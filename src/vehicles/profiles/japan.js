@@ -179,10 +179,13 @@ function buildSTB1(P) {
   for (const side of [-1, 1]) {
     for (let i = 0; i < 4; i++) {
       const z = 0.25 - i * 0.22;
-      P.add('turretDark', box(0.035, 0.25, 0.19), side * 1.165, 0.34, z,
+      P.add('turretDark', box(0.045, 0.27, 0.19), side * 1.175, 0.38, z,
         0, side * 0.07, 0);
-      P.add('turretDetail', box(0.038, 0.024, 0.16), side * 1.185, 0.43, z,
+      for (let rib = -1; rib <= 1; rib++) P.add('turretDetail',
+        box(0.050, 0.018, 0.16), side * 1.202, 0.38 + rib * 0.085, z,
         0, side * 0.07, 0);
+      P.add('turretDetail', box(0.052, 0.29, 0.018), side * 1.202, 0.38,
+        z - 0.095, 0, side * 0.07, 0);
     }
     P.add('turret', box(0.035, 0.27, 0.37), side * 1.115, 0.29, -0.70,
       0, side * 0.08, 0);
@@ -195,20 +198,26 @@ function buildSTB1(P) {
   // The oracle's four-cell cheek grilles are a primary frontal identifier.
   // Each cell has a shallow armor backing and is canted with the casting.
   for (const side of [-1, 1]) {
-    P.add('turret', box(0.62, 0.30, 0.055), side * 0.66, 0.34, 0.83,
-      0, -side * 0.25, 0);
-    for (let i = 0; i < 4; i++) P.add('turretDark', box(0.125, 0.22, 0.026),
-      side * (0.43 + i * 0.155), 0.35, 0.865 - i * 0.035,
-      0, -side * 0.25, 0);
+    P.add('turret', box(0.070, 0.34, 0.70), side * 1.105, 0.40, 0.59,
+      0, side * 0.10, 0);
+    for (let i = 0; i < 4; i++) {
+      const z = 0.84 - i * 0.17;
+      P.add('turretDark', box(0.034, 0.25, 0.142), side * 1.153, 0.41, z,
+        0, side * 0.10, 0);
+      P.add('turretDetail', box(0.040, 0.020, 0.128), side * 1.174, 0.49,
+        z, 0, side * 0.10, 0);
+      P.add('turretDetail', box(0.040, 0.020, 0.128), side * 1.174, 0.33,
+        z, 0, side * 0.10, 0);
+    }
   }
 
   // Signature left-front multi-pane searchlight: solid armored cradle,
-  // hood, nine luminous panes and a conduit seated back into the cheek.
+  // hood, six luminous panes and a conduit seated back into the cheek.
   P.add('turret', box(0.54, 0.40, 0.38), 0.73, 0.52, 1.04, -0.05, 0, 0);
   P.add('turret', box(0.58, 0.055, 0.13), 0.73, 0.75, 1.15, -0.05, 0, 0);
   P.add('turretDark', box(0.48, 0.33, 0.028), 0.73, 0.52, 1.242);
-  for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
-    P.add('turretGlass', box(0.108, 0.080, 0.018), 0.598 + col * 0.132,
+  for (let row = 0; row < 3; row++) for (let col = 0; col < 2; col++) {
+    P.add('turretGlass', box(0.160, 0.080, 0.018), 0.642 + col * 0.176,
       0.42 + row * 0.112, 1.262);
   }
   P.add('turretDetail', box(0.085, 0.42, 0.085), 0.73, 0.27, 0.92);
@@ -241,12 +250,21 @@ function buildSTB1(P) {
   P.add('turret', box(0.29, 0.13, 0.22), 0.43, 0.94, -0.31, -0.04, 0, 0);
   P.add('turretDark', box(0.21, 0.075, 0.025), 0.43, 0.95, -0.184);
   P.add('turretGlass', box(0.15, 0.045, 0.018), 0.43, 0.95, -0.201);
-  P.add('turret', cylY(0.225, 0.235, 0.055, 20), -0.43, 0.715, -0.12);
-  P.add('turret', cylY(0.195, 0.195, 0.028, 20), -0.43, 0.760, -0.12);
-  P.add('turretDark', box(0.34, 0.014, 0.030), -0.43, 0.780, -0.12);
+  P.add('turret', cylY(0.245, 0.285, 0.075, 20), -0.43, 0.725, -0.12);
+  P.add('turret', cylY(0.205, 0.225, 0.040, 20), -0.43, 0.785, -0.12);
+  P.add('turretDark', torus(0.226, 0.014, 24), -0.43, 0.805, -0.12);
+  P.add('turretDark', box(0.36, 0.016, 0.034), -0.43, 0.815, -0.12,
+    0, 0.08, 0);
+  P.add('turretDetail', box(0.055, 0.045, 0.15), -0.20, 0.795, -0.12,
+    0, 0.08, 0);
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3;
+    P.add('turretGlass', box(0.075, 0.055, 0.026),
+      -0.43 + Math.sin(a) * 0.238, 0.777, -0.12 + Math.cos(a) * 0.238,
+      0, a, 0);
+  }
   for (const [x, z, yaw] of [[0.14, 0.38, 0], [-0.22, 0.34, 0.15], [0.69, -0.05, -0.2]])
     periscope(P, 'turretDetail', x, 0.80, z, yaw);
-  P.add('turretDark', torus(0.215, 0.013, 24), -0.43, 0.785, -0.12);
   mount(P, FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.70, elev: 0.04,
     shield: false, ammo: true, ring: { r: 0.15, stubs: 3 }, seed: 1110,
@@ -254,6 +272,14 @@ function buildSTB1(P) {
   P.add('turretDark', box(0.11, 0.10, 0.31), 0.43, 0.94, -0.22);
   P.add('turretDark', cylZ(0.018, 0.58, 10), 0.43, 0.96, 0.22, -0.05, 0, 0);
   P.add('turretDark', box(0.15, 0.12, 0.10), 0.56, 0.92, -0.30);
+
+  // The source crown terminates in a broad backed mesh ventilation field.
+  // Its shallow shoe overlaps the cast roof so it reads as fitted hardware,
+  // not a black decal or a floating grate.
+  P.add('turret', box(0.82, 0.055, 0.42), 0, 0.615, -1.15, -0.07, 0, 0);
+  P.add('turretDark', box(0.72, 0.030, 0.34), 0, 0.652, -1.15, -0.07, 0, 0);
+  for (let i = -3; i <= 3; i++) P.add('turretDetail', box(0.035, 0.020, 0.31),
+    i * 0.10, 0.675, -1.15, -0.07, 0, 0);
 
   // Small supported smoke banks and a continuous bustle basket/cage.  Every
   // rail has a visible return into the turret or its backed rear face.

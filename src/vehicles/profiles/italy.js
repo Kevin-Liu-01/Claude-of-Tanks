@@ -550,8 +550,16 @@ function buildCarro45T(P) {
     const a = (k / 5) * Math.PI * 2;
     periscope(P, 'turretDetail', -0.01 + Math.sin(a) * 0.19, 0.875, L(-0.78) + Math.cos(a) * 0.19, a);
   }
-  P.add('turretDark', torus(0.20, 0.012, 16), -0.55, 0.80, L(0.10));           // loader hatch FLUSH seam on the sloping roof (raised ring read 2.40 vs ref 2.28)
-  P.add('turret', box(0.06, 0.028, 0.08), -0.34, 0.795, L(0.10));              // hinge block
+  P.add('turret', cylY(0.205, 0.235, 0.040, P.q ? 20 : 12), -0.55, 0.805, L(0.10)); // loader hatch shoe buried into the sloping roof
+  P.add('turret', cylY(0.180, 0.190, 0.022, P.q ? 20 : 12), -0.55, 0.838, L(0.10)); // shallow oval-read lid, still below the 2.42 m cupola datum
+  P.add('turretDark', torus(0.205, 0.012, 16), -0.55, 0.835, L(0.10));
+  P.add('turretDark', box(0.30, 0.014, 0.025), -0.55, 0.855, L(0.10), 0, -0.10, 0); // split-lid seam
+  P.add('turret', box(0.06, 0.055, 0.10), -0.34, 0.815, L(0.10));              // seated hinge block
+  for (let k = 0; k < 4; k++) {
+    const a = k * Math.PI / 2 + Math.PI / 4;
+    periscope(P, 'turretDetail', -0.55 + Math.sin(a) * 0.22, 0.835,
+      L(0.10) + Math.cos(a) * 0.22, a);
+  }
   P.add('turret', box(0.22, 0.155, 0.20), 0.73, 0.775, L(0.70));               // gunner periscope hood (side 2.387 @ +0.73; ref top 2.38-2.39)
   P.add('turretGlass', box(0.14, 0.05, 0.02), 0.73, 0.83, L(0.805));
   // rear: underside closure + backed service wall (owner c425f495 cadence
@@ -568,6 +576,26 @@ function buildCarro45T(P) {
     h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, L(-1.80));        // rear rack on the service wall (census-true fitting)
   addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
     elev: 0, shield: false, scale: 0.50, seed: 72 }), 0.30, 0.72, L(-0.62), [0, 2.85, 0]); // commander's Breda stowed LOW at the cupola (top under the 2.42 p95 datum; owner c425f495 carried one)
+  // The print carries canted corner launchers rather than a featureless rear
+  // roof edge.  Both banks have broad fitting-library shoes and remain under
+  // the existing commander-cupola height datum.
+  for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.smokeBank({
+    mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.95,
+    pitch: -0.34, arc: 0.62, spacing: 0.085, slot: 'detail',
+    rotation: [0, 0, -s * 0.10], seed: 78 + (s > 0 ? 1 : 0),
+  }), s * 1.02, 0.89, L(-0.92));
+
+  // Low supported crown rail follows the source roof lattice.  Each rail is
+  // returned into the plateau by short uprights; there are no sky-supported
+  // rods.  The darker rail reads clearly against the painted crown without
+  // overtopping the certified cupola datum.
+  for (const x of [-0.98, 0.35]) {
+    P.add('turretDark', box(0.025, 0.025, 0.84), x, 0.910, L(-0.94));
+    for (const z of [-1.34, -0.54]) P.add('turretDark', box(0.030, 0.120, 0.030),
+      x, 0.850, L(z));
+  }
+  for (const z of [-1.34, -0.54]) P.add('turretDark', box(1.35, 0.025, 0.025),
+    -0.315, 0.910, L(z));
   for (const [wx, wy, wz, wh] of [[-0.385, 0.822, -1.535, 1.63], [0.385, 0.817, -1.565, 1.64]]) {
     P.add('turretDark', cylY(0.035, 0.045, 0.08, 10), wx, wy + 0.04, L(wz - 0.055)); // offset-mount whips: pot clear of the st4 window, VERTICAL rod in
     P.add('turretDark', box(0.024, 0.05, 0.075), wx, wy + 0.10, L(wz - 0.028)); // the print's own trace column (tips ~4.10; the fitting's inline pot
@@ -579,7 +607,10 @@ function buildCarro45T(P) {
   for (const s2 of [-1, 1]) {
     for (let i = 0; i < 3; i++) {                                              // side access-panel seams, riding the canted wall face (owner's proud
       const pz = 0.16 - i * 0.57;                                              // panels superseded: the print walls cant 1.60@±1.54 -> 2.33@±1.15)
-      P.add('turretDark', box(0.014, 0.24, 0.36), s2 * 1.40, 0.30, L(pz), 0, 0, s2 * 0.50);
+      P.add('turret', box(0.030, 0.26, 0.38), s2 * 1.40, 0.30, L(pz), 0, 0, s2 * 0.50);
+      P.add('turretDark', box(0.018, 0.20, 0.30), s2 * 1.425, 0.30, L(pz), 0, 0, s2 * 0.50);
+      for (const dy of [-0.065, 0, 0.065]) P.add('turretDetail', box(0.020, 0.014, 0.27),
+        s2 * 1.438, 0.30 + dy, L(pz), 0, 0, s2 * 0.50);
     }
   }
   for (const s2 of [-1, 1]) P.add('turretDetail', box(0.02, 0.10, 0.16), s2 * 1.435, 0.30, L(-1.30)); // flush shackle plates (lift eyes read 2.32 over the 1.9-2.1 cant)
