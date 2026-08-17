@@ -344,6 +344,53 @@ function addType90APackage(P) {
   P.add('turret', cylY(0.27, 0.29, 0.075, 18), 0.50, 0.86, -0.48);
   P.add('turretDark', torus(0.25, 0.014, 18), 0.50, 0.91, -0.48);
   roofWeapon(P, 0.50, 0.92, -0.48, 9010, 0.82, -0.04);
+
+  // The donor's broad welded roof remains the correct Type 90 family mass,
+  // but the A package needs a visible service grammar at garage distance.
+  // Keep every addition shallow and seated: split hatch, vision blocks,
+  // weld courses and access plates all overlap the existing roof plane.
+  P.add('turret', cylY(0.27, 0.29, 0.065, 18), -0.43, 0.87, -0.71);
+  P.add('turretDark', torus(0.255, 0.014, 18), -0.43, 0.91, -0.71);
+  P.add('turret', cylY(0.23, 0.245, 0.030, 18), -0.43, 0.93, -0.71);
+  P.add('turretDark', box(0.37, 0.018, 0.034), -0.43, 0.95, -0.71, 0, 0.08, 0);
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI * 0.72 + i * (Math.PI * 1.44 / 5);
+    P.add('turretGlass', box(0.075, 0.055, 0.028),
+      -0.43 + Math.sin(a) * 0.275, 0.925, -0.71 + Math.cos(a) * 0.275,
+      0, a, 0);
+  }
+  for (const [z, w] of [[0.72, 1.18], [0.30, 1.52], [-0.20, 1.82], [-0.92, 1.92], [-1.46, 1.68]]) {
+    P.add('turretDark', box(w, 0.016, 0.030), 0, 0.862, z);
+  }
+  for (const [x, z, w, d] of [
+    [-0.77, 0.43, 0.38, 0.32], [0.75, 0.34, 0.34, 0.30],
+    [-0.82, -1.20, 0.42, 0.30], [0.80, -1.15, 0.38, 0.28],
+  ]) {
+    P.add('turretDark', box(w + 0.035, 0.020, d + 0.035), x, 0.875, z);
+    P.add('turret', box(w, 0.045, d), x, 0.892, z, -0.035, 0, 0);
+    P.add('turretDetail', box(w * 0.68, 0.014, 0.025), x, 0.923, z + d * 0.22);
+  }
+
+  // Joined flank modules and 360-degree camera/APS heads replace the quiet
+  // slab read.  These are NERA/service faces, not a second track or skirt
+  // course; their inner faces are buried into the turret shoulders.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 5; i++) {
+      const z = 0.35 - i * 0.38;
+      P.add('turretDark', box(0.035, 0.30, 0.33), side * 1.305, 0.48, z,
+        0, side * 0.09, 0);
+      P.add('turret', box(0.050, 0.26, 0.30), side * 1.325, 0.49, z,
+        0, side * 0.09, 0);
+      P.add('turretDetail', box(0.054, 0.018, 0.22), side * 1.353, 0.57, z,
+        0, side * 0.09, 0);
+    }
+    P.add('turret', box(0.21, 0.16, 0.23), side * 1.17, 0.69, 0.49,
+      -0.06, side * 0.12, 0);
+    P.add('turretDark', box(0.022, 0.10, 0.14), side * 1.285, 0.70, 0.51,
+      -0.06, side * 0.12, 0);
+    P.add('turretGlass', box(0.015, 0.060, 0.080), side * 1.300, 0.71, 0.52,
+      -0.06, side * 0.12, 0);
+  }
   smoke(P, 1.23, 0.65, 0.08, 5, 9020, -0.44);
   joinedBasket(P, 2.48, 0.47, -1.72, 0.62, 9030);
   whips(P, 0.73, -1.86, 9040, 1.08);

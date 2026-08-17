@@ -8948,7 +8948,7 @@ function buildKF51(P) {
 // into the live tank.
 // ---------------------------------------------------------------------------
 function buildKF51OwnerExact(P) {
-  const { box, cylY, cylZ, frustum, polyMultiLoft, buildGun, periscope,
+  const { box, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun, periscope,
     liftEye, headlight } = KIT;
   const slab = orientedSlab;
 
@@ -9147,11 +9147,55 @@ function buildKF51OwnerExact(P) {
   periscope(P, 'turret', 0.18, 0.645, 0.34, 0.17, 0.09, 0.12, 0);
   periscope(P, 'turret', -0.08, 0.645, 0.42, 0.15, 0.08, 0.10, 0);
 
+  // The source roof is low, not featureless.  Give its two crew stations a
+  // readable coaming/lid/hinge cadence and carry the access-panel seams
+  // across the broad wedge.  These courses are only 12-25 mm proud, so the
+  // accepted shallow silhouette and height envelope remain unchanged.
+  P.add('turretDark', torus(0.285, 0.014, P.q ? 24 : 16), -0.48, 0.665, -0.12);
+  P.add('turretDark', torus(0.265, 0.013, P.q ? 24 : 16), 0.47, 0.646, -0.22);
+  P.add('turretDetail', box(0.36, 0.022, 0.032), -0.48, 0.690, -0.12, 0, 0.08, 0);
+  P.add('turretDetail', box(0.32, 0.020, 0.030), 0.47, 0.675, -0.22, 0, -0.10, 0);
+  for (const [x, z, yaw] of [
+    [-0.72, -0.12, Math.PI / 2], [-0.48, 0.13, 0], [-0.24, -0.12, Math.PI / 2],
+    [0.24, -0.18, Math.PI / 2], [0.48, 0.02, 0], [0.70, -0.25, Math.PI / 2],
+  ]) periscope(P, 'turretDetail', x, 0.682, z, yaw, 0.080, 0.055, 0.040);
+  for (const [z, w] of [[0.70, 1.18], [0.18, 1.42], [-0.64, 1.72], [-1.46, 1.78], [-2.18, 1.54]]) {
+    P.add('turretDark', box(w, 0.014, 0.028), 0, 0.617, z);
+  }
+  for (const x of [-0.73, 0.73]) {
+    P.add('turretDetail', box(0.026, 0.018, 1.46), x, 0.626, -1.28, 0, x * 0.035, 0);
+  }
+
+  // Flush modular flank armor and backed sensor cells break the large plain
+  // side sheets without turning the Panther into an ERA brick.  Each armor
+  // face overlaps the connected turret wall; the thin dark joints are
+  // recessed visually and cannot read as floating panels.
+  for (const s of [-1, 1]) {
+    const sidePanels = [
+      [0.82, 0.34, 0.22], [0.42, 0.42, 0.24], [-0.04, 0.46, 0.25],
+      [-0.54, 0.47, 0.25], [-1.05, 0.47, 0.24], [-1.56, 0.45, 0.23],
+      [-2.03, 0.39, 0.21],
+    ];
+    for (const [z, d, h] of sidePanels) {
+      P.add('turretDark', box(0.030, h + 0.035, d + 0.032), s * 1.420, 0.35, z,
+        0, s * 0.11, 0);
+      P.add('turret', box(0.042, h, d), s * 1.438, 0.36, z,
+        0, s * 0.11, 0);
+      P.add('turretDetail', box(0.046, 0.018, d * 0.70), s * 1.461, 0.43, z,
+        0, s * 0.11, 0);
+    }
+    P.add('turret', box(0.20, 0.15, 0.24), s * 1.22, 0.56, 0.78, -0.05, s * 0.13, 0);
+    P.add('turretDark', box(0.024, 0.09, 0.15), s * 1.33, 0.57, 0.80, -0.05, s * 0.13, 0);
+    P.add('turretGlass', box(0.016, 0.055, 0.085), s * 1.347, 0.58, 0.81, -0.05, s * 0.13, 0);
+  }
+
   // SEOSS panoramic head: broad planted pedestal, tapered armor tower and
   // forward dark glass.  This is the source's characteristic tall green box.
   P.add('turret', box(0.46, 0.12, 0.48), -0.56, 0.64, -1.06);
   P.add('turret', frustum(0.22, 0.21, -0.20, 0.18, 0.17, -0.17, 0.66, 1.02), -0.56, 0, -1.06);
   P.add('turretGlass', box(0.25, 0.15, 0.018), -0.56, 0.89, -0.875);
+  P.add('turretGlass', box(0.018, 0.13, 0.20), -0.755, 0.88, -1.06);
+  P.add('turretDark', box(0.40, 0.040, 0.39), -0.56, 1.035, -1.06);
   P.add('turretDark', box(0.34, 0.045, 0.34), -0.56, 1.05, -1.06);
 
   // Rear-left RWS with source-like split shield and forward-facing MG.
@@ -9166,10 +9210,15 @@ function buildKF51OwnerExact(P) {
   // preserving the broad daylight aperture between the two armor wings.
   P.add('turretDark', box(0.055, 0.48, 0.13), 0.01, 1.03, -2.17, 0, 0, -0.48);
   P.add('turretDark', box(0.055, 0.48, 0.13), 0.55, 1.03, -2.17, 0, 0, 0.48);
-  P.add('turretDark', box(0.18, 0.18, 0.40), 0.28, 0.94, -2.02);
-  P.add('turretDark', cylZ(0.025, 1.34, 10), 0.28, 1.00, -1.17);
-  P.add('turretDark', cylZ(0.045, 0.12, 10), 0.28, 1.00, -0.46);
-  P.add('turretDetail', box(0.16, 0.16, 0.18), 0.28, 0.82, -2.00);
+  const rwsGun = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.92,
+    elev: 0.015, ammo: false, shield: false,
+  });
+  rwsGun.position.set(0.28, 0.79, -2.08);
+  P.turretG.add(rwsGun);
+  P.add('turretDetail', box(0.24, 0.16, 0.30), 0.71, 0.91, -2.03);
+  P.add('turretDark', box(0.20, 0.10, 0.026), 0.71, 0.91, -1.866);
+  P.add('turretGlass', box(0.12, 0.055, 0.018), 0.71, 0.92, -1.850);
 
   // Low roof seams and lifting hardware visible in the owner top/rear views.
   P.add('turretDetail', box(1.52, 0.025, 0.035), 0, 0.615, -1.72);
