@@ -650,8 +650,12 @@ const REG = {
   bmp3: {
     // Semantic 42manako print (CC-BY-NC). Nose +x -> yaw -90; muzzle
     // overhangs the bow ~0.27 while published length is hull-total 7.14.
+    // §5.248 IFV round reg fix (mirrors the three maps): \.? tolerates the
+    // browser loader's dot-sanitized node names; interior.001 (crew basket)
+    // follows the turret so ref hull rows stay clean.
     path: 'public/models/community-candidates/bmp3_rok_42manako.glb',
-    turretNode: '^turret\\.001$', gunNode: '^weapon2\\.001$', autoPivot: true,
+    turretNode: '^turret\\.?001$', gunNode: '^weapon2\\.?001$', autoPivot: true,
+    turretFollowers: '^interior\\.?001$',
     yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.14, overallLengthM: 7.14, widthM: 3.23, heightM: 2.40 },
   },
@@ -672,12 +676,15 @@ const REG = {
   },
   upior: {
     // FICTIONAL Polish concept (905k-vert original; one BMP-2-turret
-    // component tell recorded). Gun = sibling Object004. Nose +z —
-    // paired-render adjudication before trusting plan reads. CONCEPT
-    // pubDims = print-proportional BMP-2-class anchor (ASK-OWNER banked).
+    // component tell recorded). Gun = sibling Object004. §5.269 FIX-ROUND
+    // RE-ADJUDICATION: this extract's raw parser reads the FBX z-MIRRORED
+    // vs THREE's correct native nose-+z frame (critic shaded receipts:
+    // doors+tow-cable face = stern). yawOffset PI HERE brings the extract
+    // into the true frame; the browser maps carry NO offset. CONCEPT
+    // pubDims = print-proportional anchor (ASK-OWNER banked).
     path: 'public/models/community-candidates/upior_killcapturedestroy.glb',
     turretNode: '^mtl_h1_vehicle_bmp_2_turet_woodland$', gunNode: '^Object004$',
-    autoPivot: true,
+    autoPivot: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 6.70, overallLengthM: 6.70, widthM: 3.00, heightM: 2.50 },
   },
   marder1a3: {
@@ -718,8 +725,12 @@ const REG = {
   leo2a4m: {
     // Same account/verdict. NO usable split (whole-shell pairs + vlo) —
     // measurement-only. Nose +x -> yaw -90.
+    // §5.248 germany round row completion: turretless registration needs the
+    // fixedMount flag (jaguar class) or the extractor throws 'no turret
+    // node', and autoPivot must NOT ride along (it dereferences the turret
+    // world matrix). Whole-view instrument only, like the fidelity-map row.
     path: 'public/models/community-candidates/leo2a4m_arrafi.glb',
-    autoPivot: true, yawOffset: -Math.PI / 2,
+    fixedMount: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 4.07, heightM: 2.75 },
   },
   // ---- §5.248 batch B (15 prints, ALL LOCAL-ONLY quarantine; censuses +
@@ -774,7 +785,9 @@ const REG = {
     // yawOffset PI carried in the row so every consumer agrees (ztz99a2-row
     // convention; the fidelity harness gun-vs-turret auto-flip then no-ops).
     scaleToOverall: true, yawOffset: Math.PI,
-    pubDims: { hullLengthM: 7.82, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
+    // hullLengthM 7.56 = the committed centurion3 family value (the 7.82
+    // batch-B figure was a donor-clone error; print hull mask reads 7.565).
+    pubDims: { hullLengthM: 7.56, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
   },
   strv122: {
     // TRIPO AI-GENERATED — WEAK instrument, visual influence only.
@@ -815,7 +828,9 @@ const REG = {
     // node exists for the auto-flip -> explicit yawOffset PI.
     path: 'public/models/community-candidates/oplot_m_manako.glb',
     turretNode: '^TUR$', yawOffset: Math.PI, autoPivot: true, scaleToOverall: true,
-    turretFollowers: '^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042)$',
+    // default076 ("inner") is the turret interior shell — it tops 1.91
+    // over the deck's 1.39 and pollutes the hull mask unless it follows.
+    turretFollowers: '^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$',
     pubDims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.775, heightM: 2.285 },
   },
   ua_t80u_kursk: {

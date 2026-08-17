@@ -49,11 +49,11 @@ if (!spec) failFidelity(`Unknown tank id: ${id}`);
 // original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
   // Owner-authoritative STB-1 print (2026-08-16). The source exports a clean
-  // Hull / Tracks / Turret split, but its DCC scene frame is yawed 115.64deg
-  // and the gun is fused into Turret_2. Keep hull/turret/whole comparisons
-  // strict and disable only the dishonest isolated-gun component mask.
+  // Hull / Tracks / Turret split, but the gun is fused into Turret_2. Keep
+  // hull/turret/whole comparisons strict and disable only the dishonest
+  // isolated-gun component mask.
   stb1: { source:'glb', glb:{ path:'/models/community-candidates/stb_1_owner.glb',
-    turretNode:'^Turret_2$', autoPivot:true, yawOffset:2.018,
+    turretNode:'^Turret_2$', autoPivot:true, yawOffset:Math.PI / 2,
     gunComponentMasks:false } },
   // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
   // registrations retired fleet-wide so every MBT renders procedural +
@@ -127,12 +127,48 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t95: { source:'glb', glb:{ path:'/models/tanks/community/t95_doomturtle_haphazard.glb', fixedMount:true, yawOffset:Math.PI, paintUntextured:true } },
   // ---- §5.248 batch A (Downloads root, 13 drops — ALL LOCAL-ONLY
   // quarantine; provenance verdicts + SHA receipts in ATTRIBUTION).
-  bmp3_rok: { source:'glb', glb:{ path:'/models/community-candidates/bmp3_rok_42manako.glb', turretNode:'^turret\\.001$', gunNode:'^weapon2\\.001$', autoPivot:true, yawOffset:-Math.PI/2 } },
-  bmpt_terminator2: { source:'glb', glb:{ path:'/models/community-candidates/bmpt2_sanderwolf.glb', turretNode:'^Object_6$', autoPivot:true } },
-  upior_ifv: { source:'glb', glb:{ path:'/models/community-candidates/upior_killcapturedestroy.glb', turretNode:'^mtl_h1_vehicle_bmp_2_turet_woodland$', gunNode:'^Object004$', autoPivot:true, turretFollowers:'^(?:Object002|Object003|Plane\\.016)$' } },
-  marder1a3: { source:'glb', glb:{ path:'/models/community-candidates/marder1a3_arrafi.glb', turretNode:'^Object_6$', autoPivot:true } },
-  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI, fidelityScaleAnchor:'hullLength' } },
-  leo2a6m: { source:'glb', glb:{ path:'/models/community-candidates/leo2a6m_arrafi.glb', turretNode:'^Object_6$', autoPivot:true, yawOffset:-Math.PI/2 } },
+  bmp3: { source:'glb', glb:{ path:'/models/community-candidates/bmp3_rok_42manako.glb', turretNode:'^turret\\.?001$', gunNode:'^weapon2\\.?001$', autoPivot:true, yawOffset:-Math.PI/2,
+    // §5.248 IFV round reg fix: GLTFLoader sanitizes dots out of node names
+    // ('turret.001' loads as 'turret001') so the dotted literals never
+    // matched in-browser and the gate silently ran the fused-reference
+    // path; \\.? matches both pipelines. interior.001 (crew basket +
+    // gunner mass, y 0.64..2.37) rides the ring in reality — as a hull
+    // component it polluted every ref hull row at the turret columns.
+    turretFollowers:'^interior\\.?001$' } },
+  bmpt: { source:'glb', glb:{ path:'/models/community-candidates/bmpt2_sanderwolf.glb', turretNode:'^Object_6$', autoPivot:true } },
+  upior: { source:'glb', glb:{ path:'/models/community-candidates/upior_killcapturedestroy.glb', turretNode:'^mtl_h1_vehicle_bmp_2_turet_woodland$', gunNode:'^Object004$', autoPivot:true, turretFollowers:'^(?:Object002|Object003|Plane\\.?016)$',
+    // turretYaw REMOVED (§5.286 critic receipts: the station is NATIVELY
+    // gun-forward — the PI re-pose double-flipped the ref muzzle-over-tail).
+    // §5.269 FIX-ROUND RE-ADJUDICATION (critic shaded-content receipts:
+    // the pinned +z face carries the twin-door stern + coiled tow cable;
+    // close-nose/close-rear sheets in shots/critic-ifv/upior). The FBX's
+    // NATIVE THREE frame is nose-+z CORRECT — the earlier PI pin scored a
+    // reversed silhouette (profile-shape tells fail on this concept: BOTH
+    // ends converge; adjudicate by door/cable/shackle content). Pin
+    // REMOVED; the vertex REG carries PI instead (its raw parser mirrors).
+  } },
+  marder1a3: { source:'glb', glb:{ path:'/models/community-candidates/marder1a3_arrafi.glb', turretNode:'^Object_6$', autoPivot:true,
+    // §5.248 IFV round reg fix: FUSED PRINT — Object_6 is only the cupola
+    // + stern whips (x -0.87..0.52); the actual turret mass is baked into
+    // the hull objects (station tops 2.7-2.9 read hull-side), so scored
+    // hull/turret decomposition is dishonest (t72m1_jaguar/type99a class).
+    componentMasks:false } },
+  m3a3_bradley: { source:'glb', glb:{ path:'/models/community-candidates/m3a3_bradley_sipriv.glb', turretNode:'^bone11_169$', gunNode:'^bone28_163$', autoPivot:true, yawOffset:Math.PI } },
+  // §5.248 germany round _vlo shell-isolation audit (real-vertex scans,
+  // docs/references/tanks/leo2a6m.md): the chassis_vlo pair (Object_9/10)
+  // is a benign-REQUIRED running-gear LOD pair (y<=0.495, the print's ONLY
+  // full wheel train), but the chassis.0 detail shells Object_5/7 bake the
+  // FULL GUN TUBE (x 4.31..7.964) and an at-rest TURRET BAND (tops mirror
+  // Object_6's 1.636..1.847 across the works span), and the Slat_Armor
+  // shell parks turret-height cage panels hull-side — hull/turret mask
+  // decomposition is structurally dishonest (marder1a3/t72m1_jaguar class).
+  // componentMasks:false keeps the honest rows: whole views, dims, floaters.
+  leo2a6m: { source:'glb', glb:{ path:'/models/community-candidates/leo2a6m_arrafi.glb', turretNode:'^Object_6$', autoPivot:true, yawOffset:-Math.PI/2, componentMasks:false } },
+  // §5.248 germany round row addition: fused whole-shell pairs (Object_3/4
+  // both carry hull+turret+gun; Object_5 = vlo running-gear band) — NO
+  // usable split, whole-view instrument only (jaguar class). Audit in
+  // docs/references/tanks/leo2a4m.md.
+  leo2a4m: { source:'glb', glb:{ path:'/models/community-candidates/leo2a4m_arrafi.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   // ---- §5.248 batch B (Claude of Tanks Models folder, 15 prints — ALL
   // LOCAL-ONLY quarantine, measurement/influence only; see ATTRIBUTION).
   // pl01 followers completed + t72m1 orientation resolved by the poland
@@ -146,15 +182,15 @@ const LOCAL_REFERENCE_OVERRIDES = {
   pl01: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$' } },
   t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
   pt91_twardy: { source:'glb', glb:{ path:'/models/community-candidates/pt91a_manako.glb', turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true } },
-  strv103: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true } },
+  strv103: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
-  strv122: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false } },
+  strv122: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
-  ua_t84_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042)$', gunComponentMasks:false } },
-  ua_t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, componentMasks:false } },
-  ua_t64bv: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:236|244|245|247|253|254|256|261|262|275|276|281)|(?:Cube|Cylinder)(?:\\.?\\d{3})?)$' } },
-  ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', autoPivot:true, gunComponentMasks:false } },
+  ua_t84_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', yawOffset:Math.PI, autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$', gunComponentMasks:false } },
+  ua_t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
+  ua_t64bv: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
+  ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
   ariete_c1: { source:'glb', glb:{ path:'/models/community-candidates/ariete_c1_arrafi.glb', turretNode:'^Object_5$', gunNode:'^Object_7$', autoPivot:true, turretFollowers:'^Object_(?:2|6)$' } },
   carro45t: { source:'glb', glb:{ path:'/models/community-candidates/carro45t_hlebov.glb', turretNode:'^Object_58$', gunNode:'^Object_4$', gunFollowers:'^Object_6$', autoPivot:true } },
   k1a1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
@@ -1855,6 +1891,7 @@ if (params.get('geo')) {
     floaters: floaterScore,
   };
   const geoMin = Math.min(...Object.values(components).map((v) => +v));
+  window.__GEO_CURVES = curves;                                              // italy §5.248: raw trace export for builder-lane column decode (score-neutral)
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), gatePassed: geoMin >= 90,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
