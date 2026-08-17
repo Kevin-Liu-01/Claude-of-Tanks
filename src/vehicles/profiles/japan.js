@@ -447,12 +447,21 @@ function addType90APackage(P) {
   smoke(P, 1.23, 0.65, 0.08, 5, 9020, -0.44);
   joinedBasket(P, 2.48, 0.47, -1.72, 0.62, 9030);
   whips(P, 0.73, -1.86, 9040, 1.08);
-  // Revised Rh-120 plant with broad mask, sleeve, clamp and coax cue.
-  P.addGunExtra(box(0.76, 0.50, 0.26), 0, -0.01, 0.38);
-  P.addGunExtra(cylZ(0.19, 0.38, 18, 0.15), 0, 0, 0.67);
-  P.addGunExtraDark(cylZ(0.038, 0.10, 10), 0.29, 0.08, 0.58);
-  P.decal('turret', 'number', '90-A', 0.20, [1.48, 0.42, -0.78], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.46);
+  // Revised Rh-120 plant — §5.364 re-seat in the donor's new trunnion frame
+  // (buildType90 now pitches about the turret-face trunnion: gunExtra world
+  // = local + (0, 1.686, 1.30); the old 0.38/0.67 stations, authored for the
+  // retired scale-preserving seat, would float 0.4 m ahead of the new
+  // mantlet). The A-mark identity keeps its BEEFIER mask read as layered
+  // applique ON the donor's wide plate: an up-armor collar frame proud of
+  // the face, a fatter sleeve root over the donor's recoil step, and the
+  // long coax sleeve wrapping the donor port.
+  P.addGunExtra(box(0.92, 0.44, 0.06), 0, 0, 0.245);                          // A-mark applique collar frame (z_w 1.515..1.575, seated 5 mm into the donor face plate — §B2)
+  P.addGunExtra(cylZ(0.15, 0.34, 18, 0.12), 0, 0, 0.60);                      // strengthened sleeve root (z_w 1.73..2.07, overlapping the donor step 1.55..1.85)
+  P.addGunExtraDark(cylZ(0.038, 0.10, 10), 0.36, 0.105, 0.28);                // coax sleeve wrapping the donor port (same face station, 8 cm longer)
+  // (decal seats on the unscaled rig_turret after the donor's postAssemble
+  // shell regroup — 0.2856/−0.6396 = 0.42/−0.78 through the shell scale.)
+  P.decal('turret', 'number', '90-A', 0.20, [1.48, 0.2856, -0.6396], Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 0.9928);                                     // rig_turretTop world 2.3928 unchanged = the old 1.46 through the 0.68 shell scale
 }
 
 function buildType90A(P) {

@@ -2815,9 +2815,11 @@ export function buildType90(P) {
     [-0.56, 0.68, 1.94], [0.56, 0.68, 1.94], [1.10, 0.78, 1.28], [-1.10, 0.78, 1.28],
     [-0.54, 0.74, 1.90], [0.54, 0.74, 1.90], [1.08, RY, 1.28], [-1.08, RY, 1.28]));
   P.add('turret', box(1.12, 0.13, 0.12), 0, 0.695, 1.92);                      // the SHALLOW BROW over the gun throat (identity cue): face flush with the plan nose 1.98; r7 top 2.16 (the print's own brow line reads 2.16-2.22 post-warp — the 2.34 carry-up was the flat-roof read)
-  for (const s of [-1, 1]) {
-    P.add('turret', cylY(0.075, 0.075, 0.46, 12), s * 0.38, 0.42, 1.90);       // ROUNDED GUN-SHIELD CHEEKS flanking the embrasure (owner-named identity read; centered on the 1.82 bore line, faces ~flush with the throat plane)
-  }
+  // (§5.364: the freestanding ROUNDED GUN-SHIELD CHEEK cylinders that flanked
+  // the embrasure at x ±0.38 / z_w 1.30..1.42 sat ENTIRELY inside the new
+  // wide mantlet plate's volume (x ±0.54, z_w 1.21..1.49) — dead geometry.
+  // The owner-named rounded read now rides the mantlet's own rounded side
+  // edges in the gun bucket below, where the real vehicle carries it.)
   P.add('turret', box(2.36, 0.135, 1.66), 0, 0.8725, -1.21);                   // bustle roof at the SAME 2.34 plane (y 2.2075..2.34, z_w -0.58..-2.24; §5.248: rear pulled -2.31 -> -2.24 with the wall — the v2 print's own bustle underside RISES over its last 0.2 m [fresh worldtrace wants side bottoms 1.79@-2.29 / 1.841@-2.40] and the flat 1.43 wall bottom painted those cols; the raised basket owns the tail band now). r7: front cap at -0.58 (station i6, free slab) — the END-CAP law; x-side faces at ±1.18 are x-normal and vanish mid-slab
   P.add('turret', slab(                                                        // BUSTLE TAIL BLOCK, rising underside (§5.248 fresh worldtrace: the v2
     [-1.18, 0.21, -1.705], [1.18, 0.21, -1.705], [1.18, 0.40, -2.04], [-1.18, 0.40, -2.04], //   print's bustle/basket underside climbs 1.61@-1.905 -> 1.80@-2.24
@@ -3037,59 +3039,89 @@ export function buildType90(P) {
     P.turretG.add(whipA);
     P.add('turretDetail', box(0.08, 0.42, 0.14), s * 1.11, 0.945, -2.16);     // corner ANTENNA MAST (world x ±1.11, y 2.135..2.555, z -2.39..-2.34): the real mast the whip mounts on, rising from the top rail — the deterministic mast-bin painter (the leaning 3 px whip tip AA-flickered under the mask threshold; whatsat proved presence while the -2.40 col read the 2.13 rail). Same above-grace bin as the mast head (2.584), want 2.588
   }
-  P.decal('turret', 'number', '2274', 0.24, [1.21, 0.40, -0.5], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', '2274', 0.24, [-1.21, 0.40, -0.5], -Math.PI / 2, 0, -0.05);
-  // Rh 120 L/44: axis 1.562 (ref tube band 1.485..1.639), slim tube r 0.065
-  // (sleeve 0.159 band), muzzle +6.02 (published overall; ~1 col past the
-  // print's 5.87 tube end — certified). r5 TUBE FURNITURE RE-METER (fresh
-  // worldtrace): the ref tube carries a REAR drum swell (tops 1.697-1.715
-  // over z_w 1.85-2.31), the mid sleeve at 1.654-1.684, the fwd evac swell
-  // at 1.700-1.715 (z_w 3.03-3.47) and an off-axis MUZZLE-ZONE MRS collar
-  // whose plan column reaches x 0.137-0.259 — the r4 bare 0.065 tube left
-  // the ref's own plan tube col (front 5.769) and its evac col (front
-  // 3.455) unmatched: 1.98 + 0.82 err on the two worst plan_turret cols.
-  P.gunG.position.set(0, 0.42, 0.55);                                          // §B7 bore line 1.82 (was 1.562 = the print's squashed tube band 1.485..1.639): three-source school constant — type10 build 1.82 (roof-bore 0.48, PASS 9.0), leo2a4 2.00 (roof-bore 0.48), pre-warp artist 43.8% of face; the spec's inherited armor gunPivot already reads 1.82. Muzzle z stays 5.96 (overall 9.76 sovereign); the France mantlet grammar rides gunG and re-seats intact
-  trunnionRoll(P, 0.16, 0.50);
-  // §B3 mantlet identity (no mystery boxes): the embrasure block reads as
-  // the sealed Rh-120 mount — canvas bellows collar at the block/tube
-  // junction + bolted retainer strips on the block face + hooded coax.
-  P.addGunExtra(box(0.44, 0.34, 0.30), 0, 0.0, 0.42);                          // sealed embrasure block inside the prow
-  P.addGunExtraDark(torus(0.145, 0.022, 12), 0, 0, 0.60, 0, 0, 0);             // canvas bellows ring at the root (inside the prow silhouette)
-  P.addGunExtraDark(box(0.012, 0.30, 0.02), 0.21, 0.0, 0.575);                 // bolted retainer strips (block-face tells, 6 mm proud)
-  P.addGunExtraDark(box(0.012, 0.30, 0.02), -0.21, 0.0, 0.575);
-  // §5.16 PROPER MANTLET (france round; owner: "type 90 needs a mantlet" +
-  // "better gun placement"): the print ITSELF carries a proud mantlet mass
-  // ~0.3 m FORWARD of the turret face at the tube root (ref front-depth map
-  // tmp-france-topmap: x +-0.15, y 1.50..1.65, ref z 1.11..1.24 = proc-frame
-  // 2.12..2.25 after the ref's -1.01 full-box centering offset) — the old
-  // build buried the root INSIDE the prow and showed a bare tube. This is
-  // the Type 90's flat-faced Rh-120-class mantlet BLOCK at the print's own
-  // station, riding the gun (real mantlets elevate): flat face + bolted
-  // corner strips + dark tube collar + trunnion cheek taper into the prow.
-  // r7 MANTLET DEEPENED (batch-49 alignment): the re-normalized print's
-  // mantlet/chin band reads [1.46..2.02] across z_w 1.86..2.29 (its pre-warp
-  // chin sliver carried the mass; the §5.28 0.29-tall block paid 0.14 x4
-  // side cols against it). The REAL Type 90 mantlet IS the big flat plate —
-  // y 1.47..2.02 bore-straddling, face held at the print's own 2.065 station.
-  P.addGunExtra(box(0.32, 0.55, 0.26), 0, -0.075, 1.585);                      // mantlet block: x +-0.16, y 1.47..2.02 w, face z_w 2.065 (print station)
-  P.addGunExtra(box(0.30, 0.52, 0.025), 0, -0.075, 1.735);                     // the FLAT FACE plate (proud 2 cm, the Type 90 tell)
-  P.addGunExtraDark(cylZ(0.088, 0.03, 12), 0, 0.003, 1.76);                    // tube exit collar on the face
+  // (§5.364: decal meshes attach to rig_turret AFTER the postAssemble shell
+  // regroup, so their seats are authored in the UNSCALED turret frame —
+  // 0.272/−0.41 = the old 0.40/−0.5 through the (0.68, 0.82) shell scale,
+  // same world flank seats as d4a9410.)
+  P.decal('turret', 'number', '2274', 0.24, [1.21, 0.272, -0.41], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', '2274', 0.24, [-1.21, 0.272, -0.41], -Math.PI / 2, 0, -0.05);
+  // Rh 120 L/44 — §5.364 GUN RE-PLANT (owner order verbatim: "fix the type
+  // 90s guns. they should properly be attached to the tank and have a proper
+  // mantlet and arc up and down porperly"). DIAGNOSIS (receipts
+  // shots/type90-guns/baseline/ + tools/tmp-type90-guns.html rig probe):
+  // after the a35ac3a7 proportion correction pulled the turret face back to
+  // z_w 1.4236, the scale-preserving gun seat (z 0.67 under the 0.82 parent,
+  // gunG.scale.z 1/0.82) kept the §5.16 mantlet block at its old z_w
+  // 1.80..2.08 station — a floating block with a DAYLIGHT SLIT to the face
+  // at rest — and left the trunnion at z_w 0.349, 1.07 m behind the face,
+  // so the whole assembly ORBITED through the arc (mantlet 0.60 m below the
+  // face at −8, 0.76 m above the roof at +14) while the parent-scale shear
+  // bent every commanded angle (−8/+14 rendered −6.65/+11.68) and squashed
+  // the tube cross-section 0.68. THE PLANT: rig_gun seats at the real
+  // trunnion line ON the compressed face (world y 1.686 = the a35ac3a7
+  // bore, z_w 1.30) as a PURE ROTATION (§5.361 rig-anchor law — the
+  // proportion scale now lives in the postAssemble shell group below, never
+  // above rig_gun), the tube keeps every certified world station via the
+  // −0.9506 re-station after buildGun (muzzle world 5.9594 EXACT — the 9.76
+  // overall is sovereign), and the mantlet is re-authored as the Kyū-maru's
+  // WIDE RECTANGULAR PLATE riding elevation in a closed face slot. The r5
+  // tube-furniture receipts (sleeve/evac/MRS plan+side columns) carry over
+  // unchanged; the §r7 REAR DRUM at z_w 2.12..2.71 is RETIRED — it was the
+  // pre-compression print band read and is exactly the floating mass the
+  // owner reported (replaced by the real recoil-sleeve step off the face).
+  P.gunG.position.set(0, 0.286, 1.50);                                         // trunnion: world y 1.40 + 0.286 = 1.686 (bore), z −0.20 + 1.50 = 1.30 (the turret-face trunnion line; face plane 1.4236). GUN-FRAME LAW (this plant): gunExtra world = local + (0, 1.686, 1.30)
+  trunnionRoll(P, 0.16, 0.50);                                                 // physical trunnion cross-shaft AT the pivot (inside the prism, §B2 connected)
+  // §B3 mantlet identity (no mystery boxes): the Type 90 mantlet is ONE wide
+  // flat-faced armored plate nearly the width of the gun throat — the
+  // reference identity line reads "low wide aperture under a shallow brow;
+  // heavy inner collar" — riding elevation in front of the closed slot. The
+  // plate STRADDLES the trunnion (rear z_w 1.21 vs face 1.4236) so it
+  // pitches in place instead of orbiting: analytic corner sweep at the spec
+  // extremes −10/+20 keeps every rear corner buried in the prism (worst
+  // z_w 1.297 at +20 inside the 1.42..1.97 wall band) and the chin 3 mm
+  // clear of the 1.408 fore-deck line at −10.
+  P.addGunExtra(box(0.24, 0.30, 0.52), 0, 0, -0.32);                           // breech cradle stub bridging trunnion -> plate rear (buried, §B2)
+  P.addGunExtra(cylZ(0.125, 0.45, 14, 0.105), 0, 0, -0.185);                   // HEAVY INNER COLLAR (z_w 0.89..1.34) — the reference's named cue, continuous metal from breech line to plate rear
   for (const bs of [-1, 1]) {
-    P.addGunExtraDark(box(0.014, 0.50, 0.018), bs * 0.148, -0.075, 1.752);     // bolted edge strips on the face
-    P.addGunExtra(box(0.05, 0.46, 0.30), bs * 0.185, -0.075, 1.30);            // trunnion cheek taper closing block -> prow (§B2 connected)
+    P.addGunExtra(box(0.10, 0.36, 0.26), bs * 0.42, 0, -0.13);                 // trunnion cheek blocks tying the plate rear into the prism sides (§B2)
+    P.addGunExtraDark(box(0.016, 0.42, 0.02), bs * 0.48, 0, 0.215);            // bolted retainer strips on the face plate
+    P.addGunExtra(cylY(0.10, 0.10, 0.46, 12), bs * 0.50, 0, 0.14);             // ROUNDED vertical side edges — the owner-named rounded gun-shield read rides the mantlet itself now (total width ±0.60)
   }
-  P.addGunExtraDark(box(0.30, 0.014, 0.24), 0, -0.357, 1.55);                  // block underside shadow line
-  P.addGunExtra(cylZ(0.115, 0.34, 12, 0.14), 0, 0, 0.72);                      // root collar (z_w 0.90-1.24 inside the prow — GUN-FRAME LAW: gunExtra world z = local + gunG.z + turretG.z = local + 0.35 here, verified against the 5.94 lit muzzle)
-  P.addGunExtra(cylZ(0.15, 0.59, 14), 0, 0, 1.775);                            // RECOIL DRUM r 0.15 (r7: the re-normalized ref drum band tops 2.01-2.02 over z_w 1.83..2.42; the r5-era 12%-cut landmine is defused — the taller post-warp frame puts the cut at ~0.34, band 0.30 clears)
-  P.addGunExtraDark(cylZ(0.152, 0.05, 14), 0, 0, 1.55);                        // drum seam rings
-  P.addGunExtraDark(cylZ(0.152, 0.05, 14), 0, 0, 1.95);
-  P.addGunExtraDark(box(0.035, 0.046, 0.60), 0, 0.173, 1.75);                  // sight-cable conduit riding the drum top (y 1.97..2.016 — the ref's 2.032-rel i11 station top and its 2.01-2.02 side wants; §B3 tell: thin square-section cable run)
-  P.addGunExtraDark(box(0.03, 0.04, 0.32), 0, 0.166, 2.94);                    // conduit saddle over the evacuator (z_w 3.13..3.45 inside station i13 — ref i13 2.025-rel and side wants 2.01 at the 3.32/3.44 cols)
-  P.addGunExtra(box(0.335, 0.05, 0.24), 0.0525, 0, 5.35);                      // off-axis MRS housing PLATE x -0.115..0.22 (z_w 5.58-5.82: covers the ref's 0.198 plan tube col [reach 0.22, front want 5.751]. r7: the batch-49 plan grid re-phased and the -0.15 left edge lit the -0.183 col AGAIN (want front 3.415, err 1.21 — the r6 -0.17 class); -0.115 sits inside the [-0.117..0.003] col with the tube. §B3: the MRS mirror housing rides flat on the muzzle)
-  P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.26, 0.05, 0.60);                   // coax port
-  P.addGunExtraDark(box(0.07, 0.05, 0.06), 0.26, 0.10, 0.62);                  // coax hood
+  P.addGunExtra(box(1.08, 0.48, 0.28), 0, 0, 0.05);                            // THE MANTLET PLATE: x ±0.54 (tucked under the ±0.56 brow), y 1.446..1.926 w on the 1.42..1.95 face, z_w 1.21..1.49
+  P.addGunExtra(box(1.02, 0.44, 0.03), 0, 0, 0.205);                           // the proud FLAT FACE plate (the boxy Kyū-maru tell, z_w 1.49..1.52)
+  P.addGunExtraDark(cylZ(0.105, 0.05, 14), 0, 0, 0.235);                       // dark tube-exit collar on the face
+  P.addGunExtraDark(torus(0.128, 0.020, 14), 0, 0, 0.265);                     // canvas bellows ring at the tube/plate junction (§B3 tell)
+  P.addGunExtraDark(cylZ(0.030, 0.10, 8), 0.36, 0.105, 0.20);                  // coax port through the face (right of the bore, both marks' precedent)
+  P.addGunExtraDark(box(0.085, 0.055, 0.06), 0.36, 0.155, 0.17);               // coax hood
+  P.addGunExtraDark(box(1.00, 0.014, 0.24), 0, -0.252, 0.05);                  // plate underside shadow line
+  // RECOIL HOUSING, SEATED (gate-run-1 attribution, curves diff at
+  // z_w 1.85..2.29: retiring the §r7 drum outright paid +0.06..0.09 on six
+  // side columns — the print DOES carry its recoil-housing band there, and
+  // so does the real vehicle: the Kyū-maru's fat recuperator housing runs
+  // ~0.9 m forward of the mantlet before the thermal sleeve). The §r7 drum's
+  // sin was FLOATING 0.6 m off the face; this one starts ON the mantlet
+  // face plate (z_w 1.52) — continuous plate -> housing -> sleeve metal,
+  // riding elevation with the gun. Under-tube recuperator fairing bottoms
+  // 1.52 w (clears the 1.40 glacis-break line by 14 mm at −10 dep).
+  P.addGunExtra(cylZ(0.145, 0.90, 14), 0, 0, 0.67);                            // recoil housing drum (z_w 1.52..2.42)
+  P.addGunExtra(cylZ(0.0795, 0.06, 14, 0.145), 0, 0, 1.15);                    // taper nose onto the thermal sleeve
+  P.addGunExtraDark(cylZ(0.147, 0.045, 14), 0, 0, 0.32);                       // housing seam rings (§B3 tells)
+  P.addGunExtraDark(cylZ(0.147, 0.045, 14), 0, 0, 1.06);
+  P.addGunExtra(box(0.20, 0.12, 0.45), 0, -0.106, 0.475);                      // under-tube recuperator fairing (y 1.52..1.64 w, z_w 1.55..2.00; §B2 against the housing underside)
+  P.addGunExtraDark(box(0.035, 0.030, 0.58), 0, 0.163, 0.82);                  // sight-cable conduit riding the housing top (§B3 tell: thin square-section cable run)
+  P.addGunExtraDark(box(0.030, 0.026, 0.28), 0, 0.148, 1.95);                  // conduit saddle over the evacuator swell
+  P.addGunExtra(box(0.335, 0.05, 0.24), 0.0525, 0, 4.3994);                    // off-axis MRS housing PLATE x −0.115..0.22 (z_w 5.58..5.82 — the r7 certified plan-tube-col station, re-expressed in the trunnion frame: 5.35 − 0.9506)
+  // the fixed SLOT the mantlet rides in: a dark reveal frame flush on the
+  // face plane (4 mm proud, 3 cm larger than the plate all around). The slot
+  // stays CLOSED behind the plate through the whole arc because the prow
+  // prism is solid to the face (§B2 — no air path at −10/+20); the frame
+  // reads as the opening. Turret-frame numbers: the shell scale
+  // (1, 0.68, 0.82) applies — box/pos authored pre-scale.
+  P.add('turretDark', box(1.26, 0.8529, 0.0146), 0, 0.4206, 1.9776);
   buildGun(P, { len: 5.61, r: 0.065, sleeve: true, evac: 0.50, evacR: 2.12, collar: false, baseR: 0.15 });
-  muzzleBore(P, 0.065, 5.59);                                                  // §B3.1 muzzle bore (shadow-named)
+  P.offsetBuckets(['gun', 'gunDark'], 0, 0, -0.9506);                          // re-station the tube behind the new trunnion: world z = local + 1.30 keeps sleeve/evac/muzzle at their certified stations (tube now spans local −0.95..4.66, breech buried in the turret like the real gun)
+  P.muzzleZ = 4.6594;                                                          // rig_muzzle anchor at the same world tip 5.9594 (buildGun wrote the pre-offset 5.61)
+  muzzleBore(P, 0.065, 4.6394);                                                // §B3.1 muzzle bore (shadow-named; 5.59 − 0.9506 — same world seat)
   // §5.248 GROUND-UP RESTORE (japan wave): the 2026-08-12 0.80 local-Y
   // turret-section compression + its compressed-frame roof re-kit are
   // retired — the owner's §5.248 order ("completely redesign ... exact
@@ -3100,14 +3132,32 @@ export function buildType90(P) {
   // full-height armor; the §B7/§5.57/§5.77 receipts in
   // docs/references/tanks/type90.md price each residual column.
   // The supplied Kyū-maru source has a low welded turret. Compress the
-  // complete turret-owned assembly together so the armor, gun, bustle,
-  // hatches, optics, smoke banks and weapon remain attached through yaw;
-  // hull plates, skirts and the single smart running-gear course are
-  // intentionally untouched.
-  P.turretG.scale.set(1, 0.68, 0.82);
-  P.gunG.scale.z = 1 / 0.82;                                                  // keep the authored L/44 gun run while shortening only the oversized turret/basket envelope
-  P.gunG.position.z = 0.67;                                                   // compensate the parent-Z correction so the mantlet and muzzle retain their established stations
-  P.topY = 1.12;
+  // complete turret-owned assembly together so the armor, bustle, hatches,
+  // optics, smoke banks and weapon remain attached through yaw; hull plates,
+  // skirts and the single smart running-gear course are intentionally
+  // untouched. §5.364 RE-RIG (owner order "properly attached ... arc up and
+  // down properly"): the a35ac3a7 proportion read STANDS byte-for-byte in
+  // pixels, but it now rides a dedicated SHELL GROUP inside rig_turret
+  // instead of scaling rig_turret itself. The old parent scale composed OVER
+  // rig_gun's pitch rotation — S(1,0.68,0.82)·Rx is a SHEAR, which bent
+  // every commanded elevation (−8/+14 rendered −6.65/+11.68), ovalized the
+  // tube, and skewed the whole gun through its arc. The shell group
+  // reproduces the exact composed transform for every turret-owned mesh,
+  // fitting and LOD (identical matrices), while rig_gun — now a clean child
+  // of an unscaled rig_turret — pitches rigidly about the authored trunnion
+  // (§5.361 rig-anchor law: pivots stay profile-authored; the shared
+  // articulation rig itself is untouched, gunG remains the pitch owner).
+  P.postAssemble = ({ turretG, gunG }) => {
+    const shell = new THREE.Group();
+    shell.name = 'type90_turretShell';
+    shell.scale.set(1, 0.68, 0.82);
+    for (const child of [...turretG.children]) {
+      if (child === gunG) continue;
+      shell.add(child);
+    }
+    turretG.add(shell);
+  };
+  P.topY = 0.7616;                                                             // turret-top anchor: rig_turretTop seats on the UNSCALED rig_turret after postAssemble — 0.7616 = the a35ac3a7 1.12 × 0.68, same 2.1616 world anchor
 }
 
 // ---------------------------------------------------------------------------

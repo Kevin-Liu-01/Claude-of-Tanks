@@ -412,6 +412,15 @@ export const MODERN2_SPECS = {
       // predates the oracle; the print + the published 2.7 roof both want
       // the higher deck), gun bore-line 2.03 (print tube axis, level).
       hl: 4.35, hw: 1.95, roofY: 1.685, trkTop: 1.05, floor: 0.43,
+      // PROPORTION ROUND r2 (owner 2026-08-17): the ring STAYS at -0.60.
+      // A -0.68 aft re-seat was tried and measured 73.5 -> 21.9 (reverted):
+      // tmp-moderns-worldtrace's camera-frame z is NOT build-world z, and
+      // its apparent -0.70 offset was a frame artefact. The trustworthy
+      // frame is the raw GLB through the extract's own axisMap
+      // (gate_z = -2.057775*glb_z + 0.6785, corroborated by gunBox hi
+      // 5.643 == our 5.64 muzzle): ref turret nodes 8/9/10/11/15 span
+      // world z -2.861..+1.358, ours -2.855..+1.62 — the REAR already
+      // registers; only the FRONT runs 0.26 long.
       turretPivot: [0, 1.685, -0.60], gunPivot: [0, 0.345, 0.6],
       // Keep the gameplay/shadow proxy on the authored 2A82 tube below.
       // The former 6.45 m value belonged to the retired 10.8 m datum and
@@ -2575,12 +2584,22 @@ function buildT14(P) {
   P.add('turret', slab(                                                          // left lower belt
     [-1.36, 0, 0.02], [-1.36, 0, 1.00], [-0.97, 0, -0.52], [-1.11, 0, -0.32],
     [-1.44, BK, 0.03], [-1.44, BK, 1.04], [-1.02, BK, -0.55], [-1.17, BK, -0.35]));
+  // PROPORTION ROUND r2 FRONT TRIM (owner 2026-08-17): the print's shroud
+  // is SHORTER than the r1 arrow. Measured off the extract's own
+  // turretZProfile (gate frame, same axisMap that puts the ref muzzle at
+  // 5.643 == our 5.64): ref turret group spans world z -2.861..+1.358,
+  // ours -2.855..+1.62 — the REAR registers exactly, the FRONT runs 0.26
+  // long. Every arrow/chin station forward of the shoulder line (local
+  // 1.04) is pulled back by k = 0.778 about that line, so the apex lands
+  // local 1.958 = world 1.358 EXACTLY on the print. Shoulder and rear
+  // stations are untouched, so the turret CENTER (ref -0.627 vs ours
+  // -0.6175) and the gun/muzzle datum both hold.
   P.add('turret', slab(                                                          // front-right lower arrow
-    [0.06, 0, 2.14], [0.75, 0, 1.70], [1.36, 0, 1.00], [0.06, 0, 1.55],
-    [0.06, BK, 2.22], [0.80, BK, 1.77], [1.44, BK, 1.04], [0.06, BK, 1.60]));
+    [0.06, 0, 1.896], [0.75, 0, 1.553], [1.36, 0, 1.00], [0.06, 0, 1.437],
+    [0.06, BK, 1.958], [0.80, BK, 1.608], [1.44, BK, 1.04], [0.06, BK, 1.476]));
   P.add('turret', slab(                                                          // front-left lower arrow
-    [-0.75, 0, 1.70], [-0.06, 0, 2.14], [-0.06, 0, 1.55], [-1.36, 0, 1.00],
-    [-0.80, BK, 1.77], [-0.06, BK, 2.22], [-0.06, BK, 1.60], [-1.44, BK, 1.04]));
+    [-0.75, 0, 1.553], [-0.06, 0, 1.896], [-0.06, 0, 1.437], [-1.36, 0, 1.00],
+    [-0.80, BK, 1.608], [-0.06, BK, 1.958], [-0.06, BK, 1.476], [-1.44, BK, 1.04]));
   P.add('turret', box(1.94, BK + 0.02, 0.26), 0, (BK + 0.02) / 2, -0.60);       // lower rear wall under the bustle front
   // UPPER BELT (leans IN to the roof): roof ring apex (0.05,1.52) front
   // (0.66,1.30) shoulder (0.95,0.86) rear (0.90,-0.42).
@@ -2591,20 +2610,26 @@ function buildT14(P) {
     [-1.44, BK, 0.03], [-1.44, BK, 1.04], [-1.02, BK, -0.55], [-1.17, BK, -0.35],
     [-0.95, AH, -0.20], [-0.95, AH, 0.86], [-0.90, AH, -0.50], [-0.92, AH, -0.35]));
   P.add('turret', slab(                                                          // front-right upper arrow
-    [0.06, BK, 2.22], [0.80, BK, 1.77], [1.44, BK, 1.04], [0.06, BK, 1.60],
-    [0.05, 0.545, 2.16], [0.66, AH, 1.30], [0.95, AH, 0.86], [0.05, AH, 1.52]));
+    [0.06, BK, 1.958], [0.80, BK, 1.608], [1.44, BK, 1.04], [0.06, BK, 1.476],
+    [0.05, 0.545, 1.911], [0.66, AH, 1.242], [0.95, AH, 0.86], [0.05, AH, 1.413]));
   P.add('turret', slab(                                                          // front-left upper arrow
-    [-0.80, BK, 1.77], [-0.06, BK, 2.22], [-0.06, BK, 1.60], [-1.44, BK, 1.04],
-    [-0.66, AH, 1.30], [-0.05, 0.545, 2.16], [-0.05, AH, 1.52], [-0.95, AH, 0.86]));
+    [-0.80, BK, 1.608], [-0.06, BK, 1.958], [-0.06, BK, 1.476], [-1.44, BK, 1.04],
+    [-0.66, AH, 1.242], [-0.05, 0.545, 1.911], [-0.05, AH, 1.413], [-0.95, AH, 0.86]));
   // apex chin cap: the arrow tip tops out LOW over the gun trough — TWO
   // co-planar pieces to the print's 2.21..2.27w tip flat (no staircase)
+  // PROPORTION ROUND r2 NOSE-LINE NOTE: the oracle's turret-union yMax runs
+  // 2.532 (z_w 0.6-0.8) -> 2.474 (1.0-1.2) -> 2.158 (1.2-1.4), so the r1
+  // chin's flat 2.21-2.27 shelf looks 0.20 low. Re-lofting the chin to those
+  // heights was TRIED and measured turret 76.1 (flat), whole 77.5 -> 77.2,
+  // stations 84.6 -> 83.8: the ref's 2.474 read is a NARROW shroud-edge
+  // feature, not a 0.84-wide plate. Reverted; the flat chin stands.
   P.add('turret', slab(
-    [-0.66, AH, 1.30], [0.66, AH, 1.30], [0.42, 0.525, 1.86], [-0.42, 0.525, 1.86],
-    [-0.66, AH + 0.005, 1.34], [0.66, AH + 0.005, 1.34], [0.42, 0.585, 1.88], [-0.42, 0.585, 1.88]));
+    [-0.66, AH, 1.242], [0.66, AH, 1.242], [0.42, 0.525, 1.678], [-0.42, 0.525, 1.678],
+    [-0.66, AH + 0.005, 1.273], [0.66, AH + 0.005, 1.273], [0.42, 0.585, 1.694], [-0.42, 0.585, 1.694]));
   P.add('turret', slab(                                                          // flat apex tip over the trough
-    [-0.42, 0.525, 1.86], [0.42, 0.525, 1.86], [0.30, 0.525, 2.16], [-0.30, 0.525, 2.16],
-    [-0.42, 0.585, 1.88], [0.42, 0.585, 1.88], [0.30, 0.585, 2.14], [-0.30, 0.585, 2.14]));
-  P.add('turret', box(1.90, 0.05, 2.02), 0, AH - 0.025, 0.52);                  // front roof crown plate (2.53w)
+    [-0.42, 0.525, 1.678], [0.42, 0.525, 1.678], [0.30, 0.525, 1.911], [-0.30, 0.525, 1.911],
+    [-0.42, 0.585, 1.694], [0.42, 0.585, 1.694], [0.30, 0.585, 1.896], [-0.30, 0.585, 1.896]));
+  P.add('turret', box(1.90, 0.05, 1.911), 0, AH - 0.025, 0.4655);               // front roof crown plate (2.53w, front edge trimmed to 1.421)
   // RAISED REAR ROOF crown (print 2.72w, z -0.40..-1.10w): frustum sides
   // (the print's crown flanks lean — front cols ±1.16-1.21 read 2.73)
   P.add('turret', frustum(1.24, 0.40, -0.52, 1.16, 0.28, -0.50, AH, 1.035));    // crown front extended to z_w -0.32 (ref 2.74 line)
@@ -2619,21 +2644,28 @@ function buildT14(P) {
   P.add('turret', slab(                                                          // tail wedge (underside rises 0.285 -> 0.65; rear edge 24mm clear
     [-0.90, 0.285, -1.84], [0.90, 0.285, -1.84], [0.87, 0.65, -2.255], [-0.87, 0.65, -2.255],  // of the -2.94w column window — AA-sliver law)
     [-0.90, 0.835, -1.84], [0.90, 0.835, -1.84], [0.87, 0.835, -2.255], [-0.87, 0.835, -2.255]));
-  // turret RING BASKET under the shroud front (mask-parity mass: the print
+  // turret RING BASKET under the shroud (mask-parity mass: the print
   // carries a real crew-basket dipping below its deck inside the hull —
   // 2779 interpen verts, packet ORACLE facts; in-game this drum is fully
-  // occluded by the hull band, exactly like the print's)
-  P.add('turret', box(1.70, 0.36, 1.50), 0, -0.205, 1.07);
+  // occluded by the hull band, exactly like the print's).
+  // PROPORTION ROUND r2: measured off the oracle's own turret-union
+  // z-profile (world frame), the print holds yMin 1.346 FLAT from z -1.2
+  // all the way to its +1.358 nose — a 2.56 m run — and only lets the
+  // bustle float (yMin 1.97..2.28) behind z -1.2. The r1 drum covered just
+  // z -0.28..+1.05, so the whole mid-shroud read 0.33-0.63 too HIGH on the
+  // side turret row. Drum stretched to the measured run; the rear float is
+  // deliberately preserved (it is real §B2 air on the print).
+  P.add('turret', box(1.70, 0.314, 2.558), 0, -0.182, 0.679);
   // hard shadow seams along the knuckle + facet junctions + roof panels
   for (const s2 of [-1, 1]) {
     P.add('turretDark', box(0.02, 0.02, 0.95), s2 * 1.435, BK, 0.55);           // knuckle seam (follows the trimmed shoulder span)
-    P.add('turretDark', box(0.016, 0.30, 0.03), s2 * 0.42, 0.62, 1.88, 0.42, -s2 * 0.55, 0); // arrow ridge seams
-    P.add('turretDark', box(0.16, 0.14, 0.10), s2 * 0.70, AH - 0.10, 1.16, 0, s2 * 0.5, 0);  // corner EO box
-    P.add('turretGlass', box(0.09, 0.07, 0.02), s2 * 0.72, AH - 0.09, 1.22, 0, s2 * 0.5, 0);
+    P.add('turretDark', box(0.016, 0.30, 0.03), s2 * 0.42, 0.62, 1.694, 0.42, -s2 * 0.55, 0); // arrow ridge seams
+    P.add('turretDark', box(0.16, 0.14, 0.10), s2 * 0.70, AH - 0.10, 1.133, 0, s2 * 0.5, 0);  // corner EO box
+    P.add('turretGlass', box(0.09, 0.07, 0.02), s2 * 0.72, AH - 0.09, 1.180, 0, s2 * 0.5, 0);
   }
   P.add('turretDark', box(0.9, 0.02, 0.9), 0, AH + 0.028, 0.45);
   // gun trough: dark slot the clean tube emerges from, under the arrow apex
-  P.add('turretDark', box(0.5, 0.40, 0.2), 0, 0.30, 1.98);
+  P.add('turretDark', box(0.5, 0.40, 0.2), 0, 0.30, 1.771);
   // Afganit hard-kill launch tubes ringing the shroud base (§B3.1 grammar,
   // PROPORTION ROUND: the old 9 cm box stubs read as unidentifiable blocks
   // at 1x — banked r1 note): real launch CYLINDERS r 0.05 x 0.30 canted out
@@ -2674,6 +2706,11 @@ function buildT14(P) {
   // plateau (side ref 3.07-3.16 tops across z_w -0.74..-1.83): pedestal +
   // two tiers + EO head span the full shelf; §B3 census MG (production
   // PKTM) aims FORWARD-right on the mount, level, top 3.12w.
+  // PROPORTION ROUND r2 NOTE: the measured oracle yMax collapses 3.083 ->
+  // 2.581 between z_w -1.0 and -0.8, so the stack looks 0.28/0.44 long here.
+  // Pulling both forward faces back to that line was TRIED and measured
+  // turret 76.1 (flat) with whole 77.5 -> 76.4 — the exposed crown re-phases
+  // the whole row for no turret gain. Reverted; the r1 stations stand.
   P.add('turret', box(0.78, 0.22, 1.10), -0.23, 0.945, -0.75);                  // stack pedestal (z_w -0.80..-1.90)
   P.add('turret', box(0.74, 0.26, 0.555), -0.23, 1.285, -1.1125);               // housing rear tier (top 3.10w, spans z_w -1.435..-1.99 = ref plateau)
   P.add('turretDark', box(0.26, 0.15, 0.26), -0.45, 1.385, -0.90);              // EO head (top 3.145w)
@@ -2697,7 +2734,7 @@ function buildT14(P) {
   P.add('turretDark', box(0.045, 0.09, 0.045), -0.70, 1.64, 0.72);              // tip sensor (3.37w)
   P.add('turretDark', box(0.04, 0.06, 0.04), -0.70, 1.32, 0.83);                // aft sensor pod (3.06w — ref's second meteo column)
   for (const s of [-1, 1]) {                                                    // Afganit AESA plates
-    P.add('turretDark', box(0.30, 0.30, 0.04), s * 0.90, BK + 0.16, 1.46, -0.1, s * 0.55, 0);
+    P.add('turretDark', box(0.30, 0.30, 0.04), s * 0.90, BK + 0.16, 1.367, -0.1, s * 0.55, 0);
     P.add('turretDark', box(0.28, 0.26, 0.04), s * 1.19, BK + 0.10, -0.24, 0.1, s * 2.6, 0); // rear pair tucked to the trimmed shoulder (was 1.24 —
   }                                                                             // proud of the new belt edge at the ±1.42 plan cols)
   // vertical smoke-tube banks on the bustle flanks

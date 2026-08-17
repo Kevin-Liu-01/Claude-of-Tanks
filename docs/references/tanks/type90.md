@@ -1012,3 +1012,135 @@ receipts + reverted experiments: shots/japan-wave/PACKET-type90.md.
 Battery: strict clip 0/0+0/0+0/0, parent 0/0/0, winding clean, contig 0,
 mg1+5d, npm test exit 0. Guards type74/type89 byte-held. DELIVERED
 UNCOMMITTED-UNSTAGED.
+
+## §5.364 GUN RE-PLANT — attachment / mantlet / arc (2026-08-17, recovery lane) — gate 20.3 -> **21.9 ×3 BIT-IDENTICAL** (hull 88.5 / whole 31.2 / turret 21.9 / stations 38.6 / dims 45.9 / floaters 100; receipt md5 `a40bf4988f221ba9876637a2d1cf949e`; hash **e10fb640**, 54 meshes / 69,451 verts)
+
+Owner order verbatim: *"and fix the type 90s guns. they should properly be
+attached to the tank and have a proper mantlet and arc up and down porperly"*
+— applies to both marks (this packet; type90a's delta in type90a.md).
+Round opened by the §5.364 build lane and finished by a recovery lane after a
+credit outage; every number below is re-measured at the delivered tree.
+
+### Diagnosis — measured at 60e007f8 (`tools/tmp-type90-arc.mjs` at clean HEAD)
+The a35ac3a7 proportion landing put the shell scale on **rig_turret itself**
+(`turretG.scale = (1, 0.68, 0.82)`), and rig_gun is rig_turret's child. The
+composed transform `S(1,0.68,0.82)·Rx(θ)` is a **SHEAR**, so:
+
+| commanded | rendered (HEAD) | err | muzzle radius about trunnion |
+|---|---|---|---|
+| −10 | −8.319 | +1.681 | 5.5835 |
+| −8 | **−6.6476** | +1.352 | 5.5930 |
+| 0 | 0 | 0 | 5.6100 |
+| +14 | **11.6819** | −2.318 | 5.5585 |
+| +20 | 16.7953 | −3.205 | 5.5066 |
+
+Radius spread **0.1034 m** — the muzzle traced an ellipse, i.e. the gun
+*slid* through its arc instead of rotating. Three further defects fell out of
+the same read: the tube cross-section was **ovalised 0.68** (world half-extent
+x 0.1725 vs y 0.1173); the §5.16 mantlet block sat at z_w **1.80..2.06**,
+0.38 m AHEAD of the compressed turret face plane 1.4236, joined to it by
+nothing but the 13 cm tube (the owner's floating block / daylight slit); and
+the sim frame disagreed with the render — the inherited type10-scaled armor
+row pitched the hit model about world (1.722, 1.634) with a 4.978 m barrel,
+overshooting the rendered tip by 0.65 m.
+
+### The plant
+- **Shell group, not a scaled rig.** `P.postAssemble` (the tankFactory hook,
+  challenger/t90 precedent) re-parents every turret-owned mesh, fitting and
+  LOD into `type90_turretShell` and puts the (1, 0.68, 0.82) scale THERE.
+  rig_turret is unscaled, so rig_gun — still the shared rig's pitch owner —
+  pitches **rigidly**. `P.topY 1.12 -> 0.7616` keeps rig_turretTop at the same
+  world 2.1616; decal seats re-expressed for the now-unscaled turret frame.
+- **Trunnion on the face.** `P.gunG.position.set(0, 0.286, 1.50)` = world
+  **(0, 1.686, 1.30)** — the bore line, 12 cm behind the face plane. Tube
+  re-stationed by `P.offsetBuckets(['gun','gunDark'], 0, 0, −0.9506)` so every
+  certified station holds: muzzle world **5.9594** (9.76 overall sovereign),
+  `P.muzzleZ 4.6594`, `muzzleBore(0.065, 4.6394)`, MRS plate back at its
+  certified plan-tube column (5.35 − 0.9506).
+- **Proper mantlet.** ONE wide flat-faced plate (world x **±0.60**, was
+  ±0.25/+0.295) straddling the trunnion: heavy inner collar, breech cradle
+  stub, trunnion cheek blocks, bolted retainer strips, rounded vertical side
+  edges (the retired freestanding cheek cylinders' owner-named read now rides
+  the plate), proud face plate, dark exit collar, bellows ring, coax port and
+  hood, underside shadow line. It rides in a **fixed dark slot frame** on the
+  face plane (turret-frame `box(1.26, 0.8529, 0.0146)` at z 1.9776 => world
+  y 1.396..1.976, z 1.4156..1.4276, x ±0.63 — larger than the plate all
+  around), so the throat is closed by turret geometry at EVERY elevation.
+  The §r7 floating recoil drum is retired; the housing now starts ON the
+  plate's face (z_w 1.52..2.42) — continuous plate -> housing -> sleeve metal.
+- **Rig anchors re-authored, never remapped** (§5.361). userdrops5.js, after
+  `make()`: `armor.gunPivot = [0, 0.2397, 1.0713]`, `gunBarrel.lengthM 4.66`.
+  With the inherited `turretPivot [0, 1.4462686567164178, 0.2287280701754386]`
+  the sim trunnion composes to **(0, 1.6860, 1.3000)** = the rendered
+  trunnion exactly, and 1.30 + 4.66 = 5.96 vs the rendered 5.9594 (0.6 cm).
+  type90a inherits both through japan.js's `variant()` clone (no refit).
+  §5.369's type10-pair block is untouched and still evaluates after
+  userdrops5, so the pair never sees these values.
+
+### Arc proof — the authored range, 13 steps (`tools/tmp-type90-arc.mjs`)
+Spec arc is `gunDepressionDeg 10 / gunElevationDeg 20`. At −10, −8, −6, −4,
+−2, 0, +2, +5, +8, +11, +14, +17, +20:
+- **|rendered − commanded| = 0.0000 deg at every step** (was up to 3.2047).
+- muzzle radius about the trunnion **4.6594 m constant, spread 0.0001 m** —
+  a rigid rotation. Tube cross-section now **round** (±0.1725 in x and y).
+- mantlet follows: gunMount rear stays z_w 0.67..0.72, i.e. 0.70 m BEHIND the
+  1.4236 face plane through the whole arc (was 0.14..0.19 with the block
+  0.38 m in front of it). No pose leaves the plate unsupported.
+- bore-corridor gaps: none at any pitch ≤ +11. At +14/+17/+20 the corridor
+  probe reports uncovered bins BEHIND the pivot (z ≤ 0.22) — a probe artifact,
+  not daylight: its ±0.5 m window follows the tilted bore below the turret's
+  own lowest near-centreline geometry (unwindowed census: turret material at
+  |x| ≤ 0.30 spans y 1.794..2.039 back there; `tools/tmp-type90-attach.html`).
+- residual, honestly priced: at max depression the gun-mount underside dips
+  into the fore deck by **≤ 0.091 m** over z_w 1.48..1.72 (contact, never
+  daylight) — HEAD dipped **0.239 m** at the same pose, so the plant improves
+  it by 15 cm; at −8 it is 0.053 m (HEAD 0.192 m).
+- Frames: `shots/type90-guns/arc-recov/` (sideclose at −10/0/+10/+20) and
+  `shots/type90-guns/recov/` (sidewide + quarter + front at −10/0/+20, both
+  marks). Diagnosis/receipt sets from the build lane: `baseline/`, `after1/`,
+  `after2/`.
+
+### The a35ac3a7 proportion read is preserved EXACTLY
+Per-triangle world digests of the `turret` armor bucket, HEAD vs this tree
+(`tools/tmp-type90-bucketgeo.html`): **96 triangles removed, 0 added, all
+1,674 survivors world-position-exact** — the 96 are exactly the two
+12-segment gun-shield cheek cylinders that the wide plate swallowed (they sat
+entirely inside its volume: dead geometry). `turret` / `turretDetail` /
+`turretEquipment` / `turretGlass` / `hull` / all running-gear world AABBs are
+byte-identical. The shell regroup is a mathematical no-op for turret armor.
+
+### Battery (delivered tree, HEAD 3a37ec93)
+- geometry gate `--ids=type90` **×3 bit-identical**, receipt md5
+  `a40bf4988f221ba9876637a2d1cf949e` (also equal to the build lane's run):
+  20.3 -> **21.9** (turret 20.3->21.9, stations 32.6->38.6, whole 28.5->31.2;
+  hull 88.5 / dims 45.9 / floaters 100 unmoved). Still FALSE — the gate is
+  dominated by the ratified a35ac3a7 proportion divergence from the print,
+  not by this round; three components improved, none regressed.
+- combat anatomy: rows are the pre-existing envelopes times the shell scale
+  exactly (0.03->0.0204, 1.105->0.7514 = ×0.68; ∓2.04/1.98->∓1.6728/1.6236 =
+  ×0.82), so the WORLD hit envelope is unchanged.
+  `gen-combat-anatomy --check` in a clean-room worktree (HEAD + only this
+  lane's four files): **PASS — 116 receipts current**, no other row moved.
+- `npm test` **exit 0** (includes the landed §5.371 recoil selftest).
+- muzzle-bore probe type90/type90a **PASS** (inner 16.9 / contrast 112.3).
+- hashgeo guard, 36 ids resident in misc.js / profiles/japan.js /
+  userdrops5.js, clean-room A/B at 3a37ec93: **34 byte-held, 2 moved by
+  design** (type90 518e88f0 -> **e10fb640**, type90a 71208238 ->
+  **61cd559a**). type10 **6e25b62e** / type10b **5e6f7700** hold the §5.369
+  certification. Re-baselined after the §5.371 recoil landing + §5.372 icon
+  regen: none of the 36 baselines moved across those commits, and the live
+  tree reproduces the clean-room hashes for all four Japanese marks.
+  Retires the type10b packet's `type90 518e88f0 / type90a 71208238` guards.
+- KNOWN, PRE-EXISTING: `tank-assets-check --ids=type90,type90a` fails 4
+  (stale geometry + metadata hashes) **at clean HEAD as well** — a35ac3a7
+  landed proportions without an icon regen, and §5.372's regen covered the
+  type10 pair / leopard trio / afv trio, not these two. Needs a clean-worktree
+  icon regen for `type90,type90a` (§5.246 recipe); deliberately NOT done here
+  so this delivery stays source-only.
+- Probes added (untracked temps): `tools/tmp-type90-arc.mjs`,
+  `tmp-type90-attach.{html,mjs}`, `tmp-type90-bucketgeo.{html,mjs}`,
+  `tmp-type90-chin.mjs`, `tmp-type90-hulldeck.mjs`, `tmp-type90-recovshots.mjs`
+  (build lane: `tmp-type90-guns.{html,mjs}`, `tmp-type90-extremes.mjs`).
+- DELIVERED UNCOMMITTED-UNSTAGED. Note for staging: `docs/geometry-gate/
+  ledger.json` is tool-written and now carries a cohabiting **t14** row from a
+  concurrent lane alongside this round's type90 row.

@@ -229,6 +229,26 @@ const SPECS = [
   if (amp) amp.name = 'XM1147 AMP';
 }
 
+// §5.364 type90 gun-trunnion true-up (owner order: "properly attached ...
+// arc up and down porperly"). The visual rig now pitches about the turret-
+// face trunnion (profiles/misc.js buildType90 — world y 1.686, z 1.30). The
+// inherited type10-scaled armor row kept its donor pivot at world (1.722,
+// 1.634) with a 4.978 m barrel: sim/armor.js pitches the mantlet plates
+// about THAT point, sim/movement.js solves the lay from it, and the
+// authoritative muzzle estimate overshot the rendered tip by 0.65 m — the
+// hit-model arc diverged from the rendered gun. Re-anchor the armor
+// trunnion on the rendered line (armor frame: turretPivot [0, 1.4463,
+// 0.2287] + gunPivot = the world trunnion) and true the barrel run to the
+// rendered muzzle (5.9594 − 1.30 = 4.66 m). type90a structuredClones this
+// row in src/vehicles/japan.js and stays in lockstep. §5.361 rig-anchor
+// law: pivots are authored data — this is the authored correction, never a
+// calibration remap.
+{
+  const t90 = SPECS.find((s) => s.id === 'type90');
+  t90.armor.gunPivot = [0, 0.2397, 1.0713];
+  t90.armor.gunBarrel.lengthM = 4.66;
+}
+
 const ROOT = '/models/tanks/community/recovered/';
 const source = (id, cfg = {}) => {
   MODEL_SOURCE[id] = { source: 'glb', glb: { path: `${ROOT}${id}.glb`, paintUntextured: true, ...cfg } };
