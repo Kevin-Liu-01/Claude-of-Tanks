@@ -1307,13 +1307,13 @@
   },
   {
    "id": "carro45t",
-   "geoMin": 90.3,
-   "gatePassed": true,
+   "geoMin": 82.9,
+   "gatePassed": false,
    "components": {
     "hullCurves": 91,
-    "stations": 90.3,
+    "stations": 89.2,
     "turretCurves": 90.6,
-    "wholeCurves": 90.7,
+    "wholeCurves": 82.9,
     "dims": 100,
     "floaters": 100
    }
