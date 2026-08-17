@@ -5088,6 +5088,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // order (§5.279 absent-param loader-law pattern).
   const muzzleDefs = (Array.isArray(spec.gun.muzzles) && spec.gun.muzzles.length)
     ? spec.gun.muzzles : [null];
+  // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
+  // authored bore at its own seated tip, parented under rig_muzzle so a
+  // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
+  // them; the absent-knob fleet keeps the exact legacy center anchor.
+  const muzzleTips = [];
   root.updateMatrixWorld(true);
   for (let mi = 0; mi < muzzleDefs.length; mi++) {
     const def = muzzleDefs[mi];
@@ -5166,13 +5171,21 @@ export function createTank(specId, engineCtx, opts = {}) {
         P.muzzleZ - 2, P.muzzleZ + 1);
       if (z != null && (capZ == null || z > capZ)) capZ = z;
     }
+    let capOffset = 0;
     if (capZ != null) {
-      const capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
+      capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
       fallbackBore.position.z = capOffset + 0.032;
       fallbackBore.userData.capOffsetM = capOffset;
     }
     muzzle.add(fallbackBore);
     fallbackBore.visible = true;
+    if (def) {
+      const tip = new THREE.Object3D();
+      tip.name = `rig_muzzle_tip_${mi}`;
+      tip.position.set(boreX, boreY, capOffset);
+      muzzle.add(tip);
+      muzzleTips.push(tip);
+    }
   }
   disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
   const turretTop = new THREE.Object3D();
@@ -5184,6 +5197,14 @@ export function createTank(specId, engineCtx, opts = {}) {
     // the profile's already-positioned rig coordinates.
     hullG.attach(muzzle);
     hullG.attach(turretTop);
+    // §5.362: the recuperator group joins the hull chain too (world seat
+    // preserved — hullG is identity, so this is byte-exact on the rest
+    // hash). A casemate tube authored into the gun buckets then recoils
+    // along the hull bore axis instead of orbiting the empty virtual
+    // turret; today's fixedMount ids print their tube into the certified
+    // hull buckets, so this group is empty and the stroke is suppressed
+    // (see recoilHasTube).
+    hullG.attach(recoilG);
   }
 
   // ---- movement-solve contact metadata (data only — no geometry writes) ----
@@ -5255,6 +5276,10 @@ export function createTank(specId, engineCtx, opts = {}) {
   let recoilPending = false;         // hull-rock impulse queued by recoilKick
   let recoilScale = 1;               // current recuperator stroke strength
   let recoilPendingScale = 1;        // matching one-shot hull-rock strength
+  let recoilRapid = false;           // §5.362 autocannon-belt stroke profile
+  let recoilYawAmp = 0;              // §5.362 twin-plant kick: yaw toward the firing barrel
+  let recoilRollAmp = 0;             // §5.362 twin-plant kick: roll dip onto the firing side
+  let muzzleAltCursor = 0;           // §5.362 fallback shot alternator (no-index callers)
   // effects_combat r5 FX-CLOCK ADVANCEMENT: recoil/pop/wreck timelines no
   // longer trust the caller's dt directly — each syncFromState advances them
   // by the SHARED FX CLOCK's forward motion since the previous call (see
@@ -5266,20 +5291,50 @@ export function createTank(specId, engineCtx, opts = {}) {
   // probes, garage-only boots): the caller's dt, as before.
   let lastFxS = null;
   // Recuperator profile: sharp ~90 ms slide back in the cradle, then a damped
-  // hydraulic return over ~0.65 s. Travel scales with caliber — a 120 mm gun
-  // recoils 30-40 cm and WoT exaggerates it. r7: at 28-30 fps captures the
+  // hydraulic return over ~0.65 s. r7: at 28-30 fps captures the
   // 60 ms slide landed BETWEEN frames ("barrel appears static through the
   // shot") — 90 ms back + 0.65 s return guarantees 3+ readable frames of
   // travel at 30 fps.
-  // r5: 0.65 -> 0.78 s return + amp 0.42 -> 0.55 — the r4 motion sheet showed
-  // no readable out-of-battery travel one 300 ms frame after the shot; the
-  // longer hydraulic return guarantees the stroke survives 3-4 capture frames.
   // r2: +REC_HOLD — the gun sits AT full recoil for ~80 ms before the
   // hydraulic return. Without the hold the single peak frame landed between
   // captures at 30 fps and "no off-battery gun position was catchable in any
   // live fire frame" (r2 minor); back+hold now spans 4-6 rendered frames.
   const REC_BACK = 0.09, REC_HOLD = 0.08, REC_RETURN = 0.62;
-  const REC_AMP = 0.55 * Math.min(1.25, Math.max(0.55, ((spec.gun && spec.gun.caliberMm) || 100) / 120));
+  // §5.362 (owner: "make all cannons have proper recoil"): scale-true throw
+  // by caliber class — ~0.13 m for the 120 mm class (the old 0.55 m WoT
+  // exaggeration slid a 120 mm tube half a meter; frame readability is
+  // carried by the back+hold+long-return TIMING above, not by amplitude).
+  // 75 mm ≈ 8 cm, 105 ≈ 11, 120 ≈ 13, 125 ≈ 13.5, 152 ≈ 16.5, floor/cap
+  // 6-24 cm (small-bore rails / the 380 mm mortar class).
+  const REC_CAL = (spec.gun && spec.gun.caliberMm) || 100;
+  const REC_AMP = Math.min(0.24, Math.max(0.06, 0.13 * REC_CAL / 120));
+  // Rapid (autocannon-belt) stroke: a short sharp shudder that completes
+  // inside the fastest belt cycle (0.30 s — bmpt_terminator2) instead of the
+  // 0.79 s recuperate cycle, which a 0.3-0.5 s belt kept resetting mid-return
+  // (visible snap back into battery every shot). Throw 2-4 cm by bore
+  // (§5.362 order: "a rapid shudder, not a full recuperate cycle").
+  const RAPID_BACK = 0.03, RAPID_HOLD = 0.015, RAPID_RETURN = 0.21;
+  const RAPID_AMP = Math.min(0.04, Math.max(0.02, REC_CAL * 0.001));
+  // §5.362 tube census: only a REAL tube (>= 0.5 m of merged gun-bucket
+  // geometry riding rig_recoil) may slide. Casemates print their cannon into
+  // the certified hull buckets (gate silhouette law — see casemate.js
+  // isuCommon: the virtual rig carries only small hidden ball-mount collars),
+  // so their recoilG is empty or a stub; sliding a stub walks a loose collar
+  // along a static tube. Their recoil budget is re-routed into the hull rock
+  // below (the S-tank read: rigid mount, the chassis takes the stroke).
+  // Threshold calibration (fleet census §5.362): every real tube measures
+  // >= 0.755 m (m2a2_bradley's short 25 mm Bushmaster is the fleet minimum);
+  // the only stubs are the ISU hidden collars at 0.26 m and true empties.
+  let recoilTubeSpan = 0;
+  recoilG.traverse((o) => {
+    if (!o.isMesh || !o.geometry || o.userData.cannonBoreFallbackPart) return;
+    const mm = Array.isArray(o.material) ? o.material[0] : o.material;
+    if (mm && mm.colorWrite === false) return; // shadow proxies mirror the tube
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    const bb = o.geometry.boundingBox;
+    if (bb) recoilTubeSpan = Math.max(recoilTubeSpan, bb.max.z - bb.min.z);
+  });
+  const recoilHasTube = recoilTubeSpan >= 0.5;
   // Capture original materials lazily when destruction starts so decoration
   // added after the base build participates in the continuous burn treatment.
   const originalMats = [];
@@ -5469,6 +5524,14 @@ export function createTank(specId, engineCtx, opts = {}) {
           const mag = 4.4 * Math.min(1.4, ((spec.gun && spec.gun.caliberMm) || 100) / 100)
             * recoilPendingScale;
           visual.hitFlinch(-Math.sin(yawW), -Math.cos(yawW), mag, state.yaw);
+          // §5.362 tubeless mounts (casemate hull-printed cannons): the
+          // recuperator stroke is suppressed (recoilHasTube), so the chassis
+          // carries its share — a second, smaller impulse stacks past the
+          // per-call flinch cap (S-tank rigid-mount read: the whole vehicle
+          // recoils).
+          if (!recoilHasTube) {
+            visual.hitFlinch(-Math.sin(yawW), -Math.cos(yawW), mag * 0.6, state.yaw);
+          }
         }
         recoilPendingScale = 1;
       }
@@ -5580,34 +5643,69 @@ export function createTank(specId, engineCtx, opts = {}) {
         P.gear.update(state.trackScroll.l, state.trackScroll.r);
       }
       if (gearNow) gearAccumDt = 0;
-      if (recoilT < REC_BACK + REC_HOLD + REC_RETURN) {
+      // §5.362: per-shot stroke profile — cannon recuperate cycle vs the
+      // short autocannon-belt shudder (selected by recoilKick's impulseScale
+      // contract; see the RAPID_* constants note).
+      const rBack = recoilRapid ? RAPID_BACK : REC_BACK;
+      const rHold = recoilRapid ? RAPID_HOLD : REC_HOLD;
+      const rReturn = recoilRapid ? RAPID_RETURN : REC_RETURN;
+      if (recoilT < rBack + rHold + rReturn) {
         recoilT += adv; // r5: recuperator rides the fx clock (see lastFxS)
         const t = recoilT;
         let k;
-        if (t < REC_BACK) {
+        if (t < rBack) {
           // r7 (critic: recoil timeline lags the flash — muzzle travel ~0 at
           // 17 ms so the peak-flash frame shows the gun in battery): the
           // sine ease-IN put only 29% of travel inside 20 ms. pow 0.42
           // front-loads the stroke (>=50% of REC_AMP by 20 ms — real guns
           // are near full recoil when the flash peaks) while the hold +
           // stretched hydraulic return keep the 30 fps readability.
-          k = Math.pow(t / REC_BACK, 0.42);
-        } else if (t < REC_BACK + REC_HOLD) {
+          k = Math.pow(t / rBack, 0.42);
+        } else if (t < rBack + rHold) {
           k = 1;                                             // r2: out-of-battery hold
         } else {
-          const u = Math.min((t - REC_BACK - REC_HOLD) / REC_RETURN, 1);
+          const u = Math.min((t - rBack - rHold) / rReturn, 1);
           k = Math.pow(1 - u, 1.7);                          // hydraulic return
         }
-        recoilG.position.z = -REC_AMP * recoilScale * k;
-        // cradle rock: the trunnion mount lifts a hair with the impulse
-        if (!destroyed) gunG.rotation.x -= 0.014 * recoilScale * k;
-      } else if (recoilG.position.z !== 0) {
+        // §5.362: the rapid throw is the FINAL 2-4 cm amplitude (the 0.18
+        // belt impulseScale keeps damping the hull/camera response only);
+        // the cannon throw keeps legacy impulseScale semantics. Tubeless
+        // mounts (casemate hull-printed cannons) never slide — their budget
+        // rides the boosted hull rock (see the recoilPending block).
+        const amp = recoilRapid ? RAPID_AMP : REC_AMP * recoilScale;
+        recoilG.position.z = recoilHasTube ? -amp * k : 0;
+        if (!destroyed) {
+          // cradle rock: the trunnion mount lifts a hair with the impulse
+          if (recoilHasTube) gunG.rotation.x -= 0.014 * recoilScale * k;
+          // §5.362 twin-plant asymmetric kick (spec.gun.muzzles): the
+          // station yaws toward the firing barrel and the cradle dips a
+          // touch onto that side, decaying with the same stroke curve.
+          if (recoilYawAmp !== 0) {
+            turretG.rotation.y += recoilYawAmp * k;
+            recoilG.rotation.z = recoilRollAmp * k;
+          }
+        }
+      } else if (recoilG.position.z !== 0 || recoilG.rotation.z !== 0) {
         recoilG.position.z = 0;
+        recoilG.rotation.z = 0;
       }
     },
 
-    /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space muzzle tip */
-    gunMuzzleWorld(out) { return muzzle.getWorldPosition(out); },
+    /**
+     * @param {THREE.Vector3} out
+     * @param {number} [muzzleIndex] §5.362 twin-plant barrel selector: on
+     *   `spec.gun.muzzles` ids returns THAT barrel's seated tip (recoil-local
+     *   anchor, so a mid-stroke sample rides the recoiled tube). Omitted or
+     *   single-bore: the legacy center anchor, byte-identical behavior.
+     * @returns {THREE.Vector3} world-space muzzle tip
+     */
+    gunMuzzleWorld(out, muzzleIndex) {
+      if (muzzleIndex != null && muzzleTips.length) {
+        const n = muzzleTips.length;
+        return muzzleTips[((muzzleIndex % n) + n) % n].getWorldPosition(out);
+      }
+      return muzzle.getWorldPosition(out);
+    },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space barrel
      *  axis (+Z of the authored recoil group). */
     gunDirWorld(out) { return muzzle.getWorldDirection(out); },
@@ -5623,13 +5721,37 @@ export function createTank(specId, engineCtx, opts = {}) {
      * still shows the gun out of battery (r5: recoil rides the fx clock, so
      * stepping syncFromState no longer advances it under a pinned clock).
      * @param {number} [impulseScale=1] per-shot strength (rapid IFV belts use
-     *   the shared 0.18 scale; studio/legacy callers retain full strength)
+     *   the shared 0.18 scale; studio/legacy callers retain full strength).
+     *   §5.362 contract: impulseScale < 1 selects the short autocannon-belt
+     *   stroke profile (RAPID_*), full scale plays the cannon recuperate.
+     * @param {number} [muzzleIndex] §5.362 twin-plant ids: which barrel
+     *   fired (shot N -> muzzles[N % len]); omitted on a multi-muzzle id the
+     *   visual alternates its own cursor (studio/bridge callers). Single
+     *   bore: ignored.
+     * @returns {?number} the barrel index this kick used (multi-muzzle ids
+     *   only — flash composers spawn at gunMuzzleWorld(out, index)), else
+     *   null.
      */
-    recoilKick(ageS = 0, impulseScale = 1) {
+    recoilKick(ageS = 0, impulseScale = 1, muzzleIndex) {
       recoilT = Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
+      recoilRapid = recoilScale < 1;
       recoilPendingScale = recoilScale;
       recoilPending = true;
+      recoilYawAmp = 0;
+      recoilRollAmp = 0;
+      if (muzzleTips.length < 2) return null;
+      const n = muzzleTips.length;
+      const idx = muzzleIndex != null
+        ? ((muzzleIndex % n) + n) % n
+        : (muzzleAltCursor++ % n);
+      const def = spec.gun.muzzles[idx] || {};
+      const side = Math.sign(def.x || 0);
+      // asymmetric moment toward the firing barrel: the muzzle line sweeps
+      // toward that side (~0.43 deg rapid) and the cradle dips onto it.
+      recoilYawAmp = side * (recoilRapid ? 0.0075 : 0.012);
+      recoilRollAmp = -side * (recoilRapid ? 0.012 : 0.018);
+      return idx;
     },
 
     /**
@@ -5838,7 +5960,11 @@ export function createTank(specId, engineCtx, opts = {}) {
       recoilPending = false;
       recoilScale = 1;
       recoilPendingScale = 1;
+      recoilRapid = false;
+      recoilYawAmp = 0;
+      recoilRollAmp = 0;
       recoilG.position.z = 0;
+      recoilG.rotation.z = 0;
       sway = 0;
       wreckAge = -1;
       mats.burnt.emissiveIntensity = 0.018;

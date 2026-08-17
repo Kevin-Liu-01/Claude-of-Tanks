@@ -656,7 +656,16 @@ export function createStudio(ctx) {
         if (!a) { ok = false; break; }
         const slot = Math.max(0, Math.min(a.spec.gun.shells.length - 1, params.slot | 0));
         const shellSpec = a.spec.gun.shells[slot];
-        a.visual.gunMuzzleWorld(_v2);
+        // §5.362: kick BEFORE sampling the flash origin — twin-plant ids
+        // (spec.gun.muzzles) alternate per fire event, and the returned
+        // barrel index places the flash on the firing tip. Single-bore
+        // actors: index is null and the sample is the legacy center anchor.
+        let muzzleIndex = null;
+        if (params.recoil !== false && a.visual.recoilKick) {
+          muzzleIndex = a.visual.recoilKick(0);
+          a.visual.syncFromState(a.state, 0);
+        }
+        a.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
         a.visual.gunDirWorld(_v3);
         fxBus.emit('shell:fired', {
           shellId: -1, shooterId: a.uid, isPlayer: false,
@@ -664,10 +673,6 @@ export function createStudio(ctx) {
           caliberMm: shellSpec.caliberMm,
           muzzlePos: [_v2.x, _v2.y, _v2.z], dir: [_v3.x, _v3.y, _v3.z],
         });
-        if (params.recoil !== false && a.visual.recoilKick) {
-          a.visual.recoilKick(0);
-          a.visual.syncFromState(a.state, 0);
-        }
         if (params.tracer !== false) {
           shells.push(createShell(shellSpec, a.uid, false, _v2, _v3, uidSeq * 1000 + shells.length));
         }
@@ -780,9 +785,12 @@ export function createStudio(ctx) {
       case 'firing_moment': {
         // composed static (the combat_firing contract language) — frozen art
         if (!a) { ok = false; break; }
-        if (a.visual.recoilKick) a.visual.recoilKick(params.ageS != null ? params.ageS : 0.05);
+        // §5.362: twin-plant ids compose the flash on the firing barrel's
+        // (recoiled) tip — recoilKick returns the alternated index.
+        let fmIndex = null;
+        if (a.visual.recoilKick) fmIndex = a.visual.recoilKick(params.ageS != null ? params.ageS : 0.05);
         a.visual.syncFromState(a.state, 0);
-        a.visual.gunMuzzleWorld(_v2);
+        a.visual.gunMuzzleWorld(_v2, fmIndex != null ? fmIndex : undefined);
         a.visual.gunDirWorld(_v3);
         fx.composeFiringMoment({
           muzzlePos: _v2.clone(), dir: _v3.clone(),

@@ -1331,7 +1331,20 @@ function tryFire(game, ent, bus, rig) {
   // re-derived from real tube-tip vertices and sits off the trunnion axis
   // (m1a2: ~45 mrad skew), so the anchor-difference line pointed every
   // "settled" shot ~15 m wide at 330 m while the sim gun-lay was perfect.
-  ent.visual.gunMuzzleWorld(_muzzle);
+  // §5.362 twin-plant alternation (spec.gun.muzzles — bmpt_terminator2's
+  // twin 30 mms): shot N fires from muzzles[N % len]. The cursor lives on
+  // the gun's combat state (deterministic with the fire sequence, reset with
+  // every fresh combat state); the shell origin, the muzzle-flash origin
+  // (shell:fired muzzlePos) and the visual's asymmetric recoil kick all use
+  // the same index. Single-bore fleet: muzzleIndex stays undefined and every
+  // path below is byte-identical legacy.
+  const gunMuzzles = ent.spec.gun.muzzles;
+  let muzzleIndex;
+  if (Array.isArray(gunMuzzles) && gunMuzzles.length > 1) {
+    muzzleIndex = (c.muzzleCursor || 0) % gunMuzzles.length;
+    c.muzzleCursor = muzzleIndex + 1;
+  }
+  ent.visual.gunMuzzleWorld(_muzzle, muzzleIndex);
   if (ent.visual.gunDirWorld) {
     ent.visual.gunDirWorld(_dir);
   } else {
@@ -1351,7 +1364,7 @@ function tryFire(game, ent, bus, rig) {
   // still produces full bloom and physical/presentation recoil.
   const recoilScale = shotRecoilScale(ent.spec, shellSpec);
   fireRecoil(ent.state, ent.spec, shellSpec);
-  ent.visual.recoilKick(0, recoilScale);
+  ent.visual.recoilKick(0, recoilScale, muzzleIndex);
   if (ent.isPlayer && rig) {
     // Dedicated feel pass: the old fixed impulse made a 30 mm autocannon and
     // a 152 mm siege gun kick the camera identically. Scale both concussion
@@ -1367,6 +1380,9 @@ function tryFire(game, ent, bus, rig) {
   _firedEv.isPlayer = ent.isPlayer;
   _firedEv.shellType = shellSpec.type;
   _firedEv.shellName = shellSpec.name; // SHOT-INFO ENRICHMENT (additive)
+  // §5.362 (additive): which barrel fired on twin-plant ids, -1 single-bore.
+  // The payload object is REUSED — always write so no stale index leaks.
+  _firedEv.muzzleIndex = muzzleIndex != null ? muzzleIndex : -1;
   _firedEv.caliberMm = shellSpec.caliberMm;
   _firedEv.velocityMps = shellSpec.velocityMps;
   _firedEv.timeS = game.timeS;

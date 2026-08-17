@@ -2,6 +2,14 @@
 // Live firing-pipeline gate for IFV recoil scaling. Verifies that a rapid
 // autocannon round carries the shared 0.18 scale through gun animation,
 // camera pitch/trauma and FOV punch, while an IFV ATGM and an MBT retain 1.0.
+//
+// §5.362 update: gun travel is measured by PINNING the shared fx clock at
+// the shot and stepping exact stroke ages (the r5 stepped-capture ritual) —
+// the old single 35 ms wall sample raced the clock leap after the
+// synchronous fastForward block, and the new rapid belt stroke (2-4 cm,
+// complete inside the belt cycle) is gone before any wall-clock sample.
+// Asserts the §5.362 throw table: belt 2-4 cm rapid shudder, ATGM/MBT
+// cannon recuperate (>= 6 cm floor / ~13 cm at 120 mm).
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -71,7 +79,7 @@ try {
   });
 
   async function fireCase(specId, shellSlot) {
-    const setup = await page.evaluate(({ specId, shellSlot }) => {
+    const setup = await page.evaluate(async ({ specId, shellSlot }) => {
       const D = window.__DEBUG;
       D.startBattle(specId);
       D.game.preBattleS = 0;
@@ -97,21 +105,32 @@ try {
         target = D.aimAtNearest();
       }
       if (!target) return { ok: false, reason: 'no target' };
+      // §5.362: fire and PIN in the same synchronous block, then step the
+      // shared clock to exact stroke ages — deterministic stroke receipts.
+      const { fxNow } = await import('/src/fx/clock.js');
       D.flags.forceFire = true;
       for (let i = 0; i < 20 && !R.log.some((x) => x.tag === 'fired'); i++) {
         D.fastForward(0.05);
       }
       D.flags.forceFire = false;
-      return { ok: R.log.some((x) => x.tag === 'fired'), log: R.log.slice() };
+      if (!R.log.some((x) => x.tag === 'fired')) return { ok: false, log: R.log.slice() };
+      const g = p.visual.root.getObjectByName('rig_recoil');
+      const t0 = fxNow();
+      D.fx.setFrozen(true, t0);
+      const stroke = [];
+      for (const age of [0.02, 0.04, 0.06, 0.10, 0.14, 0.20, 0.30, 0.45, 0.65, 0.90, 1.10]) {
+        D.fx.setFrozen(true, t0 + age);
+        p.visual.syncFromState(p.state, 0);
+        stroke.push({ age, z: g ? +g.position.z.toFixed(4) : null });
+      }
+      D.fx.setFrozen(false);
+      return { ok: true, log: R.log.slice(), stroke };
     }, { specId, shellSlot });
     if (!setup.ok) throw new Error(`${specId} slot ${shellSlot} did not fire: ${setup.reason || JSON.stringify(setup.log)}`);
-    await sleep(35);
-    const recoilZ = await page.evaluate(() => {
-      const root = window.__DEBUG.game.player.visual.root;
-      const group = root.getObjectByName('rig_recoil');
-      return group ? group.position.z : null;
-    });
-    return { log: setup.log, recoilZ };
+    const peak = Math.max(...setup.stroke.map((s) => Math.abs(s.z)));
+    const settled = Math.abs(setup.stroke[setup.stroke.length - 1].z);
+    const at = (age) => Math.abs(setup.stroke.find((s) => s.age === age).z);
+    return { log: setup.log, stroke: setup.stroke, peak, settled, at };
   }
 
   const rapid = await fireCase('m2a2_bradley', 0);
@@ -121,6 +140,9 @@ try {
   const mbt = await fireCase('m1a2', 0);
 
   const entry = (run, tag) => run.log.find((x) => x.tag === tag);
+  console.log('[ifv-recoil] strokes', JSON.stringify({
+    rapid: rapid.stroke, missile: missile.stroke, mbt: mbt.stroke,
+  }));
   near(entry(rapid, 'visual').args[1], SCALE, 1e-9, 'IFV visual scale');
   near(entry(rapid, 'trauma').args[0], 0.10 * SCALE, 1e-9, 'IFV trauma');
   near(entry(rapid, 'camera').args[0], 0.006 * SCALE, 1e-9, 'IFV camera pitch');
@@ -130,12 +152,36 @@ try {
   near(entry(missile, 'camera').args[1], 1, 1e-9, 'ATGM FOV scale');
   near(entry(mbt, 'visual').args[1], 1, 1e-9, 'MBT visual scale');
   near(entry(mbt, 'camera').args[1], 1, 1e-9, 'MBT FOV scale');
-  if (!(Math.abs(missile.recoilZ) > Math.abs(rapid.recoilZ) * 3)) {
-    throw new Error(`gun travel not materially reduced: IFV ${rapid.recoilZ}, ATGM ${missile.recoilZ}`);
+  // §5.362 throw-table contract: belt rounds play the rapid 2-4 cm shudder
+  // (final amplitude — the 0.18 scale keeps damping hull/camera only) that
+  // COMPLETES inside the belt cycle; the same vehicle's missile rail plays
+  // the cannon-class recuperate (>= 6 cm floor), and a 120 mm MBT throws
+  // ~13 cm. The old 3x single-sample ratio encoded the pre-§5.362 0.55 m
+  // amplitudes.
+  if (!(rapid.peak >= 0.015 && rapid.peak <= 0.045)) {
+    throw new Error(`belt peak outside the rapid 2-4 cm class: ${rapid.peak}`);
+  }
+  if (!(rapid.at(0.45) < 0.004)) {
+    throw new Error(`belt stroke still out of battery at 0.45 s: ${rapid.at(0.45)}`);
+  }
+  if (!(missile.peak >= 0.045 && missile.peak <= 0.09)) {
+    throw new Error(`ATGM peak outside the cannon-class floor band: ${missile.peak}`);
+  }
+  if (!(missile.at(0.30) > 0.01)) {
+    throw new Error(`ATGM recuperate return missing (battery too early): ${missile.at(0.30)}`);
+  }
+  if (!(mbt.peak >= 0.10 && mbt.peak <= 0.15)) {
+    throw new Error(`120 mm MBT peak outside the class band: ${mbt.peak}`);
+  }
+  if (!(missile.peak > rapid.peak * 1.5)) {
+    throw new Error(`gun travel not materially reduced: IFV ${rapid.peak}, ATGM ${missile.peak}`);
   }
   if (errors.length) throw new Error(`browser errors: ${errors.join(' | ')}`);
 
-  console.log('[ifv-recoil] measurements', JSON.stringify({ rapid, missile, mbt }));
+  const brief = (r) => ({ peak: r.peak, settled: r.settled, stroke: r.stroke });
+  console.log('[ifv-recoil] measurements', JSON.stringify({
+    rapid: brief(rapid), missile: brief(missile), mbt: brief(mbt),
+  }));
   console.log('[ifv-recoil] GREEN');
 } finally {
   if (browser) await browser.close().catch(() => {});

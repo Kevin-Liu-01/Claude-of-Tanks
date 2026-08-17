@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { createCombatState } from '../sim/damage.js';
-import { createTankState } from '../sim/movement.js';
+import { createTankState, shotRecoilScale } from '../sim/movement.js';
 import { getSpec } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
@@ -12,6 +12,7 @@ import { SNAPSHOT_FLAGS } from './snapshot.js';
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
 const MAP_HALF_M = 508;
+const _muzzleTip = new Vector3(); // §5.362 twin-plant flash-origin scratch
 
 function hashString(value) {
   let hash = 2166136261;
@@ -290,6 +291,27 @@ export function createBrowserBattleBridge({
     if (!bus || typeof bus.emit !== 'function') return;
     if (event.type === 'shell_fired') {
         const shooter = entities.get(event.shooterId);
+        // §5.362 fleet recoil in networked battles: the authoritative sim
+        // fires server-side, so play the same presentation recuperator
+        // stroke the local sim would (state.js tryFire wiring) on the
+        // shooter's first-party visual — flash and barrel throw share this
+        // one event. Belt rounds resolve the shared rapid scale from the
+        // fired shell exactly like the local path.
+        let muzzlePos = [event.x, event.y, event.z];
+        if (shooter && shooter.visual && shooter.visual.recoilKick) {
+          const shells = (shooter.spec && shooter.spec.gun && shooter.spec.gun.shells) || [];
+          const shellSpec = shells.find((s) => s.name === event.shellName)
+            || shells.find((s) => s.type === event.shellType) || null;
+          const muzzleIndex = shooter.visual.recoilKick(
+            0, shotRecoilScale(shooter.spec, shellSpec));
+          // Twin-plant ids: the flash spawns at the firing barrel's tip
+          // (the visual owns the alternation cursor here — the server's
+          // center-bore ballistics stay authoritative for the shell).
+          if (muzzleIndex != null && shooter.visual.gunMuzzleWorld) {
+            shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex);
+            muzzlePos = [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z];
+          }
+        }
         bus.emit('shell:fired', {
           shellId: event.shellId,
           shooterId: event.shooterId,
@@ -299,7 +321,7 @@ export function createBrowserBattleBridge({
           caliberMm: event.caliberMm,
           velocityMps: event.velocityMps,
           timeS: event.timeS,
-          muzzlePos: [event.x, event.y, event.z],
+          muzzlePos,
           dir: [event.dx, event.dy, event.dz],
           shooterSpecId: shooter?.specId,
         });

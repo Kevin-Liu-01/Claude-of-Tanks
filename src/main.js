@@ -4222,15 +4222,18 @@ const SHOT_VIEWS = {
     // syncFromState calls advance 0 s. recoilKick(ageS) takes the composed
     // age directly: backdate the stroke 50 ms so the barrel sits visibly
     // out of battery in the staged still.
-    p.visual.recoilKick(0.05);          // backdate: stroke already 50 ms in
+    // §5.362: twin-plant players alternate barrels here too — the kick
+    // returns the fired barrel's index and the composed flash sits on THAT
+    // tip (single-bore: null index, legacy center anchor).
+    const fireIdx = p.visual.recoilKick(0.05); // backdate: stroke already 50 ms in
     p.visual.syncFromState(p.state);    // one call to apply the pose
     // controls_gunnery r3: staged flash direction along the real bore axis.
-    p.visual.gunMuzzleWorld(_v1);
+    p.visual.gunMuzzleWorld(_v1, fireIdx != null ? fireIdx : undefined);
     p.visual.gunDirWorld(_v3);
     fx.composeFiringMoment({
       muzzlePos: _v1.clone(),
       dir: _v3.clone(),
-      caliberMm: 120,
+      caliberMm: p.spec.gun.caliberMm,
       tracerType: 'APFSDS',
       ageS: 0.05,
     });
