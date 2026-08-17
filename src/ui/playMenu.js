@@ -100,7 +100,25 @@ const CSS = `
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.cot-play .player .vehicle{display:flex;
   align-items:center;gap:10px;min-width:0;color:#dbe5eb}.cot-play .vehicle-icon{width:58px;height:42px;flex:0 0 58px;
   object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6));transform:scale(1.06)}.cot-play .vehicle-icon.missing{display:none}
-.cot-play .vehicle-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cot-play .player .team{font:800 10px ${FONT_COND};
+.cot-play .vehicle-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-play .vehicle-copy{display:grid;min-width:0;gap:3px}.cot-play .vehicle-camo{color:#8fa1ae;font:800 8px ${FONT_COND};
+  letter-spacing:.13em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);
+  min-height:108px;margin-top:10px;overflow:hidden;border:1px solid rgba(161,180,195,.24);
+  background:linear-gradient(110deg,rgba(12,18,23,.98),rgba(21,27,33,.88))}
+.cot-play .battlefield-art{position:relative;min-height:108px;background-position:center;background-size:cover;
+  border-right:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-art::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(5,8,11,.08),rgba(8,12,16,.78)),linear-gradient(0deg,rgba(5,8,11,.6),transparent 65%)}
+.cot-play .battlefield-art span{position:absolute;z-index:1;left:13px;bottom:11px;color:#ffd08b;
+  font:900 8px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase}
+.cot-play .battlefield-copy{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);align-items:center;
+  gap:18px;padding:15px 16px}.cot-play .battlefield-id{min-width:0}.cot-play .battlefield-id i{display:block;
+  color:#e69a36;font:900 8px ${FONT_COND};font-style:normal;letter-spacing:.2em;text-transform:uppercase}
+.cot-play .battlefield-id b{display:block;margin-top:7px;color:#f1f5f8;font-size:18px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}.cot-play .battlefield-id span{display:block;margin-top:5px;color:#8597a5;
+  font-size:9px;line-height:1.4}.cot-play .battlefield-card.guest .battlefield-id i{color:#8293a0}
+.cot-play .battlefield-card select{width:100%;border-color:#d98c2d}.cot-play .battlefield-card.guest select{border-color:rgba(161,180,195,.3)}
+.cot-play .player .team{font:800 10px ${FONT_COND};
   letter-spacing:.08em;text-transform:uppercase;color:#aebfca}.cot-play .player.alpha .team{color:#82c3f4}
 .cot-play .player.bravo .team{color:#f18c82}.cot-play .player .ready{color:#78d78a;text-align:right;font:800 9px ${FONT_COND};
   letter-spacing:.1em}.cot-play .player .wait{color:#e4aa58;text-align:right;font:800 9px ${FONT_COND};letter-spacing:.1em}
@@ -134,6 +152,8 @@ const CSS = `
   .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}.cot-play .vehicle-name{font-size:10px}.cot-play .controls{
     align-items:stretch;flex-direction:column}.cot-play .control-options,
   .cot-play .control-actions{width:100%}.cot-play .control-actions{margin-left:0}.cot-play .control-options select{flex:1 1 130px}
+  .cot-play .battlefield-card{grid-template-columns:1fr}.cot-play .battlefield-art{min-height:82px;border-right:0;
+    border-bottom:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-copy{grid-template-columns:1fr;padding:12px;gap:10px}
   .cot-play .control-actions .action{flex:1 1 128px}}
 @media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}}
@@ -312,6 +332,8 @@ export function createPlayMenu({
   onNetworkStart,
   onRankedStart,
   isVehicleAllowed = () => true,
+  isCamoAllowed = () => true,
+  getCamoName = (camo) => camo || 'Factory',
   getVehicleName = (specId) => specId,
 } = {}) {
   ensureFonts();
@@ -358,10 +380,13 @@ export function createPlayMenu({
     </div><div class="status" aria-live="polite"></div><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">ROOM CODE</div><div class="code"></div></div>
         <button class="action alt" data-action="copy" type="button">Copy invite link</button></div>
+      <div class="battlefield-card"><div class="battlefield-art"><span>Battlefield briefing</span></div>
+        <div class="battlefield-copy"><div class="battlefield-id"><i data-map-role>Host selectable</i><b data-map-name>Random battlefield</b>
+          <span>Changing the operation resets readiness so every commander sees the final choice.</span></div>
+          <label>Battlefield<select data-control="map" aria-label="Battlefield"></select></label></div></div>
       <div class="players"></div><div class="controls">
         <div class="control-options"><select data-control="team" aria-label="Team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
-          <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
-          <select data-control="map" aria-label="Battlefield"></select></div>
+          <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></div>
         <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">Leave room</button>
           <button class="action alt" data-action="ready" type="button">I'm ready</button>
           <button class="action" data-action="start" type="button">Start match</button></div>
@@ -391,6 +416,10 @@ export function createPlayMenu({
   const teamSelect = root.querySelector('[data-control="team"]');
   const sizeSelect = root.querySelector('[data-control="size"]');
   const mapSelect = root.querySelector('[data-control="map"]');
+  const battlefieldCard = root.querySelector('.battlefield-card');
+  const battlefieldArt = root.querySelector('.battlefield-art');
+  const battlefieldName = root.querySelector('[data-map-name]');
+  const battlefieldRole = root.querySelector('[data-map-role]');
   const playersEl = root.querySelector('.players');
   const codeEl = root.querySelector('.code');
   const readyBtn = root.querySelector('[data-action="ready"]');
@@ -410,7 +439,9 @@ export function createPlayMenu({
   const defaultEyebrow = eyebrow.textContent;
   const defaultMenuTitle = menuTitle.textContent;
   const defaultMenuLead = menuLead.textContent;
+  const mapById = new Map();
   for (const map of maps) {
+    mapById.set(map.id, map);
     const option = document.createElement('option');
     option.value = map.id;
     option.textContent = map.name;
@@ -575,6 +606,7 @@ export function createPlayMenu({
       name,
       specId: selection.specId,
       equipment: selection.equipment,
+      camo: selection.camo,
       teamSize: Number(rankedSize.value),
     });
     setStatus(`Searching ${rankedSize.value}v${rankedSize.value} near ${rankedTicket.rating} ELO…`);
@@ -644,6 +676,13 @@ export function createPlayMenu({
     root.classList.add('lobby-active');
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
+    const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
+    battlefieldName.textContent = selectedMap?.name || next.mapId || 'Random battlefield';
+    battlefieldArt.style.backgroundImage = selectedMap?.thumb
+      ? `url("${selectedMap.thumb.replace(/"/g, '%22')}")`
+      : 'conic-gradient(from 25deg,#314931,#8b7446,#7d8c98,#474b51,#314931)';
+    battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
+    battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
     const me = next.players.find((player) => player.id === ownId());
@@ -696,11 +735,17 @@ export function createPlayMenu({
         icon.loading = 'lazy';
         icon.decoding = 'async';
         icon.addEventListener('error', () => icon.classList.add('missing'), { once: true });
+        const vehicleCopy = document.createElement('span');
+        vehicleCopy.className = 'vehicle-copy';
         const vehicleName = document.createElement('span');
         vehicleName.className = 'vehicle-name';
         try { vehicleName.textContent = getVehicleName(player.specId) || player.specId; }
         catch (_) { vehicleName.textContent = player.specId; }
-        vehicle.append(icon, vehicleName);
+        const vehicleCamo = document.createElement('span');
+        vehicleCamo.className = 'vehicle-camo';
+        vehicleCamo.textContent = `${getCamoName(player.camo || 'factory')} camouflage`;
+        vehicleCopy.append(vehicleName, vehicleCamo);
+        vehicle.append(icon, vehicleCopy);
       } else {
         const vehicleName = document.createElement('span');
         vehicleName.className = 'vehicle-name';
@@ -750,11 +795,14 @@ export function createPlayMenu({
           hostName: name,
           hostSpecId: selection.specId,
           hostEquipment: selection.equipment,
+          hostCamo: selection.camo,
           mapId: selection.mapId,
           teamSize,
           iceServers: ice.iceServers,
           relayOnly: ice.relayOnly,
           isVehicleAllowed,
+          isCamoAllowed,
+          isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
           onStart: (lobbyState) => {
             beginNetworkHandoff(lobbyState, 'host');
           },
@@ -778,6 +826,7 @@ export function createPlayMenu({
         unsubscribeState = runtime.onState(renderLobby);
         await session.submit({ type: 'select_vehicle', specId: selection.specId });
         await session.submit({ type: 'select_equipment', equipment: selection.equipment });
+        await session.submit({ type: 'select_camo', camo: selection.camo });
       }
     } catch (error) {
       closeCurrentSession('connection_failed');

@@ -31,6 +31,7 @@ const PLAYER_COUNT = 14;
 const TEAM_SIZE = 7;
 const MAP_ID = 'winter';
 const SPEC_ID = 'm60a2';
+const CAMO_IDS = ['factory', 'summer', 'winter', 'digital', 'merdc', 'splinter', 'dazzle'];
 const durationMs = numericArg('duration', 15_000);
 const settleMs = numericArg('settle', 2_500);
 const latencyMs = numericArg('latency', 45);
@@ -145,6 +146,7 @@ async function createLobby(pages, signalUrl) {
       roomInfo: state.roomInfo,
       hostName: 'Commander',
       hostSpecId: specId,
+      hostCamo: 'factory',
       mapId,
       teamSize: 7,
       onStart: (lobby) => { state.startingLobby = lobby; },
@@ -155,7 +157,7 @@ async function createLobby(pages, signalUrl) {
   }, { url: signalUrl, mapId: MAP_ID, specId: SPEC_ID });
 
   await Promise.all(guestPages.map((page, guestIndex) => page.evaluate(
-    async ({ url, roomCode, index, specId }) => {
+    async ({ url, roomCode, index, specId, camo }) => {
       const state = globalThis.__COT_LIVE_7V7;
       const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
         import('/src/net/signalingClient.js'),
@@ -174,9 +176,16 @@ async function createLobby(pages, signalUrl) {
       state.runtime = await state.session.ready;
       state.unsubscribeLobby = state.runtime.onState((lobby) => { state.lastLobby = lobby; });
       await state.session.submit({ type: 'select_vehicle', specId });
+      await state.session.submit({ type: 'select_camo', camo });
       return state.roomInfo;
     },
-    { url: signalUrl, roomCode: room.roomCode, index: guestIndex + 1, specId: SPEC_ID },
+    {
+      url: signalUrl,
+      roomCode: room.roomCode,
+      index: guestIndex + 1,
+      specId: SPEC_ID,
+      camo: CAMO_IDS[(guestIndex + 1) % CAMO_IDS.length],
+    },
   )));
 
   await hostPage.waitForFunction(
@@ -187,6 +196,10 @@ async function createLobby(pages, signalUrl) {
     (count) => globalThis.__COT_LIVE_7V7?.lastLobby?.players?.length === count,
     { timeout: timeoutMs }, PLAYER_COUNT,
   )));
+  await hostPage.waitForFunction(
+    (count) => new Set(globalThis.__COT_LIVE_7V7?.lastLobby?.players?.map((player) => player.camo)).size === count,
+    { timeout: timeoutMs }, CAMO_IDS.length,
+  );
 
   const lobby = await hostPage.evaluate(() => globalThis.__COT_LIVE_7V7.lastLobby);
   assert.equal(lobby.players.length, PLAYER_COUNT);
@@ -194,6 +207,8 @@ async function createLobby(pages, signalUrl) {
   assert.equal(lobby.players.filter((player) => player.team === 'alpha').length, TEAM_SIZE);
   assert.equal(lobby.players.filter((player) => player.team === 'bravo').length, TEAM_SIZE);
   assert.equal(new Set(lobby.players.map((player) => player.name.toLowerCase())).size, PLAYER_COUNT);
+  assert.deepEqual(new Set(lobby.players.map((player) => player.camo)), new Set(CAMO_IDS),
+    'the live duplicate-tank roster retains all seven selected camo variants');
 
   await Promise.all([
     hostPage.evaluate(() => globalThis.__COT_LIVE_7V7.session.command({

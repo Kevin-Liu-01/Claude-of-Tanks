@@ -15,12 +15,15 @@ export class PrivateRoomHostSession {
     hostName,
     hostSpecId = null,
     hostEquipment = [],
+    hostCamo = 'factory',
     mapId = 'random',
     teamSize = 2,
     iceServers = [],
     relayOnly = false,
     RTCPeerConnectionImpl = null,
     isVehicleAllowed = () => true,
+    isCamoAllowed = () => true,
+    isMapAllowed = () => true,
     onStart = null,
     onError = null,
   } = {}) {
@@ -33,6 +36,8 @@ export class PrivateRoomHostSession {
     this.relayOnly = relayOnly;
     this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
     this.isVehicleAllowed = isVehicleAllowed;
+    this.isCamoAllowed = isCamoAllowed;
+    this.isMapAllowed = isMapAllowed;
     this.onError = onError;
     this.peers = new Map();
     this.matchRuntime = null;
@@ -42,6 +47,7 @@ export class PrivateRoomHostSession {
       hostName,
       hostSpecId,
       hostEquipment,
+      hostCamo,
       maxPlayers: roomInfo.maxPlayers || 14,
       mode: roomInfo.mode || 'private',
       mapId,
@@ -50,6 +56,8 @@ export class PrivateRoomHostSession {
     this.runtime = new LobbyHostRuntime({
       lobby: this.lobby,
       isVehicleAllowed,
+      isCamoAllowed,
+      isMapAllowed,
       onStart,
     });
     this.unsubscribeSignal = signaling.onEvent((message) => this.#event(message));

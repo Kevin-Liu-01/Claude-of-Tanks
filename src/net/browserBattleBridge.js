@@ -109,6 +109,7 @@ export function createBrowserBattleBridge({
     const combat = createCombatState(spec);
     const visual = createTankVisual(spec.id, engineCtx, {
       camoSeed: 4000 + (hashString(snapshot.id) % 100000),
+      camoPattern: snapshot.camo || 'factory',
       quality: snapshot.id === id ? 'high' : 'ai',
     });
     engineCtx.scene.add(visual.root);
@@ -117,6 +118,7 @@ export function createBrowserBattleBridge({
       id: snapshot.id,
       specId: spec.id,
       spec,
+      camo: snapshot.camo || 'factory',
       displayName: snapshot.name || null,
       networkTeam: snapshot.team,
       team: 'enemy',
@@ -158,7 +160,8 @@ export function createBrowserBattleBridge({
     for (let index = 0; index < active.length; index++) {
       const player = active[index];
       const quality = !spectator && player.id === id ? 'high' : 'ai';
-      const warmKey = `${player.specId}:${quality}`;
+      const camo = player.camo || 'factory';
+      const warmKey = `${player.specId}:${camo}:${quality}`;
       if (!warmed.has(warmKey)) {
         warmed.add(warmKey);
         try {
@@ -167,6 +170,7 @@ export function createBrowserBattleBridge({
             engineCtx.anisotropy ?? 4,
             quality,
             nextFrame,
+            camo,
           );
         } catch (_) { /* createTank retains its synchronous compatibility path */ }
       }
@@ -174,6 +178,7 @@ export function createBrowserBattleBridge({
         id: player.id,
         name: player.name,
         specId: player.specId,
+        camo,
         team: player.team,
         x: 0, y: 0, z: 0, yaw: 0,
       });

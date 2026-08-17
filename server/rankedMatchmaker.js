@@ -4,6 +4,7 @@ import { isGarageVisibleTankId } from '../src/game/matchmaking.js';
 import { getSpec } from '../src/vehicles/specs.js';
 import { MAP_IDS } from '../src/world/maps/index.js';
 import { uniquePlayerName } from '../src/net/playerNames.js';
+import { networkCamoId } from '../src/vehicles/camoPolicy.js';
 import { RatingStore } from './ratingStore.js';
 
 const TEAM_SIZES = new Set([1, 2, 3, 5, 7]);
@@ -78,7 +79,7 @@ export class RankedMatchmaker {
   profile(playerId) { return this.ratings.profile(playerId); }
   leaderboard(limit) { return this.ratings.leaderboard(limit); }
 
-  join({ playerId, identityToken, specId, equipment = [], teamSize = 1 } = {}) {
+  join({ playerId, identityToken, specId, equipment = [], camo = 'factory', teamSize = 1 } = {}) {
     const id = String(playerId || '');
     if (!this.ratings.authenticate(id, identityToken)) {
       throw Object.assign(new Error('ranked identity authentication failed'), {
@@ -115,6 +116,7 @@ export class RankedMatchmaker {
       rating: profile.rating,
       specId: vehicleId,
       equipment: sanitizeLoadout(equipment, spec),
+      camo: networkCamoId(camo),
       teamSize: size,
       queuedAtMs: this.now(),
       status: 'queued',
@@ -172,6 +174,7 @@ export class RankedMatchmaker {
           name,
           specId: entry.specId,
           equipment: entry.equipment,
+          camo: entry.camo,
           team,
           rating: entry.rating,
         });

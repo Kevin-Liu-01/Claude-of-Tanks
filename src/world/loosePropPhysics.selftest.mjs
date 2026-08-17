@@ -19,6 +19,8 @@ for (const kind of expectedLooseFamilies) {
   assert.ok(meta.bodyR > 0 && meta.mass > 0 && meta.bounce > 0,
     `${kind} publishes bounded body tuning`);
 }
+assert.equal(DESTRUCTIBLE_TYPES.cone.groundConstrained, true,
+  'every authored traffic cone uses the bounded ground-contact model');
 
 function body(overrides = {}) {
   return createLoosePropBody({
@@ -50,6 +52,27 @@ function body(overrides = {}) {
   }
   assert.equal(bounced, true, 'body records a terrain rebound');
   assert.equal(b.active, false, 'damped body enters the sleeping set');
+}
+
+// Regression: sustained tank overlap used to refresh the light cone's upward
+// kick every contact window, launching it more than 40 m in ten seconds.
+// Cones now stay terrain-bound even while ram contact is attempted every tick.
+{
+  const b = body({
+    radius: 0.27, height: 0.8, mass: 0.34, restitution: 0.2,
+    friction: 3.8, angularDrag: 2.4, groundConstrained: true,
+  });
+  let maxY = b.y;
+  for (let i = 0; i < 600; i++) {
+    kickLooseProp(b, 1, 0, 14, 'ram');
+    stepLoosePropBody(b, LOOSE_PROP_STEP_S, flat, up);
+    maxY = Math.max(maxY, b.y);
+    assert.ok(Number.isFinite(b.x + b.y + b.z + b.qx + b.qy + b.qz + b.qw),
+      `cone state stays finite at fixed step ${i}`);
+  }
+  assert.ok(maxY <= 0.4000001, `cone never gains altitude under sustained contact (${maxY})`);
+  assert.equal(b.vy, 0, 'ground-constrained cone has no vertical velocity state');
+  assert.ok(Math.hypot(b.vx, b.vz) <= 7.5000001, 'cone planar speed remains hard-bounded');
 }
 
 // Static collision reflects velocity instead of allowing clutter through a

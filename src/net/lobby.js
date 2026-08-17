@@ -1,5 +1,6 @@
 import { MAX_PLAYERS, MAX_SPECTATORS, normalizeRoomCode } from './protocol.js';
 import { normalizePlayerName, uniquePlayerName } from './playerNames.js';
+import { networkCamoId } from '../vehicles/camoPolicy.js';
 
 export const LOBBY_PHASES = Object.freeze({
   WAITING: 'waiting',
@@ -65,6 +66,14 @@ function cleanEquipment(value) {
   return clean;
 }
 
+function cleanCamo(value) {
+  const id = String(value || 'factory').trim();
+  if (!/^[a-z0-9_-]{1,32}$/.test(id)) {
+    throw new LobbyError('invalid_camo', 'camouflage id is invalid');
+  }
+  return id;
+}
+
 function countTeam(lobby, team, excluding = null) {
   let count = 0;
   for (const player of lobby.players.values()) {
@@ -114,7 +123,7 @@ function assertPlayerEditable(player) {
 }
 
 function createPlayer({
-  id, name, team, specId = null, equipment = [], isHost = false, rating = null,
+  id, name, team, specId = null, equipment = [], camo = 'factory', isHost = false, rating = null,
 }) {
   return {
     id: cleanId(id),
@@ -122,6 +131,7 @@ function createPlayer({
     team,
     specId: specId ? cleanSpecId(specId) : null,
     equipment: cleanEquipment(equipment),
+    camo: networkCamoId(cleanCamo(camo)),
     ready: false,
     connected: true,
     isHost,
@@ -141,6 +151,7 @@ export function createLobby({
   allowTeamSwitch = true,
   hostSpecId = null,
   hostEquipment = [],
+  hostCamo = 'factory',
   teamSize = 1,
 } = {}) {
   const code = normalizeRoomCode(roomCode);
@@ -180,6 +191,7 @@ export function createLobby({
     team: LOBBY_TEAMS.ALPHA,
     specId: hostSpecId,
     equipment: hostEquipment,
+    camo: hostCamo,
     isHost: true,
   }));
   return lobby;
@@ -192,6 +204,7 @@ export function addLobbyPlayer(lobby, {
   team = null,
   specId = null,
   equipment = [],
+  camo = 'factory',
   rating = null,
 } = {}) {
   assertWaiting(lobby);
@@ -223,6 +236,7 @@ export function addLobbyPlayer(lobby, {
     team: targetTeam,
     specId,
     equipment,
+    camo,
     rating,
   }));
   return markChanged(lobby);
@@ -247,6 +261,8 @@ export function removeLobbyPlayer(lobby, playerId) {
  */
 export function applyLobbyCommand(lobby, playerId, command, {
   isVehicleAllowed = () => true,
+  isCamoAllowed = () => true,
+  isMapAllowed = () => true,
 } = {}) {
   assertWaiting(lobby);
   const id = cleanId(playerId);
@@ -274,6 +290,16 @@ export function applyLobbyCommand(lobby, playerId, command, {
       player.equipment = cleanEquipment(command.equipment);
       player.ready = false;
       break;
+    case 'select_camo': {
+      assertPlayerEditable(player);
+      const camo = cleanCamo(command.camo);
+      if (!isCamoAllowed(camo, player, lobby)) {
+        throw new LobbyError('camo_not_allowed', 'camouflage is unavailable in this lobby');
+      }
+      player.camo = networkCamoId(camo);
+      player.ready = false;
+      break;
+    }
     case 'set_ready':
       if (player.team !== LOBBY_TEAMS.SPECTATOR && !player.specId) {
         throw new LobbyError('vehicle_required', 'select a vehicle before readying');
@@ -315,11 +341,16 @@ export function applyLobbyCommand(lobby, playerId, command, {
       for (const entry of lobby.players.values()) entry.ready = false;
       break;
     }
-    case 'set_map':
+    case 'set_map': {
       assertHost(lobby, id);
-      lobby.mapId = String(command.mapId || 'random').slice(0, 64);
+      const mapId = String(command.mapId || 'random').slice(0, 64);
+      if (!isMapAllowed(mapId, lobby)) {
+        throw new LobbyError('map_not_allowed', 'battlefield is unavailable in this lobby');
+      }
+      lobby.mapId = mapId;
       for (const entry of lobby.players.values()) entry.ready = false;
       break;
+    }
     case 'set_locked':
       assertHost(lobby, id);
       lobby.locked = !!command.locked;

@@ -18,6 +18,7 @@ export function createLoosePropBody({
   x, baseY, z, radius, height,
   mass = 1, restitution = 0.32, friction = 2.2,
   airDrag = 0.16, angularDrag = 0.42, spinBias = 1,
+  groundConstrained = false,
 }) {
   const h = Math.max(0.12, height);
   const r = Math.max(0.08, Math.min(radius, h * 0.62));
@@ -31,6 +32,7 @@ export function createLoosePropBody({
     airDrag: Math.max(0, airDrag),
     angularDrag: Math.max(0, angularDrag),
     spinBias: spinBias < 0 ? -1 : 1,
+    groundConstrained: !!groundConstrained,
     vx: 0, vy: 0, vz: 0,
     wx: 0, wy: 0, wz: 0,
     qx: 0, qy: 0, qz: 0, qw: 1,
@@ -60,23 +62,38 @@ export function kickLooseProp(b, dx, dz, speed = 0, cause = 'ram') {
   const uz = ll > EPS ? dz / ll : 1;
   const base = cause === 'blast' ? 7.4 : cause === 'shell' ? 6.2
     : clamp(1.7 + Math.max(0, speed) * 0.46, 2.2, 7.8);
-  const kick = base * b.invMass;
+  // Cones are presentation props, not projectiles. Their light authored mass
+  // used to multiply every repeated hull contact into another upward launch.
+  // Keep their response planar and deliberately less energetic.
+  const kick = base * b.invMass * (b.groundConstrained ? 0.45 : 1);
   b.vx += ux * kick;
   b.vz += uz * kick;
   const planar = Math.hypot(b.vx, b.vz);
-  if (planar > 12) {
-    const k = 12 / planar;
+  const maxPlanar = b.groundConstrained ? 7.5 : 12;
+  if (planar > maxPlanar) {
+    const k = maxPlanar / planar;
     b.vx *= k; b.vz *= k;
   }
-  b.vy = Math.max(b.vy, (cause === 'ram' ? 0.7 + Math.min(speed, 14) * 0.08 : 1.7) * b.invMass);
+  if (b.groundConstrained) b.vy = 0;
+  else b.vy = Math.max(b.vy,
+    (cause === 'ram' ? 0.7 + Math.min(speed, 14) * 0.08 : 1.7) * b.invMass);
   // direction x up: the same hinge polarity as toppled trees/poles
-  const spin = (5.2 + Math.min(Math.max(speed, 0), 14) * 0.42) * b.invMass;
+  const spin = b.groundConstrained
+    ? 3.2 + Math.min(Math.max(speed, 0), 14) * 0.24
+    : (5.2 + Math.min(Math.max(speed, 0), 14) * 0.42) * b.invMass;
   b.wx += uz * spin * b.spinBias;
   b.wy += 0.55 * spin * b.spinBias;
   b.wz -= ux * spin * b.spinBias;
+  if (b.groundConstrained) {
+    const angular = Math.hypot(b.wx, b.wy, b.wz);
+    if (angular > 9) {
+      const k = 9 / angular;
+      b.wx *= k; b.wy *= k; b.wz *= k;
+    }
+  }
   b.active = true;
   b.sleepS = 0;
-  b.cooldownS = cause === 'ram' ? 0.16 : 0.08;
+  b.cooldownS = cause === 'ram' ? (b.groundConstrained ? 0.24 : 0.16) : 0.08;
   return true;
 }
 
@@ -91,12 +108,55 @@ function integrateQuaternion(b, dt) {
   b.qx *= inv; b.qy *= inv; b.qz *= inv; b.qw *= inv;
 }
 
+// Ground-constrained props use a small 2.5D model: planar translation plus
+// visual tumble. Their center follows the terrain directly, so no contact can
+// accumulate vertical energy. The support interpolation keeps an upright cone
+// on its base and a fallen cone on its side without a full rigid-body solver.
+function stepGroundConstrainedBody(b, dt, heightAt, bounds) {
+  b.cooldownS = Math.max(0, b.cooldownS - dt);
+  const drag = Math.max(0, 1 - (b.airDrag + b.friction) * dt);
+  b.vx *= drag; b.vz *= drag;
+  const ad = Math.max(0, 1 - (b.angularDrag + 0.9) * dt);
+  b.wx *= ad; b.wy *= ad; b.wz *= ad;
+
+  b.x += b.vx * dt; b.z += b.vz * dt;
+  integrateQuaternion(b, dt);
+  let flags = 1;
+  if (b.x < -bounds || b.x > bounds) {
+    b.x = clamp(b.x, -bounds, bounds); b.vx *= -b.restitution; flags |= 2;
+  }
+  if (b.z < -bounds || b.z > bounds) {
+    b.z = clamp(b.z, -bounds, bounds); b.vz *= -b.restitution; flags |= 2;
+  }
+
+  const halfH = b.height * 0.5;
+  const axisY = Math.abs(1 - 2 * (b.qx * b.qx + b.qz * b.qz));
+  const lowSupport = Math.min(b.radius, halfH);
+  const highSupport = Math.max(b.radius, halfH);
+  b.y = heightAt(b.x, b.z) + lowSupport + (highSupport - lowSupport) * axisY;
+  b.vy = 0;
+
+  const planar = Math.hypot(b.vx, b.vz);
+  const angular = Math.hypot(b.wx, b.wy, b.wz);
+  if (planar < 0.08 && angular < 0.42) {
+    b.sleepS += dt;
+    if (b.sleepS >= 0.45) {
+      b.vx = 0; b.vz = 0;
+      b.wx = 0; b.wy = 0; b.wz = 0;
+      b.active = false; b.cooldownS = 0; b.sleepS = 0;
+      flags |= 4;
+    }
+  } else b.sleepS = 0;
+  return flags;
+}
+
 /**
  * Advance one fixed step. Return bits: 1 moved, 2 bounced, 4 went to sleep.
  * `normalAt` may return a reused scratch object.
  */
 export function stepLoosePropBody(b, dt, heightAt, normalAt = null, bounds = 486) {
   if (!b.active || dt <= 0) return 0;
+  if (b.groundConstrained) return stepGroundConstrainedBody(b, dt, heightAt, bounds);
   b.cooldownS = Math.max(0, b.cooldownS - dt);
   b.vy -= GRAVITY * dt;
   const air = Math.max(0, 1 - b.airDrag * dt);

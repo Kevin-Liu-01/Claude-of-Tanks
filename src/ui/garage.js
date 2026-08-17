@@ -13,6 +13,9 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
+import {
+  CUSTOM_CAMO_ID, CUSTOM_CAMO_STYLES, customCamoPatternId, normalizeCustomCamo,
+} from '../vehicles/camoPolicy.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -498,6 +501,36 @@ const GARAGE_CSS = `
 .cot-camos .cnote{font-size:8.5px;font-weight:700;letter-spacing:.10em;
   color:#8a97a3;text-transform:uppercase;margin-top:6px;line-height:1.55;
   text-shadow:0 1px 2px rgba(0,0,0,.7);}
+.cot-custom-camo{margin-top:7px;border:1px solid rgba(146,164,180,.24);
+  background:linear-gradient(180deg,rgba(16,22,28,.9),rgba(7,10,13,.94));}
+.cot-custom-camo.sel{border-color:rgba(240,160,48,.7);box-shadow:0 0 12px rgba(240,160,48,.12);}
+.cot-custom-toggle{width:100%;height:31px;padding:0 9px;display:flex;align-items:center;justify-content:space-between;
+  color:#b9c6cf;background:transparent;border:0;cursor:pointer;font:900 8px ${FONT_COND};
+  letter-spacing:.16em;text-transform:uppercase;text-align:left;}
+.cot-custom-toggle span:last-child{color:#f0a030;font-size:13px;transition:transform .16s ease;}
+.cot-custom-camo.open .cot-custom-toggle span:last-child{transform:rotate(45deg);}
+.cot-custom-body{display:none;padding:8px;border-top:1px solid rgba(146,164,180,.18);}
+.cot-custom-camo.open .cot-custom-body{display:grid;gap:8px;}
+.cot-custom-preview{position:relative;height:46px;overflow:hidden;border:1px solid rgba(0,0,0,.55);
+  background:#242a26;box-shadow:inset 0 0 0 1px rgba(235,243,250,.1);}
+.cot-custom-preview canvas{width:100%;height:100%;display:block;}
+.cot-custom-local{position:absolute;left:6px;bottom:5px;padding:3px 5px;color:#ffd17f;
+  background:rgba(7,10,13,.82);font:900 6.5px ${FONT_COND};letter-spacing:.15em;text-transform:uppercase;}
+.cot-custom-styles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;}
+.cot-custom-style{height:25px;min-width:0;padding:0 3px;color:#8394a1;background:rgba(9,13,17,.86);
+  border:1px solid rgba(146,164,180,.2);cursor:pointer;font:900 6.5px ${FONT_COND};
+  letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;}
+.cot-custom-style.on{color:#ffd27a;border-color:#f0a030;background:rgba(46,31,12,.72);}
+.cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+.cot-custom-color{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:5px;color:#7f909d;
+  font:900 6.5px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;}
+.cot-custom-color input{width:24px;height:24px;padding:1px;background:#090d11;border:1px solid rgba(146,164,180,.3);}
+.cot-custom-repeat{display:grid;grid-template-columns:auto 1fr 26px;gap:6px;align-items:center;color:#8a9aa7;
+  font:900 7px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;}
+.cot-custom-repeat input{width:100%;accent-color:#f0a030;}.cot-custom-repeat output{text-align:right;color:#f0b04a;}
+.cot-custom-apply{height:29px;color:#1c1003;background:linear-gradient(#efaa45,#c8731d);border:1px solid #f0b04a;
+  cursor:pointer;font:900 7.5px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;}
+.cot-custom-help{color:#6f808d;font:700 7px ${FONT_COND};line-height:1.45;letter-spacing:.06em;text-transform:uppercase;}
 
 /* EQUIPMENT SYSTEM: 3 loadout slots at the foot of the stats card. Same
    plate/border language as the camo cards; equipped slots carry the item's
@@ -819,7 +852,10 @@ function paintCamoSwatch(canvas, spec, pid) {
   // tile-scale reference dimension: 1.6x over the raw canvas width so the
   // pattern features render BOLDER than on-hull scale — at 62px display width
   // the true-scale features smeared into flat noise (r3 readability)
-  const S = W * 1.6;
+  const repeatScale = Number.isFinite(vis.patternRepeat)
+    ? 1.28 - (vis.patternRepeat / 100) * 0.72
+    : 1;
+  const S = W * 1.6 * repeatScale;
   c.fillStyle = swRgb(base);
   c.fillRect(0, 0, W, H);
   for (let i = 0; i < 10; i++) { // weathered tonal drift
@@ -1758,6 +1794,30 @@ export function createGarage(opts) {
   const camoOpts = opts.camo || null;
   const camosEl = root.querySelector('.cot-camos');
   const camoCardById = new Map();
+  let customCamoEl = null;
+  let customPreview = null;
+  let customDraft = normalizeCustomCamo();
+  const repaintCustomPreview = () => {
+    if (!customPreview || !selectedId) return;
+    const spec = specById.get(selectedId);
+    if (spec) paintCamoSwatch(customPreview, spec, customCamoPatternId(customDraft));
+  };
+  const syncCustomControls = () => {
+    if (!customCamoEl) return;
+    customCamoEl.querySelectorAll('.cot-custom-style').forEach((button) => {
+      button.classList.toggle('on', button.dataset.style === customDraft.style);
+      button.setAttribute('aria-pressed', String(button.dataset.style === customDraft.style));
+    });
+    for (const key of ['base', 'colorA', 'colorB']) {
+      const input = customCamoEl.querySelector(`[data-custom-color="${key}"]`);
+      if (input) input.value = customDraft[key];
+    }
+    const repeat = customCamoEl.querySelector('[data-custom-repeat]');
+    const output = customCamoEl.querySelector('[data-custom-repeat-value]');
+    if (repeat) repeat.value = String(customDraft.repeat);
+    if (output) output.value = `${customDraft.repeat}%`;
+    repaintCustomPreview();
+  };
   if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
     const title = document.createElement('div');
     title.className = 'ctitle';
@@ -1797,6 +1857,91 @@ export function createGarage(opts) {
     // column edge and shipped a dangling em-dash mid-sentence)
     note.textContent = '+3.5% concealment on matching maps · auto always matches';
     camosEl.appendChild(note);
+    if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
+      customCamoEl = document.createElement('div');
+      customCamoEl.className = 'cot-custom-camo';
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'cot-custom-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.innerHTML = '<span>Create your own</span><span aria-hidden="true">+</span>';
+      const body = document.createElement('div');
+      body.className = 'cot-custom-body';
+      const preview = document.createElement('div');
+      preview.className = 'cot-custom-preview';
+      customPreview = document.createElement('canvas');
+      const localOnly = document.createElement('span');
+      localOnly.className = 'cot-custom-local';
+      localOnly.textContent = 'Solo · this device only';
+      preview.append(customPreview, localOnly);
+      const styles = document.createElement('div');
+      styles.className = 'cot-custom-styles';
+      for (const style of CUSTOM_CAMO_STYLES) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cot-custom-style';
+        button.dataset.style = style;
+        button.textContent = style === 'blotch' ? 'Blotch' : style;
+        button.addEventListener('click', () => {
+          emit('ui:click', {});
+          customDraft = normalizeCustomCamo({ ...customDraft, style });
+          syncCustomControls();
+        });
+        styles.appendChild(button);
+      }
+      const colors = document.createElement('div');
+      colors.className = 'cot-custom-colors';
+      for (const [key, label] of [['base', 'Base'], ['colorA', 'Tone 1'], ['colorB', 'Tone 2']]) {
+        const wrap = document.createElement('label');
+        wrap.className = 'cot-custom-color';
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.dataset.customColor = key;
+        const text = document.createElement('span');
+        text.textContent = label;
+        input.addEventListener('input', () => {
+          customDraft = normalizeCustomCamo({ ...customDraft, [key]: input.value });
+          repaintCustomPreview();
+        });
+        wrap.append(input, text);
+        colors.appendChild(wrap);
+      }
+      const repeat = document.createElement('label');
+      repeat.className = 'cot-custom-repeat';
+      repeat.innerHTML = '<span>Pattern repeat</span><input type="range" min="20" max="100" step="5" data-custom-repeat><output data-custom-repeat-value>55%</output>';
+      const repeatInput = repeat.querySelector('input');
+      repeatInput.addEventListener('input', () => {
+        customDraft = normalizeCustomCamo({ ...customDraft, repeat: Number(repeatInput.value) });
+        syncCustomControls();
+      });
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'cot-custom-apply';
+      apply.textContent = 'Apply to solo vehicle';
+      apply.addEventListener('click', () => {
+        if (!selectedId) return;
+        emit('ui:click', {});
+        camoOpts.setCustom(selectedId, customDraft);
+        refreshCamoSel();
+        requeueTankThumbs(selectedId);
+      });
+      const help = document.createElement('div');
+      help.className = 'cot-custom-help';
+      help.textContent = 'Custom paint stays local. Multiplayer automatically uses Factory instead.';
+      body.append(preview, styles, colors, repeat, apply, help);
+      customCamoEl.append(toggle, body);
+      camosEl.appendChild(customCamoEl);
+      toggle.addEventListener('click', () => {
+        const open = !customCamoEl.classList.contains('open');
+        customCamoEl.classList.toggle('open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open && selectedId) {
+          customDraft = normalizeCustomCamo(camoOpts.getCustom(selectedId));
+          syncCustomControls();
+        }
+        requestAnimationFrame(syncScrollFades);
+      });
+    }
   }
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.js (localStorage
@@ -1928,6 +2073,11 @@ export function createGarage(opts) {
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
+    if (customCamoEl) {
+      customCamoEl.classList.toggle('sel', cur === CUSTOM_CAMO_ID);
+      customDraft = normalizeCustomCamo(camoOpts.getCustom(selectedId));
+      syncCustomControls();
+    }
     for (const [pid, card] of camoCardById) {
       card.classList.toggle('sel', pid === cur);
       // camo r8: the grid scrolls now — keep the active pattern in view when

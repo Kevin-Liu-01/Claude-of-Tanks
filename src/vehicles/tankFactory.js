@@ -4773,6 +4773,7 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
 export function createTank(specId, engineCtx, opts = {}) {
   const {
     camoSeed = 4000,
+    camoPattern = null,
     quality = 'high',
     proceduralOnly = false,
     geometryReceipt = false,
@@ -4782,7 +4783,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   const marking = spec.markings || vehicleMarkingRecord(spec);
   const mats = geometryReceipt
     ? createGeometryReceiptMaterials()
-    : createTankMaterials(spec, engineCtx, camoSeed, quality);
+    : createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern);
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
