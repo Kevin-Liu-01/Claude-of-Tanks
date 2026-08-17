@@ -716,6 +716,28 @@ function buildStrv122(P) {
     P.add('turret', box(0.50, 0.08, 0.56), s * 0.60, 1.04, -1.28);
     P.add('turretDark', box(0.42, 0.014, 0.47), s * 0.60, 1.088, -1.28);
   }
+  // Make the Swedish roof package read as an articulated armor system at
+  // garage scale, rather than one dark, featureless slab.  The spine, cross
+  // joints and fasteners all sit directly on the existing roof field and stay
+  // inside its plan envelope; they do not create a second turret silhouette.
+  P.add('turret', box(0.18, 0.065, 1.18), 0, 1.076, -0.74);
+  P.add('turretDark', box(0.13, 0.014, 1.08), 0, 1.116, -0.74);
+  for (const z of [-1.22, -0.76, -0.30]) {
+    P.add('turretDark', box(1.54, 0.016, 0.035), 0, 1.110, z);
+    for (const x of [-0.72, -0.24, 0.24, 0.72]) {
+      P.add('turretDetail', cylY(0.022, 0.024, 0.020, 8), x, 1.126, z);
+    }
+  }
+  // Low warning/observation pods on broad armored shoes.  Their shallow
+  // housings deliberately remain below the PERI and MG skyline.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.30, 0.070, 0.30), s * 1.02, 0.92, 0.18,
+      -0.10, s * 0.16, 0);
+    P.add('turretDark', box(0.22, 0.11, 0.024), s * 1.02, 0.95, 0.342,
+      -0.10, s * 0.16, 0);
+    P.add('turretGlass', box(0.12, 0.055, 0.018), s * 1.02, 0.95, 0.358,
+      -0.10, s * 0.16, 0);
+  }
   // bustle roof + rear rack complex: rails meet posts, posts return into the
   // backed bustle armor (connected — floaters law)
   P.add('turret', box(2.20, 0.30, 0.06), 0, 0.44, -2.345);
