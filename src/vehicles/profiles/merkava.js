@@ -991,6 +991,15 @@ function merkavaChassis(P, c) {
       outset: wheelFaceW / 2 + 0.017, name: 'gearRoadWheelInnerDishes', appearanceRole: 'wheelInset' },
     { geometry: KIT.cylX(c.wheelR * 0.15, 0.014, 8), material: P.mats.detail,
       outset: wheelFaceW / 2 + 0.021, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelDish' },
+  ] : c.modernWheelFace ? [
+    { geometry: KIT.cylX(c.wheelR * 0.84, 0.012, 18), material: P.mats.dark,
+      outset: wheelFaceW / 2 + 0.006, name: 'gearRoadWheelPressedFaces', appearanceRole: 'wheelDish' },
+    { geometry: KIT.cylX(c.wheelR * 0.61, 0.010, 16), material: P.mats.detail,
+      outset: wheelFaceW / 2 + 0.010, name: 'gearRoadWheelDishRings', appearanceRole: 'wheelDish' },
+    { geometry: KIT.cylX(c.wheelR * 0.45, 0.011, 14), material: P.mats.dark,
+      outset: wheelFaceW / 2 + 0.014, name: 'gearRoadWheelDishRecesses', appearanceRole: 'wheelInset' },
+    { geometry: KIT.cylX(c.wheelR * 0.20, 0.013, 10), material: P.mats.detail,
+      outset: wheelFaceW / 2 + 0.019, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelDish' },
   ] : undefined;
   KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: c.wheelR, wheelW: wheelFaceW,
@@ -1011,7 +1020,8 @@ function merkavaChassis(P, c) {
     shoeWidthScale: c.shoeWidthScale ?? 1.00,
     integratedLinks: true,
     dishR: c.dishR ?? 0.78,
-    chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor, tireHex: c.tireHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
+    chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor,
+    tireHex: c.tireHex, wheelHex: c.wheelHex, endWheelHex: c.endWheelHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
     armBucket: c.runningGearBuckets ? 'hullRunningGearDetail' : undefined,
     wheelFaceLayers,
   });
@@ -5813,8 +5823,8 @@ function buildMerkavaMark(P, p) {
   const apexG = t.apexZ - gunZL;
   const m = p.mantlet; // { r0, r1, len, drop, z0?, legacy? } external cast sleeve
   const mDrop = m.drop ?? 0;
-  merkavaSourceGunCradle(P, p, gunZL, L);
-  if (m.legacy) { // r2 triple-cylinder sleeve (2-series masks were laid on it)
+  const sourceGunHousing = merkavaSourceGunCradle(P, p, gunZL, L);
+  if (!sourceGunHousing && m.legacy) { // generic fallback for non-rostered profiles
     P.addGunExtra(cylZ(m.r0 * 1.12, 0.62, 16), 0, mDrop, apexG - 0.24);
     P.addGunExtra(cylZ(m.r0, m.len, 16, m.r0 * 1.08), 0, mDrop, apexG + m.len / 2 - 0.06);
     P.addGunExtra(cylZ(m.r1, 0.26, 14, m.r0 * 0.94), 0, mDrop * 0.5, apexG + m.len + 0.06);
@@ -5844,7 +5854,7 @@ function buildMerkavaMark(P, p) {
         }
       }
     }
-  } else if (m.boxy) {
+  } else if (!sourceGunHousing && m.boxy) {
     // §B3.1 GUN-ASSEMBLY ACCURACY (owner 2026-08-06: "sepv2 and sepv3 and
     // the merkavas have those really ugly gun rectangular prisms and dont
     // look accurate"): the r8 boxy MG251 housing read as a literal shoebox
@@ -5961,14 +5971,14 @@ function buildMerkavaMark(P, p) {
     // floated past the rounded end ring's corner arc, x_max 0.1185 there)
     P.addGunExtraDark(box(0.13, 0.007, 0.008), -0.05, mDrop - 0.132, mz + m.len - 0.006);
     P.addGunExtraDark(box(0.11, 0.007, 0.008), 0.06, mDrop - 0.140, mz + m.len - 0.004);
-  } else {
+  } else if (!sourceGunHousing) {
     const mz = (m.z0 !== undefined ? L(m.z0) : t.apexZ - 0.06) - gunZL;
     P.addGunExtra(cylZ(m.r0 * 1.06, 0.30, 16), 0, mDrop, mz - 0.13);
     P.addGunExtra(cylZ(m.r0, m.len, 16, m.r0 * 1.05), 0, mDrop, mz + m.len / 2);
     P.addGunExtraDark(cylZ(m.r0 * 1.02, 0.035, 16), 0, mDrop, mz + m.len - 0.03);
     P.addGunExtraDark(cylZ(m.r1, 0.10, 14), 0, mDrop * 0.5, mz + m.len + 0.05);
   }
-  if (p.gunBoot) {
+  if (p.gunBoot && !sourceGunHousing) {
     // §B3.1 GUN-ASSEMBLY ACCURACY (owner 2026-08-06): the 4-series MG253
     // root read as a bare drum piercing a flat casting wall with hard
     // notch corners — a prism stack at 1x-4x. The real Mk.4 gun base is
@@ -6650,61 +6660,54 @@ function merkavaSourceOracleTurret(P, p, t) {
   return true;
 }
 
-// The supplied vehicles do not have a small collar pasted onto a turret
-// face. Their gun line begins inside a broad cast cradle whose shoulders
-// flow back into the turret cheeks and then contract around the tube. Keep
-// this entire assembly in rig_gun so the cradle, cloth collar and barrel
-// elevate together. The rear course is deliberately buried in the casting;
-// the forward course overlaps the existing mark-specific collar below.
+// The supplied vehicles do not have a collar pasted onto the end of a long
+// triangular beam. Their gun line leaves the cast cheek through a SHORT,
+// buried canvas/steel boot. Keep the whole socket in rig_gun so the cheek
+// transition, boot and tube elevate together, but keep its broad rear half
+// inside the casting. This is the only visible gun housing on rostered
+// Merkavas; the older generic mantlet recipes are deliberately bypassed.
 function merkavaSourceGunCradle(P, p, gunZL, L) {
   const id = P.spec.id;
   const cfg = {
-    merkava1b: { rearZ: 0.70, frontZ: 1.76, rearHW: 0.52, frontHW: 0.18, rearHH: 0.23, frontHH: 0.14, x: -0.02 },
-    merkava2b: { rearZ: 0.92, frontZ: 1.92, rearHW: 0.57, frontHW: 0.19, rearHH: 0.24, frontHH: 0.15, x: 0.01 },
-    merkava2d: { rearZ: 0.94, frontZ: 2.00, rearHW: 0.66, frontHW: 0.19, rearHH: 0.25, frontHH: 0.15, x: -0.01 },
-    merkava3c: { rearZ: 0.70, frontZ: 2.02, rearHW: 0.66, frontHW: 0.20, rearHH: 0.25, frontHH: 0.16, x: 0.01 },
-    merkava3d: { rearZ: 0.72, frontZ: 2.06, rearHW: 0.75, frontHW: 0.20, rearHH: 0.27, frontHH: 0.16, x: -0.03 },
-    merkava4b: { rearZ: 1.12, frontZ: 3.02, rearHW: 0.86, frontHW: 0.22, rearHH: 0.30, frontHH: 0.17, x: 0.00 },
+    merkava1b: { bootLen: 0.43, bootHW: 0.155, bootHH: 0.130, x: -0.02 },
+    merkava2b: { bootLen: 0.50, bootHW: 0.160, bootHH: 0.135, x: 0.01 },
+    merkava2d: { bootLen: 0.52, bootHW: 0.165, bootHH: 0.140, x: -0.01 },
+    merkava3c: { bootLen: 0.48, bootHW: 0.180, bootHH: 0.150, x: 0.01 },
+    merkava3d: { bootLen: 0.50, bootHW: 0.185, bootHH: 0.155, x: -0.03 },
+    merkava4b: { bootLen: 0.48, bootHW: 0.195, bootHH: 0.160, x: 0.00 },
   }[id];
-  if (!cfg) return;
+  if (!cfg) return false;
 
-  const { box, cylZ, xform } = KIT;
-  const z0 = L(cfg.rearZ) - gunZL;
-  const z1 = L(cfg.frontZ) - gunZL;
+  const { cylZ, xform } = KIT;
+  const mouthWorld = p.mantlet.z0 ?? (p.apexZ - 0.06);
+  const mouthZ = L(mouthWorld) - gunZL;
+  const frontZ = mouthZ + cfg.bootLen;
   const x0 = cfg.x;
-  P.addGunExtra(orientedSlab(
-    [x0 - cfg.rearHW, -cfg.rearHH, z0], [x0 + cfg.rearHW, -cfg.rearHH, z0],
-    [x0 + cfg.frontHW, -cfg.frontHH, z1], [x0 - cfg.frontHW, -cfg.frontHH, z1],
-    [x0 - cfg.rearHW * 0.90, cfg.rearHH, z0], [x0 + cfg.rearHW * 0.90, cfg.rearHH, z0],
-    [x0 + cfg.frontHW, cfg.frontHH, z1], [x0 - cfg.frontHW, cfg.frontHH, z1]));
 
-  // A recessed oval at the forward end makes the tube visibly emerge from
-  // a supported mechanical throat rather than a polygonal hole in a box.
-  P.addGunExtraDark(xform(cylZ(cfg.frontHW * 1.10, 0.040, P.q ? 22 : 14),
-    0, 0, 0, 0, 0, 0, [1, cfg.frontHH / cfg.frontHW, 1]),
-  x0, 0, z1 - 0.018);
-  P.addGunExtra(xform(cylZ(cfg.frontHW * 0.90, 0.18, P.q ? 22 : 14, cfg.frontHW * 0.72),
-    0, 0, 0, 0, 0, 0, [1, cfg.frontHH / cfg.frontHW, 1]),
-  x0, 0, z1 + 0.075);
-  P.addGunExtraDark(xform(cylZ(cfg.frontHW * 0.92, 0.024, P.q ? 22 : 14),
-    0, 0, 0, 0, 0, 0, [1, cfg.frontHH / cfg.frontHW, 1]),
-  x0, 0, z1 + 0.165);
+  const oval = (r, len, z, scaleY = 1, taper = undefined, dark = false) => {
+    const geo = xform(cylZ(r, len, P.q ? 24 : 16, taper), 0, 0, 0, 0, 0, 0,
+      [1, scaleY, 1]);
+    (dark ? P.addGunExtraDark : P.addGunExtra)(geo, x0, 0, z);
+  };
+  const aspect = cfg.bootHH / cfg.bootHW;
 
-  // Low crown and chin facets retain the long source assembly line in
-  // three-quarter views. Both overlap the cradle body along their full run.
-  const run = z1 - z0;
-  P.addGunExtra(box(cfg.rearHW * 1.16, 0.035, run * 0.62), x0,
-    cfg.rearHH * 0.86, z0 + run * 0.35, -0.05, 0, 0);
-  P.addGunExtraDark(box(cfg.rearHW * 0.72, 0.030, run * 0.48), x0,
-    -cfg.rearHH * 0.88, z0 + run * 0.42, 0.04, 0, 0);
-  for (const s of [-1, 1]) {
-    // Two narrow cast ribs articulate the shoulder without painting a
-    // large black rectangle across the gun-root flank.
-    P.addGunExtra(box(0.020, 0.040, run * 0.30),
-      x0 + s * cfg.rearHW * 0.79, cfg.rearHH * 0.48, z0 + run * 0.25, 0, s * -0.08, s * 0.08);
-    P.addGunExtraDark(box(0.022, 0.025, run * 0.24),
-      x0 + s * cfg.rearHW * 0.80, -cfg.rearHH * 0.48, z0 + run * 0.30, 0, s * -0.06, s * -0.06);
+  // One continuous oval boot: rolled mouth, gently contracting canvas body,
+  // and a steel throat which overlaps the canonical barrel root. Every
+  // section intersects its neighbours; there is no plate-on-empty-air path.
+  oval(cfg.bootHW * 1.12, 0.24, mouthZ - 0.03, aspect);
+  oval(cfg.bootHW, cfg.bootLen, mouthZ + cfg.bootLen * 0.47,
+    aspect, cfg.bootHW * 0.72);
+  oval(cfg.bootHW * 0.73, 0.18, frontZ - 0.015,
+    aspect * 0.96, cfg.bootHW * 0.62);
+  oval(cfg.bootHW * 0.71, 0.026, frontZ + 0.075, aspect * 0.96, undefined, true);
+
+  // Canvas cinches follow the boot instead of making a second rectangular
+  // housing around it.
+  for (const f of [0.28, 0.66]) {
+    const r = cfg.bootHW * (1 - f * 0.25);
+    oval(r + 0.004, 0.022, mouthZ + cfg.bootLen * f, aspect, undefined, true);
   }
+  return true;
 }
 
 // Source-finish pass shared by the six rostered owner-supplied Merkavas.
@@ -10198,7 +10201,14 @@ export const MERKAVA_PROFILES = {
     // finish pass.
     build: buildMerkavaMark, sourceOracleTurret: false,
     turretScale: { y: 0.86 },
-    width: 3.72, trackW: 0.62, trackTop: 1.05, wheelR: 0.42, gearOut: 1.76,
+    // Mk.4B source running gear: six compact pressed-steel road wheels on a
+    // low, dense single course. The former 0.42 m row and closely stacked
+    // front sprocket produced the oversized bullseye/double-wheel read.
+    width: 3.72, trackW: 0.58, trackTop: 0.95, wheelR: 0.36, gearOut: 1.73,
+    modernWheelFace: true, wheelHex: 0x35392f, tireHex: 0x252820, endWheelHex: 0x34372e,
+    chainHex: 0x302f28, padHex: 0x39372e, gearFloor: true,
+    trackTh: 0.082, linkPitchM: 0.095, shoeRadialScale: 0.90,
+    shoeWidthScale: 0.96, dishR: 0.72,
     deckY: 1.76, rearDeckZ: -2.75,
     body: [
       { z: 3.33, yT: 1.12, yB: 0.98, wT: 0.80, wB: 0.75 },
@@ -10217,9 +10227,9 @@ export const MERKAVA_PROFILES = {
     podX: 0.60, podIn: 0.15,
     fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.05, z1: 2.4, y: 1.46 },
     fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.05, top: 1.52, bot: 1.30 },
-    wheelZs: [1.95, 0.95, -0.05, -1.00, -1.90, -2.60],
-    sprocket: { z: 2.50, y: 0.54, r: 0.31 }, idler: { z: -3.10, y: 0.72, r: 0.28 },
-    rollers: [1.45, 0.5, -0.45, -1.35, -2.25],
+    wheelZs: [1.72, 0.92, 0.12, -0.68, -1.48, -2.28],
+    sprocket: { z: 2.43, y: 0.55, r: 0.27 }, idler: { z: -3.08, y: 0.62, r: 0.27 },
+    rollers: [1.35, 0.55, -0.25, -1.05, -1.85, -2.55],
     // WIDTH GUARD: skirt outer face exactly +-1.86 (published 3.72); the ref
     // stations read 3.70 wide here so the skirt line carries dims width.
     // Post-repair the ref skirt band is TALL (0.80..1.78 at the corner

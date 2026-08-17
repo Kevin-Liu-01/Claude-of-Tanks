@@ -1270,7 +1270,17 @@ function buildRunningGear(P, cfg) {
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
   // "track circles a void" read) — teeth, recess rings and bolts stay dark.
-  const steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
+  let steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
+  // Source-specific pressed-steel end wheels may be substantially darker
+  // than the scheme-painted hull. Keep this opt-in material on the canonical
+  // spinning sprocket/idler meshes rather than layering static cover discs.
+  if (cfg.endWheelHex) {
+    steelMat = steelMat.clone();
+    steelMat.color = new THREE.Color(cfg.endWheelHex);
+    steelMat.onBeforeCompile = vehicleAmbientFloorHook;
+    steelMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(steelMat);
+  }
   const darkMat = mats.spareTrack || mats.dark;
   for (const side of [-1, 1]) {
     const sideXc = xcForSide(side);
