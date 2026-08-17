@@ -151,3 +151,69 @@ Candidate bytes + SIM report: scratchpad ua-round/warp-candidates/
   intent SUPERSEDED by the equivalent ground-up § above (their standing
   ring-mount NSVT stays banked for post-warp per the §5.265 stowed-MG
   doctrine — a standing pintle sweeps 6+ p95 columns pre-warp).
+
+## §5.319 left-side turret finish (2026-08-17, owner order: "finish the left
+## side of oplots turret" + close top-left garage screenshot)
+- Hash `d7d068be` (64/93173) -> **`6e76802a`** (66/96743). Gate ×2
+  BIT-IDENTICAL (row md5 5e4fc7d3 both runs):
+  `min 0 | hull 0 whole 37.1 turret 0 stations 68.5 dims 100 floaters 100`
+  vs the verified live baseline 0/0/35.3/0/68.5/100/100 — **whole +1.8**,
+  stations held exactly, dims 100 HELD (heightM 2.26/2.285 = 0.9% grace,
+  hull 7.07 0.21%, overall 9.70 0.22%, width 3.78 0.16%), floaters 100.
+- MEASUREMENT (new instruments, uncommitted round tools): the §E-warped
+  print normalized into the build frame (yaw PI, z-span 9.72, tail -3.54)
+  and ray-scanned — tools/tmp-oplotleft-relief.{html,mjs} (side relief
+  100×44 + left-half top relief 40×100) + tools/tmp-oplotleft-shots.{html,
+  mjs} (10-view proc/print pair harness incl. the screenshot's close
+  top-left garage angle). Print LEFT stations (build frame): full-height
+  cheek cassette wall at the max-width plane (x -1.4725 print = -1.54..-1.55
+  build) over world z +0.34..+1.36 down to y ~1.37; shoulder smoke cluster
+  world z -0.80..-0.38 topping 2.36; mid-wall junction/panel band at
+  x -1.41..-1.47 over z -0.80..+0.30; solid bustle flank at x -1.32 over
+  z -2.1..-0.95 (rim 2.14); roof sight housing x -0.78..-0.41 z 0.28..0.65
+  topping 2.42 (capped class); wing-top terrace field to x -1.29.
+- DELIVERED (ASYMMETRY LAW: every piece authored s=-1 only; the ratified
+  right side keeps its §5.288/§5.291 bytes — right smoke bank inlined
+  VERBATIM from the retired uaSmoke both-sides call, seed 8411 + exact
+  seat, so left could re-seat without touching it):
+  (a) cheek cassette wall — 3 camo Duplet cassettes, plumb faces x -1.54,
+      world y 1.445..2.025 + top deck buried into the raked wing flank
+      (closes the wall<->wing slot, §B2) + tier/bay/base seams + a 4th
+      cassette riding the leading-edge line yawed +0.848 (silhouette stays
+      on the certified wing plan);
+  (b) junction cassette panel bridging wing->wall (z 0.07..0.35, clear of
+      the ratified edge-stack tiles);
+  (c) 3 outer wing-face course lids + dark lids (face-following rx -0.29 /
+      rz -0.075) filling the bare flank field outboard of the §5.288 brick
+      courses (print terrace field; tilted-brick p95 law respected);
+  (d) LEFT smoke bank re-seated to the print's shoulder station: 2
+      staggered smokeBank(3) rows (seeds 8412/8413), breeches recessed into
+      the shoulder slope, muzzles fanning forward-out; **print top 2.36
+      CAPPED to <=2.28 world** — the PNK-6 keeps the ONLY >2.285 window
+      (dims receipt above proves the cap held);
+  (e) wall kit density per order: ported junction box + pale lid + dome
+      bolts, vertical cable drop + clips, angled conduit hugging the
+      receding aft wall (ry -0.154 keeps it flush against the raked
+      plane), grab rail on 3 standoff feet (rail 2.04 world);
+  (f) bustle flank: solid left side bin at the print's x -1.32 face
+      (z -1.62..-2.36) + rim + straps + rack bracket, seated into the rack
+      tier; gunner-sight ZONE kept and grown to the print's own station
+      (housing + brow + twin pane + cheek plates at x -0.60, z_w 0.25..
+      0.61, top 2.275 <= datum — the print's 2.42 top stays the banked
+      capped class).
+- GATES: track-clip --exact --strict 0/0 band + 0/0 shoe + strict sweep
+  0/0. §B2 + §B5: the standard-check bow holes (x -1 / +1.06, z 3.41, 3c
+  each) and the single §B5 stranded fitting_spareTrackLinks reproduce
+  BYTE-IDENTICALLY at HEAD baseline bytes (swap-run receipt this round) —
+  pre-existing §5.272-bow / hull-deck class, ZERO delta from this round;
+  all new left kit is turret-parented and proven riding the turret in the
+  yaw-0.6 pair set. Fittings census mg1+6d -> mg1+7d (net +1: left bank
+  -1, shoulder rows +2), mg>=1 PASS. npm test GREEN (exit 0, &&-gated).
+- GUARDS byte-held at close: ua_t80u_kursk `1332bd55`, ua_t64bv `4fac9a30`,
+  ua_t80bv `554591b8`, ua_m1a1 `f7d2ec40`, t84 `54b9debb`.
+- EVIDENCE: shots/oplot-left/ — before-*/after-*/print-* ×10 views each
+  (garage-topleft = the owner screenshot's angle, close-turret-left,
+  close-wing-left, close-wall-left, hero-frontleft, hero-rearleft, left,
+  frontleft, front, plan) + after-yaw06-* (left kit yaws with the shell,
+  clears fender bins). Before set captured at the pre-edit tree, after at
+  the delivered tree (§5.254 respective-trees law).

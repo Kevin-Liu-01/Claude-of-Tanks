@@ -1243,9 +1243,18 @@ function buildUAOplotM(P) {
     g.rotation.y = 1.35;
     P.turretG.add(g);
   }
-  // gunner day sight on the roof front edge (clear of the brick courses)
-  P.add('turret', box(0.26, 0.11, 0.28), -0.44, 0.795, 0.40, -0.06, -0.04, 0);
-  P.add('turretGlass', box(0.18, 0.07, 0.024), -0.44, 0.815, 0.545, -0.06, -0.04, 0);
+  // §5.319 left finish: the gunner-sight ZONE at the print's own station
+  // (left relief F: housing x -0.78..-0.41 over world z 0.28..0.65) — the
+  // small §5.272 box grows to the print's armored housing standing on the
+  // wing/cradle top: base skirt, body, brow hood, twin pane, cheek plates.
+  // Top capped 0.855 local (2.275 world) under the 2.285 datum (P95 law;
+  // the print's own 2.42 housing top is the banked capped class).
+  P.add('turretDark', box(0.38, 0.05, 0.32), -0.60, 0.720, 0.70);
+  P.add('turret', box(0.36, 0.13, 0.30), -0.60, 0.790, 0.70);
+  P.add('turret', box(0.40, 0.024, 0.10), -0.60, 0.843, 0.86);
+  P.add('turretGlass', box(0.24, 0.078, 0.024), -0.60, 0.800, 0.862);
+  P.add('turretDark', box(0.024, 0.11, 0.28), -0.415, 0.785, 0.70);
+  P.add('turretDark', box(0.024, 0.11, 0.28), -0.785, 0.785, 0.70);
   for (const s of [-1, 1]) {
     // Varta dazzlers re-seated on the wing leading faces (the old 1.72
     // seats sit under the new inner brick course)
@@ -1283,9 +1292,95 @@ function buildUAOplotM(P) {
   P.add('turretDark', box(0.07, 0.04, 0.05), -0.84, 0.815, -0.15);
   P.add('turretDark', box(0.07, 0.04, 0.05), 0.30, 0.815, -1.34);
 
-  // Aerosol banks on the shell flanks; tied-down service whips low on the
-  // bustle rack.
-  uaSmoke(P, { x: 1.24, y: 0.40, z: -0.40, count: 6, seed: 8410, yaw: 0.40, splay: 1.05, pitch: -0.42 });
+  // Aerosol banks: the RIGHT keeps its ratified §5.248 uaSmoke seat verbatim
+  // (inline s=+1 expansion, seed 8411 unchanged); the LEFT bank re-seats to
+  // the print's own shoulder station in the §5.319 block below (relief
+  // receipt: left cluster world z -0.80..-0.38 topping 2.36, capped 2.28).
+  seat(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 6,
+    r: 0.042, len: 0.28, splay: 1.05, pitch: -0.42,
+    arc: 0.55, spacing: 0.096, slot: 'detail',
+    rotation: [0, 0.40, -0.10],
+    seed: 8411 }),
+    1.24, 0.40, -0.40);
+
+  // ---- §5.319 LEFT-SIDE TURRET FINISH (owner order: "finish the left side
+  // of oplots turret"). The print's LEFT carries a full Duplet grammar the
+  // §5.288 round only delivered on the wing TOP faces: the left relief
+  // probe (tools/tmp-oplotleft-shots/relief round tools) stations a
+  // full-height cheek cassette wall at the max-width plane (print -1.4725
+  // -> build -1.54) over world z +0.34..+1.32, a shoulder smoke bank at
+  // world z -0.86..-0.43, a mid-wall junction/cable band and a solid
+  // bustle flank at x -1.32. ASYMMETRY LAW: authored s=-1 only — the
+  // ratified right side keeps its §5.288/§5.291 bytes byte-identical.
+  {
+    // (a) cheek cassette wall: three camo Duplet cassettes, plumb faces at
+    // x -1.54 under the wing's raked flank, world y 1.445..2.025, closed by
+    // a top deck buried into the wing face (no see-through slot, §B2) with
+    // tier/bay seams + ground shadow strip; a fourth cassette rides the
+    // leading-edge line (1.50,1.30)->(0.30,2.36) yawed +0.848 so the
+    // silhouette stays on the certified wing plan.
+    for (let i = 0; i < 3; i++) {
+      P.add('turret', box(0.13, 0.58, 0.215), -1.475, 0.315, 0.98 + (i - 1) * 0.2325);
+    }
+    P.add('turret', box(0.32, 0.032, 0.72), -1.38, 0.588, 0.98);
+    P.add('turretDark', box(0.012, 0.030, 0.70), -1.543, 0.315, 0.98);
+    P.add('turretDark', box(0.012, 0.56, 0.030), -1.543, 0.315, 0.865);
+    P.add('turretDark', box(0.012, 0.56, 0.030), -1.543, 0.315, 1.0975);
+    P.add('turretDark', box(0.012, 0.045, 0.70), -1.542, 0.043, 0.98);
+    P.add('turret', box(0.125, 0.52, 0.34), -1.34, 0.28, 1.4415, 0, 0.848, 0);
+    P.add('turretDark', box(0.014, 0.44, 0.28), -1.384, 0.28, 1.491, 0, 0.848, 0);
+    // (b) junction cassette panel bridging wing -> wall (world z 0.07..0.35,
+    // clear of the ratified edge-stack tiles aft of it)
+    P.add('turret', box(0.10, 0.50, 0.28), -1.48, 0.30, 0.51);
+    P.add('turretDark', box(0.012, 0.46, 0.026), -1.532, 0.30, 0.51);
+    // (c) outer wing-face course lids (the print's stepped terrace field
+    // outboard of the §5.288 brick courses; face-following rx/rz)
+    P.add('turret', box(0.26, 0.055, 0.24), -1.27, 0.757, 0.60, -0.29, 0, -0.075);
+    P.add('turretDark', box(0.20, 0.026, 0.18), -1.27, 0.792, 0.61, -0.29, 0, -0.075);
+    P.add('turret', box(0.26, 0.055, 0.24), -1.23, 0.660, 0.92, -0.29, 0, -0.075);
+    P.add('turretDark', box(0.20, 0.026, 0.18), -1.23, 0.695, 0.93, -0.29, 0, -0.075);
+    P.add('turret', box(0.26, 0.055, 0.24), -1.16, 0.565, 1.24, -0.29, 0, -0.075);
+    P.add('turretDark', box(0.20, 0.026, 0.18), -1.16, 0.600, 1.25, -0.29, 0, -0.075);
+    // (d) shoulder smoke bank at the print's left station (print top 2.36
+    // CAPPED: muzzle tops ~2.27, the PNK-6 keeps the only >2.285 window) —
+    // two staggered rows of three, breeches recessed into the shoulder
+    // slope, muzzles fanning forward-out like the print's cluster.
+    seat(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 3,
+      r: 0.048, len: 0.30, splay: -0.60, pitch: -0.46, arc: 0.45,
+      spacing: 0.115, slot: 'detail', rotation: [0, -0.35, 0.10],
+      seed: 8412 }), -1.30, 0.730, -0.50);
+    seat(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 3,
+      r: 0.048, len: 0.30, splay: -0.60, pitch: -0.46, arc: 0.45,
+      spacing: 0.115, slot: 'detail', rotation: [0, -0.35, 0.10],
+      seed: 8413 }), -1.27, 0.715, -0.24);
+    // (e) wall kit density (order items: junction box, cable runs, grab
+    // rail): ported junction box + pale lid + dome bolts, vertical cable
+    // drop with clips, angled conduit hugging the receding aft wall, grab
+    // rail on three standoff feet — every piece buried into the wall plane
+    // and turret-owned (§B5: the whole band yaws with the shell).
+    P.add('turretDark', box(0.055, 0.155, 0.20), -1.46, 0.44, -0.25);
+    P.add('turretDetail', box(0.014, 0.115, 0.16), -1.492, 0.44, -0.25);
+    P.add('turretDetail', cylX(0.02, 0.014, 8), -1.482, 0.44, -0.13);
+    P.add('turretDetail', cylX(0.02, 0.014, 8), -1.444, 0.44, -0.37);
+    P.add('turretDark', cylY(0.016, 0.016, 0.26, 8), -1.468, 0.26, -0.25);
+    P.add('turretDetail', box(0.05, 0.028, 0.045), -1.462, 0.20, -0.25);
+    P.add('turretDetail', box(0.05, 0.028, 0.045), -1.462, 0.33, -0.25);
+    P.add('turretDark', cylZ(0.014, 0.43, 8), -1.362, 0.50, -0.68, 0, -0.154, 0);
+    P.add('turretDetail', box(0.05, 0.028, 0.028), -1.40, 0.50, -0.52);
+    P.add('turretDetail', box(0.05, 0.028, 0.028), -1.318, 0.50, -0.84);
+    P.add('turretDetail', cylZ(0.015, 0.44, 8), -1.355, 0.62, -0.84, 0, -0.154, 0);
+    P.add('turretDetail', box(0.055, 0.028, 0.028), -1.393, 0.62, -0.68);
+    P.add('turretDetail', box(0.075, 0.028, 0.028), -1.352, 0.62, -0.84);
+    P.add('turretDetail', box(0.095, 0.028, 0.028), -1.312, 0.62, -1.00);
+    // (f) bustle flank: solid left side bin at the print's x -1.32 face
+    // (world z -1.62..-2.36) with rim + straps + rack bracket, seated into
+    // the rack tier so the flank reads closed like the print's.
+    P.add('turret', box(0.20, 0.46, 0.74), -1.22, 0.34, -1.69);
+    P.add('turretDetail', box(0.11, 0.030, 0.68), -1.24, 0.585, -1.69);
+    P.add('turretDark', box(0.212, 0.36, 0.030), -1.22, 0.32, -1.48);
+    P.add('turretDark', box(0.212, 0.36, 0.030), -1.22, 0.32, -1.86);
+    P.add('turretDark', box(0.30, 0.06, 0.05), -1.00, 0.13, -1.90);
+  }
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.06, 0.07, 0.06), s * 0.94, 0.40, -1.98);
     seat(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats,
