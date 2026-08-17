@@ -8855,3 +8855,7 @@ isu122s+isu152 re-cert/verify + the TD trio identity sitting.
 - Gates ×2: jaguar **90.8** (+0.2 over hold); pt91 dims/floaters 100 HELD (whole 5.2 vlo-cap class unchanged). Guards + pl01 763b4f0c byte-held; track-clip 0/0 ×2; npm test exit 0 LIVE. Verified my side ×6 exact.
 - **LAW-BANK**: fused-print whole metric PRICES proud kit the print lacks — visible-read work rides tone/position inside the ref envelope (three toggle receipts); AA-faded thin-tip columns enter p95 at phase-dependent heights (whip-stub class — extends whip-rough-coupling); tan plank/slab reads on this palette are TONE (wood slot renders tan; rehookClone fixes free).
 - Fresh sitting spawned at the new hashes.
+
+## §5.274 — china pair 9.1/9.2 PASS, LANDED (2026-08-17)
+- Fresh sitting s5266 (85 sheets, visibility-fixed harness, all family-strip cells lit): **ztz85_iii 9.1** (all six fixes verified — gear reads §B9, marks crisp, wedge nose clean, no horseshoe, framed lamps, slatted flanks w/ honored rear revert; recovery kit reads as real kit) + **ztz99a2 9.2** (bays 0.620 exact, numerals+star unclipped, ~1.0m broad-arrow nose w/ elevation verified at +14°, rim/lenses dressed). Prior strengths held; family strip 4-distinct.
+- LANDED: profiles+specs+packets (copied from gitignored shots/ to docs/references/tanks/ — packet-location note for future briefs: packets go in docs/)+gate JSONs+rows (87.4/88.9; fleet 37/103). China round tmp tools swept. §5.248 ratified count: 6 (pl01, strv81, strv103, strv122, ztz85_iii, ztz99a2).

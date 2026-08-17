@@ -1266,6 +1266,26 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "ztz85_iii",
+   "geoMin": 87.4,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 87.4,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ztz99a2",
+   "geoMin": 88.9,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 88.9,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }
