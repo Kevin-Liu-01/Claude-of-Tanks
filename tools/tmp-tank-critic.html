@@ -27,6 +27,13 @@ const proceduralOnlyEvidence = params.get('proceduralOnly') === '1';
 // hand with tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES (the
 // m60a1/m60a3 entries there are DO-NOT-GATE but pairs-render is fine).
 const CRITIC_REFERENCE_OVERRIDES = {
+  // Owner-authoritative STB-1 print (2026-08-16). The source exports a clean
+  // Hull / Tracks / Turret split, but the gun is fused into Turret_2. Keep
+  // hull/turret/whole comparisons strict and disable only the dishonest
+  // isolated-gun component mask.
+  stb1: { source:'glb', glb:{ path:'/models/community-candidates/stb_1_owner.glb',
+    turretNode:'^Turret_2$', autoPivot:true, yawOffset:Math.PI / 2,
+    gunComponentMasks:false } },
   // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
@@ -414,8 +421,8 @@ function pairURL(refImg, procImg) {
   copyCtx.putImageData(refImg, 0, 0); pairCtx.drawImage(copy2d, 0, 0);
   copyCtx.putImageData(procImg, 0, 0); pairCtx.drawImage(copy2d, SIZE, 0);
   pairCtx.fillStyle = '#e7edf0'; pairCtx.font = '18px monospace';
-  pairCtx.fillText(proceduralOnlyEvidence ? 'AUTHORED BASELINE COPY' : 'REFERENCE', 12, 24);
-  pairCtx.fillText(proceduralOnlyEvidence ? 'AUTHORED MODEL' : 'PROCEDURAL', SIZE + 12, 24);
+  pairCtx.fillText(proceduralOnlyEvidence ? 'DETERMINISM COPY A — NOT SOURCE' : 'SOURCE GLB REFERENCE', 12, 24);
+  pairCtx.fillText(proceduralOnlyEvidence ? 'DETERMINISM COPY B — NOT SOURCE' : 'AUTHORED PROCEDURAL', SIZE + 12, 24);
   return pairCanvas.toDataURL('image/png');
 }
 

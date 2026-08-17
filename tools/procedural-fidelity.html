@@ -48,6 +48,13 @@ if (!spec) failFidelity(`Unknown tank id: ${id}`);
 // registered by the public build; the generated procedural code stays an
 // original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
+  // Owner-authoritative STB-1 print (2026-08-16). The source exports a clean
+  // Hull / Tracks / Turret split, but the gun is fused into Turret_2. Keep
+  // hull/turret/whole comparisons strict and disable only the dishonest
+  // isolated-gun component mask.
+  stb1: { source:'glb', glb:{ path:'/models/community-candidates/stb_1_owner.glb',
+    turretNode:'^Turret_2$', autoPivot:true, yawOffset:Math.PI / 2,
+    gunComponentMasks:false } },
   // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
