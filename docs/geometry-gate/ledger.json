@@ -433,14 +433,11 @@
   },
   {
    "id": "strv103",
-   "geoMin": 37.1,
+   "geoMin": 76.7,
    "gatePassed": false,
    "components": {
-    "hullCurves": 39.3,
-    "wholeCurves": 39.4,
-    "turretCurves": 100,
-    "stations": 37.1,
-    "dims": 98.2,
+    "wholeCurves": 76.7,
+    "dims": 100,
     "floaters": 100
    }
   },
@@ -1243,6 +1240,29 @@
     "stations": 0,
     "turretCurves": 0.6,
     "wholeCurves": 4,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "strv81",
+   "geoMin": 34.9,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 76.1,
+    "stations": 34.9,
+    "turretCurves": 45.9,
+    "wholeCurves": 46.9,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "strv122",
+   "geoMin": 87.1,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 87.1,
     "dims": 100,
     "floaters": 100
    }

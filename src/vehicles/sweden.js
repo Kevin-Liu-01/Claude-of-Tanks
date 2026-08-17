@@ -29,6 +29,9 @@ function variant(id, donorId, options) {
     camoScale: options.camoScale,
   };
   if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
+  // §5.248 ground-up builds own their rigs: pivot/barrel patches applied on
+  // the CLONE only (donor armor object untouched by structuredClone).
+  if (options.armorPatch) Object.assign(spec.armor, options.armorPatch);
   if (options.armorFactor) {
     for (const armor of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
       if (armor.kind === 'external') continue;
@@ -44,7 +47,13 @@ export const SWEDEN_SPECS = {
     name: 'Strv 81', number: '81', scheme: 'woodland',
     base: '#39483b', weather: '#4f5948', patches: ['#263129', '#62634a', '#74664c'],
     camoScale: 0.55,
-    dims: { hullLengthM: 7.82, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
+    // §5.248 ground-up true-up: hullLengthM 7.82 was a donor-clone
+    // registration error — the committed centurion3 family value is 7.56
+    // (same chassis), and the strv81 print's own hull mask reads 7.565.
+    // Overall/width/height stay the Swedish published figures.
+    dims: { hullLengthM: 7.56, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
+    // Rig matches the §5.248 measured build (ring 1.76/0.35, bore 2.08).
+    armorPatch: { turretPivot: [0, 1.76, 0.35], gunPivot: [0, 0.32, 0.75] },
     stats: { hp: 1450, enginePowerHp: 650, weightTons: 51.8, topSpeedKmh: 35,
       reverseSpeedKmh: 12, turretTraverseDegS: 24, gunPitchDegS: 20 },
     reloadS: 7.1,
@@ -54,6 +63,8 @@ export const SWEDEN_SPECS = {
     name: 'Strv 122', number: '122', scheme: 'splinter',
     base: '#34493c', weather: '#4b5b4c', patches: ['#202b26', '#5c644c', '#81745a'],
     camoScale: 0.42,
+    // Rig matches the §5.248 measured build (ring 1.70/-0.30, bore 2.03).
+    armorPatch: { turretPivot: [0, 1.70, -0.30], gunPivot: [0, 0.33, 0.90] },
     dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 3.02 },
     stats: { hp: 2850, enginePowerHp: 1500, weightTons: 62.5, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 38, gunPitchDegS: 32 },

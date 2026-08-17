@@ -94,3 +94,47 @@ stature cap (published heightM 2.14 pins the build at 2.18) still costs
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore inside the L74 muzzle collar on the fixed glacis gun (hullG parent, z 5.40); §C.1 1 reversed re-oriented (dozer blade slab); F-vs-D 27->0; gate HELD x2 EXACT 37.1; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §5.248 GROUND-UP REBUILD (sweden lane, 2026-08-17) — NEW ORACLE, NEW BUILD
+The batch-B print `strv103b_lamonekeli.glb` ("strv 103b" by lamonekeli,
+CC-BY-4.0, LOCAL-ONLY quarantine) became THE gate reference; the committed
+wesiora candidateGlb stays in specs as a second reference. The old
+casemate.js donor-clone registration (`buildStrv103 + oracle package`) is
+retired: strv103 is now a self-contained §K measured-loft build in
+`src/vehicles/profiles/sweden.js`.
+
+REGISTRATION FIX (this round, all four maps): the print loads with its
+length on raw X, nose -X (thin fixed-gun tube width 0.043-0.051 at raw
+X -1.00..-0.48 at the ~1.4 m gun line) -> **yawOffset +PI/2**. Pre-fix rows
+measured the print SIDEWAYS (overall read -81.8%; the whole-view baseline
+15.4 was a scale artifact).
+
+INSTRUMENT DEFECT — LENGTH-SHORT PRINT (certified-cap candidate + queued
+repair): at the gate's width anchor (3.63) the print's body reads 5.76 m
+long vs published 7.04 (-18.2%; overall 8.00 vs 8.99, height 2.21 vs 2.14).
+Published dims are sovereign: the build lofts the print's wedge shape onto
+the published frame (print z x1.2229 about the body mid). The fused
+whole-view rows carry the print-frame cost with a measured ceiling ~83-86:
+side/plan views cannot IoU>=0.9 a body 18% shorter at the same width.
+QUEUED FOR THE ORCHESTRATOR LANE (§E): piecewise z-stretch of the body
+(x1.223 about the body mid; the gun region translates to keep the published
+2.0 m overhang, width NEVER warped). After the warp the whole rows become
+satisfiable.
+
+CLUSTER STATURE CAP carried over from the wesiora era, same class on this
+print: its commander cluster reads 2.33+; published heightM (2.14,
+p95-sovereign) pins the build cluster at 2.16.
+
+Round receipts: honest baseline (old build vs new print, post-yaw-fix)
+whole 75.8 / dims 67.7. Delivered (gate x2 identical, hash x2 bit-identical
+4ac3c8c8): **whole 76.7 / dims 100 / floaters 100**; fidelity whole-views
+76.7-82.7 (overall 79.9). The build carries the print's identity kit fresh:
+nose fence (two planted carriers + 11 ribs at the 2.03-2.08 tip line),
+folded dozer with arms/braces, glacis louvre banks, planted commander
+plinth/cupola/dome cluster (Ksp 58 held p95-safe), twin rear grilles,
+flotation rim strips, four-disc course with front drive + raised rear
+idler, rear air-cleaner boxes carrying the published 3.63 width at ±1.815.
+
+NEXT: (1) the orchestrator length-warp, then re-ladder the whole rows to
+>=90; (2) side-view bottom line at the wheel gaps (print reads tighter);
+(3) fence rib count/pitch fine-match at closeup (critic lane).
