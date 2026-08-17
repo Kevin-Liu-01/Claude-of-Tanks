@@ -7,27 +7,38 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.js';
 
 const expected = {
-  verdant: [3820, 466, 4114],
-  desert: [1768, 521, 1283],
-  winter: [3631, 509, 2890],
-  urban: [1728, 947, 606],
-  coastal: [2176, 442, 1575],
-  autumn: [3745, 473, 3997],
-  steppe: [1319, 520, 514],
-  railyard: [1090, 438, 425],
-  frontier: [4113, 512, 4376],
-  fjord: [3943, 585, 3206],
-  delta: [4779, 403, 6132],
-  badlands: [1964, 711, 1004],
-  monsoon: [5838, 647, 7733],
-  alpine: [4710, 687, 3809],
-  caldera: [2890, 842, 1820],
-  foundry: [2044, 493, 1211],
+  verdant: [3826, 473, 4114],
+  desert: [1788, 537, 1283],
+  winter: [3647, 527, 2890],
+  urban: [1757, 978, 606],
+  coastal: [2190, 456, 1575],
+  autumn: [3747, 477, 3997],
+  steppe: [1327, 531, 514],
+  railyard: [1112, 459, 425],
+  frontier: [4137, 535, 4376],
+  fjord: [3960, 610, 3206],
+  delta: [4801, 419, 6132],
+  badlands: [2002, 745, 1004],
+  monsoon: [5864, 681, 7733],
+  alpine: [4729, 709, 3809],
+  caldera: [2950, 892, 1820],
+  foundry: [2121, 572, 1211],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
 for (const [mapId, counts] of Object.entries(expected)) {
   assert.deepEqual(Object.values(stats[mapId]), counts, `${mapId} manifest census`);
+  const mapWorld = createDedicatedWorldCollision(mapId);
+  const hedgehogObstacles = mapWorld.getObstacles().filter((record) => record.kind === 'hedgehog');
+  const hedgehogColliders = mapWorld.getColliders().filter((record) => record.kind === 'hedgehog');
+  assert.ok(hedgehogObstacles.length >= 3 && hedgehogObstacles.length % 3 === 0,
+    `${mapId} hedgehogs remain complete three-beam compounds`);
+  assert.equal(hedgehogColliders.length, hedgehogObstacles.length,
+    `${mapId} movement and shell hedgehog censuses agree`);
+  assert.ok(hedgehogObstacles.every((record) => record.shape2?.kind === 'obb'),
+    `${mapId} dedicated movement preserves narrow hedgehog beam shapes`);
+  assert.ok(hedgehogColliders.every((record) => record.shape2?.kind === 'obb'),
+    `${mapId} dedicated shell collision preserves narrow hedgehog beam shapes`);
 }
 
 const world = createDedicatedWorldCollision('verdant');
