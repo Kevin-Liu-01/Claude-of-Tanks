@@ -753,3 +753,145 @@ hunks verified buildBradley-only for THIS round (function-mapped);
 bmp2/spz_puma hash movement belongs to that lane. Wide sweep at close:
 type89 b19aca94, is1 59882b30, is2 b09424cc, tiger1 7b76a8c6, m60a1
 912de524 — all byte-identical to the round's baseline.
+
+## §5.349 BRADLEY FILLS + ATTACHED SKIRTS (owner order) + §5.355 gate closeout
+
+ORDER (verbatim, 2026-08-17): "the bradleys are still not filled
+internally (see througable) and their side skirts/side armors are not
+attached to the hulls properly or with attachments". Scope: ALL THREE
+Bradley playables — m2a2_bradley directly, m3a3_bradley + ua_m2a3_bradley
+via their family wrappers (profiles/afvFamily.js). marder1a3 rides the
+same donor hull but is HARD-GATED (59cb105c) and takes NONE of this
+dressing. LANDED at **3635217c** inside the owner's absorb commit
+(§5.354 shared-checkout rebase incident — the partition's finished work
+rode the owner's rebase continue); this section is the §5.355 closeout.
+
+### The shared grammar — bradleyFlankDressing (modern3.js, exported)
+ONE closure + skirt-mount grammar for the family (the m3a3 §5.306
+skirt-order treatment PROMOTED to shared; m2a2 wraps it in
+buildM2A2Bradley, m3a3/ua call it inside their wrappers):
+- **§B2 DONOR BOW-CORNER CLOSURE** (type89 §5.341 grammar): the bow
+  fender/sprocket bay read clean through at [y 0.65, z 2.99] ~0.20x0.14
+  on all three ids (bow-window sweep receipts m2a2 205px / m3a3 199 /
+  ua 203). Side plate on the 1.40..1.44 plane (outboard of the 1.395
+  shoe reach — §B4-clear BY CONSTRUCTION; the raised idler disc stays
+  §B9-readable), top chord tucked under the 1.19 mudguard line, flat
+  0.55 bottom over the wrap taper, transverse cap z 3.10..3.16 sealing
+  the front edge into the bow corner slabs.
+- **SKIRT-MOUNT COURSE**: 8 mirrored panels per side (uniform cuts
+  -2.97..+3.11 step 0.76, §C end caps), outer face ±1.652 = 6.5 mm proud
+  of the donor ODS face (no coplanar fight), hem 0.62 = the donor's §B9
+  wheel line, tops 1.42 stepping to 1.25 on the bow pair at the fender
+  line. Dark hinge-line seams (hullDark 0.05x0.024) AND a visible
+  hanger/bolt block (hullDetail 0.085x0.10x0.06) at EVERY joint — the
+  ordered "with attachments" hardware. Raked mounting apron per side
+  closing the skirt-top-to-flare daylight (outer edge buried in the
+  panel tops, inner edge landing on the flare slope / tucking under the
+  left flare's 1.62 corner); aprons split around the donor's own tall
+  flank gear which closes its own band (right exhaust z 0.975..1.925;
+  left stern bag box z -2.52..-1.98). Course END CAPS close the
+  panel-to-hull mounting lane (an enclosed axial pocket, 3518px left-lane
+  receipt). ALL course content |x| >= 1.4425, clear of the 1.395 shoe
+  reach (§B4).
+
+### Per-id §B2 fills (the §5.341 sweep handoff, made mandatory by §5.349)
+- **m2a2**: the bow slit sat beyond the certified tolerance — the
+  owner's eye outranks the cert; closed by the SHARED donor-bow closure
+  (no other m2a2-local fill; buildBradley itself is BYTE-UNTOUCHED this
+  round — proven by pre/post function extraction, 1144 lines identical).
+- **m3a3 ring-slit cap** (m3a3(a), profiles/afvFamily.js): the 3.4 cm x
+  0.60 m deck-to-cradle slit over the engine raise ([y 2.041,
+  z 0.77..1.37] world, opens at yaw) — hull-owned raise cap filling
+  1.98..2.035 in the slit zone, yaw-independent, 2 cm under the swept
+  gun-cradle floor.
+- **ua_m2a3 shelf plate + ISU fill** (ua(a)/ua(c)): turret-owned skirt
+  plate closing the 0.40x0.12 window under the ERA/stowage shelf
+  ([y 2.04, z -1.88] world; plate bottom 1.99 world clears the 1.98
+  engine-raise top through full traverse) + the ISU-pedestal pocket
+  ([-0.687, 2.818, -0.466] world) thickened into its mast+panel+dome
+  frame (optics-class fill, turret-local).
+- **m2a2 TOW-standoff enclosure — DOCUMENTED-LEGIT, never fill**: the
+  twin TOW pod rides its elevation arm + root bracket OFF the turret
+  left wall (print-true standoff; the pod elevates with the gun). The
+  §5.326 sweep already certified the class ("yaw-90 TOW-pod occlusion
+  islands, 6572px, certified silhouette class"). Any fill here would
+  manufacture false armor between pod and wall and break the elevating
+  kit — this enclosure is PERMANENTLY exempt.
+
+### Receipts (banked shots/bradley-b2/{before,after}; reproduced at HEAD)
+- See-through sweep, worst-view y0-side-l: **m2a2 4567→4053**,
+  **m3a3 4216→3728**, **ua 4579→3785** px. HEAD re-run (1c0ba018)
+  reproduces all three after-values EXACTLY. (Partition-report note: the
+  quoted "ua →3846" matches NO banked or reproduced view — 3785
+  y0-side-l / 3829 y45-side-l are the artifacts; 3785 is the receipt.)
+- Hashes (hashgeo, verified at HEAD 1c0ba018): m2a2 **a41410ac →
+  89d68758** (62 meshes HELD, verts 77930→88574 — the dressing merges
+  into existing hull buckets), m3a3 **→ 9c545ac0** (65/94181), ua
+  **→ 4b3b33fc** (76/111050). All three match the §5.354 re-bind list.
+- Track-clip STRICT at HEAD: **front 123 / rear 0** band + shoe 0/19
+  (rear: hull 13 / hullDetail 6) — BYTE-IDENTICAL rows across all three
+  ids = the shared donor's pre-existing debt (the §5.316-documented
+  123-front class, m3a3 packet). The dressing adds ZERO offenders
+  (course outboard of the shoe reach by construction).
+- dims true-up LIVE (modern3.js ~382-388): the silhouette* rows sit
+  INSIDE dims (silhouetteWidthM 3.25 / silhouetteHullLengthM 6.28 /
+  silhouetteOverallLengthM 6.25 / silhouetteHeightM 2.98 — m3a3 §5.306
+  convention); published rows keep the 3.28/6.55 datums. The §5.355
+  relocation fix: the rows had been placed OUTSIDE dims and cost the
+  gate row dims 45.6; relocated they read 100.
+
+### §5.355 gate closeout — the "hang", the honest row ×2, and §5.356
+- **THE m2a2 GATE HANG (diagnosed, not a gate defect at HEAD)**: the
+  pre-rebase run sat silent >=150 s. Mechanism REPRODUCED in a bare
+  worktree: any page-side failure (there: the gitignored reference GLB
+  missing → vite serves the SPA HTML fallback → GLTFLoader unhandled
+  SyntaxError) leaves `__FIDELITY_READY` unset, and geometry-gate.mjs
+  polls ONLY that flag — so it waits its FULL 150 s default timeout in
+  silence, then logs `Waiting failed: 150000ms exceeded` and writes an
+  error row. That silent window IS the reported "hang ≥150s". At clean
+  HEAD with local oracles present, m2a2 gates in ~4 s (×2 proven). The
+  suspected equipment/component-mask interaction is EXONERATED as the
+  hang cause: equipment buckets parent to the SAME rig groups
+  (tankFactory BUCKET_DEF: turretEquipment→turretG, hullEquipment→hullG)
+  — mask-neutral by construction, and pre/post turret-subtree AABB
+  censuses are byte-equal. NO gate-tool change shipped (none needed);
+  latent gap noted for a future round: the gate could also poll
+  `__FIDELITY_ERROR` and fail FAST instead of silently timing out.
+- **HONEST GATE ROW ×2 at HEAD 1c0ba018** (tool-written, ledger
+  merge-preserved, fleet 34/118 both runs, BIT-IDENTICAL):
+  `min 31.6 | hull 63 whole 48 turret 31.6 stations 57.5 dims 100
+  floaters 100` — dims RECOVERED 45.6→100 (the relocation), headline
+  turret-limited.
+- **Decomposition (isolated worktrees, oracles linked)**: pre-stream
+  b104b1e4 measures **83.3 ×2** (hull 87.4 / whole 85.6 / turret 83.3 /
+  stations 87.5 / dims 100 — the committed 90.9 ledger row was STALE,
+  §5.245 class). HEAD with ONLY the dressing toggled off: hull recovers
+  87.3 = the hull-curve cost is ENTIRELY the ordered dressing (released
+  by §5.349, owner's eye over the print); turret stays LOW (21.7) = the
+  turret drop is NOT the dressing.
+- **The turret drop IS the §5.356 floating-turret regression** (foreign
+  stream, root-caused independently here and by the §5.356 session):
+  3635217c's `finalizeCombatAnatomy` remapped `armor.turretPivot`
+  through the plate→receipt map; m2a2's rendered turret lifted
+  **+0.162 m** (turretDark world-y 2.115..2.775 → 2.277..2.937;
+  numerically the marder1a3 remap class — shared donor anatomy, same
+  1.895 pivot). Verified in isolation BEFORE the fix landed: with the
+  fix applied the turret re-seats EXACTLY to the pre-stream band.
+- **§5.361 FLOAT FIX LANDED (394da5ed) mid-closeout — current honest
+  row re-measured**: at HEAD cbcd3f6a (fix live, combatAnatomy md5
+  b17d519b identical to the isolated test), gate ×2 BIT-IDENTICAL:
+  `min 49.1 | hull 63 whole 49.1 turret 55.3 stations 54.9 dims 66.5
+  floaters 100` — geoMin 31.6→**49.1** (turret recovered with the
+  re-seat), ledger merge-preserved. dims coupling EXPOSED: the
+  partition tuned silhouetteHeightM 2.98 against the LIFTED render;
+  the re-seated build's actual height is **2.83** — a one-value
+  true-up (silhouetteHeightM 2.98→2.83, modern3.js dims) restores
+  dims ~100 and leaves the row whole-limited ~49.1 = the honest
+  dressed baseline vs the 42manako print (§5.349 released; the §5.360
+  sitting RATIFIED the attachments visually). FLAGGED, not applied —
+  a src edit belongs to the owner's live pivot-follow-up lane
+  (§5.362), not this docs closeout.
+
+### ua_m2a3 enrollment
+DECIDED (§5.354): **NOT ENROLLED** — measurement-only clone convention.
+See docs/references/tanks/ua_m2a3_bradley.md.

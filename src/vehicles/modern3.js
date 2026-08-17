@@ -385,7 +385,9 @@ const MODERN3_SPECS = {
     // (m3a3 §5.306 convention); published rows keep the 3.28 datum / 6.55.
     dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98,
       silhouetteWidthM: 3.25, silhouetteHullLengthM: 6.28,
-      silhouetteOverallLengthM: 6.25, silhouetteHeightM: 2.98 },
+      // §5.365: 2.98 was tuned against the §5.356 pivot-lifted render; the
+      // §5.361 rig-anchor law re-seats the turret — 2.83 is the seated p95.
+      silhouetteOverallLengthM: 6.25, silhouetteHeightM: 2.83 },
     armor: modernArmor({
       // AFV r1 rebuild (42manako oracle envelope, docs/references/vertex/
       // m2a2_bradley.json): hull roof 1.90 with the tall two-man turret

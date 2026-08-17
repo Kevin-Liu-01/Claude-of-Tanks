@@ -527,14 +527,14 @@
   },
   {
    "id": "m2a2_bradley",
-   "geoMin": 31.6,
+   "geoMin": 49.1,
    "gatePassed": false,
    "components": {
     "hullCurves": 63,
-    "stations": 57.5,
-    "turretCurves": 31.6,
-    "wholeCurves": 48,
-    "dims": 45.6,
+    "stations": 54.9,
+    "turretCurves": 55.3,
+    "wholeCurves": 49.1,
+    "dims": 100,
     "floaters": 100
    }
   },

@@ -213,3 +213,23 @@ ONLY this lane's two files reproduces EVERY briefed guard hash (marder1a3
 1c7d8fbc, bmp3_rok 7456de28, upior_ifv 3f16cb9a, spz_puma 73ee54e0, bmp2
 8da8b75a) — this lane moves only upior + m3a3.
 EVIDENCE: §5.254 pairs shots/m3a3-skirts/before/ + after/ (9 views each).
+
+### §5.349 LANDING ADDENDUM (2026-08-17, §5.355 closeout)
+The skirt-symmetry course above was PROMOTED into the SHARED family
+grammar (`bradleyFlankDressing`, modern3.js — all three Bradley
+playables) by the follow-up §5.349 owner order, gaining the §B2
+donor-bow closure + hanger/bolt hardware at every joint, and LANDED at
+**3635217c** (§5.354 absorb). m3a3-local §B2 fill landed with it: the
+**ring-slit cap** (m3a3(a)) — the 3.4 cm x 0.60 m deck-to-cradle slit
+over the engine raise ([y 2.041, z 0.77..1.37] world, opens at yaw),
+closed by a hull-owned raise cap (1.98..2.035), 2 cm under the swept
+gun-cradle floor. Receipts at HEAD 1c0ba018: sweep worst-view
+y0-side-l **4216→3728** px (banked shots/bradley-b2/, reproduced
+exactly); hash **3aaa636d → 9c545ac0** (65 meshes / 94181 verts — the
++1 mesh is the fleet-wide §5.354 equipment-split class); track-clip
+strict front 123 / rear 0 + shoe 0/19 BYTE-IDENTICAL to the donor debt
+(the 123-front class documented above). Gate row: still the LAWFUL CAP
+(min 0 — the print does not assemble, §5.248/§5.306; dims/floaters 100
+convention unchanged). Family §5.356 coupling: see the m2a2 packet —
+the anatomy-pivot regression (fixed by the §5.361 landing, 394da5ed)
+moved the family turrets, not this course.
