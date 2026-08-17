@@ -1210,23 +1210,23 @@
   },
   {
    "id": "pl01",
-   "geoMin": 62.2,
+   "geoMin": 63.1,
    "gatePassed": false,
    "components": {
     "hullCurves": 85.6,
-    "stations": 75.2,
-    "turretCurves": 67.7,
-    "wholeCurves": 62.2,
+    "stations": 76.2,
+    "turretCurves": 67.2,
+    "wholeCurves": 63.1,
     "dims": 100,
     "floaters": 100
    }
   },
   {
    "id": "t72m1_jaguar",
-   "geoMin": 90.8,
+   "geoMin": 90.9,
    "gatePassed": true,
    "components": {
-    "wholeCurves": 90.8,
+    "wholeCurves": 90.9,
     "dims": 97.4,
     "floaters": 100
    }

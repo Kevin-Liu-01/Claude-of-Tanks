@@ -347,21 +347,32 @@ function buildT72M1Jaguar(P) {
     P.add('turret', box(0.34, 0.035, 0.28), x, 0.815, z, 0, 0, rz);
     P.add('turretDark', box(0.27, 0.012, 0.035), x, 0.839, z + 0.08, 0, 0, rz);
   }
-  for (const [x, z, yaw] of [[0.06, 0.28, -0.10], [0.34, 0.10, 0.08], [0.60, -0.17, 0.18]]) {
-    KIT.periscope(P, 'turretDetail', x, 0.835, z, yaw);
+  // (§5.290 dims-recovery: the crown cadence sat at skin 0.834 where any
+  // seat under the p95 budget reads flush — the rhythm re-seats down the
+  // forward dome slope, blocks fully proud with bottoms on the local skin,
+  // tops <= 2.24 world = under the crown tier the p95 now reads)
+  for (const [x, y, z, yaw] of [[0.10, 0.783, 0.70, -0.10], [0.52, 0.8015, 0.40, 0.08], [0.72, 0.791, 0.10, 0.18]]) {
+    KIT.periscope(P, 'turretDetail', x, y, z, yaw);
   }
   // Protected commander panorama and Luna-style cheek searchlight.  Both
   // have broad armor shoes and visible lens backs, so neither reads as a
   // loose box pushed into the casting.
+  // (§5.290 dims-recovery: head mount sunk 0.84 -> 0.75 — its four side
+  // columns read 2.33 and owned heightM's p95; at 0.75 the head still rises
+  // 6.4 cm proud of the shoe and the lens/glass faces stay exposed, while
+  // the p95 hands back to the dome crown tier 2.2594 = the pre-owner read)
   P.add('turret', box(0.38, 0.055, 0.38), 0.44, 0.755, -0.72);
-  P.add('turret', box(0.30, 0.18, 0.30), 0.44, 0.84, -0.72, -0.04, 0.05, 0);
-  P.add('turretDark', box(0.22, 0.12, 0.026), 0.44, 0.85, -0.553, -0.04, 0.05, 0);
-  P.add('turretGlass', box(0.15, 0.075, 0.018), 0.44, 0.85, -0.537, -0.04, 0.05, 0);
+  P.add('turret', box(0.30, 0.18, 0.30), 0.44, 0.75, -0.72, -0.04, 0.05, 0);
+  P.add('turretDark', box(0.22, 0.12, 0.026), 0.44, 0.76, -0.553, -0.04, 0.05, 0);
+  P.add('turretGlass', box(0.15, 0.075, 0.018), 0.44, 0.76, -0.537, -0.04, 0.05, 0);
   P.add('turret', box(0.36, 0.11, 0.24), 0.68, 0.55, 0.62, -0.12, 0.18, 0);
   P.add('turretDark', cylZ(0.145, 0.15, 18), 0.68, 0.58, 0.73);
   P.add('turretGlass', cylZ(0.112, 0.018, 18), 0.68, 0.58, 0.817);
   // Two paired roof cassettes continue the ERAWA field over the gun shoulders
   // while leaving the sight and both crew stations unobstructed.
+  // (§5.290 dims-recovery receipt: a +0.07 re-seat that surfaced these from
+  // the dome casting measured whole 90.9 -> 90.8 — the print carries no mass
+  // over the gun shoulders — so the owner's seats stand exactly as landed)
   for (const s of [-1, 1]) for (let row = 0; row < 2; row++) {
     P.add('turret', box(0.25, 0.060, 0.25), s * 0.20, 0.735 - row * 0.035,
       0.48 - row * 0.29, -0.12 - row * 0.05, s * 0.06, 0);
@@ -1017,17 +1028,24 @@ function buildPL01(P) {
       P.add('turretDark', box(0.018, 0.16, 0.30), s * (x + 0.032), 0.405, z,
         -0.08, s * (0.10 + i * 0.035), 0);
     }
-    P.add('turret', box(0.22, 0.055, 1.28), s * 0.72, 0.755, -0.76,
+    // (§5.290 dims-recovery: strake seats 0.755 -> 0.7225 / rib 0.790 ->
+    // 0.7505 — the rib tops read 2.8629 across ten side columns and owned
+    // heightM's p95 over the 2.828 grace edge; re-seated the runners stay
+    // 3 cm proud of the roof plane with the dark rib line intact)
+    P.add('turret', box(0.22, 0.055, 1.28), s * 0.72, 0.7225, -0.76,
       0, s * 0.06, 0);
-    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, 0.790, -0.76,
+    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, 0.7505, -0.76,
       0, s * 0.06, 0);
     P.add('turret', box(0.24, 0.10, 0.26), s * 1.02, 0.61, -1.86,
       -0.10, s * 0.14, 0);
     P.add('turretGlass', box(0.14, 0.055, 0.020), s * 1.02, 0.62, -1.715,
       -0.10, s * 0.14, 0);
   }
+  // (§5.290 dims-recovery: seats 0.755 -> 0.705 — the blocks topped 2.86 on
+  // three side columns; at 0.705 they ride 2.5 cm proud, the conformal
+  // stealth-roof read, and the glass slits stay above the roof plane)
   for (const [x, z, yaw] of [[-0.34, 0.42, -0.12], [0, 0.34, 0], [0.34, 0.42, 0.12]]) {
-    KIT.periscope(P, 'turretDetail', x, 0.755, z, yaw);
+    KIT.periscope(P, 'turretDetail', x, 0.705, z, yaw);
   }
 
   // paired EO/hatch domes on the shoulders (print Cylinder.002/.004 —

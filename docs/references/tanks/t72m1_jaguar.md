@@ -107,3 +107,33 @@ unditching log restored to the r1 silhouette with dark-timber rehookClone
 CLOSE (x2 bit-identical): wholeCurves 90.8 (hold 90.6 BEATEN +0.2) /
 dims 97.4 / floaters 100 -> min 90.8 PASS. Audits: clip 0/0+0/0 strict,
 parent 0/0/0, holes 0, census mg1+8d. Hash c5f74df0 -> 98798d10.
+
+## §5.290 dims-recovery (2026-08-17) — owner articulation heightM re-seat
+POST-MERGE STATE (owner a80bbae7 §5.289): whole 91.0 IMPROVED, dims 100->71.3
+(heightM 2.33 vs 2.23 published, 4.59%). Fullscan attribution (gate-replica
+probe, 96 cols, rel units): p95 skips held by whip1 2.3739 / whip2 2.3427
+(pre-owner, untouched); the 4th-from-top = owner panorama HEAD, 4 cols at
+2.3427/2.3323x3 (z -0.60..-0.83); owner roof periscopes 6 cols at 2.2802;
+brow + cupola2 ring torus at 2.2594 = THE DOME CROWN TIER (bare crown reads
+rel 2.2594 — the pre-owner p95: dims 97.4 was structural, the certified
+crown's own read, so 100 is unreachable without re-shaping the ratified dome).
+RE-SEATS (fittings preserved, buckets unchanged): panorama head mount
+0.84->0.75 (top world 2.336->2.246, still 6.4 cm proud of its shoe, lens
+0.85->0.76 with glass face exposed); crown periscope cadence re-seated down
+the forward dome slope fully proud, bottoms on local skin (0.10/0.783/0.70,
+0.52/0.8015/0.40, 0.72/0.791/0.10 — the 0.834 crown skin left no sink room:
+any in-place seat under budget read flush = deleted). Cassette +0.07 surfacing
+experiment measured whole 90.9->90.8 (print carries no gun-shoulder mass) —
+REVERTED, owner seats stand; the cassettes bake mostly inside the dome
+casting as landed. Whip raise rejected: bow hullLengthM anchor is a
+razor-band column (whip-rough coupling law).
+CLOSE (x2 bit-identical a3351a27): whole 90.9 / dims 97.4 / floaters 100 ->
+min 90.9 PASS (was 71.3). The residual -0.1 whole vs the owner's 91.0 is the
+dims price: the fused ref is certified print-tall (2.43-2.51) exactly over
+the head's columns — the owner's 2.33 head bought whole with published-height
+budget; 97.4 forces it back under the crown tier. dims rows: heightM 2.26
+(1.32%), hull 6.88 (0.32), overall 9.51 (0.25), width 3.58 (0.23).
+Guards strv122 e50e253e / pt91 16de0490 / strv103 4ac3c8c8 / strv81 11e5e876
+byte-identical; track-clip --exact --strict 0/0 + shoes 0/0; npm test GREEN;
+§B5 by construction (all re-seats stay P.add turret-bucket adds, numbers
+only). Hash cf5357b -> f5a12caf (63/74813). Shots shots/dims-recovery/.
