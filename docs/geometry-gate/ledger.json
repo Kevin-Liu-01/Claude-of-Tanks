@@ -1210,6 +1210,42 @@
     "dims": 99.1,
     "floaters": 100
    }
+  },
+  {
+   "id": "pl01",
+   "geoMin": 62.2,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 85.6,
+    "stations": 75.2,
+    "turretCurves": 67.7,
+    "wholeCurves": 62.2,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t72m1_jaguar",
+   "geoMin": 90.6,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.6,
+    "dims": 97.4,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "pt91_twardy",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 0,
+    "stations": 0,
+    "turretCurves": 0.6,
+    "wholeCurves": 4,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }

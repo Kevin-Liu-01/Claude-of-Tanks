@@ -21,6 +21,12 @@ function variant(id, donorId, options) {
   if (Number.isFinite(options.reloadS)) spec.gun.reloadS = options.reloadS;
   if (options.shellName && spec.gun?.shells?.[0]) spec.gun.shells[0].name = options.shellName;
   if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
+  // §5.248 ground-up builds own their rigs: measured turret ring / gun
+  // trunnion seats and published-overall muzzle lengths (the shadow-proxy
+  // §C law sizes proxies from armor.gunBarrel — keep it the visual truth).
+  if (options.turretPivot) spec.armor.turretPivot = options.turretPivot;
+  if (options.gunPivot) spec.armor.gunPivot = options.gunPivot;
+  if (options.gunBarrel) Object.assign(spec.armor.gunBarrel, options.gunBarrel);
   spec.visual = {
     ...spec.visual,
     scheme: options.scheme,
@@ -46,7 +52,16 @@ export const POLAND_SPECS = {
     name: 'T-72M1 Jaguar', number: 'PL-721', scheme: 'woodland',
     base: '#39453a', weather: '#505b4a', patches: ['#202820', '#665b43', '#77705a'],
     camoScale: 0.48,
-    dims: { hullLengthM: 6.95, overallLengthM: 9.53, widthM: 3.59, heightM: 2.36 },
+    // §5.248 spec true-up (poland round 1) to the landed REG bracket
+    // (tools/vertex-extract.mjs t72m1_jaguar pubDims): T-72M1 carries the
+    // classic T-72 body — hull 6.86 (not the 6.95 PT-91 figure) and height
+    // 2.23 to the roof (2.36 was a with-AAMG figure; the gate's p95 law
+    // measures the roof plane).
+    dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
+    // measured rig (§5.248 rebuild): gun axis 1.64 (pivot 1.40+0.24), muzzle
+    // world 6.24 = rear extreme -3.29 + published overall 9.53
+    turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.24, 0.52],
+    gunBarrel: { lengthM: 5.74, radiusM: 0.112 },
     stats: { hp: 1850, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,
       reverseSpeedKmh: 18, turretTraverseDegS: 34, gunPitchDegS: 27 },
     reloadS: 7.1, shellName: 'Pronit APFSDS', armorFactor: 1.06,
@@ -55,7 +70,15 @@ export const POLAND_SPECS = {
     name: 'PT-91A Twardy', number: 'PT-91', scheme: 'stripes',
     base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'],
     camoScale: 0.46,
-    dims: { hullLengthM: 6.86, overallLengthM: 9.67, widthM: 3.59, heightM: 2.19 },
+    // §5.248 spec true-up (poland round 1) to the landed REG bracket
+    // (tools/vertex-extract.mjs pt91_twardy pubDims): PT-91 hull is the
+    // stretched 6.95 figure (Bumar-Łabędy data; the 6.86 was the T-72M1
+    // donor's), overall 9.67 gun forward.
+    dims: { hullLengthM: 6.95, overallLengthM: 9.67, widthM: 3.59, heightM: 2.19 },
+    // measured rig (§5.248 rebuild): gun axis 1.70 (pivot 1.38+0.32), muzzle
+    // world 6.25 = rear drums -3.42 + published overall 9.67
+    turretPivot: [0, 1.38, 0.02], gunPivot: [0, 0.32, 0.50],
+    gunBarrel: { lengthM: 5.73, radiusM: 0.115 },
     stats: { hp: 2150, enginePowerHp: 1000, weightTons: 47.5, topSpeedKmh: 60,
       reverseSpeedKmh: 20, turretTraverseDegS: 36, gunPitchDegS: 29 },
     reloadS: 6.8, shellName: 'Pronit 125 APFSDS', armorFactor: 1.08,
@@ -64,7 +87,18 @@ export const POLAND_SPECS = {
     name: 'PL-01', number: 'PL-01', scheme: 'digital',
     base: '#313b38', weather: '#47504a', patches: ['#202725', '#4e5750', '#67685e'],
     camoScale: 0.36,
-    dims: { hullLengthM: 7.00, overallLengthM: 9.20, widthM: 3.80, heightM: 2.80 },
+    // §5.248 spec true-up (owner brief "overall 9.20 -> ~8.96, apply with
+    // sources" + the landed REG bracket in tools/vertex-extract.mjs): the
+    // OBRUM/army-technology concept sheet gives 8.96 m overall / 6.95 m hull
+    // / 3.80 m wide; height 2.80 is the REG-resolved roof figure (the print's
+    // own hull is 6.95 native EXACT at that bracket). The old 9.20/7.00 pair
+    // was the donor-clone estimate.
+    dims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.80 },
+    // measured rig (§5.248 rebuild): unmanned-turret ring plane 2.07, gun
+    // axis 2.25 (print Cannon band 2.16..2.41 traced 2.16..2.34), muzzle
+    // world 5.36 = turret tail -3.60 + published overall 8.96
+    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.18, 1.55],
+    gunBarrel: { lengthM: 4.71, radiusM: 0.098 },
     stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
       reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
     reloadS: 5.4, shellName: 'DM63A1 APFSDS', armorFactor: 1.10,
