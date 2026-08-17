@@ -3474,9 +3474,16 @@ function buildT90SMLegacy(P) {
     // T3R-b3 cheek forward wedge: the ref plan front at |x| 1.52..1.62
     // reads 1.269..1.324 world (my main panel ended at 1.105) — a raked
     // plan taper off the casting wall onto the stow panel.
+    // §5.331 FLUSH RE-SEAT (owner markup faces 592/593 — the §5.74/§5.79
+    // panel-pitch class): the wedge walls were authored dead VERTICAL
+    // ("vertically pointing up"). The top ring now pulls inboard onto the
+    // prism wall plane (local side rake ~40°), top edge buried in the
+    // shell (1.22-1.24 < wall 1.276 @ y 0.40), so the corner panel lies
+    // ON the sloped cheek. Bottom ring (the certified 1.269..1.324-world
+    // plan staircase + the 1.735 line) is byte-unchanged.
     P.add('turret', orientedSlab(
       [s * 1.565, -0.005, 1.18], [s * 1.65, -0.005, 1.065], [s * 1.735, -0.005, 1.00], [s * 1.565, -0.005, 1.00],
-      [s * 1.565, 0.40, 1.18], [s * 1.65, 0.40, 1.065], [s * 1.735, 0.40, 1.00], [s * 1.565, 0.40, 1.00]));
+      [s * 1.24, 0.40, 1.13], [s * 1.36, 0.40, 1.03], [s * 1.445, 0.40, 0.97], [s * 1.22, 0.40, 0.97]));
     // r10 cheek stow split (fresh plan/front digest): ref plan front/rear at
     // |x| 1.67..1.78 is [1.153..0.313]/[1.099..0.611]; front tops taper
     // 1.829@1.674 -> 1.733@1.845 — a main panel + a lower outer panel with
@@ -3487,9 +3494,18 @@ function buildT90SMLegacy(P) {
     // outer envelope while the upper plate follows the cheek rake.  The rear
     // and inner edges overlap the shell, so this reads as seated armor rather
     // than a cabinet stood beside the turret.
+    // §5.331 FLUSH RE-SEAT (owner markup faces 600/601 outer + 604/605
+    // exposed inboard wall): the main cassette stood near-vertical (outer
+    // face 9.7° from vertical, inboard wall proud of the shell above
+    // y 0.30). Top ring re-pitched to the turret side slope — outer face
+    // now 36.9°, raised to y 0.50 so the pitched plane carries the mass
+    // the retired ±1.51-col wall boxes held — and the whole top ring is
+    // buried inside the prism wall (1.10-1.36 < wall 1.19-1.21 @ y 0.50):
+    // the standing inboard face is gone, the panel back sits flush on the
+    // shell. Bottom ring byte-unchanged (plan/width cols).
     P.add('turret', orientedSlab(
       [s * 1.42, 0.000, 0.14], [s * 1.735, 0.000, 0.18], [s * 1.735, 0.000, 1.02], [s * 1.48, 0.000, 1.08],
-      [s * 1.36, 0.440, 0.10], [s * 1.660, 0.440, 0.18], [s * 1.660, 0.440, 1.00], [s * 1.42, 0.440, 1.06],
+      [s * 1.10, 0.500, 0.10], [s * 1.36, 0.500, 0.18], [s * 1.36, 0.500, 1.00], [s * 1.13, 0.500, 1.06],
     ));
     // T3R-b3: outer panel z re-seated to the ref 0.805..1.078 world band
     // (plan ±1.816 col read proc 0.614 where the ref bottom is 0.805).
@@ -3499,48 +3515,42 @@ function buildT90SMLegacy(P) {
       const zA = s < 0 ? 0.5765 : 0.7115;
       const zB = s < 0 ? 1.0165 : 0.9915;
       const outerX = s < 0 ? 1.860 : 1.820;
-      const roofX = s < 0 ? 1.790 : 1.760;
       // Lap the outer cassette over the main cheek cassette by 80-120 mm.
-      // Its top edge leans inward with the turret wall instead of exposing a
-      // second vertical side face at |x|=1.70.
+      // §5.331 FLUSH RE-SEAT: the lower course leaned only 11° — it now
+      // shingles onto the pitched main face (top edge 1.49 rides 3 cm
+      // proud of the main plane @ y 0.38, inner edge 1.43 buried in it):
+      // outer face 45.8° L / 42.5° R, the brim read the T4S apron used to
+      // fake. Bottom lip (the certified 1.860/1.820 outer extents + the
+      // print-asym z windows) is byte-unchanged.
       P.add('turret', orientedSlab(
         [s * 1.58, 0.020, zA], [s * outerX, 0.020, zA], [s * outerX, 0.020, zB], [s * 1.58, 0.020, zB],
-        [s * 1.54, 0.380, zA], [s * roofX, 0.380, zA], [s * roofX, 0.380, zB], [s * 1.54, 0.380, zB],
+        [s * 1.43, 0.380, zA], [s * 1.49, 0.380, zA], [s * 1.49, 0.380, zB], [s * 1.43, 0.380, zB],
       ));
-      P.add('turretDark', box(0.18, 0.022, (zB - zA) * 0.88), s * (roofX - 0.09), 0.383, (zA + zB) * 0.5);
+      P.add('turretDark', box(0.06, 0.022, (zB - zA) * 0.88), s * 1.46, 0.383, (zA + zB) * 0.5);
     }
-    // T4S BRIM FLARE (verdict order 2: "turret side stowage panels stand
-    // vertical; the print's flare outward makes the MS brim"): a raked
-    // apron plate bridges the main-panel face (1.735 @ y 0.155) down-out
-    // to the outer panel's lower edge (1.86 @ y 0.02) across each side's
-    // certified outer z-window — every x extreme stays inside the already-
-    // certified 1.86/1.874 column family and the 1.890 width anchor; the
-    // lit 40-degree face is the brim read. orientedSlab = §C.1 guard.
-    // (edge law: the first cut's 1.872 outer edge AA-slivered the ±1.925
-    // plan width column — 2mm of window coverage owned the col at err
-    // 0.969, the AA-SLIVER OWNERSHIP class. Outer edge now 1.860 = the
-    // certified outer-panel extent, 10mm clear of the 1.87 boundary.)
-    {
-      const zA4 = s < 0 ? 0.58 : 0.69, zB4 = s < 0 ? 0.875 : 0.73;
-      const xo0 = s < 0 ? 1.836 : 1.796, xo1 = s < 0 ? 1.860 : 1.820;
-      const xi0 = s < 0 ? 1.723 : 1.683, xi1 = s < 0 ? 1.747 : 1.707;
-      P.add('turret', orientedSlab(
-        [s * xo0, 0.009, zB4], [s * xo1, 0.031, zB4], [s * xo1, 0.031, zA4], [s * xo0, 0.009, zA4],
-        [s * xi0, 0.144, zB4], [s * xi1, 0.166, zB4], [s * xi1, 0.166, zA4], [s * xi0, 0.144, zA4]));
-    }
+    // (T4S BRIM FLARE apron RETIRED §5.331: the thin overlay strip faked
+    // the outward flare while the panels stood vertical — with the main
+    // and outer courses genuinely pitched onto the side slope, the shingle
+    // stack itself is the brim; the apron would now bury inside the 42-46°
+    // lower course. Its 1.836-1.860 bottom-lip extents remain carried by
+    // the outer panel's unchanged bottom ring.)
     // Flank transition: replace the two isolated boxes (and their exposed
     // |x|=1.36/1.495 walls) with overlapping wedges that continue the same
     // cheek plane into the bustle shoulder.
+    // §5.331: both transition wedges pitched with the panel family (they
+    // leaned 6-8° — right behind the re-pitched cheek panels they read as
+    // the same standing-vertical class). Bottom rings byte-unchanged;
+    // tops pulled inboard onto the shell/crown line (33.8° / 39.5°).
     P.add('turret', orientedSlab(
       [s * 1.18, 0.12, -0.42], [s * 1.50, 0.12, -0.42], [s * 1.50, 0.12, 0.14], [s * 1.18, 0.12, 0.14],
-      [s * 1.16, 0.56, -0.38], [s * 1.44, 0.56, -0.38], [s * 1.44, 0.56, 0.14], [s * 1.16, 0.56, 0.14],
+      [s * 1.08, 0.56, -0.38], [s * 1.205, 0.56, -0.38], [s * 1.205, 0.56, 0.14], [s * 1.08, 0.56, 0.14],
     ));
     P.add('turret', orientedSlab(
       [s * 1.38, 0.12, -0.14], [s * 1.63, 0.12, -0.14], [s * 1.63, 0.12, 0.18], [s * 1.38, 0.12, 0.18],
-      [s * 1.34, 0.46, -0.12], [s * 1.59, 0.46, -0.12], [s * 1.59, 0.46, 0.16], [s * 1.34, 0.46, 0.16],
+      [s * 1.20, 0.46, -0.12], [s * 1.35, 0.46, -0.12], [s * 1.35, 0.46, 0.16], [s * 1.20, 0.46, 0.16],
     ));
   }
-  P.add('turret', box(0.12, 0.07, 0.55), 1.42, 0.595, -0.145);          // right flank cassette crown, seated on the 0.56 roof
+  P.add('turret', box(0.12, 0.07, 0.55), 1.14, 0.595, -0.145);          // right flank cassette crown — §5.331: re-seated inboard onto the pitched transition top (1.08..1.205 @ 0.56)
   // LEFT cheek-course end lump: ref plan_turret -1.884 is a 1-col blob at
   // z 0.963..0.99 (ONLY-REF err 9) and ref front caps it at 1.361 — a low
   // dark cassette end-block bracketed to the outer stow panel (print skew,
@@ -3558,9 +3568,13 @@ function buildT90SMLegacy(P) {
   // WIDTH-GUARD-BY-DRESSING rescale (dims 100 -> 92.2, hull -5.7 measured);
   // -1.889..-1.859 still owns the -1.898 window (8mm/2px past its edge).
   P.add('turretTrack', box(0.016, 0.12, 0.027), -1.867, 0.08, 0.8865);
-  // r12: welded casting wall carries the ±1.51 front cols to the ref 1.94
-  P.add('turret', box(0.07, 0.21, 0.80), -1.53, 0.345, 0.35);
-  P.add('turret', box(0.07, 0.30, 0.80), 1.53, 0.39, 0.35);
+  // (r12 ±1.51-col casting-wall carrier boxes RETIRED §5.331: they were
+  // fully buried inside the old near-vertical cassettes and existed only
+  // to hold the vertical-stance front mask to the 1.94 line — with the
+  // cheek panels pitched onto the side slope by owner order they would
+  // poke through the flush planes as fins. Their mass is folded into the
+  // main cassette's raised 0.50 top ring; front-mask delta re-gates with
+  // the print restore.)
   // T3R-b3 LEFT flank bin (ref front ±1.12 cols read 2.009 — the right
   // side has the 2.17 bin, the left carried only the deleted upper-Relikt
   // crest): real SM flank stowage on the roof edge + lid seam.
@@ -3569,8 +3583,14 @@ function buildT90SMLegacy(P) {
   // Joined left roof-edge cassette closes the real -1.36..-1.23 shoulder
   // between the casting wall and the plateau bin.  Its 1.94 m roof follows
   // the recovered front staircase and both side faces overlap their carriers.
-  P.add('turret', box(0.13, 0.38, 0.55), -1.295, 0.35, 0.15);
-  P.add('turretDark', box(0.11, 0.014, 0.49), -1.295, 0.533, 0.15);
+  // §5.331: pitched with the family (its vertical outer wall poked through
+  // the re-pitched transition wedge above y≈0.33); lid re-seated onto the
+  // new 1.10..1.185 top. Bottom ring unchanged.
+  P.add('turret', orientedSlab(
+    [-1.23, 0.16, -0.125], [-1.36, 0.16, -0.125], [-1.36, 0.16, 0.425], [-1.23, 0.16, 0.425],
+    [-1.10, 0.54, -0.125], [-1.185, 0.54, -0.125], [-1.185, 0.54, 0.425], [-1.10, 0.54, 0.425],
+  ));
+  P.add('turretDark', box(0.075, 0.014, 0.49), -1.1425, 0.547, 0.15);
   // T3R ROOF EQUIPMENT ENSEMBLE (owner punch list 3: "no attachments or
   // decorations or the machine gun turret"). Today's side digest: the ref's
   // tall 2.239 band spans z world -0.44..-1.32 (my old towers sat aft+low —
@@ -3712,17 +3732,10 @@ function buildT90SMLegacy(P) {
   const cageRailYs = [0.17, 0.27, 0.37, 0.47];
   const addSMBustleSideCell = (s, x, z, d) => {
     const y = 0.31, h = 0.36;
-    const outerX = s * (x + 0.052);
-    // Recessed backing closes the bustle while four horizontal courses and
-    // three stiles recover the reference's low wraparound cage. Carrier
-    // feet penetrate the underlying bustle step; no rail is held by air.
+    // Recessed backing closes the bustle (§B2); carrier feet penetrate the
+    // underlying bustle step. §5.331: the per-cell rails/stiles moved into
+    // the continuous sweep below — the cell keeps only its solid parts.
     P.add('turretDark', box(0.025, h * 0.82, d * 0.90), s * x, y, z);
-    for (const by of cageRailYs) {
-      P.add('turretDetail', box(0.028, 0.026, d * 0.94), outerX, by, z);
-    }
-    for (const bz of [-0.40, 0, 0.40]) {
-      P.add('turretDetail', box(0.028, h * 0.88, 0.028), outerX, y, z + bz * d);
-    }
     P.add('turret', box(0.12, 0.12, 0.16), s * (x - 0.02), y - h * 0.34, z + d * 0.28);
   };
   for (const s of [-1, 1]) {
@@ -3742,25 +3755,43 @@ function buildT90SMLegacy(P) {
   P.add('turret', box(0.03, 0.36, 0.60), 1.06, 0.29, -1.375);
   // (T4S: the old full-width dark plate at z -2.42 was fully buried inside
   // step3's envelope — deleted with the slat-grid rework.)
-  // Join the four stepped side cells into one cage.  The old T4S panel was
-  // a second slat layer over the aft cell; removing that duplicate leaves
-  // one supported cage surface.  Rails below bridge every change in x/z and
-  // the aft pair returns diagonally into the rear grille corner.
-  const addCageJoin = (s, ax, az, bx, bz, y) => {
-    const x0 = s * ax, x1 = s * bx;
-    const dx = x1 - x0, dz = bz - az;
-    const len = Math.hypot(dx, dz);
-    P.add('turretDetail', box(0.030, 0.026, len + 0.05), (x0 + x1) * 0.5, y, (az + bz) * 0.5, 0, Math.atan2(dx, dz), 0);
-  };
+  // §5.331 CAGE FLOW (owner markup turretDetail 1840/1841 — the rear-left
+  // rail junction; order: "attach to each other in a more flowing way
+  // instead of zig zagging"). The old grammar was four per-cell rail runs
+  // plus diagonal joins that DOUBLED BACK rearward across the staircase
+  // overlaps (join dz -0.18 and -0.08 while stepping outboard) and
+  // overshot their landings by 27-50 mm — the zig-zag. Re-authored as ONE
+  // continuous monotone polyline per side per rail height (the leclerc/
+  // kf51-class flowing basket line): z strictly forward, x strictly
+  // outboard, every segment sharing exact vertices with the next, 29-33°
+  // chamfer diagonals riding the cell faces (each lands ON the next cell's
+  // face inside its z-band), one 40° corner chamfer into the rear grille.
+  // Verticals: a post at every bend + long-run midpoints (~0.3-0.4 m
+  // rhythm, replacing the old irregular 0.13-0.36 per-cell stiles) and a
+  // corner stile pair tying the sweep into the grille frame so the
+  // sections read attached, not butted. Cell backings/feet unchanged.
   for (const s of [-1, 1]) {
-    const aftZ = s < 0 ? -2.08 : -1.96;
+    const aftZ = s < 0 ? -2.08 : -1.96;   // print asym: the left cage runs deeper aft
+    const V = [
+      [0.67, -2.51], [1.037, aftZ], [1.037, -1.30], [1.172, -1.06],
+      [1.172, -0.99], [1.292, -0.80], [1.292, -0.75], [1.4245, -0.545],
+      [1.4245, -0.40],
+    ];
     for (const y of cageRailYs) {
-      addCageJoin(s, 0.67, -2.51, 1.037, aftZ, y);
-      addCageJoin(s, 1.037, -1.18, 1.172, -1.36, y);
-      addCageJoin(s, 1.172, -0.98, 1.292, -1.06, y);
-      addCageJoin(s, 1.292, -0.74, 1.4245, -0.725, y);
+      for (let i = 0; i < V.length - 1; i++) {
+        const x0 = s * V[i][0], x1 = s * V[i + 1][0];
+        const dx = x1 - x0, dz = V[i + 1][1] - V[i][1];
+        P.add('turretDetail', box(0.030, 0.026, Math.hypot(dx, dz) + 0.026),
+          (x0 + x1) * 0.5, y, (V[i][1] + V[i + 1][1]) * 0.5, 0, Math.atan2(dx, dz), 0);
+      }
     }
-    P.add('turretDetail', box(0.030, 0.34, 0.030), s * 1.037, 0.31, aftZ);
+    for (const [px, pz] of [
+      [1.037, aftZ], [1.037, (aftZ - 1.30) / 2], [1.037, -1.30], [1.172, -1.025],
+      [1.292, -0.775], [1.4245, -0.545], [1.4245, -0.42],
+    ]) {
+      P.add('turretDetail', box(0.028, 0.317, 0.028), s * px, 0.31, pz);
+    }
+    P.add('turretDetail', box(0.028, 0.33, 0.036), s * 0.67, 0.325, -2.49);
   }
   for (const s of [-1, 1]) P.add('turretDetail', box(0.72, 0.10, 0.88), s * 0.55, 0.50, -1.85);
   // T3R bustle basket rail ring (owner: "rear turret stowage basket ring"):
@@ -3836,8 +3867,13 @@ function buildT90SMLegacy(P) {
   P.add('gun', KIT.xform(cylZ(0.180, 1.85, 16, 0.165), 0, 0, 0, 0, 0, 0, [1, 0.46, 1]), 0, 0, 2.625);  // M-5 evacuator / thermal-jacket swell
   P.add('gunDark', KIT.xform(cylZ(0.182, 0.035, 16), 0, 0, 0, 0, 0, 0, [1, 0.46, 1]), 0, 0, 1.70);
   P.add('gunDark', KIT.xform(cylZ(0.182, 0.035, 16), 0, 0, 0, 0, 0, 0, [1, 0.46, 1]), 0, 0, 3.55);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [tw * 0.99, 0.30, -0.32], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-tw * 0.99, 0.30, -0.32], -Math.PI / 2);
+  // §5.331: numeral seats moved forward z -0.32 -> -0.05 (§5.266 clip law —
+  // the auto-reseat pinned them 10 cm deeper on the pitched transition
+  // wedge, and the cage's front post/rails eclipsed the rear digit from
+  // rear-3/4 cameras; at -0.05 the glyphs ride the clean pitched cheek
+  // plane, 0.35 m clear of the cage front end).
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [tw * 0.99, 0.30, -0.05], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-tw * 0.99, 0.30, -0.05], -Math.PI / 2);
   // B2 plan-contiguity closure at the paired rear fender/bin corners.
   for (const s of [-1, 1]) P.add('hull', box(0.20, 0.08, 0.22), s * 1.50, 1.37, -2.98);
   // T4S: rear log off the loud tan default (t72b3m ORDER-3 recipe — the
