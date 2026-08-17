@@ -123,9 +123,12 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // the steppe's dressing IS hay + stone: bale silhouettes on every fold
     haystacks: 34, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
-    // DESTRUCTIBLES r1: the Kursk read — WWII hulks scattered on the open
+    // Legacy-map quality backport: modern hulks scattered on the open
     // plain (baked roster tanks, paired duel beats), tank-trap lines
-    tankWrecks: { era: 'ww2', count: 4 },
+    tankWrecks: {
+      era: 'modern', count: 5, debris: true,
+      ids: ['type99a', 'challenger2', 't90m', 'k2', 'm1a2'],
+    },
     sandbagLines: 10,
     hedgehogs: 6,
     cropFields: 5,
@@ -140,6 +143,7 @@ export default {
       // DESTRUCTIBLES r1: steppe columns — trucks + field cars on the road
       // net, fuel dumps, bivouac clusters in the balkas
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 3,
+      modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
     },
   },
 

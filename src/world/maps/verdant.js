@@ -82,11 +82,15 @@ export default {
     // 24, rocks 170 -> 195) — the critique still read "one lone bale" and a
     // golf course; paired with the bigger crater radii in props.js
     haystacks: 26, rocks: 195, outcrops: 24, craters: 58, rubblePiles: 0,
-    // DESTRUCTIBLES r1: real-roster WWII hulks staged as roadside kills +
+    // Legacy-map quality backport: a deliberate modern wreck cast staged as
+    // roadside kills +
     // paired duels (baked static via src/world/wrecks.js), soft-vehicle and
     // military-clutter dressing, and more sandbag lines along the roads —
     // all destructible (drive-through, shell-breakable)
-    tankWrecks: { era: 'ww2', count: 4 },
+    tankWrecks: {
+      era: 'modern', count: 5, debris: true,
+      ids: ['m1a1', 'leo2a7', 'challenger2', 'leclerc', 't90a'],
+    },
     sandbagLines: 12,
     hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —
@@ -106,6 +110,7 @@ export default {
       // fuel-drum clusters (rare red explosive), roadside camps in the
       // hedgerow clearings
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
+      modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
     },
   },
 

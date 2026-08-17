@@ -7,14 +7,14 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.js';
 
 const expected = {
-  verdant: [3757, 441, 4114],
-  desert: [1748, 521, 1283],
-  winter: [3604, 499, 2890],
-  urban: [1695, 925, 606],
-  coastal: [2145, 438, 1575],
-  autumn: [3703, 452, 3997],
-  steppe: [1287, 508, 514],
-  railyard: [1058, 409, 425],
+  verdant: [3771, 448, 4114],
+  desert: [1768, 533, 1283],
+  winter: [3621, 509, 2890],
+  urban: [1727, 946, 606],
+  coastal: [2162, 447, 1575],
+  autumn: [3723, 462, 3997],
+  steppe: [1304, 519, 514],
+  railyard: [1092, 431, 425],
   frontier: [4113, 517, 4376],
   fjord: [3938, 583, 3206],
   delta: [4729, 385, 6132],
