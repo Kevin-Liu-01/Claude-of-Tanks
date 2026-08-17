@@ -125,3 +125,65 @@ RESIDUALS (honest): zimmerit stays paint-level-unowned (needs the gridQuad
 tier hoisted onto Tiger plates — a follow-up round); the crane x rides the
 certified -0.85 station (the print's bin reads at +1.1 in its own frame —
 priced by the v10 cert); live gate rows pending the registration fix.
+
+## §5.247 FIX ROUND (2026-08-17, casemate lane) — critic-ordered repairs (§5.255 verdict 8.4)
+
+ORDERED FIXES (critic defect list, shots/critic-td-trio/sturmtiger):
+1. RW61 MOUTH DOMINATES DEAD-FRONT: cast collar ring (fat elliptical torus,
+   frontal 1.60 x 0.92, tube 0.075) mounted NEAR-VERTICAL hugging the front
+   wall + skimming the 47° plate, dark recessed field inside it, rectangular
+   elevation-slot well at the crown; projecting pot r 0.43/0.45 (OD 0.86-0.90)
+   seated LOW in the surround (center y 1.93 — the print seats its pot low
+   with the bore riding high, and the certified 2.00 axis is high in our
+   shorter face: a concentric 0.95 pot rode +0.15 over every crest row);
+   vent ring rebuilt as 20 DEEP dark wells (r 0.026 bores, ring r 0.325
+   concentric with the bore, tight around the muzzle rim like the real
+   counter-recoil ring); bore face DEEP-SET 0.07 behind the rim front inside
+   dark well walls; rim/bore seam torus; top/bottom guide lugs + side
+   trunnion pins. Muzzle z 3.01 EXACT (overall == hull contract); collar
+   max z 3.087 < 3.17 bow tip.
+2. BOW FACE: FULL-WIDTH spare-link band — 15 link columns + horn ribs +
+   two-row seam + retainer rails seated into the z-3.17 tip cap, capped at
+   3.170 EXACT (registration law: no new extreme column; the old ±0.60
+   strips lay flat and vanished head-on — kept as the upper-ledge row).
+   REAL jaw shackles both hooks (twin jaw plates, fat cross pin + head,
+   forward bow ring; max z 3.106). MG ball moved to the print's LEFT wall
+   station (-0.76, 1.70) as a custom short-stub build (the mgBall helper's
+   0.30 barrel would break the 3.17 length anchor from the z-2.92 wall);
+   armored driver visor + slit + rain lip at the RIGHT station (0.74, 1.78);
+   sloped-plate vision port well + hood lip at (0.60, 2.12). The old
+   fittings were mirrored vs the print and buried at the plate root.
+3. REAR: the deck-lying muffler drums + low backplates + rain hoods are
+   RETIRED for a shrouded exhaust-stack cluster at the stern (close pair at
+   x ±0.42): sooted hullDark jackets emerging over the raked tail, cheeks,
+   armored rain caps to 1.878, pipe tips 1.88 EXACT and a transverse shroud
+   trunk between the stacks (1.878 — zero new side-column tops). MEASURED
+   RESIDUAL: the stern rakes 40° to the -3.16 extreme, so full-height
+   standing columns proud of the tail face are geometrically impossible
+   inside the certified envelope — two leaned-slab variants measured 88.7
+   (x2) vs the 88.8 hold; the print's own stack window tops at the same
+   1.85-1.88 class (oracle facts). Round rear-wall port + seam + diagonal
+   handle on the leaning casemate wall (0.35, 2.20, wall-lean rx). Rear
+   stowage: 20t jack (body + foot plate + head saddle) beside the wood
+   block, crowbar, sledge, extinguisher, convoy light.
+4. ENGINE-DECK FANS: wells get real depth — sunk dark well walls, 4-blade
+   hint, hub; rim disc + torus heights EXACT.
+
+GATE: 88.8 x2 BIT-IDENTICAL (= landed §5.247 baseline EXACT hold-or-improve
+floor), dims 100 (heightM 0.77% / hullLength 0.65% / overall ~0.9% / width
+0.14%), floaters 100. Geometry hash 616c7652 -> a7fc1ce2 (31 meshes,
+71192 -> 80348 verts, intentional). Guards isu122s 90f3a6a0 / isu152
+6a78ffa2 / jpz_e100 fb3fc84c BYTE-IDENTICAL. npm test green (live tree).
+
+LESSONS BANKED (also in build comments):
+- KIT.torus pre-rotates rings FLAT (x-z plane): a "plate-plane" collar mount
+  with a small rx left a horizontal washer sweeping to z 3.56 — measured as
+  overallLengthM 6.60 (+5.1%, dims 67-71) across two runs before the vertex
+  census (tools/tmp-fix2-aabb.mjs) attributed it. Rings that must face +z
+  need rx = PI/2 (+ lean); ellipses must be authored in the flat x-z frame.
+- The 47° plate plane extended below the y-1.95 wall break floats 0.3 m off
+  the vertical wall — collar/pot furniture must follow the WALL below the
+  break, not the extrapolated plate.
+EVIDENCE: shots/casemate-fix2/sturmtiger/{before,after}-* (27 sheets each,
+REF|PROC pairs at the critic views + 6 garage angles; befores captured at
+the pre-edit tree per §5.254).
