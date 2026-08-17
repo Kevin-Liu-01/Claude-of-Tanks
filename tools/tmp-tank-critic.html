@@ -52,6 +52,12 @@ const CRITIC_REFERENCE_OVERRIDES = {
   k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
   type99a: { source:'glb', glb:{ path:'/models/community-candidates/type_99a2_armored_warfare.glb', turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true, turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$' } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
+  // §5.251: rows repaired after the owner's 952561ea GLB retirement (the
+  // §5.31b flip left these three with no override row — prints restored
+  // locally from git history; GLBs stay untracked/ignored per the owner).
+  sturmtiger: { source:'glb', glb:{ path:'/models/tanks/community/sturmtiger-tomrs.glb', fixedMount:true, yawOffset:-Math.PI/2 } },
+  jpz_e100: { source:'glb', glb:{ path:'/models/tanks/community/jagdpanzer_e100_haphazard.glb', fixedMount:true, paintUntextured:true } },
+  t95: { source:'glb', glb:{ path:'/models/tanks/community/t95_doomturtle_haphazard.glb', fixedMount:true, yawOffset:Math.PI, paintUntextured:true } },
   // ---- §5.248 batch A (Downloads root, 13 drops — ALL LOCAL-ONLY
   // quarantine; provenance verdicts + SHA receipts in ATTRIBUTION).
   bmp3: { source:'glb', glb:{ path:'/models/community-candidates/bmp3_rok_42manako.glb', turretNode:'^turret\\.001$', gunNode:'^weapon2\\.001$', autoPivot:true, yawOffset:-Math.PI/2 } },

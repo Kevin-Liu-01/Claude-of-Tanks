@@ -8701,3 +8701,24 @@ held, zero gate rows). Hash ea4382c0 -> adb8b0a8. Non-defect
 observations banked (markings = fleet scope; pair-tile framing = rig
 geometry; remaining gap = the print's baked weathering, certified
 out of profile scope). Round tools swept at landing.
+
+## 5.251 CASEMATE WAVE DELIVERED + FLEET DEAD-PRINT FINDING
+(2026-08-17): ALL FIVE §5.247 casemate tanks delivered. FLEET-CRITICAL:
+the owner's 952561ea (Aug 13, "retire tank GLB runtime") DELETED every
+oracle GLB from repo+disk — every gate run at this tree needs a local
+restore (`git show '952561ea^:path' > path`); the .bak files are a
+TRAP (PRE-repair originals — isu152.bak lacks batch-17; NEVER
+re-oracle from .baks); restored GLBs stay untracked + now IGNORED
+(public/models/tanks/**/*.glb appended). THREE BROKEN ROWS REPAIRED
+in the maps (sturmtiger/jpz_e100/t95 — the §5.31b flip's missing
+override class). ROWS LANDED (x2): isu122s 87.8-regression FOUND+FIXED
+-> 91.5 PASS (GRADUATE — re-cert critic before re-freeze at 90f3a6a0);
+isu152 91.9 HELD byte-exact (6a78ffa2, untouched-proven); sturmtiger
+88.8 (hash 616c7652 — RW61 launcher face, lattice crane, staged
+round, lift trunnions); jpz_e100 91.3 PASS (fb3fc84c); t95 80.8
+(294795a0 — ventilator towers, M2, travel lock; quad-run track-clip
+tool limitation queued). Baked-in receipts: the §5.229 bin re-phase
+regression class + the t95 topMax 9mm margin law. Fleet counter reads
+36/110 live (the roster grew; dead-print ids elsewhere still need
+restores — every lane briefed via this section). Two critics spawn:
+isu122s+isu152 re-cert/verify + the TD trio identity sitting.

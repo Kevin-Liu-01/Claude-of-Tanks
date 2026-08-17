@@ -1400,3 +1400,41 @@ critic verdict per §H.3.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 NO bore added - graduated bore grammar compliant; §C.1 2 reversed side strips re-oriented; F-vs-D 0; gate HELD x2 EXACT 90.3 PASS; hash 60b08d10 -> 8f420d18 CANDIDATE (winding-only); mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §5.247 casemate-wave round (2026-08-17, casemate family agent) — DIMS RECOVERED 87.8 -> 91.5 PASS
+
+SOURCES: registration row VALID but the print bytes were deleted at the
+owner's GLB-runtime retirement (952561ea) — the surviving local
+isu122s.glb.bak is the PRE-batch-7 original (sha mismatch vs the certified
+blob; bbox-identical, tube unslimmed). Certified batch-7 bytes RESTORED
+local-only from git `952561ea^` to the registered path (md5
+af646bba3d278410d8024ca6574bceba). Print loads; gate runs.
+
+BASELINE ×1: min 87.8 FAIL — dims 87.8 (hullLengthM read 6.60/2.53%),
+wholeCurves 91.5, floaters 100. ATTRIBUTION (fine probe
+tools/tmp-cw-traceprobe.mjs, gate-parity shadow-hidden trace): BOTH
+hullLengthM carriers were millimeter-marginal against the 12%-band
+threshold (0.2981): bow rod-beam columns z 3.19..3.30 band 0.304-0.353
+(the r10 razor margin — 15 mm was "what the threshold allows" then), tail
+tab columns z -3.40..-3.46 band 0.299-0.321 (+0.9..23 mm). §5.229's fleet
+shoe standardization re-phased the shared-camera bins and the coin
+flipped (the whip-rough-coupling law class).
+
+FIX (both anchors toward the ref's own lines, z windows EXACT so the
+registration mid holds): rod-channel beam section 45 mm deeper (top edge
+1.65 EXACT, bottom 1.455 -> 1.41 = the r4-certified line; carrier band
+0.304 -> 0.349) + tail tab tabH 0.322 -> 0.40 symmetric about tabY 0.776
+(the ref's own tail band there is ~1.2 m tall — cover-margin class).
+
+CLOSE ×3 identical: **min 91.5 | whole 91.5 dims 100 floaters 100 PASS**
+(hullLengthM 6.75/0.24%; side cover residual 0.75 -> 0.00 as a side
+effect). isu152 91.9 PASS + hash 6a78ffa2 EXACT every run (tab growth is
+isu122s-only: isu152 sets tailTabZ 0). Hash 2a9c4da1 -> 90f3a6a0 (34
+meshes / 362088 verts both sides — geometry-only). npm test green.
+track-clip: rear shoe 22 + sweep 2032/674 reproduce BYTE-IDENTICALLY at
+the pre-round baseline bytes (bisect receipt) — a pre-existing post-§5.229
+fleet artifact for the orchestrator's audit queue, not this round's.
+EVIDENCE: shots/casemate-wave/{before,after}/isu122s.
+NOTE: the current gate scores fused refs by registered standard-view
+masks (wholeCurves) + dims + floaters; hull/stations components are no
+longer emitted for this id class.

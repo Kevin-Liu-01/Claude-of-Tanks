@@ -82,3 +82,43 @@ top edge projected a wide diagonal in front view (narrowed to the ref's
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore inside the 17cm muzzle collar step (hullG, z 6.85); §C.1 0 reversed; F-vs-D 0; gate HELD x2 EXACT 66.5; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §5.247 casemate-wave round (2026-08-17, casemate family agent)
+
+SOURCES (ordered first step): registration BROKEN — same class as
+sturmtiger (procedural + candidateGlb, maps bare; print deleted at
+952561ea). Print RESTORED local-only from git `952561ea^` to
+`public/models/tanks/community/jagdpanzer_e100_haphazard.glb`
+(md5 57c8eec98bc33979db25052800561815, single fused mesh, loads clean).
+Gate baseline ×1 errored `no local GLB reference` (0-row = the receipt).
+EXACT ROW FIX (LOCAL_REFERENCE_OVERRIDES, mirrors candidateGlb):
+`jpz_e100: { source:'glb', glb:{ path:'/models/tanks/community/jagdpanzer_e100_haphazard.glb', fixedMount:true, paintUntextured:true } },`
+
+WORK (probe contracts held: hullLength span 8.7066 -> 8.7248 (+0.28% vs
+pub 8.7, in grace; the tail link rack's first cut at z -4.245 printed body
+columns to -4.364 / +0.70% and was tucked to -4.205 to weld flush into the
+tail face — margin bank receipt), overall 11.266, width 4.32, height-p95
+3.2975 EXACT):
+- Saukopf dress: bolted collar ring (10 studs), canvas dust-boot ring at
+  the pot exit, casting seam. Fore-deck access hatch seam ring.
+- The two bow "spare link" plates (owner bare-cuboid class) -> segmented
+  spareTrackStrip x3 links each; fore-deck stowage from the fleet
+  libraries: 3-can jerry rack + rails + hold-down strap (tops under the
+  17cm tube line — zero side-column cost by construction), tarp roll,
+  shovel + axe, second Bosch light + signal horn, bow shackle rings + pins
+  on the cheek bumps.
+- §B3 MANDATE: MG34 pintle on the FORWARD roof slope (top 3.22 < the 3.30
+  crest — no topMax/rough shift; hull buckets).
+- Roof: hatch seam rings on both domes, vent base collars, periscope
+  collars.
+- Rear: port-side tow cable run (starboard existed), tail shackle rings +
+  pins, vertical 2-link rack welded on the tail wall, jack + block kept.
+- Skirts: 7 hanger outriggers per side welded skirt-top->wall (y 1.455,
+  grep-verified 2 lines after the perl weld — the marker law).
+GUARDS: hash 1a07a8aa -> fb3fc84c (30 -> 31 meshes / 50287 -> 64567 verts,
+intentional); npm test green; track-clip --exact --strict 0/0 + sweep 0/0.
+EVIDENCE: shots/casemate-wave/{before,after}/jpz_e100.
+RESIDUALS: overall reads 11.266 vs pub 11.1 (+1.5%) in the OWN-frame probe
+— the same read as the pre-round baseline (the muzzle sits at the v10
+station; the gate's shared-frame read was 99.6-class); live rows pending
+the registration fix.
