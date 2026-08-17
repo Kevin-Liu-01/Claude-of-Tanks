@@ -77,6 +77,11 @@ for (const n of [
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
+/** Web Audio rejects negative/past automation times, including at startup. */
+export function safeAudioStart(now, scheduled, leadS = 0.001) {
+  return Math.max(0, Number(now) + leadS, Number(scheduled));
+}
+
 const MAX_VOICES = 24;
 const SPEED_OF_SOUND_MPS = 340;
 // SOUND r3: the former (10/d)^2 curve lost 96% of a neighboring tank at
@@ -1172,15 +1177,19 @@ export function createAudio() {
     const vel = WHIZZ_VEL_MPS[e.shellType] || 900;
     if (vel <= MIN_WHIZZ_SPEED_MPS) return;
 
-    const when = ctx.currentTime + t / vel;
+    const passAt = ctx.currentTime + t / vel;
     const closeness = 1 - miss / WHIZZ_MAX_MISS_M;     // 0..1
     const gain = 0.15 + 0.7 * closeness * closeness;
     // Pan by which side the shell passes on.
     const pan = miss > 0.001
       ? Math.max(-1, Math.min(1, (px * lfz - pz * lfx) / miss)) * 0.9 : 0;
 
-    const v = spawnVoice(when - 0.12, 0.45, gain, pan, sfxBus);
-    const w0 = when - 0.12;
+    const w0 = safeAudioStart(ctx.currentTime, passAt - 0.12);
+    // A very near pass can occur before the ideal 120 ms lead-in. Preserve a
+    // strictly increasing automation window rather than addressing AudioParam
+    // at a negative/past timestamp during the first AudioContext moments.
+    const when = Math.max(passAt, w0 + 0.001);
+    const v = spawnVoice(w0, 0.45, gain, pan, sfxBus);
     // Doppler-ish whoosh: bandpassed noise sweeping down through the pass.
     const bp = flt('bandpass', 4200, 1.8);
     bp.frequency.setValueAtTime(4200, w0);

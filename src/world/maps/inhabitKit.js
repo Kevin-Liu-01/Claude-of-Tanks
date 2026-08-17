@@ -353,6 +353,75 @@ function bChurn(rng) { // baked: galvanized milk churn
   return merge(parts);
 }
 
+// Lightweight metal dressing below shares the deterministic loose-body path
+// in props.js. Each mesh is still authored base-at-y=0 and centered on XZ so
+// its visual tumble can rotate around the real mid-height.
+function bTrashcan(rng) {
+  const parts = [];
+  parts.push(P(cyl(0.27, 0.31, 0.72, 11).translate(0, 0.36, 0), GALV, 0.10, rng));
+  parts.push(P(cyl(0.34, 0.34, 0.055, 11).translate(0, 0.755, 0), STEEL, 0.07, rng));
+  parts.push(P(cyl(0.08, 0.10, 0.08, 8).translate(0, 0.825, 0), IRON, 0.05, rng));
+  for (const s of [-1, 1]) {
+    parts.push(P(box(0.07, 0.18, 0.07).translate(s * 0.32, 0.52, 0), STEEL, 0.07, rng));
+  }
+  return merge(parts);
+}
+
+function bGasBottle(rng) {
+  const parts = [];
+  const BLUEGREY = [0.56, 0.16, 0.34];
+  parts.push(P(cyl(0.17, 0.18, 0.62, 10).translate(0, 0.34, 0), BLUEGREY, 0.10, rng));
+  parts.push(P(cyl(0.105, 0.17, 0.16, 10).translate(0, 0.73, 0), BLUEGREY, 0.08, rng));
+  parts.push(P(cyl(0.075, 0.09, 0.12, 8).translate(0, 0.87, 0), STEEL, 0.06, rng));
+  parts.push(P(box(0.17, 0.055, 0.065).translate(0.07, 0.95, 0), IRON, 0.05, rng));
+  parts.push(P(cyl(0.19, 0.19, 0.055, 10).translate(0, 0.035, 0), IRON, 0.06, rng));
+  return merge(parts);
+}
+
+function bBucket(rng) {
+  const parts = [];
+  parts.push(P(cyl(0.23, 0.17, 0.36, 10).translate(0, 0.18, 0), GALV, 0.11, rng));
+  parts.push(P(new THREE.TorusGeometry(0.23, 0.018, 5, 12)
+    .rotateX(Math.PI / 2).translate(0, 0.37, 0), STEEL, 0.06, rng));
+  const handle = new THREE.TorusGeometry(0.25, 0.014, 5, 12, Math.PI);
+  handle.rotateZ(Math.PI / 2);
+  parts.push(P(handle.translate(0, 0.34, 0), IRON, 0.05, rng));
+  return merge(parts);
+}
+
+function bJerryCan(rng) {
+  const parts = [];
+  parts.push(P(box(0.38, 0.48, 0.21).translate(0, 0.24, 0), OLIVE, 0.10, rng));
+  // pressed X ribs on both broad faces
+  for (const z of [-0.118, 0.118]) {
+    for (const s of [-1, 1]) {
+      const rib = box(0.035, 0.34, 0.025);
+      rib.rotateZ(s * 0.62);
+      parts.push(P(rib.translate(0, 0.24, z), OLIVE_D, 0.07, rng));
+    }
+  }
+  for (const x of [-0.13, 0.13]) parts.push(P(box(0.045, 0.15, 0.045)
+    .translate(x, 0.55, 0), OLIVE_D, 0.06, rng));
+  parts.push(P(box(0.30, 0.045, 0.05).translate(0, 0.62, 0), OLIVE_D, 0.06, rng));
+  parts.push(P(cyl(0.045, 0.055, 0.09, 7).translate(0.13, 0.68, 0), STEEL, 0.05, rng));
+  return merge(parts);
+}
+
+function bLooseWheel(rng) {
+  const parts = [];
+  const tire = new THREE.TorusGeometry(0.26, 0.085, 7, 14);
+  parts.push(P(tire.translate(0, 0.345, 0), TIRE, 0.045, rng));
+  const hub = new THREE.CylinderGeometry(0.13, 0.13, 0.13, 10, 1);
+  hub.rotateX(Math.PI / 2);
+  parts.push(P(hub.translate(0, 0.345, 0), STEEL, 0.09, rng));
+  for (let i = 0; i < 5; i++) {
+    const spoke = box(0.045, 0.20, 0.05);
+    spoke.rotateZ(i * Math.PI * 0.4);
+    parts.push(P(spoke.translate(0, 0.345, 0.075), STEEL, 0.07, rng));
+  }
+  return merge(parts);
+}
+
 function bLamp(rng) { // baked: cast-iron street lamp (topple class)
   const parts = [];
   const H = 4.5;
@@ -1189,8 +1258,8 @@ function bDrumRedBroken(rng) {
 /**
  * Destructible type table (world-dressing r1, extended DESTRUCTIBLES r1).
  * cls: 'break' swaps intact -> broken debris; 'topple' hinge-falls and
- *   persists; 'toss' (DESTRUCTIBLES r1) is thrown on a short ballistic arc
- *   with tumble and settles on its side (rammed drums/churns).
+ *   persists; 'physics' is a sleeping deterministic loose body that can be
+ *   pushed repeatedly, bounce, tumble, collide and settle.
  * mat: 'wood' | 'straw' | 'stone' | 'plaster' (map-toned textured materials)
  *   | 'baked' (vertex color).
  * contact: 'ob' = crushable obstacle (state.js SAT seam — resists a crawl,
@@ -1219,9 +1288,14 @@ export const DESTRUCTIBLE_TYPES = {
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, build: bTrough,      broken: bTroughBroken },
   stall:       { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 2.3,  build: bStall,       broken: bStallBroken },
   bench:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.0,  build: bBench,       broken: bBenchBroken },
-  churn:       { cls: 'toss',   mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null },
+  churn:       { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null, bodyR: 0.23, mass: 0.65, bounce: 0.38 },
   lamp:        { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.30, h: 4.7,  build: bLamp,        broken: null },
-  drum:        { cls: 'toss',   mat: 'baked', contact: 'loop', r: 0.32, h: 0.92, build: bDrum,        broken: null },
+  drum:        { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.32, h: 0.92, build: bDrum,        broken: null, bodyR: 0.31, mass: 1.0, bounce: 0.30 },
+  trashcan:    { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.35, h: 0.85, build: bTrashcan,    broken: null, bodyR: 0.32, mass: 0.75, bounce: 0.34 },
+  gasbottle:   { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.22, h: 1.0,  build: bGasBottle,   broken: null, bodyR: 0.20, mass: 1.2, bounce: 0.28 },
+  bucket:      { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.27, h: 0.62, build: bBucket,      broken: null, bodyR: 0.23, mass: 0.38, bounce: 0.46 },
+  jerrycan:    { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.29, h: 0.72, build: bJerryCan,    broken: null, bodyR: 0.27, mass: 0.82, bounce: 0.27 },
+  loosewheel:  { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.36, h: 0.69, build: bLooseWheel,  broken: null, bodyR: 0.34, mass: 0.85, bounce: 0.40, friction: 1.15 },
   sled:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.75, h: 0.5,  build: bSled,        broken: bSledBroken },
   pot:         { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.55, h: 0.75, build: bPot,         broken: bPotBroken },
   rugframe:    { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.15, h: 2.2,  build: bRugFrame,    broken: bRugFrameBroken },
@@ -1244,7 +1318,7 @@ export const DESTRUCTIBLE_TYPES = {
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
   barrier:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 1.0,  build: bBarrier,    broken: bBarrierBroken, collider: true, keep: 0.83, crushMin: 2.4 },
   roadsign:    { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.48, h: 2.85, build: bRoadsign,   broken: null, keep: 0.96 },
-  cone:        { cls: 'toss',   mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null },
+  cone:        { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null, bodyR: 0.27, mass: 0.34, bounce: 0.44 },
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
   cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
 };

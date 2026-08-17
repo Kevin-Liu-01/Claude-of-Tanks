@@ -185,7 +185,7 @@ export function createPerfHud({ renderer, game }) {
     sectionEls.get('world').textContent =
       `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
       `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
-      `${world.wrecks ?? '—'} wreck sites`;
+      `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake`;
     sectionEls.get('shadows').textContent =
       `${shadow.enabled ? 'ON' : 'OFF'}${shadow.rescue ? ` · rescue ${shadow.rescue}` : ''}   far ${shadow.maxFar ?? '—'}m   throttle ${shadow.throttle ?? '—'}\n` +
       (cascades.length

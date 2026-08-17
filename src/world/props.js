@@ -20,6 +20,10 @@ import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destru
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { createUtilityNetwork } from './utilityNetwork.js';
 import {
+  LOOSE_PROP_STEP_S, createLoosePropBody, kickLooseProp, resetLoosePropBody,
+  resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
+} from './loosePropPhysics.js';
+import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
@@ -1068,6 +1072,8 @@ ${snowCap ? `
   // -------------------------------------------------------------------------
   const drng = mulberry32(seed + 9001); // own stream — never shifts placements
   const destructibles = []; // records: {kind,cls,x,y,z,yaw,sc,r,h,slot,state,ob}
+  const looseRecords = []; // physics-class records; sleeping records cost no update work
+  const activeLoose = []; // only awake records, bounded by the local interaction area
   const dPools = new Map(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
@@ -1109,6 +1115,20 @@ ${snowCap ? `
     const idx = destructibles.length;
     destructibles.push(rec);
     pool.records.push(rec);
+    if (meta.cls === 'physics') {
+      rec.looseIndex = looseRecords.length;
+      rec.body = createLoosePropBody({
+        x, baseY: y, z,
+        radius: (meta.bodyR ?? meta.r) * sc,
+        height: rec.h,
+        mass: meta.mass ?? 1,
+        restitution: meta.bounce ?? 0.32,
+        friction: meta.friction ?? 2.2,
+        spinBias: ((idx + seed) & 1) ? 1 : -1,
+      });
+      rec.looseListed = false;
+      looseRecords.push(rec);
+    }
     if (meta.contact === 'ob') {
       const rr = (meta.fence || meta.wall) ? Math.max(meta.r * sc, 0.6) : rec.r;
       // fence/wall modules: tight oriented-ish AABB — run direction extents
@@ -1159,9 +1179,12 @@ ${snowCap ? `
         colliders.push(col);
       }
     } else if (meta.contact === 'loop') {
-      const entry = { x, y, z, r: rec.r, h: rec.h, recIdx: idx, toppled: false };
+      const entry = {
+        x, y, z, r: rec.r, h: rec.h, recIdx: idx, kind,
+        dynamic: meta.cls === 'physics', toppled: false,
+      };
       crushables.push(entry);
-      rec.loopRef = entry; // breakRecord marks it so the main.js loop stops
+      rec.loopRef = entry; // breakRecord marks static debris; physics updates its position
     }
     return rec;
   }
@@ -2066,6 +2089,32 @@ ${snowCap ? `
         addDestructible(red ? 'drumred' : 'drum', x, y - 0.02, z, vrng() * Math.PI * 2, 0.95 + vrng() * 0.1);
       }
       if (vrng() < 0.4) scatterDestructibles('pallet', spot[0], spot[1], 1, 1.6, 3.0);
+    }
+    // Persistent loose dressing: the galvanized churn was the original
+    // visually "bouncy gray can". Expand that interaction language into
+    // bins, bottles, pails, jerry cans and detached wheels, with a deliberate
+    // map-flavored mix. These are sleeping instanced bodies: the count adds
+    // scene detail but no per-frame physics until a hull or shell wakes one.
+    const industrialLoose = ['trashcan', 'gasbottle', 'jerrycan', 'loosewheel', 'bucket', 'drum'];
+    const ruralLoose = ['churn', 'bucket', 'jerrycan', 'loosewheel', 'gasbottle', 'trashcan'];
+    const dryLoose = ['jerrycan', 'gasbottle', 'bucket', 'loosewheel', 'trashcan', 'cone'];
+    const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera';
+    const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier';
+    const looseKinds = isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose;
+    const looseCap = inh.looseClutter ?? (P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
+    for (let k = 0; k < looseCap; k++) {
+      const spot = roadsideSpot(isIndustrial ? 4.6 : 5.2, isIndustrial ? 12 : 15, 52);
+      if (!spot) continue;
+      const members = vrng() < 0.42 ? 2 : 1;
+      for (let j = 0; j < members; j++) {
+        const a = vrng() * Math.PI * 2;
+        const rr = j ? 0.65 + vrng() * 0.75 : 0;
+        const x = spot[0] + Math.cos(a) * rr, z = spot[1] + Math.sin(a) * rr;
+        if (noVeg(x, z)) continue;
+        const kind = looseKinds[(vrng() * looseKinds.length) | 0];
+        addDestructible(kind, x, heightField.getHeightAt(x, z) - 0.015, z,
+          vrng() * Math.PI * 2, 0.88 + vrng() * 0.18);
+      }
     }
     // campsites / supply dumps: tents, firewood, crates, drums — the "life"
     // clusters at village outskirts and along the approach woods
@@ -3613,7 +3662,7 @@ ${snowCap ? `
     imI.castShadow = true;
     imI.receiveShadow = true;
     imI.matrixAutoUpdate = false;
-    if (meta.cls === 'topple' || meta.cls === 'toss') imI.frustumCulled = false; // instances animate
+    if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
     group.add(imI);
@@ -3642,6 +3691,60 @@ ${snowCap ? `
     let cell = dHash.get(key);
     if (!cell) { cell = []; dHash.set(key, cell); }
     cell.push(i);
+    rec._dKey = key;
+  }
+
+  // Loose bodies can cross the shell hash's 8 m cells. Re-key only on a cell
+  // boundary crossing (rare); the steady-state fixed step remains allocation
+  // free and shell hits never target a stale/ghost position.
+  function refreshDestructibleCell(rec) {
+    const key = Math.floor(rec.x / D_CELL) + ':' + Math.floor(rec.z / D_CELL);
+    if (key === rec._dKey) return;
+    const old = dHash.get(rec._dKey);
+    if (old) {
+      const at = old.indexOf(rec._destructibleIndex);
+      if (at >= 0) old.splice(at, 1);
+    }
+    let cell = dHash.get(key);
+    if (!cell) { cell = []; dHash.set(key, cell); }
+    cell.push(rec._destructibleIndex);
+    rec._dKey = key;
+  }
+  for (let i = 0; i < destructibles.length; i++) destructibles[i]._destructibleIndex = i;
+
+  // Dedicated static broad phase for awake clutter. It uses its own stamp so
+  // it cannot interfere with map.js's movement grid over the same records.
+  const LOOSE_CELL = 12;
+  const looseCells = new Map();
+  const looseCellKey = (x, z) => (x + 32768) * 65536 + (z + 32768);
+  for (const ob of obstacles) {
+    const x0 = Math.floor(ob.min[0] / LOOSE_CELL), x1 = Math.floor(ob.max[0] / LOOSE_CELL);
+    const z0 = Math.floor(ob.min[2] / LOOSE_CELL), z1 = Math.floor(ob.max[2] / LOOSE_CELL);
+    for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) {
+      const key = looseCellKey(cx, cz);
+      let cell = looseCells.get(key);
+      if (!cell) { cell = []; looseCells.set(key, cell); }
+      cell.push(ob);
+    }
+  }
+  const looseObstacleScratch = [];
+  let looseObstacleStamp = 0;
+  function queryLooseObstacles(x, z, r) {
+    looseObstacleScratch.length = 0;
+    looseObstacleStamp++;
+    const x0 = Math.floor((x - r) / LOOSE_CELL), x1 = Math.floor((x + r) / LOOSE_CELL);
+    const z0 = Math.floor((z - r) / LOOSE_CELL), z1 = Math.floor((z + r) / LOOSE_CELL);
+    for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) {
+      const cell = looseCells.get(looseCellKey(cx, cz));
+      if (!cell) continue;
+      for (const ob of cell) {
+        if (ob.__looseStamp === looseObstacleStamp) continue;
+        ob.__looseStamp = looseObstacleStamp;
+        if (ob.max[0] < x - r || ob.min[0] > x + r || ob.max[2] < z - r || ob.min[2] > z + r) continue;
+        looseObstacleScratch.push(ob);
+      }
+    }
+    return looseObstacleScratch;
   }
 
   // hinge-topple animation state (effects_combat r1 pole pattern, generalized
@@ -3688,6 +3791,19 @@ ${snowCap ? `
   // blasts are deferred one tick (also naturally staggers chained drums).
   const pendingBlasts = [];
 
+  function ensureLooseActive(rec) {
+    if (rec.looseListed) return;
+    rec.looseListed = true;
+    activeLoose.push(rec);
+  }
+
+  function kickLooseRecord(idx, dx, dz, speed, cause) {
+    const rec = destructibles[idx];
+    if (!rec || !rec.body || !kickLooseProp(rec.body, dx, dz, speed, cause)) return false;
+    ensureLooseActive(rec);
+    return true;
+  }
+
   /**
    * Break/topple/toss one destructible record. All trigger paths land here
    * (hull-overrun obstacle seam, hull-radius loop, shell sweep/impact).
@@ -3703,6 +3819,9 @@ ${snowCap ? `
     if (!rec || rec.state) return false;
     const pool = dPools.get(rec.kind);
     if (!pool || !pool.imI) return false;
+    // Loose dressing is displaced, never consumed. Shells/blasts kick it too,
+    // and a later tank can push the exact same object again after it settles.
+    if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
     if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
     if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
@@ -3769,7 +3888,12 @@ ${snowCap ? `
   function crushProp(i, dx, dz, speed = 0) {
     const c = crushables[i];
     if (!c || c.toppled) return false;
-    if (c.recIdx != null) { c.toppled = true; return breakRecord(c.recIdx, dx, dz, speed, 'ram'); }
+    if (c.recIdx != null) {
+      const rec = destructibles[c.recIdx];
+      if (rec && rec.body) return kickLooseRecord(c.recIdx, dx, dz, speed, 'ram');
+      c.toppled = true;
+      return breakRecord(c.recIdx, dx, dz, speed, 'ram');
+    }
     if (!poleIM) return false;
     c.toppled = true;
     setToppleAxis(_cax, dx, dz);
@@ -3893,6 +4017,75 @@ ${snowCap ? `
     a.im.instanceMatrix.needsUpdate = true;
   }
 
+  // Persistent loose-body pose: rotate the authored placement about its
+  // scaled mid-height, then carry that center with the body. Shared matrices
+  // keep every awake-body step allocation-free.
+  const _looseQ = new THREE.Quaternion();
+  const _looseM = new THREE.Matrix4();
+  const _looseR = new THREE.Matrix4();
+  function poseLooseRecord(rec) {
+    const b = rec.body, pool = dPools.get(rec.kind);
+    if (!b || !pool || !pool.imI) return;
+    _looseQ.set(b.qx, b.qy, b.qz, b.qw);
+    _looseM.makeTranslation(b.x, b.y, b.z);
+    _looseR.makeRotationFromQuaternion(_looseQ);
+    _looseM.multiply(_looseR);
+    _looseR.makeTranslation(-b.homeX, -(b.homeBaseY + b.height * 0.5), -b.homeZ);
+    _looseM.multiply(_looseR).multiply(pool.mats4[rec.slot]);
+    pool.imI.setMatrixAt(rec.slot, _looseM);
+    pool.imI.instanceMatrix.needsUpdate = true;
+  }
+
+  function syncLooseRecord(rec) {
+    const b = rec.body;
+    rec.x = b.x; rec.y = b.y - b.height * 0.5; rec.z = b.z;
+    if (rec.loopRef) {
+      rec.loopRef.x = b.x;
+      rec.loopRef.y = b.y - b.radius;
+      rec.loopRef.z = b.z;
+    }
+    refreshDestructibleCell(rec);
+    poseLooseRecord(rec);
+  }
+
+  let looseAcc = 0;
+  function updateLooseProps(dt) {
+    if (!activeLoose.length || dt <= 0) return;
+    looseAcc = Math.min(0.1, looseAcc + dt);
+    while (looseAcc >= LOOSE_PROP_STEP_S) {
+      looseAcc -= LOOSE_PROP_STEP_S;
+      // Integrate + collide with static cover first.
+      for (let i = activeLoose.length - 1; i >= 0; i--) {
+        const rec = activeLoose[i], b = rec.body;
+        stepLoosePropBody(b, LOOSE_PROP_STEP_S,
+          heightField.getHeightAt, heightField.getNormalAt);
+        for (const ob of queryLooseObstacles(b.x, b.z, b.radius + 0.08)) {
+          resolveLoosePropObstacle(b, ob);
+        }
+      }
+      // Momentum transfer wakes neighboring sleeping clutter. Active/active
+      // pairs are resolved once by looseIndex ordering.
+      for (let i = 0; i < activeLoose.length; i++) {
+        const rec = activeLoose[i], a = rec.body;
+        for (let j = 0; j < looseRecords.length; j++) {
+          const other = looseRecords[j];
+          if (other === rec || (other.body.active && other.looseIndex < rec.looseIndex)) continue;
+          const wakes = resolveLoosePropPair(a, other.body);
+          if ((wakes & 1) && !rec.looseListed) ensureLooseActive(rec);
+          if (wakes & 2) ensureLooseActive(other);
+        }
+      }
+      for (let i = activeLoose.length - 1; i >= 0; i--) {
+        const rec = activeLoose[i];
+        syncLooseRecord(rec);
+        if (!rec.body.active) {
+          rec.looseListed = false;
+          activeLoose.splice(i, 1);
+        }
+      }
+    }
+  }
+
   function updateProps(dt) {
     fxBudget = 6; // per-frame kind-burst cap refill
     // DESTRUCTIBLES r1: deferred explosive-drum blasts (max 2/tick so chains
@@ -3902,6 +4095,7 @@ ${snowCap ? `
       emitBreakFx('drumblast', bl.x, bl.y, bl.z, 0, 0, 1.4); // flavored fireball
       shellImpact(bl.x, bl.y, bl.z, { r: 5.4, he: true, cause: 'blast' });
     }
+    updateLooseProps(dt);
     if (!crushAnims.length) return; // zero per-frame cost when idle
     for (let k = crushAnims.length - 1; k >= 0; k--) {
       const a = crushAnims[k];
@@ -3947,6 +4141,8 @@ ${snowCap ? `
   function resetDestructibles() {
     crushAnims.length = 0;
     pendingBlasts.length = 0;
+    activeLoose.length = 0;
+    looseAcc = 0;
     for (const rec of destructibles) {
       if (rec.ob) {
         rec.ob.crushed = false;
@@ -3955,6 +4151,21 @@ ${snowCap ? `
       }
       if (rec.col) rec.col.dead = false;
       if (rec.loopRef) rec.loopRef.toppled = false;
+      if (rec.body) {
+        resetLoosePropBody(rec.body);
+        rec.looseListed = false;
+        rec.x = rec.body.homeX; rec.y = rec.body.homeBaseY; rec.z = rec.body.homeZ;
+        if (rec.loopRef) {
+          rec.loopRef.x = rec.x; rec.loopRef.y = rec.y; rec.loopRef.z = rec.z;
+        }
+        refreshDestructibleCell(rec);
+        const pool = dPools.get(rec.kind);
+        if (pool && pool.imI) {
+          pool.imI.setMatrixAt(rec.slot, pool.mats4[rec.slot]);
+          pool.imI.instanceMatrix.needsUpdate = true;
+        }
+        continue;
+      }
       if (!rec.state) continue;
       rec.state = 0;
       const pool = dPools.get(rec.kind);
@@ -3994,6 +4205,7 @@ ${snowCap ? `
   }
 
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
-    destructibles, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
+    destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
+    getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures } };
 }

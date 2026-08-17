@@ -3397,6 +3397,33 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     },
 
     /**
+     * Small contact beat for persistent loose metal dressing. Unlike
+     * propCrush this emits no wood splinters and does not imply destruction:
+     * a few contact sparks plus curb dust sell the shove while the real mesh
+     * continues rolling and can be hit again.
+     */
+    loosePropHit(pos, dir, heightM = 0.8) {
+      const gy = groundY(pos.x, pos.z);
+      _v3.set(pos.x, gy + Math.min(0.48, heightM * 0.45), pos.z);
+      sparkFan(_v3, _UP, 4, 4.5, 0.45, 0xffd2a0, 0.34, 0.018, 0.026, 0, 0.08);
+      for (let i = 0; i < 4; i++) {
+        const a = rng() * Math.PI * 2;
+        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.28;
+        _puffO.pos[1] = gy + 0.10 + rng() * 0.18;
+        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.28;
+        _puffO.vel[0] = Math.cos(a) * (0.5 + rng()) + dir.x * 0.8;
+        _puffO.vel[1] = 0.35 + rng() * 0.6;
+        _puffO.vel[2] = Math.sin(a) * (0.5 + rng()) + dir.z * 0.8;
+        _puffO.life = 0.55 + rng() * 0.35;
+        _puffO.size0 = 0.16 + rng() * 0.10; _puffO.size1 = 0.7 + rng() * 0.35;
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+        col3(0x8d877c, _puffO.col0); col3(0x716c63, _puffO.col1);
+        _puffO.alpha = 0.28 + rng() * 0.10; _puffO.grav = -0.4; _puffO.birthOffset = 0;
+        particles.emit('dust', _puffO);
+      }
+    },
+
+    /**
      * Crushable-prop impact (telephone pole / fence hit by a tank): dust
      * burst at the base, wood splinters whipped along the travel direction,
      * and a few bark chips. Called by the collision integration (see
