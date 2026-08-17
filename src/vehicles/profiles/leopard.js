@@ -8938,6 +8938,257 @@ function buildKF51(P) {
 }
 
 // ---------------------------------------------------------------------------
+// KF51 Panther — owner-source reconstruction (FULL.fbx / Grip420 woodland).
+//
+// The historical build above was tuned against silhouette masks until it
+// became a tall, segmented Leopard-2 derivative.  The owner model is the
+// opposite: one shallow Leopard-family hull, seven exposed wheels, a single
+// broad low turret wedge, and a sparse demonstrator roof.  Keep this clean
+// source-specific build separate so old mask compensations cannot leak back
+// into the live tank.
+// ---------------------------------------------------------------------------
+function buildKF51OwnerExact(P) {
+  const { box, cylY, cylZ, frustum, polyMultiLoft, buildGun, periscope,
+    liftEye, headlight } = KIT;
+  const slab = orientedSlab;
+
+  // The FBX carries strongly baked side-face shading: lit roof plates retain
+  // the olive/brown palette while vertical armor falls to roughly 44% of
+  // that luma.  Reproduce that source response without flattening the paint
+  // or changing the fleet shader.  Chain the existing CSM/ambient hook so
+  // live shadows keep working, then apply the KF51-only facet grade.
+  {
+    const material = P.mats.hull;
+    const prior = material.onBeforeCompile;
+    const priorKey = material.customProgramCacheKey?.() || 'base';
+    material.onBeforeCompile = (shader, renderer) => {
+      if (prior) prior.call(material, shader, renderer);
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nvarying vec3 vKF51WorldNormal;',
+        )
+        .replace(
+          '#include <defaultnormal_vertex>',
+          '#include <defaultnormal_vertex>\nvKF51WorldNormal = normalize( mat3( modelMatrix ) * objectNormal );',
+        );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        '#include <common>\nvarying vec3 vKF51WorldNormal;',
+      );
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `{
+          float kf51Roof = pow( clamp( abs( vKF51WorldNormal.y ), 0.0, 1.0 ), 0.55 );
+          float kf51Side = abs( vKF51WorldNormal.x ) /
+            max( abs( vKF51WorldNormal.x ) + abs( vKF51WorldNormal.z ), 0.001 );
+          float kf51Long = mix( 0.28, 0.52, step( 0.0, vKF51WorldNormal.z ) );
+          float kf51Wall = mix( kf51Long, 0.19, kf51Side );
+          outgoingLight *= mix( kf51Wall, 1.22, kf51Roof );
+        }
+        #include <opaque_fragment>`,
+      );
+    };
+    material.customProgramCacheKey = () => `${priorKey}-kf51-source-facets-r1`;
+    P.mats.dark.color.setHex(0x11130f);
+    P.mats.dark.envMapIntensity = 0.06;
+  }
+
+  // ---- HULL ---------------------------------------------------------------
+  // Source bounds: z -3.84..+3.84, x +/-1.80, belly y 0.00 and deck
+  // y 1.23 at the nose rising to 1.82 over the power pack.  The narrow tub
+  // is deliberately independent of the full-width sponson so the seven
+  // suspension wheels remain visible instead of disappearing behind a
+  // fabricated skirt wall.
+  const tubPlan = [
+    [-0.88, 3.45], [0.88, 3.45], [0.94, 3.05], [1.08, 2.55],
+    [1.08, -2.70], [0.92, -3.15], [0.84, -3.68], [-0.84, -3.68],
+    [-0.92, -3.15], [-1.08, -2.70], [-1.08, 2.55], [-0.94, 3.05],
+  ];
+  P.add('hull', polyMultiLoft(tubPlan, [
+    { height: 0.42, inset: 0.78 },
+    { height: 0.62, inset: 1.00 },
+    { height: 1.10, inset: 0.98 },
+  ]));
+
+  const deckPlan = [
+    [-1.70, 3.84], [1.70, 3.84], [1.80, 3.08], [1.78, -3.66],
+    [1.60, -3.84], [-1.60, -3.84], [-1.78, -3.66], [-1.80, 3.08],
+  ];
+  const deckY = ([, z]) => {
+    if (z >= 3.08) return 1.23 + (3.84 - z) * 0.18;
+    if (z >= 1.35) return 1.37 + (3.08 - z) * 0.155;
+    if (z >= -0.58) return 1.64;
+    if (z >= -2.25) return 1.64 + (-0.58 - z) * 0.108;
+    return 1.82;
+  };
+  P.add('hull', polyMultiLoft(deckPlan, [
+    { height: 1.13, inset: 0.84 },
+    { height: 1.31, inset: 1.00 },
+    { height: deckY, inset: 0.985 },
+  ]));
+
+  // Thin fender lips are the only continuous outboard side course in the
+  // source.  They sit above the moving return run; these are not skirts.
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.055, 0.075, 7.26), s * 1.755, 1.22, -0.04);
+    P.add('hullDark', box(0.035, 0.065, 6.55), s * 1.716, 1.135, -0.08);
+    // Source front lamp blade and its planted armored shoulder.
+    P.add('hull', slab(
+      [s * 1.66, 1.20, 3.78], [s * 0.92, 1.20, 3.78], [s * 0.90, 1.35, 3.18], [s * 1.67, 1.35, 3.18],
+      [s * 1.66, 1.28, 3.78], [s * 0.92, 1.28, 3.78], [s * 0.90, 1.43, 3.18], [s * 1.67, 1.43, 3.18]));
+    headlight(P, s * 1.26, 1.34, 3.64, 0.28, 0.095, 0.02);
+    liftEye(P, 'hullDetail', s * 0.82, 1.40, 3.17, s * 0.32);
+  }
+
+  // Engine-deck panels, rear service face, twin exhausts and towing eyes.
+  P.add('hullDark', box(2.25, 0.018, 1.28), 0, 1.837, -2.66);
+  for (let k = 0; k < 8; k++) {
+    P.add('hullDetail', box(2.08, 0.014, 0.045), 0, 1.852, -2.18 - k * 0.14);
+  }
+  // Tapered transom: broad at the deck, narrower at the recovery plate.
+  // This removes the former square rear slab while retaining one closed,
+  // supported hull volume.
+  P.add('hull', slab(
+    [-1.32, 1.20, -3.63], [1.32, 1.20, -3.63], [1.32, 1.20, -3.82], [-1.32, 1.20, -3.82],
+    [-1.63, 1.48, -3.63], [1.63, 1.48, -3.63], [1.63, 1.48, -3.82], [-1.63, 1.48, -3.82]));
+  P.add('hullDark', box(2.68, 0.38, 0.025), 0, 1.13, -3.848);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.92, 0.045, 0.045), s * 0.68, 1.27, -3.842, 0, 0, s * 0.48);
+    P.add('hullDark', box(0.52, 0.19, 0.035), s * 0.68, 0.96, -3.846);
+    for (let k = 0; k < 3; k++) {
+      P.add('hullDetail', box(0.46, 0.026, 0.018), s * 0.68, 0.90 + k * 0.06, -3.868);
+    }
+    liftEye(P, 'hullDetail', s * 1.18, 0.77, -3.78, s * 1.4);
+  }
+  // Deep source-black lower bow between the exposed track horns.  It masks
+  // the tub's structural closure without adding another body or track layer.
+  P.add('hullDark', slab(
+    [-0.62, 0.52, 3.78], [0.62, 0.52, 3.78], [0.82, 0.90, 3.78], [-0.82, 0.90, 3.78],
+    [-0.62, 0.52, 3.835], [0.62, 0.52, 3.835], [0.82, 0.90, 3.835], [-0.82, 0.90, 3.835]));
+
+  // One suspension-driven course only.  These values are the source trace:
+  // seven 0.355 m road wheels, raised front idler/rear sprocket and a fine
+  // 0.587 m shoe course.  No static wheel or olive tread duplicate exists.
+  leoGear(P, {
+    xc: 1.262, trackW: 0.587, wheelR: 0.405, wheelY: 0.45,
+    span: [2.45, -2.28],
+    sprocket: { z: -3.18, y: 0.66, r: 0.36 },
+    idler: { z: 3.28, y: 0.61, r: 0.34 },
+    topY: 1.08, botY: 0.058, dishR: 0.78,
+    rollers: [
+      { z: 2.00, y: 0.94, r: 0.085 }, { z: 0.72, y: 0.94, r: 0.085 },
+      { z: -0.58, y: 0.94, r: 0.085 }, { z: -1.82, y: 0.94, r: 0.085 },
+    ],
+    linkPitchM: 0.105, padHex: 0x2c2d25, chainHex: 0x24251f,
+    tireHex: 0x1b1c19, wheelHex: 0x292920, gearFloor: true,
+  });
+
+  // ---- TURRET -------------------------------------------------------------
+  // One connected faceted wedge.  The source roof is only ~0.68 m above the
+  // shoulder belt; the former profile's stacked crown is intentionally gone.
+  P.turretG.position.set(0, 1.72, 0.02);
+  P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
+  const turretPlan = [
+    [-0.36, 1.95], [0.36, 1.95], [1.48, 1.28], [1.55, 0.18],
+    [1.40, -2.43], [0.96, -2.96], [-0.96, -2.96], [-1.40, -2.43],
+    [-1.55, 0.18], [-1.48, 1.28],
+  ];
+  P.add('turret', polyMultiLoft(turretPlan, [
+    { height: -0.01, inset: 0.93 },
+    { height: 0.24, inset: 1.00 },
+    {
+      height: [0.27, 0.27, 0.52, 0.61, 0.58, 0.53, 0.53, 0.58, 0.61, 0.52],
+      inset: [0.78, 0.78, 0.82, 0.84, 0.88, 0.92, 0.92, 0.88, 0.84, 0.82],
+      centerHeight: 0.58,
+    },
+  ]));
+
+  // Buried front cheek undercuts and the narrow central mantlet channel.
+  for (const s of [-1, 1]) {
+    P.add('turretDark', slab(
+      [s * 0.18, 0.09, 1.55], [s * 0.48, 0.10, 1.48], [s * 1.31, 0.23, 0.92], [s * 1.07, 0.22, 0.84],
+      [s * 0.18, 0.23, 1.55], [s * 0.48, 0.25, 1.48], [s * 1.31, 0.34, 0.92], [s * 1.07, 0.34, 0.84]));
+    P.add('turretDetail', box(0.18, 0.07, 0.62), s * 1.22, 0.50, 0.23, 0, s * 0.16, 0);
+    P.add('turretDark', box(0.025, 0.16, 0.48), s * 1.34, 0.35, 0.36);
+    // Four compact source smoke tubes on broad, physically seated pads.
+    P.add('turret', box(0.24, 0.10, 0.54), s * 1.13, 0.49, -0.72, 0, s * 0.16, 0);
+    for (let k = 0; k < 4; k++) {
+      P.add('turretDark', cylZ(0.035, 0.24, 10), s * (1.05 + k * 0.055), 0.57, -0.64 - k * 0.09, -0.28, s * 0.20, 0);
+    }
+    P.decal('turret', 'crossgrey', null, 0.31,
+      [s * 1.34, 0.36, 0.04], s > 0 ? Math.PI / 2 : -Math.PI / 2, 0, s * 0.08);
+  }
+
+  // Large recessed multispectral sight on the owner's left-front cheek.
+  // Its two apertures are backed by the dark housing and the whole box is
+  // buried into the wedge instead of floating from the roof.
+  P.add('turretDark', box(0.44, 0.34, 0.18), -0.74, 0.34, 1.27, -0.20, 0, 0);
+  for (const dx of [-0.09, 0.09]) {
+    P.add('turretGlass', box(0.10, 0.10, 0.018), -0.74 + dx, 0.39, 1.366, -0.20, 0, 0);
+  }
+
+  // Rh-130: source axis ~1.94 m and muzzle z 6.88 m.  The compact mantlet
+  // is nested into the wedge; no large rectangular box obscures the cheeks.
+  P.gunG.position.set(0, 0.22, 1.58);
+  P.addGunExtra(slab(
+    [-0.34, -0.15, 0.02], [0.34, -0.15, 0.02], [0.29, -0.13, 0.39], [-0.29, -0.13, 0.39],
+    [-0.29, 0.15, 0.02], [0.29, 0.15, 0.02], [0.24, 0.13, 0.39], [-0.24, 0.13, 0.39]));
+  P.addGunExtra(cylZ(0.145, 0.30, P.q ? 20 : 12, 0.18), 0, 0, 0.28);
+  buildGun(P, { len: 5.30, r: 0.064, sleeve: true, collar: true, baseR: 0.12 });
+  muzzleBore(P, { len: 5.30, r: 0.064 });
+
+  // Sparse source roof: two flush hatches, one tall SEOSS optic and the
+  // black rear-left remote weapon station.  Every component overlaps a
+  // broad roof seat and therefore rotates with the turret as one assembly.
+  P.add('turret', cylY(0.31, 0.34, 0.075, P.q ? 22 : 14), -0.48, 0.61, -0.12);
+  P.add('turretDark', cylY(0.25, 0.27, 0.035, P.q ? 22 : 14), -0.48, 0.665, -0.12);
+  P.add('turret', box(0.58, 0.055, 0.46), 0.47, 0.61, -0.22, 0, -0.10, 0);
+  periscope(P, 'turret', 0.18, 0.645, 0.34, 0.17, 0.09, 0.12, 0);
+  periscope(P, 'turret', -0.08, 0.645, 0.42, 0.15, 0.08, 0.10, 0);
+
+  // SEOSS panoramic head: broad planted pedestal, tapered armor tower and
+  // forward dark glass.  This is the source's characteristic tall green box.
+  P.add('turret', box(0.46, 0.12, 0.48), -0.56, 0.64, -1.06);
+  P.add('turret', frustum(0.22, 0.21, -0.20, 0.18, 0.17, -0.17, 0.66, 1.02), -0.56, 0, -1.06);
+  P.add('turretGlass', box(0.25, 0.15, 0.018), -0.56, 0.89, -0.875);
+  P.add('turretDark', box(0.34, 0.045, 0.34), -0.56, 1.05, -1.06);
+
+  // Rear-left RWS with source-like split shield and forward-facing MG.
+  P.add('turretDark', cylY(0.31, 0.34, 0.10, P.q ? 22 : 14), 0.28, 0.59, -2.42);
+  P.add('turretDark', box(0.13, 0.48, 0.13), 0.28, 0.84, -2.36);
+  // Open split shield: top bridge and two wings, with daylight through the
+  // center exactly as the owner front/rear renders show.
+  P.add('turretDark', box(0.90, 0.075, 0.22), 0.28, 1.25, -2.12, -0.10, 0, 0);
+  P.add('turretDark', box(0.18, 0.40, 0.30), -0.08, 1.06, -2.12, -0.10, 0, 0);
+  P.add('turretDark', box(0.18, 0.40, 0.30), 0.64, 1.06, -2.12, -0.10, 0, 0);
+  // Canted shield braces close the load path into the pedestal while
+  // preserving the broad daylight aperture between the two armor wings.
+  P.add('turretDark', box(0.055, 0.48, 0.13), 0.01, 1.03, -2.17, 0, 0, -0.48);
+  P.add('turretDark', box(0.055, 0.48, 0.13), 0.55, 1.03, -2.17, 0, 0, 0.48);
+  P.add('turretDark', box(0.18, 0.18, 0.40), 0.28, 0.94, -2.02);
+  P.add('turretDark', cylZ(0.025, 1.34, 10), 0.28, 1.00, -1.17);
+  P.add('turretDark', cylZ(0.045, 0.12, 10), 0.28, 1.00, -0.46);
+  P.add('turretDetail', box(0.16, 0.16, 0.18), 0.28, 0.82, -2.00);
+
+  // Low roof seams and lifting hardware visible in the owner top/rear views.
+  P.add('turretDetail', box(1.52, 0.025, 0.035), 0, 0.615, -1.72);
+  P.add('turretDark', box(1.82, 0.22, 0.025), 0, 0.36, -2.975);
+  for (const x of [-0.64, 0.64]) {
+    P.add('turretDetail', box(0.035, 0.24, 0.018), x, 0.36, -2.992);
+  }
+  for (const y of [0.25, 0.47]) {
+    P.add('turretDetail', box(1.88, 0.028, 0.018), 0, y, -2.992);
+  }
+  for (const s of [-1, 1]) {
+    liftEye(P, 'turretDetail', s * 0.94, 0.59, -1.74, s * 2.2);
+    P.add('turretDetail', box(0.035, 0.12, 0.035), s * 1.03, 0.62, -2.05);
+  }
+
+  P.topY = 1.29;
+}
+
+// ---------------------------------------------------------------------------
 // Leopard 1A5 — BASE-21 PHOTO-CLASS SCAFFOLD (2026-08-07). First real build
 // of the id (overrides the ancient modern2 buildLeo1A5 via PROFILED_BUILDERS,
 // the same binding leo2a4 uses). NO USABLE ORACLE — the leo1a4 photogrammetry
@@ -9219,7 +9470,10 @@ export const LEOPARD_PROFILES = {
   leo2a7v: { build: buildLeo2A7V },
   leopard2_proto: { build: buildLeo2Proto },
   leo2_revolution: { build: buildLeo2Revolution },
+  // Preserve the established KF51 exactly; the owner-source rebuild ships as
+  // the additive KF51B variant requested by the project owner.
   kf51: { build: buildKF51 },
+  kf51b: { build: buildKF51OwnerExact },
   // BASE-21 scaffold (2026-08-07): first real 1A5 build — photo-class, no
   // usable oracle (FALSE-0 law; the leo1a4 scan is re-rig-class, unregistered).
   leo1a5: { build: buildLeo1A5Profile },

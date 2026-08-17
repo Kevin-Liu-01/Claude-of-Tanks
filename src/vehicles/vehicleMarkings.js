@@ -131,6 +131,7 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   m1a1: anchor('turret', 'left', 0.45, 0.44, 0.27, 1),
   m1a2_tusk: anchor('turret', 'right', 0.42, 0.43, 0.27, -1),
   kf51: anchor('turret', 'left', 0.36, 0.43, 0.25, 1),
+  kf51b: anchor('turret', 'left', 0.34, 0.42, 0.24, 1),
   m1a2_legacy: anchor('turret', 'right', 0.44, 0.43, 0.27, -1),
   abramsx: anchor('turret', 'left', 0.38, 0.42, 0.26, 1),
   fv510: anchor('hull', 'right', 0.44, 0.66, 0.24, -1),
@@ -141,8 +142,13 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
   merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),
   merkava2d: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
-  merkava3c: anchor('turret', 'right', 0.36, 0.44, 0.25, -1),
-  merkava3d: anchor('turret', 'left', 0.35, 0.45, 0.25, 1),
+  // The Mk 3C/D oracle turrets have deep undercuts and rear chain racks that
+  // leave no broad ray-stable flank at the generic mid-height seat.  Their
+  // IDF markings instead use separate, physically ray-seated skirt plates:
+  // right-forward on 3C and left-rear on 3D.
+  merkava3c: anchor('hull', 'right', 0.57, 0.58, 0.25, -1),
+  merkava3d: anchor('hull', 'left', 0.40, 0.58, 0.25, 1),
+  merkava4b: anchor('turret', 'right', 0.38, 0.44, 0.24, -1),
   type59: anchor('turret', 'right', 0.45, 0.48, 0.23, -1),
   amx30: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   amx30b2: anchor('turret', 'right', 0.41, 0.48, 0.24, -1),

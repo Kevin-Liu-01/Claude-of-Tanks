@@ -929,8 +929,17 @@ function merkavaChassis(P, c) {
     sprocket: { z: c.sprocket.z, y: c.sprocket.y, r: c.sprocket.r },
     idler: { z: c.idler.z, y: c.idler.y, r: c.idler.r },
     rollers: c.rollers.map((z) => ({ z, y: c.trackTop - 0.10, r: 0.075 })),
-    trackW: c.trackW, topY: c.trackTop - 0.02, paintedEnds: true,
+    trackW: c.trackW, trackTh: c.trackTh ?? 0.078,
+    topY: c.trackTop - 0.02, paintedEnds: true,
     coveredTop: c.skirt ? true : c.trackTop - 0.04, arms: !c.skirt,
+    // Family track upgrade: the same terrain-conforming loop now carries a
+    // denser, narrower-pitch Merkava shoe with its connector/horn web merged
+    // into that one animated instance layer.  This improves tread read and
+    // end-wrap continuity without authoring a static proxy or second course.
+    linkPitchM: c.linkPitchM ?? 0.13,
+    shoeRadialScale: c.shoeRadialScale ?? 0.82,
+    shoeWidthScale: c.shoeWidthScale ?? 0.96,
+    integratedLinks: true,
     dishR: c.dishR ?? 0.78,
     chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor, tireHex: c.tireHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
     armBucket: c.runningGearBuckets ? 'hullRunningGearDetail' : undefined,
@@ -1371,7 +1380,9 @@ function merkavaChassis(P, c) {
       // r12 CONTAINMENT opt-in sk.idlerFlapDz (default 0.12): the 3D flap at
       // the default offset stood coincident with the idler-wrap rear face
       // (§B4 120 exact voxels) — it steps rearward, clear of the band.
-      P.add(sk.flapMat ?? 'hullRubber', box(0.30, 0.30, 0.035), s * xc, sk.bot + 0.02, c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12), 0.12, 0, 0);
+      P.add(sk.flapMat ?? 'hullRubber', box(sk.idlerFlapW ?? 0.30, sk.idlerFlapH ?? 0.30, 0.035),
+        s * (sk.idlerFlapX ?? xc), sk.idlerFlapY ?? (sk.bot + 0.02),
+        c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12), 0.12, 0, 0);
       // rear mud flaps behind the idler: the measured tail bottoms keep
       // rising 0.43->0.61 between the idler wrap and the rack wall
       for (const rf2 of c.rearFlaps ?? []) { // { z, bot, top?, w?, x?, mat?, wood? }
@@ -2415,6 +2426,69 @@ function merkavaChassis(P, c) {
       P.add('hullDetail', box(0.07, 0.05, 0.05), hp.x, hp.base + 0.025, hp.z);
     }
   }
+
+  // Family hull-upgrade pass.  These are protective modules and service
+  // fittings seated on the already-authored glacis/skirt surfaces; they do
+  // not replace a hull plate, hide a road wheel, or create another track
+  // lane.  Density increases by mark so the vehicles stay related without
+  // collapsing into one generic modernized silhouette.
+  const hullUpgrade = {
+    merkava1b: { rows: 2, cols: 4, side: 4, depth: 0.24, rear: 2 },
+    merkava2b: { rows: 2, cols: 5, side: 5, depth: 0.25, rear: 3 },
+    merkava2d: { rows: 3, cols: 5, side: 6, depth: 0.25, rear: 3 },
+    merkava3c: { rows: 3, cols: 5, side: 6, depth: 0.26, rear: 4 },
+    merkava3d: { rows: 3, cols: 6, side: 7, depth: 0.26, rear: 4 },
+    merkava4b: { rows: 3, cols: 6, side: 7, depth: 0.27, rear: 5 },
+  }[P.spec.id];
+  if (hullUpgrade) {
+    const spanZ = Math.max(0.8, g.z1 - g.z0);
+    const firstZ = g.z0 + spanZ * 0.42;
+    const lastZ = g.z0 + spanZ * 0.82;
+    for (let row = 0; row < hullUpgrade.rows; row++) {
+      const z = firstZ + (lastZ - firstZ) * (row / Math.max(1, hullUpgrade.rows - 1));
+      const usable = Math.min(w * 0.64, 2.16 - row * 0.10);
+      const tileW = usable / hullUpgrade.cols - 0.025;
+      for (let col = 0; col < hullUpgrade.cols; col++) {
+        const x = -usable / 2 + (col + 0.5) * usable / hullUpgrade.cols;
+        const y = gTop(z) + 0.038;
+        P.add('hull', box(tileW, 0.072, hullUpgrade.depth), x, y, z,
+          rxAt(z), 0, ((col + row) % 2 ? 0.012 : -0.012));
+        P.add('hullDark', box(tileW * 0.82, 0.010, 0.018), x,
+          y + 0.037, z - hullUpgrade.depth * 0.30, rxAt(z), 0, 0);
+      }
+    }
+
+    // Skirt/sponson modules sit just inboard of the established width guard.
+    const sideFace = c.skirt?.x ?? c.sideCurtain?.x ?? c.fenderLip?.x ?? (c.bodyHW ?? hw * 0.94);
+    const sideTop = c.skirt?.top ?? c.sideCurtain?.top ?? Math.min(deckY - 0.05, c.trackTop + 0.45);
+    const sideBot = c.skirt?.bot ?? c.sideCurtain?.bot ?? Math.max(0.58, c.trackTop - 0.25);
+    const sideH = Math.max(0.20, Math.min(0.34, sideTop - sideBot - 0.10));
+    const sideZ0 = Math.min(g.z0 + 0.15, c.sprocket.z - 0.10);
+    const sideZ1 = Math.max(c.idler.z + 0.35, sideZ0 - hullUpgrade.side * 0.46);
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < hullUpgrade.side; i++) {
+        const z = sideZ0 + (sideZ1 - sideZ0) * (i / Math.max(1, hullUpgrade.side - 1));
+        const d = Math.max(0.28, Math.abs(sideZ0 - sideZ1) / Math.max(1, hullUpgrade.side - 1) - 0.035);
+        P.add('hull', box(0.055, sideH, d), s * (sideFace - 0.029),
+          sideBot + sideH * 0.58, z, 0, 0, s * (i % 2 ? 0.018 : -0.018));
+        P.add('hullDark', box(0.008, sideH * 0.78, 0.018), s * (sideFace - 0.001),
+          sideBot + sideH * 0.58, z - d * 0.30);
+      }
+    }
+
+    // Rear-deck service boxes and tied-down spare fittings occupy the broad
+    // engine shoulders, with visible shoes and straps returning into armor.
+    for (let i = 0; i < hullUpgrade.rear; i++) {
+      const s = i % 2 ? 1 : -1;
+      const z = Math.max(c.body.at(-2).z + 0.25, c.rearDeckZ - 0.24 - Math.floor(i / 2) * 0.34);
+      const x = s * (0.52 + (i % 3) * 0.22);
+      const y = gTop(z);
+      P.add('hull', box(0.34, 0.045, 0.30), x, y + 0.008, z, rxAt(z), s * 0.05, 0);
+      P.add(i % 3 === 2 ? 'hullCloth' : 'hullDetail', box(0.30, 0.13, 0.26),
+        x, y + 0.078, z, rxAt(z), s * 0.05, 0);
+      P.add('hullDark', box(0.024, 0.142, 0.28), x, y + 0.078, z, rxAt(z), s * 0.05, 0);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2705,7 +2779,7 @@ function chainCurtain(P, halfW, z, topY, drop, backZ, fine, soft, extraSkips) {
 // Open pipe-frame stowage basket + packed cloth kit + chain curtain.
 // top/topRear allow the measured falling rim line at the tail.
 function merkavaBasket(P, b) {
-  const { box } = KIT;
+  const { box, cylZ } = KIT;
   const bx = b.xoff ?? 0; // measured baskets sit slightly left of center
   const mid = (b.z0 + b.z1) / 2, len = b.z0 - b.z1;
   const topR = b.topRear ?? b.top;
@@ -2880,8 +2954,31 @@ function merkavaBasket(P, b) {
   // break the rim gap unevenly, real air between them and the rim. The
   // rim rails/floor/posts keep every certified extreme.
   const packLen = b.shelf ? 0.52 : 0.92;
-  P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 1.86, (b.top - b.bot) * packH, len * packLen),
-    bx - b.hw * 0.04, b.bot + (b.top - b.bot) * (packH * 0.5 + 0.02), b.shelf ? b.z0 - 0.02 - len * packLen / 2 : mid - len * 0.02);
+  if (!b.openPack) {
+    P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 1.86, (b.top - b.bot) * packH, len * packLen),
+      bx - b.hw * 0.04, b.bot + (b.top - b.bot) * (packH * 0.5 + 0.02), b.shelf ? b.z0 - 0.02 - len * packLen / 2 : mid - len * 0.02);
+  } else {
+    // Source-reference baskets are visibly open pipe frames carrying
+    // discrete rolled tarps, bags, and a small center case.  A monolithic
+    // packed slab hid every rail and produced a false solid bustle wall in
+    // rear-quarter views.  These loads sit on the existing basket floor,
+    // stay below the rim, and expose real air around each item.
+    const bh = b.top - b.bot;
+    const rollY = b.bot + Math.min(0.24, bh * 0.43);
+    const rollZ = b.z1 + len * 0.34;
+    for (const [f, r, d, yaw] of [[-0.48, 0.19, 0.58, -0.05], [0.48, 0.21, 0.62, 0.06]]) {
+      const x = bx + b.hw * f;
+      P.add(b.pale ? 'turret' : 'turretCloth', cylZ(r, d, 18), x, rollY, rollZ, 0, yaw, 0);
+      P.add('turretDark', box(r * 2.06, 0.025, 0.035), x, rollY + r * 0.45, rollZ - d * 0.20, 0, yaw, 0);
+      P.add('turretDark', box(r * 2.06, 0.025, 0.035), x, rollY + r * 0.45, rollZ + d * 0.20, 0, yaw, 0);
+    }
+    P.add('turretCloth', box(b.hw * 0.48, bh * 0.40, len * 0.30), bx, b.bot + bh * 0.22, b.z0 - len * 0.24, 0.04, 0.08, 0);
+    P.add('turretDark', box(0.024, bh * 0.42, len * 0.26), bx, b.bot + bh * 0.22, b.z0 - len * 0.24, 0.04, 0.08, 0);
+    for (const s of [-1, 1]) {
+      merkavaTarpLump(P, bx + s * b.hw * 0.30, b.bot + bh * 0.58, b.z0 - len * 0.38,
+        b.hw * 0.44, len * 0.32, b.pale ? 'turret' : 'turretCloth', s * 0.09);
+    }
+  }
   if (b.soft && b.voids && !b.shelf) {
     // r11 1B THROUGH-READ (critic-r10 residual b, MEASURED against the
     // official pair this round: the ref's hero-rr through-zone is NOT a
@@ -2964,8 +3061,10 @@ function merkavaBasket(P, b) {
       }
     }
   }
-  P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
-    b.hw * 0.42, b.bot + (b.top - b.bot) * 0.32, b.shelf ? b.z0 - 0.02 - len * 0.28 : mid + len * 0.08);
+  if (!b.openPack) {
+    P.add(b.pale ? 'turret' : 'turretCloth', box(b.hw * 0.90, (b.top - b.bot) * 0.55, len * 0.52),
+      b.hw * 0.42, b.bot + (b.top - b.bot) * 0.32, b.shelf ? b.z0 - 0.02 - len * 0.28 : mid + len * 0.08);
+  }
   if (b.shelf) {
     const bH2 = b.top - b.bot;
     const shZ = b.z1 + 0.02 + len * 0.17; // shelf band center (rear third)
@@ -3359,7 +3458,11 @@ function merkavaSmallTurret(P, t) {
   const csMid = (cs.z0 + cs.z1) / 2, csLen = cs.z0 - cs.z1;
   const csBase = roofAt(csMid) - 0.12;
   const csHW = cs.hw ?? 0.52;
-  if (cs.dome) {
+  if (cs.sourceFinishOnly) {
+    // The final source-fidelity pass owns both crew stations and their
+    // weapons. Keeping the legacy station here as well produced two
+    // overlapping hatch systems on the Mk.2 family.
+  } else if (cs.dome) {
     // 1B visual r2, critic item 1 — THE ROUND DOME. The flat-topped prism
     // read Mk.3; the real Mk.1 commander station is an elongated cast dome.
     // Anatomy: oval drum plinth -> barrel-vault dome (crown ridge FLAT along
@@ -3537,6 +3640,42 @@ function merkavaSmallTurret(P, t) {
     P.add('turretDark', box(0.016, mg.rodY - roofAt(mg.rodZ0 - 0.005) + 0.02, 0.018),
       mg.x + 0.012, (mg.rodY + roofAt(mg.rodZ0 - 0.005)) / 2 - 0.005, mg.rodZ0 - 0.005);     // FRONT support post at the sky-window edge (inside the ref's own 2.557 stair col)
     P.add('turretDark', box(0.09, 0.055, 0.13), mg.x - 0.075, mg.rodY - 0.010, mg.recZ0 - 0.02); // ammo can
+  } else if (cs.roundTwin) {
+    // Mk.2 family: two shallow circular crew stations planted directly
+    // into the rising cast roof. The old rectangular commander prism read
+    // as a shipping crate and erased the reference's low organic crown.
+    const rt = cs.roundTwin;
+    const addRoundStation = (st, commander = false) => {
+      const deck = roofAt(st.z);
+      const baseY = deck - 0.035;
+      const rimY = Math.min(cs.top - (commander ? 0.055 : 0.085), deck + (commander ? 0.135 : 0.105));
+      P.add('turret', cylY(st.r * 1.10, st.r * 1.15, rimY - baseY, 24), st.x, (rimY + baseY) / 2, st.z);
+      P.add('turretDark', KIT.torus(st.r, 0.020, 24), st.x, rimY - 0.004, st.z);
+      P.add('turret', cylY(st.r * 0.72, st.r * 0.74, 0.026, 24), st.x, rimY + 0.005, st.z);
+      P.add('turretDark', KIT.torus(st.r * 0.73, 0.009, 24), st.x, rimY + 0.018, st.z);
+      P.add('turretDetail', box(0.065, 0.040, 0.095), st.x - st.r * 0.88, rimY - 0.010, st.z);
+      const scopes = commander ? 5 : 3;
+      for (let k = 0; k < scopes; k++) {
+        const a = -1.05 + k * (2.10 / Math.max(1, scopes - 1));
+        const px = st.x + Math.sin(a) * st.r * 0.92;
+        const pz = st.z + Math.cos(a) * st.r * 0.92;
+        P.add('turretDetail', box(0.065, 0.055, 0.040), px, rimY + 0.020, pz, 0, a, 0);
+        P.add(glassMat, box(0.046, 0.022, 0.010), px, rimY + 0.036, pz + 0.022, 0, a, 0);
+      }
+      return rimY;
+    };
+    const cmdY = addRoundStation(rt.commander, true);
+    addRoundStation(rt.loader, false);
+    // Receiver, barrel, ammunition box, and posts all terminate on the
+    // commander ring; no roof weapon is left over empty air.
+    merkavaMG(P, rt.commander.x + 0.18, cmdY - 0.15, rt.commander.z + 0.18, rt.mgScale ?? 0.78);
+    P.add('turretDetail', box(0.18, 0.16, 0.20), rt.commander.x - 0.22, cmdY + 0.01, rt.commander.z - 0.02);
+    P.add('turretDark', box(0.14, 0.018, 0.16), rt.commander.x - 0.22, cmdY + 0.098, rt.commander.z - 0.02);
+    if (rt.sight) {
+      const sy = roofAt(rt.sight.z);
+      P.add('turret', box(rt.sight.w, rt.sight.top - sy, rt.sight.d), rt.sight.x, (rt.sight.top + sy) / 2, rt.sight.z);
+      P.add(glassMat, box(rt.sight.w * 0.62, rt.sight.h ?? 0.08, 0.018), rt.sight.x, rt.sight.top - 0.07, rt.sight.z + rt.sight.d / 2 + 0.005);
+    }
   } else {
     P.add('turret', box(csHW * 2, cs.top - 0.03 - csBase, csLen * 0.94), cs.x, (cs.top - 0.03 + csBase) / 2, csMid);
     P.add('turret', box(csHW * 1.8, 0.03, csLen * 0.80), cs.x, cs.top - 0.015, csMid);
@@ -3645,7 +3784,7 @@ function merkavaSmallTurret(P, t) {
       P.add('turretDark', box(0.016, stemH, 0.018), lrx, lr.mgBot - stemH / 2 + 0.012, lrMidZ); // pintle stem under the receiver
     }
     P.add('turretDark', box(0.075, 0.045, 0.10), lrx - 0.09, lr.rodY - 0.020, (lr.mgZ0 + lr.mgZ1) / 2); // ammo tray
-  } else {
+  } else if (!cs.roundTwin && !cs.sourceFinishOnly) {
     P.add('turret', cylY(0.19, 0.19, 0.045, 12), -cs.x * 0.9, roofAt(csMid) + 0.01, csMid + 0.02);
     // mgLoaderDy (optional, 1B batch-18): the warped 1B ref roof reads 2.46
     // where the default loader-MG crown rode 2.63 — drop it under the local
@@ -3671,16 +3810,37 @@ function merkavaSmallTurret(P, t) {
   // "olive canvas reads as a second paint" recipe — the strap/crumple tell
   // is invisible olive-on-olive); silhouette-identical, non-pale marks only.
   const stMat = t.stowTell ? 'turret' : clothMat;
-  P.add(stMat, box(stHW * 2, t.stow.top - t.stow.bot, stLen * 0.9), stX, (t.stow.top + t.stow.bot) / 2, stMid);
-  P.add(stMat, box(stHW * 1.1, (t.stow.top - t.stow.bot) * 0.6, stLen * 0.55), stX + hwM * 0.4, t.stow.bot + (t.stow.top - t.stow.bot) * 0.3, stMid - 0.05);
-  for (const f of [-0.30, 0.24]) {
-    P.add('turretDark', box(stHW * 2 + 0.02, t.stow.top - t.stow.bot + 0.02, 0.018), stX, (t.stow.top + t.stow.bot) / 2, stMid + f * stLen);
+  if (t.stowLoose) {
+    // Source Mk.2 photographs/GLBs show separate soft packs and tool rolls,
+    // not one monolithic rectangular bustle crate.  Every pack is sunk into
+    // the roof/basket shoulder and gets its own cinch, preserving load paths.
+    const packs = [
+      [-0.56, 0.31, 0.43, 0.92, 0.12],
+      [-0.10, 0.35, 0.36, 0.84, -0.08],
+      [0.34, 0.27, 0.34, 0.78, 0.09],
+      [0.66, 0.22, 0.27, 0.56, -0.14],
+    ];
+    for (const [fx, fw, fh, fd, yaw] of packs) {
+      const px = stX + stHW * fx;
+      const pw = stHW * fw;
+      const pd = stLen * fd;
+      const pTop = t.stow.bot + (t.stow.top - t.stow.bot) * fh;
+      P.add(stMat, box(pw, pTop - t.stow.bot, pd), px, (pTop + t.stow.bot) / 2, stMid, 0, yaw, 0);
+      merkavaTarpLump(P, px, pTop - 0.008, stMid, pw * 0.96, pd * 0.58, stMat, yaw);
+      P.add('turretDark', box(0.016, pTop - t.stow.bot + 0.014, pd * 0.92), px, (pTop + t.stow.bot) / 2, stMid, 0, yaw, 0);
+    }
+  } else {
+    P.add(stMat, box(stHW * 2, t.stow.top - t.stow.bot, stLen * 0.9), stX, (t.stow.top + t.stow.bot) / 2, stMid);
+    P.add(stMat, box(stHW * 1.1, (t.stow.top - t.stow.bot) * 0.6, stLen * 0.55), stX + hwM * 0.4, t.stow.bot + (t.stow.top - t.stow.bot) * 0.3, stMid - 0.05);
+    for (const f of [-0.30, 0.24]) {
+      P.add('turretDark', box(stHW * 2 + 0.02, t.stow.top - t.stow.bot + 0.02, 0.018), stX, (t.stow.top + t.stow.bot) / 2, stMid + f * stLen);
+    }
   }
   if (t.pale) { // crumpled tarp crowns over the stow shelf (form, not tone —
     // crowns tucked UNDER the certified stow top so silhouettes never move)
     merkavaTarpLump(P, stX - stHW * 0.35, t.stow.top - 0.012, stMid + 0.02, stHW * 0.75, stLen * 0.42, 'turret', 0.10);
     merkavaTarpLump(P, stX + stHW * 0.45, t.stow.top - 0.030, stMid - 0.04, stHW * 0.62, stLen * 0.36, 'turret', -0.12);
-  } else if (t.stowTell) {
+  } else if (t.stowTell && !t.stowLoose) {
     // §B3 stow identity (2B/2D, owner directive 2026-08-05): the bare cloth
     // block read as a shipping crate behind the turret — same envelope, now
     // strapped soft goods: crumpled tarp crowns tucked UNDER the certified
@@ -5233,7 +5393,18 @@ function buildMerkavaMark(P, p) {
     basketXoff: p.basketXoff,
     chainDrop: p.chainDrop, chainGap: p.chainGap,
     station: p.station ? { x: p.station.x, z0: L(p.station.z0), z1: L(p.station.z1), top: V(p.station.top), hw: p.station.hw,
+      sourceFinishOnly: p.station.sourceFinishOnly,
       drumR: p.station.drumR, cupR: p.station.cupR,
+      roundTwin: p.station.roundTwin ? {
+        commander: { ...p.station.roundTwin.commander, z: L(p.station.roundTwin.commander.z) },
+        loader: { ...p.station.roundTwin.loader, z: L(p.station.roundTwin.loader.z) },
+        sight: p.station.roundTwin.sight ? {
+          ...p.station.roundTwin.sight,
+          z: L(p.station.roundTwin.sight.z),
+          top: V(p.station.roundTwin.sight.top),
+        } : undefined,
+        mgScale: p.station.roundTwin.mgScale,
+      } : undefined,
       peak: p.station.peak ? { z: L(p.station.peak.z), top: V(p.station.peak.top) } : undefined,
       dome: p.station.dome ? (({ rx, ry, z0, z1, capF, capR, rimY, ring, scope, kit, mg, loader, pad }) => ({
         rx, ry, z0: L(z0), z1: L(z1), capF, capR, rimY: V(rimY),
@@ -5259,7 +5430,7 @@ function buildMerkavaMark(P, p) {
     beakBot: p.beakBotY !== undefined ? V(p.beakBotY) : undefined,
     mgLoaderDy: p.mgLoaderDy,
     stow: p.stow ? { z0: L(p.stow.z0), z1: L(p.stow.z1), top: V(p.stow.top), bot: V(p.stow.bot), hw: p.stow.hw, xoff: p.stow.xoff } : undefined,
-    stowTell: p.stowTell, // §B3 strapped-soft-goods identity (2026-08-05)
+    stowTell: p.stowTell, stowLoose: p.stowLoose, // §B3 strapped-soft-goods identity (2026-08-05)
     stow2: p.stow2 ? { z0: L(p.stow2.z0), z1: L(p.stow2.z1), top: V(p.stow2.top), bot: V(p.stow2.bot), hw: p.stow2.hw, xoff: p.stow2.xoff } : undefined,
     turretRack: p.turretRack ? { z0: L(p.turretRack.z0), z1: L(p.turretRack.z1), top: V(p.turretRack.top), bot: V(p.turretRack.bot), hw: p.turretRack.hw, x0: p.turretRack.x0 } : undefined,
     tailVane: p.tailVane ? { z0: L(p.tailVane.z0), z1: L(p.tailVane.z1),
@@ -5351,17 +5522,21 @@ function buildMerkavaMark(P, p) {
       top: V(p.loaderRing.top), base: V(p.loaderRing.base), solid: p.loaderRing.solid,
       collar: p.loaderRing.collar ? { r: p.loaderRing.collar.r, y: V(p.loaderRing.collar.y) } : undefined } : undefined,
   };
-  if (p.turretStyle === 'small') merkavaSmallTurret(P, t);
-  else merkavaModularTurret(P, t);
+  const sourceOracleTurret = p.sourceOracleTurret && merkavaSourceOracleTurret(P, p, t);
+  if (!sourceOracleTurret) {
+    if (p.turretStyle === 'small') merkavaSmallTurret(P, t);
+    else merkavaModularTurret(P, t);
+  }
   // r2: the old `ringFloor` interior column (bot y~0.6) is DELETED — it
   // mimicked the pre-repair oracles' fused crew-tunnel interiors; the
   // repaired references carve at the ring plane (repair 86d1071), so the
   // casting apron above carries the measured turret-mask bottoms instead.
-  if (p.turretKit) p.turretKit(P, p, t);
+  if (!sourceOracleTurret && p.turretKit) p.turretKit(P, p, t);
+  merkavaSourceFinish(P, p, t);
 
   // Mk.3D rear chain-mat tip past the hull tail (raw-bounds gun metric keys
   // off this measured sliver; mass/height must match the oracle band).
-  if (p.rearTip) {
+  if (p.rearTip && !p.sourceOracleTurret) {
     const rt = p.rearTip; // { z, hw, top, bot }
     const fromZ = t.basket ? t.basket.z1 : t.shellRearZ;
     const railY = V(rt.top);
@@ -6059,7 +6234,25 @@ function buildMerkavaMark(P, p) {
     P.decal('turret', 'number', P.spec.visual.number || '', 0.25,
       [p.hwMax * 0.9, t.roof[0][1] * 0.42, t.shellRearZ + 0.6], Math.PI / 2);
   }
-  P.topY = t.roof.at(-1)[1] + 0.45;
+  if (p.turretScale) {
+    const sx = p.turretScale.x ?? 1;
+    const sy = p.turretScale.y ?? 1;
+    const sz = p.turretScale.z ?? 1;
+    const gunWorld = {
+      x: P.turretG.position.x + P.gunG.position.x * P.turretG.scale.x,
+      y: P.turretG.position.y + P.gunG.position.y * P.turretG.scale.y,
+      z: P.turretG.position.z + P.gunG.position.z * P.turretG.scale.z,
+    };
+    const gunScale = P.gunG.scale.clone();
+    P.turretG.scale.set(sx, sy, sz);
+    P.gunG.scale.set(gunScale.x / sx, gunScale.y / sy, gunScale.z / sz);
+    P.gunG.position.set(
+      (gunWorld.x - P.turretG.position.x) / sx,
+      (gunWorld.y - P.turretG.position.y) / sy,
+      (gunWorld.z - P.turretG.position.z) / sz,
+    );
+  }
+  P.topY = (t.roof.at(-1)[1] + 0.45) * (p.turretScale?.y ?? 1);
 }
 
 // Point ON the modular beak cheek plane (f: 0 notch -> 1 shoulder).
@@ -6123,6 +6316,605 @@ function merkavaSidePanels(P, p, t, opts = {}) {
       P.add('turretDark', box(0.012, 0.018, 0.018), s * (wx + 0.037), wy - 0.19, pz + bz, 0, 0, rz);
     }
   }
+}
+
+// Mk.4B source-specific modular armor.  The supplied reference does not use
+// the tall rectangular Trophy-era side doors fitted by `merkavaSidePanels`;
+// it has a continuous arrowhead cheek followed by two swept side courses.
+// Build those courses as closed prisms whose inner faces bury into the core,
+// so the silhouette stays faceted without stand-off plates or sky seams.
+function merkava4bArmorPanels(P, p) {
+  const { box } = KIT;
+  const L = (z) => z - p.pivotZ;
+  const V = (y) => y - (p.deckY + 0.02);
+  const slab = orientedSlab;
+  const panel = (s, a) => {
+    const [zF, zR, xF, xR, xTF, xTR, yBF, yBR, yTF, yTR, thick = 0.08] = a;
+    const ixF = xF - thick, ixR = xR - thick;
+    const ixTF = xTF - thick, ixTR = xTR - thick;
+    P.add('turret', slab(
+      [s * ixF, V(yBF), L(zF)], [s * ixR, V(yBR), L(zR)],
+      [s * ixTR, V(yTR), L(zR)], [s * ixTF, V(yTF), L(zF)],
+      [s * xF, V(yBF), L(zF)], [s * xR, V(yBR), L(zR)],
+      [s * xTR, V(yTR), L(zR)], [s * xTF, V(yTF), L(zF)]));
+    // Recessed course break and fasteners remain inside the armor envelope.
+    const xMid = (xF + xR + xTF + xTR) * 0.25 + 0.004;
+    P.add('turretDark', box(0.012, 0.030, Math.max(0.18, Math.abs(zF - zR) - 0.10)),
+      s * xMid, V((yBF + yBR + yTF + yTR) * 0.25), L((zF + zR) * 0.5),
+      -0.04, 0, s * 0.05);
+    for (const f of [0.18, 0.50, 0.82]) {
+      const z = zF + (zR - zF) * f;
+      const x = xTF + (xTR - xTF) * f;
+      const y = yTF + (yTR - yTF) * f - 0.08;
+      P.add('turretDark', box(0.018, 0.022, 0.018), s * (x + 0.008), V(y), L(z));
+    }
+  };
+  for (const s of [-1, 1]) {
+    panel(s, [1.42, 0.22, 0.58, 1.68, 0.40, 1.46, 1.90, 1.82, 2.46, 2.52, 0.09]);
+    panel(s, [0.20, -1.18, 1.68, 1.82, 1.46, 1.54, 1.82, 1.84, 2.52, 2.56, 0.10]);
+    panel(s, [-1.16, -2.72, 1.82, 1.46, 1.54, 1.22, 1.84, 1.90, 2.56, 2.48, 0.09]);
+    // Backed service bins and lifting lugs observed on both flanks.
+    P.add('turretDetail', box(0.16, 0.22, 0.34), s * 1.52, V(2.22), L(-2.18), 0, s * 0.10, s * 0.04);
+    P.add('turretDark', box(0.020, 0.18, 0.28), s * 1.61, V(2.22), L(-2.18), 0, s * 0.10, s * 0.04);
+    P.add('turretDark', KIT.torus(0.075, 0.018, 14), s * 1.30, V(2.64), L(-2.56), Math.PI / 2, 0, 0);
+  }
+}
+
+// Source-oracle turret shells for the owner-supplied Merkava archive set.
+//
+// The older profiles below were optimized against silhouette masks and could
+// score well while still reading as vertical boxes in a shaded three-quarter
+// view.  These six shells instead use the source GLBs as geometric oracles:
+// each mark gets one connected multi-ring casting with its own plan sweep,
+// roof rise and rear termination.  No source vertices are copied and no GLB is
+// loaded at runtime; the values are independently-authored stations measured
+// from the reference renders/component bounds.
+function merkavaSourceOracleTurret(P, p, t) {
+  const { box, polyMultiLoft, polyTurret } = KIT;
+  const slab = orientedSlab;
+  const id = P.spec.id;
+  const pivotY = p.deckY + 0.02;
+  const L = (z) => z - p.pivotZ;
+  const V = (y) => y - pivotY;
+  const M = (pt) => [pt[0], V(pt[1]), L(pt[2])];
+  const profiles = {
+    merkava1b: {
+      plan: [[-0.30, 1.10], [0.30, 1.10], [0.72, 0.66], [1.10, 0.12], [1.29, -0.55], [1.18, -2.12], [0.90, -2.38], [-0.90, -2.38], [-1.18, -2.12], [-1.29, -0.55], [-1.10, 0.12], [-0.72, 0.66]],
+      base: 1.62,
+      roof: [[1.10, 2.10], [0.55, 2.18], [-0.20, 2.28], [-1.20, 2.34], [-2.38, 2.31]],
+      inset: 0.80,
+      shoulderRise: 0.12,
+    },
+    merkava2b: {
+      plan: [[-0.28, 1.60], [0.28, 1.60], [0.82, 1.02], [1.22, 0.34], [1.33, -0.48], [1.24, -1.78], [0.98, -2.30], [-0.98, -2.30], [-1.24, -1.78], [-1.33, -0.48], [-1.22, 0.34], [-0.82, 1.02]],
+      base: 1.72,
+      roof: [[1.60, 2.08], [0.82, 2.17], [0.05, 2.31], [-0.70, 2.40], [-1.55, 2.46], [-2.30, 2.42]],
+      inset: 0.82,
+      shoulderRise: 0.12,
+    },
+    merkava2d: {
+      plan: [[-0.30, 1.61], [0.30, 1.61], [0.94, 1.05], [1.46, 0.35], [1.66, -0.52], [1.48, -2.25], [1.02, -2.66], [-1.02, -2.66], [-1.48, -2.25], [-1.66, -0.52], [-1.46, 0.35], [-0.94, 1.05]],
+      base: 1.72,
+      roof: [[1.61, 2.09], [0.92, 2.18], [0.12, 2.31], [-0.72, 2.39], [-1.62, 2.44], [-2.66, 2.38]],
+      inset: 0.90,
+      shoulderRise: 0.12,
+      applique: true,
+    },
+    merkava3c: {
+      plan: [[-0.26, 0.94], [0.26, 0.94], [0.84, 0.58], [1.30, -0.10], [1.39, -1.28], [1.30, -2.74], [1.06, -3.28], [-1.06, -3.28], [-1.30, -2.74], [-1.39, -1.28], [-1.30, -0.10], [-0.84, 0.58]],
+      base: 1.78,
+      roof: [[0.94, 2.16], [0.42, 2.27], [-0.20, 2.36], [-1.25, 2.42], [-2.45, 2.40], [-3.28, 2.31]],
+      inset: 0.91,
+      shoulderRise: 0.10,
+      modular: true,
+    },
+    merkava3d: {
+      plan: [[-0.28, 0.93], [0.28, 0.93], [0.96, 0.60], [1.54, -0.10], [1.79, -0.92], [1.64, -2.52], [1.30, -3.20], [-1.30, -3.20], [-1.64, -2.52], [-1.79, -0.92], [-1.54, -0.10], [-0.96, 0.60]],
+      base: 1.78,
+      roof: [[0.93, 2.15], [0.42, 2.26], [-0.20, 2.36], [-1.20, 2.42], [-2.36, 2.41], [-3.20, 2.30]],
+      inset: 0.91,
+      shoulderRise: 0.10,
+      modular: true,
+    },
+    merkava4b: {
+      // The source's full ±1.81 m width belongs to the external arrowhead
+      // armor, not the cast core.  Keeping that width on the core produced a
+      // huge solid pyramid under the armor.  This narrower raised core is
+      // measured to the roof/casting group; the modules below carry the
+      // complete source envelope and leave the characteristic under-wing
+      // negative space visible in front/profile views.
+      plan: [[-0.18, 0.66], [0.18, 0.66], [0.56, 0.34], [1.05, -0.24], [1.34, -1.18], [1.22, -2.46], [0.92, -3.36], [-0.92, -3.36], [-1.22, -2.46], [-1.34, -1.18], [-1.05, -0.24], [-0.56, 0.34]],
+      base: 1.82,
+      roof: [[0.66, 2.58], [0.10, 2.67], [-0.82, 2.73], [-1.86, 2.70], [-2.72, 2.64], [-3.36, 2.54]],
+      inset: 0.72,
+      shoulderRise: 0.18,
+      mk4: true,
+    },
+  };
+  const cfg = profiles[id];
+  if (!cfg) return false;
+  const yAt = (stations, z) => {
+    if (z >= stations[0][0]) return stations[0][1];
+    for (let i = 0; i < stations.length - 1; i++) {
+      const [za, ya] = stations[i], [zb, yb] = stations[i + 1];
+      if (z <= za && z >= zb) {
+        const f = (za - z) / Math.max(0.001, za - zb);
+        return ya + (yb - ya) * f;
+      }
+    }
+    return stations.at(-1)[1];
+  };
+  const plan = cfg.plan.map(([x, z]) => [x, L(z)]);
+  const roof = cfg.plan.map(([, z]) => V(yAt(cfg.roof, z)));
+  const shoulder = cfg.plan.map(([, z], i) => {
+    // The source castings leave the ring almost immediately.  Tying this
+    // intermediate course to the roof (the old implementation) produced a
+    // tall vertical drum under an otherwise-correct roof.  Keep the course
+    // just above the ring instead, with only a shallow fore/aft rise; the
+    // long final loft is the actual Merkava cheek/side slope.
+    const fore = Math.max(0, Math.min(1, (z + 3.9) / 5.5));
+    const flank = Math.min(1, Math.abs(cfg.plan[i][0]) / 1.70);
+    return V(cfg.base + cfg.shoulderRise + fore * 0.05 - flank * 0.025);
+  });
+  P.add('turret', polyMultiLoft(plan, [
+    { height: V(cfg.base), inset: 0.94 },
+    { height: shoulder, inset: 1.00 },
+    { height: roof, inset: cfg.inset },
+  ]));
+
+  // A closed, shallow ring apron overlaps the hull deck and the casting
+  // floor.  It prevents the turret from appearing perched while preserving
+  // the deep undercuts visible on the supplied references.
+  const apronPlan = cfg.plan.map(([x, z]) => [x * 0.72, L(z * 0.72 + p.pivotZ * 0.28)]);
+  P.add('turretDark', polyTurret(apronPlan, 0.15, 0.98, 0.94), 0, V(cfg.base - 0.10), 0);
+
+  const addArmorSlab = (pts) => P.add('turret', slab(...pts.map(M)));
+  if (cfg.applique) {
+    for (const s of [-1, 1]) addArmorSlab([
+      [s * 0.22, 1.72, 1.48], [s * 1.58, 1.62, 0.10], [s * 1.52, 1.70, -1.85], [s * 0.70, 1.80, -1.95],
+      [s * 0.28, 2.36, 1.43], [s * 1.50, 2.25, 0.08], [s * 1.42, 2.28, -1.82], [s * 0.66, 2.39, -1.92],
+    ]);
+  }
+  if (cfg.modular) {
+    for (const s of [-1, 1]) addArmorSlab([
+      [s * 0.18, 1.80, 0.88], [s * 1.34, 1.75, -0.02], [s * 1.48, 1.79, -1.62], [s * 0.72, 1.84, -1.72],
+      [s * 0.22, 2.36, 0.84], [s * (id === 'merkava3d' ? 1.68 : 1.34), 2.30, -0.05], [s * (id === 'merkava3d' ? 1.58 : 1.32), 2.31, -1.58], [s * 0.66, 2.39, -1.68],
+    ]);
+  }
+
+  // The source applique is built from long, individually serviced armor
+  // cassettes.  A single unbroken slab reads like a smooth cone even when
+  // its silhouette is correct, so place shallow recessed joints directly
+  // into the outer face.  These are deliberately thin and partially buried:
+  // they cannot become stand-off boxes or change the tank envelope.
+  if (cfg.applique || cfg.modular) {
+    const faceX = cfg.applique ? 1.405 : (id === 'merkava3d' ? 1.555 : 1.305);
+    const seamY = cfg.applique ? 2.10 : 2.12;
+    const seamZs = cfg.applique ? [0.46, -0.18, -0.82, -1.43] : [0.28, -0.30, -0.90, -1.46];
+    for (const s of [-1, 1]) {
+      for (const z of seamZs) {
+        P.add('turretDark', box(0.020, 0.39, 0.026), s * faceX, V(seamY), L(z), -0.05, 0, s * -0.03);
+        P.add('turretDetail', box(0.026, 0.020, 0.055), s * (faceX + 0.004), V(seamY - 0.12), L(z - 0.08));
+      }
+      P.add('turretDark', box(0.022, 0.025, 1.78), s * faceX, V(seamY + 0.18), L(-0.58), -0.02, 0, 0);
+      P.add('turretDetail', box(0.16, 0.13, 0.34), s * (faceX - 0.06), V(2.18), L(-1.78), 0, s * 0.06, s * 0.03);
+      P.add('turretDark', box(0.024, 0.14, 0.28), s * (faceX + 0.018), V(2.18), L(-1.78), 0, s * 0.06, s * 0.03);
+    }
+  }
+  if (cfg.mk4) {
+    // The Mk.4B's defining armor is a pair of broad arrowhead modules, not
+    // a cuboid shell plus decorative squares.  Their bounds follow the two
+    // source external-turret armor groups (front and long side course).
+    for (const s of [-1, 1]) addArmorSlab([
+      [s * 0.20, 1.66, 1.52], [s * 1.75, 1.65, 0.12], [s * 1.80, 1.72, -2.02], [s * 0.84, 1.88, -2.08],
+      [s * 0.28, 2.60, 1.48], [s * 1.58, 2.25, 0.10], [s * 1.48, 2.28, -2.00], [s * 0.76, 2.62, -2.05],
+    ]);
+    // Connected rear lattice and stowage shoes: real negative space, with
+    // every post returning into the bustle rather than a giant solid wall.
+    for (const s of [-1, 1]) {
+      P.add('turretDark', box(0.045, 0.045, 1.12), s * 1.12, V(2.56), L(-2.98));
+      for (const z of [-2.45, -2.82, -3.18, -3.50]) P.add('turretDark', box(0.045, 0.48, 0.045), s * 1.12, V(2.32), L(z));
+      P.add('turretDetail', box(0.32, 0.18, 0.42), s * 0.84, V(2.53), L(-2.55), 0, s * 0.08, 0);
+    }
+    for (const x of [-0.72, 0, 0.72]) P.add('turretDark', box(0.045, 0.045, 0.58), x, V(2.54), L(-3.20));
+  } else if (t.basket) {
+    const rearTarget = {
+      merkava1b: -3.62,
+      merkava2b: -3.69,
+      merkava2d: -3.66,
+      merkava3c: -3.96,
+      merkava3d: -3.91,
+    }[id];
+    const chainFloor = (id === 'merkava1b') ? 0.60
+      : ((id === 'merkava3c' || id === 'merkava3d') ? 0.58 : null);
+    const chainTopWorld = pivotY + t.basket.bot + 0.10;
+    merkavaBasket(P, {
+      hw: t.basketHW, z0: t.basket.z0, z1: L(rearTarget), xoff: t.basketXoff,
+      top: t.basket.top, topRear: t.basket.topRear, bot: t.basket.bot,
+      chainDrop: chainFloor === null ? (t.chainDrop ?? 0.20) : Math.max(0.20, chainTopWorld - chainFloor),
+      chainGap: t.chainGap,
+      pale: t.pale, fine: true, soft: true,
+      voids: t.basketVoids, shelf: t.rackShelf,
+      openPack: true,
+    });
+  }
+  return true;
+}
+
+// Source-finish pass shared by the six owner-supplied Merkava references.
+//
+// The silhouette profiles below are already measured mark-by-mark.  What the
+// high-angle reference boards expose, however, is the dense *seated* roof
+// grammar that silhouette metrology cannot recover on its own: broad circular
+// hatch collars, asymmetric periscope crowns, complete pintle weapons, cable
+// courses, sight shoes and basket brackets.  Keep this as a final detail pass
+// on the existing authored shell.  It never cuts a hull/skirt/track surface
+// and every added item begins on, or slightly inside, its local roof datum.
+function merkavaSourceFinish(P, p, t) {
+  const id = P.spec.id;
+  if (!['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(id)) return;
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const pivotY = p.deckY + 0.02;
+  const L = (z) => z - p.pivotZ;
+  const V = (y) => y - pivotY;
+  // Mk.4B's source height includes a real roof weapon/optic crown at 3.12 m.
+  // The former 2.655 m profile cap silently crushed that equipment into the
+  // turret and was the main reason the authored roof looked bare.
+  const capWorld = id === 'merkava4b'
+    ? 3.12
+    : (p.kitCapY ?? Math.min(P.spec.dims.heightM, 2.66));
+
+  // When a mark uses the source-oracle casting, equipment must be seated on
+  // that casting rather than the older silhouette-profile roofLine.  Using
+  // the legacy datum buried Mk.2/3 hatches and the entire Mk.4B commander's
+  // station inside the new roof, leaving only their gun barrels visible.
+  // These station lines are the same source-measured world-space roof
+  // courses used by `merkavaSourceOracleTurret` above.
+  const oracleRoof = p.sourceOracleTurret ? {
+    merkava2b: [[1.60, 2.08], [0.82, 2.17], [0.05, 2.31], [-0.70, 2.40], [-1.55, 2.46], [-2.30, 2.42]],
+    merkava2d: [[1.61, 2.09], [0.92, 2.18], [0.12, 2.31], [-0.72, 2.39], [-1.62, 2.44], [-2.66, 2.38]],
+    merkava3c: [[0.94, 2.16], [0.42, 2.27], [-0.20, 2.36], [-1.25, 2.42], [-2.45, 2.40], [-3.28, 2.31]],
+    merkava3d: [[0.93, 2.15], [0.42, 2.26], [-0.20, 2.36], [-1.20, 2.42], [-2.36, 2.41], [-3.20, 2.30]],
+    merkava4b: [[0.66, 2.58], [0.10, 2.67], [-0.82, 2.73], [-1.86, 2.70], [-2.72, 2.64], [-3.36, 2.54]],
+  }[id] : null;
+  const roofCourse = oracleRoof ?? p.roofLine;
+  const roofAt = (zWorld) => {
+    if (zWorld >= roofCourse[0][0]) return roofCourse[0][1];
+    for (let i = 0; i < roofCourse.length - 1; i++) {
+      const [za, ya] = roofCourse[i], [zb, yb] = roofCourse[i + 1];
+      if (zWorld <= za && zWorld >= zb) {
+        const f = (za - zWorld) / Math.max(0.001, za - zb);
+        return ya + (yb - ya) * f;
+      }
+    }
+    return roofCourse.at(-1)[1];
+  };
+
+  const hatch = (x, z, r, roofWorld, opts = {}) => {
+    const topWorld = Math.min(capWorld, roofWorld + (opts.raise ?? 0.105));
+    const h = Math.max(0.045, topWorld - roofWorld + 0.018);
+    const y = V(roofWorld + h / 2 - 0.010);
+    // Wide armor collar embedded into the deck, then a separate lid and a
+    // dark annular break.  Twenty-four sides retain the cast circular read in
+    // close views without importing any source topology.
+    P.add('turretDetail', cylY(r * 1.14, r * 1.18, 0.045, P.q ? 24 : 14), x, V(roofWorld + 0.012), L(z));
+    P.add('turretDark', torus(r * 0.94, 0.026, P.q ? 24 : 14, 8), x, V(roofWorld + 0.039), L(z));
+    P.add('turret', cylY(r * 0.92, r * 0.96, h, P.q ? 24 : 14), x, y, L(z));
+    P.add('turretDark', box(r * 0.86, 0.018, 0.025), x, V(topWorld - 0.015), L(z + r * 0.12));
+    // Hinge knuckles visibly join the leaf to the collar.
+    P.add('turretDark', cylZ(0.032, r * 0.62, 10), x, V(roofWorld + 0.075), L(z - r * 0.92), 0, Math.PI / 2, 0);
+    for (let k = 0; k < (opts.periscopes ?? 5); k++) {
+      const a = (-0.78 + k * 1.56 / Math.max(1, (opts.periscopes ?? 5) - 1));
+      const px = x + Math.sin(a) * r * 0.93;
+      const pz = z + Math.cos(a) * r * 0.93;
+      P.add('turretDark', box(0.075, 0.060, 0.055), px, V(topWorld - 0.012), L(pz), -0.10, -a, 0);
+      P.add('turretGlass', box(0.052, 0.025, 0.012), px, V(topWorld + 0.006), L(pz + 0.025), -0.10, -a, 0);
+    }
+    return topWorld;
+  };
+
+  const sight = (x, z, roofWorld, w = 0.27, h = 0.28, d = 0.24, yaw = 0) => {
+    const top = Math.min(capWorld, roofWorld + h);
+    const actualH = Math.max(0.10, top - roofWorld);
+    // Broad tapered shoe prevents the familiar stand-off-box failure.
+    P.add('turret', box(w * 1.25, 0.055, d * 1.20), x, V(roofWorld + 0.018), L(z), 0, yaw, 0);
+    P.add('turretDetail', box(w, actualH, d), x, V(roofWorld + actualH / 2), L(z), -0.08, yaw, 0);
+    P.add('turretDark', box(w * 0.72, actualH * 0.42, 0.018), x, V(roofWorld + actualH * 0.62), L(z + d * 0.51), -0.08, yaw, 0);
+    P.add('turretGlass', box(w * 0.52, actualH * 0.25, 0.012), x, V(roofWorld + actualH * 0.67), L(z + d * 0.53), -0.08, yaw, 0);
+  };
+
+  const deckRod = (pts, mat = 'turretDark', width = 0.022, lift = 0.028) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, ay, az] = pts[i], [bx, by, bz] = pts[i + 1];
+      const dx = bx - ax, dz = bz - az, dy = by - ay;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.001) continue;
+      const yaw = Math.atan2(dx, dz);
+      const pitch = -Math.atan2(dy, len);
+      P.add(mat, box(width, width, Math.hypot(len, dy) + 0.018),
+        (ax + bx) / 2, V((ay + by) / 2 + lift), L((az + bz) / 2), pitch, yaw, 0);
+    }
+  };
+
+  const addEarlyRoof = (mark) => {
+    const is1 = mark === 'merkava1b';
+    const is2d = mark === 'merkava2d';
+    const zCmd = is1 ? -1.43 : -1.05;
+    const zLoad = is1 ? -0.72 : -1.42;
+    const cmdX = is1 ? -0.64 : (is2d ? -0.48 : 0.48);
+    const loadX = -cmdX * 0.82;
+    const cmdRoof = Math.min(capWorld - 0.08, roofAt(zCmd));
+    const loadRoof = Math.min(capWorld - 0.08, roofAt(zLoad));
+    const cmdTop = hatch(cmdX, zCmd, is1 ? 0.31 : 0.34, cmdRoof, { raise: 0.11, periscopes: 6 });
+    const loadTop = hatch(loadX, zLoad, is1 ? 0.25 : 0.28, loadRoof, { raise: 0.08, periscopes: 4 });
+    // The references carry a large commander weapon plus a smaller loader
+    // weapon.  Bases start at the hatch crowns; no rod is suspended over air.
+    merkavaMG(P, cmdX + 0.04, V(cmdTop - 0.025), L(zCmd + 0.04), is1 ? 1.10 : 1.20, true,
+      { dy: 0.21, dz: 0.62, len: 1.00 });
+    merkavaMG(P, loadX - 0.03, V(loadTop - 0.020), L(zLoad + 0.02), is1 ? 0.92 : 1.08, true,
+      { dy: 0.20, dz: 0.59, len: 0.92 });
+    // Source Mk.1/2 vehicles carry a third, low machine gun tied to the
+    // main-gun saddle.  Author it inside rig_gun so it follows elevation
+    // with the barrel instead of remaining stranded on the turret roof.
+    const twinX = is1 ? 0.24 : 0.31;
+    P.addGunExtraDark(box(0.15, 0.11, 0.34), twinX, 0.035, 0.34);
+    P.addGunExtraDark(box(0.07, 0.13, 0.12), twinX - 0.10, 0.015, 0.25);
+    P.addGunExtraDark(cylZ(0.018, is1 ? 0.66 : 0.78, 10), twinX, 0.055, is1 ? 0.78 : 0.84);
+    P.addGunExtraDark(cylZ(0.027, 0.09, 10), twinX, 0.055, is1 ? 1.08 : 1.18);
+    P.addGunExtra(box(0.11, 0.08, 0.15), twinX + 0.12, 0.015, 0.31);
+    const sightZ = is1 ? -0.20 : -0.38;
+    sight(is1 ? 0.62 : -0.64, sightZ, Math.min(capWorld - 0.18, roofAt(sightZ)), 0.24, 0.21, 0.26, is1 ? -0.12 : 0.12);
+    // Low conduit and basket tie bars reproduce the busy, mechanically
+    // connected source roofs without creating extra silhouette towers.
+    deckRod([[cmdX, cmdRoof, zCmd], [cmdX * 0.55, roofAt(-1.90), -1.90], [0, roofAt(-2.25), -2.25]], 'turretDark', 0.026);
+    deckRod([[loadX, loadRoof, zLoad], [0.82 * Math.sign(loadX), roofAt(-1.95), -1.95]], 'turretDetail', 0.018, 0.035);
+    for (const s of [-1, 1]) {
+      P.add('turretDetail', box(0.12, 0.075, 0.42), s * 0.92, V(roofAt(-1.78) + 0.025), L(-1.78), 0, s * 0.08, s * -0.05);
+      P.add('turretDark', box(0.018, 0.085, 0.36), s * 0.92, V(roofAt(-1.78) + 0.035), L(-1.78), 0, s * 0.08, s * -0.05);
+    }
+    // Dense bustle stow visible through the open basket.  Rolls and tarps
+    // sit on the basket floor and remain below its rim; straps visibly tie
+    // each mass back to the rotating rear structure.
+    const rackTop = is1 ? 2.39 : 2.42;
+    const rackZ = is1 ? -2.72 : -2.88;
+    for (const s of [-1, 1]) {
+      P.add('turretCloth', cylX(is1 ? 0.14 : 0.16, 0.54, 16), s * 0.57, V(rackTop - 0.18), L(rackZ), 0, 0, s * 0.08);
+      P.add('turretDark', box(0.025, 0.34, 0.38), s * 0.57, V(rackTop - 0.18), L(rackZ), 0, s * 0.03, 0);
+      merkavaTarpLump(P, s * 0.34, V(rackTop - 0.03), L(rackZ - 0.18), 0.54, 0.44, 'turretCloth', s * 0.12);
+    }
+    P.add('turretCloth', box(0.48, 0.28, 0.46), 0, V(rackTop - 0.20), L(rackZ - 0.08), 0.05, 0.08, 0);
+    P.add('turretDark', box(0.50, 0.020, 0.36), 0, V(rackTop - 0.05), L(rackZ - 0.08), 0.05, 0.08, 0);
+  };
+
+  const addThirdGenRoof = (mark) => {
+    const isD = mark === 'merkava3d';
+    const cmd = isD ? { x: 0.40, z: -1.50, r: 0.34, top: 2.520 } : { x: 1.115, z: -1.45, r: 0.29, top: 2.60 };
+    const load = isD ? { x: -0.33, z: -1.52, r: 0.32, top: 2.512 } : { x: -0.79, z: -2.05, r: 0.27, top: 2.53 };
+    const cmdTop = hatch(cmd.x, cmd.z, cmd.r, cmd.top - 0.075, { raise: 0.075, periscopes: 6 });
+    const loadTop = hatch(load.x, load.z, load.r, load.top - 0.065, { raise: 0.065, periscopes: 4 });
+    // The supplied Mk.3C/D roofs carry independent commander and loader
+    // pintles in addition to the low centerline weapon.  Seat each receiver
+    // on its hatch crown so the three weapons read as equipment, not rods
+    // floating above the casting.
+    merkavaMG(P, cmd.x, V(cmdTop - 0.030), L(cmd.z + 0.03), isD ? 1.16 : 1.20, true,
+      { dy: 0.19, dz: 0.59, len: 0.98 });
+    merkavaMG(P, load.x, V(loadTop - 0.030), L(load.z + 0.02), isD ? 1.08 : 1.10, true,
+      { dy: 0.18, dz: 0.57, len: 0.92 });
+    // Source-readable coaxial roof weapon, planted on a closed cradle.
+    const gunRoof = Math.min(capWorld - 0.11, roofAt(-0.72));
+    P.add('turret', box(0.30, 0.060, 0.32), 0.12, V(gunRoof + 0.015), L(-0.70), 0, 0.04, 0);
+    merkavaMG(P, 0.12, V(gunRoof + 0.025), L(-0.64), 0.92, true, { dy: 0.20, dz: 0.58, len: 0.88 });
+    sight(isD ? -0.70 : 0.04, -1.02, Math.min(capWorld - 0.20, roofAt(-1.02)), 0.25, 0.22, 0.24, isD ? -0.08 : 0.06);
+    deckRod([[-0.98, roofAt(-2.44), -2.44], [-0.30, roofAt(-2.67), -2.67], [0.44, roofAt(-2.72), -2.72], [0.92, roofAt(-2.48), -2.48]], 'turretDark', 0.024);
+    for (const s of [-1, 1]) {
+      P.add('turretDetail', box(0.11, 0.08, 0.48), s * 1.06, V(roofAt(-2.42) + 0.020), L(-2.42), 0, s * 0.05, s * -0.04);
+      for (const dz of [-0.16, 0, 0.16]) P.add('turretDark', box(0.012, 0.086, 0.025), s * 1.065, V(roofAt(-2.42) + 0.025), L(-2.42 + dz));
+    }
+    // Mk.3 baskets are visually dominated by irregular canvas packs and
+    // rolled covers.  The former oracle shell left an empty rectangular
+    // rack, which made the whole rear read like a box even though the rails
+    // were structurally correct.  Keep these masses below the rack rim and
+    // bind every one with a dark strap into the rotating bustle.
+    const rackTop = isD ? 2.40 : 2.39;
+    const rackZ = isD ? -3.18 : -3.22;
+    for (const s of [-1, 1]) {
+      P.add('turretCloth', cylX(isD ? 0.18 : 0.17, 0.62, 18), s * 0.58, V(rackTop - 0.19), L(rackZ), 0, 0, s * 0.09);
+      P.add('turretDark', box(0.024, 0.38, 0.42), s * 0.58, V(rackTop - 0.19), L(rackZ), 0, s * 0.04, 0);
+      merkavaTarpLump(P, s * 0.38, V(rackTop - 0.015), L(rackZ - 0.26), 0.62, 0.52, 'turretCloth', s * 0.14);
+    }
+    P.add('turretCloth', box(0.56, 0.26, 0.50), 0, V(rackTop - 0.20), L(rackZ - 0.10), 0.04, -0.06, 0);
+    P.add('turretDark', box(0.58, 0.020, 0.38), 0, V(rackTop - 0.055), L(rackZ - 0.10), 0.04, -0.06, 0);
+  };
+
+  const addFourthGenRoof = () => {
+    // Source-component bounds: two low right-hand roof leaves, a centered
+    // panoramic optic, and a substantial left pintle weapon.  These explicit
+    // stations replace the generic single-hatch layout and preserve Mk.4B's
+    // low swept armor while restoring its characteristic roof asymmetry.
+    const cmdX = -0.62, loadX = 0.72;
+    const cmdZ = -0.82, loadZ = -1.55;
+    const cmdRoof = roofAt(cmdZ) + 0.01;
+    const loadRoof = roofAt(loadZ) + 0.01;
+    const cmdTop = hatch(cmdX, cmdZ, 0.34, cmdRoof, { raise: 0.12, periscopes: 7 });
+    const loadTop = hatch(loadX, loadZ, 0.27, loadRoof, { raise: 0.09, periscopes: 4 });
+    sight(0.64, -0.72, roofAt(-0.72) + 0.02, 0.29, 0.19, 0.27, -0.06);
+    P.add('turret', box(0.34, 0.060, 0.38), cmdX, V(roofAt(-0.94) + 0.025), L(-0.94), 0, -0.06, 0);
+    merkavaMG(P, cmdX, V(roofAt(-0.92) + 0.035), L(-0.92), 1.34, true,
+      { dy: 0.22, dz: 0.66, len: 1.10 });
+    // The supplied Mk.4B has one prominent anti-aircraft weapon at the left
+    // station and a low right loader leaf.  A second full-size roof gun made
+    // the authored front falsely symmetrical, so the right station remains
+    // a hatch with its independent panoramic sight rather than a duplicate.
+    P.add('turretDark', box(0.20, 0.035, 0.30), loadX - 0.02, V(loadTop - 0.035), L(loadZ + 0.02), 0, 0.05, 0);
+    // The source's long centerline MG is attached to the gun cradle and must
+    // elevate with the MG253.  Build a closed pedestal on rig_gun, then the
+    // receiver, ammunition box, barrel and booster; no turret-fixed rod is
+    // left behind when the main gun pitches.
+    P.addGunExtraDark(box(0.070, 0.42, 0.070), -0.04, 0.31, 0.34);
+    P.addGunExtraDark(box(0.23, 0.16, 0.44), -0.04, 0.55, 0.48);
+    P.addGunExtra(box(0.16, 0.13, 0.24), 0.15, 0.54, 0.42);
+    P.addGunExtraDark(cylZ(0.025, 1.18, 12), -0.04, 0.60, 1.20);
+    P.addGunExtraDark(cylZ(0.038, 0.13, 12), -0.04, 0.60, 1.73);
+    P.addGunExtraDark(box(0.018, 0.075, 0.025), -0.04, 0.64, 1.48);
+    deckRod([[-1.02, roofAt(-1.52), -1.52], [-0.55, roofAt(-1.86), -1.86], [0.10, roofAt(-1.94), -1.94], [0.82, roofAt(-1.62), -1.62]], 'turretDark', 0.024);
+    // Distinctive rack-top kit, all tied to the rear plateau with broad shoes.
+    for (const [x, z, w, d, ry] of [[-0.80, -1.72, 0.28, 0.38, -0.08], [0.06, -1.82, 0.42, 0.30, 0.06], [0.83, -1.65, 0.24, 0.34, 0.10]]) {
+      const localRoof = roofAt(z);
+      P.add('turret', box(w * 1.08, 0.045, d * 1.06), x, V(localRoof - 0.04), L(z), 0, ry, 0);
+      P.add('turretDetail', box(w, 0.12, d), x, V(localRoof + 0.02), L(z), 0.02, ry, 0);
+      P.add('turretDark', box(0.020, 0.125, d * 1.02), x, V(localRoof + 0.025), L(z), 0.02, ry, 0);
+    }
+    // The reference rear is packed with individually supported radios,
+    // canvas pouches and service bins.  Keep each mass below the rack rim,
+    // visibly seated on a shoe, and break the row into unequal widths so it
+    // does not collapse into a single rectangular wall.
+    for (const [x, z, w, h, d, mat, yaw] of [
+      [-0.92, -3.06, 0.34, 0.22, 0.42, 'turretDetail', -0.08],
+      [-0.42, -3.20, 0.40, 0.30, 0.36, 'turretCloth', 0.05],
+      [0.10, -3.24, 0.30, 0.24, 0.34, 'turretDetail', -0.04],
+      [0.54, -3.16, 0.46, 0.28, 0.40, 'turretCloth', 0.08],
+      [0.98, -3.00, 0.26, 0.20, 0.34, 'turretDetail', -0.10],
+    ]) {
+      const supportY = 2.17;
+      P.add('turret', box(w * 1.04, 0.045, d * 1.05), x, V(supportY - 0.08), L(z), 0, yaw, 0);
+      P.add(mat, box(w, h, d), x, V(supportY + h * 0.5 - 0.06), L(z), 0.03, yaw, 0);
+      P.add('turretDark', box(0.022, h * 1.04, d * 1.02), x, V(supportY + h * 0.5 - 0.06), L(z), 0.03, yaw, 0);
+    }
+    // An armored shoe links the commander's leaf into the turret plateau.
+    P.add('turretDetail', box(0.42, 0.055, 0.30), cmdX, V(Math.max(cmdRoof + 0.02, cmdTop - 0.10)), L(-0.55), -0.05, 0, 0);
+  };
+
+  if (id === 'merkava1b' || id === 'merkava2b' || id === 'merkava2d') addEarlyRoof(id);
+  else if (id === 'merkava3c' || id === 'merkava3d') addThirdGenRoof(id);
+  else addFourthGenRoof();
+
+  // Source-readable CL-3030 banks and cheek service seams.  These live on
+  // the actual sloped casting, use a broad backing shoe, and are mirrored
+  // mark-by-mark rather than pasted at a generic world-space height.
+  const smoke = id === 'merkava4b'
+    ? { x: 1.28, y: 2.24, z: 0.16, n: 6, pitch: -0.36 }
+    : ((id === 'merkava3c' || id === 'merkava3d')
+      ? { x: 1.18, y: 2.13, z: -0.12, n: 6, pitch: -0.34 }
+      : { x: 1.08, y: 2.04, z: 0.02, n: 6, pitch: -0.32 });
+  for (const s of [-1, 1]) {
+    merkavaSmokeCluster(P, s * smoke.x, V(smoke.y), L(smoke.z), s * -0.24, smoke.n,
+      { pitch: smoke.pitch, soft: true });
+    // Two short, physically seated armor joints break the monolithic flat
+    // cheek read without becoming stand-off blocks.
+    P.add('turretDark', box(0.020, 0.040, 0.56), s * (smoke.x - 0.09), V(smoke.y - 0.22), L(smoke.z - 0.58),
+      -0.18, s * -0.19, 0);
+    P.add('turretDetail', box(0.16, 0.055, 0.23), s * (smoke.x - 0.18), V(smoke.y - 0.08), L(smoke.z - 0.34),
+      -0.13, s * -0.14, s * 0.07);
+  }
+
+  // Mark-specific combat fit.  The owner requested visibly denser equipment
+  // and ERA on every Merkava, but the family must not become six copies of
+  // one armor kit.  Each set below varies cheek cadence, flank depth, roof
+  // stowage and weapon-shield position while using the existing cast shell
+  // as its load-bearing surface.
+  const combatFit = {
+    merkava1b: { rows: 2, cols: 3, xOut: 1.08, y: 2.02, z: 0.72, side: 3, roof: 3, shield: [-0.64, -1.43, -0.10] },
+    merkava2b: { rows: 2, cols: 4, xOut: 1.16, y: 2.08, z: 0.68, side: 4, roof: 4, shield: [0.48, -1.05, 0.08] },
+    merkava2d: { rows: 3, cols: 4, xOut: 1.22, y: 2.10, z: 0.70, side: 5, roof: 4, shield: [-0.48, -1.05, -0.08] },
+    merkava3c: { rows: 2, cols: 5, xOut: 1.28, y: 2.15, z: 0.76, side: 5, roof: 5, shield: [1.10, -1.45, 0.10] },
+    merkava3d: { rows: 3, cols: 5, xOut: 1.34, y: 2.16, z: 0.78, side: 6, roof: 5, shield: [0.40, -1.50, 0.10] },
+    merkava4b: { rows: 3, cols: 6, xOut: 1.48, y: 2.34, z: 0.92, side: 7, roof: 6, shield: [-0.62, -0.82, -0.12] },
+  }[id];
+
+  // Faceted cheek arrays follow the cast wedge from the mantlet shoulder to
+  // the outer cheek.  Each module overlaps the casting by half its depth;
+  // the visible dark lower seam is a hinge/retainer, not a floating plate.
+  for (const s of [-1, 1]) {
+    for (let row = 0; row < combatFit.rows; row++) {
+      for (let col = 0; col < combatFit.cols; col++) {
+        const f = col / Math.max(1, combatFit.cols - 1);
+        const x = s * (0.48 + (combatFit.xOut - 0.48) * f);
+        const y = combatFit.y - row * 0.18 - f * 0.055;
+        const z = combatFit.z - f * 0.56 - row * 0.045;
+        const tileW = Math.max(0.18, (combatFit.xOut - 0.38) / combatFit.cols * 0.94);
+        const tileH = combatFit.rows === 2 ? 0.19 : 0.16;
+        const tileD = 0.30 + f * 0.06;
+        const yaw = s * (-0.12 - f * 0.24);
+        const roll = s * (0.04 + f * 0.08);
+        P.add('turret', box(tileW, tileH, tileD), x, V(y), L(z), -0.18, yaw, roll);
+        P.add('turretDark', box(tileW * 0.78, 0.018, 0.028), x,
+          V(y - tileH * 0.46), L(z + tileD * 0.33), -0.18, yaw, roll);
+      }
+    }
+
+    // A descending flank course protects the turret shoulder and visually
+    // joins the frontal array to the bustle rather than stopping in mid-air.
+    for (let i = 0; i < combatFit.side; i++) {
+      const f = i / Math.max(1, combatFit.side - 1);
+      const x = s * (combatFit.xOut - 0.02 - f * 0.10);
+      const z = 0.08 - f * 1.48;
+      const y = combatFit.y - 0.24 - f * 0.08;
+      P.add('turret', box(0.085, 0.25 - f * 0.035, 0.27), x, V(y), L(z),
+        -0.10, s * (-0.05 + f * 0.06), s * -0.05);
+      P.add('turretDark', box(0.016, 0.19, 0.18), s * (Math.abs(x) + 0.044),
+        V(y - 0.01), L(z), -0.10, s * (-0.05 + f * 0.06), 0);
+    }
+  }
+
+  // Unequal roof lockers, radio cases, spare optics and soft kit.  Every
+  // item starts on a broad shoe at roofAt(z), stays under the mark's cap,
+  // and carries a strap or hinge that visibly returns into the roof.
+  for (let i = 0; i < combatFit.roof; i++) {
+    const s = i % 2 ? 1 : -1;
+    const lane = Math.floor(i / 2);
+    const x = s * (0.42 + lane * 0.19);
+    const z = -1.78 - lane * 0.30 + (i % 3) * 0.07;
+    const roof = Math.min(capWorld - 0.10, roofAt(z));
+    const w = 0.26 + (i % 3) * 0.06;
+    const d = 0.24 + ((i + 1) % 3) * 0.07;
+    const h = Math.max(0.07, Math.min(0.15 + (i % 2) * 0.035, capWorld - roof - 0.02));
+    const mat = i % 3 === 2 ? 'turretCloth' : 'turretDetail';
+    P.add('turret', box(w * 1.10, 0.045, d * 1.10), x, V(roof + 0.005), L(z), 0, s * 0.08, 0);
+    P.add(mat, box(w, h, d), x, V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
+    P.add('turretDark', box(0.022, h * 1.04, d * 0.96), x,
+      V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
+    if (i % 2 === 0) {
+      P.add('turretDark', box(w * 0.70, 0.018, 0.026), x,
+        V(roof + h * 0.88), L(z + d * 0.28), 0.02, s * 0.08, 0);
+    }
+  }
+
+  // Spare rolled covers and a compact electronics case sit on the rear roof
+  // shoulder.  Their shoes/straps keep them from reading as hovering props.
+  for (const s of [-1, 1]) {
+    const z = id === 'merkava4b' ? -2.28 : -2.18;
+    const roof = Math.min(capWorld - 0.12, roofAt(z));
+    P.add('turret', box(0.48, 0.045, 0.34), s * 0.70, V(roof + 0.004), L(z), 0, s * 0.06, 0);
+    P.add('turretCloth', cylX(0.115, 0.44, 16), s * 0.70, V(roof + 0.115), L(z), 0, 0, s * 0.08);
+    P.add('turretDark', box(0.025, 0.25, 0.30), s * 0.70, V(roof + 0.115), L(z), 0, s * 0.06, 0);
+  }
+  const caseZ = -1.20;
+  const caseRoof = Math.min(capWorld - 0.18, roofAt(caseZ));
+  P.add('turret', box(0.36, 0.048, 0.32), -0.06, V(caseRoof + 0.006), L(caseZ), 0, -0.05, 0);
+  P.add('turretDetail', box(0.31, 0.14, 0.28), -0.06, V(caseRoof + 0.075), L(caseZ), 0.02, -0.05, 0);
+  P.add('turretGlass', box(0.13, 0.050, 0.014), -0.06, V(caseRoof + 0.095), L(caseZ + 0.148), 0.02, -0.05, 0);
+
+  // Armored MG shield: center plate and canted wings terminate in a low
+  // plinth on the same hatch/roof station as the weapon.  Angle and position
+  // vary with the mark-specific commander layout.
+  const [shieldX, shieldZ, shieldYaw] = combatFit.shield;
+  const shieldRoof = Math.min(capWorld - 0.30, roofAt(shieldZ));
+  P.add('turret', box(0.44, 0.055, 0.30), shieldX, V(shieldRoof + 0.018), L(shieldZ + 0.12), 0, shieldYaw, 0);
+  P.add('turretDetail', box(0.42, 0.26, 0.045), shieldX, V(shieldRoof + 0.17), L(shieldZ + 0.22),
+    -0.07, shieldYaw, 0);
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.16, 0.23, 0.040), shieldX + s * 0.27,
+      V(shieldRoof + 0.15), L(shieldZ + 0.18), -0.07, shieldYaw + s * 0.34, s * 0.03);
+    P.add('turretDark', box(0.020, 0.18, 0.045), shieldX + s * 0.20,
+      V(shieldRoof + 0.14), L(shieldZ + 0.20), -0.07, shieldYaw + s * 0.15, 0);
+  }
+
+  // Low cable and tool courses tie the new roof load together while keeping
+  // a clear gun and hatch envelope.
+  deckRod([[-0.92, roofAt(-1.18), -1.18], [-0.70, roofAt(-1.55), -1.55], [-0.88, roofAt(-2.05), -2.05]],
+    'turretDark', 0.020, 0.030);
+  deckRod([[0.94, roofAt(-1.30), -1.30], [0.72, roofAt(-1.66), -1.66], [0.90, roofAt(-2.10), -2.10]],
+    'turretDetail', 0.018, 0.032);
 }
 
 // §B3 NO-MYSTERY-BOXES cheek-pod tell (owner directive 2026-08-05, the
@@ -6255,7 +7047,7 @@ function merkava4Kit(P, p, t) {
 
 function merkava4bKit(P, p, t) {
   const cap = t.capY ?? (t.roof[0][1] + 0.04);
-  merkavaSidePanels(P, p, t, { radar: false });
+  merkava4bArmorPanels(P, p);
   merkavaMG(P, t.cupolaX + 0.30, cap - 0.24, t.cupolaZ - 0.20, 0.75);
   merkavaMG(P, -t.cupolaX, cap - 0.26, t.cupolaZ + 0.15, 0.65);
   // §B2/§B3.1 smoke re-seat (measured, gun-hood rake round): the shared
@@ -7532,7 +8324,7 @@ export const MERKAVA_PROFILES = {
   // tapering 2.28 at -3.8; mantlet sleeve band [1.86..2.11] out to z 2.45;
   // gun axis 1.97 tip 4.06; whips at -2.15/-2.80 to y 4.8.
   merkava1b: {
-    build: buildMerkavaMark, ...MK12_GEAR,
+    build: buildMerkavaMark, ...MK12_GEAR, sourceOracleTurret: false,
     // r10 gear read (official-pair measure): ref wheel dia ~0.72 with 9-12px
     // pale windows between wheels; the MK12 0.40 left 4-5px windows and dark
     // tops eating the plain side band (ref band y358-382 uniform 83-86L, ours
@@ -7941,7 +8733,7 @@ export const MERKAVA_PROFILES = {
   // rising cast roof 2.16@0.9 -> 2.38@-0.4, dome band drum (capped 2.66),
   // whips -2.85/-2.27 tops 4.83/4.91 with 3.0 pot bands beside them.
   merkava2b: {
-    build: buildMerkavaMark, ...MK12_GEAR,
+    build: buildMerkavaMark, ...MK12_GEAR, sourceOracleTurret: true,
     bodyTrackClear: { hw: 1.11, y: 1.12 },
     deckY: 1.68, rearDeckZ: -2.55,
     body: [
@@ -7985,9 +8777,9 @@ export const MERKAVA_PROFILES = {
     deckStow: [{ x: -0.06, y: 1.30, z: -3.59, w: 0.74, h: 0.06, d: 0.24, dark: true }],
     pivotZ: -0.55,
     turretStyle: 'small',
-    // Muzzle from published overall: -4.25 + 8.78*0.995 = 4.53 (oracle M64
-    // modelled short at 4.08 — certified wholeCurves gun cap).
-    gunAxisY: 1.99, gunR: 0.078, sleeve: false, evac: 0.60, evacR: 1.35, gunTipZ: 4.53, gunZL: 0.40,
+    // The Mk.2B's visible M64 run extends beyond the raw source-node bound;
+    // the longer authored station is the silhouette match in the fixed board.
+    gunAxisY: 1.99, gunR: 0.078, sleeve: false, evac: 0.60, evacR: 1.35, gunTipZ: 4.40, gunZL: 0.40,
     muzzleCollar: { r: 0.105, len: 0.28 },
     // §B3.1 canvas: M64 dust-cover cinch rings + shoulder sag creases
     // (sub-alias, gate-in-loop) — the bare pipe stack read as machined.
@@ -8004,13 +8796,14 @@ export const MERKAVA_PROFILES = {
     // Rising cast roof (ref side turret): 2.17@0.88 -> 2.38@-0.44, dome
     // drum band -0.44..-1.72 (capped 2.66), rear shelf 2.55-2.60.
     roofLine: [[0.88, 2.17], [0.45, 2.25], [0.10, 2.33], [-0.08, 2.37], [-0.44, 2.38], [-1.80, 2.55], [-2.06, 2.60]],
-    station: { x: 0.42, z0: -0.56, z1: -1.72, top: 2.66, hw: 0.53 },
+    station: { x: 0.42, z0: -0.56, z1: -1.72, top: 2.66, hw: 0.53, sourceFinishOnly: true },
     sightZ: 0.55,
     apron: [[0.45, 1.72], [0.12, 1.62], [0.01, 1.52], [-0.80, 1.52], [-0.88, 1.48], [-1.05, 1.48], [-1.20, 1.52], [-2.10, 1.52], [-2.30, 1.62], [-2.46, 1.66], [-2.56, 1.75], [-2.70, 1.80], [-2.90, 1.88]],
     apronHW: 1.05,
     stow: { z0: -1.95, z1: -2.28, top: 2.56, bot: 2.02, hw: 1.22 },
-    stowTell: true, // §B3 (2026-08-05): strapped tarp read on the bustle stow
+    stowTell: true, stowLoose: true, // separate supported packs, not one bustle crate
     basket: { z0: -2.30, z1: -3.35, top: 2.47, topRear: 2.45, bot: 1.89 }, basketHW: 1.20,
+    softGoods: true, chainFringe: true,
     tailVane: { z0: -3.62, z1: -4.00, top: 2.42, bot: 1.90, hw: 0.55, drop: 0.12 },
     chainDrop: 0.12, chainGap: 0.18,
     // Whips on the measured columns -2.85 / -2.27 (tops 4.83 / 4.91); the
@@ -8027,7 +8820,7 @@ export const MERKAVA_PROFILES = {
   // Print defect note: the 2D cheek wedges ride the oracle HULL node (front
   // hull trace tops 2.34-2.48 center) — small certified hullCurves residue.
   merkava2d: {
-    build: buildMerkavaMark, ...MK12_GEAR,
+    build: buildMerkavaMark, ...MK12_GEAR, sourceOracleTurret: true,
     bodyTrackClear: { hw: 1.11, y: 1.12 },
     deckY: 1.72, rearDeckZ: -2.55,
     // r2 post-repair: deck rides 1.72 FLAT -2.2..+0.9 on this print (the
@@ -8065,9 +8858,8 @@ export const MERKAVA_PROFILES = {
     },
     pivotZ: -0.55,
     turretStyle: 'small',
-    // Muzzle from published overall: -4.24 + 8.78*0.995 = 4.50 (oracle gun
-    // short at 4.03 — certified wholeCurves gun cap).
-    gunAxisY: 1.99, gunR: 0.078, sleeve: false, evac: 0.60, evacR: 1.35, gunTipZ: 4.50, gunZL: 0.40,
+    // Match the owner-supplied Mk.2D oracle's M64 muzzle station exactly.
+    gunAxisY: 1.99, gunR: 0.078, sleeve: false, evac: 0.60, evacR: 1.35, gunTipZ: 4.03, gunZL: 0.40,
     muzzleCollar: { r: 0.105, len: 0.28 },
     // §B3.1 canvas (same M64 grammar as 2B).
     mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true, canvas: true },
@@ -8077,7 +8869,7 @@ export const MERKAVA_PROFILES = {
     roofSolid: true,
     // Rising cast roof + wedge face 0.16 fwd of 2B; dome drum capped 2.66.
     roofLine: [[1.04, 2.17], [0.55, 2.26], [0.10, 2.34], [-0.08, 2.38], [-0.44, 2.39], [-1.80, 2.55], [-2.06, 2.60]],
-    station: { x: -0.45, z0: -0.56, z1: -1.72, top: 2.66, hw: 0.53 },
+    station: { x: -0.45, z0: -0.56, z1: -1.72, top: 2.66, hw: 0.53, sourceFinishOnly: true },
     sightZ: 0.60,
     apron: [[0.45, 1.72], [0.12, 1.62], [0.01, 1.52], [-0.80, 1.52], [-0.88, 1.48], [-1.05, 1.48], [-1.20, 1.52], [-2.10, 1.52], [-2.30, 1.62], [-2.46, 1.66], [-2.56, 1.75], [-2.70, 1.80], [-2.90, 1.88]],
     apronHW: 1.05,
@@ -8397,7 +9189,8 @@ export const MERKAVA_PROFILES = {
   // HULL node (hull trace tops 2.48-2.55 over z -0.7..-2.2) — small
   // hullCurves residue no articulated build can copy.
   merkava3c: {
-    build: buildMerkavaMark, ...MK3_GEAR,
+    build: buildMerkavaMark, ...MK3_GEAR, sourceOracleTurret: true,
+    turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.13, y: 1.17 },
     // §B5 flip (owner chimney report; coupled with the three maps'
     // ex_decor followers extension — see the packet §B5 section): the
@@ -8591,7 +9384,8 @@ export const MERKAVA_PROFILES = {
   // tall whip (-3.05, top 4.80) + one short pot (-2.60, top 2.59).
   // Print note (certified): bustle band in the HULL node like 3C.
   merkava3d: {
-    build: buildMerkavaMark, ...MK3_GEAR,
+    build: buildMerkavaMark, ...MK3_GEAR, sourceOracleTurret: true,
+    turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.09, y: 1.17 },
     // BATCH-18 PUSH (2026-08-02): authored in the WARPED-REF world frame
     // (loader re-centered ~-0.31 after the muzzle warp; old-frame z map
@@ -9113,7 +9907,13 @@ export const MERKAVA_PROFILES = {
   // capped; the MG253 is modelled short (4.29 vs L/44 true 4.74) —
   // wholeCurves coverage cap.
   merkava4b: {
-    build: buildMerkavaMark,
+    // The source-oracle shell was rejected at the paired-view gate: despite
+    // matching component bounds it read as a tall solid pyramid and erased
+    // the Mk.4B's low undercut/profile.  The independently-authored swept
+    // modular shell below is materially closer in front, side and rear
+    // silhouettes; source-measured roof fittings still run in the shared
+    // finish pass.
+    build: buildMerkavaMark, sourceOracleTurret: false,
     width: 3.72, trackW: 0.62, trackTop: 1.05, wheelR: 0.42, gearOut: 1.76,
     deckY: 1.76, rearDeckZ: -2.75,
     body: [
@@ -9123,6 +9923,10 @@ export const MERKAVA_PROFILES = {
       { z: -3.20, yT: 1.76, yB: 1.00, wT: 1.66, wB: 1.66 },
       { z: -4.05, yT: 1.58, yB: 0.90, wT: 1.58, wB: 1.58 },
     ],
+    // Keep the complete hull shell while lifting only its concealed
+    // outboard floor above the animated shoe envelope. This is the same
+    // additive-safe clearance treatment used by the earlier Merkava marks.
+    bodyTrackClear: { hw: 1.13, y: 1.18 },
     tailNotch: { hw: 0.45 },
     keel: { toeZ: 3.31, toeY: 0.98, toeHW: 0.60, midZ: 2.74, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -3.70, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
     glacis: { z0: 1.10, z1: 3.27 },
@@ -9136,32 +9940,35 @@ export const MERKAVA_PROFILES = {
     // stations read 3.70 wide here so the skirt line carries dims width.
     // Post-repair the ref skirt band is TALL (0.80..1.78 at the corner
     // columns) and runs to -3.30.
-    skirt: { z0: 2.50, z1: -3.30, top: 1.72, bot: 0.80, scallop: true, x: 1.86 },
+    skirt: {
+      z0: 2.50, z1: -3.30, top: 1.72, bot: 0.80, scallop: true, x: 1.86,
+      // Preserve the rear flap, seated behind the deep skirt and above the
+      // idler wrap rather than through the suspension-driven track course.
+      idlerFlapY: 1.24,
+    },
     driverHump: true,
     // r2: the deckPack casting-band mimic is GONE (the "casting fused to a
     // hull node" was 18 stranded fittings, all absorbed onto rig_turret in
     // 86d1071 — the repaired hull mask is a bare 1.76 deck). The rear rack
     // is the measured LOW band [0.6..1.69] with a thin high tail rail.
     tailRack: {
-      z0: -3.44, z1: -4.02, top: 1.68, bot: 0.95, hw: 1.75, x0: 0.45,
+      z0: -3.44, z1: -3.88, top: 1.68, bot: 0.95, hw: 1.75, x0: 0.45,
       wings: [
-        { x0: 0.60, x1: 1.10, z1: -4.16, top: 1.47, bot: 1.20 },
+        { x0: 0.60, x1: 1.10, z1: -3.88, top: 1.47, bot: 1.20 },
       ],
     },
     hullPosts: [{ x: -0.62, z: 3.43, top: 1.20, base: 1.00 }],
-    tailPins: [{ x: 0.52, y: 1.05, z: -4.24 }, { x: -0.52, y: 1.05, z: -4.24 }],
     pivotZ: -0.55,
     turretStyle: 'mod',
-    // Published hull 7.60 closes toe (3.53) to the rack tail (-4.02); the
-    // muzzle carries overall to 8.95 (oracle MG253 short at 4.30-4.39 —
-    // certified wholeCurves coverage cap).
+    // The supplied Mk.4B oracle carries the compact MG253 gun run. Preserve
+    // that source silhouette rather than extending to the published value.
     // §B3.1 (owner 2026-08-06): evac 0.30 buried the evacuator inside the
     // casting — same fix as merkava4 (drum at world ~3.24..3.60, evacR
     // 1.35 = r 0.105 vs the 0.095 sleeve); gunBoot at the trough mouth,
     // SLIM (rAdd 0.020): the sparse-turret print prices every proud mm —
     // the 0.045 roll measured turretCurves 52.3 -> 51.4.
     // Gate-in-loop: whole/turret rows measured before/after (§F.2).
-    gunAxisY: 2.06, gunR: 0.078, sleeve: true, evac: 0.751, evacR: 1.35, gunTipZ: 4.80, gunZL: 0.32,
+    gunAxisY: 2.06, gunR: 0.078, sleeve: true, evac: 0.751, evacR: 1.35, gunTipZ: 4.34, gunZL: 0.32,
     gunBoot: { rAdd: 0.020 },
     mantlet: { r0: 0.17, r1: 0.12, len: 0.60, z0: 2.55 },
     // §B1 SLOPE-MOTIVATES-THE-MASS re-mass (owner directive 2026-08-05,
@@ -9174,9 +9981,9 @@ export const MERKAVA_PROFILES = {
     // at |x| 0.9-1.5 where the real Mk.4 rakes away — the raked build
     // vacates part of that band; measured delta certified in the packet
     // round section (front_whole/front_turret lanes).
-    apexZ: 2.60, notchHW: 0.32, hwMax: 1.60, roofHW: 1.18, roofInset: 0.92,
-    shellFrontZ: 1.30, noseZ: 0.55, noseHW: 1.48, maxWZ: -0.35, shellRearZ: -2.25,
-    shellBotY: 1.53, shellTopY: 2.58,
+    apexZ: 2.60, notchHW: 0.32, hwMax: 1.74, roofHW: 1.18, roofInset: 0.68,
+    shellFrontZ: 1.30, noseZ: 0.55, noseHW: 1.52, maxWZ: -0.35, shellRearZ: -2.25,
+    shellBotY: 1.80, shellTopY: 2.49,
     // STATURE CAP (certified): the 1.313x width-normalized print rides its
     // plateau at 2.99-3.12 and cupola band to 3.1+; published height 2.66
     // (p95) pins the whole roof at 2.655-2.665 — the ridge/roof cap line is
@@ -9191,16 +9998,19 @@ export const MERKAVA_PROFILES = {
     // replace the vertical-walled block over the mantlet; plan/side
     // carriers unchanged (bottom edges + centerline top lines), only
     // upper-flank front columns vacate — measured below (§F.2).
-    crest: { z0: 2.60, zW: 1.50, z1: 0.60, hw0: 0.22, hw1: 0.46, top0: 2.30, top1: 2.655, bot: 1.92, rakeTop: 0.10, rakeTop1: 0.30 },
-    cheek: { pts: [[0.65, 1.30], [1.00, 1.05], [1.30, 0.75], [1.58, 0.55]], topIn: 2.50, topOut: 2.00, botIn: 1.88, botOut: 1.56 },
+    crest: { z0: 2.60, zW: 1.50, z1: 0.60, hw0: 0.22, hw1: 0.46, top0: 2.28, top1: 2.52, bot: 1.92, rakeTop: 0.10, rakeTop1: 0.30 },
+    cheek: { pts: [[0.65, 1.30], [1.06, 1.05], [1.40, 0.75], [1.72, 0.55]], topIn: 2.46, topOut: 2.02, botIn: 1.92, botOut: 1.80 },
     cheekRake: 0.45, wedgeFront: true, wedgeRake: 0.40,
-    roofLine: [[0.60, 2.655], [0.10, 2.60], [-0.05, 2.655], [-1.90, 2.655], [-2.10, 2.60]],
+    roofLine: [[0.60, 2.50], [0.10, 2.50], [-0.05, 2.53], [-1.35, 2.53], [-1.90, 2.48], [-2.10, 2.45]],
     bustleZ1: -2.34, bustleBot: 1.95,
-    basket: { z0: -2.36, z1: -3.90, top: 2.62, topRear: 2.50, bot: 1.96 }, basketHW: 1.32,
+    basket: { z0: -2.36, z1: -3.90, top: 2.52, topRear: 2.45, bot: 1.96 }, basketHW: 1.32,
     chainDrop: 0.12, chainGap: -0.30,
-    kitCapY: 2.655,
+    // The source rear is a supported open rack with irregular packed kit,
+    // not the generic solid rectangular basket fill.
+    softGoods: true, basketVoids: true, rackShelf: true, paleKit: true, chainFringe: true,
+    kitCapY: 2.76,
     cupolaX: 0.55, cupolaZ: -0.90, cupolaRaise: -0.16, noLoaderHatch: true,
-    pano: { x: -0.35, z: -0.95, top: 2.65 }, sightX: 0.45,
+    pano: { x: 0.64, z: -0.72, top: 2.76 }, sightX: 0.45,
     // THREE tall whips on the measured columns -3.17 / -2.37 / -2.17
     // (tops 4.53 / 4.32 / 4.30).
     antennas: [
