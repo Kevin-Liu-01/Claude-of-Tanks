@@ -6761,7 +6761,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   }[id];
   if (!cfg) return false;
 
-  const { cylZ, xform } = KIT;
+  const { box, cylX, cylY, cylZ, xform } = KIT;
   const rootZ = L(cfg.rootZ) - gunZL;
   const mouthZ = L(cfg.mouthZ) - gunZL;
   const span = mouthZ - rootZ;
@@ -6794,6 +6794,130 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     ring(midHW, midHH, rootZ + span * midF),
     ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035),
   ]));
+
+  // Surface finish for the broad mask planes. These are shallow gun-owned
+  // reliefs, not turret decals: every seam, stamp and fastener therefore
+  // follows both turret yaw and cannon elevation. Nothing sits more than a
+  // few millimetres off the square-frustum skin, preserving the compact
+  // silhouette while breaking the former featureless slab read.
+  const hwAt = (f) => cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * f;
+  const hhAt = (f) => cfg.rootHH + (cfg.mouthHH - cfg.rootHH) * f;
+  const zAt = (f) => rootZ + span * f + 0.035;
+  const topPitch = Math.atan2(cfg.rootHH - cfg.mouthHH, span);
+  const sideAngle = Math.atan2(cfg.rootHW - cfg.mouthHW, span);
+  const addSkin = (geo, x, y, z, rx = 0, ry = 0, rz = 0, dark = false) => {
+    const transformed = xform(geo, 0, 0, 0, rx, ry, rz);
+    (dark ? P.addGunExtraDark : P.addGunExtra)(transformed, x0 + x, y, z);
+  };
+
+  // Longitudinal casting/weld beads plus two transverse armor-panel breaks
+  // on the upper and lower planes. The upper center line is deliberately
+  // interrupted by a small bolted inspection cover instead of reading as a
+  // single computer-flat face.
+  const seamF0 = 0.12, seamF1 = 0.90;
+  const seamMid = (seamF0 + seamF1) * 0.5;
+  const seamLen = span * (seamF1 - seamF0);
+  addSkin(box(0.018, 0.007, seamLen), 0, hhAt(seamMid) + 0.004, zAt(seamMid), topPitch, 0, 0, true);
+  addSkin(box(0.016, 0.006, seamLen * 0.62), 0, -hhAt(seamMid) - 0.004,
+    zAt(seamMid + 0.04), -topPitch, 0, 0, true);
+  for (const f of [0.30, 0.66]) {
+    addSkin(box(hwAt(f) * 1.46, 0.007, 0.020), 0, hhAt(f) + 0.004, zAt(f), topPitch, 0, 0, true);
+  }
+
+  const hatchF = id === 'merkava4b' ? 0.54 : 0.48;
+  const hatchX = -hwAt(hatchF) * 0.36;
+  const hatchW = Math.min(0.19, cfg.rootHW * 0.46);
+  const hatchD = Math.min(0.18, span * 0.13);
+  addSkin(box(hatchW, 0.009, hatchD), hatchX, hhAt(hatchF) + 0.009, zAt(hatchF), topPitch, 0, 0, true);
+  addSkin(box(hatchW * 0.84, 0.010, hatchD * 0.82), hatchX,
+    hhAt(hatchF) + 0.014, zAt(hatchF), topPitch);
+  if (P.q) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    addSkin(cylY(0.012, 0.010, 8), hatchX + sx * hatchW * 0.34,
+      hhAt(hatchF) + 0.021, zAt(hatchF) + sz * hatchD * 0.31, topPitch, 0, 0, true);
+  }
+
+  for (const side of [-1, 1]) {
+    const sideYaw = -side * sideAngle;
+
+    // A recessed longitudinal joint and a compact inspection-frame break up
+    // each broad side without another armor layer. Both are tangent to the
+    // taper and terminate well before the mouth chamfer.
+    const sideF0 = 0.16, sideF1 = 0.78;
+    const sideMid = (sideF0 + sideF1) * 0.5;
+    addSkin(box(0.007, 0.020, span * (sideF1 - sideF0)),
+      side * (hwAt(sideMid) + 0.003), -hhAt(sideMid) * 0.10, zAt(sideMid),
+      0, sideYaw, 0, true);
+    const frameF = side < 0 ? 0.47 : 0.40;
+    const frameH = hhAt(frameF) * 0.72;
+    const frameD = Math.min(0.22, span * 0.16);
+    for (const sy of [-1, 1]) {
+      addSkin(box(0.007, 0.018, frameD), side * (hwAt(frameF) + 0.004),
+        sy * frameH * 0.5, zAt(frameF), 0, sideYaw, 0, true);
+    }
+    for (const sf of [-0.5, 0.5]) {
+      const f = frameF + sf * frameD / span;
+      addSkin(box(0.007, frameH, 0.018), side * (hwAt(f) + 0.004), 0,
+        zAt(f), 0, sideYaw, 0, true);
+    }
+
+    // Edge washer/bolt course: dark recessed washer under a small painted
+    // cap. The stagger changes per side, retaining the hand-fitted Israeli
+    // armor character instead of a mirrored procedural grid.
+    if (P.q) for (const [i, f] of [0.21, 0.43, 0.69, 0.84].entries()) {
+      const by = (i % 2 ? -1 : 1) * hhAt(f) * (side < 0 ? 0.58 : 0.62);
+      const bx = side * (hwAt(f) + 0.006);
+      addSkin(cylX(0.023, 0.008, 10), bx, by, zAt(f), 0, sideYaw, 0, true);
+      addSkin(cylX(0.013, 0.012, 8), bx + side * 0.005, by, zAt(f), 0, sideYaw);
+    }
+  }
+
+  // Mark-specific stamped service code on the right mask face. The tiny
+  // seven-segment strokes are dark inlays seated directly on the armor (not
+  // a floating canvas label), giving every mark a legible engraved identity.
+  const serviceCode = {
+    merkava1b: '1B', merkava2b: '2B', merkava2d: '2D',
+    merkava3c: '3C', merkava3d: '3D', merkava4b: '4B',
+  }[id];
+  const glyphs = {
+    '1': ['ur', 'lr'],
+    '2': ['t', 'ur', 'm', 'll', 'b'],
+    '3': ['t', 'ur', 'm', 'lr', 'b'],
+    '4': ['ul', 'm', 'ur', 'lr'],
+    B: ['t', 'ul', 'm', 'ur', 'll', 'lr', 'b'],
+    C: ['t', 'ul', 'll', 'b'],
+    D: ['t', 'ul', 'll', 'ur', 'lr', 'b'],
+  };
+  const stampF = 0.69;
+  const stampH = Math.min(0.10, cfg.mouthHH * 0.46);
+  const stampW = stampH * 0.54;
+  const bar = 0.010;
+  const advance = stampW + 0.020;
+  const stampZ = zAt(stampF);
+  const stampYaw = -sideAngle;
+  const segment = (name, charZ) => {
+    const horizontal = name === 't' || name === 'm' || name === 'b';
+    const y = name === 't' ? stampH * 0.5 : name === 'b' ? -stampH * 0.5
+      : name === 'm' ? 0 : name.startsWith('u') ? stampH * 0.25 : -stampH * 0.25;
+    const dz = horizontal ? 0 : (name.endsWith('r') ? stampW * 0.5 : -stampW * 0.5);
+    const z = charZ + dz;
+    const f = THREE.MathUtils.clamp((z - 0.035 - rootZ) / span, 0, 1);
+    addSkin(box(0.006, horizontal ? bar : stampH * 0.48,
+      horizontal ? stampW : bar), hwAt(f) + 0.004, y, z, 0, stampYaw, 0, true);
+  };
+  [...serviceCode].forEach((char, index) => {
+    const charZ = stampZ + (index - (serviceCode.length - 1) * 0.5) * advance;
+    for (const name of glyphs[char]) segment(name, charZ);
+  });
+
+  // Low lifting/tie-down bosses at the buried end provide a supported load
+  // path into the turret cheek. They stay inside the root width and are too
+  // shallow to resurrect the wide-wing silhouette that this round replaced.
+  for (const side of [-1, 1]) {
+    const f = 0.16;
+    const lugX = side * hwAt(f) * 0.56;
+    addSkin(box(0.075, 0.022, 0.075), lugX, hhAt(f) + 0.014, zAt(f), topPitch, 0, 0, true);
+    addSkin(box(0.052, 0.027, 0.052), lugX, hhAt(f) + 0.028, zAt(f), topPitch);
+  }
 
   const oval = (r, len, z, scaleY = 1, taper = undefined, dark = false) => {
     const geo = xform(cylZ(r, len, P.q ? 24 : 16, taper), 0, 0, 0, 0, 0, 0,
