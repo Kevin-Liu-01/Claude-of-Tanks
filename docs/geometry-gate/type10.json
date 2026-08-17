@@ -1,11 +1,11 @@
 {
  "id": "type10",
- "geoMin": 69.3,
+ "geoMin": 68.7,
  "gatePassed": false,
  "components": {
   "hullCurves": 77.3,
   "stations": 85.4,
-  "wholeCurves": 69.3,
+  "wholeCurves": 68.7,
   "dims": 100,
   "floaters": 100
  },
@@ -552,9 +552,9 @@
    ]
   },
   "front_whole": {
-   "score": 69.28763364406058,
-   "meanPct": 2.33,
-   "p95Pct": 4.6,
+   "score": 68.69361635402151,
+   "meanPct": 2.34,
+   "p95Pct": 5.32,
    "coverPct": 0,
    "reg": {
     "dAlong": -0.019,
@@ -586,20 +586,20 @@
      "errM": 0.23
     },
     {
+     "at": 1.31,
+     "refTop": 1.12,
+     "refBot": -1.73,
+     "procTop": 0.7,
+     "procBot": -1.76,
+     "errM": 0.219
+    },
+    {
      "at": -1.54,
      "refTop": -0.72,
      "refBot": -1.34,
      "procTop": -0.42,
      "procBot": -1.41,
      "errM": 0.185
-    },
-    {
-     "at": 1.35,
-     "refTop": 0.35,
-     "refBot": -1.73,
-     "procTop": 0.65,
-     "procBot": -1.76,
-     "errM": 0.16
     },
     {
      "at": 0.1,
@@ -840,7 +840,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 162195,
+     "area": 162295,
      "minX": 149,
      "minY": 319,
      "maxX": 971,
@@ -854,7 +854,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 158500,
+     "area": 158498,
      "minX": 249,
      "minY": 319,
      "maxX": 1023,
@@ -868,7 +868,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 163278,
+     "area": 163280,
      "minX": 249,
      "minY": 319,
      "maxX": 1023,
@@ -882,7 +882,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 158755,
+     "area": 158855,
      "minX": 154,
      "minY": 319,
      "maxX": 971,
@@ -896,7 +896,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 162998,
+     "area": 163098,
      "minX": 169,
      "minY": 319,
      "maxX": 971,

@@ -226,12 +226,12 @@
   },
   {
    "id": "type10",
-   "geoMin": 69.3,
+   "geoMin": 68.7,
    "gatePassed": false,
    "components": {
     "hullCurves": 77.3,
     "stations": 85.4,
-    "wholeCurves": 69.3,
+    "wholeCurves": 68.7,
     "dims": 100,
     "floaters": 100
    }

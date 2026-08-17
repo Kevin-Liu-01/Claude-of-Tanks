@@ -254,3 +254,40 @@ shots/japan-wave/PACKET-type10.md. Battery: strict clip 0/0+0/0+0/0
 class (adjudicated LEAVE), winding clean, npm test exit 0. KEEP 97267188;
 the 08-12 7ac6d434 "direct fidelity 91.41" board row was a different
 instrument (never the curve gate).
+
+## §5.299 REVERT — owner order: keep type10b, revert plain type10 (2026-08-17, lane C)
+
+Owner order §5.299 lane C, verbatim: **"keep the type 10b and revert the
+plain type 10 to the model before"**. Delivered uncommitted-unstaged.
+- **type10b PINNED FIRST (the keep)**: the japan-wave base it builds on was
+  frozen as a verbatim private copy `buildType10BBase` in
+  src/vehicles/modern3.js (the buildType10Native2026 text exactly as it read
+  at 9555f7fe), and profiles/japan.js buildType10B re-pointed at it — the
+  ONLY consumer. Byte-identity receipt: hashgeo **77870ef0** (76 meshes /
+  77,246 verts) before and after the pin, and again after the revert.
+- **plain type10 REVERTED** to the pre-wave model: buildType10Native2026
+  restored byte-exact from `9555f7fe^` (the 21-line japan-wave delta out:
+  sprocket-bay roof split + raised louvre bank + fender/shadow trims + mast
+  x-nudges). Spec row untouched — the wave never changed it (whole-file
+  equality vs 9555f7fe^ proven after the splice, pin block aside).
+- Reverted hash: **a1cecea6** (62 meshes / 59,602 verts). Before: 97267188
+  (62/59,890).
+- Honest gate row ×2 bit-identical at the reverted build (row md5
+  018aa586a912690ae6546502e1e8b6f5): **min 68.7** (hull 77.3 / whole 68.7 /
+  stations 85.4 / dims 100 / floaters 100) — vs the wave's 69.3; the old
+  floater island does NOT reproduce (floaters 100 measured, truth over
+  expectation). The type-10_main_battle_tank_repaired.glb oracle (restored
+  §5.281) stays registered; rows are tool-written only.
+- Guards unmoved: type90 43179448 / type74 ca287df4 / type89 3c89045d.
+- §5.254 pairs (captured at their respective trees; before = clean worktree
+  at 33260080 pre-lane state, after = the delivered tree):
+  shots/type10-revert/{before,after}/{type10,type10b}/ — **type10 0/14
+  byte-identical** (real change in every view), **type10b 14/14
+  byte-identical** (the pixel hold proof of the keep, isu152 precedent).
+  Capture determinism proven 28/28 across independent before runs.
+- npm test exit 0. File scope: modern3.js (buildType10 region + pin block
+  only) + profiles/japan.js (type10b import/call only); ariete/italy code in
+  the shared file untouched.
+The §5.248 JAPAN-WAVE section above stays as history; its KEEP 97267188 is
+superseded by this order for plain type10 — that geometry lives on solely
+as the type10b base pin.

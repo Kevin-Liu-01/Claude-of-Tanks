@@ -4,7 +4,7 @@
 // running-gear course, then adds source-specific supported armor/equipment.
 
 import { KIT, FITTINGS, orientedSlab } from './kit.js';
-import { buildType10Native2026 } from '../modern3.js';
+import { buildType10BBase } from '../modern3.js';
 import { buildType90 } from './misc.js';
 
 function mount(P, fitting, x, y, z, rotation = null, owner = 'turret') {
@@ -450,7 +450,9 @@ function addType10BPackage(P) {
 }
 
 function buildType10B(P) {
-  buildType10Native2026(P);
+  // §5.299 PIN: Type 10B keeps the japan-wave base (9555f7fe) verbatim via
+  // buildType10BBase while plain type10 reverts to the pre-wave model.
+  buildType10BBase(P);
   addType10BPackage(P);
 }
 
