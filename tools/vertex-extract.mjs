@@ -728,12 +728,23 @@ const REG = {
   pl01: {
     path: 'public/models/community-candidates/pl01_501st.glb',
     turretNode: '^Tower$', gunNode: '^Cannon$', autoPivot: true,
-    turretFollowers: '^(?:TurretBarrel|TurretBase|TurretBody|ExplosionTubes|Cylinder\\.?00[24])$',
+    // §5.248 poland measure-lane followers completion (round 1): the print's
+    // 'Tower Rotation' group also carries the sight mast (Cylinder.005 >
+    // CamHolder > Cameras > CamCovers), the left EO head (Cameras.001), the
+    // RWS ring base (Cylinder.003), the RWS shields (TurretShields) and the
+    // gun thermal cover (TowerBarrelCover, child of 'Tower Turret Rotation').
+    // The batch-B row left them in the HULL mask (ref side_hull read tops
+    // 2.79-3.15 over the turret works band — baseline workorder receipt).
+    turretFollowers: '^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$',
     pubDims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.80 },
   },
   t72m1_jaguar: {
     // FUSED two-mesh conversion (CC-BY-NC) — whole-view instrument only.
+    // §5.248 poland measure-lane orientation TBD resolved (round 1): nose =
+    // raw +x (az-0 render shows a full side profile, gun +x — userdrops3
+    // convention receipt) -> yawOffset -90°, same as bmp3/leo2a6m.
     path: 'public/models/community-candidates/t72m1_jaguar_manako.glb',
+    yawOffset: -Math.PI / 2,
     fixedMount: true, scaleToOverall: true,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
   },
@@ -745,60 +756,104 @@ const REG = {
   },
   strv103: {
     // Casemate, fixedMount by design; wesiora candidateGlb stays in specs.
+    // Orientation resolved (sweden rebuild lane 2026-08-17): length on raw X,
+    // nose -X (thin fixed-gun tube width 0.043-0.051 at raw X -1.00..-0.48,
+    // tube height y 0.027..0.081 = the ~1.4 m gun line; full-width body ends
+    // +0.97 with the rear mudguard bulge at X 0.47..0.67) -> raw -X maps to
+    // gate +Z via yawOffset +PI/2. Pre-fix rows measured the print sideways
+    // (overall read -81.8%).
     path: 'public/models/community-candidates/strv103b_lamonekeli.glb',
-    fixedMount: true, scaleToOverall: true,
+    fixedMount: true, scaleToOverall: true, yawOffset: Math.PI / 2,
     pubDims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.63, heightM: 2.14 },
   },
   strv81: {
     path: 'public/models/community-candidates/strv81_mmdsonic.glb',
     turretNode: '^turret_0$', gunNode: '^gun_0$', autoPivot: true,
-    scaleToOverall: true,
+    // Orientation resolved (sweden rebuild lane 2026-08-17): raw scene faces
+    // -Z (gun_0 extends raw -Z; pre-fix extract auto-flip read flip:true) ->
+    // yawOffset PI carried in the row so every consumer agrees (ztz99a2-row
+    // convention; the fidelity harness gun-vs-turret auto-flip then no-ops).
+    scaleToOverall: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 7.82, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
   },
   strv122: {
     // TRIPO AI-GENERATED — WEAK instrument, visual influence only.
+    // Orientation resolved (sweden rebuild lane 2026-08-17): length on raw X,
+    // nose +X (thin L44 tube width 0.024 at raw X +0.33..+0.49; turret-roof
+    // antenna spike tops the raw box at X -0.27, t64bv1-class case) ->
+    // raw +X maps to gate +Z via yawOffset -PI/2 (ztz99a2 convention).
+    // Pre-fix rows measured the print sideways (overall read -84.6%).
     path: 'public/models/community-candidates/strv122_vavtrudner.glb',
-    fixedMount: true, scaleToOverall: true,
+    fixedMount: true, scaleToOverall: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.80, heightM: 3.00 },
   },
   ztz99a2: {
     // SketchUp-authored, inches, fused-by-material — whole-view only.
+    // Orientation resolved (china measure lane 2026-08-17): length on raw X,
+    // nose +X (thin tube extension x 664..782, axis y (77.75-3.54)*0.0254 =
+    // 1.885 m; rear-bustle band at x 334..351) -> raw +X maps to gate +Z.
+    // Inches confirmed: raw width 140.14*0.0254 = 3.56 m, roof-to-track
+    // (96.6-3.54)*0.0254 = 2.36 m vs published 2.37.
     path: 'public/models/community-candidates/ztz99a2_manako.glb',
-    fixedMount: true, scaleToOverall: true,
+    fixedMount: true, scaleToOverall: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },
   },
   ztz85_iii: {
     // FUSED conversion (CC-BY-NC) — whole-view only; hull LOW-CONF.
+    // Orientation resolved (china measure lane 2026-08-17): length on raw X,
+    // nose +X (sparse tube rings x 69..110 at y 33..38; tall whip at
+    // x -22..-13 tops the raw box — the width safeScale recovers the frame,
+    // t64bv1-class documented case).
     path: 'public/models/community-candidates/ztz85iii_manako.glb',
-    fixedMount: true, scaleToOverall: true,
+    fixedMount: true, scaleToOverall: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 6.40, overallLengthM: 10.28, widthM: 3.45, heightM: 2.30 },
   },
   ua_t84_oplot_m: {
     // TUR carries the FUSED gun — yaw-only articulation.
+    // §5.248 ukraine round ORIENTATION FIX: muzzle toward raw -Z (gun-only
+    // overhang read z -4.40..-1.95 vs hull mask -1.95..+4.39) and no gun
+    // node exists for the auto-flip -> explicit yawOffset PI.
     path: 'public/models/community-candidates/oplot_m_manako.glb',
-    turretNode: '^TUR$', autoPivot: true, scaleToOverall: true,
+    turretNode: '^TUR$', yawOffset: Math.PI, autoPivot: true, scaleToOverall: true,
     turretFollowers: '^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042)$',
     pubDims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.775, heightM: 2.285 },
   },
   ua_t80u_kursk: {
     // Viewer-rip re-upload suspect; fused 3-mesh, far off-origin.
+    // §5.248 ukraine round INSTRUMENT FIX: the diorama parks the tank
+    // axis-aligned along raw X (PCA 0.05°, spans 39.86×14.97×19.97u,
+    // 0.242 m/u vs pub), nose = raw -X -> yawOffset +90 (the userdrops2
+    // FLIP-RETIRED convention). Without it the width normalizer reads the
+    // 9.65 m length as width (extract read -86%).
     path: 'public/models/community-candidates/t80u_kursk_manako.glb',
-    fixedMount: true, scaleToOverall: true,
+    fixedMount: true, scaleToOverall: true, yawOffset: Math.PI / 2,
     pubDims: { hullLengthM: 7.01, overallLengthM: 9.65, widthM: 3.60, heightM: 2.20 },
   },
   ua_t64bv: {
-    // Kitbash print (CC-BY-NC); follower census OPEN (60+ _dz_ ERA nodes
-    // split by AABB in the measure lane). Also the t64bv1 relay print.
+    // Kitbash print (CC-BY-NC). Also the t64bv1 relay print.
+    // §5.248 ukraine round FOLLOWER CENSUS (was OPEN): the 106 _dz_ ERA
+    // meshes split by AABB — 55 turret-carried K-1 (cheek/roof fans, all
+    // cy>=1.33 above the 1.30 deck, cz<=0.05) join the followers; the 47
+    // glacis rows (cz 0.71..1.54) and the four side-band strips
+    // (default136/231 pairs, |x| 1.53..1.71) stay hull. Stray _tur_
+    // meshes 001/252/255/260/282 + the turret interior 249 join; Vert*
+    // (AKM kitbash prop bits) join the existing Cube/Cylinder prop set.
     path: 'public/models/community-candidates/t64bv_donbass_manako.glb',
     turretNode: '^default279$', gunNode: '^default280$', gunFollowers: '^default$',
     autoPivot: true,
-    turretFollowers: '^(?:default(?:236|244|245|247|253|254|256|261|262|275|276|281)|(?:Cube|Cylinder)(?:\\.?\\d{3})?)$',
+    turretFollowers: '^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$',
     pubDims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 },
   },
   ua_t80bv: {
     // bashnya carries the FUSED gun; WT fingerprint — _vlo audit applies.
+    // §5.248 ukraine round ORIENTATION FIX: muzzle toward raw -Z (bo4ki
+    // fuel drums + unditching log at the raw +Z end) and the fused gun
+    // gives the auto-flip nothing to read -> explicit yawOffset PI.
+    // _vlo AUDIT: T80BV_chassis_vlo.0 (11316v) rides the hull node but
+    // spans only y 0.10..1.12 inside the chassis+track union — a low-LOD
+    // running-gear shell, NOT an articulated-content bake; masks benign.
     path: 'public/models/community-candidates/t80bv_ua_manako.glb',
-    turretNode: '^bashnya$', autoPivot: true,
+    turretNode: '^bashnya$', yawOffset: Math.PI, autoPivot: true,
     pubDims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
   },
   ariete_c1: {

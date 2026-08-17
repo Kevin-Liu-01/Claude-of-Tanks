@@ -135,14 +135,22 @@ const LOCAL_REFERENCE_OVERRIDES = {
   leo2a6m: { source:'glb', glb:{ path:'/models/community-candidates/leo2a6m_arrafi.glb', turretNode:'^Object_6$', autoPivot:true, yawOffset:-Math.PI/2 } },
   // ---- §5.248 batch B (Claude of Tanks Models folder, 15 prints — ALL
   // LOCAL-ONLY quarantine, measurement/influence only; see ATTRIBUTION).
-  pl01: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|ExplosionTubes|Cylinder\\.?00[24])$' } },
-  t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', fixedMount:true, componentMasks:false } },
+  // pl01 followers completed + t72m1 orientation resolved by the poland
+  // measure lane (§5.248 round 1): the print's 'Tower Rotation' group also
+  // carries the sight mast (Cylinder.005>CamHolder>Cameras>CamCovers), left
+  // EO head (Cameras.001), RWS ring (Cylinder.003), RWS shields
+  // (TurretShields) and the gun thermal cover (TowerBarrelCover) — the
+  // batch-B row left them in the HULL mask (ref side_hull topped 2.79-3.15
+  // over the works band). Jaguar nose = raw +x -> yawOffset -90 (userdrops3
+  // convention; az-0 render showed a full side profile).
+  pl01: { source:'glb', glb:{ path:'/models/community-candidates/pl01_501st.glb', turretNode:'^Tower$', gunNode:'^Cannon$', autoPivot:true, paintUntextured:true, turretFollowers:'^(?:TurretBarrel|TurretBase|TurretBody|TurretShields|ExplosionTubes|Cylinder\\.?00[2-5]|Cameras(?:\\.?001)?|CamHolder|CamCovers|TowerBarrelCover)$' } },
+  t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
   pt91_twardy: { source:'glb', glb:{ path:'/models/community-candidates/pt91a_manako.glb', turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true } },
   strv103: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true } },
-  strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true } },
+  strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   strv122: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false } },
-  ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false } },
-  ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false } },
+  ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
+  ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ua_t84_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042)$', gunComponentMasks:false } },
   ua_t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, componentMasks:false } },
   ua_t64bv: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:236|244|245|247|253|254|256|261|262|275|276|281)|(?:Cube|Cylinder)(?:\\.?\\d{3})?)$' } },
