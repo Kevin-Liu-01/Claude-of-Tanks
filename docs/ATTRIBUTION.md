@@ -864,3 +864,57 @@ build from photos alone), say so and the files are pulled.
 - community-candidates/t90ms_kojf.glb — re-baked from OBJ source, same.
 - community-candidates/t90_kojf.glb — re-baked from OBJ source, same.
 Textures on the re-bakes are partial (geometry is the instrument).
+
+## §5.248 batch B — "Claude of Tanks Models" folder, 15 drops (owner drop 2026-08-15/16; onboarded 2026-08-17)
+Fifteen GLBs from ~/Downloads/"Claude of Tanks Models"/, all Sketchfab exports
+with embedded asset.extras. PROVENANCE LAW applied: embedded tags are a
+starting point, never proof; live source pages NOT yet checked (deferred to
+the orchestrator/owner lane — no browser in the onboarding round). No title
+names a commercial game (THE ONE ABSOLUTE RULE not triggered on its face),
+but several carry extraction/conversion fingerprints noted below. Owner
+ruling standing: ALL FIFTEEN are **LOCAL-ONLY QUARANTINE, never ship** —
+measurement/influence references for our own ground-up §K builds (§5.248);
+every playable stays procedural. ASK-OWNER standing: type_89-strict deletion
+available on request for any file. Parked under the gitignored
+public/models/community-candidates/ with author-suffixed names; copies are
+byte-identical (SHA-256 verified) to the Downloads originals.
+
+By 42manako (https://sketchfab.com/42manako — same uploader as the quarantined
+challenger_3): ten files. Four are CC-BY-NC-4.0 = quarantine class by this
+file's standing NC rule regardless of any other finding:
+- t72m1_jaguar_manako.glb (CC-BY-NC-4.0) — fused mesh_NNN_mat_NN pair, conversion fingerprint.
+- ztz85iii_manako.glb (CC-BY-NC-4.0) — fused mat_65/73 pair, conversion fingerprint.
+- oplot_m_manako.glb (CC-BY-NC-4.0) — semantic TUR/POKLOP/KOLLO/GUS nodes, modder-authored or mod-sourced.
+- t64bv_donbass_manako.glb (CC-BY-NC-4.0) — modder kitbash (reused btr-70m-hull texture, 3ds Max defaults, AKM prop).
+CC-BY-4.0 tagged, with per-file findings:
+- pt91a_manako.glb — EXTRACTION-SUSPECT: War-Thunder-style part naming (chassis_vlo, wheel_big/small_N, track_1, misc_a/b); BUILD-STANDARD _vlo audit applies before any metric use.
+- t80bv_ua_manako.glb — EXTRACTION-SUSPECT: same _vlo/Tr1 scheme + Russian part names (bashnya, bo4ki); T-80BV exists in War Thunder.
+- ztz99a_manako.glb — STRONG SUSPECT: Sketchfab viewer-rip RE-UPLOAD fingerprint (root node "ZTZ99A.obj.cleaner.materialmerger.gles", UUID materials, 37 baked textures). The uploader is not the author; original-source hunt owed before any status upgrade.
+- t80u_kursk_manako.glb — STRONG SUSPECT: same viewer-rip re-upload fingerprint (".T-80U.obj.cleaner.materialmerger.gles", off-origin diorama placement).
+- ztz99a2_manako.glb — SketchUp/Collada authorship fingerprint (Color_* palette + edge_color materials); reads fan-authored.
+
+Other authors:
+- pl01_501st.glb — "Polish tank PL-01 Rigged (FREE)" by 501stclone_trooper
+  (https://sketchfab.com/501stclone_trooper), CC-BY-4.0 — authored-look
+  semantic Blender nodes, untextured. (pl01 oracle candidate.)
+- strv103b_lamonekeli.glb — "strv 103b" by lamonekeli
+  (https://sketchfab.com/lamonekeli), CC-BY-4.0 — fan-authored look; joins
+  (does not replace) the committed strv103_wesiora candidateGlb registration.
+- strv81_mmdsonic.glb — "Strv 81" by MMD_SonicNewYear
+  (https://sketchfab.com/MMD_SonicNewYear), CC-BY-4.0 — EXTRACTION-SUSPECT:
+  hull_0/turret_0/gun_0/chassis_N game-texture-set naming; Strv 81 exists in
+  War Thunder.
+- strv122_vavtrudner.glb — "Stridsvagn 122" by Vavtrudner
+  (https://sketchfab.com/Vavtrudner), CC-BY-4.0, 122MB (over GitHub's 100MB
+  limit; lives only in the gitignored staging area) — TRIPO AI-GENERATED
+  (tripo_node/tripo_material fingerprint): not an extraction, but a WEAK
+  metric instrument — visual influence only; metric anchors from published dims.
+- ariete_c1_arrafi.glb — "C1 Ariete Main Battle Tank" by Muhamad Mirza Arrafi
+  (https://sketchfab.com/nazidefenseforceofficial), CC-BY-4.0 — OBJ-authored
+  with semantic material split (Hull/Turret/Cannon/Gear).
+- carro45t_hlebov.glb — "Carro 45t" by Dmitry Hlebov
+  (https://sketchfab.com/hleb_hlb), CC-BY-4.0 — Blender/OBJ hand-model; the
+  subject is a World-of-Tanks-only paper design, so all "published" dims are
+  project/game-derived (LOW confidence).
+(Full SHA-256 receipts in the §5.248 batch-B onboarding report, session
+scratchpad; files are gitignored local instruments.)

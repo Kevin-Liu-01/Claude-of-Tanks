@@ -645,6 +645,101 @@ const REG = {
     turretNode: '^Object_2$', gunNode: '^Object_15$', autoPivot: true,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.30 },
   },
+  // ---- §5.248 batch B (15 prints, ALL LOCAL-ONLY quarantine; censuses +
+  // provenance in ATTRIBUTION; weak instruments marked; orientation TBDs
+  // resolved by the measure lanes).
+  pl01: {
+    path: 'public/models/community-candidates/pl01_501st.glb',
+    turretNode: '^Tower$', gunNode: '^Cannon$', autoPivot: true,
+    turretFollowers: '^(?:TurretBarrel|TurretBase|TurretBody|ExplosionTubes|Cylinder\\.?00[24])$',
+    pubDims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.80 },
+  },
+  t72m1_jaguar: {
+    // FUSED two-mesh conversion (CC-BY-NC) — whole-view instrument only.
+    path: 'public/models/community-candidates/t72m1_jaguar_manako.glb',
+    fixedMount: true, scaleToOverall: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
+  },
+  pt91_twardy: {
+    // WT-style naming — _vlo audit before metric use.
+    path: 'public/models/community-candidates/pt91a_manako.glb',
+    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
+    pubDims: { hullLengthM: 6.95, overallLengthM: 9.67, widthM: 3.59, heightM: 2.19 },
+  },
+  strv103: {
+    // Casemate, fixedMount by design; wesiora candidateGlb stays in specs.
+    path: 'public/models/community-candidates/strv103b_lamonekeli.glb',
+    fixedMount: true, scaleToOverall: true,
+    pubDims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.63, heightM: 2.14 },
+  },
+  strv81: {
+    path: 'public/models/community-candidates/strv81_mmdsonic.glb',
+    turretNode: '^turret_0$', gunNode: '^gun_0$', autoPivot: true,
+    scaleToOverall: true,
+    pubDims: { hullLengthM: 7.82, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
+  },
+  strv122: {
+    // TRIPO AI-GENERATED — WEAK instrument, visual influence only.
+    path: 'public/models/community-candidates/strv122_vavtrudner.glb',
+    fixedMount: true, scaleToOverall: true,
+    pubDims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.80, heightM: 3.00 },
+  },
+  ztz99a2: {
+    // SketchUp-authored, inches, fused-by-material — whole-view only.
+    path: 'public/models/community-candidates/ztz99a2_manako.glb',
+    fixedMount: true, scaleToOverall: true,
+    pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },
+  },
+  ztz85_iii: {
+    // FUSED conversion (CC-BY-NC) — whole-view only; hull LOW-CONF.
+    path: 'public/models/community-candidates/ztz85iii_manako.glb',
+    fixedMount: true, scaleToOverall: true,
+    pubDims: { hullLengthM: 6.40, overallLengthM: 10.28, widthM: 3.45, heightM: 2.30 },
+  },
+  ua_t84_oplot_m: {
+    // TUR carries the FUSED gun — yaw-only articulation.
+    path: 'public/models/community-candidates/oplot_m_manako.glb',
+    turretNode: '^TUR$', autoPivot: true, scaleToOverall: true,
+    turretFollowers: '^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042)$',
+    pubDims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.775, heightM: 2.285 },
+  },
+  ua_t80u_kursk: {
+    // Viewer-rip re-upload suspect; fused 3-mesh, far off-origin.
+    path: 'public/models/community-candidates/t80u_kursk_manako.glb',
+    fixedMount: true, scaleToOverall: true,
+    pubDims: { hullLengthM: 7.01, overallLengthM: 9.65, widthM: 3.60, heightM: 2.20 },
+  },
+  ua_t64bv: {
+    // Kitbash print (CC-BY-NC); follower census OPEN (60+ _dz_ ERA nodes
+    // split by AABB in the measure lane). Also the t64bv1 relay print.
+    path: 'public/models/community-candidates/t64bv_donbass_manako.glb',
+    turretNode: '^default279$', gunNode: '^default280$', gunFollowers: '^default$',
+    autoPivot: true,
+    turretFollowers: '^(?:default(?:236|244|245|247|253|254|256|261|262|275|276|281)|(?:Cube|Cylinder)(?:\\.?\\d{3})?)$',
+    pubDims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 },
+  },
+  ua_t80bv: {
+    // bashnya carries the FUSED gun; WT fingerprint — _vlo audit applies.
+    path: 'public/models/community-candidates/t80bv_ua_manako.glb',
+    turretNode: '^bashnya$', autoPivot: true,
+    pubDims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
+  },
+  ariete_c1: {
+    // Applique/Glass span hull+turret — stay hull until the measure lane
+    // splits them; also the ariete_c2 influence print.
+    path: 'public/models/community-candidates/ariete_c1_arrafi.glb',
+    turretNode: '^Object_5$', gunNode: '^Object_7$', autoPivot: true,
+    turretFollowers: '^Object_(?:2|6)$', scaleToOverall: true,
+    pubDims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.50 },
+  },
+  carro45t: {
+    // Paper vehicle — dims LOW-CONF; antenna fused into the turret (window
+    // height reads, k2-RWS precedent).
+    path: 'public/models/community-candidates/carro45t_hlebov.glb',
+    turretNode: '^Object_58$', gunNode: '^Object_4$', gunFollowers: '^Object_6$',
+    autoPivot: true,
+    pubDims: { hullLengthM: 6.98, overallLengthM: 10.60, widthM: 3.43, heightM: 2.95 },
+  },
   t14: {
     // "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2 (CC-BY-4.0; Russian
     // semantic materials BASHNYA/KORPUS/PULEMETORUDIE = original Blender
