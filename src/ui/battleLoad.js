@@ -36,6 +36,13 @@ const CSS = `
 .cot-bl .hero .art.desert{background-image:linear-gradient(160deg,#6d5330,#241a10 72%);}
 .cot-bl .hero .art.winter{background-image:linear-gradient(160deg,#5d6b78,#141a20 72%);}
 .cot-bl .hero .art.urban{background-image:linear-gradient(160deg,#4b4a45,#14161a 72%);}
+.cot-bl .hero .art.coastal,.cot-bl .hero .art.fjord{background-image:linear-gradient(160deg,#426b78,#101b22 72%);}
+.cot-bl .hero .art.autumn,.cot-bl .hero .art.badlands{background-image:linear-gradient(160deg,#80502f,#211510 72%);}
+.cot-bl .hero .art.steppe,.cot-bl .hero .art.frontier{background-image:linear-gradient(160deg,#667247,#172015 72%);}
+.cot-bl .hero .art.railyard,.cot-bl .hero .art.foundry{background-image:linear-gradient(160deg,#55514b,#151619 72%);}
+.cot-bl .hero .art.delta,.cot-bl .hero .art.monsoon{background-image:linear-gradient(160deg,#315f4d,#0e1d1a 72%);}
+.cot-bl .hero .art.alpine{background-image:linear-gradient(160deg,#7e96a6,#121a23 72%);}
+.cot-bl .hero .art.caldera{background-image:linear-gradient(160deg,#59473f,#171316 72%);}
 .cot-bl .hero .scrim{position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(5,8,11,.62) 0%,rgba(5,8,11,.25) 40%,rgba(5,8,11,.96) 100%);}
 .cot-bl .hero .vig{position:absolute;inset:0;

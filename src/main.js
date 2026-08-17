@@ -2371,6 +2371,7 @@ async function presentNetworkBattle({
   markLoadStage('readyBarrier');
 
   shotMode = false;
+  perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   if (settings.isOpen()) settings.close({ noRelock: true });
   killcam.cancel();
@@ -2671,6 +2672,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // fx and stops the sim tick; any UI path out of shot mode (garage BATTLE
   // button) must resume it or the battle is permanently frozen.
   shotMode = false;
+  perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   // PAUSE: battle entry always clears a paused overlay (probe-driven
   // startBattle can run with the panel up; the tick edge below then restores
@@ -2790,6 +2792,7 @@ function enterGarage({ preserveRoom = !!(
   game.preBattleS = 0;
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
   shotMode = false;
+  perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   game.phase = 'garage';
   // PAUSE: leaving battle clears any paused overlay (Leave Battle closes the
@@ -3732,6 +3735,15 @@ const VIEW_TIME = {
   battlefield_autumn: 2.0,
   battlefield_steppe: 2.0,
   battlefield_railyard: 2.0,
+  // Map-quality expansion
+  battlefield_frontier: 2.0,
+  battlefield_fjord: 2.0,
+  battlefield_delta: 2.0,
+  battlefield_badlands: 2.0,
+  battlefield_monsoon: 2.0,
+  battlefield_alpine: 2.0,
+  battlefield_caldera: 2.0,
+  battlefield_foundry: 2.0,
   killcam_xray: 1.0, // KILL-CAM
 };
 
@@ -3745,6 +3757,14 @@ const VIEW_MAP = {
   battlefield_autumn: 'autumn',
   battlefield_steppe: 'steppe',
   battlefield_railyard: 'railyard',
+  battlefield_frontier: 'frontier',
+  battlefield_fjord: 'fjord',
+  battlefield_delta: 'delta',
+  battlefield_badlands: 'badlands',
+  battlefield_monsoon: 'monsoon',
+  battlefield_alpine: 'alpine',
+  battlefield_caldera: 'caldera',
+  battlefield_foundry: 'foundry',
 };
 
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
@@ -4219,6 +4239,14 @@ const SHOT_VIEWS = {
   battlefield_autumn() { mapEstablishingShot(); },
   battlefield_steppe() { mapEstablishingShot(); },
   battlefield_railyard() { mapEstablishingShot(); },
+  battlefield_frontier() { mapEstablishingShot(); },
+  battlefield_fjord() { mapEstablishingShot(); },
+  battlefield_delta() { mapEstablishingShot(); },
+  battlefield_badlands() { mapEstablishingShot(); },
+  battlefield_monsoon() { mapEstablishingShot(); },
+  battlefield_alpine() { mapEstablishingShot(); },
+  battlefield_caldera() { mapEstablishingShot(); },
+  battlefield_foundry() { mapEstablishingShot(); },
   // KILL-CAM: deterministic staged x-ray replay frame. A synthetic shot from
   // the player's M1A2 into the Tiger I at its spawn is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
@@ -4319,6 +4347,9 @@ window.__SHOTS = {
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
     'battlefield_coastal', 'battlefield_autumn', 'battlefield_steppe',
     'battlefield_railyard', // MAPS r1
+    'battlefield_frontier', 'battlefield_fjord', 'battlefield_delta',
+    'battlefield_badlands', 'battlefield_monsoon', 'battlefield_alpine',
+    'battlefield_caldera', 'battlefield_foundry',
     'killcam_xray', // KILL-CAM
   ],
   set(name) {
@@ -4329,6 +4360,7 @@ window.__SHOTS = {
     warmCombatPipeline();
     showroom.stop(); // reset drag/inertia before any deterministic shot recipe
     shotMode = true;
+    perfHud.setCaptureHidden(true);
     // perf-governor r1: captures are a pixel contract — render untrimmed
     // (update(force) already redraws every cascade; this restores AO too).
     post.resetPerfTrims();

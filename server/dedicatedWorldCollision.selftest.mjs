@@ -4,18 +4,28 @@ import {
   createDedicatedWorldCollision,
   dedicatedCollisionManifestStats,
 } from './dedicatedWorldCollision.js';
+import { MAP_IDS } from '../src/world/maps/index.js';
 
 const expected = {
   verdant: [3757, 441, 4114],
-  desert: [1747, 520, 1283],
+  desert: [1748, 521, 1283],
   winter: [3604, 499, 2890],
   urban: [1695, 925, 606],
   coastal: [2145, 438, 1575],
   autumn: [3703, 452, 3997],
   steppe: [1287, 508, 514],
   railyard: [1058, 409, 425],
+  frontier: [4113, 517, 4376],
+  fjord: [3938, 583, 3206],
+  delta: [4729, 385, 6132],
+  badlands: [1923, 691, 1004],
+  monsoon: [5821, 639, 7733],
+  alpine: [4681, 677, 3809],
+  caldera: [2889, 835, 1820],
+  foundry: [2028, 495, 1211],
 };
 const stats = dedicatedCollisionManifestStats();
+assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
 for (const [mapId, counts] of Object.entries(expected)) {
   assert.deepEqual(Object.values(stats[mapId]), counts, `${mapId} manifest census`);
 }
@@ -40,4 +50,4 @@ const origin = new Vector3(collider.min[0] - 2, centerY, centerZ);
 const hit = world.raycast(origin, new Vector3(1, 0, 0), collider.max[0] - collider.min[0] + 4);
 assert.equal(hit?.kind, 'prop', 'headless raycast resolves captured shell cover');
 
-console.log('dedicatedWorldCollision.selftest: all eight exact map manifests passed');
+console.log('dedicatedWorldCollision.selftest: all sixteen exact map manifests passed');

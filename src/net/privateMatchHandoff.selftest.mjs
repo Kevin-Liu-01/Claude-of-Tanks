@@ -10,6 +10,7 @@ import { PrivateRoomClientSession } from './privateRoomSession.js';
 import { MatchClientRuntime } from './matchRuntime.js';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.js';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.js';
+import { MAP_IDS } from '../world/maps/index.js';
 
 class FakeRtcChannel {
   constructor(label) {
@@ -128,8 +129,7 @@ await Promise.resolve();
 assert.equal(joined.client.connected, true, 'client listener catches post-handoff welcome');
 assert.equal(hosted.client.connected, true, 'host local player uses the same handshake');
 assert.equal(hosted.host.peers.size, 2);
-assert.ok(['verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard']
-  .includes(hosted.mapId), 'random map resolves from the shared match seed');
+assert.ok(MAP_IDS.includes(hosted.mapId), 'random map resolves from the shared match seed');
 
 joined.submitInput({
   throttle: 1, steer: 0, brake: false, fire: false,

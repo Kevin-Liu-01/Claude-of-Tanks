@@ -225,6 +225,106 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
  */
 export function wreckPool(era) {
   return era === 'modern'
-    ? ['m1a2', 't90m', 'leo2a7', 'm1a1', 't90a', 'strv103']
+    ? ['m1a2', 't90m', 'leo2a7', 'm1a1', 't90a', 't80u', 'challenger2',
+      'leclerc', 'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete']
     : ['tiger1', 'panther_g', 't34_85', 'm4a3e8', 'is2', 'kv2'];
+}
+
+/**
+ * Build lightweight local-space battlefield debris for a baked tank wreck:
+ * torn track-pad runs, detached road wheels, armor panels and tow-cable scrap.
+ * All pieces merge into the wreck mesh (zero extra draw calls / idle work).
+ * The exact vehicle silhouette and any popped turret still come from
+ * bakeTankWreck; these are the missing secondary destruction cues around it.
+ *
+ * @param {number} seed
+ * @param {{modern?:boolean}} [opts]
+ * @returns {{geo:THREE.BufferGeometry,tris:number}}
+ */
+export function bakeWreckDebris(seed, opts = {}) {
+  const rng = mulberry32((seed ^ 0x71ac5eed) >>> 0);
+  const modern = opts.modern !== false;
+  const parts = [];
+
+  function colored(geo, family = 'char') {
+    let g = geo.index ? geo.toNonIndexed() : geo;
+    if (!g.attributes.normal) g.computeVertexNormals();
+    for (const key of Object.keys(g.attributes)) {
+      if (key !== 'position' && key !== 'normal') g.deleteAttribute(key);
+    }
+    const n = g.attributes.position.count;
+    const colors = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const grain = 0.78 + rng() * 0.38;
+      const rust = family === 'rust' || (family === 'char' && rng() < 0.12);
+      const base = rust ? [0.16, 0.072, 0.034]
+        : family === 'rubber' ? [0.028, 0.026, 0.024] : [0.064, 0.057, 0.051];
+      colors[i * 3] = base[0] * grain;
+      colors[i * 3 + 1] = base[1] * grain;
+      colors[i * 3 + 2] = base[2] * grain;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    g.clearGroups();
+    g.morphAttributes = {};
+    parts.push(g);
+  }
+
+  // Two visibly torn track runs: irregular pads snake away from opposite hull
+  // corners, with gaps and flipped shoes instead of intact ribbon geometry.
+  for (const side of [-1, 1]) {
+    const count = (modern ? 10 : 8) + ((rng() * 5) | 0);
+    const startX = side * (modern ? 2.05 : 1.65);
+    const startZ = (rng() - 0.5) * 2.2;
+    const dir = (side > 0 ? 0.45 : Math.PI + 0.45) + (rng() - 0.5) * 1.2;
+    for (let i = 0; i < count; i++) {
+      if (i > 2 && rng() < 0.16) continue;
+      const t = i * (modern ? 0.48 : 0.42);
+      const x = startX + Math.sin(dir) * t + Math.sin(i * 0.8) * 0.16;
+      const z = startZ + Math.cos(dir) * t + Math.cos(i * 0.63) * 0.14;
+      const pad = new THREE.BoxGeometry(modern ? 0.50 : 0.43, 0.09, modern ? 0.31 : 0.27);
+      pad.rotateY(dir + (rng() - 0.5) * 0.36);
+      pad.rotateX((rng() - 0.5) * 0.22);
+      pad.rotateZ((rng() - 0.5) * 0.18);
+      pad.translate(x, 0.07 + rng() * 0.05, z);
+      colored(pad, i % 5 === 0 ? 'rust' : 'char');
+    }
+  }
+
+  // Detached road wheels: a mix of flat, leaning and nearly upright discs.
+  const wheelCount = (modern ? 4 : 3) + ((rng() * 3) | 0);
+  for (let i = 0; i < wheelCount; i++) {
+    const r = (modern ? 0.34 : 0.29) + rng() * 0.12;
+    const wheel = new THREE.CylinderGeometry(r, r, 0.18 + rng() * 0.10, 10, 1);
+    const upright = rng() < 0.45;
+    wheel.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : (rng() - 0.5) * 0.22);
+    wheel.rotateY(rng() * Math.PI);
+    const a = rng() * Math.PI * 2, rr = 2.7 + rng() * 3.2;
+    wheel.translate(Math.sin(a) * rr, upright ? r : 0.12, Math.cos(a) * rr);
+    colored(wheel, 'rubber');
+    // Exposed steel hub keeps a detached wheel readable against charred soil.
+    const hub = new THREE.CylinderGeometry(r * 0.36, r * 0.36, 0.205, 9, 1);
+    hub.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : 0);
+    hub.rotateY(rng() * Math.PI);
+    hub.translate(Math.sin(a) * rr, upright ? r : 0.13, Math.cos(a) * rr);
+    colored(hub, 'rust');
+  }
+
+  // Armor skirts, grilles and stowage panels thrown beyond the burn scar.
+  const panelCount = 4 + ((rng() * 4) | 0);
+  for (let i = 0; i < panelCount; i++) {
+    const w = 0.45 + rng() * 0.75, d = 0.28 + rng() * 0.58;
+    const panel = new THREE.BoxGeometry(w, 0.045 + rng() * 0.045, d);
+    panel.rotateX((rng() - 0.5) * 0.45);
+    panel.rotateY(rng() * Math.PI);
+    panel.rotateZ((rng() - 0.5) * 0.32);
+    const a = rng() * Math.PI * 2, rr = 2.0 + rng() * 4.0;
+    panel.translate(Math.sin(a) * rr, 0.08 + rng() * 0.12, Math.cos(a) * rr);
+    colored(panel, rng() < 0.35 ? 'rust' : 'char');
+  }
+
+  const merged = mergeGeometries(parts, false);
+  if (!merged) throw new Error('wreck debris merge failed');
+  const tris = (merged.attributes.position.count / 3) | 0;
+  for (const g of parts) g.dispose();
+  return { geo: merged, tris };
 }

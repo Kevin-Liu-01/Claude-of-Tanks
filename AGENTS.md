@@ -7,7 +7,7 @@
 ## Overview
 <!-- agent-docs:fill:overview -->
 Browser-native Three.js armored combat game. The runtime combines a fixed-step
-60 Hz simulation, procedural first-party vehicle fleet, eight battlefields,
+60 Hz simulation, procedural first-party vehicle fleet, sixteen battlefields,
 garage/showroom presentation, bots, armor/ballistics/modules, and mobile input.
 Treat current `origin/main` as active shared work: isolate broad changes in a
 worktree and never stage generated tank work wholesale.

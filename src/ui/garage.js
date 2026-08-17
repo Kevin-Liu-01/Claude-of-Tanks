@@ -322,8 +322,8 @@ const GARAGE_CSS = `
 .cot-maps .mtitle::before,.cot-camos .ctitle::before,
 .cot-featured .ftitle > span:first-child::before{content:'';display:inline-block;
   width:8px;height:2px;background:#f0a030;margin-right:6px;vertical-align:2px;}
-.cot-maps{position:static;min-height:0;overflow-y:auto;
-  scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
+.cot-maps{position:static;min-height:96px;overflow-y:auto;
+  scrollbar-width:none;flex:1 1 0;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
    clip; .can-scroll is toggled by JS only when the list truly overflows */
 .cot-maps.can-scroll{
@@ -352,11 +352,19 @@ const GARAGE_CSS = `
 .cot-map-card .mthumb.desert{background-color:#b3925c;background-image:linear-gradient(135deg,#c9a86e,#8f6f42);}
 .cot-map-card .mthumb.winter{background-color:#aeb9c4;background-image:linear-gradient(135deg,#cdd6de,#7f8d9b);}
 .cot-map-card .mthumb.urban{background-color:#5c6066;background-image:linear-gradient(135deg,#75797e,#3e4247);}
-/* MAPS r1: gradient fallbacks for the second four (data-URI thumbs override) */
+/* Map art overrides these biome fallbacks once the public asset resolves. */
 .cot-map-card .mthumb.coastal{background-color:#4a7a86;background-image:linear-gradient(135deg,#5f93a0,#2f5560);}
 .cot-map-card .mthumb.autumn{background-color:#9a5a28;background-image:linear-gradient(135deg,#c07030,#6b3d1a);}
 .cot-map-card .mthumb.steppe{background-color:#b09a50;background-image:linear-gradient(135deg,#c9b264,#8a763c);}
 .cot-map-card .mthumb.railyard{background-color:#565049;background-image:linear-gradient(135deg,#6e6860,#3a352f);}
+.cot-map-card .mthumb.frontier{background-color:#536940;background-image:linear-gradient(135deg,#718553,#35442a);}
+.cot-map-card .mthumb.fjord{background-color:#4c6974;background-image:linear-gradient(135deg,#78919a,#263d49);}
+.cot-map-card .mthumb.delta{background-color:#456c4b;background-image:linear-gradient(135deg,#71945c,#21483f);}
+.cot-map-card .mthumb.badlands{background-color:#8a4f32;background-image:linear-gradient(135deg,#ba7549,#482a22);}
+.cot-map-card .mthumb.monsoon{background-color:#315b46;background-image:linear-gradient(135deg,#54785c,#172f2c);}
+.cot-map-card .mthumb.alpine{background-color:#91a5b1;background-image:linear-gradient(135deg,#d2dce1,#4e6678);}
+.cot-map-card .mthumb.caldera{background-color:#544742;background-image:linear-gradient(135deg,#796255,#221d1e);}
+.cot-map-card .mthumb.foundry{background-color:#55585a;background-image:linear-gradient(135deg,#7b756b,#282b2e);}
 .cot-map-card .mthumb.random{background-image:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
 .cot-map-card .mname{font-size:10.5px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
 .cot-map-card .msub{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
@@ -1571,6 +1579,13 @@ export function createGarage(opts) {
   };
   window.addEventListener('resize', syncScrollFades);
   requestAnimationFrame(syncScrollFades);
+  // The map roster now exceeds the short-viewport column. Its flex height
+  // can settle after the first animation frame (once the camo grid measures),
+  // so window resize alone is insufficient to keep the fade affordance true.
+  if (typeof ResizeObserver === 'function') {
+    const scrollFadeObserver = new ResizeObserver(syncScrollFades);
+    scrollFadeObserver.observe(mapsEl);
+  }
 
   // --- CAMO PICKER SECTION: per-tank paint pattern -------------------------
   // opts.camo = { patterns: string[], label: {id:label}, get(specId),

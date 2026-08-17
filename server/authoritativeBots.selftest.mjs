@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
+import { MAP_IDS } from '../src/world/maps/index.js';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
 
-const MAPS = ['verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard'];
+const MAPS = MAP_IDS;
 const SPECS = ALL_TANK_IDS
   .filter((id) => ['light', 'medium', 'heavy'].includes(getSpec(id).class))
   .slice(0, 6);

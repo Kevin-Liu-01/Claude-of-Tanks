@@ -1048,6 +1048,113 @@ function bTentBroken(rng) {
   return merge(parts);
 }
 
+// --- modern roadside / industrial clutter ---------------------------------
+// These five silhouettes extend the map language beyond farm and WWII props.
+// They remain one instanced pool per kind and use the same break/topple seam,
+// so denser modern maps do not add per-object draw calls or idle updates.
+function bBarrier(rng) {
+  const parts = [];
+  const CONC = [0.08, 0.06, 0.43];
+  const base = box(0.72, 0.42, 2.7);
+  parts.push(P(base.translate(0, 0.21, 0), CONC, 0.10, rng));
+  const top = box(0.34, 0.58, 2.52);
+  parts.push(P(top.translate(0, 0.68, 0), [0.08, 0.05, 0.5], 0.13, rng));
+  for (const z of [-0.92, 0.92]) {
+    parts.push(P(box(0.78, 0.12, 0.22).translate(0, 0.06, z), CONC, 0.08, rng));
+  }
+  return merge(parts);
+}
+function bBarrierBroken(rng) {
+  const parts = [];
+  const CONC = [0.08, 0.05, 0.38];
+  for (let i = 0; i < 7; i++) {
+    const s = 0.24 + rng() * 0.34;
+    const chunk = box(s * (0.8 + rng()), s, s * (0.7 + rng() * 0.7));
+    chunk.rotateX((rng() - 0.5) * 0.8);
+    chunk.rotateY(rng() * Math.PI);
+    parts.push(P(chunk.translate((rng() - 0.5) * 1.5, s * 0.35,
+      (rng() - 0.5) * 2.8), CONC, 0.16, rng));
+  }
+  return merge(parts);
+}
+
+function bRoadsign(rng) {
+  const parts = [];
+  const post = box(0.11, 2.8, 0.11);
+  parts.push(P(post.translate(0, 1.4, 0), STEEL, 0.08, rng));
+  const sign = box(1.18, 0.78, 0.07);
+  parts.push(P(sign.translate(0, 2.45, 0), [0.58, 0.56, 0.12], 0.08, rng));
+  const inset = box(0.92, 0.52, 0.025);
+  parts.push(P(inset.translate(0, 2.45, 0.052), [0.02, 0.12, 0.48], 0.05, rng));
+  return merge(parts);
+}
+
+function bCone(rng) {
+  const parts = [];
+  const ORANGE = [0.055, 0.84, 0.48];
+  parts.push(P(box(0.5, 0.08, 0.5).translate(0, 0.04, 0), [0.03, 0.06, 0.18], 0.06, rng));
+  const cone = new THREE.ConeGeometry(0.21, 0.68, 10, 1);
+  parts.push(P(cone.translate(0, 0.42, 0), ORANGE, 0.08, rng));
+  const band = new THREE.CylinderGeometry(0.17, 0.19, 0.1, 10, 1);
+  parts.push(P(band.translate(0, 0.42, 0), [0.11, 0.04, 0.82], 0.03, rng));
+  return merge(parts);
+}
+
+function bTransformer(rng) {
+  const parts = [];
+  const CAB = [0.31, 0.12, 0.29];
+  parts.push(P(box(1.2, 1.5, 0.78).translate(0, 0.75, 0), CAB, 0.12, rng));
+  parts.push(P(box(1.08, 0.06, 0.03).translate(0, 0.92, 0.405), STEEL, 0.05, rng));
+  for (const x of [-0.36, 0, 0.36]) {
+    const ins = new THREE.CylinderGeometry(0.08, 0.1, 0.34, 7, 1);
+    parts.push(P(ins.translate(x, 1.68, 0), [0.32, 0.18, 0.32], 0.06, rng));
+  }
+  parts.push(P(box(1.45, 0.12, 0.95).translate(0, 0.06, 0), [0.08, 0.05, 0.4], 0.08, rng));
+  return merge(parts);
+}
+function bTransformerBroken(rng) {
+  const parts = [];
+  const shell = box(1.15, 0.42, 0.75);
+  shell.rotateZ(0.18 + rng() * 0.25);
+  parts.push(charPaint(shell.translate(0, 0.3, 0), rng, 0.35));
+  for (let i = 0; i < 4; i++) {
+    const plate = box(0.6 + rng() * 0.35, 0.05, 0.35 + rng() * 0.25);
+    plate.rotateX((rng() - 0.5) * 0.5);
+    plate.rotateY(rng() * Math.PI);
+    parts.push(charPaint(plate.translate((rng() - 0.5) * 1.6, 0.08,
+      (rng() - 0.5) * 1.3), rng, 0.4));
+  }
+  return merge(parts);
+}
+
+function bCableSpool(rng) {
+  const parts = [];
+  const axis = new THREE.CylinderGeometry(0.18, 0.18, 1.0, 10, 1);
+  axis.rotateZ(Math.PI / 2);
+  parts.push(P(axis.translate(0, 0.68, 0), STEEL, 0.08, rng));
+  for (const x of [-0.55, 0.55]) {
+    const cheek = new THREE.CylinderGeometry(0.74, 0.74, 0.12, 12, 1);
+    cheek.rotateZ(Math.PI / 2);
+    parts.push(P(cheek.translate(x, 0.68, 0), WOOD, 0.15, rng));
+  }
+  const cable = new THREE.CylinderGeometry(0.49, 0.49, 0.96, 12, 1);
+  cable.rotateZ(Math.PI / 2);
+  parts.push(P(cable.translate(0, 0.68, 0), [0.02, 0.05, 0.13], 0.06, rng));
+  return merge(parts);
+}
+function bCableSpoolBroken(rng) {
+  const parts = [];
+  for (let i = 0; i < 2; i++) {
+    const cheek = new THREE.CylinderGeometry(0.68, 0.68, 0.1, 12, 1);
+    cheek.rotateX(Math.PI / 2);
+    cheek.rotateY((rng() - 0.5) * 0.5);
+    parts.push(P(cheek.translate((rng() - 0.5) * 1.7, 0.1,
+      (rng() - 0.5) * 1.1), WOOD, 0.17, rng));
+  }
+  parts.push(...plankScatter(5, 0.7, 0.12, 1.3, rng, WOOD));
+  return merge(parts);
+}
+
 // --- EXPLOSIVE fuel drum (rare red variant — fx blast + chain damage) --------
 function bDrumRed(rng) {
   const parts = [];
@@ -1135,4 +1242,9 @@ export const DESTRUCTIBLE_TYPES = {
   ammobox:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,    broken: bAmmoboxBroken },
   tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  build: bTent,       broken: bTentBroken, keep: 0.985 },
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
+  barrier:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 1.0,  build: bBarrier,    broken: bBarrierBroken, collider: true, keep: 0.83, crushMin: 2.4 },
+  roadsign:    { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.48, h: 2.85, build: bRoadsign,   broken: null, keep: 0.96 },
+  cone:        { cls: 'toss',   mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null },
+  transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
+  cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
 };

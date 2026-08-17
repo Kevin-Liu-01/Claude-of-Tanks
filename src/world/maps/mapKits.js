@@ -527,13 +527,18 @@ function jetty(buckets, rng, x0, z0, ang, y, len = 7.5) {
  * the bucket merge ("--- merge buckets into one mesh per material ---").
  * @param {object} ctx {mapId, L (layout), heightField, rng, buckets}
  */
-export function dressMapExtras({ mapId, L, heightField, rng, buckets }) {
-  // maps r1 (ADDITIVE): per-map branches dispatch BEFORE the winter guard —
-  // the winter path below consumes exactly the rng stream it always has.
-  if (mapId === 'coastal') return dressCoastalShore({ L, heightField, rng, buckets });
-  if (mapId === 'autumn') return dressAutumnRiver({ L, heightField, rng, buckets });
-  if (mapId === 'railyard') return dressRailYard({ L, heightField, rng, buckets });
-  if (mapId !== 'winter' || !L.lakes || !L.lakes.length) return;
+export function dressMapExtras({ mapId, extraKits = null, L, heightField, rng, buckets }) {
+  // Configurable kit dispatch lets new maps compose the production dressing
+  // vocabulary without cloning geometry builders. Legacy ids resolve to the
+  // exact one kit they used before, preserving their RNG stream and output.
+  const kits = extraKits || (mapId === 'coastal' ? ['coastal']
+    : mapId === 'autumn' ? ['river']
+      : mapId === 'railyard' ? ['rail']
+        : mapId === 'winter' ? ['winterLake'] : []);
+  if (kits.includes('coastal')) dressCoastalShore({ L, heightField, rng, buckets });
+  if (kits.includes('river')) dressAutumnRiver({ L, heightField, rng, buckets });
+  if (kits.includes('rail')) dressRailYard({ L, heightField, rng, buckets });
+  if (!kits.includes('winterLake') || !L.lakes || !L.lakes.length) return;
   for (const lake of L.lakes) {
     const big = lake.r >= 80; // the signature basin gets the full treatment
     // --- shoreline reed stands: clumped along the drift band -------------

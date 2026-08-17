@@ -2,11 +2,12 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { sanitizeLoadout } from '../src/game/equipment.js';
 import { isGarageVisibleTankId } from '../src/game/matchmaking.js';
 import { getSpec } from '../src/vehicles/specs.js';
+import { MAP_IDS } from '../src/world/maps/index.js';
 import { uniquePlayerName } from '../src/net/playerNames.js';
 import { RatingStore } from './ratingStore.js';
 
 const TEAM_SIZES = new Set([1, 2, 3, 5, 7]);
-const MAPS = ['verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard'];
+const MAPS = MAP_IDS;
 const QUEUE_TTL_MS = 10 * 60_000;
 const MATCH_TTL_MS = 25 * 60_000;
 const RESULT_TTL_MS = 2 * 60_000;

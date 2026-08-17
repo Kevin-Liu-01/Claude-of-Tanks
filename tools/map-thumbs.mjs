@@ -1,15 +1,15 @@
 // tools/map-thumbs.mjs — regenerate the garage map-picker thumbnails.
 // Renders each map's deterministic battlefield view through the screenshot
-// harness, downscales to 224x126 PNGs in public/maps/, and re-embeds them as
-// data URIs in src/ui/mapThumbs.js (runtime stays 100% self-contained).
+// harness and downsamples to crisp 960x540 WebPs in public/maps/. The generated
+// module references those public assets instead of embedding multi-megabyte
+// data URIs in boot-critical JavaScript.
 // Usage: node tools/screenshot.mjs && node tools/map-thumbs.mjs [--only id1,id2]
 // (expects shots/battlefield*.png to be fresh)
-// --only regenerates just those ids and PRESERVES every other id's existing
-// data URI byte-for-byte (maps r1: adding new maps must not churn the four
-// original thumbnails).
+// --only regenerates just those ids and requires every other public asset to
+// exist, keeping the generated map registry complete.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const VIEWS = {
@@ -22,8 +22,17 @@ const VIEWS = {
   autumn: 'battlefield_autumn',
   steppe: 'battlefield_steppe',
   railyard: 'battlefield_railyard',
+  frontier: 'battlefield_frontier',
+  fjord: 'battlefield_fjord',
+  delta: 'battlefield_delta',
+  badlands: 'battlefield_badlands',
+  monsoon: 'battlefield_monsoon',
+  alpine: 'battlefield_alpine',
+  caldera: 'battlefield_caldera',
+  foundry: 'battlefield_foundry',
 };
-const W = 224, H = 126;
+const W = 960, H = 540;
+const QUALITY = 88;
 
 const args = process.argv.slice(2);
 const onlyIx = args.indexOf('--only');
@@ -31,22 +40,13 @@ const only = onlyIx >= 0 ? args[onlyIx + 1].split(',') : null;
 
 mkdirSync(resolve('public/maps'), { recursive: true });
 
-// existing entries (preserved verbatim unless regenerated)
-const existing = {};
-try {
-  const cur = readFileSync(resolve('src/ui/mapThumbs.js'), 'utf8');
-  for (const m of cur.matchAll(/^  (\w+):\n    '(data:image\/png;base64,[^']*)',$/gm)) {
-    existing[m[1]] = m[2];
-  }
-} catch (_) { /* first run */ }
-
 const entries = {};
 for (const [id, view] of Object.entries(VIEWS)) {
+  const out = resolve(`public/maps/${id}.webp`);
   if (only && !only.includes(id)) {
-    if (existing[id]) {
-      entries[id] = existing[id];
-      console.log(`[thumbs] ${id} preserved (${entries[id].length} chars)`);
-    }
+    if (!existsSync(out)) throw new Error(`[thumbs] missing preserved asset ${out}`);
+    entries[id] = `/maps/${id}.webp`;
+    console.log(`[thumbs] ${id} preserved`);
     continue;
   }
   const src = resolve(`shots/${view}.png`);
@@ -54,21 +54,20 @@ for (const [id, view] of Object.entries(VIEWS)) {
     console.error(`[thumbs] missing ${src} — run node tools/screenshot.mjs first`);
     process.exit(1);
   }
-  const out = resolve(`public/maps/${id}.png`);
-  // macOS sips: crop-scale to the thumb aspect, then resize
-  execFileSync('sips', ['-s', 'format', 'png', '-z', String(H), String(W), src, '--out', out],
-    { stdio: 'pipe' });
-  entries[id] = `data:image/png;base64,${readFileSync(out).toString('base64')}`;
-  console.log(`[thumbs] ${id} <- ${view} (${entries[id].length} chars)`);
+  // High-quality WebP holds the 4.3x linear-resolution improvement without
+  // making the garage download sixteen near-megabyte lossless PNGs.
+  execFileSync('cwebp', ['-quiet', '-q', String(QUALITY), '-resize', String(W), String(H),
+    src, '-o', out], { stdio: 'pipe' });
+  entries[id] = `/maps/${id}.webp`;
+  console.log(`[thumbs] ${id} <- ${view} (${W}x${H}, WebP q${QUALITY})`);
 }
 
-const mod = `// src/ui/mapThumbs.js — GENERATED map-picker thumbnails (data URIs so the
-// build stays 100% self-contained; PNG copies live in public/maps/).
+const mod = `// src/ui/mapThumbs.js — GENERATED map art served from public/maps/.
 // Regenerate via: node tools/screenshot.mjs && node tools/map-thumbs.mjs
 // Empty string = no thumbnail yet; the picker falls back to a CSS gradient.
 
 export const MAP_THUMBS = {
-${Object.entries(entries).map(([id, uri]) => `  ${id}:\n    '${uri}',`).join('\n')}
+${Object.entries(entries).map(([id, uri]) => `  ${id}: '${uri}',`).join('\n')}
 };
 `;
 writeFileSync(resolve('src/ui/mapThumbs.js'), mod);

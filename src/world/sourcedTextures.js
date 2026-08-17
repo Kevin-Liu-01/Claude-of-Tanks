@@ -141,6 +141,49 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', tint: [0.66, 0.64, 0.60], roughMul: 1.35 },
     R: { set: 'cobble', tint: [0.88, 0.88, 0.86], roughMul: 1.5 }, M: null,
   },
+  // Map-quality expansion. Unknown ids intentionally fall back to Verdant,
+  // so every new biome must route its sourced layers explicitly; otherwise
+  // the async photo-set swap erases the authored procedural palette.
+  frontier: {
+    G: { set: 'grass', tint: [0.96, 0.94, 0.76], roughMul: 1.28 },
+    D: { set: 'dirt', tint: [0.80, 0.75, 0.64], roughMul: 1.3 },
+    R: { set: 'rock', tint: [1.02, 1.0, 0.92], roughMul: 1.15 }, M: null,
+  },
+  fjord: {
+    G: { set: 'grass', tint: [0.76, 0.86, 0.80], roughMul: 1.28 },
+    D: { set: 'dirt', tint: [0.68, 0.70, 0.68], roughMul: 1.35 },
+    R: { set: 'rock', tint: [1.12, 1.17, 1.22], roughMul: 1.15 }, M: null,
+  },
+  delta: {
+    G: { set: 'grass', tint: [0.68, 0.94, 0.60], roughMul: 1.22 },
+    D: { set: 'dirt', tint: [0.67, 0.59, 0.43], roughMul: 1.28 },
+    R: { set: 'rock', tint: [0.88, 0.94, 0.78], roughMul: 1.18 }, M: null,
+  },
+  badlands: {
+    G: { set: 'sand', tint: [0.90, 0.68, 0.52], roughMul: 1.24 },
+    D: { set: 'sand', tint: [0.70, 0.46, 0.36], roughMul: 1.28 },
+    R: null, M: null,
+  },
+  monsoon: {
+    G: { set: 'grass', tint: [0.57, 0.82, 0.58], roughMul: 1.22 },
+    D: { set: 'dirt', tint: [0.59, 0.55, 0.44], roughMul: 1.3 },
+    R: { set: 'rock', tint: [0.76, 0.84, 0.76], roughMul: 1.15 }, M: null,
+  },
+  alpine: {
+    G: { set: 'snow', roughMul: 1.15 },
+    D: { set: 'dirt', tint: [0.70, 0.70, 0.71], roughMul: 1.32 },
+    R: { set: 'rock', tint: [1.48, 1.53, 1.62], roughMul: 1.1 }, M: null,
+  },
+  caldera: {
+    G: { set: 'dirt', tint: [0.43, 0.40, 0.34], roughMul: 1.34 },
+    D: { set: 'dirt', tint: [0.30, 0.28, 0.27], roughMul: 1.4 },
+    R: { set: 'rock', tint: [0.42, 0.40, 0.39], roughMul: 1.2 }, M: null,
+  },
+  foundry: {
+    G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },
+    D: { set: 'dirt', tint: [0.52, 0.51, 0.48], roughMul: 1.38 },
+    R: { set: 'cobble', tint: [0.76, 0.77, 0.76], roughMul: 1.52 }, M: null,
+  },
 };
 
 const _imgCache = new Map();
@@ -288,13 +331,35 @@ const BUILDING_TINTS = {
     wood: { tint: [0.78, 0.76, 0.72], desat: 0.20 },
     stone: { tint: [1.10, 0.98, 0.88], desat: 0.10 },                   // smoke-stained brick
   },
+  frontier: { plaster: [1.0, 0.96, 0.86], wood: [0.92, 0.84, 0.70] },
+  fjord: {
+    plaster: [1.03, 1.04, 1.02],
+    roof: { tint: [0.77, 0.84, 0.91], desat: 0.48, lift: 0.02 },
+    wood: { tint: [0.72, 0.76, 0.78], desat: 0.38 },
+  },
+  delta: { plaster: [1.04, 0.96, 0.78], wood: [0.80, 0.70, 0.53] },
+  badlands: { plaster: [1.08, 0.79, 0.58], wood: [0.83, 0.69, 0.52] },
+  monsoon: { plaster: [0.78, 0.81, 0.72], wood: [0.67, 0.66, 0.54] },
+  alpine: { roof: { tint: [0.94, 1.01, 1.14], desat: 0.68, lift: 0.11 } },
+  caldera: {
+    plaster: { tint: [0.62, 0.59, 0.55], desat: 0.45 },
+    roof: { tint: [0.57, 0.57, 0.58], desat: 0.78 },
+    wood: [0.58, 0.54, 0.48], stone: [0.67, 0.61, 0.55],
+  },
+  foundry: {
+    plaster: { tint: [0.75, 0.74, 0.71], desat: 0.32 },
+    roof: { tint: [0.67, 0.70, 0.74], desat: 0.75, lift: 0.025 },
+    wood: { tint: [0.65, 0.63, 0.59], desat: 0.28 },
+    stone: { tint: [0.94, 0.76, 0.62], desat: 0.18 },
+  },
 };
 
 export function applySourcedBuildings(sets, mapId) {
   if (!USE_SOURCED_BUILDINGS) return;
   const plan = { plaster: 'plaster', roof: 'roof', wood: 'wood' };
   // maps r1: the rail yard's industrial halls are brick like the town's
-  if ((mapId === 'urban' || mapId === 'railyard') && sets.stone) plan.stone = 'brick';
+  if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera')
+      && sets.stone) plan.stone = 'brick';
   // urban keeps the PROCEDURAL roof sheet: its tone hook bakes a slate/clay
   // patchwork (cfg.props.tones.roof) that the single-tint sourced set cannot
   // reproduce — the uniform maroon roofscape was a top critic complaint
