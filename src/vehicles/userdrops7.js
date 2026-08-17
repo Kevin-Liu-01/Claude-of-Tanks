@@ -156,8 +156,11 @@ const SPECS = [
       // were the retired 08-15 donor-GLB envelope. silhouetteHeightM is
       // the gate-measured p95 through the mounted TOP-cupola/MG station
       // (t62mv1 DShK-height convention; roof datum keeps heightM).
+      // §5.328 cupola round: 2.64 -> 2.82 — the ordered full-read TOP-7
+      // (raised collar, episcope drum, domed lid ~2.70) carries the CLAMS
+      // 7.62 receiver/drum band at ~2.82-2.85; p95 re-measured 2.82 ×2.
       dims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10,
-        heightM: 2.29, silhouetteHeightM: 2.64 },
+        heightM: 2.29, silhouetteHeightM: 2.82 },
       visual: { marking: 'number', number: '53' } }, AHAB_AMX30),
   make('leo1a5', 'amx30b2', 'AMX-30B2', 'France',
     { hp: 1700, enginePowerHp: 750, weightTons: 37, reverseSpeedKmh: 11,
@@ -165,8 +168,11 @@ const SPECS = [
       // §5.309: same rebuilt base as amx30 (published rows shared); the
       // B2's outboard kit no longer carries a wider silhouette row — the
       // old 3.34 measured the retired donor envelope.
+      // §5.328: 2.63 -> 2.82 — shared TOP-7/CLAMS station (see amx30 note);
+      // the Brénus brick fields stay inside the width/length envelope
+      // (widthM anchor ±1.5495 untouched, gate width row 3.13 held).
       dims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10,
-        heightM: 2.29, silhouetteHeightM: 2.63 },
+        heightM: 2.29, silhouetteHeightM: 2.82 },
       visual: { marking: 'number', number: '68' } }, AHAB_AMX30),
   make('m60a1', 'm48', 'M48A5 Patton', 'USA',
     // hullLengthM 6.42 -> 6.87 (m48 build round 2026-08-08): the 6.42 row
