@@ -993,3 +993,22 @@ not permission to undo the owner-ordered section or restore source topology.
 Deterministic freeze **`d8f8a3a8`** reproduces twice at 53 rendered meshes /
 67,557 vertices. All eight presentation assets are regenerated from those
 bytes. **KEEP; retire `5d7bc85c` and all earlier Type 90 freezes.**
+
+## §5.248 JAPAN-WAVE GROUND-UP REBUILD (2026-08-17, japan lane) — 35.1 -> **83.9 ×2 BIT-IDENTICAL** (hull 88.5 / whole 86.4 / turret 83.9 / stations 87.5 / dims 100 / floaters 100; row md5 854ff6e2; hash 43179448, 53/64039)
+
+Oracle restored from 952561ea^ (md5 fcfeb38a = the 49-v2 bytes; §5.251
+law); fresh vertex REG regenerated (print measurement-clean vs published).
+The 2026-08-12 0.80-Y turret compression + compressed-frame re-kit RETIRED
+under the later §5.248 order — print-lines turret restored and improved:
+bustle tail block (rising 1.61->1.80 underside, wall rear -1.705), v2
+basket re-lay (stepped cargo 1.62/1.80, rails 1.58/1.82, fwd-extended
+frame bars), sight-housing forward run 2.505, REAL antenna masts (8x42x14
+posts — the 1024 mask AA-threshold eats thin whip tips; whatsat receipts),
+and the §B4 strict-corridor reconcile: lanes xc 1.2615/W 0.534 with the
+deep skirts back at the print's alternating 3.187/3.093 station cadence
+(MID 1.601 / inset 1.5645 planes, per-zone seams, END-CAP-law course
+cuts). Ceded: the ±1.60 ground cols (~0.31 x2) for +24 stations. Full
+receipts + reverted experiments: shots/japan-wave/PACKET-type90.md.
+Battery: strict clip 0/0+0/0+0/0, parent 0/0/0, winding clean, contig 0,
+mg1+5d, npm test exit 0. Guards type74/type89 byte-held. DELIVERED
+UNCOMMITTED-UNSTAGED.

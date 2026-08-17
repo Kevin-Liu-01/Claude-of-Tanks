@@ -226,14 +226,14 @@
   },
   {
    "id": "type10",
-   "geoMin": 0,
+   "geoMin": 69.3,
    "gatePassed": false,
    "components": {
-    "hullCurves": 50.3,
-    "stations": 45.2,
-    "wholeCurves": 45.4,
-    "dims": 49.3,
-    "floaters": 0
+    "hullCurves": 77.3,
+    "stations": 85.4,
+    "wholeCurves": 69.3,
+    "dims": 100,
+    "floaters": 100
    }
   },
   {
@@ -381,14 +381,14 @@
   },
   {
    "id": "type90",
-   "geoMin": 27.5,
+   "geoMin": 83.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 88.4,
-    "stations": 27.5,
-    "turretCurves": 43.7,
-    "wholeCurves": 56,
-    "dims": 64,
+    "hullCurves": 88.5,
+    "stations": 87.5,
+    "turretCurves": 83.9,
+    "wholeCurves": 86.4,
+    "dims": 100,
     "floaters": 100
    }
   },

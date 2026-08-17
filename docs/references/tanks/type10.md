@@ -232,3 +232,25 @@ yaw and complete seated turret ownership. The legacy source-component gate
 remains an honest incompatible zero rather than a fabricated pass. See
 `docs/critique/native-type10-first-party-recert.md`. **RE-FROZEN / KEEP
 `7ac6d434`; source-baked `84f5d108` remains historical only.**
+
+## §5.248 JAPAN-WAVE GROUND-UP REBUILD (2026-08-17, japan lane) — honest 0 -> **69.3 ×2 BIT-IDENTICAL** (hull 77.3 / stations 85.4 / whole 69.3 / dims 100 / floaters 100; row md5 31692002; hash 97267188, 62/59890)
+
+First honest non-zero curve row for a first-party type10. Oracle restored
+from 952561ea^ (md5 c3df50a6; .bak untouched); fresh vertex REG. SPEC
+TRUE-UP: dims -> 6.84/9.49/3.24/2.68 (the 08-10 sovereign datums,
+§5.73-1); armor pivots synced to the print ring [0,1.52,+0.21], bore 1.81.
+buildType10Native2026 rewritten to the print: 1.535/1.62 decks, W-plan
+bow, RAISED 0.34 BELLY (the print's visible belly line — its 0.001
+corners are donor track sheet), print-station terminals (drive HIGH at
+-2.86/1.05 in a carved sprocket-bay roof; trackR<=0.21 per the band-
+solver landmine), print-ring wedge loft w/ 2.09 crown, continuous central
+sight complex (pano head = the 2.68 P95 carrier), commander cluster LEFT
+per the print, slat-sided rack to -2.98, §B3.1 boot/sleeve/evac/muzzle
+collar/bore. Floater baseline was REAL (5.5 cm mast air-gap, visibility-
+bisected). Receipts + five reverted experiments (raked whip p95, rail-
+seated R mast, solid poles x2, 3.17 anchor strip):
+shots/japan-wave/PACKET-type10.md. Battery: strict clip 0/0+0/0+0/0
+(three-stage §B4 fix), parent 4-stranded = kf51 false-flag deck-gear
+class (adjudicated LEAVE), winding clean, npm test exit 0. KEEP 97267188;
+the 08-12 7ac6d434 "direct fidelity 91.41" board row was a different
+instrument (never the curve gate).
