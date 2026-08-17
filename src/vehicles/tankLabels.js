@@ -64,6 +64,18 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'M3A3 Bradley CFV', shortName: 'M3A3 Bradley',
     searchAliases: ['M3A3 Cavalry Fighting Vehicle', 'Bradley CFV'],
   },
+  bmp3: {
+    displayName: 'BMP-3', shortName: 'BMP-3',
+    searchAliases: ['BMP-3 IFV', 'Russian BMP-3'],
+  },
+  bmpt: {
+    displayName: 'BMPT-72 Terminator 2', shortName: 'BMPT-72',
+    searchAliases: ['BMPT-72', 'Terminator 2 tank support'],
+  },
+  upior: {
+    displayName: 'Upiór IFV', shortName: 'Upiór',
+    searchAliases: ['Upior concept IFV', 'Upiór'],
+  },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],
