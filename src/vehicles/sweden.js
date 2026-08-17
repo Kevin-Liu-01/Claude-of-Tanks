@@ -3,7 +3,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const SWEDEN_IDS = Object.freeze(['strv81', 'strv122']);
+export const SWEDEN_IDS = Object.freeze(['strv81', 'strv103a', 'strv122']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -49,6 +49,24 @@ export const SWEDEN_SPECS = {
       reverseSpeedKmh: 12, turretTraverseDegS: 24, gunPitchDegS: 20 },
     reloadS: 7.1,
     armorFactor: 1.05,
+  }),
+  // Strv 103A (§5.317 lane J): the initial-production S-Tank (1967-70,
+  // 70 built) ahead of the resident 103B. Same fixed 105 mm L74 and hull,
+  // the weaker first engine pairing (Rolls-Royce K60 240 hp diesel +
+  // Boeing 502-10MA ~300 shp gas turbine vs the B's Caterpillar 553 fit),
+  // 37.0 t vs 39.7. No flotation screens, no standard dozer blade, simpler
+  // rear deck — the visual distinctions live in profiles/sweden.js.
+  // Tier 8 = one below the B (centurion3/5, ariete/c1, t80/t80b convention
+  // for earlier marks). Published A dims: hull 7.04, overall 8.99 (gun
+  // forward), width 3.60 bare hull (B's 3.63 includes flotation gear),
+  // height 2.14. Plain 1960s Swedish olive, pre-splinter.
+  strv103a: variant('strv103a', 'strv103', {
+    name: 'Strv 103A', number: '103A', class: 'td', scheme: 'solid',
+    base: '#46503b', weather: '#525a44', patches: [],
+    camoScale: 0.5,
+    dims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.60, heightM: 2.14 },
+    stats: { hp: 1000, enginePowerHp: 540, weightTons: 37.0, topSpeedKmh: 45,
+      reverseSpeedKmh: 25, hullTraverseDegS: 42 },
   }),
   strv122: variant('strv122', 'leo2a5', {
     name: 'Strv 122', number: '122', scheme: 'splinter',

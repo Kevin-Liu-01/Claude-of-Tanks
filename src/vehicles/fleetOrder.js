@@ -50,7 +50,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'type59', 'ztz85_iii', 'type99a', 'ztz99a2',
   ]),
   sweden: Object.freeze([
-    'strv81', 'strv103', 'strv122',
+    'strv81', 'strv103a', 'strv103', 'strv122',
   ]),
   poland: Object.freeze([
     't72m1_jaguar', 'pt91_twardy', 'pl01',

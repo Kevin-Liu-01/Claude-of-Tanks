@@ -1435,6 +1435,16 @@
     "dims": 95,
     "floaters": 100
    }
+  },
+  {
+   "id": "strv103a",
+   "geoMin": 88.6,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 88.6,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }

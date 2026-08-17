@@ -8,7 +8,7 @@ import {
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 
 const displayNames = new Set();
-const HULL_ONLY_SHADOW_IDS = new Set(['strv103', 'jpz_e100', 'sturmtiger', 't95']);
+const HULL_ONLY_SHADOW_IDS = new Set(['strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);
 
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);

@@ -9,6 +9,7 @@ const LABEL_OVERRIDES = Object.freeze({
   t95: { displayName: 'T95', searchAliases: ['T95 Doomturtle'] },
   strv81: { displayName: 'Strv 81', searchAliases: ['Stridsvagn 81', 'Centurion Strv 81'] },
   strv103: { displayName: 'Strv 103B', searchAliases: ['Stridsvagn 103B', 'S-Tank'] },
+  strv103a: { displayName: 'Strv 103A', searchAliases: ['Stridsvagn 103A', 'S-Tank A'] },
   strv122: { displayName: 'Strv 122', searchAliases: ['Stridsvagn 122', 'Swedish Leopard 2'] },
   t72m1_jaguar: {
     displayName: 'T-72M1 Jaguar', shortName: 'T-72M1 Jaguar',

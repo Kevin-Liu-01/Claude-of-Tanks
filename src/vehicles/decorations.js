@@ -1129,7 +1129,7 @@ const COLDWAR_IDS = new Set([
   'm60a1', 'm60a3', 'm48', 't54', 't55', 't62', 'type59', 'centurion3',
   'centurion5', 'centurion', 'chieftain5', 'chieftain_mk10', 'charioteer',
   'leo1a5', 'type74', 't80u', 'amx30', 'm103', 'conqueror', 'is7',
-  'object279', 'is6b', 'strv103', 'challenger1',
+  'object279', 'is6b', 'strv103', 'strv103a', 'challenger1',
 ]);
 
 export function decorEra(spec) {

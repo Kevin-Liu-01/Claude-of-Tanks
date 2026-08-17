@@ -27,7 +27,7 @@ export const COLD_WAR_IDS = Object.freeze([
   't54', 'type59', 't62mv1', 't64bv1', 't72b_1987',
   'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
   'amx30', 'amx30b2',
-  'strv103', 'type74',
+  'strv103', 'strv103a', 'type74',
   't95',
 ]);
 
@@ -35,7 +35,7 @@ export const RETAINED_COLD_WAR_IDS = Object.freeze([
   'centurion3', 'centurion5',
   'chieftain5', 'chieftain_mk10',
   'amx30', 'amx30b2',
-  'type59', 'type74', 'strv103',
+  'type59', 'type74', 'strv103', 'strv103a',
   't62mv1', 't64bv1', 'leo1a5',
   'm46_patton', 'm47_patton', 'm48',
   'm60a1', 'm60a2', 'm60a3',
