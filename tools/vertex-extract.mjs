@@ -645,6 +645,83 @@ const REG = {
     turretNode: '^Object_2$', gunNode: '^Object_15$', autoPivot: true,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.30 },
   },
+  // ---- §5.248 batch A (13 drops, ALL LOCAL-ONLY quarantine; full
+  // censuses + SHA receipts in ATTRIBUTION; weak/fused instruments marked).
+  bmp3: {
+    // Semantic 42manako print (CC-BY-NC). Nose +x -> yaw -90; muzzle
+    // overhangs the bow ~0.27 while published length is hull-total 7.14.
+    path: 'public/models/community-candidates/bmp3_rok_42manako.glb',
+    turretNode: '^turret\\.001$', gunNode: '^weapon2\\.001$', autoPivot: true,
+    yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 7.14, overallLengthM: 7.14, widthM: 3.23, heightM: 2.40 },
+  },
+  m2a3_bradley_ua: {
+    // Fused alternate m2a2_bradley-family reference (~1/265 scale —
+    // pub-dims anchor law). Measurement-only.
+    path: 'public/models/community-candidates/m2a3_bradley_ua_42manako.glb',
+    autoPivot: true,
+    pubDims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
+  },
+  bmpt: {
+    // SanderWolf blockout. Object_6 turret cluster (sensor mast to y 6.44
+    // raw — p95-class height reads); twin-30mm fused into Object_4 (no
+    // gunNode). Nose +z native.
+    path: 'public/models/community-candidates/bmpt2_sanderwolf.glb',
+    turretNode: '^Object_6$', autoPivot: true,
+    pubDims: { hullLengthM: 6.95, overallLengthM: 7.20, widthM: 3.59, heightM: 3.17 },
+  },
+  upior: {
+    // FICTIONAL Polish concept (905k-vert original; one BMP-2-turret
+    // component tell recorded). Gun = sibling Object004. Nose +z —
+    // paired-render adjudication before trusting plan reads. CONCEPT
+    // pubDims = print-proportional BMP-2-class anchor (ASK-OWNER banked).
+    path: 'public/models/community-candidates/upior_killcapturedestroy.glb',
+    turretNode: '^mtl_h1_vehicle_bmp_2_turet_woodland$', gunNode: '^Object004$',
+    autoPivot: true,
+    pubDims: { hullLengthM: 6.70, overallLengthM: 6.70, widthM: 3.00, heightM: 2.50 },
+  },
+  marder1a3: {
+    // Arrafi (rip-poster account history — suspect; no per-file markers).
+    // Object_6 turret+whips fused (exclude whips for height); 20mm fused
+    // hull-side (no gunNode). Nose +z; ~2.67x meters — anchor law.
+    path: 'public/models/community-candidates/marder1a3_arrafi.glb',
+    turretNode: '^Object_6$', autoPivot: true,
+    pubDims: { hullLengthM: 6.88, overallLengthM: 6.88, widthM: 3.38, heightM: 3.02 },
+  },
+  m3a3_bradley: {
+    // SIpriv rigged lowpoly. bone11_169 turret / bone28_163 M242 (inside
+    // subtree, k1a1 pattern). Nose -z -> yaw PI. EXCLUDE detached ground
+    // props x +2.1..+3.7 (bone52/61/63). Bind-pose reads only.
+    path: 'public/models/community-candidates/m3a3_bradley_sipriv.glb',
+    turretNode: '^bone11_169$', gunNode: '^bone28_163$', autoPivot: true,
+    yawOffset: Math.PI,
+    pubDims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
+  },
+  stb1: {
+    // pyaesone print (CC-BY-NC, 125MB). Turret_2 carries the fused 105mm
+    // (muzzle x -10.94, no gunNode). Nose -x -> yaw +90. Origin floats —
+    // ground-plane re-zero before height reads. Spec 9.20 vs published
+    // Type-74-family 9.42 = non-blocking true-up ask.
+    path: 'public/models/community-candidates/stb1_pyaesone.glb',
+    turretNode: '^Turret_2$', autoPivot: true, yawOffset: Math.PI / 2,
+    pubDims: { hullLengthM: 6.70, overallLengthM: 9.20, widthM: 3.18, heightM: 2.25 },
+  },
+  leo2a6m: {
+    // Arrafi, EXTRACTION-SUSPECT x2 (account + chassis_vlo WT lineage).
+    // §E VLO HAZARD: Object_9/10 vlo duplicates + Object_5/7 whole-shell
+    // pairs — isolate ONE shell set per measure. Gun fused (no gunNode).
+    // Nose +x -> yaw -90.
+    path: 'public/models/community-candidates/leo2a6m_arrafi.glb',
+    turretNode: '^Object_6$', autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.24, heightM: 3.03 },
+  },
+  leo2a4m: {
+    // Same account/verdict. NO usable split (whole-shell pairs + vlo) —
+    // measurement-only. Nose +x -> yaw -90.
+    path: 'public/models/community-candidates/leo2a4m_arrafi.glb',
+    autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 4.07, heightM: 2.75 },
+  },
   // ---- §5.248 batch B (15 prints, ALL LOCAL-ONLY quarantine; censuses +
   // provenance in ATTRIBUTION; weak instruments marked; orientation TBDs
   // resolved by the measure lanes).

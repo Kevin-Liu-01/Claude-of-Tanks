@@ -918,3 +918,27 @@ Other authors:
   project/game-derived (LOW confidence).
 (Full SHA-256 receipts in the §5.248 batch-B onboarding report, session
 scratchpad; files are gitignored local instruments.)
+
+## §5.248 batch A — thirteen Downloads-root drops (owner-supplied 2026-08-17)
+All thirteen parked in the gitignored public/models/community-candidates/
+— LOCAL-ONLY QUARANTINE by default, never ship; playables stay procedural.
+Full 13-row provenance table + SHA-256 receipts in the batch-A onboarding
+report (session scratchpad). Highlights: bmp3_rok_42manako (CC-BY-NC, NC
+class) — new bmp3 candidate; bmpt2_sanderwolf (CC-BY, plausible original) —
+new bmpt candidate; upior_killcapturedestroy (CC-BY, original concept with
+ONE game-style-named BMP-2 turret component tell recorded) — new upior
+candidate; marder1a3_arrafi + leo2a6m_arrafi + leo2a4m_arrafi (the
+nazidefenseforceofficial account = adjudicated rip-poster 2026-07-27;
+leo2a6m/leo2a4m additionally carry the WT-lineage chassis_vlo scheme —
+extraction-suspect, measurement/influence only, §E vlo shell-isolation
+required); m3a3_bradley_sipriv (CC-BY original rigged lowpoly) — new
+m3a3_bradley candidate; m2a3_bradley_ua_42manako (CC-BY, fused) —
+m2a2-family alternate; stb1_pyaesone (CC-BY-NC, 125MB) — stb1 oracle
+candidate; type90_42manako (CC-BY-NC) — type90 alternate reference;
+spz_puma_42manako (CC-BY, SAME Sketchfab source as the registered
+spz_puma oracle) — restores the missing-on-disk instrument, copied back to
+the registered path; type-10 re-drop byte-identical to the owner-cleared
+pristine (receipt only); leopard_2a4_otco re-drop byte-identical to the
+already-parked WT-extraction quarantine copy (2026-07-27/08-06
+adjudication STANDS; the registered leo2a4 instrument remains the
+owner-authoritative repaired repartition).
