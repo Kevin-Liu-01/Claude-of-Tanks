@@ -12,13 +12,26 @@ function numericArg(name, fallback) {
   return value;
 }
 
-const PLAYER_COUNT = 4;
+function integerArg(name, fallback, { min, max }) {
+  const value = numericArg(name, fallback);
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new RangeError(`${name} must be an integer from ${min} through ${max}`);
+  }
+  return value;
+}
+
+const playerCount = integerArg('players', 4, { min: 2, max: 14 });
+const teamSize = integerArg('team-size', playerCount / 2, { min: 1, max: 7 });
+if (playerCount !== teamSize * 2) {
+  throw new RangeError('players must equal two complete teams (--players=2*--team-size)');
+}
 const durationMs = numericArg('duration', 5000);
 const settleMs = numericArg('settle', 3000);
 const latencyMs = numericArg('latency', 45);
 const jitterMs = numericArg('jitter', 15);
 const lossPercent = numericArg('loss', 5);
 const inputLossPercent = numericArg('input-loss', 3);
+const rosterTimeoutMs = 20_000 + playerCount * 2_000;
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
 
@@ -38,13 +51,19 @@ function observePage(page, label) {
   });
 }
 
-function inputFor(index, brake = false) {
+function inputFor(playerId, lobby, brake = false) {
+  const player = lobby.players.find((candidate) => candidate.id === playerId);
+  if (!player) throw new Error(`missing lobby player ${playerId}`);
+  const teammates = lobby.players.filter((candidate) => candidate.team === player.team);
+  const laneIndex = teammates.findIndex((candidate) => candidate.id === playerId);
+  const center = (teammates.length - 1) / 2;
+  const laneOffset = center > 0 ? (laneIndex - center) / center : 0;
   return {
     throttle: brake ? 0 : 1,
-    steer: brake ? 0 : [-0.08, 0.08, -0.14, 0.14][index],
+    steer: brake ? 0 : laneOffset * 0.14,
     brake,
     fire: false,
-    aimYaw: index < 2 ? 0 : Math.PI,
+    aimYaw: player.team === 'alpha' ? 0 : Math.PI,
     aimPitch: 0,
     shellSlot: 0,
     actionBits: 0,
@@ -54,16 +73,17 @@ function inputFor(index, brake = false) {
 async function closePageState(page) {
   if (!page || page.isClosed()) return;
   await page.evaluate(() => {
-    const state = globalThis.__COT_FOUR_SOAK;
+    const state = globalThis.__COT_ROSTER_SOAK;
     if (!state) return;
-    try { state.match?.close('four_player_soak_complete'); } catch (_) { /* best effort */ }
-    try { state.session?.close('four_player_soak_complete'); } catch (_) { /* best effort */ }
+    try { state.match?.close('roster_soak_complete'); } catch (_) { /* best effort */ }
+    try { state.session?.close('roster_soak_complete'); } catch (_) { /* best effort */ }
+    try { state.signaling?.close('roster_soak_complete'); } catch (_) { /* best effort */ }
   }).catch(() => {});
 }
 
 async function pumpHost(hostPage, elapsedMs, input) {
   return hostPage.evaluate(({ elapsed, frame }) => {
-    const state = globalThis.__COT_FOUR_SOAK;
+    const state = globalThis.__COT_ROSTER_SOAK;
     const startedAt = performance.now();
     state.sample = state.match.advance(elapsed, frame);
     state.advanceDurations.push(performance.now() - startedAt);
@@ -91,7 +111,7 @@ try {
       '--disable-backgrounding-occluded-windows',
     ],
   });
-  pages = await Promise.all(Array.from({ length: PLAYER_COUNT }, async (_, index) => {
+  pages = await Promise.all(Array.from({ length: playerCount }, async (_, index) => {
     const page = await browser.newPage();
     observePage(page, `player-${index + 1}`);
     const query = index === 0 ? '' : `?netSim=1&netLatency=${latencyMs}` +
@@ -102,9 +122,10 @@ try {
     });
     return page;
   }));
+  console.log(`[multiplayer-soak] ${playerCount} browser pages ready`);
   const [hostPage, ...guestPages] = pages;
 
-  const room = await hostPage.evaluate(async (url) => {
+  const room = await hostPage.evaluate(async ({ url, requestedTeamSize }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
       import('/src/net/signalingClient.js'),
       import('/src/net/privateRoomSession.js'),
@@ -115,7 +136,7 @@ try {
       mode: 'lan',
       maxPlayers: 14,
     });
-    const state = globalThis.__COT_FOUR_SOAK = {
+    const state = globalThis.__COT_ROSTER_SOAK = {
       signaling: signalingClient,
       roomInfo,
       lastLobby: null,
@@ -128,87 +149,143 @@ try {
       hostName: 'Commander',
       hostSpecId: 'm1a2',
       mapId: 'winter',
-      teamSize: 2,
+      teamSize: requestedTeamSize,
       onStart: (lobby) => { state.startingLobby = lobby; },
       onError: (error) => state.errors.push(error.message),
     });
     state.unsubscribe = state.session.runtime.onState((lobby) => { state.lastLobby = lobby; });
     return roomInfo;
-  }, signalUrl);
+  }, { url: signalUrl, requestedTeamSize: teamSize });
+  console.log(`[multiplayer-soak] host room ${room.roomCode} ready`);
 
-  await Promise.all(guestPages.map((page, guestIndex) => page.evaluate(async ({
-    url, roomCode, index,
-  }) => {
-    const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
-      import('/src/net/signalingClient.js'),
-      import('/src/net/privateRoomSession.js'),
-    ]);
-    const signalingClient = new RoomSignalingClient({ url });
-    const roomInfo = await signalingClient.joinRoom({
-      roomCode,
-      player: { id: `browser-p${index + 1}`, name: 'Commander' },
-    });
-    const state = globalThis.__COT_FOUR_SOAK = {
-      signaling: signalingClient,
-      roomInfo,
-      lastLobby: null,
-      errors: [],
-    };
-    state.session = new PrivateRoomClientSession({
-      signaling: signalingClient,
-      roomInfo,
-      onError: (error) => state.errors.push(error.message),
-    });
-    state.runtime = await state.session.ready;
-    state.unsubscribe = state.runtime.onState((lobby) => { state.lastLobby = lobby; });
-    await state.session.submit({ type: 'select_vehicle', specId: 'm1a2' });
-    return roomInfo;
-  }, { url: signalUrl, roomCode: room.roomCode, index: guestIndex + 1 })));
+  await Promise.all(guestPages.map(async (page, guestIndex) => {
+    try {
+      return await page.evaluate(async ({ url, roomCode, index, timeoutMs }) => {
+        const state = globalThis.__COT_ROSTER_SOAK = {
+          signaling: null,
+          roomInfo: null,
+          lastLobby: null,
+          errors: [],
+          stage: 'loading_modules',
+        };
+        const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
+          import('/src/net/signalingClient.js'),
+          import('/src/net/privateRoomSession.js'),
+        ]);
+        state.stage = 'joining_signaling_room';
+        const signalingClient = new RoomSignalingClient({ url });
+        state.signaling = signalingClient;
+        const roomInfo = await signalingClient.joinRoom({
+          roomCode,
+          player: { id: `browser-p${index + 1}`, name: 'Commander' },
+        });
+        state.roomInfo = roomInfo;
+        state.stage = 'opening_webrtc_channels';
+        state.session = new PrivateRoomClientSession({
+          signaling: signalingClient,
+          roomInfo,
+          onError: (error) => state.errors.push(error.message),
+        });
+        let timer = null;
+        try {
+          state.runtime = await Promise.race([
+            state.session.ready,
+            new Promise((_, reject) => {
+              timer = setTimeout(() => reject(new Error(
+                `WebRTC channels did not open within ${Math.round(timeoutMs / 1000)} seconds`,
+              )), timeoutMs);
+            }),
+          ]);
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+        state.stage = 'submitting_lobby_profile';
+        state.unsubscribe = state.runtime.onState((lobby) => { state.lastLobby = lobby; });
+        await state.session.submit({ type: 'select_vehicle', specId: 'm1a2' });
+        state.stage = 'lobby_ready';
+        return roomInfo;
+      }, {
+        url: signalUrl,
+        roomCode: room.roomCode,
+        index: guestIndex + 1,
+        timeoutMs: rosterTimeoutMs,
+      });
+    } catch (error) {
+      const details = await page.evaluate(() => ({
+        stage: globalThis.__COT_ROSTER_SOAK?.stage || 'unknown',
+        errors: globalThis.__COT_ROSTER_SOAK?.errors || [],
+      })).catch(() => ({ stage: 'page_unavailable', errors: [] }));
+      throw new Error(`player-${guestIndex + 2} failed during ${details.stage}: ${error.message}; ` +
+        `session errors=${JSON.stringify(details.errors)}`);
+    }
+  }));
+  console.log(`[multiplayer-soak] all ${guestPages.length} guest WebRTC sessions ready`);
 
   await hostPage.waitForFunction(
-    (count) => globalThis.__COT_FOUR_SOAK?.session?.runtime?.peers?.size === count - 1,
-    { timeout: 20_000 }, PLAYER_COUNT,
+    (count) => globalThis.__COT_ROSTER_SOAK?.session?.runtime?.peers?.size === count - 1,
+    { timeout: rosterTimeoutMs }, playerCount,
   );
   await Promise.all(guestPages.map((page) => page.waitForFunction(
-    (count) => globalThis.__COT_FOUR_SOAK?.lastLobby?.players?.length === count,
-    { timeout: 20_000 }, PLAYER_COUNT,
+    (count) => globalThis.__COT_ROSTER_SOAK?.lastLobby?.players?.length === count,
+    { timeout: rosterTimeoutMs }, playerCount,
   )));
-  const lobby = await hostPage.evaluate(() => globalThis.__COT_FOUR_SOAK.lastLobby);
-  assert.equal(lobby.players.length, PLAYER_COUNT);
-  assert.equal(new Set(lobby.players.map((player) => player.id)).size, PLAYER_COUNT);
+  const lobby = await hostPage.evaluate(() => globalThis.__COT_ROSTER_SOAK.lastLobby);
+  assert.equal(lobby.players.length, playerCount);
+  assert.equal(new Set(lobby.players.map((player) => player.id)).size, playerCount);
   assert.equal(new Set(lobby.players.map((player) => player.name.toLocaleLowerCase('en-US'))).size,
-    PLAYER_COUNT, 'colliding four-player names are canonicalized uniquely');
-  assert.equal(lobby.players.filter((player) => player.team === 'alpha').length, 2);
-  assert.equal(lobby.players.filter((player) => player.team === 'bravo').length, 2);
+    playerCount, 'colliding roster names are canonicalized uniquely');
+  assert.equal(lobby.players.filter((player) => player.team === 'alpha').length, teamSize);
+  assert.equal(lobby.players.filter((player) => player.team === 'bravo').length, teamSize);
+  console.log(`[multiplayer-soak] balanced ${teamSize}v${teamSize} lobby synchronized`);
 
   await Promise.all([
-    hostPage.evaluate(() => globalThis.__COT_FOUR_SOAK.session.command({
+    hostPage.evaluate(() => globalThis.__COT_ROSTER_SOAK.session.command({
       type: 'set_ready', ready: true,
     })),
-    ...guestPages.map((page) => page.evaluate(() => globalThis.__COT_FOUR_SOAK.session.submit({
+    ...guestPages.map((page) => page.evaluate(() => globalThis.__COT_ROSTER_SOAK.session.submit({
       type: 'set_ready', ready: true,
     }))),
   ]);
   await hostPage.waitForFunction(
-    (count) => globalThis.__COT_FOUR_SOAK.lastLobby.players.length === count &&
-      globalThis.__COT_FOUR_SOAK.lastLobby.players.every((player) => player.ready),
-    { timeout: 15_000 }, PLAYER_COUNT,
+    (count) => globalThis.__COT_ROSTER_SOAK.lastLobby.players.length === count &&
+      globalThis.__COT_ROSTER_SOAK.lastLobby.players.every((player) => player.ready),
+    { timeout: rosterTimeoutMs }, playerCount,
   );
-  await hostPage.evaluate(() => globalThis.__COT_FOUR_SOAK.session.command({
+  await hostPage.evaluate(() => globalThis.__COT_ROSTER_SOAK.session.command({
     type: 'start', matchSeed: 0x4C07CAFE,
   }));
-  await Promise.all([
-    hostPage.waitForFunction(() => globalThis.__COT_FOUR_SOAK.startingLobby?.phase === 'starting',
-      { timeout: 10_000 }),
-    ...guestPages.map((page) => page.waitForFunction(
-      () => globalThis.__COT_FOUR_SOAK.lastLobby?.phase === 'starting',
-      { timeout: 10_000 },
-    )),
-  ]);
+  const startDeadline = Date.now() + rosterTimeoutMs;
+  let startState = null;
+  while (Date.now() < startDeadline) {
+    const [hostStarting, guests] = await Promise.all([
+      hostPage.evaluate(() => globalThis.__COT_ROSTER_SOAK.startingLobby),
+      Promise.all(guestPages.map((page) => page.evaluate(() => {
+        const state = globalThis.__COT_ROSTER_SOAK;
+        return {
+          playerId: state.roomInfo.peerId,
+          phase: state.lastLobby?.phase || null,
+          revision: state.lastLobby?.revision ?? null,
+          readyPlayers: state.lastLobby?.players?.filter((player) => player.ready).length ?? 0,
+          closed: state.session.runtime.closed,
+          errors: [...state.session.runtime.errors],
+          transport: state.session.runtime.getStats().transport,
+        };
+      }))),
+    ]);
+    startState = { hostPhase: hostStarting?.phase || null, guests };
+    if (hostStarting?.phase === 'starting' &&
+        guests.every((guest) => guest.phase === 'starting')) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.equal(startState?.hostPhase, 'starting',
+    `host enters starting phase: ${JSON.stringify(startState)}`);
+  assert.equal(startState.guests.every((guest) => guest.phase === 'starting'), true,
+    `all ${guestPages.length} guests receive starting state: ${JSON.stringify(startState)}`);
+  console.log(`[multiplayer-soak] all ${playerCount} peers received the start transition`);
 
   const hostMatch = await hostPage.evaluate(async () => {
     const { beginPrivateHostMatch } = await import('/src/net/privateMatchHandoff.js');
-    const state = globalThis.__COT_FOUR_SOAK;
+    const state = globalThis.__COT_ROSTER_SOAK;
     state.match = beginPrivateHostMatch({ session: state.session, lobbyState: state.startingLobby });
     state.advanceDurations = [];
     state.match.ready();
@@ -219,7 +296,7 @@ try {
   });
   const guestMatches = await Promise.all(guestPages.map((page) => page.evaluate(async () => {
     const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.js');
-    const state = globalThis.__COT_FOUR_SOAK;
+    const state = globalThis.__COT_ROSTER_SOAK;
     state.match = await beginPrivateClientMatch({
       session: state.session,
       playerId: state.roomInfo.peerId,
@@ -231,18 +308,19 @@ try {
     return { playerId: state.match.playerId };
   })));
   const playerIds = [hostMatch.playerId, ...guestMatches.map((match) => match.playerId)];
-  assert.equal(hostMatch.rosterSize, PLAYER_COUNT,
-    'two-versus-two handoff creates four human-controlled authority entities');
-  assert.equal(new Set(playerIds).size, PLAYER_COUNT);
+  assert.equal(hostMatch.rosterSize, playerCount,
+    `${teamSize}-versus-${teamSize} handoff creates ${playerCount} human authority entities`);
+  assert.equal(new Set(playerIds).size, playerCount);
+  console.log(`[multiplayer-soak] ${playerCount}-human authority handoff complete`);
 
-  const handshakeDeadline = Date.now() + 20_000;
+  const handshakeDeadline = Date.now() + rosterTimeoutMs;
   let handshakeReady = false;
   let handshakeState = null;
   while (Date.now() < handshakeDeadline) {
     await pumpHost(hostPage, 50, null);
     const clients = await Promise.all(guestPages.map((page) => page.evaluate(() => {
-      const client = globalThis.__COT_FOUR_SOAK.match.client;
-      globalThis.__COT_FOUR_SOAK.sample = client.update(performance.now());
+      const client = globalThis.__COT_ROSTER_SOAK.match.client;
+      globalThis.__COT_ROSTER_SOAK.sample = client.update(performance.now());
       return {
         connected: client.connected,
         closed: client.closed,
@@ -251,7 +329,7 @@ try {
       };
     })));
     const authority = await hostPage.evaluate((count) => {
-      const host = globalThis.__COT_FOUR_SOAK.match.host;
+      const host = globalThis.__COT_ROSTER_SOAK.match.host;
       return {
         peerCount: host.peers.size,
         invalidMessages: host.stats.invalidMessages,
@@ -263,7 +341,7 @@ try {
         ready: host.peers.size === count && [...host.peers.values()].every((peer) =>
           peer.welcomed && peer.ready),
       };
-    }, PLAYER_COUNT);
+    }, playerCount);
     handshakeState = { authority, clients };
     if (authority.ready && clients.every((client) => client.connected && client.snapshots > 0)) {
       handshakeReady = true;
@@ -272,23 +350,25 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   assert.equal(handshakeReady, true,
-    `all four peers complete match handshake and receive state: ${JSON.stringify(handshakeState)}`);
+    `all ${playerCount} peers complete match handshake and receive state: ` +
+    JSON.stringify(handshakeState));
+  console.log(`[multiplayer-soak] all ${playerCount} match handshakes complete`);
 
-  const playingDeadline = Date.now() + 15_000;
+  const playingDeadline = Date.now() + rosterTimeoutMs;
   let phase = null;
   while (Date.now() < playingDeadline) {
     const state = await pumpHost(hostPage, 50, null);
     phase = state.phase;
     await Promise.all(guestPages.map((page) => page.evaluate(() => {
-      globalThis.__COT_FOUR_SOAK.sample =
-        globalThis.__COT_FOUR_SOAK.match.update(performance.now());
+      globalThis.__COT_ROSTER_SOAK.sample =
+        globalThis.__COT_ROSTER_SOAK.match.update(performance.now());
     })));
     if (phase === 'playing') break;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   assert.equal(phase, 'playing');
   const startPositions = await hostPage.evaluate(() => Object.fromEntries(
-    [...globalThis.__COT_FOUR_SOAK.match.simulation.entityById].map(([id, entity]) => [id, {
+    [...globalThis.__COT_ROSTER_SOAK.match.simulation.entityById].map(([id, entity]) => [id, {
       x: entity.state.pos.x,
       z: entity.state.pos.z,
     }]),
@@ -297,16 +377,16 @@ try {
   const playDeadline = performance.now() + durationMs;
   while (performance.now() < playDeadline) {
     await Promise.all([
-      pumpHost(hostPage, 1000 / 60, inputFor(0)),
+      pumpHost(hostPage, 1000 / 60, inputFor(hostMatch.playerId, lobby)),
       ...guestPages.map((page, index) => page.evaluate((frame) => {
-        const state = globalThis.__COT_FOUR_SOAK;
+        const state = globalThis.__COT_ROSTER_SOAK;
         state.match.submitInput(frame);
         const startedAt = performance.now();
         const sample = state.match.update(performance.now());
         state.sampleDurations.push(performance.now() - startedAt);
         if (state.sample && sample && state.sample !== sample) state.sampleIdentityStable = false;
         state.sample = sample;
-      }, inputFor(index + 1))),
+      }, inputFor(guestMatches[index].playerId, lobby))),
     ]);
     await new Promise((resolve) => setTimeout(resolve, 16));
   }
@@ -314,18 +394,18 @@ try {
   const settleDeadline = performance.now() + settleMs;
   while (performance.now() < settleDeadline) {
     await Promise.all([
-      pumpHost(hostPage, 1000 / 60, inputFor(0, true)),
+      pumpHost(hostPage, 1000 / 60, inputFor(hostMatch.playerId, lobby, true)),
       ...guestPages.map((page, index) => page.evaluate((frame) => {
-        const state = globalThis.__COT_FOUR_SOAK;
+        const state = globalThis.__COT_ROSTER_SOAK;
         state.match.submitInput(frame);
         state.sample = state.match.update(performance.now());
-      }, inputFor(index + 1, true))),
+      }, inputFor(guestMatches[index].playerId, lobby, true))),
     ]);
     await new Promise((resolve) => setTimeout(resolve, 16));
   }
 
   const authority = await hostPage.evaluate(() => {
-    const state = globalThis.__COT_FOUR_SOAK;
+    const state = globalThis.__COT_ROSTER_SOAK;
     return {
       tick: state.match.host.tick,
       peerCount: state.match.host.peers.size,
@@ -339,7 +419,7 @@ try {
     };
   });
   const reports = await Promise.all(pages.map((page) => page.evaluate(() => {
-    const state = globalThis.__COT_FOUR_SOAK;
+    const state = globalThis.__COT_ROSTER_SOAK;
     const stats = state.match.client.getStats();
     return {
       playerId: state.match.playerId,
@@ -358,9 +438,10 @@ try {
     };
   })));
 
-  assert.equal(authority.peerCount, PLAYER_COUNT);
+  assert.equal(authority.peerCount, playerCount);
   assert.equal(authority.invalidMessages, 0);
-  assert.equal(authority.droppedCatchUpMs, 0, 'four-player authority never drops simulation time');
+  assert.equal(authority.droppedCatchUpMs, 0,
+    `${playerCount}-player authority never drops simulation time`);
   assert.ok(authority.averageAdvanceMs < 4,
     `authority keeps ample 60 Hz headroom (${authority.averageAdvanceMs.toFixed(2)} ms)`);
   assert.ok(authority.maxAdvanceMs < 33,
@@ -368,7 +449,7 @@ try {
   assert.deepEqual(browserErrors, [], `browser errors:\n${browserErrors.join('\n')}`);
   const sampleTicks = reports.map((report) => report.sampleTick);
   assert.ok(Math.max(...sampleTicks) - Math.min(...sampleTicks) <= 12,
-    `four rendered timelines stay within 200 ms (${sampleTicks.join(', ')})`);
+    `${playerCount} rendered timelines stay within 200 ms (${sampleTicks.join(', ')})`);
   for (const report of reports) {
     assert.equal(report.connected, true, `${report.playerId} remains connected`);
     assert.deepEqual(report.errors, [], `${report.playerId} has no protocol errors`);
@@ -413,27 +494,40 @@ try {
     const poses = teamIds.map((viewerId) => reports.find((report) => report.playerId === viewerId)
       .entities.find((entity) => entity.id === targetId));
     assert.ok(poses.every(Boolean), `${team} teammates share visibility`);
-    assert.ok(Math.hypot(
-      poses[0].x - poses[1].x,
-      poses[0].y - poses[1].y,
-      poses[0].z - poses[1].z,
-    ) < 0.5, `${team} teammates converge on the same shared pose`);
+    const maxSharedPoseError = poses.length > 1
+      ? Math.max(...poses.slice(1).map((pose) => Math.hypot(
+        poses[0].x - pose.x,
+        poses[0].y - pose.y,
+        poses[0].z - pose.z,
+      )))
+      : 0;
+    assert.ok(maxSharedPoseError < 0.5,
+      `${team} teammates converge on one shared pose (${maxSharedPoseError.toFixed(3)} m)`);
   }
 
   await Promise.all(guestPages.map((page) => page.evaluate(() => {
-    const state = globalThis.__COT_FOUR_SOAK;
-    state.match.close('four_player_guest_departure');
-    state.session.close('four_player_guest_departure');
+    const state = globalThis.__COT_ROSTER_SOAK;
+    state.match.close('roster_soak_guest_departure');
+    state.session.close('roster_soak_guest_departure');
   })));
   await hostPage.waitForFunction(() =>
-    globalThis.__COT_FOUR_SOAK.match.host.peers.size === 1 &&
-    globalThis.__COT_FOUR_SOAK.session.peers.size === 0,
-  { timeout: 10_000 });
+    globalThis.__COT_ROSTER_SOAK.match.host.peers.size === 1 &&
+    globalThis.__COT_ROSTER_SOAK.session.peers.size === 0,
+  { timeout: rosterTimeoutMs });
 
   console.log(JSON.stringify({
     ok: true,
     players: playerIds,
-    profile: { durationMs, settleMs, latencyMs, jitterMs, lossPercent, inputLossPercent },
+    profile: {
+      playerCount,
+      teamSize,
+      durationMs,
+      settleMs,
+      latencyMs,
+      jitterMs,
+      lossPercent,
+      inputLossPercent,
+    },
     authority: {
       tick: authority.tick,
       averageAdvanceMs: Number(authority.averageAdvanceMs.toFixed(3)),

@@ -24,7 +24,9 @@ avoid editing generated evidence manually.
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Read the tool's CLI/help and its current evidence doc, run a baseline, then
-compare the same scenario after changes.
+compare the same scenario after changes. Multiplayer release checks include the
+two-player persistent-room soak, human 2v2 (`npm run test:net:four`), and full
+human 7v7 (`npm run test:net:seven`) browser paths.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

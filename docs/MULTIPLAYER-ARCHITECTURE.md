@@ -212,20 +212,23 @@ WebRTC path; the signaling service only exchanges room and connection metadata.
 npm test
 npm run test:net:browser
 npm run test:net:four
+npm run test:net:seven
 npm run build
 npm run build:private
 ```
 
 The persistent-room browser soak starts a real signaling server, Vite, and two
-Chromium pages. The four-player soak adds one host and three independent guest
-pages in a human 2v2, applies configurable latency/jitter/snapshot and input
-loss, and gates timeline skew, shared teammate poses, authority convergence,
+Chromium pages. The roster soak runs either one host plus three independent guest
+pages in a human 2v2 or one host plus thirteen guests in a full human 7v7. It
+applies configurable latency/jitter/snapshot and input loss, then gates every
+client's handshake, timeline skew, shared teammate poses, authority convergence,
 input acknowledgement lag, transport queues, runtime cost, and clean departure.
-Together they prove room policy, identity separation, dual-channel WebRTC
-handoff, rematches, authoritative movement, and adaptive delivery. Node tests
-separately cover four-client dedicated WebSockets, hidden-coordinate filtering,
-combat authority, consumables, ram/HE damage, bots, reconnect, matchmaking, Elo
-persistence, abuse bounds, and all-map collision.
+Together the soaks prove room policy, identity separation, dual-channel WebRTC
+handoff, rematches, authoritative movement, adaptive delivery, and the maximum
+fourteen-player room. Node tests separately cover four-client dedicated
+WebSockets, hidden-coordinate filtering, combat authority, consumables, ram/HE
+damage, bots, reconnect, matchmaking, Elo persistence, abuse bounds, and all-map
+collision.
 
 Useful service commands:
 
