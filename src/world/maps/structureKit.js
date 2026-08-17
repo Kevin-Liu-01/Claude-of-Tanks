@@ -1,0 +1,555 @@
+// src/world/maps/structureKit.js — twenty-four additional battlefield
+// structures. Eight heavyweight landmarks merge into the existing textured
+// building buckets; sixteen light buildings use one vertex-painted geometry
+// per family and have persistent broken-state debris for the destructible
+// instance system in props.js.
+
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+const _color = new THREE.Color();
+
+function scaleUV(geo, su = 1, sv = 1) {
+  const uv = geo.attributes.uv;
+  if (!uv) return geo;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+  return geo;
+}
+
+function box(w, h, d, uv = 0.55) {
+  return scaleUV(new THREE.BoxGeometry(w, h, d), Math.max(w, d) * uv, h * uv);
+}
+
+function slab(w, h, d, uv = 0.45) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const attr = geo.attributes.uv;
+  const su = [d, d, w, w, w, w], sv = [h, h, d, d, h, h];
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) {
+    const i = f * 4 + k;
+    attr.setXY(i, attr.getX(i) * su[f] * uv, attr.getY(i) * sv[f] * uv);
+  }
+  return geo;
+}
+
+function cylinder(rt, rb, h, segments = 10) {
+  return scaleUV(new THREE.CylinderGeometry(rt, rb, h, segments, 1), 1.5, 1.2);
+}
+
+function gable(w, h, d) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-w / 2, 0);
+  shape.lineTo(w / 2, 0);
+  shape.lineTo(0, h);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+  geo.translate(0, 0, -d / 2);
+  return scaleUV(geo, 0.5, 0.5);
+}
+
+function archShell(w, h, d) {
+  const shape = new THREE.Shape();
+  const r = w / 2;
+  shape.moveTo(-r, 0);
+  for (let i = 0; i <= 10; i++) {
+    const a = Math.PI - i * Math.PI / 10;
+    shape.lineTo(Math.cos(a) * r, Math.sin(a) * (h - 0.12));
+  }
+  shape.lineTo(r, 0);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+  geo.translate(0, 0, -d / 2);
+  return scaleUV(geo, 0.55, 0.55);
+}
+
+function paint(geo, hex, rng, jitter = 0.075) {
+  const n = geo.attributes.position.count;
+  const colors = new Float32Array(n * 3);
+  // THREE.Color.set(hex) already converts authored sRGB hex values into the
+  // renderer's linear working space. Converting again crushes midtones and
+  // makes these baked structures read almost black under low winter/industrial
+  // sun rigs.
+  _color.set(hex);
+  for (let i = 0; i < n; i++) {
+    const v = 1 + (rng() - 0.5) * jitter * 2;
+    colors[i * 3] = Math.min(1, _color.r * v);
+    colors[i * 3 + 1] = Math.min(1, _color.g * v);
+    colors[i * 3 + 2] = Math.min(1, _color.b * v);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geo;
+}
+
+function merge(parts) {
+  return mergeGeometries(parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo)), false);
+}
+
+function push(parts, bucket, geo) {
+  (parts[bucket] || parts.dark).push(geo);
+}
+
+function finish(buckets, parts) {
+  for (const [bucket, geos] of Object.entries(parts)) {
+    if (!buckets[bucket]) continue;
+    for (const geo of geos) buckets[bucket].push(geo);
+  }
+}
+
+function parts() {
+  return {
+    plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [],
+    dark: [], glass: [], curtain: [], straw: [], baked: [],
+  };
+}
+
+function addGableRoof(out, w, d, wallH, roofH, over = 0.4) {
+  const slope = Math.hypot(w / 2 + over, roofH + 0.08);
+  const angle = Math.atan2(roofH + 0.08, w / 2 + over);
+  for (const side of [-1, 1]) {
+    const roof = slab(slope + 0.14, 0.13, d + over * 2);
+    roof.rotateZ(side * angle);
+    roof.translate(-side * (w / 4 + over / 2), wallH + roofH / 2 + 0.06, 0);
+    out.roof.push(roof);
+  }
+  out.roof.push(slab(0.34, 0.14, d + over * 2).translate(0, wallH + roofH + 0.04, 0));
+}
+
+function addWindow(out, x, y, z, face = 'z', wide = 0.9, tall = 1.15) {
+  const pane = face === 'z' ? box(wide, tall, 0.06) : box(0.06, tall, wide);
+  const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
+  out.glass.push(pane.translate(x, y, z));
+  out.stone.push(sill.translate(x, y - tall / 2 - 0.08, z));
+}
+
+// -------------------------------------------------------------------------
+// Heavy structures — merged into the established building material buckets.
+// -------------------------------------------------------------------------
+
+export function makeTavern(rng, buckets, wallBucket = 'plaster') {
+  const out = parts(), w = 9.2, d = 12.4, wallH = 4.7, roofH = 2.7;
+  out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
+  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, d / 2 - 0.15));
+  out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, -d / 2 + 0.15));
+  addGableRoof(out, w, d, wallH, roofH, 0.55);
+  // Deep street balcony, carved braces, hanging inn sign and rear chimney.
+  out.wood.push(box(w * 0.78, 0.20, 1.55).translate(0, 3.05, d / 2 + 0.7));
+  for (let x = -3; x <= 3; x += 1.5) {
+    out.wood.push(box(0.10, 1.05, 0.10).translate(x, 3.6, d / 2 + 1.25));
+    out.wood.push(box(0.10, 2.55, 0.10).translate(x, 1.37, d / 2 + 1.25));
+  }
+  out.roof.push(slab(w * 0.88, 0.11, 2.1).rotateX(-0.15).translate(0, 5.05, d / 2 + 0.72));
+  out.dark.push(box(1.6, 0.95, 0.10).translate(-w / 2 - 0.08, 3.1, d * 0.2));
+  out.stone.push(box(0.72, 2.5, 0.72).translate(2.6, wallH + roofH - 0.3, -2.7));
+  for (const x of [-2.5, 0, 2.5]) addWindow(out, x, 2.0, d / 2 + 0.04);
+  finish(buckets, out);
+  return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 1.0 };
+}
+
+export function makeSchoolhouse(rng, buckets, wallBucket = 'plaster2') {
+  const out = parts(), w = 8.6, d = 13.6, wallH = 4.3, roofH = 3.0;
+  out.stone.push(box(w + 0.45, 1.1, d + 0.45).translate(0, 0, 0));
+  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, d / 2 - 0.15));
+  out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, -d / 2 + 0.15));
+  addGableRoof(out, w, d, wallH, roofH, 0.45);
+  // Bell cupola and twin entrance porch make it unmistakable at range.
+  out.wood.push(box(2.6, 1.8, 2.6).translate(0, wallH + roofH + 0.5, 1.0));
+  for (const side of [-1, 1]) out.dark.push(box(0.62, 0.85, 0.08).translate(side * 0.65, wallH + roofH + 0.6, 2.34));
+  const cap = new THREE.ConeGeometry(2.0, 2.4, 4, 1);
+  cap.rotateY(Math.PI / 4); cap.translate(0, wallH + roofH + 2.6, 1.0); out.roof.push(cap);
+  out.wood.push(box(3.5, 0.18, 2.0).translate(0, 0.18, d / 2 + 1.0));
+  for (const x of [-1.35, 1.35]) out.wood.push(box(0.13, 2.7, 0.13).translate(x, 1.5, d / 2 + 1.65));
+  out.roof.push(slab(4.1, 0.12, 2.4).rotateX(-0.14).translate(0, 3.0, d / 2 + 0.95));
+  for (const z of [-4.4, -1.5, 1.4]) for (const side of [-1, 1]) addWindow(out, side * (w / 2 + 0.04), 2.35, z, 'x', 1.25, 1.55);
+  finish(buckets, out);
+  return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 4.0 };
+}
+
+export function makeFireStation(rng, buckets, wallBucket = 'stone') {
+  const out = parts(), w = 11.4, d = 15.0, wallH = 5.4;
+  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  out.roof.push(slab(w + 0.5, 0.28, d + 0.5).translate(0, wallH + 0.12, 0));
+  // Twin deep appliance doors with lintels and a square hose-drying tower.
+  for (const x of [-3.0, 1.1]) {
+    out.dark.push(box(3.35, 3.7, 0.12).translate(x, 1.85, d / 2 + 0.08));
+    for (let y = 0.5; y < 3.6; y += 0.62) out.wood.push(box(3.15, 0.06, 0.08).translate(x, y, d / 2 + 0.16));
+  }
+  const tx = 4.0, towerH = 11.8;
+  out.stone.push(box(3.0, towerH, 3.0).translate(tx, towerH / 2, -3.7));
+  for (const face of [-1, 1]) out.dark.push(box(1.65, 2.1, 0.08).translate(tx, towerH - 2.1, -3.7 + face * 1.52));
+  const towerCap = new THREE.ConeGeometry(2.25, 2.2, 4, 1);
+  towerCap.rotateY(Math.PI / 4); towerCap.translate(tx, towerH + 1.1, -3.7); out.roof.push(towerCap);
+  out.plaster3.push(box(4.8, 0.85, 0.12).translate(-1.0, 4.7, d / 2 + 0.1));
+  finish(buckets, out);
+  return { w: w + 0.4, d: d + 0.4, h: towerH + 2.3 };
+}
+
+export function makeFishery(rng, buckets) {
+  const out = parts(), w = 10.2, d = 15.5, wallH = 4.4, roofH = 1.8;
+  out.wood.push(box(w, wallH, d).translate(0, wallH / 2 + 0.35, 0));
+  out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, d / 2 - 0.15));
+  out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, -d / 2 + 0.15));
+  addGableRoof(out, w, d, wallH + 0.35, roofH, 0.7);
+  // Wet working dock, hoist boom, ice-house annex and net loft openings.
+  out.wood.push(box(w + 6.2, 0.3, 4.0).translate(0, 0.3, d / 2 + 2.0));
+  for (const x of [-7.1, -4.8, 4.8, 7.1]) out.wood.push(box(0.25, 2.2, 0.25).translate(x, -0.6, d / 2 + 2.0));
+  out.dark.push(box(0.22, 6.2, 0.22).rotateZ(-0.38).translate(5.6, 3.35, d / 2 + 1.0));
+  out.dark.push(box(0.06, 3.0, 0.06).translate(6.75, 1.5, d / 2 + 1.0));
+  out.stone.push(box(4.2, 3.4, 5.0).translate(-w / 2 - 1.5, 1.7, -2.4));
+  out.roof.push(slab(4.6, 0.16, 5.4).rotateZ(0.12).translate(-w / 2 - 1.5, 3.75, -2.4));
+  for (const x of [-2.8, 0, 2.8]) addWindow(out, x, 2.4, d / 2 + 0.04, 'z', 1.1, 1.1);
+  finish(buckets, out);
+  return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
+}
+
+export function makeBathhouse(rng, buckets, wallBucket = 'plaster3') {
+  const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
+  out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
+  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  out.roof.push(slab(w + 0.2, 0.15, d + 0.2).translate(0, wallH + 0.08, 0));
+  // Three low domes, lantern vents and an arched entry vestibule.
+  for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
+    const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
+    dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
+    out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+  }
+  out[wallBucket].push(box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9));
+  out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
+  for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25);
+  finish(buckets, out);
+  return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
+}
+
+export function makeCaravanserai(rng, buckets, wallBucket = 'plaster') {
+  const out = parts(), w = 21.0, d = 19.0, wallH = 5.2;
+  // Courtyard plan: four occupied perimeter wings, fortified gate towers.
+  out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, -d / 2 + 2.0));
+  out[wallBucket].push(box(w, wallH, 4.0).translate(0, wallH / 2, d / 2 - 2.0));
+  out[wallBucket].push(box(4.0, wallH, d - 8.0).translate(-w / 2 + 2.0, wallH / 2, 0));
+  out[wallBucket].push(box(4.0, wallH, d - 8.0).translate(w / 2 - 2.0, wallH / 2, 0));
+  for (const x of [-6.4, 6.4]) out.stone.push(box(3.5, 7.2, 4.2).translate(x, 3.6, d / 2 - 1.2));
+  out.dark.push(box(4.6, 4.4, 0.14).translate(0, 2.2, d / 2 + 0.08));
+  out.roof.push(slab(w + 0.4, 0.18, 4.4).translate(0, wallH + 0.1, -d / 2 + 2.0));
+  out.roof.push(slab(w + 0.4, 0.18, 4.4).translate(0, wallH + 0.1, d / 2 - 2.0));
+  for (let x = -7; x <= 7; x += 3.5) {
+    out.dark.push(box(1.8, 2.2, 0.08).translate(x, 1.4, -d / 2 + 4.04));
+    out.wood.push(box(0.16, 2.8, 0.16).translate(x, 1.4, -d / 2 + 5.0));
+  }
+  finish(buckets, out);
+  return { w: w + 0.4, d: d + 0.4, h: 7.4 };
+}
+
+export function makeFoundryOffice(rng, buckets, wallBucket = 'stone') {
+  const out = parts(), w = 13.0, d = 14.0, wallH = 5.8;
+  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  // A three-bay sawtooth roof preserves the industrial silhouette.
+  for (let i = 0; i < 3; i++) {
+    const z = -d / 2 + (i + 0.5) * d / 3;
+    const tooth = gable(w, 2.0, d / 3 - 0.12).rotateY(Math.PI / 2);
+    tooth.rotateY(-Math.PI / 2); // keep extrusion along z; explicit for authoring clarity
+    tooth.translate(0, wallH, z); out.plaster3.push(tooth);
+    const roof = slab(w + 0.4, 0.14, d / 3 + 0.15);
+    roof.rotateZ(-0.27); roof.translate(0.8, wallH + 1.0, z); out.roof.push(roof);
+    addWindow(out, -w / 2 - 0.04, wallH + 0.95, z, 'x', d / 3 - 0.55, 1.45);
+  }
+  for (const x of [-3.7, -1.2, 1.3, 3.8]) addWindow(out, x, 2.9, d / 2 + 0.05, 'z', 1.25, 1.8);
+  out.dark.push(box(3.2, 3.5, 0.12).translate(0, 1.75, -d / 2 - 0.05));
+  out.stone.push(box(1.0, 4.5, 1.0).translate(4.6, wallH + 1.7, -4.0));
+  finish(buckets, out);
+  return { w: w + 0.4, d: d + 0.4, h: wallH + 4.0 };
+}
+
+export function makeRangerLodge(rng, buckets, wallBucket = 'wood') {
+  const out = parts(), w = 10.8, d = 13.4, wallH = 4.0, roofH = 3.5;
+  out.stone.push(box(w + 0.5, 1.2, d + 0.5).translate(0, 0, 0));
+  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, d / 2 - 0.15));
+  out[wallBucket].push(gable(w, roofH, 0.3).translate(0, wallH, -d / 2 + 0.15));
+  addGableRoof(out, w, d, wallH, roofH, 0.75);
+  // Full porch, stone fireplace and observation cupola.
+  out.wood.push(box(w + 1.8, 0.18, 2.6).translate(0, 0.24, d / 2 + 1.3));
+  for (const x of [-5.2, -2.6, 0, 2.6, 5.2]) out.wood.push(box(0.16, 2.8, 0.16).translate(x, 1.55, d / 2 + 2.25));
+  out.roof.push(slab(w + 2.0, 0.13, 3.1).rotateX(-0.17).translate(0, 3.25, d / 2 + 1.25));
+  out.stone.push(box(1.35, 5.8, 1.35).translate(-3.4, wallH + 0.9, -2.2));
+  out.wood.push(box(3.0, 1.7, 3.0).translate(2.0, wallH + roofH + 0.35, -1.0));
+  const cap = new THREE.ConeGeometry(2.15, 1.9, 4, 1);
+  cap.rotateY(Math.PI / 4); cap.translate(2.0, wallH + roofH + 2.15, -1.0); out.roof.push(cap);
+  for (const x of [-3.2, 0, 3.2]) addWindow(out, x, 2.1, d / 2 + 0.04);
+  finish(buckets, out);
+  return { w: w + 2.0, d: d + 3.0, h: wallH + roofH + 3.2 };
+}
+
+export const STRUCTURE_BUILDERS = {
+  tavern: makeTavern,
+  schoolhouse: makeSchoolhouse,
+  firestation: makeFireStation,
+  fishery: makeFishery,
+  bathhouse: makeBathhouse,
+  caravanserai: makeCaravanserai,
+  foundryoffice: makeFoundryOffice,
+  rangerlodge: makeRangerLodge,
+};
+
+// -------------------------------------------------------------------------
+// Light destructible structures. Every type is authored as a single baked
+// vertex-color mesh so a whole family remains one draw call on a live map.
+// -------------------------------------------------------------------------
+
+const PAL = {
+  timber: [0x4b3222, 0x74523a, 0x25221f],
+  paleWood: [0x76634b, 0x9a8768, 0x3a332b],
+  canvas: [0x95866a, 0xb7ab8d, 0x605b4d],
+  khaki: [0x596044, 0x78805c, 0x2e3529],
+  steel: [0x51575b, 0x747b7c, 0x272d31],
+  desert: [0xa18a67, 0xc0ad83, 0x655845],
+  nordic: [0x4b382c, 0x8b765e, 0x242b2c],
+};
+
+function colored(partsOut, geo, color, rng, jitter = 0.08) {
+  partsOut.push(paint(geo, color, rng, jitter));
+  return geo;
+}
+
+function gableLight({ w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = false, windows = 2 }, rng) {
+  const out = [], [wall, trim, dark] = pal;
+  if (raised > 0) {
+    for (const x of [-w * 0.38, w * 0.38]) for (const z of [-d * 0.38, d * 0.38]) {
+      colored(out, box(0.16, raised, 0.16).translate(x, raised / 2, z), dark, rng);
+    }
+  }
+  const y0 = raised;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wall, rng);
+  colored(out, gable(w, roofH, 0.14).translate(0, y0 + wallH, d / 2 - 0.07), wall, rng);
+  colored(out, gable(w, roofH, 0.14).translate(0, y0 + wallH, -d / 2 + 0.07), wall, rng);
+  const slope = Math.hypot(w / 2 + 0.28, roofH + 0.05), ang = Math.atan2(roofH + 0.05, w / 2 + 0.28);
+  for (const side of [-1, 1]) {
+    const roof = slab(slope + 0.12, 0.10, d + 0.6);
+    roof.rotateZ(side * ang); roof.translate(-side * (w / 4 + 0.14), y0 + wallH + roofH / 2 + 0.04, 0);
+    colored(out, roof, dark, rng);
+  }
+  colored(out, box(w * 0.24, wallH * 0.68, 0.07).translate(0, y0 + wallH * 0.34, d / 2 + 0.04), dark, rng);
+  for (let i = 0; i < windows; i++) {
+    const x = windows === 1 ? -w * 0.25 : -w * 0.3 + i * (w * 0.6 / Math.max(1, windows - 1));
+    if (Math.abs(x) < w * 0.16) continue;
+    colored(out, box(w * 0.17, wallH * 0.34, 0.06).translate(x, y0 + wallH * 0.58, d / 2 + 0.05), trim, rng);
+    colored(out, box(0.04, wallH * 0.34, 0.07).translate(x, y0 + wallH * 0.58, d / 2 + 0.09), dark, rng);
+  }
+  if (porch > 0) {
+    colored(out, box(w * 0.9, 0.12, porch).translate(0, y0 + 0.08, d / 2 + porch / 2), trim, rng);
+    for (const x of [-w * 0.38, w * 0.38]) colored(out, box(0.10, wallH * 0.68, 0.10).translate(x, y0 + wallH * 0.35, d / 2 + porch * 0.82), dark, rng);
+    const awning = slab(w, 0.08, porch + 0.35); awning.rotateX(-0.16);
+    colored(out, awning.translate(0, y0 + wallH * 0.73, d / 2 + porch * 0.42), trim, rng);
+  }
+  if (chimney) colored(out, box(0.42, 1.8, 0.42).translate(-w * 0.28, y0 + wallH + roofH * 0.78, -d * 0.2), dark, rng);
+  return out;
+}
+
+function debris(meta, pal, rng, material = 'wood') {
+  const out = [], [base, trim, dark] = pal;
+  const count = material === 'canvas' ? 11 : 15;
+  for (let i = 0; i < count; i++) {
+    const a = rng() * Math.PI * 2, radius = Math.sqrt(rng()) * Math.max(meta.hw, meta.hl) * 0.82;
+    const long = 0.55 + rng() * (material === 'canvas' ? 1.8 : 2.6);
+    const piece = material === 'canvas'
+      ? slab(long, 0.045, 0.45 + rng() * 0.8)
+      : box(0.16 + rng() * 0.22, 0.08 + rng() * 0.10, long);
+    piece.rotateY(a + rng()); piece.rotateX((rng() - 0.5) * 0.24);
+    piece.translate(Math.cos(a) * radius, 0.08 + rng() * 0.25, Math.sin(a) * radius);
+    colored(out, piece, i % 4 === 0 ? trim : base, rng, 0.14);
+  }
+  // Recognizable collapsed roof sheet and surviving stove/utility block.
+  const roof = slab(meta.hw * 1.35, 0.08, meta.hl * 0.95);
+  roof.rotateY((rng() - 0.5) * 0.8); roof.rotateX(0.12 + rng() * 0.18);
+  colored(out, roof.translate(meta.hw * 0.18, 0.18, -meta.hl * 0.08), dark, rng, 0.12);
+  return merge(out);
+}
+
+function makeFieldHut(rng) {
+  const out = gableLight({ w: 4.2, d: 5.6, wallH: 2.45, roofH: 1.35, pal: PAL.timber, porch: 1.1, chimney: true }, rng);
+  colored(out, box(1.4, 0.75, 0.55).translate(-1.15, 0.4, 3.15), PAL.paleWood[1], rng);
+  return merge(out);
+}
+
+function makeLeanTo(rng) {
+  const out = [], p = PAL.paleWood;
+  for (const x of [-2.4, 2.4]) for (const z of [-2.0, 2.0]) colored(out, box(0.16, 2.8, 0.16).translate(x, 1.4, z), p[2], rng);
+  colored(out, box(5.2, 2.3, 0.18).translate(0, 1.15, -2.05), p[0], rng);
+  const roof = slab(5.8, 0.12, 5.0); roof.rotateX(-0.18); colored(out, roof.translate(0, 2.75, 0), p[1], rng);
+  for (let i = 0; i < 3; i++) colored(out, box(1.1, 0.85, 0.8).translate(-1.5 + i * 1.45, 0.43, -1.45), p[0], rng);
+  return merge(out);
+}
+
+function makeHuntingBlind(rng) {
+  const out = [], p = PAL.timber, y = 3.1;
+  for (const x of [-1.15, 1.15]) for (const z of [-1.15, 1.15]) colored(out, box(0.16, y, 0.16).translate(x, y / 2, z), p[2], rng);
+  colored(out, box(2.8, 2.2, 2.8).translate(0, y + 1.1, 0), p[0], rng);
+  colored(out, slab(3.2, 0.12, 3.3).rotateZ(0.10).translate(0, y + 2.3, 0), p[1], rng);
+  for (const side of [-1, 1]) colored(out, box(0.08, 0.45, 1.5).translate(side * 1.43, y + 1.35, 0), p[2], rng);
+  for (let i = 0; i < 6; i++) colored(out, box(0.75, 0.08, 0.12).translate(1.7, 0.35 + i * 0.45, 1.15), p[1], rng);
+  return merge(out);
+}
+
+function makeFisherShack(rng) {
+  const out = gableLight({ w: 4.8, d: 6.2, wallH: 2.7, roofH: 1.45, pal: PAL.nordic, porch: 1.5, raised: 0.45 }, rng);
+  for (const x of [-1.8, 0, 1.8]) colored(out, box(0.10, 2.2, 0.10).translate(x, 1.1, -3.65), PAL.nordic[2], rng);
+  colored(out, box(4.0, 0.08, 0.08).translate(0, 2.15, -3.65), PAL.nordic[1], rng);
+  return merge(out);
+}
+
+function makeSaunaHut(rng) {
+  const out = gableLight({ w: 4.6, d: 5.0, wallH: 2.5, roofH: 1.65, pal: PAL.nordic, chimney: true, windows: 1 }, rng);
+  for (let y = 0.45; y < 2.4; y += 0.38) colored(out, box(4.75, 0.10, 0.12).translate(0, y, 2.56), PAL.nordic[1], rng);
+  colored(out, box(1.2, 0.28, 1.2).translate(1.3, 0.14, 3.1), PAL.nordic[2], rng);
+  return merge(out);
+}
+
+function makeAlpineRefuge(rng) {
+  const out = gableLight({ w: 6.0, d: 7.0, wallH: 2.8, roofH: 2.7, pal: PAL.nordic, porch: 1.0, chimney: true }, rng);
+  for (const x of [-2.3, -0.8, 0.8, 2.3]) colored(out, box(0.12, 0.9, 0.12).translate(x, 3.25, 3.85), PAL.nordic[1], rng);
+  colored(out, box(5.4, 0.12, 0.15).translate(0, 3.7, 3.85), PAL.nordic[2], rng);
+  return merge(out);
+}
+
+function makeStiltHouse(rng) {
+  const out = gableLight({ w: 5.6, d: 7.2, wallH: 2.7, roofH: 1.8, pal: PAL.paleWood, porch: 1.3, raised: 2.0 }, rng);
+  for (let i = 0; i < 6; i++) colored(out, box(1.0, 0.10, 0.18).translate(3.0, 0.35 + i * 0.34, 2.6 + i * 0.22), PAL.paleWood[1], rng);
+  colored(out, box(0.12, 2.6, 0.12).rotateX(-0.58).translate(3.0, 1.2, 3.15), PAL.paleWood[2], rng);
+  return merge(out);
+}
+
+function makeLonghouse(rng) {
+  const out = gableLight({ w: 6.8, d: 12.8, wallH: 2.8, roofH: 3.7, pal: PAL.timber, windows: 3 }, rng);
+  for (const z of [-4.3, -1.4, 1.4, 4.3]) for (const side of [-1, 1]) colored(out, box(0.12, 2.2, 0.12).translate(side * 3.46, 1.1, z), PAL.timber[1], rng);
+  const ridge = cylinder(0.18, 0.18, 13.6, 7); ridge.rotateX(Math.PI / 2); colored(out, ridge.translate(0, 6.55, 0), PAL.timber[2], rng);
+  return merge(out);
+}
+
+function makeDesertTent(rng) {
+  const out = [], p = PAL.desert, w = 5.2, d = 7.6, h = 2.8;
+  const shape = new THREE.Shape(); shape.moveTo(-w / 2, 0); shape.lineTo(0, h); shape.lineTo(w / 2, 0); shape.closePath();
+  const tent = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false }); tent.translate(0, 0, -d / 2);
+  colored(out, tent, p[0], rng, 0.12);
+  for (const z of [-d / 2 - 0.15, d / 2 + 0.15]) colored(out, box(0.12, h + 0.6, 0.12).translate(0, (h + 0.6) / 2, z), p[2], rng);
+  for (const x of [-w / 2, w / 2]) for (const z of [-d / 2, d / 2]) {
+    const rope = box(0.035, 0.035, 2.0); rope.rotateX(0.72); rope.rotateY(x > 0 ? 0.25 : -0.25);
+    colored(out, rope.translate(x * 1.1, 0.65, z * 1.08), p[2], rng);
+  }
+  colored(out, slab(3.8, 0.05, 2.2).translate(0, 0.06, d / 2 + 1.2), p[1], rng);
+  return merge(out);
+}
+
+function makeCommandTent(rng) {
+  const out = [], p = PAL.khaki, w = 6.2, d = 8.2, wall = 1.15, roof = 2.35;
+  colored(out, box(w, wall, d).translate(0, wall / 2, 0), p[0], rng);
+  colored(out, gable(w, roof, d).translate(0, wall, 0), p[1], rng);
+  for (const z of [-3.0, 0, 3.0]) colored(out, box(0.10, wall + roof + 0.3, 0.10).translate(0, (wall + roof) / 2, z), p[2], rng);
+  colored(out, box(2.4, 0.9, 0.9).translate(-1.55, 0.45, 4.25), PAL.timber[0], rng);
+  colored(out, box(0.10, 5.2, 0.10).translate(2.8, 2.6, -3.6), p[2], rng);
+  colored(out, box(1.8, 0.06, 0.06).rotateZ(-0.22).translate(3.0, 5.0, -3.6), p[2], rng);
+  return merge(out);
+}
+
+function makeFieldHospital(rng) {
+  const out = [], p = PAL.canvas;
+  for (const x of [-2.7, 2.7]) {
+    colored(out, box(4.5, 1.05, 8.8).translate(x, 0.53, 0), p[0], rng);
+    colored(out, gable(4.5, 2.0, 8.8).translate(x, 1.05, 0), p[1], rng);
+    colored(out, box(0.10, 3.3, 0.10).translate(x, 1.65, 0), p[2], rng);
+  }
+  colored(out, slab(1.1, 0.06, 1.1).translate(0, 2.15, 4.48), 0xd8d0ba, rng);
+  colored(out, box(0.22, 0.05, 0.82).translate(0, 2.19, 4.52), 0x7b2c28, rng, 0.02);
+  colored(out, box(0.82, 0.05, 0.22).translate(0, 2.20, 4.53), 0x7b2c28, rng, 0.02);
+  for (let i = 0; i < 4; i++) colored(out, box(1.65, 0.14, 0.62).translate(-2.7 + (i % 2) * 5.4, 0.48, -2.8 + ((i / 2) | 0) * 5.6), PAL.steel[1], rng);
+  return merge(out);
+}
+
+function makeGuardPost(rng) {
+  const out = [], p = PAL.steel, y0 = 1.2;
+  colored(out, box(3.2, 2.6, 3.2).translate(0, y0 + 1.3, 0), p[0], rng);
+  for (const side of [-1, 1]) {
+    colored(out, box(2.2, 0.65, 0.08).translate(0, y0 + 1.65, side * 1.64), 0x73909a, rng);
+    colored(out, box(0.08, 0.65, 2.2).translate(side * 1.64, y0 + 1.65, 0), 0x73909a, rng);
+  }
+  colored(out, slab(3.9, 0.16, 3.9).translate(0, y0 + 2.72, 0), p[2], rng);
+  for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) colored(out, box(0.18, y0, 0.18).translate(x, y0 / 2, z), p[2], rng);
+  for (let i = 0; i < 5; i++) colored(out, box(0.65, 0.08, 0.10).translate(1.7, 0.25 + i * 0.35, 1.3), p[1], rng);
+  return merge(out);
+}
+
+function makeMotorPool(rng) {
+  const out = [], p = PAL.steel, w = 9.0, d = 11.5;
+  for (const x of [-w / 2, 0, w / 2]) for (const z of [-d / 2, d / 2]) colored(out, box(0.22, 3.8, 0.22).translate(x, 1.9, z), p[2], rng);
+  const roof = slab(w + 0.8, 0.16, d + 0.8); roof.rotateZ(0.11); colored(out, roof.translate(0, 3.9, 0), p[0], rng);
+  colored(out, box(2.0, 0.25, 7.0).translate(0, 0.05, 0), p[2], rng);
+  for (const x of [-3.1, 3.1]) for (const z of [-3.7, 0, 3.7]) colored(out, cylinder(0.38, 0.38, 0.85, 10).translate(x, 0.43, z), p[1], rng);
+  colored(out, box(2.5, 1.0, 0.7).translate(-3.0, 0.5, -4.8), PAL.timber[0], rng);
+  return merge(out);
+}
+
+function makeQuonsetHut(rng) {
+  const out = [], p = PAL.steel, w = 6.8, d = 11.5, h = 3.8;
+  colored(out, archShell(w, h, d), p[0], rng, 0.10);
+  for (let z = -d / 2 + 0.8; z < d / 2; z += 1.15) {
+    const rib = archShell(w + 0.12, h + 0.08, 0.08); rib.translate(0, 0, z); colored(out, rib, p[1], rng, 0.04);
+  }
+  colored(out, box(3.5, 3.0, 0.10).translate(0, 1.5, d / 2 + 0.06), p[2], rng);
+  for (const x of [-2.2, 2.2]) colored(out, box(0.65, 0.9, 0.08).translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
+  return merge(out);
+}
+
+function makeTransformerShed(rng) {
+  const out = [], p = PAL.steel, w = 5.4, d = 5.0, h = 3.4;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
+  colored(out, slab(w + 0.5, 0.18, d + 0.5).rotateZ(-0.09).translate(0, h + 0.1, 0), p[2], rng);
+  for (const x of [-1.55, 0, 1.55]) for (let y = 1.0; y <= 2.5; y += 0.38) colored(out, box(0.95, 0.08, 0.08).translate(x, y, d / 2 + 0.08), p[1], rng);
+  for (const x of [-1.4, 1.4]) {
+    colored(out, box(0.28, 1.0, 0.28).translate(x, h + 0.6, -1.1), 0x5f4f3a, rng);
+    colored(out, cylinder(0.22, 0.22, 0.36, 8).translate(x, h + 1.16, -1.1), 0x7b735d, rng);
+  }
+  colored(out, box(2.2, 2.8, 0.10).translate(0, 1.4, -d / 2 - 0.05), p[2], rng);
+  return merge(out);
+}
+
+function makeCheckpointHut(rng) {
+  const out = [], p = PAL.steel, w = 4.0, d = 5.2, h = 3.0;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
+  colored(out, slab(w + 0.7, 0.16, d + 1.1).rotateZ(0.08).translate(0, h + 0.08, 0), p[2], rng);
+  for (const side of [-1, 1]) colored(out, box(0.08, 1.0, 2.7).translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
+  colored(out, box(2.5, 0.12, 1.8).translate(0, 0.12, d / 2 + 0.85), p[1], rng);
+  for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, 1.15, d / 2 + 1.55), p[2], rng);
+  colored(out, slab(2.8, 0.10, 2.0).rotateX(-0.12).translate(0, 2.35, d / 2 + 0.9), p[1], rng);
+  return merge(out);
+}
+
+function lightMeta(id, family, hw, hl, h, pal, build, debrisMaterial = 'wood') {
+  const meta = {
+    id, family, cls: 'break', mat: 'baked', contact: 'ob', collider: true,
+    hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build,
+  };
+  meta.broken = (rng) => debris(meta, pal, rng, debrisMaterial);
+  return meta;
+}
+
+export const DESTRUCTIBLE_BUILDING_TYPES = {
+  fieldhut: lightMeta('fieldhut', 'rural', 2.3, 3.5, 4.1, PAL.timber, makeFieldHut),
+  leanto: lightMeta('leanto', 'rural', 2.9, 2.6, 3.1, PAL.paleWood, makeLeanTo),
+  huntingblind: lightMeta('huntingblind', 'woodland', 1.8, 1.8, 5.5, PAL.timber, makeHuntingBlind),
+  fishershack: lightMeta('fishershack', 'coastal', 2.7, 4.2, 4.7, PAL.nordic, makeFisherShack),
+  saunahut: lightMeta('saunahut', 'nordic', 2.5, 3.2, 4.4, PAL.nordic, makeSaunaHut),
+  alpinerefuge: lightMeta('alpinerefuge', 'alpine', 3.3, 4.3, 5.8, PAL.nordic, makeAlpineRefuge),
+  stilthouse: lightMeta('stilthouse', 'wetland', 3.4, 4.6, 6.5, PAL.paleWood, makeStiltHouse),
+  longhouse: lightMeta('longhouse', 'tribal', 3.7, 6.8, 6.6, PAL.timber, makeLonghouse),
+  deserttent: lightMeta('deserttent', 'desert-camp', 3.2, 4.4, 3.4, PAL.desert, makeDesertTent, 'canvas'),
+  commandtent: lightMeta('commandtent', 'military-camp', 3.5, 4.8, 5.2, PAL.khaki, makeCommandTent, 'canvas'),
+  fieldhospital: lightMeta('fieldhospital', 'military-camp', 5.2, 5.0, 3.4, PAL.canvas, makeFieldHospital, 'canvas'),
+  guardpost: lightMeta('guardpost', 'military', 2.1, 2.1, 4.1, PAL.steel, makeGuardPost, 'metal'),
+  motorpool: lightMeta('motorpool', 'military', 5.0, 6.3, 4.2, PAL.steel, makeMotorPool, 'metal'),
+  quonsethut: lightMeta('quonsethut', 'industrial', 3.7, 6.2, 4.0, PAL.steel, makeQuonsetHut, 'metal'),
+  transformershed: lightMeta('transformershed', 'industrial', 3.0, 2.8, 4.7, PAL.steel, makeTransformerShed, 'metal'),
+  checkpointhut: lightMeta('checkpointhut', 'military', 2.5, 3.7, 3.3, PAL.steel, makeCheckpointHut, 'metal'),
+};
+
+export const STRUCTURE_CATALOG = [
+  ...Object.keys(STRUCTURE_BUILDERS).map((id) => ({ id, mode: 'merged' })),
+  ...Object.values(DESTRUCTIBLE_BUILDING_TYPES).map(({ id, family }) => ({ id, family, mode: 'destructible' })),
+];

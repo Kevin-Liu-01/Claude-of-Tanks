@@ -3456,7 +3456,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // a ramming hull scales it with its overrun speed (props.js breakRecord)
       // so every throw velocity below inherits the tank's momentum.
       const fam = kind === 'drumblast' ? 'drumblast'
-        : /^wall/.test(kind) ? 'masonry'
+        : /fieldhut|leanto|huntingblind|fishershack|saunahut|alpinerefuge|stilthouse|longhouse/.test(kind) ? 'woodbuilding'
+          : /deserttent|commandtent|fieldhospital/.test(kind) ? 'canvasbuilding'
+            : /guardpost|motorpool|quonsethut|transformershed|checkpointhut/.test(kind) ? 'metalbuilding'
+              : /^wall/.test(kind) ? 'masonry'
           : /^sandbag/.test(kind) ? 'sandbag'
             : /truck|jeep/.test(kind) ? 'vehicle'
               : kind === 'tent' ? 'canvas'
@@ -3466,6 +3469,52 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
                       : kind === 'barrel' ? 'barrel'
                         : kind === 'pot' ? 'pot'
                           : /lamp|drum|churn/.test(kind) ? 'metal' : 'wood';
+      if (fam === 'woodbuilding' || fam === 'canvasbuilding' || fam === 'metalbuilding') {
+        // Building-scale collapse: more mass and a wider ground-hugging dust
+        // front than the small-prop burst, while retaining the global six-
+        // bursts-per-frame cap in props.js. Persistent large debris is the
+        // broken instance; these particles sell the instant of collapse.
+        const canvas = fam === 'canvasbuilding', metal = fam === 'metalbuilding';
+        if (metal) {
+          _v3.set(pos.x, gy + Math.min(1.8, heightM * 0.42), pos.z);
+          sparkFan(_v3, _UP, 12, 9, 1.3, 0xffc980, 0.5, 0.035, 0.045, 0, 0.14);
+        }
+        const fragmentCount = canvas ? 8 : metal ? 13 : 17;
+        for (let i = 0; i < fragmentCount; i++) {
+          const a = rng() * Math.PI * 2;
+          _debO.pos[0] = pos.x + (rng() - 0.5) * 2.8;
+          _debO.pos[1] = gy + 0.35 + rng() * Math.min(2.4, heightM * 0.55);
+          _debO.pos[2] = pos.z + (rng() - 0.5) * 2.8;
+          _debO.vel[0] = dir.x * (2.2 + rng() * 3.4) + Math.cos(a) * (1.2 + rng() * 3.5);
+          _debO.vel[1] = 2.0 + rng() * 4.2;
+          _debO.vel[2] = dir.z * (2.2 + rng() * 3.4) + Math.sin(a) * (1.2 + rng() * 3.5);
+          _debO.life = 1.5 + rng() * 0.6;
+          _debO.scale = (canvas ? 0.06 : 0.09) + rng() * (canvas ? 0.07 : 0.13);
+          _debO.spin = 8 + rng() * 18;
+          _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+          _debO.groundY = gy; _debO.hot = metal && rng() < 0.12 ? 0.35 : 0;
+          _debO.seed = rng(); _debO.birthOffset = 0;
+          particles.emit('debris', _debO);
+        }
+        const dustA = canvas ? 0xa89b7d : metal ? 0x777979 : 0x8a745e;
+        const dustB = canvas ? 0x82775f : metal ? 0x55595a : 0x675444;
+        for (let i = 0; i < 12; i++) {
+          const a = rng() * Math.PI * 2;
+          _puffO.pos[0] = pos.x + (rng() - 0.5) * 3.6;
+          _puffO.pos[1] = gy + 0.18 + rng() * 0.9;
+          _puffO.pos[2] = pos.z + (rng() - 0.5) * 3.6;
+          _puffO.vel[0] = Math.cos(a) * (1.8 + rng() * 3.0) + dir.x * 2.0;
+          _puffO.vel[1] = 0.8 + rng() * 1.5;
+          _puffO.vel[2] = Math.sin(a) * (1.8 + rng() * 3.0) + dir.z * 2.0;
+          _puffO.life = 1.6 + rng() * 1.2;
+          _puffO.size0 = 0.75 + rng() * 0.5; _puffO.size1 = 3.2 + rng() * 2.2;
+          _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.7;
+          col3(dustA, _puffO.col0); col3(dustB, _puffO.col1);
+          _puffO.alpha = 0.42 + rng() * 0.15; _puffO.grav = -0.38; _puffO.birthOffset = 0;
+          particles.emit('dust', _puffO);
+        }
+        return;
+      }
       if (fam === 'masonry') {
         // wall module breach: a dense shower of masonry chunks with real
         // ballistics (velocity inherited from the rammer via dir magnitude,

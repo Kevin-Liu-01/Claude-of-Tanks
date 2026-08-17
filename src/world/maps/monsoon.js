@@ -32,10 +32,11 @@ export default {
     clusterScrub: 2.7, bushCount: 1.72, bushSpecies: 'oak',
   },
   props: {
-    plan: ['ruin', 'chapel', 'farmhouse', 'marketRow', 'ruin', 'cornershop',
+    plan: ['ruin', 'chapel', 'bathhouse', 'marketRow', 'ruin', 'cornershop',
       'granary', 'ruin', 'depot', 'farmhouse', 'tower', 'market', 'ruin', 'woodshed',
       'marketRow', 'ruin', 'farmhouse', 'chapel', 'depot', 'ruin', 'granary', 'cornershop',
       'ruin', 'market', 'farmhouse', 'woodshed'],
+    destructibleBuildings: ['stilthouse', 'longhouse', 'fieldhospital', 'commandtent'],
     wallStyle: 'fieldstone', wallStoneChance: 0.78,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     rocks: 235, outcrops: 48, craters: 82, rubblePiles: 28,

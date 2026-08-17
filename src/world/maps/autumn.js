@@ -122,8 +122,9 @@ export default {
 
   props: {
     // world-dressing r1: harvest-farm catalog — farmhouse, granary, chapel
-    plan: ['farmhouse', 'barn', 'cottage', 'chapel', 'barn', 'granary', 'ruin',
+    plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'barn', 'granary', 'ruin',
       'cottage', 'barn', 'farmhouse', 'cottage', 'barn', 'granary', 'cottage'],
+    destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
       roof: (h, s, l) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile

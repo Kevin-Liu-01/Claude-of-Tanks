@@ -13,6 +13,9 @@ import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.js';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
+import {
+  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
+} from './maps/structureKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { createUtilityNetwork } from './utilityNetwork.js';
@@ -901,6 +904,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
     // cast-iron street lights along the town grid; hedgehogs = steel anti-
     // tank obstacles scattered on streets/approaches
     cropFields: 0, lampposts: false, hedgehogs: 0,
+    destructibleBuildings: [],
     streetRows: false, curbs: false, monument: false, townCraters: false,
     ...((cfg && cfg.props) || {}),
   };
@@ -1089,7 +1093,7 @@ ${snowCap ? `
     },
   };
   function addDestructible(kind, x, y, z, yaw = 0, sc = 1, tiltX = 0, tiltZ = 0) {
-    const meta = LOCAL_TYPES[kind] || DESTRUCTIBLE_TYPES[kind];
+    const meta = LOCAL_TYPES[kind] || DESTRUCTIBLE_BUILDING_TYPES[kind] || DESTRUCTIBLE_TYPES[kind];
     if (!meta) throw new Error('world/props: unknown destructible kind ' + kind);
     let pool = dPools.get(kind);
     if (!pool) { pool = { meta, mats4: [], records: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
@@ -1109,7 +1113,13 @@ ${snowCap ? `
       const rr = (meta.fence || meta.wall) ? Math.max(meta.r * sc, 0.6) : rec.r;
       // fence/wall modules: tight oriented-ish AABB — run direction extents
       let hx = rr, hz = rr;
-      if (meta.fence || meta.wall) {
+      if (meta.hw != null || meta.hl != null) {
+        const localHw = (meta.hw ?? meta.r) * sc;
+        const localHl = (meta.hl ?? meta.r) * sc;
+        const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
+        hx = localHw * cs + localHl * sn + 0.05;
+        hz = localHw * sn + localHl * cs + 0.05;
+      } else if (meta.fence || meta.wall) {
         const segLen = meta.wall ? WALL_SEG : FENCE_SEG;
         const thick = meta.wall ? 0.35 : 0.2;
         const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
@@ -1123,7 +1133,10 @@ ${snowCap ? `
       // Rotated fences/walls/trucks used to collide as their enclosing world
       // AABB, making the empty triangular corners solid. Keep the AABB for
       // the broad phase but publish the authored local footprint too.
-      if (meta.fence || meta.wall) {
+      if (meta.hw != null || meta.hl != null) {
+        setObbShape(ob, x, z, (meta.hw ?? meta.r) * sc + 0.05,
+          (meta.hl ?? meta.r) * sc + 0.05, yaw);
+      } else if (meta.fence || meta.wall) {
         const segLen = meta.wall ? WALL_SEG : FENCE_SEG;
         const thick = meta.wall ? 0.35 : 0.2;
         setObbShape(ob, x, z, thick * sc + 0.05, segLen * 0.5 * sc + 0.05, yaw);
@@ -1319,6 +1332,9 @@ ${snowCap ? `
     // world-dressing r1: per-theme catalog — farmhouse/granary/chapel/mill,
     // logcabin/alpine/onionchurch/woodshed, minaret, cornershop, depot
     ...VILLAGE_BUILDERS,
+    // Map-quality structure pass: eight new heavyweight landmarks. They use
+    // the same bucket merge path, so detail rises without one mesh per house.
+    ...STRUCTURE_BUILDERS,
   };
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
@@ -1587,6 +1603,52 @@ ${snowCap ? `
         buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
         placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
         bi++;
+      }
+    }
+  }
+
+  // Light-building pass: huts, shelters, tents and camp infrastructure are
+  // individually destructible, unlike the heavyweight merged landmarks.
+  // A separate seeded stream keeps the established village layout stable.
+  // Each type becomes one intact InstancedMesh plus an empty broken-state
+  // pool, bounded to the handful of families authored by the active map.
+  if (P.destructibleBuildings && P.destructibleBuildings.length) {
+    const srng = mulberry32(seed + 17041);
+    const lateral = P.destructibleBuildingLat || [9.5, 9.0];
+    for (const kind of P.destructibleBuildings) {
+      const meta = DESTRUCTIBLE_BUILDING_TYPES[kind];
+      if (!meta) continue;
+      const rr = Math.hypot(meta.hw, meta.hl) * 0.72;
+      for (let attempt = 0; attempt < 80; attempt++) {
+        let px, pz, rot;
+        if (attempt < 52 && candidates.length) {
+          const cand = candidates[(srng() * candidates.length) | 0];
+          const side = srng() < 0.5 ? -1 : 1;
+          const lat = lateral[0] + srng() * lateral[1];
+          px = cand.x - cand.tz * side * lat;
+          pz = cand.z + cand.tx * side * lat;
+          rot = Math.atan2(cand.tx, cand.tz) + (srng() - 0.5) * 0.16;
+        } else {
+          px = v.x0 + 10 + srng() * Math.max(1, v.x1 - v.x0 - 20);
+          pz = v.z0 + 10 + srng() * Math.max(1, v.z1 - v.z0 - 20);
+          rot = (srng() < 0.5 ? 0 : Math.PI / 2) + (srng() - 0.5) * 0.14;
+          const roadDist = heightField._roadDist(px, pz);
+          if (roadDist < 7.5 || roadDist > 48) continue;
+        }
+        const margin = Math.max(meta.hw, meta.hl) + 2;
+        if (px < v.x0 + margin || px > v.x1 - margin || pz < v.z0 + margin || pz > v.z1 - margin) continue;
+        if (Math.hypot(px - junction.x, pz - junction.z) < 18 || noVeg(px, pz)) continue;
+        const fit = groundFit(px, pz, meta.hw * 2, meta.hl * 2, rot);
+        if (fit.spread > Math.max(P.maxSpread, 1.9)) continue;
+        let clear = true;
+        for (const pb of placedB) {
+          if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + rr + 2.0) { clear = false; break; }
+        }
+        if (!clear) continue;
+        addDestructible(kind, px, fit.y + 0.04, pz, rot);
+        buildingFeatures.push({ x: px, z: pz, w: meta.hw * 2, d: meta.hl * 2, rot });
+        placedB.push({ x: px, z: pz, rr });
+        break;
       }
     }
   }

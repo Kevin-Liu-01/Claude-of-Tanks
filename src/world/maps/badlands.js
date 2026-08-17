@@ -39,10 +39,11 @@ export default {
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
   },
   props: {
-    plan: ['compound', 'depot', 'warehouse', 'compoundSouk', 'factory', 'minaret',
+    plan: ['caravanserai', 'depot', 'warehouse', 'compoundSouk', 'factory', 'minaret',
       'adobe', 'ruin', 'containerRow', 'marketRow', 'watertower', 'depot', 'gantry', 'compound',
       'warehouse', 'adobe', 'compoundSouk', 'depot', 'containerRow', 'ruin', 'factory', 'marketRow',
       'compound', 'watertower', 'warehouse', 'gantry'],
+    destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
     blockFill: true,
     wallStyle: 'adobe', wallStoneChance: 0.12, buildingLat: [11, 6], sideSkip: 0.1,
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,

@@ -34,10 +34,11 @@ export default {
     bushCount: 1.18, bushSpecies: 'oak',
   },
   props: {
-    plan: ['farmhouse', 'barn', 'depot', 'cornershop', 'cottage', 'chapel',
+    plan: ['rangerlodge', 'barn', 'depot', 'tavern', 'schoolhouse', 'chapel',
       'granary', 'farmhouse', 'ruin', 'barn', 'woodshed', 'cottage', 'tower', 'depot',
       'farmhouse', 'granary', 'barn', 'cottage', 'depot', 'woodshed', 'farmhouse', 'ruin',
       'chapel', 'cornershop', 'barn', 'cottage'],
+    destructibleBuildings: ['fieldhut', 'huntingblind', 'commandtent', 'checkpointhut'],
     wallStyle: 'fieldstone', wallStoneChance: 0.55,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 28, rocks: 205, outcrops: 28, craters: 68, rubblePiles: 12,

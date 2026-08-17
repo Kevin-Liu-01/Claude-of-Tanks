@@ -41,10 +41,11 @@ export default {
     bushCount: 0.48, bushSpecies: 'pine',
   },
   props: {
-    plan: ['alpine', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',
+    plan: ['rangerlodge', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',
       'logcabin', 'woodshed', 'alpine', 'ruin', 'depot', 'granary', 'alpine', 'tower',
       'logcabin', 'alpine', 'woodshed', 'chapel', 'depot', 'logcabin', 'alpine', 'ruin',
       'granary', 'logcabin', 'alpine', 'woodshed'],
+    destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
     extraKits: ['winterLake'], snowCap: true, wallStyle: 'fieldstone', wallStoneChance: 0.82,
     buildingLat: [11, 6], sideSkip: 0.12, maxSpread: 3.2,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
