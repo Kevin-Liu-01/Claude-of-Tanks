@@ -63,3 +63,21 @@ chevron, seven-wheel §H family course with the leo mechanical stations.
    armor bolt cadence, rear-wall grilles depth.
 3. If a repair lane ever normalizes the print (z-stretch +3.9% body), the
    sides should clear 90 — re-ladder then.
+
+## §5.299 REVERT — owner order: undo the §5.248/§5.271 ground-up build (2026-08-17)
+Owner order §5.299 (lane A): undo strv122 + strv81 (owner articulated
+strv122 at a80bbae7; the undo includes it). Reverted to the pre-wave
+donor-clone build at 75780d72^ (both sweden files restored byte-exact;
+delivered uncommitted-unstaged). What went: the ground-up §5.248 build
+(4f5694d4 wave delivery, e50e253e live after a80bbae7 articulation,
+49/63,263) and the armorPatch rig row. What returned: buildLeo2A5(P) donor
++ addStrv122Package (add-on roof/cheek armor, skirts, decals).
+- Reverted hash: **1ca18498** (152 meshes / 151,631 verts). Before: e50e253e.
+- Honest gate row ×2 bit-identical at the reverted build: **min 86.6**
+  (whole 87.2 / dims 86.6 / floaters 100) — the ~87 weak-Tripo-print class
+  the wave documented; maps keep the corrected −π/2 yawOffset. Tool-written
+  rows only.
+- Guards unmoved: leo2a5 6ecdfb06, centurion3 63f6a82c.
+- §5.254 pairs: shots/sweden-undo/{before,after}/strv122/ (14 sheets each,
+  captured at their respective trees, 0/14 byte-identical).
+The NEXT list above is suspended while the donor-clone build stands.

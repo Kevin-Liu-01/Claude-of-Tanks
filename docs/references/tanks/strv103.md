@@ -138,3 +138,42 @@ idler, rear air-cleaner boxes carrying the published 3.63 width at ±1.815.
 NEXT: (1) the orchestrator length-warp, then re-ladder the whole rows to
 >=90; (2) side-view bottom line at the wheel gaps (print reads tighter);
 (3) fence rib count/pitch fine-match at closeup (critic lane).
+
+## §E EXECUTED — batch 57 (2026-08-17, §5.248 §E round)
+Print z-warp LANDED per the filed plan (repair_oracles.py batch 57): body
+×1.222859 about the gate mid -1.0845 (extract-frame literals in-recipe),
+rear slab translated, muzzle pinned at tail'+8.99; y/width untouched.
+Receipts: .bak = pristine sha256 eed21cd3…, output 58411c83… byte-idempotent
+×2; census guard (3, 174965, 253638). Gate ×2 BIT-IDENTICAL at the
+then-current graduate proc (4ac3c8c8): whole 76.7 -> **82.4**, dims 100 ->
+92.1 (proc hullLengthM re-quantized 6.90 in the longer shared frame —
+1-2 filter-column class, the t64bv-forecast dims-requantization; re-anchor
+debt for the build lane), floaters 100. Post-warp ref body reads 7.011
+(pub 7.04, -0.4%) / overall 9.01 — the length-short defect is RETIRED at
+the source. NOTE (§5.301, landed mid-batch): the owner reverts the strv103
+BUILD to the pre-§5.271 state (lane A); per the §5.299 adjudication the
+print repair stays as the honest reference (lane A's post-revert re-gate
+re-prices the row — the 08:29 in-flight ledger row 78.5/57 reflects lane-A
+churn, not this repair).
+
+## §5.299/§5.301 REVERT — owner extension: strv103 joins the undo (2026-08-17)
+Owner extended the §5.299 order mid-flight (banked c60fc8aa): "revert the
+strv 103b as well" — the §5.271 wholesale graduate replacement is undone.
+Reverted to the pre-wave build at 75780d72^ (both sweden files restored
+byte-exact; delivered uncommitted-unstaged). What went: the ground-up
+§5.248 build re-frozen 4ac3c8c8 (31/64,589; whole 76.7 / dims 100). What
+returned: casemate buildStrv103(P) + addStrv103BOraclePackage (the
+§5.198-era graduate build).
+- Reverted hash: **4c8f1330** (39 meshes / 74,847 verts). Before: 4ac3c8c8.
+  NOTE: the restored build does NOT reproduce the historical 4d0ff518
+  freeze hash — post-§5.229 standardization moved hashing, not geometry.
+  §3 graduates-table row reversion is the orchestrator's at landing.
+- Honest gate row ×2 bit-identical at the reverted build: **min 57**
+  (whole 78.5 / dims 57 / floaters 100). The maps NOW carry the corrected
+  +π/2 yawOffset (§5.271 registration repair kept), so this is the
+  honest-current row, not the historical pre-yaw-fix whole 75.8 / dims
+  67.7. Tool-written rows only.
+- Guards unmoved: centurion3 63f6a82c, leo2a5 6ecdfb06.
+- §5.254 pairs: shots/sweden-undo/{before,after}/strv103/ (14 sheets each,
+  captured at their respective trees, 0/14 byte-identical).
+The NEXT list above is suspended while the pre-wave build stands.

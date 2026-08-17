@@ -69,6 +69,26 @@ measured shell (skewed crown plates on the roof cap; concentric ventilator
 drums + 6 radial ribs at the measured right-wall station, x 1.02-1.15,
 y 2.18 world, z -0.27 world).
 
+## §E EXECUTED — batch 58 (2026-08-17, §5.248 §E round)
+Whip-pair excision LANDED per the filed plan (repair_oracles.py batch 58,
+_index_surgery on turret_0_turret_0_0): the pair censused as EXACTLY two
+index-connected 46v/68t thin raked prisms (raw tops 2.098/1.842 = gate
+4.20/3.69 — the packet's own "ref tops 3.7-4.2" front receipt); rule boxes
+hit (2, 92, 136) exact; rebuild_bounds=True (the pair owned the prim's
+y-max). The 2-6-tri AA sliver debris at gate 3.0-3.17 (cupola region) is
+NOT whip content and stays. Receipts: .bak = pristine bda892df…, output
+e1f0c2cb… byte-idempotent ×2. Gate ×2 BIT-IDENTICAL (07:49, PRE the owner
+§5.300 articulation commit c2dc8924 08:14): min 34.9 -> **50.3** — stations
+34.9->63.2 (+28.3), whole 46.9->59.8, turret 45.9->50.3, hull 76.1->68.9
+(shared-frame re-anchor debt: the excision dropped the model top 4.20->
+~3.2, re-binning every court — m26/m47 keep-the-warp class), dims 100
+HELD, floaters 100 HELD. SUPERSESSION NOTE (§5.299/§5.300): the owner
+ordered "undo strv 81" — lane A reverts the BUILD (including the 08:14
+articulation whose 08:28 re-gate wrote the in-flight 0/13.3 ledger row);
+per the §5.299 adjudication this print repair is "harmless, stays as
+reference" — the whip rows become satisfiable for whatever build lane A
+restores.
+
 ## NEXT (hull ladder, resumes after the whip excision lands)
 1. plan_hull 75-80: the ref x ±1.76 bracket sliver at z -2.53 (print-only,
    cover cost); center-plan nose 3.34-3.42 refinement vs ref 3.35.
@@ -80,3 +100,24 @@ y 2.18 world, z -0.27 world).
    contact pins at 2.10/-2.44 got halfway; consider idler y/r again.
 4. Engine-deck louvre stack vs the ref 1.94 line (dy-coupled; re-measure
    after every registration-moving change).
+
+## §5.299 REVERT — owner order: undo the §5.248/§5.271 ground-up build (2026-08-17)
+Owner order §5.299 (lane A): undo strv81 + strv122; the §5.300 adjudication
+includes the in-flight c2dc8924 turret articulation in the undo. Reverted to
+the pre-wave donor-clone build at 75780d72^ (both sweden files restored
+byte-exact; delivered uncommitted-unstaged). What went: the ground-up welded
+build (11e5e876 wave delivery, 8fdec56c live after c2dc8924 articulation,
+56/55,277), the 7.82→7.56 hullLengthM true-up, and the armorPatch rig row.
+What returned: centurionBuild(P) donor + addStrv81Package (turret plates,
+radio pair, decals), spec hullLengthM 7.82.
+- Reverted hash: **911d5770** (70 meshes / 85,189 verts). Before: 8fdec56c.
+- Honest gate row ×2 bit-identical at the reverted build: **min 0** (hull
+  52.9 / whole 21.9 / turret 0 / stations 16.5 / dims 13.3 / floaters 100)
+  — the expected pre-wave min-0 class vs its print; note the registration
+  maps keep the corrected π yawOffset, so rows are honest-current, not the
+  historical pre-wave numbers. Tool-written rows only.
+- Guards unmoved: centurion3 63f6a82c, leo2a5 6ecdfb06.
+- §5.254 pairs: shots/sweden-undo/{before,after}/strv81/ (14 sheets each,
+  captured at their respective trees, 0/14 byte-identical).
+The §5.248 ladder notes above remain history; the NEXT list above is
+suspended while the donor-clone build stands.
