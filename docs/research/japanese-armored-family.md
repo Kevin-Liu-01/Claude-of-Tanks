@@ -17,8 +17,9 @@ the entire family follows the same first-party-only authorship rule.
 
 ## Source-semantic identity retained
 
-- **STB-1:** low rounded prototype casting, six-wheel stance, pronounced
-  commander's cupola/searchlight, ribbed flank armor and open rear basket.
+- **STB-1:** low rounded prototype casting, five large road-wheel stations,
+  exposed single-course suspension, pronounced multi-pane searchlight,
+  asymmetric cupolas/rangefinders, flank ventilation and an open rear basket.
 - **Type 90A:** broad low welded turret, six-wheel hull, boxy autoloader
   bustle, JGSDF optics/smoke cadence and modular NERA cheek package.
 - **Type 10B:** compact five-wheel hull, shallow faceted welded turret,
@@ -30,12 +31,13 @@ driven smart track course.
 
 ## First-party geometry receipts
 
-The final procedural geometry census is `stb1 f6714514` (68 meshes / 68,137
-vertices), `type90a 15b33ac0` (67 / 80,045), and `type10b 567f2a28` (76 /
-74,830). Each tank has 42 distinct final evidence frames: 14 fixed views,
-14 yaw-0 views, and 14 yaw-90 views. Exact track clearance, duplicate-course,
-muzzle-bore, asset metadata, native-playable provenance, tests and production
-build all pass. Type 10B retains the donor Type 10's hull-owned cloth and tow
-cable; the yaw audit reports that same fixed-hull candidate on both the donor
-and derivative, while the final turntable confirms the turret package rotates
-cleanly and the cloth remains correctly attached to the hull.
+STB-1 is now a standalone procedural build rather than a Type 74 donor
+decoration pass. Its owner-source packet contains 15 source/authored pairs,
+15 authored yaw-0 frames, and 15 authored yaw-90 frames. The corrected track
+corridor records zero front, rear, sweep, or individual-shoe intersections;
+the duplicate-course and muzzle-bore probes also pass. `type90a 15b33ac0`
+(67 / 80,045) and `type10b 567f2a28` (76 / 74,830) retain their previously
+recorded receipts. Type 10B retains the donor Type 10's hull-owned cloth and
+tow cable; the yaw audit reports that same fixed-hull candidate on both the
+donor and derivative, while the final turntable confirms the turret package
+rotates cleanly and the cloth remains correctly attached to the hull.

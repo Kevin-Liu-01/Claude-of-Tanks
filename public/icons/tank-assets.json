@@ -69247,14 +69247,13 @@
           }
         ]
       },
-      "geometryHash": "8f85d500",
+      "geometryHash": "9b8e19ff",
       "metadataHash": "6455e1ec",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "gunmetal": 19,
-          "canvas": 4,
+          "gunmetal": 13,
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
@@ -69262,12 +69261,12 @@
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 4,
-          "fittingPaint": 12,
+          "fittingPaint": 7,
           "opticGlass": 2,
-          "tireRubber": 1,
-          "wood": 2,
-          "unclassified": 16,
-          "gearShadow": 2
+          "unclassified": 11,
+          "gearShadow": 1,
+          "canvas": 1,
+          "wood": 1
         }
       },
       "muzzleBore": {
@@ -69278,9 +69277,9 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 5,
+        "total": 2,
         "insignia": 1,
-        "designation": 4,
+        "designation": 1,
         "codes": [
           "JP:jp-roundel:STB-1"
         ]
@@ -69291,64 +69290,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33708,
-          "sha256": "9f8cd62104dd97404f37a6227f777b6155afd01a14b868fb697c10f54e5e2884"
+          "bytes": 29270,
+          "sha256": "df56e4047b0d1ab4471c199ebe2b548b0b189e91408b06b12c0e129779973f58"
         },
         "top": {
           "file": "stb1_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8154,
-          "sha256": "ba7a358710b16f4a06be96e42a12a91fbbe98fa134c4d2f2cc8ca7682d8a61ae"
+          "bytes": 8068,
+          "sha256": "f79b31e64207055ed189e3307df1086bb87603ce7a68a60ee1f2c13b878192b8"
         },
         "side": {
           "file": "stb1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10298,
-          "sha256": "5add2c88a0c995301370677e9e9827ce027ca0b1bd0b8ab895aa8d30370aabbd"
+          "bytes": 9594,
+          "sha256": "962f7b65e352e7798234f6a8e98ac18fb89c10d2693ad246cde7f7574d80a3df"
         },
         "topSilhouette": {
           "file": "stb1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1128,
-          "sha256": "94e8a3215ea5ca2efb3989bff4b198d6f4b3c8f2cb75ae20c736b6207865d1bd"
+          "bytes": 1186,
+          "sha256": "c1d429f06d00597872b6363c3bf98b0c584a31c8ecc51cc228122272249409d1"
         },
         "sideSilhouette": {
           "file": "stb1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5257,
-          "sha256": "523c8c5167ce0b6f4ce6b9a3c63909b3f4bb09bc2908309cd7233c64609204ba"
+          "bytes": 4745,
+          "sha256": "2ea227378e6d1944a6ef5686a2365deac3c55963c0ec82b481d57c376eeaab65"
         },
         "hitZonesSide": {
           "file": "stb1_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82077,
-          "sha256": "6d117c062eecd1d1266cd9316dc9790695d5d5317acb823caff663f36957f2d3"
+          "bytes": 78007,
+          "sha256": "871523a5d6ba4e2ad58524dfb09de29574ce4ac45d2bcc5a8533be525a477e93"
         },
         "armorSide": {
           "file": "stb1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79858,
-          "sha256": "7d545f91ccff82a4fdd2e5e8a9bf0efd3966026c39d5ca32750ddbc289f1c2c0"
+          "bytes": 75816,
+          "sha256": "f8d6750edea446154ea4abd681f9168d76fee784259cd8998f7dddf4f5ca0838"
         },
         "modulesSide": {
           "file": "stb1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80968,
-          "sha256": "39f6884e70cc64806c6f0b5c17588811ce72e38c30812ba0d9e0d24b2f0266ea"
+          "bytes": 74720,
+          "sha256": "efbb0679039250681a0a1b69fc7fe193d4a1b066ab30ab63ada1d29525ed540b"
         },
         "markings": {
           "file": "stb1_markings.png",
