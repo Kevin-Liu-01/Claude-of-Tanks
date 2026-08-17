@@ -40,6 +40,7 @@ const first = queue.join({
   identityToken: alpha.token,
   specId: 'm1a2',
   equipment: ['rammer', 'vstab', 'optics', 'toolbox'],
+  camo: 'summer',
   teamSize: 1,
 });
 assert.equal(first.status, 'queued');
@@ -53,6 +54,7 @@ const second = queue.join({
   playerId: bravo.playerId,
   identityToken: bravo.token,
   specId: 't90m',
+  camo: 'winter',
   teamSize: 1,
 });
 assert.equal(second.status, 'matched');
@@ -60,6 +62,8 @@ const firstMatched = queue.poll(first.ticketId, first.ticketToken);
 assert.equal(firstMatched.status, 'matched');
 assert.equal(firstMatched.match.mapId, 'verdant');
 assert.equal(firstMatched.match.roster.length, 2);
+assert.deepEqual(new Set(firstMatched.match.roster.map((player) => player.camo)),
+  new Set(['summer', 'winter']), 'ranked tickets preserve built-in player camouflage');
 assert.notEqual(firstMatched.match.roster[0].team, firstMatched.match.roster[1].team);
 assert.equal(queue.poll(first.ticketId, 'wrong'), null);
 

@@ -7,6 +7,18 @@
 // No top-level side effects — canvases are created inside createTankMaterials.
 
 import * as THREE from 'three';
+import {
+  CAMO_PATTERN_IDS,
+  CAMO_PATTERN_LABEL,
+  CUSTOM_CAMO_ID,
+  customCamoPatternId,
+  isBuiltInCamoId,
+  networkCamoId,
+  normalizeCustomCamo,
+  parseCustomCamoPatternId,
+} from './camoPolicy.js';
+
+export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.js';
 import { tagVehicleMaterial } from './appearanceAudit.js';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.js';
 // MOBILE r1: central texture-resolution lever (quality.js). Every canvas bake
@@ -3036,6 +3048,12 @@ function exposureTrim(canvas, k = 0.86) {
 
 const TEX_CACHE = new Map();
 
+function sharedTextureIdentity(specId, selection = null) {
+  if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
+  const patternId = resolveMultiplayerCamoPattern(specId, selection);
+  return { key: `${specId}::${patternId}`, patternId, fixed: true };
+}
+
 // PERF (performance_budget r3): per-spec bake quality tiers. The generated
 // set (2048² albedo + 2x 1024² data maps ≈ 35 MB with mips) is hero-grade
 // texel density for a vehicle the camera orbits at 4-6 m — the garage
@@ -3123,11 +3141,12 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   entry.quality = quality;
 }
 
-function acquireSharedTextures(spec, aniso, quality = 'high') {
-  const key = spec.id;
+function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) {
+  const identity = sharedTextureIdentity(spec.id, selection);
+  const { key } = identity;
   let entry = TEX_CACHE.get(key);
   if (!entry) {
-    const patternId = resolveCamoPattern(key);
+    const { patternId } = identity;
     const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
     entry = {
       refs: 0,
@@ -3136,7 +3155,7 @@ function acquireSharedTextures(spec, aniso, quality = 'high') {
       // paintable: per-instance solid-color materials (road-wheel dishes,
       // fittings) that must follow the scheme on repaint (r1: lime-green
       // wheels under winter whitewash).
-      spec, seed, feats: null, patternId, paintable: new Set(),
+      cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null, patternId, paintable: new Set(),
       quality,
       camoCanvas: makeCanvas(4, 4),
       normalCanvas: makeCanvas(4, 4),
@@ -3198,8 +3217,9 @@ function finalizeEntryResize(entry) {
  * @param {string} quality 'ai' | 'high' — must match what the build will ask
  * @param {?function(): (Promise<void>|void)} tick awaited between stages
  */
-export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null) {
-  const key = spec.id;
+export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, selection = null) {
+  const identity = sharedTextureIdentity(spec.id, selection);
+  const { key } = identity;
   const run = async (g) => {
     let r = g.next();
     while (!r.done) {
@@ -3216,11 +3236,11 @@ export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = 
     }
     return;
   }
-  const patternId = resolveCamoPattern(key);
+  const { patternId } = identity;
   const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
   entry = {
     refs: 0,
-    spec, seed, feats: null, patternId, paintable: new Set(),
+    cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null, patternId, paintable: new Set(),
     quality,
     camoCanvas: makeCanvas(4, 4),
     normalCanvas: makeCanvas(4, 4),
@@ -3289,8 +3309,8 @@ export function warmWreckTextures(renderer) {
   }
 }
 
-function releaseSharedTextures(spec) {
-  const entry = TEX_CACHE.get(spec.id);
+function releaseSharedTextures(shared) {
+  const entry = shared && TEX_CACHE.get(shared.cacheKey);
   if (!entry) return;
   if (--entry.refs <= 0) {
     entry.camoTex.dispose();
@@ -3298,7 +3318,7 @@ function releaseSharedTextures(spec) {
     entry.roughTex.dispose();
     if (entry.burntTex) entry.burntTex.dispose();
     if (entry.emberTex) entry.emberTex.dispose();
-    TEX_CACHE.delete(spec.id);
+    TEX_CACHE.delete(entry.cacheKey);
   }
 }
 
@@ -3323,8 +3343,8 @@ function ensureBurntTextures(entry, aniso) {
  * kill-time ensureBurntTextures path then always hits the cache.
  * @param {string} specId @param {number} aniso
  */
-export function* prebakeBurntSteps(specId, aniso) {
-  const entry = TEX_CACHE.get(specId);
+export function* prebakeBurntSteps(specId, aniso, selection = null) {
+  const entry = TEX_CACHE.get(sharedTextureIdentity(specId, selection).key);
   if (!entry || entry.burntTex) return;
   yield* burntBakeSteps(entry, aniso);
 }
@@ -3464,56 +3484,8 @@ function* burntBakeSteps(entry, aniso) {
 // camo r2 (expansion round): 16 -> 29. Same append-only contract — the r8
 // block keeps its exact order, the r2 block appends after 'dazzle' grouped
 // the same way (green field / desert / winter / urban / autumn / style-only).
-export const CAMO_PATTERN_IDS = [
-  'auto', 'factory', 'summer', 'desert', 'winter', 'digital',
-  'merdc', 'tropic', 'ambushdot', 'splinter',
-  'pinkdesert', 'autumn', 'urbanblock', 'washworn',
-  'naval', 'dazzle',
-  // --- camo r2 expansion ---
-  'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'm90',
-  'chocchip', 'digitaldesert',
-  'merdcwinter', 'winterbands',
-  'berlin', 'oakleaf',
-  'hexfield', 'midnight',
-  // camo r3 (owner ask 2026-08-04): the house scheme — style-only, appended
-  // last per the append-only contract.
-  'claude',
-  // camo r4 (owner ask 2026-08-07): the Claude spark. Style-only, appended
-  // per the contract. camo r5 (owner ask, same day): 'anthropic' REMOVED —
-  // the one sanctioned break of append-only; safe because getCamoSelection
-  // validates stored ids against this list and falls back to 'factory'.
-  'spark',
-  // camo r6 (owner ask 2026-08-07): the fun ten — style-only, appended per
-  // the contract.
-  'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
-  'stars', 'daisy', 'circuit', 'racing', 'paintball',
-  // camo r7/r8 (owner asks 2026-08-07): the historical set. r7's physical
-  // stowage kits were REMOVED in r8 (owner: "remove the extra props") — the
-  // budget went into bespoke paint detailing instead. Style-only.
-  'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
-];
-export const CAMO_PATTERN_LABEL = {
-  auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
-  desert: 'Desert', winter: 'Winter', digital: 'Digital',
-  merdc: 'MERDC', tropic: 'Tropic', ambushdot: 'Ambush', splinter: 'Splinter',
-  pinkdesert: 'Desert Pink', autumn: 'Autumn', urbanblock: 'Urban Block',
-  washworn: 'Whitewash', naval: 'Naval', dazzle: 'Dazzle',
-  flecktarn: 'Flecktarn', amoeba: 'Amoeba', dpm: 'DPM',
-  tigerstripe: 'Tiger Stripe', m90: 'M90 Splinter',
-  chocchip: 'Choc-Chip', digitaldesert: 'Digital Sand',
-  merdcwinter: 'MERDC Winter', winterbands: 'Winter Bands',
-  berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
-  hexfield: 'Hex Mesh', midnight: 'Night Ops',
-  claude: 'Claude', spark: 'Claude Spark',
-  ducky: 'Rubber Ducky', suits: 'High Roller', flames: 'Hot Rod',
-  leopardprint: 'Leopard Print', bolt: 'Thunderbolt', stars: 'Starfall',
-  daisy: 'Flower Power', circuit: 'Circuit Board', racing: 'Racing Team',
-  paintball: 'Paintball',
-  normandy44: "Normandy '44", berlin45: "Berlin '45", ardennes44: "Ardennes '44",
-  pacific45: "Pacific '45", jungleops: 'Jungle Ops', rasputitsa: "Rasputitsa '42",
-};
-
 const CAMO_LS_PREFIX = 'cot.camo.';
+const CUSTOM_CAMO_LS_PREFIX = 'cot.camoCustom.v1.';
 // 'urban' is an INTERNAL pattern id (gray digital) reachable only through
 // AUTO biome resolution — a green flecktarn in a gray rubble city defeated
 // the point of biome matching (r1). Direct picker selection keeps the
@@ -3548,14 +3520,41 @@ let activeBiome = 'verdant';
 export function getCamoSelection(specId) {
   try {
     const v = localStorage.getItem(CAMO_LS_PREFIX + specId);
-    return CAMO_PATTERN_IDS.includes(v) ? v : 'factory';
+    if (isBuiltInCamoId(v)) return v;
+    if (v === CUSTOM_CAMO_ID && localStorage.getItem(CUSTOM_CAMO_LS_PREFIX + specId)) {
+      return CUSTOM_CAMO_ID;
+    }
+    return 'factory';
   } catch (e) { return 'factory'; }
 }
 
 /** Persist a camo pattern selection for a tank. */
 export function setCamoSelection(specId, patternId) {
-  if (!CAMO_PATTERN_IDS.includes(patternId)) return;
+  if (!isBuiltInCamoId(patternId)) return;
   try { localStorage.setItem(CAMO_LS_PREFIX + specId, patternId); } catch (e) { /* private mode */ }
+}
+
+/** Device-local custom painter settings for one vehicle. */
+export function getCustomCamoSelection(specId) {
+  try {
+    const value = JSON.parse(localStorage.getItem(CUSTOM_CAMO_LS_PREFIX + specId) || 'null');
+    return normalizeCustomCamo(value);
+  } catch (_) { return normalizeCustomCamo(); }
+}
+
+/** Save and activate a custom pattern. It is intentionally never match-safe. */
+export function setCustomCamoSelection(specId, value) {
+  const next = normalizeCustomCamo(value);
+  try {
+    localStorage.setItem(CUSTOM_CAMO_LS_PREFIX + specId, JSON.stringify(next));
+    localStorage.setItem(CAMO_LS_PREFIX + specId, CUSTOM_CAMO_ID);
+  } catch (_) { /* private mode */ }
+  return next;
+}
+
+/** Public lobby/ranked selection; custom local paint degrades to Factory. */
+export function getMultiplayerCamoSelection(specId) {
+  return networkCamoId(getCamoSelection(specId));
 }
 
 // BOT BIOME CAMO (camo_spotting r5): runtime per-spec pattern overrides.
@@ -3570,7 +3569,7 @@ export function setCamoSelection(specId, patternId) {
 const CAMO_OVERRIDE = new Map(); // specId -> patternId ('auto' allowed)
 export function setCamoOverride(specId, patternId) {
   if (patternId == null) { CAMO_OVERRIDE.delete(specId); return; }
-  if (CAMO_PATTERN_IDS.includes(patternId) || patternId === 'urban') {
+  if (isBuiltInCamoId(patternId) || patternId === 'urban') {
     CAMO_OVERRIDE.set(specId, patternId);
   }
 }
@@ -3584,11 +3583,23 @@ export function setCamoBiome(mapId) {
 /** Concrete pattern id for a tank right now ('auto' resolved per biome). */
 export function resolveCamoPattern(specId) {
   const sel = CAMO_OVERRIDE.get(specId) || getCamoSelection(specId);
+  if (sel === CUSTOM_CAMO_ID) return customCamoPatternId(getCustomCamoSelection(specId));
   if (sel !== 'auto') return sel;
   // camo r2: deterministic per-(spec, biome) pick from the biome pool — the
   // same tank always resolves the same scheme on the same map (garage AUTO
   // preview, battle paint and repaint caching all agree), while a roster of
   // AUTO tanks fans out across the pool.
+  const pool = BIOME_PATTERN[activeBiome];
+  let h = 0;
+  const key = `${specId}:${activeBiome}`;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return pool[(h >>> 0) % pool.length];
+}
+
+/** Resolve a match-owned built-in choice without consulting local storage. */
+export function resolveMultiplayerCamoPattern(specId, selection) {
+  const safe = networkCamoId(selection);
+  if (safe !== 'auto') return safe;
   const pool = BIOME_PATTERN[activeBiome];
   let h = 0;
   const key = `${specId}:${activeBiome}`;
@@ -3725,6 +3736,22 @@ const FACTORY_OVERRIDE = {
 };
 function patternVisual(spec, patternId) {
   const v = spec.visual || { base: '#5a6b46', weather: '#6f7d55', scheme: 'solid', patches: [] };
+  const custom = parseCustomCamoPatternId(patternId);
+  if (custom) {
+    const base = hexToRgb(custom.base);
+    const weather = scale3(base, 1.10).map((channel) => Math.min(255, channel));
+    const scheme = custom.style === 'blotch' ? 'nato' : custom.style;
+    return {
+      ...v,
+      scheme,
+      base: custom.base,
+      weather: `#${weather.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`,
+      patches: [custom.colorA, custom.colorB],
+      // Higher repeat means smaller, more frequent shapes on the hull.
+      camoScale: 0.72 - (custom.repeat / 100) * 0.47,
+      patternRepeat: custom.repeat,
+    };
+  }
   if (patternId === 'factory') {
     const fo = FACTORY_OVERRIDE[spec.id];
     return fo ? { ...v, ...fo } : v;
@@ -4270,9 +4297,9 @@ async function restoreBake(entry, patternId) {
  * @param {?string} onlySpecId limit to one tank
  */
 export function applyCamoPatterns(onlySpecId = null) {
-  for (const [key, entry] of TEX_CACHE) {
-    if (onlySpecId && key !== onlySpecId) continue;
-    const pid = resolveCamoPattern(key);
+  for (const entry of TEX_CACHE.values()) {
+    if (entry.fixedPattern || (onlySpecId && entry.spec.id !== onlySpecId)) continue;
+    const pid = resolveCamoPattern(entry.spec.id);
     if (entry.patternId !== pid) repaintEntry(entry, pid);
   }
   retintGlbModels();
@@ -4386,12 +4413,15 @@ export async function applyCamoPatternsChunked(opts = null) {
   const gen = ++_camoSweepGen;
   const prio = (opts && opts.priorityIds) || [];
   const keys = [...TEX_CACHE.keys()]
-    .sort((a, b) => (prio.indexOf(a) < 0 ? 1 : 0) - (prio.indexOf(b) < 0 ? 1 : 0));
+    .sort((a, b) => {
+      const ae = TEX_CACHE.get(a), be = TEX_CACHE.get(b);
+      return (prio.indexOf(ae?.spec.id) < 0 ? 1 : 0) - (prio.indexOf(be?.spec.id) < 0 ? 1 : 0);
+    });
   for (const key of keys) {
     if (gen !== _camoSweepGen) return; // superseded — the newer drain finishes
     const entry = TEX_CACHE.get(key);
-    if (!entry) continue; // evicted while we yielded
-    const pid = resolveCamoPattern(key);
+    if (!entry || entry.fixedPattern) continue; // immutable match variants never repaint
+    const pid = resolveCamoPattern(entry.spec.id);
     if (entry.patternId === pid) continue;
     // yield BEFORE painting: the triggering click/frame paints first, and the
     // loading bar gets a frame between consecutive entry repaints.
@@ -4399,7 +4429,7 @@ export async function applyCamoPatternsChunked(opts = null) {
     if (gen !== _camoSweepGen) return;
     const cur = TEX_CACHE.get(key);
     if (!cur) continue;
-    const nowPid = resolveCamoPattern(key);
+    const nowPid = resolveCamoPattern(cur.spec.id);
     if (cur.patternId !== nowPid) {
       // camo r4: memoized bakes short-circuit the painter chain — a biome
       // flip back onto patterns this session has already worn costs blits,
@@ -4408,8 +4438,9 @@ export async function applyCamoPatternsChunked(opts = null) {
       if (await restoreBake(cur, nowPid)) continue;
       if (gen !== _camoSweepGen) return;
       const c2 = TEX_CACHE.get(key);
-      const p2 = resolveCamoPattern(key);
-      if (c2 && c2.patternId !== p2) repaintEntry(c2, p2);
+      if (!c2) continue;
+      const p2 = resolveCamoPattern(c2.spec.id);
+      if (c2.patternId !== p2) repaintEntry(c2, p2);
     }
   }
   // GLB retints chunk too: each model whose pattern changed re-composites
@@ -5387,7 +5418,7 @@ export function vehicleAmbientFloorHook(shader) {
  * @returns {object} { hull, wheels, rubber, detail, dark, glass, barrel, canvasCloth,
  *   wood, trackL, trackR, trackTexL, trackTexR, trackLinkM, decal(kind), burnt, dispose() }
  */
-export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high') {
+export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high', camoPattern = null) {
   // CAMO PATTERN SECTION: remember the engine context so applyCamoToModel can
   // CSM-register the sourced-GLB material clones (tankFactory always builds
   // the procedural material set before the GLB swap fires, so this is set by
@@ -5438,7 +5469,12 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high')
   const track = (r) => { disposables.push(r); return r; };
 
   // PERF r3: 'ai' bakes the shared set at half resolution — see QUALITY_SIZES
-  const shared = acquireSharedTextures(spec, aniso, quality === 'ai' ? 'ai' : 'high');
+  const shared = acquireSharedTextures(
+    spec,
+    aniso,
+    quality === 'ai' ? 'ai' : 'high',
+    camoPattern,
+  );
   const { camoTex, normalTex, roughTex } = shared;
 
   // Matte military paint over rolled steel: normal map carries panel lines /
@@ -5745,7 +5781,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     dispose() {
       for (const rec of paintableRecs) shared.paintable.delete(rec);
       for (const r of disposables) r.dispose();
-      releaseSharedTextures(spec);
+      releaseSharedTextures(shared);
     },
   };
 }

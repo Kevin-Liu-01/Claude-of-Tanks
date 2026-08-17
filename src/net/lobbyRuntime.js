@@ -31,10 +31,18 @@ function errorPayload(error) {
 
 /** Host-owned lobby command module, independent from signaling and transport. */
 export class LobbyHostRuntime {
-  constructor({ lobby, isVehicleAllowed = () => true, onStart = null } = {}) {
+  constructor({
+    lobby,
+    isVehicleAllowed = () => true,
+    isCamoAllowed = () => true,
+    isMapAllowed = () => true,
+    onStart = null,
+  } = {}) {
     if (!lobby || !(lobby.players instanceof Map)) throw new TypeError('canonical lobby is required');
     this.lobby = lobby;
     this.isVehicleAllowed = isVehicleAllowed;
+    this.isCamoAllowed = isCamoAllowed;
+    this.isMapAllowed = isMapAllowed;
     this.onStart = onStart;
     this.peers = new Map();
     this.listeners = new Set();
@@ -123,6 +131,8 @@ export class LobbyHostRuntime {
     const before = this.lobby.phase;
     applyLobbyCommand(this.lobby, playerId, command, {
       isVehicleAllowed: this.isVehicleAllowed,
+      isCamoAllowed: this.isCamoAllowed,
+      isMapAllowed: this.isMapAllowed,
     });
     this.broadcast();
     if (before !== this.lobby.phase && this.onStart) this.onStart(serializeLobby(this.lobby));

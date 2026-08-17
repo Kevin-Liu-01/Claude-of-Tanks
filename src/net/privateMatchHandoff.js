@@ -72,6 +72,7 @@ export function buildPrivateMatchPlayers(lobbyState) {
         id: `bot-${team}-${index}-${(lobby.matchSeed >>> 0).toString(36)}`,
         name: `Bot ${team === 'alpha' ? 'A' : 'B'}${index + 1}`,
         specId,
+        camo: 'auto',
         team,
         equipment: null,
         bot: true,
@@ -93,6 +94,8 @@ function createPersistentRoomController(session) {
     command(playerId, command) {
       applyLobbyCommand(lobby, playerId, command, {
         isVehicleAllowed: session.isVehicleAllowed || (() => true),
+        isCamoAllowed: session.isCamoAllowed || (() => true),
+        isMapAllowed: session.isMapAllowed || (() => true),
       });
       return serializeLobby(lobby);
     },

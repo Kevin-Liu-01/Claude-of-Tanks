@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import '../vehicles/camoPolicy.selftest.mjs';
 import {
   MESSAGE_TYPES,
   PLAYER_ACTION_BITS,
@@ -284,13 +285,29 @@ const lobby = createLobby({
   hostId: 'kevin',
   hostName: 'Kevin',
   hostSpecId: 'm1a2',
+  hostCamo: 'summer',
 });
-addLobbyPlayer(lobby, { id: 'guest', name: 'Guest', specId: 'm1a2' });
+addLobbyPlayer(lobby, { id: 'guest', name: 'Guest', specId: 'm1a2', camo: 'winter' });
 assert.equal(lobby.players.get('guest').team, LOBBY_TEAMS.BRAVO);
 assert.equal(lobby.players.get('kevin').specId, lobby.players.get('guest').specId,
   'two players may select the same tank');
+assert.deepEqual([...lobby.players.values()].map((player) => player.camo), ['summer', 'winter'],
+  'duplicate tank picks retain each player\'s own built-in camouflage');
 expectCode(() => applyLobbyCommand(lobby, 'guest', { type: 'set_map', mapId: 'winter' }),
   LobbyError, 'host_only');
+applyLobbyCommand(lobby, 'kevin', { type: 'set_map', mapId: 'winter' }, {
+  isMapAllowed: (mapId) => mapId === 'winter',
+});
+expectCode(() => applyLobbyCommand(lobby, 'kevin', { type: 'set_map', mapId: 'forged-map' }, {
+  isMapAllowed: (mapId) => mapId === 'winter',
+}), LobbyError, 'map_not_allowed');
+applyLobbyCommand(lobby, 'guest', { type: 'select_camo', camo: 'digital' }, {
+  isCamoAllowed: (camo) => ['factory', 'digital'].includes(camo),
+});
+assert.equal(lobby.players.get('guest').camo, 'digital');
+expectCode(() => applyLobbyCommand(lobby, 'guest', { type: 'select_camo', camo: 'custom' }, {
+  isCamoAllowed: (camo) => ['factory', 'digital'].includes(camo),
+}), LobbyError, 'camo_not_allowed');
 applyLobbyCommand(lobby, 'kevin', { type: 'set_ready', ready: true });
 applyLobbyCommand(lobby, 'guest', {
   type: 'select_equipment', equipment: ['rammer', 'vstab', 'optics', 'toolbox'],

@@ -47,6 +47,7 @@ import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
+  getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, applyCamoPatterns, applyCamoPatternsChunked, clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps,
   upgradeSharedTexturesChunked,
@@ -1145,8 +1146,11 @@ async function openPlayMenu(request) {
         specId: garage.getSelected(),
         mapId: garage.getSelectedMap(),
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
+        camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
       isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
+      isCamoAllowed: (camo) => CAMO_PATTERN_IDS.includes(camo),
+      getCamoName: (camo) => CAMO_PATTERN_LABEL[camo] || 'Factory',
       getVehicleName: (specId) => getSpec(specId).name,
       onSolo: () => {
         const start = pendingSoloStart;
@@ -1191,11 +1195,19 @@ const garage = await bootStage('ui', () => createGarage({
     patterns: CAMO_PATTERN_IDS,
     label: CAMO_PATTERN_LABEL,
     get: (specId) => getCamoSelection(specId),
+    getCustom: (specId) => getCustomCamoSelection(specId),
     set: (specId, patternId) => {
       setCamoSelection(specId, patternId);
       // Keep the exact high-resolution paint, but yield the triggering UI
       // frame before a cold pattern bake instead of blocking the click.
       camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
+      syncActiveRoomCamo(specId);
+    },
+    setCustom: (specId, value) => {
+      setCustomCamoSelection(specId, value);
+      camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
+      // Deliberately sends Factory: custom paint is local single-player only.
+      syncActiveRoomCamo(specId);
     },
   },
   // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
@@ -2030,12 +2042,20 @@ function roomReadySummary(state = activeNetworkRoom) {
 
 function syncActiveRoomVehicle(specId) {
   const me = activeRoomPlayer();
-  if (!me || me.ready || activeNetworkRoom?.phase !== 'waiting' || me.specId === specId) return;
-  networkMatch?.roomCommand?.({ type: 'select_vehicle', specId });
+  if (!me || me.ready || activeNetworkRoom?.phase !== 'waiting') return;
+  if (me.specId !== specId) networkMatch?.roomCommand?.({ type: 'select_vehicle', specId });
   networkMatch?.roomCommand?.({
     type: 'select_equipment',
     equipment: loadSelectedEquipment(specId, getSpec(specId)),
   });
+  syncActiveRoomCamo(specId);
+}
+
+function syncActiveRoomCamo(specId) {
+  const me = activeRoomPlayer();
+  if (!me || me.ready || activeNetworkRoom?.phase !== 'waiting') return;
+  const camo = getMultiplayerCamoSelection(specId);
+  if (me.camo !== camo) networkMatch?.roomCommand?.({ type: 'select_camo', camo });
 }
 
 function updateActiveRoomPresentation(state) {
@@ -2267,6 +2287,9 @@ async function presentNetworkBattle({
   // enters its first battle frame with the old result and immediately opens
   // the previous victory/defeat flow again.
   resetNetworkBattleState();
+  // AUTO paint must resolve against the authoritative map before any roster
+  // texture variant is prewarmed or built.
+  setCamoBiome(mapId);
   const spectator = own.team === 'spectator';
   const displayTeam = spectator ? 'alpha' : own.team;
   networkSpectator = spectator;
@@ -4466,10 +4489,15 @@ async function warmNetworkWrecks(entities) {
     if (visual.prewarmBurn) {
       try { visual.prewarmBurn(); } catch (_) { /* warm only */ }
     }
-    if (entity.specId && !warmedSpecs.has(entity.specId)) {
-      warmedSpecs.add(entity.specId);
+    const wreckKey = entity.specId ? `${entity.specId}:${entity.camo || 'factory'}` : '';
+    if (wreckKey && !warmedSpecs.has(wreckKey)) {
+      warmedSpecs.add(wreckKey);
       try {
-        for (const _ of prebakeBurntSteps(entity.specId, engineCtx.anisotropy ?? 4)) {
+        for (const _ of prebakeBurntSteps(
+          entity.specId,
+          engineCtx.anisotropy ?? 4,
+          entity.camo || 'factory',
+        )) {
           await yieldForFrameBudget();
         }
       } catch (_) { /* warm only */ }

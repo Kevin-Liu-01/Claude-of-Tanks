@@ -70,7 +70,7 @@ export function createRankedServiceClient({
     return { ...identity };
   }
 
-  async function join({ name, specId, equipment = [], teamSize = 1 } = {}) {
+  async function join({ name, specId, equipment = [], camo = 'factory', teamSize = 1 } = {}) {
     const player = await ensureIdentity(name);
     const ticket = await call('ranked/queue', {
       method: 'POST',
@@ -78,7 +78,7 @@ export function createRankedServiceClient({
         'content-type': 'application/json',
         authorization: `Bearer ${player.token}`,
       },
-      body: JSON.stringify({ playerId: player.playerId, specId, equipment, teamSize }),
+      body: JSON.stringify({ playerId: player.playerId, specId, equipment, camo, teamSize }),
     });
     const ticketId = ticket.ticketId;
     const ticketToken = ticket.ticketToken;

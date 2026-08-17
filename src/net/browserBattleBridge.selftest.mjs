@@ -3,6 +3,8 @@ import { Vector3 } from 'three';
 import { createBrowserBattleBridge } from './browserBattleBridge.js';
 
 const visuals = [];
+const visualOptions = [];
+const textureWarms = [];
 const scene = { add() {} };
 const game = {
   tanks: [],
@@ -19,7 +21,8 @@ const game = {
 };
 const busEvents = [];
 
-function fakeVisual() {
+function fakeVisual(_specId, _engineCtx, opts) {
+  visualOptions.push(opts);
   const visual = {
     root: { position: new Vector3() },
     visible: true,
@@ -45,13 +48,17 @@ const bridge = createBrowserBattleBridge({
   bus: { emit(type, payload) { busEvents.push({ type, payload }); } },
   viewerId: 'guest',
   createTankVisual: fakeVisual,
-  prepareVisualTextures: async () => {},
+  prepareVisualTextures: async (...args) => { textureWarms.push(args); },
 });
 
 await bridge.prepareRoster([
-  { id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha' },
-  { id: 'guest', name: 'Guest', specId: 'm1a2', team: 'bravo' },
+  { id: 'host', name: 'Host', specId: 'm1a2', camo: 'summer', team: 'alpha' },
+  { id: 'guest', name: 'Guest', specId: 'm1a2', camo: 'winter', team: 'bravo' },
 ]);
+assert.deepEqual(visualOptions.map((opts) => opts.camoPattern), ['summer', 'winter'],
+  'duplicate vehicles build with each roster player\'s immutable camo variant');
+assert.deepEqual(textureWarms.map((args) => args[4]), ['summer', 'winter'],
+  'every distinct vehicle/camo variant is prewarmed before reveal');
 assert.equal(visuals.every((visual) => !visual.visible), true,
   'prepared multiplayer visuals stay hidden at the staging origin');
 

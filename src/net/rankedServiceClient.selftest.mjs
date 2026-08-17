@@ -11,7 +11,9 @@ const storage = {
   removeItem: (key) => values.delete(key),
 };
 const alpha = createRankedServiceClient({ url, storage });
-const alphaTicket = await alpha.join({ name: 'Client Alpha', specId: 'm1a2', teamSize: 1 });
+const alphaTicket = await alpha.join({
+  name: 'Client Alpha', specId: 'm1a2', camo: 'summer', teamSize: 1,
+});
 assert.equal(alphaTicket.status, 'queued');
 const storedIdentity = alpha.identity();
 assert.ok(storedIdentity.playerId && storedIdentity.token);
@@ -19,10 +21,14 @@ assert.deepEqual((await createRankedServiceClient({ url, storage }).ensureIdenti
   storedIdentity.playerId, 'ranked identity survives a reload');
 
 const bravo = createRankedServiceClient({ url, storage: new MapStorage() });
-const bravoTicket = await bravo.join({ name: 'Client Bravo', specId: 't90m', teamSize: 1 });
+const bravoTicket = await bravo.join({
+  name: 'Client Bravo', specId: 't90m', camo: 'winter', teamSize: 1,
+});
 assert.equal(bravoTicket.status, 'matched');
 const matched = await alphaTicket.wait({ intervalMs: 1 });
 assert.equal(matched.match.roster.length, 2);
+assert.deepEqual(new Set(matched.match.roster.map((player) => player.camo)),
+  new Set(['summer', 'winter']));
 assert.equal(rankedMatchWebSocketUrl(url), `ws://127.0.0.1:${service.address.port}/match`);
 assert.equal((await alpha.leaderboard()).players.length, 2);
 
