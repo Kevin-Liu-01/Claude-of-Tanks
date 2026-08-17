@@ -134,3 +134,56 @@ with §B4-safe hinge arms, EMES well + brow, PERI R12 compact, round-lid
 hatch drums at the 2.62/2.64 p95 line, C6 low mount, Wegmann 2×4 per side
 on the forward cheeks, raised vertical whips, L44 via leoMantletGun +
 §B3.1 muzzleBore at 5.19.
+
+## §5.299 OWNER ORDER — pre-wave turret splice (lane E, §5.311 recovery; 2026-08-17)
+ORDER (verbatim): "for our leopard 2a4m, use the new hull and gun but use
+the turret from before we were using."
+Baseline 94a83234 (§5.248 ground-up, row 89.5/100/100 gatePassed=false =
+the certified instrument ceiling). DELIVERED: buildLeo2A4M keeps the
+§5.248 leoHullV3 hull + L44 leoMantletGun package VERBATIM; the turret is
+the PRE-WAVE donor-wrapper turret — buildLeo2A4's welded A4 construction
+(A4_PLAN loft + apron + EMES hood + PERI R17 + hatch drums + Wegmann 2×4 +
+bustle rack, copied verbatim) dressed with the b66d6d03^ germany.js
+wrapper package (wrapArmorCheeks MEXAS wedges, wrapPlate flank modules,
+wrapSideSlat/wrapRearSlat cage, wrapCanadianSmoke; helpers copied verbatim
+and renamed wrap*). Ring seat: spec turretPivot 1.80→1.70 reproduces the
+donor's exact seat margins on this hull (loft base 4.5 cm over the 1.67
+deck, ring plinth closes §B2 sight-lines); gun re-seated to the OLD
+turret's mantlet face (gunPivot z 1.13, tube 4.81) with world landmarks
+HELD (axis 2.00, muzzle 6.24 bore-mouth law, overall 9.96).
+
+### §5.311 hardware-line rework (heightM sovereignty receipts)
+The as-copied wrapper furniture broke the certified 2.62 p95 line exactly
+like the dossier's r1 (gate read heightM 3.30, +26%, dims 0):
+- era roofWeapon: floating 0.90 station + shielded 0.86 pintle (2.73 drum
+  / 2.96 MG world) → SEATED plate+collar on the 0.68 roof + certified low
+  side-swing C6 (§5.248 recipe verbatim; tops ≤2.52).
+- era radioPair whips (tips 3.26-3.38, drums floating 0.16 behind the
+  -2.30 loft rear) → capped base drums seated on the bustle-rack end
+  rails; the donor SEM 25 pair carries the whip read.
+- donor SEM whips de-raked to VERTICAL (the -0.10 z-rake smeared tops
+  across the ramp — whip-rough coupling law; this id's budget can't
+  afford the donor's smear).
+- FLW 200 (§5.73-3, returns with the pre-wave turret) sunk 0.05 to the
+  era WORLD seat class (trough 2.63, RWS gun 2.61).
+- donor PERI R17 head compacted in z (box 0.19→0.14, cap r 0.08→0.065)
+  and re-phased to the §5.248-certified world-z window (local -0.28): the
+  as-copied head straddled THREE stations (p95 landed on its third column:
+  2.82, +7.7%).
+Final tall set = PERI ×2 + SEM spike ×1 = exactly the excluded p95 budget;
+p95 lands at the 2.63-2.65 hardware line (probe h 2.602, 0.69%).
+
+### Gate close (final bytes ×2 BIT-IDENTICAL, md5 9f98ac78 ×2)
+**min 86.2** | whole 86.2 | dims 100 (heightM 2.60/2.62, hull 7.70/7.72,
+overall 9.92/9.96, width 3.76/3.77 — published dims UNCHANGED, true) |
+floaters 100. The −3.3 vs the 89.5 ceiling is the honest cost of the
+ordered turret: the print resembles the retired §5.248 turret; the
+pre-wave welded turret + MEXAS wedges diverge more (order supersedes,
+gate stays honest; the id was below-gate at baseline too). Audits:
+track-clip --exact --strict 0/0 front/rear/shoe/sweep; turret-parent
+0/0/0; duplicate-course PASS. Hash 94a83234→**dd1de614** (58/114107).
+Guards leo2a4 3e07c84f / leo2a5 6ecdfb06 / leo2a6 e99dd7f8 / leo2a7v
+a755d23c / leo1a5 2aee1f9d / kf51 ffb1144c EXACT; leopard2_proto
+2a88d640 / leo2_revolution f55a29c8 byte-held. Evidence:
+shots/germany-order/leo2a4m-before/ (94a83234 bytes) vs
+shots/germany-order/leo2a4m-after/leo2a4m/ (final bytes, 14 views).

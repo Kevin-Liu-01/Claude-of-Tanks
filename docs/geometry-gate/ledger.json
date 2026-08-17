@@ -1320,20 +1320,20 @@
   },
   {
    "id": "leo2a6m",
-   "geoMin": 90.9,
+   "geoMin": 91,
    "gatePassed": true,
    "components": {
-    "wholeCurves": 90.9,
+    "wholeCurves": 91,
     "dims": 100,
     "floaters": 100
    }
   },
   {
    "id": "leo2a4m",
-   "geoMin": 89.5,
+   "geoMin": 86.2,
    "gatePassed": false,
    "components": {
-    "wholeCurves": 89.5,
+    "wholeCurves": 86.2,
     "dims": 100,
     "floaters": 100
    }

@@ -192,10 +192,23 @@ const USERDROP3_SPECS = {
 USERDROP3_SPECS.kf51b = {
   ...USERDROP3_SPECS.kf51,
   id: 'kf51b', name: 'KF51B Panther', variantOf: 'kf51b',
+  // §5.299 fleet-integration truth-up (kf51b row ONLY — kf51's shared armor
+  // object is untouched, this is a fresh communityArmor instance): the
+  // b-variant builder seats its ring at 1.72/0.02 and the gun axis at 1.94
+  // with the measured 5.30 m Rh-130 tube (source muzzle world 6.88). The
+  // inherited kf51 row carried the GLB-era 6.63 m barrel + 1.86/0.52
+  // pivots — a §C shadow proxy 1.33 m too long and an aim rig offset from
+  // the visual trunnion. Track decal width follows the built 0.587 course.
+  armor: communityArmor({
+    lenM: 7.70, widM: 3.60, hgtM: 2.90, turretPivot: [0, 1.72, 0.02],
+    gunPivot: [0, 0.22, 1.58], barrelLenM: 5.30, barrelRadM: 0.064,
+    frontMm: 650, sideMm: 90, rearMm: 45, roofMm: 45,
+    tFrontMm: 750, tSideMm: 320, tRearMm: 70, mantletMm: 500,
+  }),
   visual: {
     ...USERDROP3_SPECS.kf51.visual,
     base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'],
-    number: '52', patchK: 1.28,
+    number: '52', patchK: 1.28, trackWidthM: 0.587,
   },
 };
 

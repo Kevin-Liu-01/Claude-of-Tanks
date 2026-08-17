@@ -80,17 +80,19 @@ export const GERMANY_SPECS = {
     // the 2.75 figure is an over-periscope datum the p95 recipe cannot see;
     // the print's own 3.556 read is its whip-antenna cluster, §5.261 law).
     dims: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 3.77, heightM: 2.62 },
-    // measured rig (§5.248 rebuild): ring plane at the 1.80 deck, gun axis
-    // 2.00 = the honest real-vehicle trunnion floor (overlay-measured: the
-    // print's own tube axis reads ~1.93 world — LOW; the r2 2.13 and a
-    // tried 2.18 both left a half-tube red under-strip on the side views,
-    // the residual 0.07 vs the print is the documented print-proportion
-    // cap); muzzle world 6.24 = 0.30 + 0.75 + 5.19 (bore-mouth law). A
-    // 5.25 tube was tried and REVERTED: the proc lit span outgrew the
-    // ref's and re-owned the shared gate camera (grid re-phase — hull
-    // 7.63 / heightM 2.82 regression class).
-    turretPivot: [0, 1.80, 0.30], gunPivot: [0, 0.20, 0.75],
-    gunBarrel: { lengthM: 5.19, radiusM: 0.10 },
+    // §5.299 owner-order rig (pre-wave turret splice — "use the new hull
+    // and gun but use the turret from before we were using"): ring plane
+    // 1.70 reproduces the donor A4 turret's exact seat margins on the
+    // §5.248 hull (donor built at 1.62 over its 1.59 deck; this hull's
+    // ring-zone deck is 1.67). Gun axis HELD at the certified 2.00 honest
+    // trunnion floor (1.70 + 0.30); trunnion z re-seated to the old
+    // turret's mantlet face (1.13 — at the §5.248 turret's 0.75 seat the
+    // new mantlet buried inside the old slot back wall); muzzle world HELD
+    // at 6.24 = 0.30 + 1.13 + 4.81 (bore-mouth law; overall 9.96 off the
+    // -3.78 rack tail — the §5.248 gun's world landmarks are unchanged,
+    // only the gun-local tube length re-derives from the new trunnion).
+    turretPivot: [0, 1.70, 0.30], gunPivot: [0, 0.30, 1.13],
+    gunBarrel: { lengthM: 4.81, radiusM: 0.10 },
     stats: { hp: 2450, enginePowerHp: 1500, weightTons: 61.8, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 38, gunPitchDegS: 32 },
     reloadS: 5.9, shellName: 'DM53A1 APFSDS', armorFactor: 1.22,

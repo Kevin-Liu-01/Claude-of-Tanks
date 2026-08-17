@@ -151,3 +151,39 @@ pioneer kit, tow cable, spare links, convoy plate, tow eyes, shackles),
 Wegmann 2×4 banks per side on the chamfer slopes, ISAF cooler box, PERI
 crown at the 3.03 datum, raised whips (vertical-only — see the a4m packet
 whip-rough law), L55 via leoMantletGun + §B3.1 muzzleBore at 5.98.
+
+## §5.299 OWNER ORDER — turret FINISH (lane E, §5.311 recovery; 2026-08-17)
+ORDER (verbatim): "and finally finish the leopard 2a6m turret."
+Baseline 59452b7a; row baseline 90.9/100/100 (post-§5.306 print detail-
+shell excision, EXACT-HOLD move-invariance proof). DELIVERED (the critic
+polish list, all five items, in buildLeo2A6M):
+1. BOW-CORNER cage flare panels: the run terminus turns in across z
+   3.06..3.42 (face swing 1.978→1.792), corner+forward posts, brackets
+   into the skirt band/lip; inner ends outboard of the 1.66 shoe envelope
+   (§B4 a4m mudflap-law class); every extreme inside the certified ±2.00
+   cage frame (widthM 3.98 anchor untouched).
+2. REAR-WALL service grammar behind the stern cage: crossed tow cables
+   (X) over the transom with upper/lower cable eyes, corner tail-lamp
+   pods + lenses + guard bars — all inside the -3.80 cage-tail overall
+   anchor, seated on the tail frame/rear wall.
+3. FLANK cage run extended FORWARD 3→5 sections (nose flank was bare vs
+   the ref's fuller run); forward sections seat both brackets on the
+   side-module band; existing sections byte-identical; ISAF placard
+   bridging the sec-3/sec-4 rail gap (flank decals ride the slat — the
+   wall decals would hide behind the extended run).
+4. FRONT detail density toward the print: driver periscope trio at the
+   deck crease, glacis clamp studs inboard of the lane cuts (ref-matched
+   density), center service cover + seam, EMES brow gutter, §B3.1-class
+   coax port mouth on the slot wall.
+5. WEDGE-BAND soften where dims-legal: Barracuda strap studs half-buried
+   on the cheek plates, chamfer hardware studs, side-module panel joints
+   (dark engravings ON the certified mod face — zero column growth; the
+   heightM spike columns untouched).
+
+### Gate close (final bytes ×2 BIT-IDENTICAL, md5 a83b28c2 ×2)
+**min 91 PASS** | whole 91 | dims 100 | floaters 100 — HOLD-OR-IMPROVE
+vs 90.9 satisfied (+0.1, dims 100 held EXACT). Audits: track-clip --exact
+--strict 0/0; turret-parent 0/0/0; duplicate-course PASS. Hash 59452b7a→
+**e004f4d8** (49/112843). Guards as the a4m packet (all EXACT). Evidence:
+shots/germany-order/leo2a6m-before/leo2a6m/ (59452b7a bytes) vs
+shots/germany-order/leo2a6m-after/leo2a6m/ (final bytes, 14 views).
