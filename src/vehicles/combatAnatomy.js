@@ -110,7 +110,16 @@ function fitFixedBoxes(boxes, pivot, target) {
   for (const box of boxes) mapBox(box, from, target);
 }
 
-function reconcileFrame(plates, boxes, points, target) {
+// The articulation pivots (armor.turretPivot / armor.gunPivot) are RIG
+// anchors, not anatomy: tankFactory seats the visual rig_turret/rig_gun at
+// exactly these arrays, and every geometry receipt is measured INSIDE those
+// rig frames (tools/gen-combat-anatomy.mjs computes envelopes relative to
+// rig_hull/rig_turret). Remapping a pivot through the plate->receipt map
+// therefore moves the rendered turret off its authored ring wherever the
+// authored plate bounds differ from the measured envelope (§5.356 fleet
+// floating-turret regression: pl01 +0.63 m, pt91_twardy +0.28 m). Plates and
+// boxes calibrate; pivots stay profile-authored.
+function reconcileFrame(plates, boxes, target) {
   const from = plateBounds(plates);
   if (!from || !target) return;
   const seen = new Set();
@@ -123,18 +132,18 @@ function reconcileFrame(plates, boxes, points, target) {
     }
   }
   for (const box of boxes) mapBox(box, from, target);
-  for (const point of points) if (point) mapPoint(point, from, target);
 }
 
-function reconcileChildFrame(plates, boxes, pivot, childPoints, from, to) {
+function reconcileChildFrame(plates, boxes, pivot, from, to) {
   if (!pivot || !from || !to) return;
-  const oldPivot = pivot.slice();
-  const mappedPivot = pivot.slice();
-  mapPoint(mappedPivot, from, to);
+  // Compose each turret-local point with the authored pivot, scale it through
+  // the hull receipt, then decompose about the SAME authored pivot: world
+  // placements calibrate while the rig anchor (and the visual gun it seats)
+  // keeps the profile-authored frame.
   const mapLocalPoint = (point) => {
-    for (let axis = 0; axis < 3; axis++) point[axis] += oldPivot[axis];
+    for (let axis = 0; axis < 3; axis++) point[axis] += pivot[axis];
     mapPoint(point, from, to);
-    for (let axis = 0; axis < 3; axis++) point[axis] -= mappedPivot[axis];
+    for (let axis = 0; axis < 3; axis++) point[axis] -= pivot[axis];
   };
   const seen = new Set();
   for (const plate of plates || []) {
@@ -151,8 +160,6 @@ function reconcileChildFrame(plates, boxes, pivot, childPoints, from, to) {
       if (box.min[axis] > box.max[axis]) [box.min[axis], box.max[axis]] = [box.max[axis], box.min[axis]];
     }
   }
-  for (const point of childPoints) if (point) mapLocalPoint(point);
-  pivot.splice(0, 3, ...mappedPivot);
 }
 
 function reconcileTracks(modules, target) {
@@ -244,10 +251,8 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
       // even though its visible superstructure belongs to the hull mesh.
       // Scale that child frame through the hull receipt as one rigid anatomy
       // instead of leaving crew floating at the donor pivot.
-      reconcileChildFrame(
-        armor.turretPlates, turretBoxes, armor.turretPivot, [armor.gunPivot], hullFrom, hullTarget,
-      );
-      reconcileFrame(armor.hullPlates, hullBoxes, [], hullTarget);
+      reconcileChildFrame(armor.turretPlates, turretBoxes, armor.turretPivot, hullFrom, hullTarget);
+      reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
       const compartment = fixedCompartment(calibration);
       const fixedModules = (armor.modules || []).filter(
         (box) => box.turretLocal && box.module !== 'trackL' && box.module !== 'trackR',
@@ -257,8 +262,8 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
       const fixedMount = (armor.modules || []).find((box) => box.module === 'turretRing');
       if (fixedMount) fixedMount.module = 'gunMount';
     } else {
-      reconcileFrame(armor.hullPlates, hullBoxes, [armor.turretPivot], hullTarget);
-      reconcileFrame(armor.turretPlates, turretBoxes, [armor.gunPivot], calibration.turret);
+      reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
+      reconcileFrame(armor.turretPlates, turretBoxes, calibration.turret);
     }
     reconcileTracks(armor.modules || [], calibration.tracks || null);
     alignTurretRing(armor, calibration);
