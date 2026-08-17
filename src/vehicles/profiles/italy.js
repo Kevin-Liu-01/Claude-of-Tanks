@@ -108,6 +108,30 @@ function buildArieteMk(P, mark) {
     P.add('hull', box(0.18, 0.14, 0.19), s * 0.87, 1.20, 3.705);               // nose center bumps to +3.80 (plan_hull 3.803 @ x ±0.825..0.915)
     headlight(P, s * 0.87, 1.10, 3.70, -0.22, 0.05);                           // headlight pods on the bumps
     P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.62, 3.70, Math.PI / 2, 0, 0); // bow tow eyes
+    // s5322-C4 headlight BRUSH GUARDS (§5.283 debt; thin low-kit bars also
+    // armor the razor-margin bow anchor columns per the whip-rough law).
+    P.add('hullDetail', box(0.014, 0.16, 0.014), s * 0.79, 1.12, 3.76);        // guard verticals (feet buried in the chin plane)
+    P.add('hullDetail', box(0.014, 0.16, 0.014), s * 0.95, 1.12, 3.76);
+    P.add('hullDetail', box(0.174, 0.014, 0.014), s * 0.87, 1.205, 3.76);      // guard hoop bar under the bump crest
+    P.add('hullDetail', box(0.012, 0.012, 0.085), s * 0.79, 1.19, 3.7475);     // stays tied back into the bump face
+    P.add('hullDetail', box(0.012, 0.012, 0.085), s * 0.95, 1.19, 3.7475);
+    // s5322-C5 bow tow SHACKLES stowed FLAT on the nose-band plate above
+    // their eyes (crew stowage read: D-bow half-buried on the raked plate +
+    // clamp block; the first leaned-off-the-chin seat FLOATED clear of both
+    // eye and plate in pixels — caught in the after-shots, re-stowed).
+    P.add('hullDetail', torus(0.050, 0.013, 10), s * 0.50, 1.168, 3.70, 0.52, 0, 0);
+    P.add('hullDark', box(0.05, 0.016, 0.03), s * 0.50, 1.196, 3.652);
+  }
+  // s5322-C3 woven glacis GRILLE band (§5.283 debt): dark intake field +
+  // crossing weave strips riding the §5.299 raked plane A (pitch 0.0638;
+  // tops <= surface+0.020 — the read is tone relief, budgeted inside the
+  // side_hull headroom; clear of the c2 add-on rows which start z 2.04).
+  P.add('hullDark', box(1.24, 0.009, 0.28), 0.22, 1.3667, 1.86, 0.0638, 0, 0);
+  P.add('hullDetail', box(1.18, 0.011, 0.022), 0.22, 1.3826, 1.77, 0.0638, 0, 0);
+  P.add('hullDetail', box(1.18, 0.011, 0.022), 0.22, 1.3767, 1.86, 0.0638, 0, 0);
+  P.add('hullDetail', box(1.18, 0.011, 0.022), 0.22, 1.3710, 1.95, 0.0638, 0, 0);
+  for (let k = 0; k < 5; k++) {
+    P.add('hullDetail', box(0.022, 0.011, 0.26), -0.26 + k * 0.24, 1.3767, 1.86, 0.0638, 0, 0);
   }
   for (const s of [-1, 1]) P.add('hullDetail', box(0.78, 0.04, 0.05), s * 0.39, 1.34, 2.30, -0.055, s * 0.42, 0); // V splash rail riding the raked plane (crest ~1.36, the print's furniture line)
   towCable(P, [[-1.06, 1.30, 2.50], [0, 1.355, 2.05], [1.06, 1.30, 2.50]]);     // drape re-seated on the §5.299 slope (was fully buried under the flat plate)
@@ -158,9 +182,21 @@ function buildArieteMk(P, mark) {
     P.add('hull', box(0.36, 0.50, 0.07), s * 1.345, 1.26, -3.415);             // outer rear courses to ±1.525 (bottoms above the sprocket wrap)
     P.add('hull', box(0.28, 0.50, 0.33), s * 1.025, 1.21, -3.595);             // exhaust pods x ±(0.885..1.165) to -3.76 (bottoms above the shoe faces)
     P.add('hullDark', box(0.24, 0.42, 0.03), s * 1.025, 1.19, -3.735);
+    // s5322-C7 exhaust grille DEPTH: louvre ribs proud of the recessed dark
+    // throat, inside the pod envelope (owner MBT order).
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.20, 0.016, 0.012), s * 1.025, 1.065 + k * 0.09, -3.745);
+    }
     P.add('hullDark', box(0.14, 0.07, 0.04), s * 1.32, 1.40, -3.46);           // taillights
+    P.add('hullDetail', box(0.15, 0.075, 0.012), s * 1.32, 1.40, -3.468);      // s5322-C8 taillight guard frames
     P.add('hullRubber', box(0.38, 0.18, 0.03), s * 1.30, 1.14, -3.44);         // rear flaps (hems above the sprocket shoe band)
+    P.add('hullDark', box(0.36, 0.02, 0.012), s * 1.30, 1.24, -3.4465);        // s5322-C8 flap hinge strips
   }
+  // s5322-C8 rear plate FURNITURE (owner MBT order): convoy plate + center
+  // tow hitch — all inside the certified -3.47/-3.79 rear extremes.
+  P.add('hullDetail', box(0.16, 0.12, 0.012), -0.45, 1.02, -3.4615);           // convoy plate (pale)
+  P.add('hull', box(0.09, 0.10, 0.08), 0, 1.01, -3.68);                        // tow hitch body under the tail block
+  P.add('hullDark', cylY(0.016, 0.016, 0.07, 6), 0, 1.01, -3.705);             // hitch pin
   P.add('hull', box(0.25, 0.42, 0.34), 0, 1.28, -3.62);                        // center tail block to -3.79, band 1.07..1.49 (12%-band tail anchor)
   P.add('hull', box(0.40, 0.055, 0.24), 0, 1.50, -3.62);                       // tail lip 1.476..1.524
   P.add('hullDark', box(1.64, 0.24, 0.045), 0, 1.12, -3.44);                   // rear grille shadow
@@ -170,6 +206,16 @@ function buildArieteMk(P, mark) {
   P.add('hullDark', box(1.86, 0.012, 0.72), 0, 1.502, -2.62);                  // rear-deck grille field
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(1.80, 0.014, 0.05), 0, 1.508, -2.36 - k * 0.14);
   P.add('hullDark', box(1.90, 0.012, 0.50), 0, 1.492, -1.44);                  // mid-deck radiator panel
+  // s5322-C2 rear-sponson LOUVRE BANDS both sides (§5.283 debt): recessed
+  // dark intake field flush with the wall face + rib cadence (0.004 proud —
+  // plan_hull stays byte-clean, tone carries the read).
+  for (const s of [-1, 1]) {
+    P.add('hullDark', box(0.011, 0.10, 1.05), s * 1.5295, 1.43, -2.62);
+    for (let k = 0; k < 6; k++) {
+      P.add('hullDetail', box(0.006, 0.085, 0.028), s * 1.536, 1.43, -2.24 - k * 0.15);
+    }
+    P.add('hullDark', box(0.018, 0.02, 2.07), s * 1.527, 1.50, 0.585);         // s5322-C6 fender shadow line under the sponson crest (outer face flush w/ the 1.536 wall — the 1.5535 seat nicked the front-view corner, measured + pulled in)
+  }
   stowage(P, 'hullCloth', rng, [[-1.25, 1.53, -2.62, 0.42, 0.10, 0.72]]);
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.44, seed: 7 });
@@ -181,12 +227,19 @@ function buildArieteMk(P, mark) {
   const skirtRear = c2 ? -2.92 : -0.41;                                        // C2 package: full-run heavy skirts (photo-class)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.03, 0.59, 5.82), s * 1.525, 0.835, -0.01);             // base thin skirt (Object_4 class: ±1.53, y 0.54..1.13; ends +2.90 before the idler wrap)
-    const panels = c2 ? 13 : 8;                                                // panel pitch < the 0.54 station slab (edge-on prism law)
+    // s5322-C1 real C1 SEVEN-section front-half skirt run (owner MBT order;
+    // c2 keeps its 13-panel AMV run) + per-panel hinge/bolt hardware both
+    // marks. 0.50 pitch < the 0.54 station slab (edge-on prism law holds);
+    // every new read stays inside the ±1.80 WIDTH GUARD (max 1.799).
+    const panels = c2 ? 13 : 7;
     const z0 = 3.09, panelD = (3.09 - skirtRear) / panels;
     for (let k = 0; k < panels; k++) {
       const zc = z0 - panelD * (k + 0.5);
       P.add('hull', box(0.035, 0.68, panelD - 0.025), s * 1.780, 0.94, zc);    // heavy applique panels, tops 1.28, hem 0.60 (front_hull 0.53 hem class)
       P.add('hullDark', box(0.012, 0.60, 0.02), s * 1.788, 0.94, zc - panelD / 2 + 0.012); // panel seams (inboard of the guard)
+      P.add('hullDark', box(0.004, 0.026, 0.026), s * 1.7965, 1.09, zc - panelD * 0.22);   // s5322-C1 panel bolts (face-proud 1mm, tone read)
+      P.add('hullDark', box(0.004, 0.026, 0.026), s * 1.7965, 0.79, zc + panelD * 0.22);
+      if (k > 0) P.add('hull', box(0.03, 0.14, 0.07), s * 1.784, 1.245, zc + panelD / 2 - 0.0125); // s5322-C1 hinge straps rail->panel at every interior seam
     }
     P.add('hull', box(0.045, 0.56, 0.42), s * 1.7775, 0.92, 2.86);             // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD)
     P.add('hull', box(0.24, 0.10, 3.09 - skirtRear), s * 1.655, 1.315, (3.09 + skirtRear) / 2); // hanger rail tying panels to the sponson
@@ -208,6 +261,12 @@ function buildArieteMk(P, mark) {
     trackW: 0.46, topY: 0.94, botY: 0.055, contactZF: 2.52, contactZR: -2.44,
     paintedEnds: true, coveredTop: true, arms: true,
     armBucket: 'hullRunningGearDetail',
+    // s5322-D §B6/§B9 gear read (§5.262 gearFloor/tireHex law): lifted olive
+    // dish + dark tire ring so the hub/bolt contrast set reads in skirt
+    // shade (both cfg clones re-attach the family ambient-floor hook in the
+    // factory; the shoe-pad hook is unconditional at tankFactory ~1456).
+    // dishR 0.82 opens a real rubber rim — radius/stations byte-held.
+    dishR: 0.82, tireHex: 0x242522, wheelHex: 0x3d4433,
   });
   liftEye(P, 'hullDetail', -1.40, 1.52, -1.60);
   liftEye(P, 'hullDetail', 1.40, 1.52, -1.60);
@@ -247,6 +306,13 @@ function buildArieteMk(P, mark) {
     P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
       [s * 0.20, 0.14, L(2.02)], [s * 0.96, 0.16, L(1.66)], [s * 1.10, 0.14, L(1.30)], [s * 0.20, 0.14, L(1.30)],
       [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
+    // s5322-B3 cheek LIFTING LUGS on the §5.299 raked faces (owner MBT
+    // order; leaned D-rings + seat plates, tops flush with the certified
+    // climbing face line 1.99-2.005 — zero silhouette).
+    P.add('turret', box(0.06, 0.016, 0.05), s * 0.55, 0.648, L(1.50), -0.22, 0, 0);
+    P.add('turretDetail', torus(0.034, 0.010, 10), s * 0.55, 0.652, L(1.50), 1.05, 0, s * 0.35);
+    P.add('turret', box(0.06, 0.016, 0.05), s * 0.85, 0.652, L(1.38), -0.22, 0, 0);
+    P.add('turretDetail', torus(0.034, 0.010, 10), s * 0.85, 0.657, L(1.38), 1.05, 0, s * 0.35);
   }
   P.add('turret', box(0.84, 0.52, 0.30), 0, 0.38, L(1.42));                    // mantlet cavity back wall (closes the nose between cheeks)
   for (const s2 of [-1, 1]) P.add('turret', slab(                              // cavity side cheeks to the mantlet flanks (no see-through at yaw)
@@ -276,14 +342,27 @@ function buildArieteMk(P, mark) {
     P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.30, L(-1.99));
     P.add('turretDark', box(0.03, 0.18, 0.14), bx2 + blen * 0.28, 0.30, L(-1.99));
   }
-  stowage(P, 'turretDetail', rng, [[-0.66, 0.50, L(-1.98), 0.52, 0.20, 0.42], [0.42, 0.48, L(-1.98), 0.62, 0.16, 0.40]]);
+  stowage(P, 'turretDetail', rng, [[-0.66, 0.50, L(-1.98), 0.52, 0.20, 0.42], [0.42, 0.48, L(-1.98), 0.62, 0.16, 0.40],
+    [-0.05, 0.52, L(-2.02), 0.55, 0.18, 0.40], [0.80, 0.46, L(-1.98), 0.32, 0.14, 0.34]]);  // s5322-B2 bustle bays read as CARGO (owner MBT order; tops <= 1.91 world; right item CLAMPED inside the ±1.13 bustle plan — the 1.17 overflow cost plan_turret, measured + pulled in)
+  for (const sx of [-0.66, -0.05, 0.42, 0.80]) {
+    P.add('turretDark', box(0.022, 0.30, 0.014), sx, 0.45, L(-2.17));          // s5322-B2 cargo lash straps ON the bundle faces (inside the -2.37 plan boundary; the mesh-face seats poked it, measured + re-seated)
+  }
   // full-run side racks (gate plan_turret: rails ±1.52 from +1.0 to -2.95;
   // gate front_whole wing tops 1.91-1.96)
   for (const s of [-1, 1]) {
+    // s5322-B1 rack-end caps — MEASURED EXCHANGE RECEIPT (§5.290): the
+    // §5.283 debt's "-3.0" is the REF frame's rail end; in this build's
+    // certified frame extending the run to world -3.0 walked past the
+    // z-compressed print's own rail-end column (plan_turret 63.4->48.7,
+    // st1 topPct 11.2 — both reverted). Caps are authored as end PLATES
+    // flush INSIDE the certified -2.58 rail envelope: capped-rail read,
+    // zero new extreme, st1 slab untouched.
     P.add('turret', box(0.05, 0.07, 3.55), s * 1.50, 0.18, L(-0.805));         // side rack rail at 1.44..1.51 (gate front cols ±1.5 read 1.44-1.50;
     for (const rz of [0.90, 0.30, -0.44, -1.10, -1.76, -2.42]) {               // end caps stay out of the st1 slab — prism law)
       P.add('turret', box(0.045, 0.16, 0.06), s * 1.50, 0.24, L(rz));          // stanchions tying the rail to the bay lip
     }
+    P.add('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.155, L(-2.556));        // s5322-B1 rack-end cap plates (inside the certified envelope)
+    P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.185, L(-2.572));  // cap end faces (dark hardware read)
     for (const az of [-0.50, -1.44]) {
       P.add('turret', box(0.24, 0.06, 0.05), s * 1.38, 0.34, L(az));           // rack arms to the wall (thin: plan cols ±1.2-1.3 stay ref-empty)
     }
@@ -292,8 +371,17 @@ function buildArieteMk(P, mark) {
       [s * 1.40, 0.58, L(-1.20)], [s * 1.505, 0.58, L(-1.20)], [s * 1.505, 0.58, L(-2.55)], [s * 1.40, 0.58, L(-2.55)]));
     // GALIX 80mm banks on their platform (identity cue; ±1.24-1.40, z -0.30..-0.95)
     P.add('turret', box(0.17, 0.05, 0.66), s * 1.315, 0.475, L(-0.62));        // GALIX platform (ties bank to wall)
+    P.add('turretDark', box(0.025, 0.19, 0.64), s * 1.352, 0.585, L(-0.62), 0, 0, s * 0.12); // s5322-B7 GALIX backing plate — tubes read against dark at yaw (ref plan band ±1.31-1.40 owns it)
     addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 4, splay: s * 1.05,
       pitch: -0.40, slot: 'detail', seed: 30 + (s > 0 ? 1 : 0) }), s * 1.31, 0.56, L(-0.62));
+    // s5322-B4 cable conduit run bustle -> cheek riding the wall-top
+    // shoulder (turret-owned; INBOARD of the lower wall band's own plan
+    // outline — the first wall-face seats poked the tapering walls by up to
+    // 0.045 and cost plan_turret, measured + re-seated per §5.290).
+    P.add('turretDetail', cylZ(0.013, 0.95, 6), s * 1.225, 0.66, L(-0.47));    // aft segment along the wall shoulder
+    P.add('turretDetail', cylZ(0.012, 0.85, 6), s * 1.16, 0.60, L(0.45));      // forward segment onto the cheek shoulder
+    P.add('turretDark', box(0.05, 0.06, 0.08), s * 1.21, 0.64, L(0.02));       // junction box at the segment lap
+    P.add('turretDark', box(0.045, 0.055, 0.07), s * 1.19, 0.55, L(-0.96));    // feed box at the bustle corner
   }
   // roof furniture (gate ref: TURMS 2.53@zW+0.24 / x ~+0.78; pano head
   // 2.41-2.54 @ x -0.67..-0.87; hatch bumps 2.31-2.43; broad cluster carries
@@ -303,11 +391,34 @@ function buildArieteMk(P, mark) {
   P.add('turretDark', box(0.345, 0.02, 0.28), 0.76, 1.10, L(0.22));            // split-door seam
   P.add('turretDark', box(0.26, 0.13, 0.025), 0.76, 1.09, L(0.385));           // TURMS recessed face (owner cadence: backed, not a bare square)
   P.add('turretGlass', box(0.20, 0.09, 0.02), 0.76, 1.09, L(0.395));           // TURMS window
+  // s5322-B6 TURMS head REALIZED (owner MBT order): hood side cheeks + sill
+  // framing the lens bay — every top <= 1.155 local, under the 2.46 p95
+  // datum the armored box already owns (§5.290 dims-100 seat).
+  P.add('turret', box(0.03, 0.125, 0.03), 0.615, 1.0875, L(0.382));            // hood cheek L (flush w/ the certified face-plate z extent)
+  P.add('turret', box(0.03, 0.125, 0.03), 0.905, 1.0875, L(0.382));            // hood cheek R
+  P.add('turret', box(0.26, 0.022, 0.032), 0.76, 1.036, L(0.381));             // lens sill
+  P.add('turretDark', box(0.012, 0.075, 0.010), 0.715, 1.088, L(0.394), 0, 0, 0.35); // wiper blade on the pane
   P.add('turret', cylY(0.13, 0.15, 0.16, 12), -0.76, 0.94, L(-0.16));          // pano pedestal
   P.add('turret', cylY(0.16, 0.16, 0.15, 12), -0.76, 1.095, L(-0.16));         // pano head to 2.47 (p95 datum)
   P.add('turretGlass', box(0.17, 0.08, 0.02), -0.76, 1.095, L(-0.005));
+  // s5322-B6 pano head REALIZED: brow hood over the lens + face frame +
+  // wiper — all under the head's own 1.17 crown (2.47 datum untouched).
+  P.add('turret', box(0.19, 0.022, 0.055), -0.76, 1.152, L(-0.035));           // brow hood lip (inside the head's own -0.32..0.00 side coverage)
+  P.add('turret', box(0.02, 0.09, 0.03), -0.855, 1.095, L(-0.032));            // face frame L
+  P.add('turret', box(0.02, 0.09, 0.03), -0.665, 1.095, L(-0.032));            // face frame R
+  P.add('turretDark', box(0.011, 0.07, 0.011), -0.80, 1.09, L(-0.024), 0, 0, -0.30); // wiper blade
   cupolaRing(P, 0.45, 0.86, L(-0.42), 0.24);                                   // commander hatch ring
   P.add('turret', box(0.36, 0.022, 0.32), 0.45, 0.925, L(-0.42), 0, -0.08, 0); // split lid (owner c425f495 crew-station cadence)
+  // s5322-A2 commander's MG 42/59 at the TURMS-station cupola (owner MBT
+  // order; real C1 carries one) — CENSUS pintleMG on the ring's FRONT-right
+  // rim, stowed forward alongside the TURMS housing so the entire mass nests
+  // UNDER the certified side silhouette (pano 2.47 covers z −0.32..0.00,
+  // TURMS 2.46 covers +0.06..+0.38; MG top 2.395 world). Two aft/hatch-band
+  // sweeps measured −0.2 whole each under the documented dAlong 0.739
+  // registration residual — receipts banked, this seat is the measured
+  // dims-100 + curve-neutral exchange (§5.265/§5.290).
+  addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+    elev: 0, shield: false, scale: 0.62, seed: 44 }), 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
   cupolaRing(P, -0.42, 0.86, L(-0.62), 0.23);                                  // loader hatch ring
   P.add('turret', box(0.34, 0.022, 0.30), -0.42, 0.925, L(-0.62), 0, 0.10, 0);
   for (let k = 0; k < 3; k++) periscope(P, 'turretDetail', 0.30 + k * 0.16, 0.90, L(-0.10), 0.1);
@@ -325,17 +436,38 @@ function buildArieteMk(P, mark) {
   // crosswind mast folded low on the rear roof (k2 height-law: no p95 spike)
   P.add('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
   P.add('turretDetail', cylZ(0.02, 0.55, 8), -0.30, 0.915, L(-1.38), 0.10, 0, 0);
+  // s5322-B5 wind-sensor head at the folded mast tip — T-crossbar + vane
+  // stub FLUSH with the rod's own certified line (whip-rough law: no height).
+  P.add('turretDark', box(0.085, 0.017, 0.017), -0.30, 0.938, L(-1.60));       // crossbar T
+  P.add('turretDark', box(0.017, 0.017, 0.055), -0.30, 0.938, L(-1.635));      // vane stub aft
+  P.add('turretDark', cylY(0.016, 0.016, 0.03, 6), -0.30, 0.925, L(-1.60));    // sensor drum under the bar
   // antennas: print carries ONE right whip (x +0.87, z -0.95, base 2.29,
   // tip 3.55); left base authored folded (print-true absence of the rod)
   addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.27, r: 0.02, rake: 0, seed: 48 }),
     0.87, 0.86, L(-0.885));                                                    // vertical rod (leaning tips read partial columns in the front trace)
   P.add('turretDark', cylY(0.035, 0.04, 0.09, 8), -0.87, 0.905, L(-0.885));    // left whip base drum, rod stowed
+  // s5322-B8 antenna BASES realized: AB-armored feed boxes + cable loops at
+  // both whip stations (tops nest under the certified 2.25 base-drum column).
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.05, 0.05, 0.07), s * 0.795, 0.895, L(-0.90));    // tuner feed box inboard of the pot
+    P.add('turretDetail', torus(0.030, 0.008, 8), s * 0.76, 0.856, L(-0.90));  // coiled cable service loop nested under the base-drum column
+  }
   // mantlet: protruding central block + backward-raked wedge cheeks + coax
   // (gate ref band 1.55..1.86 over +1.7..+2.12 zW)
   P.addGunExtra(box(0.75, 0.33, 0.44), 0, 0.045, 0.95);                        // central mantlet block 1.53..1.86 (world z 1.68..2.12)
   P.addGunExtra(box(0.52, 0.40, 0.34), 0, 0.02, 0.62);                         // collar shroud closing the cavity behind the block (§5.18 no-air)
   P.addGunExtra(cylZ(0.165, 0.30, 14, 0.14), 0, 0, 1.22);                      // gun collar lead
-  P.addGunExtraDark(cylZ(0.032, 0.10, 8), 0.28, 0.10, 1.10);                   // coax port right of gun
+  // s5322-A1 coax MG 42/59 — REAL aperture (owner MBT order): armored collar
+  // ring at the block face + recessed dark throat + 5cm stub barrel w/
+  // booster cap. Protrusion budget measured twice (0.30-proud rod −0.67
+  // plan_turret, 0.16-proud −0.38 — both pulled back per §5.290): the port
+  // now reads via the collar/tone with ≤0.06 proud of the face, sub-column
+  // beside the bare ref tube. Gun-bucketed so the coax ELEVATES with the
+  // 120mm (§B5/§B3.1).
+  P.addGunExtra(cylZ(0.050, 0.055, 10), 0.28, 0.07, 1.145);                    // aperture collar at the block face
+  P.addGunExtraDark(cylZ(0.034, 0.09, 8), 0.28, 0.07, 1.135);                  // port throat (recessed dark)
+  P.addGunExtraDark(cylZ(0.014, 0.04, 8), 0.28, 0.07, 1.185);                  // MG 42/59 stub muzzle
+  P.addGunExtraDark(cylZ(0.019, 0.025, 8), 0.28, 0.07, 1.215);                 // booster cap
   for (const s of [-1, 1]) {
     P.add('turret', slab(                                                      // raked mantlet wedge cheeks (turret-fixed) — tops pulled back with the
       [s * 0.375, 0.26, L(2.00)], [s * 0.55, 0.26, L(1.76)], [s * 0.55, 0.26, L(1.58)], [s * 0.375, 0.26, L(1.70)],  // §5.299 cheek rake (33°) so the wedges hug
@@ -365,11 +497,11 @@ function buildArieteMk(P, mark) {
     addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.05, r: 0.02, rake: 0, seed: 52 }),
       -0.87, 0.86, L(-0.885));                                                 // second whip rigged on the C2 fit
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.62, seed: 46 }), -0.42, 0.87, L(-0.60), [0, 2.9, 0]); // loader's MG42/59 stowed low (AMV keeps it)
+      elev: 0, shield: false, scale: 0.62, seed: 46 }), -0.42, 0.87, L(-0.60), [0, 2.9, 0]); // s5322-A3 loader's MG42/59 at the certified stowed seat (AMV keeps it; re-seat experiment cost whole — reverted w/ receipt)
     P.decal('turret', 'number', 'C2 01', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
   } else {
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.62, seed: 45 }), -0.42, 0.87, L(-0.60), [0, 2.9, 0]); // loader's MG42/59 stowed low (owner c425f495; k2 low-mount law; clear of the st4 slab)
+      elev: 0, shield: false, scale: 0.62, seed: 45 }), -0.42, 0.87, L(-0.60), [0, 2.9, 0]); // s5322-A3 loader's MG42/59 at the certified stowed seat (owner c425f495; k2 low-mount law; re-seat experiment cost whole — reverted w/ receipt)
     P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
   }
 
