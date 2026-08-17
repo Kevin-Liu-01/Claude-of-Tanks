@@ -1,6 +1,7 @@
 // German Leopard derivative registration. Owner-supplied GLBs stay outside
-// the project and are used only for comparison; all playable geometry is the
-// first-party procedural work in profiles/germany.js.
+// the project and are used only for comparison; all playable geometry is
+// first-party procedural work (profiles/leopard.js ground-up builders for
+// leo2a4m/leo2a6m per §5.248; profiles/germany.js keeps the OTCO package).
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
@@ -20,7 +21,22 @@ function variant(id, donorId, options) {
   Object.assign(spec, options.stats || {});
   if (Number.isFinite(options.reloadS)) spec.gun.reloadS = options.reloadS;
   if (options.shellName && spec.gun?.shells?.[0]) spec.gun.shells[0].name = options.shellName;
-  if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
+  // §5.248 ground-up builds own their dims: donor clones silently carried
+  // their donors' silhouette* gate overrides into the dims anchor (the
+  // china-lane ztz85_iii/ztz99a2 bug class) — strip every inherited
+  // silhouette row before applying this row's explicit dims.
+  if (options.dims) {
+    for (const key of Object.keys(spec.dims)) {
+      if (key.startsWith('silhouette')) delete spec.dims[key];
+    }
+    spec.dims = { ...spec.dims, ...options.dims };
+  }
+  // §5.248 ground-up builds own their rigs: measured turret ring / gun
+  // trunnion seats and published-overall muzzle lengths (the shadow-proxy
+  // §C law sizes proxies from armor.gunBarrel — keep it the visual truth).
+  if (options.turretPivot) spec.armor.turretPivot = options.turretPivot;
+  if (options.gunPivot) spec.armor.gunPivot = options.gunPivot;
+  if (options.gunBarrel) Object.assign(spec.armor.gunBarrel, options.gunBarrel);
   spec.visual = {
     ...spec.visual,
     scheme: options.scheme,
@@ -55,7 +71,26 @@ export const GERMANY_SPECS = {
     name: 'Leopard 2A4M', number: 'A4M', scheme: 'stripes',
     base: '#4a5141', weather: '#656b58', patches: ['#2b3329', '#625941', '#77705b'],
     camoScale: 0.42,
-    dims: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 4.07, heightM: 2.75 },
+    // §5.248 germany-round true-up (docs/references/tanks/leo2a4m.md):
+    // hull 7.72 / overall 9.96 (L44 forward, REG bracket — the print's own
+    // muzzle sits at rear + 9.96 within 0.2% once width-anchored true);
+    // width 3.77 = the measured over-skirt/armor datum (the REG 4.07 add-on
+    // figure is not carried by the print — divergence documented in the
+    // packet); height 2.60 = the p95 body-course roof datum (§5.73-1 law —
+    // the 2.75 figure is an over-periscope datum the p95 recipe cannot see;
+    // the print's own 3.556 read is its whip-antenna cluster, §5.261 law).
+    dims: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 3.77, heightM: 2.62 },
+    // measured rig (§5.248 rebuild): ring plane at the 1.80 deck, gun axis
+    // 2.00 = the honest real-vehicle trunnion floor (overlay-measured: the
+    // print's own tube axis reads ~1.93 world — LOW; the r2 2.13 and a
+    // tried 2.18 both left a half-tube red under-strip on the side views,
+    // the residual 0.07 vs the print is the documented print-proportion
+    // cap); muzzle world 6.24 = 0.30 + 0.75 + 5.19 (bore-mouth law). A
+    // 5.25 tube was tried and REVERTED: the proc lit span outgrew the
+    // ref's and re-owned the shared gate camera (grid re-phase — hull
+    // 7.63 / heightM 2.82 regression class).
+    turretPivot: [0, 1.80, 0.30], gunPivot: [0, 0.20, 0.75],
+    gunBarrel: { lengthM: 5.19, radiusM: 0.10 },
     stats: { hp: 2450, enginePowerHp: 1500, weightTons: 61.8, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 38, gunPitchDegS: 32 },
     reloadS: 5.9, shellName: 'DM53A1 APFSDS', armorFactor: 1.22,
@@ -64,7 +99,21 @@ export const GERMANY_SPECS = {
     name: 'Leopard 2A6M', number: 'A6M', scheme: 'stripes',
     base: '#48503f', weather: '#626956', patches: ['#293128', '#605640', '#746d58'],
     camoScale: 0.40,
-    dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.24, heightM: 3.03 },
+    // §5.248 germany-round true-up (docs/references/tanks/leo2a6m.md):
+    // hull 7.72 / overall 10.97 (L55 forward) — print-corroborated to 0.1%
+    // at the true width anchor; width 3.98 = over the bar-armor cage (the
+    // ISAF fit this id models; the REG 4.24 figure inflates every print
+    // read +6.5%, divergence documented in the packet); height 3.03 = the
+    // published over-PERI figure — the PERI crown is authored 3+ side
+    // columns deep so the p95 law lands ON it (whip spikes stay inside
+    // the 3-column p95 budget).
+    dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.98, heightM: 3.03 },
+    // measured rig (§5.248 rebuild): ring plane 1.80, gun axis 2.13; tube
+    // authored 5.98 so the LIT bore mouth lands ~7.15 world (the r1 5.88
+    // tube read 0.13 short on the lit-pixel span) = spec overall off the
+    // -3.80 cage tail (bore-mouth law, L55).
+    turretPivot: [0, 1.80, 0.45], gunPivot: [0, 0.33, 0.85],
+    gunBarrel: { lengthM: 5.98, radiusM: 0.10 },
     stats: { hp: 2600, enginePowerHp: 1500, weightTons: 64.1, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 40, gunPitchDegS: 34 },
     reloadS: 5.7, shellName: 'DM63 APFSDS', armorFactor: 1.27,

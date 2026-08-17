@@ -1317,6 +1317,26 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "leo2a6m",
+   "geoMin": 90.9,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.9,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leo2a4m",
+   "geoMin": 89.5,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 89.5,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }
