@@ -3416,6 +3416,48 @@ function merkavaRingTub(P, t) {
   }
 }
 
+// Flat rear armor datum shared by the source-authored Merkava family.  The
+// cast/modular shells intentionally taper toward the tail, but their bustle
+// baskets and cage rails need a transverse armor face to land on.  Earlier
+// versions let the shell taper finish immediately in front of the basket,
+// which made the rack look pinned to a point or suspended over air in the
+// rear quarters.  This shallow closed bulkhead overlaps the shell/bustle at
+// its front edge and the basket root at its rear edge.  Its dimensions are
+// derived from each mark's authored basket, so it stays family-specific and
+// cannot widen the certified turret envelope.
+function merkavaRearTurretBulkhead(P, t) {
+  if (!t.basket || !Number.isFinite(t.basketHW)) return;
+  const { box } = KIT;
+  const rearFaceZ = t.basket.z0 - 0.025;
+  const depth = 0.16;
+  const hw = Math.min(t.basketHW * 0.96, t.hwMax * 0.95);
+  const top = t.basket.top - 0.025;
+  const bot = Math.min(t.basket.bot - 0.035, top - 0.30);
+  const midY = (top + bot) / 2;
+
+  // Main transverse plate: 13.5 cm remain buried in the turret/bustle and
+  // the final 2.5 cm overlap the rack root, producing one visible load path.
+  P.add('turret', box(hw * 2, top - bot, depth), 0, midY, rearFaceZ + depth / 2);
+
+  // Recessed service breaks keep the new flat face from reading as a blank
+  // cuboid.  Relief is only 4 mm proud and remains inside the basket width.
+  P.add('turretDark', box(hw * 1.58, 0.018, 0.012), 0, top - 0.14, rearFaceZ - 0.004);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.016, Math.max(0.16, top - bot - 0.13), 0.012),
+      s * hw * 0.43, midY - 0.015, rearFaceZ - 0.004);
+    // Upper and lower basket shoes extend through the rear plane and bury
+    // into the first cage course; they are structural ties, not floaters.
+    P.add('turretDark', box(0.12, 0.055, 0.20),
+      s * hw * 0.72, top - 0.055, rearFaceZ - 0.075);
+    P.add('turretDetail', box(0.10, 0.050, 0.18),
+      s * hw * 0.72, bot + 0.065, rearFaceZ - 0.065);
+  }
+  for (let i = -2; i <= 2; i++) {
+    P.add('turretDark', box(0.026, 0.026, 0.014),
+      i * hw * 0.30, top - 0.055, rearFaceZ - 0.006);
+  }
+}
+
 function merkavaSmallTurret(P, t) {
   const { box, cylY, polyTurret, lathe, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -5651,6 +5693,9 @@ function buildMerkavaMark(P, p) {
   if (!sourceOracleTurret) {
     if (p.turretStyle === 'small') merkavaSmallTurret(P, t);
     else merkavaModularTurret(P, t);
+  }
+  if (['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(P.spec.id)) {
+    merkavaRearTurretBulkhead(P, t);
   }
   // r2: the old `ringFloor` interior column (bot y~0.6) is DELETED — it
   // mimicked the pre-repair oracles' fused crew-tunnel interiors; the
