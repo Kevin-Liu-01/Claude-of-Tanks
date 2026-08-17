@@ -12,7 +12,6 @@
 // The three GLBs remain fixed local visual/metric oracles only; runtime
 // playables stay first-party procedural.
 
-import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
@@ -129,7 +128,7 @@ function polishWhips(P, list, seedBase) {
 // ===========================================================================
 
 function buildT72M1Jaguar(P) {
-  const { box, cylX, cylY, cylZ, torus, buildRunningGear, headlight } = KIT;
+  const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
 
   // ---- hull loft to the measured whole-silhouette lines -------------------
   loftHull(P, {
@@ -186,37 +185,10 @@ function buildT72M1Jaguar(P) {
     // instead of ambient-dead discs
     tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
   });
-  // dished wheel faces (suspension-owned running-gear meshes, §B4)
-  {
-    const gearParts = { hull: [], dark: [], detail: [] };
-    const gearAdd = (slot, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
-      gearParts[slot].push(KIT.xform(geo, x, y, z, rx, ry, rz));
-    };
-    for (const s of [-1, 1]) for (const z of wheelZs) {
-      gearAdd('hull', cylX(0.216, 0.024, 18), s * 1.502, 0.47, z);
-      gearAdd('dark', torus(0.154, 0.010, 18), s * 1.516, 0.47, z, 0, Math.PI / 2, 0);
-      gearAdd('detail', cylX(0.078, 0.030, 14), s * 1.522, 0.47, z);
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2;
-        gearAdd('dark', cylX(0.013, 0.026, 8), s * 1.528,
-          0.47 + Math.sin(a) * 0.109, z + Math.cos(a) * 0.109);
-      }
-    }
-    for (const [slot, parts] of Object.entries(gearParts)) {
-      if (!parts.length) continue;
-      const geometry = KIT.mergeAll(parts);
-      if (slot === 'hull') geometry.setAttribute('color', new THREE.BufferAttribute(
-        new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
-      const material = slot === 'hull' ? P.mats.hull
-        : slot === 'detail' ? P.mats.detail : P.mats.dark;
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = `gear_t72m1jaguar_wheelFace_${slot}`;
-      mesh.userData.runningGear = true;
-      mesh.castShadow = mesh.receiveShadow = true;
-      P.hullG.add(mesh);
-      P.disposables.push(geometry);
-    }
-  }
+  // The smart running-gear builder above owns the complete dished wheel
+  // train.  Do not add a second static face course here: it cannot follow the
+  // suspension and previously produced the same doubled-wheel artifact seen
+  // on older Abrams/Leopard builds.
 
   // ---- skirts: WIDTH ANCHOR ±1.795 (published 3.59) -----------------------
   // §5.267 fix 2 (buried-gear class): the band rides fender-hung like the
@@ -341,6 +313,17 @@ function buildT72M1Jaguar(P) {
       tileW: 0.26, tileH: 0.215, tileD: 0.05,
       ry: s * 0.60, rx: -0.16,
     });
+    // Conformal ERAWA flank course: the blocks follow the cast side instead
+    // of hovering beyond it, and give the Jaguar the layered armor read that
+    // was being lost at normal garage distance.
+    for (let i = 0; i < 4; i++) {
+      const z = 0.18 - i * 0.36;
+      const x = 1.17 - i * 0.025;
+      P.add('turret', box(0.075, 0.235, 0.30), s * x, 0.39, z,
+        -0.10, s * (0.10 + i * 0.035), 0);
+      P.add('turretDark', box(0.018, 0.16, 0.24), s * (x + 0.041), 0.40, z,
+        -0.10, s * (0.10 + i * 0.035), 0);
+    }
   }
 
   // roof: REAL cupolas (§5.267 fix 1 — lids + hinge + radial periscope
@@ -358,6 +341,33 @@ function buildT72M1Jaguar(P) {
   P.add('turretDark', box(0.26, 0.14, 0.03), -0.50, 0.72, 0.455);
   P.add('turretDark', KIT.cylZ(0.075, 0.02, 14), -0.42, 0.72, 0.468, 0, 0, 0);
   P.add('turretGlass', box(0.16, 0.08, 0.02), -0.52, 0.72, 0.472);
+  // Shallow roof armor/service panels and periscope cadence.  These remain
+  // under the certified crown but break up the formerly empty dome top.
+  for (const [x, z, rz] of [[0.12, -0.06, -0.10], [0.20, -0.55, 0.08], [-0.05, -0.92, -0.06]]) {
+    P.add('turret', box(0.34, 0.035, 0.28), x, 0.815, z, 0, 0, rz);
+    P.add('turretDark', box(0.27, 0.012, 0.035), x, 0.839, z + 0.08, 0, 0, rz);
+  }
+  for (const [x, z, yaw] of [[0.06, 0.28, -0.10], [0.34, 0.10, 0.08], [0.60, -0.17, 0.18]]) {
+    KIT.periscope(P, 'turretDetail', x, 0.835, z, yaw);
+  }
+  // Protected commander panorama and Luna-style cheek searchlight.  Both
+  // have broad armor shoes and visible lens backs, so neither reads as a
+  // loose box pushed into the casting.
+  P.add('turret', box(0.38, 0.055, 0.38), 0.44, 0.755, -0.72);
+  P.add('turret', box(0.30, 0.18, 0.30), 0.44, 0.84, -0.72, -0.04, 0.05, 0);
+  P.add('turretDark', box(0.22, 0.12, 0.026), 0.44, 0.85, -0.553, -0.04, 0.05, 0);
+  P.add('turretGlass', box(0.15, 0.075, 0.018), 0.44, 0.85, -0.537, -0.04, 0.05, 0);
+  P.add('turret', box(0.36, 0.11, 0.24), 0.68, 0.55, 0.62, -0.12, 0.18, 0);
+  P.add('turretDark', cylZ(0.145, 0.15, 18), 0.68, 0.58, 0.73);
+  P.add('turretGlass', cylZ(0.112, 0.018, 18), 0.68, 0.58, 0.817);
+  // Two paired roof cassettes continue the ERAWA field over the gun shoulders
+  // while leaving the sight and both crew stations unobstructed.
+  for (const s of [-1, 1]) for (let row = 0; row < 2; row++) {
+    P.add('turret', box(0.25, 0.060, 0.25), s * 0.20, 0.735 - row * 0.035,
+      0.48 - row * 0.29, -0.12 - row * 0.05, s * 0.06, 0);
+    P.add('turretDark', box(0.19, 0.012, 0.035), s * 0.20, 0.773 - row * 0.035,
+      0.55 - row * 0.29, -0.12 - row * 0.05, s * 0.06, 0);
+  }
   // commander day/thermal head, low profile (within dome band)
   P.add('turretDetail', box(0.24, 0.14, 0.22), -0.38, 0.76, -0.26);
   P.add('turretDark', box(0.18, 0.08, 0.025), -0.38, 0.77, -0.145);
@@ -995,6 +1005,30 @@ function buildPL01(P) {
   P.add('turretDark', box(1.60, 0.014, 0.02), 0, 0.722, -0.60);
   P.add('turretDark', box(0.02, 0.014, 2.10), -0.52, 0.722, -1.35);
   P.add('turretDark', box(0.02, 0.014, 2.10), 0.52, 0.722, -1.35);
+  // Stealth-compatible applique: shallow faceted side panels, recessed
+  // sensor faces and roof strakes.  They add styling/armor subdivision while
+  // preserving the PL-01's intentionally clean, low-observable silhouette.
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      const z = 0.42 - i * 0.52;
+      const x = 1.18 + Math.min(i, 2) * 0.055;
+      P.add('turret', box(0.055, 0.24, 0.42), s * x, 0.40, z,
+        -0.08, s * (0.10 + i * 0.035), 0);
+      P.add('turretDark', box(0.018, 0.16, 0.30), s * (x + 0.032), 0.405, z,
+        -0.08, s * (0.10 + i * 0.035), 0);
+    }
+    P.add('turret', box(0.22, 0.055, 1.28), s * 0.72, 0.755, -0.76,
+      0, s * 0.06, 0);
+    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, 0.790, -0.76,
+      0, s * 0.06, 0);
+    P.add('turret', box(0.24, 0.10, 0.26), s * 1.02, 0.61, -1.86,
+      -0.10, s * 0.14, 0);
+    P.add('turretGlass', box(0.14, 0.055, 0.020), s * 1.02, 0.62, -1.715,
+      -0.10, s * 0.14, 0);
+  }
+  for (const [x, z, yaw] of [[-0.34, 0.42, -0.12], [0, 0.34, 0], [0.34, 0.42, 0.12]]) {
+    KIT.periscope(P, 'turretDetail', x, 0.755, z, yaw);
+  }
 
   // paired EO/hatch domes on the shoulders (print Cylinder.002/.004 —
   // crowns held at the published band 2.805, certified vs the print's 2.87)
