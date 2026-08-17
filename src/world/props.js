@@ -3783,16 +3783,22 @@ ${snowCap ? `
   const MAX_CRUSH_ANIMS = 14;
   const _cm = new THREE.Matrix4(), _cq = new THREE.Quaternion();
   const _cax = new THREE.Vector3();
+  // Topple/toss poses run inside the RAF-driven world update. Reuse the same
+  // composition matrices for every bounded animation instead of allocating
+  // three Matrix4 objects per prop per frame.
+  const _animM = new THREE.Matrix4();
+  const _animR = new THREE.Matrix4();
+  const _animT = new THREE.Matrix4();
   let fxBudget = 6; // kind-flavored break bursts per frame (refilled each tick)
 
   function poseToppled(a, ang) {
     _cax.set(a.ax, 0, a.az).normalize();
     _cq.setFromAxisAngle(_cax, ang);
-    const m = new THREE.Matrix4().makeTranslation(a.x, a.y, a.z)
-      .multiply(new THREE.Matrix4().makeRotationFromQuaternion(_cq))
-      .multiply(new THREE.Matrix4().makeTranslation(-a.x, -a.y, -a.z))
+    _animM.makeTranslation(a.x, a.y, a.z)
+      .multiply(_animR.makeRotationFromQuaternion(_cq))
+      .multiply(_animT.makeTranslation(-a.x, -a.y, -a.z))
       .multiply(a.placement);
-    a.im.setMatrixAt(a.index, m);
+    a.im.setMatrixAt(a.index, _animM);
     a.im.instanceMatrix.needsUpdate = true;
     if (a.wirePoleIndex != null && utilityNetwork) {
       const spans = utilityNetwork.setPoleFall(a.wirePoleIndex, a.ax, a.az, ang);
@@ -4036,11 +4042,11 @@ ${snowCap ? `
     // M = T(flight offset) * T(center) * R * T(-center) * placement — tumble
     // about the prop's own mid-height, carried along the ballistic offset
     const cy = a.y + a.h * 0.5;
-    const m = new THREE.Matrix4().makeTranslation(a.x + ox, cy + oy, a.z + oz)
-      .multiply(new THREE.Matrix4().makeRotationFromQuaternion(_tq))
-      .multiply(new THREE.Matrix4().makeTranslation(-a.x, -cy, -a.z))
+    _animM.makeTranslation(a.x + ox, cy + oy, a.z + oz)
+      .multiply(_animR.makeRotationFromQuaternion(_tq))
+      .multiply(_animT.makeTranslation(-a.x, -cy, -a.z))
       .multiply(a.placement);
-    a.im.setMatrixAt(a.index, m);
+    a.im.setMatrixAt(a.index, _animM);
     a.im.instanceMatrix.needsUpdate = true;
   }
 

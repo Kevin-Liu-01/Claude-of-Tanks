@@ -274,3 +274,13 @@ zero: its registered comparison GLB was removed from the runtime repository,
 so forcing a fresh geometry gate returns the Vite HTML fallback to GLTFLoader
 and cannot produce a valid source score. That missing-oracle condition is
 not treated as a procedural-geometry regression.
+
+## 20-PERCENT TURRET HEIGHT CORRECTION (OWNER ORDER, 2026-08-17)
+
+The complete M3A3 armored turret is shortened to `0.80` of its former height
+about the unchanged ring datum. The welded shell, cheek continuations, roof,
+cupolas, glazing, side beds and turret ERA scale as one structural assembly;
+the M242 gun axis follows the same correction and remains buried in its
+mantlet. Equipment keeps its authored proportions: TOW pod, CIV/ISU sights,
+roof weapons, smoke banks, radios, service bins, bustle rack and stowage are
+re-seated onto their corrected supports rather than vertically squashed.

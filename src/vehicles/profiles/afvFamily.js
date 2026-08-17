@@ -562,6 +562,7 @@ function buildMarder1A3(P) {
 // every disposition).
 function addM3A3Turret(P) {
   const { box, cylX, cylY, cylZ, torus, xform, buildGun } = KIT;
+  const TURRET_HEIGHT_SCALE = 0.80;
   clearUpperStructure(P);
   // buildBradley owns a complete A2 upper assembly. Its ordinary turret
   // buckets are cleared by clearUpperStructure; these semantic buckets are
@@ -698,25 +699,42 @@ function addM3A3Turret(P) {
 
   smokePair(P, 0.76, 0.47, 0.30, 4, 3640, -0.36);
   radioPair(P, 0.86, -1.07, 3630, 0.70);
-  P.decal('turret', 'number', 'M3A3', 0.20, [0.895, 0.34, -0.58], Math.PI / 2);
+  P.decal('turret', 'number', 'M3A3', 0.20,
+    [0.895, 0.34 * TURRET_HEIGHT_SCALE, -0.58], Math.PI / 2);
 
   // Destructible BRAT-style turret cassettes. The cheek rows follow the
   // frontal rake; the side rows stand on the dark beds authored above.
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 3; c++) {
-        put(side * (0.24 + c * 0.22), 0.34 + row * 0.17,
+        put(side * (0.24 + c * 0.22), (0.34 + row * 0.17) * TURRET_HEIGHT_SCALE,
           0.92 - c * 0.035, -0.16, side * 0.08, 0,
-          0.72, 0.92, 1.05);
+          0.72, 0.92 * TURRET_HEIGHT_SCALE, 1.05);
       }
     }, true);
     P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
-        put(side * 0.875, 0.27 + row * 0.18, 0.32 - c * 0.31,
-          0, side * Math.PI / 2, side * 0.025, 1.00, 0.96, 1.75);
+        put(side * 0.875, (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE, 0.32 - c * 0.31,
+          0, side * Math.PI / 2, side * 0.025,
+          1.00, 0.96 * TURRET_HEIGHT_SCALE, 1.75);
       }
     }, true);
   }
+
+  // OWNER HEIGHT ORDER (2026-08-17): shorten the complete A3 armored turret
+  // by exactly 20 percent about its ring datum. Structural armor, cupolas,
+  // glazing and backed detail scale together, while semantic equipment keeps
+  // its native dimensions and is re-seated by its lower face. Direct fitting
+  // assemblies (TOW/stowage, MGs, smoke, radios and basket contents) move to
+  // the corrected roof stations without being visually squashed. The gun rig
+  // follows the same datum so its saddle remains buried between the cheeks.
+  P.scaleBuckets([
+    'turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCupola',
+  ], 1, TURRET_HEIGHT_SCALE, 1);
+  P.forEachBucketPart(['turretEquipment'], (geo, bounds) => {
+    geo.translate(0, bounds.min.y * (TURRET_HEIGHT_SCALE - 1), 0);
+  });
+  for (const child of P.turretG.children) child.position.y *= TURRET_HEIGHT_SCALE;
 
   // Retain the full-length A3 spaced side armor as the cassette backing.
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,

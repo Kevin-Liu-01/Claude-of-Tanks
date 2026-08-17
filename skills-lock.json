@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "improve-threejs": {
+      "source": "aidenybai/react-doctor",
+      "sourceType": "github",
+      "skillPath": "skills/improve-threejs/SKILL.md",
+      "computedHash": "8649e0889daf3468b425a1ec843db02f68ea2d82165bc5bc9a8fcaa3daafa9f1"
+    }
+  }
+}
