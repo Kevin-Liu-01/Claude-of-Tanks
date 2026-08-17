@@ -85,3 +85,25 @@ floater receipt: a skin-less seat floated at yaw 90), Tellur-style
 asymmetric smoke banks (6L/3R), rear transverse drum train + rack +
 unditching log at -3.42, 2A46MS via ruBoot + tubeGun + muzzleBore.
 Rig: turretPivot [0,1.38,0.02], gunPivot [0,0.32,0.50], barrel 5.73.
+
+## §5.267 fix round (8.9 -> ordered list, on landed base d7ba844f)
+Delivered per-order: (1) turret-front/roof ERAWA carpet — two ringSkin-
+seated cassette arcs on the bare upper-nose band above the wedge tops
+(y 0.58 r 1.048 x7, y 0.688 r 0.845 x5, seams on the tile FACES after a
+crown-riding draft owned heightM's 4th column at 2.202) + two forward-roof
+rows + the rear singles re-seated; (2) rear cylinder reads — drums
+re-bucketed hullWood->hull camo steel (the tan wood slot fused them into a
+plank band) with dark end rings + hub bosses + crown straps, backing plate
+replaced by an open rail frame (3 rails + 5 posts, same -3.4175 extreme),
+log raised proud with dark-timber rehookClone + end discs + risers;
+(3) real louvre relief on the deck run; (4) commander cupola lid
+(polishCupola sunk 12 mm — crown 2.185) + radial wreath + gunner seam ring
+with handles.
+DIMS-100 HOLD receipts: the 4th p95 column chased through the cupola
+cluster (2.213 lug), arc seams (2.202), and finally the whip stubs' AA-
+faded tips (2.2016-2.2124 phase-dependent) — stubs now end under the 2.19
+crown; heightM reads 2.19 pct 0.05 with real margin.
+CLOSE (x2 bit-identical): dims 100 HELD / floaters 100 HELD / whole 5.2 /
+turret 0.6 / hull 0 / stations 0 (all chassis_vlo-capped as certified —
+the excision plan stands). Audits: clip 0/0+0/0 strict, parent 0/0/0,
+holes 0, census mg1+8d. Hash 8d369116 -> 8322c846.

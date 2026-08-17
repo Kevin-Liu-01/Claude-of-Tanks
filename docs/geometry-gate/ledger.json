@@ -1223,10 +1223,10 @@
   },
   {
    "id": "t72m1_jaguar",
-   "geoMin": 90.6,
+   "geoMin": 90.8,
    "gatePassed": true,
    "components": {
-    "wholeCurves": 90.6,
+    "wholeCurves": 90.8,
     "dims": 97.4,
     "floaters": 100
    }
@@ -1239,7 +1239,7 @@
     "hullCurves": 0,
     "stations": 0,
     "turretCurves": 0.6,
-    "wholeCurves": 4,
+    "wholeCurves": 5.2,
     "dims": 100,
     "floaters": 100
    }

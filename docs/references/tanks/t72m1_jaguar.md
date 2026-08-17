@@ -80,3 +80,30 @@ Rig: turretPivot [0,1.40,-0.02], gunPivot [0,0.24,0.52], barrel 5.74
   pl01's p95 at 2.89.
 - Evacuator/boot diameters interact with the 12% body filter: dia >=0.30
   on a 2.5-governing-height tank turns tube columns into body columns.
+
+## §5.267 fix round (7.8 -> ordered list, on landed base d7ba844f)
+Delivered per-order: (1) T-72 family turret read — visible mantlet block +
+cheeks + chin AT the dome face (the first pass sat at gun-local z 0-0.2,
+INSIDE the shell — receipt: official whole +0.1 when moved to local
+0.62-0.95), sealed ruSaddle behind the boot, cast waist seam (6.8 mm proud
+at the measured 1.2212 wall), lifting bosses, cheek weld beads, real
+cupolas (polishCupola: domed lids capped 2.246-2.252, hinge lugs at
+ring-top, RADIAL periscope wreaths — lateral pokes so the p95 budget
+stays), roofTiltScale 0.55 crown shading; (2) gear un-buried — skirt band
+re-hung 0.72->0.80 hem with a rubber lower band (receipts: 1.00 hem cost
+the fused side masks -0.3; 0.80 recovers +0.4 over the r1 close while the
+dished pairs + tireHex 0x2e302a / wheelHex 0x49503f re-hooked clones read
+crisply); (3) hull side broken — fender support brackets x7/side onto the
+sponson wall, bow corner boxes seated by slot-floor webs + mudflap knees
+(first webs at y 0.91 printed -0.28 bottoms x3 cols — re-seated inside the
+box/floor union), flap hinge strips; (4) real louvre relief (sunk wells +
+ribs, tops <= deck+0.006 after a +0.03 draft cost mean +0.2%); (5) kit —
+Asteria hood brow/cheeks/lens ring, RCWS pedestal + receiver mass + trough
+(steep-stow receipts: elev 0.18 @ scale 0.72 read heightM 2.27, elev 0.55
+raised the tip to 2.33 — final scale 0.62 elev 0.35 at the shoulder),
+guarded light pods (tucked to the glacis line after a proud draft),
+unditching log restored to the r1 silhouette with dark-timber rehookClone
+(the plank read was TONE — pale wood segments), end discs.
+CLOSE (x2 bit-identical): wholeCurves 90.8 (hold 90.6 BEATEN +0.2) /
+dims 97.4 / floaters 100 -> min 90.8 PASS. Audits: clip 0/0+0/0 strict,
+parent 0/0/0, holes 0, census mg1+8d. Hash c5f74df0 -> 98798d10.
