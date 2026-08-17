@@ -1399,6 +1399,55 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "ua_t84_oplot_m",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 8.1,
+    "stations": 44.6,
+    "turretCurves": 0,
+    "wholeCurves": 18.4,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ua_t80u_kursk",
+   "geoMin": 82.6,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 82.6,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ua_t64bv",
+   "geoMin": 30.5,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 39.6,
+    "stations": 36.8,
+    "turretCurves": 30.8,
+    "wholeCurves": 30.5,
+    "dims": 99.8,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ua_t80bv",
+   "geoMin": 2.5,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 56.8,
+    "stations": 26.7,
+    "turretCurves": 19.3,
+    "wholeCurves": 2.5,
+    "dims": 95,
+    "floaters": 100
+   }
   }
  ]
 }
