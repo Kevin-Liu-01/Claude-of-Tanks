@@ -8671,3 +8671,22 @@ LAND (poland/sweden/china/ukraine/japan/IFV lanes are free NOW; the
 rounds relayed (t64bv1 gets the donbass print mid-round; type90/
 leo2a4/leo2a6 prints queue behind their lanes' current rounds).
 STACKED GOALS: §5.247 (ten tanks) + §5.248 (this wave) both enforce.
+
+## 5.249 §5.248 ONBOARDING COMPLETE — 28/28 REGISTERED (2026-08-17):
+batch B (15, folder) + batch A (13, root) both landed: quarantine
+parking, provenance verdicts (4x CC-BY-NC never-ship class, 3x
+viewer-rip/WT-fingerprint strong suspects incl. the Arrafi rip-poster
+account trio, 1x Tripo AI weak instrument, the rest clean-parked),
+node censuses, three-map + vertex-REG rows, ATTRIBUTION sections.
+SIDE FINDINGS: several registered oracle paths DANGLING on disk
+(type10-repaired, recovered/type90, m2_bradley_ifv, leo2a6_buh —
+.bak-only; the whole public/models/tanks tree reads untracked =
+parallel-session territory); spz_puma RESTORED from the same-source
+re-drop; type10 re-drop = byte-identical pristine receipt;
+DISK-RESTORE ROUND queued for the rest. REBUILD ROUNDS: poland/
+sweden/china spawned earlier; UKRAINE + ITALY + IFV spawning now;
+japan (type90-alt/type10/stb1) + germany-leopards (leo2a6m/leo2a4m)
+queue behind their busy lanes. ASK-OWNER banked: upior concept dims
+(print-proportional default), bmp3 nation (Russia default — ROK
+livery noted), stb1 spec 9.20 vs published 9.42, m2a3_bradley as
+family-reference vs new playable id.
