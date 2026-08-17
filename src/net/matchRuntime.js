@@ -852,7 +852,11 @@ export class MatchClientRuntime {
   }
 
   readyForMatch() {
-    if (this.closed || this.readySent) return false;
+    if (this.closed) return false;
+    // READY is idempotent at authority. Permit a caller to retransmit it
+    // until a countdown/playing snapshot confirms the barrier released.
+    // WebRTC control is reliable, but a retry also closes the tiny
+    // lobby-to-match listener handoff race and makes simulated links robust.
     const sent = this.#send(MESSAGE_TYPES.READY, { loaded: true });
     if (sent) this.readySent = true;
     return sent;

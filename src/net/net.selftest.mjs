@@ -1159,6 +1159,40 @@ function createTestSimulation() {
   host.close('test_done');
 }
 
+// Match readiness is safe to retransmit until a phase snapshot acknowledges it.
+{
+  const simulation = createTestSimulation();
+  const link = createLoopbackTransportPair({ direct: true });
+  let readyAttempts = 0;
+  const clientTransport = {
+    get readyState() { return link.client.readyState; },
+    send(message) {
+      if (message?.type === MESSAGE_TYPES.READY && readyAttempts++ === 0) return true;
+      return link.client.send(message);
+    },
+    onMessage(listener) { return link.client.onMessage(listener); },
+    onClose(listener) { return link.client.onClose(listener); },
+    close(reason) { return link.client.close(reason); },
+  };
+  const host = new AuthoritativeMatchRuntime({ simulation });
+  const client = new MatchClientRuntime({
+    transport: clientTransport,
+    playerId: 'ready-retry',
+    interpolationDelayMs: 0,
+    clock: () => 0,
+  });
+  host.attachPeer({ peerId: 'ready-retry', transport: link.host });
+  client.connect();
+  assert.equal(client.readyForMatch(), true, 'first READY is accepted by the transport');
+  assert.equal(host.matchStarted, false, 'a lost first READY keeps the barrier closed');
+  assert.equal(client.readyForMatch(), true, 'READY can be safely retransmitted');
+  assert.equal(readyAttempts, 2, 'the retry traverses the control lane');
+  host.advance(50);
+  assert.equal(host.matchStarted, true, 'the retransmitted READY releases the barrier');
+  client.close('test_done');
+  host.close('test_done');
+}
+
 // Solo play is the same host/client path, not a direct simulation shortcut.
 {
   const simulation = createTestSimulation();

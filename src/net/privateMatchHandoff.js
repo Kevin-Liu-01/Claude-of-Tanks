@@ -147,7 +147,15 @@ export function beginPrivateHostMatch({
     worldCollision,
   });
   const roomController = createPersistentRoomController(session);
-  const host = new AuthoritativeMatchRuntime({ simulation, roomController });
+  // The browser render loop already clamps one delayed frame to 100 ms.
+  // Retain that same six-tick window in authority so a rare shader/OS frame
+  // cannot discard 33-50 ms of match time and force every client to converge
+  // on a timeline jump. Dedicated runtimes keep their own explicit policy.
+  const host = new AuthoritativeMatchRuntime({
+    simulation,
+    roomController,
+    maxCatchUpTicks: 6,
+  });
   session.bindMatchRuntime?.(host);
   // The browser host's local player does not need an emulated network hop.
   // Keep the same protocol/runtime seam, but deliver its in-process envelopes
