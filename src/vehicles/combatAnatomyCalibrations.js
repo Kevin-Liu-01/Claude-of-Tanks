@@ -2968,16 +2968,16 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
   "leo2a4m": {
     "hull": {
       "min": [
-        -1.8945,
+        -1.9295,
         0.5,
         -3.74
       ],
       "max": [
-        1.8945,
+        1.9295,
         1.82,
         3.61
       ],
-      "sourceHash": "b1a373e8d40eca05"
+      "sourceHash": "21cd586cbd15e04b"
     },
     "turret": {
       "min": [

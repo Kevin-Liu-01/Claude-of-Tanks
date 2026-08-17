@@ -271,3 +271,23 @@ Evidence: shots/leo2a4m-skirts/{before,after-b1,after}/ (§5.254 sets, final
 bytes). Merge receipt: 3-way onto main db3b1375 (base a7218931) — zero
 region overlap, the 7 addEquipment lines preserved verbatim; merged file
 md5 10ce81d2. npm test exit 0 at the merged state.
+
+## 2026-08-17 — 5f26bfde hull-cage restoration
+
+The owner selected the A4M CAN flank treatment visible at repository state
+`5f26bfde0a771415e354e096a209878103ec3840`. Its hull-owned side package is
+restored without rolling back the current hull, tracks, ERA, or two-band inner
+skirt:
+
+- seven stand-off armor cassettes per side use the cited revision's exact
+  `x=±1.89`, `y=1.18`, 0.82 m cadence;
+- five open slat-cage bays per side retain the cited `x=±2.02`,
+  `z=-3.12..1.30`, `y=0.92..1.42` envelope;
+- recessed dark seam bridges, backed divider strips, mounting shoes, and one
+  shallow continuous upper seat plus inboard fender lip return every cassette
+  and cage bay into the retained inner skirt/armor course; the four side-facing
+  rail rows remain open/readable, the cage is not a free-standing track
+  decoration, and panel joints remain;
+- the current segmented fore/rear skirt remains the inner weather/rubber layer,
+  so the restoration adds the requested protected silhouette without replacing
+  or duplicating the suspension-driven track course.

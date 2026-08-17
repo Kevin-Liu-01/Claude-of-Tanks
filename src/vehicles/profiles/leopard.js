@@ -10461,6 +10461,44 @@ export function buildLeo2A4M(P) {
       P.add('hullDark', box(0.015, 0.016, z1 - z0 - 0.04), s * 1.772, 1.30, (z0 + z1) / 2); // band shadow line
     }
   }
+  // OWNER RESTORE (2026-08-17): recover the 5f26bfde A4M CAN hull-side
+  // armor/cage silhouette.  The later two-band skirt remains as the inner
+  // weather-and-rubber course, while these seven thick stand-off cassettes
+  // restore the old protected side volume and give the five huge open cage
+  // bays a real seat.  Coordinates and section cadence are intentionally the
+  // wrapper-era values: outer rail x=+-2.02, armor face x=+-1.925, and the
+  // cage runs continuously from the rear sprocket guard to the mid-hull.
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      const z = 2.43 - i * 0.82;
+      wrapPlate(P, 'hull', s * 1.89, 1.18, z,
+        0.07, 0.53, 0.68, [0, 0, s * 0.018], false);
+      // Backed divider and upper mounting shoe keep each cassette visually
+      // distinct and tie the restored outer course into the current fender.
+      P.add('hullDark', box(0.012, 0.47, 0.018), s * 1.928, 1.18, z - 0.34);
+      P.add('hullDetail', box(0.12, 0.035, 0.10), s * 1.855, 1.455, z);
+    }
+    // Recessed seam bridges close the 14 cm spaces between cassettes without
+    // erasing their dark panel breaks. They are behind the armor faces and
+    // make the restored course one supported hull assembly to the voxel
+    // connectivity probe as well as to the eye.
+    for (let i = 0; i < 6; i++) {
+      const z = 2.43 - (i + 0.5) * 0.82;
+      P.add('hullDark', box(0.055, 0.44, 0.16), s * 1.855, 1.18, z);
+    }
+    wrapSideSlat(P, 'hull', s, {
+      outer: 2.02, seat: 1.89,
+      y0: 0.92, y1: 1.42,
+      z0: -3.12, z1: 1.30,
+      sections: 5,
+    });
+    // A continuous shallow upper seat closes the stand-off cavity in plan
+    // while leaving all four side-facing rail rows open and readable.
+    P.add('hullDark', box(0.17, 0.035, 4.42), s * 1.955, 1.42, -0.91);
+    // The inboard lip ties that outer seat back to the retained two-band
+    // skirt/fender course across the complete seven-cassette run.
+    P.add('hullDetail', box(0.15, 0.035, 5.89), s * 1.825, 1.455, -0.175);
+  }
   // ---- §5.345 GLACIS ERA FIELD (§5.266 articulated blocks, asymmetric:
   // the right 2.94-band bay stays kit — the spare-links fitting owns it).
   // Blocks ride their local glacis plane (+0.035 proud), inboard of the
@@ -10763,8 +10801,9 @@ export function buildLeo2A4M(P) {
   // as-copied seat broke the 2.62/2.64 hardware line).
   leoFLW200(P, { x: 0.78, y: 0.64, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.72, shields: true, seed: 13 });
   // ---- wrapper-era A4M turret package (pre-wave germany.js addA4MPackage,
-  // TURRET-owned rows verbatim via the wrap* helpers; the wrapper's hull
-  // rows stay retired — the NEW hull carries its own §5.248 kit).
+  // TURRET-owned rows verbatim via the wrap* helpers). The matching hull
+  // armor/cage course was restored above over the current two-band inner
+  // skirt; both courses remain independently hull-owned.
   wrapArmorCheeks(P, { reach: 1.60, crest: 0.66 });
   for (const side of [-1, 1]) {
     for (let i = 0; i < 5; i++) wrapPlate(P, 'turret', side * 1.57,
