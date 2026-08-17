@@ -57,6 +57,10 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'BMPT Terminator 2', shortName: 'Terminator 2',
     searchAliases: ['BMPT-72', 'Terminator 2 AFV'],
   },
+  bmpt_t90: {
+    displayName: 'BMPT T-90', shortName: 'BMPT T-90',
+    searchAliases: ['Terminator 3', 'BMPT-90', 'T-90 Terminator'],
+  },
   upior_ifv: {
     displayName: 'Upiór Infantry Fighting Vehicle', shortName: 'Upiór IFV',
     searchAliases: ['Upior IFV', 'Polish Upior'],

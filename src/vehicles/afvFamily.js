@@ -30,6 +30,8 @@ export const AFV_FAMILY_IDS = Object.freeze([
   // bmpt_terminator2 clone is the roster's Terminator)
   'bmp3',
   'upior',
+  // §5.363 owner order — the Terminator on a T-90 hull (new id, tier 10)
+  'bmpt_t90',
 ]);
 
 function variant(id, donorId, o) {
@@ -466,7 +468,46 @@ export const AFV_FAMILY_SPECS = {
       trackWidthM: 0.36, camoScale: 0.42,
     },
   },
+
+  // -------------------------------------------------------------------------
+  // §5.363 OWNER ORDER (verbatim): "add a bmp terminator 2 where it has an
+  // even crazier beefier two autocannon turret with even more equipment and
+  // decorations and even some era on a t90 hull". NEW id on the certified
+  // T-90A donor (spec clone t90a; geometry T90_PROFILES.t90a + the beefed
+  // station in profiles/afvFamily.js). FALSE-0/photo-class — never gated.
+  // Tier 10 (one over bmpt_terminator2's 9 — the beefier variant).
+  // -------------------------------------------------------------------------
 };
+
+AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
+  name: 'BMPT T-90', nation: 'Russia', number: 'BMPT-90',
+  base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'],
+  // Published stance: the T-90A donor's 6.86 hull IS the vehicle; overall
+  // reads the twin 30 mm tips past the bow (measured tip +4.109 / stern
+  // −3.455). heightM publishes the solid station crown (pano head cap at
+  // 2.90 — whips are mask-filtered, §D whip-rough law). silhouette* rows
+  // are honest node-measured AABBs (tools/tmp-bmpt-t90-measure.mjs, packet).
+  dims: { hullLengthM: 6.86, overallLengthM: 7.56, widthM: 3.78, heightM: 2.90,
+    silhouetteHullLengthM: 6.90, silhouetteOverallLengthM: 7.56,
+    silhouetteWidthM: 3.78, silhouetteHeightM: 2.90 },
+  trackWidthM: 0.58,
+  // bmpt_terminator2's frame up a notch for the T-90 hull: +150 hp pool,
+  // T-90M-class 1130 hp plant, 48 t with the full skirt/station ERA suite.
+  stats: { hp: 2400, enginePowerHp: 1130, weightTons: 48.0, topSpeedKmh: 60,
+    reverseSpeedKmh: 18, turretTraverseDegS: 60, gunPitchDegS: 48,
+    gunElevationDeg: 45, gunDepressionDeg: 5 },
+  // §5.330 knob: muzzles = the twin 2A42 tips' recoil-local axes (tubes
+  // authored at x ±0.20 in addTerminatorT90Station — wider than the clone's
+  // ±0.16 for the beefier read); one bore assembly per tip (§B3.1 ×2).
+  // reloadS 0.30 = the clone's owner-ordered "super fast" autocannon class.
+  gun: { caliberMm: 30, reloadS: 0.30, baseAccuracy: 0.26, aimTimeS: 1.20,
+    muzzles: [{ x: -0.20, y: 0 }, { x: 0.20, y: 0 }] },
+  shells: [
+    ap('3UBR8 APDS', 30, 75, 56, 1120, 500, 0.30),
+    heat('9M120-1 Ataka-T', 130, 850, 500, 550, 8, 13.5),
+    he('3UOF8 HE-I', 30, 52, 960, 500, 0.30),
+  ],
+});
 
 for (const id of AFV_FAMILY_IDS) {
   TANK_SPECS[id] = TANK_SPECS[id] || AFV_FAMILY_SPECS[id];

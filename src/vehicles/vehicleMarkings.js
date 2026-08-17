@@ -178,6 +178,9 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   bmp3_rok: anchor('turret', 'right', 0.43, 0.46, 0.21, -1),
   ua_m2a3_bradley: anchor('hull', 'left', 0.39, 0.63, 0.24, 1),
   bmpt_terminator2: anchor('turret', 'right', 0.36, 0.48, 0.21, -1),
+  // §5.363 bmpt_t90: the station walls sit behind the quad Ataka columns —
+  // the broad §5.350 skirt-ERA panel field carries the painted designation.
+  bmpt_t90: anchor('hull', 'left', 0.44, 0.60, 0.22, 1),
   upior_ifv: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),

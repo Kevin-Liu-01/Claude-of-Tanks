@@ -1239,6 +1239,246 @@ function buildPumaOracle(P) {
   addPumaOraclePackage(P);
 }
 
+// =============================== BMPT T-90 ==================================
+// §5.363 OWNER ORDER (verbatim): "add a bmp terminator 2 where it has an even
+// crazier beefier two autocannon turret with even more equipment and
+// decorations and even some era on a t90 hull".
+// NEW id `bmpt_t90` ("BMPT T-90", Russia, tier 10) — FALSE-0/photo-class: no
+// oracle exists and none is invented; the id is never gated (the
+// bmpt_terminator2/kf51b ledger-absence class).
+// HULL: the certified T-90A donor (T90_PROFILES.t90a — the T72_PROFILES
+// precedent import): K-5 glacis cassette courses, §5.262 six-wheel rubber
+// course, guarded bow/stern light clusters, split unditching log + stern
+// drums, fender kit, ruSkirtBand. This build adds the §5.350-class flank
+// program on top (full-run skirt ERA panels + top strips + rubber
+// fore/rear sections) with panel bottoms holding the certified 0.98 skirt
+// line — §B9 wheel exposure preserved — plus twin AG-17 bow pods.
+// STATION: the bmpt_terminator2 grammar sized UP — wider/taller armored
+// housing on a broader turntable, twin 30 mm at x ±0.20 (the §5.330
+// spec.gun.muzzles knob seats one bore assembly per tip, §B3.1 ×2), QUAD
+// Ataka rack per flank (the §5.360-ratified arm/web/separated-tube/proud-cap
+// grammar DOUBLED to 2 columns × 2 rows = 8 tubes), full sensor suite (pano
+// post+head, gunner hood, LWR pair, met mast), doubled smoke banks, bustle
+// stowage + cans + spare links, grab rails, cable runs — and K-5 class
+// wedge/brick ERA on the station face + cheeks ("even some era").
+function addTerminatorT90Station(P) {
+  const { box, cylY, cylZ } = KIT;
+  clearUpperStructure(P);
+  // The T-90A donor also dresses its dome through the turretTrack /
+  // turretCupola / turretEquipment buckets, which the shared helper leaves
+  // alone (t72/bmp2/bradley donors never use them — widening the shared
+  // clear would strip live donor equipment on the other residents). Clear
+  // them HERE so no donor spare-track course or cupola floats around the
+  // replacement station.
+  P.clear('turretTrack', 'turretCupola', 'turretEquipment');
+  // Deterministic rig seats: the donor family may adjust group transforms in
+  // its own turret passes — reset scale and re-seat the pivots at this spec's
+  // own armor anchors (§5.361 rig-anchor law: the ring rides turretPivot).
+  P.turretG.scale.set(1, 1, 1);
+  P.gunG.scale.set(1, 1, 1);
+  P.turretG.position.set(0, 1.40, 0.15);
+  P.gunG.position.set(0, 0.68, 0.55);
+
+  // Broad armored turntable + base skirt: both a size up from the
+  // terminator2 station (crazier/beefier read starts at the ring).
+  P.add('turret', cylY(1.04, 1.22, 0.28, 26), 0, 0.06, -0.06);
+  P.add('turret', orientedSlab(
+    [-0.94, 0.12, 1.10], [0.94, 0.12, 1.10], [1.02, 0.12, -1.02], [-1.02, 0.12, -1.02],
+    [-0.62, 0.66, 0.86], [0.62, 0.66, 0.86], [0.72, 0.68, -0.90], [-0.72, 0.68, -0.90]));
+  // Unmanned weapons housing: taller, wider and longer than the clone's
+  // tower, with a distinct roof step so the crown reads two-tiered.
+  P.add('turret', box(0.96, 0.52, 1.52), 0, 0.62, 0.10);
+  P.add('turretDark', box(0.60, 0.22, 0.26), 0, 0.68, 0.80);
+  P.add('turret', box(0.86, 0.08, 1.34), 0, 0.92, 0.06);
+
+  // Twin 30 mm plant at x ±0.20 (wider than the clone's ±0.16 — the beefier
+  // spacing the order asks for). Closed cradles + collars overlap the
+  // housing face; each tube carries its own explicit mouth so the §5.330
+  // muzzles knob (spec x ±0.20) seats one bore assembly per tip (§B3.1 ×2).
+  P.addGunExtra(box(0.24, 0.16, 0.30), 0, 0.05, 0.30);
+  for (const side of [-1, 1]) {
+    P.addGunExtra(box(0.20, 0.30, 0.36), side * 0.20, 0, 0.26);
+    P.addGunExtra(cylZ(0.068, 0.36, 14, 0.05), side * 0.20, 0, 0.58);
+    P.add('gun', cylZ(0.050, 0.60, 12), side * 0.20, 0, 1.00);
+    P.add('gun', cylZ(0.041, 2.55, 12), side * 0.20, 0, 1.88);
+    P.add('gunDark', cylZ(0.058, 0.20, 12), side * 0.20, 0, 3.24);
+    P.add('gunDark', cylZ(0.022, 0.026, 12), side * 0.20, 0, 3.353);
+  }
+  P.muzzleZ = 3.37;
+
+  // QUAD Ataka racks BOTH flanks — the §5.360-ratified grammar doubled:
+  // rack arm rooted through the housing wall, underslung mount block, TWO
+  // hanger webs, 2 columns × 2 rows of SEPARATED tubes (real air between
+  // every pair), clamp collars, PROUD light end caps with recessed dark
+  // mouth rings, rear end plates, and a top strap clamping both columns.
+  for (const side of [-1, 1]) {
+    P.add('turretDark', box(0.52, 0.14, 0.46), side * 0.76, 0.46, 0.16,
+      0, 0, side * 0.07);                                                      // underslung mount block
+    P.add('turret', box(0.50, 0.08, 0.60), side * 0.70, 0.585, 0.20,
+      0, side * 0.03, 0);                                                      // rack arm off the wall
+    P.add('turret', box(0.06, 0.40, 0.48), side * 0.90, 0.47, 0.20,
+      0, side * 0.03, 0);                                                      // inner hanger web
+    P.add('turret', box(0.06, 0.40, 0.48), side * 1.13, 0.47, 0.20,
+      0, side * 0.03, 0);                                                      // outer hanger web
+    P.add('turret', box(0.44, 0.07, 0.48), side * 1.065, 0.71, 0.20,
+      0, side * 0.03, 0);                                                      // top strap over both columns
+    for (const colX of [1.005, 1.245]) {
+      for (let row = 0; row < 2; row++) {
+        const ty = 0.35 + row * 0.25;                                          // 8 cm air between rows
+        P.add('turretDark', cylZ(0.085, 0.85, 14), side * colX, ty, 0.26,
+          0, side * 0.03, 0);
+        for (const cz of [0.06, 0.40]) {
+          P.add('turretDetail', cylZ(0.094, 0.03, 14), side * colX, ty, cz,
+            0, side * 0.03, 0);                                                // clamp collars onto the webs
+        }
+        P.add('turretDetail', cylZ(0.092, 0.035, 14), side * colX, ty, 0.70,
+          0, side * 0.03, 0);                                                  // PROUD light end cap
+        P.add('turretDark', cylZ(0.062, 0.022, 14), side * colX, ty, 0.724,
+          0, side * 0.03, 0);                                                  // recessed dark mouth ring
+        P.add('turretDark', cylZ(0.088, 0.02, 14), side * colX, ty, -0.165,
+          0, side * 0.03, 0);                                                  // rear end plate
+      }
+    }
+  }
+
+  // STATION ERA ("even some era"): K-5 class wedge clamshells hugging both
+  // front cheeks (the t90a eraRuCheeks read, station-local), a staggered
+  // brick cassette course on the sloped face, and flank tiles on the walls.
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.42, 0.26, 0.18), side * 0.50, 0.62, 0.84,
+      -0.30, -side * 0.42, 0);
+    P.add('turretDark', box(0.36, 0.02, 0.15), side * 0.52, 0.76, 0.86,
+      -0.30, -side * 0.42, 0);
+    P.add('turret', box(0.36, 0.22, 0.16), side * 0.60, 0.44, 0.70,
+      -0.24, -side * 0.50, 0);
+  }
+  for (const side of [-1, 1]) {
+    for (const bx of [0.16, 0.40, 0.64]) {
+      P.add('turret', box(0.20, 0.13, 0.10), side * bx, 0.42, 0.945,
+        -0.42, side * 0.10, 0);
+      P.add('turretDark', box(0.15, 0.016, 0.026), side * bx, 0.487, 0.973,
+        -0.42, side * 0.10, 0);
+    }
+    for (const bx of [0.28, 0.52]) {                                           // staggered second course
+      P.add('turret', box(0.20, 0.12, 0.09), side * bx, 0.56, 0.90,
+        -0.42, side * 0.10, 0);
+    }
+    for (let i = 0; i < 2; i++) {
+      armorTile(P, 'turret', side * 0.505, 0.76, 0.44 - i * 0.42,
+        0.09, 0.20, 0.36, [0, 0, side * 0.05], false);
+    }
+  }
+
+  // Full roof suite. Pano: square post + box head (§5.269 bar, no funnel).
+  P.addEquipment('turret', box(0.30, 0.10, 0.32), 0.36, 0.98, -0.34);
+  P.addEquipment('turret', box(0.13, 0.30, 0.13), 0.36, 1.16, -0.34);
+  P.addEquipment('turret', box(0.30, 0.20, 0.28), 0.36, 1.37, -0.33);
+  P.add('turretGlass', box(0.20, 0.12, 0.024), 0.36, 1.38, -0.185);
+  P.add('turretDark', box(0.31, 0.03, 0.29), 0.36, 1.485, -0.33);
+  // Gunner hood on the face roof-step junction + brow.
+  P.addEquipment('turret', box(0.36, 0.24, 0.30), -0.26, 0.99, 0.50);
+  P.addEquipment('turret', box(0.40, 0.05, 0.34), -0.26, 1.13, 0.48);
+  P.add('turretDark', box(0.26, 0.13, 0.015), -0.26, 1.00, 0.648);
+  P.add('turretGlass', box(0.24, 0.11, 0.02), -0.26, 1.00, 0.655);
+  // LWR pair on the roof-step front corners.
+  for (const side of [-1, 1]) {
+    P.addEquipment('turret', box(0.11, 0.11, 0.13), side * 0.40, 1.005, 0.62);
+    P.add('turretGlass', box(0.07, 0.05, 0.014), side * 0.40, 1.01, 0.692);
+  }
+  // Met mast rear-left: shoe + post + cross arm.
+  P.addEquipment('turret', box(0.16, 0.08, 0.16), -0.40, 0.90, -0.52);
+  P.addEquipment('turret', cylY(0.022, 0.026, 0.52, 8), -0.40, 1.19, -0.52);
+  P.addEquipment('turret', box(0.34, 0.022, 0.022), -0.40, 1.47, -0.52);
+
+  // Roof clutter (feed humps over the trunnions, cable trunk + a run to the
+  // hood, service lids with latches) — the §5.269 station-clutter bar.
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.18, 0.12, 0.40), side * 0.225, 0.98, 0.42);
+    P.add('turretDark', box(0.14, 0.02, 0.34), side * 0.225, 1.045, 0.42);
+  }
+  P.add('turretDark', box(0.09, 0.05, 0.92), 0.06, 0.985, -0.20);
+  P.add('turretDark', box(0.05, 0.035, 0.55), -0.30, 0.975, 0.14, 0, 0.3, 0);
+  P.add('turret', box(0.24, 0.035, 0.28), -0.15, 0.978, -0.28);
+  P.add('turret', box(0.24, 0.035, 0.28), 0.13, 0.978, -0.52);
+  P.add('turretDark', box(0.05, 0.014, 0.11), -0.15, 1.0, -0.30);
+  P.add('turretDark', box(0.05, 0.014, 0.11), 0.13, 1.0, -0.54);
+  // Grab rails on both housing walls (posts bridge rail to wall).
+  for (const side of [-1, 1]) {
+    for (const [rz, rl] of [[0.30, 0.55], [-0.38, 0.60]]) {
+      P.add('turretDetail', box(0.022, 0.022, rl), side * 0.515, 0.80, rz);
+      for (const pz of [rz - rl / 2 + 0.05, rz + rl / 2 - 0.05]) {
+        P.add('turretDetail', box(0.035, 0.022, 0.022), side * 0.495, 0.80, pz);
+      }
+    }
+  }
+
+  roofMG(P, -0.30, 0.91, -0.60, 3801, 'nsvt', -0.05, 0.76);
+
+  // Rear equipment: backing plate buried into the base-skirt slope, deep
+  // bustle rack seated on the slab top, cans left / spare links right.
+  P.add('turretDark', box(1.50, 0.20, 0.06), 0, 0.52, -0.94);
+  mount(P, 'turret', FITTINGS.stowageRack({
+    mats: P.mats, w: 1.56, d: 0.44, h: 0.30, fill: 0.78, rails: 3, seed: 3810,
+  }), 0, 0.70, -0.88);
+  mount(P, 'turret', FITTINGS.jerryCans({
+    mats: P.mats, count: 2, seed: 3812,
+  }), -0.52, 0.70, -0.72);
+  mount(P, 'turret', FITTINGS.spareTrackLinks({
+    mats: P.mats, links: 3, width: 0.44, seed: 3814,
+  }), 0.54, 0.685, -0.74);
+
+  // Whip pots on wing shelves off the housing rear roof (§B5 seat law).
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.18, 0.05, 0.18), side * 0.44, 0.895, -0.60);
+  }
+  radioPair(P, 0.92, -0.60, 3820, 0.44);
+
+  // Doubled smoke program: forward banks on the cheek slopes + aft banks on
+  // the base-skirt rear slopes, every bank on its own collar seat.
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.13, 0.20, 0.32), side * 0.72, 0.42, 0.82,
+      0, 0, side * 0.10);
+    P.add('turret', box(0.13, 0.18, 0.28), side * 0.70, 0.42, -0.78,
+      0, 0, side * 0.12);
+  }
+  smokePair(P, 0.78, 0.52, 0.84, 4, 3830);
+  smokePair(P, 0.76, 0.50, -0.76, 3, 3835, -0.38);
+
+  P.decal('turret', 'number', 'BMPT-90', 0.19, [0.487, 0.72, -0.42], Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.56);
+}
+
+function buildBMPTT90(P) {
+  T90_PROFILES.t90a.build(P);
+  addTerminatorT90Station(P);
+  // §5.350-class flank program over the donor's certified thin skirt band:
+  // 8 ERA panels per side (bottoms hold the certified 0.98 line — §B9 wheel
+  // exposure), top strips lapping the fender edge, rubber fore/rear
+  // sections outboard of the 1.70 track outer line.
+  sideArmorCourse(P, { x: 1.815, y: 1.10, h: 0.24, d: 0.62, count: 8,
+    front: 2.50, step: 0.70, cap: false });
+  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+    P.add('hull', KIT.box(0.05, 0.10, 0.55), side * 1.80, 1.235,
+      2.42 - i * 0.72, 0, 0, side * 0.04);
+  }
+  for (const side of [-1, 1]) {
+    P.add('hullDark', KIT.box(0.03, 0.30, 0.42), side * 1.79, 1.02, 2.86,
+      0, 0, side * 0.02);
+    P.add('hullDark', KIT.box(0.03, 0.26, 0.34), side * 1.78, 0.98, -2.72,
+      0, 0, side * 0.03);
+  }
+  // Twin AG-17 bow pods (hull-fixed, the real vehicle's corner stations):
+  // seat buried into the bow deck, armored pod, stub tube with an explicit
+  // dark mouth, drum feed lapped into the pod's inboard wall.
+  for (const side of [-1, 1]) {
+    P.addEquipment('hull', KIT.box(0.20, 0.10, 0.30), side * 1.28, 1.26, 2.55);
+    P.addEquipment('hull', KIT.box(0.24, 0.20, 0.36), side * 1.28, 1.40, 2.53);
+    P.addEquipment('hull', KIT.cylZ(0.034, 0.30, 10), side * 1.28, 1.44, 2.79);
+    P.add('hullDark', KIT.cylZ(0.015, 0.022, 10), side * 1.28, 1.44, 2.945);
+    P.addEquipment('hull', KIT.cylX(0.085, 0.13, 12), side * 1.10, 1.38, 2.48);
+  }
+}
+
 export const AFV_FAMILY_PROFILES = {
   bmp3_rok: { build: buildBMP3ROK },
   ua_m2a3_bradley: { build: buildUAM2A3 },
@@ -1250,4 +1490,6 @@ export const AFV_FAMILY_PROFILES = {
   // §5.248 ground-up wave (print-measured, no donor geometry)
   bmp3: { build: buildBMP3 },
   upior: { build: buildUpior },
+  // §5.363 owner order — Terminator on the T-90 hull (photo-class new id)
+  bmpt_t90: { build: buildBMPTT90 },
 };

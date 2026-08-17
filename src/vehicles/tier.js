@@ -42,6 +42,8 @@ export const TANK_TIER = Object.freeze({
   bmp3_rok: 8, ua_m2a3_bradley: 9, bmpt_terminator2: 9,
   upior_ifv: 9, marder1a3: 7, m3a3_bradley: 8,
   bmp3: 8, upior: 9,
+  // §5.363: the T-90-hull Terminator sits one over bmpt_terminator2.
+  bmpt_t90: 10,
 });
 
 export const ROMAN_TIER = Object.freeze(['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);
