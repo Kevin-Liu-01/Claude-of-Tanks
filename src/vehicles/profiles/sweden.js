@@ -301,27 +301,59 @@ function buildStrv81(P) {
   // commander cupola (left) with the crown at the published 3.01/3.02 line —
   // ORACLE DEFECT CAP: the print's cupola/MG cluster reads 3.08-3.15; the
   // published p95 roof pins this build at 3.02/3.04 (packet cap).
-  P.add('turret', cylY(0.285, 0.315, 0.14, 18), -0.44, 1.10, -0.45);
-  P.add('turretDark', torus(0.27, 0.014, 18), -0.44, 1.185, -0.45);
-  P.add('turret', cylY(0.255, 0.255, 0.055, 18), -0.44, 1.21, -0.45);
-  P.add('turret', KIT.sph(0.13, 16, Math.PI / 2), -0.44, 1.13, -0.45);
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2 + 0.26;
-    P.add('turretGlass', box(0.075, 0.030, 0.016),
-      -0.44 + Math.sin(a) * 0.27, 1.155, -0.45 + Math.cos(a) * 0.27, 0, a, 0);
+  // The earlier station matched the measured bounds but disappeared at
+  // garage scale.  The source's broad multi-block cupola is expressed in
+  // plan (not height) so it remains within the certified roof envelope.
+  P.add('turret', cylY(0.34, 0.37, 0.14, 20), -0.44, 1.10, -0.45);
+  P.add('turretDark', torus(0.325, 0.017, 20), -0.44, 1.185, -0.45);
+  P.add('turret', cylY(0.305, 0.305, 0.055, 20), -0.44, 1.21, -0.45);
+  P.add('turret', KIT.sph(0.155, 18, Math.PI / 2), -0.44, 1.13, -0.45);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + 0.20;
+    P.add('turretDetail', box(0.105, 0.052, 0.035),
+      -0.44 + Math.sin(a) * 0.335, 1.142, -0.45 + Math.cos(a) * 0.335, 0, a, 0);
+    P.add('turretGlass', box(0.079, 0.027, 0.018),
+      -0.44 + Math.sin(a) * 0.345, 1.151, -0.45 + Math.cos(a) * 0.345, 0, a, 0);
   }
-  // loader hatch (right) flush on the crown
-  P.add('turretDark', torus(0.245, 0.013, 16), 0.42, 1.10, -0.42);
-  P.add('turret', cylY(0.235, 0.235, 0.045, 16), 0.42, 1.09, -0.42);
+  // Loader hatch: broad source coaming, hinged lid, vision block and a low
+  // grab handle.  Every part overlaps the roof or the coaming below it.
+  P.add('turretDark', torus(0.285, 0.015, 18), 0.42, 1.10, -0.42);
+  P.add('turret', cylY(0.270, 0.270, 0.050, 18), 0.42, 1.095, -0.42);
+  P.add('turretDetail', box(0.25, 0.042, 0.075), 0.42, 1.132, -0.66);
+  P.add('turretDark', box(0.18, 0.028, 0.038), 0.42, 1.158, -0.64);
+  P.add('turretGlass', box(0.11, 0.026, 0.025), 0.42, 1.135, -0.17);
+  for (const x of [0.31, 0.53]) {
+    P.add('turretDetail', box(0.025, 0.052, 0.19), x, 1.145, -0.42);
+  }
   // shielded Ksp AA mount forward of the cupola, held under the 3.04 line
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.70,
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.84,
     elev: 0.04, shield: false, ammo: true, seed: 8120,
-  }), -0.44, 1.10, 0.02, [0, 0.06, 0]);
+  }), -0.44, 1.04, 0.02, [0, 0.06, 0]);
+  // Source-specific low cradle rails make the mount read as one planted
+  // station rather than a loose barrel over the cast roof.
+  P.add('turretDetail', box(0.040, 0.070, 0.47), -0.67, 1.105, -0.02, 0, 0.06, 0);
+  P.add('turretDetail', box(0.040, 0.070, 0.47), -0.21, 1.105, -0.02, 0, 0.06, 0);
+  P.add('turretDark', box(0.50, 0.040, 0.045), -0.44, 1.125, 0.18, 0, 0.06, 0);
   // periscope cadence on the forward crown
   for (const [x, z, ry] of [[-0.30, 0.86, 0.06], [0.06, 0.92, 0], [0.42, 0.84, -0.08]]) {
     P.add('turretDetail', box(0.13, 0.045, 0.075), x, 1.065, z, 0, ry, 0);
     P.add('turretGlass', box(0.09, 0.020, 0.013), x, 1.088, z + 0.034, 0, ry, 0);
+  }
+  // Low crown service courses and grab rails from the source top view.  The
+  // courses are intentionally shallow and broken around both crew stations.
+  for (const [x, z, w, d, ry] of [
+    [-0.70, 0.35, 0.34, 0.035, -0.18],
+    [0.68, 0.32, 0.32, 0.035, 0.18],
+    [-0.73, -0.98, 0.30, 0.035, 0.08],
+    [0.73, -0.98, 0.30, 0.035, -0.08],
+    [0.00, -1.30, 0.62, 0.032, 0],
+  ]) {
+    P.add('turretDark', box(w, 0.016, d), x, 1.078, z, 0, ry, 0);
+  }
+  for (const x of [-0.76, 0.76]) {
+    P.add('turretDetail', box(0.030, 0.055, 0.50), x, 1.105, -1.12);
+    P.add('turretDetail', box(0.22, 0.055, 0.030), x > 0 ? 0.66 : -0.66, 1.105, -1.36);
   }
   // whip pair: print bases (±0.40, world 2.72, z -0.45/-0.28) and BACKWARD
   // rakes are matched via the mount rotation (antennaWhip's own rake is a
@@ -333,17 +365,19 @@ function buildStrv81(P) {
       seed: 8130 + (s > 0 ? 1 : 0),
     }), s * 0.40, 0.955, -0.82, [s < 0 ? -1.05 : -0.50, 0, 0]);
   }
-  // spotlight seated on the brow plate (bracket post buried in the brow)
-  P.add('turretDetail', box(0.05, 0.16, 0.05), -0.60, 0.60, 1.06);
-  P.add('turretDetail', box(0.16, 0.14, 0.16), -0.60, 0.72, 1.06);
-  P.add('turretGlass', cylZ(0.055, 0.014, 12), -0.60, 0.74, 1.135);
+  // Large source search lamp: backed drum, brow-buried shoe and visible lens.
+  P.add('turretDetail', box(0.10, 0.22, 0.10), -0.60, 0.58, 1.00);
+  P.add('turret', cylZ(0.120, 0.18, 16), -0.60, 0.74, 1.08);
+  P.add('turretDark', torus(0.105, 0.014, 16), -0.60, 0.74, 1.175, Math.PI / 2, 0, 0);
+  P.add('turretGlass', cylZ(0.092, 0.018, 16), -0.60, 0.74, 1.180);
   // smoke dischargers on both cheeks (Centurion sextet cadence)
   for (const s of [-1, 1]) {
+    P.add('turret', box(0.30, 0.18, 0.16), s * 0.84, 0.42, 1.10, 0, -s * 0.12, s * 0.08);
     mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 6, r: 0.038, len: 0.24,
+      mats: P.mats, count: 6, r: 0.046, len: 0.29,
       splay: s * 1.02, pitch: -0.40, arc: 0.52,
       slot: 'detail', seed: 8100 + (s > 0 ? 1 : 0),
-    }), s * 0.87, 0.46, 1.16);
+    }), s * 0.87, 0.48, 1.16);
   }
   liftEye(P, 'turretDetail', -0.86, 0.70, -1.12, -0.5);
   liftEye(P, 'turretDetail', 0.86, 0.70, -1.12, 0.5);
