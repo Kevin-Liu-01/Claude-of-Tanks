@@ -1340,26 +1340,13 @@
   },
   {
    "id": "bmp3",
-   "geoMin": 39.8,
+   "geoMin": 40.2,
    "gatePassed": false,
    "components": {
-    "hullCurves": 62.7,
-    "stations": 73,
-    "turretCurves": 39.8,
-    "wholeCurves": 55.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "bmpt",
-   "geoMin": 8.2,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 53,
-    "stations": 20.6,
-    "turretCurves": 8.2,
-    "wholeCurves": 25.3,
+    "hullCurves": 59.6,
+    "stations": 77.6,
+    "turretCurves": 40.2,
+    "wholeCurves": 54.7,
     "dims": 100,
     "floaters": 100
    }
@@ -1379,10 +1366,10 @@
   },
   {
    "id": "marder1a3",
-   "geoMin": 85.1,
+   "geoMin": 81.9,
    "gatePassed": false,
    "components": {
-    "wholeCurves": 85.1,
+    "wholeCurves": 81.9,
     "dims": 100,
     "floaters": 100
    }

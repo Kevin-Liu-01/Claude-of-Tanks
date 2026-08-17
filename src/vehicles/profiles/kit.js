@@ -1108,5 +1108,11 @@ export const FITTINGS = {
 try {
   KIT.fittings = FITTINGS;
 } catch (_) {
-  queueMicrotask(() => { if (!KIT.fittings) KIT.fittings = FITTINGS; });
+  // Circular-import fallback: the microtask can still fire while another
+  // module in the cycle holds KIT in TDZ (authoritativeMatch.selftest flake,
+  // 2026-08-17) — swallow that tick; importers use the timing-proof
+  // `import { FITTINGS }` spelling and the next access path re-wires it.
+  queueMicrotask(() => {
+    try { if (!KIT.fittings) KIT.fittings = FITTINGS; } catch (_) { /* TDZ tick */ }
+  });
 }

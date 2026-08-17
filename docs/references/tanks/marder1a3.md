@@ -89,3 +89,56 @@ CLOSE (×2 bit-identical): min 85.1 | whole 85.1 dims 100 floaters 100
 (hull/turret/stations vacated — fused print). Vs base: dims 93.2 -> 100,
 floaters 0 -> 100, whole 85.3 -> 85.1 (−0.2, ordered §B4 body-raise; the
 spz_puma −0.2 tolerance precedent). Hash 694568.
+
+## §5.302 OWNER ORDER — hull revert, turret preserved (2026-08-17)
+ORDER (verbatim): "now completely revert our marder hull while preserving
+its new turret".
+DONE — SPLICE: the pre-§5.286 Bradley-donor hull returns COMPLETELY
+(buildBradley loft/gear/skirts/glacis/ramp/fenders + the A3 appliqué rail
+course, hullDetail rail rows and bow lights of the pre-wave builder,
+restored verbatim from 2fc642fb^). The wave's ground-up hull reverts with
+ALL its hull-side fixes as ordered: scalloped hem, one-plane glacis +
+folded fording vane, ramp frame/drums/taillights, glacis appliqué wedges,
+segmented skirt band. The §5.269-fix LOW CAST ROUND-FRONTED turret
+(external MK20 carriage, MILAN bracket, offset ringed commander station,
+unequal service boxes, smoke collar seats, periscope trio, closed rear
+wall + basket) is PRESERVED BYTE-VERBATIM in addMarderCastTurret — only
+the seat moved.
+RING-SEAT RECEIPT: seat rides spec armor.turretPivot = [0.18, 1.895,
+-0.05] — the OLD hull's ring station (pre-wave addMarderTurret sat at
+(0.18, 1.84, -0.05); 1.84 carried a 0.14-tall collar spanning 1.84..1.98).
+The preserved turret's collar is local -0.02..+0.08, so y reconciles to
+1.895: collar world band 1.875..1.975 = 0.030 buried under the donor roof
+plate top 1.905, 0.070 reveal — the same burial class as both prior
+states, and the family ring datum (pre-wave m3a3 used 1.895 on this same
+roof). Sweep box receipt: turret part min y = 1.875 exactly. §B2 no-air at
+the ring seam: no enclosed-island cluster anywhere in the ring band
+(sweep clusters all in kit-standoff zones); side crops show the cast
+skirt flowing into the roof.
+SPEC (hull-side reverts, turret-side stays): dims silhouettes restored
+(6.39 / 6.41 / 3.38 — the gate reproduces them at 0.07-0.08% on the
+restored hull) + silhouetteHeightM 2.85 measured at today's instrument
+(gate actual; the preserved turret crown on the lower donor roof);
+published heightM 3.02 stays (sight-crown publication, turret-side).
+Armor mirror hull envelope reverts to the m2a2-family datum the donor
+hull honestly measures (hl 3.27 / hw 1.64 / inW 0.95 / floor 0.45 /
+trkTop 0.95 / roofY 1.90); turret band, thickness rows, gunPivot
+[0, 0.78, 0.26] and gun data stay on the wave's print-measured values.
+GATE (×2 bit-identical, md5 903d7cfca8763e598fbd51f972d978c1): min 81.9 |
+whole 81.9, dims 100, floaters 100 (hull/turret/stations vacated — fused
+print). The wave row was 85.1 with the ground-up hull; 81.9 is the old
+hull measured against the same fused print — tool-written truth, the
+expected old-hull class.
+HASH: 694568 (59/64365) -> 59cb105c (70 meshes / 82601 verts).
+GUARDS byte-identical: bmp3_rok 7456de28, bmpt_terminator2 1c7d8fbc,
+upior ab3f40e4, upior_ifv 3f16cb9a, ua_m2a3_bradley f882ab20, spz_puma
+73ee54e0, bmp2 8da8b75a, m2a2_bradley a41410ac.
+track-clip --exact: front 0 / rear 0. §B5 receipt: yaw-35 top view — cast
++ carriage + MILAN + rack + MG + banks rotate as one, hull static
+(shots/marder-hullrevert/probe-yaw35/). §B2 sweep: whole-view worst
+1382px = certified-donor class (untouched m2a2 guard sweeps 1045px);
+turret-isolated 6030px is the preserved turret's own open kit
+architecture (mesh rack apertures, pintle standoffs, carriage frame) —
+identical geometry to the ratified §5.269 build.
+EVIDENCE: §5.254 pairs shots/marder-hullrevert/before/ (at 694568) +
+after/ (at 59cb105c), probe-r1, probe-yaw35.

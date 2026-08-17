@@ -666,14 +666,6 @@ const REG = {
     autoPivot: true,
     pubDims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
   },
-  bmpt: {
-    // SanderWolf blockout. Object_6 turret cluster (sensor mast to y 6.44
-    // raw — p95-class height reads); twin-30mm fused into Object_4 (no
-    // gunNode). Nose +z native.
-    path: 'public/models/community-candidates/bmpt2_sanderwolf.glb',
-    turretNode: '^Object_6$', autoPivot: true,
-    pubDims: { hullLengthM: 6.95, overallLengthM: 7.20, widthM: 3.59, heightM: 3.17 },
-  },
   upior: {
     // FICTIONAL Polish concept (905k-vert original; one BMP-2-turret
     // component tell recorded). Gun = sibling Object004. §5.269 FIX-ROUND

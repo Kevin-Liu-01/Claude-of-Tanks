@@ -116,3 +116,36 @@ turret +2.5, stations +2.8, whole =, dims/floaters =; hull −5.3 is the
 ORDERED cost — the blockout print carries hub-deep fused skirts and the
 tall station the critic ordered away (§B7 class: critic/owner law outranks
 oracle matching; residual certified here). Hash cd427718.
+
+## §5.304 OWNER ORDER — id RETIRED from the roster (2026-08-17)
+ORDER (verbatim): "keep our BMPT terminator 2, but remove the BMPT-72
+Terminator 2". Roster mapping per owner ruling: the ORIGINAL clone id
+`bmpt_terminator2` STAYS the roster's Terminator (byte-frozen through the
+removal — hash 1c7d8fbc, 130 meshes / 109796 verts, verified before and
+after); the §5.248 ground-up id `bmpt` (tankLabels 'BMPT-72 Terminator
+2' / shortName 'BMPT-72') is REMOVED. This resolves the §5.269/§5.263
+roster-reversal ASK-OWNER by owner ruling.
+FINAL STATE AT REMOVAL: hash cd427718 (61 meshes / 70962 verts), gate row
+min 5.7 blockout-print cap class (dims 100 / floaters 100), landed §5.286.
+REMOVAL CHECKLIST (§5.287 wiring law in reverse — every registration):
+- src/vehicles/afvFamily.js: AFV_FAMILY_IDS entry + full spec row (53
+  lines) removed; header comment updated with the order.
+- src/vehicles/profiles/afvFamily.js: buildBMPT + its section header (185
+  lines) + AFV_FAMILY_PROFILES registry row removed (grep-verified: the
+  only references were the definition and the registry row).
+- src/vehicles/tier.js: `bmpt: 9` removed (tier.selftest green without
+  the id — registered-but-tierless and tiered-but-unregistered both
+  covered; 114 tanks).
+- src/vehicles/tankLabels.js: label block removed.
+- src/vehicles/vehicleMarkings.js: anchor row removed, comment updated.
+- tools/procedural-fidelity.html + tools/visual-evaluator-page.html +
+  tools/tmp-tank-critic.html: REG rows removed.
+- tools/vertex-extract.mjs: REG row (8 lines) removed.
+- Residual `bmpt` hits in src/tools after the sweep: documentation
+  comments only (this note's cross-references).
+LEDGER: docs/geometry-gate/ledger.json still carries the bmpt row —
+tool-written law: the ORCHESTRATOR drops it at landing (reported, not
+hand-edited). docs/geometry-gate/bmpt.json and this packet STAY as
+history. The print public/models/community-candidates/bmpt2_sanderwolf.glb
+stays on disk as local reference material.
+npm test green at the removal state (no dangling references).

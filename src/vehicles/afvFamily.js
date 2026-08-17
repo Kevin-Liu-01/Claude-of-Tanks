@@ -5,13 +5,17 @@
 // complete certified hull/suspension rigs and publishing their own gameplay
 // identity here.
 //
-// §5.248 IFV WAVE (2026-08-17): five GROUND-UP print-measured ids join the
-// lane — bmp3, bmpt, upior (new), marder1a3, m3a3_bradley (variant rows
-// REPLACED by ground-up specs; the owner ordered ground-up rebuilds for the
-// drop set, superseding the donor-clone variantOf approach for these
-// subjects). Their full spec rows live below with the modern3-pattern local
-// armor mirror; the builders are original constructions in
-// profiles/afvFamily.js authored from docs/references/vertex/<id>.json.
+// §5.248 IFV WAVE (2026-08-17): GROUND-UP print-measured ids joined the
+// lane — bmp3, upior (new), marder1a3, m3a3_bradley. Their full spec rows
+// live below with the modern3-pattern local armor mirror; the builders are
+// original constructions in profiles/afvFamily.js authored from
+// docs/references/vertex/<id>.json. §5.304 OWNER ORDER (verbatim): "keep our
+// BMPT terminator 2, but remove the BMPT-72 Terminator 2" — the ground-up
+// `bmpt` id is REMOVED (spec row, builder, tier, labels, markings, tool REG
+// rows); the `bmpt_terminator2` clone stays the roster's Terminator
+// (hash-frozen 1c7d8fbc at removal). §5.302/§5.306: marder1a3 and
+// m3a3_bradley revert to their pre-wave hulls/bases per owner order — see
+// their rows.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
@@ -22,9 +26,9 @@ export const AFV_FAMILY_IDS = Object.freeze([
   'upior_ifv',
   'marder1a3',
   'm3a3_bradley',
-  // §5.248 ground-up wave
+  // §5.248 ground-up wave (bmpt removed by §5.304 owner order — the
+  // bmpt_terminator2 clone is the roster's Terminator)
   'bmp3',
-  'bmpt',
   'upior',
 ]);
 
@@ -247,11 +251,13 @@ export const AFV_FAMILY_SPECS = {
   // -------------------------------------------------------------------------
 
   marder1a3: {
-    // GROUND-UP REBUILD (replaces the bmp2-donor variant row): Marder 1A3,
-    // the Bundeswehr's tall-hull IFV — 20 mm MK20 in the small two-man
-    // turret, MILAN on the mount, rear ramp. Print marder1a3_arrafi.glb is
-    // fused/suspect (rip-poster account history) — PHOTOS GOVERN (§B7
-    // class); published dims anchor the build.
+    // Marder 1A3, the Bundeswehr's tall-hull IFV — 20 mm MK20 in the small
+    // two-man turret, MILAN on the mount, rear ramp. §5.302 OWNER ORDER:
+    // "now completely revert our marder hull while preserving its new
+    // turret" — the pre-§5.286 Bradley-donor hull returns (buildBradley +
+    // A3 rails); the §5.269 cast turret with the external MK20 carriage is
+    // preserved and re-seated. Print marder1a3_arrafi.glb stays fused/
+    // suspect (rip-poster account history) — PHOTOS GOVERN (§B7 class).
     id: 'marder1a3', name: 'Marder 1A3', nation: 'Germany', era: 'modern', class: 'ifv',
     hp: 1380,
     enginePowerHp: 600, weightTons: 33.5, topSpeedKmh: 65, reverseSpeedKmh: 17,
@@ -272,13 +278,19 @@ export const AFV_FAMILY_SPECS = {
     },
     // Published Marder 1A3 data: 6.88 hull (gun never passes the bow —
     // overall = hull), 3.38 over the appliqué, 3.02 to the sight crown.
-    dims: { hullLengthM: 6.88, overallLengthM: 6.88, widthM: 3.38, heightM: 3.02 },
+    // §5.302 hull revert: the silhouette* rows return with the pre-§5.286
+    // Bradley-donor hull (hull-side honest-measured dims; heightM stays on
+    // the preserved turret's sight-crown publication).
+    dims: { hullLengthM: 6.88, overallLengthM: 6.88, widthM: 3.38, heightM: 3.02,
+      silhouetteHullLengthM: 6.39, silhouetteOverallLengthM: 6.41,
+      silhouetteWidthM: 3.38, silhouetteHeightM: 2.85 },
     armor: ifvArmor({
-      // Photo-class envelope: tall hull roof 2.01 (print deck 2.01-2.07
-      // agrees), turret ring plane 2.02 just ahead of mid, HIGH external
-      // MK20 carriage (axis ~2.52).
-      hl: 3.44, hw: 1.69, inW: 1.05, floor: 0.42, trkTop: 1.05, roofY: 2.01,
-      turretPivot: [0, 2.02, 0.35], gunPivot: [0, 0.78, 0.26],
+      // §5.302 reverted-hull envelope (m2a2 family datum — the Bradley donor
+      // hull the order restores): roof 1.90, ring station (0.18, -0.05) at
+      // 1.895 carrying the PRESERVED §5.269 cast turret + external MK20
+      // carriage; turret-side values stay on the wave's print-measured band.
+      hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
+      turretPivot: [0.18, 1.895, -0.05], gunPivot: [0, 0.78, 0.26],
       barrelLenM: 2.55, barrelRadM: 0.026,
       glacis: [30, 45, 75], lower: [25, 32, 45], side: [20, 35, 60],
       skirt: [15, 25, 45], rear: 15, roof: 12,
@@ -295,13 +307,13 @@ export const AFV_FAMILY_SPECS = {
   },
 
   m3a3_bradley: {
-    // GROUND-UP REBUILD (replaces the m2a2-donor variant row): M3A3 Bradley
-    // CFV — the two-man scout configuration on the A3 digitized hull: CIV
-    // roof viewer, flat-panel appliqué, no side firing ports, expanded
-    // TOW/ammo. Print m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose
-    // vertex reads are scattered — the browser gate poses it correctly);
-    // the m2a2_bradley GRADUATE lineage is the family GRAMMAR donor only —
-    // geometry authored fresh here.
+    // M3A3 Bradley CFV — the two-man scout configuration. §5.306 OWNER
+    // ORDER: "revert our m3a3 bradley CFV except add the extra equipment we
+    // added and detailing and armor" — the pre-§5.286 buildBradley base
+    // returns and the wave's equipment suite (TOW twin-box, ISU, CIV drum,
+    // bustle, glacis appliqué, coax) re-seats on it. Print
+    // m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose vertex reads
+    // are scattered — the browser gate poses it correctly).
     id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', class: 'ifv',
     hp: 1350,
     enginePowerHp: 600, weightTons: 34.4, topSpeedKmh: 61, reverseSpeedKmh: 20,
@@ -318,9 +330,12 @@ export const AFV_FAMILY_SPECS = {
         shell('M792 HEI-T', 'HE', 25, 8, 8, 55, 1100, { reloadS: 0.48, count: 300 }),
       ],
     },
-    // m2a2 family datum (packet two-datum law): width rides the PUBLISHED
-    // BASE 3.28 — the appliqué read stays in the dressing inside the band.
-    dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
+    // §5.306 base revert: the pre-§5.286 declared dims return with the
+    // buildBradley base (silhouette* rows are that base's honest-measured
+    // values; re-trued against the hybrid build at gate time).
+    dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.61, heightM: 3.73,
+      silhouetteHullLengthM: 6.71, silhouetteOverallLengthM: 6.70,
+      silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
     armor: ifvArmor({
       hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
       turretPivot: [0, 1.895, -0.45], gunPivot: [-0.06, 0.375, 0.60],
@@ -387,59 +402,6 @@ export const AFV_FAMILY_SPECS = {
       scheme: 'stripes', base: '#44503a', weather: '#525c45',
       patches: ['#2a331f', '#5c5a41'], marking: 'number', number: '331',
       trackWidthM: 0.37, camoScale: 0.55,
-    },
-  },
-
-  bmpt: {
-    // NEW GROUND-UP ID: BMPT-72 "Terminator 2" — the T-72-class hull under
-    // the unmanned twin-30 mm overwatch superstructure with four Ataka
-    // rails. Print bmpt2_sanderwolf.glb is a fused blockout (gun tubes are
-    // stubs) — SILHOUETTE REFERENCE; real tube lengths are authored and the
-    // wholeCurves delta is the documented short-modelled-barrel oracle cap
-    // class. Features author on the print's lines z-mapped x0.9384 /
-    // y-mapped x0.9334 into the published envelope.
-    id: 'bmpt', name: 'BMPT-72 Terminator 2', nation: 'Russia', era: 'modern', class: 'ifv',
-    hp: 1950,
-    enginePowerHp: 840, weightTons: 44.0, topSpeedKmh: 60, reverseSpeedKmh: 18,
-    hullTraverseDegS: 40,
-    terrainResistance: { hard: 0.78, medium: 0.90, soft: 1.55 },
-    pivotStyle: 'pivot',
-    turretTraverseDegS: 60, gunPitchDegS: 45, gunElevationDeg: 45, gunDepressionDeg: 5,
-    gun: {
-      caliberMm: 30, reloadS: 0.34, baseAccuracy: 0.27, aimTimeS: 1.25,
-      bloom: BLOOM_IFV,
-      shells: [
-        shell('3UBR8 APDS-T', 'APFSDS', 30, 80, 72, 54, 1120, { pen2000Mm: 62, reloadS: 0.34, count: 425 }),
-        shell('9M120-1 Ataka-T', 'HEAT', 130, 800, 800, 480, 550, { reloadS: 13, count: 4, guided: true }),
-        shell('3UOF8 HE-I', 'HE', 30, 8, 8, 50, 960, { reloadS: 0.34, count: 425 }),
-      ],
-    },
-    dims: { hullLengthM: 6.95, overallLengthM: 7.20, widthM: 3.59, heightM: 3.17 },
-    armor: (() => {
-      const a = ifvArmor({
-        // T-72-class envelope at published dims: deck 1.73, ring 1.75 at
-        // z -0.16 (the print's own station seat), sight-mast crown 3.17.
-        hl: 3.475, hw: 1.795, inW: 1.10, floor: 0.30, trkTop: 1.05, roofY: 1.73,
-        turretPivot: [0, 1.75, -0.16], gunPivot: [0, 0.60, 0.30],
-        barrelLenM: 2.45, barrelRadM: 0.038,
-        glacis: [200, 420, 500], lower: [80, 180, 250], side: [60, 110, 180],
-        skirt: [30, 80, 250], rear: 40, roof: 30,
-        tw: 1.05, tFrontZ: 1.35, tRearZ: -1.70, tH: 0.85,
-        cheek: [80, 220, 320], tSide: [50, 120, 160], tRear: 35, tRoof: 25,
-        mantlet: [80, 220, 320],
-      });
-      // UNMANNED STATION: all three modeled crew live in the hull — a
-      // station hit must not resolve as a crew kill (spz_puma precedent).
-      a.crew = [
-        gcbox('driver', [-0.75, 0.45, 1.30], [-0.05, 1.65, 2.60]),
-        gcbox('gunner', [0.10, 0.45, -0.90], [0.95, 1.65, 0.30]),
-        gcbox('commander', [-0.95, 0.45, -0.90], [-0.15, 1.65, 0.30]),
-      ];
-      return a;
-    })(),
-    visual: {
-      scheme: 'solid', base: '#3f4837', weather: '#4c5440', patches: [],
-      marking: 'number', number: '527', trackWidthM: 0.58, camoScale: 0.50,
     },
   },
 

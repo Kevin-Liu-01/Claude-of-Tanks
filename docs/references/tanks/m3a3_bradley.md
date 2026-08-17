@@ -108,3 +108,64 @@ until it lands. §B4 swept clean (lower bow between the lanes, skirt bins
 outboard of the track pins, flaps outboard): track-clip 0/0/0 strict.
 CLOSE (×2 bit-identical): min 0 (instrument cap) | dims 100 floaters 100 —
 base-equal on every measurable component. Hash b0eb98a1.
+
+## §5.306 OWNER ORDER — base reverted, wave equipment carried over (2026-08-17)
+ORDER (verbatim): "revert our m3a3 bradley CFV except add the extra
+equipment we added and detailing and armor".
+DONE — HYBRID: the pre-§5.286 base returns from 2fc642fb^ (buildBradley
+donor hull + the low welded A3 turret: buried ring collar, faceted shell,
+gun-throat cheeks, twin crew stations, tapered left sight plinth, aft
+bins + braces, spaced side armor course x1.73, smoke/radio, M3A3 decal;
+in-builder seat (0.04, 1.895, -0.36) restored). The §5.286 wave's
+additions were diff-enumerated and each seated at the old base's
+stations:
+- CARRIED (re-seated): TOW twin-box at real depth on the LEFT A3
+  elevating bracket (root/trunnion boss/cradle arm/ribbed full-depth
+  box/proud tube mouths/rear doors — the §5.269-fix item) — the whole
+  cluster rides 0.14 inboard of its wave coordinates so the root buries
+  at this shell's own 0.61..0.69 wall line; REPLACES the old right-hand
+  pod + left electronics box (the wave corrected the TOW handedness).
+- CARRIED: stowage wing RIGHT on the station the old TOW pod vacated.
+  BUG FIXED in carry-over: the wave wrote the wing lid into the HULL
+  bucket at turret coordinates (it landed buried inside the tub —
+  latent); the lid now rides the turret it dresses (turretDark).
+- CARRIED (re-seated): ISU hood + brow on the cheek/roof junction (base
+  buried 0.15, wave reveal preserved; wave roof was 0.905 local, this
+  shell's is ~0.556).
+- CARRIED (station upgrade): CIV — the wave's rotating drum head replaces
+  the old dual-aperture box on the base's tall left sight station; the
+  tapered plinth stays, the pedestal grows (0.30x0.37x0.30) to hold the
+  drum at the wave's own 2.99 world crown.
+- CARRIED: deeper mesh bustle rack (w1.52 d0.50 h0.30 fill 0.80, wave
+  seed 3610) + standoff plate, re-seated on the base bins; base braces
+  keep returning the rails.
+- CARRIED: coax M240 + muzzleBore + muzzle tip dot on the base gun plant
+  (bore re-cut to the base's own len 2.42 / r 0.037).
+- CARRIED (hull-side): A3 glacis appliqué panel + seam strips — seats on
+  the donor's own upper glacis plane (same frustum line as the wave
+  hull's).
+- INHERITED, NOT DUPLICATED (donor already owns the station): cargo
+  hatch hump, rear roof box, troop hatch seam, engine deck + grilles,
+  driver hatch + periscopes, wire cutter, intake vent, stern light boxes
+  on the bumperettes.
+- NOT TRANSPLANTED (station conflict, documented): the wave's skirt-bin
+  course + flat-panel armorTile rows (the base's spaced side armor +
+  donor ODS skirts own the flank); the wave's ramp taillight/hinge-drum
+  variants (donor stern furniture owns those stations).
+SPEC: base-side dims block restored and TRUED to today's instrument
+(silhouettes 6.71 / 6.70 / 3.61 / 3.05 — gate actuals on the hybrid;
+the pre-wave declared 6.64/3.24 rows predate the §5.229 instrument);
+published 6.55/3.61/3.73 restored. Armor mirror stays the wave's
+m2a2-family datum (already the honest envelope for this donor hull;
+turret band matches the restored turret's class).
+GATE (×2 bit-identical, md5 3a1734ba6f1e01594596151c5a88b3f4): min 0 —
+LAWFUL CAP (m3a3_bradley_sipriv print does not assemble: parts-kit pose,
+§E posed-bake queued since §5.263; curves are ref-side capped) — live
+rows: dims 100, floaters 100. HASH: b0eb98a1 (60/55389) -> 2c5ce78c (64
+meshes / 83507 verts). GUARD m2a2_bradley byte-identical a41410ac —
+family distinctness survives (donor hull shared, turret/kit distinct).
+track-clip --exact: front 0 / rear 0. §B2 sweep: worst whole-view 1095px
+= certified-donor class (untouched m2a2 guard: 1045px); turret-isolated
+peaks are the mesh rack's own apertures (intended see-through lattice).
+EVIDENCE: §5.254 pairs shots/m3a3-hybrid/before/ (at b0eb98a1) + after/
+(at 2c5ce78c), probe-r1.

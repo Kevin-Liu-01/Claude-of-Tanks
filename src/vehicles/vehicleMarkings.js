@@ -181,9 +181,8 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
-  // flank, bmpt skirt band, upiór skirt panel field.
+  // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).
   bmp3: anchor('turret', 'right', 0.44, 0.47, 0.20, -1),
-  bmpt: anchor('hull', 'left', 0.42, 0.58, 0.24, 1),
   upior: anchor('hull', 'right', 0.42, 0.60, 0.22, -1),
 });
 

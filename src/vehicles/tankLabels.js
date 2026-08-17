@@ -72,10 +72,6 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'BMP-3', shortName: 'BMP-3',
     searchAliases: ['BMP-3 IFV', 'Russian BMP-3'],
   },
-  bmpt: {
-    displayName: 'BMPT-72 Terminator 2', shortName: 'BMPT-72',
-    searchAliases: ['BMPT-72', 'Terminator 2 tank support'],
-  },
   upior: {
     displayName: 'Upiór IFV', shortName: 'Upiór',
     searchAliases: ['Upior concept IFV', 'Upiór'],
