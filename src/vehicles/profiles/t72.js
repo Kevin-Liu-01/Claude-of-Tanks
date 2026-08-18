@@ -25,6 +25,20 @@ import {
   ruShtora,
 } from './russia.js';
 
+function coverWithVehicleCamo(material, hullPaint, subtype) {
+  if (!material || !hullPaint?.map) return material;
+  material.map = hullPaint.map;
+  material.color.setHex(0xffffff);
+  material.userData = {
+    ...(material.userData || {}),
+    camouflageCovered: true,
+    camouflageSource: 'vehicle-hull-pattern',
+    camouflageSubtype: subtype,
+  };
+  material.needsUpdate = true;
+  return material;
+}
+
 function buildT72B87(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // VERTEX ROUND r3 (batch-13 tube split): the gunNode registration re-keys
@@ -4479,6 +4493,16 @@ function buildT72B3M(P) {
                                               // to p90 95 — the band p10 is carried by the ring/chain/dish lifts)
   P.mats.wheelsRecessed.color.offsetHSL(0, 0.04, 0.10);
   P.mats.wheelsRecessed.emissive.setHex(0x0a0c07);
+  // Owner color cleanup (2026-08-18): the fitting/cloth buckets used solid
+  // fallback tints. Under the garage key those solids resolved to the same
+  // pale rgb(174 182 138) replacement-panel color across ERA lids, engine
+  // covers, roof fittings and bags. These are painted exterior surfaces, so
+  // sample the exact active hull camouflage texture instead. Their semantic
+  // roles and physical roughness remain intact; only the flat fallback
+  // albedo is replaced. BMPT Terminator 2 inherits this pass before adding
+  // its station, so both pictured T-72-family vehicles remain coherent.
+  coverWithVehicleCamo(P.mats.detail, P.mats.hull, 'fittings');
+  coverWithVehicleCamo(P.mats.canvasCloth, P.mats.hull, 'painted-canvas');
   // TRACK RUN TONE (merkava r5 run-lift recipe, sampled here: proc track
   // front faces (26,24,20) L9 vs ref (58,63,45) L21 — the band texture is
   // near-black under the board hemi and the emissive floor IS the rendered
@@ -4531,7 +4555,6 @@ function buildT72B3M(P) {
   //  - recoilG gunDark merged mesh (muzzle collar + bore + seam rings):
   //    clone-darken so the dead-front bore lands the ordered 46-48 luma
   //    ("-2 vs tube, invisible at 1x") without touching shared mats.dark.
-  const postMergePaint = P.spec.id === 'bmpt_terminator2' ? 0x2f3f2d : 0x2d3d2b;
   P.postAssemble = () => {
     P.turretG.traverse((ob) => {
       if (ob.isMesh && ob.material === P.mats.spareTrack) {
@@ -4541,7 +4564,7 @@ function buildT72B3M(P) {
         // shapes neutral steel after this post-assembly pass.
         ob.material = tagVehicleMaterial(
           ob.material.clone(), 'armorPaint', 'painted-relikt-cassette');
-        ob.material.color.setHex(postMergePaint);
+        coverWithVehicleCamo(ob.material, P.mats.hull, 'relikt-cassette');
       }
     });
     // r20 item 1e: the hullWood bucket (unused on this build until now)
@@ -4551,11 +4574,12 @@ function buildT72B3M(P) {
     // mats.wood untouched for the fleet).
     P.hullG.traverse((ob) => {
       if (ob.isMesh && ob.material === P.mats.wood) {
-        ob.material = ob.material.clone();
+        ob.material = tagVehicleMaterial(
+          ob.material.clone(), 'armorPaint', 'painted-deck-panel');
         // 0x415238 rendered 69.1 on the flatter deck faces (crown's 60-64
         // came from the annulus curvature) — one step down lands the ref's
         // 65.2 deck med
-        ob.material.color.setHex(postMergePaint);
+        coverWithVehicleCamo(ob.material, P.mats.hull, 'deck-panel');
         if (ob.material.emissive) ob.material.emissive.setHex(0x090c07);
       }
     });

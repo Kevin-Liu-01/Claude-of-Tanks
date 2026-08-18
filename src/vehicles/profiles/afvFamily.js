@@ -323,11 +323,8 @@ function buildBMPT2(P) {
   // mint replacement armor and neutral-grey equipment. Re-seat every solid
   // painted class in this vehicle's deeper olive family. Working track steel,
   // rubber and track bands deliberately remain neutral semantic gear.
-  P.mats.detail.color.setHex(0x2f3f2d);
-  P.mats.detail.emissive.setHex(0x090c07);
   P.mats.dark.color.setHex(0x273127);
   P.mats.dark.emissive.setHex(0x10150c);
-  P.mats.canvasCloth.color.setHex(0x34402f);
   P.mats.wheels.color.setHex(0x33432e);
   P.mats.wheelsRecessed.color.setHex(0x273526);
   sideArmorCourse(P, { x: 1.73, y: 1.04, h: 0.44, d: 0.62, count: 7,
