@@ -41,6 +41,10 @@ For every added or changed playable tank, run this required sequence:
    tracks, muzzle, geometry, full tests and private build.
 
 Never hand-edit `combatAnatomyCalibrations.js` or the generated technical PNGs.
+After this sequence passes, commit each tank edit atomically, integrate it from
+an isolated clean worktree onto the current `origin/main`, push `HEAD:main`,
+and report the resulting main hash. Never push a failing or partially verified
+tank edit.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
