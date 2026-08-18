@@ -2252,7 +2252,7 @@ export function attachTankDecorations(a) {
         // LOD: decor vanishes at the fleet's greeble horizon
         const lod = new THREE.LOD();
         lod.addLevel(mesh, 0);
-        lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST);
+        lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
         g.add(lod);
         drawCalls++;
       }

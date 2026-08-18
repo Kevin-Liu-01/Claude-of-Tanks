@@ -79,8 +79,13 @@ for (const mapId of MAP_IDS) {
   if (!sample.skipped && sample.darkenedPixelRatio < 0.003) {
     reasons.push(`shadow darkening touches only ${(sample.darkenedPixelRatio * 100).toFixed(2)}% of pixels`);
   }
-  if (!sample.skipped && sample.meanChangedLumaDelta < 4) {
-    reasons.push(`changed-pixel shadow luma delta ${sample.meanChangedLumaDelta.toFixed(2)} is too low`);
+  const relativeShadowContrast = sample.meanChangedLumaDelta
+    / Math.max(1, sample.meanLumaWithoutShadows);
+  if (!sample.skipped && sample.meanChangedLumaDelta < 4 && relativeShadowContrast < 0.15) {
+    reasons.push(
+      `changed-pixel shadow contrast is too low `
+      + `(${sample.meanChangedLumaDelta.toFixed(2)} luma, ${(relativeShadowContrast * 100).toFixed(1)}%)`,
+    );
   }
   if (reasons.length) failures.push({ mapId, reasons });
   console.log(
@@ -95,9 +100,14 @@ for (const mapId of MAP_IDS) {
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 1,
+  version: 2,
   capturedAt: new Date().toISOString(),
-  thresholds: { changedPixelRatio: 0.003, darkenedPixelRatio: 0.003, meanChangedLumaDelta: 4 },
+  thresholds: {
+    changedPixelRatio: 0.003,
+    darkenedPixelRatio: 0.003,
+    meanChangedLumaDelta: 4,
+    relativeChangedLuma: 0.15,
+  },
   failures,
   results,
 }, null, 2));

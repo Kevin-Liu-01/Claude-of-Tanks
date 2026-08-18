@@ -1542,13 +1542,14 @@ export function createPost(renderer, scene, camera) {
         uPrevViewProj: { value: new THREE.Matrix4() },
         uTexel: { value: new THREE.Vector2(1 / 512, 1 / 512) },
         uSeed: { value: 1 },
+        uBlendK: { value: AO_TAA_K },
       },
       vertexShader: 'varying vec2 vUv;\nvoid main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: `
         uniform sampler2D tNow, tPrev, tDepth;
         uniform mat4 uInvViewProj, uPrevViewProj;
         uniform vec2 uTexel;
-        uniform float uSeed;
+        uniform float uSeed, uBlendK;
         varying vec2 vUv;
         void main() {
           vec4 now = texture2D(tNow, vUv);
@@ -1568,7 +1569,7 @@ export function createPost(renderer, scene, camera) {
           vec3 mn = min(now.rgb, min(min(n1, n2), min(n3, n4)));
           vec3 mx = max(now.rgb, max(max(n1, n2), max(n3, n4)));
           vec3 hist = clamp(texture2D(tPrev, prevUv).rgb, mn, mx);
-          float k = (off || uSeed > 0.5) ? 1.0 : ${AO_TAA_K.toFixed(2)};
+          float k = (off || uSeed > 0.5) ? 1.0 : uBlendK;
           gl_FragColor = vec4(mix(hist, now.rgb, k), 1.0);
         }`,
       depthTest: false,
@@ -1579,6 +1580,17 @@ export function createPost(renderer, scene, camera) {
     let emaCur = gtao.pdRenderTarget.clone();
     let emaLastMs = -1e9; // >250 ms without an AO render → history is stale
     const prevViewProj = emaMat.uniforms.uPrevViewProj.value;
+    const emaLastCameraWorld = new THREE.Matrix4();
+    const emaLastProjection = new THREE.Matrix4();
+    let emaPoseValid = false;
+    const cameraMatrixMoved = (current, previous) => {
+      const a = current.elements;
+      const b = previous.elements;
+      for (let i = 0; i < 16; i++) {
+        if (Math.abs(a[i] - b[i]) > 1e-7) return true;
+      }
+      return false;
+    };
     const origSetSize = gtao.setSize.bind(gtao);
     const syncEmaSize = () => {
       emaPrev.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
@@ -1586,6 +1598,7 @@ export function createPost(renderer, scene, camera) {
       emaMat.uniforms.uTexel.value.set(
         1 / gtao.pdRenderTarget.width, 1 / gtao.pdRenderTarget.height);
       emaLastMs = -1e9; // reseed — old history is the wrong resolution
+      emaPoseValid = false;
     };
     gtao.setSize = (w, h) => {
       const s = preset.aoScale || 1;
@@ -1609,6 +1622,9 @@ export function createPost(renderer, scene, camera) {
         .multiplyMatrices(cam.matrixWorld, cam.projectionMatrixInverse);
       const now = performance.now();
       const seed = now - emaLastMs > 250;
+      const cameraMoved = !emaPoseValid
+        || cameraMatrixMoved(cam.matrixWorld, emaLastCameraWorld)
+        || cameraMatrixMoved(cam.projectionMatrix, emaLastProjection);
       if (seed) {
         prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
       }
@@ -1616,9 +1632,17 @@ export function createPost(renderer, scene, camera) {
       emaMat.uniforms.tNow.value = this.pdRenderTarget.texture;
       emaMat.uniforms.tPrev.value = emaPrev.texture;
       emaMat.uniforms.uSeed.value = seed ? 1 : 0;
+      // Temporal history suppresses half-resolution AO boil while the view is
+      // moving. Once the camera is still, the current AO is deterministic;
+      // resolve it immediately instead of letting old darkness crawl/fade for
+      // several more frames after the player stops looking around.
+      emaMat.uniforms.uBlendK.value = cameraMoved ? AO_TAA_K : 1.0;
       this._renderPass(renderer2, emaMat, emaCur, 0xffffff, 1.0);
       // this frame's view-projection becomes next frame's reprojection source
       prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+      emaLastCameraWorld.copy(cam.matrixWorld);
+      emaLastProjection.copy(cam.projectionMatrix);
+      emaPoseValid = true;
       // Default composition, verbatim from GTAOPass.prototype.render (r185)
       // with the blend input rerouted to the reprojected history.
       this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;

@@ -9,7 +9,9 @@
  */
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
+import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { getPreset, onPresetChange } from './quality.js';
+import { snapShadowCoordinate } from './shadowStability.js';
 
 const CASCADES = 4;
 // Battlefield establishing shots read objects out to ~500 m; with the clearer
@@ -20,15 +22,62 @@ const CASCADES = 4;
 // and PCF radii are penumbra-compensated per size — see applyShadowSizes).
 // The two FAR cascades cover 100s of meters — one texel is already
 // subpixel on a 1080p screen out there, so halving their resolution is
-// visually free and saves 96 MB of GPU RTs plus shadow fill rate. (CSM's
-// texel-snap uses the uniform near-cascade grid; the finer snap on a smaller
-// far map is a <1-texel offset at 250m+ — subpixel.)
+// visually free and saves 96 MB of GPU RTs plus shadow fill rate. The stock
+// CSM update assumes every cascade has one uniform resolution; this module's
+// stable update below snaps each projection to its ACTUAL map size instead.
 // PERF: far cascades re-render every OTHER frame (round-robin, one per frame)
 // — they hold ~2/3 of all shadow draw calls, and one frame of staleness at
 // 250-520 m is a fraction of a texel of camera motion. Near cascades (player
 // tank, closeups) still update every frame. `update(true)` forces both far
 // cascades (shot mode / map switch / FOV change) for deterministic captures.
 const FAR_CASCADE_START = 2;
+const _stableCameraToLight = new THREE.Matrix4();
+const _stableLightOrientation = new THREE.Matrix4();
+const _stableLightOrientationInverse = new THREE.Matrix4();
+const _stableLightFrustum = new CSMFrustum({ webGL: true });
+const _stableBounds = new THREE.Box3();
+const _stableCenter = new THREE.Vector3();
+const _stableOrigin = new THREE.Vector3();
+const _stableUp = new THREE.Vector3(0, 1, 0);
+
+/**
+ * Allocation-free CSM refit with per-cascade texel snapping.
+ * Three's stock CSM.update() divides every cascade extent by the single
+ * csm.shadowMapSize value. Our quality ladder deliberately mixes 4096/2048
+ * (down to 1024/512 on mobile), so the stock path moves the far projection
+ * in half-texel increments and makes its shadows shimmer as the camera moves.
+ */
+function updateStableCascades(csm) {
+  const camera = csm.camera;
+  _stableLightOrientation.lookAt(_stableOrigin, csm.lightDirection, _stableUp);
+  _stableLightOrientationInverse.copy(_stableLightOrientation).invert();
+  _stableCameraToLight.multiplyMatrices(_stableLightOrientationInverse, camera.matrixWorld);
+
+  for (let i = 0; i < csm.frustums.length; i++) {
+    const light = csm.lights[i];
+    const shadow = light.shadow;
+    const shadowCam = shadow.camera;
+    const texelWidth = (shadowCam.right - shadowCam.left) / Math.max(1, shadow.mapSize.x);
+    const texelHeight = (shadowCam.top - shadowCam.bottom) / Math.max(1, shadow.mapSize.y);
+    csm.frustums[i].toSpace(_stableCameraToLight, _stableLightFrustum);
+
+    _stableBounds.makeEmpty();
+    for (let j = 0; j < 4; j++) {
+      _stableBounds.expandByPoint(_stableLightFrustum.vertices.near[j]);
+      _stableBounds.expandByPoint(_stableLightFrustum.vertices.far[j]);
+    }
+
+    _stableBounds.getCenter(_stableCenter);
+    _stableCenter.z = _stableBounds.max.z + csm.lightMargin;
+    _stableCenter.x = snapShadowCoordinate(_stableCenter.x, texelWidth);
+    _stableCenter.y = snapShadowCoordinate(_stableCenter.y, texelHeight);
+    _stableCenter.applyMatrix4(_stableLightOrientation);
+
+    light.position.copy(_stableCenter);
+    light.target.position.copy(_stableCenter).add(csm.lightDirection);
+  }
+}
+
 const SHADOW_BIAS = -0.0002;
 const SHADOW_NORMAL_BIAS = 0.045; // kills acne on terrain slopes (CSM only exposes shadowBias)
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
@@ -721,7 +770,9 @@ export function createLighting(scene, camera, sunDir) {
         shadow.needsUpdate = true;
       }
     }
-    csm.shadowMapSize = sizes[0]; // texel-snap grid follows the near cascades
+    // Retain the public CSM setting for diagnostics/compatibility. Projection
+    // snapping is owned by updateStableCascades and uses each shadow.mapSize.
+    csm.shadowMapSize = sizes[0];
   }
 
   for (let i = 0; i < csm.lights.length; i++) {
@@ -831,7 +882,7 @@ export function createLighting(scene, camera, sunDir) {
      * @returns {void}
      */
     update(force = false) {
-      csm.update();
+      updateStableCascades(csm);
       _cullTick++; // cascades refit — the per-cascade frustum memo is stale
       shFrame++;
       if (force || forceFrames > 0) {
@@ -961,7 +1012,7 @@ export function createLighting(scene, camera, sunDir) {
       const fx = -dir.x, fz = -dir.z;
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
-      csm.update();
+      updateStableCascades(csm);
       forceFarCascades(); // sun moved — every cascade must re-render
     },
 
@@ -978,6 +1029,10 @@ export function createLighting(scene, camera, sunDir) {
             size: shadow.mapSize.x,
             allocated: !!shadow.map,
             allocatedSize: shadow.map?.width || 0,
+            worldUnitsPerTexel: Number((
+              (shadow.camera.right - shadow.camera.left) / Math.max(1, shadow.mapSize.x)
+            ).toFixed(6)),
+            position: light.position.toArray().map((value) => Number(value.toFixed(4))),
             radius: shadow.radius,
             normalBias: shadow.normalBias,
             autoUpdate: shadow.autoUpdate,

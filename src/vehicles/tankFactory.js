@@ -330,7 +330,7 @@ const LOD1_DIST = 150;
 function lodWrap(parent, obj, dist = LOD1_DIST) {
   const lod = new THREE.LOD();
   lod.addLevel(obj, 0);
-  lod.addLevel(new THREE.Object3D(), dist);
+  lod.addLevel(new THREE.Object3D(), dist, 0.1);
   parent.add(lod);
   return obj;
 }

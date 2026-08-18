@@ -555,6 +555,10 @@ function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
       m4.compose(v.set(p.x + off.x, p.y + off.y, p.z + off.z), q, s);
       it.setMatrixAt(i, m4);
     });
+    im.instanceMatrix.needsUpdate = true;
+    it.instanceMatrix.needsUpdate = true;
+    im.computeBoundingSphere();
+    it.computeBoundingSphere();
     g.add(im, it);
   };
   if (kind === 'ammoRack' && bb.turretLocal) {
