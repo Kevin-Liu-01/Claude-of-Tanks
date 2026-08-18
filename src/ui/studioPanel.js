@@ -1,16 +1,13 @@
 /**
  * studioPanel.js — SCENE STUDIO control panel (src/game/studio.js's UI).
  *
- * r2 reskin: full garage-language chrome — plated sections with amber notch
- * headers, keycap buttons, grouped effects board — plus the real tank icon
- * set (public/icons/<id>_side_silhouette.png via CSS mask, tinted like the
- * team panels) in the actor picker, the actor list and the selected-actor
- * header. The panel stays a THIN VIEW over the studio API — every control
+ * Workspace layout: five focused panes (Scene / Actor / FX / Camera / Output)
+ * replace the old 2,000 px scroll wall. The panel stays a THIN VIEW over the
+ * studio API — every control
  * calls the same window.__STUDIO methods the scripted shoot uses, so
  * anything staged by hand round-trips through state()/load() unchanged.
  *
- * Layout: right dock (battlefield / actors / selected-actor / effects /
- * time / camera / capture+save), top-left phase badge with EXIT,
+ * Layout: right workspace dock, top-left phase badge with EXIT,
  * bottom-left key hints + live camera readout.
  */
 import { FONT_STACK, ensureFonts } from './fonts.js';
@@ -29,12 +26,26 @@ const CSS = `
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:none;}
-.cot-studio .dock{position:absolute;top:0;right:0;bottom:0;width:318px;pointer-events:auto;
-  background:linear-gradient(270deg,rgba(5,8,11,.94) 0%,rgba(5,8,11,.9) 84%,rgba(5,8,11,0) 100%);
-  padding:14px 14px 14px 28px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
+.cot-studio .dock{position:absolute;top:0;right:0;bottom:0;width:360px;pointer-events:auto;
+  background:linear-gradient(270deg,rgba(5,8,11,.97) 0%,rgba(5,8,11,.94) 88%,rgba(5,8,11,.15) 100%);
+  padding:12px 14px 14px 30px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
   scrollbar-color:rgba(230,154,45,.4) transparent;}
 .cot-studio .dock::-webkit-scrollbar{width:7px;}
 .cot-studio .dock::-webkit-scrollbar-thumb{background:rgba(230,154,45,.35);}
+.cot-studio .docknav{position:sticky;top:-12px;z-index:6;display:grid;
+  grid-template-columns:repeat(5,1fr);gap:3px;margin:-12px -2px 12px;padding:12px 2px 9px;
+  background:linear-gradient(180deg,rgba(5,8,11,1) 74%,rgba(5,8,11,.8) 100%);
+  border-bottom:1px solid rgba(190,204,216,.16);}
+.cot-studio .docknav button{padding:8px 2px 7px;font-size:8px;letter-spacing:.12em;
+  border-color:transparent;border-bottom-color:rgba(190,204,216,.22);background:rgba(10,15,20,.72);}
+.cot-studio .docknav button.on{background:rgba(92,58,10,.72);border-color:rgba(230,154,45,.45);
+  border-bottom-color:#ffd27a;color:#fff2d9;}
+.cot-studio .sec[data-pane]{display:none;}
+.cot-studio[data-pane="scene"] .sec[data-pane="scene"],
+.cot-studio[data-pane="actor"] .sec[data-pane="actor"],
+.cot-studio[data-pane="fx"] .sec[data-pane="fx"],
+.cot-studio[data-pane="camera"] .sec[data-pane="camera"],
+.cot-studio[data-pane="output"] .sec[data-pane="output"]{display:block;}
 .cot-studio .sec{position:relative;margin-bottom:12px;border:1px solid rgba(190,204,216,.18);
   background:rgba(9,13,17,.6);padding:10px 10px 9px;}
 .cot-studio .sec::before{content:'';position:absolute;top:-1px;left:-1px;width:3px;height:17px;
@@ -66,6 +77,8 @@ const CSS = `
   font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
 .cot-studio button:hover{border-color:#e69a2d;color:#ffd27a;}
+.cot-studio button:focus-visible,.cot-studio input:focus-visible,.cot-studio select:focus-visible{
+  outline:2px solid #ffd27a;outline-offset:1px;}
 .cot-studio button.on{background:linear-gradient(180deg,#8a5a14,#5c3a0a);
   border-color:#ffc169;color:#fff2d9;}
 .cot-studio button.prime{background:linear-gradient(180deg,#ffa02e,#d95f00);
@@ -141,6 +154,17 @@ const CSS = `
   text-shadow:0 1px 4px rgba(0,0,0,.9);line-height:1.7;}
 .cot-studio .foot .cam{color:#ffd27a;font-weight:700;}
 .cot-studio .val{font-size:10px;font-weight:800;color:#ffd27a;min-width:34px;text-align:right;}
+@media(max-width:720px){
+  .cot-studio .badge{top:8px;left:8px;right:8px;gap:6px;padding:6px 8px;}
+  .cot-studio .badge .t{font-size:10px;letter-spacing:.16em;}
+  .cot-studio .badge button{font-size:8px;padding:5px 6px;}
+  .cot-studio .dock{top:48%;width:100%;padding:10px 10px 16px;background:rgba(5,8,11,.97);
+    border-top:1px solid rgba(230,154,45,.45);}
+  .cot-studio .docknav{top:-10px;margin:-10px 0 10px;padding-top:10px;}
+  .cot-studio .foot{display:none;}
+  .cot-studio .busy{top:64px;max-width:calc(100vw - 24px);white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;}
+}
 `;
 
 /**
@@ -160,6 +184,7 @@ export function createStudioPanel(S) {
   }
 
   const root = el('div', 'cot-studio');
+  root.dataset.pane = 'scene';
   document.body.appendChild(root);
 
   /** Tinted side-silhouette icon for a tank id (mask, so one PNG serves any tint). */
@@ -201,21 +226,61 @@ export function createStudioPanel(S) {
     dock.addEventListener(evName, (e) => e.stopPropagation());
   }
 
+  const dockNav = el('div', 'docknav');
+  dockNav.setAttribute('role', 'tablist');
+  const tabButtons = new Map();
+  const activatePane = (pane) => {
+    root.dataset.pane = pane;
+    for (const [id, button] of tabButtons) {
+      const on = id === pane;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-selected', String(on));
+    }
+    dock.scrollTop = 0;
+  };
+  for (const [id, label] of [
+    ['scene', 'Scene'], ['actor', 'Actor'], ['fx', 'FX'],
+    ['camera', 'Camera'], ['output', 'Output'],
+  ]) {
+    const button = el('button', id === 'scene' ? 'on' : null, label);
+    button.type = 'button';
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-selected', String(id === 'scene'));
+    button.addEventListener('click', () => activatePane(id));
+    tabButtons.set(id, button);
+    dockNav.appendChild(button);
+  }
+  dock.appendChild(dockNav);
+
   // === SCENE section ===
   const secScene = section('Battlefield');
-  const mapRow = el('div', 'grid');
-  const mapBtns = {};
+  secScene.dataset.pane = 'scene';
+  const mapRow = el('div', 'row');
+  mapRow.appendChild(el('label', 'k', 'Map'));
+  const mapSelect = document.createElement('select');
   for (const id of S.MAP_IDS) {
-    const b = el('button', null, id.toUpperCase());
-    b.addEventListener('click', () => S.setMap(id));
-    mapBtns[id] = b;
-    mapRow.appendChild(b);
+    const option = document.createElement('option');
+    option.value = id;
+    const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
+    option.textContent = `${info.name || id} · ${id.toUpperCase()}`;
+    mapSelect.appendChild(option);
   }
+  mapSelect.addEventListener('change', () => {
+    mapSelect.disabled = true;
+    Promise.resolve(S.setMap(mapSelect.value))
+      .catch((error) => flashBusy(`MAP FAILED: ${error.message}`))
+      .finally(() => {
+        mapSelect.disabled = false;
+        api.refreshMap();
+      });
+  });
+  mapRow.appendChild(mapSelect);
   secScene.appendChild(mapRow);
   dock.appendChild(secScene);
 
   // === ACTORS section ===
   const secActors = section('Actors', 'the shipped roster');
+  secActors.dataset.pane = 'scene';
   // -- tank picker (icon rows, filterable) --
   let pickedId = 'm1a2';
   const pick = el('div', 'pick');
@@ -296,10 +361,16 @@ export function createStudioPanel(S) {
 
   const addRow2 = el('div', 'grid');
   addRow2.style.marginTop = '6px';
-  const addAtMarker = el('button', null, 'ADD @ MARKER');
+  const addAtMarker = el('button', null, 'ADD IN VIEW');
+  addAtMarker.title = 'Uses the terrain marker when set; otherwise places at the camera focus';
   addAtMarker.addEventListener('click', () => {
-    const p = S._internal.markerPos;
-    S.addActor({ id: pickedId, pos: [p.x, p.z] });
+    const point = S._internal.markerActive
+      ? S._internal.markerPos
+      : (() => {
+        const camera = S.getCamera();
+        return { x: camera.lookAt[0], z: camera.lookAt[2] };
+      })();
+    S.addActor({ id: pickedId, pos: [point.x, point.z] });
   });
   const placeBtn = el('button', null, 'CLICK TO PLACE');
   placeBtn.addEventListener('click', () => {
@@ -315,6 +386,7 @@ export function createStudioPanel(S) {
 
   // === SELECTED ACTOR section ===
   const secSel = section('Selected actor');
+  secSel.dataset.pane = 'actor';
   const selHead = el('div', 'selhead');
   const selIcon = tankIcon('m1a2');
   const selNames = el('div', 'nm');
@@ -371,6 +443,7 @@ export function createStudioPanel(S) {
 
   // === EFFECTS section ===
   const secFx = section('Effects', 'sel actor · else marker');
+  secFx.dataset.pane = 'fx';
   const selOr = (fn, needActor = false) => {
     const a = S._internal.selected;
     if (needActor && !a) { flashBusy('SELECT AN ACTOR FIRST'); return null; }
@@ -444,6 +517,7 @@ export function createStudioPanel(S) {
 
   // === TIME section ===
   const secTime = section('FX time');
+  secTime.dataset.pane = 'camera';
   const ts = sliderRow('Scale', 0, 2, 0.05, (v) => S.setTimeScale(v));
   secTime.appendChild(ts.row);
   const timeRow = el('div', 'grid3');
@@ -466,6 +540,7 @@ export function createStudioPanel(S) {
 
   // === CAMERA section ===
   const secCam = section('Camera');
+  secCam.dataset.pane = 'camera';
   const camModeRow = el('div', 'grid');
   const flyBtn = el('button', null, 'FREE-FLY');
   const orbBtn = el('button', null, 'ORBIT');
@@ -487,6 +562,7 @@ export function createStudioPanel(S) {
 
   // === CAPTURE + SAVE section ===
   const secCap = section('Capture · Scene');
+  secCap.dataset.pane = 'output';
   const capRow = el('div', 'row');
   capRow.appendChild(el('label', 'k', 'Width'));
   const capSel = document.createElement('select');
@@ -641,7 +717,10 @@ export function createStudioPanel(S) {
       placeBtn.classList.toggle('on', !!specId);
       placeBtn.textContent = specId ? `CLICK MAP TO PLACE ${specId.toUpperCase()}` : 'CLICK TO PLACE';
     },
-    setSelected() { api.refreshActors(); api.refreshSelected(); },
+    setSelected(actor) {
+      api.refreshActors();
+      if (actor) activatePane('actor');
+    },
     refreshActors() {
       alist.textContent = '';
       const sel = S._internal.selected;
@@ -691,15 +770,18 @@ export function createStudioPanel(S) {
       orbBtn.classList.toggle('on', c.mode === 'orbit');
     },
     refreshTime() {
-      ts.set(S.timeScale);
-      pauseBtn.textContent = S.timeScale === 0 ? 'PLAY' : 'FREEZE';
+      const scale = S.timeScale;
+      if (Number(ts.input.value) !== scale) ts.set(scale);
+      const pauseLabel = scale === 0 ? 'PLAY' : 'FREEZE';
+      if (pauseBtn.textContent !== pauseLabel) pauseBtn.textContent = pauseLabel;
       pauseBtn.classList.toggle('on', S.timeScale === 0);
-      clockLine.textContent = `T = ${(S.fxTimeMs / 1000).toFixed(2)} s  ·  ×${S.timeScale.toFixed(2)}`;
+      const text = `T = ${(S.fxTimeMs / 1000).toFixed(2)} s  ·  ×${scale.toFixed(2)}`;
+      if (clockLine.textContent !== text) clockLine.textContent = text;
     },
     refreshMap() {
       const id = S.mapId;
       badgeMap.textContent = id ? id.toUpperCase() : '';
-      for (const [mid, b] of Object.entries(mapBtns)) b.classList.toggle('on', mid === id);
+      if (id && mapSelect.value !== id) mapSelect.value = id;
     },
     refreshAll() {
       api.refreshMap();

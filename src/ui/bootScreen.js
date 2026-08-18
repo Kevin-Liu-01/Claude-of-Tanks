@@ -44,7 +44,7 @@ const TIPS = [
 // Weighted load stages. Weight = measured share of boot wall-clock, so the bar
 // moves at a roughly constant rate instead of parking at 40% for three seconds.
 // Keep the keys in sync with the main.js BOOT STAGES block.
-const STAGES = [
+const GARAGE_STAGES = [
   ['renderer', 'Initialising renderer', 4],
   ['sky', 'Baking sky and atmosphere', 16],
   ['lighting', 'Placing sun and shadow cascades', 7],
@@ -54,6 +54,24 @@ const STAGES = [
   ['ui', 'Loading vehicle roster', 14],
   ['audio', 'Priming audio engine', 4],
   ['post', 'Compiling post-processing chain', 12],
+  ['ready', 'Standing by', 3],
+];
+
+// Direct Studio navigation keeps the first, already-painted boot surface in
+// charge until the battlefield and focused FX warm are ready.  The previous
+// flow completed this list, briefly revealed the garage, then opened a second
+// loading screen whose work was invisible to this meter.
+const STUDIO_STAGES = [
+  ['renderer', 'Initialising renderer', 3],
+  ['sky', 'Baking sky and atmosphere', 4],
+  ['lighting', 'Placing sun and shadow cascades', 2],
+  ['garage', 'Preparing shared scene', 9],
+  ['vehicle', 'Priming vehicle materials', 7],
+  ['hud', 'Wiring authoring overlays', 2],
+  ['ui', 'Preparing shared controls', 3],
+  ['audio', 'Priming audio engine', 1],
+  ['post', 'Compiling post-processing chain', 14],
+  ['studio', 'Building Scene Studio', 52],
   ['ready', 'Standing by', 3],
 ];
 
@@ -139,7 +157,8 @@ export function bootGateSkipped() {
  *   note:(s:string)=>void, ready:()=>Promise<void>, dismiss:()=>void,
  *   readonly gated:boolean}}
  */
-export function createBootScreen() {
+export function createBootScreen({ mode = 'garage' } = {}) {
+  const stages = mode === 'studio' ? STUDIO_STAGES : GARAGE_STAGES;
   const root = $('cot-boot');
   const elStage = $('cot-boot-stage');
   const elPct = $('cot-boot-pct');
@@ -148,12 +167,12 @@ export function createBootScreen() {
   const elTip = $('cot-boot-tip');
   const elGate = $('cot-boot-gate');
 
-  const total = STAGES.reduce((a, s) => a + s[2], 0);
+  const total = stages.reduce((a, s) => a + s[2], 0);
   // cumulative [start, end] fraction per stage key
   const span = new Map();
   {
     let acc = 0;
-    for (const [key, , w] of STAGES) {
+    for (const [key, , w] of stages) {
       span.set(key, [acc / total, (acc + w) / total]);
       acc += w;
     }
@@ -161,7 +180,7 @@ export function createBootScreen() {
 
   const tickEls = [];
   if (elTicks) {
-    for (let i = 0; i < STAGES.length; i++) {
+    for (let i = 0; i < stages.length; i++) {
       const s = document.createElement('span');
       elTicks.appendChild(s);
       tickEls.push(s);
@@ -212,7 +231,7 @@ export function createBootScreen() {
   const stopHero = root ? startBootHero() : () => {};
 
   function stageLabel(key) {
-    const s = STAGES.find((x) => x[0] === key);
+    const s = stages.find((x) => x[0] === key);
     return s ? s[1] : key;
   }
 
@@ -229,7 +248,7 @@ export function createBootScreen() {
     end(key) {
       const sp = span.get(key || curKey);
       if (sp && sp[1] > target) target = sp[1];
-      const i = STAGES.findIndex((x) => x[0] === (key || curKey));
+      const i = stages.findIndex((x) => x[0] === (key || curKey));
       if (i >= 0 && tickEls[i]) tickEls[i].classList.add('on');
       schedule();
     },
@@ -255,7 +274,7 @@ export function createBootScreen() {
       shown = Math.max(shown, 0.985);
       schedule();
       for (const t of tickEls) t.classList.add('on');
-      if (elStage) elStage.textContent = 'Ready for battle';
+      if (elStage) elStage.textContent = mode === 'studio' ? 'Studio ready' : 'Ready for battle';
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }
       if (elGate) elGate.classList.add('on');
       return new Promise((resolve) => {

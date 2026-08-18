@@ -99,6 +99,15 @@ import { createTransition } from './ui/transition.js';
 // SCENE STUDIO (src/game/studio.js): staging rig + scripted-shot API.
 import { createStudio } from './game/studio.js';
 
+// Direct /studio navigation is a distinct boot target, not "boot the garage,
+// reveal it, then start a second load".  The intent is captured before any
+// staged work so the inline boot screen can report Studio-specific progress
+// and main.js can hand the already-visible veil to createStudio().
+const INITIAL_PARAMS = new URLSearchParams(globalThis.location?.search || '');
+const STUDIO_BOOT_INTENT = /^\/studio\/?$/.test(globalThis.location?.pathname || '')
+  || INITIAL_PARAMS.has('studio');
+const STUDIO_BOOT_MAP = INITIAL_PARAMS.get('map') || 'verdant';
+
 const DEG = Math.PI / 180;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
 const MAX_SIM_STEPS = 4;
@@ -153,7 +162,7 @@ const _aimPose = { pos: new THREE.Vector3() };
 // registers its listeners mid-module and must never fire tick() while later
 // top-level consts are still in their temporal dead zone.
 // ---------------------------------------------------------------------------
-const boot = createBootScreen();
+const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' });
 const BOOT_TIMINGS = {};
 let bootComplete = false;
 // LOADING PERF: attribute the WHOLE boot, not just the staged work. `_lastMark`
@@ -4652,6 +4661,87 @@ async function warmNetworkOpeningEffects() {
     fx.resetAll();
   }
 }
+
+// Studio does not field the staged battle roster.  Reusing the complete
+// combat warm here used to build, burn, compile, and shadow-warm every hidden
+// battle tank before an empty authoring canvas could appear (7.0 s in the
+// direct-route baseline).  Prime only the shared FX resources the Studio can
+// use before its first actor exists; addActor() owns per-vehicle burn setup.
+let studioPipelineWarmP = null;
+let studioPipelineWarmed = false;
+function warmStudioPipelineChunked(onProgress = null) {
+  if (combatPipelineWarmed || studioPipelineWarmed) {
+    if (onProgress) onProgress(1, 'Studio effects ready');
+    return Promise.resolve();
+  }
+  if (studioPipelineWarmP) {
+    return studioPipelineWarmP.then(() => {
+      if (onProgress) onProgress(1, 'Studio effects ready');
+    });
+  }
+  studioPipelineWarmP = (async () => {
+    const trace = { stages: {} };
+    const startedAt = performance.now();
+    let markedAt = startedAt;
+    const mark = (name) => {
+      const now = performance.now();
+      trace.stages[name] = Math.round(now - markedAt);
+      markedAt = now;
+    };
+    const progress = (f, label) => {
+      if (onProgress) onProgress(f, label);
+    };
+    const yieldForFrameBudget = createFrameBudgetYielder(8);
+    progress(0.08, 'Baking Studio effects');
+    try {
+      if (fx.warmTexturesChunked) {
+        await fx.warmTexturesChunked(() => yieldForFrameBudget());
+      } else if (fx.warmTextures) {
+        fx.warmTextures();
+      }
+      mark('textures');
+      progress(0.58, 'Priming Studio effects');
+      const wp = new THREE.Vector3(-460, 0, -460);
+      const wn = new THREE.Vector3(0, 1, 0);
+      const wd = new THREE.Vector3(0, 0, 1);
+      fx.warmOpeningEffects(wp, wd, wn, 120);
+      fx.destruction(wp, null, 'shot');
+      fx.destruction(wp, null, 'ammorack');
+      fx.update(SIM_DT, [], camera);
+      post.prepareSoftParticles();
+      const mask = camera.layers.mask;
+      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+      try {
+        renderer.compile(fx.group, camera, scene);
+        fx.group.traverse((object) => {
+          const materials = Array.isArray(object.material)
+            ? object.material : (object.material ? [object.material] : []);
+          for (const material of materials) {
+            for (const key of Object.keys(material)) {
+              const value = material[key];
+              if (value?.isTexture) {
+                try { renderer.initTexture(value); } catch (_) { /* first render fallback */ }
+              }
+            }
+          }
+        });
+      } finally {
+        camera.layers.mask = mask;
+      }
+      mark('effects');
+    } catch (error) {
+      console.warn('[warm] Studio pipeline failed (continuing):', error);
+      trace.error = String(error);
+    } finally {
+      fx.resetAll();
+    }
+    progress(1, 'Studio effects ready');
+    trace.totalMs = Math.round(performance.now() - startedAt);
+    studioPipelineWarmed = true;
+    if (typeof window !== 'undefined') window.__STUDIO_WARM = trace;
+  })();
+  return studioPipelineWarmP;
+}
 // perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
 // idle callback (~1-3 s: volley + every wreck dance + all compiles) the
 // moment the staged pump finished — exactly when the player starts touching
@@ -5131,10 +5221,9 @@ function* compileHiddenVariantsSteps() {
     } catch (_) { unflip(); }
   }
 }
-// Heavy combat caches intentionally do not warm in the interactive garage.
-// The battle/studio loading veils run the same complete warm pipeline with
-// frame yields, preserving final quality while eliminating random garage
-// stalls from shader links, wreck dances, FX atlases, and unseen rosters.
+// Heavy combat caches intentionally do not warm in the interactive garage or
+// the Studio. Battles own the complete roster/wreck/shadow warm; Studio uses
+// the focused shared-FX warm above and compiles only actors it actually adds.
 
 // SCENE STUDIO (staging rig + scripted marketing-shot API, src/game/studio.js):
 // entered via ?studio=1 (map via ?map=…) or F8 from the garage; scriptable via
@@ -5145,9 +5234,21 @@ const studio = createStudio({
   renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
   hfProxy, getWorld: () => world, ensureWorld, setWorldDormant,
   setGarageSpots, setGarageSunTrim, enterGarage,
-  warmCombatPipeline: warmCombatPipelineChunked,
+  warmStudioPipeline: warmStudioPipelineChunked,
   transition, // branded loading screen on studio enter/exit
+  autoEnter: !STUDIO_BOOT_INTENT,
 });
+
+if (STUDIO_BOOT_INTENT) {
+  await bootStage('studio', () => studio.enter({
+    map: STUDIO_BOOT_MAP,
+    coveredByBoot: true,
+    onProgress: (fraction, label) => {
+      boot.sub(fraction);
+      if (label) boot.note(label);
+    },
+  }));
+}
 
 bootComplete = true;
 scheduleRaf();

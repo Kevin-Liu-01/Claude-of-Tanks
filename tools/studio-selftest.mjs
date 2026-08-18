@@ -179,6 +179,7 @@ const approx = (a, b, eps, what) => {
 let failed = false;
 try {
   // 1. boot straight into the studio on desert
+  const entryStartedAt = Date.now();
   await page.goto(`${url}?studio=1&map=desert`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
   // active flips when the studio takes the frame; mapId lands once the
@@ -192,6 +193,12 @@ try {
   const entry = await page.evaluate(() => ({
     phase: window.__DEBUG.game.phase,
     mapId: window.__STUDIO.mapId,
+    bootMs: window.__BOOT_MS,
+    bootTimings: window.__BOOT_TIMINGS,
+    studioLoad: window.__STUDIO_LOAD,
+    studioWarm: window.__STUDIO_WARM,
+    combatWarm: window.__COMBAT_WARM || null,
+    builtPoolVisuals: window.__DEBUG.game.allTanks.filter((ent) => !!ent.visual).length,
     poolTankVisible: (() => {
       let vis = false;
       for (const ent of window.__DEBUG.game.allTanks) {
@@ -203,7 +210,19 @@ try {
   if (entry.phase !== 'studio') throw new Error(`phase is '${entry.phase}', expected 'studio'`);
   if (entry.mapId !== 'desert') throw new Error(`map is '${entry.mapId}', expected 'desert'`);
   if (entry.poolTankVisible) throw new Error('battle-pool tank visuals are visible in the studio');
-  console.log('[studio-selftest] phase=studio, map=desert, battle pool hidden');
+  if (entry.builtPoolVisuals !== 0) {
+    throw new Error(`direct Studio boot built ${entry.builtPoolVisuals} hidden battle-pool visuals`);
+  }
+  if (entry.combatWarm) throw new Error('direct Studio boot ran the complete combat warm');
+  if (!entry.studioLoad?.directBoot || !entry.bootTimings?.studio) {
+    throw new Error('direct Studio boot did not use the covered Studio loading stage');
+  }
+  console.log(
+    `[studio-selftest] direct entry ${Date.now() - entryStartedAt} ms wall / ` +
+    `${entry.bootMs} ms boot / ${entry.studioLoad.totalMs} ms Studio / ` +
+    `${entry.studioWarm?.totalMs || 0} ms focused warm`,
+  );
+  console.log('[studio-selftest] phase=studio, map=desert, battle pool unbuilt + hidden');
 
   // 2. deterministic 3-tank load
   const s1 = await page.evaluate(
@@ -216,11 +235,13 @@ try {
   const frozen0 = await page.evaluate(() => ({
     t: window.__STUDIO.fxTimeMs, simT: window.__DEBUG.game.timeS,
     scale: window.__STUDIO.timeScale, phase: window.__DEBUG.game.phase,
+    perf: window.__STUDIO.performance(),
   }));
   await new Promise((r) => setTimeout(r, 700));
   const frozen1 = await page.evaluate(() => ({
     t: window.__STUDIO.fxTimeMs, simT: window.__DEBUG.game.timeS,
     shellsAlive: window.__DEBUG.game.shells.length,
+    perf: window.__STUDIO.performance(),
   }));
   if (frozen0.phase !== 'studio') throw new Error('load() left the studio phase');
   if (frozen0.scale !== 0) throw new Error(`timeScale after load is ${frozen0.scale}, expected 0`);
@@ -229,11 +250,18 @@ try {
   }
   if (frozen1.simT !== frozen0.simT) throw new Error('battle sim clock advanced inside the studio');
   if (frozen1.shellsAlive !== 0) throw new Error('battle shells are live inside the studio');
+  const frozenRenders = frozen1.perf.renderedFrames - frozen0.perf.renderedFrames;
+  if (frozenRenders > 4) {
+    throw new Error(`frozen idle rendered ${frozenRenders} frames instead of staying on demand`);
+  }
   const victim = s1.actors.find((a) => a.name === 'victim');
   if (!victim || victim.state !== 'turret-popped') {
     throw new Error(`tank_kill did not leave the victim turret-popped (got ${victim && victim.state})`);
   }
-  console.log(`[studio-selftest] fx frozen at ${frozen1.t} ms, sim static, kill state applied`);
+  console.log(
+    `[studio-selftest] fx frozen at ${frozen1.t} ms, sim static, ` +
+    `${frozen1.perf.skippedFrames - frozen0.perf.skippedFrames} idle frames skipped`,
+  );
 
   // 3. hi-res capture (probe writes the PNG)
   const cap1 = await page.evaluate(() => window.__STUDIO.capture({ width: 2560 }));

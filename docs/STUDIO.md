@@ -14,7 +14,7 @@ Code: `src/game/studio.js` (logic + `window.__STUDIO`),
 
 | Path | How |
 |---|---|
-| URL | `?studio=1` (optionally `&map=desert\|winter\|urban\|verdant`) — auto-enters once `__GAME_READY` |
+| URL | `/studio?map=desert` or legacy `?studio=1&map=desert` — boots directly into Studio |
 | Garage | **F8** (toggle; also the panel's EXIT button) |
 | Script | `window.__STUDIO.enter({ map })` / `window.__STUDIO.exit()` |
 | Leave | F8 / Esc / EXIT → back to the garage |
@@ -22,6 +22,13 @@ Code: `src/game/studio.js` (logic + `window.__STUDIO`),
 Battle-pool tank visuals are hidden while the studio is active; exit restores
 them and hands control back through the normal garage entry (camo overrides
 cleared, pedestal key restored).
+
+Direct navigation is one covered load. The inline boot screen remains visible
+while the battlefield and Studio-only FX resources build in parallel; it does
+not reveal the garage or run the full battle-roster/wreck/shadow warm first.
+Runtime entry from the garage and map changes use the shared transition screen
+with real world-build progress. `window.__STUDIO_LOAD`, `__STUDIO_WARM`, and
+`__WORLD_LOAD` expose the most recent stage timings for diagnostics.
 
 Note for headless drivers: the boot "press any key" gate auto-dismisses under
 webdriver (and `?nogate`), exactly like the screenshot harness.
@@ -34,10 +41,10 @@ webdriver (and `?nogate`), exactly like the screenshot harness.
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it (terrain re-conform live)
 - **Space**: freeze/unfreeze fx time · **Delete**: remove selected actor
-- Panel: map switcher, actor add/list, pose sliders (facing/turret/gun within
-  spec limits), camo, damage state, effect buttons, fx time scale + step,
-  camera fly/orbit + FOV/roll/speed, CAPTURE, scene save/load (JSON download /
-  upload / 3 localStorage slots, shift-click a slot to save).
+- Panel: five focused workspaces instead of one long scroll — **Scene** (map +
+  roster), **Actor** (pose/camo/state), **FX**, **Camera** (timeline + rig), and
+  **Output** (capture + scene save/load). Scene JSON can be downloaded,
+  uploaded, copied, or stored in three local slots (shift-click saves).
 
 ## `window.__STUDIO` (scripted-shoot contract)
 
@@ -60,7 +67,9 @@ __STUDIO.advanceFx(ms)                                // step frozen fx forward
 __STUDIO.setTimeScale(v) / .timeScale / .fxTimeMs
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
+__STUDIO.getMapInfo(id)             // {id, name, sub}
 __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
+__STUDIO.performance()              // rendered/skipped frame + pool-sweep counters
 __STUDIO.active / .mapId
 ```
 
@@ -180,6 +189,11 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 Same JSON in → same frame out. Effects with `tMs > fxTime` are kept in
 `state()` but do not fire inside the composition.
 
+When the timeline is frozen, an unchanged Studio frame is render-on-demand:
+camera/actor/effect/resize changes invalidate it, while idle animation,
+world updates, lighting, and post-processing are skipped. A live time scale
+continues to render normally.
+
 `state()` returns the schema above (actors in creation order with their
 current pose/state, the effect log with authored `tMs`, the live camera,
 `fxTime` = current clock). `load(state())` round-trips.
@@ -205,7 +219,9 @@ current pose/state, the effect log with authored `tMs`, the live camera,
 
 `tools/studio-selftest.mjs` (own vite on a 7xxx port, puppeteer) drives:
 enter via `?studio=1&map=desert`, `load()` a 3-tank scene (firing / exploding
-mid-fireball / burnt wreck, plus dust and engine smoke), asserts no battle sim
-and fx frozen at `fxTime`, captures ≥2560-px PNGs on desert and winter with
-different cameras/FOVs, and verifies the scene JSON round-trip. Output:
+mid-fireball / burnt wreck, plus dust and engine smoke), asserts direct boot
+used the covered Studio stage without building or warming hidden battle-pool
+visuals, asserts no battle sim and fx frozen at `fxTime`, captures ≥2560-px
+PNGs on desert and winter with different cameras/FOVs, and verifies the scene
+JSON round-trip. Output:
 `shots/studio-selftest/*.png`.

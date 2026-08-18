@@ -83,7 +83,7 @@ const _ndc = new THREE.Vector2();
  *   renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
  *   hfProxy, getWorld(), ensureWorld(mapId,onProgress), setWorldDormant(on),
  *   setGarageSpots(on), setGarageSunTrim(on), enterGarage(),
- *   warmCombatPipeline(), transition (branded loading screen, optional)
+ *   warmStudioPipeline(), transition (branded loading screen, optional)
  * @returns {{active: boolean, tick(dt: number): void, enter(opts?: object):
  *   Promise<void>, exit(): void, api: object}}
  */
@@ -91,8 +91,9 @@ export function createStudio(ctx) {
   const {
     renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
     hfProxy, getWorld, ensureWorld, setWorldDormant, setGarageSpots,
-    setGarageSunTrim, enterGarage, warmCombatPipeline,
+    setGarageSunTrim, enterGarage,
   } = ctx;
+  const warmStudioPipeline = ctx.warmStudioPipeline || (() => Promise.resolve());
   // Optional so a ctx without it (tests, stripped builds) still gets a
   // working studio — the run() fallback just executes the work directly.
   const transition = ctx.transition ||
@@ -102,14 +103,24 @@ export function createStudio(ctx) {
   let active = false;
   let entering = null;         // in-flight enter() promise (shared latch)
   let loading = false;         // load() in flight (blocks re-entrant loads)
+  let mapChange = null;        // serialized map switch; prevents two world activations
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
   let uidSeq = 1;
   const actors = [];           // see addActor()
+  const actorRoots = [];       // raycast roots, maintained with actors
+  const actorByRoot = new WeakMap();
+  const pickHits = [];         // Raycaster optionalTarget scratch
   const shells = [];           // live studio projectiles (fx tracer source)
   const effectLog = [];        // fired one-shots (scene JSON round-trip)
   let lastFov = 0;
+  let frameDirty = true;
+  let cameraDirty = true;
+  let poolSweepAcc = 0;
   let sceneMeta = { seed: 5000 };
+  const perf = { renderedFrames: 0, skippedFrames: 0, poolSweeps: 0 };
+
+  function invalidate() { frameDirty = true; }
 
   // fx event channel: a PRIVATE bus bound to the fx system only, so synthetic
   // events (muzzle flash, impact, smoke column, detrack burst) reuse the real
@@ -162,7 +173,13 @@ export function createStudio(ctx) {
     return {
       group,
       pos: new THREE.Vector3(),
-      set(p) { this.pos.copy(p); group.position.copy(p); group.position.y += 0.06; group.visible = true; },
+      set(p) {
+        this.pos.copy(p);
+        group.position.copy(p);
+        group.position.y += 0.06;
+        group.visible = true;
+        invalidate();
+      },
     };
   }
 
@@ -173,6 +190,8 @@ export function createStudio(ctx) {
       camera.fov = cam.fov;
       camera.updateProjectionMatrix();
     }
+    cameraDirty = false;
+    invalidate();
   }
 
   function lookAt(target) {
@@ -198,6 +217,9 @@ export function createStudio(ctx) {
     const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1;
     const v = cam.speed * boost * dt;
     if (cam.mode === 'fly') {
+      const moving = keys.has('KeyW') || keys.has('KeyS') || keys.has('KeyA')
+        || keys.has('KeyD') || keys.has('KeyE') || keys.has('KeyQ');
+      if (!moving && !cameraDirty) return false;
       camera.getWorldDirection(_fwd);
       _v1.set(0, 0, 0);
       if (keys.has('KeyW')) _v1.addScaledVector(_fwd, v);
@@ -209,17 +231,27 @@ export function createStudio(ctx) {
       if (keys.has('KeyQ')) _v1.y -= v;
       camera.position.add(_v1);
       applyCameraPose();
-    } else {
-      orbitApply();
+      return true;
     }
+    if (cameraDirty) {
+      orbitApply();
+      return true;
+    }
+    return false;
   }
 
   // --- pool / world housekeeping ---------------------------------------------
   /** Hide every battle-pool tank visual (idle pump may stream new ones in). */
   function sweepPool() {
+    perf.poolSweeps++;
+    let changed = false;
     for (const ent of game.allTanks) {
-      if (ent.visual && ent.visual.root.visible) ent.visual.setVisible(false);
+      if (ent.visual && ent.visual.root.visible) {
+        ent.visual.setVisible(false);
+        changed = true;
+      }
     }
+    if (changed) invalidate();
   }
   /** Restore staged-battle visuals on exit (battle re-entry force-shows too). */
   function unsweepPool() {
@@ -341,10 +373,14 @@ export function createStudio(ctx) {
       burning: false,
     };
     actors.push(a);
+    actorRoots.push(visual.root);
+    actorByRoot.set(visual.root, a);
     if (a.camo && a.camo !== 'inherit') {
       setCamoOverride(specId, a.camo);
-      applyCamoPatterns(specId);
     }
+    // A shared texture may have been cached for the garage biome. Resolve the
+    // one visible spec now; never sweep unrelated cached vehicles.
+    applyCamoPatterns(specId);
     settleActor(a);
     if (cfg.state && cfg.state !== 'intact') setActorState(a, cfg.state, a.stateAgeS);
     if (cfg.smoking) a.smoking = true;   // additive layer over any mesh state
@@ -354,6 +390,7 @@ export function createStudio(ctx) {
       visual.syncFromState(a.state, 0);
     }
     panel.refreshActors();
+    invalidate();
     return a;
   }
 
@@ -363,9 +400,12 @@ export function createStudio(ctx) {
     fxBus.emit('tank:fire', { id: a.uid, burning: false }); // drop its column
     scene.remove(a.visual.root);
     a.visual.dispose();
+    const rootIndex = actorRoots.indexOf(a.visual.root);
+    if (rootIndex >= 0) actorRoots.splice(rootIndex, 1);
     actors.splice(actors.indexOf(a), 1);
     if (selected === a) selected = null;
     panel.refreshActors();
+    invalidate();
     return true;
   }
 
@@ -407,6 +447,7 @@ export function createStudio(ctx) {
     // per-step emitter (see stepFx)
     a.visual.syncFromState(st, 0);
     panel.refreshActors();
+    invalidate();
     return true;
   }
 
@@ -455,6 +496,7 @@ export function createStudio(ctx) {
         a.visual.syncFromState(a.state, 0);
       }
     }
+    invalidate();
     return a;
   }
 
@@ -489,12 +531,12 @@ export function createStudio(ctx) {
     if (!actors.length) return null;
     _ray.setFromCamera(pointerNdc(e), camera);
     _ray.far = 3000;
-    const roots = actors.map((a) => a.visual.root);
-    const hits = _ray.intersectObjects(roots, true);
-    if (!hits.length) return null;
-    let o = hits[0].object;
+    pickHits.length = 0;
+    _ray.intersectObjects(actorRoots, true, pickHits);
+    if (!pickHits.length) return null;
+    let o = pickHits[0].object;
     while (o) {
-      const a = actors.find((x) => x.visual.root === o);
+      const a = actorByRoot.get(o);
       if (a) return a;
       o = o.parent;
     }
@@ -532,6 +574,7 @@ export function createStudio(ctx) {
     dragMoved += Math.abs(dx) + Math.abs(dy);
     cam.yaw -= dx * 0.0032;
     cam.pitch = Math.max(-1.45, Math.min(1.45, cam.pitch - dy * 0.0032));
+    cameraDirty = true;
     if (cam.mode === 'orbit') orbitApply();
     else applyCameraPose();
   }
@@ -568,10 +611,12 @@ export function createStudio(ctx) {
     const k = e.deltaY < 0 ? 1 : -1;
     if (cam.mode === 'orbit') {
       cam.orbit.dist = Math.max(3, Math.min(400, cam.orbit.dist * (1 - k * 0.12)));
+      cameraDirty = true;
       orbitApply();
     } else {
       camera.getWorldDirection(_fwd);
       camera.position.addScaledVector(_fwd, k * Math.max(2, cam.speed * 0.35));
+      invalidate();
     }
   }
 
@@ -607,6 +652,7 @@ export function createStudio(ctx) {
   window.addEventListener('pointerup', onPointerUp, true);
   window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   window.addEventListener('blur', () => keys.clear());
+  window.addEventListener('resize', invalidate, { passive: true });
 
   // --- effects ---------------------------------------------------------------
   /** Resolve an effect anchor to a world position (actor anchors are live). */
@@ -902,6 +948,7 @@ export function createStudio(ctx) {
         tMs: Math.round(clockMs),
       });
       if (w) w.setWindTime(0.35 + clockMs / 1000);
+      invalidate();
     }
     return ok;
   }
@@ -963,6 +1010,7 @@ export function createStudio(ctx) {
       stepFx(FX_STEP_S);
       for (const a of actors) a.visual.syncFromState(a.state, FX_STEP_S);
     }
+    invalidate();
   }
 
   /** Reset the fx timeline to a clean, seeded t=0 (keeps actors). */
@@ -980,6 +1028,7 @@ export function createStudio(ctx) {
     }
     const w = getWorld();
     if (w) w.setWindTime(0.35);
+    invalidate();
   }
 
   // --- camera API --------------------------------------------------------------
@@ -1172,20 +1221,52 @@ export function createStudio(ctx) {
 
   async function setMap(mapId) {
     const id = resolveMapId(mapId, () => 0.01);
-    panel.setBusy(`Building ${getMapConfig(id).name || id}…`);
-    try {
-      await ensureWorld(id, (f, label) => panel.setBusy(`${label} ${Math.round(f * 100)}%`));
+    const current = getWorld();
+    if (current && current.mapId === id) return id;
+    if (mapChange) {
+      await mapChange;
+      const latest = getWorld();
+      if (latest && latest.mapId === id) return id;
+    }
+    const work = async (progress) => {
+      panel.setBusy(`Building ${getMapConfig(id).name || id}…`);
+      progress(0.03, 'Surveying battlefield');
+      await ensureWorld(id, (f, label) => {
+        panel.setBusy(`${label} ${Math.round(f * 100)}%`);
+        progress(0.03 + f * 0.86, label);
+      });
       setWorldDormant(false);
       setCamoBiome(id);
-      applyCamoPatterns();
-      for (const a of actors) settleActor(a);
-      const w = getWorld();
-      if (w) w.setWindTime(0.35 + clockMs / 1000);
+      // Only Studio actors can be seen. Repainting every cached garage/battle
+      // texture on a biome change turned a map pick into seconds of unrelated
+      // canvas work.
+      const refreshed = new Set();
+      for (const actor of actors) {
+        if (refreshed.has(actor.specId)) continue;
+        refreshed.add(actor.specId);
+        applyCamoPatterns(actor.specId);
+      }
+      progress(0.92, 'Settling actors');
+      for (const actor of actors) settleActor(actor);
+      const world = getWorld();
+      if (world) world.setWindTime(0.35 + clockMs / 1000);
       panel.refreshAll();
+      invalidate();
+      progress(1, 'Studio ready');
+      return world.mapId;
+    };
+    mapChange = transition.run(work, {
+      kicker: 'Scene Studio',
+      title: getMapConfig(id).name || id,
+      sub: 'Switching battlefield',
+      minShowMs: 360,
+    });
+    try {
+      return await mapChange;
     } finally {
+      mapChange = null;
       panel.setBusy(null);
     }
-    return getWorld().mapId;
   }
 
   // --- enter / exit -------------------------------------------------------------
@@ -1203,8 +1284,10 @@ export function createStudio(ctx) {
 
   async function doEnter(opts) {
     // never race the boot tail: everything the studio touches exists once
-    // the game declares readiness
-    if (!window.__GAME_READY) {
+    // the game declares readiness. Direct /studio boot is explicitly invoked
+    // by main.js from its final covered stage, where all Studio dependencies
+    // already exist but __GAME_READY deliberately has not flipped yet.
+    if (!opts.coveredByBoot && !window.__GAME_READY) {
       await new Promise((res) => {
         const t = setInterval(() => {
           if (window.__GAME_READY) { clearInterval(t); res(); }
@@ -1212,11 +1295,15 @@ export function createStudio(ctx) {
       });
     }
     const mapId = resolveMapId(opts.map || urlParam('map') || 'verdant', () => 0.01);
-    // The whole swap runs behind the branded loading screen: the garage keeps
-    // rendering under the fade-in, and the world build drives the real bar.
-    // Probes never see it (transition.run is a synchronous no-op under
-    // automation — screenshot contract).
-    await transition.run(async (p) => {
+    const trace = { mapId, directBoot: !!opts.coveredByBoot, stages: {} };
+    const startedAt = performance.now();
+    let markedAt = startedAt;
+    const mark = (name) => {
+      const now = performance.now();
+      trace.stages[name] = Math.round(now - markedAt);
+      markedAt = now;
+    };
+    const work = async (p) => {
       p(0.02, 'Preparing studio');
       game.phase = 'studio';
       garage.hide();
@@ -1225,13 +1312,39 @@ export function createStudio(ctx) {
       setGarageSpots(false);
       setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
       ensureFxBus();
-      await warmCombatPipeline(); // yield between warm stages behind the veil
       active = true;        // tick branch takes the frame from here on
       panel.show();
-      await ensureWorld(mapId, (f, label) => p(0.04 + f * 0.9, label));
+      mark('shell');
+      // Both paths are frame-budgeted and independent. Interleave their yield
+      // points so sprite baking does not become a second serial load after the
+      // battlefield has finished assembling.
+      let worldProgress = 0;
+      let fxProgress = 0;
+      const report = (label) => p(
+        0.04 + worldProgress * 0.78 + fxProgress * 0.18,
+        label,
+      );
+      await Promise.all([
+        ensureWorld(mapId, (f, label) => {
+          worldProgress = Math.max(worldProgress, f);
+          report(label);
+        }),
+        warmStudioPipeline((f, label) => {
+          fxProgress = Math.max(fxProgress, f);
+          report(label);
+        }),
+      ]);
+      mark('worldAndFx');
       setWorldDormant(false);
       setCamoBiome(mapId);
-      applyCamoPatterns();
+      // Direct entry has no actors and should not repaint the hidden garage
+      // hero. Existing actors can occur only through an API re-entry.
+      const refreshed = new Set();
+      for (const actor of actors) {
+        if (refreshed.has(actor.specId)) continue;
+        refreshed.add(actor.specId);
+        applyCamoPatterns(actor.specId);
+      }
       sweepPool();
       resetFx();
       timeScale = 1;
@@ -1251,12 +1364,28 @@ export function createStudio(ctx) {
       lighting.updateFrustums();
       panel.setBusy(null);
       panel.refreshAll();
-    }, {
-      kicker: 'Scene Studio',
-      title: getMapConfig(mapId).name || mapId,
-      sub: 'Staging rig · Free camera',
-      minShowMs: 900,
-    });
+      invalidate();
+      mark('present');
+    };
+    try {
+      if (opts.coveredByBoot) {
+        await work(opts.onProgress || (() => {}));
+      } else {
+        await transition.run(work, {
+          kicker: 'Scene Studio',
+          title: getMapConfig(mapId).name || mapId,
+          sub: 'Staging rig · Free camera',
+          minShowMs: 360,
+        });
+      }
+    } catch (error) {
+      active = false;
+      panel.hide();
+      game.phase = 'garage';
+      throw error;
+    }
+    trace.totalMs = Math.round(performance.now() - startedAt);
+    window.__STUDIO_LOAD = trace;
     syncRoute(true);
     docBrand('studio');
   }
@@ -1302,10 +1431,20 @@ export function createStudio(ctx) {
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
   function tick(dt) {
-    updateCamera(dt);
-    sweepPool();
+    const cameraMoved = updateCamera(dt);
+    poolSweepAcc += dt;
+    if (poolSweepAcc >= 0.5) {
+      poolSweepAcc = 0;
+      sweepPool();
+    }
+    panel.tick(dt);
+    const animating = timeScale > 0;
+    if (!animating && !cameraMoved && !frameDirty) {
+      perf.skippedFrames++;
+      return;
+    }
     const w = getWorld();
-    const wdt = timeScale === 0 ? 0 : dt;
+    const wdt = animating ? dt : 0;
     camera.getWorldDirection(_fwd);
     if (w) w.update(wdt, camera.position, _fwd, null);
     stepFx(dt * timeScale);
@@ -1314,9 +1453,10 @@ export function createStudio(ctx) {
       lighting.updateFrustums();
       lastFov = camera.fov;
     }
-    panel.tick(dt);
     lighting.update();
     post.render(dt);
+    perf.renderedFrames++;
+    frameDirty = false;
   }
 
   function urlParam(name) {
@@ -1403,6 +1543,7 @@ export function createStudio(ctx) {
     setMap,
     get active() { return active; },
     get mapId() { const w = getWorld(); return w ? w.mapId : null; },
+    performance: () => ({ ...perf }),
     // actors
     addActor: (cfg) => { const a = addActor(cfg); selectActor(a); return api.listActors()[actors.indexOf(a)]; },
     removeActor,
@@ -1414,7 +1555,12 @@ export function createStudio(ctx) {
     effect: fireEffect,
     clearEffects: () => resetFx(),
     advanceFx: (ms) => { advanceFx(ms); panel.refreshAll(); },
-    setTimeScale: (v) => { timeScale = Math.max(0, Math.min(4, v)); panel.refreshTime(); return timeScale; },
+    setTimeScale: (v) => {
+      timeScale = Math.max(0, Math.min(4, v));
+      panel.refreshTime();
+      invalidate();
+      return timeScale;
+    },
     get timeScale() { return timeScale; },
     get fxTimeMs() { return Math.round(clockMs); },
     // camera
@@ -1426,6 +1572,10 @@ export function createStudio(ctx) {
     ACTOR_STATES,
     EFFECT_TYPES,
     CAMO_PATTERN_IDS,
+    getMapInfo: (id) => {
+      const config = getMapConfig(id);
+      return { id, name: config.name || id, sub: config.sub || '' };
+    },
     getSpecInfo: (id) => {
       const s = getSpec(id);
       return {
@@ -1440,6 +1590,7 @@ export function createStudio(ctx) {
       get placeArmed() { return placeArmed; },
       set placeArmed(v) { placeArmed = v; },
       get markerPos() { return marker.pos; },
+      get markerActive() { return marker.group.visible; },
       cam,
       actors,
       findActor,
@@ -1452,7 +1603,7 @@ export function createStudio(ctx) {
 
   // Auto-entry: the /studio pretty route or the legacy ?studio=1 param
   // (waits for readiness; map via ?map=…)
-  if (urlParam('studio') || onStudioRoute()) {
+  if (ctx.autoEnter !== false && (urlParam('studio') || onStudioRoute())) {
     const t = setInterval(() => {
       if (!window.__GAME_READY) return;
       clearInterval(t);
