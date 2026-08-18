@@ -400,6 +400,8 @@ const liveDrive = evaluate(`(async () => {
   let canopyShadowProxyCasters = 0;
   let canopyShadowProxyVertices = 0;
   let treeFoliageShadowCasters = 0;
+  let treeTrunkShadowCasters = 0;
+  let treeTrunkShadowReceivers = 0;
   D.scene.traverse((object) => {
     if (object.userData?.canopyShadowProxy && object.castShadow) {
       canopyShadowProxyCasters++;
@@ -407,6 +409,10 @@ const liveDrive = evaluate(`(async () => {
     }
     if (object.userData?.treeFoliage && object.castShadow) {
       treeFoliageShadowCasters++;
+    }
+    if (object.userData?.treeTrunk) {
+      if (object.castShadow) treeTrunkShadowCasters++;
+      if (object.receiveShadow) treeTrunkShadowReceivers++;
     }
   });
   frameTimes.sort((a, b) => a - b);
@@ -427,6 +433,8 @@ const liveDrive = evaluate(`(async () => {
     canopyShadowProxyCasters,
     canopyShadowProxyVertices,
     treeFoliageShadowCasters,
+    treeTrunkShadowCasters,
+    treeTrunkShadowReceivers,
     shadowThrottle: telemetry.shadows.throttle,
     nearAutoUpdate: telemetry.shadows.cascades
       .slice(0, 2).map((cascade) => cascade.autoUpdate),
@@ -464,6 +472,14 @@ if (liveDrive.treeFoliageShadowCasters !== 0) {
     `${liveDrive.treeFoliageShadowCasters} alpha-tested tree-card shadow casters remain`,
   );
 }
+if (liveDrive.treeTrunkShadowCasters < 1) {
+  liveDriveReasons.push('live world has no tree-trunk ground-shadow casters');
+}
+if (liveDrive.treeTrunkShadowReceivers !== 0) {
+  liveDriveReasons.push(
+    `${liveDrive.treeTrunkShadowReceivers} tree-trunk meshes still receive unstable canopy/self shadows`,
+  );
+}
 if (liveDriveReasons.length) failures.push({ preset: 'live-drive', reasons: liveDriveReasons });
 console.log(
   `${liveDriveReasons.length ? 'FAIL' : 'PASS'} live-drive `
@@ -474,7 +490,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 3,
+  version: 4,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

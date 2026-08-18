@@ -2774,6 +2774,15 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   for (const sp of speciesList) {
     nearMeshes[sp] = treeGeo[sp].map((g) => {
       const trunk = makeTreeMesh(g.trunk, barkMat, sp, false);
+      // shadow-stability r2: The opaque canopy proxy is deliberately coarse
+      // and stable on broad ground receivers, but projecting that same mask
+      // onto a narrow bark cylinder makes its lit face jump between dark and
+      // light samples while the chase camera crosses cascade texels. Bark
+      // already has normal-mapped/direct-light form shading, so keep the
+      // trunk as a ground shadow CASTER without letting canopy/self shadows
+      // crawl across its visible surface.
+      trunk.receiveShadow = false;
+      trunk.userData.treeTrunk = true;
       const foliage = makeTreeMesh(g.cards, foliageMats[sp], sp, true);
       // The visible alpha cards no longer enter the shadow pass; their
       // low-frequency proxy below owns crown shade without cutout shimmer.
@@ -2789,7 +2798,10 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     farMeshes[sp] = treeGeoFar[sp].map((g) => {
       const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false);
       farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
-      const pair = [makeTreeMesh(g.trunk, barkMat, sp, false), farCanopy];
+      const farTrunk = makeTreeMesh(g.trunk, barkMat, sp, false);
+      farTrunk.receiveShadow = false;
+      farTrunk.userData.treeTrunk = true;
+      const pair = [farTrunk, farCanopy];
       // PERF (perf-budget r3): far-partition trees (beyond ~260 m) do NOT cast
       // shadows — a tree shadow out there is subpixel at 1080p (see lighting.js
       // far-cascade rationale) yet every lobe/trunk was re-rasterized by the

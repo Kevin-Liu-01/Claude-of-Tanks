@@ -60,7 +60,12 @@ export default {
     mieCoefficient: 0.018, mieDirectionalG: 0.9, fogDensity: 0.00124,
     fogTintHex: 0x81888a, fogMix: 0.74, envIntensity: 0.23,
     cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
-    sunIntensity: 3.25, sunColorHex: 0xffd6ad, hemiIntensity: 0.56,
+    // shadow-audit r2: the 24° key was too weak after haze/ACES on the
+    // mobile-low path (3.95 changed-pixel luma against the 4.0 contract), so
+    // factory and trunk shadows read as flat discoloration. Keep the authored
+    // warm overcast fill, but give the directional sun enough separation to
+    // hold across every shadow-map tier.
+    sunIntensity: 4.0, sunColorHex: 0xffd6ad, hemiIntensity: 0.56,
   },
   minimap: {
     base: [73, 75, 73], hard: [91, 91, 88], soft: [64, 67, 65],
