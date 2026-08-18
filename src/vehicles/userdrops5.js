@@ -49,16 +49,16 @@ const SPECS = [
   // gun-level 0.45 s reload applied to that inherited TOW (900 dmg HEAT at
   // 2 rps). Real 30 mm RARDEN belts, per-shell reloads, no missile.
   make('m2a2_bradley', 'fv510', 'FV510 Warrior', 'UK',
-    { hp: 1250, weightTons: 25.4, topSpeedKmh: 75,
+    { hp: 1400, weightTons: 25.4, topSpeedKmh: 75, hullTraverseDegS: 45,
       gun: {
-        caliberMm: 30, reloadS: 0.45,
+        caliberMm: 30, reloadS: 0.75, soundProfile: 'rarden-l21a1',
         shells: [
-          { name: 'L14A2 APDS-T', type: 'APFSDS', caliberMm: 30, pen100Mm: 85, pen1000Mm: 78,
-            dmg: 55, velocityMps: 1175, moduleDmg: 30, tracer: 'APFSDS',
-            pen2000Mm: 70, reloadS: 0.45, count: 130 },
+          { name: 'L14A2 APDS-T', type: 'APFSDS', caliberMm: 30, pen100Mm: 96, pen1000Mm: 86,
+            dmg: 90, velocityMps: 1175, moduleDmg: 30, tracer: 'APFSDS',
+            pen2000Mm: 76, reloadS: 0.75, count: 130 },
           { name: 'L13A1 HE-T', type: 'HE', caliberMm: 30, pen100Mm: 8, pen1000Mm: 8,
-            dmg: 52, velocityMps: 1070, moduleDmg: 30, tracer: 'HE',
-            reloadS: 0.45, count: 120 },
+            dmg: 82, velocityMps: 1070, moduleDmg: 30, tracer: 'HE',
+            pen2000Mm: 8, reloadS: 0.75, count: 120 },
         ],
       },
       dims: { hullLengthM: 6.34, overallLengthM: 6.34, widthM: 3.03, heightM: 2.80 } }),
@@ -261,25 +261,31 @@ const SPECS = [
   milan.name = 'FV510 Warrior MILAN';
   milan.variantOf = 'fv510';
   milan.publicVisualFallback = null;
-  milan.hp = 1450;
+  milan.hp = 1525;
   milan.weightTons = 28.4;
-  milan.topSpeedKmh = 72;
+  milan.topSpeedKmh = 68;
+  milan.hullTraverseDegS = 43;
   milan.visual = { ...base.visual, number: 'M9' };
   milan.gun = {
     ...base.gun,
+    reloadS: 0.78,
     shells: [
-      ...base.gun.shells.map((shell) => copy(shell)),
+      ...base.gun.shells.map((shell, index) => ({
+        ...copy(shell),
+        dmg: index === 0 ? 84 : 76,
+        reloadS: 0.78,
+      })),
       {
         name: 'MILAN 2', type: 'HEAT', caliberMm: 115,
         pen100Mm: 800, pen1000Mm: 800, pen2000Mm: 800,
-        dmg: 430, velocityMps: 200, moduleDmg: 115, tracer: 'HEAT',
-        reloadS: 12.5, count: 6, guided: true,
+        dmg: 480, velocityMps: 200, moduleDmg: 115, tracer: 'HEAT',
+        reloadS: 12.5, count: 6, guided: true, soundProfile: 'milan-launch',
       },
     ],
   };
   // The visible glacis tiles, side packs and turret applique are real armor,
-  // not cosmetic boxes.  Add their protection before the common AFV package
-  // is lazily applied by getSpec(). Tracks remain external and untouched.
+  // not cosmetic boxes. Add their protection directly to this canonical
+  // variant. Tracks remain external and untouched.
   for (const plate of milan.armor.hullPlates) {
     if (/upper_glacis/.test(plate.name)) {
       plate.keMm += 30; plate.ceMm += 70;

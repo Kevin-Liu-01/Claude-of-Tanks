@@ -64,18 +64,21 @@ function variant(id, donorId, o) {
 }
 
 const ap = (name, caliberMm, pen, damage, velocityMps, count, reloadS = 0.42) => ({
-  name, type: 'APFSDS', caliberMm, pen100Mm: Math.round(pen * 1.10),
-  pen1000Mm: Math.round(pen * 1.04), pen2000Mm: pen, dmg: damage,
+  name, type: 'APFSDS', caliberMm,
+  pen100Mm: Array.isArray(pen) ? pen[0] : Math.round(pen * 1.10),
+  pen1000Mm: Array.isArray(pen) ? pen[1] : Math.round(pen * 1.04),
+  pen2000Mm: Array.isArray(pen) ? pen[2] : pen, dmg: damage,
   moduleDmg: caliberMm, tracer: 'APFSDS', velocityMps, count, reloadS,
 });
-const heat = (name, caliberMm, pen, damage, velocityMps, count, reloadS) => ({
+const heat = (name, caliberMm, pen, damage, velocityMps, count, reloadS, soundProfile) => ({
   name, type: 'HEAT', caliberMm, pen100Mm: pen, pen1000Mm: pen,
   pen2000Mm: pen, dmg: damage, moduleDmg: caliberMm, tracer: 'HEAT',
-  velocityMps, count, reloadS, guided: true,
+  velocityMps, count, reloadS, guided: true, soundProfile,
 });
-const he = (name, caliberMm, damage, velocityMps, count, reloadS = 0.42) => ({
+const he = (name, caliberMm, damage, velocityMps, count, reloadS = 0.42, soundProfile) => ({
   name, type: 'HE', caliberMm, pen100Mm: 8, pen1000Mm: 8, pen2000Mm: 8,
   dmg: damage, moduleDmg: caliberMm, tracer: 'HE', velocityMps, count, reloadS,
+  soundProfile,
 });
 
 // ---------------------------------------------------------------------------
@@ -192,13 +195,14 @@ export const AFV_FAMILY_SPECS = {
       silhouetteHullLengthM: 6.53, silhouetteOverallLengthM: 6.74,
       silhouetteWidthM: 3.20, silhouetteHeightM: 2.62 },
     trackWidthM: 0.38,
-    stats: { hp: 1180, enginePowerHp: 500, weightTons: 18.7, topSpeedKmh: 70,
-      reverseSpeedKmh: 20, turretTraverseDegS: 52, gunPitchDegS: 38 },
-    gun: { caliberMm: 30, reloadS: 0.40, baseAccuracy: 0.29, aimTimeS: 1.35 },
+    stats: { hp: 1550, enginePowerHp: 500, weightTons: 18.7, topSpeedKmh: 70,
+      reverseSpeedKmh: 20, hullTraverseDegS: 48, turretTraverseDegS: 52, gunPitchDegS: 38 },
+    gun: { caliberMm: 30, reloadS: 0.36, baseAccuracy: 0.29, aimTimeS: 1.35,
+      soundProfile: '2a72' },
     shells: [
-      ap('3UBR11 APFSDS', 30, 100, 58, 1120, 180, 0.40),
-      heat('9M117M1 Arkan', 100, 750, 430, 370, 8, 12.5),
-      he('3UOF19 HE-FRAG', 100, 340, 355, 22, 4.0),
+      ap('3UBR11 APFSDS', 30, [128, 116, 104], 58, 1120, 180, 0.36),
+      heat('9M117M1 Arkan', 100, 750, 470, 370, 8, 12.5, 'arkan-launch'),
+      he('3UOF19 HE-FRAG', 100, 340, 355, 22, 4.0, 'bmp3-100mm'),
     ],
   }),
   ua_m2a3_bradley: variant('ua_m2a3_bradley', 'm2a2_bradley', {
@@ -207,11 +211,13 @@ export const AFV_FAMILY_SPECS = {
     dims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.61, heightM: 3.60,
       silhouetteHullLengthM: 6.58, silhouetteOverallLengthM: 6.62,
       silhouetteWidthM: 3.56, silhouetteHeightM: 3.09 },
-    stats: { hp: 1550, weightTons: 34.3, topSpeedKmh: 61, reverseSpeedKmh: 20 },
+    stats: { hp: 1950, weightTons: 34.3, topSpeedKmh: 58, reverseSpeedKmh: 20,
+      hullTraverseDegS: 40 },
+    gun: { reloadS: 0.42, soundProfile: 'm242-bushmaster' },
     shells: [
-      ap('M919 APFSDS-T', 25, 110, 62, 1345, 225, 0.50),
-      heat('BGM-71E TOW-2A', 152, 900, 500, 300, 7, 14),
-      he('M792 HEI-T', 25, 58, 1100, 300, 0.50),
+      ap('M919 APFSDS-T', 25, [142, 128, 116], 64, 1345, 225, 0.42),
+      heat('BGM-71E TOW-2A', 152, 900, 560, 300, 7, 14, 'tow-launch'),
+      he('M792 HEI-T', 25, 56, 1100, 300, 0.42),
     ],
   }),
   bmpt_terminator2: variant('bmpt_terminator2', 't72b3m', {
@@ -225,8 +231,8 @@ export const AFV_FAMILY_SPECS = {
       silhouetteHullLengthM: 6.99, silhouetteOverallLengthM: 7.52,
       silhouetteWidthM: 3.59, silhouetteHeightM: 2.56 },
     trackWidthM: 0.58,
-    stats: { hp: 2250, enginePowerHp: 1000, weightTons: 44.0, topSpeedKmh: 60,
-      reverseSpeedKmh: 18, turretTraverseDegS: 58, gunPitchDegS: 45,
+    stats: { hp: 2700, enginePowerHp: 1000, weightTons: 44.0, topSpeedKmh: 60,
+      reverseSpeedKmh: 18, hullTraverseDegS: 34, turretTraverseDegS: 58, gunPitchDegS: 45,
       gunElevationDeg: 45, gunDepressionDeg: 5 },
     // OWNER ORDER (2026-08-17): "2 shooting holes for both its barrels ...
     // with a super fast reload". muzzles = the twin 2A42 tips' recoil-local
@@ -234,13 +240,14 @@ export const AFV_FAMILY_SPECS = {
     // factory's fallback-bore pass seats one dark mouth PER tip (opt-in
     // knob, absent-param byte-identical fleet-wide). reloadS 0.34 -> 0.30:
     // the fleet's fastest autocannon convention was marder1a3's 20 mm at
-    // 0.32; the twin-plant Terminator goes the ordered notch under it.
+    // 0.20; the twin-plant Terminator trades some cycle rate for heavier fire.
     gun: { caliberMm: 30, reloadS: 0.30, baseAccuracy: 0.27, aimTimeS: 1.25,
+      soundProfile: 'twin-2a42',
       muzzles: [{ x: -0.16, y: 0 }, { x: 0.16, y: 0 }] },
     shells: [
-      ap('3UBR8 APDS', 30, 75, 56, 1120, 425, 0.30),
-      heat('9M120-1 Ataka-T', 130, 850, 500, 550, 4, 13.5),
-      he('3UOF8 HE-I', 30, 52, 960, 425, 0.30),
+      ap('3UBR8 APDS', 30, [118, 106, 94], 52, 1120, 425, 0.30),
+      heat('9M120-1 Ataka-T', 130, 850, 540, 550, 4, 13.5, 'ataka-launch'),
+      he('3UOF8 HE-I', 30, 48, 960, 425, 0.30),
     ],
   }),
   bwp1: variant('bwp1', 'bmp2', {
@@ -250,13 +257,14 @@ export const AFV_FAMILY_SPECS = {
       silhouetteHullLengthM: 6.61, silhouetteOverallLengthM: 6.72,
       silhouetteWidthM: 3.45, silhouetteHeightM: 2.82 },
     trackWidthM: 0.44,
-    stats: { hp: 1700, enginePowerHp: 720, weightTons: 32.0, topSpeedKmh: 68,
-      reverseSpeedKmh: 28, turretTraverseDegS: 60, gunPitchDegS: 46 },
-    gun: { caliberMm: 30, reloadS: 0.38, baseAccuracy: 0.26, aimTimeS: 1.25 },
+    stats: { hp: 1850, enginePowerHp: 720, weightTons: 32.0, topSpeedKmh: 68,
+      reverseSpeedKmh: 28, hullTraverseDegS: 48, turretTraverseDegS: 60, gunPitchDegS: 46 },
+    gun: { caliberMm: 30, reloadS: 0.32, baseAccuracy: 0.26, aimTimeS: 1.25,
+      soundProfile: 'mk30-2' },
     shells: [
-      ap('MK30 APFSDS-T', 30, 120, 60, 1385, 220, 0.38),
-      heat('Spike-LR2', 152, 850, 510, 180, 4, 14.5),
-      he('30 mm ABM', 30, 58, 1100, 220, 0.38),
+      ap('MK30 APFSDS-T', 30, [158, 144, 130], 62, 1385, 220, 0.32),
+      heat('Spike-LR2', 152, 850, 580, 180, 4, 14.5, 'spike-launch'),
+      he('30 mm ABM', 30, 60, 1100, 220, 0.32),
     ],
   }),
 
@@ -273,21 +281,23 @@ export const AFV_FAMILY_SPECS = {
     // preserved and re-seated. Print marder1a3_arrafi.glb stays fused/
     // suspect (rip-poster account history) — PHOTOS GOVERN (§B7 class).
     id: 'marder1a3', name: 'Marder 1A3', nation: 'Germany', era: 'modern', class: 'ifv',
-    hp: 1380,
+    hp: 1250,
     enginePowerHp: 600, weightTons: 33.5, topSpeedKmh: 65, reverseSpeedKmh: 17,
-    hullTraverseDegS: 42,
+    hullTraverseDegS: 50,
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.5 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 50, gunPitchDegS: 40, gunElevationDeg: 45, gunDepressionDeg: 12,
     gun: {
       // MK20 Rh202 belt bursts are LIVE per-shell reloads; MILAN pays its
       // full rail time.
-      caliberMm: 20, reloadS: 0.32, baseAccuracy: 0.30, aimTimeS: 1.30,
+      caliberMm: 20, reloadS: 0.20, baseAccuracy: 0.30, aimTimeS: 1.30,
+      soundProfile: 'rh202',
       bloom: BLOOM_IFV,
       shells: [
-        shell('DM63 APDS-T', 'APFSDS', 20, 64, 58, 40, 1100, { pen2000Mm: 48, reloadS: 0.32, count: 500 }),
-        shell('MILAN 2', 'HEAT', 115, 720, 720, 440, 200, { reloadS: 15, count: 4, guided: true }),
-        shell('DM81 HEI-T', 'HE', 20, 6, 6, 38, 1045, { reloadS: 0.32, count: 750 }),
+        shell('DM63 APDS-T', 'APFSDS', 20, 72, 64, 32, 1100, { pen2000Mm: 56, reloadS: 0.20, count: 500 }),
+        shell('MILAN 2', 'HEAT', 115, 720, 720, 450, 200,
+          { reloadS: 15, count: 4, guided: true, soundProfile: 'milan-launch' }),
+        shell('DM81 HEI-T', 'HE', 20, 6, 6, 30, 1045, { reloadS: 0.20, count: 750 }),
       ],
     },
     // Published Marder 1A3 data: 6.88 hull (gun never passes the bow —
@@ -329,19 +339,21 @@ export const AFV_FAMILY_SPECS = {
     // m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose vertex reads
     // are scattered — the browser gate poses it correctly).
     id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', class: 'ifv',
-    hp: 1350,
+    hp: 1800,
     enginePowerHp: 600, weightTons: 34.4, topSpeedKmh: 61, reverseSpeedKmh: 20,
-    hullTraverseDegS: 42,
+    hullTraverseDegS: 40,
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.4 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
     gun: {
-      caliberMm: 25, reloadS: 0.48, baseAccuracy: 0.28, aimTimeS: 1.25,
+      caliberMm: 25, reloadS: 0.40, baseAccuracy: 0.28, aimTimeS: 1.25,
+      soundProfile: 'm242-bushmaster',
       bloom: BLOOM_IFV,
       shells: [
-        shell('M919 APFSDS-T', 'APFSDS', 25, 110, 110, 60, 1345, { pen2000Mm: 110, reloadS: 0.48, count: 300 }),
-        shell('BGM-71F TOW-2B', 'HEAT', 152, 900, 900, 500, 300, { reloadS: 14, count: 10, guided: true }),
-        shell('M792 HEI-T', 'HE', 25, 8, 8, 55, 1100, { reloadS: 0.48, count: 300 }),
+        shell('M919 APFSDS-T', 'APFSDS', 25, 136, 122, 62, 1345, { pen2000Mm: 110, reloadS: 0.40, count: 300 }),
+        shell('BGM-71F TOW-2B', 'HEAT', 152, 900, 900, 600, 300,
+          { reloadS: 14, count: 10, guided: true, soundProfile: 'tow-launch' }),
+        shell('M792 HEI-T', 'HE', 25, 8, 8, 56, 1100, { reloadS: 0.40, count: 300 }),
       ],
     },
     // §5.306 base revert: the pre-§5.286 declared dims return with the
@@ -378,21 +390,24 @@ export const AFV_FAMILY_SPECS = {
     // NATION: Russia (§5.249 ASK-OWNER default; the print's ROK livery is
     // noted — a ROK-marked variant remains available as bmp3_rok).
     id: 'bmp3', name: 'BMP-3', nation: 'Russia', era: 'modern', class: 'ifv',
-    hp: 1150,
+    hp: 1450,
     enginePowerHp: 500, weightTons: 18.7, topSpeedKmh: 70, reverseSpeedKmh: 20,
-    hullTraverseDegS: 46,
+    hullTraverseDegS: 48,
     terrainResistance: { hard: 0.72, medium: 0.85, soft: 1.45 },
     pivotStyle: 'pivot',
     turretTraverseDegS: 50, gunPitchDegS: 38, gunElevationDeg: 60, gunDepressionDeg: 6,
     gun: {
       // 2A72 belt is the rapid plant; the 2A70 pays real rail/loader time
       // on the ATGM and HE-FRAG natures (per-shell reloads are LIVE).
-      caliberMm: 30, reloadS: 0.42, baseAccuracy: 0.30, aimTimeS: 1.35,
+      caliberMm: 30, reloadS: 0.34, baseAccuracy: 0.30, aimTimeS: 1.35,
+      soundProfile: '2a72',
       bloom: BLOOM_IFV,
       shells: [
-        shell('3UBR11 APFSDS-T', 'APFSDS', 30, 95, 88, 55, 1120, { pen2000Mm: 80, reloadS: 0.42, count: 200 }),
-        shell('9M117M1 Arkan', 'HEAT', 100, 750, 750, 460, 370, { reloadS: 12, count: 8, guided: true }),
-        shell('3UOF19 HE-FRAG', 'HE', 100, 12, 12, 320, 250, { reloadS: 4.0, count: 22 }),
+        shell('3UBR11 APFSDS-T', 'APFSDS', 30, 112, 102, 55, 1120, { pen2000Mm: 92, reloadS: 0.34, count: 200 }),
+        shell('9M117M1 Arkan', 'HEAT', 100, 750, 750, 500, 370,
+          { reloadS: 12, count: 8, guided: true, soundProfile: 'arkan-launch' }),
+        shell('3UOF19 HE-FRAG', 'HE', 100, 12, 12, 360, 250,
+          { reloadS: 4.0, count: 22, soundProfile: 'bmp3-100mm' }),
       ],
     },
     // Published: 7.14 hull; the 2A70 muzzle overhangs the bow ~0.27 in the
@@ -428,19 +443,21 @@ export const AFV_FAMILY_SPECS = {
     // length was a pre-extraction BMP-2-class guess and is superseded by
     // the print's own proportions (conflict reported to the orchestrator).
     id: 'upior', name: 'Upiór IFV', nation: 'Poland', era: 'modern', class: 'ifv',
-    hp: 1450,
-    enginePowerHp: 800, weightTons: 30.0, topSpeedKmh: 72, reverseSpeedKmh: 30,
-    hullTraverseDegS: 48,
+    hp: 1700,
+    enginePowerHp: 800, weightTons: 30.0, topSpeedKmh: 75, reverseSpeedKmh: 30,
+    hullTraverseDegS: 52,
     terrainResistance: { hard: 0.70, medium: 0.82, soft: 1.45 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 55, gunPitchDegS: 40, gunElevationDeg: 35, gunDepressionDeg: 7,
     gun: {
-      caliberMm: 30, reloadS: 0.38, baseAccuracy: 0.28, aimTimeS: 1.30,
+      caliberMm: 30, reloadS: 0.30, baseAccuracy: 0.28, aimTimeS: 1.30,
+      soundProfile: '2a72',
       bloom: BLOOM_IFV,
       shells: [
-        shell('3UBR11 APFSDS-T', 'APFSDS', 30, 100, 92, 55, 1120, { pen2000Mm: 85, reloadS: 0.38, count: 220 }),
-        shell('Spike-LR', 'HEAT', 152, 800, 800, 500, 180, { reloadS: 14, count: 4, guided: true }),
-        shell('3UOF8 HE-I', 'HE', 30, 8, 8, 48, 960, { reloadS: 0.38, count: 300 }),
+        shell('3UBR11 APFSDS-T', 'APFSDS', 30, 146, 132, 58, 1120, { pen2000Mm: 118, reloadS: 0.30, count: 220 }),
+        shell('Spike-LR', 'HEAT', 152, 800, 800, 550, 180,
+          { reloadS: 14, count: 4, guided: true, soundProfile: 'spike-launch' }),
+        shell('3UOF8 HE-I', 'HE', 30, 8, 8, 52, 960, { reloadS: 0.30, count: 300 }),
       ],
     },
     // OWNER FLIP ORDER dims (2026-08-17): with the hull un-mirrored (wedge
@@ -497,19 +514,20 @@ AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
   trackWidthM: 0.58,
   // bmpt_terminator2's frame up a notch for the T-90 hull: +150 hp pool,
   // T-90M-class 1130 hp plant, 48 t with the full skirt/station ERA suite.
-  stats: { hp: 2400, enginePowerHp: 1130, weightTons: 48.0, topSpeedKmh: 60,
-    reverseSpeedKmh: 18, turretTraverseDegS: 60, gunPitchDegS: 48,
+  stats: { hp: 2950, enginePowerHp: 1130, weightTons: 48.0, topSpeedKmh: 60,
+    reverseSpeedKmh: 18, hullTraverseDegS: 32, turretTraverseDegS: 60, gunPitchDegS: 48,
     gunElevationDeg: 45, gunDepressionDeg: 5 },
   // §5.330 knob: muzzles = the twin 2A42 tips' recoil-local axes (tubes
   // authored at x ±0.20 in addTerminatorT90Station — wider than the clone's
   // ±0.16 for the beefier read); one bore assembly per tip (§B3.1 ×2).
-  // reloadS 0.30 = the clone's owner-ordered "super fast" autocannon class.
-  gun: { caliberMm: 30, reloadS: 0.30, baseAccuracy: 0.26, aimTimeS: 1.20,
+  // reloadS 0.28 keeps the T-90 station distinct from the 0.30 s clone.
+  gun: { caliberMm: 30, reloadS: 0.28, baseAccuracy: 0.26, aimTimeS: 1.20,
+    soundProfile: 'twin-2a42',
     muzzles: [{ x: -0.20, y: 0 }, { x: 0.20, y: 0 }] },
   shells: [
-    ap('3UBR8 APDS', 30, 75, 56, 1120, 500, 0.30),
-    heat('9M120-1 Ataka-T', 130, 850, 500, 550, 8, 13.5),
-    he('3UOF8 HE-I', 30, 52, 960, 500, 0.30),
+    ap('3UBR8 APDS', 30, [122, 110, 98], 50, 1120, 500, 0.28),
+    heat('9M120-1 Ataka-T', 130, 850, 560, 550, 8, 13.5, 'ataka-launch'),
+    he('3UOF8 HE-I', 30, 46, 960, 500, 0.28),
   ],
 });
 

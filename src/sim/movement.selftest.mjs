@@ -489,10 +489,10 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   near(shotRecoilScale(rapidIfv, beltRound), IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
     'IFV autocannon: shared recoil scale selected');
   near(rapidKickState._spring.pitchV, 8 * Math.PI / 180 * IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
-    'IFV autocannon: hull pitch impulse reduced to 18 percent');
+    'IFV autocannon: hull pitch impulse uses the readable 36-percent scale');
   near(Math.hypot(rapidKickState._spring.recoilVX, rapidKickState._spring.recoilVZ),
     0.3 * 0.7 * IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
-    'IFV autocannon: translation impulse reduced to 18 percent');
+    'IFV autocannon: translation impulse uses the readable 36-percent scale');
 
   ent.state.bloomF = 1;
   fireRecoil(ent.state, rapidIfv, { caliberMm: 152, reloadS: 14 });

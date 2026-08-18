@@ -35,7 +35,9 @@ function clearUpperStructure(P) {
   for (const child of [...P.gunG.children]) {
     if (child !== P.recoilG) P.gunG.remove(child);
   }
-  for (const child of [...P.recoilG.children]) P.recoilG.remove(child);
+  for (const child of [...P.recoilG.children]) {
+    if (!child.name.startsWith('rig_barrel_')) P.recoilG.remove(child);
+  }
 }
 
 function roofMG(P, x, y, z, seed, cls = 'mag', yaw = 0, scale = 0.82) {
@@ -249,11 +251,12 @@ function addTerminatorStation(P) {
   // Twin 2A42 cannon plant. Closed collars overlap the tower face; the
   // individual bore mouths are explicit so the pair never reads as rods.
   for (const side of [-1, 1]) {
+    const barrel = side < 0 ? 0 : 1;
     P.addGunExtra(box(0.18, 0.25, 0.30), side * 0.16, 0, 0.28);
     P.addGunExtra(cylZ(0.060, 0.32, 14, 0.048), side * 0.16, 0, 0.55);
-    P.add('gun', cylZ(0.038, 2.45, 12), side * 0.16, 0, 1.82);
-    P.add('gunDark', cylZ(0.056, 0.18, 12), side * 0.16, 0, 3.10);
-    P.add('gunDark', cylZ(0.021, 0.025, 12), side * 0.16, 0, 3.205);
+    P.add(`gunBarrel${barrel}`, cylZ(0.038, 2.45, 12), side * 0.16, 0, 1.82);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.056, 0.18, 12), side * 0.16, 0, 3.10);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.021, 0.025, 12), side * 0.16, 0, 3.205);
   }
   P.muzzleZ = 3.22;
   // OWNER "much better" ROUND (2026-08-17, the removed ground-up bmpt's
@@ -1385,12 +1388,13 @@ function addTerminatorT90Station(P) {
   // muzzles knob (spec x ±0.20) seats one bore assembly per tip (§B3.1 ×2).
   P.addGunExtra(box(0.24, 0.16, 0.30), 0, 0.05, 0.30);
   for (const side of [-1, 1]) {
+    const barrel = side < 0 ? 0 : 1;
     P.addGunExtra(box(0.20, 0.30, 0.36), side * 0.20, 0, 0.26);
     P.addGunExtra(cylZ(0.068, 0.36, 14, 0.05), side * 0.20, 0, 0.58);
-    P.add('gun', cylZ(0.050, 0.60, 12), side * 0.20, 0, 1.00);
-    P.add('gun', cylZ(0.041, 2.55, 12), side * 0.20, 0, 1.88);
-    P.add('gunDark', cylZ(0.058, 0.20, 12), side * 0.20, 0, 3.24);
-    P.add('gunDark', cylZ(0.022, 0.026, 12), side * 0.20, 0, 3.353);
+    P.add(`gunBarrel${barrel}`, cylZ(0.050, 0.60, 12), side * 0.20, 0, 1.00);
+    P.add(`gunBarrel${barrel}`, cylZ(0.041, 2.55, 12), side * 0.20, 0, 1.88);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.058, 0.20, 12), side * 0.20, 0, 3.24);
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.022, 0.026, 12), side * 0.20, 0, 3.353);
   }
   P.muzzleZ = 3.37;
 

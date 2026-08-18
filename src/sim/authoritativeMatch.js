@@ -742,6 +742,7 @@ export function createAuthoritativeMatch({
       shooterId: entity.id,
       shellType: shellSpec.type,
       shellName: shellSpec.name,
+      weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
       caliberMm: shellSpec.caliberMm,
       velocityMps: shellSpec.velocityMps,
       x: gun.muzzle.x,

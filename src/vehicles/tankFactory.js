@@ -4367,6 +4367,10 @@ const BUCKET_DEF = {
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'],
+  // Opt-in independent twin-gun tubes. Only authored multi-muzzle profiles
+  // use these buckets; the rest of the fleet retains the merged recoilG path.
+  gunBarrel0: ['barrel0G', 'barrel'], gunBarrel0Dark: ['barrel0G', 'dark'],
+  gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'dark'],
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
   hullShadow: ['hullG', 'shadow'],
@@ -4921,6 +4925,15 @@ export function createTank(specId, engineCtx, opts = {}) {
   gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
   const recoilG = new THREE.Group();
   recoilG.name = 'rig_recoil';
+  const authoredMuzzles = Array.isArray(spec.gun?.muzzles) ? spec.gun.muzzles : [];
+  const barrelGs = authoredMuzzles.length > 1
+    ? authoredMuzzles.map((_, index) => {
+      const group = new THREE.Group();
+      group.name = `rig_barrel_${index}`;
+      recoilG.add(group);
+      return group;
+    })
+    : [];
   root.add(hullG, turretG);
   turretG.add(gunG);
   gunG.add(recoilG);
@@ -5033,7 +5046,10 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
-  const DIRT_Y = { hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff };
+  const DIRT_Y = {
+    hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff,
+    barrel0G: gunYOff, barrel1G: gunYOff,
+  };
   for (const [bucket, list] of Object.entries(buckets)) {
     if (!list.length) continue;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
@@ -5070,7 +5086,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     // only — geometry/hash-invariant; banded builds are unaffected).
     if (/track|tread/i.test(bucket)) mesh.userData.trackBucket = bucket;
     mesh.castShadow = mesh.receiveShadow = true;
-    const parent = ({ hullG, turretG, recoilG, gunG })[parentKey];
+    const parent = ({
+      hullG, turretG, recoilG, gunG,
+      barrel0G: barrelGs[0], barrel1G: barrelGs[1],
+    })[parentKey];
+    if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   }
@@ -5210,10 +5230,9 @@ export function createTank(specId, engineCtx, opts = {}) {
   // the exact legacy single-assembly path below runs once at the authored/
   // center axis — byte-identical geometry, names, seating and disposal
   // order (§5.279 absent-param loader-law pattern).
-  const muzzleDefs = (Array.isArray(spec.gun.muzzles) && spec.gun.muzzles.length)
-    ? spec.gun.muzzles : [null];
+  const muzzleDefs = authoredMuzzles.length ? authoredMuzzles : [null];
   // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
-  // authored bore at its own seated tip, parented under rig_muzzle so a
+  // authored bore at its own seated tip, parented under its tube group so a
   // mid-stroke sample rides the recoiled tube. gunMuzzleWorld(out, i) reads
   // them; the absent-knob fleet keeps the exact legacy center anchor.
   const muzzleTips = [];
@@ -5228,7 +5247,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     fallbackBore.visible = true;
     // The measured seating pass below replaces this nominal 32 mm lip. Keep a
     // safe default for profiles whose center ray has no renderable cap.
-    fallbackBore.position.z = 0.032;
+    const independentBarrel = def && barrelGs[mi] ? barrelGs[mi] : null;
+    const boreParent = independentBarrel || muzzle;
+    const boreBaseZ = independentBarrel ? P.muzzleZ : 0;
+    fallbackBore.position.z = boreBaseZ + 0.032;
     const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
     boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
     boreRim.userData.cannonBoreFallbackPart = true;
@@ -5266,7 +5288,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       // single-mouth path (nearest-part refinement is a centerline-only law).
       boreX = def.x || 0;
       boreY = def.y || 0;
-      fallbackBore.position.set(boreX, boreY, 0.032);
+      fallbackBore.position.set(boreX, boreY, boreBaseZ + 0.032);
     } else {
       const authoredSeat = authoredBore || authoredRim;
       if (authoredSeat) {
@@ -5288,8 +5310,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     // buckets count: autocannon tips such as BMP-2 deliberately put their
     // centerline cap in `gunDark`, exactly as the former generic ray did.
     let capZ = null;
-    for (const name of ['gun', 'gunDark']) {
-      const surface = recoilG.getObjectByName(name);
+    const surfaceNames = independentBarrel
+      ? [`gunBarrel${mi}`, `gunBarrel${mi}Dark`]
+      : ['gun', 'gunDark'];
+    for (const name of surfaceNames) {
+      const surface = (independentBarrel || recoilG).getObjectByName(name);
       if (!surface || !surface.isMesh) continue;
       const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
         P.muzzleZ - 2, P.muzzleZ + 1);
@@ -5298,16 +5323,16 @@ export function createTank(specId, engineCtx, opts = {}) {
     let capOffset = 0;
     if (capZ != null) {
       capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
-      fallbackBore.position.z = capOffset + 0.032;
+      fallbackBore.position.z = boreBaseZ + capOffset + 0.032;
       fallbackBore.userData.capOffsetM = capOffset;
     }
-    muzzle.add(fallbackBore);
+    boreParent.add(fallbackBore);
     fallbackBore.visible = true;
     if (def) {
       const tip = new THREE.Object3D();
       tip.name = `rig_muzzle_tip_${mi}`;
-      tip.position.set(boreX, boreY, capOffset);
-      muzzle.add(tip);
+      tip.position.set(boreX, boreY, boreBaseZ + capOffset);
+      boreParent.add(tip);
       muzzleTips.push(tip);
     }
   }
@@ -5403,6 +5428,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   let recoilRapid = false;           // §5.362 autocannon-belt stroke profile
   let recoilYawAmp = 0;              // §5.362 twin-plant kick: yaw toward the firing barrel
   let recoilRollAmp = 0;             // §5.362 twin-plant kick: roll dip onto the firing side
+  let recoilBarrelIndex = -1;        // independently animated firing tube, -1 = shared recoilG
   let muzzleAltCursor = 0;           // §5.362 fallback shot alternator (no-index callers)
   // effects_combat r5 FX-CLOCK ADVANCEMENT: recoil/pop/wreck timelines no
   // longer trust the caller's dt directly — each syncFromState advances them
@@ -5432,13 +5458,13 @@ export function createTank(specId, engineCtx, opts = {}) {
   // 6-24 cm (small-bore rails / the 380 mm mortar class).
   const REC_CAL = (spec.gun && spec.gun.caliberMm) || 100;
   const REC_AMP = Math.min(0.24, Math.max(0.06, 0.13 * REC_CAL / 120));
-  // Rapid (autocannon-belt) stroke: a short sharp shudder that completes
-  // inside the fastest belt cycle (0.30 s — bmpt_terminator2) instead of the
-  // 0.79 s recuperate cycle, which a 0.3-0.5 s belt kept resetting mid-return
-  // (visible snap back into battery every shot). Throw 2-4 cm by bore
-  // (§5.362 order: "a rapid shudder, not a full recuperate cycle").
-  const RAPID_BACK = 0.03, RAPID_HOLD = 0.015, RAPID_RETURN = 0.21;
-  const RAPID_AMP = Math.min(0.04, Math.max(0.02, REC_CAL * 0.001));
+  // Rapid (autocannon-belt) stroke: a sharp, readable shudder that completes
+  // inside the Terminators' 0.28-0.30 s cycles. The 0.20 s Rh202 can re-kick
+  // during the hydraulic return without snapping to battery. A 5.5-7.7 cm
+  // throw is deliberately presentation-forward: the old 2-4 cm travel was
+  // invisible from the normal chase orbit even though it was scale-plausible.
+  const RAPID_BACK = 0.045, RAPID_HOLD = 0.055, RAPID_RETURN = 0.18;
+  const RAPID_AMP = Math.min(0.085, Math.max(0.055, REC_CAL * 0.0022));
   // §5.362 tube census: only a REAL tube (>= 0.5 m of merged gun-bucket
   // geometry riding rig_recoil) may slide. Casemates print their cannon into
   // the certified hull buckets (gate silhouette law — see casemate.js
@@ -5812,10 +5838,21 @@ export function createTank(specId, engineCtx, opts = {}) {
         // mounts (casemate hull-printed cannons) never slide — their budget
         // rides the boosted hull rock (see the recoilPending block).
         const amp = recoilRapid ? RAPID_AMP : REC_AMP * recoilScale;
-        recoilG.position.z = recoilHasTube ? -amp * k : 0;
+        const independentTube = barrelGs.length > 1 && recoilBarrelIndex >= 0;
+        recoilG.position.z = recoilHasTube && !independentTube ? -amp * k : 0;
+        if (independentTube) {
+          for (let index = 0; index < barrelGs.length; index++) {
+            barrelGs[index].position.z = index === recoilBarrelIndex ? -amp * k : 0;
+          }
+        }
         if (!destroyed) {
-          // cradle rock: the trunnion mount lifts a hair with the impulse
-          if (recoilHasTube) gunG.rotation.x -= 0.014 * recoilScale * k;
+          // Cradle rock: autocannons get a presentation minimum independent
+          // of their stabilized hull impulse, so the gun motion remains
+          // visible while the vehicle and reticle stay controllable.
+          if (recoilHasTube) {
+            const cradlePitch = recoilRapid ? 0.012 : 0.014 * recoilScale;
+            gunG.rotation.x -= cradlePitch * k;
+          }
           // §5.362 twin-plant asymmetric kick (spec.gun.muzzles): the
           // station yaws toward the firing barrel and the cradle dips a
           // touch onto that side, decaying with the same stroke curve.
@@ -5824,9 +5861,12 @@ export function createTank(specId, engineCtx, opts = {}) {
             recoilG.rotation.z = recoilRollAmp * k;
           }
         }
-      } else if (recoilG.position.z !== 0 || recoilG.rotation.z !== 0) {
+      } else if (recoilG.position.z !== 0 || recoilG.rotation.z !== 0
+        || (barrelGs.length > 0
+          && (barrelGs[0].position.z !== 0 || barrelGs[1].position.z !== 0))) {
         recoilG.position.z = 0;
         recoilG.rotation.z = 0;
+        for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
       }
     },
 
@@ -5879,17 +5919,20 @@ export function createTank(specId, engineCtx, opts = {}) {
       recoilPending = true;
       recoilYawAmp = 0;
       recoilRollAmp = 0;
+      recoilBarrelIndex = -1;
       if (muzzleTips.length < 2) return null;
       const n = muzzleTips.length;
       const idx = muzzleIndex != null
         ? ((muzzleIndex % n) + n) % n
         : (muzzleAltCursor++ % n);
       const def = spec.gun.muzzles[idx] || {};
+      recoilBarrelIndex = idx;
       const side = Math.sign(def.x || 0);
       // asymmetric moment toward the firing barrel: the muzzle line sweeps
-      // toward that side (~0.43 deg rapid) and the cradle dips onto it.
-      recoilYawAmp = side * (recoilRapid ? 0.0075 : 0.012);
-      recoilRollAmp = -side * (recoilRapid ? 0.012 : 0.018);
+      // toward that side (~0.69 deg rapid) and the cradle visibly dips onto
+      // it; only the firing tube travels, so the idle tube stays in battery.
+      recoilYawAmp = side * 0.012;
+      recoilRollAmp = -side * (recoilRapid ? 0.020 : 0.018);
       return idx;
     },
 
@@ -6102,8 +6145,10 @@ export function createTank(specId, engineCtx, opts = {}) {
       recoilRapid = false;
       recoilYawAmp = 0;
       recoilRollAmp = 0;
+      recoilBarrelIndex = -1;
       recoilG.position.z = 0;
       recoilG.rotation.z = 0;
+      for (let index = 0; index < barrelGs.length; index++) barrelGs[index].position.z = 0;
       sway = 0;
       wreckAge = -1;
       mats.burnt.emissiveIntensity = 0.018;

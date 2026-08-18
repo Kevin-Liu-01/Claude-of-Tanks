@@ -670,6 +670,7 @@ export function createStudio(ctx) {
         fxBus.emit('shell:fired', {
           shellId: -1, shooterId: a.uid, isPlayer: false,
           shellType: shellSpec.type, shellName: shellSpec.name,
+          weaponSound: shellSpec.soundProfile || a.spec.gun.soundProfile || null,
           caliberMm: shellSpec.caliberMm,
           muzzlePos: [_v2.x, _v2.y, _v2.z], dir: [_v3.x, _v3.y, _v3.z],
         });

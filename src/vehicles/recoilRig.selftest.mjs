@@ -7,7 +7,7 @@
 // Covers:
 //  - caliber-class cannon throw (120 mm class ~0.13 m) + full recuperate
 //    return to battery;
-//  - autocannon-belt rapid stroke (2-4 cm) completing inside the fastest
+//  - autocannon-belt rapid stroke (5.5-7.7 cm) completing inside the fastest
 //    belt cycle (no mid-return snap at 0.30-0.5 s reloads);
 //  - twin-plant alternation (spec.gun.muzzles) on BOTH terminators
 //    (bmpt_terminator2 ±0.16, bmpt_t90 §5.368 ±0.20): per-barrel fire
@@ -36,8 +36,12 @@ function rig(id) {
   const recoilG = visual.root.getObjectByName('rig_recoil');
   const turretG = visual.root.getObjectByName('rig_turret');
   const muzzle = visual.root.getObjectByName('rig_muzzle');
+  const barrelGs = [
+    visual.root.getObjectByName('rig_barrel_0'),
+    visual.root.getObjectByName('rig_barrel_1'),
+  ].filter(Boolean);
   visual.syncFromState(state, 0); // settle the rest pose
-  return { visual, state, recoilG, turretG, muzzle };
+  return { visual, state, recoilG, turretG, muzzle, barrelGs };
 }
 
 // ---- 120 mm-class cannon: scale-true throw + full recuperate cycle --------
@@ -58,10 +62,12 @@ function rig(id) {
 // ---- IFV autocannon: rapid shudder completes inside the belt cycle --------
 {
   const { visual, state, recoilG } = rig('bmp3');
-  visual.recoilKick(0, 0.18); // the shared belt scale (shotRecoilScale)
-  visual.syncFromState(state, 0.04); // inside the rapid hold window
-  near(recoilG.position.z, -0.03, 1e-6, 'bmp3: 30 mm rapid throw');
-  visual.syncFromState(state, 0.24); // t=0.28 > rapid cycle 0.255
+  visual.recoilKick(0, 0.36); // the shared belt scale (shotRecoilScale)
+  visual.syncFromState(state, 0.06); // inside the rapid hold window
+  near(recoilG.position.z, -0.066, 1e-6, 'bmp3: 30 mm rapid throw');
+  assert.ok(visual.root.getObjectByName('rig_gun').rotation.x < -0.011,
+    'bmp3: rapid cradle pitch remains visible despite stabilization');
+  visual.syncFromState(state, 0.22); // t=0.28 = complete rapid cycle
   near(recoilG.position.z, 0, 1e-9, 'bmp3: back in battery before the 0.42 s belt refire');
   // same vehicle's missile rail (full impulse) plays the cannon profile
   visual.recoilKick(0, 1);
@@ -83,7 +89,8 @@ const TWIN_PLANT = ['bmpt_terminator2', 'bmpt_t90'];
 for (const id of TWIN_PLANT) {
   const bore = getSpec(id).gun.muzzles.map((m) => m.x);
   assert.equal(bore.length, 2, `${id}: twin plant`);
-  const { visual, state, recoilG, turretG } = rig(id);
+  const { visual, state, recoilG, turretG, barrelGs } = rig(id);
+  assert.equal(barrelGs.length, 2, `${id}: each physical tube owns an animation group`);
   const a = new THREE.Vector3(); const b = new THREE.Vector3(); const c = new THREE.Vector3();
   visual.gunMuzzleWorld(a, 0);
   visual.gunMuzzleWorld(b, 1);
@@ -96,35 +103,42 @@ for (const id of TWIN_PLANT) {
   near(a.y, b.y, 1e-6, `${id}: twin tips share the bore height`);
 
   // internal cursor alternates when no index is passed (studio/bridge path)
-  assert.equal(visual.recoilKick(0, 0.18), 0, `${id}: cursor shot 1 -> barrel 0`);
-  assert.equal(visual.recoilKick(0, 0.18), 1, `${id}: cursor shot 2 -> barrel 1`);
-  assert.equal(visual.recoilKick(0, 0.18), 0, `${id}: cursor wraps`);
+  assert.equal(visual.recoilKick(0, 0.36), 0, `${id}: cursor shot 1 -> barrel 0`);
+  assert.equal(visual.recoilKick(0, 0.36), 1, `${id}: cursor shot 2 -> barrel 1`);
+  assert.equal(visual.recoilKick(0, 0.36), 0, `${id}: cursor wraps`);
   // explicit index (sim path: shot N -> muzzles[N % len]) is respected
-  assert.equal(visual.recoilKick(0, 0.18, 5), 1, `${id}: explicit index modulo`);
+  assert.equal(visual.recoilKick(0, 0.36, 5), 1, `${id}: explicit index modulo`);
 
   // asymmetric kick: yaw/roll flip sides with the firing barrel
-  visual.recoilKick(0, 0.18, 0); // left barrel
-  visual.syncFromState(state, 0.04);
+  visual.recoilKick(0, 0.36, 0); // left barrel
+  visual.syncFromState(state, 0.06);
   const yawL = turretG.rotation.y - state.turretYaw;
   const rollL = recoilG.rotation.z;
-  assert.ok(yawL < -0.004, `${id}: left barrel yaws the station left (got ${yawL})`);
-  assert.ok(rollL > 0.008, `${id}: left barrel dips the left side (got ${rollL})`);
+  assert.ok(yawL < -0.010, `${id}: left barrel yaws the station left (got ${yawL})`);
+  assert.ok(rollL > 0.017, `${id}: left barrel dips the left side (got ${rollL})`);
+  near(recoilG.position.z, 0, 1e-12, `${id}: shared cradle does not slide both tubes`);
+  near(barrelGs[0].position.z, -0.066, 1e-6, `${id}: left firing tube recoils`);
+  near(barrelGs[1].position.z, 0, 1e-12, `${id}: right idle tube stays in battery`);
   visual.syncFromState(state, 0.5); // settle
-  visual.recoilKick(0, 0.18, 1); // right barrel
-  visual.syncFromState(state, 0.04);
+  visual.recoilKick(0, 0.36, 1); // right barrel
+  visual.syncFromState(state, 0.06);
   const yawR = turretG.rotation.y - state.turretYaw;
   const rollR = recoilG.rotation.z;
-  assert.ok(yawR > 0.004, `${id}: right barrel yaws the station right (got ${yawR})`);
-  assert.ok(rollR < -0.008, `${id}: right barrel dips the right side (got ${rollR})`);
+  assert.ok(yawR > 0.010, `${id}: right barrel yaws the station right (got ${yawR})`);
+  assert.ok(rollR < -0.017, `${id}: right barrel dips the right side (got ${rollR})`);
   assert.ok(Math.abs(yawL + yawR) < 1e-9 && Math.abs(rollL + rollR) < 1e-9,
     `${id}: the two barrels' kicks are exact mirrors`);
-  assert.ok(Math.abs(recoilG.position.z + 0.03) < 1e-6,
-    `${id}: axial throw rides every alternating kick`);
-  // the belt refire must never catch the stroke mid-return: reloadS 0.30 is
-  // the fleet's fastest cannon cycle and the rapid stroke spans 0.255 s.
+  near(recoilG.position.z, 0, 1e-12, `${id}: shared cradle remains seated`);
+  near(barrelGs[0].position.z, 0, 1e-12, `${id}: left idle tube stays in battery`);
+  near(barrelGs[1].position.z, -0.066, 1e-6, `${id}: right firing tube recoils`);
+  // The Terminator belt refire must find the tube back in battery; the
+  // rapid stroke spans exactly 0.28 s, matching the fastest twin cycle.
   const cycle = getSpec(id).gun.shells[0].reloadS;
-  visual.syncFromState(state, cycle - 0.04);
-  near(recoilG.position.z, 0, 1e-9, `${id}: in battery before the ${cycle}s belt refire`);
+  visual.syncFromState(state, cycle - 0.06);
+  for (let index = 0; index < barrelGs.length; index++) {
+    near(barrelGs[index].position.z, 0, 1e-9,
+      `${id}: tube ${index} in battery before the ${cycle}s belt refire`);
+  }
   near(recoilG.rotation.z, 0, 1e-12, `${id}: cradle roll returns to zero`);
 }
 // Roster guard: every id that authors `gun.muzzles` must be exercised above.
@@ -173,10 +187,10 @@ for (const id of TWIN_PLANT) {
 // ---- shortest real tube in the fleet (m2a2 0.755 m Bushmaster) recoils ----
 {
   const { visual, state, recoilG } = rig('m2a2_bradley');
-  visual.recoilKick(0, 0.18);
-  visual.syncFromState(state, 0.04);
-  near(recoilG.position.z, -0.025, 1e-6, 'm2a2: 25 mm belt shudder on the short tube');
-  visual.syncFromState(state, 0.24);
+  visual.recoilKick(0, 0.36);
+  visual.syncFromState(state, 0.06);
+  near(recoilG.position.z, -0.055, 1e-6, 'm2a2: 25 mm belt shudder on the short tube');
+  visual.syncFromState(state, 0.22);
   near(recoilG.position.z, 0, 1e-9, 'm2a2: belt stroke recuperated inside the cycle');
 }
 

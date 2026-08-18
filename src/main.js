@@ -53,7 +53,7 @@ import {
   prebakeSharedTextures, prebakeBurntSteps,
   upgradeSharedTexturesChunked,
 } from './vehicles/materials.js';
-import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
+import { computeDispersionRadM, shotRecoilScale, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
 import {
   estimatePenRatio, selectShell, resolveShellHit, createCombatState, repairAllModules,
@@ -1515,6 +1515,21 @@ function teleMissM(rec, pos) {
 }
 bus.on('shell:fired', (ev) => {
   if (!ev.isPlayer) return;
+  // Network authority owns firing, so the bridge supplies the barrel stroke
+  // and this client-side layer restores the same camera/FOV recoil used by
+  // local battles. Local simulation already applies it in state.js.
+  if (networkMatch && game.player && rig) {
+    const shells = game.player.spec.gun.shells || [];
+    const shellSpec = shells.find((shell) => shell.name === ev.shellName)
+      || shells.find((shell) => shell.type === ev.shellType) || null;
+    const recoilScale = shotRecoilScale(game.player.spec, shellSpec);
+    const caliberMm = (shellSpec && shellSpec.caliberMm) || ev.caliberMm || game.player.spec.gun.caliberMm;
+    const caliberK = Math.max(0, Math.min(1, (caliberMm - 30) / 122));
+    rig.addTrauma((0.10 + caliberK * 0.20) * recoilScale);
+    if (rig.recoilKick) {
+      rig.recoilKick((0.006 + caliberK * 0.011) * recoilScale, recoilScale);
+    }
+  }
   const tgt = teleTargetFor(ev.muzzlePos, ev.dir);
   playerShellLog.push({
     shellId: ev.shellId, t: Math.round(game.timeS * 100) / 100,

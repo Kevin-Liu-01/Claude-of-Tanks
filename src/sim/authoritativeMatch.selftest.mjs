@@ -216,6 +216,8 @@ const guidedEvent = guidedMatch.snapshot({
   tick: 241, serverTimeMs: 241000 / 60, viewerId: 'guided-a', ackInputSeq: 1,
 }).events.find((event) => event.type === 'shell_fired' && event.shooterId === 'guided-a');
 assert.ok(guidedEvent, 'authority emits the controlled guided shot');
+assert.equal(guidedEvent.weaponSound, 'spike-launch',
+  'authority routes the guided round to its launcher report');
 const guidedEntity = guidedMatch.entityById.get('guided-a');
 const guidedDirect = guidedEntity.input.aimPoint.clone().sub(new Vector3(
   guidedEvent.x, guidedEvent.y, guidedEvent.z,
@@ -242,6 +244,8 @@ const ordinaryEvent = guidedMatch.snapshot({
 }).events.find((event) => event.type === 'shell_fired' &&
   event.shooterId === 'guided-a' && event.shellName !== guidedEvent.shellName);
 assert.ok(ordinaryEvent, 'authority emits the controlled ordinary shot');
+assert.equal(ordinaryEvent.weaponSound, 'mk30-2',
+  'authority routes the belt round to the Puma autocannon report');
 assert.ok(ordinaryBore.dot(new Vector3(
   ordinaryEvent.dx, ordinaryEvent.dy, ordinaryEvent.dz,
 )) > 1 - 1e-10, 'ordinary network shot leaves exactly on the articulated bore');

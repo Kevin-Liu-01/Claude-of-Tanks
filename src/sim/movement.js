@@ -340,10 +340,11 @@ const LN6 = Math.log(6);
 // Slower IFV guns and missile rails retain their ordinary after-shot bloom.
 export const IFV_AUTOCANNON_AFTER_SHOT_BLOOM = 1.02;
 const IFV_AUTOCANNON_MAX_CYCLE_S = 1;
-// FEEL: an IFV's 25-35 mm stream should read as one stabilized burst, not as
-// repeated main-gun shocks. Apply this to every physical/presentation recoil
-// layer; slow IFV guns and ATGM rails remain full-strength.
-export const IFV_AUTOCANNON_RECOIL_SCALE = 0.18;
+// FEEL: an IFV's 20-35 mm stream stays stabilized, but each shot must remain
+// readable from the gameplay camera. 0.36 preserves a much lighter response
+// than a tank cannon while giving the hull, camera and FOV layers enough
+// impulse to survive normal motion. Slow IFV guns and ATGM rails stay full.
+export const IFV_AUTOCANNON_RECOIL_SCALE = 0.36;
 const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun

@@ -365,7 +365,7 @@ const MODERN3_SPECS = {
 
   m2a2_bradley: {
     id: 'm2a2_bradley', name: 'M2A2 Bradley', nation: 'USA', era: 'modern', class: 'ifv',
-    hp: 1300,
+    hp: 1650,
     enginePowerHp: 600, weightTons: 30.4, topSpeedKmh: 61, reverseSpeedKmh: 20,
     hullTraverseDegS: 42,
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.4 },
@@ -373,16 +373,17 @@ const MODERN3_SPECS = {
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
     gun: {
       // §6.4 per-shell reloads are LIVE (sim/damage.js startReload): the M242
-      // cycles 0.5 s bursts for sustained support fire while the TOW rail
+      // cycles 0.42 s bursts for sustained support fire while the TOW rail
       // pays its full 14 s. gun.reloadS carries the headline burst value
       // (garage card + fallback); per-shell counts size the belts vs. rails.
-      caliberMm: 25, reloadS: 0.5, baseAccuracy: 0.30, aimTimeS: 1.4,
+      caliberMm: 25, reloadS: 0.42, baseAccuracy: 0.30, aimTimeS: 1.4,
+      soundProfile: 'm242-bushmaster',
       bloom: BLOOM_MODERN,
       shells: [
-        shell('M919 APFSDS-T', 'APFSDS', 25, 110, 110, 60, 1345, { pen2000Mm: 110, reloadS: 0.5, count: 225 }),
-        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 480, 300,
-          { reloadS: 14, count: 7, guided: true }),
-        shell('M792 HEI-T', 'HE', 25, 8, 8, 55, 1100, { reloadS: 0.5, count: 300 }),
+        shell('M919 APFSDS-T', 'APFSDS', 25, 130, 118, 58, 1345, { pen2000Mm: 106, reloadS: 0.42, count: 225 }),
+        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 540, 300,
+          { reloadS: 14, count: 7, guided: true, soundProfile: 'tow-launch' }),
+        shell('M792 HEI-T', 'HE', 25, 8, 8, 50, 1100, { reloadS: 0.42, count: 300 }),
       ],
     },
     // dims reconciliation (AFV r1, packet "Oracle status"): widthM rides the
@@ -426,22 +427,23 @@ const MODERN3_SPECS = {
 
   bmp2: {
     id: 'bmp2', name: 'BMP-2', nation: 'USSR', era: 'modern', class: 'ifv',
-    hp: 900,
-    enginePowerHp: 300, weightTons: 14.3, topSpeedKmh: 65, reverseSpeedKmh: 7,
-    hullTraverseDegS: 44,
+    hp: 1050,
+    enginePowerHp: 300, weightTons: 14.3, topSpeedKmh: 65, reverseSpeedKmh: 12,
+    hullTraverseDegS: 50,
     terrainResistance: { hard: 0.75, medium: 0.9, soft: 1.6 },
     pivotStyle: 'pivot',
     turretTraverseDegS: 50, gunPitchDegS: 36, gunElevationDeg: 30, gunDepressionDeg: 5,
     gun: {
       // §17.4 per-shell reloads are LIVE (sim/damage.js startReload): 2A42
-      // 0.4 s bursts / 16 s Konkurs rail. Belt split is the real 160/340.
-      caliberMm: 30, reloadS: 0.4, baseAccuracy: 0.32, aimTimeS: 1.4,
+      // 0.28 s bursts / 16 s Konkurs rail. Belt split is the real 160/340.
+      caliberMm: 30, reloadS: 0.28, baseAccuracy: 0.32, aimTimeS: 1.4,
+      soundProfile: '2a42',
       bloom: BLOOM_MODERN,
       shells: [
-        shell('3UBR8 APDS', 'APFSDS', 30, 60, 60, 45, 1120, { pen2000Mm: 60, reloadS: 0.4, count: 160 }),
-        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 420, 250,
-          { reloadS: 16, count: 5, guided: true }),
-        shell('3UOF8 HE-I', 'HE', 30, 6, 6, 45, 960, { reloadS: 0.4, count: 340 }),
+        shell('3UBR8 APDS', 'APFSDS', 30, 74, 66, 42, 1120, { pen2000Mm: 58, reloadS: 0.28, count: 160 }),
+        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 430, 250,
+          { reloadS: 16, count: 5, guided: true, soundProfile: 'konkurs-launch' }),
+        shell('3UOF8 HE-I', 'HE', 30, 6, 6, 38, 960, { reloadS: 0.28, count: 340 }),
       ],
     },
     // dims two-datum note (packet): heightM 2.45 is the Wikipedia
@@ -472,7 +474,7 @@ const MODERN3_SPECS = {
 
   spz_puma: {
     id: 'spz_puma', name: 'SPz Puma', nation: 'Germany', era: 'modern', class: 'ifv',
-    hp: 1500,
+    hp: 2100,
     enginePowerHp: 1088, weightTons: 31.5, topSpeedKmh: 70, reverseSpeedKmh: 30,
     hullTraverseDegS: 46,
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.4 },
@@ -481,14 +483,15 @@ const MODERN3_SPECS = {
     turretTraverseDegS: 60, gunPitchDegS: 45, gunElevationDeg: 45, gunDepressionDeg: 10,
     gun: {
       // MK30-2/ABM per-shell reloads are LIVE (sim/damage.js startReload):
-      // 0.4 s bursts on the belts, 15 s on the Spike rail.
-      caliberMm: 30, reloadS: 0.4, baseAccuracy: 0.28, aimTimeS: 1.3,
+      // 0.35 s bursts on the belts, 15 s on the Spike rail.
+      caliberMm: 30, reloadS: 0.35, baseAccuracy: 0.28, aimTimeS: 1.3,
+      soundProfile: 'mk30-2',
       bloom: BLOOM_MODERN,
       shells: [
-        shell('MK30 APFSDS-T', 'APFSDS', 30, 130, 120, 62, 1385, { pen2000Mm: 110, reloadS: 0.4, count: 200 }),
-        shell('Spike LR', 'HEAT', 152, 760, 760, 500, 180,
-          { reloadS: 15, count: 6, guided: true }),
-        shell('KETF ABM', 'HE', 30, 10, 10, 58, 1100, { reloadS: 0.4, count: 200 }),
+        shell('MK30 APFSDS-T', 'APFSDS', 30, 180, 164, 70, 1385, { pen2000Mm: 148, reloadS: 0.35, count: 200 }),
+        shell('Spike LR', 'HEAT', 152, 760, 760, 520, 180,
+          { reloadS: 15, count: 6, guided: true, soundProfile: 'spike-launch' }),
+        shell('KETF ABM', 'HE', 30, 10, 10, 72, 1100, { reloadS: 0.35, count: 200 }),
       ],
     },
     // dims datum (AFV lane 2026-08-06, packet "Oracle status"): 7.6 hull =
@@ -547,22 +550,23 @@ const MODERN3_SPECS = {
 
   type89: {
     id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', class: 'ifv',
-    hp: 1200,
-    enginePowerHp: 600, weightTons: 26.5, topSpeedKmh: 70, reverseSpeedKmh: 12,
-    hullTraverseDegS: 42,
+    hp: 1450,
+    enginePowerHp: 600, weightTons: 26.5, topSpeedKmh: 70, reverseSpeedKmh: 16,
+    hullTraverseDegS: 46,
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.5 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 48, gunPitchDegS: 36, gunElevationDeg: 30, gunDepressionDeg: 8,
     gun: {
       // 35 mm KDE per-shell reloads are LIVE (sim/damage.js startReload):
       // 0.5 s bursts — the heaviest AFV autocannon round — / 18 s Jyu-MAT.
-      caliberMm: 35, reloadS: 0.5, baseAccuracy: 0.30, aimTimeS: 1.4,
+      caliberMm: 35, reloadS: 0.52, baseAccuracy: 0.30, aimTimeS: 1.4,
+      soundProfile: 'kde-35',
       bloom: BLOOM_MODERN,
       shells: [
-        shell('Type 89 APDS-T', 'APFSDS', 35, 95, 90, 70, 1385, { pen2000Mm: 80, reloadS: 0.5, count: 120 }),
-        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 450, 200,
-          { reloadS: 18, count: 6, guided: true }),
-        shell('35mm HEI-T', 'HE', 35, 8, 8, 65, 1175, { reloadS: 0.5, count: 280 }),
+        shell('Type 89 APDS-T', 'APFSDS', 35, 112, 100, 82, 1385, { pen2000Mm: 88, reloadS: 0.52, count: 120 }),
+        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 500, 200,
+          { reloadS: 18, count: 6, guided: true, soundProfile: 'jyu-mat-launch' }),
+        shell('35mm HEI-T', 'HE', 35, 8, 8, 78, 1175, { reloadS: 0.52, count: 280 }),
       ],
     },
     // PHOTO-CLASS build (no oracle — the War Thunder rip is REFUSED per THE

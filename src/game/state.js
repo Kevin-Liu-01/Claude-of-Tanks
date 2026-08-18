@@ -1387,6 +1387,9 @@ function tryFire(game, ent, bus, rig) {
   _firedEv.isPlayer = ent.isPlayer;
   _firedEv.shellType = shellSpec.type;
   _firedEv.shellName = shellSpec.name; // SHOT-INFO ENRICHMENT (additive)
+  // Weapon-native audio stays presentation-only. Shell overrides distinguish
+  // ATGM/100 mm launches from the vehicle's default autocannon report.
+  _firedEv.weaponSound = shellSpec.soundProfile || ent.spec.gun.soundProfile || null;
   // §5.362 (additive): which barrel fired on twin-plant ids, -1 single-bore.
   // The payload object is REUSED — always write so no stale index leaks.
   _firedEv.muzzleIndex = muzzleIndex != null ? muzzleIndex : -1;

@@ -103,6 +103,38 @@ const HEARTBEAT_WINDOW_S = 6;   // pulse window per threshold crossing (not a dr
 /** Rough muzzle velocities by shell type, for scheduling flyby whizzes (m/s). */
 const WHIZZ_VEL_MPS = { AP: 800, APCR: 1080, HEAT: 1000, HE: 790, APFSDS: 1700 };
 
+// Weapon-native reports for IFVs. These tune the existing baked pressure
+// layers and add live mechanical/launcher detail; they do not duplicate
+// samples per vehicle or move gameplay decisions into the audio system.
+const DEFAULT_WEAPON_REPORT = Object.freeze({
+  kind: 'cannon', rate: 1, gain: 1, crackGain: 1, tailGain: 1,
+  mechanicalHz: 0, mechanicalGain: 0, toneHz: 0, hissGain: 0,
+  durationS: 0, twin: false,
+});
+
+export const WEAPON_REPORT_PROFILES = Object.freeze({
+  'm242-bushmaster': Object.freeze({ kind: 'autocannon', rate: 1.10, gain: 0.88, crackGain: 1.10, tailGain: 0.68, mechanicalHz: 1180, mechanicalGain: 0.22, toneHz: 0, hissGain: 0, durationS: 0.34, twin: false }),
+  '2a42': Object.freeze({ kind: 'autocannon', rate: 0.97, gain: 0.96, crackGain: 1.02, tailGain: 0.78, mechanicalHz: 820, mechanicalGain: 0.25, toneHz: 0, hissGain: 0, durationS: 0.40, twin: false }),
+  'mk30-2': Object.freeze({ kind: 'autocannon', rate: 0.92, gain: 1.03, crackGain: 1.08, tailGain: 0.86, mechanicalHz: 690, mechanicalGain: 0.22, toneHz: 0, hissGain: 0, durationS: 0.43, twin: false }),
+  'kde-35': Object.freeze({ kind: 'autocannon', rate: 0.86, gain: 1.10, crackGain: 1.04, tailGain: 0.94, mechanicalHz: 610, mechanicalGain: 0.20, toneHz: 0, hissGain: 0, durationS: 0.47, twin: false }),
+  'rarden-l21a1': Object.freeze({ kind: 'autocannon', rate: 0.80, gain: 1.12, crackGain: 0.96, tailGain: 0.92, mechanicalHz: 520, mechanicalGain: 0.30, toneHz: 0, hissGain: 0, durationS: 0.54, twin: false }),
+  '2a72': Object.freeze({ kind: 'autocannon', rate: 1.02, gain: 0.91, crackGain: 0.98, tailGain: 0.70, mechanicalHz: 910, mechanicalGain: 0.20, toneHz: 0, hissGain: 0, durationS: 0.37, twin: false }),
+  'twin-2a42': Object.freeze({ kind: 'autocannon', rate: 0.94, gain: 1.06, crackGain: 1.06, tailGain: 0.82, mechanicalHz: 740, mechanicalGain: 0.32, toneHz: 0, hissGain: 0, durationS: 0.44, twin: true }),
+  'rh202': Object.freeze({ kind: 'autocannon', rate: 1.18, gain: 0.76, crackGain: 1.14, tailGain: 0.56, mechanicalHz: 1360, mechanicalGain: 0.18, toneHz: 0, hissGain: 0, durationS: 0.30, twin: false }),
+  'bmp3-100mm': Object.freeze({ kind: 'cannon', rate: 1.05, gain: 0.96, crackGain: 0.92, tailGain: 0.84, mechanicalHz: 360, mechanicalGain: 0.12, toneHz: 0, hissGain: 0, durationS: 0.62, twin: false }),
+  'tow-launch': Object.freeze({ kind: 'launcher', rate: 0.92, gain: 0.92, crackGain: 0, tailGain: 0, mechanicalHz: 260, mechanicalGain: 0.12, toneHz: 118, hissGain: 0.82, durationS: 1.15, twin: false }),
+  'konkurs-launch': Object.freeze({ kind: 'launcher', rate: 0.86, gain: 0.88, crackGain: 0, tailGain: 0, mechanicalHz: 230, mechanicalGain: 0.10, toneHz: 104, hissGain: 0.76, durationS: 1.28, twin: false }),
+  'spike-launch': Object.freeze({ kind: 'launcher', rate: 1.08, gain: 0.78, crackGain: 0, tailGain: 0, mechanicalHz: 410, mechanicalGain: 0.16, toneHz: 154, hissGain: 0.68, durationS: 0.94, twin: false }),
+  'jyu-mat-launch': Object.freeze({ kind: 'launcher', rate: 0.98, gain: 0.84, crackGain: 0, tailGain: 0, mechanicalHz: 330, mechanicalGain: 0.14, toneHz: 132, hissGain: 0.72, durationS: 1.04, twin: false }),
+  'milan-launch': Object.freeze({ kind: 'launcher', rate: 0.82, gain: 0.86, crackGain: 0, tailGain: 0, mechanicalHz: 210, mechanicalGain: 0.11, toneHz: 96, hissGain: 0.74, durationS: 1.34, twin: false }),
+  'arkan-launch': Object.freeze({ kind: 'launcher', rate: 1.02, gain: 0.90, crackGain: 0, tailGain: 0, mechanicalHz: 290, mechanicalGain: 0.13, toneHz: 142, hissGain: 0.78, durationS: 1.02, twin: false }),
+  'ataka-launch': Object.freeze({ kind: 'launcher', rate: 0.95, gain: 0.98, crackGain: 0, tailGain: 0, mechanicalHz: 300, mechanicalGain: 0.18, toneHz: 126, hissGain: 0.88, durationS: 1.18, twin: true }),
+});
+
+export function resolveWeaponReportProfile(id) {
+  return WEAPON_REPORT_PROFILES[id] || DEFAULT_WEAPON_REPORT;
+}
+
 /**
  * Create the game audio system. Pure factory — no AudioContext, no DOM access
  * until `resume()` is called from a user gesture.
@@ -600,12 +632,13 @@ export function createAudio() {
    * distance lowpass). Player's own gun: hotter overall, more sub, plus the
    * mechanical action foley (breech clank at end of recoil, brass tinkle).
    */
-  function bakedGunshot(x, y, z, caliberMm, isPlayer) {
+  function bakedGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
+    const report = resolveWeaponReportProfile(profileId);
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'large' : caliberMm > 76 ? 'medium' : 'small';
-    const shotGain = s.gain * (isPlayer ? 1.15 : 1);
+    const shotGain = s.gain * (isPlayer ? 1.15 : 1) * report.gain;
     // Layer model: crack dies toward 180 m, sub keeps a floor (distant guns
     // still thump), tail always rides — thunder is what distance leaves.
     const crackK = Math.max(0, Math.min(1, 1 - (s.dist - 45) / 135));
@@ -615,11 +648,25 @@ export function createAudio() {
     const v = spawnVoice(when, life, shotGain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
-    sampleLayer(v, `fire_${cls}_sub`, when, subK, jitterRate(), lp);
+    sampleLayer(v, `fire_${cls}_sub`, when, subK, jitterRate() * report.rate, lp);
     if (crackK > 0.02) {
-      sampleLayer(v, `fire_${cls}_crack`, when + rng() * 0.006, crackK, jitterRate(), lp);
+      sampleLayer(v, `fire_${cls}_crack`, when + rng() * 0.006,
+        crackK * report.crackGain, jitterRate() * report.rate, lp);
     }
-    sampleLayer(v, `fire_${cls}_tail`, when + 0.012 + rng() * 0.018, 1.0, jitterRate(), lp);
+    sampleLayer(v, `fire_${cls}_tail`, when + 0.012 + rng() * 0.018,
+      report.tailGain, jitterRate() * report.rate, lp);
+    if (report.mechanicalGain > 0) {
+      const tAction = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
+      wire(v, osrc(v, 'triangle', report.mechanicalHz, tAction, 0.10),
+        env(tAction, 0.001, report.mechanicalGain, 0.07), lp);
+      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.7, 2.2),
+        env(tAction, 0.001, report.mechanicalGain * 0.75, 0.035), lp);
+      if (report.twin) {
+        const sidePitch = muzzleIndex === 1 ? 1.08 : 0.94;
+        wire(v, osrc(v, 'square', report.mechanicalHz * sidePitch, tAction + 0.014, 0.06),
+          env(tAction + 0.014, 0.001, report.mechanicalGain * 0.24, 0.045), lp);
+      }
+    }
     if (isPlayer) {
       // Muzzle-blast wind over the hull.
       wire(v, nsrc(v, when, 0.3), flt('lowpass', 850, 0.6), env(when, 0.01, 0.26, 0.26), lp);
@@ -805,10 +852,42 @@ export function createAudio() {
 
   // ------------------------------------------------------------- gunfire ---
 
-  /** Cannon shot: baked layered sample set, or the pre-r2 synth fallback. */
-  function gunshot(x, y, z, caliberMm, isPlayer) {
-    if (sfxReady) bakedGunshot(x, y, z, caliberMm, isPlayer);
-    else synthGunshot(x, y, z, caliberMm, isPlayer);
+  /** Guided-weapon motor: launch thump, ignition tone and pressure hiss. */
+  function missileLaunch(x, y, z, isPlayer, report, muzzleIndex = -1) {
+    const s = spat(x, y, z);
+    if (s.gain < 0.0015) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, report.durationS + 0.25,
+      s.gain * report.gain * (isPlayer ? 1.08 : 1), s.pan, sfxBus);
+    const lp = distLowpass(s.dist + 25);
+    lp.connect(v.in);
+    wire(v, nsrc(v, when, 0.09), flt('lowpass', 520, 0.8),
+      env(when, 0.002, 0.52, 0.07), lp);
+    const motor = osrc(v, 'sawtooth', report.toneHz, when + 0.018, report.durationS);
+    motor.frequency.exponentialRampToValueAtTime(
+      report.toneHz * report.rate * 1.7, when + report.durationS * 0.72);
+    wire(v, motor, flt('lowpass', 780, 0.9),
+      env(when + 0.018, 0.025, 0.16, report.durationS * 0.82), lp);
+    wire(v, nsrc(v, when + 0.01, report.durationS, 1.1),
+      flt('bandpass', 1450 * report.rate, 0.7),
+      env(when + 0.01, 0.012, report.hissGain, report.durationS * 0.88), lp);
+    if (report.mechanicalGain > 0) {
+      const latchAt = when + (muzzleIndex === 1 ? 0.008 : 0);
+      wire(v, osrc(v, 'triangle', report.mechanicalHz, latchAt, 0.09),
+        env(latchAt, 0.001, report.mechanicalGain, 0.06), lp);
+    }
+  }
+
+  /** Weapon shot: baked cannon layers, synth fallback, or launcher motor. */
+  function gunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
+    const report = resolveWeaponReportProfile(profileId);
+    if (report.kind === 'launcher') {
+      missileLaunch(x, y, z, isPlayer, report, muzzleIndex);
+    } else if (sfxReady) {
+      bakedGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex);
+    } else {
+      synthGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex);
+    }
   }
 
   /**
@@ -819,17 +898,19 @@ export function createAudio() {
    * The PLAYER's own gun gets a mechanical action tail: breech clank at the
    * end of recoil and a brass-casing tinkle.
    */
-  function synthGunshot(x, y, z, caliberMm, isPlayer) {
+  function synthGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
+    const report = resolveWeaponReportProfile(profileId);
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'heavy' : caliberMm > 76 ? 'medium' : 'light';
     const dur = { light: 0.55, medium: 1.0, heavy: 1.7, huge: 2.6 }[cls];
-    const v = spawnVoice(when, dur + (isPlayer ? 1.0 : 0), s.gain * (isPlayer ? 1.08 : 1), s.pan, sfxBus);
+    const v = spawnVoice(when, dur + (isPlayer ? 1.0 : 0),
+      s.gain * (isPlayer ? 1.08 : 1) * report.gain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     const src = ctx.createBufferSource();
     src.buffer = gunBufs[cls];
-    src.playbackRate.value = 0.94 + rng() * 0.12;   // ±6% per-shot variation
+    src.playbackRate.value = (0.94 + rng() * 0.12) * report.rate;
     src.start(when);
     src.stop(when + dur / src.playbackRate.value + 0.05);
     v.sources.push(src);
@@ -838,7 +919,15 @@ export function createAudio() {
     // has been dulled by the shared lowpass — restores the whip-snap.
     if (s.dist < 120) {
       wire(v, nsrc(v, when, 0.03), flt('highpass', 2400 + rng() * 900, 0.8),
-        env(when, 0.001, cls === 'light' ? 0.55 : 0.42, 0.018), lp);
+        env(when, 0.001, (cls === 'light' ? 0.55 : 0.42) * report.crackGain, 0.018), lp);
+    }
+    if (report.mechanicalGain > 0) {
+      const tAction = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
+      const sidePitch = report.twin && muzzleIndex === 1 ? 1.08 : 1;
+      wire(v, osrc(v, 'triangle', report.mechanicalHz * sidePitch, tAction, 0.10),
+        env(tAction, 0.001, report.mechanicalGain, 0.07), lp);
+      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.7, 2.2),
+        env(tAction, 0.001, report.mechanicalGain * 0.72, 0.035), lp);
     }
     if (isPlayer) {
       // Muzzle-blast wind over the hull.
@@ -1852,7 +1941,8 @@ export function createAudio() {
 
   function onShellFired(e) {
     const mp = e.muzzlePos;
-    gunshot(mp[0], mp[1], mp[2], e.caliberMm, !!e.isPlayer);
+    gunshot(mp[0], mp[1], mp[2], e.caliberMm, !!e.isPlayer,
+      e.weaponSound, e.muzzleIndex);
     if (!e.isPlayer) scheduleWhizz(e);
     else radio.say('firing', { prob: 0.18, delayS: 0.08 });
   }

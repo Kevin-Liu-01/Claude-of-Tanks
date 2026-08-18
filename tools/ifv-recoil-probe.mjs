@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 // Live firing-pipeline gate for IFV recoil scaling. Verifies that a rapid
-// autocannon round carries the shared 0.18 scale through gun animation,
+// autocannon round carries the shared 0.36 scale through gun animation,
 // camera pitch/trauma and FOV punch, while an IFV ATGM and an MBT retain 1.0.
 //
 // §5.362 update: gun travel is measured by PINNING the shared fx clock at
 // the shot and stepping exact stroke ages (the r5 stepped-capture ritual) —
 // the old single 35 ms wall sample raced the clock leap after the
-// synchronous fastForward block, and the new rapid belt stroke (2-4 cm,
+// synchronous fastForward block, and the new rapid belt stroke (5.5-7.7 cm,
 // complete inside the belt cycle) is gone before any wall-clock sample.
-// Asserts the §5.362 throw table: belt 2-4 cm rapid shudder, ATGM/MBT
+// Asserts the §5.362 throw table: belt 5.5-7.7 cm rapid shudder, ATGM/MBT
 // cannon recuperate (>= 6 cm floor / ~13 cm at 120 mm).
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
-const SCALE = 0.18;
+const SCALE = 0.36;
 const near = (a, b, eps, label) => {
   if (!Number.isFinite(a) || Math.abs(a - b) > eps) {
     throw new Error(`${label}: expected ${b} ±${eps}, got ${a}`);
@@ -152,14 +152,14 @@ try {
   near(entry(missile, 'camera').args[1], 1, 1e-9, 'ATGM FOV scale');
   near(entry(mbt, 'visual').args[1], 1, 1e-9, 'MBT visual scale');
   near(entry(mbt, 'camera').args[1], 1, 1e-9, 'MBT FOV scale');
-  // §5.362 throw-table contract: belt rounds play the rapid 2-4 cm shudder
-  // (final amplitude — the 0.18 scale keeps damping hull/camera only) that
+  // §5.362 throw-table contract: belt rounds play the rapid 5.5-7.7 cm shudder
+  // (final amplitude — the 0.36 scale governs hull/camera only) that
   // COMPLETES inside the belt cycle; the same vehicle's missile rail plays
   // the cannon-class recuperate (>= 6 cm floor), and a 120 mm MBT throws
   // ~13 cm. The old 3x single-sample ratio encoded the pre-§5.362 0.55 m
   // amplitudes.
-  if (!(rapid.peak >= 0.015 && rapid.peak <= 0.045)) {
-    throw new Error(`belt peak outside the rapid 2-4 cm class: ${rapid.peak}`);
+  if (!(rapid.peak >= 0.05 && rapid.peak <= 0.08)) {
+    throw new Error(`belt peak outside the rapid 5.5-7.7 cm class: ${rapid.peak}`);
   }
   if (!(rapid.at(0.45) < 0.004)) {
     throw new Error(`belt stroke still out of battery at 0.45 s: ${rapid.at(0.45)}`);
@@ -173,8 +173,11 @@ try {
   if (!(mbt.peak >= 0.10 && mbt.peak <= 0.15)) {
     throw new Error(`120 mm MBT peak outside the class band: ${mbt.peak}`);
   }
-  if (!(missile.peak > rapid.peak * 1.5)) {
-    throw new Error(`gun travel not materially reduced: IFV ${rapid.peak}, ATGM ${missile.peak}`);
+  // The presentation-forward belt throw may approach the 30 mm gun's 6 cm
+  // cannon-class floor; its identity is the much faster return, while the
+  // missile/cannon stroke remains out of battery at 0.30 s.
+  if (rapid.peak > missile.peak + 0.005) {
+    throw new Error(`belt throw exceeds the missile/cannon stroke: IFV ${rapid.peak}, ATGM ${missile.peak}`);
   }
   if (errors.length) throw new Error(`browser errors: ${errors.join(' | ')}`);
 
