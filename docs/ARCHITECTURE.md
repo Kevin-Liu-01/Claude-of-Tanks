@@ -121,6 +121,7 @@ function createBus(){ const m=new Map(); return {
 | `module:state` | `{ id, module:ModuleName, state:'ok'|'yellow'|'red' }` | integration |
 | `player:reload` | `{ t, total }` (every sim tick while reloading) | integration |
 | `ui:shellSelect` | `{ slot:0|1|2 }` | hud |
+| `ui:magazineReload` | `{}` | input/hud |
 | `ui:battleStart` | `{ specId }` | garage |
 | `ui:click` | `{}` | hud/garage (any button press) |
 
@@ -153,6 +154,11 @@ TankSpec = {
   // --- gun ---
   gun: {
     caliberMm: number, reloadS: number,
+    autoloader?: {
+      magazineSize: number,      // ready rounds at battle start/full reload
+      intraClipS: number,        // delay between shots in one magazine
+      fullReloadS: number,       // all-or-nothing magazine replenishment
+    },
     baseAccuracy: number,        // meters dispersion @100 m, fully aimed (2σ)
     aimTimeS: number,
     bloom: { move, hullRot, turret, afterShot }, // movement doc §1 semantics
@@ -269,7 +275,11 @@ CombatState = {            // damage.createCombatState(spec) builds this
   crew:    { [CrewName]: boolean },               // alive?
   fire: { burning: boolean, tickTimer: number, ticksLeft: number },
   eraSpent: Set<string>,                          // Plate.name of detonated ERA tiles
-  reload: { t: number, totalS: number },          // t counts down to 0 = ready
+  reload: {
+    t: number, totalS: number,
+    kind: 'ready'|'shell'|'intraClip'|'magazine',
+  },                                              // t counts down to 0 = ready
+  magazine: null|{ rounds: number, capacity: number },
   shellSlot: 0|1|2,
 }
 ```
@@ -611,6 +621,9 @@ export function resolveHeBurst(shell, burstPoint: Vector3, tanks /* TankEntity[]
 // blastRadiusM(caliber) (shells doc §6 formula, absorb 1.1×armor).
 export function tickFire(entity, rng) => { damage, extinguished, destroyed }  // per 0.5 s
 export function selectShell(combatState, slot), startReload(combatState, spec)
+export function startPostShotReload(combatState, spec) // shell or magazine cycle
+export function startMagazineReload(combatState, spec) => boolean // discard partial clip
+export function tickReload(combatState, dt) => boolean // true on ready edge
 export function estimatePenRatio(shellSpec, distM, plateInfo /* queryAimArmor result */)
   => number   // avgPen / effectiveMm using normalization+slope-exponent, NO rng.
               // HUD color: ≥1.15 green, 0.85–1.15 orange, <0.85 red.

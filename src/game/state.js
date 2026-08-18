@@ -16,7 +16,7 @@ import {
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
-  startReload, isHeClass, ramDamage,
+  selectShell, startPostShotReload, startReload, tickReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
 import { createAI, roleOf } from './ai.js';
 import { pushHullFromObstacle } from '../world/collision.js';
@@ -1312,6 +1312,7 @@ function announceDestroyed(game, bus, ent, killerId, cause) {
 function tryFire(game, ent, bus, rig) {
   const c = ent.combat;
   if (!ent.input.fire || c.destroyed || c.reload.t > 0) return;
+  if (c.magazine && c.magazine.rounds <= 0) return;
   if (c.modules.gun && c.modules.gun.state === 'red') return;
   // BATTLE-AI r7 hardening: clamp to the spec's REAL magazine — a slot index
   // past shells.length (2-shell loadouts like the sturmtiger) fed an
@@ -1319,6 +1320,10 @@ function tryFire(game, ent, bus, rig) {
   const maxSlot = ent.spec.gun.shells.length - 1;
   const slot = Math.max(0, Math.min(Math.min(2, maxSlot), ent.input.shellSlot | 0));
   if (slot !== c.shellSlot) {
+    if (c.magazine) {
+      selectShell(c, slot, ent.spec);
+      return;
+    }
     // PER-SHELL RELOAD guard: switching INTO a slower slot at fire time must
     // pay the incoming shell's load first (an IFV bot flipping its 0.4 s
     // autocannon timer onto the ATGM rail would otherwise fire the missile
@@ -1399,7 +1404,7 @@ function tryFire(game, ent, bus, rig) {
   _firedEv.muzzlePos[0] = _muzzle.x; _firedEv.muzzlePos[1] = _muzzle.y; _firedEv.muzzlePos[2] = _muzzle.z;
   _firedEv.dir[0] = _dir.x; _firedEv.dir[1] = _dir.y; _firedEv.dir[2] = _dir.z;
   bus.emit('shell:fired', _firedEv);
-  startReload(c, ent.spec);
+  startPostShotReload(c, ent.spec);
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
   // up any concealing foliage within 15 m (see src/sim/spotting.js).
   if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
@@ -1701,15 +1706,16 @@ export function simStep(game, bus, world, rig, collider) {
   for (const ent of game.tanks) {
     const c = ent.combat;
     if (!c || c.destroyed) continue;
-    if (c.reload.t > 0) {
-      const wasReloading = c.reload.t;
-      c.reload.t = Math.max(0, c.reload.t - dt);
+    const reload = c.reload;
+    if (reload.t > 0) {
+      const wasReloading = reload.t;
+      const done = tickReload(c, dt);
       if (ent.isPlayer) bus.emit('player:reload', {
-        t: c.reload.t,
-        total: c.reload.totalS,
+        t: reload.t,
+        total: reload.totalS,
         // A single authoritative edge feeds the mechanical ready cue and
         // instrumentation. Previously consumers had to infer it from frames.
-        done: wasReloading > 0 && c.reload.t === 0,
+        done: wasReloading > 0 && done,
       });
     }
     tryFire(game, ent, bus, rig);

@@ -91,7 +91,8 @@ function entity(id, specId, team, x, { visible = false, yaw = 0, speed = 0 } = {
       maxHp: 1000,
       destroyed: false,
       fire: { burning: false },
-      reload: { t: 1.25 },
+      reload: { t: 1.25, totalS: 18.5, kind: 'magazine' },
+      magazine: { rounds: 1, capacity: 3 },
       shellSlot: 1,
     },
   };
@@ -718,7 +719,14 @@ const visible = captureWorldSnapshot({
   canObserve: (_viewer, target) => target.team === 'alpha' || target.spotted,
 });
 assert.deepEqual(visible.entities.map((entry) => entry.id), ['p1', 'p2']);
-assert.equal(decodeEntitySnapshot(captureEntitySnapshot(hidden)).x, 20);
+const decodedVisible = decodeEntitySnapshot(captureEntitySnapshot(hidden));
+assert.equal(decodedVisible.x, 20);
+assert.equal(decodedVisible.reloadTotalS, 18.5,
+  'snapshot carries the authoritative total reload duration');
+assert.equal(decodedVisible.reloadKind, 'magazine');
+assert.equal(decodedVisible.magazineRounds, 1);
+assert.equal(decodedVisible.magazineCapacity, 3,
+  'snapshot carries ready-rack count and capacity');
 
 // ACK-based entity deltas preserve full client truth, including visibility
 // removals, without retransmitting unchanged tanks.

@@ -4,7 +4,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01']);
+export const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -19,6 +19,7 @@ function variant(id, donorId, options) {
   delete spec.community;
   Object.assign(spec, options.stats || {});
   if (Number.isFinite(options.reloadS)) spec.gun.reloadS = options.reloadS;
+  if (options.autoloader) spec.gun.autoloader = { ...options.autoloader };
   if (options.shellName && spec.gun?.shells?.[0]) spec.gun.shells[0].name = options.shellName;
   if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
   // §5.248 ground-up builds own their rigs: measured turret ring / gun
@@ -101,9 +102,47 @@ export const POLAND_SPECS = {
     gunBarrel: { lengthM: 4.71, radiusM: 0.098 },
     stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
       reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
-    reloadS: 5.4, shellName: 'DM63A1 APFSDS', armorFactor: 1.10,
+    reloadS: 20.0,
+    autoloader: { magazineSize: 3, intraClipS: 2.4, fullReloadS: 20.0 },
+    shellName: 'DM63A1 APFSDS', armorFactor: 1.10,
   }),
 };
+
+// OBRUM's modular fire-support turret was offered around both 120 mm and
+// 105 mm autoloading guns. The 105 keeps the same low-observable hull and
+// turret family while trading single-shot damage for a four-round magazine.
+POLAND_SPECS.pl01_105 = (() => {
+  const spec = structuredClone(POLAND_SPECS.pl01);
+  spec.id = 'pl01_105';
+  spec.name = 'PL-01 (105)';
+  spec.variantOf = 'pl01';
+  spec.gun = {
+    ...spec.gun,
+    caliberMm: 105,
+    reloadS: 18.0,
+    autoloader: { magazineSize: 4, intraClipS: 2.0, fullReloadS: 18.0 },
+    shells: [
+      {
+        name: 'DM63 105 APFSDS', type: 'APFSDS', caliberMm: 105,
+        pen100Mm: 720, pen1000Mm: 655, pen2000Mm: 590,
+        dmg: 400, velocityMps: 1555, moduleDmg: 105, tracer: 'APFSDS',
+      },
+      {
+        name: 'M456A2 HEAT-T', type: 'HEAT', caliberMm: 105,
+        pen100Mm: 450, pen1000Mm: 450,
+        dmg: 390, velocityMps: 1173, moduleDmg: 105, tracer: 'HEAT',
+      },
+      {
+        name: 'DM12 105 HE', type: 'HE', caliberMm: 105,
+        pen100Mm: 40, pen1000Mm: 40,
+        dmg: 480, velocityMps: 732, moduleDmg: 105, tracer: 'HE',
+      },
+    ],
+  };
+  spec.armor.gunBarrel.radiusM = 0.086;
+  spec.visual = { ...spec.visual, number: 'PL-105' };
+  return spec;
+})();
 
 for (const id of POLAND_IDS) {
   TANK_SPECS[id] = TANK_SPECS[id] || POLAND_SPECS[id];

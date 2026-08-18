@@ -1865,19 +1865,44 @@ export function initHud(bus) {
     // as the countdown hits zero. The old faint full-circle track is gone
     // (it read as part of the backing disc); the dark hairline backing
     // rides only under the lit arc for sky readability.
+    const reloadRing = 14 + (zs - 1) * 9; // clears the zoom-scaled marker arms
     if (isReloading) {
-      const RING = 14 + (zs - 1) * 9; // clears the zoom-scaled marker arms
       const frac = Math.max(0, Math.min(1, rl0.t / rl0.totalS)); // remaining
       ctx.strokeStyle = 'rgba(6,9,12,0.45)';
       ctx.lineWidth = 3.6;
       ctx.beginPath();
-      ctx.arc(cx, cy, RING, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = RELOAD_ACCENT;
       ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.arc(cx, cy, RING, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
+    }
+    // Magazine autoloader ready-rack: compact pips directly above the gun
+    // marker. Lit cells are immediately fireable rounds; empty cells remain
+    // outlined during a full magazine reload, so intra-clip and magazine
+    // waits are distinguishable without reading the timer.
+    const mag = view.magazine;
+    if (mag && mag.capacity > 1) {
+      const cap = Math.min(8, mag.capacity | 0);
+      const rounds = Math.max(0, Math.min(cap, mag.rounds | 0));
+      const pipW = sniper ? 7 : 6;
+      const pipH = sniper ? 3.5 : 3;
+      const gap = 2;
+      const totalW = cap * pipW + (cap - 1) * gap;
+      const x0 = cx - totalW * 0.5;
+      const y0 = cy - reloadRing - 11;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < cap; i++) {
+        ctx.fillStyle = i < rounds ? 'rgba(231,239,243,0.96)' : 'rgba(8,12,15,0.55)';
+        ctx.strokeStyle = rl0?.kind === 'magazine'
+          ? RELOAD_ACCENT : 'rgba(207,220,227,0.82)';
+        ctx.beginPath();
+        ctx.rect(x0 + i * (pipW + gap), y0, pipW, pipH);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
     // ready pulse (r7): the moment the reload arc closes, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
@@ -3227,7 +3252,7 @@ export function initHud(bus) {
     blockedLabel: false, // gameplay_feel r7: dwell-gated PATH BLOCKED text
     gunX: null, gunY: null, gunDistM: null, gunTargetId: null,
     atGunLimit: false, gunLimitSpec: false,
-    reload: { t: 0, totalS: 1 }, zoom: 1,
+    reload: { t: 0, totalS: 1, kind: 'ready' }, magazine: null, zoom: 1,
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
 
@@ -3242,6 +3267,7 @@ export function initHud(bus) {
     aimView.atGunLimit = !!aim.atGunLimit;
     aimView.gunLimitSpec = !!aim.gunLimitSpec;
     aimView.reload = aim.reload || aimView.reload;
+    aimView.magazine = aim.magazine || null;
     aimView.zoom = aim.zoom || 1;
     aimView.gunX = null; aimView.gunY = null;
     let placed = false;

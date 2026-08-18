@@ -283,6 +283,12 @@ const GARAGE_CSS = `
   gap:7px;padding:0 7px 5px;color:#637481;font:900 6.5px ${FONT_COND};
   letter-spacing:.12em;text-transform:uppercase;}
 .cot-garage .shellhead span:nth-last-child(-n+2){text-align:right;}
+.cot-garage .magazine-spec{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin:0 0 9px;padding:7px 8px;border-left:2px solid #e79c34;
+  background:rgba(231,156,52,.08);color:#8798a5;font:800 7px ${FONT_COND};
+  letter-spacing:.09em;text-transform:uppercase;}
+.cot-garage .magazine-spec b{color:#edf3f6;font:750 9px ${FONT_STACK};
+  letter-spacing:.01em;text-transform:none;font-variant-numeric:tabular-nums;}
 .cot-garage .shellrow{display:grid;grid-template-columns:43px minmax(0,1fr) 63px 44px;
   gap:7px;align-items:center;min-height:36px;margin-top:4px;padding:5px 7px;
   color:#c6d2dc;background:rgba(19,25,31,.62);border:1px solid rgba(146,164,180,.12);}
@@ -2410,6 +2416,13 @@ export function createGarage(opts) {
     const eqM = computeEquipMults(eqIds);
     const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id).name).join(', ');
     const reloadS = spec.gun.reloadS * eqM.reload;
+    const autoloader = spec.gun.autoloader;
+    const reloadLabel = autoloader ? 'Magazine reload' : 'Reload';
+    const magazineSpec = autoloader
+      ? `<div class="magazine-spec"><span>Magazine autoloader</span>` +
+        `<b>${autoloader.magazineSize} rounds &middot; ${autoloader.intraClipS.toFixed(1)} s cycle &middot; ` +
+        `${reloadS.toFixed(1)} s full reload</b></div>`
+      : '';
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
     const vrBase = viewRangeOf(spec);
     const vrMove = vrBase * equipViewMult(eqIds, true);   // always-on items
@@ -2441,7 +2454,7 @@ export function createGarage(opts) {
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
       statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT)) +
-      statBar('Reload', `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
+      statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
         { mod: eqM.reload !== 1, title: eqTitle(`${spec.gun.reloadS.toFixed(1)} s`) }) +
       statBar('Aim time', `${aimS.toFixed(1)} s`, statFrac(grp, 'aim', aimS, true),
         { mod: eqM.aimTime !== 1, title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
@@ -2456,6 +2469,7 @@ export function createGarage(opts) {
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
       `<section class="cot-stat-section"><div class="cot-stat-title">Ammunition</div>` +
+      magazineSpec +
       `<div class="shellhead"><span>Type</span><span>Round</span><span>Pen</span><span>Damage</span></div>` +
       shellRows + `</section>` +
       `<section class="cot-stat-section"><div class="cot-stat-title">Protection &amp; gun</div>` +

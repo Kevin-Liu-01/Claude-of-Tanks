@@ -6,7 +6,7 @@
  * authoritative host validates all client-authored fields here.
  */
 
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 export const MATCH_TICK_HZ = 60;
 export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
@@ -21,6 +21,7 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   REPAIR: 1 << 0,
   FIRST_AID: 1 << 1,
   EXTINGUISHER: 1 << 2,
+  RELOAD_MAGAZINE: 1 << 3,
 });
 
 export const MESSAGE_TYPES = Object.freeze({

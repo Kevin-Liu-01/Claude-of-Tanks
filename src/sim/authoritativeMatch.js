@@ -30,7 +30,9 @@ import {
   resolveHeBurst,
   resolveShellHit,
   selectShell,
-  startReload,
+  startMagazineReload,
+  startPostShotReload,
+  tickReload,
   tickFire,
   tickModuleRepairs,
 } from './damage.js';
@@ -662,6 +664,11 @@ export function createAuthoritativeMatch({
     const bits = entity.input.actionBits | 0;
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
+    if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) {
+      if (startMagazineReload(entity.combat, entity.spec)) {
+        emit('magazine_reload', { id: entity.id });
+      }
+    }
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       const bit = 1 << slot;
       if (!(bits & bit)) continue;
@@ -705,6 +712,7 @@ export function createAuthoritativeMatch({
   function tryFire(entity) {
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return;
+    if (combat.magazine && combat.magazine.rounds <= 0) return;
     if (combat.modules.gun && combat.modules.gun.state === 'red') return;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return;
@@ -725,7 +733,7 @@ export function createAuthoritativeMatch({
     applyDispersion(_gunDir, sigma, rng);
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
     shells.push(shell);
-    startReload(combat, entity.spec);
+    startPostShotReload(combat, entity.spec);
     fireRecoil(entity.state, entity.spec, shellSpec);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
     if (!entity.bot) {
@@ -934,7 +942,7 @@ export function createAuthoritativeMatch({
       for (const entity of entities) {
         if (entity.combat.destroyed) continue;
         if (entity.combat.reload.t > 0) {
-          entity.combat.reload.t = Math.max(0, entity.combat.reload.t - dt);
+          tickReload(entity.combat, dt);
         }
         tryFire(entity);
       }

@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-18T02:40:12.042Z",
+ "generatedAt": "2026-08-18T22:53:11.331Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
- "total": 118,
+ "total": 119,
  "rows": [
   {
    "id": "recon_tank",
@@ -730,14 +730,27 @@
   },
   {
    "id": "pl01",
-   "geoMin": 66.9,
+   "geoMin": 62.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 82.2,
-    "stations": 80.8,
-    "turretCurves": 69.9,
-    "wholeCurves": 66.9,
-    "dims": 99.6,
+    "hullCurves": 79.9,
+    "stations": 75,
+    "turretCurves": 66.5,
+    "wholeCurves": 62.9,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "pl01_105",
+   "geoMin": 62.9,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 79.9,
+    "stations": 74.3,
+    "turretCurves": 69.5,
+    "wholeCurves": 62.9,
+    "dims": 100,
     "floaters": 100
    }
   },

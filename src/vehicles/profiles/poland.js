@@ -785,6 +785,7 @@ function buildPT91Twardy(P) {
 function buildPL01(P) {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const slab = orientedSlab;
+  const is105 = P.spec.id === 'pl01_105';
 
   // ---- center hull body (x ±1.616): tub + faceted glacis ------------------
   // deck line = the measured falling top run (side_hull tops 2.07 rear ->
@@ -965,10 +966,30 @@ function buildPL01(P) {
       mats: P.mats, pods: 2, spacing: 0.11, r: 0.040,
       shield: true, seed: 1010 + (s > 0 ? 1 : 0),
     }), s * 0.76, 1.12, 3.02, [-0.44, 0, 0]);
+    // Narrow LED position lamps live in the skirt shoulders and rear corner
+    // armor; these make the long stealth side planes readable after dark.
+    P.add('hullDetail', box(0.024, 0.075, 0.30), s * 1.904, 1.69, 2.32);
+    P.add('hullGlass', box(0.010, 0.044, 0.22), s * 1.917, 1.69, 2.32);
+    P.add('hullDetail', box(0.024, 0.11, 0.24), s * 1.73, 1.65, -3.34);
+    P.add('hullGlass', box(0.014, 0.070, 0.16), s * 1.745, 1.65, -3.485);
   }
   // hinged front access panels (print Hinges x ±0.53, z 2.88..3.30)
   for (const s of [-1, 1]) for (let k = 0; k < 2; k++) {
     P.add('hullDetail', box(0.10, 0.035, 0.16), s * (0.18 + k * 0.34), 1.42, 3.06, -0.485, 0, 0);
+  }
+  // Recovery equipment remains conformal: a deck-clipped tow cable, paired
+  // rear clevises, and service handles break up the broad engine surface.
+  mount(P, 'hull', FITTINGS.towCable({
+    mats: P.mats,
+    pts: [[-1.22, 0, -0.08], [-0.62, 0.055, 0.10], [0, 0.025, 0.15],
+      [0.62, 0.055, 0.10], [1.22, 0, -0.08]],
+    r: 0.018, seg: 26, seed: 1015,
+  }), 0, 2.13, -2.78);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', torus(0.105, 0.022, 14), s * 1.13, 0.86, -3.39,
+      Math.PI / 2, 0, 0);
+    for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.28, 0.025, 0.035),
+      s * 0.72, 2.135, -2.18 - k * 0.28);
   }
 
   // ---- turret: the faceted diamond (joined two-band loft) -----------------
@@ -1040,6 +1061,23 @@ function buildPL01(P) {
       -0.10, s * 0.14, 0);
     P.add('turretGlass', box(0.14, 0.055, 0.020), s * 1.02, 0.62, -1.715,
       -0.10, s * 0.14, 0);
+    // Two-stage cheek armor: a faceted carrier, recessed service seam, and
+    // fasteners make each side read as layered armor rather than a flat slab.
+    P.add('turret', box(0.075, 0.31, 0.62), s * 1.30, 0.35, 0.18,
+      -0.08, s * 0.18, 0);
+    P.add('turret', box(0.060, 0.27, 0.48), s * 1.36, 0.33, -0.42,
+      -0.06, s * 0.13, 0);
+    P.add('turretDark', box(0.012, 0.20, 0.47), s * 1.342, 0.36, 0.18,
+      -0.08, s * 0.18, 0);
+    for (const dz of [-0.22, 0.22]) for (const dy of [-0.09, 0.09]) {
+      P.add('turretDetail', cylX(0.018, 0.020, 8), s * 1.39, 0.36 + dy, 0.18 + dz,
+        0, 0, Math.PI / 2);
+    }
+    // Four-corner laser-warning receivers with paired glass apertures.
+    P.add('turretDetail', box(0.115, 0.105, 0.12), s * 1.18, 0.58, 0.62,
+      -0.05, s * 0.32, 0);
+    P.add('turretGlass', box(0.045, 0.045, 0.016), s * 1.225, 0.595, 0.67,
+      -0.05, s * 0.32, 0);
   }
   // (§5.290 dims-recovery: seats 0.755 -> 0.705 — the blocks topped 2.86 on
   // three side columns; at 0.705 they ride 2.5 cm proud, the conformal
@@ -1067,6 +1105,15 @@ function buildPL01(P) {
   P.add('turret', box(0.26, 0.185, 0.24), 0, 0.635, 1.09);
   P.add('turretDark', box(0.20, 0.10, 0.028), 0, 0.645, 1.222);
   P.add('turretGlass', box(0.13, 0.06, 0.02), 0, 0.645, 1.242);
+  // Roof service panels, lifting eyes, and the modular mission-bay rack.
+  for (const x of [-0.38, 0.38]) {
+    P.add('turretDetail', box(0.50, 0.026, 0.34), x, 0.735, -0.58);
+    P.add('turretDark', box(0.42, 0.012, 0.025), x, 0.750, -0.58);
+  }
+  mount(P, 'turret', FITTINGS.stowageRack({
+    mats: P.mats, w: 1.10, d: 0.34, h: 0.17, rails: 2, fill: 0.42,
+    seed: is105 ? 1052 : 1051,
+  }), 0, 0.49, -2.12);
 
   // ---- RWS (the hump): riser + shielded MG station inside the print's own
   // spike window z -2.44..-2.08 (the <=4-column heightM budget; the print's
@@ -1087,16 +1134,21 @@ function buildPL01(P) {
   // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
   // whole envelope shares the tower's 3-column window)
   mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.55, elev: 0.12,
-    ammo: true, seed: 1020,
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
+    ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
   }), -0.05, 1.02, -1.33, [0, Math.PI / 2, 0]);
+  // RWS ammunition chest and independent day/thermal sensor block.
+  P.add('turretDetail', box(0.22, 0.18, 0.15), -0.31, 1.02, -1.33);
+  P.add('turretDark', box(0.16, 0.12, 0.025), 0.24, 1.07, -1.235);
+  P.add('turretGlass', box(0.055, 0.055, 0.014), 0.20, 1.09, -1.218);
+  P.add('turretGlass', box(0.038, 0.038, 0.014), 0.27, 1.04, -1.218);
 
   // smoke banks: recessed multi-tube blocks on the tail deck (print
   // ExplosionTubes — held under the roof band)
   for (const s of [-1, 1]) {
     mount(P, 'turret', FITTINGS.smokeBank({
-      mats: P.mats, count: 4, r: 0.038, len: 0.24, splay: s * 0.92,
-      pitch: -0.35, arc: 0.42, spacing: 0.088, slot: 'detail',
+      mats: P.mats, count: 6, r: 0.035, len: 0.24, splay: s * 0.92,
+      pitch: -0.35, arc: 0.48, spacing: 0.078, slot: 'detail',
       rotation: [0, s * 0.12, -s * 0.06], seed: 1030 + (s > 0 ? 1 : 0),
     }), s * 0.42, 0.60, -1.78);
   }
@@ -1114,15 +1166,24 @@ function buildPL01(P) {
     [-0.235, 0.27, 1.25], [0.235, 0.27, 1.25], [0.20, 0.185, 3.25], [-0.20, 0.185, 3.25]));
   P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, 0.225, 2.10);        // cover spine seam
   P.addGunExtraDark(box(0.42, 0.36, 0.03), 0, 0.03, 3.262);        // cover end plate
+  // Armored coaxial 7.62 mm fairing and visible receiver beside the main
+  // weapon. It follows gun pitch and gives the angular mantlet a second
+  // functional layer instead of a single uninterrupted cover.
+  P.addGunExtra(box(0.15, 0.16, 0.52), 0.31, 0.015, 0.82);
+  P.addGunExtraDark(box(0.105, 0.095, 0.30), 0.31, 0.025, 0.93);
+  P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, 0.025, 1.48);
+  P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, 0.025, 1.91);
+  const mainTubeR = is105 ? 0.086 : 0.098;
   tubeGun(P, [
-    [3.26, 4.20, 0.098, 0.094],
-    [4.20, 4.24, 0.104, 0.104],
-    [4.24, 4.60, 0.094, 0.092],
-    [4.60, 4.71, 0.100, 0.100],          // the print's ribbed muzzle collar
-  ], { rings: [[4.22, 0.106], [4.63, 0.103]], muzzle: 4.71 });
-  muzzleBore(P, { r: 0.088, boreR: 0.058 });
-  P.decal('hull', 'number', 'PL-01', 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
-  P.decal('hull', 'number', 'PL-01', 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
+    [3.26, 4.20, mainTubeR, mainTubeR * 0.96],
+    [4.20, 4.24, mainTubeR * 1.06, mainTubeR * 1.06],
+    [4.24, 4.60, mainTubeR * 0.96, mainTubeR * 0.94],
+    [4.60, 4.71, mainTubeR * 1.02, mainTubeR * 1.02],
+  ], { rings: [[4.22, mainTubeR * 1.08], [4.63, mainTubeR * 1.05]], muzzle: 4.71 });
+  muzzleBore(P, { r: mainTubeR * 0.90, boreR: mainTubeR * 0.59 });
+  const hullMark = P.spec.visual.number || (is105 ? 'PL-105' : 'PL-01');
+  P.decal('hull', 'number', hullMark, 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
+  P.decal('hull', 'number', hullMark, 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48);
 }
 
@@ -1130,4 +1191,5 @@ export const POLAND_PROFILES = {
   t72m1_jaguar: { build: buildT72M1Jaguar },
   pt91_twardy: { build: buildPT91Twardy },
   pl01: { build: buildPL01 },
+  pl01_105: { build: buildPL01 },
 };

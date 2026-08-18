@@ -289,6 +289,12 @@ function renderDossier(record) {
     return item;
   }));
 
+  const loadingMetrics = record.metrics.autoloader
+    ? [
+        ['Magazine system', `${record.metrics.magazineSize} × ${record.shells[0]?.damage || 0} damage / ${record.metrics.intraClipS}s cycle`],
+        ['Full reload / DPM', `${record.metrics.reloadS}s / ${record.metrics.dpm.toLocaleString('en-US')}`],
+      ]
+    : [['Reload / DPM', `${record.metrics.reloadS}s / ${record.metrics.dpm.toLocaleString('en-US')}`]];
   const metricRows = [
     ['Hit points', record.metrics.hp.toLocaleString('en-US')],
     ['Combat weight', `${record.metrics.weightTons} t`],
@@ -297,7 +303,7 @@ function renderDossier(record) {
     ['Forward / reverse', `${record.metrics.topSpeedKmh} / ${record.metrics.reverseSpeedKmh} km/h`],
     ['Hull traverse', `${record.metrics.hullTraverseDegS}°/s`],
     ['Primary caliber', `${record.metrics.caliberMm} mm`],
-    ['Reload / DPM', `${record.metrics.reloadS}s / ${record.metrics.dpm.toLocaleString('en-US')}`],
+    ...loadingMetrics,
     ['Peak KE / CE', `${record.metrics.bestKeMm} / ${record.metrics.bestCeMm} mm`],
     ['Overall envelope', `${record.dimensions.overallLengthM} × ${record.dimensions.widthM} × ${record.dimensions.heightM} m`],
   ];

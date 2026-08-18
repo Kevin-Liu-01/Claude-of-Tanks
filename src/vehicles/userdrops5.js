@@ -209,7 +209,11 @@ const SPECS = [
     // p95-with-kit < 2.60 print max < 3.05 published max. Unlocks the §5.57
     // crown-band dims-datum cap (turret_side 68.9). Receipts:
     // docs/references/tanks/type90.md DATUM section.
-    { hp: 2200, weightTons: 50.2, topSpeedKmh: 70, gun: { reloadS: 5.5 },
+    { hp: 2200, weightTons: 50.2, topSpeedKmh: 70,
+      gun: {
+        reloadS: 18.5,
+        autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
+      },
       dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
     { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 },

@@ -53,6 +53,7 @@ export const ACTION_DEFS = [
   { id: 'shell1', label: 'Shell Slot 1', group: 'Combat' },
   { id: 'shell2', label: 'Shell Slot 2', group: 'Combat' },
   { id: 'shell3', label: 'Shell Slot 3', group: 'Combat' },
+  { id: 'reloadMagazine', label: 'Reload Magazine', group: 'Combat' },
   { id: 'consumable1', label: 'Repair Kit', group: 'Consumables' },
   { id: 'consumable2', label: 'First Aid Kit', group: 'Consumables' },
   { id: 'consumable3', label: 'Fire Extinguisher', group: 'Consumables' },
@@ -92,6 +93,7 @@ export const DEFAULT_BINDINGS = {
   shell1: 'Digit1',
   shell2: 'Digit2',
   shell3: 'Digit3',
+  reloadMagazine: 'KeyC',
   consumable1: 'Digit4',
   consumable2: 'Digit5',
   consumable3: 'Digit6',
@@ -123,6 +125,7 @@ export const DEFAULT_PAD_BINDINGS = {
   shell1: 12, // D-UP
   shell2: 14, // D-LEFT
   shell3: 15, // D-RIGHT
+  reloadMagazine: 13, // D-DOWN
   consumable1: 2, // X
   consumable2: 3, // Y
   consumable3: 1, // B

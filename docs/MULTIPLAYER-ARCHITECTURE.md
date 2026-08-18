@@ -69,14 +69,19 @@ LAN/private WebRTC uses two data channels:
 Ranked WebSocket remains ordered, but coalesces pending snapshot or input state
 so stale frames cannot consume the reliable control budget. Input and reliable
 control have independent sequence spaces, preventing reordered steering from
-starving room commands. Fire and consumable edges repeat until a snapshot
-acknowledges receipt; authority deduplicates consumable rising edges before the
-simulation sees them. All transports enforce payload and buffered-byte limits
+starving room commands. Fire, consumable, and manual-magazine-reload edges
+repeat until a snapshot acknowledges receipt; authority deduplicates action
+rising edges before the simulation sees them. All transports enforce payload and buffered-byte limits
 and fail visibly on sustained backpressure.
 
 Snapshots use a compact binary codec, explicit snapshot acknowledgements,
 per-peer deltas, and periodic keyframes. A missing delta baseline waits for a
 recovering keyframe rather than inventing state.
+
+Reload presentation is authoritative. Each entity row carries remaining and
+total reload time, reload phase, ready-rack rounds, and magazine capacity. The
+browser bridge never reconstructs magazine state from muzzle events, so packet
+loss cannot create a locally fireable round that the authority does not own.
 
 One-shot combat/destruction events travel independently over reliable control
 instead of living only inside replaceable snapshots. The browser bridge drains

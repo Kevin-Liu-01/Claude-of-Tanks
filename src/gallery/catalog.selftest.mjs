@@ -36,4 +36,23 @@ assert.ok(Number.isFinite(serialized.protection.armorPlateCount));
 const sample = createGalleryRecord(getSpec(ALL_TANK_IDS[0]));
 assert.match(sample.brief.join(' '), new RegExp(sample.displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
+const magazineRecord = createGalleryRecord(getSpec('pl01_105'));
+assert.equal(magazineRecord.metrics.autoloader, true);
+assert.equal(magazineRecord.metrics.magazineSize, 4);
+assert.equal(magazineRecord.metrics.intraClipS, 2);
+assert.equal(magazineRecord.metrics.reloadS, 18);
+assert.equal(magazineRecord.metrics.burstDamage, 1600);
+assert.equal(magazineRecord.metrics.dpm, 4000);
+assert.match(magazineRecord.brief.join(' '), /4-round magazine autoloader/);
+assert.match(magazineRecord.highlights.join(' '), /1,600 burst damage/);
+
+const serializedMagazine = serializeGallerySpec(getSpec('pl01_105'));
+assert.deepEqual(serializedMagazine.gun.autoloader, {
+  magazineSize: 4,
+  intraMagazineCycleS: 2,
+  fullReloadS: 18,
+  burstDamage: 1600,
+  sustainedDamagePerMinute: 4000,
+});
+
 console.log(`tank gallery catalog self-test passed (${records.length} vehicles)`);

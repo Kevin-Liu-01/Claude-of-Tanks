@@ -200,7 +200,15 @@ export function createBrowserBattleBridge({
     combat.hp = snapshot.hp;
     combat.maxHp = snapshot.maxHp;
     combat.reload.t = snapshot.reloadS;
-    combat.reload.totalS = Math.max(combat.reload.totalS, snapshot.reloadS);
+    combat.reload.totalS = Math.max(snapshot.reloadTotalS || 0, snapshot.reloadS);
+    combat.reload.kind = snapshot.reloadKind || 'ready';
+    if (snapshot.magazineCapacity > 0) {
+      if (!combat.magazine) combat.magazine = { rounds: 0, capacity: 0 };
+      combat.magazine.rounds = snapshot.magazineRounds;
+      combat.magazine.capacity = snapshot.magazineCapacity;
+    } else {
+      combat.magazine = null;
+    }
     combat.shellSlot = snapshot.shellSlot;
     combat.fire.burning = !!(snapshot.flags & SNAPSHOT_FLAGS.BURNING);
     const destroyed = !!(snapshot.flags & SNAPSHOT_FLAGS.DESTROYED);

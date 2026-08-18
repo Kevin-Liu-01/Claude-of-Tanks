@@ -271,7 +271,10 @@ export const MODERN2_SPECS = {
     terrainResistance: MODERN_TR, pivotStyle: 'neutral',
     turretTraverseDegS: 42, gunPitchDegS: 32, gunElevationDeg: 15, gunDepressionDeg: 8,
     gun: {
-      caliberMm: 120, reloadS: 5.0, baseAccuracy: 0.30, aimTimeS: 1.9,
+      caliberMm: 120, reloadS: 18.5, baseAccuracy: 0.30, aimTimeS: 1.9,
+      // Three-round ready rack: rapid presentation from the Leclerc bustle
+      // conveyor, followed by an all-or-nothing magazine replenishment.
+      autoloader: { magazineSize: 3, intraClipS: 2.5, fullReloadS: 18.5 },
       bloom: BLOOM_MODERN,
       shells: [
         apfsds('OFL 120 F2 APFSDS', 120, 640, 520, 1790),

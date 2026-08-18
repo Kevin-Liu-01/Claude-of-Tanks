@@ -51,6 +51,14 @@ const modernSpec = {
   gun: { caliberMm: 120, reloadS: 6.0, baseAccuracy: 0.30, aimTimeS: 1.8 },
   armor: null,
 };
+const autoloaderSpec = {
+  ...modernSpec,
+  id: 'fixture_autoloader',
+  gun: {
+    ...modernSpec.gun,
+    autoloader: { magazineSize: 3, intraClipS: 2.4, fullReloadS: 20 },
+  },
+};
 
 console.log('[1] catalog integrity');
 {
@@ -98,6 +106,11 @@ console.log('[2] loadout sanitizing: slot cap, dedupe, unknown + era gate');
   assert(modern.length === 3, 'same loadout legal on a modern spec');
   assert(equipEligible('vstab', modernSpec) && !equipEligible('vstab', ww2Spec),
     'equipEligible era gate');
+  assert(!equipEligible('rammer', autoloaderSpec),
+    'magazine autoloaders cannot mount a gun rammer');
+  const autoloader = sanitizeLoadout(['rammer', 'vents', 'vstab', 'optics'], autoloaderSpec);
+  assert(autoloader.join(',') === 'vents,vstab,optics',
+    'autoloading loadout drops rammer and fills remaining legal slots');
 }
 
 console.log('[3] multiplier folding');
@@ -231,6 +244,9 @@ console.log('[9] AI parity defaults');
     `WWII heavy default is era-legal (${heavyWw2.join(', ')})`);
   const mbt = defaultLoadoutFor(modernSpec);
   assert(mbt.includes('vstab'), `modern MBT default fields the stabilizer (${mbt.join(', ')})`);
+  const autoMbt = defaultLoadoutFor(autoloaderSpec);
+  assert(autoMbt.join(',') === 'vents,vstab,optics',
+    `autoloading MBT default replaces rammer (${autoMbt.join(', ')})`);
   const unknown = defaultLoadoutFor({ era: 'ww2', class: 'hovertank' });
   assert(unknown.length === 3, 'unknown class falls back to the medium kit');
 }

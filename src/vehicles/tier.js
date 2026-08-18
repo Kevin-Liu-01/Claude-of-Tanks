@@ -36,7 +36,7 @@ export const TANK_TIER = Object.freeze({
   // strv103a one below the B (earlier-mark convention: centurion3/5,
   // ariete/c1, t80/t80b).
   strv81: 7, strv103a: 8, strv122: 10,
-  t72m1_jaguar: 8, pt91_twardy: 9, pl01: 10,
+  t72m1_jaguar: 8, pt91_twardy: 9, pl01: 10, pl01_105: 10,
   stb1: 7, type90a: 10, type10b: 10,
   leo2a4_otco: 8, leo2a4m: 9, leo2a6m: 10,
   bmp3_rok: 8, ua_m2a3_bradley: 9, bmpt_terminator2: 9,

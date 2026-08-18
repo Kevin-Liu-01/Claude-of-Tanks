@@ -294,6 +294,36 @@ assert.ok(kitEvents.some((event) => event.type === 'consumable_used' && event.sl
 assert.ok(kitEvents.some((event) => event.type === 'consumable_denied' &&
   event.reason === 'COOLDOWN'), 'authority enforces reusable-kit cooldowns');
 
+const autoloaderMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  players: [
+    { id: 'auto-a', specId: 'pl01_105', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'auto-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+  ],
+});
+autoloaderMatch.onMatchReady();
+const autoEntity = autoloaderMatch.entityById.get('auto-a');
+const autoInput = new Map([['auto-a', {
+  throttle: 0, steer: 0, brake: true, fire: true,
+  aimYaw: 0, aimPitch: 0, shellSlot: 0, actionBits: 0,
+}]]);
+autoloaderMatch.step({ dt: 1 / 60, inputs: autoInput });
+assert.equal(autoEntity.combat.magazine.rounds, 3,
+  'authority consumes one ready-rack round after firing');
+assert.equal(autoEntity.combat.reload.kind, 'intraClip',
+  'authority starts the short intra-magazine cycle');
+autoInput.get('auto-a').fire = false;
+for (let i = 0; i < 130; i++) autoloaderMatch.step({ dt: 1 / 60, inputs: autoInput });
+assert.equal(autoEntity.combat.reload.kind, 'ready');
+autoInput.get('auto-a').actionBits = PLAYER_ACTION_BITS.RELOAD_MAGAZINE;
+autoloaderMatch.step({ dt: 1 / 60, inputs: autoInput });
+assert.equal(autoEntity.combat.magazine.rounds, 0,
+  'manual reload discards the authority-owned partial magazine');
+assert.equal(autoEntity.combat.reload.kind, 'magazine');
+assert.ok(autoloaderMatch.snapshot({ tick: 132, serverTimeMs: 2200,
+  viewerId: 'auto-a', ackInputSeq: 1 }).events.some((event) =>
+  event.type === 'magazine_reload'), 'manual magazine reload is replicated');
+
 const ramMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [

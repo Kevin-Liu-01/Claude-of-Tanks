@@ -57,6 +57,7 @@ import { computeDispersionRadM, shotRecoilScale, SIM_DT } from './sim/movement.j
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
 import {
   estimatePenRatio, selectShell, resolveShellHit, createCombatState, repairAllModules,
+  startMagazineReload,
 } from './sim/damage.js';
 import { createShell } from './sim/ballistics.js';
 import { createKillCam } from './game/killcam.js';
@@ -1855,6 +1856,11 @@ for (let slot = 0; slot < 3; slot++) {
   });
 }
 
+input.onAction('reloadMagazine', () => {
+  if (game.phase !== 'battle' || settings.isOpen()) return;
+  bus.emit('ui:magazineReload', {});
+});
+
 // Consumables — rebindable actions (Digit4/5/6 + pad X/Y/B default; HUD tray
 // clickable, which emits the same 'ui:consumable'). 0 = Repair Kit (all
 // damaged modules to full), 1 = First Aid (revive crew), 2 = Fire
@@ -1918,11 +1924,26 @@ input.onAction('perfHud', () => perfHud.toggle());
 
 bus.on('ui:shellSelect', ({ slot }) => {
   if (game.player && game.player.combat && !game.player.combat.destroyed) {
+    if (slot === game.player.combat.shellSlot && game.player.combat.magazine) {
+      bus.emit('ui:magazineReload', {});
+      return;
+    }
     // spec: with per-shell reloads the restart prices the INCOMING shell
     // (autocannon belt 0.4 s vs. ATGM rail 14+ s on the same vehicle).
     selectShell(game.player.combat, slot, game.player.spec);
     game.player.input.shellSlot = slot;
   }
+});
+
+bus.on('ui:magazineReload', () => {
+  const p = game.player;
+  if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
+  if (networkMatch) {
+    networkActionBitsPending |= PLAYER_ACTION_BITS.RELOAD_MAGAZINE;
+  } else {
+    startMagazineReload(p.combat, p.spec);
+  }
+  bus.emit('ui:click', {});
 });
 
 // ---------------------------------------------------------------------------
@@ -2248,7 +2269,8 @@ function networkInputFrame() {
     actionBits: networkActionBitsPending & (
       PLAYER_ACTION_BITS.REPAIR |
       PLAYER_ACTION_BITS.FIRST_AID |
-      PLAYER_ACTION_BITS.EXTINGUISHER
+      PLAYER_ACTION_BITS.EXTINGUISHER |
+      PLAYER_ACTION_BITS.RELOAD_MAGAZINE
     ),
   };
 }
@@ -3048,7 +3070,8 @@ const frameInfo = {
     gunTargetId: null,
     atGunLimit: false,
     gunLimitSpec: false, // GUN LIMIT label (movement.js r3: spec pins only)
-    reload: { t: 0, totalS: 1 },
+    reload: { t: 0, totalS: 1, kind: 'ready' },
+    magazine: { rounds: 0, capacity: 0 },
     shellSlot: 0,
     shells: [],
     zoom: 1,
@@ -3149,6 +3172,9 @@ function computeAimInfo() {
   aim.gunLimitSpec = !!p.state.gunLimitSpec;
   aim.reload.t = p.combat.reload.t;
   aim.reload.totalS = p.combat.reload.totalS;
+  aim.reload.kind = p.combat.reload.kind;
+  aim.magazine.rounds = p.combat.magazine?.rounds || 0;
+  aim.magazine.capacity = p.combat.magazine?.capacity || 0;
   aim.shellSlot = p.combat.shellSlot;
   aim.shells = shellCards;
   aim.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
@@ -4005,6 +4031,9 @@ function forcedHudFrame(mode, forcedAim) {
   aim.gunLimitSpec = false;
   aim.reload.t = forcedAim.reload.t;
   aim.reload.totalS = forcedAim.reload.totalS;
+  aim.reload.kind = forcedAim.reload.kind || 'shell';
+  aim.magazine.rounds = forcedAim.magazine?.rounds || 0;
+  aim.magazine.capacity = forcedAim.magazine?.capacity || 0;
   aim.shellSlot = forcedAim.shellSlot;
   aim.shells = shellCards;
   aim.zoom = forcedAim.zoom || 1;

@@ -139,6 +139,10 @@ export const EQUIP_CATEGORIES = [
 export function equipEligible(item, spec) {
   const it = typeof item === 'string' ? EQUIPMENT_BY_ID.get(item) : item;
   if (!it) return false;
+  // Magazine autoloaders cannot mount a gun rammer in the WoT equipment
+  // model. Vents can still improve the full magazine load; the intra-clip
+  // mechanism delay remains fixed.
+  if (it.id === 'rammer' && spec?.gun?.autoloader) return false;
   if (it.era === 'all') return true;
   return !!spec && spec.era === it.era;
 }
@@ -282,6 +286,9 @@ export const AI_DEFAULT_LOADOUTS = {
  * @returns {Array<string>}
  */
 export function defaultLoadoutFor(spec) {
+  if (spec?.gun?.autoloader && spec.class === 'mbt') {
+    return sanitizeLoadout(['vents', 'vstab', 'optics'], spec);
+  }
   const list = (spec && AI_DEFAULT_LOADOUTS[spec.class]) || AI_DEFAULT_LOADOUTS.medium;
   return sanitizeLoadout(list, spec);
 }

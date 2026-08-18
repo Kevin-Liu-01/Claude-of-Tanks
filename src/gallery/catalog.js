@@ -107,8 +107,24 @@ export function createGalleryRecord(spec) {
     ? Number(spec.enginePowerHp || 0) / Number(spec.weightTons)
     : 0;
   const damage = Number(shell?.dmg || 0);
-  const reload = Math.max(0.1, Number(spec.gun?.reloadS || 0.1));
-  const dpm = damage * (60 / reload);
+  const autoloader = spec.gun?.autoloader || null;
+  const magazineSize = autoloader
+    ? Math.max(1, Math.floor(Number(autoloader.magazineSize) || 1))
+    : 1;
+  const intraClipS = autoloader
+    ? Math.max(0.05, Number(autoloader.intraClipS) || Number(spec.gun?.reloadS) || 0.1)
+    : 0;
+  const fullReloadS = Math.max(
+    0.1,
+    Number(autoloader?.fullReloadS) || Number(spec.gun?.reloadS) || 0.1,
+  );
+  // Sustained magazine DPM is measured from one first shot to the next:
+  // every round in the magazine, the intervening intra-magazine cycles, and
+  // one complete magazine reload. This avoids presenting fullReloadS as a
+  // conventional per-shot reload and materially understating autoloader DPM.
+  const sustainedCycleS = fullReloadS + Math.max(0, magazineSize - 1) * intraClipS;
+  const burstDamage = damage * magazineSize;
+  const dpm = burstDamage * (60 / sustainedCycleS);
   const bestKeMm = Math.max(0, ...keValues);
   const bestCeMm = Math.max(0, ...ceValues);
   const features = protectionFeatures(spec);
@@ -145,13 +161,17 @@ export function createGalleryRecord(spec) {
     ),
   };
 
-  const firstParagraph = `${label.displayName} is represented in Claude of Tanks as a Tier ${tierNumeral(spec.id) || tier} ${nation} ${vehicleClass.toLowerCase()} from the ${era.toLowerCase()} period. Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${shellTypes.length || 1} ammunition ${shellTypes.length === 1 ? 'family' : 'families'}, while the drivetrain delivers ${rounded(powerToWeight)} horsepower per tonne and a ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h forward-speed ceiling.`;
+  const armamentSentence = autoloader
+    ? `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament uses a ${magazineSize}-round magazine autoloader with a ${rounded(intraClipS)}-second intra-magazine cycle and a complete reload time of ${rounded(fullReloadS)} seconds; the modeled ammunition suite comprises ${shellTypes.length || 1} ${shellTypes.length === 1 ? 'family' : 'families'}.`
+    : `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${shellTypes.length || 1} ammunition ${shellTypes.length === 1 ? 'family' : 'families'}.`;
+  const firstParagraph = `${label.displayName} is represented in Claude of Tanks as a Tier ${tierNumeral(spec.id) || tier} ${nation} ${vehicleClass.toLowerCase()} from the ${era.toLowerCase()} period. ${armamentSentence} The drivetrain delivers ${rounded(powerToWeight)} horsepower per tonne and a ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h forward-speed ceiling.`;
   const featureSentence = features.length
     ? ` The protection model also includes ${joinTechnicalList(features)} where those layers are present in the authored plate set.`
     : '';
   const secondParagraph = `Within the current simulation balance, the vehicle combines ${mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0))} with ${protectionAssessment(bestKeMm)}. Its internal layout exposes ${modules.length} modeled module volumes and ${crew.length} crew stations to resolved post-penetration damage.${featureSentence}`;
 
   const highlights = [
+    ...(autoloader ? [`${magazineSize}-round magazine: ${burstDamage.toLocaleString('en-US')} burst damage with a ${rounded(intraClipS)} s intra-magazine cycle`] : []),
     best ? `${best.shell.name || best.shell.type}: ${rounded(best.penetration, 0)} mm penetration at 1,000 m` : 'Ammunition performance is not specified',
     `${rounded(powerToWeight)} hp/t and ${rounded(Number(spec.hullTraverseDegS || 0), 0)}°/s hull traverse`,
     `${(spec.armor?.hullPlates || []).length + (spec.armor?.turretPlates || []).length} authored armor plates; ${modules.length + crew.length} internal volumes`,
@@ -169,7 +189,7 @@ export function createGalleryRecord(spec) {
     tier,
     tierNumeral: tierNumeral(spec.id) || String(tier),
     image: `/icons/${spec.id}_angle.webp`,
-    searchText: [label.searchAliases.join(' '), nation, era, vehicleClass, tier].join(' ').toLocaleLowerCase('en-US'),
+    searchText: [label.searchAliases.join(' '), nation, era, vehicleClass, tier, autoloader ? 'magazine autoloader' : ''].join(' ').toLocaleLowerCase('en-US'),
     ratings: Object.freeze(ratings),
     metrics: Object.freeze({
       hp: Number(spec.hp || 0),
@@ -181,7 +201,11 @@ export function createGalleryRecord(spec) {
       hullTraverseDegS: Number(spec.hullTraverseDegS || 0),
       turretTraverseDegS: Number(spec.turretTraverseDegS || 0),
       caliberMm: Number(spec.gun?.caliberMm || 0),
-      reloadS: Number(spec.gun?.reloadS || 0),
+      reloadS: rounded(fullReloadS),
+      autoloader: Boolean(autoloader),
+      magazineSize,
+      intraClipS: rounded(intraClipS),
+      burstDamage,
       aimTimeS: Number(spec.gun?.aimTimeS || 0),
       dpm: rounded(dpm, 0),
       bestPenetrationMm: rounded(best?.penetration || 0, 0),
@@ -246,6 +270,13 @@ export function serializeGallerySpec(spec) {
     gun: {
       caliberMm: record.metrics.caliberMm,
       reloadS: record.metrics.reloadS,
+      autoloader: record.metrics.autoloader ? {
+        magazineSize: record.metrics.magazineSize,
+        intraMagazineCycleS: record.metrics.intraClipS,
+        fullReloadS: record.metrics.reloadS,
+        burstDamage: record.metrics.burstDamage,
+        sustainedDamagePerMinute: record.metrics.dpm,
+      } : null,
       aimTimeS: record.metrics.aimTimeS,
       shells: record.shells,
     },

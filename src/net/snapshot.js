@@ -13,7 +13,18 @@ const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
   'x', 'y', 'z', 'vx', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
-  'hp', 'maxHp', 'reloadMs', 'shellSlot', 'flags',
+  'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
+  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags',
+]);
+
+export const SNAPSHOT_RELOAD_KINDS = Object.freeze({
+  ready: 0,
+  shell: 1,
+  intraClip: 2,
+  magazine: 3,
+});
+const SNAPSHOT_RELOAD_KIND_NAMES = Object.freeze([
+  'ready', 'shell', 'intraClip', 'magazine',
 ]);
 
 export const SNAPSHOT_FLAGS = Object.freeze({
@@ -81,6 +92,12 @@ export function captureEntitySnapshot(entity) {
     hp: Math.max(0, Math.round(finite(entity.combat.hp))),
     maxHp: Math.max(1, Math.round(finite(entity.combat.maxHp, 1))),
     reloadMs: Math.max(0, Math.round(finite(entity.combat.reload && entity.combat.reload.t) * 1000)),
+    reloadTotalMs: Math.max(0, Math.round(finite(
+      entity.combat.reload && entity.combat.reload.totalS,
+    ) * 1000)),
+    reloadKind: SNAPSHOT_RELOAD_KINDS[entity.combat.reload?.kind] ?? 0,
+    magazineRounds: Math.max(0, entity.combat.magazine?.rounds | 0),
+    magazineCapacity: Math.max(0, entity.combat.magazine?.capacity | 0),
     shellSlot: Math.max(0, Math.min(2, entity.combat.shellSlot | 0)),
     flags: entityFlags(entity),
   };
@@ -259,7 +276,11 @@ export function decodeEntitySnapshot(entity, target = null) {
   out.gunPitch = dequantizeAngle(entity.gunPitch);
   out.hp = entity.hp;
   out.maxHp = entity.maxHp;
-  out.reloadS = entity.reloadMs / 1000;
+  out.reloadS = finite(entity.reloadMs) / 1000;
+  out.reloadTotalS = finite(entity.reloadTotalMs, entity.reloadMs) / 1000;
+  out.reloadKind = SNAPSHOT_RELOAD_KIND_NAMES[entity.reloadKind | 0] || 'ready';
+  out.magazineRounds = Math.max(0, entity.magazineRounds | 0);
+  out.magazineCapacity = Math.max(0, entity.magazineCapacity | 0);
   out.shellSlot = entity.shellSlot;
   out.flags = entity.flags;
   return out;

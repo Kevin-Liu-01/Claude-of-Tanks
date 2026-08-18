@@ -200,6 +200,10 @@ export function createCombatState(spec) {
       ? spec.armor.crew.map((c) => c.crew)
       : DEFAULT_CREW;
   for (const name of roster) crew[name] = true;
+  const autoloader = spec.gun && spec.gun.autoloader;
+  const magazineSize = autoloader
+    ? Math.max(1, Math.floor(Number(autoloader.magazineSize) || 1))
+    : 0;
   return {
     hp: spec.hp,
     maxHp: spec.hp,
@@ -208,7 +212,8 @@ export function createCombatState(spec) {
     crew,
     fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
     eraSpent: new Set(),
-    reload: { t: 0, totalS: spec.gun.reloadS },
+    reload: { t: 0, totalS: spec.gun.reloadS, kind: 'ready' },
+    magazine: autoloader ? { rounds: magazineSize, capacity: magazineSize } : null,
     shellSlot: 0,
   };
 }
@@ -1545,6 +1550,91 @@ export function selectShell(combatState, slot, spec) {
   else combatState.reload.t = combatState.reload.totalS;
 }
 
+/** Shared crew, module, and equipment multiplier for a new load cycle. */
+function reloadMultiplier(combatState, spec) {
+  let mult = 1;
+  if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
+  const rack = combatState.modules && combatState.modules.ammoRack;
+  if (rack && rack.state !== 'ok') mult *= AMMORACK_RELOAD_MULT;
+  const loaderMechanism = combatState.modules &&
+    (combatState.modules.autoloader || combatState.modules.feedSystem);
+  if (loaderMechanism?.state === 'yellow') mult *= 1.35;
+  else if (loaderMechanism?.state === 'red') mult *= 2;
+  mult *= equipMult(combatState, 'reload');
+
+  const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
+  const missileRack = combatState.modules && combatState.modules.missileRack;
+  const missileRound = loaded && loaded.type === 'HEAT'
+    && Number(loaded.reloadS || spec.gun.reloadS) >= 8;
+  if (missileRound && missileRack?.state === 'yellow') mult *= 1.4;
+  else if (missileRound && missileRack?.state === 'red') mult *= 1.8;
+  return mult;
+}
+
+function beginMagazineReload(combatState, spec) {
+  const magazine = combatState.magazine;
+  const autoloader = spec.gun && spec.gun.autoloader;
+  if (!magazine || !autoloader) return false;
+  magazine.rounds = 0;
+  const totalS = Math.max(0.05, Number(autoloader.fullReloadS) || spec.gun.reloadS)
+    * reloadMultiplier(combatState, spec);
+  combatState.reload.totalS = totalS;
+  combatState.reload.t = totalS;
+  combatState.reload.kind = 'magazine';
+  return true;
+}
+
+/**
+ * Discard a partial magazine and begin a complete magazine load. Returns
+ * false when the tank has no magazine, is already loading one, or is full.
+ */
+export function startMagazineReload(combatState, spec) {
+  const magazine = combatState.magazine;
+  if (!magazine || magazine.rounds >= magazine.capacity) return false;
+  if (combatState.reload.kind === 'magazine' && combatState.reload.t > 0) return false;
+  return beginMagazineReload(combatState, spec);
+}
+
+/**
+ * Advance a reload timer without allocating. Magazine rounds become
+ * available atomically when a full magazine reload completes.
+ * @returns {boolean} true only on the ready edge
+ */
+export function tickReload(combatState, dt) {
+  if (!combatState || combatState.reload.t <= 0) return false;
+  const remaining = combatState.reload.t - dt;
+  combatState.reload.t = remaining <= 1e-9 ? 0 : remaining;
+  if (combatState.reload.t > 0) return false;
+  if (combatState.reload.kind === 'magazine' && combatState.magazine) {
+    combatState.magazine.rounds = combatState.magazine.capacity;
+  }
+  combatState.reload.kind = 'ready';
+  return true;
+}
+
+/**
+ * Begin the correct cycle after a shot: a short intra-magazine delay while
+ * rounds remain, otherwise the complete magazine reload. Conventional guns
+ * retain their one-shell reload behavior.
+ */
+export function startPostShotReload(combatState, spec) {
+  const magazine = combatState.magazine;
+  const autoloader = spec.gun && spec.gun.autoloader;
+  if (!magazine || !autoloader) {
+    startReload(combatState, spec);
+    return;
+  }
+  magazine.rounds = Math.max(0, magazine.rounds - 1);
+  if (magazine.rounds <= 0) {
+    beginMagazineReload(combatState, spec);
+    return;
+  }
+  const totalS = Math.max(0.05, Number(autoloader.intraClipS) || spec.gun.reloadS);
+  combatState.reload.totalS = totalS;
+  combatState.reload.t = totalS;
+  combatState.reload.kind = 'intraClip';
+}
+
 /**
  * Begin a reload after firing. Applies the locked crew debuff — a dead loader
  * multiplies reload time ×1.5 (ARCHITECTURE.md §2.4) — and the armor doc §9
@@ -1556,31 +1646,21 @@ export function selectShell(combatState, slot, spec) {
  * @returns {void}
  */
 export function startReload(combatState, spec) {
-  let mult = 1;
-  if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
-  const rack = combatState.modules && combatState.modules.ammoRack;
-  if (rack && rack.state !== 'ok') mult *= AMMORACK_RELOAD_MULT;
-  const loaderMechanism = combatState.modules &&
-    (combatState.modules.autoloader || combatState.modules.feedSystem);
-  if (loaderMechanism?.state === 'yellow') mult *= 1.35;
-  else if (loaderMechanism?.state === 'red') mult *= 2;
-  // EQUIPMENT SYSTEM: gun rammer / vents (× <1) — re-derived per reload like
-  // the debuffs above, from the loadout attached to this combat state.
-  mult *= equipMult(combatState, 'reload');
+  if (combatState.magazine && spec.gun.autoloader) {
+    beginMagazineReload(combatState, spec);
+    return;
+  }
+  const mult = reloadMultiplier(combatState, spec);
   // PER-SHELL RELOAD (IFV support role): a shell carrying its own reloadS
   // governs its slot — autocannon belts cycle in fractions of a second while
   // the ATGM rail on the same vehicle takes its full 14-18 s. Vehicles
   // without per-shell data keep the single gun-level duration.
   const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
-  const missileRack = combatState.modules && combatState.modules.missileRack;
-  const missileRound = loaded && loaded.type === 'HEAT'
-    && Number(loaded.reloadS || spec.gun.reloadS) >= 8;
-  if (missileRound && missileRack?.state === 'yellow') mult *= 1.4;
-  else if (missileRound && missileRack?.state === 'red') mult *= 1.8;
   const baseS = (loaded && loaded.reloadS) || spec.gun.reloadS;
   const totalS = baseS * mult;
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
+  combatState.reload.kind = 'shell';
 }
 
 /**
