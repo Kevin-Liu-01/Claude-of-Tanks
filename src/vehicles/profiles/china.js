@@ -720,23 +720,27 @@ function buildZTZ99A2(P) {
     [0.20, 0.30, 0.32], [-0.24, -0.12, -0.30], [0.80, -0.20, 0.14],
   ]) periscope(P, 'turretDetail', x, 0.915, z, r);
 
-  // ---- integral bustle basket: rails, verticals, dark backing and stowage,
-  // top 2.42 world, rear face -2.70 world (print's 2.45 band to -2.7).
-  for (const y of [0.22, 0.42, 0.62, 0.80]) {
-    P.add('turretDetail', box(2.60, 0.030, 0.040), 0, y, -2.52);
-  }
-  for (let i = 0; i < 9; i++) {
-    P.add('turretDetail', box(0.032, 0.62, 0.040), -1.26 + i * 0.315, 0.52, -2.52);
-  }
-  P.add('turretDark', box(2.56, 0.56, 0.030), 0, 0.50, -2.46);
+  // ---- integral bustle basket: a rear-facing open rack plus two seated
+  // side panniers.  The old rack sat on the TOP rail and faced into the
+  // turret, leaving the full rear/side basket volume visibly empty.  This
+  // rack starts on the lower cradle, opens aft and carries soft stowage from
+  // floor to crown; the panniers overlap the bustle shell at their forward
+  // ends and remain inside the side-return rails (§B2 / §B5).
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.038, 0.038, 0.86), s * 1.29, 0.80, -2.02, 0, s * 0.10, 0);
     P.add('turretDetail', box(0.038, 0.038, 0.86), s * 1.29, 0.22, -2.02, 0, s * 0.10, 0);
     P.add('turretDetail', box(0.038, 0.56, 0.038), s * 1.335, 0.51, -1.60);
+
+    for (const [z, y, h] of [[-2.20, 0.43, 0.34], [-1.84, 0.48, 0.42]]) {
+      P.addEquipment('turret', box(0.16, h, 0.31), s * 1.20, y, z);
+      P.add('turretDark', box(0.18, h * 1.02, 0.026), s * 1.20, y, z - 0.16);
+    }
+    P.add('turretDark', box(0.18, 0.040, 0.76), s * 1.20, 0.72, -2.02);
   }
   mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 2.20, d: 0.52, h: 0.26, fill: 0.40, rails: 3, seed: 9965,
-  }), 0, 0.66, -2.24);
+    mats: P.mats, w: 2.60, d: 0.60, h: 0.58, posts: 9,
+    fill: 0.92, rails: 3, mesh: false, rotation: [0, Math.PI, 0], seed: 9965,
+  }), 0, 0.22, -2.24);
 
   // smoke banks: staggered 5-tube rows on the cheek flanks
   addSmokeBanks(P, 1.38, 0.50, 0.40, 5, 9968);
