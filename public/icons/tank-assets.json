@@ -123726,7 +123726,7 @@
           }
         ]
       },
-      "geometryHash": "1b2c1cb0",
+      "geometryHash": "6c5d9580",
       "metadataHash": "c34a32dc",
       "appearance": {
         "version": 1,
@@ -123810,24 +123810,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87057,
-          "sha256": "7de0c20051eb7f146353a792ade84092fad10d10249d4f24df4b1051be865ce4"
+          "bytes": 86853,
+          "sha256": "a2a8ff849243ecc66b0a6908d97b4fcc49f5c6561b56f63024defe9d05aebbf8"
         },
         "armorSide": {
           "file": "ztz99a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84748,
-          "sha256": "b8c0d5e2b378f9655b667fd3e9c2f1af2778de223a085e5a7eb8b04f06584f39"
+          "bytes": 84855,
+          "sha256": "519713fc6f1419f0c41775ea8403db5f40cac2e346b3f68ec6b5bb947e10d5f9"
         },
         "modulesSide": {
           "file": "ztz99a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77490,
-          "sha256": "50e46e237c5ae96f55d35827ec303ba12a3bf572d4481c0c992a6b956da6a2f3"
+          "bytes": 77781,
+          "sha256": "c9064d8ee0bf65b18fbc866d83a2d77837b6570db48106178804738b4641b9b7"
         },
         "markings": {
           "file": "ztz99a2_markings.png",

@@ -88,6 +88,72 @@ function addRearFuelDrums(P, y, z, seed) {
   }), 0, y + 0.18, z + 0.12);
 }
 
+function addZTZ99A2RearServiceComplex(P) {
+  const { box, cylX, cylZ, torus } = KIT;
+
+  // The welded rear wall is armor; everything mounted to it is equipment.
+  // Keep the service complex slightly embedded in the shell so the three
+  // cabinets, their drip rail and the basket cradle read as one supported
+  // installation instead of a second armor slab floating behind the turret.
+  P.addEquipment('turret', box(2.18, 0.56, 0.085), 0, 0.43, -1.738);
+  P.add('turretDark', box(2.06, 0.030, 0.055), 0, 0.735, -1.782);
+  P.add('turretDark', box(2.06, 0.032, 0.055), 0, 0.125, -1.782);
+  const cabinets = [
+    { x: -0.74, w: 0.52, h: 0.34, y: 0.43 },
+    { x: 0, w: 0.66, h: 0.42, y: 0.42 },
+    { x: 0.74, w: 0.52, h: 0.34, y: 0.43 },
+  ];
+  for (const { x, w, h, y } of cabinets) {
+    P.addEquipment('turret', box(w, h, 0.18), x, y, -1.82);
+    P.add('turretDark', box(w * 0.88, h * 0.84, 0.022), x, y, -1.922);
+    P.add('turretDetail', box(w * 0.74, 0.024, 0.030), x, y + h * 0.39, -1.940);
+    P.add('turretDetail', box(w * 0.74, 0.024, 0.030), x, y - h * 0.39, -1.940);
+  }
+
+  // Louvered central APU/radio door, side access latches and real rear-face
+  // fasteners provide the density missing from the marked broad slab.
+  for (let row = 0; row < 5; row++) {
+    P.add('turretDetail', box(0.46, 0.025, 0.030), 0, 0.30 + row * 0.058, -1.947);
+  }
+  for (const x of [-0.91, -0.57, 0.57, 0.91]) {
+    P.add('turretDetail', box(0.036, 0.12, 0.035), x, 0.43, -1.947);
+  }
+  for (const x of [-0.99, -0.49, 0.49, 0.99]) {
+    for (const y of [0.18, 0.68]) {
+      P.add('turretDark', cylZ(0.022, 0.035, 8), x, y, -1.952);
+    }
+  }
+  // Transverse recovery/tool tube and two positive straps.  Its ends remain
+  // inside the side-return rails and below the antenna collars.
+  P.addEquipment('turret', cylX(0.095, 1.88, 14), 0, 0.80, -1.86);
+  for (const x of [-0.64, 0.64]) {
+    P.add('turretDark', box(0.055, 0.23, 0.23), x, 0.80, -1.86);
+  }
+
+  // Rear-facing cable reel and extinguisher bottle are asymmetric on
+  // purpose, like the roof fittings, but both have planted cradles.
+  P.addEquipment('turret', cylZ(0.155, 0.105, 16), 0.77, 0.48, -2.005);
+  P.add('turretDark', torus(0.13, 0.020, 16), 0.77, 0.48, -2.064);
+  P.add('turretDark', cylZ(0.030, 0.120, 10), 0.77, 0.48, -2.070);
+  P.addEquipment('turret', cylX(0.095, 0.62, 14), -0.69, 0.48, -2.015);
+  for (const x of [-0.91, -0.47]) {
+    P.add('turretDark', box(0.035, 0.22, 0.22), x, 0.48, -2.015);
+  }
+  // Cabinet-to-basket load paths and a populated lower tray.  The cases sit
+  // inside the existing rail envelope rather than replacing or widening it.
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', box(0.055, 0.055, 0.52), side * 1.04, 0.25, -1.98,
+      0, side * 0.08, 0);
+  }
+  for (const x of [-0.78, -0.26, 0.26, 0.78]) {
+    P.addEquipment('turret', box(0.39, 0.34, 0.30), x, 0.36, -2.18);
+    P.add('turretDark', box(0.055, 0.36, 0.32), x, 0.36, -2.18);
+    P.add('turretDetail', box(0.19, 0.035, 0.050), x, 0.54, -2.29);
+  }
+  P.addEquipment('turret', cylX(0.13, 1.10, 14), -0.43, 0.69, -2.22);
+  P.addEquipment('turret', cylX(0.11, 0.92, 14), 0.54, 0.67, -2.19);
+}
+
 // ===========================================================================
 // ZTZ-85-III (WZ-1227F3) — GROUND-UP §K BUILD (§5.248, 2026-08-17)
 // ===========================================================================
@@ -741,6 +807,7 @@ function buildZTZ99A2(P) {
     mats: P.mats, w: 2.60, d: 0.60, h: 0.58, posts: 9,
     fill: 0.92, rails: 3, mesh: false, rotation: [0, Math.PI, 0], seed: 9965,
   }), 0, 0.22, -2.24);
+  addZTZ99A2RearServiceComplex(P);
 
   // smoke banks: staggered 5-tube rows on the cheek flanks
   addSmokeBanks(P, 1.38, 0.50, 0.40, 5, 9968);
