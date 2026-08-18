@@ -54,6 +54,34 @@ function kTile(P, owner, x, y, z, w, h, d, rotation = null, lid = true) {
     x, y + h * 0.50 - 0.015, z + d * 0.50 - 0.002, r[0], r[1], r[2]);
 }
 
+// Surface-seated cassette. The visible face keeps the authored plane while
+// the body grows only toward the carrier, so a sloped/vertical ERA module has
+// a real load path instead of balancing on an edge or hovering above armor.
+// `axis` is the cassette-local carrier normal; `contactSide` points inward.
+function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
+  axis = 'y', contactSide = -1, embed = 0.04, lid = true, painted = false,
+} = {}) {
+  const { box } = KIT;
+  const bucket = painted ? owner : (owner === 'hull' ? 'hullTrack' : 'turretTrack');
+  const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
+  const r = rotation || [0, 0, 0];
+  const dims = { x: w, y: h, z: d };
+  const shift = { x: 0, y: 0, z: 0 };
+  dims[axis] += embed;
+  shift[axis] = contactSide * embed * 0.5;
+  P.add(bucket, KIT.xform(box(dims.x, dims.y, dims.z), shift.x, shift.y, shift.z),
+    x, y, z, r[0], r[1], r[2]);
+  if (!lid) return;
+
+  const outward = -contactSide;
+  const lidDims = { x: w * 0.80, y: h * 0.80, z: d * 0.80 };
+  lidDims[axis] = Math.min(0.024, dims[axis] * 0.22);
+  const lidShift = { x: 0, y: 0, z: 0 };
+  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5 - lidDims[axis] * 0.5);
+  P.add(dark, KIT.xform(box(lidDims.x, lidDims.y, lidDims.z),
+    lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
+}
+
 // Ukrainian service whip pair (staggered heights, rear-quarter seats).
 function uaWhips(P, o) {
   for (const s of [-1, 1]) {
@@ -1088,8 +1116,11 @@ function buildUAOplotM(P) {
   // Glacis: the Nozh built-in ERA wedge courses (two full-width rows with
   // the center driver break), splash board, lights, eyes.
   for (const s of [-1, 1]) for (let row = 0; row < 2; row++) for (let i = 0; i < 4; i++) {
-    kTile(P, 'hull', s * (0.24 + i * 0.30), 1.315 - row * 0.10, 2.42 - row * 0.30 + (i & 1) * 0.02,
-      0.26, 0.105, 0.30, [-0.30, s * 0.05, 0], true);
+    seatedCassette(P, 'hull', s * (0.24 + i * 0.30), 1.315 - row * 0.10,
+      2.42 - row * 0.30 + (i & 1) * 0.02, 0.26, 0.105, 0.30,
+      [-0.30, s * 0.05, 0], {
+        axis: 'y', contactSide: -1, embed: 0.055, painted: true,
+      });
   }
   P.add('hull', box(1.92, 0.05, 0.16), 0, 1.335, 2.10);
   ruGlacisKit(P, { w: 3.05, y: 1.12, z: 2.70, eyeX: 0.74, eyeZ: 3.24, eyeY: 0.85, hookY: 0.95, hookZ: 3.30, hlY: 1.22 });
@@ -1228,35 +1259,36 @@ function buildUAOplotM(P) {
       const rx = i === 3 ? -0.14 : -0.28;                 // last brick lies
       const d = i === 3 ? 0.30 : 0.36;                    // flatter: its tilted
       const dy = i === 3 ? -0.018 : 0;                    // corner stays under
-      P.add('turretTrack', box(0.30, 0.15, d),            // the 2.285 datum
-        s * (0.503 + 0.099 * u), 0.517 + 0.400 * u + dy, 1.879 - 1.401 * u,
-        rx, s * 0.07, s * 0.03);
-      P.add('turretDark', box(0.25, 0.032, d - 0.06),
-        s * (0.503 + 0.099 * u), 0.595 + 0.400 * u + dy, 1.889 - 1.401 * u,
-        rx, s * 0.07, s * 0.03);
+      seatedCassette(P, 'turret', s * (0.48 + i * 0.20),
+        0.517 + 0.400 * u + dy, 1.82 - i * 0.22, 0.30, 0.15, d,
+        [rx, s * 0.76, s * 0.03], {
+          axis: 'y', contactSide: -1, embed: 0.060, painted: true,
+        });
     }
     for (let i = 0; i < 4; i++) {
       const u = 0.06 + i * 0.16;
       const rx = i === 3 ? -0.14 : -0.29;
       const d = i === 3 ? 0.28 : 0.34;
       const dy = i === 3 ? -0.018 : 0;
-      P.add('turretTrack', box(0.32, 0.15, d),
-        s * (0.917 + 0.161 * u), 0.587 + 0.330 * u + dy, 1.501 - 1.119 * u,
-        rx, s * 0.14, s * 0.05);
-      P.add('turretDark', box(0.27, 0.032, d - 0.06),
-        s * (0.917 + 0.161 * u), 0.665 + 0.330 * u + dy, 1.511 - 1.119 * u,
-        rx, s * 0.14, s * 0.05);
+      seatedCassette(P, 'turret', s * (0.70 + i * 0.20),
+        0.587 + 0.330 * u + dy, 1.44 - i * 0.20, 0.32, 0.15, d,
+        [rx, s * 0.76, s * 0.05], {
+          axis: 'y', contactSide: -1, embed: 0.060, painted: true,
+        });
     }
     // shell-flank Duplet brick AFT of the edge stack — the rear turret
     // side reads a stacked module too (the edge cassette stack owns the
     // forward flank corner; the bustle stowage owns z < -1.27)
-    P.add('turretTrack', box(0.13, 0.36, 0.34), s * 1.21, 0.34, -1.12, 0, s * 0.30, 0);
-    P.add('turretDark', box(0.10, 0.028, 0.28), s * 1.21, 0.525, -1.12, 0, s * 0.30, 0);
+    seatedCassette(P, 'turret', s * 1.21, 0.34, -1.12, 0.13, 0.36, 0.34,
+      [0, s * 0.30, 0], {
+        axis: 'x', contactSide: -s, embed: 0.045, painted: true,
+      });
     P.add('turretDark', box(0.02, 0.30, 0.035), s * 1.258, 0.34, -1.28, 0, s * 0.30, 0);
     // Duplet edge cassette stack on the shoulder corner
     for (let i = 0; i < 4; i++) {
-      kTile(P, 'turret', s * 1.50, 0.26 + (i & 1) * 0.02, 0.20 - i * 0.34, 0.14, 0.34, 0.30,
-        [0, 0, s * 0.06], true);
+      seatedCassette(P, 'turret', s * 1.50, 0.26 + (i & 1) * 0.02,
+        0.20 - i * 0.34, 0.14, 0.34, 0.30, [0, 0, s * 0.06],
+        { axis: 'x', contactSide: -s, embed: 0.055, painted: true });
     }
   }
   // gun cradle channel: solid center wedge from the shell front to the

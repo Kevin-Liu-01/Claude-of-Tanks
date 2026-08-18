@@ -474,7 +474,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         0.8,
         1.98
       ],
-      "sourceHash": "c3bca8d631a3e791"
+      "sourceHash": "90f2a1d14ae33c9f"
     },
     "tracks": {
       "left": {
@@ -530,7 +530,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         0.8,
         1.98
       ],
-      "sourceHash": "f5e19d0761650e98"
+      "sourceHash": "d0bec4fed6fd75c9"
     },
     "tracks": {
       "left": {
@@ -577,16 +577,16 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
     },
     "turret": {
       "min": [
-        -1.5147,
+        -1.5243,
         -0.03,
         -1.71
       ],
       "max": [
-        1.5147,
+        1.5243,
         0.8135,
         1.77
       ],
-      "sourceHash": "56f44cce206ffb52"
+      "sourceHash": "a2e049c496ef997b"
     },
     "tracks": {
       "left": {
@@ -5697,20 +5697,20 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.47,
         3.6044
       ],
-      "sourceHash": "40fcda6340bbd410"
+      "sourceHash": "8f11f874e8cb2e2b"
     },
     "turret": {
       "min": [
-        -1.55,
+        -1.5786,
         -0.05,
         -2.06
       ],
       "max": [
-        1.55,
+        1.5786,
         0.87,
         2.36
       ],
-      "sourceHash": "b0239ea2b9897fcb"
+      "sourceHash": "7617413af796d64a"
     },
     "tracks": {
       "left": {

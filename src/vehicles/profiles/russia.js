@@ -1963,11 +1963,12 @@ export function eraRuCheeks(P, p, kind) {
             const tuck = row * (C.rowTuck ?? 0.02);
             const bx = bank.ax + along * Math.cos(bank.a) - tuck * Math.sin(bank.a);
             const bz = bank.z0 - along * Math.sin(bank.a) - tuck * Math.cos(bank.a);
-            P.add(C.bucket ?? 'turretTrack', box(C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15),
+            P.add(C.bucket ?? p.k1Bucket ?? 'turretTrack', box(C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15),
               -s * bx, y, bz, (C.tilt ?? -0.20) - row * (C.tiltRow ?? 0.07), -s * bank.a, 0);
           } else if (row < 3) {
             const t = Math.PI / 2 + s * ((p.k1T0 ?? 0.22) + i * (p.k1Step ?? 0.21));
-            put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09, 'turretTrack', skinD(t, y) + (p.k1OutI?.[i] ?? p.k1Out ?? 0.03));
+            put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09,
+              p.k1Bucket ?? 'turretTrack', skinD(t, y) + (p.k1OutI?.[i] ?? p.k1Out ?? 0.03));
           }
         }
       }

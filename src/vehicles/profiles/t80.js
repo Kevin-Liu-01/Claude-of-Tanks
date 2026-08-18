@@ -424,20 +424,15 @@ function buildT80Line(P, v) {
     // T-80B brow: forward shelf + spread applique tiles (t80b ref plan
     // front reads 1.74 out to |x| 0.8, 1.43-1.56 to 1.15) + 902 tubes left
     P.add('turret', box(0.50, 0.18, 0.30), -0.86, 0.28, 1.24, 0, -0.50, 0);
-    // CHEV (§5.14) -> TIP §5.29 (owner refinement 2026-08-07): the three
-    // spread applique tiles per side become TWO flat applique panels
-    // MEETING AT THE MANTLET HOOD — tip (±0.64, 1.54) at the hood flank
-    // (±0.65), outer end (1.24, 0.99) on the old tile-2 line (42.5deg =
-    // the landed 41deg class). Face line proud of the dome plan-front
-    // ellipse along the run (t80 critic-conditional mechanism, shared).
-    // Tile grammar carried by the 3-seg + row seam grid; §H.4: t80b keeps
-    // brow shelf + 902 bank as its marks.
-    eraRuCheeks(P, { tip: { x: 0.62, z: 1.55, ox: 1.25, oz: 0.96, y: 0.43, h: 0.36, d: 0.17, tilt: -0.22, segs: 4, rows: 1, gap: false } }, 'tip');
+    // The former continuous chevron-tip bars are intentionally absent. They
+    // floated ahead of the casting and duplicated the BV's real Kontakt field.
+    // T-80B keeps its structural brow shelf and individually seated shoulder
+    // modules; T-80BV adds its own supported Kontakt blanket below.
     // Two raised outer modules per cheek bridge the applique course into
     // the cast shoulder.  Their backs overlap the existing side carrier;
     // the old low tiles disappeared inside the dome after the height pass.
     for (const s of [-1, 1]) for (let i = 0; i < 2; i++) {
-      P.add('turretTrack', box(0.29, 0.22, 0.25), s * (1.18 + i * 0.08), 0.39 - i * 0.015, 0.65 - i * 0.27, -0.15, s * (0.68 + i * 0.16), 0);
+      P.add('turret', box(0.29, 0.22, 0.25), s * (1.18 + i * 0.08), 0.39 - i * 0.015, 0.65 - i * 0.27, -0.15, s * (0.68 + i * 0.16), 0);
       P.add('turretDark', box(0.22, 0.020, 0.19), s * (1.18 + i * 0.08), 0.510 - i * 0.015, 0.65 - i * 0.27, -0.15, s * (0.68 + i * 0.16), 0);
     }
     // T-80B 902A launchers sit in compact mirrored groups on broad cheek
@@ -458,24 +453,10 @@ function buildT80Line(P, v) {
     P.add('turret', box(0.72, 0.13, 0.28), -0.35, roofY(0.665), -0.92);
   }
   if (v === 0) {
-    // CHEV (§5.14) -> TIP §5.29 (owner refinement 2026-08-07 + the critic
-    // wave's t80 CONDITIONAL: "the banks tuck UNDER the fat dome bulge in
-    // plan — raise proudness until the read BREAKS the dome silhouette"):
-    // the light banks become TWO flat K-1 panels MEETING AT THE MANTLET
-    // HOOD — tip (±0.66, 1.56) tucks against the hood flank (hood ±0.65,
-    // z 1.19..1.69; the 125mm emerges above/behind the tip), outer end
-    // (1.30, 0.94) at the cheek chain. The face line rides 3-9cm PROUD of
-    // the dome plan-front ellipse (cz 0.22 + 1.289·sqrt(1-(x/1.465)²))
-    // along the whole run — the plan V breaks the dome silhouette (the
-    // critic's measured pass condition; tilt top-edge retreat 3.7cm
-    // priced in). Still the LIGHTEST fit of the three (§H.4): one clean
-    // 3-seg panel pair, no flank field, no lower lip.
-    eraRuCheeks(P, { tip: { x: 0.64, z: 1.57, ox: 1.30, oz: 0.92, y: 0.41, h: 0.34, d: 0.17, tilt: -0.21, segs: 4, rows: 1, gap: false } }, 'tip');
-    // The early T-80 keeps the lightest armor fit, but it still needs a
-    // readable shoulder return rather than two panels swallowed by the cast
-    // shell.  One unequal cassette per side completes that attachment.
+    // The early T-80 carries no continuous ERA chevron. One compact shoulder
+    // return per side remains planted into the cast shell as applique/stowage.
     for (const s of [-1, 1]) {
-      P.add('turretTrack', box(0.30, 0.22, 0.27), s * 1.22, 0.36, 0.55, -0.14, s * 0.72, 0);
+      P.add('turret', box(0.30, 0.22, 0.27), s * 1.22, 0.36, 0.55, -0.14, s * 0.72, 0);
       P.add('turretDark', box(0.23, 0.020, 0.21), s * 1.22, 0.480, 0.55, -0.14, s * 0.72, 0);
       const smoke = FITTINGS.smokeBank({ mats: P.mats, count: s < 0 ? 5 : 4, r: 0.038, len: 0.24, pitch: -0.40, splay: 0.27, arc: 0.52, spacing: 0.082, seed: 36 + s });
       smoke.position.set(s * 1.16, 0.50, 0.30);
@@ -484,16 +465,10 @@ function buildT80Line(P, v) {
     }
   }
   if (v === 2) {
-    // T-80BV Kontakt-1: cheek field (tip panels) + flank wrap + glacis raft
-    // CHEV (§5.14) -> TIP §5.29 (owner refinement 2026-08-07): the banked
-    // brick walls become TWO tall flat K-1 panels MEETING AT THE V-NOSE
-    // COVER — tip (±0.30, 1.52) tucks at the cover flank (±0.28,
-    // z 1.26..1.62; the gun emerges above/behind the tip), outer end
-    // (1.28, 0.72) hands off to the arc brick 3 (flank wrap kept EXACTLY,
-    // banksOff law). 39deg V; full 3-course grid (rows 2) = the BV's
-    // heaviest-fit §H.4 identity; mid-run half-buries in the dome bulge
-    // (the K-1-on-casting hug, §B2 no-air).
-    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.18, k1Pitch: 0.21, k1T0: 0.24, k1Step: 0.22, k1H: 0.21, k1Out: 0.04, k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.17, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
+    // T-80BV Kontakt-1: discrete cheek field + flank wrap + glacis raft. The
+    // obsolete shared continuous bars are gone; every visible module below
+    // has a painted carrier shoe buried into the cast turret.
+    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.18, k1Pitch: 0.21, k1T0: 0.24, k1Step: 0.22, k1H: 0.21, k1Out: 0.04, k1Bucket: 'turret', k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.17, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
     // Tagil-style frontal protection: a planted, faceted module course on
     // each side of the gun.  Each outer module steps down/back with the cast
     // shoulder, while a deep painted shoe remains buried in the dome.  This
@@ -503,9 +478,9 @@ function buildT80Line(P, v) {
       const x = 0.38 + i * 0.19;
       const z = 1.47 - i * 0.18;
       const y = 0.44 - i * 0.012;
-      const yaw = 0.42 + i * 0.09;
+      const yaw = 0.76;
       P.add('turret', box(0.31, 0.20, 0.25), s * (x - 0.025), y - 0.055, z - 0.035, -0.22, s * yaw, 0);
-      P.add('turretTrack', box(0.35, 0.27, 0.28), s * x, y, z, -0.22, s * yaw, 0);
+      P.add('turret', box(0.35, 0.27, 0.28), s * x, y, z, -0.22, s * yaw, 0);
       P.add('turretDark', box(0.27, 0.022, 0.21), s * x, y + 0.145, z, -0.22, s * yaw, 0);
     }
     // Continue the Kontakt-1 blanket into six individually readable flank
@@ -515,8 +490,8 @@ function buildT80Line(P, v) {
       const x = 1.24 + i * 0.030;
       const z = 0.46 - i * 0.235;
       const yaw = 0.66 + i * 0.105;
-      P.add('turretTrack', box(0.19, 0.11, 0.20), s * (x - 0.035), 0.12 - i * 0.006, z, -0.06, s * yaw, 0);
-      P.add('turretTrack', box(0.22, 0.14, 0.22), s * x, 0.15 - i * 0.006, z, -0.06, s * yaw, 0);
+      P.add('turret', box(0.19, 0.11, 0.20), s * (x - 0.035), 0.12 - i * 0.006, z, -0.06, s * yaw, 0);
+      P.add('turret', box(0.22, 0.14, 0.22), s * x, 0.15 - i * 0.006, z, -0.06, s * yaw, 0);
       P.add('turretDark', box(0.17, 0.012, 0.15), s * x, 0.226 - i * 0.006, z, -0.06, s * yaw, 0);
     }
     // The production BV's 902B system is visibly asymmetric: seven tubes
