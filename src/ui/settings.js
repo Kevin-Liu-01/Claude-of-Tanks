@@ -31,7 +31,11 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { uiIconSVG } from './uiIcons.js';
-import { getStoredChoice, setPresetName, PRESET_ORDER, PRESETS } from '../engine/quality.js';
+import {
+  getDeviceTier, getMobilePresetChoice, getStoredChoice,
+  MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,
+  setMobilePresetName, setPresetName,
+} from '../engine/quality.js';
 
 const SETTINGS_CSS = `
 /* settings_ui r2 (owner: "make our settings screen look much better"):
@@ -831,25 +835,31 @@ export function createSettings(opts) {
     el('span', 'lb', row).textContent = 'Graphics quality';
     const seg = el('div', 'cot-set-seg', row);
     const btns = [];
-    for (const name of ['auto', ...PRESET_ORDER]) {
+    const mobile = getDeviceTier() === 'mobile';
+    const choices = mobile ? MOBILE_PRESET_ORDER : ['auto', ...PRESET_ORDER];
+    for (const name of choices) {
       const b = el('button', '', seg);
       b.type = 'button';
       b.textContent = name === 'auto' ? 'auto' : PRESETS[name].label.toLowerCase();
       b.dataset.name = name;
       b.addEventListener('click', () => {
-        setPresetName(name); // persists + live-applies (post chain resize, shadow RT realloc)
+        if (mobile) setMobilePresetName(name);
+        else setPresetName(name); // live-applies post resize + shadow RT realloc
         for (const x of btns) x.classList.toggle('sel', x.dataset.name === name);
         emit('ui:click', {});
       });
       btns.push(b);
     }
-    for (const x of btns) x.classList.toggle('sel', x.dataset.name === getStoredChoice());
+    const selected = mobile ? getMobilePresetChoice() : getStoredChoice();
+    for (const x of btns) x.classList.toggle('sel', x.dataset.name === selected);
     const note = el('div', 'cot-set-note', card);
-    note.textContent =
-      'Auto uses adaptive High quality with scene MSAA plus final-frame SMAA: real geometry, foliage, ' +
-      'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
-      'the 3D frame when needed; the reticle and HUD remain native-sharp. Medium/Low reduce GPU cost. ' +
-      'Applies instantly.';
+    note.textContent = mobile
+      ? 'Performance, Balanced and Quality stay inside the mobile texture budget. They resize raster, ' +
+        'anti-aliasing and shadow buffers instantly without reloading the battlefield.'
+      : 'Auto uses adaptive High quality with scene MSAA plus final-frame SMAA: real geometry, foliage, ' +
+        'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
+        'the 3D frame when needed; the reticle and HUD remain native-sharp. Medium/Low reduce GPU cost. ' +
+        'Applies instantly.';
   }
 
   function renderTab() {
@@ -1137,7 +1147,8 @@ export function createSettings(opts) {
     cancelCapture();
     clearConflict();
     if (activeTab === 'graphics') {
-      setPresetName('auto');
+      if (getDeviceTier() === 'mobile') setMobilePresetName('mobile');
+      else setPresetName('auto');
       renderTab();
       return;
     }

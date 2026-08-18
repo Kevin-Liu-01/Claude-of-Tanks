@@ -4,6 +4,11 @@
 
 import { FONT_STACK, FONT_COND } from './fonts.js';
 import { uiIconSVG } from './uiIcons.js';
+import {
+  getDeviceTier, getMobilePresetChoice, getStoredChoice,
+  MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,
+  setMobilePresetName, setPresetName,
+} from '../engine/quality.js';
 
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:39;display:none;pointer-events:none;
@@ -44,7 +49,7 @@ const CSS = `
 .cot-touch .fire{right:max(20px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));
   width:96px;height:96px;color:#ffd27a;}
 .cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
-.cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb,.cot-touch .brake .lb{position:absolute;bottom:-17px;
+.cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:8px;font-weight:800;
   letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
@@ -70,29 +75,44 @@ const CSS = `
 .cot-touch .autoaim.on{color:#ffd27a;border-color:#f0ad45;
   background:radial-gradient(circle at 35% 28%,rgba(120,83,28,.92),rgba(42,27,10,.96) 64%,rgba(8,7,5,.98));
   box-shadow:0 0 18px rgba(240,150,40,.42),inset 0 1px 4px rgba(255,225,170,.2);}
-.cot-touch .brake{left:166px;bottom:45px;width:54px;height:54px;color:#dce7ef;}
-.cot-touch .brake b{font-family:${FONT_COND};font-size:16px;letter-spacing:.02em;}
-.cot-touch .back{position:absolute;z-index:4;top:max(8px,env(safe-area-inset-top));
-  left:max(8px,env(safe-area-inset-left));height:38px;padding:0 12px;pointer-events:auto;
-  touch-action:manipulation;border:1px solid rgba(210,224,235,.28);border-left:3px solid #e69a2d;
-  background:rgba(7,11,15,.78);font-family:${FONT_COND};font-size:9px;font-weight:800;
-  letter-spacing:.14em;text-transform:uppercase;box-shadow:0 3px 12px rgba(0,0,0,.4);}
+.cot-touch .mobile-chrome{position:absolute;z-index:4;top:max(8px,env(safe-area-inset-top));
+  right:max(10px,env(safe-area-inset-right));display:flex;gap:4px;pointer-events:auto;}
+.cot-touch .quick{width:44px;height:44px;padding:3px 2px 2px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:manipulation;
+  border:1px solid rgba(184,201,214,.34);border-bottom:2px solid rgba(184,201,214,.38);
+  background:linear-gradient(180deg,rgba(20,27,33,.94),rgba(7,11,15,.96));
+  color:#dce7ef;box-shadow:0 3px 12px rgba(0,0,0,.45);}
+.cot-touch .quick:active{border-color:#f0ad45;color:#ffd27a;background:rgba(48,32,12,.96);}
+.cot-touch .quick svg{width:18px;height:18px;display:block;}
+.cot-touch .quick .ql{font-family:${FONT_COND};font-size:6.5px;font-weight:800;line-height:1;
+  letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
+.cot-touch .quick.muted{color:#f08b75;border-color:rgba(240,102,83,.55);}
+.cot-touch .speed{position:absolute;z-index:3;left:calc(var(--edge) + 150px);
+  bottom:max(24px,env(safe-area-inset-bottom));min-width:76px;height:42px;padding:5px 9px 4px;
+  display:flex;align-items:baseline;justify-content:flex-end;gap:5px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(7,11,15,.82),rgba(7,11,15,.55));
+  border-left:2px solid #e69a2d;border-bottom:1px solid rgba(184,201,214,.24);
+  box-shadow:0 3px 12px rgba(0,0,0,.35);font-family:${FONT_COND};}
+.cot-touch .speed b{font-size:24px;line-height:1;font-weight:700;color:#eef4f9;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;}
+.cot-touch .speed span{font-size:8px;font-weight:800;letter-spacing:.12em;color:#9fb0bf;}
 
 /* Recompose the existing live HUD instead of duplicating ammo/state UI. */
 body.cot-touch-layout{overscroll-behavior:none;}
 body.cot-touch-layout #app canvas{touch-action:none;}
 body.cot-touch-layout .cot-hints,body.cot-touch-layout .cot-ear,
-body.cot-touch-layout .cot-dlog,body.cot-touch-layout .cot-net{display:none!important;}
+body.cot-touch-layout .cot-dlog{display:none!important;}
 body.cot-touch-layout button[aria-label="Leave battle and return to garage"]{display:none!important;}
 body.cot-touch-layout .cot-top{top:max(4px,env(safe-area-inset-top));padding:5px 29px 7px;gap:10px;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
 body.cot-touch-layout .cot-top .tm{font-size:12px;}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
 body.cot-touch-layout .cot-kf{font-size:9px;padding:3px 7px;background:rgba(7,10,14,.68);}
-/* MOBILE-UX r1: the top-right tray is AMMO ONLY (>=44 px thumb targets) —
-   the consumables move to a right-edge column, see .cot-cons below. */
+/* Ammo is directly above the equipment/consumable stack, leaving the top
+   edge to the three global mobile controls. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
-  top:max(8px,env(safe-area-inset-top));bottom:auto;transform:none;gap:4px;z-index:3;align-items:flex-start;}
+  top:auto;bottom:calc(max(22px,env(safe-area-inset-bottom)) + 280px);
+  transform:none;gap:4px;z-index:3;align-items:flex-start;}
 body.cot-touch-layout .cot-shell{width:48px;height:52px;}
 body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.76);}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
@@ -114,6 +134,10 @@ body.cot-touch-layout .cot-cons{display:flex;flex-direction:column;gap:9px;posit
   bottom:calc(max(22px,env(safe-area-inset-bottom)) + 124px);z-index:3;}
 body.cot-touch-layout .cot-con{width:48px;height:48px;}
 body.cot-touch-layout .cot-con svg{transform:none;}
+body.cot-touch-layout .cot-net{top:calc(max(8px,env(safe-area-inset-top)) + 48px);
+  right:max(10px,env(safe-area-inset-right));padding:4px 7px 3px;z-index:4;
+  background:rgba(7,11,15,.68);border-right:2px solid rgba(240,160,48,.72);
+  color:#dce7ef;opacity:.88;font-size:9px;letter-spacing:.08em;}
 body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;top:54px;bottom:auto;
   width:116px!important;height:116px!important;opacity:.86;}
 body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 224px));
@@ -127,18 +151,17 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
   .cot-touch .arrow.l{top:48px}.cot-touch .arrow.r{top:48px}
   .cot-touch .fire{width:82px;height:82px}.cot-touch .scope{right:112px;width:54px;height:54px}
   .cot-touch .autoaim{right:172px;width:54px;height:54px}
-  .cot-touch .fire.alt{left:137px;bottom:136px;width:56px;height:56px}.cot-touch .brake{left:137px;width:48px;height:48px}
+  .cot-touch .fire.alt{left:137px;bottom:136px;width:56px;height:56px}
+  .cot-touch .speed{left:calc(var(--edge) + 128px);min-width:70px;}
   body.cot-touch-layout .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
   body.cot-touch-layout .cot-minimap{width:92px!important;height:92px!important;}
   body.cot-touch-layout .cot-dp{display:none;}
 }
 @media (orientation:portrait) and (max-width:900px){
   .cot-touch .aimhint::after{content:" · LANDSCAPE RECOMMENDED";}
-  /* MOBILE-UX r1: in portrait the centered score plate and the right-aligned
-     ammo tray share the same band — the tray buried the timer (owner shot).
-     Drop the tray below the plate; the killfeed steps below the tray. */
-  body.cot-touch-layout .cot-shells{top:calc(max(4px,env(safe-area-inset-top)) + 46px);}
-  body.cot-touch-layout .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 106px);}
+  .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px);}
+  body.cot-touch-layout .cot-net{top:calc(max(8px,env(safe-area-inset-top)) + 96px);}
+  body.cot-touch-layout .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 130px);}
 }
 @media (orientation:portrait) and (max-width:680px){
   /* Keep the three right-hand actions clear of the handbrake on narrow
@@ -152,20 +175,33 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
    (11px overlap, both bottom-anchored). The keycap badge is hidden on touch,
    so its top-right corner is free: the count moves there. */
 body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
-/* MOBILE-QA r1: touch-target floor for chrome the phone shares with desktop.
-   The garage nav row (25px), country chips (20px), carousel arrows (34px strip)
-   and the battle back button (38px) all sat under the
-   ~40px finger floor; several were genuinely hard to hit on an SE. Padding
-   bumps only — same type, same layout language. */
+@media (max-height:480px){
+  /* Short landscape phones cannot fit a 3-high equipment stack plus ammo.
+     Keep the requested order but lay equipment out in one row. */
+  body.cot-touch-layout .cot-cons{flex-direction:row;
+    bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
+  body.cot-touch-layout .cot-shells{
+    bottom:calc(max(22px,env(safe-area-inset-bottom)) + 168px);}
+}
+/* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px 12px;}
 body.cot-touch-layout .cot-car-arrow{width:44px;}
-body.cot-touch-layout .cot-touch .back{padding:12px 16px;min-height:44px;}
 `;
 
 const SHELL = uiIconSVG('shell', 34);
 const SCOPE = uiIconSVG('scope', 34);
 const AUTO_AIM = uiIconSVG('autoAim', 30);
+const SOUND = uiIconSVG('sound', 20);
+const SOUND_OFF = uiIconSVG('soundOff', 20);
+const GRAPHICS = uiIconSVG('graphics', 20);
+const SETTINGS = uiIconSVG('settings', 20);
+
+export function nextQuickGraphicsPreset(current, mobile = false) {
+  const order = mobile ? MOBILE_PRESET_ORDER : PRESET_ORDER;
+  const i = order.indexOf(current);
+  return order[(i < 0 ? 0 : i + 1) % order.length];
+}
 
 // Hybrid mobile Dynamic Aim: landing on FIRE arms the shot, dragging steers
 // the sight, a quick lift fires at the final position, and a sustained hold
@@ -264,7 +300,10 @@ export function createMobileFireGesture({
   };
 }
 
-export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle, isSniper = () => false }) {
+export function createTouchControls({
+  input, bus, isBattleActive, isSniper = () => false,
+  onOpenSettings = () => {}, onToggleSound = () => false,
+}) {
   if (!document.getElementById('cot-touch-style')) {
     const style = document.createElement('style');
     style.id = 'cot-touch-style'; style.textContent = CSS; document.head.appendChild(style);
@@ -272,7 +311,11 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   const root = document.createElement('div');
   root.className = 'cot-touch';
   root.setAttribute('aria-label', 'Mobile battle controls');
-  root.innerHTML = `<button class="back" type="button" aria-label="Return to garage">&#8592; Garage</button>` +
+  root.innerHTML = `<div class="mobile-chrome" aria-label="Battle options">` +
+    `<button class="quick sound" type="button" aria-label="Mute sound">${SOUND}<span class="ql">Sound</span></button>` +
+    `<button class="quick graphics" type="button" aria-label="Change graphics quality">${GRAPHICS}<span class="ql">GFX</span></button>` +
+    `<button class="quick settings" type="button" aria-label="Open settings">${SETTINGS}<span class="ql">Settings</span></button></div>` +
+    `<div class="speed" aria-label="Vehicle speed"><b>0</b><span>KM/H</span></div>` +
     `<div class="aimpad" aria-label="Swipe to aim"></div><div class="aimhint">Swipe to aim</div>` +
     // MOBILE-QA r2 (owner): one triangle glyph (U+25B2, text presentation on
     // every platform) rotated per direction — U+25C0/U+25B6 carry DEFAULT
@@ -281,7 +324,6 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
     `<div class="joy" aria-label="Movement joystick"><span class="arrow u">&#9650;</span><span class="arrow d">&#9650;</span>` +
     `<span class="arrow l">&#9650;</span><span class="arrow r">&#9650;</span><div class="knob"></div></div>` +
     `<button class="round fire alt" type="button" aria-label="Fire gun left">${SHELL}<span class="lb">Fire</span></button>` +
-    `<button class="round brake" type="button" aria-label="Handbrake"><b>HB</b><span class="lb">Brake</span></button>` +
     `<button class="round autoaim" type="button" aria-label="Toggle auto-aim" aria-pressed="false">${AUTO_AIM}<span class="lb">Auto Aim</span></button>` +
     `<button class="round scope" type="button" aria-label="Toggle sniper mode">${SCOPE}<span class="lb">Scope</span></button>` +
     `<button class="round fire" type="button" aria-label="Fire gun">${SHELL}<span class="lb">Fire</span></button>` +
@@ -437,16 +479,6 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   aimPad.addEventListener('pointerup', endAim); aimPad.addEventListener('pointercancel', endAim);
   aimPad.addEventListener('lostpointercapture', endAim);
 
-  function bindHold(button, action) {
-    const up = (e) => { input.releaseVirtual(action); button.classList.remove('down'); if (e) e.stopPropagation(); };
-    button.addEventListener('pointerdown', (e) => {
-      e.preventDefault(); e.stopPropagation(); button.classList.add('down'); input.pressVirtual(action);
-      try { button.setPointerCapture(e.pointerId); } catch (_) { /* fine */ }
-    });
-    button.addEventListener('pointerup', up); button.addEventListener('pointercancel', up);
-    button.addEventListener('lostpointercapture', up);
-  }
-
   // DYNAMIC AIM (all tanks, both fire buttons): unlike handbrake, FIRE is
   // never pressed immediately on pointerdown. A quick tap/drag fires once on
   // release; a 320 ms hold becomes the input layer's real held-fire state, so
@@ -523,7 +555,6 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) cancelFireGesture();
   });
-  bindHold(root.querySelector('.brake'), 'handbrake');
   root.querySelector('.scope').addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});
   });
@@ -539,8 +570,41 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
     const label = autoAim.querySelector('.lb');
     if (label) label.textContent = on ? 'Locked' : 'Auto Aim';
   });
-  root.querySelector('.back').addEventListener('click', (e) => {
-    e.stopPropagation(); bus.emit('ui:click', {}); onLeaveBattle();
+  const soundButton = root.querySelector('.quick.sound');
+  soundButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const muted = !!onToggleSound();
+    soundButton.classList.toggle('muted', muted);
+    soundButton.innerHTML = `${muted ? SOUND_OFF : SOUND}<span class="ql">${muted ? 'Muted' : 'Sound'}</span>`;
+    soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+    soundButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
+  });
+  const graphicsButton = root.querySelector('.quick.graphics');
+  function graphicsChoice() {
+    if (getDeviceTier() === 'mobile') return getMobilePresetChoice();
+    const stored = getStoredChoice();
+    return stored === 'auto' ? resolvePresetName(stored) : stored;
+  }
+  function renderGraphicsButton() {
+    const name = graphicsChoice();
+    const label = PRESETS[name]?.label || name;
+    const short = label === 'Performance' ? 'Perf' : label === 'Balanced' ? 'Bal' :
+      label === 'Quality' ? 'Qual' : label;
+    graphicsButton.querySelector('.ql').textContent = `GFX ${short}`;
+    graphicsButton.setAttribute('aria-label', `Graphics quality: ${label}. Tap to change level`);
+    graphicsButton.title = `Graphics: ${label}`;
+  }
+  graphicsButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const mobile = getDeviceTier() === 'mobile';
+    const next = nextQuickGraphicsPreset(graphicsChoice(), mobile);
+    if (mobile) setMobilePresetName(next); else setPresetName(next);
+    renderGraphicsButton();
+    bus.emit('ui:click', {});
+  });
+  renderGraphicsButton();
+  root.querySelector('.quick.settings').addEventListener('click', (e) => {
+    e.stopPropagation(); bus.emit('ui:click', {}); onOpenSettings();
   });
 
   bus.on('phase:change', ({ phase }) => { battle = phase === 'battle'; syncLayout(); });
@@ -548,5 +612,15 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   window.addEventListener('orientationchange', syncLayout, { passive: true });
   syncLayout();
 
-  return { root, get isLayout() { return layout; }, refresh: syncLayout };
+  const speedValue = root.querySelector('.speed b');
+  return {
+    root,
+    get isLayout() { return layout; },
+    refresh: syncLayout,
+    update(speedMps = 0) {
+      const kmh = Math.max(0, Math.min(999, Math.round(Math.abs(Number(speedMps) || 0) * 3.6)));
+      const text = String(kmh);
+      if (speedValue.textContent !== text) speedValue.textContent = text;
+    },
+  };
 }

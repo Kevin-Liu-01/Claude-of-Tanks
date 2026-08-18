@@ -1687,10 +1687,16 @@ const settings = createSettings({
   isGamePaused: () => game.phase === 'battle' && !game.result && !killcam.isActive(),
 });
 garage.attachSettingsControl(settings.gear);
+let mobileSoundMuted = false;
 const touchControls = createTouchControls({
   input, bus,
   isBattleActive: () => game.phase === 'battle',
-  onLeaveBattle: () => leaveBattleToGarage(),
+  onOpenSettings: () => settings.open(),
+  onToggleSound: () => {
+    mobileSoundMuted = !mobileSoundMuted;
+    audio.mute(mobileSoundMuted);
+    return mobileSoundMuted;
+  },
   // MOBILE-UX r1: pinch-to-scope needs the live camera mode so a spread
   // ENTERS the scope (sniperToggle lane) and further spread steps zoomIn.
   isSniper: () => rig.mode === 'SNIPER',
@@ -1811,13 +1817,13 @@ renderer.domElement.addEventListener('mousedown', () => {
   if (!input.isLocked()) input.requestLock();
 });
 
-// Battle start: grab the pointer inside the BATTLE-click gesture and flash the
-// controls hint strip (reflects the CURRENT bindings; fades after 8 s).
+// Battle start: desktop grabs the pointer inside the BATTLE-click gesture.
+// The old eight-second controls strip is deliberately retired; it covered
+// the battlefield on every round even after players knew the bindings.
 bus.on('ui:battleStart', () => {
   touchControls.refresh();
   if (!input.isTouchLayout()) {
     input.requestLock();
-    settings.showHints();
   }
 });
 
@@ -3005,6 +3011,7 @@ bus.on('ui:roomStart', startActiveRoomRound);
 // ---------------------------------------------------------------------------
 const frameInfo = {
   timeS: 0,
+  pingMs: 0,
   mode: 'battle',
   camera,
   player: null,
@@ -3743,6 +3750,7 @@ function tick(nowMs) {
   if (observerFocus) networkBridge?.setPerspective(observerFocus.id);
   if (inBattle && hudFocus && !kcActive && !killcam.isActive()) {
     frameInfo.timeS = game.timeS;
+    frameInfo.pingMs = networkMatch ? (networkMatch.client?.rttMs ?? 0) : 0;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = hudFocus;
     frameInfo.tanks = game.tanks; // COMMUNITY TANKS: roster varies per battle
@@ -3751,6 +3759,7 @@ function tick(nowMs) {
     refreshSpotFrame(hudFocus); // SPOTTING WIRING
     if (game.player) computeAimInfo();
     hud.update(frameInfo);
+    touchControls.update(hudFocus.state?.speed || 0);
     damagePanel.update(hudFocus.combat);
   }
 

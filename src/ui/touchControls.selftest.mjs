@@ -1,4 +1,20 @@
-import { createMobileFireGesture } from './touchControls.js';
+import { createMobileFireGesture, nextQuickGraphicsPreset } from './touchControls.js';
+import { MOBILE_PRESET_ORDER, PRESETS } from '../engine/quality.js';
+
+if (nextQuickGraphicsPreset('low') !== 'medium' ||
+    nextQuickGraphicsPreset('ultra') !== 'low') {
+  throw new Error('desktop quick graphics cycle is not closed');
+}
+if (nextQuickGraphicsPreset('mobile', true) !== 'mobile-high' ||
+    nextQuickGraphicsPreset('mobile-high', true) !== 'mobile-low') {
+  throw new Error('mobile quick graphics cycle is not closed');
+}
+for (const name of MOBILE_PRESET_ORDER) {
+  const preset = PRESETS[name];
+  if (!preset || preset.textureScale !== 0.5 || preset.textureCap !== 2048) {
+    throw new Error(`${name} escaped the mobile texture budget`);
+  }
+}
 
 let clock = 0;
 let timerSeq = 0;

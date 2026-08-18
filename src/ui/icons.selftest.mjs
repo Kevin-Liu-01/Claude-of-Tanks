@@ -25,3 +25,7 @@ for (const id of ['battleBots', 'battlePrivate', 'battleLan', 'battleRanked', 'b
 for (const id of ['damage', 'penetration', 'team', 'check', 'clock', 'rematch', 'map']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing debrief icon: ${id}`);
 }
+
+for (const id of ['sound', 'soundOff', 'graphics', 'settings']) {
+  if (!uiIconIds().includes(id)) throw new Error(`missing mobile HUD icon: ${id}`);
+}

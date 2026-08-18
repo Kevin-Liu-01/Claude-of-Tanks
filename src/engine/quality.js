@@ -51,6 +51,8 @@
  */
 
 const LS_KEY = 'cot.gfxPreset';
+const LS_MOBILE_KEY = 'cot.gfxMobilePreset';
+let _mobileResetHandled = false;
 
 // ---------------------------------------------------------------------------
 // MOBILE r1: DEVICE TIER (mobile/tablet vs desktop), resolved ONCE at boot by
@@ -215,6 +217,24 @@ export const PRESETS = {
     shadowMapSizes: [2048, 2048, 1024, 1024],
     shadowMaxFar: 380,
   },
+  // Mobile quick-switch levels keep the constrained texture budget fixed —
+  // live switching cannot (and should not) rebuild the world's texture
+  // atlas. They only retarget raster, AA, bloom and shadow buffers, which are
+  // safe to resize while a battle is running. Balanced remains the original
+  // mobile default.
+  'mobile-low': {
+    label: 'Performance',
+    msaaSamples: 0,
+    maxPixelRatio: 0.9,
+    adaptiveBasePixelRatio: 0.78,
+    aoScale: 0,
+    bloomScale: 0.35,
+    shadowMapSizes: [768, 768, 512, 512],
+    shadowMaxFar: 260,
+    textureScale: 0.5,
+    textureCap: 2048,
+    dynMin: 0.55,
+  },
   // MOBILE r1: the DEVICE tier for phones/tablets — never offered by the
   // settings picker (PRESET_ORDER below is unchanged) and never resolved on a
   // desktop-class device; resolvePresetName pins it whenever the device tier
@@ -231,7 +251,7 @@ export const PRESETS = {
   //   AO off, half bloom chain, governor floor 0.6 — the post chain's
   //   cheapest stable configuration without forking its structure.
   mobile: {
-    label: 'Mobile',
+    label: 'Balanced',
     msaaSamples: 2,
     maxPixelRatio: 1.25,
     adaptiveBasePixelRatio: 1.0,
@@ -243,9 +263,23 @@ export const PRESETS = {
     textureCap: 2048,
     dynMin: 0.6,
   },
+  'mobile-high': {
+    label: 'Quality',
+    msaaSamples: 2,
+    maxPixelRatio: 1.35,
+    adaptiveBasePixelRatio: 1.1,
+    aoScale: 0,
+    bloomScale: 0.55,
+    shadowMapSizes: [1536, 1024, 768, 512],
+    shadowMaxFar: 340,
+    textureScale: 0.5,
+    textureCap: 2048,
+    dynMin: 0.65,
+  },
 };
 
 export const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
+export const MOBILE_PRESET_ORDER = ['mobile-low', 'mobile', 'mobile-high'];
 
 const listeners = new Set();
 
@@ -364,9 +398,25 @@ export function reportSustainedOverload() {
 export function getStoredChoice() {
   try {
     const v = window.localStorage.getItem(LS_KEY);
-    if (v === 'auto' || (v && PRESETS[v])) return v;
+    if (v === 'auto' || PRESET_ORDER.includes(v)) return v;
   } catch (_) { /* storage blocked — fall through to auto */ }
   return 'auto';
+}
+
+/** Mobile-safe quick quality choice, separate from the desktop picker. */
+export function getMobilePresetChoice() {
+  try {
+    if (!_mobileResetHandled) {
+      _mobileResetHandled = true;
+      if (new URLSearchParams(window.location.search).has('gfxreset')) {
+        window.localStorage.removeItem(LS_MOBILE_KEY);
+        return 'mobile';
+      }
+    }
+    const v = window.localStorage.getItem(LS_MOBILE_KEY);
+    if (MOBILE_PRESET_ORDER.includes(v)) return v;
+  } catch (_) { /* storage blocked — balanced is the safe default */ }
+  return 'mobile';
 }
 
 /**
@@ -388,10 +438,18 @@ export function resolvePresetName(choice = getStoredChoice()) {
   // desktop texture/shadow footprint on a device that OOMs under it — that is
   // exactly the deployed-build brick this tier exists to fix. ?tier=desktop
   // remains the explicit test/escape hatch (resolveDeviceTier).
-  if (getDeviceTier() === 'mobile') return 'mobile';
+  if (getDeviceTier() === 'mobile') return getMobilePresetChoice();
   if (choice !== 'auto') return choice;
   // perf-r2e: 'auto' adapts to the hardware (see ADAPTIVE AUTO TIER above).
   return resolveAutoTier();
+}
+
+/** Apply one of the three mobile-safe live presets. */
+export function setMobilePresetName(name) {
+  if (!MOBILE_PRESET_ORDER.includes(name)) return;
+  try { window.localStorage.setItem(LS_MOBILE_KEY, name); } catch (_) { /* ok */ }
+  const preset = getPreset();
+  for (const fn of listeners) fn(preset);
 }
 
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object */
@@ -407,7 +465,7 @@ export function getPreset() {
  * @returns {void}
  */
 export function setPresetName(name) {
-  if (name !== 'auto' && !PRESETS[name]) return;
+  if (name !== 'auto' && !PRESET_ORDER.includes(name)) return;
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
   // perf-r2e: an explicit preset pick takes control back from the adaptive
   // auto tier — clear any persisted governor demotion so a later return to

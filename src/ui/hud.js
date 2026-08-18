@@ -710,12 +710,12 @@ export function initHud(bus) {
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netEmaDt = 1 / 60;
   let netLastTxt = netEl.textContent;
-  // controls_gunnery r3 (minor): FPS/ping readout is OPT-IN via the
-  // GAMEPLAY -> Interface toggle (settings.js broadcasts 'ui:perfMeter' at
-  // boot and on change) — fresh profiles show no dev chrome.
+  // Desktop keeps the player's Interface preference. Mobile always shows the
+  // compact readout directly below its top-right control row.
   let netOptIn = false;
-  function updateNetReadout(timeS) {
-    if (!netOptIn) return;
+  function updateNetReadout(frame) {
+    const mobileRequired = document.body.classList.contains('cot-touch-layout');
+    if (!netOptIn && !mobileRequired) return;
     const now = performance.now();
     if (netLastMs > 0) {
       const dt = Math.min(0.25, (now - netLastMs) / 1000);
@@ -728,10 +728,9 @@ export function initHud(bus) {
     if (netFrames < 30) return;
     netEl.style.display = '';
     const fps = Math.max(1, Math.min(999, Math.round(1 / netEmaDt)));
-    const ping = 31 + Math.round(Math.sin(timeS * 0.37) * 2 + Math.sin(timeS * 1.7) * 1);
-    // hud_ui r7: two compact letterspaced caps tokens with tabular digits —
-    // the old lowercase "ping 33 ms · 55 fps" string read as debug text left
-    // in the build, not a styled HUD readout.
+    // Local play has no transport hop and reports 0 ms. Multiplayer forwards
+    // the runtime client's measured RTT; never synthesize a decorative ping.
+    const ping = Math.max(0, Math.min(999, Math.round(Number(frame?.pingMs) || 0)));
     const txt = `${fps} FPS  ${ping} MS`;
     if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
   }
@@ -3483,7 +3482,7 @@ export function initHud(bus) {
       if (!spawnFlags) captureSpawnFlags(frame); // tanks still on their spawns
       updateSpotting(frame);
       updateTeams(frame);
-      updateNetReadout(frame.timeS);
+      updateNetReadout(frame);
       // SPOTTING SECTION: sixth-sense fuse/lamp + camo/eye indicator
       updateSixthSense(frame.timeS);
       updateCamoIndicator(frame.spotting ? frame.spotting.player : null);
