@@ -20,7 +20,7 @@
 //   long with a +23% kit band; kursk -2.6% overall (usable as-is).
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 import {
   loftHull,
@@ -1053,7 +1053,8 @@ function buildUAT80UKursk(P) {
 // the gun; 6x rubber-rim gear with the Ukrainian skirt line.
 // ---------------------------------------------------------------------------
 function buildUAOplotM(P) {
-  const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
+  const slab = orientedSlab;
 
   // Hull loft (T-80UD lineage): deck plateau 1.42, rear deck fall to the
   // 1.27 tail, glacis break +1.85 falling 1.36 -> 0.84 at the bow tip,

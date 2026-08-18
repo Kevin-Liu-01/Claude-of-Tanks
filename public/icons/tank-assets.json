@@ -116029,8 +116029,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.4486,
-          0.216
+          1.3925,
+          0.1515
         ],
         "plates": [
           {
@@ -116768,12 +116768,12 @@
             "name": "turretRing",
             "min": [
               -0.9541,
-              1.2918,
+              1.2357,
               -0.8139
             ],
             "max": [
               0.9541,
-              1.5055,
+              1.4494,
               1.2459
             ],
             "turretLocal": false
@@ -116962,8 +116962,8 @@
           }
         ]
       },
-      "geometryHash": "c21a7901",
-      "metadataHash": "661a55b7",
+      "geometryHash": "4da46006",
+      "metadataHash": "1cca356a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -117047,24 +117047,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71336,
-          "sha256": "526a96dbbffdcdb2826265d733190ca934f54535d122b735bf34bef23496d4d8"
+          "bytes": 71617,
+          "sha256": "10d79acfd525e074d349b358296eb32af34014bd48ba5bb9b3222dc264d0b5a5"
         },
         "armorSide": {
           "file": "ua_t84_oplot_m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75389,
-          "sha256": "88d961a298f44cc5126ca3cc54b821b14038f33253e3258cd26a98a54efc1e47"
+          "bytes": 74066,
+          "sha256": "7eace147cc93d8dc5978347d7b79ce47345a9cb19b8c59ae2742127668ad00e9"
         },
         "modulesSide": {
           "file": "ua_t84_oplot_m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82082,
-          "sha256": "ebd47ea95a13d3c23be02570e466136956bb2c029bd0d80863b65e272392ede0"
+          "bytes": 81903,
+          "sha256": "ded32bef8800391f61faadf4314dc47e3c222f75db3a6d08471ec4903d817eb7"
         },
         "markings": {
           "file": "ua_t84_oplot_m_markings.png",
