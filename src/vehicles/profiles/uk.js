@@ -354,19 +354,22 @@ const CHIEFTAIN_HULL = {
   // the r4 idler sat at ROAD-WHEEL height (y 0.42 vs wheelY 0.38) so the
   // band curled to ground at the bow — the parallelogram read the owner
   // flagged ("tracks are the shape \________/ not /_____/"). RAISED to
-  // y 0.62: the idler top wrap (0.965) meets the return-run roller line
+  // y 0.64: the idler top wrap meets the return-run roller line
   // (0.955) so the top run flows level into the idler like the real
   // Chieftain, the band top face (1.01) stays a §B4-clean 10 mm under the
   // belt loft bottom (beltTop 1.02 — y 0.635 clipped it by 5 mm, audit 24
   // vox), and the contact tangent builds a real ~42° approach ramp from
   // the first road wheel (ramp 2.465,0.055 -> 2.81,0.36, wrap bottom
-  // 0.275; z kept 2.58: wrap face stays ~3.02, clear of the corner flaps
-  // at 3.08). The ORACLE PRINT carries the low-idler defect (its
+  // 0.275. The recovered Mk.5 source places the front idler 0.86 road-wheel
+  // pitches ahead of the first station; z 3.02 carries that relationship
+  // into the authored 0.88 m cadence and tucks the wrap beneath the raised
+  // mudguard shoulder instead of leaving it stranded behind the bow. The
+  // ORACLE PRINT carries the low-idler defect (its
   // whole-mask bow bottoms: 0 @ z 2.51, 0.091 @ 2.88, 0.183 @ 3.00 — the
   // print's own band grounds to ~2.9); owner law outranks oracle matching
   // (M1-slope precedent) — the residual on side cols z 2.55..3.02 is
   // measured and certified in the packet §B6 section.
-  sprocket: { z: -3.10, y: 0.875, r: 0.30 }, idler: { z: 2.58, y: 0.62, r: 0.3 },
+  sprocket: { z: -3.10, y: 0.875, r: 0.30 }, idler: { z: 3.02, y: 0.64, r: 0.3 },
   rollers: [{ z: 1.45, y: 0.82, r: 0.09 }, { z: 0.1, y: 0.82, r: 0.09 }, { z: -1.25, y: 0.82, r: 0.09 }],
   trackTop: 0.98, arms: true,
   // Decal quads are mask geometry: pin the side numbers onto real planes
@@ -400,12 +403,12 @@ function chieftain5Build(P) {
       // 3.123 side column bottoms at 0.305 (the old heel read 0.244, the
       // r4 worst-3 side column). Front bottoms are track/tab-owned, so this
       // is side-only; the corner flap above closes the taller bay.
-      P.add('hull', slab(                                  // W1 glacis wing
-        [xw1[0], 0.56, 3.43], [xw1[1], 0.56, 3.43], [xw1[1], 0.30, 3.05], [xw1[0], 0.30, 3.05],
+      P.add('hull', slab(                                  // W1 glacis wing / idler mudguard
+        [xw1[0], 1.08, 3.43], [xw1[1], 1.08, 3.43], [xw1[1], 1.10, 3.05], [xw1[0], 1.10, 3.05],
         [xw1[0], 1.25, 3.43], [xw1[1], 1.25, 3.43], [xw1[1], 1.34, 3.05], [xw1[0], 1.34, 3.05]));
     }
     P.add('hull', slab(                                    // W2a shoulder
-      [xw2a[0], 0.72, 3.55], [xw2a[1], 0.72, 3.55], [xw2a[1], 0.56, 3.43], [xw2a[0], 0.56, 3.43],
+      [xw2a[0], 0.94, 3.55], [xw2a[1], 0.94, 3.55], [xw2a[1], 1.08, 3.43], [xw2a[0], 1.08, 3.43],
       [xw2a[0], 1.235, 3.55], [xw2a[1], 1.235, 3.55], [xw2a[1], 1.25, 3.43], [xw2a[0], 1.25, 3.43]));
     P.add('hull', slab(                                    // W2b ledge
       [xw2b[0], 0.75, 3.616], [xw2b[1], 0.75, 3.616], [xw2b[1], 0.72, 3.55], [xw2b[0], 0.72, 3.55],
@@ -583,15 +586,14 @@ function chieftain5Build(P) {
   // bays reading as shadow (ref gear-zone p5 ~26). Interval-interior on
   // every row (top deck-owned, bottom track-owned, plan wing-owned).
   P.add('hullRunningGearDark', box(0.02, 0.66, 5.0), -1.105, 0.43, 0.075);
-  // r5 O2b: front corner flaps tucked behind the bow-wing undersides,
-  // FORWARD of the idler wrap (wrap ends z ~3.02; flaps at 3.08..3.16 —
-  // containment-clear) with bottoms 0.31 ≥ the ref's own side-column
-  // bottoms (0.305 @ z 3.123), so no gate row moves. They close the
-  // close-front bow-bay cavity the way the ref's corners read filled;
+  // r5 O2b, source-proportion re-seat: retain both corner flaps but rake
+  // them into the forward shoulder cap. The native idler now occupies the
+  // bay beneath them, so the flaps close the mudguard crown rather than
+  // standing through the animated shoe orbit.
   // hullTrack matches the ref's warm dusty flap/track tone (measured
   // rgb ~(69,63,53)).
-  P.add('hullTrack', box(0.6393, 0.55, 0.08), -1.39365, 0.585, 3.12);
-  P.add('hullTrack', box(0.5957, 0.55, 0.08), 1.17965, 0.585, 3.12);
+  P.add('hullTrack', box(0.6393, 0.34, 0.08), -1.39365, 1.00, 3.50, -0.24, 0, 0);
+  P.add('hullTrack', box(0.5957, 0.34, 0.08), 1.17965, 1.00, 3.50, -0.24, 0, 0);
   segBoxZ(P, 'hull', 0.06, 0.98, 4.20, 1.50, 1.08, -0.60);
   segBoxZ(P, 'hull', 0.06, 0.29, 1.00, 1.50, 1.425, -3.20);
   for (const s of [-1, 1]) {
@@ -1211,11 +1213,13 @@ const MK10_HULL = {
   wheelZs: [2.3, 1.42, 0.54, -0.34, -1.22, -2.1],
   // §B6 trapezoid (family law, banked in the chieftain5 §B6 round): BIG
   // raised front idler + HIGH rear drive sprocket. Idler r 0.30 at the
-  // RAISED y 0.62 (the brief's "big idler" — the family-proven geometry;
+  // RAISED y 0.64 (the brief's "big idler" — the family-proven geometry;
   // an r 0.32 cut lifted the return-run segment 5-10 mm INTO the 1.02 belt
   // bottom, audit 12 vox); shoe orbit far edge 2.58+0.43=3.01 stays clear
-  // of the bow wing heels at 3.08 (§B4).
-  sprocket: { z: -3.10, y: 0.875, r: 0.30 }, idler: { z: 2.58, y: 0.62, r: 0.30 },
+  // and advanced to z 3.02 from the source's 0.86-pitch idler lead. The
+  // upper wrap now nests beneath the shoulder mudguard instead of ending
+  // behind it.
+  sprocket: { z: -3.10, y: 0.875, r: 0.30 }, idler: { z: 3.02, y: 0.64, r: 0.30 },
   rollers: [{ z: 1.45, y: 0.82, r: 0.09 }, { z: 0.1, y: 0.82, r: 0.09 }, { z: -1.25, y: 0.82, r: 0.09 }],
   trackTop: 0.98,
   // Mk 10 skirt band: 6 panels, hem at the 0.79 wheel-top line so all six
@@ -1241,18 +1245,18 @@ function chieftainMk10Build(P) {
   // are the length anchor, the glacis center runs to 3.72 underneath).
   for (const s of [-1, 1]) {
     const x0 = s * 1.06, x1 = s * 1.75;
-    P.add('hull', slab(                                   // W1 glacis wing
-      [x0, 0.56, 3.43], [x1, 0.56, 3.43], [x1, 0.32, 3.08], [x0, 0.32, 3.08],
+    P.add('hull', slab(                                   // W1 glacis wing / idler mudguard
+      [x0, 1.08, 3.43], [x1, 1.08, 3.43], [x1, 1.10, 3.08], [x0, 1.10, 3.08],
       [x0, 1.25, 3.43], [x1, 1.25, 3.43], [x1, 1.335, 3.08], [x0, 1.335, 3.08]));
     P.add('hull', slab(                                   // W2 shoulder
-      [x0, 0.72, 3.60], [x1, 0.72, 3.60], [x1, 0.56, 3.43], [x0, 0.56, 3.43],
+      [x0, 0.90, 3.60], [x1, 0.90, 3.60], [x1, 1.08, 3.43], [x0, 1.08, 3.43],
       [x0, 1.225, 3.60], [x1, 1.225, 3.60], [x1, 1.25, 3.43], [x0, 1.25, 3.43]));
     P.add('hull', slab(                                   // W3 thin tip band
       [x0, 0.85, 3.76], [x1, 0.85, 3.76], [x1, 0.72, 3.60], [x0, 0.72, 3.60],
       [x0, 1.05, 3.76], [x1, 1.05, 3.76], [x1, 1.05, 3.60], [x0, 1.05, 3.60]));
-    // bow corner flap closing the wing->track bay (family O2b class; z 3.08+
-    // keeps it §B4-clear of the 3.03 idler shoe-orbit far edge)
-    P.add('hullTrack', box(0.62, 0.52, 0.08), s * 1.40, 0.60, 3.14);
+    // Retained corner flap, now raked into the shoulder cap above the
+    // source-proportioned idler instead of occupying its shoe orbit.
+    P.add('hullTrack', box(0.62, 0.34, 0.08), s * 1.40, 1.00, 3.50, -0.24, 0, 0);
     P.add('hullDetail', box(0.21, 0.06, 0.62), s * 0.945, 1.02, 2.81);
   }
   // ---- cast belly: center keel + shallow V (family cross-section, symmetric)
@@ -3986,6 +3990,19 @@ function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
   P.add('turret', slab(
     [-0.54, -0.10, 1.54], [0.54, -0.10, 1.54], [0.68, -0.05, 1.18], [-0.68, -0.05, 1.18],
     [-0.42, 0.48, 1.50], [0.42, 0.48, 1.50], [0.58, 0.54, 1.14], [-0.58, 0.54, 1.14]));
+  // Source-measured cast cheek roots. These overlap the pear shell and the
+  // throat on broad faces, carrying the mantlet load into the shoulder
+  // instead of leaving a narrow gun box attached to a featureless dome.
+  // Mk.10's Stillbrew plates below seat directly on these same cast roots.
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(
+      [s * 0.42, -0.12, 1.50], [s * 0.98, -0.10, 1.20], [s * 1.24, -0.06, 0.58], [s * 0.62, -0.10, 0.78],
+      [s * 0.38, 0.46, 1.40], [s * 0.82, 0.60, 1.07], [s * 1.04, 0.66, 0.48], [s * 0.55, 0.54, 0.68]));
+    // A shallow cast seam follows the cheek crown. It is supported by the
+    // shell along its full length and gives the Mk.5 its characteristic
+    // rolled/cast transition without turning it into appliqué armour.
+    P.add('turretDetail', box(0.035, 0.035, 0.62), s * 0.87, 0.635, 0.84, 0, s * 0.40, -0.08);
+  }
   P.add('turretDark', box(0.72, 0.34, 0.055), 0, 0.16, 1.49);
   P.addGunExtra(cylZ(0.24, 0.22, seg, 0.27), 0, 0, 0.18);
   P.addGunExtraDark(cylZ(0.205, 0.10, seg), 0, 0, 0.33);
@@ -3996,19 +4013,58 @@ function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
   // cast front.  They retain the underlying pear silhouette and never read
   // as detached cassettes.  Mk.5 instead exposes the clean rolled casting.
   if (stillbrew) {
+    // Continuous armoured forehead underlaps both cheek caps and the cast
+    // crown.  The previous cheeks stopped independently at the roof line,
+    // leaving a visible open trench from high front-quarter views.  This
+    // closed bridge carries the roof into the mantlet throat on broad faces.
     P.add('turret', slab(
-      [-0.34, 0.10, 1.43], [0.34, 0.10, 1.43], [0.44, 0.12, 0.74], [-0.44, 0.12, 0.74],
-      [-0.28, 0.72, 1.26], [0.28, 0.72, 1.26], [0.38, 0.82, 0.58], [-0.38, 0.82, 0.58]));
+      [-0.74, 0.48, 1.36], [0.74, 0.48, 1.36], [0.98, 0.52, 0.56], [-0.98, 0.52, 0.56],
+      [-0.63, 0.80, 1.25], [0.63, 0.80, 1.25], [0.82, 0.88, 0.50], [-0.82, 0.88, 0.50]));
+    P.add('turretDetail', box(1.46, 0.025, 0.055), 0, 0.865, 0.58);
+    P.add('turret', slab(
+      [-0.35, 0.06, 1.46], [0.35, 0.06, 1.46], [0.48, 0.10, 0.68], [-0.48, 0.10, 0.68],
+      [-0.27, 0.75, 1.24], [0.27, 0.75, 1.24], [0.40, 0.87, 0.54], [-0.40, 0.87, 0.54]));
     for (const s of [-1, 1]) {
       P.add('turret', slab(
-        [s * 0.30, 0.06, 1.38], [s * 1.08, 0.02, 1.04], [s * 1.28, 0.02, 0.35], [s * 0.42, 0.08, 0.58],
-        [s * 0.26, 0.68, 1.21], [s * 0.91, 0.78, 0.87], [s * 1.10, 0.70, 0.25], [s * 0.36, 0.72, 0.48]));
-      P.add('turretDetail', box(0.025, 0.42, 0.58), s * 0.83, 0.43, 0.69, 0, s * 0.44, 0);
+        [s * 0.28, 0.00, 1.42], [s * 1.14, -0.04, 1.10], [s * 1.34, -0.02, 0.32], [s * 0.44, 0.05, 0.54],
+        [s * 0.24, 0.72, 1.19], [s * 0.96, 0.86, 0.86], [s * 1.17, 0.77, 0.22], [s * 0.37, 0.78, 0.44]));
+      // Lower Stillbrew lobe wraps down and out to the casting waist. Its
+      // rear edge stays buried in the shell, while the inner edge forms the
+      // source's unmistakable V-shaped mantlet cut-out.
+      P.add('turret', slab(
+        [s * 0.40, -0.12, 0.76], [s * 1.32, -0.10, 0.48], [s * 1.30, -0.06, -0.02], [s * 0.50, -0.08, 0.18],
+        [s * 0.36, 0.72, 0.58], [s * 1.14, 0.72, 0.34], [s * 1.12, 0.66, -0.08], [s * 0.44, 0.70, 0.10]));
+      // Upper cap breaks the cheek into the two rounded armour masses seen
+      // in the Mk.10 source while remaining one supported assembly.
+      P.add('turret', slab(
+        [s * 0.34, 0.58, 1.26], [s * 0.96, 0.66, 0.98], [s * 1.13, 0.62, 0.60], [s * 0.42, 0.61, 0.78],
+        [s * 0.31, 0.78, 1.18], [s * 0.84, 0.91, 0.90], [s * 1.00, 0.87, 0.53], [s * 0.38, 0.80, 0.70]));
+      P.add('turretDetail', box(0.025, 0.48, 0.68), s * 0.89, 0.46, 0.66, 0, s * 0.44, 0);
+      // Low retaining bosses follow the sloped armour crown.  They are
+      // vertical, half-buried fasteners; the old forward-axis cylinders sat
+      // beside the cheek and read as a row of floating dots.
       for (const [x, y, z] of [
-        [s * 0.53, 0.59, 1.13], [s * 0.82, 0.63, 0.93],
-        [s * 1.02, 0.57, 0.59], [s * 1.04, 0.49, 0.32],
-      ]) P.add('turretDetail', cylZ(0.025, 0.035, 10), x, y, z);
+        [s * 0.49, 0.785, 1.15], [s * 0.73, 0.845, 1.00],
+        [s * 0.94, 0.835, 0.72], [s * 1.07, 0.755, 0.40],
+      ]) P.add('turretDetail', cylY(0.034, 0.036, 0.022, 10), x, y, z);
+
+      // Shallow side cassettes overlap the cast flank instead of hovering
+      // outside it.  Their changing plan angle follows the pear shell and
+      // forms one flush Stillbrew side belt without widening the envelope.
+      for (const [x, y, z, ry] of [
+        [1.25, 0.38, 0.68, 0.24],
+        [1.34, 0.39, 0.28, 0.10],
+        [1.35, 0.40, -0.12, -0.06],
+      ]) {
+        P.add('turret', box(0.13, 0.34, 0.34), s * x, y, z, 0, s * ry, 0);
+        P.add('turretDetail', box(0.018, 0.27, 0.27), s * (x + 0.061), y + 0.005, z, 0, s * ry, 0);
+      }
     }
+    // Dark supported cleft makes the separated left/right Stillbrew lobes
+    // legible head-on without opening a real hole in the closed cast mask.
+    P.add('turretDark', slab(
+      [-0.08, 0.38, 1.48], [0.08, 0.38, 1.48], [0.20, 0.50, 0.76], [-0.20, 0.50, 0.76],
+      [-0.04, 0.62, 1.45], [0.04, 0.62, 1.45], [0.12, 0.64, 0.80], [-0.12, 0.64, 0.80]));
   }
 
   // Asymmetric side-service packs are deliberately shallow and overlap the
