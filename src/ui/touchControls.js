@@ -138,7 +138,10 @@ body.cot-touch-layout .cot-net{top:calc(max(8px,env(safe-area-inset-top)) + 48px
   right:max(10px,env(safe-area-inset-right));padding:4px 7px 3px;z-index:4;
   background:rgba(7,11,15,.68);border-right:2px solid rgba(240,160,48,.72);
   color:#dce7ef;opacity:.88;font-size:9px;letter-spacing:.08em;}
-body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;top:54px;bottom:auto;
+/* The former Garage shortcut occupied the first 44 px of this corner. With
+   battle exit living in Settings, let the minimap own the safe-area top row. */
+body.cot-touch-layout .cot-minimap{left:max(8px,env(safe-area-inset-left));right:auto;
+  top:max(8px,env(safe-area-inset-top));bottom:auto;
   width:116px!important;height:116px!important;opacity:.86;}
 body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 224px));
   bottom:max(8px,env(safe-area-inset-bottom));
