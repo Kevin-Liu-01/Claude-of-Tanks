@@ -10004,9 +10004,15 @@ export function buildLeo2A6M(P) {
   }
   // ---- wedge turret (print component Object_6 is CLEAN — lofted to its
   // traced lines; turret-local frame, pivot [0, 1.80, 0.45]).
+  // Keep the canonical 2A6 arrowhead as the structural front.  The 2A6M
+  // package is additional applique, Barracuda hardware and ISAF furniture;
+  // it must not replace the base wedge with a second broad cheek volume.
+  const a6mCrestR = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12], [1.36, 0.24, -0.16], [1.43, 0.19, -0.20]];
+  const a6mCrestL = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
   wedgeTurretV3(P, {
-    h: 0.82, apexY: 0.55, gunW: 0.36, slotZ: 1.60,
-    chamferY: 0.42, roofX: 1.02, wallShadowXCap: 1.30,
+    h: 0.82, apexY: 0.09, gunW: 0.36, slotZ: 1.55,
+    crestTail: 0.05, wallDrop: 0.10,
+    chamferY: 0.42, roofX: 1.02, wallShadowXCap: 1.335,
     // §5.345 front re-loft (owner: "the turret front is jsut incomplete and
     // misshapen"): the default 1.95-wide underride bridge painted a flat
     // full-width wall under the gun to z 1.85 — narrowed to the mantlet
@@ -10028,20 +10034,20 @@ export function buildLeo2A6M(P) {
       { x: 1.30, z0: -3.02, z1: -2.30, top: 0.62, y0: 0.06 },                 // bustle (print rear -2.60 world)
     ],
     rack: { x: 1.06, z0: -3.02, z1: -3.34, top: 0.54, bot: 0.10, slats: true, cargo: false, wall: true },
-    // plan nose traced off the print turret component: apex 2.95 local
-    // (world 3.40 — the wedge reaches over the driver area), tips raking to
-    // the 1.46 pads.
-    nose: [[0.26, 2.90], [0.55, 2.62], [1.00, 2.05], [1.30, 1.42], [1.435, 0.95]],
+    // Exact Leopard 2A6 base-front plan.  M-specific fittings are layered
+    // below after the helper closes this wedge and its hollow cavity.
+    nose: [[0.26, 2.74], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96], [1.36, 1.60], [1.435, 1.42]],
     tipPads: [
-      { s: 1, x: 1.46, x0: 1.33, z0: 0.30, z1: 1.35, y0: -0.02, y1: 0.10, yaw: 0 },
-      { s: -1, x: 1.46, x0: 1.33, z0: 0.30, z1: 1.35, y0: -0.02, y1: 0.10, yaw: 0 },
+      { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: -0.04, y1: 0.06, yaw: 0 },
+      { s: -1, x: 1.53, x0: 1.44, z0: 0.29, z1: 1.51, y0: 0.02, y1: 0.26, yaw: 0 },
+      { s: -1, x: 1.44, x0: 1.32, z0: 0.29, z1: 1.92, y0: 0.02, y1: 0.26, yaw: 0 },
     ],
     sideMods: [
       { s: 1, x: 1.42, z0: -1.75, z1: 1.55, y0: 0.12, y1: 0.30 },
       { s: -1, x: 1.42, z0: -1.75, z1: 1.55, y0: 0.12, y1: 0.30 },
     ],
-    // crest falls 2.60 -> 2.10 world across the wedge (print front read)
-    crest: [[0.30, 0.80, 2.42], [0.70, 0.72, 2.28], [1.05, 0.56, 1.78], [1.28, 0.44, 1.30], [1.44, 0.31, 0.92]],
+    crest: a6mCrestR,
+    crestL: a6mCrestL,
     // §5.345: EMES hood raised 0.72 -> 0.86 (world 2.66 = the print's own
     // upper roof band 2.55..2.66) — at 0.72 the hood sat BELOW the roof-V
     // shoulders and read as a loose crate in the front saddle; at 0.86 it
@@ -10066,42 +10072,26 @@ export function buildLeo2A6M(P) {
     // spikes: the whole-mask bbox needs them, the p95 law ignores them)
     whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
   });
-  // The 2A6M arrowhead is a deep spaced-applique module, not a thin roof
-  // eyebrow over a vertical turret wall.  The traced upper wedge above owns
-  // the sharp plan-view nose.  These closed lower carriers follow that same
-  // arrow line back into the welded core, producing the characteristic tall
-  // trapezoidal cheek face and a raked underside in front/quarter/profile.
-  // Their aft rings overlap the slot wall and body shoulder, so the armor is
-  // visibly supported while the helper's dark shadow wall remains exposed
-  // as the real hollow cavity behind the applique.
+  // 2A6M/CAN additions sit ON the canonical 2A6 cheek.  These are shallow,
+  // closed Barracuda/applique skins and attachment hardware, not a second
+  // turret front.  Every panel remains inside the 2A6 crest and tip envelope.
   for (const s of [-1, 1]) {
-    // One faceted carrier per cheek.  The inner nose is deliberately farther
-    // forward and taller than the outer shoulder: that is what makes the
-    // assembly read as an arrow wedge instead of a rectangular add-on.
+    // Upper thermal skin follows the inner arrow plane and overlaps the
+    // helper-owned plate by 12 mm at its rear edge.
     P.add('turret', slab(
-      [s * 0.35, 0.04, 1.64], [s * 1.42, 0.03, 0.50], [s * 1.30, 0.07, 0.31], [s * 0.39, 0.08, 1.25],
-      [s * 0.32, 0.69, 2.40], [s * 1.40, 0.38, 0.92], [s * 1.27, 0.49, 0.42], [s * 0.41, 0.64, 1.36]));
-    // Two shallow roof returns close the broad triangular opening behind
-    // the cheek.  They overlap both the carrier's aft ring and the welded
-    // roof shoulder, leaving only the narrow, backed cavity seam visible.
+      [s * 0.37, 0.300, 2.47], [s * 0.91, 0.310, 2.02], [s * 0.91, 0.405, 1.73], [s * 0.40, 0.430, 2.18],
+      [s * 0.37, 0.318, 2.46], [s * 0.91, 0.328, 2.01], [s * 0.91, 0.423, 1.72], [s * 0.40, 0.448, 2.17]));
+    // Outboard skin follows the falling crest and terminates before the
+    // real 2A6 tip pad so the characteristic arrow point remains visible.
     P.add('turret', slab(
-      [s * 0.40, 0.57, 1.46], [s * 0.96, 0.57, 0.69], [s * 0.96, 0.57, 0.48], [s * 0.40, 0.57, 0.48],
-      [s * 0.40, 0.65, 1.46], [s * 0.96, 0.65, 0.69], [s * 0.96, 0.65, 0.48], [s * 0.40, 0.65, 0.48]));
-    P.add('turret', slab(
-      [s * 0.96, 0.57, 0.69], [s * 1.27, 0.46, 0.45], [s * 1.27, 0.46, 0.36], [s * 0.96, 0.57, 0.48],
-      [s * 0.96, 0.65, 0.69], [s * 1.27, 0.53, 0.45], [s * 1.27, 0.53, 0.36], [s * 0.96, 0.65, 0.48]));
-    // A recessed aft liner and two short spacers make the cavity readable
-    // without painting a decorative black stripe across the armor face.
-    P.add('turretDark', slab(
-      [s * 0.43, 0.15, 1.69], [s * 1.27, 0.13, 0.62], [s * 1.20, 0.20, 0.49], [s * 0.43, 0.22, 1.17],
-      [s * 0.41, 0.43, 1.66], [s * 1.24, 0.28, 0.66], [s * 1.17, 0.36, 0.53], [s * 0.41, 0.40, 1.20]));
-    P.add('turret', box(0.075, 0.30, 0.34), s * 0.75, 0.34, 1.30, 0, s * 0.58, s * 0.08);
-    P.add('turret', box(0.075, 0.24, 0.30), s * 1.12, 0.29, 0.75, 0, s * 0.45, s * 0.10);
-    // Half-buried fasteners follow the new cheek plane and break up its
-    // broad face while remaining inside the armor envelope.
-    for (const t of [0.22, 0.50, 0.78]) {
-      P.add('turretDetail', box(0.06, 0.06, 0.035),
-        s * (0.38 + 0.94 * t), 0.29 + 0.04 * t, 2.18 - 1.17 * t, 0, s * 0.61, s * 0.14);
+      [s * 0.94, 0.330, 1.83], [s * 1.28, 0.300, 1.54], [s * 1.28, 0.350, 1.24], [s * 0.94, 0.400, 1.55],
+      [s * 0.94, 0.347, 1.82], [s * 1.28, 0.317, 1.53], [s * 1.28, 0.367, 1.23], [s * 0.94, 0.417, 1.54]));
+    // Half-buried clamps and a short dark mounting rail make the M package
+    // legible without widening or flattening the base cheek.
+    P.add('turretDark', box(0.030, 0.10, 0.50), s * 0.925, 0.385, 1.78, 0, s * 0.68, 0);
+    for (const t of [0.18, 0.50, 0.82]) {
+      P.add('turretDetail', box(0.048, 0.048, 0.030),
+        s * (0.39 + 0.82 * t), 0.40 - 0.08 * t, 2.36 - 0.93 * t, 0, s * 0.65, s * 0.08);
     }
   }
   // EMES plinth: merges the raised hood base into the forward roof plates
