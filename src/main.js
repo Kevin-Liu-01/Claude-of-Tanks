@@ -1121,10 +1121,15 @@ const garageMaps = [
 ];
 let pendingSoloStart = null;
 let playMenuPromise = null;
+let pendingLobbyRoom = null;
 async function openPlayMenu(request) {
   if (activeNetworkRoom && networkMatch && !networkMatch.client?.closed) {
     const menu = await playMenuPromise;
     if (menu?.showActiveRoom()) return;
+  }
+  if (playMenuPromise) {
+    const menu = await playMenuPromise;
+    if (menu?.showCurrentRoom()) return;
   }
   if ((request?.mode || 'solo') === 'solo') {
     pendingSoloStart = null;
@@ -1168,6 +1173,7 @@ async function openPlayMenu(request) {
       },
       onNetworkStart: beginNetworkBattle,
       onRankedStart: beginRankedBattle,
+      onLobbyChange: handleLobbyRoomChange,
     }));
   }
   const menu = await playMenuPromise;
@@ -1182,6 +1188,7 @@ const garage = await bootStage('ui', () => createGarage({
     rememberSpecId(specId);
     setPedestalTank(specId);
     syncActiveRoomVehicle(specId);
+    syncPendingLobbySelection();
   },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
   onPlayRequest: (request) => openPlayMenu(request).catch((error) => {
@@ -1202,12 +1209,14 @@ const garage = await bootStage('ui', () => createGarage({
       // frame before a cold pattern bake instead of blocking the click.
       camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
       syncActiveRoomCamo(specId);
+      syncPendingLobbySelection();
     },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
       // Deliberately sends Factory: custom paint is local single-player only.
       syncActiveRoomCamo(specId);
+      syncPendingLobbySelection();
     },
   },
   // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
@@ -1220,6 +1229,7 @@ const garage = await bootStage('ui', () => createGarage({
     // cached tank on a map-card click. The visible hero repaints in the
     // first slice; parked/roster entries follow one frame apart.
     applyCamoPatternsChunked({ priorityIds: [selectedSpecId] });
+    syncPendingLobbySelection();
   },
 }));
 
@@ -2079,9 +2089,30 @@ function activeRoomPlayer(state = activeNetworkRoom) {
   return state?.players?.find((player) => player.id === networkMatch?.playerId) || null;
 }
 
-function roomReadySummary(state = activeNetworkRoom) {
-  const active = state?.players?.filter((player) => player.team !== 'spectator') || [];
-  return { ready: active.filter((player) => player.ready).length, total: active.length };
+function garageRoomStatus(state, playerId) {
+  const me = state?.players?.find((player) => player.id === playerId);
+  if (!me) return null;
+  const active = state.players.filter((player) => player.team !== 'spectator');
+  return {
+    roomCode: state.roomCode,
+    mode: state.mode,
+    ready: me.ready,
+    readyCount: active.filter((player) => player.ready).length,
+    total: active.length,
+  };
+}
+
+function handleLobbyRoomChange(context) {
+  pendingLobbyRoom = context?.state ? context : null;
+  if (activeNetworkRoom) return;
+  garage.setRoomStatus(pendingLobbyRoom
+    ? garageRoomStatus(pendingLobbyRoom.state, pendingLobbyRoom.playerId)
+    : null);
+}
+
+function syncPendingLobbySelection() {
+  if (!pendingLobbyRoom || !playMenuPromise) return;
+  playMenuPromise.then((menu) => menu.syncGarageSelection());
 }
 
 function syncActiveRoomVehicle(specId) {
@@ -2103,15 +2134,7 @@ function syncActiveRoomCamo(specId) {
 }
 
 function updateActiveRoomPresentation(state) {
-  const me = activeRoomPlayer(state);
-  const count = roomReadySummary(state);
-  garage.setRoomStatus(me ? {
-    roomCode: state.roomCode,
-    mode: state.mode,
-    ready: me.ready,
-    readyCount: count.ready,
-    total: count.total,
-  } : null);
+  garage.setRoomStatus(garageRoomStatus(state, networkMatch?.playerId));
   bus.emit('network:roomState', {
     state,
     playerId: networkMatch?.playerId || '',
@@ -2957,9 +2980,9 @@ bus.on('ui:battleAgain', async () => {
 });
 
 bus.on('ui:roomOpen', async () => {
-  if (!activeNetworkRoom || !playMenuPromise) return;
+  if (!playMenuPromise) return;
   const menu = await playMenuPromise;
-  menu.showActiveRoom();
+  menu.showCurrentRoom();
 });
 
 bus.on('ui:roomReady', ({ ready } = {}) => {

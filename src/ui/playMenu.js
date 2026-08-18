@@ -331,6 +331,7 @@ export function createPlayMenu({
   onSolo,
   onNetworkStart,
   onRankedStart,
+  onLobbyChange,
   isVehicleAllowed = () => true,
   isCamoAllowed = () => true,
   getCamoName = (camo) => camo || 'Factory',
@@ -401,6 +402,7 @@ export function createPlayMenu({
     </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
   document.body.appendChild(root);
 
+  const closeBtn = root.querySelector('.close');
   const room = root.querySelector('.room');
   const ranked = root.querySelector('.ranked');
   const lobbyEl = root.querySelector('.lobby');
@@ -511,6 +513,25 @@ export function createPlayMenu({
     status.classList.toggle('err', !!error);
   }
 
+  function notifyLobbyChange(next = state) {
+    if (typeof onLobbyChange !== 'function' || activeRoom) return;
+    try {
+      onLobbyChange(next ? {
+        state: next,
+        playerId: ownId(),
+        role: role || 'client',
+      } : null);
+    } catch (error) {
+      console.error('[play-menu] lobby presentation failed', error);
+    }
+  }
+
+  function setClosePurpose(inRoom) {
+    const label = inRoom ? 'Back to garage — stay in room' : 'Close';
+    closeBtn.setAttribute('aria-label', label);
+    closeBtn.title = label;
+  }
+
   function ownId() {
     return activeRoom?.playerId || (session && session.roomInfo && session.roomInfo.peerId);
   }
@@ -540,8 +561,10 @@ export function createPlayMenu({
     activeRoom = null;
     state = null;
     role = null;
+    notifyLobbyChange(null);
     clearClientRoomUrl();
     resetInvitation();
+    setClosePurpose(false);
     room.classList.remove('connected');
     lobbyEl.classList.remove('show');
     root.classList.remove('lobby-active');
@@ -648,6 +671,7 @@ export function createPlayMenu({
       setStatus(error.message, true);
       return false;
     }
+    notifyLobbyChange(null);
     hide(false);
     start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
     return true;
@@ -671,6 +695,8 @@ export function createPlayMenu({
       beginNetworkHandoff(next, 'client');
       return;
     }
+    setClosePurpose(true);
+    notifyLobbyChange(next);
     lobbyEl.classList.add('show');
     room.classList.add('connected');
     root.classList.add('lobby-active');
@@ -961,6 +987,7 @@ export function createPlayMenu({
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
   function show(initialMode = null, invite = null) {
+    if (showCurrentRoom()) return;
     root.classList.add('show');
     if (initialMode) selectMode(initialMode);
     const inviteCode = normalizeRoomCode(invite && invite.roomCode);
@@ -978,12 +1005,15 @@ export function createPlayMenu({
   function hide(closeSession = true) {
     createSizeMenu.close();
     root.classList.remove('show');
-    if (closeSession && !handedOff && !activeRoom) closeCurrentSession('menu_closed');
+    const parkedInGarage = !!(session && state?.phase === 'waiting');
+    if (closeSession && !handedOff && !activeRoom && !parkedInGarage) {
+      closeCurrentSession('menu_closed');
+    }
   }
   function dispose() {
     handedOff = false;
-    if (activeRoom) closeCurrentSession('menu_disposed');
-    hide(true);
+    if (activeRoom || session) closeCurrentSession('menu_disposed');
+    else hide(false);
     root.remove();
   }
   function attachActiveRoom(adapter) {
@@ -1012,17 +1042,37 @@ export function createPlayMenu({
     room.classList.remove('connected');
     lobbyEl.classList.remove('show');
     root.classList.remove('lobby-active');
+    setClosePurpose(false);
   }
-  function showActiveRoom() {
-    if (!activeRoom) return false;
+  function showCurrentRoom() {
+    const next = activeRoom?.state || state;
+    if (!next || (!activeRoom && !session)) return false;
     ranked.classList.remove('show');
     room.classList.add('show');
     root.classList.add('show');
-    renderLobby(activeRoom.state);
+    renderLobby(next);
+    syncGarageSelection();
     return true;
   }
+  function syncGarageSelection() {
+    if (!session || activeRoom || handedOff || state?.phase !== 'waiting') return false;
+    const me = state.players?.find((player) => player.id === ownId());
+    if (!me || me.ready) return false;
+    const selection = getSelection();
+    if (me.specId !== selection.specId) {
+      command({ type: 'select_vehicle', specId: selection.specId });
+    }
+    command({ type: 'select_equipment', equipment: selection.equipment });
+    if (me.camo !== selection.camo) command({ type: 'select_camo', camo: selection.camo });
+    if (role === 'host' && selection.mapId && state.mapId !== selection.mapId) {
+      command({ type: 'set_map', mapId: selection.mapId });
+    }
+    return true;
+  }
+  const showActiveRoom = showCurrentRoom;
   return {
     root, show, hide, dispose,
-    attachActiveRoom, updateActiveRoom, detachActiveRoom, showActiveRoom,
+    attachActiveRoom, updateActiveRoom, detachActiveRoom,
+    showActiveRoom, showCurrentRoom, syncGarageSelection,
   };
 }

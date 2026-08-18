@@ -5,12 +5,8 @@ import { createSignalingServer } from '../server/signalingServer.js';
 
 const root = new URL('..', import.meta.url).pathname;
 const errors = [];
-const vite = await createViteServer({
-  root,
-  logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
-});
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
+let vite = null;
 let browser = null;
 
 function observe(page, label) {
@@ -31,11 +27,17 @@ async function closeState(page) {
 }
 
 try {
-  await vite.listen();
   const signalAddress = await signaling.listen();
+  const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
+  process.env.VITE_SIGNAL_URL = signalUrl;
+  vite = await createViteServer({
+    root,
+    logLevel: 'error',
+    server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+  });
+  await vite.listen();
   const viteAddress = vite.httpServer.address();
   const origin = `http://127.0.0.1:${viteAddress.port}`;
-  const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
 
   browser = await puppeteer.launch({
     headless: true,
@@ -53,18 +55,9 @@ try {
   const guestPage = await browser.newPage();
   observe(hostPage, 'host');
   observe(guestPage, 'guest');
-  await Promise.all([
-    hostPage.goto(`${origin}/tools/multiplayer-browser-soak.html`, {
-      waitUntil: 'domcontentloaded', timeout: 180_000,
-    }),
-    guestPage.goto(`${origin}/?nosplash=1&tier=desktop&gfxreset=1`, {
-      waitUntil: 'domcontentloaded', timeout: 180_000,
-    }),
-  ]);
-  await guestPage.waitForFunction(
-    () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage',
-    { timeout: 240_000 },
-  );
+  await hostPage.goto(`${origin}/tools/multiplayer-browser-soak.html`, {
+    waitUntil: 'domcontentloaded', timeout: 180_000,
+  });
 
   const room = await hostPage.evaluate(async ({ signalUrl: url }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
@@ -106,22 +99,19 @@ try {
     return roomInfo;
   }, { signalUrl });
 
-  await guestPage.evaluate(({ signalUrl: url, roomCode }) => {
-    document.querySelector('.cot-battle-mode')?.click();
-    document.querySelector('.cot-battle-choice[data-mode="private"]')?.click();
-    document.querySelector('.cot-battle')?.click();
-    globalThis.__COT_GUEST_ENTRY = { signalUrl: url, roomCode, frames: [] };
-  }, { signalUrl, roomCode: room.roomCode });
-  await guestPage.waitForSelector('.cot-play.show [data-action="join"]', { timeout: 30_000 });
-  await guestPage.evaluate(({ signalUrl: url, roomCode }) => {
-    const signal = document.querySelector('.cot-play [data-field="signal"]');
-    signal.value = url;
-    signal.dispatchEvent(new Event('input', { bubbles: true }));
-    const code = document.querySelector('.cot-play [data-field="code"]');
-    code.value = roomCode;
-    code.dispatchEvent(new Event('input', { bubbles: true }));
-    document.querySelector('.cot-play [data-action="join"]').click();
-  }, { signalUrl, roomCode: room.roomCode });
+  const inviteUrl = new URL(`${origin}/`);
+  inviteUrl.searchParams.set('nosplash', '1');
+  inviteUrl.searchParams.set('tier', 'desktop');
+  inviteUrl.searchParams.set('gfxreset', '1');
+  inviteUrl.searchParams.set('room', room.roomCode);
+  inviteUrl.searchParams.set('host', 'Entry Host');
+  await guestPage.goto(inviteUrl.href, {
+    waitUntil: 'domcontentloaded', timeout: 180_000,
+  });
+  await guestPage.waitForFunction(
+    () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage',
+    { timeout: 240_000 },
+  );
 
   await guestPage.waitForFunction(() => {
     const status = document.querySelector('.cot-play .status');
@@ -145,7 +135,35 @@ try {
     ),
   ]);
 
+  await guestPage.click('.cot-play .close');
+  await guestPage.waitForFunction(
+    () => !document.querySelector('.cot-play')?.classList.contains('show') &&
+      window.__DEBUG?.garage?.isOpen === true,
+    { timeout: 10_000 },
+  );
+  const garageRoom = await guestPage.evaluate(() => ({
+    url: location.href,
+    reminderVisible: document.querySelector('.cot-room-reminder')?.classList.contains('show') || false,
+    reminderText: document.querySelector('.cot-room-reminder .rr-copy')?.textContent || '',
+  }));
+  assert.equal(garageRoom.reminderVisible, true,
+    'guest garage must expose the room reminder while membership stays active');
+  assert.match(garageRoom.reminderText, new RegExp(room.roomCode),
+    'guest garage reminder must identify the active room');
+  assert.equal(new URL(garageRoom.url).searchParams.get('room'), room.roomCode,
+    'guest invite URL must remain canonical until the player explicitly leaves');
+  assert.equal(await hostPage.evaluate(() =>
+    globalThis.__COT_GUEST_ENTRY_HOST?.lobby?.players?.length), 2,
+  'guest must remain in the host roster while viewing the garage');
+
+  await guestPage.click('.cot-room-reminder');
+  await guestPage.waitForFunction(
+    () => document.querySelector('.cot-play.show .lobby.show .players')?.children.length === 2,
+    { timeout: 10_000 },
+  );
+
   await guestPage.evaluate(() => {
+    globalThis.__COT_GUEST_ENTRY = { frames: [] };
     const state = globalThis.__COT_GUEST_ENTRY;
     const menu = document.querySelector('.cot-play');
     const loader = document.querySelector('.cot-bl');
@@ -226,5 +244,5 @@ try {
 } finally {
   if (browser) await browser.close().catch(() => {});
   await signaling.close().catch(() => {});
-  await vite.close().catch(() => {});
+  if (vite) await vite.close().catch(() => {});
 }
