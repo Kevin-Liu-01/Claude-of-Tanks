@@ -6869,6 +6869,138 @@ function finishT90MProryvOwner2026(P) {
   P.add('turretDetail', torus(0.238, 0.025, 20), 0.98, 0.83, 1.070);
 }
 
+// Final Proryv armor/equipment pass.  This deliberately leaves the canonical
+// six-wheel running gear, linked shoe course, side curtains and their runtime
+// suspension ownership untouched.  The new hull pieces terminate above the
+// idler crown; turret furniture remains turret-owned and physically overlaps
+// a roof, cupola, bustle shell or cage return.
+function refineT90MProryvArmor2026(P) {
+  const { box, cylX, cylY, torus } = KIT;
+
+  // Deep, swept track shoulders bridge the upper glacis into the outer
+  // fenders.  Their forward tips descend around (not through) the idlers,
+  // replacing the thin rectangular mudguard read with a closed armored brow.
+  for (const s of [-1, 1]) {
+    P.add('hull', orientedSlab(
+      [s * 0.96, 0.84, 3.16], [s * 1.80, 0.82, 3.10], [s * 1.70, 1.17, 2.43], [s * 0.91, 1.17, 2.65],
+      [s * 0.94, 0.93, 3.10], [s * 1.77, 0.92, 3.04], [s * 1.65, 1.27, 2.44], [s * 0.89, 1.27, 2.64],
+    ));
+    P.add('hull', orientedSlab(
+      [s * 1.34, 0.77, 3.18], [s * 1.82, 0.75, 3.12], [s * 1.77, 1.01, 2.72], [s * 1.28, 1.03, 2.80],
+      [s * 1.32, 0.83, 3.14], [s * 1.80, 0.82, 3.08], [s * 1.73, 1.09, 2.73], [s * 1.27, 1.10, 2.80],
+    ));
+    P.add('hullDark', box(0.50, 0.026, 0.050), s * 1.44, 1.275, 2.55, -0.30, -s * 0.22, 0);
+    P.add('hullDark', box(0.42, 0.026, 0.045), s * 1.58, 1.105, 2.83, -0.42, -s * 0.16, 0);
+
+    // Unequal Relikt shoulder cassettes disappear into the structural brow.
+    // Nested seam plates create a readable armor cadence without entering
+    // the track lane or adding another suspended course.
+    for (const [x, y, z, yaw, w, d] of [
+      [1.13, 1.285, 2.54, 0.26, 0.38, 0.30],
+      [1.43, 1.225, 2.67, 0.38, 0.34, 0.28],
+      [1.63, 1.115, 2.88, 0.28, 0.25, 0.24],
+    ]) {
+      P.add('hull', box(w, 0.070, d), s * x, y, z, -0.35, -s * yaw, 0);
+      P.add('hullDark', box(w * 0.70, 0.010, 0.030), s * x, y + 0.043, z - d * 0.34, -0.35, -s * yaw, 0);
+    }
+  }
+
+  // Two overlapping lower-nose facets form a real V-section from the tow
+  // line to the upper plate.  They are shallow skins on the existing closed
+  // bow, with a recessed center weld and unequal transverse service seams.
+  for (const s of [-1, 1]) {
+    P.add('hull', orientedSlab(
+      [s * 0.04, 0.56, 3.235], [s * 1.06, 0.61, 3.17], [s * 1.39, 1.13, 2.64], [s * 0.04, 1.13, 2.73],
+      [s * 0.04, 0.63, 3.19], [s * 1.01, 0.69, 3.13], [s * 1.34, 1.21, 2.61], [s * 0.04, 1.21, 2.70],
+    ));
+    P.add('hullDark', box(0.035, 0.030, 0.70), s * 0.035, 0.91, 2.96, -0.49, 0, 0);
+    P.add('hullDark', box(0.80, 0.022, 0.045), s * 0.52, 0.84, 3.02, -0.47, -s * 0.05, 0);
+  }
+
+  // A denser, stepped upper-glacis blanket ties the center field into both
+  // shoulder brows.  The old three broad plates remain the load-bearing
+  // base; these smaller modules overlap it and leave deliberate dark breaks.
+  for (const s of [-1, 1]) {
+    for (const [x, y, z, yaw, w, d] of [
+      [0.22, 1.340, 2.10, 0.10, 0.34, 0.28],
+      [0.50, 1.325, 2.20, 0.20, 0.38, 0.30],
+      [0.80, 1.300, 2.31, 0.30, 0.40, 0.30],
+      [1.09, 1.270, 2.43, 0.40, 0.36, 0.28],
+    ]) {
+      P.add('hull', box(w, 0.065, d), s * x, y, z, -0.32, -s * yaw, 0);
+      P.add('hullDark', box(w * 0.74, 0.010, 0.025), s * x, y + 0.040, z - d * 0.34, -0.32, -s * yaw, 0);
+    }
+  }
+  P.add('hullDark', box(0.075, 0.040, 0.68), 0, 1.275, 2.30, -0.32, 0, 0);
+
+  // Armored bustle shoulders: a closed tapered side volume on each flank
+  // carries the magazine roof into the terminal frame.  Four shallow panels
+  // provide service/ERA rhythm while their inner faces remain buried in the
+  // existing welded bustle, eliminating the former lid-and-rail silhouette.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.88, 0.17, -1.05], [s * 1.42, 0.17, -1.22], [s * 1.22, 0.22, -2.62], [s * 0.76, 0.24, -2.48],
+      [s * 0.86, 0.68, -1.08], [s * 1.31, 0.60, -1.24], [s * 1.10, 0.60, -2.52], [s * 0.75, 0.68, -2.42],
+    ));
+    for (const [z, y, h, d] of [
+      [-1.28, 0.40, 0.31, 0.31], [-1.62, 0.39, 0.32, 0.30],
+      [-1.95, 0.38, 0.30, 0.28], [-2.26, 0.37, 0.27, 0.25],
+    ]) {
+      const x = 1.31 - Math.max(0, -z - 1.28) * 0.12;
+      P.add('turret', box(0.22, h, d), s * x, y, z, -0.08, -s * 0.08, 0);
+      P.add('turretDark', box(0.014, h * 0.74, d * 0.74), s * (x + 0.118), y, z, -0.08, -s * 0.08, 0);
+      P.add('turretDetail', box(0.16, 0.018, 0.034), s * x, y + h * 0.53, z + d * 0.30);
+    }
+    // Upper/lower cage returns are tied to both the bustle shell and backed
+    // rear face; nothing terminates in open air.
+    for (const y of [0.30, 0.58]) P.add('turretDetail', box(0.036, 0.032, 0.90), s * 0.78, y, -2.88);
+    for (const z of [-2.55, -2.88, -3.21]) P.add('turretDetail', box(0.038, 0.30, 0.038), s * 0.78, 0.44, z);
+  }
+  for (const y of [0.31, 0.58]) P.add('turretDetail', box(1.58, 0.032, 0.038), 0, y, -3.31);
+
+  // Bustle-top stores sit in shallow welded trays rather than floating on
+  // the cage.  Unequal boxes, a transverse canvas roll and four straps give
+  // the rear roof useful service density while keeping the terminal open.
+  for (const [x, y, z, w, d] of [
+    [-0.58, 0.785, -1.50, 0.58, 0.42], [0.52, 0.785, -1.62, 0.50, 0.36],
+  ]) {
+    P.add('turret', box(w + 0.08, 0.055, d + 0.08), x, y - 0.035, z);
+    P.addEquipment('turret', box(w, 0.11, d), x, y + 0.035, z);
+    P.add('turretDark', box(w * 0.76, 0.012, 0.030), x, y + 0.096, z + d * 0.34);
+  }
+  P.add('turretCloth', cylX(0.105, 0.90, 14), 0.10, 0.84, -2.13);
+  for (const x of [-0.22, 0.10, 0.42]) P.add('turretDark', box(0.035, 0.23, 0.18), x, 0.84, -2.13);
+
+  // Roof armor and equipment: low structural collars remain hittable;
+  // periscopes, electronics and tool boxes use the equipment bucket so they
+  // add visual fidelity without silently enlarging armor hit volumes.
+  P.addCupola('turret', cylY(0.39, 0.41, 0.060, 20), -0.48, 0.995, -0.34);
+  P.addCupola('turret', cylY(0.33, 0.35, 0.055, 18), 0.38, 0.985, -0.28);
+  for (const [x, z, yaw] of [
+    [-0.78, -0.31, -0.52], [-0.65, -0.04, -0.20], [-0.40, 0.04, 0.12],
+    [-0.19, -0.12, 0.38], [0.12, -0.04, -0.32], [0.39, 0.03, 0.02], [0.64, -0.10, 0.32],
+  ]) {
+    P.add('turretDark', box(0.13, 0.055, 0.085), x, 1.035, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.088, 0.030, 0.010), x, 1.045, z + 0.048, 0, yaw, 0);
+  }
+  for (const [x, y, z, w, h, d, yaw] of [
+    [0.78, 0.82, -0.72, 0.42, 0.16, 0.34, 0.10],
+    [-0.98, 0.75, -0.98, 0.36, 0.13, 0.42, -0.12],
+    [0.08, 0.80, -1.04, 0.48, 0.10, 0.30, 0.04],
+  ]) {
+    P.add('turret', box(w + 0.08, 0.045, d + 0.08), x, y - h * 0.45, z, 0, yaw, 0);
+    P.addEquipment('turret', box(w, h, d), x, y, z, 0, yaw, 0);
+    P.add('turretDark', box(w * 0.72, 0.012, 0.028), x, y + h * 0.53, z + d * 0.32, 0, yaw, 0);
+  }
+  // Roof cable channels, lift eyes and hatch handles are all seated against
+  // broad armor, never used as stand-off supports.
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.035, 0.028, 0.90), s * 1.03, 0.67, -0.50, 0, 0, -s * 0.05);
+    P.add('turretDetail', torus(0.070, 0.015, 12), s * 1.05, 0.71, -0.92, Math.PI / 2, 0, 0);
+    P.add('turretDetail', torus(0.060, 0.014, 12), s * 0.73, 0.78, -1.28, Math.PI / 2, 0, 0);
+  }
+}
+
 // T-90M Proryv native reconstruction.  The complete low V-bow hull and native
 // six-wheel linked course are rebuilt above, while the repository-authored
 // welded Tagil fighting compartment is resectioned and given a continuous
@@ -6880,6 +7012,7 @@ function buildT90MProryvNative2026(P) {
   replaceT90MProryvTurret(P);
   enhanceT90MProryvSurface2026(P);
   finishT90MProryvOwner2026(P);
+  refineT90MProryvArmor2026(P);
   // The replacement turret is authored at construction scale so every
   // station is easy to reason about.  Proryv's installed silhouette is much
   // flatter: compress the complete rotating package vertically about the
