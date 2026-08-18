@@ -249,6 +249,54 @@ const SPECS = [
   t90.armor.gunBarrel.lengthM = 4.66;
 }
 
+// Warrior MILAN remains a first-party procedural derivative of the authored
+// FV510 rather than a Bradley fallback.  Clone the already-constructed local
+// Warrior row here (it is not registered in TANK_SPECS until the loop below),
+// retain the RARDEN belts and add the roof-mounted MILAN 2 as its own guided
+// ammunition plant.
+{
+  const base = SPECS.find((s) => s.id === 'fv510');
+  const milan = copy(base);
+  milan.id = 'fv510_milan';
+  milan.name = 'FV510 Warrior MILAN';
+  milan.variantOf = 'fv510';
+  milan.publicVisualFallback = null;
+  milan.hp = 1450;
+  milan.weightTons = 28.4;
+  milan.topSpeedKmh = 72;
+  milan.visual = { ...base.visual, number: 'M9' };
+  milan.gun = {
+    ...base.gun,
+    shells: [
+      ...base.gun.shells.map((shell) => copy(shell)),
+      {
+        name: 'MILAN 2', type: 'HEAT', caliberMm: 115,
+        pen100Mm: 800, pen1000Mm: 800, pen2000Mm: 800,
+        dmg: 430, velocityMps: 200, moduleDmg: 115, tracer: 'HEAT',
+        reloadS: 12.5, count: 6, guided: true,
+      },
+    ],
+  };
+  // The visible glacis tiles, side packs and turret applique are real armor,
+  // not cosmetic boxes.  Add their protection before the common AFV package
+  // is lazily applied by getSpec(). Tracks remain external and untouched.
+  for (const plate of milan.armor.hullPlates) {
+    if (/upper_glacis/.test(plate.name)) {
+      plate.keMm += 30; plate.ceMm += 70;
+    } else if (/hull_side_upper|skirt/.test(plate.name)) {
+      plate.keMm += 20; plate.ceMm += 50;
+    }
+  }
+  for (const plate of milan.armor.turretPlates) {
+    if (/cheek|mantlet/.test(plate.name)) {
+      plate.keMm += 25; plate.ceMm += 60;
+    } else if (/side/.test(plate.name)) {
+      plate.keMm += 15; plate.ceMm += 40;
+    }
+  }
+  SPECS.push(milan);
+}
+
 const ROOT = '/models/tanks/community/recovered/';
 const source = (id, cfg = {}) => {
   MODEL_SOURCE[id] = { source: 'glb', glb: { path: `${ROOT}${id}.glb`, paintUntextured: true, ...cfg } };
@@ -410,4 +458,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3c', 'merkava3d', 'merkava4b', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 'm1a2_sepv3', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'fv510', 't64bv1', 'type90'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3c', 'merkava3d', 'merkava4b', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 'm1a2_sepv3', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'fv510', 'fv510_milan', 't64bv1', 'type90'].includes(id));

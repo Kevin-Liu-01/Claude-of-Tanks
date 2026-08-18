@@ -3196,14 +3196,20 @@ function fv510PhotoBuild(P) {
   // idler — §B6 trapezoid by construction; band inboard so the committed
   // skirt/strake plane clears the dilated shoe surface (§B4) ----
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.42, wheelW: 0.24, wheelY: 0.42, xc: 1.125,
-    // The old 5.4 m terminal span was eight percent longer than the
-    // reference course.  Keep all six native stations, but close their
-    // cadence and bring both end transitions back under the body.
-    wheelZs: [1.88, 1.08, 0.43, -0.37, -1.07, -1.72],
-    sprocket: { z: 2.05, y: 0.60, r: 0.28 }, idler: { z: -2.03, y: 0.57, r: 0.25 },
-    trackW: 0.42, trackTh: 0.052, shoeRadialScale: 0.66,
-    topY: 0.98, coveredTop: true, arms: false, paintedEnds: true,
+    style: 'rubber', wheelR: 0.42, wheelW: 0.26, wheelY: 0.44, xc: 1.16,
+    // One six-station smart course, spread evenly between full-size end
+    // drums.  The previous 0.25/0.28 m terminals were tucked beside the
+    // first/last road wheels, so the links read as a flat under-hull belt
+    // with neither an approach nor a departure wrap.  These stations retain
+    // every road wheel and every protected skirt above them while restoring
+    // the Warrior's long, visibly trapezoidal course.
+    wheelZs: [1.92, 1.16, 0.40, -0.40, -1.16, -1.92],
+    sprocket: { z: 2.48, y: 0.64, r: 0.37 },
+    idler: { z: -2.45, y: 0.62, r: 0.35 },
+    trackW: 0.46, trackTh: 0.055, shoeRadialScale: 0.72,
+    topY: 1.06, botY: 0.055, deadSag: 0.055,
+    contactZF: 2.12, contactZR: -2.12,
+    coveredTop: true, integratedLinks: true, arms: false, paintedEnds: true,
     // warm-olive pads + ambient floor (merkava r12 gear-tone law; the
     // default near-black band read ambient-dead behind the skirts)
     padHex: 0x333429, chainHex: 0x2b2c24, gearFloor: true,
@@ -3366,14 +3372,17 @@ function fv510PhotoBuild(P) {
   buildGun(P, { len: 1.84, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
   muzzleBore(P, { len: 1.84, r: 0.030 });                     // §B3.1 (shadow-named, 3fca39b)
   // RARDEN 30 mm: autocannon-scale disc (law: smaller disc)
-  P.addGunExtra(cylZ(0.041, 0.60, 10, 0.046), 0, 0, 0.82);
-  P.addGunExtra(cylZ(0.0335, 0.55, 10), 0, 0, 1.42);
+  // These pieces are tube furniture and therefore belong to the recoil
+  // bucket. The former gunMount ownership left a stationary solid cap in
+  // front of the fleet bore furniture and blocked the visible gun hole.
+  P.add('gun', cylZ(0.041, 0.60, 10, 0.046), 0, 0, 0.82);
+  P.add('gun', cylZ(0.0335, 0.55, 10), 0, 0, 1.42);
   // perforated flash hider (photo-parity r2 gap #4: the vent read — four
   // deep dark rings + slotted cap; muzzle tip 3.152 < the +3.17 nose)
-  P.addGunExtra(cylZ(0.048, 0.30, 12), 0, 0, 1.68);
-  for (const zr of [1.575, 1.655, 1.735, 1.815]) P.addGunExtraDark(cylZ(0.0495, 0.018, 12), 0, 0, zr);
-  P.addGunExtraDark(cylZ(0.037, 0.05, 10), 0, 0, 1.84);
-  P.addGunExtraDark(cylZ(0.028, 0.012, 10), 0, 0, 1.866);
+  P.add('gun', cylZ(0.048, 0.30, 12), 0, 0, 1.68);
+  for (const zr of [1.575, 1.655, 1.735, 1.815]) P.add('gunDark', cylZ(0.0495, 0.018, 12), 0, 0, zr);
+  P.add('gunDark', cylZ(0.037, 0.05, 10), 0, 0, 1.84);
+  P.add('gunDark', cylZ(0.028, 0.012, 10), 0, 0, 1.866);
   // coax 7.62 chain gun port left of the main gun (dark ring + stub)
   P.add('turretDark', cylZ(0.032, 0.02, 10), -0.42, 0.30, 0.52);
   P.add('turretDark', cylZ(0.014, 0.16, 8), -0.42, 0.30, 0.58);
@@ -3398,6 +3407,132 @@ function fv510PhotoBuild(P) {
   P.turretG.position.y = 1.74;
   P.turretG.scale.y = 0.84;
   P.topY = 0.79;
+}
+
+// FV510 Warrior MILAN — tier-IX protected support conversion.  The complete
+// photo-class Warrior remains the structural base, including its WRAP skirts,
+// rib cages, rear door, native six-station suspension and RARDEN installation.
+// This pass is strictly additive: applique, missile equipment, observation
+// kit and a denser roof/glacis service grammar all land on existing armor.
+function fv510MilanBuild(P) {
+  fv510PhotoBuild(P);
+  const num = P.spec.visual.number || 'M9';
+
+  // ---- layered upper-glacis package.  Every closed tile overlaps the long
+  // Warrior rake below it; the two rows step upward with that parent plane.
+  for (const [x, y, z, w, d, pitch] of [
+    [-0.62, 1.235, 2.71, 0.55, 0.42, -0.56],
+    [0.00, 1.235, 2.71, 0.55, 0.42, -0.56],
+    [0.62, 1.235, 2.71, 0.55, 0.42, -0.56],
+    [-0.58, 1.430, 2.35, 0.62, 0.48, -0.46],
+    [0.10, 1.430, 2.35, 0.62, 0.48, -0.46],
+    [0.78, 1.430, 2.35, 0.56, 0.48, -0.46],
+  ]) {
+    P.add('hull', box(w, 0.085, d), x, y, z, pitch, 0, 0);
+    P.add('hullDark', box(w * 0.88, 0.018, 0.026), x, y + 0.050, z - d * 0.34,
+      pitch, 0, 0);
+  }
+  // Broad bow shoulders bridge the applique into the existing fenders while
+  // remaining above the end-wheel sweeps and inside the original skirt face.
+  for (const s of [-1, 1]) {
+    P.add('hull', sslab(s,
+      [0.88, 1.20, 2.83], [1.43, 1.20, 2.83], [1.45, 1.35, 2.30], [0.88, 1.35, 2.30],
+      [0.88, 1.29, 2.78], [1.40, 1.29, 2.78], [1.42, 1.45, 2.30], [0.88, 1.45, 2.30]));
+    // Additional modular side armor is seated directly on the existing WRAP
+    // panels, not substituted for them.  The shallow course keeps the full
+    // zig-zag armor and outer rib cage readable underneath.
+    for (let k = 0; k < 6; k++) {
+      const z = 1.95 - k * 0.77;
+      P.add('hull', box(0.036, 0.32, 0.61), s * 1.515, 1.47, z);
+      P.add('hullDark', box(0.010, 0.026, 0.47), s * 1.536, 1.62, z);
+      P.add('hullDetail', box(0.045, 0.050, 0.16), s * 1.535, 1.32, z);
+    }
+  }
+
+  // ---- glacis service equipment: a protected central IR lamp, paired large
+  // white-light pods and their brush guards, plus tools/cable runs.  These are
+  // semantic equipment rather than armor and therefore use addEquipment.
+  P.addEquipment('hull', box(0.30, 0.18, 0.25), 0.48, 1.55, 2.18, -0.35, 0, 0);
+  P.addEquipment('hullDark', cylZ(0.090, 0.12, 16), 0.48, 1.58, 2.31, -0.18, 0, 0);
+  P.addEquipment('hullGlass', cylZ(0.068, 0.014, 16), 0.48, 1.59, 2.377, -0.18, 0, 0);
+  for (const s of [-1, 1]) {
+    const lamp = FITTINGS.lightCluster({
+      mats: P.mats, pods: 1, spacing: 0.16, r: 0.090, rake: -0.44,
+      seed: 31 + s,
+    });
+    lamp.position.set(s * 1.08, 1.49, 2.72);
+    lamp.scale.setScalar(1.08);
+    P.hullG.add(lamp);
+    P.addEquipment('hullDark', box(0.025, 0.24, 0.23), s * 1.20, 1.49, 2.72);
+    P.addEquipment('hullDark', box(0.025, 0.24, 0.23), s * 0.96, 1.49, 2.72);
+    P.addEquipment('hullDark', box(0.27, 0.025, 0.23), s * 1.08, 1.61, 2.72);
+  }
+  P.addEquipment('hullDetail', box(0.055, 0.055, 1.15), -0.44, 1.58, 2.05, 0, 0.08, 0);
+  P.addEquipment('hullDetail', box(0.055, 0.055, 0.88), 0.13, 1.60, 2.04, 0, -0.12, 0);
+  for (const x of [-0.72, -0.45, -0.18]) {
+    P.addEquipment('hullDark', box(0.20, 0.035, 0.28), x, 1.59, 1.52, 0, -0.10, 0);
+  }
+
+  // ---- turret cheek/bustle applique.  The armor overlaps the welded crew
+  // cell at both the front and side returns, so it remains a single supported
+  // mass under yaw rather than a stand-off collection of boxes.
+  for (const s of [-1, 1]) {
+    P.add('turret', sslab(s,
+      [0.35, 0.00, 0.50], [0.82, -0.02, 0.32], [0.88, 0.00, -0.02], [0.50, 0.00, 0.08],
+      [0.32, 0.48, 0.46], [0.76, 0.48, 0.28], [0.83, 0.48, -0.04], [0.47, 0.48, 0.04]));
+    P.add('turret', box(0.16, 0.42, 0.52), s * 0.82, 0.26, -0.45, 0, s * 0.12, 0);
+    P.add('turret', box(0.19, 0.34, 0.62), s * 0.69, 0.25, -1.43, 0, s * 0.10, 0);
+    P.add('turretDark', box(0.025, 0.045, 0.43), s * 0.91, 0.37, -0.45);
+    P.add('turretDetail', box(0.22, 0.06, 0.14), s * 0.69, 0.46, -1.42);
+  }
+  P.add('turret', box(1.20, 0.34, 0.30), 0, 0.24, -1.58);
+  P.add('turretDetail', box(1.08, 0.035, 0.34), 0, 0.43, -1.57);
+
+  // ---- MILAN launcher: a forward-facing closed tube, armored collar,
+  // elevation cradle and sight channel on the turret-right roof.  The cradle
+  // penetrates the roof shoe and the tube overlaps the cradle at both ends.
+  P.addEquipment('turret', box(0.36, 0.16, 0.48), 0.56, 0.63, -0.08, 0, -0.06, 0);
+  P.addEquipment('turretDark', cylX(0.075, 0.40, 12), 0.56, 0.70, -0.03);
+  P.addEquipment('turret', box(0.12, 0.30, 0.14), 0.56, 0.79, -0.03, 0.10, 0, 0);
+  P.addEquipment('turretDark', cylZ(0.112, 1.12, 18, 0.124), 0.56, 0.92, 0.36, -0.04, 0, 0);
+  P.addEquipment('turretDetail', cylZ(0.126, 0.17, 18), 0.56, 0.92, -0.13, -0.04, 0, 0);
+  P.addEquipment('turretDark', cylZ(0.086, 0.025, 18), 0.56, 0.92, 0.927, -0.04, 0, 0);
+  P.addEquipment('turretGlass', box(0.14, 0.10, 0.018), 0.37, 0.89, 0.01, -0.02, 0, 0);
+  // Two spare missile tubes remain tied to the bustle by broad saddles.
+  for (const [x, y] of [[-0.33, 0.55], [0.02, 0.59]]) {
+    P.addEquipment('turret', box(0.20, 0.08, 0.68), x, y - 0.08, -1.20);
+    P.addEquipment('turretDark', cylZ(0.074, 0.72, 14, 0.082), x, y, -1.20);
+    P.addEquipment('turretDetail', cylZ(0.083, 0.035, 14), x, y, -0.83);
+  }
+
+  // ---- populated roof: armored rectangular hatch, panoramic head, paired
+  // periscope hoods, a shielded second GPMG and compact stowage/radio boxes.
+  P.addEquipment('turret', box(0.46, 0.045, 0.42), -0.29, 0.61, -0.49, 0, 0.08, 0);
+  P.addEquipment('turretDark', box(0.38, 0.018, 0.035), -0.29, 0.642, -0.30, 0, 0.08, 0);
+  P.addEquipment('turret', cylY(0.14, 0.16, 0.16, 14), -0.55, 0.68, -0.10);
+  P.addEquipment('turret', box(0.26, 0.18, 0.24), -0.55, 0.83, -0.10);
+  P.addEquipment('turretGlass', box(0.17, 0.07, 0.016), -0.55, 0.85, 0.026);
+  for (const x of [-0.20, 0.08]) {
+    P.addEquipment('turret', box(0.19, 0.07, 0.15), x, 0.63, 0.06, -0.12, 0, 0);
+    P.addEquipment('turretGlass', box(0.13, 0.035, 0.014), x, 0.65, 0.142, -0.12, 0, 0);
+  }
+  P.addEquipment('turret', box(0.30, 0.20, 0.28), 0.54, 0.62, -0.80);
+  P.addEquipment('turretDetail', box(0.27, 0.030, 0.30), 0.54, 0.735, -0.80);
+  const roofMg = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.16, scale: 0.82, seed: 29,
+  });
+  roofMg.position.set(-0.34, 0.67, -0.58);
+  roofMg.rotation.y = 0.16;
+  P.turretG.add(roofMg);
+  for (const s of [-1, 1]) {
+    P.addEquipment('turret', box(0.035, 0.24, 0.30), -0.34 + s * 0.22, 0.76, -0.50,
+      0, s * 0.08, 0);
+  }
+
+  // Dense but supported designation grammar.  The custom fleet marking uses
+  // a different hull-side anchor; these builder decals identify the upgrade.
+  P.decal('turret', 'number', num, 0.20, [0.92, 0.30, -0.48], Math.PI / 2);
+  P.decal('turret', 'number', num, 0.20, [-0.92, 0.30, -0.48], -Math.PI / 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -4028,6 +4163,7 @@ export const UK_PROFILES = {
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows
   // carry the cap until the parked §E warp lands — packet round section).
   fv510: { build: fv510PhotoBuild },
+  fv510_milan: { build: fv510MilanBuild },
 };
 
 // §5.75 family-module split: profiles/challenger.js (challenger1Build moved

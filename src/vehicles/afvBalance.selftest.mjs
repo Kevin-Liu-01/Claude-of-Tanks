@@ -44,6 +44,9 @@ for (const [id, baseHp, baseFrontKe] of expected) {
 if (!afvIds.includes('fv510')) {
   throw new Error('derived AFV coverage must include FV510 Warrior');
 }
+if (!afvIds.includes('fv510_milan')) {
+  throw new Error('derived AFV coverage must include FV510 Warrior MILAN');
+}
 
 {
   const bmp = TANK_SPECS.bmp2;
@@ -87,6 +90,7 @@ for (const [id, missileName] of [
   ['bmp2', '9M113M Konkurs-M'],
   ['spz_puma', 'Spike LR'],
   ['type89', 'Type 79 Jyu-MAT'],
+  ['fv510_milan', 'MILAN 2'],
 ]) {
   const missile = getSpec(id).gun.shells.find((shell) => shell.name === missileName);
   if (!missile?.guided) {

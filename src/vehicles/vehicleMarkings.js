@@ -143,6 +143,9 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   m1a2_legacy: anchor('turret', 'right', 0.44, 0.43, 0.27, -1),
   abramsx: anchor('turret', 'left', 0.38, 0.42, 0.26, 1),
   fv510: anchor('hull', 'right', 0.44, 0.66, 0.24, -1),
+  // Separate left-flank seat clears the MILAN's outer modular armor course;
+  // the base Warrior keeps its right-side troop-hull designation.
+  fv510_milan: anchor('hull', 'left', 0.38, 0.62, 0.22, 1),
   m1a1ha: anchor('turret', 'left', 0.42, 0.44, 0.27, 1),
   m1a2_sepv2: anchor('turret', 'right', 0.40, 0.43, 0.27, -1),
   m1a2_sepv3: anchor('turret', 'left', 0.39, 0.44, 0.27, 1),
