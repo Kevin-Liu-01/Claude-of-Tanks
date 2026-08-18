@@ -181,8 +181,9 @@ const SHADOW_AMBIENT_SPEC_DIM = 0.55;
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
 // resolved as a visible hatch/cross pattern and crawled because its rotation
 // was keyed to screen pixels. Keep the physically widening CSM cascade radii
-// themselves, anchor the Vogel rotation in shadow-map texels (patched below),
-// and guarantee a small antialiasing footprint even on 1024/512 mobile maps.
+// themselves, use one deterministic Vogel orientation per cascade (patched
+// below), and guarantee a small antialiasing footprint even on 1024/512
+// mobile maps.
 // This removes three blocker probes and their divergent radius too: cleaner
 // edges for fewer texture reads on every device tier.
 const MIN_FILTER_RADIUS_TEXELS = 1.25;
@@ -687,10 +688,13 @@ vec3 cotPrev;`);
 
 ${endHead}`);
 
-  // Anchor the five-tap Vogel pattern to stable shadow texels instead of
-  // screen pixels. CSM texel snapping now keeps the filter phase on the same
-  // world surface as the camera moves, eliminating crawling/hatching without
-  // adding a single sample.
+  // Give each cascade one deterministic five-tap Vogel orientation. The old
+  // screen-space seed crawled with the camera; the later shadow-texel seed
+  // still changed phase whenever a snapped cascade recentered because the
+  // same world point moved to a different local atlas texel. A rotation based
+  // only on the cascade's fixed radius cannot change during camera motion or
+  // a round-robin refresh, while retaining a different orientation for each
+  // cascade and the same five-sample cost.
   const penAnchor =
     'float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;';
   const sm = THREE.ShaderChunk.shadowmap_pars_fragment;
@@ -698,7 +702,7 @@ ${endHead}`);
     throw new Error('lighting.js: penumbra anchor not found in shadowmap_pars_fragment');
   }
   THREE.ShaderChunk.shadowmap_pars_fragment = sm.replace(penAnchor,
-    'float phi = interleavedGradientNoise( floor( shadowCoord.xy * shadowMapSize ) ) * PI2;');
+    'float phi = fract( shadowRadius * 0.754877666 ) * PI2;');
 }
 
 /**
