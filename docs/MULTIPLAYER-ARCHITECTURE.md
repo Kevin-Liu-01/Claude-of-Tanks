@@ -61,8 +61,8 @@ connection sequence.
 
 LAN/private WebRTC uses two data channels:
 
-- `cot-match-v1`: ordered and reliable for handshake, lobby, combat events,
-  ping, errors, and leave control.
+- `cot-match-v1`: ordered and reliable for handshake, lobby, room chat,
+  combat events, ping, errors, and leave control.
 - `cot-state-v1`: unordered with zero retransmits for replaceable snapshots
   and live input.
 
@@ -149,12 +149,20 @@ screen and lobby can say “Join Name’s Game.” That URL field is never trust
 identity: both in-memory and distributed signaling return the canonical host
 name in their create/join responses, and the client replaces the hint.
 
-Rooms persist across rounds. Protocol-v4 `ROOM_COMMAND` and `ROOM_STATE`
+Rooms persist across rounds. Protocol-v5 `ROOM_COMMAND` and `ROOM_STATE`
 messages carry round, last result, full human roster, selections, and readiness
 on the reliable channel. When authority publishes a result, the room returns
 from `playing` to `waiting`, keeps connected peers and the WebRTC channels,
 increments its next round at start, and clears every ready flag. The next match
 replaces the simulation runtime while preserving transport and room identity.
+
+Battle chat uses dedicated `ROOM_CHAT_COMMAND` and `ROOM_CHAT` control
+messages instead of bloating snapshots or room-state broadcasts. Authority
+derives the sender name and team from the authenticated room peer, normalizes
+plain text, caps messages at 240 characters, throttles each sender, and fans
+the accepted message out to every room participant. Clients retain only the
+latest 48 messages; the battle UI disables driving and firing while its input
+owns focus.
 
 Closing the result report returns to the garage without leaving the room. A
 compact room reminder remains under Battle and exposes ready/unready state.

@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import '../vehicles/camoPolicy.selftest.mjs';
 import {
   MESSAGE_TYPES,
+  MAX_ROOM_CHAT_LENGTH,
   PLAYER_ACTION_BITS,
   ProtocolError,
   createEnvelope,
   createRoomCode,
   isSequenceNewer,
   normalizePlayerInput,
+  normalizeRoomChatText,
   normalizeRoomCode,
   validateEnvelope,
 } from './protocol.js';
@@ -278,6 +280,9 @@ assert.equal(automaticPlayerName('stable-browser-id'), automaticPlayerName('stab
 assert.notEqual(automaticPlayerName('stable-browser-id'), automaticPlayerName('other-browser-id'),
   'automatic callsigns differentiate independent browser identities');
 assert.equal(uniquePlayerName('Commander', ['commander', 'Commander 2']), 'Commander 3');
+assert.equal(normalizeRoomChatText('  hold\u200b   this ridge  '), 'hold this ridge');
+expectCode(() => normalizeRoomChatText('x'.repeat(MAX_ROOM_CHAT_LENGTH + 1)),
+  ProtocolError, 'chat_too_long');
 
 // Lobby policy: player identity is independent from vehicle identity.
 const lobby = createLobby({
@@ -962,6 +967,72 @@ function createTestSimulation() {
     },
   };
   return simulation;
+}
+
+// Room chat uses reliable control traffic, but identity and rate policy stay
+// host-owned. A client cannot spoof the visible sender fields in its payload.
+{
+  let chatNowMs = 1_000;
+  const room = {
+    phase: 'playing', round: 1, revision: 3,
+    players: [
+      { id: 'chat-a', name: 'Atlas', team: 'alpha' },
+      { id: 'chat-b', name: 'Bishop', team: 'bravo' },
+    ],
+  };
+  const roomController = {
+    state: () => room,
+    command: () => room,
+  };
+  const host = new AuthoritativeMatchRuntime({
+    simulation: createTestSimulation(),
+    roomController,
+    chatClock: () => chatNowMs,
+  });
+  const linkA = createLoopbackTransportPair({ direct: true });
+  const linkB = createLoopbackTransportPair({ direct: true });
+  host.attachPeer({ peerId: 'chat-a', transport: linkA.host });
+  host.attachPeer({ peerId: 'chat-b', transport: linkB.host });
+  const clientA = new MatchClientRuntime({ transport: linkA.client, playerId: 'chat-a' });
+  const clientB = new MatchClientRuntime({ transport: linkB.client, playerId: 'chat-b' });
+  clientA.connect();
+  clientB.connect();
+  const observed = [];
+  clientB.onRoomChat((message) => observed.push(message));
+  linkA.client.send(createEnvelope(MESSAGE_TYPES.ROOM_CHAT_COMMAND, {
+    text: '  Push\u200b   now!  ', senderId: 'chat-b', senderName: 'FORGED',
+  }, { seq: 1, tick: 0 }));
+  clientA.sendSeq = 2;
+  assert.equal(observed.length, 1);
+  assert.deepEqual({
+    senderId: observed[0].senderId,
+    senderName: observed[0].senderName,
+    team: observed[0].team,
+    text: observed[0].text,
+  }, {
+    senderId: 'chat-a', senderName: 'Atlas', team: 'alpha', text: 'Push now!',
+  });
+  assert.equal(clientA.getRoomChatHistory().length, 1,
+    'the sender receives the same authority-authenticated room message');
+
+  clientA.sendRoomChat('too fast');
+  assert.equal(clientA.errors.at(-1)?.code, 'chat_rate_limited');
+  assert.equal(observed.length, 1, 'rate-limited messages are never broadcast');
+
+  for (let index = 0; index < 50; index++) {
+    chatNowMs += 1_300;
+    clientA.sendRoomChat(`message ${index}`);
+  }
+  assert.equal(clientA.getRoomChatHistory().length, 48,
+    'client chat history remains bounded during long rooms');
+  assert.equal(clientB.getRoomChatHistory().length, 48);
+  assert.equal(clientB.getRoomChatHistory().at(-1).text, 'message 49');
+
+  assert.equal(clientA.sendRoomChat('x'.repeat(MAX_ROOM_CHAT_LENGTH + 1)), false);
+  assert.equal(clientA.errors.at(-1)?.code, 'chat_too_long');
+  clientA.close('test_done');
+  clientB.close('test_done');
+  host.close('test_done');
 }
 
 // A pre-handshake packet must be rejected without making a later valid HELLO

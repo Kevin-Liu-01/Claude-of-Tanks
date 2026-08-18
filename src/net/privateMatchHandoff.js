@@ -197,6 +197,9 @@ export function beginPrivateHostMatch({
     ready() { return client.readyForMatch(); },
     onRoomState(listener) { return client.onRoomState(listener); },
     roomCommand(command) { return client.submitRoomCommand(command); },
+    onRoomChat(listener) { return client.onRoomChat(listener); },
+    getRoomChatHistory() { return client.getRoomChatHistory(); },
+    sendRoomChat(text) { return client.sendRoomChat(text); },
     prepareRound({ lobbyState: nextLobby, worldCollision: nextCollision = null } = {}) {
       const next = validateStartingLobby(nextLobby);
       const nextMapId = resolvePrivateMatchMap(next);
@@ -248,6 +251,9 @@ export async function beginPrivateClientMatch({ session, playerId, lobbyState } 
     ready() { return client.readyForMatch(); },
     onRoomState(listener) { return client.onRoomState(listener); },
     roomCommand(command) { return client.submitRoomCommand(command); },
+    onRoomChat(listener) { return client.onRoomChat(listener); },
+    getRoomChatHistory() { return client.getRoomChatHistory(); },
+    sendRoomChat(text) { return client.sendRoomChat(text); },
     update(nowMs) { return client.update(nowMs); },
     submitInput(input, clientTick) { return client.submitInput(input, clientTick); },
     close(reason = 'private_match_closed') {

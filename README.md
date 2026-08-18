@@ -72,7 +72,7 @@ protocol. Three.js presents the result; it does not decide it.
 | Browser-native engine | Direct Three.js rendering, generated worlds, custom tank movement, post-processing, particles, audio, and device recovery without a commercial game-engine runtime |
 | Combat authority | Fixed 60 Hz movement, finite-point aiming, physical muzzle ballistics, plate armor, internal modules, spotting, bots, destructibles, and match outcome |
 | Original fleet | 80 selectable first-party procedural vehicles, generated presentation assets, live geometry fingerprints, and zero GLB-sourced playable tanks |
-| Network play | Protocol-v4 intent validation, viewer-filtered state, low-latency replaceable input, dedicated WebSocket authority, prediction, reconciliation, and reconnectable room state |
+| Network play | Protocol-v5 intent/chat validation, viewer-filtered state, low-latency replaceable input, dedicated WebSocket authority, prediction, reconciliation, and reconnectable room state |
 | Persistent rounds | Invite links, teams, spectators, ready locks, after-action rematch voting, garage room presence, and non-host rejoin while the browser host remains authoritative |
 | Performance | A direct solo path, isolated public routes, adaptive rendering, idle warmup, reusable snapshot storage, bounded cosmetic event work, and GPU black-frame recovery |
 | Production tools | A deterministic in-game Scene Studio, Tank Gallery geometry markup, fleet icon/diagram generation, browser multiplayer rigs, and public/private artifact verification |
@@ -187,7 +187,7 @@ src/world/     eight generated maps, terrain, vegetation, props and destructible
 src/vehicles/  specs, first-party procedural geometry, materials and asset proofs
 src/sim/       renderer-free movement, aiming, ballistics, armor, damage and spotting
 src/game/      application state, AI, input, killcam and Scene Studio
-src/net/       protocol v4, rooms, snapshots, prediction, WebRTC and WebSocket adapters
+src/net/       protocol v5, rooms, chat, snapshots, prediction, WebRTC and WebSocket adapters
 src/ui/        garage, battle HUD, room flow, reports, settings and mobile controls
 server/        signaling, distributed room store, dedicated authority, rating and ranked queue
 ```

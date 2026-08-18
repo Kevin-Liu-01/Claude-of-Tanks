@@ -150,7 +150,7 @@ waiting ──everyone ready──► starting ──load──► playing
    └──────── result + readiness reset ◄───────────┘
 ```
 
-Protocol-v4 `ROOM_COMMAND` and `ROOM_STATE` messages carry the room's round,
+Protocol-v5 `ROOM_COMMAND` and `ROOM_STATE` messages carry the room's round,
 last result, roster, team, vehicle, equipment, map, and ready state on the
 reliable channel. After a result the same peers remain connected, the room
 returns to waiting, readiness resets, and the next round replaces only the

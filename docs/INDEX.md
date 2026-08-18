@@ -26,7 +26,7 @@ https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 
 | Document | Authoritative scope |
 | --- | --- |
-| MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v4, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
+| MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v5, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
 | PERFORMANCE.md | Boot, route isolation, device quality, render recovery, frame ownership, event budgets, and measurement |
 | STUDIO.md | Scene Studio interaction, scripted API, scene schema, effects, capture, and determinism |
 | GALLERY.md | Tank Gallery architecture, dossiers, diagnostic overlays, exact-surface markup, exports, interaction, and verification |

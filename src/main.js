@@ -2026,10 +2026,54 @@ let networkActionBitsPending = 0;
 let networkSpectator = false;
 let activeNetworkRoom = null;
 let unsubscribeNetworkRoom = null;
+let unsubscribeNetworkRoomChat = null;
 let networkRoomMenuAttached = false;
 let networkPresentedRound = 0;
 let networkRematchPending = false;
 const pendingNetworkEvents = [];
+const pendingNetworkRoomChat = [];
+let networkRoomChat = null;
+let networkRoomChatPromise = null;
+
+function roomChatVisible() {
+  return !!(networkMatch && activeNetworkRoom && game.phase === 'battle');
+}
+
+function syncRoomChatVisibility() {
+  if (!networkRoomChat) return;
+  networkRoomChat.setPlayer(networkMatch?.playerId || '');
+  networkRoomChat.setActive(roomChatVisible());
+}
+
+function handleNetworkRoomChat(message) {
+  if (networkRoomChat) networkRoomChat.append(message);
+  else {
+    pendingNetworkRoomChat.push(message);
+    if (pendingNetworkRoomChat.length > 48) pendingNetworkRoomChat.shift();
+  }
+}
+
+async function ensureNetworkRoomChat() {
+  if (!networkRoomChatPromise) {
+    networkRoomChatPromise = import('./ui/roomChat.js').then(({ createRoomChat }) => {
+      networkRoomChat = createRoomChat({
+        input,
+        onSend: (text) => networkMatch?.sendRoomChat?.(text) || false,
+        isAvailable: () => roomChatVisible() && !settings.isOpen(),
+        shouldRelock: () => roomChatVisible() && !settings.isOpen() && !game.result &&
+          !killcam.isActive() && !networkSpectator,
+      });
+      networkRoomChat.setPlayer(networkMatch?.playerId || '');
+      for (const message of networkMatch?.getRoomChatHistory?.() || []) {
+        networkRoomChat.append(message);
+      }
+      for (const message of pendingNetworkRoomChat.splice(0)) networkRoomChat.append(message);
+      syncRoomChatVisibility();
+      return networkRoomChat;
+    });
+  }
+  return networkRoomChatPromise;
+}
 
 function activeRoomPlayer(state = activeNetworkRoom) {
   return state?.players?.find((player) => player.id === networkMatch?.playerId) || null;
@@ -2073,6 +2117,7 @@ function updateActiveRoomPresentation(state) {
     playerId: networkMatch?.playerId || '',
     role: networkMatch?.role || 'client',
   });
+  syncRoomChatVisibility();
   if (playMenuPromise) {
     playMenuPromise.then((menu) => {
       if (!activeNetworkRoom) return;
@@ -2109,19 +2154,31 @@ function attachNetworkRoom(initialState) {
   networkPresentedRound = Number(initialState?.round) || 1;
   updateActiveRoomPresentation(initialState);
   unsubscribeNetworkRoom = networkMatch.onRoomState(handleNetworkRoomState);
+  if (unsubscribeNetworkRoomChat) unsubscribeNetworkRoomChat();
+  unsubscribeNetworkRoomChat = networkMatch.onRoomChat?.(handleNetworkRoomChat) || null;
+  void ensureNetworkRoomChat();
 }
 
 function clearActiveNetworkRoom() {
   if (unsubscribeNetworkRoom) unsubscribeNetworkRoom();
+  if (unsubscribeNetworkRoomChat) unsubscribeNetworkRoomChat();
   unsubscribeNetworkRoom = null;
+  unsubscribeNetworkRoomChat = null;
   activeNetworkRoom = null;
   networkPresentedRound = 0;
   networkRematchPending = false;
+  pendingNetworkRoomChat.length = 0;
+  if (networkRoomChat) {
+    networkRoomChat.setActive(false);
+    networkRoomChat.clear();
+  }
   garage.setRoomStatus(null);
   if (playMenuPromise) playMenuPromise.then((menu) => menu.detachActiveRoom());
   networkRoomMenuAttached = false;
   bus.emit('network:roomState', null);
 }
+
+bus.on('phase:change', syncRoomChatVisibility);
 
 function networkInputFrame() {
   const player = game.player;

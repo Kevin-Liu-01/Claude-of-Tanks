@@ -6,11 +6,12 @@
  * authoritative host validates all client-authored fields here.
  */
 
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 export const MATCH_TICK_HZ = 60;
 export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
 export const MAX_SPECTATORS = 8;
+export const MAX_ROOM_CHAT_LENGTH = 240;
 
 // Edge-triggered player actions travel in the same validated input stream as
 // driving and gunnery. The authority latches these bits until a simulation
@@ -30,6 +31,8 @@ export const MESSAGE_TYPES = Object.freeze({
   LOBBY_STATE: 'lobby_state',
   ROOM_COMMAND: 'room_command',
   ROOM_STATE: 'room_state',
+  ROOM_CHAT_COMMAND: 'room_chat_command',
+  ROOM_CHAT: 'room_chat',
   INPUT: 'input',
   SNAPSHOT: 'snapshot',
   EVENT: 'event',
@@ -106,6 +109,28 @@ export function createRoomCode(rng = cryptoUnit) {
     out += ROOM_CODE_ALPHABET[(unit * ROOM_CODE_ALPHABET.length) | 0];
   }
   return out;
+}
+
+/**
+ * Validate player-authored room chat before it reaches presentation or room
+ * authority. Chat stays plain text: controls, bidi overrides, and invisible
+ * joiners are removed so a message cannot visually impersonate UI chrome.
+ */
+export function normalizeRoomChatText(value) {
+  if (typeof value !== 'string') {
+    throw new ProtocolError('invalid_chat', 'chat text must be a string');
+  }
+  const text = value
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .replace(/[\u200b-\u200d\u202a-\u202e\u2066-\u2069\ufeff]/g, '')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  if (!text) throw new ProtocolError('empty_chat', 'chat message is empty');
+  if ([...text].length > MAX_ROOM_CHAT_LENGTH) {
+    throw new ProtocolError('chat_too_long',
+      `chat messages may contain at most ${MAX_ROOM_CHAT_LENGTH} characters`);
+  }
+  return text;
 }
 
 /** Create one wire envelope. */

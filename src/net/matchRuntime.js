@@ -8,6 +8,7 @@ import {
   isSequenceNewer,
   nextSequence,
   normalizePlayerInput,
+  normalizeRoomChatText,
   validateEnvelope,
 } from './protocol.js';
 import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.js';
@@ -45,6 +46,10 @@ function defaultClock() {
 
 const MAX_PENDING_EVENT_BATCHES = 256;
 const MAX_EVENTS_PER_BATCH = 512;
+const MAX_ROOM_CHAT_HISTORY = 48;
+const ROOM_CHAT_COOLDOWN_MS = 650;
+const ROOM_CHAT_BURST_WINDOW_MS = 10_000;
+const ROOM_CHAT_BURST_LIMIT = 8;
 const SEQUENCE_RANGE = 0x80000000;
 
 function sequenceDistance(latest, previous) {
@@ -72,6 +77,7 @@ export class AuthoritativeMatchRuntime {
     maxCatchUpTicks = 4,
     maxInputLeadTicks = 120,
     roomController = null,
+    chatClock = defaultClock,
     keyframeIntervalTicks = tickHz * 2,
     snapshotHistoryCapacity = Math.max(64,
       Math.ceil(keyframeIntervalTicks * snapshotHz / tickHz) * 2),
@@ -92,6 +98,9 @@ export class AuthoritativeMatchRuntime {
       throw new TypeError('roomController must implement state() and command()');
     }
     this.roomController = roomController;
+    if (typeof chatClock !== 'function') throw new TypeError('chatClock must be a function');
+    this.chatClock = chatClock;
+    this.chatSequence = 0;
     this.tickHz = tickHz;
     this.snapshotHz = snapshotHz;
     this.tickMs = 1000 / tickHz;
@@ -150,6 +159,9 @@ export class AuthoritativeMatchRuntime {
       actionBitsHeld: 0,
       lastSnapshotAckTick: null,
       lastKeyframeTick: -Infinity,
+      chatLastAtMs: -Infinity,
+      chatWindowStartMs: -Infinity,
+      chatWindowCount: 0,
       snapshotHistory: new Map(),
       unsubscribeMessage: null,
       unsubscribeClose: null,
@@ -267,6 +279,9 @@ export class AuthoritativeMatchRuntime {
           }
           this.#receiveRoomCommand(peer, message.payload);
           break;
+        case MESSAGE_TYPES.ROOM_CHAT_COMMAND:
+          this.#receiveRoomChat(peer, message.payload);
+          break;
         case MESSAGE_TYPES.INPUT:
           if (!peer.welcomed) {
             throw new ProtocolError('hello_required', 'hello must precede match input');
@@ -329,6 +344,46 @@ export class AuthoritativeMatchRuntime {
       }
     }
     this.#broadcastRoomState(next);
+  }
+
+  #receiveRoomChat(peer, payload) {
+    if (!this.roomController) {
+      throw new ProtocolError('room_unavailable', 'chat is only available in a room');
+    }
+    const text = normalizeRoomChatText(payload?.text);
+    const nowMs = Number(this.chatClock());
+    if (!Number.isFinite(nowMs)) {
+      throw new ProtocolError('invalid_clock', 'room chat clock is unavailable');
+    }
+    if (nowMs - peer.chatLastAtMs < ROOM_CHAT_COOLDOWN_MS) {
+      throw new ProtocolError('chat_rate_limited', 'wait a moment before sending again');
+    }
+    if (nowMs - peer.chatWindowStartMs >= ROOM_CHAT_BURST_WINDOW_MS) {
+      peer.chatWindowStartMs = nowMs;
+      peer.chatWindowCount = 0;
+    }
+    if (peer.chatWindowCount >= ROOM_CHAT_BURST_LIMIT) {
+      throw new ProtocolError('chat_rate_limited', 'too many messages; pause before sending again');
+    }
+    const room = this.roomController.state();
+    const sender = room?.players?.find((player) => String(player.id) === peer.id);
+    if (!sender) throw new ProtocolError('unknown_player', 'chat sender is not in this room');
+    peer.chatLastAtMs = nowMs;
+    peer.chatWindowCount++;
+    const message = {
+      id: `${Number(room.round) || 0}:${this.chatSequence}`,
+      sequence: this.chatSequence,
+      round: Number(room.round) || 0,
+      senderId: peer.id,
+      senderName: String(sender.name || 'Player').slice(0, 32),
+      team: sender.team === 'alpha' || sender.team === 'bravo' ? sender.team : 'spectator',
+      text,
+      serverTimeMs: Math.max(0, Math.round(this.timeMs)),
+    };
+    this.chatSequence = nextSequence(this.chatSequence);
+    for (const entry of this.peers.values()) {
+      if (entry.welcomed) this.#send(entry, MESSAGE_TYPES.ROOM_CHAT, message);
+    }
   }
 
   #resetPeerForRound(peer) {
@@ -624,6 +679,8 @@ export class MatchClientRuntime {
     this.pendingEventBatches = [];
     this.connectionListeners = new Set();
     this.roomListeners = new Set();
+    this.roomChatListeners = new Set();
+    this.roomChatHistory = [];
     this.roomState = null;
     this.roomRound = 0;
     this.handshakeSent = false;
@@ -797,6 +854,36 @@ export class MatchClientRuntime {
             for (const listener of [...this.roomListeners]) listener(this.roomState);
           }
           break;
+        case MESSAGE_TYPES.ROOM_CHAT: {
+          const payload = message.payload;
+          const text = normalizeRoomChatText(payload?.text);
+          const senderId = String(payload?.senderId || '');
+          const senderName = String(payload?.senderName || '').trim().slice(0, 32);
+          const sequence = Number(payload?.sequence);
+          const round = Number(payload?.round);
+          const serverTimeMs = Number(payload?.serverTimeMs);
+          if (!/^[a-zA-Z0-9_-]{1,48}$/.test(senderId) || !senderName ||
+              !Number.isSafeInteger(sequence) || sequence < 0 ||
+              !Number.isSafeInteger(round) || round < 0 ||
+              !Number.isFinite(serverTimeMs) || serverTimeMs < 0) {
+            throw new ProtocolError('invalid_room_chat', 'room chat payload is malformed');
+          }
+          const chat = {
+            id: String(payload.id || `${round}:${sequence}`).slice(0, 64),
+            sequence,
+            round,
+            senderId,
+            senderName,
+            team: payload.team === 'alpha' || payload.team === 'bravo'
+              ? payload.team : 'spectator',
+            text,
+            serverTimeMs,
+          };
+          this.roomChatHistory.push(chat);
+          if (this.roomChatHistory.length > MAX_ROOM_CHAT_HISTORY) this.roomChatHistory.shift();
+          for (const listener of [...this.roomChatListeners]) listener(chat);
+          break;
+        }
         case MESSAGE_TYPES.LOBBY_STATE:
           // Before the first match, browser-hosted rooms use the lightweight
           // lobby runtime on this same reliable channel. Accept its state so
@@ -865,6 +952,18 @@ export class MatchClientRuntime {
   submitRoomCommand(command) {
     if (this.closed || !command || typeof command !== 'object') return false;
     return this.#send(this.connected ? MESSAGE_TYPES.ROOM_COMMAND : MESSAGE_TYPES.LOBBY_COMMAND, command);
+  }
+
+  sendRoomChat(text) {
+    if (this.closed || !this.connected) return false;
+    try {
+      return this.#send(MESSAGE_TYPES.ROOM_CHAT_COMMAND, {
+        text: normalizeRoomChatText(text),
+      });
+    } catch (error) {
+      this.errors.push(safeErrorPayload(error));
+      return false;
+    }
   }
 
   /** Send the match HELLO after the lobby host has entered handoff mode. */
@@ -951,6 +1050,15 @@ export class MatchClientRuntime {
     return () => this.roomListeners.delete(listener);
   }
 
+  onRoomChat(listener) {
+    this.roomChatListeners.add(listener);
+    return () => this.roomChatListeners.delete(listener);
+  }
+
+  getRoomChatHistory() {
+    return this.roomChatHistory.slice();
+  }
+
   getStats() {
     const snapshotTotal = this.snapshotPacketsReceived + this.estimatedMissingSnapshots;
     return {
@@ -988,6 +1096,8 @@ export class MatchClientRuntime {
     if (this.unsubscribeClose) this.unsubscribeClose();
     this.pendingEventBatches.length = 0;
     this.roomListeners.clear();
+    this.roomChatListeners.clear();
+    this.roomChatHistory.length = 0;
     if (typeof this.transport.close === 'function') this.transport.close(reason);
   }
 }
