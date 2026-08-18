@@ -61,10 +61,15 @@ road wheels, and scroll from measured hull travel rather than a cosmetic timer.
 
 ## World and renderer
 
-Eight authored battlefields are generated from code: Verdant Fields, Sirocco
-Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, and
-Cinder Junction. Each owns a height field, material palette, roads, foliage,
-buildings, collision, concealment, destructibles, lighting, sky, and minimap.
+Sixteen authored battlefields are generated from code. The original eight are
+Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford,
+Tarkhan Steppe, and Cinder Junction; Frontier Basin, Nordhavn Fjord, Jade River
+Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, and
+Ironworks form the second set. Each owns a height field, material palette,
+roads, foliage, structures, collision, concealment, destructibles, lighting,
+sky, and minimap. Shared structure, wreck, loose-prop, utility-network,
+terrain-attachment, and destruction systems keep the expanded vocabulary
+consistent, while map-specific composition preserves distinct tactical spaces.
 The browser and dedicated server share generated collision manifests so an
 obstacle is not passable on one authority and solid on another.
 

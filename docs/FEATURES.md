@@ -16,7 +16,7 @@ stack, authoring tools, test rigs, and public presentation.
 | --- | --- |
 | Playable fleet | 80 selectable first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
-| Battlefields | 8 generated and destructible maps |
+| Battlefields | 16 generated and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
 | Modes | Solo bots, private room codes, LAN rooms, and ranked service flow |
@@ -143,7 +143,7 @@ Relevant implementation:
 - src/game/ai.js
 - server/authoritativeBots.selftest.mjs
 
-## Eight generated battlefields
+## Sixteen generated battlefields
 
 The game includes:
 
@@ -155,11 +155,26 @@ The game includes:
 6. Amberford
 7. Tarkhan Steppe
 8. Cinder Junction
+9. Frontier Basin
+10. Nordhavn Fjord
+11. Jade River Delta
+12. Redrock Divide
+13. Monsoon Ridge
+14. Glacier Pass
+15. Obsidian Caldera
+16. Ironworks
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,
 destructibles, sky, lighting, fog, and minimap. Browser-hosted and dedicated
 matches use matching collision descriptions.
+
+All sixteen maps use the same modern world-quality vocabulary: 24 procedural
+structure families, independently destructible huts and camps, persistent
+debris, vehicle wreck families and detached remnants, topple interactions,
+connected utility networks, loose physical props, terrain attachment, and
+narrow collision shapes. The original eight received a deliberate backport
+rather than remaining a lower-detail compatibility tier.
 
 Destruction is durable state. A destroyed prop changes collision and is
 represented by a revision plus destroyed identifiers so a packet loss,
@@ -306,4 +321,6 @@ The repository includes executable checks for the claims above:
 | Cold-load behavior | npm run perf:cold |
 | Development performance trace | npm run perf:dev |
 
-The detailed verification map is in docs/DEVELOPMENT.md.
+The detailed verification map is in docs/DEVELOPMENT.md. The dated
+conversation-to-practice synthesis, with fresh renderer captures and commit
+evidence, is in docs/DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md.

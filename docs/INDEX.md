@@ -90,6 +90,7 @@ reproducibility. They must not be treated as the current product guide:
 | QA-ARCHIVE.md | Archived performance and quality evidence index |
 | POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md | Running-gear incident record |
 | FLEET-OVERHAUL-WORKLOG-2026-08-13-18.md | Conversation-scale fleet, tooling, runtime, and verification worklog |
+| DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md | Commit-backed synthesis of the Claude/Codex conversation record, engineering-practice evolution, and fresh 2026-08-18 visual evidence |
 | handoff/ | Previous task and program handoffs |
 | perf-*.json, cert-*.json, feel-*.json | Point-in-time measurements |
 | marketing-shots-report.md | Generated public image report |

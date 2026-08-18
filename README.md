@@ -6,7 +6,7 @@
 
 <p align="center">
   A World of Tanks-style armored combat game in <strong>pure Three.js</strong> — plate-level armor simulation,
-  80 original first-party vehicles, eight destructible battlefields, killcam X-ray, a built-in cinematic studio,
+  80 original first-party vehicles, sixteen destructible battlefields, killcam X-ray, a built-in cinematic studio,
   and full mobile support. Built end-to-end through a long-running multi-agent Claude/Codex pipeline.
 </p>
 
@@ -58,8 +58,9 @@ protocol. Three.js presents the result; it does not decide it.
 - **Real visibility:** view range, concealment, movement/firing bloom, foliage, radio sharing, and the 15 m bush rule.
 - **Terrain-shaped mobility:** fixed-step drivetrain, slopes and ground resistance, suspension-damped hull attitude,
   per-wheel support, flexible terrain-following tracks, collision, ramming, and crushable cover.
-- **Eight generated battlefields:** Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford,
-  Tarkhan Steppe, and Cinder Junction.
+- **Sixteen generated battlefields:** eight original arenas plus Frontier Basin, Nordhavn Fjord, Jade River Delta,
+  Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, and Ironworks. Every map shares the modern structure,
+  wreck, loose-prop, utility-network, placement, and destruction systems.
 - **Combat feedback:** dual reticle, penetration information, directional hits, shot cards, module damage, spectating,
   and an X-ray killcam built from the resolved shot.
 - **Desktop and mobile:** remappable mouse/keyboard controls plus joystick, swipe aim, pinch-to-scope, dynamic fire,
@@ -132,7 +133,20 @@ reference models.
 </tr>
 </table>
 
-The landing page presents all 30 new frames with nation filters and full-screen inspection.
+The landing page presents all 30 modern showcase frames with nation filters and full-screen inspection.
+
+## Fresh development checkpoint
+
+These production-renderer frames were captured from the current game on 2026-08-18 at 1920×1080. The complete
+[conversation, commit, and quality-practice history](docs/DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md) connects the visible
+result to the commits, postmortems, tests, and working rules that produced it.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/development-evolution-2026-08-18/garage.webp" alt="Fresh 2026-08-18 garage capture with sixteen-map picker and scrollable nation selector"><br><sub><b>Garage:</b> current vehicle, map, camouflage, dossier, and nation-selection surfaces.</sub></td>
+<td width="50%"><img src="docs/images/development-evolution-2026-08-18/combat_firing.webp" alt="Fresh 2026-08-18 production renderer capture of an M1A2 firing in battle"><br><sub><b>Battle:</b> first-party vehicle geometry, live firing FX, terrain, utility lines, foliage, and current shadows.</sub></td>
+</tr>
+</table>
 
 ## Systems in view
 
@@ -183,7 +197,7 @@ controls ──► deterministic authority ──► state + reliable events ─
 
 ```text
 src/engine/    renderer, camera, lighting, post, quality and GPU recovery
-src/world/     eight generated maps, terrain, vegetation, props and destructibles
+src/world/     sixteen generated maps, terrain, vegetation, props and destructibles
 src/vehicles/  specs, first-party procedural geometry, materials and asset proofs
 src/sim/       renderer-free movement, aiming, ballistics, armor, damage and spotting
 src/game/      application state, AI, input, killcam and Scene Studio
@@ -205,7 +219,9 @@ Start with [Technical overview](docs/TECHNICAL-OVERVIEW.md),
 [Performance architecture](docs/PERFORMANCE.md), and
 [Scene Studio](docs/STUDIO.md). The public [Tank Gallery](https://cot.kevinliu.studio/gallery)
 and its [implementation contract](docs/GALLERY.md) expose the live procedural
-fleet with armor, module, crew, and exact-surface markup diagnostics. Historical fleet-program ledgers and the original implementation contract remain
+fleet with armor, module, crew, and exact-surface markup diagnostics. The dated
+[development evolution](docs/DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md) traces how conversation feedback, incidents,
+commits, visual evidence, and live tests became the current engineering practice. Historical fleet-program ledgers and the original implementation contract remain
 under docs/ as an auditable build record; they are not the current product guide.
 
 ## Develop and verify
