@@ -15,7 +15,6 @@ import { dirname, resolve } from 'node:path';
 
 const session = process.argv[2] || 'cot-render-stability';
 const outPath = resolve(process.argv[3] || '.qa-dev/render-stability-audit.json');
-const presets = ['ultra', 'high', 'medium', 'low', 'mobile'];
 
 function evaluate(script) {
   const raw = execFileSync('agent-browser', [
@@ -32,16 +31,37 @@ function evaluate(script) {
 if (!evaluate('window.__GAME_READY === true && !!window.__DEBUG?.lighting')) {
   throw new Error('game/render debug facade is not ready in the audit browser');
 }
+const deviceTier = evaluate('window.__DEBUG.telemetry().quality.tier');
+const presets = deviceTier === 'mobile'
+  ? ['mobile-low', 'mobile', 'mobile-high']
+  : ['ultra', 'high', 'medium', 'low'];
 
 const results = [];
 const failures = [];
 for (const preset of presets) {
   const result = evaluate(`(async () => {
     const D = window.__DEBUG;
-    D.quality.setPresetName(${JSON.stringify(preset)});
+    if (${JSON.stringify(deviceTier)} === 'mobile') {
+      D.quality.setMobilePresetName(${JSON.stringify(preset)});
+    } else {
+      D.quality.setPresetName(${JSON.stringify(preset)});
+    }
     window.__SHOTS.set('battlefield');
     D.post.pinDynScale(1);
     await new Promise((resolve) => setTimeout(resolve, 700));
+
+    // Regression for the live-only shadow flash: the old adaptive trim path
+    // switched both near cascades to half/third-rate manual updates. Static
+    // screenshots remained perfect, while camera motion presented large
+    // lighting steps. Force the maximum trim rung and prove cadence stays
+    // continuous before running the ordinary texel/frozen-frame contracts.
+    D.post.forcePerfTrim(99);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const trimTelemetry = D.telemetry();
+    const trimmedNearAutoUpdate = trimTelemetry.shadows.cascades
+      .slice(0, 2).map((cascade) => cascade.autoUpdate);
+    D.post.forcePerfTrim(0);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     const camera = D.camera;
     const csm = D.lighting.csm;
@@ -172,6 +192,8 @@ for (const preset of presets) {
       transitions,
       temporalChangedSamples,
       temporalMaxRgbDelta,
+      trimShadowThrottle: trimTelemetry.shadows.throttle,
+      trimmedNearAutoUpdate,
       lods,
       zeroHysteresisLevels,
       invalidInstancedBounds,
@@ -198,6 +220,12 @@ for (const preset of presets) {
   if (result.temporalChangedSamples !== 0) {
     reasons.push(`${result.temporalChangedSamples} unstable frozen-frame samples`);
   }
+  if (result.trimShadowThrottle !== 0) {
+    reasons.push(`adaptive trim enabled shadow throttle ${result.trimShadowThrottle}`);
+  }
+  if (result.trimmedNearAutoUpdate.some((enabled) => !enabled)) {
+    reasons.push('adaptive trim disabled continuous near-cascade refresh');
+  }
   if (result.glError !== 0) reasons.push(`WebGL error ${result.glError}`);
   if (result.shaderErrors !== 0) reasons.push(`${result.shaderErrors} shader errors`);
   if (result.zeroHysteresisLevels !== 0) reasons.push(`${result.zeroHysteresisLevels} zero-hysteresis LOD levels`);
@@ -222,6 +250,7 @@ mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
   version: 1,
   capturedAt: new Date().toISOString(),
+  deviceTier,
   failures,
   results,
 }, null, 2));

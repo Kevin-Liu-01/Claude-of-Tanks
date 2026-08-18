@@ -31,7 +31,8 @@ import {
 } from './engine/deviceDiag.js';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
-  reportSustainedOverload, setPresetName, noteGpuRenderer, getDeviceTier,
+  reportSustainedOverload, setPresetName, setMobilePresetName,
+  noteGpuRenderer, getDeviceTier,
 } from './engine/quality.js';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
@@ -1600,12 +1601,6 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
-// perf-governor r1: the post governor's session trim ladder reaches the
-// shadow lever through this hook — rung 1 halves the cascade refresh rate,
-// rung 3 drops it to a third; rung 2 (AO off) is post-internal.
-post.setPerfTrimHandler((lvl) => {
-  lighting.setShadowThrottle(lvl >= 3 ? 2 : lvl >= 1 ? 1 : 0);
-});
 
 // ---------------------------------------------------------------------------
 // End-of-battle overlay (integration-owned DOM)
@@ -5751,7 +5746,10 @@ window.__DEBUG = {
   garage,
   // perf-r2e ADAPTIVE AUTO TIER introspection (probes assert the resolved
   // tier, drive the overload escalation, and reset the stored choice)
-  quality: { resolvePresetName, resolveAutoTier, reportSustainedOverload, setPresetName, noteGpuRenderer },
+  quality: {
+    resolvePresetName, resolveAutoTier, reportSustainedOverload,
+    setPresetName, setMobilePresetName, noteGpuRenderer,
+  },
   get pedestalVisual() { return pedestalVisual; },
   // switch-desync r1: the id the garage UI (stats card / card highlight)
   // believes is selected — probes assert pedestalVisual.specId === this.

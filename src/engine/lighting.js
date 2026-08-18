@@ -28,8 +28,9 @@ const CASCADES = 4;
 // PERF: far cascades re-render every OTHER frame (round-robin, one per frame)
 // — they hold ~2/3 of all shadow draw calls, and one frame of staleness at
 // 250-520 m is a fraction of a texel of camera motion. Near cascades (player
-// tank, closeups) still update every frame. `update(true)` forces both far
-// cascades (shot mode / map switch / FOV change) for deterministic captures.
+// tank, closeups) ALWAYS update every frame, including during adaptive
+// performance relief. `update(true)` forces both far cascades (shot mode /
+// map switch / FOV change) for deterministic captures.
 const FAR_CASCADE_START = 2;
 const _stableCameraToLight = new THREE.Matrix4();
 const _stableLightOrientation = new THREE.Matrix4();
@@ -797,14 +798,6 @@ export function createLighting(scene, camera, sunDir) {
     forceFarCascades();
   });
   let rrIndex = 0; // round-robin cursor over the far cascades
-  // perf-governor r1 (discoverthreejs "only update shadow maps when needed"):
-  // measured-overload shadow relief. Level 0 = stock (near cascades every
-  // frame, far round-robin one per frame). Level 1 = near cascades every 2nd
-  // frame (staggered), far advance every 2nd. Level 2 = every 3rd. Engaged
-  // only by the post.js perf governor on sustained frame-budget misses and
-  // walked back when headroom returns; capture paths call update(force) which
-  // redraws every cascade regardless, so screenshot contracts never see it.
-  let shadowThrottle = 0;
   let shFrame = 0;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
@@ -888,10 +881,7 @@ export function createLighting(scene, camera, sunDir) {
       if (force || forceFrames > 0) {
         if (forceFrames > 0) forceFrames--;
         for (let i = 0; i < csm.lights.length; i++) {
-          // under a throttle the near cascades are manual too — force ALL
-          if (i >= FAR_CASCADE_START || shadowThrottle > 0) {
-            csm.lights[i].shadow.needsUpdate = true;
-          }
+          csm.lights[i].shadow.needsUpdate = true;
         }
         if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
@@ -911,44 +901,19 @@ export function createLighting(scene, camera, sunDir) {
           }
         }
       } else {
-        const rate = shadowThrottle === 0 ? 1 : shadowThrottle === 1 ? 2 : 3;
-        // near cascades: every `rate`-th frame, staggered so they never both
-        // re-render on the same frame while throttled
-        if (shadowThrottle > 0) {
-          for (let i = 0; i < FAR_CASCADE_START; i++) {
-            if (shFrame % rate === i % rate) csm.lights[i].shadow.needsUpdate = true;
-          }
+        // The live governor must never change shadow cadence. Alternating the
+        // near maps at 1/2 or 1/3 rate made a stable 60-120 Hz frame stream
+        // present 20-40 Hz shadow steps — the reported full-screen flashing.
+        // Near maps stay on autoUpdate; only the already-subpixel far pair is
+        // amortized, one map per frame, exactly as in the untrimmed path.
+        for (let i = 0; i < csm.lights.length; i++) {
+          csm.lights[i].shadow.autoUpdate = i < FAR_CASCADE_START;
         }
-        // far cascades: round-robin, advanced every `rate`-th frame
         const span = csm.lights.length - FAR_CASCADE_START;
-        if (span > 0 && shFrame % rate === 0) {
+        if (span > 0) {
           rrIndex = (rrIndex + 1) % span;
           csm.lights[FAR_CASCADE_START + rrIndex].shadow.needsUpdate = true;
         }
-      }
-    },
-
-    /**
-     * perf-governor r1: shadow-refresh relief lever (0 stock / 1 half-rate /
-     * 2 third-rate). Toggles the near cascades between autoUpdate and the
-     * manual staggered schedule in update(); forces a full redraw on every
-     * change so no stale map is ever presented.
-     * @param {0|1|2} level
-     * @returns {void}
-     */
-    /** perf-governor r1: current shadow-refresh relief rung (probes). */
-    get shadowThrottle() { return shadowThrottle; },
-
-    setShadowThrottle(level) {
-      const lv = level === 2 ? 2 : level === 1 ? 1 : 0;
-      if (lv === shadowThrottle) return;
-      shadowThrottle = lv;
-      for (let i = 0; i < FAR_CASCADE_START; i++) {
-        csm.lights[i].shadow.autoUpdate = lv === 0;
-      }
-      forceFarCascades();
-      for (let i = 0; i < csm.lights.length; i++) {
-        csm.lights[i].shadow.needsUpdate = true;
       }
     },
 
@@ -1020,7 +985,9 @@ export function createLighting(scene, camera, sunDir) {
     getShadowTelemetry() {
       return {
         maxFar: csm.maxFar,
-        throttle: shadowThrottle,
+        // Retained for telemetry schema compatibility. Shadow refresh is no
+        // longer a performance lever because changing its cadence is visible.
+        throttle: 0,
         frame: shFrame,
         forceFrames,
         cascades: csm.lights.map((light) => {

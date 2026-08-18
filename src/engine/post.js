@@ -1852,13 +1852,15 @@ export function createPost(renderer, scene, camera) {
   // tier" there is now a SESSION TRIM LADDER driven purely by measured frame
   // times — relief the moment a device actually struggles, restored the
   // moment it recovers, never persisted:
-  //   trim 1  shadow cascades re-render at half rate (lighting.js lever)
-  //   trim 2  GTAO off (the most expensive single pass)
-  //   trim 3  shadow cascades at third rate
+  //   trim 1  GTAO off (the most expensive single pass)
+  // Shadow cadence is deliberately NOT a relief lever: half/third-rate near
+  // maps present as 20-40 Hz lighting flashes inside an otherwise smooth
+  // frame stream. If resolution + AO relief is insufficient, the existing
+  // adaptive tier step is both steadier and more honest.
   // Down-steps need TRIM_STRIKES consecutive overloaded windows (~3 s) so a
   // killcam beat can't trim; up-steps need clean windows and back off
   // exponentially when they flap (the R3F `flipflops` guard).
-  const TRIM_MAX = 3;
+  const TRIM_MAX = 1;
   const TRIM_STRIKES = 2;
   // perf-governor r2 (owner: "adjust based on framerate — if declining, kick
   // in"): the absolute budget + spike-miss gates are blind to two real cases:
@@ -1887,10 +1889,9 @@ export function createPost(renderer, scene, camera) {
   let trimUpBackoffS = TRIM_UP_BACKOFF_S;
   let trimLastUpAt = -Infinity;
   let trimLastDownAt = -Infinity;
-  let onPerfTrim = null; // main.js hook (shadow throttle lives in lighting.js)
   let quality = 'high'; // mirrors setQuality — AO recomputes from one place
   function applyAoEnabled() {
-    gtao.enabled = quality !== 'low' && preset.aoScale > 0 && perfTrim < 2;
+    gtao.enabled = quality !== 'low' && preset.aoScale > 0 && perfTrim < 1;
   }
   function setPerfTrim(next) {
     const lv = Math.max(0, Math.min(TRIM_MAX, next));
@@ -1898,9 +1899,6 @@ export function createPost(renderer, scene, camera) {
     perfTrim = lv;
     applyAoEnabled();
     renderer.domElement.dataset.perfTrim = String(perfTrim);
-    if (onPerfTrim) {
-      try { onPerfTrim(perfTrim); } catch (_) { /* relief must never throw */ }
-    }
   }
   function applySize(w, h) {
     cssW = w;
@@ -2066,7 +2064,6 @@ export function createPost(renderer, scene, camera) {
     trimStrikes = 0;
     trimUpBackoffS = TRIM_UP_BACKOFF_S;
     renderer.domElement.dataset.perfTrim = '0';
-    if (onPerfTrim) { try { onPerfTrim(0); } catch (_) { /* never throw */ } }
     applyAoEnabled();
     dynPin = null; // preset change releases any QA capture pin
     dynScale = baseDynScale(); // new preset = new budget baseline; governor re-earns supersampling
@@ -2243,18 +2240,6 @@ export function createPost(renderer, scene, camera) {
 
     /** perf-governor r1: current session trim rung (0 = untrimmed). */
     get perfTrim() { return perfTrim; },
-
-    /**
-     * perf-governor r1: receive trim-level changes (main.js forwards them to
-     * levers post.js cannot reach — the lighting shadow throttle).
-     * @param {?function(number): void} fn
-     */
-    setPerfTrimHandler(fn) {
-      onPerfTrim = typeof fn === 'function' ? fn : null;
-      if (onPerfTrim) {
-        try { onPerfTrim(perfTrim); } catch (_) { /* sync current state */ }
-      }
-    },
 
     /** perf-governor r1: capture/shot contexts must render untrimmed. */
     resetPerfTrims() {
