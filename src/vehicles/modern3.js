@@ -3954,7 +3954,20 @@ export function buildBradley(P) {
 // rides the same donor hull but is HARD-GATED (59cb105c) and does NOT take
 // this dressing — its own bow window stays a fenced future round.
 export function bradleyFlankDressing(P) {
-  const { box, slab } = KIT;
+  const { box, slab, cylY, polyMultiLoft } = KIT;
+  // All three Bradley playables share the donor's compact bearing beneath
+  // much broader turret furniture. A faceted, turret-owned belly pan and
+  // collar close the low side sight-line while preserving traverse and the
+  // existing hull roof, glacis, skirts, suspension and smart-track course.
+  const turretSeatPlan = [
+    [-0.68, 0.82], [0.68, 0.82], [0.90, 0.45], [0.92, -0.78],
+    [0.70, -1.08], [-0.70, -1.08], [-0.92, -0.78], [-0.90, 0.45],
+  ];
+  P.add('turret', polyMultiLoft(turretSeatPlan, [
+    { height: -0.07, inset: 0.90 },
+    { height: 0.07, inset: 1.00 },
+  ]));
+  P.add('turret', cylY(0.82, 0.87, 0.16, P.q ? 22 : 14), 0, 0.005, -0.10);
   for (const s of [-1, 1]) {
     const m = (x) => s * x;
     // §B2 DONOR BOW-CORNER CLOSURE (type89 §5.341 grammar): the bow

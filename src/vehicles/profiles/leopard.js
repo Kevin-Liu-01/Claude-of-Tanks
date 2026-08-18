@@ -950,10 +950,29 @@ function leoHullV3(P, H) {
 // 2.05 across the wedge), wall taper, measured rack, roof clusters capped
 // by the published-height p95 budget (<= 4 raised trace columns).
 // All coordinates turret-local.
+const LEO_A6_UNDERBODY_PLAN = [
+  [-0.46, 1.58], [0.46, 1.58], [1.22, 0.92], [1.39, 0.42],
+  [1.33, -1.48], [1.05, -2.40], [-1.05, -2.40], [-1.33, -1.48],
+  [-1.39, 0.42], [-1.22, 0.92],
+];
+
 function wedgeTurretV3(P, T) {
   const { box, frustum, polyMultiLoft, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const h = T.h;
+  if (T.underbodyRings) {
+    // The arrow wedges project well beyond their compact bearing collar.
+    // A shallow, full-plan armored pan closes those side/low sight-lines
+    // while remaining turret-owned, so it follows traverse instead of
+    // becoming a hull-mounted shelf. This is opt-in: sibling turret hashes
+    // remain unchanged unless their own deck interface requests it.
+    P.add('turret', polyMultiLoft(T.underbodyPlan ?? LEO_A6_UNDERBODY_PLAN, T.underbodyRings));
+  }
+  if (T.seatRing) {
+    const R = T.seatRing;
+    P.add('turret', cylY(R.r0, R.r1, R.h, P.q ? (R.hiSeg ?? 26) : (R.loSeg ?? 16)),
+      R.x ?? 0, R.y, R.z);
+  }
   if (T.shellPlan) {
     // Per-profile continuous welded shell.  This opt-in replaces only the
     // helper's primary body/cheek plates; rack, mantlet furniture, stations
@@ -1894,6 +1913,11 @@ export function buildLeo2A6(P) {
   const crestLt = [[0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73], [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10], [1.41, 0.55, -0.16], [1.44, 0.30, -0.20]];
   wedgeTurretV3(P, {
     h: 0.75, apexY: 0.09, gunW: 0.36, slotZ: 1.55, crestTail: 0.05, wallDrop: 0.10,
+    underbodyRings: [
+      { height: -0.12, inset: 0.90 },
+      { height: 0.055, inset: 1.00 },
+    ],
+    seatRing: { r0: 1.08, r1: 1.12, h: 0.16, y: -0.045, z: -0.30 },
     // r9 contiguity: clamp the spaced-armor shadow wall's outboard reach —
     // its 0.97*crest fin (x to 1.397 L) stood proud of the 1.38 wall face
     // and read as a black pocket from garage quarters (see the opt-in note
@@ -10491,6 +10515,11 @@ export function buildLeo2A6M(P) {
   wedgeTurretV3(P, {
     h: 0.82, apexY: 0.09, gunW: 0.36, slotZ: 1.55,
     crestTail: 0.05, wallDrop: 0.10,
+    underbodyRings: [
+      { height: -0.15, inset: 0.90 },
+      { height: 0.055, inset: 1.00 },
+    ],
+    seatRing: { r0: 1.08, r1: 1.12, h: 0.18, y: -0.06, z: -0.30 },
     chamferY: 0.42, roofX: 1.02, wallShadowXCap: 1.335,
     // §5.345 front re-loft (owner: "the turret front is jsut incomplete and
     // misshapen"): the default 1.95-wide underride bridge painted a flat
@@ -11170,6 +11199,14 @@ export function buildLeo2A4M(P) {
     [-0.92, 1.20], [0.92, 1.20], [1.24, 0.78], [1.20, -0.82], [1.13, -1.80],
     [1.04, -2.30], [-1.04, -2.30], [-1.13, -1.80], [-1.20, -0.82], [-1.24, 0.78],
   ];
+  // Full-plan lower armor pan: the restored A4M side package exposes the
+  // original narrow bearing from low quarters. This pan follows the welded
+  // shell footprint and overlaps the deck, closing the see-through slot
+  // without turning the hull skirts or cage into turret geometry.
+  P.add('turret', polyMultiLoft(A4_PLAN, [
+    { height: -0.08, inset: 0.90 },
+    { height: 0.04, inset: 1.00 },
+  ]));
   P.add('turret', polyMultiLoft(A4_PLAN, [
     { height: 0.015, inset: 1.00 },
     { height: 0.40, inset: 0.995 },
@@ -11200,7 +11237,7 @@ export function buildLeo2A4M(P) {
   for (const s of [-1, 1]) P.add('turretDark', box(0.026, 0.35, 0.20), s * 0.448, 0.285, 1.065);
   // turret ring plinth: closes the deck<->turret slit from every side
   // sight-line (§B2) and yaws with the mass.
-  P.add('turret', cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35);
+  P.add('turret', cylY(1.08, 1.12, 0.16, P.q ? 26 : 16), 0, -0.045, -0.35);
   // EMES-15 gunner sight hood at the RIGHT FRONT CORNER (the A4 tell).
   P.add('turret', box(0.72, 0.50, 0.62), 0.64, 0.59, 0.75);                    // giant armored body, buried into roof
   P.add('turret', box(0.82, 0.10, 0.70), 0.64, 0.88, 0.72);                    // overhanging cap course
