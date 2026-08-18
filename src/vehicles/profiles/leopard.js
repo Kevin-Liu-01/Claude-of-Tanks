@@ -10066,40 +10066,42 @@ export function buildLeo2A6M(P) {
     // spikes: the whole-mask bbox needs them, the p95 law ignores them)
     whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
   });
-  // §5.345 FRONT RE-LOFT (owner order ×2: "the turret front is jsut
-  // incomplete and misshapen"). The print's Object_6 is a WELDED turret —
-  // its front volume exists; ours was an open pocket between the wedge
-  // appliqué and the roof V (deck-read pit from top, void shadow from the
-  // front quarter, the EMES crate floating in the saddle). Close it with
-  // the real A5-family construction (§K: close volumes with real geometry):
-  // two plan-angled cheek WALLS meeting the mantlet slot, a forward roof
-  // plate per side under the wedge overhang, and the EMES standing seated
-  // on that roof. All faces stay inside certified silhouette lines: front
-  // pixels were body-wall-carried, side tops stay under the 0.70 apex tier,
-  // plan stays inside the traced nose (mask-neutral by construction).
+  // The 2A6M arrowhead is a deep spaced-applique module, not a thin roof
+  // eyebrow over a vertical turret wall.  The traced upper wedge above owns
+  // the sharp plan-view nose.  These closed lower carriers follow that same
+  // arrow line back into the welded core, producing the characteristic tall
+  // trapezoidal cheek face and a raked underside in front/quarter/profile.
+  // Their aft rings overlap the slot wall and body shoulder, so the armor is
+  // visibly supported while the helper's dark shadow wall remains exposed
+  // as the real hollow cavity behind the applique.
   for (const s of [-1, 1]) {
-    // cheek wall: vertical solid, plan-raked from the slot cheek to the
-    // side-module shoulder (the visible "angled turret front" under the
-    // wedge — §B1 slope-motivates-the-mass, one raked face each side).
+    // One faceted carrier per cheek.  The inner nose is deliberately farther
+    // forward and taller than the outer shoulder: that is what makes the
+    // assembly read as an arrow wedge instead of a rectangular add-on.
     P.add('turret', slab(
-      [s * 0.46, 0.02, 1.50], [s * 1.28, 0.02, 0.60], [s * 1.28, 0.02, 0.42], [s * 0.46, 0.02, 1.32],
-      [s * 0.46, 0.60, 1.50], [s * 1.28, 0.60, 0.60], [s * 1.28, 0.60, 0.42], [s * 0.46, 0.60, 1.32]));
-    // forward roof plates close the pocket top: inner sheet beside the EMES
-    // corridor, outer sheet to the wall shoulder (tops 0.66 = the body roof
-    // plane; side view stays tier-carried at 0.70).
+      [s * 0.35, 0.04, 1.64], [s * 1.42, 0.03, 0.50], [s * 1.30, 0.07, 0.31], [s * 0.39, 0.08, 1.25],
+      [s * 0.32, 0.69, 2.40], [s * 1.40, 0.38, 0.92], [s * 1.27, 0.49, 0.42], [s * 0.41, 0.64, 1.36]));
+    // Two shallow roof returns close the broad triangular opening behind
+    // the cheek.  They overlap both the carrier's aft ring and the welded
+    // roof shoulder, leaving only the narrow, backed cavity seam visible.
     P.add('turret', slab(
-      [s * 0.44, 0.60, 1.50], [s * 0.96, 0.60, 0.951], [s * 0.96, 0.60, 0.50], [s * 0.44, 0.60, 0.50],
-      [s * 0.44, 0.66, 1.50], [s * 0.96, 0.66, 0.951], [s * 0.96, 0.66, 0.50], [s * 0.44, 0.66, 0.50]));
+      [s * 0.40, 0.57, 1.46], [s * 0.96, 0.57, 0.69], [s * 0.96, 0.57, 0.48], [s * 0.40, 0.57, 0.48],
+      [s * 0.40, 0.65, 1.46], [s * 0.96, 0.65, 0.69], [s * 0.96, 0.65, 0.48], [s * 0.40, 0.65, 0.48]));
     P.add('turret', slab(
-      [s * 0.96, 0.60, 0.951], [s * 1.26, 0.60, 0.622], [s * 1.26, 0.60, 0.42], [s * 0.96, 0.60, 0.42],
-      [s * 0.96, 0.66, 0.951], [s * 1.26, 0.66, 0.622], [s * 1.26, 0.66, 0.42], [s * 0.96, 0.66, 0.42]));
-    // §5.284-class face articulation on the new walls: dark top seam +
-    // three half-buried strap studs riding the raked face (yaw = the wall's
-    // own plan normal), so the plane reads as armor, not a void.
-    P.add('turretDark', box(0.016, 0.05, 0.98), s * 0.875, 0.575, 1.045, 0, s * 0.832, 0);
+      [s * 0.96, 0.57, 0.69], [s * 1.27, 0.46, 0.45], [s * 1.27, 0.46, 0.36], [s * 0.96, 0.57, 0.48],
+      [s * 0.96, 0.65, 0.69], [s * 1.27, 0.53, 0.45], [s * 1.27, 0.53, 0.36], [s * 0.96, 0.65, 0.48]));
+    // A recessed aft liner and two short spacers make the cavity readable
+    // without painting a decorative black stripe across the armor face.
+    P.add('turretDark', slab(
+      [s * 0.43, 0.15, 1.69], [s * 1.27, 0.13, 0.62], [s * 1.20, 0.20, 0.49], [s * 0.43, 0.22, 1.17],
+      [s * 0.41, 0.43, 1.66], [s * 1.24, 0.28, 0.66], [s * 1.17, 0.36, 0.53], [s * 0.41, 0.40, 1.20]));
+    P.add('turret', box(0.075, 0.30, 0.34), s * 0.75, 0.34, 1.30, 0, s * 0.58, s * 0.08);
+    P.add('turret', box(0.075, 0.24, 0.30), s * 1.12, 0.29, 0.75, 0, s * 0.45, s * 0.10);
+    // Half-buried fasteners follow the new cheek plane and break up its
+    // broad face while remaining inside the armor envelope.
     for (const t of [0.22, 0.50, 0.78]) {
       P.add('turretDetail', box(0.06, 0.06, 0.035),
-        s * (0.46 + 0.82 * t + 0.010), 0.30, 1.50 - 0.90 * t + 0.011, 0, s * 0.832, 0);
+        s * (0.38 + 0.94 * t), 0.29 + 0.04 * t, 2.18 - 1.17 * t, 0, s * 0.61, s * 0.14);
     }
   }
   // EMES plinth: merges the raised hood base into the forward roof plates
