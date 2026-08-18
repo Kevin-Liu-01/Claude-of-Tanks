@@ -10072,6 +10072,13 @@ export function buildLeo2A6M(P) {
     // spikes: the whole-mask bbox needs them, the p95 law ignores them)
     whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
   });
+  // The helper's dark basket stopped 35-40 mm above the A6M deck and made
+  // the complete rotating package read as a floating shell from the user's
+  // front-quarter angle.  This closed bearing collar is buried into both
+  // the deck and the basket, so the turret has a real continuous load path
+  // without moving the certified gun axis or any hull/track geometry.
+  P.add('turret', cylY(1.08, 1.12, 0.10, P.q ? 28 : 18), 0, -0.085, -0.10);
+  P.add('turretDark', torus(1.075, 0.012, P.q ? 28 : 18, 6), 0, -0.030, -0.10);
   // 2A6M/CAN additions sit ON the canonical 2A6 cheek.  These are shallow,
   // closed Barracuda/applique skins and attachment hardware, not a second
   // turret front.  Every panel remains inside the 2A6 crest and tip envelope.
@@ -10092,6 +10099,24 @@ export function buildLeo2A6M(P) {
     for (const t of [0.18, 0.50, 0.82]) {
       P.add('turretDetail', box(0.048, 0.048, 0.030),
         s * (0.39 + 0.82 * t), 0.40 - 0.08 * t, 2.36 - 0.93 * t, 0, s * 0.65, s * 0.08);
+    }
+    // Closed crown return: the applique used to end at z~1.7 while the
+    // welded roof began at z~0.55, exposing an open black triangle between
+    // them.  The lower face overlaps the applique by 20 mm and the rear
+    // edge overlaps the V-roof by 50 mm.  It remains split around the real
+    // gun channel instead of laying a decorative sheet over the mantlet.
+    P.add('turret', slab(
+      [s * 0.39, 0.405, 2.20], [s * 0.93, 0.382, 1.69], [s * 0.99, 0.605, 0.50], [s * 0.28, 0.595, 0.50],
+      [s * 0.39, 0.448, 2.18], [s * 0.93, 0.425, 1.67], [s * 0.99, 0.665, 0.49], [s * 0.28, 0.655, 0.49]));
+
+    // Shallow side cassettes sit six millimetres proud of the structural
+    // side band and overlap it through their full height.  The former dark
+    // joint bars were parked 20 mm outboard by themselves and could read as
+    // floating trim; these closed modules give every joint a backed face.
+    for (const z of [-1.43, -0.81, -0.19, 0.43, 1.05]) {
+      P.add('turret', box(0.026, 0.14, 0.54), s * 1.413, 0.21, z);
+      P.add('turretDetail', cylX(0.014, 0.020, 8), s * 1.427, 0.21, z - 0.20);
+      P.add('turretDetail', cylX(0.014, 0.020, 8), s * 1.427, 0.21, z + 0.20);
     }
   }
   // EMES plinth: merges the raised hood base into the forward roof plates
@@ -10192,22 +10217,24 @@ export function buildLeo2A6M(P) {
   P.add('turretDetail', box(0.36, 0.022, 0.05), 0.66, 0.685, 0.64);
   P.add('turretDark', cylZ(0.028, 0.05, 8), 0.34, 0.34, 1.645);
   P.add('turretDark', cylZ(0.016, 0.012, 8), 0.34, 0.34, 1.675);              // §B3.1-class dark port mouth
-  // Barracuda strap studs half-buried along each wedge cheek plate (the
-  // ref's ISAF cheeks carry strap hardware — breaks the big bare facets).
+  // Barracuda fasteners follow the actual shallow applique surface.  The
+  // previous cubes at y=.56-.70 included the exact marked lug at
+  // (.55,.695,2.28): roughly 0.27 m above and partly ahead of the armor.
+  // Low-profile round heads below are inset into the cheek plane, so they
+  // read as attachment hardware rather than a constellation of floaters.
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.05, 0.05, 0.05), s * 0.70, 0.70, 2.355);
-    P.add('turretDetail', box(0.05, 0.05, 0.05), s * 1.05, 0.62, 1.86);
-    P.add('turretDetail', box(0.05, 0.05, 0.05), s * 1.28, 0.56, 1.38);
-    P.add('turretDetail', box(0.05, 0.06, 0.10), s * 0.55, 0.695, 2.28);      // apex-tier lug pair
+    for (const [x, y, z, rx] of [
+      [0.47, 0.354, 2.30, 0.08],
+      [0.62, 0.352, 2.17, 0.08],
+      [0.79, 0.360, 2.02, 0.10],
+      [1.00, 0.361, 1.67, 0.12],
+      [1.18, 0.345, 1.43, 0.12],
+    ]) {
+      P.add('turretDetail', cylY(0.018, 0.020, 0.022, 8), s * x, y, z, rx, 0, s * 0.08);
+    }
     // chamfer hardware studs (soften the long chamfer facet)
     for (const cz of [-1.30, -0.70, -0.10, 0.48]) {
-      P.add('turretDetail', box(0.05, 0.05, 0.05), s * 1.17, 0.54, cz);
-    }
-    // side-module panel joints: the mod band reads as segmented armor
-    // modules instead of one tall faceted ribbon (§5.04-legal: dark
-    // engravings ON the certified mod face, zero column growth).
-    for (const jz of [-1.28, -0.62, 0.05, 0.72, 1.30]) {
-      P.add('turretDark', box(0.016, 0.20, 0.028), s * 1.44, 0.21, jz);
+      P.add('turretDetail', cylX(0.018, 0.022, 8), s * 1.423, 0.30, cz);
     }
   }
   // ---- L55 with the trunnion-roll mantlet; bore mouth measured to land
