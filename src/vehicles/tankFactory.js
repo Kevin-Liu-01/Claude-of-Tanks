@@ -345,6 +345,23 @@ function lodWrap(parent, obj, dist = LOD1_DIST) {
 const PROC_SHADOW_MAT = new THREE.MeshBasicMaterial({
   name: 'ProceduralShadowProxy', colorWrite: false, depthWrite: false,
 });
+// The convex caster follows the authored outer silhouette, so an unmodified
+// hull can sit on (or bridge a concavity above) the visible armor receiving
+// its shadow. That turns normal shadow acne into broad moving bands whenever
+// the tank or camera crosses shadow texels. Keep the caster inside the render
+// shell and give its shadow-depth pass a small slope bias. This preserves the
+// three-draw proxy budget and its world silhouette without letting a hidden
+// performance mesh shadow its own tank skin.
+const PROC_SHADOW_DEPTH_MAT = new THREE.MeshDepthMaterial({
+  name: 'ProceduralShadowProxyDepth',
+  depthPacking: THREE.RGBADepthPacking,
+  polygonOffset: true,
+  polygonOffsetFactor: 1.25,
+  polygonOffsetUnits: 2,
+});
+const PROC_SHADOW_BODY_INSET_M = 0.05;
+const PROC_SHADOW_GUN_INSET_M = 0.012;
+const PROC_SHADOW_MIN_AXIS_SCALE = 0.8;
 const SHADOW_SUPPORT_DIRECTIONS = (() => {
   const directions = [
     new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
@@ -368,7 +385,7 @@ const SHADOW_SUPPORT_DIRECTIONS = (() => {
   return Object.freeze(directions);
 })();
 
-function authoredShadowHull(owner, sourceMeshes) {
+function authoredShadowHull(owner, sourceMeshes, insetM) {
   const sources = sourceMeshes.filter((mesh) => mesh?.isMesh &&
     !mesh.isInstancedMesh && mesh.geometry?.getAttribute('position'));
   if (!sources.length) return null;
@@ -434,10 +451,24 @@ function authoredShadowHull(owner, sourceMeshes) {
   if (unique.size < 4) return null;
   const geometry = new ConvexGeometry([...unique.values()]);
   geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const axisScale = (axisSize) => Math.max(PROC_SHADOW_MIN_AXIS_SCALE,
+    axisSize > 1e-4 ? 1 - (2 * insetM) / axisSize : 1);
+  const scaleX = axisScale(size.x);
+  const scaleY = axisScale(size.y);
+  const scaleZ = axisScale(size.z);
+  geometry.translate(-center.x, -center.y, -center.z);
+  geometry.scale(scaleX, scaleY, scaleZ);
+  geometry.translate(center.x, center.y, center.z);
+  geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   geometry.userData.authoredShadowHull = true;
   geometry.userData.shadowSourceTriangles = sourceTriangles;
   geometry.userData.shadowSupportPoints = unique.size;
+  geometry.userData.shadowInsetM = insetM;
+  geometry.userData.shadowAxisScale = [scaleX, scaleY, scaleZ];
   return geometry;
 }
 
@@ -448,15 +479,15 @@ function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, dis
 
   const find = (owner, names) => names.map((name) => owner.getObjectByName(name)).filter(Boolean);
   const hullGeo = authoredShadowHull(hullG, find(hullG,
-    ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber']));
-  const turretGeo = authoredShadowHull(turretG, find(turretG, ['turret']));
+    ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber']), PROC_SHADOW_BODY_INSET_M);
+  const turretGeo = authoredShadowHull(turretG, find(turretG, ['turret']), PROC_SHADOW_BODY_INSET_M);
   // Mantlet + barrel share gun pitch. Merge their authored support points in
   // gunG coordinates; recoil travel is deliberately omitted from the shadow
   // proxy to preserve the three-draw budget during the short firing kick.
   const gunGeo = authoredShadowHull(gunG, [
     ...find(gunG, ['gunMount']),
     ...find(recoilG, ['gun', 'gunDark']),
-  ]);
+  ], PROC_SHADOW_GUN_INSET_M);
 
   const add = (parent, geo, name) => {
     disposables.push(geo);
@@ -464,6 +495,7 @@ function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, dis
     mesh.name = `procShadow_${name}`;
     mesh.castShadow = true;
     mesh.receiveShadow = false;
+    mesh.customDepthMaterial = PROC_SHADOW_DEPTH_MAT;
     mesh.frustumCulled = true;
     mesh.userData.authoredShadowProxy = true;
     mesh.userData.shadowVehicleId = spec.id;

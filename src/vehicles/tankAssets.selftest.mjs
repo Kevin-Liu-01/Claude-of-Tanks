@@ -82,8 +82,16 @@ function verifyAuthoredShadowCasters(id, tank) {
     sourceTriangles += caster.geometry.userData.shadowSourceTriangles;
     assert.equal(caster.castShadow, true, `${id}/${caster.name}: casts`);
     assert.equal(caster.material.colorWrite, false, `${id}/${caster.name}: shadow-only material`);
+    assert.equal(caster.customDepthMaterial?.name, 'ProceduralShadowProxyDepth',
+      `${id}/${caster.name}: isolated biased depth material`);
+    assert.equal(caster.customDepthMaterial.polygonOffset, true,
+      `${id}/${caster.name}: shadow-depth slope bias enabled`);
     assert.equal(caster.geometry.userData.authoredShadowHull, true,
       `${id}/${caster.name}: derived from authored geometry`);
+    assert(caster.geometry.userData.shadowInsetM > 0,
+      `${id}/${caster.name}: caster inset inside visible armor`);
+    assert(caster.geometry.userData.shadowAxisScale.every((scale) => scale <= 1 && scale >= 0.8),
+      `${id}/${caster.name}: bounded inset axis scale`);
     assert(triangles <= 120,
       `${id}/${caster.name}: bounded shadow triangle budget (${triangles})`);
   }
