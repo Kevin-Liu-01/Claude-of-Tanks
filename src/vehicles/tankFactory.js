@@ -323,6 +323,93 @@ function mergeAll(list) {
   return merged;
 }
 
+// Mobile battle bots inherit a number of profile-authored fittings that are
+// intentionally separate meshes on hero vehicles (garage inspection and
+// close killcams can frame them at arm's length). Those tiny boxes/rings are
+// static direct children of an articulation rig, often sharing one material,
+// and issuing them separately is substantially more expensive than their
+// geometry on phone CPUs. Batch only anonymous, metadata-free leaf meshes:
+// named combat/gear parts, animated running gear, ERA, decals, LOD children,
+// procedural shadow proxies, and every player/desktop mesh remain untouched.
+function batchMobileStaticChildren(parents, disposables) {
+  for (const parent of parents) {
+    const groups = new Map();
+    for (const mesh of parent.children) {
+      if (!mesh.isMesh || mesh.isInstancedMesh || mesh.name || mesh.children.length
+          || !mesh.visible || Array.isArray(mesh.material)
+          || Object.keys(mesh.userData || {}).length
+          || Object.keys(mesh.morphTargetDictionary || {}).length
+          || Object.keys(mesh.geometry?.morphAttributes || {}).length) continue;
+      const geo = mesh.geometry;
+      if (!geo || geo.drawRange.start !== 0
+          || (Number.isFinite(geo.drawRange.count) && geo.drawRange.count !== Infinity)) continue;
+      const attrs = Object.entries(geo.attributes)
+        .map(([name, attr]) => `${name}:${attr.itemSize}:${attr.normalized ? 1 : 0}`)
+        .sort().join(',');
+      const key = [mesh.material?.uuid || '', attrs, mesh.castShadow ? 1 : 0,
+        mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
+        mesh.frustumCulled ? 1 : 0].join('|');
+      const group = groups.get(key) || [];
+      group.push(mesh);
+      groups.set(key, group);
+    }
+    let batchIndex = 0;
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      const geometries = group.map((mesh) => {
+        mesh.updateMatrix();
+        return mesh.geometry.clone().applyMatrix4(mesh.matrix);
+      });
+      const merged = mergeAll(geometries);
+      if (!merged) continue;
+      disposables.push(merged);
+      const source = group[0];
+      const batch = new THREE.Mesh(merged, source.material);
+      batch.name = `mobileStaticBatch_${batchIndex++}`;
+      batch.userData.mobileStaticBatch = true;
+      batch.castShadow = source.castShadow;
+      batch.receiveShadow = source.receiveShadow;
+      batch.renderOrder = source.renderOrder;
+      batch.layers.mask = source.layers.mask;
+      batch.frustumCulled = source.frustumCulled;
+      for (const mesh of group) parent.remove(mesh);
+      parent.add(batch);
+    }
+  }
+}
+
+function collectMobileDetailObjects(root, rigParents) {
+  const records = [];
+  const managedGroups = new Set();
+  root.traverse((object) => {
+    if (!object.isGroup) return;
+    const name = object.name || '';
+    if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
+        || name.startsWith('muzzleBoreShadowFallback')) managedGroups.add(object);
+  });
+  const underManagedGroup = (object) => {
+    for (let parent = object.parent; parent; parent = parent.parent) {
+      if (managedGroups.has(parent)) return true;
+      if (parent === root) break;
+    }
+    return false;
+  };
+  for (const group of managedGroups) records.push({ object: group, baseVisible: group.visible });
+  const fineGear = /^(gearRoadWheel.*(?:Inset|Ring|Rim|Bowl|Hub|Dish|Recess)|gearReturnRollers|gearEndWheelHardware)$/;
+  root.traverse((object) => {
+    if (!object.isMesh || underManagedGroup(object)) return;
+    const name = object.name || '';
+    const anonymousStatic = !name && rigParents.includes(object.parent)
+      && Object.keys(object.userData || {}).length === 0
+      && !String(object.material?.name || '').includes('armor-paint');
+    if (anonymousStatic || object.userData.mobileStaticBatch
+        || name.startsWith('vehicleMarking_') || fineGear.test(name)) {
+      records.push({ object, baseVisible: object.visible });
+    }
+  });
+  return records;
+}
+
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
@@ -4807,6 +4894,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     camoSeed = 4000,
     camoPattern = null,
     quality = 'high',
+    geometryQuality = quality === 'low' ? 'low' : 'high',
     proceduralOnly = false,
     geometryReceipt = false,
   } = opts;
@@ -4821,6 +4909,8 @@ export function createTank(specId, engineCtx, opts = {}) {
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
   root.name = `tank_${specId}`;
+  root.userData.textureQuality = quality;
+  root.userData.geometryQuality = geometryQuality;
   const hullG = new THREE.Group();
   hullG.name = 'rig_hull';
   const turretG = new THREE.Group();
@@ -4842,9 +4932,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   const disposables = [];
 
   const P = {
-    // PERF r3: 'ai' is a TEXTURE tier only — geometry detail stays hero
-    // (killcam closeups frame AI vehicles at arm's length)
-    spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
+    // PERF r3: `quality` remains the texture tier. Mobile battle bots can
+    // independently select the existing authored low-detail geometry path,
+    // leaving the player's close camera subject and all garage/kilcam heroes
+    // at full fidelity without creating another material-cache variant.
+    spec, mats, rng, q: geometryQuality !== 'low', hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     // Casemate profiles opt into a genuinely fixed combat rig.  Their
     // printed cannon already belongs to the hull buckets; the flag also
@@ -4980,7 +5072,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     mesh.castShadow = mesh.receiveShadow = true;
     const parent = ({ hullG, turretG, recoilG, gunG })[parentKey];
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
-    else lodWrap(parent, mesh);
+    else lodWrap(parent, mesh, geometryQuality === 'low' ? 64 : LOD1_DIST);
   }
 
   // ---- ERA bricks (t90m) ----
@@ -5407,6 +5499,8 @@ export function createTank(specId, engineCtx, opts = {}) {
   // patch in docs/handoff/effects_combat-r1.md.
   const SUSP_VIS_P = 2.6, SUSP_VIS_R = 2.1, SWAY_VIS = 3.2;
   let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
+  let mobileDetailObjects = [];
+  let mobileDetailsVisible = true;
   const emberPhase = rng() * Math.PI * 2;
   // r6 SHADER BURN MASK (replaces the r4/r5 per-mesh charQueue swap — critic:
   // "half coal-black, half pristine camo split on a mesh seam ... a material
@@ -5523,6 +5617,19 @@ export function createTank(specId, engineCtx, opts = {}) {
      *   play the recuperator cycle twice as fast.
      */
     syncFromState(state, dt = SIM_STEP, viewDistM) {
+      if (mobileDetailObjects.length) {
+        // Hysteresis prevents tiny cosmetics from toggling when a vehicle
+        // hovers around the handoff. Callers without a battle-camera distance
+        // are inspection contexts (garage/studio/killcam) and keep all detail.
+        const shouldShow = viewDistM === undefined
+          || (mobileDetailsVisible ? viewDistM < 66 : viewDistM < 52);
+        if (shouldShow !== mobileDetailsVisible) {
+          mobileDetailsVisible = shouldShow;
+          for (const record of mobileDetailObjects) {
+            record.object.visible = record.baseVisible && shouldShow;
+          }
+        }
+      }
       root.position.copy(state.pos);
       // r5 fx-clock advancement for the SELF-TIMED timelines (recoil, pop,
       // wreck char/embers): see the lastFxS note above. adv == dt live;
@@ -6055,6 +6162,18 @@ export function createTank(specId, engineCtx, opts = {}) {
   // authored addition; camouflage armor, skirts, guards and wheel dishes are
   // deliberately outside this normalization.
   normalizeTankAppearance(root);
+
+  if (geometryQuality === 'low') {
+    const mobileBatchParents = [hullG, turretG, gunG, recoilG];
+    root.traverse((object) => {
+      if (!object.isGroup) return;
+      const name = object.name || '';
+      if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
+          || name.startsWith('muzzleBoreShadowFallback')) mobileBatchParents.push(object);
+    });
+    batchMobileStaticChildren(mobileBatchParents, disposables);
+    mobileDetailObjects = collectMobileDetailObjects(root, [hullG, turretG, gunG, recoilG]);
+  }
 
   return visual;
 }

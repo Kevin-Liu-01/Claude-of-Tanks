@@ -3,6 +3,8 @@
 //        [--dsf 1|2] [--out file] [--preset low|medium|high|ultra] [--dump file]
 //        [--note tag] [--no-trend] [--roster random|id1,id2,...]
 //        [--map verdant|desert|winter|urban] [--scene battle|garage] [--breakdown]
+//        [--tier desktop|mobile] [--mobile-preset mobile-low|mobile|mobile-high]
+//        [--fps-target 60|120]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
@@ -121,6 +123,18 @@ const noTrend = args.includes('--no-trend'); // skip the perf-trend.jsonl append
 // per-frame {t, ms} series for temporal tail bucketing; --note tags the
 // trend row so experiment rows never read as regressions.
 const forcePreset = opt('preset', '');
+const deviceTier = opt('tier', 'desktop');
+if (!['desktop', 'mobile'].includes(deviceTier)) {
+  console.error(`[perf] unknown --tier ${deviceTier} (want desktop|mobile)`);
+  process.exit(2);
+}
+const mobilePreset = opt('mobile-preset', 'mobile');
+const MOBILE_PRESETS = ['mobile-low', 'mobile', 'mobile-high'];
+if (!MOBILE_PRESETS.includes(mobilePreset)) {
+  console.error(`[perf] unknown --mobile-preset ${mobilePreset} (want ${MOBILE_PRESETS.join('|')})`);
+  process.exit(2);
+}
+const fpsTarget = Math.max(30, parseFloat(opt('fps-target', '60')) || 60);
 const dumpFile = opt('dump', '');
 const trendNote = opt('note', '');
 // PERF r3 (draw-call worst-frame gate): certification measures a PINNED
@@ -170,9 +184,9 @@ const wantBreakdown = args.includes('--breakdown');
 //   RATCHET TARGET 6 M once cascade shadow-proxy LODs land (see
 //   docs/handoff/performance_budget-r2.md §4).
 const BUDGET = {
-  fpsMedianMin: 60,
-  fpsP5Min: 45,
-  frameMsP99Max: 25,
+  fpsMedianMin: fpsTarget,
+  fpsP5Min: fpsTarget * 0.75,
+  frameMsP99Max: 1500 / fpsTarget,
   drawCallsWorstFrameMax: 900,
   // FROZEN 2026-07-28 (perf-owner): the triangle and texture gates were each
   // raised once to "observed +10%" after content rounds — a budget that moves
@@ -312,7 +326,7 @@ const port = 5900 + Math.floor(Math.random() * 90);
 // the puppeteer execution context.
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false, hmr: false } });
 await server.listen();
-const url = `http://localhost:${server.config.server.port}/`;
+const url = `http://localhost:${server.config.server.port}/?tier=${deviceTier}`;
 console.error(`[perf] vite up at ${url}`);
 
 const browser = await puppeteer.launch({
@@ -354,11 +368,12 @@ await page.evaluateOnNewDocument(() => {
     if (window.__GAME_READY === true) { window.__READY_AT = performance.now(); clearInterval(iv); }
   }, 25);
 });
-if (forcePreset) {
-  await page.evaluateOnNewDocument((p) => {
-    try { window.localStorage.setItem('cot.gfxPreset', p); } catch (_) { /* ok */ }
-  }, forcePreset);
-}
+await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
+  try {
+    if (desktopPreset) window.localStorage.setItem('cot.gfxPreset', desktopPreset);
+    if (tier === 'mobile') window.localStorage.setItem('cot.gfxMobilePreset', phonePreset);
+  } catch (_) { /* storage can be blocked in hardened browser contexts */ }
+}, deviceTier, forcePreset, mobilePreset);
 
 let failed = false;
 let report = null;
@@ -600,7 +615,10 @@ try {
       const terrain = named('terrain') || kids[0];
       const veg = named('veget') || kids[1];
       const props = named('prop') || kids[2];
-      const tankRoots = (D.game.tanks || []).map((e) => e.visual && e.visual.root).filter(Boolean);
+      // The live roster may be swapped after staging and parked pool entries
+      // are still scene children. Attribute every procedural tank root that
+      // can render, rather than only the current game.tanks array.
+      const tankRoots = D.scene.children.filter((o) => (o.name || '').startsWith('tank_'));
       const state = [];
       const save = (o) => { if (o) state.push([o, o.visible]); };
       const nextFrame = () => new Promise((r) => requestAnimationFrame(r));
@@ -633,18 +651,21 @@ try {
       out.push(await sample('noBattleWorld'));
       world.group.visible = true;
 
-      // staged battle tanks off (7 AI + player, all 1500 m away in garage)
-      const tankPrev = tankRoots.map((r) => r.visible);
-      tankRoots.forEach((r) => { r.visible = false; });
-      out.push(await sample('noStagedTanks'));
-      tankRoots.forEach((r, i) => { r.visible = tankPrev[i]; });
+      // all battle/parked procedural tanks off
+      // Detach instead of toggling visibility: the live spotting/presentation
+      // update legitimately calls visual.setVisible() every frame and would
+      // otherwise undo the probe between samples.
+      const tankParents = tankRoots.map((r) => r.parent);
+      tankRoots.forEach((r) => r.removeFromParent());
+      out.push(await sample('noTanks'));
+      tankRoots.forEach((r, i) => tankParents[i]?.add(r));
 
       // world AND tanks off = what the garage screen alone costs
       world.group.visible = false;
-      tankRoots.forEach((r) => { r.visible = false; });
+      tankRoots.forEach((r) => r.removeFromParent());
       out.push(await sample('garageOnly'));
       world.group.visible = true;
-      tankRoots.forEach((r, i) => { r.visible = tankPrev[i]; });
+      tankRoots.forEach((r, i) => tankParents[i]?.add(r));
 
       // sub-attribution inside the world group
       for (const [label, obj] of [['noVegetation', veg], ['noProps', props], ['noTerrain', terrain]]) {
@@ -668,6 +689,18 @@ try {
   }
 
   const perf = await page.evaluate(() => window.__PERF);
+  const adaptive = await page.evaluate(() => {
+    const canvas = window.__DEBUG.renderer.domElement;
+    const quality = window.__DEBUG.telemetry().quality;
+    return {
+      ...quality,
+      renderScale: Number(canvas.dataset.renderScale || 0),
+      frameEmaMs: Number(canvas.dataset.frameEmaMs || 0),
+      frameBudgetMs: Number(canvas.dataset.dynBudgetMs || 0),
+      measuredFps: Number(canvas.dataset.fps || 0),
+      fpsBaseline: Number(canvas.dataset.fpsBaseline || 0),
+    };
+  });
   if (dumpFile) {
     writeFileSync(resolve(dumpFile), JSON.stringify({ times: perf.times, deltas: perf.deltas, calls: perf.calls, tris: perf.tris }));
     console.error(`[perf] raw frame series dumped to ${dumpFile}`);
@@ -695,6 +728,9 @@ try {
   report = {
     date: new Date().toISOString(),
     ...(forcePreset ? { forcedPreset: forcePreset } : {}),
+    deviceTier,
+    ...(deviceTier === 'mobile' ? { mobilePreset } : {}),
+    fpsTarget,
     scene: sceneMode,
     map: mapId,
     roster: forceRoster ? `pinned:${forceRoster.join(',')}` : 'random-seeded',
@@ -717,6 +753,7 @@ try {
       median: q(perf.tris.slice().sort((a, b) => a - b), 0.5),
       max: Math.max(...perf.tris),
     },
+    adaptive,
     rendererInfo: perf.info || null,
     heap: {
       startMB: +(heap[0] / 1048576).toFixed(1),
@@ -841,6 +878,8 @@ try {
         heapRetainedMBperS: report.heap.retainedGrowthMBperS,
         budgetPass: report.budget.pass,
         ...(forcePreset ? { preset: forcePreset } : {}),
+        ...(deviceTier !== 'desktop' ? { deviceTier, mobilePreset } : {}),
+        ...(fpsTarget !== 60 ? { fpsTarget } : {}),
         ...(mapId !== 'verdant' ? { map: mapId } : {}),
         // contaminated rows must never read as regressions (see machine stamp)
         ...(contended ? { note: trendNote ? `contended; ${trendNote}` : 'contended', load1: report.machine.load1End, cores: CORES } : (trendNote ? { note: trendNote } : {})),

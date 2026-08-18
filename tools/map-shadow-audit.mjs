@@ -38,6 +38,8 @@ function evaluate(script) {
 if (!evaluate('window.__GAME_READY === true && !!window.__DEBUG?.sampleShadowContribution')) {
   throw new Error('game/shadow debug facade is not ready in the audit browser');
 }
+const deviceTier = evaluate('window.__DEBUG.telemetry().quality.tier');
+const expectedCascadeCount = deviceTier === 'mobile' ? 3 : 4;
 
 const results = [];
 const failures = [];
@@ -61,7 +63,9 @@ for (const mapId of MAP_IDS) {
   const sample = result.sample || {};
   const reasons = [];
   if (!shadow.enabled) reasons.push(`shadows disabled (${shadow.rescue || 'no rescue reason'})`);
-  if (!Array.isArray(shadow.cascades) || shadow.cascades.length !== 4) reasons.push('expected four CSM cascades');
+  if (!Array.isArray(shadow.cascades) || shadow.cascades.length !== expectedCascadeCount) {
+    reasons.push(`expected ${expectedCascadeCount} CSM cascades for ${deviceTier}`);
+  }
   else {
     shadow.cascades.forEach((cascade, index) => {
       if (!cascade.allocated) reasons.push(`cascade ${index} has no shadow target`);

@@ -174,7 +174,12 @@ try {
   if (selected.cores) await cdpTry('Emulation.setHardwareConcurrencyOverride', { hardwareConcurrency: selected.cores });
   if (cpuProfileEnabled) {
     await cdp.send('Profiler.enable');
-    await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+    // A 4x-throttled isolate can generate a multi-minute 0.5 ms profile that
+    // times out while DevTools serializes it. One-millisecond sampling still
+    // resolves the hot renderer stacks while halving probe overhead/output.
+    await cdp.send('Profiler.setSamplingInterval', {
+      interval: selected.cpuRate >= 4 ? 1000 : 500,
+    });
   }
   // A 0.5 ms sampler materially amplifies the real desktop path's cold model
   // and shader compilation. Keep the lossless in-page recorder on for that window,
@@ -349,7 +354,7 @@ try {
     try { partialTrace = await page?.evaluate(() => window.__DEV_TRACE?.snapshot() || null); } catch (_) { /* renderer unavailable */ }
   } else {
     // No second protocol wait: this is the very giant-task failure we report.
-    try { browser?.process()?.kill('SIGTERM'); } catch (_) { /* already gone */ }
+    try { browser?.process()?.kill('SIGKILL'); } catch (_) { /* already gone */ }
     browser = null;
   }
   profilerRunning = false;

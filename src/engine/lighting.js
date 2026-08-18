@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { getPreset, onPresetChange } from './quality.js';
+import { getDeviceTier, getPreset, onPresetChange } from './quality.js';
 import { snapShadowCoordinate } from './shadowStability.js';
 
 const CASCADES = 4;
@@ -730,10 +730,16 @@ ${endHead}`);
  */
 export function createLighting(scene, camera, sunDir) {
   const preset = getPreset();
+  // Phones use three stable splits over their shorter 260-340 m shadow
+  // range. Desktop keeps four out to 700 m. The single mobile far split is
+  // refreshed every other frame, matching the existing cadence of each far
+  // desktop split while removing one full CSM sampler and allocation.
+  const mobileTier = getDeviceTier() === 'mobile';
+  const cascadeCount = mobileTier ? 3 : CASCADES;
   const csm = new CSM({
     camera,
     parent: scene,
-    cascades: CASCADES,
+    cascades: cascadeCount,
     maxFar: preset.shadowMaxFar,
     mode: 'practical',
     shadowMapSize: preset.shadowMapSizes[0],
@@ -914,7 +920,7 @@ export function createLighting(scene, camera, sunDir) {
           csm.lights[i].shadow.autoUpdate = i < FAR_CASCADE_START;
         }
         const span = csm.lights.length - FAR_CASCADE_START;
-        if (span > 0) {
+        if (span > 0 && (!mobileTier || (shFrame & 1) === 0)) {
           rrIndex = (rrIndex + 1) % span;
           csm.lights[FAR_CASCADE_START + rrIndex].shadow.needsUpdate = true;
         }

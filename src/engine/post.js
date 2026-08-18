@@ -1760,11 +1760,11 @@ export function createPost(renderer, scene, camera) {
   // and battle in the owner's screen recording (DOM HUD crisp, 3D mush).
   // The rebuild keeps the stepped/rate-limited/retina-fenced shape and fixes
   // the decision logic:
-  //  - BUDGET-RELATIVE thresholds: the frame budget is
-  //    max(16.9 ms, display cadence p10, capped at 34 ms) — "healthy" is
-  //    judged against what vsync can actually deliver, so the up path is
-  //    reachable on every refresh rate (60 Hz idle: EMA 16.7 < 16.9 x 1.06
-  //    → recovers; 120 Hz judges against the 60 fps target, not 8.3 ms).
+  //  - BUDGET-RELATIVE thresholds: the frame budget is the best stable
+  //    display cadence observed this session, never faster than 8.5 ms and
+  //    capped at 34 ms. A 60 Hz panel therefore targets 16.7 ms while a
+  //    120 Hz panel targets 8.5 ms. Keeping the best cadence prevents a live
+  //    battle slowdown from redefining 12-30 fps as the new healthy target.
   //  - MISS-RATIO evidence: a step needs the EMA level AND the share of
   //    frames blowing budget x 1.35 to agree (down needs > 15% missed, up
   //    needs < 4%), so scheduler jitter alone cannot thrash the scale.
@@ -1806,11 +1806,11 @@ export function createPost(renderer, scene, camera) {
   // evidence can safely begin sooner. Recovery remains backoff-protected.
   const DYN_INTERVAL_S = 1.5;
   const DYN_WARMUP_S = 3; // ignore boot/shader-compile turbulence
-  const DYN_TARGET_MS = 16.9; // 60 fps budget (+~1% vsync slack)
+  const DYN_TARGET_MS = 8.5; // 120 fps budget (+~2% vsync slack)
   const DYN_BUDGET_MAX_MS = 34; // starved cadences never fake a lax budget
-  const DYN_DOWN_LEVEL = 1.12; // EMA > budget x this (plus misses) => down
+  const DYN_DOWN_LEVEL = 1.08; // EMA > budget x this (plus misses) => down
   const DYN_UP_LEVEL = 1.06; // EMA < budget x this (plus clean) => up
-  const DYN_MISS_AT = 1.35; // a frame > budget x this counts as missed
+  const DYN_MISS_AT = 1.12; // a frame > budget x this counts as missed
   const DYN_DOWN_MISS_MIN = 0.15; // missed-frame share required to step down
   const DYN_UP_MISS_MAX = 0.04; // missed-frame share tolerated for an up-step
   const DYN_MIN_WINDOW_FRAMES = 30; // no decision on a thin evidence window
@@ -1839,6 +1839,7 @@ export function createPost(renderer, scene, camera) {
   let dynWinFrames = 0; // evidence window since the last decision
   let dynWinMisses = 0;
   let dynBudgetMs = DYN_TARGET_MS;
+  let dynBestCadenceMs = DYN_BUDGET_MAX_MS;
   let dynLastDecision = 0;
   let dynUpBackoffS = DYN_INTERVAL_S;
   let dynLastUpAt = -Infinity;
@@ -1860,7 +1861,7 @@ export function createPost(renderer, scene, camera) {
   // Down-steps need TRIM_STRIKES consecutive overloaded windows (~3 s) so a
   // killcam beat can't trim; up-steps need clean windows and back off
   // exponentially when they flap (the R3F `flipflops` guard).
-  const TRIM_MAX = 1;
+  const trimMax = () => (preset.aoScale > 0 ? 1 : 0);
   const TRIM_STRIKES = 2;
   // perf-governor r2 (owner: "adjust based on framerate — if declining, kick
   // in"): the absolute budget + spike-miss gates are blind to two real cases:
@@ -1875,7 +1876,7 @@ export function createPost(renderer, scene, camera) {
   // exhausted ladder doesn't re-fire every window forever.
   const FPS_DECLINE_K = 0.80;
   const FPS_BASELINE_MIN = 24;   // no baseline chasing on already-slow boxes
-  const FPS_SMOOTH_CEILING = 72; // above this, a relative sag is not user-felt
+  const FPS_SMOOTH_CEILING = 118; // high-refresh declines should still govern
   let fpsBaseline = 0;
   const TRIM_UP_BACKOFF_S = 15;
   // trim releases tolerate a dirtier window than resolution up-steps (0.04):
@@ -1894,7 +1895,7 @@ export function createPost(renderer, scene, camera) {
     gtao.enabled = quality !== 'low' && preset.aoScale > 0 && perfTrim < 1;
   }
   function setPerfTrim(next) {
-    const lv = Math.max(0, Math.min(TRIM_MAX, next));
+    const lv = Math.max(0, Math.min(trimMax(), next));
     if (lv === perfTrim) return;
     perfTrim = lv;
     applyAoEnabled();
@@ -1957,12 +1958,15 @@ export function createPost(renderer, scene, camera) {
     if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
     // Decision point (every >= 1.5 s of visible frames).
     // Display cadence estimate: p10 of the recent deltas is the shortest
-    // period vsync consistently delivers; the budget is the 60 fps target or
-    // the cadence, whichever is slower (capped — see DYN_BUDGET_MAX_MS).
+    // period vsync consistently delivers. Retain the BEST stable cadence
+    // observed since boot; otherwise a workload regression slowly raises its
+    // own budget and the governor stops helping precisely when it is needed.
     dynRingScratch.set(dynRing.subarray(0, dynRingN));
     const sorted = dynRingScratch.subarray(0, dynRingN).sort();
     const p10 = sorted[Math.floor(dynRingN * 0.10)];
-    dynBudgetMs = Math.min(DYN_BUDGET_MAX_MS, Math.max(DYN_TARGET_MS, p10));
+    dynBestCadenceMs = Math.min(dynBestCadenceMs, p10);
+    dynBudgetMs = Math.min(DYN_BUDGET_MAX_MS,
+      Math.max(DYN_TARGET_MS, dynBestCadenceMs));
     const missRatio = dynWinMisses / dynWinFrames;
     // perf-governor r2: achieved fps this window (counted frames over counted
     // time — >250 ms hitch frames are excluded from both, so a uniform
@@ -1996,7 +2000,7 @@ export function createPost(renderer, scene, camera) {
     renderer.domElement.dataset.fpsBaseline = fpsBaseline.toFixed(1);
     const clean = dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX;
     const leverLeft = dynLeverAvailable && dynScale > dynFloor;
-    if (overloaded && !leverLeft && perfTrim < TRIM_MAX && dynClock > 8) {
+    if (overloaded && !leverLeft && perfTrim < trimMax() && dynClock > 8) {
       // scale floor reached but trims remain: walk the trim ladder
       trimStrikes++;
       if (trimStrikes >= TRIM_STRIKES) {
@@ -2008,7 +2012,7 @@ export function createPost(renderer, scene, camera) {
         trimLastDownAt = dynClock;
         return;
       }
-    } else if (overloaded && !leverLeft && perfTrim >= TRIM_MAX && dynClock > 8) {
+    } else if (overloaded && !leverLeft && perfTrim >= trimMax() && dynClock > 8) {
       // fully trimmed and still overloaded: escalate to the persisted tier
       tierStrikes++;
       if (tierStrikes >= TIER_STRIKES_MAX) {

@@ -271,8 +271,15 @@ export function ensureTankVisual(game, ent) {
   // measured 666-685 MB scene textures vs the FROZEN 512 MB gate, and each
   // 2048² bake costs 250-350 ms of main-thread canvas work.
   const hero = usesHeroTextureTier(game, ent);
+  const mobileBot = !hero && getDeviceTier() === 'mobile';
   ent.visual = createTank(ent.specId, engineCtx, {
-    camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
+    camoSeed: ent._camoSeed,
+    quality: hero ? 'high' : 'ai',
+    // The low-detail branches are already authored per vehicle profile and
+    // preserve armor silhouettes. Use them only for non-player mobile battle
+    // actors; desktop, the player's tank, garage previews, and closeup tools
+    // keep the exact full-detail geometry path.
+    geometryQuality: mobileBot ? 'low' : 'high',
   });
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {

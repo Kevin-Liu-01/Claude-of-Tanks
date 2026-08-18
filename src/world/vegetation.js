@@ -1490,6 +1490,16 @@ export async function createVegetationAsync(heightField, engineCtx, seed = 2001,
 }
 
 function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass) {
+  const mobileTier = getDeviceTier() === 'mobile';
+  // Phone screens cannot resolve the alpha-card density used by desktop in
+  // the midfield; it aliases into crawling grain while spending millions of
+  // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
+  // silhouettes. Both transitions already use continuous density/LOD fades,
+  // so this removes sub-pixel noise without introducing a distance pop.
+  const grassFadeEnd = mobileTier ? 132 : GRASS_FADE_END;
+  const grassTaperEnd = mobileTier ? 112 : 155;
+  const treeNearIn = mobileTier ? 200 : TREE_NEAR_IN;
+  const treeNearOut = mobileTier ? 225 : TREE_NEAR_OUT;
   const veg = {
     species: ['pine', 'oak'],
     clusterMix: [['pine', 0.55], ['oak', 0.45]],
@@ -1507,8 +1517,10 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   const L = heightField._layout;
   const v = L.village;
   const noVeg = heightField._noVeg || (() => false);
-  const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity);
-  const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity);
+  const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
+    * (mobileTier ? 0.62 : 1));
+  const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
+    * (mobileTier ? 0.72 : 1));
 
   const uWindTime = { value: 0 };
   const uCamPos = { value: new THREE.Vector3(0, 0, 0) };
@@ -1631,7 +1643,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     grassVariants.push({
       geo: makeTuftGeometry(w, h),
       geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
-      matMid: makeGrassMaterial(grassTex[gv], GRASS_FADE_END, 'world-grass-wind-v6'),
+      matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v6'),
       matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v6'),
     });
   }
@@ -1846,7 +1858,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     return true;
   }
   const spawn = L.spawns.player;
-  const initialGrassRadius = GRASS_FADE_END + CHUNK_SIZE * 0.71 + 32;
+  const initialGrassRadius = grassFadeEnd + CHUNK_SIZE * 0.71 + 32;
   for (let cz = 0; cz < CHUNKS; cz++) {
     for (let cx = 0; cx < CHUNKS; cx++) {
       const x0 = -HALF + cx * CHUNK_SIZE, z0 = -HALF + cz * CHUNK_SIZE;
@@ -3210,14 +3222,14 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
       const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
       if (t.near) {
-        if (d > TREE_NEAR_OUT && !promo) {
+        if (d > treeNearOut && !promo) {
           t.near = false;
           t.lodT = true;
           t.lodF = 0; // near side starts solid, dissolves out
           addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
           lodTransitions.push({ t, dir: 1 });
         }
-      } else if (d < TREE_NEAR_IN || promo) {
+      } else if (d < treeNearIn || promo) {
         t.near = true;
         t.lodT = true;
         t.lodF = 1; // near side arrives fully dissolved, fades in
@@ -3236,7 +3248,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     }
     for (const t of trees) {
       const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
-      t.near = d < TREE_NEAR_IN || (t.near && d <= TREE_NEAR_OUT) ||
+      t.near = d < treeNearIn || (t.near && d <= treeNearOut) ||
         scopePromoted(t, camPos);
       if (t.near) {
         const slots = nearSlots[t.species][t.variant];
@@ -3365,13 +3377,13 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     // ring while the tank is parked. Once the camera has travelled roughly
     // two hull lengths, stream a full chunk-width ahead of the fade band.
     const movedFromSpawn = Math.hypot(camPos.x - spawn.x, camPos.z - spawn.z);
-    const grassAhead = GRASS_FADE_END + (movedFromSpawn > 28 ? CHUNK_SIZE : 32);
+    const grassAhead = grassFadeEnd + (movedFromSpawn > 28 ? CHUNK_SIZE : 32);
     for (const gc of grassChunks) {
       const d = Math.max(0,
         Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);
       gc.cameraDist = d;
       if (!gc.built) {
-        if (d < GRASS_FADE_END && !urgentGrass) urgentGrass = gc;
+        if (d < grassFadeEnd && !urgentGrass) urgentGrass = gc;
         else if (d < grassAhead && d < aheadDist) {
           aheadGrass = gc;
           aheadDist = d;
@@ -3413,7 +3425,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
       // 40-60 m" seam line (critique). Full midfield density now runs PAST
       // the carpet handover before the far taper begins; the far half of the
       // r3 cut (sub-pixel range) is preserved by the same 205 m endpoint.
-      let frac = d < GRASS_FADE_END ? 1 - 0.94 * smoothstepJs(56, 155, d) : 0;
+      let frac = d < grassFadeEnd ? 1 - 0.94 * smoothstepJs(56, grassTaperEnd, d) : 0;
       // PERF (performance_budget r5): far-band tuft geometry LOD (see
       // makeTuftFarGeometry). `d` is already edge-adjusted by the chunk
       // radius; beyond 48 m the nearest possible card is small enough for the
@@ -3476,7 +3488,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     // hud_ui r6: zoom-scaled impostor→mesh promotion radius (aim corridor)
     const wasR = scopeZoomR;
     scopeZoomR = (sniperFadeTarget >= 0.5 && fovDeg != null && fovDeg <= 15)
-      ? Math.min(720, TREE_NEAR_IN * clamp(30 / fovDeg, 1, 3.4)) : 0;
+      ? Math.min(720, treeNearIn * clamp(30 / fovDeg, 1, 3.4)) : 0;
     if (Math.abs(scopeZoomR - wasR) > 1) scopeRepartitionPending = true;
   }
 
