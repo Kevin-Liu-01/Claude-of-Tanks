@@ -3663,7 +3663,7 @@ function buildType74Native2026(P) {
 // owner-decreed divergence — the §5.304 type59 class).
 function buildAMX30(P, b2) {
   const {
-    box, cylY, cylZ, frustum, torus, xform, polyMultiLoft,
+    box, cylX, cylY, cylZ, frustum, torus, xform, polyMultiLoft,
     buildGun, buildRunningGear, headlight, liftEye, periscope,
     jerryCan, ammoCan, stowage,
   } = KIT;
@@ -4173,6 +4173,24 @@ function buildAMX30(P, b2) {
   // ---- 105 F1 + 20 mm M693 coax + PH-8-B searchlight (one gun plant) ----
   P.gunG.position.set(0, 0.33, 1.30);                                          // world bore axis 1.93 / trunnion z 1.25
   trunnionRoll(P, 0.18, 0.56);
+  // Broad AMX-30 cast gun shield. The AMX-40-base rewrite accidentally
+  // retained only the narrow rotor collar, leaving the F1 tube to emerge
+  // directly from the turret nose between two large optical boxes. The
+  // AMX-30 family instead has a compact horizontal rocking mantlet: a
+  // sealing plate buried in the embrasure, a rounded cast shield spanning
+  // the trunnions, and a proud boot/collar at its center. Keep the complete
+  // assembly in gunMount so it pitches with the cannon without following
+  // recoil. Its rear half overlaps the lofted nose so elevation cannot open
+  // a sky seam between the mask and turret.
+  P.addGunExtra(box(0.86, 0.56, 0.12), 0, 0.02, 0.04);                         // buried sealing plate
+  P.addGunExtra(
+    xform(cylX(0.29, 0.82, P.q ? 24 : 16), 0, 0, 0, 0, 0, 0, [1, 0.92, 1.10]),
+    0, 0.02, 0.22);                                                            // rounded rocking shield
+  P.addGunExtra(box(0.70, 0.055, 0.30), 0, 0.285, 0.15, -0.08, 0, 0);         // cast rain brow
+  P.addGunExtra(box(0.66, 0.070, 0.28), 0, -0.265, 0.17, 0.10, 0, 0);         // supported lower lip
+  for (const [mx, my] of [[-0.36, 0.19], [0.36, 0.19], [-0.36, -0.17], [0.36, -0.17]]) {
+    P.addGunExtraDark(cylZ(0.014, 0.030, 8), mx, my, 0.535);                   // shield fasteners
+  }
   P.addGunExtra(cylZ(0.16, 0.44, 14, 0.20), 0, 0, 0.28);                       // cast rotor collar emerging from the nose
   P.addGunExtra(cylZ(0.135, 0.16, 14, 0.16), 0, 0, 0.52);
   P.addGunExtraDark(torus(0.118, 0.020, 14), 0, 0, 0.62);                      // canvas boot ring
