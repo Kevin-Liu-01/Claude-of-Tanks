@@ -36,6 +36,7 @@ https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 | SCREENSHOT_CONTRACT.md | Game-ready and deterministic staged-frame capture contract |
 | DEV-PERF-TRACE.md | Development performance flight recorder |
 | MOBILE-QA.md | Sustained mobile test procedure and evidence ledger |
+| IMPROVEMENT-PROGRAM-2026-08-17.md | Dated implementation and verification record for the 16-map, multiplayer, UI, destruction, and rendering improvement program |
 | ATTRIBUTION.md | Asset provenance, licenses, and quarantine record |
 
 ## Vehicle-authoring law
