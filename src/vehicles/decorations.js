@@ -1325,13 +1325,9 @@ const TANK_MANIFESTS = {
   ],
   // --- Modern ---
   leo2a4: () => [
-    // Dense field camouflage uses equipment-like fabric geometry only:
-    // three tied rolls and two armor-hugging open-mesh side veils.
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.70 }, slot: ['turretRear', { low: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.45 }, slot: ['turretSide', { side: 1 }] },
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.45 }, slot: ['turretSide', { side: -1 }] },
-    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.80, w: 1.05 }, slot: ['turretVeil', { side: 1 }] },
-    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.80, w: 1.05 }, slot: ['turretVeil', { side: -1 }] },
+    // The family profile owns the complete hull-and-turret ghillie suit.
+    // Keep normal stowage here, but do not layer the old rectangular side
+    // veils or tied rolls over its shaped, cut-out carrier meshes.
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },

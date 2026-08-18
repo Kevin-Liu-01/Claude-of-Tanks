@@ -35613,8 +35613,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.705,
-          0.392
+          1.72,
+          0.3
         ],
         "plates": [
           {
@@ -36228,12 +36228,12 @@
             "name": "turretRing",
             "min": [
               -0.9761,
-              1.5412,
+              1.5562,
               -0.6301
             ],
             "max": [
               0.9761,
-              1.7388,
+              1.7538,
               1.4141
             ],
             "turretLocal": false
@@ -36422,8 +36422,8 @@
           }
         ]
       },
-      "geometryHash": "924dfd62",
-      "metadataHash": "bb207c6d",
+      "geometryHash": "19105802",
+      "metadataHash": "f2a3b882",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -36436,14 +36436,14 @@
           "trackPad": 1,
           "gearShadow": 3,
           "trackSteel": 2,
+          "canvas": 7,
           "armorPaint": 4,
           "gunmetal": 11,
           "fittingPaint": 6,
           "opticGlass": 2,
           "tireRubber": 1,
           "wood": 1,
-          "unclassified": 12,
-          "canvas": 1
+          "unclassified": 12
         }
       },
       "muzzleBore": {
@@ -36507,24 +36507,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70343,
-          "sha256": "af25374e6db6bf95aa0316d57d70493dcccac597a4f4a8eb32bda752b52dbe76"
+          "bytes": 84076,
+          "sha256": "8d762085ca217ef62ec66003ef5e993eda5c2982dc4149758f8b96246cd6d252"
         },
         "armorSide": {
           "file": "leo2a4_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75036,
-          "sha256": "99d95b7a205bb0637d885c5407c913ff1fc6e311792c6aa3ef0a7356c6184d05"
+          "bytes": 86759,
+          "sha256": "fef737ba2fc08c381ec6fd6c33da8890d3bcd3cb3bbc7f8d446c8e2cc3509f71"
         },
         "modulesSide": {
           "file": "leo2a4_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80207,
-          "sha256": "2c72bf5a5ba83c1d85c190ed93d7e640130bbe8ae9dbc1a7123c72df957b5958"
+          "bytes": 90795,
+          "sha256": "20dfc1173e16f09869a7023b81146b0e8f1173b33403e0a07a204dcd4e5953f6"
         },
         "markings": {
           "file": "leo2a4_markings.png",

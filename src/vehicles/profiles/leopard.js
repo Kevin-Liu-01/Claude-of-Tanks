@@ -4366,6 +4366,480 @@ function leoFLW200(P, o) {
 }
 
 // ---------------------------------------------------------------------------
+// Leopard 2A4 full-vehicle ghillie suit.
+//
+// The generic decoration pass used to hang two rectangular veils from the
+// turret sides and tie three rolls to the hard surface.  That read as luggage,
+// not a vehicle-sized camouflage suit.  This authored package follows the A4
+// armor instead: cut-net carriers cover the glacis, deck, skirts, transom,
+// turret cheeks, flanks, crown and bustle, while merged torn-leaf courses give
+// the net a real broken outline.  The running gear stays completely exposed.
+// Roof sheets are split around both crew hatches, EMES, PERI, the loader MG,
+// FLW and antenna seats; the turret face is split around a 0.9 m gun corridor.
+// Everything is equipment geometry, never part of an armor material bucket.
+// ---------------------------------------------------------------------------
+function leo2A4FullGhillie(P) {
+  if (P.spec.id !== 'leo2a4') return;
+  const { box, xform, mergeAll, slab } = KIT;
+  const hullNet = [], turretNet = [], hullLight = [], hullDark = [], turretLight = [], turretDark = [];
+  const noise01 = (n, salt = 0) => {
+    const v = Math.sin((n + 1) * 12.9898 + (salt + 1) * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+
+  const makeCloth = (hex, key) => {
+    const mat = P.mats.canvasCloth.clone();
+    mat.color.setHex(hex);
+    mat.roughness = 1;
+    mat.metalness = 0;
+    mat.envMapIntensity = 0.08;
+    mat.onBeforeCompile = vehicleAmbientFloorHook;
+    mat.customProgramCacheKey = () => `leo2a4-ghillie-${key}`;
+    return mat;
+  };
+  const makeNet = () => {
+    const mat = makeCloth(0xffffff, 'cut-net');
+    let texture = null;
+    if (typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 128, 128);
+      ctx.strokeStyle = 'rgba(34,48,27,0.72)';
+      ctx.lineWidth = 1.25;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      // A deterministic, irregular knot network replaces the wallpaper-like
+      // diamond lattice.  Long wandering strands cross and share nodes, so
+      // every cloth section reads as one connected carrier.
+      for (let row = 0; row < 12; row++) {
+        const baseY = (row + 0.55) * 128 / 12 + (noise01(row, 1) - 0.5) * 5;
+        ctx.beginPath(); ctx.moveTo(-4, baseY);
+        for (let step = 0; step <= 12; step++) {
+          const x = step * 11;
+          const y = baseY + (noise01(row * 17 + step, 2) - 0.5) * 9
+            + Math.sin(step * 0.8 + row) * 2;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      for (let col = 0; col < 11; col++) {
+        const baseX = (col + 0.5) * 128 / 11 + (noise01(col, 3) - 0.5) * 6;
+        ctx.beginPath(); ctx.moveTo(baseX, -4);
+        for (let step = 0; step <= 12; step++) {
+          const y = step * 11;
+          const x = baseX + (noise01(col * 19 + step, 4) - 0.5) * 10
+            + Math.cos(step * 0.7 + col) * 2;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(27,40,23,0.82)';
+      for (let knot = 0; knot < 38; knot++) {
+        ctx.beginPath();
+        ctx.arc(noise01(knot, 5) * 128, noise01(knot, 6) * 128,
+          0.7 + noise01(knot, 7) * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const colors = ['rgba(60,81,47,0.78)', 'rgba(82,105,58,0.72)', 'rgba(44,63,40,0.76)'];
+      // The texture is only the sparse carrier web.  Physical leaf strips
+      // below own the mass and broken outline; keeping this mostly open is
+      // what prevents the carrier from reading as a printed cuboid.
+      for (let i = 0; i < 34; i++) {
+        const x = (17 + i * 47) % 128;
+        const y = (31 + i * 73) % 128;
+        const w = 2 + (i % 3);
+        const h = 1 + (i % 2);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((i * 0.91) % Math.PI);
+        ctx.fillRect(-w, -h, w * 2, h * 2);
+        ctx.restore();
+      }
+      texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.anisotropy = 4;
+      mat.map = texture;
+      mat.alphaTest = 0.12;
+      mat.side = THREE.DoubleSide;
+      mat.needsUpdate = true;
+    }
+    return { mat, texture };
+  };
+  const addMerged = (parent, geos, mat, name, extra = []) => {
+    if (!geos.length) return;
+    const geo = mergeAll(geos);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = name;
+    mesh.castShadow = mesh.receiveShadow = true;
+    parent.add(mesh);
+    P.disposables.push(geo, mat, ...extra.filter(Boolean));
+  };
+  const leaf = (w, d, h = 0.018, seed = 0) => {
+    const skew = ((seed % 7) - 3) * 0.035;
+    const bite = 0.58 + (seed % 5) * 0.055;
+    return slab(
+      [-w * (0.32 + bite * 0.12), 0, -d], [w, 0, -d * (0.22 + skew)],
+      [w * (0.18 + skew), 0, d], [-w * bite, 0, d * (0.08 - skew)],
+      [-w * (0.32 + bite * 0.12), h, -d], [w, h, -d * (0.22 + skew)],
+      [w * (0.18 + skew), h, d], [-w * bite, h, d * (0.08 - skew)]);
+  };
+  const topLeaf = (out, x, y, z, s, seed) => {
+    out.push(xform(leaf(0.075 * s, 0.15 * s, 0.024, seed), x, y, z,
+      (seed % 3 - 1) * 0.08, seed * 0.67, (seed % 2 ? 1 : -1) * 0.06));
+    out.push(xform(leaf(0.058 * s, 0.13 * s, 0.020, seed + 13),
+      x + Math.sin(seed * 1.7) * 0.075 * s, y + 0.012,
+      z + Math.cos(seed * 1.3) * 0.070 * s,
+      (seed % 4 - 1.5) * 0.06, seed * 0.43 + 0.8, 0));
+    out.push(xform(leaf(0.038 * s, 0.18 * s, 0.017, seed + 29),
+      x - Math.cos(seed * 0.9) * 0.060 * s, y + 0.020,
+      z + Math.sin(seed * 1.1) * 0.055 * s,
+      0, seed * 0.31 - 0.6, (seed % 3 - 1) * 0.07));
+  };
+  const sideLeaf = (out, side, x, y, z, s, seed) => {
+    out.push(xform(leaf(0.070 * s, 0.15 * s, 0.018, seed), side * x, y, z,
+      seed * 0.29, 0, side * Math.PI / 2));
+    out.push(xform(leaf(0.055 * s, 0.13 * s, 0.016, seed + 17), side * x,
+      y + Math.sin(seed) * 0.065 * s, z + Math.cos(seed * 1.4) * 0.060 * s,
+      seed * 0.41 + 0.7, 0, side * (Math.PI / 2 + 0.11)));
+    out.push(xform(leaf(0.036 * s, 0.18 * s, 0.014, seed + 31), side * x,
+      y - 0.075 * s, z - Math.sin(seed * 0.8) * 0.050 * s,
+      seed * 0.23 - 0.4, 0, side * (Math.PI / 2 - 0.09)));
+  };
+
+  // A real cloth carrier needs its own offset silhouette.  Build a single
+  // subdivided sheet with deterministic low-amplitude ripples rather than
+  // painting flat boxes directly onto the armor.  Cells are removed around
+  // articulated/fitted equipment, producing physical openings in the net.
+  const insidePoly = (x, z, poly) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, zi] = poly[i], [xj, zj] = poly[j];
+      if (((zi > z) !== (zj > z)) && (x < ((xj - xi) * (z - zi)) / (zj - zi) + xi)) inside = !inside;
+    }
+    return inside;
+  };
+  const clothTop = ({ x0, x1, z0, z1, nx, nz, yAt, outline = null, holes = [], seed = 0 }) => {
+    const positions = [], uvs = [];
+    const vertex = (x, z) => {
+      const ripple = Math.sin(x * 8.3 + z * 5.7 + seed) * 0.010
+        + Math.cos(x * 3.9 - z * 7.1 + seed * 0.7) * 0.006;
+      return [x, yAt(x, z) + ripple, z];
+    };
+    const pushTri = (a, b, c) => {
+      for (const p of [a, b, c]) {
+        positions.push(...p);
+        uvs.push(p[0] * 0.72, p[2] * 0.72);
+      }
+    };
+    for (let iz = 0; iz < nz; iz++) {
+      const za = z0 + (z1 - z0) * iz / nz;
+      const zb = z0 + (z1 - z0) * (iz + 1) / nz;
+      for (let ix = 0; ix < nx; ix++) {
+        const xa = x0 + (x1 - x0) * ix / nx;
+        const xb = x0 + (x1 - x0) * (ix + 1) / nx;
+        const probes = [[(xa + xb) / 2, (za + zb) / 2], [xa, za], [xb, za], [xb, zb], [xa, zb]];
+        if (outline && !insidePoly(probes[0][0], probes[0][1], outline)) continue;
+        if (holes.some((hole) => probes.some(([x, z]) => insidePoly(x, z, hole)))) continue;
+        const a = vertex(xa, za), b = vertex(xb, za), c = vertex(xb, zb), d = vertex(xa, zb);
+        pushTri(a, c, b); // upward winding
+        pushTri(a, d, c);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const clothSide = ({ side, z0, z1, nz, ny, topAt, bottomAt, outAt, seed = 0 }) => {
+    const positions = [], uvs = [];
+    const vertex = (z, t) => {
+      const top = topAt(z), bottom = bottomAt(z);
+      const y = bottom + (top - bottom) * t
+        + Math.sin(z * 7.1 + t * 5.3 + seed) * 0.008;
+      const x = side * (outAt(z, t)
+        + Math.sin(z * 5.9 + t * 8.1 + seed * 0.4) * 0.008);
+      return [x, y, z];
+    };
+    const tri = (a, b, c) => {
+      for (const p of [a, b, c]) {
+        positions.push(...p);
+        uvs.push(p[2] * 0.72, p[1] * 0.72);
+      }
+    };
+    for (let iz = 0; iz < nz; iz++) {
+      const za = z0 + (z1 - z0) * iz / nz;
+      const zb = z0 + (z1 - z0) * (iz + 1) / nz;
+      for (let iy = 0; iy < ny; iy++) {
+        const ta = iy / ny, tb = (iy + 1) / ny;
+        const a = vertex(za, ta), b = vertex(zb, ta), c = vertex(zb, tb), d = vertex(za, tb);
+        if (side > 0) { tri(a, b, c); tri(a, c, d); } else { tri(a, c, b); tri(a, d, c); }
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const clothFace = ({ z, x0, x1, y0, y1, nx, ny, outline = null, holes = [], seed = 0 }) => {
+    const positions = [], uvs = [];
+    const vertex = (x, y) => [x, y,
+      z + Math.sin(x * 7.7 + y * 6.1 + seed) * 0.010
+        + Math.cos(x * 4.3 - y * 8.7 + seed * 0.5) * 0.006];
+    const tri = (a, b, c) => {
+      for (const p of [a, b, c]) {
+        positions.push(...p);
+        uvs.push(p[0] * 0.72, p[1] * 0.72);
+      }
+    };
+    for (let iy = 0; iy < ny; iy++) {
+      const ya = y0 + (y1 - y0) * iy / ny;
+      const yb = y0 + (y1 - y0) * (iy + 1) / ny;
+      for (let ix = 0; ix < nx; ix++) {
+        const xa = x0 + (x1 - x0) * ix / nx;
+        const xb = x0 + (x1 - x0) * (ix + 1) / nx;
+        const probes = [[(xa + xb) / 2, (ya + yb) / 2], [xa, ya], [xb, ya], [xb, yb], [xa, yb]];
+        if (outline && !insidePoly(probes[0][0], probes[0][1], outline)) continue;
+        if (holes.some((hole) => probes.some(([x, y]) => insidePoly(x, y, hole)))) continue;
+        const a = vertex(xa, ya), b = vertex(xb, ya), c = vertex(xb, yb), d = vertex(xa, yb);
+        tri(a, b, c); tri(a, c, d);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const faceLeaf = (out, x, y, z, s, seed) => {
+    out.push(xform(leaf(0.070 * s, 0.15 * s, 0.020, seed), x, y, z,
+      Math.PI / 2, 0, (seed % 5 - 2) * 0.17));
+    out.push(xform(leaf(0.052 * s, 0.13 * s, 0.017, seed + 19),
+      x + Math.sin(seed) * 0.065 * s, y + Math.cos(seed * 1.3) * 0.055 * s, z,
+      Math.PI / 2, seed * 0.19, (seed % 4 - 1.5) * 0.14));
+    out.push(xform(leaf(0.035 * s, 0.18 * s, 0.015, seed + 37),
+      x - Math.cos(seed * 0.8) * 0.055 * s, y - 0.060 * s, z,
+      Math.PI / 2, seed * 0.27, (seed % 3 - 1) * 0.12));
+  };
+
+  // HULL TOP: one rippled blanket floats 5-7 cm above the entire deck and
+  // follows the glacis down to the beak.  The turret rises through a tailored
+  // central aperture instead of intersecting a surface-applied texture.
+  const hullTurretOpening = [[-1.39, -2.12], [-1.39, 1.58], [1.39, 1.58], [1.39, -2.12]];
+  const hullBlanketY = (_x, z) => {
+    if (z <= 2.20) return 1.765;
+    if (z <= 2.40) return 1.765 - (z - 2.20) * 0.45;
+    if (z <= 2.96) return 1.675 - (z - 2.40) * 0.33;
+    if (z <= 3.52) return 1.490 - (z - 2.96) * 0.18;
+    return 1.389 - (z - 3.52) * 0.44;
+  };
+  const hullBlanketOutline = [
+    [-0.94, -3.80], [0.94, -3.80], [1.02, -3.42], [1.68, -3.12],
+    [1.71, -2.62], [1.72, 2.18], [1.57, 2.72], [0.96, 3.42],
+    [0.88, 3.82], [-0.88, 3.82], [-0.96, 3.42], [-1.57, 2.72],
+    [-1.72, 2.18], [-1.71, -2.62], [-1.68, -3.12], [-1.02, -3.42],
+  ];
+  hullNet.push(clothTop({
+    x0: -1.72, x1: 1.72, z0: -3.80, z1: 3.82, nx: 30, nz: 60,
+    yAt: hullBlanketY, outline: hullBlanketOutline, holes: [hullTurretOpening], seed: 4,
+  }));
+
+  // HULL SIDES: one rippled net carrier follows the real skirt shoulder and
+  // tapered nose at each side.  Its irregular hem stays above the native
+  // linked track.  The visible mass is made from individual leaves below,
+  // never from rectangular curtain panels.
+  const hullSideWidth = (z) => {
+    if (z > 2.25) return THREE.MathUtils.lerp(1.71, 1.06, (z - 2.25) / 1.53);
+    if (z < -3.20) return THREE.MathUtils.lerp(1.71, 1.33, (-z - 3.20) / 0.58);
+    return 1.71;
+  };
+  const hullSideTop = (z) => hullBlanketY(0, z) - 0.015;
+  const hullSideBottom = (z) => 0.625
+    + Math.sin(z * 3.1) * 0.035 + Math.cos(z * 5.7) * 0.020;
+  for (const side of [-1, 1]) {
+    hullNet.push(clothSide({
+      // Stop the hanging skirt where the sprocket/idler arcs begin.  The
+      // center blanket and tailored end faces continue the suit across the
+      // bow and stern, while this side carrier remains outside the straight
+      // shoe course instead of slicing through the animated wrap.
+      side, z0: -3.12, z1: 2.24, nz: 44, ny: 10,
+      topAt: hullSideTop, bottomAt: hullSideBottom,
+      outAt: (z, t) => hullSideWidth(z) + 0.025 + (1 - t) * 0.075,
+      seed: 11 + side,
+    }));
+    for (let iz = 0; iz < 24; iz++) {
+      const z = -3.55 + iz * 0.30 + (noise01(iz + (side > 0 ? 80 : 0), 11) - 0.5) * 0.16;
+      if (z < -3.10 || z > 2.22) continue;
+      const bottom = hullSideBottom(z), top = hullSideTop(z);
+      for (let row = 0; row < 3; row++) {
+        const seed = iz * 3 + row + (side > 0 ? 90 : 0);
+        const y = bottom + (top - bottom) * (0.17 + row * 0.31
+          + (noise01(seed, 12) - 0.5) * 0.14);
+        const target = (iz + row + (side > 0 ? 1 : 0)) % 3 ? hullDark : hullLight;
+        sideLeaf(target, side, Math.min(1.826, hullSideWidth(z) + 0.095), y, z,
+          0.64 + noise01(seed, 13) * 0.34, seed + 11);
+      }
+    }
+  }
+  const hullFrontOutline = [[-0.86, 0.69], [0.86, 0.69], [1.04, 0.88], [0.91, 1.40],
+    [0.67, 1.55], [-0.67, 1.55], [-0.91, 1.40], [-1.04, 0.88]];
+  const hullRearOutline = [[-1.31, 0.66], [1.31, 0.66], [1.46, 0.92], [1.37, 1.62],
+    [0.98, 1.72], [-0.98, 1.72], [-1.37, 1.62], [-1.46, 0.92]];
+  const hullFrontHoles = [
+    [[-0.72, 1.09], [-0.46, 1.09], [-0.46, 1.34], [-0.72, 1.34]],
+    [[0.46, 1.09], [0.72, 1.09], [0.72, 1.34], [0.46, 1.34]],
+  ];
+  hullNet.push(clothFace({ z: 3.895, x0: -1.05, x1: 1.05, y0: 0.66, y1: 1.57,
+    nx: 16, ny: 9, outline: hullFrontOutline, holes: hullFrontHoles, seed: 23 }));
+  hullNet.push(clothFace({ z: -3.825, x0: -1.48, x1: 1.48, y0: 0.64, y1: 1.74,
+    nx: 20, ny: 10, outline: hullRearOutline, seed: 29 }));
+
+  // The native A4 front mudguard has a narrow supported corner shelf where
+  // its outer post meets the forward lip.  Seat one irregular cloth tongue
+  // over each shelf so the drape follows that real surface continuously;
+  // keeping these high and forward also leaves the complete idler/shoe orbit
+  // untouched.  Without the tongues, the net edge and mudguard lip enclosed
+  // a pair of one-cell sky pinholes in the top-down continuity audit.
+  for (const side of [-1, 1]) {
+    const seed = side > 0 ? 207 : 203;
+    hullDark.push(xform(leaf(0.13, 0.15, 0.020, seed), side * 1.64, 1.515, 3.92,
+      0.02, side * 0.08, side * 0.025));
+  }
+
+  for (let iz = 0; iz < 20; iz++) {
+    const z = -3.56 + iz * 0.37 + (noise01(iz, 14) - 0.5) * 0.13;
+    for (let ix = 0; ix < 9; ix++) {
+      const seed = iz * 9 + ix + 2;
+      const x = -1.48 + ix * 0.37 + (noise01(seed, 15) - 0.5) * 0.18;
+      if (!insidePoly(x, z, hullBlanketOutline) || insidePoly(x, z, hullTurretOpening)) continue;
+      // End courses sit between the live track lanes; leaves are wider than
+      // their carrier cells, so keep their centers one leaf-width inboard.
+      if ((z > 3.18 || z < -3.18) && Math.abs(x) > 0.72) continue;
+      const y = hullBlanketY(x, z) + 0.025;
+      topLeaf(seed % 3 ? hullDark : hullLight, x, y, z,
+        0.61 + noise01(seed, 16) * 0.37, seed);
+    }
+  }
+  for (let ix = 0; ix < 9; ix++) {
+    const seed = ix + 211;
+    const x = -0.78 + ix * 0.195 + (noise01(seed, 17) - 0.5) * 0.10;
+    faceLeaf(ix % 3 ? hullDark : hullLight, x, 0.86 + noise01(seed, 18) * 0.40, 3.91,
+      0.62 + noise01(seed, 19) * 0.30, seed);
+  }
+  for (let ix = 0; ix < 12; ix++) {
+    const seed = ix + 227;
+    const x = -1.18 + ix * 0.215 + (noise01(seed, 20) - 0.5) * 0.12;
+    faceLeaf(ix % 2 ? hullLight : hullDark, x, 0.82 + noise01(seed, 21) * 0.62, -3.84,
+      0.60 + noise01(seed, 22) * 0.34, seed);
+  }
+
+  // TURRET FACE: a tailored brow/cheek carrier follows the welded face and
+  // has a literal opening for the complete gun/mantlet/recoil assembly.
+  const turretFaceOutline = [[-1.18, 0.10], [1.18, 0.10], [1.11, 0.72],
+    [0.74, 0.79], [-0.74, 0.79], [-1.11, 0.72]];
+  const turretGunOpening = [[-0.47, 0.04], [0.47, 0.04], [0.47, 0.73], [-0.47, 0.73]];
+  turretNet.push(clothFace({ z: 1.292, x0: -1.20, x1: 1.20, y0: 0.06, y1: 0.80,
+    nx: 20, ny: 9, outline: turretFaceOutline, holes: [turretGunOpening], seed: 37 }));
+
+  // TURRET FLANKS / REAR: curved-in-plan side carriers land just outside the
+  // welded armor and narrow into the bustle.  There are no box-side panels.
+  const turretSideWidth = (z) => {
+    if (z > 0.55) return THREE.MathUtils.lerp(1.31, 1.05, (z - 0.55) / 0.55);
+    if (z < -1.45) return THREE.MathUtils.lerp(1.28, 1.03, (-z - 1.45) / 1.28);
+    return z < -0.50 ? 1.28 : 1.31;
+  };
+  const turretSideTop = (z) => 0.755 - Math.max(0, -z - 1.55) * 0.045;
+  const turretSideBottom = (z) => 0.10 + Math.sin(z * 4.7) * 0.028;
+  for (const side of [-1, 1]) {
+    turretNet.push(clothSide({
+      side, z0: -2.73, z1: 1.08, nz: 38, ny: 9,
+      topAt: turretSideTop, bottomAt: turretSideBottom,
+      outAt: (z, t) => turretSideWidth(z) + 0.018 + (1 - t) * 0.028,
+      seed: 43 + side,
+    }));
+    for (let iz = 0; iz < 15; iz++) {
+      const z = 0.92 - iz * 0.245
+        + (noise01(iz + (side > 0 ? 60 : 0), 23) - 0.5) * 0.12;
+      for (let row = 0; row < 3; row++) {
+        const seed = 300 + iz * 3 + row + (side > 0 ? 70 : 0);
+        const bottom = turretSideBottom(z), top = turretSideTop(z);
+        const y = bottom + (top - bottom) * (0.17 + row * 0.31
+          + (noise01(seed, 24) - 0.5) * 0.13);
+        const target = (seed + (side > 0 ? 1 : 0)) % 3 ? turretDark : turretLight;
+        sideLeaf(target, side, Math.min(1.36, turretSideWidth(z) + 0.047), y, z,
+          0.58 + noise01(seed, 25) * 0.38, seed);
+      }
+    }
+  }
+  const turretRearOutline = [[-0.98, 0.10], [0.98, 0.10], [1.09, 0.28],
+    [0.91, 0.69], [-0.91, 0.69], [-1.09, 0.28]];
+  turretNet.push(clothFace({ z: -2.755, x0: -1.10, x1: 1.10, y0: 0.08, y1: 0.70,
+    nx: 18, ny: 8, outline: turretRearOutline, seed: 47 }));
+
+  // TURRET CROWN: a subdivided cloth shell floats 6-9 cm over the welded
+  // roof.  Its rippled vertices and the side drops above create a separate
+  // silhouette and visible air layer; it is not a material applied to the
+  // armor.  The concave outline opens around the mantlet and EMES, while
+  // physical cells are omitted for every remaining working station.
+  const turretRoofOutline = [
+    [-0.81, 1.06], [-0.48, 1.06], [-0.48, 0.80], [0.18, 0.80],
+    [0.18, 0.30], [1.05, 0.30], [1.09, 0.69], [1.06, -0.72],
+    [0.99, -1.58], [0.91, -2.28], [-0.91, -2.28], [-0.99, -1.58],
+    [-1.06, -0.72], [-1.09, 0.69],
+  ];
+  const turretRoofHoles = [
+    [[-1.00, -0.98], [-1.00, 0.34], [-0.14, 0.34], [-0.14, -0.98]],
+    [[0.19, -0.52], [0.19, -0.10], [0.53, -0.10], [0.53, -0.52]],
+    [[0.28, -0.52], [0.91, -0.52], [0.91, -0.62], [0.96, -0.62],
+      [0.96, -1.58], [0.38, -1.65], [0.38, -1.06], [0.28, -1.06]],
+    [[-0.90, -2.25], [-0.90, -1.78], [-0.73, -1.78], [-0.73, -2.25]],
+  ];
+  turretNet.push(clothTop({
+    x0: -1.10, x1: 1.10, z0: -2.30, z1: 1.08, nx: 22, nz: 34,
+    yAt: () => 0.758, outline: turretRoofOutline, holes: turretRoofHoles, seed: 19,
+  }));
+  for (let iz = 0; iz < 12; iz++) {
+    const z = -2.14 + iz * 0.265 + (noise01(iz, 26) - 0.5) * 0.10;
+    for (let ix = 0; ix < 9; ix++) {
+      const seed = 411 + iz * 9 + ix;
+      const x = -0.96 + ix * 0.24 + (noise01(seed, 27) - 0.5) * 0.13;
+      if (!insidePoly(x, z, turretRoofOutline)
+        || turretRoofHoles.some((hole) => insidePoly(x, z, hole))) continue;
+      topLeaf(seed % 3 ? turretDark : turretLight, x, 0.790, z,
+        0.56 + noise01(seed, 28) * 0.38, seed);
+    }
+  }
+  for (let side = -1; side <= 1; side += 2) {
+    for (let row = 0; row < 3; row++) {
+      const seed = 531 + row + side;
+      const x = side * (0.58 + row * 0.20 + noise01(seed, 29) * 0.05);
+      const y = 0.16 + row * 0.18 + noise01(seed, 30) * 0.10;
+      faceLeaf((row + (side > 0 ? 1 : 0)) % 2 ? turretLight : turretDark,
+        x, y, 1.31, 0.60 + noise01(seed, 31) * 0.32, seed);
+    }
+  }
+  for (let ix = 0; ix < 10; ix++) {
+    const seed = ix + 549;
+    const x = -0.88 + ix * 0.195 + (noise01(seed, 32) - 0.5) * 0.10;
+    faceLeaf(ix % 3 ? turretDark : turretLight, x, 0.18 + noise01(seed, 33) * 0.40, -2.77,
+      0.57 + noise01(seed, 34) * 0.36, seed);
+  }
+
+  const hullNetPack = makeNet();
+  const turretNetPack = makeNet();
+  addMerged(P.hullG, hullNet, hullNetPack.mat, 'leo2a4_ghillie_hull_net', [hullNetPack.texture]);
+  addMerged(P.turretG, turretNet, turretNetPack.mat, 'leo2a4_ghillie_turret_net', [turretNetPack.texture]);
+  addMerged(P.hullG, hullLight, makeCloth(0x64794a, 'hull-light'), 'leo2a4_ghillie_hull_light');
+  addMerged(P.hullG, hullDark, makeCloth(0x34462d, 'hull-dark'), 'leo2a4_ghillie_hull_dark');
+  addMerged(P.turretG, turretLight, makeCloth(0x64794a, 'turret-light'), 'leo2a4_ghillie_turret_light');
+  addMerged(P.turretG, turretDark, makeCloth(0x34462d, 'turret-dark'), 'leo2a4_ghillie_turret_dark');
+}
+
+// ---------------------------------------------------------------------------
 // Leopard 2A4 — BASE-21 MODERNIZATION (owner directive 2026-08-06: the
 // base-game customs "are wholly ancient"). PHOTO-CLASS build: NO reference
 // oracle exists (MODEL_SOURCE is procedural-only, no ledger row — FALSE-0
@@ -4857,6 +5331,7 @@ export function buildLeo2A4(P) {
   // world +6.26 = the extended 10.12 overall over the -3.86 tail.
   P.gunG.position.set(0, 0.27, 1.13);
   leoMantletGun(P, { rollR: 0.26, rollW: 0.62, plateW: 0.56, plateH: 0.44, len: 4.95, r: 0.084, evac: 0.56, evacR: 1.78 });
+  leo2A4FullGhillie(P);
   P.topY = 1.24;
 }
 
