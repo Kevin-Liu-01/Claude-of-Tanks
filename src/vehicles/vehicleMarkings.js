@@ -87,6 +87,10 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   t95: anchor('hull', 'right', 0.39, 0.61, 0.29, -1),
   chieftain5: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   chieftain_mk10: anchor('turret', 'right', 0.39, 0.49, 0.25, -1),
+  // The Mk 1's low turret has little clear flank around the mantlet and
+  // bustle, so seat its roundel on the broad right sponson ahead of the
+  // builder-authored V1 designation.
+  vickers_mk1: anchor('hull', 'right', 0.58, 0.58, 0.23, -1),
   challenger1: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
   challenger2: anchor('turret', 'right', 0.37, 0.44, 0.26, -1),
   challenger_3: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),

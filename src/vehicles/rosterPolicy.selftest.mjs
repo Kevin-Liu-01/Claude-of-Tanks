@@ -10,6 +10,11 @@ import {
 const retainedWw2 = new Set(RETAINED_WW2_IDS);
 const retainedColdWar = new Set(RETAINED_COLD_WAR_IDS);
 
+assert.ok(
+  retainedColdWar.has('vickers_mk1'),
+  'Vickers MBT Mk 1 remains in the playable Cold War runtime roster',
+);
+
 for (const id of retainedWw2) {
   assert.equal(isRetiredHistoricalTank({ id, era: 'ww2' }), false, `${id} stays selectable`);
 }

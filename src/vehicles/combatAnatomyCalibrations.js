@@ -4925,6 +4925,62 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       }
     }
   },
+  "vickers_mk1": {
+    "hull": {
+      "min": [
+        -1.5845,
+        0.48,
+        -3.97
+      ],
+      "max": [
+        1.5845,
+        1.91,
+        3.9
+      ],
+      "sourceHash": "b4ed6e5034c226b3"
+    },
+    "turret": {
+      "min": [
+        -1.435,
+        -0.704,
+        -2.225
+      ],
+      "max": [
+        1.435,
+        1.155,
+        1.6
+      ],
+      "sourceHash": "979a0f8472a366ee"
+    },
+    "tracks": {
+      "left": {
+        "min": [
+          -1.43,
+          0.01,
+          -3.329
+        ],
+        "max": [
+          -0.94,
+          1.2697,
+          3.4899
+        ],
+        "sourceHash": "3caaf73608f92c0b"
+      },
+      "right": {
+        "min": [
+          0.94,
+          0.01,
+          -3.329
+        ],
+        "max": [
+          1.43,
+          1.2697,
+          3.4899
+        ],
+        "sourceHash": "14d199a4a2e010a8"
+      }
+    }
+  },
   "isu152": {
     "hull": {
       "min": [
