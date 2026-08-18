@@ -7053,7 +7053,7 @@
           }
         ]
       },
-      "geometryHash": "b0eb1d2d",
+      "geometryHash": "1781b4bf",
       "metadataHash": "f2a7a899",
       "appearance": {
         "version": 1,
@@ -7097,40 +7097,40 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32042,
-          "sha256": "7f6bde00bce377f0a4ff095811cedc820787daa9cde8fbcf48ad11d5aa788221"
+          "bytes": 29478,
+          "sha256": "bf3303cfbafb0af346956d60bf46d75af8f3fbf1f516a82ad9c70cbc8affbc56"
         },
         "top": {
           "file": "ariete_c1_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11106,
-          "sha256": "5449631ac0973bdc9b171c42d82bcabe13d5101aec2da028ee514f57f8d1c093"
+          "bytes": 9874,
+          "sha256": "8c8d3f4a770769ef6959cd799ec31e90b7764e8c73f42f35b102b8acf4859991"
         },
         "side": {
           "file": "ariete_c1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10498,
-          "sha256": "49768d9de74f2c65c8d3d7e4b8d76a0d450061bf712895fc27c291c1b38936f7"
+          "bytes": 9474,
+          "sha256": "162c018f038741ad59f64e560480fd155236a73bb81209727b459a8e392888ad"
         },
         "topSilhouette": {
           "file": "ariete_c1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1374,
-          "sha256": "36691cc949f719e4598177e45e764405b8bb6f25213e387613a9bb6eacbfe5a6"
+          "bytes": 1161,
+          "sha256": "cdf480e330d5a4a8b04983704acd26f8f2e6d6dca6e48560e7c964fb1bdd22db"
         },
         "sideSilhouette": {
           "file": "ariete_c1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4637,
-          "sha256": "d7560c73d72b94012cc428512475e63aaae16d5a03da7965d7a386862880d9e7"
+          "bytes": 4525,
+          "sha256": "68655264662d3f66b28a477f73d66d1b77691a2ceec155ebc8c4c26cd56d7de7"
         },
         "hitZonesSide": {
           "file": "ariete_c1_hit_zones_side.png",
@@ -8040,7 +8040,7 @@
           }
         ]
       },
-      "geometryHash": "55fa8588",
+      "geometryHash": "b828f25d",
       "metadataHash": "dbc17d27",
       "appearance": {
         "version": 1,
@@ -8084,40 +8084,40 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32266,
-          "sha256": "f96e540cc341f6a56a06505bebd4509e71a150c5a43256195704db3fd8787d51"
+          "bytes": 30706,
+          "sha256": "29ff353baa3cee8a58907030d9a0ff21f2808f32489033f7295b5cef5c00c6f6"
         },
         "top": {
           "file": "ariete_c2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11246,
-          "sha256": "7abe36a8536bf645d36c8f2457027535ad9da443686d35f7d72f0e1d4baf99cd"
+          "bytes": 11562,
+          "sha256": "51b5e37eac2f499354551e22523cf5f91a3ced8d7caaa75f00274f06c332143a"
         },
         "side": {
           "file": "ariete_c2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10128,
-          "sha256": "52f545ca1caa21dd4dc8f3df076f5f8665c9a0a046ee4d99c7941fad4234062b"
+          "bytes": 9550,
+          "sha256": "a9d8039d3f9d788cb64a4b90048c2a55b90f9db4927d306c547fa4dbfc67ca30"
         },
         "topSilhouette": {
           "file": "ariete_c2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1413,
-          "sha256": "e02507e4d8eafc9557f6fd9d3a9bfeaf76d65a74bec0377f6d7224aa25c89a26"
+          "bytes": 1336,
+          "sha256": "d1722041f0c0cba0de5f8f1ddd1e1c858e6fbdcea4000666ad4c4b09b474338e"
         },
         "sideSilhouette": {
           "file": "ariete_c2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4620,
-          "sha256": "e2ef155ad71796ac896fbd4ddc897d77fae9bb865082456cab82641b6c85a642"
+          "bytes": 4676,
+          "sha256": "9d11dc58d2beced89cba0b1d9d2fefeb706d9958e4c298a19cacfc687a3edf86"
         },
         "hitZonesSide": {
           "file": "ariete_c2_hit_zones_side.png",
