@@ -8986,7 +8986,7 @@ function buildKF51OwnerExact(P) {
   // sponson/fender run, family driver station, fan wells, leopard rear
   // plate + grilles) at the kf51b frame: deck 1.615 crease / 1.64 mid /
   // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
-  // complete rotating rig moves 0.18 m forward to z 0.20; nose 3.84,
+  // complete rotating rig moves 0.28 m forward to z 0.30; nose 3.84,
   // tail lip -3.82, width anchor ±1.80
   // (spec widM 3.60, §5.263). Running gear params VERBATIM from the
   // §5.303 source trace (7×0.405 wheels, 0.105 fine pitch, §5.262
@@ -9156,7 +9156,7 @@ function buildKF51OwnerExact(P) {
   // ---- TURRET -------------------------------------------------------------
   // One connected faceted wedge.  The source roof is only ~0.68 m above the
   // shoulder belt; the former profile's stacked crown is intentionally gone.
-  P.turretG.position.set(0, 1.72, 0.20);
+  P.turretG.position.set(0, 1.72, 0.30);
   P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
   const turretPlan = [
     [-0.36, 1.95], [0.36, 1.95], [1.48, 1.28], [1.55, 0.18],
