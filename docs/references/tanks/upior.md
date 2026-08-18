@@ -11,9 +11,9 @@ spike above), 'W-01'.
 
 ## OWNERSHIP / ROUND STATE (2026-08-17, §5.248 IFV wave)
 GROUND-UP NEW ID (spec src/vehicles/afvFamily.js, builder `buildUpior` in
-src/vehicles/profiles/afvFamily.js). The bmp2-donor `upior_ifv` variant
-remains a separate playable (owner turret enrichment c425f495 re-applied
-to it after the §5.258 merge).
+src/vehicles/profiles/afvFamily.js). The former bmp2-donor `upior_ifv`
+variant is now the separate playable `bwp1` (BWP-1; owner turret
+enrichment c425f495 re-applied after the §5.258 merge).
 
 ## DIMS DECISION — PRINT-PROPORTIONAL (§5.249 ASK-OWNER default)
 The REG row's provisional 6.70 m length was a pre-extraction BMP-2-class

@@ -6189,7 +6189,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       }
     }
   },
-  "upior_ifv": {
+  "bwp1": {
     "hull": {
       "min": [
         -1.7359,

@@ -23,7 +23,7 @@ export const AFV_FAMILY_IDS = Object.freeze([
   'bmp3_rok',
   'ua_m2a3_bradley',
   'bmpt_terminator2',
-  'upior_ifv',
+  'bwp1',
   'marder1a3',
   'm3a3_bradley',
   // §5.248 ground-up wave (bmpt removed by §5.304 owner order — the
@@ -243,8 +243,8 @@ export const AFV_FAMILY_SPECS = {
       he('3UOF8 HE-I', 30, 52, 960, 425, 0.30),
     ],
   }),
-  upior_ifv: variant('upior_ifv', 'bmp2', {
-    name: 'Upior Infantry Fighting Vehicle', nation: 'Poland', number: 'UPIOR',
+  bwp1: variant('bwp1', 'bmp2', {
+    name: 'BWP-1 (Bojowy Wóz Piechoty 1)', nation: 'Poland', number: 'BWP-1',
     base: '#3f4a3e', weather: '#535d4d', patches: ['#28312b', '#5d5948', '#706750'],
     dims: { hullLengthM: 6.90, overallLengthM: 7.12, widthM: 3.45, heightM: 3.02,
       silhouetteHullLengthM: 6.61, silhouetteOverallLengthM: 6.72,

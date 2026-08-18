@@ -344,7 +344,7 @@ function buildBMPT2(P) {
   }
 }
 
-function addUpiorStation(P) {
+function addBWP1Station(P) {
   const { box, cylY, cylZ, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.40, 0.60);
@@ -361,7 +361,7 @@ function addUpiorStation(P) {
   P.add('turret', box(0.54, 0.42, 0.46), 0.28, 0.98, -0.04);
   P.add('turretGlass', box(0.34, 0.18, 0.025), 0.28, 1.00, 0.205);
   P.add('turretDark', cylZ(0.055, 0.64, 12), 0.28, 1.11, 0.44);
-  // §5.349 RESIDUE (§B2 sweep handoff upior_ifv(a)): the sensor-head/rack
+  // §5.349 RESIDUE (§B2 sweep handoff bwp1(a)): the sensor-head/rack
   // framed pocket (489px pre-landing / 668px live at [y 2.51..2.82] world)
   // — the head cantilevered over air behind/beside its pedestal ring. Mast
   // arm block bridges the head rear to the drum roof: bottom buried in the
@@ -402,13 +402,13 @@ function addUpiorStation(P) {
   roofMG(P, -0.42, 0.77, -0.26, 3400, 'mag', -0.05, 0.75);
   smokePair(P, 0.83, 0.57, 0.05, 4, 3410);
   radioPair(P, 0.66, -0.72, 3420, 0.78);
-  P.decal('turret', 'number', 'UPIOR', 0.19, [-1.02, 0.41, -0.32], -Math.PI / 2);
+  P.decal('turret', 'number', 'BWP-1', 0.19, [-1.02, 0.41, -0.32], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.49);
 }
 
-function buildUpiorIFVVariant(P) {
+function buildBWP1Variant(P) {
   buildBMP2(P);
-  addUpiorStation(P);
+  addBWP1Station(P);
   sideArmorCourse(P, { x: 1.69, y: 1.14, h: 0.70, d: 0.68, count: 8,
     front: 2.45, step: 0.73, cap: false });
   for (const side of [-1, 1]) for (let i = 0; i < 5; i++) {
@@ -416,7 +416,7 @@ function buildUpiorIFVVariant(P) {
       0.25, 0.10, 0.30, [-0.30, 0, 0], false);
   }
   bowLightPair(P, 1.18, 1.51, 2.84, 3430);
-  // §5.349 RESIDUE (§B2 sweep handoff upior_ifv(b)): the same bmp3_rok-class
+  // §5.349 RESIDUE (§B2 sweep handoff bwp1(b)): the same bmp3_rok-class
   // bow light hover (119px pre-landing / 106px live every side view) —
   // light platforms to surface contact (§5.265): bottoms sunk into the
   // upper-glacis plate (surface y 1.32 at z 2.84), tops welded to the drum
@@ -1571,7 +1571,7 @@ export const AFV_FAMILY_PROFILES = {
   bmp3_rok: { build: buildBMP3ROK },
   ua_m2a3_bradley: { build: buildUAM2A3 },
   bmpt_terminator2: { build: buildBMPT2 },
-  upior_ifv: { build: buildUpiorIFVVariant },
+  bwp1: { build: buildBWP1Variant },
   marder1a3: { build: buildMarder1A3 },
   m3a3_bradley: { build: buildM3A3 },
   spz_puma: { build: buildPumaOracle },

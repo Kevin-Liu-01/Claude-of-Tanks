@@ -7,10 +7,22 @@
 
 const LABEL_OVERRIDES = Object.freeze({
   t95: { displayName: 'T95', searchAliases: ['T95 Doomturtle'] },
-  strv81: { displayName: 'Strv 81', searchAliases: ['Stridsvagn 81', 'Centurion Strv 81'] },
-  strv103: { displayName: 'Strv 103B', searchAliases: ['Stridsvagn 103B', 'S-Tank'] },
-  strv103a: { displayName: 'Strv 103A', searchAliases: ['Stridsvagn 103A', 'S-Tank A'] },
-  strv122: { displayName: 'Strv 122', searchAliases: ['Stridsvagn 122', 'Swedish Leopard 2'] },
+  strv81: {
+    displayName: 'Stridsvagn 81', shortName: 'Strv 81',
+    searchAliases: ['Centurion Strv 81', 'Swedish Centurion'],
+  },
+  strv103: {
+    displayName: 'Stridsvagn 103B', shortName: 'Strv 103B',
+    searchAliases: ['S-Tank', 'S-Tank B'],
+  },
+  strv103a: {
+    displayName: 'Stridsvagn 103A', shortName: 'Strv 103A',
+    searchAliases: ['S-Tank A'],
+  },
+  strv122: {
+    displayName: 'Stridsvagn 122', shortName: 'Strv 122',
+    searchAliases: ['Swedish Leopard 2'],
+  },
   t72m1_jaguar: {
     displayName: 'T-72M1 Jaguar', shortName: 'T-72M1 Jaguar',
     searchAliases: ['T-72M1 Jaguar Poland', 'Jaguar MBT'],
@@ -22,6 +34,10 @@ const LABEL_OVERRIDES = Object.freeze({
   pl01: {
     displayName: 'PL-01', shortName: 'PL-01',
     searchAliases: ['PL-01 Concept', 'Polish stealth tank'],
+  },
+  k2: {
+    displayName: 'K2 Black Panther', shortName: 'K2',
+    searchAliases: ['K2 Main Battle Tank', 'K2 MBT'],
   },
   k2b: {
     displayName: 'K2B', shortName: 'K2B',
@@ -65,12 +81,12 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'BMPT T-90', shortName: 'BMPT T-90',
     searchAliases: ['Terminator 3', 'BMPT-90', 'T-90 Terminator'],
   },
-  upior_ifv: {
-    displayName: 'Upiór Infantry Fighting Vehicle', shortName: 'Upiór IFV',
-    searchAliases: ['Upior IFV', 'Polish Upior'],
+  bwp1: {
+    displayName: 'BWP-1 (Bojowy Wóz Piechoty 1)', shortName: 'BWP-1',
+    searchAliases: ['Bojowy Wóz Piechoty 1', 'BWP 1', 'Polish BMP-1', 'BMP-1 Poland'],
   },
   marder1a3: {
-    displayName: 'Marder 1A3', shortName: 'Marder 1A3',
+    displayName: 'Schützenpanzer Marder 1A3', shortName: 'Marder 1A3',
     searchAliases: ['SPz Marder 1A3', 'Schützenpanzer Marder'],
   },
   m3a3_bradley: {
@@ -84,6 +100,10 @@ const LABEL_OVERRIDES = Object.freeze({
   upior: {
     displayName: 'Upiór IFV', shortName: 'Upiór',
     searchAliases: ['Upior concept IFV', 'Upiór'],
+  },
+  spz_puma: {
+    displayName: 'Schützenpanzer Puma', shortName: 'Puma',
+    searchAliases: ['SPz Puma', 'Puma IFV'],
   },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',

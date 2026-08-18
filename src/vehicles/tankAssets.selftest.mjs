@@ -53,6 +53,20 @@ assert.equal(getSpec('m1a2').name, 'M1A2 Abrams', 'Tejas is the canonical M1A2 i
 assert.equal(getSpec('m1a2_legacy').name, 'M1A2 Abrams (Legacy)', 'former M1A2 retains the legacy identity');
 assert.equal(getSpec('m1a1ha').name, 'M1A1 Abrams HA', 'Abrams family naming is consistent');
 assert.equal(getSpec('m1a2_sepv3').name, 'M1A2 Abrams SEPv3', 'SEPv3 carries the family name');
+assert.equal(getSpec('bwp1').name, 'BWP-1 (Bojowy Wóz Piechoty 1)',
+  'BMP-derived Upior entry is publicly named BWP-1');
+assert.equal(ALL_TANK_IDS.includes('upior_ifv'), false,
+  'retired Upior IFV id is absent from the runtime roster');
+assert.equal(getSpec('upior').name, 'Upiór IFV',
+  'separate ground-up Upior identity remains unchanged');
+assert.equal(getSpec('strv122').name, 'Stridsvagn 122',
+  'Swedish vehicle uses its operator-standard public name');
+assert.equal(getSpec('k2').label.shortName, 'K2',
+  'K2 keeps the canonical designation as its concise public label');
+assert.equal(getSpec('spz_puma').name, 'Schützenpanzer Puma',
+  'Puma uses the Bundeswehr vehicle-class designation');
+assert.equal(getSpec('marder1a3').name, 'Schützenpanzer Marder 1A3',
+  'Marder uses the standardized German vehicle-class designation');
 assert.equal(ALL_TANK_IDS.includes('m1a2_tejas'), false, 'retired Tejas alias is not selectable');
 const canonicalM1A2 = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
 const legacyM1A2 = createTank('m1a2_legacy', null, { proceduralOnly: true, geometryReceipt: true });
