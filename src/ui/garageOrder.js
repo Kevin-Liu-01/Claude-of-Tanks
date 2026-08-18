@@ -35,3 +35,24 @@ export function countryFilterGroups(specs, countryCodeOf) {
   }
   return groups;
 }
+
+/** Pure overflow state for horizontally scrolling garage rails. Browser
+ * scrollLeft can briefly overshoot on elastic-scroll engines, so clamp before
+ * deriving the edge affordances. */
+export function horizontalRailState(scrollLeft, scrollWidth, clientWidth, epsilon = 2) {
+  const maxScroll = Math.max(0, Number(scrollWidth) - Number(clientWidth));
+  const position = Math.max(0, Math.min(maxScroll, Number(scrollLeft) || 0));
+  return {
+    maxScroll,
+    hasLeft: maxScroll > 1 && position > epsilon,
+    hasRight: maxScroll > 1 && position < maxScroll - epsilon,
+  };
+}
+
+/** Convert either a mouse wheel or a two-axis trackpad gesture into one
+ * horizontal rail delta. DOM_DELTA_LINE/PAGE values are normalized to pixels. */
+export function horizontalRailWheelDelta(deltaX, deltaY, deltaMode = 0, pageWidth = 0) {
+  const dominant = Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY;
+  const scale = deltaMode === 1 ? 20 : deltaMode === 2 ? Math.max(1, pageWidth) : 1;
+  return dominant * scale;
+}

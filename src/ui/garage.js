@@ -26,7 +26,10 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
-import { compareCountryThenTierThenName, countryFilterGroups } from './garageOrder.js';
+import {
+  compareCountryThenTierThenName, countryFilterGroups,
+  horizontalRailState, horizontalRailWheelDelta,
+} from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
 import { getPlayerRecord } from '../game/profile.js';
@@ -298,16 +301,52 @@ const GARAGE_CSS = `
 .cot-garage .armorline span{display:block;font:900 6.5px ${FONT_COND};letter-spacing:.13em;}
 .cot-garage .armorline b{display:block;margin-top:6px;color:#e6edf3;font-size:11px;font-weight:700;
   font-variant-numeric:tabular-nums;text-transform:none;}
-/* One combined historical fleet, filtered by national flag. */
-.cot-country-chips{position:absolute;left:calc(50% - 34px);bottom:190px;transform:translateX(-50%);
-  display:flex;gap:5px;width:max-content;max-width:calc(100vw - 620px);
-  overflow-x:auto;scrollbar-width:none;pointer-events:auto;}
-.cot-country-chips::-webkit-scrollbar{display:none;}
+/* One combined historical fleet, filtered by national flag. The outer rail
+   owns fixed edge controls/fades while the inner strip scrolls underneath;
+   this prevents the hard half-chip cutoff that used to appear at both ends. */
+.cot-country-rail{--country-edge:32px;position:absolute;z-index:5;
+  left:calc(50% - 34px);bottom:186px;transform:translateX(-50%);
+  width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
+  grid-template-columns:var(--country-edge) minmax(0,1fr) var(--country-edge);
+  align-items:stretch;pointer-events:auto;isolation:isolate;}
+.cot-country-rail::before,.cot-country-rail::after{content:'';position:absolute;z-index:2;
+  top:0;bottom:4px;width:54px;opacity:0;pointer-events:none;
+  transition:opacity .16s,width .16s;}
+.cot-country-rail::before{left:var(--country-edge);
+  background:linear-gradient(90deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
+.cot-country-rail::after{right:var(--country-edge);
+  background:linear-gradient(270deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
+.cot-country-rail.has-more-left::before,.cot-country-rail.has-more-right::after{opacity:.78;}
+.cot-country-rail:hover::before,.cot-country-rail:hover::after,
+.cot-country-rail:focus-within::before,.cot-country-rail:focus-within::after{width:62px;}
+.cot-country-rail.has-more-left:hover::before,.cot-country-rail.has-more-right:hover::after,
+.cot-country-rail.has-more-left:focus-within::before,
+.cot-country-rail.has-more-right:focus-within::after{opacity:1;}
+.cot-country-chips{grid-column:2;display:flex;gap:5px;min-width:0;padding:2px 3px 4px;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;scroll-padding-inline:18px;touch-action:pan-x;
+  scrollbar-width:thin;scrollbar-color:rgba(154,174,190,.28) transparent;}
+.cot-country-chips::-webkit-scrollbar{height:3px;}
+.cot-country-chips::-webkit-scrollbar-track{background:transparent;}
+.cot-country-chips::-webkit-scrollbar-thumb{background:rgba(154,174,190,.18);border-radius:3px;}
+.cot-country-rail:hover .cot-country-chips::-webkit-scrollbar-thumb,
+.cot-country-rail:focus-within .cot-country-chips::-webkit-scrollbar-thumb{background:rgba(240,176,74,.42);}
+.cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;width:100%;height:48px;
+  color:#91a2af;background:linear-gradient(180deg,rgba(16,22,28,.96),rgba(7,10,14,.98));
+  border:1px solid rgba(146,164,180,.28);cursor:pointer;opacity:.68;outline:none;
+  transition:color .14s,border-color .14s,background .14s,opacity .14s,box-shadow .14s;}
+.cot-country-edge.prev{grid-column:1;border-right-color:rgba(146,164,180,.16);}
+.cot-country-edge.next{grid-column:3;border-left-color:rgba(146,164,180,.16);}
+.cot-country-edge:hover,.cot-country-edge:focus-visible{color:#ffd27a;border-color:rgba(240,176,74,.72);
+  background:linear-gradient(180deg,rgba(42,30,14,.98),rgba(13,10,7,.98));opacity:1;
+  box-shadow:0 0 18px rgba(240,160,48,.12);}
+.cot-country-edge.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
 .cot-country-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
   border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
   color:#9fb0bf;font-family:${FONT_STACK};font-size:10px;font-weight:800;
   letter-spacing:.14em;text-transform:uppercase;padding:6px 11px 5px;
-  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:0 0 auto;
+  scroll-snap-align:center;
   transition:color .15s,border-color .15s,background .15s,transform .15s;outline:none;}
 .cot-country-chip .cot-flag{width:22px;height:auto;display:block;box-shadow:0 0 0 1px rgba(255,255,255,.12);}
 .cot-country-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);
@@ -626,7 +665,7 @@ const GARAGE_CSS = `
    the interactive chrome — one quiet amber ring, outline-based so nothing
    shifts layout. Mouse clicks stay ring-free via :focus-visible. */
 .cot-battle:focus-visible,.cot-battle-mode:focus-visible,.cot-battle-choice:focus-visible,
-.cot-country-chip:focus-visible,.cot-car-arrow:focus-visible,.cot-record-trigger:focus-visible,
+.cot-country-chip:focus-visible,.cot-country-edge:focus-visible,.cot-car-arrow:focus-visible,.cot-record-trigger:focus-visible,
 .cot-record-close:focus-visible{
   outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
 .cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
@@ -644,7 +683,7 @@ const GARAGE_CSS = `
 .cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
 .cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
 .cot-garage.enter .cot-battle-control{animation:cot-g-drop-c .36s ease-out .05s backwards;}
-.cot-garage.enter .cot-country-chips{animation:cot-g-rise-c .32s ease-out .10s backwards;}
+.cot-garage.enter .cot-country-rail{animation:cot-g-rise-c .32s ease-out .10s backwards;}
 .cot-garage.enter .cot-carousel{animation:cot-g-rise-c .36s ease-out .14s backwards;}
 /* MARKETING FEATURED PANEL: rotating in-engine action stills (see
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
@@ -729,7 +768,11 @@ const GARAGE_CSS = `
   .cot-camo-card{padding:3px 2px 2px;}.cot-camo-card .sw{height:22px;margin-bottom:2px;}
   .cot-camo-card .cl{font-size:6.5px;letter-spacing:.06em;}
   .cot-camos .cnote{display:none;}
-  .cot-country-chips{left:50%;bottom:86px;gap:3px;max-width:86vw;}
+  .cot-country-rail{--country-edge:26px;left:208px;right:14px;bottom:82px;
+    width:auto;height:42px;transform:none;}
+  .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise;}
+  .cot-country-edge{height:38px;}
+  .cot-country-chips{gap:3px;padding-bottom:3px;scroll-padding-inline:10px;}
   .cot-country-chip{padding:3px 6px 2px;font-size:7px;letter-spacing:.10em;gap:3px;}
   .cot-country-chip .cot-flag{width:15px;}
   .cot-carousel{bottom:8px;gap:4px;height:72px;max-width:98vw;}
@@ -1534,7 +1577,13 @@ export function createGarage(opts) {
     `</div><button class="cot-room-reminder" type="button" aria-label="Open active room">` +
     `<span class="rr-dot"></span><span class="rr-copy"></span></button></div>` +
     `<div class="stats"></div>` +
+    `<div class="cot-country-rail">` +
+    `<button class="cot-country-edge prev is-unavailable" type="button" disabled aria-hidden="true" ` +
+    `aria-label="Scroll countries left">${uiIconSVG('chevronLeft', 14)}</button>` +
     `<div class="cot-country-chips" role="group" aria-label="Filter vehicles by country"></div>` +
+    `<button class="cot-country-edge next is-unavailable" type="button" disabled aria-hidden="true" ` +
+    `aria-label="Scroll countries right">${uiIconSVG('chevronRight', 14)}</button>` +
+    `</div>` +
     `<div class="cot-carousel">` +
     `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="Previous vehicle">` +
     `${uiIconSVG('chevronLeft', 15)}</button>` +
@@ -1669,6 +1718,10 @@ export function createGarage(opts) {
 
   const statsEl = root.querySelector('.stats');
   const cardsEl = root.querySelector('.cot-cards');
+  const countryRailEl = root.querySelector('.cot-country-rail');
+  const chipsEl = root.querySelector('.cot-country-chips');
+  const prevCountryBtn = root.querySelector('.cot-country-edge.prev');
+  const nextCountryBtn = root.querySelector('.cot-country-edge.next');
   const prevVehicleBtn = root.querySelector('.cot-car-arrow.prev');
   const nextVehicleBtn = root.querySelector('.cot-car-arrow.next');
   const battleControl = root.querySelector('.cot-battle-control');
@@ -1738,6 +1791,52 @@ export function createGarage(opts) {
   const queueCarouselAffordances = () => requestAnimationFrame(syncCarouselAffordances);
   cardsEl.addEventListener('scroll', syncCarouselAffordances, { passive: true });
   window.addEventListener('resize', queueCarouselAffordances);
+
+  // Country flags use the same honest overflow contract as the vehicle strip:
+  // fixed edge fades/buttons appear only where hidden content really exists.
+  const syncCountryRailAffordances = () => {
+    const { hasLeft, hasRight } = horizontalRailState(
+      chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
+    );
+    countryRailEl.classList.toggle('has-more-left', hasLeft);
+    countryRailEl.classList.toggle('has-more-right', hasRight);
+    for (const [button, available] of [[prevCountryBtn, hasLeft], [nextCountryBtn, hasRight]]) {
+      button.disabled = !available;
+      button.classList.toggle('is-unavailable', !available);
+      button.setAttribute('aria-hidden', String(!available));
+    }
+  };
+  const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
+  const scrollCountries = (direction) => {
+    const distance = Math.max(180, chipsEl.clientWidth * 0.72);
+    chipsEl.scrollBy({ left: direction * distance, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+  };
+  chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
+  chipsEl.addEventListener('wheel', (event) => {
+    const { maxScroll } = horizontalRailState(
+      chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
+    );
+    if (maxScroll <= 1) return;
+    const delta = horizontalRailWheelDelta(
+      event.deltaX, event.deltaY, event.deltaMode, chipsEl.clientWidth,
+    );
+    if (!delta) return;
+    const before = chipsEl.scrollLeft;
+    const target = Math.max(0, Math.min(maxScroll, before + delta));
+    if (Math.abs(target - before) < 0.5) return;
+    event.preventDefault();
+    chipsEl.scrollLeft = target;
+    syncCountryRailAffordances();
+  }, { passive: false });
+  prevCountryBtn.addEventListener('click', () => {
+    emit('ui:click', {});
+    scrollCountries(-1);
+  });
+  nextCountryBtn.addEventListener('click', () => {
+    emit('ui:click', {});
+    scrollCountries(1);
+  });
+  window.addEventListener('resize', queueCountryRailAffordances);
 
   // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
@@ -2164,7 +2263,6 @@ export function createGarage(opts) {
   // every historical era stays together inside its country fleet.
   const inCountry = (spec, countryId) => countryCodeOf(spec) === countryId;
   let countryFilter = countryGroups[0]?.id || 'us';
-  const chipsEl = root.querySelector('.cot-country-chips');
   const chipById = new Map();
   for (const group of countryGroups) {
     const count = group.count;
@@ -2192,6 +2290,15 @@ export function createGarage(opts) {
   function applyCountryFilter(countryId) {
     countryFilter = countryId;
     for (const [id, chip] of chipById) chip.classList.toggle('sel', id === countryId);
+    // Programmatic tank selection can cross national groups. Keep the active
+    // flag fully visible rather than leaving its highlight under an edge fade.
+    const activeChip = chipById.get(countryId);
+    requestAnimationFrame(() => {
+      if (api.isOpen && activeChip) activeChip.scrollIntoView({
+        block: 'nearest', inline: 'center', behavior: REDUCED_MOTION ? 'auto' : 'smooth',
+      });
+      syncCountryRailAffordances();
+    });
     let vis = 0; // garage_ui: stagger budget for the reveal animation
     for (const spec of specs) {
       const card = cardById.get(spec.id);
@@ -2211,6 +2318,7 @@ export function createGarage(opts) {
     }
     cardsEl.scrollLeft = 0;
     queueCarouselAffordances();
+    queueCountryRailAffordances();
   }
   // --- END country filter chips --------------------------------------------
 
@@ -2645,6 +2753,10 @@ export function createGarage(opts) {
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);
+      // The hidden garage reports a zero-width rail during initial creation.
+      // Re-measure after display:block so the first visible frame gets honest
+      // left/right fades and controls without waiting for a resize or scroll.
+      queueCountryRailAffordances();
     },
 
     /** Close the garage screen. */

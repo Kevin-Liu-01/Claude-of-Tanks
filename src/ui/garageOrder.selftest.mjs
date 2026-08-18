@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { compareCountryThenTierThenName, countryFilterGroups } from './garageOrder.js';
+import {
+  compareCountryThenTierThenName, countryFilterGroups,
+  horizontalRailState, horizontalRailWheelDelta,
+} from './garageOrder.js';
 
 const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],
@@ -47,4 +50,23 @@ assert.deepEqual(
   'duplicate display names use a deterministic id tie-break',
 );
 
-console.log('garageOrder.selftest: country / tier / display-name ordering verified');
+assert.deepEqual(horizontalRailState(0, 900, 400), {
+  maxScroll: 500, hasLeft: false, hasRight: true,
+}, 'country rail advertises only the right edge at its start');
+assert.deepEqual(horizontalRailState(250, 900, 400), {
+  maxScroll: 500, hasLeft: true, hasRight: true,
+}, 'country rail advertises both edges in its middle');
+assert.deepEqual(horizontalRailState(500, 900, 400), {
+  maxScroll: 500, hasLeft: true, hasRight: false,
+}, 'country rail advertises only the left edge at its end');
+assert.deepEqual(horizontalRailState(20, 300, 400), {
+  maxScroll: 0, hasLeft: false, hasRight: false,
+}, 'a fitting country rail shows no false edge affordances');
+assert.equal(horizontalRailWheelDelta(4, 60), 60,
+  'vertical mouse-wheel motion pans the horizontal country rail');
+assert.equal(horizontalRailWheelDelta(-38, 6), -38,
+  'native horizontal trackpad motion keeps its direction and magnitude');
+assert.equal(horizontalRailWheelDelta(0, 3, 1), 60,
+  'line-mode wheel motion is normalized to useful pixels');
+
+console.log('garageOrder.selftest: ordering, filters and horizontal rail behavior verified');
