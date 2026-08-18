@@ -126,7 +126,8 @@ function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
 // Every offset is measured along the carrier's real surface normal rather
 // than a world axis, so swept cheeks and tumbled bustle walls stay flush.
 function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
-  thickness = 0.055, baseOffset = -0.006, outwardHint = [1, 0, 0]) {
+  thickness = 0.055, baseOffset = -0.006, outwardHint = [1, 0, 0],
+  smoothOuter = false) {
   const a = new THREE.Vector3(...p00);
   const u = new THREE.Vector3(...p10).sub(a);
   const v = new THREE.Vector3(...p01).sub(a);
@@ -136,11 +137,26 @@ function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
     const q = new THREE.Vector3(...point).addScaledVector(normal, distance);
     return [q.x, q.y, q.z];
   };
-  sideSlab(P, bucket, side,
-    offset(p00, baseOffset), offset(p10, baseOffset),
-    offset(p11, baseOffset), offset(p01, baseOffset),
-    offset(p00, baseOffset + thickness), offset(p10, baseOffset + thickness),
-    offset(p11, baseOffset + thickness), offset(p01, baseOffset + thickness));
+  const b0 = offset(p00, baseOffset), b1 = offset(p10, baseOffset);
+  const b2 = offset(p11, baseOffset), b3 = offset(p01, baseOffset);
+  const t0 = offset(p00, baseOffset + thickness);
+  const t1 = offset(p10, baseOffset + thickness);
+  const t2 = offset(p11, baseOffset + thickness);
+  const t3 = offset(p01, baseOffset + thickness);
+  const M = ([x, y, z]) => [side * x, y, z];
+  const geometry = side > 0
+    ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
+    : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2));
+  if (smoothOuter) {
+    // slab() is deliberately non-indexed so its hard armor edges survive.
+    // Only the exposed face (the fifth quad, vertices 24..29) shares one
+    // normal; this removes a false diagonal facet without rounding its rim.
+    const n = side > 0 ? normal : new THREE.Vector3(-normal.x, normal.y, normal.z);
+    const normals = geometry.getAttribute('normal');
+    for (let i = 24; i < 30; i++) normals.setXYZ(i, n.x, n.y, n.z);
+    normals.needsUpdate = true;
+  }
+  P.add(bucket, geometry);
 }
 
 const ERA_CONTACT_OFFSET = -0.006;
@@ -256,7 +272,7 @@ function armorFlankPatch(P, bucket, t, side, y0, y1, z0, z1,
 // cassette back into that plane.  Natural panel gaps provide separation;
 // no ink-black grid geometry is required.
 function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
-  thickness = 0.075, baseOffset = -0.006) {
+  thickness = 0.075, baseOffset = -0.006, smoothOuter = false) {
   const zT = side > 0 ? (t.zTipR ?? t.zTip) : t.zTip;
   const zW = side > 0 ? (t.zWideR ?? t.zWide) : t.zWide;
   const bx = side > 0 ? (t.twTipR ?? t.tw) : t.tw;
@@ -278,7 +294,7 @@ function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
   const p00 = point(u0, v0, 0), p10 = point(u1, v0, 0);
   const p11 = point(u1, v1, 0), p01 = point(u0, v1, 0);
   surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
-    thickness, baseOffset, [1, 0, 1]);
+    thickness, baseOffset, [1, 0, 1], smoothOuter);
 }
 
 // Forward-side ERA belongs to the cheek's swept OUTER quad, not the
@@ -3657,23 +3673,26 @@ function buildTejasFamily(P, p) {
     // shell surface.  A continuous inset skin preserves the laminated armor read
     // without reintroducing vertical or horizontal split seams.
     for (const side of [-1, 1]) {
-      const u0 = 0.035, u1 = 0.895;
-      const v0 = 0.055, v1 = 0.875;
+      // The published Tejas shell has a deliberately shorter/chopped
+      // vehicle-right (+x) cheek.  Reusing the left cassette's outer and
+      // roof margins there exposed the swept carrier/side cassette as a
+      // triangular tongue in dead-front views.  Let the right cassette own
+      // the full shortened shoulder and roof transition; keep a small
+      // construction margin so the applique still reads as a seated layer.
+      const u0 = side > 0 ? 0.005 : 0.035;
+      const u1 = side > 0 ? 0.985 : 0.895;
+      const v0 = side > 0 ? 0.025 : 0.055;
+      const v1 = side > 0 ? 0.985 : 0.875;
       cheekEraPatch(P, 'turret', t, side, u0, u1, v0, v1,
         0.155, ERA_CONTACT_OFFSET);
-      // The carrier quad is bilinear rather than perfectly planar.  Four
-      // zero-gap coplanar face leaves follow that curvature without the
-      // visible recessed cross that defined the retired four-cassette set.
-      // Their shared edges meet exactly and read as one continuous skin.
-      const uEdge = [u0 + 0.035, 0.465, u1 - 0.035];
-      const vEdge = [v0 + 0.045, 0.465, v1 - 0.045];
-      for (let col = 0; col < 2; col++) {
-        for (let row = 0; row < 2; row++) {
-          cheekEraPatch(P, 'turretDetail', t, side,
-            uEdge[col], uEdge[col + 1], vEdge[row], vEdge[row + 1],
-            0.007, eraFaceBase(0.155));
-        }
-      }
+      // Keep the exposed face on the cassette's exact carrier quad.  The
+      // former four zero-gap leaves each recomputed a slightly different
+      // normal on this bilinear surface; on the shorter right cheek those
+      // local planes crossed behind the cassette body and exposed a large
+      // triangular tongue of base armor.  One full face uses the identical
+      // bounds/normal as the body, so the layers remain parallel and closed.
+      cheekEraPatch(P, 'turretDetail', t, side, u0, u1, v0, v1,
+        0.007, eraFaceBase(0.155), true);
     }
     // Three-row upper-glacis array, grown from the Tejas deck surface just
     // like the M1A1HA set rather than bridged across the slope as boxes.

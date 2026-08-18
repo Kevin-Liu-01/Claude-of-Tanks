@@ -49617,8 +49617,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.759,
-          -0.1713
+          1.47,
+          -0.2
         ],
         "plates": [
           {
@@ -50325,12 +50325,12 @@
             "name": "turretRing",
             "min": [
               -0.9995,
-              1.4357,
+              1.1467,
               -1.2729
             ],
             "max": [
               0.9995,
-              1.6923,
+              1.4033,
               0.9304
             ],
             "turretLocal": false
@@ -50519,8 +50519,8 @@
           }
         ]
       },
-      "geometryHash": "9404bd67",
-      "metadataHash": "e0df1ffe",
+      "geometryHash": "d6c80cb0",
+      "metadataHash": "2f0cc035",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -50539,7 +50539,7 @@
           "armorPaint": 4,
           "tireRubber": 1,
           "wood": 1,
-          "unclassified": 15,
+          "unclassified": 13,
           "canvas": 1
         }
       },
@@ -50604,24 +50604,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79797,
-          "sha256": "88f65a81a186743cf32b041dc63bf2d20c7293b55c8c181ac38faa08d9cdd133"
+          "bytes": 79052,
+          "sha256": "6f937a3ce6d3f098ec3868e96d69be4b85857ffa6fb9dc8818bbb42ec83cb921"
         },
         "armorSide": {
           "file": "m1a2_tusk_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78843,
-          "sha256": "03faca3053a7f5f63af57e3badd243ed7170d31bede0f3e3ec5a538aacf350d6"
+          "bytes": 78020,
+          "sha256": "9717c32ec5288c12aaa14a837d87abe959ba96cf9289ca51ae25ec80f4dcd51d"
         },
         "modulesSide": {
           "file": "m1a2_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81843,
-          "sha256": "b1e6e9a59f86fbbf4bc3acc369e950772b69f32523eff3b2cb37af92b1a90078"
+          "bytes": 80243,
+          "sha256": "6beae3d73d0dec5cce33072778dab5b2ac38a2b6d930ed5a118bda31d3bccef3"
         },
         "markings": {
           "file": "m1a2_tusk_markings.png",
