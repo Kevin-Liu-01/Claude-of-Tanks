@@ -34473,8 +34473,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.775,
-          0.1279
+          1.72,
+          0.12
         ],
         "plates": [
           {
@@ -35243,12 +35243,12 @@
             "name": "turretRing",
             "min": [
               -1.0051,
-              1.7057,
+              1.6507,
               -1.2465
             ],
             "max": [
               1.0051,
-              1.9143,
+              1.8593,
               0.8603
             ],
             "turretLocal": false
@@ -35437,8 +35437,8 @@
           }
         ]
       },
-      "geometryHash": "1f1f637d",
-      "metadataHash": "9543a334",
+      "geometryHash": "8e89e6bf",
+      "metadataHash": "2bce27bd",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -35520,24 +35520,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79923,
-          "sha256": "684acfd2ebfee9d4d387f12434fe1f42d3995d04b442d50c56230a72725960f5"
+          "bytes": 80942,
+          "sha256": "015303e871614223157be65408e0355ee70a0d219f173db62aa5b978d7541f27"
         },
         "armorSide": {
           "file": "leo2_revolution_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78936,
-          "sha256": "b4875131cda9b85c1267db805fedabff46e5ad891e8877416ccbeb4bf133677a"
+          "bytes": 80057,
+          "sha256": "a340e82770fd841c7086bd82ac3afb3ba0dc744fb1a2a2b6777b0df051b9623d"
         },
         "modulesSide": {
           "file": "leo2_revolution_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83141,
-          "sha256": "cc0ba88737315067e06c8e4fece84e121829b28cfa3b3fab53d95b1928d63260"
+          "bytes": 83065,
+          "sha256": "7ae3cdda6720905ebd7bb3cc705168f223e34dff744849b3a77b86e4b04e006a"
         },
         "markings": {
           "file": "leo2_revolution_markings.png",

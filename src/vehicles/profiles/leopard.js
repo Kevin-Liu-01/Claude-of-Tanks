@@ -6722,8 +6722,12 @@ function buildLeo2Revolution(P) {
     padHex: 0x24231f, gearFloor: true,
   });
 
-  // ---- turret: ring pivot (0, 1.60, -0.35); local z = w + 0.35, y = w - 1.60
-  P.turretG.position.set(0, 1.60, -0.35);
+  // ---- turret: ring pivot (0, 1.60, -0.50); local z = w + 0.50, y = w - 1.60
+  // OWNER CENTERING PASS (2026-08-18): move the complete rotating package
+  // 15 cm rearward so its fighting compartment, bustle and roof equipment
+  // sit over the hull ring in side profile.  This is deliberately a parent-
+  // rig translation: gun, cheeks, RWS, racks and markings keep one yaw frame.
+  P.turretG.position.set(0, 1.60, -0.50);
   // RESTORED NATIVE PRIMARY CASTING (2026-08): the strongest pre-wrapper
   // Revolution retained excellent authored hull, track, armor-course and
   // equipment work, but its turret was assembled as separate upper plates.
