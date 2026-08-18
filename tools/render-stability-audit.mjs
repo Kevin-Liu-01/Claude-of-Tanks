@@ -397,6 +397,18 @@ const liveDrive = evaluate(`(async () => {
   const cameraEnd = D.camera.position;
   const telemetry = D.telemetry();
   const glError = D.renderer.getContext().getError();
+  let canopyShadowProxyCasters = 0;
+  let canopyShadowProxyVertices = 0;
+  let treeFoliageShadowCasters = 0;
+  D.scene.traverse((object) => {
+    if (object.userData?.canopyShadowProxy && object.castShadow) {
+      canopyShadowProxyCasters++;
+      canopyShadowProxyVertices += object.geometry?.attributes?.position?.count || 0;
+    }
+    if (object.userData?.treeFoliage && object.castShadow) {
+      treeFoliageShadowCasters++;
+    }
+  });
   frameTimes.sort((a, b) => a - b);
   const percentile = (q) => frameTimes[Math.min(
     frameTimes.length - 1, Math.floor(frameTimes.length * q))] || 0;
@@ -412,6 +424,9 @@ const liveDrive = evaluate(`(async () => {
     frameMsP95: percentile(0.95),
     glError,
     shaderErrors: telemetry.shadows.shaderErrors,
+    canopyShadowProxyCasters,
+    canopyShadowProxyVertices,
+    treeFoliageShadowCasters,
     shadowThrottle: telemetry.shadows.throttle,
     nearAutoUpdate: telemetry.shadows.cascades
       .slice(0, 2).map((cascade) => cascade.autoUpdate),
@@ -441,6 +456,14 @@ if (liveDrive.glError !== 0) liveDriveReasons.push(`live WebGL error ${liveDrive
 if (liveDrive.shaderErrors !== 0) {
   liveDriveReasons.push(`${liveDrive.shaderErrors} live shader errors`);
 }
+if (liveDrive.canopyShadowProxyCasters < 1 || liveDrive.canopyShadowProxyVertices < 1) {
+  liveDriveReasons.push('live world has no stable tree-canopy shadow proxies');
+}
+if (liveDrive.treeFoliageShadowCasters !== 0) {
+  liveDriveReasons.push(
+    `${liveDrive.treeFoliageShadowCasters} alpha-tested tree-card shadow casters remain`,
+  );
+}
 if (liveDriveReasons.length) failures.push({ preset: 'live-drive', reasons: liveDriveReasons });
 console.log(
   `${liveDriveReasons.length ? 'FAIL' : 'PASS'} live-drive `
@@ -451,7 +474,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 2,
+  version: 3,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

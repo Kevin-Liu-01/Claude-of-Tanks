@@ -2667,6 +2667,49 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
+  // shadow-stability r1: Alpha-tested leaf cards are excellent visible
+  // silhouettes but poor moving CSM casters. A texel-snapped cascade still
+  // re-rasterizes thousands of sub-pixel cutouts as the chase camera drives,
+  // so their resolved coverage flips and the ground under a stand flashes.
+  // Cast the crown from a handful of opaque, separated canopy lobes instead:
+  // the coarse gaps retain a natural broken shadow while solid geometry is
+  // temporally stable. The proxy writes neither color nor depth in the main
+  // pass, follows the same near partition/topple matrix as its tree, and is
+  // cheaper across the shadow cascades than re-drawing the foliage cards.
+  const canopyShadowMat = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    colorWrite: false,
+    depthWrite: false,
+    depthTest: false,
+    toneMapped: false,
+  });
+  const SHADOW_LOBES = [
+    [ 0.00,  0.02,  0.00, 0.27, 0.24, 0.27],
+    [-0.27, -0.05, -0.10, 0.22, 0.20, 0.22],
+    [ 0.27,  0.04,  0.08, 0.22, 0.21, 0.21],
+    [-0.08,  0.26,  0.18, 0.21, 0.22, 0.20],
+    [ 0.10, -0.24, -0.18, 0.22, 0.19, 0.21],
+    [ 0.06,  0.10, -0.29, 0.20, 0.20, 0.20],
+  ];
+  function buildCanopyShadowProxy(source) {
+    source.computeBoundingBox();
+    const box = source.boundingBox;
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const lobes = SHADOW_LOBES.map(([ox, oy, oz, sx, sy, sz]) => {
+      const g = new THREE.IcosahedronGeometry(1, 0);
+      g.scale(size.x * sx, size.y * sy, size.z * sz);
+      g.translate(
+        center.x + size.x * ox,
+        center.y + size.y * oy,
+        center.z + size.z * oz,
+      );
+      return g;
+    });
+    const merged = mergeGeometries(lobes, false);
+    for (const lobe of lobes) lobe.dispose();
+    return merged;
+  }
   function makeTreeMesh(geo, mat, sp, isFoliage) {
     // per-instance occlusion fade — EVERY geometry drawn with the tree hooks
     // must carry the attribute (near meshes are updated live; far meshes stay
@@ -2698,6 +2741,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     m.matrixAutoUpdate = false;
     if (isFoliage) {
       m.customDepthMaterial = foliageDepthMats[sp];
+      m.userData.treeFoliage = true;
       // GTAO's override-material prepass ignores alphaTest — cards would
       // composite as huge dark floating quads over the canopy
       m.userData.aoExclude = true;
@@ -2716,10 +2760,19 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   // shadow-triangle mass is props/buildings (-0.66 M measured with props
   // castShadow off) — see docs/handoff/performance_budget-r5.md §3.
   for (const sp of speciesList) {
-    nearMeshes[sp] = treeGeo[sp].map((g) => [
-      makeTreeMesh(g.trunk, barkMat, sp, false),
-      makeTreeMesh(g.cards, foliageMats[sp], sp, true),
-    ]);
+    nearMeshes[sp] = treeGeo[sp].map((g) => {
+      const trunk = makeTreeMesh(g.trunk, barkMat, sp, false);
+      const foliage = makeTreeMesh(g.cards, foliageMats[sp], sp, true);
+      // The visible alpha cards no longer enter the shadow pass; their
+      // low-frequency proxy below owns crown shade without cutout shimmer.
+      foliage.castShadow = false;
+      const shadowProxy = makeTreeMesh(
+        buildCanopyShadowProxy(g.cards), canopyShadowMat, sp, false);
+      shadowProxy.receiveShadow = false;
+      shadowProxy.userData.shadowOnly = true;
+      shadowProxy.userData.canopyShadowProxy = true;
+      return [trunk, foliage, shadowProxy];
+    });
     // r7: far LOD is now a 2-variant array (silhouette variety at range)
     farMeshes[sp] = treeGeoFar[sp].map((g) => {
       const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false);
