@@ -127,11 +127,13 @@ function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
 // than a world axis, so swept cheeks and tumbled bustle walls stay flush.
 function surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
   thickness = 0.055, baseOffset = -0.006, outwardHint = [1, 0, 0],
-  smoothOuter = false) {
+  smoothOuter = false, normalOverride = null) {
   const a = new THREE.Vector3(...p00);
   const u = new THREE.Vector3(...p10).sub(a);
   const v = new THREE.Vector3(...p01).sub(a);
-  const normal = new THREE.Vector3().crossVectors(u, v).normalize();
+  const normal = normalOverride
+    ? normalOverride.clone().normalize()
+    : new THREE.Vector3().crossVectors(u, v).normalize();
   if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
   const offset = (point, distance) => {
     const q = new THREE.Vector3(...point).addScaledVector(normal, distance);
@@ -271,8 +273,7 @@ function armorFlankPatch(P, bucket, t, side, y0, y1, z0, z1,
 // patch uses the same four certified corners as abramsShell, then buries the
 // cassette back into that plane.  Natural panel gaps provide separation;
 // no ink-black grid geometry is required.
-function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
-  thickness = 0.075, baseOffset = -0.006, smoothOuter = false) {
+function cheekEraFrame(t, side, u0, u1, v0, v1) {
   const zT = side > 0 ? (t.zTipR ?? t.zTip) : t.zTip;
   const zW = side > 0 ? (t.zWideR ?? t.zWide) : t.zWide;
   const bx = side > 0 ? (t.twTipR ?? t.tw) : t.tw;
@@ -293,8 +294,48 @@ function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
   };
   const p00 = point(u0, v0, 0), p10 = point(u1, v0, 0);
   const p11 = point(u1, v1, 0), p01 = point(u0, v1, 0);
+  const normal = new THREE.Vector3().crossVectors(
+    new THREE.Vector3(...p10).sub(new THREE.Vector3(...p00)),
+    new THREE.Vector3(...p01).sub(new THREE.Vector3(...p00)),
+  ).normalize();
+  if (normal.dot(new THREE.Vector3(1, 0, 1)) < 0) normal.negate();
+  return { p00, p10, p11, p01, normal };
+}
+
+function cheekEraPatch(P, bucket, t, side, u0, u1, v0, v1,
+  thickness = 0.075, baseOffset = -0.006, smoothOuter = false) {
+  const { p00, p10, p11, p01, normal } = cheekEraFrame(
+    t, side, u0, u1, v0, v1);
   surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
-    thickness, baseOffset, [1, 0, 1], smoothOuter);
+    thickness, baseOffset, [1, 0, 1], smoothOuter, normal);
+}
+
+// Inset cheek skins must remain parallel to their full cassette carrier.
+// Re-sampling a smaller bilinear quad and deriving a second normal made the
+// former TUSK leaves cross the cassette body on the asymmetric right cheek.
+// Interpolate the smaller face from the full carrier, but force its original
+// normal so a visible armor-paint rim is restored without split seams or
+// triangular tongues.
+function cheekEraInsetPatch(P, bucket, t, side, u0, u1, v0, v1,
+  insetU, insetV, thickness, baseOffset, smoothOuter = false) {
+  const frame = cheekEraFrame(t, side, u0, u1, v0, v1);
+  const bilerp = (u, v) => frame.p00.map((n, i) => (
+    n * (1 - u) * (1 - v)
+      + frame.p10[i] * u * (1 - v)
+      + frame.p11[i] * u * v
+      + frame.p01[i] * (1 - u) * v
+  ));
+  const p00 = bilerp(insetU, insetV);
+  const p10 = bilerp(1 - insetU, insetV);
+  const p11 = bilerp(1 - insetU, 1 - insetV);
+  const p01 = bilerp(insetU, 1 - insetV);
+  surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
+    thickness, baseOffset, [1, 0, 1], smoothOuter, frame.normal);
+}
+
+function cheekEraOutwardOffset(t, side, u0, u1, v0, v1, distance) {
+  const normal = cheekEraFrame(t, side, u0, u1, v0, v1).normal;
+  return [side * normal.x * distance, normal.y * distance, normal.z * distance];
 }
 
 // Forward-side ERA belongs to the cheek's swept OUTER quad, not the
@@ -1380,7 +1421,7 @@ const TEJAS_TURRET = {
 // A box EDGE within ~6 mm of a column boundary AA-bleeds a spike into the
 // neighbor column at the mask's 40-threshold — that bleed cost dims 97.2
 // twice in this round (head front edge at 0.477; keep 7 mm+ margins).
-function tejasRoofKit(P, t, station = 'crows') {
+function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
   const reactiveLeftWeapons = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(P.spec.id);
   const plat = 0.87;                          // 2.44 world — rack/hatch plateau
@@ -1870,7 +1911,27 @@ function tejasRoofKit(P, t, station = 'crows') {
     // left seat y 0.448 (one trace pixel under the right's 0.475): at the
     // forward columns the rim crowns quantized 2.165 -> 2.192 on side col
     // z 1.83 (A/B curve diff) — 0.448 restores the certified 2.165 read.
-    tejasSmokeCluster(P, side * 1.22, side < 0 ? 0.448 : 0.475, side < 0 ? 1.32 : 1.12, side);
+    let smokeX = side * 1.22;
+    let smokeY = side < 0 ? 0.448 : 0.475;
+    let smokeZ = side < 0 ? 1.32 : 1.12;
+    if (abramsKit === 'tusk') {
+      // The unified XM32 cheek cassette is 155 mm proud of the original
+      // shell.  The inherited M250 coordinates still sat on that shell and
+      // consequently buried both six-tube banks in the applique.  Translate
+      // the complete bracket/tube/bore assembly along the exact local cheek
+      // normal, with a 10 mm seating allowance, so the bracket lands on the
+      // new face instead of floating or clipping through it.
+      const u0 = side > 0 ? 0.005 : 0.035;
+      const u1 = side > 0 ? 0.985 : 0.895;
+      const v0 = side > 0 ? 0.025 : 0.055;
+      const v1 = side > 0 ? 0.985 : 0.875;
+      const [dx, dy, dz] = cheekEraOutwardOffset(
+        t, side, u0, u1, v0, v1, 0.165);
+      smokeX += dx;
+      smokeY += dy;
+      smokeZ += dz;
+    }
+    tejasSmokeCluster(P, smokeX, smokeY, smokeZ, side);
   }
   // ---- asymmetric flank kit (vertex r1 plan/front tables, world coords) ---
   // All z below are turret-local (world - 0.35); y local (world - 1.57).
@@ -3301,7 +3362,7 @@ function buildTejasFamily(P, p) {
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
   abramsBustleRack(P, t, 1);
-  tejasRoofKit(P, t, p.station ?? 'crows');
+  tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
   // Mantlet hand-rolled post-warp (the shared abramsMantlet block2/seam tops
   // rode 2.05-2.11 world where the warped-frame ref reads a 2.00 flat cover
   // line; block1 deepened to the ref's 1.54-1.56 cover bottom, collar
@@ -3684,15 +3745,14 @@ function buildTejasFamily(P, p) {
       const v0 = side > 0 ? 0.025 : 0.055;
       const v1 = side > 0 ? 0.985 : 0.875;
       cheekEraPatch(P, 'turret', t, side, u0, u1, v0, v1,
-        0.155, ERA_CONTACT_OFFSET);
-      // Keep the exposed face on the cassette's exact carrier quad.  The
-      // former four zero-gap leaves each recomputed a slightly different
-      // normal on this bilinear surface; on the shorter right cheek those
-      // local planes crossed behind the cassette body and exposed a large
-      // triangular tongue of base armor.  One full face uses the identical
-      // bounds/normal as the body, so the layers remain parallel and closed.
-      cheekEraPatch(P, 'turretDetail', t, side, u0, u1, v0, v1,
-        0.007, eraFaceBase(0.155), true);
+        0.155, ERA_CONTACT_OFFSET, true);
+      // Restore the small contrasting laminate seen on the other Abrams ERA
+      // blocks.  It is one continuous inset cap, leaving a camouflaged rim
+      // around the unified cassette; it deliberately reuses the full
+      // carrier normal rather than reviving the old four independently
+      // pitched leaves.
+      cheekEraInsetPatch(P, 'turretDetail', t, side, u0, u1, v0, v1,
+        0.055, 0.065, 0.007, eraFaceBase(0.155), true);
     }
     // Three-row upper-glacis array, grown from the Tejas deck surface just
     // like the M1A1HA set rather than bridged across the slope as boxes.

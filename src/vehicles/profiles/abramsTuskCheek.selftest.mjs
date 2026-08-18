@@ -6,39 +6,78 @@ const tank = createTank('m1a2_tusk', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
+const armor = tank.root.getObjectByName('turret');
 const detail = tank.root.getObjectByName('turretDetail');
+const dark = tank.root.getObjectByName('turretDark');
+assert.ok(armor?.geometry, 'TUSK turret armor geometry exists');
 assert.ok(detail?.geometry, 'TUSK turret detail geometry exists');
+assert.ok(dark?.geometry, 'TUSK turret dark geometry exists');
 
-const position = detail.geometry.getAttribute('position');
-const normal = detail.geometry.getAttribute('normal');
 const a = new THREE.Vector3();
 const b = new THREE.Vector3();
 const c = new THREE.Vector3();
-const rightCheekFace = [];
 
-for (let i = 0; i < position.count; i += 3) {
-  a.fromBufferAttribute(position, i);
-  b.fromBufferAttribute(position, i + 1);
-  c.fromBufferAttribute(position, i + 2);
-  const centroid = a.clone().add(b).add(c).multiplyScalar(1 / 3);
-  const area = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
-  const faceNormal = new THREE.Vector3().fromBufferAttribute(normal, i);
-  if (centroid.x > 0.65 && centroid.z > 1.0 && area > 0.12
-    && faceNormal.x > 0.4 && faceNormal.z > 0.4) {
-    rightCheekFace.push({
-      vertices: [a.clone(), b.clone(), c.clone()],
-      normal: faceNormal,
-    });
+function largeCheekFaces(mesh, side) {
+  const position = mesh.geometry.getAttribute('position');
+  const normal = mesh.geometry.getAttribute('normal');
+  const faces = [];
+  for (let i = 0; i < position.count; i += 3) {
+    a.fromBufferAttribute(position, i);
+    b.fromBufferAttribute(position, i + 1);
+    c.fromBufferAttribute(position, i + 2);
+    const centroid = a.clone().add(b).add(c).multiplyScalar(1 / 3);
+    const area = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
+    const faceNormal = new THREE.Vector3().fromBufferAttribute(normal, i);
+    if (side * centroid.x > 0.65 && centroid.z > 1.0 && area > 0.12
+      && side * faceNormal.x > 0.4 && faceNormal.z > 0.4) {
+      faces.push({
+        vertices: [a.clone(), b.clone(), c.clone()],
+        normal: faceNormal,
+      });
+    }
   }
+  return faces;
 }
 
-assert.equal(rightCheekFace.length, 2,
-  'right unified cheek exposes one closed two-triangle ERA face');
-assert.ok(rightCheekFace[0].normal.distanceTo(rightCheekFace[1].normal) < 1e-6,
-  'right ERA face shares one normal and cannot read as a protruding cheek triangle');
-const xs = rightCheekFace.flatMap(({ vertices }) => vertices.map((v) => v.x));
-assert.ok(Math.min(...xs) < 0.73 && Math.max(...xs) > 1.58,
-  'right ERA face reaches from the gun throat to the outer shoulder');
+for (const side of [-1, 1]) {
+  const caps = largeCheekFaces(detail, side);
+  assert.equal(caps.length, 2,
+    `${side < 0 ? 'left' : 'right'} unified cheek has one continuous inset cap`);
+  assert.ok(caps[0].normal.distanceTo(caps[1].normal) < 1e-6,
+    'inset cap shares one normal and cannot form a split or triangular tongue');
+
+  const bodies = largeCheekFaces(armor, side).filter(({ normal }) =>
+    normal.distanceTo(caps[0].normal) < 1e-6);
+  assert.equal(bodies.length, 2,
+    'unified cheek body remains one smooth, closed two-triangle cassette');
+
+  const bodyX = bodies.flatMap(({ vertices }) => vertices.map((v) => side * v.x));
+  const capX = caps.flatMap(({ vertices }) => vertices.map((v) => side * v.x));
+  assert.ok(Math.min(...capX) > Math.min(...bodyX) + 0.025
+    && Math.max(...capX) < Math.max(...bodyX) - 0.025,
+  'contrasting laminate is inset on both sides and leaves a visible camouflaged rim');
+}
+
+// The TUSK-only M250 shift is visible in the gunmetal bore/rim vertices. The
+// old inherited banks ended at |x| <= 1.451 and were swallowed by the new
+// 155 mm cheek cassettes. Both banks must now project past |x|=1.52 while
+// staying inside the turret plan envelope, proving the complete launchers
+// moved with their bores rather than leaving partial cylinders behind.
+const darkPosition = dark.geometry.getAttribute('position');
+for (const side of [-1, 1]) {
+  const exposedLauncherVertices = [];
+  for (let i = 0; i < darkPosition.count; i++) {
+    const x = darkPosition.getX(i);
+    const y = darkPosition.getY(i);
+    const z = darkPosition.getZ(i);
+    if (side * x > 1.52 && side * x < 1.59
+      && y > 0.52 && y < 0.72 && z > 1.20 && z < 1.70) {
+      exposedLauncherVertices.push([x, y, z]);
+    }
+  }
+  assert.ok(exposedLauncherVertices.length >= 140,
+    `${side < 0 ? 'left' : 'right'} M250 bank clears the cheek ERA face`);
+}
 
 tank.dispose();
-console.log('abramsTuskCheek.selftest: right cheek ERA is continuous, seated, and smooth');
+console.log('abramsTuskCheek.selftest: cheek caps contrast and both M250 banks clear ERA');
