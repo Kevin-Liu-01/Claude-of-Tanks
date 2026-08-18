@@ -60,6 +60,27 @@ for (const [x, z] of [[0.55, 1.25], [0.85, 1.00]]) {
     `A6M crown return closes roof/wedge ray (${x},${z})`);
 }
 
+// The 2A6-pattern center brow now bridges the two inner cheek edges above
+// the gun.  These centerline rays used to miss entirely at z >= 1.85; the
+// replacement must form a continuous, sloping structural roof without
+// dropping into the 2.13 m gun-axis corridor.
+for (const [z, minY, maxY] of [
+  [1.85, 2.32, 2.40],
+  [2.10, 2.28, 2.36],
+  [2.30, 2.25, 2.33],
+]) {
+  const hits = downHits(turret, 0, z);
+  assert.ok(hits.length > 0 && hits[0] >= minY && hits[0] <= maxY,
+    `A6M center brow seats above the gun at z=${z} (${hits[0]} m)`);
+}
+const gunAxisY = turretRig.position.y + 0.33;
+const forwardGunCorridorHits = new THREE.Raycaster(
+  new THREE.Vector3(0, gunAxisY, 4.0 + turretRig.position.z),
+  new THREE.Vector3(0, 0, -1), 0, 1.8,
+).intersectObject(turret, false);
+assert.equal(forwardGunCorridorHits.length, 0,
+  'A6M brow leaves the forward L/55 gun corridor open');
+
 // The bearing collar reaches the 1.67 m hull deck instead of leaving the
 // old 35-40 mm air slit under the dark turret basket.
 const turretBounds = new THREE.Box3().setFromObject(turret);

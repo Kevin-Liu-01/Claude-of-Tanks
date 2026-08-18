@@ -41830,7 +41830,7 @@
           }
         ]
       },
-      "geometryHash": "6d78307e",
+      "geometryHash": "76afefa9",
       "metadataHash": "01ca5d96",
       "appearance": {
         "version": 1,
@@ -41915,24 +41915,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80180,
-          "sha256": "af70dafa404b405a8dcff66563d147a95b8b155f0a8b193470043d8f6ec73211"
+          "bytes": 80211,
+          "sha256": "14f670e0c31a255b8e3e3e6afef15341fdb978be5be228663b4aa4433d38978d"
         },
         "armorSide": {
           "file": "leo2a6m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80867,
-          "sha256": "46c57e934b2de9d8ccde6dd97575fa673de2949d547afd50f68a6769a289531b"
+          "bytes": 80261,
+          "sha256": "798a6d8b6451041adf58571eb0d11175f6896cad9eb611f00221e19d44c03340"
         },
         "modulesSide": {
           "file": "leo2a6m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84574,
-          "sha256": "b66dead77b9ad4d0f07f7172a2fa60e0cc05dab5b87b524fd8c5ec8d36054203"
+          "bytes": 84633,
+          "sha256": "51e5090af40d87bdf2334600e998b54c41f755b1966a7a811d860ad9d8d02467"
         },
         "markings": {
           "file": "leo2a6m_markings.png",

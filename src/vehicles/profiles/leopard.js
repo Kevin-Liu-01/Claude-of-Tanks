@@ -10594,6 +10594,32 @@ export function buildLeo2A6M(P) {
       P.add('turretDetail', cylX(0.014, 0.020, 8), s * 1.427, 0.21, z + 0.20);
     }
   }
+  // 2A6-pattern mantlet brow: the M rebuild closed each arrow cheek but
+  // left their inner crown edges as two separate horns above the gun.  The
+  // resident 2A6 carries a low, sloping armored bridge here.  Reproduce that
+  // load path as one closed trapezoidal loft, buried into both crown returns
+  // and the forward V-roof while keeping its underside above the L/55 tube.
+  // The shallow transverse steps are welded brow ribs, not loose roof boxes;
+  // they share the structural turret bucket and therefore yaw with the cheek
+  // armor instead of remaining behind as decorations.
+  const a6mBrowPlan = [
+    [-0.40, 2.34], [0.40, 2.34], [0.30, 0.50], [-0.30, 0.50],
+  ];
+  P.add('turret', KIT.polyMultiLoft(a6mBrowPlan, [
+    { height: [0.43, 0.43, 0.60, 0.60], inset: 1.00 },
+    { height: [0.49, 0.49, 0.68, 0.68], inset: 1.00 },
+  ]));
+  {
+    const browRise = Math.atan2(0.19, 1.84);
+    const browTop = (z) => 0.68 - (z - 0.50) * (0.19 / 1.84);
+    const browWidth = (z) => 0.60 + (z - 0.50) * (0.20 / 1.84);
+    for (const z of [0.84, 1.16, 1.48]) {
+      P.add('turret', box(browWidth(z) - 0.10, 0.028, 0.13),
+        0, browTop(z) + 0.013, z, browRise, 0, 0);
+      P.add('turretDark', box(browWidth(z) - 0.16, 0.010, 0.020),
+        0, browTop(z) + 0.028, z - 0.055, browRise, 0, 0);
+    }
+  }
   // EMES plinth: merges the raised hood base into the forward roof plates
   // (no floating crate seam) — the hood + its own cap ride above.
   P.add('turret', box(0.52, 0.10, 0.42), 0.66, 0.66, 0.40);
