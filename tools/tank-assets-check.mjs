@@ -7,7 +7,11 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS } from '../src/vehicles/tankAssets.js';
+import '../src/vehicles/tankFactory.js';
+import {
+  TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount,
+} from '../src/vehicles/tankAssets.js';
+import { getSpec } from '../src/vehicles/specs.js';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -175,8 +179,10 @@ try {
         .map((issue) => `${issue.code}:${issue.object}:${issue.color?.hex || 'n/a'}`).join(', ')})`);
     }
     const bore = live.muzzleBore || {};
-    if (!skipBore && (bore.tagged !== 1 || bore.rims !== 1 || bore.discs !== 1)) {
-      failures.push(`${id}: cannon bore must have one visible tagged rim/disc pair (${JSON.stringify(bore)})`);
+    const expectedBores = expectedMuzzleBoreCount(getSpec(id));
+    if (!skipBore && (bore.tagged !== expectedBores
+        || bore.rims !== expectedBores || bore.discs !== expectedBores)) {
+      failures.push(`${id}: cannon bore must have ${expectedBores} visible tagged rim/disc pair(s) (${JSON.stringify(bore)})`);
     }
 
     if (liveOnly) continue;

@@ -186,9 +186,9 @@ const SPECS = [
         // garage key. The fleet solid painter otherwise adds broad dusty
         // lifts that read as accidental light-olive replacement panels on
         // this densely segmented ERA/roof layout.
-        base: '#2f402c',
-        weather: '#33452f',
-        solidWeatheringIntensity: 0.08,
+        base: '#293a28',
+        weather: '#2e422d',
+        solidWeatheringIntensity: 0.03,
       } }),
   make('t90a', 't72bu', 'T-72BU', 'USSR/Russia',
     { hp: 2050, weightTons: 46.5, topSpeedKmh: 65, gun: { reloadS: 7.0 } }),

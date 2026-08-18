@@ -2,10 +2,15 @@ import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.js';
 import { ALL_TANK_IDS, getSpec, RETIRED_EXTERNAL_PLACEHOLDER_IDS } from './specs.js';
 import {
-  TANK_ASSET_VIEWS, geometryFingerprint, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata,
+  TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
+  requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
+assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m')), 1,
+  'single-cannon profiles require one bore/rim pair');
+assert.equal(expectedMuzzleBoreCount(getSpec('bmpt_terminator2')), 2,
+  'twin autocannon profiles require one bore/rim pair per barrel');
 
 const displayNames = new Set();
 const HULL_ONLY_SHADOW_IDS = new Set(['strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);

@@ -6,6 +6,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import '../src/vehicles/tankFactory.js';
+import { getSpec } from '../src/vehicles/specs.js';
+import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.js';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const outArg = process.argv.find((arg) => arg.startsWith('--out='));
@@ -72,16 +75,17 @@ try {
     const path = resolve(outDir, `${id}.png`);
     writeFileSync(path, Buffer.from(shot.image.split(',')[1], 'base64'));
     const contrast = shot.surroundLuma - shot.innerLuma;
+    const expectedBores = expectedMuzzleBoreCount(getSpec(id));
     if (!all) {
       console.log(`[muzzle-bore] ${id} inner ${shot.innerLuma.toFixed(1)} surround ${shot.surroundLuma.toFixed(1)} contrast ${contrast.toFixed(1)} ${JSON.stringify(shot.muzzleBore)} -> ${path}`);
     } else if ((idIndex + 1) % 10 === 0 || idIndex + 1 === checkedIds.length) {
       console.log(`[muzzle-bore] checked ${idIndex + 1}/${checkedIds.length} (latest ${id})`);
     }
-    if (shot.muzzleBore.tagged !== 1) {
-      failures.push(`${id}: expected one visible tagged bore, found ${shot.muzzleBore.tagged}`);
+    if (shot.muzzleBore.tagged !== expectedBores) {
+      failures.push(`${id}: expected ${expectedBores} visible tagged bore(s), found ${shot.muzzleBore.tagged}`);
     }
-    if (shot.muzzleBore.rims !== 1 || shot.muzzleBore.discs !== 1) {
-      failures.push(`${id}: expected one visible rim/disc pair, found ${JSON.stringify(shot.muzzleBore)}`);
+    if (shot.muzzleBore.rims !== expectedBores || shot.muzzleBore.discs !== expectedBores) {
+      failures.push(`${id}: expected ${expectedBores} visible rim/disc pair(s), found ${JSON.stringify(shot.muzzleBore)}`);
     }
     const firstHit = shot.boreDebug && shot.boreDebug.centerHits && shot.boreDebug.centerHits[0];
     const firstHitIsBore = !!(firstHit && firstHit.bore);
@@ -94,9 +98,9 @@ try {
     const rimSamplesPass = shot.boreDebug.rimSamples?.every((sample) => sample.pass) === true;
     const concentric = Number.isFinite(shot.boreDebug.concentricOffsetM)
       && shot.boreDebug.concentricOffsetM <= 0.004;
-    const pass = shot.muzzleBore.tagged === 1
-      && shot.muzzleBore.rims === 1
-      && shot.muzzleBore.discs === 1
+    const pass = shot.muzzleBore.tagged === expectedBores
+      && shot.muzzleBore.rims === expectedBores
+      && shot.muzzleBore.discs === expectedBores
       && firstHitIsBore
       && innerSamplesPass
       && rimSamplesPass

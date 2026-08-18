@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import { tagVehicleMaterial } from '../appearanceAudit.js';
 import {
   loftHull,
   meshDome,
@@ -4409,15 +4410,24 @@ function buildT72B3M(P) {
   // on-element on-view; iterate BY SAMPLE). Per-instance material edits —
   // createTankMaterials is per-tank (merkava refTone precedent), so the
   // russia siblings never see these hexes.
+  // The dense horizontal armor field also needs a matte response: the
+  // fleet-default sky lobe washed upward-facing ERA/deck faces into a cyan
+  // or mint "unpainted panel" class in the garage and Surface Studio.
+  P.mats.hull.roughness = 0.94;
+  P.mats.hull.envMapIntensity = 0.28;
+  P.mats.hull.clearcoat = 0.015;
+  P.mats.hull.specularIntensity = 0.40;
+  P.mats.barrel.roughness = 0.90;
+  P.mats.barrel.envMapIntensity = 0.25;
   P.mats.spareTrack.color.setHex(0x303d2b);   // painted ERA/spare-link family: deep factory green, never mint
                                               // (r2: one hue step greener — the warm cast read cream from the front)
-  P.mats.dark.color.setHex(0x2c3126);         // fittings gunmetal off the warm brown; r2 darker still so the
+  P.mats.dark.color.setHex(0x293326);         // green-black fittings stay distinct without reading as raw grey;
                                               // ring gap wedges/creases read as SHADOW against the scheme
                                               // (0x33382e sat only ~5L under the camo and the ring gaps vanished)
                                               // r17: one step up + shade-floor emissive below — lit faces sampled
                                               // 52 (in the 50-58 law window) but shade faces fell to 30-40 and
                                               // owned whole sub-45 cells on the quarter views
-  P.mats.dark.emissive.setHex(0x161a0e);     // shade faces 40 -> 46: the curtain/rail/can south faces owned whole
+  P.mats.dark.emissive.setHex(0x12170d);     // shade faces remain readable without lifting fittings back to grey
                                               // sub-45 heat cells; ref's own contact-shadow class bottoms at ~45
                                               // r18 item 10: one more step (lit dark faces measured medL 44 =
                                               // the last close-roof sub-45 clusters; order: cores to 50-58)
@@ -4430,8 +4440,8 @@ function buildT72B3M(P) {
   // r16: lift halved 0.085->0.045 — the r15 lift made the ring lids/tiles
   // the brightest pixels on 4 views (crown-ring p90 85.6 vs ref 67.2); the
   // ring swing now comes from cloth-shadow gaps + a softer lid family.
-  P.mats.detail.color.setHex(0x35472f);       // fittings stay legible without pale olive islands
-  P.mats.detail.emissive.setHex(0x0d0f09);    // r18 item 10: the ring lids'/rims' SHADE faces measured medL 44 —
+  P.mats.detail.color.setHex(0x2d3d2b);       // fittings stay legible without pale olive islands
+  P.mats.detail.emissive.setHex(0x090c07);    // r18 item 10: the ring lids'/rims' SHADE faces measured medL 44 —
                                               // the exact close-roof sub-45 clusters (same rects in the r6
                                               // baseline); +12L floor lands them in the 50-58 order window while
                                               // lit lid faces move ~+2 (still the only permitted over-51 class)
@@ -4450,7 +4460,7 @@ function buildT72B3M(P) {
                                               // (sampled: vertical faces render ~1.16x raw luma under the frontal
                                               // key — 0x474d37 ran the glacis to 86 vs ref 62; raw-57 lands 62-66)
   P.mats.rubber.emissive.setHex(0x080906);    // shade-floor so ring undersides stay in-family
-  P.mats.canvasCloth.color.setHex(0x35402b);  // canvas stays distinct without becoming a tan/light-olive patch
+  P.mats.canvasCloth.color.setHex(0x303b29);  // canvas stays distinct without becoming a tan/light-olive patch
                                               // above (the top-N med order); sides move 78.6->~82 vs ref 80.9
                                               // (+1.5 over, traded for the +6 top order)
                                               // bags/cloth: kill the ochre top-face accent (bar samples H81 = ref
@@ -4512,19 +4522,26 @@ function buildT72B3M(P) {
   if (P.mats.trackLink && P.mats.trackLink.emissive) P.mats.trackLink.emissive.setHex(0x1a2016);
   // r19 items 6/8d/9 — POST-MERGE CLONE PASS. The factory merges buckets
   // into per-bucket meshes AFTER the builder returns (tankFactory
-  // BUCKET_DEF merge), so build-time traverses never see them; the
-  // microtask runs after the synchronous factory completes.
+  // BUCKET_DEF merge), so build-time traverses never see them. Use the
+  // factory's synchronous postAssemble seam: a microtask raced icon/audit
+  // capture and left tan replacement panels in generated assets.
   //  - turretTrack merged mesh (crown cap + roof-annulus overlay): clone-
   //    lift to the ref's 62-65 top-face window (spareTrack itself is
   //    pinned by the banked glacis bow rows 70-74 and the strip median).
   //  - recoilG gunDark merged mesh (muzzle collar + bore + seam rings):
   //    clone-darken so the dead-front bore lands the ordered 46-48 luma
   //    ("-2 vs tube, invisible at 1x") without touching shared mats.dark.
-  queueMicrotask(() => {
+  const postMergePaint = P.spec.id === 'bmpt_terminator2' ? 0x2f3f2d : 0x2d3d2b;
+  P.postAssemble = () => {
     P.turretG.traverse((ob) => {
       if (ob.isMesh && ob.material === P.mats.spareTrack) {
-        ob.material = ob.material.clone();
-        ob.material.color.setHex(0x35472f);
+        // This profile intentionally uses turretTrack for its painted Relikt
+        // cassette/crown family, not for a working tread course. Retag the
+        // clone so the fleet gear normalizer does not repaint these armor
+        // shapes neutral steel after this post-assembly pass.
+        ob.material = tagVehicleMaterial(
+          ob.material.clone(), 'armorPaint', 'painted-relikt-cassette');
+        ob.material.color.setHex(postMergePaint);
       }
     });
     // r20 item 1e: the hullWood bucket (unused on this build until now)
@@ -4538,8 +4555,8 @@ function buildT72B3M(P) {
         // 0x415238 rendered 69.1 on the flatter deck faces (crown's 60-64
         // came from the annulus curvature) — one step down lands the ref's
         // 65.2 deck med
-        ob.material.color.setHex(0x34452f);
-        if (ob.material.emissive) ob.material.emissive.setHex(0x0c0f09);
+        ob.material.color.setHex(postMergePaint);
+        if (ob.material.emissive) ob.material.emissive.setHex(0x090c07);
       }
     });
     P.gunG.traverse((ob) => {
@@ -4549,7 +4566,7 @@ function buildT72B3M(P) {
         if (ob.material.emissive) ob.material.emissive.setHex(0x11140b);
       }
     });
-  });
+  };
   P.topY = 1.3;
 }
 

@@ -31,6 +31,14 @@ export function requiredTankAssetFiles(id) {
   return Object.fromEntries(Object.keys(TANK_ASSET_VIEWS).map((view) => [view, tankAssetFile(id, view)]));
 }
 
+/** Number of independently visible muzzle bore/rim pairs required by a
+ * vehicle's declared gun plant. Most tanks have one; twin autocannon profiles
+ * publish one local muzzle axis per barrel. */
+export function expectedMuzzleBoreCount(spec) {
+  const muzzles = spec?.gun?.muzzles;
+  return Array.isArray(muzzles) && muzzles.length ? muzzles.length : 1;
+}
+
 function rounded(value, digits = 4) {
   return Number.isFinite(value) ? Number(value.toFixed(digits)) : null;
 }

@@ -216,7 +216,11 @@ export const AFV_FAMILY_SPECS = {
   }),
   bmpt_terminator2: variant('bmpt_terminator2', 't72b3m', {
     name: 'BMPT Terminator 2', nation: 'Russia', number: 'BMPT-2',
-    base: '#46513b', weather: '#5a624b', patches: ['#2c342b', '#655d44', '#756b50'],
+    // The previous digital field peaked in pale sage/khaki. Under the
+    // garage key those tones made the ERA, engine covers and station armor
+    // look like unpainted replacement parts. Keep the same three-tone
+    // language, but inside the deeper Russian factory-olive family.
+    base: '#35452f', weather: '#3f4d36', patches: ['#243128', '#4d4a37', '#5a523e'],
     dims: { hullLengthM: 7.20, overallLengthM: 7.20, widthM: 3.59, heightM: 3.33,
       silhouetteHullLengthM: 6.99, silhouetteOverallLengthM: 7.52,
       silhouetteWidthM: 3.59, silhouetteHeightM: 2.56 },
