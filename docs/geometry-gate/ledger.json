@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-17T19:45:45.872Z",
+ "generatedAt": "2026-08-18T02:40:12.042Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 34,
+ "passed": 35,
  "total": 118,
  "rows": [
   {
@@ -251,11 +251,6 @@
    }
   },
   {
-   "id": "ariete_c2",
-   "geoMin": 0,
-   "gatePassed": false
-  },
-  {
    "id": "m3a3_bradley",
    "geoMin": 0,
    "gatePassed": false,
@@ -334,6 +329,19 @@
    }
   },
   {
+   "id": "ariete_c2",
+   "geoMin": 3.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 10.5,
+    "stations": 3.6,
+    "turretCurves": 53.8,
+    "wholeCurves": 6.6,
+    "dims": 47.9,
+    "floaters": 100
+   }
+  },
+  {
    "id": "bmpt",
    "geoMin": 8.2,
    "gatePassed": false,
@@ -394,6 +402,19 @@
     "wholeCurves": 17.7,
     "turretCurves": 49.6,
     "stations": 72.7,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ariete_c1",
+   "geoMin": 17.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 21.3,
+    "stations": 37.1,
+    "turretCurves": 50.7,
+    "wholeCurves": 17.4,
     "dims": 100,
     "floaters": 100
    }
@@ -464,16 +485,6 @@
    }
   },
   {
-   "id": "leo2a6m",
-   "geoMin": 91,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 91,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "m1a2_tejas",
    "geoMin": 25.7,
    "gatePassed": false,
@@ -526,19 +537,6 @@
    }
   },
   {
-   "id": "m2a2_bradley",
-   "geoMin": 49.1,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 63,
-    "stations": 54.9,
-    "turretCurves": 55.3,
-    "wholeCurves": 49.1,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "jagdtiger",
    "geoMin": 31.8,
    "gatePassed": false,
@@ -565,19 +563,6 @@
    }
   },
   {
-   "id": "ariete_c1",
-   "geoMin": 39.6,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 46.6,
-    "stations": 85.8,
-    "turretCurves": 62.5,
-    "wholeCurves": 39.6,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "merkava2b",
    "geoMin": 39.6,
    "gatePassed": false,
@@ -587,16 +572,6 @@
     "turretCurves": 39.6,
     "stations": 80,
     "dims": 95.3,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo2a4m",
-   "geoMin": 86.1,
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 86.1,
-    "dims": 100,
     "floaters": 100
    }
   },
@@ -635,6 +610,19 @@
     "wholeCurves": 56.1,
     "turretCurves": 45.2,
     "stations": 51.9,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "m2a2_bradley",
+   "geoMin": 49.1,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 63,
+    "stations": 54.9,
+    "turretCurves": 55.3,
+    "wholeCurves": 49.1,
     "dims": 100,
     "floaters": 100
    }
@@ -792,19 +780,6 @@
    }
   },
   {
-   "id": "t14",
-   "geoMin": 76.1,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 78.1,
-    "stations": 84.6,
-    "turretCurves": 76.1,
-    "wholeCurves": 77.5,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "m1a2",
    "geoMin": 76,
    "gatePassed": false,
@@ -813,6 +788,19 @@
     "wholeCurves": 76,
     "turretCurves": 84.1,
     "stations": 83.6,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t14",
+   "geoMin": 76.1,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 78.1,
+    "stations": 84.6,
+    "turretCurves": 76.1,
+    "wholeCurves": 77.5,
     "dims": 100,
     "floaters": 100
    }
@@ -967,6 +955,16 @@
     "wholeCurves": 86.7,
     "turretCurves": 85.5,
     "stations": 87.8,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leo2a4m",
+   "geoMin": 86.1,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 86.1,
     "dims": 100,
     "floaters": 100
    }
@@ -1325,6 +1323,16 @@
    "components": {
     "wholeCurves": 90.9,
     "dims": 97.4,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leo2a6m",
+   "geoMin": 91,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 91,
+    "dims": 100,
     "floaters": 100
    }
   },

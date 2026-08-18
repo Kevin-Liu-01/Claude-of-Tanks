@@ -648,16 +648,16 @@ const MODERN3_SPECS = {
         shell('DM11 HE-FRAG', 'HE', 120, 55, 55, 590, 1010),
       ],
     },
-    // §5.248 ground-up true-up: published production C1 dims (weaponsystems
-    // .net/system/837 hull 7.59; Wikipedia infobox 3.61 over skirts, 2.45
-    // roof; overall 9.67 family datum = army-technology 9.669). The old
-    // 9.80/3.62/2.68 row was donor-clone flavor, not published data.
-    dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.45 },
+    // §5.248 ground-up true-up: published production C1 plan dimensions
+    // (7.59 hull, 3.61 over skirts, 9.67 overall). The authored envelope is
+    // 0.10 m taller than the 2.45 m roof datum because this round restores the
+    // compressed suspension/track course and raises the supported body with it.
+    dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.55 },
     armor: modernArmor({
       // geometric FRAME params re-seated on the arrafi-print measured build
       // (profiles/italy.js buildArieteMk); every RHAe VALUE byte-identical.
-      hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.40, trkTop: 0.94, roofY: 1.49,
-      turretPivot: [0, 1.30, -0.10], gunPivot: [0, 0.35, 1.05],
+      hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
+      turretPivot: [0, 1.40, -0.10], gunPivot: [0, 0.35, 1.05],
       barrelLenM: 4.93, barrelRadM: 0.105,
       glacis: [55, 380, 520], lower: [55, 320, 430], side: [45, 110, 150],
       skirt: [45, 120, 320], rear: 40, roof: 40,
@@ -668,7 +668,7 @@ const MODERN3_SPECS = {
     visual: {
       scheme: 'stripes', base: '#48533e', weather: '#53604a',
       patches: ['#384431', '#2c3529'], marking: 'number', number: 'C1 32',
-      trackWidthM: 0.46, camoScale: 0.56,
+      trackWidthM: 0.60, camoScale: 0.56,
     },
   },
 
@@ -690,14 +690,14 @@ const MODERN3_SPECS = {
       ],
     },
     // §5.248 true-up: the AMV/C2 package rides the SAME C1 chassis (same
-    // hull, same 120/44) — published-size deltas are armor modules only.
-    // The old 7.75/10.12/3.64/2.82 row was donor-clone flavor.
-    dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.47 },
+    // hull, same 120/44). Its 2.57 m authored envelope carries the same 0.10 m
+    // course/body correction, with the remaining height in its armor package.
+    dims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.57 },
     armor: modernArmor({
       // frame re-seated on the shared buildArieteMk base; RHAe VALUES
       // byte-identical (the C2 package keeps its uparmored rows).
-      hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.40, trkTop: 0.94, roofY: 1.49,
-      turretPivot: [0, 1.30, -0.10], gunPivot: [0, 0.35, 1.05],
+      hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
+      turretPivot: [0, 1.40, -0.10], gunPivot: [0, 0.35, 1.05],
       barrelLenM: 4.93, barrelRadM: 0.105,
       glacis: [70, 520, 760], lower: [65, 450, 620], side: [50, 160, 240],
       skirt: [55, 230, 520], rear: 45, roof: 45,
@@ -708,7 +708,7 @@ const MODERN3_SPECS = {
     visual: {
       scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945',
       patches: ['#2e3b2d', '#5b5140'], marking: 'number', number: 'C2 01',
-      trackWidthM: 0.46, camoScale: 0.50,
+      trackWidthM: 0.60, camoScale: 0.50,
     },
   },
 

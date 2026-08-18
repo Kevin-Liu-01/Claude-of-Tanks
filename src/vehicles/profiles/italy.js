@@ -69,6 +69,11 @@ function buildArieteMk(P, mark) {
   const slab = orientedSlab;
   const { rng } = P;
   const c2 = mark === 'c2';
+  // The supplied Arrafi reference carries a 1.06 m running-gear envelope
+  // and ~0.60 m shoes. Keep that mechanical course rooted at the terrain,
+  // then raise the armored body on its suspension instead of globally
+  // scaling the tank (which previously damaged skirts and gun proportions).
+  const BODY_RIDE_LIFT = 0.10;
 
   // ---- hull tub + sponsons -------------------------------------------------
   P.add('hull', box(1.90, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.95 (inner band plane 1.017, audit dilates 2), belly 0.40
@@ -219,14 +224,16 @@ function buildArieteMk(P, mark) {
   stowage(P, 'hullCloth', rng, [[-1.25, 1.53, -2.62, 0.42, 0.10, 0.72]]);
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.44, seed: 7 });
-    links.position.set(0.98, 1.525, -2.62);
+    links.position.set(0.98, 1.525 + BODY_RIDE_LIFT, -2.62);
     P.hullG.add(links);
   }
   // ---- skirts (plan: heavy applique run z -0.41..+3.09 ONLY; stations rear
   // 3.04-3.07 = no wide rear skirt. WIDTH GUARD: max |x| = 1.80) -------------
   const skirtRear = c2 ? -2.92 : -0.41;                                        // C2 package: full-run heavy skirts (photo-class)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.03, 0.59, 5.82), s * 1.525, 0.835, -0.01);             // base thin skirt (Object_4 class: ±1.53, y 0.54..1.13; ends +2.90 before the idler wrap)
+    const skirtBucket = s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
+    const skirtDarkBucket = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    P.add(skirtBucket, box(0.03, 0.59, 5.82), s * 1.665, 0.835, -0.01);        // base thin skirt re-wrapped just outside the wider native course
     // s5322-C1 real C1 SEVEN-section front-half skirt run (owner MBT order;
     // c2 keeps its 13-panel AMV run) + per-panel hinge/bolt hardware both
     // marks. 0.50 pitch < the 0.54 station slab (edge-on prism law holds);
@@ -235,30 +242,30 @@ function buildArieteMk(P, mark) {
     const z0 = 3.09, panelD = (3.09 - skirtRear) / panels;
     for (let k = 0; k < panels; k++) {
       const zc = z0 - panelD * (k + 0.5);
-      P.add('hull', box(0.035, 0.68, panelD - 0.025), s * 1.780, 0.94, zc);    // heavy applique panels, tops 1.28, hem 0.60 (front_hull 0.53 hem class)
-      P.add('hullDark', box(0.012, 0.60, 0.02), s * 1.788, 0.94, zc - panelD / 2 + 0.012); // panel seams (inboard of the guard)
-      P.add('hullDark', box(0.004, 0.026, 0.026), s * 1.7965, 1.09, zc - panelD * 0.22);   // s5322-C1 panel bolts (face-proud 1mm, tone read)
-      P.add('hullDark', box(0.004, 0.026, 0.026), s * 1.7965, 0.79, zc + panelD * 0.22);
-      if (k > 0) P.add('hull', box(0.03, 0.14, 0.07), s * 1.784, 1.245, zc + panelD / 2 - 0.0125); // s5322-C1 hinge straps rail->panel at every interior seam
+      P.add(skirtBucket, box(0.035, 0.68, panelD - 0.025), s * 1.780, 0.94, zc); // heavy applique panels, tops 1.28, hem 0.60 (front_hull 0.53 hem class)
+      P.add(skirtDarkBucket, box(0.012, 0.60, 0.02), s * 1.788, 0.94, zc - panelD / 2 + 0.012); // panel seams (inboard of the guard)
+      P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * 1.7965, 1.09, zc - panelD * 0.22);   // s5322-C1 panel bolts (face-proud 1mm, tone read)
+      P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * 1.7965, 0.79, zc + panelD * 0.22);
+      if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07), s * 1.784, 1.245, zc + panelD / 2 - 0.0125); // s5322-C1 hinge straps rail->panel at every interior seam
     }
-    P.add('hull', box(0.045, 0.56, 0.42), s * 1.7775, 0.92, 2.86);             // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD)
-    P.add('hull', box(0.24, 0.10, 3.09 - skirtRear), s * 1.655, 1.315, (3.09 + skirtRear) / 2); // hanger rail tying panels to the sponson
+    P.add(skirtBucket, box(0.045, 0.56, 0.42), s * 1.7775, 0.92, 2.86);        // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD)
+    P.add(skirtBucket, box(0.14, 0.10, 3.09 - skirtRear), s * 1.72, 1.315, (3.09 + skirtRear) / 2); // hanger rail tying panels to the sponson
     // front mudguards (plan ±1.545..1.795 -> z 3.005..3.093; front-view
     // crest 1.33, outer droop 1.22)
-    P.add('hull', box(0.23, 0.10, 0.46), s * 1.660, 1.275, 2.86);
-    P.add('hull', box(0.055, 0.26, 0.46), s * 1.7725, 1.19, 2.86);
-    P.add('hullRubber', box(0.22, 0.05, 0.10), s * 1.66, 1.10, 3.10);
+    P.add(skirtBucket, box(0.14, 0.10, 0.46), s * 1.72, 1.275, 2.86);
+    P.add(skirtBucket, box(0.055, 0.26, 0.46), s * 1.7725, 1.19, 2.86);
+    P.add(skirtBucket, box(0.14, 0.05, 0.10), s * 1.72, 1.10, 3.10);
   }
   // ---- running gear: SEVEN wheels, gate-ref stations (contact [-2.44,
   // +2.52]; ramp 0.30@-2.92 / 0.66@-3.29 / 0.87@-3.67; front wrap crest
   // 0.81-0.89 @ +3.49..+3.63) -------------------------------------------------
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.335, wheelW: 0.26, wheelY: 0.50, xc: 1.24,
+    style: 'rubber', wheelR: 0.36, wheelW: 0.31, wheelY: 0.52, xc: 1.30,
     wheelZs: [2.17, 1.46, 0.75, 0.04, -0.67, -1.38, -2.09],
-    idler: { z: 3.10, y: 0.70, r: 0.30 },
-    sprocket: { z: -3.00, y: 0.60, r: 0.35 },
-    rollers: [1.50, 0.10, -1.30].map((z) => ({ z, y: 0.94, r: 0.09 })),
-    trackW: 0.46, topY: 0.94, botY: 0.055, contactZF: 2.52, contactZR: -2.44,
+    idler: { z: 3.10, y: 0.76, r: 0.32 },
+    sprocket: { z: -3.00, y: 0.68, r: 0.37 },
+    rollers: [1.50, 0.10, -1.30].map((z) => ({ z, y: 1.00, r: 0.09 })),
+    trackW: 0.60, topY: 1.06, botY: 0.055, contactZF: 2.52, contactZR: -2.44,
     paintedEnds: true, coveredTop: true, arms: true,
     armBucket: 'hullRunningGearDetail',
     // s5322-D §B6/§B9 gear read (§5.262 gearFloor/tireHex law): lifted olive
@@ -270,10 +277,11 @@ function buildArieteMk(P, mark) {
   });
   liftEye(P, 'hullDetail', -1.40, 1.52, -1.60);
   liftEye(P, 'hullDetail', 1.40, 1.52, -1.60);
-  P.decal('hull', 'number', c2 ? 'EI 135' : 'EI 121', 0.24, [-0.80, 1.29, 2.72], 0, -0.16);
+  P.decal('hull', 'number', c2 ? 'EI 135' : 'EI 121', 0.24,
+    [-0.80, 1.29 + BODY_RIDE_LIFT, 2.72], 0, -0.16);
 
   // ---- turret ---------------------------------------------------------------
-  P.turretG.position.set(0, 1.30, -0.10);
+  P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT, -0.10);
   const L = (zWorld) => zWorld + 0.10;                                         // world z -> turret local
   // main shell loft: front plate behind the mantlet at +1.30, cheek corner
   // (±1.17,+1.28), walls ±1.24..1.28, to the bustle break at -1.12
@@ -517,7 +525,17 @@ function buildArieteMk(P, mark) {
   }
   P.addGunExtra(box(0.10, 0.09, 0.14), 0, 0.13, 4.38);                         // MRS head ON TOP of the tube (print 1.796 bump @ zW 5.29-5.39)
   muzzleBore(P, { len: 4.93, r: 0.10 });
-  P.topY = 2.55;
+  // Lift only body-owned geometry. The smart wheels, end drums, animated
+  // band, shoes and torsion arms remain one terrain-seated running-gear rig.
+  // This is intentionally not a root scale/offset: skirt thickness, gun run,
+  // turret articulation and track contact retain their authored units.
+  P.offsetBuckets([
+    'hull', 'hullCupola', 'hullEquipment', 'hullDetail', 'hullDark',
+    'hullRubber', 'hullWood', 'hullCloth', 'hullGlass', 'hullTrack',
+    'hullTrackGuardL', 'hullTrackGuardR', 'hullTrackTrimL', 'hullTrackTrimR',
+    'hullTrackDetailL', 'hullTrackDetailR',
+  ], 0, BODY_RIDE_LIFT, 0);
+  P.topY = 2.55 + BODY_RIDE_LIFT;
 }
 
 function buildArieteC1(P) { buildArieteMk(P, 'c1'); }
