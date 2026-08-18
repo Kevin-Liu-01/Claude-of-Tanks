@@ -6873,7 +6873,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
   addSkin(box(hatchW * 0.84, 0.010, hatchD * 0.82), hatchX,
     hhAt(hatchF) + 0.014, zAt(hatchF), topPitch);
   if (P.q) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    addSkin(cylY(0.012, 0.010, 8), hatchX + sx * hatchW * 0.34,
+    addSkin(cylY(0.012, 0.012, 0.010, 8), hatchX + sx * hatchW * 0.34,
       hhAt(hatchF) + 0.021, zAt(hatchF) + sz * hatchD * 0.31, topPitch, 0, 0, true);
   }
 
