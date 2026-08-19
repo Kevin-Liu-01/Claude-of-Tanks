@@ -24,7 +24,7 @@
  * still be captured.
  */
 
-import { FEATURED_IMAGES } from './featuredShots.js';
+import { FEATURED_SHOTS } from './featuredShots.js';
 
 const TIPS = [
   ['Angling', 'Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.'],
@@ -83,7 +83,7 @@ const $ = (id) => document.getElementById(id);
 // r9.5: the list lives in featuredShots.js — ONE copy shared with the
 // garage gallery and the state-transition screens, because hand-synced
 // copies drifted from disk twice (the r9.1 "same picture every load" bug).
-const HERO_SHOTS = FEATURED_IMAGES;
+const HERO_SHOTS = FEATURED_SHOTS;
 const HERO_ROTATE_MS = 9000;
 
 /**
@@ -99,23 +99,27 @@ function startBootHero() {
   try { q = window.location.search || ''; } catch (_) { q = ''; }
   if (/[?&]nohero\b/.test(q)) return () => {}; // A/B timing escape hatch
   const layers = wrap.querySelectorAll('.hly');
+  const shotEl = $('cot-boot-shot');
   if (layers.length < 2) return () => {};
   let idx = -1;
   let front = 0;
   let timer = 0;
   let stopped = false;
   const show = (i) => {
+    const shot = HERO_SHOTS[i];
     front ^= 1;
-    layers[front].style.backgroundImage = `url("${HERO_SHOTS[i]}")`;
+    layers[front].style.backgroundImage = `url("${shot.img}")`;
+    layers[front].style.backgroundPosition = shot.focal || 'center';
     layers[front].classList.add('on');
     layers[front ^ 1].classList.remove('on');
+    if (shotEl) shotEl.textContent = shot.cap;
     idx = i;
   };
   const preload = (i, cb) => {
     const im = new Image();
     im.onload = () => { if (!stopped) cb(); };
     im.onerror = () => { /* missing still — keep the gradient field */ };
-    im.src = HERO_SHOTS[i];
+    im.src = HERO_SHOTS[i].img;
   };
   const advance = () => {
     const next = (idx + 1) % HERO_SHOTS.length;

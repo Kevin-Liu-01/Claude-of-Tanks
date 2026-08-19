@@ -22,6 +22,9 @@ const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
 export const AUTOLOADER_HUD_SHELLS = 3;
+export const AUTOLOADER_HUD_ARC_Y = Object.freeze([0, 2.25, 0]);
+export const AUTOLOADER_HUD_ARC_RAD = Object.freeze([0.14, 0, -0.14]);
+const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
 
 /**
  * Normalize authoritative magazine state for the compact reticle indicator.
@@ -44,6 +47,7 @@ export function autoloaderHudState(magazine, reload, out = null) {
   state.fullReload = fullReload;
   state.loadProgress = loadProgress;
   state.intraClip = reload?.kind === 'intraClip' && reload.t > 0.001;
+  state.reloading = reload?.t > 0.001;
   return state;
 }
 
@@ -1919,10 +1923,12 @@ export function initHud(bus) {
       ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
     }
-    // Magazine autoloader ready-rack: three recognizable shells directly
-    // UNDER the center marker. White shells are ready rounds; intra-clip
-    // cycling uses an amber keyline, and a full-magazine reload fills the
-    // three silhouettes from the base upward while the timer counts down.
+    // Magazine autoloader ready-rack: three shells curve directly
+    // UNDER the center marker. The outer rounds tilt inward and sit slightly
+    // above the middle round, following the lower arc of the reload ring.
+    // Orange means ready; both intra-clip cycling and full-magazine loading
+    // turn the rack neutral gray. A full reload fills the silhouettes from
+    // the base upward while the timer counts down.
     // A magazine larger than the three-shell visual window keeps an exact
     // +N overflow label instead of silently losing authoritative state.
     const magazineHud = autoloaderHudState(view.magazine, rl0, magazineHudScratch);
@@ -1933,46 +1939,56 @@ export function initHud(bus) {
       const gap = sniper ? 4 : 3.5;
       const totalW = AUTOLOADER_HUD_SHELLS * shellW
         + (AUTOLOADER_HUD_SHELLS - 1) * gap;
-      const x0 = cx - totalW * 0.5;
       const y0 = cy + reloadRing + 6;
-      magazineBottomY = y0 + shellH;
+      magazineBottomY = y0 + shellH + AUTOLOADER_HUD_ARC_Y[1];
       lastMagazineIndicatorY = y0;
       lastMagazineIndicatorState = magazineHud;
+      const shellInk = magazineHud.reloading
+        ? AUTOLOADER_SHELL_RELOADING : RELOAD_ACCENT;
+      const shellOutline = magazineHud.reloading
+        ? 'rgba(174,184,192,0.64)' : 'rgba(240,160,48,0.7)';
 
       for (let i = 0; i < AUTOLOADER_HUD_SHELLS; i++) {
-        const x = x0 + i * (shellW + gap);
+        const shellCx = cx + (i - 1) * (shellW + gap);
+        const shellCy = y0 + AUTOLOADER_HUD_ARC_Y[i] + shellH * 0.5;
         const ready = i < magazineHud.readyShells;
         const loading = magazineHud.fullReload
           ? Math.max(0, Math.min(1, magazineHud.loadProgress * AUTOLOADER_HUD_SHELLS - i))
           : 0;
+        ctx.save();
+        ctx.translate(shellCx, shellCy);
+        ctx.rotate(AUTOLOADER_HUD_ARC_RAD[i]);
+        const x = -shellW * 0.5;
+        const y = -shellH * 0.5;
         // dark under-stroke keeps the silhouettes legible over sky and snow
-        magazineShellPath(ctx, x, y0, shellW, shellH);
+        magazineShellPath(ctx, x, y, shellW, shellH);
         ctx.strokeStyle = 'rgba(5,8,11,0.88)';
         ctx.lineWidth = 3;
         ctx.stroke();
-        magazineShellPath(ctx, x, y0, shellW, shellH);
+        magazineShellPath(ctx, x, y, shellW, shellH);
         ctx.fillStyle = 'rgba(7,11,14,0.52)';
         ctx.fill();
         if (ready || loading > 0) {
           ctx.save();
-          magazineShellPath(ctx, x, y0, shellW, shellH);
+          magazineShellPath(ctx, x, y, shellW, shellH);
           ctx.clip();
-          ctx.fillStyle = ready ? 'rgba(231,239,243,0.96)' : RELOAD_ACCENT;
+          ctx.fillStyle = shellInk;
           const fillH = ready ? shellH : shellH * loading;
-          ctx.fillRect(x - 1, y0 + shellH - fillH, shellW + 2, fillH + 1);
+          ctx.fillRect(x - 1, y + shellH - fillH, shellW + 2, fillH + 1);
           ctx.restore();
         }
-        magazineShellPath(ctx, x, y0, shellW, shellH);
-        ctx.strokeStyle = magazineHud.fullReload || magazineHud.intraClip
-          ? RELOAD_ACCENT : 'rgba(207,220,227,0.88)';
+        magazineShellPath(ctx, x, y, shellW, shellH);
+        ctx.strokeStyle = ready || loading > 0
+          ? shellInk : shellOutline;
         ctx.lineWidth = 1;
         ctx.stroke();
+        ctx.restore();
       }
       if (magazineHud.overflow > 0) {
-        ctx.fillStyle = 'rgba(231,239,243,0.9)';
+        ctx.fillStyle = shellInk;
         ctx.font = `700 9px ${FONT_COND}`;
         ctx.textAlign = 'left';
-        ctx.fillText(`+${magazineHud.overflow}`, x0 + totalW + 3, y0 + shellH - 1);
+        ctx.fillText(`+${magazineHud.overflow}`, cx + totalW * 0.5 + 3, y0 + shellH);
         ctx.textAlign = 'center';
       }
     } else {
@@ -3718,6 +3734,10 @@ export function initHud(bus) {
           overflow: lastMagazineIndicatorState.overflow,
           fullReload: lastMagazineIndicatorState.fullReload,
           loadProgress: lastMagazineIndicatorState.loadProgress,
+          reloading: lastMagazineIndicatorState.reloading,
+          curved: true,
+          outerRotationRad: AUTOLOADER_HUD_ARC_RAD[0],
+          centerDropPx: AUTOLOADER_HUD_ARC_Y[1],
         } : null,
         floorPx: RET_FLOOR_PX,
         ceilPx: retCeilPx(),

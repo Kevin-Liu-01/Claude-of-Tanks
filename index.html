@@ -141,14 +141,15 @@
        gradient keeps the splash chrome/wordmark contrast on any frame. */
     #cot-boot-hero { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
     #cot-boot-hero .hly {
-      position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease;
-      background-size: cover; background-position: center 38%;
+      position: absolute; inset: 0; opacity: 0;
+      background-size: cover; background-position: center 38%; transform: scale(1.02);
+      transition: opacity 1.2s ease, transform 10s ease-out;
     }
-    #cot-boot-hero .hly.on { opacity: 1; }
+    #cot-boot-hero .hly.on { opacity: 1; transform: scale(1.075); }
     #cot-boot-hero::after {
       content: ''; position: absolute; inset: 0;
       background:
-        linear-gradient(180deg, rgba(5,8,11,.78) 0%, rgba(5,8,11,.46) 26%, rgba(5,8,11,.40) 55%, rgba(5,8,11,.84) 100%),
+        linear-gradient(180deg, rgba(5,8,11,.70) 0%, rgba(5,8,11,.34) 26%, rgba(5,8,11,.38) 55%, rgba(5,8,11,.90) 100%),
         radial-gradient(120% 95% at 50% 34%, rgba(5,8,11,.10) 0%, rgba(5,8,11,.58) 88%);
     }
     /* horizon glow + a faint armour-plate grid so the field is never flat black */
@@ -166,14 +167,30 @@
       mask-image: radial-gradient(88% 68% at 50% 44%, #000 12%, transparent 74%);
       -webkit-mask-image: radial-gradient(88% 68% at 50% 44%, #000 12%, transparent 74%);
     }
-    .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
+    .cot-boot-inner {
+      position: relative; z-index: 2; width: min(780px, 88vw); padding: 28px 42px 30px;
+      text-align: center; border-top: 1px solid rgba(240,160,48,.36);
+      border-bottom: 1px solid rgba(146,164,180,.22);
+      background: linear-gradient(90deg,rgba(5,8,11,.08),rgba(5,8,11,.74) 18%,rgba(5,8,11,.74) 82%,rgba(5,8,11,.08));
+      box-shadow: 0 28px 84px rgba(0,0,0,.30); backdrop-filter: blur(4px);
+    }
+    .cot-boot-eyebrow {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      margin: -11px 0 19px; color: #71808d;
+      font: 700 8px/1 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
+      letter-spacing: .25em; text-transform: uppercase;
+    }
+    .cot-boot-eyebrow span:last-child { color: #c2903f; }
+    .cot-boot-eyebrow span:last-child::before { content: ''; display: inline-block;
+      width: 5px; height: 5px; margin-right: 8px; border-radius: 50%; background: #f0a030;
+      box-shadow: 0 0 9px rgba(240,160,48,.7); vertical-align: 1px; }
 
     /* --- emblem + wordmark ------------------------------------------------ */
     /* garage_ui: staggered entrance — the splash used to pop in fully formed.
        Pure CSS with `backwards` fill, so it runs from the very first paint
        (no JS on the path) and every element still lands exactly where the
        static layout put it. */
-    .cot-boot-mark { display: block; width: 120px; height: 120px; margin: 0 auto 20px;
+    .cot-boot-mark { display: block; width: 108px; height: 108px; margin: 0 auto 17px;
       animation: cot-boot-pop .62s cubic-bezier(.18,.7,.3,1) backwards; }
     .cot-boot-word { line-height: .92; }
     .cot-boot-word .l1 {
@@ -211,7 +228,7 @@
     }
 
     /* --- progress ---------------------------------------------------------- */
-    .cot-boot-load { margin-top: 46px; animation: cot-boot-rise .55s ease-out .36s backwards; }
+    .cot-boot-load { margin-top: 34px; animation: cot-boot-rise .55s ease-out .36s backwards; }
     .cot-boot-meta {
       display: flex; align-items: flex-end; justify-content: space-between; gap: 18px;
       margin-bottom: 9px;
@@ -251,7 +268,7 @@
 
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
-      margin-top: 34px; min-height: 44px; padding: 0 6%;
+      margin-top: 27px; min-height: 44px; padding: 0 6%;
       font-size: 13px; font-weight: 500; line-height: 1.55; color: #aebbc7;
       opacity: 1; transition: opacity .35s ease;
       animation: cot-boot-rise .55s ease-out .46s backwards;
@@ -338,7 +355,28 @@
       text-transform: uppercase; text-align: center;
       animation: cot-boot-fade .6s ease-out .55s backwards;
     }
-    @media (max-width: 760px) { .cot-boot-mark { width: 92px; height: 92px; } .cot-boot-load { margin-top: 32px; } }
+    .cot-boot-shot {
+      position: absolute; right: 24px; bottom: 20px; z-index: 2; max-width: 42vw;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: #687784; font: 700 8px/1 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
+      letter-spacing: .17em; text-transform: uppercase; text-align: right;
+      animation: cot-boot-fade .6s ease-out .7s backwards;
+    }
+    .cot-boot-shot::before { content: 'Featured capture  /  '; color: #c2903f; }
+    @media (max-width: 760px) {
+      .cot-boot-inner { width: min(92vw,620px); padding: 22px 20px 24px; }
+      .cot-boot-eyebrow { margin-bottom: 14px; }
+      .cot-boot-mark { width: 84px; height: 84px; } .cot-boot-load { margin-top: 26px; }
+      .cot-boot-shot { display: none; }
+    }
+    @media (max-height: 720px) {
+      .cot-boot-inner { padding-top: 18px; padding-bottom: 19px; }
+      .cot-boot-eyebrow { margin-bottom: 9px; }
+      .cot-boot-mark { width: 70px; height: 70px; margin-bottom: 9px; }
+      .cot-boot-load { margin-top: 20px; }.cot-boot-tip { margin-top: 17px; }
+      .cot-boot-links { display: none; }.cot-boot-gate { margin-top: 13px; }
+    }
+    @media (prefers-reduced-motion: reduce) { #cot-boot-hero .hly { transition: opacity .2s linear; transform: none; } }
   </style>
   <script>
     // BOOT RECOVERY r1: a deploy can replace hashed chunks while an older
@@ -450,6 +488,7 @@
          the images after first paint — see #cot-boot-hero styles above) -->
     <div id="cot-boot-hero" aria-hidden="true"><div class="hly"></div><div class="hly"></div></div>
     <div class="cot-boot-inner">
+      <div class="cot-boot-eyebrow"><span>Armored combat simulation</span><span>Live build</span></div>
       <!-- Brand badge: v4.3 colored crest (master copy public/brand/logo-mark.svg
            - keep in sync). Inline SVG so it needs no network round-trip at all. -->
       <svg class="cot-boot-mark" viewBox="0 0 256 256" aria-label="Claude of Tanks">
@@ -615,6 +654,7 @@
       <div class="cot-boot-gate" id="cot-boot-gate">Press any key to continue</div>
       <button class="cot-boot-retry" id="cot-boot-retry" type="button">Retry loading</button>
     </div>
+    <div class="cot-boot-shot" id="cot-boot-shot" aria-hidden="true"></div>
     <div class="cot-boot-foot">Claude of Tanks &middot; Three.js technology demo</div>
   </div>
 
