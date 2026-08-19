@@ -909,7 +909,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.6288,
         3.5139
       ],
-      "sourceHash": "591fc9cd4d5b6a6e"
+      "sourceHash": "9bfb1b10498c25c0"
     },
     "turret": {
       "min": [

@@ -98445,7 +98445,7 @@
           }
         ]
       },
-      "geometryHash": "4f42b604",
+      "geometryHash": "15ed21cc",
       "metadataHash": "bcd978b9",
       "appearance": {
         "version": 1,
@@ -98529,24 +98529,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72997,
-          "sha256": "ba11a2a13d366d9137e767fdf6440f86b7f5a6ff2997afc8f5c0d860869b4436"
+          "bytes": 79325,
+          "sha256": "b656eb5765cd3d9cf297a6b3224ed35b705dcf516c9d55f3214755943d20ebad"
         },
         "armorSide": {
           "file": "t90a_burlak_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75098,
-          "sha256": "68a5c612805204217b5bc743e2c495dbec2b5142506230eda49c24f734a53038"
+          "bytes": 82179,
+          "sha256": "e05fb680ba712604b59699aef361025f5b1a4fb7cb3f096e5115670a826dff29"
         },
         "modulesSide": {
           "file": "t90a_burlak_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80098,
-          "sha256": "9d7eec5ba29364eb4b2a87c0f9f222969e7a4abd36d75e5990bcc37f7049e372"
+          "bytes": 83872,
+          "sha256": "a8aff10fdedcdfa5a0f63cd3ac5025563f4e01aa435b94931b776e85f7e746dc"
         },
         "markings": {
           "file": "t90a_burlak_markings.png",
