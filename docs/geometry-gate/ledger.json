@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-19T06:23:36.767Z",
+ "generatedAt": "2026-08-19T22:58:04.526Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 35,
- "total": 120,
+ "passed": 36,
+ "total": 121,
  "rows": [
   {
    "id": "recon_tank",
@@ -1140,6 +1140,16 @@
     "turretCurves": 90.6,
     "stations": 90.7,
     "dims": 95.9,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "mbt70",
+   "geoMin": 90.1,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.1,
+    "dims": 100,
     "floaters": 100
    }
   },

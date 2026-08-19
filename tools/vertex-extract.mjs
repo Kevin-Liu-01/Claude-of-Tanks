@@ -40,6 +40,14 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 // pubDims from userdrops5.js make() rows (t72b_1987/t72b3m inherit t72b3 in
 // modern1.js; t72bu/t90a_vladimir inherit t90a in variants.js).
 const REG = {
+  // Owner MBT-70 print is fused by material (no honest articulated masks).
+  // Raw nose +X; fixedMount scales the whole source envelope to the authored
+  // muzzle-to-stern datum while keeping the playable fully procedural.
+  mbt70: {
+    path: 'public/models/community-candidates/mbt70_usa.glb',
+    fixedMount: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 7.10, overallLengthM: 9.20, widthM: 3.51, heightM: 2.59 },
+  },
   // AFV program (owner drop 2026-08-04, CC-BY-4.0 42manako; ATTRIBUTION.md).
   // IFV: no gun overhang — overall = hull length; heightM published over the
   // turret roof (2.98 class), width the base 3.28 datum (packet two-datum note).

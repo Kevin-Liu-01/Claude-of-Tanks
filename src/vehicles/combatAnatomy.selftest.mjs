@@ -68,9 +68,10 @@ for (const id of ALL_TANK_IDS) {
   const crew = spec.armor.crew.map((box) => box.crew);
   assert.equal(new Set(crew).size, crew.length, `${id}: one volume per crew member`);
   const loaderless = !crew.includes('loader');
-  const missile = spec.class === 'ifv' && spec.gun.shells.some(
-    (shell) => shell.type === 'HEAT' && Number(shell.reloadS || spec.gun.reloadS) >= 8,
-  );
+  const missile = spec.gun.shells.some((shell) => (
+    Number(shell.reloadS || spec.gun.reloadS) >= 8
+    && (shell.guided || (spec.class === 'ifv' && shell.type === 'HEAT'))
+  ));
   assert.equal(names.includes('autoloader'), loaderless && spec.class !== 'ifv', `${id}: autoloader applicability`);
   assert.equal(names.includes('feedSystem'), spec.class === 'ifv', `${id}: weapon-feed applicability`);
   assert.equal(names.includes('missileRack'), missile, `${id}: missile-rack applicability`);

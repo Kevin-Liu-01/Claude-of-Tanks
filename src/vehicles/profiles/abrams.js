@@ -1411,6 +1411,43 @@ const TEJAS_TURRET = {
   slotW: 0.60, slotX: -0.05,
 };
 
+// Hull-only donor for the owner-directed MBT-70 composition. The new vehicle
+// shares the certified M1A1 loft and suspension instead of maintaining a
+// second approximate Abrams hull, while deliberately omitting the deep skirt
+// wall so its wheels and track return remain exposed.
+export function buildM1A1BareHull(P) {
+  abramsHull(P, {
+    ...TEJAS_HULL,
+    noSkirt: true,
+    noFlaps: true,
+    noNumber: true,
+    noCable: true,
+    noRearFlap: true,
+  });
+
+  // Restore the real Abrams stern-quarter closures without reintroducing
+  // the full side-skirt wall.  The upper tongue closes the exposed fender
+  // return above the sprocket; the deeper guard plate closes the rear
+  // quarter behind the shoe sweep.  These are the same measured stations
+  // used by the certified M1 family and remain clear of the live track run.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.632, 0.145, 0.020), side * 1.376, 1.6225, -3.608);
+    P.add('hullDetail', box(0.612, 0.020, 0.008), side * 1.376, 1.688, -3.622);
+    for (const bx of [1.15, 1.375, 1.60]) {
+      P.add('hullDetail', box(0.024, 0.024, 0.006), side * bx, 1.60, -3.621);
+    }
+
+    P.add('hull', box(0.602, 0.325, 0.020), side * 1.389, 1.5325, -3.776);
+    P.add('hullDetail', box(0.602, 0.022, 0.010), side * 1.389, 1.684, -3.781);
+    P.add('hullDark', box(0.155, 0.085, 0.012), side * 1.36, 1.575, -3.792);
+    P.add('hullDetail', box(0.052, 0.052, 0.008), side * (1.36 - 0.038), 1.573, -3.797);
+    P.add('hullDark', box(0.042, 0.042, 0.004), side * (1.36 + 0.040), 1.573, -3.7955);
+    P.add('hullDetail', box(0.020, 0.115, 0.030), side * 1.265, 1.575, -3.7855);
+    P.add('hullDetail', box(0.020, 0.115, 0.030), side * 1.455, 1.575, -3.7855);
+    P.add('hullDetail', box(0.210, 0.020, 0.030), side * 1.36, 1.633, -3.7855);
+  }
+}
+
 // Roof kit shared by the tejas-oracle family. station: 'crows' or 'cws'
 // (same oracle massing, different dressing).
 // DIMS CLAMP, post-W1b (batch-16 tail flatten y' = 2.46 + 0.03*(y_orig -

@@ -53,6 +53,9 @@ function guidedMissileSlot(spec) {
 export function specialActionKind(spec) {
   if (!spec) return SPECIAL_ACTION_KINDS.NONE;
   if (spec.hydropneumaticAim) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
+  // Launchers whose normal primary ammunition is guided do not need the IFV
+  // E-to-arm selector swap. They fire through the ordinary primary-fire path.
+  if (spec.gun?.primaryGuided === true) return SPECIAL_ACTION_KINDS.NONE;
   if (guidedMissileSlot(spec) >= 0) return SPECIAL_ACTION_KINDS.GUIDED_MISSILE;
   if (spec.gun?.autoloader) return SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD;
   return SPECIAL_ACTION_KINDS.NONE;
@@ -169,6 +172,7 @@ export function finishSpecialActionFire(entity, shellId) {
  * channel. Authorities use this gate before applying cursor steering.
  */
 export function specialActionGuidesShell(entity, shell) {
+  if (entity?.spec?.gun?.primaryGuided === true && shell?.spec?.guided === true) return true;
   const action = entity?.specialAction;
   return !!(action?.active && action.inFlightShellId === shell?.id && shell?.spec?.guided);
 }

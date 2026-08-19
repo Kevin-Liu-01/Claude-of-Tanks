@@ -18,6 +18,7 @@ import {
   completeGuidedMissileFlight,
   createSpecialActionState,
   finishSpecialActionFire,
+  specialActionGuidesShell,
   specialActionKind,
   specialActionLocksShell,
 } from './specialActions.js';
@@ -56,6 +57,18 @@ assert.equal(ifv.specialAction.active, true, 'guidance remains engaged during fl
 assert.equal(completeGuidedMissileFlight(ifv, 41), true);
 assert.equal(ifv.combat.shellSlot, originalSlot, 'impact restores the pre-E weapon immediately');
 assert.equal(specialActionLocksShell(ifv), false);
+
+const mbt70 = entityFor('mbt70');
+assert.equal(mbt70.spec.gun.shells.length, 1,
+  'MBT-70 exposes only its primary ATGM ammunition');
+assert.equal(mbt70.spec.gun.shells[0].guided, true);
+assert.equal(specialActionKind(mbt70.spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
+  'primary missile guidance leaves the suspension action available');
+const mbt70Shell = createShell(
+  mbt70.spec.gun.shells[0], 'mbt70', true, new Vector3(), new Vector3(0, 0, 1), 70,
+);
+assert.equal(specialActionGuidesShell(mbt70, mbt70Shell), true,
+  'MBT-70 primary fire guides immediately without the IFV selector action');
 
 const toggled = entityFor('bwp1');
 assert.equal(activateSpecialAction(toggled).active, true);

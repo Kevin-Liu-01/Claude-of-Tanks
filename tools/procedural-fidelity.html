@@ -84,6 +84,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   leo1a5: { source:'glb', glb:{ path:'/models/community-candidates/tank_leopard_1.glb',
     turretNode:'^Turret_01$', gunNode:'^gun_01_Shape$', autoPivot:true,
     yawOffset:Math.PI } },
+  // Owner-supplied MBT-70 print (2026-08-19). Its export fuses hull, turret,
+  // running gear and gun, so the complete nine-view silhouette is the honest
+  // comparison. Raw source nose is +X; it remains authoring-only.
+  mbt70: { source:'glb', glb:{ path:'/models/community-candidates/mbt70_usa.glb',
+    fixedMount:true, componentMasks:false, yawOffset:-Math.PI / 2 } },
   // ---- KojfDiscord AW series (§5.38 owner drops, LOCAL-ONLY QUARANTINE,
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort

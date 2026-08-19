@@ -3737,6 +3737,62 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       }
     }
   },
+  "mbt70": {
+    "hull": {
+      "min": [
+        -1.75,
+        0.42,
+        -3.937
+      ],
+      "max": [
+        1.75,
+        1.713,
+        3.905
+      ],
+      "sourceHash": "05b6b6757d83251e"
+    },
+    "turret": {
+      "min": [
+        -1.45,
+        0,
+        -3
+      ],
+      "max": [
+        1.45,
+        0.955,
+        1.61
+      ],
+      "sourceHash": "0b5e021d624e39a3"
+    },
+    "tracks": {
+      "left": {
+        "min": [
+          -1.695,
+          -0.002,
+          -3.6879
+        ],
+        "max": [
+          -1.115,
+          1.508,
+          3.4494
+        ],
+        "sourceHash": "3f4fddfe2048d922"
+      },
+      "right": {
+        "min": [
+          1.115,
+          -0.002,
+          -3.6879
+        ],
+        "max": [
+          1.695,
+          1.508,
+          3.4494
+        ],
+        "sourceHash": "cc75e6d7ed1ea4c4"
+      }
+    }
+  },
   "t14": {
     "hull": {
       "min": [

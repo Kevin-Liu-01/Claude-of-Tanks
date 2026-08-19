@@ -174,9 +174,10 @@ function reconcileTracks(modules, target) {
 }
 
 function hasMissile(spec) {
-  return spec.class === 'ifv' && (spec.gun?.shells || []).some(
-    (shell) => shell.type === 'HEAT' && Number(shell.reloadS || spec.gun.reloadS) >= MISSILE_RELOAD_FLOOR_S,
-  );
+  return (spec.gun?.shells || []).some((shell) => (
+    Number(shell.reloadS || spec.gun.reloadS) >= MISSILE_RELOAD_FLOOR_S
+    && (shell.guided || (spec.class === 'ifv' && shell.type === 'HEAT'))
+  ));
 }
 
 function alignTurretRing(armor, calibration) {
