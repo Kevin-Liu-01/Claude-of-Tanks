@@ -817,27 +817,27 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "min": [
           -1.7,
           0.005,
-          -2.7285
+          -2.7292
         ],
         "max": [
           -1.09,
-          1.2594,
+          1.2593,
           3.1692
         ],
-        "sourceHash": "af4331ff05458b17"
+        "sourceHash": "89be7105899c3fb1"
       },
       "right": {
         "min": [
           1.09,
           0.005,
-          -2.7285
+          -2.7292
         ],
         "max": [
           1.7,
-          1.2594,
+          1.2593,
           3.1692
         ],
-        "sourceHash": "db1b0b3b741324e8"
+        "sourceHash": "b9f6f7833364398e"
       }
     }
   },
@@ -929,27 +929,27 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "min": [
           -1.6575,
           0.005,
-          -2.7285
+          -2.7292
         ],
         "max": [
           -1.0627,
-          1.2594,
+          1.2593,
           3.1692
         ],
-        "sourceHash": "8dd4dad46214b677"
+        "sourceHash": "538c3dee5201a46f"
       },
       "right": {
         "min": [
           1.0627,
           0.005,
-          -2.7285
+          -2.7292
         ],
         "max": [
           1.6575,
-          1.2594,
+          1.2593,
           3.1692
         ],
-        "sourceHash": "b591a07d6d5fd494"
+        "sourceHash": "a190557c2950c588"
       }
     }
   },
@@ -985,27 +985,27 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "min": [
           -1.625,
           0.035,
-          -2.7376
+          -2.7374
         ],
         "max": [
           -1.185,
-          1.2178,
+          1.2177,
           3.1689
         ],
-        "sourceHash": "800b390e5e0b89e1"
+        "sourceHash": "ed48c956a27db4d0"
       },
       "right": {
         "min": [
           1.185,
           0.035,
-          -2.7376
+          -2.7374
         ],
         "max": [
           1.625,
-          1.2178,
+          1.2177,
           3.1689
         ],
-        "sourceHash": "07b43e68f51a9e00"
+        "sourceHash": "49c1d30fad12286e"
       }
     }
   },
@@ -1821,27 +1821,27 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "min": [
           -1.675,
           0.01,
-          -3.4174
+          -3.42
         ],
         "max": [
           -1.075,
-          1.4396,
+          1.4395,
           3.4298
         ],
-        "sourceHash": "d7ec4616e04ae519"
+        "sourceHash": "342bae100c4b9484"
       },
       "right": {
         "min": [
           1.075,
           0.01,
-          -3.4174
+          -3.42
         ],
         "max": [
           1.675,
-          1.4396,
+          1.4395,
           3.4298
         ],
-        "sourceHash": "ab7f2543c46d0fdb"
+        "sourceHash": "5e6a3c90b93db784"
       }
     }
   },
@@ -6053,27 +6053,27 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "min": [
           -1.675,
           0.01,
-          -3.4174
+          -3.42
         ],
         "max": [
           -1.075,
-          1.4396,
+          1.4395,
           3.4298
         ],
-        "sourceHash": "d7ec4616e04ae519"
+        "sourceHash": "342bae100c4b9484"
       },
       "right": {
         "min": [
           1.075,
           0.01,
-          -3.4174
+          -3.42
         ],
         "max": [
           1.675,
-          1.4396,
+          1.4395,
           3.4298
         ],
-        "sourceHash": "ab7f2543c46d0fdb"
+        "sourceHash": "5e6a3c90b93db784"
       }
     }
   },
@@ -6557,27 +6557,27 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "min": [
           -1.7,
           0.005,
-          -2.7285
+          -2.7292
         ],
         "max": [
           -1.09,
-          1.2594,
+          1.2593,
           3.1692
         ],
-        "sourceHash": "af4331ff05458b17"
+        "sourceHash": "89be7105899c3fb1"
       },
       "right": {
         "min": [
           1.09,
           0.005,
-          -2.7285
+          -2.7292
         ],
         "max": [
           1.7,
-          1.2594,
+          1.2593,
           3.1692
         ],
-        "sourceHash": "db1b0b3b741324e8"
+        "sourceHash": "b9f6f7833364398e"
       }
     }
   }

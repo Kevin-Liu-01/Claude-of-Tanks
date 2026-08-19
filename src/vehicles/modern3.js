@@ -1002,6 +1002,7 @@ export function buildK2(P) {
     sprocket: { z: -3.08, y: 1.10, r: 0.25 }, idler: { z: 3.10, y: 0.72, r: 0.24 },
     rollers: [1.55, 0.05, -1.45].map((z) => ({ z, y: 0.93, r: 0.08 })),
     trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.10,
+    containRearRoadWheel: true,
     paintedEnds: true, coveredTop: 1.0, padCornerFloor: 0,
     padHex: 0x25251f, chainHex: 0x34332c,
   });
@@ -1011,8 +1012,9 @@ export function buildK2(P) {
   for (const s of [-1, 1]) {
     P.add('hullRunningGearDark', cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08);
     P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
-    P.add('hullRunningGearDark', cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 1.10, -3.08);
-    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 1.10, -3.08);
+    // The canonical animated sprocket owns the complete rear carrier, teeth
+    // and hub. Do not layer a static pressed face here: the old 0.34 m disc
+    // escaped behind the links and read as a seventh road wheel.
     // Visible ISU knuckles and canted arms sit in the open skirt cuts.  They
     // are nested inside the certified shoe lane, adding the source model's
     // suspension depth without widening the running-gear silhouette.

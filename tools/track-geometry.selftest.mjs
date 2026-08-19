@@ -32,6 +32,18 @@ function checkLoop(label, front, rear) {
 checkLoop('rear drive', {z:3.45,y:0.46,r:0.33}, {z:-3.50,y:0.48,r:0.35});
 checkLoop('front drive', {z:3.38,y:0.50,r:0.37}, {z:-3.42,y:0.44,r:0.32});
 
+{
+  const wheelZs = [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16];
+  const legacy = KIT.runningGearContactPatch(wheelZs, 0.385, { contactZR: -1.50 });
+  const contained = KIT.runningGearContactPatch(wheelZs, 0.385, {
+    contactZR: -1.50,
+    containRearRoadWheel: true,
+  });
+  assert.equal(legacy.zR, -1.50, 'legacy source pins remain byte-compatible by default');
+  assert.ok(Math.abs(contained.zR - (-1.9725)) < 1e-9,
+    'opt-in rear containment carries the loaded tread past the final road-wheel quadrant');
+}
+
 const shoe=KIT.trackShoeGeometries(0.58,0.165);
 shoe.pad.computeBoundingBox();
 shoe.inner.computeBoundingBox();

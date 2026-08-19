@@ -1173,6 +1173,20 @@ function integratedTrackShoeDetail(trackW, pitch, radialScale = 1, widthScale = 
   return detail;
 }
 
+function runningGearContactPatch(wheelZs, wheelR, cfg = {}) {
+  const rearRoadZ = Math.min(...wheelZs);
+  const frontRoadZ = Math.max(...wheelZs);
+  let zF = cfg.contactZF ?? frontRoadZ + wheelR * 0.5;
+  let zR = cfg.contactZR ?? rearRoadZ - wheelR * 0.5;
+  // Some source-fitted contact pins predate the larger road-wheel passes.
+  // Once a rear wheel grows past that old departure knee, its aft quadrant
+  // escapes behind the rising tread run. Opt affected families into a
+  // mechanical lower bound: the loaded course must reach at least halfway
+  // around the last wheel before it climbs toward the final drive.
+  if (cfg.containRearRoadWheel) zR = Math.min(zR, rearRoadZ - wheelR * 0.5);
+  return { zF, zR };
+}
+
 function buildRunningGear(P, cfg) {
   const { mats, hullG, q } = P;
   const seg = q ? 26 : 12;
@@ -1466,8 +1480,7 @@ function buildRunningGear(P, cfg) {
     // contact patch when a wheel-size retune must NOT move the certified
     // ramp/wrap tangents (m1a2 rides gate-certified 0.399/0.465-0.53 ramp
     // bins derived at the r4 patch). Defaults byte-identical.
-    zF: cfg.contactZF ?? Math.max(...wheelZs) + wheelR * 0.5,
-    zR: cfg.contactZR ?? Math.min(...wheelZs) - wheelR * 0.5,
+    ...runningGearContactPatch(wheelZs, wheelR, cfg),
   };
   // A measured source may require a non-circular approach/departure course
   // while still using the native band, linked shoes, animation and spinner
@@ -2589,6 +2602,7 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft, polyMultiLoft,
   mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, trackHitboxHull,
+  runningGearContactPatch,
   buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,

@@ -596,6 +596,7 @@ function buildT90ALegacy(P) {
     // climbs continuously to the raised sprocket.  Pinning the tangent
     // removes the false metre-long flat tail without moving any wheel.
     trackW: 0.61, topY: 0.86, botY: 0.05, contactZR: -1.50,
+    containRearRoadWheel: true,
     paintedEnds: true, coveredTop: true, arms: true,
   });
   // The native linked course now carries the complete rear climb and loaded
@@ -3328,6 +3329,7 @@ function buildT90SMLegacy(P) {
     // 0.08 low over six cols); rear ramp 0.218@-2.189 -> 0.655@-2.735 (my
     // ground ran to -2.19 where the ref lifts).
     contactZF: 2.20, contactZR: -1.45,
+    containRearRoadWheel: true,
     trackW: 0.44, trackTh: 0.03, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     // Suspension arms are genuine running gear, not hull armor.  Keep their
     // geometry and material byte-visible while excluding them from the

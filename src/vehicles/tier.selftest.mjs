@@ -15,6 +15,7 @@ for (const id of ALL_TANK_IDS) {
 
 assert.equal(tierNumeral('m1a2_sepv3'), 'X', 'SEPv3 no longer renders a blank tier');
 assert.equal(tankTier('t80bv'), 9, 'T-80BV UI and matchmaking agree at tier IX');
+assert.equal(tierNumeral('k2b'), 'X', 'K2B is presented and matched as a Tier X vehicle');
 assert.equal(tierNumeral('unknown-dev-row'), '', 'unknown UI tiers stay visible as missing');
 assert.equal(tankTier('unknown-dev-row'), 6, 'unknown matchmaking tier keeps the legacy fallback');
 
