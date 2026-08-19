@@ -7227,19 +7227,19 @@ function buildLeo2Revolution(P) {
   // plan line — the old 2.58w reach was the top plan-turret error)
   // r5: top 2.15 -> 2.02 (its AA read 2.185 on the lone 2.21w column where
   // the ref falls to 2.056)
-  P.add('turret', box(0.92, 0.29, 0.10), 0, 0.315, 2.55);
-  for (const s of [-1, 1]) P.add('turretDark', box(0.065, 0.27, 0.44), s * 0.47, 0.32, 2.43);
+  P.add('turret', box(0.92, 0.29, 0.10), 0, 0.28, 2.55);
+  for (const s of [-1, 1]) P.add('turretDark', box(0.065, 0.27, 0.44), s * 0.47, 0.285, 2.43);
   // P-1 (defuse-recert critic order): the mantlet cheek blocks read as
   // bare grey "posts" over the black ring window at close-front. Tells:
   // the RIGHT cheek carries the coax MG port (pale collar + dark bore on
   // its front face — the real 2A46/L44 coax spot), the LEFT a bolt row.
   // All faces interior to the turret silhouette (core 2.2525 line owns
   // every column here; y stays inside the blocks' own 0.19..0.43 band).
-  P.add('turretDetail', KIT.cylZ(0.032, 0.014, 12), 0.47, 0.365, 2.662);       // coax port collar
-  P.add('turretDark', KIT.cylZ(0.018, 0.022, 10), 0.47, 0.365, 2.664);         // coax bore stub
-  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.405, 2.662);        // left cheek bolt row
-  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.345, 2.662);
-  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.285, 2.662);
+  P.add('turretDetail', KIT.cylZ(0.032, 0.014, 12), 0.47, 0.33, 2.662);        // coax port collar
+  P.add('turretDark', KIT.cylZ(0.018, 0.022, 10), 0.47, 0.33, 2.664);          // coax bore stub
+  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.37, 2.662);         // left cheek bolt row
+  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.31, 2.662);
+  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.25, 2.662);
   // ---- L/44 at axis 1.85 (band 1.76..1.94): muzzle 6.005 (published
   // overall 9.97; print tube ends 5.934). r7: 6.02 -> 6.005 — the settled
   // grid's pitch shrank the 0.75-pitch cover margin to 0.083 and the 6.02
@@ -7248,7 +7248,15 @@ function buildLeo2Revolution(P) {
   // (pct ~1.05, -0.4 dims) is the priced trade. A 4.99 try shifted the
   // plan camera enough to land the ±2.0 jacket faces on plan-bin
   // boundaries (ONLY-PROC flicker at ±2.04, plan 96.4 -> 92.3). ----
-  P.gunG.position.set(0, 0.25, 1.35);
+  // The previous articulation axis sat at local z=1.35, roughly 1.05 m
+  // behind the visible mantlet seal.  Level fire happened to hide that
+  // mismatch because the long gun-owned shroud reached forward into the
+  // static slot, but elevation/depression made the complete tube describe a
+  // huge arc through the turret face.  Put the actual pitch axis inside the
+  // mantlet opening and counter-translate the already-certified gun geometry
+  // below so the zero-pitch silhouette and muzzle station remain unchanged.
+  const gunTrunnionShiftZ = 1.05;
+  P.gunG.position.set(0, 0.25, 2.40);
   P.addGunExtra(KIT.cylX(0.135, 0.70, P.q ? 20 : 14), 0, 0.08, 0);
   P.addGunExtra(slab(
     [-0.35, -0.14, 0.16], [0.35, -0.14, 0.16], [0.25, -0.11, 0.70], [-0.25, -0.11, 0.70],
@@ -7256,16 +7264,6 @@ function buildLeo2Revolution(P) {
   P.addGunExtraDark(box(0.48, 0.045, 0.42), 0, -0.135, 0.43);                 // mantlet boot lower fold
   P.addGunExtra(cylZ(0.115, 0.56, 14, 0.14), 0, 0.03, 0.90);
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.23, 0.08, 0.50);
-  // r9 A1 mantlet-face relief (critic order — ref paints "mantlet drum +
-  // bolted flange"): flange disc proud of the drum's front face (r 0.126 >
-  // the drum's 0.10 nose) + 6 bolt studs. All inside the notch envelope:
-  // side rows covered by the mantlet back wall's 2.02 top at the same w,
-  // front/plan interior (world y 1.75..2.01 under the turret line).
-  P.addGunExtraDark(cylZ(0.126, 0.018, P.q ? 20 : 14), 0, 0.03, 1.155);
-  for (let k = 0; k < 6; k++) {
-    const ba = k * Math.PI / 3 + 0.26;
-    P.addGunExtraDark(cylZ(0.0095, 0.014, 8), 0.104 * Math.cos(ba), 0.03 + 0.104 * Math.sin(ba), 1.166);
-  }
   // r5: sleeve OFF + r 0.078 — the kit sleeve/clamp rings (r*1.22/1.31)
   // printed 1.985+AA over the ref's bare 1.917 tube band on six columns.
   // baseR degenerate (2mm axis sliver): the 0.10 breech collar hung a 1.735
@@ -7293,6 +7291,25 @@ function buildLeo2Revolution(P) {
   // w 2.83..2.93 — its travel-clamp jaw rides the gun/turret node while
   // the pedestal stays hull; our hull rod can't print the turret row)
   P.addGunExtra(box(0.10, 0.14, 0.096), 0, 0.108, 1.8775);
+  // Preserve every authored zero-pitch station while changing only the
+  // rotation center.  The transverse trunnion stays at the new origin.
+  P.offsetBuckets(['gunMount', 'gunMountDark', 'gun', 'gunDark'], 0, 0, -gunTrunnionShiftZ);
+  P.addGunExtra(KIT.cylX(0.16, 0.70, P.q ? 20 : 14), 0, 0.03, 0);
+  // The old ring/hole stayed buried behind the mantlet face after the pivot
+  // repair.  Rebuild the complete aperture in the gun frame: the dark throat
+  // sits just behind the face, the camouflaged torus rests on it, and the bolt
+  // circle is proud of the ring.  All three now share the real trunnion and
+  // pitch concentrically with the barrel instead of orbiting inside the
+  // turret.  At level fire their world z stations are 2.605..2.642, directly
+  // on the static slot wall's 2.60 m face.
+  const gunApertureZ = 0.215;
+  P.addGunExtraDark(cylZ(0.150, 0.026, P.q ? 20 : 14), 0, 0.03, gunApertureZ - 0.010);
+  P.addGunExtra(torus(0.168, 0.022, P.q ? 24 : 16), 0, 0.03, gunApertureZ + 0.014);
+  for (let k = 0; k < 6; k++) {
+    const ba = k * Math.PI / 3 + 0.26;
+    P.addGunExtraDark(cylZ(0.0095, 0.014, 8),
+      0.168 * Math.cos(ba), 0.03 + 0.168 * Math.sin(ba), gunApertureZ + 0.031);
+  }
   // ---- r9 FINISH TIER (critic drivers 2/4/5/6 + A3): B1 gear trim, D1
   // lattice, D2 rear-wall dressing, E1/E2 seam grammar, F1/F2 albedo +
   // de-CAD, A3 stowed-MAG legibility. Zero-mask mechanisms throughout:
