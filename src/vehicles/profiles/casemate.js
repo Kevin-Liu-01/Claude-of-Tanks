@@ -3399,13 +3399,16 @@ function buildISU152(P) {
   for (const gz2 of [5.545, 5.645]) {
     P.add('hull', ell(cylZ(0.1027, 0.042, 18)), -0.24, 1.858, gz2);            // spaced flute rings
   }
-  P.add('hull', ell(cylZ(0.1027, 0.026, 18)), -0.24, 1.858, 5.707);            // muzzle end band
+  P.add('hull', ell(KIT.xform(cylY(0.1027, 0.1027, 0.026, 18, true),
+    0, 0, 0, Math.PI / 2, 0, 0)), -0.24, 1.858, 5.707);                       // open muzzle end band
   // SLICE-VISIBILITY RING (family law, re-learned): an end-on primitive
   // cylinder rasterizes ZERO lateral fragments, so a station window with no
   // end cap inside reads EMPTY (s11 [3.74,4.39] went onlyOne). One thin
   // disc mid-window keeps the slice lit at the tube's exact width.
   P.add('hull', ell(cylZ(0.102, 0.03, 18)), -0.24, 1.858, 4.06);
-  P.add('hullCloth', paintFlat(cylZ(0.035, 0.012, 12), 0.54, 0.03), -0.24, 1.858, 5.716); // bore (shrunk, softened)
+  // The universal caliber-aware bore assembly owns the recessed throat. A
+  // painted cap here sat in front of that assembly and made the ISU-152 read
+  // as a plugged barrel to both the release probe and the live renderer.
   // ---- DShK on the right cupola head — r4 ORDER 1 REBUILD (owner
   // decoration law + MG PHYSICS; critic r3: "thin rod + small block lying
   // flat across the roof — no receiver mass, no pintle column, no sky

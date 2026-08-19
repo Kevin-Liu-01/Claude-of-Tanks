@@ -47,6 +47,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import { tagVehicleMaterial } from '../appearanceAudit.js';
 
 // ---------------------------------------------------------------------------
 // Piecewise deck lookup (z descending front->rear).
@@ -2135,6 +2136,7 @@ function buildPershing(P, cfg) {
     // the blotch scale on a 0.66 m drum matches the hull plates). Hub
     // rings/bolts are hullDark — kept, per the order.
     const wheelCamo = rehook(P.mats.hull.clone());
+    tagVehicleMaterial(wheelCamo, 'wheelPaint', 'patton-wheel-camouflage');
     wheelCamo.vertexColors = false;
     wheelCamo.map = P.mats.hull.map.clone();
     wheelCamo.map.repeat.set(0.26, 0.26);

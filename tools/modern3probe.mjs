@@ -1,5 +1,6 @@
 // tools/modern3probe.mjs — captures closeup renders of the modern3.js pack.
 // Usage: node tools/modern3probe.mjs [--ids a,b,c] [--out shots/modern3]
+//   [--dist meters] [--target-y meters]
 // Two judged angles per vehicle (sun-side front quarter + rear quarter),
 // PNGs land in shots/modern3/<id>_{front,rear}.png. Prints the visible
 // triangle count per vehicle (budget <= 120k) and fails on console errors.
@@ -36,6 +37,8 @@ const args = process.argv.slice(2);
 const opt = (name, fb) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : fb; };
 const outDir = resolve(opt('out', 'shots/modern3'));
 const ids = opt('ids', 'chieftain_mk10,k2,type10,m2a2_bradley,bmp2,ariete').split(',');
+const dist = opt('dist', '0');
+const targetY = opt('target-y', '');
 mkdirSync(outDir, { recursive: true });
 
 const ANGLES = [
@@ -64,7 +67,8 @@ page.on('pageerror', (e) => errors.push(String(e)));
 let failed = false;
 for (const id of ids) {
   for (const ang of ANGLES) {
-    const url = `http://localhost:${port}/tools/modern3probe.html?id=${id}&az=${ang.az}&pitch=${ang.pitch}`;
+    const targetQuery = targetY === '' ? '' : `&targetY=${encodeURIComponent(targetY)}`;
+    const url = `http://localhost:${port}/tools/modern3probe.html?id=${id}&az=${ang.az}&pitch=${ang.pitch}&dist=${encodeURIComponent(dist)}${targetQuery}`;
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction('window.__PROBE_READY === true', { timeout: 60000 });
     const err = await page.evaluate('window.__PROBE_ERROR || null');

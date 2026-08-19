@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- tools/modern3probe.html — closeup render probe for the modern3.js builder
      pack (chieftain_mk10 / k2 / type10 / m2a2_bradley / bmp2 / ariete).
-     Query: ?id=<specId>&az=<deg>&pitch=<deg>&dist=<m|0=auto>
+     Query: ?id=<specId>&az=<deg>&pitch=<deg>&dist=<m|0=auto>&targetY=<m>
      Sets window.__PROBE_READY after the settled frame; window.__TRIS carries
      the visible triangle count (<=120k budget gate). -->
 <html><body style="margin:0">
@@ -15,6 +15,7 @@ const id = q.get('id') || 'chieftain_mk10';
 const az = parseFloat(q.get('az') ?? '-38');
 const pitch = parseFloat(q.get('pitch') ?? '10');
 const distQ = parseFloat(q.get('dist') ?? '0');
+const targetYQ = q.has('targetY') ? parseFloat(q.get('targetY')) : null;
 const W = 1280, H = 720;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -55,14 +56,15 @@ try {
   const spec = getSpec(id);
   const dist = distQ || Math.max(6.2, spec.dims.overallLengthM * 0.82);
   const cy = spec.dims.heightM * 0.52;
+  const targetY = Number.isFinite(targetYQ) ? targetYQ : cy;
   const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 500);
   const a = (az * Math.PI) / 180, p = (pitch * Math.PI) / 180;
   camera.position.set(
     Math.sin(a) * Math.cos(p) * dist,
-    cy + Math.sin(p) * dist,
+    targetY + Math.sin(p) * dist,
     Math.cos(a) * Math.cos(p) * dist,
   );
-  camera.lookAt(0, cy, 0);
+  camera.lookAt(0, targetY, 0);
 
   let tris = 0;
   visual.root.updateMatrixWorld(true);

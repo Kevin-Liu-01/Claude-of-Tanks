@@ -13,7 +13,8 @@ import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes, finalizeFirstPartyRoster } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
-import { normalizeTankAppearance } from './appearanceAudit.js';
+import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.js';
+import { wheelPatternFor } from './wheelPatterns.js';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord,
 } from './vehicleMarkings.js';
@@ -905,21 +906,29 @@ function boltRing(discs, r, w, n = 8) {
     discs.push(xform(cylX(r * 0.042, w * 1.16, 6), 0, Math.sin(a) * r * 0.4, Math.cos(a) * r * 0.4));
   }
 }
-function wheelGeo(style, r, w, seg, dishR = 0.90) {
+function radialRibs(parts, r, w, count, innerR = 0.20, outerR = 0.75,
+  tangential = 0.13, widthScale = 1.22, phase = 0) {
+  const mid = r * (innerR + outerR) / 2;
+  const length = r * (outerR - innerR);
+  for (let k = 0; k < count; k++) {
+    const a = (k / count) * Math.PI * 2 + phase;
+    parts.push(xform(box(w * widthScale, r * tangential, length),
+      0, Math.sin(a) * mid, Math.cos(a) * mid, -a, 0, 0));
+  }
+}
+
+function wheelGeo(style, r, w, seg, dishR = 0.90, pattern = null, customFace = false) {
+  const patternFasteners = pattern?.fasteners ?? 8;
   const discs = [];
   if (style === 'steel') {
     discs.push(cylX(r, w, seg));
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2;
-      discs.push(xform(box(w * 1.12, r * 0.3, r * 0.62),
-        0, Math.sin(a) * r * 0.5, Math.cos(a) * r * 0.5, a, 0, 0));
-    }
+    radialRibs(discs, r, w, pattern?.pockets || 6, 0.18, 0.82, 0.18, 1.18, 0.1);
     discs.push(cylX(r * 0.24, w * 1.3, 10));
     discs.push(cylX(r * 0.14, w * 1.44, 8));            // hub cap
-    boltRing(discs, r, w, 6);
+    boltRing(discs, r, w, patternFasteners);
     return { tire: null, disc: mergeAll(discs), dark: null };
   }
-  if (style === 'holes') {
+  if (style === 'holes' && (!pattern || pattern.motif === 'perforated')) {
     // T-34 Christie wheel (r7 rebuild): the painted dish spans nearly the
     // full radius with a THIN rubber rim, and the six big stamped lightening
     // holes are dark inserts — the "spider" face that makes the wheel read
@@ -928,16 +937,17 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
     discs.push(cylX(r * 0.86, w * 1.10, seg));           // near-full dish
     discs.push(cylX(r * 0.28, w * 1.32, 12));            // hub drum
     discs.push(cylX(r * 0.15, w * 1.5, 8));              // hub cap
-    boltRing(discs, r * 0.72, w, 8);
+    boltRing(discs, r * 0.72, w, patternFasteners);
     const dk = [];
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + 0.3;
+    const pocketCount = pattern?.pockets || 6;
+    for (let k = 0; k < pocketCount; k++) {
+      const a = (k / pocketCount) * Math.PI * 2 + 0.3;
       dk.push(xform(cylX(r * 0.185, w * 1.16, 10),
         0, Math.sin(a) * r * 0.55, Math.cos(a) * r * 0.55));
     }
     return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
   }
-  if (style === 'dished') {
+  if (style === 'dished' && (!pattern || pattern.motif === 'deep-dish')) {
     // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
     // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
     // toward the hub, dark shadow annulus at the dish bottom, raised hub drum
@@ -962,10 +972,34 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
     discs.push(cylX(r * 0.26, w * 1.34, 12));            // raised hub drum
     discs.push(cylX(r * 0.15, w * 1.52, 10));            // hub cap
     const dk = [cylX(r * 0.50, w * 0.52, seg)];          // dish-bottom shadow annulus
-    for (let k = 0; k < 16; k++) {                        // 16 rim bolts on the dish slope
-      const a = (k / 16) * Math.PI * 2 + 0.1;
+    for (let k = 0; k < patternFasteners; k++) {          // rim bolts on the dish slope
+      const a = (k / patternFasteners) * Math.PI * 2 + 0.1;
       dk.push(xform(cylX(r * 0.042, w * 1.12, 6),
         0, Math.sin(a) * r * 0.60, Math.cos(a) * r * 0.60));
+    }
+    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+  }
+  // Recent profile builders already supply source-measured, suspension-bound
+  // face layers. Preserve their proven base stack so the shared fleet motif
+  // cannot sit proud of and occlude those authored rings/recesses. They still
+  // receive the family-specific idler, sprocket, roller, paint, and receipt.
+  if (customFace) {
+    const tire = mergeAll([
+      cylX(r, w, seg),
+      cylX(r * 0.30, w * 1.20, seg),
+    ]);
+    discs.push(cylX(r * dishR, w * 1.14, seg));
+    discs.push(cylX(r * 0.24, w * 1.38, 10));
+    discs.push(cylX(r * 0.14, w * 1.54, 8));
+    boltRing(discs, r * dishR / 0.9, w, 8);
+    const dk = [
+      cylX(r * 0.46, w * 1.08, seg),
+      cylX(r * 0.205, w * 1.40, 10),
+    ];
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2 + 0.13;
+      dk.push(xform(cylX(r * 0.045, w * 1.20, 6),
+        0, Math.sin(a) * r * dishR * 0.72, Math.cos(a) * r * dishR * 0.72));
     }
     return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
   }
@@ -978,7 +1012,7 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
   // "body-green disc" concern) without the target-ring geometry.
   const tire = mergeAll([
     cylX(r, w, seg),
-    cylX(r * 0.30, w * 1.2, seg),                        // hub shadow well
+    cylX(r * 0.94, w * 1.03, seg),                       // rounded tire shoulder
   ]);
   // Painted dish stands PROUD of the tire caps and covers `dishR` of the
   // radius (default 90%) — real road wheels read as painted steel discs with
@@ -986,24 +1020,54 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
   // and never as wide-ringed bullseyes (camo_spotting r3). Russian/modern
   // rigs pass a smaller dishR for their fat rubber tires (r5: "uniform green
   // discs with no rubber/hub separation").
-  discs.push(cylX(r * dishR, w * 1.14, seg));
-  discs.push(cylX(r * 0.24, w * 1.38, 10));              // hub
-  discs.push(cylX(r * 0.14, w * 1.54, 8));               // hub cap
-  boltRing(discs, r * dishR / 0.9, w, 8);
-  // shaded-parity r1 ("every road wheel in all 5 families is a flat disc"):
-  // the rubber style merged hub, dish and bolts into ONE painted material, so
-  // under uniform camo every feature vanished. Give it the same dark contrast
-  // set the dished/holes styles have — recessed annulus between dish and hub,
-  // dark hub-drum sidewall, and a dark bolt ring standing on the dish — so
-  // the wheel reads as a wheel under any paint scheme.
-  const dk = [
-    cylX(r * 0.46, w * 1.08, seg),                       // dish/hub recess annulus
-    cylX(r * 0.205, w * 1.40, 10),                       // hub drum sidewall shadow
-  ];
-  for (let k = 0; k < 12; k++) {
-    const a = (k / 12) * Math.PI * 2 + 0.13;
-    dk.push(xform(cylX(r * 0.045, w * 1.20, 6),
-      0, Math.sin(a) * r * dishR * 0.72, Math.cos(a) * r * dishR * 0.72));
+  discs.push(cylX(r * dishR, w * 1.12, seg));            // painted outer dish
+  const dk = [];
+  const motif = pattern?.motif || 'split-rim';
+  if (motif === 'split-rim') {
+    dk.push(cylX(r * 0.70, w * 1.17, seg));
+    discs.push(cylX(r * 0.53, w * 1.23, seg));
+    dk.push(cylX(r * 0.32, w * 1.27, 12));
+  } else if (motif === 'rib') {
+    dk.push(cylX(r * 0.67, w * 1.17, seg));
+    radialRibs(discs, r, w, pattern?.pockets || 8, 0.20, dishR * 0.84,
+      0.12, 1.24, 0.08);
+  } else if (motif === 'spoke' || motif === 'solid-spoke') {
+    dk.push(cylX(r * 0.69, w * 1.17, seg));
+    radialRibs(discs, r, w, pattern?.pockets || 5, 0.18, dishR * 0.86,
+      motif === 'solid-spoke' ? 0.24 : 0.20, 1.24, 0.06);
+  } else if (motif === 'scalloped' || motif === 'perforated') {
+    const count = pattern?.pockets || 6;
+    dk.push(cylX(r * 0.39, w * 1.17, 14));
+    for (let k = 0; k < count; k++) {
+      const a = (k / count) * Math.PI * 2 + 0.28;
+      dk.push(xform(cylX(r * (motif === 'perforated' ? 0.15 : 0.125), w * 1.21, 10),
+        0, Math.sin(a) * r * 0.56, Math.cos(a) * r * 0.56));
+    }
+  } else if (motif === 'flanged') {
+    dk.push(cylX(r * 0.61, w * 1.17, seg));
+    discs.push(cylX(r * 0.45, w * 1.23, 16));
+    dk.push(cylX(r * 0.29, w * 1.27, 12));
+  } else if (motif === 'deep-dish') {
+    dk.push(cylX(r * 0.57, w * 1.17, seg));
+    for (const side of [-1, 1]) {
+      discs.push(xform(cylX(
+        side < 0 ? r * 0.78 : r * 0.31,
+        w * 0.16, seg,
+        side < 0 ? r * 0.31 : r * 0.78,
+      ), side * w * 0.62, 0, 0));
+    }
+  } else if (motif === 'armored-hub') {
+    dk.push(cylX(r * 0.52, w * 1.17, seg));
+    discs.push(cylX(r * 0.38, w * 1.25, 14));
+  } else {
+    dk.push(cylX(r * 0.48, w * 1.17, seg));
+  }
+  discs.push(cylX(r * 0.24, w * 1.34, 12));              // raised hub drum
+  discs.push(cylX(r * 0.14, w * 1.48, 10));              // removable hub cap
+  for (let k = 0; k < patternFasteners; k++) {
+    const a = (k / patternFasteners) * Math.PI * 2 + 0.13;
+    dk.push(xform(cylX(r * 0.040, w * 1.40, 6),
+      0, Math.sin(a) * r * dishR * 0.70, Math.cos(a) * r * dishR * 0.70));
   }
   return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
 }
@@ -1016,9 +1080,10 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
 // -> dark bolt heads standing on the dish. Returns { body, dark } geometry
 // so the recess/bolts render in dark steel against the worn-steel body
 // (steel/dark albedo, not hull camo — r8 critique).
-function idlerGeo(r, w, seg) {
+function idlerGeo(r, w, seg, pattern = null) {
   const body = [];
   const dark = [];
+  const ringSeg = Math.max(12, seg - 8);
   // r5 track-gate rework ("both track wraps are hollow — the track circles a
   // void"): the old face put the RIM BAND *and* a full-radius annulus in the
   // near-black steel material, so from any garage/closeup angle the wrap
@@ -1026,9 +1091,14 @@ function idlerGeo(r, w, seg) {
   // SOLID painted dished wheel that fills the wrap out to the band's inner
   // face: full-width painted drum core + near-full-radius dished cones, with
   // dark kept to a slim worn contact rim, round lightening holes and bolts.
-  dark.push(cylX(r, w * 0.96, seg));                     // slim worn contact rim
-  body.push(cylX(r * 0.97, w * 0.80, seg));              // solid painted drum core
+  // True open rim rings on both faces. The former full-radius dark cylinder
+  // sat proud of the dish and turned every idler into a blank black plate.
   const hD = Math.max(0.05, r * 0.16);                   // dish proudness
+  for (const side of [-1, 1]) {
+    dark.push(xform(torus(r * 0.91, r * 0.065, ringSeg, 4),
+      side * (w * 0.40 + hD * 0.78), 0, 0, 0, 0, Math.PI / 2));
+  }
+  body.push(cylX(r * 0.97, w * 0.80, seg));              // solid painted drum core
   for (const s of [-1, 1]) {
     body.push(xform(
       cylX(s < 0 ? r * 0.34 : r * 0.94, hD, seg, s < 0 ? r * 0.94 : r * 0.34),
@@ -1036,18 +1106,25 @@ function idlerGeo(r, w, seg) {
   }
   body.push(cylX(r * 0.26, w + hD * 1.6, 14));           // raised hub drum
   body.push(cylX(r * 0.15, w + hD * 2.1, 10));           // hub cap
+  if (pattern?.motif === 'rib' || pattern?.motif === 'spoke'
+    || pattern?.motif === 'solid-spoke') {
+    radialRibs(body, r, w, pattern.pockets || 6, 0.23, 0.79,
+      pattern.motif === 'spoke' ? 0.15 : 0.11, 1.20, 0.08);
+  }
   // r7b DE-STAR (Sherman "star-toothed wheel at the rear" misread): the six
   // BIG dark holes at 0.56 r left green lobes between them that rendered as
   // a 6-point drive star at garage range — the critic concluded rear drive.
   // Idlers keep ROUND lightening holes but small and tucked toward the hub
   // so the face reads as a plain dished wheel, unmistakably NOT a sprocket.
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2 + 0.35;
-    dark.push(xform(cylX(r * 0.085, w * 0.9 + hD, 8),
+  const holeCount = pattern?.idlerHoles ?? 8;
+  for (let k = 0; k < holeCount; k++) {
+    const a = (k / holeCount) * Math.PI * 2 + 0.35;
+    dark.push(xform(cylX(r * 0.085, w * 0.9 + hD * 2.5, 8),
       0, Math.sin(a) * r * 0.48, Math.cos(a) * r * 0.48));
   }
-  for (let k = 0; k < 8; k++) {                          // dark bolt heads on the dish
-    const a = (k / 8) * Math.PI * 2 + 0.2;
+  const boltCount = pattern?.endFasteners ?? 8;
+  for (let k = 0; k < boltCount; k++) {                  // dark bolt heads on the dish
+    const a = (k / boltCount) * Math.PI * 2 + 0.2;
     dark.push(xform(cylX(0.022, w + hD * 1.6, 6),
       0, Math.sin(a) * r * 0.30, Math.cos(a) * r * 0.30));
   }
@@ -1060,7 +1137,8 @@ function idlerGeo(r, w, seg) {
 // recessed core, dark teeth (they read as link engagement, not camo spikes),
 // dark bolt ring, raised hub. `toothOuter` is the band outer radius
 // (r + CLEAR + trackTh/2) supplied by the caller; tips stay a hair proud.
-function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ringSpan = null) {
+function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
+  ringSpan = null, pattern = null) {
   // r7b TOOTHED-RING REBUILD (hard critique on both judged WWII closeups AND
   // the Sherman drive-end misread): the r5 "teeth hidden just inside the
   // band" compromise rendered the drive end as a FLAT TOOTHLESS PAINTED DISC
@@ -1080,12 +1158,15 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
   const pitchArc = (Math.PI * (rootR + tipR)) / n;       // circumferential pitch at mid
   const body = [cylX(r * 0.88, w * 0.80, seg)];          // solid painted body drum
   const dark = [];
+  const ringSeg = Math.max(12, seg - 8);
   body.push(cylX(r * 0.30, w * 1.14, 12));               // hub
   body.push(cylX(r * 0.17, w * 1.26, 10));               // hub cap
   const span = ringSpan ?? w;                            // rings ride the BAND edges
   for (const off of [-(span / 2) * 0.99, (span / 2) * 0.99]) {
-    body.push(xform(cylX(r * 0.94, w * 0.145, seg), off, 0, 0));   // carrier ring, painted
-    dark.push(xform(cylX(r * 0.82, w * 0.155, seg), off, 0, 0));   // recessed dark root ring
+    // Open carrier rings expose the central drum and hub. These used to be
+    // full discs at the band edges, which visually erased the entire wheel.
+    body.push(xform(torus(r * 0.84, r * 0.10, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
+    dark.push(xform(torus(r * 0.69, r * 0.055, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2;
       const mid = (rootR + tipR) / 2;
@@ -1097,8 +1178,9 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
         off, Math.sin(a) * (tipR - 0.01), Math.cos(a) * (tipR - 0.01), Math.PI / 2 - a, 0, 0));
     }
   }
-  for (let k = 0; k < 8; k++) {                          // dark bolt ring on the hub boss
-    const a = (k / 8) * Math.PI * 2;
+  const boltCount = pattern?.endFasteners ?? 8;
+  for (let k = 0; k < boltCount; k++) {                  // dark bolt ring on the hub boss
+    const a = (k / boltCount) * Math.PI * 2;
     dark.push(xform(cylX(0.02, w * 1.06, 6),
       0, Math.sin(a) * r * 0.44, Math.cos(a) * r * 0.44));
   }
@@ -1214,10 +1296,22 @@ function buildRunningGear(P, cfg) {
   const xcForSide = (side) => side < 0 ? xcLeft : xcRight;
 
   const wheelY = cfg.wheelY ?? wheelR + 0.10;
+  const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
   // Machine-readable family receipt. Variant builders still choose their
   // own radius, cadence, terminal geometry and protection; this records only
   // the native mechanical station count for lineage/provenance checks.
   hullG.userData.nativeRoadWheelStations = wheelZs.length;
+  const wheelPatternReceipt = {
+    id: wheelPattern.id,
+    label: wheelPattern.label,
+    style,
+    stations: wheelZs.length,
+    wheelFaceLayers: (cfg.wheelFaceLayers || []).length,
+  };
+  const wheelReceipts = hullG.userData.wheelPatternReceipts
+    || (hullG.userData.wheelPatternReceipts = []);
+  wheelReceipts.push(wheelPatternReceipt);
+  hullG.userData.nativeWheelPatterns = [...new Set(wheelReceipts.map((receipt) => receipt.id))];
 
   // torsion arms: static axle stub + trailing arm per wheel station (merged
   // into the hull detail bucket — zero extra draw calls)
@@ -1281,7 +1375,10 @@ function buildRunningGear(P, cfg) {
     for (const side of [-1, 1]) rollerEntries.push({ x: side * xcForSide(side), y: rl.y, z: rl.z, r: rl.r ?? rollerR, road: false, i: 0 });
   }
 
-  const { tire, disc, dark } = wheelGeo(style, wheelR, wheelW, seg, cfg.dishR ?? 0.90);
+  const { tire, disc, dark } = wheelGeo(
+    style, wheelR, wheelW, seg, cfg.dishR ?? 0.90, wheelPattern,
+    (cfg.wheelFaceLayers || []).length > 0,
+  );
   // Some modern pressed-steel wheel assemblies are measurably oval in the
   // normalized side reference (vertical tire diameter exceeds the fore/aft
   // diameter).  Scaling the authored wheel geometry, rather than faking the
@@ -1298,6 +1395,8 @@ function buildRunningGear(P, cfg) {
   const mkInst = (geo, mat, list, appearanceRole, name) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     im.userData.runningGear = true;
+    im.userData.wheelPattern = wheelPattern.id;
+    im.userData.wheelPatternLabel = wheelPattern.label;
     if (appearanceRole) im.userData.appearanceRole = appearanceRole;
     if (name) im.name = name;
     // PERF: wheels/rollers sit inside the hull + track-band ground shadow —
@@ -1346,7 +1445,11 @@ function buildRunningGear(P, cfg) {
     P.disposables.push(tireMat);
   }
   if (tire) mkInst(tire, tireMat, entries, 'wheelTire', 'gearRoadWheelTires');
-  let dishMat = style === 'rubber' || style === 'holes' || style === 'dished' ? mats.wheels : mats.detail;
+  // Every wheel style, including legacy steel/bogie wheels, uses the same
+  // camouflage-aware dusty wheel paint. Routing steel wheels through the
+  // generic fitting material was the source of the older fleet's odd green,
+  // tan, and glossy wheel rows.
+  let dishMat = mats.wheels;
   // Per-profile painted wheel tone.  Modern demonstrators often carry
   // deeply shadowed, scheme-painted dishes; using the fleet wheel material
   // can turn them into a row of pale toy discs.  Undefined is exactly the
@@ -1381,8 +1484,18 @@ function buildRunningGear(P, cfg) {
     });
   }
   if (rollerEntries.length) {
-    const rg = mergeAll([cylX(rollerR, trackW * 0.55, Math.max(8, seg - 6)), cylX(rollerR * 0.4, trackW * 0.62, 8)]);
-    mkInst(rg, mats.detail, rollerEntries, 'wheelDish', 'gearReturnRollers');
+    const rollerSeg = Math.max(8, seg - 6);
+    const rollerTire = mergeAll([
+      cylX(rollerR, trackW * 0.50, rollerSeg),
+      cylX(rollerR * 0.92, trackW * 0.54, rollerSeg),
+    ]);
+    const rollerDish = mergeAll([
+      cylX(rollerR * 0.76, trackW * 0.57, rollerSeg),
+      cylX(rollerR * wheelPattern.rollerHub, trackW * 0.63, 8),
+      cylX(rollerR * 0.18, trackW * 0.69, 8),
+    ]);
+    mkInst(rollerTire, mats.rubber, rollerEntries, 'wheelTire', 'gearReturnRollerTires');
+    mkInst(rollerDish, mats.wheels, rollerEntries, 'wheelDish', 'gearReturnRollerDiscs');
   }
 
   // sprocket + idler as two-material spinner assemblies (they spin about X).
@@ -1406,8 +1519,8 @@ function buildRunningGear(P, cfg) {
   // the whole build ×0.9921 (probe-frame law receipt in the m48 packet).
   // Radial tooth reach is untouched; the rings pull inboard only.
   const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
-    mats.trackLinkM, cfg.endRingSpan ?? trackW);
-  const ig = idlerGeo(idler.r, trackW * 0.74, seg);
+    mats.trackLinkM, cfg.endRingSpan ?? trackW, wheelPattern);
+  const ig = idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
@@ -1434,6 +1547,8 @@ function buildRunningGear(P, cfg) {
       for (const [geo, mat] of [[gp.body, steelMat], [gp.dark, darkMat]]) {
         const m = new THREE.Mesh(geo, mat);
         m.userData.runningGear = true;
+        m.userData.wheelPattern = wheelPattern.id;
+        m.userData.wheelPatternLabel = wheelPattern.label;
         m.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
         m.name = geo === gp.body ? 'gearEndWheelBody' : 'gearEndWheelHardware';
         m.position.set(side * sideXc, end.y, end.z);
@@ -4724,6 +4839,11 @@ function createGeometryReceiptMaterials() {
     trackTexR,
     trackLinkM: 0.165 * 4,
   };
+  tagVehicleMaterial(mats.wheels, 'wheelPaint', 'wheel-paint-receipt');
+  tagVehicleMaterial(mats.wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed-receipt');
+  tagVehicleMaterial(mats.rubber, 'tireRubber', 'tire-rubber-receipt');
+  tagVehicleMaterial(mats.trackLink, 'trackSteel', 'track-steel-receipt');
+  tagVehicleMaterial(mats.spareTrack, 'trackSteel', 'spare-track-steel-receipt');
   mats.decal = () => mats.detail;
   mats.dispose = () => { for (const resource of owned) resource.dispose(); };
   return mats;

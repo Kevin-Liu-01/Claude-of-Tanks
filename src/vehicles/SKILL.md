@@ -28,6 +28,14 @@ Camouflaged roof fittings, sights, launchers, stowage, and machine guns must use
 `P.addEquipment()` so they never expand armor hitboxes. Structural cupolas use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.
 
+Canonical running gear resolves a deterministic family motif through
+`wheelPatterns.js`. Keep road wheels, return rollers, idlers, and sprockets on
+that one suspension-driven assembly; use `wheelPattern` only for a documented
+vehicle override and `wheelFaceLayers` for source-measured detail that must
+move with suspension. Painted faces use the camouflage-aware `wheelPaint`
+role, while tires/insets remain neutral. Run `wheelQuality.selftest.mjs` after
+any wheel or running-gear change to certify every selectable tank.
+
 Physical camouflage suits use `addVehicleGhillieSuit(P)` from
 `ghillieSuit.js`. Add a vehicle-specific registry entry with fitted top, side,
 and end panels; preserve explicit gun, sight, hatch, exhaust, and service
