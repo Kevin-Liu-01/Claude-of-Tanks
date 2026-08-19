@@ -2057,7 +2057,8 @@ function buildChallenger2Legacy(P) {
   if (P.q) for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.62, 0.045, 0.05), 0, 0.64 + k * 0.13, -4.16);
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.15, 0.08, 0.05), s * 1.28, 1.42, -4.135);          // taillights
-    P.add('hullRubber', box(0.62, 0.40, 0.026), s * 1.40, 0.90, -4.13);        // rear flaps (clear of the −4.105 orbit)
+    P.addMudguard(`challenger-rear-flap-${s}`, 'hullRubber',
+      box(0.62, 0.40, 0.026), s * 1.40, 0.90, -4.13);                         // rear flaps (clear of the −4.105 orbit)
     P.add('hullDetail', box(0.07, 0.05, 0.16), s * 1.40, 1.125, -4.06);        // flap hangers
   }
   P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.32, -4.155);                 // convoy plate
@@ -2069,7 +2070,8 @@ function buildChallenger2Legacy(P) {
     P.add('hull', mslab1(s,                                                    // mudguards 24mm inside the anchor face (plan-row truth)
       [1.02, 1.035, 3.55], [1.735, 1.035, 3.55], [1.735, 1.035, 3.52], [1.02, 1.035, 3.52],
       [1.02, 1.075, 4.15], [1.735, 1.075, 4.15], [1.735, 1.125, 3.57], [1.02, 1.125, 3.57]));
-    P.add('hullRubber', box(0.60, 0.30, 0.026), s * 1.40, 0.86, 4.145);        // front flaps ahead of the +4.085 orbit
+    P.addMudguard(`challenger-front-flap-${s}`, 'hullRubber',
+      box(0.60, 0.30, 0.026), s * 1.40, 0.86, 4.145);                         // front flaps ahead of the +4.085 orbit
   }
   // big flat squared skirts at ±1.76 EXACT: raised stepped FRONT panel
   // (raked leading edge, exposes the idler + approach run) + 5 full panels.

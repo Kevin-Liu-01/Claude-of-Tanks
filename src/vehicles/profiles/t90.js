@@ -1073,7 +1073,10 @@ function buildT90AVladimirLegacy(P) {
     P.add('hullTrack', box(0.72, 0.075, 0.30), s * 0.42, 1.24 - row * 0.07, 1.15 + row * 0.30, -0.35, s * 0.35, 0);
   }
   KIT.towCable(P, [[-1.30, 1.29, 0.95], [0, 1.37, 0.45], [1.30, 1.29, 0.95]]);
-  ruFlaps(P, { x: 1.50, w: 0.60, front: [1.02, 0.11], frontZ: 2.06 });
+  // Seat the narrow Vladimir curtains directly beneath the fender lip. The
+  // former 1.50 m center left their inboard edge 5 cm outside the fixed
+  // support after the recovered profile scale.
+  ruFlaps(P, { x: 1.45, w: 0.60, front: [1.02, 0.11], frontZ: 2.06 });
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.50, xc: 1.46, dishR: 0.84,
     // Keep six full-size road wheels while opening a real terminal bay for

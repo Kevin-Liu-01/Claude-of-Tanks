@@ -1432,23 +1432,43 @@ function merkavaChassis(P, c) {
         // (r1 read: orange blocks); layered dark flap + wood mud-stain strip
         // lands the ref's muted brown. Size stays inside the track/skirt
         // silhouette envelope.
-        P.add(sk.flapMat ?? 'hullRubber', box(sk.flapW ?? 0.30, sk.flapH ?? 0.34, 0.035), s * xc, sk.bot + 0.05, c.sprocket.z + c.sprocket.r + 0.16, -0.12, 0, 0);
+        const flapW = sk.flapW ?? 0.30;
+        const flapH = sk.flapH ?? 0.34;
+        const sprocketFlapZ = c.sprocket.z + c.sprocket.r + 0.16;
+        P.addMudguard(`merkava-sprocket-flap-${s}`, sk.flapMat ?? 'hullRubber',
+          box(flapW, flapH, 0.035), s * xc,
+          sk.bot + 0.05, sprocketFlapZ, -0.12, 0, 0);
+        // A transverse top hanger carries the inboard flap back to the
+        // outboard fender/skirt edge. Several early marks previously left
+        // 10-18 cm of open air between these two visible assemblies.
+        const hangerOuterX = sk.x - 0.02;
+        const hangerW = Math.max(0.08, hangerOuterX - xc);
+        P.add('hullDark', box(hangerW, 0.07, 0.05),
+          s * (xc + hangerOuterX) / 2,
+          sk.bot + 0.05 + flapH / 2 - 0.035,
+          sprocketFlapZ);
         if (sk.flapMat) {
-          const fh2 = sk.flapH ?? 0.34;
-          P.add('hullWood', box((sk.flapW ?? 0.30) * 0.96, fh2 * 0.42, 0.022), s * xc, sk.bot + 0.05 - fh2 * 0.27, c.sprocket.z + c.sprocket.r + 0.185, -0.12, 0, 0);
-          P.add('hullDark', box((sk.flapW ?? 0.30) * 0.9, 0.035, 0.040), s * xc, sk.bot + 0.05 + fh2 / 2 - 0.04, c.sprocket.z + c.sprocket.r + 0.165, -0.12, 0, 0);
+          P.add('hullWood', box(flapW * 0.96, flapH * 0.42, 0.022), s * xc,
+            sk.bot + 0.05 - flapH * 0.27, sprocketFlapZ + 0.025,
+            -0.12, 0, 0);
+          P.add('hullDark', box(flapW * 0.9, 0.035, 0.040), s * xc,
+            sk.bot + 0.05 + flapH / 2 - 0.04, sprocketFlapZ + 0.005,
+            -0.12, 0, 0);
         }
       }
       // r12 CONTAINMENT opt-in sk.idlerFlapDz (default 0.12): the 3D flap at
       // the default offset stood coincident with the idler-wrap rear face
       // (§B4 120 exact voxels) — it steps rearward, clear of the band.
-      P.add(sk.flapMat ?? 'hullRubber', box(sk.idlerFlapW ?? 0.30, sk.idlerFlapH ?? 0.30, 0.035),
+      P.addMudguard(`merkava-idler-flap-${s}`, sk.flapMat ?? 'hullRubber',
+        box(sk.idlerFlapW ?? 0.30, sk.idlerFlapH ?? 0.30, 0.035),
         s * (sk.idlerFlapX ?? xc), sk.idlerFlapY ?? (sk.bot + 0.02),
         c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12), 0.12, 0, 0);
       // rear mud flaps behind the idler: the measured tail bottoms keep
       // rising 0.43->0.61 between the idler wrap and the rack wall
-      for (const rf2 of c.rearFlaps ?? []) { // { z, bot, top?, w?, x?, mat?, wood? }
-        P.add(rf2.mat ?? 'hullRubber', box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
+      for (let flapIndex = 0; flapIndex < (c.rearFlaps ?? []).length; flapIndex++) {
+        const rf2 = c.rearFlaps[flapIndex]; // { z, bot, top?, w?, x?, mat?, wood? }
+        P.addMudguard(`merkava-rear-flap-${s}-${flapIndex}`, rf2.mat ?? 'hullRubber',
+          box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
           s * (rf2.x ?? xc), ((rf2.top ?? 0.95) + rf2.bot) / 2, rf2.z);
         if (rf2.wood) { // mud-stain strip: the ref's corner flaps read brown
           // (strip rides the OUTWARD face: +z for bow flaps, -z for tail
@@ -2229,8 +2249,11 @@ function merkavaChassis(P, c) {
   if (!c.skirt && c.rearFlaps) {
     const xcF = (c.gearOut ?? hw - 0.036) - c.trackW / 2;
     for (const s of [-1, 1]) {
-      for (const rf2 of c.rearFlaps) { // { z, bot, top?, w?, x?, mat?, wood? }
-        P.add(rf2.mat ?? 'hullRubber', box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
+      for (let flapIndex = 0; flapIndex < c.rearFlaps.length; flapIndex++) {
+        const rf2 = c.rearFlaps[flapIndex]; // { z, bot, top?, w?, x?, mat?, wood? }
+        P.addMudguard(`merkava-skirtless-rear-flap-${s}-${flapIndex}`,
+          rf2.mat ?? 'hullRubber',
+          box(rf2.w ?? 0.26, (rf2.top ?? 0.95) - rf2.bot, 0.05),
           s * (rf2.x ?? xcF), ((rf2.top ?? 0.95) + rf2.bot) / 2, rf2.z);
       }
       if (c.tailKit) {

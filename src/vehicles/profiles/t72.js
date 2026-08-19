@@ -4640,8 +4640,10 @@ function buildT72BU(P) {
   // outer rear mudguard corners (front-view 1.5 band at |x| 1.59..1.71;
   // plan 1024: ref outer-column rear ends -2.98)
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.12, 0.20, 0.24), s * 1.65, 1.39, -2.90);
-    P.add('hull', box(0.16, 0.08, 0.12), s * 1.71, 1.32, -2.90);
+    P.addMudguard(`t72bu-rear-rubber-${s}`, 'hullRubber',
+      box(0.12, 0.20, 0.24), s * 1.65, 1.39, -2.90);
+    P.addMudguard(`t72bu-rear-cap-${s}`, 'hull',
+      box(0.16, 0.08, 0.12), s * 1.71, 1.32, -2.90);
   }
   // fender lips (family constant) — mid-hull only: the ref rear plateau
   // (1.267) and nose (1.21) tolerate nothing above them
@@ -4702,14 +4704,23 @@ function buildT72BU(P) {
     P.add('hull', box(0.30, 0.08, 0.36), s * 1.26, 1.22, 3.11);
   }
   KIT.towCable(P, [[-1.25, 1.30, 2.0], [0, 1.38, 1.5], [1.25, 1.30, 2.0]]);
-  ruFlaps(P, { x: 1.64, w: 0.36, front: [0.78, 0.38], frontZ: 3.38 });
+  // Carry the curtain ahead of the forward-shifted idler course on a short
+  // fixed fender crown. Keeping the old z=3.38 curtain after opening the
+  // terminal bay put it through the rising shoe arc; this seated extension
+  // preserves the full guard without entering the animated track sweep.
+  for (const s of [-1, 1]) {
+    P.addMudguard(`t72bu-front-fender-extension-${s}`, 'hull',
+      box(0.44, 0.10, 0.25), s * 1.64, 1.32, 3.405);
+  }
+  ruFlaps(P, { x: 1.64, w: 0.36, front: [1.06, 0.38], frontZ: 3.55 });
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.39, wheelW: 0.21, wheelY: 0.45, xc: 1.42, dishR: 0.84,
-    // The source course is the same height but about ten percent shorter in
-    // side projection.  Compress the native six-station datum and pull both
-    // terminal centers inward; do not scale or substitute the linked shoes.
+    // Keep the native six-station datum, but leave a real mechanical interval
+    // between each terminal drum and the adjacent road wheel. The former
+    // inward centers overlapped those wheels in side elevation and collapsed
+    // both approach/departure runs into one crowded wheel row.
     wheelZs: evenStations(6, 4.43, 0.125),
-    sprocket: { z: -2.36, y: 0.84, r: 0.24 }, idler: { z: 2.65, y: 0.70, r: 0.24 },
+    sprocket: { z: -2.78, y: 0.84, r: 0.24 }, idler: { z: 3.06, y: 0.70, r: 0.24 },
     rollers: [-1.5, 0.5, 1.9].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.54, topY: 0.86, botY: 0.04, paintedEnds: true, coveredTop: true, arms: true,
   });

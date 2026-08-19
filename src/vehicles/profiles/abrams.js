@@ -806,7 +806,9 @@ function abramsHull(P, g) {
       // override re-hangs the flap clear of the sweep INSIDE the same side
       // trace column and behind the fenders' plan reach. Default
       // byte-identical.
-      P.add('hullRubber', box(0.32 * s, 0.26 * s, 0.028), side * (sk.x - 0.17 * s), sk.bot + 0.14 * s, g.frontFlapZ ?? (sk.z1 + 0.02), -0.08, 0, 0);
+      P.addMudguard(`abrams-front-flap-${side}`, 'hullRubber',
+        box(0.32 * s, 0.26 * s, 0.028), side * (sk.x - 0.17 * s),
+        sk.bot + 0.14 * s, g.frontFlapZ ?? (sk.z1 + 0.02), -0.08, 0, 0);
     }
     if (!g.noFlaps && !g.noRearFlap) {
       // rearFlapZ hangs the flap behind the skirt end when the oracle's rear
@@ -832,7 +834,8 @@ function abramsHull(P, g) {
       // boxes read as untextured gray slabs floating mid-height in the rear
       // track runs (critic item 5; ref zone samples olive (67,73,57)).
       // Geometry identical — the flap still carries the -3.77 columns.
-      P.add(g.rearFlapCamo ? 'hull' : 'hullRubber', box(0.26 * s, 0.24 * s, 0.028),
+      P.addMudguard(`abrams-rear-flap-${side}`,
+        g.rearFlapCamo ? 'hull' : 'hullRubber', box(0.26 * s, 0.24 * s, 0.028),
         side * (sk.x - (g.rearFlapInset ?? 0.155) * s), rfy, rfz, 0.08, 0, 0);
     }
   }

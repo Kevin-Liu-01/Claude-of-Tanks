@@ -637,8 +637,11 @@ function buildCarro45T(P) {
     P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, -2.05);             // z inside the ref's ±1.74 plan front line)
     for (let k = 0; k < 7; k++) P.add('hullDark', box(0.034, 0.50, 0.016), s * 1.696, 1.19, 2.55 - k * 0.95); // apron seams
     P.add('hull', box(0.27, 0.05, 0.10), s * 1.545, 1.42, 3.13);              // mudguard tip stub (ref front edge 3.09-3.15)
-    P.add('hullRubber', box(0.03, 0.20, 0.06), s * 1.695, 1.05, 3.31);         // front flap stubs outboard of the shoe lane (ref flap band 0.9-1.15)
-    P.add('hullRubber', box(0.24, 0.28, 0.03), s * 1.55, 1.02, -3.30);         // rear flaps
+    P.addMudguard(`italy-front-flap-${s}`, 'hullRubber',
+      box(0.03, 0.20, 0.06), s * 1.695, 1.05, 3.31);                          // front flap stubs outboard of the shoe lane
+    P.add('hullDetail', box(0.04, 0.05, 0.24), s * 1.695, 1.145, 3.20);       // fender-to-flap hanger
+    P.addMudguard(`italy-rear-flap-${s}`, 'hullRubber',
+      box(0.24, 0.28, 0.03), s * 1.55, 1.02, -3.30);                          // rear flaps
     if (s > 0) {
       P.add('hullDetail', box(0.06, 0.03, 1.10), 1.50, 1.545, 2.62);           // crowbar on the bow fender (outside the turret swing circle)
       P.add('hullDetail', box(0.09, 0.04, 0.60), 1.52, 1.545, -2.45);          // shovel aft of the swing circle, clear of the st0/st1 windows

@@ -294,14 +294,18 @@ function leoHull(P, H) {
     P.add('hullDark', box(0.15, 0.085, 0.04), s * hw * 0.78, R.yTop - 0.12, R.z - 0.005); // taillights
     for (const off of [-0.07, 0.07]) P.add('hullDetail', box(0.05, 0.2, 0.12), s * hw * 0.6 + off, R.yBot + 0.28, R.z - 0.02);
     P.add('hullDetail', KIT.cylX(0.032, 0.24, 8), s * hw * 0.6, R.yBot + 0.30, R.z - 0.06);
-    if (H.rearFlaps !== false) P.add('hullRubber', box(0.5, 0.32, 0.028), s * (H.xc ?? hw - H.trackW / 2), R.yBot - 0.02, R.z - 0.04, 0.1, 0, 0);
+    if (H.rearFlaps !== false) P.addMudguard(`leopard-kit-rear-flap-${s}`, 'hullRubber',
+      box(0.5, 0.32, 0.028), s * (H.xc ?? hw - H.trackW / 2),
+      R.yBot - 0.02, R.z - 0.04, 0.1, 0, 0);
   }
   P.add('hullDark', box(0.15, 0.09, 0.04), 0, R.yTop - 0.14, R.z - 0.005);   // convoy light
   P.add('hullDetail', box(0.19, 0.026, 0.06), 0, R.yTop - 0.085, R.z - 0.02);
   P.add('hullWood', box(0.26, 0.11, 0.09), 0, R.yBot + 0.10, R.z - 0.02);
   // front mud flaps behind the beak
   if (H.frontFlaps !== false) {
-    for (const s of [-1, 1]) P.add('hullRubber', box(0.36, 0.40, 0.03), s * (H.xc ?? hw - H.trackW / 2), H.beltY + 0.06, pw.z - 0.14);
+    for (const s of [-1, 1]) P.addMudguard(`leopard-kit-front-flap-${s}`, 'hullRubber',
+      box(0.36, 0.40, 0.03), s * (H.xc ?? hw - H.trackW / 2),
+      H.beltY + 0.06, pw.z - 0.14);
   }
 
   // side skirts: heavy sculpted front blocks + thinner rear run with panel
@@ -822,7 +826,9 @@ function leoHullV3(P, H) {
   if (H.rearFlaps) {
     const FL = H.rearFlaps;
     for (const s of [-1, 1]) {
-      P.add('hullRubber', box(0.38, FL.y1 - FL.y0, 0.035), s * FL.x, (FL.y0 + FL.y1) / 2, FL.z, 0.06, 0, 0);
+      P.addMudguard(`leopard-native-rear-flap-${s}`, 'hullRubber',
+        box(0.38, FL.y1 - FL.y0, 0.035), s * FL.x,
+        (FL.y0 + FL.y1) / 2, FL.z, 0.06, 0, 0);
       // mounting bracket back onto the rear wall (floater-safe)
       P.add('hullDetail', box(0.07, 0.07, R.wallZ - FL.z + 0.14), s * FL.x, FL.y1 - 0.03, (FL.z + R.wallZ) / 2);
     }
@@ -7640,7 +7646,8 @@ function buildLeo2Revolution(P) {
 
 // small rectangular mud flap helper (leopard family)
 function mudflapRect(P, x, y, z) {
-  P.add('hullRubber', KIT.box(0.34, 0.44, 0.03), x, y, z);
+  P.addMudguard(`leopard-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
+    'hullRubber', KIT.box(0.34, 0.44, 0.03), x, y, z);
 }
 
 // ---------------------------------------------------------------------------
@@ -9946,10 +9953,13 @@ function buildLeo1A5Profile(P) {
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.625, 0.03, 6.87), s * 1.3725, 0.985, -0.015);   // plank x 1.06..1.685, y 0.97..1.00
     P.add('hullDetail', box(0.625, 0.03, 0.13), s * 1.3725, 0.985, 3.47);     // front cap over the idler
-    P.add('hullRubber', box(0.26, 0.26, 0.028), s * 1.545, 0.855, 3.515);     // outboard mudguard drop (fwd of the 3.47 orbit edge)
+    P.addMudguard(`leopard1a5-front-drop-${s}`, 'hullRubber',
+      box(0.26, 0.26, 0.028), s * 1.545, 0.855, 3.515);                      // outboard mudguard drop
     P.add('hullDetail', box(0.26, 0.035, 0.032), s * 1.545, 0.995, 3.515);    // drop hinge strip
-    P.add('hullRubber', box(0.30, 0.22, 0.025), s * 1.525, 0.615, 3.53);      // front flap (face 3.5425 < the 3.545 nose anchor)
-    P.add('hullRubber', box(0.40, 0.30, 0.028), s * 1.35, 0.80, -3.525);      // rear flap (aft of the −3.50 orbit edge)
+    P.addMudguard(`leopard1a5-front-flap-${s}`, 'hullRubber',
+      box(0.30, 0.22, 0.025), s * 1.525, 0.615, 3.53);                       // front flap
+    P.addMudguard(`leopard1a5-rear-flap-${s}`, 'hullRubber',
+      box(0.40, 0.30, 0.028), s * 1.35, 0.80, -3.525);                       // rear flap
     P.add('hullDetail', box(0.06, 0.03, 0.10), s * 1.655, 0.985, -3.49);      // mudguard tail cap
     for (let k = 0; k < 7; k++) {                                             // scalloped apron bays
       const az = 2.51 - k * 0.835;

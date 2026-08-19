@@ -368,10 +368,13 @@ function curveHull(P, H) {
   }
   for (const [fz, fy0, fy1] of [H.flapF, H.flapR].filter(Boolean)) {
     for (const side of [-1, 1]) {
-      P.add('hullRubber', box(H.trackW * 0.92, fy1 - fy0, 0.03), side * xc, (fy0 + fy1) / 2, fz);
+      P.addMudguard(`patton-${fz < 0 ? 'rear' : 'front'}-flap-${side}`,
+        'hullRubber', box(H.trackW * 0.92, fy1 - fy0, 0.03),
+        side * xc, (fy0 + fy1) / 2, fz);
       // hanger strap: articulation floater guard (the flap must stay one
       // island with the hull in every pose)
-      P.add(gearFitB, box(0.035, Math.max(0.08, spons - fy1 + 0.06), 0.035), side * xc, (spons + fy1) / 2 - 0.01, fz);
+      P.add(gearFitB, box(0.035, Math.max(0.08, spons - fy1 + 0.06), 0.035),
+        side * xc, (spons + fy1) / 2 - 0.01, fz);
     }
   }
   return { hw, bhw, xc, iw, spons, deckAt, toeZ, tailZ: tail[0], kneeZ, kneeY };
@@ -3898,7 +3901,9 @@ const M45_HULL = {
   // columns at 2.994 vs the ref's own 2.939 flap line; at the raised
   // 1.005 band the plane clears the wrap arc's z-2.925 cross-section
   // (y <= 0.80 there), so the r1 §B4 wrap-face constraint no longer binds.
-  flapF: [2.925, 1.27, 1.32], flapR: [-2.81, 1.27, 1.32],
+  // Extend only the hidden upper edge into the fixed fender underside; the
+  // source-pinned lower band and terminal-wheel clearances stay unchanged.
+  flapF: [2.925, 1.27, 1.38], flapR: [-2.81, 1.27, 1.32],
   gear: {
     // r2b (90-ladder): contactZR -1.79 -> -1.705 — the loop eases ~0.1 m
     // past the patch end, so the proc band sat at 0 through z -2.29 where

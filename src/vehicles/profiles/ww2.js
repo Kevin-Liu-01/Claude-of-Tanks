@@ -1786,7 +1786,8 @@ function buildTigerI(P) {
     P.add('hullDark', box(0.022, 0.012, 0.58), s * 1.42, 1.312, 2.83, -0.075, 0, 0);
     P.add('hull', box(0.745, 0.035, 0.55), s * 1.4625, 1.285, -2.90, 0.06, 0, 0); // rear mudguard
     P.add('hullDark', box(0.022, 0.012, 0.50), s * 1.42, 1.310, -2.90, 0.06, 0, 0);
-    P.add('hullRubber', box(0.70, 0.24, 0.024), s * 1.44, 1.13, -3.145);     // rear rubber flaps
+    P.addMudguard(`ww2-rear-flap-${s}`, 'hullRubber',
+      box(0.70, 0.24, 0.024), s * 1.44, 1.13, -3.145);                       // rear rubber flaps
   }
   // bow furniture: Kugelblende ball MG (right), driver visor (left)
   P.add('hullDark', sph(0.135, P.q ? 22 : 12), 0.55, 1.68, 2.60);

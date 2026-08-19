@@ -5310,8 +5310,15 @@ function buildType89(P) {
     P.add('hullDark', box(0.014, 0.16, 0.015), s * 1.516, 1.01, -1.60);
     P.add('hullDetail', box(0.05, 0.09, 0.26), s * 1.50, 1.20, 2.95);          // skirt hangers fore/aft
     P.add('hullDetail', box(0.05, 0.09, 0.26), s * 1.50, 1.20, -2.90);
-    P.add('hullRubber', box(0.26, 0.20, 0.035), s * 1.18, 0.98, 3.06);         // front mudflaps
-    P.add('hullRubber', box(0.26, 0.24, 0.035), s * 1.18, 0.78, -3.28);        // rear mudflaps
+    P.addMudguard(`modern3-front-flap-${s}`, 'hullRubber',
+      box(0.26, 0.20, 0.035), s * 1.18, 0.98, 3.06);                          // front mudflaps
+    P.addMudguard(`modern3-rear-flap-${s}`, 'hullRubber',
+      box(0.26, 0.24, 0.035), s * 1.18, 0.78, -3.28);                         // rear mudflaps
+    // Transverse hangers connect the inboard curtains to the fixed skirt
+    // rail instead of leaving their outer edges suspended in the track bay.
+    for (const [z, y] of [[3.06, 1.055], [-3.28, 0.875]]) {
+      P.add('hullDark', box(0.32, 0.05, 0.06), s * 1.34, y, z);
+    }
   }
   // ---- fittings (§B3.2 density) -------------------------------------------
   {

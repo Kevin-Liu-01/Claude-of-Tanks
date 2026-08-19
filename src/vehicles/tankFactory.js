@@ -1300,6 +1300,17 @@ function buildRunningGear(P, cfg) {
   const suspensionDroopM = cfg.suspensionDroopM ?? hydraulicAim?.droopM ?? 0.22;
   const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
   const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
+  if (P.geometryReceipt) {
+    const runningGearReceipts = hullG.userData.runningGearReceipts
+      || (hullG.userData.runningGearReceipts = []);
+    runningGearReceipts.push({
+      wheelZs: [...wheelZs],
+      wheelR,
+      wheelY,
+      sprocket: { z: sprocket.z, y: sprocket.y, r: sprocket.r },
+      idler: { z: idler.z, y: idler.y, r: idler.r },
+    });
+  }
   // Machine-readable family receipt. Variant builders still choose their
   // own radius, cadence, terminal geometry and protection; this records only
   // the native mechanical station count for lineage/provenance checks.
@@ -5096,6 +5107,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   gunG.add(recoilG);
 
   const buckets = {};
+  const mudguardParts = [];
   const eraClusters = new Map();
   const eraPlacements = [];
   const decals = [];
@@ -5106,7 +5118,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     // independently select the existing authored low-detail geometry path,
     // leaving the player's close camera subject and all garage/kilcam heroes
     // at full fidelity without creating another material-cache variant.
-    spec, mats, rng, q: geometryQuality !== 'low', hullG, turretG, gunG, recoilG,
+    spec, mats, rng, q: geometryQuality !== 'low', geometryReceipt,
+    hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     // Casemate profiles opt into a genuinely fixed combat rig.  Their
     // printed cannon already belongs to the hull buckets; the flag also
@@ -5122,6 +5135,18 @@ export function createTank(specId, engineCtx, opts = {}) {
     postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       (buckets[bucket] || (buckets[bucket] = [])).push(xform(geo, x, y, z, rx, ry, rz, s));
+    },
+    // Mudguards and hanging mudflaps are still ordinary hull geometry, but
+    // they carry a semantic receipt until bucket merge.  The seating audit
+    // below verifies that each registered part, or a connected multi-part
+    // guard assembly, physically reaches the fixed hull/fender structure.
+    // This prevents a visually plausible terminal plate from silently
+    // floating above or beside the fender after later profile adjustments.
+    addMudguard(label, bucket, geo, x = 0, y = 0, z = 0,
+      rx = 0, ry = 0, rz = 0, s = 1) {
+      const part = xform(geo, x, y, z, rx, ry, rz, s);
+      (buckets[bucket] || (buckets[bucket] = [])).push(part);
+      mudguardParts.push({ label, bucket, part });
     },
     // Painted fittings sometimes share the hull/turret material, but they do
     // not own armor. Keep them in a separate semantic bucket so geometry
@@ -5200,6 +5225,88 @@ export function createTank(specId, engineCtx, opts = {}) {
   };
 
   (resolveBuilder(specId, spec) || buildCommunityPlaceholder)(P);
+
+  // ---- mudguard/fender physical seating receipts -----------------------
+  // Work on the still-unmerged primitive AABBs. A guard may comprise a
+  // horizontal crown, vertical post and rubber drop, so adjacency propagates
+  // through registered guard pieces until one reaches a non-guard hull part.
+  // Five centimetres is the fleet construction tolerance: enough for bevels
+  // and deliberate panel seams, too small to hide a visibly floating plate.
+  const MUDGUARD_SEAT_TOLERANCE_M = 0.05;
+  // Variant builders may explicitly clear a donor bucket before authoring a
+  // replacement. Do not audit semantic parts that were removed with that
+  // bucket; only geometry still present in the final bucket arrays is live.
+  const liveMudguardParts = mudguardParts.filter(({ bucket, part }) =>
+    buckets[bucket]?.includes(part));
+  root.userData.mudguardFenderSeats = [];
+  if (geometryReceipt && liveMudguardParts.length) {
+    const mudguardSet = new Set(liveMudguardParts.map(({ part }) => part));
+    const hullSupportParts = [];
+    for (const [bucket, list] of Object.entries(buckets)) {
+      const bucketDef = BUCKET_DEF[bucket];
+      if (!bucketDef || bucketDef[0] !== 'hullG') continue;
+      if (/track|runninggear|shadow/i.test(bucket)) continue;
+      for (const part of list) {
+        if (mudguardSet.has(part)) continue;
+        if (!part.boundingBox) part.computeBoundingBox();
+        hullSupportParts.push({ bucket, part, box: part.boundingBox });
+      }
+    }
+    const axisGap = (a0, a1, b0, b1) => Math.max(0, a0 - b1, b0 - a1);
+    const boxAxisGaps = (a, b) => [
+      axisGap(a.min.x, a.max.x, b.min.x, b.max.x),
+      axisGap(a.min.y, a.max.y, b.min.y, b.max.y),
+      axisGap(a.min.z, a.max.z, b.min.z, b.max.z),
+    ];
+    const boxGap = (a, b) => Math.hypot(...boxAxisGaps(a, b));
+    const guardNodes = liveMudguardParts.map((entry) => {
+      if (!entry.part.boundingBox) entry.part.computeBoundingBox();
+      const box = entry.part.boundingBox;
+      let directGapM = Infinity;
+      let directAxisGapM = null;
+      let supportBucket = null;
+      for (const support of hullSupportParts) {
+        const axisGaps = boxAxisGaps(box, support.box);
+        const gap = Math.hypot(...axisGaps);
+        if (gap < directGapM) {
+          directGapM = gap;
+          directAxisGapM = axisGaps;
+          supportBucket = support.bucket;
+        }
+      }
+      return { ...entry, box, directGapM, directAxisGapM, supportBucket };
+    });
+    const supported = new Set();
+    for (let index = 0; index < guardNodes.length; index++) {
+      if (guardNodes[index].directGapM <= MUDGUARD_SEAT_TOLERANCE_M) {
+        supported.add(index);
+      }
+    }
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let index = 0; index < guardNodes.length; index++) {
+        if (supported.has(index)) continue;
+        for (const supportIndex of supported) {
+          if (boxGap(guardNodes[index].box, guardNodes[supportIndex].box)
+              <= MUDGUARD_SEAT_TOLERANCE_M) {
+            supported.add(index);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    root.userData.mudguardFenderSeats = guardNodes.map((node, index) => ({
+      label: node.label,
+      bucket: node.bucket,
+      supported: supported.has(index),
+      directGapM: Number.isFinite(node.directGapM) ? node.directGapM : null,
+      directAxisGapM: node.directAxisGapM,
+      supportBucket: node.supportBucket,
+      toleranceM: MUDGUARD_SEAT_TOLERANCE_M,
+    }));
+  }
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];

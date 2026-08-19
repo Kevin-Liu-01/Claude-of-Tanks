@@ -484,8 +484,10 @@ export function ruFlaps(P, o) {
   const { box } = KIT;
   for (const s of [-1, 1]) {
     const xf = s * o.x;
-    if (o.front) P.add('hullRubber', box(o.w, o.front[1], 0.045), xf, o.front[0], o.frontZ);
-    if (o.rear) P.add('hullRubber', box(o.w, o.rear[1], 0.045), xf, o.rear[0], o.rearZ);
+    if (o.front) P.addMudguard(`ru-front-flap-${s}`, 'hullRubber',
+      box(o.w, o.front[1], 0.045), xf, o.front[0], o.frontZ);
+    if (o.rear) P.addMudguard(`ru-rear-flap-${s}`, 'hullRubber',
+      box(o.w, o.rear[1], 0.045), xf, o.rear[0], o.rearZ);
   }
 }
 
