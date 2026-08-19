@@ -5,6 +5,7 @@ import {
   WEAPON_REPORT_PROFILES,
   distanceLowpassHz,
   engineAudibleAtDistance,
+  resolveReloadCuePlan,
   resolveWeaponReportProfile,
   safeAudioStart,
   worldDistanceGain,
@@ -70,4 +71,24 @@ assert.ok(AUDIO_PERSPECTIVE_MIX.sniper.cannonGain >= 0.9,
 assert.ok(AUDIO_PERSPECTIVE_MIX.sniper.cannonDistanceBiasM > 100,
   'scope filters exposed muzzle crack while retaining pressure');
 
-console.log('audioTiming.selftest: scheduling, weapon reports, distance and perspective mixes passed');
+const rapidReload = resolveReloadCuePlan(0.3, 'shell', 30);
+assert.equal(rapidReload.profile, 'rapid', 'rapid autocannon cycle reuses the weapon action layer');
+assert.equal(rapidReload.cues.length, 0, 'rapid cycles do not allocate overlapping reload voices');
+assert.equal(rapidReload.ready, false, 'rapid cycles do not spam a ready latch');
+
+const shellReload = resolveReloadCuePlan(7.5, 'shell', 125);
+assert.deepEqual(shellReload.cues.map((cue) => cue.type),
+  ['breechOpen', 'extract', 'shellLift', 'shellLift', 'ram', 'breechClose'],
+  'large conventional reload follows open/extract/handle/ram/close order');
+for (let i = 1; i < shellReload.cues.length; i++) {
+  assert.ok(shellReload.cues[i].at > shellReload.cues[i - 1].at,
+    'conventional reload cue thresholds are strictly ordered');
+}
+
+const magazineReload = resolveReloadCuePlan(18, 'magazine', 120);
+assert.equal(magazineReload.profile, 'magazine', 'full magazine loads use the autoloader mechanism');
+assert.equal(magazineReload.cues.filter((cue) => cue.type === 'index').length, 3,
+  'full magazine load has three audible conveyor indexes');
+assert.ok(magazineReload.cues.at(-1).at < 1, 'final breech cue precedes the authoritative ready edge');
+
+console.log('audioTiming.selftest: scheduling, weapon reports, reload mechanisms, distance and perspective mixes passed');

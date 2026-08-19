@@ -278,7 +278,9 @@ export function ensureTankVisual(game, ent) {
   // measured 666-685 MB scene textures vs the FROZEN 512 MB gate, and each
   // 2048² bake costs 250-350 ms of main-thread canvas work.
   const hero = usesHeroTextureTier(game, ent);
-  const mobileBot = !hero && getDeviceTier() === 'mobile';
+  const playerActor = ent.isPlayer || ent === game.tanks[0];
+  const mobileBot = !playerActor && getDeviceTier() === 'mobile';
+  const battleBot = !playerActor;
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed,
     quality: hero ? 'high' : 'ai',
@@ -287,6 +289,13 @@ export function ensureTankVisual(game, ent) {
     // actors; desktop, the player's tank, garage previews, and closeup tools
     // keep the exact full-detail geometry path.
     geometryQuality: mobileBot ? 'low' : 'high',
+    // Desktop AI keeps its exact authored geometry. Static same-material
+    // fittings are transform-baked into articulation-local batches, while
+    // purely cosmetic sub-pixel details use camera-aware THREE.LOD. The
+    // player/garage/studio paths remain untouched, and a close killcam brings
+    // every original detail back automatically.
+    batchStatic: battleBot,
+    battleDetailLod: battleBot && !mobileBot,
   });
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {
@@ -1733,14 +1742,31 @@ export function simStep(game, bus, world, rig, collider) {
     const reload = c.reload;
     if (reload.t > 0) {
       const wasReloading = reload.t;
+      const reloadKind = reload.kind;
       const done = tickReload(c, dt);
-      if (ent.isPlayer) bus.emit('player:reload', {
-        t: reload.t,
-        total: reload.totalS,
-        // A single authoritative edge feeds the mechanical ready cue and
-        // instrumentation. Previously consumers had to infer it from frames.
-        done: wasReloading > 0 && done,
-      });
+      if (ent.isPlayer) {
+        // This is a 60 Hz presentation event while a load is active. Reuse one
+        // payload per entity instead of allocating hundreds of short-lived
+        // objects during every long-calibre reload.
+        const ev = ent._reloadEvent || (ent._reloadEvent = {
+          t: 0, total: 0, progress: 0, kind: 'ready', caliberMm: 0,
+          magazineRounds: 0, magazineCapacity: 0, done: false,
+        });
+        const shell = ent.spec.gun.shells[c.shellSlot] || ent.spec.gun.shells[0];
+        ev.t = reload.t;
+        ev.total = reload.totalS;
+        ev.progress = reload.totalS > 0
+          ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS)) : 1;
+        // tickReload changes kind to "ready" on the terminal edge. Preserve
+        // the cycle that actually completed so presentation can distinguish
+        // a shell load, an autoloader index, and a magazine replenishment.
+        ev.kind = reloadKind;
+        ev.caliberMm = (shell && shell.caliberMm) || ent.spec.gun.caliberMm || 100;
+        ev.magazineRounds = c.magazine ? c.magazine.rounds : 0;
+        ev.magazineCapacity = c.magazine ? c.magazine.capacity : 0;
+        ev.done = wasReloading > 0 && done;
+        bus.emit('player:reload', ev);
+      }
     }
     tryFire(game, ent, bus, rig);
   }

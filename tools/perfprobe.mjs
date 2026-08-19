@@ -4,7 +4,7 @@
 //        [--note tag] [--no-trend] [--roster random|id1,id2,...]
 //        [--map verdant|desert|winter|urban] [--scene battle|garage] [--breakdown]
 //        [--tier desktop|mobile] [--mobile-preset mobile-low|mobile|mobile-high]
-//        [--fps-target 60|120]
+//        [--fps-target 60|120] [--msaa 0|2|4]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
 // battle on the verdant map, simulates combat (drive via synthetic keys +
 // forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
@@ -135,6 +135,8 @@ if (!MOBILE_PRESETS.includes(mobilePreset)) {
   process.exit(2);
 }
 const fpsTarget = Math.max(30, parseFloat(opt('fps-target', '60')) || 60);
+const forcedMsaaRaw = opt('msaa', '');
+const forcedMsaa = forcedMsaaRaw === '' ? null : Math.max(0, parseInt(forcedMsaaRaw, 10) || 0);
 const dumpFile = opt('dump', '');
 const trendNote = opt('note', '');
 // PERF r3 (draw-call worst-frame gate): certification measures a PINNED
@@ -409,6 +411,9 @@ try {
   } else if (mapId !== 'verdant') {
     // garage on a non-default battlefield: switch the staged world only
     await page.evaluate((map) => window.__DEBUG.switchMap(map), mapId);
+  }
+  if (forcedMsaa !== null) {
+    await page.evaluate((samples) => window.__DEBUG.post.sceneAA.setSamples(samples), forcedMsaa);
   }
   // small settle so shaders/instances for battle HUD compile
   await new Promise((r) => setTimeout(r, 1500));
@@ -728,6 +733,7 @@ try {
   report = {
     date: new Date().toISOString(),
     ...(forcePreset ? { forcedPreset: forcePreset } : {}),
+    ...(forcedMsaa !== null ? { forcedMsaa } : {}),
     deviceTier,
     ...(deviceTier === 'mobile' ? { mobilePreset } : {}),
     fpsTarget,

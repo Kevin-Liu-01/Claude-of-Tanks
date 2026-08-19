@@ -331,7 +331,9 @@ function mergeAll(list) {
 // and issuing them separately is substantially more expensive than their
 // geometry on phone CPUs. Batch only anonymous, metadata-free leaf meshes:
 // named combat/gear parts, animated running gear, ERA, decals, LOD children,
-// procedural shadow proxies, and every player/desktop mesh remain untouched.
+// procedural shadow proxies, and every player mesh remain untouched. Desktop
+// battle bots may opt into the same articulation-local batching without using
+// the mobile geometry tier.
 function batchMobileStaticChildren(parents, disposables) {
   for (const parent of parents) {
     const groups = new Map();
@@ -403,12 +405,38 @@ function collectMobileDetailObjects(root, rigParents) {
     const anonymousStatic = !name && rigParents.includes(object.parent)
       && Object.keys(object.userData || {}).length === 0
       && !String(object.material?.name || '').includes('armor-paint');
-    if (anonymousStatic || object.userData.mobileStaticBatch
+    const cosmeticStaticBatch = object.userData.mobileStaticBatch
+      && !String(object.material?.name || '').includes('armor-paint');
+    if (anonymousStatic || cosmeticStaticBatch
         || name.startsWith('vehicleMarking_') || fineGear.test(name)) {
       records.push({ object, baseVisible: object.visible });
     }
   });
   return records;
+}
+
+/**
+ * Put exact close-range detail behind THREE.LOD for battle-only AI visuals.
+ * The original objects and materials are retained byte-for-byte and return
+ * automatically whenever any camera (including a killcam) moves close. This
+ * removes sub-pixel fittings/markings from every color and shadow traversal at
+ * range without freezing detail state to the previous gameplay camera.
+ */
+function installBattleDetailLods(records, distance = 112) {
+  let index = 0;
+  for (const record of records) {
+    const object = record.object;
+    const parent = object?.parent;
+    if (!parent || !record.baseVisible || parent.isLOD) continue;
+    const lod = new THREE.LOD();
+    lod.name = `battleDetailLod_${index++}`;
+    lod.userData.battleDetailLod = true;
+    parent.remove(object);
+    lod.addLevel(object, 0);
+    lod.addLevel(new THREE.Object3D(), distance, 0.12);
+    parent.add(lod);
+  }
+  return index;
 }
 
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
@@ -4639,7 +4667,8 @@ function bakeDirt(geo, yOffset, strength = 1, deckEq = false) {
  * Build the articulated visual for one tank.
  * @param {string} specId one of TANK_IDS
  * @param {object} engineCtx EngineCtx (§2.8)
- * @param {{camoSeed?: number, quality?: 'high'|'ai'|'low', staticPreview?: boolean}} [opts] — PERF r3:
+ * @param {{camoSeed?: number, quality?: 'high'|'ai'|'low', staticPreview?: boolean,
+ *   batchStatic?: boolean, battleDetailLod?: boolean}} [opts] — PERF r3:
  *   'ai' keeps full geometry detail but bakes the shared texture set at half
  *   resolution (materials.js QUALITY_SIZES); 'high' is hero-grade.
  * @returns {object} TankVisual (ARCHITECTURE §3.3.2)
@@ -5069,6 +5098,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     geometryQuality = quality === 'low' ? 'low' : 'high',
     proceduralOnly = false,
     geometryReceipt = false,
+    batchStatic = false,
+    battleDetailLod = false,
   } = opts;
   const spec = getSpec(specId);
   const armor = spec.armor;
@@ -6472,7 +6503,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // deliberately outside this normalization.
   normalizeTankAppearance(root);
 
-  if (geometryQuality === 'low') {
+  if (geometryQuality === 'low' || batchStatic) {
     const mobileBatchParents = [hullG, turretG, gunG, recoilG];
     root.traverse((object) => {
       if (!object.isGroup) return;
@@ -6481,7 +6512,11 @@ export function createTank(specId, engineCtx, opts = {}) {
           || name.startsWith('muzzleBoreShadowFallback')) mobileBatchParents.push(object);
     });
     batchMobileStaticChildren(mobileBatchParents, disposables);
-    mobileDetailObjects = collectMobileDetailObjects(root, [hullG, turretG, gunG, recoilG]);
+    const detailObjects = collectMobileDetailObjects(root, [hullG, turretG, gunG, recoilG]);
+    if (geometryQuality === 'low') mobileDetailObjects = detailObjects;
+    else if (battleDetailLod) {
+      root.userData.battleDetailLodCount = installBattleDetailLods(detailObjects);
+    }
   }
 
   return visual;

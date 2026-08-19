@@ -180,6 +180,39 @@ export function resolveWeaponReportProfile(id) {
   return WEAPON_REPORT_PROFILES[id] || DEFAULT_WEAPON_REPORT;
 }
 
+/** Build the mechanical cue sequence for one authoritative reload cycle. */
+export function resolveReloadCuePlan(totalS, kind = 'shell', caliberMm = 100) {
+  const total = Math.max(0.05, Number(totalS) || 0.05);
+  const caliber = Math.max(12, Number(caliberMm) || 100);
+  // The weapon report already contains rapid bolt/feed action. A separate
+  // ready voice every 0.2-0.4 s only muddies the mix and burns audio voices.
+  if (total < 0.55) return { profile: 'rapid', ready: false, cues: [] };
+  if (kind === 'magazine') {
+    return { profile: 'magazine', ready: true, cues: [
+      { at: 0.02, type: 'motor' }, { at: 0.22, type: 'index' },
+      { at: 0.48, type: 'index' }, { at: 0.74, type: 'index' },
+      { at: 0.92, type: 'breechClose' },
+    ] };
+  }
+  if (kind === 'intraClip') {
+    return { profile: 'intraClip', ready: true, cues: [
+      { at: 0.10, type: 'motor' }, { at: 0.48, type: 'index' },
+      { at: 0.86, type: 'breechClose' },
+    ] };
+  }
+  const cues = [
+    { at: 0.015, type: 'breechOpen' },
+    { at: Math.min(0.20, 0.72 / total), type: 'extract' },
+    { at: 0.40, type: 'shellLift' },
+  ];
+  if (caliber >= 105 && total >= 4) cues.push({ at: 0.64, type: 'shellLift' });
+  cues.push(
+    { at: Math.max(0.72, 1 - 0.70 / total), type: 'ram' },
+    { at: Math.max(0.86, 1 - 0.22 / total), type: 'breechClose' },
+  );
+  return { profile: 'shell', ready: true, cues };
+}
+
 /**
  * Create the game audio system. Pure factory — no AudioContext, no DOM access
  * until `resume()` is called from a user gesture.
@@ -330,6 +363,10 @@ export function createAudio() {
   let battleOver = false;
   let pendingResult = null;
   let reloadCalled = false;
+  const reloadCycle = {
+    active: false, total: 0, kind: 'ready', caliberMm: 100,
+    lastT: 0, nextCue: 0, plan: null,
+  };
   let lowHpCalled = false;
   let _uiVolEvents = 0;   // debug: ui:volumes deliveries (tools/audio-probe.mjs)
   const soundLog = [];
@@ -1483,14 +1520,64 @@ export function createAudio() {
     }
   }
 
-  /** Non-spatial breech latch: the loaded gun is ready to fire again. */
-  function reloadReadySound() {
+  /** Interior reload mechanism, keyed to the real reload timer's cue plan. */
+  function reloadMechanicalSound(type, caliberMm = 100) {
     if (!ctx) return;
     const when = ctx.currentTime + 0.004;
-    const v = spawnVoice(when, 0.24, 0.36, 0, sfxBus);
+    const mass = Math.max(0.65, Math.min(1.45, caliberMm / 100));
+    const v = spawnVoice(when, type === 'motor' ? 0.46 : 0.30,
+      0.26 + mass * 0.10, 0, sfxBus);
+    if (type === 'breechOpen') {
+      const latch = osrc(v, 'triangle', 330 / mass, when, 0.18);
+      latch.frequency.exponentialRampToValueAtTime(185 / mass, when + 0.13);
+      wire(v, latch, flt('lowpass', 1350, 0.9), env(when, 0.002, 0.52, 0.15));
+      wire(v, nsrc(v, when, 0.055), flt('bandpass', 980, 1.8), env(when, 0.001, 0.42, 0.045));
+    } else if (type === 'extract') {
+      wire(v, nsrc(v, when, 0.11), flt('bandpass', 1500, 2.4), env(when, 0.003, 0.32, 0.09));
+      const ring = osrc(v, 'triangle', 2100 / Math.sqrt(mass), when + 0.025, 0.16);
+      ring.frequency.exponentialRampToValueAtTime(1320 / Math.sqrt(mass), when + 0.14);
+      wire(v, ring, env(when + 0.025, 0.001, 0.18, 0.13));
+    } else if (type === 'shellLift') {
+      const shell = osrc(v, 'sine', 118 / mass, when, 0.20);
+      shell.frequency.exponentialRampToValueAtTime(74 / mass, when + 0.16);
+      wire(v, shell, flt('lowpass', 620, 0.8), env(when, 0.006, 0.55, 0.17));
+      wire(v, nsrc(v, when + 0.018, 0.09), flt('bandpass', 720, 1.4),
+        env(when + 0.018, 0.003, 0.24, 0.075));
+    } else if (type === 'ram') {
+      wire(v, nsrc(v, when, 0.15), flt('bandpass', 560 / mass, 0.9),
+        env(when, 0.006, 0.38, 0.13));
+      const thud = osrc(v, 'triangle', 165 / mass, when + 0.075, 0.15);
+      thud.frequency.exponentialRampToValueAtTime(82 / mass, when + 0.19);
+      wire(v, thud, flt('lowpass', 720, 0.8), env(when + 0.075, 0.002, 0.52, 0.12));
+    } else if (type === 'motor') {
+      const motor = osrc(v, 'sawtooth', 92 + 36 / mass, when, 0.40);
+      motor.frequency.linearRampToValueAtTime(150 + 42 / mass, when + 0.28);
+      wire(v, motor, flt('bandpass', 520, 1.5), env(when, 0.025, 0.24, 0.38));
+      wire(v, nsrc(v, when, 0.40), flt('bandpass', 1180, 3.0),
+        env(when, 0.02, 0.13, 0.38));
+    } else if (type === 'index') {
+      for (let i = 0; i < 3; i++) {
+        const at = when + i * 0.047;
+        wire(v, osrc(v, 'square', 640 / mass + i * 75, at, 0.055),
+          flt('bandpass', 930, 2.3), env(at, 0.001, 0.22 - i * 0.035, 0.045));
+      }
+    } else { // breechClose
+      wire(v, nsrc(v, when, 0.05), flt('bandpass', 1120, 1.7), env(when, 0.001, 0.48, 0.04));
+      const close = osrc(v, 'triangle', 285 / mass, when + 0.018, 0.16);
+      close.frequency.exponentialRampToValueAtTime(145 / mass, when + 0.14);
+      wire(v, close, flt('lowpass', 1200, 0.8), env(when + 0.018, 0.002, 0.58, 0.13));
+    }
+  }
+
+  /** Non-spatial breech latch: the loaded gun is ready to fire again. */
+  function reloadReadySound(caliberMm = 100) {
+    if (!ctx) return;
+    const when = ctx.currentTime + 0.004;
+    const mass = Math.max(0.7, Math.min(1.35, caliberMm / 100));
+    const v = spawnVoice(when, 0.24, 0.32 + mass * 0.06, 0, sfxBus);
     wire(v, nsrc(v, when, 0.035), flt('bandpass', 1250, 1.8), env(when, 0.001, 0.55, 0.028));
-    const latch = osrc(v, 'triangle', 420, when + 0.025, 0.13);
-    latch.frequency.exponentialRampToValueAtTime(690, when + 0.1);
+    const latch = osrc(v, 'triangle', 420 / Math.sqrt(mass), when + 0.025, 0.13);
+    latch.frequency.exponentialRampToValueAtTime(690 / Math.sqrt(mass), when + 0.1);
     wire(v, latch, flt('lowpass', 1500, 0.8), env(when + 0.025, 0.002, 0.45, 0.11));
   }
 
@@ -2314,8 +2401,38 @@ export function createAudio() {
     });
     bus.on('player:reload', (e) => {
       if (!ctx || !e || phase !== 'battle' || battleOver) return;
+      const total = Math.max(0.05, Number(e.total) || 0.05);
+      const kind = e.kind || 'shell';
+      const caliberMm = Math.max(12, Number(e.caliberMm) || 100);
+      const restarted = !reloadCycle.active || reloadCycle.kind !== kind ||
+        Math.abs(reloadCycle.total - total) > 0.01 || e.t > reloadCycle.lastT + 0.04;
+      if (restarted) {
+        reloadCycle.active = true;
+        reloadCycle.total = total;
+        reloadCycle.kind = kind;
+        reloadCycle.caliberMm = caliberMm;
+        reloadCycle.lastT = e.t;
+        reloadCycle.nextCue = 0;
+        reloadCycle.plan = resolveReloadCuePlan(total, kind, caliberMm);
+        logSound('reload:start', { kind, total, caliberMm });
+      }
+      const progress = Number.isFinite(e.progress)
+        ? Math.max(0, Math.min(1, e.progress))
+        : Math.max(0, Math.min(1, 1 - (Number(e.t) || 0) / total));
+      const cues = reloadCycle.plan.cues;
+      while (reloadCycle.nextCue < cues.length &&
+          progress + 1e-6 >= cues[reloadCycle.nextCue].at) {
+        const cue = cues[reloadCycle.nextCue++];
+        reloadMechanicalSound(cue.type, caliberMm);
+        logSound('reload:cue', { cue: cue.type, kind, progress, caliberMm });
+      }
+      reloadCycle.lastT = Number(e.t) || 0;
       if (e.done) {
-        reloadReadySound();
+        if (reloadCycle.plan.ready) {
+          reloadReadySound(caliberMm);
+          logSound('reload:ready', { kind, total, caliberMm });
+        }
+        reloadCycle.active = false;
         reloadCalled = false;
         // Autocannon cycles keep their mechanical cue but do not flood the
         // radio; spoken ready calls are for reloads the player had to wait on.
@@ -2380,6 +2497,8 @@ export function createAudio() {
       battleOver = false;
       pendingResult = null;
       reloadCalled = false;
+      reloadCycle.active = false;
+      reloadCycle.plan = null;
       lowHpCalled = false;
       if (!ctx) return;
       if (next === 'battle' && prev !== 'battle') {
