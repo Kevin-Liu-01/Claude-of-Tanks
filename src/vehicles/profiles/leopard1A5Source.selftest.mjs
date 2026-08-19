@@ -45,9 +45,28 @@ for (const band of trackBands) {
   const box = bounds(band);
   assert.ok(box.max.y >= 1.10 && box.min.y <= 0.011,
     `${band.name} wraps the complete source-height course`);
-  assert.ok(box.max.z - box.min.z >= 6.92,
-    `${band.name} reaches both source end wheels`);
+  assert.ok(box.max.z - box.min.z >= 6.65 && box.max.z - box.min.z <= 6.76,
+    `${band.name} follows the measured asymmetric Leopard course`);
 }
+
+// Finish pass: the fenders form a continuous bridge over the track return,
+// the shallow aprons/lockers fill the formerly empty side band, and the two
+// large rear fuel cans are physically carried by the transom rack.
+const finish = hullRig.userData.leopard1A5FinishReceipt;
+assert.deepEqual(finish, {
+  continuousFenders: true,
+  segmentedSideAprons: 14,
+  fenderLockers: 8,
+  rearFuelCans: 2,
+  roadWheelStations: 7,
+  frontIdlerZ: 3.18,
+  rearSprocketZ: -2.68,
+}, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
+const gear = hullRig.userData.runningGearReceipts?.[0];
+assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
+assert.ok(gear.sprocket.y - gear.idler.y >= 0.18,
+  'rear drive sprocket remains visibly raised above the front idler');
+mesh('hullCloth');
 
 // The source ring is 0.50 m forward of hull center. The gun saddle must root
 // inside the cast turret face so the tube and mantlet remain one assembly.
@@ -76,4 +95,4 @@ turretRig.traverse((node) => {
 assert.equal(pintleMgs, 1, 'one turret-owned pintle machine gun is retained');
 assert.equal(stowageRacks, 2, 'both turret-side stowage racks are retained');
 
-console.log('leopard1A5Source.selftest: source envelope, smart course, seated rig, and A5 kit pass');
+console.log('leopard1A5Source.selftest: source envelope, Leopard course, closed fenders, rear fuel cans, seated rig, and A5 kit pass');

@@ -10413,20 +10413,36 @@ function buildLeo1A5SourceProfile(P) {
   P.add('hull', box(2.50, 0.60, 0.15), 0, 1.21, -3.47);
   P.add('hull', box(2.62, 0.06, 0.20), 0, 1.50, -3.43);
 
-  // Fender planks and scalloped aprons leave the single smart-track course
-  // visible. End guards follow the wheel arcs instead of forming flat walls.
+  // The source's fenders are a continuous structural shelf, not two thin
+  // rails floating above the running gear. Close the sponson-to-fender gap,
+  // keep the return run in shadow, and hang shallow segmented rubber aprons
+  // from the outer fascia. The road-wheel faces remain fully exposed below.
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, 1.205, -0.02);
+    // The inner closure terminates inboard of the shoe envelope; the narrow
+    // outer fascia starts outboard of it.  Together they seal the sponson
+    // visually without occupying the animated return-run sweep.
+    P.add('hullDetail', box(0.08, 0.22, 6.16), s * 1.01, 1.115, -0.08);
+    P.add('hullDetail', box(0.024, 0.18, 6.04), s * 1.68, 1.105, -0.10);
     P.add('hullDetail', slab(
       [s * 1.10, 1.17, 3.34], [s * 1.67, 1.17, 3.36], [s * 1.67, 1.17, 2.70], [s * 1.13, 1.17, 2.62],
       [s * 1.10, 1.23, 3.42], [s * 1.67, 1.23, 3.42], [s * 1.67, 1.23, 2.70], [s * 1.13, 1.23, 2.62]));
     P.add('hullRubber', box(0.025, 0.31, 0.36), s * 1.675, 1.045, 3.31, -0.06, 0, 0);
     P.add('hullRubber', box(0.025, 0.34, 0.40), s * 1.675, 1.02, -3.34, 0.08, 0, 0);
     for (let k = 0; k < 7; k++) {
-      const z = 2.42 - k * 0.80;
-      P.add('hullRubber', box(0.024, 0.18, 0.68), s * 1.674, 1.10, z);
-      P.add('hullRubber', box(0.024, 0.08, 0.42), s * 1.674, 0.97, z);
-      P.add('hullDetail', box(0.012, 0.035, 0.62), s * 1.683, 1.175, z);
+      const z = 2.40 - k * 0.82;
+      P.add('hullRubber', box(0.024, 0.31, 0.76), s * 1.674, 0.995, z);
+      P.add('hullDetail', box(0.014, 0.34, 0.026), s * 1.694, 1.00, z - 0.395);
+      P.add('hullDetail', box(0.36, 0.035, 0.055), s * 1.47, 1.255, z);
+    }
+    // Leopard-pattern fender lockers: flush lids and small outboard latches
+    // add the long, busy side cadence visible on service vehicles without
+    // turning cosmetic stowage into armor.
+    for (let k = 0; k < 4; k++) {
+      const z = -2.58 + k * 0.83;
+      P.addEquipment('hull', box(0.42, 0.16, 0.72), s * 1.43, 1.305, z);
+      P.addEquipment('hull', box(0.44, 0.025, 0.74), s * 1.43, 1.397, z);
+      P.add('hullDark', box(0.022, 0.07, 0.11), s * 1.655, 1.305, z + 0.22);
     }
   }
   P.mats.rubber.color.setHex(0x34372d);
@@ -10466,23 +10482,50 @@ function buildLeo1A5SourceProfile(P) {
   P.add('hullDark', box(1.78, 0.018, 0.44), 0, 1.806, -3.00);
   for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, 1.819, -2.84 - k * 0.11);
 
-  // Seven 660 mm dual wheels and the source-measured 1.15 m linked course.
+  // Rear service face and two oversized NATO fuel cans in proper carriers.
+  // They sit against the transom, clear of the sprocket wraps, with braces
+  // running forward into the hull instead of hovering behind it.
+  P.add('hullDark', box(2.28, 0.46, 0.035), 0, 1.34, -3.525);
+  for (let k = 0; k < 7; k++) {
+    P.add('hullDetail', box(0.035, 0.38, 0.035), -0.90 + k * 0.30, 1.34, -3.545);
+  }
+  for (const s of [-1, 1]) {
+    const canX = s * 0.86;
+    P.addEquipment('hullCloth', box(0.44, 0.50, 0.18), canX, 1.43, -3.44);
+    P.addEquipment('hullCloth', box(0.18, 0.065, 0.07), canX, 1.715, -3.44);
+    P.add('hullDark', box(0.49, 0.035, 0.22), canX, 1.695, -3.44);
+    P.add('hullDark', box(0.49, 0.035, 0.22), canX, 1.165, -3.44);
+    P.add('hullDark', box(0.035, 0.56, 0.22), canX - 0.225, 1.43, -3.44);
+    P.add('hullDark', box(0.035, 0.56, 0.22), canX + 0.225, 1.43, -3.44);
+    P.add('hullDark', box(0.045, 0.39, 0.025), canX, 1.43, -3.545, 0, 0, s * 0.64);
+    P.add('hullDark', box(0.045, 0.39, 0.025), canX, 1.43, -3.547, 0, 0, -s * 0.64);
+    P.add('hullDark', box(0.075, 0.09, 0.34), canX, 1.19, -3.37, 0.20, 0, 0);
+    P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
+  }
+
+  // Seven 660 mm dual wheels and a source-measured asymmetric Leopard
+  // course: low front idler, raised rear drive sprocket, fine 140 mm shoes,
+  // and a return run tucked directly beneath the closed fender shelf.
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: 0.43, xc: 1.36,
-    wheelZs: [2.42, 1.61, 0.80, 0, -0.80, -1.61, -2.42],
-    sprocket: { z: -3.04, y: 0.54, r: 0.34 }, idler: { z: 3.04, y: 0.53, r: 0.34 },
-    rollers: [{ z: 2.05, y: 0.91, r: 0.105 }, { z: 0.70, y: 0.91, r: 0.105 },
-      { z: -0.68, y: 0.91, r: 0.105 }, { z: -2.02, y: 0.91, r: 0.105 }],
-    trackW: 0.56, topY: 1.10, arms: true, paintedEnds: true,
+    wheelZs: [2.46, 1.64, 0.82, 0, -0.82, -1.64, -2.46],
+    sprocket: { z: -2.68, y: 0.72, r: 0.32 }, idler: { z: 3.18, y: 0.53, r: 0.34 },
+    rollers: [{ z: 2.12, y: 0.93, r: 0.105 }, { z: 0.72, y: 0.93, r: 0.105 },
+      { z: -0.70, y: 0.93, r: 0.105 }, { z: -2.05, y: 0.93, r: 0.105 }],
+    trackW: 0.56, trackTh: 0.10, topY: 1.12, botY: 0.055,
+    linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
+    endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
   });
-  for (const s of [-1, 1]) {
-    for (const [z, y] of [[3.04, 0.53], [-3.04, 0.54]]) {
-      P.add('hullTrack', xform(torus(0.17, 0.022, P.q ? 22 : 14), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.57, y, z);
-      P.add('hullTrack', xform(torus(0.085, 0.017, P.q ? 18 : 12), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.575, y, z);
-      P.add('hullTrack', cylX(0.052, 0.035, 12), s * 1.577, y, z);
-    }
-  }
+  P.hullG.userData.leopard1A5FinishReceipt = {
+    continuousFenders: true,
+    segmentedSideAprons: 14,
+    fenderLockers: 8,
+    rearFuelCans: 2,
+    roadWheelStations: 7,
+    frontIdlerZ: 3.18,
+    rearSprocketZ: -2.68,
+  };
 
   // ------------------------------------------------------------- turret --
   // The source ring is 0.54 m ahead of the hull origin.  Keep that authored

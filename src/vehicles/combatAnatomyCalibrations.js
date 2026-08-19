@@ -2816,28 +2816,28 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "left": {
         "min": [
           -1.64,
-          0.01,
-          -3.4675
+          0.005,
+          -3.0949
         ],
         "max": [
           -1.08,
-          1.105,
-          3.467
+          1.135,
+          3.611
         ],
-        "sourceHash": "6163d5998e85dcae"
+        "sourceHash": "2a8e99e3cfd4a9de"
       },
       "right": {
         "min": [
           1.08,
-          0.01,
-          -3.4675
+          0.005,
+          -3.0949
         ],
         "max": [
           1.64,
-          1.105,
-          3.467
+          1.135,
+          3.611
         ],
-        "sourceHash": "2246665d11ea7661"
+        "sourceHash": "af68d0de04c6f507"
       }
     }
   },
