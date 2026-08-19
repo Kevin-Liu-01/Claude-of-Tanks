@@ -6,18 +6,15 @@
 // moved to profiles/challenger.js (§5.75 family-module split) — that module
 // imports the spec-table helpers exported below.
 //
-// Registration pattern: tankFactory.js imports MODERN1_BUILDERS and merges it
-// into its BUILDERS table (clearly-marked extension hook there). Specs and
+// Registration pattern: tankFactory.js passes MODERN1_BUILDERS through the
+// checked factory-configuration gate. Specs and
 // model-source rows register HERE by mutating the exported tables from
 // specs.js — specs.js itself is untouched (it is concurrently edited by the
 // sourcing workflows). Builders draw on the shared geometry/greeble kit
-// exported by tankFactory.js (KIT). NOTE: tankFactory <-> modern1 is a
-// deliberate module cycle — this module must not READ tankFactory bindings at
-// module scope (they are TDZ during our evaluation); builders destructure KIT
-// at call time.
+// exported by tankFactoryCore.js (KIT).
 
 import * as THREE from 'three';
-import { KIT } from './tankFactory.js';
+import { KIT } from './tankFactoryCore.js';
 import { muzzleBore } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {

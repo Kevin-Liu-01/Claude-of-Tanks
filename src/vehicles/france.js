@@ -6,13 +6,11 @@
 // NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.js (family migration
 // is a separate, owner-approvable move).
 //
-// Registration pattern (modern3.js): tankFactory.js imports FRANCE_BUILDERS
-// and merges it into BUILDERS at the marked extension hook; builders draw on
-// tankFactory's exported geometry KIT. tankFactory <-> france is the same
-// deliberate module cycle — KIT is only dereferenced INSIDE builder bodies
-// (build time), never during module evaluation, so the TDZ is never hit.
+// Registration pattern (modern3.js): tankFactory.js passes FRANCE_BUILDERS
+// through the checked factory-configuration gate; builders draw on
+// tankFactoryCore's exported geometry KIT.
 
-import { KIT } from './tankFactory.js';
+import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import { shell, apfsdsPenetration as apfsdsPens, modernArmor } from './specHelpers.js';
@@ -89,7 +87,7 @@ for (const [id, spec] of Object.entries(FRANCE_SPECS)) {
 // §C missing-side winding guard — face-outwardness census; re-orders reversed
 // rings so mirrored slabs never ship inward-facing (FrontSide-culled) walls.
 // Same device as modern3.js orientedSlab / uk.js sslab. KIT dereferenced at
-// call time only (the tankFactory module-cycle law at the top of this file).
+// call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];

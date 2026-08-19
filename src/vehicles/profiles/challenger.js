@@ -12,11 +12,8 @@
 //     the exported specs.js tables — the modern1 pattern).
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
-// §I fittings census: the FITTINGS import is the spelling that survives
-// synchronous top-level createTank rigs (kit.js attach-site note). KIT rides
-// the deliberate tankFactory module cycle (kit.js re-exports it) — builders
-// and helpers here destructure KIT at CALL time only, never at module scope
-// (TDZ during our evaluation — the modern1 cycle law).
+// Shared geometry and exact-equipment fittings come from the cycle-free
+// profile kit; builders destructure the geometry they use at call time.
 import { KIT, FITTINGS, muzzleBore } from './kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
@@ -1865,8 +1862,7 @@ for (const [id, spec] of Object.entries(CHALLENGER_SPECS)) {
 // turret with mantlet-less slot, round cdr cupola RIGHT + pano sight,
 // huge bustle bin/basket, fat sleeved L30 with MRS, 6 wheels + 4 rollers.
 // ---------------------------------------------------------------------------
-// BASE-21 helpers (challenger2 rebuild): call-time KIT access only (the
-// module-cycle law — KIT initializes after this module evaluates).
+// BASE-21 helpers (challenger2 rebuild): call-time KIT access.
 // Mirror-safe slab (§C MISSING-SIDE law): s=-1 mirrors x AND swaps corner
 // order so faces stay outward — never a bare x*s mirror.
 const m1MirrX = ([x, y, z]) => [-x, y, z];

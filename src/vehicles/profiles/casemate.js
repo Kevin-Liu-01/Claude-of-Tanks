@@ -30,8 +30,6 @@ import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 't
 import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
-// NOTE: KIT arrives through the tankFactory module cycle — it must only be
-// dereferenced inside functions (module-scope destructuring hits the TDZ).
 const box = (...a) => KIT.box(...a);
 const stations = (count, span, zc = 0) => Array.from({ length: count }, (_, i) =>
   zc + span / 2 - i * (span / (count - 1)));

@@ -31,9 +31,6 @@ import {
   communityArmor as buildCommunityArmor,
 } from '../specHelpers.js';
 
-// NOTE: KIT bindings are only dereferenced inside build-time functions —
-// never at module scope — because of the tankFactory extension-module cycle.
-
 // ---------------------------------------------------------------------------
 // Type 74 spec registration. userdrops.js delisted the id together with its
 // PERSONAL-USE GLB because the vehicle had "no procedural fallback"; this

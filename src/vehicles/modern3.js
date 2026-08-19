@@ -4,16 +4,13 @@
 // K1A1 (§5.38 KOREA round — new build vs the k1a1_kojf print).
 //
 // Registration pattern (established by modern1.js/modern2.js): tankFactory.js
-// imports MODERN3_BUILDERS and merges it into its BUILDERS table at the
-// clearly-marked extension hook; builders draw on tankFactory's exported
-// geometry KIT. NOTE: tankFactory <-> modern3 is a deliberate module cycle —
-// KIT is only dereferenced INSIDE the builder bodies (at build time), never
-// during module evaluation, so the TDZ is never hit.
+// passes MODERN3_BUILDERS through the checked factory-configuration gate;
+// builders draw on tankFactoryCore's exported geometry KIT.
 //
 // Specs merge into the specs.js tables at module init (idempotent).
 
 import * as THREE from 'three';
-import { KIT } from './tankFactory.js';
+import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {
@@ -637,7 +634,7 @@ for (const [id, spec] of Object.entries(MODERN3_SPECS)) {
 }
 
 // ---------------------------------------------------------------------------
-// Builders (KIT destructured inside each body — see cycle note above)
+// Builders
 // ---------------------------------------------------------------------------
 
 // =============================== Chieftain Mk 10 ===========================
@@ -4563,7 +4560,7 @@ export function buildBMP2(P) {
 // slabs binds through one") — face-outwardness census; re-orders reversed
 // rings so mirrored slabs never ship inward-facing (FrontSide-culled) walls.
 // Same device as misc.js orientedSlab / uk.js sslab. KIT dereferenced at
-// call time only (the tankFactory module-cycle law at the top of this file).
+// call time only.
 // ---------------------------------------------------------------------------
 function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
   const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];

@@ -21,8 +21,6 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
-// NOTE: KIT bindings are only dereferenced inside build-time functions —
-// never at module scope — because of the tankFactory extension-module cycle.
 // THREE is used only for the t72b3m r23 light-immune flat class (kf51 r7
 // precedent, leopard.js): MeshBasicMaterial renders its albedo flat from
 // every view — the only route below the ~52 hemi vertical-face floor. The

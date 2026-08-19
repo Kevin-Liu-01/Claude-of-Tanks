@@ -7,7 +7,7 @@
 // These are original primitive reconstructions informed by normalized local
 // reference renders and real vehicle dimensions. They intentionally do not
 // contain, decode, or reproduce source mesh topology.
-import { KIT } from '../tankFactory.js';
+import { KIT } from '../tankFactoryCore.js';
 
 export { KIT };
 
@@ -616,12 +616,10 @@ export function buildDonorVariant(P, p) {
 //
 // Distinct from the legacy P-bucket helpers (KIT.pintleMG / KIT.towCable /
 // KIT.stowage — those write into merged material buckets and stay for the
-// already-graduated call sites): KIT.fittings.* return marker-carrying
+// already-graduated call sites): FITTINGS functions return marker-carrying
 // groups, which is what the §B3 census machine-checks.
 //
-// Profile usage (import { FITTINGS } is the timing-proof spelling — see the
-// cycle note at the attach site below; KIT.fittings is the same object on
-// every runtime build path):
+// Profile usage:
 //   import { KIT, FITTINGS } from './kit.js';
 //   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone' });
 //   mg.position.set(0.62, roofY, -0.85);     // anchor INSIDE the turret AABB
@@ -1085,29 +1083,3 @@ export const FITTINGS = {
   unditchingLog: fittingUnditchingLog,
   markExact: fittingMarkExact,
 };
-
-// Attach on the shared KIT object so callers reach the fittings as
-// KIT.fittings.<fn>. Additive property; no existing KIT key is touched.
-// CYCLE LAW: kit.js evaluates INSIDE the deliberate tankFactory module cycle
-// (tankFactory -> profiledProcedurals -> kit.js), BEFORE the KIT const
-// initializes — a bare module-scope read here is a TDZ ReferenceError (the
-// same law that forbids profiles reading KIT bindings at module scope). The
-// try arm covers out-of-cycle evaluation; the microtask arm lands the attach
-// the moment the module graph settles, which precedes every runtime build
-// path (game boot, garage, critic/gate rigs — all async). The one window it
-// cannot cover is a SYNCHRONOUS top-level createTank in the same job as
-// graph evaluation (tmp-hashgeo pattern): those rigs — and profile builders
-// that must stay loadable under them — use the timing-proof spelling
-//   import { FITTINGS } from './kit.js';
-// which is initialized before any profile module evaluates.
-try {
-  KIT.fittings = FITTINGS;
-} catch (_) {
-  // Circular-import fallback: the microtask can still fire while another
-  // module in the cycle holds KIT in TDZ (authoritativeMatch.selftest flake,
-  // 2026-08-17) — swallow that tick; importers use the timing-proof
-  // `import { FITTINGS }` spelling and the next access path re-wires it.
-  queueMicrotask(() => {
-    try { if (!KIT.fittings) KIT.fittings = FITTINGS; } catch (_) { /* TDZ tick */ }
-  });
-}

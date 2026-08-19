@@ -7,20 +7,17 @@
 //   leo1a5  Leopard 1A5        (§10, priority 4)
 //   t14     T-14 Armata        (§16, priority 4)
 //
-// Registration pattern (established by modern1.js): tankFactory.js imports
-// MODERN2_BUILDERS and merges it into its BUILDERS table at the clearly-marked
-// extension hook; builders draw on tankFactory's exported geometry KIT.
-// NOTE: tankFactory <-> modern2 is a deliberate module cycle — this module
-// must not READ tankFactory bindings at module scope (TDZ during our
-// evaluation); builders destructure KIT at call time. Specs/model-source rows
+// Registration pattern (established by modern1.js): tankFactory.js passes
+// MODERN2_BUILDERS through the checked factory-configuration gate; builders
+// draw on tankFactoryCore's exported geometry KIT. Specs/model-source rows
 // register here by mutating the exported specs.js tables (specs.js itself is
 // a contested file, left untouched). Armor values are open-source RHAe
 // estimates per the roster doc (game-design baselines).
 
 import * as THREE from 'three';
-import { KIT } from './tankFactory.js';
+import { KIT } from './tankFactoryCore.js';
 // §I fittings census: the FITTINGS import is the spelling that survives
-// synchronous top-level createTank rigs (kit.js attach-site note).
+// synchronous top-level createTank rigs.
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
 import { createType99Armor } from './profiles/type99Armor.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
