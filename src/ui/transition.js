@@ -20,7 +20,13 @@
  */
 
 import { FONT_STACK, FONT_COND } from './fonts.js';
-import { FEATURED_IMAGES, FEATURED_SHOTS, randomFeaturedShot } from './featuredShots.js';
+import {
+  FEATURED_IMAGES,
+  FEATURED_SHOTS,
+  TRANSITION_SHOTS,
+  featuredShotForMap,
+  randomFeaturedShot,
+} from './featuredShots.js';
 
 const FADE_IN_MS = 240;
 const FADE_OUT_MS = 340;
@@ -42,15 +48,8 @@ const CSS = `
   background:linear-gradient(180deg,rgba(5,8,11,.78) 0%,rgba(5,8,11,.46) 46%,rgba(5,8,11,.9) 100%);}
 .cot-trans .vig{position:absolute;inset:0;
   background:radial-gradient(108% 125% at 50% 38%,rgba(0,0,0,0) 38%,rgba(0,0,0,.74) 100%);}
-.cot-trans .frame{position:absolute;inset:18px;border:1px solid rgba(159,176,191,.16);
-  box-shadow:inset 0 0 80px rgba(0,0,0,.18);pointer-events:none;}
-.cot-trans .frame::before,.cot-trans .frame::after{content:'';position:absolute;top:-1px;
-  width:90px;height:1px;background:#f0a030;box-shadow:0 0 12px rgba(240,160,48,.38);}
-.cot-trans .frame::before{left:-1px}.cot-trans .frame::after{right:-1px}
 .cot-trans .core{position:relative;display:flex;flex-direction:column;align-items:center;
-  min-width:min(620px,82vw);padding:28px 36px 31px;border-top:1px solid rgba(240,160,48,.34);
-  border-bottom:1px solid rgba(159,176,191,.2);background:linear-gradient(90deg,transparent,
-  rgba(5,8,11,.7) 16%,rgba(5,8,11,.7) 84%,transparent);transform:translateY(8px);opacity:0;
+  transform:translateY(8px);opacity:0;
   transition:transform 480ms cubic-bezier(.2,.7,.2,1),opacity 360ms ease;}
 .cot-trans.lit .core{transform:translateY(0);opacity:1;}
 .cot-trans .mark{width:46px;height:46px;object-fit:contain;
@@ -75,13 +74,6 @@ const CSS = `
 .cot-trans .mfill{position:absolute;left:0;top:0;bottom:0;width:0%;
   background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
   box-shadow:0 0 14px rgba(240,160,48,.5);transition:width .16s linear;}
-.cot-trans .photo{position:absolute;right:30px;bottom:27px;max-width:44vw;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap;font-family:${FONT_COND};font-size:8px;
-  font-weight:700;letter-spacing:.18em;color:#687784;text-transform:uppercase;}
-.cot-trans .photo::before{content:'Featured capture  /  ';color:#c2903f;}
-@media(max-width:640px){.cot-trans .frame{inset:10px}.cot-trans .core{min-width:88vw;padding:23px 18px 26px}
-  .cot-trans .photo{display:none}.cot-trans .mark{width:38px;height:38px}.cot-trans .meter{margin-top:24px}}
-@media(prefers-reduced-motion:reduce){.cot-trans .bg,.cot-trans .core{transition:none}}
 `;
 
 /** @returns {boolean} true when transitions must be invisible (probes). */
@@ -115,14 +107,14 @@ export function createTransition() {
   const root = document.createElement('div');
   root.className = 'cot-trans';
   root.innerHTML =
-    `<div class="bg"></div><div class="scrim"></div><div class="vig"></div><div class="frame"></div>` +
+    `<div class="bg"></div><div class="scrim"></div><div class="vig"></div>` +
     `<div class="core">` +
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<div class="kick"></div><div class="title"></div><div class="sub"></div>` +
     `<div class="meter"><div class="mrow"><div class="mstage"></div>` +
     `<div class="mpct">0%</div></div>` +
     `<div class="mbar"><div class="mfill"></div></div></div>` +
-    `</div><div class="photo"></div>`;
+    `</div>`;
   document.body.appendChild(root);
 
   const bgEl = root.querySelector('.bg');
@@ -133,7 +125,6 @@ export function createTransition() {
   const stageEl = root.querySelector('.mstage');
   const pctEl = root.querySelector('.mpct');
   const fillEl = root.querySelector('.mfill');
-  const photoEl = root.querySelector('.photo');
 
   let visible = false;
   let shownAt = 0;
@@ -163,7 +154,7 @@ export function createTransition() {
     /**
      * Stage and fade the screen in.
      * @param {{kicker?:string, title?:string, sub?:string, progress?:boolean,
-     *   hero?:string}} [o] progress:false hides the meter (pure veil).
+     *   hero?:string, mapId?:string}} [o] progress:false hides the meter (pure veil).
      */
     show(o = {}) {
       if (skipTransitions()) return;
@@ -175,15 +166,17 @@ export function createTransition() {
       meterEl.classList.toggle('off', o.progress === false);
       api.progress(0, 'Loading');
       const shot = o.hero
-        ? FEATURED_SHOTS.find((entry) => entry.img === o.hero) || { img: o.hero, cap: '' }
-        : randomFeaturedShot();
+        ? FEATURED_SHOTS.find((entry) => entry.img === o.hero) || { img: o.hero, focal: 'center' }
+        : o.mapId ? featuredShotForMap(o.mapId) : randomFeaturedShot();
       const hero = shot.img;
       const warmHero = decodedHeroes.has(hero) ? hero : FEATURED_IMAGES[0];
       const warmShot = FEATURED_SHOTS.find((entry) => entry.img === warmHero) || shot;
-      photoEl.textContent = warmShot.cap || '';
       bgEl.style.backgroundPosition = warmShot.focal || 'center';
       decodeHero(warmHero).then((url) => {
-        if (url && visible && hideToken === token) bgEl.style.backgroundImage = `url("${url}")`;
+        if (url && visible && hideToken === token) {
+          bgEl.style.backgroundImage = `url("${url}")`;
+          bgEl.style.backgroundPosition = warmShot.focal || 'center';
+        }
       });
       // Decode the requested random frame off the fade-critical path, then
       // swap only after decode has completed (CSS no longer blocks on it).
@@ -191,9 +184,13 @@ export function createTransition() {
         if (url && visible && hideToken === token) {
           bgEl.style.backgroundImage = `url("${url}")`;
           bgEl.style.backgroundPosition = shot.focal || 'center';
-          photoEl.textContent = shot.cap || '';
         }
       });
+      // Keep the following curated capture warm for the next state change.
+      const at = TRANSITION_SHOTS.findIndex((entry) => entry.img === hero);
+      if (at >= 0 && TRANSITION_SHOTS.length > 1) {
+        decodeHero(TRANSITION_SHOTS[(at + 1) % TRANSITION_SHOTS.length].img);
+      }
       visible = true;
       shownAt = performance.now();
       root.classList.remove('out');
@@ -229,7 +226,7 @@ export function createTransition() {
      * Under automation: executes work synchronously, no overlay, no dwell.
      * @param {(p:(f:number,l?:string)=>void)=>any} work
      * @param {{kicker?:string,title?:string,sub?:string,progress?:boolean,
-     *   hero?:string,minShowMs?:number}} [o]
+     *   hero?:string,mapId?:string,minShowMs?:number}} [o]
      * @returns {Promise<any>} work's result
      */
     async run(work, o = {}) {

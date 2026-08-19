@@ -7,56 +7,82 @@
  * from disk twice (r9.1: preload() errored forever and every rotation stuck
  * on frame 1). Names must match public/media/featured/ EXACTLY.
  *
- * f6-f9 are OWNER-AUTHORED studio captures. `maps` is deliberately curated,
- * not inferred from the caption: loading screens use it to keep the action
- * photography relevant to the battlefield being prepared. `focal` is a CSS
- * background-position and protects the important action when a screen crops.
+ * `FEATURED_SHOTS` remains the complete garage gallery. Loading and transition
+ * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
+ * stay browsable without returning to the player-facing loading rotation.
  */
 export const FEATURED_SHOTS = [
   {
     img: '/media/featured/f1_09_winter_lake_duel.webp',
-    cap: 'Frosthollow — ammo-rack kill', maps: ['winter'], focal: '50% 44%',
+    cap: 'Frosthollow — ammo-rack kill', focal: '50% 44%',
   },
   {
     img: '/media/featured/f2_06_desert_hero_kf51.webp',
-    cap: 'Sirocco Wadi — KF51 firing', maps: ['desert'], focal: '55% 48%',
+    cap: 'Sirocco Wadi — KF51 firing', focal: '55% 48%',
   },
   {
     img: '/media/featured/f3_19_urban_overwatch_church.webp',
-    cap: 'Steinburg — church overwatch', maps: ['urban'], focal: '50% 48%',
+    cap: 'Steinburg — church overwatch', focal: '50% 48%',
   },
   {
     img: '/media/featured/f4_20_urban_ruin_brawl.webp',
-    cap: 'Steinburg — ruin brawl', maps: ['foundry', 'railyard', 'caldera'], focal: '50% 48%',
+    cap: 'Steinburg — ruin brawl', focal: '50% 48%',
   },
   {
     img: '/media/featured/f5_01_desert_duel_leclerc_kill.webp',
-    cap: 'Sirocco Wadi — Leclerc duel', maps: ['badlands', 'autumn'], focal: '48% 48%',
+    cap: 'Sirocco Wadi — Leclerc duel', focal: '48% 48%',
   },
   {
     img: '/media/featured/f6_studio_strv_steinburg_duel.webp',
-    cap: 'Steinburg — Strv 103 street duel', maps: ['urban'], focal: '54% 48%',
+    cap: 'Steinburg — Strv 103 street duel',
+    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '54% 48%',
   },
   {
     img: '/media/featured/f7_studio_t90_column_fire.webp',
-    cap: 'Verdant Fields — T-90 column under fire', maps: ['verdant', 'frontier'], focal: '50% 48%',
+    cap: 'Verdant Fields — T-90 column under fire',
+    maps: ['verdant', 'frontier', 'steppe'], focal: '50% 48%',
   },
   {
     img: '/media/featured/f8_studio_m1_firefight.webp',
-    cap: 'Verdant Fields — M1 platoon firefight', maps: ['steppe', 'delta', 'monsoon', 'coastal'], focal: '50% 48%',
+    cap: 'Verdant Fields — M1 platoon firefight',
+    maps: ['desert', 'badlands', 'autumn', 'delta', 'monsoon', 'coastal'], focal: '50% 48%',
   },
   {
     img: '/media/featured/f9_studio_fjord_firefight.webp',
-    cap: 'Glacier Fjord — armored breakthrough', maps: ['fjord', 'alpine'], focal: '52% 48%',
+    cap: 'Glacier Fjord — armored breakthrough',
+    maps: ['fjord', 'alpine', 'winter'], focal: '52% 48%',
   },
 ];
 
 /** Just the image URLs (boot hero + transition backdrops). */
-export const FEATURED_IMAGES = FEATURED_SHOTS.map((s) => s.img);
+export const TRANSITION_SHOTS = FEATURED_SHOTS.filter((shot) => shot.maps?.length);
+export const FEATURED_IMAGES = TRANSITION_SHOTS.map((s) => s.img);
 
-/** A random featured-shot record. */
+let rotation = [];
+let previousImage = '';
+
+function refillRotation() {
+  rotation = [...TRANSITION_SHOTS];
+  for (let i = rotation.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rotation[i], rotation[j]] = [rotation[j], rotation[i]];
+  }
+  if (rotation.length > 1 && rotation[0].img === previousImage) {
+    [rotation[0], rotation[1]] = [rotation[1], rotation[0]];
+  }
+}
+
+/** Next curated capture, shuffled without immediate repeats. */
+export function nextFeaturedShot() {
+  if (!rotation.length) refillRotation();
+  const shot = rotation.shift();
+  previousImage = shot.img;
+  return shot;
+}
+
+/** Backward-compatible random-shot name; now uses the non-repeating rotation. */
 export function randomFeaturedShot() {
-  return FEATURED_SHOTS[Math.floor(Math.random() * FEATURED_SHOTS.length)];
+  return nextFeaturedShot();
 }
 
 /**
@@ -67,7 +93,7 @@ export function randomFeaturedShot() {
  */
 export function featuredShotForMap(mapId) {
   const key = String(mapId || '').trim().toLowerCase();
-  return FEATURED_SHOTS.find((shot) => shot.maps?.includes(key)) || randomFeaturedShot();
+  return TRANSITION_SHOTS.find((shot) => shot.maps?.includes(key)) || nextFeaturedShot();
 }
 
 /** A random featured image URL. @returns {string} */

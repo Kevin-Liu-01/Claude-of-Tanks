@@ -2993,6 +2993,7 @@ function leaveBattleToGarage() {
   leavingBattle = true;
   transition.run(() => { enterGarage(); }, {
     kicker: 'Leaving battle', title: 'Garage',
+    mapId: world?.mapId || game.mapId,
     progress: false, minShowMs: 760,
   }).finally(() => { leavingBattle = false; });
 }
@@ -3017,6 +3018,7 @@ bus.on('ui:battleAgain', async () => {
     }
     await transition.run(() => { enterGarage(); }, {
       kicker: 'Regrouping', title: 'Next battle',
+      mapId: world?.mapId || game.mapId,
       progress: false, minShowMs: 420,
     });
   } finally {

@@ -1462,6 +1462,7 @@ export function createStudio(ctx) {
       kicker: 'Scene Studio',
       title: getMapConfig(id).name || id,
       sub: 'Switching battlefield',
+      mapId: id,
       minShowMs: 360,
     });
     try {
@@ -1578,6 +1579,7 @@ export function createStudio(ctx) {
           kicker: 'Scene Studio',
           title: getMapConfig(mapId).name || mapId,
           sub: 'Staging rig · Free camera',
+          mapId,
           minShowMs: 360,
         });
       }
@@ -1605,6 +1607,7 @@ export function createStudio(ctx) {
     exiting = true;
     transition.run(() => { doExit(); }, {
       kicker: 'Scene Studio', title: 'Garage',
+      mapId: getWorld()?.mapId,
       progress: false, minShowMs: 720,
     }).finally(() => { exiting = false; });
   }

@@ -24,7 +24,7 @@
  * still be captured.
  */
 
-import { FEATURED_SHOTS } from './featuredShots.js';
+import { TRANSITION_SHOTS } from './featuredShots.js';
 
 const TIPS = [
   ['Angling', 'Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.'],
@@ -83,7 +83,11 @@ const $ = (id) => document.getElementById(id);
 // r9.5: the list lives in featuredShots.js — ONE copy shared with the
 // garage gallery and the state-transition screens, because hand-synced
 // copies drifted from disk twice (the r9.1 "same picture every load" bug).
-const HERO_SHOTS = FEATURED_SHOTS;
+// Keep the first percentage screen on the curated current-capture pool. Export
+// the binding so the loading-screen self-test can guard against old renders
+// accidentally returning to this first paint surface.
+export const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
+const HERO_SHOTS = BOOT_HERO_SHOTS;
 const HERO_ROTATE_MS = 9000;
 
 /**
@@ -99,7 +103,6 @@ function startBootHero() {
   try { q = window.location.search || ''; } catch (_) { q = ''; }
   if (/[?&]nohero\b/.test(q)) return () => {}; // A/B timing escape hatch
   const layers = wrap.querySelectorAll('.hly');
-  const shotEl = $('cot-boot-shot');
   if (layers.length < 2) return () => {};
   let idx = -1;
   let front = 0;
@@ -112,12 +115,14 @@ function startBootHero() {
     layers[front].style.backgroundPosition = shot.focal || 'center';
     layers[front].classList.add('on');
     layers[front ^ 1].classList.remove('on');
-    if (shotEl) shotEl.textContent = shot.cap;
     idx = i;
   };
   const preload = (i, cb) => {
     const im = new Image();
-    im.onload = () => { if (!stopped) cb(); };
+    im.onload = async () => {
+      try { if (im.decode) await im.decode(); } catch (_) { /* loaded is enough */ }
+      if (!stopped) cb();
+    };
     im.onerror = () => { /* missing still — keep the gradient field */ };
     im.src = HERO_SHOTS[i].img;
   };
@@ -125,16 +130,31 @@ function startBootHero() {
     const next = (idx + 1) % HERO_SHOTS.length;
     preload(next, () => { if (!stopped) show(next); });
   };
+  const stopRotation = () => {
+    if (timer) clearInterval(timer);
+    timer = 0;
+  };
+  const startRotation = () => {
+    if (!stopped && !document.hidden && !timer && HERO_SHOTS.length > 1) {
+      timer = setInterval(advance, HERO_ROTATE_MS);
+    }
+  };
+  const onVisibility = () => {
+    if (document.hidden) stopRotation();
+    else startRotation();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
   // first still: decode fully off the critical path, then fade in.
   // Start at a RANDOM still (owner: different picture every load).
   const first = Math.floor(Math.random() * HERO_SHOTS.length);
   preload(first, () => {
     show(first);
-    if (HERO_SHOTS.length > 1) timer = setInterval(advance, HERO_ROTATE_MS);
+    startRotation();
   });
   return () => {
     stopped = true;
-    if (timer) clearInterval(timer);
+    stopRotation();
+    document.removeEventListener('visibilitychange', onVisibility);
   };
 }
 
