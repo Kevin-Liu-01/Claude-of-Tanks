@@ -15,6 +15,7 @@ import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
 import { iconUrl } from './icons.js';
 import { uiIconSVG } from './uiIcons.js';
+import { ensureStyle } from './dom.js';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
@@ -158,14 +159,6 @@ const CSS = `
 @media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}}
 `;
-
-function ensureStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = CSS;
-  document.head.appendChild(style);
-}
 
 function stored(key, fallback) {
   try { return localStorage.getItem(key) || fallback; } catch (_) { return fallback; }
@@ -338,7 +331,7 @@ export function createPlayMenu({
   getVehicleName = (specId) => specId,
 } = {}) {
   ensureFonts();
-  ensureStyle();
+  ensureStyle(STYLE_ID, CSS);
   const root = document.createElement('div');
   root.className = 'cot-play';
   root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="Close">×</button>

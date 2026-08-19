@@ -4,6 +4,7 @@
 // Contract: docs/ARCHITECTURE.md §3.7.3.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { ensureStyle } from './dom.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
 import { flagIconHTML, flagIconUrl } from './flags.js';
 import { flagIconCode } from './flagCodes.js';
@@ -823,15 +824,6 @@ const GARAGE_CSS = `
   .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
 }
 `;
-
-function ensureStyle(id, css) {
-  if (!document.getElementById(id)) {
-    const s = document.createElement('style');
-    s.id = id;
-    s.textContent = css;
-    document.head.appendChild(s);
-  }
-}
 
 // garage_ui: one shared accessibility gate for the WAAPI micro-transitions
 // (the CSS entrance set is gated by the same media query in GARAGE_CSS).

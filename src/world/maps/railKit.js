@@ -8,41 +8,11 @@
 // is the matte vertex-colored bucket (containers, tar decks).
 
 import * as THREE from 'three';
+import {
+  box, gablePrism as createGablePrism, jitterUV, scaleUV,
+} from '../propGeometry.js';
 
-// --- tiny local twins of the props.js geometry helpers (same duplication
-// rule as maps/urbanKit.js / maps/mapKits.js) ---------------------------------
-function scaleUV(geo, su, sv) {
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
-  return geo;
-}
-
-function box(w, h, d, uvScale = 0.5) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  return scaleUV(g, Math.max(w, d) * uvScale, h * uvScale);
-}
-
-function jitterUV(geo, rng) {
-  const uv = geo.attributes.uv;
-  if (!uv) return geo;
-  const ou = rng() * 7.31, ov = rng() * 5.17;
-  const su = 0.86 + rng() * 0.30, sv = 0.86 + rng() * 0.30;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
-  return geo;
-}
-
-function gablePrism(w, h, t) {
-  const shape = new THREE.Shape();
-  shape.moveTo(-w / 2, 0);
-  shape.lineTo(w / 2, 0);
-  shape.lineTo(0, h);
-  shape.closePath();
-  const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
-  g.translate(0, 0, -t / 2);
-  const uv = g.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.5, uv.getY(i) * 0.5);
-  return g;
-}
+const gablePrism = (width, height, depth) => createGablePrism(width, height, depth, 0.5);
 
 /** Flat vertex paint (with slight per-vertex value jitter) for the matte
  * vertex-colored 'baked' bucket — the container/tar-deck material. */

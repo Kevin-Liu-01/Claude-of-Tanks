@@ -16,6 +16,7 @@
 // Contract: docs/ARCHITECTURE.md §3.7.2 (API preserved; setPose added).
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { ensureStyle } from './dom.js';
 import { getTopDownMasks } from './tankThumbs.js';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
@@ -78,15 +79,6 @@ const DP_CSS = `
   animation:cotFirePulse .7s ease-in-out infinite alternate;}
 @keyframes cotFirePulse{from{opacity:.55}to{opacity:1}}
 `;
-
-function ensureStyle(id, css) {
-  if (!document.getElementById(id)) {
-    const s = document.createElement('style');
-    s.id = id;
-    s.textContent = css;
-    document.head.appendChild(s);
-  }
-}
 
 function hpColor(frac) {
   return frac > 0.5 ? '#7ee87e' : frac > 0.25 ? '#f0b04a' : '#f05a5a';

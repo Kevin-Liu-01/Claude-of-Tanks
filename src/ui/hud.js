@@ -5,6 +5,7 @@
 // indicator. DOM/canvas only — no scene objects.
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
+import { createElement as el, ensureStyle } from './dom.js';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -693,22 +694,6 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 function penColor(r) {
   if (r == null || !isFinite(r)) return PEN_NONE;
   return r >= 1.15 ? PEN_GREEN : r >= 0.85 ? PEN_ORANGE : PEN_RED;
-}
-
-function ensureStyle(id, css) {
-  if (!document.getElementById(id)) {
-    const s = document.createElement('style');
-    s.id = id;
-    s.textContent = css;
-    document.head.appendChild(s);
-  }
-}
-
-function el(tag, cls, parent) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (parent) parent.appendChild(e);
-  return e;
 }
 
 function fmtTimer(s) {
@@ -2456,42 +2441,45 @@ export function initHud(bus) {
       cam.up.set(0, 0, 1);
       cam.lookAt(0, 0, 0);
       cam.updateMatrixWorld(true);
-      const rt = new THREE.WebGLRenderTarget(N, N, { depthBuffer: true });
-      rt.texture.colorSpace = THREE.SRGBColorSpace;
-      const oldFog = scene.fog;
-      scene.fog = null;
-      const hidden = [];
-      if (Array.isArray(exclude)) {
-        for (const o of exclude) {
-          if (o && o.visible !== false) { o.visible = false; hidden.push(o); }
-        }
-      }
-      // auto-hide sky-scale shells (sky dome, cloud decks, horizon ring):
-      // their infinite-deck shaders happily paint clouds/haze OVER the map
-      // in a straight-down render (depth-independent transparents). Anything
-      // whose world-space bounding radius rivals the whole map is scenery
-      // shell, not map content.
-      const _ws = new THREE.Vector3();
-      scene.traverse((o) => {
-        if (!o.visible || (!o.isMesh && !o.isSprite)) return;
-        const g = o.geometry;
-        if (!g) return;
-        if (!g.boundingSphere && g.computeBoundingSphere) g.computeBoundingSphere();
-        const bs = g.boundingSphere;
-        if (!bs || !isFinite(bs.radius)) return;
-        o.getWorldScale(_ws);
-        const rw = bs.radius * Math.max(Math.abs(_ws.x), Math.abs(_ws.y), Math.abs(_ws.z));
-        if (rw > mapWorldSize * 0.9) { o.visible = false; hidden.push(o); }
-      });
-      const oldTarget = renderer.getRenderTarget();
-      renderer.setRenderTarget(rt);
-      renderer.render(scene, cam);
       const buf = new Uint8Array(N * N * 4);
-      renderer.readRenderTargetPixels(rt, 0, 0, N, N, buf);
-      renderer.setRenderTarget(oldTarget);
-      scene.fog = oldFog;
-      for (const o of hidden) o.visible = true;
-      rt.dispose();
+      const oldTarget = renderer.getRenderTarget();
+      const oldFog = scene.fog;
+      const rt = new THREE.WebGLRenderTarget(N, N, { depthBuffer: true });
+      const hidden = [];
+      try {
+        rt.texture.colorSpace = THREE.SRGBColorSpace;
+        scene.fog = null;
+        if (Array.isArray(exclude)) {
+          for (const o of exclude) {
+            if (o && o.visible !== false) { o.visible = false; hidden.push(o); }
+          }
+        }
+        // auto-hide sky-scale shells (sky dome, cloud decks, horizon ring):
+        // their infinite-deck shaders happily paint clouds/haze OVER the map
+        // in a straight-down render (depth-independent transparents). Anything
+        // whose world-space bounding radius rivals the whole map is scenery
+        // shell, not map content.
+        const _ws = new THREE.Vector3();
+        scene.traverse((o) => {
+          if (!o.visible || (!o.isMesh && !o.isSprite)) return;
+          const g = o.geometry;
+          if (!g) return;
+          if (!g.boundingSphere && g.computeBoundingSphere) g.computeBoundingSphere();
+          const bs = g.boundingSphere;
+          if (!bs || !isFinite(bs.radius)) return;
+          o.getWorldScale(_ws);
+          const rw = bs.radius * Math.max(Math.abs(_ws.x), Math.abs(_ws.y), Math.abs(_ws.z));
+          if (rw > mapWorldSize * 0.9) { o.visible = false; hidden.push(o); }
+        });
+        renderer.setRenderTarget(rt);
+        renderer.render(scene, cam);
+        renderer.readRenderTargetPixels(rt, 0, 0, N, N, buf);
+      } finally {
+        renderer.setRenderTarget(oldTarget);
+        scene.fog = oldFog;
+        for (const o of hidden) o.visible = true;
+        rt.dispose();
+      }
       const c = document.createElement('canvas');
       c.width = N; c.height = N;
       const x2 = c.getContext('2d');

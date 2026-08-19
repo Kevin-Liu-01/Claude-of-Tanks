@@ -31,6 +31,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { uiIconSVG } from './uiIcons.js';
+import { createElement as el, ensureStyle } from './dom.js';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS,
@@ -328,22 +329,6 @@ const MAX_PAD_BUTTONS = 17;
 // grace window absorbs that same-event race (sub-ms in practice); a human
 // deliberately opening the menu after a skip is always slower than 250 ms.
 const KC_DONE_GRACE_MS = 250;
-
-function ensureStyle(id, css) {
-  if (!document.getElementById(id)) {
-    const s = document.createElement('style');
-    s.id = id;
-    s.textContent = css;
-    document.head.appendChild(s);
-  }
-}
-
-function el(tag, cls, parent) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (parent) parent.appendChild(e);
-  return e;
-}
 
 /**
  * Create the settings panel + garage gear button + battle controls-hint strip.

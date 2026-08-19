@@ -1592,10 +1592,10 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   // Two single-segment crossed cards are sufficient for grass-scale parallax.
   // The old three 2-segment cards cost 12 triangles per tuft; this costs four
   // and also avoids the overly busy blade volume the user was seeing.
-  function makeTuftGeometry(w, h) {
+  function makeTuftGeometry(w, h, planeCount = 2, widthScale = 1.12) {
     const planes = [];
-    for (let k = 0; k < 2; k++) {
-      const p = new THREE.PlaneGeometry(w * 1.12, h, 1, 1);
+    for (let k = 0; k < planeCount; k++) {
+      const p = new THREE.PlaneGeometry(w * widthScale, h, 1, 1);
       p.translate(0, h / 2 - 0.03, 0);
       p.rotateY((k / 2) * Math.PI);
       planes.push(p);
@@ -1608,19 +1608,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
 
   // Far tufts collapse to one wider plane. At this range their alpha
   // silhouette supplies the entire read, so a crossed second plane is waste.
-  function makeTuftFarGeometry(w, h) {
-    const planes = [];
-    for (let k = 0; k < 1; k++) {
-      const p = new THREE.PlaneGeometry(w * 1.5, h, 1, 1);
-      p.translate(0, h / 2 - 0.03, 0);
-      p.rotateY((k / 2) * Math.PI);
-      planes.push(p);
-    }
-    const geo = mergeGeometries(planes, false);
-    const nrm = geo.attributes.normal;
-    for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
-    return geo;
-  }
+  const makeTuftFarGeometry = (w, h) => makeTuftGeometry(w, h, 1, 1.5);
 
   const grassTex = [
     makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone),

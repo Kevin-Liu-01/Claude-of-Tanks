@@ -19,28 +19,7 @@
 // road-side fence runs), tanks drive through reeds, not into invisible walls.
 
 import * as THREE from 'three';
-
-// --- tiny local twins of the props.js geometry helpers (not exported there;
-// same duplication rule as maps/urbanKit.js) ---------------------------------
-function scaleUV(geo, su, sv) {
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
-  return geo;
-}
-
-function box(w, h, d, uvScale = 0.5) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  return scaleUV(g, Math.max(w, d) * uvScale, h * uvScale);
-}
-
-function jitterUV(geo, rng) {
-  const uv = geo.attributes.uv;
-  if (!uv) return geo;
-  const ou = rng() * 7.31, ov = rng() * 5.17;
-  const su = 0.86 + rng() * 0.30, sv = 0.86 + rng() * 0.30;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
-  return geo;
-}
+import { box, jitterUV, scaleUV } from '../propGeometry.js';
 
 // =============================================================================
 // DESERT BAZAAR — plan builders ('market', 'marketRow')

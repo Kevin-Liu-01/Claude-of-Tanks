@@ -106,6 +106,14 @@ function readCenter(renderer, rt, buf) {
   return buf[0] + buf[1] + buf[2];
 }
 
+function disposeSceneResources(scene) {
+  scene.traverse((object) => {
+    object.geometry?.dispose();
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) material?.dispose();
+  });
+}
+
 /**
  * Render the three probes. Restores every renderer state it touches.
  * @returns {{basic:boolean, lit:boolean, litShadow:boolean, errors:string[]}}
@@ -124,11 +132,14 @@ export function runDeviceDiag(renderer) {
       const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
       cam.position.set(0, 0, 3);
       scene.add(new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshBasicMaterial({ color: 0xcc3322 })));
-      renderer.setRenderTarget(rt);
-      renderer.clear();
-      renderer.render(scene, cam);
-      out.basic = readCenter(renderer, rt, buf) > 24;
-      scene.traverse((o) => { if (o.material) o.material.dispose(); if (o.geometry) o.geometry.dispose(); });
+      try {
+        renderer.setRenderTarget(rt);
+        renderer.clear();
+        renderer.render(scene, cam);
+        out.basic = readCenter(renderer, rt, buf) > 24;
+      } finally {
+        disposeSceneResources(scene);
+      }
     }
     // lit, shadows OFF — render twice, judge the second frame (the owner's
     // iPhone produced a one-boot litShadow false-negative: first-frame
@@ -136,13 +147,16 @@ export function runDeviceDiag(renderer) {
     {
       renderer.shadowMap.enabled = false;
       const p = probeScene(false);
-      for (let i = 0; i < 2; i++) {
-        renderer.setRenderTarget(rt);
-        renderer.clear();
-        renderer.render(p.scene, p.cam);
+      try {
+        for (let i = 0; i < 2; i++) {
+          renderer.setRenderTarget(rt);
+          renderer.clear();
+          renderer.render(p.scene, p.cam);
+        }
+        out.lit = FORCE === 'nolit' ? false : readCenter(renderer, rt, buf) > 24;
+      } finally {
+        disposeSceneResources(p.scene);
       }
-      out.lit = FORCE === 'nolit' ? false : readCenter(renderer, rt, buf) > 24;
-      p.scene.traverse((o) => { if (o.material) o.material.dispose(); if (o.geometry) o.geometry.dispose(); });
     }
     // lit, shadows ON (CSM-style depth compare path compiles here) — three
     // warmup frames before judging, same flake defense
@@ -155,15 +169,18 @@ export function runDeviceDiag(renderer) {
       p.sun.shadow.camera.far = 30;
       p.ground.receiveShadow = true;
       if (p.box) p.box.castShadow = true;
-      for (let i = 0; i < 3; i++) {
-        renderer.setRenderTarget(rt);
-        renderer.clear();
-        renderer.render(p.scene, p.cam);
+      try {
+        for (let i = 0; i < 3; i++) {
+          renderer.setRenderTarget(rt);
+          renderer.clear();
+          renderer.render(p.scene, p.cam);
+        }
+        out.litShadow = (FORCE === 'noshadow' || FORCE === 'flakyshadow')
+          ? false : readCenter(renderer, rt, buf) > 24;
+      } finally {
+        disposeSceneResources(p.scene);
+        p.sun.shadow.map?.dispose();
       }
-      out.litShadow = (FORCE === 'noshadow' || FORCE === 'flakyshadow')
-        ? false : readCenter(renderer, rt, buf) > 24;
-      p.scene.traverse((o) => { if (o.material) o.material.dispose(); if (o.geometry) o.geometry.dispose(); });
-      if (p.sun.shadow.map) p.sun.shadow.map.dispose();
     }
   } catch (e) {
     if (bag.errors.length < 8) bag.errors.push('diag threw: ' + String(e && e.message ? e.message : e).slice(0, 200));
@@ -207,10 +224,11 @@ let _envCompLight = null;
 export function enforceEnvValidity(renderer, scene) {
   if (!scene.environment) return true;
   let lum = -1;
+  let probe = null;
   const prevTarget = renderer.getRenderTarget();
   const rt = new THREE.WebGLRenderTarget(16, 16, { depthBuffer: true });
   try {
-    const probe = new THREE.Scene();
+    probe = new THREE.Scene();
     probe.environment = scene.environment;
     const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
     cam.position.set(0, 0, 2.4);
@@ -225,11 +243,10 @@ export function enforceEnvValidity(renderer, scene) {
     const buf = new Uint8Array(4);
     renderer.readRenderTargetPixels(rt, 8, 8, 1, 1, buf);
     lum = buf[0] + buf[1] + buf[2];
-    ball.geometry.dispose();
-    ball.material.dispose();
   } catch (_) {
     lum = -1; // treat an unreadable probe as invalid — never risk a black scene
   } finally {
+    if (probe) disposeSceneResources(probe);
     renderer.setRenderTarget(prevTarget);
     rt.dispose();
   }
@@ -266,23 +283,37 @@ const ENV_COMP_INTENSITY = 3.1;
  * start.
  * @returns {{before:number, after:?number, rescued:boolean}}
  */
-/** Mean luminance of the lower 60% band of one real scene render (0-255). */
-function measureSceneBand(renderer, scene, camera) {
+/**
+ * Own one reusable lower-band readback target for a diagnostic transaction.
+ * Every measurement restores the caller's render target; dispose ends the
+ * transaction and makes accidental reuse fail loudly.
+ */
+function createSceneBandProbe(renderer) {
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const buf = new Uint8Array(64 * 22 * 4);
-  const prev = renderer.getRenderTarget();
-  try {
-    renderer.setRenderTarget(rt);
-    renderer.clear();
-    renderer.render(scene, camera);
-    renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
-    let s = 0;
-    for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
-    return s / (buf.length / 4) / 3;
-  } finally {
-    renderer.setRenderTarget(prev);
-    rt.dispose();
-  }
+  let disposed = false;
+  return {
+    measure(scene, camera) {
+      if (disposed) throw new Error('scene-band probe already disposed');
+      const prev = renderer.getRenderTarget();
+      try {
+        renderer.setRenderTarget(rt);
+        renderer.clear();
+        renderer.render(scene, camera);
+        renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i += 4) sum += buf[i] + buf[i + 1] + buf[i + 2];
+        return sum / (buf.length / 4) / 3;
+      } finally {
+        renderer.setRenderTarget(prev);
+      }
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      rt.dispose();
+    },
+  };
 }
 
 function recompileScene(scene) {
@@ -316,14 +347,15 @@ export function reclaimShadows(renderer, scene, camera) {
   const note = (m) => { if (bag && bag.errors.length < 8) bag.errors.push(m); };
   if (renderer.shadowMap.enabled) return { reclaimed: false, reason: 'already-on' };
   if (FORCE === 'noshadow') return { reclaimed: false, reason: 'forced-off' };
+  const probe = createSceneBandProbe(renderer);
   try {
-    const before = measureSceneBand(renderer, scene, camera);
+    const before = probe.measure(scene, camera);
     if (before < 6) return { reclaimed: false, reason: 'scene-black' };
     renderer.shadowMap.enabled = true;
     recompileScene(scene);
     // warmup render before judging (same flake defense as the boot probes)
-    measureSceneBand(renderer, scene, camera);
-    const after = measureSceneBand(renderer, scene, camera);
+    probe.measure(scene, camera);
+    const after = probe.measure(scene, camera);
     if (after >= 6) {
       note(`shadows reclaimed (band ${before.toFixed(1)} -> ${after.toFixed(1)})`);
       appendRescue('shadows-reclaimed');
@@ -337,39 +369,24 @@ export function reclaimShadows(renderer, scene, camera) {
     note('reclaim threw: ' + String(e && e.message ? e.message : e).slice(0, 160));
     renderer.shadowMap.enabled = false;
     return { reclaimed: false, reason: 'threw' };
+  } finally {
+    probe.dispose();
   }
 }
 
 export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}) {
-  const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
-  const buf = new Uint8Array(64 * 22 * 4);
   // FORCE==='blackscene' test rig: simulated band readings — black baseline,
   // stage 1 (shadows) does NOT cure, stage 2 (environment) does, and the
   // confirm re-measure after reverting stage 1 stays cured. Exercises the
   // full ladder walk + revert logic deterministically on a healthy desktop.
   const sim = FORCE === 'blackscene' ? [0, 0, 42, 42] : null;
   let simI = 0;
+  const probe = sim ? null : createSceneBandProbe(renderer);
   const measure = () => {
     if (sim) return sim[Math.min(simI++, sim.length - 1)];
-    const prev = renderer.getRenderTarget();
-    try {
-      renderer.setRenderTarget(rt);
-      renderer.clear();
-      renderer.render(scene, camera);
-      // lower 60% of the frame — terrain/vehicle band; sky stays out of it
-      renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
-      let s = 0;
-      for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
-      return s / (buf.length / 4) / 3;
-    } finally {
-      renderer.setRenderTarget(prev);
-    }
+    // lower 60% of the frame — terrain/vehicle band; sky stays out of it
+    return probe.measure(scene, camera);
   };
-  const recompile = () => scene.traverse((o) => {
-    if (!o.material) return;
-    const mm = Array.isArray(o.material) ? o.material : [o.material];
-    for (const m of mm) m.needsUpdate = true;
-  });
   // Rescue ladder, cheapest-degradation first. Each stage: {apply, revert,
   // label}. The owner's device proved shadows-off alone does NOT cure the
   // black scene (live ?diagforce=noshadow test), so the ladder continues to
@@ -380,20 +397,20 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
     {
       label: 'shadows-off',
       can: () => renderer.shadowMap.enabled,
-      apply() { this._v = renderer.shadowMap.enabled; renderer.shadowMap.enabled = false; recompile(); },
-      revert() { renderer.shadowMap.enabled = this._v; recompile(); },
+      apply() { this._v = renderer.shadowMap.enabled; renderer.shadowMap.enabled = false; recompileScene(scene); },
+      revert() { renderer.shadowMap.enabled = this._v; recompileScene(scene); },
     },
     {
       label: 'environment-off',
       can: () => !!scene.environment,
-      apply() { this._v = scene.environment; scene.environment = null; recompile(); },
-      revert() { scene.environment = this._v; recompile(); },
+      apply() { this._v = scene.environment; scene.environment = null; recompileScene(scene); },
+      revert() { scene.environment = this._v; recompileScene(scene); },
     },
     {
       label: 'fog-off',
       can: () => !!scene.fog,
-      apply() { this._v = scene.fog; scene.fog = null; recompile(); },
-      revert() { scene.fog = this._v; recompile(); },
+      apply() { this._v = scene.fog; scene.fog = null; recompileScene(scene); },
+      revert() { scene.fog = this._v; recompileScene(scene); },
     },
   ];
   const out = { before: 0, after: null, rescued: false, stage: null };
@@ -436,7 +453,7 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
   } catch (e) {
     note('watchdog threw: ' + String(e && e.message ? e.message : e).slice(0, 160));
   } finally {
-    rt.dispose();
+    probe?.dispose();
   }
   return out;
 }

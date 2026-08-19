@@ -14,6 +14,7 @@
 // Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.js.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { createElement as el, ensureStyle } from './dom.js';
 import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js';
 import { uiIconSVG } from './uiIcons.js';
 import { maskIcon, iconUrl } from './icons.js';
@@ -338,22 +339,6 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
   .cot-si-diag{display:none;}
 }
 `;
-
-function ensureStyle(id, css) {
-  if (!document.getElementById(id)) {
-    const s = document.createElement('style');
-    s.id = id;
-    s.textContent = css;
-    document.head.appendChild(s);
-  }
-}
-
-function el(tag, cls, parent) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (parent) parent.appendChild(e);
-  return e;
-}
 
 /** Classify a HitEvent into the WoT-mod result badge. */
 function classify(ev) {

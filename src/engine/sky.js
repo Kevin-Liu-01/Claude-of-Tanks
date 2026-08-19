@@ -707,29 +707,33 @@ function sampleHorizonColor(renderer, sunDir, preset = DEFAULT_PRESET) {
   cam.updateMatrixWorld();
 
   const prevTarget = renderer.getRenderTarget();
-  renderer.setRenderTarget(rt);
-  renderer.render(sampleScene, cam);
-  renderer.setRenderTarget(prevTarget);
-
   const row = new Uint8Array(HORIZON_RT_SIZE * 4);
-  renderer.readRenderTargetPixels(rt, 0, HORIZON_RT_SIZE >> 1, HORIZON_RT_SIZE, 1, row);
-
+  let targetRestored = false;
   let r = 0;
   let g = 0;
   let b = 0;
-  for (let i = 0; i < HORIZON_RT_SIZE; i++) {
-    r += row[i * 4];
-    g += row[i * 4 + 1];
-    b += row[i * 4 + 2];
-  }
-  const inv = 1 / (HORIZON_RT_SIZE * 255);
-  r *= inv;
-  g *= inv;
-  b *= inv;
+  try {
+    renderer.setRenderTarget(rt);
+    renderer.render(sampleScene, cam);
+    renderer.setRenderTarget(prevTarget);
+    targetRestored = true;
+    renderer.readRenderTargetPixels(rt, 0, HORIZON_RT_SIZE >> 1, HORIZON_RT_SIZE, 1, row);
 
-  rt.dispose();
-  sampleSky.geometry.dispose();
-  sampleSky.material.dispose();
+    for (let i = 0; i < HORIZON_RT_SIZE; i++) {
+      r += row[i * 4];
+      g += row[i * 4 + 1];
+      b += row[i * 4 + 2];
+    }
+    const inv = 1 / (HORIZON_RT_SIZE * 255);
+    r *= inv;
+    g *= inv;
+    b *= inv;
+  } finally {
+    if (!targetRestored) renderer.setRenderTarget(prevTarget);
+    rt.dispose();
+    sampleSky.geometry.dispose();
+    sampleSky.material.dispose();
+  }
 
   // Guard the degenerate case (context hiccup → black readback): fall back to
   // the hand-tuned preset rather than fogging the world to black.

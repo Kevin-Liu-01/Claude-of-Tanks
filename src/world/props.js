@@ -27,6 +27,7 @@ import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
 import { hedgehogBeamSpecs, sampleDiscGround, sampleObbGround } from './propPlacement.js';
+import { box, gablePrism, jitterUV, scaleUV, slabBox } from './propGeometry.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -221,30 +222,6 @@ function makeStraw(noi, anisotropy, tone = null) {
   return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 2.4, anisotropy) };
 }
 
-// ---------------------------------------------------------------------------
-// Geometry helpers
-// ---------------------------------------------------------------------------
-
-function scaleUV(geo, su, sv) {
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
-  return geo;
-}
-
-// per-part random UV phase + mild scale jitter: with RepeatWrapping this
-// de-syncs the texture grid between wall segments / buildings so no two
-// surfaces tile identically. The scale term (r5) varies the apparent tile
-// format per part — identical-pitch roof tile rows were striping in visible
-// registration across whole rooftops.
-function jitterUV(geo, rng) {
-  const uv = geo.attributes.uv;
-  if (!uv) return geo;
-  const ou = rng() * 7.31, ov = rng() * 5.17;
-  const su = 0.86 + rng() * 0.30, sv = 0.86 + rng() * 0.30;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
-  return geo;
-}
-
 function _mustReplace(src, anchor, replacement) {
   const out = src.replace(anchor, replacement);
   if (out === src) throw new Error(`world/props: shader anchor missing: ${anchor}`);
@@ -273,43 +250,6 @@ function makeGrimeTexture(noi, anisotropy) {
     px[j + 2] = (c2 * 0.5 + 0.5) * 255; px[j + 3] = 255;
   }
   return toTexture(px, s, { anisotropy });
-}
-
-function box(w, h, d, uvScale = 0.5) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  return scaleUV(g, Math.max(w, d) * uvScale, h * uvScale);
-}
-
-// r2 terrain_environment: per-face-correct UV box for THIN SLABS (roof
-// planes, sidewalks). box() scales V by the box HEIGHT on every face — on a
-// 0.12 m-thick roof slab the top face's V axis actually runs along the slab
-// LENGTH, so the tile texture was stretched ~200:1 into featureless orange
-// streaks (the critique's "untextured flat orange planes"). BoxGeometry face
-// order: +x,-x,+y,-y,+z,-z, 4 verts each — scale each face by its true
-// world dimensions so tile rows resolve on the visible plane.
-function slabBox(w, h, d, uvScale = 0.5) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  const uv = g.attributes.uv;
-  const su = [d, d, w, w, w, w], sv = [h, h, d, d, h, h];
-  for (let f = 0; f < 6; f++) {
-    for (let k = 0; k < 4; k++) {
-      const i = f * 4 + k;
-      uv.setXY(i, uv.getX(i) * su[f] * uvScale, uv.getY(i) * sv[f] * uvScale);
-    }
-  }
-  return g;
-}
-
-// triangular gable prism: width w, height h, thickness t (along z)
-function gablePrism(w, h, t) {
-  const shape = new THREE.Shape();
-  shape.moveTo(-w / 2, 0);
-  shape.lineTo(w / 2, 0);
-  shape.lineTo(0, h);
-  shape.closePath();
-  const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
-  g.translate(0, 0, -t / 2);
-  return scaleUV(g, 0.4, 0.4);
 }
 
 // ---------------------------------------------------------------------------

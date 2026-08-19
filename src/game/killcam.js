@@ -72,6 +72,7 @@
  */
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
+import { createElement as el, ensureStyle } from '../ui/dom.js';
 import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.js';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec } from '../vehicles/specs.js';
@@ -977,22 +978,6 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-leader{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 `;
 
-function ensureStyle() {
-  if (!document.getElementById('cot-kc-style')) {
-    const st = document.createElement('style');
-    st.id = 'cot-kc-style';
-    st.textContent = KC_CSS;
-    document.head.appendChild(st);
-  }
-}
-
-function el(tag, cls, parent) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (parent) parent.appendChild(n);
-  return n;
-}
-
 /** Cylinder mesh between two points (local space of `parent`). */
 function tube(a, b, radius, mat, parent, disposables) {
   _s.copy(b).sub(a);
@@ -1109,7 +1094,7 @@ export function createKillCam(deps) {
   function ensureDom() {
     if (dom) return dom;
     ensureFonts();
-    ensureStyle();
+    ensureStyle('cot-kc-style', KC_CSS);
     const root = el('div', 'cot-kc');
     document.body.appendChild(root);
     el('div', 'cot-kc-grade', root); // death-view desat + vignette (class 'grade')

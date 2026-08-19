@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.js';
 import { RAIL_BUILDERS } from './railKit.js'; // maps r1: railyard + coastal kits
+import { gablePrism as createGablePrism } from '../propGeometry.js';
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --
 function box(w, h, d, uvScale = 0.5) {
@@ -22,19 +23,7 @@ function box(w, h, d, uvScale = 0.5) {
   return g;
 }
 
-function gablePrism(w, h, t) {
-  // triangular gable slab: width w, rise h, thickness t (matches props.js look)
-  const shape = new THREE.Shape();
-  shape.moveTo(-w / 2, 0);
-  shape.lineTo(w / 2, 0);
-  shape.lineTo(0, h);
-  shape.closePath();
-  const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
-  g.translate(0, 0, -t / 2);
-  const uv = g.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.5, uv.getY(i) * 0.5);
-  return g;
-}
+const gablePrism = (width, height, depth) => createGablePrism(width, height, depth, 0.5);
 
 function pushParts(buckets, parts) {
   for (const key of Object.keys(parts)) {

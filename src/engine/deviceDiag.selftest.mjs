@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 
 globalThis.window = { __GL_DIAG: { errors: [] } };
 
-const { diagUiRequested, runSceneBlackWatchdog } = await import('./deviceDiag.js');
+const {
+  diagUiRequested, reclaimShadows, runDeviceDiag, runSceneBlackWatchdog,
+} = await import('./deviceDiag.js');
 const { debugModeRequested } = await import('../ui/perfHud.js');
 
 assert.equal(diagUiRequested('?diag'), true);
@@ -39,4 +42,53 @@ assert.equal(currentTarget, originalTarget,
 assert.equal(result.rescued, false);
 assert.ok(window.__GL_DIAG.errors.some((message) => message.includes('watchdog threw')));
 
-console.log('deviceDiag.selftest: explicit UI gates + watchdog target restore passed');
+let disposedGeometries = 0;
+let disposedMaterials = 0;
+const disposeGeometry = THREE.BufferGeometry.prototype.dispose;
+const disposeMaterial = THREE.Material.prototype.dispose;
+THREE.BufferGeometry.prototype.dispose = function disposeCheckedGeometry() {
+  disposedGeometries++;
+  return disposeGeometry.call(this);
+};
+THREE.Material.prototype.dispose = function disposeCheckedMaterial() {
+  disposedMaterials++;
+  return disposeMaterial.call(this);
+};
+try {
+  currentTarget = originalTarget;
+  const diagResult = runDeviceDiag(renderer);
+  assert.equal(diagResult.basic, false);
+  assert.equal(currentTarget, originalTarget,
+    'boot diagnostic readback failure restores the display render target');
+  assert.ok(disposedGeometries > 0 && disposedMaterials > 0,
+    'boot diagnostic readback failure disposes temporary scene resources');
+} finally {
+  THREE.BufferGeometry.prototype.dispose = disposeGeometry;
+  THREE.Material.prototype.dispose = disposeMaterial;
+}
+
+const reclaimTarget = { name: 'screen' };
+let reclaimCurrentTarget = reclaimTarget;
+const probeTargets = new Set();
+const reclaimRenderer = {
+  shadowMap: { enabled: false },
+  getRenderTarget: () => reclaimCurrentTarget,
+  setRenderTarget: (target) => {
+    reclaimCurrentTarget = target;
+    if (target !== reclaimTarget) probeTargets.add(target);
+  },
+  clear() {},
+  render() {},
+  readRenderTargetPixels(_target, _x, _y, _width, _height, buffer) { buffer.fill(12); },
+};
+const reclaimScene = { traverse() {} };
+assert.deepEqual(reclaimShadows(reclaimRenderer, reclaimScene, {}), {
+  reclaimed: true,
+  reason: 'healthy',
+});
+assert.equal(reclaimCurrentTarget, reclaimTarget,
+  'shadow reclaim restores the display render target');
+assert.equal(probeTargets.size, 1,
+  'shadow reclaim reuses one GPU readback target for all measurements');
+
+console.log('deviceDiag.selftest: UI gates + reusable readback ownership passed');

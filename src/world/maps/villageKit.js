@@ -9,40 +9,7 @@
 // foundation course (the props.js grounding precedent).
 
 import * as THREE from 'three';
-
-// --- tiny local twins of the props.js geometry helpers (not exported there) --
-function scaleUV(geo, su, sv) {
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
-  return geo;
-}
-function box(w, h, d, uvScale = 0.5) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  return scaleUV(g, Math.max(w, d) * uvScale, h * uvScale);
-}
-// thin-slab box with per-face-correct UVs (props.js slabBox twin — roof planes)
-function slabBox(w, h, d, uvScale = 0.5) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  const uv = g.attributes.uv;
-  const su = [d, d, w, w, w, w], sv = [h, h, d, d, h, h];
-  for (let f = 0; f < 6; f++) {
-    for (let k = 0; k < 4; k++) {
-      const i = f * 4 + k;
-      uv.setXY(i, uv.getX(i) * su[f] * uvScale, uv.getY(i) * sv[f] * uvScale);
-    }
-  }
-  return g;
-}
-function gablePrism(w, h, t) {
-  const shape = new THREE.Shape();
-  shape.moveTo(-w / 2, 0);
-  shape.lineTo(w / 2, 0);
-  shape.lineTo(0, h);
-  shape.closePath();
-  const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
-  g.translate(0, 0, -t / 2);
-  return scaleUV(g, 0.4, 0.4);
-}
+import { box, gablePrism, scaleUV, slabBox } from '../propGeometry.js';
 function pushParts(buckets, parts) {
   for (const key of Object.keys(parts)) {
     if (!buckets[key]) continue;

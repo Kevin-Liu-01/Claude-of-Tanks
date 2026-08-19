@@ -28,6 +28,7 @@
  */
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { createElement as el, ensureStyle } from './dom.js';
 import { iconUrl, maskIcon } from './icons.js';
 import { uiIconSVG } from './uiIcons.js';
 import { getSpec } from '../vehicles/specs.js';
@@ -310,13 +311,6 @@ export function summarizeTeam(rows = []) {
   }, { total: 0, alive: 0, kills: 0, damage: 0 });
 }
 
-function el(tag, cls, parent) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (parent) parent.appendChild(e);
-  return e;
-}
-
 /**
  * Create the end screen controller.
  * @param {{on:Function,emit:Function}} bus game event bus
@@ -326,12 +320,7 @@ function el(tag, cls, parent) {
  */
 export function createEndScreen(bus, host) {
   ensureFonts();
-  if (!document.getElementById('cot-es-style')) {
-    const s = document.createElement('style');
-    s.id = 'cot-es-style';
-    s.textContent = ES_CSS;
-    document.head.appendChild(s);
-  }
+  ensureStyle('cot-es-style', ES_CSS);
   host.classList.add('cot-es');
   host.setAttribute('role', 'dialog');
   host.setAttribute('aria-modal', 'true');

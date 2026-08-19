@@ -47,6 +47,22 @@ function hexToRgb(hex) {
 const rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const scale3 = (c, s) => [c[0] * s, c[1] * s, c[2] * s];
+const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+
+function capCanvasLuma(ctx, size, maxLuma) {
+  const image = ctx.getImageData(0, 0, size, size);
+  const data = image.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const pixelLuma = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    if (pixelLuma > maxLuma) {
+      const scale = maxLuma / pixelLuma;
+      data[i] *= scale;
+      data[i + 1] *= scale;
+      data[i + 2] *= scale;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+}
 
 // Irregular blob path around (x,y) with radius r.
 function blobPath(ctx, rng, x, y, r, lobes = 7, jitter = 0.45) {
@@ -820,20 +836,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // mottle lifts pushed bright texels ~7% over the authored whitewash band
     // ('#99a1a2' since the r5 cooling), which the warm garage key then blew
     // into cream — no texel may exceed the authored base luma +4%.
-    {
-      const lumaOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-      const maxL = lumaOf(base) * 1.04;
-      const img = ctx.getImageData(0, 0, S, S);
-      const dd = img.data;
-      for (let i = 0; i < dd.length; i += 4) {
-        const l = 0.2126 * dd[i] + 0.7152 * dd[i + 1] + 0.0722 * dd[i + 2];
-        if (l > maxL) {
-          const k = maxL / l;
-          dd[i] *= k; dd[i + 1] *= k; dd[i + 2] *= k;
-        }
-      }
-      ctx.putImageData(img, 0, 0);
-    }
+    capCanvasLuma(ctx, S, luma(base) * 1.04);
   } else if (scheme === 'fleck' && patches.length) {
     // Flecktarn (camo_spotting r2 legibility rework): the r9 specks (6-22 px,
     // ~12% total coverage) were pedestal-illegible on the Tiger — they read
@@ -874,20 +877,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // composited-base luma ceiling: no texel may end up brighter than the
     // authored weather tone (+4%) — the r9 field drifted far lighter than
     // the authored base under the tonal/mottle lifts.
-    {
-      const lumaOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-      const maxL = Math.max(lumaOf(base), lumaOf(weather)) * 1.04;
-      const img = ctx.getImageData(0, 0, S, S);
-      const dd = img.data;
-      for (let i = 0; i < dd.length; i += 4) {
-        const l = 0.2126 * dd[i] + 0.7152 * dd[i + 1] + 0.0722 * dd[i + 2];
-        if (l > maxL) {
-          const k = maxL / l;
-          dd[i] *= k; dd[i + 1] *= k; dd[i + 2] *= k;
-        }
-      }
-      ctx.putImageData(img, 0, 0);
-    }
+    capCanvasLuma(ctx, S, Math.max(luma(base), luma(weather)) * 1.04);
     // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'digital' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
@@ -1153,20 +1143,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       path.lineTo(x0 + (rng() - 0.5) * 6, y0 + len);
       strokeWrapped(ctx, S, path, rgb(tone, 0.10 + rng() * 0.12), 1.5 + rng() * 4);
     }
-    {
-      const lumaOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-      const maxL = lumaOf(base) * 1.04;
-      const img = ctx.getImageData(0, 0, S, S);
-      const dd = img.data;
-      for (let i = 0; i < dd.length; i += 4) {
-        const l = 0.2126 * dd[i] + 0.7152 * dd[i + 1] + 0.0722 * dd[i + 2];
-        if (l > maxL) {
-          const k = maxL / l;
-          dd[i] *= k; dd[i + 1] *= k; dd[i + 2] *= k;
-        }
-      }
-      ctx.putImageData(img, 0, 0);
-    }
+    capCanvasLuma(ctx, S, luma(base) * 1.04);
   } else if (scheme === 'caunter' && patches.length) {
     // British Caunter-family stone scheme (camo r8): PARALLEL hard-edged
     // diagonal bands, all sharing the vehicle's one angle — the disciplined
