@@ -1,8 +1,9 @@
 // src/game/garageDressing.js — WORKSHOP SET DRESSING for the garage hangar
 // (garage-scene r1). The bay read as a clean showroom: podium + a handful of
 // crates. This module turns it into a WORKING tank workshop — benches with
-// tools, pegboards, shell racks, spare gun barrels, road-wheel/track stacks,
-// a spare turret on blocks, oil drums, jerrycans, welding cart with a faint
+// tools, pegboards, shell racks, first-party modern gun/road-wheel/track
+// assemblies, a T-90M turret on blocks, a K2 hull on its side, Relikt ERA,
+// serviced M2/DShK mounts, oil drums, jerrycans, welding cart with a faint
 // arc glow, cable reels, an engine hoist with a hanging engine block, a big
 // wall fan, extra hanging work lamps — and the hero feature: TWO roster tanks
 // visibly under repair in the corner bays (one on jack stands with its turret
@@ -12,8 +13,9 @@
 //  - 100% procedural (canvas textures + primitives + tankFactory procedural
 //    builds) — no downloads, no GLB jobs, shares the stage's texture language
 //    via the helpers exported from ui/garageStage.js.
-//  - BUILDS IN CHUNKS: main.js pumps static clutter → bay A tank → bay B tank
-//    behind the boot veil, with a painted frame between chunks. The complete
+//  - BUILDS IN CHUNKS: main.js pumps static clutter → repair bays → modern
+//    component displays behind the boot veil, with a painted frame between
+//    chunks. The complete
 //    workshop is present when the garage becomes interactive, so no later
 //    repair-bay build can interrupt a tank switch.
 //  - PEDESTAL READABILITY IS SACRED: everything sits outside the painted
@@ -31,13 +33,19 @@ import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.js';
 import { createTank } from '../vehicles/tankFactory.js';
+import { DECOR_KITS } from '../vehicles/decorations.js';
 
 // Repair-bay residents use the same first-party builders as playable tanks;
 // the lighter proceduralOnly option skips cosmetic decoration for background
 // dressing while retaining the authored silhouette and materials.
 const BAY_A_SPEC = 't90a_burlak';
 const BAY_B_SPEC = 'm1a2';
+const SALVAGE_TURRET_SPEC = 't90m';
+const SALVAGE_HULL_SPEC = 'k2';
 const BAY_TANK_OPTS = { quality: 'ai', proceduralOnly: true };
+const MODERN_COMPONENT_SOURCES = Object.freeze([
+  BAY_A_SPEC, BAY_B_SPEC, SALVAGE_TURRET_SPEC, SALVAGE_HULL_SPEC,
+]);
 
 /**
  * Build the (initially empty) workshop dressing rig.
@@ -50,6 +58,7 @@ export function createGarageDressing(engineCtx, pos) {
   const group = new THREE.Group();
   group.name = 'garage_dressing';
   group.position.copy(pos);
+  group.userData.modernComponentSources = MODERN_COMPONENT_SOURCES;
 
   // Establish the dressing's final light set before the boot warm renders the
   // hero. Adding this light from a later build chunk changes Three's lighting
@@ -250,8 +259,6 @@ export function createGarageDressing(engineCtx, pos) {
     lampShade: track(new THREE.CylinderGeometry(0.14, 0.72, 0.52, 18)),
     lampGlow: track(new THREE.CylinderGeometry(0.56, 0.56, 0.05, 18)),
     lampCable: track(new THREE.CylinderGeometry(0.018, 0.018, 1, 6)),
-    roadWheel: track(new THREE.CylinderGeometry(0.38, 0.38, 0.16, 18)),
-    trackLink: track(new THREE.BoxGeometry(0.34, 0.075, 0.16)),
     jerrycan: track(new THREE.BoxGeometry(0.34, 0.5, 0.17)),
   };
 
@@ -365,6 +372,82 @@ export function createGarageDressing(engineCtx, pos) {
     put(track(new THREE.TorusGeometry(0.07, 0.014, 6, 12, Math.PI * 1.3)), mat.rubber, 0.06, 0.16, 0, 0, Math.PI / 2, 0.6, 1, e, false);
   }
 
+  /** Bounds only meshes that are actually visible through their parent chain. */
+  function visibleWorldBounds(root) {
+    const bounds = new THREE.Box3();
+    const local = new THREE.Box3();
+    root.updateMatrixWorld(true);
+    root.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      if (o.userData?.authoredShadowProxy || o.material?.colorWrite === false) return;
+      for (let p = o; p && p !== root.parent; p = p.parent) if (!p.visible) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      local.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+      bounds.union(local);
+    });
+    return bounds;
+  }
+
+  /** Seat the visible portion of a real vehicle build onto a shop support. */
+  function seatVisibleRoot(root, supportY) {
+    const bounds = visibleWorldBounds(root);
+    if (!bounds.isEmpty()) {
+      root.position.y += supportY - bounds.min.y;
+      root.updateMatrixWorld(true);
+    }
+  }
+
+  /** Mark a sourced component for browser QA and future garage audits. */
+  function markModernPart(object, sourceVehicleId, component) {
+    object.userData.sourceVehicleId = sourceVehicleId;
+    object.userData.sourceEra = 'modern';
+    object.userData.component = component;
+    object.name = `dressing_${sourceVehicleId}_${component}`;
+    return object;
+  }
+
+  /** Copy an articulated gun rig while retaining its first-party geometry. */
+  function placeGunRig(source, sourceVehicleId, x, y, z, scale = 1) {
+    if (!source) return null;
+    const holder = markModernPart(new THREE.Group(), sourceVehicleId, 'gun_assembly');
+    holder.position.set(x, y, z);
+    holder.rotation.y = Math.PI / 2;
+    holder.scale.setScalar(scale);
+    const gun = source.clone(true);
+    gun.position.set(0, 0, 0);
+    gun.rotation.set(0, 0, 0);
+    gun.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+    });
+    holder.add(gun);
+    group.add(holder);
+    return holder;
+  }
+
+  /** Build one complete service MG from the fleet decoration kit. */
+  function serviceMachineGun(parent, variant, shield, x, seed) {
+    const mg = markModernPart(new THREE.Group(),
+      variant === 'dshk' ? SALVAGE_TURRET_SPEC : BAY_B_SPEC,
+      variant === 'dshk' ? 'dshk_service_mount' : 'm2_service_mount');
+    mg.position.set(x, 1.02, 0);
+    // Side-on against the north wall: the full receiver, feed box and barrel
+    // read as weapons instead of three short end-on posts.
+    mg.rotation.y = Math.PI / 2;
+    mg.scale.setScalar(1.18);
+    const parts = DECOR_KITS.aamg({ rng: mulberry32(seed), v: variant, shield, ring: false });
+    for (const part of parts) {
+      const material = part.mat === 'kit' ? mat.olive : mat.oily;
+      const mesh = new THREE.Mesh(track(part.geo), material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mg.add(mesh);
+    }
+    parent.add(mg);
+    return mg;
+  }
+
   const chunks = [];
 
   // ==========================================================================
@@ -426,7 +509,8 @@ export function createGarageDressing(engineCtx, pos) {
     wallSign('FLAMMABLE', 22.9, 3.4, 8.1, -Math.PI / 2, 1.7, 0.85);
 
     // --- SOUTH WALL (right of frame from the hero cam) ----------------------
-    // spare gun barrels on timber X-trestles
+    // Timber X-trestles for the real T-90M gun rig built in the modern
+    // component chunk below.
     {
       const tre = track(new THREE.BoxGeometry(0.1, 1.15, 0.12));
       for (const tx of [4.2, 7.6]) {
@@ -436,85 +520,10 @@ export function createGarageDressing(engineCtx, pos) {
         }
         put(track(new THREE.BoxGeometry(0.12, 0.1, 0.7)), mat.timberDark, tx, 0.95, 21.5, 0, 0, 0, 1);
       }
-      const barrelG = track(new THREE.CylinderGeometry(0.075, 0.11, 5.4, 12));
-      for (const [by, bz, s] of [[1.1, 21.42, 1], [1.1, 21.62, 0.92], [1.32, 21.52, 0.85]]) {
-        put(barrelG, mat.oily, 5.9, by, bz, 0, 0, Math.PI / 2, s);
-      }
-      // muzzle brake on the top barrel
-      put(track(new THREE.CylinderGeometry(0.13, 0.13, 0.42, 10)), mat.oily, 8.25, 1.32, 21.52, 0, 0, Math.PI / 2);
       workLamp(5.9, 20.7, 5);
     }
-    // road-wheel stacks + one leaning wheel
-    {
-      const wheels = new THREE.InstancedMesh(G.roadWheel, mat.steelMid, 9);
-      const tires = new THREE.InstancedMesh(track(new THREE.TorusGeometry(0.38, 0.055, 8, 20)), mat.rubber, 9);
-      const M4 = new THREE.Matrix4();
-      const E = new THREE.Euler();
-      let i = 0;
-      for (const [sx, sz, n] of [[1.5, 21.5, 4], [2.5, 21.3, 3]]) {
-        for (let k = 0; k < n; k++) {
-          M4.makeTranslation(sx, 0.1 + k * 0.175, sz);
-          wheels.setMatrixAt(i, M4);
-          E.set(Math.PI / 2, 0, 0);
-          M4.makeRotationFromEuler(E).setPosition(sx, 0.1 + k * 0.175, sz);
-          tires.setMatrixAt(i, M4);
-          i++;
-        }
-      }
-      // leaning pair against the wall (near-vertical: axis almost horizontal)
-      for (const lx of [3.3, 3.62]) {
-        E.set(Math.PI / 2 - 0.2, 0.25, 0);
-        M4.makeRotationFromEuler(E).setPosition(lx, 0.42, 22.5);
-        wheels.setMatrixAt(i, M4);
-        E.set(Math.PI - 0.2, 0.25, 0);
-        M4.makeRotationFromEuler(E).setPosition(lx, 0.42, 22.5);
-        tires.setMatrixAt(i, M4);
-        i++;
-      }
-      wheels.count = tires.count = i;
-      wheels.castShadow = tires.castShadow = true;
-      group.add(wheels, tires);
-      track(wheels); track(tires);
-    }
-    // track-link pile on a pallet
-    {
-      put(track(new THREE.BoxGeometry(1.35, 0.11, 1.0)), mat.timberDark, -1.9, 0.06, 21.2, 0.12);
-      const links = new THREE.InstancedMesh(G.trackLink, mat.oily, 20);
-      const M4 = new THREE.Matrix4();
-      const E = new THREE.Euler();
-      for (let i = 0; i < 20; i++) {
-        E.set(0, rng() * 0.8 - 0.4 + 0.12, (rng() - 0.5) * 0.2);
-        M4.makeRotationFromEuler(E).setPosition(
-          -2.25 + (i % 3) * 0.38 + (rng() - 0.5) * 0.06,
-          0.16 + Math.floor(i / 6) * 0.085,
-          20.9 + (Math.floor(i / 3) % 2) * 0.32 + (rng() - 0.5) * 0.06,
-        );
-        links.setMatrixAt(i, M4);
-      }
-      links.castShadow = true;
-      group.add(links);
-      track(links);
-    }
-    // spare turret on timber blocks (generic cast dome + gun stub)
-    {
-      const t = new THREE.Group();
-      t.position.set(-6.6, 0, 20.5);
-      t.rotation.y = 2.4;
-      group.add(t);
-      const blockG = track(new THREE.BoxGeometry(0.5, 0.42, 0.5));
-      for (const [bx, bz] of [[-0.75, -0.6], [0.75, -0.6], [-0.75, 0.6], [0.75, 0.6]]) {
-        put(blockG, mat.timber, bx, 0.21, bz, 0, 0, 0, 1, t);
-      }
-      const dome = new THREE.Mesh(track(new THREE.SphereGeometry(1.05, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2)), mat.olive);
-      dome.scale.set(1.15, 0.62, 1);
-      dome.position.y = 0.48;
-      dome.castShadow = dome.receiveShadow = true;
-      t.add(dome);
-      put(track(new THREE.CylinderGeometry(1.02, 1.08, 0.18, 20)), mat.olive, 0, 0.44, 0, 0, 0, 0, [1.15, 1, 1], t);
-      put(track(new THREE.BoxGeometry(0.5, 0.34, 0.3)), mat.olive, 1.2, 0.72, 0, 0, 0, 0, 1, t); // mantlet
-      put(track(new THREE.CylinderGeometry(0.075, 0.09, 2.6, 10)), mat.oily, 2.6, 0.72, 0, 0, 0, Math.PI / 2, 1, t);
-      put(track(new THREE.CylinderGeometry(0.16, 0.18, 0.22, 12)), mat.steelDark, 0.35, 1.14, 0.3, 0, 0, 0, 1, t); // cupola stub
-    }
+    // All spare armor assemblies are first-party modern-fleet geometry and
+    // are added together in buildModernComponents after the repair bays.
     // big workshop wall fan (static) + guard
     {
       const f = new THREE.Group();
@@ -654,14 +663,8 @@ export function createGarageDressing(engineCtx, pos) {
       put(track(new THREE.BoxGeometry(0.66, 0.52, 0.48)), mat.oily, 0, 0, 0, 0, 0, 0, 1, eng);
       put(track(new THREE.BoxGeometry(0.6, 0.17, 0.32)), mat.steelMid, 0, 0.34, 0, 0, 0, -0.05, 1, eng);
     }
-    // NW: tarp-covered crate stack beside the existing crates
-    {
-      put(track(new THREE.BoxGeometry(1.6, 1.1, 1.2)), mat.olive, -16.6, 0.55, -19.9, 0.25);
-      const tarp = put(track(new THREE.BoxGeometry(1.8, 0.16, 1.4)),
-        track(shadowMat(new THREE.MeshStandardMaterial({ color: 0x3f4438, roughness: 0.92, metalness: 0 }))),
-        -16.6, 1.16, -19.9, 0.25);
-      tarp.rotation.z = 0.04;
-    }
+    // The NW floor band stays open for the real K2 side-hull teardown in the
+    // modern component chunk.
 
     // --- FLOOR: bay outlines, oil, skids, painted spur lane ------------------
     const outlineMat = track(new THREE.MeshBasicMaterial({
@@ -885,6 +888,241 @@ export function createGarageDressing(engineCtx, pos) {
     workLamp(15.9, 16.6, 0, 7.4); // fixture only — the pool above is its throw
   });
 
+  // ==========================================================================
+  // CHUNK 4 — T-90M COMPONENT BAY (south wall): the complete authored turret,
+  // its gun assembly on the existing trestles, and real Relikt tile geometry
+  // arranged for inspection. These are extracted from a real fleet build;
+  // there is no generic "tank-looking" substitute in this display.
+  // ==========================================================================
+  chunks.push(function buildT90mComponents() {
+    const vis = createTank(SALVAGE_TURRET_SPEC, engineCtx, {
+      camoSeed: 906, ...BAY_TANK_OPTS,
+    });
+    tankVisuals.push(vis);
+    const hull = vis.root.getObjectByName('rig_hull');
+    const turret = vis.root.getObjectByName('rig_turret');
+    const gun = vis.root.getObjectByName('rig_gun');
+    if (hull) hull.visible = false;
+    vis.root.traverse((o) => {
+      if (o.userData?.authoredShadowProxy) o.visible = false;
+    });
+    markModernPart(vis.root, SALVAGE_TURRET_SPEC, 'turret_cradle');
+    vis.root.position.set(-6.6, 0, 20.5);
+    vis.root.rotation.y = 2.4;
+    group.add(vis.root);
+    dimVisual(vis, 0.50);
+    seatVisibleRoot(vis.root, 0.50);
+
+    // Four broad timber crib blocks and cross-bearers visibly carry the
+    // turret ring; the tank root above contains only the real turret subtree.
+    const cradle = markModernPart(new THREE.Group(), SALVAGE_TURRET_SPEC, 'turret_support');
+    cradle.position.set(-6.6, 0, 20.5);
+    cradle.rotation.y = 2.4;
+    group.add(cradle);
+    const blockG = track(new THREE.BoxGeometry(0.68, 0.46, 0.68));
+    for (const [bx, bz] of [[-1.05, -0.84], [1.05, -0.84], [-1.05, 0.84], [1.05, 0.84]]) {
+      put(blockG, mat.timber, bx, 0.23, bz, 0, 0, 0, 1, cradle);
+    }
+    const bearerG = track(new THREE.BoxGeometry(2.85, 0.16, 0.28));
+    put(bearerG, mat.timberDark, 0, 0.49, -0.70, 0, 0, 0, 1, cradle);
+    put(bearerG, mat.timberDark, 0, 0.49, 0.70, 0, 0, 0, 1, cradle);
+
+    // Reuse the exact fleet gun hierarchy (mantlet, recoil housing, barrel,
+    // bore and muzzle), laid crosswise over the timber stands built in core.
+    placeGunRig(gun, SALVAGE_TURRET_SPEC, 2.75, 1.08, 21.39, 0.92);
+
+    // The native T-90M profile merges its seven unequal Relikt cassettes into
+    // the turretCloth draw bucket. Recreate those exact authored dimensions
+    // here (profiles/t90.js, "Proryv Relikt fan") and reuse that bucket's
+    // actual material; this preserves the real cadence instead of reverting
+    // to the old one-size-fits-all generic tile.
+    const reliktMaterial = turret?.getObjectByName('turretCloth')?.material || mat.olive;
+    const reliktDimensions = [
+      [0.32, 0.27, 0.39], [0.38, 0.31, 0.43], [0.43, 0.34, 0.46],
+      [0.47, 0.35, 0.45], [0.48, 0.34, 0.43], [0.40, 0.31, 0.40],
+      [0.28, 0.27, 0.34],
+    ];
+    const rack = markModernPart(new THREE.Group(), SALVAGE_TURRET_SPEC, 'relikt_service_rack');
+    rack.position.set(-11.2, 0, 21.15);
+    group.add(rack);
+    put(track(new THREE.BoxGeometry(2.7, 0.12, 0.90)), mat.timberDark, 0, 0.06, 0, 0, 0, 0, 1, rack);
+    const uprightG = track(new THREE.BoxGeometry(0.06, 1.52, 0.06));
+    const railG = track(new THREE.BoxGeometry(2.35, 0.06, 0.06));
+    for (const x of [-1.15, 1.15]) put(uprightG, mat.steelMid, x, 0.82, -0.30, 0, 0, 0, 1, rack);
+    for (const y of [0.25, 0.76, 1.28, 1.56]) put(railG, mat.steelMid, 0, y, -0.30, 0, 0, 0, 1, rack);
+    const cassetteG = track(new THREE.BoxGeometry(1, 1, 1));
+    const cassettes = markModernPart(
+      new THREE.InstancedMesh(cassetteG, reliktMaterial, 21),
+      SALVAGE_TURRET_SPEC, 'relikt_cassettes',
+    );
+    cassettes.userData.sourceGeometry = 'profiles/t90.js:Proryv Relikt fan';
+    const M4 = new THREE.Matrix4();
+    const Q = new THREE.Quaternion();
+    const P = new THREE.Vector3();
+    const S = new THREE.Vector3();
+    let index = 0;
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 7; col++) {
+        const [w, h, d] = reliktDimensions[col];
+        P.set(-1.02 + col * 0.34, 0.39 + row * 0.43, -0.34);
+        S.set(w, h, d);
+        M4.compose(P, Q, S);
+        cassettes.setMatrixAt(index++, M4);
+      }
+    }
+    cassettes.instanceMatrix.needsUpdate = true;
+    cassettes.castShadow = cassettes.receiveShadow = true;
+    rack.add(cassettes);
+    track(cassettes);
+    wallSign('T-90M / RELIKT', -8.7, 3.25, 22.86, Math.PI, 2.8, 0.9);
+  });
+
+  // ==========================================================================
+  // CHUNK 5 — K2 TEARDOWN + MODERN WEAPON RACK (north/west walls): an actual
+  // K2 hull rolled onto a service cradle, its own wheels and track shoes in
+  // orderly stacks, plus fleet M2/DShK fittings on a dedicated service table.
+  // ==========================================================================
+  chunks.push(function buildK2Components() {
+    const vis = createTank(SALVAGE_HULL_SPEC, engineCtx, {
+      camoSeed: 172, ...BAY_TANK_OPTS,
+    });
+    tankVisuals.push(vis);
+    const hull = vis.root.getObjectByName('rig_hull');
+    const turret = vis.root.getObjectByName('rig_turret');
+    const tires = vis.root.getObjectByName('gearRoadWheelTires');
+    const discs = vis.root.getObjectByName('gearRoadWheelDiscs')
+      || vis.root.getObjectByName('gearRoadWheelDiscsRecessed');
+    const pads = vis.root.getObjectByName('gearTrackPads');
+    if (turret) turret.visible = false;
+    if (hull) {
+      const removedGear = [];
+      hull.traverse((o) => {
+        if (o.userData?.runningGear
+            || /^(gear|hullRunningGear|k2_track_rubber)/.test(o.name || '')) {
+          removedGear.push(o);
+        }
+      });
+      // Several running-gear layers live below THREE.LOD nodes whose update()
+      // rewrites child.visible every frame. Detach them from this stripped
+      // display hull so they cannot reappear; the source visual still owns
+      // and disposes the shared wheel/shoe geometries used by the loose parts.
+      for (const o of removedGear) o.removeFromParent();
+    }
+    vis.root.traverse((o) => {
+      if (o.userData?.authoredShadowProxy) o.visible = false;
+    });
+    markModernPart(vis.root, SALVAGE_HULL_SPEC, 'side_hull');
+    vis.root.position.set(-16.25, 0, -16.85);
+    vis.root.rotation.set(0, 0.35, THREE.MathUtils.degToRad(68));
+    group.add(vis.root);
+    dimVisual(vis, 0.48);
+    seatVisibleRoot(vis.root, 0.20);
+
+    const cradle = markModernPart(new THREE.Group(), SALVAGE_HULL_SPEC, 'hull_support');
+    cradle.position.set(-16.25, 0, -16.85);
+    cradle.rotation.y = 0.35;
+    group.add(cradle);
+    const beamG = track(new THREE.BoxGeometry(2.55, 0.24, 0.58));
+    put(beamG, mat.timber, 0, 0.12, -2.05, 0, 0, 0, 1, cradle);
+    put(beamG, mat.timber, 0, 0.12, 2.05, 0, 0, 0, 1, cradle);
+    const chockG = track(new THREE.BoxGeometry(0.36, 0.42, 0.52));
+    for (const z of [-2.05, 2.05]) {
+      put(chockG, mat.timberDark, -1.1, 0.32, z, 0, 0, -0.28, 1, cradle);
+      put(chockG, mat.timberDark, 1.1, 0.32, z, 0, 0, 0.28, 1, cradle);
+    }
+
+    // Stack the K2's actual tire and dish geometries flat, like removed road
+    // wheels in a service bay. The hidden source running gear remains the
+    // single disposal owner for these shared geometries and materials.
+    if (tires && discs) {
+      if (!tires.geometry.boundingBox) tires.geometry.computeBoundingBox();
+      const size = new THREE.Vector3();
+      tires.geometry.boundingBox.getSize(size);
+      const rise = Math.max(0.14, size.x * 0.92);
+      const wheelPositions = [];
+      for (const [x, z, count] of [[-21.25, -8.65, 4], [-20.20, -9.75, 4]]) {
+        for (let i = 0; i < count; i++) {
+          wheelPositions.push([x, 0.10 + rise * (i + 0.5), z]);
+        }
+      }
+      const wheelTires = markModernPart(
+        new THREE.InstancedMesh(tires.geometry, tires.material, wheelPositions.length),
+        SALVAGE_HULL_SPEC, 'road_wheel_tires',
+      );
+      const wheelDiscs = markModernPart(
+        new THREE.InstancedMesh(discs.geometry, discs.material, wheelPositions.length),
+        SALVAGE_HULL_SPEC, 'road_wheel_discs',
+      );
+      const E = new THREE.Euler(0, 0, Math.PI / 2);
+      const M4 = new THREE.Matrix4();
+      wheelPositions.forEach(([x, y, z], i) => {
+        M4.makeRotationFromEuler(E).setPosition(x, y, z);
+        wheelTires.setMatrixAt(i, M4);
+        wheelDiscs.setMatrixAt(i, M4);
+      });
+      wheelTires.instanceMatrix.needsUpdate = true;
+      wheelDiscs.instanceMatrix.needsUpdate = true;
+      wheelTires.castShadow = wheelTires.receiveShadow = true;
+      wheelDiscs.castShadow = wheelDiscs.receiveShadow = true;
+      group.add(wheelTires, wheelDiscs);
+      track(wheelTires); track(wheelDiscs);
+    }
+
+    // K2 shoe geometry is retained whole (pad, web, connector and guide horn)
+    // and arranged horn-up on a service pallet instead of primitive boxes.
+    if (pads) {
+      const pallet = markModernPart(new THREE.Group(), SALVAGE_HULL_SPEC, 'track_shoe_pallet');
+      pallet.position.set(-21.15, 0, -13.45);
+      pallet.rotation.y = -0.12;
+      group.add(pallet);
+      put(track(new THREE.BoxGeometry(1.75, 0.11, 1.15)), mat.timberDark, 0, 0.06, 0, 0, 0, 0, 1, pallet);
+      const shoes = markModernPart(
+        new THREE.InstancedMesh(pads.geometry, pads.material, 8),
+        SALVAGE_HULL_SPEC, 'track_shoes',
+      );
+      const E = new THREE.Euler();
+      const M4 = new THREE.Matrix4();
+      let index = 0;
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 2; col++) {
+          // The canonical source shoe has its guide horn on local -Y for the
+          // animated lower run. Flip it horn-up for a loose shop-floor part.
+          E.set(Math.PI, (col % 2 ? 0.035 : -0.035), 0);
+          M4.makeRotationFromEuler(E).setPosition(
+            -0.38 + col * 0.76,
+            0.19,
+            -0.35 + row * 0.23,
+          );
+          shoes.setMatrixAt(index++, M4);
+        }
+      }
+      shoes.instanceMatrix.needsUpdate = true;
+      shoes.castShadow = shoes.receiveShadow = true;
+      pallet.add(shoes);
+      track(shoes);
+    }
+
+    // A clean service table presents three real fleet decoration fittings:
+    // unshielded M2, DShK, and shielded M2, all aligned muzzle-forward.
+    const mgRack = new THREE.Group();
+    mgRack.name = 'dressing_modern_machine_gun_service_rack';
+    mgRack.userData.sourceVehicleIds = [BAY_B_SPEC, SALVAGE_TURRET_SPEC];
+    mgRack.userData.sourceEra = 'modern';
+    mgRack.userData.component = 'machine_gun_service_rack';
+    mgRack.position.set(-6.4, 0, -21.35);
+    group.add(mgRack);
+    put(track(new THREE.BoxGeometry(3.9, 0.12, 0.95)), mat.steelMid, 0, 0.84, 0, 0, 0, 0, 1, mgRack);
+    const legG = track(new THREE.BoxGeometry(0.08, 0.84, 0.08));
+    for (const [x, z] of [[-1.72, -0.36], [1.72, -0.36], [-1.72, 0.36], [1.72, 0.36]]) {
+      put(legG, mat.steelDark, x, 0.42, z, 0, 0, 0, 1, mgRack);
+    }
+    serviceMachineGun(mgRack, 'm2', false, -1.20, 1901);
+    serviceMachineGun(mgRack, 'dshk', false, 0, 1902);
+    serviceMachineGun(mgRack, 'm2', true, 1.20, 1903);
+    wallSign('K2 TEARDOWN', -16.35, 3.20, -22.86, 0, 2.5, 0.9);
+    wallSign('WEAPON SERVICE', -6.4, 2.75, -22.86, 0, 2.7, 0.8);
+  });
+
   /** Darken a repair tank so it never competes with the pedestal hero. */
   function dimVisual(vis, k) {
     vis.root.traverse((o) => {
@@ -923,6 +1161,7 @@ export function createGarageDressing(engineCtx, pos) {
     },
     isBuilt() { return next >= chunks.length; },
     dispose() {
+      if (group.parent) group.parent.remove(group);
       for (const v of tankVisuals) { try { v.dispose(); } catch (_) { /* shared refs */ } }
       tankVisuals.length = 0;
       for (const o of disposables) if (o && o.dispose) o.dispose();

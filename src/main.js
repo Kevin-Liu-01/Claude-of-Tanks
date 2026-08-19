@@ -70,7 +70,7 @@ import { createDamagePanel } from './ui/damagePanel.js';
 import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
-import { createGarageStage } from './ui/garageStage.js';
+import { createGarageStage, GARAGE_TRACK_AXIS_YAW_RAD } from './ui/garageStage.js';
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
 import { createGarageDressing } from './game/garageDressing.js';
@@ -776,11 +776,11 @@ function buildPedestalVisual(specId, parked = false) {
   });
   const pedSpec = getSpec(specId);
   vis.spec = pedSpec;
-  // camo_spotting r4: same front-3/4 presentation for every hero — long
-  // hulls may carry a yaw trim so the camo picker repaints a fully framed
-  // vehicle (visual.garageYawDeg, authored per spec; 0 keeps today's pose).
-  vis.root.rotation.y =
-    (162 + ((pedSpec && pedSpec.visual && pedSpec.visual.garageYawDeg) || 0)) * DEG;
+  // Every showroom vehicle follows the garage floor's world-Z tread axis.
+  // Keeping this canonical also makes the podium guides continuous with the
+  // approach scuffs instead of letting vehicle-specific presentation yaw
+  // break the physical alignment.
+  vis.root.rotation.y = GARAGE_TRACK_AXIS_YAW_RAD;
   pedestalPose(vis);
   // A cold hero can compile its exact garage material variants below the bay
   // before reveal. It remains attached/visible so compileAsync traverses it,
@@ -1530,12 +1530,10 @@ const showroom = (() => {
     getSubject: () => (pedestalVisual ? pedestalVisual.root : null),
     getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
     // HERO POSE (garage_ui: front+side three-quarter). The pedestal hull is
-    // yawed 162° (setPedestalTank), so its nose points at world azimuth 162°;
-    // the old eye azimuth atan2(7.4, 8.0) ≈ 42.8° sat 119° off the nose and
-    // read as left-flank + rear. Park the eye 45° off the nose on the
-    // vehicle's RIGHT (162° + 45° = 207°): classic WoT front-right 3/4 —
+    // aligned to the floor's world-Z tread axis. Park the eye 45° off the
+    // nose on the vehicle's RIGHT: classic WoT front-right 3/4 —
     // gun sweeps toward camera-left, front plate and one flank both read.
-    heroYawRad: (162 + 45) * DEG,
+    heroYawRad: GARAGE_TRACK_AXIS_YAW_RAD + 45 * DEG,
     // elevation keeps the original garageCameraPose() composition (~6.3°)
     heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
     // FIXED FRAMING (garage r9): pose against the stage center + a canonical

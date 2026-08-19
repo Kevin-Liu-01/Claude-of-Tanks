@@ -11,6 +11,18 @@
 // showcase spotlights can stay — the stage's own fixtures complement them.
 import * as THREE from 'three';
 
+// The floor texture's approach scuffs run along world Z. Face showroom tanks
+// toward -Z (the nearest exact floor-track heading to the old 162-degree pose)
+// and use this same axis for the podium guides and camera composition.
+export const GARAGE_TRACK_AXIS_YAW_RAD = Math.PI;
+const PODIUM_TREAD_UV_YAW_OFFSET_RAD = -Math.PI / 2;
+const GARAGE_FLOOR_SIZE_M = 46;
+const GARAGE_PODIUM_RADIUS_M = 6;
+const GARAGE_TRACK_CENTER_OFFSET_M = 1.55;
+const GARAGE_TRACK_SCUFF_WIDTH_M = 0.78;
+const GARAGE_TRACK_CLEAT_PITCH_M = 0.32;
+const GARAGE_TRACK_CLEAT_THICKNESS_M = 0.065;
+
 // deterministic PRNG (mulberry32) so the hangar is identical every boot
 // (exported: garageDressing.js shares the stage's texture/prop language)
 export function mulberry32(a) {
@@ -43,6 +55,44 @@ export function dither(c2d, w, h, rng, alpha = 0.05) {
     d[i] += n; d[i + 1] += n; d[i + 2] += n;
   }
   c2d.putImageData(img, 0, 0);
+}
+
+/** Draw one straight, dimensioned tread lane in texture space. */
+function drawTrackScuffLane(g, {
+  centerX, y0, y1, pixelsPerMeter, bodyAlpha, edgeAlpha, cleatAlpha, phaseY,
+}) {
+  const top = Math.min(y0, y1);
+  const bottom = Math.max(y0, y1);
+  const width = GARAGE_TRACK_SCUFF_WIDTH_M * pixelsPerMeter;
+  const half = width / 2;
+  const edge = Math.max(1, 0.055 * pixelsPerMeter);
+  const pitch = GARAGE_TRACK_CLEAT_PITCH_M * pixelsPerMeter;
+  const cleatH = Math.max(1, GARAGE_TRACK_CLEAT_THICKNESS_M * pixelsPerMeter);
+
+  // Feathered rubber body: crisp enough to read as a guide, soft enough to
+  // remain a worn floor contact patch instead of painted UI geometry.
+  const body = g.createLinearGradient(centerX - half, 0, centerX + half, 0);
+  body.addColorStop(0, 'rgba(20,24,28,0)');
+  body.addColorStop(0.14, `rgba(20,24,28,${bodyAlpha * 0.72})`);
+  body.addColorStop(0.32, `rgba(20,24,28,${bodyAlpha})`);
+  body.addColorStop(0.68, `rgba(20,24,28,${bodyAlpha})`);
+  body.addColorStop(0.86, `rgba(20,24,28,${bodyAlpha * 0.72})`);
+  body.addColorStop(1, 'rgba(20,24,28,0)');
+  g.fillStyle = body;
+  g.fillRect(centerX - half, top, width, bottom - top);
+
+  // Parallel contact edges keep the floor and podium lanes visually locked.
+  g.fillStyle = `rgba(14,18,22,${edgeAlpha})`;
+  g.fillRect(centerX - half * 0.72, top, edge, bottom - top);
+  g.fillRect(centerX + half * 0.72 - edge, top, edge, bottom - top);
+
+  // Identical world-space pitch on both canvases makes every cleat continue
+  // through the platform seam instead of changing scale or slant.
+  const first = phaseY + Math.ceil((top - phaseY) / pitch) * pitch;
+  g.fillStyle = `rgba(10,14,18,${cleatAlpha})`;
+  for (let y = first; y <= bottom; y += pitch) {
+    g.fillRect(centerX - half * 0.82, y - cleatH / 2, width * 0.82, cleatH);
+  }
 }
 
 // --- concrete floor texture: grime, expansion joints, painted bay, treads ---
@@ -103,25 +153,23 @@ function makeFloorTexture(rng) {
   g.beginPath();
   g.moveTo(S / 2, S * 0.78); g.lineTo(S / 2, S * 0.98);
   g.stroke();
-  // tank tread scuff arcs through the bay
-  for (let k = 0; k < 2; k++) {
-    const off = (k - 0.5) * 120;
-    g.strokeStyle = 'rgba(30,32,34,0.35)';
-    g.lineWidth = 26;
-    g.beginPath();
-    g.moveTo(S / 2 + off, S);
-    g.quadraticCurveTo(S / 2 + off * 1.3, S * 0.6, S / 2 + off, S * 0.42);
-    g.stroke();
-    // tread cleat marks inside the scuff
-    g.strokeStyle = 'rgba(20,22,24,0.4)';
-    g.lineWidth = 2;
-    for (let i = 0; i < 26; i++) {
-      const t = i / 26;
-      const y = S - t * S * 0.58;
-      g.beginPath();
-      g.moveTo(S / 2 + off - 12, y); g.lineTo(S / 2 + off + 12, y - 6);
-      g.stroke();
-    }
+  // Straight approach scuffs share the podium's real-world spacing, width,
+  // and cleat pitch. They overlap beneath the disc so no gap can open at its
+  // edge, even at grazing camera angles.
+  const floorPxPerM = S / GARAGE_FLOOR_SIZE_M;
+  const floorTrackOffsetPx = GARAGE_TRACK_CENTER_OFFSET_M * floorPxPerM;
+  const floorTrackTop = S / 2 - (GARAGE_PODIUM_RADIUS_M + 0.5) * floorPxPerM;
+  for (const side of [-1, 1]) {
+    drawTrackScuffLane(g, {
+      centerX: S / 2 + side * floorTrackOffsetPx,
+      y0: floorTrackTop,
+      y1: S,
+      pixelsPerMeter: floorPxPerM,
+      bodyAlpha: 0.28,
+      edgeAlpha: 0.28,
+      cleatAlpha: 0.36,
+      phaseY: S / 2,
+    });
   }
   // speckle
   for (let i = 0; i < 2600; i++) {
@@ -303,7 +351,7 @@ export function createGarageStage(engineCtx, pos) {
   const disposables = [];
   const track = (o) => { disposables.push(o); return o; };
 
-  const HW = 23; // hangar half-width (camera at +8.2/+8.8 stays well inside)
+  const HW = GARAGE_FLOOR_SIZE_M / 2; // camera at +8.2/+8.8 stays well inside
   const WALL_H = 10;
 
   // --- floor ---------------------------------------------------------------
@@ -370,12 +418,21 @@ export function createGarageStage(engineCtx, pos) {
       g.fillStyle = grad;
       g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
     }
-    // twin tread wear bands (tanks drive on/off along one axis)
-    for (const off of [-118, 118]) {
-      g.fillStyle = 'rgba(28,30,32,0.30)';
-      g.fillRect(C + off - 56, 0, 112, 1024);
-      g.fillStyle = 'rgba(22,24,26,0.25)';
-      for (let y = 10; y < 1024; y += 26) g.fillRect(C + off - 48, y, 96, 5);
+    // Twin podium lanes use the exact same physical dimensions and cleat
+    // phase as the surrounding floor scuffs.
+    const podiumPxPerM = 1024 / (GARAGE_PODIUM_RADIUS_M * 2);
+    const podiumTrackOffsetPx = GARAGE_TRACK_CENTER_OFFSET_M * podiumPxPerM;
+    for (const side of [-1, 1]) {
+      drawTrackScuffLane(g, {
+        centerX: C + side * podiumTrackOffsetPx,
+        y0: 0,
+        y1: 1024,
+        pixelsPerMeter: podiumPxPerM,
+        bodyAlpha: 0.34,
+        edgeAlpha: 0.34,
+        cleatAlpha: 0.42,
+        phaseY: C,
+      });
     }
     // worn painted alignment ring + radial ticks
     g.strokeStyle = 'rgba(188,192,198,0.34)';
@@ -426,10 +483,14 @@ export function createGarageStage(engineCtx, pos) {
   }));
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
-    track(new THREE.CylinderGeometry(6, 6.35, 0.36, 56)),
+    track(new THREE.CylinderGeometry(GARAGE_PODIUM_RADIUS_M, 6.35, 0.36, 56)),
     [podSideMat, podTopMat, podTopMat],
   );
   podium.position.y = 0.18;
+  // Cylinder cap UVs lay the baked tread guides along local X, 90 degrees
+  // across tank-forward. Offset the podium so its guides continue the two
+  // world-Z tread scuffs painted onto the surrounding garage floor.
+  podium.rotation.y = GARAGE_TRACK_AXIS_YAW_RAD + PODIUM_TREAD_UV_YAW_OFFSET_RAD;
   podium.receiveShadow = true;
   podium.castShadow = true;
   group.add(podium);
