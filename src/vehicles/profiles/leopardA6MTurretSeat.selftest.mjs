@@ -67,7 +67,7 @@ for (const [x, z] of [[0.55, 1.25], [0.85, 1.00]]) {
 for (const [z, minY, maxY] of [
   [1.85, 2.32, 2.40],
   [2.10, 2.28, 2.36],
-  [2.30, 2.25, 2.33],
+  [2.18, 2.25, 2.33],
 ]) {
   const hits = downHits(turret, 0, z);
   assert.ok(hits.length > 0 && hits[0] >= minY && hits[0] <= maxY,
@@ -91,5 +91,55 @@ const hullDeck = new THREE.Raycaster(
 ).intersectObject(hull, false)[0]?.point.y;
 assert.ok(Number.isFinite(hullDeck) && turretBounds.min.y <= hullDeck + 0.002,
   `A6M bearing overlaps hull deck (${turretBounds.min.y} <= ${hullDeck})`);
+
+// The cage keeps its low protective rail, but every lower bracket now rises
+// to the real skirt face before turning inward.  Six sections on each side
+// must therefore report the same continuous rail -> heel -> skirt path.
+const cageReceipts = hullRig.userData.leopardSlatMountReceipts;
+assert.equal(cageReceipts?.length, 12, 'A6M records both six-section cage runs');
+for (const receipt of cageReceipts) {
+  assert.equal(receipt.outerX, 1.990, 'A6M cage retains the certified outer plane');
+  assert.equal(receipt.seatX, 1.875, 'A6M cage bracket reaches the skirt seat');
+  assert.equal(receipt.railY, 0.78, 'A6M cage retains its lower protective rail');
+  assert.equal(receipt.lowerMountY, 0.90, 'A6M lower bracket lands on the skirt face');
+  assert.ok(receipt.lowerMountY > receipt.railY,
+    'A6M cage has a vertical heel between its lower rail and skirt mount');
+}
+
+// The same cheek-fitting roof bridge is a family component on both the A6M
+// and A6.  Its dimensions follow the crown-return opening exactly.
+const expectedBridge = {
+  frontZ: 2.20,
+  rearZ: 0.50,
+  frontHalfWidth: 0.39,
+  rearHalfWidth: 0.28,
+  ribZ: [0.82, 1.14, 1.46],
+};
+assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, expectedBridge,
+  'A6M uses the fitted family mantlet-roof bridge');
+
+const a6 = createTank('leo2a6', null, {
+  proceduralOnly: true,
+  geometryReceipt: true,
+});
+a6.root.updateMatrixWorld(true);
+const a6TurretRig = a6.root.getObjectByName('rig_turret');
+const a6GunRig = a6.root.getObjectByName('rig_gun');
+const a6MuzzleRig = a6.root.getObjectByName('rig_muzzle');
+assert.ok(a6TurretRig && a6GunRig && a6MuzzleRig,
+  'leo2a6 keeps its canonical turret, gun, and muzzle rigs');
+assert.deepEqual(a6TurretRig.userData.leopardA6MantletRoofBridge, expectedBridge,
+  'A6 uses the same fitted family mantlet-roof bridge as the A6M');
+
+const a6Gun = findMesh(a6GunRig, 'gun');
+const a6GunDark = findMesh(a6GunRig, 'gunDark');
+const physicalGunFaceZ = Math.max(
+  new THREE.Box3().setFromObject(a6Gun).max.z,
+  new THREE.Box3().setFromObject(a6GunDark).max.z,
+);
+const muzzleWorld = new THREE.Vector3();
+a6MuzzleRig.getWorldPosition(muzzleWorld);
+assert.ok(Math.abs(muzzleWorld.z - physicalGunFaceZ) <= 0.012,
+  `A6 muzzle rig sits on the physical barrel face (${muzzleWorld.z} vs ${physicalGunFaceZ})`);
 
 console.log('Leopard 2A6M turret-seat selftest passed');

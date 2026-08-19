@@ -494,6 +494,52 @@ function leoMantletGun(P, G) {
   muzzleBore(P, { len: G.len, r: G.r });
 }
 
+// Close the narrow channel above the Leopard 2A6-family mantlet.  This
+// bridge follows the inner arrowhead-cheek edges instead of spanning them
+// with a broad rectangular shelf, and is shared so the A6 and A6M cannot
+// drift into different frontal-roof shapes.
+function leopardA6MantletRoofBridge(P) {
+  const { box, polyMultiLoft } = KIT;
+  const frontZ = 2.20;
+  const rearZ = 0.50;
+  const frontHalfWidth = 0.39;
+  const rearHalfWidth = 0.28;
+  const plan = [
+    [-frontHalfWidth, frontZ],
+    [frontHalfWidth, frontZ],
+    [rearHalfWidth, rearZ],
+    [-rearHalfWidth, rearZ],
+  ];
+
+  P.add('turret', polyMultiLoft(plan, [
+    { height: [0.445, 0.445, 0.60, 0.60], inset: 1 },
+    { height: [0.505, 0.505, 0.68, 0.68], inset: 1 },
+  ]));
+
+  const rise = Math.atan2(0.175, frontZ - rearZ);
+  const topAt = (z) => 0.68 - (z - rearZ) * (0.175 / (frontZ - rearZ));
+  const widthAt = (z) => 2 * (
+    rearHalfWidth
+    + (z - rearZ) * ((frontHalfWidth - rearHalfWidth) / (frontZ - rearZ))
+  );
+  for (const z of [0.82, 1.14, 1.46]) {
+    P.add('turret', box(widthAt(z) - 0.08, 0.028, 0.13),
+      0, topAt(z) + 0.013, z, rise, 0, 0);
+    P.add('turretDark', box(widthAt(z) - 0.14, 0.010, 0.020),
+      0, topAt(z) + 0.028, z - 0.055, rise, 0, 0);
+  }
+
+  if (P.geometryReceipt) {
+    P.turretG.userData.leopardA6MantletRoofBridge = {
+      frontZ,
+      rearZ,
+      frontHalfWidth,
+      rearHalfWidth,
+      ribZ: [0.82, 1.14, 1.46],
+    };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // GATE-V10 measured-curve machinery for the two live-mask wedge tanks
 // (leo2a6 / leo2a5). Every constant is read off the fresh post-repair
@@ -2012,6 +2058,7 @@ export function buildLeo2A6(P) {
     // the launchers as MISSING. Replaced by the proud chamfer-slope banks
     // below (T.smoke omitted -> the shared block skips).
   });
+  leopardA6MantletRoofBridge(P);
   // r3 #2 (owner circularity law, 3rd round on this item): the r2 raised
   // rims sat half BURIED in the sloped roof V (commander rim top 0.780 vs
   // its local roof 0.776 — the "dashed engraving" read; the loader's dark
@@ -2409,7 +2456,11 @@ export function buildLeo2A6(P) {
     // above is dark-on-dark inside the face ring (no tonal hole end-on) —
     // the mats.shadow furniture supplies the recessed-void read on top of
     // the certified rings (mask/frame-excluded by construction).
-    muzzleBore(P, { z: 5.5125, r: 0.104 });
+    // The profile's nominal gunLengthM is 6.6 m, but this hand-lofted L/55
+    // ends at local z=5.5125.  Keep the universal rig/fallback bore on that
+    // physical face so it cannot appear as a detached ring ahead of the gun.
+    P.muzzleZ = 5.5125;
+    muzzleBore(P, { z: P.muzzleZ, r: 0.104 });
   }
   // ---- shaded-parity r2 tone family (m60a1/kv2 recipe — MATERIALS ONLY,
   // zero mask change). r1 measured: proc band near-pure black vs the ref's
@@ -10597,10 +10648,29 @@ function leoSlatRun(P, owner, side, o) {
     for (const z of [a, b]) {
       P.add(rail, box(0.028, o.y1 - o.y0 + 0.05, 0.028), side * o.x, (o.y0 + o.y1) / 2, z);
     }
-    // standoff brackets to the seat face (top + bottom per section)
-    for (const y of [o.y0, o.y1]) {
+    // Standoff brackets to the seat face.  Some cages retain a lower rail
+    // below the skirt face; seatY0 lets that rail rise through a short heel
+    // before its bracket actually lands on the skirt instead of in mid-air.
+    const lowerMountY = o.seatY0 ?? o.y0;
+    for (const y of [lowerMountY, o.y1]) {
       P.add(body, box(Math.abs(o.x - o.seat) + 0.05, 0.040, 0.042),
         side * ((o.x + o.seat) / 2), y, mid);
+    }
+    if (lowerMountY > o.y0 + 0.001) {
+      P.add(body, box(0.040, lowerMountY - o.y0 + 0.04, 0.042),
+        side * o.x, (lowerMountY + o.y0) / 2, mid);
+    }
+    if (P.geometryReceipt) {
+      P.hullG.userData.leopardSlatMountReceipts ||= [];
+      P.hullG.userData.leopardSlatMountReceipts.push({
+        side,
+        section: sec,
+        outerX: o.x,
+        seatX: o.seat,
+        railY: o.y0,
+        lowerMountY,
+        upperMountY: o.y1,
+      });
     }
   }
 }
@@ -10697,7 +10767,17 @@ export function buildLeo2A6M(P) {
   // 1.26, rails thinned) — accent over the hull line, wheels reading below
   // (§B9); the ±1.990 rail plane is the widthM 3.98 anchor and HOLDS.
   for (const s of [-1, 1]) {
-    leoSlatRun(P, 'hull', s, { x: 1.990, seat: 1.875, y0: 0.78, y1: 1.26, z0: -3.05, z1: 3.10, sections: 6, railTh: 0.020 });
+    leoSlatRun(P, 'hull', s, {
+      x: 1.990,
+      seat: 1.875,
+      seatY0: 0.90,
+      y0: 0.78,
+      y1: 1.26,
+      z0: -3.05,
+      z1: 3.10,
+      sections: 6,
+      railTh: 0.020,
+    });
     // §B2 top-flange (PRE-EXISTING §5.248 debt, receipts in the packet: the
     // pristine build reads the same enclosed cells): the cage<->skirt air
     // corridor read as enclosed top-down background at (±1.93, z 2.07/2.85)
@@ -10841,6 +10921,7 @@ export function buildLeo2A6M(P) {
     // spikes: the whole-mask bbox needs them, the p95 law ignores them)
     whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
   });
+  leopardA6MantletRoofBridge(P);
   // The helper's dark basket stopped 35-40 mm above the A6M deck and made
   // the complete rotating package read as a floating shell from the user's
   // front-quarter angle.  This closed bearing collar is buried into both
@@ -10886,32 +10967,6 @@ export function buildLeo2A6M(P) {
       P.add('turret', box(0.026, 0.14, 0.54), s * 1.413, 0.21, z);
       P.add('turretDetail', cylX(0.014, 0.020, 8), s * 1.427, 0.21, z - 0.20);
       P.add('turretDetail', cylX(0.014, 0.020, 8), s * 1.427, 0.21, z + 0.20);
-    }
-  }
-  // 2A6-pattern mantlet brow: the M rebuild closed each arrow cheek but
-  // left their inner crown edges as two separate horns above the gun.  The
-  // resident 2A6 carries a low, sloping armored bridge here.  Reproduce that
-  // load path as one closed trapezoidal loft, buried into both crown returns
-  // and the forward V-roof while keeping its underside above the L/55 tube.
-  // The shallow transverse steps are welded brow ribs, not loose roof boxes;
-  // they share the structural turret bucket and therefore yaw with the cheek
-  // armor instead of remaining behind as decorations.
-  const a6mBrowPlan = [
-    [-0.40, 2.34], [0.40, 2.34], [0.30, 0.50], [-0.30, 0.50],
-  ];
-  P.add('turret', KIT.polyMultiLoft(a6mBrowPlan, [
-    { height: [0.43, 0.43, 0.60, 0.60], inset: 1.00 },
-    { height: [0.49, 0.49, 0.68, 0.68], inset: 1.00 },
-  ]));
-  {
-    const browRise = Math.atan2(0.19, 1.84);
-    const browTop = (z) => 0.68 - (z - 0.50) * (0.19 / 1.84);
-    const browWidth = (z) => 0.60 + (z - 0.50) * (0.20 / 1.84);
-    for (const z of [0.84, 1.16, 1.48]) {
-      P.add('turret', box(browWidth(z) - 0.10, 0.028, 0.13),
-        0, browTop(z) + 0.013, z, browRise, 0, 0);
-      P.add('turretDark', box(browWidth(z) - 0.16, 0.010, 0.020),
-        0, browTop(z) + 0.028, z - 0.055, browRise, 0, 0);
     }
   }
   // EMES plinth: merges the raised hood base into the forward roof plates
