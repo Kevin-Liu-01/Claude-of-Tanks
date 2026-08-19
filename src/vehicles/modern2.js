@@ -24,6 +24,20 @@ import { KIT } from './tankFactory.js';
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
 import { createType99Armor } from './profiles/type99Armor.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import {
+  plate as par,
+  frontPlate as fr,
+  rearPlate as rr,
+  rightSidePlate as sR,
+  leftSidePlate as sL,
+  roofPlate as rf,
+  rightCheekPlate as chR,
+  leftCheekPlate as chL,
+  moduleBox as mbox,
+  crewBox as cbox,
+  shell,
+  apfsdsPenetration as apfsdsPens,
+} from './specHelpers.js';
 
 // type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
 // custom type99a based on this model" — the Type 99A2 print drop VOIDS the
@@ -35,49 +49,6 @@ const MODERN2_IDS = [
   'type99a', 'leo1a5', 't14',
 ];
 
-// ---------------------------------------------------------------------------
-// Pure spec helpers (local copies — specs.js keeps its helpers module-local).
-// Same math as specs.js: par() planarity guarantee, apfsdsPens anchoring.
-// ---------------------------------------------------------------------------
-
-function par(name, physicalMm, v0, v1, v3, o = {}) {
-  const v2 = [v1[0] + v3[0] - v0[0], v1[1] + v3[1] - v0[1], v1[2] + v3[2] - v0[2]];
-  return {
-    name,
-    verts: [v0, v1, v2, v3],
-    physicalMm,
-    keMm: o.keMm !== undefined ? o.keMm : physicalMm,
-    ceMm: o.ceMm !== undefined ? o.ceMm : physicalMm,
-    kind: o.kind || 'main',
-    era: o.era || null,
-    moduleLink: o.moduleLink || null,
-    gunFollow: !!o.gunFollow,
-  };
-}
-const fr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [-w, yB, zB], [w, yB, zB], [-w, yT, zT], o);
-const rr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [w, yB, zB], [-w, yB, zB], [w, yT, zT], o);
-const sR = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [xB, yB, zF], [xB, yB, zR], [xT, yT, zF], o);
-const sL = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [-xB, yB, zR], [-xB, yB, zF], [-xT, yT, zR], o);
-const rf = (name, mm, w, y, zR, zF, o) =>
-  par(name, mm, [-w, y, zF], [w, y, zF], [-w, y, zR], o);
-const chR = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
-  par(name, mm, [xIn, y0, zIn], [xOut, y0, zOut], [xIn - xi, y1, zIn - tb], o);
-const chL = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
-  par(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
-const mbox = (module, min, max, turretLocal = false) => ({ module, min, max, turretLocal });
-const cbox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
-const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
-  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
-const apfsdsPens = (quoted2km) => {
-  const pen1000 = quoted2km / 0.90;
-  return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
-};
 const apfsds = (name, cal, quoted2km, dmg, vel) => {
   const p = apfsdsPens(quoted2km);
   return shell(name, 'APFSDS', cal, p[0], p[1], dmg, vel, { pen2000Mm: p[2] });

@@ -41,20 +41,9 @@
 // creation, e.g. `import './vehicles/variants.js'`.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { shell, apfsdsPenetration as apfsdsPens } from './specHelpers.js';
 
-// --- local mirrors of specs.js module-private helpers (schema-identical) ---
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
-
-const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
-  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
-
-// mirrors specs.js apfsdsPens (modern pens roster-quoted @2 km)
-const apfsdsPens = (quoted2km) => {
-  const pen1000 = quoted2km / 0.90;
-  return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
-};
 
 /**
  * Deep-clone a base armor model and scale the KE/CE ratings of the fighting

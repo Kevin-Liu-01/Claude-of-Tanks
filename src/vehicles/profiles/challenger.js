@@ -10,11 +10,7 @@
 //     entries (CHALLENGER_BUILDERS, merged into tankFactory.BUILDERS by the
 //     same extension hook modern1.js uses; specs register HERE by mutating
 //     the exported specs.js tables — the modern1 pattern).
-// Shared helpers stay with their original owners and are IMPORTED, never
-// duplicated (§5.75): uk.js keeps the UK family kit (ukHull / segBoxZ /
-// towCableUK / ukToneKit / ukGearAirBackers + the §C.1 winding-guard KIT
-// proxy names), modern1.js keeps the spec-table helpers (par/fr/.../shell/
-// apfsdsPens).
+// Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs (kit.js attach-site note). KIT rides
@@ -26,9 +22,20 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.js carries.
 import { vehicleAmbientFloorHook } from '../materials.js';
-// Spec-table helpers stay owned by modern1.js (its t72b3/merkava4/leo2a6
-// armor tables use them too) — the challenger armor tables import them.
-import { par, fr, rr, sR, sL, rf, chR, chL, mbox, cbox, shell, apfsdsPens } from '../modern1.js';
+import {
+  plate as par,
+  frontPlate as fr,
+  rearPlate as rr,
+  rightSidePlate as sR,
+  leftSidePlate as sL,
+  roofPlate as rf,
+  rightCheekPlate as chR,
+  leftCheekPlate as chL,
+  moduleBox as mbox,
+  crewBox as cbox,
+  shell,
+  apfsdsPenetration as apfsdsPens,
+} from '../specHelpers.js';
 // UK family kit stays owned by uk.js (chieftains/centurions/vickers use it);
 // challenger1Build consumes the exact bindings it always did, including the
 // §C.1 winding-guarded `slab` (orientedSlab via the uk.js KIT proxy).

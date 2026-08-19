@@ -25,6 +25,11 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, buildProfile } from './kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
+import {
+  shell,
+  apfsdsPenetration as apfsdsPens,
+  communityArmor as buildCommunityArmor,
+} from '../specHelpers.js';
 
 // NOTE: KIT bindings are only dereferenced inside build-time functions —
 // never at module scope — because of the tankFactory extension-module cycle.
@@ -34,99 +39,11 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
 // PERSONAL-USE GLB because the vehicle had "no procedural fallback"; this
 // module IS that clean-license fallback, so the spec ships (the quarantined
 // GLB stays lab-only via LOCAL_REFERENCE_OVERRIDES — never a MODEL_SOURCE).
-// Helpers are local mirrors of specs.js module-private builders
-// (schema-identical, same duplication rule as modern1.js / userdrops.js).
-// ---------------------------------------------------------------------------
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
-function par(name, physicalMm, v0, v1, v3, o = {}) {
-  const v2 = [v1[0] + v3[0] - v0[0], v1[1] + v3[1] - v0[1], v1[2] + v3[2] - v0[2]];
-  return {
-    name, verts: [v0, v1, v2, v3], physicalMm,
-    keMm: o.keMm !== undefined ? o.keMm : physicalMm,
-    ceMm: o.ceMm !== undefined ? o.ceMm : physicalMm,
-    kind: o.kind || 'main', era: o.era || null,
-    moduleLink: o.moduleLink || null, gunFollow: !!o.gunFollow,
-  };
-}
-const fr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [-w, yB, zB], [w, yB, zB], [-w, yT, zT], o);
-const rr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [w, yB, zB], [-w, yB, zB], [w, yT, zT], o);
-const sR = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [xB, yB, zF], [xB, yB, zR], [xT, yT, zF], o);
-const sL = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [-xB, yB, zR], [-xB, yB, zF], [-xT, yT, zR], o);
-const rf = (name, mm, w, y, zR, zF, o) =>
-  par(name, mm, [-w, y, zF], [w, y, zF], [-w, y, zR], o);
-const mbox = (module, min, max, turretLocal = false) => ({ module, min, max, turretLocal });
-const cbox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
-const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
-  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
+const communityArmor = (o) => buildCommunityArmor(o, {
+  exposeTurretless: false,
+  allowTurretless: false,
 });
-const apfsdsPens = (quoted2km) => {
-  const pen1000 = quoted2km / 0.90;
-  return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
-};
-function communityArmor(o) {
-  const hl = o.lenM / 2;
-  const hw = o.widM / 2;
-  const inW = hw * 0.62;
-  const floor = o.hgtM * 0.16;
-  const trkTop = o.hgtM * 0.38;
-  const roofY = o.turretPivot[1];
-  const tp = o.turretPivot;
-  const tH = Math.max(0.5, o.hgtM - roofY - 0.1);
-  const tw = hw * 0.55;
-  const tl = hw * 0.62;
-  return {
-    boundingRadiusM: hl + o.barrelLenM * 0.55 + 0.4,
-    turretPivot: [tp[0], tp[1], tp[2]],
-    gunPivot: [o.gunPivot[0], o.gunPivot[1], o.gunPivot[2]],
-    gunBarrel: { lengthM: o.barrelLenM, radiusM: o.barrelRadM },
-    hullPlates: [
-      fr('upper_glacis', o.frontMm, hw * 0.95, o.hgtM * 0.34, hl * 0.92, roofY, hl * 0.62),
-      fr('lower_front', o.frontMm, hw * 0.95, floor, hl * 0.8, o.hgtM * 0.34, hl * 0.92),
-      sR('hull_side_upper_R', o.sideMm, hw, trkTop, hw, roofY, -hl, hl * 0.6),
-      sL('hull_side_upper_L', o.sideMm, hw, trkTop, hw, roofY, -hl, hl * 0.6),
-      sR('hull_side_lower_R', o.sideMm, inW, floor, inW, trkTop, -hl * 0.95, hl * 0.9),
-      sL('hull_side_lower_L', o.sideMm, inW, floor, inW, trkTop, -hl * 0.95, hl * 0.9),
-      sR('track_R', 18, hw * 0.9, 0.15, hw * 0.9, trkTop, -hl, hl, { kind: 'external', moduleLink: 'trackR' }),
-      sL('track_L', 18, hw * 0.9, 0.15, hw * 0.9, trkTop, -hl, hl, { kind: 'external', moduleLink: 'trackL' }),
-      rr('hull_rear', o.rearMm, hw * 0.95, floor, -hl * 0.92, roofY, -hl),
-      rf('hull_roof', o.roofMm, hw * 0.95, roofY, -hl, hl * 0.62),
-    ],
-    turretPlates: [
-      fr('turret_front', o.tFrontMm, tw * 0.8, 0.02, tl, tH, tl * 0.9),
-      sR('turret_side_R', o.tSideMm, tw, 0.02, tw * 0.92, tH, -tl, tl * 0.85),
-      sL('turret_side_L', o.tSideMm, tw, 0.02, tw * 0.92, tH, -tl, tl * 0.85),
-      rr('turret_rear', o.tRearMm, tw * 0.85, 0.02, -tl, tH, -tl * 1.05),
-      rf('turret_roof', o.roofMm, tw, tH + 0.02, -tl, tl * 0.85),
-      par('mantlet', o.mantletMm,
-        [-o.barrelRadM * 4, o.gunPivot[1] - 0.28, tl + 0.04],
-        [o.barrelRadM * 4, o.gunPivot[1] - 0.28, tl + 0.04],
-        [-o.barrelRadM * 4, o.gunPivot[1] + 0.28, tl],
-        { kind: 'spaced', gunFollow: true }),
-    ],
-    modules: [
-      mbox('engine', [-inW * 0.95, floor, -hl * 0.95], [inW * 0.95, roofY * 0.85, -hl * 0.5]),
-      mbox('fuelTank', [-inW * 0.95, floor, -hl * 0.48], [inW * 0.95, roofY * 0.65, -hl * 0.28]),
-      mbox('ammoRack', [-inW * 0.9, floor, -hl * 0.2], [inW * 0.9, roofY * 0.55, hl * 0.28]),
-      mbox('turretRing', [-tw, roofY - 0.18, tp[2] - tw], [tw, roofY + 0.02, tp[2] + tw]),
-      mbox('radio', [inW * 0.25, roofY * 0.55, hl * 0.5], [inW * 0.9, roofY * 0.9, hl * 0.8]),
-      mbox('optics', [0.1, tH * 0.5, tl * 0.3], [tw * 0.55, tH * 0.85, tl * 0.8], true),
-      mbox('gun', [-o.barrelRadM * 2.4, o.gunPivot[1] - 0.22, -tl * 0.4], [o.barrelRadM * 2.4, o.gunPivot[1] + 0.28, tl], true),
-      mbox('trackL', [-hw, 0, -hl], [-inW, trkTop, hl]),
-      mbox('trackR', [inW, 0, -hl], [hw, trkTop, hl]),
-    ],
-    crew: [
-      cbox('driver', [-inW * 0.8, floor + 0.2, hl * 0.45], [-inW * 0.1, roofY * 0.9, hl * 0.85]),
-      cbox('gunner', [-tw * 0.85, 0.05, -tl * 0.3], [-tw * 0.15, tH * 0.85, tl * 0.5], true),
-      cbox('commander', [tw * 0.15, 0.05, -tl * 0.9], [tw * 0.85, tH * 0.9, -tl * 0.1], true),
-      cbox('loader', [tw * 0.1, 0.05, -tl * 0.2], [tw * 0.8, tH * 0.8, tl * 0.5], true),
-    ],
-  };
-}
 
 // Same stats as the (never-registered) userdrops.js TYPE74_SPEC so the
 // authored balance intent carries over unchanged.

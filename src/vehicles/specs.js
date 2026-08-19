@@ -7,6 +7,21 @@ import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 import { isRetiredHistoricalTank } from './rosterPolicy.js';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
+import {
+  plate as par,
+  frontPlate as fr,
+  rearPlate as rr,
+  rightSidePlate as sR,
+  leftSidePlate as sL,
+  roofPlate as rf,
+  rightCheekPlate as chR,
+  leftCheekPlate as chL,
+  moduleBox as mbox,
+  crewBox as cbox,
+  shell,
+  apfsdsPenetration as apfsdsPens,
+  communityArmor,
+} from './specHelpers.js';
 
 /** Foundational roster ids in their locked relative garage-carousel order. */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
@@ -15,67 +30,6 @@ import { finalizeCombatAnatomy } from './combatAnatomy.js';
 // TANK_IDS/ALL_TANK_IDS, so no garage card, no ledger row.
 export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m'];
 
-// ---------------------------------------------------------------------------
-// Plate helpers (pure array math). Every quad is built as a PARALLELOGRAM
-// (v2 = v1 + v3 - v0) which guarantees planarity. Winding is CCW seen from
-// outside: outward normal = normalize(cross(v1-v0, v3-v0)).
-// ---------------------------------------------------------------------------
-
-function par(name, physicalMm, v0, v1, v3, o = {}) {
-  const v2 = [v1[0] + v3[0] - v0[0], v1[1] + v3[1] - v0[1], v1[2] + v3[2] - v0[2]];
-  return {
-    name,
-    verts: [v0, v1, v2, v3],
-    physicalMm,
-    keMm: o.keMm !== undefined ? o.keMm : physicalMm,
-    ceMm: o.ceMm !== undefined ? o.ceMm : physicalMm,
-    kind: o.kind || 'main',
-    era: o.era || null,
-    moduleLink: o.moduleLink || null,
-    gunFollow: !!o.gunFollow,
-  };
-}
-
-// Front-facing plate: spans x in [-w,w], bottom edge (yB,zB) -> top edge (yT,zT).
-const fr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [-w, yB, zB], [w, yB, zB], [-w, yT, zT], o);
-// Rear-facing plate (outward -Z).
-const rr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [w, yB, zB], [-w, yB, zB], [w, yT, zT], o);
-// Right side (+X outward): bottom edge (xB,yB) -> top edge (xT,yT), z in [zR,zF].
-const sR = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [xB, yB, zF], [xB, yB, zR], [xT, yT, zF], o);
-// Left side (-X outward).
-const sL = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [-xB, yB, zR], [-xB, yB, zF], [-xT, yT, zR], o);
-// Roof (outward +Y): x in [-w,w], z in [zR,zF] at height y.
-const rf = (name, mm, w, y, zR, zF, o) =>
-  par(name, mm, [-w, y, zF], [w, y, zF], [-w, y, zR], o);
-// Right turret cheek, angled in plan: inner-front edge (xIn,zIn) -> outer edge (xOut,zOut),
-// vertical span [y0,y1], optional top setback tb (slope-back) & inward shift xi.
-const chR = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
-  par(name, mm, [xIn, y0, zIn], [xOut, y0, zOut], [xIn - xi, y1, zIn - tb], o);
-const chL = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
-  par(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
-
-const mbox = (module, min, max, turretLocal = false) => ({ module, min, max, turretLocal });
-const cbox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
-
-// Shell factory. Types: roster APHE/APCBC/APBC -> 'AP'; HVAP -> 'APCR'.
-const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
-  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
-
-// Modern pens are roster-quoted @2 km (ARCHITECTURE §2.2):
-//   pen1000Mm = quoted2km / (1 - lossPer100m*10); pen100Mm = pen1000Mm / (1 - lossPer100m*9).
-// APFSDS: pen1000Mm = quoted2km / 0.90 (1%/100 m falloff anchored at 1 km);
-// pen2000Mm = the quoted value itself — ballistics.js interpolates
-// 1000→2000 m and clamps beyond. HEAT / HE have zero falloff.
-const apfsdsPens = (quoted2km) => {
-  const pen1000 = quoted2km / 0.90;
-  return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
-};
 
 // controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.js LN6
 // shrink tau so a second aimed shot is possible ~2.3 s (modern) / ~3.5 s
@@ -831,75 +785,6 @@ TANK_SPECS.m1a2.visual.number = '23';
 // Armor models are parametric balance layouts, not copied mesh payloads.
 // ===========================================================================
 
-/**
- * Parametric armor layout for community vehicles.
- * @param {object} o { lenM, widM, hgtM, turretPivot, gunPivot, barrelLenM,
- *   barrelRadM, frontMm, sideMm, rearMm, roofMm, tFrontMm, tSideMm, tRearMm,
- *   mantletMm, turretless }
- */
-function communityArmor(o) {
-  const hl = o.lenM / 2;                 // hull half-length
-  const hw = o.widM / 2;                 // half-width incl. tracks
-  const inW = hw * 0.62;                 // inner hull half-width
-  const floor = o.hgtM * 0.16;
-  const trkTop = o.hgtM * 0.38;
-  const roofY = o.turretPivot[1];
-  const tp = o.turretPivot;
-  const tH = Math.max(0.5, o.hgtM - roofY - 0.1); // turret shell height
-  const tw = hw * 0.55;                  // turret half-width
-  const tl = o.turretless ? hl * 0.5 : hw * 0.62; // turret half-length
-  return {
-    boundingRadiusM: hl + o.barrelLenM * 0.55 + 0.4,
-    // Keep the vehicle-layout fact in the runtime armor record. Previously
-    // this input only changed the size of the generated armor boxes and was
-    // then discarded, so movement/model QA had to guess from an id list.
-    turretless: o.turretless === true,
-    turretPivot: [tp[0], tp[1], tp[2]],
-    gunPivot: [o.gunPivot[0], o.gunPivot[1], o.gunPivot[2]],
-    gunBarrel: { lengthM: o.barrelLenM, radiusM: o.barrelRadM },
-    hullPlates: [
-      fr('upper_glacis', o.frontMm, hw * 0.95, o.hgtM * 0.34, hl * 0.92, roofY, hl * 0.62),
-      fr('lower_front', o.frontMm, hw * 0.95, floor, hl * 0.8, o.hgtM * 0.34, hl * 0.92),
-      sR('hull_side_upper_R', o.sideMm, hw, trkTop, hw, roofY, -hl, hl * 0.6),
-      sL('hull_side_upper_L', o.sideMm, hw, trkTop, hw, roofY, -hl, hl * 0.6),
-      sR('hull_side_lower_R', o.sideMm, inW, floor, inW, trkTop, -hl * 0.95, hl * 0.9),
-      sL('hull_side_lower_L', o.sideMm, inW, floor, inW, trkTop, -hl * 0.95, hl * 0.9),
-      sR('track_R', 18, hw * 0.9, 0.15, hw * 0.9, trkTop, -hl, hl, { kind: 'external', moduleLink: 'trackR' }),
-      sL('track_L', 18, hw * 0.9, 0.15, hw * 0.9, trkTop, -hl, hl, { kind: 'external', moduleLink: 'trackL' }),
-      rr('hull_rear', o.rearMm, hw * 0.95, floor, -hl * 0.92, roofY, -hl),
-      rf('hull_roof', o.roofMm, hw * 0.95, roofY, -hl, hl * 0.62),
-    ],
-    turretPlates: [
-      fr('turret_front', o.tFrontMm, tw * 0.8, 0.02, tl, tH, tl * 0.9),
-      sR('turret_side_R', o.tSideMm, tw, 0.02, tw * 0.92, tH, -tl, tl * 0.85),
-      sL('turret_side_L', o.tSideMm, tw, 0.02, tw * 0.92, tH, -tl, tl * 0.85),
-      rr('turret_rear', o.tRearMm, tw * 0.85, 0.02, -tl, tH, -tl * 1.05),
-      rf('turret_roof', o.roofMm, tw, tH + 0.02, -tl, tl * 0.85),
-      par('mantlet', o.mantletMm,
-        [-o.barrelRadM * 4, o.gunPivot[1] - 0.28, tl + 0.04],
-        [o.barrelRadM * 4, o.gunPivot[1] - 0.28, tl + 0.04],
-        [-o.barrelRadM * 4, o.gunPivot[1] + 0.28, tl],
-        { kind: 'spaced', gunFollow: true }),
-    ],
-    modules: [
-      mbox('engine', [-inW * 0.95, floor, -hl * 0.95], [inW * 0.95, roofY * 0.85, -hl * 0.5]),
-      mbox('fuelTank', [-inW * 0.95, floor, -hl * 0.48], [inW * 0.95, roofY * 0.65, -hl * 0.28]),
-      mbox('ammoRack', [-inW * 0.9, floor, -hl * 0.2], [inW * 0.9, roofY * 0.55, hl * 0.28]),
-      mbox('turretRing', [-tw, roofY - 0.18, tp[2] - tw], [tw, roofY + 0.02, tp[2] + tw]),
-      mbox('radio', [inW * 0.25, roofY * 0.55, hl * 0.5], [inW * 0.9, roofY * 0.9, hl * 0.8]),
-      mbox('optics', [0.1, tH * 0.5, tl * 0.3], [tw * 0.55, tH * 0.85, tl * 0.8], true),
-      mbox('gun', [-o.barrelRadM * 2.4, o.gunPivot[1] - 0.22, -tl * 0.4], [o.barrelRadM * 2.4, o.gunPivot[1] + 0.28, tl], true),
-      mbox('trackL', [-hw, 0, -hl], [-inW, trkTop, hl]),
-      mbox('trackR', [inW, 0, -hl], [hw, trkTop, hl]),
-    ],
-    crew: [
-      cbox('driver', [-inW * 0.8, floor + 0.2, hl * 0.45], [-inW * 0.1, roofY * 0.9, hl * 0.85]),
-      cbox('gunner', [-tw * 0.85, 0.05, -tl * 0.3], [-tw * 0.15, tH * 0.85, tl * 0.5], true),
-      cbox('commander', [tw * 0.15, 0.05, -tl * 0.9], [tw * 0.85, tH * 0.9, -tl * 0.1], true),
-      cbox('loader', [tw * 0.1, 0.05, -tl * 0.2], [tw * 0.8, tH * 0.8, tl * 0.5], true),
-    ],
-  };
-}
 
 /** First-party expansion ids (garage carousel order, appended after core). */
 const FIRST_PARTY_EXPANSION_TANK_IDS = [

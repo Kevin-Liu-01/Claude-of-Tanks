@@ -20,58 +20,24 @@ import * as THREE from 'three';
 import { KIT } from './tankFactory.js';
 import { muzzleBore } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import {
+  plate as par,
+  frontPlate as fr,
+  rearPlate as rr,
+  rightSidePlate as sR,
+  leftSidePlate as sL,
+  roofPlate as rf,
+  rightCheekPlate as chR,
+  leftCheekPlate as chL,
+  moduleBox as mbox,
+  crewBox as cbox,
+  shell,
+  apfsdsPenetration as apfsdsPens,
+} from './specHelpers.js';
 
 const D2R = Math.PI / 180;
 
-// ---------------------------------------------------------------------------
-// Spec-table helpers (duplicated from specs.js — they are file-private there
-// and specs.js is a contested file; these are pure functions, safe to mirror).
-// ---------------------------------------------------------------------------
-function par(name, physicalMm, v0, v1, v3, o = {}) {
-  const v2 = [v1[0] + v3[0] - v0[0], v1[1] + v3[1] - v0[1], v1[2] + v3[2] - v0[2]];
-  return {
-    name,
-    verts: [v0, v1, v2, v3],
-    physicalMm,
-    keMm: o.keMm !== undefined ? o.keMm : physicalMm,
-    ceMm: o.ceMm !== undefined ? o.ceMm : physicalMm,
-    kind: o.kind || 'main',
-    era: o.era || null,
-    moduleLink: o.moduleLink || null,
-    gunFollow: !!o.gunFollow,
-  };
-}
-const fr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [-w, yB, zB], [w, yB, zB], [-w, yT, zT], o);
-const rr = (name, mm, w, yB, zB, yT, zT, o) =>
-  par(name, mm, [w, yB, zB], [-w, yB, zB], [w, yT, zT], o);
-const sR = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [xB, yB, zF], [xB, yB, zR], [xT, yT, zF], o);
-const sL = (name, mm, xB, yB, xT, yT, zR, zF, o) =>
-  par(name, mm, [-xB, yB, zR], [-xB, yB, zF], [-xT, yT, zR], o);
-const rf = (name, mm, w, y, zR, zF, o) =>
-  par(name, mm, [-w, y, zF], [w, y, zF], [-w, y, zR], o);
-const chR = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
-  par(name, mm, [xIn, y0, zIn], [xOut, y0, zOut], [xIn - xi, y1, zIn - tb], o);
-const chL = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, xi = 0, o) =>
-  par(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
-const mbox = (module, min, max, turretLocal = false) => ({ module, min, max, turretLocal });
-const cbox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
-const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
-  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
-const apfsdsPens = (quoted2km) => {
-  const pen1000 = quoted2km / 0.90;
-  return [Math.round(pen1000 / 0.91), Math.round(pen1000), quoted2km];
-};
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
-
-// §5.75 family-module split: profiles/challenger.js builds its challenger2/
-// challenger_3 armor + spec tables from these same helpers. They stay OWNED
-// here (the t72b3/merkava4/leo2a6 tables use them too) and are exported for
-// that one consumer — imported, never duplicated.
-export { par, fr, rr, sR, sL, rf, chR, chL, mbox, cbox, shell, apfsdsPens };
 
 // ---------------------------------------------------------------------------
 // Armor models (plate-by-plate, roster RHAe tables)
