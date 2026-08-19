@@ -119,6 +119,10 @@ async function bootPage(forceSplash) {
   check(mode, 'all stage ticks lit', state.ticksLit === state.ticksAll,
     `${state.ticksLit}/${state.ticksAll}`);
   check(mode, '__GAME_READY not blocked by gate', state.ready);
+  const appLoadMs = Number(state.bootMs) + Number(state.timings?.imports);
+  check(mode, 'load-to-ready stays under 5 seconds',
+    Number.isFinite(appLoadMs) && appLoadMs >= 0 && appLoadMs < 5000,
+    `${appLoadMs} ms`);
 
   await page.keyboard.press('Space');
   // dismiss() removes the root 620 ms after the fade starts, but the

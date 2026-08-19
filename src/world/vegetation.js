@@ -1464,10 +1464,11 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
  */
 export async function createVegetationAsync(heightField, engineCtx, seed = 2001, cfg = null,
   tick = null, fineSlices = false) {
-  // A phone only needs the grass chunks around its first spawn immediately;
-  // deterministic far chunks stream well ahead of the camera afterward.
-  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg,
-    getDeviceTier() === 'mobile');
+  // Async map loads only need the complete grass ring around their first
+  // spawn. Deterministic outer chunks are beyond the shader fade band and
+  // stream a full chunk ahead of the camera afterward. Synchronous capture
+  // builds still drain every chunk eagerly for their frozen pixel contract.
+  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg, true);
   const stageTimings = {};
   let stepStarted = performance.now();
   let r = g.next();
@@ -1870,9 +1871,9 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
         meshes: null, built: false, job: null, lod: false,
       };
       grassChunks.push(gc);
-      // Desktop and synchronous screenshot builds retain the exact eager
-      // path. Mobile builds only the complete first-view ring; no rendered
-      // tuft/count/placement changes, just when distant chunks are generated.
+      // Synchronous screenshot builds retain the exact eager path. Async map
+      // builds create the complete first-view ring; no rendered tuft/count/
+      // placement changes, only when invisible distant chunks are generated.
       if (!deferFarGrass || Math.hypot(spawn.x - gc.cx, spawn.z - gc.cz) < initialGrassRadius) {
         beginGrassChunk(gc);
         advanceGrassChunk(gc, grassPerChunk);

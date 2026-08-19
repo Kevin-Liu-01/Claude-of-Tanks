@@ -26,13 +26,6 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: dsf });
-await page.evaluateOnNewDocument(() => {
-  window.__READY_AT = -1;
-  const iv = setInterval(() => {
-    if (window.__GAME_READY === true) { window.__READY_AT = performance.now(); clearInterval(iv); }
-  }, 25);
-});
-
 const cdp = await page.createCDPSession();
 await cdp.send('Profiler.enable');
 await cdp.send('Profiler.setSamplingInterval', { interval: 250 }); // µs
@@ -40,7 +33,17 @@ await cdp.send('Profiler.start');
 
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
-const loadToReadyMs = await page.evaluate(() => window.__READY_AT);
+// __BOOT_MS starts when main.js evaluates; `imports` covers navigation through
+// module graph fetch/evaluation. Their sum is the app's exact ready timestamp
+// on the navigation time origin and cannot miss readiness like the old 25 ms
+// polling interval (which occasionally left this at -1).
+const loadToReadyMs = await page.evaluate(() => {
+  const boot = Number(window.__BOOT_MS);
+  const imports = Number(window.__BOOT_TIMINGS?.imports);
+  return Number.isFinite(boot) && Number.isFinite(imports)
+    ? boot + imports
+    : performance.now();
+});
 const { profile } = await cdp.send('Profiler.stop');
 
 // Aggregate self time per function (sampling profile: hit counts x interval).

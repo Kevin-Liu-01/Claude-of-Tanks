@@ -31,6 +31,7 @@ const cpuRate = Math.max(1, Number(opt('cpu', '1')) || 1);
 const cores = Math.max(0, Number(opt('cores', '0')) || 0);
 const memoryGB = Math.max(0, Number(opt('memory', '0')) || 0);
 const deviceTier = opt('tier', 'desktop');
+const limitMs = Math.max(1, Number(opt('limit', '5000')) || 5000);
 
 const SEQUENCE = [
   'm1a1', 'leclerc', 'tiger1',           // cold representatives
@@ -129,7 +130,8 @@ if (timings) {
 const ok = rows.filter((r) => r.ms >= 0).map((r) => r.ms).sort((a, b) => a - b);
 const pct = (p) => ok.length ? ok[Math.min(ok.length - 1, Math.floor((p / 100) * ok.length))] : -1;
 const median = ok.length ? ok[Math.floor(ok.length / 2)] : -1;
-console.log(`[switch-probe] n=${ok.length}/${rows.length} median=${median}ms p95=${pct(95)}ms max=${ok[ok.length - 1]}ms`);
+const withinBudget = rows.every((row) => row.ms >= 0 && row.ms < limitMs);
+console.log(`[switch-probe] n=${ok.length}/${rows.length} median=${median}ms p95=${pct(95)}ms max=${ok[ok.length - 1]}ms budget=<${limitMs}ms ${withinBudget ? 'PASS' : 'FAIL'}`);
 const traceStats = await page.evaluate(() => window.__DEV_TRACE?.stats() || null);
 if (traceStats) {
   console.log(`[switch-probe] frames p95=${traceStats.gapP95}ms p99=${traceStats.gapP99}ms max=${traceStats.maxGapMs}ms longTasks=${traceStats.longTasks} freezes=${traceStats.freezes}`);
@@ -141,4 +143,4 @@ if (pageErrors.length) {
 
 await browser.close();
 await server.close();
-process.exit(rows.some((r) => r.ms < 0) || pageErrors.length ? 1 : 0);
+process.exit(!withinBudget || pageErrors.length ? 1 : 0);

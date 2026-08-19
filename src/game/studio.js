@@ -2176,6 +2176,13 @@ export function createStudio(ctx) {
       cam.orbit.target.copy(_v2);
       cam.orbit.dist = 24;
       lighting.updateFrustums();
+      // Direct-route boot has not started the shared rAF yet. Produce one
+      // complete real Studio frame behind the boot veil so readiness means a
+      // stable canvas, not merely a finished scene graph.
+      if (opts.coveredByBoot) {
+        lighting.update(true);
+        post.render(0);
+      }
       panel.setBusy(null);
       panel.refreshAll();
       invalidate();

@@ -235,12 +235,13 @@ export function spawnTanks(game, engineCtx) {
  * dwell absorbs ~300 ms chunks instead of one 2 s freeze.
  * @param {object} game game state
  * @param {number} [limit] max visuals to build this call (default: all)
+ * @param {?function(object):boolean} [predicate] optional roster subset
  * @returns {boolean} true when every staged participant has a visual
  */
-export function ensureStagedVisuals(game, limit = Infinity) {
+export function ensureStagedVisuals(game, limit = Infinity, predicate = null) {
   let built = 0;
   for (const ent of game.tanks) {
-    if (ent.visual) continue;
+    if (ent.visual || (predicate && !predicate(ent))) continue;
     if (built >= limit) return false;
     ensureTankVisual(game, ent);
     built++;
@@ -251,9 +252,10 @@ export function ensureStagedVisuals(game, limit = Infinity) {
 /** perf-r4b: the next entity ensureStagedVisuals(game, 1) would build, plus
  * the texture tier ensureTankVisual will bake it at — the pre-battle loading
  * loop prebakes that exact entry chunked before the build acquires it.
+ * @param {?function(object):boolean} [predicate] optional roster subset
  * @returns {?{ent: object, quality: string}} */
-export function nextStagedBake(game) {
-  const ent = game.tanks.find((e) => !e.visual);
+export function nextStagedBake(game, predicate = null) {
+  const ent = game.tanks.find((e) => !e.visual && (!predicate || predicate(e)));
   if (!ent) return null;
   const hero = usesHeroTextureTier(game, ent);
   return { ent, quality: hero ? 'high' : 'ai' };

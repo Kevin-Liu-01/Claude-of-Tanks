@@ -268,6 +268,13 @@ const sky = await bootStage('sky', () => {
   s.bakeEnvironment();
   return s;
 });
+// Loading-budget r1: the garage cannot see the outdoor cloud decks, but a
+// battle or direct Studio entry can need them immediately. Start their two
+// deterministic canvas bakes now and let the remaining boot stages overlap
+// the work. ensureWorld still awaits the shared promise before activation.
+const bootCloudWarmP = sky.ensureCloudTexturesChunked
+  ? sky.ensureCloudTexturesChunked(() => nextFrame()).catch(() => {})
+  : Promise.resolve();
 const lighting = await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir));
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
@@ -300,6 +307,7 @@ const worldBuilds = new Map();
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let worldDormant = false;        // garage: world hidden + per-frame update off
+let worldServicesMapId = null;   // collider/minimap/garage placement prepared
 // The sky/fog preset the atmosphere is currently keyed to. Seeded with the
 // boot map so the FIRST activation of 'verdant' behaves exactly like the old
 // boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
@@ -338,7 +346,12 @@ function beginWorldBuild(mapId, onProgress = null, background = false) {
       rec.stageTimings[key] = (rec.stageTimings[key] || 0) + Math.round(now - rec.stageMark);
       rec.stageMark = now;
     };
-    const yieldForeground = createFrameBudgetYielder(12);
+    // The branded load veil owns foreground builds. A 12 ms slice forced
+    // hundreds of scheduler round-trips on dense maps even though the meter
+    // cannot present meaningfully faster than a frame. Coalesce to 32 ms;
+    // generation order and geometry stay identical while the user-visible
+    // load sheds the scheduling tax.
+    const yieldForeground = createFrameBudgetYielder(32);
     const yieldBackground = createFrameBudgetYielder(6);
     rec.promise = createMapAsync(engineCtx, { mapId: id, seed: 1337 },
       async (label, f) => {
@@ -389,6 +402,7 @@ function beginWorldBuild(mapId, onProgress = null, background = false) {
   }
   return rec;
 }
+
 /** World raycast that is safe before any battlefield exists. */
 function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
 
@@ -409,9 +423,28 @@ spawnTanks(game, engineCtx);
 let collider = null;
 let battleStaged = false;
 // perf-r2f: handle of the in-flight chunked camo sweep startBattle kicks —
-// startBattleLoading awaits it before the wreck dances (burnt bakes copy the
+// The countdown warm awaits it before the wreck dances (burnt bakes copy the
 // camo canvases, so paint must be final first).
 let camoSweepP = Promise.resolve();
+let battleCountdownWarmP = Promise.resolve();
+
+async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null) {
+  const total = game.tanks.filter((ent) =>
+    !ent.visual && (!predicate || predicate(ent))).length;
+  let built = 0;
+  for (;;) {
+    const next = nextStagedBake(game, predicate);
+    if (!next) return built;
+    try {
+      await prebakeSharedTextures(getSpec(next.ent.specId),
+        engineCtx.anisotropy ?? 4, next.quality, () => yieldForBudget());
+    } catch (_) { /* visual construction remains the fallback */ }
+    ensureStagedVisuals(game, 1, predicate);
+    built++;
+    if (onProgress) onProgress(built / Math.max(1, total));
+    await yieldForBudget();
+  }
+}
 
 // --- fx ----------------------------------------------------------------------
 const fx = createFx(engineCtx, hfProxy, { seed: 5000 });
@@ -461,7 +494,9 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
   // Finish the visible workshop while the boot veil owns the screen. Each
   // chunk still gets a painted frame, but no repair-bay build can now land as
   // a surprise 50–170 ms task after the garage becomes interactive.
-  while (gd.pump()) await nextFrame();
+  if (!STUDIO_BOOT_INTENT) {
+    while (gd.pump()) await nextFrame();
+  }
   return { stage: gs, dressing: gd };
 });
 // FEEL r12: corner perf overlay — fps / p95 frame time / worst stall /
@@ -884,6 +919,7 @@ setInterval(() => {
 // high-resolution repaint a few seconds after the garage becomes interactive;
 // every unseen roster entry stays lazy until selected or battle loading.
 await bootStage('vehicle', async () => {
+  if (STUDIO_BOOT_INTENT) return;
   await prebakeSharedTextures(getSpec(selectedSpecId), engineCtx.anisotropy ?? 4,
     'high', () => nextFrame());
   await setPedestalTank(selectedSpecId);
@@ -934,11 +970,21 @@ function placeGarage() {
 /**
  * Make `next` the active battlefield: hide whatever was active, re-target
  * atmosphere/lighting to the map's sky preset, rebuild the collider + minimap
- * and re-seat the garage stage.
+ * and optionally prepare the battle/garage-only services.
  * @param {object} next a World from createMap/createMapAsync
+ * @param {{services?:boolean}} [opts]
  * @returns {object} the active World
  */
-function activateWorld(next) {
+function prepareWorldServices(next = world) {
+  if (!next || world !== next) return;
+  collider = createCollider(game, next);
+  hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
+    minimapSnapCtx());
+  placeGarage();
+  worldServicesMapId = next.mapId;
+}
+
+function activateWorld(next, { services = true } = {}) {
   if (world && world !== next) world.group.visible = false;
   world = next;
   worldDormant = false;
@@ -960,9 +1006,14 @@ function activateWorld(next) {
     baseFogDensity = scene.fog.density;
   }
   lighting.setSun(sky.sunDir, skyCfg);
-  hud.buildMinimap(world.heightField, world.getMinimapFeatures(), world.config.minimap,
-    minimapSnapCtx()); // hud_ui r6: real top-down capture as the map underlay
-  placeGarage();
+  // Studio never consumes the simulation collider, hidden battle minimap, or
+  // garage placement. Building all three during a direct Studio launch costs
+  // hundreds of milliseconds without changing its visible frame.
+  if (services) prepareWorldServices(next);
+  else {
+    collider = null;
+    worldServicesMapId = null;
+  }
   return world;
 }
 
@@ -988,9 +1039,12 @@ function switchMap(mapId) {
  * subsystem per frame so the caller's loading bar keeps animating.
  * @param {string} mapId concrete map id
  * @param {?function(number, string):void} [onProgress] (fraction, label)
+ * @param {{precompile?:boolean,compilePrograms?:boolean,services?:boolean}}
+ *   [opts] optionally submit color programs without the exhaustive shadow
+ *   warm, and defer battle/garage-only services for Studio
  * @returns {Promise<object>} the active World
  */
-async function ensureWorld(mapId, onProgress = null) {
+async function ensureWorld(mapId, onProgress = null, opts = null) {
   const id = mapId || pendingMapId;
   let next = worldCache.get(id);
   const wt = { id, cached: !!next };
@@ -1014,32 +1068,41 @@ async function ensureWorld(mapId, onProgress = null) {
     }
   }
   wtStage('build');
-  next.group.visible = true;
+  // Keep the fresh world out of the normal render loop while yielding the
+  // progress frame. Showing it here made that supposedly cheap paint frame
+  // perform a full first world/shadow render before the explicit warm below.
+  next.group.visible = false;
   // perf-r3: assembleWorld and activateWorld (minimap top-down capture,
   // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
   // loading bar a painted frame between them.
-  await nextFrame();
+  // Fine-sliced builders have already painted progress immediately before
+  // sealing the world. Fast-path battle/Studio loads skip a redundant extra
+  // frame here; exhaustive capture/shot preparation keeps the old seam.
+  if (opts?.precompile !== false) await nextFrame();
   wtStage('present');
+  next.group.visible = true;
   // perf-r5c (retina probe): activateWorld's minimap capture was the FIRST
   // render touching the fresh world's programs — 55 links resolved in that
   // one slice (630 ms). Submit the compiles now, let the parallel linker
   // breathe, and bake the cloud decks one-per-frame; the capture then binds
   // ready programs and baked clouds.
-  try {
-    if (typeof renderer.compileAsync === 'function') {
-      await renderer.compileAsync(next.group, camera, scene);
-    } else {
-      renderer.compile(next.group, camera, scene);
-    }
-  } catch (_) { /* warm only */ }
+  if (opts?.precompile !== false || opts?.compilePrograms === true) {
+    try {
+      if (typeof renderer.compileAsync === 'function') {
+        await renderer.compileAsync(next.group, camera, scene);
+      } else {
+        renderer.compile(next.group, camera, scene);
+      }
+    } catch (_) { /* warm only */ }
+  }
   wtStage('compile');
-  await nextFrame();
+  if (opts?.precompile !== false) await nextFrame();
   // shadow-depth variants never build through compile() (r2d note) and the
   // render that submits them also BINDS them — one full render resolved ~59
   // links in a single slice (3 s under heavy host load). Render the world in
   // SUBSETS instead (terrain -> +vegetation -> +props): each slice submits
   // and resolves roughly a third, with linker breathing between.
-  {
+  if (opts?.precompile !== false) {
     const kids = next.group.children.slice();
     const cohorts = Math.min(3, Math.max(1, kids.length));
     for (let sub = 0; sub < cohorts; sub++) {
@@ -1058,9 +1121,15 @@ async function ensureWorld(mapId, onProgress = null) {
     }
   }
   wtStage('shadowWarm');
+  await bootCloudWarmP;
   if (sky.ensureCloudTexturesChunked) await sky.ensureCloudTexturesChunked(() => nextFrame());
   wtStage('clouds');
-  if (world !== next || worldDormant) activateWorld(next);
+  const needsServices = opts?.services !== false && worldServicesMapId !== next.mapId;
+  if (world !== next || worldDormant) {
+    activateWorld(next, { services: opts?.services !== false });
+  } else if (needsServices) {
+    prepareWorldServices(next);
+  }
   wtStage('activate');
   wt.totalMs = Math.round(performance.now() - wtStart);
   if (typeof window !== 'undefined') window.__WORLD_LOAD = wt;
@@ -2037,7 +2106,9 @@ async function startBattleLoading(specId, mapId = null) {
 
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   battleLoad.progress(0.02, 'Loading battlefield');
-  await ensureWorld(resolved, (f, label) => battleLoad.progress(0.02 + f * 0.53, label));
+  await ensureWorld(resolved,
+    (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
+    { precompile: false });
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   bltStage('world');
 
@@ -2053,33 +2124,53 @@ async function startBattleLoading(specId, mapId = null) {
   // a synchronous ~5-15 ms canvas bake on the very frame the shell landed.
   hud.warmShotCards(game.tanks.map((e) => e.specId));
   battleLoad.progress(0.58, 'Painting vehicles');
-  await nextFrame();
-  const missing = game.tanks.filter((e) => !e.visual).length;
-  for (let i = 0; i < missing + 1; i++) {
-    // perf-r4b: bake the NEXT tank's shared canvases chunked (a painted frame
-    // between painter stages) so the build below acquires a warm cache entry
-    // — one 2048² family bake was a 0.3-4.7 s atomic task under this bar.
-    const next = nextStagedBake(game);
-    if (next) {
-      try {
-        await prebakeSharedTextures(getSpec(next.ent.specId),
-          engineCtx.anisotropy ?? 4, next.quality, () => loadYield());
-      } catch (_) { /* warm only — ensureStagedVisuals bakes as before */ }
-    }
-    if (ensureStagedVisuals(game, 1)) break;
-    battleLoad.progress(0.58 + ((i + 1) / Math.max(1, missing)) * 0.30, 'Painting vehicles');
-    await loadYield();
-  }
+  // The player is the only required subject for the first chase frame. Allied
+  // formation visuals stream first during the frozen countdown, then enemies.
+  const openingVisual = (ent) => ent.isPlayer;
+  if (game.tanks.some((ent) => !ent.visual && openingVisual(ent))) await nextFrame();
+  await streamBattleVisuals(openingVisual, loadYield, (fraction) => {
+    battleLoad.progress(0.58 + fraction * 0.30, 'Painting vehicles');
+  });
   bltStage('bake');
 
-  // 3. shader/texture warm: pulling this in front of the countdown
-  //    is what keeps the opening flyby from hitching on a compile storm.
-  // Camouflage painting starts with roster staging; finish it before burnt
-  // texture caches copy those canvases during the single warm pipeline.
-  await camoSweepP;
-  battleLoad.progress(0.90, 'Compiling shaders');
-  await nextFrame();
-  await warmCombatPipelineChunked();
+  // Complete hidden enemy visuals and exhaustive first-use caches during the
+  // already-visible, simulation-frozen countdown. Preserve the old ordering:
+  // camouflage settles before burnt variants copy those canvases.
+  battleLoad.progress(0.90, 'Preparing deployment');
+  const entryCamoSweep = camoSweepP;
+  const startCountdownWarm = () => (async () => {
+    const countdownWarmStartedAt = performance.now();
+    const trace = { done: false, stages: {} };
+    if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
+    let markedAt = performance.now();
+    const mark = (name) => {
+      const now = performance.now();
+      trace.stages[name] = Math.round(now - markedAt);
+      markedAt = now;
+    };
+    await entryCamoSweep;
+    mark('camo');
+    const countdownYield = createFrameBudgetYielder(8);
+    await streamBattleVisuals((ent) => ent.team === 'player', countdownYield);
+    mark('allyVisuals');
+    await streamBattleVisuals(null, countdownYield);
+    mark('enemyVisuals');
+    await warmCombatPipelineChunked();
+    mark('combatWarm');
+    trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
+    trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
+    trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
+    trace.done = true;
+    if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
+  })().catch((error) => {
+    if (typeof window !== 'undefined') {
+      window.__BATTLE_COUNTDOWN_WARM = {
+        done: true,
+        doneBeforeRollout: false,
+        error: String(error),
+      };
+    }
+  });
   bltStage('warm');
   battleLoad.progress(1, 'Ready');
 
@@ -2100,8 +2191,13 @@ async function startBattleLoading(specId, mapId = null) {
   // screen; any render-target resize is hidden instead of landing on the
   // first visible battle frame.
   post.setAdaptiveSuspended(false);
+  bltStage('restoreRenderer');
   await battleLoad.hide();
+  bltStage('hide');
   openBattle();
+  bltStage('open');
+  blt.totalMs = Math.round(performance.now() - shownAt);
+  battleCountdownWarmP = startCountdownWarm();
 }
 // Headless probes drive the battle entry through __DEBUG.startBattle (which is
 // synchronous) and skip the in-battle countdown (startBattle arms it only on
@@ -2913,9 +3009,10 @@ function startBattle(specId, mapId = null, opts = {}) {
   // above). The old back-to-back sync sweeps repainted the warm cache in a
   // single task — a rematch measured a 14 s frame with the loading bar
   // frozen. Chunked, the bar animates between entry repaints; the player's
-  // spec paints in the first slice. startBattleLoading AWAITS the handle
-  // before the wreck dances — burnt bakes copy the camo canvases, so paint
-  // must be final first (the sync sweep's ordering, preserved).
+  // The player can be visible as soon as the veil drops. Repaint that one
+  // retained cache entry immediately; the rest stays chunked and completes
+  // ahead of burnt-variant warming during the frozen countdown.
+  applyCamoPatterns(specId);
   camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
   // SHOT-INFO identity (killcam_shotinfo r3): set synchronously — hud.update
   // only forwards it after the first rendered frame, which dropped hits
@@ -2968,7 +3065,10 @@ function openBattle() {
     // swaps) get their programs linked while everything is still frozen and
     // a one-frame hitch is invisible. Repeats are cache hits.
     setTimeout(() => {
-      if (game.phase === 'battle' && game.preBattleS > 0) compileHiddenVariantsChunked();
+      if (game.phase !== 'battle' || game.preBattleS <= 0) return;
+      battleCountdownWarmP.then(() => {
+        if (game.phase === 'battle' && game.preBattleS > 0) compileHiddenVariantsChunked();
+      });
     }, 900);
   }
   audio.resume(); // the entry-gate keypress already unlocked the context
@@ -3013,6 +3113,10 @@ function enterGarage({ preserveRoom = !!(
   perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   game.phase = 'garage';
+  // A Studio-only activation deliberately skipped the hidden battle HUD,
+  // collider, and garage placement. Finish those services now while the
+  // Studio-to-garage transition veil still owns the frame.
+  if (world && worldServicesMapId !== world.mapId) prepareWorldServices(world);
   // PAUSE: leaving battle clears any paused overlay (Leave Battle closes the
   // panel itself before calling here — this covers every other exit path).
   // After the phase flip above, isBattleActive() is already false, but pass
@@ -4690,6 +4794,9 @@ if (world) {
   updateDustAndSync();
 }
 await bootStage('post', async () => {
+  // Direct Studio boot has no garage hero or dressing to present. Its own
+  // covered entry renders the real world/camera before the boot veil lifts.
+  if (STUDIO_BOOT_INTENT) return;
   if (typeof renderer.compileAsync === 'function') {
     const t0 = performance.now();
     try { await renderer.compileAsync(scene, camera, scene); } catch (_) { /* first render is fallback */ }
@@ -4819,13 +4926,18 @@ function warmStudioPipelineChunked(onProgress = null) {
     const progress = (f, label) => {
       if (onProgress) onProgress(f, label);
     };
-    const yieldForFrameBudget = createFrameBudgetYielder(8);
     progress(0.08, 'Baking Studio effects');
     try {
-      if (fx.warmTexturesChunked) {
-        await fx.warmTexturesChunked(() => yieldForFrameBudget());
-      } else if (fx.warmTextures) {
+      // Studio entry is completely covered by the branded boot/transition
+      // veil.  Yielding once for every procedural flipbook tile stretched
+      // ~200 ms of deterministic canvas work into 800-900 ms of wall time,
+      // without presenting a useful intermediate frame.  Finish the exact
+      // same generator contiguously here; the garage idle warmer remains
+      // frame-budgeted because it runs in an already interactive view.
+      if (fx.warmTextures) {
         fx.warmTextures();
+      } else if (fx.warmTexturesChunked) {
+        await fx.warmTexturesChunked(() => Promise.resolve());
       }
       mark('textures');
       progress(0.58, 'Priming Studio effects');
@@ -5360,7 +5472,13 @@ function* compileHiddenVariantsSteps() {
 // actors, effects, capture all live in the studio module.
 const studio = createStudio({
   renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
-  hfProxy, getWorld: () => world, ensureWorld, setWorldDormant,
+  hfProxy, getWorld: () => world,
+  ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
+    precompile: false,
+    compilePrograms: true,
+    services: false,
+  }),
+  setWorldDormant,
   setGarageSpots, setGarageSunTrim, enterGarage,
   warmStudioPipeline: warmStudioPipelineChunked,
   transition, // branded loading screen on studio enter/exit
@@ -6026,6 +6144,7 @@ window.__DEBUG = {
   // them to the same private/LAN entry path used by the play menu.
   beginNetworkBattle,
   enterGarage,
+  leaveBattleToGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks
   get spotting() { return game.spotting; },
   killcam,                             // KILL-CAM introspection (phase, cancel)
@@ -6083,6 +6202,15 @@ if (pendingRoomInvitePromise) {
 window.__GAME_READY = true;
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
+// Direct Studio navigation skips garage-only construction on the critical
+// path. Fill that hidden destination during a genuinely idle Studio window so
+// a later Studio -> Garage exit still reveals a complete bay and hero.
+if (STUDIO_BOOT_INTENT) {
+  requestQuietIdle(async () => {
+    while (garageDressing.pump()) await nextFrame();
+    if (!pedestalVisual) await setPedestalTank(selectedSpecId, true);
+  });
+}
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic
 // probe yet renders the REAL scene's lit meshes black. Sample the actual
 // garage frame shortly after ready; if the lit band reads black, shadows-off

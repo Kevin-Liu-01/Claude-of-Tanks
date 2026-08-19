@@ -208,7 +208,7 @@ const BUDGET = {
   // the RATCHET targets below are printed as warning deltas on every run so
   // the remaining creep is visible at review time.
   trianglesMedianMax: 7_000_000,
-  loadToReadyMaxMs: 8000,
+  loadToReadyMaxMs: 5000,
   // GPU texture creep guard: the scene-material texture estimate DOUBLED in
   // one content round (442 MB -> 806 MB, r2 -> r3; ~30 MB of generated canvas
   // maps per vehicle x a 17-vehicle pool resident at boot). This headless Mac
@@ -374,13 +374,6 @@ const consoleErrors = [];
 page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('favicon')) consoleErrors.push(m.text()); });
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 
-// Record precise time-to-ready inside the page.
-await page.evaluateOnNewDocument(() => {
-  window.__READY_AT = -1;
-  const iv = setInterval(() => {
-    if (window.__GAME_READY === true) { window.__READY_AT = performance.now(); clearInterval(iv); }
-  }, 25);
-});
 await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   try {
     if (desktopPreset) window.localStorage.setItem('cot.gfxPreset', desktopPreset);
@@ -395,8 +388,8 @@ try {
   // screenshot harness's 90 s budget — cold vite transforms under machine
   // load blew the old 30 s goto and killed certification attempts before a
   // single frame was measured (this round's first dsf1 run died exactly
-  // there). A retried load resets the page's time origin, so __READY_AT
-  // still measures the successful load only.
+  // there). A retried load resets the page's time origin, so the app-owned
+  // BOOT_MS + imports mark still measures the successful load only.
   for (let attempt = 0; ; attempt++) {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
@@ -408,7 +401,15 @@ try {
       consoleErrors.length = 0;
     }
   }
-  const loadToReadyMs = await page.evaluate(() => window.__READY_AT);
+  // Exact navigation-time ready mark. The former 25 ms interval could lose
+  // its last callback during a long task and report -1 despite GAME_READY.
+  const loadToReadyMs = await page.evaluate(() => {
+    const boot = Number(window.__BOOT_MS);
+    const imports = Number(window.__BOOT_TIMINGS?.imports);
+    return Number.isFinite(boot) && Number.isFinite(imports)
+      ? boot + imports
+      : performance.now();
+  });
 
   if (sceneMode === 'battle') {
     // Enter battle deterministically (pinned worst-case roster by default —
@@ -921,7 +922,7 @@ try {
     frameMsP99: { limit: `<=${BUDGET.frameMsP99Max}`, actual: report.frameMs.p99, pass: report.frameMs.p99 <= BUDGET.frameMsP99Max },
     drawCallsWorstFrame: { limit: `<=${BUDGET.drawCallsWorstFrameMax}`, actual: report.drawCalls.max, pass: report.drawCalls.max <= BUDGET.drawCallsWorstFrameMax },
     trianglesMedian: { limit: `<=${BUDGET.trianglesMedianMax}`, actual: report.triangles.median, pass: report.triangles.median <= BUDGET.trianglesMedianMax },
-    loadToReady: { limit: `<=${BUDGET.loadToReadyMaxMs}`, actual: report.loadToReadyMs, pass: report.loadToReadyMs <= BUDGET.loadToReadyMaxMs },
+    loadToReady: { limit: `<${BUDGET.loadToReadyMaxMs}`, actual: report.loadToReadyMs, pass: report.loadToReadyMs < BUDGET.loadToReadyMaxMs },
     sceneTextureMB: {
       limit: `<=${BUDGET.sceneTextureMBMax} (frozen; holdable via parked-pool visual eviction)`,
       actual: report.gpuTextureEstimate.sceneTextureMB,

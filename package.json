@@ -37,6 +37,7 @@
     "studio:examples": "node tools/studio-example-videos.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs",
+    "perf:loading": "node tools/loading-budget-probe.mjs",
     "test:net:browser": "node tools/multiplayer-browser-soak.mjs",
     "test:net:four": "node tools/multiplayer-four-player-soak.mjs",
     "test:net:seven": "node tools/multiplayer-four-player-soak.mjs --players=14 --team-size=7",
