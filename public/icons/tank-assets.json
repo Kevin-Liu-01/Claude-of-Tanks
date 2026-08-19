@@ -78279,13 +78279,13 @@
           }
         ]
       },
-      "geometryHash": "4baa8d97",
+      "geometryHash": "d19f9cd9",
       "metadataHash": "24575706",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "gunmetal": 11,
+          "gunmetal": 12,
           "gearShadow": 2,
           "trackSteel": 1,
           "fittingPaint": 6,

@@ -608,6 +608,28 @@ function buildStrv103A(P) {
     P.add('hullDark', box(0.26, 0.02, 0.36), s * 1.65, 1.70, -3.06);
     P.add('hullDetail', box(0.02, 0.16, 0.30), s * 1.79, 1.54, -3.06);        // width-defining guard lips
   }
+  // Starboard recovery rope: follow the fender/skirt seam fore-aft. The old
+  // gallery read looked like a loose cable rotated 90 degrees through the
+  // running gear; this shallow supported route stays planted on the A hull.
+  const sideTowRope = FITTINGS.towCable({
+    mats: P.mats,
+    pts: [
+      [1.778, 1.510, -2.62],
+      [1.784, 1.494, -1.22],
+      [1.782, 1.498, 0.18],
+      [1.774, 1.510, 2.34],
+    ],
+    r: 0.019,
+    eyes: false,
+    seed: 10315,
+  });
+  sideTowRope.name = 'strv103a_side_tow_rope';
+  sideTowRope.userData.owner = 'hull';
+  sideTowRope.userData.orientation = 'longitudinal';
+  P.hullG.add(sideTowRope);
+  for (const z of [-2.30, -1.05, 0.30, 1.82]) {
+    P.add('hullDark', box(0.042, 0.062, 0.090), 1.750, 1.50, z);             // rope retaining straps
+  }
   // twin raked whip masts (print: pair tips ~2.9 leaning rearward)
   for (const s of [-1, 1]) {
     P.add('hullDetail', cylY(0.045, 0.055, 0.10, 10), s * 0.92, 1.91, -1.86);
