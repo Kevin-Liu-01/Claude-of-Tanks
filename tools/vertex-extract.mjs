@@ -952,6 +952,16 @@ const REG = {
     fixedMount: true,
     pubDims: { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.62 },
   },
+  leo1a5: {
+    // Owner-supplied articulated Leopard 1 oracle (Marina.Kardava,
+    // CC-BY-4.0). The GLB remains a local authoring input: gameplay stays
+    // first-party procedural. Raw hierarchy keeps hull, turret, gun and
+    // both running-gear sides in distinct nodes.
+    path: 'public/models/community-candidates/tank_leopard_1.glb',
+    turretNode: '^Turret_01$', gunNode: '^gun_01_Shape$', autoPivot: true,
+    yawOffset: Math.PI,
+    pubDims: { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.62 },
+  },
 };
 const RUSSIA_IDS = Object.keys(REG);
 

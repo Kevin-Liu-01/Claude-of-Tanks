@@ -1,4 +1,54 @@
-# Leopard 1A5 (`leo1a5`) — BASE-21 photo-class packet
+# Leopard 1A5 (`leo1a5`) — owner-source rebuild packet
+
+## Current source authority (2026-08-18)
+
+The owner-supplied `tank_leopard_1.glb` is now the articulated geometric and
+visual oracle for the Leopard 1 base vehicle. It supersedes the old
+`NO usable oracle` / `FALSE-0` ruling below. The playable model remains
+first-party procedural geometry; the ignored GLB is loaded only by authoring
+and fidelity tools.
+
+- Source: **Tank_Leopard 1**, Marina.Kardava, CC-BY-4.0, Sketchfab model
+  `b8a64bf4f6ae4811bea84c8d657f0025`.
+- Receipt: SHA-256
+  `6cae5ea670df40cd8c5371635fa212f7b7b65f69dcfcd1d25645e3eae1b2eb87`.
+- Source census: 21 nodes, 9 meshes, 99,080 vertices, 74,380 triangles.
+  Articulated owners resolve to `Hull`, `Turret_01`, and
+  `gun_01_Shape`; no external geometry reaches the playable path.
+- Registration: turret `^Turret_01$`, gun `^gun_01_Shape$`, automatic
+  pivot, `yawOffset = PI`. The extracted normalized receipt lives at
+  `docs/references/vertex/leo1a5.json`.
+- Builder: `buildLeo1A5SourceProfile` in
+  `src/vehicles/profiles/leopard.js`, selected by
+  `LEOPARD_PROFILES.leo1a5`.
+
+### Rebuild result
+
+The hull, deck crown, bow, exposed seven-wheel suspension, idler/sprocket
+course, cast teardrop turret, compact saddle, L7A3 placement, and rear basket
+were rebuilt from source stations and contours. The Leopard 1A5-specific
+Blohm & Voss cheek package, EMES-18, Wegmann launchers, optics, MG, hatches,
+stowage, tools, cables, lights, decals, and antenna mounts are then seated on
+that source-derived base.
+
+Published-dimension gate: **100/100**. Measured procedural values are
+2.61 m height, 7.11 m hull length, 9.52 m overall length, and 3.36 m width,
+all within 0.6% of the 2.62 / 7.09 / 9.54 / 3.37 m spec anchors. The exact
+track audit reports **0/0 band**, **0/0 shoe**, and **0/0 swept** incursions.
+The source loader reports zero source interpenetration violations; procedural
+floater audit is 100.
+
+The strict source silhouette score is intentionally reported, not hidden:
+geo-min 43.6 (hull 63.1, turret 53.3, stations 72.1, dimensions 100,
+floaters 100). The supplied source depicts a base Leopard 1, while the
+playable target is a Leopard 1A5. The A5 cheek appliqué, EMES-18, smoke
+banks, and loaded stowage create valid silhouette deltas, so the gate remains
+an honest diagnostic rather than a false release pass. The paired visual
+packet confirms correct source registration and coherent 0/90-degree yaw
+ownership (maximum yaw-proxy delta 1.9 degrees, centroid delta 0.14 m).
+
+The historical packets below are retained as an audit trail. Their old
+`FALSE-0` and welded-turret assumptions are superseded by this section.
 
 Spec home: src/vehicles/modern2.js (dims 7.09 / 9.54 / 3.37 / 2.62).
 Old build: buildLeo1A5 (modern2), pre-oracle era ("wholly ancient"
@@ -8,8 +58,8 @@ MODERN2_BUILDERS via PROFILED_BUILDERS, the same binding leo2a4 uses).
 Family guidance (owner 2026-08-06): leo1a5 takes inspiration from the
 leopard1 family.
 
-## ORACLE STATE (2026-08-07, base-21 scaffold round)
-**NO usable oracle.** The leo1a4 photogrammetry scan was adjudicated
+## Historical oracle state (2026-08-07, superseded)
+**At that time there was no usable oracle.** The leo1a4 photogrammetry scan was adjudicated
 RE-RIG-CLASS (fused 1.1M-vert blob, accessor-outlier crush — see the
 scan section below): it is NOT registered in any harness map and MUST
 NOT be. There is no docs/geometry-gate/leo1a5.json and no ledger row.

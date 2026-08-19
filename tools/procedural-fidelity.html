@@ -79,6 +79,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // outboard equipment then remains an honest silhouette difference.
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false, geometryComponentMasks:false, fidelityScaleAnchor:'hullLength' } },
   amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false, geometryComponentMasks:false, fidelityScaleAnchor:'hullLength' } },
+  // Owner-supplied articulated Leopard 1 oracle (Marina.Kardava,
+  // CC-BY-4.0). It is a local authoring reference only.
+  leo1a5: { source:'glb', glb:{ path:'/models/community-candidates/tank_leopard_1.glb',
+    turretNode:'^Turret_01$', gunNode:'^gun_01_Shape$', autoPivot:true,
+    yawOffset:Math.PI } },
   // ---- KojfDiscord AW series (§5.38 owner drops, LOCAL-ONLY QUARANTINE,
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort

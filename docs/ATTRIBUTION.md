@@ -946,3 +946,15 @@ owner-authoritative repaired repartition).
 ## §5.317 owner drops (2026-08-17)
 - `t95_world_of_tanks.glb` (sha256 14c576b58d4eac19…, 10.6MB) — GAME-TITLED upload (World of Tanks) = EXTRACTION-SUSPECT class: LOCAL-ONLY reference in community-candidates/ (gitignored), never ship, owner-sanctioned measurement/visual use for the §5.317 t95 redesign (new row oracle candidate pending §E/censor verdicts).
 - `strv_103b.glb` (sha256 e0b0997377b43edf…, 10.6MB) — CENSUS VERDICT (lane J, 2026-08-17): CLEAN CC-BY-4.0 COMMUNITY MODEL. Provenance is embedded in the GLB `asset.extras`: title "Strv 103B", author "BFJFFK (https://sketchfab.com/chilecaliente)", license "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)", source https://sketchfab.com/3d-models/strv-103b-c05d9f47d8d640588f7f08d04491fa8d, generator Sketchfab-12.74.0 (OBJ-origin conversion: root node "Strv_103B.obj.cleaner.materialmerger.gles"). No game-rip fingerprints (5 anonymous Object_N meshes, UUID material names, no engine/extraction tags). LOCAL-ONLY reference in community-candidates/ (gitignored) for the new strv103a id + the strv103 family; attribution recorded here per CC-BY. Census: 5 meshes / 73,539 verts / 54,002 tris, ~1:1 meters, nose +Z; full receipts in docs/references/tanks/strv103a.md.
+
+## Leopard 1 owner oracle (2026-08-18)
+
+- **Tank_Leopard 1** by
+  [Marina.Kardava](https://sketchfab.com/Marina.Kardava), licensed
+  [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/), source
+  [Sketchfab model b8a64bf4f6ae4811bea84c8d657f0025](https://sketchfab.com/3d-models/tank-leopard-1-b8a64bf4f6ae4811bea84c8d657f0025).
+  Owner-supplied file SHA-256:
+  `6cae5ea670df40cd8c5371635fa212f7b7b65f69dcfcd1d25645e3eae1b2eb87`.
+  The GLB is a local-only, gitignored comparison instrument. No source mesh,
+  material, texture, animation, or derived payload byte ships; `leo1a5`
+  remains original first-party procedural geometry.

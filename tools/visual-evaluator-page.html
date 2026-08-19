@@ -29,13 +29,15 @@
 // Driver: tools/visual-evaluator.mjs.
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.js';
-import { MODEL_SOURCE } from '/src/vehicles/specs.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+import { loadReferenceGlb } from '/tools/reference-glb-loader.js';
 
 const out = document.getElementById('out');
 const say = (t) => { out.textContent = t; };
 const params = new URLSearchParams(location.search);
 const SELFTEST = params.get('selftest') === '1';
 const id = SELFTEST ? 'selftest' : (params.get('id') || 'isu152');
+const spec = SELFTEST ? null : TANK_SPECS[id];
 
 const MASK_S = 1024;      // analysis mask resolution
 const SHOT_S = 640;       // shaded overlay background (critic pair size)
@@ -71,6 +73,11 @@ const CRITIC_REFERENCE_OVERRIDES = {
   type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // Owner-supplied articulated Leopard 1 oracle (Marina.Kardava,
+  // CC-BY-4.0). Measurement/critic only; the playable stays procedural.
+  leo1a5: { source:'glb', glb:{ path:'/models/community-candidates/tank_leopard_1.glb',
+    turretNode:'^Turret_01$', gunNode:'^gun_01_Shape$', autoPivot:true,
+    yawOffset:Math.PI } },
   leo2a4: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
   leo2a7v: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
   k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
@@ -328,17 +335,13 @@ if (SELFTEST) {
   }
   if (MODEL_SOURCE[id]?.source !== 'glb') throw new Error(`${id} has no GLB reference registered`);
   const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
-  reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+  // Runtime GLB swapping is deliberately retired. Fidelity tooling owns its
+  // comparison oracle through the tool-only loader instead of waiting for a
+  // production createTank side effect that can never occur.
+  reference = await loadReferenceGlb(MODEL_SOURCE[id], id, spec);
   procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
   scene.add(reference.root, procedural.root);
-  const swapped = (visual) => {
-    let yes = false;
-    visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
-    return yes;
-  };
-  say('waiting for reference GLB…');
-  for (let i = 0; i < 600 && !swapped(reference); i++) await sleep(50);
-  if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
+  if (!reference.root.userData.__glbSwapped) throw new Error(`${id} reference GLB did not load`);
   await sleep(400);
 }
 reference.root.updateMatrixWorld(true);

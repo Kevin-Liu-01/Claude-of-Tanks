@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-18T22:53:11.331Z",
+ "generatedAt": "2026-08-19T01:41:19.349Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
- "total": 119,
+ "total": 120,
  "rows": [
   {
    "id": "recon_tank",
@@ -597,6 +597,19 @@
     "stations": 77.6,
     "turretCurves": 40.2,
     "wholeCurves": 54.7,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leo1a5",
+   "geoMin": 43.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 63.1,
+    "stations": 72.1,
+    "turretCurves": 53.3,
+    "wholeCurves": 43.6,
     "dims": 100,
     "floaters": 100
    }
