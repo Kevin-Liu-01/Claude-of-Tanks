@@ -46,7 +46,7 @@ export const CAMO_PATTERN_LABEL = Object.freeze({
 
 export const CUSTOM_CAMO_ID = 'custom';
 export const CUSTOM_CAMO_STYLES = Object.freeze(['blotch', 'digital', 'stripes', 'splinter']);
-export const DEFAULT_CUSTOM_CAMO = Object.freeze({
+const DEFAULT_CUSTOM_CAMO = Object.freeze({
   style: 'blotch',
   base: '#46513d',
   colorA: '#252a24',

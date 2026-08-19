@@ -2345,6 +2345,38 @@ export function createAI(entity, opts = {}) {
     void distToTarget;
   }
 
+  // Both the low-speed detector and orbit watchdog escalate through this
+  // same recovery policy. Low-speed wedges wait for a repeated strike;
+  // orbiting proves a bad route immediately and skips that first-strike hold.
+  function escalateStuckRecovery(timeS, requireRepeatedStrike) {
+    stuckStrikes++;
+    if (requireRepeatedStrike && stuckStrikes < 2) return;
+
+    detourSide = -detourSide;
+    detourUntilS = timeS + UNSTICK_TIME_S + 6;
+    // A live corner plan caused the wedge, so replace it immediately. With
+    // no plan, let the wide detour own steering for the recovery window.
+    if (routeActive) {
+      routeActive = false;
+      routeTimer = 0;
+    } else {
+      routeTimer = UNSTICK_TIME_S + 6;
+    }
+    if (mode === 'patrol' && waypoints.length > 1) {
+      wpIndex = (wpIndex + 1) % waypoints.length;
+    } else if (hasMoveTarget) {
+      hasMoveTarget = false;
+    }
+    if (hasVantage) vetoVantage();
+    hasVantage = false;
+
+    // Four failed legs mean the bot is pocketed rather than merely wedged.
+    if (stuckStrikes >= 4) {
+      if (timeS >= scootUntilS && escapePocket()) stuckStrikes = 0;
+      else stuckStrikes = 2;
+    }
+  }
+
   // ---- main update ----------------------------------------------------------
 
   function update(dt, timeS) {
@@ -2640,40 +2672,7 @@ export function createAI(entity, opts = {}) {
         unstickUntilS = timeS + UNSTICK_TIME_S;
         unstickSteer = rng() < 0.5 ? -1 : 1;
         lowSpeedT = 0;
-        // Repeated strikes on the same leg = the straight line is blocked:
-        // detour sideways (side flips per strike), and in patrol also skip
-        // the waypoint, instead of ramming it until the battle clock runs
-        // out.
-        stuckStrikes++;
-        if (stuckStrikes >= 2) {
-          detourSide = -detourSide;
-          detourUntilS = timeS + UNSTICK_TIME_S + 6;
-          // r7 router interplay: a wedge WITH a live corner plan means the
-          // plan itself is bad — replan NOW (cornerBias flips to the other
-          // flank with detourSide). A wedge with NO plan is a terrain grind
-          // the router cannot see — suppress planning for the detour window
-          // so the wide ghost detour owns the steering.
-          if (routeActive) {
-            routeActive = false;
-            routeTimer = 0;
-          } else {
-            routeTimer = UNSTICK_TIME_S + 6;
-          }
-          if (mode === 'patrol' && waypoints.length > 1) {
-            wpIndex = (wpIndex + 1) % waypoints.length;
-          } else if (hasMoveTarget) {
-            hasMoveTarget = false;
-          }
-          if (hasVantage) vetoVantage(); // this vantage was unreachable
-          hasVantage = false; // blocked vantage — re-sample a fresh one
-          if (stuckStrikes >= 4) {
-            // r7 POCKET ESCAPE: four wedge cycles on one leg — commit to the
-            // clearest 30 m lane out of the pocket instead of flipping sides
-            // against the same cluster forever.
-            if (timeS >= scootUntilS && escapePocket()) stuckStrikes = 0;
-            else stuckStrikes = 2; // keep flipping sides
-          }
-        }
+        escalateStuckRecovery(timeS, true);
       }
     } else {
       lowSpeedT = 0;
@@ -2703,27 +2702,7 @@ export function createAI(entity, opts = {}) {
         navBestD = Infinity;
         unstickUntilS = timeS + UNSTICK_TIME_S;
         unstickSteer = rng() < 0.5 ? -1 : 1;
-        stuckStrikes++;
-        detourSide = -detourSide;
-        detourUntilS = timeS + UNSTICK_TIME_S + 6;
-        // r7 router interplay — same rule as the low-speed strike above
-        if (routeActive) {
-          routeActive = false;
-          routeTimer = 0;
-        } else {
-          routeTimer = UNSTICK_TIME_S + 6;
-        }
-        if (mode === 'patrol' && waypoints.length > 1) {
-          wpIndex = (wpIndex + 1) % waypoints.length;
-        } else if (hasMoveTarget) {
-          hasMoveTarget = false;
-        }
-        if (hasVantage) vetoVantage(); // this vantage was unreachable
-        hasVantage = false; // blocked vantage — re-sample a fresh one
-        if (stuckStrikes >= 4) {
-          if (timeS >= scootUntilS && escapePocket()) stuckStrikes = 0; // r7
-          else stuckStrikes = 2; // keep flipping sides
-        }
+        escalateStuckRecovery(timeS, false);
       }
     } else if (!driveIntent) {
       navNoProgressT = 0;

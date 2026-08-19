@@ -93,7 +93,7 @@ export function classLabel(value) {
   return CLASS_LABELS[value] || titleCase(value || 'vehicle');
 }
 
-export function eraLabel(value) {
+function eraLabel(value) {
   return ERA_LABELS[value] || titleCase(value || 'unspecified era');
 }
 

@@ -11,7 +11,7 @@ function utf8Size(value) {
   return value.length * 2;
 }
 
-export const jsonWireCodec = Object.freeze({
+const jsonWireCodec = Object.freeze({
   encode(value) { return JSON.stringify(value); },
   decode(value) {
     if (typeof value !== 'string') {
@@ -44,7 +44,7 @@ function normalizedReadyState(channel) {
 }
 
 /** Wrap WebRTC RTCDataChannel or WebSocket behind the shared transport seam. */
-export function createChannelTransport(channel, {
+function createChannelTransport(channel, {
   kind = 'channel',
   codec = jsonWireCodec,
   stateCodec = codec,

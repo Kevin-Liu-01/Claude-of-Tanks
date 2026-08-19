@@ -1317,7 +1317,7 @@ function wedgeTurretV3(P, T) {
 // plan nose 3.08 -> tips +-1.50 @ z 0.65..1.90, rack +-1.02 to -2.78,
 // mantlet block top 2.14 over z 3.35..3.90, L/55 axis 1.94 muzzle 7.08.
 // ---------------------------------------------------------------------------
-export function buildLeo2A6(P) {
+function buildLeo2A6(P) {
   const { box, cylX, cylZ, torus, xform, frustum } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -10698,7 +10698,7 @@ function leoSlatRear(P, o) {
 // + stern + turret flanks), raised belly line with the bolted mine plate,
 // reinforced crew-hatch hardware, ISAF stowage density; L55 at the
 // 7.18 bore mouth (spec overall 10.97 exactly).
-export function buildLeo2A6M(P) {
+function buildLeo2A6M(P) {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, shovelTool, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -11223,7 +11223,7 @@ function wrapRearSlat(P, width, y0, y1, z, seatZ) {
 // slabs, mine-belly, the big rear stowage rack; gun keeps the §5.248 L44
 // package re-seated at the old turret's trunnion face (muzzle world 6.24,
 // overall 9.96 — bore-mouth law receipts in src/vehicles/germany.js).
-export function buildLeo2A4M(P) {
+function buildLeo2A4M(P) {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, liftEye, smokeCluster, shovelTool, towCable, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   leoHullV3(P, {
     bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,

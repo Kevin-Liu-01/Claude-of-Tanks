@@ -5,7 +5,7 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import { createType99Armor } from './profiles/type99Armor.js';
 
-export const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a2']);
+const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a2']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -51,7 +51,7 @@ function variant(id, donorId, options) {
   return spec;
 }
 
-export const CHINA_SPECS = {
+const CHINA_SPECS = {
   ztz85_iii: variant('ztz85_iii', 'type59', {
     name: 'ZTZ-85-III', number: '85-III', base: '#35483a', weather: '#4a5947',
     patches: ['#263229', '#59634c', '#736a4d'], camoScale: 0.50,

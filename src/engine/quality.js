@@ -134,13 +134,6 @@ export function texSize(px) {
   return Math.max(1, Math.round(Math.min(scaled, p.textureCap || Infinity, _glMaxTexSize)));
 }
 
-/** Clamp WITHOUT the tier scale — for sizes that must not shrink on mobile
- * (readability-critical bakes) but still may never exceed device caps. */
-export function clampTexSize(px) {
-  const p = getPreset();
-  return Math.max(1, Math.min(px, p.textureCap || Infinity, _glMaxTexSize));
-}
-
 export const PRESETS = {
   // r5: cascade 2 (roughly the 130-230 m band where pole/tree/building
   // shadows are most readable at gameplay camera angles) went 2048 → 4096 on

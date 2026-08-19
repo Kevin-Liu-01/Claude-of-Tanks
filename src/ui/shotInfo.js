@@ -14,11 +14,11 @@
 // Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.js.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js';
 import { uiIconSVG } from './uiIcons.js';
 import { maskIcon, iconUrl } from './icons.js';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
-import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
-import { penAtDistanceMm } from '../sim/ballistics.js';
+import { getSpec } from '../vehicles/specs.js';
 import { getMapConfig } from '../world/maps/index.js';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.js — this module keeps ALL the
@@ -353,74 +353,6 @@ function el(tag, cls, parent) {
   if (cls) e.className = cls;
   if (parent) parent.appendChild(e);
   return e;
-}
-
-/** 'turret_cheek_R' -> 'turret cheek R'; 'turretRing' -> 'turret ring'. */
-function zoneLabel(zone) {
-  if (!zone) return '—';
-  return zone
-    .replace(/_(R|L)$/, ' $1')
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .toLowerCase()
-    .replace(/ (r|l)$/, (m) => m.toUpperCase());
-}
-
-/**
- * Shell display name with a duplicated type token stripped: specs name rounds
- * like 'M829A4 APFSDS' and the card already renders the type badge — never
- * show 'APFSDS M829A4 APFSDS' (same helper as killcam.js).
- * @param {{shellType?:string, shellName?:string}} ev HitEvent
- * @returns {string} cleaned name ('' when it collapses to the bare type)
- */
-function shellDisplayName(ev) {
-  const type = (ev.shellType || '').trim();
-  let name = (ev.shellName || '').trim();
-  if (type) {
-    const esc = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    name = name.replace(new RegExp(`^${esc}\\s+|\\s+${esc}$`, 'i'), '');
-    if (name.toUpperCase() === type.toUpperCase()) name = '';
-  }
-  return name;
-}
-
-/**
- * Nominal (un-rolled) penetration of the event's shell at the event's flight
- * distance — the exact baseline the sim's ±25% pen roll came from
- * (ensurePenRoll: rollUniform(rng, penAtDistanceMm(spec, distM))). Lets the
- * card print 'roll / nominal' instead of a context-free roll that reads as a
- * bug beside a thin plate (same helper as killcam.js).
- * @param {{attackerSpecId?:string, shellName?:string, shellType?:string,
- *   flightDistM?:number}} ev HitEvent
- * @returns {number} nominal pen in mm (0 when unresolvable)
- */
-function nominalPenFor(ev) {
-  try {
-    const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
-    const shells = spec && spec.gun ? spec.gun.shells : null;
-    let sh = shells
-      ? (shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
-        || shells.find((s) => s.type === ev.shellType))
-      : null;
-    if (!sh && ev.shellName) {
-      // Payload carries no attackerSpecId (staged/legacy events): resolve the
-      // shell by exact identity across the whole roster. Only an UNAMBIGUOUS
-      // match is trusted — if two guns ship a same-named shell with different
-      // pen curves the baseline is omitted rather than guessed (the card must
-      // never lie). Same fallback as killcam.js.
-      let pen = -1;
-      for (const id of ALL_TANK_IDS) {
-        const g = getSpec(id).gun;
-        if (!g || !g.shells) continue;
-        for (const c of g.shells) {
-          if (c.name !== ev.shellName || c.type !== ev.shellType) continue;
-          const p = Math.round(penAtDistanceMm(c, ev.flightDistM || 0));
-          if (pen === -1) { pen = p; sh = c; } else if (p !== pen) return 0;
-        }
-      }
-    }
-    return sh ? Math.round(penAtDistanceMm(sh, ev.flightDistM || 0)) : 0;
-  } catch (_) { return 0; }
 }
 
 /** Classify a HitEvent into the WoT-mod result badge. */

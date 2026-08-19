@@ -17,22 +17,6 @@ import { KIT } from './tankFactory.js';
 import { FITTINGS } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const MODERN3_IDS = [
-  // k2 RE-LISTED 2026-08-08 (§5.38 owner priority wave): the 2026-08-06
-  // delist reason ('nvm k2 doesnt [have a glb], remove it') is VOIDED by the
-  // owner's k2_black_panther_armored_warfare.glb drop — "fully model a
-  // custom k2 black panther based on this model". Print is LOCAL-ONLY
-  // quarantine (measurement/influence only); the playable stays procedural.
-  'chieftain_mk10', 'k2', 'type10', 'm2a2_bradley', 'bmp2',
-  'carro45t', 'ariete', 'ariete_c1', 'ariete_c2',
-  // AFV lane 2026-08-06 (owner order "make the spz puma as well" + "use the
-  // bradley on puma and this type 89 ifv"): both ride the bradley recipe.
-  'spz_puma', 'type89',
-  // KOREA round 2026-08-08 (§5.38): K1A1 NEW — the "baby Abrams", built vs
-  // the k1a1_kojf semantic print (LOCAL-ONLY quarantine, same polarity).
-  'k1a1',
-];
-
 // ---------------------------------------------------------------------------
 // Spec helpers — local mirrors of the specs.js plate/shell conventions
 // (specs.js keeps them module-private; duplicated here per pack ownership).
@@ -2300,7 +2284,7 @@ function buildK1A1(P) {
 // real radial relief, §5.262 gear tones (gearFloor + tireHex + wheelHex so
 // the exposed train never reads ambient-black), §B9 skirt hem at ~49%
 // wheel exposure, rotation-invariant end-drum face anatomy.
-export function buildType10Native2026(P) {
+function buildType10Native2026(P) {
   const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab

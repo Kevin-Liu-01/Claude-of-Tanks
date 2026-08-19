@@ -10,7 +10,7 @@
 // and the battle HUD loadout readout (damagePanel.js).
 
 /** Default ink — matches hud.js TRAY_INK. */
-export const EQUIP_INK = 'rgba(238,244,250,0.86)';
+const EQUIP_INK = 'rgba(238,244,250,0.86)';
 
 // Each entry is the inner markup of a 24x24 viewBox, as a function of ink.
 const GLYPHS = {

@@ -45,7 +45,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 // ---------------------------------------------------------------------------
 
 // Piecewise-linear lookup over [[z, v], ...] breakpoints (sorted by z).
-export function lerpPts(pts, z) {
+function lerpPts(pts, z) {
   if (z <= pts[0][0]) return pts[0][1];
   for (let i = 1; i < pts.length; i++) {
     if (z <= pts[i][0]) {
@@ -300,34 +300,6 @@ export function ruBoot(P, o) {
   }
 }
 
-// §B3 ERA tile grammar on an authored slab face (owner directive
-// 2026-08-06: "weird rectangular prisms that dont emulate actual armor").
-// Dresses an EXISTING certified plate with the K-1 cassette read: a dark
-// seam grid + a rim frame, every strip INSIDE the slab's own outline and
-// <=4 mm proud of the face — under all §C partial-pixel thresholds, so no
-// mask row can move. The slab keeps every certified face line; only the
-// bare-prism read goes away.
-//   o = { w, h, d, x, y, z, rx, ry, rz, sx (outer-face sign, default +1),
-//         rows, cols, seam (width, default 0.02), proud (default 0.004),
-//         inset (edge margin, default 0.025), bucket (default 'turretDark') }
-export function eraTileFace(P, o) {
-  const { box } = KIT;
-  const sx = o.sx ?? 1, proud = o.proud ?? 0.004, inset = o.inset ?? 0.025;
-  const bucket = o.bucket ?? 'turretDark';
-  const seam = o.seam ?? 0.02;
-  const fx = sx * (o.w / 2 + proud / 2);          // strip center off the face
-  const H = o.h - inset * 2, D = o.d - inset * 2;
-  const rot = [o.rx ?? 0, o.ry ?? 0, o.rz ?? 0];
-  const put = (ly, lz, hh, dd) => P.add(bucket, KIT.xform(box(proud, hh, dd), fx, ly, lz),
-    o.x, o.y, o.z, rot[0], rot[1], rot[2]);
-  for (let r = 1; r < (o.rows ?? 2); r++) put(-H / 2 + (H * r) / (o.rows ?? 2), 0, seam, D);
-  for (let c = 1; c < (o.cols ?? 3); c++) put(0, -D / 2 + (D * c) / (o.cols ?? 3), H, seam);
-  // rim frame (the cassette rail read)
-  put(H / 2 - seam / 2, 0, seam, D);
-  put(-H / 2 + seam / 2, 0, seam, D);
-  put(0, D / 2 - seam / 2, H, seam);
-  put(0, -D / 2 + seam / 2, H, seam);
-}
 // ---------------------------------------------------------------------------
 // Shared Soviet-family furniture (hull frame unless noted)
 // ---------------------------------------------------------------------------
@@ -698,7 +670,7 @@ export function buildT62Obr1975Chassis(P, o = {}) {
   widthAnchor(P, 1.815, 1.344, -0.463);
 }
 
-export function buildT62MV1(P) {
+function buildT62MV1(P) {
   const { box, cylX, cylY, cylZ } = KIT;
   buildT62Obr1975Chassis(P);
 
@@ -880,7 +852,7 @@ export function buildT62MV1(P) {
 // z 0.32, rear tip -0.71, mantlet collar band 1.94..2.09 (halfW 0.46 ->
 // 0.20), tube top 1.79 (axis ~1.65), print muzzle 6.00 -> tube PINNED to
 // 5.72 = rearmost + 9.00 (dims sovereign; the print runs +4.4%).
-export function buildT54(P) {
+function buildT54(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // r30b REGISTERED RE-SEAT (gate-digest, authored frame): the gate registers
   // by BODY-span mids (the print's thin nose lip is band-excluded), landing
@@ -1048,7 +1020,7 @@ export function buildT54(P) {
 // DShK cluster crest 2.537 @ +0.48; bustle bin -1.45..-2.07 y 1.56..2.06;
 // turret-node APRON bottoming 1.03 over -0.95..+0.10 (t90m/t54 class);
 // tube band 1.597..1.812 (axis 1.705, r 0.108) to +3.74.
-export function buildT44(P) {
+function buildT44(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   // r2 registered decode: ref deck plate spans only ±1.30 (front_hull tops
   // 1.449@|x|<1.28 = deck-edge bins, 1.31-1.35@1.35..1.59 = the narrow
@@ -1247,7 +1219,7 @@ export function buildT44(P) {
 // 125 mm at axis 1.466, evac swell z 2.11..3.01, muzzle 4.312. The bergman
 // print parents its rear drum/log rack into the Turret node — matched here
 // (same world seats) so the component masks compare like for like.
-export function buildT64BV1(P) {
+function buildT64BV1(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement

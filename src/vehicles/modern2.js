@@ -30,7 +30,7 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 // 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
 // oracle (community-candidates quarantine, registered in the three harness
 // maps + vertex REG); the playable stays procedural (buildType99A below).
-export const MODERN2_IDS = [
+const MODERN2_IDS = [
   'leo2a4', 't80u', 'leclerc', 'leclerc_xlr', 'amx56',
   'type99a', 'leo1a5', 't14',
 ];
@@ -175,7 +175,7 @@ const MALACHIT = { keReduction: 0.25, ceFlatMm: 450 };
 // ---------------------------------------------------------------------------
 // Specs
 // ---------------------------------------------------------------------------
-export const MODERN2_SPECS = {
+const MODERN2_SPECS = {
   leo2a4: {
     id: 'leo2a4', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', class: 'mbt',
     hp: 2200,

@@ -9,9 +9,9 @@
 
 export const STUDIO_MIN_DURATION_MS = 1000;
 export const STUDIO_MAX_DURATION_MS = 20000;
-export const STUDIO_DEFAULT_DURATION_MS = 12000;
-export const STUDIO_MAX_CAMERA_SHOTS = 32;
-export const STUDIO_MAX_ACTOR_KEYS = 64;
+const STUDIO_DEFAULT_DURATION_MS = 12000;
+const STUDIO_MAX_CAMERA_SHOTS = 32;
+const STUDIO_MAX_ACTOR_KEYS = 64;
 
 const CAMERA_TRANSITIONS = new Set(['smooth', 'linear', 'cut']);
 const ACTOR_TRANSITIONS = new Set(['smooth', 'linear', 'cut']);

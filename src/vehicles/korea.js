@@ -10,7 +10,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const KOREA_IDS = Object.freeze(['k2b']);
+const KOREA_IDS = Object.freeze(['k2b']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -47,7 +47,7 @@ function variant(id, donorId, options) {
   return spec;
 }
 
-export const KOREA_SPECS = {
+const KOREA_SPECS = {
   // Pre-§5.248 pl01 deltas verbatim (dims/stats/reload/shell/armorFactor and
   // the digital scheme palette); the donor rig (turret/gun pivots, barrel)
   // stays the certified K2 clone, exactly as the old row inherited it.

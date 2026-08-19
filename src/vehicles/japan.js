@@ -4,7 +4,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b']);
+const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -41,7 +41,7 @@ function variant(id, donorId, options) {
   return spec;
 }
 
-export const JAPAN_SPECS = {
+const JAPAN_SPECS = {
   stb1: variant('stb1', 'type74', {
     name: 'STB-1', number: 'STB-1', scheme: 'solid',
     base: '#3c4937', weather: '#59624d', patches: ['#273126', '#59604b', '#77715b'],

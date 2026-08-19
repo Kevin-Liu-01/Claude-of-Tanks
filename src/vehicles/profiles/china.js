@@ -886,7 +886,7 @@ function buildZTZ99A2(P) {
 // redesign diverges from it BY OWNER DECREE (+10% width, obr-1975 hull) —
 // gate deltas are documented in docs/references/tanks/type59.md §5.304,
 // never chased back toward the print.
-export function buildType59(P) {
+function buildType59(P) {
   const { box, cylX, cylY, cylZ } = KIT;
 
   // ---- widened obr-1975 chassis with the T-54A wheel-gap pattern (span,

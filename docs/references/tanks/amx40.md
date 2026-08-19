@@ -21,7 +21,7 @@ mount), export-demonstrator sand livery, 'AMX 40' skirt branding.
 Builder `buildAMX40` + spec row live in **src/vehicles/france.js** (NEW
 module, orchestrator-stubbed and wired into tankFactory at the marked
 extension hook; single owner = the france lane). Registered in
-FRANCE_BUILDERS + FRANCE_IDS; specs merge at import (modern3 pattern);
+FRANCE_BUILDERS; specs merge at import (modern3 pattern);
 MODEL_SOURCE procedural. leclerc/amx30/amx30b2 stay in profiles/misc.js
 (family migration = separate owner-approvable move).
 

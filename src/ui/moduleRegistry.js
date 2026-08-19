@@ -10,13 +10,7 @@
 //     ({ id, module, state }) emitted by game/state.js — audio, HUD and
 //     killcam all subscribe to that one channel.
 
-import {
-  MODULE_IDS as CATALOG_MODULE_IDS,
-  MODULE_LABEL as CATALOG_MODULE_LABEL,
-} from '../sim/moduleCatalog.js';
-
-/** Internal-module ids, in the damage panel's presentation order. */
-export const MODULE_IDS = CATALOG_MODULE_IDS;
+import { MODULE_LABEL as CATALOG_MODULE_LABEL } from '../sim/moduleCatalog.js';
 
 /** Full display names (cards, killcam labels, log rows). */
 export const MODULE_LABEL = CATALOG_MODULE_LABEL;

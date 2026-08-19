@@ -531,6 +531,7 @@ const _v3 = new THREE.Vector3();
 const _e = new THREE.Euler();
 const _qq = new THREE.Quaternion();
 const _m = new THREE.Matrix4();
+const _scale = new THREE.Vector3(1, 1, 1);
 
 function paintFlat(geo, color, flex) {
   const n = geo.attributes.position.count;
@@ -561,7 +562,7 @@ function foliageCard(w, h, px, py, pz, euler, shade, hue, sat, flex, canopyCx, c
     }
   }
   _qq.setFromEuler(euler);
-  _m.compose(_v3.set(px, py, pz), _qq, new THREE.Vector3(1, 1, 1));
+  _m.compose(_v3.set(px, py, pz), _qq, _scale);
   g.applyMatrix4(_m);
   const n = g.attributes.position.count;
   _c.setHSL(hue, sat, 0.5, THREE.SRGBColorSpace); // tint via HSL, applied as multiplier around 1

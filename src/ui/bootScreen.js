@@ -162,7 +162,7 @@ function startBootHero() {
  * Should the entry gate be dismissed without a keypress?
  * @returns {boolean} true for headless harnesses / explicit ?nosplash
  */
-export function bootGateSkipped() {
+function bootGateSkipped() {
   if (typeof window === 'undefined') return true;
   if (window.__COT_FORCE_SPLASH) return false;
   let q = '';

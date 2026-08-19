@@ -144,8 +144,6 @@ const WHEELED_TR = { hard: 0.65, medium: 0.95, soft: 1.9 };
 // ---------------------------------------------------------------------------
 // NEW VEHICLES — class-template specs (communityArmor rule)
 // ---------------------------------------------------------------------------
-export const USERDROP2_TANK_IDS = ['bmp1', 'm1128', 'm1296'];
-
 const QUAR_BERGMAN = {
   author: 'm_bergman',
   source: 'https://www.thingiverse.com/thing:4718232',

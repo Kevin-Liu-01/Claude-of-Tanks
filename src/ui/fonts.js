@@ -32,23 +32,6 @@ export const FONT_STACK = "'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helv
  */
 export const FONT_COND = "'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif";
 
-// Type scale tokens (px) — one modular scale for every overlay.
-export const TYPE = {
-  h1: 30,      // screen title (selected tank name)
-  h2: 17,      // section headers / brand line
-  h3: 15,      // card headers
-  label: 11,   // uppercase micro-labels
-  body: 12.5,  // body copy
-  micro: 9.5,  // hints, footnotes
-  trackHead: '.24em', // heading letterspacing (uppercase display lines) — fonts r4b: Monument Grotesk's wide caps read airy at Inter-era .30em
-  trackLabel: '.15em', // uppercase label letterspacing (was .18em under Inter)
-  trackTight: '-.01em', // former-condensed layer: Inter tightened for density
-  wBody: 500,  // weight floor — no UI text below this
-  wLabel: 600,
-  wStrong: 700,
-  wDisplay: 800,
-};
-
 // Weights the UI actually uses (resolved against the face ranges below).
 // Floor is 500: nothing below medium anywhere in the UI.
 const WEIGHTS = [500, 600, 700, 800];

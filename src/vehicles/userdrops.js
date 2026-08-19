@@ -133,8 +133,6 @@ function communityArmor(o) {
 // tier up on mobility+depression): L7 105 mm, 38 t, hydropneumatic
 // suspension = standout -10 gun depression, thin cast armor.
 // ---------------------------------------------------------------------------
-export const USERDROP_TANK_IDS = ['type74'];
-
 const TYPE74_SPEC = {
   id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', class: 'mbt',
   // variantOf self-marker (m1a1 rule): nation-roster

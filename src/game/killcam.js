@@ -72,9 +72,9 @@
  */
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
+import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.js';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
-import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
-import { penAtDistanceMm } from '../sim/ballistics.js';
+import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.js';
 import { tierNumeral } from '../ui/battleLoad.js';
 import {
@@ -150,75 +150,6 @@ const _Y = new THREE.Vector3(0, 1, 0);
 const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 
 // MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.js (single source).
-
-/** 'turret_cheek_R' -> 'turret cheek R' (same formatter as shotInfo.js). */
-function zoneLabel(zone) {
-  if (!zone) return '—';
-  return zone
-    .replace(/_(R|L)$/, ' $1')
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .toLowerCase()
-    .replace(/ (r|l)$/, (m) => m.toUpperCase());
-}
-
-/**
- * Shell display name with a duplicated type token stripped: specs name rounds
- * like 'M829A4 APFSDS', and the header already prints the type badge — never
- * render 'APFSDS · M829A4 APFSDS' (same helper as shotInfo.js).
- * @param {{shellType?:string, shellName?:string}} ev HitEvent
- * @returns {string} cleaned display name ('' when it collapses to the type)
- */
-function shellDisplayName(ev) {
-  const type = (ev.shellType || '').trim();
-  let name = (ev.shellName || '').trim();
-  if (type) {
-    const esc = type.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    name = name.replace(new RegExp(`^${esc}\\s+|\\s+${esc}$`, 'i'), '');
-    if (name.toUpperCase() === type.toUpperCase()) name = '';
-  }
-  return name;
-}
-
-/**
- * Nominal (un-rolled) penetration of the event's shell at the event's flight
- * distance — the exact baseline the sim's ±25% pen roll was made from
- * (ensurePenRoll: rollUniform(rng, penAtDistanceMm(spec, distM))). Resolved
- * from the attacker's spec so the annotation can print 'roll / nominal'
- * (same helper as shotInfo.js; a bare pen roll beside a 63 mm plate read as
- * a bug to anyone knowing the shell's paper pen, r4 critique).
- * @param {object} ev HitEvent
- * @returns {number} nominal pen in mm (0 when unresolvable)
- */
-function nominalPenFor(ev) {
-  try {
-    const spec = ev.attackerSpecId ? getSpec(ev.attackerSpecId) : null;
-    const shells = spec && spec.gun ? spec.gun.shells : null;
-    let sh = shells
-      ? (shells.find((s) => s.name === ev.shellName && s.type === ev.shellType)
-        || shells.find((s) => s.type === ev.shellType))
-      : null;
-    if (!sh && ev.shellName) {
-      // Payload carries no attackerSpecId (staged frames): resolve the shell
-      // by exact identity across the whole roster instead of printing the
-      // context-free bare roll (r5 critique — 'Pen roll 1027 mm' with no
-      // '/ 885' baseline). Only an UNAMBIGUOUS match is trusted: if two guns
-      // ship a same-named shell with different pen curves, the baseline is
-      // omitted rather than guessed — the panel must never lie.
-      let pen = -1;
-      for (const id of ALL_TANK_IDS) {
-        const g = getSpec(id).gun;
-        if (!g || !g.shells) continue;
-        for (const c of g.shells) {
-          if (c.name !== ev.shellName || c.type !== ev.shellType) continue;
-          const p = Math.round(penAtDistanceMm(c, ev.flightDistM || 0));
-          if (pen === -1) { pen = p; sh = c; } else if (p !== pen) return 0;
-        }
-      }
-    }
-    return sh ? Math.round(penAtDistanceMm(sh, ev.flightDistM || 0)) : 0;
-  } catch (_) { return 0; }
-}
 
 // ---------------------------------------------------------------------------
 // Shared x-ray material set (lazy singleton; depth-tested)

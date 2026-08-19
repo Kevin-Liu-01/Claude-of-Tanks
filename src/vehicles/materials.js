@@ -352,81 +352,13 @@ const inGap = (line, t) => (line.gaps || []).some(([g0, g1]) => t >= g0 && t <= 
 // Albedo (2048) — camo scheme base + feature overlay + weathering.
 // ---------------------------------------------------------------------------
 
-// FLEET DARK-CLASS ALBEDO FLOOR (materials albedo-floor round, 2026-08-04 —
-// the escalated B3 class: m47 r6 / t84 r32 / leo2a5 r8 cited the same
-// blocker from three independent critics: "the fleet camo's near-black
-// blotch albedo holds the top/steep views"). OPT-IN KNOB, SHIPPED DISABLED
-// (0 = byte-identical to the authored palettes, the §F.2 shared-helper
-// contract) — the measured round record below is why.
-//
-// MECHANISM (proven end-to-end with a 41/50/80 floor ladder on official
-// critic pairs): any authored PATCH tone whose ITU-601 luma sits below the
-// floor is scaled up to it — a pure luma scale (hue / r/g ratios preserved
-// exactly, so every packet hue gate holds by construction). Applied at
-// paintCamo palette ingestion under `visual.fleetAlbedoFloor`, which ONLY
-// the procedural bake paths set (bakeSharedCanvases / repaintEntry);
-// glbPatternTile keeps authored tones, wheelToneOf/paintKitCanvas read
-// visual.patches directly and are untouched. Sub-floor authored classes in
-// the fleet: '#1d1f1c' L30.1 (challenger2 / leclerc / chieftain_mk10 /
-// chieftain5-GRADUATE stripes), '#1f2420' L34.0 (abramsx), '#23261e' L36.2
-// (type99a), '#23261f' L36.3 (the leo1a5-family nato black on the
-// patton/leo2a6/kf51/tejas cohort), plus picker patterns (digital '#262a20',
-// m90 '#26292b', midnight '#26292c', tigerstripe '#272b22').
-//
-// WHY DISABLED — the round's measured finding (2026-08-04, floor ladder on
-// m47_patton / t84 / leo2a5 official pairs, docs/references/
-// materials-albedo-floor.md for the full censuses):
-// 1. The three cited windows are NOT held by the authored hex. Recovered
-//    references paint their hulls from the SAME shared proc canvas
-//    (modelLoader paintUntextured → getSharedCamoTexture), so the class's
-//    own albedo cancels out of every proc-vs-ref census. The m47 top-window
-//    gap (proc sub50 2189 vs ref 1160) is (a) tankFactory bakeDirt's
-//    up-facing deck multiplier ×0.84 (tank_models r4 anti-blowout law) which
-//    the ref-side refineCommunityGeometry bake does NOT carry — every proc
-//    deck texel renders ~16% darker than the ref's identical texel — plus
-//    (b) proc-only sub-50 content (floor-80 experiment residual: proc 496 vs
-//    ref 71 — spareTrack/fittings/panel-line classes). Lifting the class
-//    lifts BOTH halves and the ref responds faster (no deck penalty): at
-//    floor 50 the gap WIDENED (1318 vs 1029 baseline).
-// 2. leo2a5 gear-band sub45 2358: dark-class share measured ≈ 0 (floor 50 =
-//    +13.7 canvas-luma on the class moved the census by -4 px). The
-//    population is leopard-lane gear hexes (the r8 corner-ladder-capped
-//    system) + BASE-class texels under tankFactory bakeDirt's hem dust
-//    (G ×0.66 at ground) — neither is the patch palette.
-// 3. t84 lower-band pale>=95 (1/0 vs ref 93/246): the nato proc canvas has
-//    no >=95 class at all (max patch tone renders 88.7 on-canvas after the
-//    0.86 exposureTrim) and the hem takes bakeDirt ×0.66 G on top; the ref
-//    (also shared-canvas) reaches >=95 through its own recovered-geometry
-//    lit response. Not reachable from the palette without moving the
-//    mid/light classes (banned: 19 graduates' med/hue windows are scored
-//    against them). Banked residual on the 19th graduate — frozen.
-// Held windows stayed EXACT under every tested floor (m47 A1 med 66.6 /
-// p75 70.5, t84 letterbox med 67.8, leo2a5 hull-side med 71.4), so the knob
-// is SAFE — it is just not the lever the cited windows hang on. The real
-// B3-class levers are bakeDirt-lane (tankFactory deck/hem constants vs the
-// modelLoader refine bake). Flipping this floor on (recommended 41, just
-// under the calibrated '#2e2e2e'/L46 summer-black family) is a fleet
-// re-paint of the sub-floor cohort above — graduate re-cert scope is the
-// orchestrator's call, never a side effect.
-const CAMO_DARK_CLASS_FLOOR_L = 0; // 0 = disabled (authored palettes verbatim)
-const liftDarkClassTone = (c) => {
-  const L = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
-  return L >= CAMO_DARK_CLASS_FLOOR_L ? c
-    : scale3(c, CAMO_DARK_CLASS_FLOOR_L / Math.max(L, 1));
-};
 
 function paintCamo(canvas, visual, rng, feats, seed) {
   const ctx = canvas.getContext('2d');
   const S = canvas.width;
   const base = hexToRgb(visual.base);
   const weather = hexToRgb(visual.weather || visual.base);
-  // fleetAlbedoFloor: set by the procedural bake paths only (bakeSharedCanvases
-  // / repaintEntry) — never by glbPatternTile, so ref oracles keep authored
-  // tones. 'winter'/'washworn' patches[0] is the show-through UNDER color
-  // (not a top-coat blotch) but shares the same darkest-class semantics; no
-  // shipped wash palette sits under the floor, so the branch is a no-op there.
-  const rawPatches = (visual.patches || []).map(hexToRgb);
-  const patches = visual.fleetAlbedoFloor ? rawPatches.map(liftDarkClassTone) : rawPatches;
+  const patches = (visual.patches || []).map(hexToRgb);
 
   // World-size normalization (r7): camoScale is UV repeats per meter (boxUV
   // in tankFactory), so a tank at the 0.34 default spreads one tile over ~3 m
@@ -3106,11 +3038,8 @@ function* bakeSharedCanvasesSteps(entry, quality) {
     map: texSize(szq.map * aiMobileScale),
   };
   const { spec, seed } = entry;
-  // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
-  // fleetAlbedoFloor: procedural-canvas dark-class floor (see paintCamo) —
-  // proc bakes only; glbPatternTile stays authored-tone (ref oracle frozen).
-  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern',
-    fleetAlbedoFloor: true };
+  // Welded-composite hulls draw no rivet/bolt rows.
+  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern' };
   const rng = mulberry32(seed);
   entry.feats = genPlateFeatures(rng);
   // tank_models r5 ("hull sides show a grid of panel seams on what are single
@@ -3255,25 +3184,8 @@ export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = 
 }
 
 /**
- * TANK-SWITCH PERF (switching r1): upgrade a live spec's shared bake from the
- * 'ai' tier to hero 'high' IN PLACE — the exact repaint acquireSharedTextures
- * has always run when a 'high' acquire finds an 'ai' entry, exposed so the
- * garage can build pedestal heroes at the cheap tier (~4x fewer pixels on the
- * click-to-visible path) and crispen them from an idle beat later. Live
- * materials update through texture.needsUpdate; burnt/ember derive from the
- * albedo and rebuild lazily at the next wreck, exactly like the acquire path.
- * @param {string} specId spec whose cached entry should be re-baked
- * @returns {boolean} true when an upgrade ran
- */
-export function upgradeSharedTextures(specId) {
-  const entry = TEX_CACHE.get(specId);
-  if (!entry || entry.refs <= 0 || entry.quality !== 'ai') return false;
-  upgradeEntryToHigh(entry); // camo r8: dispose-on-resize (see helper note)
-  return true;
-}
-
-/**
- * perf-r5: chunked twin of {@link upgradeSharedTextures} — the in-place hero
+ * Upgrade a live spec's shared bake from the AI tier to hero quality without
+ * blocking one frame. Live materials retain the old bake until finalization.
  * re-bake to 'high' was a ~0.9 s ATOM landing ~350 ms after every pedestal
  * reveal of an 'ai'-baked spec (owner: "switching between tanks laggy").
  * Yields between painter stages; live materials keep showing the 'ai' bake
@@ -3318,6 +3230,7 @@ function releaseSharedTextures(shared) {
     entry.roughTex.dispose();
     if (entry.burntTex) entry.burntTex.dispose();
     if (entry.emberTex) entry.emberTex.dispose();
+    if (entry.kitTex) entry.kitTex.dispose();
     TEX_CACHE.delete(entry.cacheKey);
   }
 }
@@ -3581,7 +3494,7 @@ export function setCamoBiome(mapId) {
 }
 
 /** Concrete pattern id for a tank right now ('auto' resolved per biome). */
-export function resolveCamoPattern(specId) {
+function resolveCamoPattern(specId) {
   const sel = CAMO_OVERRIDE.get(specId) || getCamoSelection(specId);
   if (sel === CUSTOM_CAMO_ID) return customCamoPatternId(getCustomCamoSelection(specId));
   if (sel !== 'auto') return sel;
@@ -3597,7 +3510,7 @@ export function resolveCamoPattern(specId) {
 }
 
 /** Resolve a match-owned built-in choice without consulting local storage. */
-export function resolveMultiplayerCamoPattern(specId, selection) {
+function resolveMultiplayerCamoPattern(specId, selection) {
   const safe = networkCamoId(selection);
   if (safe !== 'auto') return safe;
   const pool = BIOME_PATTERN[activeBiome];
@@ -3779,9 +3692,7 @@ function patternVisual(spec, patternId) {
     // and brown '#423a30'->'#3e352a' — one value step down each so both
     // pattern tones separate from the green base at 50-150 m. Still well off
     // the '#26291f' floor that clipped to unlit pure black (r1); the m1a2's
-    // patch-scale/weight fix rides the GLB tile tune (GLB_TILE_TUNE below),
-    // not the shared palette, so the Tiger's already-good summer keeps its
-    // patch geometry.
+    // Keep the Tiger's already-good summer patch geometry unchanged.
     if (spec.nation === 'USSR' || spec.nation === 'Russia') {
       o = { scheme: 'nato', base: '#4a5638', weather: '#556042', patches: ['#333d2a', '#4a3f2e'] };
     } else {
@@ -4157,10 +4068,7 @@ const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
 const detailRgbOf = (v) => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
 
 function repaintEntry(entry, patternId) {
-  // fleetAlbedoFloor: same proc-only dark-class floor as bakeSharedCanvases —
-  // picker/biome repaints must land on the identical canvas.
-  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern',
-    fleetAlbedoFloor: true };
+  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern' };
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
   let ph = 0;
@@ -4183,13 +4091,8 @@ function repaintEntry(entry, patternId) {
   snapshotBake(entry, patternId);
 }
 
-// camo r4: wheels / sprockets / fittings + the solid scheme-tone KIT canvas
-// (ARAT tiles, bolt-on armor — texture-backed so the applyCamoToModel clone
-// pass cannot orphan it: color-only paintables go stale on clones, canvas
-// redraws propagate to every clone; tank_models r7) follow every repaint AND
-// every memoized restore, so the tint block is shared by both paths. The
-// helpers only read the visual's tones — the plain patternVisual the restore
-// path passes lands on the same colors as repaintEntry's flagged clone.
+// Wheels, sprockets, fittings and the solid kit canvas follow every repaint
+// and memoized restore through this one tint gate.
 function retintEntryFittings(entry, vis) {
   for (const rec of entry.paintable) {
     const c = rec.kind === 'wheels' ? wheelRgbOf(vis)
@@ -4302,96 +4205,8 @@ export function applyCamoPatterns(onlySpecId = null) {
     const pid = resolveCamoPattern(entry.spec.id);
     if (entry.patternId !== pid) repaintEntry(entry, pid);
   }
-  retintGlbModels();
 }
 
-/**
- * Picker-path pattern apply (camo r4, owner ask): restore the memoized bake
- * when one exists — the hull updates within a frame or two — and fall back
- * to ONE deferred repaint (which memoizes itself) on a cold pattern. GLB
- * retints run immediately either way: composeGlbShare keeps its own
- * per-share key check and the per-palette pattern-tile cache makes repeat
- * composites cheap.
- * @param {string} specId the tank whose selection just changed
- */
-export function applyCamoPatternInstant(specId) {
-  const entry = TEX_CACHE.get(specId);
-  if (entry) {
-    const pid = resolveCamoPattern(specId);
-    if (entry.patternId !== pid) {
-      restoreBake(entry, pid).then((hit) => {
-        if (hit) return;
-        // cold pattern — repaint whatever the LATEST selection is (rapid
-        // clicks race the microtask; the newest resolution wins outright).
-        const cur = TEX_CACHE.get(specId);
-        const nowPid = resolveCamoPattern(specId);
-        if (cur && cur.patternId !== nowPid) repaintEntry(cur, nowPid);
-      });
-    }
-  }
-  retintGlbModels();
-}
-
-// camo r4: background bake trickle. One (spec, pattern) bake per timeout
-// slot, gap adaptive to the measured bake cost, so the garage stays
-// responsive while the roster warms; a newer call cancels the remainder.
-let _prewarmGen = 0;
-let _prewarmScratch = null; // reused {camo, rough} canvases (one hero-size pair)
-/**
- * Trickle-bake every picker pattern for one spec into the blob cache so
- * first clicks restore instead of painting (camo r4). Scratch canvases run
- * the exact repaintEntry pipeline — same vis flags, same seed^hash rng
- * streams, same feats plan — so restores are pixel-identical to a live
- * repaint. GLB-swapped specs also warm their per-palette pattern tiles (the
- * paintCamo atom behind composeGlbShare). Call with a null/unknown id (e.g.
- * on battle start) to cancel a running trickle.
- * @param {?string} specId garage-selected tank, or null to cancel
- */
-export function prewarmCamoBakes(specId) {
-  const gen = ++_prewarmGen;
-  const entry = specId ? TEX_CACHE.get(specId) : null;
-  if (!entry || !entry.camoCanvas || entry.camoCanvas.width < 8) return;
-  const glb = GLB_TINTED.some((e) => e.specId === specId);
-  const todo = CAMO_PATTERN_IDS.filter((pid) => pid !== 'auto'
-    && pid !== entry.patternId && !BAKE_CACHE.has(bakeKey(specId, pid)));
-  const step = () => {
-    if (gen !== _prewarmGen) return;
-    const pid = todo.shift();
-    if (!pid) return;
-    if (BAKE_CACHE.has(bakeKey(specId, pid))) { setTimeout(step, 40); return; }
-    const t0 = performance.now();
-    if (!_prewarmScratch) {
-      _prewarmScratch = { camo: makeCanvas(4, 4), rough: makeCanvas(4, 4) };
-    }
-    const sc = _prewarmScratch;
-    // re-read sizes every step: the hero-quality upgrade can rebake the entry
-    // larger mid-trickle; the size key keeps stale bakes out either way.
-    if (sc.camo.width !== entry.camoCanvas.width) {
-      sc.camo.width = sc.camo.height = entry.camoCanvas.width;
-    }
-    if (sc.rough.width !== entry.roughCanvas.width) {
-      sc.rough.width = sc.rough.height = entry.roughCanvas.width;
-    }
-    // mirror repaintEntry EXACTLY — flags, rng streams, shared feats plan
-    const vis = { ...patternVisual(entry.spec, pid),
-      modernWelds: entry.spec.era === 'modern', fleetAlbedoFloor: true };
-    let ph = 0;
-    for (const ch of pid) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
-    paintCamo(sc.camo, vis, mulberry32(entry.seed ^ ph), entry.feats, entry.seed);
-    exposureTrim(sc.camo);
-    paintRoughness(sc.rough, mulberry32(entry.seed ^ ph ^ 0x9e37), entry.feats);
-    paintPatchRoughness(sc.rough, sc.camo, vis);
-    const key = bakeKey(specId, pid), w = sc.camo.width;
-    let camo = null, rough = null, n = 0;
-    const done = () => { if (++n === 2) bakeStore(key, camo, rough, w); };
-    canvasToBlob(sc.camo, (b) => { camo = b; done(); });
-    canvasToBlob(sc.rough, (b) => { rough = b; done(); });
-    if (glb) glbPatternTile(entry.spec, pid); // warm the compose tile too
-    const cost = performance.now() - t0;
-    setTimeout(step, Math.max(200, cost * 2));
-  };
-  setTimeout(step, 350); // let the tank-select frame settle first
-}
 
 // perf-r2f (journey probe): the no-arg sweep above repaints EVERY stale cache
 // entry in one task — a biome flip with a warm 7-tank cache is ~0.3-1.4 s of
@@ -4443,737 +4258,8 @@ export async function applyCamoPatternsChunked(opts = null) {
       if (c2.patternId !== p2) repaintEntry(c2, p2);
     }
   }
-  // GLB retints chunk too: each model whose pattern changed re-composites
-  // several albedo sheets (composeGlbShare skips unchanged ones itself).
-  for (const e of [...GLB_TINTED]) {
-    if (gen !== _camoSweepGen) return;
-    await new Promise((r) => setTimeout(r, 16));
-    if (gen !== _camoSweepGen) return;
-    if (GLB_TINTED.includes(e)) applyGlbEntry(e); // skip entries evicted mid-drain
-  }
 }
 
-// ---- sourced-GLB hook (modelLoader.js) ------------------------------------
-// GLB assets arrive with their own baked albedo maps. The old approach — a
-// 0.45 color lerp over the map — was invisible (summer/desert/winter were
-// pixel-identical) and blew bright pips out of dark hardware, so patterns are
-// now COMPOSITED in texture space:
-//   albedo' = camo pattern tile (full paintCamo language, no plate features)
-//             ⊕ overlay( grayscale(albedo), mean-luma normalized )  — keeps
-//               the asset's baked AO / panel shading / weathering
-//             ∩ alpha(albedo)                                        — keeps cutouts
-// Composited canvases are shared per source texture (every instance of a spec
-// reuses one GPU texture) and recomposed in place on pattern switches.
-// Materials are classified by GLB name: rubber / lights / optics / radiators /
-// screws / tracks keep their factory look (tinting those produced the r1
-// "LED fairy light" bolt-pip artifacts); untextured hull-paint materials fall
-// back to a strong base tint; 'factory' restores the original maps/colors.
-const GLB_TINTED = [];            // registered models: { specId, spec, mats: [rec] }
-let GLB_ENGINE_CTX = null;        // EngineCtx captured by createTankMaterials (CSM registration)
-const GLB_CTX_PROBED = new WeakSet(); // ctx objects already probed (stub vs real CSM)
-
-// Capture only a REAL CSM-registering context: the tank-thumbnail booth
-// (ui/tankThumbs.js) passes a stub `setupShadowMaterial: (m) => m` that would
-// otherwise clobber the capture and silently un-CSM every later GLB clone
-// (= the r6 supernova returning through the side door). Probe each distinct
-// ctx once with a throwaway material and keep it only if it stamps USE_CSM.
-const GLB_CTX_REAL = new WeakSet(); // ctxs whose probe stamped USE_CSM
-function captureGlbEngineCtx(engineCtx) {
-  if (!engineCtx || typeof engineCtx.setupShadowMaterial !== 'function') return;
-  if (GLB_ENGINE_CTX === engineCtx || GLB_CTX_PROBED.has(engineCtx)) return;
-  GLB_CTX_PROBED.add(engineCtx);
-  const probe = new THREE.MeshStandardMaterial();
-  try { engineCtx.setupShadowMaterial(probe); } catch (e) { /* stub/booth ctx */ }
-  if (probe.defines && probe.defines.USE_CSM) {
-    GLB_ENGINE_CTX = engineCtx;
-    GLB_CTX_REAL.add(engineCtx);
-  }
-  probe.dispose();
-}
-// True when this engineCtx is a REAL CSM-registering context (probed above).
-// Stub contexts — the thumbnail booth, the fidelity board, headless probes —
-// pass `(m) => m`, which SWALLOWS a chained extraHook argument.
-const isRealShadowCtx = (ctx) => !!ctx && GLB_CTX_REAL.has(ctx);
-const GLB_MAP_SHARE = new Map();  // srcTex.uuid -> { src, meanLuma, canvas, tex, key } | null
-const GLB_TILE_CACHE = new Map(); // nation:patternId -> pattern tile canvas
-// 'addon' covers modelLoader's procedural correction parts — they already
-// carry the shared camo canvas directly and must not be re-composited.
-// camo_spotting r6: 'props' (the dannzjs asset family's accessory class —
-// rucksacks, duffels, bustle-rack stowage, tarps) + 'stowage'/'canvas' are
-// masked out of the camo composite: crews do not spray CARC over soft kit,
-// and scheme-painted rucksacks read as one-color toy molding at closeup
-// (critic r6 minor). These sheets are textured (verified on the sepv3/tusk
-// GLBs), so skipping keeps the asset's own canvas/webbing albedo.
-const GLB_SKIP_RE = /rubber|tire|light|lens|glass|optic|radiator|screw|track|wheel|gear|addon|props|stowage|canvas/i;
-// camo_spotting r7: per-SPEC material masks for sourced GLBs whose running
-// gear carries none of the names above. The andertan Leclerc bakes the whole
-// running-gear volume (road wheels, sprockets, both track runs) into one
-// textured material named exactly 'Nato black' — a flat #1e2222 sheet whose
-// meanLuma (~0.13) sits just above the 0.10 dark-hardware skip — so DESERT/
-// WINTER repainted wheels and track band in scheme paint while the m1a2's
-// named gear correctly stayed dark (critic r7 minor). Anchored `$`: the
-// 'Nato black.0NN' clones are small fittings + the gun sleeve and keep the
-// existing composite/tint behavior.
-const GLB_SPEC_SKIP_RE = {
-  leclerc: /^Nato[ _]black$/i,
-};
-// camo r2: per-SPEC dark-paint luma floor for sourced GLBs whose PAINTED
-// hull bakes just UNDER the 0.10 dark-hardware skip. The buhtan leo2a6's
-// 'body'/'turret' sheets measure meanLuma 0.093/0.098 (the acquireGlbShare
-// 16x16 probe) — dark green paint plus baked AO — so the entire vehicle
-// silently kept its raw baked albedo for EVERY pattern including factory
-// (latent since the composite path landed; surfaced by this round's
-// leo2a6 camo-cycle probe). Same mechanism as spec.visual.glbDarkPaintLuma
-// (the jagdtiger wave-2 rule) but materials-owned like GLB_SPEC_SKIP_RE.
-// The fleet sweep (tmp probe, this round) found no other GLB with HULL
-// sheets in the 0.06-0.10 band — t80u/m1a1 carry one small 256px sheet at
-// 0.091 that is genuine dark hardware and correctly stays skipped.
-const GLB_SPEC_DARK_PAINT = { leo2a6: 0.06 };
-// Per-spec chroma pre-compensation for picker patterns composited through
-// the GLB atlas path (see composeGlbShare) — measured against the m1a2
-// reference render under the garage key.
-const GLB_CHROMA_COMP = { strv103: 0.82 };
-
-// camo_spotting r6: per-(nation:pattern) patch rescale for the GLB atlas
-// composite. The dannzjs Abrams family's UV islands run noticeably larger
-// than the 3x3-tile reference the other GLB moderns land on, so the SAME
-// tile painted the m1a2 with outsized geometry — desert blobs at dazzle
-// scale ("near-white cream blobs read giraffe patches") while summer's NATO
-// patches, authored small, mushed to monotone olive at 50-150 m. Keyed by
-// nation so the cache key stays valid; the T-90M (Russia) keeps its praised
-// splinter desert untouched, and every procedural boxUV painter ignores
-// these (patchK/blackK default 1 there).
-const GLB_TILE_TUNE = {
-  'USA:desert': { patchK: 0.72 },                // shrink blobs ~30%
-  'USA:summer': { patchK: 1.14, blackK: 1.35 },  // grow patches, weight black
-  // tank_models r7 (Leclerc factory "two arbitrary brown blobs on an
-  // otherwise plain green hull"): grow the Centre-Europe bands and weight
-  // the noir component so the FR 3-tone reads authored on the atlas.
-  'France:factory': { patchK: 1.2, blackK: 1.4 },
-  // camo_spotting r7 (critic: "leclerc SUMMER/AUTO reads as near-solid green
-  // — pattern barely visible on the hull — while m1a2 SUMMER is a crisp
-  // 3-tone"): the andertan atlas has the same UV-density mismatch the
-  // factory tune above fixed, but 'France:summer' had no row, so summer's
-  // small authored NATO patches fell between the sheet's hull/skirt islands
-  // and the vehicle rendered one flat olive. Same proven numbers as the
-  // factory row; AUTO on verdant resolves to 'summer' and rides this too.
-  'France:summer': { patchK: 1.2, blackK: 1.4 },
-};
-function glbPatternTile(spec, patternId) {
-  const tuneKey = `${spec.nation || 'x'}:${patternId}`;
-  // tank_models r7 (KF51 "two material worlds" major / tiger2 sand-dip): the
-  // tile cache was keyed by NATION but painted from patternVisual(SPEC) —
-  // Germany mixes Dunkelgelb WWII paints with NATO-green moderns, so
-  // whichever German GLB composited FIRST poisoned '<nation>:factory' for the
-  // whole nation (order-dependent: the KF51 hull rendered Tiger-II sand while
-  // its add-on skirts took the per-spec green canvas). Key the cache by the
-  // PALETTE ITSELF: distinct paints get distinct tiles while identical
-  // palettes (the three Abrams, the NATO-green Germans) still share one.
-  const pv = { ...patternVisual(spec, patternId), camoScale: 0.5, ...(GLB_TILE_TUNE[tuneKey] || {}) };
-  const key = `${patternId}:${pv.scheme || 'solid'}:${pv.base}:${pv.weather || ''}:` +
-    `${(pv.patches || []).join('|')}:${pv.patchK || 1}:${pv.blackK || 1}`;
-  let tile = GLB_TILE_CACHE.get(key);
-  if (!tile) {
-    let ph = 7;
-    for (const ch of key) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
-    // no plate features on the tile — the GLB carries its own panel detail.
-    // camoScale pinned to the 0.5 reference: GLB atlas tiling is 2x2 across
-    // the sheet (not boxUV), so the wk world-size normalization in paintCamo
-    // must not rescale these tiles.
-    const feats = { hLines: [], vLines: [], rings: [], chips: [], streaks: [] };
-    tile = paintCamo(makeCanvas(1024, 1024), pv, mulberry32(ph), feats, ph);
-    GLB_TILE_CACHE.set(key, tile);
-  }
-  return tile;
-}
-
-// camo_spotting r4: shared per-(nation:pattern) ROUGHNESS map for composited
-// GLB plates. The composite path stripped the asset's metallicRoughness maps
-// and ran one constant roughness across the whole body — so a flat armor
-// facet sitting at the sun↔camera mirror angle answered as ONE uniform
-// specular sheet that washed the pattern to an untinted cream rectangle
-// (m1a2 turret side chamfer, critic r4 MAJOR; proven by live A/B — with
-// specular killed the plate shows fully tinted pattern). The map mirrors the
-// albedo tile's 3x3 layout so per-patch response lands exactly on the painted
-// patches: tone offsets ±0.045 around a 0.85 matte base, rough overspray
-// rims at patch boundaries, fine batch speckle. One texture serves every
-// source sheet / vehicle of the same nation+pattern (texture budget: one
-// 384² gray canvas per key in use).
-const GLB_ROUGH_CACHE = new Map(); // nation:patternId -> THREE.CanvasTexture
-function glbPatternRoughTexture(spec, patternId) {
-  const key = `${spec.nation || 'x'}:${patternId}`;
-  let tex = GLB_ROUGH_CACHE.get(key);
-  if (!tex) {
-    const CELL = 128, N = 3, S = CELL * N;
-    const canvas = makeCanvas(S, S);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const BASE = Math.round(0.85 * 255);
-    ctx.fillStyle = `rgb(${BASE},${BASE},${BASE})`;
-    ctx.fillRect(0, 0, S, S);
-    // classify ONE cell from the albedo tile, then stamp it 3x3 (the albedo
-    // composite draws the pattern tile 3x3 across the atlas — same layout).
-    const vis = patternVisual(spec, patternId);
-    const tones = [];
-    for (const hx of [vis.base, vis.weather, ...(vis.patches || [])]) {
-      if (!hx) continue;
-      const c = hexToRgb(hx);
-      if (!tones.some((t) => t[0] === c[0] && t[1] === c[1] && t[2] === c[2])) tones.push(c);
-    }
-    if (tones.length >= 2) {
-      const offs = tones.map((c) => ((((c[0] * 3 + c[1] * 5 + c[2] * 7) % 97) / 96) * 2 - 1) * 0.045);
-      const down = makeCanvas(CELL, CELL);
-      const dctx = down.getContext('2d', { willReadFrequently: true });
-      dctx.drawImage(glbPatternTile(spec, patternId), 0, 0, CELL, CELL);
-      const cd = dctx.getImageData(0, 0, CELL, CELL).data;
-      const cls = new Uint8Array(CELL * CELL);
-      for (let p = 0, n = CELL * CELL; p < n; p++) {
-        const r = cd[p * 4], g = cd[p * 4 + 1], b = cd[p * 4 + 2];
-        let best = 0, bd = Infinity;
-        for (let t = 0; t < tones.length; t++) {
-          const dr = r - tones[t][0], dg = g - tones[t][1], db = b - tones[t][2];
-          const d = dr * dr + dg * dg + db * db;
-          if (d < bd) { bd = d; best = t; }
-        }
-        cls[p] = best;
-      }
-      const cell = ctx.createImageData(CELL, CELL);
-      const rd = cell.data;
-      let s0 = 0xc4a0 ^ CELL;
-      for (let y = 0; y < CELL; y++) {
-        for (let x = 0; x < CELL; x++) {
-          const p = y * CELL + x;
-          const k = cls[p];
-          let dv = offs[k];
-          if (cls[y * CELL + ((x + 1) % CELL)] !== k
-            || cls[((y + 1) % CELL) * CELL + x] !== k) dv += 0.035;
-          s0 = (s0 * 1664525 + 1013904223) >>> 0;
-          dv += (((s0 >>> 16) & 255) / 255 - 0.5) * 0.024;
-          let v = BASE + dv * 255;
-          v = v < 0 ? 0 : (v > 255 ? 255 : v);
-          const i4 = p * 4;
-          rd[i4] = rd[i4 + 1] = rd[i4 + 2] = v;
-          rd[i4 + 3] = 255;
-        }
-      }
-      // camo r2: stamp with the SAME mirror stagger the albedo composite
-      // uses (composeGlbShare) so patch-keyed roughness stays registered on
-      // the flipped cells; 'factory' stays straight there and here.
-      const cellCnv = makeCanvas(CELL, CELL);
-      cellCnv.getContext('2d').putImageData(cell, 0, 0);
-      const mirror = patternId !== 'factory';
-      for (let gy = 0; gy < N; gy++) {
-        for (let gx = 0; gx < N; gx++) {
-          const fx = mirror && (gx & 1) ? -1 : 1;
-          const fy = mirror && (gy & 1) ? -1 : 1;
-          ctx.save();
-          ctx.translate(gx * CELL + (fx < 0 ? CELL : 0), gy * CELL + (fy < 0 ? CELL : 0));
-          ctx.scale(fx, fy);
-          ctx.drawImage(cellCnv, 0, 0);
-          ctx.restore();
-        }
-      }
-    }
-    tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.NoColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.flipY = false;            // match the composited albedo (GLTF: false)
-    tex.anisotropy = 4;
-    tex.needsUpdate = true;
-    GLB_ROUGH_CACHE.set(key, tex);
-  }
-  return tex;
-}
-
-// Bake one source texture to a canvas (≤1024) + measure mean luminance.
-// Returns null when the image is unreadable (compressed formats) — those
-// materials degrade to the plain-tint path.
-function acquireGlbShare(srcTex, cap = 1024) {
-  if (GLB_MAP_SHARE.has(srcTex.uuid)) return GLB_MAP_SHARE.get(srcTex.uuid);
-  let share = null;
-  const img = srcTex.image;
-  if (img && img.width > 0 && img.height > 0) {
-    try {
-      // PERF r3: non-hero GLB camo composites bake at <=512 (cap param) —
-      // an AI vehicle's composited hull sheet at 512² is ~5.5 mm/texel,
-      // invisible past 20 m, and the per-source-texture composite pool was
-      // the largest single texture block on Abrams-variant rosters.
-      const w = Math.min(img.width, cap), h = Math.min(img.height, cap);
-      const src = makeCanvas(w, h);
-      src.getContext('2d').drawImage(img, 0, 0, w, h);
-      const probe = makeCanvas(16, 16);
-      const pctx = probe.getContext('2d');
-      pctx.drawImage(src, 0, 0, 16, 16);
-      const d = pctx.getImageData(0, 0, 16, 16).data;
-      let lum = 0, n = 0;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i + 3] < 8) continue;
-        lum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-        n++;
-      }
-      const canvas = makeCanvas(w, h);
-      const tex = new THREE.CanvasTexture(canvas);
-      tex.flipY = srcTex.flipY;                    // GLTF textures: flipY=false
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = srcTex.wrapS; tex.wrapT = srcTex.wrapT;
-      tex.anisotropy = srcTex.anisotropy || 4;
-      tex.offset.copy(srcTex.offset); tex.repeat.copy(srcTex.repeat);
-      tex.rotation = srcTex.rotation; tex.center.copy(srcTex.center);
-      tex.channel = srcTex.channel;
-      const meanLuma = n ? lum / (n * 255) : 0.5;
-      // Pre-baked BOUNDED detail layer for the overlay pass: grayscale luma
-      // remapped around mid-gray relative to the atlas mean, clamped to
-      // [84, 186]. CSS brightness()+contrast() filters could not lift the
-      // asset's pit-dark atlas strips (engine deck, rear panels) out of the
-      // toe — they composited as near-black "navy" plates that ignored every
-      // camo pattern (r6 critique). A one-off per-pixel remap bounds how far
-      // any baked texel can push the pattern in either direction while
-      // keeping the AO/panel shading that sells the model.
-      const detail = makeCanvas(w, h);
-      const dctx = detail.getContext('2d');
-      dctx.drawImage(src, 0, 0, w, h);
-      const dimg = dctx.getImageData(0, 0, w, h);
-      const dd = dimg.data;
-      const invMean = 1 / Math.max(meanLuma * 255, 12);
-      for (let i = 0; i < dd.length; i += 4) {
-        const l = 0.2126 * dd[i] + 0.7152 * dd[i + 1] + 0.0722 * dd[i + 2];
-        let v = 128 * Math.pow(l * invMean, 0.6);
-        // r7: clamp tightened 84/186 -> 92/178 — baked rivet-dot decals along
-        // the m1a2 glacis/skirt seams punched through the pattern as dark
-        // dotted rows the real vehicle doesn't have. r9: floor raised again
-        // (92 -> 106) — the surviving dot rows still read as red-tinted rivet
-        // noise over brown pattern patches at closeup; broad AO shading sits
-        // well above this floor so panel depth survives.
-        // tank_models r5 (sandblasted-Abrams major): ceiling 178 -> 150 — the
-        // asset's baked pale dust/wear texels overlay-brightened the pattern
-        // up to ~2x, reading as a coarse white stipple across decks and cheeks
-        // at closeup. 150 keeps highlights a gentle lift (<~1.35x) while AO
-        // still darkens; the paint reads as one matte scheme.
-        v = v < 106 ? 106 : (v > 150 ? 150 : v);
-        dd[i] = dd[i + 1] = dd[i + 2] = v;
-      }
-      // tank_models r1 (critic: "columns of magenta/pink dot artifacts on the
-      // hull side and glacis"): the asset bakes rows of small rivet/decal dots
-      // whose remapped luma still punches through the overlay as regularly
-      // spaced bright/dark pips — over brown pattern patches they read as
-      // pink dots. Despeckle: any texel deviating hard from its 4-neighbor
-      // mean is an isolated dot, not AO/panel shading — pull it to the mean.
-      {
-        const g = new Uint8ClampedArray(w * h);
-        for (let p = 0, n = w * h; p < n; p++) g[p] = dd[p * 4];
-        for (let y = 1; y < h - 1; y++) {
-          for (let x = 1; x < w - 1; x++) {
-            const p = y * w + x;
-            const m4 = (g[p - 1] + g[p + 1] + g[p - w] + g[p + w]) * 0.25;
-            const v0 = g[p];
-            if (Math.abs(v0 - m4) > 14) {
-              const i4 = p * 4;
-              dd[i4] = dd[i4 + 1] = dd[i4 + 2] = m4;
-            }
-          }
-        }
-      }
-      // mean-neutral detail (camo_spotting r2): the pow-0.6 remap centers the
-      // atlas MEAN on 128, but the [106,150] clamp truncates dark-skewed
-      // atlases asymmetrically — on the strv103 the layer's average landed
-      // well below 1.0x, so the composited pattern rendered a step darker
-      // than the identical pattern on the m1a2, and the darker panels picked
-      // up proportionally more of the warm garage key ("two different desert
-      // paint pots"). Rescale the clamped layer (opaque texels only) so its
-      // mean multiplier is exactly 1.0.
-      {
-        let sum = 0, cnt = 0;
-        for (let p = 0, n2 = w * h; p < n2; p++) {
-          if (dd[p * 4 + 3] < 8) continue;
-          sum += dd[p * 4]; cnt++;
-        }
-        const k = cnt ? 128 / Math.max(sum / cnt, 1) : 1;
-        if (Math.abs(k - 1) > 0.01) {
-          for (let p = 0, n2 = w * h; p < n2; p++) {
-            let v = dd[p * 4] * k;
-            v = v < 106 ? 106 : (v > 150 ? 150 : v);
-            dd[p * 4] = dd[p * 4 + 1] = dd[p * 4 + 2] = v;
-          }
-        }
-      }
-      dctx.putImageData(dimg, 0, 0);
-      share = { src, detail, meanLuma, canvas, tex, key: null };
-    } catch (e) { share = null; }
-  }
-  GLB_MAP_SHARE.set(srcTex.uuid, share);
-  return share;
-}
-
-function composeGlbShare(share, spec, patternId) {
-  const key = `${spec.id}:${patternId}`;
-  if (share.key === key) return;                   // already composed for this pattern
-  const { src, canvas } = share;
-  const w = canvas.width, h = canvas.height;
-  const ctx = canvas.getContext('2d');
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.filter = 'none';
-  // 1. pattern base — ~3 tile repeats across the atlas so blobs land at
-  //    believable hull scale through arbitrary UV islands (r7: at 2 repeats
-  //    the m1a2's woodland blobs went cartoon-large above the fender line).
-  //    camo r2 ANTI-TILING (the terrain r8 rotation-blend precedent, texture
-  //    space edition): alternate stamps are MIRRORED (odd column flips X,
-  //    odd row flips Y) so the same blob constellation never repeats twice
-  //    across one hull sheet — mirror seams are continuous by construction
-  //    (a seamless tile's mirrored edge equals its neighbor's edge, the
-  //    MirroredRepeatWrapping identity) and the wrap edges stay unflipped so
-  //    the atlas still tiles. The matching roughness cells flip identically
-  //    (glbPatternRoughTexture) so per-patch response stays registered.
-  //    'factory' keeps the straight 3x3: the dual-gate metrology boards
-  //    render factory paint and its composite stays byte-stable.
-  const tile = glbPatternTile(spec, patternId);
-  const tw = Math.ceil(w / 3), th = Math.ceil(h / 3);
-  const mirror = patternId !== 'factory';
-  for (let gx = 0; gx < 3; gx++) {
-    for (let gy = 0; gy < 3; gy++) {
-      const fx = mirror && (gx & 1) ? -1 : 1;
-      const fy = mirror && (gy & 1) ? -1 : 1;
-      ctx.save();
-      ctx.translate(gx * tw + (fx < 0 ? tw : 0), gy * th + (fy < 0 ? th : 0));
-      ctx.scale(fx, fy);
-      ctx.drawImage(tile, 0, 0, tw, th);
-      ctx.restore();
-    }
-  }
-  // 2+3. the asset's baked detail + exposure trim as PURE LUMINANCE
-  //    modulation (camo_spotting r2). The old canvas 'overlay' composite of
-  //    the grayscale detail layer worked per channel: on a tan pattern texel
-  //    (r,g > 128 > b) a dark AO texel darkened the low blue channel
-  //    proportionally more than the screen-branch r/g, so every AO-heavy
-  //    atlas region drifted MORE saturated and redder than the authored
-  //    palette — measured on the strv103 desert: rendered hull sat 0.50 /
-  //    hue 38 deg vs 0.39-0.40 / 43-48 deg for the identical pattern on
-  //    m1a2/tiger1 ("two different desert paint pots"). The warm
-  //    rgb(214,212,206) exposure multiply added another warm-bias step the
-  //    procedural fleet's NEUTRAL 0.86 exposureTrim never had. Both are now
-  //    a single per-pixel uniform RGB scale — detail m = det/128 (the
-  //    detail layer is clamped to [106,150], so m spans 0.83-1.17, the same
-  //    mid-tone response the overlay had) x neutral 0.831 exposure — which
-  //    preserves hue and saturation EXACTLY: AO/panel shading modulates
-  //    brightness only, and one desert paint pot serves the whole roster.
-  //  3b. hard luminance ceiling (r6 winter/desert blowout gate) folded into
-  //      the same pass: no texel past LUMA_MAX feeds the bloom pass.
-  //  3c. palette saturation ceiling kept as a safety net: no composited
-  //      texel may exceed the most saturated authored tone (+5% headroom).
-  {
-    const LUMA_MAX = 198;                          // ~0.78 encoded (r10: winter clay)
-    const EXPOSURE = 212 / 255;                    // neutral trim (was warm 214,212,206)
-    if (!share.detailData) {
-      share.detailData = share.detail.getContext('2d').getImageData(0, 0, w, h).data;
-    }
-    const det = share.detailData;
-    const pv = patternVisual(spec, patternId);
-    let satMax = 0;
-    for (const hx of [pv.base, pv.weather, ...(pv.patches || [])]) {
-      if (!hx) continue;
-      const c = hexToRgb(hx);
-      const mx = Math.max(c[0], c[1], c[2]);
-      const mn = Math.min(c[0], c[1], c[2]);
-      if (mx > 0) satMax = Math.max(satMax, (mx - mn) / mx);
-    }
-    satMax = Math.min(1, satMax + 0.05);
-    // per-spec chroma pre-compensation (camo_spotting r2): the Strv 103's
-    // low sloped hull takes the warm garage key square-on with little
-    // neutral fill, so identical composited palettes RENDER ~+0.08 more
-    // saturated / 6 deg redder than on the m1a2 ("two different desert
-    // paint pots"). Author the difference away in texture space for the
-    // picker patterns; 'factory' keeps its already-compensated r9 tones.
-    const chromaComp =
-      (patternId !== 'factory' && GLB_CHROMA_COMP[spec.id]) || 1;
-    const img = ctx.getImageData(0, 0, w, h);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const m = (det[i] / 128) * EXPOSURE;         // luminance-only detail
-      let r = d[i] * m, g = d[i + 1] * m, b = d[i + 2] * m;
-      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-      if (mx > 8) {
-        const sat = (mx - mn) / mx;
-        const k = (sat > satMax ? satMax / sat : 1) * chromaComp;
-        if (k !== 1) {
-          const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-          r = l + (r - l) * k; g = l + (g - l) * k; b = l + (b - l) * k;
-        }
-      }
-      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      if (lum > LUMA_MAX) {
-        const s = LUMA_MAX / lum;
-        r *= s; g *= s; b *= s;
-      }
-      d[i] = r; d[i + 1] = g; d[i + 2] = b;
-    }
-    ctx.putImageData(img, 0, 0);
-  }
-  // 4. restore the source alpha exactly (cutout skirts, decal sheets)
-  ctx.globalCompositeOperation = 'destination-in';
-  ctx.drawImage(src, 0, 0, w, h);
-  ctx.restore();
-  share.key = key;
-  share.tex.needsUpdate = true;
-}
-
-function applyGlbEntry(entry) {
-  const pid = resolveCamoPattern(entry.specId);
-  const vis = patternVisual(entry.spec, pid);
-  const target = new THREE.Color(vis.base || '#5a6b46');
-  for (const rec of entry.mats) {
-    if (rec.kind === 'skip') continue;
-    if (rec.kind === 'tex') {
-      // 'factory' composites too: the raw asset's baked albedo mixes a
-      // woodland hull with a flat-olive turret and a bare-metal gun tube —
-      // only the generated pattern makes the vehicle read as ONE paint job
-      // (r5: "two different tanks welded together").
-      composeGlbShare(rec.share, entry.spec, pid);
-      rec.m.map = rec.share.tex;
-      // camo_spotting r4: pattern-keyed roughness (see glbPatternRoughTexture)
-      // — only when the source sheet samples with an identity transform, so
-      // the 3x3 tile layout stays aligned with the composited albedo.
-      const st = rec.share.tex;
-      if (st.offset.x === 0 && st.offset.y === 0 && st.repeat.x === 1
-        && st.repeat.y === 1 && st.rotation === 0) {
-        rec.m.roughnessMap = glbPatternRoughTexture(entry.spec, pid);
-        rec.m.roughness = 1.0;                     // map carries the response
-      }
-      rec.m.color.copy(rec.orig);                  // never tint textured mats
-      rec.m.needsUpdate = true;
-    } else {                                       // 'plain': untextured hull paint
-      // factory tints too — the asset's untextured paint colors are arbitrary
-      // (navy-ish breech/deck fittings on the m1a2) and must follow the
-      // scheme like everything else (r6 un-camo'd panel critique).
-      // camo_spotting r2: 0.8 -> 0.92 — the 20% leak of arbitrary saturated
-      // asset colors was one of the strv103 "second desert paint pot"
-      // contributors; keep only a hint of per-part variation.
-      rec.m.color.copy(rec.orig).lerp(target, 0.92);
-    }
-  }
-}
-
-function retintGlbModels() {
-  for (const e of GLB_TINTED) applyGlbEntry(e);
-}
-
-/**
- * PERF (perf-smooth r1): amortized share-composite warm-up for the pipelined
- * GLB swap. acquireGlbShare's per-source-sheet build (canvas draw + two full
- * getImageData passes + per-pixel detail remap + despeckle over a 1024²/512²
- * sheet) is the dominant slice of the old one-shot swap job (probe: 340 ms
- * prep on a 42-material asset). It is cached globally per source texture, so
- * modelLoader can warm ONE not-yet-built share per battle-safe idle slot
- * before applyCamoToModel runs; the camo pass then hits the cache for every
- * sheet. Mirrors applyCamoToModel's own conditions exactly (same skip
- * regexes) so no share is ever built that the camo pass would not have
- * built itself — over-acquiring would allocate composite canvases (VRAM)
- * for name-skipped gear sheets.
- * @param {THREE.Object3D} root normalized GLB scene (pre-camo)
- * @param {object} spec TankSpec
- * @param {{shareCap?: number}} [opts] same cap the camo pass will use
- * @returns {boolean} true when a share was built this call (more may remain);
- *   false when every paintable sheet already has its share cached
- */
-export function warmNextGlbShare(root, spec, opts = null) {
-  const shareCap = (opts && typeof opts === 'object' && opts.shareCap) || 1024;
-  const specSkipRe = GLB_SPEC_SKIP_RE[spec.id] || null;
-  let built = false;
-  root.traverse((o) => {
-    if (built || !o.isMesh) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    for (const m of mats) {
-      if (built || !m || !m.color || !m.map) continue;
-      const name = m.name || '';
-      if (GLB_SKIP_RE.test(name) || (specSkipRe && specSkipRe.test(name))) continue;
-      if (GLB_MAP_SHARE.has(m.map.uuid)) continue;
-      acquireGlbShare(m.map, shareCap);
-      built = true;
-    }
-  });
-  return built;
-}
-
-/**
- * Apply the active camo pattern to a sourced-GLB tank model (texture-space
- * pattern composite; the asset's baked AO/weathering is preserved as an
- * overlay layer). Called by modelLoader.applyGlbModel after its material
- * upgrade pass; registered so later pattern switches recompose live.
- * @param {THREE.Object3D} root normalized GLB scene
- * @param {object} spec TankSpec
- */
-export function applyCamoToModel(root, spec, opts = null) {
-  // PERF r3: opts.shareCap sizes the per-source camo composites (modelLoader
-  // passes 512 for non-hero GLBs, 1024 for the closeup-contract heroes).
-  // Legacy third-arg callers passed a scale number — ignore non-objects.
-  const shareCap = (opts && typeof opts === 'object' && opts.shareCap) || 1024;
-  const entry = { specId: spec.id, spec, mats: [] };
-  // CSM registration for the cloned GLB materials (r6 winter/desert supernova
-  // ROOT CAUSE): the cascaded-shadow rig adds one directional light PER
-  // CASCADE to the scene. Materials that went through
-  // engineCtx.setupShadowMaterial (the whole procedural fleet) are patched to
-  // take exactly ONE cascade per fragment; unpatched materials receive ALL
-  // cascade suns at once — N x the sun on the whole GLB body. Dark factory
-  // paint hid the overshoot; bright winter/desert paint crossed the bloom
-  // threshold and rendered as a nuclear-white/gold light source (proven by
-  // probe: an unregistered mid-gray sphere at pedestal height blooms white
-  // while CSM-registered tanks with brighter albedo stay matte).
-  const ctx = GLB_ENGINE_CTX;
-  const setup = ctx && typeof ctx.setupShadowMaterial === 'function'
-    ? (m) => {
-      ctx.setupShadowMaterial(m, vehicleAmbientFloorHook);
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    }
-    : (m) => {
-      // headless/tooling fallback: keep at least the readability floor
-      m.onBeforeCompile = vehicleAmbientFloorHook;
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    };
-  const specSkipRe = GLB_SPEC_SKIP_RE[spec.id] || null;
-  // PERF (perf-smooth r1, draw-call worst-frame): clone ONCE PER PARAM-CLASS,
-  // not once per mesh. The per-mesh clone made every mesh of a 40-60-part kit
-  // its own unique material instance, which defeated modelLoader's
-  // mergeStaticKit entirely (it buckets by material instance) — swapped GLB
-  // tanks submitted 30-100 main-pass draws each and a 14-tank battle heat
-  // frame breached the 900-call worst-frame budget (probe census: m1a2 115
-  // unique material instances across 144 meshes, 51 param-classes).
-  // Two sources land in one class only when EVERY render-relevant parameter
-  // AND texture identity AND the name-rule outcome (the skip regexes below
-  // are the only name-driven decision left at this point) are identical, so
-  // the shared clone is configured exactly as each per-mesh clone would have
-  // been — visual output is identical by construction. Within a single tank
-  // this is the sharing the procedural fleet already uses (mats.hull et al
-  // span many meshes), so the burn/wreck paths handle it (applyBurnHook's
-  // __burnU guard). Restyle entries are pushed once per clone, so pattern
-  // switches composite once instead of N times.
-  const classKey = (m) => {
-    const name = m.name || '';
-    const skip = GLB_SKIP_RE.test(name) || (specSkipRe && specSkipRe.test(name)) ? 1 : 0;
-    const parts = [
-      m.type, skip,
-      m.color ? m.color.getHex() : -1,
-      m.roughness, m.metalness,
-      m.transparent ? 1 : 0, m.opacity, m.side, m.alphaTest || 0,
-      m.vertexColors ? 1 : 0, m.flatShading ? 1 : 0,
-      m.depthWrite ? 1 : 0, m.depthTest ? 1 : 0, m.blending,
-      m.emissive ? m.emissive.getHex() : -1, m.emissiveIntensity,
-      'envMapIntensity' in m ? m.envMapIntensity : -1,
-      'specularIntensity' in m ? m.specularIntensity : -1,
-      'clearcoat' in m ? m.clearcoat : -1,
-      'sheen' in m ? m.sheen : -1,
-      'transmission' in m ? m.transmission : -1,
-      'ior' in m ? m.ior : -1,
-      m.normalScale ? `${m.normalScale.x},${m.normalScale.y}` : '-',
-      m.aoMapIntensity != null ? m.aoMapIntensity : -1,
-      m.bumpScale != null ? m.bumpScale : -1,
-    ];
-    for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
-      'emissiveMap', 'alphaMap', 'bumpMap', 'clearcoatMap', 'specularColorMap']) {
-      parts.push(m[k] ? m[k].uuid : '-');
-    }
-    return parts.join('|');
-  };
-  const cloneByClass = new Map();
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    for (let i = 0; i < mats.length; i++) {
-      const m = mats[i];
-      if (!m || !m.color) continue;
-      const key = classKey(m);
-      const shared = cloneByClass.get(key);
-      if (shared) {
-        if (Array.isArray(o.material)) o.material[i] = shared; else o.material = shared;
-        continue;
-      }
-      // clone: GLTF clones share materials with the loader cache.
-      // Material.clone() drops onBeforeCompile/customProgramCacheKey, so the
-      // clone is re-registered with the CSM rig + readability floor above —
-      // 'skip' materials included (they were equally over-lit).
-      const own = setup(m.clone());
-      cloneByClass.set(key, own);
-      if (Array.isArray(o.material)) o.material[i] = own; else o.material = own;
-      if (GLB_SKIP_RE.test(own.name || '') ||
-          (specSkipRe && specSkipRe.test(own.name || ''))) {
-        entry.mats.push({ m: own, kind: 'skip' });
-        continue;
-      }
-      const share = own.map ? acquireGlbShare(own.map, shareCap) : null;
-      // very dark sheets are bare hardware/track runs — leave them unpainted
-      // (recoloring them is what created bright pips on the skirts in r1).
-      // Wave-2 (jagdtiger): assets whose whole PAINTED hull bakes near-black
-      // opt into a lower skip threshold via visual.glbDarkPaintLuma — named
-      // gear (GLB_SKIP_RE above) still keeps its factory look.
-      // camo r2: GLB_SPEC_DARK_PAINT is the materials-owned fallback for the
-      // same rule (see the leo2a6 note above).
-      const skipLuma = (spec.visual && spec.visual.glbDarkPaintLuma)
-        ?? GLB_SPEC_DARK_PAINT[spec.id] ?? 0.10;
-      if (share && share.meanLuma < skipLuma) {
-        entry.mats.push({ m: own, kind: 'skip' });
-        continue;
-      }
-      // Painted plates respond like the procedural fleet's matte CARC, not
-      // like the asset's baked metallicRoughness. The baked maps push
-      // metalness ~0.35 across the whole body, so every plate mirrored the
-      // bright PMREM sky: dark camo patches sheened navy-teal ("bare primer"
-      // r6 critique). The composited albedo already carries the baked
-      // AO/weathering, so dropping the maps loses nothing.
-      own.metalnessMap = null;
-      own.roughnessMap = null;
-      own.metalness = 0.05;
-      // tank_models r1 (critic: "blown-out cream highlight patches with
-      // visible ordered-dither checkerboard" on glacis/cheeks): 0.62 GGX +
-      // 0.6 env fired a broad clipped sheen across big flat GLB plates under
-      // the field sun. Matte CARC: roughness up, env trimmed to the
-      // procedural fleet's level.
-      // camo_spotting r4 (critic MAJOR: "untinted cream rectangle" on the
-      // m1a2 turret side under summer/digital): the plate is FULLY pattern-
-      // composited — the cream was the constant 0.74-roughness GGX + IBL
-      // sheet firing off a flat chamfer facet that sits at the exact
-      // sun↔garage-camera mirror angle (N·H 0.976; proven by live A/B —
-      // roughness 1 / env 0 shows fully tinted pattern there, and killing
-      // only the sun removes the wash). CARC over armor is duller than 0.74:
-      // roughness up (applyGlbEntry overlays the pattern-keyed roughness map
-      // on top), dielectric specular trimmed, env down. Diffuse response is
-      // untouched, so the tank_models luma calibration holds.
-      own.roughness = 0.88;
-      if ('envMapIntensity' in own) own.envMapIntensity = 0.32;
-      if ('specularIntensity' in own) own.specularIntensity = 0.6;
-      // The asset also bakes KHR_materials_clearcoat 0.37-1.0 into its
-      // MeshPhysicalMaterials — a near-mirror lacquer lobe that ignores the
-      // base roughness/metalness clamps. Under the garage spots + sky IBL it
-      // detonated winter into a nuclear-white light source and desert into
-      // gold plating (r6 critical; proven by bisect: flat mid-gray albedo
-      // with clearcoat intact still bloomed white). Military paint has no
-      // clearcoat — strip the whole layer on painted plates.
-      if ('clearcoat' in own) {
-        own.clearcoat = 0;
-        own.clearcoatMap = null;
-        own.clearcoatRoughnessMap = null;
-        own.clearcoatNormalMap = null;
-      }
-      if ('sheen' in own) own.sheen = 0;
-      entry.mats.push(share
-        ? { m: own, kind: 'tex', share, origMap: own.map, orig: own.color.clone() }
-        : { m: own, kind: 'plain', orig: own.color.clone() });
-    }
-  });
-  GLB_TINTED.push(entry);
-  applyGlbEntry(entry);
-}
-
-/**
- * Shared per-spec generated camo albedo for external consumers (modelLoader's
- * procedural add-on parts wear it directly, so they restyle live with pattern
- * switches exactly like the composited GLB plates and the procedural fleet).
- * @param {object} spec TankSpec
- * @returns {THREE.Texture} the live repaintable camo canvas texture
- */
-export function getSharedCamoTexture(spec) {
-  const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
-  return entry.camoTex;
-}
 
 /**
  * Shared per-spec roughness map for external consumers (community GLB camo
@@ -5226,47 +4312,6 @@ export function getKitPaintTexture(spec) {
   return entry.kitTex;
 }
 
-/**
- * COMMUNITY TANKS: scheme-painted running-gear materials for sourced GLBs —
- * wheel dishes take the active pattern's solid wheel paint (registered on the
- * shared entry so garage repaints re-tint them live, exactly like the
- * procedural fleet's dishes), track runs take worn dark steel. One shared
- * pair per spec. (r7: CAD/low-poly models rendered tracks, rubber and hull
- * as one uniform color — "no material separation".)
- * @param {object} spec TankSpec
- * @returns {{ wheel: THREE.Material, track: THREE.Material }}
- */
-export function getCommunityGearMaterials(spec) {
-  const entry = TEX_CACHE.get(spec.id) || acquireSharedTextures(spec, 4);
-  if (!entry.gearMats) {
-    const vis = patternVisual(spec, entry.patternId);
-    // shadowed wheel tone (wheelDarkRgbOf): low-poly assets often bake the
-    // whole wheel run as one flat strip — full scheme paint read as a pink
-    // slab on the Quaternius heavy
-    const wheel = new THREE.MeshStandardMaterial({
-      name: 'AddOnWheel', color: new THREE.Color(cssRGB(wheelDarkRgbOf(vis))),
-      roughness: 0.82, metalness: 0.10, roughnessMap: entry.roughTex,
-      vertexColors: true,   // r8: baked dust/AO (modelLoader.refineCommunityGeometry)
-      envMapIntensity: 0.55,
-    });
-    wheel.onBeforeCompile = vehicleAmbientFloorHook;
-    wheel.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    const track = new THREE.MeshStandardMaterial({
-      // r2: pulled toward neutral dark iron with the procedural trackLink —
-      // the warmer 0x4a453a flared tan under the garage key (T-90A gear)
-      name: 'AddOnTrack', color: 0x413d35, roughness: 0.94, metalness: 0.1,
-      roughnessMap: entry.roughTex,
-      vertexColors: true,   // r8: baked dust/AO (modelLoader.refineCommunityGeometry)
-      envMapIntensity: 0.1, // r1: no blue-sky sheen on community track runs
-    });
-    track.onBeforeCompile = vehicleAmbientFloorHook;
-    track.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    // live repaint hook: wheel dishes follow the pattern like procedural ones
-    entry.paintable.add({ m: wheel, kind: 'wheelsDark' });
-    entry.gearMats = { wheel, track };
-  }
-  return entry.gearMats;
-}
 
 // ======================= END CAMO PATTERN SECTION ==========================
 
@@ -5308,8 +4353,7 @@ const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
  * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
  * view-dependent floor. Chain via `setupShadowMaterial(mat,
  * vehicleAmbientFloorHook)` for CSM materials, or assign directly as
- * `onBeforeCompile` for sourced-GLB materials (see applyCamoToModel's clone
- * re-registration above/below).
+ * `onBeforeCompile` in renderer stubs used by thumbnails and headless tools.
  * @param {object} shader onBeforeCompile shader arg
  */
 export function vehicleAmbientFloorHook(shader) {
@@ -5410,6 +4454,28 @@ export function vehicleAmbientFloorHook(shader) {
   );
 }
 
+// Renderer stubs expose setupShadowMaterial but ignore its hook argument.
+// Probe each context once so every material takes the correct registration
+// path without duplicating capability checks at material creation sites.
+const SHADOW_CONTEXT_SUPPORT = new WeakMap();
+function supportsShadowHook(engineCtx) {
+  if (!engineCtx || (typeof engineCtx !== 'object' && typeof engineCtx !== 'function')
+      || typeof engineCtx.setupShadowMaterial !== 'function') return false;
+  if (SHADOW_CONTEXT_SUPPORT.has(engineCtx)) return SHADOW_CONTEXT_SUPPORT.get(engineCtx);
+
+  const probe = new THREE.MeshStandardMaterial();
+  let supported = false;
+  try {
+    engineCtx.setupShadowMaterial(probe);
+    supported = !!probe.defines?.USE_CSM;
+  } catch {
+    // A tooling stub that rejects real materials uses the direct hook path.
+  }
+  probe.dispose();
+  SHADOW_CONTEXT_SUPPORT.set(engineCtx, supported);
+  return supported;
+}
+
 /**
  * Build the full material set for one tank.
  * @param {object} spec TankSpec (reads spec.visual palette hints)
@@ -5419,40 +4485,7 @@ export function vehicleAmbientFloorHook(shader) {
  *   wood, trackL, trackR, trackTexL, trackTexR, trackLinkM, decal(kind), burnt, dispose() }
  */
 export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high', camoPattern = null) {
-  // CAMO PATTERN SECTION: remember the engine context so applyCamoToModel can
-  // CSM-register the sourced-GLB material clones (tankFactory always builds
-  // the procedural material set before the GLB swap fires, so this is set by
-  // the time any GLB clone needs it). See the r6 supernova note there.
-  captureGlbEngineCtx(engineCtx);
-  // gameplay_feel r4-fix (round critique: shaded ENEMY hulls unreadable at
-  // point-blank scope range): the camera-anchored readability fill
-  // (vehicleAmbientFloorHook) was only registered on the GLB-camo path
-  // (applyCamoToModel), so fully PROCEDURAL vehicles (k2, m2a2_bradley,
-  // chieftain_mk10, …) rendered with zero fill and crushed to black in tree
-  // shade — the live audit read 0/14 hooked materials on both. Chain the hook
-  // for the whole procedural set exactly like the GLB clones (the hook itself
-  // already gates by received light and albedo, so lit response, dark gear
-  // and the tank_models clay calibrations stay untouched).
-  //
-  // shaded-parity kv2/m60a1 r3 (critic MAJOR: procedural sun-opposite faces
-  // collapse to a black cutout — median tank luminance 13.6 vs the reference
-  // GLB's 58.7 on pair-left, 3.4-4.7x dark across left/rear/rear-3/4 on four
-  // measured tanks — while lit faces sit at only 1.1-1.7x): ROOT CAUSE was
-  // this seam, not the shader. A STUB setupShadowMaterial (`(m) => m` — the
-  // fidelity board, the thumbnail booth, headless probes) is still a
-  // function, so the old ternary picked the chain arm and the stub silently
-  // DROPPED the vehicleAmbientFloorHook argument — procedural materials
-  // rendered with zero ambient floor while the reference GLB's clone pass
-  // (applyCamoToModel below) probes the ctx and falls back to assigning the
-  // hook directly. Same scene, same lights, one hooked fleet and one raw
-  // fleet. Route by the PROBED ctx capability instead: real CSM ctx -> chain
-  // (in-game path, byte-identical program); stub/absent -> assign the hook
-  // directly, exactly like the GLB fallback. Measured after (board rig,
-  // fixed-world pairs over kv2/m60a1/is3/jagdtiger): shade views 3.4-4.7x ->
-  // 0.94-1.17x and lit views 1.1-1.7x -> 1.02-1.20x — every view inside the
-  // critic's ~1.3x gate on all four tanks
-  // (docs/critique/shade-parity-{before,after}.json).
-  const setup = isRealShadowCtx(engineCtx)
+  const setup = supportsShadowHook(engineCtx)
     ? (m) => {
       engineCtx.setupShadowMaterial(m, vehicleAmbientFloorHook);
       m.customProgramCacheKey = () => 'veh-ambient-floor-v2';

@@ -19,7 +19,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const AFV_FAMILY_IDS = Object.freeze([
+const AFV_FAMILY_IDS = Object.freeze([
   'bmp3_rok',
   'ua_m2a3_bradley',
   'bmpt_terminator2',
@@ -187,7 +187,7 @@ function ifvArmor(o) {
   };
 }
 
-export const AFV_FAMILY_SPECS = {
+const AFV_FAMILY_SPECS = {
   bmp3_rok: variant('bmp3_rok', 'bmp2', {
     name: 'BMP-3 (ROK)', nation: 'South Korea', number: 'ROK 3',
     base: '#465341', weather: '#5e6753', patches: ['#2d352c', '#69604b', '#81765b'],

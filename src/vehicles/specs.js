@@ -902,7 +902,7 @@ function communityArmor(o) {
 }
 
 /** First-party expansion ids (garage carousel order, appended after core). */
-export const FIRST_PARTY_EXPANSION_TANK_IDS = [
+const FIRST_PARTY_EXPANSION_TANK_IDS = [
   'strv103', 'is3', 't34_85_cad', 'newc_tiger', 'newc_pziii',
   'pziii_konserwa', 'leichttraktor',
   // wave 2 (print-model crawl, 2026-07-28)

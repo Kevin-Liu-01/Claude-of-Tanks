@@ -135,8 +135,6 @@ function communityArmor(o) {
 // ---------------------------------------------------------------------------
 // NEW VEHICLE — KF51 Panther (class-template spec, communityArmor rule)
 // ---------------------------------------------------------------------------
-export const USERDROP3_TANK_IDS = ['kf51', 'kf51b'];
-
 const USERDROP3_SPECS = {
   // KF51 Panther: Rheinmetall's 130 mm Future Gun System demonstrator on a
   // Leopard 2 hull — the harder-hitting, slightly softer sibling of the 2A7

@@ -3,9 +3,8 @@
 //
 // Deep-hunt integration 2026-07: the terrain splat layers and the village
 // building materials can be fed from downloaded PBR sets instead of the
-// procedural canvas painters. The procedural path stays the fallback of
-// record: USE_SOURCED_* flags below gate the swap, and any image that fails
-// to load simply leaves the procedural texture in place (the swap mutates the
+// procedural canvas painters. Any image that fails to load simply leaves the
+// procedural texture in place (the swap mutates the
 // existing THREE.CanvasTexture image in-place, so materials/uniform bindings
 // never change and the __GAME_READY screenshot contract is unaffected).
 //
@@ -20,10 +19,6 @@ import * as THREE from 'three';
 // below were the largest world textures left on the mobile tier (7-10 live
 // 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
 import { texSize } from '../engine/quality.js';
-
-/** Master switches — flip to false to ship pure procedural again. */
-export const USE_SOURCED_TERRAIN = true;
-export const USE_SOURCED_BUILDINGS = true;
 
 const TT = '/textures/terrain';
 const TB = '/textures/buildings';
@@ -291,7 +286,6 @@ async function applySet(setKey, layer, opts) {
  * @param {object} S splat cfg (uses mudRough for the M roughness multiplier)
  */
 export function applySourcedTerrain(mapId, layers, S = {}) {
-  if (!USE_SOURCED_TERRAIN) return;
   const plan = TERRAIN_PLAN[mapId] || TERRAIN_PLAN.verdant;
   for (const key of ['G', 'D', 'R', 'M']) {
     if (!plan[key] || !layers[key]) continue;
@@ -355,7 +349,6 @@ const BUILDING_TINTS = {
 };
 
 export function applySourcedBuildings(sets, mapId) {
-  if (!USE_SOURCED_BUILDINGS) return;
   const plan = { plaster: 'plaster', roof: 'roof', wood: 'wood' };
   // maps r1: the rail yard's industrial halls are brick like the town's
   if ((mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera')

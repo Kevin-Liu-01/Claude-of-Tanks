@@ -1,8 +1,8 @@
 import { flagIconCode } from '../ui/flagCodes.js';
 
-export const VEHICLE_MARKING_SCHEMA_VERSION = 1;
+const VEHICLE_MARKING_SCHEMA_VERSION = 1;
 
-export const VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION = 1;
+const VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION = 1;
 
 export const SURFACE_MARKING_STYLE = Object.freeze({
   surfaceLiftM: 0.006,

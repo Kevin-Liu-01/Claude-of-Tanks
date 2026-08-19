@@ -5,7 +5,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const GERMANY_IDS = Object.freeze(['leo2a4_otco', 'leo2a4m', 'leo2a6m']);
+const GERMANY_IDS = Object.freeze(['leo2a4_otco', 'leo2a4m', 'leo2a6m']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -57,7 +57,7 @@ function variant(id, donorId, options) {
   return spec;
 }
 
-export const GERMANY_SPECS = {
+const GERMANY_SPECS = {
   leo2a4_otco: variant('leo2a4_otco', 'leo2a4', {
     name: 'Leopard 2A4 OTCO', number: 'OTCO', scheme: 'stripes',
     base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'],

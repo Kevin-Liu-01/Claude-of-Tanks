@@ -8,7 +8,7 @@
  * the authority still owns traverse limits, gun limits, dispersion and fire.
  */
 
-export const DEFAULT_AIM_DISTANCE_M = 1000;
+const DEFAULT_AIM_DISTANCE_M = 1000;
 export const MIN_AIM_DISTANCE_M = 0.01;
 export const MAX_AIM_DISTANCE_M = 2000;
 

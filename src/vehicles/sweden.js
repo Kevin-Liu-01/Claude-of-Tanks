@@ -5,7 +5,7 @@ import {
   TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims,
 } from './specs.js';
 
-export const SWEDEN_IDS = Object.freeze(['strv81', 'udes03', 'strv103a', 'strv122']);
+const SWEDEN_IDS = Object.freeze(['strv81', 'udes03', 'strv103a', 'strv122']);
 
 function siegeGun({
   name, reloadS, accuracy, aimTimeS, damage,
@@ -76,7 +76,7 @@ function enforceTurretlessArmor(spec) {
   return spec;
 }
 
-export const SWEDEN_SPECS = {
+const SWEDEN_SPECS = {
   strv81: variant('strv81', 'centurion3', {
     name: 'Strv 81', number: '81', scheme: 'woodland',
     base: '#39483b', weather: '#4f5948', patches: ['#263129', '#62634a', '#74664c'],

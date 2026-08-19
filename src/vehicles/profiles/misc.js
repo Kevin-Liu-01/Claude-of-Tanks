@@ -23,7 +23,7 @@
 // NOTHING (bins, baskets, flaps, ERA, mirrors) may exceed those planes or
 // the whole tank rescales and every mask shifts.
 import * as THREE from 'three';
-import { KIT, FITTINGS, buildProfile, WESTERN } from './kit.js';
+import { KIT, FITTINGS, buildProfile } from './kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
 
 // NOTE: KIT bindings are only dereferenced inside build-time functions —
@@ -3179,7 +3179,7 @@ export function buildType90(P) {
 // 2.28 (real 2.0-2.13 + cupola 2.25; print 2.40-2.47 reads tall), cupola
 // RIGHT of center per photos (print reads it near center x 0..0.15).
 // ---------------------------------------------------------------------------
-export function buildType74(P) {
+function buildType74(P) {
   const { box, cylY, cylZ, frustum, lathe, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, shovelTool, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)

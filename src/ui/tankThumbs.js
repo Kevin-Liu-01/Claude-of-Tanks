@@ -57,7 +57,7 @@ function installErrorGuard() {
  * Normalize every tank portrait under `root` to its packaged transparent PNG.
  * @param {Document|Element} root
  */
-export function applyTankThumbs(root) {
+function applyTankThumbs(root) {
   if (!root || !root.querySelectorAll) return;
   installErrorGuard();
   for (const img of root.querySelectorAll('img[data-cot-thumb]')) {

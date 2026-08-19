@@ -96,7 +96,3 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // FLIP-RETIRED:   },
   // FLIP-RETIRED: };
 }
-
-export const USERDROP4_TANK_IDS = ['m1a2_legacy', 'abramsx'];
-// Dual-gate graduates leave the sourced-intent roster (CUSTOM chip).
-export const USERDROP4_SOURCED_IDS = USERDROP4_TANK_IDS.filter((id) => id !== 'm1a2_legacy');

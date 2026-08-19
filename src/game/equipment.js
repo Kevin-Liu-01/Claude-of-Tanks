@@ -28,7 +28,6 @@
 //                                        (same ids — spotting owns vision)
 // Nothing in the catalog is cosmetic-only.
 
-import { EQUIPMENT as SPOTTING_EQUIPMENT } from '../sim/spotting.js';
 
 /** Equipment slots per vehicle (WoT standard). */
 export const EQUIP_SLOTS = 3;
@@ -317,9 +316,4 @@ export function equipModifiedStats(spec, ids) {
       mod: spec.hullTraverseDegS * m.traverse,
     },
   };
-}
-
-/** True when the spotting table carries any effect for this item id. */
-export function isSpottingItem(id) {
-  return !!SPOTTING_EQUIPMENT[id];
 }

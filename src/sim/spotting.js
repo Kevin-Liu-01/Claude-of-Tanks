@@ -61,7 +61,7 @@ export const SPOT_LINGER_S = 5;        // spotted state persists after last pass
 // getConcealment() display state uses these; isSpotted stays instant.
 export const SIXTH_SENSE_DELAY_S = 3;
 export const SIXTH_SENSE_SHOW_S = 8;
-export const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
+const BUSH_FIRE_TRANSPARENT_M = 15; // 15 m rule radius
 // MUZZLE-FLASH REVEAL (r2 — replaces the AI-side spotting-gate bypass):
 // fire reveal is resolved THROUGH the camo math. notifyFired pulls the
 // shooter's next check to `now`, so the bloom-stripped camo (+ the 15 m
@@ -86,8 +86,8 @@ export const CAMO_PAINT_BONUS = 0.035; // biome-MATCHED camo pattern (+3.5%, r3)
 // targets light up. Pairs with vegetation.js canopy add 0.13 -> 0.08
 // (bushes stay 0.35): trees soft-conceal, bushes are the real hides.
 export const MAX_BUSH_BONUS = 0.5;     // stacked-foliage cap
-export const FIRE_CAMO_LOSS = 0.82;    // fallback own-camo loss at full bloom (unknown caliber)
-export const FIRE_BLOOM_TAU_S = 1.7;   // bloom e-folding time
+const FIRE_CAMO_LOSS = 0.82;    // fallback own-camo loss at full bloom (unknown caliber)
+const FIRE_BLOOM_TAU_S = 1.7;   // bloom e-folding time
 const FIRE_BLOOM_EPS = 0.03;           // below this the shot is "cold"
 const MOVING_SPEED_MPS = 0.4;
 const CHECK_NEAR_S = 0.5;              // spotting-check cadence by proximity
@@ -114,7 +114,7 @@ export const BASE_CAMO = {
 };
 
 /** Class fallbacks for specs not in the tables (test fixtures, future tanks). */
-export const CLASS_CAMO = {
+const CLASS_CAMO = {
   light:  { still: 0.34, moving: 0.34 },
   medium: { still: 0.23, moving: 0.17 },
   heavy:  { still: 0.12, moving: 0.08 },
@@ -206,7 +206,7 @@ export function fireBloomAt(firedAtS, timeS) {
  * @param {?number} caliberMm shooter's gun caliber
  * @returns {number} own-camo fraction lost at full bloom, in [0.55, 0.90]
  */
-export function fireCamoLossFor(caliberMm) {
+function fireCamoLossFor(caliberMm) {
   if (!(caliberMm > 0)) return FIRE_CAMO_LOSS;
   return 0.55 + 0.35 * clamp((caliberMm - 50) / 100, 0, 1);
 }

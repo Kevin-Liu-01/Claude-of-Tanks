@@ -95,9 +95,9 @@ function bumpPlates(armor, nameRe, dKe, dCe) {
 const m1a2 = TANK_SPECS.m1a2;
 const t90m = TANK_SPECS.t90m;
 
-export const VARIANT_TANK_IDS = ['m1a1', 't90a', 'm1a2_tusk'];
+const VARIANT_TANK_IDS = ['m1a1', 't90a', 'm1a2_tusk'];
 
-export const VARIANT_SPECS = {
+const VARIANT_SPECS = {
   // ---- M1A1 Abrams — roster §2 (priority 2) -------------------------------
   m1a1: {
     id: 'm1a1', name: 'M1A1 Abrams', nation: 'USA', era: 'modern', class: 'mbt',
@@ -229,7 +229,7 @@ export const VARIANT_SPECS = {
 // TurretPivot/GunPivot nodes; paintUntextured routes the baked-in kit parts
 // (untextured CARC-green Principled materials) onto the live camo canvas and
 // keeps near-black hardware dark, exactly like the community CAD assets.
-export const VARIANT_MODEL_SOURCE = {
+const VARIANT_MODEL_SOURCE = {
   // m1a1: DUAL-GATE GRADUATE (2026-08-02, freeze e500174c after the r5
   // cable re-freeze) — NO variant backfill. The graduation retired the
   // primary registration and this backfill silently re-sourced the slot,

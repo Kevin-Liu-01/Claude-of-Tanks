@@ -14,7 +14,7 @@ export { KIT };
 export const evenStations = (count, span, bias = 0) => Array.from({ length:count }, (_, i) =>
   count === 1 ? bias : span / 2 - i * (span / (count - 1)) + bias);
 
-export function addSegmentedSkirts(P, width, length, y, height, panels = 6) {
+function addSegmentedSkirts(P, width, length, y, height, panels = 6) {
   const { box } = KIT;
   const panelD = length / panels;
   for (const side of [-1, 1]) {
@@ -31,7 +31,7 @@ export function addSegmentedSkirts(P, width, length, y, height, panels = 6) {
   }
 }
 
-export function addEra(P, width, frontZ, roofY, rows = 2) {
+function addEra(P, width, frontZ, roofY, rows = 2) {
   const { box } = KIT;
   const cols=7;
   for (let row=0; row<rows; row++) for (let col=0; col<cols; col++) {
@@ -40,7 +40,7 @@ export function addEra(P, width, frontZ, roofY, rows = 2) {
   }
 }
 
-export function buildHull(P,p) {
+function buildHull(P,p) {
   const { box,cylY,cylZ,torus,frustum,buildRunningGear,fenders,headlight,towCable }=KIT;
   const d=P.spec.dims;
   const width=p.width || d.widthM;
@@ -207,7 +207,7 @@ export function buildHull(P,p) {
   return {width,length,halfL,roofY,trackTop};
 }
 
-export function westernWedge(P,p) {
+function westernWedge(P,p) {
   const { box,frustum,slab }=KIT;
   const tw=p.turretWidth/2, h=p.turretHeight, front=p.turretFront, rear=p.turretRear;
   P.add('turret',frustum(tw*0.96,front*0.50,rear,tw*0.83,front*0.30,rear*0.94,0.02,h));
@@ -224,7 +224,7 @@ export function westernWedge(P,p) {
 // Abrams-family welded turret: broad, low, almost rectangular bustle with
 // distinct swept cheeks. The generic Leopard arrow wedge made every M1 read
 // like a narrowed Leopard 2 and was especially obvious from above.
-export function abramsTurret(P,p) {
+function abramsTurret(P,p) {
   const { box,frustum,slab }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   P.add('turret',frustum(tw*0.98,f*0.52,r,tw*0.91,f*0.36,r*0.96,0,h));
@@ -250,7 +250,7 @@ export function abramsTurret(P,p) {
   for(let i=0;i<10;i++) P.add('turretDetail',box(0.025,h*0.48,0.025),-tw*0.86+i*(tw*1.72/9),h*0.39,rackZ);
 }
 
-export function sovietTurret(P,p) {
+function sovietTurret(P,p) {
   const { lathe,box }=KIT;
   const r=p.turretWidth/2, h=p.turretHeight;
   P.add('turret',lathe([[r*0.86,0],[r,0.12],[r*0.94,h*0.48],[r*0.70,h*0.86],[r*0.40,h],[0.02,h]],28,p.turretDepth/(p.turretWidth||1)));
@@ -260,7 +260,7 @@ export function sovietTurret(P,p) {
   }
 }
 
-export function merkavaTurret(P,p) {
+function merkavaTurret(P,p) {
   const { box,cylY,slab }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   const inner=Math.max(0.11,tw*0.13);
@@ -285,7 +285,7 @@ export function merkavaTurret(P,p) {
   }
 }
 
-export function castTurret(P,p) {
+function castTurret(P,p) {
   const { lathe,frustum,box }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight;
   const f=p.turretFront ?? p.turretDepth*0.42;
@@ -308,7 +308,7 @@ export function castTurret(P,p) {
   for(let i=0;i<7;i++) P.add('turretDetail',box(0.022,h*0.34,0.022),-tw*0.62+i*(tw*1.24/6),h*0.34,rackZ);
 }
 
-export function ifvTurret(P,p) {
+function ifvTurret(P,p) {
   const { box,polyTurret }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   P.add('turret',polyTurret([
@@ -323,7 +323,7 @@ export function ifvTurret(P,p) {
   for(let i=0;i<5;i++) P.add('turretDetail',box(0.025,h*0.30,0.025),-tw*0.55+i*(tw*1.10/4),h*0.30,r-0.16);
 }
 
-export function type90Turret(P,p) {
+function type90Turret(P,p) {
   const { box,cylY,polyTurret,slab }=KIT;
   const tw=p.turretWidth/2,h=p.turretHeight,f=p.turretFront,r=p.turretRear;
   // Ten-sided welded shell derived from the Type 90 top view: narrow gun
@@ -362,7 +362,7 @@ export function type90Turret(P,p) {
   P.add('turret',cylY(0.24,0.24,0.045,14),-tw*0.38,h+0.025,-0.24);
 }
 
-export function buildTurretAndGun(P,p) {
+function buildTurretAndGun(P,p) {
   const { box,cylY,cylZ,buildGun,cupola,periscope,pintleMG,smokeCluster }=KIT;
   if (p.turret === 'casemate') {
     // The armor/simulation rig still supplies a gun pitch group, but there is
@@ -569,15 +569,6 @@ export function buildDonorVariant(P, p) {
   KIT.buildCanonical(P, p.base);
   if (p.kit) p.kit(P, p);
 }
-
-export const WESTERN={hull:'western',wheels:7,skirts:true,turret:'western',turretWidth:2.45,turretDepth:3.05,turretHeight:0.72,turretFront:1.05,turretRear:-1.65,pano:true,mg:true};
-export const LEOPARD={...WESTERN,turretWidth:2.62,turretDepth:3.42,turretHeight:0.76,turretFront:1.18,turretRear:-1.92,smokeCount:4,gunLength:4.0,antennaHeight:0.72};
-export const SOVIET={hull:'soviet',wheels:6,skirts:true,turret:'soviet',turretWidth:2.25,turretDepth:2.55,turretHeight:0.62,turretFront:0.92,turretRear:-1.18,era:true,pano:true,mg:true,gunLength:4.0};
-export const MERKAVA={hull:'merkava',wheels:6,skirts:true,turret:'merkava',turretWidth:2.18,turretDepth:2.85,turretHeight:0.72,turretFront:1.16,turretRear:-1.55,rearDoor:true,pano:true,mg:true,gunLength:2.9,antennaHeight:1.06};
-export const CLASSIC={hull:'classic',wheels:6,skirts:false,turret:'cast',turretWidth:2.25,turretDepth:2.55,turretHeight:0.76,turretFront:1.00,turretRear:-1.20,mg:true};
-export const WW2={...CLASSIC,pano:false,smoke:false,antennas:false,sleeve:false,evac:null,mg:false,arms:true};
-export const CASEMATE={...WW2,hull:'casemate',turret:'casemate',turretWidth:1.5,turretDepth:1.8,turretHeight:0.35,turretFront:0.72,turretRear:-0.9};
-export const ABRAMS={...WESTERN,family:'abrams',hull:'western',turret:'abrams',width:3.05,hullLength:7.25,roofY:1.58,trackW:0.56,turretWidth:2.48,turretDepth:3.42,turretHeight:0.74,turretFront:1.05,turretRear:-1.96,pano:true,mg:true,gunLength:3.25,antennaHeight:0.72};
 
 // ===========================================================================
 // KIT.fittings — STANDARD DECORATION FITTINGS (kit-fittings round, 2026-08-03)

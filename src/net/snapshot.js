@@ -17,7 +17,7 @@ const ENTITY_DELTA_FIELDS = Object.freeze([
   'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags',
 ]);
 
-export const SNAPSHOT_RELOAD_KINDS = Object.freeze({
+const SNAPSHOT_RELOAD_KINDS = Object.freeze({
   ready: 0,
   shell: 1,
   intraClip: 2,

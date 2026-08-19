@@ -95,8 +95,3 @@ export function featuredShotForMap(mapId) {
   const key = String(mapId || '').trim().toLowerCase();
   return TRANSITION_SHOTS.find((shot) => shot.maps?.includes(key)) || nextFeaturedShot();
 }
-
-/** A random featured image URL. @returns {string} */
-export function randomFeaturedImage() {
-  return randomFeaturedShot().img;
-}

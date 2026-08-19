@@ -26,8 +26,6 @@ export const CORE_MODULE_IDS = Object.freeze([
   'radio', 'optics', 'trackL', 'trackR',
 ]);
 
-export const OPTIONAL_MODULE_IDS = Object.freeze(['autoloader', 'feedSystem', 'missileRack']);
-
 export const MODULE_LABEL = Object.freeze(Object.fromEntries(
   MODULE_IDS.map((id) => [id, MODULE_DEFS[id].label]),
 ));

@@ -4,7 +4,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105']);
+const POLAND_IDS = Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105']);
 
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
@@ -48,7 +48,7 @@ function variant(id, donorId, options) {
   return spec;
 }
 
-export const POLAND_SPECS = {
+const POLAND_SPECS = {
   t72m1_jaguar: variant('t72m1_jaguar', 't72b_1987', {
     name: 'T-72M1 Jaguar', number: 'PL-721', scheme: 'woodland',
     base: '#39453a', weather: '#505b4a', patches: ['#202820', '#665b43', '#77705a'],

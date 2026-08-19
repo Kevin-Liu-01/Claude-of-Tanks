@@ -842,6 +842,8 @@ const _quat = new THREE.Quaternion();
 const _upAxis = new THREE.Vector3(0, 1, 0);
 const _one = new THREE.Vector3(1, 1, 1);
 const _posv = new THREE.Vector3();
+const _scalev = new THREE.Vector3();
+const _euler = new THREE.Euler();
 
 function mergeInto(buckets, parts, transform = null) {
   for (const key of Object.keys(parts)) {
@@ -1121,7 +1123,7 @@ ${snowCap ? `
     if (!pool) { pool = { meta, mats4: [], records: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
     _de.set(tiltX, yaw, tiltZ, 'YXZ');
     _dq.setFromEuler(_de);
-    _mat4.compose(_posv.set(x, y, z), _dq, new THREE.Vector3(sc, sc, sc));
+    _mat4.compose(_posv.set(x, y, z), _dq, _scalev.set(sc, sc, sc));
     pool.mats4.push(_mat4.clone());
     const rec = {
       kind, cls: meta.cls, x, y, z, yaw, sc,
@@ -1277,8 +1279,8 @@ ${snowCap ? `
   function addBakedInstance(name, geo, x, y, z, yaw, sc = 1, tiltX = 0, tiltZ = 0) {
     let e = bakedInstances.get(name);
     if (!e) { e = { geo, list: [] }; bakedInstances.set(name, e); }
-    _quat.setFromEuler(new THREE.Euler(tiltX, yaw, tiltZ, 'YXZ'));
-    _mat4.compose(_posv.set(x, y, z), _quat, new THREE.Vector3(sc, sc, sc));
+    _quat.setFromEuler(_euler.set(tiltX, yaw, tiltZ, 'YXZ'));
+    _mat4.compose(_posv.set(x, y, z), _quat, _scalev.set(sc, sc, sc));
     e.list.push(_mat4.clone());
   }
 
@@ -2466,7 +2468,8 @@ ${snowCap ? `
     }
     const y = heightField.getHeightAt(x, z) - sink * sc;
     _quat.setFromAxisAngle(_upAxis, yawR);
-    _mat4.compose(_posv.set(x, y, z), _quat, new THREE.Vector3(sc, sc * (0.8 + rng() * 0.35), sc));
+    _mat4.compose(_posv.set(x, y, z), _quat,
+      _scalev.set(sc, sc * (0.8 + rng() * 0.35), sc));
     rockPlacements[vv].push(_mat4.clone());
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over

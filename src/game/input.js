@@ -42,7 +42,7 @@ const PAD_ACTIVE_WINDOW_MS = 4000; // recent-activity window for padActive()
 const PAD_MAX_BUTTONS = 17;
 
 /** Every rebindable action, grouped for the settings panel. */
-export const ACTION_DEFS = [
+const ACTION_DEFS = [
   { id: 'forward', label: 'Move Forward', group: 'Movement' },
   { id: 'back', label: 'Move Back', group: 'Movement' },
   { id: 'left', label: 'Steer Left', group: 'Movement' },
@@ -110,7 +110,7 @@ export const DEFAULT_BINDINGS = {
 };
 
 /** Default secondary bindings: arrow keys as alternate movement (WoT staple). */
-export const DEFAULT_BINDINGS2 = {
+const DEFAULT_BINDINGS2 = {
   forward: 'ArrowUp',
   back: 'ArrowDown',
   left: 'ArrowLeft',
@@ -120,7 +120,7 @@ export const DEFAULT_BINDINGS2 = {
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
  *  LB special action, RB free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
  *  left = drive, right = aim. */
-export const DEFAULT_PAD_BINDINGS = {
+const DEFAULT_PAD_BINDINGS = {
   fire: 7, // RT
   sniperToggle: 6, // LT
   handbrake: 0, // A
@@ -238,7 +238,7 @@ const LABEL_SPECIAL = {
  * @param {?string} code
  * @returns {string}
  */
-export function labelForCode(code) {
+function labelForCode(code) {
   if (!code) return '—';
   if (LABEL_SPECIAL[code]) return LABEL_SPECIAL[code];
   if (code.startsWith('Key')) return code.slice(3);
@@ -252,7 +252,7 @@ export function labelForCode(code) {
  * @param {?number} index
  * @returns {string}
  */
-export function labelForPadButton(index) {
+function labelForPadButton(index) {
   if (index == null || index < 0) return '—';
   return PAD_BUTTON_LABELS[index] || `PAD ${index}`;
 }

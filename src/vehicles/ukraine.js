@@ -8,7 +8,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const UKRAINE_IDS = Object.freeze([
+const UKRAINE_IDS = Object.freeze([
   'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1',
 ]);
 
@@ -50,7 +50,7 @@ function variant(id, donorId, o) {
   return spec;
 }
 
-export const UKRAINE_SPECS = {
+const UKRAINE_SPECS = {
   ua_t64bv: variant('ua_t64bv', 't64bv1', {
     // §5.248 DIMS PIN: the donor t64bv1 is mid-§5.247 rebuild and its dims
     // row moves under this clone — pin THIS id to its own registered

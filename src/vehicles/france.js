@@ -16,8 +16,6 @@ import { KIT } from './tankFactory.js';
 import { FITTINGS } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
-export const FRANCE_IDS = ['amx40'];
-
 // ---------------------------------------------------------------------------
 // Spec helpers — local mirrors of the specs.js plate/shell conventions
 // (specs.js keeps them module-private; duplicated here per pack ownership —

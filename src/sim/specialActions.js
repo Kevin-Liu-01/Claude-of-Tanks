@@ -40,7 +40,7 @@ const DESCRIPTOR_RELOAD = Object.freeze({
 });
 
 /** Return the guided shell slot, or -1 when this vehicle has no ATGM. */
-export function guidedMissileSlot(spec) {
+function guidedMissileSlot(spec) {
   const shells = spec?.gun?.shells;
   if (!Array.isArray(shells)) return -1;
   for (let i = 0; i < shells.length; i++) {

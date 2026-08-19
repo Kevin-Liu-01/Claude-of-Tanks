@@ -125,7 +125,7 @@ function fnvBytes(hash, bytes) {
   return hash >>> 0;
 }
 
-export function textFingerprint(text) {
+function textFingerprint(text) {
   return fnvBytes(0x811c9dc5, new TextEncoder().encode(String(text))).toString(16).padStart(8, '0');
 }
 
