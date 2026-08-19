@@ -94,7 +94,10 @@ async function dieAndWaitForResult() {
   if (!spawned) fail('spawnKillShell returned false');
   await page.evaluate(() => window.__DEBUG.fastForward(2));
   const result = await page.evaluate(() => window.__DEBUG.game.result);
-  if (result !== 'defeat') fail(`expected defeat result, got ${result}`);
+  // Team play may continue after the player's death; both the mid-battle
+  // death replay and battle-deciding defeat replay exercise the same visual
+  // teardown contract this probe owns.
+  if (result !== null && result !== 'defeat') fail(`unexpected death result ${result}`);
   const post = await page.evaluate(() => window.__playerSnapshot());
   console.log('[revive] post-death snapshot:', JSON.stringify(post));
   if (!post.destroyedFlag) fail('player visual not flagged destroyed after death');
@@ -157,6 +160,66 @@ if (!ghostSeen) {
   console.log('[revive] B aim-settle:', JSON.stringify(aim));
   if (!aim) fail('B: no aim target found after restart');
   else if (aim.err > 3) fail(`B: gunAimError ${aim.err.toFixed(2)} deg after settle (should be ~0)`);
+}
+
+// ---- scenario C: leave to garage while kill-cam UI owns the frame ---------
+console.log('\n[revive] scenario C: active killcam -> leave battle -> clean garage');
+await freshBattle();
+await dieAndWaitForResult();
+const replaySeen = await page.waitForFunction(
+  () => window.__DEBUG.killcam.isActive() && document.body.classList.contains('cot-kc-live'),
+  { timeout: 30000, polling: 100 },
+).then(() => true).catch(() => false);
+if (!replaySeen) {
+  fail('C: active kill-cam UI was never observed');
+} else {
+  await page.evaluate(() => window.__DEBUG.enterGarage());
+  await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 10000 });
+  const exitState = await page.evaluate(() => {
+    const kc = document.querySelector('.cot-kc');
+    const hud = document.querySelector('.cot-hud');
+    const stats = document.querySelector('.cot-si-stats');
+    const damage = document.querySelector('.cot-dp');
+    return {
+      active: window.__DEBUG.killcam.isActive(),
+      bodyLive: document.body.classList.contains('cot-kc-live'),
+      report: document.body.classList.contains('cot-si-report'),
+      killcamClasses: kc ? [...kc.classList] : [],
+      killcamDisplay: kc ? getComputedStyle(kc).display : null,
+      fadeCount: document.querySelectorAll('.cot-kc-fadeblk').length,
+      hudInlineDisplay: hud?.style.display || '',
+      statsInlineVisibility: stats?.style.visibility || '',
+      statsShown: !!stats?.classList.contains('show'),
+      damageInlineVisibility: damage?.style.visibility || '',
+    };
+  });
+  console.log('[revive] C garage state:', JSON.stringify(exitState));
+  if (exitState.active) fail('C: killcam controller remained active in garage');
+  if (exitState.bodyLive) fail('C: cot-kc-live body class leaked into garage');
+  if (exitState.report || exitState.statsShown) fail('C: battle report leaked into garage');
+  if (exitState.killcamDisplay !== 'none') fail(`C: killcam root display is ${exitState.killcamDisplay}`);
+  if (exitState.killcamClasses.some((name) => name !== 'cot-kc')) {
+    fail(`C: killcam transition classes leaked (${exitState.killcamClasses.join(',')})`);
+  }
+  if (exitState.fadeCount) fail(`C: ${exitState.fadeCount} killcam fade layer(s) leaked`);
+  if (exitState.statsInlineVisibility) fail('C: replay stats visibility veil was not released');
+  if (exitState.damageInlineVisibility) fail('C: replay damage-panel veil was not released');
+  await freshBattle();
+  const nextBattle = await page.evaluate(() => ({
+    hudDisplay: getComputedStyle(document.querySelector('.cot-hud')).display,
+    bodyLive: document.body.classList.contains('cot-kc-live'),
+    report: document.body.classList.contains('cot-si-report'),
+    killcamDisplay: getComputedStyle(document.querySelector('.cot-kc')).display,
+    statsShown: document.querySelector('.cot-si-stats')?.classList.contains('show'),
+    damageVisibility: document.querySelector('.cot-dp')?.style.visibility || '',
+  }));
+  console.log('[revive] C next-battle state:', JSON.stringify(nextBattle));
+  if (nextBattle.hudDisplay === 'none') fail('C: interrupted replay kept the next battle HUD hidden');
+  if (nextBattle.bodyLive || nextBattle.report || nextBattle.statsShown) {
+    fail('C: interrupted replay UI classes leaked into the next battle');
+  }
+  if (nextBattle.killcamDisplay !== 'none') fail('C: killcam UI reopened in the next battle');
+  if (nextBattle.damageVisibility) fail('C: next-battle damage panel remained veiled');
 }
 
 await browser.close();

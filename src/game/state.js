@@ -11,7 +11,7 @@ import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
 import {
-  createShell, stepShell, applyDispersion, shellGravityMps2,
+  createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
@@ -19,10 +19,10 @@ import {
   selectShell, startPostShotReload, startReload, tickReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
 import {
+  completeGuidedMissileFlight,
   createSpecialActionState,
   finishSpecialActionFire,
-  specialActionWantsFire,
-  tickSpecialAction,
+  specialActionGuidesShell,
 } from '../sim/specialActions.js';
 import { createAI, roleOf } from './ai.js';
 import { pushHullFromObstacle } from '../world/collision.js';
@@ -1319,8 +1319,7 @@ function announceDestroyed(game, bus, ent, killerId, cause) {
 /** Fire the loaded shell if the trigger is held and the gun is ready. */
 function tryFire(game, ent, bus, rig) {
   const c = ent.combat;
-  const specialFire = specialActionWantsFire(ent);
-  if ((!ent.input.fire && !specialFire) || c.destroyed || c.reload.t > 0) return;
+  if (!ent.input.fire || c.destroyed || c.reload.t > 0) return;
   if (c.magazine && c.magazine.rounds <= 0) return;
   if (c.modules.gun && c.modules.gun.state === 'red') return;
   // BATTLE-AI r7 hardening: clamp to the spec's REAL magazine — a slot index
@@ -1345,6 +1344,8 @@ function tryFire(game, ent, bus, rig) {
     if (newBase > oldBase) { startReload(c, ent.spec); return; }
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
+  const guidedSpecial = !!(shellSpec.guided && ent.specialAction?.active &&
+    ent.specialAction.pendingFire && c.shellSlot === ent.specialAction.missileSlot);
 
   // Barrel direction from the visual (already chasing input.aimPoint).
   // controls_gunnery r3 CRITICAL: use the articulated bore AXIS (recoil-group
@@ -1414,7 +1415,7 @@ function tryFire(game, ent, bus, rig) {
   _firedEv.dir[0] = _dir.x; _firedEv.dir[1] = _dir.y; _firedEv.dir[2] = _dir.z;
   bus.emit('shell:fired', _firedEv);
   startPostShotReload(c, ent.spec);
-  if (specialFire) finishSpecialActionFire(ent);
+  if (guidedSpecial) finishSpecialActionFire(ent, shell.id);
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
   // up any concealing foliage within 15 m (see src/sim/spotting.js).
   if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
@@ -1455,6 +1456,10 @@ function stepShells(game, bus, world) {
   for (let si = 0; si < shells.length; si++) {
     const shell = shells[si];
     if (shell.dead) continue;
+    const shooter = game.tankById.get(shell.shooterId);
+    if (specialActionGuidesShell(shooter, shell)) {
+      guideShellToward(shell, shooter.input?.aimPoint, SIM_DT);
+    }
     stepShell(shell, SIM_DT);
 
     _seg.copy(shell.pos).sub(shell.prevPos);
@@ -1521,7 +1526,16 @@ function stepShells(game, bus, world) {
   // positions, fx trails copy into their own arrays, damage events copy fields)
   for (let i = shells.length - 1; i >= 0; i--) {
     if (shells[i].dead) {
-      if (_shellPool.length < 64) _shellPool.push(shells[i]);
+      const shell = shells[i];
+      const shooter = game.tankById.get(shell.shooterId);
+      if (completeGuidedMissileFlight(shooter, shell.id)) {
+        bus.emit('ui:specialActionResult', {
+          kind: shooter.specialAction.kind,
+          active: false,
+          reason: 'IMPACT',
+        });
+      }
+      if (_shellPool.length < 64) _shellPool.push(shell);
       shells.splice(i, 1);
     }
   }
@@ -1728,7 +1742,6 @@ export function simStep(game, bus, world, rig, collider) {
         done: wasReloading > 0 && done,
       });
     }
-    tickSpecialAction(ent);
     tryFire(game, ent, bus, rig);
   }
 

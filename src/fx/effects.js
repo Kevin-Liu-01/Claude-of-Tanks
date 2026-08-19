@@ -28,6 +28,7 @@ import { setBreakFxProvider, notifyShellSweep, notifyShellImpact } from '../worl
 // battlefield readability (WoT deliberately thickens them) and the thin r2
 // ribbons were invisible in 60 fps frames.
 const TRACER_PRESETS = {
+  ATGM:   { core: 0xffff82, glow: 0xffd21f, width: 0.16 },
   AP:     { core: 0xffd27a, glow: 0xff9030, width: 0.16 },
   APCR:   { core: 0xe8f4ff, glow: 0x9cc8ff, width: 0.11 },
   HEAT:   { core: 0xff6a3c, glow: 0xff3020, width: 0.19 },
@@ -2717,7 +2718,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         if (sh.dead) continue;
         const shPos = sh.pos;
         const shVel = sh.vel;
-        const preset = TRACER_PRESETS[sh.spec && sh.spec.tracer] || TRACER_PRESETS.AP;
+        const tracerId = sh.spec?.guided ? 'ATGM' : sh.spec?.tracer;
+        const preset = TRACER_PRESETS[tracerId] || TRACER_PRESETS.AP;
         const speed = shVel.length();
         // r7 (critic: "30 m uniform laser beam no shell ever produced"): the
         // bolt is a 3-6 m head+tail streak — APFSDS at 1700 m/s tops out at

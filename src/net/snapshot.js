@@ -69,7 +69,7 @@ function entityFlags(entity) {
   if (entity.input && entity.input.fire) flags |= SNAPSHOT_FLAGS.FIRING;
   if (entity.spotted) flags |= SNAPSHOT_FLAGS.SPOTTED;
   if (entity.specialAction?.active) flags |= SNAPSHOT_FLAGS.SPECIAL_ACTIVE;
-  if (entity.specialAction?.pendingFire || entity.specialAction?.restoringShell) {
+  if (entity.specialAction?.pendingFire || entity.specialAction?.inFlightShellId != null) {
     flags |= SNAPSHOT_FLAGS.SPECIAL_PENDING;
   }
   return flags;
@@ -121,6 +121,7 @@ function captureShellSnapshot(shell) {
     vy: quantize(vectorAxis(shell.vel, 1), VELOCITY_SCALE),
     vz: quantize(vectorAxis(shell.vel, 2), VELOCITY_SCALE),
     type: String((shell.spec && shell.spec.type) || ''),
+    guided: shell.spec?.guided === true,
   };
 }
 

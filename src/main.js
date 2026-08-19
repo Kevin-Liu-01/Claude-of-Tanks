@@ -2986,6 +2986,14 @@ function enterGarage({ preserveRoom = !!(
   // Entry failures and interrupted network handoffs also land here. Always
   // release a loading-screen suspension before the garage becomes visible.
   post.setAdaptiveSuspended(false);
+  // A garage exit may interrupt any replay phase (including the pre-replay
+  // death hold). Tear the kill-cam down before network presentation entities
+  // are disposed, revoke the pending launch, and release main.js's separate
+  // HUD veil. Without this ordering, the next battle inherited letterbox/
+  // label DOM plus display:none HUD roots from the interrupted replay.
+  kcPending = null;
+  killcam.cancel();
+  veilHud(false);
   if (preserveRoom) disposeNetworkPresentation();
   else closeNetworkMatch('returned_to_garage');
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.

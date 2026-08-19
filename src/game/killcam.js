@@ -1335,6 +1335,7 @@ export function createKillCam(deps) {
       bus.on('phase:change', (p) => {
         if (!p || p.phase !== 'battle') {
           spectate.stop(true);
+          api.cancel();
           return;
         }
         // killcam r2: entering battle clears stale lethal chains through

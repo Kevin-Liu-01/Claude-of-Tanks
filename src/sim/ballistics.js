@@ -25,6 +25,12 @@ const G_SHELL = 9.81 * GRAVITY_SCALE;
 const _basisRef = new Vector3();
 const _right = new Vector3();
 const _up = new Vector3();
+const _guideCurrent = new Vector3();
+const _guideDesired = new Vector3();
+const _guidePerp = new Vector3();
+
+/** Default cursor-guidance authority for ATGMs (radians per second). */
+export const GUIDED_MISSILE_TURN_RATE_RAD_S = 2.4;
 
 /**
  * Effective shell gravity. Powered/guided missiles fly the sight line; shell
@@ -141,6 +147,40 @@ export function stepShell(shell, dt) {
   shell.vel.y -= gravity * dt;
   shell.ageS += dt;
   if (shell.ageS > SHELL_MAX_LIFETIME_S) shell.dead = true;
+}
+
+/**
+ * Steer one guided missile toward the authority-owned cursor point while
+ * preserving its authored speed. The bounded turn keeps flight readable and
+ * deterministic; callers decide whether the missile's E-channel is engaged.
+ *
+ * @returns {boolean} true when a valid guided velocity was applied
+ */
+export function guideShellToward(shell, aimPoint, dt) {
+  if (!shell?.spec?.guided || !aimPoint || !(dt > 0)) return false;
+  const speed = shell.vel?.length?.() || 0;
+  if (!(speed > 1e-6) || !shell.pos) return false;
+  _guideDesired.copy(aimPoint).sub(shell.pos);
+  if (_guideDesired.lengthSq() <= 1e-8) return false;
+  _guideDesired.normalize();
+  _guideCurrent.copy(shell.vel).multiplyScalar(1 / speed);
+  const dot = Math.max(-1, Math.min(1, _guideCurrent.dot(_guideDesired)));
+  const angle = Math.acos(dot);
+  if (angle <= 1e-7) return true;
+  const rate = Number.isFinite(shell.spec.guidanceTurnRateRadS)
+    ? Math.max(0, shell.spec.guidanceTurnRateRadS)
+    : GUIDED_MISSILE_TURN_RATE_RAD_S;
+  const turn = Math.min(angle, rate * dt);
+  if (!(turn > 0)) return false;
+  _guidePerp.copy(_guideDesired).addScaledVector(_guideCurrent, -dot);
+  if (_guidePerp.lengthSq() <= 1e-10) {
+    _guidePerp.set(Math.abs(_guideCurrent.y) < 0.9 ? 0 : 1,
+      Math.abs(_guideCurrent.y) < 0.9 ? 1 : 0, 0).cross(_guideCurrent);
+  }
+  _guidePerp.normalize();
+  _guideCurrent.multiplyScalar(Math.cos(turn)).addScaledVector(_guidePerp, Math.sin(turn));
+  shell.vel.copy(_guideCurrent).multiplyScalar(speed);
+  return true;
 }
 
 /**

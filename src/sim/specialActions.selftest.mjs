@@ -4,18 +4,22 @@ import '../vehicles/tankFactory.js'; // register the full authored fleet
 import { getSpec } from '../vehicles/specs.js';
 import { createCombatState, startPostShotReload } from './damage.js';
 import { createTankState, SIM_DT, updateTank } from './movement.js';
+import {
+  GUIDED_MISSILE_TURN_RATE_RAD_S,
+  createShell,
+  guideShellToward,
+} from './ballistics.js';
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.js';
 import { captureEntitySnapshot, SNAPSHOT_FLAGS } from '../net/snapshot.js';
 import {
   SPECIAL_ACTION_KINDS,
   activateSpecialAction,
+  completeGuidedMissileFlight,
   createSpecialActionState,
   finishSpecialActionFire,
   specialActionKind,
   specialActionLocksShell,
-  specialActionWantsFire,
-  tickSpecialAction,
 } from './specialActions.js';
 
 function entityFor(id) {
@@ -46,15 +50,31 @@ assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot);
 assert.ok(ifv.combat.reload.t > 0, 'ATGM uses the existing per-shell load time');
 assert.equal(specialActionLocksShell(ifv), true);
 ifv.combat.reload.t = 0;
-assert.equal(specialActionWantsFire(ifv), true, 'queued ATGM fires only when authoritative reload is ready');
 startPostShotReload(ifv.combat, ifv.spec);
-finishSpecialActionFire(ifv);
-assert.equal(ifv.specialAction.restoringShell, true);
-assert.equal(tickSpecialAction(ifv), false, 'shell remains locked through the ATGM post-shot reload');
-ifv.combat.reload.t = 0;
-assert.equal(tickSpecialAction(ifv), true);
-assert.equal(ifv.combat.shellSlot, originalSlot, 'completed launcher cycle restores the prior shell');
+assert.equal(finishSpecialActionFire(ifv, 41), true);
+assert.equal(ifv.specialAction.inFlightShellId, 41);
+assert.equal(ifv.specialAction.active, true, 'guidance remains engaged during flight');
+assert.equal(completeGuidedMissileFlight(ifv, 41), true);
+assert.equal(ifv.combat.shellSlot, originalSlot, 'impact restores the pre-E weapon immediately');
 assert.equal(specialActionLocksShell(ifv), false);
+
+const toggled = entityFor('bwp1');
+assert.equal(activateSpecialAction(toggled).active, true);
+assert.equal(activateSpecialAction(toggled).active, false,
+  'a second E press disengages an armed missile before launch');
+
+const guidedSpec = toggled.spec.gun.shells[toggled.specialAction.missileSlot];
+const guidedShell = createShell(
+  guidedSpec, 'ifv', true, new Vector3(), new Vector3(0, 0, 1), 77,
+);
+const guidedSpeed = guidedShell.vel.length();
+assert.equal(guideShellToward(guidedShell, new Vector3(80, 0, 120), SIM_DT), true);
+assert.ok(guidedShell.vel.x > 0, 'cursor guidance turns the missile toward the new sight point');
+assert.ok(Math.abs(guidedShell.vel.length() - guidedSpeed) < 1e-9,
+  'guidance preserves authored missile speed');
+assert.ok(Math.atan2(guidedShell.vel.x, guidedShell.vel.z) <=
+  GUIDED_MISSILE_TURN_RATE_RAD_S * SIM_DT + 1e-9,
+  'guidance obeys the deterministic turn-rate cap');
 
 const strv = entityFor('strv103a');
 assert.equal(specialActionKind(strv.spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM);
@@ -82,8 +102,9 @@ assert.equal(autoloader.combat.reload.kind, 'magazine');
 assert.equal(specialActionKind(getSpec('m1a2')), SPECIAL_ACTION_KINDS.NONE,
   'vehicles without a modeled system do not receive a fake ability');
 
-// The network action remains fully authoritative: the input edge queues the
-// launch server-side, and the normal server firing path emits the projectile.
+// The network action remains fully authoritative: E only engages/selects the
+// launcher; a later ordinary fire frame launches and subsequent aim frames
+// steer the missile on the server.
 const match = createAuthoritativeMatch({
   mapId: 'verdant',
   countdownS: 0,
@@ -113,6 +134,11 @@ match.step({
 const authoritativeIfv = match.entityById.get('ifv');
 assert.equal(authoritativeIfv.specialAction.pendingFire, true);
 assert.equal(authoritativeIfv.combat.shellSlot, authoritativeIfv.specialAction.missileSlot);
+let snapshot = match.snapshot({ tick: 1, serverTimeMs: 17, viewerId: 'ifv', ackInputSeq: 1 });
+assert.ok(snapshot.events.some((event) => event.type === 'special_action' && event.id === 'ifv'));
+assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),
+  'E engages ATGM guidance without auto-firing');
+match.afterSnapshotBroadcast();
 authoritativeIfv.combat.reload.t = 0;
 match.step({
   dt: SIM_DT,
@@ -121,9 +147,35 @@ match.step({
     ['target', input()],
   ]),
 });
-const snapshot = match.snapshot({ tick: 2, serverTimeMs: 34, viewerId: 'ifv', ackInputSeq: 2 });
-assert.ok(snapshot.events.some((event) => event.type === 'special_action' && event.id === 'ifv'));
+snapshot = match.snapshot({ tick: 2, serverTimeMs: 34, viewerId: 'ifv', ackInputSeq: 2 });
+assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),
+  'a ready launcher still waits for the player click');
+match.afterSnapshotBroadcast();
+match.step({
+  dt: SIM_DT,
+  inputs: new Map([
+    ['ifv', { ...input(), fire: true }],
+    ['target', input()],
+  ]),
+});
+snapshot = match.snapshot({ tick: 3, serverTimeMs: 51, viewerId: 'ifv', ackInputSeq: 3 });
 assert.ok(snapshot.events.some((event) => event.type === 'shell_fired' && event.shooterId === 'ifv'),
-  'queued ATGM launches through the authoritative firing path');
+  'the click launches the engaged ATGM through the authoritative firing path');
+assert.equal(snapshot.shells.length, 1);
+assert.equal(snapshot.shells[0].guided, true, 'network snapshots preserve the yellow ATGM tracer identity');
+const launchVx = snapshot.shells[0].vx;
+match.afterSnapshotBroadcast();
+for (let i = 0; i < 6; i++) {
+  match.step({
+    dt: SIM_DT,
+    inputs: new Map([
+      ['ifv', { ...input(), aimYaw: 0.45, aimDistance: 800 }],
+      ['target', input()],
+    ]),
+  });
+}
+snapshot = match.snapshot({ tick: 9, serverTimeMs: 153, viewerId: 'ifv', ackInputSeq: 9 });
+assert.ok(snapshot.shells[0].vx > launchVx,
+  'authoritative missile velocity follows subsequent cursor aim frames');
 
 console.log('specialActions.selftest: all assertions passed');

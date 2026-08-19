@@ -19,7 +19,7 @@ import {
   updateTank,
 } from './movement.js';
 import {
-  applyDispersion, createShell, stepShell,
+  applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.js';
 import { tankPoseFromState, traceTank } from './armor.js';
 import {
@@ -47,11 +47,11 @@ import { PLAYER_ACTION_BITS } from '../net/protocol.js';
 import { decodeAimIntent } from '../net/aimIntent.js';
 import {
   activateSpecialAction,
+  completeGuidedMissileFlight,
   createSpecialActionState,
   finishSpecialActionFire,
+  specialActionGuidesShell,
   specialActionLocksShell,
-  specialActionWantsFire,
-  tickSpecialAction,
 } from './specialActions.js';
 
 const BATTLE_LIMIT_S = 15 * 60;
@@ -731,12 +731,13 @@ export function createAuthoritativeMatch({
 
   function tryFire(entity) {
     const combat = entity.combat;
-    const specialFire = specialActionWantsFire(entity);
-    if ((!entity.input.fire && !specialFire) || combat.destroyed || combat.reload.t > 0) return;
+    if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return;
     if (combat.magazine && combat.magazine.rounds <= 0) return;
     if (combat.modules.gun && combat.modules.gun.state === 'red') return;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return;
+    const guidedSpecial = !!(shellSpec.guided && entity.specialAction?.active &&
+      entity.specialAction.pendingFire && combat.shellSlot === entity.specialAction.missileSlot);
     if (entity.bot) {
       const friendlyRisk = botFriendlyFireRisk(
         entity, entity.input.aimPoint, shellSpec, entities,
@@ -781,7 +782,7 @@ export function createAuthoritativeMatch({
       dy: _gunDir.y,
       dz: _gunDir.z,
     });
-    if (specialFire) finishSpecialActionFire(entity);
+    if (guidedSpecial) finishSpecialActionFire(entity, shell.id);
   }
 
   function recordShellHit(shell, hit, wasDestroyed = false) {
@@ -829,6 +830,10 @@ export function createAuthoritativeMatch({
   function stepShells(dt) {
     for (const shell of shells) {
       if (shell.dead) continue;
+      const shooter = entityById.get(shell.shooterId);
+      if (specialActionGuidesShell(shooter, shell)) {
+        guideShellToward(shell, shooter.input?.aimPoint, dt);
+      }
       stepShell(shell, dt);
       const worldHit = segmentWorldHit(worldCollision, heightField, shell.prevPos, shell.pos);
       const tankHit = firstTankTrace(shell, entities);
@@ -872,6 +877,18 @@ export function createAuthoritativeMatch({
         const wasDestroyed = tankHit.target.combat.destroyed;
         const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
         recordShellHit(shell, hit, wasDestroyed);
+      }
+    }
+    for (const shell of shells) {
+      if (!shell.dead) continue;
+      const shooter = entityById.get(shell.shooterId);
+      if (completeGuidedMissileFlight(shooter, shell.id)) {
+        emit('special_action', {
+          id: shooter.id,
+          kind: shooter.specialAction.kind,
+          active: false,
+          reason: 'IMPACT',
+        });
       }
     }
     shells = shells.filter((shell) => !shell.dead);
@@ -966,7 +983,6 @@ export function createAuthoritativeMatch({
         if (entity.combat.reload.t > 0) {
           tickReload(entity.combat, dt);
         }
-        tickSpecialAction(entity);
         tryFire(entity);
       }
       stepShells(dt);

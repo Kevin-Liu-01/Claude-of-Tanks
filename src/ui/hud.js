@@ -1089,7 +1089,8 @@ export function initHud(bus) {
     }
     const action = player?.specialAction;
     specialButton.classList.toggle('active', !!action?.active);
-    specialButton.classList.toggle('pending', !!(action?.pendingFire || action?.restoringShell));
+    specialButton.classList.toggle('pending', !!(action?.pendingFire ||
+      action?.inFlightShellId != null));
     specialButton.disabled = !player || !!player.combat?.destroyed;
     specialButton.setAttribute('aria-pressed', action?.active ? 'true' : 'false');
   }
@@ -3341,7 +3342,10 @@ export function initHud(bus) {
     if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
   });
   bus.on('ui:specialActionResult', ({ kind, active }) => {
-    if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) showAlert('ATGM LAUNCH QUEUED', false);
+    if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
+      showAlert(active ? 'ATGM GUIDANCE ENGAGED · CLICK TO FIRE'
+        : 'ATGM GUIDANCE DISENGAGED', false);
+    }
     else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
       showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED', false);
     } else if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) showAlert('MAGAZINE RELOAD STARTED', false);

@@ -280,16 +280,25 @@ export function createBrowserBattleBridge({
           pos: new Vector3(),
           prevPos: new Vector3(),
           vel: new Vector3(),
-          spec: { type: raw.type },
+          spec: {
+            type: raw.type,
+            tracer: raw.guided ? 'ATGM' : raw.type,
+            guided: !!raw.guided,
+          },
           dead: false,
           ageS: 0,
+          distM: 0,
         };
         shellById.set(shellId, shell);
       }
       shell.prevPos.copy(shell.pos);
       shell.pos.set(raw.x / POS_SCALE, raw.y / POS_SCALE, raw.z / POS_SCALE);
       if (shell.prevPos.lengthSq() === 0) shell.prevPos.copy(shell.pos);
+      else shell.distM += shell.prevPos.distanceTo(shell.pos);
       shell.vel.set(raw.vx / VEL_SCALE, raw.vy / VEL_SCALE, raw.vz / VEL_SCALE);
+      shell.spec.type = raw.type;
+      shell.spec.guided = !!raw.guided;
+      shell.spec.tracer = raw.guided ? 'ATGM' : raw.type;
       shell.ageS = Math.max(0, game.timeS - (shell.spawnedAtS || game.timeS));
       if (shell.spawnedAtS == null) shell.spawnedAtS = game.timeS;
     }
@@ -404,6 +413,7 @@ export function createBrowserBattleBridge({
         bus.emit('ui:specialActionResult', {
           kind: event.kind,
           active: !!event.active,
+          reason: event.reason || null,
         });
     } else if (event.type === 'special_action_denied' && event.id === id) {
         bus.emit('ui:specialActionDenied', {

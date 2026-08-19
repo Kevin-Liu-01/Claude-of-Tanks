@@ -23,12 +23,13 @@ const RESULT_NONE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.NONE, 
 const RESULT_BUSY = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, reason: 'BUSY' });
 const RESULT_RELOAD_DENIED = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'FULL_OR_RELOADING' });
 const RESULT_MISSILE = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, active: true });
+const RESULT_MISSILE_OFF = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, active: false });
 const RESULT_RELOAD = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, active: true });
 const RESULT_SUSPENSION_ON = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, active: true });
 const RESULT_SUSPENSION_OFF = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, active: false });
 const DESCRIPTOR_NONE = Object.freeze({ kind: SPECIAL_ACTION_KINDS.NONE, label: '', shortLabel: '' });
 const DESCRIPTOR_MISSILE = Object.freeze({
-  kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, label: 'Launch ATGM', shortLabel: 'ATGM',
+  kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, label: 'ATGM Guidance', shortLabel: 'ATGM',
 });
 const DESCRIPTOR_SUSPENSION = Object.freeze({
   kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
@@ -75,23 +76,38 @@ export function createSpecialActionState(spec) {
     kind: specialActionKind(spec),
     missileSlot: guidedMissileSlot(spec),
     active: false,
+    // For ATGMs, pendingFire means the guidance channel is armed and waiting
+    // for the player's normal fire click. E never pulls the trigger itself.
     pendingFire: false,
-    restoringShell: false,
+    inFlightShellId: null,
     returnShellSlot: 0,
   };
 }
 
-/** True while an ATGM launch owns the shell selector. */
+/** True while an engaged ATGM channel owns the shell selector. */
 export function specialActionLocksShell(entity) {
   const action = entity?.specialAction;
-  return !!(action && (action.pendingFire || action.restoringShell));
+  return !!(action?.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE && action.active);
+}
+
+function restoreMissileSelection(entity) {
+  const action = entity?.specialAction;
+  const combat = entity?.combat;
+  if (!action || !combat) return false;
+  const maxSlot = Math.max(0, (entity.spec?.gun?.shells?.length || 1) - 1);
+  const slot = Math.max(0, Math.min(maxSlot, action.returnShellSlot | 0));
+  action.active = false;
+  action.pendingFire = false;
+  action.inFlightShellId = null;
+  if (combat.shellSlot !== slot) selectShell(combat, slot, entity.spec);
+  if (entity.input) entity.input.shellSlot = slot;
+  return true;
 }
 
 /**
  * Consume one special-action press.
- * Missile requests select the existing guided shell and let the normal reload
- * and firing pipeline launch it when ready. No parallel weapon simulation is
- * introduced.
+ * Missile requests select the existing guided shell and arm cursor guidance.
+ * The normal fire input launches it only after the selected rail is ready.
  */
 export function activateSpecialAction(entity) {
   const action = entity?.specialAction;
@@ -109,7 +125,11 @@ export function activateSpecialAction(entity) {
   }
 
   if (action.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
-    if (action.pendingFire || action.restoringShell) return RESULT_BUSY;
+    if (action.inFlightShellId != null) return RESULT_BUSY;
+    if (action.active) {
+      restoreMissileSelection(entity);
+      return RESULT_MISSILE_OFF;
+    }
     const slot = action.missileSlot;
     if (slot < 0 || !entity.spec?.gun?.shells?.[slot]) return RESULT_NONE;
     action.returnShellSlot = combat.shellSlot;
@@ -123,35 +143,27 @@ export function activateSpecialAction(entity) {
   return RESULT_NONE;
 }
 
-/** Does the normal firing path need to launch a queued missile this tick? */
-export function specialActionWantsFire(entity) {
+/** Mark the click-fired missile as the one currently guided by the cursor. */
+export function finishSpecialActionFire(entity, shellId) {
   const action = entity?.specialAction;
-  return !!(action?.pendingFire && entity.combat?.shellSlot === action.missileSlot &&
-    entity.combat.reload?.t <= 0);
-}
-
-/** Mark the queued missile as fired; retain its slot through its real reload. */
-export function finishSpecialActionFire(entity) {
-  const action = entity?.specialAction;
-  if (!action?.pendingFire) return;
+  if (!action?.active || !action.pendingFire || action.inFlightShellId != null) return false;
   action.pendingFire = false;
-  action.restoringShell = action.returnShellSlot !== action.missileSlot;
-  if (!action.restoringShell) action.active = false;
+  action.inFlightShellId = shellId;
+  return true;
 }
 
 /**
- * Complete an ATGM cycle and return to the shell that was selected before the
- * special press. The missile's full post-shot reload has already elapsed, so
- * this bookkeeping switch does not start a second load.
+ * True only for the live missile owned by this entity's engaged guidance
+ * channel. Authorities use this gate before applying cursor steering.
  */
-export function tickSpecialAction(entity) {
+export function specialActionGuidesShell(entity, shell) {
   const action = entity?.specialAction;
-  if (!action?.restoringShell || entity.combat?.reload?.t > 0) return false;
-  const maxSlot = Math.max(0, (entity.spec?.gun?.shells?.length || 1) - 1);
-  const slot = Math.max(0, Math.min(maxSlot, action.returnShellSlot | 0));
-  entity.combat.shellSlot = slot;
-  if (entity.input) entity.input.shellSlot = slot;
-  action.restoringShell = false;
-  action.active = false;
-  return true;
+  return !!(action?.active && action.inFlightShellId === shell?.id && shell?.spec?.guided);
+}
+
+/** Disengage guidance on impact/expiry and restore the pre-E weapon. */
+export function completeGuidedMissileFlight(entity, shellId) {
+  const action = entity?.specialAction;
+  if (!action?.active || action.inFlightShellId !== shellId) return false;
+  return restoreMissileSelection(entity);
 }
