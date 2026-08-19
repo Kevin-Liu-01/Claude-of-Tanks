@@ -105,6 +105,142 @@ function uaSmoke(P, o) {
   }
 }
 
+// Ukrainian T-80 field-modernization package. The resident cast T-80 dome
+// remains the load-bearing core, while overlapping welded shoulders, a joined
+// rear bustle and a low Relikt/K-5 course give the two modernized vehicles the
+// angular T-90-family read requested by the owner. True armor stays in the
+// structural turret buckets; sights, RWS hardware, basket rails and stowage
+// use the equipment path so they cannot enlarge combat hit volumes.
+function addModernizedT80TurretSuite(P, variant) {
+  const { box, cylX, cylY, torus } = KIT;
+  const kursk = variant === 'kursk';
+  const suite = kursk ? 't80u-kursk-t90-style' : 't80bv-ua-t90-style';
+  P.turretG.userData.uaT80ModernizationSuite = suite;
+
+  // Joined faceted cheek carriers: their inner/rear edges are buried in the
+  // casting, so the angular shell reads as one turret rather than applique
+  // hovering around a round donor dome.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.12, 0.12, 1.38], [s * 1.28, 0.12, 0.55],
+      [s * 1.16, 0.15, -0.12], [s * 0.16, 0.14, 0.38],
+      [s * 0.12, 0.57, 1.30], [s * 1.10, 0.57, 0.52],
+      [s * 0.98, 0.60, -0.14], [s * 0.12, 0.61, 0.34],
+    ));
+
+    // Low rear-flank cassettes extend the frontal chevron into the shoulder
+    // instead of ending in isolated blocks. They inherit the vehicle camo.
+    for (const [z, y, yaw, roll] of [
+      [0.22, 0.48, 0.10, 0.04],
+      [-0.30, 0.46, -0.04, -0.03],
+      [-0.80, 0.42, 0.08, 0.05],
+    ]) {
+      P.add('turretDark', box(0.15, 0.15, 0.34), s * 1.08, y - 0.03, z,
+        -0.10, s * yaw, s * roll);
+      seatedCassette(P, 'turret', s * 1.22, y, z, 0.28, 0.22, 0.42,
+        [-0.10, s * yaw, s * roll], {
+          axis: 'x', contactSide: -s, embed: 0.055, painted: true,
+        });
+    }
+
+    // Bustle shoulder and external service box. The carrier overlaps both the
+    // casting and the central magazine body below.
+    P.add('turret', box(0.38, 0.34, 0.82), s * 0.92, 0.34, -1.20,
+      -0.05, -s * 0.08, s * 0.025);
+    P.addEquipment('turret', box(0.28, 0.23, 0.44), s * 1.18, 0.39,
+      -1.31 + (s > 0 ? 0.08 : -0.05), 0, -s * 0.07, 0);
+    P.addEquipment('turret', box(0.24, 0.028, 0.36), s * 1.18, 0.53,
+      -1.31 + (s > 0 ? 0.08 : -0.05), 0, -s * 0.07, 0);
+  }
+
+  // Crown bridge and attached bustle form a continuous T-90-like welded
+  // upper silhouette while leaving the gun and two crew stations clear.
+  P.add('turret', orientedSlab(
+    [-0.82, 0.53, 0.40], [0.82, 0.53, 0.40],
+    [0.72, 0.51, -0.82], [-0.72, 0.51, -0.82],
+    [-0.68, 0.66, 0.32], [0.68, 0.66, 0.32],
+    [0.61, 0.64, -0.78], [-0.61, 0.64, -0.78],
+  ));
+  P.add('turret', orientedSlab(
+    [-1.02, 0.16, -0.70], [1.02, 0.16, -0.70],
+    [0.88, 0.17, -1.78], [-0.88, 0.17, -1.78],
+    [-0.94, 0.54, -0.64], [0.94, 0.54, -0.64],
+    [0.78, 0.55, -1.78], [-0.78, 0.55, -1.78],
+  ));
+  P.add('turret', box(1.48, 0.035, 0.64), 0, 0.57, -1.35);
+
+  // Shallow roof ERA follows the crown plane; this is armor, not generic
+  // gray track material. The central court remains open for hatches/RWS.
+  for (const [x, z, ry] of [
+    [-0.75, 0.16, -0.14], [0.75, 0.16, 0.14],
+    [-0.77, -0.32, 0.08], [0.77, -0.32, -0.08],
+    [-0.70, -0.76, -0.10], [0.70, -0.76, 0.10],
+  ]) {
+    P.add('turret', box(0.36, 0.075, 0.38), x, 0.665, z, -0.04, ry, 0);
+    P.add('turretDark', box(0.29, 0.018, 0.30), x, 0.709, z, -0.04, ry, 0);
+  }
+
+  // Sosna-class gunner optic on the right-front crown.
+  const sightX = 0.58;
+  P.addEquipment('turret', box(0.38, 0.13, 0.38), sightX, 0.66, 0.31,
+    -0.06, -0.04, 0);
+  P.addEquipment('turret', box(0.30, 0.23, 0.29), sightX, 0.80, 0.30,
+    -0.04, -0.04, 0);
+  P.add('turretDark', box(0.25, 0.16, 0.018), sightX, 0.82, 0.455,
+    -0.04, -0.04, 0);
+  P.add('turretGlass', box(0.19, 0.10, 0.012), sightX, 0.82, 0.466,
+    -0.04, -0.04, 0);
+
+  // Offset panoramic/Kord station, with every course overlapping the seat.
+  const panoX = kursk ? -0.61 : -0.57;
+  const panoZ = kursk ? -0.55 : -0.47;
+  P.addEquipment('turret', cylY(0.27, 0.30, 0.10, 18), panoX, 0.70, panoZ);
+  P.addEquipment('turret', box(0.42, 0.22, 0.42), panoX, 0.83, panoZ,
+    -0.04, -0.08, 0);
+  P.addEquipment('turret', box(0.30, kursk ? 0.29 : 0.24, 0.28), panoX,
+    kursk ? 1.02 : 0.99, panoZ, -0.04, -0.08, 0);
+  P.add('turretDark', box(0.23, 0.14, 0.016), panoX, kursk ? 1.03 : 1.00,
+    panoZ + 0.15, -0.04, -0.08, 0);
+  P.add('turretGlass', box(0.17, 0.095, 0.010), panoX, kursk ? 1.03 : 1.00,
+    panoZ + 0.16, -0.04, -0.08, 0);
+  {
+    const rws = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'kord', tone: 'dark', elev: -0.08,
+      ammo: true, shield: true, scale: kursk ? 0.78 : 0.72,
+      seed: kursk ? 8961 : 8861,
+    });
+    rws.name = `uaT80ModernKord_${variant}`;
+    rws.position.set(panoX, kursk ? 0.94 : 0.90, panoZ - 0.03);
+    rws.rotation.y = kursk ? 0.24 : 0.18;
+    P.turretG.add(rws);
+  }
+
+  // Populated, three-sided bustle basket rooted into the magazine shoulders.
+  for (const y of [0.28, 0.43, 0.57]) {
+    P.addEquipment('turret', box(1.92, 0.025, 0.035), 0, y, -1.94);
+  }
+  for (const x of [-0.92, -0.46, 0, 0.46, 0.92]) {
+    P.addEquipment('turret', box(0.025, 0.34, 0.035), x, 0.42, -1.94);
+  }
+  for (const s of [-1, 1]) {
+    P.addEquipment('turret', box(0.035, 0.025, 0.82), s * 0.95, 0.57, -1.58);
+    P.addEquipment('turret', box(0.035, 0.25, 0.025), s * 0.95, 0.43, -1.72);
+    P.addEquipment('turret', box(0.035, 0.25, 0.025), s * 0.95, 0.43, -1.36);
+  }
+  P.addEquipment('turret', box(0.46, 0.20, 0.34), -0.38, 0.39, -1.56);
+  P.addEquipment('turret', box(0.36, 0.16, 0.30), 0.42, 0.37, -1.58);
+  P.addEquipment('turret', cylX(0.08, 0.74, 12), 0.28, 0.61, -1.64);
+
+  // Mechanical fasteners, hatch rings and bustle lid break up the otherwise
+  // flat crown while remaining attached to their carrier planes.
+  P.addEquipment('turret', torus(0.24, 0.018, 18), 0.36, 0.706, -0.36);
+  P.addEquipment('turret', box(0.46, 0.030, 0.35), 0.36, 0.722, -0.36,
+    0, 0.08, 0);
+  for (const x of [-0.55, -0.18, 0.18, 0.55]) {
+    P.addEquipment('turret', box(0.025, 0.035, 0.14), x, 0.603, -1.25);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // ua_t64bv — T-64BV, Donbas war (print: t64bv_donbass_manako.glb)
 // Print frame map: zBuild = (zPrint + 3.97) * 1.101 - 3.27 (hull body
@@ -755,6 +891,8 @@ function buildUAT80BV(P) {
       s * 0.86, 0.33, -0.88);
   }
 
+  addModernizedT80TurretSuite(P, 'bv');
+
   // 2A46M-1 at the 1.69 axis: saddle, boot, sleeve, muzzle +6.27, bore
   // (gun local +0.06 compensates the 1.50 -> 1.44 ring drop — the world
   // axis is certified).
@@ -1026,9 +1164,12 @@ function buildUAT80UKursk(P) {
     P.add('turret', box(0.42, 0.34, 0.46), s * 1.02, 0.36, -0.78 + (s > 0 ? 0.12 : -0.08), 0, s * 0.08, 0);
     P.add('turretDark', box(0.36, 0.04, 0.38), s * 1.02, 0.545, -0.78 + (s > 0 ? 0.12 : -0.08), 0, s * 0.08, 0);
   }
-  P.add('turret', cylZ(0.13, 1.55, 14), 0, 0.50, -1.30);
-  P.add('turretDark', cylZ(0.138, 0.045, 12), 0, 0.50, -1.98);
-  P.add('turretDark', cylZ(0.138, 0.045, 12), 0, 0.50, -0.66);
+  // The snorkel is carried transversely across the bustle. The former cylZ
+  // call laid it fore-aft and made the tube spear out of the turret rear.
+  P.addEquipment('turret', cylX(0.13, 1.55, 14), 0, 0.50, -1.30);
+  P.add('turretDark', cylX(0.138, 0.045, 12), -0.68, 0.50, -1.30);
+  P.add('turretDark', cylX(0.138, 0.045, 12), 0.68, 0.50, -1.30);
+  P.turretG.userData.uaRearTubeAxis = 'x';
   P.add('turretDetail', cylX(0.020, 1.42, 12), 0, 0.38, -1.06);
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.05, 0.14, 0.07), s * 0.56, 0.31, -0.99);
@@ -1040,6 +1181,8 @@ function buildUAT80UKursk(P) {
       h: 0.18, r: 0.011, rake: -s * 0.9, seed: 8912 + (s > 0 ? 1 : 0) }),
       s * 0.88, 0.31, -0.83);
   }
+
+  addModernizedT80TurretSuite(P, 'kursk');
 
   // 2A46M-1 at the 1.70 axis, muzzle +6.145 world, true bore (gun local
   // +0.06 compensates the 1.50 -> 1.44 ring drop — world axis certified).
