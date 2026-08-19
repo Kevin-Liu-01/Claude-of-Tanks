@@ -27,7 +27,7 @@
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
-import { KIT, muzzleBore, orientedSlab } from './kit.js';
+import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // NOTE: KIT arrives through the tankFactory module cycle — it must only be
@@ -459,6 +459,27 @@ export function buildStrv103(P) {
   }
   P.add('hullDark', cylZ(0.045, 1.10, 10), 0.02, 1.85, -1.08);
   for (const z of [-1.52, -1.05, -0.60]) P.add('hullDetail', box(0.20, 0.045, 0.08), 0.02, 1.85, z);
+  // Starboard recovery rope.  Route it along the side seam instead of through
+  // the side wall so it reads as a secured longitudinal cable in profile.
+  const sideTowRope = FITTINGS.towCable({
+    mats: P.mats,
+    pts: [
+      [1.864, 1.455, -2.36],
+      [1.872, 1.438, -1.18],
+      [1.868, 1.446, 0.12],
+      [1.854, 1.462, 1.96],
+    ],
+    r: 0.019,
+    eyes: false,
+    seed: 10355,
+  });
+  sideTowRope.name = 'strv103_side_tow_rope';
+  sideTowRope.userData.owner = 'hull';
+  sideTowRope.userData.orientation = 'longitudinal';
+  P.hullG.add(sideTowRope);
+  for (const z of [-2.08, -0.86, 0.38, 1.66]) {
+    P.add('hullDark', box(0.045, 0.070, 0.095), 1.842, 1.45, z);
+  }
   // raked antenna masts (oracle: symmetric pair rising to 2.80 at z ~ -2.0)
   for (const s of [-1, 1]) {
     P.add('hullDetail', KIT.cylY(0.045, 0.055, 0.10, 10), s * 0.96, 1.86, -1.86);

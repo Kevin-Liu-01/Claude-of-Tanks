@@ -77570,13 +77570,13 @@
           }
         ]
       },
-      "geometryHash": "b6b8858a",
+      "geometryHash": "f073af4e",
       "metadataHash": "fe84db4f",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "gunmetal": 9,
+          "gunmetal": 10,
           "gearShadow": 2,
           "wheelTire": 1,
           "wheelDish": 5,
