@@ -45,6 +45,13 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { getPreset, onPresetChange, reportSustainedOverload } from './quality.js';
+import {
+  baseDynamicScale,
+  dynamicScaleFloor,
+  internalPixelRatio,
+  overloadReliefLever,
+  reconstructionSharpness,
+} from './renderScalePolicy.js';
 import { LATE_FX_LAYER } from '../fx/particles.js';
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian
@@ -566,10 +573,11 @@ class FsrUpscalePass extends Pass {
     }
     this.rcasMaterial.uniforms.tDiffuse.value = source;
     this.rcasMaterial.uniforms.uTexelDelta.value.set(1 / sourceW, 1 / sourceH);
-    // EASU's reconstructed frame benefits from a little more recovery than a
-    // native frame; keep native RCAS deliberately restrained to avoid crunchy
-    // grass/tree halos on already-sharp 1× displays.
-    this.rcasMaterial.uniforms.uSharpness.value = upscale ? 0.28 : 0.12;
+    // Match contrast recovery to the enlargement. High's normal 1.5→2 path
+    // stays at the proven 0.28; more heavily scaled Medium/Low frames receive
+    // stronger recovery, capped at 0.4 before grass/leaf halos dominate.
+    const inputScale = upscale ? Math.min(inW / outW, inH / outH) : 1;
+    this.rcasMaterial.uniforms.uSharpness.value = reconstructionSharpness(inputScale);
     this.quad.material = this.rcasMaterial;
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
     if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
@@ -1192,6 +1200,8 @@ function capLuminance(c, maxLum) {
  * @property {GTAOPass} gtao
  * @property {number} msaaSamples - active scene-only MSAA sample count
  * @property {(level: 'high'|'low') => void} setQuality
+ * @property {(suspended: boolean) => void} setAdaptiveSuspended
+ * @property {() => void} resetAdaptiveResolution
  */
 
 /**
@@ -1768,8 +1778,10 @@ export function createPost(renderer, scene, camera) {
   //  - MISS-RATIO evidence: a step needs the EMA level AND the share of
   //    frames blowing budget x 1.35 to agree (down needs > 15% missed, up
   //    needs < 4%), so scheduler jitter alone cannot thrash the scale.
-  //  - FLOOR 0.75 (was 0.67): the worst legal frame keeps >= 75% of the
-  //    preset resolution per axis (effective ratio ~1.125 on the 1.5 cap).
+  //  - QUALITY-AWARE FLOOR: default High keeps >= 90% of its preset
+  //    resolution per axis (effective ratio 1.35 on the 1.5 cap); explicit
+  //    Ultra may fall only to the complete High ceiling. Mobile presets retain
+  //    lower explicit floors because avoiding a tab OOM is the harder limit.
   //  - ANTI-FLAP BACKOFF instead of a dead band: an up-step punished by a
   //    down-step within 8 s doubles the wait before the next up try
   //    (1.5 → 3 → 6 → 12 → 20 s cap; a flap-free minute resets it). Recovery
@@ -1778,11 +1790,9 @@ export function createPost(renderer, scene, camera) {
   //  - hidden-document frames never govern: main.js's rAF-starvation
   //    fallback ticks at ~10 Hz by design — that cadence says nothing about
   //    GPU cost and used to read as a permanent budget blowout.
-  //  - RETINA-CLASS FENCE unchanged: engages only when the renderer pixel
-  //    ratio is >= 1.25. At dsf 1 the renderer ratio is 1.0, so the
-  //    screenshot harness and every dsf-1 certification render bit-identical
-  //    frames — the governor cannot mask a workload regression on the gate
-  //    path.
+  //  - DPR-1 FENCE: native-density desktop output never falls below 1.0. AO
+  //    relief and the preset tier handle pressure there; a supposedly adaptive
+  //    system must not trade the whole picture for sub-native blur.
   //  - STEPPED + RATE-LIMITED, not a per-frame lerp: every ratio change
   //    reallocates the whole composer chain (scene HDR target, GTAO, bloom,
   //    SMAA); steps of ~0.09 at most once per 1.5 s.
@@ -1793,12 +1803,6 @@ export function createPost(renderer, scene, camera) {
   // on the canvas (1 Hz), plus the read-only post.dynScale getter below —
   // reachable for probes via window.__DEBUG.post.dynScale. Nothing about the
   // scale is persisted: every boot re-earns resolution from the preset base.
-  // MOBILE r1: the governor floor is preset data now — the mobile tier lets
-  // the chain fall further (0.6) before it stops shedding load; desktop tiers
-  // keep the historical 0.75 (preset.dynMin unset). Reads the LIVE preset so
-  // a settings-driven preset switch re-floors correctly.
-  const DYN_MIN_DEFAULT = 0.75;
-  const dynMin = () => preset.dynMin ?? DYN_MIN_DEFAULT;
   const DYN_STEP = 0.09;
   // Weak devices used to endure ~20 s before the full relief ladder engaged:
   // 6 s warmup + three 2.5 s resolution decisions + two trim strikes. Shader
@@ -1817,15 +1821,10 @@ export function createPost(renderer, scene, camera) {
   const DYN_FLAP_S = 8; // a down this soon after an up = the up flapped
   const DYN_BACKOFF_MAX_S = 20;
   const DYN_BACKOFF_RESET_S = 60; // a flap-free minute forgives the backoff
-  // High exposes the native 1.5x renderer ratio as an opportunistic ceiling
-  // and starts at 1.25x. This remains relative to the live capped ratio, so
-  // dpr-1 displays stay exactly 1.0 and never allocate a pointless upscale.
-  function baseDynScale() {
-    const capped = Math.min(renderer.getPixelRatio(), preset.maxPixelRatio);
-    const base = Math.min(capped, preset.adaptiveBasePixelRatio || capped);
-    return capped > 0 ? base / capped : 1;
-  }
-  let dynScale = baseDynScale();
+  // High starts at its complete 1.5x configured ratio. Lower/mobile presets
+  // can still declare an adaptive base; the pure policy keeps this math shared
+  // with its Node regression test.
+  let dynScale = baseDynamicScale(renderer.getPixelRatio(), preset);
   let dynEma = 0; // ms (r5 kept seconds; ms reads directly against budgets)
   let dynClock = 0;
   let dynLastStep = 0;
@@ -1845,6 +1844,10 @@ export function createPost(renderer, scene, camera) {
   let dynLastUpAt = -Infinity;
   let dynLastDownAt = -Infinity;
   let dynPin = null; // QA capture pin (see pinDynScale below); null = live
+  // Battlefield/roster construction intentionally monopolizes frames behind
+  // an opaque loading screen. Those deltas are not playable GPU performance
+  // and must never demote the quality used after the reveal.
+  let adaptiveSuspended = false;
   // perf-r2e adaptive-tier strike counter (see the decision block)
   const TIER_STRIKES_MAX = 4;
   let tierStrikes = 0;
@@ -1904,7 +1907,7 @@ export function createPost(renderer, scene, camera) {
   function applySize(w, h) {
     cssW = w;
     cssH = h;
-    const renderScale = Math.min(renderer.getPixelRatio(), preset.maxPixelRatio) * dynScale;
+    const renderScale = internalPixelRatio(renderer.getPixelRatio(), preset, dynScale);
     composer.setPixelRatio(renderScale);
     composer.setSize(w, h);
     renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
@@ -1921,6 +1924,7 @@ export function createPost(renderer, scene, camera) {
   }
   /** Advance the governor one frame; resizes the chain when a step fires. */
   function dynGovern(dt) {
+    if (adaptiveSuspended) return;
     if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
     // rAF-starvation fallback frames (main.js ticks hidden documents at
     // ~10 Hz) carry loop cadence, not GPU cost — they must never govern.
@@ -1945,15 +1949,10 @@ export function createPost(renderer, scene, camera) {
       renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
     }
     if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
-    // perf-governor r1: the resolution lever now works at EVERY pixel ratio —
-    // a dpr-1 laptop that can't hold the budget gets a slightly soft 60 fps
-    // instead of a crisp slideshow (the R3F AdaptivePixelRatio stance). The
-    // engine-aa r1 "weird pixelly" lesson came from the old 0.67-0.75 floor
-    // with a double upscale; dpr-1 devices therefore keep a conservative 0.8
-    // floor while retina-class chains keep the preset floor.
-    const dynLeverAvailable = true;
-    const dynFloor = renderer.getPixelRatio() < 1.25
-      ? Math.max(dynMin(), 0.8) : dynMin();
+    // Resolution only moves inside a preset's readability fence. DPR-1
+    // desktop output stays native; Retina High bottoms at 1.35 instead of the
+    // old 1.125 watercolor path; constrained mobile tiers retain lower floors.
+    const dynFloor = dynamicScaleFloor(renderer.getPixelRatio(), preset);
     if (dynClock - dynLastDecision < DYN_INTERVAL_S) return;
     if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
     // Decision point (every >= 1.5 s of visible frames).
@@ -1978,8 +1977,11 @@ export function createPost(renderer, scene, camera) {
     if (dynUpBackoffS > DYN_INTERVAL_S && dynClock - dynLastDownAt > DYN_BACKOFF_RESET_S) {
       dynUpBackoffS = DYN_INTERVAL_S; // flap-free minute: forgiven
     }
-    // perf-governor r1 RELIEF LADDER, purely from measured frame times:
-    //   resolution steps → session trims (shadow rate, AO) → tier strike.
+    // clarity-r1 RELIEF LADDER, purely from measured frame times:
+    //   AO trim → resolution steps → tier strike.
+    // GTAO is the most expensive individual pass and its absence is much less
+    // destructive than throwing away geometry/texture samples across the
+    // whole screen. Resolution is therefore the fallback, not the first move.
     // The tier step (quality.reportSustainedOverload — persisted, no-op when
     // the user pinned an explicit preset) now fires only after the WHOLE
     // in-session ladder is exhausted, so it is the last resort it was always
@@ -1999,9 +2001,10 @@ export function createPost(renderer, scene, camera) {
     renderer.domElement.dataset.fps = windowFps.toFixed(1);
     renderer.domElement.dataset.fpsBaseline = fpsBaseline.toFixed(1);
     const clean = dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX;
-    const leverLeft = dynLeverAvailable && dynScale > dynFloor;
-    if (overloaded && !leverLeft && perfTrim < trimMax() && dynClock > 8) {
-      // scale floor reached but trims remain: walk the trim ladder
+    const reliefLever = overloadReliefLever(perfTrim, trimMax(), dynScale, dynFloor);
+    if (overloaded && reliefLever === 'trim') {
+      // Preserve pixel density first: require consecutive evidence, then drop
+      // GTAO before touching the full-frame raster scale.
       trimStrikes++;
       if (trimStrikes >= TRIM_STRIKES) {
         trimStrikes = 0;
@@ -2012,7 +2015,8 @@ export function createPost(renderer, scene, camera) {
         trimLastDownAt = dynClock;
         return;
       }
-    } else if (overloaded && !leverLeft && perfTrim >= trimMax() && dynClock > 8) {
+      return;
+    } else if (overloaded && reliefLever === 'tier' && dynClock > 8) {
       // fully trimmed and still overloaded: escalate to the persisted tier
       tierStrikes++;
       if (tierStrikes >= TIER_STRIKES_MAX) {
@@ -2023,27 +2027,26 @@ export function createPost(renderer, scene, camera) {
       tierStrikes = 0;
       trimStrikes = 0;
     }
-    if (overloaded && leverLeft) {
+    if (overloaded && reliefLever === 'resolution') {
       dynScale = Math.max(dynFloor, dynScale - DYN_STEP);
       if (dynClock - dynLastUpAt < DYN_FLAP_S) {
         // the last up-step flapped — back the next try off exponentially
         dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
       }
       dynLastDownAt = dynClock;
+    } else if (clean
+        && dynScale < 1 && dynClock - dynLastStep >= dynUpBackoffS) {
+      // Recover pixel density before AO; structural detail is the readability
+      // priority and the AO pass is also the costliest lever to restore.
+      dynScale = Math.min(1, dynScale + DYN_STEP);
+      dynLastUpAt = dynClock;
     } else if (perfTrim > 0
         && dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < TRIM_UP_MISS_MAX
         && dynClock - trimLastDownAt >= trimUpBackoffS
         && dynClock - trimLastUpAt >= trimUpBackoffS) {
-      // recovery order: un-trim first (restore shadows/AO), resolution after —
-      // the trims are the visually loudest levers
       setPerfTrim(perfTrim - 1);
       trimLastUpAt = dynClock;
       return;
-    } else if (dynLeverAvailable
-        && clean
-        && dynScale < 1 && dynClock - dynLastStep >= dynUpBackoffS) {
-      dynScale = Math.min(1, dynScale + DYN_STEP);
-      dynLastUpAt = dynClock;
     } else {
       return;
     }
@@ -2055,6 +2058,30 @@ export function createPost(renderer, scene, camera) {
     const css = renderer.getSize(new THREE.Vector2());
     applySize(css.x, css.y);
   }
+  function resetGovernorState() {
+    dynPin = null;
+    dynScale = baseDynamicScale(renderer.getPixelRatio(), preset);
+    dynEma = 0;
+    dynRingN = 0;
+    dynRingI = 0;
+    dynWinFrames = 0;
+    dynWinMisses = 0;
+    dynBudgetMs = DYN_TARGET_MS;
+    dynBestCadenceMs = DYN_BUDGET_MAX_MS;
+    dynUpBackoffS = DYN_INTERVAL_S;
+    dynLastUpAt = -Infinity;
+    dynLastDownAt = -Infinity;
+    tierStrikes = 0;
+    trimStrikes = 0;
+    trimUpBackoffS = TRIM_UP_BACKOFF_S;
+    trimLastUpAt = -Infinity;
+    trimLastDownAt = -Infinity;
+    fpsBaseline = 0;
+    dynLastStep = dynClock;
+    dynLastDecision = dynClock;
+    if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
+  }
+
   // Live preset switching (settings UI writes quality.setPresetName): retarget
   // every buffer without rebuilding the chain.
   onPresetChange((p) => {
@@ -2069,18 +2096,7 @@ export function createPost(renderer, scene, camera) {
     trimUpBackoffS = TRIM_UP_BACKOFF_S;
     renderer.domElement.dataset.perfTrim = '0';
     applyAoEnabled();
-    dynPin = null; // preset change releases any QA capture pin
-    dynScale = baseDynScale(); // new preset = new budget baseline; governor re-earns supersampling
-    dynEma = 0;
-    dynRingN = 0;
-    dynRingI = 0;
-    dynWinFrames = 0;
-    dynWinMisses = 0;
-    dynUpBackoffS = DYN_INTERVAL_S;
-    fpsBaseline = 0; // perf-governor r2: new preset re-earns its fps baseline
-    dynLastStep = dynClock;
-    dynLastDecision = dynClock;
-    if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
+    resetGovernorState();
   });
 
   return {
@@ -2224,7 +2240,8 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     pinDynScale(v) {
-      dynPin = v == null ? null : Math.min(1, Math.max(dynMin(), v));
+      dynPin = v == null ? null : Math.min(1,
+        Math.max(dynamicScaleFloor(renderer.getPixelRatio(), preset), v));
       if (dynPin !== null && dynPin !== dynScale) {
         dynScale = dynPin;
         if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
@@ -2250,6 +2267,29 @@ export function createPost(renderer, scene, camera) {
       trimStrikes = 0;
       trimUpBackoffS = TRIM_UP_BACKOFF_S;
       setPerfTrim(0);
+    },
+
+    /**
+     * Opaque loading work is deliberately bursty and does not represent the
+     * playable scene's steady workload. Pause all governor accounting while
+     * it runs, then earn a fresh baseline from visible gameplay on resume.
+     * @param {boolean} suspended
+     * @returns {void}
+     */
+    setAdaptiveSuspended(suspended) {
+      const next = !!suspended;
+      if (next === adaptiveSuspended) return;
+      adaptiveSuspended = next;
+      renderer.domElement.dataset.adaptiveSuspended = String(next);
+      setPerfTrim(0);
+      resetGovernorState();
+    },
+
+    /** New scene workload = fresh crisp baseline; no low-resolution state may
+     * leak from a battle into the garage (or vice versa). */
+    resetAdaptiveResolution() {
+      setPerfTrim(0);
+      resetGovernorState();
     },
 
     /** QA hook (probes): force a trim rung, bypassing the strike windows. */

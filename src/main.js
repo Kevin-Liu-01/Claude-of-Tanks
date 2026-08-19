@@ -1627,6 +1627,14 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
+// Pixel-density state is workload-local. A pressured battle must never carry
+// a reduced render scale back into the garage, and a fresh battle gets a new
+// measured baseline instead of inheriting showroom cadence.
+bus.on('phase:change', () => post.resetAdaptiveResolution());
+// Map construction, roster painting and shader compilation intentionally
+// create long frames behind an opaque screen. They are loading throughput,
+// not gameplay performance, so exclude them from the live quality governor.
+bus.on('ui:battleStart', () => post.setAdaptiveSuspended(true));
 
 // ---------------------------------------------------------------------------
 // End-of-battle overlay (integration-owned DOM)
@@ -2001,6 +2009,8 @@ bus.on('shell:fired', (p) => {
  * @returns {Promise<void>} resolves when the battle is live
  */
 async function startBattleLoading(specId, mapId = null) {
+  // Debug/API entry can bypass the garage's ui:battleStart event.
+  post.setAdaptiveSuspended(true);
   const shownAt = performance.now();
   const loadYield = createFrameBudgetYielder(12);
   const resolved = resolveMapId(mapId || pendingMapId);
@@ -2086,6 +2096,10 @@ async function startBattleLoading(specId, mapId = null) {
   bltStage('holdCountdown');
   blt.totalMs = Math.round(performance.now() - shownAt);
   if (typeof window !== 'undefined') window.__BATTLE_LOAD = blt;
+  // Restore the full playable baseline while the opaque veil still owns the
+  // screen; any render-target resize is hidden instead of landing on the
+  // first visible battle frame.
+  post.setAdaptiveSuspended(false);
   await battleLoad.hide();
   openBattle();
 }
@@ -2605,6 +2619,8 @@ async function presentNetworkBattle({
     loadTrace.blackCheck = { error: error?.message || String(error) };
   }
   battleLoad.progress(1, 'Ready');
+  // As in solo entry, perform the fresh-baseline resize while still covered.
+  post.setAdaptiveSuspended(false);
   await battleLoad.hide();
   markLoadStage('reveal');
   loadTrace.totalMs = Math.round(performance.now() - loadStartedAt);
@@ -2967,6 +2983,9 @@ const PRE_BATTLE_HOLD_S = 5;
 function enterGarage({ preserveRoom = !!(
   activeNetworkRoom && networkMatch && !networkMatch.client?.closed && game.result
 ) } = {}) {
+  // Entry failures and interrupted network handoffs also land here. Always
+  // release a loading-screen suspension before the garage becomes visible.
+  post.setAdaptiveSuspended(false);
   if (preserveRoom) disposeNetworkPresentation();
   else closeNetworkMatch('returned_to_garage');
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
@@ -4405,9 +4424,12 @@ const SHOT_VIEWS = {
   },
   explosion() {
     hud.setMode('hidden');
-    // enemy[2] = third ENEMY (team-filtered: allies must never be the victim)
+    // Prefer the third enemy for the original framing, but compact deterministic
+    // screenshot rosters may field only one. Always remain team-filtered so an
+    // ally can never become the staged victim.
     const victims = game.tanks.filter((t) => t.team === 'enemy');
-    const ent = victims[2];
+    const ent = victims[2] || victims[0];
+    if (!ent) throw new Error('Explosion view requires at least one enemy tank');
     _v2.copy(ent.state.pos);
     // effects_combat r1: frame center raised (was +1.4) and camera pulled
     // back to 26 m at a shallower 18 deg so fireball + leaning smoke column

@@ -3,9 +3,9 @@
  *
  * The perf budget (>=60 fps median / >=45 fps p5 at 1080p) must hold at the
  * DEFAULT settings on a retina display (devicePixelRatio 2), where the
- * composer's 1.5 maxPixelRatio cap still rasterizes 2.25x the pixels of a
- * 1080p@dpr1 frame through the full HDR post chain. Measured on this class of
- * GPU that lands ~53 fps median / ~30 fps p5 — a hard budget fail.
+ * composer's High 1.5 pixel ratio rasterizes 2.25x the pixels of a 1080p@dpr1
+ * frame through the full HDR post chain. Measured on this class of GPU that
+ * requires scaled AO/bloom and adaptive relief to stay inside the budget.
  * (engine-aa r1: the renderer CANVAS may now back at up to dpr 2 — see
  * renderer.js PIXEL_RATIO_CAP — but only the final to-screen AA pass
  * rasterizes there; every cap below still governs the composer chain.)
@@ -34,17 +34,15 @@
  * - `shadowMapSizes` — per-cascade CSM shadow map resolutions (lighting.js).
  *
  * Preset semantics (resolution numbers are the EFFECTIVE pixel ratio at
- * dpr>=2, where the renderer caps at 1.5):
- * - ultra : maxed visuals — 4x scene MSAA, full-res AO, 1.5 ratio, 4096
+ * dpr>=2, where the renderer canvas caps at 2.0):
+ * - ultra : maxed visuals — 4x scene MSAA, full-res AO, native 2.0 ratio, 4096
  *           cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
  *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). Uses 4x scene MSAA
- *           (engine-aa r1) and starts at 1.25 ratio on
- *           Retina and can climb to the full 1.5 composer cap, with half-res
- *           AO and a 0.6x bloom chain. The frame governor can fall back to
- *           ~1.125 under sustained load, preserving the >=45 fps floor, and
- *           recovers when the load lifts.
+ * - high  : THE DEFAULT on every display ('auto'). Uses 4x scene MSAA and the
+ *           full 1.5 ratio from the first frame, with half-res AO and a 0.6x
+ *           bloom chain. The frame governor drops AO before resolution and
+ *           never lets High fall below 1.35, preventing the muddy 1.125 path.
  * - medium: 2x scene MSAA, 1.0 ratio, half-res AO/bloom, 2048/1024 cascades.
  * - low   : SMAA only, 0.75 ratio, AO off, half-res bloom, 2048/1024
  *           cascades, shorter shadow range.
@@ -169,17 +167,20 @@ export const PRESETS = {
   ultra: {
     label: 'Ultra',
     msaaSamples: 4,
-    maxPixelRatio: 1.5,
+    maxPixelRatio: 2.0,
+    // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
+    // may fall to 1.5 — still the complete High raster, never below it.
+    dynMin: 0.75,
     aoScale: 1.0,
     bloomScale: 1.0,
     shadowMapSizes: [4096, 4096, 4096, 2048],
     shadowMaxFar: 700,
   },
-  // High starts above CSS-pixel resolution on Retina panels and can earn the
-  // full 1.5 native renderer ratio. Fine geometry reaches SMAA before any
-  // upscale instead of being rasterized at 1.0 then stretched across a 1.5x
-  // backing store. The governor may return to ~1.125 under sustained load
-  // (post.js DYN_MIN 0.75) and recovers when the load lifts.
+  // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
+  // reaches SMAA before the smaller native-canvas upscale instead of being
+  // rasterized at 1.25 (or the old 1.125 floor) and enlarged into watercolor.
+  // AO is the first overload lever; only persistent pressure may lower raster
+  // density, with 0.9 keeping the effective floor at 1.35.
   // engine-aa r1: msaaSamples 2 → 4 on THE DEFAULT tier. 2x MSAA leaves one
   // intermediate coverage level per geometric edge — after ACES + the grade's
   // contrast S-curve the survivors read as visible stair-steps on hull/skirt/
@@ -193,7 +194,8 @@ export const PRESETS = {
     label: 'High',
     msaaSamples: 4,
     maxPixelRatio: 1.5,
-    adaptiveBasePixelRatio: 1.25,
+    adaptiveBasePixelRatio: 1.5,
+    dynMin: 0.9,
     aoScale: 0.5,
     bloomScale: 0.6,
     shadowMapSizes: [4096, 4096, 2048, 2048],
@@ -203,6 +205,10 @@ export const PRESETS = {
     label: 'Medium',
     msaaSamples: 2,
     maxPixelRatio: 1.0,
+    // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
+    // fallback by another hidden 0.75 dynamic scale: desktop readability
+    // remains at least one internal sample per CSS pixel.
+    dynMin: 1.0,
     aoScale: 0.5,
     bloomScale: 0.5,
     shadowMapSizes: [2048, 2048, 1024, 1024],
@@ -211,7 +217,8 @@ export const PRESETS = {
   low: {
     label: 'Low',
     msaaSamples: 0,
-    maxPixelRatio: 0.75,
+    maxPixelRatio: 1.0,
+    dynMin: 1.0,
     aoScale: 0,
     bloomScale: 0.5,
     shadowMapSizes: [2048, 2048, 1024, 1024],
@@ -299,8 +306,11 @@ const listeners = new Set();
 //    notch and persists, so the next session starts where this one settled.
 // ---------------------------------------------------------------------------
 const LS_AUTO_TIER = 'cot.gfxAutoTier';
+const LS_AUTO_POLICY = 'cot.gfxAutoTierPolicy';
+const AUTO_POLICY_VERSION = 'clarity-r2';
 const AUTO_ORDER = ['low', 'medium', 'high']; // ultra stays explicit opt-in
 let _gpuRendererString = '';
+let _autoPolicyHandled = false;
 
 /** Record the unmasked GL renderer string (createRenderer calls this once). */
 export function noteGpuRenderer(str) {
@@ -350,10 +360,22 @@ function storedAutoTier() {
   try {
     if (new URLSearchParams(window.location.search).has('gfxreset')) {
       window.localStorage.removeItem(LS_AUTO_TIER);
+      window.localStorage.setItem(LS_AUTO_POLICY, AUTO_POLICY_VERSION);
+      _autoPolicyHandled = true;
       return null;
     }
   } catch (_) { /* headless */ }
   try {
+    // clarity-r2 fixes loading-screen frames being mistaken for gameplay.
+    // Discard one stale verdict written by the old policy so an affected
+    // player is not left permanently blurry even after installing the fix.
+    if (!_autoPolicyHandled) {
+      _autoPolicyHandled = true;
+      if (window.localStorage.getItem(LS_AUTO_POLICY) !== AUTO_POLICY_VERSION) {
+        window.localStorage.removeItem(LS_AUTO_TIER);
+        window.localStorage.setItem(LS_AUTO_POLICY, AUTO_POLICY_VERSION);
+      }
+    }
     const v = window.localStorage.getItem(LS_AUTO_TIER);
     return AUTO_ORDER.includes(v) ? v : null;
   } catch (_) { return null; }

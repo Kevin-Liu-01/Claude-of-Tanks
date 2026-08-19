@@ -1510,6 +1510,7 @@ export function createStudio(ctx) {
     const work = async (p) => {
       p(0.02, 'Preparing studio');
       game.phase = 'studio';
+      post.resetAdaptiveResolution?.();
       garage.hide();
       showroom.stop();
       hud.setMode('hidden');

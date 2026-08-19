@@ -17,7 +17,8 @@ import { resolveDeviceTier, noteGpuRenderer } from './quality.js';
 
 // engine-aa r1: 1.5 → 2. This caps the CANVAS BACKING STORE, not the render
 // cost: the composer renders the scene + post chain at the preset's
-// maxPixelRatio (still 1.5 — quality.js owns that budget lever) and only the
+// maxPixelRatio (1.5 on default High; native 2 on explicit Ultra — quality.js
+// owns that budget lever) and only the
 // final to-screen AA pass rasterizes at the canvas resolution. At the old 1.5
 // cap a dpr-2 display took TWO stacked upscales (composer → 1.5x canvas,
 // then the browser stretching the canvas 1.33x onto physical pixels), which
