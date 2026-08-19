@@ -1489,6 +1489,14 @@ export function createKillCam(deps) {
       else if (pb.phase === 'contact') updateContact(dt);
       else if (pb.phase === 'impact') updateImpact(dt);
       else if (pb.phase === 'xray') updateXray(dt);
+      else if (pb.phase === 'exit'
+          && performance.now() - (pb.exitWallMs || 0) > EXIT_HOLD_MS + 120) {
+        // Wall-clock timers are the primary exit driver, but embedded/background
+        // Chromium can discard a timer while rAF continues. The visual update
+        // is a second independent clock so a replay can never strand its opaque
+        // fade over a still-running battle.
+        completeExit();
+      }
       // 'exit': the closing letterbox + fade own the screen — camera holds
       // its last x-ray pose; wall-clock timers drive the handover (beginExit)
     },
@@ -2784,9 +2792,22 @@ export function createKillCam(deps) {
     // sightline: the vegetation layer is hidden for the whole x-ray hold.
     // The camera backs off along the shell path (-0.52) so the penetrated
     // face always faces the lens.
+    const sideM = R * 0.88;
     const off = new THREE.Vector3()
-      .addScaledVector(_s, R * 0.88)
+      .addScaledVector(_s, sideM)
       .addScaledVector(dirW, -R * 0.52);
+    // Both lateral sides tell the same armor/path story, but one can put the
+    // live map sun almost exactly behind the victim. The translucent ghost
+    // then disappears into a white disc even though the staged x-ray remains
+    // fine. Prefer the side whose view axis is farther from the sun; retain
+    // the along-path component so the penetrated plate still faces the lens.
+    const sun = scene.userData.sunDirWorld;
+    if (sun && sun.lengthSq() > 1e-8) {
+      const currentSunDot = -off.dot(sun) / Math.max(1e-6, off.length());
+      off.addScaledVector(_s, -sideM * 2);
+      const flippedSunDot = -off.dot(sun) / Math.max(1e-6, off.length());
+      if (flippedSunDot >= currentSunDot) off.addScaledVector(_s, sideM * 2);
+    }
     off.y += R * 0.44;
     const pos = center.clone().add(off);
     if (heightField) {
@@ -3959,25 +3980,29 @@ export function createKillCam(deps) {
   function beginExit() {
     if (!pb || pb.phase === 'exit') return;
     pb.phase = 'exit';
+    pb.exitWallMs = performance.now();
     const d = ensureDom();
     d.root.classList.add('out');
     const f = ensureFade();
     f.classList.remove('lift');
     void f.offsetWidth;
     f.classList.add('in');
+    exitTimers.push(setTimeout(completeExit, EXIT_HOLD_MS));
+  }
+
+  function completeExit() {
+    if (!active || !pb || pb.phase !== 'exit') return;
+    teardown(true); // scene restored + onDone + killcam:done, behind black
+    const f2 = fadeEl;
+    if (!f2) return;
     exitTimers.push(setTimeout(() => {
-      teardown(true); // scene restored + onDone + killcam:done, behind black
-      const f2 = fadeEl;
-      if (!f2) return;
+      f2.classList.add('lift');
+      f2.classList.remove('in');
       exitTimers.push(setTimeout(() => {
-        f2.classList.add('lift');
-        f2.classList.remove('in');
-        exitTimers.push(setTimeout(() => {
-          if (fadeEl === f2) fadeEl = null;
-          f2.remove();
-        }, 420));
-      }, 50));
-    }, EXIT_HOLD_MS));
+        if (fadeEl === f2) fadeEl = null;
+        f2.remove();
+      }, 420));
+    }, 50));
   }
 
   function finish(runCallback) {
