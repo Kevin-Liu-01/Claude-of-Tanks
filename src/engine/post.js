@@ -1446,8 +1446,18 @@ export function createPost(renderer, scene, camera) {
   // existed), so canopies get proper grounding instead of being AO-invisible.
   // The scene depth is complete and resolved before this pass runs.
   gtao.setGBuffer(sceneDepth);
-  gtao.updateGtaoMaterial(GTAO_PARAMS);
-  gtao.updatePdMaterial(GTAO_PD_PARAMS); // ao-boil r1: see GTAO_PD_PARAMS
+  // Temporal reprojection below turns half-resolution AO into a converged
+  // signal across frames. High/Medium therefore need eight fresh taps, not
+  // sixteen nearly redundant taps every 8.33 ms; Ultra keeps the full 16-tap
+  // inspection profile. This makes contact grounding cheap enough to remain
+  // enabled on more 120 Hz frames instead of the governor dropping it whole.
+  const applyAoSampling = (p) => {
+    const samples = p.aoScale >= 0.99 ? 16 : 8;
+    gtao.updateGtaoMaterial({ ...GTAO_PARAMS, samples });
+    gtao.updatePdMaterial({ ...GTAO_PD_PARAMS, samples });
+    renderer.domElement.dataset.aoSamples = String(samples);
+  };
+  applyAoSampling(preset);
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
   // View-distance AO fade. AO is a CONTACT cue: at establishing-shot ranges a
   // 1.6 m occlusion radius is subpixel, and on the horizon mountain ring
@@ -2086,6 +2096,7 @@ export function createPost(renderer, scene, camera) {
   // every buffer without rebuilding the chain.
   onPresetChange((p) => {
     preset = p;
+    applyAoSampling(preset);
     msaaSamples = samplesForPreset(preset);
     sceneAA.setSamples(msaaSamples);
     publishAAState();

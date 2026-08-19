@@ -18,20 +18,22 @@ const CASCADES = 4;
 // exp2 fog (sky.js) shadows must hold that far or buildings/trees float.
 // PERF: shadow range and per-cascade map sizes now come from the graphics
 // quality preset (src/engine/quality.js — ultra [4096,4096,4096,2048], high
-// [4096,4096,2048,2048]; medium/low trade range+resolution for fill rate,
+// [4096,2048,2048,1024]; medium/low trade range+resolution for fill rate,
 // and PCF radii are penumbra-compensated per size — see applyShadowSizes).
-// The two FAR cascades cover 100s of meters — one texel is already
-// subpixel on a 1080p screen out there, so halving their resolution is
-// visually free and saves 96 MB of GPU RTs plus shadow fill rate. The stock
-// CSM update assumes every cascade has one uniform resolution; this module's
-// stable update below snaps each projection to its ACTUAL map size instead.
-// PERF: far cascades re-render every OTHER frame (round-robin, one per frame)
-// — they hold ~2/3 of all shadow draw calls, and one frame of staleness at
-// 250-520 m is a fraction of a texel of camera motion. Near cascades (player
-// tank, closeups) ALWAYS update every frame, including during adaptive
-// performance relief. `update(true)` forces both far cascades (shot mode /
-// map switch / FOV change) for deterministic captures.
+// The farther cascades cover 100s of meters, where their smaller texels remain
+// subpixel at gameplay scale. High now uses ~100 MB of shadow depth targets
+// instead of ~160 MB, while keeping its hero cascade at 4096. The stock CSM
+// update assumes every cascade has one uniform resolution; this module's stable
+// update below snaps each projection to its ACTUAL map size instead.
+// PERF: at high refresh, every cascade is capped to the established 60 Hz
+// lighting cadence: the near pair update together and the far pair alternate
+// at 30 Hz each. A 60 Hz display is cadence-equivalent (three maps per frame);
+// a 120/240 Hz panel no longer multiplies shadow work. `update(true)` forces
+// every cascade for deterministic captures, map switches, and FOV changes.
 const FAR_CASCADE_START = 2;
+const RATE_CAPPED_CASCADE_START = 0;
+const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
+const SHADOW_REFRESH_EPSILON_S = 0.001;
 const _stableCameraToLight = new THREE.Matrix4();
 const _stableLightOrientation = new THREE.Matrix4();
 const _stableLightOrientationInverse = new THREE.Matrix4();
@@ -790,8 +792,10 @@ export function createLighting(scene, camera, sunDir) {
     csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
-    // PERF: far cascades update round-robin via needsUpdate (see update())
-    if (i >= FAR_CASCADE_START) {
+    // PERF (120 Hz): the near pair are capped together at 60 Hz and the far
+    // pair remain round-robin at 30 Hz each. All maps are driven through
+    // needsUpdate so display refresh never multiplies lighting work.
+    if (i >= RATE_CAPPED_CASCADE_START) {
       csm.lights[i].shadow.autoUpdate = false;
       csm.lights[i].shadow.needsUpdate = true; // first frame renders all
     }
@@ -805,10 +809,12 @@ export function createLighting(scene, camera, sunDir) {
       csm.maxFar = p.shadowMaxFar;
       csm.updateFrustums();
     }
-    forceFarCascades();
+    forceRateCappedCascades();
   });
   let rrIndex = 0; // round-robin cursor over the far cascades
   let shFrame = 0;
+  let midShadowAcc = 0;
+  let farShadowAcc = 0;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
   // forces FULL cascade redraws for the next 2 frames, so the round-robin
@@ -816,10 +822,10 @@ export function createLighting(scene, camera, sunDir) {
   // far maps for even one presented frame.
   let forceFrames = 0;
 
-  /** Mark every throttled (far) cascade for re-render on the next frame. */
-  function forceFarCascades() {
+  /** Mark every rate-capped cascade for re-render on the next frame. */
+  function forceRateCappedCascades() {
     forceFrames = 2;
-    for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
+    for (let i = RATE_CAPPED_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
     }
   }
@@ -880,19 +886,24 @@ export function createLighting(scene, camera, sunDir) {
      * Per-frame cascade refit. Call after the camera's world matrix is final
      * for the frame (ARCHITECTURE.md §4 step 9) and before `post.render`.
      * @param {boolean} [force=false] - re-render ALL cascades this frame
-     *   (deterministic screenshot captures); otherwise the two far cascades
-     *   alternate, one per frame.
+     *   (deterministic screenshot captures).
+     * @param {number} [dt=1/60] render delta used by the refresh-rate caps.
      * @returns {void}
      */
-    update(force = false) {
+    update(force = false, dt = 1 / 60) {
       updateStableCascades(csm);
       _cullTick++; // cascades refit — the per-cascade frustum memo is stale
       shFrame++;
+      const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
+      midShadowAcc = Math.min(SHADOW_REFRESH_INTERVAL_S * 2, midShadowAcc + step);
+      farShadowAcc = Math.min(SHADOW_REFRESH_INTERVAL_S * 2, farShadowAcc + step);
       if (force || forceFrames > 0) {
         if (forceFrames > 0) forceFrames--;
         for (let i = 0; i < csm.lights.length; i++) {
           csm.lights[i].shadow.needsUpdate = true;
         }
+        midShadowAcc = 0;
+        farShadowAcc = 0;
         if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
         // bisect hook: every cascade re-renders every frame (no round-robin)
@@ -911,18 +922,28 @@ export function createLighting(scene, camera, sunDir) {
           }
         }
       } else {
-        // The live governor must never change shadow cadence. Alternating the
-        // near maps at 1/2 or 1/3 rate made a stable 60-120 Hz frame stream
-        // present 20-40 Hz shadow steps — the reported full-screen flashing.
-        // Near maps stay on autoUpdate; only the already-subpixel far pair is
-        // amortized, one map per frame, exactly as in the untrimmed path.
+        // Refresh-rate invariant shadow budget. At 60 Hz this is identical to
+        // the established path: cascades 0/1 render each frame and one far map
+        // renders each frame (30 Hz per far cascade). At 120+ Hz the near pair
+        // and far round-robin retain that same proven 60 Hz work cadence.
+        // Stable texel snapping keeps skipped projections coherent; both near
+        // maps update together, so no seam presents mismatched lighting.
         for (let i = 0; i < csm.lights.length; i++) {
-          csm.lights[i].shadow.autoUpdate = i < FAR_CASCADE_START;
+          csm.lights[i].shadow.autoUpdate = i < RATE_CAPPED_CASCADE_START;
+          if (i >= RATE_CAPPED_CASCADE_START) csm.lights[i].shadow.needsUpdate = false;
+        }
+        if (csm.lights.length > 0
+            && midShadowAcc + SHADOW_REFRESH_EPSILON_S >= SHADOW_REFRESH_INTERVAL_S) {
+          for (let i = 0; i < Math.min(FAR_CASCADE_START, csm.lights.length); i++) {
+            csm.lights[i].shadow.needsUpdate = true;
+          }
+          midShadowAcc = Math.max(0, midShadowAcc - SHADOW_REFRESH_INTERVAL_S);
         }
         const span = csm.lights.length - FAR_CASCADE_START;
-        if (span > 0 && (!mobileTier || (shFrame & 1) === 0)) {
+        if (span > 0 && farShadowAcc + SHADOW_REFRESH_EPSILON_S >= SHADOW_REFRESH_INTERVAL_S) {
           rrIndex = (rrIndex + 1) % span;
           csm.lights[FAR_CASCADE_START + rrIndex].shadow.needsUpdate = true;
+          farShadowAcc = Math.max(0, farShadowAcc - SHADOW_REFRESH_INTERVAL_S);
         }
       }
     },
@@ -949,7 +970,7 @@ export function createLighting(scene, camera, sunDir) {
 
     updateFrustums() {
       csm.updateFrustums();
-      forceFarCascades(); // cascade boxes jumped — stale far maps would smear
+      forceRateCappedCascades(); // cascade boxes jumped — stale maps would smear
     },
 
     /**
@@ -988,15 +1009,15 @@ export function createLighting(scene, camera, sunDir) {
       const fl = Math.hypot(fx, fz) || 1;
       fill.position.set((fx / fl) * FILL_HORIZ_M, FILL_ELEV_Y, (fz / fl) * FILL_HORIZ_M);
       updateStableCascades(csm);
-      forceFarCascades(); // sun moved — every cascade must re-render
+      forceRateCappedCascades(); // sun moved — every cascade must re-render
     },
 
     /** Read-only diagnostics; sampled at 4 Hz by the opt-in telemetry HUD. */
     getShadowTelemetry() {
       return {
         maxFar: csm.maxFar,
-        // Retained for telemetry schema compatibility. Shadow refresh is no
-        // longer a performance lever because changing its cadence is visible.
+        // Retained for telemetry schema compatibility. The fixed 60 Hz work
+        // cadence is refresh-rate invariant and no longer governor-controlled.
         throttle: 0,
         frame: shFrame,
         forceFrames,

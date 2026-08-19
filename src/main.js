@@ -3365,11 +3365,18 @@ let shotHudFrame = false;
 let lastCineActive = false; // battle-open flyby HUD veil edge latch
 
 function updateDustAndSync(dtFrame) {
+  const cameraPosition = camera.position;
   for (const ent of game.tanks) {
     // PERF r3: staged-battle visuals are deferred to post-ready idle — skip
     // entities whose visual has not streamed in yet (garage phase only;
     // warmCombatPipeline builds all of them before battle/shot frames).
     if (!ent.state || !ent.combat || !ent.visual) continue;
+    const state = ent.state;
+    const combat = ent.combat;
+    const visual = ent.visual;
+    const spec = ent.spec;
+    const dims = spec.dims;
+    const topSpeedMps = spec.topSpeedKmh / 3.6;
     // effects_combat r1: pass the real frame dt so self-timed visual
     // timelines (recuperator recoil, turret-pop arc, ember cooldown) play at
     // wall-clock speed on 120 Hz displays (undefined at boot -> 1/60 default).
@@ -3377,21 +3384,21 @@ function updateDustAndSync(dtFrame) {
     // dressing (per-wheel heightAt conform + link/band instance pass) at a
     // reduced cadence beyond fine-detail range — battle loop only; studio,
     // killcam and staged poses omit it and keep full-rate updates.
-    ent.visual.syncFromState(ent.state, dtFrame,
-      camera.position.distanceTo(ent.state.pos));
+    const viewDistM = cameraPosition.distanceTo(state.pos);
+    visual.syncFromState(state, dtFrame, viewDistM);
     // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
     // Wrecks stay visible; the player is never gated; outside battle
     // (garage/shot/killcam) everything renders. isSpotted already includes
     // the 5 s linger, so the eased fade flips out of contact, not mid-fight.
     if (game.phase === 'battle' && game.spotting && ent.team === 'enemy') {
-      const visible = ent.combat.destroyed ||
+      const visible = combat.destroyed ||
         game.spotting.isSpotted(ent.id, 'player', game.player);
       const target = visible ? 1 : 0;
       if (ent._spotFade === undefined) ent._spotFade = target;
       // eased fade to avoid popping (0 -> 1 in ~0.35 s); no dt (boot) = snap
       ent._spotFade += (target - ent._spotFade) *
         (dtFrame === undefined ? 1 : Math.min(1, dtFrame / 0.35));
-      ent.visual.setVisible(ent._spotFade > 0.02);
+      visual.setVisible(ent._spotFade > 0.02);
     } else if (game.phase === 'battle' && !ent.isPlayer) {
       // Allies (and enemies in the no-spotting fallback) are force-shown; the
       // PLAYER's hull visibility is OWNED by the camera rig — it hides the
@@ -3400,9 +3407,15 @@ function updateDustAndSync(dtFrame) {
       // hid it: the scope rendered the inside of the hull/mantlet (a
       // near-black frame the grade pass then crushed to pure black at every
       // zoom).
-      ent.visual.setVisible(true);
+      visual.setVisible(true);
     }
-    if (game.phase === 'battle' && !ent.combat.destroyed) {
+    // Presentation FX must obey the same visibility boundary as the actor.
+    // Emitting dust for an unspotted enemy both leaks its position and burns
+    // transparent overdraw on a vehicle the player is not allowed to see.
+    // The far field is already absorbed by aerial perspective; skip vehicle
+    // media beyond it instead of filling a 1024-card pool off camera.
+    const vehicleFxVisible = visual.root.visible && viewDistM < 360;
+    if (game.phase === 'battle' && !combat.destroyed && vehicleFxVisible) {
       // PERF (perf-budget): dust/exhaust emission was per-FRAME — an unlocked
       // 120 fps client emitted 2x the particles the fx were tuned for at 60,
       // rotating the smoke/dust pools twice as fast late-battle. Fixed 60 Hz
@@ -3412,21 +3425,32 @@ function updateDustAndSync(dtFrame) {
       if (ent._fxAcc < 1 / 60) continue;
       const fxTicks = Math.min(2, Math.floor(ent._fxAcc * 60));
       ent._fxAcc -= fxTicks / 60;
-      const sp = Math.abs(ent.state.speed);
+      const sp = Math.abs(state.speed);
       const throttle = Math.abs(ent.input.throttle || 0);
-      _fwd.set(Math.sin(ent.state.yaw), 0, Math.cos(ent.state.yaw));
+      _fwd.set(Math.sin(state.yaw), 0, Math.cos(state.yaw));
       if (sp > 0.8) {
-        const intensity = Math.min(1, sp / (ent.spec.topSpeedKmh / 3.6));
-        _v3.set(_fwd.z, 0, -_fwd.x); // right axis
-        // Emit from BOTH rear track contact points; multiple puffs per frame
-        // at speed so a top-speed run reads as a rolling plume (r1 critique).
-        const puffs = (intensity > 0.6 ? 3 : 1) * fxTicks;
-        for (let side = -1; side <= 1; side += 2) {
-          _v1.copy(ent.state.pos)
-            .addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.45)
-            .addScaledVector(_v3, side * ent.spec.dims.widthM * 0.45);
-          for (let i = 0; i < puffs; i++) fx.dust(_v1, _fwd, intensity);
+        const intensity = Math.min(1, sp / topSpeedMps);
+        // Distance-driven emission: the old "three puffs per 60 Hz tick per
+        // track" saturated the complete dust pool in about one second and
+        // layered hundreds of overlapping 5 m cards into a muddy veil. One
+        // structured burst every ~0.45-0.70 m leaves continuous twin tracks
+        // at speed, scales naturally with vehicle motion, and is identical
+        // on 60/120/240 Hz displays.
+        const spacingM = THREE.MathUtils.lerp(0.70, 0.45, intensity);
+        ent._dustTravelAcc = Math.min(spacingM * 2,
+          (ent._dustTravelAcc || 0) + sp * (fxTicks / 60));
+        if (ent._dustTravelAcc >= spacingM) {
+          ent._dustTravelAcc -= spacingM;
+          _v3.set(_fwd.z, 0, -_fwd.x); // right axis
+          for (let side = -1; side <= 1; side += 2) {
+            _v1.copy(state.pos)
+              .addScaledVector(_fwd, -dims.hullLengthM * 0.45)
+              .addScaledVector(_v3, side * dims.widthM * 0.45);
+            fx.dust(_v1, _fwd, intensity);
+          }
         }
+      } else {
+        ent._dustTravelAcc = 0;
       }
       // Exhaust puffs off the engine deck whenever the engine is under load.
       // effects_combat r2: the stationary hero tank idles visibly during the
@@ -3436,23 +3460,23 @@ function updateDustAndSync(dtFrame) {
       // (idle floor 0.10; fx.exhaust is probability-gated so idle stays wispy)
       {
         const load = Math.max(0.10, (rig.cinematicActive && ent.isPlayer) ? 0.3 : 0,
-          Math.min(1, throttle * 0.7 + (sp / (ent.spec.topSpeedKmh / 3.6)) * 0.5));
-        _v1.copy(ent.state.pos).addScaledVector(_fwd, -ent.spec.dims.hullLengthM * 0.42);
-        _v1.y += ent.spec.dims.heightM * 0.72;
-        fx.exhaust(_v1, load, ent.spec.era === 'ww2');
+          Math.min(1, throttle * 0.7 + (sp / topSpeedMps) * 0.5));
+        _v1.copy(state.pos).addScaledVector(_fwd, -dims.hullLengthM * 0.42);
+        _v1.y += dims.heightM * 0.72;
+        fx.exhaust(_v1, load, spec.era === 'ww2');
       }
       // effects_combat r1: crushable props — pole vs hull overlap triggers
       // the hinge-topple (world.crushProp) + wood-splinter burst.
       if (sp > 1.2 && world && world.crushables && world.crushables.length) {
-        const hl = ent.spec.dims.hullLengthM * 0.5 + 0.5;
+        const hl = dims.hullLengthM * 0.5 + 0.5;
         // Lightweight loop-contact props bypass the sim collider, so derive
         // the signed travel direction here. Facing direction alone made props
         // rammed in reverse fall toward the moving tank.
-        _v2.copy(_fwd).multiplyScalar(Math.sign(ent.state.speed) || 1);
+        _v2.copy(_fwd).multiplyScalar(Math.sign(state.speed) || 1);
         for (let ci = 0; ci < world.crushables.length; ci++) {
           const c = world.crushables[ci];
           if (c.toppled) continue;
-          const dx = c.x - ent.state.pos.x, dz = c.z - ent.state.pos.z;
+          const dx = c.x - state.pos.x, dz = c.z - state.pos.z;
           if (dx * dx + dz * dz > hl * hl) continue;
           // DESTRUCTIBLES r1: the hull speed rides into the break so tossed
           // drums/debris inherit the rammer's velocity
@@ -3463,6 +3487,10 @@ function updateDustAndSync(dtFrame) {
           }
         }
       }
+    } else if (!vehicleFxVisible) {
+      // Never bank invisible travel and dump it as one giant plume when the
+      // actor re-enters spotting/range.
+      ent._dustTravelAcc = 0;
     }
   }
 }
@@ -3896,7 +3924,7 @@ function tick(nowMs) {
   // around is laggy" report). Splits are fov-independent; refresh only the
   // cascade geometry.
   if (camera.fov !== lastFov) { lighting.updateFov(); lastFov = camera.fov; }
-  lighting.update();
+  lighting.update(false, dtR);
   post.render(dtR);
   perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
 }

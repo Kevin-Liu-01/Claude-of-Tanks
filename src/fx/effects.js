@@ -3298,28 +3298,16 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // was still sub-visible at 10 m/s in the r6 drive frames.
       _puffO.alpha = Math.min(gt === 'hard' ? 0.42 : 0.58,
         (gt === 'hard' ? 0.14 + 0.32 * intensity : 0.26 + 0.36 * intensity) * kA * 1.18) * alphaCapK;
-      _puffO.grav = -0.24; _puffO.birthOffset = 0;
+      // Settle slowly instead of pulling a 4-5 s veil through the ground;
+      // soft-depth then resolves the contact edge without a muddy half-card.
+      _puffO.grav = -0.10; _puffO.birthOffset = 0;
       particles.emit('dust', _puffO);
-      // r6: second veil card per pass on soft ground — main.js emits 1 puff
-      // per 60 Hz tick per track below 0.6 intensity, which starves the
-      // meadow wake; doubling the mass inside dust() keeps the caller's
-      // budget contract while the grass corridor builds a readable plume.
-      if (gt !== 'hard' && rng() < 0.6) {
-        _puffO.pos[0] = pos.x - dir.x * 0.9 + (rng() - 0.5) * 0.7;
-        _puffO.pos[1] = Math.max(pos.y, gy) + 1.05 + rng() * 0.3;
-        _puffO.pos[2] = pos.z - dir.z * 0.9 + (rng() - 0.5) * 0.7;
-        _puffO.life = 2.4 + rng() * 1.8;
-        _puffO.size0 = (0.5 + intensity * 0.6);
-        _puffO.size1 = Math.min(5.4, (2.6 + intensity * 3.0 + rng() * 1.2)) * sizeCapK;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.2;
-        _puffO.alpha = Math.min(0.46, (0.18 + 0.30 * intensity) * kA) * alphaCapK;
-        particles.emit('dust', _puffO);
-      }
-      // r6 twin persistent plume (grass): a second, taller, longer-lived card
+      // Persistent upper lobe (grass): one taller, longer-lived card
       // rising off the track rear at speed — WoT reference shows twin plumes
-      // hanging over the wake corridor at anything over ~20 km/h. Emitted at
-      // the same contact point every pass, so each track builds its own
-      // continuous plume readable from the chase camera.
+      // hanging over the wake corridor at anything over ~20 km/h. The old
+      // additional generic veil was redundant with this lobe and multiplied
+      // overdraw; the low primary + this upper lobe make a cleaner two-scale
+      // silhouette per track.
       if (gt !== 'hard' && intensity > 0.28) {
         _puffO.pos[0] = pos.x - dir.x * 1.2 + (rng() - 0.5) * 0.5;
         _puffO.pos[1] = Math.max(pos.y, gy) + 1.15 + rng() * 0.4;
@@ -3333,7 +3321,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2.0;
         col3(0xa8a189, _puffO.col0); col3(0x8a876f, _puffO.col1); // r7: sunlit-dust lift
         _puffO.alpha = Math.min(0.56, 0.34 + 0.34 * intensity) * alphaCapK;
-        _puffO.grav = -0.18; _puffO.birthOffset = 0;
+        _puffO.grav = -0.06; _puffO.birthOffset = 0;
         particles.emit('dust', _puffO);
       }
     },

@@ -113,14 +113,15 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
 
-// PERF (perf-r2): beyond this camera distance the track dressing (per-wheel
-// heightAt conform + link/band/wheel instance pass) updates every 3rd sync —
-// see the gearNow gate in syncFromState. Matches the ~150 m LOD1 de-greeble
-// band. The per-visual phase is staggered by creation order so a 14-tank
-// battle spreads its reduced-rate updates across frames instead of bursting
-// them all on the same one.
-const GEAR_FULL_RATE_M = 160;
-let _gearStaggerSeq = 0;
+// PERF (120 Hz): track-link placement and suspension conformance are close-
+// range detail. Keep the player/near combat at render rate, then update from
+// elapsed time instead of "every N frames" so a 120 Hz display does not run
+// distant gear twice as often as a 60 Hz display. The accumulated dt keeps
+// absolute track scroll exact; only the sub-pixel presentation cadence falls.
+const GEAR_FULL_RATE_M = 110;
+const GEAR_MID_RATE_M = 220;
+const GEAR_MID_INTERVAL_S = 1 / 30;
+const GEAR_FAR_INTERVAL_S = 1 / 15;
 
 // ---- module-scope scratch (no per-frame allocation) ------------------------
 const _m = new THREE.Matrix4();
@@ -416,27 +417,41 @@ function collectMobileDetailObjects(root, rigParents) {
 }
 
 /**
- * Put exact close-range detail behind THREE.LOD for battle-only AI visuals.
- * The original objects and materials are retained byte-for-byte and return
- * automatically whenever any camera (including a killcam) moves close. This
- * removes sub-pixel fittings/markings from every color and shadow traversal at
- * range without freezing detail state to the previous gameplay camera.
+ * Collect exact close-range detail into one detachable group per articulation
+ * parent for battle-only AI visuals. THREE.LOD hides renderables but Three's
+ * matrix traversal still visits every invisible child; detaching a far detail
+ * group removes those nodes from color, shadow, culling AND matrix work. The
+ * original objects/materials are retained byte-for-byte and can be reattached
+ * immediately for close combat, inspection, destruction, or a killcam.
  */
-function installBattleDetailLods(records, distance = 112) {
-  let index = 0;
+function installBattleDetailGroups(records) {
+  const byParent = new Map();
+  let objectCount = 0;
   for (const record of records) {
     const object = record.object;
     const parent = object?.parent;
-    if (!parent || !record.baseVisible || parent.isLOD) continue;
-    const lod = new THREE.LOD();
-    lod.name = `battleDetailLod_${index++}`;
-    lod.userData.battleDetailLod = true;
-    parent.remove(object);
-    lod.addLevel(object, 0);
-    lod.addLevel(new THREE.Object3D(), distance, 0.12);
-    parent.add(lod);
+    if (!parent || !record.baseVisible) continue;
+    let objects = byParent.get(parent);
+    if (!objects) { objects = []; byParent.set(parent, objects); }
+    objects.push(object);
+    objectCount++;
   }
-  return index;
+  const groups = [];
+  let index = 0;
+  for (const [parent, objects] of byParent) {
+    const group = new THREE.Group();
+    group.name = `battleDetailGroup_${index++}`;
+    group.userData.battleDetailGroup = true;
+    group.matrixAutoUpdate = false; // identity under the same articulation parent
+    group.updateMatrix();
+    for (const object of objects) {
+      parent.remove(object);
+      group.add(object);
+    }
+    parent.add(group);
+    groups.push({ parent, group });
+  }
+  return { groups, objectCount };
 }
 
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
@@ -5788,7 +5803,6 @@ export function createTank(specId, engineCtx, opts = {}) {
   let groundSampler = null;          // (x, z) => terrain height, set by integration
   let gearAccumDt = 0;               // elapsed time across distance-cadence skips
   let sway = 0;                      // turn-lean roll (rad), smoothed
-  let gearPhase = (_gearStaggerSeq++) % 3; // perf-r2: distant-gear cadence stagger
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
   // Hit/recoil impulses accumulate here and are routed into the SIM's flinch
@@ -5822,6 +5836,19 @@ export function createTank(specId, engineCtx, opts = {}) {
   let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
   let mobileDetailObjects = [];
   let mobileDetailsVisible = true;
+  let battleDetailGroups = [];
+  let battleDetailsAttached = true;
+  function setBattleDetailsAttached(attached) {
+    if (!battleDetailGroups.length || attached === battleDetailsAttached) return;
+    battleDetailsAttached = attached;
+    for (const record of battleDetailGroups) {
+      if (attached) {
+        if (record.group.parent !== record.parent) record.parent.add(record.group);
+      } else if (record.group.parent) {
+        record.group.removeFromParent();
+      }
+    }
+  }
   const emberPhase = rng() * Math.PI * 2;
   // r6 SHADER BURN MASK (replaces the r4/r5 per-mesh charQueue swap — critic:
   // "half coal-black, half pristine camo split on a mesh seam ... a material
@@ -5938,6 +5965,14 @@ export function createTank(specId, engineCtx, opts = {}) {
      *   play the recuperator cycle twice as fast.
      */
     syncFromState(state, dt = SIM_STEP, viewDistM) {
+      if (battleDetailGroups.length) {
+        // Hysteresis keeps a bot hovering at the handoff from churning scene
+        // children. Undefined distance is an inspection/cinematic contract:
+        // studio, staged shots and killcam ghosts always restore exact detail.
+        const shouldAttach = viewDistM === undefined
+          || (battleDetailsAttached ? viewDistM < 122 : viewDistM < 96);
+        setBattleDetailsAttached(shouldAttach);
+      }
       if (mobileDetailObjects.length) {
         // Hysteresis prevents tiny cosmetics from toggling when a vehicle
         // hovers around the handoff. Callers without a battle-camera distance
@@ -6077,19 +6112,17 @@ export function createTank(specId, engineCtx, opts = {}) {
         turretG.rotation.y = state.turretYaw;
         gunG.rotation.x = -state.gunPitch;
       }
-      // PERF (perf-r2, measured in the perf-smooth r1 V8 profile and blessed
-      // by its handoff): the track dressing below — per-wheel heightAt
-      // conform (the analytic heightfield runs noise octaves PER QUERY) plus
-      // the link/band/wheel instance-matrix pass — is fine detail that LOD1
-      // already de-greebles beyond ~150 m. When the battle loop reports a
-      // camera distance past GEAR_FULL_RATE_M, run it every 3rd sync (20 Hz):
-      // wheel spin and link scroll place from ABSOLUTE track scroll, so a
-      // skipped frame delays the sub-pixel motion by <= 33 ms with no drift.
-      // Callers that omit viewDistM (studio, killcam, staged one-shot poses,
-      // probes) always take the full-rate path.
+      // PERF (120 Hz): the track dressing below — per-wheel heightAt conform
+      // plus link/band/wheel instance matrices — follows elapsed-time cadence
+      // outside close combat. Wheel spin and link scroll place from ABSOLUTE
+      // track scroll, so skipped presentation frames cannot accumulate drift.
+      // Callers that omit viewDistM (studio, killcam, staged poses, probes)
+      // always retain full-rate animation.
       gearAccumDt += Math.max(0, dt || 0);
-      const gearNow = viewDistM === undefined || viewDistM <= GEAR_FULL_RATE_M
-        || ((gearPhase = (gearPhase + 1) % 3) === 0);
+      const gearInterval = viewDistM === undefined || viewDistM <= GEAR_FULL_RATE_M
+        ? 0
+        : (viewDistM <= GEAR_MID_RATE_M ? GEAR_MID_INTERVAL_S : GEAR_FAR_INTERVAL_S);
+      const gearNow = gearInterval === 0 || gearAccumDt + 1e-6 >= gearInterval;
       const gearStepDt = gearAccumDt;
       // per-wheel suspension conformance before the gear placement pass
       if (P.gear && groundSampler && !destroyed && gearNow) {
@@ -6292,6 +6325,10 @@ export function createTank(specId, engineCtx, opts = {}) {
      */
     setDestroyed(opts) {
       if (destroyed) return;
+      // A distant live bot may have its cosmetic hierarchy detached from the
+      // scene graph. Restore it before the one-time burn capture so a later
+      // close killcam never reveals pristine fittings on a charred wreck.
+      setBattleDetailsAttached(true);
       destroyed = true;
       // lazy capture (see originalMats note): traverse NOW so GLB-swapped
       // meshes are included in the burnt swap and restorable on rematch.
@@ -6461,6 +6498,9 @@ export function createTank(specId, engineCtx, opts = {}) {
     setVisible(v) { root.visible = v; },
 
     dispose() {
+      // Detached detail is intentionally outside root traversal while far.
+      // Reattach before resource disposal so no retained mesh is skipped.
+      setBattleDetailsAttached(true);
       for (const g of disposables) g.dispose();
       root.traverse((o) => {
         if (o.isInstancedMesh) o.dispose();
@@ -6515,7 +6555,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     const detailObjects = collectMobileDetailObjects(root, [hullG, turretG, gunG, recoilG]);
     if (geometryQuality === 'low') mobileDetailObjects = detailObjects;
     else if (battleDetailLod) {
-      root.userData.battleDetailLodCount = installBattleDetailLods(detailObjects);
+      const installed = installBattleDetailGroups(detailObjects);
+      battleDetailGroups = installed.groups;
+      root.userData.battleDetailGroupCount = battleDetailGroups.length;
+      root.userData.battleDetailObjectCount = installed.objectCount;
     }
   }
 

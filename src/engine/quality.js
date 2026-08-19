@@ -39,7 +39,7 @@
  *           cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
  *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). Uses 4x scene MSAA and the
+ * - high  : THE DEFAULT on every display ('auto'). Uses 2x scene MSAA and the
  *           full 1.5 ratio from the first frame, with half-res AO and a 0.6x
  *           bloom chain. The frame governor drops AO before resolution and
  *           never lets High fall below 1.35, preventing the muddy 1.125 path.
@@ -181,24 +181,25 @@ export const PRESETS = {
   // rasterized at 1.25 (or the old 1.125 floor) and enlarged into watercolor.
   // AO is the first overload lever; only persistent pressure may lower raster
   // density, with 0.9 keeping the effective floor at 1.35.
-  // engine-aa r1: msaaSamples 2 → 4 on THE DEFAULT tier. 2x MSAA leaves one
-  // intermediate coverage level per geometric edge — after ACES + the grade's
-  // contrast S-curve the survivors read as visible stair-steps on hull/skirt/
-  // barrel silhouettes (owner garage screenshot), and SMAA cannot always
-  // reconstruct them once the governor has the chain below native. 4x is the
-  // WebGL2 baseline every target GPU supports (maxSamples >= 4; Apple/ANGLE
-  // reports 8) and the scene-only MSAA target keeps the cost off the post
-  // chain. Perf: certified against the dsf-1 and dsf-2 budgets with
-  // tools/perfprobe.mjs — see shots/engine-aa-r1/ before/after reports.
+  // perf-120 r1: return the default tier to 2x scene MSAA. The complete chain
+  // still resolves geometry through hardware MSAA, then runs display-space
+  // SMAA and a contrast-adaptive native-output reconstruction. Paired live-
+  // battle probes showed 2x beating both 4x (extra scene bandwidth) and 0x
+  // (unstable shader/specular edges) while retaining the clarity fix. Ultra
+  // remains the explicit 4x inspection tier.
   high: {
     label: 'High',
-    msaaSamples: 4,
+    msaaSamples: 2,
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
     aoScale: 0.5,
     bloomScale: 0.6,
-    shadowMapSizes: [4096, 4096, 2048, 2048],
+    // Keep the hero/contact cascade at 4096. Cascade 1 and the far band do
+    // not need equal allocations: this drops the live high-tier shadow RT
+    // footprint from ~160 MB to ~100 MB and halves the second every-frame
+    // shadow raster, while lighting.js preserves physical penumbra width.
+    shadowMapSizes: [4096, 2048, 2048, 1024],
     shadowMaxFar: 700,
   },
   medium: {

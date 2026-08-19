@@ -1337,8 +1337,10 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   }
 
   const fogUniforms = () => THREE.UniformsUtils.clone(THREE.UniformsLib.fog);
-  // world-space sun direction matching the sky/lighting rig
-  // (elevation 35°, azimuth 140° — see src/engine/sky.js)
+  // Shared world-space sun direction for every media/debris material. Seeded
+  // to the default sky, then updated from the active map's real lighting rig
+  // each frame so dust lobes, smoke rims and flying debris never shade from a
+  // stale Verdant-only key after a map/studio atmosphere switch.
   const sunDirW = new THREE.Vector3(0.527, 0.574, -0.627).normalize();
 
   function puffMaterial(map, additive, drag, intensity, tiles = 1, nearFade = [0.5, 2.2]) {
@@ -1570,6 +1572,8 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      */
     update(dt) {
       if (!frozen) uTime.value += dt;
+      const liveSun = engineCtx?.scene?.userData?.sunDirWorld;
+      if (liveSun && liveSun.lengthSq() > 1e-8) sunDirW.copy(liveSun).normalize();
       for (const pool of poolList) pool.flush();
     },
 

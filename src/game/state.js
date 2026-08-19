@@ -289,12 +289,12 @@ export function ensureTankVisual(game, ent) {
     // actors; desktop, the player's tank, garage previews, and closeup tools
     // keep the exact full-detail geometry path.
     geometryQuality: mobileBot ? 'low' : 'high',
-    // Desktop AI keeps its exact authored geometry. Static same-material
-    // fittings are transform-baked into articulation-local batches, while
-    // purely cosmetic sub-pixel details use camera-aware THREE.LOD. The
-    // player/garage/studio paths remain untouched, and a close killcam brings
-    // every original detail back automatically.
-    batchStatic: battleBot,
+    // Every battle actor keeps its exact authored geometry while anonymous
+    // same-material fittings are transform-baked into articulation-local
+    // batches. AI additionally detaches purely cosmetic detail at range. The
+    // separate garage/studio constructors remain untouched, and close combat
+    // or a killcam restores every retained bot detail automatically.
+    batchStatic: true,
     battleDetailLod: battleBot && !mobileBot,
   });
   engineCtx.scene.add(ent.visual.root);
