@@ -16,6 +16,7 @@ import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
 import { iconUrl } from './icons.js';
 import { uiIconSVG } from './uiIcons.js';
 import { ensureStyle } from './dom.js';
+import { createRandomMapMosaic } from './randomPreviews.js';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
@@ -125,9 +126,21 @@ const CSS = `
   min-height:108px;margin-top:10px;overflow:hidden;border:1px solid rgba(161,180,195,.24);
   background:linear-gradient(110deg,rgba(12,18,23,.98),rgba(21,27,33,.88))}
 .cot-play .battlefield-art{position:relative;min-height:108px;background-position:center;background-size:cover;
-  border-right:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-art::after{content:"";position:absolute;inset:0;
+  overflow:hidden;border-right:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-art::after{content:"";position:absolute;inset:0;z-index:1;
   background:linear-gradient(90deg,rgba(5,8,11,.08),rgba(8,12,16,.78)),linear-gradient(0deg,rgba(5,8,11,.6),transparent 65%)}
-.cot-play .battlefield-art span{position:absolute;z-index:1;left:13px;bottom:11px;color:#ffd08b;
+.cot-play .battlefield-art .random-map-mosaic{position:absolute;inset:0;display:none;grid-template-columns:repeat(4,1fr);
+  gap:2px;background:#070a0d;transform:scale(1.015)}
+.cot-play .battlefield-art.is-random .random-map-mosaic{display:grid}
+.cot-play .battlefield-art .random-map-tile{display:block;min-width:0;background-position:center;background-size:cover;
+  filter:saturate(.9) contrast(1.08);transform:skewX(-4deg) scale(1.08)}
+.cot-play .battlefield-art .random-map-tile:nth-child(even){transform:skewX(-4deg) scale(1.08) translateY(3px)}
+.cot-play .battlefield-art .random-map-count{position:absolute;z-index:2;right:13px;top:11px;display:grid;
+  min-width:54px;padding:6px 8px 5px;text-align:center;border:1px solid rgba(255,199,104,.52);
+  background:rgba(7,11,15,.76);box-shadow:0 6px 18px rgba(0,0,0,.46)}
+.cot-play .battlefield-art .random-map-count b{color:#ffd18a;font:900 16px ${FONT_COND};line-height:1}
+.cot-play .battlefield-art .random-map-count span{margin-top:2px;color:#a9b6bf;font:800 6px ${FONT_COND};
+  letter-spacing:.15em;text-transform:uppercase}
+.cot-play .battlefield-art > span{position:absolute;z-index:3;left:13px;bottom:11px;color:#ffd08b;
   font:900 8px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase}
 .cot-play .battlefield-copy{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);align-items:center;
   gap:18px;padding:15px 16px}.cot-play .battlefield-id{min-width:0}.cot-play .battlefield-id i{display:block;
@@ -430,6 +443,7 @@ export function createPlayMenu({
   const mapSelect = root.querySelector('[data-control="map"]');
   const battlefieldCard = root.querySelector('.battlefield-card');
   const battlefieldArt = root.querySelector('.battlefield-art');
+  battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
   const battlefieldName = root.querySelector('[data-map-name]');
   const battlefieldRole = root.querySelector('[data-map-role]');
   const playersEl = root.querySelector('.players');
@@ -714,9 +728,11 @@ export function createPlayMenu({
     mapSelect.value = next.mapId;
     const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
     battlefieldName.textContent = selectedMap?.name || next.mapId || 'Random battlefield';
-    battlefieldArt.style.backgroundImage = selectedMap?.thumb
-      ? `url("${selectedMap.thumb.replace(/"/g, '%22')}")`
-      : 'conic-gradient(from 25deg,#314931,#8b7446,#7d8c98,#474b51,#314931)';
+    const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
+    battlefieldArt.classList.toggle('is-random', randomBattlefield);
+    battlefieldArt.style.backgroundImage = randomBattlefield
+      ? 'none'
+      : `url("${selectedMap.thumb.replace(/"/g, '%22')}")`;
     battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);

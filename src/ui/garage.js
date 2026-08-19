@@ -28,6 +28,7 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
+import { createRandomMapMosaic } from './randomPreviews.js';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
@@ -446,13 +447,13 @@ const GARAGE_CSS = `
    plate is content-height on roomy screens, but may shrink and scroll when
    the viewport is short so it never collides with the sections below. */
 .cot-leftcol{position:absolute;left:34px;top:108px;bottom:210px;
-  width:224px;display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
+  width:248px;display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
 /* garage_polish r9: the battlefield + camo sections share ONE industrial
    plate treatment (translucent backdrop + hairline + amber title tick) so
    they read as a composed panel instead of loose elements on the floor.
    (r9.1: the gallery is deliberately PLATELESS — owner call — but keeps
    the amber title tick so the column rhythm holds.) */
-.cot-maps,.cot-camos{box-sizing:border-box;width:224px;
+.cot-maps,.cot-camos{box-sizing:border-box;width:248px;
   background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.58));
   border:1px solid rgba(146,164,180,.16);padding:9px 9px 8px;}
 .cot-maps .mtitle::before,.cot-camos .ctitle::before,
@@ -501,7 +502,14 @@ const GARAGE_CSS = `
 .cot-map-card .mthumb.alpine{background-color:#91a5b1;background-image:linear-gradient(135deg,#d2dce1,#4e6678);}
 .cot-map-card .mthumb.caldera{background-color:#544742;background-image:linear-gradient(135deg,#796255,#221d1e);}
 .cot-map-card .mthumb.foundry{background-color:#55585a;background-image:linear-gradient(135deg,#7b756b,#282b2e);}
-.cot-map-card .mthumb.random{background-image:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
+.cot-map-card .mthumb.random{display:grid;overflow:hidden;background:#11171c;isolation:isolate;}
+.cot-map-card .mthumb.random .random-map-mosaic{position:absolute;inset:0;display:grid;
+  grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:1px;background:#070a0d;}
+.cot-map-card .mthumb.random .random-map-tile{display:block;min-width:0;min-height:0;background-position:center;
+  background-size:cover;filter:saturate(.92) contrast(1.06);transition:transform .18s ease,filter .18s ease;}
+.cot-map-card .mthumb.random::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 0 9px rgba(3,6,8,.3);}
+.cot-map-card:hover .mthumb.random .random-map-tile{transform:scale(1.08);filter:saturate(1.08) contrast(1.08);}
 .cot-map-card .mname{font-size:10.5px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
 .cot-camos{position:static;flex:0 0 auto;pointer-events:auto;}
@@ -514,15 +522,16 @@ const GARAGE_CSS = `
 /* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
    grid below stays static). Thin styled scrollbar so the affordance reads
    without stealing column width from the swatches. */
-.cot-camos .cgrid.camo{max-height:157px;overflow-y:auto;overscroll-behavior:contain;
-  padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+.cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));max-height:min(230px,24vh);
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:3px;
+  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
 .cot-camos .cgrid.camo.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
 .cot-camos .cgrid.camo::-webkit-scrollbar{width:5px;}
 .cot-camos .cgrid.camo::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
 .cot-camos .cgrid.camo::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
-.cot-camo-card{cursor:pointer;text-align:center;padding:4px 3px 3px;min-width:0;
+.cot-camo-card{cursor:pointer;text-align:center;padding:5px 4px 4px;min-width:0;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
   transition:border-color .12s,background .12s,box-shadow .12s;}
@@ -530,17 +539,24 @@ const GARAGE_CSS = `
 .cot-camo-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));
   box-shadow:0 0 10px rgba(240,160,48,.18);}
-.cot-camo-card .sw{height:30px;margin:0 auto 3px;border:1px solid rgba(0,0,0,.55);
+.cot-camo-card .sw{width:100%;height:auto;aspect-ratio:2.55;margin:0 auto 4px;border:1px solid rgba(0,0,0,.55);
   position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(235,243,250,.10);}
-.cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.cot-camo-card .sw.auto{background:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
+.cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
+  object-fit:cover;object-position:center;}
+.cot-camo-card .sw.auto{background:#11171c;}
+.cot-camo-card .sw.auto::before{content:'';position:absolute;z-index:2;left:50%;top:50%;width:13px;height:13px;
+  transform:translate(-50%,-50%) rotate(45deg);border:1px solid rgba(255,202,113,.8);
+  background:rgba(7,11,14,.68);box-shadow:0 2px 8px rgba(0,0,0,.72);}
+.cot-camo-card .sw.auto::after{content:'';position:absolute;z-index:3;left:50%;top:50%;width:4px;height:4px;
+  transform:translate(-50%,-50%);background:#ffc267;box-shadow:0 0 5px rgba(255,176,70,.65);}
 /* equipment tiles: distinct procedural icons on a dark plate (r3: identical
    stripe bars read as placeholders) */
 .cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg,#232a31,#12161b);}
 .cot-camo-card .sw.eq svg{display:block;}
-.cot-camo-card .cl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#9fb0bf;
-  text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-camo-card .cl{min-height:19px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  font-size:8px;font-weight:700;line-height:1.18;letter-spacing:.08em;color:#9fb0bf;
+  text-transform:uppercase;white-space:normal;overflow:hidden;overflow-wrap:anywhere;}
 .cot-camo-card.sel .cl{color:#d8a04c;}
 /* r4: caption WRAPS instead of clipping — the old nowrap line overflowed the
    196px column and cut off mid-sentence, leaving a dangling em-dash */
@@ -559,7 +575,7 @@ const GARAGE_CSS = `
 .cot-custom-camo.open .cot-custom-body{display:grid;gap:8px;}
 .cot-custom-preview{position:relative;height:46px;overflow:hidden;border:1px solid rgba(0,0,0,.55);
   background:#242a26;box-shadow:inset 0 0 0 1px rgba(235,243,250,.1);}
-.cot-custom-preview canvas{width:100%;height:100%;display:block;}
+.cot-custom-preview canvas{width:100%;height:100%;display:block;object-fit:cover;object-position:center;}
 .cot-custom-local{position:absolute;left:6px;bottom:5px;padding:3px 5px;color:#ffd17f;
   background:rgba(7,10,13,.82);font:900 6.5px ${FONT_COND};letter-spacing:.15em;text-transform:uppercase;}
 .cot-custom-styles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;}
@@ -696,7 +712,7 @@ const GARAGE_CSS = `
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
    column; purely decorative, so on short viewports it is the element that
    clips first (leftcol overflow:hidden), never the functional pickers. */
-.cot-featured{width:224px;flex:0 0 auto;pointer-events:auto;}
+.cot-featured{width:248px;flex:0 0 auto;pointer-events:auto;}
 /* r9.1: browse arrows — visible on hover, click = prev/next still */
 .cot-featured .fnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
   width:20px;height:32px;display:flex;align-items:center;justify-content:center;
@@ -771,9 +787,9 @@ const GARAGE_CSS = `
   .cot-camos{width:180px;margin-top:0;padding:7px;
     background:rgba(7,11,15,.62);border:1px solid rgba(146,164,180,.18);}
   .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
-  .cot-camos .cgrid.camo{max-height:118px;} /* camo r8: ~3 compact rows */
-  .cot-camo-card{padding:3px 2px 2px;}.cot-camo-card .sw{height:22px;margin-bottom:2px;}
-  .cot-camo-card .cl{font-size:6.5px;letter-spacing:.06em;}
+  .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));max-height:158px;}
+  .cot-camo-card{padding:3px 3px 3px;}.cot-camo-card .sw{height:auto;aspect-ratio:2.55;margin-bottom:3px;}
+  .cot-camo-card .cl{min-height:16px;font-size:6.5px;line-height:1.16;letter-spacing:.05em;}
   .cot-camos .cnote{display:none;}
   .cot-country-rail{--country-edge:26px;left:208px;right:14px;bottom:82px;
     width:auto;height:42px;transform:none;}
@@ -1481,6 +1497,47 @@ function paintCamoSwatch(canvas, spec, pid) {
   c.fillStyle = g;
   c.fillRect(0, 0, W, H);
 }
+
+// AUTO is a per-map policy, so its tile previews four real resolved pattern
+// families rather than one arbitrary paint job or a flat colour quadrant.
+function paintAutoCamoSwatch(canvas, spec) {
+  const W = 128, H = 44;
+  canvas.width = W; canvas.height = H;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#11171c';
+  c.fillRect(0, 0, W, H);
+  const patterns = ['summer', 'desert', 'winter', 'urbanblock'];
+  const scratch = document.createElement('canvas');
+  const panelW = W / patterns.length;
+  patterns.forEach((pattern, index) => {
+    paintCamoSwatch(scratch, spec, pattern);
+    const x0 = index * panelW;
+    c.save();
+    c.beginPath();
+    c.moveTo(x0 - 5, 0);
+    c.lineTo(x0 + panelW + 5, 0);
+    c.lineTo(x0 + panelW - 5, H);
+    c.lineTo(x0 - 15, H);
+    c.closePath();
+    c.clip();
+    c.drawImage(scratch, x0 - index * 5, 0, W, H);
+    c.restore();
+    if (index) {
+      c.strokeStyle = 'rgba(235,243,250,.34)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(x0 + 5, 0);
+      c.lineTo(x0 - 5, H);
+      c.stroke();
+    }
+  });
+  const shade = c.createLinearGradient(0, 0, 0, H);
+  shade.addColorStop(0, 'rgba(255,255,255,.07)');
+  shade.addColorStop(0.55, 'rgba(255,255,255,0)');
+  shade.addColorStop(1, 'rgba(3,6,8,.22)');
+  c.fillStyle = shade;
+  c.fillRect(0, 0, W, H);
+}
 // --- END CAMO PICKER SECTION (swatch painter) --------------------------------
 
 function frontArmorMm(plates, keys) {
@@ -1853,7 +1910,8 @@ export function createGarage(opts) {
       card.className = 'cot-map-card';
       const thumb = document.createElement('div');
       thumb.className = `mthumb ${m.id}`;
-      if (m.thumb) thumb.style.backgroundImage = `url(${m.thumb})`;
+      if (m.id === 'random') thumb.appendChild(createRandomMapMosaic(maps));
+      else if (m.thumb) thumb.style.backgroundImage = `url(${m.thumb})`;
       const nm = document.createElement('div');
       nm.className = 'mname';
       nm.textContent = m.name;
@@ -1933,7 +1991,7 @@ export function createGarage(opts) {
       card.className = 'cot-camo-card';
       card.dataset.pid = pid; // camo r8: stable hook for tools + tests
       card.innerHTML = pid === 'auto'
-        ? `<div class="sw auto"></div><div class="cl"></div>`
+        ? `<div class="sw auto"><canvas></canvas></div><div class="cl"></div>`
         : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
       card.querySelector('.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
@@ -2190,7 +2248,10 @@ export function createGarage(opts) {
       if (spec) {
         for (const [pid, card] of camoCardById) {
           const cv = card.querySelector('.sw canvas');
-          if (cv) paintCamoSwatch(cv, spec, pid);
+          if (cv) {
+            if (pid === 'auto') paintAutoCamoSwatch(cv, spec);
+            else paintCamoSwatch(cv, spec, pid);
+          }
         }
         swatchesFor = selectedId;
       }
