@@ -5,6 +5,7 @@
 // Each build preserves its donor hull and single suspension-driven native
 // course, then adds supported Swedish armor, equipment and gun-station cues.
 
+import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import { buildStrv103 } from './casemate.js';
 import { centurionBuild } from './uk.js';
@@ -608,24 +609,23 @@ function buildStrv103A(P) {
     P.add('hullDark', box(0.26, 0.02, 0.36), s * 1.65, 1.70, -3.06);
     P.add('hullDetail', box(0.02, 0.16, 0.30), s * 1.79, 1.54, -3.06);        // width-defining guard lips
   }
-  // Starboard recovery rope: follow the fender/skirt seam fore-aft. The old
-  // gallery read looked like a loose cable rotated 90 degrees through the
-  // running gear; this shallow supported route stays planted on the A hull.
-  const sideTowRope = FITTINGS.towCable({
-    mats: P.mats,
-    pts: [
-      [1.778, 1.510, -2.62],
-      [1.784, 1.494, -1.22],
-      [1.782, 1.498, 0.18],
-      [1.774, 1.510, 2.34],
-    ],
-    r: 0.019,
-    eyes: false,
-    seed: 10315,
-  });
+  // Starboard recovery rope: a rigid, segmented fore-aft assembly planted on
+  // the fender/skirt seam. Do not use a free spline here: an older fitting
+  // transform could rotate that curve into a vertical line through the road
+  // wheels. These short Z-axis runs make the intended orientation structural.
+  const sideTowRope = new THREE.Group();
   sideTowRope.name = 'strv103a_side_tow_rope';
   sideTowRope.userData.owner = 'hull';
   sideTowRope.userData.orientation = 'longitudinal';
+  sideTowRope.userData.fixedToFender = true;
+  for (const [z0, z1] of [[-2.62, -1.22], [-1.22, 0.18], [0.18, 2.34]]) {
+    const segment = new THREE.Mesh(cylZ(0.019, z1 - z0, P.q ? 12 : 8), P.mats.dark);
+    segment.name = 'strv103a_side_tow_rope_segment';
+    segment.position.set(1.778, 1.500, (z0 + z1) * 0.5);
+    segment.castShadow = true;
+    segment.receiveShadow = true;
+    sideTowRope.add(segment);
+  }
   P.hullG.add(sideTowRope);
   for (const z of [-2.30, -1.05, 0.30, 1.82]) {
     P.add('hullDark', box(0.042, 0.062, 0.090), 1.750, 1.50, z);             // rope retaining straps
