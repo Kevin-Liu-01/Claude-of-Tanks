@@ -66,9 +66,9 @@ for (const spec of specs) {
 const udes = createTank('udes03', null, { proceduralOnly: true, geometryReceipt: true });
 const udesHull = udes.root.getObjectByName('rig_hull');
 const udesWheels = udes.root.getObjectByName('gearRoadWheelTires');
-assert.equal(udesHull?.userData.nativeRoadWheelStations, 6,
-  'UDES 03 carries its own six-station running gear');
-assert.equal(udesWheels?.count, 12, 'UDES 03 has one road-wheel course per side');
+assert.equal(udesHull?.userData.nativeRoadWheelStations, 4,
+  'UDES 03 carries its own iconic four-station running gear');
+assert.equal(udesWheels?.count, 8, 'UDES 03 has one four-wheel course per side');
 assert.ok(udes.root.getObjectByName('gearTrackBandL'), 'UDES 03 has one deformable left track band');
 assert.ok(udes.root.getObjectByName('gearTrackBandR'), 'UDES 03 has one deformable right track band');
 
