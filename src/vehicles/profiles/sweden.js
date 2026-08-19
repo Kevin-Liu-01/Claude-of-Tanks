@@ -9,6 +9,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import { buildStrv103 } from './casemate.js';
 import { centurionBuild } from './uk.js';
 import { buildLeo2A5 } from './leopard.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 
 function mount(P, owner, fitting, x, y, z, rotation = null) {
   fitting.position.set(x, y, z);
@@ -82,6 +83,7 @@ function addStrv103BOraclePackage(P) {
 function buildStrv103B(P) {
   buildStrv103(P);
   addStrv103BOraclePackage(P);
+  addVehicleGhillieSuit(P);
 }
 
 function addStrv81Package(P) {
@@ -309,6 +311,7 @@ function addStrv122Package(P) {
 function buildStrv122(P) {
   buildLeo2A5(P);
   addStrv122Package(P);
+  addVehicleGhillieSuit(P);
 }
 
 // ---------------------------------------------------------------------------
@@ -549,6 +552,7 @@ function buildStrv103A(P) {
 
   P.decal('hull', 'number', P.spec.visual.number || '103A', 0.28, [1.685, 1.62, -1.35], Math.PI / 2, 0, 0);
   P.decal('hull', 'number', P.spec.visual.number || '103A', 0.28, [-1.685, 1.62, -1.35], -Math.PI / 2, 0, 0);
+  addVehicleGhillieSuit(P);
   P.topY = 1.35;
 }
 

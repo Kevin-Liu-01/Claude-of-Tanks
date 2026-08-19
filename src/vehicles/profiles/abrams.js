@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 
 // KIT is populated by tankFactory.js, which sits on the other side of an
 // import cycle with the profile modules — resolve members lazily.
@@ -4421,8 +4422,10 @@ function buildTejasFamily(P, p) {
     P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + 0.006, dz, Math.PI / 2, 0, 0);
   }
   abramsArmorHardware(P, vid, t);
-  // Keep the Abrams family vegetation-free.  Armor texture and roof density
-  // come from hard-surface cassettes, sensors, stowage and cable runs above.
+  // SEPv3 receives a tailored ULCANS-style multispectral cover. Other marks
+  // retain their hard-surface identity unless explicitly configured by the
+  // shared physical-ghillie registry.
+  addVehicleGhillieSuit(P);
 }
 
 // ---------------------------------------------------------------------------

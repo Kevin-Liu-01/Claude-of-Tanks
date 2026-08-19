@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 import {
   loftHull,
   meshDome,
@@ -1135,6 +1136,7 @@ function buildT84(P) {
   P.addGunExtra(box(0.40, 0.235, 0.71), 0, 0.018, 2.15);       // evac box: band 1.582..1.817 @ world 2.40..3.11, plan halfW 0.20 (gun-local seat unchanged — rides the axis)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [1.215, 0.2665, 0.20], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-1.215, 0.2665, 0.20], -Math.PI / 2);
+  addVehicleGhillieSuit(P);
   P.topY = 1.40;
 }
 

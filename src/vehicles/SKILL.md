@@ -28,6 +28,17 @@ Camouflaged roof fittings, sights, launchers, stowage, and machine guns must use
 `P.addEquipment()` so they never expand armor hitboxes. Structural cupolas use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.
 
+Physical camouflage suits use `addVehicleGhillieSuit(P)` from
+`ghillieSuit.js`. Add a vehicle-specific registry entry with fitted top, side,
+and end panels; preserve explicit gun, sight, hatch, exhaust, and service
+openings; keep the hem above the smart-track corridor; and attach hull/turret
+meshes to their canonical owner rigs. A suit must be a detailed suspended
+equipment mesh with a visible air layer, deterministic connected netting, and
+an identity-appropriate treatment (`leafy`, `nakidka`, or `ulcans`)—never a
+paint alias, generic outer box, or inherited family blanket. Verify additions
+with `ghillieSuit.selftest.mjs`, standard front/quarter/side/top views, and the
+normal anatomy/release sequence below.
+
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Read current program state and the relevant family profile, inspect standard

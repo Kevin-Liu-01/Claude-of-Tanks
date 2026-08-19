@@ -13,6 +13,7 @@
 // playables stay first-party procedural.
 
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone,
@@ -750,6 +751,7 @@ function buildPT91Twardy(P) {
   P.addGunExtraDark(cylZ(0.032, 0.10, 10), 0.30, 0.11, 0.55);
   P.decal('turret', 'number', 'PT-91', 0.24, [-1.32, 0.42, -0.98], -Math.PI / 2);
   P.decal('turret', 'number', 'PT-91', 0.24, [1.32, 0.42, -0.98], Math.PI / 2);
+  addVehicleGhillieSuit(P);
   P.topY = Math.max(P.topY || 0, 1.35);
 }
 
