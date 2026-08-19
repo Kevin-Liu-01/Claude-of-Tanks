@@ -10370,7 +10370,7 @@ function buildLeo1A5Profile(P) {
 // first-party procedural geometry. Its high track course, shallow boat hull,
 // long low cast turret, compact saddle and rear basket set the base shape;
 // A5-only B&V appliqué, EMES-18 and German equipment are then surface-seated.
-function buildLeo1A5SourceProfile(P) {
+function buildLeo1A5ArticulatedProfile(P) {
   const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     shovelTool, xform } = KIT;
@@ -11801,7 +11801,7 @@ export const LEOPARD_PROFILES = {
   kf51b: { build: buildKF51OwnerExact },
   // Owner-source rebuild (2026-08-18): articulated Leopard 1 oracle base plus
   // the complete procedural A5 cheek, optic, launcher and stowage package.
-  leo1a5: { build: buildLeo1A5SourceProfile },
+  leo1a5: { build: buildLeo1A5ArticulatedProfile },
   // §5.248 germany-leopards ground-up builds (owner order — the
   // profiles/germany.js donor-wrapper builders are retired; these rows must
   // stay ahead of any legacy same-key row in the profiledProcedurals merge).

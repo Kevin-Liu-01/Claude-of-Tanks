@@ -33,6 +33,7 @@ const garageWaitMs = Math.max(0, (Number(option('garage-wait', '0')) || 0) * 100
 const openTimeoutMs = Math.max(10000, (Number(option('open-timeout', '180')) || 180) * 1000);
 const output = resolve(option('out', `.qa-dev/dev-perf-${profileName}.json`));
 const cpuProfileEnabled = !['0', 'false', 'off'].includes(String(option('cpu-profile', 'true')).toLowerCase());
+const profileLoad = ['1', 'true', 'on'].includes(String(option('profile-load', 'false')).toLowerCase());
 const profiles = {
   normal: { cpuRate: 1, cores: null, memoryGB: null, softwareGPU: false },
   constrained: { cpuRate: 2, cores: null, memoryGB: null, softwareGPU: false },
@@ -185,7 +186,7 @@ try {
   // and shader compilation. Keep the lossless in-page recorder on for that window,
   // then start CPU sampling at battle-open so the diagnostic does not create
   // the multi-minute CDP stall it is trying to measure.
-  if (cpuProfileEnabled && entryMode === 'debug') {
+  if (cpuProfileEnabled && (entryMode === 'debug' || profileLoad)) {
     await cdp.send('Profiler.start');
     profilerRunning = true;
   }
@@ -315,6 +316,7 @@ try {
     version: 1, generatedAt: new Date().toISOString(), profile: profileName, entryMode,
     profileConfig: {
       ...selected,
+      profileLoad,
       gpuMeaning: selected.softwareGPU
         ? 'SwiftShader software rasterizer: a severe GPU stress floor, not a calibrated low-end iGPU'
         : 'Host ANGLE renderer; CPU/device traits are the only calibrated constraints',

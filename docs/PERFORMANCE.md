@@ -161,6 +161,19 @@ Use the cold-load probe:
 
     npm run perf:cold
 
+Use the transition-stall gate:
+
+    npm run perf:transitions
+
+This drives cold Studio-to-garage, cold garage-to-battle, battle-to-garage,
+and cached-rematch paths. It records both total duration and the largest
+requestAnimationFrame gap, attributes Long Tasks to the visible loading stage,
+and includes the first two destination frames so work cannot be moved just
+past the loading veil. A run made while another browser renderer or a saturated
+host is competing for CPU/GPU is reported as `REFUSED`, not as a valid pass or
+failure. Use `npm run perf:loading` for the exhaustive boot/map/Studio/tank
+selection matrix.
+
 Use the network render probe:
 
     npm run test:net:render
@@ -198,4 +211,4 @@ regression record.
 - No public comparison-asset loading for a playable tank.
 - No quality setting changes simulation truth.
 - No failed diagnostic leaves an off-screen render target bound.
-
+- No transition certification from a host-contended measurement window.

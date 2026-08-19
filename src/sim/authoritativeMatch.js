@@ -328,7 +328,8 @@ export function createAuthoritativeMatch({
   const pendingEvents = [];
   const destroyedObstacleIndices = [];
   let destructibleRevision = 0;
-  let shells = [];
+  const shells = [];
+  const destroyedBeforeBurst = new Map();
   let nextShellId = 1;
   let timeS = 0;
   let fireTickAcc = 0;
@@ -841,10 +842,13 @@ export function createAuthoritativeMatch({
       if (worldHit && (!tankHit || worldHit.t * segmentLength < tankHit.distance)) {
         shell.pos.lerpVectors(shell.prevPos, shell.pos, worldHit.t);
         if (isHeClass(shell.spec.type)) {
-          const wasDestroyed = new Map(entities.map((entity) => [entity.id, entity.combat.destroyed]));
+          destroyedBeforeBurst.clear();
+          for (const entity of entities) {
+            destroyedBeforeBurst.set(entity.id, entity.combat.destroyed);
+          }
           const hits = resolveHeBurst(shell, shell.pos, entities, null, null, rng);
           for (const hit of hits) recordShellHit(
-            shell, hit, hit.targetId ? wasDestroyed.get(hit.targetId) : false,
+            shell, hit, hit.targetId ? destroyedBeforeBurst.get(hit.targetId) : false,
           );
         } else {
           shell.dead = true;
@@ -866,12 +870,15 @@ export function createAuthoritativeMatch({
       if (!tankHit) continue;
       if (isHeClass(shell.spec.type)) {
         const burstPoint = tankHit.hits[0].point;
-        const wasDestroyed = new Map(entities.map((entity) => [entity.id, entity.combat.destroyed]));
+        destroyedBeforeBurst.clear();
+        for (const entity of entities) {
+          destroyedBeforeBurst.set(entity.id, entity.combat.destroyed);
+        }
         const hits = resolveHeBurst(
           shell, burstPoint, entities, tankHit.target, tankHit.hits, rng,
         );
         for (const hit of hits) recordShellHit(
-          shell, hit, hit.targetId ? wasDestroyed.get(hit.targetId) : false,
+          shell, hit, hit.targetId ? destroyedBeforeBurst.get(hit.targetId) : false,
         );
       } else {
         const wasDestroyed = tankHit.target.combat.destroyed;
@@ -891,7 +898,9 @@ export function createAuthoritativeMatch({
         });
       }
     }
-    shells = shells.filter((shell) => !shell.dead);
+    let live = 0;
+    for (const shell of shells) if (!shell.dead) shells[live++] = shell;
+    shells.length = live;
   }
 
   function updateVisibility() {

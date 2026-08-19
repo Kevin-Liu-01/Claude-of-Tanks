@@ -6,6 +6,7 @@
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { ensureStyle } from './dom.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
+import { preloadImage, preloadImageWhenIdle } from './imagePreload.js';
 import { flagIconHTML, flagIconUrl } from './flags.js';
 import { flagIconCode } from './flagCodes.js';
 import { iconUrl } from './icons.js';
@@ -1496,7 +1497,8 @@ function frontArmorMm(plates, keys) {
 
 /**
  * Create the garage/tank-select screen. Appends its root to document.body (hidden).
- * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function,onPlayRequest?:Function}} opts
+ * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function,
+ *   onPlayRequest?:Function,onPlayModeIntent?:Function}} opts
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
 export function createGarage(opts) {
@@ -1683,15 +1685,16 @@ export function createGarage(opts) {
       capEl.textContent = FEATURED_SHOTS[i].cap;
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
       idx = i;
+      preloadImageWhenIdle(FEATURED_SHOTS[(i + 1) % FEATURED_SHOTS.length].img);
     };
-    const preload = (i, cb) => {
-      const im = new Image();
-      im.onload = () => cb();
-      im.onerror = () => { /* missing still — stay on the current frame */ };
-      im.src = FEATURED_SHOTS[i].img;
+    const preload = (i, cb, priority = 'low') => {
+      preloadImage(FEATURED_SHOTS[i].img, { priority }).then((url) => {
+        if (url) cb();
+      });
     };
-    const jump = (i) => preload(i, () => show(i));
-    const advance = () => jump((idx + 1) % FEATURED_SHOTS.length);
+    const jump = (i, priority = 'high') => preload(i, () => show(i), priority);
+    const advance = (priority = 'low') => jump(
+      (idx + 1) % FEATURED_SHOTS.length, priority);
     const arm = () => { if (!timer) timer = setInterval(advance, 8000); };
     // r9.1: manual browse resets the auto-rotate clock so it never snatches
     // the frame away right after the user picked one
@@ -1699,7 +1702,7 @@ export function createGarage(opts) {
     // r9.1 (owner): lead with a DIFFERENT shot each load
     const first = Math.floor(Math.random() * FEATURED_SHOTS.length);
     preload(first, () => { show(first); arm(); });
-    shotEl.addEventListener('click', () => { advance(); rearm(); });
+    shotEl.addEventListener('click', () => { advance('high'); rearm(); });
     panel.querySelector('.fnav.prev').addEventListener('click', (e) => {
       e.stopPropagation();
       jump((idx - 1 + FEATURED_SHOTS.length) % FEATURED_SHOTS.length);
@@ -2568,6 +2571,9 @@ export function createGarage(opts) {
     const meta = battleModeMeta[nextMode];
     if (!meta) return;
     battleMode = nextMode;
+    if (nextMode !== 'solo' && opts.onPlayModeIntent) {
+      try { opts.onPlayModeIntent(nextMode); } catch (_) { /* optional warm path */ }
+    }
     battleModeBtn.querySelector('span').textContent = meta.short;
     battleBtn.querySelector('.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', `Battle type: ${meta.label}. Change battle type`);
@@ -2750,10 +2756,16 @@ export function createGarage(opts) {
       refreshServiceRecord();
       root.style.display = 'block';
       // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
-      // and battle-exit both used to hard-cut the whole screen in one frame)
+      // and battle-exit both used to hard-cut the whole screen in one frame).
+      // Do not force `offsetWidth` here: after a battle that synchronously
+      // lays out the complete hidden garage (fleet cards, dossiers, pickers,
+      // service record) and has produced multi-second transition freezes.
+      // The transition veil already gives us a frame boundary, so re-attach
+      // the animation class on that boundary instead.
       root.classList.remove('enter');
-      void root.offsetWidth; // restart the CSS animation set
-      root.classList.add('enter');
+      requestAnimationFrame(() => {
+        if (api.isOpen) root.classList.add('enter');
+      });
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);

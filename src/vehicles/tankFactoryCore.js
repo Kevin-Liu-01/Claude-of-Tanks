@@ -291,7 +291,7 @@ function batchMobileStaticChildren(parents, disposables, onBatch = null) {
       const attrs = Object.entries(geo.attributes)
         .map(([name, attr]) => `${name}:${attr.itemSize}:${attr.normalized ? 1 : 0}`)
         .sort().join(',');
-      const key = [mesh.material?.uuid || '', attrs, mesh.castShadow ? 1 : 0,
+      const key = [mesh.material?.uuid || '', attrs, geo.index ? 1 : 0, mesh.castShadow ? 1 : 0,
         mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
         mesh.frustumCulled ? 1 : 0].join('|');
       const group = groups.get(key) || [];
@@ -305,7 +305,12 @@ function batchMobileStaticChildren(parents, disposables, onBatch = null) {
         mesh.updateMatrix();
         return mesh.geometry.clone().applyMatrix4(mesh.matrix);
       });
-      const merged = mergeAll(geometries);
+      // These groups are now homogeneous by index mode. Preserve indexed
+      // geometry instead of expanding every triangle to non-indexed vertices
+      // through mergeAll(); roster assembly previously spent hundreds of
+      // milliseconds copying 2-3x the vertex data for each battle bot.
+      const merged = mergeGeometries(geometries, false);
+      for (const geometry of geometries) geometry.dispose();
       if (!merged) continue;
       disposables.push(merged);
       const source = group[0];

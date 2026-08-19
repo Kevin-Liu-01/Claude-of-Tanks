@@ -50,4 +50,5 @@ for (let i = 1; i < rotation.length; i++) {
 assert.equal(new Set(rotation.slice(0, 4)).size, 4, 'each rotation cycle visits every capture');
 assert.equal(new Set(rotation.slice(4, 8)).size, 4, 'refilled rotation visits every capture');
 
+await import('./imagePreload.selftest.mjs');
 console.log('loading screen featured-capture selftest: PASS');

@@ -257,8 +257,7 @@ export function ensureStagedVisuals(game, limit = Infinity, predicate = null) {
 export function nextStagedBake(game, predicate = null) {
   const ent = game.tanks.find((e) => !e.visual && (!predicate || predicate(e)));
   if (!ent) return null;
-  const hero = usesHeroTextureTier(game, ent);
-  return { ent, quality: hero ? 'high' : 'ai' };
+  return { ent, quality: textureQualityFor(game, ent) };
 }
 
 /**
@@ -276,21 +275,21 @@ export function ensureTankVisual(game, ent) {
   // bakes go to vehicles the camera can inspect at arm's length — the
   // player's pick and the closeup screenshot-contract specs (the garage
   // pedestal acquires 'high' itself and upgrades a cached 'ai' entry in
-  // place). AI roster fills bake at half size: 5-7 full hero sets per battle
+  // place). AI roster fills bake at a compact tier: 5-7 full hero sets per battle
   // measured 666-685 MB scene textures vs the FROZEN 512 MB gate, and each
   // 2048² bake costs 250-350 ms of main-thread canvas work.
-  const hero = usesHeroTextureTier(game, ent);
+  const textureQuality = textureQualityFor(game, ent);
   const playerActor = ent.isPlayer || ent === game.tanks[0];
   const mobileBot = !playerActor && getDeviceTier() === 'mobile';
   const battleBot = !playerActor;
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed,
-    quality: hero ? 'high' : 'ai',
-    // The low-detail branches are already authored per vehicle profile and
-    // preserve armor silhouettes. Use them only for non-player mobile battle
-    // actors; desktop, the player's tank, garage previews, and closeup tools
-    // keep the exact full-detail geometry path.
-    geometryQuality: mobileBot ? 'low' : 'high',
+    quality: textureQuality,
+    // The low-detail branches are authored per vehicle profile and preserve
+    // armor silhouettes. Battle bots use them on every tier: assembling a
+    // full-detail 13-vehicle roster produced 400-600 ms geometry tasks during
+    // the countdown. Player, garage, Studio, and close-up paths remain full.
+    geometryQuality: battleBot ? 'low' : 'high',
     // Every battle actor keeps its exact authored geometry while anonymous
     // same-material fittings are transform-baked into articulation-local
     // batches. AI additionally detaches purely cosmetic detail at range. The
@@ -316,12 +315,16 @@ export function ensureTankVisual(game, ent) {
 // vehicle at 3-6 m — always hero texture tier regardless of roster role.
 const HERO_TEX_SPECS = new Set(['m1a2', 'tiger1', 't34_85', 't90m', 'leo2a7']);
 
-function usesHeroTextureTier(game, ent) {
+function textureQualityFor(game, ent) {
   // The first participant is the player before setupBattle stamps isPlayer.
   // Mobile keeps that close camera subject at hero resolution, but distant
   // bots use the AI tier. Garage selection still upgrades its shared entry.
-  if (ent.isPlayer || ent === game.tanks[0]) return true;
-  return getDeviceTier() !== 'mobile' && HERO_TEX_SPECS.has(ent.specId);
+  // 1024/512 is still finer than the chase-camera projection, while the old
+  // 2048/1024 player bake created the single largest cold-entry task. Garage
+  // heroes retain their delayed full-quality upgrade for close inspection.
+  if (ent.isPlayer || ent === game.tanks[0]) return 'preview';
+  return getDeviceTier() !== 'mobile' && HERO_TEX_SPECS.has(ent.specId)
+    ? 'preview' : 'ai';
 }
 
 // Matchmaking and every tier badge consume the same canonical table in

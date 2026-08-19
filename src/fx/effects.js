@@ -1028,9 +1028,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
   // --- timers, continuous emitters, event bookkeeping ------------------------
   /** @type {{t:number, fn:Function}[]} pending one-shot callbacks (sim-frozen aware) */
-  let timers = [];
+  const timers = [];
   /** @type {{key:string|null, pos:number[], acc:number, ttl:number, scale:number}[]} smoke-column emitters */
-  let columns = [];
+  const columns = [];
   /** last known world position per tank id (fed by bus events that carry pos) */
   const lastKnownPos = new Map();
   // world-dressing r1: shellId -> shell type, so a world impact knows whether
@@ -2748,7 +2748,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           _due.length = 0;
           for (const tm of timers) { tm.t -= tickDt; if (tm.t <= 0) _due.push(tm); }
           if (_due.length) {
-            timers = timers.filter((tm) => tm.t > 0);
+            let live = 0;
+            for (const tm of timers) if (tm.t > 0) timers[live++] = tm;
+            timers.length = live;
             for (const tm of _due) tm.fn();
             _due.length = 0;
           }
@@ -2773,7 +2775,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
               while (col.acc >= 0.45) { col.acc -= 0.45; emitSmolderPuff(col, -col.acc); }
             }
           }
-          if (compact) columns = columns.filter((c) => c.ttl > 0 || c.smolder > 0);
+          if (compact) {
+            let live = 0;
+            for (const col of columns) {
+              if (col.ttl > 0 || col.smolder > 0) columns[live++] = col;
+            }
+            columns.length = live;
+          }
         }
       }
       // world-dressing r1: sweep live shell flight segments against the
@@ -3107,7 +3115,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
             capColumns();
           }
         } else {
-          columns = columns.filter((c) => c.key !== e.id);
+          let live = 0;
+          for (const col of columns) if (col.key !== e.id) columns[live++] = col;
+          columns.length = live;
         }
       });
     },
@@ -4080,8 +4090,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       atgmFlares.count = 0;
       renderedAtgmBodies = 0;
       renderedAtgmTrailSegments = 0;
-      timers = [];
-      columns = [];
+      timers.length = 0;
+      columns.length = 0;
       lastKnownPos.clear();
       shellKinds.clear();
       sweepTails.clear();

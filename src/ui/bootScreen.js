@@ -25,6 +25,7 @@
  */
 
 import { TRANSITION_SHOTS } from './featuredShots.js';
+import { preloadImage } from './imagePreload.js';
 
 const TIPS = [
   ['Angling', 'Turn your hull 20-30° away from the shooter. Side plates presented at an angle gain effective thickness — flat-on armour is the easiest armour to punch through.'],
@@ -118,13 +119,9 @@ function startBootHero() {
     idx = i;
   };
   const preload = (i, cb) => {
-    const im = new Image();
-    im.onload = async () => {
-      try { if (im.decode) await im.decode(); } catch (_) { /* loaded is enough */ }
-      if (!stopped) cb();
-    };
-    im.onerror = () => { /* missing still — keep the gradient field */ };
-    im.src = HERO_SHOTS[i].img;
+    preloadImage(HERO_SHOTS[i].img, { priority: 'high' }).then((url) => {
+      if (url && !stopped) cb();
+    });
   };
   const advance = () => {
     const next = (idx + 1) % HERO_SHOTS.length;

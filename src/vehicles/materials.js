@@ -26,7 +26,7 @@ import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from '
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
 // The painters are all canvas.width-relative, so this is a pure resolution
 // change — identical feature plan, quarter the pixels at scale 0.5.
-import { getDeviceTier, texSize } from '../engine/quality.js';
+import { texSize } from '../engine/quality.js';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -2620,7 +2620,7 @@ function paintHeight(canvas, visual, rng, feats, seed) {
 }
 
 // Sobel the heightfield into a tangent-space normal map (wrapping edges).
-function heightToNormal(hCanvas, strength = 1.6) {
+function* heightToNormalSteps(hCanvas, strength = 1.6) {
   const S = hCanvas.width;
   const src = hCanvas.getContext('2d').getImageData(0, 0, S, S).data;
   const out = makeCanvas(S, S);
@@ -2641,6 +2641,10 @@ function heightToNormal(hCanvas, strength = 1.6) {
       d[i + 2] = (nz * 0.5 + 0.5) * 255;
       d[i + 3] = 255;
     }
+    // A 1024-row Sobel pass was one several-hundred-millisecond task during
+    // battle/garage entry. Async prebakes can now yield every 32 rows while
+    // the synchronous authoring path drains the identical generator.
+    if ((y & 31) === 31 && y + 1 < S) yield;
   }
   octx.putImageData(img, 0, 0);
   return out;
@@ -2965,20 +2969,25 @@ function sharedTextureIdentity(specId, selection = null) {
 
 // PERF (performance_budget r3): per-spec bake quality tiers. The generated
 // set (2048² albedo + 2x 1024² data maps ≈ 35 MB with mips) is hero-grade
-// texel density for a vehicle the camera orbits at 4-6 m — the garage
-// pedestal and the player's own tank. AI roster vehicles are viewed at
-// 20-500 m where a 1024²/512² set is already ~3 mm/texel on the hull, yet a
+// texel density for a vehicle the camera orbits at 4-6 m — the final garage
+// pedestal upgrade. Player previews use the next tier during battle entry;
+// AI roster vehicles are viewed at
+// 20-500 m where even a 512²/256² set exceeds their normal projected size, yet a
 // full battle held 5-7 hero sets (scene texture estimate 666-685 MB vs the
 // FROZEN 512 MB gate) and each boot-path bake burned 250-350 ms of 2048²
-// canvas painting. The painters are all canvas.width-relative, so an 'ai'
-// entry is the identical feature plan at half resolution; if the player
-// later selects a spec cached at 'ai' (garage pedestal always acquires
-// 'high'), bakeSharedCanvases repaints the SAME canvases in place at full
+// canvas painting. The painters are all canvas.width-relative, so lower
+// tiers retain the identical feature plan; if the player later selects a
+// cached spec, bakeSharedCanvases repaints the SAME canvases in place at full
 // size — live materials update through texture.needsUpdate, exactly like
 // the camo repaint path below.
 const QUALITY_SIZES = {
   high: { albedo: ALBEDO_SIZE, map: MAP_SIZE },
-  ai: { albedo: ALBEDO_SIZE / 2, map: MAP_SIZE / 2 },
+  // Garage previews and authored close-up contracts retain the former AI
+  // tier. Ordinary battle bots rarely exceed ~150 screen pixels, so their
+  // backing maps use the lower tier below; 1024/512 there oversampled the
+  // projection while making every roster build a visible long task.
+  preview: { albedo: ALBEDO_SIZE / 2, map: MAP_SIZE / 2 },
+  ai: { albedo: ALBEDO_SIZE / 4, map: MAP_SIZE / 4 },
   // World dressing bakes a live tank only long enough to collapse its posed
   // geometry into vertex-coloured static wreck meshes; none of these maps
   // ever render. wrecks.js has requested `low` since its introduction, but
@@ -2987,6 +2996,15 @@ const QUALITY_SIZES = {
   // texture after collapsing the posed model to vertex-coloured geometry.
   low: { albedo: 256, map: 128 },
 };
+
+export function normalizeMaterialTextureQuality(quality) {
+  return Object.prototype.hasOwnProperty.call(QUALITY_SIZES, quality) ? quality : 'high';
+}
+
+export function materialTextureDimensions(quality) {
+  const sizes = QUALITY_SIZES[normalizeMaterialTextureQuality(quality)];
+  return { albedo: sizes.albedo, map: sizes.map };
+}
 
 function bakeSharedCanvases(entry, quality) {
   const g = bakeSharedCanvasesSteps(entry, quality);
@@ -3000,19 +3018,12 @@ function bakeSharedCanvases(entry, quality) {
 // wrapper above drains it whole — every existing caller (acquire, hero
 // upgrade) is byte-identical, same rng draw order.
 function* bakeSharedCanvasesSteps(entry, quality) {
-  // MOBILE r1: tier scale applied at the ONE place every shared vehicle bake
-  // sizes itself ('high' hero 2048/1024 → 1024/512 on mobile, 'ai' roster
-  // 1024/512 → 512/256) — burnt/ember/camo repaints all derive from these.
-  const szq = QUALITY_SIZES[quality] || QUALITY_SIZES.high;
-  // Loading-speed r1: mobile AI is never inspected at garage distance and
-  // usually occupies fewer than ~150 screen pixels. Its former 512/256 set
-  // oversampled that projection while 13 families dominated battle entry.
-  // Keep the player/hero path unchanged; halve only the mobile AI backing
-  // canvases to 256/128 (same deterministic feature plan, quarter the work).
-  const aiMobileScale = quality === 'ai' && getDeviceTier() === 'mobile' ? 0.5 : 1;
+  // Tier scale is applied at the one place every shared vehicle bake sizes
+  // itself; burnt/ember/camo repaints all derive from these canvases.
+  const szq = QUALITY_SIZES[normalizeMaterialTextureQuality(quality)];
   const sz = {
-    albedo: texSize(szq.albedo * aiMobileScale),
-    map: texSize(szq.map * aiMobileScale),
+    albedo: texSize(szq.albedo),
+    map: texSize(szq.map),
   };
   const { spec, seed } = entry;
   // Welded-composite hulls draw no rivet/bolt rows.
@@ -3034,7 +3045,7 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   yield;
   const heightCanvas = paintHeight(makeCanvas(sz.map, sz.map), vis, rng, entry.feats, seed);
   yield;
-  const normalSrc = heightToNormal(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
+  const normalSrc = yield* heightToNormalSteps(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
   yield;
   entry.normalCanvas.width = entry.normalCanvas.height = sz.map;
   entry.normalCanvas.getContext('2d').drawImage(normalSrc, 0, 0, sz.map, sz.map);
@@ -3073,9 +3084,9 @@ function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) 
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
     TEX_CACHE.set(key, entry);
-  } else if (quality === 'high' && entry.quality === 'ai') {
+  } else if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
     // in-place hero upgrade (garage selection of an AI-baked spec)
-    upgradeEntryToHigh(entry);
+    upgradeEntry(entry, quality);
   }
   entry.refs++;
   return entry;
@@ -3092,8 +3103,13 @@ function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) 
 // dispose() drops the GL object so the next bind re-allocates at the new
 // size; the THREE.Texture object identity is untouched, so every live
 // material keeps working.
-function upgradeEntryToHigh(entry) {
-  bakeSharedCanvases(entry, 'high');
+const QUALITY_RANK = { low: -1, ai: 0, preview: 1, high: 2 };
+export function isMaterialTextureQualityUpgrade(current, requested) {
+  return QUALITY_RANK[normalizeMaterialTextureQuality(requested)]
+    > QUALITY_RANK[normalizeMaterialTextureQuality(current)];
+}
+function upgradeEntry(entry, quality = 'high') {
+  bakeSharedCanvases(entry, quality);
   finalizeEntryResize(entry);
 }
 
@@ -3120,7 +3136,7 @@ function finalizeEntryResize(entry) {
  * (a prebaked-but-never-acquired entry behaves exactly like a released one).
  * @param {object} spec TankSpec
  * @param {number} aniso engineCtx.anisotropy
- * @param {string} quality 'ai' | 'high' — must match what the build will ask
+ * @param {string} quality 'ai' | 'preview' | 'high' — must match what the build will ask
  * @param {?function(): (Promise<void>|void)} tick awaited between stages
  */
 export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, selection = null) {
@@ -3136,8 +3152,8 @@ export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = 
   let entry = TEX_CACHE.get(key);
   if (entry) {
     // mirror acquire's only upgrade case; anything else is already adequate
-    if (quality === 'high' && entry.quality === 'ai') {
-      await run(bakeSharedCanvasesSteps(entry, 'high'));
+    if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
+      await run(bakeSharedCanvasesSteps(entry, quality));
       finalizeEntryResize(entry);
     }
     return;
@@ -3173,7 +3189,7 @@ export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = 
  */
 export async function upgradeSharedTexturesChunked(specId, tick = null) {
   const entry = TEX_CACHE.get(specId);
-  if (!entry || entry.refs <= 0 || entry.quality !== 'ai') return false;
+  if (!entry || entry.refs <= 0 || entry.quality === 'high') return false;
   const g = bakeSharedCanvasesSteps(entry, 'high');
   let r = g.next();
   while (!r.done) {
@@ -4196,15 +4212,18 @@ export function applyCamoPatterns(onlySpecId = null) {
 let _camoSweepGen = 0;
 /**
  * Chunked equivalent of applyCamoPatterns(): one repaint per macrotask.
- * @param {{priorityIds?: string[]}} [opts] specs to repaint first (the ones
- *   on screen — pedestal hero, player tank)
+ * @param {{priorityIds?: string[],onlySpecIds?: string[]}} [opts] specs to
+ *   repaint first, optionally restricting the sweep to currently relevant
+ *   vehicles (pedestal hero or the fielded battle roster)
  * @returns {Promise<void>} resolves when every stale entry is repainted (or
  *   a newer sweep took over the remainder)
  */
 export async function applyCamoPatternsChunked(opts = null) {
   const gen = ++_camoSweepGen;
   const prio = (opts && opts.priorityIds) || [];
+  const only = opts?.onlySpecIds?.length ? new Set(opts.onlySpecIds) : null;
   const keys = [...TEX_CACHE.keys()]
+    .filter((key) => !only || only.has(TEX_CACHE.get(key)?.spec.id))
     .sort((a, b) => {
       const ae = TEX_CACHE.get(a), be = TEX_CACHE.get(b);
       return (prio.indexOf(ae?.spec.id) < 0 ? 1 : 0) - (prio.indexOf(be?.spec.id) < 0 ? 1 : 0);
@@ -4232,7 +4251,36 @@ export async function applyCamoPatternsChunked(opts = null) {
       const c2 = TEX_CACHE.get(key);
       if (!c2) continue;
       const p2 = resolveCamoPattern(c2.spec.id);
-      if (c2.patternId !== p2) repaintEntry(c2, p2);
+      if (c2.patternId !== p2) {
+        const vis = {
+          ...patternVisual(c2.spec, p2),
+          modernWelds: c2.spec.era === 'modern',
+        };
+        let ph = 0;
+        for (const ch of p2) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
+
+        // A repaint used to be one 0.3-2.1 s task: albedo painter, exposure
+        // scan, both roughness passes, fittings, and snapshot all ran without
+        // returning to the browser. Preserve the exact painter/RNG output but
+        // split the independent passes into paintable tasks. A superseding
+        // sweep aborts between passes; its fresh albedo pass then owns the
+        // same canvases from that point onward.
+        paintCamo(c2.camoCanvas, vis, mulberry32(c2.seed ^ ph), c2.feats, c2.seed);
+        await new Promise((r) => setTimeout(r, 16));
+        if (gen !== _camoSweepGen) return;
+        exposureTrim(c2.camoCanvas);
+        c2.camoTex.needsUpdate = true;
+        await new Promise((r) => setTimeout(r, 16));
+        if (gen !== _camoSweepGen) return;
+        paintRoughness(c2.roughCanvas, mulberry32(c2.seed ^ ph ^ 0x9e37), c2.feats);
+        await new Promise((r) => setTimeout(r, 16));
+        if (gen !== _camoSweepGen) return;
+        paintPatchRoughness(c2.roughCanvas, c2.camoCanvas, vis);
+        c2.roughTex.needsUpdate = true;
+        c2.patternId = p2;
+        retintEntryFittings(c2, vis);
+        snapshotBake(c2, p2);
+      }
     }
   }
 }
@@ -4478,11 +4526,15 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
   const disposables = [];
   const track = (r) => { disposables.push(r); return r; };
 
-  // PERF r3: 'ai' bakes the shared set at half resolution — see QUALITY_SIZES
+  // PERF r3: static wreck, battle AI, player, and garage-preview tiers are
+  // resolution-bounded in QUALITY_SIZES; only the final hero upgrade keeps
+  // the full tier. Keep `low` explicit here: falling through to `high` made
+  // every transient world-wreck collapse bake 2048/1024 canvases that were
+  // immediately discarded.
   const shared = acquireSharedTextures(
     spec,
     aniso,
-    quality === 'ai' ? 'ai' : 'high',
+    normalizeMaterialTextureQuality(quality),
     camoPattern,
   );
   const { camoTex, normalTex, roughTex } = shared;

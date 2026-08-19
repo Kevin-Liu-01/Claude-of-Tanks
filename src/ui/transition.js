@@ -27,6 +27,7 @@ import {
   featuredShotForMap,
   randomFeaturedShot,
 } from './featuredShots.js';
+import { isImagePreloaded, preloadImage } from './imagePreload.js';
 
 const FADE_IN_MS = 240;
 const FADE_OUT_MS = 340;
@@ -129,25 +130,7 @@ export function createTransition() {
   let visible = false;
   let shownAt = 0;
   let hideToken = 0; // cancels a pending hide when show() re-enters first
-  const decodedHeroes = new Map();
-  const decodeHero = (url) => {
-    if (decodedHeroes.has(url)) return decodedHeroes.get(url);
-    const pending = new Promise((resolve) => {
-      const img = new Image();
-      img.onload = async () => {
-        try { if (img.decode) await img.decode(); } catch (_) { /* loaded is enough */ }
-        resolve(url);
-      };
-      img.onerror = () => resolve(null);
-      img.src = url;
-    });
-    decodedHeroes.set(url, pending);
-    return pending;
-  };
-  // Decode one small still during the already-covered boot window so the
-  // first state transition always has an immediately paintable backdrop.
-  decodeHero(FEATURED_IMAGES[0]);
-
+  let warmAfterWork = null;
   const api = {
     get visible() { return visible; },
 
@@ -169,10 +152,11 @@ export function createTransition() {
         ? FEATURED_SHOTS.find((entry) => entry.img === o.hero) || { img: o.hero, focal: 'center' }
         : o.mapId ? featuredShotForMap(o.mapId) : randomFeaturedShot();
       const hero = shot.img;
-      const warmHero = decodedHeroes.has(hero) ? hero : FEATURED_IMAGES[0];
+      const warmHero = isImagePreloaded(hero) || !isImagePreloaded(FEATURED_IMAGES[0])
+        ? hero : FEATURED_IMAGES[0];
       const warmShot = FEATURED_SHOTS.find((entry) => entry.img === warmHero) || shot;
       bgEl.style.backgroundPosition = warmShot.focal || 'center';
-      decodeHero(warmHero).then((url) => {
+      preloadImage(warmHero, { priority: 'high' }).then((url) => {
         if (url && visible && hideToken === token) {
           bgEl.style.backgroundImage = `url("${url}")`;
           bgEl.style.backgroundPosition = warmShot.focal || 'center';
@@ -180,7 +164,7 @@ export function createTransition() {
       });
       // Decode the requested random frame off the fade-critical path, then
       // swap only after decode has completed (CSS no longer blocks on it).
-      if (warmHero !== hero) decodeHero(hero).then((url) => {
+      if (warmHero !== hero) preloadImage(hero, { priority: 'high' }).then((url) => {
         if (url && visible && hideToken === token) {
           bgEl.style.backgroundImage = `url("${url}")`;
           bgEl.style.backgroundPosition = shot.focal || 'center';
@@ -188,9 +172,8 @@ export function createTransition() {
       });
       // Keep the following curated capture warm for the next state change.
       const at = TRANSITION_SHOTS.findIndex((entry) => entry.img === hero);
-      if (at >= 0 && TRANSITION_SHOTS.length > 1) {
-        decodeHero(TRANSITION_SHOTS[(at + 1) % TRANSITION_SHOTS.length].img);
-      }
+      warmAfterWork = at >= 0 && TRANSITION_SHOTS.length > 1
+        ? TRANSITION_SHOTS[(at + 1) % TRANSITION_SHOTS.length].img : null;
       visible = true;
       shownAt = performance.now();
       root.classList.remove('out');
@@ -237,6 +220,7 @@ export function createTransition() {
       try {
         result = await work(api.progress);
         api.progress(1, 'Ready');
+        if (warmAfterWork) preloadImage(warmAfterWork, { priority: 'low' });
       } finally {
         const dwell = (o.minShowMs != null ? o.minShowMs : 800) -
           (performance.now() - shownAt);

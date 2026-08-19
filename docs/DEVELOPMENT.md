@@ -156,6 +156,14 @@ Cold-load probe:
 
     npm run perf:cold
 
+Garage/battle transition responsiveness:
+
+    npm run perf:transitions
+
+The transition gate fails independently on total load duration and the worst
+main-thread frame gap, and refuses certification under detected host/GPU
+contention. Run the exhaustive route matrix with `npm run perf:loading`.
+
 Development flight recorder:
 
     npm run perf:dev

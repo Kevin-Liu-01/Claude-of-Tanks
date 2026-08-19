@@ -84,6 +84,7 @@ import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
   startConsumableCooldown,
 } from './game/consumables.js';
+import { advancePreBattleCountdown } from './game/preBattleCountdown.js';
 import { PLAYER_ACTION_BITS } from './net/protocol.js';
 import { encodeAimIntent } from './net/aimIntent.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
@@ -197,11 +198,12 @@ function createFrameBudgetYielder(budgetMs = 12) {
   let sliceStart = performance.now();
   return async (force = false) => {
     if (!force && performance.now() - sliceStart < budgetMs) return;
-    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
-      await globalThis.scheduler.yield();
-    } else {
-      await nextFrame();
-    }
+    // scheduler.yield() ends the current task but may run its continuation
+    // ahead of rendering. Two 300-500 ms vehicle/map atoms therefore became
+    // one 900+ ms visible frame gap even though the Long Tasks API reported
+    // them separately. Loading work promises a painted progress/countdown
+    // frame at every exceeded budget, so use the actual frame boundary.
+    await nextFrame();
     sliceStart = performance.now();
   };
 }
@@ -323,15 +325,15 @@ const hfProxy = {
   get maxY() { return world ? world.heightField.maxY : 0; },
 };
 
-function beginWorldBuild(mapId, onProgress = null, background = false) {
+function beginWorldBuild(mapId, onProgress = null) {
   const id = mapId || pendingMapId;
   const cached = worldCache.get(id);
   if (cached) return { promise: Promise.resolve(cached), listeners: null, f: 1, label: 'Ready' };
   let rec = worldBuilds.get(id);
   if (!rec) {
     rec = {
-      id, f: 0, label: 'Surveying terrain', foreground: !background,
-      listeners: new Set(), startedAt: performance.now(), promise: null,
+      id, f: 0, label: 'Surveying terrain',
+      listeners: new Set(), promise: null,
       stageTimings: {}, stageLabel: null, stageMark: performance.now(),
     };
     const finishBuildStage = (now = performance.now()) => {
@@ -352,7 +354,6 @@ function beginWorldBuild(mapId, onProgress = null, background = false) {
     // generation order and geometry stay identical while the user-visible
     // load sheds the scheduling tax.
     const yieldForeground = createFrameBudgetYielder(32);
-    const yieldBackground = createFrameBudgetYielder(6);
     rec.promise = createMapAsync(engineCtx, { mapId: id, seed: 1337 },
       async (label, f) => {
         if (label !== rec.stageLabel) {
@@ -366,7 +367,7 @@ function beginWorldBuild(mapId, onProgress = null, background = false) {
         for (const fn of rec.listeners) {
           try { fn(f, label); } catch (_) { /* advisory */ }
         }
-        await (rec.foreground ? yieldForeground() : yieldBackground());
+        await yieldForeground();
       // Drain the same deterministic generators at their finest checkpoints.
       // The frame-budget yielder above still coalesces cheap work on fast
       // machines, while slow CPUs no longer turn a coarse row/family batch
@@ -376,25 +377,12 @@ function beginWorldBuild(mapId, onProgress = null, background = false) {
         finishBuildStage();
         next.group.visible = false;
         worldCache.set(id, next);
-        if (typeof window !== 'undefined' && window.__WORLD_PREFETCH?.id === id) {
-          Object.assign(window.__WORLD_PREFETCH, {
-            done: true, totalMs: Math.round(performance.now() - rec.startedAt), f: 1,
-          });
-        }
         return next;
-      })
-      .catch((error) => {
-        if (typeof window !== 'undefined' && window.__WORLD_PREFETCH?.id === id) {
-          Object.assign(window.__WORLD_PREFETCH, { done: false, failed: String(error) });
-        }
-        throw error;
       })
       .finally(() => {
         if (worldBuilds.get(id) === rec) worldBuilds.delete(id);
       });
     worldBuilds.set(id, rec);
-  } else if (!background) {
-    rec.foreground = true;
   }
   if (onProgress && rec.listeners) {
     rec.listeners.add(onProgress);
@@ -427,6 +415,8 @@ let battleStaged = false;
 // camo canvases, so paint must be final first).
 let camoSweepP = Promise.resolve();
 let battleCountdownWarmP = Promise.resolve();
+let battleWarmPending = false;
+let battleWarmGeneration = 0;
 
 async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null) {
   const total = game.tanks.filter((ent) =>
@@ -435,15 +425,68 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
   for (;;) {
     const next = nextStagedBake(game, predicate);
     if (!next) return built;
+    const visualTiming = {
+      specId: next.ent.specId,
+      quality: next.quality,
+      startedAt: Math.round(performance.now()),
+    };
+    const visualTimings = typeof window !== 'undefined'
+      ? (window.__VISUAL_LOAD_TIMINGS ||= []) : null;
+    visualTimings?.push(visualTiming);
+    let visualMark = performance.now();
     try {
       await prebakeSharedTextures(getSpec(next.ent.specId),
         engineCtx.anisotropy ?? 4, next.quality, () => yieldForBudget());
     } catch (_) { /* visual construction remains the fallback */ }
+    visualTiming.prebakeMs = Math.round(performance.now() - visualMark);
+    visualMark = performance.now();
     ensureStagedVisuals(game, 1, predicate);
+    visualTiming.buildMs = Math.round(performance.now() - visualMark);
+    visualMark = performance.now();
+    await stageBattleVisualReveal(next.ent, yieldForBudget);
+    visualTiming.uploadMs = Math.round(performance.now() - visualMark);
+    visualTiming.totalMs = Math.round(performance.now() - visualTiming.startedAt);
     built++;
     if (onProgress) onProgress(built / Math.max(1, total));
     await yieldForBudget();
   }
+}
+
+/** Separate visual construction, texture upload, and first scene render into
+ * distinct painted frames. Shader submission stays on the real render path;
+ * compileAsync was tested here and made the transition materially worse on
+ * ANGLE because its initial traversal became another large atomic task. */
+async function stageBattleVisualReveal(ent, yieldForBudget) {
+  const visual = ent?.visual;
+  const root = visual?.root;
+  if (!root || root.userData.loadStaged) return;
+  const parent = root.parent;
+  if (parent) parent.remove(root);
+  await yieldForBudget(true);
+  const textures = new Set();
+  root.traverse((object) => {
+    const materials = Array.isArray(object.material)
+      ? object.material : (object.material ? [object.material] : []);
+    for (const material of materials) {
+      for (const key of Object.keys(material)) {
+        const value = material[key];
+        if (value?.isTexture) textures.add(value);
+      }
+    }
+  });
+  for (const texture of textures) {
+    try { renderer.initTexture(texture); } catch (_) { /* first render fallback */ }
+    // A visual can reference dozens of tiny maps. Force a paint only when
+    // their accumulated upload work crosses the countdown's frame budget;
+    // one unconditional frame per texture stretched an eight-vehicle cold
+    // deployment beyond the five-second rollout hold.
+    await yieldForBudget();
+  }
+  root.userData.loadStaged = true;
+  (parent || scene).add(root);
+  if (ent.state && visual.syncFromState) visual.syncFromState(ent.state);
+  visual.setVisible?.(true);
+  await yieldForBudget(true);
 }
 
 // --- fx ----------------------------------------------------------------------
@@ -718,7 +761,7 @@ function touchCache(specId, vis) {
 }
 /**
  * Build a pedestal-grade visual for the LRU (shared camoSeed/pose contract).
- * Texture tier is 'ai' — HALF-RES bake, ~4x cheaper on the switch/boot path;
+ * Texture tier is 'preview' — half-res bake, ~4x cheaper on the switch/boot path;
  * scheduleHeroUpgrade() re-bakes the shared canvases to 'high' IN PLACE from
  * an idle slice right after the reveal (needsUpdate flips live materials, so
  * the visible hero crispens without a rebuild — same mechanism the garage
@@ -729,7 +772,7 @@ function buildPedestalVisual(specId, parked = false) {
   // contact metadata from its full rendered subtree; battle/player/AI builds
   // still run that solve normally.
   const vis = createTank(specId, engineCtx, {
-    camoSeed: 4200, quality: 'ai', staticPreview: true,
+    camoSeed: 4200, quality: 'preview', staticPreview: true,
   });
   const pedSpec = getSpec(specId);
   vis.spec = pedSpec;
@@ -866,7 +909,7 @@ function setPedestalTank(specId, force = false) {
   // (pedestalSwitchPending holds the watchdog off for 8 s) and the token
   // discipline below discards superseded asynchronous work.
   const buildToken = pedestalPollToken;
-  return prebakeSharedTextures(getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', () => nextFrame())
+  return prebakeSharedTextures(getSpec(specId), engineCtx.anisotropy ?? 4, 'preview', () => nextFrame())
     .catch(() => { /* buildPedestalVisual can still acquire synchronously */ })
     .then(async () => {
       if (buildToken !== pedestalPollToken) {
@@ -899,6 +942,41 @@ function setPedestalTank(specId, force = false) {
       scheduleHeroUpgrade(specId);
       recordSwitch(specId, t0, 'procedural');
     });
+}
+
+/**
+ * Reuse the just-fielded player visual as the garage hero. Battle actors and
+ * pedestal previews share the same first-party geometry/material contract;
+ * rebuilding the selected tank on every return added a 350-700 ms task even
+ * though the complete visual was already resident one frame earlier.
+ * setupBattle will pose this same entity back onto the battlefield on the
+ * next deployment. A separately cached garage hero still wins when present.
+ */
+function adoptBattlePlayerAsPedestal(specId) {
+  const incoming = game.player?.visual;
+  if (!incoming || incoming.specId !== specId) return false;
+  const cached = pedestalCache.get(specId);
+  // A rematch reuses the same adopted visual, which is naturally still in
+  // the cache and attached to the scene. Only prefer an attached cache entry
+  // when it is a different, dedicated garage visual.
+  if (cached?.root?.parent && cached !== incoming) return false;
+  const outgoing = pedestalVisual;
+  try { incoming.resetDestroyed?.(); } catch (_) { /* presentation recovery */ }
+  incoming.spec = getSpec(specId);
+  incoming.root.rotation.y =
+    (162 + (incoming.spec?.visual?.garageYawDeg || 0)) * DEG;
+  if (!incoming.root.parent) scene.add(incoming.root);
+  pedestalVisual = incoming;
+  pedestalPose(incoming);
+  incoming.setVisible?.(true);
+  incoming.__everShown = true;
+  touchCache(specId, incoming);
+  scheduleHeroUpgrade(specId);
+  if (outgoing && outgoing !== incoming) parkVisual(outgoing);
+  pedestalPollToken++;
+  pedestalShownToken = pedestalPollToken;
+  pedTrace('adopt-battle', { id: specId, pv: pedVisState(incoming) });
+  return true;
 }
 // switch-desync r1: CONVERGENCE WATCHDOG — the last line of defense. Whatever
 // interleaving the async seams produce (superseded builds, late compiles,
@@ -1056,7 +1134,7 @@ async function ensureWorld(mapId, onProgress = null, opts = null) {
     wtMark = now;
   };
   if (!next) {
-    const rec = beginWorldBuild(id, onProgress, false);
+    const rec = beginWorldBuild(id, onProgress);
     try {
       next = await rec.promise;
       wt.buildDetail = { ...rec.stageTimings };
@@ -1202,7 +1280,23 @@ const garageMaps = [
 ];
 let pendingSoloStart = null;
 let playMenuPromise = null;
+let playMenuModulePromise = null;
 let pendingLobbyRoom = null;
+function loadPlayMenuModule() {
+  if (!playMenuModulePromise) {
+    const request = import('./ui/playMenu.js');
+    playMenuModulePromise = request;
+    request.catch(() => {
+      if (playMenuModulePromise === request) playMenuModulePromise = null;
+    });
+  }
+  return playMenuModulePromise;
+}
+function preloadPlayMode(mode) {
+  loadPlayMenuModule()
+    .then((module) => module.preloadPlayMode(mode))
+    .catch(() => { /* battle click remains the retry/fallback path */ });
+}
 async function openPlayMenu(request) {
   if (activeNetworkRoom && networkMatch && !networkMatch.client?.closed) {
     const menu = await playMenuPromise;
@@ -1226,7 +1320,7 @@ async function openPlayMenu(request) {
   }
   pendingSoloStart = typeof request?.startSolo === 'function' ? request.startSolo : null;
   if (!playMenuPromise) {
-    playMenuPromise = import('./ui/playMenu.js').then(({ createPlayMenu }) => createPlayMenu({
+    const pending = loadPlayMenuModule().then(({ createPlayMenu }) => createPlayMenu({
       maps: garageMaps,
       getSelection: () => ({
         specId: garage.getSelected(),
@@ -1256,6 +1350,10 @@ async function openPlayMenu(request) {
       onRankedStart: beginRankedBattle,
       onLobbyChange: handleLobbyRoomChange,
     }));
+    playMenuPromise = pending;
+    pending.catch(() => {
+      if (playMenuPromise === pending) playMenuPromise = null;
+    });
   }
   const menu = await playMenuPromise;
   menu.show(request?.mode, request?.invite);
@@ -1268,6 +1366,7 @@ const garage = await bootStage('ui', () => createGarage({
     selectedSpecId = specId;
     rememberSpecId(specId);
     setPedestalTank(specId);
+    applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] });
     syncActiveRoomVehicle(specId);
     syncPendingLobbySelection();
   },
@@ -1275,6 +1374,7 @@ const garage = await bootStage('ui', () => createGarage({
   onPlayRequest: (request) => openPlayMenu(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
   }),
+  onPlayModeIntent: preloadPlayMode,
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
   maps: garageMaps,
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
@@ -1288,13 +1388,17 @@ const garage = await bootStage('ui', () => createGarage({
       setCamoSelection(specId, patternId);
       // Keep the exact high-resolution paint, but yield the triggering UI
       // frame before a cold pattern bake instead of blocking the click.
-      camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
+      camoSweepP = applyCamoPatternsChunked({
+        priorityIds: [specId], onlySpecIds: [specId],
+      });
       syncActiveRoomCamo(specId);
       syncPendingLobbySelection();
     },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
-      camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
+      camoSweepP = applyCamoPatternsChunked({
+        priorityIds: [specId], onlySpecIds: [specId],
+      });
       // Deliberately sends Factory: custom paint is local single-player only.
       syncActiveRoomCamo(specId);
       syncPendingLobbySelection();
@@ -1309,7 +1413,9 @@ const garage = await bootStage('ui', () => createGarage({
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the
     // first slice; parked/roster entries follow one frame apart.
-    applyCamoPatternsChunked({ priorityIds: [selectedSpecId] });
+    applyCamoPatternsChunked({
+      priorityIds: [selectedSpecId], onlySpecIds: [selectedSpecId],
+    });
     syncPendingLobbySelection();
   },
 }));
@@ -2081,6 +2187,7 @@ async function startBattleLoading(specId, mapId = null) {
   // Debug/API entry can bypass the garage's ui:battleStart event.
   post.setAdaptiveSuspended(true);
   const shownAt = performance.now();
+  if (typeof window !== 'undefined') window.__VISUAL_LOAD_TIMINGS = [];
   const loadYield = createFrameBudgetYielder(12);
   const resolved = resolveMapId(mapId || pendingMapId);
   const cfg = getMapConfig(resolved);
@@ -2116,7 +2223,27 @@ async function startBattleLoading(specId, mapId = null) {
   //    chunk-by-chunk (55 → 88%) so the bar moves through the texture bakes.
   battleLoad.progress(0.56, 'Assembling rosters');
   await nextFrame();
+  const playerVisualStartedAt = performance.now();
   startBattle(specId, resolved, { deferVisuals: true, preBattleHold: true });
+  const playerVisualTiming = {
+    specId: game.player?.specId || specId,
+    quality: 'preview',
+    startedAt: Math.round(playerVisualStartedAt),
+    buildMs: Math.round(performance.now() - playerVisualStartedAt),
+    prebakeMs: 0,
+  };
+  if (typeof window !== 'undefined') {
+    (window.__VISUAL_LOAD_TIMINGS ||= []).push(playerVisualTiming);
+  }
+  const playerUploadStartedAt = performance.now();
+  // setupBattle must construct the player synchronously so simulation and HUD
+  // state are valid, but it does not have to upload every map in the same
+  // frame. Detach and stage that already-built root just like the streamed
+  // allies; otherwise the first hidden battle render pays the whole upload as
+  // one 500-700 ms "Ready" freeze.
+  await stageBattleVisualReveal(game.player, loadYield);
+  playerVisualTiming.uploadMs = Math.round(performance.now() - playerUploadStartedAt);
+  playerVisualTiming.totalMs = Math.round(performance.now() - playerVisualStartedAt);
   bltStage('roster');
   battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
   // PERF (perf-r2): bake the shot-card schematics for this exact roster now,
@@ -2138,39 +2265,49 @@ async function startBattleLoading(specId, mapId = null) {
   // camouflage settles before burnt variants copy those canvases.
   battleLoad.progress(0.90, 'Preparing deployment');
   const entryCamoSweep = camoSweepP;
-  const startCountdownWarm = () => (async () => {
-    const countdownWarmStartedAt = performance.now();
-    const trace = { done: false, stages: {} };
-    if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
-    let markedAt = performance.now();
-    const mark = (name) => {
-      const now = performance.now();
-      trace.stages[name] = Math.round(now - markedAt);
-      markedAt = now;
-    };
-    await entryCamoSweep;
-    mark('camo');
-    const countdownYield = createFrameBudgetYielder(8);
-    await streamBattleVisuals((ent) => ent.team === 'player', countdownYield);
-    mark('allyVisuals');
-    await streamBattleVisuals(null, countdownYield);
-    mark('enemyVisuals');
-    await warmCombatPipelineChunked();
-    mark('combatWarm');
-    trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
-    trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
-    trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
-    trace.done = true;
-    if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
-  })().catch((error) => {
-    if (typeof window !== 'undefined') {
-      window.__BATTLE_COUNTDOWN_WARM = {
-        done: true,
-        doneBeforeRollout: false,
-        error: String(error),
+  const startCountdownWarm = () => {
+    const warmGeneration = ++battleWarmGeneration;
+    battleWarmPending = true;
+    return (async () => {
+      const countdownWarmStartedAt = performance.now();
+      const trace = { done: false, stages: {} };
+      if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
+      let markedAt = performance.now();
+      const mark = (name) => {
+        const now = performance.now();
+        trace.stages[name] = Math.round(now - markedAt);
+        markedAt = now;
       };
-    }
-  });
+      await entryCamoSweep;
+      if (warmGeneration !== battleWarmGeneration) return;
+      mark('camo');
+      const countdownYield = createFrameBudgetYielder(8);
+      await streamBattleVisuals((ent) => ent.team === 'player', countdownYield);
+      if (warmGeneration !== battleWarmGeneration) return;
+      mark('allyVisuals');
+      await streamBattleVisuals(null, countdownYield);
+      if (warmGeneration !== battleWarmGeneration) return;
+      mark('enemyVisuals');
+      await warmCombatPipelineChunked();
+      mark('combatWarm');
+      if (warmGeneration !== battleWarmGeneration) return;
+      trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
+      trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
+      trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
+      trace.done = true;
+      if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
+    })().catch((error) => {
+      if (warmGeneration === battleWarmGeneration && typeof window !== 'undefined') {
+        window.__BATTLE_COUNTDOWN_WARM = {
+          done: true,
+          doneBeforeRollout: false,
+          error: String(error),
+        };
+      }
+    }).finally(() => {
+      if (warmGeneration === battleWarmGeneration) battleWarmPending = false;
+    });
+  };
   bltStage('warm');
   battleLoad.progress(1, 'Ready');
 
@@ -3013,7 +3150,10 @@ function startBattle(specId, mapId = null, opts = {}) {
   // retained cache entry immediately; the rest stays chunked and completes
   // ahead of burnt-variant warming during the frozen countdown.
   applyCamoPatterns(specId);
-  camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
+  camoSweepP = applyCamoPatternsChunked({
+    priorityIds: [specId],
+    onlySpecIds: game.tanks.map((ent) => ent.specId),
+  });
   // SHOT-INFO identity (killcam_shotinfo r3): set synchronously — hud.update
   // only forwards it after the first rendered frame, which dropped hits
   // resolved in the very first sim ticks (headless replays / spectators).
@@ -3095,6 +3235,15 @@ function clearBattlePresentationForExit() {
 function enterGarage({ preserveRoom = !!(
   activeNetworkRoom && networkMatch && !networkMatch.client?.closed && game.result
 ) } = {}) {
+  const garageTrace = { stages: {} };
+  const garageStartedAt = performance.now();
+  let garageMarkedAt = garageStartedAt;
+  const markGarageStage = (name) => {
+    const now = performance.now();
+    garageTrace.stages[name] = Math.round(now - garageMarkedAt);
+    garageMarkedAt = now;
+  };
+  if (typeof window !== 'undefined') window.__GARAGE_ENTRY = garageTrace;
   // Entry failures and interrupted network handoffs also land here. Always
   // release a loading-screen suspension before the garage becomes visible.
   post.setAdaptiveSuspended(false);
@@ -3104,19 +3253,26 @@ function enterGarage({ preserveRoom = !!(
   // HUD veil. Without this ordering, the next battle inherited letterbox/
   // label DOM plus display:none HUD roots from the interrupted replay.
   clearBattlePresentationForExit();
+  markGarageStage('presentationReset');
   if (preserveRoom) disposeNetworkPresentation();
   else closeNetworkMatch('returned_to_garage');
+  markGarageStage('networkRelease');
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
   game.preBattleS = 0;
+  battleWarmGeneration++;
+  battleWarmPending = false;
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
   shotMode = false;
   perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   game.phase = 'garage';
-  // A Studio-only activation deliberately skipped the hidden battle HUD,
-  // collider, and garage placement. Finish those services now while the
-  // Studio-to-garage transition veil still owns the frame.
-  if (world && worldServicesMapId !== world.mapId) prepareWorldServices(world);
+  // Direct Studio activation deliberately skips battle-only collision and
+  // minimap capture. The garage needs only its placement; building the
+  // collider plus an offscreen top-down render here was a repeatable ~330 ms
+  // exit freeze. ensureWorld prepares those services behind the next battle
+  // loader, where they are actually consumed.
+  if (world && worldServicesMapId !== world.mapId) placeGarage();
+  markGarageStage('worldServices');
   // PAUSE: leaving battle clears any paused overlay (Leave Battle closes the
   // panel itself before calling here — this covers every other exit path).
   // After the phase flip above, isBattleActive() is already false, but pass
@@ -3126,21 +3282,31 @@ function enterGarage({ preserveRoom = !!(
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
   clearCamoOverrides();
+  adoptBattlePlayerAsPedestal(selectedSpecId);
+  markGarageStage('worldAndHero');
   // perf-r2f: chunked — the hero repaints in the first slice (inside the
   // transition veil); parked roster entries follow one frame apart instead
   // of freezing the garage reveal for the whole cache.
-  applyCamoPatternsChunked({ priorityIds: [selectedSpecId] });
+  applyCamoPatternsChunked({
+    priorityIds: [selectedSpecId], onlySpecIds: [selectedSpecId],
+  });
   setGarageSpots(true);
   setGarageSunTrim(true);
+  markGarageStage('lighting');
   bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
   if (document.exitPointerLock) document.exitPointerLock();
   hud.setMode('hidden');
+  markGarageStage('eventAndHud');
   garage.show(selectedSpecId);
+  markGarageStage('garageUi');
   garageCameraPose();
   showroom.start(); // SHOWROOM CAMERA: hero framing + drag-orbit takes over
+  markGarageStage('camera');
   audio.ambientOn(false);
   audio.playGarageSting();
+  markGarageStage('audio');
+  garageTrace.totalMs = Math.round(performance.now() - garageStartedAt);
 }
 
 // STATE TRANSITIONS: every player-facing exit from a battle passes through
@@ -3502,7 +3668,13 @@ function updateDustAndSync(dtFrame) {
     // reduced cadence beyond fine-detail range — battle loop only; studio,
     // killcam and staged poses omit it and keep full-rate updates.
     const viewDistM = cameraPosition.distanceTo(state.pos);
-    visual.syncFromState(state, dtFrame, viewDistM);
+    // A returned player's already-resident battle visual can become the
+    // garage hero. Its simulation entity intentionally retains the last
+    // battlefield pose for the next deployment, so do not let the generic
+    // visual sync pull the displayed pedestal tank back out of the garage.
+    if (game.phase !== 'garage' || visual !== pedestalVisual) {
+      visual.syncFromState(state, dtFrame, viewDistM);
+    }
     // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
     // Wrecks stay visible; the player is never gated; outside battle
     // (garage/shot/killcam) everything renders. isSpotted already includes
@@ -3816,7 +3988,13 @@ function tick(nowMs) {
     } else if (game.preBattleS > 0) {
       if (game.preBattleS !== Infinity) { // Infinity = still under the loading screen
         const heldS = game.preBattleS;
-        game.preBattleS = Math.max(0, game.preBattleS - dtR);
+        // Required textures/programs normally finish inside the five-second
+        // countdown. On a severely contended device they can take longer;
+        // hold the final displayed second instead of releasing controls while
+        // background construction is still capable of freezing live play.
+        game.preBattleS = advancePreBattleCountdown(
+          game.preBattleS, dtR, battleWarmPending,
+        );
         hud.preBattleCountdown(game.preBattleS); // 0 on the crossing frame = release flash
         if (heldS > 0 && game.preBattleS === 0) bus.emit('battle:rollout', {});
       }
@@ -6118,6 +6296,7 @@ window.__DEBUG = {
     setPresetName, setMobilePresetName, noteGpuRenderer,
   },
   get pedestalVisual() { return pedestalVisual; },
+  get pedestalOnStage() { return onStage(pedestalVisual); },
   // switch-desync r1: the id the garage UI (stats card / card highlight)
   // believes is selected — probes assert pedestalVisual.specId === this.
   get selectedSpecId() { return selectedSpecId; },

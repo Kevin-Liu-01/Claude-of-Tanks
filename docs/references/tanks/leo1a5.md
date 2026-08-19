@@ -18,7 +18,7 @@ and fidelity tools.
 - Registration: turret `^Turret_01$`, gun `^gun_01_Shape$`, automatic
   pivot, `yawOffset = PI`. The extracted normalized receipt lives at
   `docs/references/vertex/leo1a5.json`.
-- Builder: `buildLeo1A5SourceProfile` in
+- Builder: `buildLeo1A5ArticulatedProfile` in
   `src/vehicles/profiles/leopard.js`, selected by
   `LEOPARD_PROFILES.leo1a5`.
 

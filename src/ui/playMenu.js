@@ -29,6 +29,23 @@ const PUBLIC_STUN_SERVERS = Object.freeze([{
   ],
 }]);
 
+let rankedServiceModulePromise = null;
+function loadRankedServiceModule() {
+  if (!rankedServiceModulePromise) {
+    const request = import('../net/rankedServiceClient.js');
+    rankedServiceModulePromise = request;
+    request.catch(() => {
+      if (rankedServiceModulePromise === request) rankedServiceModulePromise = null;
+    });
+  }
+  return rankedServiceModulePromise;
+}
+
+/** Warm only code implied by an explicit garage mode selection. */
+export function preloadPlayMode(mode) {
+  return mode === 'ranked' ? loadRankedServiceModule() : Promise.resolve(null);
+}
+
 const CSS = `
 .cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:center;justify-content:center;
   padding:24px;background:rgba(3,5,8,.76);backdrop-filter:blur(12px);font-family:${FONT_STACK};color:#edf3f7;}
@@ -590,7 +607,7 @@ export function createPlayMenu({
   }
 
   async function refreshRanked() {
-    const { createRankedServiceClient } = await import('../net/rankedServiceClient.js');
+    const { createRankedServiceClient } = await loadRankedServiceModule();
     rankedClient = createRankedServiceClient({ url: rankedService.value.trim() });
     const identity = rankedClient.identity();
     if (identity) {
