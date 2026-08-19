@@ -3481,10 +3481,11 @@ function buildT90SMLegacy(P) {
     // ("vertically pointing up"). The top ring now pulls inboard onto the
     // prism wall plane (local side rake ~40°), top edge buried in the
     // shell (1.22-1.24 < wall 1.276 @ y 0.40), so the corner panel lies
-    // ON the sloped cheek. Bottom ring (the certified 1.269..1.324-world
-    // plan staircase + the 1.735 line) is byte-unchanged.
+    // ON the sloped cheek.  Keep the lower ring 80 mm above the turret
+    // datum: the former -5 mm ring landed on the hull deck at world y 1.40
+    // and made this turret-owned wedge touch the fixed hull through yaw.
     P.add('turret', orientedSlab(
-      [s * 1.565, -0.005, 1.18], [s * 1.65, -0.005, 1.065], [s * 1.735, -0.005, 1.00], [s * 1.565, -0.005, 1.00],
+      [s * 1.565, 0.080, 1.18], [s * 1.65, 0.080, 1.065], [s * 1.735, 0.080, 1.00], [s * 1.565, 0.080, 1.00],
       [s * 1.24, 0.40, 1.13], [s * 1.36, 0.40, 1.03], [s * 1.445, 0.40, 0.97], [s * 1.22, 0.40, 0.97]));
     // r10 cheek stow split (fresh plan/front digest): ref plan front/rear at
     // |x| 1.67..1.78 is [1.153..0.313]/[1.099..0.611]; front tops taper
@@ -3504,9 +3505,10 @@ function buildT90SMLegacy(P) {
     // the retired ±1.51-col wall boxes held — and the whole top ring is
     // buried inside the prism wall (1.10-1.36 < wall 1.19-1.21 @ y 0.50):
     // the standing inboard face is gone, the panel back sits flush on the
-    // shell. Bottom ring byte-unchanged (plan/width cols).
+    // shell.  Its lower ring shares the same 80 mm turret-deck clearance as
+    // the forward wedge; x/z plan extents stay unchanged.
     P.add('turret', orientedSlab(
-      [s * 1.42, 0.000, 0.14], [s * 1.735, 0.000, 0.18], [s * 1.735, 0.000, 1.02], [s * 1.48, 0.000, 1.08],
+      [s * 1.42, 0.080, 0.14], [s * 1.735, 0.080, 0.18], [s * 1.735, 0.080, 1.02], [s * 1.48, 0.080, 1.08],
       [s * 1.10, 0.500, 0.10], [s * 1.36, 0.500, 0.18], [s * 1.36, 0.500, 1.00], [s * 1.13, 0.500, 1.06],
     ));
     // T3R-b3: outer panel z re-seated to the ref 0.805..1.078 world band
