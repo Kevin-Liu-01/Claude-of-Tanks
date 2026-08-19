@@ -1295,11 +1295,52 @@ function buildUAOplotM(P) {
   KIT.periscope(P, 'hullDetail', -0.14, 1.45, 1.80);
   KIT.periscope(P, 'hullDetail', 0.14, 1.45, 1.80);
 
-  // Fender runs with bins + tow cable.
+  // Fender runs with bins + tow cable. The bins occupy only the inboard
+  // half of the fender. A segmented welded shelf now spans the remaining
+  // channel to the Duplet side-skirt root, so the skirt is visibly carried
+  // by the hull rather than floating outside the track run.
   for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
     const z = 1.90 - i * 0.72;
     P.add('hull', box(0.38, 0.11, 0.60), s * 1.27, 1.30, z);
     P.add('hullDark', box(0.32, 0.026, 0.50), s * 1.27, 1.362, z);
+  }
+  {
+    const fenderStep = 5.60 / 9;
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 9; i++) {
+        const z = -3.30 + (i + 0.5) * fenderStep;
+        P.addMudguard(`ua-oplot-fender-bridge-${s}-${i}`, 'hull',
+          box(0.64, 0.06, fenderStep * 0.985),
+          s * 1.565, 1.31, z, 0, 0, -s * 0.003);
+        // Rolled outer seam and inboard support angle make the shelf read as
+        // a supported fender assembly rather than one featureless slab.
+        P.add('hullDark', box(0.035, 0.035, fenderStep * 0.90),
+          s * 1.868, 1.337, z, 0, 0, -s * 0.003);
+        P.add('hullDark', box(0.045, 0.09, fenderStep * 0.08),
+          s * 1.43, 1.275, z, 0, 0, -s * 0.003);
+      }
+      // End plates continue the shelf into the existing raked bow tip and
+      // stern transom instead of ending in mid-air at the first skirt seam.
+      P.addMudguard(`ua-oplot-fender-bridge-${s}-bow`, 'hull',
+        box(0.64, 0.06, 0.74), s * 1.565, 1.31, 2.655,
+        0, 0, -s * 0.003);
+      P.addMudguard(`ua-oplot-fender-bridge-${s}-nose`, 'hull',
+        box(0.64, 0.06, 0.52), s * 1.245, 1.20, 3.27,
+        -0.18, 0, -s * 0.003);
+      P.addMudguard(`ua-oplot-fender-bridge-${s}-stern`, 'hull',
+        box(0.64, 0.06, 0.20), s * 1.565, 1.295, -3.38,
+        0, 0, -s * 0.003);
+    }
+    P.hullG.userData.uaOplotFenderBridge = Object.freeze({
+      innerX: 1.245,
+      outerX: 1.885,
+      undersideY: 1.28,
+      topY: 1.34,
+      skirtRootX: 1.70,
+      skirtTopY: 1.30,
+      trackTopY: 0.88,
+      registeredParts: 24,
+    });
   }
   KIT.towCable(P, [[-1.10, 1.43, 0.20], [-0.40, 1.455, -0.30], [0.42, 1.455, -0.32], [1.10, 1.43, 0.16]]);
   {

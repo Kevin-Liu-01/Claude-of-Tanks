@@ -119681,7 +119681,7 @@
           }
         ]
       },
-      "geometryHash": "f9c557f5",
+      "geometryHash": "d770265f",
       "metadataHash": "48fb3956",
       "appearance": {
         "version": 1,
@@ -119701,7 +119701,7 @@
           "armorPaint": 4,
           "opticGlass": 2,
           "tireRubber": 1,
-          "unclassified": 12,
+          "unclassified": 13,
           "gearShadow": 2
         }
       },
@@ -119766,24 +119766,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73329,
-          "sha256": "1d6419d011235d3edf14bde3fc3325c877529843c898b5ef462b61643bef2396"
+          "bytes": 72115,
+          "sha256": "e698eae1561735f30e0fa8a0b479e665f8ea99530d251ff98b002ada1a1d7e3f"
         },
         "armorSide": {
           "file": "ua_t84_oplot_m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75970,
-          "sha256": "667ce3f197ae8ef1b2cd770debb4dbcec01592e06bd54d3d95bcbac5278e10b7"
+          "bytes": 75904,
+          "sha256": "d5ed89383c7ca3824817ea72c441a4fdfb7cbae2ca7f5b17e57b3a18b53398fe"
         },
         "modulesSide": {
           "file": "ua_t84_oplot_m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83118,
-          "sha256": "eea456315560861379da6fad7d230bbfc263c33c4ffd7338c7fad49a4ce3eb24"
+          "bytes": 83046,
+          "sha256": "b333f97f98454bb682fbab76485b075bc278473ec6e4008b5f96cb79b96fc964"
         },
         "markings": {
           "file": "ua_t84_oplot_m_markings.png",
