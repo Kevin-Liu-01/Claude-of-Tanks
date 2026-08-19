@@ -59,8 +59,9 @@ export const POLAND_SPECS = {
     // 2.23 to the roof (2.36 was a with-AAMG figure; the gate's p95 law
     // measures the roof plane).
     dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
-    // measured rig (§5.248 rebuild): gun axis 1.64 (pivot 1.40+0.24), muzzle
-    // world 6.24 = rear extreme -3.29 + published overall 9.53
+    // Measured T-72M1/Jaguar rig: gun axis 1.64 m
+    // (turret 1.40 + trunnion 0.24); the 5.74 m tube lands the muzzle on the
+    // published overall line without moving the turret off its ring.
     turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.24, 0.52],
     gunBarrel: { lengthM: 5.74, radiusM: 0.112 },
     stats: { hp: 1850, enginePowerHp: 1000, weightTons: 45.5, topSpeedKmh: 60,

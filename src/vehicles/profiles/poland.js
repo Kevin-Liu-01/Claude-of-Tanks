@@ -18,6 +18,7 @@ import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone,
 } from './russia.js';
+import { buildT72B87Native } from './t72.js';
 
 // ---------------------------------------------------------------------------
 // Shared Polish fittings (fresh authorship — the old clone-package helpers
@@ -128,7 +129,7 @@ function polishWhips(P, list, seedBase) {
 // 2.25 + <=4 spike columns).
 // ===========================================================================
 
-function buildT72M1Jaguar(P) {
+function buildT72M1JaguarLegacy(P) {
   const { box, cylY, cylZ, torus, buildRunningGear } = KIT;
 
   // ---- hull loft to the measured whole-silhouette lines -------------------
@@ -393,10 +394,12 @@ function buildT72M1Jaguar(P) {
   // steeper stow (r-fix receipt: scale 0.72 at elev 0.18 spanned 5 side
   // columns at ~2.3 and read heightM 2.27 — the mass stays, the barrel
   // rides up so the station keeps <=3 columns)
-  mount(P, 'turret', FITTINGS.pintleMG({
+  const jaguarWkm = FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.62, elev: 0.35,
     ammo: true, seed: 7321,
-  }), -0.85, 0.60, -0.80, [0, 0.10, 0]);
+  });
+  jaguarWkm.name = 'jaguar_wkm_b';
+  mount(P, 'turret', jaguarWkm, -0.85, 0.60, -0.80, [0, 0.10, 0]);
 
   // smoke banks: 902A Tucha clusters (§5.267: re-seated proud of the dome
   // skin so the tubes READ — the r1 seats sank into the casting)
@@ -448,6 +451,208 @@ function buildT72M1Jaguar(P) {
   P.decal('hull', 'number', 'PL-721', 0.26, [-1.797, 1.02, 0.90], -Math.PI / 2);
   P.decal('hull', 'number', 'PL-721', 0.26, [1.797, 1.02, 0.90], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.30);
+}
+
+// Current production Jaguar.  The Polish modernization shares the certified
+// T-72 six-wheel chassis, track course, cast turret and 2A46 articulation with
+// the live Russian T-72 family.  Everything that makes it a Jaguar remains a
+// first-party Polish overlay: shallow camouflaged ERAWA, Drawa/Obra optics,
+// smoke banks, WKM-B, bustle services and external stowage.  The legacy
+// measured build above remains only as an authoring receipt while the fleet
+// migrates; it is deliberately not registered as playable geometry.
+function buildT72M1JaguarCurrentPrototype(P) {
+  const { box, cylY, cylZ, torus } = KIT;
+  buildT72B87Native(P, 'jaguar');
+
+  P.hullG.userData.t72FamilyFoundation = 'current-t72b87';
+  P.turretG.userData.polishModernization = 't72m1-jaguar-erawa';
+
+  // ERAWA-1 glacis: a buried camouflaged carrier and three staggered courses
+  // follow the upper-glacis rake.  These are shallow armor cassettes, not gray
+  // spare-track blocks and not cubes floating above the plate.
+  P.add('hull', box(2.54, 0.050, 0.94), 0, 1.245, 1.95, -0.30, 0, 0);
+  for (let row = 0; row < 3; row++) {
+    const z = 1.68 + row * 0.30;
+    const y = 1.305 - row * 0.060;
+    for (let col = -4; col <= 4; col++) {
+      if (row === 2 && Math.abs(col) === 4) continue;
+      const x = col * 0.286 + (row === 1 ? 0.035 : row === 2 ? -0.028 : 0);
+      P.add('hull', box(0.267, 0.090, 0.270), x, y, z, -0.30, 0, 0);
+      P.add('hullDark', box(0.222, 0.012, 0.020), x, y + 0.050, z + 0.122, -0.30, 0, 0);
+    }
+  }
+
+  // Full-length ERAWA side courses sit flush on the existing current-T-72
+  // skirts.  Their back faces overlap the panels by 12 mm, guaranteeing a
+  // visible armor-to-fender load path while preserving the single track run.
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      const z = -2.02 + i * 0.67;
+      const h = 0.255 + (i % 3) * 0.012;
+      P.add('hull', box(0.078, h, 0.585), s * 1.792, 1.075 + (i % 2) * 0.010, z,
+        0, 0, s * ((i % 3) - 1) * 0.010);
+      P.add('hullDark', box(0.014, h * 0.72, 0.505), s * 1.838,
+        1.075 + (i % 2) * 0.010, z);
+      P.add('hullDetail', box(0.016, 0.022, 0.48), s * 1.842,
+        1.075 + h * 0.48, z);
+    }
+    // Polish fender returns and rubber terminals are seated on the shelves.
+    P.add('hull', box(0.18, 0.075, 0.74), s * 1.69, 1.205, 2.52, -0.05, 0, 0);
+    P.add('hullRubber', box(0.42, 0.30, 0.035), s * 1.49, 1.02, 2.82, -0.12, 0, 0);
+    P.add('hullDark', box(0.05, 0.13, 0.46), s * 1.64, 1.16, 2.57, -0.08, 0, 0);
+  }
+
+  // Two connected ERAWA cheek carriers conform to the current cast turret.
+  // Rows taper inward around the mantlet, producing the Jaguar's compact
+  // chevron rather than the old oversized dome or a Russian Kontakt necklace.
+  for (const s of [-1, 1]) {
+    P.add('turretDark', orientedSlab(
+      [s * 0.10, 0.02, 1.10], [s * 0.78, 0.02, 0.98], [s * 1.38, 0.02, 0.45], [s * 0.74, 0.02, 0.38],
+      [s * 0.11, 0.10, 1.07], [s * 0.75, 0.10, 0.95], [s * 1.33, 0.10, 0.44], [s * 0.72, 0.10, 0.37]));
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 5; i++) {
+      const x = s * (0.20 + i * 0.245 + row * 0.014);
+      const z = 1.06 - i * 0.118 - row * 0.135 + (i % 2 ? 0.012 : -0.008);
+      const y = 0.075 + row * 0.120 + i * 0.012;
+      const yaw = s * (0.31 + i * 0.075 + row * 0.018);
+      const w = 0.225 - i * 0.006 + (row === 1 ? 0.010 : 0);
+      P.add('turret', box(w, 0.096 + (i % 2) * 0.010, 0.225), x, y, z,
+        -0.11, yaw, s * ((i % 3) - 1) * 0.012);
+      P.add('turretDark', box(w * 0.78, 0.012, 0.020), x, y + 0.057, z + 0.102,
+        -0.11, yaw, 0);
+    }
+    for (let i = 0; i < 5; i++) {
+      const z = 0.20 - i * 0.245;
+      P.add('turret', box(0.205, 0.135, 0.250), s * (1.25 - i * 0.045),
+        0.19 - i * 0.010, z, -0.05, s * (0.63 + i * 0.12), 0);
+    }
+  }
+
+  // Drawa-T fire-control optics and Obra laser-warning heads remain low on
+  // broad shoes so no sensor or decoration hovers above the casting.
+  P.add('turret', box(0.38, 0.055, 0.34), -0.54, 0.565, 0.32, -0.06, 0, 0);
+  P.add('turret', box(0.28, 0.175, 0.27), -0.54, 0.645, 0.34, -0.04, 0, 0);
+  P.add('turretDark', box(0.225, 0.105, 0.025), -0.54, 0.660, 0.486, -0.04, 0, 0);
+  P.add('turretGlass', box(0.145, 0.075, 0.014), -0.50, 0.666, 0.501, -0.04, 0, 0);
+  P.add('turret', cylY(0.31, 0.33, 0.060, 18), 0.48, 0.635, -0.10);
+  P.add('turretDark', torus(0.255, 0.016, 18), 0.48, 0.672, -0.10);
+  P.add('turret', box(0.20, 0.145, 0.21), 0.75, 0.535, 0.08, 0, -0.08, 0);
+  P.add('turretGlass', box(0.145, 0.070, 0.020), 0.75, 0.55, 0.196, 0, -0.08, 0);
+  for (const [x, y, z, ry] of [
+    [-1.17, 0.39, 0.34, -0.48], [1.17, 0.39, 0.34, 0.48],
+    [-0.86, 0.42, -0.80, -2.60], [0.86, 0.42, -0.80, 2.60],
+  ]) {
+    P.add('turret', box(0.14, 0.095, 0.12), x, y, z, 0, ry, 0);
+    P.add('turretGlass', box(0.085, 0.050, 0.018), x + Math.sin(ry) * 0.068,
+      y, z + Math.cos(ry) * 0.068, 0, ry, 0);
+  }
+
+  // Polish smoke banks: four launchers per connected armored shoe, clear of
+  // the ERAWA cassettes and attached to the traversing turret hierarchy.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.34, 0.075, 0.30), s * 1.00, 0.30, 0.49, 0, s * -0.52, 0);
+    for (let i = 0; i < 4; i++) {
+      P.add('turretDark', cylZ(0.045, 0.235, 10), s * (0.86 + i * 0.078),
+        0.35 + (i % 2) * 0.028, 0.72 - i * 0.080, -0.42, s * -(0.24 + i * 0.09), 0);
+    }
+  }
+
+  // Open rear basket, snorkel and unequal service cells return directly into
+  // the cast rear; all equipment traverses with the turret.
+  P.add('turretDark', box(1.72, 0.045, 0.045), 0, 0.49, -1.46);
+  P.add('turretDark', box(1.72, 0.045, 0.045), 0, 0.25, -1.45);
+  for (const x of [-0.82, -0.42, 0, 0.46, 0.82]) {
+    P.add('turretDark', box(0.038, 0.25, 0.34), x, 0.37, -1.30, 0.18, 0, 0);
+  }
+  for (const [x, w, h] of [[-0.54, 0.42, 0.19], [-0.08, 0.34, 0.23], [0.42, 0.46, 0.17]]) {
+    P.add('turret', box(w, h, 0.28), x, 0.25 + h / 2, -1.18, 0, x * 0.08, 0);
+    P.add('turretDark', box(w - 0.045, 0.018, 0.22), x, 0.26 + h, -1.18, 0, x * 0.08, 0);
+  }
+  P.add('turret', cylZ(0.105, 0.82, 16), 0.72, 0.34, -1.23, Math.PI / 2, 0, 0);
+  P.add('turretDark', torus(0.108, 0.014, 16), 0.72, 0.34, -1.66, Math.PI / 2, 0, 0);
+
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.03, ammo: true });
+  mg.scale.setScalar(0.78);
+  mg.position.set(-0.55, 0.68, -0.18);
+  mg.name = 'jaguar_wkm_b';
+  P.turretG.add(mg);
+  polishWhips(P, [[-0.90, 0.58, -0.56, 0.76, -0.02], [0.88, 0.58, -0.58, 0.64, 0.03]], 7210);
+
+  // A connected, angular Polish mantlet skin closes the gun-root valley.
+  for (const s of [-1, 1]) {
+    P.addGunExtra(box(0.16, 0.28, 0.42), s * 0.26, -0.02, 0.02, 0, s * 0.10, 0);
+    P.addGunExtraDark(box(0.022, 0.22, 0.30), s * 0.35, -0.02, 0.05, 0, s * 0.10, 0);
+  }
+  P.addGunExtra(box(0.58, 0.10, 0.30), 0, -0.19, 0.04);
+
+  P.decal('hull', 'number', 'PL-721', 0.24, [-1.84, 1.08, 0.72], -Math.PI / 2);
+  P.decal('hull', 'number', 'PL-721', 0.24, [1.84, 1.08, 0.72], Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.16);
+}
+
+// Production Jaguar refit. Preserve the measured Polish hull, native
+// six-wheel course and source-correct cast-turret envelope above, then bring
+// across the current T-72 family's structural grammar as an inset refit. The
+// additions stay inside the certified silhouette: cast cheek load paths,
+// seated ERAWA returns, backed fender armor and a connected service field.
+// This avoids the short-chassis regression of the donor prototype while still
+// making the playable Jaguar visibly part of the live T-72 family.
+function buildT72M1Jaguar(P) {
+  const { box, cylY, torus } = KIT;
+  buildT72M1JaguarLegacy(P);
+
+  P.hullG.userData.t72FamilyFoundation = 'measured-current-t72-family';
+  P.turretG.userData.polishModernization = 't72m1-jaguar-erawa-refit';
+
+  // Shallow ERAWA skirt faces are planted into the existing fender-hung
+  // panels. Their outer faces remain on the published-width anchor instead
+  // of widening the vehicle or becoming a second skirt wall.
+  for (const s of [-1, 1]) for (let i = 0; i < 7; i++) {
+    const z = -1.96 + i * 0.69;
+    const h = 0.225 + (i % 3) * 0.012;
+    P.add('hull', box(0.030, h, 0.56), s * 1.780, 1.045 + (i % 2) * 0.010, z,
+      0, 0, s * ((i % 3) - 1) * 0.008);
+    P.add('hullDark', box(0.009, h * 0.70, 0.46), s * 1.796,
+      1.045 + (i % 2) * 0.010, z);
+    P.add('hullDetail', box(0.010, 0.020, 0.44), s * 1.797,
+      1.045 + h * 0.47, z);
+  }
+
+  // Buried cast continuations close the lower gun-root valleys. These are
+  // structural turret mass behind the Polish ERAWA wedge, borrowed from the
+  // current T-72B family rather than decorative blocks hung in open space.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.10, 0.03, 1.11], [s * 0.68, 0.03, 0.98], [s * 1.03, 0.03, 0.57], [s * 0.70, 0.03, 0.48],
+      [s * 0.12, 0.23, 1.03], [s * 0.63, 0.24, 0.92], [s * 0.96, 0.23, 0.54], [s * 0.66, 0.23, 0.45]));
+
+    // A low inner chevron course bridges the sight-safe gap between the
+    // main wedge leaves and the mantlet. Tiles overlap the cast continuation
+    // and remain below the roof crown.
+    for (let i = 0; i < 4; i++) {
+      const x = s * (0.20 + i * 0.185);
+      const z = 1.00 - i * 0.105;
+      P.add('turret', box(0.165, 0.078, 0.175), x, 0.44 - i * 0.012, z,
+        -0.14, s * (0.22 + i * 0.08), -0.045);
+      P.add('turretDark', box(0.125, 0.010, 0.024), x, 0.485 - i * 0.012,
+        z + 0.075, -0.14, s * (0.22 + i * 0.08), -0.045);
+    }
+  }
+
+  // Backed driver/splash detail and unequal engine-deck service cells add
+  // current-family articulation without altering the certified hull loft.
+  P.add('hull', box(2.16, 0.040, 0.13), 0, 1.315, 2.43, -0.30, 0, 0);
+  for (const [x, z, w, d] of [
+    [-0.52, -1.55, 0.62, 0.34], [0.18, -1.62, 0.52, 0.30], [0.73, -1.74, 0.42, 0.26],
+  ]) {
+    P.add('hullDark', box(w, 0.016, d), x, 1.463, z);
+    P.add('hullDetail', box(w * 0.82, 0.014, 0.030), x, 1.476, z + d * 0.34);
+  }
+
+  // Commander ring receives the current T-72 concentric seat and a visible
+  // hinge return while leaving the Polish WKM-B, Drawa and Obra package clear.
+  P.add('turret', cylY(0.305, 0.325, 0.035, 18), -0.38, 0.806, -0.42);
+  P.add('turretDark', torus(0.290, 0.010, 18), -0.38, 0.827, -0.42);
+  P.add('turretDark', box(0.055, 0.025, 0.11), -0.10, 0.821, -0.42, 0, 0.22, 0);
 }
 
 // ===========================================================================

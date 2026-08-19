@@ -5844,21 +5844,21 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
   "t72m1_jaguar": {
     "hull": {
       "min": [
-        -1.795,
+        -1.796,
         0.43,
         -3.26
       ],
       "max": [
-        1.795,
+        1.796,
         1.485,
         3.715
       ],
-      "sourceHash": "c3c5eb7c1127fbdb"
+      "sourceHash": "192040c12fd3e5e1"
     },
     "turret": {
       "min": [
         -1.273,
-        0.045,
+        0.03,
         -1.754
       ],
       "max": [
@@ -5866,7 +5866,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         0.857,
         1.22
       ],
-      "sourceHash": "045e43bda32cdcc6"
+      "sourceHash": "0f52b57773633612"
     },
     "tracks": {
       "left": {

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-19T01:41:19.349Z",
+ "generatedAt": "2026-08-19T05:51:20.447Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 120,
@@ -1344,11 +1344,11 @@
   },
   {
    "id": "t72m1_jaguar",
-   "geoMin": 90.9,
+   "geoMin": 91,
    "gatePassed": true,
    "components": {
-    "wholeCurves": 90.9,
-    "dims": 97.4,
+    "wholeCurves": 91,
+    "dims": 97.8,
     "floaters": 100
    }
   },

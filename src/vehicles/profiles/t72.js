@@ -406,6 +406,7 @@ function buildT72B87(P) {
 export function buildT72B87Native(P, variant = 'b87') {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
+  const jaguar = variant === 'jaguar';
 
   // ---- compact low T-72 family hull -------------------------------------
   // B3 and the obr.1987 deliberately share the same family datum, but the
@@ -455,7 +456,7 @@ export function buildT72B87Native(P, variant = 'b87') {
         b3 ? s * (i % 2 ? 0.025 : -0.018) : s * (i % 3 - 1) * 0.012);
       P.add('hullDark', box(0.018, b3 ? sh * 0.72 : sh * 0.76, 0.025), s * 1.778, sy, z + sd / 2);
       P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.780, sy + sh / 2 + 0.012, z);
-      if (!b3 && i >= 3) {
+      if (!b3 && !jaguar && i >= 3) {
         // Period Kontakt-1 side cassettes sit on the complete skirt rather
         // than replacing it.  Each tile has a visible lower seat and hinge.
         P.add('hullTrack', box(0.105, 0.19, sd * 0.43), s * 1.802, sy + 0.035,
@@ -499,7 +500,7 @@ export function buildT72B87Native(P, variant = 'b87') {
         P.add('hullDark', cylX(r * 0.25, 0.034, 12), s * 1.512, y, z);
       }
     }
-  } else {
+  } else if (!jaguar) {
     // The older six-wheel course receives the same readable mechanical
     // hierarchy as the current family without changing its track geometry:
     // dark tire, olive dish, hub, and eight small fasteners on each native
@@ -565,7 +566,7 @@ export function buildT72B87Native(P, variant = 'b87') {
       P.add('hullTrack', box(0.29, 0.115, 0.31), x, 1.275 - row * 0.07, z, -0.31, 0, 0);
       P.add('hullDark', box(0.255, 0.012, 0.022), x, 1.338 - row * 0.07, z + 0.145, -0.31, 0, 0);
     }
-  } else {
+  } else if (!jaguar) {
     // Three dense, flush Kontakt-1 glacis courses. Tiles are individually
     // legible but share a buried carrier so they cannot float off the plate.
     P.add('hullTrack', box(2.24, 0.06, 0.82), 0, 1.26, 1.92, -0.27, 0, 0);
@@ -736,7 +737,7 @@ export function buildT72B87Native(P, variant = 'b87') {
   meshDomeCurved(P, rings, b3 ? 0.79 : 0.75, 0, b3 ? -0.02 : -0.09, { capR: b3 ? 1.8 : 2.15 });
   P.add('turretDark', cylY(b3 ? 1.53 : 1.62, b3 ? 1.53 : 1.62, 0.05, 28), 0, -0.025, b3 ? -0.02 : -0.09);
 
-  if (!b3) {
+  if (!b3 && !jaguar) {
   // Kontakt-1 is planted directly into the new casting.  Four staggered
   // frontal courses descend over the cheek, a tighter inner horseshoe fills
   // the crown transition, and three mixed flank courses turn around the
@@ -782,7 +783,7 @@ export function buildT72B87Native(P, variant = 'b87') {
         s * (0.60 + i * 0.13 + row * 0.022), 0);
     }
   }
-  } else {
+  } else if (b3) {
     // B3 turret protection: two large Kontakt-5 arrow leaves meet around
     // the armored gun tunnel, with clipped flank cassettes and a restrained
     // stagger at the crown. Each course overlaps the cast shoulder instead
@@ -847,7 +848,7 @@ export function buildT72B87Native(P, variant = 'b87') {
   P.add('turretDark', cylY(0.25, 0.25, 0.025, 16), -0.56, b3 ? 0.675 : 0.635, -0.02);
   P.add('turret', cylY(b3 ? 0.27 : 0.28, b3 ? 0.29 : 0.30, b3 ? 0.075 : 0.09, 16), 0.48, b3 ? 0.525 : 0.54, -0.10);
   P.add('turretDark', cylY(0.24, 0.24, 0.024, 16), 0.48, b3 ? 0.575 : 0.60, -0.10);
-  if (!b3) {
+  if (!b3 && !jaguar) {
     // TPN-3-49 night sight on a tapered cheek shoe.  The old cuboid rose
     // above the cupola; this lower housing stays readable but follows the
     // cast roof and keeps its blue glass clear of the K-1 courses.
@@ -857,7 +858,7 @@ export function buildT72B87Native(P, variant = 'b87') {
   }
   P.add('turret', cylZ(b3 ? 0.19 : 0.225, b3 ? 0.18 : 0.21, 16), 0.54, b3 ? 0.50 : 0.47, 0.57, -0.24, 0, 0);
   P.add('turretGlass', cylZ(b3 ? 0.16 : 0.19, 0.02, 16), 0.54, b3 ? 0.51 : 0.48, b3 ? 0.665 : 0.682, -0.24, 0, 0);
-  if (!b3) {
+  if (!b3 && !jaguar) {
     // Broad welded cradle and two lower stays make the large Luna lamp an
     // attached source identifier rather than a blue disc on the casting.
     P.add('turretDark', box(0.31, 0.065, 0.17), 0.54, 0.36, 0.48, -0.18, 0, 0);
@@ -902,7 +903,7 @@ export function buildT72B87Native(P, variant = 'b87') {
     }
     P.add('turret', box(0.22, 0.060, 0.12), 0.63, 0.565, -0.38, 0, 0.12, 0);
     P.add('turretDark', box(0.13, 0.032, 0.024), 0.63, 0.575, -0.31, 0, 0.12, 0);
-  } else {
+  } else if (!jaguar) {
     // Armored commander/NSVT station: a broad cupola seat, frontal shield
     // and short return wings. The opening and weapon line remain clear.
     P.add('turret', cylY(0.34, 0.36, 0.055, 18), -0.56, 0.655, -0.14);
@@ -920,23 +921,25 @@ export function buildT72B87Native(P, variant = 'b87') {
     }
   }
 
-  // Twin 902B banks with buried cheek brackets.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.38, 0.08, 0.32), s * 0.99, 0.29, 0.56, 0, s * -0.58, 0);
-    for (let i = 0; i < 6; i++) {
-      P.add('turretDark', cylZ(0.039, 0.23, 8), s * (0.80 + i * 0.058), 0.34 + (i % 2) * 0.025, 0.80 - i * 0.068, -0.42, s * -(0.25 + i * 0.08), 0);
+  // Twin 902B banks and NSVT are Russian-fit identifiers. Polish derivatives
+  // author their own smoke banks, WKM-B and antenna layout on the shared cast
+  // structure so family reuse never becomes a decoration clone.
+  if (!jaguar) {
+    for (const s of [-1, 1]) {
+      P.add('turret', box(0.38, 0.08, 0.32), s * 0.99, 0.29, 0.56, 0, s * -0.58, 0);
+      for (let i = 0; i < 6; i++) {
+        P.add('turretDark', cylZ(0.039, 0.23, 8), s * (0.80 + i * 0.058), 0.34 + (i % 2) * 0.025, 0.80 - i * 0.068, -0.42, s * -(0.25 + i * 0.08), 0);
+      }
     }
-  }
-  {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.04, ammo: true });
     mg.scale.setScalar(b3 ? 0.88 : 0.94);
     mg.position.set(-0.55, b3 ? 0.67 : 0.61, -0.17);
     P.turretG.add(mg);
+    P.add('turretDark', cylY(0.040, 0.045, 0.11, 10), -0.87, 0.59, -0.48);
+    P.add('turretDetail', box(0.025, 0.50, 0.025), -0.87, 0.82, -0.48);
+    P.add('turretDark', cylY(0.035, 0.040, 0.10, 10), 0.87, 0.59, -0.48);
+    P.add('turretDetail', box(0.022, 0.24, 0.022), 0.87, 0.68, -0.48);
   }
-  P.add('turretDark', cylY(0.040, 0.045, 0.11, 10), -0.87, 0.59, -0.48);
-  P.add('turretDetail', box(0.025, 0.50, 0.025), -0.87, 0.82, -0.48);
-  P.add('turretDark', cylY(0.035, 0.040, 0.10, 10), 0.87, 0.59, -0.48);
-  P.add('turretDetail', box(0.022, 0.24, 0.022), 0.87, 0.68, -0.48);
 
   // Open low bustle rail with direct returns into the cast rear shoulder.
   P.add('turretDark', box(1.55, 0.05, 0.05), 0, 0.30, -1.28);
@@ -958,7 +961,7 @@ export function buildT72B87Native(P, variant = 'b87') {
     P.add('turret', box(0.24, 0.20, 0.30), s * 1.08, 0.20, -0.72, 0, s * 0.20, 0);
     P.add('turretDark', box(0.18, 0.025, 0.24), s * 1.08, 0.315, -0.72, 0, s * 0.20, 0);
   }
-  if (!b3) {
+  if (!b3 && !jaguar) {
     // Shallow 1987 stowage bustle: three unequal jerrycan/tool cells sit
     // inside the open rail and return forward into the cast shoulder. The
     // frame stays visibly open and period-correct rather than becoming a
@@ -1063,10 +1066,12 @@ export function buildT72B87Native(P, variant = 'b87') {
   P.gunG.position.set(0, 0.05, 1.23);
   ruSaddle(P, { rollR: 0.19, rollW: 0.56, tubeR: 0.105, rootL: 0.58 });
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0,
-    b3 ? [0.48, 0.28, 1] : [0.62, 0.36, 1]), 0, b3 ? -0.05 : -0.035, b3 ? 0.16 : 0.13);
-  P.addGunExtra(box(b3 ? 0.40 : 0.48, b3 ? 0.24 : 0.27, 0.48), 0, -0.02, -0.20);
-  tubeGun(P, [[0.50, 2.02, 0.112], [2.02, 2.82, 0.122], [2.82, 4.80, 0.116]], {
-    rings: [[2.02, 0.122], [2.82, 0.121], [3.52, 0.119], [4.24, 0.117]], muzzle: 4.80,
+    b3 ? [0.48, 0.28, 1] : jaguar ? [0.57, 0.33, 1] : [0.62, 0.36, 1]),
+  0, b3 ? -0.05 : -0.035, b3 ? 0.16 : jaguar ? 0.15 : 0.13);
+  P.addGunExtra(box(b3 ? 0.40 : jaguar ? 0.44 : 0.48, b3 ? 0.24 : jaguar ? 0.25 : 0.27, 0.48), 0, -0.02, -0.20);
+  const muzzleZ = jaguar ? 5.22 : 4.80;
+  tubeGun(P, [[0.50, 2.02, 0.112], [2.02, 2.82, 0.122], [2.82, muzzleZ, 0.116]], {
+    rings: [[2.02, 0.122], [2.82, 0.121], [3.52, 0.119], [4.24, 0.117]], muzzle: muzzleZ,
   });
   muzzleBore(P, { r: 0.116 });
   P.topY = 1.16;
