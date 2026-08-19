@@ -4,7 +4,7 @@
 export const TANK_TIER = Object.freeze({
   m4a3e8: 6, tiger1: 7, t34_85: 6, is2: 7, panther_g: 7,
   m1a2: 10, t90m: 10, leo2a7: 10,
-  strv103: 9, is3: 8, t34_85_cad: 6, newc_tiger: 7,
+  strv103: 10, is3: 8, t34_85_cad: 6, newc_tiger: 7,
   newc_pziii: 4, pziii_konserwa: 3, leichttraktor: 1, recon_tank: 8, q_heavy: 9,
   kv2: 6, tiger2: 8, sherman_jumbo: 6, jagdtiger: 9, jpz_e100: 10,
   sturmtiger: 8, t95: 9, t30: 9, is7: 10, object279: 10, is6b: 8, is1: 5,
@@ -33,9 +33,8 @@ export const TANK_TIER = Object.freeze({
   amx30: 7, amx30b2: 8, m48: 7, m60a2: 8, vickers_mk1: 7, t84: 9,
   ua_t64bv: 8, ua_t80bv: 9, ua_t80u_kursk: 9, ua_t84_oplot_m: 10, ua_m1a1: 9,
   ztz85_iii: 8, ztz99a2: 10,
-  // strv103a one below the B (earlier-mark convention: centurion3/5,
-  // ariete/c1, t80/t80b).
-  strv81: 7, strv103a: 8, strv122: 10,
+  // Dedicated Swedish siege-TD progression: prototype -> A -> B.
+  strv81: 7, udes03: 8, strv103a: 9, strv122: 10,
   t72m1_jaguar: 8, pt91_twardy: 9, pl01: 10, pl01_105: 10,
   stb1: 7, type90a: 10, type10b: 10,
   leo2a4_otco: 8, leo2a4m: 9, leo2a6m: 10,

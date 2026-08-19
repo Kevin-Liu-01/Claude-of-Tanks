@@ -361,6 +361,130 @@ function fixedGunRun(P, axisY, secs) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// UDES 03 — compact Swedish hydropneumatic test-bed and Tier VIII siege TD.
+// The owner-supplied image is a visual oracle only: no external geometry,
+// texture, or topology enters this first-party procedural construction.
+// Its identity is the short low wedge, six-wheel course, exposed loaded run,
+// centered fixed 105 mm, broad service hatches, and uncluttered rear deck.
+// ---------------------------------------------------------------------------
+function buildUdes03(P) {
+  const { box, cylY, cylZ, torus, liftEye, periscope } = KIT;
+  P.fixedMount = true;
+
+  // Compact closed wedge. Split the hull at the fender datum so the complete
+  // animated shoe course owns a genuine corridor: a narrow inter-track tub
+  // carries the belly, while the armor shoulders flare only above the loaded
+  // upper run. This also leaves room for the unusually large hydraulic stroke.
+  const outline = [
+    { z: 2.96, b: 0.72, t: 1.04, w: 0.78, wt: 1.18 },
+    { z: 2.34, b: 0.39, t: 1.31, w: 0.84, wt: 1.34 },
+    { z: 1.30, b: 0.31, t: 1.52, w: 0.86, wt: 1.36 },
+    { z: 0.20, b: 0.30, t: 1.62, w: 0.87, wt: 1.36 },
+    { z: -1.62, b: 0.33, t: 1.61, w: 0.88, wt: 1.35 },
+    { z: -2.45, b: 0.52, t: 1.55, w: 0.84, wt: 1.30 },
+    { z: -2.95, b: 0.82, t: 1.42, w: 0.76, wt: 1.20 },
+  ];
+  loftRows(P, outline.map((row) => ({
+    z: row.z, b: row.b, t: 1.28, w: Math.min(row.w, 0.74), wt: 0.74,
+  })));
+  loftRows(P, outline.map((row) => ({
+    z: row.z, b: 1.30, t: Math.max(row.t, 1.32), w: row.wt, wt: row.wt,
+  })));
+  // The lower tow beam remains entirely inboard of both track lanes; the two
+  // lofts already provide closed beak and tail caps at their end stations.
+  P.add('hullDark', box(1.40, 0.07, 0.08), 0, 0.70, 2.92);
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.12, 0.15, 0.22), side * 0.74, 0.69, 2.80);
+    P.add('hullDark', torus(0.055, 0.016, 10), side * 0.74, 0.62, 2.92);
+  }
+
+  // Centered 105 mm gun. The stepped root disappears into the glacis and the
+  // open bore is explicitly authored for muzzle/ballistics alignment checks.
+  muzzleBore(P, { z: 4.70, r: 0.080, y: 1.43, parent: 'hullG' });
+  fixedGunRun(P, 1.43, [
+    { z0: 4.70, z1: 4.53, r: 0.102 },
+    { z0: 4.53, z1: 3.02, r: 0.082 },
+    { z0: 3.02, z1: 1.94, r: 0.090 },
+    { z0: 1.94, z1: 0.78, r: 0.103, r2: 0.128 },
+  ]);
+  P.add('hull', KIT.xform(cylZ(0.125, 0.46, 16, 0.15), 0, 0, 0, -0.20), 0, 1.41, 0.93);
+  P.add('hullDark', box(0.46, 0.055, 0.12), 0, 1.36, 1.44, -0.20, 0, 0);
+  P.turretG.position.set(0, 1.43, 0.40);
+  P.gunG.position.set(0, 0, 0);
+  P.muzzleZ = 4.30;
+
+  // Glacis louvres and splash rail follow the actual roof slope. Alternating
+  // ribs stay in merged buckets, preserving one draw call per material.
+  const glY = (z) => 1.52 - (z - 1.30) * 0.20;
+  for (const side of [-1, 1]) {
+    P.add('hullDark', box(0.68, 0.022, 0.88), side * 0.42, glY(1.83), 1.83, -0.20, 0, 0);
+    for (let i = 0; i < 6; i++) {
+      const z = 1.48 + i * 0.145;
+      P.add('hullDetail', box(0.65, 0.030, 0.045), side * 0.42, glY(z) + 0.026, z,
+        -0.20, 0, 0);
+    }
+  }
+  P.add('hullDetail', box(1.72, 0.045, 0.05), 0, glY(2.40) + 0.02, 2.40, -0.20, 0, 0);
+
+  // Low roof stations: large circular driver's hatch, rectangular commander
+  // hatch, short optic heads, and separate radiator/intake fields.
+  P.add('hull', cylY(0.31, 0.34, 0.075, 18), -0.63, 1.64, -0.04);
+  P.add('hullDark', torus(0.31, 0.016, 18), -0.63, 1.69, -0.04);
+  P.add('hull', box(0.60, 0.08, 0.46), 0.35, 1.65, -0.18, 0, -0.08, 0);
+  P.add('hullDark', box(0.50, 0.018, 0.36), 0.35, 1.70, -0.18, 0, -0.08, 0);
+  mount(P, 'hull', FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.64,
+    elev: 0.05, shield: false, ammo: true, seed: 302,
+  }), 0.38, 1.70, -0.22, [0, -0.05, 0]);
+  P.addEquipment('hull', box(0.24, 0.18, 0.27), 0.64, 1.72, -0.54);
+  P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.39);
+  periscope(P, 'hullDetail', -0.20, 1.62, 0.36);
+  periscope(P, 'hullDetail', 0.18, 1.62, 0.30);
+  for (const side of [-1, 1]) {
+    P.add('hullDark', box(0.92, 0.025, 0.68), side * 0.49, 1.63, -1.72);
+    for (let i = 0; i < 6; i++) {
+      P.add('hullDetail', box(0.84, 0.028, 0.035), side * 0.49, 1.65,
+        -1.98 + i * 0.105);
+    }
+    mount(P, 'hull', FITTINGS.lightCluster({
+      mats: P.mats, pods: 1, spacing: 0.12, r: 0.050,
+      shield: true, seed: 300 + (side > 0 ? 1 : 0),
+    }), side * 1.02, 1.38, 2.62);
+  }
+  P.add('hull', box(0.38, 0.10, 0.34), 0.72, 1.64, -1.02);
+  P.add('hullDark', box(0.34, 0.018, 0.30), 0.72, 1.70, -1.02);
+  P.add('hullDetail', KIT.cylY(0.043, 0.052, 0.10, 10), -0.86, 1.65, -1.28);
+  mount(P, 'hull', FITTINGS.antennaWhip({
+    mats: P.mats, h: 0.88, r: 0.011, rake: -0.24, seed: 303,
+  }), -0.86, 1.68, -1.30);
+  liftEye(P, 'hullDetail', -1.08, 1.60, 0.58, 0.35);
+  liftEye(P, 'hullDetail', 1.08, 1.60, 0.58, -0.35);
+
+  // Exposed six-wheel hydropneumatic course. Shallow fenders and a recessed
+  // bay wall keep the wheels readable while the deformable lower track run
+  // has the full ±0.50 m spec-owned hydraulic envelope.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.16, 0.035, 5.20), side * 1.31, 1.32, -0.02);
+    P.add('hull', box(0.06, 0.22, 4.92), side * 1.36, 1.43, -0.04);
+    P.add('hullRunningGearDark', box(0.02, 0.68, 4.86), side * 0.86, 0.54, -0.02);
+    for (let k = 0; k < 8; k++) {
+      P.add('hullDetail', box(0.018, 0.10, 0.48), side * 1.385, 1.45, 2.18 - k * 0.64);
+    }
+  }
+  KIT.buildRunningGear(P, {
+    style: 'rubber', dishR: 0.78, wheelR: 0.34, wheelW: 0.20, wheelY: 0.42, xc: 1.11,
+    wheelZs: [1.98, 1.20, 0.40, -0.40, -1.20, -1.98],
+    sprocket: { z: 2.52, y: 0.60, r: 0.28 }, idler: { z: -2.53, y: 0.66, r: 0.27 },
+    rollers: [{ z: 1.23, y: 0.98, r: 0.085 }, { z: 0, y: 1.01, r: 0.085 }, { z: -1.23, y: 0.98, r: 0.085 }],
+    trackW: 0.58, trackTh: 0.07, topY: 1.08, botY: 0.04,
+    arms: true, coveredTop: false, deadSag: 0.025,
+  });
+  P.decal('hull', 'number', '03', 0.25, [1.365, 1.50, -0.72], Math.PI / 2, 0, 0);
+  P.decal('hull', 'number', '03', 0.25, [-1.365, 1.50, -0.72], -Math.PI / 2, 0, 0);
+  P.topY = 1.34;
+}
+
 function buildStrv103A(P) {
   const { box, cylX, cylY, cylZ, frustum, torus, sph, liftEye, periscope } = KIT;
   P.fixedMount = true;
@@ -557,6 +681,7 @@ function buildStrv103A(P) {
 }
 
 export const SWEDEN_PROFILES = {
+  udes03: { build: buildUdes03 },
   strv103: { build: buildStrv103B },
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },

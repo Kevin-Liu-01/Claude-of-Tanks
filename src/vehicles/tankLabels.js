@@ -11,6 +11,10 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'Stridsvagn 81', shortName: 'Strv 81',
     searchAliases: ['Centurion Strv 81', 'Swedish Centurion'],
   },
+  udes03: {
+    displayName: 'UDES 03', shortName: 'UDES 03',
+    searchAliases: ['UDES 03 Swedish tank destroyer', 'Swedish siege TD'],
+  },
   strv103: {
     displayName: 'Stridsvagn 103B', shortName: 'Strv 103B',
     searchAliases: ['S-Tank', 'S-Tank B'],

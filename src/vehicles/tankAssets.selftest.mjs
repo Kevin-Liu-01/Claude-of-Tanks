@@ -13,7 +13,7 @@ assert.equal(expectedMuzzleBoreCount(getSpec('bmpt_terminator2')), 2,
   'twin autocannon profiles require one bore/rim pair per barrel');
 
 const displayNames = new Set();
-const HULL_ONLY_SHADOW_IDS = new Set(['strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);
+const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);
 
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);

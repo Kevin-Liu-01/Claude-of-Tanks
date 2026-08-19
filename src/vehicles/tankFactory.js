@@ -1296,6 +1296,9 @@ function buildRunningGear(P, cfg) {
   const xcForSide = (side) => side < 0 ? xcLeft : xcRight;
 
   const wheelY = cfg.wheelY ?? wheelR + 0.10;
+  const hydraulicAim = P.spec?.hydropneumaticAim;
+  const suspensionDroopM = cfg.suspensionDroopM ?? hydraulicAim?.droopM ?? 0.22;
+  const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
   const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
   // Machine-readable family receipt. Variant builders still choose their
   // own radius, cadence, terminal geometry and protection; this records only
@@ -2360,7 +2363,11 @@ function buildRunningGear(P, cfg) {
           if (g2 - 0.17 * e.r > g) g = g2 - 0.17 * e.r;
           const dev = g - wy;
           // Real suspension travel: wheels visibly drop into ruts
-          // and ride crests instead of the r2 near-rigid ±7 cm creep
+          // and ride crests instead of the r2 near-rigid ±7 cm creep.
+          // Hydraulic siege vehicles opt into their larger physical envelope
+          // through the same spec record that owns their aiming limits. This
+          // lets the wheel course and loaded band stay planted through the
+          // pronounced hull angles instead of saturating at the fleet clamp.
           // gameplay_feel r5 (terrain-contact hard gate): ASYMMETRIC clamp —
           // droop opens to −0.22 m and up-travel to +0.30 m so a bump
           // the rigid hull plane straddles lifts the wheel over the crest
@@ -2372,7 +2379,9 @@ function buildRunningGear(P, cfg) {
           // +10 cm crest moved the wheel/belt +13.5 cm and left daylight;
           // hollows overshot in the other direction. One-to-one displacement
           // is both physically correct and keeps the rendered contact honest.
-          const target = dev < -0.22 ? -0.22 : (dev > 0.30 ? 0.30 : dev);
+          const target = dev < -suspensionDroopM
+            ? -suspensionDroopM
+            : (dev > suspensionCompressionM ? suspensionCompressionM : dev);
           // Frame-rate independent damping. Distant gear updates at 20 Hz,
           // so the caller accumulates skipped dt and lands the same response
           // as a near tank without doing extra terrain work.

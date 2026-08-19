@@ -1177,6 +1177,50 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       }
     }
   },
+  "udes03": {
+    "hull": {
+      "min": [
+        -1.39,
+        0.3,
+        -2.95
+      ],
+      "max": [
+        1.39,
+        1.69,
+        4.7
+      ],
+      "sourceHash": "8d202c1d32419b2e"
+    },
+    "turret": null,
+    "tracks": {
+      "left": {
+        "min": [
+          -1.4,
+          0.005,
+          -2.8781
+        ],
+        "max": [
+          -0.82,
+          1.165,
+          2.8795
+        ],
+        "sourceHash": "0824270c0c64cc29"
+      },
+      "right": {
+        "min": [
+          0.82,
+          0.005,
+          -2.8781
+        ],
+        "max": [
+          1.4,
+          1.165,
+          2.8795
+        ],
+        "sourceHash": "4fa141182696b24b"
+      }
+    }
+  },
   "strv103a": {
     "hull": {
       "min": [

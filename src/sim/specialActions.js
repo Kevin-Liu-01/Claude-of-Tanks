@@ -17,8 +17,6 @@ export const SPECIAL_ACTION_KINDS = Object.freeze({
   MAGAZINE_RELOAD: 'magazine_reload',
 });
 
-const HYDROPNEUMATIC_IDS = new Set(['strv103', 'strv103a']);
-
 const RESULT_NONE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.NONE, reason: 'UNAVAILABLE' });
 const RESULT_BUSY = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, reason: 'BUSY' });
 const RESULT_RELOAD_DENIED = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, reason: 'FULL_OR_RELOADING' });
@@ -55,7 +53,7 @@ export function guidedMissileSlot(spec) {
 /** Resolve the single primary action presented by the context button. */
 export function specialActionKind(spec) {
   if (!spec) return SPECIAL_ACTION_KINDS.NONE;
-  if (HYDROPNEUMATIC_IDS.has(spec.id)) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
+  if (spec.hydropneumaticAim) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
   if (guidedMissileSlot(spec) >= 0) return SPECIAL_ACTION_KINDS.GUIDED_MISSILE;
   if (spec.gun?.autoloader) return SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD;
   return SPECIAL_ACTION_KINDS.NONE;
