@@ -16,23 +16,23 @@ import { resolve, join } from 'node:path';
 const SCENARIOS = [
   ['desert', 'm1a2_sepv3', 't90m'],
   ['winter', 'strv122', 'k2'],
-  ['urban', 'challenger_3', 'leo2a7v'],
+  ['desert', 'challenger_3', 'leo2a7v'],
   ['verdant', 'type10b', 'ztz99a2'],
   ['desert', 'leclerc_xlr', 't14'],
   ['winter', 'kf51b', 'abramsx'],
-  ['urban', 'm1a2_tusk', 't90sm'],
+  ['desert', 'm1a2_tusk', 't90sm'],
   ['verdant', 'ua_t84_oplot_m', 'pt91_twardy'],
   ['desert', 'pl01_105', 'k2b'],
   ['winter', 'merkava4b', 'ariete_c2'],
-  ['urban', 'm1a2_sepv2', 'type99a'],
+  ['desert', 'm1a2_sepv2', 'type99a'],
   ['verdant', 'leo2_revolution', 't72b3m'],
   ['desert', 'challenger2', 'leclerc'],
   ['winter', 'type10', 'k1a1'],
-  ['urban', 'm1a1ha', 't80u'],
+  ['desert', 'm1a1ha', 't80u'],
   ['verdant', 'ua_m1a1', 'ua_t64bv'],
   ['desert', 'leo2a6m', 't90ms'],
   ['winter', 'merkava3d', 'amx40'],
-  ['urban', 'type90a', 'pt91m'],
+  ['desert', 'type90a', 'pt91m'],
   ['verdant', 'm1a2', 'ua_t80u_kursk'],
 ].map(([map, alpha, bravo], index) => ({
   index: index + 1,
@@ -50,6 +50,10 @@ function opt(name, fallback) {
 
 const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
 const count = Math.max(1, Math.min(SCENARIOS.length, Number.parseInt(opt('count', '20'), 10) || 20));
+const only = new Set(String(opt('only', ''))
+  .split(',')
+  .map((value) => Number.parseInt(value.trim(), 10))
+  .filter((value) => Number.isInteger(value) && value >= 1 && value <= SCENARIOS.length));
 const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
 const videoBitsPerSecond = Math.max(
   2_000_000,
@@ -211,11 +215,15 @@ try {
     { timeout: 180_000 },
   );
 
-  const jobs = SCENARIOS.slice(0, count);
-  for (const scenario of jobs) {
+  const jobs = only.size
+    ? SCENARIOS.filter((scenario) => only.has(scenario.index))
+    : SCENARIOS.slice(0, count);
+  for (let jobIndex = 0; jobIndex < jobs.length; jobIndex++) {
+    const scenario = jobs[jobIndex];
     const number = String(scenario.index).padStart(2, '0');
     console.log(
-      `[studio-examples] ${number}/${String(count).padStart(2, '0')} ` +
+      `[studio-examples] ${String(jobIndex + 1).padStart(2, '0')}/` +
+      `${String(jobs.length).padStart(2, '0')} [scenario ${number}] ` +
       `${scenario.alpha} vs ${scenario.bravo} on ${scenario.map}`,
     );
     const result = await page.evaluate(async (job) => {

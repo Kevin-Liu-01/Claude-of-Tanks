@@ -305,4 +305,6 @@ npm run studio:examples -- --out shots/studio-modern-examples
 
 The batch tool validates both actors as `modern`/`mbt`, records the production
 canvas path at 1280×720, and writes WebM files plus `manifest.json` under the
-gitignored output directory.
+gitignored output directory. Use `--only 3,7,11` to render selected pinned
+scenario numbers. The pinned set avoids the urban center because its buildings
+can occlude a generic two-tank camera rail.
