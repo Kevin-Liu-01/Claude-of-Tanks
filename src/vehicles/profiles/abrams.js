@@ -7534,16 +7534,10 @@ function buildAbramsX(P) {
     const lz = z + 0.39;
     const opticY = ly0 + h * 0.48;
     // Low turntable, seated inside the measured body band rather than on
-    // the old extra 108 mm pedestal that made both stations tower-like.
-    // The forward station begins 46 mm above the local roof course in the
-    // measurement receipt.  Preserve that outer envelope, but bridge it
-    // with a buried neck so the hood cannot read as a floating decoration.
-    const roofSeatY = 2.420 - 1.95;
-    if (ly0 > roofSeatY) {
-      const seatH = ly0 - roofSeatY + 0.014;
-      P.add('turret', cylY(0.185, 0.205, seatH, 12), x,
-        roofSeatY + seatH / 2, lz);
-    }
+    // the old extra pedestal that made both stations tower-like. The final
+    // shell retune lowered this roof course, so the complete station now
+    // starts directly in the armor instead of standing on a second floating
+    // bridge cylinder.
     P.add('turretDark', cylY(0.210, 0.210, 0.055, 12), x,
       y0 - 1.95 + 0.030, z + 0.39);
     P.add('turret', cylY(0.190, 0.210, 0.052, 10), x,
@@ -7607,8 +7601,8 @@ function buildAbramsX(P) {
         z + 0.39 + Math.cos(ba) * 0.188);
     }
   };
-  axRoofSight(0.702, 0.603, 2.476, 2.860);
-  axRoofSight(-0.759, 0.826, 2.373, 2.758);
+  axRoofSight(0.702, 0.603, 2.145, 2.529);
+  axRoofSight(-0.759, 0.826, 2.115, 2.500);
   // Paired narrow roof posts at x=+/-1.30 own the 2.656 m front-view
   // shoulder samples without raising the broad outer sensor wings.
   for (const side of [-1, 1]) {
@@ -8044,15 +8038,15 @@ function buildAbramsX(P) {
       P.add('turretDetail', cylY(0.018, 0.018, 0.018, 8),
         side * (0.18 + bi * 0.18), 2.407 - 1.95, -1.834 + 0.39);
     }
-    // Edge electronics and tie-down blocks.  Their station envelopes come
-    // from the receipt, but each is rebuilt as a simple box with visible
-    // separation so the roof edge reads busy and functional at hero range.
+    // Edge electronics and tie-down blocks. Their plan envelopes come from
+    // the receipt, while their vertical bands are seated on the final shell
+    // rather than retaining the pre-retune roof height.
     const edgeBoxes = [
-      [1.103, 1.204, 2.357, 2.447, -1.666, -1.568],
-      [1.486, 1.573, 2.267, 2.348, -1.572, -1.474],
-      [1.579, 1.666, 2.276, 2.342, -1.421, -1.334],
-      [1.491, 1.591, 2.300, 2.386, -0.462, -0.366],
-      [1.582, 1.682, 2.278, 2.364, -0.370, -0.275],
+      [1.103, 1.204, 2.088, 2.178, -1.666, -1.568],
+      [1.486, 1.573, 2.032, 2.113, -1.572, -1.474],
+      [1.579, 1.666, 2.063, 2.129, -1.421, -1.334],
+      [1.491, 1.591, 2.195, 2.281, -0.462, -0.366],
+      [1.582, 1.682, 2.160, 2.246, -0.370, -0.275],
     ];
     for (const [x0, x1, y0, y1, z0, z1] of edgeBoxes) {
       axRwsBox('turretDetail', side > 0 ? x0 : -x1, side > 0 ? x1 : -x0,
@@ -8661,6 +8655,7 @@ function buildAbramsX(P) {
   // the XM360 still has its measured rising roof bridge.  A shallow lower
   // flare seats each segment on the outer armor top; the constant 0.3925 m
   // crest is the source's repeated cross-section cut, not copied topology.
+  const AX_SPINE_SEAT_DROP = 0.055;
   const axSpineStations = [
     // world z, outer-seat y, spine-top y, top half-width, seat half-width
     [2.404, 1.855, 1.855, 0.410, 0.470],
@@ -8670,7 +8665,8 @@ function buildAbramsX(P) {
     [0.979, 2.159, 2.367, 0.360, 0.508],
     [0.766, 2.363, 2.374, 0.360, 0.404],
   ].map(([z, y0, y1, topW, seatW]) => ({
-    z: z + 0.39, y0: y0 - 1.95, y1: y1 - 1.95, topW, seatW,
+    z: z + 0.39, y0: y0 - 1.95 - AX_SPINE_SEAT_DROP,
+    y1: y1 - 1.95, topW, seatW,
   }));
   for (let i = 0; i < axSpineStations.length - 1; i++) {
     const a = axSpineStations[i], b = axSpineStations[i + 1];
@@ -8695,7 +8691,7 @@ function buildAbramsX(P) {
   // 2.0 m-long ridge had both footprint axes wrong and disappeared into
   // the camouflage instead of reading as the AbramsX roof cassette.
   P.add('turret', slab(
-    [-0.405, 0.413, 1.189], [0.405, 0.413, 1.189], [0.405, 0.413, -0.161], [-0.405, 0.413, -0.161],
+    [-0.405, 0.169, 1.189], [0.405, 0.169, 1.189], [0.405, 0.348, -0.161], [-0.405, 0.348, -0.161],
     [-0.360, 0.5162, 1.1555], [0.360, 0.5162, 1.1555],
     [0.360, 0.5162, -0.1275], [-0.360, 0.5162, -0.1275]));
   P.add('turretDark', box(0.014, 0.009, 1.28), -0.368, 0.517, 0.514);
@@ -8709,12 +8705,8 @@ function buildAbramsX(P) {
   if (P.q) {
     for (const side of [-1, 1]) {
       P.add('turretDark', box(0.02, 0.5, 0.02), side * 1.30, -0.16, 2.30, -0.35, 0, 0);
-      P.add('turretDark', box(0.02, 0.02, 3.2), side * 1.58, 0.40, 0.35);
-      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.462, -0.01);
-      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.462, 0.89);
-      // AXDED-R1: corner sticks shortened (tops 2.38 world owned the tail
-      // bins 0.08 over the ref's 2.30 line) — tops now 2.29 world.
-      P.add('turretDetail', box(0.03, 0.20, 0.03), side * 1.3, 0.24, -1.65);
+      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.346, -0.01);
+      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.226, 0.89);
     }
   }
   // AXDED-R1: sensor post trimmed under the falling shelf top line (the
@@ -8746,14 +8738,7 @@ function buildAbramsX(P) {
   // AXFIX-O5 (§5.27 order 5): the drum pair was sub-visible at garage range
   // — FATTENED to the print's proportions. Tops HOLD the 0.509 local =
   // 2.459 world grace ceiling exactly as certified (p95 budget untouched).
-  // roof bolt courses along the plateau edges (the new print's riveted
-  // roof-edge read; +8 mm sub-AA over the 0.48 plane, side x-invariant)
-  P.add('turretDetail', box(0.008, 0.007, 2.30), -1.60, 0.4845, 0.30);
-  P.add('turretDetail', box(0.008, 0.007, 2.30), 1.60, 0.4845, 0.30);
   P.add('turretDark', box(0.56, 0.05, 0.016), 0, 0.035, 2.6485, 0.513, 0, 0); // face sensor slit (flush on the 29.4° rake)
-  for (const side of [-1, 1]) {   // cheek chamfer weld seams
-    P.add('turretDark', box(1.16, 0.013, 0.013), side * 1.124, 0.245, 2.487, 0, side * 0.434, 0);
-  }
   // AXDED-R2 CHEEK SMOKE BANKS (new-ref look order + §B3.2: the new print
   // carries recessed multi-tube banks in BOTH upper cheeks — the proc face
   // was bare). KIT fitting, turret parented (§B5 — yaws with the shell),
