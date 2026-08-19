@@ -40,6 +40,17 @@ import {
 } from '../vehicles/materials.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.js';
 import { createStudioPanel } from '../ui/studioPanel.js';
+import {
+  STUDIO_MAX_DURATION_MS,
+  normalizeStoryboard,
+  clampStudioTime,
+  upsertCameraShot,
+  removeCameraShot as removeStoryboardShot,
+  upsertActorKey,
+  clearActorTrack as clearStoryboardActorTrack,
+  sampleCameraRail,
+  sampleActorTrack,
+} from './studioTimeline.js';
 
 const DEG = Math.PI / 180;
 const FX_STEP_S = 1 / 60;      // fixed timeline step (load() and live advance)
@@ -76,6 +87,14 @@ const _up = new THREE.Vector3(0, 1, 0);
 const _size = new THREE.Vector2();
 const _ray = new THREE.Raycaster();
 const _ndc = new THREE.Vector2();
+const _cameraSample = {
+  x: 0, y: 0, z: 0,
+  lookX: 0, lookY: 0, lookZ: 0,
+  fov: 50, rollDeg: 0, shotId: null,
+};
+const _actorSample = {
+  x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: null,
+};
 
 /**
  * Create the studio. Pure setup — nothing heavy happens until enter().
@@ -115,12 +134,19 @@ export function createStudio(ctx) {
   const pickHits = [];         // Raycaster optionalTarget scratch
   const shells = [];           // live studio projectiles (fx tracer source)
   const effectLog = [];        // authored effect instances (scene JSON round-trip)
+  const activeEffectIds = new Set(); // effects emitted at the current playhead
   let lastFov = 0;
   let frameDirty = true;
   let cameraDirty = true;
   let poolSweepAcc = 0;
   let sceneMeta = { seed: 5000 };
   let selectedEffect = null;
+  let storyboard = normalizeStoryboard();
+  let selectedShotId = null;
+  let shotUidSeq = 1;
+  let actorKeyUidSeq = 1;
+  let railVisible = true;
+  let recording = null;
   const perf = { renderedFrames: 0, skippedFrames: 0, poolSweeps: 0 };
 
   function invalidate() { frameDirty = true; }
@@ -151,6 +177,8 @@ export function createStudio(ctx) {
   let placeArmed = null;       // specId to place on next terrain click
   const marker = buildMarker();// last terrain click (effect anchor)
   scene.add(marker.group);
+  const rail = buildCameraRail();
+  scene.add(rail.group);
 
   function buildMarker() {
     const group = new THREE.Group();
@@ -186,6 +214,64 @@ export function createStudio(ctx) {
     };
   }
 
+  function buildCameraRail() {
+    const group = new THREE.Group();
+    group.name = 'studio_camera_rail';
+    group.visible = false;
+    const pointGeometry = new THREE.SphereGeometry(0.22, 10, 7);
+    const pointMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffbc59, transparent: true, opacity: 0.95, depthTest: false,
+    });
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0xe69a2d, transparent: true, opacity: 0.8, depthTest: false,
+    });
+    let line = null;
+    return {
+      group,
+      rebuild() {
+        if (line) {
+          group.remove(line);
+          line.geometry.dispose();
+          line = null;
+        }
+        group.clear();
+        const shots = storyboard.shots;
+        if (shots.length >= 2) {
+          const samples = Math.max(2, (shots.length - 1) * 24 + 1);
+          const positions = new Float32Array(samples * 3);
+          for (let i = 0; i < samples; i++) {
+            const tMs = storyboard.durationMs * (i / (samples - 1));
+            sampleCameraRail(shots, tMs, _cameraSample);
+            const o = i * 3;
+            positions[o] = _cameraSample.x;
+            positions[o + 1] = _cameraSample.y;
+            positions[o + 2] = _cameraSample.z;
+          }
+          const geometry = new THREE.BufferGeometry();
+          geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          line = new THREE.Line(geometry, lineMaterial);
+          line.frustumCulled = false;
+          line.renderOrder = 900;
+          group.add(line);
+        }
+        for (const shot of shots) {
+          const point = new THREE.Mesh(pointGeometry, pointMaterial);
+          point.position.fromArray(shot.pos);
+          point.frustumCulled = false;
+          point.renderOrder = 901;
+          point.userData.studioShotId = shot.id;
+          group.add(point);
+        }
+        group.visible = active && railVisible && timeScale === 0 && !recording && shots.length > 0;
+        invalidate();
+      },
+      updateVisibility() {
+        group.visible = active && railVisible && timeScale === 0 && !recording
+          && storyboard.shots.length > 0;
+      },
+    };
+  }
+
   function applyCameraPose() {
     camera.rotation.order = 'YXZ';
     camera.rotation.set(cam.pitch, cam.yaw, cam.roll);
@@ -217,6 +303,7 @@ export function createStudio(ctx) {
   }
 
   function updateCamera(dt) {
+    if (timeScale > 0 && storyboard.shots.length) return false;
     const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1;
     const v = cam.speed * boost * dt;
     if (cam.mode === 'fly') {
@@ -310,6 +397,9 @@ export function createStudio(ctx) {
     st.yawRate = 0;
     st.turretYaw = p.turretDeg * DEG;
     st.gunPitch = clampGunDeg(a.spec, p.gunDeg) * DEG;
+    a.timelineX = p.x;
+    a.timelineZ = p.z;
+    a.timelineYaw = st.yaw;
     a.visual.syncFromState(st, 0);
   }
 
@@ -395,8 +485,13 @@ export function createStudio(ctx) {
       // engine_smoke/burning EFFECTS may also layer them onto wreck states
       smoking: false,
       burning: false,
+      timelineX: x,
+      timelineZ: z,
+      timelineYaw: (cfg.facingDeg || 0) * DEG,
+      timelineTrack: null,
     };
     actors.push(a);
+    bindStoryboardTracks();
     actorRoots.push(visual.root);
     actorByRoot.set(visual.root, a);
     if (a.camo && a.camo !== 'inherit') {
@@ -421,6 +516,7 @@ export function createStudio(ctx) {
   function removeActor(ref, opts = {}) {
     const a = findActor(ref);
     if (!a) return false;
+    const actorKey = actorRefOut(a);
     const hadEffects = effectLog.length > 0;
     for (let i = effectLog.length - 1; i >= 0; i--) {
       const effectActor = findActor(effectLog[i].actor);
@@ -433,10 +529,13 @@ export function createStudio(ctx) {
     const rootIndex = actorRoots.indexOf(a.visual.root);
     if (rootIndex >= 0) actorRoots.splice(rootIndex, 1);
     actors.splice(actors.indexOf(a), 1);
+    storyboard = clearStoryboardActorTrack(storyboard, actorKey);
+    bindStoryboardTracks();
     if (selected === a) selected = null;
     if (hadEffects && opts.rebuild !== false) rebuildEffects(clockMs);
     panel.refreshActors();
     panel.refreshEffects();
+    panel.refreshStoryboard();
     invalidate();
     return true;
   }
@@ -447,6 +546,7 @@ export function createStudio(ctx) {
     selectedEffect = null;
     while (actors.length) removeActor(actors[actors.length - 1], { rebuild: false });
     uidSeq = 1;
+    storyboard = normalizeStoryboard({ ...storyboard, actorTracks: [] });
     resetFxRuntime(sceneMeta.seed || 5000);
     panel.setSelectedEffect(null);
   }
@@ -528,6 +628,7 @@ export function createStudio(ctx) {
     if (patch.turretDeg != null) p.turretDeg = patch.turretDeg;
     if (patch.gunDeg != null) p.gunDeg = clampGunDeg(a.spec, patch.gunDeg);
     if (patch.name !== undefined) a.name = patch.name || null;
+    if (patch.name !== undefined) bindStoryboardTracks();
     if (patch.camo !== undefined) {
       a.camo = patch.camo || null;
       if (a.camo) {
@@ -603,6 +704,7 @@ export function createStudio(ctx) {
 
   function onPointerDown(e) {
     if (!active || e.target !== renderer.domElement) return;
+    if (recording) return;
     if (e.button === 0) {
       const hitActor = pickActor(e);
       if (hitActor && !placeArmed) {
@@ -758,7 +860,7 @@ export function createStudio(ctx) {
       ...(Array.isArray(e.from) ? { from: [...e.from] } : {}),
       ...(Array.isArray(e.to) ? { to: [...e.to] } : {}),
       params: { ...(e.params || {}) },
-      tMs: Math.round(tMs),
+      tMs: clampStudioTime(tMs, storyboard.durationMs),
     };
   }
 
@@ -769,6 +871,7 @@ export function createStudio(ctx) {
    * @returns {boolean} fired
    */
   function fireEffect(e, opts = {}) {
+    if (recording && opts.record !== false) return false;
     ensureFxBus();
     const params = e.params || {};
     const got = effectPos(e, _v1);
@@ -1055,12 +1158,15 @@ export function createStudio(ctx) {
       if (opts.record !== false) {
         const record = makeEffectRecord(e, opts.tMs != null ? opts.tMs : clockMs);
         effectLog.push(record);
+        activeEffectIds.add(record.id);
         if (effectLog.length > MAX_STUDIO_EFFECTS) {
           effectLog.shift();
           rebuildEffects(clockMs);
         }
         selectedEffect = record;
         if (opts.refresh !== false) panel.setSelectedEffect(record);
+      } else if (e.id) {
+        activeEffectIds.add(e.id);
       }
       if (w) w.setWindTime(0.35 + clockMs / 1000);
       invalidate();
@@ -1097,6 +1203,7 @@ export function createStudio(ctx) {
   }
 
   function removeEffect(ref) {
+    if (recording) return false;
     const effect = findEffect(ref);
     if (!effect) return false;
     const index = effectLog.indexOf(effect);
@@ -1105,6 +1212,18 @@ export function createStudio(ctx) {
     rebuildEffects(clockMs);
     panel.setSelectedEffect(selectedEffect);
     return true;
+  }
+
+  function updateEffect(ref, patch = {}) {
+    if (recording) return null;
+    const effect = findEffect(ref);
+    if (!effect) return null;
+    if (patch.tMs != null) effect.tMs = clampStudioTime(patch.tMs, storyboard.durationMs);
+    if (patch.params) effect.params = { ...effect.params, ...patch.params };
+    rebuildEffects(clockMs);
+    panel.refreshEffects();
+    panel.refreshStoryboard();
+    return listEffects().find((item) => item.id === effect.id) || null;
   }
 
   // --- timeline ---------------------------------------------------------------
@@ -1156,11 +1275,15 @@ export function createStudio(ctx) {
    * @param {number} ms milliseconds of fx time
    */
   function advanceFx(ms) {
-    const steps = Math.max(0, Math.round((ms / 1000) / FX_STEP_S));
-    for (let i = 0; i < steps; i++) {
-      stepFx(FX_STEP_S);
-      for (const a of actors) a.visual.syncFromState(a.state, FX_STEP_S);
+    let remainingS = Math.max(0, ms / 1000);
+    while (remainingS > 1e-7) {
+      const dt = Math.min(FX_STEP_S, remainingS);
+      applyStoryboardActors(clockMs + dt * 1000, dt);
+      stepFx(dt);
+      for (const a of actors) a.visual.syncFromState(a.state, dt);
+      remainingS -= dt;
     }
+    applyStoryboardCamera(clockMs);
     invalidate();
   }
 
@@ -1171,6 +1294,7 @@ export function createStudio(ctx) {
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
+    activeEffectIds.clear();
     const w = getWorld();
     if (w) w.setWindTime(0.35);
   }
@@ -1190,10 +1314,14 @@ export function createStudio(ctx) {
 
   /** Rebuild every pooled effect from the authored stack at the current time. */
   function rebuildEffects(targetMs = clockMs) {
-    const target = Math.max(0, targetMs);
+    const target = clampStudioTime(targetMs, storyboard.durationMs);
     const savedScale = timeScale;
     resetFxRuntime(sceneMeta.seed || 5000);
-    for (const a of actors) restoreAuthoredActor(a);
+    for (const a of actors) {
+      settleActor(a);
+      restoreAuthoredActor(a);
+    }
+    applyStoryboardActors(0, 0);
     const ordered = effectLog
       .map((effect, index) => ({ effect, index }))
       .sort((a, b) => a.effect.tMs - b.effect.tMs || a.index - b.index);
@@ -1208,6 +1336,7 @@ export function createStudio(ctx) {
     advanceFx(target - t);
     clockMs = target;
     timeScale = savedScale;
+    applyStoryboardFrame(target, 0);
     const w = getWorld();
     if (w) w.setWindTime(0.35 + target / 1000);
     panel.refreshAll();
@@ -1223,6 +1352,64 @@ export function createStudio(ctx) {
     for (const a of actors) restoreAuthoredActor(a);
     panel.setSelectedEffect(null);
     invalidate();
+  }
+
+  function seekTimeline(timeMs, opts = {}) {
+    if (recording && !opts.recording) return Math.round(clockMs);
+    const target = clampStudioTime(timeMs, storyboard.durationMs);
+    if (opts.pause !== false) timeScale = 0;
+    rebuildEffects(target);
+    panel.refreshAll();
+    return Math.round(clockMs);
+  }
+
+  function nextPendingEffect(targetMs) {
+    let next = null;
+    for (const effect of effectLog) {
+      if (activeEffectIds.has(effect.id)) continue;
+      if (effect.tMs < clockMs - 0.01 || effect.tMs > targetMs + 0.01) continue;
+      if (!next || effect.tMs < next.tMs) next = effect;
+    }
+    return next;
+  }
+
+  function advanceTimeline(ms) {
+    const target = clampStudioTime(clockMs + Math.max(0, ms), storyboard.durationMs);
+    let due = nextPendingEffect(target);
+    while (due) {
+      advanceFx(Math.max(0, due.tMs - clockMs));
+      applyStoryboardActors(due.tMs, 0);
+      fireEffect(due, { record: false, refresh: false });
+      due = nextPendingEffect(target);
+    }
+    advanceFx(Math.max(0, target - clockMs));
+    clockMs = target;
+    applyStoryboardFrame(target, 0);
+    if (clockMs >= storyboard.durationMs) timeScale = 0;
+    return Math.round(clockMs);
+  }
+
+  function playTimeline() {
+    if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
+    timeScale = 1;
+    rail.updateVisibility();
+    panel.refreshTime();
+    invalidate();
+    return true;
+  }
+
+  function pauseTimeline() {
+    if (recording) return Math.round(clockMs);
+    timeScale = 0;
+    rail.updateVisibility();
+    panel.refreshTime();
+    invalidate();
+    return Math.round(clockMs);
+  }
+
+  function stopTimeline() {
+    if (recording) stopRecording();
+    return seekTimeline(0);
   }
 
   // --- camera API --------------------------------------------------------------
@@ -1268,6 +1455,296 @@ export function createStudio(ctx) {
         r2(camera.position.z + _fwd.z * 20),
       ],
     };
+  }
+
+  // --- cinematic storyboard -------------------------------------------------
+  function actorTrackFor(a) {
+    return a.timelineTrack;
+  }
+
+  function bindStoryboardTracks() {
+    for (const a of actors) a.timelineTrack = null;
+    for (const track of storyboard.actorTracks) {
+      const a = findActor(track.actor);
+      if (a) a.timelineTrack = track;
+    }
+  }
+
+  function applyStoryboardCamera(timeMs) {
+    if (!sampleCameraRail(storyboard.shots, timeMs, _cameraSample)) return false;
+    camera.position.set(_cameraSample.x, _cameraSample.y, _cameraSample.z);
+    cam.mode = 'fly';
+    cam.fov = _cameraSample.fov;
+    cam.roll = _cameraSample.rollDeg * DEG;
+    _v2.set(_cameraSample.lookX, _cameraSample.lookY, _cameraSample.lookZ);
+    lookAt(_v2);
+    return true;
+  }
+
+  function applyStoryboardActors(timeMs, dt = 0) {
+    for (const a of actors) {
+      const track = actorTrackFor(a);
+      if (!track || !sampleActorTrack(track.keys, timeMs, _actorSample)) continue;
+      const st = a.state;
+      const yaw = _actorSample.facingDeg * DEG;
+      const dx = _actorSample.x - a.timelineX;
+      const dz = _actorSample.z - a.timelineZ;
+      const dyaw = Math.atan2(Math.sin(yaw - a.timelineYaw), Math.cos(yaw - a.timelineYaw));
+      if (dt > 0) {
+        const forwardX = Math.sin(yaw);
+        const forwardZ = Math.cos(yaw);
+        const signedDist = dx * forwardX + dz * forwardZ;
+        st.speed = signedDist / dt;
+        st.yawRate = dyaw / dt;
+        st.trackScroll.l += signedDist + dyaw * 1.5;
+        st.trackScroll.r += signedDist - dyaw * 1.5;
+      } else {
+        st.speed = 0;
+        st.yawRate = 0;
+      }
+      a.timelineX = _actorSample.x;
+      a.timelineZ = _actorSample.z;
+      a.timelineYaw = yaw;
+      st.pos.x = _actorSample.x;
+      st.pos.z = _actorSample.z;
+      st.pos.y = hfProxy.getHeightAt(st.pos.x, st.pos.z);
+      st.yaw = yaw;
+      st.turretYaw = _actorSample.turretDeg * DEG;
+      st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg) * DEG;
+
+      // Four cheap height samples keep cinematic tracks seated on rolling
+      // terrain without invoking the full authoritative movement solver on
+      // every rendered frame.
+      const halfL = Math.max(1, (a.spec.dims.hullLengthM || 6) * 0.38);
+      const halfW = Math.max(0.7, (a.spec.dims.widthM || 3) * 0.4);
+      const fx = Math.sin(yaw);
+      const fz = Math.cos(yaw);
+      const rx = Math.cos(yaw);
+      const rz = -Math.sin(yaw);
+      const frontH = hfProxy.getHeightAt(st.pos.x + fx * halfL, st.pos.z + fz * halfL);
+      const rearH = hfProxy.getHeightAt(st.pos.x - fx * halfL, st.pos.z - fz * halfL);
+      const rightH = hfProxy.getHeightAt(st.pos.x + rx * halfW, st.pos.z + rz * halfW);
+      const leftH = hfProxy.getHeightAt(st.pos.x - rx * halfW, st.pos.z - rz * halfW);
+      st.visualPitch = Math.atan2(frontH - rearH, halfL * 2);
+      st.visualRoll = Math.atan2(rightH - leftH, halfW * 2);
+    }
+  }
+
+  function applyStoryboardFrame(timeMs, dt = 0) {
+    applyStoryboardActors(timeMs, dt);
+    applyStoryboardCamera(timeMs);
+    rail.updateVisibility();
+    invalidate();
+  }
+
+  function getStoryboard() {
+    return normalizeStoryboard(storyboard);
+  }
+
+  function setStoryboard(next = {}) {
+    if (recording) return getStoryboard();
+    storyboard = normalizeStoryboard(next);
+    bindStoryboardTracks();
+    for (const effect of effectLog) {
+      effect.tMs = clampStudioTime(effect.tMs, storyboard.durationMs);
+    }
+    if (clockMs > storyboard.durationMs) clockMs = storyboard.durationMs;
+    selectedShotId = storyboard.shots.some((shot) => shot.id === selectedShotId)
+      ? selectedShotId
+      : (storyboard.shots[0]?.id || null);
+    for (const shot of storyboard.shots) {
+      const match = /(?:shot-)(\d+)$/.exec(shot.id);
+      if (match) shotUidSeq = Math.max(shotUidSeq, Number(match[1]) + 1);
+    }
+    rail.rebuild();
+    panel.refreshStoryboard();
+    invalidate();
+    return getStoryboard();
+  }
+
+  function setStoryboardDuration(durationMs) {
+    if (recording) return storyboard.durationMs;
+    const previousTime = clockMs;
+    const next = setStoryboard({ ...storyboard, durationMs });
+    if (previousTime > next.durationMs) seekTimeline(next.durationMs);
+    else rebuildEffects(previousTime);
+    return next.durationMs;
+  }
+
+  function addCameraShot(cfg = {}) {
+    if (recording) return null;
+    const live = getCamera();
+    const tMs = clampStudioTime(cfg.tMs != null ? cfg.tMs : clockMs, storyboard.durationMs);
+    const existing = storyboard.shots.find((shot) => shot.tMs === tMs);
+    const id = cfg.id || existing?.id || `shot-${shotUidSeq++}`;
+    storyboard = upsertCameraShot(storyboard, {
+      id,
+      label: cfg.label || existing?.label || `Shot ${storyboard.shots.length + 1}`,
+      tMs,
+      pos: cfg.pos || live.pos,
+      lookAt: cfg.lookAt || live.lookAt,
+      fov: cfg.fov != null ? cfg.fov : live.fov,
+      rollDeg: cfg.rollDeg != null ? cfg.rollDeg : live.rollDeg,
+      transition: cfg.transition || existing?.transition || 'smooth',
+    });
+    selectedShotId = id;
+    rail.rebuild();
+    panel.refreshStoryboard();
+    return storyboard.shots.find((shot) => shot.id === id) || null;
+  }
+
+  function updateCameraShot(ref, patch = {}) {
+    if (recording) return null;
+    const id = String(ref || '');
+    const shot = storyboard.shots.find((item) => item.id === id);
+    if (!shot) return null;
+    storyboard = upsertCameraShot(storyboard, { ...shot, ...patch, id });
+    selectedShotId = id;
+    rail.rebuild();
+    panel.refreshStoryboard();
+    return storyboard.shots.find((item) => item.id === id) || null;
+  }
+
+  function removeCameraShot(ref) {
+    if (recording) return false;
+    const id = String(ref || '');
+    if (!storyboard.shots.some((shot) => shot.id === id)) return false;
+    storyboard = removeStoryboardShot(storyboard, id);
+    selectedShotId = storyboard.shots[0]?.id || null;
+    rail.rebuild();
+    panel.refreshStoryboard();
+    return true;
+  }
+
+  function selectCameraShot(ref, seek = true) {
+    const shot = storyboard.shots.find((item) => item.id === String(ref || ''));
+    if (!shot) return null;
+    selectedShotId = shot.id;
+    if (seek) seekTimeline(shot.tMs);
+    panel.refreshStoryboard();
+    return shot.id;
+  }
+
+  function keyActor(ref, cfg = {}) {
+    if (recording) return null;
+    const a = findActor(ref);
+    if (!a) return null;
+    const actor = String(a.name || a.uid);
+    const tMs = clampStudioTime(cfg.tMs != null ? cfg.tMs : clockMs, storyboard.durationMs);
+    const track = storyboard.actorTracks.find((item) => item.actor === actor);
+    const existing = track?.keys.find((key) => key.tMs === tMs);
+    const id = cfg.id || existing?.id || `key-${actorKeyUidSeq++}`;
+    storyboard = upsertActorKey(storyboard, actor, {
+      id,
+      tMs,
+      pos: cfg.pos || [a.state.pos.x, a.state.pos.z],
+      facingDeg: cfg.facingDeg != null ? cfg.facingDeg : a.state.yaw / DEG,
+      turretDeg: cfg.turretDeg != null ? cfg.turretDeg : a.state.turretYaw / DEG,
+      gunDeg: cfg.gunDeg != null ? cfg.gunDeg : a.state.gunPitch / DEG,
+      transition: cfg.transition || existing?.transition || 'smooth',
+    });
+    bindStoryboardTracks();
+    panel.refreshStoryboard();
+    invalidate();
+    return storyboard.actorTracks.find((item) => item.actor === actor)
+      ?.keys.find((key) => key.id === id) || null;
+  }
+
+  function clearActorTrack(ref) {
+    if (recording) return false;
+    const a = findActor(ref);
+    const actor = a ? String(a.name || a.uid) : String(ref || '');
+    const before = storyboard.actorTracks.length;
+    storyboard = clearStoryboardActorTrack(storyboard, actor);
+    bindStoryboardTracks();
+    panel.refreshStoryboard();
+    invalidate();
+    return storyboard.actorTracks.length !== before;
+  }
+
+  function setRailVisible(visible) {
+    railVisible = !!visible;
+    rail.updateVisibility();
+    panel.refreshStoryboard();
+    invalidate();
+    return railVisible;
+  }
+
+  function bearingDeg(fromX, fromZ, toX, toZ) {
+    return Math.atan2(toX - fromX, toZ - fromZ) / DEG;
+  }
+
+  /** Build an immediately recordable 12-second battle from the first two actors. */
+  function directDuel() {
+    if (recording) throw new Error('Stop recording before replacing the storyboard');
+    if (actors.length < 2) throw new Error('Direct Duel needs at least two staged tanks');
+    const alpha = actors[0];
+    const bravo = actors[1];
+    const ax = alpha.pose.x; const az = alpha.pose.z;
+    const bx = bravo.pose.x; const bz = bravo.pose.z;
+    const dx = bx - ax; const dz = bz - az;
+    const distance = Math.max(1, Math.hypot(dx, dz));
+    const ux = dx / distance; const uz = dz / distance;
+    const px = uz; const pz = -ux;
+    const move = Math.min(8, Math.max(3, distance * 0.14));
+    const a1x = ax + ux * move; const a1z = az + uz * move;
+    const b1x = bx - ux * move; const b1z = bz - uz * move;
+    const midX = (a1x + b1x) * 0.5; const midZ = (a1z + b1z) * 0.5;
+    const midY = hfProxy.getHeightAt(midX, midZ) + 2.2;
+    const alphaFacing = bearingDeg(ax, az, bx, bz);
+    const bravoFacing = bearingDeg(bx, bz, ax, az);
+    const cameraAt = (x, z, height) => [x, hfProxy.getHeightAt(x, z) + height, z];
+    const alphaRef = String(alpha.name || alpha.uid);
+    const bravoRef = String(bravo.name || bravo.uid);
+
+    storyboard = normalizeStoryboard({
+      durationMs: 12000,
+      shots: [
+        { id: 'duel-wide', label: 'Establishing', tMs: 0,
+          pos: cameraAt(midX + px * 34 - ux * 8, midZ + pz * 34 - uz * 8, 8),
+          lookAt: [midX, midY, midZ], fov: 48, transition: 'smooth' },
+        { id: 'duel-alpha', label: 'Alpha fires', tMs: 3500,
+          pos: cameraAt(a1x - ux * 15 + px * 5, a1z - uz * 15 + pz * 5, 4.2),
+          lookAt: [midX + ux * 4, midY, midZ + uz * 4], fov: 39, transition: 'cut' },
+        { id: 'duel-cross', label: 'Return fire', tMs: 6200,
+          pos: cameraAt(midX - px * 25, midZ - pz * 25, 5.8),
+          lookAt: [midX, midY, midZ], fov: 42, transition: 'smooth' },
+        { id: 'duel-impact', label: 'Knockout', tMs: 8200,
+          pos: cameraAt(b1x + px * 15 - ux * 5, b1z + pz * 15 - uz * 5, 3.3),
+          lookAt: [b1x, hfProxy.getHeightAt(b1x, b1z) + 1.8, b1z], fov: 34, transition: 'cut' },
+        { id: 'duel-end', label: 'Aftermath', tMs: 12000,
+          pos: cameraAt(midX + px * 22 + ux * 7, midZ + pz * 22 + uz * 7, 6.5),
+          lookAt: [midX, midY, midZ], fov: 44, transition: 'smooth' },
+      ],
+      actorTracks: [
+        { actor: alphaRef, keys: [
+          { id: 'duel-a0', tMs: 0, pos: [ax, az], facingDeg: alphaFacing, turretDeg: 0, gunDeg: 0 },
+          { id: 'duel-a1', tMs: 5200, pos: [a1x, a1z], facingDeg: alphaFacing, turretDeg: 0, gunDeg: 0 },
+          { id: 'duel-a2', tMs: 12000, pos: [a1x, a1z], facingDeg: alphaFacing, turretDeg: 0, gunDeg: 0 },
+        ] },
+        { actor: bravoRef, keys: [
+          { id: 'duel-b0', tMs: 0, pos: [bx, bz], facingDeg: bravoFacing, turretDeg: 0, gunDeg: 0 },
+          { id: 'duel-b1', tMs: 5800, pos: [b1x, b1z], facingDeg: bravoFacing, turretDeg: 0, gunDeg: 0 },
+          { id: 'duel-b2', tMs: 12000, pos: [b1x, b1z], facingDeg: bravoFacing, turretDeg: 0, gunDeg: 0 },
+        ] },
+      ],
+    });
+    bindStoryboardTracks();
+    selectedShotId = storyboard.shots[0].id;
+    resetFx();
+    const authored = [
+      { type: 'dust', actor: alphaRef, tMs: 1100, params: { count: 10, intensity: 0.8 } },
+      { type: 'dust', actor: bravoRef, tMs: 1700, params: { count: 10, intensity: 0.8, dirDeg: 180 } },
+      { type: 'fire', actor: alphaRef, tMs: 4050, params: { slot: 0, tracer: true, recoil: true } },
+      { type: 'fire', actor: bravoRef, tMs: 6250, params: { slot: 0, tracer: true, recoil: true } },
+      { type: 'fire', actor: alphaRef, tMs: 8120, params: { slot: 0, tracer: true, recoil: true } },
+      { type: 'tank_kill', actor: bravoRef, tMs: 8450, params: { cause: 'ammorack', pop: true } },
+    ];
+    for (const effect of authored) effectLog.push(makeEffectRecord(effect, effect.tMs));
+    rail.rebuild();
+    seekTimeline(0);
+    panel.refreshAll();
+    return getStoryboard();
   }
   const r2 = (v) => Math.round(v * 100) / 100;
 
@@ -1326,6 +1803,131 @@ export function createStudio(ctx) {
     return { dataURL, width: W, height: H };
   }
 
+  function videoMimeType() {
+    if (typeof MediaRecorder === 'undefined') return '';
+    const candidates = [
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4',
+    ];
+    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+  }
+
+  /**
+   * Record the live Studio canvas while the cinematic timeline plays once.
+   * The storyboard duration is always clamped to 20 seconds by its schema.
+   */
+  function recordVideo(opts = {}) {
+    if (recording) return recording.promise;
+    if (typeof MediaRecorder === 'undefined' || !renderer.domElement.captureStream) {
+      return Promise.reject(new Error('This browser does not support Studio video recording'));
+    }
+    const fps = Math.max(24, Math.min(60, Math.round(opts.fps || 60)));
+    const mimeType = opts.mimeType || videoMimeType();
+    const stream = renderer.domElement.captureStream(fps);
+    const recorderOptions = {
+      videoBitsPerSecond: Math.max(2_000_000, Math.min(30_000_000,
+        Math.round(opts.videoBitsPerSecond || 12_000_000))),
+      ...(mimeType ? { mimeType } : {}),
+    };
+    let mediaRecorder;
+    try {
+      mediaRecorder = new MediaRecorder(stream, recorderOptions);
+    } catch (error) {
+      for (const track of stream.getTracks()) track.stop();
+      return Promise.reject(error);
+    }
+    const chunks = [];
+    let resolvePromise;
+    let rejectPromise;
+    const promise = new Promise((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
+    });
+    const session = {
+      mediaRecorder,
+      stream,
+      chunks,
+      promise,
+      resolve: resolvePromise,
+      reject: rejectPromise,
+      download: opts.download !== false,
+      name: opts.name || null,
+      mimeType: mediaRecorder.mimeType || mimeType || 'video/webm',
+      startedAt: performance.now(),
+      durationMs: storyboard.durationMs,
+      elapsedMs: 0,
+      stopping: false,
+    };
+    recording = session;
+    mediaRecorder.addEventListener('dataavailable', (event) => {
+      if (event.data && event.data.size) chunks.push(event.data);
+    });
+    mediaRecorder.addEventListener('error', (event) => {
+      session.reject(event.error || new Error('Studio video recording failed'));
+    });
+    mediaRecorder.addEventListener('stop', () => {
+      const blob = new Blob(chunks, { type: session.mimeType });
+      const result = {
+        blob,
+        size: blob.size,
+        mimeType: session.mimeType,
+        durationMs: session.elapsedMs || session.durationMs,
+      };
+      if (session.download && blob.size) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const ext = session.mimeType.includes('mp4') ? 'mp4' : 'webm';
+        link.download = session.name ||
+          `studio_${getWorld()?.mapId || 'battle'}_${Math.round(storyboard.durationMs / 1000)}s.${ext}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+      for (const track of stream.getTracks()) track.stop();
+      if (recording === session) recording = null;
+      timeScale = 0;
+      rail.updateVisibility();
+      panel.refreshStoryboard();
+      panel.refreshTime();
+      invalidate();
+      session.resolve(result);
+    }, { once: true });
+
+    seekTimeline(0, { recording: true });
+    rail.updateVisibility();
+    lighting.update(true);
+    stepFx(0);
+    post.render(0);
+    mediaRecorder.start(250);
+    timeScale = 1;
+    panel.refreshStoryboard();
+    panel.refreshTime();
+    invalidate();
+    return promise;
+  }
+
+  function stopRecording() {
+    if (!recording || recording.stopping) return false;
+    recording.stopping = true;
+    recording.elapsedMs = Math.min(recording.durationMs, Math.round(clockMs));
+    timeScale = 0;
+    if (recording.mediaRecorder.state !== 'inactive') recording.mediaRecorder.stop();
+    return true;
+  }
+
+  function recordingStatus() {
+    return {
+      active: !!recording,
+      stopping: !!recording?.stopping,
+      durationMs: storyboard.durationMs,
+      elapsedMs: recording ? Math.round(clockMs) : 0,
+      supported: typeof MediaRecorder !== 'undefined' && !!renderer.domElement.captureStream,
+      mimeType: recording?.mimeType || videoMimeType() || null,
+    };
+  }
+
   // --- scene JSON --------------------------------------------------------------
   /** @returns {object} round-trippable scene JSON (docs/STUDIO.md schema). */
   function stateJson() {
@@ -1360,6 +1962,7 @@ export function createStudio(ctx) {
         ...(a.burning !== a.authoredBurning ? { authoredBurning: a.authoredBurning } : {}),
       })),
       effects: effectLog.map((e) => ({ ...e, params: { ...e.params } })),
+      storyboard: getStoryboard(),
       camera: getCamera(),
       fxTime: Math.round(clockMs),
       timeScale,
@@ -1376,6 +1979,7 @@ export function createStudio(ctx) {
    * @returns {Promise<object>} the round-trip state()
    */
   async function load(json = {}, opts = {}) {
+    if (recording) throw new Error('Stop recording before loading a scene');
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
     try {
@@ -1388,33 +1992,38 @@ export function createStudio(ctx) {
       clearActors();
       resetFx(sceneMeta.seed);
       for (const cfg of json.actors || []) addActor(cfg);
+      storyboard = normalizeStoryboard(json.storyboard || {
+        durationMs: Math.min(STUDIO_MAX_DURATION_MS, Math.max(
+          12000,
+          Number(json.fxTime) || 0,
+          (json.effects || []).reduce((max, effect) => Math.max(max, Number(effect.tMs) || 0), 0),
+        )),
+      });
+      bindStoryboardTracks();
+      selectedShotId = storyboard.shots[0]?.id || null;
+      rail.rebuild();
       if (json.camera) applyCamera(json.camera);
-      // timeline: fire effects at tMs, advance to fxTime, freeze
-      const fxMs = Math.max(0, json.fxTime || 0);
+      // Canonical timeline: log every authored event, then deterministically
+      // rebuild the visible frame at the requested playhead. Future events
+      // remain scheduled and will fire automatically during playback.
+      const fxMs = clampStudioTime(json.fxTime || 0, storyboard.durationMs);
       const list = (json.effects || [])
-        .map((e) => ({ ...e, tMs: Math.max(0, e.tMs || 0) }))
+        .map((e) => ({ ...e, tMs: clampStudioTime(e.tMs || 0, storyboard.durationMs) }))
         .sort((x, y) => x.tMs - y.tMs);
-      let t = 0;
       for (const e of list) {
-        if (e.tMs > fxMs) {
-          // beyond the freeze point: keep it on the log (state() round-trips
-          // it; it fires only if a longer fxTime replays the scene)
-          effectLog.push(makeEffectRecord(e, e.tMs));
-          continue;
-        }
-        advanceFx(e.tMs - t);
-        t = e.tMs;
-        fireEffect(e, { tMs: e.tMs, refresh: false });
+        effectLog.push(makeEffectRecord(e, e.tMs));
       }
-      advanceFx(fxMs - t);
-      clockMs = fxMs; // exact (advanceFx rounds to whole steps)
-      timeScale = json.timeScale != null ? json.timeScale : 0;
+      rebuildEffects(fxMs);
+      timeScale = fxMs >= storyboard.durationMs
+        ? 0
+        : Math.max(0, Math.min(4, json.timeScale != null ? json.timeScale : 0));
       const w = getWorld();
       if (w) w.setWindTime(0.35 + fxMs / 1000);
       for (const a of actors) a.visual.syncFromState(a.state, 0);
       lighting.updateFrustums();
       lighting.update(true);
       selectedEffect = null;
+      rail.updateVisibility();
       panel.refreshAll();
       return stateJson();
     } finally {
@@ -1552,7 +2161,7 @@ export function createStudio(ctx) {
       }
       sweepPool();
       resetFx();
-      timeScale = 1;
+      timeScale = 0;
       p(0.96, 'Positioning camera');
       // default vantage: over the player spawn, looking across the field
       const w = getWorld();
@@ -1615,6 +2224,7 @@ export function createStudio(ctx) {
 
   function doExit() {
     if (!active) return;
+    if (recording) stopRecording();
     active = false;
     panel.hide();
     marker.group.visible = false;
@@ -1625,11 +2235,18 @@ export function createStudio(ctx) {
     clearActors();
     shells.length = 0;
     effectLog.length = 0;
+    activeEffectIds.clear();
     fx.resetAll();
     fx.setFrozen(false);
     timeScale = 1;
     camera.rotation.z = 0; // no roll may leak into game cameras
     cam.roll = 0;
+    storyboard = normalizeStoryboard();
+    selectedShotId = null;
+    shotUidSeq = 1;
+    actorKeyUidSeq = 1;
+    rail.rebuild();
+    rail.updateVisibility();
     unsweepPool();
     enterGarage(); // restores camo overrides, sun trim, spots, showroom
     syncRoute(false);
@@ -1645,7 +2262,8 @@ export function createStudio(ctx) {
       sweepPool();
     }
     panel.tick(dt);
-    const animating = timeScale > 0;
+    const playbackScale = timeScale;
+    const animating = playbackScale > 0;
     if (!animating && !cameraMoved && !frameDirty) {
       perf.skippedFrames++;
       return;
@@ -1654,8 +2272,8 @@ export function createStudio(ctx) {
     const wdt = animating ? dt : 0;
     camera.getWorldDirection(_fwd);
     if (w) w.update(wdt, camera.position, _fwd, null);
-    stepFx(dt * timeScale);
-    for (const a of actors) a.visual.syncFromState(a.state, dt * timeScale);
+    if (animating) advanceTimeline(dt * playbackScale * 1000);
+    else stepFx(0);
     if (camera.fov !== lastFov) {
       lighting.updateFrustums();
       lastFov = camera.fov;
@@ -1664,6 +2282,9 @@ export function createStudio(ctx) {
     post.render(dt);
     perf.renderedFrames++;
     frameDirty = false;
+    if (recording && !recording.stopping && clockMs >= storyboard.durationMs) {
+      stopRecording();
+    }
   }
 
   function urlParam(name) {
@@ -1737,9 +2358,9 @@ export function createStudio(ctx) {
     capture,
     listActors: () => actors.map((a, i) => ({
       index: i, uid: a.uid, name: a.name, id: a.specId,
-      pos: [r2(a.pose.x), r2(a.pose.z)],
-      facingDeg: r2(a.pose.facingDeg), turretDeg: r2(a.pose.turretDeg),
-      gunDeg: r2(a.pose.gunDeg), state: a.stateName,
+      pos: [r2(a.state.pos.x), r2(a.state.pos.z)],
+      facingDeg: r2(a.state.yaw / DEG), turretDeg: r2(a.state.turretYaw / DEG),
+      gunDeg: r2(a.state.gunPitch / DEG), state: a.stateName,
       smoking: !!a.smoking, burning: !!a.burning,
       camo: a.camo || null, camoSeed: a.camoSeed,
     })),
@@ -1747,34 +2368,81 @@ export function createStudio(ctx) {
     // session control
     enter: (opts) => enter(opts),
     exit,
-    setMap,
+    setMap: (id) => recording
+      ? Promise.reject(new Error('Stop recording before changing battlefield'))
+      : setMap(id),
     get active() { return active; },
     get mapId() { const w = getWorld(); return w ? w.mapId : null; },
     performance: () => ({ ...perf }),
     // actors
-    addActor: (cfg) => { const a = addActor(cfg); selectActor(a); return api.listActors()[actors.indexOf(a)]; },
-    removeActor,
-    updateActor: (ref, patch) => { const a = updateActor(ref, patch); panel.refreshAll(); return a ? api.listActors()[actors.indexOf(a)] : null; },
-    setActorState,
+    addActor: (cfg) => {
+      if (recording) return null;
+      const a = addActor(cfg);
+      selectActor(a);
+      return api.listActors()[actors.indexOf(a)];
+    },
+    removeActor: (ref) => recording ? false : removeActor(ref),
+    updateActor: (ref, patch) => {
+      if (recording) return null;
+      const a = updateActor(ref, patch);
+      panel.refreshAll();
+      return a ? api.listActors()[actors.indexOf(a)] : null;
+    },
+    setActorState: (ref, state, ageS) => recording ? false : setActorState(ref, state, ageS),
     selectActor: (ref) => { const a = selectActor(ref); return a ? a.uid : null; },
-    clearActors: () => { clearActors(); },
+    clearActors: () => { if (!recording) clearActors(); },
     // effects + time
     effect: fireEffect,
     listEffects,
     selectEffect,
     removeEffect,
-    clearEffects: () => resetFx(),
-    advanceFx: (ms) => { advanceFx(ms); panel.refreshAll(); },
+    updateEffect,
+    clearEffects: () => {
+      if (recording) return false;
+      resetFx(); applyStoryboardFrame(0, 0); panel.refreshAll();
+      return true;
+    },
+    advanceFx: (ms) => seekTimeline(clockMs + ms),
     setTimeScale: (v) => {
-      timeScale = Math.max(0, Math.min(4, v));
+      if (recording) return timeScale;
+      const next = Math.max(0, Math.min(4, v));
+      if (next > 0 && clockMs >= storyboard.durationMs - 0.5) {
+        seekTimeline(0, { pause: false });
+      }
+      timeScale = next;
+      rail.updateVisibility();
       panel.refreshTime();
       invalidate();
       return timeScale;
     },
     get timeScale() { return timeScale; },
     get fxTimeMs() { return Math.round(clockMs); },
+    // cinematic storyboard + transport
+    getStoryboard,
+    setStoryboard,
+    setStoryboardDuration,
+    addCameraShot,
+    updateCameraShot,
+    removeCameraShot,
+    selectCameraShot,
+    keyActor,
+    clearActorTrack,
+    setRailVisible,
+    directDuel,
+    seek: seekTimeline,
+    play: playTimeline,
+    pause: pauseTimeline,
+    stop: stopTimeline,
+    get durationMs() { return storyboard.durationMs; },
+    get playing() { return timeScale > 0; },
+    get railVisible() { return railVisible; },
+    get selectedShotId() { return selectedShotId; },
+    // video output
+    recordVideo,
+    stopRecording,
+    recordingStatus,
     // camera
-    setCamera: applyCamera,
+    setCamera: (cfg) => recording ? getCamera() : applyCamera(cfg),
     getCamera,
     // constants for tooling/panel
     TANK_IDS: ALL_TANK_IDS,
@@ -1802,6 +2470,9 @@ export function createStudio(ctx) {
       set placeArmed(v) { placeArmed = v; },
       get markerPos() { return marker.pos; },
       get markerActive() { return marker.group.visible; },
+      get storyboard() { return storyboard; },
+      get selectedShotId() { return selectedShotId; },
+      get railObjectVisible() { return rail.group.visible; },
       cam,
       actors,
       findActor,

@@ -435,7 +435,150 @@ try {
   const capW2 = await page.evaluate(() => window.__STUDIO.capture({ width: 2560 }));
   writeCapture('winter_wreck_closeup.png', capW2);
 
-  // 9. exit hands back to the garage
+  // 9. Cinematic storyboard: direct a two-tank duel, prove the rail/actor/FX
+  // tracks render in the panel, scrub deterministically, and automatically
+  // fire the knockout event during accelerated preview playback.
+  const duel = await page.evaluate(() => {
+    const board = window.__STUDIO.directDuel();
+    return {
+      board,
+      effects: window.__STUDIO.listEffects(),
+      shotCards: document.querySelectorAll('.shotcard').length,
+      cameraMarkers: document.querySelectorAll('.tlmarker.camera').length,
+      actorMarkers: document.querySelectorAll('.tlmarker.actor').length,
+      effectMarkers: document.querySelectorAll('.tlmarker.fx').length,
+      railVisible: window.__STUDIO.railVisible,
+      railObjectVisible: window.__STUDIO._internal.railObjectVisible,
+    };
+  });
+  if (duel.board.durationMs !== 12000 || duel.board.shots.length !== 5
+    || duel.board.actorTracks.length !== 2 || duel.effects.length !== 6) {
+    throw new Error(`direct duel storyboard is incomplete: ${JSON.stringify(duel)}`);
+  }
+  if (duel.shotCards !== 5 || duel.cameraMarkers !== 5
+    || duel.actorMarkers !== 6 || duel.effectMarkers !== 6
+    || !duel.railVisible || !duel.railObjectVisible) {
+    throw new Error(`cinematic timeline UI does not match its model: ${JSON.stringify(duel)}`);
+  }
+  const scrubbed = await page.evaluate(() => {
+    window.__STUDIO.seek(9000);
+    return {
+      time: window.__STUDIO.fxTimeMs,
+      actors: window.__STUDIO.listActors(),
+      camera: window.__STUDIO.getCamera(),
+    };
+  });
+  if (scrubbed.time !== 9000 || scrubbed.actors[1]?.state !== 'turret-popped') {
+    throw new Error(`9 s storyboard scrub missed the authored knockout: ${JSON.stringify(scrubbed)}`);
+  }
+  const movedKey = duel.board.actorTracks[0].keys[1].pos;
+  if (Math.hypot(scrubbed.actors[0].pos[0] - movedKey[0], scrubbed.actors[0].pos[1] - movedKey[1]) > 0.1) {
+    throw new Error(`9 s storyboard scrub did not move the tank to its keyed pose: ${JSON.stringify(scrubbed.actors[0])}`);
+  }
+  const firstCamera = duel.board.shots[0].pos;
+  if (Math.hypot(
+    scrubbed.camera.pos[0] - firstCamera[0],
+    scrubbed.camera.pos[1] - firstCamera[1],
+    scrubbed.camera.pos[2] - firstCamera[2],
+  ) < 1) {
+    throw new Error('camera rail stayed on its establishing shot at 9 seconds');
+  }
+  await page.evaluate(() => {
+    window.__STUDIO.seek(0);
+    window.__STUDIO.setTimeScale(4);
+  });
+  await page.waitForFunction(
+    'window.__STUDIO.fxTimeMs >= 9000 && window.__STUDIO.listActors()[1]?.state === "turret-popped"',
+    { timeout: 5000 },
+  );
+  await page.evaluate(() => window.__STUDIO.pause());
+  const duelRoundTrip = await page.evaluate(async () => {
+    const S = window.__STUDIO;
+    const before = S.getStoryboard();
+    const state = S.state();
+    await S.load(state);
+    const after = S.getStoryboard();
+    return {
+      before,
+      after,
+      effects: S.listEffects().length,
+      actors: S.listActors(),
+    };
+  });
+  if (JSON.stringify(duelRoundTrip.before) !== JSON.stringify(duelRoundTrip.after)
+    || duelRoundTrip.effects !== 6 || duelRoundTrip.actors[1]?.state !== 'turret-popped') {
+    throw new Error(`duel storyboard did not round-trip: ${JSON.stringify(duelRoundTrip)}`);
+  }
+  console.log('[studio-selftest] 12 s duel rail, tank motion, scrub, and automatic FX playback passed');
+
+  // 10. Browser video path: a one-second storyboard records the actual
+  // postprocessed canvas to a non-empty MediaRecorder blob. Downloads stay
+  // disabled in the harness; the production button enables them.
+  const video = await page.evaluate(async () => {
+    const S = window.__STUDIO;
+    S.clearEffects();
+    const camera = S.getCamera();
+    const actor = S.listActors()[0];
+    S.setStoryboard({
+      durationMs: 1000,
+      shots: [
+        { id: 'record-a', label: 'Record start', tMs: 0,
+          pos: camera.pos, lookAt: camera.lookAt, fov: camera.fov },
+        { id: 'record-b', label: 'Record end', tMs: 1000,
+          pos: [camera.pos[0] + 2, camera.pos[1] + 0.4, camera.pos[2] + 1],
+          lookAt: camera.lookAt, fov: camera.fov - 2 },
+      ],
+      actorTracks: [{ actor: actor.name || actor.uid, keys: [
+        { id: 'record-k0', tMs: 0, pos: actor.pos,
+          facingDeg: actor.facingDeg, turretDeg: actor.turretDeg, gunDeg: actor.gunDeg },
+        { id: 'record-k1', tMs: 1000, pos: [actor.pos[0] + 1.5, actor.pos[1]],
+          facingDeg: actor.facingDeg, turretDeg: actor.turretDeg, gunDeg: actor.gunDeg },
+      ] }],
+    });
+    S.seek(500);
+    S.effect({ type: 'fire', actor: actor.name || actor.uid, params: { tracer: true, recoil: true } });
+    S.seek(0);
+    const result = await S.recordVideo({ fps: 30, download: false, videoBitsPerSecond: 4000000 });
+    return {
+      size: result.size,
+      type: result.mimeType,
+      durationMs: result.durationMs,
+      status: S.recordingStatus(),
+      time: S.fxTimeMs,
+    };
+  });
+  if (video.durationMs !== 1000 || video.size < 1000 || video.status.active || video.time !== 1000) {
+    throw new Error(`Studio video recording failed: ${JSON.stringify(video)}`);
+  }
+  await page.evaluate(() => document.querySelector('.pgroup[data-group="global"]')
+    ?.scrollIntoView({ block: 'start' }));
+  await new Promise((resolveScroll) => setTimeout(resolveScroll, 100));
+  await page.screenshot({ path: join(outDir, 'cinematic_storyboard_panel.png') });
+  await page.setViewport({ width: 640, height: 400, deviceScaleFactor: 1 });
+  const mobileLayout = await page.evaluate(() => {
+    document.querySelector('.pgroup[data-group="global"]')?.scrollIntoView({ block: 'start' });
+    const dock = document.querySelector('.cot-studio .dock');
+    const timeline = document.querySelector('.timelineBoard');
+    const dockRect = dock.getBoundingClientRect();
+    const timelineRect = timeline.getBoundingClientRect();
+    return {
+      viewport: [innerWidth, innerHeight],
+      dock: [dockRect.left, dockRect.right, dockRect.width],
+      timeline: [timelineRect.left, timelineRect.right, timelineRect.width],
+      horizontalOverflow: dock.scrollWidth - dock.clientWidth,
+      shotCards: document.querySelectorAll('.shotcard').length,
+    };
+  });
+  if (mobileLayout.dock[0] < -0.5 || mobileLayout.dock[1] > mobileLayout.viewport[0] + 0.5
+    || mobileLayout.timeline[0] < -0.5 || mobileLayout.timeline[1] > mobileLayout.viewport[0] + 0.5
+    || mobileLayout.horizontalOverflow > 1 || mobileLayout.shotCards !== 2) {
+    throw new Error(`mobile cinematic panel overflowed: ${JSON.stringify(mobileLayout)}`);
+  }
+  await page.screenshot({ path: join(outDir, 'cinematic_storyboard_mobile.png') });
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  console.log(`[studio-selftest] video recorded ${video.size} bytes as ${video.type}`);
+
+  // 11. exit hands back to the garage
   const after = await page.evaluate(() => {
     window.__STUDIO.exit();
     return { phase: window.__DEBUG.game.phase, active: window.__STUDIO.active };

@@ -1,12 +1,14 @@
-# SCENE STUDIO — staging rig & scripted-shot API
+# SCENE STUDIO — cinematic staging, storyboards & scripted-shot API
 
 The studio is a first-class game mode for composing shots: the chosen battle
 map fully live (terrain, vegetation, props, sky, lighting, post) with **no
 battle sim** — no AI, no spotting, no HUD combat chrome — plus placeable tank
 actors with full pose/damage-state control, the game's real effects language,
-a free camera, an fx time scale with freeze, and a hi-res capture path.
+a free camera, camera rails, tank motion tracks, a 20-second storyboard, live
+preview, browser video recording, and a hi-res still-capture path.
 
-Code: `src/game/studio.js` (logic + `window.__STUDIO`),
+Code: `src/game/studio.js` (runtime + `window.__STUDIO`),
+`src/game/studioTimeline.js` (pure storyboard normalization and sampling),
 `src/ui/studioPanel.js` (panel UI). main.js integration is one import, one
 `createStudio(ctx)` call and one `tick()` branch.
 
@@ -40,12 +42,15 @@ webdriver (and `?nogate`), exactly like the screenshot harness.
   (orbit mode: wheel = distance)
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it (terrain re-conform live)
-- **Space**: freeze/unfreeze fx time · **Delete**: remove the selected effect
+- **Space**: play/pause the storyboard · **Delete**: remove the selected effect
   (or selected actor when no effect layer is selected)
 - Panel: one scrollable workspace, organized into **Battlefield** (a visual
   16-map preview picker), **Tanks** (roster plus selected-tank pose/camo/state),
-  **Effects**, **Global** (timeline plus camera), and **Output** (capture plus
-  scene save/load). Map-card images are loaded only when the picker opens;
+  **Effects**, **Cinematics** (storyboard, rail, tank keys, timeline, camera),
+  and **Output** (video, stills, scene save/load). Add camera shots at the
+  playhead, key the selected tank after posing it, then scrub or play. The
+  **Direct 12 s Duel** button turns the first two staged tanks into an
+  immediately recordable moving battle. Map-card images load only when the picker opens;
   Scene JSON can be downloaded, uploaded, copied, or stored in three local
   slots (shift-click saves).
 
@@ -54,6 +59,7 @@ webdriver (and `?nogate`), exactly like the screenshot harness.
 ```js
 await __STUDIO.load(sceneJson)      // deterministic build → returns state()
 __STUDIO.capture(opts)              // {dataURL, width, height} hi-res PNG
+await __STUDIO.recordVideo(opts)    // plays once → {blob, size, mimeType, durationMs}
 __STUDIO.listActors()               // [{index, uid, name, id, pos, facingDeg, …, state}]
 __STUDIO.state()                    // round-trippable scene JSON (see schema)
 ```
@@ -67,9 +73,16 @@ __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
 __STUDIO.effect({type, actor|at, params})             // fire one effect NOW
 __STUDIO.listEffects()                               // authored FX layers + stable ids
 __STUDIO.selectEffect(id) / .removeEffect(id)        // select/delete one layer
+__STUDIO.updateEffect(id, {tMs})                     // retime a layer
 __STUDIO.clearEffects()                               // reset fx timeline (keeps actors)
-__STUDIO.advanceFx(ms)                                // step frozen fx forward
+__STUDIO.advanceFx(ms) / .seek(ms)                    // scrub/step the timeline
 __STUDIO.setTimeScale(v) / .timeScale / .fxTimeMs
+__STUDIO.play() / .pause() / .stop()
+__STUDIO.getStoryboard() / .setStoryboard(board) / .setStoryboardDuration(ms)
+__STUDIO.addCameraShot(cfg?) / .updateCameraShot(id, patch) / .removeCameraShot(id)
+__STUDIO.keyActor(ref, cfg?) / .clearActorTrack(ref)
+__STUDIO.setRailVisible(on) / .directDuel()
+__STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.getMapInfo(id)             // {id, name, sub}
@@ -92,6 +105,16 @@ returns `{ dataURL, width, height }`. Default width =
 Clamped to the GPU max texture size (≤ 6144). `download: true` also saves the
 PNG from the browser. Headless drivers read `dataURL` and write the file
 themselves (see `tools/studio-selftest.mjs`).
+
+### recordVideo(opts)
+
+`{ fps?, videoBitsPerSecond?, mimeType?, download?, name? }` records the live
+postprocessed renderer canvas while the storyboard plays once from zero to its
+bounded duration. Defaults: 60 fps, 12 Mbps, best supported WebM codec,
+`download: true`. The storyboard schema clamps every production to 1–20
+seconds. The result is `{ blob, size, mimeType, durationMs }`. Recording hides
+the camera rail and pauses on the final frame. The video contains the rendered
+picture only; Studio does not currently mix game audio into the capture stream.
 
 ## Scene JSON schema
 
@@ -131,6 +154,29 @@ themselves (see `tools/studio-selftest.mjs`).
     { "type": "dust",      "actor": 2, "tMs": 0,
       "params": { "count": 12, "intensity": 1, "dirDeg": 90 } }
   ],
+
+  "storyboard": {
+    "version": 1,
+    "durationMs": 12000,       // clamped to 1000–20000
+    "shots": [                 // camera positions are absolute world meters
+      { "id": "shot-1", "label": "Establishing", "tMs": 0,
+        "pos": [24, 8, -52], "lookAt": [12, 2, -40],
+        "fov": 45, "rollDeg": 0, "transition": "smooth" },
+      { "id": "shot-2", "label": "Impact", "tMs": 8000,
+        "pos": [8, 4, -18], "lookAt": [16, 2, -4],
+        "fov": 34, "rollDeg": 0, "transition": "cut" }
+    ],
+    "actorTracks": [
+      { "actor": "hero", "keys": [
+        { "id": "key-1", "tMs": 0, "pos": [12, -40],
+          "facingDeg": 120, "turretDeg": -35, "gunDeg": 8,
+          "transition": "smooth" },
+        { "id": "key-2", "tMs": 6000, "pos": [18, -32],
+          "facingDeg": 120, "turretDeg": -20, "gunDeg": 4,
+          "transition": "smooth" }
+      ] }
+    ]
+  },
 
   "camera": {
     "pos": [24, 6, -52],
@@ -186,15 +232,19 @@ neither, the panel marker (or the ground ahead of the camera) is used.
    module's real support solve (zero-input handbrake settle), then the
    authored facing/turret/gun values are pinned exactly,
 5. applies the camera,
-6. fires effects sorted by `tMs`, advancing the shared fx clock between them
+6. samples actor motion tracks and the camera rail at the requested playhead,
+7. fires effects sorted by `tMs`, advancing the shared fx clock between them
    in fixed 1/60 s steps (the same cadence live play emits at — smoke
    columns, engine smoke, shell flight and light/ring timelines all age
    through their real update paths),
-7. advances to exactly `fxTime` and freezes (`timeScale 0` unless the JSON
+8. advances to exactly `fxTime` and freezes (`timeScale 0` unless the JSON
    says otherwise). Wind is pinned to a deterministic phase.
 
-Same JSON in → same frame out. Effects with `tMs > fxTime` are kept in
-`state()` but do not fire inside the composition.
+Same JSON in → same frame out. Effects with `tMs > fxTime` stay scheduled in
+`state()` and fire automatically when preview or recording crosses their time.
+Camera rails use Catmull-Rom spatial interpolation for `smooth` arrivals;
+`linear` and `cut` are available per shot. Actor keys use shortest-arc angular
+interpolation and terrain-following presentation with moving track links.
 
 When the timeline is frozen, an unchanged Studio frame is render-on-demand:
 camera/actor/effect/resize changes invalidate it, while idle animation,
@@ -229,6 +279,8 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 - Engine-smoke/burning emission while `timeScale > 0` runs on the live render
   cadence; the frozen composition path (`load`/`advanceFx`) is the
   deterministic one.
+- Video capture is picture-only and uses the browser's available MediaRecorder
+  codec. Encoded bytes are not expected to be identical across browsers.
 
 ## Self-test
 
@@ -238,5 +290,19 @@ mid-fireball / burnt wreck, plus dust and engine smoke), asserts direct boot
 used the covered Studio stage without building or warming hidden battle-pool
 visuals, asserts no battle sim and fx frozen at `fxTime`, captures ≥2560-px
 PNGs on desert and winter with different cameras/FOVs, and verifies the scene
-JSON round-trip. Output:
+JSON round-trip. It also builds the 12-second duel, checks camera/tank/FX
+timeline lanes, scrubs to the knockout, proves automatic event playback, and
+records a non-empty one-second WebM through the production MediaRecorder path.
+`src/game/studioTimeline.selftest.mjs` separately covers duration clamps,
+normalization, rails, cuts, and actor interpolation. Output:
 `shots/studio-selftest/*.png`.
+
+Render the pinned 20-video modern-MBT example set with:
+
+```bash
+npm run studio:examples -- --out shots/studio-modern-examples
+```
+
+The batch tool validates both actors as `modern`/`mbt`, records the production
+canvas path at 1280×720, and writes WebM files plus `manifest.json` under the
+gitignored output directory.

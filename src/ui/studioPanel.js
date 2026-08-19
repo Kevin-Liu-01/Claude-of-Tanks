@@ -202,7 +202,7 @@ const CSS = `
   scrollbar-color:rgba(230,154,45,.4) transparent;}
 .cot-studio .fxempty{padding:10px 7px;border:1px dashed rgba(190,204,216,.2);color:#687784;
   font-size:8.5px;line-height:1.5;letter-spacing:.1em;text-align:center;text-transform:uppercase;}
-.cot-studio .fxrow{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:7px;
+.cot-studio .fxrow{display:grid;grid-template-columns:8px minmax(0,1fr) 54px auto;align-items:center;gap:7px;
   min-height:38px;padding:5px 5px 5px 7px;margin-bottom:3px;cursor:pointer;background:rgba(14,19,24,.72);
   border:1px solid transparent;border-left:2px solid rgba(190,204,216,.22);}
 .cot-studio .fxrow:hover,.cot-studio .fxrow:focus-visible{border-color:rgba(230,154,45,.5);outline:none;}
@@ -215,9 +215,45 @@ const CSS = `
 .cot-studio .fxrow .fn .n2{font-size:7.5px;font-weight:700;color:#7d8c98;letter-spacing:.08em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;margin-top:2px;}
 .cot-studio .fxrow.sel .fn .n1{color:#ffd27a;}
+.cot-studio .fxrow .ftime{width:54px;font-size:9px;text-align:right;padding:3px 4px;}
 .cot-studio .fxrow .del{padding:2px 6px;font-size:10px;}
 .cot-studio .fxstackbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;}
 .cot-studio .fxstackbar .hint{font-size:7.5px;color:#71808d;letter-spacing:.08em;text-transform:uppercase;}
+/* --- cinematic storyboard ---------------------------------------------------- */
+.cot-studio .storyClock{display:flex;align-items:center;justify-content:space-between;margin:5px 0 7px;
+  color:#ffd27a;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;}
+.cot-studio .storyClock .limit{color:#71808d;font-size:7.5px;letter-spacing:.08em;}
+.cot-studio .scrub{width:100%;display:block;margin:1px 0 8px;}
+.cot-studio .timelineBoard{display:grid;gap:3px;margin:7px 0 8px;padding:5px;
+  background:rgba(3,6,9,.78);border:1px solid rgba(190,204,216,.16);}
+.cot-studio .tlane{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:5px;}
+.cot-studio .tlane>.lbl{font-size:7px;font-weight:900;letter-spacing:.13em;color:#71808d;text-align:right;}
+.cot-studio .tltrack{position:relative;height:18px;cursor:crosshair;overflow:hidden;
+  background:linear-gradient(90deg,rgba(230,154,45,.05),rgba(190,204,216,.04));
+  border-left:1px solid rgba(230,154,45,.45);border-right:1px solid rgba(190,204,216,.16);}
+.cot-studio .tltrack::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent 0,transparent calc(10% - 1px),rgba(190,204,216,.1) calc(10% - 1px),rgba(190,204,216,.1) 10%);}
+.cot-studio .tlmarker{position:absolute;top:4px;width:8px;height:10px;transform:translateX(-50%);
+  border:0;padding:0;background:#e69a2d;box-shadow:0 0 5px rgba(230,154,45,.55);z-index:2;}
+.cot-studio .tlmarker.actor{background:#7fc7ff;}
+.cot-studio .tlmarker.fx{width:6px;border-radius:50%;background:#ef6d58;}
+.cot-studio .tlmarker.sel{outline:2px solid #fff2d9;outline-offset:1px;}
+.cot-studio .playhead{position:absolute;top:0;bottom:0;width:1px;background:#fff2d9;
+  box-shadow:0 0 5px #ffd27a;pointer-events:none;z-index:3;}
+.cot-studio .shotboard{display:grid;gap:4px;max-height:154px;overflow-y:auto;margin:6px 0 8px;}
+.cot-studio .shotcard{display:grid;grid-template-columns:28px minmax(0,1fr) 72px 28px;align-items:center;
+  gap:5px;padding:5px;background:rgba(14,19,24,.72);border:1px solid rgba(190,204,216,.17);}
+.cot-studio .shotcard.sel{border-color:#e69a2d;background:rgba(52,36,12,.62);}
+.cot-studio .shotcard .num{font-size:8px;font-weight:900;color:#e69a2d;text-align:center;}
+.cot-studio .shotcard .copy{min-width:0;cursor:pointer;}
+.cot-studio .shotcard .name{font-size:9px;font-weight:900;color:#dce5ec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-studio .shotcard .time{font-size:7.5px;font-weight:700;color:#71808d;margin-top:2px;}
+.cot-studio .shotcard select{font-size:8px;padding:3px;}
+.cot-studio .shotcard .del{padding:2px 5px;}
+.cot-studio .recStatus{margin:6px 0;font-size:8px;font-weight:800;letter-spacing:.1em;
+  color:#71808d;text-transform:uppercase;text-align:center;}
+.cot-studio .recStatus.on{color:#ff806b;animation:studioRecPulse 1s ease-in-out infinite;}
+@keyframes studioRecPulse{50%{opacity:.45;}}
 .cot-studio .foot{position:absolute;left:20px;bottom:14px;pointer-events:none;
   font-size:10px;font-weight:600;letter-spacing:.08em;color:#9fb0bf;
   text-shadow:0 1px 4px rgba(0,0,0,.9);line-height:1.7;}
@@ -231,6 +267,9 @@ const CSS = `
     border-left:0;border-top:1px solid rgba(230,154,45,.45);box-shadow:0 -10px 24px rgba(0,0,0,.25);}
   .cot-studio .mapBtn{height:126px;}
   .cot-studio .mapPop{max-height:calc(100vh - 150px);}
+  .cot-studio button{min-height:32px;}
+  .cot-studio .tlmarker{width:14px;height:14px;top:2px;min-height:0;}
+  .cot-studio .shotcard{grid-template-columns:28px minmax(0,1fr) 82px 34px;}
   .cot-studio .foot{display:none;}
   .cot-studio .busy{top:64px;max-width:calc(100vw - 24px);white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;}
@@ -668,25 +707,101 @@ export function createStudioPanel(S) {
   effectsGroup.body.appendChild(secFx);
 
   // === GLOBAL group ===
-  const globalGroup = panelGroup('04', 'Global', 'Timeline & camera');
+  const globalGroup = panelGroup('04', 'Cinematics', 'Storyboard, rail & choreography');
+  globalGroup.root.dataset.group = 'global'; // stable automation selector
   dock.appendChild(globalGroup.root);
-  const secTime = section('Timeline', 'global effect time');
-  const ts = sliderRow('Scale', 0, 2, 0.05, (v) => S.setTimeScale(v));
+  const secTime = section('Storyboard', 'camera · actors · effects · 20 s max');
+  const duration = sliderRow('Length', 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
+  secTime.appendChild(duration.row);
+  const ts = sliderRow('Speed', 0.25, 2, 0.05, (v) => S.setTimeScale(v));
   secTime.appendChild(ts.row);
   const timeRow = el('div', 'grid3');
-  const pauseBtn = el('button', null, 'FREEZE');
-  pauseBtn.addEventListener('click', () => S.setTimeScale(S.timeScale === 0 ? 1 : 0));
-  const step1 = el('button', null, '+16 MS');
-  step1.addEventListener('click', () => S.advanceFx(16.7));
-  const step2 = el('button', null, '+250 MS');
-  step2.addEventListener('click', () => S.advanceFx(250));
-  timeRow.append(pauseBtn, step1, step2);
+  const restartBtn = el('button', null, 'RESTART');
+  restartBtn.addEventListener('click', () => S.stop());
+  const pauseBtn = el('button', null, 'PLAY');
+  pauseBtn.addEventListener('click', () => (S.playing ? S.pause() : S.play()));
+  const stepBtn = el('button', null, '+1 FRAME');
+  stepBtn.addEventListener('click', () => { S.pause(); S.seek(S.fxTimeMs + 1000 / 30); });
+  timeRow.append(restartBtn, pauseBtn, stepBtn);
   secTime.appendChild(timeRow);
-  const clockLine = el('div', null, '');
-  clockLine.style.cssText = 'font-size:10px;font-weight:700;color:#8a97a3;margin-top:5px;letter-spacing:.1em;';
+  const clockLine = el('div', 'storyClock');
+  const clockNow = el('span', null, '00.00 / 12.00 S');
+  const clockLimit = el('span', 'limit', 'MAX 20 S');
+  clockLine.append(clockNow, clockLimit);
   secTime.appendChild(clockLine);
-  const resetFxBtn = el('button', 'warn', 'RESET FX TIMELINE');
-  resetFxBtn.style.cssText = 'width:100%;margin-top:6px;';
+  const scrub = document.createElement('input');
+  scrub.type = 'range';
+  scrub.className = 'scrub';
+  scrub.min = '0';
+  scrub.max = String(S.durationMs);
+  scrub.step = '10';
+  scrub.value = '0';
+  scrub.setAttribute('aria-label', 'Storyboard playhead');
+  let scrubFrame = 0;
+  scrub.addEventListener('input', () => {
+    cancelAnimationFrame(scrubFrame);
+    scrubFrame = requestAnimationFrame(() => S.seek(Number(scrub.value)));
+  });
+  secTime.appendChild(scrub);
+
+  const timelineBoard = el('div', 'timelineBoard');
+  function timelineLane(label) {
+    const lane = el('div', 'tlane');
+    lane.appendChild(el('div', 'lbl', label));
+    const track = el('div', 'tltrack');
+    track.addEventListener('pointerdown', (event) => {
+      if (event.target !== track) return;
+      const rect = track.getBoundingClientRect();
+      S.seek(((event.clientX - rect.left) / Math.max(1, rect.width)) * S.durationMs);
+    });
+    lane.appendChild(track);
+    timelineBoard.appendChild(lane);
+    return track;
+  }
+  const cameraLane = timelineLane('CAM');
+  const actorLane = timelineLane('TANK');
+  const effectLane = timelineLane('FX');
+  secTime.appendChild(timelineBoard);
+
+  const authorRow = el('div', 'grid');
+  const addShotBtn = el('button', null, 'ADD CAMERA SHOT');
+  addShotBtn.addEventListener('click', () => S.addCameraShot());
+  const keyActorBtn = el('button', null, 'KEY SELECTED TANK');
+  keyActorBtn.addEventListener('click', () => {
+    const actor = S._internal.selected;
+    if (!actor) { flashBusy('SELECT A TANK FIRST'); return; }
+    S.keyActor(actor);
+  });
+  authorRow.append(addShotBtn, keyActorBtn);
+  secTime.appendChild(authorRow);
+  const railRow = el('div', 'grid');
+  railRow.style.marginTop = '5px';
+  const railBtn = el('button', null, 'SHOW CAMERA RAIL');
+  railBtn.addEventListener('click', () => S.setRailVisible(!S.railVisible));
+  const clearTrackBtn = el('button', 'warn', 'CLEAR TANK TRACK');
+  clearTrackBtn.addEventListener('click', () => {
+    const actor = S._internal.selected;
+    if (!actor) { flashBusy('SELECT A TANK FIRST'); return; }
+    S.clearActorTrack(actor);
+  });
+  railRow.append(railBtn, clearTrackBtn);
+  secTime.appendChild(railRow);
+  const duelBtn = el('button', 'prime', 'DIRECT 12 S DUEL');
+  duelBtn.style.marginTop = '6px';
+  duelBtn.title = 'Uses the first two staged tanks and replaces cinematic tracks and effects';
+  duelBtn.addEventListener('click', () => {
+    try {
+      S.directDuel();
+      flashBusy('12 SECOND DUEL STORYBOARD READY');
+    } catch (error) {
+      flashBusy(error.message);
+    }
+  });
+  secTime.appendChild(duelBtn);
+  const shotboard = el('div', 'shotboard');
+  secTime.appendChild(shotboard);
+  const resetFxBtn = el('button', 'warn', 'CLEAR ALL EFFECTS');
+  resetFxBtn.style.cssText = 'width:100%;margin-top:2px;';
   resetFxBtn.addEventListener('click', () => S.clearEffects());
   secTime.appendChild(resetFxBtn);
   globalGroup.body.appendChild(secTime);
@@ -715,8 +830,34 @@ export function createStudioPanel(S) {
   // === OUTPUT group ===
   const outputGroup = panelGroup('05', 'Output', 'Capture & scene files');
   dock.appendChild(outputGroup.root);
-  const secCap = section('Capture · Scene', 'render, save & restore');
+  const secCap = section('Video · Stills · Scene', 'record, render, save & restore');
+  const videoRow = el('div', 'row');
+  videoRow.appendChild(el('label', 'k', 'Video'));
+  const fpsSel = document.createElement('select');
+  for (const [label, fps] of [['60 FPS · 12 Mbps', 60], ['30 FPS · 12 Mbps', 30]]) {
+    const option = document.createElement('option');
+    option.value = String(fps);
+    option.textContent = label;
+    fpsSel.appendChild(option);
+  }
+  videoRow.appendChild(fpsSel);
+  secCap.appendChild(videoRow);
+  const recordBtn = el('button', 'prime', 'RECORD VIDEO');
+  recordBtn.addEventListener('click', () => {
+    if (S.recordingStatus().active) {
+      S.stopRecording();
+      return;
+    }
+    S.recordVideo({ fps: Number(fpsSel.value), download: true })
+      .then((result) => flashBusy(`VIDEO SAVED · ${(result.size / 1048576).toFixed(1)} MB`))
+      .catch((error) => flashBusy(`RECORD FAILED: ${error.message}`));
+    api.refreshStoryboard();
+  });
+  secCap.appendChild(recordBtn);
+  const recStatus = el('div', 'recStatus', 'READY · VIDEO FOLLOWS STORYBOARD ONCE');
+  secCap.appendChild(recStatus);
   const capRow = el('div', 'row');
+  capRow.style.marginTop = '8px';
   capRow.appendChild(el('label', 'k', 'Width'));
   const capSel = document.createElement('select');
   for (const [label, w] of [['2560 px', 2560], ['3200 px', 3200], ['3840 px', 3840], ['5120 px', 5120]]) {
@@ -727,7 +868,8 @@ export function createStudioPanel(S) {
   }
   capRow.appendChild(capSel);
   secCap.appendChild(capRow);
-  const capBtn = el('button', 'prime', 'CAPTURE PNG');
+  const capBtn = el('button', null, 'CAPTURE PNG');
+  capBtn.style.width = '100%';
   capBtn.addEventListener('click', () => {
     S.capture({ width: parseInt(capSel.value, 10), download: true });
   });
@@ -896,6 +1038,22 @@ export function createStudioPanel(S) {
         el('div', 'n2', `${effectAnchorLabel(effect)} · T ${(effect.tMs / 1000).toFixed(2)} S`),
       );
       row.appendChild(names);
+      const time = document.createElement('input');
+      time.type = 'number';
+      time.className = 'ftime';
+      time.min = '0';
+      time.max = String(S.durationMs / 1000);
+      time.step = '0.05';
+      time.value = (effect.tMs / 1000).toFixed(2);
+      time.title = 'Effect time in seconds';
+      time.setAttribute('aria-label', `${effect.type.replaceAll('_', ' ')} time in seconds`);
+      time.addEventListener('pointerdown', (event) => event.stopPropagation());
+      time.addEventListener('click', (event) => event.stopPropagation());
+      time.addEventListener('change', (event) => {
+        event.stopPropagation();
+        S.updateEffect(effect.id, { tMs: Number(time.value) * 1000 });
+      });
+      row.appendChild(time);
       const del = el('button', 'del warn', '✕');
       del.title = `Delete ${effect.type.replaceAll('_', ' ')}`;
       del.setAttribute('aria-label', del.title);
@@ -918,6 +1076,98 @@ export function createStudioPanel(S) {
     }
   }
 
+  function addTimelineMarker(track, className, timeMs, title, onClick, selected = false) {
+    const marker = el('button', `tlmarker ${className}${selected ? ' sel' : ''}`);
+    marker.type = 'button';
+    marker.style.left = `${Math.max(0, Math.min(100, (timeMs / Math.max(1, S.durationMs)) * 100))}%`;
+    marker.title = title;
+    marker.setAttribute('aria-label', title);
+    marker.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onClick();
+    });
+    track.appendChild(marker);
+  }
+
+  function addPlayhead(track) {
+    const playhead = el('div', 'playhead');
+    playhead.style.left = `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`;
+    track.appendChild(playhead);
+  }
+
+  function rebuildStoryboard() {
+    const board = S.getStoryboard();
+    cameraLane.textContent = '';
+    actorLane.textContent = '';
+    effectLane.textContent = '';
+    shotboard.textContent = '';
+    board.shots.forEach((shot, index) => {
+      addTimelineMarker(
+        cameraLane,
+        'camera',
+        shot.tMs,
+        `${shot.label} at ${(shot.tMs / 1000).toFixed(2)} seconds`,
+        () => S.selectCameraShot(shot.id),
+        shot.id === S.selectedShotId,
+      );
+      const card = el('div', `shotcard${shot.id === S.selectedShotId ? ' sel' : ''}`);
+      card.appendChild(el('div', 'num', String(index + 1).padStart(2, '0')));
+      const copy = el('div', 'copy');
+      copy.append(
+        el('div', 'name', shot.label),
+        el('div', 'time', `${(shot.tMs / 1000).toFixed(2)} S · FOV ${Math.round(shot.fov)}`),
+      );
+      copy.addEventListener('click', () => S.selectCameraShot(shot.id));
+      card.appendChild(copy);
+      const transition = document.createElement('select');
+      transition.setAttribute('aria-label', `${shot.label} transition`);
+      for (const id of ['smooth', 'linear', 'cut']) {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = id.toUpperCase();
+        transition.appendChild(option);
+      }
+      transition.value = shot.transition;
+      transition.addEventListener('change', () => S.updateCameraShot(shot.id, {
+        transition: transition.value,
+      }));
+      card.appendChild(transition);
+      const del = el('button', 'del warn', '✕');
+      del.title = `Remove ${shot.label}`;
+      del.setAttribute('aria-label', del.title);
+      del.addEventListener('click', () => S.removeCameraShot(shot.id));
+      card.appendChild(del);
+      shotboard.appendChild(card);
+    });
+    for (const track of board.actorTracks) {
+      for (const key of track.keys) {
+        addTimelineMarker(
+          actorLane,
+          'actor',
+          key.tMs,
+          `${track.actor} pose at ${(key.tMs / 1000).toFixed(2)} seconds`,
+          () => S.seek(key.tMs),
+        );
+      }
+    }
+    for (const effect of S.listEffects()) {
+      addTimelineMarker(
+        effectLane,
+        'fx',
+        effect.tMs,
+        `${effect.type.replaceAll('_', ' ')} at ${(effect.tMs / 1000).toFixed(2)} seconds`,
+        () => { S.selectEffect(effect.id); S.seek(effect.tMs); },
+        effect.selected,
+      );
+    }
+    addPlayhead(cameraLane);
+    addPlayhead(actorLane);
+    addPlayhead(effectLane);
+    if (!board.shots.length) {
+      shotboard.appendChild(el('div', 'fxempty', 'Add two camera shots to create a rail'));
+    }
+  }
+
   // --- public panel API -------------------------------------------------------
   let refreshAcc = 0;
   const api = {
@@ -934,6 +1184,7 @@ export function createStudioPanel(S) {
     },
     setSelected(actor) {
       api.refreshActors();
+      api.refreshStoryboard();
     },
     setSelectedEffect(effect) {
       api.refreshEffects();
@@ -980,6 +1231,7 @@ export function createStudioPanel(S) {
     },
     refreshEffects() {
       rebuildEffectList();
+      rebuildStoryboard();
     },
     refreshCamera() {
       const c = S.getCamera();
@@ -991,12 +1243,42 @@ export function createStudioPanel(S) {
     },
     refreshTime() {
       const scale = S.timeScale;
-      if (Number(ts.input.value) !== scale) ts.set(scale);
-      const pauseLabel = scale === 0 ? 'PLAY' : 'FREEZE';
+      if (scale > 0 && Number(ts.input.value) !== scale) ts.set(scale);
+      const pauseLabel = scale === 0 ? 'PLAY' : 'PAUSE';
       if (pauseBtn.textContent !== pauseLabel) pauseBtn.textContent = pauseLabel;
       pauseBtn.classList.toggle('on', S.timeScale === 0);
-      const text = `T = ${(S.fxTimeMs / 1000).toFixed(2)} s  ·  ×${scale.toFixed(2)}`;
-      if (clockLine.textContent !== text) clockLine.textContent = text;
+      const seconds = S.durationMs / 1000;
+      if (Number(duration.input.value) !== seconds) duration.set(seconds);
+      scrub.max = String(S.durationMs);
+      if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
+      const text = `${(S.fxTimeMs / 1000).toFixed(2)} / ${seconds.toFixed(2)} S`;
+      if (clockNow.textContent !== text) clockNow.textContent = text;
+      const left = `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`;
+      for (const playhead of timelineBoard.querySelectorAll('.playhead')) playhead.style.left = left;
+      const rec = S.recordingStatus();
+      recordBtn.textContent = rec.active ? 'STOP RECORDING' : 'RECORD VIDEO';
+      recordBtn.classList.toggle('on', rec.active);
+      recStatus.classList.toggle('on', rec.active);
+      recStatus.textContent = rec.active
+        ? `RECORDING ${(rec.elapsedMs / 1000).toFixed(1)} / ${(rec.durationMs / 1000).toFixed(1)} S · ${rec.mimeType || 'VIDEO'}`
+        : (rec.supported ? 'READY · VIDEO FOLLOWS STORYBOARD ONCE' : 'VIDEO RECORDING NOT SUPPORTED');
+    },
+    refreshStoryboard() {
+      const isRecording = S.recordingStatus().active;
+      railBtn.classList.toggle('on', S.railVisible);
+      railBtn.textContent = S.railVisible ? 'HIDE CAMERA RAIL' : 'SHOW CAMERA RAIL';
+      duration.input.disabled = isRecording;
+      scrub.disabled = isRecording;
+      restartBtn.disabled = isRecording;
+      pauseBtn.disabled = isRecording;
+      stepBtn.disabled = isRecording;
+      addShotBtn.disabled = isRecording;
+      keyActorBtn.disabled = isRecording || !S._internal.selected;
+      clearTrackBtn.disabled = isRecording || !S._internal.selected;
+      duelBtn.disabled = isRecording || S._internal.actors.length < 2;
+      railBtn.disabled = isRecording;
+      rebuildStoryboard();
+      api.refreshTime();
     },
     refreshMap() {
       const id = S.mapId;
@@ -1017,6 +1299,7 @@ export function createStudioPanel(S) {
       api.refreshActors();
       api.refreshEffects();
       api.refreshCamera();
+      api.refreshStoryboard();
       api.refreshTime();
     },
     tick(dt) {
