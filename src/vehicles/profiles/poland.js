@@ -718,6 +718,7 @@ function buildPT91Twardy(P) {
     trackW: 0.56, topY: 1.00, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
   });
+
   // The smart running-gear builder owns the complete road-wheel face stack.
   // Do not add a second static disc/inset layer here: it would remain hull-
   // fixed while the suspension instances move and visibly double the wheels.
@@ -1148,6 +1149,37 @@ function buildPL01(P) {
     coveredTop: true, arms: true,
   });
 
+  // The 105-mm demonstrator carries a field-fit glacis protection pack.
+  // It is deliberately mounted ON the existing upper-glacis plane: one
+  // centered spare-link strip plus two shallow camouflaged ERA courses.
+  // Nothing is added to the running gear, so both PL-01s retain one native
+  // linked course per side and the front idler wrap stays unobstructed.
+  if (is105) {
+    const glacisY = (z) => 2.645 - z * 0.515;
+    const glacisPitch = 0.476;
+    const links = FITTINGS.spareTrackLinks({
+      mats: P.mats, links: 4, width: 0.66, pitch: 0.17, seed: 1057,
+      rotation: [glacisPitch, 0, 0],
+    });
+    links.name = 'pl01_105_glacis_spare_links';
+    links.position.set(0, glacisY(2.03) + 0.055, 2.03);
+    P.hullG.add(links);
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const z = 1.78 + i * 0.30;
+        const y = glacisY(z) + 0.052;
+        P.add('hull', box(0.34, 0.060, 0.245), s * 0.72, y, z,
+          glacisPitch, 0, 0);
+        // A narrow recessed seam keeps the cassettes legible while their
+        // broad faces inherit the vehicle camouflage instead of generic
+        // gray ERA material.
+        P.add('hullDark', box(0.285, 0.012, 0.195), s * 0.72,
+          y + 0.034, z - 0.015, glacisPitch, 0, 0);
+      }
+    }
+    P.hullG.userData.pl01FrontGlacisPack = 'seated-spare-links-and-camo-era';
+  }
+
   // ---- hull deck furniture -------------------------------------------------
   // driver's station: flush hatch + the raised twin periscope fairing
   P.add('hull', cylY(0.26, 0.26, 0.030, 16), -0.58, 2.115, 1.06);
@@ -1322,33 +1354,71 @@ function buildPL01(P) {
     seed: is105 ? 1052 : 1051,
   }), 0, 0.49, -2.12);
 
-  // ---- RWS (the hump): riser + shielded MG station inside the print's own
-  // spike window z -2.44..-2.08 (the <=4-column heightM budget; the print's
-  // wider 3.3 field to -0.88 is certified print-tall) --------------------
-  // The tower is z-THIN and x-WIDE: heightM prices SIDE columns only, so a
-  // 0.20 m deep / 0.52 m wide station spends <=3 of the 4-column p95
-  // budget while presenting a real 0.5 m RWS mass in front/hero views
-  // (r1/r2 dims receipts: 0.3+ m deep assemblies read heightM 3.37).
-  // (r4 dims receipt: a 0.175-radius ring at 0.795 topped 2.89 across 4
-  // columns and OWNED heightM's p95 — the ring now hides inside the tower
-  // window and the plinth crown stays under the 1% grace edge 2.828)
-  P.add('turret', box(0.46, 0.035, 0.34), -0.05, 0.7275, -1.33);    // plinth
-  P.add('turret', cylY(0.095, 0.11, 0.05, 16), -0.05, 0.77, -1.33);
-  P.add('turret', box(0.52, 0.46, 0.17), -0.05, 1.03, -1.33);       // tower
-  P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, 1.278, -1.33); // cap
-  P.add('turretDetail', box(0.10, 0.05, 0.09), 0.12, 1.315, -1.325); // sensor
-  P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, 1.352, -1.325);
-  // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
-  // whole envelope shares the tower's 3-column window)
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
-    ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
-  }), -0.05, 1.02, -1.33, [0, Math.PI / 2, 0]);
-  // RWS ammunition chest and independent day/thermal sensor block.
-  P.add('turretDetail', box(0.22, 0.18, 0.15), -0.31, 1.02, -1.33);
-  P.add('turretDark', box(0.16, 0.12, 0.025), 0.24, 1.07, -1.235);
-  P.add('turretGlass', box(0.055, 0.055, 0.014), 0.20, 1.09, -1.218);
-  P.add('turretGlass', box(0.038, 0.038, 0.014), 0.27, 1.04, -1.218);
+  // ---- RWS / CROWS -------------------------------------------------------
+  // Base PL-01 keeps the print's laterally parked low-observable RWS. The
+  // 105-mm demonstrator receives a forward-aimed CROWS-style powered station
+  // with a real roof plate -> slew ring -> pedestal -> cradle load path.
+  if (!is105) {
+    // RWS (the hump): riser + shielded MG station inside the print's own
+    // spike window z -2.44..-2.08 (the <=4-column heightM budget; the print's
+    // wider 3.3 field to -0.88 is certified print-tall) --------------------
+    // The tower is z-THIN and x-WIDE: heightM prices SIDE columns only, so a
+    // 0.20 m deep / 0.52 m wide station spends <=3 of the 4-column p95
+    // budget while presenting a real 0.5 m RWS mass in front/hero views
+    // (r1/r2 dims receipts: 0.3+ m deep assemblies read heightM 3.37).
+    // (r4 dims receipt: a 0.175-radius ring at 0.795 topped 2.89 across 4
+    // columns and OWNED heightM's p95 — the ring now hides inside the tower
+    // window and the plinth crown stays under the 1% grace edge 2.828)
+    P.add('turret', box(0.46, 0.035, 0.34), -0.05, 0.7275, -1.33);    // plinth
+    P.add('turret', cylY(0.095, 0.11, 0.05, 16), -0.05, 0.77, -1.33);
+    P.add('turret', box(0.52, 0.46, 0.17), -0.05, 1.03, -1.33);       // tower
+    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, 1.278, -1.33); // cap
+    P.add('turretDetail', box(0.10, 0.05, 0.09), 0.12, 1.315, -1.325); // sensor
+    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, 1.352, -1.325);
+    // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
+    // whole envelope shares the tower's 3-column window)
+    mount(P, 'turret', FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
+      ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
+    }), -0.05, 1.02, -1.33, [0, Math.PI / 2, 0]);
+    // RWS ammunition chest and independent day/thermal sensor block.
+    P.add('turretDetail', box(0.22, 0.18, 0.15), -0.31, 1.02, -1.33);
+    P.add('turretDark', box(0.16, 0.12, 0.025), 0.24, 1.07, -1.235);
+    P.add('turretGlass', box(0.055, 0.055, 0.014), 0.20, 1.09, -1.218);
+    P.add('turretGlass', box(0.038, 0.038, 0.014), 0.27, 1.04, -1.218);
+  } else {
+    const cx = -0.05, cy = 0.735, cz = -1.26;
+    P.addEquipment('turret', box(0.62, 0.040, 0.50), cx, cy + 0.020, cz);
+    P.addEquipment('turretDark', cylY(0.205, 0.215, 0.055, 18),
+      cx, cy + 0.0675, cz);
+    P.addEquipment('turret', cylY(0.145, 0.175, 0.15, 16),
+      cx, cy + 0.17, cz);
+    P.addEquipment('turretDark', box(0.42, 0.035, 0.34),
+      cx, cy + 0.26, cz + 0.02);
+    P.addEquipment('turret', box(0.44, 0.20, 0.38),
+      cx, cy + 0.36, cz + 0.08);
+    for (const s of [-1, 1]) {
+      P.addEquipment('turretDark', box(0.035, 0.22, 0.34),
+        cx + s * 0.235, cy + 0.36, cz + 0.08);
+    }
+    // Day/thermal head is carried on the forward face, clear of the gun.
+    P.addEquipment('turretDark', box(0.22, 0.20, 0.18),
+      cx + 0.17, cy + 0.37, cz + 0.31);
+    P.addEquipment('turretGlass', box(0.070, 0.060, 0.014),
+      cx + 0.13, cy + 0.40, cz + 0.407);
+    P.addEquipment('turretGlass', box(0.050, 0.045, 0.014),
+      cx + 0.21, cy + 0.35, cz + 0.407);
+    P.addEquipment('turretDetail', box(0.18, 0.16, 0.24),
+      cx - 0.28, cy + 0.35, cz - 0.02);
+    const crowsGun = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.78,
+      elev: 0.05, ammo: false, shield: false, seed: 1058,
+    });
+    crowsGun.name = 'pl01_105_crows_weapon';
+    crowsGun.position.set(cx, cy + 0.27, cz + 0.06);
+    P.turretG.add(crowsGun);
+    P.turretG.userData.pl01RemoteStation = 'forward-crows';
+  }
 
   // smoke banks: recessed multi-tube blocks on the tail deck (print
   // ExplosionTubes — held under the roof band)
@@ -1365,8 +1435,9 @@ function buildPL01(P) {
   polishWhips(P, [[-0.30, 0.40, -2.32, 0.16, -0.04], [0.30, 0.39, -2.44, 0.13, 0.05]], 1040);
 
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
-  // axis world 2.25 (pivot 2.07 + 0.18); gun pivot world z 0.65.
-  // cover: world 0.98..3.90 falling 2.52 -> 2.43 (gun-local z 0.33..3.25)
+  // axis world 2.33 (pivot 2.07 + 0.26); gun pivot world z 0.55.
+  // The root sleeve now overlaps the turret nose by 10 cm; its cover then
+  // runs forward as one pitch-owned assembly to the bare tube.
   P.addGunExtra(box(0.56, 0.42, 0.90), 0, 0.045, 0.80);            // root sleeve
   P.addGunExtra(orientedSlab(
     [-0.235, -0.12, 1.25], [0.235, -0.12, 1.25], [0.20, -0.115, 3.25], [-0.20, -0.115, 3.25],

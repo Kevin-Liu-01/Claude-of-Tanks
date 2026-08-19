@@ -96,10 +96,11 @@ export const POLAND_SPECS = {
     // own hull is 6.95 native EXACT at that bracket). The old 9.20/7.00 pair
     // was the donor-clone estimate.
     dims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.80 },
-    // measured rig (§5.248 rebuild): unmanned-turret ring plane 2.07, gun
-    // axis 2.25 (print Cannon band 2.16..2.41 traced 2.16..2.34), muzzle
-    // world 5.36 = turret tail -3.60 + published overall 8.96
-    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.18, 1.55],
+    // measured rig (§5.248 rebuild): unmanned-turret ring plane 2.07. The
+    // gun axis is raised 8 cm and its root is buried 10 cm farther into the
+    // nose so the thermal sleeve and mantlet form one connected assembly
+    // instead of hovering just ahead of the turret face.
+    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.26, 1.45],
     gunBarrel: { lengthM: 4.71, radiusM: 0.098 },
     stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
       reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
@@ -117,6 +118,11 @@ POLAND_SPECS.pl01_105 = (() => {
   spec.id = 'pl01_105';
   spec.name = 'PL-01 (105)';
   spec.variantOf = 'pl01';
+  // Published 2.80 m remains the stealth roof height. The requested CROWS
+  // raises the combat-ready silhouette to 3.31 m; keep the two dimensions
+  // explicit so visual gates do not pretend the weapon station is a roof
+  // antenna or force it back through the turret.
+  spec.dims = { ...spec.dims, silhouetteHeightM: 3.31 };
   spec.gun = {
     ...spec.gun,
     caliberMm: 105,
