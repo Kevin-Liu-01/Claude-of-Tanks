@@ -11,6 +11,10 @@ import * as THREE from 'three';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { getDeviceTier, getPreset, onPresetChange } from './quality.js';
+import {
+  createShadowRefreshScheduler,
+  mergeRequiredShadowWork,
+} from './shadowRefresh.js';
 import { snapShadowCoordinate } from './shadowStability.js';
 
 const CASCADES = 4;
@@ -25,15 +29,13 @@ const CASCADES = 4;
 // instead of ~160 MB, while keeping its hero cascade at 4096. The stock CSM
 // update assumes every cascade has one uniform resolution; this module's stable
 // update below snaps each projection to its ACTUAL map size instead.
-// PERF: at high refresh, every cascade is capped to the established 60 Hz
-// lighting cadence: the near pair update together and the far pair alternate
-// at 30 Hz each. A 60 Hz display is cadence-equivalent (three maps per frame);
-// a 120/240 Hz panel no longer multiplies shadow work. `update(true)` forces
-// every cascade for deterministic captures, map switches, and FOV changes.
+// PERF: every cascade is capped to the established 60 Hz lighting cadence.
+// At 60 Hz the near pair update together and the far pair alternate at 30 Hz
+// each. At 120+ Hz a near-pair frame alternates with a far-only frame, keeping
+// the same cadence without ever combining all caster ranges. `update(true)`
+// still forces every cascade for deterministic captures and map switches.
 const FAR_CASCADE_START = 2;
 const RATE_CAPPED_CASCADE_START = 0;
-const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
-const SHADOW_REFRESH_EPSILON_S = 0.001;
 const _stableCameraToLight = new THREE.Matrix4();
 const _stableLightOrientation = new THREE.Matrix4();
 const _stableLightOrientationInverse = new THREE.Matrix4();
@@ -763,25 +765,29 @@ export function createLighting(scene, camera, sunDir) {
   // vehicle cast shadows that the broken Basic-packing path was dropping.
   patchShadowDepthPacking();
 
-  /** Apply per-cascade shadow map sizes; dispose old RTs so three reallocates. */
+  /** Resize one cascade, retaining every other live map until its own turn. */
+  function applyShadowSize(i, size) {
+    const shadow = csm.lights[i].shadow;
+    // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
+    const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
+    shadow.radius = Math.max(
+      MIN_FILTER_RADIUS_TEXELS,
+      SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref),
+    );
+    if (shadow.mapSize.x !== size) {
+      shadow.mapSize.set(size, size);
+      if (shadow.map) {
+        shadow.map.dispose();
+        shadow.map = null;
+      }
+    }
+    shadow.needsUpdate = true;
+  }
+
+  /** Apply all sizes before first render; live switches use the queue below. */
   function applyShadowSizes(sizes) {
     for (let i = 0; i < csm.lights.length; i++) {
-      const size = sizes[Math.min(i, sizes.length - 1)];
-      const shadow = csm.lights[i].shadow;
-      // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
-      const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
-      shadow.radius = Math.max(
-        MIN_FILTER_RADIUS_TEXELS,
-        SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref),
-      );
-      if (shadow.mapSize.x !== size) {
-        shadow.mapSize.set(size, size);
-        if (shadow.map) {
-          shadow.map.dispose();
-          shadow.map = null;
-        }
-        shadow.needsUpdate = true;
-      }
+      applyShadowSize(i, sizes[Math.min(i, sizes.length - 1)]);
     }
     // Retain the public CSM setting for diagnostics/compatibility. Projection
     // snapping is owned by updateStableCascades and uses each shadow.mapSize.
@@ -792,9 +798,9 @@ export function createLighting(scene, camera, sunDir) {
     csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
-    // PERF (120 Hz): the near pair are capped together at 60 Hz and the far
-    // pair remain round-robin at 30 Hz each. All maps are driven through
-    // needsUpdate so display refresh never multiplies lighting work.
+    // PERF (120 Hz): every near map is capped at 60 Hz and the far pair remain
+    // round-robin at 30 Hz each. The scheduler below phase-spreads them on
+    // high-refresh displays. All maps are driven through needsUpdate.
     if (i >= RATE_CAPPED_CASCADE_START) {
       csm.lights[i].shadow.autoUpdate = false;
       csm.lights[i].shadow.needsUpdate = true; // first frame renders all
@@ -802,19 +808,28 @@ export function createLighting(scene, camera, sunDir) {
   }
   // PERF: per-cascade map size (before the first render allocates the RTs)
   applyShadowSizes(preset.shadowMapSizes);
+  let pendingShadowSizes = null;
+  let pendingShadowMask = 0;
+  let pendingShadowCursor = 0;
   // Live quality switching (settings UI → quality.setPresetName)
   onPresetChange((p) => {
-    applyShadowSizes(p.shadowMapSizes);
+    // Reallocating every cascade synchronously creates a 1000+ draw-call
+    // recovery frame exactly while the GPU is already overloaded. Keep each
+    // existing map alive, then replace/refresh one cascade per render frame.
+    pendingShadowSizes = p.shadowMapSizes.slice();
+    pendingShadowMask = (2 ** csm.lights.length) - 1;
+    pendingShadowCursor = 0;
+    csm.shadowMapSize = p.shadowMapSizes[0];
     if (csm.maxFar !== p.shadowMaxFar) {
       csm.maxFar = p.shadowMaxFar;
       csm.updateFrustums();
     }
-    forceRateCappedCascades();
   });
-  let rrIndex = 0; // round-robin cursor over the far cascades
+  const shadowScheduler = createShadowRefreshScheduler(csm.lights.length, {
+    nearCount: Math.min(FAR_CASCADE_START, csm.lights.length),
+  });
   let shFrame = 0;
-  let midShadowAcc = 0;
-  let farShadowAcc = 0;
+  let lastScheduledMask = 0;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
   // forces FULL cascade redraws for the next 2 frames, so the round-robin
@@ -825,6 +840,7 @@ export function createLighting(scene, camera, sunDir) {
   /** Mark every rate-capped cascade for re-render on the next frame. */
   function forceRateCappedCascades() {
     forceFrames = 2;
+    shadowScheduler.reset();
     for (let i = RATE_CAPPED_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
     }
@@ -851,6 +867,11 @@ export function createLighting(scene, camera, sunDir) {
 
   return {
     csm,
+
+    // Allocation-free read used by the deterministic performance probe to
+    // correlate a completed frame's renderer counters with its cascade work.
+    // Keep the richer getShadowTelemetry() path at HUD cadence only.
+    get scheduledMask() { return lastScheduledMask; },
 
     /**
      * Register a material for cascaded shadows, then (optionally) chain a
@@ -891,22 +912,35 @@ export function createLighting(scene, camera, sunDir) {
      * @returns {void}
      */
     update(force = false, dt = 1 / 60) {
+      let transitionCascade = -1;
+      if (pendingShadowMask) {
+        for (let offset = 0; offset < csm.lights.length; offset++) {
+          const i = (pendingShadowCursor + offset) % csm.lights.length;
+          if (!(pendingShadowMask & (1 << i))) continue;
+          transitionCascade = i;
+          pendingShadowMask &= ~(1 << i);
+          pendingShadowCursor = (i + 1) % csm.lights.length;
+          applyShadowSize(i,
+            pendingShadowSizes[Math.min(i, pendingShadowSizes.length - 1)]);
+          if (!pendingShadowMask) pendingShadowSizes = null;
+          break;
+        }
+      }
       updateStableCascades(csm);
       _cullTick++; // cascades refit — the per-cascade frustum memo is stale
       shFrame++;
       const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
-      midShadowAcc = Math.min(SHADOW_REFRESH_INTERVAL_S * 2, midShadowAcc + step);
-      farShadowAcc = Math.min(SHADOW_REFRESH_INTERVAL_S * 2, farShadowAcc + step);
+      lastScheduledMask = 0;
       if (force || forceFrames > 0) {
         if (forceFrames > 0) forceFrames--;
+        lastScheduledMask = shadowScheduler.forceMask();
         for (let i = 0; i < csm.lights.length; i++) {
           csm.lights[i].shadow.needsUpdate = true;
         }
-        midShadowAcc = 0;
-        farShadowAcc = 0;
         if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
         // bisect hook: every cascade re-renders every frame (no round-robin)
+        lastScheduledMask = shadowScheduler.forceMask();
         for (let i = 0; i < csm.lights.length; i++) csm.lights[i].shadow.needsUpdate = true;
       } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.freezeMask !== undefined) {
         // bisect hook: masked cascades stop re-rendering entirely (matrix
@@ -919,31 +953,26 @@ export function createLighting(scene, camera, sunDir) {
           if (mask & (1 << i)) { sh.autoUpdate = false; sh.needsUpdate = false; } else {
             sh.autoUpdate = i < FAR_CASCADE_START;
             sh.needsUpdate = true;
+            lastScheduledMask |= 1 << i;
           }
         }
       } else {
         // Refresh-rate invariant shadow budget. At 60 Hz this is identical to
         // the established path: cascades 0/1 render each frame and one far map
-        // renders each frame (30 Hz per far cascade). At 120+ Hz the near pair
-        // and far round-robin retain that same proven 60 Hz work cadence.
-        // Stable texel snapping keeps skipped projections coherent; both near
-        // maps update together, so no seam presents mismatched lighting.
+        // renders each frame (30 Hz per far cascade). At 120+ Hz the same work
+        // is phase-spread into near-pair and far-only frames. This removes the
+        // three-map burst without lowering target cadence or map resolution.
         for (let i = 0; i < csm.lights.length; i++) {
           csm.lights[i].shadow.autoUpdate = i < RATE_CAPPED_CASCADE_START;
           if (i >= RATE_CAPPED_CASCADE_START) csm.lights[i].shadow.needsUpdate = false;
         }
-        if (csm.lights.length > 0
-            && midShadowAcc + SHADOW_REFRESH_EPSILON_S >= SHADOW_REFRESH_INTERVAL_S) {
-          for (let i = 0; i < Math.min(FAR_CASCADE_START, csm.lights.length); i++) {
-            csm.lights[i].shadow.needsUpdate = true;
-          }
-          midShadowAcc = Math.max(0, midShadowAcc - SHADOW_REFRESH_INTERVAL_S);
+        lastScheduledMask = shadowScheduler.step(step);
+        if (transitionCascade >= 0) {
+          lastScheduledMask = mergeRequiredShadowWork(
+            lastScheduledMask, transitionCascade, csm.lights.length, 1);
         }
-        const span = csm.lights.length - FAR_CASCADE_START;
-        if (span > 0 && farShadowAcc + SHADOW_REFRESH_EPSILON_S >= SHADOW_REFRESH_INTERVAL_S) {
-          rrIndex = (rrIndex + 1) % span;
-          csm.lights[FAR_CASCADE_START + rrIndex].shadow.needsUpdate = true;
-          farShadowAcc = Math.max(0, farShadowAcc - SHADOW_REFRESH_INTERVAL_S);
+        for (let i = 0; i < csm.lights.length; i++) {
+          if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;
         }
       }
     },
@@ -1021,6 +1050,7 @@ export function createLighting(scene, camera, sunDir) {
         throttle: 0,
         frame: shFrame,
         forceFrames,
+        scheduledMask: lastScheduledMask,
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;
           return {

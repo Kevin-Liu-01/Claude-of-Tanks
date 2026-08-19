@@ -857,7 +857,7 @@ export function createSettings(opts) {
     note.textContent = mobile
       ? 'Performance, Balanced and Quality stay inside the mobile texture budget. They resize raster, ' +
         'anti-aliasing and shadow buffers instantly without reloading the battlefield.'
-      : 'Auto uses adaptive High quality with scene MSAA plus final-frame SMAA: real geometry, foliage, ' +
+      : 'Auto uses adaptive High quality with full-resolution final-frame SMAA: real geometry, foliage, ' +
         'and shader edges stay smooth. It raises 3D resolution when there is GPU headroom and scales only ' +
         'the 3D frame when needed; the reticle and HUD remain native-sharp. Medium/Low reduce GPU cost. ' +
         'Applies instantly.';

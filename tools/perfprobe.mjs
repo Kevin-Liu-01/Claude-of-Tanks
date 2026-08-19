@@ -4,11 +4,12 @@
 //        [--note tag] [--no-trend] [--roster random|id1,id2,...]
 //        [--map verdant|desert|winter|urban] [--scene battle|garage] [--breakdown]
 //        [--tier desktop|mobile] [--mobile-preset mobile-low|mobile|mobile-high]
-//        [--fps-target 60|120] [--msaa 0|2|4]
+//        [--fps-target 60|120] [--msaa 0|2|4] [--entry player|sync]
 // Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
-// battle on the verdant map, simulates combat (drive via synthetic keys +
-// forceFire debug flag) for N seconds while sampling rAF deltas, renderer.info,
-// and JS heap. Prints a JSON report to stdout (and --out file if given), and
+// battle through the real player loading/warm-up path by default, simulates
+// combat (drive via synthetic keys + forceFire debug flag) for N seconds while
+// sampling rAF deltas, renderer.info, and JS heap. Prints a JSON report to stdout
+// (and --out file if given), and
 // appends a one-line summary to docs/perf-trend.jsonl so per-commit creep
 // (load-to-ready, texture MB, triangles) is visible as a series.
 //
@@ -135,6 +136,16 @@ if (!MOBILE_PRESETS.includes(mobilePreset)) {
   process.exit(2);
 }
 const fpsTarget = Math.max(30, parseFloat(opt('fps-target', '60')) || 60);
+// The synchronous debug entry intentionally skips the loading screen, chunked
+// vehicle bake, combat shader warm-up and visible countdown. It remains useful
+// for cold-path diagnosis, but cannot certify the frame pacing a player gets.
+// Certification defaults to the real entry and opens its window only after the
+// countdown releases controls.
+const entryMode = opt('entry', 'player');
+if (!['player', 'sync'].includes(entryMode)) {
+  console.error(`[perf] unknown --entry ${entryMode} (want player|sync)`);
+  process.exit(2);
+}
 const forcedMsaaRaw = opt('msaa', '');
 const forcedMsaa = forcedMsaaRaw === '' ? null : Math.max(0, parseInt(forcedMsaaRaw, 10) || 0);
 const dumpFile = opt('dump', '');
@@ -400,14 +411,29 @@ try {
   const loadToReadyMs = await page.evaluate(() => window.__READY_AT);
 
   if (sceneMode === 'battle') {
-    // Enter battle on verdant deterministically (pinned worst-case roster by
-    // default — see WORST_CASE_ROSTER above).
-    await page.evaluate((roster, map) => {
-      const D = window.__DEBUG;
-      if (roster) D.flags.forceRoster = roster;
-      D.startBattle('m1a2', map);
-      D.flags.forceFire = true; // fire whenever reloaded
-    }, forceRoster, mapId);
+    // Enter battle deterministically (pinned worst-case roster by default —
+    // see WORST_CASE_ROSTER above). The default exercises the same loading,
+    // vehicle painting, shader warm-up and countdown path as the BATTLE button.
+    // --entry sync is a deliberate cold-path diagnostic only.
+    if (entryMode === 'player') {
+      await page.evaluate(async (roster, map) => {
+        const D = window.__DEBUG;
+        if (roster) D.flags.forceRoster = roster;
+        D.flags.forceFire = true; // fire whenever reloaded after release
+        await D.beginBattleEntry('m1a2', map);
+      }, forceRoster, mapId);
+      await page.waitForFunction(
+        'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
+        { timeout: 120000 },
+      );
+    } else {
+      await page.evaluate((roster, map) => {
+        const D = window.__DEBUG;
+        if (roster) D.flags.forceRoster = roster;
+        D.startBattle('m1a2', map);
+        D.flags.forceFire = true;
+      }, forceRoster, mapId);
+    }
   } else if (mapId !== 'verdant') {
     // garage on a non-default battlefield: switch the staged world only
     await page.evaluate((map) => window.__DEBUG.switchMap(map), mapId);
@@ -506,7 +532,9 @@ try {
     // renderer.info auto-resets after every internal render pass; take manual
     // control so each rAF sample sees the FULL frame (shadow + composer passes).
     R.info.autoReset = false;
-    window.__PERF = { deltas: [], times: [], calls: [], tris: [], heap: [], done: false };
+    window.__PERF = {
+      deltas: [], times: [], calls: [], tris: [], shadowMasks: [], heap: [], done: false,
+    };
     const P = window.__PERF;
     let last = -1;
     const t0 = performance.now();
@@ -531,6 +559,7 @@ try {
         // counters accumulated since our reset at the previous rAF = one frame
         P.calls.push(R.info.render.calls);
         P.tris.push(R.info.render.triangles);
+        P.shadowMasks.push(window.__DEBUG.lighting.scheduledMask | 0);
       }
       R.info.reset();
       last = now;
@@ -624,6 +653,55 @@ try {
       // are still scene children. Attribute every procedural tank root that
       // can render, rather than only the current game.tanks array.
       const tankRoots = D.scene.children.filter((o) => (o.name || '').startsWith('tank_'));
+      const tankInventory = tankRoots.map((root) => {
+        let meshes = 0;
+        let visibleMeshes = 0;
+        let shadowCasters = 0;
+        let visibleTriangles = 0;
+        const mergeGroups = new Map();
+        root.traverse((object) => {
+          if (!object.isMesh && !object.isInstancedMesh) return;
+          meshes++;
+          let shown = object.visible !== false;
+          for (let parent = object.parent; shown && parent; parent = parent.parent) {
+            if (parent.visible === false) shown = false;
+            if (parent === root) break;
+          }
+          if (!shown || root.visible === false || !root.parent) return;
+          visibleMeshes++;
+          if (object.castShadow) shadowCasters++;
+          const positionCount = object.geometry?.getAttribute?.('position')?.count || 0;
+          visibleTriangles += Math.round((object.geometry?.index?.count || positionCount) / 3)
+            * Math.max(1, object.count || 1);
+          if (object.isMesh && !object.isInstancedMesh && !object.children.length
+              && !Array.isArray(object.material)) {
+            const attrs = Object.entries(object.geometry?.attributes || {})
+              .map(([name, attr]) => `${name}:${attr.itemSize}:${attr.normalized ? 1 : 0}`)
+              .sort().join(',');
+            const key = `${object.parent?.uuid}|${object.material?.uuid}|${attrs}`;
+            const group = mergeGroups.get(key) || {
+              parent: object.parent?.name || '(unnamed parent)',
+              names: [],
+            };
+            group.names.push(object.name || '(anonymous)');
+            mergeGroups.set(key, group);
+          }
+        });
+        return {
+          name: root.name,
+          visible: root.visible !== false && !!root.parent,
+          distanceM: Number(root.position.distanceTo(D.camera.position).toFixed(1)),
+          meshes,
+          visibleMeshes,
+          shadowCasters,
+          visibleTriangles,
+          battleDetailGroups: root.userData.battleDetailGroupCount || 0,
+          battleDetailObjects: root.userData.battleDetailObjectCount || 0,
+          mergeCandidates: [...mergeGroups.values()]
+            .filter((group) => group.names.length > 1)
+            .sort((a, b) => b.names.length - a.names.length),
+        };
+      });
       const state = [];
       const save = (o) => { if (o) state.push([o, o.visible]); };
       const nextFrame = () => new Promise((r) => requestAnimationFrame(r));
@@ -689,7 +767,7 @@ try {
 
       for (const [o, v] of state) o.visible = v;
       await nextFrame();
-      return { phase: D.game.phase, frames, samples: out };
+      return { phase: D.game.phase, frames, tanks: tankInventory, samples: out };
     }, 30);
   }
 
@@ -707,7 +785,13 @@ try {
     };
   });
   if (dumpFile) {
-    writeFileSync(resolve(dumpFile), JSON.stringify({ times: perf.times, deltas: perf.deltas, calls: perf.calls, tris: perf.tris }));
+    writeFileSync(resolve(dumpFile), JSON.stringify({
+      times: perf.times,
+      deltas: perf.deltas,
+      calls: perf.calls,
+      tris: perf.tris,
+      shadowMasks: perf.shadowMasks,
+    }));
     console.error(`[perf] raw frame series dumped to ${dumpFile}`);
   }
   const deltas = perf.deltas.slice().sort((a, b) => a - b);
@@ -729,6 +813,23 @@ try {
     const hi = Math.min(...heap.slice(-third));
     heapFloorGrowthMBs = ((hi - lo) / (heap.length - third)) / (1024 * 1024);
   }
+  const shadowWork = Object.entries(perf.shadowMasks.reduce((groups, mask, index) => {
+    const key = String(mask | 0);
+    const group = groups[key] || (groups[key] = { calls: [], deltas: [] });
+    group.calls.push(perf.calls[index]);
+    group.deltas.push(perf.deltas[index]);
+    return groups;
+  }, {})).map(([mask, group]) => {
+    const calls = group.calls.slice().sort((a, b) => a - b);
+    const frameMs = group.deltas.slice().sort((a, b) => a - b);
+    return {
+      mask: +mask,
+      frames: group.calls.length,
+      drawCallsMedian: q(calls, 0.5),
+      drawCallsMax: calls[calls.length - 1],
+      frameMsP99: +q(frameMs, 0.99).toFixed(2),
+    };
+  }).sort((a, b) => a.mask - b.mask);
 
   report = {
     date: new Date().toISOString(),
@@ -737,6 +838,7 @@ try {
     deviceTier,
     ...(deviceTier === 'mobile' ? { mobilePreset } : {}),
     fpsTarget,
+    entry: sceneMode === 'battle' ? entryMode : null,
     scene: sceneMode,
     map: mapId,
     roster: forceRoster ? `pinned:${forceRoster.join(',')}` : 'random-seeded',
@@ -755,6 +857,7 @@ try {
       median: q(perf.calls.slice().sort((a, b) => a - b), 0.5),
       max: Math.max(...perf.calls),
     },
+    shadowWork,
     triangles: {
       median: q(perf.tris.slice().sort((a, b) => a - b), 0.5),
       max: Math.max(...perf.tris),

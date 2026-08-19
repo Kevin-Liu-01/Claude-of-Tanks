@@ -39,11 +39,12 @@
  *           cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
  *           resolvePresetName).
- * - high  : THE DEFAULT on every display ('auto'). Uses 2x scene MSAA and the
- *           full 1.5 ratio from the first frame, with half-res AO and a 0.6x
+ * - high  : THE DEFAULT on every display ('auto'). Uses full-resolution
+ *           display-space SMAA and the full 1.5 ratio from the first frame,
+ *           with half-res AO and a 0.6x
  *           bloom chain. The frame governor drops AO before resolution and
  *           never lets High fall below 1.35, preventing the muddy 1.125 path.
- * - medium: 2x scene MSAA, 1.0 ratio, half-res AO/bloom, 2048/1024 cascades.
+ * - medium: SMAA, 1.0 ratio, half-res AO/bloom, 2048/1024 cascades.
  * - low   : SMAA only, 0.75 ratio, AO off, half-res bloom, 2048/1024
  *           cascades, shorter shadow range.
  */
@@ -181,15 +182,16 @@ export const PRESETS = {
   // rasterized at 1.25 (or the old 1.125 floor) and enlarged into watercolor.
   // AO is the first overload lever; only persistent pressure may lower raster
   // density, with 0.9 keeping the effective floor at 1.35.
-  // perf-120 r1: return the default tier to 2x scene MSAA. The complete chain
-  // still resolves geometry through hardware MSAA, then runs display-space
-  // SMAA and a contrast-adaptive native-output reconstruction. Paired live-
-  // battle probes showed 2x beating both 4x (extra scene bandwidth) and 0x
-  // (unstable shader/specular edges) while retaining the clarity fix. Ultra
-  // remains the explicit 4x inspection tier.
+  // perf-120 r2: default High no longer pays for scene MSAA before its
+  // already-enabled high-preset display-space SMAA + FSR reconstruction.
+  // The real 14-tank player-entry probe isolated 2x scene MSAA as a 40 FPS
+  // cost at native 1080p (116 -> 156 median) while the final SMAA still owns
+  // geometry, foliage and hot-specular edge cleanup. This also avoids mixing
+  // a multisample resolve with the post sharpen, which could make fine edges
+  // read soft. Ultra remains the explicit 4x inspection tier.
   high: {
     label: 'High',
-    msaaSamples: 2,
+    msaaSamples: 0,
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
@@ -204,7 +206,7 @@ export const PRESETS = {
   },
   medium: {
     label: 'Medium',
-    msaaSamples: 2,
+    msaaSamples: 0,
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
     // fallback by another hidden 0.75 dynamic scale: desktop readability

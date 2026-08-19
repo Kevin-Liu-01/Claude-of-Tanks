@@ -335,13 +335,25 @@ function mergeAll(list) {
 // procedural shadow proxies, and every player mesh remain untouched. Desktop
 // battle bots may opt into the same articulation-local batching without using
 // the mobile geometry tier.
-function batchMobileStaticChildren(parents, disposables) {
+//
+// A few NAMED subassemblies are also authoring-only splits: they never move,
+// receive damage, or participate in module state independently. Baking
+// same-material siblings under their existing articulation parent is exact.
+// Running end wheels, live track bands, ERA, armor and gameplay-query parts
+// deliberately stay outside this allowlist.
+const BATTLE_STATIC_BATCH_NAME = /^(?:crowsBarrelShadowRun|gearAirShadowBacker|gear_(?:endWheelDress_(?:dark|detail|hull)|wheelBay(?:AO|VoidDress)|wrapPads[LR])|muzzleBoreShadowFallback(?:Rim|Annulus).*|vehicleMarking_.*)$/;
+
+function batchMobileStaticChildren(parents, disposables, onBatch = null) {
+  let sourceMeshes = 0;
+  let batches = 0;
   for (const parent of parents) {
     const groups = new Map();
     for (const mesh of parent.children) {
-      if (!mesh.isMesh || mesh.isInstancedMesh || mesh.name || mesh.children.length
+      const exactStaticNamed = BATTLE_STATIC_BATCH_NAME.test(mesh.name || '');
+      if (!mesh.isMesh || mesh.isInstancedMesh || (!exactStaticNamed && mesh.name)
+          || mesh.children.length
           || !mesh.visible || Array.isArray(mesh.material)
-          || Object.keys(mesh.userData || {}).length
+          || (!exactStaticNamed && Object.keys(mesh.userData || {}).length)
           || Object.keys(mesh.morphTargetDictionary || {}).length
           || Object.keys(mesh.geometry?.morphAttributes || {}).length) continue;
       const geo = mesh.geometry;
@@ -378,8 +390,12 @@ function batchMobileStaticChildren(parents, disposables) {
       batch.frustumCulled = source.frustumCulled;
       for (const mesh of group) parent.remove(mesh);
       parent.add(batch);
+      if (onBatch) onBatch(group, batch);
+      sourceMeshes += group.length;
+      batches++;
     }
   }
+  return { sourceMeshes, batches, savedDraws: sourceMeshes - batches };
 }
 
 function collectMobileDetailObjects(root, rigParents) {
@@ -1562,6 +1578,7 @@ function buildRunningGear(P, cfg) {
   // discs at closeup, the judged shot's worst failure. Steel end wheels also
   // separate cleanly from the scheme-painted road wheels.
   const spinners = [];
+  const spinnerInstances = [];
   const bandOuterR = 0.045 + trackTh / 2;   // wrap CLEAR + half band thickness
   // r5 track gate: end drums widened toward the band width — the old 0.7/0.62
   // drums left the outermost interleave row standing PROUD of the sprocket
@@ -1594,26 +1611,71 @@ function buildRunningGear(P, cfg) {
     P.disposables.push(steelMat);
   }
   const darkMat = mats.spareTrack || mats.dark;
-  for (const side of [-1, 1]) {
-    const sideXc = xcForSide(side);
+  if (P.batchStatic) {
+    const addSpinnerBatch = (items, material, name, appearanceRole) => {
+      let vertexCapacity = 0;
+      let indexCapacity = 0;
+      for (const { geo } of items) {
+        vertexCapacity += geo.getAttribute('position').count;
+        indexCapacity += geo.index?.count || 0;
+      }
+      const batch = new THREE.BatchedMesh(
+        items.length * 2,
+        vertexCapacity,
+        Math.max(indexCapacity, vertexCapacity * 2),
+        material,
+      );
+      batch.userData.runningGear = true;
+      batch.userData.wheelPattern = wheelPattern.id;
+      batch.userData.wheelPatternLabel = wheelPattern.label;
+      batch.userData.appearanceRole = appearanceRole;
+      batch.name = name;
+      batch.castShadow = false;
+      batch.receiveShadow = true;
+      const entries = [];
+      for (const { geo, end } of items) {
+        const geometryId = batch.addGeometry(geo);
+        for (const side of [-1, 1]) {
+          entries.push({
+            instanceId: batch.addInstance(geometryId),
+            side, r: end.r,
+            x: side * xcForSide(side), y: end.y, z: end.z,
+          });
+        }
+      }
+      hullG.add(batch);
+      spinnerInstances.push({ batch, entries });
+    };
+    addSpinnerBatch([
+      { geo: sg.body, end: sprocket },
+      { geo: ig.body, end: idler },
+    ], steelMat, 'gearEndWheelBody', 'wheelDish');
+    addSpinnerBatch([
+      { geo: sg.dark, end: sprocket },
+      { geo: ig.dark, end: idler },
+    ], darkMat, 'gearEndWheelHardware', 'trackHardware');
+  } else {
     for (const [gp, end] of [[sg, sprocket], [ig, idler]]) {
-      // body + dark as SIBLING MESHES directly under hullG (never a Group:
+      // body + dark stay directly under hullG (never a wrapper Group:
       // modelLoader.applySwap hides procedural Mesh/LOD/InstancedMesh children
-      // on GLB swap — a wrapper Group would survive the sweep and leave
-      // orphaned steel wheels floating beside sourced tanks).
+      // on GLB swap — a Group would survive and leave orphaned wheels).
       for (const [geo, mat] of [[gp.body, steelMat], [gp.dark, darkMat]]) {
-        const m = new THREE.Mesh(geo, mat);
-        m.userData.runningGear = true;
-        m.userData.wheelPattern = wheelPattern.id;
-        m.userData.wheelPatternLabel = wheelPattern.label;
-        m.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
-        m.name = geo === gp.body ? 'gearEndWheelBody' : 'gearEndWheelHardware';
-        m.position.set(side * sideXc, end.y, end.z);
-        // PERF: sprocket/idler are wrapped by the casting track band — no cast
-        m.castShadow = false;
-        m.receiveShadow = true;
-        hullG.add(m);
-        spinners.push({ mesh: m, r: end.r, side });
+        const name = geo === gp.body ? 'gearEndWheelBody' : 'gearEndWheelHardware';
+        for (const side of [-1, 1]) {
+          const sideXc = xcForSide(side);
+          const m = new THREE.Mesh(geo, mat);
+          m.userData.runningGear = true;
+          m.userData.wheelPattern = wheelPattern.id;
+          m.userData.wheelPatternLabel = wheelPattern.label;
+          m.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
+          m.name = name;
+          m.position.set(side * sideXc, end.y, end.z);
+          // PERF: sprocket/idler are wrapped by the casting track band — no cast
+          m.castShadow = false;
+          m.receiveShadow = true;
+          hullG.add(m);
+          spinners.push({ mesh: m, r: end.r, side });
+        }
       }
     }
   }
@@ -2344,6 +2406,15 @@ function buildRunningGear(P, cfg) {
         im.instanceMatrix.needsUpdate = true;
       }
       for (const sp of spinners) sp.mesh.rotation.x = (sp.side < 0 ? l : r) / sp.r;
+      for (const record of spinnerInstances) {
+        for (const sp of record.entries) {
+          _q.setFromAxisAngle(_X, (sp.side < 0 ? l : r) / sp.r);
+          _v.set(sp.x, sp.y, sp.z);
+          _s.set(1, 1, 1);
+          _m.compose(_v, _q, _s);
+          record.batch.setMatrixAt(sp.instanceId, _m);
+        }
+      }
       // band bottom run follows the wheels (skipped on a thrown side — the
       // band is gone there)
       if (!brokenL) deformBand(-1);
@@ -5164,7 +5235,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     // independently select the existing authored low-detail geometry path,
     // leaving the player's close camera subject and all garage/kilcam heroes
     // at full fidelity without creating another material-cache variant.
-    spec, mats, rng, q: geometryQuality !== 'low', geometryReceipt,
+    spec, mats, rng, q: geometryQuality !== 'low', geometryReceipt, batchStatic,
     hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     // Casemate profiles opt into a genuinely fixed combat rig.  Their
@@ -6328,6 +6399,11 @@ export function createTank(specId, engineCtx, opts = {}) {
       // A distant live bot may have its cosmetic hierarchy detached from the
       // scene graph. Restore it before the one-time burn capture so a later
       // close killcam never reveals pristine fittings on a charred wreck.
+      // Remember that state: the capture is synchronous, so a far wreck can
+      // shed the hierarchy again before presentation instead of submitting
+      // 40-60 one-frame cosmetic draws at the exact moment of the blast.
+      const restoreDetachedBattleDetails = battleDetailGroups.length > 0
+        && !battleDetailsAttached;
       setBattleDetailsAttached(true);
       destroyed = true;
       // lazy capture (see originalMats note): traverse NOW so GLB-swapped
@@ -6405,6 +6481,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       popT = Math.max(0, (opts && opts.ageS) || 0);
       popTrailAcc = 0;
       applyPop();
+      if (restoreDetachedBattleDetails) setBattleDetailsAttached(false);
     },
 
     /** @returns {boolean} the wreck look is currently applied */
@@ -6503,6 +6580,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       setBattleDetailsAttached(true);
       for (const g of disposables) g.dispose();
       root.traverse((o) => {
+        if (o.isBatchedMesh) o.dispose();
         if (o.isInstancedMesh) o.dispose();
         // PERF (performance_budget r3): kit-merged GLB geometry is baked
         // per instance (modelLoader mergeStaticKit) — unlike the shared
@@ -6549,9 +6627,29 @@ export function createTank(specId, engineCtx, opts = {}) {
       if (!object.isGroup) return;
       const name = object.name || '';
       if (name.startsWith('rig_decor_') || name.startsWith('fitting_')
-          || name.startsWith('muzzleBoreShadowFallback')) mobileBatchParents.push(object);
+          || name.startsWith('muzzleBoreShadowFallback')
+          || object.children.some((child) => BATTLE_STATIC_BATCH_NAME.test(child.name || ''))) {
+        mobileBatchParents.push(object);
+      }
     });
-    batchMobileStaticChildren(mobileBatchParents, disposables);
+    const batchStats = batchMobileStaticChildren(mobileBatchParents, disposables,
+      (sources, batch) => {
+        // Markings hide as a unit on destruction. Replace retained source
+        // references with the exact merged draw so the existing wreck/reset
+        // lifecycle remains byte-for-byte equivalent.
+        let markingBatch = false;
+        for (const source of sources) {
+          const index = decalMeshes.indexOf(source);
+          if (index < 0) continue;
+          decalMeshes.splice(index, 1);
+          markingBatch = true;
+        }
+        if (markingBatch) {
+          batch.userData.vehicleMarking = true;
+          decalMeshes.push(batch);
+        }
+      });
+    root.userData.staticBatchSavedDraws = batchStats.savedDraws;
     const detailObjects = collectMobileDetailObjects(root, [hullG, turretG, gunG, recoilG]);
     if (geometryQuality === 'low') mobileDetailObjects = detailObjects;
     else if (battleDetailLod) {
