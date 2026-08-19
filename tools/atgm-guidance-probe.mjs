@@ -44,19 +44,37 @@ try {
   await page.evaluate(() => {
     const D = window.__DEBUG;
     D.startBattle('bwp1');
+    D.game.player.combat.reload.t = 0;
   });
+
+  // Use the real desktop input path. The first canvas click acquires pointer
+  // lock; ATGM engagement and launch below must arrive through KeyE + LMB.
+  await page.click('canvas');
+  await page.waitForFunction(
+    () => window.__DEBUG.input.isLocked() || window.__DEBUG.input.isCursorAim(),
+    { timeout: 5000 },
+  );
+  // Lift the reticle above the near road so the live missile has enough flight
+  // time for a player-visible body, curved trail, and steering sample.
+  await page.mouse.move(640, 360);
+  await page.mouse.move(640, 80, { steps: 12 });
+  await page.waitForFunction(() => {
+    const D = window.__DEBUG;
+    const p = D.game.player;
+    const dx = p.input.aimPoint.x - p.state.pos.x;
+    const dz = p.input.aimPoint.z - p.state.pos.z;
+    return Math.hypot(dx, dz) > 250 && D.gunAimError() < 0.025;
+  }, { timeout: 5000 });
+
+  const originalSlot = await page.evaluate(() => window.__DEBUG.game.player.combat.shellSlot);
+  await page.keyboard.press('KeyE');
 
   const engaged = await page.evaluate(async () => {
     const D = window.__DEBUG;
     const p = D.game.player;
-    const originalSlot = p.combat.shellSlot;
-    D.bus.emit('ui:specialAction', {});
-    p.combat.reload.t = 0;
     p.input.fire = false;
-    D.fastForward(0.2);
     await new Promise((resolve) => requestAnimationFrame(resolve));
     return {
-      originalSlot,
       selectedSlot: p.combat.shellSlot,
       missileSlot: p.specialAction.missileSlot,
       active: p.specialAction.active,
@@ -73,13 +91,16 @@ try {
   ).then(() => true).catch(() => false);
   if (!buttonEngaged) fail('HUD did not show ATGM guidance as engaged');
 
+  await page.mouse.click(640, 360);
+  await page.waitForFunction(
+    () => window.__DEBUG.game.player.specialAction.inFlightShellId != null,
+    { timeout: 3000 },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
   const launched = await page.evaluate(() => {
     const D = window.__DEBUG;
     const p = D.game.player;
-    p.input.aimPoint.set(p.state.pos.x, p.state.pos.y + 1.5, p.state.pos.z + 700);
-    D.flags.forceFire = true;
-    D.fastForward(0.05);
-    D.flags.forceFire = false;
     const shell = D.game.shells.find((entry) => entry.id === p.specialAction.inFlightShellId);
     return shell ? {
       id: shell.id,
@@ -88,27 +109,46 @@ try {
       pendingFire: p.specialAction.pendingFire,
       inFlightShellId: p.specialAction.inFlightShellId,
       vx: shell.vel.x,
+      vy: shell.vel.y,
+      vz: shell.vel.z,
       speed: shell.vel.length(),
+      aim: [p.input.aimPoint.x, p.input.aimPoint.y, p.input.aimPoint.z],
+      visual: D.fx.getGuidedMissileDebug?.() || null,
     } : null;
   });
   if (!launched) fail('click did not launch the engaged ATGM');
   if (!launched.guided || launched.pendingFire || !launched.active) {
     fail('ATGM did not enter its guided in-flight state');
   }
+  if (!launched.visual || launched.visual.bodies < 1 || launched.visual.trailSegments < 2) {
+    fail(`ATGM is not visibly rendered with a sustained trail: ${JSON.stringify(launched.visual)}`);
+  }
 
+  await page.mouse.move(900, 160, { steps: 10 });
+  await new Promise((resolve) => setTimeout(resolve, 180));
   const steered = await page.evaluate(() => {
     const D = window.__DEBUG;
     const p = D.game.player;
     const shell = D.game.shells.find((entry) => entry.id === p.specialAction.inFlightShellId);
-    p.input.aimPoint.set(shell.pos.x + 700, shell.pos.y + 35, shell.pos.z + 700);
-    D.fastForward(0.25);
+    if (!shell) return null;
     return {
       vx: shell.vel.x,
+      vy: shell.vel.y,
+      vz: shell.vel.z,
       speed: shell.vel.length(),
       active: p.specialAction.active,
+      aim: [p.input.aimPoint.x, p.input.aimPoint.y, p.input.aimPoint.z],
+      visual: D.fx.getGuidedMissileDebug?.() || null,
     };
   });
-  if (!(steered.vx > launched.vx + 1)) fail('missile velocity did not follow the moved cursor');
+  if (!steered) fail('missile completed before the real cursor-guidance sample');
+  console.log('[atgm-guidance] launch/steer:', JSON.stringify({ launched, steered }));
+  const velocityDelta = Math.hypot(
+    steered.vx - launched.vx,
+    steered.vy - launched.vy,
+    steered.vz - launched.vz,
+  );
+  if (!(velocityDelta > 1)) fail('missile velocity did not follow the moved cursor');
   if (Math.abs(steered.speed - launched.speed) > 1e-6) fail('guidance changed missile speed');
   if (!steered.active) fail('guidance disengaged before projectile completion');
 
@@ -130,7 +170,7 @@ try {
       active: p.specialAction.active,
       inFlightShellId: p.specialAction.inFlightShellId,
     };
-  }, engaged.originalSlot);
+  }, originalSlot);
   if (completed.active || completed.inFlightShellId != null) fail('projectile death did not disengage E');
   if (completed.selectedSlot !== completed.originalSlot) fail('normal weapon was not restored');
   const buttonDisengaged = await page.waitForFunction(

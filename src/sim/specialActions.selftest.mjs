@@ -47,9 +47,8 @@ const originalSlot = ifv.combat.shellSlot;
 const missileResult = activateSpecialAction(ifv);
 assert.equal(missileResult.ok, true);
 assert.equal(ifv.combat.shellSlot, ifv.specialAction.missileSlot);
-assert.ok(ifv.combat.reload.t > 0, 'ATGM uses the existing per-shell load time');
+assert.equal(ifv.combat.reload.t, 0, 'E arms the ATGM for the next click immediately');
 assert.equal(specialActionLocksShell(ifv), true);
-ifv.combat.reload.t = 0;
 startPostShotReload(ifv.combat, ifv.spec);
 assert.equal(finishSpecialActionFire(ifv, 41), true);
 assert.equal(ifv.specialAction.inFlightShellId, 41);
@@ -139,7 +138,6 @@ assert.ok(snapshot.events.some((event) => event.type === 'special_action' && eve
 assert.ok(!snapshot.events.some((event) => event.type === 'shell_fired'),
   'E engages ATGM guidance without auto-firing');
 match.afterSnapshotBroadcast();
-authoritativeIfv.combat.reload.t = 0;
 match.step({
   dt: SIM_DT,
   inputs: new Map([

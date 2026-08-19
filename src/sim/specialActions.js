@@ -6,7 +6,6 @@
  * authoritative matches call the same edge-triggered functions below.
  */
 import {
-  selectShell,
   startMagazineReload,
 } from './damage.js';
 
@@ -79,6 +78,12 @@ export function createSpecialActionState(spec) {
     pendingFire: false,
     inFlightShellId: null,
     returnShellSlot: 0,
+    // The normal weapon's load cycle is suspended while the launcher owns
+    // the selector. Restoring these exact values prevents E from either
+    // granting an instant cannon round or forcing a second cannon reload.
+    returnReloadT: 0,
+    returnReloadTotalS: 0,
+    returnReloadKind: 'ready',
   };
 }
 
@@ -97,15 +102,18 @@ function restoreMissileSelection(entity) {
   action.active = false;
   action.pendingFire = false;
   action.inFlightShellId = null;
-  if (combat.shellSlot !== slot) selectShell(combat, slot, entity.spec);
+  combat.shellSlot = slot;
+  combat.reload.t = Math.max(0, Number(action.returnReloadT) || 0);
+  combat.reload.totalS = Math.max(0, Number(action.returnReloadTotalS) || 0);
+  combat.reload.kind = action.returnReloadKind || (combat.reload.t > 0 ? 'shell' : 'ready');
   if (entity.input) entity.input.shellSlot = slot;
   return true;
 }
 
 /**
  * Consume one special-action press.
- * Missile requests select the existing guided shell and arm cursor guidance.
- * The normal fire input launches it only after the selected rail is ready.
+ * Missile requests arm the guided launcher immediately. The normal fire input
+ * launches it; E never starts a hidden ammunition-switch reload.
  */
 export function activateSpecialAction(entity) {
   const action = entity?.specialAction;
@@ -131,9 +139,15 @@ export function activateSpecialAction(entity) {
     const slot = action.missileSlot;
     if (slot < 0 || !entity.spec?.gun?.shells?.[slot]) return RESULT_NONE;
     action.returnShellSlot = combat.shellSlot;
+    action.returnReloadT = combat.reload.t;
+    action.returnReloadTotalS = combat.reload.totalS;
+    action.returnReloadKind = combat.reload.kind;
     action.pendingFire = true;
     action.active = true;
-    if (combat.shellSlot !== slot) selectShell(combat, slot, entity.spec);
+    combat.shellSlot = slot;
+    combat.reload.t = 0;
+    combat.reload.totalS = 0;
+    combat.reload.kind = 'ready';
     if (entity.input) entity.input.shellSlot = slot;
     return RESULT_MISSILE;
   }

@@ -48,11 +48,15 @@ const TRACER_PRESETS = {
 // `if (!frozen) age += dt` gate held a full-brightness beam through every
 // stepped capture window).
 const TRAIL_S = 0.28;
+const ATGM_TRAIL_S = 0.48;
+const ATGM_TRAIL_POINTS = 24;
+const ATGM_TRAIL_SPACING_M = 0.55;
+const MAX_ATGM_BODIES = 12;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
 const COMPOSE_VELOCITY = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
 
-const MAX_TRACERS = 96;
+const MAX_TRACERS = 256;
 const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% of peak
 // 210 (was 1150): the 1150 peak stamped a ~20 m saturated yellow disc onto
 // the terrain and whited out the bottom half of the scope (r6 "flashbang").
@@ -150,17 +154,19 @@ attribute vec4 aA;     // tail.xyz, width
 attribute vec4 aB;     // head.xyz, brightness
 attribute vec3 aCore;
 attribute vec3 aGlow;
+attribute float aTint;
 varying vec2 vUv;
 varying vec3 vCore;
 varying vec3 vGlow;
 varying float vBright;
 varying float vSeed;
+varying float vTint;
 #ifdef USE_FOG
   varying float vFogDepth;
 #endif
 uniform vec2 uNearFade;
 void main() {
-  vUv = uv; vCore = aCore; vGlow = aGlow; vBright = aB.w;
+  vUv = uv; vCore = aCore; vGlow = aGlow; vBright = aB.w; vTint = aTint;
   vSeed = fract( dot( aA.xyz, vec3( 0.1031, 0.11369, 0.13787 ) ) );
   if ( aB.w <= 0.0 ) {
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
@@ -200,6 +206,7 @@ varying vec3 vCore;
 varying vec3 vGlow;
 varying float vBright;
 varying float vSeed;
+varying float vTint;
 #ifdef USE_FOG
   uniform vec3 fogColor;
   uniform float fogNear;
@@ -228,10 +235,12 @@ void main() {
   #endif
   // A neutral hot core preserves the physical incandescent read; the shell
   // preset lives in the close corona, so AP/APCR/HE remain distinguishable.
-  vec3 hot = mix( vCore, vec3( 1.0, 0.97, 0.88 ), 0.72 );
+  vec3 neutralHot = mix( vCore, vec3( 1.0, 0.97, 0.88 ), 0.72 );
+  vec3 hot = mix( neutralHot, vCore, vTint );
   vec3 col = ( hot * core * 3.6 + vGlow * corona * 0.95 )
     * tailEnergy * shimmer * vBright;
-  col += vec3( 1.0, 0.985, 0.92 ) * bead * vBright * 3.0;
+  vec3 beadColor = mix( vec3( 1.0, 0.985, 0.92 ), vCore, vTint );
+  col += beadColor * bead * vBright * 3.0;
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -510,12 +519,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const trB = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 4), 4);
   const trCore = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
   const trGlow = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
-  const tracerAttrs = [trA, trB, trCore, trGlow];
-  for (const a of [trA, trB, trCore, trGlow]) a.setUsage(THREE.DynamicDrawUsage);
+  const trTint = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS), 1);
+  const tracerAttrs = [trA, trB, trCore, trGlow, trTint];
+  for (const a of tracerAttrs) a.setUsage(THREE.DynamicDrawUsage);
   tracerGeo.setAttribute('aA', trA);
   tracerGeo.setAttribute('aB', trB);
   tracerGeo.setAttribute('aCore', trCore);
   tracerGeo.setAttribute('aGlow', trGlow);
+  tracerGeo.setAttribute('aTint', trTint);
   tracerGeo.instanceCount = 0;
   const tracerMat = new THREE.ShaderMaterial({
     vertexShader: TRACER_VERT,
@@ -536,6 +547,35 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   tracerMesh.layers.set(LATE_FX_LAYER);
   group.add(tracerMesh);
 
+  // Guided missiles need a readable projectile, not only the same short
+  // ribbon used by supersonic shells. These two instanced pools draw a pale
+  // missile body and its hot yellow exhaust point without allocating meshes
+  // during flight. Geometry faces local +Z, matching projectile velocity.
+  const atgmBodyGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.25, 8, 1, false);
+  atgmBodyGeo.rotateX(Math.PI / 2);
+  const atgmBodyMat = new THREE.MeshBasicMaterial({ color: 0xffe15a });
+  const atgmBodies = new THREE.InstancedMesh(atgmBodyGeo, atgmBodyMat, MAX_ATGM_BODIES);
+  atgmBodies.count = 0;
+  atgmBodies.frustumCulled = false;
+  atgmBodies.renderOrder = 25;
+  atgmBodies.layers.set(LATE_FX_LAYER);
+  atgmBodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const atgmFlareGeo = new THREE.SphereGeometry(0.25, 8, 6);
+  const atgmFlareMat = new THREE.MeshBasicMaterial({
+    color: 0xffd21f,
+    transparent: true,
+    opacity: 0.92,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const atgmFlares = new THREE.InstancedMesh(atgmFlareGeo, atgmFlareMat, MAX_ATGM_BODIES);
+  atgmFlares.count = 0;
+  atgmFlares.frustumCulled = false;
+  atgmFlares.renderOrder = 26;
+  atgmFlares.layers.set(LATE_FX_LAYER);
+  atgmFlares.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  group.add(atgmBodies, atgmFlares);
+
   // Static tracers (screenshot composers) survive per-frame rebuilds:
   // [ax,ay,az, bx,by,bz, width, bright, coreR,G,B, glowR,G,B, bornAtS] × N
   // bornAtS (r5): stepped-frozen-clock captures used to show the composed
@@ -544,8 +584,18 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const staticTracers = [];
   // Afterglow trails: shellId -> { d: Float32Array(14), age, seen }
   const trails = new Map();
+  // Guided flight paths retain multiple sampled positions so steering reads
+  // as a curved yellow trace. Each record owns one fixed buffer; the hot
+  // render loop only shifts and rewrites it.
+  const guidedTrails = new Map();
   const _trailCore = [0, 0, 0];
   const _trailGlow = [0, 0, 0];
+  const _atgmCore = [1, 0.64, 0.015];
+  const _atgmGlow = [1, 0.36, 0];
+  const _atgmObject = new THREE.Object3D();
+  const _atgmFlareObject = new THREE.Object3D();
+  let renderedAtgmBodies = 0;
+  let renderedAtgmTrailSegments = 0;
 
   // --- scorch decals (pooled, persistent, slope-aligned) ---------------------
   const MAX_SCORCH = 8;
@@ -712,6 +762,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
       || tracerGeo.instanceCount > 0
+      || atgmBodies.count > 0
       || shockRings.some((r) => r.mesh.visible)
       || muzzleRings.some((r) => r.mesh.visible),
   };
@@ -926,13 +977,53 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const _coreArr = [0, 0, 0];
   const _glowArr = [0, 0, 0];
 
-  function writeTracer(i, ax, ay, az, bx, by, bz, width, bright, core, glow) {
+  function writeTracer(i, ax, ay, az, bx, by, bz, width, bright, core, glow, tint = 0) {
     let j = i * 4;
     trA.array[j] = ax; trA.array[j + 1] = ay; trA.array[j + 2] = az; trA.array[j + 3] = width;
     trB.array[j] = bx; trB.array[j + 1] = by; trB.array[j + 2] = bz; trB.array[j + 3] = bright;
     j = i * 3;
     trCore.array[j] = core[0]; trCore.array[j + 1] = core[1]; trCore.array[j + 2] = core[2];
     trGlow.array[j] = glow[0]; trGlow.array[j + 1] = glow[1]; trGlow.array[j + 2] = glow[2];
+    trTint.array[i] = tint;
+  }
+
+  function appendGuidedTrailPoint(trail, x, y, z) {
+    const points = trail.points;
+    const count = trail.count;
+    if (count > 0) {
+      const p = (count - 1) * 3;
+      const dx = x - points[p], dy = y - points[p + 1], dz = z - points[p + 2];
+      if (dx * dx + dy * dy + dz * dz < ATGM_TRAIL_SPACING_M * ATGM_TRAIL_SPACING_M) {
+        points[p] = x; points[p + 1] = y; points[p + 2] = z;
+        return;
+      }
+    }
+    if (trail.count >= ATGM_TRAIL_POINTS) {
+      points.copyWithin(0, 3, ATGM_TRAIL_POINTS * 3);
+      trail.count = ATGM_TRAIL_POINTS - 1;
+    }
+    const p = trail.count * 3;
+    points[p] = x; points[p + 1] = y; points[p + 2] = z;
+    trail.count++;
+  }
+
+  function writeGuidedTrail(trail, firstInstance, opacity = 1) {
+    let instance = firstInstance;
+    const points = trail.points;
+    const denom = Math.max(1, trail.count - 1);
+    for (let i = 1; i < trail.count && instance < MAX_TRACERS; i++) {
+      const a = (i - 1) * 3;
+      const b = i * 3;
+      const head = i / denom;
+      writeTracer(instance++,
+        points[a], points[a + 1], points[a + 2],
+        points[b], points[b + 1], points[b + 2],
+        0.08 + 0.09 * head,
+        (0.55 + 1.05 * head) * opacity,
+        _atgmCore, _atgmGlow, 1);
+      renderedAtgmTrailSegments++;
+    }
+    return instance;
   }
 
   // --- timers, continuous emitters, event bookkeeping ------------------------
@@ -2549,6 +2640,14 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const fx = {
     group,
 
+    /** Render-side ATGM visibility telemetry used by the browser lifecycle gate. */
+    getGuidedMissileDebug() {
+      return {
+        bodies: renderedAtgmBodies,
+        trailSegments: renderedAtgmTrailSegments,
+      };
+    },
+
     /**
      * LOADING PERF (boot r9): finish the deferred particle sprite bakes
      * (idempotent, ~200 ms once). Must run before the first fx-visible frame;
@@ -2712,6 +2811,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // lingering trail almost no 60 fps frame ever caught a streak),
       // then composer statics
       let n = 0;
+      let atgmCount = 0;
+      renderedAtgmTrailSegments = 0;
+      for (const trail of guidedTrails.values()) trail.seen = false;
       const shellCount = shells ? shells.length : 0;
       for (let i = 0; i < shellCount && n < MAX_TRACERS; i++) {
         const sh = shells[i];
@@ -2730,6 +2832,43 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           Math.max(sh.distM || 0, 0.08));
         _v1.copy(shVel).normalize();
         _v2.copy(shPos).addScaledVector(_v1, -len);
+        if (sh.spec?.guided) {
+          // A physical missile body rides at the live authoritative position;
+          // the exhaust flare sits just behind it. The shell position is the
+          // nose, so offset the body rearward along its instantaneous heading.
+          if (atgmCount < MAX_ATGM_BODIES) {
+            _atgmObject.position.copy(shPos).addScaledVector(_v1, -0.65);
+            _atgmObject.quaternion.setFromUnitVectors(_Z, _v1);
+            _atgmObject.scale.set(1, 1, 1);
+            _atgmObject.updateMatrix();
+            atgmBodies.setMatrixAt(atgmCount, _atgmObject.matrix);
+            _atgmFlareObject.position.copy(shPos).addScaledVector(_v1, -1.35);
+            _atgmFlareObject.quaternion.identity();
+            _atgmFlareObject.scale.setScalar(1.15);
+            _atgmFlareObject.updateMatrix();
+            atgmFlares.setMatrixAt(atgmCount, _atgmFlareObject.matrix);
+            atgmCount++;
+          }
+
+          let guidedTrail = guidedTrails.get(sh.id);
+          if (!guidedTrail) {
+            guidedTrail = {
+              points: new Float32Array(ATGM_TRAIL_POINTS * 3),
+              count: 0,
+              age: 0,
+              seen: true,
+            };
+            guidedTrails.set(sh.id, guidedTrail);
+            if (sh.prevPos) appendGuidedTrailPoint(
+              guidedTrail, sh.prevPos.x, sh.prevPos.y, sh.prevPos.z,
+            );
+          }
+          guidedTrail.age = 0;
+          guidedTrail.seen = true;
+          appendGuidedTrailPoint(guidedTrail, shPos.x, shPos.y, shPos.z);
+          n = writeGuidedTrail(guidedTrail, n);
+          if (n >= MAX_TRACERS) continue;
+        }
         col3(preset.core, _coreArr); col3(preset.glow, _glowArr);
         // enemy fire reads wider/brighter — battlefield legibility (width is
         // hard-capped below: no tracer body may exceed ~0.15 m)
@@ -2749,22 +2888,47 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         }
         const bw = Math.min(preset.width * wide, 0.15);
         writeTracer(n++, _v2.x, _v2.y, _v2.z, shPos.x, shPos.y, shPos.z,
-          bw, bright, _coreArr, _glowArr);
+          bw, bright,
+          sh.spec?.guided ? _atgmCore : _coreArr,
+          sh.spec?.guided ? _atgmGlow : _glowArr,
+          sh.spec?.guided ? 1 : 0);
         // record/refresh the afterglow trail for this shell — stored as a
         // VAPOR ribbon (r4): what lingers after the bolt passes is powder
         // vapor, not light. Grey-tinted, alpha-capped low, only the bolt's
         // own 3-6 m segment (r7: the old 28 m span WAS the laser).
-        let tr = trails.get(sh.id);
-        if (!tr) { tr = { d: new Float32Array(14), age: 0, seen: true }; trails.set(sh.id, tr); }
-        tr.age = 0; tr.seen = true;
-        const d = tr.d;
-        d[0] = _v2.x; d[1] = _v2.y; d[2] = _v2.z;
-        d[3] = shPos.x; d[4] = shPos.y; d[5] = shPos.z;
-        d[6] = bw * 1.3; d[7] = bright * 0.16;
-        // desaturate the preset hue hard toward smoke grey (25% color keeps a
-        // faint warm/cool identity without reading as an incandescent rod)
-        d[8] = 0.45 + _coreArr[0] * 0.25; d[9] = 0.44 + _coreArr[1] * 0.25; d[10] = 0.43 + _coreArr[2] * 0.25;
-        d[11] = 0.30 + _glowArr[0] * 0.25; d[12] = 0.30 + _glowArr[1] * 0.25; d[13] = 0.30 + _glowArr[2] * 0.25;
+        if (!sh.spec?.guided) {
+          let tr = trails.get(sh.id);
+          if (!tr) { tr = { d: new Float32Array(14), age: 0, seen: true }; trails.set(sh.id, tr); }
+          tr.age = 0; tr.seen = true;
+          const d = tr.d;
+          d[0] = _v2.x; d[1] = _v2.y; d[2] = _v2.z;
+          d[3] = shPos.x; d[4] = shPos.y; d[5] = shPos.z;
+          d[6] = bw * 1.3; d[7] = bright * 0.16;
+          // desaturate the preset hue hard toward smoke grey (25% color keeps a
+          // faint warm/cool identity without reading as an incandescent rod)
+          d[8] = 0.45 + _coreArr[0] * 0.25; d[9] = 0.44 + _coreArr[1] * 0.25; d[10] = 0.43 + _coreArr[2] * 0.25;
+          d[11] = 0.30 + _glowArr[0] * 0.25; d[12] = 0.30 + _glowArr[1] * 0.25; d[13] = 0.30 + _glowArr[2] * 0.25;
+        }
+      }
+      atgmBodies.count = atgmCount;
+      atgmFlares.count = atgmCount;
+      renderedAtgmBodies = atgmCount;
+      if (atgmCount > 0 || atgmBodies.userData.lastCount > 0) {
+        atgmBodies.instanceMatrix.needsUpdate = true;
+        atgmFlares.instanceMatrix.needsUpdate = true;
+      }
+      atgmBodies.userData.lastCount = atgmCount;
+
+      // Keep the steered path yellow for a short beat after impact so the
+      // player can read where the missile curved before guidance disengages.
+      if (guidedTrails.size) {
+        for (const [id, trail] of guidedTrails) {
+          if (trail.seen) continue;
+          trail.age += tickDt;
+          if (trail.age >= ATGM_TRAIL_S) { guidedTrails.delete(id); continue; }
+          const fade = 1 - trail.age / ATGM_TRAIL_S;
+          n = writeGuidedTrail(trail, n, fade * fade);
+        }
       }
       // afterglow: trails not refreshed this frame fade out over TRAIL_S
       // (aged by the shared clock's motion — stepped captures fade honestly)
@@ -3910,7 +4074,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst
       staticTracers.length = 0;
       trails.clear();
+      guidedTrails.clear();
       tracerGeo.instanceCount = 0;
+      atgmBodies.count = 0;
+      atgmFlares.count = 0;
+      renderedAtgmBodies = 0;
+      renderedAtgmTrailSegments = 0;
       timers = [];
       columns = [];
       lastKnownPos.clear();

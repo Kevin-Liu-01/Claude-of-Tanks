@@ -1238,6 +1238,17 @@ export function createKillCam(deps) {
     if (fadeEl) { fadeEl.remove(); fadeEl = null; }
   }
 
+  function resetDomPresentation() {
+    if (dom) {
+      dom.root.classList.remove('on', 'xr', 'in', 'out', 'grade', 'now');
+      dom.flash.classList.remove('go');
+      dom.killer.root.classList.remove('on', 'rv');
+      dom.labelHost.textContent = '';
+      dom.leader.textContent = '';
+    }
+    document.body.classList.remove('cot-kc-live');
+  }
+
   // -------------------------------------------------------------------------
   // Capture
   // -------------------------------------------------------------------------
@@ -1472,6 +1483,7 @@ export function createKillCam(deps) {
     cancel() {
       clearExit();
       if (active) finish(false);
+      else resetDomPresentation();
     },
 
     /** SPECTATE introspection/driving for probes (active, targetId, cycle). */
@@ -4062,18 +4074,9 @@ export function createKillCam(deps) {
       scene.remove(pb.group);
       pb.group.clear();
     }
-    if (dom) {
-      // every transition class stripped — a cancel mid-entry, mid-hold or
-      // mid-exit must leave the DOM exactly as a fresh begin() expects it
-      // (bars parked, grade off, flash spent, killer card hidden)
-      dom.root.classList.remove('on', 'xr', 'in', 'out', 'grade', 'now');
-      dom.flash.classList.remove('go');
-      dom.killer.root.classList.remove('on', 'rv');
-      dom.labelHost.textContent = '';
-      dom.leader.textContent = '';
-    }
-    // release the css-level HUD veil (counterpart of begin()'s stamp)
-    document.body.classList.remove('cot-kc-live');
+    // Every transition class and the CSS HUD veil are stripped even if a
+    // later cancel sees an already-inactive controller.
+    resetDomPresentation();
     const done = pb ? pb.onDone : null;
     const wasDeathView = pb ? pb.isDeathView : false;
     pb = null;

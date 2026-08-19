@@ -90,9 +90,14 @@ async function freshBattle() {
 }
 
 async function dieAndWaitForResult() {
-  const spawned = await page.evaluate(() => window.__DEBUG.spawnKillShell());
-  if (!spawned) fail('spawnKillShell returned false');
-  await page.evaluate(() => window.__DEBUG.fastForward(2));
+  let destroyed = false;
+  for (let attempt = 0; attempt < 4 && !destroyed; attempt++) {
+    const spawned = await page.evaluate(() => window.__DEBUG.spawnKillShell());
+    if (!spawned) fail(`spawnKillShell returned false on attempt ${attempt + 1}`);
+    await page.evaluate(() => window.__DEBUG.fastForward(2));
+    destroyed = await page.evaluate(() => window.__DEBUG.game.player.combat.destroyed);
+  }
+  if (!destroyed) fail('player did not die after four deterministic kill-shell attempts');
   const result = await page.evaluate(() => window.__DEBUG.game.result);
   // Team play may continue after the player's death; both the mid-battle
   // death replay and battle-deciding defeat replay exercise the same visual
@@ -173,7 +178,31 @@ const replaySeen = await page.waitForFunction(
 if (!replaySeen) {
   fail('C: active kill-cam UI was never observed');
 } else {
-  await page.evaluate(() => window.__DEBUG.enterGarage());
+  // Exercise the real settings/mobile-menu leave route while the replay owns
+  // the frame. Cleanup must happen on the click edge, before the transition
+  // waits to swap the underlying scene to the garage.
+  const immediateExit = await page.evaluate(() => {
+    window.__DEBUG.settings.open();
+    const leave = document.querySelector('.cot-settings.open .cot-set-btn.leave');
+    if (!leave) return { missingLeaveButton: true };
+    // Capture in the same JavaScript task as the real leave handler. A
+    // transition callback or timeout is too late: leaked kill-cam DOM is
+    // already visible during the fade by then.
+    leave.click();
+    return {
+      active: window.__DEBUG.killcam.isActive(),
+      bodyLive: document.body.classList.contains('cot-kc-live'),
+      killcamDisplay: getComputedStyle(document.querySelector('.cot-kc')).display,
+      fadeCount: document.querySelectorAll('.cot-kc-fadeblk').length,
+      report: document.body.classList.contains('cot-si-report'),
+    };
+  });
+  console.log('[revive] C immediate leave state:', JSON.stringify(immediateExit));
+  if (immediateExit.missingLeaveButton) fail('C: settings Leave Battle control was unavailable');
+  if (immediateExit.active || immediateExit.bodyLive || immediateExit.killcamDisplay !== 'none' ||
+      immediateExit.fadeCount || immediateExit.report) {
+    fail('C: killcam presentation survived the real Leave Battle click');
+  }
   await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 10000 });
   const exitState = await page.evaluate(() => {
     const kc = document.querySelector('.cot-kc');

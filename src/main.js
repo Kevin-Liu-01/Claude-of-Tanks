@@ -2980,6 +2980,18 @@ function openBattle() {
 // battle_countdown r1: WoT-style pre-battle freeze length (player path only).
 const PRE_BATTLE_HOLD_S = 5;
 
+function clearBattlePresentationForExit() {
+  kcPending = null;
+  killcam.cancel();
+  if (killcam.spectate?.active) killcam.spectate.stop(true);
+  veilHud(false);
+  // cancel() emits killcam:done, which may flush a buffered report. Hide the
+  // whole battle presentation after that event so no replay text, report,
+  // spectate bar, or damage-panel veil can survive the leave click.
+  hud.setMode('hidden');
+  endOverlay.style.display = 'none';
+}
+
 function enterGarage({ preserveRoom = !!(
   activeNetworkRoom && networkMatch && !networkMatch.client?.closed && game.result
 ) } = {}) {
@@ -2991,9 +3003,7 @@ function enterGarage({ preserveRoom = !!(
   // are disposed, revoke the pending launch, and release main.js's separate
   // HUD veil. Without this ordering, the next battle inherited letterbox/
   // label DOM plus display:none HUD roots from the interrupted replay.
-  kcPending = null;
-  killcam.cancel();
-  veilHud(false);
+  clearBattlePresentationForExit();
   if (preserveRoom) disposeNetworkPresentation();
   else closeNetworkMatch('returned_to_garage');
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
@@ -3038,6 +3048,9 @@ let leavingBattle = false;
 function leaveBattleToGarage() {
   if (leavingBattle) return;
   leavingBattle = true;
+  // The transition intentionally delays the scene swap, but kill-cam DOM is
+  // input state and must release synchronously on the actual leave action.
+  clearBattlePresentationForExit();
   transition.run(() => { enterGarage(); }, {
     kicker: 'Leaving battle', title: 'Garage',
     mapId: world?.mapId || game.mapId,
