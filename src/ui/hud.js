@@ -21,6 +21,43 @@ const PEN_NONE = 'rgba(236,242,248,0.95)';
 const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
+export const AUTOLOADER_HUD_SHELLS = 3;
+
+/**
+ * Normalize authoritative magazine state for the compact reticle indicator.
+ * The HUD deliberately uses three shell silhouettes as its visual grammar;
+ * magazines larger than three retain an exact overflow read (for example +1).
+ */
+export function autoloaderHudState(magazine, reload, out = null) {
+  const capacity = Math.max(0, magazine?.capacity | 0);
+  if (capacity <= 1) return null;
+  const rounds = Math.max(0, Math.min(capacity, magazine?.rounds | 0));
+  const fullReload = reload?.kind === 'magazine' && reload.totalS > 0 && reload.t > 0.001;
+  const loadProgress = fullReload
+    ? Math.max(0, Math.min(1, 1 - reload.t / reload.totalS))
+    : 0;
+  const state = out || {};
+  state.capacity = capacity;
+  state.rounds = rounds;
+  state.readyShells = Math.min(AUTOLOADER_HUD_SHELLS, rounds);
+  state.overflow = Math.max(0, rounds - AUTOLOADER_HUD_SHELLS);
+  state.fullReload = fullReload;
+  state.loadProgress = loadProgress;
+  state.intraClip = reload?.kind === 'intraClip' && reload.t > 0.001;
+  return state;
+}
+
+function magazineShellPath(ctx, x, y, shellW, shellH) {
+  ctx.beginPath();
+  ctx.moveTo(x + shellW * 0.5, y);
+  ctx.lineTo(x + shellW, y + shellH * 0.28);
+  ctx.lineTo(x + shellW, y + shellH * 0.82);
+  ctx.lineTo(x + shellW * 0.72, y + shellH);
+  ctx.lineTo(x + shellW * 0.28, y + shellH);
+  ctx.lineTo(x, y + shellH * 0.82);
+  ctx.lineTo(x, y + shellH * 0.28);
+  ctx.closePath();
+}
 // MOBILE-UX r1 (owner: "don't let the reticle grow too large — it should only
 // show the actual hit zones of shells"): the dispersion circle now draws the
 // TRUE 2σ cone. computeDispersionRadM is the radius shells are re-rolled
@@ -1082,6 +1119,9 @@ export function initHud(bus) {
   const hitDirs = []; // { wx, wz, kind:'pen'|'bounce'|'he', crit, dmg, t0, re, _screenAng }
   const liveNums = []; // { x, y, until } — active damage-number rects (stacking)
   let hitMark = null; // { t0, bounced } — reticle hit-confirm marker (own shots)
+  let lastMagazineIndicatorY = null;
+  let lastMagazineIndicatorState = null;
+  const magazineHudScratch = {};
   let bounceTimer = null;
   const hpPool = new Map(); // tank id -> { root, fill, nm, lastFrac }
   const spotById = new Map(); // tank id -> { vis, lastT, lastX, lastZ, ever }
@@ -1879,30 +1919,65 @@ export function initHud(bus) {
       ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
     }
-    // Magazine autoloader ready-rack: compact pips directly above the gun
-    // marker. Lit cells are immediately fireable rounds; empty cells remain
-    // outlined during a full magazine reload, so intra-clip and magazine
-    // waits are distinguishable without reading the timer.
-    const mag = view.magazine;
-    if (mag && mag.capacity > 1) {
-      const cap = Math.min(8, mag.capacity | 0);
-      const rounds = Math.max(0, Math.min(cap, mag.rounds | 0));
-      const pipW = sniper ? 7 : 6;
-      const pipH = sniper ? 3.5 : 3;
-      const gap = 2;
-      const totalW = cap * pipW + (cap - 1) * gap;
+    // Magazine autoloader ready-rack: three recognizable shells directly
+    // UNDER the center marker. White shells are ready rounds; intra-clip
+    // cycling uses an amber keyline, and a full-magazine reload fills the
+    // three silhouettes from the base upward while the timer counts down.
+    // A magazine larger than the three-shell visual window keeps an exact
+    // +N overflow label instead of silently losing authoritative state.
+    const magazineHud = autoloaderHudState(view.magazine, rl0, magazineHudScratch);
+    let magazineBottomY = 0;
+    if (magazineHud) {
+      const shellW = sniper ? 6.5 : 5.5;
+      const shellH = sniper ? 16 : 14;
+      const gap = sniper ? 4 : 3.5;
+      const totalW = AUTOLOADER_HUD_SHELLS * shellW
+        + (AUTOLOADER_HUD_SHELLS - 1) * gap;
       const x0 = cx - totalW * 0.5;
-      const y0 = cy - reloadRing - 11;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < cap; i++) {
-        ctx.fillStyle = i < rounds ? 'rgba(231,239,243,0.96)' : 'rgba(8,12,15,0.55)';
-        ctx.strokeStyle = rl0?.kind === 'magazine'
-          ? RELOAD_ACCENT : 'rgba(207,220,227,0.82)';
-        ctx.beginPath();
-        ctx.rect(x0 + i * (pipW + gap), y0, pipW, pipH);
+      const y0 = cy + reloadRing + 6;
+      magazineBottomY = y0 + shellH;
+      lastMagazineIndicatorY = y0;
+      lastMagazineIndicatorState = magazineHud;
+
+      for (let i = 0; i < AUTOLOADER_HUD_SHELLS; i++) {
+        const x = x0 + i * (shellW + gap);
+        const ready = i < magazineHud.readyShells;
+        const loading = magazineHud.fullReload
+          ? Math.max(0, Math.min(1, magazineHud.loadProgress * AUTOLOADER_HUD_SHELLS - i))
+          : 0;
+        // dark under-stroke keeps the silhouettes legible over sky and snow
+        magazineShellPath(ctx, x, y0, shellW, shellH);
+        ctx.strokeStyle = 'rgba(5,8,11,0.88)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        magazineShellPath(ctx, x, y0, shellW, shellH);
+        ctx.fillStyle = 'rgba(7,11,14,0.52)';
         ctx.fill();
+        if (ready || loading > 0) {
+          ctx.save();
+          magazineShellPath(ctx, x, y0, shellW, shellH);
+          ctx.clip();
+          ctx.fillStyle = ready ? 'rgba(231,239,243,0.96)' : RELOAD_ACCENT;
+          const fillH = ready ? shellH : shellH * loading;
+          ctx.fillRect(x - 1, y0 + shellH - fillH, shellW + 2, fillH + 1);
+          ctx.restore();
+        }
+        magazineShellPath(ctx, x, y0, shellW, shellH);
+        ctx.strokeStyle = magazineHud.fullReload || magazineHud.intraClip
+          ? RELOAD_ACCENT : 'rgba(207,220,227,0.88)';
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
+      if (magazineHud.overflow > 0) {
+        ctx.fillStyle = 'rgba(231,239,243,0.9)';
+        ctx.font = `700 9px ${FONT_COND}`;
+        ctx.textAlign = 'left';
+        ctx.fillText(`+${magazineHud.overflow}`, x0 + totalW + 3, y0 + shellH - 1);
+        ctx.textAlign = 'center';
+      }
+    } else {
+      lastMagazineIndicatorY = null;
+      lastMagazineIndicatorState = null;
     }
     // ready pulse (r7): the moment the reload arc closes, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
@@ -1981,7 +2056,9 @@ export function initHud(bus) {
       // condensed sizes the lowercase glyph read as a capital "3.4 S".
       ctx.fillStyle = RELOAD_ACCENT;
       const cdTxt = rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : `${rl0.t.toFixed(1)}`;
-      const cdY = cy + 14 + (zs - 1) * 9 + 15; // just under the reload ring
+      const cdY = magazineHud
+        ? magazineBottomY + 15
+        : cy + 14 + (zs - 1) * 9 + 15; // just under the reload ring / magazine
       ctx.font = `700 16px ${FONT_COND}`;
       const cdW = ctx.measureText(cdTxt).width;
       ctx.font = `500 10.5px ${FONT_COND}`;
@@ -3633,6 +3710,15 @@ export function initHud(bus) {
         penRatio: aimView.penRatio,
         cameraMarkerColor: lastCameraMarkerCol,
         gunMarkerColor: lastGunMarkerCol,
+        magazineIndicator: lastMagazineIndicatorState ? {
+          shellCount: AUTOLOADER_HUD_SHELLS,
+          y: lastMagazineIndicatorY,
+          rounds: lastMagazineIndicatorState.rounds,
+          capacity: lastMagazineIndicatorState.capacity,
+          overflow: lastMagazineIndicatorState.overflow,
+          fullReload: lastMagazineIndicatorState.fullReload,
+          loadProgress: lastMagazineIndicatorState.loadProgress,
+        } : null,
         floorPx: RET_FLOOR_PX,
         ceilPx: retCeilPx(),
       }),
