@@ -7,6 +7,7 @@ import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 import { isRetiredHistoricalTank } from './rosterPolicy.js';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
+import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.js';
 import {
   plate as par,
   frontPlate as fr,
@@ -1643,10 +1644,7 @@ export function finalizeFirstPartyRoster() {
     spec.name = label.displayName;
     spec.label = label;
     spec.markings = vehicleMarkingRecord(spec);
-    spec.authorship = Object.freeze({
-      geometry: 'first-party-procedural',
-      runtimeExternalGeometry: false,
-    });
+    spec.authorship = FIRST_PARTY_VEHICLE_AUTHORSHIP;
   }
 }
 

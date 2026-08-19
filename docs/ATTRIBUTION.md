@@ -1,4 +1,24 @@
-# Asset Attribution
+# Project and Asset Attribution
+
+## Project authorship
+
+**Claude of Tanks was created, designed, and directed by Kevin B. Liu.**
+Claude and Codex were development tools, not co-authors or copyright holders.
+Unless a row below, an embedded notice, or a license record identifies another
+author, every original repository file and asset is Copyright © 2026 Kevin B.
+Liu and is covered by the root MIT License. This includes the source,
+documentation, procedural vehicle and environment definitions, generated tank
+icons and technical diagrams, first-party interface and brand composition,
+screenshots, video, synthesized audio, tests, and production tools.
+
+Every selectable runtime vehicle model is original procedural geometry created
+by Kevin B. Liu. Downloaded vehicle models are quarantined comparison/research
+inputs, never playable geometry, and retain the attribution recorded below.
+
+Third-party exceptions take precedence over the repository-wide Kevin B. Liu
+notice. The root MIT License does not relicense third-party fonts, marks,
+shader code, reference models, props, or other sourced work. See
+[`NOTICE.md`](../NOTICE.md) for the concise repository coverage rule.
 
 Every downloaded asset committed to this repo is recorded here (name, author,
 source, license, file path). Runtime stays fully self-contained: all files are

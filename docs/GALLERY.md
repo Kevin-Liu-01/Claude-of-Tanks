@@ -148,6 +148,13 @@ Copy data emits `claude-of-tanks/gallery-spec@1`:
   "schema": "claude-of-tanks/gallery-spec@1",
   "id": "m1a2",
   "name": "M1A2 Abrams",
+  "authorship": {
+    "creator": "Kevin B. Liu",
+    "copyright": "Copyright © 2026 Kevin B. Liu",
+    "license": "MIT",
+    "geometry": "first-party-procedural",
+    "runtimeExternalGeometry": false
+  },
   "nation": "USA",
   "era": "Modern",
   "class": "Main battle tank",
@@ -167,7 +174,8 @@ functions, materials, and non-portable runtime identifiers.
 Copy JSON and Download in the Markup layer emit schema version 1 with tool
 identifier `tank-gallery-surface-markup`. Each packet includes:
 
-- first-party/procedural authorship constraints;
+- named Kevin B. Liu creator, copyright, license, and first-party/procedural
+  authorship constraints;
 - vehicle, camera, hull, turret, and gun pose;
 - right-handed metre-based coordinate-system metadata;
 - operation, scope, instruction, and optional offset or primitive request;

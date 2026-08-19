@@ -19,6 +19,9 @@ for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
   assert.equal(spec.community, undefined, `${id}: obsolete community/source credit leaked into selectable spec`);
   assert.notEqual(String(spec.nation || '').toLowerCase(), 'community', `${id}: Community nation is not selectable`);
+  assert.equal(spec.authorship?.creator, 'Kevin B. Liu', `${id}: named first-party creator`);
+  assert.equal(spec.authorship?.copyright, 'Copyright © 2026 Kevin B. Liu', `${id}: first-party copyright`);
+  assert.equal(spec.authorship?.license, 'MIT', `${id}: first-party license`);
   assert.equal(spec.authorship?.geometry, 'first-party-procedural', `${id}: first-party geometry authorship`);
   assert.equal(spec.authorship?.runtimeExternalGeometry, false, `${id}: runtime external geometry disabled`);
   assert.equal(spec.publicVisualFallback, undefined, `${id}: own first-party public visuals`);

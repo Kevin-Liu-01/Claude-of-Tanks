@@ -37,7 +37,9 @@ https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 | DEV-PERF-TRACE.md | Development performance flight recorder |
 | MOBILE-QA.md | Sustained mobile test procedure and evidence ledger |
 | IMPROVEMENT-PROGRAM-2026-08-17.md | Dated implementation and verification record for the 16-map, multiplayer, UI, destruction, and rendering improvement program |
-| ATTRIBUTION.md | Asset provenance, licenses, and quarantine record |
+| ATTRIBUTION.md | Kevin B. Liu project authorship, asset provenance, third-party licenses, and quarantine record |
+| ../NOTICE.md | Repository-wide authorship rule for every original file, model, and generated asset |
+| ../LICENSE | MIT terms for Kevin B. Liu's first-party work |
 
 ## Vehicle-authoring law
 

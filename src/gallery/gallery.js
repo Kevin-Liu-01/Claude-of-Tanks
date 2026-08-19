@@ -271,6 +271,7 @@ function renderDossier(record) {
   $('#dossierMeta').textContent = `${record.nation} // ${record.vehicleClass} // Tier ${record.tierNumeral}`;
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
+  $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship.creator}`;
   $('#viewerRecord').textContent = `Archive record ${String(allIndex).padStart(3, '0')} / ${String(records.length).padStart(3, '0')}`;
 
   const ratingTones = { firepower: '#e9a346', protection: '#67d19a', mobility: '#64cfdb', survivability: '#c18cff' };

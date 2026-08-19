@@ -180,6 +180,7 @@ export function createGalleryRecord(spec) {
   return Object.freeze({
     id: spec.id,
     displayName: tankDisplayName(spec),
+    authorship: spec.authorship,
     shortName: label.shortName,
     aliases: label.searchAliases,
     nation,
@@ -254,6 +255,7 @@ export function serializeGallerySpec(spec) {
     schema: 'claude-of-tanks/gallery-spec@1',
     id: record.id,
     name: record.displayName,
+    authorship: record.authorship,
     nation: record.nation,
     era: record.era,
     class: record.vehicleClass,

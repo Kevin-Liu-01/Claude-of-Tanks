@@ -19,6 +19,10 @@ and `tankAssets.js` owns UI asset mappings.
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
 All playables use first-party runtime geometry; source GLBs are comparison-only.
+Every first-party procedural vehicle is created by Kevin B. Liu and must keep
+the canonical named authorship record from `src/authorship.js`; AI systems are
+development tools, not model authors. Preserve third-party reference credits
+in `docs/ATTRIBUTION.md`.
 Keep turret/gun parenting correct, derive track hit geometry from the running
 gear profile, and land per-tank changes atomically with audits. Every playable
 tank carries the core combat modules; `combatAnatomy.js` adds only

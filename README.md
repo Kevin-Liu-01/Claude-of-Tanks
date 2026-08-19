@@ -241,9 +241,12 @@ simulation rules, networking, browser multiplayer, and both build variants have 
 
 ## Credits and licensing
 
-Created and directed by **Kevin Liu** through a long-running multi-agent Claude/Codex development pipeline spanning
+Created, designed, and directed by **Kevin B. Liu** through a long-running multi-agent Claude/Codex development pipeline spanning
 research, vehicle authoring, simulation, networking, design, performance, QA, documentation, and deployment.
+Claude and Codex were development tools, not co-authors or copyright holders.
 
-All gameplay code and selectable vehicles are original first-party work. External models may be retained only as
+All gameplay code and every selectable procedural vehicle model are original first-party work by Kevin B. Liu. The
+repository-wide [`NOTICE.md`](NOTICE.md) attributes every original file and generated asset; the
+[`LICENSE`](LICENSE) grants the MIT terms. External models may be retained only as
 quarantined visual references for research and verification; they are never loaded as playable geometry. No assets
 extracted from commercial games are used. See [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) for the complete asset record.

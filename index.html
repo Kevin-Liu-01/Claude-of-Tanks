@@ -10,6 +10,8 @@
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Claude of Tanks — Free Browser Tank Game | 80 Tanks, 16 Battlefields</title>
+  <meta name="author" content="Kevin B. Liu" />
+  <meta name="copyright" content="Copyright © 2026 Kevin B. Liu" />
   <!-- SEO/AEO (seo r1): honest, current numbers everywhere — the old cards
        still claimed "48 tanks, 4 battlefields". Canonical + absolute image
        URLs (crawlers do not resolve relative og:image reliably), and a
@@ -40,6 +42,8 @@
     "@id": "https://claude-of-tanks.vercel.app/#game",
     "name": "Claude of Tanks",
     "url": "https://claude-of-tanks.vercel.app/",
+    "creator": { "@type": "Person", "name": "Kevin Liu", "url": "https://github.com/Kevin-Liu-01" },
+    "copyrightHolder": { "@type": "Person", "name": "Kevin B. Liu" },
     "image": "https://claude-of-tanks.vercel.app/brand/og-image.png",
     "description": "Free-roam armored warfare rendered live in the browser: 80 original first-party vehicles, 8 hand-tuned battlefields, bot and multiplayer battles, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
     "genre": ["Vehicular combat", "Simulation", "Action"],
@@ -615,7 +619,7 @@
       <div class="cot-boot-gate" id="cot-boot-gate">Press any key to continue</div>
       <button class="cot-boot-retry" id="cot-boot-retry" type="button">Retry loading</button>
     </div>
-    <div class="cot-boot-foot">Claude of Tanks &middot; Three.js technology demo</div>
+    <div class="cot-boot-foot">Created by Kevin Liu &middot; Three.js technology demo</div>
   </div>
 
   <dialog class="cot-credits" id="cot-credits" data-cot-boot-control aria-labelledby="cot-credits-title">
@@ -623,13 +627,14 @@
       <img class="cot-credits-portrait" src="https://github.com/Kevin-Liu-01.png?size=480" alt="Kevin Liu" />
       <div class="cot-credits-copy">
         <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits">&times;</button>
-        <span class="cot-credits-kicker">Creator / director</span>
-        <h2 id="cot-credits-title">Kevin Liu</h2>
-        <p>I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration.</p>
-        <p>The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every playable tank is first-party work made for this project.</p>
+        <span class="cot-credits-kicker">Creator / designer / director</span>
+        <h2 id="cot-credits-title">Kevin B. Liu</h2>
+        <p>I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.</p>
+        <p>The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every selectable tank is original procedural model work by Kevin B. Liu.</p>
         <div class="cot-credits-actions">
           <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer">Kevin on GitHub</a>
           <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer">Source code</a>
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/NOTICE.md" target="_blank" rel="noopener noreferrer">Authorship notice</a>
         </div>
       </div>
     </div>
