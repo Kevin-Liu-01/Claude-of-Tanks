@@ -11,8 +11,8 @@ import {
 import { BOOT_HERO_SHOTS } from './bootScreen.js';
 import { MAP_THUMBS } from './mapThumbs.js';
 
-assert.equal(FEATURED_SHOTS.length, 9, 'the complete garage gallery stays available');
-assert.equal(TRANSITION_SHOTS.length, 4, 'only the current owner-authored captures rotate');
+assert.equal(FEATURED_SHOTS.length, 10, 'the complete garage gallery stays available');
+assert.equal(TRANSITION_SHOTS.length, 5, 'only the current owner-authored captures rotate');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.deepEqual(
   BOOT_HERO_SHOTS,
@@ -20,7 +20,7 @@ assert.deepEqual(
   'the first percentage loading screen must use the current curated captures',
 );
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-assert.ok(FEATURED_IMAGES.every((img) => /\/f[6-9]_studio_/.test(img)),
+assert.ok(FEATURED_IMAGES.every((img) => /\/f(?:[6-9]|[1-9]\d+)_studio_/.test(img)),
   'legacy marketing renders must not return to loading-screen rotation');
 
 for (const shot of FEATURED_SHOTS) {
@@ -42,13 +42,21 @@ assert.equal(
   '/media/featured/f9_studio_fjord_firefight.webp',
   'the owner-authored fjord capture should headline Glacier Fjord',
 );
+assert.equal(
+  featuredShotForMap('urban').img,
+  '/media/featured/f10_studio_urban_crossfire.webp',
+  'the latest owner-authored urban capture should headline Steinburg',
+);
 
-const rotation = Array.from({ length: 8 }, () => nextFeaturedShot().img);
+const cycleSize = TRANSITION_SHOTS.length;
+const rotation = Array.from({ length: cycleSize * 2 }, () => nextFeaturedShot().img);
 for (let i = 1; i < rotation.length; i++) {
   assert.notEqual(rotation[i], rotation[i - 1], 'curated rotation must not repeat immediately');
 }
-assert.equal(new Set(rotation.slice(0, 4)).size, 4, 'each rotation cycle visits every capture');
-assert.equal(new Set(rotation.slice(4, 8)).size, 4, 'refilled rotation visits every capture');
+assert.equal(new Set(rotation.slice(0, cycleSize)).size, cycleSize,
+  'each rotation cycle visits every capture');
+assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
+  'refilled rotation visits every capture');
 
 await import('./imagePreload.selftest.mjs');
 console.log('loading screen featured-capture selftest: PASS');

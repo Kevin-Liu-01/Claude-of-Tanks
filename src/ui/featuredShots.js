@@ -35,7 +35,7 @@ export const FEATURED_SHOTS = [
   {
     img: '/media/featured/f6_studio_strv_steinburg_duel.webp',
     cap: 'Steinburg — Strv 103 street duel',
-    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '54% 48%',
+    maps: ['foundry', 'railyard', 'caldera'], focal: '54% 48%',
   },
   {
     img: '/media/featured/f7_studio_t90_column_fire.webp',
@@ -51,6 +51,11 @@ export const FEATURED_SHOTS = [
     img: '/media/featured/f9_studio_fjord_firefight.webp',
     cap: 'Glacier Fjord — armored breakthrough',
     maps: ['fjord', 'alpine', 'winter'], focal: '52% 48%',
+  },
+  {
+    img: '/media/featured/f10_studio_urban_crossfire.webp',
+    cap: 'Steinburg — armored street crossfire',
+    maps: ['urban'], focal: '50% 55%',
   },
 ];
 
