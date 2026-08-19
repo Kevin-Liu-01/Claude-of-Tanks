@@ -9,8 +9,9 @@
 //      exactly fxTime,
 //   3. captures a >= 2560 px PNG via __STUDIO.capture (probe writes the file),
 //   4. verifies the scene JSON round-trips (load(state()) reproduces poses),
-//   5. repeats on winter with a different camera + FOV,
-//   6. exits the studio and confirms the garage phase returns.
+//   5. exercises every FX control, selected-layer deletion, and clean replay,
+//   6. repeats on winter with a different camera + FOV,
+//   7. exits the studio and confirms the garage phase returns.
 // Exits non-zero on any assertion or page console error.
 //
 // Shares the /tmp/cot-shots FIFO lock with the other capture harnesses so
@@ -224,6 +225,36 @@ try {
   );
   console.log('[studio-selftest] phase=studio, map=desert, battle pool unbuilt + hidden');
 
+  const panelLayout = await page.evaluate(() => {
+    const mapButton = document.querySelector('.mapBtn');
+    mapButton?.click();
+    const result = {
+      tabs: document.querySelectorAll('[role="tab"]').length,
+      groups: [...document.querySelectorAll('.pgroup')].map((node) => node.dataset.group),
+      hiddenSections: [...document.querySelectorAll('.pgroup .sec')]
+        .filter((node) => getComputedStyle(node).display === 'none').length,
+      mapCards: document.querySelectorAll('.mapCard').length,
+      selectedMap: document.querySelector('.mapCard[aria-selected="true"]')?.dataset.mapId,
+      hero: document.querySelector('.mapBtn .mhero')?.getAttribute('src'),
+      previewsHydrated: [...document.querySelectorAll('.mapCard img')]
+        .filter((image) => image.getAttribute('src')).length,
+    };
+    mapButton?.click();
+    return result;
+  });
+  if (panelLayout.tabs !== 0) throw new Error(`Studio still renders ${panelLayout.tabs} workspace tabs`);
+  if (panelLayout.groups.join(',') !== 'battlefield,tanks,effects,global,output') {
+    throw new Error(`Studio group order is ${panelLayout.groups.join(',')}`);
+  }
+  if (panelLayout.hiddenSections) throw new Error(`${panelLayout.hiddenSections} Studio sections remain tab-hidden`);
+  if (panelLayout.mapCards !== 16 || panelLayout.selectedMap !== 'desert') {
+    throw new Error(`map picker rendered ${panelLayout.mapCards} cards, selected=${panelLayout.selectedMap}`);
+  }
+  if (!panelLayout.hero?.endsWith('/maps/desert.webp') || panelLayout.previewsHydrated !== 16) {
+    throw new Error(`map preview hydration failed: ${JSON.stringify(panelLayout)}`);
+  }
+  console.log('[studio-selftest] one-workspace hierarchy and 16-card visual map picker are live');
+
   // 2. deterministic 3-tank load
   const s1 = await page.evaluate(
     (scene) => window.__STUDIO.load(scene), DESERT_SCENE,
@@ -282,13 +313,112 @@ try {
     approx(a.gunDeg, b.gunDeg, 0.1, `actor${i}.gun`);
   }
   if (s2.fxTime !== s1.fxTime) throw new Error(`round-trip fxTime ${s1.fxTime} -> ${s2.fxTime}`);
+  if (s2.effects.length !== s1.effects.length
+    || s2.effects.some((effect, i) => effect.id !== s1.effects[i].id)) {
+    throw new Error('round-trip changed stable effect ids/order');
+  }
   approx(s1.camera.pos[0], s2.camera.pos[0], 0.1, 'camera.x');
   approx(s1.camera.pos[1], s2.camera.pos[1], 0.1, 'camera.y');
   approx(s1.camera.pos[2], s2.camera.pos[2], 0.1, 'camera.z');
   approx(s1.camera.fov, s2.camera.fov, 0.1, 'camera.fov');
   console.log('[studio-selftest] scene JSON round-trips (poses, camera, fxTime)');
 
-  // 5. winter, different camera + fov
+  // 5. FX board: place a real terrain marker, select the victim, then invoke
+  // every control. Each must append its corresponding real effect type. The
+  // selected tank is intentionally put through kill/detrack/smoke/burning;
+  // clearEffects() must restore the authored intact baseline afterward.
+  const canvas = await page.$('canvas');
+  if (!canvas) throw new Error('renderer canvas missing');
+  const canvasBox = await canvas.boundingBox();
+  if (!canvasBox) throw new Error('renderer canvas has no box');
+  await page.mouse.click(canvasBox.x + canvasBox.width * 0.38, canvasBox.y + canvasBox.height * 0.38);
+  const board = await page.evaluate(() => {
+    window.__STUDIO.selectActor('victim');
+    const labels = [
+      'FIRE GUN', 'MUZZLE FLASH', 'MG BURST', 'RECOIL + FLASH',
+      'TRACER MARKER → ACTOR', 'EXPL SMALL', 'EXPL MEDIUM', 'EXPL LARGE',
+      'BARRAGE ×5', 'DUST BURST', 'SPARKS', 'FROZEN FIREBALL',
+      'IMPACT PEN', 'NON-PEN', 'RICOCHET', 'HE SPLASH', 'ERA POP', 'ARMOR SCARS',
+      'KILL · AMMO-RACK', 'KILL · BURN-OUT', 'DETRACK L', 'DETRACK R',
+      'EXHAUST BELCH', 'ENGINE SMOKE', 'SET BURNING', 'EXTINGUISH',
+    ];
+    const missing = [];
+    for (const label of labels) {
+      const button = [...document.querySelectorAll('.cot-studio button')]
+        .find((node) => node.textContent.trim() === label);
+      if (!button) missing.push(label);
+      else button.click();
+    }
+    return {
+      missing,
+      marker: window.__STUDIO._internal.markerActive,
+      effects: window.__STUDIO.listEffects(),
+      actor: window.__STUDIO.listActors().find((a) => a.name === 'victim'),
+      rows: document.querySelectorAll('.fxrow').length,
+    };
+  });
+  if (board.missing.length) throw new Error(`FX controls missing: ${board.missing.join(', ')}`);
+  if (!board.marker) throw new Error('terrain click did not arm the FX marker');
+  const gotTypes = new Set(board.effects.map((effect) => effect.type));
+  const missingTypes = await page.evaluate(
+    (types) => window.__STUDIO.EFFECT_TYPES.filter((type) => !types.includes(type)),
+    [...gotTypes],
+  );
+  if (missingTypes.length) throw new Error(`FX board did not route types: ${missingTypes.join(', ')}`);
+  if (board.rows !== board.effects.length) {
+    throw new Error(`FX stack rendered ${board.rows} rows for ${board.effects.length} effects`);
+  }
+  const smoke = board.effects.find((effect) => effect.type === 'engine_smoke');
+  if (!smoke) throw new Error('ENGINE SMOKE did not author an effect layer');
+  const deleteResult = await page.evaluate((id) => {
+    window.__STUDIO.selectEffect(id);
+    const row = document.querySelector(`.fxrow[data-effect-id="${id}"]`);
+    if (!row || row.getAttribute('aria-selected') !== 'true') return { selected: false };
+    row.focus();
+    row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    const actor = window.__STUDIO.listActors().find((a) => a.name === 'victim');
+    return {
+      selected: true,
+      removed: !window.__STUDIO.listEffects().some((effect) => effect.id === id),
+      actor,
+    };
+  }, smoke.id);
+  if (!deleteResult.selected || !deleteResult.removed) {
+    throw new Error('selected effect layer did not delete from the FX stack');
+  }
+  await page.evaluate(() => window.__STUDIO.clearEffects());
+  const cleared = await page.evaluate(() => ({
+    effects: window.__STUDIO.listEffects(),
+    actor: window.__STUDIO.listActors().find((a) => a.name === 'victim'),
+    rows: document.querySelectorAll('.fxrow').length,
+  }));
+  if (cleared.effects.length || cleared.rows) throw new Error('CLEAR ALL left authored FX rows behind');
+  if (!cleared.actor || cleared.actor.state !== 'intact' || cleared.actor.smoking || cleared.actor.burning) {
+    throw new Error(`clearEffects did not restore authored actor baseline: ${JSON.stringify(cleared.actor)}`);
+  }
+  console.log(`[studio-selftest] all ${board.effects.length} FX layers routed; selection/delete/replay clean`);
+
+  // 6. change battlefield through the visual picker, then load its composed
+  // scene. This proves the card routes to the same real setMap() path as the API.
+  await page.evaluate(() => {
+    document.querySelector('.mapBtn')?.click();
+    const winter = document.querySelector('.mapCard[data-map-id="winter"]');
+    if (!winter) throw new Error('winter map card missing');
+    winter.click();
+  });
+  await page.waitForFunction(
+    "window.__STUDIO.mapId === 'winter' && document.querySelector('.mapCard[data-map-id=\"winter\"]')?.getAttribute('aria-selected') === 'true'",
+    { timeout: 120000 },
+  );
+  const winterPicker = await page.evaluate(() => ({
+    name: document.querySelector('.mapBtn .mn')?.textContent,
+    hero: document.querySelector('.mapBtn .mhero')?.getAttribute('src'),
+  }));
+  if (winterPicker.name !== 'Frosthollow' || !winterPicker.hero?.endsWith('/maps/winter.webp')) {
+    throw new Error(`winter map card did not refresh its preview: ${JSON.stringify(winterPicker)}`);
+  }
+
+  // 7. winter, different camera + fov
   const w1 = await page.evaluate((scene) => window.__STUDIO.load(scene), WINTER_SCENE);
   if (w1.map !== 'winter') throw new Error(`winter load landed on '${w1.map}'`);
   if (Math.abs(w1.camera.fov - WINTER_SCENE.camera.fov) > 0.1) {
@@ -297,7 +427,7 @@ try {
   const capW = await page.evaluate(() => window.__STUDIO.capture({ width: 3200 }));
   writeCapture('winter_overwatch_burnout.png', capW);
 
-  // 6. a second winter framing off the same machinery (camera-only move):
+  // 8. a second winter framing off the same machinery (camera-only move):
   // low closeup on the burning turret-popped IS-2, popped turret foreground
   await page.evaluate(() => window.__STUDIO.setCamera({
     pos: [11, 2.6, 14.5], lookAt: [24, 2.0, 20], groundRel: true, fov: 42,
@@ -305,7 +435,7 @@ try {
   const capW2 = await page.evaluate(() => window.__STUDIO.capture({ width: 2560 }));
   writeCapture('winter_wreck_closeup.png', capW2);
 
-  // 7. exit hands back to the garage
+  // 9. exit hands back to the garage
   const after = await page.evaluate(() => {
     window.__STUDIO.exit();
     return { phase: window.__DEBUG.game.phase, active: window.__STUDIO.active };

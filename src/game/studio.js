@@ -47,6 +47,7 @@ const SETTLE_STEPS = 48;       // updateTank steps to conform a placed actor
 const SETTLE_STEPS_DRAG = 6;   // cheap conform while dragging
 const CAPTURE_MIN_W = 2560;    // capture floor (marketing contract)
 const CAPTURE_MAX_W = 6144;    // sanity cap (also clamped by GPU max texture)
+const MAX_STUDIO_EFFECTS = 256; // bounded authoring/replay stack
 
 /** Actor damage-state ids (panel + scene JSON `state`). */
 export const ACTOR_STATES = [
@@ -107,17 +108,19 @@ export function createStudio(ctx) {
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
   let uidSeq = 1;
+  let effectUidSeq = 1;
   const actors = [];           // see addActor()
   const actorRoots = [];       // raycast roots, maintained with actors
   const actorByRoot = new WeakMap();
   const pickHits = [];         // Raycaster optionalTarget scratch
   const shells = [];           // live studio projectiles (fx tracer source)
-  const effectLog = [];        // fired one-shots (scene JSON round-trip)
+  const effectLog = [];        // authored effect instances (scene JSON round-trip)
   let lastFov = 0;
   let frameDirty = true;
   let cameraDirty = true;
   let poolSweepAcc = 0;
   let sceneMeta = { seed: 5000 };
+  let selectedEffect = null;
   const perf = { renderedFrames: 0, skippedFrames: 0, poolSweeps: 0 };
 
   function invalidate() { frameDirty = true; }
@@ -342,6 +345,15 @@ export function createStudio(ctx) {
     const pos = cfg.pos || [0, 0];
     const x = pos[0] || 0;
     const z = (pos.length >= 3 ? pos[2] : pos[1]) || 0;
+    const authoredStateName = ACTOR_STATES.includes(cfg.authoredState)
+      ? cfg.authoredState
+      : (ACTOR_STATES.includes(cfg.state) ? cfg.state : 'intact');
+    const authoredSmoking = cfg.authoredSmoking != null
+      ? !!cfg.authoredSmoking
+      : !!cfg.smoking;
+    const authoredBurning = cfg.authoredBurning != null
+      ? !!cfg.authoredBurning
+      : !!cfg.burning;
     const a = {
       uid: `a${uidSeq++}`,
       name: cfg.name || null,
@@ -367,6 +379,18 @@ export function createStudio(ctx) {
       stateName: 'intact',
       stateAgeS: cfg.stateAgeS != null ? cfg.stateAgeS : null,
       recoilAgeS: cfg.recoilAgeS != null ? cfg.recoilAgeS : null,
+      // Authoring baseline is distinct from the current presentation state.
+      // Effects may wreck, smoke, burn, recoil, or detrack the live visual;
+      // removing one effect replays the remaining stack from these values.
+      authoredStateName,
+      authoredStateAgeS: cfg.authoredStateAgeS !== undefined
+        ? cfg.authoredStateAgeS
+        : (cfg.stateAgeS != null ? cfg.stateAgeS : null),
+      authoredSmoking,
+      authoredBurning,
+      authoredRecoilAgeS: cfg.authoredRecoilAgeS !== undefined
+        ? cfg.authoredRecoilAgeS
+        : (cfg.recoilAgeS != null ? cfg.recoilAgeS : null),
       // continuous-emitter flags — the enum states set them, but the
       // engine_smoke/burning EFFECTS may also layer them onto wreck states
       smoking: false,
@@ -382,11 +406,11 @@ export function createStudio(ctx) {
     // one visible spec now; never sweep unrelated cached vehicles.
     applyCamoPatterns(specId);
     settleActor(a);
-    if (cfg.state && cfg.state !== 'intact') setActorState(a, cfg.state, a.stateAgeS);
-    if (cfg.smoking) a.smoking = true;   // additive layer over any mesh state
-    if (cfg.burning && !a.burning) igniteColumn(a);
-    if (a.recoilAgeS != null && visual.recoilKick) {
-      visual.recoilKick(a.recoilAgeS);
+    applyActorState(a, authoredStateName, a.authoredStateAgeS);
+    if (authoredSmoking) a.smoking = true;   // additive layer over any mesh state
+    if (authoredBurning && !a.burning) igniteColumn(a);
+    if (a.authoredRecoilAgeS != null && visual.recoilKick) {
+      visual.recoilKick(a.authoredRecoilAgeS);
       visual.syncFromState(a.state, 0);
     }
     panel.refreshActors();
@@ -394,9 +418,15 @@ export function createStudio(ctx) {
     return a;
   }
 
-  function removeActor(ref) {
+  function removeActor(ref, opts = {}) {
     const a = findActor(ref);
     if (!a) return false;
+    const hadEffects = effectLog.length > 0;
+    for (let i = effectLog.length - 1; i >= 0; i--) {
+      const effectActor = findActor(effectLog[i].actor);
+      if (effectActor === a) effectLog.splice(i, 1);
+    }
+    if (selectedEffect && !effectLog.includes(selectedEffect)) selectedEffect = null;
     fxBus.emit('tank:fire', { id: a.uid, burning: false }); // drop its column
     scene.remove(a.visual.root);
     a.visual.dispose();
@@ -404,13 +434,21 @@ export function createStudio(ctx) {
     if (rootIndex >= 0) actorRoots.splice(rootIndex, 1);
     actors.splice(actors.indexOf(a), 1);
     if (selected === a) selected = null;
+    if (hadEffects && opts.rebuild !== false) rebuildEffects(clockMs);
     panel.refreshActors();
+    panel.refreshEffects();
     invalidate();
     return true;
   }
 
   function clearActors() {
-    while (actors.length) removeActor(actors[actors.length - 1]);
+    effectLog.length = 0;
+    effectUidSeq = 1;
+    selectedEffect = null;
+    while (actors.length) removeActor(actors[actors.length - 1], { rebuild: false });
+    uidSeq = 1;
+    resetFxRuntime(sceneMeta.seed || 5000);
+    panel.setSelectedEffect(null);
   }
 
   /**
@@ -421,8 +459,7 @@ export function createStudio(ctx) {
    * @param {string} stateName ACTOR_STATES id
    * @param {?number} [ageS] wreck age override (char/settle progress)
    */
-  function setActorState(ref, stateName, ageS = null) {
-    const a = findActor(ref);
+  function applyActorState(a, stateName, ageS = null) {
     if (!a || !ACTOR_STATES.includes(stateName)) return false;
     ensureFxBus();
     // reset previous look + emitter flags
@@ -448,6 +485,17 @@ export function createStudio(ctx) {
     a.visual.syncFromState(st, 0);
     panel.refreshActors();
     invalidate();
+    return true;
+  }
+
+  /** Change the actor's authored baseline, then re-apply the effect stack. */
+  function setActorState(ref, stateName, ageS = null) {
+    const a = findActor(ref);
+    if (!a || !ACTOR_STATES.includes(stateName)) return false;
+    a.authoredStateName = stateName;
+    a.authoredStateAgeS = ageS;
+    if (effectLog.length) rebuildEffects();
+    else applyActorState(a, stateName, ageS);
     return true;
   }
 
@@ -488,14 +536,20 @@ export function createStudio(ctx) {
       }
     }
     settleActor(a, patch._drag ? SETTLE_STEPS_DRAG : SETTLE_STEPS);
-    if (patch.state) setActorState(a, patch.state, patch.stateAgeS ?? a.stateAgeS);
+    if (patch.state && ACTOR_STATES.includes(patch.state)) {
+      a.authoredStateName = patch.state;
+      a.authoredStateAgeS = patch.stateAgeS ?? a.authoredStateAgeS;
+      if (!effectLog.length) applyActorState(a, a.authoredStateName, a.authoredStateAgeS);
+    }
     if (patch.recoilAgeS !== undefined) {
       a.recoilAgeS = patch.recoilAgeS;
+      a.authoredRecoilAgeS = patch.recoilAgeS;
       if (a.recoilAgeS != null && a.visual.recoilKick) {
         a.visual.recoilKick(a.recoilAgeS);
         a.visual.syncFromState(a.state, 0);
       }
     }
+    if (effectLog.length && !patch._drag) rebuildEffects(clockMs);
     invalidate();
     return a;
   }
@@ -504,6 +558,10 @@ export function createStudio(ctx) {
   let selected = null;
   function selectActor(ref) {
     selected = findActor(ref);
+    if (selected && selectedEffect) {
+      selectedEffect = null;
+      panel.setSelectedEffect(null);
+    }
     panel.setSelected(selected);
     return selected;
   }
@@ -640,7 +698,8 @@ export function createStudio(ctx) {
     keys.add(e.code);
     if (e.code === 'Space' && !e.repeat) api.setTimeScale(timeScale === 0 ? 1 : 0);
     if (e.code === 'Delete' || e.code === 'Backspace') {
-      if (selected) removeActor(selected);
+      if (selectedEffect) removeEffect(selectedEffect);
+      else if (selected) removeActor(selected);
     }
   }
   function onKeyUp(e) { keys.delete(e.code); }
@@ -682,13 +741,34 @@ export function createStudio(ctx) {
     return { a: null, pos: out };
   }
 
+  function reserveEffectId(id) {
+    const m = /^fx(\d+)$/.exec(String(id || ''));
+    if (m) effectUidSeq = Math.max(effectUidSeq, Number(m[1]) + 1);
+  }
+
+  function makeEffectRecord(e, tMs = clockMs) {
+    const id = e.id || `fx${effectUidSeq++}`;
+    reserveEffectId(id);
+    return {
+      id,
+      type: e.type,
+      ...(e.actor != null ? { actor: actorRefOut(e.actor) } : {}),
+      ...(e.hFrac != null ? { hFrac: e.hFrac } : {}),
+      ...(Array.isArray(e.at) ? { at: [...e.at] } : {}),
+      ...(Array.isArray(e.from) ? { from: [...e.from] } : {}),
+      ...(Array.isArray(e.to) ? { to: [...e.to] } : {}),
+      params: { ...(e.params || {}) },
+      tMs: Math.round(tMs),
+    };
+  }
+
   /**
    * Fire one effect NOW (records it on the effect log at the current studio
    * clock so state()/load() round-trip). See docs/STUDIO.md for the schema.
    * @param {object} e {type, actor|at, params}
    * @returns {boolean} fired
    */
-  function fireEffect(e) {
+  function fireEffect(e, opts = {}) {
     ensureFxBus();
     const params = e.params || {};
     const got = effectPos(e, _v1);
@@ -713,15 +793,16 @@ export function createStudio(ctx) {
         }
         a.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
         a.visual.gunDirWorld(_v3);
+        const shellId = -(uidSeq * 100000 + shells.length + 1);
         fxBus.emit('shell:fired', {
-          shellId: -1, shooterId: a.uid, isPlayer: false,
+          shellId, shooterId: a.uid, isPlayer: false,
           shellType: shellSpec.type, shellName: shellSpec.name,
           weaponSound: shellSpec.soundProfile || a.spec.gun.soundProfile || null,
           caliberMm: shellSpec.caliberMm,
           muzzlePos: [_v2.x, _v2.y, _v2.z], dir: [_v3.x, _v3.y, _v3.z],
         });
         if (params.tracer !== false) {
-          shells.push(createShell(shellSpec, a.uid, false, _v2, _v3, uidSeq * 1000 + shells.length));
+          shells.push(createShell(shellSpec, a.uid, false, _v2, _v3, shellId));
         }
         break;
       }
@@ -749,19 +830,38 @@ export function createStudio(ctx) {
           name: 'studio', type, tracer: type,
           velocityMps: params.speedMps || 900, caliberMm: params.caliberMm || 105,
         };
-        shells.push(createShell(spec, 'studio', !!params.isPlayer, _v2, _v3, uidSeq * 1000 + shells.length));
+        const shellId = -(uidSeq * 100000 + shells.length + 1);
+        const shell = createShell(spec, 'studio', !!params.isPlayer, _v2, _v3, shellId);
+        shell._studioMaxDistM = _v2.distanceTo(_v1.set(to[0], to[1], to[2]));
+        shells.push(shell);
         break;
       }
       case 'impact': {
         _v2.set(params.normal ? params.normal[0] : 0,
           params.normal ? params.normal[1] : 1,
           params.normal ? params.normal[2] : 0).normalize();
-        fx.impact(params.kind || 'pen', pos, _v2, params.caliberMm || 120);
+        fxBus.emit('shell:hit', {
+          shellId: null,
+          targetId: a ? a.uid : null,
+          kind: params.kind || 'pen',
+          caliberMm: params.caliberMm || 120,
+          damage: 0,
+          pos: [pos.x, pos.y, pos.z],
+          normal: [_v2.x, _v2.y, _v2.z],
+        });
         break;
       }
       case 'sparks': {
         _v2.set(0, 1, 0);
-        fx.impact(params.kind || 'ricochet', pos, _v2, params.caliberMm || 100);
+        fxBus.emit('shell:hit', {
+          shellId: null,
+          targetId: a ? a.uid : null,
+          kind: params.kind || 'ricochet',
+          caliberMm: params.caliberMm || 100,
+          damage: 0,
+          pos: [pos.x, pos.y, pos.z],
+          normal: [_v2.x, _v2.y, _v2.z],
+        });
         break;
       }
       case 'explosion': {
@@ -800,6 +900,16 @@ export function createStudio(ctx) {
         if (!a) { ok = false; break; }
         a.smoking = params.off ? false : true;
         if (a.stateName === 'intact' && a.smoking) a.stateName = 'engine-smoking';
+        else if (a.stateName === 'engine-smoking' && !a.smoking) a.stateName = 'intact';
+        if (a.smoking) {
+          _fwd.set(Math.sin(a.state.yaw), 0, Math.cos(a.state.yaw));
+          _v2.copy(a.state.pos).addScaledVector(_fwd, -a.spec.dims.hullLengthM * 0.42);
+          _v2.y += a.spec.dims.heightM * 0.72;
+          // The continuous emitter normally starts on the next FX tick. Seed
+          // it with the same real exhaust recipe so a frozen Studio button
+          // click has immediate, selectable visual feedback.
+          for (let i = 0; i < 8; i++) fx.exhaust(_v2, 1, true);
+        }
         panel.refreshActors();
         break;
       }
@@ -809,6 +919,7 @@ export function createStudio(ctx) {
         if (params.off) {
           a.burning = false;
           fxBus.emit('tank:fire', { id: a.uid, burning: false });
+          if (a.stateName === 'burning') a.stateName = 'intact';
         } else {
           igniteColumn(a);
           if (a.stateName === 'intact') a.stateName = 'burning';
@@ -875,7 +986,10 @@ export function createStudio(ctx) {
           dir.y += jp;
           dir.normalize();
           const from = _v2.clone().addScaledVector(dir, 2 + i * gapM);
-          shells.push(createShell(spec, a.uid, false, from, dir, uidSeq * 1000 + shells.length));
+          const shell = createShell(spec, a.uid, false, from, dir,
+            -(uidSeq * 100000 + shells.length + 1));
+          shell.distM = 2 + i * gapM;
+          shells.push(shell);
         }
         break;
       }
@@ -938,15 +1052,16 @@ export function createStudio(ctx) {
         ok = false;
     }
     if (ok) {
-      effectLog.push({
-        type: e.type,
-        ...(e.actor != null ? { actor: actorRefOut(e.actor) } : {}),
-        ...(Array.isArray(e.at) ? { at: [...e.at] } : {}),
-        ...(e.from ? { from: [...e.from] } : {}),
-        ...(e.to ? { to: [...e.to] } : {}),
-        params: { ...params },
-        tMs: Math.round(clockMs),
-      });
+      if (opts.record !== false) {
+        const record = makeEffectRecord(e, opts.tMs != null ? opts.tMs : clockMs);
+        effectLog.push(record);
+        if (effectLog.length > MAX_STUDIO_EFFECTS) {
+          effectLog.shift();
+          rebuildEffects(clockMs);
+        }
+        selectedEffect = record;
+        if (opts.refresh !== false) panel.setSelectedEffect(record);
+      }
       if (w) w.setWindTime(0.35 + clockMs / 1000);
       invalidate();
     }
@@ -955,7 +1070,41 @@ export function createStudio(ctx) {
 
   function actorRefOut(ref) {
     const a = findActor(ref);
-    return a ? (a.name || actors.indexOf(a)) : ref;
+    return a ? (a.name || a.uid) : ref;
+  }
+
+  function findEffect(ref) {
+    if (ref == null) return null;
+    if (typeof ref === 'object') return effectLog.includes(ref) ? ref : null;
+    if (typeof ref === 'number') return effectLog[ref] || null;
+    return effectLog.find((effect) => effect.id === ref) || null;
+  }
+
+  function listEffects() {
+    return effectLog.map((effect, index) => ({
+      ...effect,
+      index,
+      selected: effect === selectedEffect,
+      params: { ...effect.params },
+    }));
+  }
+
+  function selectEffect(ref) {
+    selectedEffect = findEffect(ref);
+    panel.setSelectedEffect(selectedEffect);
+    invalidate();
+    return selectedEffect ? selectedEffect.id : null;
+  }
+
+  function removeEffect(ref) {
+    const effect = findEffect(ref);
+    if (!effect) return false;
+    const index = effectLog.indexOf(effect);
+    effectLog.splice(index, 1);
+    if (selectedEffect === effect) selectedEffect = null;
+    rebuildEffects(clockMs);
+    panel.setSelectedEffect(selectedEffect);
+    return true;
   }
 
   // --- timeline ---------------------------------------------------------------
@@ -981,6 +1130,8 @@ export function createStudio(ctx) {
             shellId: sh.id, hitTerrain: true, pos: [sh.pos.x, sh.pos.y, sh.pos.z],
           });
         } else if (sh.distM > 4000) {
+          sh.dead = true;
+        } else if (sh._studioMaxDistM != null && sh.distM >= sh._studioMaxDistM) {
           sh.dead = true;
         }
       }
@@ -1013,21 +1164,64 @@ export function createStudio(ctx) {
     invalidate();
   }
 
-  /** Reset the fx timeline to a clean, seeded t=0 (keeps actors). */
-  function resetFx(seed = sceneMeta.seed || 5000) {
+  function resetFxRuntime(seed = sceneMeta.seed || 5000) {
     ensureFxBus();
     shells.length = 0;
-    effectLog.length = 0;
     fx.resetAll();
     fx.resetSeed(seed);
     fx.setFrozen(false);
     clockMs = 0;
-    // wrecks keep their look; burning columns were cleared by resetAll — re-arm
-    for (const a of actors) {
-      if (a.burning) igniteColumn(a);
-    }
     const w = getWorld();
     if (w) w.setWindTime(0.35);
+  }
+
+  function restoreAuthoredActor(a) {
+    a.visual.resetDestroyed(); // also repairs tracks and clears recoil/flinch
+    a.stateAgeS = a.authoredStateAgeS;
+    a.recoilAgeS = a.authoredRecoilAgeS;
+    applyActorState(a, a.authoredStateName, a.authoredStateAgeS);
+    if (a.authoredSmoking) a.smoking = true;
+    if (a.authoredBurning && !a.burning) igniteColumn(a);
+    if (a.authoredRecoilAgeS != null && a.visual.recoilKick) {
+      a.visual.recoilKick(a.authoredRecoilAgeS);
+      a.visual.syncFromState(a.state, 0);
+    }
+  }
+
+  /** Rebuild every pooled effect from the authored stack at the current time. */
+  function rebuildEffects(targetMs = clockMs) {
+    const target = Math.max(0, targetMs);
+    const savedScale = timeScale;
+    resetFxRuntime(sceneMeta.seed || 5000);
+    for (const a of actors) restoreAuthoredActor(a);
+    const ordered = effectLog
+      .map((effect, index) => ({ effect, index }))
+      .sort((a, b) => a.effect.tMs - b.effect.tMs || a.index - b.index);
+    let t = 0;
+    for (const item of ordered) {
+      const e = item.effect;
+      if (e.tMs > target) continue;
+      advanceFx(e.tMs - t);
+      t = e.tMs;
+      fireEffect(e, { record: false, refresh: false });
+    }
+    advanceFx(target - t);
+    clockMs = target;
+    timeScale = savedScale;
+    const w = getWorld();
+    if (w) w.setWindTime(0.35 + target / 1000);
+    panel.refreshAll();
+    invalidate();
+  }
+
+  /** Reset the authored FX stack and restore every actor to its baseline. */
+  function resetFx(seed = sceneMeta.seed || 5000) {
+    effectLog.length = 0;
+    effectUidSeq = 1;
+    selectedEffect = null;
+    resetFxRuntime(seed);
+    for (const a of actors) restoreAuthoredActor(a);
+    panel.setSelectedEffect(null);
     invalidate();
   }
 
@@ -1149,10 +1343,21 @@ export function createStudio(ctx) {
         ...(a.camo ? { camo: a.camo } : {}),
         camoSeed: a.camoSeed,
         state: a.stateName,
+        ...(a.stateName !== a.authoredStateName
+          ? { authoredState: a.authoredStateName }
+          : {}),
         ...(a.stateAgeS != null ? { stateAgeS: a.stateAgeS } : {}),
+        ...(a.stateAgeS !== a.authoredStateAgeS
+          ? { authoredStateAgeS: a.authoredStateAgeS }
+          : {}),
         ...(a.recoilAgeS != null ? { recoilAgeS: a.recoilAgeS } : {}),
+        ...(a.recoilAgeS !== a.authoredRecoilAgeS
+          ? { authoredRecoilAgeS: a.authoredRecoilAgeS }
+          : {}),
         ...(a.smoking && a.stateName !== 'engine-smoking' ? { smoking: true } : {}),
         ...(a.burning && a.stateName !== 'burning' ? { burning: true } : {}),
+        ...(a.smoking !== a.authoredSmoking ? { authoredSmoking: a.authoredSmoking } : {}),
+        ...(a.burning !== a.authoredBurning ? { authoredBurning: a.authoredBurning } : {}),
       })),
       effects: effectLog.map((e) => ({ ...e, params: { ...e.params } })),
       camera: getCamera(),
@@ -1194,15 +1399,12 @@ export function createStudio(ctx) {
         if (e.tMs > fxMs) {
           // beyond the freeze point: keep it on the log (state() round-trips
           // it; it fires only if a longer fxTime replays the scene)
-          effectLog.push({ ...e, params: { ...(e.params || {}) }, tMs: Math.round(e.tMs) });
+          effectLog.push(makeEffectRecord(e, e.tMs));
           continue;
         }
         advanceFx(e.tMs - t);
         t = e.tMs;
-        if (fireEffect(e)) {
-          // fireEffect logged it at the CURRENT clock — keep authored tMs
-          effectLog[effectLog.length - 1].tMs = Math.round(e.tMs);
-        }
+        fireEffect(e, { tMs: e.tMs, refresh: false });
       }
       advanceFx(fxMs - t);
       clockMs = fxMs; // exact (advanceFx rounds to whole steps)
@@ -1212,6 +1414,7 @@ export function createStudio(ctx) {
       for (const a of actors) a.visual.syncFromState(a.state, 0);
       lighting.updateFrustums();
       lighting.update(true);
+      selectedEffect = null;
       panel.refreshAll();
       return stateJson();
     } finally {
@@ -1553,6 +1756,9 @@ export function createStudio(ctx) {
     clearActors: () => { clearActors(); },
     // effects + time
     effect: fireEffect,
+    listEffects,
+    selectEffect,
+    removeEffect,
     clearEffects: () => resetFx(),
     advanceFx: (ms) => { advanceFx(ms); panel.refreshAll(); },
     setTimeScale: (v) => {
@@ -1587,6 +1793,7 @@ export function createStudio(ctx) {
     // panel-internal hooks (not part of the scripted contract)
     _internal: {
       get selected() { return selected; },
+      get selectedEffect() { return selectedEffect; },
       get placeArmed() { return placeArmed; },
       set placeArmed(v) { placeArmed = v; },
       get markerPos() { return marker.pos; },

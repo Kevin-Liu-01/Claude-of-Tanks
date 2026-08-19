@@ -1,9 +1,9 @@
 /**
  * studioPanel.js — SCENE STUDIO control panel (src/game/studio.js's UI).
  *
- * Workspace layout: five focused panes (Scene / Actor / FX / Camera / Output)
- * replace the old 2,000 px scroll wall. The panel stays a THIN VIEW over the
- * studio API — every control
+ * Workspace layout: one scrollable, grouped workspace (Battlefield / Tanks /
+ * Effects / Global / Output). The panel stays a THIN VIEW over the studio API
+ * — every control
  * calls the same window.__STUDIO methods the scripted shoot uses, so
  * anything staged by hand round-trips through state()/load() unchanged.
  *
@@ -12,6 +12,7 @@
  */
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
+import { MAP_THUMBS } from './mapThumbs.js';
 
 const CSS = `
 .cot-studio{position:fixed;inset:0;z-index:58;display:none;pointer-events:none;
@@ -26,28 +27,27 @@ const CSS = `
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:none;}
-.cot-studio .dock{position:absolute;top:0;right:0;bottom:0;width:360px;pointer-events:auto;
-  background:linear-gradient(270deg,rgba(5,8,11,.97) 0%,rgba(5,8,11,.94) 88%,rgba(5,8,11,.15) 100%);
-  padding:12px 14px 14px 30px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
+.cot-studio .dock{position:absolute;top:0;right:0;bottom:0;width:390px;pointer-events:auto;
+  background:rgba(5,8,11,.94);border-left:1px solid rgba(210,221,230,.17);
+  box-shadow:-12px 0 28px rgba(0,0,0,.26);backdrop-filter:blur(12px) saturate(.85);
+  padding:16px 14px 28px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
   scrollbar-color:rgba(230,154,45,.4) transparent;}
 .cot-studio .dock::-webkit-scrollbar{width:7px;}
 .cot-studio .dock::-webkit-scrollbar-thumb{background:rgba(230,154,45,.35);}
-.cot-studio .docknav{position:sticky;top:-12px;z-index:6;display:grid;
-  grid-template-columns:repeat(5,1fr);gap:3px;margin:-12px -2px 12px;padding:12px 2px 9px;
-  background:linear-gradient(180deg,rgba(5,8,11,1) 74%,rgba(5,8,11,.8) 100%);
-  border-bottom:1px solid rgba(190,204,216,.16);}
-.cot-studio .docknav button{padding:8px 2px 7px;font-size:8px;letter-spacing:.12em;
-  border-color:transparent;border-bottom-color:rgba(190,204,216,.22);background:rgba(10,15,20,.72);}
-.cot-studio .docknav button.on{background:rgba(92,58,10,.72);border-color:rgba(230,154,45,.45);
-  border-bottom-color:#ffd27a;color:#fff2d9;}
-.cot-studio .sec[data-pane]{display:none;}
-.cot-studio[data-pane="scene"] .sec[data-pane="scene"],
-.cot-studio[data-pane="actor"] .sec[data-pane="actor"],
-.cot-studio[data-pane="fx"] .sec[data-pane="fx"],
-.cot-studio[data-pane="camera"] .sec[data-pane="camera"],
-.cot-studio[data-pane="output"] .sec[data-pane="output"]{display:block;}
-.cot-studio .sec{position:relative;margin-bottom:12px;border:1px solid rgba(190,204,216,.18);
-  background:rgba(9,13,17,.6);padding:10px 10px 9px;}
+.cot-studio .pgroup{position:relative;margin-bottom:19px;}
+.cot-studio .pgroup+.pgroup{padding-top:2px;}
+.cot-studio .ghead{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;
+  column-gap:8px;margin:0 2px 8px;}
+.cot-studio .gnum{grid-row:1 / 3;align-self:stretch;display:flex;align-items:center;justify-content:center;
+  border-right:1px solid rgba(230,154,45,.42);font-size:9px;font-weight:900;letter-spacing:.08em;
+  color:#e69a2d;}
+.cot-studio .gtitle{font-size:11px;font-weight:900;letter-spacing:.23em;color:#dce5ec;
+  line-height:1.25;text-transform:uppercase;}
+.cot-studio .gsub{font-size:7.5px;font-weight:700;letter-spacing:.12em;color:#65727d;
+  line-height:1.45;text-transform:uppercase;}
+.cot-studio .gbody{display:grid;gap:7px;}
+.cot-studio .sec{position:relative;border:1px solid rgba(190,204,216,.17);
+  background:rgba(10,15,20,.68);padding:10px 10px 9px;}
 .cot-studio .sec::before{content:'';position:absolute;top:-1px;left:-1px;width:3px;height:17px;
   background:#e69a2d;}
 .cot-studio .sec>.h{font-size:10px;font-weight:800;letter-spacing:.24em;color:#c9d4dd;
@@ -87,6 +87,55 @@ const CSS = `
 .cot-studio button.warn{border-color:rgba(240,90,90,.55);color:#f0a0a0;}
 .cot-studio .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
 .cot-studio .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}
+/* --- battlefield picker ----------------------------------------------------- */
+.cot-studio .mapPick{position:relative;width:100%;}
+.cot-studio .mapBtn{position:relative;display:block;width:100%;height:148px;padding:0;overflow:hidden;
+  text-align:left;border-color:rgba(190,204,216,.32);background:#111820;}
+.cot-studio .mapBtn:hover{border-color:#e69a2d;}
+.cot-studio .mapBtn:disabled{cursor:wait;opacity:.78;}
+.cot-studio .mapBtn .mhero{display:block;width:100%;height:100%;object-fit:cover;
+  transform:scale(1.01);transition:transform .2s ease,filter .2s ease;}
+.cot-studio .mapBtn:hover .mhero{transform:scale(1.035);filter:saturate(1.08);}
+.cot-studio .mapBtn .mshade{position:absolute;inset:42% 0 0;background:linear-gradient(180deg,transparent,
+  rgba(4,7,10,.35) 25%,rgba(4,7,10,.94) 100%);pointer-events:none;}
+.cot-studio .mapBtn .mcopy{position:absolute;left:11px;right:42px;bottom:10px;min-width:0;}
+.cot-studio .mapBtn .mn{display:block;font-size:13px;font-weight:900;letter-spacing:.07em;color:#fff3db;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 7px #000;}
+.cot-studio .mapBtn .ms{display:block;margin-top:3px;font-size:7.5px;font-weight:800;letter-spacing:.1em;
+  color:#aebbc6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px #000;}
+.cot-studio .mapBtn .mid{position:absolute;top:9px;left:9px;padding:3px 6px;
+  background:rgba(4,7,10,.78);border:1px solid rgba(255,255,255,.2);font-size:7px;font-weight:900;
+  letter-spacing:.16em;color:#ffd27a;}
+.cot-studio .mapBtn .mar{position:absolute;right:10px;bottom:12px;width:22px;height:22px;display:grid;
+  place-items:center;background:rgba(4,7,10,.74);border:1px solid rgba(255,255,255,.2);
+  color:#ffd27a;font-size:8px;}
+.cot-studio .mapPop{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:20;display:none;
+  max-height:min(65vh,560px);background:rgba(5,8,11,.99);border:1px solid rgba(230,154,45,.55);
+  box-shadow:0 18px 54px rgba(0,0,0,.8);}
+.cot-studio .mapPop.open{display:flex;flex-direction:column;}
+.cot-studio .mapPopHead{display:flex;align-items:center;justify-content:space-between;padding:8px 9px 7px;
+  border-bottom:1px solid rgba(190,204,216,.15);font-size:8px;font-weight:900;letter-spacing:.2em;
+  color:#aebbc6;text-transform:uppercase;}
+.cot-studio .mapPopHead span:last-child{color:#687784;letter-spacing:.08em;}
+.cot-studio .mapGrid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:max-content;
+  align-content:start;flex:1;min-height:0;gap:7px;padding:8px;overflow-y:auto;
+  overscroll-behavior:contain;scrollbar-width:thin;
+  scrollbar-color:rgba(230,154,45,.4) transparent;}
+.cot-studio .mapCard{position:relative;display:block;min-width:0;padding:0 0 7px;overflow:hidden;
+  align-self:start;text-align:left;text-transform:none;background:rgba(14,19,24,.9);
+  border:1px solid rgba(190,204,216,.2);}
+.cot-studio .mapCard:hover{border-color:rgba(230,154,45,.72);color:#ffd27a;}
+.cot-studio .mapCard[aria-selected="true"]{border-color:#e69a2d;
+  box-shadow:inset 0 -2px 0 #e69a2d;background:rgba(52,36,12,.6);}
+.cot-studio .mapCard img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;margin-bottom:6px;
+  background:#111820;}
+.cot-studio .mapCard .cn{display:block;padding:0 7px;font-size:9px;font-weight:900;letter-spacing:.045em;
+  color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-studio .mapCard .cs{display:block;padding:2px 7px 0;font-size:7px;font-weight:800;letter-spacing:.1em;
+  color:#71808d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-studio .mapCard .check{position:absolute;top:5px;right:5px;display:none;width:18px;height:18px;
+  place-items:center;background:#e69a2d;color:#111820;font-size:10px;box-shadow:0 2px 8px #000;}
+.cot-studio .mapCard[aria-selected="true"] .check{display:grid;}
 /* tank silhouette icon (public/icons/<id>_side_silhouette.png, mask-tinted) */
 .cot-studio .tic{flex:none;background:#cfd9e2;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
   -webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain;}
@@ -149,6 +198,26 @@ const CSS = `
 .cot-studio .fxg .gh{font-size:8px;font-weight:800;letter-spacing:.22em;color:#e69a2d;
   text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px;}
 .cot-studio .fxg .gh::after{content:'';flex:1;height:1px;background:rgba(230,154,45,.25);}
+.cot-studio .fxstack{max-height:188px;overflow-y:auto;margin-bottom:8px;scrollbar-width:thin;
+  scrollbar-color:rgba(230,154,45,.4) transparent;}
+.cot-studio .fxempty{padding:10px 7px;border:1px dashed rgba(190,204,216,.2);color:#687784;
+  font-size:8.5px;line-height:1.5;letter-spacing:.1em;text-align:center;text-transform:uppercase;}
+.cot-studio .fxrow{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:7px;
+  min-height:38px;padding:5px 5px 5px 7px;margin-bottom:3px;cursor:pointer;background:rgba(14,19,24,.72);
+  border:1px solid transparent;border-left:2px solid rgba(190,204,216,.22);}
+.cot-studio .fxrow:hover,.cot-studio .fxrow:focus-visible{border-color:rgba(230,154,45,.5);outline:none;}
+.cot-studio .fxrow.sel{border-color:#e69a2d;border-left-color:#ffd27a;background:rgba(52,36,12,.62);}
+.cot-studio .fxrow .pip{width:6px;height:6px;border-radius:50%;background:#e69a2d;
+  box-shadow:0 0 7px rgba(255,177,70,.65);}
+.cot-studio .fxrow .fn{min-width:0;}
+.cot-studio .fxrow .fn .n1{font-size:9.5px;font-weight:800;color:#dce5ec;letter-spacing:.1em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;}
+.cot-studio .fxrow .fn .n2{font-size:7.5px;font-weight:700;color:#7d8c98;letter-spacing:.08em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;margin-top:2px;}
+.cot-studio .fxrow.sel .fn .n1{color:#ffd27a;}
+.cot-studio .fxrow .del{padding:2px 6px;font-size:10px;}
+.cot-studio .fxstackbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;}
+.cot-studio .fxstackbar .hint{font-size:7.5px;color:#71808d;letter-spacing:.08em;text-transform:uppercase;}
 .cot-studio .foot{position:absolute;left:20px;bottom:14px;pointer-events:none;
   font-size:10px;font-weight:600;letter-spacing:.08em;color:#9fb0bf;
   text-shadow:0 1px 4px rgba(0,0,0,.9);line-height:1.7;}
@@ -158,9 +227,10 @@ const CSS = `
   .cot-studio .badge{top:8px;left:8px;right:8px;gap:6px;padding:6px 8px;}
   .cot-studio .badge .t{font-size:10px;letter-spacing:.16em;}
   .cot-studio .badge button{font-size:8px;padding:5px 6px;}
-  .cot-studio .dock{top:48%;width:100%;padding:10px 10px 16px;background:rgba(5,8,11,.97);
-    border-top:1px solid rgba(230,154,45,.45);}
-  .cot-studio .docknav{top:-10px;margin:-10px 0 10px;padding-top:10px;}
+  .cot-studio .dock{top:43%;width:100%;padding:12px 10px 22px;background:rgba(5,8,11,.97);
+    border-left:0;border-top:1px solid rgba(230,154,45,.45);box-shadow:0 -10px 24px rgba(0,0,0,.25);}
+  .cot-studio .mapBtn{height:126px;}
+  .cot-studio .mapPop{max-height:calc(100vh - 150px);}
   .cot-studio .foot{display:none;}
   .cot-studio .busy{top:64px;max-width:calc(100vw - 24px);white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;}
@@ -184,7 +254,6 @@ export function createStudioPanel(S) {
   }
 
   const root = el('div', 'cot-studio');
-  root.dataset.pane = 'scene';
   document.body.appendChild(root);
 
   /** Tinted side-silhouette icon for a tank id (mask, so one PNG serves any tint). */
@@ -226,61 +295,114 @@ export function createStudioPanel(S) {
     dock.addEventListener(evName, (e) => e.stopPropagation());
   }
 
-  const dockNav = el('div', 'docknav');
-  dockNav.setAttribute('role', 'tablist');
-  const tabButtons = new Map();
-  const activatePane = (pane) => {
-    root.dataset.pane = pane;
-    for (const [id, button] of tabButtons) {
-      const on = id === pane;
-      button.classList.toggle('on', on);
-      button.setAttribute('aria-selected', String(on));
-    }
-    dock.scrollTop = 0;
-  };
-  for (const [id, label] of [
-    ['scene', 'Scene'], ['actor', 'Actor'], ['fx', 'FX'],
-    ['camera', 'Camera'], ['output', 'Output'],
-  ]) {
-    const button = el('button', id === 'scene' ? 'on' : null, label);
-    button.type = 'button';
-    button.setAttribute('role', 'tab');
-    button.setAttribute('aria-selected', String(id === 'scene'));
-    button.addEventListener('click', () => activatePane(id));
-    tabButtons.set(id, button);
-    dockNav.appendChild(button);
-  }
-  dock.appendChild(dockNav);
-
-  // === SCENE section ===
-  const secScene = section('Battlefield');
-  secScene.dataset.pane = 'scene';
-  const mapRow = el('div', 'row');
-  mapRow.appendChild(el('label', 'k', 'Map'));
-  const mapSelect = document.createElement('select');
+  // === BATTLEFIELD group ===
+  const battlefieldGroup = panelGroup('01', 'Battlefield', 'Map & environment');
+  dock.appendChild(battlefieldGroup.root);
+  const secScene = section('Map', '16 live battlefields');
+  const mapPick = el('div', 'mapPick');
+  const mapBtn = el('button', 'mapBtn');
+  mapBtn.type = 'button';
+  mapBtn.setAttribute('aria-haspopup', 'listbox');
+  mapBtn.setAttribute('aria-expanded', 'false');
+  mapBtn.setAttribute('aria-label', 'Choose battlefield');
+  const mapHero = document.createElement('img');
+  mapHero.className = 'mhero';
+  mapHero.alt = '';
+  mapHero.draggable = false;
+  const mapShade = el('span', 'mshade');
+  const mapCopy = el('span', 'mcopy');
+  const mapName = el('span', 'mn');
+  const mapSub = el('span', 'ms');
+  mapCopy.append(mapName, mapSub);
+  const mapId = el('span', 'mid');
+  const mapArrow = el('span', 'mar', '▼');
+  mapBtn.append(mapHero, mapShade, mapCopy, mapId, mapArrow);
+  const mapPop = el('div', 'mapPop');
+  mapPop.setAttribute('role', 'listbox');
+  mapPop.setAttribute('aria-label', 'Battlefields');
+  const mapPopHead = el('div', 'mapPopHead');
+  mapPopHead.append(el('span', null, 'Choose battlefield'), el('span', null, 'Preview · click to load'));
+  const mapGrid = el('div', 'mapGrid');
+  const mapCards = new Map();
+  const mapImages = [];
   for (const id of S.MAP_IDS) {
-    const option = document.createElement('option');
-    option.value = id;
-    const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
-    option.textContent = `${info.name || id} · ${id.toUpperCase()}`;
-    mapSelect.appendChild(option);
+    const info = S.getMapInfo ? S.getMapInfo(id) : { name: id, sub: '' };
+    const card = el('button', 'mapCard');
+    card.type = 'button';
+    card.dataset.mapId = id;
+    card.setAttribute('role', 'option');
+    card.setAttribute('aria-selected', 'false');
+    card.setAttribute('aria-label', `Load ${info.name || id}`);
+    const thumb = document.createElement('img');
+    thumb.alt = '';
+    thumb.loading = 'lazy';
+    thumb.decoding = 'async';
+    thumb.dataset.src = MAP_THUMBS[id] || '';
+    mapImages.push(thumb);
+    card.append(
+      thumb,
+      el('span', 'cn', info.name || id),
+      el('span', 'cs', info.sub || id.toUpperCase()),
+      el('span', 'check', '✓'),
+    );
+    card.addEventListener('click', () => chooseMap(id));
+    mapCards.set(id, card);
+    mapGrid.appendChild(card);
   }
-  mapSelect.addEventListener('change', () => {
-    mapSelect.disabled = true;
-    Promise.resolve(S.setMap(mapSelect.value))
+  mapPop.append(mapPopHead, mapGrid);
+  mapPick.append(mapBtn, mapPop);
+  secScene.appendChild(mapPick);
+  battlefieldGroup.body.appendChild(secScene);
+
+  let mapPreviewsHydrated = false;
+  function hydrateMapPreviews() {
+    if (mapPreviewsHydrated) return;
+    mapPreviewsHydrated = true;
+    for (const image of mapImages) {
+      if (image.dataset.src) image.src = image.dataset.src;
+    }
+  }
+  function toggleMapPick(open) {
+    const next = open != null ? open : !mapPop.classList.contains('open');
+    mapPop.classList.toggle('open', next);
+    mapBtn.setAttribute('aria-expanded', String(next));
+    mapArrow.textContent = next ? '▲' : '▼';
+    if (next) {
+      hydrateMapPreviews();
+      requestAnimationFrame(() => mapCards.get(S.mapId)?.focus({ preventScroll: true }));
+    }
+  }
+  function setMapLoading(loading) {
+    mapBtn.disabled = loading;
+    mapPick.setAttribute('aria-busy', String(loading));
+    for (const card of mapCards.values()) card.disabled = loading;
+  }
+  function chooseMap(id) {
+    toggleMapPick(false);
+    if (!id || id === S.mapId) return;
+    setMapLoading(true);
+    Promise.resolve(S.setMap(id))
       .catch((error) => flashBusy(`MAP FAILED: ${error.message}`))
       .finally(() => {
-        mapSelect.disabled = false;
+        setMapLoading(false);
         api.refreshMap();
       });
+  }
+  mapBtn.addEventListener('click', () => toggleMapPick());
+  mapPop.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      toggleMapPick(false);
+      mapBtn.focus();
+    }
   });
-  mapRow.appendChild(mapSelect);
-  secScene.appendChild(mapRow);
-  dock.appendChild(secScene);
+  document.addEventListener('pointerdown', (event) => {
+    if (mapPop.classList.contains('open') && !mapPick.contains(event.target)) toggleMapPick(false);
+  });
 
-  // === ACTORS section ===
-  const secActors = section('Actors', 'the shipped roster');
-  secActors.dataset.pane = 'scene';
+  // === TANKS group ===
+  const tanksGroup = panelGroup('02', 'Tanks', 'Roster, staging & pose');
+  dock.appendChild(tanksGroup.root);
+  const secActors = section('Add tanks', 'the shipped roster');
   // -- tank picker (icon rows, filterable) --
   let pickedId = 'm1a2';
   const pick = el('div', 'pick');
@@ -382,11 +504,10 @@ export function createStudioPanel(S) {
   const alist = el('div', 'alist');
   alist.style.marginTop = '6px';
   secActors.appendChild(alist);
-  dock.appendChild(secActors);
+  tanksGroup.body.appendChild(secActors);
 
   // === SELECTED ACTOR section ===
-  const secSel = section('Selected actor');
-  secSel.dataset.pane = 'actor';
+  const secSel = section('Selected tank', 'pose, paint & state');
   const selHead = el('div', 'selhead');
   const selIcon = tankIcon('m1a2');
   const selNames = el('div', 'nm');
@@ -439,20 +560,45 @@ export function createStudioPanel(S) {
   delBtn.addEventListener('click', () => { const a = S._internal.selected; if (a) S.removeActor(a); });
   delRow.append(recoilBtn, delBtn);
   secSel.appendChild(delRow);
-  dock.appendChild(secSel);
+  tanksGroup.body.appendChild(secSel);
 
-  // === EFFECTS section ===
-  const secFx = section('Effects', 'sel actor · else marker');
-  secFx.dataset.pane = 'fx';
+  // === EFFECTS group ===
+  const effectsGroup = panelGroup('03', 'Effects', 'Game-authentic layers & events');
+  dock.appendChild(effectsGroup.root);
+  const secFx = section('Layers & events', 'sel tank · else marker');
+  const fxStackBar = el('div', 'fxstackbar');
+  fxStackBar.appendChild(el('div', 'hint', 'select a layer · delete removes only it'));
+  const clearStackBtn = el('button', 'warn', 'CLEAR ALL');
+  clearStackBtn.addEventListener('click', () => S.clearEffects());
+  fxStackBar.appendChild(clearStackBtn);
+  const fxStack = el('div', 'fxstack');
+  fxStack.setAttribute('role', 'listbox');
+  fxStack.setAttribute('aria-label', 'Authored effects');
+  secFx.append(fxStackBar, fxStack);
   const selOr = (fn, needActor = false) => {
     const a = S._internal.selected;
     if (needActor && !a) { flashBusy('SELECT AN ACTOR FIRST'); return null; }
     return fn(a);
   };
+  const atMarker = (fn) => {
+    if (!S._internal.markerActive) {
+      flashBusy('CLICK THE BATTLEFIELD TO PLACE THE FX MARKER');
+      return null;
+    }
+    return fn();
+  };
+  const fireProjectile = (effect) => {
+    const fired = S.effect(effect);
+    // A shell born on a frozen timeline is still at its muzzle. Advance one
+    // real simulation frame so the button immediately shows the projectile
+    // and its improved tracer profile without unfreezing the composition.
+    if (fired && S.timeScale === 0) S.advanceFx(1000 / 60);
+    return fired;
+  };
   /** actor-anchored when one is selected, marker-anchored otherwise */
-  const impactFx = (kind, hFrac = 0.55, caliberMm = 120) => selOr((a) => S.effect(a
-    ? { type: 'impact', actor: a.uid, hFrac, params: { kind, caliberMm } }
-    : { type: 'impact', params: { kind, caliberMm } }));
+  const impactFx = (kind, hFrac = 0.55, caliberMm = 120) => selOr((a) => S.effect({
+    type: 'impact', actor: a.uid, hFrac, params: { kind, caliberMm, normal: [0.15, 0.35, -0.92] },
+  }), true);
   function fxGroup(title, defs) {
     const g = el('div', 'fxg');
     g.appendChild(el('div', 'gh', title));
@@ -467,15 +613,19 @@ export function createStudioPanel(S) {
     secFx.appendChild(g);
   }
   fxGroup('Gunnery', [
-    ['FIRE GUN', () => selOr((a) => S.effect({ type: 'fire', actor: a.uid }), true)],
+    ['FIRE GUN', () => selOr((a) => fireProjectile({ type: 'fire', actor: a.uid }), true)],
     ['MUZZLE FLASH', () => selOr((a) => S.effect(a
       ? { type: 'muzzle_flash', actor: a.uid } : { type: 'muzzle_flash' }))],
     ['MG BURST', () => selOr((a) => S.effect({ type: 'mg_burst', actor: a.uid }), true)],
     ['RECOIL + FLASH', () => selOr((a) => S.effect({ type: 'firing_moment', actor: a.uid, params: { ageS: 0.05 } }), true)],
-    ['TRACER  MARKER → ACTOR', () => selOr((a) => {
+    ['TRACER MARKER → ACTOR', () => selOr((a) => {
+      if (!S._internal.markerActive) {
+        flashBusy('CLICK THE BATTLEFIELD TO PLACE THE TRACER ORIGIN');
+        return false;
+      }
       const m = S._internal.markerPos;
       const t = a.state.pos;
-      S.effect({
+      fireProjectile({
         type: 'tracer',
         from: [m.x, m.y + 1.8, m.z],
         to: [t.x, t.y + a.spec.dims.heightM * 0.6, t.z],
@@ -484,13 +634,15 @@ export function createStudioPanel(S) {
     }, true), true],
   ]);
   fxGroup('Strikes · at marker', [
-    ['EXPL SMALL', () => S.effect({ type: 'explosion', params: { size: 'small' } })],
-    ['EXPL MEDIUM', () => S.effect({ type: 'explosion', params: { size: 'medium' } })],
-    ['EXPL LARGE', () => S.effect({ type: 'explosion', params: { size: 'large' } })],
-    ['BARRAGE ×5', () => S.effect({ type: 'barrage', params: { count: 5, radiusM: 10 } })],
-    ['DUST BURST', () => selOr((a) => S.effect(a
-      ? { type: 'dust', actor: a.uid } : { type: 'dust' }))],
-    ['SPARKS', () => S.effect({ type: 'sparks' })],
+    ['EXPL SMALL', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'small' } }))],
+    ['EXPL MEDIUM', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'medium' } }))],
+    ['EXPL LARGE', () => atMarker(() => S.effect({ type: 'explosion', params: { size: 'large' } }))],
+    ['BARRAGE ×5', () => atMarker(() => S.effect({ type: 'barrage', params: { count: 5, radiusM: 10 } }))],
+    ['DUST BURST', () => atMarker(() => S.effect({ type: 'dust' }))],
+    ['SPARKS', () => atMarker(() => S.effect({ type: 'sparks' }))],
+    ['FROZEN FIREBALL', () => atMarker(() => S.effect({
+      type: 'explosion_moment', params: { ageS: 0.6 },
+    })), true],
   ]);
   fxGroup('Armor hits · sel actor', [
     ['IMPACT PEN', () => impactFx('pen', 0.55)],
@@ -513,11 +665,12 @@ export function createStudioPanel(S) {
       S.effect({ type: 'engine_smoke', actor: a.uid, params: { off: true } });
     }, true)],
   ]);
-  dock.appendChild(secFx);
+  effectsGroup.body.appendChild(secFx);
 
-  // === TIME section ===
-  const secTime = section('FX time');
-  secTime.dataset.pane = 'camera';
+  // === GLOBAL group ===
+  const globalGroup = panelGroup('04', 'Global', 'Timeline & camera');
+  dock.appendChild(globalGroup.root);
+  const secTime = section('Timeline', 'global effect time');
   const ts = sliderRow('Scale', 0, 2, 0.05, (v) => S.setTimeScale(v));
   secTime.appendChild(ts.row);
   const timeRow = el('div', 'grid3');
@@ -536,11 +689,10 @@ export function createStudioPanel(S) {
   resetFxBtn.style.cssText = 'width:100%;margin-top:6px;';
   resetFxBtn.addEventListener('click', () => S.clearEffects());
   secTime.appendChild(resetFxBtn);
-  dock.appendChild(secTime);
+  globalGroup.body.appendChild(secTime);
 
   // === CAMERA section ===
   const secCam = section('Camera');
-  secCam.dataset.pane = 'camera';
   const camModeRow = el('div', 'grid');
   const flyBtn = el('button', null, 'FREE-FLY');
   const orbBtn = el('button', null, 'ORBIT');
@@ -558,11 +710,12 @@ export function createStudioPanel(S) {
   const roll = sliderRow('Roll', -45, 45, 0.5, (v) => S.setCamera({ rollDeg: v }));
   const spd = sliderRow('Speed', 2, 60, 1, (v) => { S._internal.cam.speed = v; });
   secCam.append(fov.row, roll.row, spd.row);
-  dock.appendChild(secCam);
+  globalGroup.body.appendChild(secCam);
 
-  // === CAPTURE + SAVE section ===
-  const secCap = section('Capture · Scene');
-  secCap.dataset.pane = 'output';
+  // === OUTPUT group ===
+  const outputGroup = panelGroup('05', 'Output', 'Capture & scene files');
+  dock.appendChild(outputGroup.root);
+  const secCap = section('Capture · Scene', 'render, save & restore');
   const capRow = el('div', 'row');
   capRow.appendChild(el('label', 'k', 'Width'));
   const capSel = document.createElement('select');
@@ -633,7 +786,7 @@ export function createStudioPanel(S) {
     slotRow.appendChild(b);
   }
   secCap.appendChild(slotRow);
-  dock.appendChild(secCap);
+  outputGroup.body.appendChild(secCap);
 
   // --- footer hints ------------------------------------------------------------
   const foot = el('div', 'foot');
@@ -657,6 +810,19 @@ export function createStudioPanel(S) {
     if (sub) h.appendChild(el('span', 'sub', sub));
     s.appendChild(h);
     return s;
+  }
+  function panelGroup(index, title, sub) {
+    const groupRoot = el('section', 'pgroup');
+    groupRoot.dataset.group = title.toLowerCase();
+    const head = el('div', 'ghead');
+    head.append(
+      el('span', 'gnum', index),
+      el('div', 'gtitle', title),
+      el('div', 'gsub', sub),
+    );
+    const body = el('div', 'gbody');
+    groupRoot.append(head, body);
+    return { root: groupRoot, body };
   }
   function sliderRow(label, min, max, step, onInput) {
     const row = el('div', 'row');
@@ -703,12 +869,61 @@ export function createStudioPanel(S) {
     return '';
   }
 
+  function effectAnchorLabel(effect) {
+    if (effect.actor != null) return `ACTOR ${String(effect.actor)}`;
+    if (effect.from && effect.to) return 'FLIGHT PATH';
+    if (effect.at) return `POINT ${effect.at.map((v) => Number(v).toFixed(1)).join(' / ')}`;
+    return 'MAP MARKER';
+  }
+
+  function rebuildEffectList() {
+    fxStack.textContent = '';
+    const effects = S.listEffects();
+    if (!effects.length) {
+      fxStack.appendChild(el('div', 'fxempty', 'No effects yet · choose an effect below'));
+      return;
+    }
+    for (const effect of effects) {
+      const row = el('div', 'fxrow' + (effect.selected ? ' sel' : ''));
+      row.tabIndex = 0;
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', String(effect.selected));
+      row.dataset.effectId = effect.id;
+      row.appendChild(el('span', 'pip'));
+      const names = el('div', 'fn');
+      names.append(
+        el('div', 'n1', effect.type.replaceAll('_', ' ')),
+        el('div', 'n2', `${effectAnchorLabel(effect)} · T ${(effect.tMs / 1000).toFixed(2)} S`),
+      );
+      row.appendChild(names);
+      const del = el('button', 'del warn', '✕');
+      del.title = `Delete ${effect.type.replaceAll('_', ' ')}`;
+      del.setAttribute('aria-label', del.title);
+      del.addEventListener('click', (event) => {
+        event.stopPropagation();
+        S.removeEffect(effect.id);
+      });
+      row.appendChild(del);
+      row.addEventListener('click', () => S.selectEffect(effect.id));
+      row.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          S.selectEffect(effect.id);
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
+          event.preventDefault();
+          S.removeEffect(effect.id);
+        }
+      });
+      fxStack.appendChild(row);
+    }
+  }
+
   // --- public panel API -------------------------------------------------------
   let refreshAcc = 0;
   const api = {
     root,
     show() { root.style.display = 'block'; api.refreshAll(); },
-    hide() { root.style.display = 'none'; togglePick(false); },
+    hide() { root.style.display = 'none'; togglePick(false); toggleMapPick(false); },
     setBusy(text) {
       busy.style.display = text ? 'block' : 'none';
       if (text) busy.textContent = text;
@@ -719,7 +934,9 @@ export function createStudioPanel(S) {
     },
     setSelected(actor) {
       api.refreshActors();
-      if (actor) activatePane('actor');
+    },
+    setSelectedEffect(effect) {
+      api.refreshEffects();
     },
     refreshActors() {
       alist.textContent = '';
@@ -761,6 +978,9 @@ export function createStudioPanel(S) {
       camoSel.value = a.camo || 'inherit';
       stateSel.value = a.stateName;
     },
+    refreshEffects() {
+      rebuildEffectList();
+    },
     refreshCamera() {
       const c = S.getCamera();
       fov.set(c.fov);
@@ -781,11 +1001,21 @@ export function createStudioPanel(S) {
     refreshMap() {
       const id = S.mapId;
       badgeMap.textContent = id ? id.toUpperCase() : '';
-      if (id && mapSelect.value !== id) mapSelect.value = id;
+      if (!id) return;
+      const info = S.getMapInfo ? S.getMapInfo(id) : { name: id, sub: '' };
+      mapHero.src = MAP_THUMBS[id] || '';
+      mapName.textContent = info.name || id;
+      mapSub.textContent = info.sub || `${id.toUpperCase()} BATTLEFIELD`;
+      mapId.textContent = id.toUpperCase();
+      mapBtn.setAttribute('aria-label', `Choose battlefield. Current: ${info.name || id}`);
+      for (const [cardId, card] of mapCards) {
+        card.setAttribute('aria-selected', String(cardId === id));
+      }
     },
     refreshAll() {
       api.refreshMap();
       api.refreshActors();
+      api.refreshEffects();
       api.refreshCamera();
       api.refreshTime();
     },

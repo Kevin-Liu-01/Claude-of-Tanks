@@ -153,12 +153,14 @@ varying vec2 vUv;
 varying vec3 vCore;
 varying vec3 vGlow;
 varying float vBright;
+varying float vSeed;
 #ifdef USE_FOG
   varying float vFogDepth;
 #endif
 uniform vec2 uNearFade;
 void main() {
   vUv = uv; vCore = aCore; vGlow = aGlow; vBright = aB.w;
+  vSeed = fract( dot( aA.xyz, vec3( 0.1031, 0.11369, 0.13787 ) ) );
   if ( aB.w <= 0.0 ) {
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
@@ -177,9 +179,12 @@ void main() {
   vec3 side = cross( axis, viewDir );
   float sl = length( side );
   side = sl > 1e-4 ? side / sl : vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
-  // r7: halo span 6.0 -> 3.6 — the wide additive halo read as the sci-fi
-  // beam's body; the bolt now spans a tight core + close glow only.
-  wpos += side * position.y * aA.w * 3.6;
+  // The incandescent wake starts needle-thin and blooms only around the
+  // projectile head. This silhouette reads as a shell in flight instead of
+  // a constant-width billboard/laser, while retaining combat readability.
+  float along = position.x + 0.5;
+  float widthProfile = mix( 0.38, 1.0, smoothstep( 0.08, 0.78, along ) );
+  wpos += side * position.y * aA.w * 3.2 * widthProfile;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   #ifdef USE_FOG
     vFogDepth = -mvPosition.z;
@@ -193,6 +198,7 @@ varying vec2 vUv;
 varying vec3 vCore;
 varying vec3 vGlow;
 varying float vBright;
+varying float vSeed;
 #ifdef USE_FOG
   uniform vec3 fogColor;
   uniform float fogNear;
@@ -200,25 +206,31 @@ varying float vBright;
   varying float vFogDepth;
 #endif
 void main() {
+  float x = clamp( vUv.x, 0.0, 1.0 );
   float d = abs( vUv.y * 2.0 - 1.0 );
-  float core = smoothstep( 0.30, 0.0, d );
-  float glow = pow( max( 1.0 - d, 0.0 ), 3.0 );
-  // r7 bolt profile (critic: "a ~30 m continuous uniform-brightness tapered
-  // beam ... reads as a sci-fi laser"): a shell tracer is a BRIGHT HEAD with
-  // an exponentially-decaying incandescent tail. exp falloff kills the
-  // uniform mid-beam; a compact round head bulb carries the white-hot point.
-  float head = exp( ( vUv.x - 1.0 ) * 3.4 );
-  float bulb = smoothstep( 0.90, 1.0, vUv.x ) * smoothstep( 0.75, 0.0, d );
-  float a = ( core + glow * 0.35 ) * head * vBright + bulb * vBright * 0.9;
+  float core = exp( -d * d * 48.0 );
+  float corona = exp( -d * d * 7.5 );
+  // Bright projectile bead plus a turbulent incandescent wake. The wake is
+  // tapered at birth and energy rises toward the round, white-hot head.
+  float tailGate = smoothstep( 0.0, 0.12, x );
+  float tailEnergy = pow( x, 0.78 ) * tailGate;
+  float shimmer = 0.91 + 0.09 * sin( x * 58.0 + vSeed * 31.0 );
+  vec2 hp = vec2( ( x - 0.955 ) * 1.75, ( vUv.y - 0.5 ) * 2.0 );
+  float bead = exp( -dot( hp, hp ) * 15.0 );
+  float a = ((core * 0.92 + corona * 0.28) * tailEnergy * shimmer
+    + bead * 1.15) * vBright;
   if ( a < 0.004 ) discard;
   #ifdef USE_FOG
     float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
   #else
     float fogFactor = 0.0;
   #endif
-  // orange-white ramp: white-hot head point, glow hue fading down the tail
-  vec3 col = ( vCore * core * 4.2 + vGlow * glow * 1.1 ) * head * vBright;
-  col += vec3( 1.0, 0.96, 0.86 ) * bulb * vBright * 2.4;
+  // A neutral hot core preserves the physical incandescent read; the shell
+  // preset lives in the close corona, so AP/APCR/HE remain distinguishable.
+  vec3 hot = mix( vCore, vec3( 1.0, 0.97, 0.88 ), 0.72 );
+  vec3 col = ( hot * core * 3.6 + vGlow * corona * 0.95 )
+    * tailEnergy * shimmer * vBright;
+  col += vec3( 1.0, 0.985, 0.92 ) * bead * vBright * 3.0;
   gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
 }
 `;
@@ -2703,17 +2715,19 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       for (let i = 0; i < shellCount && n < MAX_TRACERS; i++) {
         const sh = shells[i];
         if (sh.dead) continue;
+        const shPos = sh.pos;
+        const shVel = sh.vel;
         const preset = TRACER_PRESETS[sh.spec && sh.spec.tracer] || TRACER_PRESETS.AP;
-        const speed = sh.vel.length();
+        const speed = shVel.length();
         // r7 (critic: "30 m uniform laser beam no shell ever produced"): the
         // bolt is a 3-6 m head+tail streak — APFSDS at 1700 m/s tops out at
         // 6 m, ordnance velocities land 3-4 m. Clamped by distM so a fresh
         // shell's tail never pokes back out of the muzzle. The old dim
         // 28 m PATH ribbon is GONE — it was the laser's body.
         const len = Math.min(THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
-          Math.max(sh.distM || 0, 2));
-        _v1.copy(sh.vel).normalize();
-        _v2.copy(sh.pos).addScaledVector(_v1, -len);
+          Math.max(sh.distM || 0, 0.08));
+        _v1.copy(shVel).normalize();
+        _v2.copy(shPos).addScaledVector(_v1, -len);
         col3(preset.core, _coreArr); col3(preset.glow, _glowArr);
         // enemy fire reads wider/brighter — battlefield legibility (width is
         // hard-capped below: no tracer body may exceed ~0.15 m)
@@ -2723,7 +2737,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         // foreshortened to a dot — widen/brighten so the player's own shot
         // stays readable from the default chase camera (r5: invisible)
         if (camera) {
-          _camV.copy(sh.pos).sub(camera.position);
+          _camV.copy(shPos).sub(camera.position);
           const cl = _camV.length();
           if (cl > 1e-4) {
             const k = THREE.MathUtils.smoothstep(Math.abs(_camV.dot(_v1)) / cl, 0.9, 0.995);
@@ -2732,7 +2746,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           }
         }
         const bw = Math.min(preset.width * wide, 0.15);
-        writeTracer(n++, _v2.x, _v2.y, _v2.z, sh.pos.x, sh.pos.y, sh.pos.z,
+        writeTracer(n++, _v2.x, _v2.y, _v2.z, shPos.x, shPos.y, shPos.z,
           bw, bright, _coreArr, _glowArr);
         // record/refresh the afterglow trail for this shell — stored as a
         // VAPOR ribbon (r4): what lingers after the bolt passes is powder
@@ -2742,7 +2756,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         if (!tr) { tr = { d: new Float32Array(14), age: 0, seen: true }; trails.set(sh.id, tr); }
         tr.age = 0; tr.seen = true;
         const d = tr.d;
-        d[0] = _v2.x; d[1] = _v2.y; d[2] = _v2.z; d[3] = sh.pos.x; d[4] = sh.pos.y; d[5] = sh.pos.z;
+        d[0] = _v2.x; d[1] = _v2.y; d[2] = _v2.z;
+        d[3] = shPos.x; d[4] = shPos.y; d[5] = shPos.z;
         d[6] = bw * 1.3; d[7] = bright * 0.16;
         // desaturate the preset hue hard toward smoke grey (25% color keeps a
         // faint warm/cool identity without reading as an incandescent rod)
@@ -2919,7 +2934,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           // one column per tank id; refresh if already burning
           const existing = columns.find((c) => c.key === e.id);
           if (existing) existing.ttl = SMOKE_COLUMN_S;
-          else { columns.push({ key: e.id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 }); capColumns(); }
+          else {
+            const col = { key: e.id, pos: [p[0], p[1], p[2]], acc: 0, ttl: SMOKE_COLUMN_S, scale: 0.8 };
+            columns.push(col);
+            emitColumnPuff(col); // ignition is visible even on a frozen frame
+            capColumns();
+          }
         } else {
           columns = columns.filter((c) => c.key !== e.id);
         }

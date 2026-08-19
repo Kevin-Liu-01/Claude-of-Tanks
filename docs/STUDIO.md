@@ -40,11 +40,14 @@ webdriver (and `?nogate`), exactly like the screenshot harness.
   (orbit mode: wheel = distance)
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it (terrain re-conform live)
-- **Space**: freeze/unfreeze fx time · **Delete**: remove selected actor
-- Panel: five focused workspaces instead of one long scroll — **Scene** (map +
-  roster), **Actor** (pose/camo/state), **FX**, **Camera** (timeline + rig), and
-  **Output** (capture + scene save/load). Scene JSON can be downloaded,
-  uploaded, copied, or stored in three local slots (shift-click saves).
+- **Space**: freeze/unfreeze fx time · **Delete**: remove the selected effect
+  (or selected actor when no effect layer is selected)
+- Panel: one scrollable workspace, organized into **Battlefield** (a visual
+  16-map preview picker), **Tanks** (roster plus selected-tank pose/camo/state),
+  **Effects**, **Global** (timeline plus camera), and **Output** (capture plus
+  scene save/load). Map-card images are loaded only when the picker opens;
+  Scene JSON can be downloaded, uploaded, copied, or stored in three local
+  slots (shift-click saves).
 
 ## `window.__STUDIO` (scripted-shoot contract)
 
@@ -62,6 +65,8 @@ __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
 __STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)
 __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
 __STUDIO.effect({type, actor|at, params})             // fire one effect NOW
+__STUDIO.listEffects()                               // authored FX layers + stable ids
+__STUDIO.selectEffect(id) / .removeEffect(id)        // select/delete one layer
 __STUDIO.clearEffects()                               // reset fx timeline (keeps actors)
 __STUDIO.advanceFx(ms)                                // step frozen fx forward
 __STUDIO.setTimeScale(v) / .timeScale / .fxTimeMs
@@ -73,7 +78,9 @@ __STUDIO.performance()              // rendered/skipped frame + pool-sweep count
 __STUDIO.active / .mapId
 ```
 
-`ref` = actor `uid` (`"a1"`), `name`, roster index, or the actor object.
+Actor `ref` = `uid` (`"a1"`), `name`, roster index, or the actor object.
+Effect `ref` = stable effect `id` (`"fx1"`), stack index, or the returned
+effect object.
 
 ### capture(opts)
 
@@ -114,8 +121,8 @@ themselves (see `tools/studio-selftest.mjs`).
     }
   ],
 
-  "effects": [                  // one-shots fired on the fx timeline
-    { "type": "fire",      "actor": "hero", "tMs": 0,
+  "effects": [                  // selectable layers fired on the fx timeline
+    { "id": "fx1", "type": "fire", "actor": "hero", "tMs": 0,
       "params": { "slot": 0, "tracer": true, "recoil": true } },
     { "type": "tank_kill", "actor": 1, "tMs": 100,
       "params": { "cause": "ammorack", "pop": true } },
@@ -195,8 +202,16 @@ world updates, lighting, and post-processing are skipped. A live time scale
 continues to render normally.
 
 `state()` returns the schema above (actors in creation order with their
-current pose/state, the effect log with authored `tMs`, the live camera,
+current pose/state, the effect stack with stable `id` + authored `tMs`, the live camera,
 `fxTime` = current clock). `load(state())` round-trips.
+
+Effects are individually removable even after they have emitted pooled
+particles or changed a tank presentation. Studio restores each actor's
+authored baseline (serialized as `authoredState`, `authoredSmoking`,
+`authoredBurning`, and authored age/recoil fields only when it differs from
+the visible state), resets the FX pools, and deterministically replays the
+remaining stack to the same `fxTime`. This is why deleting engine smoke,
+burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 
 ## Known limitations
 
@@ -209,8 +224,8 @@ current pose/state, the effect log with authored `tMs`, the live camera,
   map; re-lighting would need a sky re-bake).
 - The garage bay set-dressing physically exists at the map edge (−1500,−1500)
   and can be framed if you fly there.
-- Studio shells collide with terrain only (props/tanks don't stop them); aim
-  `tracer`/`fire` accordingly or freeze before contact.
+- Studio `fire` shells collide with terrain only (props/tanks don't stop
+  them). A standalone `tracer` stops at its authored `to` point.
 - Engine-smoke/burning emission while `timeScale > 0` runs on the live render
   cadence; the frozen composition path (`load`/`advanceFx`) is the
   deterministic one.
