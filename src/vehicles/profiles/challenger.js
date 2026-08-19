@@ -2648,10 +2648,11 @@ function buildChallenger2(P) {
     [[2.80, cr2At(hullTop, 2.80)], ...hullTop.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.31]],
     [[2.80, cr2At(hullBottom, 2.80)], ...hullBottom.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.02]]);
 
-  // Side-mask carrier behind the proud Hydrogas discs.  Like Leclerc's
-  // authored wrap fills, this is visible track structure, not a measurement
-  // proxy: it follows the repaired print's exact rising bow/stern courses
-  // while the real wheels remain proud of it in the judged side view.
+  // Return-run carrier behind the proud Hydrogas discs.  Its lower edge must
+  // stay above the moving wheel/track envelope: the former full-height side
+  // sheet dropped to ground level and read as armor driven through the track
+  // course in low side views.  This is now the shallow structural band that
+  // actually lives beneath the fender, while the main hull owns the belly.
   const gearTop = [
     [-3.40, 1.58], [-2.18, 1.58], [-1.60, 1.56], [-1.23, 1.55],
     [-1.14, 1.50], [-1.05, 1.48], [-0.20, 1.47], [-0.19, 1.53],
@@ -2660,9 +2661,9 @@ function buildChallenger2(P) {
     [3.64, 1.36], [3.81, 1.35], [3.90, 1.20],
   ];
   const gearBottom = [
-    [-3.45, 1.02], [-3.34, 1.02], [-3.339, 0.62], [-3.20, 0.58], [-3.05, 0.59], [-2.95, 0.52], [-2.80, 0.40],
-    [-2.50, 0.20], [-2.20, 0.08], [-2.05, 0.02], [-1.90, 0.00],
-    [2.80, 0.00], [3.10, 0.07], [3.40, 0.25], [3.70, 0.50], [3.85, 0.70],
+    [-3.45, 1.02], [-3.20, 1.00], [-2.80, 0.96], [-2.20, 0.93],
+    [-1.20, 0.91], [1.80, 0.91], [2.60, 0.93], [3.10, 0.97],
+    [3.40, 1.03], [3.70, 1.10], [3.85, 1.14],
   ];
   cr2ProfileStrip(P, 1.06, 1.10, gearTop, gearBottom);
 
@@ -2730,15 +2731,16 @@ function buildChallenger2(P) {
       [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), 1.48, -0.55], [sx(shoulderOuter), 1.48, 0.55], [sx(1.18), 1.48, 0.55],
       [sx(1.18), 1.49, -0.55], [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, -0.55],
       [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, 0.55], [sx(1.18), 1.49, 0.55]));
-    const skirtH = 1.54;
-    P.add('hullRubber', box(side < 0 ? 0.08 : 0.14, skirtH, 0.08),
-      sx(side < 0 ? 1.62 : 1.65), skirtH / 2, 0);
+    // These were accidentally authored as 1.54 m VERTICAL rubber strips.
+    // Lay the same rails longitudinally on the fender shoulder instead.
+    // The slight fore/aft rake follows the live deck course at z +/-0.77.
+    P.add('hullDetail', box(side < 0 ? 0.08 : 0.14, 0.045, 1.54),
+      sx(side < 0 ? 1.62 : 1.65), 1.405, 0, -0.035, 0, 0);
   }
   // Continuous ring landing beneath the articulated assembly. This is the
   // actual load surface (centered on armorChallenger2.turretPivot.z), not a
   // second turret silhouette; it closes the former visual/physical seam.
   P.add('hull', box(2.75, 0.035, 1.00), 0, 1.525, 1.00);
-  P.add('hullRubber', box(0.030, 1.46, 0.08), -1.675, 0.73, 0);
   for (const side of [-1, 1]) P.add('hull', box(0.025, 0.12, 0.12), side * 1.005, 0.435, 0);
   P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0);
 
@@ -3085,9 +3087,9 @@ function buildChallenger2(P) {
   // the previous three full-depth courses doubled the main shell roof and
   // created the critic's broad continuous mound.
   cr2Course(P, 'turret', [[-0.84, -0.64], [-0.20, -0.64], [-0.20, -1.31], [-0.84, -1.31]],
-    0.54, [0.61, 0.61, 0.63, 0.63]);
+    [0.43, 0.43, 0.44, 0.44], [0.61, 0.61, 0.63, 0.63]);
   cr2Course(P, 'turret', [[0.386, -0.96], [0.85, -0.96], [0.85, -1.08], [0.386, -1.08]],
-    0.52, [0.60, 0.60, 0.59, 0.59]);
+    [0.43, 0.39, 0.39, 0.43], [0.60, 0.60, 0.59, 0.59]);
 
   // Bustle shoulders step up from the low core; their unequal footprints
   // preserve the source's roof asymmetry and leave a real center channel.
@@ -3129,16 +3131,21 @@ function buildChallenger2(P) {
     P.add('turretDetail', cylY(0.018, 0.018, 0.016, 10), x, 0.354, z);
   P.add('turretDark', box(0.50, 0.20, 0.05), 0, 0.17, 1.98);                  // recessed L30 slot
   // Layered front cheek plates: dark gasket, inset armor face and diagonal
-  // weld courses.  Their front faces stop at z=1.74, well behind the loft's
-  // z=1.95 nose, so they add depth without changing the plan contour.
+  // weld courses.  The old boxes were yawed in plan but remained vertical,
+  // leaving their upper halves visibly proud of the steep Dorchester face.
+  // Rake the complete stack into the sovereign front plane so both panels
+  // are physically seated from the lower cheek to the roof arris.
   for (const side of [-1, 1]) {
     const cheekYaw = side * 0.367;
-    // Follow the actual loft face: x .26..98 maps z 1.92..1.65.  The first
-    // fix placed plates behind this plane, so the solid cheek occluded them.
-    P.add('turretDark', box(0.72, 0.34, 0.030), side * 0.62, 0.22, 1.785, 0, cheekYaw, 0);
-    P.add('turret', box(0.58, 0.22, 0.014), side * 0.624, 0.23, 1.796, 0, cheekYaw, 0);
-    P.add('turretDark', box(0.52, 0.020, 0.014), side * 0.624, 0.30, 1.804, 0, cheekYaw, side * 0.28);
-    P.add('turretDark', box(0.46, 0.020, 0.014), side * 0.624, 0.17, 1.804, 0, cheekYaw, -side * 0.22);
+    const cheekRake = -0.96;
+    P.add('turretDark', box(0.72, 0.58, 0.030), side * 0.62, 0.18, 1.56,
+      cheekRake, cheekYaw, 0);
+    P.add('turret', box(0.58, 0.45, 0.014), side * 0.624, 0.18, 1.575,
+      cheekRake, cheekYaw, 0);
+    P.add('turretDark', box(0.49, 0.020, 0.014), side * 0.624, 0.29, 1.43,
+      cheekRake, cheekYaw, side * 0.28);
+    P.add('turretDark', box(0.43, 0.020, 0.014), side * 0.624, 0.09, 1.72,
+      cheekRake, cheekYaw, -side * 0.22);
     P.add('turretDark', box(0.035, 0.28, 0.050), side * 1.34, 0.15, 1.12,
       0, side * 0.08, side * 0.10);
   }
@@ -3163,16 +3170,15 @@ function buildChallenger2(P) {
     P.add('turretDark', box(0.010, 0.080, 0.82), side * 1.454, 0.17, -1.02);
     if (P.q) for (let k = 0; k < 7; k++) P.add('turretDetail', box(0.018, 0.070, 0.070),
       side * 1.459, 0.175, -1.38 + k * 0.12);
-    // Forward Dorchester/smoke-bank shoulder. The source plan carries a
-    // closed solid to the ±1.49 lane and local z≈1.95; omitting it left both
-    // the outer plan-front and forward side-roof columns empty.
+    // Forward Dorchester/smoke-bank shoulder.  Keep the commander-side
+    // course; the loader-side copy was the broad block called out in the
+    // markup, projecting through the otherwise continuous front casting.
     const cheekOuter = side < 0 ? 1.50 : 1.46;
     const cheekPlan = [
       [side * 0.90, 1.05], [side * cheekOuter, 1.05],
       [side * cheekOuter, 1.38], [side * 0.35, 1.42],
     ];
-    cr2Course(P, 'turret', cheekPlan, -0.03,
-      side < 0 ? [0.24, 0.38, 0.38, 0.24] : [0.24, 0.00, 0.00, 0.24]);
+    if (side > 0) cr2Course(P, 'turret', cheekPlan, -0.03, [0.24, 0.00, 0.00, 0.24]);
     // Outboard Dorchester cassette follows the shell face as one tapered,
     // closed solid.  Its upper course dies into the ruled roof instead of
     // carrying the former full-length cap/rail.
@@ -3398,7 +3404,7 @@ function buildChallenger2(P) {
   // ridge.  Preserve the measured four-sided hood, side wall and inset glass
   // as separate masses, following the same component discipline as Leclerc.
   cr2Course(P, 'turret', [[0.56, -0.02], [0.90, -0.02], [0.90, 0.30], [0.56, 0.30]],
-    0.48, [0.64, 0.68, 0.68, 0.64]);
+    [0.47, 0.38, 0.38, 0.44], [0.64, 0.68, 0.68, 0.64]);
   P.add('turretDark', box(0.24, 0.12, 0.020), 0.73, 0.585, 0.312);
   P.add('turretGlass', box(0.17, 0.070, 0.012), 0.73, 0.585, 0.325);
   P.add('turretDark', box(0.018, 0.14, 0.24), 0.908, 0.585, 0.14);
@@ -3506,7 +3512,7 @@ function buildChallenger2(P) {
     cr2Course(P, 'turret', [
       [side * 1.03, -1.18], [side * 1.34, -1.18],
       [side * 1.34, -0.86], [side * 1.03, -0.86],
-    ], 0.43, [0.60, 0.57, 0.58, 0.64]);
+    ], [0.38, 0.28, 0.30, 0.39], [0.60, 0.57, 0.58, 0.64]);
     P.add('turret', box(0.066, 0.155, 0.20), side * 1.10, 0.742, -1.02);
     P.add('turret', box(0.092, 0.155, 0.18), side * 1.185, 0.742, -1.02);
     P.add('turret', box(0.064, 0.165, 0.17), side * 1.267, 0.742, -1.01);
