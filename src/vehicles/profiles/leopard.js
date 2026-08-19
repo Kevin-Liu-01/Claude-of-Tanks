@@ -8312,12 +8312,13 @@ function buildKF51(P) {
   zseg(1.46, -0.80, 5, (a, b) => P.add('turret', frustum(1.30, a, b, 1.24, Math.min(a, 1.34), b, 0.72, 0.79)));   // fore roof step (2.50w)
   zseg(1.49, -2.49, 9, (a, b) => P.add('turret', frustum(1.02, a, b, 0.95, Math.min(a, 1.47), Math.max(b, -2.47), 0.79, h))); // roof course (2.525w over −2.04..1.94w)
   P.add('turret', box(2.20, 0.30, 2.6), 0, 0.16, 0.55);                        // underride fill to the ring
-  // r4 #1b TURRET-SIDE RIM HIGHLIGHT: a pale base lip along the wall feet —
-  // the light edge the ref shows above its dark deck channel. 2.5 mm proud
-  // (sub-raster; seam-ring-law class), 27 mm tall at the wall base rows.
+  // KF51 front-finish round: these wall-foot lips are structural armor
+  // returns, not exposed grey trim. Keep the proven geometry and contact
+  // line, but paint it through the turret camo bucket so the two long rails
+  // no longer read as unpainted fallback strips in the garage heroes.
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.012, 0.027, 2.96), s * 1.4965, 0.1735, 0.50);  // cheek-base lip (walls ±1.50, z −0.98..1.98)
-    P.add('turretDetail', box(0.012, 0.027, 3.39), s * 1.4365, 0.1735, -1.015);// mid-wall lip (walls ±1.44, z −2.71..0.68)
+    P.add('turret', box(0.012, 0.027, 2.96), s * 1.4965, 0.1735, 0.50);        // cheek-base armor return
+    P.add('turret', box(0.012, 0.027, 3.39), s * 1.4365, 0.1735, -1.015);      // mid-wall armor return
   }
   P.add('turretDark', box(1.30, 0.26, 1.927), 0, -0.13, 0.0135);               // basket tub (mask floor 1.45 to 1.42w; r5: the ref floor RISES to 1.617 at the 1.55w column — the tub retreats so the trunnion roll's 1.585 line reads there instead)
   P.add('turretDark', box(1.50, 0.11, 1.30), 0, -0.05, -0.75);                 // ring shelf (1.605 bottoms −0.50..−0.95w)
@@ -8421,8 +8422,13 @@ function buildKF51(P) {
     [-1.358, 0.545, 1.3964], [1.358, 0.545, 1.3964], [1.30, 0.716, 1.345], [-1.30, 0.716, 1.345],
     [-1.358, 0.5477, 1.4055], [1.358, 0.5477, 1.4055], [1.30, 0.7187, 1.3541], [-1.30, 0.7187, 1.3541]));
   P.add('turretDark', box(2.70, 0.022, 0.014), 0, 0.538, 1.401);               // dip shadow slot under the (raised) brow foot
-  P.add('turretDark', box(0.60, 0.58, 0.015), 0, 0.42, 1.6135);                // mantlet recess shadow panel (1 mm proud of the back wall face; deeper z broke the 2.08w col; r6 narrowed with the wall)
-  P.add('turret', box(0.48, 0.44, 0.004), 0, 0.42, 1.6225);                    // r3 #4b: scheme inner panel over the dark frame — the recess read as a grey sticker; face 2.0745w stays under the 2.08w col (the broken 15 mm attempt hit it)
+  P.add('turretDark', box(0.60, 0.58, 0.015), 0, 0.42, 1.6135);                // mantlet recess frame
+  // The old 4 mm inner panel was only a decal-like back face, so the square
+  // above the Rh-130 still read as an open cavity. This proper camouflaged
+  // armor cassette fills the brow volume while its 2.10 m lower edge stays
+  // above the 2.04 m shroud crown. The 150 mm depth brings the square into
+  // the same front plane family as the surrounding cheek returns.
+  P.add('turret', box(0.54, 0.36, 0.15), 0, 0.57, 1.63);
   // crown block + drone-bay seams. r5: width 1.70 → 1.40 — the crown is
   // FRONT-INVISIBLE in the ref (plateau 2.95 shadows |x|<0.72; the old
   // ±0.85 edges printed 2.608 over the ref's bare 2.548 left-band cols);
@@ -8883,11 +8889,11 @@ function buildKF51(P) {
     };
     const moatDeck = [[2.18, 1.6004], [0.30, 1.62], [-0.49, 1.615], [-0.80, 1.73], [-1.20, 1.755], [-1.94, 1.79], [-2.30, 1.805], [-2.42, 1.8062]];
     for (const s of [-1, 1]) {
-      // x-planes SORTED — the first cut passed s*x directly into slab() and
-      // the s=−1 pieces reversed winding → backface-culled from straight top
-      // (measured: right moat read 28.4, LEFT MOAT INVISIBLE). Width 0.155
-      // (1.505..1.66) = ~8 px at the top-view raster.
-      const xa = Math.min(s * 1.505, s * 1.66), xb = Math.max(s * 1.505, s * 1.66);
+      // Keep only a narrow bearing seam at the turret foot. The previous
+      // 155 mm moat projected as two large grey rails down both turret
+      // sides; 30 mm retains readable separation without covering the
+      // camouflaged deck.
+      const xa = Math.min(s * 1.505, s * 1.535), xb = Math.max(s * 1.505, s * 1.535);
       for (let i = 0; i < moatDeck.length - 1; i++) {
         const [zF, yF] = moatDeck[i], [zR, yR] = moatDeck[i + 1];
         // shell −0.007..+0.003 = the certified boundary-strip proudness —
@@ -8913,9 +8919,9 @@ function buildKF51(P) {
         [wa, 1.3938, 2.88], [wb, 1.3938, 2.88], [wb, 1.444, 2.55], [wa, 1.444, 2.55]));
       moat(KIT.xform(KIT.box(0.34, 0.008, 0.12), s * 1.27, 1.816, -2.98));     // rear dash (outboard of the fans)
     }
-    moat(KIT.slab(                                                             // front band: widens the certified glacis cross strip to z 2.46
-      [-1.53, 1.482, 2.46], [1.53, 1.482, 2.46], [1.53, 1.544, 2.34], [-1.53, 1.544, 2.34],
-      [-1.53, 1.490, 2.46], [1.53, 1.490, 2.46], [1.53, 1.552, 2.34], [-1.53, 1.552, 2.34]));
+    // The former full-width front moat was the large grey rectangle across
+    // the upper glacis. The underlying hull plate is already closed and
+    // camouflaged, so no separate comparison strip belongs here.
     moat(KIT.xform(KIT.box(1.10, 0.008, 0.12), 0, 1.816, -2.98));              // rear dash between the fans
     const wornDish = rehook(P.mats.wheels.clone());      // road-wheel dishes — r3 #6: faces must sit BELOW the skirt value (ref wheel V21 vs skirt 30; r2's 0x44462f rendered V26-28, INVERTED)
     wornDish.color.setHex(0x2e2c22);                     // r5 #7: dishes darker (lit-side response 44 -> ~37; unlit side stays floor-bound) — amplitude vs the lit skirt fields grows toward the ref's D24
@@ -9335,26 +9341,10 @@ function buildKF51(P) {
     tone(flat(0x0e0e0e), KIT.xform(KIT.cylY(0.072, 0.072, 0.005, 14), 0.17, 1.8330, -2.63)); // round exhaust port (~14 — boreDark floors ~42 in this shadow zone)
     tone(paleStrip, KIT.xform(KIT.box(0.018, 0.007, 0.38), 0.325, 1.8320, -2.70));  // raised housing rims
     tone(paleStrip, KIT.xform(KIT.box(0.018, 0.007, 0.38), -0.325, 1.8320, -2.70));
-    // ---- r7 minor: GLACIS PALE-TAN. The ref front renders the glacis as a
-    // near-uniform pale-tan face (front-view upper med 50.7 sd 8.9, rgb
-    // R>G>B warm) — ours read camo-patchy 40.9 sd 15.3. Slope-parallel tan
-    // shells over the bare camo faces (moat-shell class: sub-raster proud,
-    // plan/side interior; bottoms sunk 3mm into the plate). The certified
-    // dark bands (weld seam, cross strip, moat front band) and all proud
-    // furniture (pods, wings, flaps) stay on top. FRONT-first quad order
-    // (winding-audit law).
-    const glacisTan = mkTone(0x3b3526, 0.08);            // (0x363021 measured mid 49.6 vs ref 57.9 — one notch up)
-    // r4 CONTAINMENT: the shell splits at z 3.13 with the glacis sheet it
-    // coats (centre-only ±0.94 beyond — the wrap crest owned those rows).
-    tone(glacisTan, KIT.slab(                                                  // main raked plate, centre run z 3.13..3.66
-      [-0.94, 1.2581, 3.66], [0.94, 1.2581, 3.66], [0.94, 1.3388, 3.13], [-0.94, 1.3388, 3.13],
-      [-0.94, 1.2625, 3.66], [0.94, 1.2625, 3.66], [0.94, 1.3432, 3.13], [-0.94, 1.3432, 3.13]));
-    tone(glacisTan, KIT.slab(                                                  // full-width run z 2.56..3.13
-      [-1.52, 1.3388, 3.13], [1.52, 1.3388, 3.13], [1.52, 1.4255, 2.56], [-1.52, 1.4255, 2.56],
-      [-1.52, 1.3432, 3.13], [1.52, 1.3432, 3.13], [1.52, 1.4299, 2.56], [-1.52, 1.4299, 2.56]));
-    tone(glacisTan, KIT.slab(                                                  // crease-slab sliver between moat band and the knee
-      [-1.52, 1.4244, 2.555], [1.52, 1.4244, 2.555], [1.52, 1.4682, 2.47], [-1.52, 1.4682, 2.47],
-      [-1.52, 1.4288, 2.555], [1.52, 1.4288, 2.555], [1.52, 1.4726, 2.47], [-1.52, 1.4726, 2.47]));
+    // The upper glacis already has complete structural armor in the hull
+    // camo bucket. The former solid-tone comparison shells hid that paint
+    // under one large grey rectangle; leave the real armor exposed so the
+    // whole raked plate participates in the vehicle's camouflage again.
     // ---- r8 minor: FRONT BOW PALE-TAN. The ref bow plate (the reverse-
     // slope nose face under the beak, front rect x ±0.9 / y 0.46..1.04)
     // renders med 60.9 RGB (71,59,47) — R−G +12 warm tan; ours read 62.7
