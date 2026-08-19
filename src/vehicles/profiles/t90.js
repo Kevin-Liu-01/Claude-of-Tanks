@@ -7287,6 +7287,66 @@ function buildT90BurlakHybridNative2026(P) {
     if (rightPlate) geo.translate(1.68 - bounds.min.x, 0, 0);
     else if (leftPlate) geo.translate(-1.68 - bounds.max.x, 0, 0);
   });
+  // Closing fender shelves. Narrowing the inherited T-90A hull and then
+  // reseating its outboard skirt course used to leave a 20–30 cm open air
+  // channel down both shoulders. These mirrored, segmented plates overlap
+  // the fixed hull at x=1.43 and the existing guard's inner lip at x=1.72,
+  // so the glacis, fender and skirt read as one supported assembly without
+  // deleting any of the prototype's bins, timber pads or terminal guards.
+  const addFenderShelf = (s, label, z0, z1, innerY0, innerY1, outerY0 = 1.250, outerY1 = 1.250) => {
+    const innerX = 1.43;
+    const outerX = 1.72;
+    const thickness = 0.055;
+    P.addMudguard(`t90a-burlak-fender-closure-${s}-${label}`, 'hull', orientedSlab(
+      [s * innerX, innerY0 - thickness, z0], [s * outerX, outerY0 - thickness, z0],
+      [s * outerX, outerY1 - thickness, z1], [s * innerX, innerY1 - thickness, z1],
+      [s * innerX, innerY0, z0], [s * outerX, outerY0, z0],
+      [s * outerX, outerY1, z1], [s * innerX, innerY1, z1],
+    ));
+    // Rolled outer seam and inboard support web make each shelf visibly
+    // founded instead of reading as another paper-thin floating rectangle.
+    P.add('hullDetail', KIT.box(0.030, 0.030, z1 - z0 - 0.035),
+      s * 1.705, (outerY0 + outerY1) * 0.5 + 0.010, (z0 + z1) * 0.5);
+    P.add('hullDark', orientedSlab(
+      [s * 1.425, innerY0 - 0.12, z0 + 0.035], [s * 1.455, innerY0 - 0.12, z0 + 0.035],
+      [s * 1.455, innerY1 - 0.12, z1 - 0.035], [s * 1.425, innerY1 - 0.12, z1 - 0.035],
+      [s * 1.425, innerY0 - 0.055, z0 + 0.035], [s * 1.455, innerY0 - 0.055, z0 + 0.035],
+      [s * 1.455, innerY1 - 0.055, z1 - 0.035], [s * 1.425, innerY1 - 0.055, z1 - 0.035],
+    ));
+  };
+  for (const s of [-1, 1]) {
+    for (const [label, z0, z1, y0, y1] of [
+      ['centre', -1.30, 0.00, 1.362, 1.378],
+      ['forward', 0.00, 1.35, 1.378, 1.352],
+      ['shoulder', 1.35, 2.35, 1.352, 1.272],
+    ]) addFenderShelf(s, label, z0, z1, y0, y1);
+
+    // The bow shoulder follows the glacis taper instead of ending as a
+    // square shelf in front of the lead timber pad. Its aft edge laps the
+    // longitudinal run while the narrow toe buries into the native nose.
+    const t = 0.055;
+    P.addMudguard(`t90a-burlak-fender-closure-${s}-bow`, 'hull', orientedSlab(
+      [s * 1.10, 1.272 - t, 2.35], [s * 1.72, 1.250 - t, 2.35],
+      [s * 1.38, 1.180 - t, 3.42], [s * 0.62, 1.145 - t, 3.42],
+      [s * 1.10, 1.272, 2.35], [s * 1.72, 1.250, 2.35],
+      [s * 1.38, 1.180, 3.42], [s * 0.62, 1.145, 3.42],
+    ));
+    P.add('hullDetail', orientedSlab(
+      [s * 1.695, 1.230, 2.38], [s * 1.725, 1.230, 2.38],
+      [s * 1.395, 1.162, 3.39], [s * 1.365, 1.162, 3.39],
+      [s * 1.695, 1.260, 2.38], [s * 1.725, 1.260, 2.38],
+      [s * 1.395, 1.192, 3.39], [s * 1.365, 1.192, 3.39],
+    ));
+  }
+  P.hullG.userData.t90BurlakFenderClosure = Object.freeze({
+    innerX: 1.43,
+    outerX: 1.72,
+    sternZ: -1.30,
+    bowZ: 3.42,
+    trackTopY: 1.17,
+    shelfUndersideY: 1.195,
+    registeredParts: 8,
+  });
   replaceT90BurlakCoreNative2026(P);
   finishT90BurlakNative2026(P);
   // The inherited cast tree is deliberately compressed only in section;
