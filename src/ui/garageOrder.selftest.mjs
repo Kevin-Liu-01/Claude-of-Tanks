@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  compareCountryThenTierThenName, countryFilterGroups,
+  compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.js';
 
@@ -40,6 +40,12 @@ assert.deepEqual(
   'country filters combine modern, Cold War and WWII vehicles under one flag',
 );
 
+assert.equal(defaultGarageMapId([
+  { id: 'verdant' }, { id: 'desert' }, { id: 'random' },
+]), 'random', 'garage defaults to random even when it is not the first card');
+assert.equal(defaultGarageMapId([{ id: 'verdant' }]), 'verdant',
+  'a caller without a random option keeps its first concrete map');
+
 const duplicateNames = [
   { id: 'variant_b', nation: 'Russia', name: 'T-72' },
   { id: 'variant_a', nation: 'Russia', name: 'T-72' },
@@ -69,4 +75,4 @@ assert.equal(horizontalRailWheelDelta(-38, 6), -38,
 assert.equal(horizontalRailWheelDelta(0, 3, 1), 60,
   'line-mode wheel motion is normalized to useful pixels');
 
-console.log('garageOrder.selftest: ordering, filters and horizontal rail behavior verified');
+console.log('garageOrder.selftest: ordering, map default, filters and horizontal rail behavior verified');

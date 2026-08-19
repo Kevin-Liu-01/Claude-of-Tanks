@@ -28,7 +28,7 @@ import {
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
 import {
-  compareCountryThenTierThenName, countryFilterGroups,
+  compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
@@ -138,7 +138,7 @@ const GARAGE_CSS = `
 .cot-record-dialog::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
 .cot-record-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;
   padding:22px 24px 18px;border-bottom:1px solid rgba(146,164,180,.18);}
-.cot-record-head .eyebrow,.cot-dossier-kicker,.cot-stat-title{font:900 8px ${FONT_COND};
+.cot-record-head .eyebrow,.cot-stat-title{font:900 8px ${FONT_COND};
   letter-spacing:.24em;text-transform:uppercase;color:#f0b04a;}
 .cot-record-head h2{margin-top:5px;font-size:24px;letter-spacing:.025em;color:#f3f7fa;}
 .cot-record-head p{margin-top:5px;font:700 9px ${FONT_COND};letter-spacing:.12em;
@@ -242,15 +242,14 @@ const GARAGE_CSS = `
   background:rgba(230,139,26,.13);color:#ffd28e;}
 .cot-battle-choice:hover .choice-icon,.cot-battle-choice[aria-checked='true'] .choice-icon{
   color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
-.cot-garage .stats{position:absolute;right:26px;top:94px;width:326px;padding:0;pointer-events:auto;
+.cot-garage .stats{position:absolute;right:26px;top:94px;width:300px;padding:0;pointer-events:auto;
   background:linear-gradient(155deg,rgba(17,23,29,.96),rgba(7,10,13,.96) 72%);
   border:1px solid rgba(166,184,199,.3);border-top:2px solid #d99531;
   box-shadow:0 18px 48px rgba(0,0,0,.62),inset 0 0 0 1px rgba(255,255,255,.018);}
 .cot-garage .stats::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(circle at 86% 0,rgba(240,160,48,.105),transparent 28%),
     linear-gradient(115deg,transparent 0 68%,rgba(255,255,255,.018) 68% 69%,transparent 69%);}
-.cot-dossier-head{position:relative;padding:15px 17px 14px;min-height:84px;}
-.cot-dossier-kicker{margin-bottom:7px;color:#ba8949;}
+.cot-dossier-head{position:relative;padding:13px 15px 12px;min-height:66px;}
 .cot-dossier-title{display:flex;align-items:center;gap:9px;padding-right:44px;}
 .cot-tier-plate{height:25px;min-width:31px;padding:0 6px;display:grid;place-items:center;
   color:#161007;background:linear-gradient(180deg,#ffc466,#d88b24);border:1px solid #ffd18a;
@@ -262,7 +261,7 @@ const GARAGE_CSS = `
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
   box-shadow:0 1px 3px rgba(0,0,0,.5);}
-.cot-garage .stats .stats-ti{position:absolute;right:16px;top:30px;width:34px;height:22px;
+.cot-garage .stats .stats-ti{position:absolute;right:15px;top:17px;width:34px;height:22px;
   object-fit:contain;pointer-events:none;opacity:.82;
   filter:drop-shadow(0 4px 6px rgba(0,0,0,.78));}
 .cot-stat-section{position:relative;padding:12px 16px 14px;border-top:1px solid rgba(146,164,180,.17);}
@@ -458,7 +457,7 @@ const GARAGE_CSS = `
 .cot-maps .mtitle::before,.cot-camos .ctitle::before,
 .cot-featured .ftitle > span:first-child::before{content:'';display:inline-block;
   width:8px;height:2px;background:#f0a030;margin-right:6px;vertical-align:2px;}
-.cot-maps{position:static;min-height:96px;overflow-y:auto;
+.cot-maps{position:static;min-height:96px;max-height:210px;overflow-y:auto;
   scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
    clip; .can-scroll is toggled by JS only when the list truly overflows */
@@ -615,7 +614,7 @@ const GARAGE_CSS = `
 .cot-garage .eqslot.empty:hover .plus{color:#9fb0bf;}
 /* EQUIPMENT PICKER: side panel opened by a slot click — icon+name+effect
    tiles, category filter chips, era-locked tiles stay visible but inert. */
-.cot-eqpick{position:absolute;right:370px;top:94px;width:372px;display:none;
+.cot-eqpick{position:absolute;right:340px;top:94px;width:372px;display:none;
   pointer-events:auto;z-index:70;font-family:${FONT_STACK};
   background:linear-gradient(180deg,rgba(11,15,20,.94),rgba(7,10,13,.96));
   border:1px solid rgba(146,164,180,.32);box-shadow:0 10px 36px rgba(0,0,0,.65);
@@ -1839,7 +1838,7 @@ export function createGarage(opts) {
   // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
   const maps = opts.maps || [];
-  let selectedMapId = maps.length ? maps[0].id : 'verdant';
+  let selectedMapId = defaultGarageMapId(maps);
   const mapCardById = new Map();
   if (maps.length) {
     const title = document.createElement('div');
@@ -2438,7 +2437,6 @@ export function createGarage(opts) {
     statsEl.innerHTML =
       `<div class="cot-dossier-head">` +
       `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
-      `<div class="cot-dossier-kicker">Vehicle dossier</div>` +
       `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
       `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div></div>` +
       `<section class="cot-stat-section"><div class="cot-stat-title">Performance</div>` +

@@ -36,6 +36,17 @@ export function countryFilterGroups(specs, countryCodeOf) {
   return groups;
 }
 
+/** The garage is opt-out random: a concrete battlefield is used only after
+ * the player deliberately selects one of its cards. Keep this policy pure so
+ * createGarage callers cannot accidentally make the first catalog row the
+ * silent default again. */
+export function defaultGarageMapId(maps) {
+  const entries = Array.isArray(maps) ? maps : [];
+  return entries.some((map) => map?.id === 'random')
+    ? 'random'
+    : (entries[0]?.id || 'random');
+}
+
 /** Pure overflow state for horizontally scrolling garage rails. Browser
  * scrollLeft can briefly overshoot on elastic-scroll engines, so clamp before
  * deriving the edge affordances. */

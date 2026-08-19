@@ -1194,11 +1194,11 @@ const hud = await bootStage('hud', () => {
 });
 
 const garageMaps = [
+  { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
   ...MAP_IDS.map((id) => {
     const c = getMapConfig(id);
     return { id, name: c.name, sub: c.sub || '', thumb: MAP_THUMBS[id] || '' };
   }),
-  { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
 ];
 let pendingSoloStart = null;
 let playMenuPromise = null;
