@@ -1,0 +1,150 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { createTank } from '../tankFactory.js';
+import { getSpec } from '../specs.js';
+import { createTankState } from '../../sim/movement.js';
+
+const MERKAVA_IDS = [
+  'merkava1b', 'merkava2b', 'merkava2d',
+  'merkava3c', 'merkava3d', 'merkava4b',
+];
+
+const REMOVED_SURFACES = [
+  { id: 'merkava3c', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.20], max: [-1.72, 0.445, 1.70] },
+  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.28], max: [-1.72, 0.300, 1.70] },
+  { id: 'merkava3d', mesh: 'hullCloth', min: [-1.716, 0.375, -3.13], max: [-1.716, 0.420, 1.59] },
+  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.716, 0.300, -3.13], max: [-1.716, 0.375, 1.59] },
+];
+
+const round = (value, places = 4) => Number(value.toFixed(places));
+
+function roadWheelStations(tires) {
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const stations = new Map();
+  for (let i = 0; i < tires.count; i++) {
+    tires.getMatrixAt(i, matrix);
+    position.setFromMatrixPosition(matrix);
+    stations.set(`${round(position.y)}:${round(position.z)}`, {
+      y: position.y,
+      z: position.z,
+    });
+  }
+  return [...stations.values()];
+}
+
+function staticWheelRings(root, stations) {
+  const rings = [];
+  root.traverse((mesh) => {
+    if (!['hullRunningGearDark', 'hullRunningGearDetail'].includes(mesh.name)) return;
+    const position = mesh.geometry?.getAttribute('position');
+    if (!position) return;
+    for (const station of stations) {
+      const groups = new Map();
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i);
+        if (Math.abs(x) < 1) continue;
+        const dy = position.getY(i) - station.y;
+        const dz = position.getZ(i) - station.z;
+        const radius = Math.hypot(dy, dz);
+        if (radius < 0.08 || radius > 0.42) continue;
+        const key = `${round(x, 3)}:${round(radius, 3)}`;
+        const angles = groups.get(key) || new Set();
+        angles.add(round(Math.atan2(dz, dy), 2));
+        groups.set(key, angles);
+      }
+      for (const [key, angles] of groups) {
+        if (angles.size >= 8) rings.push({ mesh: mesh.name, station, key, samples: angles.size });
+      }
+    }
+  });
+  return rings;
+}
+
+function containsMarkedSurface(root, mark, tolerance = 1e-4) {
+  let found = false;
+  root.traverse((mesh) => {
+    if (found || mesh.name !== mark.mesh) return;
+    const position = mesh.geometry?.getAttribute('position');
+    if (!position) return;
+    const index = mesh.geometry.index;
+    const faceCount = index ? index.count / 3 : position.count / 3;
+    const vertices = [];
+    for (let face = 0; face < faceCount; face++) {
+      for (let corner = 0; corner < 3; corner++) {
+        const vertex = index ? index.getX(face * 3 + corner) : face * 3 + corner;
+        const point = [position.getX(vertex), position.getY(vertex), position.getZ(vertex)];
+        const inside = point.every((value, axis) => value >= mark.min[axis] - tolerance && value <= mark.max[axis] + tolerance);
+        if (inside) vertices.push(point);
+      }
+    }
+    if (vertices.length < 6) return;
+    for (let axis = 0; axis < 3; axis++) {
+      const values = vertices.map((point) => point[axis]);
+      if (Math.abs(Math.min(...values) - mark.min[axis]) > tolerance) return;
+      if (Math.abs(Math.max(...values) - mark.max[axis]) > tolerance) return;
+    }
+    found = true;
+  });
+  return found;
+}
+
+const visuals = new Map();
+for (const id of MERKAVA_IDS) {
+  const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+  visuals.set(id, visual);
+  const tires = visual.root.getObjectByName('gearRoadWheelTires');
+  assert.ok(tires?.isInstancedMesh, `${id}: canonical road wheels are instanced`);
+  assert.equal(tires.count, 12, `${id}: exactly six canonical road wheels per side`);
+  assert.equal(visual.root.getObjectByName('rig_hull')?.userData.nativeRoadWheelStations, 6,
+    `${id}: running-gear receipt records six road-wheel stations`);
+  assert.deepEqual(staticWheelRings(visual.root, roadWheelStations(tires)), [],
+    `${id}: no static wheel cylinders remain inside the suspension-driven road wheels`);
+}
+
+const mk3d = visuals.get('merkava3d');
+const mk3dFaceNames = [
+  'gearRoadWheelPressedFaces', 'gearRoadWheelDishRings',
+  'gearRoadWheelDishRecesses', 'gearRoadWheelHubCaps',
+];
+for (const name of mk3dFaceNames) {
+  const layer = mk3d.root.getObjectByName(name);
+  assert.ok(layer?.isInstancedMesh, `merkava3d: ${name} is suspension-driven`);
+  assert.equal(layer.count, 12, `merkava3d: ${name} follows all twelve road wheels`);
+  assert.equal(layer.userData.dynamicWheelFace, true, `merkava3d: ${name} cannot remain parked on the hull`);
+}
+
+const tireMatrix = new THREE.Matrix4();
+const faceMatrix = new THREE.Matrix4();
+const tirePosition = new THREE.Vector3();
+const facePosition = new THREE.Vector3();
+for (const [id, visual] of visuals) {
+  const faceLayers = [];
+  visual.root.traverse((object) => {
+    if (object.userData.dynamicWheelFace) faceLayers.push(object);
+  });
+  if (!faceLayers.length) continue;
+  const state = createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0);
+  visual.setGroundSampler((x, z) => Math.sin(z * 1.7) * 0.11 + x * 0.015);
+  for (let frame = 0; frame < 24; frame++) visual.syncFromState(state, 1 / 60);
+  const tireLayer = visual.root.getObjectByName('gearRoadWheelTires');
+  for (const layer of faceLayers) {
+    for (let instance = 0; instance < tireLayer.count; instance++) {
+      tireLayer.getMatrixAt(instance, tireMatrix);
+      layer.getMatrixAt(instance, faceMatrix);
+      tirePosition.setFromMatrixPosition(tireMatrix);
+      facePosition.setFromMatrixPosition(faceMatrix);
+      assert.ok(Math.abs(facePosition.y - tirePosition.y) < 1e-6,
+        `${id}: ${layer.name} follows wheel ${instance} suspension travel`);
+      assert.ok(Math.abs(facePosition.z - tirePosition.z) < 1e-6,
+        `${id}: ${layer.name} stays concentric with wheel ${instance}`);
+    }
+  }
+}
+
+for (const mark of REMOVED_SURFACES) {
+  assert.equal(containsMarkedSurface(visuals.get(mark.id).root, mark), false,
+    `${mark.id}: owner-marked ${mark.mesh} patch stays removed`);
+}
+
+console.log('merkavaRunningGear.selftest: one suspended wheel course and four owner removals passed');

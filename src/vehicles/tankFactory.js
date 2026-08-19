@@ -1313,12 +1313,21 @@ function buildRunningGear(P, cfg) {
   };
   const addRoadWheelLayer = (geometry, material, layer = {}) => {
     if (!geometry || !material) return null;
-    const roadEntries = entries.filter((entry) => entry.road).map((entry) => ({
-      ...entry,
-      x: entry.x + Math.sign(entry.x || 1) * (layer.outset ?? 0),
-      y: entry.y + (layer.yOffset ?? 0),
-      z: entry.z + (layer.zOffset ?? 0),
-    }));
+    const roadEntries = [];
+    for (const entry of entries) {
+      if (!entry.road) continue;
+      roadEntries.push({
+        ...entry,
+        x: entry.x + Math.sign(entry.x || 1) * (layer.outset ?? 0),
+        y: entry.y + (layer.yOffset ?? 0),
+        z: entry.z + (layer.zOffset ?? 0),
+        // Decorative dish/rim geometry may sit slightly outboard, but it is
+        // still part of this exact physical wheel. Reuse the canonical wheel's
+        // suspension and thrown-wheel state instead of sampling terrain again
+        // at the decoration's shifted X coordinate.
+        suspensionSource: entry,
+      });
+    }
     const layerMesh = mkInst(geometry, material, roadEntries,
       layer.appearanceRole || 'wheelDish', layer.name || 'gearRoadWheelDetail');
     layerMesh.userData.dynamicWheelFace = true;
@@ -2117,7 +2126,8 @@ function buildRunningGear(P, cfg) {
       for (const { im, list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
-          if (e.thrown) {
+          const suspensionEntry = e.suspensionSource || e;
+          if (suspensionEntry.thrown) {
             // de-track scatter: this road wheel tore off. r5 (critic: "no
             // scattered road wheel readable"): it used to land 0.9 m out —
             // hidden in the hull's own shadow line. It now rolls a few
@@ -2146,13 +2156,13 @@ function buildRunningGear(P, cfg) {
           // Clamp only the COSMETIC downward chatter. Terrain conformance is
           // real suspension travel and must retain its full droop; clamping
           // the combined value to -2 cm was the rigid-track/taped-down feel.
-          const groundOff = e.off || 0;
+          const groundOff = suspensionEntry.off || 0;
           const voff = groundOff + Math.max(bob, -0.02);
           // The wheel can chatter against the suspension, but the track belt
           // remains keyed to the sampled terrain offset. Feeding positive
           // cosmetic bob into the belt lifted whole link runs 8-11 cm off
           // flat ground at speed — the visible "floating tracks" defect.
-          if (e.road) e.voff = groundOff;
+          if (suspensionEntry.road) suspensionEntry.voff = groundOff;
           _q.setFromAxisAngle(_X, scroll / e.r);
           _v.set(e.x, e.y + voff, e.z);
           _s.set(1, 1, 1);
@@ -2199,6 +2209,10 @@ function buildRunningGear(P, cfg) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
           if (!e.road) continue;
+          // Face layers reuse the canonical entry's solved travel. Skipping
+          // their shifted copies here preserves the established damping
+          // cadence while preventing concentric layers from drifting apart.
+          if (e.suspensionSource) continue;
           // world position of the CONTACT-plane point under this wheel (YXZ;
           // hull-local y = conformPlaneY — see the contact-metadata note)
           const x1 = e.x * cr - conformPlaneY * sr;

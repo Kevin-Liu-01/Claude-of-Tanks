@@ -1259,9 +1259,11 @@ function merkavaChassis(P, c) {
         // r12 order 2 opt-in sk.fillerTop: the filler's upper band sat in the
         // wheel window rows and curtained the ref's visible wheels — 3D caps
         // it below the window; siblings keep the 0.445 top byte-identical.
-        const fTop9 = sk.fillerTop ?? 0.445;
-        P.add('hullRunningGearDark', box(0.016, fTop9 - 0.145, fcz0 - fcz1),
-          s * ((c.gearOut ?? hw - 0.036) - 0.008), (fTop9 + 0.145) / 2, (fcz0 + fcz1) / 2);
+        if (sk.runFiller !== false) {
+          const fTop9 = sk.fillerTop ?? 0.445;
+          P.add('hullRunningGearDark', box(0.016, fTop9 - 0.145, fcz0 - fcz1),
+            s * ((c.gearOut ?? hw - 0.036) - 0.008), (fTop9 + 0.145) / 2, (fcz0 + fcz1) / 2);
+        }
         if (sk.soft) {
           // r11 second wall RETIRED (r12 order 2): it stood OUTBOARD of the
           // wheels and curtained the whole window flat-56 — the ref shows
@@ -1292,32 +1294,15 @@ function merkavaChassis(P, c) {
           // AND the median pool. (Candidates measured at this plane, side /
           // close-roof: hullDark 56/57, hullCloth ~80/65, hullDetail —
           // scheme-repainted pale sand — 94/76.) sk.soft is 3D-only.
-          P.add('hullCloth', box(0.016, 0.045, 4.72),
-            s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.3975, -0.77);
-          P.add('hullRunningGearDark', box(0.016, 0.075, 4.72),
-            s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.3375, -0.77);
-          // (KIT.torus is pre-rotated rx pi/2 — a flat y-axis ring; rz
-          // pi/2 stands it facing +-x. An ry spin here was a no-op that
-          // left the rings FLAT, reaching x +-2.06 and poisoning the
-          // fidelity width normalization — r11 gate-0 incident.)
-          // r12 (critic r11 order 2): the r11 hairline rim rings AA-diluted
-          // to p95 ~70 — they upgrade to the 1B-proven FOUR-TONE dish
-          // anatomy (broad pale dish face + dark break + pale mid + dark
-          // inner + pale hub, ~52% pale share so the certified med-56 window
-          // parity holds while the pale arcs print the ref's own 94-class
-          // wheel highlights). Faces ride 6 mm proud of the wheel discs,
-          // inside gearOut and the band width — silhouette/audit-free.
-          const wfR9 = c.wheelR ?? 0.39, wfY9 = wfR9 + 0.07;
-          const wfX9 = xc + Math.min(0.23, c.trackW * 0.37) / 2 + 0.006;
-          for (const wz9 of c.wheelZs) {
-            // (r12b: pale share trimmed 52% -> ~38% — the first cut lifted
-            // the window med +5 over the certified med-56 parity)
-            P.add('hullRunningGearDetail', KIT.cylX(wfR9 * 0.84, 0.012, 16), s * wfX9, wfY9, wz9);           // pale dish face
-            P.add('hullRunningGearDark', KIT.cylX(wfR9 * 0.62, 0.008, 14), s * (wfX9 + 0.004), wfY9, wz9);   // dark dish-break ring
-            P.add('hullRunningGearDetail', KIT.cylX(wfR9 * 0.50, 0.010, 12), s * (wfX9 + 0.007), wfY9, wz9); // pale mid dish
-            P.add('hullRunningGearDark', KIT.cylX(wfR9 * 0.34, 0.012, 10), s * (wfX9 + 0.011), wfY9, wz9);   // dark inner dish
-            P.add('hullRunningGearDetail', KIT.cylX(wfR9 * 0.15, 0.014, 8), s * (wfX9 + 0.015), wfY9, wz9);  // hub cap
+          if (sk.lowCurtain !== false) {
+            P.add('hullCloth', box(0.016, 0.045, 4.72),
+              s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.3975, -0.77);
+            P.add('hullRunningGearDark', box(0.016, 0.075, 4.72),
+              s * ((c.gearOut ?? hw - 0.036) - 0.012), 0.3375, -0.77);
           }
+          // Wheel-face anatomy belongs to buildRunningGear's instanced
+          // layers. Static cylinders here used to sit inside the real road
+          // wheels and remain parked while suspension moved underneath them.
         }
       }
       // Scallop tabs stay SHALLOW (hem dips ~8 cm below the plate line):
@@ -9855,7 +9840,7 @@ export const MERKAVA_PROFILES = {
       // wheels half-curtained (see the 3B skirt note for the safety laws)
       lobeBot: 0.782, lintelBot: 0.755,
       // r12 §B4: in-band walls clamp clear of both wraps (see 3B note).
-      wallClamp: { z0: 1.58, z1: -3.13 }, fillerClamp: { z0: 1.70, z1: -3.20 },
+      wallClamp: { z0: 1.58, z1: -3.13 }, fillerClamp: { z0: 1.70, z1: -3.20 }, runFiller: false,
       flareF: { len: 0.20, x: 1.8435, top: 1.35, bot: 1.27 },
       flareR: { z0: -3.47, z1: -3.87, x: 1.8435, top: 1.35, bot: 1.27 } },
     lipStrips: [
@@ -10079,7 +10064,8 @@ export const MERKAVA_PROFILES = {
       // rings; the idler flap steps 7 cm rearward off the wrap's rear face.
       // r12 order 2: fillerTop 0.30 drops the filler below the wheel-window
       // rows (the ref shows WHEELS there, not a curtain).
-      wallClamp: { z0: 1.58, z1: -3.14 }, fillerClamp: { z0: 1.70, z1: -3.28 }, idlerFlapDz: 0.42, fillerTop: 0.30,
+      wallClamp: { z0: 1.58, z1: -3.14 }, fillerClamp: { z0: 1.70, z1: -3.28 }, idlerFlapDz: 0.42,
+      fillerTop: 0.30, runFiller: false, lowCurtain: false,
       flareR: { z0: -3.46, z1: -3.81, x: 1.8435, top: 1.35, bot: 1.27 } },
     lipStrips: [
       { x: -1.8435, z0: 2.335, z1: 2.135, top: 1.35, bot: 1.27 },
@@ -10100,6 +10086,7 @@ export const MERKAVA_PROFILES = {
     // crest chamfer + glacis break + decal delete + pale sleeve rings +
     // readable arch wheels (ref arch rect p95 76 vs our 62).
     softGoods: true, rackX: true, noDecal: true, sleevePale: true, tailFitLit: true,
+    modernWheelFace: true,
     crestChamfer: 0.035, glacisBreak: true, wheelHex: 0x3d3d31,
     // r12 order 2: guide-horn/chain + shoe-pad layers lift toward the ref's
     // own >=45L arch-window gear floor (the fixed iron read sub-30 — the
