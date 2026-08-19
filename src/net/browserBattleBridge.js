@@ -307,11 +307,12 @@ export function createBrowserBattleBridge({
         // fired shell exactly like the local path.
         let muzzlePos = [event.x, event.y, event.z];
         let shellSpec = null;
+        let muzzleIndex = -1;
         if (shooter && shooter.visual && shooter.visual.recoilKick) {
           const shells = (shooter.spec && shooter.spec.gun && shooter.spec.gun.shells) || [];
           shellSpec = shells.find((s) => s.name === event.shellName)
             || shells.find((s) => s.type === event.shellType) || null;
-          const muzzleIndex = shooter.visual.recoilKick(
+          muzzleIndex = shooter.visual.recoilKick(
             0, shotRecoilScale(shooter.spec, shellSpec));
           // Twin-plant ids: the flash spawns at the firing barrel's tip
           // (the visual owns the alternation cursor here — the server's
@@ -329,6 +330,7 @@ export function createBrowserBattleBridge({
           shellName: event.shellName,
           weaponSound: event.weaponSound || shellSpec?.soundProfile
             || shooter?.spec?.gun?.soundProfile || null,
+          muzzleIndex,
           caliberMm: event.caliberMm,
           velocityMps: event.velocityMps,
           timeS: event.timeS,

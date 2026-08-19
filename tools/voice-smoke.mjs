@@ -196,6 +196,7 @@ try {
     window.__P.emit('phase:change', { phase: 'garage' });
     window.__P.emit('ui:battleStart', { specId: 'm1a2', mapId: null });
     window.__P.emit('phase:change', { phase: 'battle' });
+    window.__P.emit('battle:rollout', {});
   });
   await sleep(4200); // battle_start + audio.js's own on_the_move follow-up drain
 
@@ -212,7 +213,7 @@ try {
   await page.evaluate(() => window.__P.emit('player:reload', { t: 0, total: 7, done: true }));
   await sleep(2000);
   await page.evaluate(() => window.__P.emit('player:spotted', { timeS: window.__P.timeS() }));
-  await sleep(2000);
+  await sleep(6000); // 3 s fuse + full warning line before lower-priority shot result
   // player pen on the enemy — full payload so every shell:hit listener
   // (fx impact/decals need pos+normal, shot-info stats, hud damage number)
   // takes its real path.
@@ -228,6 +229,7 @@ try {
   // 4) battle END: victory result over the fanfare.
   await page.evaluate(() => window.__P.emit('battle:ended',
     { result: 'victory', timeS: window.__P.timeS(), map: 'debug' }));
+  await page.evaluate(() => window.__P.emit('battle:presented', { result: 'victory' }));
   await sleep(2600);
 
   const state = await page.evaluate(() => ({

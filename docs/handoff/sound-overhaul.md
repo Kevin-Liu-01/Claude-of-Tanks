@@ -1,33 +1,33 @@
-# Handoff — SOUND overhaul (2026-07-31)
+# Handoff — sound quality and routing audit (2026-08-18)
 
-The comprehensive sound system landed in `src/audio/audio.js` +
-`src/audio/voices.js` (see ARCHITECTURE.md §3.9 for the full contract, and
-`node tools/audio-probe.mjs` for the auditable verification gate — recordings
-under `shots/audio-probe/`). Everything hooks existing bus events; no
-emitter-side changes were made to in-flight files. Two OPTIONAL 1-line
-emitter patches would unlock deferred polish, for whoever owns those files:
+The current contract lives in `docs/ARCHITECTURE.md` §3.9. The audit removed
+the old 120/140 m remote-engine cutoff, made the occupied vehicle explicit in
+listener state, and added a scoped interior/headset mix that preserves level
+while reducing exposed track and muzzle high frequencies. The occupied engine
+is always retained; up to the nine nearest remote engines use 900/1000 m range
+hysteresis and monotonic distance gain/filtering. One-shots use the same wider
+battlefield distance curve and remain measurable at 900 m.
 
-1. **Garage tank-switch servo/clunk** (owner asked for "tank-switch
-   servo/clunk"): `src/ui/garage.js` selection handler currently emits only
-   the generic `ui:click`. Add alongside it:
-   `emit('ui:tankSelect', { specId });`
-   — then `src/audio/audio.js` `bindBus` can hook `ui:tankSelect` for a
-   dedicated hydraulic clunk (audio-side handler is a 5-minute add; ping the
-   SOUND agent or copy the `battleHorn()` wiring pattern).
+Canonical audio routing now covers shell reports and impacts, terrain expiry,
+tank destruction/fire, blocked-drive impact, tank-on-tank ram, prop crush,
+module state, reload, spotting, phase/result, and killcam events. Networked
+shell reports preserve the authoritative muzzle index and muzzle position.
+Leaving battle tears down world loops; killcam ducking is applied before its
+first impact rather than waiting for the next frame.
 
-2. **Sniper-view fire mix variant**: the player's shots already get a
-   distinct mechanical layer (breech clank + brass). A per-mode mix (drier
-   crack in sniper view) needs one extra field on the frame call in
-   `src/main.js` step 8: `audio.update(dtR, _listenerPose, game.tanks)` →
-   pass `rig.mode === 'SNIPER'` as a 4th arg (audio.update signature is
-   backward-compatible; unknown args ignored today).
+Verification is split by failure domain:
 
-Also noted while probing (NOT audio, pre-existing on this tree): unhandled
-`TypeError ... reading '_x'` in `src/vehicles/tankFactory.js:3875
-syncFromState` (wheel-spin quaternion on a mid-swap rigid gear) spams the
-console during battles — it is quarantined in tools/audio-probe.mjs's console
-gate so the audio assertions stay meaningful; the tank-model owner should
-clear it, after which the quarantine regex can be deleted.
+- `node src/audio/audioTiming.selftest.mjs` — pure distance, perspective,
+  scheduling, and weapon-report contracts.
+- `node tools/audio-spatial-killcam-probe.mjs` — real browser PCM for own tank,
+  scope, remote distance matrices, engines, ram, killcam, and phase cleanup.
+- `node tools/audio-probe.mjs` — recorded canonical event, voice, bus-slider,
+  clipping, and live-mix matrix under `shots/audio-probe/`.
+- `node tools/sfx-smoke.mjs` — baked layers, bass, volleys, and clipping.
+- `node tools/voice-smoke.mjs` — production event gates and radio scheduling.
+- `node tools/make-sfx.mjs --verify` and
+  `node tools/make-voices.mjs --verify` — asset loudness, peak, duration, and
+  payload budgets.
 
-Countdown ticks were in the original sound spec but the game has no
-pre-battle countdown mechanic — N/A until such a mechanic exists.
+The visible countdown culminates in the `battle:rollout` horn and radio call;
+there is no separate per-number tick in the current mix.

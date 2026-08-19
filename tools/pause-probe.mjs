@@ -170,7 +170,11 @@ try {
   }
   check('BATTLE click enters battle', phase === 'battle', `phase=${phase}`);
   if (phase !== 'battle') throw new Error('no battle — aborting');
-  await sleep(3800); // battle-open flyby
+  // Player entry now holds the simulation behind a visible five-second
+  // countdown. Pause semantics begin at rollout, not while the roster is
+  // intentionally frozen.
+  await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0', { timeout: 12000 });
+  await sleep(600); // first live simulation beats after rollout
 
   // audio context + pointer lock via a real canvas click (the gesture path)
   await page.mouse.click(Math.round(width / 2), Math.round(height * 0.55));
@@ -298,9 +302,8 @@ try {
   try {
     await page.waitForFunction(
       () => window.__DEBUG.game.result === 'victory' &&
-        (document.querySelector('.cot-end') || {}).style &&
-        document.querySelector('.cot-end').style.display !== 'none',
-      { timeout: 8000 });
+        document.querySelector('.cot-es')?.classList.contains('show'),
+      { timeout: 20000 });
     endUp = true;
   } catch (_) { /* fall through to the check */ }
   check('end overlay shows after victory', endUp);

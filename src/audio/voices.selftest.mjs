@@ -83,6 +83,13 @@ try {
   ctx.advance(4.2); radio.update();
   assert.equal(radio.log.at(-1).id, 'enemy_crit', 'newer same-moment shot report replaces the queued generic one');
 
+  const genericResultSrc = ctx.sources.at(-1);
+  ctx.advance(4.3);
+  radio.say('target_destroyed', { delayS: 0.22 });
+  ctx.advance(4.52); radio.update();
+  assert.equal(genericResultSrc.active, false, 'confirmed kill cuts an older generic shot report');
+  assert.equal(radio.log.at(-1).id, 'target_destroyed', 'confirmed kill is not lost behind combat chatter');
+
   ctx.advance(6);
   const beforeStale = radio.log.length;
   radio.say('enemy_spotted', { delayS: 1 });
@@ -111,7 +118,7 @@ try {
   radio.cancelPending([], true);
   assert.equal(obsoleteActive.active, false, 'battle end can stop active obsolete chatter');
 
-  console.log('voices.selftest: scheduler timing, priority, staleness, rotation, and non-overlap passed');
+  console.log('voices.selftest: scheduler timing, priority, kill confirmation, staleness, rotation, and non-overlap passed');
 } finally {
   globalThis.fetch = originalFetch;
 }

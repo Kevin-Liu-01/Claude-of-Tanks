@@ -8,6 +8,7 @@
 // under shots/audio-probe/ so the mix can be listened to, and asserts:
 //   - zero page console errors
 //   - no digital clipping (peak < 0 dBFS on every capture; warn above -1)
+//   - every canonical combat event reaches its intended audio route
 //   - crew voice lines actually trigger on their events (voiceLog)
 //   - channel buses respond to the settings mix (combat/voice sliders)
 // Exit 0 = green. Shares the FIFO capture lock with tools/screenshot.mjs so
@@ -297,9 +298,11 @@ try {
   // Shell into dirt (shell:expired terrain path — was silent pre-overhaul).
   await emit('shell:expired', `{shellId:9007, pos:window.__P.pos(6,-2,24), hitTerrain:true}`);
   await sleep(900);
-  // Ram crunch + sapling crush + track snap.
+  // Terrain impact + tank-on-tank ram + sapling crush + track snap.
   await emit('tank:impact', `{id:window.__P.playerId, specId:'m1a2', isPlayer:true, speedMps:9.5, pos:window.__P.pos(2,-1,4)}`);
   await sleep(900);
+  await emit('tank:ram', `{aId:window.__P.playerId, bId:window.__P.enemyId, aIsPlayer:true, bIsPlayer:false, closingMps:8.5, dmgA:42, dmgB:75, pos:window.__P.pos(-2,-1,5)}`);
+  await sleep(1000);
   await emit('prop:crushed', `{id:window.__P.playerId, specId:'m1a2', isPlayer:true, speedMps:6, kind:'tree', h:7, pos:window.__P.pos(3,-2,5), dir:[0,0,1]}`);
   await sleep(1000);
   await emit('module:state', `{id:window.__P.enemyId, module:'trackR', state:'red'}`);
@@ -313,8 +316,11 @@ try {
   // Freeze the sim and let earlier combat chatter drain. Without this clean
   // window, live bot calls can legitimately pre-empt the lower-priority
   // enemy-spotted/track lines and make the trigger gate nondeterministic.
-  await page.evaluate(() => { window.__DEBUG.game.preBattleS = 999; });
-  await sleep(4000);
+  await page.evaluate(() => {
+    window.__DEBUG.game.preBattleS = 999;
+    window.__COT_AUDIO.clearVoiceQueue();
+  });
+  await sleep(500);
   await tapStart();
   await sleep(200);
   await emit('tank:spotted', `{id:window.__P.enemyId, team:'player', timeS:1, spotterId:window.__P.playerId}`);
@@ -411,6 +417,21 @@ try {
   await sleep(12000);
   await page.evaluate(() => { window.__DEBUG.flags.forceFire = false; });
   capReport('battle-mix', await tapStopAndFetch());
+
+  // ---- canonical gameplay event route assertions ---------------------------
+  const soundLog = await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type));
+  const mustRoute = ['shell:fired', 'shell:hit', 'shell:expired', 'tank:impact',
+    'tank:ram', 'prop:crushed', 'tank:destroyed', 'tank:fire'];
+  const missingRoutes = mustRoute.filter((type) => !soundLog.includes(type));
+  report.routes = {
+    fired: [...new Set(soundLog)],
+    missing: missingRoutes,
+  };
+  if (missingRoutes.length) {
+    failed = true;
+    report.errors.push(`gameplay events missed audio routes: ${missingRoutes.join(', ')}`);
+  }
+  console.log(`[audio-probe] sound routes fired: ${[...new Set(soundLog)].join(', ') || '(none)'}`);
 
   // ---- voice trigger assertions ----------------------------------------------
   const voiceLog = await page.evaluate(() => window.__COT_AUDIO.voiceLog.map((v) => v.id));

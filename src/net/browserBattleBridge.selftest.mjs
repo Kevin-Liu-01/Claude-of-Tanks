@@ -36,6 +36,8 @@ function fakeVisual(_specId, _engineCtx, opts) {
       this.syncs++;
       this.root.position.copy(state.pos);
     },
+    recoilKick() { return 1; },
+    gunMuzzleWorld(out, muzzleIndex) { return out.set(20 + muzzleIndex, 3, -8); },
     dispose() {},
   };
   visuals.push(visual);
@@ -94,6 +96,19 @@ snapshot.entities[1].z++;
 bridge.apply(snapshot);
 assert.deepEqual(visuals.map((visual) => visual.syncs), [1, 1],
   'subsequent snapshots leave visual sync ownership to the render loop');
+
+snapshot.tick++;
+bridge.apply(snapshot, 1 / 60, [{
+  type: 'shell_fired', shellId: 77, shooterId: 'host',
+  shellType: 'APFSDS', shellName: 'M829A3', caliberMm: 120,
+  velocityMps: 1650, timeS: 1, x: 142, y: 2, z: -73,
+  dx: 0, dy: 0, dz: 1,
+}]);
+const fired = busEvents.findLast((event) => event.type === 'shell:fired');
+assert.equal(fired?.payload?.muzzleIndex, 1,
+  'network shell audio receives the same twin-barrel index as recoil and flash');
+assert.deepEqual(fired?.payload?.muzzlePos, [21, 3, -8],
+  'network shell audio originates from the selected muzzle tip');
 
 assert.equal(bridge.endDisconnected(), true, 'an interrupted match resolves once');
 assert.equal(game.result, 'draw');

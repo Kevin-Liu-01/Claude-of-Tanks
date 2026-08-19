@@ -3284,7 +3284,9 @@ const camInput = {
   autoAimPoint: null,
 };
 const _cursorNdc = { x: 0, y: 0 };
-const _listenerPose = { pos: null, forward: _fwd, kind: 'camera' }; // reused — no per-frame literal
+const _listenerPose = {
+  pos: null, forward: _fwd, kind: 'camera', ownerId: null, scoped: false,
+}; // reused — no per-frame literal
 let simAcc = 0;
 let lastMs = -1;
 // PAUSE (owner: "pause mid game if u press escape"): live-battle pause
@@ -3828,9 +3830,13 @@ function tick(nowMs) {
       ? audioEnt.spec.dims.heightM * 0.68 : 1.6);
     _listenerPose.pos = _audioPos;
     _listenerPose.kind = killcam.spectate.active ? 'spectated-tank' : 'player-tank';
+    _listenerPose.ownerId = audioEnt.id;
+    _listenerPose.scoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
   } else {
     _listenerPose.pos = camera.position;
     _listenerPose.kind = kcActive || killcam.isActive() ? 'killcam-camera' : 'camera';
+    _listenerPose.ownerId = null;
+    _listenerPose.scoped = false;
   }
   audio.update(dtR, _listenerPose, game.tanks);
 

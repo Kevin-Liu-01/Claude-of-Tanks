@@ -17,8 +17,9 @@
  * hardware.
  *
  * Contract: ARCHITECTURE.md §3.9.
- *   - distance gain  = clamp(18/dist, 0, 1)^1.65 (tank-death explosions — the
- *     biggest sound in the game — carry further: clamp(26/dist,0,1)^1.6)
+ *   - distance gain  = clamp(22/dist, 0, 1)^1.5 plus distance lowpass
+ *     (tank-death explosions — the biggest sound in the game — carry further:
+ *     clamp(26/dist,0,1)^1.6)
  *   - equal-power stereo pan from listener-relative azimuth (StereoPannerNode)
  *   - max ~24 simultaneous one-shot voices, steal oldest
  *   - bus graph: {combat, cinematic, engine, ambience, ui, voice} → compressor →
@@ -44,7 +45,7 @@
  *   - combat one-shots (gunfire by caliber class, penetration clang, ricochet
  *     zing variants, HE / destruction, track snap, dirt splash)  → sfxBus
  *   - slowed kill-cam destruction replay                       → cinematicBus
- *   - engine loops (UNTOUCHED diesel/turbine character), turret-traverse whir,
+ *   - engine loops (diesel/turbine character), turret-traverse whir,
  *     suspension landing thumps                                   → engineBus
  *   - wind/birds battle bed, garage workshop room tone            → ambientBus
  *   - UI ticks, battle horn, kill sting, result fanfares, sting   → musicBus
@@ -84,15 +85,59 @@ export function safeAudioStart(now, scheduled, leadS = 0.001) {
 
 const MAX_VOICES = 24;
 const SPEED_OF_SOUND_MPS = 340;
-// SOUND r3: the former (10/d)^2 curve lost 96% of a neighboring tank at
-// 50 m, before channel/master gain. The wider reference and gentler rolloff
-// keep nearby engines, tracks and cannon reports present while distance LPF,
-// propagation delay and the voice cap preserve depth/headroom.
-const WORLD_REF_M = 18;
-const WORLD_ROLLOFF = 1.65;
-const ENGINE_HEAR_IN_M = 120;   // start an engine loop when a tank comes this close
-const ENGINE_HEAR_OUT_M = 140;  // stop it when it drifts beyond this (hysteresis)
-const MAX_ENGINE_VOICES = 8;
+// The battlefield must retain an audible horizon. Distance still lowers and
+// darkens sources aggressively, but it must not hard-mute a tank just beyond
+// brawling range. The old 18 m / 1.65 curve plus a 140 m engine cutoff made
+// most of a 7v7 battle disappear from the mix.
+export const AUDIO_DISTANCE_MODEL = Object.freeze({
+  referenceM: 22,
+  rolloff: 1.5,
+  engineHearInM: 900,
+  engineHearOutM: 1000,
+  maxEngineVoices: 10,
+  activeEngineBiasM: 24,
+});
+
+export const AUDIO_PERSPECTIVE_MIX = Object.freeze({
+  arcade: Object.freeze({
+    engineGain: 1,
+    engineCutoffHz: 18000,
+    enginePanScale: 1,
+    cannonGain: 1,
+    cannonDistanceBiasM: 0,
+  }),
+  // The gunner's sight is an interior/headset perspective: pressure and
+  // machinery remain strong, while exposed track hiss and muzzle crack are
+  // filtered and centered. Scope must never behave like a volume mute.
+  sniper: Object.freeze({
+    engineGain: 1.18,
+    engineCutoffHz: 650,
+    enginePanScale: 0.15,
+    cannonGain: 0.98,
+    cannonDistanceBiasM: 220,
+  }),
+});
+
+export function worldDistanceGain(distanceM) {
+  const d = Math.max(0.5, Number(distanceM) || 0.5);
+  const g = Math.min(AUDIO_DISTANCE_MODEL.referenceM / d, 1);
+  return Math.pow(g, AUDIO_DISTANCE_MODEL.rolloff);
+}
+
+export function distanceLowpassHz(distanceM) {
+  const d = Math.max(0, Number(distanceM) || 0);
+  return Math.max(450, Math.min(18000, 18000 * (40 / (40 + d))));
+}
+
+export function engineAudibleAtDistance(distanceM, alreadyActive = false) {
+  if (!Number.isFinite(distanceM)) return false;
+  const limit = alreadyActive
+    ? AUDIO_DISTANCE_MODEL.engineHearOutM
+    : AUDIO_DISTANCE_MODEL.engineHearInM;
+  return distanceM <= limit;
+}
+
+const MAX_ENGINE_VOICES = AUDIO_DISTANCE_MODEL.maxEngineVoices;
 const MIN_WHIZZ_SPEED_MPS = 300;
 const WHIZZ_MAX_MISS_M = 15;
 const LANDING_VY_MPS = 2.8;     // downward speed that reads as a hard landing
@@ -244,6 +289,8 @@ export function createAudio() {
   let lfx = 0, lfz = 1;         // forward (XZ, normalized-ish)
   let listenerValid = false;
   let listenerKind = 'camera';
+  let listenerOwnerId = null;
+  let listenerScoped = false;
 
   // Game context tracked listener-side (NO new emitter-side hooks needed):
   // player identity comes from update(tanks); phase from 'phase:change'.
@@ -258,6 +305,12 @@ export function createAudio() {
   const voices = [];
   /** tankId -> engine loop voice */
   const engines = new Map();
+  // Reused nearest-emitter ranking. The cap protects CPU/headroom; ranking
+  // guarantees it is the nearest battlefield, not roster order, that wins.
+  const engineCandidates = new Array(MAX_ENGINE_VOICES).fill(null);
+  const engineCandidateScore = new Float64Array(MAX_ENGINE_VOICES);
+  let engineCandidateCount = 0;
+  let probeEngineSoloId = null; // verification-only filter, set via __COT_AUDIO
   /** tankId -> burning-fire loop */
   const fireLoops = new Map();
   /** tankId -> {prevY, vy, lastThumpT} suspension landing tracker */
@@ -279,6 +332,13 @@ export function createAudio() {
   let reloadCalled = false;
   let lowHpCalled = false;
   let _uiVolEvents = 0;   // debug: ui:volumes deliveries (tools/audio-probe.mjs)
+  const soundLog = [];
+  let soundSeq = 0;
+
+  function logSound(type, data = null) {
+    soundLog.push({ seq: ++soundSeq, t: ctx ? ctx.currentTime : 0, type, ...(data || {}) });
+    if (soundLog.length > 256) soundLog.shift();
+  }
 
   // ---------------------------------------------------------------- graph ---
 
@@ -437,8 +497,7 @@ export function createAudio() {
     const dx = x - lx, dy = y - ly, dz = z - lz;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     _sp.dist = d < 0.5 ? 0.5 : d;
-    const g = Math.min(WORLD_REF_M / _sp.dist, 1);
-    _sp.gain = Math.pow(g, WORLD_ROLLOFF);
+    _sp.gain = worldDistanceGain(_sp.dist);
     if (d > 0.001) {
       // rightAxis of listener forward (fx,0,fz) is (fz, 0, -fx) — §1.1 convention.
       const lateral = (dx * lfz - dz * lfx) / d;
@@ -531,8 +590,7 @@ export function createAudio() {
 
   /** Air-absorption lowpass by distance (bright at 0 m, muffled far away). */
   function distLowpass(dist) {
-    const cutoff = Math.max(450, Math.min(18000, 18000 * (40 / (40 + dist))));
-    return flt('lowpass', cutoff, 0.5);
+    return flt('lowpass', distanceLowpassHz(dist), 0.5);
   }
 
   /** Propagation delay for far events (capped so nothing feels broken). */
@@ -634,19 +692,23 @@ export function createAudio() {
    */
   function bakedGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
     const s = spat(x, y, z);
-    if (s.gain < 0.0015) return;
+    if (s.gain < 0.00075) return;
     const report = resolveWeaponReportProfile(profileId);
+    const perspective = isPlayer && listenerScoped
+      ? AUDIO_PERSPECTIVE_MIX.sniper
+      : AUDIO_PERSPECTIVE_MIX.arcade;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'large' : caliberMm > 76 ? 'medium' : 'small';
-    const shotGain = s.gain * (isPlayer ? 1.15 : 1) * report.gain;
+    const shotGain = s.gain * (isPlayer ? 1.15 : 1) * report.gain * perspective.cannonGain;
     // Layer model: crack dies toward 180 m, sub keeps a floor (distant guns
     // still thump), tail always rides — thunder is what distance leaves.
     const crackK = Math.max(0, Math.min(1, 1 - (s.dist - 45) / 135));
     const subK = isPlayer ? 1.3 : 0.72 + 0.28 * crackK;
     const tailBuf = sfxBufs.get(`fire_${cls}_tail`);
     const life = (tailBuf ? tailBuf.duration / 0.95 : 2.6) + 0.25 + (isPlayer ? 1.0 : 0);
-    const v = spawnVoice(when, life, shotGain, s.pan, sfxBus);
-    const lp = distLowpass(s.dist);
+    const v = spawnVoice(when, life, shotGain,
+      s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
+    const lp = distLowpass(s.dist + (isPlayer ? perspective.cannonDistanceBiasM : 0));
     lp.connect(v.in);
     sampleLayer(v, `fire_${cls}_sub`, when, subK, jitterRate() * report.rate, lp);
     if (crackK > 0.02) {
@@ -681,7 +743,7 @@ export function createAudio() {
         for (let i = 0; i < 3; i++) {
           const at = tBr + i * (0.05 + rng() * 0.05);
           wire(v, osrc(v, 'triangle', 3400 + rng() * 1600, at, 0.09),
-            env(at, 0.001, 0.05 - i * 0.011, 0.07));
+            env(at, 0.001, 0.05 - i * 0.011, 0.07), lp);
         }
       }
     }
@@ -855,11 +917,15 @@ export function createAudio() {
   /** Guided-weapon motor: launch thump, ignition tone and pressure hiss. */
   function missileLaunch(x, y, z, isPlayer, report, muzzleIndex = -1) {
     const s = spat(x, y, z);
-    if (s.gain < 0.0015) return;
+    if (s.gain < 0.00075) return;
+    const perspective = isPlayer && listenerScoped
+      ? AUDIO_PERSPECTIVE_MIX.sniper
+      : AUDIO_PERSPECTIVE_MIX.arcade;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const v = spawnVoice(when, report.durationS + 0.25,
-      s.gain * report.gain * (isPlayer ? 1.08 : 1), s.pan, sfxBus);
-    const lp = distLowpass(s.dist + 25);
+      s.gain * report.gain * (isPlayer ? 1.08 : 1) * perspective.cannonGain,
+      s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
+    const lp = distLowpass(s.dist + 25 + (isPlayer ? perspective.cannonDistanceBiasM : 0));
     lp.connect(v.in);
     wire(v, nsrc(v, when, 0.09), flt('lowpass', 520, 0.8),
       env(when, 0.002, 0.52, 0.07), lp);
@@ -900,14 +966,18 @@ export function createAudio() {
    */
   function synthGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
     const s = spat(x, y, z);
-    if (s.gain < 0.0015) return;
+    if (s.gain < 0.00075) return;
     const report = resolveWeaponReportProfile(profileId);
+    const perspective = isPlayer && listenerScoped
+      ? AUDIO_PERSPECTIVE_MIX.sniper
+      : AUDIO_PERSPECTIVE_MIX.arcade;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'heavy' : caliberMm > 76 ? 'medium' : 'light';
     const dur = { light: 0.55, medium: 1.0, heavy: 1.7, huge: 2.6 }[cls];
     const v = spawnVoice(when, dur + (isPlayer ? 1.0 : 0),
-      s.gain * (isPlayer ? 1.08 : 1) * report.gain, s.pan, sfxBus);
-    const lp = distLowpass(s.dist);
+      s.gain * (isPlayer ? 1.08 : 1) * report.gain * perspective.cannonGain,
+      s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
+    const lp = distLowpass(s.dist + (isPlayer ? perspective.cannonDistanceBiasM : 0));
     const src = ctx.createBufferSource();
     src.buffer = gunBufs[cls];
     src.playbackRate.value = (0.94 + rng() * 0.12) * report.rate;
@@ -943,7 +1013,7 @@ export function createAudio() {
         for (let i = 0; i < 3; i++) {
           const at = tBr + i * (0.05 + rng() * 0.05);
           wire(v, osrc(v, 'triangle', 3400 + rng() * 1600, at, 0.09),
-            env(at, 0.001, 0.055 - i * 0.012, 0.07));
+            env(at, 0.001, 0.055 - i * 0.012, 0.07), lp);
         }
       }
     }
@@ -977,6 +1047,52 @@ export function createAudio() {
       wire(v, nsrc(v, when + 0.05, 0.35, 1, crackleBuf), flt('bandpass', 900, 1.4),
         env(when + 0.05, 0.01, 0.35 * k, 0.3), lp);
     }
+    logSound('tank:impact', { id: e.id, dist: s.dist, gain: s.gain, speedMps: e.speedMps });
+  }
+
+  /** Tank-on-tank collision. This is a distinct replicated event from a hull
+   * touching scenery, and needs plate crush plus an interior hit for either
+   * locally occupied participant. */
+  function onTankRam(e) {
+    if (!e || !e.pos) return;
+    const s = spat(e.pos[0], e.pos[1], e.pos[2]);
+    const closing = Math.max(0, Number(e.closingMps) || 0);
+    const damage = Math.max(Number(e.dmgA) || 0, Number(e.dmgB) || 0);
+    const k = Math.max(0.25, Math.min(1, closing / 11 + damage / 900));
+    if (s.gain * k < 0.0012) return;
+    const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
+    const v = spawnVoice(when, 1.15, s.gain * (0.58 + 0.42 * k), s.pan, sfxBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    // Initial hull/body collision.
+    wire(v, nsrc(v, when, 0.16), flt('lowpass', 360, 0.8),
+      env(when, 0.002, 1.0, 0.13), lp);
+    wire(v, osrc(v, 'triangle', 72 + 46 * k, when, 0.42),
+      env(when, 0.002, 0.72, 0.34), lp);
+    // Plate fold and track/gear scatter after the body hit.
+    wire(v, nsrc(v, when + 0.025, 0.62, 0.82),
+      flt('bandpass', 520 + 260 * k, 4.8),
+      env(when + 0.025, 0.01, 0.48, 0.52), lp);
+    wire(v, nsrc(v, when + 0.045, 0.75, 1, crackleBuf),
+      flt('bandpass', 1180, 1.2),
+      env(when + 0.045, 0.008, 0.42, 0.64), lp);
+
+    const occupied = !!(e.aIsPlayer || e.bIsPlayer ||
+      (listenerOwnerId != null && (e.aId === listenerOwnerId || e.bId === listenerOwnerId)));
+    if (occupied) {
+      if (sfxReady) {
+        hitWhump(0.55 + 0.45 * k);
+      } else {
+        const cabin = spawnVoice(when + 0.008, 0.65, 0.55 + 0.35 * k, 0, sfxBus);
+        wire(cabin, nsrc(cabin, when + 0.008, 0.24), flt('lowpass', 280, 0.8),
+          env(when + 0.008, 0.002, 0.8, 0.2));
+        wire(cabin, osrc(cabin, 'sine', 54, when + 0.008, 0.38),
+          env(when + 0.008, 0.002, 0.55, 0.31));
+      }
+    }
+    logSound('tank:ram', {
+      aId: e.aId, bId: e.bId, occupied, dist: s.dist, gain: s.gain, closingMps: closing,
+    });
   }
 
   /** gameplay_feel r6: sapling/trunk crush under a hull — sharp wood crack,
@@ -991,6 +1107,7 @@ export function createAudio() {
     wire(v, nsrc(v, when, 0.05), flt('bandpass', 950, 1.3), env(when, 0.001, 0.9, 0.045), lp);
     wire(v, osrc(v, 'triangle', 92, when, 0.2), env(when, 0.002, 0.55, 0.16), lp);
     wire(v, nsrc(v, when, 0.38), flt('lowpass', 1500, 0.8), env(when, 0.012, 0.4, 0.32), lp);
+    logSound('prop:crushed', { id: e.id, kind: e.kind, dist: s.dist, gain: s.gain });
   }
 
   /**
@@ -1526,6 +1643,18 @@ export function createAudio() {
     fireLoops.delete(id);
   }
 
+  function stopWorldLoops(reason) {
+    for (const [id, eng] of engines) {
+      eng.kill();
+      logSound('engine:stop', { id, reason });
+    }
+    engines.clear();
+    landing.clear();
+    for (const fire of fireLoops.values()) fire.kill();
+    fireLoops.clear();
+    probeEngineSoloId = null;
+  }
+
   // ---------------------------------------------------------------- alarms ---
 
   /** Two-tone fire klaxon while the PLAYER burns (voice bus — crew compartment). */
@@ -1604,8 +1733,9 @@ export function createAudio() {
     const f0 = isTurbine ? 58 : modern ? 50 : 41;   // fundamental at idle pitch 1.0
 
     const out = ctx.createGain(); out.gain.value = 0;
+    const rangeLp = flt('lowpass', 18000, 0.5);
     const pan = ctx.createStereoPanner();
-    out.connect(pan); pan.connect(engineBus);
+    out.connect(rangeLp); rangeLp.connect(pan); pan.connect(engineBus);
     const now = ctx.currentTime;
 
     // Twin detuned saws — the mechanical growl.
@@ -1660,9 +1790,15 @@ export function createAudio() {
 
     const topMps = Math.max(1, ((entity.spec && entity.spec.topSpeedKmh) || 40) / 3.6);
 
-    return {
-      out, pan,
-      update(ent) {
+    const voice = {
+      out, pan, rangeLp,
+      id: entity.id,
+      lastDist: Infinity,
+      lastGain: 0,
+      lastCutoffHz: 18000,
+      own: false,
+      scoped: false,
+      update(ent, isOwn, scoped) {
         const t = ctx.currentTime;
         const spd = Math.abs(ent.state.speed);
         const frac = Math.min(1, spd / topMps);
@@ -1687,10 +1823,22 @@ export function createAudio() {
 
         const pos = ent.state.pos;
         const s = spat(pos.x, pos.y, pos.z);
+        const perspective = isOwn && scoped
+          ? AUDIO_PERSPECTIVE_MIX.sniper
+          : AUDIO_PERSPECTIVE_MIX.arcade;
         gNoi.gain.setTargetAtTime((isTurbine ? 0.3 : 0.22) + demand * 0.12, t, 0.055);
         const load = 0.44 + 0.30 * frac + 0.26 * demand;
-        out.gain.setTargetAtTime(s.gain * load, t, 0.1);
-        pan.pan.setTargetAtTime(s.pan, t, 0.1);
+        const gain = s.gain * load * (isOwn ? perspective.engineGain : 1);
+        const cutoff = Math.min(distanceLowpassHz(s.dist),
+          isOwn ? perspective.engineCutoffHz : 18000);
+        out.gain.setTargetAtTime(gain, t, 0.1);
+        rangeLp.frequency.setTargetAtTime(cutoff, t, 0.08);
+        pan.pan.setTargetAtTime(s.pan * (isOwn ? perspective.enginePanScale : 1), t, 0.1);
+        voice.lastDist = s.dist;
+        voice.lastGain = gain;
+        voice.lastCutoffHz = cutoff;
+        voice.own = !!isOwn;
+        voice.scoped = !!(isOwn && scoped);
         return s.dist;
       },
       kill() {
@@ -1698,9 +1846,12 @@ export function createAudio() {
         out.gain.setTargetAtTime(0, t, 0.1);
         const all = [sawA, sawB, sub, wob, noi, sq, sqLfo, clat, tur];
         for (const n of all) { if (n) { try { n.stop(t + 0.4); } catch (_) { /* stopped */ } } }
-        sawA.onended = () => { try { out.disconnect(); pan.disconnect(); } catch (_) { /* detached */ } };
+        sawA.onended = () => {
+          try { out.disconnect(); rangeLp.disconnect(); pan.disconnect(); } catch (_) { /* detached */ }
+        };
       },
     };
+    return voice;
   }
 
   // ------------------------------------------------------ turret traverse ---
@@ -1736,17 +1887,18 @@ export function createAudio() {
 
     let lastPitch = null;
     return {
-      update(ent, dt) {
+      update(ent, dt, scoped) {
         const t = ctx.currentTime;
+        const cabinK = scoped ? 1.18 : 1;
         const rate = Math.min(1, Math.abs(ent.state.turretYawRate || 0) / TRAVERSE_RATE_FULL);
-        gMotor.gain.setTargetAtTime(rate * 0.085, t, 0.06);
-        gGear.gain.setTargetAtTime(rate * 0.075, t, 0.06);
-        amG.gain.setTargetAtTime(rate * 0.03, t, 0.06);
+        gMotor.gain.setTargetAtTime(rate * 0.085 * cabinK, t, 0.06);
+        gGear.gain.setTargetAtTime(rate * 0.075 * cabinK, t, 0.06);
+        amG.gain.setTargetAtTime(rate * 0.03 * cabinK, t, 0.06);
         motor.frequency.setTargetAtTime(84 * (0.9 + 0.35 * rate), t, 0.08);
         const pitch = ent.state.gunPitch || 0;
         if (lastPitch != null && dt > 0.0001) {
           const pr = Math.min(1, Math.abs(pitch - lastPitch) / dt / 0.35);
-          gServo.gain.setTargetAtTime(pr > 0.06 ? pr * 0.045 : 0, t, 0.05);
+          gServo.gain.setTargetAtTime(pr > 0.06 ? pr * 0.045 * cabinK : 0, t, 0.05);
         }
         lastPitch = pitch;
       },
@@ -1941,10 +2093,20 @@ export function createAudio() {
 
   function onShellFired(e) {
     const mp = e.muzzlePos;
-    gunshot(mp[0], mp[1], mp[2], e.caliberMm, !!e.isPlayer,
+    const ownShot = listenerOwnerId != null
+      ? e.shooterId === listenerOwnerId
+      : !!e.isPlayer;
+    const s = spat(mp[0], mp[1], mp[2]);
+    const dist = s.dist, gain = s.gain;
+    gunshot(mp[0], mp[1], mp[2], e.caliberMm, ownShot,
       e.weaponSound, e.muzzleIndex);
-    if (!e.isPlayer) scheduleWhizz(e);
-    else radio.say('firing', { prob: 0.18, delayS: 0.08 });
+    if (!ownShot) scheduleWhizz(e);
+    if (e.isPlayer) radio.say('firing', { prob: 0.18, delayS: 0.08 });
+    logSound('shell:fired', {
+      id: e.shellId, shooterId: e.shooterId, own: ownShot,
+      scoped: ownShot && listenerScoped, caliberMm: e.caliberMm,
+      report: resolveWeaponReportProfile(e.weaponSound).kind, dist, gain,
+    });
   }
 
   const CREW_DAMAGE_CALL = {
@@ -1981,7 +2143,8 @@ export function createAudio() {
     // Receiving-end feel (COMBAT-SFX r2): a damaging hit on the PLAYER adds
     // an interior low whump + rumble under the impact sound. Deflections
     // deliberately get NONE — a bounce must feel like relief, not damage.
-    const playerHit = playerId != null && e.targetId === playerId;
+    const playerHit = (listenerOwnerId != null && e.targetId === listenerOwnerId) ||
+      (listenerOwnerId == null && playerId != null && e.targetId === playerId);
     switch (e.kind) {
       case 'pen':
         clang(p[0], p[1], p[2], playerHit && (e.damage || 0) > 0 ? 1 : 0);
@@ -2013,6 +2176,10 @@ export function createAudio() {
       default:
         break;
     }
+    logSound('shell:hit', {
+      id: e.shellId, kind: e.kind, targetId: e.targetId,
+      attackerId: e.attackerId, occupied: playerHit, damage: e.damage || 0,
+    });
     // Voice director — exactly one report per resolved shell. Incoming damage
     // chooses the most actionable crew/module consequence; outgoing fire
     // reports the final result only after the impact is known.
@@ -2064,6 +2231,10 @@ export function createAudio() {
       killSting();
       radio.say('target_destroyed', { delayS: 0.22 });
     }
+    logSound('tank:destroyed', {
+      id: e.id, killerId: e.killerId, cause: e.cause || 'shot',
+      occupied: e.id === listenerOwnerId,
+    });
   }
 
   /** Player module damage/repair → alarms + crew calls (edge-triggered). */
@@ -2136,7 +2307,10 @@ export function createAudio() {
     // Shells that terminate in the world (dirt/rubble) were silent before the
     // SOUND overhaul — fx already keyed off this event, audio now does too.
     bus.on('shell:expired', (e) => {
-      if (ctx && e && e.hitTerrain && e.pos) dirtImpact(e.pos[0], e.pos[1], e.pos[2]);
+      if (ctx && e && e.hitTerrain && e.pos) {
+        dirtImpact(e.pos[0], e.pos[1], e.pos[2]);
+        logSound('shell:expired', { id: e.shellId, hitTerrain: true });
+      }
     });
     bus.on('player:reload', (e) => {
       if (!ctx || !e || phase !== 'battle' || battleOver) return;
@@ -2155,10 +2329,12 @@ export function createAudio() {
     // gameplay_feel r2: blocked-drive collision feedback (state.js emits once
     // per genuine hit, 5.4 km/h closing-speed floor)
     bus.on('tank:impact', (e) => { if (ctx) onTankImpact(e); });
+    bus.on('tank:ram', (e) => { if (ctx) onTankRam(e); });
     bus.on('prop:crushed', (e) => { if (ctx) onPropCrushed(e); }); // gameplay_feel r6
     bus.on('tank:fire', (e) => {
       if (!ctx) return;
       if (e.burning) startFireLoop(e.id); else stopFireLoop(e.id);
+      logSound('tank:fire', { id: e.id, burning: !!e.burning, occupied: e.id === listenerOwnerId });
       if (playerId != null && e.id === playerId) {
         if (e.burning && !playerBurning) {
           playerBurning = true;
@@ -2208,13 +2384,24 @@ export function createAudio() {
       if (!ctx) return;
       if (next === 'battle' && prev !== 'battle') {
         garageToneStop();
+        stopWorldLoops('battle-reset');
+        tankInfo.clear();
+        playerId = null;
         moduleState.clear();
         heartbeatArmedBelow = 0;
-      } else if (next === 'garage' && prev !== 'garage') {
+      } else if (next !== 'battle' && prev === 'battle') {
+        stopWorldLoops(`phase:${next}`);
         stopFireAlarm();
         stopTraverseRig();
         radio.silence();
         playerBurning = false;
+        listenerOwnerId = null;
+        listenerScoped = false;
+        if (next === 'garage') garageToneStart();
+      } else if (next === 'garage' && prev !== 'garage') {
+        // Some presentation flows insert a non-battle results phase before
+        // garage. The room tone belongs to the destination, not only to a
+        // direct battle -> garage edge.
         garageToneStart();
       }
     });
@@ -2244,7 +2431,10 @@ export function createAudio() {
     bus.on('killcam:begin', () => {
       if (!ctx) return;
       duckK = 0.35;
-      applyChannelVolumes(true);
+      // The replay can reach impact only a few milliseconds after this edge
+      // when a test/debug fast-forwards. Pin the live buses immediately so a
+      // full-level cannon/engine transient never masks the cinematic impact.
+      applyChannelVolumes(false);
     });
     bus.on('killcam:done', () => {
       if (!ctx) return;
@@ -2280,14 +2470,41 @@ export function createAudio() {
    * fire loop spatialization, voice pruning, traverse whir, landing thumps,
    * critical-HP alarm, radio queue.
    * @param {number} dt render delta, seconds (audio runs on its own clock)
-   * @param {{pos: {x,y,z}, forward: {x,y,z}}} listener camera pose
+   * @param {{pos: {x,y,z}, forward: {x,y,z}, kind?: string,
+   *   ownerId?: string|null, scoped?: boolean}} listener camera/vehicle pose
    * @param {Array<object>} tanks all TankEntity objects (alive and dead)
    */
+  function rankEngineCandidate(ent, score) {
+    let at = engineCandidateCount;
+    if (at < MAX_ENGINE_VOICES) {
+      engineCandidateCount++;
+    } else {
+      at = MAX_ENGINE_VOICES - 1;
+      if (score >= engineCandidateScore[at]) return;
+    }
+    while (at > 0 && score < engineCandidateScore[at - 1]) {
+      engineCandidates[at] = engineCandidates[at - 1];
+      engineCandidateScore[at] = engineCandidateScore[at - 1];
+      at--;
+    }
+    engineCandidates[at] = ent;
+    engineCandidateScore[at] = score;
+  }
+
+  function isEngineCandidate(id) {
+    for (let i = 0; i < engineCandidateCount; i++) {
+      if (engineCandidates[i] && engineCandidates[i].id === id) return true;
+    }
+    return false;
+  }
+
   function update(dt, listener, tanks) {
     if (!ctx) return;
     // Refresh listener pose (XZ forward, normalized defensively).
     lx = listener.pos.x; ly = listener.pos.y; lz = listener.pos.z;
     listenerKind = listener.kind || 'camera';
+    listenerOwnerId = listener.ownerId ?? null;
+    listenerScoped = !!listener.scoped && listenerKind !== 'killcam-camera';
     const fx = listener.forward.x, fz = listener.forward.z;
     const fl = Math.sqrt(fx * fx + fz * fz);
     if (fl > 0.001) { lfx = fx / fl; lfz = fz / fl; }
@@ -2303,6 +2520,51 @@ export function createAudio() {
 
     if (!tanks) return;
 
+    // First pass mirrors identity/position before any event-side decisions,
+    // then ranks the nearest audible engines. Existing voices receive a small
+    // hysteresis bias so equal-distance tanks do not churn at the cap edge.
+    for (let i = 0; i < tanks.length; i++) {
+      const ent = tanks[i];
+      if (!ent || !ent.state || !ent.state.pos) continue;
+      const id = ent.id;
+      let info = tankInfo.get(id);
+      if (!info) {
+        info = { team: ent.team, isPlayer: !!ent.isPlayer, pos: ent.state.pos };
+        tankInfo.set(id, info);
+      } else {
+        info.team = ent.team;
+        info.isPlayer = !!ent.isPlayer;
+        info.pos = ent.state.pos;
+      }
+      if (ent.isPlayer) playerId = id;
+    }
+    if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
+
+    for (let i = 0; i < engineCandidateCount; i++) engineCandidates[i] = null;
+    engineCandidateCount = 0;
+    for (let i = 0; i < tanks.length; i++) {
+      const ent = tanks[i];
+      if (!ent || !ent.state || !ent.state.pos || ent.combat?.destroyed) continue;
+      if (probeEngineSoloId != null && ent.id !== probeEngineSoloId) continue;
+      const pos = ent.state.pos;
+      const dx = pos.x - lx, dy = pos.y - ly, dz = pos.z - lz;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const own = ent.id === listenerOwnerId;
+      const active = engines.has(ent.id);
+      if (!own && !engineAudibleAtDistance(dist, active)) continue;
+      const score = own ? -1e9
+        : dist - (active ? AUDIO_DISTANCE_MODEL.activeEngineBiasM : 0);
+      rankEngineCandidate(ent, score);
+    }
+
+    for (const [id, eng] of engines) {
+      if (isEngineCandidate(id)) continue;
+      eng.kill();
+      engines.delete(id);
+      landing.delete(id);
+      logSound('engine:stop', { id, reason: 'range-or-priority' });
+    }
+
     for (let i = 0; i < tanks.length; i++) {
       const ent = tanks[i];
       // Deferred battle staging leaves roster shells in game.tanks while the
@@ -2310,31 +2572,15 @@ export function createAudio() {
       // Audio must ignore them until setupBattle supplies a world position.
       if (!ent || !ent.state || !ent.state.pos) continue;
       const id = ent.id;
-      // Roster mirror for listener-side event decisions (spotted voice,
-      // track-snap position) — no emitter-side changes needed.
-      let info = tankInfo.get(id);
-      if (!info) { info = { team: ent.team, isPlayer: !!ent.isPlayer, pos: ent.state.pos }; tankInfo.set(id, info); }
-      else { info.team = ent.team; info.isPlayer = !!ent.isPlayer; info.pos = ent.state.pos; }
-      if (ent.isPlayer) playerId = id;
-
       const dead = !!(ent.combat && ent.combat.destroyed);
-      const eng = engines.get(id);
-      if (eng) {
-        if (dead) { eng.kill(); engines.delete(id); landing.delete(id); continue; }
-        const dist = eng.update(ent);
-        if (dist > ENGINE_HEAR_OUT_M && !ent.isPlayer) {
-          eng.kill();
-          engines.delete(id);
-          landing.delete(id);
+      let eng = engines.get(id);
+      if (!dead && isEngineCandidate(id)) {
+        if (!eng) {
+          eng = createEngineVoice(ent);
+          engines.set(id, eng);
+          logSound('engine:start', { id, own: id === listenerOwnerId });
         }
-      } else if (!dead) {
-        const pos = ent.state.pos;
-        const s = spat(pos.x, pos.y, pos.z);
-        if ((s.dist < ENGINE_HEAR_IN_M && engines.size < MAX_ENGINE_VOICES) || ent.isPlayer) {
-          const nv = createEngineVoice(ent);
-          nv.update(ent);
-          engines.set(id, nv);
-        }
+        eng.update(ent, id === listenerOwnerId, listenerScoped);
       }
 
       // Suspension landing detection for engine-audible tanks: a fast sink
@@ -2359,7 +2605,7 @@ export function createAudio() {
       // Player-only mechanical + alarm state.
       if (ent.isPlayer && !dead && phase === 'battle') {
         if (!traverseRig) traverseRig = createTraverseRig();
-        traverseRig.update(ent, dt);
+        traverseRig.update(ent, dt, listenerScoped);
         // Critical-HP heartbeat: a bounded pulse window per threshold
         // crossing (never a permanent drone), optional via settings.
         if (alarmHeartbeatOn && !battleOver && ent.combat && ent.combat.maxHp > 0) {
@@ -2434,11 +2680,32 @@ export function createAudio() {
       get sfxLoaded() { return sfxReady; },
       get sfxCount() { return sfxBufs.size; },
       get killcamSfxLog() { return killcamSfxLog; },
-      listenerState() { return { x: lx, y: ly, z: lz, fx: lfx, fz: lfz, kind: listenerKind }; },
+      get soundLog() { return soundLog; },
+      listenerState() {
+        return {
+          x: lx, y: ly, z: lz, fx: lfx, fz: lfz,
+          kind: listenerKind, ownerId: listenerOwnerId, scoped: listenerScoped,
+        };
+      },
       spatialAt(x, y, z) { return { ...spat(x, y, z) }; },
+      engineState() {
+        return [...engines.entries()].map(([id, eng]) => ({
+          id,
+          dist: eng.lastDist,
+          gain: eng.lastGain,
+          cutoffHz: eng.lastCutoffHz,
+          own: eng.own,
+          scoped: eng.scoped,
+        })).sort((a, b) => a.dist - b.dist);
+      },
+      setEngineProbeSolo(id = null) {
+        probeEngineSoloId = id || null;
+        return probeEngineSoloId;
+      },
       // force: the probe tests the BUS level, not the radio discipline —
       // cooldowns must never turn a slider check into a false silence.
       sayVoice(id) { return radio.say(id, { force: true }); },
+      clearVoiceQueue() { radio.silence(); },
       startTap(maxS = 40) {
         if (!ctx || tap) return false;
         const sp = ctx.createScriptProcessor(4096, 2, 2);

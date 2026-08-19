@@ -48,7 +48,9 @@ export const VOICE_LINES = {
   ricochet:         { files: ['ricochet.ogg', 'ricochet_b.ogg'],               pri: 1, cdS: 5, group: 'shot_result', groupCdS: 3.5, staleS: 0.8 },
   enemy_crit:       { files: ['enemy_crit.ogg', 'enemy_crit_b.ogg', 'enemy_crit_c.ogg'], pri: 1, cdS: 8, group: 'shot_result', groupCdS: 3.5, staleS: 0.8 },
   enemy_ammo_rack:  { files: ['enemy_ammo_rack.ogg'],                          pri: 2, cdS: 12, group: 'shot_result', staleS: 1.0 },
-  target_destroyed: { files: ['target_destroyed.ogg', 'target_destroyed_b.ogg', 'target_destroyed_c.ogg', 'target_destroyed_d.ogg'], pri: 2, cdS: 3.5, group: 'shot_result', staleS: 1.2 },
+  // A confirmed kill supersedes a generic penetration/critical report. Keep
+  // it below survival/result priority 4, but high enough to cut old chatter.
+  target_destroyed: { files: ['target_destroyed.ogg', 'target_destroyed_b.ogg', 'target_destroyed_c.ogg', 'target_destroyed_d.ogg'], pri: 3, cdS: 3.5, group: 'shot_result', staleS: 2.0 },
   // survival
   were_hit:         { files: ['were_hit.ogg', 'were_hit_b.ogg', 'were_hit_c.ogg'], pri: 2, cdS: 6, group: 'incoming', staleS: 0.8 },
   bounced_us:       { files: ['bounced_us.ogg', 'bounced_us_b.ogg', 'bounced_us_c.ogg'], pri: 2, cdS: 6, group: 'incoming', staleS: 0.8 },

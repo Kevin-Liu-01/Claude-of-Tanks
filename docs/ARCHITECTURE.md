@@ -827,7 +827,9 @@ Audio = {
                        // ("We're hit!", "They bounced us!", "Ricochet!");
                        // shell:expired(hitTerrain) → dirt splash; tank:destroyed → big
                        // explosion + debris, kill sting + "Target destroyed" on player
-                       // kills; module:state → track snap (world), ammo-rack beep +
+                       // kills; tank:impact / tank:ram / prop:crushed → spatial hull,
+                       // plate, gear, and foliage collision layers; module:state →
+                       // track snap (world), ammo-rack beep +
                        // damage/repair radio calls (player); tank:fire → burning loop +
                        // fire klaxon + "Fire! Put it out!" (player); tank:spotted →
                        // "Enemy spotted"; player:reload(done) → breech latch +
@@ -838,8 +840,10 @@ Audio = {
                        // playback matching the replay time scale; ui:click → click;
                        // ui:volumes → live 5-channel mix {master, engine, combat,
                        // ambience, ui, voice, alarmHeartbeat}
-  update(dt, listener /* {pos: Vector3, forward: Vector3} */, tanks: TankEntity[]),
-                       // engine loops: per audible tank, saw+noise loop, RPM pitch =
+  update(dt, listener /* {pos, forward, kind, ownerId, scoped} */, tanks: TankEntity[]),
+                       // engine loops: occupied tank plus nearest audible tanks
+                       // (10-voice cap, 900 m enter / 1000 m exit hysteresis),
+                       // saw+noise loop, RPM pitch =
                        //   0.8 + 0.6×|speed|/topSpeed (turbine whine preset for m1a2:
                        //   add high sine 900→1400 Hz); track squeak above 2 m/s;
                        //   shell whizz for player-passing shells (dist<15 m, speed>300);
@@ -856,26 +860,38 @@ Audio = {
 Bus graph: `{combat, cinematic combat, engine, ambience, ui/music, voice} → compressor → master`.
 Channel gains follow the settings SOUND tab (`cot.settings.v1`, live via
 'ui:volumes'); crew radio + alarms sit on the voice bus. Distance model:
-gain = `clamp(18/dist, 0, 1)`^1.65, equal-power stereo pan from listener-relative
-azimuth, air-absorption lowpass + speed-of-sound delay for far events. During
-live play distance is measured from the occupied/spectated tank while azimuth
-follows the camera; cinematic/garage distance follows the camera. This hybrid
-listener prevents third-person camera pullback from muting nearby vehicles.
-Max ~24
-simultaneous one-shot voices; steal oldest. Everything is synthesized at
+gain = `clamp(22/dist, 0, 1)`^1.5, equal-power stereo pan from listener-relative
+azimuth, air-absorption lowpass + speed-of-sound delay for far events. Engines
+have no close-range hard cutoff: the occupied tank is always retained and up
+to the nine nearest remote engines remain eligible to 900 m (1000 m exit hysteresis),
+with distance steadily lowering and darkening them. During live play distance
+is measured from the occupied/spectated tank while azimuth follows the camera;
+cinematic/garage distance follows the camera. This hybrid listener prevents
+third-person camera pullback from muting nearby vehicles. Scoped view is an
+interior/headset perspective, not a mute: the occupied engine and cannon retain
+level while their exposed high-frequency energy and stereo width are reduced.
+Max ~24 simultaneous one-shot voices; steal oldest. Everything is synthesized at
 runtime (oscillators, seeded noise, pre-rendered gun beds) EXCEPT the crew
 radio lines: original macOS-TTS takes processed offline into ~48 KiB of Opus
 under `public/audio/voice/` (`tools/make-voices.mjs`, docs/ATTRIBUTION.md).
 Radio discipline lives in `src/audio/voices.js`: one line at a time, priority
 ladder (survival calls interrupt flavor), per-line cooldowns, ±3% rate jitter.
-Debug: `window.__COT_AUDIO` (after resume) exposes the ctx, a master PCM tap
-and the voice log for `tools/audio-probe.mjs`.
+Leaving battle stops all engine, burning, traverse, landing, and alarm loops so
+no world sound can leak into the garage. Debug: `window.__COT_AUDIO` (after
+resume) exposes the context, master PCM tap, listener/engine state, canonical
+sound-route log, baked-SFX log, and voice log for the audio probes.
 
 Focused verification: `node tools/audio-spatial-killcam-probe.mjs` captures
-the same nearby cannon in arcade/sniper views, then drives a real lethal shell
-through the replay and asserts listener ownership, PCM audibility, ducking,
-headroom, and the 0.55x cinematic debris rate. `node tools/sfx-smoke.mjs`
-retains the full baked-layer and volley/no-clipping gate.
+the occupied cannon and engine in arcade/sniper views; measures remote cannon
+reports at 12/80/250/600/900 m and engines at 40/160/420/850 m; exercises ram
+audio; then drives a real lethal shell through replay and asserts listener
+ownership, PCM audibility, monotonic distance falloff/filtering, mix ducking,
+headroom, 0.55x cinematic debris, and garage loop cleanup.
+`node tools/audio-probe.mjs` records the full event/voice/bus matrix and asserts
+every canonical combat event entered its intended audio route.
+`node tools/sfx-smoke.mjs` retains the baked-layer, bass, and volley/no-clipping
+gate; `node tools/make-sfx.mjs --verify` and `node tools/make-voices.mjs --verify`
+enforce asset duration, loudness, peak, and payload budgets.
 
 ---
 
