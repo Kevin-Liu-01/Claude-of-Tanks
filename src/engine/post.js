@@ -4,19 +4,19 @@
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
  *   SceneAAPass (MSAA render + resolve) → AerialPass (+ specular-AA firefly
  *   clamp) → GTAOPass → LateFxPass (copied depth) → UnrealBloomPass →
- *   OutputPass → GradePass → SMAAPass → FSR1 (EASU + RCAS)
+ *   OutputGradePass (ACES + sRGB + grade) → SMAAPass → FSR1
+ *   (EASU + RCAS)
  *
  * The scene renders into a quality-aware multisampled HalfFloat HDR target
  * with a DepthTexture, then resolves once into the composer's single-sampled
  * ping-pong buffers. This preserves real geometry/foliage edge coverage while
- * avoiding MSAA on every fullscreen post pass. OutputPass applies
- * ACES tone mapping + sRGB conversion (reading renderer.toneMapping/
- * outputColorSpace); the display-space GradePass resolves contrast, scope
- * sharpening and split tone before the two screen-space AA stages run LAST on
- * the values the eye sees. That ordering prevents the grade from sharpening
- * stair steps back into an already-antialiased frame. Bloom thresholds against
- * the linear HDR buffer — sun, muzzle flash and fire exceed 1.0 and bloom
- * naturally.
+ * avoiding MSAA on every fullscreen post pass. OutputGradePass applies the
+ * renderer's exact tone mapping + output transfer and the display-space grade
+ * in one draw; scope neighbor samples run through that same output transform.
+ * SMAA and reconstruction still run last on the values the eye sees, so the
+ * grade cannot sharpen stair steps back into an already-antialiased frame.
+ * Bloom thresholds against the linear HDR buffer — sun, muzzle flash and fire
+ * exceed 1.0 and bloom naturally.
  *
  * aa-r1 (owner: "glass and other vegetation is still anti aliasing a lot"):
  * SMAA is an edge-PATTERN filter — it reconstructs geometric silhouettes but
@@ -526,7 +526,7 @@ class FsrUpscalePass extends Pass {
     this.needsSwap = false;
     this.outputSize = new THREE.Vector2(1, 1);
     this.intermediate = new THREE.WebGLRenderTarget(1, 1, {
-      // EASU runs after OutputPass/grade/SMAA, so the input is display-space
+      // EASU runs after output conversion/grade/SMAA, so the input is display-space
       // 0..1. RGBA8 halves native-resolution bandwidth/memory vs half-float
       // with no HDR information left to preserve.
       type: THREE.UnsignedByteType,
@@ -811,7 +811,7 @@ const AerialShader = {
     }`,
 };
 
-// Final grade (applied AFTER OutputPass, i.e. in display sRGB space):
+// Final grade (applied after output conversion, i.e. in display sRGB space):
 // S-curve contrast, saturation, subtle corner vignette, a real black anchor
 // and ONE fixed warm white balance — the same grade for every camera, so the
 // battlefield establishing shot and the combat closeup read as one game
@@ -1183,6 +1183,60 @@ const GradeShader = {
       gl_FragColor = vec4( clamp( col, 0.0, 1.0 ), texel.a );
     }`,
 };
+
+// OutputPass and the display grade used to be two consecutive native-size
+// fullscreen draws. Fuse them without changing color math: OutputPass still
+// owns the renderer-driven tone-mapping/output-space defines and exposure,
+// while every GradeShader source sample is converted to display space before
+// the grade touches it. The latter matters for scope blur/unsharp taps — only
+// transforming the center texel would make scoped frames differ from the old
+// two-pass result.
+function createOutputGradePass() {
+  const sampleAnchor = 'texture2D( tDiffuse,';
+  let fragmentShader = GradeShader.fragmentShader.split(sampleAnchor).join('sampleDisplay(');
+  const parsAnchor = 'uniform sampler2D tDiffuse;';
+  const outputPars = /* glsl */ `precision highp float;
+    uniform sampler2D tDiffuse;
+    #include <tonemapping_pars_fragment>
+    #include <colorspace_pars_fragment>
+
+    vec4 sampleDisplay( vec2 sampleUv ) {
+      vec4 outputColor = texture2D( tDiffuse, sampleUv );
+      #ifdef LINEAR_TONE_MAPPING
+        outputColor.rgb = LinearToneMapping( outputColor.rgb );
+      #elif defined( REINHARD_TONE_MAPPING )
+        outputColor.rgb = ReinhardToneMapping( outputColor.rgb );
+      #elif defined( CINEON_TONE_MAPPING )
+        outputColor.rgb = CineonToneMapping( outputColor.rgb );
+      #elif defined( ACES_FILMIC_TONE_MAPPING )
+        outputColor.rgb = ACESFilmicToneMapping( outputColor.rgb );
+      #elif defined( AGX_TONE_MAPPING )
+        outputColor.rgb = AgXToneMapping( outputColor.rgb );
+      #elif defined( NEUTRAL_TONE_MAPPING )
+        outputColor.rgb = NeutralToneMapping( outputColor.rgb );
+      #elif defined( CUSTOM_TONE_MAPPING )
+        outputColor.rgb = CustomToneMapping( outputColor.rgb );
+      #endif
+      #ifdef SRGB_TRANSFER
+        outputColor = sRGBTransferOETF( outputColor );
+      #endif
+      return outputColor;
+    }`;
+  const patched = fragmentShader.replace(parsAnchor, outputPars);
+  if (patched === fragmentShader || !patched.includes('sampleDisplay( vUv )')) {
+    throw new Error('post.js: output-grade shader anchors not found');
+  }
+  fragmentShader = patched;
+
+  const pass = new OutputPass();
+  Object.assign(pass.uniforms, THREE.UniformsUtils.clone(GradeShader.uniforms));
+  pass.material.name = 'OutputGradePass';
+  pass.material.uniforms = pass.uniforms;
+  pass.material.fragmentShader = fragmentShader;
+  pass.material.needsUpdate = true;
+  pass.isOutputGradePass = true;
+  return pass;
+}
 
 /** Scale a linear color down so its Rec709 luminance is <= maxLum (hue kept).
  * @param {THREE.Color} c @param {number} maxLum @returns {void} */
@@ -1714,15 +1768,18 @@ export function createPost(renderer, scene, camera) {
   }
   composer.addPass(bloom); // 3. HDR bloom — muzzle flash / fire pop here
 
-  // SMAA runs after BOTH OutputPass and the display grade. Anti-aliasing computed on
+  // SMAA runs after BOTH the output transform and display grade. Anti-aliasing computed on
   // linear HDR values is defeated by the tone map: a 6.0-vs-0.4 edge blended
   // 50/50 in linear space still tone-maps to ~white against mid-grey, so hot
   // speculars (gun tube top edge vs sky) kept a jagged 1px stair. SMAA's edge
   // detection and blend now run in display sRGB space — the space the eye
   // sees — which is also where the algorithm was designed to operate.
-  composer.addPass(new OutputPass()); // 4. ACES + sRGB
-  const grade = new ShaderPass(GradeShader);
-  composer.addPass(grade); // 5. display-space grade (+ scope treatment)
+  // PERF (120 Hz): tone mapping/output transfer and grading are adjacent
+  // native-size passes with no consumer between them. The fused pass preserves
+  // OutputPass' renderer-driven defines and exact display-space grade math,
+  // while removing one full-frame read/write from every battle frame.
+  const grade = createOutputGradePass();
+  composer.addPass(grade); // 4. ACES + sRGB + display grade/scope treatment
   const smaa = new SMAAPass();
   // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
   // steps). The HUD-scale gun tubes, wires, fences and vehicle silhouettes
@@ -1735,9 +1792,9 @@ export function createPost(renderer, scene, camera) {
   if (smaa._materialWeights && smaa._materialWeights.defines) {
     smaa._materialWeights.defines.SMAA_MAX_SEARCH_STEPS = '16';
   }
-  composer.addPass(smaa); // 6. edge-pattern AA (geometric silhouettes)
+  composer.addPass(smaa); // 5. edge-pattern AA (geometric silhouettes)
 
-  // 7. Native-output FSR1 spatial reconstruction. SMAA first resolves the
+  // 6. Native-output FSR1 spatial reconstruction. SMAA first resolves the
   // geometric pattern at internal resolution; EASU then follows those edges
   // while enlarging and RCAS restores local contrast. This avoids both the
   // browser's bilinear blur and the old post-upscale FXAA-style low-pass.
