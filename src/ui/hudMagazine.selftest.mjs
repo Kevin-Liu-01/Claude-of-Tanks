@@ -1,20 +1,20 @@
 import assert from 'node:assert/strict';
 import {
-  AUTOLOADER_HUD_ARC_RAD,
-  AUTOLOADER_HUD_ARC_Y,
   AUTOLOADER_HUD_SHELLS,
+  autoloaderHudShellPose,
   autoloaderHudState,
 } from './hud.js';
 
-assert.equal(AUTOLOADER_HUD_SHELLS, 3, 'autoloaders use three center-shell silhouettes');
+assert.equal(AUTOLOADER_HUD_SHELLS, 4, 'the compact rack can draw four shell silhouettes');
+const threeShellPoses = Array.from({ length: 3 }, (_, index) => autoloaderHudShellPose(index, 3));
 assert.ok(
-  AUTOLOADER_HUD_ARC_Y[1] > AUTOLOADER_HUD_ARC_Y[0]
-    && AUTOLOADER_HUD_ARC_Y[1] > AUTOLOADER_HUD_ARC_Y[2],
+  threeShellPoses[1].y > threeShellPoses[0].y
+    && threeShellPoses[1].y > threeShellPoses[2].y,
   'the center shell drops below the outer pair to form a shallow lower arc',
 );
 assert.ok(
-  AUTOLOADER_HUD_ARC_RAD[0] > 0
-    && AUTOLOADER_HUD_ARC_RAD[2] === -AUTOLOADER_HUD_ARC_RAD[0],
+  threeShellPoses[0].rotation > 0
+    && threeShellPoses[2].rotation === -threeShellPoses[0].rotation,
   'outer shells tilt symmetrically inward toward the reticle',
 );
 assert.equal(autoloaderHudState(null, null), null, 'conventional guns have no indicator');
@@ -25,12 +25,13 @@ const ready = autoloaderHudState(
 );
 assert.deepEqual(
   {
+    visible: ready.visibleShells,
     ready: ready.readyShells,
     overflow: ready.overflow,
     fullReload: ready.fullReload,
     reloading: ready.reloading,
   },
-  { ready: 3, overflow: 0, fullReload: false, reloading: false },
+  { visible: 3, ready: 3, overflow: 0, fullReload: false, reloading: false },
   'three-round magazine lights all three shells',
 );
 
@@ -55,7 +56,15 @@ const fourRound = autoloaderHudState(
   { rounds: 4, capacity: 4 },
   { kind: 'ready', t: 0, totalS: 18 },
 );
-assert.equal(fourRound.readyShells, 3, 'the visual window stays at three shells');
-assert.equal(fourRound.overflow, 1, 'larger magazines retain an exact overflow read');
+assert.equal(fourRound.visibleShells, 4, 'a four-round magazine draws four shell silhouettes');
+assert.equal(fourRound.readyShells, 4, 'all four ready rounds light their own silhouettes');
+assert.equal(fourRound.overflow, 0, 'a four-round magazine no longer renders a +1 label');
 
-console.log('hudMagazine.selftest: three-shell autoloader indicator passed');
+const fiveRound = autoloaderHudState(
+  { rounds: 5, capacity: 5 },
+  { kind: 'ready', t: 0, totalS: 18 },
+);
+assert.equal(fiveRound.visibleShells, 4, 'the compact rack remains capped at four silhouettes');
+assert.equal(fiveRound.overflow, 1, 'magazines above four retain an exact overflow read');
+
+console.log('hudMagazine.selftest: capacity-aware four-shell autoloader indicator passed');

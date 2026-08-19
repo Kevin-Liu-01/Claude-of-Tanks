@@ -22,15 +22,15 @@ const PEN_NONE = 'rgba(236,242,248,0.95)';
 const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
-export const AUTOLOADER_HUD_SHELLS = 3;
-export const AUTOLOADER_HUD_ARC_Y = Object.freeze([0, 2.25, 0]);
-export const AUTOLOADER_HUD_ARC_RAD = Object.freeze([0.14, 0, -0.14]);
+export const AUTOLOADER_HUD_SHELLS = 4;
+const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
+const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
 const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
 
 /**
  * Normalize authoritative magazine state for the compact reticle indicator.
- * The HUD deliberately uses three shell silhouettes as its visual grammar;
- * magazines larger than three retain an exact overflow read (for example +1).
+ * The HUD draws the actual capacity through four shells; larger magazines
+ * retain an exact overflow read without turning a four-round rack into +1.
  */
 export function autoloaderHudState(magazine, reload, out = null) {
   const capacity = Math.max(0, magazine?.capacity | 0);
@@ -43,13 +43,25 @@ export function autoloaderHudState(magazine, reload, out = null) {
   const state = out || {};
   state.capacity = capacity;
   state.rounds = rounds;
-  state.readyShells = Math.min(AUTOLOADER_HUD_SHELLS, rounds);
-  state.overflow = Math.max(0, rounds - AUTOLOADER_HUD_SHELLS);
+  state.visibleShells = Math.min(AUTOLOADER_HUD_SHELLS, capacity);
+  state.readyShells = Math.min(state.visibleShells, rounds);
+  state.overflow = Math.max(0, rounds - state.visibleShells);
   state.fullReload = fullReload;
   state.loadProgress = loadProgress;
   state.intraClip = reload?.kind === 'intraClip' && reload.t > 0.001;
   state.reloading = reload?.t > 0.001;
   return state;
+}
+
+export function autoloaderHudShellPose(index, shellCount, out = null) {
+  const count = Math.max(1, Math.min(AUTOLOADER_HUD_SHELLS, shellCount | 0));
+  const safeIndex = Math.max(0, Math.min(count - 1, index | 0));
+  const center = (count - 1) * 0.5;
+  const normalized = center > 0 ? (safeIndex - center) / center : 0;
+  const pose = out || {};
+  pose.y = (1 - Math.abs(normalized)) * AUTOLOADER_HUD_ARC_DEPTH;
+  pose.rotation = -normalized * AUTOLOADER_HUD_OUTER_ROTATION;
+  return pose;
 }
 
 function magazineShellPath(ctx, x, y, shellW, shellH) {
@@ -1180,6 +1192,7 @@ export function initHud(bus) {
   let lastMagazineIndicatorY = null;
   let lastMagazineIndicatorState = null;
   const magazineHudScratch = {};
+  const magazineShellPoseScratch = {};
   let bounceTimer = null;
   const hpPool = new Map(); // tank id -> { root, fill, nm, lastFrac }
   const spotById = new Map(); // tank id -> { vis, lastT, lastX, lastZ, ever }
@@ -1977,13 +1990,13 @@ export function initHud(bus) {
       ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
       ctx.stroke();
     }
-    // Magazine autoloader ready-rack: three shells curve directly
+    // Magazine autoloader ready-rack: up to four shells curve directly
     // UNDER the center marker. The outer rounds tilt inward and sit slightly
     // above the middle round, following the lower arc of the reload ring.
     // Orange means ready; both intra-clip cycling and full-magazine loading
     // turn the rack neutral gray. A full reload fills the silhouettes from
     // the base upward while the timer counts down.
-    // A magazine larger than the three-shell visual window keeps an exact
+    // A magazine larger than the four-shell visual window keeps an exact
     // +N overflow label instead of silently losing authoritative state.
     const magazineHud = autoloaderHudState(view.magazine, rl0, magazineHudScratch);
     let magazineBottomY = 0;
@@ -1991,10 +2004,11 @@ export function initHud(bus) {
       const shellW = sniper ? 6.5 : 5.5;
       const shellH = sniper ? 16 : 14;
       const gap = sniper ? 4 : 3.5;
-      const totalW = AUTOLOADER_HUD_SHELLS * shellW
-        + (AUTOLOADER_HUD_SHELLS - 1) * gap;
+      const visibleShells = magazineHud.visibleShells;
+      const totalW = visibleShells * shellW
+        + (visibleShells - 1) * gap;
       const y0 = cy + reloadRing + 6;
-      magazineBottomY = y0 + shellH + AUTOLOADER_HUD_ARC_Y[1];
+      magazineBottomY = y0 + shellH;
       lastMagazineIndicatorY = y0;
       lastMagazineIndicatorState = magazineHud;
       const shellInk = magazineHud.reloading
@@ -2002,16 +2016,18 @@ export function initHud(bus) {
       const shellOutline = magazineHud.reloading
         ? 'rgba(174,184,192,0.64)' : 'rgba(240,160,48,0.7)';
 
-      for (let i = 0; i < AUTOLOADER_HUD_SHELLS; i++) {
-        const shellCx = cx + (i - 1) * (shellW + gap);
-        const shellCy = y0 + AUTOLOADER_HUD_ARC_Y[i] + shellH * 0.5;
+      for (let i = 0; i < visibleShells; i++) {
+        const shellPose = autoloaderHudShellPose(i, visibleShells, magazineShellPoseScratch);
+        const shellCx = cx + (i - (visibleShells - 1) * 0.5) * (shellW + gap);
+        const shellCy = y0 + shellPose.y + shellH * 0.5;
+        magazineBottomY = Math.max(magazineBottomY, y0 + shellPose.y + shellH);
         const ready = i < magazineHud.readyShells;
         const loading = magazineHud.fullReload
-          ? Math.max(0, Math.min(1, magazineHud.loadProgress * AUTOLOADER_HUD_SHELLS - i))
+          ? Math.max(0, Math.min(1, magazineHud.loadProgress * visibleShells - i))
           : 0;
         ctx.save();
         ctx.translate(shellCx, shellCy);
-        ctx.rotate(AUTOLOADER_HUD_ARC_RAD[i]);
+        ctx.rotate(shellPose.rotation);
         const x = -shellW * 0.5;
         const y = -shellH * 0.5;
         // dark under-stroke keeps the silhouettes legible over sky and snow
@@ -3799,7 +3815,7 @@ export function initHud(bus) {
         cameraMarkerColor: lastCameraMarkerCol,
         gunMarkerColor: lastGunMarkerCol,
         magazineIndicator: lastMagazineIndicatorState ? {
-          shellCount: AUTOLOADER_HUD_SHELLS,
+          shellCount: lastMagazineIndicatorState.visibleShells,
           y: lastMagazineIndicatorY,
           rounds: lastMagazineIndicatorState.rounds,
           capacity: lastMagazineIndicatorState.capacity,
@@ -3808,8 +3824,12 @@ export function initHud(bus) {
           loadProgress: lastMagazineIndicatorState.loadProgress,
           reloading: lastMagazineIndicatorState.reloading,
           curved: true,
-          outerRotationRad: AUTOLOADER_HUD_ARC_RAD[0],
-          centerDropPx: AUTOLOADER_HUD_ARC_Y[1],
+          outerRotationRad: AUTOLOADER_HUD_OUTER_ROTATION,
+          centerDropPx: autoloaderHudShellPose(
+            Math.floor((lastMagazineIndicatorState.visibleShells - 1) * 0.5),
+            lastMagazineIndicatorState.visibleShells,
+            magazineShellPoseScratch,
+          ).y,
         } : null,
         floorPx: RET_FLOOR_PX,
         ceilPx: retCeilPx(),
