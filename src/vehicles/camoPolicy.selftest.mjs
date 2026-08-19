@@ -3,7 +3,9 @@ import {
   CAMO_PATTERN_IDS,
   CUSTOM_CAMO_ID,
   customCamoPatternId,
+  factoryThemePatternId,
   isBuiltInCamoId,
+  isPlainGreenFactoryVisual,
   networkCamoId,
   normalizeCustomCamo,
   parseCustomCamoPatternId,
@@ -15,6 +17,17 @@ assert.equal(isBuiltInCamoId(CUSTOM_CAMO_ID), false,
 assert.equal(networkCamoId(CUSTOM_CAMO_ID), 'factory');
 assert.equal(networkCamoId('unknown'), 'factory');
 assert.equal(networkCamoId(CAMO_PATTERN_IDS.at(-1)), CAMO_PATTERN_IDS.at(-1));
+
+const plainGreen = {
+  id: 'example', nation: 'Sweden', era: 'modern',
+  visual: { scheme: 'solid', base: '#45513f', patches: [] },
+};
+assert.equal(isPlainGreenFactoryVisual(plainGreen.visual), true);
+assert.equal(factoryThemePatternId(plainGreen), 'm90');
+assert.equal(factoryThemePatternId({
+  ...plainGreen,
+  visual: { scheme: 'nato', base: '#45513f', patches: ['#252a24', '#73563a'] },
+}), null, 'authored patterned factory paint must remain untouched');
 
 const custom = normalizeCustomCamo({
   style: 'digital', base: '#123456', colorA: '#abcdef', colorB: '#010203', repeat: 75,

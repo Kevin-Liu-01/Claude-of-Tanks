@@ -57,6 +57,54 @@ const DEFAULT_CUSTOM_CAMO = Object.freeze({
 const BUILT_IN = new Set(CAMO_PATTERN_IDS);
 const HEX = /^#[0-9a-f]{6}$/i;
 
+// Distinctive factory fallback for vehicles whose authored visual is still a
+// single green coat. Pools reuse the shipped painter catalog and follow the
+// visual language already authored for each nation/era; the spec id chooses a
+// stable member so a country block does not become one repeated uniform.
+const FACTORY_THEME_POOLS = Object.freeze({
+  'USA:ww2': ['summer', 'ardennes44'],
+  'USA:modern': ['summer', 'merdc'],
+  'Germany:ww2': ['ambushdot', 'splinter'],
+  'Germany:modern': ['summer', 'flecktarn'],
+  'USSR:ww2': ['amoeba', 'rasputitsa'],
+  'USSR:modern': ['digital', 'amoeba'],
+  'USSR/Russia:modern': ['digital', 'amoeba'],
+  'Russia:modern': ['digital', 'amoeba'],
+  'UK:ww2': ['dpm'],
+  'UK:modern': ['dpm', 'summer'],
+  'France:modern': ['summer'],
+  'Israel:modern': ['desert', 'digitaldesert'],
+  'China:modern': ['digital'],
+  'South Korea:modern': ['digital', 'summer'],
+  'Japan:modern': ['digital', 'tigerstripe'],
+  'Italy:coldwar': ['summer'],
+  'Italy:modern': ['summer'],
+  'Poland:modern': ['digital'],
+  'Sweden:modern': ['m90'],
+  'Ukraine:modern': ['digital', 'summer'],
+});
+
+/** True only for the legacy single-coat green factory presentation. */
+export function isPlainGreenFactoryVisual(visual) {
+  if (!visual || visual.scheme !== 'solid' || (visual.patches || []).length) return false;
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(visual.base || ''));
+  if (!match) return false;
+  const [, rr, gg, bb] = match;
+  const r = Number.parseInt(rr, 16);
+  const g = Number.parseInt(gg, 16);
+  const b = Number.parseInt(bb, 16);
+  return g >= r && g > b + 4 && Math.max(r, g, b) - Math.min(r, g, b) >= 8;
+}
+
+/** Built-in theme that replaces a plain-green factory coat, or null. */
+export function factoryThemePatternId(spec) {
+  if (!spec?.id || !isPlainGreenFactoryVisual(spec.visual)) return null;
+  const pool = FACTORY_THEME_POOLS[`${spec.nation}:${spec.era}`] || ['summer'];
+  let hash = 0;
+  for (const char of spec.id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
+  return pool[(hash >>> 0) % pool.length];
+}
+
 export function isBuiltInCamoId(value) {
   return BUILT_IN.has(String(value || ''));
 }

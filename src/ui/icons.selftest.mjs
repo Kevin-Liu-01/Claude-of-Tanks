@@ -1,8 +1,10 @@
 /** Plain-node coverage for the shared UI and equipment vector icon sets. */
 
+import './garageDossier.selftest.mjs';
 import { EQUIPMENT_CATALOG } from '../game/equipment.js';
 import { equipIconIds, equipIconSVG } from './equipIcons.js';
 import { uiIconIds, uiIconSVG } from './uiIcons.js';
+import { shellIconSVG, shellIconTypes } from './shellIcons.js';
 
 const equipIds = new Set(equipIconIds());
 for (const item of EQUIPMENT_CATALOG) {
@@ -28,4 +30,14 @@ for (const id of ['damage', 'penetration', 'team', 'check', 'clock', 'rematch', 
 
 for (const id of ['sound', 'soundOff', 'graphics', 'settings']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing mobile HUD icon: ${id}`);
+}
+
+for (const id of ['gallery', 'speed', 'camouflage', 'shield', 'engine', 'scope', 'damage', 'optics']) {
+  if (!uiIconIds().includes(id)) throw new Error(`missing garage dossier icon: ${id}`);
+}
+
+for (const type of shellIconTypes()) {
+  if (!shellIconSVG(type, 24).includes(`data-shell-type="${type}"`)) {
+    throw new Error(`missing garage ammunition silhouette: ${type}`);
+  }
 }

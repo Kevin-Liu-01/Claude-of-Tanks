@@ -12,6 +12,7 @@ import {
   CAMO_PATTERN_LABEL,
   CUSTOM_CAMO_ID,
   customCamoPatternId,
+  factoryThemePatternId,
   isBuiltInCamoId,
   networkCamoId,
   normalizeCustomCamo,
@@ -3566,54 +3567,10 @@ export function hasCamoPaint(specId) {
 // Nation-flavored palettes. Marking/number/zimmerit/camoScale stay authored —
 // only scheme/base/weather/patches are overridden, so the plate-feature and
 // weathering layers (painted by paintCamo on top) are fully respected.
-//
-// FACTORY_OVERRIDE (r7 major): the m1a2's authored 'nato' factory visual made
-// FACTORY and SUMMER two near-identical green 3-tone choices on the flagship
-// tank. US armor ships in monotone CARC Green 383 — factory is now a solid
-// green (panel-tone variation comes from the tonal/mottle layers + the GLB's
-// baked detail overlay), keeping the 3-color NATO look exclusive to 'summer'.
+// Per-model corrections for already-distinct authored factory schemes. Plain
+// green factory visuals are handled by factoryThemePatternId(), so they never
+// need one-off palette exceptions here.
 const FACTORY_OVERRIDE = {
-  // r8: pure solid left the GLB's baked-camo luma showing through on the
-  // hull while the turret atlas stayed flat — coverage read inconsistent
-  // across one vehicle (r7 factory critique). Tone-on-tone green patches
-  // (same family, low contrast) put OUR pattern everywhere so hull, turret
-  // and skirts read as one deliberate paint job; still clearly distinct from
-  // 'summer's 3-color NATO.
-  // r9: light patch desaturated/darkened ~25% — '#586349' rendered as
-  // oversaturated lime blobs under the warm garage key ("paintball arena").
-  // tank_models r1 (critic: factory/summer "nearly patternless — reads as
-  // primer clay"): tone-on-tone was invisible at any distance. Factory is now
-  // the roster §6.5 NATO 3-color (green #4c5d43 / black / red-brown) with the
-  // black lifted off pure black so lighting still models the patch surface.
-  // tank_models r2 (critic minor: factory "soft-edged lime-green + saturated
-  // orange-tan blobs read airsoft-arcade"): green pulled down/grayer and the
-  // red-brown desaturated a step further; blob scale/edge fixes live in the
-  // 'nato' painter.
-  // camo_spotting r3: factory red-brown pulled a step cooler with the summer
-  // palette ('#584639' rode the same warm-key salmon drift).
-  // camo_spotting r4 (critic: factory/summer green "reads light and slightly
-  // minty ... a value step too bright" vs CARC Green 383): base/weather
-  // dropped ~10% in lightness and a step toward gray. Most of the remaining
-  // mint was the specular film (see the hull/GLB spec trims this round) —
-  // the paint itself only needed the half-step.
-  // camo_spotting r7 (critic: "FACTORY still reads as a multi-tone camo
-  // scheme, not monotone CARC Green 383 — saturated brown patches at
-  // summer's pattern scale ... the two choices differ mainly in contrast,
-  // not identity"): the near-black + red-brown NATO chips are gone. Factory
-  // is now strictly GREEN-FAMILY, delta-L only: both patch tones are the
-  // base hue scaled in value (0.63x / 1.26x — zero hue shift), so the hull
-  // reads as ONE monotone green coat with tonal batch/fade variation while
-  // the 3-color NATO look stays exclusive to 'summer'. Kept as patches (not
-  // pure solid) per the r8 lesson: the GLB's baked-camo luma ghosts through
-  // a flat coat and coverage reads inconsistent across hull vs turret.
-  m1a2: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#282f23', '#505e46'] },
-  // tank_models r2: the Abrams VARIANTS must land on the SAME factory
-  // woodland as the base m1a2 — their untextured kit parts (ARAT tiles, TUSK
-  // shield, muzzle furniture) paint from the per-spec canvas while the baked
-  // hull composite uses the shared USA nation tile, and any palette split
-  // reads as mismatched toy parts (the r2 "bright-tan pyramid studs" major).
-  m1a1: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#282f23', '#505e46'] },
-  m1a2_tusk: { scheme: 'nato', base: '#404b38', weather: '#485341', patches: ['#282f23', '#505e46'] },
   // Hinterhalt tones: the authored '#7a4a35' Rotbraun reads bright orange
   // under the warm garage key light (r7 "orange/green cow spots"); drop both
   // patch tones toward RAL 6003/8017 so the scheme reads olive + chocolate.
@@ -3660,7 +3617,11 @@ function patternVisual(spec, patternId) {
   }
   if (patternId === 'factory') {
     const fo = FACTORY_OVERRIDE[spec.id];
-    return fo ? { ...v, ...fo } : v;
+    const authored = fo ? { ...v, ...fo } : v;
+    const themedPattern = factoryThemePatternId({ ...spec, visual: authored });
+    return themedPattern
+      ? patternVisual({ ...spec, visual: authored }, themedPattern)
+      : authored;
   }
   let o = null;
   if (patternId === 'summer') {

@@ -28,6 +28,10 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
+import { shellIconSVG } from './shellIcons.js';
+import {
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem,
+} from './garageDossier.js';
 import { createRandomMapMosaic } from './randomPreviews.js';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
@@ -244,14 +248,15 @@ const GARAGE_CSS = `
   background:rgba(230,139,26,.13);color:#ffd28e;}
 .cot-battle-choice:hover .choice-icon,.cot-battle-choice[aria-checked='true'] .choice-icon{
   color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
-.cot-garage .stats{position:absolute;right:26px;top:94px;width:300px;padding:0;pointer-events:auto;
-  background:linear-gradient(155deg,rgba(17,23,29,.96),rgba(7,10,13,.96) 72%);
+.cot-garage .stats{position:absolute;right:22px;top:86px;width:352px;padding:0;pointer-events:auto;
+  background:transparent;border:0;box-shadow:none;}
+.cot-garage .stats::before{display:none;}
+.cot-dossier-head{position:relative;padding:14px 16px 13px;min-height:104px;margin-bottom:8px;
+  background:linear-gradient(150deg,rgba(22,28,34,.97),rgba(8,11,14,.97) 72%);
   border:1px solid rgba(166,184,199,.3);border-top:2px solid #d99531;
-  box-shadow:0 18px 48px rgba(0,0,0,.62),inset 0 0 0 1px rgba(255,255,255,.018);}
-.cot-garage .stats::before{content:'';position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(circle at 86% 0,rgba(240,160,48,.105),transparent 28%),
-    linear-gradient(115deg,transparent 0 68%,rgba(255,255,255,.018) 68% 69%,transparent 69%);}
-.cot-dossier-head{position:relative;padding:13px 15px 12px;min-height:66px;}
+  box-shadow:0 14px 36px rgba(0,0,0,.48),inset 0 0 0 1px rgba(255,255,255,.015);}
+.cot-dossier-head::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 86% 0,rgba(240,160,48,.105),transparent 30%);}
 .cot-dossier-title{display:flex;align-items:center;gap:9px;padding-right:44px;}
 .cot-tier-plate{height:25px;min-width:31px;padding:0 6px;display:grid;place-items:center;
   color:#161007;background:linear-gradient(180deg,#ffc466,#d88b24);border:1px solid #ffd18a;
@@ -266,22 +271,41 @@ const GARAGE_CSS = `
 .cot-garage .stats .stats-ti{position:absolute;right:15px;top:17px;width:34px;height:22px;
   object-fit:contain;pointer-events:none;opacity:.82;
   filter:drop-shadow(0 4px 6px rgba(0,0,0,.78));}
-.cot-stat-section{position:relative;padding:12px 16px 14px;border-top:1px solid rgba(146,164,180,.17);}
-.cot-stat-section::before{content:'';position:absolute;left:0;top:-1px;width:34px;height:1px;background:#d99531;}
-.cot-stat-title{margin-bottom:10px;color:#8293a1;display:flex;align-items:center;gap:7px;}
-.cot-stat-title::before{content:'';width:7px;height:2px;background:#f0a030;}
-.cot-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 13px;}
-.cot-garage .srow{min-width:0;}
-.cot-garage .srow .lr{display:flex;justify-content:space-between;gap:5px;font-size:8px;
-  letter-spacing:.09em;color:#91a1ae;text-transform:uppercase;margin-bottom:4px;white-space:nowrap;}
+.cot-gallery-link{width:100%;height:30px;margin-top:11px;padding:0 9px;display:flex;align-items:center;gap:8px;
+  color:#b6c5d0;background:linear-gradient(90deg,rgba(240,160,48,.1),rgba(20,27,34,.7));
+  border:1px solid rgba(240,176,74,.3);cursor:pointer;text-align:left;font:900 7.5px ${FONT_COND};
+  letter-spacing:.14em;text-transform:uppercase;transition:color .14s,border-color .14s,background .14s;}
+.cot-gallery-link svg{width:15px;height:15px;color:#f0a030;flex:0 0 auto;}
+.cot-gallery-link .go{margin-left:auto;color:#f0a030;font-size:13px;line-height:1;}
+.cot-gallery-link:hover,.cot-gallery-link:focus-visible{color:#fff0d7;border-color:#f0a030;
+  background:linear-gradient(90deg,rgba(240,160,48,.2),rgba(32,24,12,.86));outline:none;}
+.cot-stat-section{position:relative;padding:13px 15px 15px;margin-bottom:8px;
+  background:linear-gradient(155deg,rgba(16,22,28,.96),rgba(7,10,13,.96) 76%);
+  border:1px solid rgba(146,164,180,.2);box-shadow:0 10px 28px rgba(0,0,0,.36);}
+.cot-stat-section:last-child{margin-bottom:0;}
+.cot-stat-section::before{content:'';position:absolute;left:-1px;top:-1px;width:38px;height:2px;background:#d99531;}
+.cot-stat-title{margin-bottom:10px;color:#8fa0ad;display:flex;align-items:center;gap:7px;}
+.cot-stat-title svg{width:13px;height:13px;color:#f0a030;flex:0 0 auto;}
+.cot-stat-title span{min-width:0;}
+.cot-stat-title small{margin-left:auto;color:#596975;font:800 6.5px ${FONT_COND};
+  letter-spacing:.1em;text-transform:uppercase;}
+.cot-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.cot-garage .srow{position:relative;min-width:0;min-height:50px;padding:8px 8px 8px 36px;
+  background:linear-gradient(145deg,rgba(23,30,37,.72),rgba(10,14,18,.82));
+  border:1px solid rgba(146,164,180,.13);overflow:hidden;}
+.cot-garage .srow .sicon{position:absolute;left:8px;top:10px;width:20px;height:20px;display:grid;
+  place-items:center;color:#d99531;background:rgba(240,160,48,.07);border:1px solid rgba(240,176,74,.12);}
+.cot-garage .srow .sicon svg{width:15px;height:15px;}
+.cot-garage .srow .lr{display:flex;flex-direction:column;gap:2px;font-size:7px;
+  letter-spacing:.11em;color:#7f909d;text-transform:uppercase;white-space:nowrap;}
 /* r4: VALUE cells escape the row's uppercase transform — SI units are
    case-sensitive ("6.0 s", "67 km/h", not "6.0 S" / "67 KM/H") */
-.cot-garage .srow .lr b{min-width:0;color:#e6edf3;font-size:9px;font-weight:700;
+.cot-garage .srow .lr b{min-width:0;color:#edf3f7;font-size:11px;font-weight:750;
   font-variant-numeric:tabular-nums;letter-spacing:.01em;text-transform:none;overflow:hidden;text-overflow:ellipsis;}
-.cot-garage .srow .track{height:4px;background:rgba(255,255,255,.075);overflow:hidden;}
+.cot-garage .srow .track{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06);overflow:hidden;}
 .cot-garage .srow .fill{height:100%;background:linear-gradient(90deg,#b87425,#f0b04a);
   box-shadow:0 0 8px rgba(240,160,48,.18);}
-.cot-garage .shellhead{display:grid;grid-template-columns:43px minmax(0,1fr) 63px 44px;
+.cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
   gap:7px;padding:0 7px 5px;color:#637481;font:900 6.5px ${FONT_COND};
   letter-spacing:.12em;text-transform:uppercase;}
 .cot-garage .shellhead span:nth-last-child(-n+2){text-align:right;}
@@ -291,10 +315,14 @@ const GARAGE_CSS = `
   letter-spacing:.09em;text-transform:uppercase;}
 .cot-garage .magazine-spec b{color:#edf3f6;font:750 9px ${FONT_STACK};
   letter-spacing:.01em;text-transform:none;font-variant-numeric:tabular-nums;}
-.cot-garage .shellrow{display:grid;grid-template-columns:43px minmax(0,1fr) 63px 44px;
-  gap:7px;align-items:center;min-height:36px;margin-top:4px;padding:5px 7px;
-  color:#c6d2dc;background:rgba(19,25,31,.62);border:1px solid rgba(146,164,180,.12);}
-.cot-garage .shellrow .ty{font-size:8px;font-weight:900;letter-spacing:.07em;}
+.cot-garage .shellrow{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
+  gap:7px;align-items:center;min-height:46px;margin-top:5px;padding:6px 7px;
+  color:#c6d2dc;background:linear-gradient(90deg,rgba(19,25,31,.78),rgba(11,15,19,.7));
+  border:1px solid rgba(146,164,180,.13);border-left:2px solid color-mix(in srgb,var(--shell-color) 78%,#252c31);}
+.cot-garage .shellkind{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  color:var(--shell-color);}
+.cot-garage .shellkind svg{width:15px;height:22px;flex:0 0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));}
+.cot-garage .shellrow .ty{font:900 7px ${FONT_COND};letter-spacing:.05em;}
 .cot-garage .shellrow .nm{min-width:0;color:#e6edf3;font-size:9px;font-weight:650;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;}
 .cot-garage .shellrow .nm small{display:block;margin-top:2px;color:#71818e;font:700 6px ${FONT_COND};
@@ -304,11 +332,41 @@ const GARAGE_CSS = `
 .cot-garage .shellmetric b{display:block;margin-bottom:1px;color:#e6edf3;font:700 9px ${FONT_STACK};
   letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;}
 .cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
-.cot-garage .armorline{min-width:0;min-height:49px;padding:8px 9px;color:#7f909d;
+.cot-garage .armorline{position:relative;min-width:0;min-height:54px;padding:9px 8px 8px 38px;color:#7f909d;
   text-transform:uppercase;background:rgba(19,25,31,.62);border:1px solid rgba(146,164,180,.12);}
+.cot-garage .armorline svg{position:absolute;left:9px;top:11px;width:19px;height:19px;color:#c88b35;}
 .cot-garage .armorline span{display:block;font:900 6.5px ${FONT_COND};letter-spacing:.13em;}
-.cot-garage .armorline b{display:block;margin-top:6px;color:#e6edf3;font-size:11px;font-weight:700;
+.cot-garage .armorline b{display:block;margin-top:5px;color:#e6edf3;font-size:11px;font-weight:700;
   font-variant-numeric:tabular-nums;text-transform:none;}
+.cot-layer-link{width:100%;height:28px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:7px;
+  color:#8fa0ad;background:rgba(15,20,25,.72);border:1px solid rgba(146,164,180,.18);cursor:pointer;
+  font:900 7px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;}
+.cot-layer-link svg{width:13px;height:13px;color:#c88b35;}
+.cot-layer-link:hover,.cot-layer-link:focus-visible{color:#ffd79a;border-color:rgba(240,176,74,.55);outline:none;}
+.cot-special-card{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 25px;gap:9px;
+  align-items:start;padding:10px;background:linear-gradient(120deg,rgba(240,160,48,.13),rgba(15,20,26,.86) 55%);
+  border:1px solid rgba(240,176,74,.25);border-left:2px solid #f0a030;}
+.cot-special-icon{width:40px;height:40px;display:grid;place-items:center;color:#ffc66c;
+  background:rgba(240,160,48,.1);border:1px solid rgba(240,176,74,.22);}
+.cot-special-icon svg{width:23px;height:23px;}
+.cot-special-copy{min-width:0;}.cot-special-copy b{display:block;color:#f6ead7;font-size:10px;letter-spacing:.02em;}
+.cot-special-copy p{margin-top:4px;color:#9babb7;font-size:7.5px;line-height:1.45;}
+.cot-special-copy small{display:block;margin-top:6px;color:#dba453;font:800 6.5px ${FONT_COND};
+  letter-spacing:.07em;text-transform:uppercase;white-space:normal;}
+.cot-special-card kbd{width:25px;height:25px;display:grid;place-items:center;color:#171008;background:#efab4a;
+  border:1px solid #ffd18b;box-shadow:0 2px 0 #8b5117;font:900 10px ${FONT_COND};}
+.cot-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
+.cot-module-chip{min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 7px;
+  color:#a8b7c2;background:rgba(19,25,31,.62);border:1px solid rgba(146,164,180,.12);
+  font:800 7px ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;}
+.cot-module-chip .mi{width:17px;height:17px;display:grid;place-items:center;color:#c88b35;flex:0 0 auto;}
+.cot-module-chip svg{width:15px;height:15px;}.cot-module-chip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-crew-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;}
+.cot-crew-chip{min-width:0;padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:#8798a5;background:rgba(13,18,23,.7);border:1px solid rgba(146,164,180,.1);
+  font:800 6px ${FONT_COND};letter-spacing:.04em;text-transform:uppercase;}
+.cot-crew-chip svg{width:16px;height:16px;color:#b8c5cf;}
+.cot-crew-chip span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* One combined historical fleet, filtered by national flag. The outer rail
    owns fixed edge controls/fades while the inner strip scrolls underneath;
    this prevents the hard half-chip cutoff that used to appear at both ends. */
@@ -446,7 +504,7 @@ const GARAGE_CSS = `
 /* The column runs down to just above the country chips. The battlefield
    plate is content-height on roomy screens, but may shrink and scroll when
    the viewport is short so it never collides with the sections below. */
-.cot-leftcol{position:absolute;left:34px;top:108px;bottom:210px;
+.cot-leftcol{position:absolute;left:34px;top:86px;bottom:210px;
   width:248px;display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
 /* garage_polish r9: the battlefield + camo sections share ONE industrial
    plate treatment (translucent backdrop + hairline + amber title tick) so
@@ -456,9 +514,10 @@ const GARAGE_CSS = `
 .cot-maps,.cot-camos{box-sizing:border-box;width:248px;
   background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.58));
   border:1px solid rgba(146,164,180,.16);padding:9px 9px 8px;}
-.cot-maps .mtitle::before,.cot-camos .ctitle::before,
-.cot-featured .ftitle > span:first-child::before{content:'';display:inline-block;
-  width:8px;height:2px;background:#f0a030;margin-right:6px;vertical-align:2px;}
+.cot-maps .mtitle,.cot-camos .ctitle,.cot-featured .ftitle > span:first-child{
+  display:flex;align-items:center;gap:7px;}
+.cot-maps .mtitle svg,.cot-camos .ctitle svg,.cot-featured .ftitle > span:first-child svg{
+  width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
 .cot-maps{position:static;min-height:96px;max-height:210px;overflow-y:auto;
   scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
@@ -544,11 +603,6 @@ const GARAGE_CSS = `
 .cot-camo-card .sw canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
   object-fit:cover;object-position:center;}
 .cot-camo-card .sw.auto{background:#11171c;}
-.cot-camo-card .sw.auto::before{content:'';position:absolute;z-index:2;left:50%;top:50%;width:13px;height:13px;
-  transform:translate(-50%,-50%) rotate(45deg);border:1px solid rgba(255,202,113,.8);
-  background:rgba(7,11,14,.68);box-shadow:0 2px 8px rgba(0,0,0,.72);}
-.cot-camo-card .sw.auto::after{content:'';position:absolute;z-index:3;left:50%;top:50%;width:4px;height:4px;
-  transform:translate(-50%,-50%);background:#ffc267;box-shadow:0 0 5px rgba(255,176,70,.65);}
 /* equipment tiles: distinct procedural icons on a dark plate (r3: identical
    stripe bars read as placeholders) */
 .cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;
@@ -611,6 +665,8 @@ const GARAGE_CSS = `
 .cot-garage .eqhead{display:flex;justify-content:space-between;align-items:baseline;
   font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
+.cot-garage .eqhead span{display:flex;align-items:center;gap:7px;}
+.cot-garage .eqhead svg{width:13px;height:13px;color:#f0a030;}
 .cot-garage .eqhead i{font-style:normal;color:#6d7a86;letter-spacing:.08em;}
 .cot-garage .eqrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .cot-garage .eqslot{cursor:pointer;height:58px;display:flex;flex-direction:column;
@@ -631,7 +687,7 @@ const GARAGE_CSS = `
 .cot-garage .eqslot.empty:hover .plus{color:#9fb0bf;}
 /* EQUIPMENT PICKER: side panel opened by a slot click — icon+name+effect
    tiles, category filter chips, era-locked tiles stay visible but inert. */
-.cot-eqpick{position:absolute;right:340px;top:94px;width:372px;display:none;
+.cot-eqpick{position:absolute;right:390px;top:86px;width:372px;display:none;
   pointer-events:auto;z-index:70;font-family:${FONT_STACK};
   background:linear-gradient(180deg,rgba(11,15,20,.94),rgba(7,10,13,.96));
   border:1px solid rgba(146,164,180,.32);box-shadow:0 10px 36px rgba(0,0,0,.65);
@@ -762,6 +818,16 @@ const GARAGE_CSS = `
   .cot-nav .nv .nvi{width:15px;height:15px;}
   .cot-nav .record-badge{position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;
     font-size:6px;}
+}
+
+/* Short desktop viewports have spare room beside the country/carousel rail,
+   not underneath it. Compact the two scrolling previews and let the left
+   stack use that lane so Battle Gallery remains a complete section instead
+   of a clipped title at 720–820 px heights. */
+@media (min-width:901px) and (max-height:820px){
+  .cot-leftcol{bottom:176px;}
+  .cot-camos .cgrid.camo{max-height:min(150px,20vh);}
+  .cot-featured .fshot{height:74px;}
 }
 
 /* Compact touch garage: keep the tank, BATTLE action and vehicle roster
@@ -1499,7 +1565,8 @@ function paintCamoSwatch(canvas, spec, pid) {
 }
 
 // AUTO is a per-map policy, so its tile previews four real resolved pattern
-// families rather than one arbitrary paint job or a flat colour quadrant.
+// families as a clean seasonal contact sheet. The caption below already
+// supplies the AUTO identity, so no badge obscures the paint.
 function paintAutoCamoSwatch(canvas, spec) {
   const W = 128, H = 44;
   canvas.width = W; canvas.height = H;
@@ -1508,29 +1575,18 @@ function paintAutoCamoSwatch(canvas, spec) {
   c.fillRect(0, 0, W, H);
   const patterns = ['summer', 'desert', 'winter', 'urbanblock'];
   const scratch = document.createElement('canvas');
-  const panelW = W / patterns.length;
+  const cellW = W / 2;
+  const cellH = H / 2;
   patterns.forEach((pattern, index) => {
     paintCamoSwatch(scratch, spec, pattern);
-    const x0 = index * panelW;
-    c.save();
-    c.beginPath();
-    c.moveTo(x0 - 5, 0);
-    c.lineTo(x0 + panelW + 5, 0);
-    c.lineTo(x0 + panelW - 5, H);
-    c.lineTo(x0 - 15, H);
-    c.closePath();
-    c.clip();
-    c.drawImage(scratch, x0 - index * 5, 0, W, H);
-    c.restore();
-    if (index) {
-      c.strokeStyle = 'rgba(235,243,250,.34)';
-      c.lineWidth = 1;
-      c.beginPath();
-      c.moveTo(x0 + 5, 0);
-      c.lineTo(x0 - 5, H);
-      c.stroke();
-    }
+    const x = (index % 2) * cellW;
+    const y = Math.floor(index / 2) * cellH;
+    c.drawImage(scratch, 0, 0, W, H, x, y, cellW, cellH);
   });
+  c.strokeStyle = 'rgba(235,243,250,.28)';
+  c.lineWidth = 1;
+  c.beginPath(); c.moveTo(cellW, 0); c.lineTo(cellW, H); c.stroke();
+  c.beginPath(); c.moveTo(0, cellH); c.lineTo(W, cellH); c.stroke();
   const shade = c.createLinearGradient(0, 0, 0, H);
   shade.addColorStop(0, 'rgba(255,255,255,.07)');
   shade.addColorStop(0.55, 'rgba(255,255,255,0)');
@@ -1719,7 +1775,7 @@ export function createGarage(opts) {
     const panel = document.createElement('div');
     panel.className = 'cot-featured';
     panel.innerHTML =
-      `<div class="ftitle"><span>Battle gallery</span><span class="fdots">` +
+      `<div class="ftitle"><span>${uiIconSVG('gallery', 13)}Battle gallery</span><span class="fdots">` +
       FEATURED_SHOTS.map(() => '<span></span>').join('') +
       `</span></div>` +
       `<div class="fshot"><div class="fly"></div><div class="fly"></div>` +
@@ -1802,6 +1858,10 @@ export function createGarage(opts) {
   for (const s of allSpecs) specById.set(s.id, s);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
+  const openSelectedInGallery = (layer = 'appearance') => {
+    emit('ui:click', {});
+    window.location.href = garageGalleryHref(selectedId, layer);
+  };
   let recordRestoreFocus = null;
   const isRecordOpen = () => recordModal.classList.contains('open');
   const openServiceRecord = () => {
@@ -1903,7 +1963,7 @@ export function createGarage(opts) {
   if (maps.length) {
     const title = document.createElement('div');
     title.className = 'mtitle';
-    title.textContent = 'Battlefield';
+    title.innerHTML = `${uiIconSVG('map', 13)}<span>Battlefield</span>`;
     mapsEl.appendChild(title);
     for (const m of maps) {
       const card = document.createElement('div');
@@ -1978,7 +2038,7 @@ export function createGarage(opts) {
   if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
     const title = document.createElement('div');
     title.className = 'ctitle';
-    title.textContent = 'Camouflage';
+    title.innerHTML = `${uiIconSVG('camouflage', 13)}<span>Camouflage</span>`;
     camosEl.appendChild(title);
     const grid = document.createElement('div');
     // camo r8: 'camo' modifier — the pattern roster grew 6 -> 16, so THIS
@@ -2213,6 +2273,11 @@ export function createGarage(opts) {
 
   // slot boxes are re-created by every renderStats — delegate their clicks
   statsEl.addEventListener('click', (e) => {
+    const galleryLink = e.target.closest('[data-gallery-layer]');
+    if (galleryLink) {
+      openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
+      return;
+    }
     const slot = e.target.closest('.eqslot');
     if (!slot) return;
     emit('ui:click', {});
@@ -2414,19 +2479,27 @@ export function createGarage(opts) {
   // across the garage carousel and screenshot harness.
   ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
 
+  function statSectionTitle(icon, label, meta = '') {
+    return `<div class="cot-stat-title">${uiIconSVG(icon, 13)}` +
+      `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
+  }
+
   function statBar(label, valueText, frac, opts) {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
     // EQUIPMENT SYSTEM: values changed by the mounted loadout render in the
     // boost tint with the stock value + contributing items in the tooltip.
     const mod = opts && opts.mod;
     const title = opts && opts.title ? ` title="${opts.title}"` : '';
-    return `<div class="srow"><div class="lr"><span>${label}</span>` +
-      `<b${mod ? ' class="eqmod"' : ''}${title}>${valueText}</b></div>` +
+    const icon = opts?.icon || 'speed';
+    return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
+      `<div class="lr"><span>${label}</span>` +
+      `<b${mod ? ' class="eqmod"' : ''}>${valueText}</b></div>` +
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
   let statsFor = null; // last spec rendered — gates the swap micro-fade
   function renderStats(spec) {
+    const vehicleChanged = statsFor !== spec.id;
     // garage_ui: vehicle-switch micro-fade — the stats card content used to
     // teleport; a 190 ms fade/rise sells the swap without delaying the data.
     if (statsFor !== spec.id && statsFor !== null &&
@@ -2447,7 +2520,8 @@ export function createGarage(opts) {
       // shell's own duration differs from the headline Reload bar above.
       const shRel = sh.reloadS && Math.abs(sh.reloadS - spec.gun.reloadS) > 0.01
         ? `${sh.reloadS.toFixed(sh.reloadS < 10 ? 1 : 0)} s reload` : '';
-      shellRows += `<div class="shellrow"><span class="ty" style="color:${col}">${sh.type}</span>` +
+      shellRows += `<div class="shellrow" style="--shell-color:${col}">` +
+        `<span class="shellkind">${shellIconSVG(sh.type, 24)}<span class="ty">${sh.type}</span></span>` +
         `<span class="nm">${sh.name}${shRel ? `<small>${shRel}</small>` : ''}</span>` +
         `<span class="shellmetric"><b>${pen}</b>mm</span>` +
         `<span class="shellmetric"><b>${sh.dmg}</b>hp</span></div>`;
@@ -2489,6 +2563,21 @@ export function createGarage(opts) {
       ? `${Math.round(vrMove)} / ${Math.round(vrStill)} m`
       : `${Math.round(vrMove)} m`;
     const eqTitle = (base) => `Stock ${base} &middot; ${eqNames}`;
+    const special = garageSpecialSystem(spec, reloadS);
+    const specialCard = special
+      ? `<section class="cot-stat-section cot-special-section">` +
+        statSectionTitle(special.icon, 'Special system', 'E key') +
+        `<div class="cot-special-card"><span class="cot-special-icon">${uiIconSVG(special.icon, 24)}</span>` +
+        `<div class="cot-special-copy"><b>${special.label}</b><p>${special.detail}</p>` +
+        `<small>${special.meta}</small></div><kbd>E</kbd></div></section>`
+      : '';
+    const moduleRows = garageModuleRows(spec);
+    const crewRows = garageCrewRows(spec);
+    const moduleChips = moduleRows.map((row) =>
+      `<div class="cot-module-chip" title="Damageable module: ${row.label}">` +
+      `<span class="mi">${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
+    const crewChips = crewRows.map((row) =>
+      `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     let slotBoxes = '';
     for (let i = 0; i < EQUIP_SLOTS; i++) {
       const it = eqIds[i] ? EQUIPMENT_BY_ID.get(eqIds[i]) : null;
@@ -2502,42 +2591,54 @@ export function createGarage(opts) {
       `<div class="cot-dossier-head">` +
       `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
       `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
-      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div></div>` +
-      `<section class="cot-stat-section"><div class="cot-stat-title">Performance</div>` +
+      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
+      `<button class="cot-gallery-link" type="button" data-gallery-layer="appearance">` +
+      `${uiIconSVG('gallery', 15)}<span>Open in Tank Gallery</span><span class="go">&#8250;</span></button></div>` +
+      `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
       `<div class="cot-performance-grid">` +
-      statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
-      statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
-      statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT)) +
+      statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
+      statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
+      statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
-        { mod: eqM.reload !== 1, title: eqTitle(`${spec.gun.reloadS.toFixed(1)} s`) }) +
+        { icon: 'clock', mod: eqM.reload !== 1, title: eqTitle(`${spec.gun.reloadS.toFixed(1)} s`) }) +
       statBar('Aim time', `${aimS.toFixed(1)} s`, statFrac(grp, 'aim', aimS, true),
-        { mod: eqM.aimTime !== 1, title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
-      statBar('Damage', `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg)) +
+        { icon: 'scope', mod: eqM.aimTime !== 1, title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
+      statBar('Damage', `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
       statBar('View range', viewText, statFrac(grp, 'view', vrMove),
-        { mod: vrMove > vrBase || vrStill > vrMove + 0.5,
+        { icon: 'optics', mod: vrMove > vrBase || vrStill > vrMove + 0.5,
           title: vrStill > vrMove + 0.5 ? `Moving / stationary &middot; stock ${vrBase} m`
             : eqTitle(`${vrBase} m`) }) +
       statBar('Camouflage', `${Math.round(camoStill * 100)} / ${Math.round(camoMove * 100)} %`,
         statFrac(grp, 'camo', camoStill),
-        { mod: camoModded, title: 'Stationary / moving' +
+        { icon: 'camouflage', mod: camoModded, title: 'Stationary / moving' +
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
-      `<section class="cot-stat-section"><div class="cot-stat-title">Ammunition</div>` +
+      specialCard +
+      `<section class="cot-stat-section">${statSectionTitle('shell', 'Ammunition', `${shells.length} types`)}` +
       magazineSpec +
-      `<div class="shellhead"><span>Type</span><span>Round</span><span>Pen</span><span>Damage</span></div>` +
+      `<div class="shellhead"><span>Class</span><span>Round</span><span>Pen</span><span>Damage</span></div>` +
       shellRows + `</section>` +
-      `<section class="cot-stat-section"><div class="cot-stat-title">Protection &amp; gun</div>` +
+      `<section class="cot-stat-section">${statSectionTitle('shield', 'Protection')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline"><span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
-      `<div class="armorline"><span>Turret front</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div>` +
-      `<div class="armorline"><span>Gun</span><b>${spec.gun.caliberMm} mm</b></div>` +
-      `<div class="armorline"><span>Gun arc</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
+      `<div class="armorline">${uiIconSVG('shield', 19)}<span>Hull front</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
+      `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>Turret front</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
+      `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}Inspect armor overlay</button></section>` +
+      `<section class="cot-stat-section">${statSectionTitle('gun', 'Armament', `${spec.gun.caliberMm} mm`)}` +
+      `<div class="armor-grid">` +
+      `<div class="armorline">${uiIconSVG('gun', 19)}<span>Gun</span><b>${spec.gun.caliberMm} mm</b></div>` +
+      `<div class="armorline">${uiIconSVG('scope', 19)}<span>Gun arc</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
+      `<section class="cot-stat-section">${statSectionTitle('engine', 'Modules', `${moduleRows.length} systems`)}` +
+      `<div class="cot-module-grid">${moduleChips}</div>` +
+      `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}Open module overlay</button></section>` +
+      `<section class="cot-stat-section">${statSectionTitle('crew', 'Crew', `${crewRows.length} stations`)}` +
+      `<div class="cot-crew-grid">${crewChips}</div></section>` +
       // §5.31b PRINT VIEWER: view-only notice replaces the loadout slots —
       // equipment cannot be mounted on (or saved for) a print pseudo-spec.
       `<section class="cot-stat-section">` +
-      `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
+      `<div class="eqhead"><span>${uiIconSVG('repair', 13)} Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
       `<div class="eqrow">${slotBoxes}</div></section>`;
     statsEl.querySelector('h3').textContent = spec.label?.displayName || spec.name;
+    if (vehicleChanged) statsEl.scrollTop = 0;
   }
 
   function applySelection(specId) {
@@ -2781,9 +2882,7 @@ export function createGarage(opts) {
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
   });
   root.querySelector('[data-nav="gallery"]').addEventListener('click', () => {
-    emit('ui:click', {});
-    const query = selectedId ? `?id=${encodeURIComponent(selectedId)}` : '';
-    window.location.href = `/gallery${query}`;
+    openSelectedInGallery();
   });
   root.querySelector('[data-nav="home"]').addEventListener('click', () => {
     emit('ui:click', {});
@@ -2830,6 +2929,7 @@ export function createGarage(opts) {
       if (!api.isOpen) window.addEventListener('keydown', onKey);
       api.isOpen = true;
       api.setSelected(specById.has(selected) ? selected : selectedId);
+      statsEl.scrollTop = 0;
       // The hidden garage reports a zero-width rail during initial creation.
       // Re-measure after display:block so the first visible frame gets honest
       // left/right fades and controls without waiting for a resize or scroll.

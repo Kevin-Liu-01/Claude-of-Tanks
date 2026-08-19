@@ -17,4 +17,6 @@ assert.equal(isMaterialTextureQualityUpgrade('preview', 'high'), true);
 assert.equal(isMaterialTextureQualityUpgrade('high', 'preview'), false);
 assert.equal(isMaterialTextureQualityUpgrade('preview', 'preview'), false);
 
+await import('./factoryCamo.selftest.mjs');
+
 console.log('materialQuality.selftest: low, AI, preview, and hero texture tiers passed');
