@@ -4797,12 +4797,17 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
-  if (typeof renderer.compileAsync === 'function') {
-    const t0 = performance.now();
-    try { await renderer.compileAsync(scene, camera, scene); } catch (_) { /* first render is fallback */ }
-    BOOT_TIMINGS.postCompileAsync = Math.round(performance.now() - t0);
-    await nextFrame();
-  }
+  // COLD-BOOT RECOVERY: never await compileAsync here. Three polls
+  // COMPLETION_STATUS_KHR until every program reports ready; affected
+  // mobile/ANGLE drivers can leave that advisory bit false forever on the
+  // first visit, parking this exact stage at 85%, while a reload succeeds
+  // from the driver shader cache. Submit the same programs synchronously,
+  // give the driver one frame to work, then let the real hidden render below
+  // perform Three's finite first-use link/uniform discovery.
+  const t0 = performance.now();
+  try { renderer.compile(scene, camera, scene); } catch (_) { /* first render is fallback */ }
+  BOOT_TIMINGS.postCompile = Math.round(performance.now() - t0);
+  await nextFrame();
   lighting.update(true); // boot: render every cascade before first present
   post.render(SIM_DT);
 });

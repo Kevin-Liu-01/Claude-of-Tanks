@@ -10,7 +10,10 @@
 //   while the splash is still up, a keypress dismisses the splash.
 // PASS 2 (harness path, webdriver bypass): splash auto-dismisses with no
 //   keypress and __GAME_READY still sets.
-// Both passes must produce zero console/page errors. Exits non-zero on any
+// PASS 3 (cold-driver fault): KHR_parallel_shader_compile is present but its
+//   completion bit never becomes true. Boot must not depend on that advisory
+//   driver signal, so it still reaches 100% without a reload.
+// All passes must produce zero console/page errors. Exits non-zero on any
 // failed assertion. Also prints per-stage BOOT_TIMINGS so "loading is slow"
 // is attributable, not vibes.
 //
@@ -63,7 +66,7 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 
-async function bootPage(forceSplash) {
+async function bootPage(forceSplash, { stallParallelCompile = false } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
   const pageErrors = [];
@@ -73,6 +76,34 @@ async function bootPage(forceSplash) {
   });
   if (forceSplash) {
     await page.evaluateOnNewDocument(() => { window.__COT_FORCE_SPLASH = true; });
+  }
+  if (stallParallelCompile) {
+    await page.evaluateOnNewDocument(() => {
+      // Three's WebGLRenderer.compileAsync() polls this bit until it becomes
+      // true. Some cold mobile/ANGLE drivers never report completion even
+      // though an ordinary first render can link the same programs. Emulate
+      // that driver contract so the regression is deterministic in CI.
+      const COMPLETION_STATUS_KHR = 0x91b1;
+      for (const Context of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+        if (!Context) continue;
+        const proto = Context.prototype;
+        const getExtension = proto.getExtension;
+        const getProgramParameter = proto.getProgramParameter;
+        proto.getExtension = function patchedGetExtension(name) {
+          const extension = getExtension.call(this, name);
+          if (name !== 'KHR_parallel_shader_compile') return extension;
+          window.__COT_KHR_STALL_INJECTED = true;
+          return extension || { COMPLETION_STATUS_KHR };
+        };
+        proto.getProgramParameter = function patchedGetProgramParameter(program, name) {
+          if (name === COMPLETION_STATUS_KHR) {
+            window.__COT_KHR_STALL_CHECKS = (window.__COT_KHR_STALL_CHECKS || 0) + 1;
+            return false;
+          }
+          return getProgramParameter.call(this, program, name);
+        };
+      }
+    });
   }
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
   return { page, pageErrors };
@@ -161,6 +192,35 @@ async function bootPage(forceSplash) {
   }));
   check(mode, 'splash auto-dismissed (no keypress)', state.splashGone);
   check(mode, '__GAME_READY set', state.ready);
+  check(mode, 'zero console/page errors', pageErrors.length === 0,
+    pageErrors.slice(0, 3).join(' | '));
+  await page.close();
+}
+
+// ---------------------------------------------------------------------------
+// PASS 3 — cold-driver fault: parallel compile completion never arrives
+// ---------------------------------------------------------------------------
+{
+  const mode = 'cold-driver';
+  const { page, pageErrors } = await bootPage(true, { stallParallelCompile: true });
+  let ready = false;
+  try {
+    await page.waitForFunction('window.__GAME_READY === true', { timeout: 12000 });
+    ready = true;
+  } catch (_) { /* asserted below with the last visible stage */ }
+  if (ready) await sleep(400); // let the progress easing paint its final frame
+  const state = await page.evaluate(() => ({
+    injected: window.__COT_KHR_STALL_INJECTED === true,
+    checks: window.__COT_KHR_STALL_CHECKS || 0,
+    pct: parseInt(document.getElementById('cot-boot-pct')?.textContent || '-1', 10),
+    stage: document.getElementById('cot-boot-stage')?.textContent || '',
+  }));
+  check(mode, 'parallel-compile fault injected', state.injected);
+  check(mode, 'cold boot performs zero completion polling', state.checks === 0,
+    `${state.checks} completion checks`);
+  check(mode, 'boot does not await the advisory completion bit', ready,
+    `final ${state.pct}% at "${state.stage}", completion checks ${state.checks}`);
+  check(mode, 'cold-driver bar reaches 100%', state.pct >= 100, `${state.pct}%`);
   check(mode, 'zero console/page errors', pageErrors.length === 0,
     pageErrors.slice(0, 3).join(' | '));
   await page.close();
