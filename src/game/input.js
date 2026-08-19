@@ -53,6 +53,7 @@ export const ACTION_DEFS = [
   { id: 'shell1', label: 'Shell Slot 1', group: 'Combat' },
   { id: 'shell2', label: 'Shell Slot 2', group: 'Combat' },
   { id: 'shell3', label: 'Shell Slot 3', group: 'Combat' },
+  { id: 'specialAction', label: 'Special Action', group: 'Combat' },
   { id: 'reloadMagazine', label: 'Reload Magazine', group: 'Combat' },
   { id: 'consumable1', label: 'Repair Kit', group: 'Consumables' },
   { id: 'consumable2', label: 'First Aid Kit', group: 'Consumables' },
@@ -69,7 +70,8 @@ export const ACTION_DEFS = [
 ];
 
 /** Default primary bindings: WASD move, LMB fire, Shift sniper, RMB aim,
- *  1/2/3 shells, 4/5/6 consumables, wheel zoom, Space handbrake, Esc menu.
+ *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
+ *  Space handbrake, Esc menu.
  *  WoT PC CLASSIC LAYOUT — locked by movement-physics.md §9.2 ("Enter: Shift
  *  key or wheel-in") and cameraRig's CamInput contract (shiftPressed rising
  *  edge toggles sniper). gameplay_feel r3: an uncommitted edit swapped
@@ -93,6 +95,7 @@ export const DEFAULT_BINDINGS = {
   shell1: 'Digit1',
   shell2: 'Digit2',
   shell3: 'Digit3',
+  specialAction: 'KeyE',
   reloadMagazine: 'KeyC',
   consumable1: 'Digit4',
   consumable2: 'Digit5',
@@ -115,7 +118,7 @@ export const DEFAULT_BINDINGS2 = {
 };
 
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
- *  RB free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
+ *  LB special action, RB free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
  *  left = drive, right = aim. */
 export const DEFAULT_PAD_BINDINGS = {
   fire: 7, // RT
@@ -125,6 +128,7 @@ export const DEFAULT_PAD_BINDINGS = {
   shell1: 12, // D-UP
   shell2: 14, // D-LEFT
   shell3: 15, // D-RIGHT
+  specialAction: 4, // LB
   reloadMagazine: 13, // D-DOWN
   consumable1: 2, // X
   consumable2: 3, // Y

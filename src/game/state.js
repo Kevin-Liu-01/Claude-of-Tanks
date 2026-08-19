@@ -18,6 +18,12 @@ import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectShell, startPostShotReload, startReload, tickReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
+import {
+  createSpecialActionState,
+  finishSpecialActionFire,
+  specialActionWantsFire,
+  tickSpecialAction,
+} from '../sim/specialActions.js';
 import { createAI, roleOf } from './ai.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { getStoredDifficulty } from './input.js';
@@ -178,6 +184,7 @@ export function spawnTanks(game, engineCtx) {
       isPlayer: false,
       state: null,
       combat: null,
+      specialAction: createSpecialActionState(spec),
       input: {
         throttle: 0, steer: 0, brake: false, fire: false,
         aimPoint: new THREE.Vector3(), shellSlot: 0,
@@ -711,6 +718,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.isPlayer = isPlayer;
     ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
     ent.combat = createCombatState(ent.spec);
+    ent.specialAction = createSpecialActionState(ent.spec);
     // EQUIPMENT SYSTEM: attach the loadout — player fights with the garage
     // picks, every bot gets its class-default kit (AI parity: the player is
     // never uniquely advantaged). applyEquipmentToCombat stores the
@@ -1311,7 +1319,8 @@ function announceDestroyed(game, bus, ent, killerId, cause) {
 /** Fire the loaded shell if the trigger is held and the gun is ready. */
 function tryFire(game, ent, bus, rig) {
   const c = ent.combat;
-  if (!ent.input.fire || c.destroyed || c.reload.t > 0) return;
+  const specialFire = specialActionWantsFire(ent);
+  if ((!ent.input.fire && !specialFire) || c.destroyed || c.reload.t > 0) return;
   if (c.magazine && c.magazine.rounds <= 0) return;
   if (c.modules.gun && c.modules.gun.state === 'red') return;
   // BATTLE-AI r7 hardening: clamp to the spec's REAL magazine — a slot index
@@ -1405,6 +1414,7 @@ function tryFire(game, ent, bus, rig) {
   _firedEv.dir[0] = _dir.x; _firedEv.dir[1] = _dir.y; _firedEv.dir[2] = _dir.z;
   bus.emit('shell:fired', _firedEv);
   startPostShotReload(c, ent.spec);
+  if (specialFire) finishSpecialActionFire(ent);
   // SPOTTING WIRING: firing blooms the shooter's camo (with decay) and lights
   // up any concealing foliage within 15 m (see src/sim/spotting.js).
   if (game.spotting) game.spotting.notifyFired(ent.id, game.timeS);
@@ -1718,6 +1728,7 @@ export function simStep(game, bus, world, rig, collider) {
         done: wasReloading > 0 && done,
       });
     }
+    tickSpecialAction(ent);
     tryFire(game, ent, bus, rig);
   }
 

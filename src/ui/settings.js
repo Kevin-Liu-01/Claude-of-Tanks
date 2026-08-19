@@ -519,6 +519,7 @@ export function createSettings(opts) {
     emit('ui:bindingsChanged', {
       shells: ['shell1', 'shell2', 'shell3'].map(bindLabel),
       consumables: ['consumable1', 'consumable2', 'consumable3'].map(bindLabel),
+      specialAction: bindLabel('specialAction'),
     });
   }
 

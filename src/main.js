@@ -60,6 +60,7 @@ import {
   startMagazineReload,
 } from './sim/damage.js';
 import { createShell } from './sim/ballistics.js';
+import { activateSpecialAction, specialActionLocksShell } from './sim/specialActions.js';
 import { createKillCam } from './game/killcam.js';
 import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
@@ -1861,6 +1862,11 @@ input.onAction('reloadMagazine', () => {
   bus.emit('ui:magazineReload', {});
 });
 
+input.onAction('specialAction', () => {
+  if (game.phase !== 'battle' || settings.isOpen()) return;
+  bus.emit('ui:specialAction', {});
+});
+
 // Consumables — rebindable actions (Digit4/5/6 + pad X/Y/B default; HUD tray
 // clickable, which emits the same 'ui:consumable'). 0 = Repair Kit (all
 // damaged modules to full), 1 = First Aid (revive crew), 2 = Fire
@@ -1924,6 +1930,7 @@ input.onAction('perfHud', () => perfHud.toggle());
 
 bus.on('ui:shellSelect', ({ slot }) => {
   if (game.player && game.player.combat && !game.player.combat.destroyed) {
+    if (specialActionLocksShell(game.player)) return;
     if (slot === game.player.combat.shellSlot && game.player.combat.magazine) {
       bus.emit('ui:magazineReload', {});
       return;
@@ -1942,6 +1949,18 @@ bus.on('ui:magazineReload', () => {
     networkActionBitsPending |= PLAYER_ACTION_BITS.RELOAD_MAGAZINE;
   } else {
     startMagazineReload(p.combat, p.spec);
+  }
+  bus.emit('ui:click', {});
+});
+
+bus.on('ui:specialAction', () => {
+  const p = game.player;
+  if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
+  if (networkMatch) {
+    networkActionBitsPending |= PLAYER_ACTION_BITS.SPECIAL_ACTION;
+  } else {
+    const result = activateSpecialAction(p);
+    bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
   }
   bus.emit('ui:click', {});
 });
@@ -2270,7 +2289,8 @@ function networkInputFrame() {
       PLAYER_ACTION_BITS.REPAIR |
       PLAYER_ACTION_BITS.FIRST_AID |
       PLAYER_ACTION_BITS.EXTINGUISHER |
-      PLAYER_ACTION_BITS.RELOAD_MAGAZINE
+      PLAYER_ACTION_BITS.RELOAD_MAGAZINE |
+      PLAYER_ACTION_BITS.SPECIAL_ACTION
     ),
   };
 }

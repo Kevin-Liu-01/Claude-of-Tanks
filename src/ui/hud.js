@@ -93,6 +93,10 @@ import { tierNumeral } from '../vehicles/tier.js';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';
+import {
+  SPECIAL_ACTION_KINDS,
+  specialActionDescriptor,
+} from '../sim/specialActions.js';
 
 // module-scope scratch (no per-frame allocation)
 const _mInv = new THREE.Matrix4();
@@ -467,7 +471,7 @@ const HUD_CSS = `
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
    information a spectator wants). Removed with the bar (spectate:end). */
-body.cot-spectating .cot-shells,body.cot-spectating .cot-dp,
+body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !important;}
 .cot-dmgnum{position:absolute;font-weight:700;font-size:18px;color:#ffd166;white-space:nowrap;
   text-shadow:0 1px 1px rgba(0,0,0,.95),0 0 12px rgba(0,0,0,.5);
@@ -505,6 +509,25 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.5);
   opacity:0;transition:opacity .18s ease;}
 .cot-bounce.show{opacity:1;}
+.cot-special{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);
+  min-width:154px;height:38px;padding:5px 12px 5px 8px;display:none;
+  grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
+  cursor:pointer;color:#dce7ef;background:linear-gradient(180deg,rgba(20,27,33,.94),rgba(7,11,15,.96));
+  border:1px solid rgba(184,201,214,.38);border-bottom:2px solid rgba(184,201,214,.42);
+  box-shadow:0 3px 12px rgba(0,0,0,.45);font-family:${FONT_COND};text-transform:uppercase;}
+.cot-special.show{display:grid;}
+.cot-special:hover{border-color:rgba(240,176,74,.72);color:#ffd27a;}
+.cot-special:active{transform:translateX(-50%) scale(.97);}
+.cot-special.active{border-color:#f0a030;color:#ffd27a;background:linear-gradient(180deg,rgba(54,39,15,.95),rgba(21,14,7,.97));
+  box-shadow:0 0 16px rgba(240,160,48,.3);}
+.cot-special.pending .si{animation:cotSpecialPulse .8s ease-in-out infinite alternate;}
+.cot-special .si{display:flex;align-items:center;justify-content:center;}
+.cot-special .si svg{width:22px;height:22px;display:block;}
+.cot-special .sl{font-size:9px;font-weight:800;letter-spacing:.13em;white-space:nowrap;text-align:left;}
+.cot-special .sk{font-size:9px;font-weight:800;color:#9fb0bf;border:1px solid rgba(146,164,180,.42);
+  padding:1px 4px;line-height:13px;}
+.cot-special.active .sk{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+@keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
 .cot-shells{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:flex-end;}
 .cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
@@ -1026,6 +1049,51 @@ export function initHud(bus) {
   // ======================= END SPOTTING SECTION =============================
 
   // --- shell selector + consumables ---
+  const specialButton = el('button', 'cot-special', root);
+  specialButton.type = 'button';
+  specialButton.innerHTML = '<span class="si"></span><span class="sl"></span><span class="sk">E</span>';
+  // Act on pointerdown and suppress the compatibility mouse event. While the
+  // game owns pointer lock, a bubbled Mouse0 is the fire binding; letting a
+  // touch/click reach window would fire the cannon alongside this action.
+  specialButton.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    bus.emit('ui:specialAction', {});
+  });
+  // Keyboard activation produces click(detail=0) without pointerdown.
+  specialButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (event.detail === 0) bus.emit('ui:specialAction', {});
+  });
+  const specialIcon = specialButton.querySelector('.si');
+  const specialLabel = specialButton.querySelector('.sl');
+  const specialKey = specialButton.querySelector('.sk');
+  let specialSpecId = null;
+  let specialKind = SPECIAL_ACTION_KINDS.NONE;
+
+  function updateSpecialAction(player) {
+    const specId = player?.spec?.id || null;
+    if (specId !== specialSpecId) {
+      specialSpecId = specId;
+      const descriptor = specialActionDescriptor(player?.spec);
+      specialKind = descriptor.kind;
+      const icon = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE ? 'missileRack'
+        : specialKind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM ? 'track'
+          : specialKind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD ? 'autoloader' : null;
+      specialIcon.innerHTML = icon ? uiIconSVG(icon, 22, 'currentColor') : '';
+      specialLabel.textContent = descriptor.label;
+      specialLabel.dataset.short = descriptor.shortLabel;
+      specialButton.title = descriptor.label;
+      specialButton.setAttribute('aria-label', descriptor.label || 'Special action unavailable');
+      specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
+    }
+    const action = player?.specialAction;
+    specialButton.classList.toggle('active', !!action?.active);
+    specialButton.classList.toggle('pending', !!(action?.pendingFire || action?.restoringShell));
+    specialButton.disabled = !player || !!player.combat?.destroyed;
+    specialButton.setAttribute('aria-pressed', action?.active ? 'true' : 'false');
+  }
+
   const shellBox = el('div', 'cot-shells', root);
   const slotEls = [];
   for (let i = 0; i < 3; i++) {
@@ -3270,6 +3338,17 @@ export function initHud(bus) {
         if (k) k.textContent = p.consumables[i];
       }
     }
+    if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
+  });
+  bus.on('ui:specialActionResult', ({ kind, active }) => {
+    if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) showAlert('ATGM LAUNCH QUEUED', false);
+    else if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) {
+      showAlert(active ? 'SUSPENSION AIM ENGAGED' : 'SUSPENSION AIM DISENGAGED', false);
+    } else if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) showAlert('MAGAZINE RELOAD STARTED', false);
+  });
+  bus.on('ui:specialActionDenied', ({ reason }) => {
+    showAlert(reason === 'BUSY' ? 'SPECIAL ACTION IN PROGRESS'
+      : reason === 'FULL_OR_RELOADING' ? 'MAGAZINE ALREADY READY' : 'SPECIAL ACTION UNAVAILABLE', false);
   });
   bus.on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
     const s = conEls[slot];
@@ -3576,6 +3655,7 @@ export function initHud(bus) {
       if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
       playerRef = frame.player || playerRef;
       if (frame.player) playerId = frame.player.id;
+      updateSpecialAction(frame.player || playerRef);
       // damage panel: live pose for its rotating plan view (main.js calls
       // damagePanel.update right after hud.update each frame). The panel is
       // CAMERA-UP — its top is the camera's forward bearing — so it needs

@@ -134,6 +134,19 @@ body.cot-touch-layout .cot-cons{display:flex;flex-direction:column;gap:9px;posit
   bottom:calc(max(22px,env(safe-area-inset-bottom)) + 124px);z-index:3;}
 body.cot-touch-layout .cot-con{width:48px;height:48px;}
 body.cot-touch-layout .cot-con svg{transform:none;}
+/* The HUD's context-aware Special Action remains the one canonical button on
+   touch. Recompose it into the fire cluster instead of adding a second mobile
+   implementation or another input path. */
+body.cot-touch-layout .cot-special{left:auto;right:128px;
+  bottom:calc(max(22px,env(safe-area-inset-bottom)) + 112px);transform:none;
+  width:64px;min-width:64px;height:64px;padding:5px;border-radius:50%;
+  grid-template-columns:1fr;grid-template-rows:28px 12px;gap:0;justify-items:center;
+  border:2px solid rgba(220,231,239,.32);background:radial-gradient(circle at 35% 28%,rgba(90,103,113,.84),rgba(22,29,35,.93) 62%,rgba(6,9,12,.96));}
+body.cot-touch-layout .cot-special:active{transform:scale(.94);}
+body.cot-touch-layout .cot-special .si svg{width:27px;height:27px;}
+body.cot-touch-layout .cot-special .sl{font-size:0;letter-spacing:.07em;text-align:center;}
+body.cot-touch-layout .cot-special .sl::after{content:attr(data-short);font-size:7px;}
+body.cot-touch-layout .cot-special .sk{display:none;}
 body.cot-touch-layout .cot-net{top:calc(max(8px,env(safe-area-inset-top)) + 48px);
   right:max(10px,env(safe-area-inset-right));padding:4px 7px 3px;z-index:4;
   background:rgba(7,11,15,.68);border-right:2px solid rgba(240,160,48,.72);
@@ -157,6 +170,8 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
   .cot-touch .fire.alt{left:137px;bottom:136px;width:56px;height:56px}
   .cot-touch .speed{left:calc(var(--edge) + 128px);min-width:70px;}
   body.cot-touch-layout .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
+  body.cot-touch-layout .cot-special{right:108px;width:56px;min-width:56px;height:56px;
+    bottom:calc(max(22px,env(safe-area-inset-bottom)) + 98px);}
   body.cot-touch-layout .cot-minimap{width:92px!important;height:92px!important;}
   body.cot-touch-layout .cot-dp{display:none;}
 }
@@ -185,6 +200,8 @@ body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
     bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
   body.cot-touch-layout .cot-shells{
     bottom:calc(max(22px,env(safe-area-inset-bottom)) + 168px);}
+  body.cot-touch-layout .cot-special{right:174px;
+    bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
 }
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}

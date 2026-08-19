@@ -45,6 +45,14 @@ import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.js';
 import { decodeAimIntent } from '../net/aimIntent.js';
+import {
+  activateSpecialAction,
+  createSpecialActionState,
+  finishSpecialActionFire,
+  specialActionLocksShell,
+  specialActionWantsFire,
+  tickSpecialAction,
+} from './specialActions.js';
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
@@ -378,6 +386,7 @@ export function createAuthoritativeMatch({
       kills: 0,
       damage: 0,
       consumableReadyAt: [0, 0, 0],
+      specialAction: createSpecialActionState(spec),
     };
     entities.push(entity);
     entityById.set(id, entity);
@@ -469,9 +478,11 @@ export function createAuthoritativeMatch({
     entity.input.brake = input.brake;
     entity.input.fire = input.fire;
     entity.input.actionBits = input.actionBits | 0;
-    const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
-    if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
-    entity.input.shellSlot = shellSlot;
+    if (!specialActionLocksShell(entity)) {
+      const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
+      if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
+      entity.input.shellSlot = shellSlot;
+    }
     decodeAimIntent(input, entity.state.pos, _aim);
     entity.input.aimPoint.copy(_aim);
   }
@@ -669,6 +680,15 @@ export function createAuthoritativeMatch({
         emit('magazine_reload', { id: entity.id });
       }
     }
+    if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) {
+      const result = activateSpecialAction(entity);
+      emit(result.ok ? 'special_action' : 'special_action_denied', {
+        id: entity.id,
+        kind: result.kind,
+        active: !!result.active,
+        reason: result.reason || null,
+      });
+    }
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       const bit = 1 << slot;
       if (!(bits & bit)) continue;
@@ -711,7 +731,8 @@ export function createAuthoritativeMatch({
 
   function tryFire(entity) {
     const combat = entity.combat;
-    if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return;
+    const specialFire = specialActionWantsFire(entity);
+    if ((!entity.input.fire && !specialFire) || combat.destroyed || combat.reload.t > 0) return;
     if (combat.magazine && combat.magazine.rounds <= 0) return;
     if (combat.modules.gun && combat.modules.gun.state === 'red') return;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
@@ -760,6 +781,7 @@ export function createAuthoritativeMatch({
       dy: _gunDir.y,
       dz: _gunDir.z,
     });
+    if (specialFire) finishSpecialActionFire(entity);
   }
 
   function recordShellHit(shell, hit, wasDestroyed = false) {
@@ -944,6 +966,7 @@ export function createAuthoritativeMatch({
         if (entity.combat.reload.t > 0) {
           tickReload(entity.combat, dt);
         }
+        tickSpecialAction(entity);
         tryFire(entity);
       }
       stepShells(dt);

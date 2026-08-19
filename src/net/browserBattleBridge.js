@@ -8,6 +8,7 @@ import { pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.js';
 import { PresentationEventQueue } from './presentationEventQueue.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
+import { createSpecialActionState } from '../sim/specialActions.js';
 
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
@@ -126,6 +127,7 @@ export function createBrowserBattleBridge({
       isPlayer: !spectator && snapshot.id === id,
       state,
       combat,
+      specialAction: createSpecialActionState(spec),
       input: {
         throttle: 0,
         steer: 0,
@@ -215,6 +217,10 @@ export function createBrowserBattleBridge({
     combat.destroyed = destroyed;
     entity.input.fire = !!(snapshot.flags & SNAPSHOT_FLAGS.FIRING);
     entity.input.shellSlot = snapshot.shellSlot;
+    entity.specialAction.active = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE);
+    entity.specialAction.pendingFire = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_PENDING);
+    state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
+      entity.specialAction.active;
     if (destroyed) visualDestroy(entity);
     else if (!destroyed && entity._networkDestroyed) {
       if (entity.visual.resetDestroyed) entity.visual.resetDestroyed();
@@ -393,6 +399,16 @@ export function createBrowserBattleBridge({
           slot: event.slot,
           reason: event.reason,
           remainingS: event.remainingS,
+        });
+    } else if (event.type === 'special_action' && event.id === id) {
+        bus.emit('ui:specialActionResult', {
+          kind: event.kind,
+          active: !!event.active,
+        });
+    } else if (event.type === 'special_action_denied' && event.id === id) {
+        bus.emit('ui:specialActionDenied', {
+          kind: event.kind,
+          reason: event.reason,
         });
     } else if (event.type === 'module_state') {
         bus.emit('module:state', {

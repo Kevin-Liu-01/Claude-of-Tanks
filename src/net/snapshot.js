@@ -32,6 +32,8 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   BURNING: 1 << 1,
   FIRING: 1 << 2,
   SPOTTED: 1 << 3,
+  SPECIAL_ACTIVE: 1 << 4,
+  SPECIAL_PENDING: 1 << 5,
 });
 
 function finite(value, fallback = 0) {
@@ -66,6 +68,10 @@ function entityFlags(entity) {
   if (combat.fire && combat.fire.burning) flags |= SNAPSHOT_FLAGS.BURNING;
   if (entity.input && entity.input.fire) flags |= SNAPSHOT_FLAGS.FIRING;
   if (entity.spotted) flags |= SNAPSHOT_FLAGS.SPOTTED;
+  if (entity.specialAction?.active) flags |= SNAPSHOT_FLAGS.SPECIAL_ACTIVE;
+  if (entity.specialAction?.pendingFire || entity.specialAction?.restoringShell) {
+    flags |= SNAPSHOT_FLAGS.SPECIAL_PENDING;
+  }
   return flags;
 }
 

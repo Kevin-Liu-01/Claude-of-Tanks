@@ -356,6 +356,12 @@ const DRIVER_DEAD_MULT = 0.7;    // accel & traverse when the driver is dead
 const ENGINE_YELLOW_POWER_MULT = 0.5;
 
 const DEG2RAD = Math.PI / 180;
+// Strv 103 hydropneumatic aiming. This is a target offset for the existing
+// hull attitude/support solver, not a second visual transform: armor, muzzle,
+// tracks, terrain contact, and remote snapshots all retain one canonical pose.
+const SUSPENSION_AIM_NOSE_DOWN_RAD = 6 * DEG2RAD;
+const SUSPENSION_AIM_NOSE_UP_RAD = 8 * DEG2RAD;
+const SUSPENSION_AIM_RATE_RAD_S = 5 * DEG2RAD;
 const RAD2DEG = 180 / Math.PI;
 
 // Casemate TDs (movement doc §7 + the §1 class-table note): the gun yaw is
@@ -539,6 +545,8 @@ export function createTankState(spec, pos, yaw) {
     trackScroll: { l: 0, r: 0 },
     atGunLimit: false,
     gunLimitSpec: false, // GUN LIMIT label flag (see GUN_LIMIT_LABEL_DIST_M)
+    suspensionAim: false,
+    suspensionAimPitch: 0,
     // r2 blocked-drive impact telemetry: closing speed (m/s) the collision
     // pushback absorbed this tick (0 = no blocked contact). state.js reads it
     // right after updateTank to emit ONE 'tank:impact' bus event per hit.
@@ -902,7 +910,36 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // contact at gravity rate instead of hanging off one end for several ticks.
   state._perch = Math.max(0, (state._perch || 0) - dt / PERCH_RELEASE_S);
   const perch = state._perch;
-  const targetPitch = state._terr.pitch + inertialPitch;
+  // The Strv 103 has no conventional elevation mechanism: its
+  // hydropneumatic suspension tilts the complete hull toward the sight line.
+  // The mode is opt-in via the special-action edge. It feeds the same spring
+  // and support solve used by terrain pitch, so it adds no render-time work or
+  // duplicate collision pose. At rest, the existing static-pose cache resumes.
+  let suspensionAimPitch = state.suspensionAimPitch || 0;
+  // Ordinary vehicles take only this predictable false branch. The extra aim
+  // math runs solely while a Strv mode is engaged or its offset is settling.
+  if (state.suspensionAim || suspensionAimPitch !== 0) {
+    let suspensionAimTarget = 0;
+    if (state.suspensionAim && input.aimPoint) {
+      const adx = input.aimPoint.x - state.pos.x;
+      const adz = input.aimPoint.z - state.pos.z;
+      const ady = input.aimPoint.y - (state.pos.y + gunPivotHeight(spec));
+      const worldAimPitch = Math.atan2(ady, Math.max(Math.hypot(adx, adz), 1e-6));
+      suspensionAimTarget = clamp(
+        worldAimPitch - state._terr.pitch,
+        -SUSPENSION_AIM_NOSE_DOWN_RAD,
+        SUSPENSION_AIM_NOSE_UP_RAD,
+      );
+    }
+    suspensionAimPitch = approach(
+      suspensionAimPitch,
+      suspensionAimTarget,
+      SUSPENSION_AIM_RATE_RAD_S * dt,
+    );
+    if (!state.suspensionAim && Math.abs(suspensionAimPitch) < 1e-6) suspensionAimPitch = 0;
+    state.suspensionAimPitch = suspensionAimPitch;
+  }
+  const targetPitch = state._terr.pitch + inertialPitch + suspensionAimPitch;
   const targetRoll = state._terr.roll;
   const wP = SPRING_OMEGA * (1 + PERCH_W_BOOST * perch);
   const zP = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
