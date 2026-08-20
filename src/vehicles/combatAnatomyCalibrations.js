@@ -3749,7 +3749,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.713,
         3.905
       ],
-      "sourceHash": "05b6b6757d83251e"
+      "sourceHash": "c3291d94abef2885"
     },
     "turret": {
       "min": [
@@ -3762,7 +3762,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         0.955,
         1.61
       ],
-      "sourceHash": "093c116381c0bb67"
+      "sourceHash": "d6ca0b203a09365d"
     },
     "tracks": {
       "left": {

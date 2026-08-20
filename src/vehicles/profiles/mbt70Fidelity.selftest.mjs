@@ -14,8 +14,12 @@ assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads the
 assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external geometry is prohibited');
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
 const factoryVisual = resolveCamoVisual(spec, 'factory');
-assert.equal(factoryVisual.scheme, 'nato', 'factory paint uses a restrained German three-tone pattern');
-assert.equal(factoryVisual.base, '#56564d', 'factory paint cannot regress to the old bright olive-green coat');
+assert.equal(factoryVisual.scheme, 'fleck',
+  'factory paint uses an authored modernized Bundeswehr flecktarn pattern');
+assert.equal(factoryVisual.base, '#4b5142',
+  'factory paint cannot regress to the old bright olive-green coat');
+assert.ok(factoryVisual.patches.length >= 3 && spec.visual.camoScale <= 0.45,
+  'factory flecktarn carries enough tonal layers and a tight enough repeat to read at gallery range');
 assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true, 'launcher ATGM is the normal primary weapon');
 assert.equal(spec.gun.shells.length, 1, 'no fictional conventional selector round');
@@ -26,6 +30,8 @@ assert.ok(spec.hydropneumaticAim.compressionM >= 0.60 && spec.hydropneumaticAim.
   'MBT-70 carries enough wheel travel to reshape its long seven-wheel course');
 assert.equal(spec.armor.turretPivot[2], 0.57,
   'extended bustle is balanced by moving the complete turret rig forward');
+assert.equal(spec.armor.turretPivot[1], 1.49,
+  'turret ring is lowered onto the donor hull deck');
 assert.equal(spec.dims.overallLengthM, 9.37,
   'published envelope follows the additional complete-rig forward seat');
 assert.equal(wheelPatternFor(spec).id, 'split-rim-ten',
@@ -66,6 +72,12 @@ assert.ok(mantlet.planStations >= 13 && mantlet.ringCount >= 5,
   'mantlet has enough plan and elevation stations to hold the compound curve');
 assert.ok(mantlet.rearOverlapM >= 0.30,
   'mantlet root penetrates the turret nose instead of floating ahead of it');
+assert.ok(mantlet.depthM < 1.20 && mantlet.foreAftScale < 0.90,
+  'mantlet fore-aft projection is shortened without removing its rear overlap');
+assert.ok(mantlet.rootRecessWidthM < mantlet.widthM * 0.50,
+  'launcher-root recess is substantially narrower than the cast shield');
+assert.ok(mantlet.rootRecessHeightM < mantlet.heightM * 0.60,
+  'launcher-root recess is substantially shorter than the cast shield');
 assert.equal(mantlet.xm150Sleeve, true);
 assert.equal(mantlet.nearMuzzleSensor, true);
 const turretRig = tank.root.getObjectByName('rig_turret');
@@ -81,9 +93,25 @@ assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretRec
   forwardOffsetM: 0.57,
   structuralWidthM: 3.48,
   hullWidthM: 3.51,
+  seatYM: 1.49,
+  bustleFloorRiseM: 0.23,
+  bustleFloorFrontM: 0,
+  bustleFloorRearM: 0.23,
   abramsLikeBustle: true,
   rearQuarterArmorRetained: true,
+  rearQuarterClosurePanels: 4,
+  turretEraPanels: 6,
+  hullEraPanels: 8,
+  addedEquipmentPieces: 14,
 });
+assert.ok(turretRig.userData.mbt70TurretReceipt.bustleFloorRearM
+  > turretRig.userData.mbt70TurretReceipt.bustleFloorFrontM + 0.20,
+  'bustle underside rises aft to clear the donor engine deck');
+assert.ok(turretRig.userData.mbt70TurretReceipt.rearQuarterClosurePanels >= 4,
+  'rear sprocket cavities receive attached armor closures');
+assert.ok(turretRig.userData.mbt70TurretReceipt.turretEraPanels >= 6
+  && turretRig.userData.mbt70TurretReceipt.hullEraPanels >= 8,
+  'modernized MBT-70 carries substantial turret and glacis ERA coverage');
 assert.ok(Math.abs(tank.root.getObjectByName('rig_turret').userData.mbt70TurretReceipt.structuralWidthM
   - spec.dims.widthM) <= 0.04,
   'structural turret shell spans the same visual width as the hull');

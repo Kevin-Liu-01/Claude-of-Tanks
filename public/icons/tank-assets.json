@@ -75671,7 +75671,7 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.57,
+          1.49,
           0.57
         ],
         "plates": [
@@ -76286,12 +76286,12 @@
             "name": "turretRing",
             "min": [
               -1.3682,
-              1.4576,
+              1.3776,
               -0.4481
             ],
             "max": [
               1.3682,
-              1.6824,
+              1.6024,
               1.6858
             ],
             "turretLocal": false
@@ -76495,8 +76495,8 @@
           }
         ]
       },
-      "geometryHash": "7feef79a",
-      "metadataHash": "85ad661b",
+      "geometryHash": "45bafc5a",
+      "metadataHash": "2023aa19",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -76512,7 +76512,7 @@
           "fittingPaint": 5,
           "opticGlass": 2,
           "gunmetal": 10,
-          "unclassified": 13,
+          "unclassified": 15,
           "canvas": 1
         }
       },
@@ -76537,24 +76537,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77371,
-          "sha256": "84914bf5029991fb5417b3b455f1b174885f8da623313caf19aa567fdd67f5f2"
+          "bytes": 80289,
+          "sha256": "e6cdb396dde3ba8458e757f4be0fe4f56f68eabbc11d2c82ac7a54018f2b9864"
         },
         "armorSide": {
           "file": "mbt70_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79686,
-          "sha256": "882973ee02cb41d61cfce8ebf8a5b1f4b4cfe1c25bec5a9d9fdac25f178b3fcf"
+          "bytes": 83649,
+          "sha256": "bcbbfb65731f8f57307e26a2aad7c62250bde775d8d5c1f00c6ecf49081bd0a1"
         },
         "modulesSide": {
           "file": "mbt70_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83363,
-          "sha256": "98952439a4aa90fd3e84682a48ecf716c24d77856e59da9581e5f49b406859da"
+          "bytes": 87537,
+          "sha256": "9b7281c0b9b073cb7271ac19e5be190f71ee677d656ce41f6765e38d42998295"
         },
         "angle": {
           "file": "mbt70_angle.webp",
