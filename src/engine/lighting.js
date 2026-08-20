@@ -13,6 +13,7 @@ import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { getDeviceTier, getPreset, onPresetChange } from './quality.js';
 import {
   createShadowRefreshScheduler,
+  isContinuousShadowCascade,
   mergeRequiredShadowWork,
 } from './shadowRefresh.js';
 import { snapShadowCoordinate } from './shadowStability.js';
@@ -29,13 +30,13 @@ const CASCADES = 4;
 // instead of ~160 MB, while keeping its hero cascade at 4096. The stock CSM
 // update assumes every cascade has one uniform resolution; this module's stable
 // update below snaps each projection to its ACTUAL map size instead.
-// PERF: every cascade is capped to the established 60 Hz lighting cadence.
-// At 60 Hz the near pair update together and the far pair alternate at 30 Hz
-// each. At 120+ Hz a near-pair frame alternates with a far-only frame, keeping
-// the same cadence without ever combining all caster ranges. `update(true)`
-// still forces every cascade for deterministic captures and map switches.
+// Moving near-field shadows must refresh on every presented frame. Capping
+// them to 60 Hz made the player, nearby vehicles and contact shadows visibly
+// step across surfaces on high-refresh displays — an artifact that reads like
+// texture Z-fighting. Only the genuinely subpixel far pair are rate-capped and
+// alternate at 30 Hz each. `update(true)` still forces every cascade for
+// deterministic captures and map switches.
 const FAR_CASCADE_START = 2;
-const RATE_CAPPED_CASCADE_START = 0;
 const _stableCameraToLight = new THREE.Matrix4();
 const _stableLightOrientation = new THREE.Matrix4();
 const _stableLightOrientationInverse = new THREE.Matrix4();
@@ -798,10 +799,10 @@ export function createLighting(scene, camera, sunDir) {
     csm.lights[i].shadow.normalBias = SHADOW_NORMAL_BIAS;
     csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
     csm.lights[i].color.setHex(SUN_COLOR);
-    // PERF (120 Hz): every near map is capped at 60 Hz and the far pair remain
-    // round-robin at 30 Hz each. The scheduler below phase-spreads them on
-    // high-refresh displays. All maps are driven through needsUpdate.
-    if (i >= RATE_CAPPED_CASCADE_START) {
+    // Near maps stay on Three's continuous update path so moving contact
+    // shadows cannot lag the visible tank. Only the far pair are driven
+    // through the bounded needsUpdate scheduler below.
+    if (!isContinuousShadowCascade(i, FAR_CASCADE_START)) {
       csm.lights[i].shadow.autoUpdate = false;
       csm.lights[i].shadow.needsUpdate = true; // first frame renders all
     }
@@ -841,7 +842,7 @@ export function createLighting(scene, camera, sunDir) {
   function forceRateCappedCascades() {
     forceFrames = 2;
     shadowScheduler.reset();
-    for (let i = RATE_CAPPED_CASCADE_START; i < csm.lights.length; i++) {
+    for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
     }
   }
@@ -957,14 +958,15 @@ export function createLighting(scene, camera, sunDir) {
           }
         }
       } else {
-        // Refresh-rate invariant shadow budget. At 60 Hz this is identical to
-        // the established path: cascades 0/1 render each frame and one far map
-        // renders each frame (30 Hz per far cascade). At 120+ Hz the same work
-        // is phase-spread into near-pair and far-only frames. This removes the
-        // three-map burst without lowering target cadence or map resolution.
+        // Near cascades remain continuous at the display cadence; rate-capping
+        // them made dynamic contact shadows step at 60 Hz on 120/144 Hz
+        // displays. The scheduler still amortizes the far pair, whose texels
+        // are subpixel at gameplay distance, without changing near-field
+        // image stability.
         for (let i = 0; i < csm.lights.length; i++) {
-          csm.lights[i].shadow.autoUpdate = i < RATE_CAPPED_CASCADE_START;
-          if (i >= RATE_CAPPED_CASCADE_START) csm.lights[i].shadow.needsUpdate = false;
+          const continuous = isContinuousShadowCascade(i, FAR_CASCADE_START);
+          csm.lights[i].shadow.autoUpdate = continuous;
+          if (!continuous) csm.lights[i].shadow.needsUpdate = false;
         }
         lastScheduledMask = shadowScheduler.step(step);
         if (transitionCascade >= 0) {

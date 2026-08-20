@@ -2,8 +2,14 @@ import assert from 'node:assert/strict';
 import {
   SHADOW_REFRESH_INTERVAL_S,
   createShadowRefreshScheduler,
+  isContinuousShadowCascade,
   mergeRequiredShadowWork,
 } from './shadowRefresh.js';
+
+assert.equal(isContinuousShadowCascade(0), true, 'hero cascade refreshes every presented frame');
+assert.equal(isContinuousShadowCascade(1), true, 'contact cascade refreshes every presented frame');
+assert.equal(isContinuousShadowCascade(2), false, 'far cascade is eligible for rate limiting');
+assert.equal(isContinuousShadowCascade(-1), false, 'invalid cascade is never continuous');
 
 function sample(hz, seconds = 2, cascades = 4) {
   const scheduler = createShadowRefreshScheduler(cascades);

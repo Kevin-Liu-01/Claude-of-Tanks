@@ -9,6 +9,13 @@
 
 export const SHADOW_REFRESH_INTERVAL_S = 1 / 60;
 
+/** Near cascades follow the display cadence; farther cascades may be scheduled. */
+export function isContinuousShadowCascade(cascadeIndex, nearCount = 2) {
+  const index = cascadeIndex | 0;
+  const count = Math.max(0, nearCount | 0);
+  return index >= 0 && index < count;
+}
+
 /**
  * Add one required cascade job without letting a live transition exceed the
  * high-refresh per-frame map budget. Existing scheduled work keeps its bit

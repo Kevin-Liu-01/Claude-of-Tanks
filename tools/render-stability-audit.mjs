@@ -237,7 +237,11 @@ for (const preset of presets) {
     let lods = 0;
     let zeroHysteresisLevels = 0;
     let invalidInstancedBounds = 0;
+    let duplicateVisibleMeshes = 0;
+    const duplicateVisibleMeshSamples = [];
+    const visibleMeshKeys = new Map();
     const missingTextures = new Set();
+    D.scene.updateMatrixWorld(true);
     D.scene.traverse((object) => {
       if (object.isLOD) {
         lods++;
@@ -249,6 +253,34 @@ for (const preset of presets) {
         const sphere = object.boundingSphere;
         if (!Number.isFinite(sphere.radius) || !Number.isFinite(sphere.center.lengthSq())) {
           invalidInstancedBounds++;
+        }
+      }
+      // Exact duplicate ordinary meshes are the common accidental Z-fighting
+      // path during scene/state rebuilds. Instanced/Batched meshes keep their
+      // real poses in per-instance buffers, so their shared object transform
+      // is intentional and excluded here.
+      let worldVisible = object.visible;
+      let offscreenWarmup = false;
+      for (let parent = object.parent; worldVisible && parent; parent = parent.parent) {
+        worldVisible = parent.visible;
+        if (parent.name === 'killcamWarmup') offscreenWarmup = true;
+      }
+      if (object.isMesh && !object.isInstancedMesh && !object.isBatchedMesh
+          && worldVisible && !offscreenWarmup && object.geometry) {
+        const matrixKey = Array.from(object.matrixWorld.elements,
+          (value) => Number(value).toFixed(6)).join(',');
+        const key = object.geometry.uuid + '|' + matrixKey;
+        const previous = visibleMeshKeys.get(key);
+        if (previous) {
+          duplicateVisibleMeshes++;
+          if (duplicateVisibleMeshSamples.length < 8) {
+            duplicateVisibleMeshSamples.push([
+              previous.name || previous.parent?.name || previous.type,
+              object.name || object.parent?.name || object.type,
+            ]);
+          }
+        } else {
+          visibleMeshKeys.set(key, object);
         }
       }
       const materials = object.material
@@ -285,6 +317,8 @@ for (const preset of presets) {
       lods,
       zeroHysteresisLevels,
       invalidInstancedBounds,
+      duplicateVisibleMeshes,
+      duplicateVisibleMeshSamples,
       missingTextures: [...missingTextures],
       glError,
       shaderErrors: telemetry.shadows.shaderErrors,
@@ -332,6 +366,9 @@ for (const preset of presets) {
   if (result.shaderErrors !== 0) reasons.push(`${result.shaderErrors} shader errors`);
   if (result.zeroHysteresisLevels !== 0) reasons.push(`${result.zeroHysteresisLevels} zero-hysteresis LOD levels`);
   if (result.invalidInstancedBounds !== 0) reasons.push(`${result.invalidInstancedBounds} invalid instanced bounds`);
+  if (result.duplicateVisibleMeshes !== 0) {
+    reasons.push(`${result.duplicateVisibleMeshes} exact duplicate visible meshes`);
+  }
   if (result.missingTextures.length) reasons.push(`${result.missingTextures.length} missing texture sources`);
   result.cascades.forEach((cascade, index) => {
     if (!cascade.allocated || cascade.allocatedSize !== cascade.size) {
