@@ -2631,6 +2631,148 @@ function pattonSmokeBank(P, side, y, z, scale = 1) {
   }
 }
 
+function m60SectionAt(worldZ) {
+  const sections = worldZ >= M60_SECTIONS.at(-1).z ? M60_SECTIONS : M60_BUSTLE;
+  if (worldZ >= sections[0].z) return { ...sections[0], hwR: sections[0].hwR ?? sections[0].hw };
+  for (let index = 0; index < sections.length - 1; index++) {
+    const front = sections[index];
+    const rear = sections[index + 1];
+    if (worldZ <= front.z && worldZ >= rear.z) {
+      const mix = (front.z - worldZ) / Math.max(0.001, front.z - rear.z);
+      const lerp = (a, b) => a + (b - a) * mix;
+      return {
+        z: worldZ,
+        hw: lerp(front.hw, rear.hw),
+        hwR: lerp(front.hwR ?? front.hw, rear.hwR ?? rear.hw),
+        top: lerp(front.top, rear.top),
+        bot: lerp(front.bot, rear.bot),
+      };
+    }
+  }
+  const tail = sections.at(-1);
+  return { ...tail, hwR: tail.hwR ?? tail.hw };
+}
+
+function m60CastingPointAt(side, worldZ, heightFraction) {
+  const section = m60SectionAt(worldZ);
+  const profile = side < 0
+    ? [[-1, 0.29], [-0.94, 0.445], [-0.919, 0.795], [-0.837, 0.927]]
+    : [[1, 0.29], [0.23, 0.72], [0.038, 0.915]];
+  let a = profile[0], b = profile[1];
+  for (let index = 0; index < profile.length - 1; index++) {
+    if (heightFraction >= profile[index][1] && heightFraction <= profile[index + 1][1]) {
+      a = profile[index]; b = profile[index + 1]; break;
+    }
+  }
+  const mix = (heightFraction - a[1]) / Math.max(0.001, b[1] - a[1]);
+  const fx = a[0] + (b[0] - a[0]) * mix;
+  const halfWidth = side > 0 ? section.hwR : section.hw;
+  const x = fx * halfWidth;
+  const y = section.bot + (section.top - section.bot) * heightFraction;
+  return new THREE.Vector3(x, y - 1.76, worldZ - 0.30);
+}
+
+function m60EraCellAt(side, worldZ, heightFraction, w, h, d, castEmbedM) {
+  const point = m60CastingPointAt(side, worldZ, heightFraction);
+  // Two finite tangents reconstruct the actual loft patch under this one
+  // cassette: longitudinal curvature from adjacent z sections and dome
+  // curvature from adjacent profile heights.  Building an orthonormal frame
+  // from them gives every tile its own pitch, yaw AND roll instead of one
+  // flat orientation shared by an entire bank.
+  const frontTangent = m60CastingPointAt(side, worldZ + 0.025, heightFraction)
+    .sub(m60CastingPointAt(side, worldZ - 0.025, heightFraction));
+  const verticalTangent = m60CastingPointAt(side, worldZ, heightFraction + 0.018)
+    .sub(m60CastingPointAt(side, worldZ, heightFraction - 0.018));
+  const normal = new THREE.Vector3().crossVectors(verticalTangent, frontTangent)
+    .multiplyScalar(side).normalize();
+  const xAxis = frontTangent.normalize().multiplyScalar(-side);
+  const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
+  xAxis.crossVectors(yAxis, normal).normalize();
+  const rotation = new THREE.Matrix4().makeBasis(xAxis, yAxis, normal);
+  const quaternion = new THREE.Quaternion().setFromRotationMatrix(rotation);
+  const euler = new THREE.Euler().setFromQuaternion(quaternion, 'YXZ');
+  point.addScaledVector(normal, d / 2 - castEmbedM);
+  return {
+    x: point.x, y: point.y, z: point.z,
+    rx: euler.x, ry: euler.y, rz: euler.z,
+    nx: normal.x, ny: normal.y, nz: normal.z,
+    w, h, d,
+  };
+}
+
+function addM60A3TurretEra(P) {
+  const { box } = KIT;
+  const turretPivot = P.spec.armor.turretPivot;
+  const frontTilesPerSide = 15;
+  const sideTilesPerSide = 18;
+  const castEmbedM = 0.0125;
+  const putTurretLocal = (put, cell) => put(
+    cell.x,
+    turretPivot[1] + cell.y,
+    turretPivot[2] + cell.z,
+    cell.rx, cell.ry, cell.rz,
+    cell.w / 0.28, cell.h / 0.13, cell.d / 0.07,
+  );
+
+  for (const side of [-1, 1]) {
+    const frontCells = [];
+    for (let row = 0; row < 3; row++) {
+      for (let column = 0; column < 5; column++) {
+        // Lower courses reach the narrow nose; higher courses start farther
+        // aft where the casting has opened around the mantlet.  This creates
+        // the rounded, terraced cheek silhouette instead of two flat walls.
+        const rowFrontZ = 2.04 - row * 0.20;
+        const worldZ = rowFrontZ + (1.10 - rowFrontZ) * (column / 4);
+        const heightFraction = 0.34 + row * 0.12;
+        frontCells.push(m60EraCellAt(side, worldZ, heightFraction,
+          0.27 - row * 0.025, 0.17, 0.078, castEmbedM));
+      }
+    }
+    P.eraCluster(`m60a3_turret_era_front_${side > 0 ? 'R' : 'L'}`, (put) => {
+      for (const cell of frontCells) putTurretLocal(put, cell);
+    }, true);
+    for (const cell of frontCells) {
+      P.add('turretDark', box(cell.w * 0.32, cell.h * 0.46, 0.026),
+        cell.x - cell.nx * 0.021, cell.y - cell.ny * 0.021,
+        cell.z - cell.nz * 0.021,
+        cell.rx, cell.ry, cell.rz);
+    }
+
+    const sideCells = [];
+    for (let row = 0; row < 3; row++) {
+      const heightFraction = 0.34 + row * 0.14;
+      for (let column = 0; column < 6; column++) {
+        const localZ = 0.02 - column * 0.25;
+        const worldZ = localZ + 0.30;
+        sideCells.push(m60EraCellAt(side, worldZ, heightFraction,
+          0.22, 0.17, 0.078, castEmbedM));
+      }
+    }
+    P.eraCluster(`m60a3_turret_era_side_${side > 0 ? 'R' : 'L'}`, (put) => {
+      for (const cell of sideCells) putTurretLocal(put, cell);
+    }, true);
+    for (const cell of sideCells) {
+      P.add('turretDark', box(cell.w * 0.45, cell.h * 0.48, 0.026),
+        cell.x - cell.nx * 0.021, cell.y - cell.ny * 0.021,
+        cell.z - cell.nz * 0.021,
+        cell.rx, cell.ry, cell.rz);
+    }
+  }
+
+  P.turretG.userData.m60a3EraReceipt = {
+    frontTilesPerSide,
+    sideTilesPerSide,
+    totalTiles: (frontTilesPerSide + sideTilesPerSide) * 2,
+    castEmbedM,
+    minimumMantletClearanceM: 0.055,
+    independentlyStrippableSectors: 4,
+    turretLocal: true,
+    instanced: true,
+    curvedSurfaceNormals: (frontTilesPerSide + sideTilesPerSide) * 2,
+    tangentAxesPerTile: 2,
+  };
+}
+
 function finishM60Variant(P, variant) {
   const { box, cylY, cylZ } = KIT;
   const a3 = variant === 'a3';
@@ -2660,14 +2802,17 @@ function finishM60Variant(P, variant) {
 
   // Needle-casting cheek armor.  Every block is turret-owned, buried into
   // the swept cheek and rotates as part of the complete turret package.
-  const cheekZ = a3 ? [1.27, 0.91, 0.55, 0.19] : [1.30, 0.84, 0.38];
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < cheekZ.length; i++) {
-      const z = cheekZ[i];
-      const x = side * (0.52 + i * (a3 ? 0.19 : 0.27));
-      const y = a3 ? 0.61 + (i % 2) * 0.03 : 0.60;
-      pattonFaceCassette(P, 'turret', x, y, z, a3 ? 0.39 : 0.50,
-        a3 ? 0.31 : 0.36, a3 ? 0.13 : 0.15, -0.10, side * (a3 ? 0.34 : 0.29), 0, a3 ? 2 : 1, 1);
+  if (a3) {
+    addM60A3TurretEra(P);
+  } else {
+    const cheekZ = [1.30, 0.84, 0.38];
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < cheekZ.length; i++) {
+        const z = cheekZ[i];
+        const x = side * (0.52 + i * 0.27);
+        pattonFaceCassette(P, 'turret', x, 0.60, z, 0.50,
+          0.36, 0.15, -0.10, side * 0.29, 0, 1, 1);
+      }
     }
   }
 

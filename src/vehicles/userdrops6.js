@@ -1,6 +1,12 @@
 // Recovered m_bergman pack: every distinct tank/assault-gun in part 1 that
 // was not already represented by the earlier BMP/Stryker imports.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import {
+  rightCheekPlate as chR,
+  leftCheekPlate as chL,
+  rightSidePlate as sR,
+  leftSidePlate as sL,
+} from './specHelpers.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 // Reference assets never become playables, including in local development.
@@ -31,6 +37,28 @@ const make = (baseId, id, name, nation, patch = {}) => {
   // resolution agrees with the rendered vehicle (see specs.fitArmorToDims).
   if (patch.dims) fitArmorToDims(s.armor, dims, s.dims);
   return s;
+};
+
+const m60a3Armor = () => {
+  const armor = copy(TANK_SPECS.m60a1.armor);
+  // First-generation Blazer-style protection: a meaningful shaped-charge
+  // defeat layer with only a modest kinetic effect.  The broad records are
+  // sector hit surfaces; each name maps to a dense visual cassette cluster
+  // in profiles/patton.js and is independently consumed after detonation.
+  const blazer = { keReduction: 0.08, ceFlatMm: 300 };
+  const era = { kind: 'era', era: blazer, keMm: 18, ceMm: 18 };
+  armor.turretPlates = [
+    chL('m60a3_turret_era_front_L', 18,
+      0.34, 1.86, 1.43, 0.02, 0.14, 0.90, 0.12, 0, era),
+    chR('m60a3_turret_era_front_R', 18,
+      0.34, 1.86, 1.43, 0.02, 0.14, 0.90, 0.12, 0, era),
+    sL('m60a3_turret_era_side_L', 18,
+      1.42, 0.14, 1.36, 0.90, -1.58, 0.12, era),
+    sR('m60a3_turret_era_side_R', 18,
+      1.42, 0.14, 1.36, 0.90, -1.58, 0.12, era),
+    ...armor.turretPlates,
+  ];
+  return armor;
 };
 
 const SPECS = [
@@ -104,6 +132,7 @@ const SPECS = [
       dims: { hullLengthM: 6.33, overallLengthM: 6.6, widthM: 3.51, heightM: 3.0 } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
     { hp: 1800, weightTons: 52.6, topSpeedKmh: 48, gun: { reloadS: 7.2 },
+      armor: m60a3Armor(),
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
 ];
 
