@@ -6,6 +6,7 @@ const tank = createTank('kf51', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
+await Promise.resolve();
 
 try {
   tank.root.updateMatrixWorld(true);
@@ -57,6 +58,56 @@ try {
     ).intersectObject(turretDetail, false);
     assert.equal(detailHits.length, 0,
       `KF51 turret-side armor return at z=${z} is no longer grey detail geometry`);
+  }
+
+  assert.deepEqual(hullRig.userData.kf51Finish, {
+    kf51HullTurretSeatBridge: 14,
+    kf51GlacisShoulderBridge: 4,
+    kf51DeckPaletteHardware: 3,
+    kf51TurretRoofBridge: 1,
+    kf51TurretLowerCollar: 2,
+    kf51TrackShoulderL: 2,
+    kf51TrackShoulderR: 2,
+    kf51TurretCheekBaseArmor: 1,
+    kf51TurretMidwallBaseArmor: 1,
+    kf51LowerGlacisCamo: 1,
+  }, 'KF51 structural finish receipt records every palette-aware shell');
+
+  const frontArmorHit = (x, y) => new THREE.Raycaster(
+    new THREE.Vector3(x, y, 4),
+    new THREE.Vector3(0, 0, -1),
+    0,
+    10,
+  ).intersectObject(hullRig, true).find((hit) => hit.object.name === 'hull');
+  const lowerGlacis = frontArmorHit(0, 0.75);
+  assert.ok(lowerGlacis?.point.z > 3.4 && lowerGlacis.object.material?.map,
+    'KF51 lower glacis is colored by the merged camouflage armor');
+  for (const x of [-1.45, 1.45]) {
+    const shoulder = frontArmorHit(x, 1.0);
+    assert.ok(shoulder?.point.z > 3.64 && shoulder.object.material?.map,
+      `KF51 ${x < 0 ? 'left' : 'right'} track shoulder joins the front mudguard in camo`);
+  }
+
+  const sideArmorHit = (y, z) => new THREE.Raycaster(
+    new THREE.Vector3(4, y, z),
+    new THREE.Vector3(-1, 0, 0),
+    0,
+    10,
+  ).intersectObject(tank.root, true)
+    .find((hit) => hit.object.name === 'turret');
+  assert.ok(sideArmorHit(1.84, 0)?.object.material?.map,
+    'KF51 lower turret collar closes the former black hull gap in camouflage');
+  assert.ok(sideArmorHit(1.96, 0)?.object.material?.map,
+    'KF51 cheek base is palette-aware armor instead of a shadow rail');
+
+  const mudguards = [];
+  tank.root.traverse((object) => {
+    if (object.isMesh && object.material?.name === 'cot:kf51-mudguard') mudguards.push(object);
+  });
+  assert.equal(mudguards.length, 4, 'KF51 keeps four palette-painted corner mudguards');
+  for (const mudguard of mudguards) {
+    assert.ok(mudguard.material.color.getHex() > 0x202020,
+      'KF51 mudguards are no longer pure-black cards');
   }
 } finally {
   tank.dispose();

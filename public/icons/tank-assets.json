@@ -30435,7 +30435,7 @@
           }
         ]
       },
-      "geometryHash": "47e3bd6c",
+      "geometryHash": "6b7aff37",
       "metadataHash": "f0efef52",
       "appearance": {
         "version": 1,
@@ -30447,8 +30447,8 @@
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "gearShadow": 206,
           "unclassified": 64,
+          "gearShadow": 182,
           "armorPaint": 5,
           "gunmetal": 7,
           "fittingPaint": 2,
@@ -30477,64 +30477,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31480,
-          "sha256": "cfc6c70d79c883d9bcf8fefb5f686c93f1e3980d788fa2f64b04a7fa29714fac"
+          "bytes": 32006,
+          "sha256": "4ef02a800512cce2790549c9b55a9281f44ce083496559e3ac9f185a5ddab1c0"
         },
         "top": {
           "file": "kf51_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10722,
-          "sha256": "259f330986819f714749cb71958678e1e9e0166ce91b61a9aa3bef4eac32aaba"
+          "bytes": 10014,
+          "sha256": "82a9a3bd68813827271082ed71725d948c966d7da057ac76759b8622e90443cd"
         },
         "side": {
           "file": "kf51_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10332,
-          "sha256": "ee30554d0c771b98cc63b29eff9b13258a5695df996898696312c960a716ee47"
+          "bytes": 9898,
+          "sha256": "5ce0353d20ed98774f0ead43a948bd05010af02e8b5971a1033963fe4b8de654"
         },
         "topSilhouette": {
           "file": "kf51_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1116,
-          "sha256": "97340f787158883ac75eaf438f999ec9695157960da48f5e0357f0d2304c101c"
+          "bytes": 1110,
+          "sha256": "5e20f8499799eb753da370191aa1b2fbc7e66e016a91878eb454023acaa1beb3"
         },
         "sideSilhouette": {
           "file": "kf51_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4242,
-          "sha256": "6bdf0af7e5af8f8aaf822e4522dcac080c1f68241c29b8cd37cb0c425df8af2d"
+          "bytes": 4208,
+          "sha256": "17d610426ab0d5f831facfd63f289e59f25057a1aba4064fd11f6727d8594f51"
         },
         "hitZonesSide": {
           "file": "kf51_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70573,
-          "sha256": "4a8328fcd01454ff9faca9ecc6fdfe5b386dbc460d8f0ab913b88b457eea61eb"
+          "bytes": 71423,
+          "sha256": "3adef3645bf98567c738704104f29e63e10f54a2e86e20713b068ac7b6849a00"
         },
         "armorSide": {
           "file": "kf51_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71835,
-          "sha256": "2c0d5a50aaad396f20270026c445569a90806b7215cd6466f0bfb2cc5c6b8fc4"
+          "bytes": 72420,
+          "sha256": "1546752a096428237725f7c92588a15b90f34d8ecc0d96a3c8732e7e1d313142"
         },
         "modulesSide": {
           "file": "kf51_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78857,
-          "sha256": "a19ebd1dcc8e6fa2349eef7d59d01440452d8e43eb994b2c9c58dbfe32a9d1b1"
+          "bytes": 79016,
+          "sha256": "aa0f56517a0278633ad39d301aaf33f0e961a8517ce7ed3a79e253d583dd0f38"
         },
         "markings": {
           "file": "kf51_markings.png",
