@@ -8,16 +8,6 @@
   backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);
 }
-.public-nav::after{
-  content:"";
-  position:absolute;
-  left:0;
-  bottom:-1px;
-  width:min(31%,460px);
-  height:1px;
-  background:linear-gradient(90deg,#e9a346,transparent);
-  pointer-events:none;
-}
 .public-nav__inner{
   width:min(1440px,calc(100% - 40px));
   height:100%;
@@ -48,6 +38,7 @@
 .public-nav__links a{
   display:flex;
   align-items:center;
+  gap:7px;
   padding:0 14px;
   border-left:1px solid rgba(220,230,233,.08);
   color:#9aa3a7;
@@ -59,11 +50,20 @@
   text-transform:uppercase;
   transition:background .16s ease,color .16s ease;
 }
+.public-nav__icon{
+  width:14px;
+  height:14px;
+  flex:none;
+  opacity:.72;
+  transition:opacity .16s ease,transform .16s ease;
+}
+.public-nav__icon--tank{width:17px}
+.public-nav__icon--studio{width:15px;height:15px}
 .public-nav__links a:hover,.public-nav__links a[aria-current="page"]{
   color:#efeee9;
   background:rgba(255,255,255,.035);
 }
-.public-nav__links a[aria-current="page"]{box-shadow:inset 0 -2px 0 #e9a346}
+.public-nav__links a:hover .public-nav__icon,.public-nav__links a[aria-current="page"] .public-nav__icon{opacity:1;transform:translateY(-1px)}
 .public-nav__links .public-nav__cta{
   height:36px;
   align-self:center;
@@ -80,11 +80,12 @@
   .public-nav__inner{width:calc(100% - 20px)}
   .public-nav__brand span{display:none}
   .public-nav__brand img{width:28px;height:34px}
-  .public-nav__links a{padding-inline:9px;font-size:7px;letter-spacing:.08em}
+  .public-nav__links a{gap:5px;padding-inline:9px;font-size:7px;letter-spacing:.08em}
+  .public-nav__icon{width:12px;height:12px}.public-nav__icon--tank{width:15px}.public-nav__icon--studio{width:13px;height:13px}
   .public-nav__links .public-nav__cta{height:34px;margin-left:7px;padding-inline:12px}
 }
 @media(max-width:520px){
   .public-nav__inner{width:calc(100% - 12px)}
-  .public-nav__links a{padding-inline:6px;font-size:6px;letter-spacing:.06em}
+  .public-nav__links a{gap:3px;padding-inline:6px;font-size:6px;letter-spacing:.06em}
   .public-nav__links .public-nav__cta{margin-left:4px;padding-inline:8px}
 }
