@@ -1,15 +1,15 @@
 <p align="center">
   <a href="https://cot.kevinliu.studio">
-    <img src="public/brand/og-image.png" alt="Claude of Tanks — Urban Crossfire X with the Claude of Tanks crest badge and wordmark">
+    <img src="public/brand/og-image.png" alt="Claude of Tanks armored battle with the crest badge and wordmark">
   </a>
 </p>
 
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  Browser-based armored combat built with <strong>Three.js</strong>: 112 production-visible first-party procedural vehicles,
-  16 destructible battlefields, plate-level armor, physical gunnery, X-ray killcams,
-  multiplayer rooms, Scene Studio production tools, and adaptive desktop and mobile rendering.
+  Free browser-native armored combat built with <strong>Three.js</strong>. Take 112 production-visible first-party procedural vehicles
+  across 16 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
+  magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
 
 <p align="center">
@@ -19,20 +19,38 @@
   &nbsp;·&nbsp;
   <a href="https://cot.kevinliu.studio/gallery">TANK GALLERY</a>
   &nbsp;·&nbsp;
+  <a href="https://cot.kevinliu.studio/studio">SCENE STUDIO</a>
+  &nbsp;·&nbsp;
   <a href="docs/INDEX.md">ENGINEERING DOCS</a>
 </p>
 
 <table>
 <tr>
-<td width="33%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Close Strv firefight through Steinburg"></td>
-<td width="33%"><img src="public/media/featured/f8_studio_m1_firefight.webp" alt="M1 tanks exchanging fire at close range"></td>
-<td width="34%"><img src="public/media/featured/f9_studio_fjord_firefight.webp" alt="Multi-tank firefight across Glacier Fjord"></td>
+<td width="33%"><img src="public/media/featured/f7_studio_t90_column_fire.webp" alt="T-90 column firing across a green battlefield"></td>
+<td width="33%"><img src="public/media/presentation-r1/13_urban_hero_leo2a6.webp" alt="Leopard 2A6 advancing through an urban battle"></td>
+<td width="34%"><img src="public/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp" alt="AbramsX and T-90M fighting at close range in the desert"></td>
+</tr>
+<tr>
+<td width="33%"><img src="public/media/showcase-r1/103_foreground_urban_overwatch_church.webp" alt="Foreground tank overlooking an urban firefight"></td>
+<td width="33%"><img src="public/media/showcase-r1/87_action_verdant_column_massacre.webp" alt="Armored column under fire in a green valley"></td>
+<td width="34%"><img src="public/media/showcase-r1/113_foreground_winter_ice_breaker.webp" alt="Tank leading a battle across a frozen lake"></td>
 </tr>
 </table>
 
-Every image above is a handmade, deterministic composition captured with the current game renderer. The
-[88-frame showcase library](public/media/showcase-r1/manifest.json) begins with 13 owner-selected scenes, followed by
-60 approved action and foreground frames, five directed Studio frames, and ten interface states.
+These are handmade, deterministic scenes captured with the current game renderer—not concept art. The
+[88-frame showcase archive](public/media/showcase-r1/manifest.json) contains 13 owner-selected scenes, 30 action frames,
+30 close foreground compositions, five directed Studio frames, and ten interface states. The
+[landing selection](public/media/landing-r1/manifest.json) records the six hero frames, feature reel, five camera-rail
+films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now published on the site.
+
+## Fight, inspect, and direct
+
+- **Fight:** enter solo or multiplayer battles with physical shell travel, armor geometry, component damage, spotting,
+  terrain, collision, destructible structures, persistent wrecks, and authority-owned results.
+- **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
+  exact-surface review packet from the same specification used in combat.
+- **Direct:** stage any roster vehicle on any battlefield in Scene Studio, animate actors and cameras, schedule game FX,
+  and capture stills or video from reproducible scene data.
 
 ## Current release
 
@@ -49,12 +67,58 @@ Every image above is a handmade, deterministic composition captured with the cur
 The provenance gate currently reports **121 first-party procedural battle playables, 0 GLB-sourced playables, and 7
 isolated comparison candidates**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
+## Field footage
+
+Each frame below opens a looping WebM recorded from the game. The camera rails use live vehicles, maps, ballistics,
+recoil, impacts, sparks, smoke, debris, and destruction effects.
+
+<table>
+<tr>
+<td width="50%"><a href="public/media/hero-rails-r2/01_desert-ground-rush.webm"><img src="public/media/hero-rails-r2/01_desert-ground-rush.jpg" alt="Open the Desert Ground Rush gameplay film"></a><br><sub><b>Desert Ground Rush:</b> a low camera threads moving armor and incoming fire.</sub></td>
+<td width="50%"><a href="public/media/hero-rails-r2/04_urban-overhead-dive.webm"><img src="public/media/hero-rails-r2/04_urban-overhead-dive.jpg" alt="Open the Urban Overhead Dive gameplay film"></a><br><sub><b>Urban Overhead Dive:</b> a rail camera drops into a close street engagement.</sub></td>
+</tr>
+<tr>
+<td width="50%"><a href="public/media/hero-rails-r2/02_winter-ice-orbit.webm"><img src="public/media/hero-rails-r2/02_winter-ice-orbit.jpg" alt="Open the Winter Ice Orbit gameplay film"></a><br><sub><b>Winter Ice Orbit:</b> tanks exchange fire while the camera circles the frozen contact line.</sub></td>
+<td width="50%"><a href="public/media/hero-rails-r2/05_coastal-shell-skim.webm"><img src="public/media/hero-rails-r2/05_coastal-shell-skim.jpg" alt="Open the Coastal Shell Skim gameplay film"></a><br><sub><b>Coastal Shell Skim:</b> a fast lateral pass follows the shell path through a beach assault.</sub></td>
+</tr>
+</table>
+
+<p align="center">
+  <a href="https://cot.kevinliu.studio/home"><strong>OPEN THE FULL LANDING SHOWCASE</strong></a>
+</p>
+
+## Vehicle-specific mechanics
+
+The fleet does not reduce every vehicle to the same gun and movement model. Specifications can add their own loading,
+guidance, suspension, ammunition, anatomy, and control behavior while remaining inside the fixed-step authority.
+
+<table>
+<tr>
+<td width="50%"><img src="public/media/feature-evidence-r2/mechanic-strv-suspension.webp" alt="Stridsvagn 103 using hydropneumatic suspension to aim on a slope"><br><sub><b>Swedish siege suspension:</b> the Strv 103A, Strv 103B, and UDES 03 aim their fixed guns by pitching the physical hull. Wheels and both loaded track runs reshape around the solved pose.</sub></td>
+<td width="50%"><img src="public/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 firing a guided Shillelagh missile"><br><sub><b>Guided weapons:</b> the MBT-70 fires the Shillelagh as its primary round. IFVs carry vehicle-specific TOW, MILAN, Spike, Konkurs, Arkan, and Jyu-MAT launchers.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="public/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t internal modules and crew shown in Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
+<td width="50%"><img src="public/media/feature-evidence-r2/garage-fleet.webp" alt="Claude of Tanks garage displaying the procedural vehicle fleet"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—112 in production or 148 in keyed local development.</sub></td>
+</tr>
+</table>
+
+- **Magazine autoloaders** track ready rounds, intra-magazine cycle time, full replenishment, manual magazine reloads,
+  shell changes, and damage to the loading mechanism. The Leclerc, Type 90, PL-01, and four-round PL-01 105 each carry
+  their own magazine timings.
+- **Guided missiles** travel at visible weapon-specific speeds and steer toward the authority-owned aim point. Launcher
+  damage, rack damage, ammunition count, reload state, guidance, impact, and presentation all remain synchronized.
+- **Hydropneumatic aim** uses the same canonical pose for armor, muzzle, collision, wheels, tracks, remote snapshots, and
+  the camera; there is no separate visual-only tank tilt.
+- **Free look** keeps the sight and turret on target while the camera moves. Hold `Shift` on keyboard, `RB` on a standard
+  controller, or assign another binding in settings.
+
 ## Combat systems
 
 <table>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_player_view.webp" alt="Production battle HUD during live armored combat"><br><sub><b>Battle HUD:</b> dual reticle, ammunition, modules, teams, minimap, chat, performance, and authority-owned combat feedback.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_killcam_xray.webp" alt="X-ray killcam showing the resolved shell path and internal damage"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
+<td width="50%"><img src="public/media/feature-evidence-r2/killcam-modules.webp" alt="X-ray killcam showing a T-90M shell path through an M1A2 Abrams SEPv3"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
@@ -125,14 +189,37 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 </tr>
 </table>
 
+### Controls at a glance
+
+| Action | Keyboard and mouse | Standard controller |
+| --- | --- | --- |
+| Drive and steer | `WASD` or arrow keys | Left stick |
+| Aim and fire | Mouse + `LMB` | Right stick + `RT` |
+| Precision sight | Hold `RMB` by default; wheel in also enters | `LT` |
+| Free look without moving the turret | Hold `Shift` or `Left Alt` | `RB` |
+| Select ammunition | `1` / `2` / `3` | D-pad |
+| Vehicle-specific action | `E` | `LB` |
+| Reload a partial magazine | `C` | Remappable |
+| Consumables | `4` / `5` / `6` | Remappable |
+| Handbrake | `Space` | `A` |
+| Shot log / performance / menu | `L` / `F8` / `Esc` | Interface controls |
+
+Every desktop action is remappable. `RMB` can use hold-to-aim, toggle-aim, or classic free-look behavior. Touch devices
+receive dedicated movement, aim, scope, fire, ammunition, equipment, and special-action controls rather than a scaled
+desktop HUD.
+
 ## Production tools
 
 <table>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_studio.webp" alt="Scene Studio composing a shot on Verdant Fields"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/15_verdant_column_massacre.webp" alt="Multi-vehicle firefight staged in Scene Studio"><br><sub><b>Reproducible imagery:</b> vehicles, camos, camera, lighting, recoil, tracers, explosions, sparks, smoke, debris, wrecks, and timeline are scene data—not composited concept art.</sub></td>
+<td width="50%"><a href="public/media/landing-r1/studio-leclerc-knockout.webm"><img src="public/media/landing-r1/studio-leclerc-knockout.jpg" alt="Open the Scene Studio film of a Strv 122 firing on and destroying a Leclerc"></a><br><sub><b>Directed destruction:</b> this 1080p timeline moves both actors, fires the Strv 122, resolves impacts, detaches the Leclerc track, and triggers its ammunition-rack blast.</sub></td>
 </tr>
 </table>
+
+Scene Studio works with the runtime rather than a separate cinematic renderer. Vehicles, camouflage, camera, lighting,
+recoil, tracers, explosions, sparks, smoke, debris, wreck state, and timeline events remain scene data. A saved scene can
+be replayed, scrubbed, edited, exported as JSON, captured as a high-resolution still, or recorded as a video.
 
 Regenerate the current public archive:
 
@@ -142,10 +229,13 @@ npm run shots:battle:grade -- --root shots/marketing-battles-r3
 npm run studio:action:render
 npm run showcase:publish
 npm run showcase:check
+npm run landing:media:publish
 ```
 
 The capture harness serializes concurrent jobs, starts a clean local game, verifies the requested state, and records
-current rendering diagnostics. `public/media/showcase-r1/manifest.json` defines the published archive.
+current rendering diagnostics. `public/media/showcase-r1/manifest.json` defines the source archive;
+`public/media/landing-r1/manifest.json` records the public hero, rail, mosaic, and Studio selections with their actor,
+effect, duration, dimensions, and byte receipts.
 
 The same run is reviewed in contact sheets before any frame becomes a 4K master. These collection views make weak
 silhouettes, obstructed cameras, repeated compositions, and overpowered effects obvious before automated grading.
@@ -158,6 +248,36 @@ silhouettes, obstructed cameras, repeated compositions, and overpowered effects 
 </table>
 
 [Open all six review sheets](docs/SHOWCASE-LIBRARY.md#review-sheets) and the complete admission contract.
+
+## Selected field frames
+
+The landing page publishes a larger responsive mosaic. This smaller wall samples the action and foreground collections
+without repeating the six hero frames.
+
+<table>
+<tr>
+<td width="25%"><img src="public/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp" alt="Leclerc duel in the desert"></td>
+<td width="25%"><img src="public/media/showcase-r1/63_action_desert_overwatch_line.webp" alt="Desert overwatch line under fire"></td>
+<td width="25%"><img src="public/media/showcase-r1/69_action_winter_village_brawl.webp" alt="Tank battle through a winter village"></td>
+<td width="25%"><img src="public/media/showcase-r1/71_action_urban_street_duel.webp" alt="Close urban street duel"></td>
+</tr>
+<tr>
+<td width="25%"><img src="public/media/showcase-r1/76_action_verdant_field_duel.webp" alt="Tank duel across a green field"></td>
+<td width="25%"><img src="public/media/showcase-r1/84_action_steppe_horizon_charge.webp" alt="Armored charge across the steppe"></td>
+<td width="25%"><img src="public/media/showcase-r1/95_foreground_coastal_dune_ambush.webp" alt="Foreground tank entering a coastal dune ambush"></td>
+<td width="25%"><img src="public/media/showcase-r1/97_foreground_winter_lake_duel.webp" alt="Foreground tank fighting on a winter lake"></td>
+</tr>
+<tr>
+<td width="25%"><img src="public/media/showcase-r1/101_foreground_urban_street_duel.webp" alt="Tank filling the foreground of an urban duel"></td>
+<td width="25%"><img src="public/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp" alt="Challenger 1 leading a green battlefield attack"></td>
+<td width="25%"><img src="public/media/showcase-r1/115_foreground_urban_alley_flash.webp" alt="Tank firing through a narrow urban alley"></td>
+<td width="25%"><img src="public/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp" alt="Foreground tank overlooking a ridge battle"></td>
+</tr>
+</table>
+
+[Browse the full showcase manifest](public/media/showcase-r1/manifest.json),
+[open the public Tank Gallery](https://cot.kevinliu.studio/gallery), or
+[build a new shot in Scene Studio](https://cot.kevinliu.studio/studio).
 
 ## Architecture
 

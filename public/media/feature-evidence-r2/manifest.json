@@ -14,11 +14,11 @@
   "images": [
     {
       "id": "killcam-modules",
-      "title": "Killcam module trace",
+      "title": "M1A2 SEPv3 killcam module trace",
       "path": "/media/feature-evidence-r2/killcam-modules.webp",
       "width": 3840,
       "height": 2160,
-      "bytes": 2072224
+      "bytes": 1290704
     },
     {
       "id": "garage-fleet",
@@ -58,7 +58,7 @@
       "path": "/media/feature-evidence-r2/mechanic-strv-suspension.webp",
       "width": 3840,
       "height": 2160,
-      "bytes": 1220854
+      "bytes": 1720382
     }
   ]
 }

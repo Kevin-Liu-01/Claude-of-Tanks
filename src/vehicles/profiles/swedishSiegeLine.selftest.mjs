@@ -79,6 +79,27 @@ for (const spec of specs) {
   for (let frame = 0; frame < 240; frame++) updateTank(entity, flatTerrain, SIM_DT);
   assert.ok(state.suspensionAimPitch >= THREE.MathUtils.degToRad(10.5),
     `${spec.id}: hydraulic aim reaches a pronounced nose-up posture`);
+  const settledVisual = createTank(spec.id, null, {
+    proceduralOnly: true, geometryReceipt: true,
+  });
+  settledVisual.setGroundSampler(() => 0);
+  for (let frame = 0; frame < 48; frame++) settledVisual.syncFromState(state, SIM_DT);
+  const settledWheels = settledVisual.root.getObjectByName('gearRoadWheelTires');
+  const settledMatrix = new THREE.Matrix4();
+  const settledPosition = new THREE.Vector3();
+  let settledMinY = Infinity;
+  let settledMaxY = -Infinity;
+  for (let instance = 0; instance < settledWheels.count; instance++) {
+    settledWheels.getMatrixAt(instance, settledMatrix);
+    settledPosition.setFromMatrixPosition(settledMatrix);
+    settledMinY = Math.min(settledMinY, settledPosition.y);
+    settledMaxY = Math.max(settledMaxY, settledPosition.y);
+  }
+  const settledStaggerM = settledMaxY - settledMinY;
+  assert.ok(settledStaggerM >= 0.30,
+    `${spec.id}: live hydraulic support solve uses compression and droop across the wheel course ` +
+    `(${settledStaggerM.toFixed(3)} m)`);
+  settledVisual.dispose();
   entity.input.aimPoint.set(0, -85, 180);
   for (let frame = 0; frame < 300; frame++) updateTank(entity, flatTerrain, SIM_DT);
   assert.ok(state.suspensionAimPitch <= THREE.MathUtils.degToRad(-11.5),

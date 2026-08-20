@@ -4390,7 +4390,7 @@ const VIEW_MAP = {
 
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
 // (deterministic spawns) whenever the map actually changes.
-function ensureShotWorld(mapId) {
+function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // boot r8: the battlefield is deferred, so a staged capture may well be the
   // first thing that needs one at all. Synchronous by contract (__SHOTS.set
   // must fully determine the frame) — this is why createMap keeps its
@@ -4404,7 +4404,7 @@ function ensureShotWorld(mapId) {
   applyCamoPatterns();
   // Always restage deterministically: a prior random-roster battle must not
   // leak into the screenshot contract (recipes reference tiger1/t90m/etc).
-  setupBattle(game, 'm1a2', world);
+  setupBattle(game, playerSpecId, world);
   battleStaged = true;
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec, game.player.visual);
@@ -4898,15 +4898,15 @@ const SHOT_VIEWS = {
   battlefield_alpine() { mapEstablishingShot(); },
   battlefield_caldera() { mapEstablishingShot(); },
   battlefield_foundry() { mapEstablishingShot(); },
-  // KILL-CAM: deterministic staged x-ray replay frame. A synthetic shot from
-  // the player's M1A2 into the Tiger I at its spawn is resolved through the
+  // KILL-CAM: deterministic staged x-ray replay frame. A synthetic T-90M
+  // flank shot into the player's M1A2 SEPv3 is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
   // combat state) and handed to the kill-cam's staged x-ray renderer.
   killcam_xray() {
     hud.setMode('hidden');
-    const target = game.tankById.get('tiger1');
-    const shooter = game.player;
-    const shellSpec = shooter.spec.gun.shells[0]; // 120 mm APFSDS
+    const target = game.player;
+    const shooter = game.tankById.get('t90m');
+    const shellSpec = shooter.spec.gun.shells[0]; // 125 mm APFSDS
     // Synthetic flank muzzle (staged frame): a front-right-quarter shot at
     // 440 m guarantees a penetration whose internal ray crosses track/engine/
     // fuel/ammo boxes — the frame must showcase module damage.
@@ -5020,7 +5020,8 @@ window.__SHOTS = {
     setGarageSpots(true); // shot staging keeps the boot-time light set
     zeroInputs();
     killcam.cancel(); // KILL-CAM: clear any staged/active replay (restores materials)
-    ensureShotWorld(VIEW_MAP[name] || 'verdant'); // MAP-CONFIG WIRING
+    ensureShotWorld(VIEW_MAP[name] || 'verdant',
+      name === 'killcam_xray' ? 'm1a2_sepv3' : 'm1a2'); // MAP-CONFIG WIRING
     // camo_spotting r2: garage shot keeps the neutral pedestal key; every
     // battlefield shot gets the authored map sun.
     setGarageSunTrim(name === 'garage');

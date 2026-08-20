@@ -405,6 +405,87 @@ export function createStudio(ctx) {
     a.visual.syncFromState(st, 0);
   }
 
+  /**
+   * Drive a siege vehicle through the real hydropneumatic aiming simulation.
+   * This is deliberately not a pose override: updateTank owns hull attitude
+   * and support height, while syncFromState settles every wheel station and
+   * deforms both loaded track runs against the active heightfield.
+   * @param {string|number|object} ref actor reference
+   * @param {number} pitchDeg requested sight-line elevation in degrees
+   * @returns {?object} settled suspension telemetry, or null when unsupported
+   */
+  function setHydropneumaticAim(ref, pitchDeg = 0) {
+    const a = findActor(ref);
+    const hydraulic = a?.spec?.hydropneumaticAim;
+    if (!a || !hydraulic) return null;
+
+    const st = a.state;
+    const targetDeg = Math.max(-(hydraulic.noseDownDeg ?? 12),
+      Math.min(hydraulic.noseUpDeg ?? 12, Number(pitchDeg) || 0));
+    const targetPitch = targetDeg * DEG;
+    const rangeM = 180;
+    const authoredX = a.pose.x;
+    const authoredZ = a.pose.z;
+    const authoredYaw = a.pose.facingDeg * DEG;
+
+    st.suspensionAim = true;
+    a.input.throttle = 0;
+    a.input.steer = 0;
+    a.input.brake = true;
+    a.input.fire = false;
+    a.input.aimPoint.set(
+      authoredX + Math.sin(authoredYaw) * Math.cos(targetPitch) * rangeM,
+      st.pos.y + 2 + Math.sin(targetPitch) * rangeM,
+      authoredZ + Math.cos(authoredYaw) * Math.cos(targetPitch) * rangeM,
+    );
+    // Six seconds covers the hydraulic rate limit and the slower chassis
+    // attitude/support springs at either end of the authored travel range.
+    for (let frame = 0; frame < 360; frame++) {
+      updateTank(a, hfProxy, SIM_DT);
+      // Studio placement remains authoritative while the suspension solver
+      // owns vertical seating and attitude.
+      st.pos.x = authoredX;
+      st.pos.z = authoredZ;
+      st.yaw = authoredYaw;
+      st.speed = 0;
+      st.yawRate = 0;
+    }
+    // Running-gear conformance is visually damped. Advance it independently
+    // after the simulation settles so wheels and track bands reach the same
+    // final ground course before a still or recording begins.
+    for (let frame = 0; frame < 48; frame++) a.visual.syncFromState(st, SIM_DT);
+
+    const wheels = a.visual.root.getObjectByName('gearRoadWheelTires');
+    let minWheelY = Infinity;
+    let maxWheelY = -Infinity;
+    if (wheels?.isInstancedMesh) {
+      const matrix = new THREE.Matrix4();
+      const position = new THREE.Vector3();
+      for (let instance = 0; instance < wheels.count; instance++) {
+        wheels.getMatrixAt(instance, matrix);
+        position.setFromMatrixPosition(matrix);
+        minWheelY = Math.min(minWheelY, position.y);
+        maxWheelY = Math.max(maxWheelY, position.y);
+      }
+    }
+    a.timelineX = authoredX;
+    a.timelineZ = authoredZ;
+    a.timelineYaw = authoredYaw;
+    invalidate();
+    return {
+      actor: a.name || a.uid,
+      requestedPitchDeg: r2(targetDeg),
+      suspensionPitchDeg: r2(st.suspensionAimPitch / DEG),
+      renderedPitchDeg: r2(st.visualPitch / DEG),
+      terrainPitchDeg: r2(st._terr.pitch / DEG),
+      suspensionRockDeg: r2((st._susp?.p || 0) * 2.6 / DEG),
+      supportY: r2(st.pos.y),
+      wheelStaggerM: Number.isFinite(minWheelY) ? r2(maxWheelY - minWheelY) : 0,
+      trackBands: ['gearTrackBandL', 'gearTrackBandR']
+        .filter((name) => !!a.visual.root.getObjectByName(name)).length,
+    };
+  }
+
   /** Resolve an actor by uid / name / roster index / actor object. */
   function findActor(ref) {
     if (ref == null) return null;
@@ -459,7 +540,10 @@ export function createStudio(ctx) {
       },
       combat: null,
       rigidGear: false,
-      contactGeom: null,
+      contactGeom: visual.contactGeom ? {
+        ...visual.contactGeom,
+        endRise: visual.contactGeom.endRise ? { ...visual.contactGeom.endRise } : null,
+      } : null,
       pose: {
         x, z,
         facingDeg: cfg.facingDeg || 0,
@@ -2397,6 +2481,9 @@ export function createStudio(ctx) {
       panel.refreshAll();
       return a ? api.listActors()[actors.indexOf(a)] : null;
     },
+    setHydropneumaticAim: (ref, pitchDeg) => recording
+      ? null
+      : setHydropneumaticAim(ref, pitchDeg),
     setActorState: (ref, state, ageS) => recording ? false : setActorState(ref, state, ageS),
     selectActor: (ref) => { const a = selectActor(ref); return a ? a.uid : null; },
     clearActors: () => { if (!recording) clearActors(); },

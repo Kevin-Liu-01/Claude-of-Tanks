@@ -4,29 +4,11 @@ import { autoMountMediaArchives } from './mediaArchive.js';
 autoMountMediaArchives();
 
 function mountHeroRail(root) {
-  const videos = [...root.querySelectorAll('video')];
-  if (videos.length === 0) return;
+  const slides = [...root.querySelectorAll('[data-hero-slide]')];
+  if (slides.length < 2) return;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-
-  if (videos.length === 1) {
-    const [video] = videos;
-    const applyMotionPreference = () => {
-      if (reducedMotion.matches || document.hidden) {
-        video.pause();
-        video.currentTime = 0;
-        return;
-      }
-      video.play().catch(() => {});
-    };
-    reducedMotion.addEventListener('change', applyMotionPreference);
-    document.addEventListener('visibilitychange', applyMotionPreference);
-    applyMotionPreference();
-    return;
-  }
-
-  let activeIndex = Math.max(0, videos.findIndex((video) => video.classList.contains('is-active')));
+  let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
   let advanceTimer = 0;
-  let transitionToken = 0;
 
   const stopTimer = () => {
     clearTimeout(advanceTimer);
@@ -34,11 +16,10 @@ function mountHeroRail(root) {
   };
 
   const expose = (index) => {
-    videos.forEach((video, videoIndex) => {
-      const active = videoIndex === index;
-      video.classList.toggle('is-active', active);
-      video.setAttribute('aria-hidden', String(!active));
-      if (!active) video.pause();
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === index;
+      slide.classList.toggle('is-active', active);
+      slide.setAttribute('aria-hidden', String(!active));
     });
     activeIndex = index;
   };
@@ -46,47 +27,21 @@ function mountHeroRail(root) {
   const scheduleAdvance = () => {
     stopTimer();
     if (reducedMotion.matches || document.hidden) return;
-    const current = videos[activeIndex];
-    const remainingMs = Number.isFinite(current.duration)
-      ? Math.max(800, (current.duration - current.currentTime) * 1000)
-      : 6000;
-    advanceTimer = window.setTimeout(() => advance(), remainingMs + 80);
+    advanceTimer = window.setTimeout(advance, 5600);
   };
 
-  const advance = async () => {
+  const advance = () => {
     stopTimer();
     if (reducedMotion.matches || document.hidden) return;
-    const token = ++transitionToken;
-    const nextIndex = (activeIndex + 1) % videos.length;
-    const next = videos[nextIndex];
-    next.currentTime = 0;
-    next.preload = 'auto';
-    try {
-      await next.play();
-      if (token !== transitionToken) return;
-      expose(nextIndex);
-      scheduleAdvance();
-    } catch {
-      window.setTimeout(advance, 800);
-    }
+    const nextIndex = (activeIndex + 1) % slides.length;
+    expose(nextIndex);
+    scheduleAdvance();
   };
 
-  videos.forEach((video) => {
-    video.addEventListener('ended', advance);
-    video.addEventListener('playing', () => {
-      if (video === videos[activeIndex]) scheduleAdvance();
-    });
-  });
-
   const applyMotionPreference = () => {
-    transitionToken += 1;
     stopTimer();
-    if (reducedMotion.matches) {
-      videos.forEach((video) => video.pause());
-      videos[activeIndex].currentTime = 0;
-      return;
-    }
-    videos[activeIndex].play().then(scheduleAdvance).catch(() => {});
+    if (reducedMotion.matches) expose(0);
+    else scheduleAdvance();
   };
   reducedMotion.addEventListener('change', applyMotionPreference);
   document.addEventListener('visibilitychange', applyMotionPreference);
@@ -95,3 +50,28 @@ function mountHeroRail(root) {
 }
 
 document.querySelectorAll('[data-hero-rail]').forEach(mountHeroRail);
+
+function mountViewportVideo(video) {
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let visible = false;
+
+  const sync = () => {
+    if (!visible || reducedMotion.matches || document.hidden) {
+      video.pause();
+      return;
+    }
+    video.play().catch(() => {});
+  };
+
+  const observer = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting && entry.intersectionRatio >= 0.18;
+    if (visible && video.preload === 'none') video.preload = 'metadata';
+    sync();
+  }, { threshold: [0, 0.18, 0.55] });
+
+  observer.observe(video);
+  reducedMotion.addEventListener('change', sync);
+  document.addEventListener('visibilitychange', sync);
+}
+
+document.querySelectorAll('[data-autoplay-video]').forEach(mountViewportVideo);

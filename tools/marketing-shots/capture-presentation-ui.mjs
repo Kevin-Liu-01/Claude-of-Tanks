@@ -215,17 +215,19 @@ try {
     },
     {
       id: 'mechanic_strv_suspension_4k', width: 1920, height: 1080, dpr: 2,
-      path: '/?studio=1&map=steppe&nogate=1', settleMs: 1200,
+      path: '/?studio=1&map=railyard&nogate=1', settleMs: 1200,
       ready: () => window.__GAME_READY === true && window.__STUDIO?.active === true,
+      studioCapture: true,
       setup: {
         kind: 'strv-suspension',
         scene: {
-          map: 'steppe', seed: 77152,
+          map: 'railyard', seed: 77152,
           actors: [
-            { id: 'strv103', name: 'suspension', pos: [-100, -60], facingDeg: 184, gunDeg: 0, camo: 'summer' },
-            { id: 't72b3m', name: 'range-target', pos: [-101, -92], facingDeg: 8, turretDeg: 0, gunDeg: 0, camo: 'summer' },
+            { id: 'strv103', name: 'suspension', pos: [-30, 30], facingDeg: 0, gunDeg: 0, camo: 'summer' },
           ],
-          camera: { pos: [-92, 1.2, -50], lookAt: [-100, 1.7, -61], groundRel: true, fov: 39, rollDeg: 1 },
+          // Pure broadside: local +Z runs across frame, exposing the complete
+          // wheel/track profile while the commanded hull pitch stays obvious.
+          camera: { pos: [-14, 2.5, 30], lookAt: [-30, 1.15, 30], groundRel: true, fov: 32, rollDeg: 0 },
           fxTime: 0, timeScale: 0,
         },
       },
@@ -253,11 +255,11 @@ try {
           window.__STUDIO.seek(setup.scene.fxTime || 0);
         } else if (setup.kind === 'strv-suspension') {
           await window.__STUDIO.load(setup.scene);
-          window.__STUDIO.selectActor('suspension');
-          const actor = window.__STUDIO._internal.selected;
-          actor.state.suspensionAim = true;
-          actor.state.suspensionAimPitch = 12 * Math.PI / 180;
-          actor.visual.syncFromState(actor.state, 0);
+          const settled = window.__STUDIO.setHydropneumaticAim('suspension', 12);
+          if (!settled || settled.renderedPitchDeg < 9 || settled.wheelStaggerM < 0.3
+            || settled.trackBands !== 2) {
+            throw new Error(`Strv suspension did not settle: ${JSON.stringify(settled)}`);
+          }
           window.__STUDIO.setRailVisible(false);
         }
       }, target.setup);
@@ -266,7 +268,15 @@ try {
     await new Promise((resolveWait) => setTimeout(resolveWait, target.settleMs));
     if (errors.length) throw new Error(`${target.id} console errors:\n${errors.join('\n')}`);
     const output = join(outDir, `${target.id}.png`);
-    await page.screenshot({ path: output, type: 'png' });
+    if (target.studioCapture) {
+      const capture = await page.evaluate(() => window.__STUDIO.capture({
+        width: 3840, height: 2160, type: 'image/png', download: false,
+      }));
+      const encoded = capture.dataURL.replace(/^data:image\/png;base64,/, '');
+      writeFileSync(output, Buffer.from(encoded, 'base64'));
+    } else {
+      await page.screenshot({ path: output, type: 'png' });
+    }
     console.log(`[presentation-ui] ${target.id}.png (${target.width * (target.dpr || 1)}x${target.height * (target.dpr || 1)})`);
   }
 } finally {

@@ -556,9 +556,8 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // running tier sum (the ally side starts pre-loaded with the PLAYER's own
   // tier), capacity-capped at 6/7. The seeded shuffle order stays the
   // tie-break, so rosters remain reproducible per battleCount. The
-  // deterministic staged battle keeps the legacy 3-ally pick — tiger1 stays
-  // an ENEMY (killcam_xray stages a player shot into it) and the
-  // establishing-shot framing is unchanged.
+  // deterministic staged battle keeps the legacy 3-ally pick and its locked
+  // team assignments so the establishing-shot framing remains unchanged.
   const nonPlayers = game.tanks.filter((e) => e.specId !== playerSpecId);
   let allyPick;
   if (opts.random) {

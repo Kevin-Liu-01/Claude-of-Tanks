@@ -2,7 +2,7 @@
 //
 // Usage:
 //   npm run studio:action:render
-//   node tools/marketing-shots/record-studio-action-loop.mjs --out shots/studio-action-loop-r1
+//   node tools/marketing-shots/record-studio-action-loop.mjs --out shots/studio-action-loop-r2
 //
 // The staged composition starts from a camera already approved by the battle
 // screenshot campaign, then uses a deliberately narrow rail so scenery cannot
@@ -22,8 +22,10 @@ function opt(name, fallback) {
   return index >= 0 ? args[index + 1] : fallback;
 }
 
-const outDir = resolve(opt('out', 'shots/studio-action-loop-r1'));
+const outDir = resolve(opt('out', 'shots/studio-action-loop-r2'));
 const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
+const width = Math.max(1280, Math.min(3840, Number.parseInt(opt('width', '1920'), 10) || 1920));
+const height = Math.max(720, Math.min(2160, Number.parseInt(opt('height', '1080'), 10) || 1080));
 const bitrate = Math.max(4_000_000, Math.min(
   30_000_000,
   Number.parseInt(opt('bitrate', '10000000'), 10) || 10_000_000,
@@ -121,30 +123,24 @@ const scene = {
   seed: 8222,
   actors: [
     { id: 'strv122', name: 'shooter', pos: [176, -108], facingDeg: 122, turretDeg: -1, gunDeg: 0.5, camo: 'winterbands', camoSeed: 8220 },
-    { id: 'type99a', name: 'victim', pos: [206, -126], facingDeg: 300, turretDeg: 20, gunDeg: 0.5, camo: 'merdcwinter', camoSeed: 8221 },
-    { id: 'pt91m', name: 'wingman', pos: [188, -142], facingDeg: 350, turretDeg: -35, gunDeg: 0.5, camo: 'washworn', camoSeed: 8222 },
-    { id: 'type99a', name: 'reinforcement', pos: [183.7, -125.8], facingDeg: 90.5, turretDeg: 0, gunDeg: 0.5, camo: 'winter', camoSeed: 9223 },
+    { id: 'leclerc', name: 'victim', pos: [198, -123], facingDeg: 300, turretDeg: 20, gunDeg: 0.5, camo: 'winterbands', camoSeed: 8221 },
   ],
   effects: [
     { type: 'dust', actor: 'shooter', tMs: 250, params: { count: 14, intensity: 0.8, dirDeg: 302 } },
-    { type: 'dust', actor: 'reinforcement', tMs: 650, params: { count: 12, intensity: 0.75, dirDeg: 270 } },
     { type: 'fire', actor: 'shooter', tMs: 1120, params: { slot: 0, tracer: true, recoil: true } },
     { type: 'impact', actor: 'victim', tMs: 1450, params: { kind: 'nonpen', caliberMm: 120, hFrac: 0.56 } },
     { type: 'sparks', actor: 'victim', tMs: 1520, params: { caliberMm: 120, kind: 'ricochet', hFrac: 0.58 } },
-    { type: 'fire', actor: 'reinforcement', tMs: 2240, params: { slot: 0, tracer: true, recoil: true } },
     { type: 'fire', actor: 'victim', tMs: 2720, params: { slot: 0, tracer: true, recoil: true } },
     { type: 'sparks', actor: 'shooter', tMs: 2960, params: { caliberMm: 125, kind: 'ricochet', hFrac: 0.68 } },
     { type: 'fire', actor: 'shooter', tMs: 3580, params: { slot: 0, tracer: true, recoil: true } },
     { type: 'detrack', actor: 'victim', tMs: 3740, params: { side: 'L' } },
     { type: 'tank_kill', actor: 'victim', tMs: 3980, params: { cause: 'ammorack', pop: true } },
-    { type: 'fire', actor: 'reinforcement', tMs: 4880, params: { slot: 0, tracer: true, recoil: true } },
-    { type: 'tank_kill', actor: 'wingman', tMs: 5260, params: { cause: 'fuel', pop: false } },
   ],
   camera: {
-    pos: [163.7, 1.1, -132.3],
-    lookAt: [193, 2.4, -124],
+    pos: [164.5, 1.1, -132.8],
+    lookAt: [187, 2.4, -118.5],
     groundRel: true,
-    fov: 32,
+    fov: 30,
     rollDeg: 1,
   },
   fxTime: 0,
@@ -191,7 +187,7 @@ try {
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+  await page.setViewport({ width, height, deviceScaleFactor: 1 });
   page.on('console', (message) => {
     if (message.type() === 'error' && !message.text().includes('favicon')) {
       consoleErrors.push(message.text());
@@ -224,13 +220,13 @@ try {
       durationMs,
       shots: [
         { id: 'open', label: 'Armored contact', tMs: 0,
-          pos: [x, y, z], lookAt: [lx, ly, lz], fov: 32, rollDeg: 1, transition: 'linear' },
+          pos: [x, y, z], lookAt: [lx, ly, lz], fov: 30, rollDeg: 1, transition: 'linear' },
         { id: 'push', label: 'Return fire', tMs: 2200,
-          pos: [x + 1.8, y + 0.4, z + 0.5], lookAt: [lx + 0.8, ly + 0.1, lz + 0.2], fov: 34, rollDeg: 0.5, transition: 'smooth' },
+          pos: [x + 1.8, y + 0.4, z + 0.5], lookAt: [lx + 0.8, ly + 0.1, lz + 0.2], fov: 31, rollDeg: 0.5, transition: 'smooth' },
         { id: 'impact', label: 'Knockout', tMs: 3850,
-          pos: [x + 3.1, y + 0.8, z + 0.9], lookAt: [194.5, ly + 0.1, -124.5], fov: 35, rollDeg: -0.75, transition: 'smooth' },
+          pos: [x + 3.1, y + 0.8, z + 0.9], lookAt: [195, ly + 0.1, -122.5], fov: 30, rollDeg: -0.75, transition: 'smooth' },
         { id: 'aftermath', label: 'Breakthrough', tMs: durationMs,
-          pos: [x + 0.8, y + 1.25, z - 0.7], lookAt: [193.5, ly + 0.2, -124], fov: 33, rollDeg: 0, transition: 'smooth' },
+          pos: [x + 0.8, y + 1.25, z - 0.7], lookAt: [192, ly + 0.2, -121], fov: 31, rollDeg: 0, transition: 'smooth' },
       ],
       actorTracks: [
         { actor: 'shooter', keys: [
@@ -239,17 +235,9 @@ try {
           { id: 'shooter-2', tMs: durationMs, pos: [179.4, -110.1], facingDeg: 122, turretDeg: -1, gunDeg: 0.5 },
         ] },
         { actor: 'victim', keys: [
-          { id: 'victim-0', tMs: 0, pos: [206, -126], facingDeg: 300, turretDeg: 20, gunDeg: 0.5 },
-          { id: 'victim-1', tMs: 3700, pos: [204.8, -125.5], facingDeg: 300, turretDeg: 18, gunDeg: 0.5 },
-          { id: 'victim-2', tMs: durationMs, pos: [204.8, -125.5], facingDeg: 300, turretDeg: 18, gunDeg: 0.5 },
-        ] },
-        { actor: 'reinforcement', keys: [
-          { id: 'reinforcement-0', tMs: 0, pos: [183.7, -125.8], facingDeg: 90.5, turretDeg: 0, gunDeg: 0.5 },
-          { id: 'reinforcement-1', tMs: durationMs, pos: [187.1, -125.5], facingDeg: 90.5, turretDeg: -2, gunDeg: 0.5 },
-        ] },
-        { actor: 'wingman', keys: [
-          { id: 'wingman-0', tMs: 0, pos: [188, -142], facingDeg: 350, turretDeg: -35, gunDeg: 0.5 },
-          { id: 'wingman-1', tMs: durationMs, pos: [188.4, -139.2], facingDeg: 350, turretDeg: -32, gunDeg: 0.5 },
+          { id: 'victim-0', tMs: 0, pos: [198, -123], facingDeg: 300, turretDeg: 20, gunDeg: 0.5 },
+          { id: 'victim-1', tMs: 3700, pos: [196.8, -122.5], facingDeg: 300, turretDeg: 18, gunDeg: 0.5 },
+          { id: 'victim-2', tMs: durationMs, pos: [196.8, -122.5], facingDeg: 300, turretDeg: 18, gunDeg: 0.5 },
         ] },
       ],
     };
@@ -258,19 +246,19 @@ try {
     S.seek(0);
     return { scene: S.state(), storyboard: S.getStoryboard() };
   }, scene);
-  writeFileSync(join(outDir, 'studio_winter_breakthrough.resolved.json'), `${JSON.stringify(staged.scene, null, 2)}\n`);
+  writeFileSync(join(outDir, 'studio_leclerc_knockout.resolved.json'), `${JSON.stringify(staged.scene, null, 2)}\n`);
 
-  const keyframes = [850, 1550, 2600, 3900, 5050];
+  const keyframes = [850, 1550, 2600, 4150, 5200];
   for (let index = 0; index < keyframes.length; index++) {
     const tMs = keyframes[index];
-    const captured = await page.evaluate(async (timeMs) => {
+    const captured = await page.evaluate(async (input) => {
       const S = window.__STUDIO;
-      S.seek(timeMs);
+      S.seek(input.timeMs);
       await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
-      return S.capture({ width: 1920, height: 1080, type: 'image/png', download: false });
-    }, tMs);
+      return S.capture({ width: input.width, height: input.height, type: 'image/png', download: false });
+    }, { width, height, timeMs: tMs });
     const bytes = Buffer.from(String(captured.dataURL).split(',')[1], 'base64');
-    const file = `studio_winter_breakthrough_${String(index + 1).padStart(2, '0')}_${tMs}ms.png`;
+    const file = `studio_leclerc_knockout_${String(index + 1).padStart(2, '0')}_${tMs}ms.png`;
     writeFileSync(join(outDir, file), bytes);
     console.log(`[studio-action] wrote ${file} (${bytes.length} bytes)`);
   }
@@ -297,7 +285,7 @@ try {
     };
   }, { fps, bitrate });
   const extension = recording.mimeType.includes('mp4') ? 'mp4' : 'webm';
-  const masterFile = `studio_winter_breakthrough.${extension}`;
+  const masterFile = `studio_leclerc_knockout.${extension}`;
   const videoBytes = Buffer.from(recording.base64, 'base64');
   if (videoBytes.length !== recording.size) {
     throw new Error(`Browser reported ${recording.size} bytes, transferred ${videoBytes.length}`);
@@ -305,8 +293,8 @@ try {
   writeFileSync(join(outDir, masterFile), videoBytes);
   writeFileSync(join(outDir, 'manifest.json'), `${JSON.stringify({
     version: 1,
-    renderer: { width: 1280, height: 720, fps, bitrate },
-    scene: 'studio_winter_breakthrough.resolved.json',
+    renderer: { width, height, fps, bitrate },
+    scene: 'studio_leclerc_knockout.resolved.json',
     master: masterFile,
     durationMs: recording.durationMs,
     mimeType: recording.mimeType,

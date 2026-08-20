@@ -17,7 +17,7 @@ const outputDir = resolve(opt('out', 'public/media/feature-evidence-r2'));
 mkdirSync(outputDir, { recursive: true });
 
 const captures = [
-  ['killcam-modules', 'Killcam module trace', join(shotsRoot, 'killcam/killcam_xray.png')],
+  ['killcam-modules', 'M1A2 SEPv3 killcam module trace', join(shotsRoot, 'killcam/killcam_xray.png')],
   ['garage-fleet', 'Garage fleet', join(shotsRoot, 'ui-raw/garage_4k.png')],
   ['gallery-carro45t-modules', 'Carro 45t internal modules', join(shotsRoot, 'ui-raw/gallery_modules_carro45t_4k.png')],
   ['studio-action', 'Scene Studio action frame', join(shotsRoot, 'ui-raw/studio_action_4k.png')],

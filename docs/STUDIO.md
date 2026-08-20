@@ -76,6 +76,7 @@ Additional methods used by the panel:
 __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
 __STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)
 __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
+__STUDIO.setHydropneumaticAim(ref, pitchDeg)          // real siege-suspension settle
 __STUDIO.effect({type, actor|at, params})             // fire one effect NOW
 __STUDIO.listEffects()                               // authored FX layers + stable ids
 __STUDIO.selectEffect(id) / .removeEffect(id)        // select/delete one layer
@@ -96,6 +97,11 @@ __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg,
 __STUDIO.performance()              // rendered/skipped frame + pool-sweep counters
 __STUDIO.active / .mapId
 ```
+
+`setHydropneumaticAim` is available only for vehicles whose spec defines a
+hydropneumatic aiming system. It advances the fixed-step movement solver, seats
+the sprung hull through compression and droop, and settles the deformable wheel
+and track course before returning pitch and wheel-stagger telemetry.
 
 Actor `ref` = `uid` (`"a1"`), `name`, roster index, or the actor object.
 Effect `ref` = stable effect `id` (`"fx1"`), stack index, or the returned

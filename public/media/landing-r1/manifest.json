@@ -1,0 +1,290 @@
+{
+  "libraryId": "claude-of-tanks-landing-r1",
+  "schemaVersion": 1,
+  "source": "Owner-directed selection from first-party Scene Studio and marketing-shot libraries",
+  "hero": [
+    {
+      "id": "og-t90-column",
+      "title": "T-90 column fire",
+      "src": "/media/featured/f7_studio_t90_column_fire.webp",
+      "collection": "handmade"
+    },
+    {
+      "id": "leopard-urban-hero",
+      "title": "Leopard 2A6 urban advance",
+      "src": "/media/presentation-r1/13_urban_hero_leo2a6.webp",
+      "collection": "handmade"
+    },
+    {
+      "id": "desert-armored-contact",
+      "title": "Desert armored contact",
+      "src": "/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp",
+      "collection": "action"
+    },
+    {
+      "id": "urban-overwatch",
+      "title": "Urban overwatch",
+      "src": "/media/showcase-r1/103_foreground_urban_overwatch_church.webp",
+      "collection": "foreground"
+    },
+    {
+      "id": "verdant-column-fire",
+      "title": "Verdant column under fire",
+      "src": "/media/showcase-r1/87_action_verdant_column_massacre.webp",
+      "collection": "action"
+    },
+    {
+      "id": "winter-ice-breaker",
+      "title": "Winter ice breaker",
+      "src": "/media/showcase-r1/113_foreground_winter_ice_breaker.webp",
+      "collection": "foreground"
+    }
+  ],
+  "featureReel": {
+    "video": "/media/promo-v13/claude-of-tanks-promo-clean.mp4",
+    "poster": "/media/promo-v13/claude-of-tanks-promo-clean.jpg",
+    "width": 1920,
+    "height": 1080,
+    "durationMs": 24933,
+    "fps": 60
+  },
+  "relocatedRails": [
+    {
+      "id": "desert-ground-rush",
+      "title": "Desert ground rush",
+      "video": "/media/hero-rails-r2/01_desert-ground-rush.webm",
+      "poster": "/media/hero-rails-r2/01_desert-ground-rush.jpg"
+    },
+    {
+      "id": "steppe-charge-thread",
+      "title": "Steppe charge thread",
+      "video": "/media/hero-rails-r2/03_steppe-charge-thread.webm",
+      "poster": "/media/hero-rails-r2/03_steppe-charge-thread.jpg"
+    },
+    {
+      "id": "urban-overhead-dive",
+      "title": "Urban overhead dive",
+      "video": "/media/hero-rails-r2/04_urban-overhead-dive.webm",
+      "poster": "/media/hero-rails-r2/04_urban-overhead-dive.jpg"
+    },
+    {
+      "id": "coastal-shell-skim",
+      "title": "Coastal shell skim",
+      "video": "/media/hero-rails-r2/05_coastal-shell-skim.webm",
+      "poster": "/media/hero-rails-r2/05_coastal-shell-skim.jpg"
+    }
+  ],
+  "winterDestructionRail": "/media/hero-rails-r2/02_winter-ice-orbit.webm",
+  "mosaic": [
+    {
+      "id": "61_action_desert_duel_leclerc_kill",
+      "title": "desert duel leclerc kill",
+      "collection": "action",
+      "src": "/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp"
+    },
+    {
+      "id": "63_action_desert_overwatch_line",
+      "title": "desert overwatch line",
+      "collection": "action",
+      "src": "/media/showcase-r1/63_action_desert_overwatch_line.webp"
+    },
+    {
+      "id": "67_action_winter_lake_duel",
+      "title": "winter lake duel",
+      "collection": "action",
+      "src": "/media/showcase-r1/67_action_winter_lake_duel.webp"
+    },
+    {
+      "id": "69_action_winter_village_brawl",
+      "title": "winter village brawl",
+      "collection": "action",
+      "src": "/media/showcase-r1/69_action_winter_village_brawl.webp"
+    },
+    {
+      "id": "71_action_urban_street_duel",
+      "title": "urban street duel",
+      "collection": "action",
+      "src": "/media/showcase-r1/71_action_urban_street_duel.webp"
+    },
+    {
+      "id": "74_action_urban_ruin_brawl",
+      "title": "urban ruin brawl",
+      "collection": "action",
+      "src": "/media/showcase-r1/74_action_urban_ruin_brawl.webp"
+    },
+    {
+      "id": "76_action_verdant_field_duel",
+      "title": "verdant field duel",
+      "collection": "action",
+      "src": "/media/showcase-r1/76_action_verdant_field_duel.webp"
+    },
+    {
+      "id": "78_action_verdant_village_brawl",
+      "title": "verdant village brawl",
+      "collection": "action",
+      "src": "/media/showcase-r1/78_action_verdant_village_brawl.webp"
+    },
+    {
+      "id": "80_action_desert_wadi_gauntlet",
+      "title": "desert wadi gauntlet",
+      "collection": "action",
+      "src": "/media/showcase-r1/80_action_desert_wadi_gauntlet.webp"
+    },
+    {
+      "id": "84_action_steppe_horizon_charge",
+      "title": "steppe horizon charge",
+      "collection": "action",
+      "src": "/media/showcase-r1/84_action_steppe_horizon_charge.webp"
+    },
+    {
+      "id": "86_action_coastal_harbor_kill",
+      "title": "coastal harbor kill",
+      "collection": "action",
+      "src": "/media/showcase-r1/86_action_coastal_harbor_kill.webp"
+    },
+    {
+      "id": "89_action_coastal_beach_storm",
+      "title": "coastal beach storm",
+      "collection": "action",
+      "src": "/media/showcase-r1/89_action_coastal_beach_storm.webp"
+    },
+    {
+      "id": "93_foreground_desert_overwatch_line",
+      "title": "desert overwatch line",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/93_foreground_desert_overwatch_line.webp"
+    },
+    {
+      "id": "95_foreground_coastal_dune_ambush",
+      "title": "coastal dune ambush",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/95_foreground_coastal_dune_ambush.webp"
+    },
+    {
+      "id": "97_foreground_winter_lake_duel",
+      "title": "winter lake duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/97_foreground_winter_lake_duel.webp"
+    },
+    {
+      "id": "99_foreground_winter_village_brawl",
+      "title": "winter village brawl",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/99_foreground_winter_village_brawl.webp"
+    },
+    {
+      "id": "101_foreground_urban_street_duel",
+      "title": "urban street duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/101_foreground_urban_street_duel.webp"
+    },
+    {
+      "id": "104_foreground_urban_ruin_brawl",
+      "title": "urban ruin brawl",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/104_foreground_urban_ruin_brawl.webp"
+    },
+    {
+      "id": "106_foreground_verdant_field_duel",
+      "title": "verdant field duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/106_foreground_verdant_field_duel.webp"
+    },
+    {
+      "id": "109_foreground_verdant_hero_challenger1",
+      "title": "verdant hero challenger1",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp"
+    },
+    {
+      "id": "111_foreground_steppe_windbreak_snipe",
+      "title": "steppe windbreak snipe",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/111_foreground_steppe_windbreak_snipe.webp"
+    },
+    {
+      "id": "115_foreground_urban_alley_flash",
+      "title": "urban alley flash",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/115_foreground_urban_alley_flash.webp"
+    },
+    {
+      "id": "118_foreground_verdant_meadow_duel",
+      "title": "verdant meadow duel",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/118_foreground_verdant_meadow_duel.webp"
+    },
+    {
+      "id": "120_foreground_verdant_overwatch_ridge",
+      "title": "verdant overwatch ridge",
+      "collection": "foreground",
+      "src": "/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp"
+    }
+  ],
+  "studio": {
+    "video": "/media/landing-r1/studio-leclerc-knockout.webm",
+    "poster": "/media/landing-r1/studio-leclerc-knockout.jpg",
+    "width": 1920,
+    "height": 1080,
+    "durationMs": 6500,
+    "videoBytes": 9279659,
+    "posterBytes": 362137,
+    "actors": [
+      {
+        "id": "strv122",
+        "name": "shooter"
+      },
+      {
+        "id": "leclerc",
+        "name": "victim"
+      }
+    ],
+    "effects": [
+      {
+        "type": "dust",
+        "actor": "shooter",
+        "tMs": 250
+      },
+      {
+        "type": "fire",
+        "actor": "shooter",
+        "tMs": 1120
+      },
+      {
+        "type": "impact",
+        "actor": "victim",
+        "tMs": 1450
+      },
+      {
+        "type": "sparks",
+        "actor": "victim",
+        "tMs": 1520
+      },
+      {
+        "type": "fire",
+        "actor": "victim",
+        "tMs": 2720
+      },
+      {
+        "type": "sparks",
+        "actor": "shooter",
+        "tMs": 2960
+      },
+      {
+        "type": "fire",
+        "actor": "shooter",
+        "tMs": 3580
+      },
+      {
+        "type": "detrack",
+        "actor": "victim",
+        "tMs": 3740
+      },
+      {
+        "type": "tank_kill",
+        "actor": "victim",
+        "tMs": 3980
+      }
+    ]
+  }
+}

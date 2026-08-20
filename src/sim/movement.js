@@ -1383,8 +1383,23 @@ export function updateTank(entity, heightField, dt, collide = null) {
       ? Math.min(yieldWant, yieldPrev + FAN_YIELD_OPEN_MPS * dt)
       : yieldWant; // closing (harder clamp) applies instantly
     state._fanYield = fanYield;
-    let supportY = outerMax;
-    if (fanMax - fanYield > supportY) supportY = fanMax - fanYield;
+    // Hydraulic siege suspension can compress the high end of the loaded
+    // track run while the opposite end droops. Treating the outer track edge
+    // as a rigid hull point forced the chassis to sit on its highest tilted
+    // pad; every road wheel then saturated in droop and the rendered belt
+    // stayed almost parallel to the hull. Lower the sprung root by half the
+    // intentional hydraulic rise, bounded by the authored compression
+    // travel. The hard belly/undercut guards below remain unyielding.
+    const rigidUndercut = cg && Number.isFinite(cg.gearBottomYM) &&
+      Number.isFinite(cg.bottomYM) && cg.bottomYM < cg.gearBottomYM - 0.01;
+    const hydraulicTrackYield = state.suspensionAim && hydraulicAim && !rigidUndercut
+      ? Math.min(hydraulicAim.compressionM ?? RIDE_COMPRESSION_M,
+        Math.abs(Math.sin(suspensionAimPitch)) * sl)
+      : 0;
+    let supportY = outerMax - hydraulicTrackYield;
+    if (fanMax - fanYield - hydraulicTrackYield > supportY) {
+      supportY = fanMax - fanYield - hydraulicTrackYield;
+    }
     // The METADATA-LESS belly guard shares the roughness yield: on ≤ 4 m-cell
     // live maps a pan-threatening crest between the tracks cannot exist while
     // the patch is smooth (guard fully hard there, r5 behavior), and on
@@ -1444,8 +1459,6 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // hull pan is rigid and remains an absolute floor. If a visual publishes
     // a keel below its gear plane, that undercut is also rigid: do not spend
     // suspension travel by pushing the hull itself through the terrain.
-    const rigidUndercut = cg && Number.isFinite(cg.gearBottomYM) &&
-      Number.isFinite(cg.bottomYM) && cg.bottomYM < cg.gearBottomYM - 0.01;
     const compressionFloorY = (rigidUndercut
       ? supportY
       : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + supportMargin;
