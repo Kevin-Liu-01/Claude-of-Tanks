@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
+await import('./resourceLifetime.selftest.mjs');
+
 globalThis.window = { __GL_DIAG: { errors: [] } };
 
 const {

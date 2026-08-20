@@ -250,17 +250,19 @@ export const PRESETS = {
   // - 1024/512 shadow cascades + 300 m range — the desktop 'high' cascades
   //   (2x 4096² + 2x 2048² ≈ 170 MB of RTs) were a third of the whole mobile
   //   budget; lighting.js' penumbra compensation keeps softness constant.
-  // - composer at 1.0x CSS pixels, may earn 1.25x (adaptiveBase/max), MSAA 2,
-  //   AO off, half bloom chain, governor floor 0.6 — the post chain's
-  //   cheapest stable configuration without forking its structure.
+  // - composer at 1.0x CSS pixels, may earn 1.25x (adaptiveBase/max), scene
+  //   MSAA off, AO off, half bloom chain, governor floor 0.6. The final
+  //   display-space SMAA still owns edge cleanup; avoiding the multisampled
+  //   half-float scene target saves both bandwidth and a meaningful block of
+  //   graphics memory on the devices most likely to lose their context.
   mobile: {
     label: 'Balanced',
-    msaaSamples: 2,
+    msaaSamples: 0,
     maxPixelRatio: 1.25,
     adaptiveBasePixelRatio: 1.0,
     aoScale: 0,
     bloomScale: 0.5,
-    shadowMapSizes: [1024, 1024, 512, 512],
+    shadowMapSizes: [1024, 768, 512, 512],
     shadowMaxFar: 300,
     textureScale: 0.5,
     textureCap: 2048,

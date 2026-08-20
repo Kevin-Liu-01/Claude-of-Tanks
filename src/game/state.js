@@ -260,6 +260,11 @@ export function nextStagedBake(game, predicate = null) {
   return { ent, quality: textureQualityFor(game, ent) };
 }
 
+/** Visual-only battle geometry policy; garage/Studio use separate builders. */
+export function battleGeometryQuality(playerActor, deviceTier = getDeviceTier()) {
+  return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
+}
+
 /**
  * PERF (performance_budget r4): build a pool entity's visual on demand (battle
  * roster selection). Shares the per-spec texture cache with any live instance
@@ -280,16 +285,19 @@ export function ensureTankVisual(game, ent) {
   // 2048² bake costs 250-350 ms of main-thread canvas work.
   const textureQuality = textureQualityFor(game, ent);
   const playerActor = ent.isPlayer || ent === game.tanks[0];
-  const mobileBot = !playerActor && getDeviceTier() === 'mobile';
+  const deviceTier = getDeviceTier();
+  const mobileBot = !playerActor && deviceTier === 'mobile';
   const battleBot = !playerActor;
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed,
     quality: textureQuality,
     // The low-detail branches are authored per vehicle profile and preserve
-    // armor silhouettes. Battle bots use them on every tier: assembling a
-    // full-detail 13-vehicle roster produced 400-600 ms geometry tasks during
-    // the countdown. Player, garage, Studio, and close-up paths remain full.
-    geometryQuality: battleBot ? 'low' : 'high',
+    // armor silhouettes. Battle bots use them on every tier, and mobile also
+    // uses them for the player's battle-only copy: the full-fidelity garage
+    // hero remains untouched while avoiding a desktop-grade build and GPU
+    // footprint for a subject mostly framed below the HUD. Desktop players,
+    // garage, Studio, and authored close-up paths remain full fidelity.
+    geometryQuality: battleGeometryQuality(playerActor, deviceTier),
     // Every battle actor keeps its exact authored geometry while anonymous
     // same-material fittings are transform-baked into articulation-local
     // batches. AI additionally detaches purely cosmetic detail at range. The

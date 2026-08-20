@@ -1,5 +1,15 @@
 import { PerspectiveCamera, Vector3 } from 'three';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './mobileAutoAim.js';
+import { battleGeometryQuality } from './state.js';
+
+if (battleGeometryQuality(true, 'desktop') !== 'high') {
+  throw new Error('desktop player must retain high-detail battle geometry');
+}
+if (battleGeometryQuality(false, 'desktop') !== 'low'
+    || battleGeometryQuality(true, 'mobile') !== 'low'
+    || battleGeometryQuality(false, 'mobile') !== 'low') {
+  throw new Error('mobile players and all battle bots must use low-detail geometry');
+}
 
 const mk = (id, x, z, team = 'enemy', destroyed = false) => ({
   id, team, state: { pos: new Vector3(x, 0, z) }, spec: { dims: { heightM: 3 } },

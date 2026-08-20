@@ -7,6 +7,7 @@ import {
   overloadReliefLever,
   reconstructionSharpness,
 } from './renderScalePolicy.js';
+import { PRESETS } from './quality.js';
 
 const high = {
   maxPixelRatio: 1.5,
@@ -41,6 +42,10 @@ const mobile = {
   adaptiveBasePixelRatio: 1,
   dynMin: 0.6,
 };
+assert.equal(PRESETS.mobile.msaaSamples, 0,
+  'balanced mobile must not allocate a multisampled half-float scene target');
+assert.deepEqual(PRESETS.mobile.shadowMapSizes, [1024, 768, 512, 512],
+  'balanced mobile shadows must retain a bounded resident footprint');
 assert.equal(baseDynamicScale(2, mobile), 0.8,
   'mobile keeps its constrained starting density');
 assert.equal(dynamicScaleFloor(2, mobile), 0.6,

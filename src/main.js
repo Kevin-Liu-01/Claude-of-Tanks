@@ -26,6 +26,9 @@ import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
 import { createOffscreenSceneWarmer } from './engine/offscreenWarm.js';
 import {
+  disposeObject3DResources, residentResourceLimits,
+} from './engine/resourceLifetime.js';
+import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
 } from './engine/deviceDiag.js';
@@ -240,6 +243,7 @@ _lastMark = BOOT_T0;
 const container = document.getElementById('app');
 boot.begin('renderer');
 const renderer = createRenderer(container);
+let graphicsContextLost = false;
 // MOBILE r2: GPU self-test + rescue ladder. The owner's iPhone renders every
 // LIT mesh black (unlit sky/HUD fine) and no desktop browser reproduces it —
 // so the device itself proves at boot which pipeline stage it can render,
@@ -306,6 +310,7 @@ initTopMaskRig(engineCtx);
 // call. Boot never touches them.
 const worldCache = new Map();
 const worldBuilds = new Map();
+const residentLimits = residentResourceLimits(getDeviceTier());
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let worldDormant = false;        // garage: world hidden + per-frame update off
@@ -324,6 +329,23 @@ const hfProxy = {
   get minY() { return world ? world.heightField.minY : 0; },
   get maxY() { return world ? world.heightField.maxY : 0; },
 };
+
+let lastWorldRelease = null;
+function enforceWorldCacheBudget() {
+  if (!Number.isFinite(residentLimits.worldScenes)) return;
+  for (const [id, cached] of worldCache) {
+    if (worldCache.size <= residentLimits.worldScenes) break;
+    if (cached === world || worldBuilds.has(id)) continue;
+    worldCache.delete(id);
+    const preserveRoots = scene.children.filter((child) => child !== cached.group);
+    const released = disposeObject3DResources(cached.group, { preserveRoots });
+    // Render lists retain object references independently of the scene graph.
+    // Clear them after a whole battlefield leaves so its JS graph and buffers
+    // can be reclaimed before the next mobile frame.
+    renderer.renderLists?.dispose?.();
+    lastWorldRelease = { id, ...released };
+  }
+}
 
 function beginWorldBuild(mapId, onProgress = null) {
   const id = mapId || pendingMapId;
@@ -637,7 +659,7 @@ function pedestalSwitchPending() {
 // Switch latency is instrumented end-to-end: window.__SWITCH_TIMINGS rows are
 // { id, ms, path } where ms is click → hero visibly on stage.
 const pedestalCache = new Map(); // specId -> visual, oldest-first (LRU)
-const PEDESTAL_CACHE_MAX = 6;
+const PEDESTAL_CACHE_MAX = residentLimits.pedestalVisuals;
 const PEDESTAL_PARK_Y = -200;
 if (typeof window !== 'undefined') window.__SWITCH_TIMINGS = [];
 // switch-desync r1: bounded event trace of the pedestal switch pipeline —
@@ -719,6 +741,19 @@ function onStage(vis) {
     Math.abs(r.position.z - GARAGE_POS.z) < 4 &&
     r.position.y > GARAGE_POS.y - 50;
 }
+function evictPedestalVisual(id, vis) {
+  pedestalCache.delete(id);
+  pedTrace('evict', { id: vis.specId, state: pedVisState(vis) });
+  scene.remove(vis.root);
+  vis.dispose();
+}
+function trimPedestalCache(maxEntries = PEDESTAL_CACHE_MAX) {
+  for (const [id, vis] of pedestalCache) {
+    if (pedestalCache.size <= maxEntries) break;
+    if (vis === pedestalVisual || vis.__pedestalCompiling || onStage(vis)) continue;
+    evictPedestalVisual(id, vis);
+  }
+}
 function touchCache(specId, vis) {
   pedestalCache.delete(specId);
   pedestalCache.set(specId, vis);
@@ -740,11 +775,6 @@ function touchCache(specId, vis) {
   //     while the incoming one loads) is never evictable — evicting it left
   //     a bare pedestal for the whole incoming compile. The cache may sit
   //     one entry over budget for that window; the next touch settles it.
-  const evict = (v) => {
-    pedTrace('evict', { id: v.specId, state: pedVisState(v) });
-    scene.remove(v.root);
-    v.dispose();
-  };
   for (const pass of [1, 2]) {
     for (const [id, v] of pedestalCache) {
       if (pedestalCache.size <= PEDESTAL_CACHE_MAX) return;
@@ -753,8 +783,7 @@ function touchCache(specId, vis) {
       if (v === vis) continue;            // never evict the entry just inserted
       if (onStage(v)) continue;           // never strip a hero off the stage
       if (pass === 1 && v.__everShown) continue;
-      pedestalCache.delete(id);
-      evict(v);
+      evictPedestalVisual(id, v);
     }
   }
 }
@@ -1091,6 +1120,7 @@ function activateWorld(next, { services = true } = {}) {
     collider = null;
     worldServicesMapId = null;
   }
+  enforceWorldCacheBudget();
   return world;
 }
 
@@ -1772,6 +1802,10 @@ bus.on('phase:change', (ev) => {
   if (ev.phase === 'battle') {
     botPressure.enemyShells = 0; botPressure.aimedAtPlayer = 0;
     botPressure.hitsOnPlayer = 0; botPressure.dmgOnPlayer = 0;
+    // A phone cannot afford showroom convenience copies alongside a complete
+    // battle. Keep only the selected hero; it shares paint with the player
+    // and gives the garage an immediate return without retaining old picks.
+    if (getDeviceTier() === 'mobile') trimPedestalCache(1);
   }
 });
 bus.on('shell:fired', (ev) => {
@@ -1799,6 +1833,31 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
+// WebGL context restoration is recoverable in place. Three rebuilds its GL
+// state first; we then step mobile down to the safe preset, trim optional
+// residents, resize the post targets and redraw the shadow set. The sim stays
+// frozen while the graphics device is unavailable instead of racing ahead
+// behind a blocking warning or throwing away the battle with a page reload.
+renderer.userData.contextRecovery = {
+  onLost() {
+    graphicsContextLost = true;
+    post.setAdaptiveSuspended(true);
+  },
+  async onRestored() {
+    if (getDeviceTier() === 'mobile') {
+      setMobilePresetName('mobile-low');
+      trimPedestalCache(1);
+      enforceWorldCacheBudget();
+    }
+    await nextFrame();
+    applyViewportSize();
+    post.resetAdaptiveResolution();
+    lighting.update(true);
+    graphicsContextLost = false;
+    post.setAdaptiveSuspended(false);
+    return true;
+  },
+};
 // Pixel-density state is workload-local. A pressured battle must never carry
 // a reduced render scale back into the garage, and a fresh battle gets a new
 // measured baseline instead of inheriting showroom cadence.
@@ -3846,6 +3905,7 @@ function tick(nowMs) {
   let dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
   lastMs = nowMs;
   devTrace?.frame(dtR * 1000);
+  if (graphicsContextLost) return;
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
   // contrast to haze; scale density down toward 0.35x as FOV drops below 15
@@ -6306,6 +6366,10 @@ window.__DEBUG = {
   // believes is selected — probes assert pedestalVisual.specId === this.
   get selectedSpecId() { return selectedSpecId; },
   get pedestalCacheIds() { return [...pedestalCache.keys()]; },
+  get worldCacheIds() { return [...worldCache.keys()]; },
+  get residentLimits() { return { ...residentLimits }; },
+  get lastWorldRelease() { return lastWorldRelease ? { ...lastWorldRelease } : null; },
+  get graphicsContextLost() { return graphicsContextLost; },
   selectGarageTank: (id) => garage.setSelected(id),
   get world() { return world; },
   switchMap,

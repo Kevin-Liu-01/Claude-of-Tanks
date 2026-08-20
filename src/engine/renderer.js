@@ -43,6 +43,9 @@ export function createRenderer(container) {
     powerPreference: 'high-performance',
     stencil: false,
   });
+  // WebGLRenderer is not an Object3D and therefore has no built-in userData.
+  // Reserve a small integration bag for lifecycle hooks installed by main.js.
+  renderer.userData = renderer.userData || {};
 
   // MOBILE r1: resolve the device tier (quality.js) before ANY preset
   // consumer runs — sky bake, lighting, post and every texture bake read the
@@ -62,14 +65,36 @@ export function createRenderer(container) {
   // screen (no handler anywhere) — on phones, where the OS reclaims the GPU
   // under memory pressure, that was indistinguishable from a crash. Keep the
   // context restorable (preventDefault) and give the player a branded
-  // explanation + reload path; a successful in-place restore reloads
-  // outright, which re-runs the whole boot cleanly.
+  // explanation + reload path. Once main.js has installed its recovery
+  // hooks, a successful restore keeps the current battle and rebuilds at a
+  // safer preset; an early-boot loss still reloads through the fallback.
   renderer.domElement.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
-    showContextLossOverlay();
+    let recovering = false;
+    try {
+      const handler = renderer.userData.contextRecovery?.onLost;
+      if (typeof handler === 'function') {
+        handler();
+        recovering = true;
+      }
+    } catch (_) { /* reload button remains the safe fallback */ }
+    showContextLossOverlay(recovering);
   }, false);
   renderer.domElement.addEventListener('webglcontextrestored', () => {
-    try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
+    const handler = renderer.userData.contextRecovery?.onRestored;
+    if (typeof handler !== 'function') {
+      try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
+      return;
+    }
+    Promise.resolve().then(() => handler()).then((handled) => {
+      if (handled === false) {
+        try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
+        return;
+      }
+      document.getElementById('cot-ctxlost')?.remove();
+    }).catch(() => {
+      try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
+    });
   }, false);
 
   const width = container.clientWidth || window.innerWidth;
@@ -107,7 +132,7 @@ export function createRenderer(container) {
  * dependency), idempotent, sits above every game surface. The message keeps to
  * the boot splash's visual language (dark steel, orange accent, Inter stack).
  */
-function showContextLossOverlay() {
+function showContextLossOverlay(recovering = false) {
   try {
     if (document.getElementById('cot-ctxlost')) return;
     const el = document.createElement('div');
@@ -121,14 +146,15 @@ function showContextLossOverlay() {
     el.innerHTML = [
       '<div style="max-width:min(520px,86vw)">',
       '<div style="font-size:22px;font-weight:800;letter-spacing:.34em;color:#f0ad45">CLAUDE&nbsp;OF&nbsp;TANKS</div>',
-      '<div style="margin-top:18px;font-size:15px;font-weight:600">Graphics device was reset</div>',
+      `<div style="margin-top:18px;font-size:15px;font-weight:600">${recovering ? 'Restoring graphics' : 'Graphics device was reset'}</div>`,
       '<div style="margin-top:10px;font-size:12.5px;line-height:1.6;color:#9fb0bf">',
-      'The browser reclaimed the game’s graphics memory (this can happen on phones and tablets under memory pressure). ',
-      'Reload to jump back in — your garage and progress are saved.',
+      recovering
+        ? 'The browser briefly reclaimed graphics memory. The battle is paused while the renderer restores at a safer mobile quality.'
+        : 'The browser reclaimed the game’s graphics memory (this can happen on phones and tablets under memory pressure). Reload to jump back in — your garage and progress are saved.',
       '</div>',
       '<button id="cot-ctxlost-btn" style="margin-top:22px;padding:12px 34px;border:1px solid rgba(240,173,69,.6);',
       'border-left:3px solid #f0ad45;background:rgba(240,173,69,.12);color:#ffd27a;font:800 12px/1 \'Inter\',system-ui,sans-serif;',
-      'letter-spacing:.22em;text-transform:uppercase;cursor:pointer">Reload</button>',
+      `letter-spacing:.22em;text-transform:uppercase;cursor:pointer">${recovering ? 'Reload now' : 'Reload'}</button>`,
       '</div>',
     ].join('');
     (document.body || document.documentElement).appendChild(el);

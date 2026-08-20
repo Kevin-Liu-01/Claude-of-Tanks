@@ -1,7 +1,8 @@
 // The Mobile QA Lap (docs/MOBILE-QA.md): a deterministic real-time session
 // on emulated-iPhone headless Chrome, instrumented for main-thread health.
 // Stations: garage_idle, tank_switch, battle_load, look, drive, fire,
-// fight (+spot reveals), rematch. Emits a JSON scorecard with per-station
+// fight (+spot reveals), rematch, cross-map resource release, and forced GPU
+// context recovery. Emits a JSON scorecard with per-station
 // long tasks, rAF gaps, renderer.info deltas, heap, sim-time — and budget
 // pass/fail flags (ratified 2026-08-07).
 // Usage: node tools/mobilelap.mjs [--out scorecard.json] [--tank m2a2_bradley]
@@ -26,6 +27,7 @@ const BUDGET = {
   fire: { over100Per10s: 0, gapP95: 20 },
   fight: { over100Per10s: 0, revealWorstMs: 50, gapP95: 20 },
   rematch: { wallMs: 8000 },
+  map_cycle: { wallMs: 30000 },
 };
 
 const server = await createServer({
@@ -269,6 +271,75 @@ await page.waitForFunction(
   { timeout: 120000, polling: 100 });
 await end();
 
+// Mobile browsers account hidden worlds against the same graphics budget as
+// the visible battlefield. Move to a different map and prove that the prior
+// scene is evicted rather than accumulating across random battles.
+console.log('[lap] map_cycle');
+await begin('map_cycle');
+const cycleFromMap = await page.evaluate(() => window.__DEBUG.world?.mapId || 'verdant');
+const cycleToMap = cycleFromMap === 'desert' ? 'verdant' : 'desert';
+await page.evaluate((mapId, specId) => {
+  window.__DEBUG.enterGarage();
+  return window.__DEBUG.beginSoloBattle({ specId, mapId });
+}, cycleToMap, TANK);
+await page.waitForFunction(
+  (mapId) => window.__DEBUG.game.phase === 'battle'
+    && window.__DEBUG.game.preBattleS <= 0
+    && window.__DEBUG.world?.mapId === mapId,
+  { timeout: 120000, polling: 100 }, cycleToMap);
+await sleep(1000);
+await end();
+const mobileResidency = await page.evaluate(() => ({
+  limits: window.__DEBUG.residentLimits,
+  worlds: window.__DEBUG.worldCacheIds,
+  pedestal: window.__DEBUG.pedestalCacheIds,
+  release: window.__DEBUG.lastWorldRelease,
+  memory: { ...window.__DEBUG.renderer.info.memory },
+  garageEntry: window.__GARAGE_ENTRY || null,
+  battleLoad: window.__BATTLE_LOAD || null,
+  countdownWarm: window.__BATTLE_COUNTDOWN_WARM || null,
+}));
+
+// WEBGL_lose_context exercises the browser's real loss/restoration events.
+// The game must pause, show recovery state, preserve the battle, step down to
+// the safe preset, and resume without a reload.
+console.log('[lap] context_recovery');
+const contextRecovery = await page.evaluate(async () => {
+  const D = window.__DEBUG;
+  const gl = D.renderer.getContext();
+  const ext = gl.getExtension('WEBGL_lose_context');
+  if (!ext) return { supported: false };
+  const phase = D.game.phase;
+  const map = D.world?.mapId;
+  ext.loseContext();
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const during = {
+    paused: D.graphicsContextLost,
+    overlay: !!document.getElementById('cot-ctxlost'),
+  };
+  ext.restoreContext();
+  const deadline = performance.now() + 12000;
+  while (performance.now() < deadline
+      && (D.graphicsContextLost || document.getElementById('cot-ctxlost'))) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  return {
+    supported: true,
+    during,
+    after: {
+      paused: D.graphicsContextLost,
+      overlay: !!document.getElementById('cot-ctxlost'),
+      phase: D.game.phase,
+      map: D.world?.mapId,
+      preset: D.quality.resolvePresetName(),
+      contextLost: D.renderer.getContext().isContextLost(),
+      renderCalls: D.renderer.info.render.calls,
+    },
+    statePreserved: D.game.phase === phase && D.world?.mapId === map,
+  };
+});
+
 // ---- scorecard --------------------------------------------------------------
 const raw = await page.evaluate(() => {
   const out = { stations: {}, spotted: window.__LAP.spotted, ua: navigator.userAgent, dpr: devicePixelRatio };
@@ -299,6 +370,8 @@ const raw = await page.evaluate(() => {
   return out;
 });
 raw.battleLoadStages = battleLoadStages;
+raw.mobileResidency = mobileResidency;
+raw.contextRecovery = contextRecovery;
 
 // spot-reveal worst task: tasks within ±200 ms of each reveal in 'fight'
 const fightTasks = (raw.stations.fight || {}).tasks || [];
@@ -321,12 +394,26 @@ for (const [k, b] of Object.entries(BUDGET)) {
   if (b.revealWorstMs != null && raw.reveals.some((r) => r.worstMs > b.revealWorstMs)) pass = false;
   raw.verdicts[k] = pass ? 'PASS' : 'FAIL';
 }
+raw.verdicts.mobile_residency = mobileResidency.worlds.length <= mobileResidency.limits.worldScenes
+  && mobileResidency.pedestal.length <= mobileResidency.limits.pedestalVisuals
+  && !!mobileResidency.release ? 'PASS' : 'FAIL';
+raw.verdicts.context_recovery = !contextRecovery.supported || (
+  contextRecovery.during.paused
+  && contextRecovery.during.overlay
+  && !contextRecovery.after.paused
+  && !contextRecovery.after.overlay
+  && !contextRecovery.after.contextLost
+  && contextRecovery.after.renderCalls > 0
+  && contextRecovery.statePreserved
+) ? 'PASS' : 'FAIL';
 
 console.log('\n[lap] scorecard:');
 for (const [k, st] of Object.entries(raw.stations)) {
   console.log(`  ${raw.verdicts[k] === 'PASS' ? ' ok ' : raw.verdicts[k] === 'FAIL' ? 'FAIL' : ' -- '} ${k}: wall ${st.wallMs}ms sim ${st.simS}s worst ${st.worstMs}ms >100ms/10s ${st.over100Per10s} ltf ${st.ltfPct}% gapP95 ${st.gapP95}ms prog+${st.programsDelta} tex+${st.texturesDelta} heap${st.heapDeltaMB >= 0 ? '+' : ''}${st.heapDeltaMB}MB calls ${st.drawCalls}`);
 }
 console.log(`  reveals: ${raw.reveals.length} (worst ${raw.reveals.reduce((a, r) => Math.max(a, r.worstMs), 0)} ms)`);
+console.log(`  ${raw.verdicts.mobile_residency === 'PASS' ? ' ok ' : 'FAIL'} mobile residency: ${mobileResidency.worlds.length}/${mobileResidency.limits.worldScenes} worlds, ${mobileResidency.pedestal.length}/${mobileResidency.limits.pedestalVisuals} pedestal visuals`);
+console.log(`  ${raw.verdicts.context_recovery === 'PASS' ? ' ok ' : 'FAIL'} context recovery: ${contextRecovery.supported ? JSON.stringify(contextRecovery.after) : 'extension unsupported'}`);
 
 if (OUT) { writeFileSync(OUT, JSON.stringify(raw, null, 2)); console.log(`[lap] wrote ${OUT}`); }
 const failed = Object.values(raw.verdicts).filter((v) => v === 'FAIL').length;
