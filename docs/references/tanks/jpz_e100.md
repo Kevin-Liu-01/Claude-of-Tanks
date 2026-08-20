@@ -57,6 +57,37 @@ casemate rear blends into a fuller tail); front/rear masks trade against
 the side views on this print. Paper vehicle: oracle is the identity
 target per the packet.
 
+### 2026-08-19 supplied comparison model
+
+The user-supplied `jagdpanzer_e_100_world_of_tanks.glb` was used strictly as
+an offline authoring comparison. It is not copied into the repository and is
+never loaded by the playable vehicle. The 53-node / 25-mesh source measures
+4.48 m wide, 3.40 m tall, and 11.42 m long in its native scene bounds; its
+hull-only envelope is approximately 4.48 × 2.99 × 8.75 m. The comparison
+confirms the tall rear-set casemate, broad bolted gun-mount frame, convex cast
+pot, eight large road-wheel stations per side, deep segmented skirts, and the
+long exposed 17 cm barrel as the required identity cues.
+
+The procedural redesign preserves that base envelope (3.48 m travel height
+with the low remote station fitted) and adds an explicitly
+non-armor modernization kit: close-mounted side/rear slat cages with visible
+standoffs, a remote M2 station, paired six-tube smoke banks, panoramic sight,
+radio whips, and a physical leafy net suit with gun/hatch service cutouts. The
+modern hardware intentionally changes the raw silhouette compared with the
+bare source; the comparison board records 92.3 for the running-gear component
+and 88.2 overall after the added cage, net, and roof equipment. The stricter
+geometry receipt rises from the supplied-model baseline of 83.6 to 85.0, with
+the dimension component corrected from 0 to 98.3. These parts
+remain outside the vehicle's armor buckets and do not enlarge its combat
+hitbox.
+
+Balance was rebuilt around a slow tier-X assault destroyer role: 2,300 HP,
+1,500 hp engine, 30/12 km/h limits, a 420 mm mantlet and 360 mm casemate front,
+plus a 22.5 s reload on the 1,150-damage APCBC round. Premium APCR trades down
+to 1,050 damage for 352 mm penetration, while HE is the situational
+1,450-damage option. The resulting sustained damage stays below 3,100 DPM so
+the improved armor and handling do not also create a burst-and-DPM outlier.
+
 
 ## Geometry gate v9 (2026-07-31, from-scratch agent)
 

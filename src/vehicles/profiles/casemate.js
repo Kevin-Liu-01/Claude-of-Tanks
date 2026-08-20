@@ -29,6 +29,7 @@
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 
 const box = (...a) => KIT.box(...a);
 const stations = (count, span, zc = 0) => Array.from({ length: count }, (_, i) =>
@@ -694,9 +695,9 @@ function buildJPzE100(P) {
     { z: 3.50, b: 0.44, t: 1.55, w: 1.58 },                    // lower nose slope (belly 0.45
     { z: 3.00, b: 0.44, t: 1.75, w: 1.60 },                    //  between the tracks — ref front)
     { z: 2.60, b: 0.44, t: 1.86, w: 1.60 },                    // glacis shoulder
-    { z: -3.55, b: 0.45, t: 1.86, w: 1.60 },                   // hull tub run
-    { z: -4.02, b: 0.98, t: 1.86, w: 1.58 },                   // tail chamfer
-    { z: -4.30, b: 1.32, t: 1.85, w: 1.52 },                   // tail foot (12%-band R)
+    { z: -3.55, b: 0.45, t: 1.86, w: 1.08 },                   // narrow inside rear track rise
+    { z: -4.02, b: 0.98, t: 1.86, w: 1.05 },                   // tail chamfer clears sprocket course
+    { z: -4.30, b: 1.32, t: 1.85, w: 1.02 },                   // tail foot (12%-band R)
   ], {
     x: 1.08,
     front: { z0: -3.65, z1: 3.60, floor: 1.05 },
@@ -724,31 +725,52 @@ function buildJPzE100(P) {
     { z: -4.18, b: 1.80, t: 2.58, w: 1.30, wt: 1.16 },         //  the ref corner line in front view)
     { z: -4.32, b: 1.70, t: 1.90, w: 1.20 },                   // tail upper foot
   ]);
-  // heavy slab side skirts covering the top run (E 100/Maus signature) —
-  // panel band y 0.95..1.50 per the oracle's front profile, outer face at
-  // EXACTLY +-widthM/2 (procScale 1.000 anchor)
+  // Heavy segmented side skirts covering the top run (E 100/Maus
+  // signature).  The old full-face gunmetal overlay turned both sides into
+  // featureless black slabs.  Structural panels now retain the vehicle's
+  // camouflage while narrow recessed seams and the lower lip provide depth.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.09, 0.50, 7.40), s * 2.105, 1.19, -0.10);
-    P.add('hull', box(0.30, 0.06, 7.70), s * 1.72, 1.63, 0.10);                // fender lip to the hull wall
-    P.add('hullDark', box(0.02, 0.44, 7.35), s * 2.149, 1.17, -0.10);          // panel shadow face
-    for (let k = 0; k < 7; k++) {
-      P.add('hullDark', box(0.105, 0.46, 0.02), s * 2.105, 1.18, -3.30 + k * 1.08);
+    P.add('hull', box(0.09, 0.62, 7.40), s * 2.105, 1.22, -0.10);
+    P.add('hull', box(0.50, 0.06, 7.70), s * 1.81, 1.63, 0.10);                // fender lip closes hull-to-skirt shoulder
+    for (let k = 0; k < 8; k++) {
+      const z = -3.33 + k * 0.92;
+      P.add('hull', box(0.012, 0.56, 0.86), s * 2.144, 1.23, z);
+      P.add('hullDark', box(0.014, 0.53, 0.018), s * 2.143, 1.22, z + 0.45);
+      for (const by of [1.02, 1.43]) {
+        P.add('hullDetail', KIT.cylX(0.013, 0.014, 7), s * 2.149, by, z - 0.32);
+        P.add('hullDetail', KIT.cylX(0.013, 0.014, 7), s * 2.149, by, z + 0.32);
+      }
     }
-    P.add('hullDark', box(0.03, 0.08, 7.2), s * 2.06, 0.92, -0.10);            // lower edge shadow
+    P.add('hullDark', box(0.03, 0.07, 7.2), s * 2.06, 0.89, -0.10);            // lower edge shadow
   }
 
-  // saukopf collar low on the casemate front + 17 cm StuK with its enormous
-  // overhang. Axis 2.27; muzzle at published overall: 11.1 - 4.42 = +6.68.
-  P.add('hull', xform2(cylZ(0.34, 0.30, 18), 0, 0, 0, -0.50), 0, 2.28, 0.85);
-  P.add('hull', cylZ(0.30, 0.65, 18, 0.26), 0, 2.27, 1.30);                    // cast pot
-  // §5.247 wave: saukopf dress — bolted ring seam on the collar + canvas
-  // dust boot at the pot exit + casting seam line (all inside the pot
-  // silhouette; mask-interior).
-  P.add('hullDark', KIT.torus(0.315, 0.013, 20), 0, 2.27, 1.615, Math.PI / 2, 0, 0); // dust boot ring
-  P.add('hullDark', KIT.torus(0.255, 0.010, 20), 0, 2.27, 1.02, Math.PI / 2, 0, 0);  // pot casting seam
-  for (let k = 0; k < 10; k++) {
-    const a = (k / 10) * Math.PI * 2 + 0.15;
-    P.add('hullDark', cylZ(0.016, 0.03, 6), Math.cos(a) * 0.30, 2.28 + Math.sin(a) * 0.30, 0.70, -0.50, 0, 0);
+  // Reference-defining gun mount: a broad trapezoidal bolted frame is
+  // planted into the casemate slope and surrounds a massive cast pot.  The
+  // former 0.34 m round collar read as a token ring and missed the supplied
+  // model's strongest front-view cue.
+  const mantletPitch = -0.72;
+  P.add('hullDetail', box(1.70, 0.20, 0.18), 0, 2.70, 0.96, mantletPitch, 0, 0);
+  P.add('hullDetail', box(1.82, 0.22, 0.20), 0, 1.98, 1.52, mantletPitch, 0, 0);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.23, 0.88, 0.19), s * 0.78, 2.34, 1.24,
+      mantletPitch, 0, s * 0.075);
+    P.add('hullDetail', box(0.10, 0.30, 0.10), s * 0.94, 2.18, 1.38,
+      mantletPitch, 0, s * 0.10);                                             // elevation guide shoulder
+  }
+  P.add('hullDark', xform2(cylZ(0.53, 0.18, 24), 0, 0, 0, mantletPitch), 0, 2.29, 1.22);
+  P.add('hull', xform2(cylZ(0.48, 0.40, 24, 0.41), 0, 0, 0, mantletPitch), 0, 2.29, 1.35);
+  P.add('hull', cylZ(0.36, 0.58, 22, 0.30), 0, 2.27, 1.61);                    // rounded cast gun pot
+  P.add('hullDark', KIT.torus(0.370, 0.018, 24), 0, 2.27, 1.905, Math.PI / 2, 0, 0);
+  P.add('hullDark', KIT.torus(0.425, 0.012, 24), 0, 2.28, 1.34, Math.PI / 2, 0, 0);
+  const boltSeats = [
+    [-0.70, 2.70], [-0.36, 2.76], [0.36, 2.76], [0.70, 2.70],
+    [-0.78, 2.48], [-0.80, 2.18], [-0.72, 1.98],
+    [0.78, 2.48], [0.80, 2.18], [0.72, 1.98],
+    [-0.40, 1.92], [0, 1.89], [0.40, 1.92],
+  ];
+  for (const [x, y] of boltSeats) {
+    const z = 1.52 - (y - 1.98) * 0.78;
+    P.add('hullDark', cylZ(0.025, 0.045, 8), x, y, z, mantletPitch, 0, 0);
   }
   // §B3.1 MUZZLE BORE (shadow-named, 3fca39b)
   muzzleBore(P, { z: 6.85, r: 0.150, y: 2.27, parent: 'hullG' });
@@ -806,17 +828,48 @@ function buildJPzE100(P) {
   KIT.periscope(P, 'hullDetail', -0.30, roofY(-0.5) - 0.06, -0.50);
   P.add('hullDetail', KIT.torus(0.075, 0.011, 12), 0.30, roofY(-0.5) - 0.005, -0.50);  // periscope collars
   P.add('hullDetail', KIT.torus(0.075, 0.011, 12), -0.30, roofY(-0.5) - 0.005, -0.50);
-  // §5.247 wave (§B3 mandate): MG34 pintle on the FORWARD roof slope
-  // (top 3.22 stays under the 3.30 crest — no topMax/threshold shift).
+  // Modernized remote weapon station.  All painted supports use the
+  // equipment bucket, and the fitting is parented directly to the fixed hull
+  // rig, so neither the station nor its optics expand the armor hit volume.
   {
-    const mx = 0.85, mz = -0.45, mb = roofY(-0.45) - 0.02;
-    P.add('hullDetail', cylY(0.024, 0.028, 0.16, 8), mx, mb + 0.08, mz);       // pintle column
-    P.add('hullDetail', box(0.05, 0.055, 0.10), mx, mb + 0.185, mz);           // cradle
-    P.add('hullDark', box(0.055, 0.07, 0.44), mx, mb + 0.225, mz + 0.12);      // receiver
-    P.add('hullDark', cylZ(0.017, 0.36, 8), mx, mb + 0.23, mz + 0.51);         // barrel jacket
-    P.add('hullDark', cylZ(0.026, 0.05, 8), mx, mb + 0.23, mz + 0.69);         // flash cone
-    P.add('hullDark', KIT.cylX(0.065, 0.034, 10), mx - 0.05, mb + 0.22, mz + 0.06); // drum mag
-    P.add('hullDark', box(0.024, 0.06, 0.038), mx, mb + 0.19, mz - 0.13, 0.35, 0, 0); // spade grip
+    const mx = 0.62, mz = -0.92, mb = roofY(mz) + 0.01;
+    P.addEquipment('hull', box(0.46, 0.08, 0.42), mx, mb + 0.04, mz);
+    P.addEquipment('hull', cylY(0.18, 0.20, 0.10, 16), mx, mb + 0.12, mz);
+    P.addEquipment('hull', box(0.32, 0.18, 0.28), mx, mb + 0.18, mz);
+    P.addEquipment('hullGlass', box(0.14, 0.075, 0.025), mx - 0.16, mb + 0.20, mz + 0.05);
+    const rws = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.72, elev: 0.08,
+      shield: true, ammo: true, seed: 1700,
+    });
+    rws.name = 'jpzE100RemoteWeapon';
+    rws.position.set(mx, mb + 0.14, mz);
+    rws.rotation.y = 0.10;
+    rws.userData.remoteControlled = true;
+    P.hullG.add(rws);
+  }
+  // Paired six-tube smoke banks sit on supported casemate shoulders.
+  for (const s of [-1, 1]) {
+    P.addEquipment('hull', box(0.34, 0.12, 0.30), s * 1.28, 2.36, 0.34,
+      -0.20, 0, s * 0.12);
+    const smoke = FITTINGS.smokeBank({
+      mats: P.mats, count: 6, r: 0.050, len: 0.30, splay: s * 0.82,
+      pitch: -0.48, arc: 0.66, spacing: 0.10, seed: 1710 + s,
+    });
+    smoke.name = s < 0 ? 'jpzE100SmokeBankL' : 'jpzE100SmokeBankR';
+    smoke.position.set(s * 1.28, 2.43, 0.34);
+    smoke.rotation.z = s * 0.12;
+    P.hullG.add(smoke);
+  }
+  // Low-profile panoramic sight and paired radio whips keep the roof busy
+  // without blocking the hatch or cannon service corridors in the net.
+  P.addEquipment('hull', box(0.32, 0.20, 0.30), -0.42, roofY(-0.80) + 0.10, -0.80);
+  P.addEquipment('hullGlass', box(0.20, 0.08, 0.025), -0.42, roofY(-0.80) + 0.15, -0.64);
+  for (const [s, z] of [[-1, -3.18], [1, -3.02]]) {
+    P.addEquipment('hullDetail', cylY(0.055, 0.060, 0.08, 10), s * 0.70, roofY(z) + 0.04, z);
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 0.42, r: 0.011, rake: s * 0.05, seed: 1720 + s });
+    antenna.name = s < 0 ? 'jpzE100AntennaL' : 'jpzE100AntennaR';
+    antenna.position.set(s * 0.70, roofY(z) + 0.06, z);
+    P.hullG.add(antenna);
   }
   liftEye(P, 'hullDetail', -0.88, roofY(-0.5) - 0.04, -0.50, 0.4); liftEye(P, 'hullDetail', 0.88, roofY(-0.5) - 0.04, -0.50, -0.4);
   liftEye(P, 'hullDetail', -0.85, roofY(-2.9) - 0.12, -2.90, 2.7); liftEye(P, 'hullDetail', 0.85, roofY(-2.9) - 0.12, -2.90, -2.7);
@@ -843,16 +896,52 @@ function buildJPzE100(P) {
     P.add('hullDetail', box(0.30, 0.038, 0.10), 1.90, 1.455, -3.30 + k * 1.08); // hanger outriggers
     P.add('hullDetail', box(0.30, 0.038, 0.10), -1.90, 1.455, -3.30 + k * 1.08);
   }
+  // Stand-off slat cage wraps both casemate flanks and the rear wall.  Every
+  // rail has a visible load path through short armor-mounted outriggers.
+  const cageZs = [-3.62, -2.84, -2.06, -1.28, -0.50];
+  for (const s of [-1, 1]) {
+    for (const z of cageZs) {
+      P.addEquipment('hullDetail', box(0.17, 0.035, 0.035), s * 1.58, 2.22, z);
+      P.addEquipment('hullDark', box(0.035, 0.72, 0.035), s * 1.68, 2.44, z);
+    }
+    for (const y of [2.10, 2.34, 2.58, 2.82]) {
+      P.addEquipment('hullDark', box(0.035, 0.035, 3.20), s * 1.68, y, -2.06);
+    }
+  }
+  for (const x of [-1.40, -0.84, -0.28, 0.28, 0.84, 1.40]) {
+    P.addEquipment('hullDetail', box(0.035, 0.70, 0.035), x, 2.42, -4.26);
+  }
+  for (const y of [2.10, 2.34, 2.58, 2.82]) {
+    P.addEquipment('hullDark', box(2.86, 0.035, 0.035), 0, y, -4.26);
+  }
   steelGear(P, {
-    style: 'dished', wheelR: 0.30, wheelW: 0.22, wheelY: 0.34, xc: 1.55,
-    wheelZs: stations(8, 4.40, -0.15), layers: [[0.10], [-0.10]],
-    sprocket: { z: -3.10, y: 0.45, r: 0.31 }, idler: { z: 2.68, y: 0.45, r: 0.30 },
-    trackW: 0.80, topY: 0.90, botY: 0.06, arms: false, coveredTop: 1.20, deadSag: 0.05, shadows: false,
+    style: 'dished', wheelR: 0.43, wheelW: 0.22, wheelY: 0.47, xc: 1.55,
+    wheelZs: stations(8, 5.18, -0.04), layers: [[0.13], [-0.13]],
+    sprocket: { z: -3.25, y: 0.49, r: 0.41 }, idler: { z: 3.00, y: 0.49, r: 0.39 },
+    trackW: 0.80, topY: 1.12, botY: 0.04, arms: false, coveredTop: 1.38,
+    deadSag: 0.055, shadows: false, bayShadowTop: 1.40,
   });
   P.decal('hull', 'cross', null, 0.46, [1.78, 2.45, -0.35], Math.PI / 2, 0, 0.14);
   P.decal('hull', 'cross', null, 0.46, [-1.78, 2.45, -0.35], -Math.PI / 2, 0, -0.14);
   P.decal('hull', 'number', P.spec.visual.number || '100', 0.36, [1.76, 2.40, -1.85], Math.PI / 2, 0, 0.14);
   P.decal('hull', 'number', P.spec.visual.number || '100', 0.36, [-1.76, 2.40, -1.85], -Math.PI / 2, 0, -0.14);
+  addVehicleGhillieSuit(P);
+  P.hullG.userData.jpzE100ModernizationReceipt = Object.freeze({
+    sourceComparisonOnly: true,
+    mantletFrame: 'bolted-trapezoid',
+    mantletOuterWidthM: 1.82,
+    roadWheelStations: 8,
+    roadWheelRadiusM: 0.43,
+    segmentedSkirtPanelsPerSide: 8,
+    slatCageAttached: true,
+    cageOwners: ['hull-left', 'hull-right', 'hull-rear'],
+    remoteWeapon: 'm2',
+    remoteControlled: true,
+    smokeBanks: 2,
+    smokeCanistersPerBank: 6,
+    physicalGhillie: true,
+    armorBucketsExcluded: ['hullEquipment', 'hullDetail', 'hullDark'],
+  });
   P.topY = 1.90;
 }
 

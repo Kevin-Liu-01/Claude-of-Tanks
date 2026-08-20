@@ -4,7 +4,7 @@ import { createTank } from './tankFactory.js';
 import { GHILLIE_SUIT_CONFIGS } from './ghillieSuit.js';
 
 const ids = [
-  'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
+  'jpz_e100', 'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
   'strv103a', 'strv103', 't84', 'ua_m1a1',
 ];
 

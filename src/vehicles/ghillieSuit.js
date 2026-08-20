@@ -356,8 +356,42 @@ const abramsHullY = (x, z) => {
   // the outboard lift is higher where the cloth crosses the fender line.
   return armorY + (Math.abs(x) > 1.04 ? 0.18 : 0.08);
 };
+const jpzE100HullY = (_x, z) => {
+  if (z > 0.76) return 1.94;
+  if (z > -0.50) return 2.76 + (0.76 - z) * 0.15;
+  if (z > -1.20) return 2.95 + (-0.50 - z) * 0.30;
+  if (z > -3.00) return 3.16 + (-1.20 - z) * 0.078;
+  return 3.30;
+};
 
 export const GHILLIE_SUIT_CONFIGS = Object.freeze({
+  jpz_e100: {
+    id: 'jpz_e100', seed: 1700, style: 'leafy', density: 0.86, leafScale: 1.02,
+    light: 0x697853, dark: 0x33452f, netColor: 'rgba(37,52,33,0.82)',
+    hull: {
+      top: [{
+        x0: -1.10, x1: 1.10, z0: -3.76, z1: 2.82, nx: 24, nz: 54,
+        yAt: (x, z) => jpzE100HullY(x, z) + 0.055,
+        outline: [[-0.88, -3.76], [0.88, -3.76], [1.02, -2.90], [1.04, 0.72],
+          [1.10, 1.16], [1.08, 2.34], [0.86, 2.82], [-0.86, 2.82],
+          [-1.08, 2.34], [-1.10, 1.16], [-1.04, 0.72], [-1.02, -2.90]],
+        // Keep the complete cannon recoil lane, hatches and remote station
+        // serviceable. The side blankets supply the dense visual coverage.
+        holes: [rect(-0.55, 0.55, 0.48, 2.94), rect(0.20, 1.00, -1.55, -0.55),
+          rect(-0.98, -0.24, -2.28, -1.45)],
+        seed: 301,
+      }],
+      side: [-1, 1].map((side) => ({
+        side, z0: -3.68, z1: 2.58, nz: 46, ny: 10,
+        topAt: (z) => jpzE100HullY(0, z) + 0.03,
+        bottomAt: (z) => 1.55 + Math.sin(z * 2.7) * 0.030,
+        // The cloth hangs from the cage and skirt battens, outside both the
+        // linked track corridor and the structural casemate side.
+        outAt: (_z, t) => 1.56 + (1 - t) * 0.040,
+        seed: 311 + side,
+      })),
+    },
+  },
   ua_t64bv: {
     id: 'ua_t64bv', seed: 640, style: 'leafy', density: 0.92, leafScale: 1.04,
     light: 0x6f7d48, dark: 0x33452d, netColor: 'rgba(38,54,29,0.76)',

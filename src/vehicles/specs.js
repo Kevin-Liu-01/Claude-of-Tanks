@@ -1299,32 +1299,39 @@ const FIRST_PARTY_EXPANSION_SPECS = {
       source: 'https://www.thingiverse.com/thing:2624802',
       license: 'CC-BY 4.0',
     },
-    hp: 1800,
-    enginePowerHp: 1200, weightTons: 130, topSpeedKmh: 23, reverseSpeedKmh: 5,
-    hullTraverseDegS: 14,
-    terrainResistance: { hard: 1.3, medium: 1.5, soft: 2.7 },
+    hp: 2300,
+    // Modernized 1,500 hp powerpack: still a deliberate 130-ton assault TD,
+    // but no longer loses the match before it can reposition once.
+    enginePowerHp: 1500, weightTons: 130, topSpeedKmh: 30, reverseSpeedKmh: 12,
+    hullTraverseDegS: 20,
+    terrainResistance: { hard: 1.05, medium: 1.25, soft: 2.05 },
     pivotStyle: 'neutral',
-    turretTraverseDegS: 18, gunPitchDegS: 10, gunElevationDeg: 14, gunDepressionDeg: 6, gunArcDeg: 10,
+    turretTraverseDegS: 24, gunPitchDegS: 14, gunElevationDeg: 15, gunDepressionDeg: 7, gunArcDeg: 12,
     gun: {
-      caliberMm: 170, reloadS: 18.0, baseAccuracy: 0.42, aimTimeS: 3.2,
+      // The 17 cm keeps the vehicle's high-alpha identity. Penetration and
+      // handling now belong at Tier X, while a 22.5 s cycle prevents the
+      // modernization from becoming a high-alpha DPM outlier.
+      caliberMm: 170, reloadS: 22.5, baseAccuracy: 0.36, aimTimeS: 2.8,
       bloom: BLOOM_WW2,
       shells: [
-        shell('17cm PzGr APCBC', 'AP', 170, 230, 200, 850, 880),
-        shell('17cm PzGr 40 APCR', 'APCR', 170, 268, 230, 750, 1020),
-        shell('17cm Sprgr HE', 'HE', 170, 85, 85, 1000, 850),
+        shell('17cm PzGr APCBC', 'AP', 170, 305, 270, 1150, 940),
+        shell('17cm PzGr 50 APCR', 'APCR', 170, 352, 315, 1050, 1160),
+        shell('17cm Sprgr HE', 'HE', 170, 95, 95, 1450, 900),
       ],
     },
-    dims: { hullLengthM: 8.7, overallLengthM: 11.1, widthM: 4.3, heightM: 3.29 },
+    // 3.48 m is the as-modernized travel height through the low RWS; the
+    // source-comparison fighting compartment itself remains ~3.3-3.4 m.
+    dims: { hullLengthM: 8.7, overallLengthM: 11.1, widthM: 4.3, heightM: 3.48 },
     armor: communityArmor({
       lenM: 8.7, widM: 4.3, hgtM: 3.29, turretPivot: [0, 2.0, 0.2],
       gunPivot: [0, 0.4, 0.4], barrelLenM: 4.95, barrelRadM: 0.11,
-      frontMm: 200, sideMm: 120, rearMm: 150, roofMm: 40,
-      tFrontMm: 350, tSideMm: 120, tRearMm: 150, mantletMm: 350, turretless: true,
+      frontMm: 220, sideMm: 140, rearMm: 120, roofMm: 50,
+      tFrontMm: 360, tSideMm: 150, tRearMm: 120, mantletMm: 420, turretless: true,
     }),
     visual: {
-      scheme: 'ambush', base: '#8d7a4a', weather: '#80704a',
-      patches: ['#6a713f', '#7a4a35'], marking: 'cross', number: '100',
-      trackWidthM: 0.9, camoScale: 0.55,
+      scheme: 'nato', base: '#4c5740', weather: '#59634b',
+      patches: ['#242820', '#57463a'], marking: 'cross', number: '100',
+      trackWidthM: 0.9, camoScale: 0.48,
     },
   },
 

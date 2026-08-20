@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-19T23:18:06.620Z",
+ "generatedAt": "2026-08-20T04:16:24.009Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 36,
+ "passed": 35,
  "total": 121,
  "rows": [
   {
@@ -973,6 +973,16 @@
    }
   },
   {
+   "id": "jpz_e100",
+   "geoMin": 85,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 85,
+    "dims": 98.3,
+    "floaters": 100
+   }
+  },
+  {
    "id": "sherman_jumbo",
    "geoMin": 85.5,
    "gatePassed": false,
@@ -1444,16 +1454,6 @@
     "turretCurves": 92.8,
     "stations": 92.7,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "jpz_e100",
-   "geoMin": 91.3,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 91.3,
-    "dims": 99.6,
     "floaters": 100
    }
   },
