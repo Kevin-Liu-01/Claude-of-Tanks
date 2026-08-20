@@ -411,10 +411,9 @@ spawnTanks(game, engineCtx);
 let collider = null;
 let battleStaged = false;
 // perf-r2f: handle of the in-flight chunked camo sweep startBattle kicks —
-// The countdown warm awaits it before the wreck dances (burnt bakes copy the
-// camo canvases, so paint must be final first).
+// The covered entry warm awaits it before the wreck dances (burnt bakes copy
+// the camo canvases, so paint must be final first).
 let camoSweepP = Promise.resolve();
-let battleCountdownWarmP = Promise.resolve();
 let battleWarmPending = false;
 let battleWarmGeneration = 0;
 
@@ -2223,6 +2222,12 @@ async function startBattleLoading(specId, mapId = null) {
   await nextFrame();
   const playerVisualStartedAt = performance.now();
   startBattle(specId, resolved, { deferVisuals: true, preBattleHold: true });
+  // Audio's first resume creates the context, synthesis buffers, decoded-SFX
+  // requests, and UI hooks. On a cold session that is hundreds of milliseconds
+  // of main-thread work. Doing it from openBattle() made the first visible
+  // countdown frame inherit the whole cost; the battle phase now exists and
+  // the opaque loader is still up, so initialize it here instead.
+  audio.resume();
   const playerVisualTiming = {
     specId: game.player?.specId || specId,
     quality: 'preview',
@@ -2258,18 +2263,24 @@ async function startBattleLoading(specId, mapId = null) {
   });
   bltStage('bake');
 
-  // Complete hidden enemy visuals and exhaustive first-use caches during the
-  // already-visible, simulation-frozen countdown. Preserve the old ordering:
-  // camouflage settles before burnt variants copy those canvases.
+  // Complete hidden enemy visuals and exhaustive first-use caches while the
+  // opaque transition still owns the screen. This work used to begin after
+  // battleLoad.hide(), spending up to 8 ms on every visible countdown frame
+  // and occasionally blocking one for a procedural canvas/shader atom. The
+  // result looked like a 47-52 FPS countdown followed by a perfectly smooth
+  // battle. Preserve the old ordering (camouflage must settle before burnt
+  // variants copy those canvases), but make the phase boundary honest: once
+  // the world is visible, loading is finished.
   battleLoad.progress(0.90, 'Preparing deployment');
   const entryCamoSweep = camoSweepP;
-  const startCountdownWarm = () => {
+  const finishEntryWarm = () => {
     const warmGeneration = ++battleWarmGeneration;
     battleWarmPending = true;
     return (async () => {
       const countdownWarmStartedAt = performance.now();
-      const trace = { done: false, stages: {} };
+      const trace = { done: false, phase: 'transition', stages: {} };
       if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
+      devTrace?.mark('battle:entry-warm-start', {});
       let markedAt = performance.now();
       const mark = (name) => {
         const now = performance.now();
@@ -2279,14 +2290,24 @@ async function startBattleLoading(specId, mapId = null) {
       await entryCamoSweep;
       if (warmGeneration !== battleWarmGeneration) return;
       mark('camo');
-      const countdownYield = createFrameBudgetYielder(8);
-      await streamBattleVisuals((ent) => ent.team === 'player', countdownYield);
+      battleLoad.progress(0.91, 'Finishing camouflage');
+      // The branded transition is opaque but still animated. A 24 ms slice
+      // preserves regular progress paints while avoiding the old interactive
+      // 8 ms duty cycle, which added several seconds of pure rAF waiting once
+      // this work moved out of the visible countdown.
+      const coveredYield = createFrameBudgetYielder(24);
+      await streamBattleVisuals((ent) => ent.team === 'player', coveredYield, (fraction) => {
+        battleLoad.progress(0.91 + fraction * 0.02, 'Preparing allied vehicles');
+      });
       if (warmGeneration !== battleWarmGeneration) return;
       mark('allyVisuals');
-      await streamBattleVisuals(null, countdownYield);
+      await streamBattleVisuals(null, coveredYield, (fraction) => {
+        battleLoad.progress(0.93 + fraction * 0.04, 'Preparing opposing vehicles');
+      });
       if (warmGeneration !== battleWarmGeneration) return;
       mark('enemyVisuals');
-      await warmCombatPipelineChunked();
+      battleLoad.progress(0.97, 'Priming combat effects');
+      await warmCombatPipelineChunked(24);
       mark('combatWarm');
       if (warmGeneration !== battleWarmGeneration) return;
       trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
@@ -2294,6 +2315,7 @@ async function startBattleLoading(specId, mapId = null) {
       trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
       trace.done = true;
       if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
+      devTrace?.mark('battle:entry-warm-end', { totalMs: trace.totalMs });
     })().catch((error) => {
       if (warmGeneration === battleWarmGeneration && typeof window !== 'undefined') {
         window.__BATTLE_COUNTDOWN_WARM = {
@@ -2306,7 +2328,12 @@ async function startBattleLoading(specId, mapId = null) {
       if (warmGeneration === battleWarmGeneration) battleWarmPending = false;
     });
   };
+  await finishEntryWarm();
   bltStage('warm');
+  // Start the cheap ambient graph before reveal as well. openBattle keeps its
+  // idempotent calls for debug/direct entry paths, but the normal player path
+  // reaches it with no cold audio work left.
+  audio.ambientOn(true);
   battleLoad.progress(1, 'Ready');
 
   // Cached maps can finish in only a few frames. Give the page enough dwell
@@ -2314,11 +2341,9 @@ async function startBattleLoading(specId, mapId = null) {
   const readyHoldMs = 900 - (performance.now() - shownAt);
   if (readyHoldMs > 0) await new Promise((r) => setTimeout(r, readyHoldMs));
 
-  // 4. battle_countdown r1: no more counting down ON the loading screen —
-  // the world opens as soon as it is ready, and the visible WoT-style
-  // 5 s countdown runs IN the battle (openBattle resolves the sim hold armed
-  // at roster spawn). The hold also absorbs first-use compiles behind a frame
-  // where nothing can move yet.
+  // 4. The visible WoT-style countdown is presentation-only. All first-use
+  // work above has completed, so these five seconds have the same render
+  // budget as live play instead of acting as an extension of the loader.
   bltStage('holdCountdown');
   blt.totalMs = Math.round(performance.now() - shownAt);
   if (typeof window !== 'undefined') window.__BATTLE_LOAD = blt;
@@ -2332,7 +2357,6 @@ async function startBattleLoading(specId, mapId = null) {
   openBattle();
   bltStage('open');
   blt.totalMs = Math.round(performance.now() - shownAt);
-  battleCountdownWarmP = startCountdownWarm();
 }
 // Headless probes drive the battle entry through __DEBUG.startBattle (which is
 // synchronous) and skip the in-battle countdown (startBattle arms it only on
@@ -2849,14 +2873,16 @@ async function presentNetworkBattle({
   } catch (error) {
     loadTrace.blackCheck = { error: error?.message || String(error) };
   }
+  // Network entry used to perform the same cold audio initialization after
+  // the loading veil was gone. Keep every battle entry path phase-consistent.
+  audio.resume();
+  audio.ambientOn(true);
   battleLoad.progress(1, 'Ready');
   // As in solo entry, perform the fresh-baseline resize while still covered.
   post.setAdaptiveSuspended(false);
   await battleLoad.hide();
   markLoadStage('reveal');
   loadTrace.totalMs = Math.round(performance.now() - loadStartedAt);
-  audio.resume();
-  audio.ambientOn(true);
 }
 
 /**
@@ -3198,16 +3224,6 @@ function openBattle() {
   // Camera look stays free; hulls, turrets and triggers release at zero.
   if (game.preBattleS === Infinity) {
     game.preBattleS = PRE_BATTLE_HOLD_S;
-    // perf-r2e: one re-warm sweep mid-countdown — materials that land AFTER
-    // the loading screen (late kit additions, graduate passes, straggler
-    // swaps) get their programs linked while everything is still frozen and
-    // a one-frame hitch is invisible. Repeats are cache hits.
-    setTimeout(() => {
-      if (game.phase !== 'battle' || game.preBattleS <= 0) return;
-      battleCountdownWarmP.then(() => {
-        if (game.phase === 'battle' && game.preBattleS > 0) compileHiddenVariantsChunked();
-      });
-    }, 900);
   }
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
@@ -3981,8 +3997,8 @@ function tick(nowMs) {
     // outside the sim, so looking around stays free, exactly like WoT's
     // pre-battle freeze. simAcc stays drained so release cannot replay a
     // catch-up burst of queued sim steps. The rest of the frame (rig,
-    // visuals, fx, render) runs normally — that is the whole point: the
-    // first-seconds jank lands while nothing can move or shoot.
+    // visuals, fx, render) runs normally; entry loading must already be done
+    // so this phase has the same frame budget as live play.
     if (networkMatch) {
       // The server/host owns both the countdown and every simulation step.
       // `game.preBattleS` is presentation copied from snapshot metadata.
@@ -3991,10 +4007,9 @@ function tick(nowMs) {
     } else if (game.preBattleS > 0) {
       if (game.preBattleS !== Infinity) { // Infinity = still under the loading screen
         const heldS = game.preBattleS;
-        // Required textures/programs normally finish inside the five-second
-        // countdown. On a severely contended device they can take longer;
-        // hold the final displayed second instead of releasing controls while
-        // background construction is still capable of freezing live play.
+        // Covered entry warm normally finishes before the world is revealed.
+        // Keep the final-second hold as a fail-safe for an interrupted/future
+        // entry path; controls must never release while construction is live.
         game.preBattleS = advancePreBattleCountdown(
           game.preBattleS, dtR, battleWarmPending,
         );
@@ -5182,7 +5197,7 @@ function warmCombatPipeline() {
   let r = g.next();
   while (!r.done) r = g.next();
 }
-async function warmCombatPipelineChunked() {
+async function warmCombatPipelineChunked(budgetMs = 8) {
   if (combatPipelineWarmed && !_warmGen) return;
   const g = _warmGen || (_warmGen = warmCombatPipelineSteps());
   // Generator yields mark safe preemption points, not mandatory 16 ms
@@ -5190,7 +5205,7 @@ async function warmCombatPipelineChunked() {
   // and yield only when that budget is spent. The old one-rAF-per-marker
   // policy added well over a second of pure frame latency across effect,
   // wreck, and hidden-variant markers on constrained machines.
-  const yieldForFrameBudget = createFrameBudgetYielder(8);
+  const yieldForFrameBudget = createFrameBudgetYielder(budgetMs);
   for (;;) {
     if (_warmGen !== g) return; // the sync wrapper took over and finished
     const r = g.next();
@@ -5495,19 +5510,6 @@ function* linkerBreathingSlices(maxSlices) {
   } catch (_) { /* best-effort — the render below still resolves links */ }
 }
 
-// perf-r5: the countdown re-warm ran this SYNCHRONOUSLY while late roster and
-// wreck bakes piled in — a 10 s frame during the countdown on a slow device.
-// Chunked wrapper for live windows; the sync wrapper stays for the
-// loading screen and capture paths.
-async function compileHiddenVariantsChunked() {
-  const g = compileHiddenVariantsSteps();
-  const yieldForFrameBudget = createFrameBudgetYielder(8);
-  let r = g.next();
-  while (!r.done) {
-    await yieldForFrameBudget();
-    r = g.next();
-  }
-}
 function* compileHiddenVariantsSteps() {
   // MOBILE-QA r5: renderer.compile does NOT traverse visible:false subtrees
   // (three's projectObject early-out — the old comment claiming otherwise

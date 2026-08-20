@@ -62,6 +62,11 @@ npm run perf:dev -- --profile=constrained --out=.qa-dev/constrained.json
 npm run perf:dev -- --profile=software --out=.qa-dev/software.json
 ```
 
+For the real player entry path, add `--entry=real --entry-gate=true`. The gate
+requires warm-up ownership to remain under the transition and requires both
+the countdown and first-live-five-second windows to have no long task, freeze,
+or shader-program birth, with bounded p95 and worst-frame gaps.
+
 `constrained` applies CDP 2x CPU throttling at the battle-open edge, covering
 the first live frames and active play without letting the game's monolithic
 constructor make DevTools itself unavailable. `software` adds SwiftShader from
@@ -83,12 +88,15 @@ Optional `--cores=4 --memory=4` navigator overrides are available for quality-
 selection experiments. They are not silently mixed into the default CPU test.
 
 Each probe preserves a boot trace checkpoint, then records battle
-construction/countdown, active driving and firing, the first 10 seconds after
-`preBattleS` reaches zero, a 0.5 ms V8 CPU sample profile, and the complete
-play trace. At the end it injects a marked 320 ms
-main-thread block to falsify the detector. That synthetic block starts only
-after the natural trace and CPU profile are captured, so it is never counted as
-game performance.
+construction, the complete visible countdown as its own frame window, active
+driving and firing, the first five and first ten seconds after `preBattleS`
+reaches zero, a 0.5 ms V8 CPU sample profile, and the complete play trace.
+The countdown and live summaries include effective FPS, average/p50/p95/p99
+frame gaps, worst gap, program births, long tasks, and freezes, so transition
+work cannot silently spill into either phase. At the end it injects a marked
+320 ms main-thread block to falsify the detector. That synthetic block starts
+only after the natural trace and CPU profile are captured, so it is never
+counted as game performance.
 
 The probe is diagnostic evidence. The ratified Mobile QA Lap in
 `docs/MOBILE-QA.md` remains the release-budget gate.

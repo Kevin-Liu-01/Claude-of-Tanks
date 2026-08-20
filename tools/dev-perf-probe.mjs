@@ -34,6 +34,7 @@ const openTimeoutMs = Math.max(10000, (Number(option('open-timeout', '180')) || 
 const output = resolve(option('out', `.qa-dev/dev-perf-${profileName}.json`));
 const cpuProfileEnabled = !['0', 'false', 'off'].includes(String(option('cpu-profile', 'true')).toLowerCase());
 const profileLoad = ['1', 'true', 'on'].includes(String(option('profile-load', 'false')).toLowerCase());
+const entryGateEnabled = ['1', 'true', 'on'].includes(String(option('entry-gate', 'false')).toLowerCase());
 const profiles = {
   normal: { cpuRate: 1, cores: null, memoryGB: null, softwareGPU: false },
   constrained: { cpuRate: 2, cores: null, memoryGB: null, softwareGPU: false },
@@ -66,8 +67,16 @@ function frameWindow(trace, fromMs, toMs) {
   const frames = trace.frames.filter((row) => row[ix.tMs] >= fromMs && row[ix.tMs] <= toMs);
   const gaps = frames.map((row) => row[ix.gapMs]);
   const programs = frames.map((row) => row[ix.programs]);
+  const requestedDurationMs = Math.max(0, toMs - fromMs);
+  const observedDurationMs = frames.length > 1
+    ? frames[frames.length - 1][ix.tMs] - frames[0][ix.tMs] : 0;
   return {
     fromMs: +fromMs.toFixed(1), toMs: +toMs.toFixed(1), frames: frames.length,
+    requestedDurationMs: +requestedDurationMs.toFixed(1),
+    observedDurationMs: +observedDurationMs.toFixed(1),
+    effectiveFps: observedDurationMs > 0
+      ? +((frames.length - 1) * 1000 / observedDurationMs).toFixed(2) : 0,
+    averageGapMs: gaps.length ? +(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length).toFixed(2) : 0,
     gapP50: +percentile(gaps, .5).toFixed(2), gapP95: +percentile(gaps, .95).toFixed(2),
     gapP99: +percentile(gaps, .99).toFixed(2), maxGapMs: +(Math.max(0, ...gaps)).toFixed(2),
     programBirths: programs.length ? Math.max(...programs) - programs[0] : 0,
@@ -77,6 +86,21 @@ function frameWindow(trace, fromMs, toMs) {
       && ['screen:freeze', 'sim:freeze', 'render:freeze'].includes(row.name)
       && row.tMs >= fromMs && row.tMs <= toMs).length,
   };
+}
+function countdownWindow(trace) {
+  const ix = Object.fromEntries(trace.frameSchema.map((name, i) => [name, i]));
+  const frames = trace.frames.filter((row) => row[ix.phase] === 'battle'
+    && Number.isFinite(row[ix.preBattleS]) && row[ix.preBattleS] > 0);
+  if (!frames.length) return null;
+  return frameWindow(trace, frames[0][ix.tMs], frames[frames.length - 1][ix.tMs]);
+}
+function firstLiveWindow(trace, durationMs = 5000) {
+  const ix = Object.fromEntries(trace.frameSchema.map((name, i) => [name, i]));
+  const rollout = trace.events.find((row) => row.name === 'battle:rollout');
+  const first = trace.frames.find((row) => row[ix.phase] === 'battle' && row[ix.preBattleS] <= 0);
+  const fromMs = rollout?.tMs ?? first?.[ix.tMs];
+  if (!Number.isFinite(fromMs)) return null;
+  return frameWindow(trace, fromMs, fromMs + durationMs);
 }
 function battleOpenWindow(trace) {
   const ix = Object.fromEntries(trace.frameSchema.map((name, i) => [name, i]));
@@ -289,10 +313,23 @@ try {
     battle: window.__BATTLE_LOAD || null,
     network: window.__NETWORK_LOAD || null,
     combatWarm: window.__COMBAT_WARM || null,
+    countdownWarm: window.__BATTLE_COUNTDOWN_WARM || null,
     glb: window.__GLB_STATS || null,
     worldPrefetch: window.__WORLD_PREFETCH || null,
     rosterPrefetch: window.__ROSTER_PREFETCH || null,
   }));
+  const countdown = countdownWindow(naturalTrace);
+  const firstLive5s = firstLiveWindow(naturalTrace);
+  const cleanVisibleWindow = (window) => !!window
+    && window.programBirths === 0 && window.longTasks === 0 && window.freezes === 0
+    && window.gapP95 <= 50 && window.maxGapMs <= 100;
+  const entryHealth = entryMode === 'real' ? {
+    warmOwnedByTransition: loading.countdownWarm?.done === true
+      && loading.countdownWarm?.phase === 'transition',
+    countdownClean: cleanVisibleWindow(countdown),
+    firstLive5sClean: cleanVisibleWindow(firstLive5s),
+  } : null;
+  if (entryHealth) entryHealth.pass = Object.values(entryHealth).every(Boolean);
 
   // Detector falsification: marked and kept out of naturalTrace/topSelf.
   await page.evaluate(() => new Promise((resolveWait) => {
@@ -317,13 +354,17 @@ try {
     profileConfig: {
       ...selected,
       profileLoad,
+      entryGateEnabled,
       gpuMeaning: selected.softwareGPU
         ? 'SwiftShader software rasterizer: a severe GPU stress floor, not a calibrated low-end iGPU'
         : 'Host ANGLE renderer; CPU/device traits are the only calibrated constraints',
     },
     cdp: emulation, url, readyWallMs, seconds, bootTrace, garageDwell, loading,
+    entryHealth,
     natural: {
       stats: naturalTrace.stats,
+      countdown,
+      firstLive5s,
       battleOpen10s: battleOpenWindow(naturalTrace),
       anomalies: naturalTrace.events.filter((row) => row.kind === 'anomaly'),
       topSelf: topSelf(profile),
@@ -340,12 +381,17 @@ try {
   console.log(JSON.stringify({
     output, profile: profileName, readyWallMs,
     gpu: trace.environment.gpu?.renderer || null,
-    natural: result.natural.stats, battleOpen10s: result.natural.battleOpen10s,
+    natural: result.natural.stats,
+    entryHealth: result.entryHealth,
+    countdown: result.natural.countdown,
+    firstLive5s: result.natural.firstLive5s,
+    battleOpen10s: result.natural.battleOpen10s,
     syntheticVerification: result.syntheticVerification,
     consoleErrors,
   }, null, 2));
   if (!syntheticFreeze) process.exitCode = 2;
   if (consoleErrors.length) process.exitCode = 3;
+  if (entryGateEnabled && entryMode === 'real' && !entryHealth?.pass) process.exitCode = 4;
 } catch (error) {
   let partialTrace = null, partialProfile = null;
   const devToolsResponsive = !(error.name === 'ProtocolError' && /timed out/i.test(error.message));
@@ -367,7 +413,10 @@ try {
     url, readyWallMs, openTimeoutMs, bootTrace,
     error: { name: error.name, message: error.message, stack: error.stack },
     natural: partialTrace ? {
-      stats: partialTrace.stats, battleOpen10s: battleOpenWindow(partialTrace),
+      stats: partialTrace.stats,
+      countdown: countdownWindow(partialTrace),
+      firstLive5s: firstLiveWindow(partialTrace),
+      battleOpen10s: battleOpenWindow(partialTrace),
       anomalies: partialTrace.events.filter((row) => row.kind === 'anomaly'),
       topSelf: partialProfile ? topSelf(partialProfile) : [],
     } : null,
