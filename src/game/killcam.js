@@ -78,6 +78,7 @@ import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.js';
 import { tierNumeral } from '../ui/battleLoad.js';
+import { isKillcamGhostSurface } from './killcamGhostPolicy.js';
 import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
   replayDistanceAtTime, replayStateFromPose,
@@ -1526,6 +1527,7 @@ export function createKillCam(deps) {
       group: new THREE.Group(),
       disposables: [],
       ghostBackup: null,
+      ghostSeen: null,
       ghostVis: null, ghostSkin: null, // re-assertable skin pass (r3)
       labels: [],
       obstacles: null, // module/crew box screen rects (label repulsion, r3)
@@ -2540,6 +2542,7 @@ export function createKillCam(deps) {
       pb.ghostBackup = null;
     }
     pb.ghostSkin = null;
+    pb.ghostSeen = null;
     pb.ghostVis = null;
     // scene dressing: hidden rather than disposed — teardown() still owns the
     // geometry lifetime, and one flag retires trail, ribbon, module boxes,
@@ -2963,10 +2966,12 @@ export function createKillCam(deps) {
     const vis = snap.targetEnt.visual;
     vis.setVisible(true); // player may have died while scoped (hull hidden)
     pb.ghostBackup = [];
-    // Ghost EVERY mesh, including currently-hidden LOD detail levels: the
-    // x-ray camera sits close enough to flip LODs mid-hold, and a skipped
-    // mesh would pop in with its original dark non-additive material and
-    // read as a black hole in the hull. Skin renders at renderOrder 11;
+    pb.ghostSeen = new WeakSet();
+    // Ghost every color-rendering mesh, including currently-hidden LOD detail
+    // levels. The x-ray camera sits close enough to flip LODs mid-hold, and a
+    // skipped painted mesh would pop in with its original dark non-additive
+    // material and read as a black hole in the hull. Non-painting helpers stay
+    // excluded. Skin renders at renderOrder 11;
     // everything the kill-cam adds (pb.group: proxies, boxes, shell path,
     // labels' anchor dots) renders AFTER it at groupOrder 12, so the organs
     // stay crisp whatever the local skin density.
@@ -2978,15 +2983,23 @@ export function createKillCam(deps) {
     pb.ghostVis = vis;
     pb.ghostSkin = () => {
       pb.ghostVis.root.traverse((o) => {
-        if (o.isMesh && o.material !== S.ghost) {
-          pb.ghostBackup.push([o, o.material, o.renderOrder, o.castShadow]);
-          o.material = S.ghost;
-          o.renderOrder = 11;
-          // the hull's own cast shadow otherwise sits directly beneath the
-          // translucent skin and reads THROUGH it as a black tank-shaped
-          // void (live Abrams probe) — WT floats the wreck on lit ground
+        if (!o.isMesh || o.material === S.ghost || pb.ghostSeen.has(o)) return;
+        pb.ghostSeen.add(o);
+        pb.ghostBackup.push([o, o.material, o.renderOrder, o.castShadow]);
+        // Invisible authored shadow hulls stay in the scene with colorWrite
+        // disabled. Ghosting them made their coarse convex silhouettes appear
+        // as huge cones around barrels and roof fittings. Suspend their shadow
+        // only; never turn a non-painting helper into visible x-ray geometry.
+        if (!isKillcamGhostSurface(o)) {
           o.castShadow = false;
+          return;
         }
+        o.material = S.ghost;
+        o.renderOrder = 11;
+        // the hull's own cast shadow otherwise sits directly beneath the
+        // translucent skin and reads THROUGH it as a black tank-shaped
+        // void (live Abrams probe) — WT floats the wreck on lit ground
+        o.castShadow = false;
       });
     };
     pb.ghostSkin();

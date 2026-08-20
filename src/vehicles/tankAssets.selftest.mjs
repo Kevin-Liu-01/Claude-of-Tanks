@@ -5,6 +5,7 @@ import {
   TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
+import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m')), 1,
@@ -104,6 +105,8 @@ function verifyAuthoredShadowCasters(id, tank) {
     sourceTriangles += caster.geometry.userData.shadowSourceTriangles;
     assert.equal(caster.castShadow, true, `${id}/${caster.name}: casts`);
     assert.equal(caster.material.colorWrite, false, `${id}/${caster.name}: shadow-only material`);
+    assert.equal(isKillcamGhostSurface(caster), false,
+      `${id}/${caster.name}: shadow hull never leaks into kill-cam x-ray`);
     assert.equal(caster.customDepthMaterial?.name, 'ProceduralShadowProxyDepth',
       `${id}/${caster.name}: isolated biased depth material`);
     assert.equal(caster.customDepthMaterial.polygonOffset, true,
