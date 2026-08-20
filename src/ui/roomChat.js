@@ -8,8 +8,9 @@ function ensureStyle() {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-.cot-room-chat{position:fixed;z-index:46;left:max(18px,env(safe-area-inset-left));bottom:166px;
-  width:min(420px,38vw);min-width:300px;display:grid;gap:7px;pointer-events:none;
+.cot-room-chat{position:fixed;z-index:46;left:max(18px,env(safe-area-inset-left));
+  top:clamp(270px,50%,calc(100vh - 230px));bottom:auto;transform:translateY(-50%);
+  width:min(380px,calc(50vw - 34px));min-width:280px;display:grid;gap:7px;pointer-events:none;
   color:#e5edf3;font-family:${FONT_STACK};text-shadow:0 1px 3px rgba(0,0,0,.95)}
 .cot-room-chat[hidden]{display:none}.cot-room-chat *{box-sizing:border-box}
 .cot-room-chat-log{max-height:146px;overflow:hidden;display:flex;flex-direction:column;
@@ -45,12 +46,15 @@ function ensureStyle() {
 .cot-room-chat-send:disabled{opacity:.4;cursor:not-allowed}.cot-room-chat-count{position:absolute;right:79px;
   bottom:-13px;color:#8494a0;font:700 8px ${FONT_COND};letter-spacing:.08em}.cot-room-chat-count.over{color:#ff867d}
 body.cot-touch-layout .cot-room-chat{left:max(9px,env(safe-area-inset-left));top:180px;bottom:auto;
-  width:min(58vw,390px);min-width:0;z-index:48}
+  width:min(58vw,390px);min-width:0;z-index:48;transform:none}
 body.cot-touch-layout .cot-room-chat-log{max-height:105px;padding-left:0}
 body.cot-touch-layout .cot-room-chat-message{font-size:10px}
 body.cot-touch-layout .cot-room-chat-controls{padding:6px}
 body.cot-touch-layout .cot-room-chat-toggle{min-width:82px;height:38px;background:rgba(7,11,15,.9)}
-@media(max-width:760px){.cot-room-chat{top:112px;bottom:auto;width:min(72vw,390px);min-width:250px}
+@media(max-height:700px){.cot-room-chat{top:50%}.cot-room-chat-log{max-height:105px}}
+@media(max-width:760px){.cot-room-chat{top:clamp(340px,calc(50% + 20px),calc(100vh - 80px));
+    bottom:auto;width:min(360px,44vw);min-width:220px}
+  .cot-room-chat-log{max-height:clamp(48px,calc(100vh - 440px),92px)}
   body.cot-touch-layout .cot-room-chat{top:180px}}
 @media(prefers-reduced-motion:reduce){.cot-room-chat-log{transition:none}}
 `;

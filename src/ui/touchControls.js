@@ -132,7 +132,7 @@ body.cot-touch-layout .cot-consep{display:none;}
 body.cot-touch-layout .cot-cons{display:flex;flex-direction:column;gap:9px;position:fixed;
   left:auto;right:max(14px,env(safe-area-inset-right));
   bottom:calc(max(22px,env(safe-area-inset-bottom)) + 124px);z-index:3;}
-body.cot-touch-layout .cot-con{width:48px;height:48px;}
+body.cot-touch-layout .cot-con{width:48px;height:52px;}
 body.cot-touch-layout .cot-con svg{transform:none;}
 /* The HUD's context-aware Special Action remains the one canonical button on
    touch. Recompose it into the fire cluster instead of adding a second mobile

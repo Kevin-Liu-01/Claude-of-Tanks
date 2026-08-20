@@ -31,6 +31,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { uiIconSVG } from './uiIcons.js';
+import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.js';
 import { createElement as el, ensureStyle } from './dom.js';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
@@ -1200,10 +1201,21 @@ export function createSettings(opts) {
   // can land) — and main.js's isBattleActive callback now also reports false
   // once the local player is destroyed, so the no-replay death (straight to
   // the death cam) hands off with a free cursor too, exactly like WoT.
+  const settingsOwnsPointerUnlock = () => shouldOpenSettingsFromPointerUnlock({
+    pointerLocked: !!document.pointerLockElement,
+    settingsOpen: open,
+    battleActive: isBattleActive(),
+    replayActive: replayOwnsScreen(),
+    activeElement: document.activeElement,
+  });
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement || open || !isBattleActive() || replayOwnsScreen()) return;
+    // Enter opens room chat by focusing its field and intentionally releasing
+    // pointer lock. A focused editor owns that unlock; only an otherwise
+    // unclaimed in-battle unlock (the browser's swallowed Esc gesture) opens
+    // Settings.
+    if (!settingsOwnsPointerUnlock()) return;
     setTimeout(() => {
-      if (document.pointerLockElement || open || !isBattleActive() || replayOwnsScreen()) return;
+      if (!settingsOwnsPointerUnlock()) return;
       if (document.hasFocus() && !document.hidden) openPanel();
       else showResumeVeil();
     }, 0);
@@ -1211,7 +1223,11 @@ export function createSettings(opts) {
   // Focus regained with the pointer still unlocked (alt-tab round trip that
   // never fired another pointerlockchange): offer the resume veil.
   window.addEventListener('focus', () => {
-    if (!open && isBattleActive() && !input.isLocked() && !replayOwnsScreen()) showResumeVeil();
+    if (!open && isBattleActive() && !input.isLocked() && !replayOwnsScreen() &&
+        shouldOpenSettingsFromPointerUnlock({
+          battleActive: true,
+          activeElement: document.activeElement,
+        })) showResumeVeil();
   });
 
   // --- gear button (garage) --------------------------------------------------------

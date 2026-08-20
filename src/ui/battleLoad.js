@@ -101,9 +101,10 @@ const CSS = `
   background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
   box-shadow:0 0 14px rgba(240,160,48,.5);transition:width .18s linear;}
 .cot-bl .count{margin-top:16px;text-align:center;font-family:${FONT_COND};
-  font-size:12.5px;font-weight:700;letter-spacing:.34em;text-indent:.34em;
-  color:#8a97a3;text-transform:uppercase;min-height:17px;}
-.cot-bl .count b{color:#ffd27a;font-size:15px;}
+  font-size:15px;font-weight:800;letter-spacing:.3em;text-indent:.3em;
+  color:#dce6ee;text-transform:uppercase;min-height:24px;
+  text-shadow:0 2px 8px rgba(0,0,0,.9);}
+.cot-bl .count b{color:#ffd27a;font-size:23px;text-shadow:0 0 18px rgba(240,160,48,.36);}
 .cot-bl .tip{margin-top:12px;text-align:center;font-size:12px;color:#7f8d99;
   line-height:1.5;padding:0 8%;}
 .cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
@@ -120,7 +121,7 @@ const CSS = `
   .cot-bl .row .sil{flex-basis:38px;height:20px}.cot-bl .row .nm{font-size:10px}
   .cot-bl .foot{padding:9px 12px max(11px,env(safe-area-inset-bottom))}
   .cot-bl .fmeta{margin-bottom:5px}.cot-bl .fstage{font-size:9px}.cot-bl .fpct{font-size:15px}
-  .cot-bl .count{margin-top:8px;font-size:9px}.cot-bl .count b{font-size:12px}.cot-bl .tip{display:none}
+  .cot-bl .count{margin-top:8px;font-size:10px}.cot-bl .count b{font-size:16px}.cot-bl .tip{display:none}
 }
 `;
 

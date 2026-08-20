@@ -326,8 +326,7 @@ const HUD_CSS = `
   filter:drop-shadow(0 5px 11px rgba(0,0,0,.5));
   clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);}
 .cot-top::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
-  background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12)),
-    linear-gradient(90deg,transparent 49.7%,rgba(191,207,219,.18) 49.8%,rgba(191,207,219,.18) 50.2%,transparent 50.3%);}
+  background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12));}
 .cot-top::after{content:"";position:absolute;z-index:2;left:50%;bottom:0;width:72px;height:2px;
   transform:translateX(-50%);pointer-events:none;
   background:linear-gradient(90deg,transparent,rgba(200,216,228,.7),transparent);
@@ -578,20 +577,21 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
    center-upper so it never fights the reticle. The numeral pops on each
    second via a keyed scale animation; the release swaps to ROLL OUT! and
    fades. Pure overlay: pointer-events none, no layout impact. */
-.cot-prebattle{position:absolute;left:50%;top:24%;transform:translateX(-50%);
-  text-align:center;pointer-events:none;opacity:0;transition:opacity .3s ease;}
+.cot-prebattle{position:absolute;left:50%;top:22%;transform:translateX(-50%);
+  min-width:min(390px,calc(100vw - 32px));text-align:center;pointer-events:none;
+  opacity:0;transition:opacity .3s ease;}
 .cot-prebattle.on{opacity:1;}
-.cot-prebattle .k{font-family:${FONT_COND};font-size:13px;font-weight:800;
-  letter-spacing:.34em;text-indent:.34em;text-transform:uppercase;color:#cfd9e2;
-  text-shadow:0 1px 6px rgba(0,0,0,.9);}
-.cot-prebattle .n{margin-top:4px;font-family:${FONT_STACK};font-size:88px;
+.cot-prebattle .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};
+  font-size:17px;font-weight:900;line-height:1;letter-spacing:.3em;text-indent:.3em;
+  text-transform:uppercase;color:#ffe0a2;background:linear-gradient(90deg,transparent,rgba(7,11,15,.86) 16%,rgba(7,11,15,.86) 84%,transparent);
+  border-bottom:1px solid rgba(240,160,48,.74);
+  text-shadow:0 2px 8px rgba(0,0,0,.96),0 0 16px rgba(240,160,48,.28);}
+.cot-prebattle .n{margin-top:7px;font-family:${FONT_STACK};font-size:92px;
   font-weight:800;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;
   text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
 .cot-prebattle .n.tick{animation:cot-pb-pop .5s cubic-bezier(.2,.7,.3,1);}
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
-.cot-prebattle .s{margin-top:6px;font-family:${FONT_COND};font-size:11px;font-weight:700;
-  letter-spacing:.22em;text-transform:uppercase;color:#8a97a3;text-shadow:0 1px 4px rgba(0,0,0,.9);}
 .cot-alert.show{opacity:1;}
 .cot-bounce{position:absolute;left:50%;top:37%;transform:translateX(-50%);font-size:15px;
   font-weight:700;letter-spacing:.06em;color:#c8d2dc;white-space:nowrap;
@@ -652,19 +652,20 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-shell .tip b{color:#e6edf3;font-weight:600;}
 .cot-shell .tip .tnm{font-size:11px;font-weight:600;color:#eef4f9;margin-bottom:2px;}
 .cot-shell:hover .tip{display:block;}
-/* r6-2: consumables VISUALLY SUBORDINATE to ammo — a 12px divider gap and
-   shorter slots bottom-aligned with the tray (the old equal-weight boxes
-   made the dock read as six same-y grey squares) */
+/* Equipment uses the same target size as ammo so every bottom-tray action is
+   equally easy to acquire. The divider and smaller pictograms preserve the
+   ammo/equipment grouping without shrinking the buttons themselves. */
 .cot-consep{width:1px;align-self:stretch;background:rgba(146,164,180,.3);margin:2px 6px;}
 /* MOBILE-UX r1: the consumables live in their own container so the mobile
    tier can re-park them as a right-edge thumb column (touchControls.js).
    display:contents = the wrapper generates NO box on desktop — the slots
    stay direct flex items of the tray, pixel-identical to the old markup. */
 .cot-cons{display:contents;}
-.cot-con{width:44px;height:52px;position:relative;cursor:pointer;
+.cot-con{width:64px;height:64px;position:relative;cursor:pointer;
   background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
   display:flex;align-items:center;justify-content:center;transition:border-color .12s;}
+.cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:hover{border-color:rgba(210,225,240,.5);}
 .cot-con .key{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#8a97a3;
   font-family:${FONT_COND};letter-spacing:-.01em;
@@ -1002,13 +1003,11 @@ export function initHud(bus) {
   const shotInfo = createShotInfo(bus);
   root.appendChild(shotInfo.root);
   // ======================= END SHOT-INFO SECTION ============================
-  // battle_countdown r1: pre-battle freeze overlay (kicker + numeral + hint)
+  // battle_countdown r1: pre-battle freeze overlay (kicker + numeral)
   const preBattleEl = el('div', 'cot-prebattle', root);
   const pbKick = el('div', 'k', preBattleEl);
   pbKick.textContent = 'BATTLE BEGINS IN';
   const pbNum = el('div', 'n', preBattleEl);
-  const pbHint = el('div', 's', preBattleEl);
-  pbHint.textContent = 'ALL VEHICLES HOLD · LOOK AROUND FREELY';
   let pbShownSec = -1;
   let pbHideTimer = 0;
 
@@ -3664,7 +3663,6 @@ export function initHud(bus) {
       } else if (pbShownSec !== 0) {
         pbShownSec = 0;
         pbKick.textContent = '';
-        pbHint.textContent = '';
         pbNum.classList.remove('tick');
         pbNum.textContent = 'ROLL OUT!';
         void pbNum.offsetWidth;
@@ -3674,7 +3672,6 @@ export function initHud(bus) {
           preBattleEl.classList.remove('on');
           // reset for the next battle
           pbKick.textContent = 'BATTLE BEGINS IN';
-          pbHint.textContent = 'ALL VEHICLES HOLD · LOOK AROUND FREELY';
           pbNum.classList.remove('go');
           pbShownSec = -1;
         }, 1100);
