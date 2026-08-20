@@ -712,12 +712,23 @@ function buildCarro45T(P) {
   P.add('turret', slab(                                                        // rear slope 2.35@-1.40 -> 2.16@-2.24 (gate line; aft corners taper to
     [-1.10, 0.66, L(-1.38)], [0.44, 0.66, L(-1.38)], [0.40, 0.64, L(-2.20)], [-1.06, 0.64, L(-2.20)],  // the ref's narrower rear edge)
     [-1.10, 0.853, L(-1.40)], [0.44, 0.853, L(-1.40)], [0.40, 0.66, L(-2.22)], [-1.06, 0.66, L(-2.22)]));
-  // right shelf rim + sight housing (front_turret 2.24 rim @ x 1.2..1.48,
-  // housing top 2.28)
-  P.add('turret', box(0.36, 0.05, 2.10), 1.395, 0.715, L(-0.35));             // shelf rim to ±1.575 (gate 2.24 @ x 1.19..1.57)
-  P.addEquipment('turret', box(0.36, 0.14, 0.46), 1.16, 0.63, L(-0.35));                // commander's sight housing (top 2.20 — gate right side max)
-  P.add('turretGlass', box(0.026, 0.10, 0.30), 1.345, 0.63, L(-0.30));
-  P.add('turretDark', box(0.30, 0.02, 0.40), 1.16, 0.705, L(-0.35));
+  // Vehicle-right roof closure. The former 0.36 x 2.10 m horizontal shelf
+  // started at x=1.215, leaving an open trough between it and the x=0.48
+  // crown. From head-on it read as a floating plank over an unfinished roof.
+  // These two structural courses continue the crown into the shell instead:
+  // their inboard edges share the plateau heights, their outboard edges meet
+  // the canted wall, and the fore course follows the roof's falling rake.
+  P.add('turret', slab(                                                        // rear roof closure, z -1.40..-0.44
+    [0.44, 0.66, L(-1.40)], [1.12, 0.61, L(-1.40)], [1.18, 0.61, L(-0.44)], [0.44, 0.66, L(-0.44)],
+    [0.44, 0.853, L(-1.40)], [1.12, 0.70, L(-1.40)], [1.18, 0.70, L(-0.44)], [0.44, 0.853, L(-0.44)]));
+  P.add('turret', slab(                                                        // fore roof closure, z -0.44..+0.99
+    [0.44, 0.66, L(-0.44)], [1.18, 0.61, L(-0.44)], [1.02, 0.53, L(0.99)], [0.44, 0.58, L(0.99)],
+    [0.48, 0.85, L(-0.44)], [1.18, 0.70, L(-0.44)], [1.02, 0.63, L(0.99)], [0.44, 0.75, L(0.99)]));
+  // Compact commander's sight is seated through the new roof skin rather
+  // than suspended under the retired shelf.
+  P.addEquipment('turret', box(0.32, 0.14, 0.42), 0.94, 0.80, L(-0.35));
+  P.add('turretGlass', box(0.026, 0.10, 0.28), 1.105, 0.80, L(-0.30));
+  P.add('turretDark', box(0.28, 0.02, 0.36), 0.94, 0.875, L(-0.35));
   // cupola (x 0, z -0.78, top 2.421) + loader ring + periscopes
   P.add('turret', cylY(0.20, 0.28, 0.036, P.q ? 20 : 12), -0.01, 0.872, L(-0.78)); // cupola base cone (tapered: the station slab edge reads the low rim)
   P.add('turret', cylY(0.155, 0.195, 0.022, P.q ? 20 : 12), -0.01, 0.910, L(-0.78)); // dome step to 2.421
