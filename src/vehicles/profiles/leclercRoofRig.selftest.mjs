@@ -80,6 +80,44 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
     assert.ok(near(anf1.position.y, 0.610) && near(anf1.userData.roofContactY, 0.610),
       `${id} ANF1 pintle foot is seated on the mid roof`);
 
+    if (id === 'leclerc_xlr' || id === 'amx56') {
+      assert.deepEqual(turretRig.userData.leclercVariantRoofStations, {
+        leftPadCenterX: -0.67,
+        rightPadCenterX: 0.67,
+        padCenterZ: -0.33,
+        roofY: 0.752,
+        rightHatchBottomY: 0.752,
+      }, `${id} centers both occupied roof stations on the raised pads`);
+      const roofCupolas = turretRig.getObjectByName('turretCupola');
+      roofCupolas?.geometry.computeBoundingBox();
+      const cupolaBounds = roofCupolas?.geometry.boundingBox;
+      assert.ok(cupolaBounds && cupolaBounds.min.x < -0.88 && cupolaBounds.max.x > 0.86
+        && near((cupolaBounds.min.z + cupolaBounds.max.z) / 2, -0.33, 0.002),
+      `${id} physically places both hatch rings around the marked pad centers`);
+    }
+
+    if (id === 'leclerc_xlr') {
+      assert.deepEqual(turretRig.userData.leclercXlrRoofAssembly, {
+        padCenterX: -0.67,
+        padCenterZ: -0.33,
+        roofY: 0.752,
+        shoeBottomY: 0.752,
+        shoeTopY: 0.807,
+        bodyBottomY: 0.807,
+        bodyTopY: 0.987,
+        weaponFootY: 0.987,
+        weaponRootZ: -0.17,
+        shieldRearZ: -0.0372,
+        periscopeBottomY: 0.752,
+      }, 'Leclerc XLR RWS, weapon, shield, and periscope expose continuous roof contacts');
+      const rwsGun = turretRig.getObjectByName('leclercXlrRoofRwsGun');
+      assert.ok(rwsGun && near(rwsGun.position.x, -0.67)
+        && near(rwsGun.position.y, 0.987) && near(rwsGun.position.z, -0.17),
+      'Leclerc XLR weapon is centered over the left pad and advanced into its shield');
+      assert.ok(near(rwsGun.userData.mountContactY, 0.987),
+        'Leclerc XLR weapon foot records its RWS body-crown contact');
+    }
+
     if (id === 'amx56') {
       assert.deepEqual(turretRig.userData.amx56RoofAssembly, {
         gunnerSightRoofY: 0.610,
@@ -88,14 +126,20 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
         rwsBaseBottomY: 0.752,
         rwsBodyTopY: 1.012,
         rwsWeaponFootY: 1.012,
-        rwsShieldRearZ: -0.321,
-        rwsBodyFrontZ: -0.310,
+        rwsPadCenterX: -0.67,
+        rwsPadCenterZ: -0.33,
+        rwsShieldRearZ: -0.071,
+        rwsBodyFrontZ: -0.060,
+        rightHatchCenterX: 0.67,
+        rightHatchCenterZ: -0.33,
+        rightHatchBottomY: 0.752,
         periscopeRoofY: 0.648,
         periscopeBottomY: 0.648,
       }, 'AMX 56 roof sight, RWS, shield, weapon, and periscope expose zero-gap contacts');
       const rwsGun = turretRig.getObjectByName('amx56RoofRwsGun');
-      assert.ok(rwsGun && near(rwsGun.position.y, 1.012),
-        'AMX 56 heavy weapon foot meets the RWS body crown');
+      assert.ok(rwsGun && near(rwsGun.position.x, -0.67)
+        && near(rwsGun.position.y, 1.012) && near(rwsGun.position.z, -0.23),
+      'AMX 56 heavy weapon is centered on the marked pad and meets the RWS body crown');
       assert.ok(near(rwsGun.userData.mountContactY, 1.012),
         'AMX 56 heavy weapon records its structural mount contact');
     }

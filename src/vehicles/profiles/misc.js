@@ -1667,9 +1667,25 @@ function buildLeclerc(P, variant = 's2') {
   // seven front cols (x -0.34..-0.62) where the ref roof is 2.359/2.369;
   // now ring top 2.368 / bar 2.378. Flush periscope collar RINGS added
   // (photo read 7: clean roof w/ periscope rings; sub-centimeter, mask-free).
-  P.add('turret', cylY(0.22, 0.22, 0.016, 14), -0.56, roofAt(-0.55) + 0.008, -0.55);
-  P.add('turretDark', box(0.38, 0.012, 0.03), -0.56, roofAt(-0.55) + 0.020, -0.55);
-  P.add('turret', cylY(0.20, 0.20, 0.04, 14), 0.58, roofAt(-0.90) + 0.02, -0.90);
+  const centeredRoofStations = variant === 'xlr' || variant === 'amx56';
+  const commanderStation = centeredRoofStations ? [-0.67, -0.33] : [-0.56, -0.55];
+  const gunnerStation = centeredRoofStations ? [0.67, -0.33] : [0.58, -0.90];
+  const addRoofCupola = centeredRoofStations ? P.addCupola.bind(P) : P.add.bind(P);
+  addRoofCupola('turret', cylY(0.22, 0.22, 0.016, 14),
+    commanderStation[0], roofAt(commanderStation[1]) + 0.008, commanderStation[1]);
+  P.add('turretDark', box(0.38, 0.012, 0.03),
+    commanderStation[0], roofAt(commanderStation[1]) + 0.020, commanderStation[1]);
+  addRoofCupola('turret', cylY(0.20, 0.20, 0.04, 14),
+    gunnerStation[0], roofAt(gunnerStation[1]) + 0.02, gunnerStation[1]);
+  if (centeredRoofStations) {
+    P.turretG.userData.leclercVariantRoofStations = {
+      leftPadCenterX: -0.67,
+      rightPadCenterX: 0.67,
+      padCenterZ: -0.33,
+      roofY: 0.752,
+      rightHatchBottomY: 0.752,
+    };
+  }
   P.add('turretDetail', torus(0.062, 0.008, 12), -0.35, 0.754, -0.28);         // flush collar rings (KIT.torus lies FLAT by default — the loop-1
   P.add('turretDetail', torus(0.062, 0.008, 12), 0.42, roofAt(-0.58) - 0.002, -0.58); // vertical-hoop draft bought a +0.027 trace pixel at col -0.704)
   // 7.62 ANF1 pintle MOVED forward-LEFT (photo-parity round, read 5 — the
@@ -1933,21 +1949,52 @@ function buildLeclercXLR(P) {
   }
   for (const y of [0.29, 0.55]) P.add('turretDetail', box(1.82, 0.025, 0.025), 0, y, -2.39);
 
-  // Compact roof RWS: broad shoe, tapered sensor, armored shield and a
-  // forward-rest 7.62 mm.  Every part is turret-owned and rotates at yaw.
-  P.add('turret', cylY(0.27, 0.27, 0.055, 16), -0.34, 0.82, -0.42);
-  P.add('turret', box(0.42, 0.18, 0.42), -0.34, 0.94, -0.42);
-  P.add('turretDark', box(0.26, 0.14, 0.025), -0.34, 0.98, -0.195);
-  P.add('turretGlass', box(0.16, 0.10, 0.025), -0.34, 1.00, -0.178);
-  P.add('turret', box(0.50, 0.28, 0.045), -0.34, 1.08, -0.08, -0.18, 0, 0);
+  // Compact roof RWS: the complete stack is centered on the marked left
+  // roof pad. Its shoe bottoms exactly on the 0.752 m plateau; the body then
+  // grows directly from the shoe instead of hovering 40.5 mm above it.
+  // Painted RWS pieces are equipment rather than primary turret armor.
+  const xlrRwsX = -0.67;
+  const xlrRwsZ = -0.33;
+  const xlrRoofY = 0.752;
+  const xlrShoeH = 0.055;
+  const xlrShoeTopY = 0.807;
+  const xlrBodyH = 0.18;
+  const xlrBodyTopY = 0.987;
+  P.addEquipment('turret', cylY(0.27, 0.27, xlrShoeH, 16),
+    xlrRwsX, xlrRoofY + xlrShoeH / 2, xlrRwsZ);
+  P.addEquipment('turret', box(0.42, xlrBodyH, 0.42),
+    xlrRwsX, xlrShoeTopY + xlrBodyH / 2, xlrRwsZ);
+  P.add('turretDark', box(0.26, 0.14, 0.025), xlrRwsX, 0.9395, -0.105);
+  P.add('turretGlass', box(0.16, 0.10, 0.025), xlrRwsX, 0.9595, -0.088);
+  // The shield follows the roof drop and the weapon receiver advances into
+  // its rear plane. This makes shield, gun and body one continuous load path.
+  P.addEquipment('turret', box(0.50, 0.28, 0.045),
+    xlrRwsX, 1.0395, 0.01, -0.18, 0, 0);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true });
-    mg.position.set(-0.34, 1.15, -0.35);
+    mg.name = 'leclercXlrRoofRwsGun';
+    mg.position.set(xlrRwsX, xlrBodyTopY, -0.17);
+    mg.userData.mountContactY = xlrBodyTopY;
     P.turretG.add(mg);
   }
-  periscope(P, 'turretDetail', 0.18, 0.83, 0.14, -0.10);
+  // The marked periscope block previously started at 0.795 m. Lower it so
+  // its 70 mm housing bottoms exactly on the same 0.752 m roof plateau.
+  periscope(P, 'turretDetail', 0.18, 0.787, 0.14, -0.10);
   P.add('turretGlass', cylZ(0.075, 0.040, 14), 0.88, 0.76, 0.35, Math.PI / 2, 0, 0);
   P.add('turretDetail', torus(0.085, 0.012, 14), 0.88, 0.76, 0.37, Math.PI / 2, 0, 0);
+  P.turretG.userData.leclercXlrRoofAssembly = {
+    padCenterX: xlrRwsX,
+    padCenterZ: xlrRwsZ,
+    roofY: xlrRoofY,
+    shoeBottomY: xlrRoofY,
+    shoeTopY: xlrShoeTopY,
+    bodyBottomY: xlrShoeTopY,
+    bodyTopY: xlrBodyTopY,
+    weaponFootY: xlrBodyTopY,
+    weaponRootZ: -0.17,
+    shieldRearZ: -0.0372,
+    periscopeBottomY: xlrRoofY,
+  };
   P.topY = Math.max(P.topY, 1.34);
 }
 
@@ -2004,14 +2051,16 @@ function buildAMX56(P) {
   // Gunner/commander plant: low dual sight boxes and a shielded forward RWS.
   P.add('turret', box(0.42, 0.23, 0.40), 0.62, 0.725, 0.18, 0, -0.08, 0);
   P.add('turretGlass', box(0.25, 0.13, 0.025), 0.62, 0.745, 0.395);
-  P.add('turret', cylY(0.24, 0.24, 0.08, 16), -0.48, 0.792, -0.58);
-  P.add('turret', box(0.40, 0.18, 0.38), -0.48, 0.922, -0.50);
-  P.add('turretGlass', box(0.15, 0.10, 0.025), -0.48, 0.942, -0.29);
-  P.add('turret', box(0.52, 0.30, 0.045), -0.48, 1.052, -0.275, -0.16, 0, 0);
+  const amxRwsX = -0.67;
+  const amxRwsZ = -0.33;
+  P.addEquipment('turret', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
+  P.addEquipment('turret', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
+  P.add('turretGlass', box(0.15, 0.10, 0.025), amxRwsX, 0.942, -0.04);
+  P.addEquipment('turret', box(0.52, 0.30, 0.045), amxRwsX, 1.052, -0.025, -0.16, 0, 0);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true });
     mg.name = 'amx56RoofRwsGun';
-    mg.position.set(-0.48, 1.012, -0.48);
+    mg.position.set(amxRwsX, 1.012, -0.23);
     mg.userData.mountContactY = 1.012;
     P.turretG.add(mg);
   }
@@ -2023,8 +2072,13 @@ function buildAMX56(P) {
     rwsBaseBottomY: 0.752,
     rwsBodyTopY: 1.012,
     rwsWeaponFootY: 1.012,
-    rwsShieldRearZ: -0.321,
-    rwsBodyFrontZ: -0.310,
+    rwsPadCenterX: amxRwsX,
+    rwsPadCenterZ: amxRwsZ,
+    rwsShieldRearZ: -0.071,
+    rwsBodyFrontZ: -0.060,
+    rightHatchCenterX: 0.67,
+    rightHatchCenterZ: -0.33,
+    rightHatchBottomY: 0.752,
     periscopeRoofY: 0.648,
     periscopeBottomY: 0.648,
   };
