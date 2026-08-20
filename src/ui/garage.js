@@ -793,8 +793,9 @@ const GARAGE_CSS = `
 .cot-featured .ftitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;display:flex;justify-content:space-between;
   align-items:baseline;}
-.cot-featured .fdots{display:flex;gap:5px;}
-.cot-featured .fdots span{width:6px;height:6px;background:rgba(146,164,180,.35);
+.cot-featured .ftitle > span:first-child{flex:0 0 auto;white-space:nowrap;}
+.cot-featured .fdots{display:flex;gap:2px;flex:0 0 auto;}
+.cot-featured .fdots span{width:3px;height:6px;flex:0 0 3px;background:rgba(146,164,180,.35);
   transition:background .2s;cursor:pointer;}
 .cot-featured .fdots span:hover{background:rgba(210,225,240,.7);}
 .cot-featured .fdots span.on{background:#f0a030;}
