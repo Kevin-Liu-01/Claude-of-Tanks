@@ -573,19 +573,21 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .25s ease;}
 .cot-alert.red{color:#f05a5a;}
-/* battle_countdown r1: WoT-style pre-battle freeze — kicker + big numeral,
+/* battle_countdown r2: WoT-style pre-battle freeze — kicker + big numeral,
    center-upper so it never fights the reticle. The numeral pops on each
    second via a keyed scale animation; the release swaps to ROLL OUT! and
-   fades. Pure overlay: pointer-events none, no layout impact. */
+   fades. The kicker uses a dark text edge instead of a backdrop so terrain
+   stays visible behind it. Pure overlay: pointer-events none, no layout impact. */
 .cot-prebattle{position:absolute;left:50%;top:22%;transform:translateX(-50%);
   min-width:min(390px,calc(100vw - 32px));text-align:center;pointer-events:none;
   opacity:0;transition:opacity .3s ease;}
 .cot-prebattle.on{opacity:1;}
 .cot-prebattle .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};
   font-size:17px;font-weight:900;line-height:1;letter-spacing:.3em;text-indent:.3em;
-  text-transform:uppercase;color:#ffe0a2;background:linear-gradient(90deg,transparent,rgba(7,11,15,.86) 16%,rgba(7,11,15,.86) 84%,transparent);
-  border-bottom:1px solid rgba(240,160,48,.74);
-  text-shadow:0 2px 8px rgba(0,0,0,.96),0 0 16px rgba(240,160,48,.28);}
+  text-transform:uppercase;color:#ffe0a2;
+  text-shadow:-1px -1px 0 rgba(4,7,10,.98),1px -1px 0 rgba(4,7,10,.98),
+    -1px 1px 0 rgba(4,7,10,.98),1px 1px 0 rgba(4,7,10,.98),
+    0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);}
 .cot-prebattle .n{margin-top:7px;font-family:${FONT_STACK};font-size:92px;
   font-weight:800;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;
   text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
