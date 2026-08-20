@@ -107,7 +107,7 @@ const GARAGE_CSS = `
   display:inline-flex;align-items:center;gap:6px;
   padding:0 6px;background:rgba(11,15,20,.72);
   border:1px solid rgba(146,164,180,.28);border-bottom-width:2px;
-  transition:color .15s,border-color .15s,background .15s;}
+  text-decoration:none;transition:color .15s,border-color .15s,background .15s;}
 .cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
@@ -752,7 +752,7 @@ const GARAGE_CSS = `
    shifts layout. Mouse clicks stay ring-free via :focus-visible. */
 .cot-battle:focus-visible,.cot-battle-mode:focus-visible,.cot-battle-choice:focus-visible,
 .cot-country-chip:focus-visible,.cot-country-edge:focus-visible,.cot-car-arrow:focus-visible,.cot-record-trigger:focus-visible,
-.cot-record-close:focus-visible{
+.cot-github:focus-visible,.cot-record-close:focus-visible{
   outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
 .cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
   outline:1px solid rgba(240,176,74,.8);outline-offset:1px;}
@@ -1665,6 +1665,10 @@ export function createGarage(opts) {
     `title="Local service record" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
+    `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
+    `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
+    `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
+    `<span class="nav-label">GitHub</span></a>` +
     `<div class="cot-settings-slot"></div></nav>` +
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
@@ -2897,6 +2901,9 @@ export function createGarage(opts) {
   root.querySelector('[data-nav="home"]').addEventListener('click', () => {
     emit('ui:click', {});
     window.location.href = '/home'; // pretty route (vite.config.js rewrite)
+  });
+  root.querySelector('[data-nav="github"]').addEventListener('click', () => {
+    emit('ui:click', {});
   });
   function onKey(e) {
     if (!api.isOpen) return;

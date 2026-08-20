@@ -32,6 +32,8 @@ for (const id of ['sound', 'soundOff', 'graphics', 'settings']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing mobile HUD icon: ${id}`);
 }
 
+if (!uiIconIds().includes('github')) throw new Error('missing garage GitHub icon');
+
 for (const id of ['gallery', 'speed', 'camouflage', 'shield', 'engine', 'scope', 'damage', 'optics']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing garage dossier icon: ${id}`);
 }
