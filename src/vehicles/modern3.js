@@ -2164,7 +2164,7 @@ function buildK1A1(P) {
 // real radial relief, §5.262 gear tones (gearFloor + tireHex + wheelHex so
 // the exposed train never reads ambient-black), §B9 skirt hem at ~49%
 // wheel exposure, rotation-invariant end-drum face anatomy.
-function buildType10Native2026(P) {
+function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
   const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab
@@ -2439,6 +2439,7 @@ function buildType10Native2026(P) {
   P.turretG.position.set(0, 1.672, 0.2354);
   P.add('turret', cylY(1.122, 1.166, 0.11, P.q ? 24 : 14), 0, -0.033, -0.2354); // ring riser seals the deck gap (§B2; seated on the 1.6885 mid deck)
   const shellLift = 0;
+  const bustleRackSeatShift = 0.1364;                                           // closes the former 125 mm shell-to-rack air gap
   // Eighteen-station welded shell lofted to the print plan ×1.10: tight
   // mantlet throat, swept cheek V, broad +-1.43 walls, vertical mid-side
   // break, tapered bustle (the slat rack carries the mass aft of it).
@@ -2522,17 +2523,44 @@ function buildType10Native2026(P) {
   // One CONTINUOUS central complex (§5.248 print receipt): gunner housing +
   // conduit spine + pano head in line — §B3 sight grammar: hooded windows,
   // framed lenses, seated pedestals.
-  // GUNNER SIGHT HOUSING (center-left):
-  P.add('turret', box(0.572, 0.528, 0.616), -0.176, 0.88, 1.221);               // housing body (top 2.865 world = print 2.604 ×1.10)
-  P.add('turret', box(0.605, 0.0495, 0.638), -0.176, 1.1682, 1.21);             // proud lid
-  P.addEquipment('turret', box(0.44, 0.055, 0.088), -0.22, 1.078, 1.545, -0.22, 0, 0); // window brow hood (§B3 sight tell)
-  P.add('turretDark', box(0.396, 0.11, 0.033), -0.22, 0.99, 1.54);              // recessed window band on the front face
-  P.add('turretGlass', box(0.308, 0.066, 0.0198), -0.22, 0.99, 1.551);
-  P.add('turretDark', box(0.033, 0.088, 0.0165), -0.22, 0.902, 1.554);          // wiper stub under the band
-  P.add('turretDark', box(0.0242, 0.484, 0.594), -0.484, 0.88, 1.221);          // side lid seam
-  // CONDUIT SPINE bridging housing -> pano (print side band continuous)
-  P.add('turret', box(0.374, 0.264, 0.396), -0.22, 1.0505, 0.726);              // spine
-  P.add('turretDark', box(0.33, 0.033, 0.33), -0.22, 1.1913, 0.726);
+  // GUNNER SIGHT HOUSING. The production Type 10 now carries the owner's
+  // compact RIGHT-side lamp/optic treatment; the Type 10B keeps the taller
+  // print-derived housing because its Kai roof package is authored around it.
+  // Both variants penetrate the crown by 12 mm instead of balancing above it.
+  if (compactRightGunnerSight) {
+    const sightX = 0.70;
+    const sightZ = 1.16;
+    const roofY = 0.635;
+    const embed = 0.012;
+    const bodyW = 0.32;
+    const bodyH = 0.28;
+    const bodyD = 0.34;
+    const bodyY = roofY + bodyH * 0.5 - embed;
+    P.add('turret', box(bodyW, bodyH, bodyD), sightX, bodyY, sightZ);
+    P.add('turret', box(0.345, 0.035, 0.365), sightX, bodyY + bodyH * 0.5, sightZ);
+    P.addEquipment('turret', box(0.255, 0.035, 0.060),
+      sightX, bodyY + 0.055, sightZ + bodyD * 0.5 + 0.024, -0.10, 0, 0);
+    P.add('turretDark', box(0.225, 0.105, 0.025),
+      sightX, bodyY + 0.005, sightZ + bodyD * 0.5 + 0.013);
+    P.add('turretGlass', box(0.165, 0.065, 0.015),
+      sightX, bodyY + 0.005, sightZ + bodyD * 0.5 + 0.034);
+    P.add('turretDark', box(0.018, 0.235, 0.31),
+      sightX - bodyW * 0.5 - 0.009, bodyY, sightZ);
+    // Low armored cable shoe closes the sight into the crown without
+    // recreating the former tall center-left spine.
+    P.add('turret', box(0.34, 0.055, 0.28), 0.42, roofY + 0.015, 0.87, 0, -0.22, 0);
+  } else {
+    P.add('turret', box(0.572, 0.528, 0.616), -0.176, 0.88, 1.221);             // housing body (bottom 0.616 overlaps the 0.627 crown)
+    P.add('turret', box(0.605, 0.0495, 0.638), -0.176, 1.1682, 1.21);           // proud lid
+    P.addEquipment('turret', box(0.44, 0.055, 0.088), -0.22, 1.078, 1.545, -0.22, 0, 0); // window brow hood (§B3 sight tell)
+    P.add('turretDark', box(0.396, 0.11, 0.033), -0.22, 0.99, 1.54);            // recessed window band on the front face
+    P.add('turretGlass', box(0.308, 0.066, 0.0198), -0.22, 0.99, 1.551);
+    P.add('turretDark', box(0.033, 0.088, 0.0165), -0.22, 0.902, 1.554);        // wiper stub under the band
+    P.add('turretDark', box(0.0242, 0.484, 0.594), -0.484, 0.88, 1.221);        // side lid seam
+    // CONDUIT SPINE bridging housing -> pano (print side band continuous)
+    P.add('turret', box(0.374, 0.264, 0.396), -0.22, 1.0505, 0.726);            // spine
+    P.add('turretDark', box(0.33, 0.033, 0.33), -0.22, 1.1913, 0.726);
+  }
   // PANORAMIC COMMANDER SIGHT (center-left front, head to the P95 datum):
   P.add('turret', box(0.33, 0.22, 0.44), -0.275, 0.737, 0.242);                 // pedestal plinth on the roof
   P.add('turret', cylY(0.0935, 0.1045, 0.286, 12), -0.275, 0.99, 0.297);        // pedestal column
@@ -2589,10 +2617,10 @@ function buildType10Native2026(P) {
   }
   P.add('turretDetail', box(0.0396, 0.869, 0.0396), -1.4388, 0.9405, -2.0174);  // LEFT whip MAST BASE — solid run seated THROUGH the rack shoulder
   P.add('turretDetail', box(0.0275, 0.0275, 0.462), -1.4388, 1.133, -2.222, -0.86, 0, 0); // antenna STAY off the mast raked aft-down (under the datum)
-  P.add('turretDetail', box(0.0495, 0.0495, 0.286), 1.243, 0.6078, -2.6334);    // forward rail stub off the rack's front post (§B2)
-  P.add('turretDetail', box(0.264, 0.0495, 0.0495), 1.364, 0.6078, -2.5124);    // mast seat arm on the stub
-  P.add('turretDetail', box(0.0396, 0.726, 0.0396), 1.4388, 0.9955, -2.5124);   // RIGHT STOWED ANTENNA MAST seated on the arm (PHYSICAL-SEAT gate)
-  P.add('turretDark', box(0.0352, 0.066, 0.0352), 1.4388, 1.3915, -2.5124);     // its cap joint
+  P.add('turretDetail', box(0.0495, 0.0495, 0.286), 1.243, 0.6078, -2.6334 + bustleRackSeatShift); // forward rail stub off the rack's front post (§B2)
+  P.add('turretDetail', box(0.264, 0.0495, 0.0495), 1.364, 0.6078, -2.5124 + bustleRackSeatShift); // mast seat arm on the stub
+  P.add('turretDetail', box(0.0396, 0.726, 0.0396), 1.4388, 0.9955, -2.5124 + bustleRackSeatShift); // RIGHT STOWED ANTENNA MAST seated on the arm (PHYSICAL-SEAT gate)
+  P.add('turretDark', box(0.0352, 0.066, 0.0352), 1.4388, 1.3915, -2.5124 + bustleRackSeatShift); // its cap joint
   // crosswind sensor on the bustle crown (print roof dip zone)
   P.add('turretDetail', box(0.099, 0.055, 0.099), 0, 0.726, -1.705);
   P.add('turretDark', box(0.0572, 0.0176, 0.0572), 0, 0.7645, -1.705);
@@ -2621,12 +2649,14 @@ function buildType10Native2026(P) {
   // gussets + cross-brace, LOADED (JGSDF field config) ----------------------
   {
     const yLo = 0.165, yHi = 0.583;                                             // world 1.837 / 2.255
-    const zF = -2.7214, zR = -3.5134;                                           // world -2.486 / -3.278
+    const zF = -2.7214 + bustleRackSeatShift;
+    const zR = -3.5134 + bustleRackSeatShift;
+    const zMid = (zF + zR) * 0.5;
     P.add('turretDetail', box(2.53, 0.0495, 0.0495), 0, yLo, zR + 0.022);       // lower rear rail
     P.add('turretDetail', box(2.53, 0.0495, 0.0495), 0, yHi, zR + 0.022);       // upper rear rail
     for (const s of [-1, 1]) {
-      P.add('turretDetail', box(0.0495, 0.0495, 0.682), s * 1.243, yLo, -3.058); // lower side returns
-      P.add('turretDetail', box(0.0495, 0.0495, 0.682), s * 1.243, yHi, -3.058); // upper side returns
+      P.add('turretDetail', box(0.0495, 0.0495, 0.682), s * 1.243, yLo, zMid);  // lower side returns
+      P.add('turretDetail', box(0.0495, 0.0495, 0.682), s * 1.243, yHi, zMid);  // upper side returns
       P.add('turretDetail', box(0.044, 0.462, 0.044), s * 1.243, 0.374, zF - 0.022); // forward posts into the bustle shoulder (§B2)
       P.add('turretDetail', box(0.044, 0.462, 0.044), s * 1.243, 0.374, zR + 0.022); // rear corner posts
       P.add('turretDetail', box(0.066, 0.066, 0.033), s * 1.243, yHi + 0.044, zR + 0.022); // corner gussets
@@ -2637,16 +2667,27 @@ function buildType10Native2026(P) {
       P.add('turretDetail', box(0.0308, 0.44, 0.0308), x, 0.374, zR + 0.022);
     }
     for (let k = 0; k < 3; k++) {                                               // side slats
-      for (const s of [-1, 1]) P.add('turretDetail', box(0.0308, 0.44, 0.0308), s * 1.243, 0.374, -2.86 - k * 0.176);
+      for (const s of [-1, 1]) P.add('turretDetail', box(0.0308, 0.44, 0.0308), s * 1.243, 0.374, zF - 0.1386 - k * 0.176);
     }
-    P.add('turretDark', box(2.42, 0.0176, 0.638), 0, yLo + 0.022, -3.058);      // mesh floor
+    P.add('turretDark', box(2.42, 0.0176, 0.638), 0, yLo + 0.022, zMid);        // mesh floor
     stowage(P, 'turretCloth', rng, [
-      [-0.66, 0.363, -2.992, 0.792, 0.286, 0.55],
-      [0.33, 0.374, -3.036, 0.726, 0.308, 0.572],
-      [1.10, 0.341, -2.97, 0.44, 0.242, 0.506],
+      [-0.66, 0.363, -2.992 + bustleRackSeatShift, 0.792, 0.286, 0.55],
+      [0.33, 0.374, -3.036 + bustleRackSeatShift, 0.726, 0.308, 0.572],
+      [1.10, 0.341, -2.97 + bustleRackSeatShift, 0.44, 0.242, 0.506],
     ]);
-    P.add('turretCloth', cylX(0.088, 0.72, 10), -0.30, yHi - 0.055, -3.245);    // rolled tarp on the load
-    ammoCan(P, 'turretDark', -1.122, 0.33, -2.882, 0.2);
+    P.add('turretCloth', cylX(0.088, 0.72, 10), -0.30, yHi - 0.055, -3.245 + bustleRackSeatShift); // rolled tarp on the load
+    ammoCan(P, 'turretDark', -1.122, 0.33, -2.882 + bustleRackSeatShift, 0.2);
+
+    P.turretG.userData.type10RoofBustleReceipt = {
+      opticVariant: compactRightGunnerSight ? 'compact-right' : 'type10b-standard-left',
+      opticCenterX: compactRightGunnerSight ? 0.70 : -0.176,
+      opticScaleRatio: compactRightGunnerSight ? 0.56 : 1,
+      opticBottomY: compactRightGunnerSight ? 0.623 : 0.616,
+      roofCarrierY: compactRightGunnerSight ? 0.635 : 0.627,
+      bustleShellRearZ: -2.596,
+      bustleForwardContactZ: zF,
+      bustleOverlapM: zF - (-2.596),
+    };
   }
   P.decal('turret', 'number', '73', 0.264, [1.5752, 0.407, -0.55], Math.PI / 2, 0, 0.05); // on the module face
   P.decal('turret', 'number', '73', 0.264, [-1.5752, 0.407, -0.33], -Math.PI / 2, 0, -0.05);
@@ -2664,7 +2705,7 @@ function buildType10Native2026(P) {
 // rows, high side cassettes, EO pair, RWS, Kai mask, basket/whips) stays in
 // profiles/japan.js addType10BPackage, re-seated at the ×1.10 frame.
 export function buildType10BBase(P) {
-  buildType10Native2026(P);
+  buildType10Native2026(P, { compactRightGunnerSight: false });
 }
 
 // ================================ M2A2 Bradley ==============================

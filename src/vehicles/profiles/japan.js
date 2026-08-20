@@ -3,6 +3,7 @@
 // Each builder preserves its complete donor hull, skirts and single smart
 // running-gear course, then adds source-specific supported armor/equipment.
 
+import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { buildType10BBase } from '../modern3.js';
 import { buildType90 } from './misc.js';
@@ -20,6 +21,60 @@ function cassette(P, owner, x, y, z, w, h, d, rotation = null, fastener = true) 
   P.add(armor, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
   if (fastener) P.add(detail, KIT.box(w * 0.68, 0.014, Math.max(0.025, d * 0.07)),
     x, y + h * 0.5 + 0.009, z + d * 0.25, r[0], r[1], r[2]);
+}
+
+function seatedArmorCassette(P, owner, x, y, z, w, h, d, rotation = null, {
+  axis = 'y', contactSide = -1, embed = 0.012, lid = true,
+} = {}) {
+  const bucket = owner === 'hull' ? 'hull' : 'turret';
+  const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
+  const r = rotation || [0, 0, 0];
+  const dims = { x: w, y: h, z: d };
+  const shift = { x: 0, y: 0, z: 0 };
+  dims[axis] += embed;
+  shift[axis] = contactSide * embed * 0.5;
+  P.add(bucket, KIT.xform(KIT.box(dims.x, dims.y, dims.z),
+    shift.x, shift.y, shift.z), x, y, z, r[0], r[1], r[2]);
+  if (!lid) return;
+  const outward = -contactSide;
+  const lidDims = { x: w * 0.76, y: h * 0.76, z: d * 0.76 };
+  lidDims[axis] = Math.min(0.020, dims[axis] * 0.22);
+  const lidShift = { x: 0, y: 0, z: 0 };
+  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5 - lidDims[axis] * 0.5);
+  P.add(detail, KIT.xform(KIT.box(lidDims.x, lidDims.y, lidDims.z),
+    lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
+}
+
+function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
+  const a = new THREE.Vector3(...p00);
+  const b = new THREE.Vector3(...p10);
+  const c = new THREE.Vector3(...p11);
+  const d = new THREE.Vector3(...p01);
+  const point = a.clone().multiplyScalar((1 - u) * (1 - v))
+    .addScaledVector(b, u * (1 - v))
+    .addScaledVector(c, u * v)
+    .addScaledVector(d, (1 - u) * v);
+  const du = b.clone().sub(a).multiplyScalar(1 - v)
+    .add(c.clone().sub(d).multiplyScalar(v));
+  const dv = d.clone().sub(a).multiplyScalar(1 - u)
+    .add(c.clone().sub(b).multiplyScalar(u));
+  const normal = new THREE.Vector3().crossVectors(du, dv).normalize();
+  if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
+  return { point, normal, du, dv };
+}
+
+function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed = 0.012) {
+  const n = face.normal.clone().normalize();
+  const course = courseAxis.clone();
+  const zAxis = course.addScaledVector(n, -course.dot(n)).normalize();
+  const xAxis = new THREE.Vector3().crossVectors(n, zAxis).normalize();
+  const basis = new THREE.Matrix4().makeBasis(xAxis, n, zAxis);
+  const rotation = new THREE.Euler().setFromQuaternion(
+    new THREE.Quaternion().setFromRotationMatrix(basis), 'XYZ');
+  const center = face.point.clone().addScaledVector(n, h * 0.5);
+  seatedArmorCassette(P, owner, center.x, center.y, center.z, w, h, d,
+    [rotation.x, rotation.y, rotation.z], { embed, lid: true });
+  return { point: face.point.clone(), normal: n, center, embed };
 }
 
 // `s` is an opt-in uniform scale on the helpers' internal fixed sizes
@@ -471,6 +526,8 @@ function buildType90A(P) {
 
 function addType10BPackage(P) {
   const { box, cylY, cylZ } = KIT;
+  const eraEmbed = 0.012;
+  let turretEraCount = 0;
   // §5.336 re-seat: every station and size below is the ratified B-variant
   // delta carried at the owner-decreed ×1.10 frame of the rebuilt shared
   // base (the §5.299 byte-pin is retired by that order — the base upgrade
@@ -479,35 +536,96 @@ function addType10BPackage(P) {
   // Sharp modular Type 10B cheek shell. It remains a shallow swept mass and
   // intersects the donor crown, avoiding a second detached turret volume.
   for (const side of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [side * 0.198, 0.055, 1.606], [side * 1.694, 0.055, 0.88],
-      [side * 1.628, 0.055, -0.638], [side * 0.44, 0.055, 0.264],
+    const topFace = [
       [side * 0.176, 0.638, 1.342], [side * 1.43, 0.671, 0.638],
-      [side * 1.375, 0.616, -0.715], [side * 0.407, 0.66, 0.165]));
-    for (let row = 0; row < 2; row++) for (let i = 0; i < 5; i++) {
-      cassette(P, 'turret', side * (0.55 + i * 0.253), 0.682 - row * 0.165,
-        1.166 - i * 0.176 - row * 0.275, 0.22, 0.154, 0.22,
-        [-0.16, side * (0.035 + i * 0.045), side * 0.018], false);
+      [side * 1.375, 0.616, -0.715], [side * 0.407, 0.66, 0.165],
+    ];
+    const sideFace = [
+      [side * 1.694, 0.055, 0.88], [side * 1.43, 0.671, 0.638],
+      [side * 1.375, 0.616, -0.715], [side * 1.628, 0.055, -0.638],
+    ];
+    P.add('turret', orientedSlab(
+      [side * 0.198, 0.055, 1.606], sideFace[0], sideFace[3], [side * 0.44, 0.055, 0.264],
+      topFace[0], topFace[1], topFace[2], topFace[3]));
+
+    // Four compound-pitch courses replace the two hand-rotated diagonal
+    // strips. Every cassette inherits the wing's local normal and penetrates
+    // its carrier by 12 mm, so neither yaw nor pitch can open a daylight gap.
+    for (const u of [0.16, 0.38, 0.60, 0.82]) {
+      for (const v of [0.12, 0.36, 0.60, 0.84]) {
+        const face = sampleFace(...topFace, u, v, [0, 1, 0]);
+        faceSeatedArmorCassette(P, 'turret', face, face.dv,
+          0.225, 0.082, 0.205, eraEmbed);
+        turretEraCount++;
+      }
+    }
+    // A joined outer-shoulder course protects the flank without forming a
+    // detached second shell. Local +Y follows the outward side normal.
+    for (const v of [0.14, 0.38, 0.62, 0.86]) {
+      const face = sampleFace(...sideFace, 0.58, v, [side, 0, 0]);
+      faceSeatedArmorCassette(P, 'turret', face, face.dv,
+        0.285, 0.078, 0.255, eraEmbed);
+      turretEraCount++;
     }
     // High modular side armor is additive over the intact Type 10 skirts and
     // stays clear of the five-wheel smart course (inner faces seated on the
-    // 1.6606 skirt outer plane — §B2 no-air; outer 1.7102 inside the ±1.782
-    // width anchor).
-    for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.6854, 1.133,
-      1.782 - i * 0.748, 0.0495, 0.462, 0.66, null, false);
+    // 1.6605 skirt outer plane. The old course stopped 0.15 mm short; these
+    // modules embed 10 mm into that exact carrier plane.
+    for (let i = 0; i < 6; i++) {
+      const thickness = 0.0495;
+      const carrierX = 1.6605;
+      const centerX = side * (carrierX + thickness * 0.5);
+      seatedArmorCassette(P, 'hull', centerX, 1.133, 1.782 - i * 0.748,
+        thickness, 0.462, 0.66, null, {
+          axis: 'x', contactSide: -side, embed: 0.010, lid: true,
+        });
+    }
   }
   // Paired EO stations and compact commander's RWS preserve JGSDF asymmetry.
-  P.add('turret', box(0.495, 0.0825, 0.484), -0.55, 0.968, -0.242);
-  P.add('turretDetail', box(0.385, 0.363, 0.352), -0.55, 1.155, -0.187, -0.06, 0, 0);
-  P.add('turretDark', box(0.286, 0.187, 0.033), -0.55, 1.166, 0.0275);
-  P.add('turretGlass', box(0.198, 0.11, 0.022), -0.55, 1.166, 0.0528);
-  P.add('turret', box(0.374, 0.275, 0.341), 0.77, 0.979, 0.11, -0.08, 0, 0);
-  P.add('turretDark', box(0.264, 0.143, 0.0286), 0.77, 0.99, 0.3135);
-  P.add('turretGlass', box(0.176, 0.0825, 0.0198), 0.77, 0.99, 0.3366);
-  roofWeapon(P, 0.462, 1.001, -0.638, 10010, 0.858, 0.045, 1.1);
-  smoke(P, 1.353, 0.715, 0.055, 6, 10020, -0.45, 1.1);
-  joinedBasket(P, 2.772, 0.528, -1.914, 0.77, 10030, 1.1);
+  // Each assembly is lowered as a unit onto the marked 0.637 m crown plane;
+  // optics, shields and weapons keep their relative internal alignment.
+  const roofY = 0.637;
+  const roofEmbed = 0.012;
+  const leftBaseY = roofY + 0.0825 * 0.5 - roofEmbed;
+  const leftDeltaY = leftBaseY - 0.968;
+  P.add('turret', box(0.495, 0.0825, 0.484), -0.55, leftBaseY, -0.242);
+  P.add('turretDetail', box(0.385, 0.363, 0.352), -0.55, 1.155 + leftDeltaY, -0.187, -0.06, 0, 0);
+  P.add('turretDark', box(0.286, 0.187, 0.033), -0.55, 1.166 + leftDeltaY, 0.0275);
+  P.add('turretGlass', box(0.198, 0.11, 0.022), -0.55, 1.166 + leftDeltaY, 0.0528);
+
+  const rightBodyY = roofY + 0.275 * 0.5 - roofEmbed;
+  const rightDeltaY = rightBodyY - 0.979;
+  P.add('turret', box(0.374, 0.275, 0.341), 0.77, rightBodyY, 0.11, -0.08, 0, 0);
+  P.add('turretDark', box(0.264, 0.143, 0.0286), 0.77, 0.99 + rightDeltaY, 0.3135);
+  P.add('turretGlass', box(0.176, 0.0825, 0.0198), 0.77, 0.99 + rightDeltaY, 0.3366);
+
+  const rwsBaseY = roofY + (0.075 * 1.1) * 0.5 - roofEmbed;
+  roofWeapon(P, 0.462, rwsBaseY, -0.638, 10010, 0.858, 0.045, 1.1);
+  smoke(P, 1.353, roofY, 0.055, 6, 10020, -0.45, 1.1);
+  const kaiBasketZ = -1.789;
+  joinedBasket(P, 2.772, 0.528, kaiBasketZ, 0.77, 10030, 1.1);
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', box(0.035, 0.035, 0.56),
+      side * 1.34, 0.53, -2.30, 0, side * 0.08, 0);
+  }
   whips(P, 0.814, -2.134, 10040, 1.21, 1.1);
+  P.turretG.userData.type10bRoofEraReceipt = {
+    roofCarrierY: roofY,
+    contactEmbedM: roofEmbed,
+    leftSightBottomY: roofY - roofEmbed,
+    rightSightBottomY: roofY - roofEmbed,
+    rwsBottomY: roofY - roofEmbed,
+    maxRoofGapM: 0,
+    turretEraCassettes: turretEraCount,
+    formerTurretEraCassettes: 20,
+    hullEraCassettes: 12,
+    eraCarrierDerivedTransforms: true,
+    turretEraEmbedM: eraEmbed,
+    hullEraEmbedM: 0.010,
+    kaiBasketRearZ: kaiBasketZ - 0.77 - 0.025 * 1.1,
+    baseBasketForwardZ: -2.585,
+    basketJoinGapM: 0,
+  };
   // Type 10 Kai 120-mm closed mask and strengthened sleeve.
   P.addGunExtra(box(0.858, 0.55, 0.297), 0, -0.011, 0.44);
   P.addGunExtra(cylZ(0.209, 0.44, 18, 0.165), 0, 0, 0.77);
