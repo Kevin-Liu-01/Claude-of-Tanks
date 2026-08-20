@@ -99711,7 +99711,7 @@
           }
         ]
       },
-      "geometryHash": "609b3cfc",
+      "geometryHash": "a2ed6069",
       "metadataHash": "a2cc751d",
       "appearance": {
         "version": 1,
@@ -99724,13 +99724,13 @@
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 5,
-          "gunmetal": 10,
-          "fittingPaint": 5,
+          "gunmetal": 14,
+          "fittingPaint": 7,
           "opticGlass": 2,
           "trackSteel": 2,
           "tireRubber": 1,
-          "unclassified": 12,
-          "gearShadow": 1
+          "unclassified": 11,
+          "gearShadow": 2
         }
       },
       "muzzleBore": {
@@ -99741,9 +99741,9 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 3,
+        "total": 2,
         "insignia": 1,
-        "designation": 2,
+        "designation": 1,
         "codes": [
           "RU:ru-star:112"
         ]
@@ -99794,24 +99794,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70184,
-          "sha256": "3b1d3a8bd399c70a81095aa48c9af14705d1727540eea44f8fec7701cc7a382b"
+          "bytes": 73599,
+          "sha256": "0a64706230ec4b4df9ecb7816beb954a5a4132f5cfdfbc703fea7c7948432885"
         },
         "armorSide": {
           "file": "t90a_vladimir_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72071,
-          "sha256": "14dd3a44ea7ad0248a447f6858643e0f74282ff913eb1c11e7f4bc8c932853dd"
+          "bytes": 74043,
+          "sha256": "a255e0ef06bbf1eb01de80187dbe75146072a65bc47608a8039d4c86290b843e"
         },
         "modulesSide": {
           "file": "t90a_vladimir_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79164,
-          "sha256": "c545fc6f44b7c60b58638ca634580326721e3869e45d0589b79bce4415aae679"
+          "bytes": 80476,
+          "sha256": "96d6681c73774fc357a19e3dfb683eacbbc70412b20027bbb82b694b187493e0"
         },
         "markings": {
           "file": "t90a_vladimir_markings.png",

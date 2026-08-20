@@ -1159,14 +1159,44 @@ function buildT90AVladimirLegacy(P) {
     [1.45, -0.10], [1.25, -0.45], [1.05, -0.62], [0.80, -0.72], [0.30, -0.80],
     [-0.30, -0.80], [-0.80, -0.72], [-1.05, -0.62], [-1.25, -0.45], [-1.45, -0.10],
   ];
-  // One rotating collar enters the 1.47..1.51 m deck and overlaps the cast
-  // shell. At yaw it leaves with the turret instead of exposing a hull-fixed
-  // duplicate footprint.
-  P.add('turret', polyTurret(turretPlan, 0.125, 0.94, 1.02), 0, -0.015, 0);
+  // One rotating collar enters the 1.47..1.51 m deck. Enlarge this marked
+  // lower cheek course 2x from its original base, then use its upper ring as
+  // the exact lower edge of the cast cheek above. At yaw the complete collar
+  // leaves with the turret.
+  const lowerCheekBaseY = -0.015;
+  const originalLowerCheekHeightM = 0.125;
+  const lowerCheekHeightMultiplier = 2;
+  const lowerCheekHeightM = originalLowerCheekHeightM * lowerCheekHeightMultiplier;
+  const lowerCheekBasePlanScale = 0.94;
+  const lowerCheekTopPlanScale = 1.02;
+  const lowerCheekTopY = lowerCheekBaseY + lowerCheekHeightM;
+  P.add('turret', polyTurret(
+    turretPlan,
+    lowerCheekHeightM,
+    lowerCheekBasePlanScale,
+    lowerCheekTopPlanScale,
+  ), 0, lowerCheekBaseY, 0);
   // The measured faceted perimeter owns the exact asymmetric plan, while a
-  // shallow cast crown grows from its inset top ring.  This keeps the source
-  // outline without the former pair of broad flat roof slabs.
-  P.add('turret', polyTurret(turretPlan, 0.26, 1, 0.58), 0, 0.10, 0);
+  // shallow cast crown grows from its inset top ring. The requested taller
+  // silhouette establishes a 0.568-m roof junction. Start the upper cheek at
+  // the collar's exact 0.235-m top station and reuse its 1.02 plan scale;
+  // this creates one continuous frustum instead of intersecting courses.
+  const originalCheekHeightM = 0.26;
+  const originalCheekBaseY = 0.10;
+  const requestedCheekHeightMultiplier = 1.8;
+  const cheekTopY = originalCheekBaseY + originalCheekHeightM * requestedCheekHeightMultiplier;
+  const cheekBaseY = lowerCheekTopY;
+  const cheekHeightM = cheekTopY - cheekBaseY;
+  const cheekHeightMultiplier = cheekHeightM / originalCheekHeightM;
+  const cheekBasePlanScale = lowerCheekTopPlanScale;
+  const cheekTopPlanScale = 0.58;
+  const cheekRiseM = cheekTopY - (originalCheekBaseY + originalCheekHeightM);
+  P.add('turret', polyTurret(
+    turretPlan,
+    cheekHeightM,
+    cheekBasePlanScale,
+    cheekTopPlanScale,
+  ), 0, cheekBaseY, 0);
   // Owner-height correction: Vladimir's cast fighting compartment must meet
   // the tall autoloader bustle through its own crown, not through equipment
   // stacked above a low half-dome.  Raise and facet the actual crown while
@@ -1185,7 +1215,8 @@ function buildT90AVladimirLegacy(P) {
   const p5 = {
     rings, sz: 0.73, rCz: 0.23,
     eyeKit: true, eyeRound: true, eyeScale: 1.50, eyeX: 0.60, eyeZ: 1.24,
-    k5Len: 0.85, k5T: 0.50, k5Y: 0.05, k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07,
+    k5Len: 0.85, k5T: 0.50, k5Y: 0.05 + cheekRiseM,
+    k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07 + cheekRiseM,
   };
   eraRuCheeks(P, p5, 'k5');
   // Vladimir's OTShU-1-7 pair belongs beside the gun, not in the former roof
@@ -1194,9 +1225,32 @@ function buildT90AVladimirLegacy(P) {
   // and the complete station remains turret-owned through yaw.
   for (const s of [-1, 1]) {
     P.add('turret', KIT.xform(box(0.34, 0.28, 0.44), 0, 0, -0.04),
-      s * 0.60, 0.20, 1.04, -0.22, -s * 0.12, 0);
+      s * 0.60, 0.20 + cheekRiseM, 1.04, -0.22, -s * 0.12, 0);
   }
-  ruShtora(P, p5, 0.28);
+  ruShtora(P, p5, 0.28 + cheekRiseM);
+  P.turretG.userData.t90aVladimirProportionReceipt = {
+    lowerCheekBaseY,
+    originalLowerCheekHeightM,
+    lowerCheekHeightMultiplier,
+    lowerCheekHeightM,
+    lowerCheekBasePlanScale,
+    lowerCheekTopPlanScale,
+    lowerCheekTopY,
+    cheekBaseY,
+    originalCheekBaseY,
+    originalCheekHeightM,
+    requestedCheekHeightMultiplier,
+    cheekHeightMultiplier,
+    cheekHeightM,
+    cheekBasePlanScale,
+    cheekTopPlanScale,
+    cheekTopY,
+    courseOverlapM: Math.max(0, lowerCheekTopY - cheekBaseY),
+    edgeMatched: cheekBaseY === lowerCheekTopY && cheekBasePlanScale === lowerCheekTopPlanScale,
+    cheekRiseM,
+    eraRaisedM: cheekRiseM,
+    shtoraRaisedM: cheekRiseM,
+  };
   // Vladimir ESSA hierarchy.  A long, narrow optical run and one distinct
   // outer service body replace the old staircase of tall touching boxes.
   // This follows the graduated T-90A housing grammar while retaining this
@@ -1300,20 +1354,45 @@ function buildT90AVladimirLegacy(P) {
     P.add('turretDetail', box(0.09, 0.026, 0.215), s * 1.675, 0.128, 0.2145);
     P.add('turretDetail', box(0.035, 0.026, 0.04), s * 1.7225, 0.128, 0.20);
   }
-  // Standard marker-bearing NSVT. Its origin is the pintle foot, seated on
-  // the 1.89 m world roof facet (turret pivot 1.50 + local 0.39): no air gap
-  // and no buried post.
+  // Mirrored 902B smoke batteries grow from armored shoes on the connected
+  // cheek course. The roots enter the side facets while the tubes clear the
+  // Shtora heads and the frontal K-5 fan.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.22, 0.22, 0.46), s * 1.18, 0.45, 0.32, 0, 0, -s * 0.16);
+    P.add('turretDark', box(0.16, 0.18, 0.025), s * 1.305, 0.47, 0.32, 0, 0, -s * 0.16);
+    const smoke = FITTINGS.smokeBank({
+      mats: P.mats, count: 6, r: 0.042, len: 0.30,
+      pitch: -0.40, splay: 0.30, arc: 0.55, spacing: 0.10,
+    });
+    smoke.name = `t90aVladimirSmokeBank${s < 0 ? 'L' : 'R'}`;
+    smoke.position.set(s * 1.21, 0.51, 0.35);
+    smoke.rotation.y = s * 1.04;
+    P.turretG.add(smoke);
+  }
+  // Automated commander's Kord. A buried slew ring, armored cradle and
+  // forward optic make this a controlled T-90-style station rather than an
+  // exposed hand pintle. Its exact fitting remains turret-owned through yaw.
   {
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'two-tone', elev: -0.10,
-      ammo: true, scale: 0.55, shield: false,
+      mats: P.mats, cls: 'kord', tone: 'two-tone', elev: -0.07,
+      ammo: true, scale: 0.86, shield: true,
     });
-    mg.position.set(-0.30, 0.53, -0.32);
+    mg.name = 't90aVladimirRemoteKord';
+    mg.position.set(0.38, 0.67, -0.45);
+    mg.rotation.y = 0.10;
     P.turretG.add(mg);
-    // Compact source shield: its buried lower half enters the crown and the
-    // receiver passes through its centre, keeping the mount continuous.
-    P.add('turretDetail', box(0.19, 0.13, 0.025), -0.30, 0.585, -0.20, -0.08, 0, 0);
+    P.add('turret', cylY(0.19, 0.22, 0.11, 16), 0.38, 0.60, -0.45);
+    P.add('turretDark', cylY(0.16, 0.16, 0.025, 14), 0.38, 0.6675, -0.45);
+    P.add('turret', box(0.34, 0.18, 0.24), 0.38, 0.72, -0.35, -0.05, 0.10, 0);
+    P.add('turretDetail', box(0.12, 0.14, 0.13), 0.61, 0.79, -0.24, -0.05, 0.10, 0);
+    P.add('turretGlass', box(0.085, 0.085, 0.012), 0.62, 0.80, -0.168, -0.05, 0.10, 0);
   }
+  P.turretG.userData.t90aVladimirEquipmentReceipt = {
+    smokeBanks: 2,
+    smokeCanistersPerBank: 6,
+    remoteWeapon: 'kord',
+    remoteControlled: true,
+  };
   // rear bin stack + basket (ref rows 1.86-1.97 over -1.49..-2.29)
   const rearBin = (x, w, zRear, h) => {
     P.add('turret', box(w, h, -0.65 - zRear), x, 0.145, (zRear - 0.65) / 2);
@@ -1356,18 +1435,30 @@ function buildT90AVladimirLegacy(P) {
   // Raise the complete articulated gun seat, including its saddle and root,
   // rather than lifting only the visible tube away from the mantlet.
   P.gunG.position.set(0, 0.16, 1.05);
-  ruSaddle(P, { rollR: 0.10, rollW: 0.60, tubeR: 0.060, rootL: 0.66 });
-  // r13c: root block y-slimmed into the ref's fused-root band — rig_gun is
-  // turret-mask content, and the 0.26-tall block owned six side_turret
-  // cols at 1.42..1.68 where the ref sleeve reads 1.529..1.663
-  P.addGunExtra(box(0.44, 0.13, 0.26), 0, 0.046, 0.12);
-  P.addGunExtra(box(0.36, 0.10, 0.85), 0, 0.06, 0.55);
+  ruSaddle(P, { rollR: 0.15, rollW: 0.70, tubeR: 0.078, rootL: 0.78, rootR: 0.105 });
+  // A broad cast root and tapered accordion boot give the 2A46M a deliberate
+  // load path into the taller cheeks.  Every section intersects the next;
+  // the gun remains one elevating rig rather than a tube floating in a slit.
+  P.addGunExtra(box(0.56, 0.18, 0.30), 0, 0.045, 0.14);
+  ruBoot(P, {
+    pts: [[0.10, 0.56, 0.30, 0.02], [0.32, 0.46, 0.26, 0.01],
+      [0.58, 0.34, 0.21, 0.005], [0.84, 0.23, 0.17, 0]],
+    creaseD: 0.032,
+  });
   tubeGun(P, [
-    [0.45, 2.30, 0.060, 0.060, 0, 0, 0.18], [2.30, 2.87, 0.060, 0.060, 0, 0, 0.18],
-    [2.87, 3.90, 0.050], [3.90, 4.475, 0.050],
-  ], { rings: [[0.90, 0.065], [1.50, 0.065], [2.30, 0.065], [2.95, 0.052], [3.60, 0.052], [4.20, 0.052]], muzzle: 4.475 });
-  P.add('gun', cylZ(0.070, 0.40, 14, 0.065), 0, 0, 2.06);
-  P.add('gunDark', cylZ(0.072, 0.04, 14), 0, 0, 2.27);
+    [0.52, 2.30, 0.078, 0.078, 0, 0, 0.20], [2.30, 2.87, 0.078, 0.076, 0, 0, 0.20],
+    [2.87, 3.90, 0.064], [3.90, 4.475, 0.060],
+  ], { rings: [[0.90, 0.083], [1.50, 0.083], [2.30, 0.082], [2.95, 0.068], [3.60, 0.066], [4.20, 0.064]], muzzle: 4.475 });
+  P.add('gun', cylZ(0.105, 0.48, 14, 0.098), 0, 0, 2.06);
+  P.add('gunDark', cylZ(0.108, 0.04, 14), 0, 0, 2.31);
+  muzzleBore(P, { r: 0.060 });
+  P.gunG.userData.t90aVladimirGunReceipt = {
+    sleeveRadiusM: 0.078,
+    muzzleRadiusM: 0.060,
+    fumeExtractorRadiusM: 0.105,
+    muzzleZ: 4.475,
+    sealedBoot: true,
+  };
   const dxV = ringSkin(rings, 0.32) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxV, 0.28, -0.35], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxV, 0.28, -0.35], -Math.PI / 2);
