@@ -2416,9 +2416,8 @@ function buildMBT70(P) {
   const {
     xform, box, polyMultiLoft, cylY, cylZ, sph, torus,
     buildGun, liftEye, periscope,
-    smokeCluster, stowage, jerryCan, ammoCan,
+    smokeCluster,
   } = KIT;
-  const { rng } = P;
   const seg = P.q ? 24 : 14;
 
   // ---- certified M1A1 hull, intentionally without side skirts ------------
@@ -2447,6 +2446,13 @@ function buildMBT70(P) {
   const TH = 0.80;
   const TURRET_SEAT_Y_M = 1.49;
   const BUSTLE_FLOOR_RISE_M = 0.23;
+  // Preserve the original sight crown while extending the housing downward
+  // to the roof, so attachment does not reduce the certified height datum.
+  const GUNNER_SIGHT_HEIGHT_M = 0.435;
+  const GUNNER_SIGHT_BASE_Y_M = TH;
+  const INSIGNIA_REAR_LOCAL_Z_M = -1.72;
+  const SPARE_TRACK_MOUNT_X_M = 1.47;
+  const SPARE_TRACK_MOUNT_Z_M = -2.44;
   const TURRET_HALF_WIDTH_M = 1.74;
   const TURRET_WIDTH_SCALE = TURRET_HALF_WIDTH_M / 1.45;
   const turretPlan = [
@@ -2542,16 +2548,48 @@ function buildMBT70(P) {
     mg.position.set(0.62, TH + 0.61, -0.66);
     P.turretG.add(mg);
   }
-  P.addEquipment('turret', box(0.34, 0.37, 0.34), -0.64, TH + 0.25, 0.02);     // gunner sight
-  P.add('turretGlass', box(0.22, 0.17, 0.025), -0.64, TH + 0.28, 0.20);
+  // Seat the gunner sight through a thin gasket directly on the roof.  Its
+  // previous center left a visible 65 mm air gap beneath the marked housing.
+  P.addEquipment('turretDark', box(0.30, 0.025, 0.30), -0.64,
+    GUNNER_SIGHT_BASE_Y_M + 0.0125, 0.02);
+  P.addEquipment('turret', box(0.34, GUNNER_SIGHT_HEIGHT_M, 0.34), -0.64,
+    GUNNER_SIGHT_BASE_Y_M + GUNNER_SIGHT_HEIGHT_M * 0.5, 0.02);                // gunner sight
+  P.add('turretGlass', box(0.22, 0.17, 0.025), -0.64,
+    GUNNER_SIGHT_BASE_Y_M + GUNNER_SIGHT_HEIGHT_M * 0.54, 0.20);
   periscope(P, 'turretDetail', -0.58, TH + 0.16, -0.30);
   // Rear basket, smoke launchers, antennae and securely seated stowage.
   P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.06);
   P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.06);
   for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.06);
-  stowage(P, 'turretCloth', rng, [[-0.58, 0.36, -2.89, 0.78, 0.30, 0.30], [0.50, 0.34, -2.88, 0.74, 0.28, 0.30]]);
-  jerryCan(P, 'turretCloth', 1.08, 0.38, -2.85, 0.18);
-  ammoCan(P, 'turretDark', -1.05, 0.38, -2.85, -0.12);
+  for (const [side, seed] of [[-1, 73], [1, 74]]) {
+    const rack = FITTINGS.stowageRack({
+      mats: P.mats, w: 1.26, d: 0.38, h: 0.28, rails: 3, fill: 0.95,
+      seed, rotation: [0, Math.PI, 0],
+    });
+    rack.name = `mbt70_bustle_stowage_rack_${side < 0 ? 'left' : 'right'}`;
+    rack.position.set(side * 0.68, 0.205, -2.84);
+    P.turretG.add(rack);
+  }
+  const bustleCans = FITTINGS.jerryCans({
+    mats: P.mats, count: 2, gap: 0.04, seed: 75,
+  });
+  bustleCans.name = 'mbt70_bustle_jerry_cans';
+  bustleCans.position.set(-0.92, 0.215, -2.78);
+  P.turretG.add(bustleCans);
+  const bustleCable = FITTINGS.towCable({
+    mats: P.mats, r: 0.018, eyes: false, seed: 76,
+    pts: [[-1.18, 0.73, -2.40], [0, 0.77, -2.58], [1.18, 0.73, -2.40]],
+  });
+  bustleCable.name = 'mbt70_bustle_tow_cable';
+  P.turretG.add(bustleCable);
+  // Low service cases and positive latches occupy the previously bare left
+  // bustle roof without competing with the commander's station.
+  P.addEquipment('turret', box(0.48, 0.11, 0.34), -0.82, TH + 0.055, -1.72, -0.035, 0, 0);
+  P.addEquipment('turret', box(0.38, 0.10, 0.30), -0.94, 0.70, -2.18, -0.035, 0, 0);
+  for (const x of [-1.00, -0.66]) {
+    P.addEquipment('turretDark', box(0.055, 0.035, 0.11), x, TH + 0.1225, -1.72);
+  }
+  P.addEquipment('turretDark', box(0.055, 0.035, 0.11), -0.94, 0.7675, -2.18);
   smokeCluster(P, 1.26, 0.55, -0.62, 4, 1.18, 0.70);
   smokeCluster(P, -1.26, 0.55, -0.62, 4, -1.18, 0.70);
   // The MBT-70's signature paired smoke canisters sit proud of the turret
@@ -2597,9 +2635,13 @@ function buildMBT70(P) {
     P.addEquipment('turret', box(0.24, 0.18, 0.38), side * 1.47, 0.49, -1.25, 0, side * 0.05, 0);
     P.addEquipment('turret', box(0.22, 0.16, 0.34), side * 1.44, 0.52, -1.72, 0, side * 0.04, 0);
     P.addEquipment('turretDetail', box(0.055, 0.055, 0.64), side * 1.18, TH + 0.04, -1.52);
-    for (const z of [-2.05, -2.28, -2.51]) {
-      P.addEquipment('turretDark', box(0.24, 0.11, 0.08), side * 1.14, 0.66, z, 0, side * 0.04, 0);
-    }
+    const links = FITTINGS.spareTrackLinks({
+      mats: P.mats, links: 4, width: 0.46, pitch: 0.165, seed: 77 + side,
+      rotation: [0, 0, side * Math.PI / 2],
+    });
+    links.name = `mbt70_bustle_spare_links_${side < 0 ? 'left' : 'right'}`;
+    links.position.set(side * SPARE_TRACK_MOUNT_X_M, 0.47, SPARE_TRACK_MOUNT_Z_M);
+    P.turretG.add(links);
   }
   P.addEquipment('turret', box(0.28, 0.20, 0.32), -1.02, TH + 0.12, -0.88);
   P.add('turretGlass', box(0.17, 0.10, 0.02), -1.02, TH + 0.15, -0.705);
@@ -2701,13 +2743,23 @@ function buildMBT70(P) {
     rearQuarterClosurePanels: 4,
     turretEraPanels: turretEraStations.length * 2,
     hullEraPanels: hullEraStations.length,
-    addedEquipmentPieces: 14,
+    roofSightBaseYM: GUNNER_SIGHT_BASE_Y_M,
+    roofSightGapM: 0,
+    spareTrackLinkRacks: 2,
+    spareTrackLinksPerRack: 4,
+    spareTrackMountXM: SPARE_TRACK_MOUNT_X_M,
+    spareTrackMountZM: SPARE_TRACK_MOUNT_Z_M,
+    bustleStowageRacks: 2,
+    bustleJerryCanCount: 2,
+    bustleTowCable: true,
+    insigniaRearLocalZM: INSIGNIA_REAR_LOCAL_Z_M,
+    addedEquipmentPieces: 24,
   };
 
   // The running gear above is the exact M1A1 seven-wheel assembly supplied
   // by buildM1A1BareHull; do not layer a second MBT-70 track loop over it.
-  P.decal('turret', 'crossgrey', null, 0.31, [1.68, 0.44, -0.32], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.31, [-1.68, 0.44, -0.32], -Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.31, [1.59, 0.44, INSIGNIA_REAR_LOCAL_Z_M], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.31, [-1.59, 0.44, INSIGNIA_REAR_LOCAL_Z_M], -Math.PI / 2);
   P.decal('hull', 'number', '70', 0.28, [1.70, 1.20, 1.82], Math.PI / 2);
   // Preserve the certified Abrams hull construction while shortening its
   // longitudinal stations to the MBT-70 wheelbase.  Re-seat that shortened

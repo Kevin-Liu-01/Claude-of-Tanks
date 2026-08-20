@@ -5,6 +5,7 @@ import { getSpec, MODEL_SOURCE } from '../specs.js';
 import { tankTier } from '../tier.js';
 import { wheelPatternFor } from '../wheelPatterns.js';
 import { resolveCamoVisual } from '../materials.js';
+import { vehicleMarkingAnchor } from '../vehicleMarkings.js';
 import { createTankState, SIM_DT } from '../../sim/movement.js';
 
 const spec = getSpec('mbt70');
@@ -36,6 +37,8 @@ assert.equal(spec.dims.overallLengthM, 9.37,
   'published envelope follows the additional complete-rig forward seat');
 assert.equal(wheelPatternFor(spec).id, 'split-rim-ten',
   'M1A1 donor keeps the Abrams split-rim wheel identity');
+assert.ok(vehicleMarkingAnchor('mbt70').longitudinal <= 0.25,
+  'generated MBT-70 insignia is ray-seated on the rear quarter of the turret');
 assert(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'authored turret magazine exposes a missile-rack damage volume');
 assert(spec.armor.crew.every((crew) => crew.turretLocal),
@@ -102,8 +105,55 @@ assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretRec
   rearQuarterClosurePanels: 4,
   turretEraPanels: 6,
   hullEraPanels: 8,
-  addedEquipmentPieces: 14,
+  roofSightBaseYM: 0.8,
+  roofSightGapM: 0,
+  spareTrackLinkRacks: 2,
+  spareTrackLinksPerRack: 4,
+  spareTrackMountXM: 1.47,
+  spareTrackMountZM: -2.44,
+  bustleStowageRacks: 2,
+  bustleJerryCanCount: 2,
+  bustleTowCable: true,
+  insigniaRearLocalZM: -1.72,
+  addedEquipmentPieces: 24,
 });
+const turretEquipment = turretRig.getObjectByName('turretEquipment');
+const turretEquipmentPositions = turretEquipment.geometry.getAttribute('position');
+let sightVertexCount = 0;
+let sightMinLocalY = Infinity;
+for (let i = 0; i < turretEquipmentPositions.count; i++) {
+  const x = turretEquipmentPositions.getX(i);
+  const y = turretEquipmentPositions.getY(i);
+  const z = turretEquipmentPositions.getZ(i);
+  if (x >= -0.82 && x <= -0.46 && z >= -0.16 && z <= 0.20) {
+    sightVertexCount++;
+    sightMinLocalY = Math.min(sightMinLocalY, y);
+  }
+}
+assert.ok(sightVertexCount > 0,
+  'marked gunner-sight housing remains present in the turret equipment mesh');
+assert.ok(Math.abs(sightMinLocalY - 0.80) < 0.005,
+  `gunner sight begins on the turret roof with no air gap (${sightMinLocalY.toFixed(3)} m)`);
+for (const side of ['left', 'right']) {
+  const links = turretRig.getObjectByName(`mbt70_bustle_spare_links_${side}`);
+  assert(links, `${side} bustle carries a real spare-track fitting`);
+  assert.equal(links.parent, turretRig, `${side} spare links rotate with the turret`);
+  assert.ok(Math.abs(Math.abs(links.position.x) - 1.47) < 1e-9
+    && links.position.z <= -2.40,
+    `${side} spare links sit flush against the aft bustle quarter`);
+  assert.ok(Math.abs(Math.abs(links.rotation.z) - Math.PI / 2) < 1e-9,
+    `${side} spare links hang vertically against the side plate`);
+}
+for (const name of [
+  'mbt70_bustle_stowage_rack_left',
+  'mbt70_bustle_stowage_rack_right',
+  'mbt70_bustle_jerry_cans',
+  'mbt70_bustle_tow_cable',
+]) {
+  const fitting = turretRig.getObjectByName(name);
+  assert(fitting, `${name} is present`);
+  assert.equal(fitting.parent, turretRig, `${name} remains attached through turret yaw`);
+}
 assert.ok(turretRig.userData.mbt70TurretReceipt.bustleFloorRearM
   > turretRig.userData.mbt70TurretReceipt.bustleFloorFrontM + 0.20,
   'bustle underside rises aft to clear the donor engine deck');
