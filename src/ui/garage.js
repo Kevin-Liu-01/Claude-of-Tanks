@@ -40,6 +40,7 @@ import {
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
 import { getPlayerRecord } from '../game/profile.js';
+import { mountGitHubStars } from './githubStars.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -121,6 +122,9 @@ const GARAGE_CSS = `
 .cot-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
   color:#1a1105;background:#f0a030;border:1px solid #ffc46b;font:900 7px ${FONT_COND};
   line-height:1;letter-spacing:0;box-shadow:0 0 12px rgba(240,160,48,.2);}
+.cot-nav .cot-github{position:relative;padding-inline:8px;}
+.cot-nav .github-stars{padding-left:6px;border-left:1px solid rgba(146,164,180,.28);
+  color:#f0b04a;font:900 7px ${FONT_COND};letter-spacing:.04em;font-variant-numeric:tabular-nums;}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
   right:auto;top:auto;}
@@ -825,6 +829,9 @@ const GARAGE_CSS = `
   .cot-nav .nv .nvi{width:15px;height:15px;}
   .cot-nav .record-badge{position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;
     font-size:6px;}
+  .cot-nav .github-stars{position:absolute;right:-7px;top:-6px;min-width:18px;height:14px;padding:0 3px;
+    display:grid;place-items:center;border:1px solid #ffc46b;background:#f0a030;color:#1a1105;
+    font-size:5.5px;line-height:1;letter-spacing:0;box-shadow:0 0 10px rgba(240,160,48,.22);}
 }
 
 /* Short desktop viewports have spare room beside the country/carousel rail,
@@ -1668,7 +1675,7 @@ export function createGarage(opts) {
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">GitHub</span></a>` +
+    `<span class="nav-label">GitHub</span><span class="github-stars" data-github-stars>Stars</span></a>` +
     `<div class="cot-settings-slot"></div></nav>` +
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
@@ -1719,6 +1726,7 @@ export function createGarage(opts) {
     `<div class="cot-camos"></div></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
+  mountGitHubStars(root);
 
   function refreshServiceRecord() {
     const record = getPlayerRecord();

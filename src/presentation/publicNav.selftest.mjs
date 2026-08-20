@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatGitHubStarCount } from '../ui/githubStars.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pages = [
@@ -19,6 +20,8 @@ const expectedLinks = [
   ['/', 'Play Now'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
+assert.equal(formatGitHubStarCount(999), '999');
+assert.equal(formatGitHubStarCount(1200), '1.2K');
 assert.match(navCss, /\.public-nav__links\{display:flex;align-items:center;gap:8px\}/,
   'desktop navigation controls must retain visible spacing');
 assert.doesNotMatch(navCss, /\.public-nav__links\{[^}]*align-items:stretch/,
@@ -52,6 +55,30 @@ for (const [file, activeHref] of pages) {
   const github = links.find(({ href }) => href.includes('github.com'));
   assert.ok(github?.attrs.includes('target="_blank"'), `${file} GitHub control opens the repository`);
   assert.ok(linksBlock.includes('data-github-stars'), `${file} GitHub control exposes the live star count`);
+}
+
+const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+const gameRepositoryLinks = [...gameHtml.matchAll(/<a[^>]+href="https:\/\/github\.com\/Kevin-Liu-01\/Claude-of-Tanks"[^>]*>([\s\S]*?)<\/a>/g)];
+assert.equal(gameRepositoryLinks.length, 2, 'loading and credits screens must retain both repository controls');
+for (const [, contents] of gameRepositoryLinks) {
+  assert.ok(contents.includes('data-github-stars'), 'every repository control in the loading flow shows stars');
+}
+
+const garageSource = readFileSync(join(ROOT, 'src/ui/garage.js'), 'utf8');
+const githubControl = garageSource.indexOf('class="nv cot-github"');
+const settingsSlot = garageSource.indexOf('class="cot-settings-slot"');
+assert.ok(githubControl >= 0 && settingsSlot > githubControl,
+  'garage GitHub stars must sit immediately before the settings control');
+assert.match(garageSource, /class="github-stars" data-github-stars>Stars<\/span>/,
+  'garage GitHub control exposes the shared live star count');
+
+for (const file of ['home.html', 'docs.html']) {
+  const html = readFileSync(join(ROOT, file), 'utf8');
+  const repositoryLinks = [...html.matchAll(/<a[^>]+href="https:\/\/github\.com\/Kevin-Liu-01\/(?:Claude-of-Tanks|claude-of-tanks)"[^>]*>([\s\S]*?)<\/a>/g)];
+  assert.ok(repositoryLinks.length >= 2, `${file} must retain navbar and footer repository controls`);
+  for (const [, contents] of repositoryLinks) {
+    assert.ok(contents.includes('data-github-stars'), `${file} repository control is missing its star count`);
+  }
 }
 
 console.log('public navigation selftest passed');

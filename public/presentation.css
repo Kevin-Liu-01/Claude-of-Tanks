@@ -111,6 +111,7 @@ button{font:inherit;color:inherit}
 .footer .inner{display:flex;align-items:center;justify-content:space-between;gap:30px}
 .footer .brand{margin:0}
 .footer-links{display:flex;gap:20px;flex-wrap:wrap;color:var(--dim);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.footer-links a{display:inline-flex;align-items:center;gap:7px}.footer-stars{display:inline-flex;align-items:center;gap:3px;color:var(--amber);font-variant-numeric:tabular-nums;letter-spacing:.04em}
 .lightbox{border:1px solid var(--line);padding:0;background:#05080b;color:var(--ink);width:min(94vw,1500px);max-height:94vh}
 .lightbox::backdrop{background:rgba(2,4,6,.92);backdrop-filter:blur(10px)}
 .lightbox img{width:100%;max-height:82vh;object-fit:contain;background:#020304}

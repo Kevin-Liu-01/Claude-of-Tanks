@@ -25,6 +25,7 @@
  */
 
 import { TRANSITION_SHOTS } from './featuredShots.js';
+import { mountGitHubStars } from './githubStars.js';
 import { preloadImage } from './imagePreload.js';
 
 const TIPS = [
@@ -188,6 +189,7 @@ export function createBootScreen({ mode = 'garage' } = {}) {
   const elTicks = $('cot-boot-ticks');
   const elTip = $('cot-boot-tip');
   const elGate = $('cot-boot-gate');
+  mountGitHubStars(document);
 
   const total = stages.reduce((a, s) => a + s[2], 0);
   // cumulative [start, end] fraction per stage key
