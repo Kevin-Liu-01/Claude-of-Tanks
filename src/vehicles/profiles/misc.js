@@ -1088,7 +1088,8 @@ function buildLeclerc(P, variant = 's2') {
       else P.add('hull', box(0.035, 1.01, 0.41), s * 1.6825, 0.985, -3.05 + 0.4306 * k);
     }
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.03, 0.90, 0.016), s * 1.684, 0.975, 0.72 - k * 0.86);
-    P.add('hullDark', box(0.02, 0.05, 5.82), s * 1.688, 0.505, 0.31);
+    // The former 5.82 m gunmetal strip was a detached lower-skirt line, not a
+    // Leclerc structural rail.  The segmented side modules above own this run.
     // The animated idler/shoes exclusively own the forward track lane.  The
     // restored mudguard is authored above/ahead of this lane, not at the old
     // intersecting z=3.28/y=0.775 seat.
@@ -1400,6 +1401,7 @@ function buildLeclerc(P, variant = 's2') {
   }
   for (const s of [-1, 1]) {
     P.add('turret', box(0.66, 0.06, 0.54), s * 0.67, 0.722, -0.33);            // HIGH ROOF forward caps x 0.34..1.00 per side, top LH (2.352w), z_l -0.06..-0.60 — the CENTER stays at the channel line (ref front center cols 2.248-2.278: a full-width cap read +0.046..0.055 on six cols, loop 1)
+    P.add('turret', box(0.66, 0.10, 0.10), s * 0.67, 0.646, -0.55);             // aft roof-cap return: overlaps the 0.60 autoloader roof and the cap underside, closing the former hovering rear edge
   }
   // commander hatch WELL (print read: recessed dish floor 2.07w, x -0.35..
   // -0.85, z_w 0.34..0.64) sunk into the mid roof + lid ring inside
@@ -1607,8 +1609,11 @@ function buildLeclerc(P, variant = 's2') {
     P.add('turret', slab(
       [s * 1.40, 0.32, 0.34], [s * 1.535, 0.32, 0.34], [s * 1.535, 0.32, -0.45], [s * 1.40, 0.32, -0.45],
       [s * 1.40, s < 0 ? 0.57 : 0.46, 0.30], [s * 1.44, s < 0 ? 0.57 : 0.46, 0.30], [s * 1.44, s < 0 ? 0.57 : 0.46, -0.45], [s * 1.40, s < 0 ? 0.57 : 0.46, -0.45]));
-    // applique 1.246..1.60w — the print's LEFT plate runs to 1.41w, RIGHT to 1.04w
-    P.add('turret', box(0.028, 0.355, s < 0 ? 1.55 : 1.18), s * 1.63, -0.177, s < 0 ? 0.735 : 0.55);
+    // Hull/fender applique 1.246..1.60w.  This is fixed body armor, not a
+    // turret skirt: preserve the yaw-zero surface while keeping it stationary
+    // as the turret traverses.
+    P.add('hull', box(0.028, 0.355, s < 0 ? 1.55 : 1.18),
+      s * 1.63, 1.423, s < 0 ? 0.635 : 0.45);
     P.add('turretDetail', box(0.045, 0.045, 1.28), s * 1.53, 0.35, -0.79);     // basket rails
     P.add('turretDetail', box(0.045, 0.045, 1.28), s * 1.53, 0.02, -0.79);
     for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.03, 0.33, 0.03), s * 1.53, 0.185, -0.24 - k * 0.28);
@@ -1675,7 +1680,7 @@ function buildLeclerc(P, variant = 's2') {
   // new seat owns that band instead (side masks image both flanks, so a
   // LEFT gun legally covers it): receiver z_w 0.246..0.453 inside the two
   // 2.409 col windows [0.238..0.459] (scale 0.78 sizes the rec to fit; foot
-  // z_l 0.413), top ~2.41w; foot SUNK (priced-furniture-swap law) so the
+  // z_l 0.413), top ~2.41w; foot seated at y 0.610 so the
   // stack stays at the pintle allowance: front cols -0.825/-0.866 read
   // ~2.41 vs ref 2.369 (+0.021 x2, funded by the tower/hatch recovery).
   // Barrel DROOPS (elev -0.08, matched-envelope law) under the cheek-plane
@@ -1686,8 +1691,10 @@ function buildLeclerc(P, variant = 's2') {
     // measured fix for side cols 0.515/0.626: the two-tone CAP strip rode
     // the barrel to z_w 0.76 at 2.439 and pixel-printed 2.464 (loop-2
     // whatsat AABB [-0.877..-0.823, top 2.439, z 0.258..0.763]).
-    const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: false });
-    anf1.position.set(-0.85, 0.640, 0.413);
+    const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: false, barrelBridge: true });
+    anf1.name = 'leclercRoofAnf1';
+    anf1.position.set(-0.85, 0.610, 0.413);
+    anf1.userData.roofContactY = 0.610;
     P.turretG.add(anf1);
   }
   // §5.14 ORDER: 12.7 mm M2 on the roof, FORWARD rest (§5.07 CROWS-FORWARD
@@ -1705,6 +1712,7 @@ function buildLeclerc(P, variant = 's2') {
     // roof instead), scale 0.76, foot sunk to 0.575 — receiver band ~2.40
     // inside the ref's own 2.37-2.42 cluster window at z_w 0.16..0.46.
     const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', elev: -0.20, seed: 17, scale: 0.76, ammo: false });
+    m2.name = 'leclercRoofM2';
     m2.position.set(0.88, 0.575, 0.36);
     P.turretG.add(m2);
     P.add('turretDark', box(0.10, 0.02, 0.14), 0.70, 0.62, 0.10);              // flat 12.7 ammo pouch on the mid roof
@@ -1858,6 +1866,15 @@ function buildLeclerc(P, variant = 's2') {
   P.addGunExtra(cylZ(0.138, 1.15, 12), 0.045, -0.014, 3.98);                   // fore sleeve band (ref 1.717..1.994 @ w 4.2-5.0)
   buildGun(P, { len: 5.89, r: 0.085, sleeve: true, evac: 0.52, evacR: 1.72, collar: true, baseR: 0.17 });
   muzzleBore(P, 0.085, 5.87);                                                  // §B3.1 muzzle bore on the F1 tube (shadow-named)
+  P.hullG.userData.leclercRigFinish = {
+    removedLowerSkirtRails: 2,
+    hullFixedSideApplique: 2,
+  };
+  P.turretG.userData.leclercRoofFinish = {
+    highRoofSupportBridges: 2,
+    anf1RoofContactY: 0.610,
+    anf1BarrelBridge: true,
+  };
   P.topY = LH + 0.55;
 }
 
@@ -1985,18 +2002,32 @@ function buildAMX56(P) {
   P.addGunExtraDark(box(0.11, 0.08, 0.025), 0.15, 0.11, 5.21);
 
   // Gunner/commander plant: low dual sight boxes and a shielded forward RWS.
-  P.add('turret', box(0.42, 0.23, 0.40), 0.62, 0.84, 0.18, 0, -0.08, 0);
-  P.add('turretGlass', box(0.25, 0.13, 0.025), 0.62, 0.86, 0.395);
-  P.add('turret', cylY(0.24, 0.24, 0.08, 16), -0.48, 0.82, -0.58);
-  P.add('turret', box(0.40, 0.18, 0.38), -0.48, 0.95, -0.50);
-  P.add('turretGlass', box(0.15, 0.10, 0.025), -0.48, 0.97, -0.29);
-  P.add('turret', box(0.52, 0.30, 0.045), -0.48, 1.08, -0.14, -0.16, 0, 0);
+  P.add('turret', box(0.42, 0.23, 0.40), 0.62, 0.725, 0.18, 0, -0.08, 0);
+  P.add('turretGlass', box(0.25, 0.13, 0.025), 0.62, 0.745, 0.395);
+  P.add('turret', cylY(0.24, 0.24, 0.08, 16), -0.48, 0.792, -0.58);
+  P.add('turret', box(0.40, 0.18, 0.38), -0.48, 0.922, -0.50);
+  P.add('turretGlass', box(0.15, 0.10, 0.025), -0.48, 0.942, -0.29);
+  P.add('turret', box(0.52, 0.30, 0.045), -0.48, 1.052, -0.275, -0.16, 0, 0);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true });
-    mg.position.set(-0.48, 1.15, -0.48);
+    mg.name = 'amx56RoofRwsGun';
+    mg.position.set(-0.48, 1.012, -0.48);
+    mg.userData.mountContactY = 1.012;
     P.turretG.add(mg);
   }
-  periscope(P, 'turretDetail', 0.12, 0.81, -0.18, 0.12);
+  periscope(P, 'turretDetail', 0.12, 0.683, -0.18, 0.12);
+  P.turretG.userData.amx56RoofAssembly = {
+    gunnerSightRoofY: 0.610,
+    gunnerSightBottomY: 0.610,
+    rwsRoofY: 0.752,
+    rwsBaseBottomY: 0.752,
+    rwsBodyTopY: 1.012,
+    rwsWeaponFootY: 1.012,
+    rwsShieldRearZ: -0.321,
+    rwsBodyFrontZ: -0.310,
+    periscopeRoofY: 0.648,
+    periscopeBottomY: 0.648,
+  };
   P.topY = Math.max(P.topY, 1.37);
 }
 

@@ -749,6 +749,11 @@ function fittingPintleMG(opts = {}) {
     for (let k = 0; k < 5; k++) {
       parts.add(B, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
     }
+  } else if (opts.barrelBridge) {
+    // Some slim, unsleeved weapons otherwise begin their barrel 100 mm ahead
+    // of the receiver.  Let callers request the missing breech-to-barrel run
+    // without changing the certified silhouettes of existing fittings.
+    parts.add(B, aim(cylZ(cls.barrelR * s * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
   }
   const bl = cls.barrelL * s;
   parts.add(B, aim(cylZ(cls.barrelR * s, bl, 8), 0.10 * s + bl / 2), 0, trunY, trunZ);
@@ -775,7 +780,9 @@ function fittingPintleMG(opts = {}) {
       parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
     }
   }
-  return fitAssemble('pintleMG', parts, opts);
+  const fitting = fitAssemble('pintleMG', parts, opts);
+  fitting.userData.barrelBridge = Boolean(opts.barrelBridge);
+  return fitting;
 }
 
 /**
