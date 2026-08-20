@@ -117,6 +117,11 @@ const SPECS = [
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
   make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
     { hp: 2050, weightTons: 48.5, topSpeedKmh: 70, reverseSpeedKmh: 20,
+      visual: {
+        scheme: 'stripes', base: '#394b3c', weather: '#53604a',
+        patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42,
+        marking: 'number', number: '312', trackWidthM: 0.50,
+      },
       dims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.19 } }),
   make('merkava4', 'merkava1b', 'Merkava Mk.1B', 'Israel',
     { hp: 1900, weightTons: 60, topSpeedKmh: 46, gun: { reloadS: 7.8 },

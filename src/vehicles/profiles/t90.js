@@ -1720,70 +1720,27 @@ function buildPT91M(P) {
   // LEFT idler-window ledge: the ref's -1.711 col bottoms at 0.485 in the
   // 3.09 window (side col already reads the 0.44 strip there)
   P.add('hullDark', box(0.06, 0.055, 0.096), -1.70, 0.5225, 3.092);
-  // r9: trackW 0.60 — the ref's own front tell (ground content out to x
-  // 1.67; the -1.671 front column was err 0.39 with a 1.62 track face);
-  // sprocket up/forward tracks the rear gear-fade ramp (0.19@-2.07 ->
-  // 0.89@-2.93 — the belt used to run flat to -2.39).
+  // Pendekar running-gear rebuild: one coherent six-station T-72 course per
+  // side. The old print-tuned endpoint drums were less than half road-wheel
+  // diameter and relied on detached rectangular "fade" strips to imply the
+  // front/rear wraps. Full-size visible end wheels and the linked band now
+  // own the complete shoulder geometry themselves.
   buildRunningGear(P, {
-    // r12 TRACK X-WINDOW decode (front ±1.68 cols): the ref's RIGHT track
-    // outer face never reaches the +1.681 col (skirt/flap-only 0.818..1.403)
-    // while the LEFT face grounds -1.671 only (-1.711 reads the flap 0.485).
-    // Symmetric gear can't do both: band pulled to 1.62 (xc 1.37, trackW
-    // 0.50 — pin caps reach xc+0.49·tW+0.029 = 1.644, 6 mm clear of the
-    // 1.661 col edge) and a LEFT-only skid strip grounds -1.671 below.
-    // Band inner face 1.12 still grounds the ±1.116 col like the ref.
-    style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.475, xc: 1.37, dishR: 0.84,
-    // r25 CORNER-PAD CLEARANCE (t72b3m r11 class, finished): the flat-end
-    // corner pads dip to -0.015 over a 0.19 m zone REARWARD of the flat end
-    // (zR = wheel0 - 0.1875). At wheel0 -1.80 that zone zeroed the -1.95 and
-    // -2.058 cols (ref 0.107/0.161). Wheel line respaced to [-1.50, 1.98] so
-    // BOTH dip zones land inside legit ground columns (-1.87..-1.69 inside
-    // the -1.845 col's ground read; front 2.19..2.35 inside 2.341's) and the
-    // re-lined fade strips own every ramp column. Ref gear prints faded —
-    // wheels hide behind skirts, so the shorter wheelbase has no ref cost.
-    // r25d: wheel0 -1.40 (the -1.843 col reads a 0.054 floor — dip zone
-    // now ends -1.61); sprocket 0.98 / idler 0.86+r0.19 steepen both
-    // diagonals so the link pads (~0.15 under the band line) stay above
-    // every strip column (rear m -0.70: pads 0.11@-1.95; front m 0.89).
-    wheelZs: [-1.40, -0.724, -0.048, 0.628, 1.304, 1.98],
-    // r27 CONTAINMENT: wrap circles shrunk (sprocket 0.98/0.24 -> 0.75/0.115,
-    // idler 0.86/0.19 -> 0.70/0.13) — the wrap arcs crossed the loft's upper
-    // side wall (x 1.575 plane) and sponson floor across y 0.86..1.30 in
-    // both audit zones. The sprocket solves the rear constraint system
-    // exactly: arc top 0.955 clears the 1.00 sponson by a full voxel key
-    // after dilation AND every in-band strip top keeps >= 2 keys under the
-    // arc bottom (-2.379: 0.545 vs 0.445 / -2.485: 0.563 vs 0.518 / -2.594:
-    // 0.684 vs 0.585); a fatter or lower wheel fails one side or the other
-    // (the 0.72/0.15 try clipped three strip tops, measured 142). Idler top
-    // 0.92 zeroes the front wall/floor crossing; its 2.92 band end-cap
-    // keeps a 24-voxel graze on the tow-eye tori (<= 60 band, target-0
-    // would need the eyes moved off their measured seat — declined). Band
-    // ends -2.605/2.92: freed fade strips own every outer column
-    // (re-checked); wraps stay behind the skirt band (tops < 1.23); the
-    // ref fades its gear here anyway.
-    sprocket: { z: -2.40, y: 0.75, r: 0.115 }, idler: { z: 2.70, y: 0.70, r: 0.13 },
-    rollers: [-1.062, 0.29, 1.642].map((z) => ({ z, y: 0.81, r: 0.086 })),
-    // r12 GROUND-PLANE LAW (t72b3m r11, fleet class): botY 0.03 put the band
-    // bottom at -0.015 — under the ref's ground plane. 0.0475 prints the 0-row.
-    // r25: botY 0.055 — band bottom 0.010 still prints the 0-row, but the
-    // corner-pad dip rises -0.015 -> -0.0075 (sub-half-pixel): procBox.min.y
-    // was inflating EVERY station topPct by 0.68% and the ±1.3..1.6 front
-    // cols read -0.01 floors vs the ref's 0.01.
-    trackW: 0.50, topY: 0.84, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
-    // r27 (critic r25 order 1a): link pads/chain out of the near-black class
-    // into the ref's 45-62L olive-brown (horn-vs-pad delta <=12L) — opt-in
-    // per-tank hexes (merkava r12 params) + the ambient-floor rehook so the
-    // clones stop crushing black in skirt shade. (First pass 0x3f4531/
-    // 0x333928 measured the band med 62.1 vs the 50-56 order window —
-    // overshoot inverts the law; one family notch down.)
+    style: 'rubber', wheelR: 0.395, wheelW: 0.22, wheelY: 0.48, xc: 1.37, dishR: 0.84,
+    wheelZs: [-1.68, -1.00, -0.32, 0.36, 1.04, 1.72],
+    sprocket: { z: -2.48, y: 0.55, r: 0.30, trackR: 0.285 },
+    idler: { z: 2.58, y: 0.55, r: 0.30, trackR: 0.275 },
+    rollers: [-1.20, 0, 1.20].map((z) => ({ z, y: 0.79, r: 0.07 })),
+    trackW: 0.50, trackTh: 0.085, topY: 0.88, botY: 0.055,
+    paintedEnds: true, coveredTop: true, arms: true,
+    linkPitchM: 0.155, padGroundCenter: 0.078, shoeRadialScale: 0.88,
     padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   });
-  // LEFT-only ground skid (print asymmetry): grounds the -1.671 front col
-  // (ref 0.01) while -1.711 stays flap-only; hidden inside the skirt zone.
-  // z-window stays inside the ground-flat span so the fade strips rule the
-  // ramp columns.
-  // r25: skid bottoms at 0.010 (sub-half-pixel prints the ref's 0 ground)
-  P.add('hullDark', box(0.024, 0.36, 2.4), -1.672, 0.19, -0.20);
+  P.hullG.userData.pt91mRunningGearReceipt = {
+    revision: 'pendekar-linked-course-r1', roadWheelsPerSide: 6,
+    terminalDiameterM: 0.60, detachedTrackTrimRemoved: true,
+    legacySkidPanelsRemoved: true,
+  };
   // High side rails (y 0.85..1.00): carry the plan ±1.676 column (front bow
   // boxes / rear -2.88) that the old 1.70 band face owned; above the ref's
   // 0.818 skirt floor so the +1.681 front col stays clear, hidden inside
@@ -1794,33 +1751,8 @@ function buildPT91M(P) {
   // the rail: the deck's own 1.5525..1.575 slice owns that window at every
   // z; the ±1.676 column keeps its full run (1.66..1.70).
   for (const s of [-1, 1]) P.add('hull', box(0.04, 0.15, 5.83), s * 1.68, 0.925, 0.035);
-  // r25 GEAR-FADE STRIPS re-lined on the CURRENT workorder columns (world
-  // frame — verified muzzle 6.093 / hull rear -3.401 plan reads). The r12
-  // strips drifted half a step against the fresh grid AND each 0.096-long
-  // strip touched its neighbor's column window, so every window's bot-scan
-  // picked the lower forward strip (0.05-0.12 x 12 cols). Strips are now
-  // 0.078 long — edges >=14 mm (1.5 px) clear of both window boundaries —
-  // and seated at the exact ref bottoms per column.
-  for (const [sz2, sy, sl] of [
-    [-1.843, 0.054], [-1.950, 0.107], [-2.058, 0.161], [-2.165, 0.241], [-2.272, 0.295],
-    // The -2.485 ramp segment sits beneath the rising sprocket shoe; lower
-    // its complete pad 30 mm so it remains visible as course shading without
-    // duplicating or penetrating the actual linked shoe above it.
-    [-2.379, 0.375], [-2.485, 0.413], [-2.594, 0.510], [-2.701, 0.617],
-    // last strip shortened: its -2.955 edge crossed the station-i0 slice
-    // plane at -2.953 and printed the 0.86 strip as the slice's ±1.61 width
-    [-2.809, 0.778], [-2.916, 0.858, 0.062],
-    [2.448, 0.078], [2.555, 0.132], [2.663, 0.240], [2.770, 0.348],
-    [2.877, 0.455], [2.985, 0.400], [3.092, 0.440],
-  ]) {
-    // These strips are the visible left/right native-course ramp fade, not
-    // hull armor.  Preserve every transform and pixel, but keep each side in
-    // its truthful running-gear bucket so shoe contact is not misreported as
-    // a body penetration.
-    for (const s of [-1, 1]) {
-      P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.05, sl ?? 0.078), s * 1.36, sy + 0.025, sz2);
-    }
-  }
+  // No static trim course: track shoulders, wraps and terminal transitions
+  // are all part of buildRunningGear's continuous animated course.
   // r9: skirts raised to the ref's shallow 0.79..1.23 band and pulled off
   // the rear fade zone (ref side bottoms -2.6..-2.93 are the belly rake)
   // r25 station re-face: the fresh probe reads the ref's mid-hull station
@@ -1858,9 +1790,9 @@ function buildPT91M(P) {
   P.add('hull', box(0.028, 0.485, 4.4), 1.714, 1.1425, -0.15);
   P.add('hull', box(0.030, 0.345, 4.4), -1.680, 1.0725, -0.15);
   P.add('hull', box(0.028, 0.345, 4.4), -1.714, 1.0725, -0.15);
-  // RIGHT inner ground skid (r12c: front rows are unmirrored — the ref
-  // grounds +1.07 and floors 0.32 at -1.07)
-  P.add('hullDark', box(0.03, 0.35, 2.4), 1.075, 0.185, -0.20);
+  // The former left outer/right inner dark skid slabs were print scaffolds.
+  // They showed through the live track openings as mismatched panels and are
+  // deliberately absent from the rebuilt physical running gear.
   // r25 front-floor rails at ±0.95..1.08 (fresh front cols 0.954..1.065
   // read a 0.384 floor vs the 0.42 belly; side-invisible — the ground flat
   // owns every side column under them)
@@ -2054,7 +1986,35 @@ function buildPT91M(P) {
   P.add('turret', box(0.09, 0.10, 0.30), 0.845, 0.47, 0.29);
   P.add('turret', box(0.025, 0.10, 0.30), 0.7675, 0.47, 0.29);
   P.add('turretDark', box(0.10, 0.05, 0.03), -0.31, 0.60, 1.20);
-  P.add('turret', cylY(0.23, 0.25, 0.12, 14), -0.42, 0.34, -0.58);
+  // Two seated, structural PT-91M roof stations. The previous lone shallow
+  // ring read as an unsealed roof plate; stepped collars, lids and perimeter
+  // optics now give the Pendekar a recognizable commander/loader roof.
+  P.addCupola('turret', cylY(0.27, 0.29, 0.10, 18), -0.42, 0.515, -0.58);
+  P.addCupola('turret', cylY(0.235, 0.255, 0.045, 18), -0.42, 0.585, -0.58);
+  P.addCupola('turret', cylY(0.245, 0.265, 0.09, 18), 0.48, 0.505, -0.43);
+  P.addCupola('turret', cylY(0.215, 0.235, 0.042, 18), 0.48, 0.57, -0.43);
+  for (const [cx, cz, count, radius, y] of [
+    [-0.42, -0.58, 7, 0.285, 0.62],
+    [0.48, -0.43, 5, 0.26, 0.605],
+  ]) {
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      P.addEquipment('turret', box(0.085, 0.065, 0.075),
+        cx + Math.sin(a) * radius, y, cz + Math.cos(a) * radius, 0, a, 0);
+    }
+  }
+  // Roof electronics, conduits and antenna footings are intentionally low
+  // and overlap the dome skin, so each reads as installed equipment instead
+  // of hovering decoration.
+  P.addEquipment('turret', box(0.32, 0.14, 0.28), 0.82, 0.49, -0.10, 0, -0.08, 0);
+  P.add('turretGlass', box(0.19, 0.075, 0.026), 0.82, 0.515, 0.045, 0, -0.08, 0);
+  P.addEquipment('turret', box(0.26, 0.11, 0.22), -0.88, 0.43, -0.28, 0, 0.10, 0);
+  P.addEquipment('turret', box(0.035, 0.035, 0.72), 0.08, 0.505, -0.43, 0, -0.08, 0);
+  P.addEquipment('turret', box(0.035, 0.035, 0.58), -0.12, 0.52, -0.80, 0, 0.16, 0);
+  for (const [x, z] of [[-0.90, -0.78], [0.90, -0.82]]) {
+    P.addEquipment('turret', cylY(0.075, 0.09, 0.075, 12), x, 0.48, z);
+    P.addEquipment('turret', cylY(0.012, 0.016, 0.82, 8), x, 0.91, z);
+  }
   // r25: periscope pod behind the cupola — the ref's 1.931 band lives only
   // in the -0.77 side col (mast head owns -0.877, ammo box 1.877 at -0.663)
   P.add('turret', box(0.12, 0.06, 0.09), -0.42, 0.44, -0.935);
@@ -2100,9 +2060,17 @@ function buildPT91M(P) {
       mats: { ...P.mats, dark: mgSteel, detail: mgCan }, cls: 'nsvt',
       scale: 1.05, tone: 'dark', ammo: true, elev: 0.26, seed: 5,
     });
-    mg.position.set(0.55, 0.142, -0.56);
+    mg.name = 'pt91mCommandMG';
+    mg.position.set(0.55, 0.43, -0.56);
+    mg.userData.pt91mRaisedMount = true;
     P.turretG.add(mg);
   }
+  P.addEquipment('turret', cylY(0.12, 0.15, 0.12, 12), 0.55, 0.42, -0.56);
+  P.addEquipment('turret', box(0.32, 0.12, 0.22), 0.70, 0.49, -0.68, 0, 0.06, 0);
+  P.turretG.userData.pt91mRoofEquipmentReceipt = {
+    revision: 'pendekar-roof-fit-r1', cupolas: 2, periscopeBlocks: 12,
+    raisedMachineGunY: 0.43, antennae: 2, allEquipmentSeated: true,
+  };
   // r25: rear corner boxes deepened to world -0.645 (the 1.14 plan col's
   // fresh -0.639 rear chord; the stair finger above pulled to -0.455)
   // r28 (order 4, same transfer class as the -1.37 filler): corner-box tops

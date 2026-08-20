@@ -18,7 +18,9 @@ for (const id of ALL_TANK_IDS) {
   }
 }
 
-assert.ok(themed.length >= 25, 'the known plain-green playable fleet must receive factory themes');
+assert.ok(themed.length >= 24, 'the remaining plain-green playable fleet must receive factory themes');
+assert.equal(resolveCamoVisual(getSpec('pt91m'), 'factory').scheme, 'stripes',
+  'PT-91M factory paint should retain its authored Polish stripe pattern');
 assert.equal(resolveCamoVisual(getSpec('m1a1'), 'factory').scheme, 'nato',
   'Abrams factory paint should retain its authored NATO pattern');
 assert.equal(factoryThemePatternId(getSpec('udes03')), 'm90',

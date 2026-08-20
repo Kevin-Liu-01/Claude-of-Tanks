@@ -418,34 +418,34 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         0.73,
         1.235
       ],
-      "sourceHash": "469c1a2566f3f1e1"
+      "sourceHash": "29940477587e66db"
     },
     "tracks": {
       "left": {
         "min": [
           -1.62,
-          0.01,
-          -2.6041
+          0.0125,
+          -2.8513
         ],
         "max": [
           -1.12,
-          0.986,
-          2.9172
+          0.945,
+          2.9412
         ],
-        "sourceHash": "8471902760db32ce"
+        "sourceHash": "8c2d7eb8015f65cd"
       },
       "right": {
         "min": [
           1.12,
-          0.01,
-          -2.6041
+          0.0125,
+          -2.8513
         ],
         "max": [
           1.62,
-          0.986,
-          2.9172
+          0.945,
+          2.9412
         ],
-        "sourceHash": "3e6ef3e4b62c9b12"
+        "sourceHash": "30fedc046b83fafc"
       }
     }
   },

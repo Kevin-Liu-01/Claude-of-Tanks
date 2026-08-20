@@ -75872,13 +75872,13 @@
             "name": "trackL",
             "min": [
               -1.62,
-              0.01,
-              -2.6041
+              0.0125,
+              -2.8513
             ],
             "max": [
               -1.12,
-              0.986,
-              2.9172
+              0.945,
+              2.9412
             ],
             "turretLocal": false
           },
@@ -75887,13 +75887,13 @@
             "name": "trackR",
             "min": [
               1.12,
-              0.01,
-              -2.6041
+              0.0125,
+              -2.8513
             ],
             "max": [
               1.62,
-              0.986,
-              2.9172
+              0.945,
+              2.9412
             ],
             "turretLocal": false
           }
@@ -75946,22 +75946,22 @@
           }
         ]
       },
-      "geometryHash": "e0e3afa5",
-      "metadataHash": "5f45e194",
+      "geometryHash": "9eb8bc6f",
+      "metadataHash": "be7e5164",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "fittingPaint": 8,
           "opticGlass": 4,
-          "gunmetal": 13,
+          "gunmetal": 11,
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "armorPaint": 4,
+          "armorPaint": 6,
           "wood": 1,
           "trackSteel": 2,
           "tireRubber": 1,
@@ -75990,64 +75990,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27154,
-          "sha256": "58a0989bd351394182daf0f1e802721621a2d73fe6636762d378d55f52aad083"
+          "bytes": 29902,
+          "sha256": "e6bb1f7eca7114d37700200d128f6081861499e7dcd892e341c623caeb79b22f"
         },
         "top": {
           "file": "pt91m_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8720,
-          "sha256": "e5844e7586f0956b519955fff8441a7004bc6446aed835ce7cd44fdc68d15638"
+          "bytes": 11390,
+          "sha256": "dbc250fa1f10f64aaa2ed54eb7fd5b9740b1284d0a22c300dbdd4c507457b995"
         },
         "side": {
           "file": "pt91m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 6946,
-          "sha256": "376b5af5a3f4b695b9e4b3573c09f358d449984bd8df61aab7e1ae035a15a76d"
+          "bytes": 8284,
+          "sha256": "5327e10fcdb5693f04af86af6ff8a03599fb9a05b464bd0578e45757bc457aef"
         },
         "topSilhouette": {
           "file": "pt91m_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1554,
-          "sha256": "ebd51b7224774b5fbe62644282490b277a7629caf660eeaec45c9630e0479340"
+          "bytes": 1534,
+          "sha256": "9282bdcce9257dd1902a59c5333510f8db63304a4afeab27b153759a376bae4f"
         },
         "sideSilhouette": {
           "file": "pt91m_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3855,
-          "sha256": "9b6f7405b4b791cbc456fb0c2be17ae4a352c2d8279f656c9bc982db312e573f"
+          "bytes": 4066,
+          "sha256": "915dc02091d7cbaddb50379c415faf9639c0939f3fb2e12890b8bb5836572197"
         },
         "hitZonesSide": {
           "file": "pt91m_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62658,
-          "sha256": "b82322b42740d71cf7a9b7d964019acf11e09f04e67d2a4e2257c0087dfc2d6b"
+          "bytes": 69565,
+          "sha256": "202651295e2d5d481715838a6abacbe6f3c2740bd71cc37a66766cc661581c91"
         },
         "armorSide": {
           "file": "pt91m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64372,
-          "sha256": "bbf6c8b932d1efccb6eb0104f66c7116fc6a0b464df39d2556c8287111e40344"
+          "bytes": 71606,
+          "sha256": "e81c56f8598b77cc66212662e9bd6d83b6da9766ada320e5e618b80fe95e18a7"
         },
         "modulesSide": {
           "file": "pt91m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71127,
-          "sha256": "0f0390706c2fbe80062b0e36a0c9803cbbbf03f34d9a8f79ddc766e90e471d6d"
+          "bytes": 75187,
+          "sha256": "077eaed2703297a5cddc37b4f06478798a5ce5630118d9adb2c2072784a16939"
         },
         "markings": {
           "file": "pt91m_markings.png",
