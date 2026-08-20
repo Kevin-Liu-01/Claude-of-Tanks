@@ -866,7 +866,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         0.84,
         1.2568
       ],
-      "sourceHash": "db39b64b2f8011fd"
+      "sourceHash": "a57e3cdd7c143b5a"
     },
     "tracks": {
       "left": {

@@ -1220,14 +1220,20 @@ function buildT90AVladimirLegacy(P) {
   };
   eraRuCheeks(P, p5, 'k5');
   // Vladimir's OTShU-1-7 pair belongs beside the gun, not in the former roof
-  // seam. Broad angled shoes grow out of the planted K-5 shoulders and enter
-  // the rear half of each enlarged housing; the round lenses stay fully open
-  // and the complete station remains turret-owned through yaw.
+  // seam. Keep its optical centre close to the 2A46M axis instead of inheriting
+  // the taller cheek course: the cheeks and K-5 rise, while the complete eye
+  // housing returns to its original mantlet-side station. Broad angled shoes
+  // grow out of the planted K-5 shoulders and enter the rear half of each
+  // enlarged housing; the round lenses stay fully open and the complete
+  // station remains turret-owned through yaw.
+  const gunAxisY = 0.16;
+  const shtoraCenterY = 0.28;
+  const shtoraSupportY = shtoraCenterY - 0.08;
   for (const s of [-1, 1]) {
     P.add('turret', KIT.xform(box(0.34, 0.28, 0.44), 0, 0, -0.04),
-      s * 0.60, 0.20 + cheekRiseM, 1.04, -0.22, -s * 0.12, 0);
+      s * 0.60, shtoraSupportY, 1.04, -0.22, -s * 0.12, 0);
   }
-  ruShtora(P, p5, 0.28 + cheekRiseM);
+  ruShtora(P, p5, shtoraCenterY);
   P.turretG.userData.t90aVladimirProportionReceipt = {
     lowerCheekBaseY,
     originalLowerCheekHeightM,
@@ -1249,7 +1255,10 @@ function buildT90AVladimirLegacy(P) {
     edgeMatched: cheekBaseY === lowerCheekTopY && cheekBasePlanScale === lowerCheekTopPlanScale,
     cheekRiseM,
     eraRaisedM: cheekRiseM,
-    shtoraRaisedM: cheekRiseM,
+    shtoraCenterY,
+    shtoraSupportY,
+    shtoraLoweredM: cheekRiseM,
+    shtoraToGunAxisM: shtoraCenterY - gunAxisY,
   };
   // Vladimir ESSA hierarchy.  A long, narrow optical run and one distinct
   // outer service body replace the old staircase of tall touching boxes.
@@ -1434,7 +1443,7 @@ function buildT90AVladimirLegacy(P) {
   // ---- 2A46M (fused in the ref; mine stays a Gun node) ----
   // Raise the complete articulated gun seat, including its saddle and root,
   // rather than lifting only the visible tube away from the mantlet.
-  P.gunG.position.set(0, 0.16, 1.05);
+  P.gunG.position.set(0, gunAxisY, 1.05);
   ruSaddle(P, { rollR: 0.15, rollW: 0.70, tubeR: 0.078, rootL: 0.78, rootR: 0.105 });
   // A broad cast root and tapered accordion boot give the 2A46M a deliberate
   // load path into the taller cheeks.  Every section intersects the next;

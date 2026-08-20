@@ -37,7 +37,12 @@ try {
   assert.ok(near(proportion.courseOverlapM, 0), 'cheek courses do not intersect');
   assert.equal(proportion.edgeMatched, true, 'cheek courses share one exact edge ring');
   assert.ok(near(proportion.eraRaisedM, 0.208), 'Kontakt-5 package follows the structural rise');
-  assert.ok(near(proportion.shtoraRaisedM, 0.208), 'Shtora package follows the structural rise');
+  assert.ok(near(proportion.shtoraCenterY, 0.28), 'Shtora optical centres sit at the mantlet-side station');
+  assert.ok(near(proportion.shtoraSupportY, 0.20), 'Shtora support shoes move with the complete eye assembly');
+  assert.ok(near(proportion.shtoraLoweredM, 0.208), 'Shtora package drops by the former cheek-rise inheritance');
+  assert.ok(near(proportion.shtoraToGunAxisM, 0.12), 'Shtora optical centres sit 120 mm above the gun axis');
+  assert.ok(near(proportion.shtoraCenterY - gunRig.position.y, proportion.shtoraToGunAxisM),
+    'Shtora-to-gun alignment receipt matches the articulated gun rig');
 
   const position = turret.geometry.attributes.position;
   let topCourseVertices = 0;
@@ -90,4 +95,4 @@ try {
   tank.dispose();
 }
 
-console.log('t90AVladimirProportions.selftest: connected cheeks, raised ERA, smoke banks, RWS, and enlarged cannon verified');
+console.log('t90AVladimirProportions.selftest: aligned Shtora, connected cheeks, raised ERA, smoke banks, RWS, and enlarged cannon verified');

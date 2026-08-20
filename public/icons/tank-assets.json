@@ -99711,7 +99711,7 @@
           }
         ]
       },
-      "geometryHash": "a2ed6069",
+      "geometryHash": "001f7bba",
       "metadataHash": "a2cc751d",
       "appearance": {
         "version": 1,
@@ -99794,24 +99794,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73599,
-          "sha256": "0a64706230ec4b4df9ecb7816beb954a5a4132f5cfdfbc703fea7c7948432885"
+          "bytes": 73953,
+          "sha256": "14773e5087ad2acdd2300fd0c3b163a3bc86a72d68c67106c9796f6d4f230a28"
         },
         "armorSide": {
           "file": "t90a_vladimir_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74043,
-          "sha256": "a255e0ef06bbf1eb01de80187dbe75146072a65bc47608a8039d4c86290b843e"
+          "bytes": 74021,
+          "sha256": "c2368f95e6ac226d7c581334a364f11dbedea888a46c7330b6d64c9355fad489"
         },
         "modulesSide": {
           "file": "t90a_vladimir_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80476,
-          "sha256": "96d6681c73774fc357a19e3dfb683eacbbc70412b20027bbb82b694b187493e0"
+          "bytes": 79813,
+          "sha256": "7782afff14d103d0761df76385d90b4a2f8ead7fd1b93ca169165945e33b320b"
         },
         "markings": {
           "file": "t90a_vladimir_markings.png",
