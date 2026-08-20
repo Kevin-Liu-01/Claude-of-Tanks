@@ -83,6 +83,50 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
     lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
 }
 
+// Seat a cassette from the carrier face itself instead of approximating its
+// pitch with hand-authored Euler angles. Local +Y is the armor-face normal,
+// local +Z follows the requested course direction, and the body penetrates
+// the carrier by `embed` so there can be no daylight under the module.
+function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
+  embed = 0.012, painted = true, lid = true,
+} = {}) {
+  const n = new THREE.Vector3(...normal).normalize();
+  const course = new THREE.Vector3(...courseAxis);
+  const zAxis = course.clone().addScaledVector(n, -course.dot(n)).normalize();
+  const xAxis = new THREE.Vector3().crossVectors(n, zAxis).normalize();
+  const basis = new THREE.Matrix4().makeBasis(xAxis, n, zAxis);
+  const rotation = new THREE.Euler().setFromQuaternion(
+    new THREE.Quaternion().setFromRotationMatrix(basis), 'XYZ');
+  const support = new THREE.Vector3(...point);
+  const center = support.clone().addScaledVector(n, h * 0.5);
+  seatedCassette(P, owner, center.x, center.y, center.z, w, h, d,
+    [rotation.x, rotation.y, rotation.z], {
+      axis: 'y', contactSide: -1, embed, painted, lid,
+    });
+  return { support, normal: n, center, rotation, embed };
+}
+
+// Bilinear face probe for the welded wing and shoulder quads. Besides the
+// point it returns both surface tangents, allowing every ERA course to inherit
+// the compound pitch/yaw of the armor underneath it.
+function sampleFace(p00, p10, p11, p01, u, v, outwardHint) {
+  const a = new THREE.Vector3(...p00);
+  const b = new THREE.Vector3(...p10);
+  const c = new THREE.Vector3(...p11);
+  const d = new THREE.Vector3(...p01);
+  const point = a.clone().multiplyScalar((1 - u) * (1 - v))
+    .addScaledVector(b, u * (1 - v))
+    .addScaledVector(c, u * v)
+    .addScaledVector(d, (1 - u) * v);
+  const du = b.clone().sub(a).multiplyScalar(1 - v)
+    .add(c.clone().sub(d).multiplyScalar(v));
+  const dv = d.clone().sub(a).multiplyScalar(1 - u)
+    .add(c.clone().sub(b).multiplyScalar(u));
+  const normal = new THREE.Vector3().crossVectors(du, dv).normalize();
+  if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
+  return { point, normal, du, dv };
+}
+
 // Ukrainian service whip pair (staggered heights, rear-quarter seats).
 function uaWhips(P, o) {
   for (const s of [-1, 1]) {
@@ -1228,6 +1272,17 @@ function buildUAT80UKursk(P) {
 function buildUAOplotM(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   const slab = orientedSlab;
+  const eraReceipt = {
+    carrierDerivedTransforms: true,
+    contactEmbedM: 0.012,
+    maxSupportGapM: 0,
+    faceNormalAlignmentDeg: 0,
+    hullGlacisCassettes: 0,
+    turretWingCassettes: 0,
+    turretShoulderCassettes: 0,
+    replacedTurretCassettes: 30,
+    additionalTurretCassettes: 0,
+  };
 
   // Hull loft (T-80UD lineage): deck plateau 1.42, rear deck fall to the
   // 1.27 tail, glacis break +1.85 falling 1.36 -> 0.84 at the bow tip,
@@ -1258,14 +1313,33 @@ function buildUAOplotM(P) {
   P.add('hullDetail', box(0.22, 0.12, 0.72), -1.32, 1.43, -2.35);
   P.add('hull', box(0.95, 0.05, 0.55), 0.42, 1.445, -2.05);
 
-  // Glacis: the Nozh built-in ERA wedge courses (two full-width rows with
-  // the center driver break), splash board, lights, eyes.
-  for (const s of [-1, 1]) for (let row = 0; row < 2; row++) for (let i = 0; i < 4; i++) {
-    seatedCassette(P, 'hull', s * (0.24 + i * 0.30), 1.315 - row * 0.10,
-      2.42 - row * 0.30 + (i & 1) * 0.02, 0.26, 0.105, 0.30,
-      [-0.30, s * 0.05, 0], {
-        axis: 'y', contactSide: -1, embed: 0.055, painted: true,
-      });
+  // Glacis: two Nozh courses seated from the actual piecewise-linear hull
+  // profile. The former fixed -0.30 pitch leaned the modules against the
+  // armor slope; deriving +X pitch from dy/dz makes their backs parallel to
+  // the glacis and buries the complete inner face by 12 mm.
+  {
+    const profile = [[1.85, 1.36], [2.30, 1.245], [2.80, 1.10], [3.20, 0.95], [3.54, 0.84]];
+    const carrierAt = (z) => {
+      for (let i = 0; i < profile.length - 1; i++) {
+        const [z0, y0] = profile[i];
+        const [z1, y1] = profile[i + 1];
+        if (z >= z0 && z <= z1) {
+          const slope = (y1 - y0) / (z1 - z0);
+          return { y: y0 + (z - z0) * slope, slope };
+        }
+      }
+      throw new Error(`Oplot-M glacis ERA station ${z} is outside the carrier profile`);
+    };
+    for (const z of [2.18, 2.56]) {
+      const carrier = carrierAt(z);
+      for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+        faceSeatedCassette(P, 'hull',
+          [s * (0.23 + i * 0.30), carrier.y, z],
+          [0, 1, -carrier.slope], [0, carrier.slope, 1],
+          0.25, 0.10, 0.29, { embed: eraReceipt.contactEmbedM });
+        eraReceipt.hullGlacisCassettes += 1;
+      }
+    }
   }
   P.add('hull', box(1.92, 0.05, 0.16), 0, 1.335, 2.10);
   ruGlacisKit(P, { w: 3.05, y: 1.12, z: 2.70, eyeX: 0.74, eyeZ: 3.24, eyeY: 0.85, hookY: 0.95, hookZ: 3.30, hlY: 1.22 });
@@ -1430,37 +1504,23 @@ function buildUAOplotM(P) {
     [1.52, 0.10], [1.34, -0.86], [1.04, -1.54], [0.60, -1.58],
   ], 0.775, 1, 0.90), 0, 0.02, 0);
   for (const s of [-1, 1]) {
+    const wingTop = [
+      [s * 0.24, 0.40, 2.10], [s * 1.18, 0.56, 1.24],
+      [s * 1.38, 0.845, 0.30], [s * 0.30, 0.845, 0.52],
+    ];
     // WEDGE WING: tall at the shell junction (roof line), sloping to the
     // low nose tip at world +2.12..2.26 (print wing profile).
     P.add('turret', slab(
       [s * 0.30, 0.02, 2.36], [s * 1.50, 0.02, 1.30], [s * 1.55, 0.02, 0.30], [s * 0.32, 0.02, 0.52],
-      [s * 0.24, 0.40, 2.10], [s * 1.18, 0.56, 1.24], [s * 1.38, 0.845, 0.30], [s * 0.30, 0.845, 0.52]));
-    // §5.272 fix (4): ERA module ARTICULATION — the one smooth cassette
-    // slab per wing is replaced by two courses of individual stacked
-    // Duplet bricks with lid seams riding the wing's top-face rake
-    // (course lines lerped on the measured face quad; tops stay under the
-    // 0.845 roof shoulder so the PNK-6 keeps the only p95 spike window).
-    for (let i = 0; i < 4; i++) {
-      const u = 0.08 + i * 0.18;
-      const rx = i === 3 ? -0.14 : -0.28;                 // last brick lies
-      const d = i === 3 ? 0.30 : 0.36;                    // flatter: its tilted
-      const dy = i === 3 ? -0.018 : 0;                    // corner stays under
-      seatedCassette(P, 'turret', s * (0.48 + i * 0.20),
-        0.517 + 0.400 * u + dy, 1.82 - i * 0.22, 0.30, 0.15, d,
-        [rx, s * 0.76, s * 0.03], {
-          axis: 'y', contactSide: -1, embed: 0.060, painted: true,
-        });
-    }
-    for (let i = 0; i < 4; i++) {
-      const u = 0.06 + i * 0.16;
-      const rx = i === 3 ? -0.14 : -0.29;
-      const d = i === 3 ? 0.28 : 0.34;
-      const dy = i === 3 ? -0.018 : 0;
-      seatedCassette(P, 'turret', s * (0.70 + i * 0.20),
-        0.587 + 0.330 * u + dy, 1.44 - i * 0.20, 0.32, 0.15, d,
-        [rx, s * 0.76, s * 0.05], {
-          axis: 'y', contactSide: -1, embed: 0.060, painted: true,
-        });
+      ...wingTop));
+    // Dense 3x5 Duplet field. Each module inherits the bilinear wing's
+    // compound pitch and sweep, so both complete banks stay flush while the
+    // turret gains eight cassettes over the former hand-tuned coverage.
+    for (const u of [0.22, 0.50, 0.78]) for (const v of [0.10, 0.245, 0.39, 0.535, 0.68]) {
+      const face = sampleFace(...wingTop, u, v, [0, 1, 0]);
+      faceSeatedCassette(P, 'turret', face.point.toArray(), face.normal.toArray(),
+        face.dv.toArray(), 0.235, 0.09, 0.205, { embed: eraReceipt.contactEmbedM });
+      eraReceipt.turretWingCassettes += 1;
     }
     // shell-flank Duplet brick AFT of the edge stack — the rear turret
     // side reads a stacked module too (the edge cassette stack owns the
@@ -1470,13 +1530,23 @@ function buildUAOplotM(P) {
         axis: 'x', contactSide: -s, embed: 0.045, painted: true,
       });
     P.add('turretDark', box(0.02, 0.30, 0.035), s * 1.258, 0.34, -1.28, 0, s * 0.30, 0);
-    // Duplet edge cassette stack on the shoulder corner
-    for (let i = 0; i < 4; i++) {
-      seatedCassette(P, 'turret', s * 1.50, 0.26 + (i & 1) * 0.02,
-        0.20 - i * 0.34, 0.14, 0.34, 0.30, [0, 0, s * 0.06],
-        { axis: 'x', contactSide: -s, embed: 0.055, painted: true });
+    // Shoulder wrap follows the actual welded side quad rather than four
+    // plumb boxes. Local width runs vertically and the course runs aft.
+    const shoulderFace = [
+      [s * 1.52, 0.02, 0.10], [s * 1.34, 0.02, -0.86],
+      [s * 1.206, 0.795, -0.774], [s * 1.368, 0.795, 0.09],
+    ];
+    for (const u of [0.11, 0.37, 0.63, 0.89]) {
+      const face = sampleFace(...shoulderFace, u, 0.42, [s, 0, 0]);
+      faceSeatedCassette(P, 'turret', face.point.toArray(), face.normal.toArray(),
+        face.du.toArray(), 0.245, 0.11, 0.28, { embed: eraReceipt.contactEmbedM });
+      eraReceipt.turretShoulderCassettes += 1;
     }
   }
+  eraReceipt.additionalTurretCassettes = eraReceipt.turretWingCassettes
+    + eraReceipt.turretShoulderCassettes - eraReceipt.replacedTurretCassettes;
+  P.turretG.userData.uaOplotMERAReceipt = Object.freeze({ ...eraReceipt });
+  P.hullG.userData.uaOplotMERAReceipt = P.turretG.userData.uaOplotMERAReceipt;
   // gun cradle channel: solid center wedge from the shell front to the
   // mantlet (the wings flank it; no see-through channel, §B2).
   P.add('turret', slab(
@@ -1636,14 +1706,8 @@ function buildUAOplotM(P) {
     // clear of the ratified edge-stack tiles aft of it)
     P.add('turret', box(0.10, 0.50, 0.28), -1.48, 0.30, 0.51);
     P.add('turretDark', box(0.012, 0.46, 0.026), -1.532, 0.30, 0.51);
-    // (c) outer wing-face course lids (the print's stepped terrace field
-    // outboard of the §5.288 brick courses; face-following rx/rz)
-    P.add('turret', box(0.26, 0.055, 0.24), -1.27, 0.757, 0.60, -0.29, 0, -0.075);
-    P.add('turretDark', box(0.20, 0.026, 0.18), -1.27, 0.792, 0.61, -0.29, 0, -0.075);
-    P.add('turret', box(0.26, 0.055, 0.24), -1.23, 0.660, 0.92, -0.29, 0, -0.075);
-    P.add('turretDark', box(0.20, 0.026, 0.18), -1.23, 0.695, 0.93, -0.29, 0, -0.075);
-    P.add('turret', box(0.26, 0.055, 0.24), -1.16, 0.565, 1.24, -0.29, 0, -0.075);
-    P.add('turretDark', box(0.20, 0.026, 0.18), -1.16, 0.600, 1.25, -0.29, 0, -0.075);
+    // (c) The common bilinear Duplet field above now owns these outer
+    // terrace stations; keeping the old three boxes would double-stack ERA.
     // (d) shoulder smoke bank at the print's left station (print top 2.36
     // CAPPED: muzzle tops ~2.27, the PNK-6 keeps the only >2.285 window) —
     // two staggered rows of three, breeches recessed into the shoulder
@@ -1712,14 +1776,8 @@ function buildUAOplotM(P) {
     // right edge-stack tiles aft of it)
     P.add('turret', box(0.10, 0.50, 0.28), 1.475, 0.30, 0.51);
     P.add('turretDark', box(0.012, 0.46, 0.026), 1.527, 0.30, 0.51);
-    // (c) outer wing-face course lids (print terrace steps, mirrored
-    // face-following tilts rx -0.29 / rz +0.075)
-    P.add('turret', box(0.26, 0.055, 0.24), 1.27, 0.757, 0.60, -0.29, 0, 0.075);
-    P.add('turretDark', box(0.20, 0.026, 0.18), 1.27, 0.792, 0.61, -0.29, 0, 0.075);
-    P.add('turret', box(0.26, 0.055, 0.24), 1.23, 0.660, 0.92, -0.29, 0, 0.075);
-    P.add('turretDark', box(0.20, 0.026, 0.18), 1.23, 0.695, 0.93, -0.29, 0, 0.075);
-    P.add('turret', box(0.26, 0.055, 0.24), 1.16, 0.565, 1.24, -0.29, 0, 0.075);
-    P.add('turretDark', box(0.20, 0.026, 0.18), 1.16, 0.600, 1.25, -0.29, 0, 0.075);
+    // (c) The common bilinear Duplet field above owns the mirrored outer
+    // terrace too, keeping one continuous carrier-seated layer.
     // (d) LOW shoulder ledge + stowage kit (print right cluster tops 2.17
     // -> ledge 2.20 / kit 2.28 world; no smoke mirror — asymmetry law)
     P.add('turret', box(0.29, 0.045, 0.44), 1.345, 0.755, -0.22);

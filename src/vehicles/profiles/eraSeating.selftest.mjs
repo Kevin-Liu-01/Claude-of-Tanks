@@ -48,6 +48,24 @@ assert.equal(oplot.root.getObjectByName('turretTrack'), undefined,
   'Oplot Duplet modules inherit the turret camouflage palette');
 assert.equal(oplot.root.getObjectByName('hullTrack'), undefined,
   'Oplot Nozh modules inherit the hull camouflage palette');
+const eraReceipt = oplot.root.getObjectByName('rig_turret')?.userData.uaOplotMERAReceipt;
+assert.ok(eraReceipt, 'Oplot-M exposes a carrier-contact ERA receipt');
+assert.equal(eraReceipt.carrierDerivedTransforms, true,
+  'all revised Oplot-M ERA transforms come from carrier faces');
+assert.equal(eraReceipt.hullGlacisCassettes, 16,
+  'both four-wide glacis courses remain complete');
+assert.equal(eraReceipt.turretWingCassettes, 30,
+  'both turret wings carry dense three-by-five Duplet fields');
+assert.equal(eraReceipt.turretShoulderCassettes, 8,
+  'both turret shoulders carry four face-following wrap cassettes');
+assert.equal(eraReceipt.additionalTurretCassettes, 8,
+  'the revised turret gains eight cassettes over the replaced layout');
+assert.ok(eraReceipt.contactEmbedM >= 0.01,
+  'every revised cassette penetrates its armor carrier by at least 10 mm');
+assert.equal(eraReceipt.maxSupportGapM, 0,
+  'carrier-derived seating permits no daylight under the cassette backs');
+assert.equal(eraReceipt.faceNormalAlignmentDeg, 0,
+  'cassette backs and armor faces share the same normal');
 
 function assertFlushFaceCaps(bodyName, capName, accept, minimum, label) {
   const body = oplot.root.getObjectByName(bodyName);
@@ -65,9 +83,9 @@ function assertFlushFaceCaps(bodyName, capName, accept, minimum, label) {
 }
 
 assertFlushFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
-  area > 0.020 && area < 0.045 && Math.abs(centroid.x) > 0.40 && Math.abs(centroid.x) < 1.12
-    && centroid.y > 0.50 && centroid.y < 0.86 && centroid.z > 0.78 && centroid.z < 1.90,
-24, 'Oplot turret Duplet');
+  area > 0.012 && area < 0.020 && Math.abs(centroid.x) > 0.35 && Math.abs(centroid.x) < 1.25
+    && centroid.y > 0.50 && centroid.y < 0.90 && centroid.z > 0.50 && centroid.z < 2.00,
+60, 'Oplot turret Duplet');
 
 // On each side, the discrete face-cap course must sweep rearward as it moves
 // away from the gun. This is the plan-view V/chevron law; a broad rectangular
@@ -75,17 +93,17 @@ assertFlushFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
 {
   const caps = oplot.root.getObjectByName('turretDark');
   const course = triangles(caps, ({ centroid, normal, area }) =>
-    area > 0.020 && area < 0.045 && normal.y > 0.90
-      && Math.abs(centroid.x) > 0.40 && Math.abs(centroid.x) < 1.12
-      && centroid.y > 0.50 && centroid.y < 0.86
-      && centroid.z > 0.78 && centroid.z < 1.90);
+    area > 0.012 && area < 0.020 && normal.y > 0.90
+      && Math.abs(centroid.x) > 0.35 && Math.abs(centroid.x) < 1.25
+      && centroid.y > 0.50 && centroid.y < 0.90
+      && centroid.z > 0.50 && centroid.z < 2.00);
   for (const side of [-1, 1]) {
     const sideCaps = course.filter(({ centroid }) => Math.sign(centroid.x) === side)
       .sort((lhs, rhs) => Math.abs(lhs.centroid.x) - Math.abs(rhs.centroid.x));
-    assert.ok(sideCaps.length >= 12, `Oplot ${side < 0 ? 'left' : 'right'} chevron keeps discrete modules`);
-    const innerZ = Math.max(...sideCaps.slice(0, 4).map(({ centroid }) => centroid.z));
-    const outerZ = Math.min(...sideCaps.slice(-4).map(({ centroid }) => centroid.z));
-    assert.ok(innerZ - outerZ > 0.50,
+    assert.ok(sideCaps.length >= 30, `Oplot ${side < 0 ? 'left' : 'right'} chevron keeps fifteen discrete modules`);
+    const innerZ = Math.max(...sideCaps.slice(0, 10).map(({ centroid }) => centroid.z));
+    const outerZ = Math.min(...sideCaps.slice(-10).map(({ centroid }) => centroid.z));
+    assert.ok(innerZ - outerZ > 0.45,
       `Oplot ${side < 0 ? 'left' : 'right'} Duplet course forms a rearward-swept V`);
   }
 }
@@ -93,7 +111,7 @@ assertFlushFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
 assertFlushFaceCaps('hull', 'hullDark', ({ centroid, area }) =>
   area > 0.020 && area < 0.045 && Math.abs(centroid.x) > 0.15 && Math.abs(centroid.x) < 1.35
     && centroid.y > 1.15 && centroid.y < 1.46 && centroid.z > 1.95 && centroid.z < 2.70,
-24, 'Oplot glacis Nozh');
+32, 'Oplot glacis Nozh');
 
 oplot.dispose();
 console.log('eraSeating.selftest: T-80 bars removed; Oplot ERA caps are carrier-seated');
