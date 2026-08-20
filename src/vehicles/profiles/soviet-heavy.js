@@ -1415,8 +1415,45 @@ function buildKV2(P) {
     P.add('turret', box(0.15, 0.15, 0.022), s * 0.42, 1.075, 1.169, 0, 0, s * Math.PI / 4); // top corner fillets
     P.add('turretDark', box(0.11, 0.02, 0.014), s * 0.40, 0.545, 0.95, 0, 0, s * Math.PI / 4); // lower corner seams
   }
-  P.add('turret', box(1.10, 0.06, 0.44), 0, 1.2745, 1.21, 0.671, 0, 0);         // front-top chamfer (1.70,2.83w)->(1.36,3.09w),
+  const frontChamferRx = 0.671;
+  const frontChamferCenterY = 1.2745;
+  const frontChamferCenterZ = 1.21;
+  P.add('turret', box(1.10, 0.06, 0.44), 0,
+    frontChamferCenterY, frontChamferCenterZ, frontChamferRx, 0, 0);             // front-top chamfer (1.70,2.83w)->(1.36,3.09w),
                                                                                // x±0.55 so the plan corners stay the prism cut
+
+  // The chamfer used to read as a 6 cm floating plate from the rear quarters.
+  // Seat a narrower armor backing against its selected underside instead of
+  // changing the exterior surface: the 12 mm overlap hides light leaks and
+  // keeps the two faces from becoming coplanar, while the inset ends preserve
+  // the original prism corner cut. Because this lives in the turret bucket it
+  // follows yaw, while the deliberately shallow backing remains behind the
+  // moving howitzer housing throughout the authored -5°/+12° pitch sweep.
+  const frontChamferBackingThickness = 0.18;
+  const frontChamferBackingOverlap = 0.012;
+  const frontChamferBackingOffset = 0.06 / 2
+    + frontChamferBackingThickness / 2
+    - frontChamferBackingOverlap;
+  const frontChamferUndersideNormalY = -Math.cos(frontChamferRx);
+  const frontChamferUndersideNormalZ = -Math.sin(frontChamferRx);
+  const frontChamferBackingCenterY = frontChamferCenterY
+    + frontChamferUndersideNormalY * frontChamferBackingOffset;
+  const frontChamferBackingCenterZ = frontChamferCenterZ
+    + frontChamferUndersideNormalZ * frontChamferBackingOffset;
+  P.add('turret', box(1.06, frontChamferBackingThickness, 0.40), 0,
+    frontChamferBackingCenterY, frontChamferBackingCenterZ, frontChamferRx, 0, 0);
+  P.turretG.userData.kv2FrontChamferClosure = Object.freeze({
+    turretLocal: true,
+    exteriorSlopePreserved: true,
+    backingThicknessM: frontChamferBackingThickness,
+    overlapM: frontChamferBackingOverlap,
+    edgeInsetM: 0.02,
+    backingCenterY: frontChamferBackingCenterY,
+    backingCenterZ: frontChamferBackingCenterZ,
+    undersideNormalY: frontChamferUndersideNormalY,
+    undersideNormalZ: frontChamferUndersideNormalZ,
+    pitchSweepDeg: Object.freeze([-5, 12]),
+  });
   P.add('turret', box(1.74, 0.035, 0.40), 0, 1.4775, -0.74);                   // raised rear roof strip (3.165, z −0.22..−0.62)
   // §5.247 wave: the print's periscope pods are ROUNDED STALKS, not bare
   // boxes (close-roof ref read: cylindrical stubs with dark apertures).

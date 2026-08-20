@@ -41336,7 +41336,7 @@
           }
         ]
       },
-      "geometryHash": "02af0414",
+      "geometryHash": "7a3ad81d",
       "metadataHash": "01a8b981",
       "appearance": {
         "version": 1,
@@ -41421,24 +41421,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84357,
-          "sha256": "a900c28479cd0cc33d849779bd07e728660b955598dd59a9874a70fdee777698"
+          "bytes": 84037,
+          "sha256": "c2dcdbae1e1a1eaf7fe2e604e2cf3e09a3062b59511351dc77d8914b851ee32e"
         },
         "armorSide": {
           "file": "kv2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86831,
-          "sha256": "0317c326f126b18ba6c23e58e3db6ded755622029cbd8584c92650571e1133da"
+          "bytes": 86605,
+          "sha256": "bc9fbbc5abc7470d3a3afcc8684e6a836f9229d90462234ecf040aaefd417d25"
         },
         "modulesSide": {
           "file": "kv2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94499,
-          "sha256": "6fbda814ecc4383052c2c5c0e87acbfbe29146b4c80ab3950e7f2e6fe585b4dc"
+          "bytes": 93820,
+          "sha256": "c370484dfc132d9e1d82d79ffb3985b9c4ac293d6273c6a2349ee7d1b43cff58"
         },
         "markings": {
           "file": "kv2_markings.png",
