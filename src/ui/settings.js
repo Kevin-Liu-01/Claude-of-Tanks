@@ -733,9 +733,9 @@ export function createSettings(opts) {
     const rmbNote = el('div', 'cot-set-note', mouse);
     rmbNote.textContent =
       'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
-      '(aim pitch is preserved both ways). Toggle-aim: tap RMB like Shift. Free look: hold RMB ' +
-      'to look around while the gun stays put (classic). Left Alt is the dedicated free-look hold. ' +
-      'Shift always toggles sniper.';
+      '(aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. ' +
+      'Free look: hold RMB to look around while the gun stays put (classic). Shift is always ' +
+      'the dedicated free-look hold; Left Alt remains its secondary default.';
 
     const battle = groupCard(body, 'Battle');
     const diffRow = el('div', 'cot-set-row', battle);

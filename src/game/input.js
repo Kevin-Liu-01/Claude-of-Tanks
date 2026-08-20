@@ -26,6 +26,7 @@
 
 const BINDINGS_KEY = 'cot.bindings.v1'; // primary keyboard/mouse map (v1 compatible)
 const BINDINGS2_KEY = 'cot.bindings2.v1'; // secondary keyboard/mouse map
+const BINDINGS_LAYOUT_KEY = 'cot.bindings.layout.v2'; // Shift free-look migration receipt
 const PAD_KEY = 'cot.padBindings.v1'; // gamepad button map (standard-mapping indices)
 const SETTINGS_KEY = 'cot.settings.v1';
 
@@ -70,19 +71,14 @@ const ACTION_DEFS = [
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ];
 
-/** Default primary bindings: WASD move, LMB fire, Shift sniper, Alt free look, RMB aim,
+/** Default primary bindings: WASD move, LMB fire, Shift free look, RMB aim,
  *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
  *  Space handbrake, Esc menu.
- *  WoT PC CLASSIC LAYOUT — locked by movement-physics.md §9.2 ("Enter: Shift
- *  key or wheel-in") and cameraRig's CamInput contract (shiftPressed rising
- *  edge toggles sniper). gameplay_feel r3: an uncommitted edit swapped
- *  sniperToggle/freeCamera onto Mouse2/ShiftLeft — that killed the Shift tap
- *  (sniper no-op on every desktop) and broke WoT muscle memory, so the swap
- *  is reverted. gunnery r1 (owner): RMB keeps the 'freeCamera' BINDING slot,
- *  but its FUNCTION is now settings.rmbMode — 'hold' (hold-to-aim sniper,
- *  the owner-mandated default), 'toggle' (tap toggles sniper), or
- *  'freelook' (the classic gun-lock free look). Shift sniper is unaffected
- *  in every mode. main.js routes the action per mode each frame.
+ *  Shift is the always-available gun-lock/free-look hold: it moves the camera
+ *  without rotating the turret or hull. Sniper has no default keyboard key;
+ *  default RMB hold, wheel-in, controller LT, and the mobile scope control
+ *  still enter it. RMB keeps the context-sensitive `freeCamera` binding slot
+ *  (`hold`, `toggle`, or `freelook` via settings.rmbMode).
  *  Mouse buttons are encoded as synthetic codes "Mouse0".."Mouse4"; the wheel
  *  as "WheelUp"/"WheelDown". `null` means unbound. */
 export const DEFAULT_BINDINGS = {
@@ -92,7 +88,7 @@ export const DEFAULT_BINDINGS = {
   right: 'KeyD',
   handbrake: 'Space',
   fire: 'Mouse0',
-  sniperToggle: 'ShiftLeft',
+  sniperToggle: null,
   shell1: 'Digit1',
   shell2: 'Digit2',
   shell3: 'Digit3',
@@ -101,7 +97,7 @@ export const DEFAULT_BINDINGS = {
   consumable1: 'Digit4',
   consumable2: 'Digit5',
   consumable3: 'Digit6',
-  freeLook: 'AltLeft',
+  freeLook: 'ShiftLeft',
   freeCamera: 'Mouse2',
   zoomIn: 'WheelUp',
   zoomOut: 'WheelDown',
@@ -117,6 +113,7 @@ const DEFAULT_BINDINGS2 = {
   back: 'ArrowDown',
   left: 'ArrowLeft',
   right: 'ArrowRight',
+  freeLook: 'AltLeft',
 };
 
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
@@ -153,7 +150,7 @@ const DEFAULT_SETTINGS = {
   // gunnery r1 (owner): what the RMB-bound 'freeCamera' action DOES —
   // 'hold' = hold-to-aim (enter sniper while held, release restores the
   // prior arcade zoom + preserved aim pitch; the owner-mandated default),
-  // 'toggle' = tap toggles sniper like Shift, 'freelook' = classic WoT
+  // 'toggle' = tap toggles sniper, 'freelook' = classic WoT
   // gun-lock free look. Routed per frame by main.js; cameraRig owns the
   // hold/exit semantics (CamInput.aimHold).
   rmbMode: 'hold',
@@ -281,6 +278,42 @@ function stickCurve(v) {
 }
 
 /**
+ * Upgrade the former default keyboard layout without overwriting intentional
+ * custom bindings. Shift moves from sniper to free look only when the saved
+ * free-look key is still its old Left-Alt default (or predates that action).
+ * Left Alt is retained as the secondary free-look key when that slot is free.
+ *
+ * @param {Record<string, string|null>} primary
+ * @param {Record<string, string|null>} secondary
+ * @returns {boolean} whether either map changed
+ */
+export function migrateShiftFreeLookBindings(primary, secondary) {
+  if (!primary || typeof primary !== 'object' ||
+      !secondary || typeof secondary !== 'object') return false;
+
+  let changed = false;
+  const owns = (map, code, except) => Object.entries(map)
+    .some(([actionId, binding]) => actionId !== except && binding === code);
+  const oldFreeLookDefault = !Object.prototype.hasOwnProperty.call(primary, 'freeLook') ||
+    primary.freeLook === 'AltLeft';
+
+  if (primary.sniperToggle === 'ShiftLeft') {
+    primary.sniperToggle = null;
+    changed = true;
+  }
+  if (oldFreeLookDefault && !owns(primary, 'ShiftLeft', 'freeLook')) {
+    primary.freeLook = 'ShiftLeft';
+    changed = true;
+    if (!owns(secondary, 'AltLeft', 'freeLook') &&
+        (!Object.prototype.hasOwnProperty.call(secondary, 'freeLook') ||
+          secondary.freeLook == null)) {
+      secondary.freeLook = 'AltLeft';
+    }
+  }
+  return changed;
+}
+
+/**
  * Create the input layer.
  * @param {{lockElement?: HTMLElement}} [opts] - lockElement: canvas that owns pointer lock.
  * @returns {InputLayer}
@@ -296,6 +329,18 @@ export function createInput(opts = {}) {
     maps[1][def.id] = DEFAULT_BINDINGS2[def.id] != null ? DEFAULT_BINDINGS2[def.id] : null;
   }
   const storedMaps = [loadJson(BINDINGS_KEY), loadJson(BINDINGS2_KEY)];
+  // Existing players commonly have a full copy of the previous defaults in
+  // localStorage, so changing DEFAULT_BINDINGS alone would leave Shift aiming.
+  // Migrate that exact legacy shape once and preserve all custom layouts.
+  if (loadJson(BINDINGS_LAYOUT_KEY) !== 2 && storedMaps[0] &&
+      typeof storedMaps[0] === 'object') {
+    if (!storedMaps[1] || typeof storedMaps[1] !== 'object') storedMaps[1] = {};
+    if (migrateShiftFreeLookBindings(storedMaps[0], storedMaps[1])) {
+      saveJson(BINDINGS_KEY, storedMaps[0]);
+      saveJson(BINDINGS2_KEY, storedMaps[1]);
+    }
+  }
+  saveJson(BINDINGS_LAYOUT_KEY, 2);
   for (let s = 0; s < 2; s++) {
     const stored = storedMaps[s];
     if (stored && typeof stored === 'object') {
@@ -392,8 +437,8 @@ export function createInput(opts = {}) {
   const actionHandlers = new Map(); // actionId -> Set<cb(code)>
   // Sub-frame tap latch (gameplay_feel r1): isDown() samples a LEVEL once per
   // render frame, so a physical press+release that both land between two
-  // frames (fast Shift tap at low fps; puppeteer keyboard.press) used to
-  // vanish — the sniper toggle randomly ate quick taps. Every press edge
+  // frames (fast keyboard tap at low fps; puppeteer keyboard.press) used to
+  // vanish — toggle actions randomly ate quick taps. Every press edge
   // latches its actionId here; isDown() consumes the latch and reports the
   // action down for that one query even though the key is already up. Held
   // keys behave exactly as before (the latch is just cleared on first read).
@@ -704,8 +749,8 @@ export function createInput(opts = {}) {
 
     /** @param {string} actionId @returns {boolean} action currently held, OR
      *  tapped since the last query (sub-frame press+release latch — a fast
-     *  Shift tap toggles sniper even when both key events land between two
-     *  render frames; see pressLatch above). */
+     *  taps still register even when both key events land between two render
+     *  frames; see pressLatch above). */
     isDown(actionId) {
       pollPad();
       if (!enabled) return false;

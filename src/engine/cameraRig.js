@@ -111,7 +111,8 @@ function nearestZoomIndex(zoom, list) {
  * @property {number} wheel - accumulated wheel notches this frame (int, ±3 max): +N zoom in, -N zoom out
  * @property {boolean} rmb - generic gun-lock/free-look hold (dedicated action
  *   or RMB in free-look mode); camera moves while the aim point stays frozen
- * @property {boolean} shiftPressed - Shift held (rising edge toggles sniper)
+ * @property {boolean} shiftPressed - sniper-toggle action level; the legacy
+ *   field name is retained, and its rising edge toggles sniper
  * @property {boolean} [aimHold] - RMB hold-to-aim level (gunnery r1, settings
  *   rmbMode 'hold'): rising edge enters sniper from ARCADE, falling edge
  *   returns to the pre-scope arcade orbit with the aim ray preserved. Only
@@ -614,7 +615,7 @@ export function createCameraRig(camera, deps) {
      * Per-frame rig update (ARCHITECTURE.md §4 step 3). No-op while an
      * external pose is active. Applies mouse to the shared aim angles
      * (sensitivity ÷ zoom in sniper), handles wheel zoom stepping and
-     * Shift sniper toggling, solves the active camera mode, runs the
+     * sniper-action toggling, solves the active camera mode, runs the
      * server-aim raycast, writes the player's `input.aimPoint`, and applies
      * trauma shake last.
      *
@@ -672,10 +673,10 @@ export function createCameraRig(camera, deps) {
         const skip = Math.abs(camInput.mouseDX) > 2 || Math.abs(camInput.mouseDY) > 2 ||
           camInput.wheel !== 0 || camInput.shiftPressed || camInput.rmb;
         if (skip || !solveCinematic(player, dt)) endCinematic(player);
-        // controls_gunnery r6: a Shift tap must SKIP AND STILL TOGGLE. The
+        // controls_gunnery r6: a sniper-toggle tap must SKIP AND STILL TOGGLE. The
         // tap used to be eaten by the skip (prevShift never updates in this
         // branch, so the rising edge died with the cinematic): players who
-        // Shift'ed into the opening flyby landed in ARCADE with no scope
+        // toggled scope during the opening flyby landed in ARCADE with no scope
         // treatment and read sniper entry as broken (probe: mode ARCADE /
         // fov 60 after a mid-flyby tap; the critic's "live sniper entry has
         // no vignette" frame is exactly this failure). A shift-skip now
@@ -685,7 +686,7 @@ export function createCameraRig(camera, deps) {
         if (!(camInput.shiftPressed && cine === null)) return;
       }
 
-      // Shift toggles sniper on the rising edge.
+      // The dedicated sniper action toggles on its rising edge.
       if (camInput.shiftPressed && !prevShift) {
         if (rig.mode === 'ARCADE') rig.enterSniper();
         else rig.exitSniper(true); // gameplay_feel r6: restore pre-scope orbit
@@ -695,7 +696,7 @@ export function createCameraRig(camera, deps) {
       // RMB HOLD-TO-AIM (gunnery r1, settings rmbMode 'hold' — the default):
       // press enters sniper, release returns to the pre-scope arcade orbit
       // with the aim ray preserved (bug-2 rules). The latch ties the exit to
-      // an entry THIS hold made: releasing RMB over a Shift- or wheel-entered
+      // an entry THIS hold made: releasing RMB over an action- or wheel-entered
       // scope must not kick the player out of it.
       if (camInput.aimHold && !prevAimHold) {
         if (rig.mode === 'ARCADE') {

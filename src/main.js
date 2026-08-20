@@ -4017,21 +4017,18 @@ function tick(nowMs) {
     camInput.cursorX = _cursorNdc.x;
     camInput.cursorY = _cursorNdc.y;
   }
-  // FREE-LOOK / RMB ROUTING: left Alt (or the rebindable `freeLook` action)
-  // always provides classic hold-to-look with the aim point and turret frozen.
-  // This stays separate from Shift's established sniper toggle. What the
-  // RMB-bound 'freeCamera'
-  // action does is the player's settings.rmbMode pick —
+  // FREE-LOOK / RMB ROUTING: Shift (the rebindable `freeLook` action; Left Alt
+  // remains its secondary default) always provides classic hold-to-look with
+  // the aim point and turret frozen. What the RMB-bound `freeCamera` action
+  // does is the player's settings.rmbMode pick —
   //   'hold' (DEFAULT, owner ask): hold-to-aim — the rig enters sniper while
   //     held and returns to the prior arcade zoom + preserved aim pitch on
   //     release (CamInput.aimHold; edges live in cameraRig).
-  //   'toggle': tap toggles sniper — routed through the same rising-edge
-  //     lane as Shift.
+  //   'toggle': tap toggles sniper through the existing rising-edge lane.
   //   'freelook': the WoT-classic gun-lock free look (pre-r1 behavior).
   //     Meaningless in CURSOR-AIM mode (the camera never mouselooks), where
   //     it degrades to the legacy RMB sniper toggle so no-pointer-lock embeds
   //     keep a mouse-reachable scope on the button players aim with.
-  // Shift = sniper stays live in EVERY mode (movement-physics.md §9.2).
   // isDown() consumes the sub-frame tap latch, so 'freeCamera' is read
   // exactly once per frame.
   const rmbMode = input.getSettings().rmbMode || 'hold';

@@ -311,9 +311,10 @@ switching modes never snaps the view.
   at the raycast hit, and the gun converges on that 3-D point (server-aim). Draw a second
   small marker where the gun actually points *now* (gun marker) so the player sees turret lag;
   WoT's optional "server reticle" is exactly this authoritative gun-aim indicator.
-- **Gun lock / free look**: hold the dedicated Free Look action (`Left Alt` by
-  default, controller `RB`) to move the camera while freezing the aim point and
-  turret. RMB can provide the same behavior when its setting is `freelook`.
+- **Gun lock / free look**: hold the dedicated Free Look action (`Left Shift`
+  by default, secondary `Left Alt`, controller `RB`) to move the camera while
+  freezing the aim point, turret, and hull. RMB can provide the same behavior
+  when its setting is `freelook`.
 
 ### 9.2 Sniper — first person from the gun
 
@@ -329,8 +330,11 @@ switching modes never snaps the view.
 - **Scope overlay**: full-screen black vignette ring (scope shadow), thin crosslines, zoom
   text, and the dispersion circle rendered in screen space sized from `r(D)` at the aim
   distance. Hull is hidden (camera is inside the tank); render nothing of own vehicle.
-- Enter: Shift key or wheel-in past arcade's closest step. Exit: Shift or wheel-out past ×2.
-  Keep arcade orbit yaw synced to turret yaw on exit so the camera comes out behind the gun.
+- Enter: default RMB hold, RMB toggle when configured, or wheel-in past arcade's
+  closest step. Exit by releasing default RMB hold, toggling RMB when configured,
+  or wheeling out past ×2. Keep arcade orbit yaw synced to turret yaw on exit so
+  the camera comes out behind the gun. The rebindable sniper action has no
+  default keyboard key.
 - Sniper mode is disabled for SPG (they get strategic view instead).
 
 ### 9.3 Server-aim / reticle terrain-follow details

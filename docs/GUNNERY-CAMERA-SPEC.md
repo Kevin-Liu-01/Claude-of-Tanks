@@ -81,12 +81,14 @@ summaries above are reproducible with the commands in the probe header).
    nets 0.00 deg vs deployed +0.33 deg).
 2. **RMB aiming (separate owner ask).** `settings.rmbMode`:
    `hold` (default) = hold RMB to scope, release returns to the pre-scope
-   arcade orbit + preserved pitch; `toggle` = tap like Shift; `freelook` =
-   classic gun-lock free look. Shift sniper unaffected in every mode. Wired
+   arcade orbit + preserved pitch; `toggle` = tap to toggle scope; `freelook` =
+   classic gun-lock free look. Wired
    through the existing `freeCamera` binding + settings GAMEPLAY chips.
-   A separate rebindable `freeLook` action (default `Left Alt`, controller
+   A separate rebindable `freeLook` action (default `Left Shift`, secondary
+   `Left Alt`, controller
    `RB`) always holds the camera free while freezing the aim point and turret;
-   it does not change Shift's sniper-toggle contract or the selected RMB mode.
+   sniper mode has no default keyboard binding, and the selected RMB mode is
+   unchanged.
 3. **Narrow-window mouse regression fix.** `input.isTouchLayout()` treated any
    window <= 900 px wide as a touch device (commit 39e43c0), which disabled
    pointer lock AND the cursor-aim fallback in embedded desktop panes — mouse
