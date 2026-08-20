@@ -131,6 +131,28 @@ async function createStartingRoom(authorityPage, playerPage, signalUrl, config) 
     await state.session.submit({ type: 'select_camo', camo: pass.playerCamo });
   }, { url: signalUrl, roomCode: room.roomCode, config });
 
+  if (config.playerTeam === 'alpha') {
+    await authorityPage.evaluate(() => globalThis.__COT_DUAL.session.command({
+      type: 'set_team', team: 'spectator',
+    }));
+    await playerPage.waitForFunction(
+      () => globalThis.__COT_DUAL?.lastLobby?.players
+        ?.some((player) => player.isHost && player.team === 'spectator'),
+      { timeout: 20_000 },
+    );
+    await playerPage.evaluate(() => globalThis.__COT_DUAL.session.submit({
+      type: 'set_team', team: 'alpha',
+    }));
+    await authorityPage.waitForFunction(
+      () => globalThis.__COT_DUAL?.lastLobby?.players
+        ?.some((player) => !player.isHost && player.team === 'alpha'),
+      { timeout: 20_000 },
+    );
+    await authorityPage.evaluate(() => globalThis.__COT_DUAL.session.command({
+      type: 'set_team', team: 'bravo',
+    }));
+  }
+
   await authorityPage.waitForFunction(
     (specs) => globalThis.__COT_DUAL?.lastLobby?.players?.length === 2 &&
       specs.every((specId) => globalThis.__COT_DUAL.lastLobby.players
@@ -146,6 +168,12 @@ async function createStartingRoom(authorityPage, playerPage, signalUrl, config) 
   assert.equal(lobby.teamSize, 1);
   assert.deepEqual(new Set(lobby.players.map((player) => player.specId)),
     new Set([config.playerSpecId, config.opponentSpecId]));
+  assert.equal(lobby.players.find((player) => player.id === `${config.id}-player`)?.team,
+    config.playerTeam);
+  assert.equal(lobby.players.find((player) => player.specId === config.playerSpecId)?.camo,
+    config.playerCamo);
+  assert.equal(lobby.players.find((player) => player.specId === config.opponentSpecId)?.camo,
+    config.opponentCamo);
 
   await Promise.all([
     authorityPage.evaluate(() => globalThis.__COT_DUAL.session.command({
@@ -191,7 +219,20 @@ async function startLightAuthority(authorityPage) {
     });
     state.match.ready();
     state.pumpTimer = setInterval(() => {
-      try { state.lastSnapshot = state.match.advance(1000 / 60); }
+      try {
+        const faceoff = state.faceoff;
+        if (faceoff) {
+          const alpha = state.match.simulation.entityById.get(faceoff.alphaId);
+          const bravo = state.match.simulation.entityById.get(faceoff.bravoId);
+          if (alpha && bravo) {
+            alpha.input.aimPoint.copy(bravo.state.pos);
+            alpha.input.aimPoint.y += bravo.spec.dims.heightM * 0.52;
+            bravo.input.aimPoint.copy(alpha.state.pos);
+            bravo.input.aimPoint.y += alpha.spec.dims.heightM * 0.52;
+          }
+        }
+        state.lastSnapshot = state.match.advance(1000 / 60);
+      }
       catch (error) { state.errors.push(error.message); }
     }, 1000 / 60);
   });
@@ -308,6 +349,13 @@ async function stageFaceoff(authorityPage, lobby) {
       entity.input.brake = true;
       entity.input.fire = false;
     }
+    const alphaEntity = simulation.entityById.get(alphaPlayer.id);
+    const bravoEntity = simulation.entityById.get(bravoPlayer.id);
+    alphaEntity.input.aimPoint.copy(bravoEntity.state.pos);
+    alphaEntity.input.aimPoint.y += bravoEntity.spec.dims.heightM * 0.52;
+    bravoEntity.input.aimPoint.copy(alphaEntity.state.pos);
+    bravoEntity.input.aimPoint.y += alphaEntity.spec.dims.heightM * 0.52;
+    state.faceoff = { alphaId: alphaPlayer.id, bravoId: bravoPlayer.id };
     return {
       axis: pair.axis,
       alphaId: alphaPlayer.id,
@@ -351,6 +399,45 @@ async function framePerspective(page, opponentId) {
   }, opponentId);
 }
 
+async function readFaceoffProof(authorityPage) {
+  await authorityPage.waitForFunction(() => {
+    const state = globalThis.__COT_DUAL;
+    const faceoff = state?.faceoff;
+    if (!faceoff) return false;
+    const entities = state.match?.simulation?.entityById;
+    const alpha = entities?.get(faceoff.alphaId);
+    const bravo = entities?.get(faceoff.bravoId);
+    if (!alpha || !bravo) return false;
+    const errorFor = (entity, target) => {
+      const desired = Math.atan2(
+        target.state.pos.x - entity.state.pos.x,
+        target.state.pos.z - entity.state.pos.z,
+      );
+      const actual = entity.state.yaw + entity.state.turretYaw;
+      return Math.abs(Math.atan2(Math.sin(actual - desired), Math.cos(actual - desired)));
+    };
+    return errorFor(alpha, bravo) < 0.04 && errorFor(bravo, alpha) < 0.04;
+  }, { timeout: 20_000, polling: 50 });
+  return authorityPage.evaluate(() => {
+    const state = globalThis.__COT_DUAL;
+    const { alphaId, bravoId } = state.faceoff;
+    const alpha = state.match.simulation.entityById.get(alphaId);
+    const bravo = state.match.simulation.entityById.get(bravoId);
+    const errorFor = (entity, target) => {
+      const desired = Math.atan2(
+        target.state.pos.x - entity.state.pos.x,
+        target.state.pos.z - entity.state.pos.z,
+      );
+      const actual = entity.state.yaw + entity.state.turretYaw;
+      return Math.abs(Math.atan2(Math.sin(actual - desired), Math.cos(actual - desired)));
+    };
+    return {
+      alphaTurretError: errorFor(alpha, bravo),
+      bravoTurretError: errorFor(bravo, alpha),
+    };
+  });
+}
+
 async function closePlayer(page) {
   if (!page || page.isClosed()) return;
   await page.evaluate(() => {
@@ -391,15 +478,25 @@ async function capturePerspective(origin, signalUrl, config) {
     const opponent = lobby.players.find((player) => player.id !== own.id);
     await framePerspective(playerPage, opponent.id);
     await new Promise((resolveWait) => setTimeout(resolveWait, 2200));
+    const turretProof = await readFaceoffProof(authorityPage);
     const image = await playerPage.screenshot({ type: 'jpeg', quality: 94 });
-    const state = await playerPage.evaluate(() => ({
-      phase: window.__DEBUG.game.phase,
-      roster: window.__DEBUG.game.tankById.size,
-      errors: globalThis.__COT_DUAL.errors,
-      distance: window.__DEBUG.game.player.state.pos.distanceTo(
-        window.__DEBUG.game.tanks.find((tank) => tank.id !== window.__DEBUG.game.player.id).state.pos,
-      ),
-    }));
+    const state = await playerPage.evaluate((opponentId) => {
+      const player = window.__DEBUG.game.player;
+      const target = window.__DEBUG.game.tankById.get(opponentId);
+      const view = target.state.pos.clone().sub(player.state.pos).normalize();
+      const cameraOffset = window.__DEBUG.camera.position.clone().sub(player.state.pos).normalize();
+      return {
+        phase: window.__DEBUG.game.phase,
+        roster: window.__DEBUG.game.tankById.size,
+        errors: globalThis.__COT_DUAL.errors,
+        distance: player.state.pos.distanceTo(target.state.pos),
+        view: view.toArray(),
+        cameraBehindDot: cameraOffset.dot(view),
+      };
+    }, opponent.id);
+    state.team = own.team;
+    state.camos = Object.fromEntries(lobby.players.map((player) => [player.specId, player.camo]));
+    state.turrets = turretProof;
     const authority = await authorityPage.evaluate(() => ({
       errors: globalThis.__COT_DUAL.errors,
       started: globalThis.__COT_DUAL.match?.host?.matchStarted,
@@ -408,6 +505,10 @@ async function capturePerspective(origin, signalUrl, config) {
     assert.equal(state.phase, 'battle');
     assert.equal(state.roster, 2);
     assert.ok(state.distance > 24 && state.distance < 38);
+    assert.equal(state.team, config.playerTeam);
+    assert.ok(state.cameraBehindDot < -0.7);
+    assert.ok(state.turrets.alphaTurretError < 0.04);
+    assert.ok(state.turrets.bravoTurretError < 0.04);
     assert.deepEqual(state.errors, []);
     assert.deepEqual(authority.errors, []);
     assert.equal(authority.started, true);
@@ -421,32 +522,24 @@ async function capturePerspective(origin, signalUrl, config) {
 async function compose(alphaImage, bravoImage) {
   const page = await browser.newPage();
   observe(page, 'composition');
-  await page.setViewport({ width: 2400, height: 900, deviceScaleFactor: 1 });
+  await page.setViewport({ width: 2400, height: 700, deviceScaleFactor: 1 });
   const dataUrl = (buffer) => `data:image/jpeg;base64,${buffer.toString('base64')}`;
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>
-    *{box-sizing:border-box}html,body{margin:0;width:2400px;height:900px;overflow:hidden}
-    body{padding:28px;background:#06090d;color:#e8edf2;font-family:Inter,Arial,sans-serif}
-    header{height:62px;display:flex;align-items:flex-start;justify-content:space-between;border-top:2px solid #f0a030;padding:14px 2px 0}
-    .eyebrow{font:800 14px/1 Arial,sans-serif;letter-spacing:.28em;color:#f0aa38}
-    h1{margin:7px 0 0;font:800 24px/1 Arial,sans-serif;letter-spacing:.05em;text-transform:uppercase}
-    .truth{padding-top:9px;font:700 12px/1 Arial,sans-serif;letter-spacing:.2em;color:#93a2af}
-    main{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px}
-    figure{position:relative;margin:0;height:720px;overflow:hidden;background:#090d12;border:1px solid #38424c;border-top:2px solid #f0a030;box-shadow:0 18px 54px rgba(0,0,0,.48)}
+    *{box-sizing:border-box}html,body{margin:0;width:2400px;height:700px;overflow:hidden}
+    body{padding:16px 28px 12px;background:#06090d;color:#e8edf2;font-family:Inter,Arial,sans-serif}
+    main{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    figure{position:relative;margin:0;height:672px;overflow:hidden;background:#090d12;border:1px solid #38424c;border-top:2px solid #f0a030;box-shadow:0 18px 54px rgba(0,0,0,.48)}
     figure.bravo{border-top-color:#77b8d8}figure img{display:block;width:100%;height:100%;object-fit:cover}
     figcaption{position:absolute;left:18px;top:16px;display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(5,8,12,.86);border:1px solid rgba(255,255,255,.22);font:800 12px/1 Arial,sans-serif;letter-spacing:.18em;text-transform:uppercase}
     .alpha figcaption{border-left:3px solid #f0a030}.bravo figcaption{border-left:3px solid #77b8d8}
     .vehicle{color:#aab6c1;font-weight:700}.live{color:#70d68b}
     .link{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);width:74px;height:74px;display:grid;place-items:center;background:#0a0e13;border:2px solid #f0a030;box-shadow:0 0 0 8px rgba(6,9,13,.78);font:900 14px/1 Arial,sans-serif;letter-spacing:.12em;color:#f6bd61}
-    footer{height:52px;display:flex;align-items:center;justify-content:center;gap:16px;color:#9ba8b3;font:800 12px/1 Arial,sans-serif;letter-spacing:.22em;text-transform:uppercase}
-    footer b{color:#e4ebf1}footer span{color:#f0a030}
   </style></head><body>
-    <header><div><div class="eyebrow">Live browser multiplayer</div><h1>Two screens // opposing sights</h1></div><div class="truth">Intent → authority → filtered snapshots</div></header>
     <main>
       <figure class="alpha"><img src="${dataUrl(alphaImage)}" alt=""><figcaption><span class="live">Live</span> Player one <span class="vehicle">M1A2 Abrams</span></figcaption></figure>
       <figure class="bravo"><img src="${dataUrl(bravoImage)}" alt=""><figcaption><span class="live">Live</span> Player two <span class="vehicle">T-90M Proryv</span></figcaption></figure>
       <div class="link">VS</div>
     </main>
-    <footer><b>Paired live multiplayer perspectives</b><span>◆</span> deterministic opposing faceoffs</footer>
   </body></html>`, { waitUntil: 'load' });
   await page.screenshot({ path: outputPath, type: 'webp', quality: 92 });
   await page.close();
@@ -473,24 +566,32 @@ try {
     id: 'abrams',
     label: 'Abrams perspective',
     playerName: 'Alpha Commander',
+    playerTeam: 'alpha',
     playerSpecId: 'm1a2',
-    playerCamo: 'merdc',
+    playerCamo: 'factory',
     opponentName: 'Bravo Commander',
     opponentSpecId: 't90m',
-    opponentCamo: 'desert',
+    opponentCamo: 'factory',
   });
   const bravo = await capturePerspective(origin, signalUrl, {
     id: 'proryv',
     label: 'T-90M perspective',
     playerName: 'Bravo Commander',
+    playerTeam: 'bravo',
     playerSpecId: 't90m',
-    playerCamo: 'desert',
+    playerCamo: 'factory',
     opponentName: 'Alpha Commander',
     opponentSpecId: 'm1a2',
-    opponentCamo: 'merdc',
+    opponentCamo: 'factory',
   });
   console.log('[multiplayer-shot] composing the README feature image');
   await compose(alpha.image, bravo.image);
+  assert.equal(alpha.state.camos.m1a2, bravo.state.camos.m1a2);
+  assert.equal(alpha.state.camos.t90m, bravo.state.camos.t90m);
+  assert.ok(alpha.state.view[0] * bravo.state.view[0] +
+    alpha.state.view[1] * bravo.state.view[1] +
+    alpha.state.view[2] * bravo.state.view[2] < -0.98,
+  'the two player cameras must face opposite directions');
   assert.deepEqual(browserErrors, [], `browser errors:\n${browserErrors.join('\n')}`);
   console.log(JSON.stringify({
     ok: true,
