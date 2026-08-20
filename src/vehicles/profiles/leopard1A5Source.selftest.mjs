@@ -59,11 +59,15 @@ assert.deepEqual(finish, {
   fenderLockers: 8,
   rearFuelCans: 2,
   roadWheelStations: 7,
-  roadWheelY: 0.30,
+  roadWheelY: 0.25,
   roadWheelPitch: 0.74,
   roadWheelSpan: 4.44,
-  roadWheelZs: [2.22, 1.48, 0.74, 0, -0.74, -1.48, -2.22],
-  trackBotY: 0.005,
+  roadWheelZs: [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04],
+  roadWheelForwardShift: 0.18,
+  returnRollerZs: [2.30, 0.90, -0.52, -1.87],
+  trackBotY: -0.045,
+  trackContactZF: 2.82,
+  trackContactZR: -2.46,
   sealedHullSides: true,
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
@@ -83,9 +87,9 @@ assert.deepEqual(finish, {
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
-assert.equal(gear.wheelY, 0.30, 'the seven road-wheel centers move lower into the taller track course');
-assert.deepEqual(gear.wheelZs, [2.22, 1.48, 0.74, 0, -0.74, -1.48, -2.22],
-  'the seven road wheels use the tighter Leopard 1 pitch');
+assert.equal(gear.wheelY, 0.25, 'the seven road-wheel centers move lower into the taller track course');
+assert.deepEqual(gear.wheelZs, [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04],
+  'the seven road wheels advance together on the tighter Leopard 1 pitch');
 for (let i = 1; i < gear.wheelZs.length; i++) {
   assert.ok(Math.abs((gear.wheelZs[i - 1] - gear.wheelZs[i]) - 0.74) < 1e-8,
     `road-wheel station ${i} remains on the compact 0.74 m pitch`);
@@ -94,8 +98,10 @@ assert.deepEqual(gear.idler, { z: 3.17, y: 0.66, r: 0.29 },
   'the front idler retains its authored position and radius');
 assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.72, r: 0.30 },
   'the rear sprocket retains its authored position and radius');
-assert.ok(gear.idler.y - gear.wheelY >= 0.31 && gear.sprocket.y - gear.wheelY >= 0.37,
+assert.ok(gear.idler.y - gear.wheelY >= 0.41 && gear.sprocket.y - gear.wheelY >= 0.47,
   'the fixed terminal drums now rise strongly above the lowered road-wheel axis');
+assert.ok(Math.abs(gear.wheelZs.reduce((sum, z) => sum + z, 0) / gear.wheelZs.length - 0.18) < 1e-8,
+  'the complete road-wheel row advances 18 cm without changing its cadence');
 
 // The sponson must bear on the fender shelf, while exactly one long shallow
 // upper-glacis surface remains between the deck break and nose. A vertical

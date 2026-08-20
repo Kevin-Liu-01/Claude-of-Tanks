@@ -10457,8 +10457,12 @@ function buildLeo1A5ArticulatedProfile(P) {
   const fenderShelfTopY = 1.2275;
   const hullSponsonBottomY = 1.20;
   const hullSponsonTopY = 1.44;
-  const roadWheelY = 0.30;
-  const roadWheelZs = [2.22, 1.48, 0.74, 0, -0.74, -1.48, -2.22];
+  const roadWheelY = 0.25;
+  const roadWheelZs = [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04];
+  const returnRollerZs = [2.30, 0.90, -0.52, -1.87];
+  const trackBotY = -0.045;
+  const trackContactZF = 2.82;
+  const trackContactZR = -2.46;
 
   // ---------------------------------------------------------------- hull --
   // Normalized source anchors: x ±1.685, z ±3.541; track y 0..1.185;
@@ -10617,18 +10621,18 @@ function buildLeo1A5ArticulatedProfile(P) {
   }
 
   // Seven 660 mm dual wheels on the Leopard-family trapezoid course. The
-  // road-wheel pitch tightens from .82 m to .74 m and the row drops another
-  // 5 cm into the loaded bottom run. The authored idler, sprocket and return
-  // run remain fixed, producing the compact Leopard 1 wheel train while
-  // keeping both approach shoulders and certified length anchors intact.
+  // compact .74 m pitch is retained, while the complete row advances 18 cm
+  // to sit centrally between the fixed end drums and drops another 5 cm into
+  // a correspondingly deeper loaded run. Return supports and both contact
+  // knees advance with the road-wheel pack so the linked course remains a
+  // coherent trapezoid instead of stretching diagonally around the old row.
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: roadWheelY, xc: 1.40,
     wheelZs: roadWheelZs,
     sprocket: { z: -2.70, y: 0.72, r: 0.30 }, idler: { z: 3.17, y: 0.66, r: 0.29 },
-    rollers: [{ z: 2.12, y: 0.93, r: 0.105 }, { z: 0.72, y: 0.93, r: 0.105 },
-      { z: -0.70, y: 0.93, r: 0.105 }, { z: -2.05, y: 0.93, r: 0.105 }],
-    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: 0.005,
-    contactZF: 2.64, contactZR: -2.64,
+    rollers: returnRollerZs.map((z) => ({ z, y: 0.93, r: 0.105 })),
+    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: trackBotY,
+    contactZF: trackContactZF, contactZR: trackContactZR,
     linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
     endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
@@ -10643,7 +10647,11 @@ function buildLeo1A5ArticulatedProfile(P) {
     roadWheelPitch: 0.74,
     roadWheelSpan: 4.44,
     roadWheelZs: [...roadWheelZs],
-    trackBotY: 0.005,
+    roadWheelForwardShift: 0.18,
+    returnRollerZs: [...returnRollerZs],
+    trackBotY,
+    trackContactZF,
+    trackContactZR,
     sealedHullSides: true,
     closedDeckUnderstructure: true,
     deckSupportSegments: 2,
