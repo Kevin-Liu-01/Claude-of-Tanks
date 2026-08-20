@@ -7278,8 +7278,8 @@ function buildLeo2Revolution(P) {
   // y 0.30L printed 1.72 bottoms into the ref's 2.084 ring columns AND sat
   // buried 0.2 inside the wall solid — now sized into the wall's 1.88..2.12
   // side band and pinned ON the wall faces
-  P.decal('turret', 'crossgrey', null, 0.22, [1.612, 0.50, 1.475], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.22, [-1.652, 0.50, 1.475], -Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.22, [1.612, 0.42, 1.475], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.22, [-1.652, 0.42, 1.475], -Math.PI / 2);
   // mantlet back wall behind the notch (cheeks pulled to the ref 2.30w
   // plan line — the old 2.58w reach was the top plan-turret error)
   // r5: top 2.15 -> 2.02 (its AA read 2.185 on the lone 2.21w column where
