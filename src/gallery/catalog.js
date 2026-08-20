@@ -76,17 +76,17 @@ function joinTechnicalList(items) {
 }
 
 function mobilityAssessment(powerToWeight, topSpeed) {
-  if (powerToWeight >= 25 && topSpeed >= 60) return 'high power-to-weight performance and a strong road-speed ceiling';
-  if (powerToWeight >= 18 || topSpeed >= 55) return 'balanced tactical mobility for its weight class';
-  if (powerToWeight >= 13) return 'measured mobility that favors deliberate positioning';
-  return 'low-speed, high-inertia movement that rewards route planning';
+  if (powerToWeight >= 25 && topSpeed >= 60) return 'a high power-to-weight ratio and high maximum road speed';
+  if (powerToWeight >= 18 || topSpeed >= 55) return 'mobility appropriate to its weight class';
+  if (powerToWeight >= 13) return 'moderate mobility that favors deliberate positioning';
+  return 'low maximum speed and high inertia that require careful route planning';
 }
 
 function protectionAssessment(bestKe) {
-  if (bestKe >= 700) return 'a very strong peak kinetic-protection zone';
-  if (bestKe >= 400) return 'substantial peak kinetic protection';
-  if (bestKe >= 180) return 'moderate localized kinetic protection';
-  return 'limited peak kinetic protection and a greater reliance on positioning';
+  if (bestKe >= 700) return 'very high maximum kinetic protection';
+  if (bestKe >= 400) return 'high maximum kinetic protection';
+  if (bestKe >= 180) return 'moderate local kinetic protection';
+  return 'limited kinetic protection, which increases the importance of positioning';
 }
 
 export function classLabel(value) {
@@ -164,11 +164,11 @@ export function createGalleryRecord(spec) {
   const armamentSentence = autoloader
     ? `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament uses a ${magazineSize}-round magazine autoloader with a ${rounded(intraClipS)}-second intra-magazine cycle and a complete reload time of ${rounded(fullReloadS)} seconds; the modeled ammunition suite comprises ${shellTypes.length || 1} ${shellTypes.length === 1 ? 'family' : 'families'}.`
     : `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${shellTypes.length || 1} ammunition ${shellTypes.length === 1 ? 'family' : 'families'}.`;
-  const firstParagraph = `${label.displayName} is represented in Claude of Tanks as a Tier ${tierNumeral(spec.id) || tier} ${nation} ${vehicleClass.toLowerCase()} from the ${era.toLowerCase()} period. ${armamentSentence} The drivetrain delivers ${rounded(powerToWeight)} horsepower per tonne and a ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h forward-speed ceiling.`;
+  const firstParagraph = `In Claude of Tanks, ${label.displayName} is a Tier ${tierNumeral(spec.id) || tier} ${nation} ${vehicleClass.toLowerCase()} from the ${era.toLowerCase()} period. ${armamentSentence} Its drivetrain provides ${rounded(powerToWeight)} horsepower per tonne and a maximum forward speed of ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h.`;
   const featureSentence = features.length
-    ? ` The protection model also includes ${joinTechnicalList(features)} where those layers are present in the authored plate set.`
+    ? ` The authored plate set also includes ${joinTechnicalList(features)}.`
     : '';
-  const secondParagraph = `Within the current simulation balance, the vehicle combines ${mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0))} with ${protectionAssessment(bestKeMm)}. Its internal layout exposes ${modules.length} modeled module volumes and ${crew.length} crew stations to resolved post-penetration damage.${featureSentence}`;
+  const secondParagraph = `The current balance model gives this vehicle ${mobilityAssessment(powerToWeight, Number(spec.topSpeedKmh || 0))}. Its armor model provides ${protectionAssessment(bestKeMm)}. Post-penetration damage can affect ${modules.length} modeled module volumes and ${crew.length} crew stations.${featureSentence}`;
 
   const highlights = [
     ...(autoloader ? [`${magazineSize}-round magazine: ${burstDamage.toLocaleString('en-US')} burst damage with a ${rounded(intraClipS)} s intra-magazine cycle`] : []),

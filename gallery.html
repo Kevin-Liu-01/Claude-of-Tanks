@@ -12,29 +12,23 @@
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/src/presentation/mediaArchive.css">
   <link rel="stylesheet" href="/src/gallery/gallery.css">
+  <link rel="stylesheet" href="/src/presentation/publicNav.css">
   <title>Tank Gallery — Claude of Tanks</title>
 </head>
 <body>
-  <nav class="global-nav" aria-label="Primary navigation">
-    <a class="brand" href="/home" aria-label="Claude of Tanks home">
-      <img src="/brand/logo-mark.svg" alt="">
-      <span>Claude <b>of Tanks</b></span>
-    </a>
-    <div class="nav-links">
-      <a href="/home">Showcase</a>
-      <a href="/gallery" aria-current="page">Tank Gallery</a>
-      <a href="/docs">Documentation</a>
-      <a href="/studio">Scene Studio</a>
-      <a class="nav-play" href="/">Enter garage</a>
+  <nav class="public-nav" aria-label="Primary navigation">
+    <div class="public-nav__inner">
+      <a class="public-nav__brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
+      <div class="public-nav__links"><a href="/home">Home</a><a href="/gallery" aria-current="page">Tank Gallery</a><a href="/docs">Docs</a><a href="/studio">Studio</a><a class="public-nav__cta" href="/">Play Now</a></div>
     </div>
   </nav>
 
   <main class="gallery-shell">
     <aside class="archive-panel" aria-label="Vehicle archive">
       <header class="panel-heading">
-        <p class="eyebrow">Ordnance archive // live registry</p>
+        <p class="eyebrow">Playable vehicle registry</p>
         <h1>Vehicle<br>Gallery</h1>
-        <p>Every selectable vehicle, reconstructed live from the first-party procedural fleet.</p>
+        <p>The Gallery constructs every selectable vehicle from the current first-party procedural fleet.</p>
       </header>
 
       <form class="archive-filters" id="archiveFilters" role="search">
@@ -51,7 +45,7 @@
 
       <div class="archive-summary">
         <span id="archiveCount">Loading registry…</span>
-        <span>Click to inspect</span>
+        <span>Select a vehicle to inspect it</span>
       </div>
       <div class="vehicle-list" id="vehicleList" role="listbox" aria-label="Playable vehicles"></div>
       <footer class="archive-footer">
@@ -63,8 +57,8 @@
     <section class="viewer" id="viewport" aria-label="Interactive tank viewer">
       <div class="viewer-atmosphere" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="viewer-head">
-        <div class="live-pill"><span></span> Live procedural specimen</div>
-        <div class="viewer-head-actions"><button type="button" class="field-frames-button" id="galleryArchiveOpen">Field frames <span>61</span></button><div class="viewer-record" id="viewerRecord">Archive record —</div></div>
+        <div class="live-pill"><span></span> Current procedural model</div>
+        <div class="viewer-head-actions"><button type="button" class="field-frames-button" id="galleryArchiveOpen">Field frames <span>88</span></button><div class="viewer-record" id="viewerRecord">Archive record —</div></div>
       </div>
 
       <div class="loading-state" id="loadingState" role="status">
@@ -123,13 +117,13 @@
         </section>
 
         <section class="dossier-section" aria-labelledby="summaryHeading">
-          <div class="section-label"><span id="summaryHeading">Technical reading</span><small>Current game model</small></div>
+          <div class="section-label"><span id="summaryHeading">Technical summary</span><small>Current game data</small></div>
           <div class="technical-brief" id="technicalBrief"></div>
           <ul class="highlights" id="highlights"></ul>
         </section>
 
         <section class="dossier-section" aria-labelledby="articulationHeading">
-          <div class="section-label"><span id="articulationHeading">Articulation</span><small>Live rig</small></div>
+          <div class="section-label"><span id="articulationHeading">Articulation</span><small>Current vehicle rig</small></div>
           <label class="range-control" for="hullYaw"><span>Hull yaw <output id="hullYawValue">0°</output></span><input id="hullYaw" type="range" min="-180" max="180" value="0"></label>
           <label class="range-control" for="turretYaw"><span>Turret yaw <output id="turretYawValue">0°</output></span><input id="turretYaw" type="range" min="-180" max="180" value="0"></label>
           <label class="range-control" for="gunPitch"><span>Gun elevation <output id="gunPitchValue">0°</output></span><input id="gunPitch" type="range" min="-10" max="20" step="0.5" value="0"></label>
@@ -168,7 +162,7 @@
           <div class="markup-selection-list" id="markupSelectionList"></div>
           <div class="markup-action-row"><button type="button" id="markupUndo">Undo</button><button type="button" id="markupClear">Clear</button><button type="button" id="markupFocus">Focus</button></div>
 
-          <label class="markup-field" for="markupJson"><span>Actionable JSON</span><textarea id="markupJson" class="markup-json" readonly spellcheck="false"></textarea></label>
+          <label class="markup-field" for="markupJson"><span>Review packet JSON</span><textarea id="markupJson" class="markup-json" readonly spellcheck="false"></textarea></label>
           <div class="markup-action-row markup-action-row--export"><button type="button" id="markupCopy">Copy JSON</button><button type="button" id="markupDownload">Download</button><button type="button" id="markupSavePng">Save PNG</button></div>
           <p class="markup-shortcuts">Shift+1–4 operation · Cmd/Ctrl+Z undo · Delete selected</p>
         </section>
@@ -183,14 +177,14 @@
           <div class="ammunition-list" id="ammunitionList"></div>
         </section>
 
-        <p class="model-note">Every selectable vehicle and diagnostic model is original procedural work by Kevin B. Liu. Values describe Claude of Tanks simulation data, not a real-world survivability or engineering assessment. Diagnostic overlays show authored collision volumes.</p>
+        <p class="model-note">Every selectable vehicle and diagnostic model is original procedural work by Kevin B. Liu. The displayed values describe the Claude of Tanks simulation and do not provide a real-world engineering or survivability assessment. Diagnostic overlays represent authored collision volumes.</p>
       </div>
     </aside>
   </main>
 
   <dialog class="gallery-archive-dialog" id="galleryArchive" aria-labelledby="galleryArchiveTitle">
-    <header><div><p class="eyebrow">Live renderer // production archive</p><h2 id="galleryArchiveTitle">Tanks in context.</h2><p>Inspect the same first-party rigs in battle, destruction, terrain, and cinematic production.</p></div><button type="button" id="galleryArchiveClose" aria-label="Close field frames">×</button></header>
-    <div class="gallery-archive-body" data-media-archive data-mode="compact" data-limit="61"></div>
+    <header><div><p class="eyebrow">Game-rendered showcase archive</p><h2 id="galleryArchiveTitle">Vehicles in game scenes</h2><p>Review the same first-party vehicle rigs in battle, destruction, terrain, and Scene Studio compositions.</p></div><button type="button" id="galleryArchiveClose" aria-label="Close field frames">×</button></header>
+    <div class="gallery-archive-body" data-media-archive data-mode="compact" data-limit="88"></div>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
   <script type="module" src="/src/gallery/gallery.js"></script>

@@ -12,9 +12,9 @@ the same first-party procedural vehicle constructor used by the garage, battle,
 Scene Studio, and generated-asset tools, then presents one vehicle in a focused
 inspection environment.
 
-The Gallery is not a second vehicle registry. All labels, specifications,
-armor plates, modules, crew volumes, and visual rigs come from canonical
-`src/vehicles/` sources.
+The Gallery does not maintain a separate vehicle registry. All labels,
+specifications, armor plates, modules, crew volumes, and visual rigs come from
+the canonical `src/vehicles/` sources.
 
 ## User capabilities
 
@@ -36,7 +36,7 @@ armor plates, modules, crew volumes, and visual rigs come from canonical
 - inspect dimensions, mobility, weapon, protection, and ammunition data;
 - copy a shareable vehicle/layer URL;
 - copy a versioned normalized data record;
-- open the shared 61-frame field archive to inspect the same procedural rigs
+- open the shared 88-frame field archive to inspect the same procedural rigs
   in combat, destruction, terrain, HUD, mobile, Gallery, and Studio contexts.
 
 ## Architecture
@@ -62,7 +62,7 @@ record. It owns:
 - search text and filters;
 - normalized 0–100 presentation ratings;
 - derived metrics such as power-to-weight ratio and damage per minute;
-- technical reading paragraphs and highlight bullets;
+- technical summary paragraphs and highlight bullets;
 - the normalized copy-data schema.
 
 Ratings are comparative presentation aids. Canonical raw values remain visible
@@ -82,16 +82,16 @@ createTank(id, engineCtx, {
 });
 ```
 
-Only one vehicle visual is live. Selecting another vehicle removes and
-disposes the previous visual before constructing the next one.
+The viewer constructs a single vehicle at a time. Selecting another vehicle
+removes and disposes the previous model before constructing the replacement.
 
 The viewer header also opens the shared presentation archive. Gallery mounts
 `src/presentation/mediaArchive.js` only when the dialog is requested; the
-component fetches `public/media/presentation-r1/manifest.json`, lazy-loads its
+component fetches `public/media/showcase-r1/manifest.json`, lazy-loads its
 WebP frames in a horizontally scrollable compact rail, and reuses the same
 lightbox/filter semantics as the landing page, field manual, and Studio. This
-keeps the public route focused on one live vehicle until the user asks for the
-larger context set.
+keeps the public route focused on the selected vehicle until the user opens the
+larger archive.
 
 ### Diagnostic overlays
 
@@ -99,7 +99,7 @@ larger context set.
 
 | Layer | Canonical source | Presentation |
 | --- | --- | --- |
-| Exterior | Procedural vehicle rig | Shipped materials and geometry |
+| Exterior | Procedural vehicle rig | Current materials and geometry |
 | Armor | `armor.hullPlates` and `armor.turretPlates` | Translucent plate polygons with protection bands |
 | Modules | `armor.modules` | Selectable hull- or turret-local boxes |
 | Crew | `armor.crew` | Selectable hull- or turret-local station boxes |

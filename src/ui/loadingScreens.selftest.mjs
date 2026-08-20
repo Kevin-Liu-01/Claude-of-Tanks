@@ -11,17 +11,33 @@ import {
 import { BOOT_HERO_SHOTS } from './bootScreen.js';
 import { MAP_THUMBS } from './mapThumbs.js';
 
-assert.equal(FEATURED_SHOTS.length, 15, 'the owner-approved gallery plus Studio sequence stays available');
-assert.equal(TRANSITION_SHOTS.length, 7, 'only lightweight owner-approved captures rotate');
+assert.equal(FEATURED_SHOTS.length, 20, 'the handmade and owner-approved galleries stay available');
+assert.equal(TRANSITION_SHOTS.length, 10, 'only lightweight handmade and owner-approved captures rotate');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.deepEqual(
   BOOT_HERO_SHOTS,
   TRANSITION_SHOTS,
   'the first percentage loading screen must use the current curated captures',
 );
+assert.equal(
+  BOOT_HERO_SHOTS[0].img,
+  '/media/featured/f7_studio_t90_column_fire.webp',
+  'the handmade landing hero must be the first boot-screen option',
+);
+assert.deepEqual(
+  BOOT_HERO_SHOTS.slice(0, 3).map((shot) => shot.img),
+  [
+    '/media/featured/f7_studio_t90_column_fire.webp',
+    '/media/featured/f6_studio_strv_steinburg_duel.webp',
+    '/media/featured/f9_studio_fjord_firefight.webp',
+  ],
+  'handmade Studio frames must lead the boot-screen rotation',
+);
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-assert.ok(FEATURED_IMAGES.every((img) => /\/presentation-r1\/\d+_/.test(img)),
-  'only owner-approved presentation captures may enter the loading-screen rotation');
+assert.ok(FEATURED_IMAGES.every((img) => /\/(?:featured\/f\d+_studio_|presentation-r1\/\d+_)/.test(img)),
+  'only handmade Studio or owner-approved presentation captures may enter the loading-screen rotation');
+assert.ok(FEATURED_SHOTS.slice(0, 5).every((shot) => shot.handmade),
+  'the complete handmade set must lead the featured gallery');
 assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 1,
   'the garage gallery should expose one real animated Studio battle');
 assert.ok(FEATURED_SHOTS.find((shot) => shot.animated)?.img.endsWith('.gif'),
@@ -56,13 +72,13 @@ for (const mapId of Object.keys(MAP_THUMBS)) {
 
 assert.equal(
   featuredShotForMap('fjord').img,
-  '/media/presentation-r1/08_winter_village_hell.webp',
-  'Winter Village Hell should headline Glacier Fjord',
+  '/media/featured/f9_studio_fjord_firefight.webp',
+  'the handmade Fjord firefight should headline Glacier Fjord',
 );
 assert.equal(
   featuredShotForMap('urban').img,
-  '/media/presentation-r1/12_urban_crossfire_x.webp',
-  'Urban Crossfire X should headline Steinburg',
+  '/media/featured/f6_studio_strv_steinburg_duel.webp',
+  'the handmade Strv duel should headline Steinburg',
 );
 
 const cycleSize = TRANSITION_SHOTS.length;

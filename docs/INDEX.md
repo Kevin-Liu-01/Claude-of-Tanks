@@ -14,8 +14,8 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | --- | --- | --- |
 | ../README.md | Everyone | Public overview, screenshots, features, architecture, and quick start |
 | TECHNICAL-OVERVIEW.md | Engineers and technical reviewers | Current architecture, authority boundaries, runtime lifecycle, source ownership, and verification model |
-| FEATURES.md | Players, reviewers, contributors | Visible features connected to their implementation and proof |
-| HOW-IT-WORKS.md | Technical readers | Narrative tour of the shipped game from boot to results |
+| FEATURES.md | Players, reviewers, contributors | Visible features connected to their implementation and verification |
+| HOW-IT-WORKS.md | Technical readers | Technical description of the current game from boot to results |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
 | DEVELOPMENT.md | Engineers and release owners | Local setup, services, test matrix, tools, and release procedure |
 
@@ -23,10 +23,11 @@ The public browser field manual is available at
 https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 
 The current public presentation is image-led and sourced from a reproducible
-61-frame archive: 50 checked-in Scene Studio compositions plus 11 deterministic
-game/interface captures. The manifest lives at
-`../public/media/presentation-r1/manifest.json`; the landing page, field manual,
-Tank Gallery, and Scene Studio share its filtering and inspection component.
+88-frame archive: 13 owner-selected features, 60 approved 4K campaign frames,
+five directed Studio keyframes, and ten deterministic interface captures. The
+manifest lives at `../public/media/showcase-r1/manifest.json`; the landing page,
+field manual, Tank Gallery, and Scene Studio share its filtering and inspection
+component. Six published contact sheets preserve the human visual-review pass.
 
 ## Current subsystem references
 
@@ -40,7 +41,9 @@ Tank Gallery, and Scene Studio share its filtering and inspection component.
 | MODULES.md | Internal module and crew damage model |
 | GUNNERY-CAMERA-SPEC.md | Camera, requested aim point, gun solution, scope, and reticle contract |
 | SCREENSHOT_CONTRACT.md | Game-ready and deterministic staged-frame capture contract |
-| ../public/media/presentation-r1/manifest.json | Current 61-frame public visual archive, provenance, maps, actors, effects, and feature tags |
+| SHOWCASE-LIBRARY.md | Published 88-frame archive, admission contract, review sheets, and rebuild procedure |
+| MARKETING-BATTLE-CAMPAIGN.md | 60-frame 4K campaign composition, capture, contact-sheet review, and grading contract |
+| ../public/media/showcase-r1/manifest.json | Current public visual archive, provenance, process sheets, maps, actors, effects, and feature tags |
 | DEV-PERF-TRACE.md | Development performance flight recorder |
 | MOBILE-QA.md | Sustained mobile test procedure and evidence ledger |
 | IMPROVEMENT-PROGRAM-2026-08-17.md | Dated implementation and verification record for the 16-map, multiplayer, UI, destruction, and rendering improvement program |

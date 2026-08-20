@@ -336,13 +336,14 @@ See docs/GALLERY.md.
 
 ## Public visual archive
 
-`public/media/presentation-r1/manifest.json` is the contract for the current
-61-frame archive. All 50 Studio scenes render at 1600 x 900 through the shipped
-renderer; the game/interface set records the 1920 x 1080 garage, battle HUD,
-sniper view, firing cycle, destruction event, killcam, Ironworks overview,
-vehicle close-up, Gallery, Studio, and a responsive mobile surface. The checked-in
-scene generator, serialized capture harness, and publisher make the set
-reproducible and prevent hand-curated imagery from drifting away from the game.
+`public/media/showcase-r1/manifest.json` is the contract for the current
+88-frame archive: 13 owner-selected features, 30 action compositions, 30
+foreground compositions, five directed Studio keyframes, and ten live interface
+states. The publisher also records six 2400×592 contact sheets that preserve the
+human collection-review pass before 4K admission. Checked-in scene data, the
+serialized capture harness, automated image grading, owner approval, and the
+publisher keep the archive reproducible and prevent hand-curated imagery from
+drifting away from the game.
 
 ## Verification as a product feature
 

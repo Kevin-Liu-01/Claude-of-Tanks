@@ -7,7 +7,7 @@ The R3 campaign is a deterministic set of 60 in-engine 4K battle images:
 - `tools/marketing-shots/scenes-foreground-r3/`: 30 foreground-led variants,
   numbered 91-120.
 
-Every image is rendered by the live Scene Studio with current first-party
+Every image is rendered by Scene Studio with current first-party
 procedural tanks and materials. Source/comparison models and generated-image
 substitutes are not part of this path. PNG exports under `shots/` are local
 artifacts; the scene definitions and generation/grade tools are the durable
@@ -28,7 +28,7 @@ modern fleet. The generator refuses a campaign unless all of these are true:
 
 The action contact sheet must visibly show multiple readable tanks in every
 frame. The foreground sheet must show a large, readable anchor tank plus battle
-depth. Actor counts alone do not satisfy this visual gate. Reject frames with
+depth. Actor counts alone do not establish acceptable composition. Reject frames with
 camera/scenery intersections, dominant walls or foliage, clipped silhouettes,
 or effects that erase the vehicle shape.
 
@@ -70,3 +70,12 @@ clipping, saturation, and edge/detail density. Its JSON receipt defaults to
 `shots/marketing-battles-r3/quality-report.json`. Contact-sheet inspection is
 still mandatory because image statistics cannot prove tank visibility or a
 good composition.
+
+The publisher preserves that human-review evidence beside the final archive:
+
+| Action review | Foreground review |
+| --- | --- |
+| [![Action frames 71–80 contact sheet](../public/media/showcase-r1/process/action-review-02.webp)](../public/media/showcase-r1/process/action-review-02.webp) | [![Foreground frames 101–110 contact sheet](../public/media/showcase-r1/process/foreground-review-02.webp)](../public/media/showcase-r1/process/foreground-review-02.webp) |
+
+All six sheets and their exact frame ranges are indexed in
+[`SHOWCASE-LIBRARY.md`](SHOWCASE-LIBRARY.md#review-sheets).

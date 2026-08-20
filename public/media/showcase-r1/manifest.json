@@ -40,6 +40,143 @@
       "edgeMeanMin": 3.2
     }
   },
+  "process": {
+    "purpose": "Human visual review before final 4K admission",
+    "sequence": [
+      "deterministic scene JSON",
+      "review capture",
+      "contact-sheet inspection",
+      "4K export",
+      "automated grade",
+      "owner approval"
+    ],
+    "contactSheets": {
+      "action": [
+        {
+          "page": 1,
+          "src": "/media/showcase-r1/process/action-review-01.webp",
+          "frames": [
+            "61_action_desert_duel_leclerc_kill",
+            "62_action_desert_ram_abramsx_t90m",
+            "63_action_desert_overwatch_line",
+            "64_action_desert_village_brawl",
+            "65_action_coastal_dune_ambush",
+            "66_action_coastal_seafront_duel",
+            "67_action_winter_lake_duel",
+            "68_action_winter_ram_leo2a6",
+            "69_action_winter_village_brawl",
+            "70_action_winter_overwatch_birch"
+          ],
+          "dimensions": {
+            "width": 2400,
+            "height": 592
+          }
+        },
+        {
+          "page": 2,
+          "src": "/media/showcase-r1/process/action-review-02.webp",
+          "frames": [
+            "71_action_urban_street_duel",
+            "72_action_urban_ram_plaza",
+            "73_action_urban_overwatch_church",
+            "74_action_urban_ruin_brawl",
+            "75_action_urban_hero_abramsx",
+            "76_action_verdant_field_duel",
+            "77_action_verdant_ram_hedgerow",
+            "78_action_verdant_village_brawl",
+            "79_action_verdant_hero_challenger1",
+            "80_action_desert_wadi_gauntlet"
+          ],
+          "dimensions": {
+            "width": 2400,
+            "height": 592
+          }
+        },
+        {
+          "page": 3,
+          "src": "/media/showcase-r1/process/action-review-03.webp",
+          "frames": [
+            "81_action_steppe_windbreak_snipe",
+            "82_action_desert_last_stand",
+            "83_action_winter_ice_breaker",
+            "84_action_steppe_horizon_charge",
+            "85_action_urban_alley_flash",
+            "86_action_coastal_harbor_kill",
+            "87_action_verdant_column_massacre",
+            "88_action_verdant_meadow_duel",
+            "89_action_coastal_beach_storm",
+            "90_action_verdant_overwatch_ridge"
+          ],
+          "dimensions": {
+            "width": 2400,
+            "height": 592
+          }
+        }
+      ],
+      "foreground": [
+        {
+          "page": 1,
+          "src": "/media/showcase-r1/process/foreground-review-01.webp",
+          "frames": [
+            "91_foreground_desert_duel_leclerc_kill",
+            "92_foreground_desert_ram_abramsx_t90m",
+            "93_foreground_desert_overwatch_line",
+            "94_foreground_desert_village_brawl",
+            "95_foreground_coastal_dune_ambush",
+            "96_foreground_coastal_seafront_duel",
+            "97_foreground_winter_lake_duel",
+            "98_foreground_winter_ram_leo2a6",
+            "99_foreground_winter_village_brawl",
+            "100_foreground_winter_overwatch_birch"
+          ],
+          "dimensions": {
+            "width": 2400,
+            "height": 592
+          }
+        },
+        {
+          "page": 2,
+          "src": "/media/showcase-r1/process/foreground-review-02.webp",
+          "frames": [
+            "101_foreground_urban_street_duel",
+            "102_foreground_urban_ram_plaza",
+            "103_foreground_urban_overwatch_church",
+            "104_foreground_urban_ruin_brawl",
+            "105_foreground_urban_hero_abramsx",
+            "106_foreground_verdant_field_duel",
+            "107_foreground_verdant_ram_hedgerow",
+            "108_foreground_verdant_village_brawl",
+            "109_foreground_verdant_hero_challenger1",
+            "110_foreground_desert_wadi_gauntlet"
+          ],
+          "dimensions": {
+            "width": 2400,
+            "height": 592
+          }
+        },
+        {
+          "page": 3,
+          "src": "/media/showcase-r1/process/foreground-review-03.webp",
+          "frames": [
+            "111_foreground_steppe_windbreak_snipe",
+            "112_foreground_desert_last_stand",
+            "113_foreground_winter_ice_breaker",
+            "114_foreground_steppe_horizon_charge",
+            "115_foreground_urban_alley_flash",
+            "116_foreground_coastal_harbor_kill",
+            "117_foreground_verdant_column_massacre",
+            "118_foreground_verdant_meadow_duel",
+            "119_foreground_coastal_beach_storm",
+            "120_foreground_verdant_overwatch_ridge"
+          ],
+          "dimensions": {
+            "width": 2400,
+            "height": 592
+          }
+        }
+      ]
+    }
+  },
   "animatedPreview": {
     "src": "/media/presentation-r1/studio_action_loop.gif",
     "poster": "/media/presentation-r1/studio_action_poster.webp",

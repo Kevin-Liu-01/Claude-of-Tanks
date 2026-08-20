@@ -142,9 +142,9 @@ function startBootHero() {
     else startRotation();
   };
   document.addEventListener('visibilitychange', onVisibility);
-  // first still: decode fully off the critical path, then fade in.
-  // Start at a RANDOM still (owner: different picture every load).
-  const first = Math.floor(Math.random() * HERO_SHOTS.length);
+  // First still: decode fully off the critical path, then fade in. The owner-
+  // selected handmade hero stays first; the remaining picks rotate afterward.
+  const first = 0;
   preload(first, () => {
     show(first);
     startRotation();

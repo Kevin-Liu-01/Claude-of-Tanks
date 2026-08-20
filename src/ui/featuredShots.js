@@ -13,6 +13,34 @@
  */
 export const FEATURED_SHOTS = [
   {
+    img: '/media/featured/f7_studio_t90_column_fire.webp',
+    cap: 'Scene Studio — T-90 column fire',
+    maps: ['verdant', 'frontier'], focal: '50% 48%', handmade: true,
+  },
+  {
+    img: '/media/featured/f6_studio_strv_steinburg_duel.webp',
+    cap: 'Scene Studio — Strv Steinburg duel',
+    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '50% 52%', handmade: true,
+  },
+  {
+    img: '/media/featured/f9_studio_fjord_firefight.webp',
+    cap: 'Scene Studio — Fjord firefight',
+    maps: ['winter', 'fjord', 'alpine'], focal: '50% 50%', handmade: true,
+  },
+  {
+    img: '/media/featured/f8_studio_m1_firefight.webp',
+    cap: 'Scene Studio — M1 firefight', focal: '50% 50%', handmade: true,
+  },
+  {
+    img: '/media/featured/f10_studio_urban_crossfire.webp',
+    cap: 'Scene Studio — urban crossfire', focal: '50% 50%', handmade: true,
+  },
+  {
+    img: '/media/presentation-r1/12_urban_crossfire_x.webp',
+    cap: 'Steinburg — crossfire X',
+    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '50% 52%',
+  },
+  {
     img: '/media/presentation-r1/02_desert_rooftop_dive.webp',
     cap: 'Sirocco Wadi — rooftop dive',
     maps: ['desert', 'badlands', 'delta', 'monsoon'], focal: '50% 50%',
@@ -32,11 +60,6 @@ export const FEATURED_SHOTS = [
   {
     img: '/media/presentation-r1/10_urban_overpass_dive.webp',
     cap: 'Steinburg — overpass dive', focal: '50% 52%',
-  },
-  {
-    img: '/media/presentation-r1/12_urban_crossfire_x.webp',
-    cap: 'Steinburg — crossfire X',
-    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '50% 52%',
   },
   {
     img: '/media/presentation-r1/15_verdant_column_massacre.webp',

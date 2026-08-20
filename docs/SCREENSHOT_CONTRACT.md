@@ -39,30 +39,31 @@ MUST uphold this contract at all times or the build is considered broken.
 - Run `node tools/screenshot.mjs` after every change that could affect rendering;
   shots land in `shots/<view>.png` at 1920x1080.
 
-## Public presentation archive
+## Public showcase archive
 
 The public image system is a larger, reproducible layer above the minimum critic
-views. `tools/marketing-shots/scenes-presentation-r1/` contains 50 Scene Studio
-compositions spanning all sixteen maps, vehicle families, recoil, tracers,
-impacts, destruction, debris, wrecks, and track separation. The deterministic
-game harness contributes 11 interface/system frames. The publisher compresses
-those captures and writes the public provenance manifest:
+views. `tools/marketing-shots/scenes-action-r3/` and
+`scenes-foreground-r3/` contain 60 approved multi-tank campaign compositions.
+The archive leads with 13 owner picks and also preserves five directed Studio
+keyframes and ten deterministic interface/system frames.
+
+Visual review is required. The publisher tiles the action and foreground
+campaigns into six ordered contact sheets, ten captures per sheet, so the entire
+set can be checked for camera intersections, weak silhouettes, repetitive
+staging, and effects that erase vehicle readability before individual 4K frames
+are admitted.
 
 ```bash
-node tools/marketing-shots/gen-presentation-r1.mjs
-node tools/marketing-shots/shoot.mjs \
-  --scenes tools/marketing-shots/scenes-presentation-r1 \
-  --out shots/presentation-r1/raw --width 1600
-node tools/screenshot.mjs \
-  --out shots/presentation-r1/ui-raw \
-  --views garage,player_view,sniper_view,tank_closeup_modern,combat_firing,explosion,battlefield_foundry,killcam_xray \
-  --width 1920 --height 1080
-node tools/marketing-shots/capture-presentation-ui.mjs
-node tools/marketing-shots/publish-presentation-r1.mjs
+npm run shots:battle:generate
+npm run shots:battle:grade -- --root shots/marketing-battles-r3
+npm run studio:action:render
+npm run showcase:publish
+npm run showcase:check
 ```
 
-`public/media/presentation-r1/manifest.json` must report 50 Studio frames, 11
-interface frames, 61 total frames, and `firstPartyRuntimeOnly: true`. Landing,
-docs, Gallery, and Studio consume that one manifest through the shared media
-archive component. Raw PNGs remain local capture evidence; compressed WebP
-frames and the manifest are the shipped artifacts.
+`public/media/showcase-r1/manifest.json` must report 13 owner picks, 30 action
+frames, 30 foreground frames, five Studio frames, ten interface frames, 88 total
+frames, six process sheets, and `firstPartyRuntimeOnly: true`. Landing, docs,
+Gallery, and Studio consume that manifest through the shared media archive
+component. Raw 4K PNGs remain local capture evidence; compressed WebP frames,
+review sheets, and the manifest are shipped artifacts.

@@ -1,11 +1,10 @@
 # How Claude of Tanks works
 
-This is the current technical tour of the shipped game. It describes the live
-runtime, not the historical tank-rebuild program or quarantined reference
-assets. The short version: a Vite application runs an original Three.js render
-stack around a deterministic 60 Hz armored-combat simulation, and multiplayer
-moves that same authority across WebRTC or WebSocket without moving gameplay
-decisions into the renderer.
+This document describes the current game runtime. Historical fleet work and
+quarantined reference assets are outside its scope. A Vite application runs a
+Three.js rendering stack around a deterministic 60 Hz armored-combat
+simulation. Multiplayer transports the same authority model over WebRTC or
+WebSocket without moving gameplay decisions into the renderer.
 
 ## Runtime at a glance
 
@@ -73,10 +72,10 @@ consistent, while map-specific composition preserves distinct tactical spaces.
 The browser and dedicated server share generated collision manifests so an
 obstacle is not passable on one authority and solid on another.
 
-The render side is plain Three.js: WebGL renderer, procedural sky and PMREM,
+The rendering system uses Three.js: a WebGL renderer, procedural sky and PMREM,
 cascaded shadows, atmospheric fog, post-processing, particles, decals, and
-audio. It never decides whether a shell penetrated or a tank was spotted. It
-renders facts emitted by the authority.
+audio. It does not decide whether a shell penetrated or a vehicle was spotted.
+It presents state emitted by the authority.
 
 ## Movement and aiming
 
@@ -111,7 +110,7 @@ The combat path is data-first and renderer-free:
 
 Spotting uses view range, concealment, movement/firing bloom, foliage, and the
 15 m bush rule. Viewer-specific network snapshots omit hidden enemy positions;
-clients do not receive coordinates and then pretend not to know them.
+clients do not receive coordinates for vehicles they are not permitted to see.
 
 ## Bots
 
@@ -193,7 +192,7 @@ several remote destructions cannot monopolize one render frame. Critical state
 events apply immediately; smoke, debris, and other expensive effects can be
 staged over subsequent frames without changing the outcome.
 
-## Scene Studio and the 61-frame field archive
+## Scene Studio and the 88-frame field archive
 
 Scene Studio (`src/game/studio.js`) runs a live battlefield with combat AI
 paused. It can place any current vehicle, conform it to terrain, pose turret and
@@ -201,25 +200,20 @@ gun within spec limits, apply camouflage/damage states, fire the game's real
 effects, freeze deterministic time, and capture through the full renderer up
 to the GPU's safe output size.
 
-The landing page, public field manual, Gallery, and Studio share one reproducible
-visual archive rather than hand-retouched art. Its 50 checked-in Studio scenes
-cover every battlefield plus combat, recoil, tracers, impacts, destruction,
-debris, track separation, wrecks, and varied camera grammar. Eleven deterministic
-game/interface frames record the current garage, HUD, precision sight, killcam,
-Gallery, Studio, and mobile presentation. The generated manifest records the
-map, feature, actors, effects, and provenance for every public frame:
+The landing page, public field manual, Gallery, and Studio use a reproducible
+visual archive rather than hand-retouched art. It leads with 13 owner-selected
+features, then preserves 30 action frames, 30 foreground-led frames, five
+directed Studio keyframes, and ten deterministic game/interface captures. Six
+contact sheets expose all 60 campaign frames in the collection-review pass. The
+generated manifest records map, feature, actors, effects, provenance, grading,
+and review-sheet membership for every public frame:
 
 ```bash
-node tools/marketing-shots/gen-presentation-r1.mjs
-node tools/marketing-shots/shoot.mjs \
-  --scenes tools/marketing-shots/scenes-presentation-r1 \
-  --out shots/presentation-r1/raw --width 1600
-node tools/screenshot.mjs \
-  --out shots/presentation-r1/ui-raw \
-  --views garage,player_view,sniper_view,tank_closeup_modern,combat_firing,explosion,battlefield_foundry,killcam_xray \
-  --width 1920 --height 1080
-node tools/marketing-shots/capture-presentation-ui.mjs
-node tools/marketing-shots/publish-presentation-r1.mjs
+npm run shots:battle:generate
+npm run shots:battle:grade -- --root shots/marketing-battles-r3
+npm run studio:action:render
+npm run showcase:publish
+npm run showcase:check
 ```
 
 ## Verification

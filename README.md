@@ -1,13 +1,15 @@
 <p align="center">
-  <img src="public/brand/logo-mark.svg" alt="Claude of Tanks crest" width="108">
+  <a href="https://cot.kevinliu.studio">
+    <img src="public/brand/og-image.png" alt="Claude of Tanks — Urban Crossfire X with the Claude of Tanks crest badge and wordmark">
+  </a>
 </p>
 
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  Browser-native armored combat in <strong>pure Three.js</strong>: 121 first-party procedural vehicles,
+  Browser-based armored combat built with <strong>Three.js</strong>: 121 first-party procedural vehicles,
   16 destructible battlefields, plate-level armor, physical gunnery, X-ray killcams,
-  live multiplayer rooms, a production Scene Studio, and adaptive desktop/mobile rendering.
+  multiplayer rooms, Scene Studio production tools, and adaptive desktop and mobile rendering.
 </p>
 
 <p align="center">
@@ -20,30 +22,26 @@
   <a href="docs/INDEX.md">ENGINEERING DOCS</a>
 </p>
 
-<p align="center">
-  <img src="public/media/presentation-r1/35_verdant_contact.webp" alt="A column of first-party tanks advancing through Verdant Fields">
-</p>
-
 <table>
 <tr>
-<td width="33%"><img src="public/media/presentation-r1/01_desert_wadi_gauntlet.webp" alt="Armored combat and destruction in Sirocco Wadi"></td>
-<td width="33%"><img src="public/media/presentation-r1/05_winter_ice_breaker.webp" alt="Vehicle destroyed across a frozen battlefield"></td>
-<td width="34%"><img src="public/media/presentation-r1/12_urban_crossfire_x.webp" alt="Close urban crossfire in Steinburg"></td>
+<td width="33%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Close Strv firefight through Steinburg"></td>
+<td width="33%"><img src="public/media/featured/f8_studio_m1_firefight.webp" alt="M1 tanks exchanging fire at close range"></td>
+<td width="34%"><img src="public/media/featured/f9_studio_fjord_firefight.webp" alt="Multi-tank firefight across Glacier Fjord"></td>
 </tr>
 </table>
 
-Every image above is a fresh deterministic capture from the shipped renderer. The new
-[61-frame field archive](public/media/presentation-r1/manifest.json) contains 50 Scene Studio compositions and 11 live
-game/interface states; it uses the real vehicles, maps, particles, debris, lighting, post stack, HUD, Gallery, and Studio.
+Every image above is a handmade, deterministic composition captured with the current game renderer. The
+[88-frame showcase library](public/media/showcase-r1/manifest.json) begins with 13 owner-selected scenes, followed by
+60 approved action and foreground frames, five directed Studio frames, and ten interface states.
 
-## What ships
+## Current release
 
 | | Current runtime |
 | --- | --- |
 | Fleet | **121** selectable first-party procedural vehicles; **0** GLB-sourced playables |
 | Worlds | **16** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
-| Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** certified path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
+| Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
 | Play | Solo bots, persistent private rooms, LAN rooms, room chat, spectators, rematches, and dedicated ranked authority |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
@@ -51,7 +49,7 @@ game/interface states; it uses the real vehicles, maps, particles, debris, light
 The provenance gate currently reports **121 first-party procedural battle playables, 0 GLB-sourced playables, and 7
 isolated comparison candidates**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
-## Combat, in pictures
+## Combat systems
 
 <table>
 <tr>
@@ -59,7 +57,7 @@ isolated comparison candidates**. Comparison inputs are never a playable loading
 <td width="50%"><img src="public/media/presentation-r1/ui_killcam_xray.webp" alt="X-ray killcam showing the resolved shell path and internal damage"><br><sub><b>X-ray killcam:</b> the resolved shell path, struck plate, effective protection, penetration result, damaged modules, and crew.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, real muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/ui_combat_firing.webp" alt="Tank firing with current muzzle flash and recoil"><br><sub><b>Physical gunnery:</b> finite world aim, bore convergence, resolved muzzle transform, visible recoil, dispersion, travel time, and gravity.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/ui_explosion.webp" alt="Tank destruction with fire, sparks, fragments, and smoke"><br><sub><b>Destruction:</b> fire, sparks, smoke, detached remnants, persistent wreck state, and pooled effects driven by the completed hit.</sub></td>
 </tr>
 </table>
@@ -81,8 +79,8 @@ isolated comparison candidates**. Comparison inputs are never a playable loading
 <td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery showing a live procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 121 records, orbit and articulate the live rig, inspect armor/modules/crew, and export exact-surface review packets.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>One vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery showing a procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 121 records, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>
 
@@ -103,13 +101,13 @@ context loss. The current presentation path combines:
 - an in-game diagnostics surface for FPS, ping, frame timing, draw calls, triangles, memory, network telemetry, quality,
   and renderer/driver identity.
 
-**120 FPS is a measured certified path, not a universal promise.** Refresh rate, browser, thermal limits, GPU/driver,
-resolution, and quality level still determine the achieved rate. Combat rules remain fixed at 60 Hz at every render rate.
+The renderer reached **120 FPS on the certified test hardware**. Actual performance depends on refresh rate, browser,
+thermal limits, GPU and driver, resolution, and quality level. Combat rules remain fixed at 60 Hz at every render rate.
 
 <table>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_sniper_view.webp" alt="Precision sight rendered through the current post-processing path"><br><sub><b>Presentation:</b> high-resolution scope, stable shadowing, post AA, bounded depth copies, and readable combat overlays.</sub></td>
-<td width="50%"><img src="public/media/presentation-r1/ui_battlefield_foundry.webp" alt="Ironworks battlefield overview rendered in the live game"><br><sub><b>World scale:</b> authored layouts and dense dressing remain behind adaptive quality, instancing, culling, and streaming policy.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/ui_battlefield_foundry.webp" alt="Ironworks battlefield overview rendered by the current game"><br><sub><b>World rendering:</b> authored layouts and detailed environments use adaptive quality, instancing, culling, and streaming.</sub></td>
 </tr>
 </table>
 
@@ -131,7 +129,7 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_studio.webp" alt="Scene Studio composing a shot on Verdant Fields"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, pose it inside physical limits, stage game-authentic effects on deterministic time, and capture the production renderer.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/ui_studio.webp" alt="Scene Studio composing a shot on Verdant Fields"><br><sub><b>Scene Studio:</b> place any roster vehicle on any map, conform it to terrain, set its pose within physical limits, schedule game effects on a deterministic timeline, and capture the current renderer.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/15_verdant_column_massacre.webp" alt="Multi-vehicle firefight staged in Scene Studio"><br><sub><b>Reproducible imagery:</b> vehicles, camos, camera, lighting, recoil, tracers, explosions, sparks, smoke, debris, wrecks, and timeline are scene data—not composited concept art.</sub></td>
 </tr>
 </table>
@@ -139,20 +137,27 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 Regenerate the current public archive:
 
 ```bash
-node tools/marketing-shots/gen-presentation-r1.mjs
-node tools/marketing-shots/shoot.mjs \
-  --scenes tools/marketing-shots/scenes-presentation-r1 \
-  --out shots/presentation-r1/raw --width 1600
-node tools/screenshot.mjs \
-  --out shots/presentation-r1/ui-raw \
-  --views garage,player_view,sniper_view,tank_closeup_modern,combat_firing,explosion,battlefield_foundry,killcam_xray \
-  --width 1920 --height 1080
-node tools/marketing-shots/capture-presentation-ui.mjs
-node tools/marketing-shots/publish-presentation-r1.mjs
+npm run shots:battle:generate
+npm run shots:battle:grade -- --root shots/marketing-battles-r3
+npm run studio:action:render
+npm run showcase:publish
+npm run showcase:check
 ```
 
-The capture harness serializes concurrent jobs, launches a clean local game, verifies the requested state, and records
-current render diagnostics. `public/media/presentation-r1/manifest.json` is the public archive contract.
+The capture harness serializes concurrent jobs, starts a clean local game, verifies the requested state, and records
+current rendering diagnostics. `public/media/showcase-r1/manifest.json` defines the published archive.
+
+The same run is reviewed in contact sheets before any frame becomes a 4K master. These collection views make weak
+silhouettes, obstructed cameras, repeated compositions, and overpowered effects obvious before automated grading.
+
+<table>
+<tr>
+<td width="50%"><a href="public/media/showcase-r1/process/action-review-02.webp"><img src="public/media/showcase-r1/process/action-review-02.webp" alt="Action campaign contact sheet, frames 71 through 80"></a><br><sub><b>Action review:</b> ten multi-tank compositions inspected together.</sub></td>
+<td width="50%"><a href="public/media/showcase-r1/process/foreground-review-02.webp"><img src="public/media/showcase-r1/process/foreground-review-02.webp" alt="Foreground campaign contact sheet, frames 101 through 110"></a><br><sub><b>Foreground review:</b> anchor-tank readability checked against battle depth.</sub></td>
+</tr>
+</table>
+
+[Open all six review sheets](docs/SHOWCASE-LIBRARY.md#review-sheets) and the complete admission contract.
 
 ## Architecture
 
@@ -168,7 +173,7 @@ controls ──► deterministic authority ──► filtered state + reliable e
 ```text
 src/engine/    renderer, camera, lighting, post, quality, telemetry, GPU recovery
 src/world/     sixteen maps, terrain, vegetation, props, collision, destruction
-src/vehicles/  specs, procedural geometry, materials, profiles, asset proofs
+src/vehicles/  specs, procedural geometry, materials, profiles, asset verification
 src/sim/       DOM-free movement, aiming, ballistics, armor, damage, spotting
 src/game/      local composition, bots, input, profile, killcam, Scene Studio
 src/net/       protocol, rooms, chat, snapshots, prediction, WebRTC/WebSocket
@@ -198,9 +203,9 @@ have executable checks.
 
 ## Credits and licensing
 
-Created, designed, and directed by **Kevin B. Liu** through a long-running Claude/Codex development pipeline spanning
-research, vehicle authoring, simulation, networking, design, performance, QA, documentation, and deployment. Claude and
-Codex were development tools, not co-authors or copyright holders.
+**Kevin B. Liu** created, designed, and directed the project. Claude and Codex assisted with research, vehicle authoring,
+simulation, networking, design, performance, quality assurance, documentation, and deployment. They are development
+tools, not co-authors or copyright holders.
 
 All gameplay code and every selectable procedural vehicle model are original first-party work by Kevin B. Liu. See
 [`NOTICE.md`](NOTICE.md), [`LICENSE`](LICENSE), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md). External models may be

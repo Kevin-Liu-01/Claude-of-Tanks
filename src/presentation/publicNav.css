@@ -1,0 +1,90 @@
+.public-nav{
+  position:sticky;
+  z-index:110;
+  top:0;
+  height:64px;
+  border-bottom:1px solid rgba(220,230,233,.14);
+  background:rgba(6,9,12,.94);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+.public-nav::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:-1px;
+  width:min(31%,460px);
+  height:1px;
+  background:linear-gradient(90deg,#e9a346,transparent);
+  pointer-events:none;
+}
+.public-nav__inner{
+  width:min(1440px,calc(100% - 40px));
+  height:100%;
+  margin-inline:auto;
+  display:flex;
+  align-items:stretch;
+  justify-content:space-between;
+}
+.public-nav__brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  color:#efeee9;
+  text-decoration:none;
+  white-space:nowrap;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.public-nav__brand img{
+  width:32px;
+  height:38px;
+  filter:drop-shadow(0 4px 8px #000);
+}
+.public-nav__brand b{color:#e9a346;font-weight:900}
+.public-nav__links{display:flex;align-items:stretch}
+.public-nav__links a{
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  border-left:1px solid rgba(220,230,233,.08);
+  color:#9aa3a7;
+  text-decoration:none;
+  white-space:nowrap;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  transition:background .16s ease,color .16s ease;
+}
+.public-nav__links a:hover,.public-nav__links a[aria-current="page"]{
+  color:#efeee9;
+  background:rgba(255,255,255,.035);
+}
+.public-nav__links a[aria-current="page"]{box-shadow:inset 0 -2px 0 #e9a346}
+.public-nav__links .public-nav__cta{
+  height:36px;
+  align-self:center;
+  margin-left:12px;
+  padding-inline:18px;
+  border:0;
+  background:#e9a346;
+  color:#18130c;
+}
+.public-nav__links .public-nav__cta:hover{background:#ffdba1;color:#18130c}
+
+@media(max-width:900px){
+  .public-nav{height:56px}
+  .public-nav__inner{width:calc(100% - 20px)}
+  .public-nav__brand span{display:none}
+  .public-nav__brand img{width:28px;height:34px}
+  .public-nav__links a{padding-inline:9px;font-size:7px;letter-spacing:.08em}
+  .public-nav__links .public-nav__cta{height:34px;margin-left:7px;padding-inline:12px}
+}
+@media(max-width:520px){
+  .public-nav__inner{width:calc(100% - 12px)}
+  .public-nav__links a{padding-inline:6px;font-size:6px;letter-spacing:.06em}
+  .public-nav__links .public-nav__cta{margin-left:4px;padding-inline:8px}
+}

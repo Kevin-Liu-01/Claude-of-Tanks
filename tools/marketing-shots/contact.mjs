@@ -22,11 +22,17 @@ const out = resolve(opt('out', 'shots/marketing/sheets'));
 const TILE_W = parseInt(opt('tile', '640'), 10);
 const ALL = args.includes('--all');
 const COLS = parseInt(opt('cols', '5'), 10);
+const CONTAINS = opt('contains', '');
 mkdirSync(out, { recursive: true });
 
+function numericPrefix(file) {
+  return Number(/^\d+/.exec(file)?.[0] || Number.MAX_SAFE_INTEGER);
+}
+
 const files = readdirSync(dir)
-  .filter((f) => ALL ? f.endsWith('.png') : /_v\d+\.png$/.test(f))
-  .sort();
+  .filter((f) => ALL ? /\.(?:png|webp|jpe?g)$/i.test(f) : /_v\d+\.(?:png|webp|jpe?g)$/i.test(f))
+  .filter((f) => !CONTAINS || f.includes(CONTAINS))
+  .sort((a, b) => numericPrefix(a) - numericPrefix(b) || a.localeCompare(b));
 const groups = new Map();
 if (ALL) {
   const pageSize = Math.max(COLS, COLS * 2);
@@ -42,7 +48,7 @@ if (ALL) {
   }
 }
 if (!groups.size) {
-  console.error(`[contact] no ${ALL ? 'PNG' : '_vN'} files found in`, dir);
+  console.error(`[contact] no ${ALL ? 'image' : '_vN image'} files found in`, dir);
   process.exit(1);
 }
 
@@ -51,7 +57,11 @@ const page = await browser.newPage();
 await page.setContent('<canvas id="c"></canvas>');
 
 for (const [base, names] of groups) {
-  const uris = names.map((n) => `data:image/png;base64,${readFileSync(join(dir, n)).toString('base64')}`);
+  const uris = names.map((n) => {
+    const ext = n.split('.').at(-1).toLowerCase();
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext;
+    return `data:image/${mime};base64,${readFileSync(join(dir, n)).toString('base64')}`;
+  });
   const dataURL = await page.evaluate(async (srcs, labels, tw, requestedCols) => {
     const imgs = [];
     for (const s of srcs) {

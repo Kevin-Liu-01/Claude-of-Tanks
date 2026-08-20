@@ -1,5 +1,5 @@
-// og-image.png composer (brand v4.6): 1200x630 OG key art — the T-90 column
-// owner shot + lower-third scrim + the crest mark + CLAUDE / OF TANKS
+// og-image.png composer (brand v4.7): 1200x630 OG key art — the T-90 column
+// handmade Studio shot + lower-third scrim + crest + CLAUDE / OF TANKS
 // wordmark in ABC Monument Grotesk (fonts r4 tracking: .10em / .30em).
 // Usage: node tools/brand-og-image-compose.mjs
 import puppeteer from 'puppeteer';

@@ -30,7 +30,7 @@ function openShot(shot) {
   image.alt = shot.alt;
   dialog.querySelector('span').textContent = `${shot.feature} // ${shot.map}`;
   dialog.querySelector('strong').textContent = shot.title;
-  dialog.querySelector('small').textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : 'Live renderer capture';
+  dialog.querySelector('small').textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : 'Game-rendered capture';
   dialog.showModal();
 }
 

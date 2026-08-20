@@ -29,6 +29,7 @@ function opt(name, fallback) {
 const CAMPAIGN = resolve(opt('campaign-root', join(ROOT, 'shots/marketing-battles-r3')));
 const STUDIO = resolve(opt('studio-root', join(ROOT, 'shots/studio-action-loop-winter-r1')));
 const SHOWCASE_OUT = resolve(ROOT, 'public/media/showcase-r1');
+const PROCESS_OUT = join(SHOWCASE_OUT, 'process');
 const PRESENTATION_OUT = resolve(ROOT, 'public/media/presentation-r1');
 const OWNER_PICKS = JSON.parse(readFileSync(join(HERE, 'showcase-owner-picks-r1.json'), 'utf8'));
 const MAP_NAMES = Object.freeze({
@@ -41,6 +42,7 @@ const MAP_NAMES = Object.freeze({
 });
 
 mkdirSync(SHOWCASE_OUT, { recursive: true });
+mkdirSync(PROCESS_OUT, { recursive: true });
 mkdirSync(PRESENTATION_OUT, { recursive: true });
 
 function readJson(file) {
@@ -53,11 +55,11 @@ function run(command, commandArgs, label) {
   if (result.status !== 0) throw new Error(`${label} failed`);
 }
 
-function encodeWebp(input, output, quality = 80) {
+function encodeWebp(input, output, quality = 80, width = 1920, height = 1080) {
   if (!existsSync(input)) throw new Error(`Missing source image: ${input}`);
   run('cwebp', [
     '-quiet', '-mt', '-m', '6', '-q', String(quality), '-sharp_yuv',
-    '-resize', '1920', '1080', input, '-o', output,
+    '-resize', String(width), String(height), input, '-o', output,
   ], `cwebp ${basename(input)}`);
 }
 
@@ -137,6 +139,48 @@ function campaignShots(qualityReport) {
     }
   }
   return shots;
+}
+
+function reviewContactSheets() {
+  const reviewRoot = join(CAMPAIGN, 'published-review-sheets');
+  const collections = {};
+
+  for (const kind of ['action', 'foreground']) {
+    const sheetDirectory = join(reviewRoot, kind);
+    mkdirSync(sheetDirectory, { recursive: true });
+    run(process.execPath, [
+      join(HERE, 'contact.mjs'), '--all',
+      '--dir', SHOWCASE_OUT,
+      '--out', sheetDirectory,
+      '--contains', `_${kind}_`,
+      '--tile', '480',
+      '--cols', '5',
+    ], `${kind} contact sheets`);
+
+    const sheets = readdirSync(sheetDirectory)
+      .filter((file) => /^all_\d+_SHEET\.png$/.test(file))
+      .sort();
+    if (sheets.length !== 3) throw new Error(`Expected 3 ${kind} contact sheets, found ${sheets.length}`);
+
+    const ids = sceneFiles(join(HERE, `scenes-${kind}-r3`)).map((file) => file.replace(/\.json$/, ''));
+    collections[kind] = sheets.map((file, index) => {
+      const page = index + 1;
+      const outputName = `${kind}-review-${String(page).padStart(2, '0')}.webp`;
+      encodeWebp(join(sheetDirectory, file), join(PROCESS_OUT, outputName), 82, 2400, 592);
+      return {
+        page,
+        src: `/media/showcase-r1/process/${outputName}`,
+        frames: ids.slice(index * 10, index * 10 + 10),
+        dimensions: { width: 2400, height: 592 },
+      };
+    });
+  }
+
+  return {
+    purpose: 'Human visual review before final 4K admission',
+    sequence: ['deterministic scene JSON', 'review capture', 'contact-sheet inspection', '4K export', 'automated grade', 'owner approval'],
+    contactSheets: collections,
+  };
 }
 
 function ownerPickShots() {
@@ -248,6 +292,7 @@ if (qualityReport.totals?.images !== 60 || qualityReport.totals?.passed !== 60 |
 
 const ownerPicks = ownerPickShots();
 const campaign = campaignShots(qualityReport);
+const reviewProcess = reviewContactSheets();
 const studio = studioShots(ownerPicks.length + campaign.length);
 const interfaces = interfaceShots();
 const shots = [...ownerPicks, ...campaign, ...studio.shots, ...interfaces]
@@ -281,6 +326,7 @@ const manifest = {
     required: { images: 60, passed: 60, failed: 0 },
     thresholds: qualityReport.thresholds,
   },
+  process: reviewProcess,
   animatedPreview,
   shots,
 };

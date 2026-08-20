@@ -1,16 +1,16 @@
-# SCENE STUDIO — cinematic staging, storyboards & scripted-shot API
+# Scene Studio
 
-The studio is a first-class game mode for composing shots: the chosen battle
-map fully live (terrain, vegetation, props, sky, lighting, post) with **no
-battle sim** — no AI, no spotting, no HUD combat chrome — plus placeable tank
-actors with full pose/damage-state control, the game's real effects language,
-a free camera, camera rails, tank motion tracks, a 20-second storyboard, live
-preview, browser video recording, and a hi-res still-capture path.
+Scene Studio is a game mode for composing and recording scenes with the current
+renderer. It loads the selected battlefield, including terrain, vegetation,
+props, sky, lighting, and post-processing, without running combat AI, spotting,
+or the battle HUD. Users can place vehicles, set pose and damage state, schedule
+game effects, operate a free camera, define camera and vehicle tracks, edit a
+20-second timeline, record browser video, and capture high-resolution stills.
 
-Code: `src/game/studio.js` (runtime + `window.__STUDIO`),
+Implementation: `src/game/studio.js` (runtime and `window.__STUDIO`),
 `src/game/studioTimeline.js` (pure storyboard normalization and sampling),
-`src/ui/studioPanel.js` (panel UI). main.js integration is one import, one
-`createStudio(ctx)` call and one `tick()` branch.
+and `src/ui/studioPanel.js` (panel interface). `main.js` integrates the mode
+through an import, a `createStudio(ctx)` call, and a `tick()` branch.
 
 ## Entering / leaving
 
@@ -21,44 +21,44 @@ Code: `src/game/studio.js` (runtime + `window.__STUDIO`),
 | Script | `window.__STUDIO.enter({ map })` / `window.__STUDIO.exit()` |
 | Leave | F8 / Esc / EXIT → back to the garage |
 
-Battle-pool tank visuals are hidden while the studio is active; exit restores
-them and hands control back through the normal garage entry (camo overrides
-cleared, pedestal key restored).
+Battle vehicle visuals remain hidden while Studio is active. Exiting Studio
+restores them and returns control through the normal garage entry. This also
+clears camouflage overrides and restores the pedestal key.
 
-Direct navigation is one covered load. The inline boot screen remains visible
-while the battlefield and Studio-only FX resources build in parallel; it does
-not reveal the garage or run the full battle-roster/wreck/shadow warm first.
+Direct navigation uses a dedicated load path. The inline boot screen remains
+visible while the battlefield and Studio effect resources load in parallel.
+This path does not display the garage or warm the complete battle roster,
+wreck, and shadow resources.
 Runtime entry from the garage and map changes use the shared transition screen
-with real world-build progress. `window.__STUDIO_LOAD`, `__STUDIO_WARM`, and
+with measured world-build progress. `window.__STUDIO_LOAD`, `__STUDIO_WARM`, and
 `__WORLD_LOAD` expose the most recent stage timings for diagnostics.
 
-Note for headless drivers: the boot "press any key" gate auto-dismisses under
-webdriver (and `?nogate`), exactly like the screenshot harness.
+Under WebDriver or the `?nogate` parameter, the boot input prompt closes
+automatically so headless capture tools can enter Studio.
 
 ## Interactive controls
 
-- **LMB-drag** on the world: look around (no pointer lock needed — embed-safe)
+- **LMB-drag** on the world: look around without pointer lock
 - **WASD** fly, **Q/E** down/up, **Shift** 4× speed, **wheel** dolly
   (orbit mode: wheel = distance)
 - **Click terrain**: move the effect marker (amber ring)
-- **Click a tank**: select · **drag a tank**: move it (terrain re-conform live)
+- **Click a tank**: select · **drag a tank**: move it and update terrain alignment
 - **Space**: play/pause the storyboard · **Delete**: remove the selected effect
   (or selected actor when no effect layer is selected)
-- Panel: one scrollable workspace, organized into **Battlefield** (a visual
-  16-map preview picker), **Tanks** (roster plus selected-tank pose/camo/state),
-  **Effects**, **Cinematics** (storyboard, rail, tank keys, timeline, camera),
-  and **Output** (video, stills, scene save/load). Add camera shots at the
-  playhead, key the selected tank after posing it, then scrub or play. The
-  **Direct 12 s Duel** button turns the first two staged tanks into an
-  immediately recordable moving battle. Map-card images load only when the picker opens;
-  Scene JSON can be downloaded, uploaded, copied, or stored in three local
-  slots (shift-click saves). The Output section also opens the shared 61-frame
-  field archive as composition, lighting, effect, and vehicle-staging reference.
+- The panel provides a scrollable workspace with **Battlefield**, **Tanks**,
+  **Effects**, **Cinematics**, and **Output** sections. Add camera shots at the
+  playhead, set a keyframe after positioning the selected tank, and then scrub
+  or play the timeline. **Direct 12 s Duel** configures the first two staged
+  tanks as a recordable moving battle. Map previews load when the battlefield
+  picker opens. Scene JSON can be downloaded, uploaded, copied, or stored in
+  three local slots; Shift-click saves to a slot. The Output section also opens
+  the shared 88-frame archive for composition, lighting, effects, and vehicle
+  placement reference.
 
-The archive drawer is the same `src/presentation/mediaArchive.js` component used
-by the landing page, public field manual, and Tank Gallery. It reads the checked-in
-presentation manifest and lazy-loads its compact rail only after the user opens
-it, so the 61 reference frames add no image transfer to Studio's boot path.
+The archive drawer uses the same `src/presentation/mediaArchive.js` component as
+the landing page, public field manual, and Tank Gallery. It reads the checked-in
+showcase manifest and loads its compact image rail only when opened, so the 88
+reference frames do not add image transfers to Studio startup.
 
 ## `window.__STUDIO` (scripted-shoot contract)
 
@@ -70,7 +70,7 @@ __STUDIO.listActors()               // [{index, uid, name, id, pos, facingDeg, �
 __STUDIO.state()                    // round-trippable scene JSON (see schema)
 ```
 
-Extras (same machinery the panel uses):
+Additional methods used by the panel:
 
 ```js
 __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
@@ -209,23 +209,23 @@ neither, the panel marker (or the ground ahead of the camera) is used.
 
 | type | needs | params | what it is |
 |---|---|---|---|
-| `fire` | actor | `slot` (shell index), `tracer` (default true), `recoil` (default true) | full firing event: real muzzle flash (+APFSDS sabot petals), recuperator recoil, a live shell that flies and impacts terrain through the real event path |
+| `fire` | actor | `slot` (shell index), `tracer` (default true), `recoil` (default true) | Complete firing event with muzzle flash, APFSDS sabot petals, recoil, projectile travel, and terrain impact. |
 | `muzzle_flash` | actor or point | `caliberMm`, `dirDeg` (point form) | flash + smoke ring + ground dust only |
-| `tracer` | `from:[x,y,z]`, `to:[x,y,z]` | `shellType` (AP/APCR/APFSDS/HEAT/HE), `speedMps`, `caliberMm` | a real shell entity flying from→to; freeze mid-flight via `fxTime` |
-| `impact` | point/actor | `kind` (pen/nonpen/ricochet/he_pen/he_splash/era/spaced_absorb/terrain), `caliberMm`, `normal:[x,y,z]` | armor/terrain impact language |
+| `tracer` | `from:[x,y,z]`, `to:[x,y,z]` | `shellType` (AP/APCR/APFSDS/HEAT/HE), `speedMps`, `caliberMm` | Projectile entity traveling between two points; `fxTime` can freeze it in flight. |
+| `impact` | point/actor | `kind` (pen/nonpen/ricochet/he_pen/he_splash/era/spaced_absorb/terrain), `caliberMm`, `normal:[x,y,z]` | Armor or terrain impact effect. |
 | `sparks` | point/actor | `caliberMm` | ricochet spark fan (alias of impact ricochet) |
 | `explosion` | point/actor | `size`: `small` (HE dirt plume) / `medium` (destruction, no rack) / `large` (full ammo-rack fireball + debris + smoke column), `cause` | standalone explosion |
-| `tank_kill` | actor | `cause` (ammorack/shot/fire), `pop` (default true) | the real kill: fireball/debris/column + burn-sweep wreck swap + turret pop on the actor |
-| `dust` | point/actor | `count`, `intensity`, `dirDeg` | dust burst (track-dust language) |
-| `engine_smoke` | actor | `off` | ADDITIVE: continuous sooty engine-deck smoke, layers over any mesh state (a smoldering wreck) |
-| `burning` | actor | `off` | ADDITIVE: the keyed fire/smoke column, layers over any mesh state |
+| `tank_kill` | actor | `cause` (ammorack/shot/fire), `pop` (default true) | Destruction sequence with a fireball, debris, smoke column, wreck transition, and optional turret detachment. |
+| `dust` | point/actor | `count`, `intensity`, `dirDeg` | Dust burst using the track-dust effect. |
+| `engine_smoke` | actor | `off` | Additive continuous smoke from the engine deck, including on wreck meshes. |
+| `burning` | actor | `off` | Additive keyed fire and smoke column over the current mesh state. |
 | `detrack` | actor | `side`: `L`/`R` | thrown-track visual + link/spark/dust burst |
 | `firing_moment` | actor | `ageS` (default 0.05), `caliberMm`, `shellType` | the composed frozen firing still (contract `combat_firing` language) |
 | `explosion_moment` | point/actor | `ageS` (default 0.6) | the composed frozen destruction still |
-| `mg_burst` | actor | `count` (default 7), `gapM` (chain spacing, default 7), `spreadDeg`, `caliberMm` (default 12.7), `speedMps` | coax-MG volley: small flash + a chain of live small-caliber tracers already strung down the gun line (fixed per-index jitter — deterministic) |
-| `barrage` | point/actor | `count` (default 5), `radiusM` (default 10), `size`: `small`/`medium`/`mixed` (default), `seedDeg` | artillery stonk — deterministic ring of ground bursts around the anchor |
-| `armor_scar` | actor | `count` (default 4), `caliberMm` (default 100), `seedDeg` | battle scarring: permanent impact decals stamped around the hull at fixed bearings/heights |
-| `exhaust` | actor | `count` (default 14), `intensity` (default 0.95), `sooty` (default true) | diesel belch off the engine deck (the continuous emitter's anchor, one burst) |
+| `mg_burst` | actor | `count` (default 7), `gapM` (chain spacing, default 7), `spreadDeg`, `caliberMm` (default 12.7), `speedMps` | Coaxial machine-gun flash and a deterministic sequence of small-caliber tracers along the gun line. |
+| `barrage` | point/actor | `count` (default 5), `radiusM` (default 10), `size`: `small`/`medium`/`mixed` (default), `seedDeg` | Deterministic ring of artillery ground bursts around the anchor. |
+| `armor_scar` | actor | `count` (default 4), `caliberMm` (default 100), `seedDeg` | Persistent impact decals placed around the hull at fixed bearings and heights. |
+| `exhaust` | actor | `count` (default 14), `intensity` (default 0.95), `sooty` (default true) | Exhaust burst from the engine deck at the continuous emitter anchor. |
 
 ### Determinism contract
 
@@ -235,18 +235,18 @@ neither, the panel marker (or the ground ahead of the camera) is used.
    second argument skips this), re-conforms poses after swaps,
 3. resets the fx system (`resetAll` + `resetSeed(seed)`), studio clock to 0,
 4. builds actors in order; poses conform to terrain through the movement
-   module's real support solve (zero-input handbrake settle), then the
+   module's support calculation (zero-input handbrake settle), then the
    authored facing/turret/gun values are pinned exactly,
 5. applies the camera,
 6. samples actor motion tracks and the camera rail at the requested playhead,
 7. fires effects sorted by `tMs`, advancing the shared fx clock between them
-   in fixed 1/60 s steps (the same cadence live play emits at — smoke
+   in fixed 1/60 s steps (the same cadence used during play; smoke
    columns, engine smoke, shell flight and light/ring timelines all age
-   through their real update paths),
+   through their runtime update paths),
 8. advances to exactly `fxTime` and freezes (`timeScale 0` unless the JSON
    says otherwise). Wind is pinned to a deterministic phase.
 
-Same JSON in → same frame out. Effects with `tMs > fxTime` stay scheduled in
+The same JSON input produces the same frame. Effects with `tMs > fxTime` remain scheduled in
 `state()` and fire automatically when preview or recording crosses their time.
 Camera rails use Catmull-Rom spatial interpolation for `smooth` arrivals;
 `linear` and `cut` are available per shot. Actor keys use shortest-arc angular
@@ -254,11 +254,11 @@ interpolation and terrain-following presentation with moving track links.
 
 When the timeline is frozen, an unchanged Studio frame is render-on-demand:
 camera/actor/effect/resize changes invalidate it, while idle animation,
-world updates, lighting, and post-processing are skipped. A live time scale
+world updates, lighting, and post-processing are skipped. A nonzero time scale
 continues to render normally.
 
 `state()` returns the schema above (actors in creation order with their
-current pose/state, the effect stack with stable `id` + authored `tMs`, the live camera,
+current pose/state, the effect stack with stable `id` + authored `tMs`, the current camera,
 `fxTime` = current clock). `load(state())` round-trips.
 
 Effects are individually removable even after they have emitted pooled
@@ -274,31 +274,29 @@ burning, a tracer, a detrack, or a kill leaves no orphaned visual state.
 - **Camo is per-spec**: two actors of the same tank id share one paint bake
   (`camo`/`camoSeed` of the most recent application wins). Different specs are
   fully independent.
-- Wrecked/burning states and effects **do not run combat math** — no damage
-  numbers, no module sim; this is a staging rig.
+- Wrecked and burning states do not run the combat simulation. They do not
+  calculate damage or module state.
 - `timeOfDayish` is accepted but ignored (sun/sky presets are authored per
   map; re-lighting would need a sky re-bake).
 - The garage bay set-dressing physically exists at the map edge (−1500,−1500)
   and can be framed if you fly there.
 - Studio `fire` shells collide with terrain only (props/tanks don't stop
   them). A standalone `tracer` stops at its authored `to` point.
-- Engine-smoke/burning emission while `timeScale > 0` runs on the live render
-  cadence; the frozen composition path (`load`/`advanceFx`) is the
-  deterministic one.
-- Video capture is picture-only and uses the browser's available MediaRecorder
+- Engine smoke and burning effects with `timeScale > 0` use the current render
+  cadence. The frozen composition path (`load`/`advanceFx`) remains deterministic.
+- Video capture does not include audio and uses the browser's available MediaRecorder
   codec. Encoded bytes are not expected to be identical across browsers.
 
 ## Self-test
 
-`tools/studio-selftest.mjs` (own vite on a 7xxx port, puppeteer) drives:
-enter via `?studio=1&map=desert`, `load()` a 3-tank scene (firing / exploding
-mid-fireball / burnt wreck, plus dust and engine smoke), asserts direct boot
-used the covered Studio stage without building or warming hidden battle-pool
-visuals, asserts no battle sim and fx frozen at `fxTime`, captures ≥2560-px
-PNGs on desert and winter with different cameras/FOVs, and verifies the scene
-JSON round-trip. It also builds the 12-second duel, checks camera/tank/FX
-timeline lanes, scrubs to the knockout, proves automatic event playback, and
-records a non-empty one-second WebM through the production MediaRecorder path.
+`tools/studio-selftest.mjs` starts Vite on an available 7xxx port and uses
+Puppeteer to enter `?studio=1&map=desert`. It loads a three-tank scene with
+firing, destruction, wreck, dust, and engine-smoke states. The test verifies
+the dedicated Studio boot path, confirms that battle simulation is disabled,
+checks the frozen `fxTime`, captures PNG files at 2560 pixels or wider on two
+maps, and verifies scene JSON round-trip behavior. It also creates the 12-second
+duel, checks camera, vehicle, and effect tracks, seeks to the knockout event,
+verifies scheduled playback, and records a non-empty one-second WebM file.
 `src/game/studioTimeline.selftest.mjs` separately covers duration clamps,
 normalization, rails, cuts, and actor interpolation. Output:
 `shots/studio-selftest/*.png`.
@@ -309,7 +307,7 @@ Render the pinned 20-video modern-MBT example set with:
 npm run studio:examples -- --out shots/studio-modern-examples
 ```
 
-The batch tool validates both actors as `modern`/`mbt`, records the production
+The batch tool validates both actors as `modern`/`mbt`, records the current
 canvas path at 1280×720, and writes WebM files plus `manifest.json` under the
 gitignored output directory. Use `--only 3,7,11` to render selected pinned
 scenario numbers. The pinned set avoids the urban center because its buildings

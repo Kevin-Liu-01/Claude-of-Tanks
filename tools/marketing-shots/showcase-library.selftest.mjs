@@ -26,4 +26,21 @@ assert.ok(manifest.shots.every((shot) => existsSync(join(ROOT, 'public', shot.sr
 assert.ok(existsSync(join(ROOT, 'public', manifest.animatedPreview.src)));
 assert.ok(existsSync(join(ROOT, 'public', manifest.animatedPreview.poster)));
 
+assert.deepEqual(manifest.process.sequence, [
+  'deterministic scene JSON',
+  'review capture',
+  'contact-sheet inspection',
+  '4K export',
+  'automated grade',
+  'owner approval',
+]);
+for (const kind of ['action', 'foreground']) {
+  const sheets = manifest.process.contactSheets[kind];
+  assert.equal(sheets.length, 3, `${kind} must publish three review sheets`);
+  assert.deepEqual(sheets.map((sheet) => sheet.page), [1, 2, 3]);
+  assert.equal(sheets.flatMap((sheet) => sheet.frames).length, 30);
+  assert.ok(sheets.every((sheet) => sheet.frames.length === 10));
+  assert.ok(sheets.every((sheet) => existsSync(join(ROOT, 'public', sheet.src))));
+}
+
 console.log('showcase-library selftest passed');
