@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.js';
 import { getSpec, MODEL_SOURCE } from '../specs.js';
 import { tankTier } from '../tier.js';
 import { wheelPatternFor } from '../wheelPatterns.js';
+import { createTankState, SIM_DT } from '../../sim/movement.js';
 
 const spec = getSpec('mbt70');
 assert(spec, 'MBT-70 is registered');
@@ -15,6 +16,10 @@ assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true, 'launcher ATGM is the normal primary weapon');
 assert.equal(spec.gun.shells.length, 1, 'no fictional conventional selector round');
 assert.equal(spec.gun.shells[0].guided, true);
+assert.equal(typeof spec.hydropneumaticAim, 'object',
+  'MBT-70 suspension aim owns an explicit physical travel envelope');
+assert.ok(spec.hydropneumaticAim.compressionM >= 0.60 && spec.hydropneumaticAim.droopM >= 0.60,
+  'MBT-70 carries enough wheel travel to reshape its long seven-wheel course');
 assert.equal(spec.armor.turretPivot[2], 0.57,
   'extended bustle is balanced by moving the complete turret rig forward');
 assert.equal(spec.dims.overallLengthM, 9.37,
@@ -69,6 +74,61 @@ assert.equal(tank.root.getObjectByName('gearRoadWheelDiscs')?.count, 14,
 assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.nativeWheelPatterns,
   ['split-rim-ten'], 'native running gear records one Abrams wheel pattern');
 assert(tank.root.getObjectByName('muzzleBoreShadowDisc'), '152 mm launcher has an open bore');
+
+// The hydropneumatic pose must articulate the complete inherited Abrams gear,
+// not leave a rigid belt and wheel train sliding through the floor. This is a
+// render-rig contract: read the actual instance matrices and band vertices.
+const state = createTankState(spec, new THREE.Vector3(), 0);
+state.visualPitch = THREE.MathUtils.degToRad(10);
+tank.setGroundSampler(() => 0);
+const band = tank.root.getObjectByName('gearTrackBandL');
+const restBand = Float32Array.from(band.geometry.getAttribute('position').array);
+for (let frame = 0; frame < 48; frame++) tank.syncFromState(state, SIM_DT);
+
+const wheels = tank.root.getObjectByName('gearRoadWheelTires');
+const matrix = new THREE.Matrix4();
+const position = new THREE.Vector3();
+let minWheelY = Infinity;
+let maxWheelY = -Infinity;
+for (let instance = 0; instance < wheels.count; instance++) {
+  wheels.getMatrixAt(instance, matrix);
+  position.setFromMatrixPosition(matrix);
+  minWheelY = Math.min(minWheelY, position.y);
+  maxWheelY = Math.max(maxWheelY, position.y);
+}
+assert.ok(maxWheelY - minWheelY >= 0.38,
+  `MBT-70 hydraulic posture visibly staggers the road wheels (${(maxWheelY - minWheelY).toFixed(3)} m)`);
+
+const deformedBand = band.geometry.getAttribute('position').array;
+let maxBandTravel = 0;
+for (let i = 1; i < deformedBand.length; i += 3) {
+  maxBandTravel = Math.max(maxBandTravel, Math.abs(deformedBand[i] - restBand[i]));
+}
+assert.ok(maxBandTravel >= 0.34,
+  `MBT-70 loaded track run reshapes with the wheels (${maxBandTravel.toFixed(3)} m)`);
 tank.dispose();
+
+// The MBT-70 shortens and re-seats its complete donor hull after construction.
+// Terrain samples must use those transformed wheel stations, not the M1A1's
+// stale pre-transform coordinates.
+const contactTank = createTank('mbt70', null, { proceduralOnly: true, geometryReceipt: true });
+const contactHull = contactTank.root.getObjectByName('rig_hull');
+const frontWheelZ = contactHull.userData.runningGearReceipts[0].wheelZs[0];
+const frontWheelWorldZ = frontWheelZ * contactHull.scale.z + contactHull.position.z;
+contactTank.setGroundSampler((_x, z) => Math.abs(z - frontWheelWorldZ) < 0.015 ? 0.25 : 0);
+const contactState = createTankState(spec, new THREE.Vector3(), 0);
+for (let frame = 0; frame < 48; frame++) contactTank.syncFromState(contactState, SIM_DT);
+const contactWheels = contactTank.root.getObjectByName('gearRoadWheelTires');
+let raisedFrontWheelY = -Infinity;
+for (let instance = 0; instance < contactWheels.count; instance++) {
+  contactWheels.getMatrixAt(instance, matrix);
+  position.setFromMatrixPosition(matrix);
+  if (Math.abs(position.z - frontWheelZ) < 1e-3) {
+    raisedFrontWheelY = Math.max(raisedFrontWheelY, position.y);
+  }
+}
+assert.ok(raisedFrontWheelY >= 0.72,
+  `terrain conformance samples the re-seated front station (${raisedFrontWheelY.toFixed(3)} m local Y)`);
+contactTank.dispose();
 
 console.log('mbt70Fidelity.selftest: source proportions, procedural ownership, anatomy and ATGM contract pass');

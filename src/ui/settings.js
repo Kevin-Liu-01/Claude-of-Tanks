@@ -572,8 +572,9 @@ export function createSettings(opts) {
     note.innerHTML =
       'Click a chip, then press any key, mouse button or wheel notch to rebind — pad chips listen for a ' +
       'controller button. Tap Esc to cancel; <b>hold Esc</b> to bind Escape itself. Right-click a chip to clear it.<br>' +
-      'What <b>Aim / Free Look</b> does (hold-to-aim, toggle-aim or classic free look) is picked on the ' +
-      'GAMEPLAY tab. Controller: left stick drives, right stick aims, START opens this menu.';
+      'What <b>Aim / Free Look (RMB)</b> does (hold-to-aim, toggle-aim or classic free look) is picked on the ' +
+      'GAMEPLAY tab. <b>Free Look (Hold)</b> always locks the gun independently. ' +
+      'Controller: left stick drives, right stick aims, RB free-looks, START opens this menu.';
     refreshChips();
   }
 
@@ -717,7 +718,8 @@ export function createSettings(opts) {
     rmbNote.textContent =
       'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
       '(aim pitch is preserved both ways). Toggle-aim: tap RMB like Shift. Free look: hold RMB ' +
-      'to look around while the gun stays put (classic). Shift always toggles sniper.';
+      'to look around while the gun stays put (classic). Left Alt is the dedicated free-look hold. ' +
+      'Shift always toggles sniper.';
 
     const battle = groupCard(body, 'Battle');
     const diffRow = el('div', 'cot-set-row', battle);

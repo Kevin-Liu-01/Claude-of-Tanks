@@ -105,6 +105,7 @@ real input or authority motion releases the hold immediately. The complete desig
 | Handbrake | `Space` |
 | Aim / fire | Mouse / left mouse |
 | Sniper mode | `Shift`, configurable `RMB`, or mouse wheel |
+| Free look without moving turret | Hold `Left Alt` (or controller `RB`) |
 | Shell slots | `1` `2` `3` |
 | Repair / first aid / extinguisher | `4` `5` `6` |
 | Minimap zoom / shot log | `M` / `L` |

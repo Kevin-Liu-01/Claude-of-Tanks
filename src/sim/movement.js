@@ -390,8 +390,16 @@ const CASEMATE_ARC_DEG = 11;
 // the settled gun lands ON the aim point, not a deadband short of it.
 const AUTO_TRAVERSE_RAMP_RAD = 8 * DEG2RAD;
 
+/** True when the rendered barrel is rigidly attached to a hydraulic hull. */
+function hasFixedHydraulicGun(spec) {
+  return !!(spec.hydropneumaticAim && spec.armor && spec.armor.turretless);
+}
+
 /** Gun-yaw half-arc in radians for a spec (Infinity = full turret). */
 function gunArcRadFor(spec) {
+  // Swedish siege vehicles have no invisible fine-lay joint: the hull must
+  // rotate all the way onto the sight line because the rendered gun is fixed.
+  if (hasFixedHydraulicGun(spec)) return 0;
   if (typeof spec.gunArcDeg === 'number') return spec.gunArcDeg * DEG2RAD;
   if (spec.armor && spec.armor.turretless) return CASEMATE_ARC_DEG * DEG2RAD;
   return Infinity;
@@ -1014,17 +1022,49 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // duplicate collision pose. At rest, the existing static-pose cache resumes.
   let suspensionAimPitch = state.suspensionAimPitch || 0;
   const hydraulicAim = spec.hydropneumaticAim;
+  const fixedHydraulicGun = hasFixedHydraulicGun(spec);
   // Ordinary vehicles take only this predictable false branch. The extra aim
   // math runs solely while a Strv mode is engaged or its offset is settling.
   if ((state.suspensionAim && hydraulicAim) || suspensionAimPitch !== 0) {
     let suspensionAimTarget = 0;
     if (state.suspensionAim && input.aimPoint) {
-      const adx = input.aimPoint.x - state.pos.x;
-      const adz = input.aimPoint.z - state.pos.z;
-      const ady = input.aimPoint.y - (state.pos.y + gunPivotHeight(spec));
-      const worldAimPitch = Math.atan2(ady, Math.max(Math.hypot(adx, adz), 1e-6));
+      let requestedPitch;
+      if (fixedHydraulicGun) {
+        // Feedback from the ACTUAL rendered fixed bore. Terrain pitch, roll,
+        // spring lag and the authored trunnion position are all present in
+        // this frame, so adding the remaining local pitch error to the current
+        // hydraulic offset converges the visible barrel itself onto the aim.
+        // No virtual gunPitch joint is needed to hide an approximation error.
+        _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
+        _hullQuat.setFromEuler(_hullEuler);
+        const armor = spec.armor || {};
+        const turretPivot = armor.turretPivot || [0, spec.dims.heightM * 0.7, 0];
+        const gunPivot = armor.gunPivot || [0, spec.dims.heightM * 0.15, 0];
+        _gunOriginWorld.set(
+          turretPivot[0] + gunPivot[0],
+          turretPivot[1] + gunPivot[1],
+          turretPivot[2] + gunPivot[2],
+        ).applyQuaternion(_hullQuat).add(state.pos);
+        _aimLocal.copy(input.aimPoint).sub(_gunOriginWorld)
+          .applyQuaternion(_hullQuat.conjugate());
+        _hullQuat.conjugate();
+        const borePitchError = Math.atan2(
+          _aimLocal.y, Math.max(Math.hypot(_aimLocal.x, _aimLocal.z), 1e-6));
+        // Close the remaining bore error as a damped feedback loop. Applying
+        // the whole error every 60 Hz tick fights the slower hull-attitude
+        // spring and produces a visible ±0.4° limit cycle; a 4 Hz correction
+        // converges promptly without hunting while the outer rate clamp still
+        // governs large moves.
+        requestedPitch = suspensionAimPitch + borePitchError * Math.min(1, dt * 4);
+      } else {
+        const adx = input.aimPoint.x - state.pos.x;
+        const adz = input.aimPoint.z - state.pos.z;
+        const ady = input.aimPoint.y - (state.pos.y + gunPivotHeight(spec));
+        const worldAimPitch = Math.atan2(ady, Math.max(Math.hypot(adx, adz), 1e-6));
+        requestedPitch = worldAimPitch - state._terr.pitch;
+      }
       suspensionAimTarget = clamp(
-        worldAimPitch - state._terr.pitch,
+        requestedPitch,
         -(hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD,
         (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD,
       );
@@ -1524,8 +1564,28 @@ export function updateTank(entity, heightField, dt, collide = null) {
       ? Math.atan2(_aimLocal.x, _aimLocal.z)
       : state.turretYaw;
     const desiredGun = Math.atan2(_aimLocal.y, Math.max(localHoriz, 1e-6));
-    const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
-    state.turretYaw = chaseAngle(state.turretYaw, wantTurretYaw, turretRate * dt);
+    if (fixedHydraulicGun) {
+      // A hydraulic siege TD has one physical aiming joint: its hull. Keep the
+      // authoritative firing state on that same visible bore instead of using
+      // invisible turret/gun angles to finish the lay. The suspension feedback
+      // above removes desiredGun while auto-traverse removes wantTurretYaw.
+      state.turretYaw = 0;
+      state.gunPitch = 0;
+      const noseDown = (hydraulicAim?.noseDownDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_DOWN_DEG) * DEG2RAD;
+      const noseUp = (hydraulicAim?.noseUpDeg ?? SUSPENSION_AIM_DEFAULT_NOSE_UP_DEG) * DEG2RAD;
+      const requestedSuspensionPitch = suspensionAimPitch + desiredGun;
+      const yawPinned = Math.abs(wrapAngle(wantTurretYaw)) > 1e-4;
+      const pitchPinned = !state.suspensionAim ||
+        requestedSuspensionPitch < -noseDown - 1e-4 ||
+        requestedSuspensionPitch > noseUp + 1e-4;
+      state.atGunLimit = yawPinned || pitchPinned;
+      const labelWant = Math.abs(steer) < 0.2 && state.atGunLimit &&
+        horiz >= GUN_LIMIT_LABEL_DIST_M;
+      state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
+      state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
+    } else {
+      const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
+      state.turretYaw = chaseAngle(state.turretYaw, wantTurretYaw, turretRate * dt);
     // Casemate gun-arc clamp (§7): the "virtual turret" (fire-control fine
     // lay) only slews inside ±gunArc of the hull; the reticle pins red
     // (atGunLimit) while the auto hull-traverse above swings the excess onto
@@ -1613,7 +1673,8 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const labelWant = !fastTransient && Math.abs(steer) < 0.2 &&
       (specPinned || (state.atGunLimit && horiz >= GUN_LIMIT_LABEL_DIST_M));
     state._gunLimitHoldS = labelWant ? (state._gunLimitHoldS || 0) + dt : 0;
-    state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
+      state.gunLimitSpec = state._gunLimitHoldS >= GUN_LIMIT_LABEL_DWELL_S;
+    }
   }
   state.turretYawRate = wrapAngle(state.turretYaw - prevTurretYaw) / dt;
 

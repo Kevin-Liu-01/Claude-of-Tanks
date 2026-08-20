@@ -45,15 +45,37 @@ for (let i = 0; i < LINE.length; i++) {
 const flatTerrain = { getHeightAt: () => 0, getGroundType: () => 'hard' };
 for (const spec of specs) {
   const state = createTankState(spec, new THREE.Vector3(), 0);
+  const reachableAim = new THREE.Vector3(0, 28, 180);
   const entity = {
     spec,
     state,
     input: {
       throttle: 0, steer: 0, brake: false, fire: false, shellSlot: 0,
-      aimPoint: new THREE.Vector3(0, 85, 180),
+      aimPoint: reachableAim,
     },
   };
   state.suspensionAim = true;
+  for (let frame = 0; frame < 360; frame++) updateTank(entity, flatTerrain, SIM_DT);
+  assert.equal(state.turretYaw, 0,
+    `${spec.id}: fixed gun never hides yaw in a virtual turret`);
+  assert.equal(state.gunPitch, 0,
+    `${spec.id}: fixed gun elevation is owned entirely by the rendered hull`);
+
+  const visual = createTank(spec.id, null, { proceduralOnly: true, geometryReceipt: true });
+  visual.setGroundSampler(() => 0);
+  for (let frame = 0; frame < 48; frame++) visual.syncFromState(state, SIM_DT);
+  visual.root.updateMatrixWorld(true);
+  const muzzle = visual.root.getObjectByName('rig_muzzle');
+  const muzzlePos = muzzle.getWorldPosition(new THREE.Vector3());
+  const boreDir = new THREE.Vector3(0, 0, 1).transformDirection(muzzle.matrixWorld);
+  const aimDir = reachableAim.clone().sub(muzzlePos).normalize();
+  const boreErrorDeg = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(
+    boreDir.dot(aimDir), -1, 1)));
+  assert.ok(boreErrorDeg <= 0.25,
+    `${spec.id}: visible fixed bore tracks the requested aim (${boreErrorDeg.toFixed(3)} deg error)`);
+  visual.dispose();
+
+  entity.input.aimPoint.set(0, 85, 180);
   for (let frame = 0; frame < 240; frame++) updateTank(entity, flatTerrain, SIM_DT);
   assert.ok(state.suspensionAimPitch >= THREE.MathUtils.degToRad(10.5),
     `${spec.id}: hydraulic aim reaches a pronounced nose-up posture`);

@@ -16,7 +16,9 @@
 //     repeated close-aim scope cycles never ratchet the pitch upward (the old
 //     entry scan-lift + keep-pitch exit climbed to PITCH_MAX = sky).
 //     The never-aimed battle opening keeps the gameplay_feel r4 dirt-guard.
-//  3. RMB aiming (settings rmbMode): 'hold' (default) enters sniper while held
+//  3. Dedicated Alt free-look moves the camera while the aim/turret stay put,
+//     independent of the selected RMB mode. RMB aiming (settings rmbMode):
+//     'hold' (default) enters sniper while held
 //     and restores the prior arcade orbit + pitch on release; 'toggle' taps
 //     like Shift; 'freelook' keeps the classic gun-lock free look.
 //
@@ -321,6 +323,33 @@ const view = (page) => page.evaluate(() => {
   const t2 = await view(page);
   check(mode, "rmbMode 'toggle': tap again exits", t2.mode === 'ARCADE',
     `mode=${t2.mode} fov=${t2.fov.toFixed(1)}`);
+
+  // Dedicated free-look: remains available while RMB is still the default
+  // hold-to-aim control. Shift is deliberately not involved (sniper toggle).
+  await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'hold'));
+  const alt0 = await view(page);
+  await page.keyboard.down('Alt');
+  await sleep(120);
+  for (let i = 0; i < 6; i++) {
+    await page.mouse.move(800 - (i + 1) * 40, 450, { steps: 1 });
+    await sleep(20);
+  }
+  await sleep(300);
+  const alt1 = await view(page);
+  check(mode, 'Left Alt hold free-looks independently of RMB mode',
+    Math.abs(deg(wrap(alt1.camYaw - alt0.camYaw))) > 8,
+    `dYaw=${deg(wrap(alt1.camYaw - alt0.camYaw)).toFixed(1)} deg`);
+  const altAimFrozen = Math.hypot(
+    alt1.aimPoint[0] - alt0.aimPoint[0], alt1.aimPoint[2] - alt0.aimPoint[2]);
+  check(mode, 'Left Alt hold keeps the aim point and turret frozen', altAimFrozen < 1,
+    `aim point moved ${altAimFrozen.toFixed(2)} m`);
+  await page.screenshot({ path: `${SHOT_DIR}${mode}-04-alt-freelook.png` });
+  await page.keyboard.up('Alt');
+  await sleep(400);
+  const alt2 = await view(page);
+  check(mode, 'Left Alt release snaps the camera back to the aim',
+    Math.abs(deg(wrap(alt2.camYaw - alt0.camYaw))) < 2,
+    `dYaw after release ${deg(wrap(alt2.camYaw - alt0.camYaw)).toFixed(2)} deg`);
 
   // freelook (classic): camera moves, aim/turret frozen, snap back on release
   await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'freelook'));

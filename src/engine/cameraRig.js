@@ -109,7 +109,8 @@ function nearestZoomIndex(zoom, list) {
  * @property {number} mouseDX - mouse delta x in px this frame
  * @property {number} mouseDY - mouse delta y in px this frame
  * @property {number} wheel - accumulated wheel notches this frame (int, ±3 max): +N zoom in, -N zoom out
- * @property {boolean} rmb - right button held (gun lock: free look, aim frozen)
+ * @property {boolean} rmb - generic gun-lock/free-look hold (dedicated action
+ *   or RMB in free-look mode); camera moves while the aim point stays frozen
  * @property {boolean} shiftPressed - Shift held (rising edge toggles sniper)
  * @property {boolean} [aimHold] - RMB hold-to-aim level (gunnery r1, settings
  *   rmbMode 'hold'): rising edge enters sniper from ARCADE, falling edge
@@ -768,7 +769,7 @@ export function createCameraRig(camera, deps) {
       if (rig.mode === 'ARCADE') solveArcade(player, dt, false);
       else solveSniper(player);
 
-      if (!camInput.rmb) updateAim(player); // RMB: aim raycast frozen (gun lock)
+      if (!camInput.rmb) updateAim(player); // free look: aim raycast frozen (gun lock)
       else writePlayerAim(player); // …but the (frozen) aim point is still published
 
       // Trauma shake — additive rotational only, after the solve.

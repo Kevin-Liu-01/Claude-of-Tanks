@@ -309,7 +309,15 @@ const MODERN2_SPECS = {
     hp: 2050,
     enginePowerHp: 1475, weightTons: 50.4, topSpeedKmh: 69, reverseSpeedKmh: 32,
     hullTraverseDegS: 42,
-    terrainResistance: MODERN_TR, pivotStyle: 'neutral', hydropneumaticAim: true,
+    terrainResistance: MODERN_TR, pivotStyle: 'neutral',
+    // The MBT-70's adjustable hydropneumatic gear is a real long-travel rig,
+    // not merely a flag that tilts the hull. The explicit envelope lets all
+    // seven road-wheel stations and the loaded track run follow that attitude
+    // instead of saturating at the fleet's shallow conventional defaults.
+    hydropneumaticAim: {
+      noseDownDeg: 10, noseUpDeg: 10, rateDegS: 8,
+      compressionM: 0.65, droopM: 0.65,
+    },
     turretTraverseDegS: 40, gunPitchDegS: 28, gunElevationDeg: 20, gunDepressionDeg: 10,
     gun: {
       caliberMm: 152, reloadS: 10.5, baseAccuracy: 0.32, aimTimeS: 2.1,

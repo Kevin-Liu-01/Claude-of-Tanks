@@ -3941,7 +3941,10 @@ function tick(nowMs) {
     camInput.cursorX = _cursorNdc.x;
     camInput.cursorY = _cursorNdc.y;
   }
-  // RMB ROUTING (gunnery r1, owner feature): what the RMB-bound 'freeCamera'
+  // FREE-LOOK / RMB ROUTING: left Alt (or the rebindable `freeLook` action)
+  // always provides classic hold-to-look with the aim point and turret frozen.
+  // This stays separate from Shift's established sniper toggle. What the
+  // RMB-bound 'freeCamera'
   // action does is the player's settings.rmbMode pick —
   //   'hold' (DEFAULT, owner ask): hold-to-aim — the rig enters sniper while
   //     held and returns to the prior arcade zoom + preserved aim pitch on
@@ -3957,7 +3960,9 @@ function tick(nowMs) {
   // exactly once per frame.
   const rmbMode = input.getSettings().rmbMode || 'hold';
   const rmbHeld = input.isDown('freeCamera');
-  camInput.rmb = rmbMode === 'freelook' && !cursorAimNow ? rmbHeld : false;
+  const freeLookHeld = input.isDown('freeLook');
+  camInput.rmb = inBattle && !paused && !cursorAimNow &&
+    (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
   camInput.aimHold = inBattle && !paused && rmbMode === 'hold' && rmbHeld;
   camInput.shiftPressed = input.isDown('sniperToggle') ||
     (rmbMode === 'toggle' && rmbHeld) ||

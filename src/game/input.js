@@ -58,6 +58,7 @@ const ACTION_DEFS = [
   { id: 'consumable1', label: 'Repair Kit', group: 'Consumables' },
   { id: 'consumable2', label: 'First Aid Kit', group: 'Consumables' },
   { id: 'consumable3', label: 'Fire Extinguisher', group: 'Consumables' },
+  { id: 'freeLook', label: 'Free Look (Hold)', group: 'Camera' },
   // gunnery r1: RMB's FUNCTION is picked by settings.rmbMode (hold-to-aim /
   // toggle-aim / free-look classic); this action owns the physical binding.
   { id: 'freeCamera', label: 'Aim / Free Look (RMB)', group: 'Camera' },
@@ -69,7 +70,7 @@ const ACTION_DEFS = [
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ];
 
-/** Default primary bindings: WASD move, LMB fire, Shift sniper, RMB aim,
+/** Default primary bindings: WASD move, LMB fire, Shift sniper, Alt free look, RMB aim,
  *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
  *  Space handbrake, Esc menu.
  *  WoT PC CLASSIC LAYOUT — locked by movement-physics.md §9.2 ("Enter: Shift
@@ -100,6 +101,7 @@ export const DEFAULT_BINDINGS = {
   consumable1: 'Digit4',
   consumable2: 'Digit5',
   consumable3: 'Digit6',
+  freeLook: 'AltLeft',
   freeCamera: 'Mouse2',
   zoomIn: 'WheelUp',
   zoomOut: 'WheelDown',
@@ -118,13 +120,13 @@ const DEFAULT_BINDINGS2 = {
 };
 
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
- *  LB special action, RB free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
+ *  LB special action, RB dedicated free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
  *  left = drive, right = aim. */
 const DEFAULT_PAD_BINDINGS = {
   fire: 7, // RT
   sniperToggle: 6, // LT
   handbrake: 0, // A
-  freeCamera: 5, // RB
+  freeLook: 5, // RB
   shell1: 12, // D-UP
   shell2: 14, // D-LEFT
   shell3: 15, // D-RIGHT
@@ -331,6 +333,19 @@ export function createInput(opts = {}) {
       else if (v === null && Object.prototype.hasOwnProperty.call(storedPad, def.id)) padBindings[def.id] = null;
     }
   }
+  // Adding the dedicated free-look action moves the default RB assignment
+  // away from the older context-sensitive RMB action. Old saves can contain
+  // that prior RB value, so apply the same first-owner dedupe as keyboard
+  // bindings; `freeLook` appears first and keeps the physical button.
+  {
+    const used = new Set();
+    for (const def of ACTION_DEFS) {
+      const button = padBindings[def.id];
+      if (button == null) continue;
+      if (used.has(button)) padBindings[def.id] = null;
+      else used.add(button);
+    }
+  }
 
   let codeToAction = new Map(); // code -> actionId (both keyboard slots)
   let padButtonToAction = new Map(); // button index -> actionId
@@ -508,7 +523,8 @@ export function createInput(opts = {}) {
     if (!enabled) return;
     const actionId = codeToAction.get(code);
     if (actionId && evt && evt.cancelable &&
-        (code === 'Space' || code.startsWith('Arrow') || code === 'Tab')) {
+        (code === 'Space' || code === 'Tab' ||
+         code.startsWith('Arrow') || code.startsWith('Alt'))) {
       evt.preventDefault(); // keep bound nav keys from scrolling/refocusing
     }
     const wasDown = down.has(code);

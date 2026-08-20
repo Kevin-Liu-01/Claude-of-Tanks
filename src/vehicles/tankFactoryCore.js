@@ -2388,6 +2388,18 @@ function buildRunningGear(P, cfg) {
       const ca = Math.cos(-pEff), sa = Math.sin(-pEff);
       const cr = Math.cos(rEff), sr = Math.sin(rEff);
       const px = state.pos.x, py = state.pos.y, pz = state.pos.z;
+      // Some profile builders reshape/re-seat a certified donor hull after
+      // its running gear is built (MBT-70 shortens and shifts the M1A1 donor).
+      // Wheel records remain in hullG-local space, so fold that persistent
+      // transform into both the sampled station and its physical footprint.
+      // The solved offset stays hullG-local and therefore divides by scaleY.
+      const hsx = hullG.scale.x;
+      const hsy = hullG.scale.y;
+      const hsz = hullG.scale.z;
+      const hpx = hullG.position.x;
+      const hpy = hullG.position.y;
+      const hpz = hullG.position.z;
+      const invHsy = 1 / Math.max(Math.abs(hsy), 1e-6);
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -2398,9 +2410,12 @@ function buildRunningGear(P, cfg) {
           if (e.suspensionSource) continue;
           // world position of the CONTACT-plane point under this wheel (YXZ;
           // hull-local y = conformPlaneY — see the contact-metadata note)
-          const x1 = e.x * cr - conformPlaneY * sr;
-          const y1 = e.x * sr + conformPlaneY * cr;
-          const z1 = e.z;
+          const hx = e.x * hsx + hpx;
+          const hy = conformPlaneY * hsy + hpy;
+          const hz = e.z * hsz + hpz;
+          const x1 = hx * cr - hy * sr;
+          const y1 = hx * sr + hy * cr;
+          const z1 = hz;
           const y2 = y1 * ca - z1 * sa, z2 = y1 * sa + z1 * ca;
           const wx = px + x1 * cb + z2 * sb;
           const wy = py + y2;
@@ -2412,8 +2427,8 @@ function buildRunningGear(P, cfg) {
           // hollows. Rest the wheel on the HIGHEST ground under its footprint:
           // rim edges across the width (±0.5 w along the axle, in hull-local
           // X) and half-radius fore/aft along the roll direction.
-          const hwW = 0.5 * wheelW;
-          const hrZ = 0.55 * e.r;
+          const hwW = 0.5 * wheelW * Math.abs(hsx);
+          const hrZ = 0.55 * e.r * Math.abs(hsz);
           let g = sampler(wx, wz);
           const gxX = cb * cr, gxZ = -sb * cr;       // hull-local +X in world XZ
           const gzX = sb * ca, gzZ = cb * ca;        // hull-local +Z in world XZ
@@ -2426,7 +2441,7 @@ function buildRunningGear(P, cfg) {
           if (g2 - 0.17 * e.r > g) g = g2 - 0.17 * e.r;
           g2 = sampler(wx - gzX * hrZ, wz - gzZ * hrZ);
           if (g2 - 0.17 * e.r > g) g = g2 - 0.17 * e.r;
-          const dev = g - wy;
+          const dev = (g - wy) * invHsy;
           // Real suspension travel: wheels visibly drop into ruts
           // and ride crests instead of the r2 near-rigid ±7 cm creep.
           // Hydraulic siege vehicles opt into their larger physical envelope
