@@ -6965,11 +6965,11 @@
             "min": [
               -1.6,
               0.01,
-              -3.4596
+              -3.3354
             ],
             "max": [
               -1,
-              1.18,
+              1.21,
               3.5096
             ],
             "turretLocal": false
@@ -6980,11 +6980,11 @@
             "min": [
               1,
               0.01,
-              -3.4596
+              -3.3354
             ],
             "max": [
               1.6,
-              1.18,
+              1.21,
               3.5096
             ],
             "turretLocal": false
@@ -7053,8 +7053,8 @@
           }
         ]
       },
-      "geometryHash": "df236578",
-      "metadataHash": "f2a7a899",
+      "geometryHash": "5192b1da",
+      "metadataHash": "4c259867",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -7137,24 +7137,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68228,
-          "sha256": "8ea7ba229548a7c37eff862bb0aa8d9959f3affeabc69beba86ca331a6f948a8"
+          "bytes": 67233,
+          "sha256": "b401bc710573a03dd181f7188ecfb4e082ca254f37be5c9aa37271fae57a0ce0"
         },
         "armorSide": {
           "file": "ariete_c1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71735,
-          "sha256": "c56424b957576a9817d8904a32fd46a7f197f71bf39bd2aa9e4a38f1dc6d46e1"
+          "bytes": 70783,
+          "sha256": "481f98f6bc8588f67c70992f989032c0b1044ee10d524c5ef299bfbff6cce5ac"
         },
         "modulesSide": {
           "file": "ariete_c1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79591,
-          "sha256": "510a447a7eb101cc21c8158554c7bddf4fc92f4492ac46f714b56a854a4669ed"
+          "bytes": 79254,
+          "sha256": "1f70b7731c18a2ba4f20746e4d21431f25371bc8d73038c62529f93ad230f5d3"
         },
         "markings": {
           "file": "ariete_c1_markings.png",
@@ -7952,11 +7952,11 @@
             "min": [
               -1.6,
               0.01,
-              -3.4596
+              -3.3354
             ],
             "max": [
               -1,
-              1.18,
+              1.21,
               3.5096
             ],
             "turretLocal": false
@@ -7967,11 +7967,11 @@
             "min": [
               1,
               0.01,
-              -3.4596
+              -3.3354
             ],
             "max": [
               1.6,
-              1.18,
+              1.21,
               3.5096
             ],
             "turretLocal": false
@@ -8040,8 +8040,8 @@
           }
         ]
       },
-      "geometryHash": "cecf288a",
-      "metadataHash": "dbc17d27",
+      "geometryHash": "118d3272",
+      "metadataHash": "07aff49d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -8053,10 +8053,10 @@
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "armorPaint": 7,
-          "fittingPaint": 8,
+          "armorPaint": 8,
+          "fittingPaint": 7,
           "opticGlass": 2,
-          "gunmetal": 14,
+          "gunmetal": 13,
           "tireRubber": 1,
           "canvas": 1,
           "unclassified": 13,
@@ -8124,24 +8124,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67602,
-          "sha256": "7831338824b3ef11fe3c2c860c7be4dd25f0571a7cfa75f2af541268dddcb028"
+          "bytes": 66576,
+          "sha256": "4ebe65121df60253cc052723247fa0abfd0a7913f20874571a0a5f94544b028e"
         },
         "armorSide": {
           "file": "ariete_c2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72595,
-          "sha256": "5011fc0a1f31a713c555f016c709918e3cdd934107de861bb133a3c84db91c2c"
+          "bytes": 71660,
+          "sha256": "04fdbbf38cf0e54cc65fa65d2548987a1a8ccf754185423adfa78cc6d3036912"
         },
         "modulesSide": {
           "file": "ariete_c2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80353,
-          "sha256": "4cd007be78a82cdbab7e46afd31c77c2f8f7dc16891f3831f4ca46f34e67f286"
+          "bytes": 80724,
+          "sha256": "6ff5d6783d835c4b64dc942ee80cb27b15cb4071050d52ba45a2a6ec264489cb"
         },
         "markings": {
           "file": "ariete_c2_markings.png",

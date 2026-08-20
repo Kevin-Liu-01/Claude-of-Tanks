@@ -74,6 +74,13 @@ function buildArieteMk(P, mark) {
   // then raise the armored body on its suspension instead of globally
   // scaling the tank (which previously damaged skirts and gun proportions).
   const BODY_RIDE_LIFT = 0.10;
+  // Establish the articulation frame before adding the C2's marked shoulder
+  // modules.  They used to be authored into hull buckets, so their boxes
+  // stayed behind when the turret yawed.  L() and localY() preserve their
+  // exact zero-yaw world seats while transferring ownership to rig_turret.
+  P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT, -0.10);
+  const L = (zWorld) => zWorld + 0.10;                                         // world z -> turret local
+  const localY = (yWorldBeforeLift) => yWorldBeforeLift - 1.30;
 
   // ---- hull tub + sponsons -------------------------------------------------
   P.add('hull', box(1.90, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.95 (inner band plane 1.017, audit dilates 2), belly 0.40
@@ -146,12 +153,17 @@ function buildArieteMk(P, mark) {
   // front comb: bins ±(1.03..1.48) to 1.86-2.03, posts -0.83(2.32),
   // -0.65(2.17), +0.30..+0.71(2.09-2.11) --------------------------------------
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.42, 0.49, 0.66), s * 1.25, 1.745, -0.06);              // sponson bin aft (top 1.99; ref inner edge 2.02)
-    P.add('hull', box(0.42, 0.40, 0.62), s * 1.25, 1.70, 0.62);                // sponson bin fore (top 1.90)
-    P.add('hullDark', box(0.38, 0.02, 0.58), s * 1.25, 2.00, -0.06);           // bin lids
-    P.add('hullDark', box(0.38, 0.02, 0.54), s * 1.25, 1.915, 0.62);
-    P.add('hullDetail', box(0.43, 0.03, 0.03), s * 1.25, 1.80, -0.06);         // strap lines
-    P.add('hullDetail', box(0.43, 0.03, 0.03), s * 1.25, 1.78, 0.62);
+    const armorBucket = c2 ? 'turret' : 'hull';
+    const darkBucket = c2 ? 'turretDark' : 'hullDark';
+    const detailBucket = c2 ? 'turretDetail' : 'hullDetail';
+    const y = (value) => c2 ? localY(value) : value;
+    const z = (value) => c2 ? L(value) : value;
+    P.add(armorBucket, box(0.42, 0.49, 0.66), s * 1.25, y(1.745), z(-0.06));    // sponson bin aft (top 1.99; ref inner edge 2.02)
+    P.add(armorBucket, box(0.42, 0.40, 0.62), s * 1.25, y(1.70), z(0.62));      // sponson bin fore (top 1.90)
+    P.add(darkBucket, box(0.38, 0.02, 0.58), s * 1.25, y(2.00), z(-0.06));     // bin lids
+    P.add(darkBucket, box(0.38, 0.02, 0.54), s * 1.25, y(1.915), z(0.62));
+    P.add(detailBucket, box(0.43, 0.03, 0.03), s * 1.25, y(1.80), z(-0.06));   // strap lines
+    P.add(detailBucket, box(0.43, 0.03, 0.03), s * 1.25, y(1.78), z(0.62));
   }
   P.add('hull', cylY(0.84, 0.86, 0.08, P.q ? 26 : 14), 0, 1.48, 0.02);         // low turret race ring (top 1.52 — the ref's inter-post line)
   // LEFT equipment group (gate front comb: 2.32@-0.83, 2.17@-0.65..-0.55,
@@ -260,12 +272,12 @@ function buildArieteMk(P, mark) {
   // +2.52]; ramp 0.30@-2.92 / 0.66@-3.29 / 0.87@-3.67; front wrap crest
   // 0.81-0.89 @ +3.49..+3.63) -------------------------------------------------
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.36, wheelW: 0.31, wheelY: 0.52, xc: 1.30,
+    style: 'rubber', wheelR: 0.38, wheelW: 0.31, wheelY: 0.53, xc: 1.30,
     wheelZs: [2.17, 1.46, 0.75, 0.04, -0.67, -1.38, -2.09],
     idler: { z: 3.10, y: 0.76, r: 0.32 },
-    sprocket: { z: -3.00, y: 0.68, r: 0.37 },
-    rollers: [1.50, 0.10, -1.30].map((z) => ({ z, y: 1.00, r: 0.09 })),
-    trackW: 0.60, topY: 1.06, botY: 0.055, contactZF: 2.52, contactZR: -2.44,
+    sprocket: { z: -3.00, y: 0.84, r: 0.25 },
+    rollers: [1.50, 0.10, -1.30].map((z) => ({ z, y: 1.03, r: 0.09 })),
+    trackW: 0.60, topY: 1.09, botY: 0.055, contactZF: 2.52, contactZR: -2.50,
     paintedEnds: true, coveredTop: true, arms: true,
     armBucket: 'hullRunningGearDetail',
     // s5322-D §B6/§B9 gear read (§5.262 gearFloor/tireHex law): lifted olive
@@ -275,14 +287,22 @@ function buildArieteMk(P, mark) {
     // dishR 0.82 opens a real rubber rim — radius/stations byte-held.
     dishR: 0.82, tireHex: 0x242522, wheelHex: 0x3d4433,
   });
+  P.hullG.userData.arieteRunningGearReceipt = Object.freeze({
+    roadWheelRadiusM: 0.38,
+    roadWheelStations: 7,
+    rearSprocketRadiusM: 0.25,
+    rearSprocketOriginalRadiusM: 0.37,
+    rearSprocketRadiusRatio: 0.25 / 0.37,
+    rearSprocketCenterYM: 0.84,
+    rearTrackContactZM: -2.50,
+    linkedCourseAdjusted: true,
+  });
   liftEye(P, 'hullDetail', -1.40, 1.52, -1.60);
   liftEye(P, 'hullDetail', 1.40, 1.52, -1.60);
   P.decal('hull', 'number', c2 ? 'EI 135' : 'EI 121', 0.24,
     [-0.80, 1.29 + BODY_RIDE_LIFT, 2.72], 0, -0.16);
 
   // ---- turret ---------------------------------------------------------------
-  P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT, -0.10);
-  const L = (zWorld) => zWorld + 0.10;                                         // world z -> turret local
   // main shell loft: front plate behind the mantlet at +1.30, cheek corner
   // (±1.17,+1.28), walls ±1.24..1.28, to the bustle break at -1.12
   const ARIETE_SHELL = [
@@ -425,8 +445,12 @@ function buildArieteMk(P, mark) {
   // sweeps measured −0.2 whole each under the documented dAlong 0.739
   // registration residual — receipts banked, this seat is the measured
   // dims-100 + curve-neutral exchange (§5.265/§5.290).
-  addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-    elev: 0, shield: false, scale: 0.62, seed: 44 }), 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
+  if (!c2) {
+    const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+      elev: 0, shield: false, scale: 0.62, seed: 44 });
+    commanderMg.name = 'arieteC1CommanderMg';
+    addFitting(P, 'turret', commanderMg, 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
+  }
   cupolaRing(P, -0.42, 0.86, L(-0.62), 0.23);                                  // loader hatch ring
   P.add('turret', box(0.34, 0.022, 0.30), -0.42, 0.925, L(-0.62), 0, 0.10, 0);
   for (let k = 0; k < 3; k++) periscope(P, 'turretDetail', 0.30 + k * 0.16, 0.90, L(-0.10), 0.1);
@@ -499,19 +523,49 @@ function buildArieteMk(P, mark) {
     P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
     P.add('hull', box(0.26, 0.10, 0.16), 0.0, 1.72, 0.90);                     // driver thermal camera pod on the fairing
     P.add('hullGlass', box(0.16, 0.05, 0.02), 0.0, 1.73, 0.985);
-    P.add('hull', box(0.44, 0.34, 0.60), -1.14, 1.70, -1.35);                  // APU box left-rear deck
-    P.add('hullDark', box(0.38, 0.26, 0.02), -1.14, 1.68, -1.04);
+    P.add('turret', box(0.44, 0.34, 0.60), -1.14, localY(1.70), L(-1.35));     // yawing APU/shoulder box, zero-yaw world seat retained
+    P.add('turretDark', box(0.38, 0.26, 0.02), -1.14, localY(1.68), L(-1.04));
     stowage(P, 'turretDetail', rng, [[0.62, 0.76, L(-2.06), 0.48, 0.18, 0.24]]);
     addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.05, r: 0.02, rake: 0, seed: 52 }),
       -0.87, 0.86, L(-0.885));                                                 // second whip rigged on the C2 fit
-    addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.62, seed: 46 }), -0.42, 0.87, L(-0.60), [0, 2.9, 0]); // s5322-A3 loader's MG42/59 at the certified stowed seat (AMV keeps it; re-seat experiment cost whole — reverted w/ receipt)
+    // T-90-style automated weapon tower on the right roof.  The low race is
+    // the only structural part; pedestal, yoke, shields and gun remain
+    // equipment so they cannot inflate the turret armor receipt.
+    const rwsX = 0.54, rwsZ = L(-0.57);
+    P.addCupola('turret', cylY(0.18, 0.21, 0.10, 16), rwsX, 0.94, rwsZ);
+    P.addEquipment('turret', box(0.30, 0.20, 0.28), rwsX, 1.07, rwsZ);
+    P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX - 0.18, 1.20, rwsZ + 0.03, 0, 0, -0.08);
+    P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.18, 1.20, rwsZ + 0.03, 0, 0, 0.08);
+    P.addEquipment('turret', box(0.17, 0.18, 0.17), rwsX + 0.25, 1.09, rwsZ + 0.14);
+    P.add('turretGlass', box(0.11, 0.10, 0.014), rwsX + 0.25, 1.10, rwsZ + 0.232);
+    const remoteRws = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'two-tone',
+      elev: -0.04, ammo: true, shield: true, scale: 0.88, seed: 46 });
+    remoteRws.name = 'arieteC2RemoteRws';
+    remoteRws.userData.remoteControlled = true;
+    addFitting(P, 'turret', remoteRws, rwsX, 1.17, rwsZ + 0.02, [0, 0.08, 0]);
     P.decal('turret', 'number', 'C2 01', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
   } else {
-    addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.62, seed: 45 }), -0.42, 0.87, L(-0.60), [0, 2.9, 0]); // s5322-A3 loader's MG42/59 at the certified stowed seat (owner c425f495; k2 low-mount law; re-seat experiment cost whole — reverted w/ receipt)
+    const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+      elev: 0, shield: false, scale: 0.62, seed: 45 });
+    loaderMg.name = 'arieteC1LoaderMg';
+    addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
     P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
   }
+  P.turretG.userData.arieteEquipmentReceipt = Object.freeze(c2 ? {
+    roofWeaponStations: 1,
+    remoteWeapon: 'nsvt',
+    remoteControlled: true,
+    remoteWeaponSide: 'right',
+    armoredTower: true,
+    rotatingShoulderModules: 4,
+    rotatingApuAssembly: true,
+  } : {
+    roofWeaponStations: 2,
+    manualPintles: 2,
+    remoteControlled: false,
+    rotatingShoulderModules: 0,
+    rotatingApuAssembly: false,
+  });
 
   // gun: OTO Breda 120/44; muzzle at the published overall (+5.875; the
   // print tube ends +5.46 — certified short-tube class, wholeCurves cover
