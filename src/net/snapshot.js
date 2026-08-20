@@ -11,7 +11,7 @@ const REST_TILT_DEADZONE_RAD = 0.0035;
 const REST_POSE = Symbol('networkRestPose');
 const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
-  'x', 'y', 'z', 'vx', 'vz',
+  'x', 'y', 'z', 'vx', 'vy', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
   'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags',
@@ -34,6 +34,7 @@ export const SNAPSHOT_FLAGS = Object.freeze({
   SPOTTED: 1 << 3,
   SPECIAL_ACTIVE: 1 << 4,
   SPECIAL_PENDING: 1 << 5,
+  AIRBORNE: 1 << 6,
 });
 
 function finite(value, fallback = 0) {
@@ -72,6 +73,7 @@ function entityFlags(entity) {
   if (entity.specialAction?.pendingFire || entity.specialAction?.inFlightShellId != null) {
     flags |= SNAPSHOT_FLAGS.SPECIAL_PENDING;
   }
+  if (entity.state?.grounded === false) flags |= SNAPSHOT_FLAGS.AIRBORNE;
   return flags;
 }
 
@@ -89,6 +91,7 @@ export function captureEntitySnapshot(entity) {
     y: quantize(vectorAxis(state.pos, 1), POSITION_SCALE),
     z: quantize(vectorAxis(state.pos, 2), POSITION_SCALE),
     vx: quantize(Math.sin(yaw) * speed, VELOCITY_SCALE),
+    vy: quantize(finite(state.verticalSpeed, state._ride?.v), VELOCITY_SCALE),
     vz: quantize(Math.cos(yaw) * speed, VELOCITY_SCALE),
     yaw: quantizeAngle(yaw),
     pitch: quantizeAngle(state.visualPitch),
@@ -275,6 +278,7 @@ export function decodeEntitySnapshot(entity, target = null) {
   out.y = entity.y / POSITION_SCALE;
   out.z = entity.z / POSITION_SCALE;
   out.vx = entity.vx / VELOCITY_SCALE;
+  out.vy = finite(entity.vy) / VELOCITY_SCALE;
   out.vz = entity.vz / VELOCITY_SCALE;
   out.yaw = dequantizeAngle(entity.yaw);
   out.pitch = dequantizeAngle(entity.pitch);
@@ -320,9 +324,10 @@ function interpolateEntity(aRaw, bRaw, t, durationS, target = null,
   const b = decodeEntitySnapshot(bRaw, scratchB);
   const out = decodeEntitySnapshot(bRaw, target);
   out.x = hermite(a.x, a.vx, b.x, b.vx, t, durationS);
-  out.y = a.y + (b.y - a.y) * t;
+  out.y = hermite(a.y, a.vy, b.y, b.vy, t, durationS);
   out.z = hermite(a.z, a.vz, b.z, b.vz, t, durationS);
   out.vx = a.vx + (b.vx - a.vx) * t;
+  out.vy = a.vy + (b.vy - a.vy) * t;
   out.vz = a.vz + (b.vz - a.vz) * t;
   out.yaw = lerpAngle(a.yaw, b.yaw, t);
   out.pitch = lerpAngle(a.pitch, b.pitch, t);
@@ -336,6 +341,7 @@ function interpolateEntity(aRaw, bRaw, t, durationS, target = null,
 function extrapolateEntity(raw, extraS, target = null) {
   const entity = decodeEntitySnapshot(raw, target);
   entity.x += entity.vx * extraS;
+  entity.y += entity.vy * extraS;
   entity.z += entity.vz * extraS;
   entity.reloadS = Math.max(0, entity.reloadS - extraS);
   return entity;
@@ -355,7 +361,7 @@ function stabilizeRestPose(entity) {
     Object.defineProperty(entity, REST_POSE, { value: rest });
     return entity;
   }
-  const moving = Math.hypot(entity.vx || 0, entity.vz || 0) > REST_SPEED_MPS;
+  const moving = Math.hypot(entity.vx || 0, entity.vy || 0, entity.vz || 0) > REST_SPEED_MPS;
   if (moving) {
     rest.x = entity.x;
     rest.y = entity.y;

@@ -37,6 +37,7 @@ import {
 import {
   SnapshotAssembler,
   SnapshotBuffer,
+  SNAPSHOT_FLAGS,
   captureEntitySnapshot,
   captureWorldSnapshot,
   createSnapshotDelta,
@@ -70,16 +71,20 @@ function input(overrides = {}) {
   };
 }
 
-function entity(id, specId, team, x, { visible = false, yaw = 0, speed = 0 } = {}) {
+function entity(id, specId, team, x, {
+  visible = false, yaw = 0, speed = 0, y = 2, verticalSpeed = 0, grounded = true,
+} = {}) {
   return {
     id,
     specId,
     team,
     spotted: visible,
     state: {
-      pos: { x, y: 2, z: 3 },
+      pos: { x, y, z: 3 },
       yaw,
       speed,
+      verticalSpeed,
+      grounded,
       visualPitch: 0,
       visualRoll: 0,
       turretYaw: 0,
@@ -727,6 +732,15 @@ assert.equal(decodedVisible.reloadKind, 'magazine');
 assert.equal(decodedVisible.magazineRounds, 1);
 assert.equal(decodedVisible.magazineCapacity, 3,
   'snapshot carries ready-rack count and capacity');
+const airborne = decodeEntitySnapshot(captureEntitySnapshot(entity(
+  'airborne', 'm1a2', 'alpha', 5,
+  { y: 8.25, verticalSpeed: -4.5, grounded: false },
+)));
+assert.equal(airborne.y, 8.25);
+assert.equal(airborne.vy, -4.5,
+  'snapshot carries authoritative tank vertical velocity');
+assert.ok(airborne.flags & SNAPSHOT_FLAGS.AIRBORNE,
+  'snapshot distinguishes ballistic flight from supported suspension motion');
 
 // ACK-based entity deltas preserve full client truth, including visibility
 // removals, without retransmitting unchanged tanks.
@@ -808,6 +822,31 @@ assert.equal(interpolation.sample(27), reusedFrame,
   'render sampling reuses its frame object instead of allocating at 120 Hz');
 assert.equal(interpolation.sample(28).entities[0], reusedEntity,
   'render sampling reuses entity objects while updating their values');
+
+// Vertical motion uses the same velocity-aware Hermite path as X/Z and
+// bounded extrapolation, so a networked jump does not become a sequence of
+// linear height steps or freeze between packets.
+{
+  const flight = new SnapshotBuffer({ interpolationDelayMs: 0, maxExtrapolationMs: 250 });
+  flight.push(captureWorldSnapshot({
+    tick: 10, serverTimeMs: 0,
+    entities: [entity('jumper', 'm1a2', 'alpha', 0,
+      { y: 5, verticalSpeed: 4, grounded: false })],
+    viewerId: 'jumper',
+  }));
+  flight.push(captureWorldSnapshot({
+    tick: 13, serverTimeMs: 100,
+    entities: [entity('jumper', 'm1a2', 'alpha', 1,
+      { y: 5.35, verticalSpeed: 3, grounded: false })],
+    viewerId: 'jumper',
+  }));
+  const mid = flight.sample(50).entities[0];
+  assert.ok(mid.y > 5.1 && mid.y < 5.25,
+    `airborne interpolation follows vertical velocity (y=${mid.y})`);
+  const extrapolated = flight.sample(200).entities[0];
+  assert.ok(extrapolated.y > 5.6,
+    `airborne extrapolation advances Y between authority packets (y=${extrapolated.y})`);
+}
 
 // Remote tanks at rest must not visibly seesaw between centimeter/angle
 // quantization bins. This is presentation stabilization only: meaningful

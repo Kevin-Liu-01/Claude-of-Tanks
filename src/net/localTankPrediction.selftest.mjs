@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState } from '../sim/movement.js';
 import { LocalTankPredictor } from './localTankPrediction.js';
+import { SNAPSHOT_FLAGS } from './snapshot.js';
 
 const SPEC = {
   enginePowerHp: 1500,
@@ -147,6 +148,37 @@ assert.equal(predictor.getStats().pendingInputs, 1,
   parked.recordInput(driving, 1 / 30, 1);
   assert.ok(parkedEntity.state.pos.z > beforeMove + 0.0001,
     'real local movement input releases the parked hold immediately');
+}
+
+// Reconciliation must seed the complete ballistic state, not just Y. Pending
+// input replay then advances the exact shared gravity integrator while leaving
+// horizontal momentum intact.
+{
+  const flightState = createTankState(SPEC, new Vector3(0, 5, 0), 0);
+  const flightEntity = {
+    spec: SPEC,
+    state: flightState,
+    combat: null,
+    contactGeom: null,
+    rigidGear: false,
+  };
+  const flight = new LocalTankPredictor({ entity: flightEntity, heightField: FIELD });
+  flight.reconcile(authority(0, null, 0, 0, {
+    y: 5,
+    vy: 2,
+    vz: 8,
+    flags: SNAPSHOT_FLAGS.AIRBORNE,
+  }));
+  const startY = flightEntity.state.pos.y;
+  flight.recordInput(driving, 0.1, 1);
+  assert.equal(flightEntity.state.grounded, false,
+    'airborne authority phase survives local input replay');
+  assert.ok(flightEntity.state.pos.y > startY,
+    'positive authority vertical velocity continues upward during replay');
+  assert.ok(flightEntity.state.verticalSpeed < 2 && flightEntity.state.verticalSpeed > 0.8,
+    `replay integrates gravity into vertical velocity (${flightEntity.state.verticalSpeed})`);
+  assert.ok(flightEntity.state.pos.z > 0.7,
+    'airborne replay preserves authoritative horizontal momentum');
 }
 
 console.log('localTankPrediction.selftest: replay, parked stability, correction, and reconnect passed');

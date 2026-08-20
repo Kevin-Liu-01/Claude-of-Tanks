@@ -88,6 +88,7 @@ const TURN_POWER_DIVERT = 0.5;   // drive-accel fraction diverted to the tracks 
 const TRAVERSE_SPEED_SCALE = 0.2;// hull traverse reduction fraction at top speed (× speedFrac²)
 const GRAVITY = 9.81;            // m/s²
 const MAX_CLIMB_DEG = 28;        // slope (deg) at which the drive stalls
+const MAX_CLIMB_RAD = MAX_CLIMB_DEG * (Math.PI / 180);
 const DOWNHILL_BONUS_CAP = 0.25; // up to +25% v_target downhill
 // r4 (round critique: "heavy-tank standing start on a grade reads dead"): an
 // open throttle on a DRIVABLE grade (below the 28° stall) must always win the
@@ -257,6 +258,13 @@ const RIDE_COMPRESSION_M = 0.20;      // track/wheel up-travel over a local cres
 const RIDE_DROOP_M = 0.18;            // max chassis separation from support plane
 const RIDE_GROUND_V_TAU = 0.09;       // smooth noisy max-contact handoffs
 const RIDE_SUPPORT_V_CAP = 12;         // m/s; rejects pathological height steps
+// Contact is released once the terrain falls beyond full track droop. The old
+// solver clamped the root to `support + droop` forever, effectively applying
+// an unbounded downward constraint across cliffs. Free flight preserves the
+// last support-relative vertical velocity and integrates gravity until the
+// extended running gear intersects terrain again.
+const RIDE_DETACH_CLEARANCE_M = 0.015;
+const RIDE_DETACH_REL_V_MPS = 0.20;
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
 // fast turn cannot dip the leaned-into track edge below the terrain.
@@ -306,6 +314,7 @@ const SWAY_VIS = 3.2; // effects_combat r1: pairs with tankFactory SWAY_VIS 3.2
 const FLINCH_W = 13;
 const FLINCH_Z = 0.32;
 const MUZZLE_CLEARANCE_M = 0.15; // gun-terrain clamp: min muzzle height above ground
+const MUZZLE_CLEARANCE_FRACTIONS = Object.freeze([1, 0.55]);
 // GUN LIMIT label gating (r3, round critique): the muzzle-terrain clearance
 // clamp pins the reticle near-CONSTANTLY while driving rough ground (every
 // crest the barrel sweeps raises the depression floor over the close-range
@@ -442,7 +451,7 @@ function slopeSpeedFactor(pitchAlongRad) {
  * Extract movement-relevant debuffs from a CombatState per the locked table in
  * ARCHITECTURE §2.4. `combat == null` ⇒ fully healthy.
  */
-function readDebuffs(combat) {
+function readDebuffs(combat, out) {
   let immobile = false;
   let powerMult = 1;
   let accelMult = 1;
@@ -501,7 +510,15 @@ function readDebuffs(combat) {
       if (typeof em.bloom === 'number') bloomMult = em.bloom;
     }
   }
-  return { immobile, powerMult, accelMult, traverseMult, turretMult, aimTimeMult, gunYellow, bloomMult };
+  out.immobile = immobile;
+  out.powerMult = powerMult;
+  out.accelMult = accelMult;
+  out.traverseMult = traverseMult;
+  out.turretMult = turretMult;
+  out.aimTimeMult = aimTimeMult;
+  out.gunYellow = gunYellow;
+  out.bloomMult = bloomMult;
+  return out;
 }
 
 /** Hull-local height of the gun trunnion above ground contact (for aim angles). */
@@ -536,6 +553,10 @@ export function createTankState(spec, pos, yaw) {
     pos: pos.clone(),
     yaw: wrapAngle(yaw),
     speed: 0,
+    verticalSpeed: 0,
+    grounded: true,
+    landingImpactMps: 0,
+    slopeBlocked: false,
     yawRate: 0,
     visualPitch: 0,
     visualRoll: 0,
@@ -566,12 +587,51 @@ export function createTankState(spec, pos, yaw) {
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
-    _ride: { y: pos.y, v: 0, supportY: NaN, groundV: 0 }, // sprung vertical chassis motion
+    _ride: { // sprung vertical chassis motion + deterministic airborne phase
+      y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0,
+    },
+    _groundType: 'medium',
+    _debuff: { // reused hot-loop output; readDebuffs allocates nothing per tick
+      immobile: false,
+      powerMult: 1,
+      accelMult: 1,
+      traverseMult: 1,
+      turretMult: 1,
+      aimTimeMult: 1,
+      gunYellow: false,
+      bloomMult: 1,
+    },
     _sup: {                        // static-pose support cache (skip resampling)
       x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0,
       y: pos.y, floorY: pos.y, rigid: false, cg: null,
     },
   };
+}
+
+/**
+ * Re-seed vertical contact after an integration-owned teleport or authored
+ * pose change. This keeps tools and respawn code from leaving the ballistic
+ * phase at the pre-teleport position.
+ */
+export function resetTankVerticalState(state, y = state?.pos?.y, verticalSpeed = 0,
+  grounded = true) {
+  if (!state || !state.pos || !Number.isFinite(y)) {
+    throw new TypeError('movement.resetTankVerticalState: valid state and y are required');
+  }
+  state.pos.y = y;
+  state.verticalSpeed = Number.isFinite(verticalSpeed) ? verticalSpeed : 0;
+  state.grounded = grounded !== false;
+  state.landingImpactMps = 0;
+  const ride = state._ride;
+  if (ride) {
+    ride.y = y;
+    ride.v = state.verticalSpeed;
+    ride.supportY = NaN;
+    ride.groundV = 0;
+    ride.grounded = state.grounded;
+    ride.airTime = 0;
+  }
+  if (state._sup) state._sup.x = NaN;
 }
 
 /**
@@ -596,21 +656,31 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // (pose corners, per-wheel gear lines, muzzle clearance). Real battles
   // provide the baked 1 m grid (≤ ~1 cm from the analytic surface); selftest
   // fixtures don't and keep their exact synthetic function.
-  const hAt = heightField.getHeightAtFast
-    ? (x, z) => heightField.getHeightAtFast(x, z)
-    : (x, z) => heightField.getHeightAt(x, z);
+  // Height-field samplers are closure-backed pure functions in both browser
+  // and headless worlds. Selecting the method reference directly avoids one
+  // short-lived closure per tank per 60 Hz tick (and matches map/headless
+  // collision callers).
+  const hAt = heightField.getHeightAtFast || heightField.getHeightAt;
   if (!(dt > 0)) return;
   const spec = entity.spec;
   const state = entity.state;
   const input = entity.input;
-  const debuff = readDebuffs(entity.combat);
+  const debuff = readDebuffs(entity.combat, state._debuff || (state._debuff = {}));
+  const groundedAtStart = state.grounded !== false;
+  state.slopeBlocked = false;
 
   const throttle = debuff.immobile ? 0 : clamp(input.throttle || 0, -1, 1);
   const steer = debuff.immobile ? 0 : clamp(input.steer || 0, -1, 1);
   const braking = !!input.brake;
 
   // ---- ground sampling (hull center) ----
-  const ground = heightField.getGroundType(state.pos.x, state.pos.z);
+  // Ground material affects track force only while the tracks are loaded.
+  // Retaining the last material in flight avoids a needless terrain lookup and
+  // prevents mid-air engine/brake authority from changing horizontal momentum.
+  const ground = groundedAtStart
+    ? heightField.getGroundType(state.pos.x, state.pos.z)
+    : state._groundType;
+  if (groundedAtStart) state._groundType = ground;
   const res = spec.terrainResistance;
   const R = res[ground] || res.medium;
   const Rh = res.hard;
@@ -689,10 +759,15 @@ export function updateTank(entity, heightField, dt, collide = null) {
     }
   }
   const yawTarget = steerCmd * trMax;
-  state.yawRate = approach(state.yawRate, yawTarget, (Math.max(trMax, 1e-6) / YAW_SPOOL_S) * dt);
+  if (groundedAtStart) {
+    state.yawRate = approach(
+      state.yawRate, yawTarget, (Math.max(trMax, 1e-6) / YAW_SPOOL_S) * dt,
+    );
+  }
   state.yaw = wrapAngle(state.yaw + state.yawRate * dt);
   // 'pivot' tanks rotate about the locked track: the hull center orbits sideways.
-  if (Math.abs(state.speed) < PIVOT_SPEED_EPS && spec.pivotStyle === 'pivot' && steerCmd !== 0) {
+  if (groundedAtStart && Math.abs(state.speed) < PIVOT_SPEED_EPS &&
+      spec.pivotStyle === 'pivot' && steerCmd !== 0) {
     const drift = Math.sign(steerCmd) * PIVOT_OFFSET_M * Math.abs(state.yawRate) * dt;
     state.pos.x += rx * drift;
     state.pos.z += rz * drift;
@@ -755,6 +830,13 @@ export function updateTank(entity, heightField, dt, collide = null) {
       rate *= 1 - TURN_POWER_DIVERT * Math.min(Math.abs(state.yawRate) / trMax, 1);
     }
   }
+  // Tracks cannot create longitudinal force while unloaded. Preserve the
+  // horizontal component through flight; gravity is integrated independently
+  // by the vertical phase below.
+  if (!groundedAtStart) {
+    rate = 0;
+    spoolTarget = 0;
+  }
   state._spool = spoolTarget > 0
     ? Math.min(1, (state._spool || 0) + dt / SPOOL_S)
     : Math.max(0, (state._spool || 0) - dt / SPOOL_DECAY_S);
@@ -764,14 +846,24 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // momentum — v *= 1 − k·|yawRate|/trMax·dt. r4 crit: fades out below
   // ~half top speed so mid-speed serpentining stays fluid; the target-scale
   // bleed above remains the dominant term.
-  if (trMax > 1e-6 && state.yawRate !== 0) {
+  if (groundedAtStart && trMax > 1e-6 && state.yawRate !== 0) {
     const bleedFade = clamp(
       (Math.abs(state.speed) / Math.max(topMps, 1e-6) - TURN_BLEED_FADE_LO) /
         (TURN_BLEED_FADE_HI - TURN_BLEED_FADE_LO), 0, 1);
     state.speed *= 1 -
       TURN_DIRECT_BLEED * bleedFade * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
   }
-  if (!debuff.immobile) {
+  // A grade above rated climbability is a contact constraint, not merely a
+  // zero target speed. Reject any remaining uphill component immediately so
+  // momentum cannot drive the kinematic support plane through wall-like
+  // terrain; the full gravity term below then starts the natural downslope
+  // return. Ordinary grades retain the tuned engine/traction model.
+  const impassableGrade = groundedAtStart && Math.abs(terrPitch) >= MAX_CLIMB_RAD;
+  if (impassableGrade && state.speed * terrPitch > 0) {
+    state.speed = 0;
+    state.slopeBlocked = true;
+  }
+  if (groundedAtStart && !debuff.immobile) {
     // Gravity along the track line: stalled tanks slide back, coasting gains
     // downhill. r3: the throttled share is SPEED-gated — a near-stationary
     // tank on a slope hasn't hooked the ground yet (tracks barely turning:
@@ -787,7 +879,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
       ? (1 - clamp((Math.abs(state.speed) - 1.0) / 2.0, 0, 1)) * (1 - (state._spool || 0))
       : 0;
     state.speed += -GRAVITY * Math.sin(terrPitch) * dt *
-      (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0);
+      (impassableGrade ? 1.0 : (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0));
   }
   // CLIMB_CREEP floor (r4, see the constant): with the throttle open toward a
   // reachable target, the net of drive − drag − gravity this tick never drops
@@ -800,7 +892,8 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // the hull momentarily slides BACKWARD on a steep grade, moveSign flips
   // pitchAlong to "downhill" and vTarget goes positive for a tick — the
   // margin gate must not read that flip as a drivable slope.
-  if (throttle !== 0 && !braking && !debuff.immobile && vTarget * throttle > 0) {
+  if (groundedAtStart && throttle !== 0 && !braking && !debuff.immobile &&
+      vTarget * throttle > 0) {
     const drivable = slopeSpeedFactor(terrPitch * Math.sign(throttle));
     if (drivable > 0.01) {
       const creep = CLIMB_CREEP_MPS2 * Math.min(1, drivable / 0.15);
@@ -910,7 +1003,9 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // PERCH boost (see the constants): balancing on a single line-end contact
   // stiffens/critically-damps the PITCH axis so the hull tips onto its second
   // contact at gravity rate instead of hanging off one end for several ticks.
-  state._perch = Math.max(0, (state._perch || 0) - dt / PERCH_RELEASE_S);
+  state._perch = groundedAtStart
+    ? Math.max(0, (state._perch || 0) - dt / PERCH_RELEASE_S)
+    : 0;
   const perch = state._perch;
   // Swedish siege TDs have no conventional elevation mechanism: their
   // hydropneumatic suspension tilts the complete hull toward the sight line.
@@ -942,8 +1037,13 @@ export function updateTank(entity, heightField, dt, collide = null) {
     if (!state.suspensionAim && Math.abs(suspensionAimPitch) < 1e-6) suspensionAimPitch = 0;
     state.suspensionAimPitch = suspensionAimPitch;
   }
-  const targetPitch = state._terr.pitch + inertialPitch + suspensionAimPitch;
-  const targetRoll = state._terr.roll;
+  // Once unsupported, terrain below cannot torque the hull. Retain the launch
+  // attitude and damp its existing angular spring velocity; landing resumes
+  // the ordinary terrain target on the following fixed tick.
+  const targetPitch = groundedAtStart
+    ? state._terr.pitch + inertialPitch + suspensionAimPitch
+    : spr.pitch;
+  const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
   const wP = SPRING_OMEGA * (1 + PERCH_W_BOOST * perch);
   const zP = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
   spr.pitchV += (wP * wP * (targetPitch - spr.pitch) -
@@ -961,30 +1061,35 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // replicate its spring tick-for-tick so the support solve below clears the
   // terrain at the pose that actually reaches the screen.
   {
-    const accel = clamp(poseDvdt, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP);
+    const accel = groundedAtStart
+      ? clamp(poseDvdt, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP)
+      : 0;
     let pT = accel * SUSP_ACCEL_GAIN;
     let rT = 0;
-    const hl2 = SUSP_FIT_LEN * spec.dims.hullLengthM;
-    const hw2 = SUSP_FIT_WID * spec.dims.widthM;
-    const fx2 = Math.sin(state.yaw), fz2 = Math.cos(state.yaw);
-    const rx2 = Math.cos(state.yaw), rz2 = -Math.sin(state.yaw);
-    const px2 = state.pos.x, pz2 = state.pos.z;
-    const hFL = hAt(px2 + fx2 * hl2 - rx2 * hw2, pz2 + fz2 * hl2 - rz2 * hw2);
-    const hFR = hAt(px2 + fx2 * hl2 + rx2 * hw2, pz2 + fz2 * hl2 + rz2 * hw2);
-    const hRL = hAt(px2 - fx2 * hl2 - rx2 * hw2, pz2 - fz2 * hl2 - rz2 * hw2);
-    const hRR = hAt(px2 - fx2 * hl2 + rx2 * hw2, pz2 - fz2 * hl2 + rz2 * hw2);
-    const terrP2 = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl2);
-    // Renderer-consistent roll sign (positive lifts the right side): the rock
-    // layer's roll delta now measures the true conformance error instead of
-    // fighting the main spring on side slopes.
-    const terrR2 = Math.atan2((hFR + hRR - hFL - hRL) * 0.5, 2 * hw2);
-    // Perch gate (see PERCH_SUSP_BLEED): a hull carried by one line end has no
-    // loaded bogies — fade the terrain-delta target and bleed the stored
-    // displacement so the ×SUSP_VIS amplification cannot hold the rendered
-    // pose dived past the two-contact pose (the r5 egg-crate levitation).
-    const kf = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) * SUSP_K_GAIN * (1 - perch);
-    pT += clamp((terrP2 - state.visualPitch) * kf, -SUSP_P_CLAMP, SUSP_P_CLAMP);
-    rT += clamp((terrR2 - state.visualRoll) * kf, -SUSP_R_CLAMP, SUSP_R_CLAMP);
+    if (groundedAtStart) {
+      const hl2 = SUSP_FIT_LEN * spec.dims.hullLengthM;
+      const hw2 = SUSP_FIT_WID * spec.dims.widthM;
+      const fx2 = Math.sin(state.yaw), fz2 = Math.cos(state.yaw);
+      const rx2 = Math.cos(state.yaw), rz2 = -Math.sin(state.yaw);
+      const px2 = state.pos.x, pz2 = state.pos.z;
+      const hFL = hAt(px2 + fx2 * hl2 - rx2 * hw2, pz2 + fz2 * hl2 - rz2 * hw2);
+      const hFR = hAt(px2 + fx2 * hl2 + rx2 * hw2, pz2 + fz2 * hl2 + rz2 * hw2);
+      const hRL = hAt(px2 - fx2 * hl2 - rx2 * hw2, pz2 - fz2 * hl2 - rz2 * hw2);
+      const hRR = hAt(px2 - fx2 * hl2 + rx2 * hw2, pz2 - fz2 * hl2 + rz2 * hw2);
+      const terrP2 = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl2);
+      // Renderer-consistent roll sign (positive lifts the right side): the rock
+      // layer's roll delta now measures the true conformance error instead of
+      // fighting the main spring on side slopes.
+      const terrR2 = Math.atan2((hFR + hRR - hFL - hRL) * 0.5, 2 * hw2);
+      // Perch gate (see PERCH_SUSP_BLEED): a hull carried by one line end has no
+      // loaded bogies — fade the terrain-delta target and bleed the stored
+      // displacement so the ×SUSP_VIS amplification cannot hold the rendered
+      // pose dived past the two-contact pose (the r5 egg-crate levitation).
+      const kf = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) *
+        SUSP_K_GAIN * (1 - perch);
+      pT += clamp((terrP2 - state.visualPitch) * kf, -SUSP_P_CLAMP, SUSP_P_CLAMP);
+      rT += clamp((terrR2 - state.visualRoll) * kf, -SUSP_R_CLAMP, SUSP_R_CLAMP);
+    }
     susp.pv += (SUSP_W * SUSP_W * (pT - susp.p) - 2 * SUSP_Z * SUSP_W * susp.pv) * dt;
     susp.p += susp.pv * dt;
     susp.rv += (SUSP_W * SUSP_W * (rT - susp.r) - 2 * SUSP_Z * SUSP_W * susp.rv) * dt;
@@ -1105,10 +1210,11 @@ export function updateTank(entity, heightField, dt, collide = null) {
       // pads −14 cm into a rise). Excluded from the fit/settle: it is a
       // clearance guard, not ground contact.
       if (cg && cg.endRise) {
-        for (const [zg, rise] of [
-          [zc + sl + cg.endRise.dzM, cg.endRise.frontM],
-          [zc - sl - cg.endRise.dzM, cg.endRise.rearM],
-        ]) {
+        for (let end = 0; end < 2; end++) {
+          const zg = end === 0
+            ? zc + sl + cg.endRise.dzM
+            : zc - sl - cg.endRise.dzM;
+          const rise = end === 0 ? cg.endRise.frontM : cg.endRise.rearM;
           const yg = yBot + rise;
           const xg = x * cr0 - yg * sr0;
           const yg1 = x * sr0 + yg * cr0;
@@ -1177,10 +1283,11 @@ export function updateTank(entity, heightField, dt, collide = null) {
         // INBOARD rear/front wrap corner buried a parked type90 12 cm on
         // desert dunes while the outer-line guards straddled it.
         if (ln.yOff === 0 && cg && cg.endRise) {
-          for (const [zg, rise] of [
-            [zc + sl + cg.endRise.dzM, cg.endRise.frontM],
-            [zc - sl - cg.endRise.dzM, cg.endRise.rearM],
-          ]) {
+          for (let end = 0; end < 2; end++) {
+            const zg = end === 0
+              ? zc + sl + cg.endRise.dzM
+              : zc - sl - cg.endRise.dzM;
+            const rise = end === 0 ? cg.endRise.frontM : cg.endRise.rearM;
             const ygr = yBot + rise;
             const xg1 = x * cr0 - ygr * sr0;
             const yg1 = x * sr0 + ygr * cr0;
@@ -1258,7 +1365,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // smoothed 0..1 excess to the pitch spring boost. Instant attack (the
     // decay above already ran this tick), PERCH_RELEASE_S release.
     const perchWant = clamp(Math.abs(tipRaw) / SETTLE_CLAMP_RAD - 1, 0, 1);
-    if (perchWant > state._perch) state._perch = perchWant;
+    if (groundedAtStart && perchWant > state._perch) state._perch = perchWant;
     // Attitude-scaled margin (see SUPPORT_MARGIN_ATT_M): worst-case combined
     // pitch+roll lifts the plane an extra centimeter so the track link pads
     // (1–2 cm below the contact plane) can never approach the 3 cm gate.
@@ -1292,42 +1399,96 @@ export function updateTank(entity, heightField, dt, collide = null) {
     sup.cg = cg; // measured-footprint identity: a new stamp re-solves a parked tank
   }
 
-  // Sprung-mass heave: supportY is the neutral track-contact height, while
-  // floorY is the lowest position allowed after wheel/track compression and
-  // rigid-pan clearance. A falling support lets the belt droop; a rising one
-  // compresses before it lifts the hull. Feed-forward the smoothed support-
-  // plane velocity so steady grades do not create artificial hover — only
-  // changes in grade/curvature produce suspension travel.
+  // Vertical contact state. While loaded, the sprung mass follows support
+  // inside the authored compression/droop envelope. When terrain falls beyond
+  // full droop, contact opens and the root follows a ballistic arc independent
+  // of the heightfield. Re-contact occurs when the fully extended running gear
+  // reaches support; the existing spring then absorbs the landing.
   {
     const supportY = sup.y;
     const floorY = Number.isFinite(sup.floorY) ? sup.floorY : supportY;
     const ride = state._ride || (state._ride = {
-      y: supportY, v: 0, supportY, groundV: 0,
+      y: state.pos.y, v: 0, supportY, groundV: 0, grounded: true, airTime: 0,
     });
-    if (!Number.isFinite(ride.supportY) || !Number.isFinite(ride.y)) {
-      ride.y = supportY;
-      ride.v = 0;
+    state.landingImpactMps = 0;
+    if (!Number.isFinite(ride.y)) ride.y = state.pos.y;
+    if (!Number.isFinite(ride.v)) ride.v = 0;
+    if (!Number.isFinite(ride.supportY)) {
+      // Fresh spawns are authored on terrain. Authority reconciliation may
+      // deliberately seed an airborne pose; preserve its Y/v and phase.
+      if (state.grounded !== false) {
+        ride.y = supportY;
+        ride.v = 0;
+        ride.grounded = true;
+      }
       ride.supportY = supportY;
       ride.groundV = 0;
-    } else {
-      const rawGroundV = clamp((supportY - ride.supportY) / dt,
-        -RIDE_SUPPORT_V_CAP, RIDE_SUPPORT_V_CAP);
-      const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
-      ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
-      ride.supportY = supportY;
+    }
 
-      ride.v += (RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) +
-        2 * RIDE_ZETA * RIDE_OMEGA * (ride.groundV - ride.v)) * dt;
+    const rawGroundV = clamp((supportY - ride.supportY) / dt,
+      -RIDE_SUPPORT_V_CAP, RIDE_SUPPORT_V_CAP);
+    const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
+    ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
+    ride.supportY = supportY;
+    const contactY = supportY + RIDE_DROOP_M;
+    let grounded = groundedAtStart;
+
+    if (!grounded) {
+      ride.v -= GRAVITY * dt;
       ride.y += ride.v * dt;
+      ride.airTime = (ride.airTime || 0) + dt;
+      // Only a descending/closing body can land. This avoids a rising ramp
+      // below an ascending hull spuriously grabbing it back out of flight.
+      if (ride.y <= contactY && ride.v <= ride.groundV + RIDE_DETACH_REL_V_MPS) {
+        const closingMps = Math.max(0, ride.groundV - ride.v);
+        ride.y = Math.max(contactY, floorY);
+        ride.grounded = true;
+        ride.airTime = 0;
+        grounded = true;
+        state.landingImpactMps = closingMps;
+      }
+    } else {
+      // Test contact before applying the spring. Across a cliff, support can
+      // move several meters in one tick; letting that delta enter the spring
+      // would create the same unbounded downward tether as the old clamp.
+      const clearOfDroop = ride.y - contactY > RIDE_DETACH_CLEARANCE_M;
+      const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
+      if (clearOfDroop && separating) {
+        ride.grounded = false;
+        ride.airTime = 0;
+        grounded = false;
+      } else {
+        ride.grounded = true;
+        ride.airTime = 0;
+        ride.v += (RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) +
+          2 * RIDE_ZETA * RIDE_OMEGA * (ride.groundV - ride.v)) * dt;
+        ride.y += ride.v * dt;
 
-      if (ride.y < floorY) {
-        ride.y = floorY;
-        if (ride.v < ride.groundV) ride.v = ride.groundV;
-      } else if (ride.y > supportY + RIDE_DROOP_M) {
-        ride.y = supportY + RIDE_DROOP_M;
-        if (ride.v > ride.groundV) ride.v = ride.groundV;
+        if (ride.y < floorY) {
+          ride.y = floorY;
+          if (ride.v < ride.groundV) ride.v = ride.groundV;
+        } else if (ride.y > contactY) {
+          if (ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS) {
+            ride.grounded = false;
+            grounded = false;
+          } else {
+            ride.y = contactY;
+            if (ride.v > ride.groundV) ride.v = ride.groundV;
+          }
+        }
       }
     }
+
+    if (grounded && ride.y < floorY) {
+      // A rapidly rising landing surface may overtake the chassis between
+      // fixed ticks. The rigid compression floor remains the final no-tunnel
+      // constraint.
+      ride.y = floorY;
+      if (ride.v < ride.groundV) ride.v = ride.groundV;
+    }
+    state.grounded = grounded;
+    ride.grounded = grounded;
+    state.verticalSpeed = ride.v;
     state.pos.y = ride.y;
   }
 
@@ -1391,7 +1552,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
       _gunWorldDir.copy(_hullUpWorld).multiplyScalar(Math.sin(state.gunPitch))
         .addScaledVector(_turretForwardWorld, Math.cos(state.gunPitch));
       let needSin = -1;
-      for (const frac of [1, 0.55]) { // muzzle tip + mid-barrel
+      for (const frac of MUZZLE_CLEARANCE_FRACTIONS) { // muzzle tip + mid-barrel
         const hMuz = hAt(
           _gunOriginWorld.x + _gunWorldDir.x * barrelLen * frac,
           _gunOriginWorld.z + _gunWorldDir.z * barrelLen * frac,

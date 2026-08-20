@@ -134,7 +134,8 @@ and metadata fingerprints.
 src/sim/movement.js owns tank motion. Its inputs are normalized controls,
 vehicle parameters, terrain support, collision context, and fixed time step.
 Its outputs include authoritative position, yaw, velocity, hull attitude,
-support information, and track travel.
+support information, contact phase, vertical velocity, landing impulse, and
+track travel.
 
 The solver covers:
 
@@ -143,17 +144,40 @@ The solver covers:
 - steering and pivot behavior;
 - brake and handbrake;
 - slope and ground resistance;
+- rated-grade traction rejection and gravity-driven downslope return;
 - map boundary and obstacle collision;
 - tank-to-tank collision and ramming;
 - crushable prop interaction;
 - per-wheel terrain support;
-- damped chassis height, pitch, and roll.
+- damped chassis height, pitch, and roll;
+- suspension-limited contact release, ballistic flight, and landing.
+
+Vertical motion has two explicit deterministic phases. While `grounded`, the
+sprung chassis follows the sampled support plane within the running gear's
+compression and droop limits. When support falls beyond full droop, the tracks
+unload, drive/brake/steering forces stop, horizontal momentum is preserved, and
+`verticalSpeed` integrates gravity. Contact resumes only when the fully
+extended footprint reaches terrain. A slope at or above the 28-degree rated
+grade rejects remaining uphill velocity and applies full along-slope gravity;
+lower grades continue to use the engine, resistance, and creep model.
+The solver raises `slopeBlocked` on a rejected drive tick. Bot controllers
+consume that authoritative contact signal to activate a short-lived,
+fixed-cadence terrain fan, selecting a climbable contour before the generic
+stuck timeout. A sustained block also enters deterministic reverse/detour
+recovery. The richer height probes remain dormant during ordinary traversal,
+so this terrain-aware path correction does not become a per-frame AI cost.
 
 The movement module is used by solo, browser-hosted authority, dedicated
 authority, local network prediction, bots, and Studio terrain settlement.
 
 Presentation consumes support and travel but does not feed cosmetic wheel or
 track placement back into authority.
+
+Network snapshots carry quantized `vy` and an airborne flag. Remote
+presentation interpolates Y with velocity-aware Hermite motion, and local
+prediction seeds and replays the same contact phase and vertical velocity as
+authority. This prevents a browser client from flattening or re-grounding a
+server-authoritative jump.
 
 ## Aiming and gunnery
 

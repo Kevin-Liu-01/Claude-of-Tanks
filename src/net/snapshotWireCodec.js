@@ -2,7 +2,7 @@ const SNAPSHOT_WIRE_TAG = 2;
 const INPUT_WIRE_TAG = 3;
 const ENTITY_FIELDS = Object.freeze([
   'id', 'specId', 'team',
-  'x', 'y', 'z', 'vx', 'vz',
+  'x', 'y', 'z', 'vx', 'vy', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
   'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags',

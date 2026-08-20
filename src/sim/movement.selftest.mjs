@@ -231,10 +231,15 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     if (i < 60) return; // spring settle from spawn
     const { penetration, minGap } = contactStats(ent.state, field);
     if (penetration > worstPen) worstPen = penetration;
-    if (minGap > worstFloat) worstFloat = minGap;
-    const travel = ent.state._sup.y - ent.state.pos.y;
-    if (travel > worstCompression) worstCompression = travel;
-    if (-travel > worstDroop) worstDroop = -travel;
+    // In free flight, separation from the terrain is the intended ballistic
+    // clearance rather than suspension travel. The authored envelope applies
+    // only while the running gear has contact.
+    if (ent.state.grounded) {
+      if (minGap > worstFloat) worstFloat = minGap;
+      const travel = ent.state._sup.y - ent.state.pos.y;
+      if (travel > worstCompression) worstCompression = travel;
+      if (-travel > worstDroop) worstDroop = -travel;
+    }
   });
   assert(worstPen < 0.22,
     `sine drive λ=${wl} A=${amp}: root plane exceeds track up-travel (${worstPen.toFixed(3)} m)`);
@@ -263,10 +268,12 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     if (i < 60) return;
     const { penetration, minGap } = contactStats(ent.state, field);
     if (penetration > worstPen) worstPen = penetration;
-    if (minGap > worstFloat) worstFloat = minGap;
-    const travel = ent.state._sup.y - ent.state.pos.y;
-    if (travel > worstCompression) worstCompression = travel;
-    if (-travel > worstDroop) worstDroop = -travel;
+    if (ent.state.grounded) {
+      if (minGap > worstFloat) worstFloat = minGap;
+      const travel = ent.state._sup.y - ent.state.pos.y;
+      if (travel > worstCompression) worstCompression = travel;
+      if (-travel > worstDroop) worstDroop = -travel;
+    }
   });
   assert(worstPen < 0.22, `egg-crate drive: root plane exceeds up-travel (${worstPen.toFixed(3)} m)`);
   assert(worstFloat < 0.23, `egg-crate drive: root plane exceeds droop (${worstFloat.toFixed(3)} m)`);
@@ -340,6 +347,192 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   run(ent, field, 240);
   assert(ent.state.pos.y < 0.06,
     `measured short track ignores phantom end support (height ${ent.state.pos.y.toFixed(3)} m)`);
+}
+
+// ------------------------------------ 7a. ballistic crest/drop/landing -------
+// Once the complete track run leaves a ledge, suspension droop is exhausted
+// and the chassis becomes a projectile. Horizontal momentum must continue
+// while vertical velocity integrates gravity; terrain support may not pull the
+// root downward. A lower shelf then catches the fully extended tracks and the
+// suspension absorbs the landing back to its neutral support height.
+{
+  const field = makeField((x, z) => (z < 0 ? 0 : -3));
+  const ent = makeEntity(field, 0, -4.5, 0);
+  run(ent, field, 180);
+  ent.state.speed = 12;
+  ent.input.throttle = 0;
+  let tookOff = false;
+  let landed = false;
+  let takeoffZ = 0;
+  let takeoffY = 0;
+  let takeoffVY = 0;
+  let afterHalfSecondVY = null;
+  let airborneTicks = 0;
+  let maxClearance = 0;
+  run(ent, field, 360, () => {
+    const ground = field.getHeightAt(ent.state.pos.x, ent.state.pos.z);
+    maxClearance = Math.max(maxClearance, ent.state.pos.y - ground);
+    if (!tookOff && ent.state.grounded === false) {
+      tookOff = true;
+      takeoffZ = ent.state.pos.z;
+      takeoffY = ent.state.pos.y;
+      takeoffVY = ent.state.verticalSpeed;
+    }
+    if (ent.state.grounded === false) {
+      airborneTicks++;
+      if (airborneTicks === 30) afterHalfSecondVY = ent.state.verticalSpeed;
+    } else if (tookOff && airborneTicks > 0) {
+      landed = true;
+    }
+  });
+  assert(tookOff, 'ledge: tank leaves terrain support after suspension reaches full droop');
+  assert(takeoffZ > -1,
+    `ledge: support reaches the lip before takeoff (z=${takeoffZ.toFixed(2)})`);
+  assert(maxClearance > 0.75,
+    `ledge: chassis follows a free-flight arc instead of support (${maxClearance.toFixed(2)} m)`);
+  assert(afterHalfSecondVY !== null &&
+    Math.abs((afterHalfSecondVY - takeoffVY) + 9.81 * 0.5) < 0.35,
+  `ledge: airborne vertical acceleration is gravity (vy0=${takeoffVY}, vy.5=${afterHalfSecondVY})`);
+  assert(ent.state.pos.z > takeoffZ + 2,
+    `ledge: horizontal momentum continues in flight (${(ent.state.pos.z - takeoffZ).toFixed(2)} m)`);
+  assert(landed && ent.state.grounded === true,
+    'ledge: extended tracks re-establish support and remain grounded after landing');
+  near(ent.state.pos.y, ent.state._sup.y, 0.03,
+    'ledge: suspension settles from landing onto the lower shelf');
+  assert(Number.isFinite(takeoffY), 'ledge: takeoff pose remains finite');
+}
+
+// A rising launch ramp preserves its upward support velocity at the instant
+// contact disappears. The tank must continue above the lip before gravity
+// bends the path down; snapping directly to the lower terrain is forbidden.
+{
+  const grade = 0.18;
+  const field = makeField((x, z) => (z < 0 ? grade * z : -4));
+  const ent = makeEntity(field, 0, -8, 0);
+  run(ent, field, 180);
+  ent.state.speed = 13;
+  ent.input.throttle = 1;
+  let takeoffY = null;
+  let takeoffVY = null;
+  let apexY = -Infinity;
+  run(ent, field, 150, () => {
+    if (ent.state.grounded === false) {
+      if (takeoffY === null) {
+        takeoffY = ent.state.pos.y;
+        takeoffVY = ent.state.verticalSpeed;
+      }
+      apexY = Math.max(apexY, ent.state.pos.y);
+    }
+  });
+  assert(takeoffY !== null, 'ramp: tank enters free flight at the lip');
+  assert(takeoffVY > 0.5,
+    `ramp: upward terrain velocity becomes launch velocity (${takeoffVY} m/s)`);
+  assert(apexY > takeoffY + 0.08,
+    `ramp: projectile rises beyond the lip before falling (${(apexY - takeoffY).toFixed(2)} m)`);
+}
+
+// A continuous rolling crest (no discontinuity) must also release contact
+// when horizontal speed carries the chassis beyond what suspension droop can
+// follow. This is the normal battlefield jump case.
+{
+  const grade = 0.22;
+  const field = makeField((x, z) => (z < 0 ? grade * z : -grade * z));
+  const ent = makeEntity(field, 0, -9, 0);
+  run(ent, field, 180);
+  ent.state.speed = 14;
+  ent.input.throttle = 1;
+  let airborneTicks = 0;
+  let landed = false;
+  run(ent, field, 240, () => {
+    if (!ent.state.grounded) airborneTicks++;
+    else if (airborneTicks > 0) landed = true;
+  });
+  assert(airborneTicks >= 6,
+    `rolling crest: horizontal momentum produces a visible free-flight arc (${airborneTicks} ticks)`);
+  assert(landed, 'rolling crest: tank naturally reconnects with the descending face');
+}
+
+// Airborne ticks skip loaded-track material and four-corner suspension-rock
+// probes. Landing support still uses the conservative footprint pass, so this
+// is a strict hot-loop saving rather than a lower-fidelity collision mode.
+{
+  function countedField() {
+    const counts = { height: 0, ground: 0 };
+    return {
+      counts,
+      getHeightAt() { counts.height++; return 0; },
+      getGroundType() { counts.ground++; return 'medium'; },
+      getNormalAt: () => null,
+    };
+  }
+  const groundField = countedField();
+  const grounded = makeEntity(groundField, 0, 0, 0);
+  groundField.counts.height = 0;
+  grounded.state.speed = 4;
+  updateTank(grounded, groundField, SIM_DT);
+  const groundedHeightQueries = groundField.counts.height;
+
+  const airField = countedField();
+  const airborne = makeEntity(airField, 0, 0, 0);
+  airborne.state.pos.y = 10;
+  airborne.state.grounded = false;
+  airborne.state._ride.y = 10;
+  airborne.state._ride.v = 0;
+  airborne.state._ride.supportY = 0;
+  airborne.state._ride.grounded = false;
+  airField.counts.height = 0;
+  airField.counts.ground = 0;
+  airborne.state.speed = 4;
+  updateTank(airborne, airField, SIM_DT);
+  assert(airField.counts.ground === 0,
+    'airborne hot loop: skips unloaded-track ground-material lookup');
+  assert(airField.counts.height <= groundedHeightQueries - 4,
+    `airborne hot loop: removes suspension-rock probes (${airField.counts.height} vs ${groundedHeightQueries})`);
+}
+
+// ---------------------------------- 7b. non-traversable slope constraint ----
+// Transmission target speed alone is not a contact constraint: a fast tank
+// used to carry momentum straight up a 45-degree face while the support solve
+// lifted it. Above the rated grade the tracks must reject uphill displacement
+// and gravity must return the hull downslope. Ordinary 20-degree grades remain
+// driveable so the rule does not turn rolling terrain into invisible walls.
+{
+  const steep = makeField((x, z) => z);
+  const ent = makeEntity(steep, 0, 0, 0);
+  run(ent, steep, 300);
+  const startZ = ent.state.pos.z;
+  ent.state.speed = 10;
+  ent.input.throttle = 1;
+  let reportedBlock = false;
+  run(ent, steep, 60, () => { reportedBlock ||= ent.state.slopeBlocked; });
+  assert(ent.state.pos.z < startZ + 0.35,
+    `45-degree grade: uphill displacement is rejected (${(ent.state.pos.z - startZ).toFixed(2)} m)`);
+  assert(ent.state.speed <= 0,
+    `45-degree grade: tank stalls or slides downslope (${ent.state.speed.toFixed(2)} m/s)`);
+  assert(reportedBlock, '45-degree grade: solver reports rejected traction to bot recovery');
+}
+{
+  const field = makeField((x, z) => (z < 0 ? 0 : z));
+  const ent = makeEntity(field, 0, -8, 0);
+  run(ent, field, 240);
+  ent.state.speed = 12;
+  ent.input.throttle = 1;
+  let farthestZ = ent.state.pos.z;
+  run(ent, field, 240, () => { farthestZ = Math.max(farthestZ, ent.state.pos.z); });
+  assert(farthestZ < 1.5,
+    `45-degree face approach: high-speed entry remains bounded (max z=${farthestZ.toFixed(2)})`);
+  assert(ent.state.speed <= 0.05,
+    `45-degree face approach: no sustained uphill velocity (${ent.state.speed.toFixed(2)} m/s)`);
+}
+{
+  const grade = Math.tan(20 * Math.PI / 180);
+  const field = makeField((x, z) => grade * z);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.input.throttle = 1;
+  run(ent, field, 600);
+  assert(ent.state.pos.z > 3,
+    `20-degree grade: normal climb remains driveable (${ent.state.pos.z.toFixed(2)} m)`);
+  assert(ent.state.grounded === true, '20-degree grade: normal climb retains terrain contact');
 }
 
 // ------------------------------------------------------ 7. accel sanity --

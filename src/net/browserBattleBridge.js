@@ -236,6 +236,13 @@ export function createBrowserBattleBridge({
       state.trackScroll.l += forwardDistance;
       state.trackScroll.r += forwardDistance;
       state.pos.set(snapshot.x, snapshot.y, snapshot.z);
+      state.verticalSpeed = snapshot.vy || 0;
+      state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
+      if (state._ride) {
+        state._ride.y = snapshot.y;
+        state._ride.v = state.verticalSpeed;
+        state._ride.grounded = state.grounded;
+      }
       state.yaw = snapshot.yaw;
       state.visualPitch = snapshot.pitch;
       state.visualRoll = snapshot.roll;

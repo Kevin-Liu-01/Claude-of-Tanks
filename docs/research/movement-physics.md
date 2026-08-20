@@ -167,13 +167,44 @@ slope slides backwards and a coasting tank gains speed downhill even at zero thr
 Slopes steeper than ~35–40° are effectively walls (WoT maps enforce this by geometry).
 Side slopes (roll) do not affect speed in WoT; they only tilt the hull (and thus the gun).
 
+In the shipped kinematic solver, `MAX_CLIMB_DEG` is also a contact constraint.
+Reducing target speed alone is insufficient because a vehicle arriving with
+momentum can otherwise continue uphill while the height solver lifts it. At or
+above the rated grade, remove any uphill velocity before integration and apply
+the full gravity component along the slope. Downhill motion remains valid;
+grades below the threshold retain the tuned engine and creep behavior.
+
+### 5.1 Ground contact and free flight
+
+Terrain support has finite suspension authority. While grounded, the chassis
+spring may move between the compression floor and `supportY + droopM`. If the
+terrain falls farther than full droop while the chassis is separating from the
+support plane, contact opens:
+
+```
+grounded = false
+vy       = last chassis/support vertical velocity
+
+each fixed tick in flight:
+  xz += horizontalVelocity * dt       // no track drive, brake, or steering force
+  vy -= 9.81 * dt
+  y  += vy * dt
+```
+
+The tank lands when its fully extended running-gear footprint reaches the
+terrain while closing. The contact phase then resumes with the impact velocity
+still in the heave spring, which absorbs the landing against the compression
+floor. Terrain pitch and roll do not torque an unsupported chassis. This phase
+state and `vy` are authoritative, deterministic, and included in network
+snapshots and local prediction.
+
 ---
 
 ## 6. Hull attitude: terrain following + inertial pitch + recoil + suspension
 
 The hull's visual orientation is decoupled from the movement math (which runs on yaw only).
 
-1. **Terrain following**: sample terrain height at 4 points (front-left/right, rear-left/right
+1. **Terrain following while supported**: sample terrain height at 4 points (front-left/right, rear-left/right
    at the track contact rectangle, half-length ~3 m, half-width ~1.5 m).
    `targetPitch = atan2(h_front - h_rear, wheelbase)`, `targetRoll = atan2(h_left - h_right, gauge)`.
 2. **Spring-damper smoothing** (this IS the suspension bounce): drive current pitch/roll to
@@ -340,9 +371,23 @@ function updateTank(t, input, dt) {
   t.speed += -G * Math.sin(rad(terrPitch)) * dt * (input.throttle ? 0.3 : 1.0); // gravity term
   t.speed *= 1 - TURN_SPEED_LOSS * Math.abs(t.yawRate) / trMax * dt;    // bleed in turns
 
-  // ---- integrate & stick to terrain ----
+  // ---- integrate horizontal motion ----
   t.pos.addScaledVector(forwardAxis(t.yaw), t.speed * dt);
-  t.pos.y = terrainHeight(t.pos.x, t.pos.z);
+
+  // ---- finite support or ballistic flight ----
+  const support = solveTrackFootprint(t.pos, t.yaw, t.hullSpring);
+  if (t.grounded && separatingBeyondFullDroop(t, support)) {
+    t.grounded = false;                    // preserve current verticalSpeed
+  } else if (!t.grounded) {
+    t.verticalSpeed -= G * dt;
+    t.pos.y += t.verticalSpeed * dt;
+    if (closingOnExtendedTracks(t, support)) {
+      t.grounded = true;                   // spring absorbs the retained impact speed
+      t.pos.y = support.y + DROOP_M;
+    }
+  } else {
+    stepHeaveSpring(t, support, dt);        // bounded by compression and droop
+  }
 
   // ---- hull attitude spring (visual) ----
   const inertialPitch = -K_INERTIA * (t.speed - t.prevSpeed) / dt;      // brake dip

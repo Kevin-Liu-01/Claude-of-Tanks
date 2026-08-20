@@ -252,8 +252,9 @@ TankEntity = {
 }
 
 TankState = {              // movement.createTankState(spec, pos:Vector3, yaw) builds this
-  pos: THREE.Vector3,      // pos.y === heightField.getHeightAt(pos.x,pos.z) after update
-  yaw: number, speed: number /* m/s signed */, yawRate: number /* rad/s */,
+  pos: THREE.Vector3,      // authoritative root; Y may be above support in flight
+  yaw: number, speed: number /* horizontal m/s signed */, yawRate: number /* rad/s */,
+  verticalSpeed: number, grounded: boolean, landingImpactMps: number,
   visualPitch: number, visualRoll: number,        // spring outputs, radians
   turretYaw: number, gunPitch: number,            // radians (conventions §1.1)
   turretYawRate: number,                          // rad/s (for bloom)
@@ -541,6 +542,7 @@ roughness). MeshStandardMaterial only.
 ### 3.4 movement — `src/sim/movement.js` (pure logic)
 ```js
 export function createTankState(spec, pos /* Vector3 */, yaw) => TankState        // §2.4
+export function resetTankVerticalState(state, y, verticalSpeed = 0, grounded = true) => void
 export function updateTank(entity /* {spec, state, input, combat} */, heightField, dt,
                            collide = null) => void
 // collide: null | (pos: Vector3, radiusM: number, outPush: Vector3) => boolean
@@ -560,6 +562,11 @@ hull space (sets `state.atGunLimit`), bloom grow τ=0.05 s / shrink τ=aimTimeS/
 Reads combat state ONLY via the locked debuffs table (§2.4) — guard for
 `entity.combat == null` (treat as healthy). Updates `trackScroll` from speed & yawRate
 (outer track faster: `v ± yawRate × 1.5 m`).
+
+The current vertical contract supersedes the original terrain-height snap:
+support is suspension-limited while grounded, then releases into deterministic
+gravity flight after full droop. Grades at or above the rated climb angle are
+contact constraints and cannot be crossed by residual uphill speed.
 
 ### 3.5 combat — `src/sim/` (pure logic)
 

@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../sim/movement.js';
 import { isSequenceNewer } from './protocol.js';
 import { decodeAimIntent } from './aimIntent.js';
+import { SNAPSHOT_FLAGS } from './snapshot.js';
 
 const DEFAULT_HARD_SNAP_M = 7;
 const DEFAULT_CORRECTION_TAU_S = 0.09;
@@ -55,11 +56,18 @@ function applyAuthority(state, snapshot) {
   state.visualRoll = snapshot.roll;
   state.turretYaw = snapshot.turretYaw;
   state.gunPitch = snapshot.gunPitch;
+  state.verticalSpeed = snapshot.vy || 0;
+  state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
   state._prevSpeed = state.speed;
   state._spring.pitch = snapshot.pitch;
   state._spring.roll = snapshot.roll;
   state._ride.y = snapshot.y;
-  state._ride.supportY = snapshot.y;
+  state._ride.v = state.verticalSpeed;
+  state._ride.grounded = state.grounded;
+  state._ride.airTime = 0;
+  // Force the first replay tick to establish terrain support at the authority
+  // pose without replacing an airborne Y/v pair.
+  state._ride.supportY = NaN;
 }
 
 function applyInput(entity, input) {
@@ -90,6 +98,10 @@ function copyPresentation(target, source, correction) {
   );
   target.yaw = wrapAngle(source.yaw + correction.yaw);
   target.speed = source.speed;
+  target.verticalSpeed = source.verticalSpeed;
+  target.grounded = source.grounded;
+  target.landingImpactMps = source.landingImpactMps;
+  target.slopeBlocked = source.slopeBlocked;
   target.yawRate = source.yawRate;
   target.visualPitch = source.visualPitch + correction.pitch;
   target.visualRoll = source.visualRoll + correction.roll;

@@ -145,6 +145,15 @@ const FLANK_TIMEOUT_S   = 20.0;
 const FLANK_ASPECT_RAD  = Math.PI / 3;  // 60° off target nose = flank achieved
 const STUCK_TIME_S      = 2.0;
 const UNSTICK_TIME_S    = 1.4;
+const SLOPE_BLOCK_RECOVERY_S = 0.35;
+const TERRAIN_ROUTE_LOOK_M = 28;
+const TERRAIN_ROUTE_STEP_M = 4;
+// Keep a small margin inside movement.js's 28° contact constraint so a route
+// does not oscillate on the exact numerical boundary.
+const TERRAIN_ROUTE_MAX_GRADE = Math.tan(27 * Math.PI / 180);
+const TERRAIN_ROUTE_FAN_RAD = Object.freeze([
+  0.42, -0.42, 0.78, -0.78, 1.12, -1.12, 1.48, -1.48,
+]);
 const GUN_LIMIT_NUDGE_S = 1.5;    // gun pinned this long → back up for depression
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
@@ -583,6 +592,7 @@ export function createAI(entity, opts = {}) {
 
   // Stuck / gun-limit recovery.
   let lowSpeedT = 0;
+  let slopeBlockT = 0;
   let unstickUntilS = -1;
   let unstickSteer = 1;
   // PROGRESS-based stuck sensing: `state.speed` is the DRIVETRAIN speed and
@@ -1260,10 +1270,60 @@ export function createAI(entity, opts = {}) {
   let routeTimer = 0;
   let routeGoalX = 1e9;
   let routeGoalZ = 1e9;
+  let terrainRouteUntilS = -1;
   // a corner just reached is vetoed briefly so the replan hops to the NEXT
   // corner along the box instead of re-offering the same cell (the crawl
   // loop the autumn rock-cluster trace measured)
   const lastCorner = { x: 1e9, z: 1e9, untilS: -1 };
+  function terrainLineGrade(sx, sz, startH, ux, uz) {
+    let previousH = startH;
+    let worstRise = 0;
+    for (let distance = TERRAIN_ROUTE_STEP_M;
+      distance <= TERRAIN_ROUTE_LOOK_M; distance += TERRAIN_ROUTE_STEP_M) {
+      const height = hf.getHeightAt(sx + ux * distance, sz + uz * distance);
+      const rise = (height - previousH) / TERRAIN_ROUTE_STEP_M;
+      if (rise > worstRise) worstRise = rise;
+      previousH = height;
+    }
+    return worstRise;
+  }
+
+  function planTerrainRoute(sx, sz, dirx, dirz, goalX, goalZ) {
+    const startH = hf.getHeightAt(sx, sz);
+    if (terrainLineGrade(sx, sz, startH, dirx, dirz) <= TERRAIN_ROUTE_MAX_GRADE) {
+      return false;
+    }
+
+    let bestScore = Infinity;
+    let bestX = 0;
+    let bestZ = 0;
+    for (let index = 0; index < TERRAIN_ROUTE_FAN_RAD.length; index++) {
+      const angle = TERRAIN_ROUTE_FAN_RAD[index];
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      const ux = dirx * c + dirz * s;
+      const uz = -dirx * s + dirz * c;
+      const grade = terrainLineGrade(sx, sz, startH, ux, uz);
+      if (grade > TERRAIN_ROUTE_MAX_GRADE) continue;
+      const cx = sx + ux * TERRAIN_ROUTE_LOOK_M;
+      const cz = sz + uz * TERRAIN_ROUTE_LOOK_M;
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 480) continue;
+      const side = Math.sign(angle) || 1;
+      const score = Math.hypot(goalX - cx, goalZ - cz) + grade * 35 +
+        Math.abs(angle) * 5 + (side === detourSide ? 0 : 8);
+      if (score < bestScore) {
+        bestScore = score;
+        bestX = cx;
+        bestZ = cz;
+      }
+    }
+    if (bestScore === Infinity) return false;
+    routeCorner.x = bestX;
+    routeCorner.z = bestZ;
+    routeActive = true;
+    return true;
+  }
+
   function planRoute(gx, gz) {
     routeActive = false;
     const st = entity.state;
@@ -1301,7 +1361,10 @@ export function createAI(entity, opts = {}) {
       if (t0 > t1 || t1 < 0 || t0 > lim) continue;
       if (t0 < bestT) { bestT = t0; box = o; }
     }
-    if (!box) return;
+    if (!box) {
+      if (nowS < terrainRouteUntilS) planTerrainRoute(sx, sz, dx, dz, gx, gz);
+      return;
+    }
     const m2 = margin + 2.8; // corner clearance: a TURNING hull's diagonal
                              // swings ~halfL past its track line
     const cs = [
@@ -2363,7 +2426,8 @@ export function createAI(entity, opts = {}) {
       routeTimer = UNSTICK_TIME_S + 6;
     }
     if (mode === 'patrol' && waypoints.length > 1) {
-      wpIndex = (wpIndex + 1) % waypoints.length;
+      if (wpIndex < waypoints.length - 1) wpIndex++;
+      else if (loopWaypoints) wpIndex = 0;
     } else if (hasMoveTarget) {
       hasMoveTarget = false;
     }
@@ -2653,6 +2717,35 @@ export function createAI(entity, opts = {}) {
       const inst = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
       progressRate += (inst - progressRate) * Math.min(1, dt * 2.5);
     }
+    // movement.js reports a rated-grade contact rejection explicitly. Waiting
+    // for the generic two-second low-speed heuristic made bots repeatedly
+    // grind into short cliffs that the coarse 25 m route grid cannot see.
+    // A sustained slope block is definitive terrain feedback: reverse and
+    // invalidate the leg promptly so the existing seeded detour/replan policy
+    // can route around it. The short dwell filters one-tick ridge contacts.
+    if (driveIntent && st.slopeBlocked && timeS >= unstickUntilS) {
+      // Turn on the comparatively richer terrain fan only after the movement
+      // solver reports a real rejected face. It remains active briefly while
+      // the tank clears that local feature, keeping ordinary AI updates on
+      // the existing low-cost obstacle path.
+      terrainRouteUntilS = timeS + 6;
+      routeTimer = 0;
+      slopeBlockT += dt;
+      if (slopeBlockT >= SLOPE_BLOCK_RECOVERY_S) {
+        slopeBlockT = 0;
+        unstickUntilS = timeS + UNSTICK_TIME_S;
+        navNoProgressT = 0;
+        navBestD = Infinity;
+        escalateStuckRecovery(timeS, false);
+        // A rejected grade is geometric, not probabilistic. Reuse the newly
+        // flipped detour side so this recovery does not consume the combat RNG
+        // stream; the route recovery above owns any macro-waypoint change.
+        unstickSteer = detourSide;
+      }
+    } else {
+      slopeBlockT = 0;
+    }
+
     if (timeS < unstickUntilS) {
       input.throttle = -0.7;
       input.steer = unstickSteer;

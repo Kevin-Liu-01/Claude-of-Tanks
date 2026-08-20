@@ -31,7 +31,9 @@
 import * as THREE from 'three';
 import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
-import { createTankState, updateTank, SIM_DT } from '../sim/movement.js';
+import {
+  createTankState, resetTankVerticalState, updateTank, SIM_DT,
+} from '../sim/movement.js';
 import { createShell, stepShell } from '../sim/ballistics.js';
 import { createBus } from './state.js';
 import {
@@ -368,7 +370,7 @@ export function createStudio(ctx) {
     const st = a.state;
     st.pos.x = p.x;
     st.pos.z = p.z;
-    st.pos.y = hfProxy.getHeightAt(p.x, p.z);
+    resetTankVerticalState(st, hfProxy.getHeightAt(p.x, p.z));
     st.yaw = p.facingDeg * DEG;
     st.speed = 0;
     st.yawRate = 0;
@@ -1507,7 +1509,7 @@ export function createStudio(ctx) {
       a.timelineYaw = yaw;
       st.pos.x = _actorSample.x;
       st.pos.z = _actorSample.z;
-      st.pos.y = hfProxy.getHeightAt(st.pos.x, st.pos.z);
+      resetTankVerticalState(st, hfProxy.getHeightAt(st.pos.x, st.pos.z));
       st.yaw = yaw;
       st.turretYaw = _actorSample.turretDeg * DEG;
       st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg) * DEG;
