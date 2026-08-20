@@ -1,0 +1,150 @@
+{
+  "libraryId": "claude-of-tanks-feature-loops-r1",
+  "schemaVersion": 1,
+  "renderer": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "videoBitsPerSecond": 7000000
+  },
+  "source": "Scene Studio using approved action-campaign sightlines",
+  "qualityGate": {
+    "reviewedFramesPerLoop": 3,
+    "requirements": [
+      "tank visible throughout",
+      "unobstructed approved sightline",
+      "moving vehicle",
+      "live firing or impact"
+    ],
+    "passed": 6,
+    "failed": 0
+  },
+  "loops": [
+    {
+      "id": "01_desert_duel_leclerc_kill",
+      "title": "Desert crossfire",
+      "map": "desert",
+      "durationMs": 6000,
+      "gif": "/media/feature-loops-r1/01_desert_duel_leclerc_kill.gif",
+      "video": "/media/feature-loops-r1/01_desert_duel_leclerc_kill.webm",
+      "poster": "/media/feature-loops-r1/01_desert_duel_leclerc_kill.jpg",
+      "gifBytes": 6944229,
+      "videoBytes": 1839369,
+      "actors": [
+        {
+          "id": "m1a2_sepv3",
+          "name": "M1A2 Abrams SEPv3"
+        },
+        {
+          "id": "leo2_revolution",
+          "name": "Leopard 2 Revolution"
+        }
+      ]
+    },
+    {
+      "id": "02_desert_ram_abramsx_t90m",
+      "title": "Close armored contact",
+      "map": "desert",
+      "durationMs": 6000,
+      "gif": "/media/feature-loops-r1/02_desert_ram_abramsx_t90m.gif",
+      "video": "/media/feature-loops-r1/02_desert_ram_abramsx_t90m.webm",
+      "poster": "/media/feature-loops-r1/02_desert_ram_abramsx_t90m.jpg",
+      "gifBytes": 8908279,
+      "videoBytes": 2300729,
+      "actors": [
+        {
+          "id": "challenger_3",
+          "name": "Challenger 3"
+        },
+        {
+          "id": "kf51",
+          "name": "KF51 Panther"
+        }
+      ]
+    },
+    {
+      "id": "03_winter_lake_duel",
+      "title": "Winter knockout",
+      "map": "winter",
+      "durationMs": 6000,
+      "gif": "/media/feature-loops-r1/03_winter_lake_duel.gif",
+      "video": "/media/feature-loops-r1/03_winter_lake_duel.webm",
+      "poster": "/media/feature-loops-r1/03_winter_lake_duel.jpg",
+      "gifBytes": 7164814,
+      "videoBytes": 1756750,
+      "actors": [
+        {
+          "id": "t80u",
+          "name": "T-80U"
+        },
+        {
+          "id": "challenger_3",
+          "name": "Challenger 3"
+        }
+      ]
+    },
+    {
+      "id": "04_urban_street_duel",
+      "title": "Urban advance",
+      "map": "urban",
+      "durationMs": 6000,
+      "gif": "/media/feature-loops-r1/04_urban_street_duel.gif",
+      "video": "/media/feature-loops-r1/04_urban_street_duel.webm",
+      "poster": "/media/feature-loops-r1/04_urban_street_duel.jpg",
+      "gifBytes": 11581803,
+      "videoBytes": 2822863,
+      "actors": [
+        {
+          "id": "type10",
+          "name": "Type 10"
+        },
+        {
+          "id": "ua_t84_oplot_m",
+          "name": "T-84BM Oplot-M"
+        }
+      ]
+    },
+    {
+      "id": "05_urban_hero_abramsx",
+      "title": "Urban heavy armor",
+      "map": "urban",
+      "durationMs": 6000,
+      "gif": "/media/feature-loops-r1/05_urban_hero_abramsx.gif",
+      "video": "/media/feature-loops-r1/05_urban_hero_abramsx.webm",
+      "poster": "/media/feature-loops-r1/05_urban_hero_abramsx.jpg",
+      "gifBytes": 8949715,
+      "videoBytes": 2540874,
+      "actors": [
+        {
+          "id": "m1a2_tusk",
+          "name": "M1A2 Abrams TUSK"
+        },
+        {
+          "id": "ariete",
+          "name": "C1 Ariete Preserie"
+        }
+      ]
+    },
+    {
+      "id": "06_verdant_meadow_duel",
+      "title": "Meadow breakthrough",
+      "map": "verdant",
+      "durationMs": 6000,
+      "gif": "/media/feature-loops-r1/06_verdant_meadow_duel.gif",
+      "video": "/media/feature-loops-r1/06_verdant_meadow_duel.webm",
+      "poster": "/media/feature-loops-r1/06_verdant_meadow_duel.jpg",
+      "gifBytes": 13826762,
+      "videoBytes": 5961864,
+      "actors": [
+        {
+          "id": "abramsx",
+          "name": "AbramsX"
+        },
+        {
+          "id": "strv122",
+          "name": "Stridsvagn 122"
+        }
+      ]
+    }
+  ]
+}

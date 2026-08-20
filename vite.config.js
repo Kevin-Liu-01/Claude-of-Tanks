@@ -77,6 +77,9 @@ function rewriteRoutes(req, res, next) {
   }
   else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
   else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
+  else if (/^\/docs\/(simulation|vehicles|rendering|worlds|multiplayer|interface|studio)\/?$/.test(path)) {
+    req.url = '/docs-topic.html' + query;
+  }
   next();
 }
 
@@ -123,12 +126,13 @@ export default {
         main: resolve(process.cwd(), 'index.html'),
         home: resolve(process.cwd(), 'home.html'),
         docs: resolve(process.cwd(), 'docs.html'),
+        docsTopic: resolve(process.cwd(), 'docs-topic.html'),
         gallery: resolve(process.cwd(), 'gallery.html'),
       },
     },
   },
   optimizeDeps: {
-    entries: ['index.html', 'home.html', 'docs.html', 'gallery.html'],
+    entries: ['index.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html'],
     include: [
       'three',
       'three/examples/jsm/utils/BufferGeometryUtils.js',

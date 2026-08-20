@@ -4053,14 +4053,15 @@ export function createKillCam(deps) {
       const g = gameRef();
       return g && g.tankById ? g.tankById.get(id) : null;
     };
-    function announce(kind, ent, count) {
+    function announce(kind, ent, list) {
       if (!busRef || !ent) return;
       busRef.emit(`spectate:${kind}`, {
         id: ent.id,
         name: ent.displayName || null,
         vehicle: ent.spec ? ent.spec.name : String(ent.id),
         specId: ent.specId || null,
-        count,
+        count: list.length,
+        index: Math.max(1, list.findIndex((candidate) => candidate.id === ent.id) + 1),
         allTeams: observerAllTeams,
       });
     }
@@ -4068,7 +4069,7 @@ export function createKillCam(deps) {
       curId = ent.id;
       if (first) rig.startSpectate(ent);
       else rig.setSpectateTarget(ent);
-      announce(first ? 'begin' : 'change', ent, list.length);
+      announce(first ? 'begin' : 'change', ent, list);
     }
     function cycle(dir) {
       if (!on) return;

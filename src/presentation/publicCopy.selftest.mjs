@@ -45,6 +45,6 @@ for (const file of pageFiles) {
 }
 
 const gallerySource = readFileSync(join(ROOT, 'src/gallery/gallery.js'), 'utf8');
-assert.match(gallerySource, /mountMediaArchive\([^\n]+\{ mode: 'compact', limit: 88 \}\)/);
+assert.match(gallerySource, /mountMediaArchive\([^\n]+\{ mode: 'wall', limit: 88, filters: false \}\)/);
 
 console.log('public copy selftest passed');

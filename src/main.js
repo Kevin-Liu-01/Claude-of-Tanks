@@ -4529,6 +4529,27 @@ const SHOT_VIEWS = {
       shells: shellCards,
     });
   },
+  spectator_view() {
+    const ally = game.tanks.find((ent) => ent && !ent.isPlayer && ent.team !== 'enemy');
+    if (!ally) throw new Error('Spectator view requires a living allied vehicle');
+    orbitPose(ally, 13.5, 174, 13, 48);
+    forcedHudFrame('battle', {
+      distM: 210,
+      penRatio: null,
+      reload: { t: 0, totalS: 6 },
+      shellSlot: 0,
+      dispersionRadM: computeDispersionRadM(game.player.spec, game.player.state, 210),
+      shells: shellCards,
+    });
+    hud.stageSpectateBar({
+      id: ally.id,
+      name: ally.displayName || 'SteppeWolf_71',
+      vehicle: ally.spec.name,
+      specId: ally.specId,
+      count: 5,
+      index: 2,
+    });
+  },
   sniper_view() {
     // aim at the nearest enemy bearing WITH a clear sightline. r4: the old
     // check raycast ONE point (heightM*0.6) and accepted any blocker within
@@ -4975,7 +4996,7 @@ const SHOT_VIEWS = {
 
 window.__SHOTS = {
   views: [
-    'battlefield', 'player_view', 'sniper_view', 'tank_closeup_modern',
+    'battlefield', 'player_view', 'spectator_view', 'sniper_view', 'tank_closeup_modern',
     'tank_closeup_ww2', 'tank_closeup_t90m', 'tank_closeup_leo2a7',
     'detrack', 'combat_firing', 'explosion', 'garage',
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',

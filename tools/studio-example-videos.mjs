@@ -9,7 +9,7 @@
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import {
-  mkdirSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync,
+  mkdirSync, readFileSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync,
 } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -42,6 +42,43 @@ const SCENARIOS = [
   seed: 24001 + index * 137,
 }));
 
+const FEATURE_SCENE_FILES = [
+  '61_action_desert_duel_leclerc_kill.json',
+  '62_action_desert_ram_abramsx_t90m.json',
+  '67_action_winter_lake_duel.json',
+  '71_action_urban_street_duel.json',
+  '75_action_urban_hero_abramsx.json',
+  '88_action_verdant_meadow_duel.json',
+];
+
+function featureScenario(file, index) {
+  const scene = JSON.parse(readFileSync(resolve('tools/marketing-shots/scenes-action-r3', file), 'utf8'));
+  const fireTimes = [750, 1750, 2850];
+  let fireIndex = 0;
+  let accentIndex = 0;
+  scene.effects = scene.effects.map((effect) => {
+    let tMs;
+    if (effect.type === 'fire' || effect.type === 'mg_burst') tMs = fireTimes[fireIndex++ % fireTimes.length];
+    else if (effect.type === 'tank_kill') tMs = 4050;
+    else if (effect.type === 'explosion') tMs = 3650;
+    else tMs = [1250, 2350, 3300, 4800][accentIndex++ % 4];
+    return { ...effect, tMs };
+  });
+  scene.fxTime = 0;
+  scene.timeScale = 0;
+  return {
+    index: index + 1,
+    map: scene.map,
+    alpha: scene.actors[0].id,
+    bravo: scene.actors[1]?.id || scene.actors[0].id,
+    seed: scene.seed,
+    scene,
+    slug: file.replace(/^\d+_action_/, '').replace(/\.json$/, ''),
+  };
+}
+
+const FEATURE_SCENARIOS = FEATURE_SCENE_FILES.map(featureScenario);
+
 const args = process.argv.slice(2);
 function opt(name, fallback) {
   const index = args.indexOf(`--${name}`);
@@ -49,7 +86,9 @@ function opt(name, fallback) {
 }
 
 const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
-const count = Math.max(1, Math.min(SCENARIOS.length, Number.parseInt(opt('count', '20'), 10) || 20));
+const collection = opt('collection', 'duels');
+const scenarioPool = collection === 'features' ? FEATURE_SCENARIOS : SCENARIOS;
+const count = Math.max(1, Math.min(scenarioPool.length, Number.parseInt(opt('count', String(scenarioPool.length)), 10) || scenarioPool.length));
 const only = new Set(String(opt('only', ''))
   .split(',')
   .map((value) => Number.parseInt(value.trim(), 10))
@@ -165,6 +204,7 @@ const consoleErrors = [];
 const manifest = {
   version: 1,
   generatedAt: new Date().toISOString(),
+  collection,
   renderer: { width: 1280, height: 720, fps, videoBitsPerSecond },
   videos: [],
 };
@@ -215,9 +255,9 @@ try {
     { timeout: 180_000 },
   );
 
-  const jobs = only.size
-    ? SCENARIOS.filter((scenario) => only.has(scenario.index))
-    : SCENARIOS.slice(0, count);
+    const jobs = only.size
+    ? scenarioPool.filter((scenario) => only.has(scenario.index))
+    : scenarioPool.slice(0, count);
   for (let jobIndex = 0; jobIndex < jobs.length; jobIndex++) {
     const scenario = jobs[jobIndex];
     const number = String(scenario.index).padStart(2, '0');
@@ -235,20 +275,60 @@ try {
           throw new Error(`${info.id} is ${info.era}/${info.class}, expected modern/mbt`);
         }
       }
-      const camo = job.map === 'winter' ? 'winter' : (job.map === 'desert' ? 'desert' : 'summer');
-      await S.load({
-        map: job.map,
-        seed: job.seed,
-        actors: [
-          { id: job.alpha, name: 'alpha', pos: [-26, -8], facingDeg: 72, camo },
-          { id: job.bravo, name: 'bravo', pos: [26, 10], facingDeg: 252, camo },
-        ],
-        fxTime: 0,
-        timeScale: 0,
-      });
-      const board = S.directDuel();
-      if (board.durationMs > 20_000 || board.actorTracks.length !== 2) {
-        throw new Error('Direct Duel did not build a bounded two-tank storyboard');
+      let board;
+      if (job.scene) {
+        await S.load(job.scene);
+        const base = S.getCamera();
+        const [x, y, z] = base.pos;
+        const [lx, ly, lz] = base.lookAt;
+        const durationMs = 6000;
+        const actorTracks = job.scene.actors.map((actor, actorIndex) => {
+          const heading = (actor.facingDeg || 0) * Math.PI / 180;
+          const travel = actorIndex === 1 ? 0.8 : 1.8;
+          return {
+            actor: actor.name,
+            keys: [
+              { id: `${actor.name}-0`, tMs: 0, pos: [...actor.pos], facingDeg: actor.facingDeg || 0,
+                turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
+              { id: `${actor.name}-1`, tMs: durationMs,
+                pos: [actor.pos[0] + Math.sin(heading) * travel, actor.pos[1] + Math.cos(heading) * travel],
+                facingDeg: actor.facingDeg || 0, turretDeg: actor.turretDeg || 0, gunDeg: actor.gunDeg || 0 },
+            ],
+          };
+        });
+        board = {
+          durationMs,
+          shots: [
+            { id: 'open', label: 'Contact', tMs: 0, pos: [x, y, z], lookAt: [lx, ly, lz],
+              fov: base.fov, rollDeg: base.rollDeg || 0, transition: 'linear' },
+            { id: 'exchange', label: 'Exchange', tMs: 2900, pos: [x + 0.9, y + 0.25, z + 0.45],
+              lookAt: [lx + 0.5, ly + 0.1, lz], fov: Math.max(32, base.fov - 1),
+              rollDeg: (base.rollDeg || 0) * 0.5, transition: 'smooth' },
+            { id: 'impact', label: 'Impact', tMs: durationMs, pos: [x + 1.6, y + 0.45, z + 0.75],
+              lookAt: [lx + 0.8, ly + 0.15, lz + 0.1], fov: Math.max(32, base.fov - 2),
+              rollDeg: 0, transition: 'smooth' },
+          ],
+          actorTracks,
+        };
+        S.setStoryboard(board);
+        S.setRailVisible(false);
+        S.seek(0);
+      } else {
+        const camo = job.map === 'winter' ? 'winter' : (job.map === 'desert' ? 'desert' : 'summer');
+        await S.load({
+          map: job.map,
+          seed: job.seed,
+          actors: [
+            { id: job.alpha, name: 'alpha', pos: [-26, -8], facingDeg: 72, camo },
+            { id: job.bravo, name: 'bravo', pos: [26, 10], facingDeg: 252, camo },
+          ],
+          fxTime: 0,
+          timeScale: 0,
+        });
+        board = S.directDuel();
+      }
+      if (board.durationMs > 20_000 || board.actorTracks.length < 2) {
+        throw new Error('Studio did not build a bounded multi-tank storyboard');
       }
       const recording = await S.recordVideo({
         fps: job.fps,
@@ -277,7 +357,9 @@ try {
       throw new Error(`${number}: invalid recording ${result.durationMs} ms / ${result.size} bytes`);
     }
     const extension = result.mimeType.includes('mp4') ? 'mp4' : 'webm';
-    const file = `${number}_${scenario.alpha}_vs_${scenario.bravo}_${scenario.map}.${extension}`;
+    const file = scenario.slug
+      ? `${number}_${scenario.slug}.${extension}`
+      : `${number}_${scenario.alpha}_vs_${scenario.bravo}_${scenario.map}.${extension}`;
     const bytes = Buffer.from(result.base64, 'base64');
     if (bytes.length !== result.size) {
       throw new Error(`${file}: browser reported ${result.size} bytes, transferred ${bytes.length}`);

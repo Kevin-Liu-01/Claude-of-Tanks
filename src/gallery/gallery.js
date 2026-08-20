@@ -515,7 +515,7 @@ $('#copySpec').addEventListener('click', () => {
 const galleryArchive = $('#galleryArchive');
 $('#galleryArchiveOpen').addEventListener('click', () => {
   galleryArchive.showModal();
-  mountMediaArchive(galleryArchive.querySelector('[data-media-archive]'), { mode: 'compact', limit: 88 })
+  mountMediaArchive(galleryArchive.querySelector('[data-media-archive]'), { mode: 'wall', limit: 88, filters: false })
     .catch((error) => showToast(error.message));
 });
 $('#galleryArchiveClose').addEventListener('click', () => galleryArchive.close());

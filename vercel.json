@@ -9,6 +9,7 @@
   "rewrites": [
     { "source": "/home", "destination": "/home.html" },
     { "source": "/docs", "destination": "/docs.html" },
+    { "source": "/docs/:topic", "destination": "/docs-topic.html" },
     { "source": "/gallery", "destination": "/gallery.html" },
     { "source": "/studio", "destination": "/index.html" }
   ]

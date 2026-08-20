@@ -19,6 +19,7 @@ MUST uphold this contract at all times or the build is considered broken.
 |---|---|
 | `battlefield` | wide establishing shot of the map: terrain, sky, foliage, several tanks |
 | `player_view` | standard WoT third-person chase camera behind the player tank, HUD visible |
+| `spectator_view` | allied chase camera with the death-state vehicle switcher visible |
 | `sniper_view` | first-person gunner zoom with reticle, penetration indicator, HUD |
 | `tank_closeup_modern` | close orbit shot of the M1A2 Abrams model, full detail |
 | `tank_closeup_ww2` | close orbit shot of the Tiger I (or T-34-85) model, full detail |
@@ -67,3 +68,21 @@ frames, six process sheets, and `firstPartyRuntimeOnly: true`. Landing, docs,
 Gallery, and Studio consume that manifest through the shared media archive
 component. Raw 4K PNGs remain local capture evidence; compressed WebP frames,
 review sheets, and the manifest are shipped artifacts.
+
+## Public feature loops
+
+The six short feature loops are deterministic Scene Studio captures based on
+approved action-campaign sightlines. Capture masters remain local. The publisher
+creates a VP9 WebM, a true GIF, a JPEG poster, and a byte receipt for every loop.
+
+```bash
+npm run studio:features:render
+npm run studio:features:publish
+node tools/marketing-shots/feature-loops.selftest.mjs
+```
+
+`public/media/feature-loops-r1/manifest.json` must report six passed loops and
+zero failures. Each loop must include two or more identified vehicles, one of the
+approved map families, a six-second duration, and matching file-size receipts.
+Public pages prefer WebM for playback efficiency; the GIF renditions remain
+available for documentation and third-party embedding.

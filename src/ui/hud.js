@@ -6,6 +6,7 @@
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { createElement as el, ensureStyle } from './dom.js';
+import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -474,66 +475,65 @@ const HUD_CSS = `
 .cot-dl b{color:#ff8f80;font-weight:700;font-variant-numeric:tabular-nums;}
 .cot-dl.out{opacity:0;}
 .cot-dmglayer{position:absolute;inset:0;}
-/* ===== SPECTATE BAR (killcam_endscreen r1) =================================
-   Slim ink strip shown while the ally chase-cam runs (killcam.js emits
-   spectate:begin/change/end): SPECTATING <nick> · <vehicle>, cycle hints and
-   a RETURN TO GARAGE action that clicks the integration end button's
-   existing handler. Slides/fades in staggered after the killcam exit fade —
-   never pops in a single frame. */
-.cot-spec{position:absolute;left:50%;bottom:56px;transform:translate(-50%,16px);
-  opacity:0;display:none;pointer-events:auto;align-items:center;
-  grid-template-columns:max-content minmax(0,1fr) max-content max-content;
-  grid-template-areas:"status identity switch garage";column-gap:18px;
-  width:min(900px,calc(100vw - 32px));min-width:0;
-  background:linear-gradient(180deg,rgba(12,16,20,.92),rgba(7,10,13,.95));
-  border:1px solid rgba(146,164,180,.3);border-left:3px solid #f0a030;
-  box-shadow:0 8px 28px rgba(0,0,0,.55);padding:9px 16px 10px;
-  transition:opacity .45s ease .15s,transform .5s cubic-bezier(.2,.7,.3,1) .15s;}
+/* Compact chase-camera identity card. The vehicle portrait anchors the target;
+   controls share one baseline and one 44 px interaction size. */
+.cot-spec{position:absolute;left:50%;bottom:48px;transform:translate(-50%,14px);
+  opacity:0;display:none;pointer-events:auto;align-items:stretch;
+  grid-template-columns:82px minmax(190px,1fr) auto 82px;column-gap:0;
+  width:min(680px,calc(100vw - 32px));min-width:0;min-height:70px;
+  background:linear-gradient(105deg,rgba(7,11,14,.97),rgba(14,20,25,.95));
+  border:1px solid rgba(161,181,196,.32);border-top:2px solid rgba(240,160,48,.78);
+  box-shadow:0 14px 42px rgba(0,0,0,.62),inset 0 1px rgba(255,255,255,.035);
+  padding:6px;transition:opacity .32s ease .12s,transform .42s cubic-bezier(.2,.7,.3,1) .12s;}
 .cot-spec.show{display:grid;}
 .cot-spec.in{opacity:1;transform:translate(-50%,0);}
-.cot-spec .kk{font-family:${FONT_COND};font-weight:800;font-size:9px;
-  letter-spacing:.3em;color:#f0a030;text-transform:uppercase;grid-area:status;}
-.cot-spec .who{display:flex;flex-direction:column;grid-area:identity;min-width:0;}
-.cot-spec .who b{font-size:13.5px;font-weight:800;color:#f2f7fb;letter-spacing:.02em;
+.cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
+  border-right:1px solid rgba(161,181,196,.16);background:linear-gradient(145deg,rgba(240,160,48,.13),rgba(77,96,110,.03));}
+.cot-spec .portrait::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:#f0a030;}
+.cot-spec .portrait img{display:block;width:76px;height:58px;object-fit:contain;filter:drop-shadow(0 5px 6px rgba(0,0,0,.62));}
+.cot-spec .portrait span{position:absolute;left:12px;right:10px;bottom:8px;height:1px;background:rgba(240,160,48,.42);}
+.cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:5px 15px 6px;}
+.cot-spec .status{display:flex;align-items:center;gap:7px;min-width:0;font-family:${FONT_COND};
+  font-size:8px;font-weight:800;line-height:1;letter-spacing:.16em;text-transform:uppercase;color:#9fb0bf;}
+.cot-spec .status i{width:6px;height:6px;border-radius:50%;background:#70dca0;box-shadow:0 0 9px rgba(112,220,160,.55);}
+.cot-spec .status .counter{margin-left:auto;color:#f0b04a;font:800 8px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.08em;}
+.cot-spec .who{display:flex;min-width:0;flex-direction:column;margin-top:6px;}
+.cot-spec .who b{font-size:15px;line-height:1.05;font-weight:800;color:#f2f7fb;letter-spacing:.015em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cot-spec .who span{font-family:${FONT_COND};font-weight:700;font-size:9.5px;
-  letter-spacing:.14em;color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
+.cot-spec .who span{margin-top:4px;font-family:${FONT_COND};font-weight:700;font-size:9px;line-height:1;
+  letter-spacing:.12em;color:#aab8c2;text-transform:uppercase;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
 @keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
 .cot-spec .who.sw{animation:cotSpecSw .35s ease;}
-.cot-spec .switch{grid-area:switch;display:grid;grid-template-columns:1fr 1fr;
-  gap:4px;min-width:96px;}
-.cot-spec .switch-label{grid-column:1/-1;font-family:${FONT_COND};font-weight:700;
-  font-size:8px;line-height:1;letter-spacing:.19em;color:#8a97a3;text-align:center;
-  text-transform:uppercase;white-space:nowrap;margin-bottom:1px;}
-.cot-spec .cycle{height:44px;min-width:46px;display:flex;align-items:center;
-  justify-content:center;gap:5px;font-family:${FONT_COND};font-size:10px;font-weight:800;
-  color:#dce5ec;cursor:pointer;border:1px solid rgba(146,164,180,.42);
-  background:rgba(146,164,180,.06);transition:transform 160ms ease-out,background-color 120ms ease,
-  border-color 120ms ease;}
-.cot-spec .cycle kbd{font:inherit;color:#f2f7fb;}
-.cot-spec .cycle .arrow{font-size:11px;color:#95a7b6;}
+.cot-spec .switch{align-self:center;display:grid;grid-template-columns:repeat(2,68px);height:44px;
+  border-left:1px solid rgba(161,181,196,.16);}
+.cot-spec .cycle{height:44px;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:0 9px;font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:#aab8c2;cursor:pointer;border:0;border-right:1px solid rgba(161,181,196,.2);
+  background:rgba(146,164,180,.035);transition:transform 160ms ease-out,background-color 120ms ease,color 120ms ease;}
+.cot-spec .cycle kbd{display:grid;place-items:center;width:20px;height:20px;border:1px solid rgba(203,216,226,.34);
+  border-radius:2px;background:rgba(255,255,255,.04);font:800 9px/1 ui-monospace,SFMono-Regular,monospace;color:#f2f7fb;box-shadow:none;}
 .cot-spec .cycle:active{transform:scale(.97);}
 .cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #ffd27a;
   outline-offset:2px;}
-.cot-spec .gar{font-family:${FONT_COND};font-weight:800;font-size:10px;
-  letter-spacing:.2em;text-transform:uppercase;color:#f4e9d8;cursor:pointer;
-  border:1px solid rgba(240,193,105,.55);background:rgba(240,160,48,.1);
-  padding:6px 14px 7px;min-height:44px;grid-area:garage;white-space:nowrap;
-  transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease;}
-.cot-spec .gar-short{display:none;}
+.cot-spec .gar{align-self:center;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;
+  margin-left:6px;padding:0 10px;font-family:${FONT_COND};font-weight:800;font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:#d4dee5;cursor:pointer;border:1px solid rgba(240,193,105,.42);
+  background:rgba(240,160,48,.07);white-space:nowrap;transition:transform 160ms ease-out,
+  background-color 120ms ease,border-color 120ms ease;}
+.cot-spec .gar i{width:8px;height:8px;border-top:1px solid #f0b04a;border-right:1px solid #f0b04a;transform:rotate(45deg);}
 .cot-spec .gar:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
-  .cot-spec .cycle:hover{background:rgba(146,164,180,.14);border-color:rgba(190,207,220,.66);}
+  .cot-spec .cycle:hover{background:rgba(146,164,180,.12);color:#f2f7fb;}
   .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,193,105,.78);}
 }
 @media (max-width:960px){
-  .cot-spec{column-gap:10px;padding-left:12px;padding-right:12px;
-    width:min(900px,calc(100vw - 20px));}
-  .cot-spec .kk{font-size:8px;letter-spacing:.22em;}
-  .cot-spec .gar{padding-left:11px;padding-right:11px;}
-  .cot-spec .gar-long{display:none;}
-  .cot-spec .gar-short{display:inline;}
+  .cot-spec{width:min(680px,calc(100vw - 20px));grid-template-columns:72px minmax(150px,1fr) auto 70px;}
+  .cot-spec .portrait img{width:66px;}
+  .cot-spec .identity{padding-left:11px;padding-right:11px;}
+  .cot-spec .switch{grid-template-columns:repeat(2,48px);}
+  .cot-spec .cycle span{display:none;}
+  .cot-spec .gar{font-size:7px;padding:0 8px;}
 }
 /* The minimap owns the lower-right 236 px. On compact desktop viewports the
    bar docks into the remaining lower-left lane instead of rendering beneath
@@ -546,10 +546,15 @@ const HUD_CSS = `
   .cot-spec{bottom:252px;}
 }
 @media (max-width:560px){
-  .cot-spec{grid-template-columns:max-content minmax(0,1fr) max-content;
-    grid-template-areas:"status identity garage" "status switch garage";row-gap:6px;}
-  .cot-spec .switch{justify-self:start;min-width:92px;}
-  .cot-spec .switch-label{display:none;}
+  .cot-spec{grid-template-columns:62px minmax(0,1fr) 88px 46px;min-height:62px;padding:4px;}
+  .cot-spec .portrait img{width:58px;height:52px;}
+  .cot-spec .identity{padding:4px 8px;}
+  .cot-spec .scope{display:none;}
+  .cot-spec .who b{font-size:13px;}
+  .cot-spec .who span{font-size:8px;}
+  .cot-spec .switch{grid-template-columns:repeat(2,44px);}
+  .cot-spec .gar{width:40px;margin-left:4px;padding:0;}
+  .cot-spec .gar span{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
   .cot-top .wedge i.on,.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
@@ -943,24 +948,13 @@ export function initHud(bus) {
   // integration end button's existing click handler — either where main.js
   // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
   const specBar = el('div', 'cot-spec', root);
-  specBar.innerHTML =
-    '<span class="kk">Spectating</span>' +
-    '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
-    '<span class="switch" role="group" aria-label="Switch spectated vehicle">' +
-      '<span class="switch-label" aria-hidden="true">Switch vehicle</span>' +
-      '<button type="button" class="cycle prev" aria-label="Previous vehicle">' +
-        '<span class="arrow" aria-hidden="true">\u25C0\uFE0E</span><kbd aria-hidden="true">A</kbd>' +
-      '</button>' +
-      '<button type="button" class="cycle next" aria-label="Next vehicle">' +
-        '<kbd aria-hidden="true">D</kbd><span class="arrow" aria-hidden="true">\u25B6\uFE0E</span>' +
-      '</button>' +
-    '</span>' +
-    '<button type="button" class="gar" aria-label="Return to garage">' +
-      '<span class="gar-long">Return to garage</span><span class="gar-short" aria-hidden="true">Garage</span>' +
-    '</button>';
+  specBar.innerHTML = spectatorSwitcherMarkup();
   const specWho = specBar.querySelector('.who');
   const specNick = specBar.querySelector('.nick');
   const specVeh = specBar.querySelector('.veh');
+  const specPortrait = specBar.querySelector('.portrait img');
+  const specScope = specBar.querySelector('.scope');
+  const specCounter = specBar.querySelector('.counter');
   specBar.querySelector('.cycle.prev').addEventListener('click', () => {
     bus.emit('spectate:cycle', { direction: -1 });
     bus.emit('ui:click', {});
@@ -976,12 +970,16 @@ export function initHud(bus) {
   });
   function specPopulate(p, first) {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
+    const card = spectatorCardModel(p);
     // same nickname the team panels show for this entity (nickById-backed)
     specNick.textContent = ent ? nickFor(ent) : (p.name || p.vehicle || String(p.id));
     const numeral = p.specId ? tierNumeral(p.specId) : '';
     const tier = numeral ? `${numeral} · ` : '';
-    const countLabel = p.allTeams ? 'vehicles alive' : 'allies alive';
-    specVeh.textContent = `${tier}${p.vehicle || ''}${p.count > 1 ? ` · ${p.count} ${countLabel}` : ''}`;
+    specVeh.textContent = `${tier}${p.vehicle || 'Unknown vehicle'}`;
+    specScope.textContent = card.scope;
+    specCounter.textContent = card.counter;
+    specPortrait.src = card.icon;
+    specPortrait.hidden = !card.icon;
     specBar.classList.add('show');
     document.body.classList.add('cot-spectating'); // own-tank furniture off
     if (first) {
@@ -3645,7 +3643,22 @@ export function initHud(bus) {
         shown: specBar.classList.contains('show') && specBar.classList.contains('in'),
         nick: specNick.textContent,
         vehicle: specVeh.textContent,
+        counter: specCounter.textContent,
+        scope: specScope.textContent,
       };
+    },
+
+    /** Deterministic presentation seam used by the screenshot harness. */
+    stageSpectateBar(payload = {}) {
+      specPopulate({
+        id: payload.id || 'spectator-preview',
+        name: payload.name || 'SteppeWolf_71',
+        vehicle: payload.vehicle || 'M1A2 SEP v3',
+        specId: payload.specId || 'm1a2_sepv3',
+        count: payload.count || 5,
+        index: payload.index || 2,
+        allTeams: !!payload.allTeams,
+      }, true);
     },
 
     /** PERF (perf-r2): pre-bake shot-card schematics for a fielded roster
@@ -3887,6 +3900,7 @@ export function initHud(bus) {
     window.__HUD_DEBUG = {
       getHitArcs: () => hud.getHitArcs(),
       getSpectateBar: () => hud.getSpectateBar(),
+      stageSpectateBar: (payload) => hud.stageSpectateBar(payload),
       // MOBILE-UX r1 probe seam (introspection only): everything the reticle
       // clamp math consumed and produced on the LAST drawn frame, so a
       // numeric gate can assert drawnR == clamp(projection, floor, ceiling)

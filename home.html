@@ -6,104 +6,61 @@
   <title>Claude of Tanks — Browser-Native Armored Combat</title>
   <meta name="author" content="Kevin B. Liu">
   <meta name="copyright" content="Copyright © 2026 Kevin B. Liu">
-  <meta name="description" content="Claude of Tanks is a browser-based Three.js armored combat game with 121 first-party procedural vehicles, 16 destructible battlefields, fixed-step combat, multiplayer rooms, mobile support, an X-ray killcam, and Scene Studio.">
+  <meta name="description" content="Claude of Tanks is a browser-native armored combat game with 121 first-party vehicles, 16 battlefields, physical gunnery, multiplayer, mobile controls, and in-browser production tools.">
   <link rel="canonical" href="https://cot.kevinliu.studio/home">
   <meta name="theme-color" content="#05080b">
   <meta property="og:title" content="Claude of Tanks — Armored Combat, Browser Native">
-  <meta property="og:description" content="121 first-party vehicles, 16 battlefields, physical gunnery, 7v7 multiplayer rooms, mobile play, and a renderer built directly on Three.js.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://cot.kevinliu.studio/home">
+  <meta property="og:description" content="121 first-party vehicles, 16 battlefields, physical gunnery, multiplayer rooms, mobile play, and a renderer built directly on Three.js.">
+  <meta property="og:type" content="website"><meta property="og:url" content="https://cot.kevinliu.studio/home">
   <meta property="og:image" content="https://cot.kevinliu.studio/brand/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Claude of Tanks — Urban Crossfire X with the crest badge and wordmark">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png">
+  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png">
   <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/media/featured/f7_studio_t90_column_fire.webp" as="image">
-  <link rel="stylesheet" href="/presentation.css">
-  <link rel="stylesheet" href="/src/presentation/mediaArchive.css">
-  <link rel="stylesheet" href="/src/presentation/publicNav.css">
-  <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"VideoGame","name":"Claude of Tanks","url":"https://cot.kevinliu.studio/","creator":{"@type":"Person","name":"Kevin Liu","url":"https://github.com/Kevin-Liu-01"},"copyrightHolder":{"@type":"Person","name":"Kevin B. Liu"},"genre":["Vehicular combat","Simulation","Action"],"gamePlatform":"Web Browser","playMode":["SinglePlayer","MultiPlayer"],"description":"Browser-based Three.js armored combat with 121 first-party procedural vehicles, sixteen destructible battlefields, plate-level armor, multiplayer rooms, mobile controls, an X-ray killcam, and in-browser production tools.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
-  </script>
+  <link rel="preload" href="/media/feature-loops-r1/05_urban_hero_abramsx.webm" as="video" type="video/webm">
+  <link rel="stylesheet" href="/presentation.css"><link rel="stylesheet" href="/src/presentation/publicNav.css">
 </head>
-<body class="home-v3">
-  <nav class="public-nav" aria-label="Primary navigation">
-    <div class="public-nav__inner">
-      <a class="public-nav__brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
-      <div class="public-nav__links"><a href="/home" aria-current="page">Home</a><a href="/gallery">Tank Gallery</a><a href="/docs">Docs</a><a href="/studio">Studio</a><a class="public-nav__cta" href="/">Play Now</a></div>
-    </div>
-  </nav>
+<body class="home-v4">
+  <nav class="public-nav" aria-label="Primary navigation"><div class="public-nav__inner">
+    <a class="public-nav__brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
+    <div class="public-nav__links"><a href="/home" aria-current="page">Home</a><a href="/gallery">Tank Gallery</a><a href="/docs">Docs</a><a href="/studio">Studio</a><a class="public-nav__cta" href="/">Play Now</a></div>
+  </div></nav>
 
   <main>
-    <header class="v3-hero" id="top">
-      <img class="v3-hero-image" src="/media/featured/f7_studio_t90_column_fire.webp" alt="Handmade Scene Studio composition of a modern T-90 column firing through a burning battlefield">
-      <div class="v3-hero-scrim"></div>
-      <div class="shell v3-hero-copy">
-        <p class="micro"><em>Three.js rendering</em> // Fixed-step simulation</p>
-        <h1>Armored combat<br><span>in the browser</span></h1>
-        <p class="lede">Claude of Tanks includes 121 first-party vehicles, sixteen authored battlefields, plate-level combat, persistent multiplayer, mobile controls, and tools for reproducing every image shown below.</p>
-        <div class="hero-actions"><a class="btn primary" href="/">Enter battle</a><a class="btn" href="#archive">Open 88-frame archive</a></div>
-      </div>
-      <div class="v3-hero-credit"><span>HANDMADE FRAME 02 / 05</span><strong>T-90 column fire</strong><small>Current renderer // Scene Studio</small></div>
+    <header class="v4-hero">
+      <video autoplay muted loop playsinline preload="auto" poster="/media/feature-loops-r1/05_urban_hero_abramsx.jpg" aria-label="Modern tanks advancing and firing through a city"><source src="/media/feature-loops-r1/05_urban_hero_abramsx.webm" type="video/webm"></video>
+      <div class="v4-hero-shade"></div>
+      <div class="shell v4-hero-copy"><p class="micro"><em>Armored combat</em> // Built for the browser</p><h1>Armored combat<br><span>at close range</span></h1><p>121 original vehicles. Sixteen battlefields. Physical armor, live modules, tracked suspension, multiplayer, and no install.</p><div class="hero-actions"><a class="btn primary" href="/">Enter battle</a><a class="btn" href="/gallery">Inspect the fleet</a></div></div>
+      <span class="v4-live"><i></i> Live Scene Studio capture</span>
     </header>
 
-    <section class="v3-metrics" aria-label="Current product facts"><div class="shell">
-      <article><strong>121</strong><span>Playable procedural vehicles</span><small>0 GLB-sourced playables</small></article>
-      <article><strong>16</strong><span>Destructible battlefields</span><small>Shared structures and physics</small></article>
-      <article><strong>60 Hz</strong><span>Authoritative simulation</span><small>Fixed-step movement and combat</small></article>
-      <article><strong>120 FPS</strong><span>Measured render path</span><small>On certified test hardware</small></article>
-    </div></section>
+    <section class="v4-facts" aria-label="Game facts"><div class="shell"><span><b>121</b> playable vehicles</span><span><b>16</b> battlefields</span><span><b>60 Hz</b> simulation</span><span><b>7v7</b> multiplayer</span></div></section>
 
-    <section class="v3-photo-lead home-section" aria-labelledby="v3-intro-title"><div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>01</em> Current game</p><h2 id="v3-intro-title">Rendered by the<br>current game</h2></div><p>These images use the current game renderer. Vehicles articulate, projectiles leave the resolved muzzle, armor events are resolved by the simulation, debris and detached tracks persist, and deterministic scene files can reproduce each effect.</p></div>
-      <div class="v3-triptych">
-        <figure class="v3-photo v3-photo--wide"><img src="/media/presentation-r1/02_desert_rooftop_dive.webp" alt="A tank thrown above a close armored fight in Sirocco Wadi" loading="lazy"><figcaption><span>Destruction</span><strong>Rooftop dive</strong><small>Debris · dust · ammunition fire</small></figcaption></figure>
-        <figure class="v3-photo"><img src="/media/presentation-r1/05_winter_ice_breaker.webp" alt="Winter armored engagement with an ammunition-rack destruction" loading="lazy"><figcaption><span>Destruction</span><strong>Ice breaker</strong><small>Persistent wreck state</small></figcaption></figure>
-        <figure class="v3-photo"><img src="/media/presentation-r1/16_verdant_meadow_duel.webp" alt="Modern tanks exchanging fire across a bright meadow" loading="lazy"><figcaption><span>Gunnery</span><strong>Meadow duel</strong><small>Crossfire · impact · terrain</small></figcaption></figure>
-      </div>
-    </div></section>
-
-    <section class="home-section v3-systems" id="systems" aria-labelledby="systems-title"><div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>02</em> Runtime systems</p><h2 id="systems-title">Integrated game<br>systems</h2></div><p>The renderer, simulation, interface, networking, worlds, and tools have separate ownership. They share vehicle records, event definitions, quality policies, and interface conventions.</p></div>
-      <div class="v3-system-grid">
-        <article class="v3-system-card v3-system-card--feature"><img src="/media/presentation-r1/ui_player_view.webp" alt="Production battle HUD in the current game" loading="lazy"><div><span>Graphics</span><h3>Adaptive rendering</h3><p>The Three.js WebGL renderer includes fused output grading, adaptive render scale, shader warmup, stable cascaded shadows, device diagnostics, and context recovery.</p><a href="/docs#graphics">Read the graphics architecture →</a></div></article>
-        <article class="v3-system-card"><img src="/media/presentation-r1/ui_killcam_xray.webp" alt="X-ray killcam showing a resolved penetrating shot" loading="lazy"><div><span>Combat feedback</span><h3>Authoritative shot results</h3><p>Dual reticles, bore state, penetration feedback, module damage, shot cards, spectating, and the X-ray killcam all present the result produced by the authoritative simulation.</p><a href="/docs#combat">Review combat resolution →</a></div></article>
-        <article class="v3-system-card"><img src="/media/presentation-r1/25_steppe_horizon_charge.webp" alt="Modern tanks charging and firing across uneven steppe terrain" loading="lazy"><div><span>Vehicle dynamics</span><h3>Terrain response</h3><p>The fixed-step drivetrain supports slope response, per-wheel terrain support, visual suspension, terrain-following track paths, visible recoil, ramming, and ballistic terrain interaction.</p><a href="/docs#vehicles">Review vehicle design →</a></div></article>
-        <article class="v3-system-card"><img src="/media/presentation-r1/24_autumn_orchard_stand.webp" alt="Tanks fighting through the authored Amberford orchard battlefield" loading="lazy"><div><span>World systems</span><h3>Authored battlefields</h3><p>Each map includes designed routes and strongpoints, textured structure families, modern wrecks, linked utilities, loose props, collision, atmosphere, and persistent destruction.</p><a href="/docs#worlds">Review the world systems →</a></div></article>
-        <article class="v3-system-card"><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="A multi-tank column fighting under fire on Verdant Fields" loading="lazy"><div><span>Multiplayer</span><h3>Persistent multiplayer rooms</h3><p>Rooms support host map selection, player camouflage, chat, invitation rejoin, garage presence, prediction, reconciliation, and verified moving-and-firing 7v7 matches.</p><a href="/docs#multiplayer">Review authority boundaries →</a></div></article>
-        <article class="v3-system-card"><img src="/media/presentation-r1/ui_garage.webp" alt="Current responsive garage interface" loading="lazy"><div><span>Interface and mobile</span><h3>Consistent controls</h3><p>The garage, dossier, HUD, autoloader rack, settings, room chat, touch joysticks, swipe aim, pinch scope, safe-area layout, and device quality controls use consistent interface conventions.</p><a href="/docs#interface">Read the interface guide →</a></div></article>
-      </div>
-    </div></section>
-
-    <section class="home-section v3-archive" id="archive" aria-labelledby="archive-title"><div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>03</em> Production archive</p><h2 id="archive-title">The 88-frame<br>showcase archive</h2></div><p>Browse 13 owner selections, 60 approved 4K action and foreground compositions, five frames from a directed Studio battle, and ten interface states. Each campaign frame retains its deterministic scene data and quality report.</p></div>
-      <div data-media-archive data-limit="88" data-page-size="24"></div>
-    </div></section>
-
-    <section class="v3-tools" id="tools" aria-label="Production tools">
-      <article><img class="studio-action-loop" src="/media/presentation-r1/studio_action_loop.gif" alt="Animated Scene Studio battle with moving tanks, firing, impacts, and a knockout"><img class="studio-action-poster" src="/media/presentation-r1/studio_action_poster.webp" alt="Three modern tanks in the directed Scene Studio winter battle" loading="lazy"><div><p class="micro"><em>Scene Studio</em> // In-browser production tools</p><h2>Scene composition and capture</h2><p>Place vehicles on any map, conform them to terrain, set articulation, create effects, freeze deterministic time, build camera rails, record video, and import or export scene JSON.</p><a class="btn" href="/studio">Open Scene Studio</a></div></article>
-      <article><img src="/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery procedural vehicle inspection" loading="lazy"><div><p class="micro"><em>Tank Gallery</em> // Current vehicle geometry</p><h2>Interactive vehicle inspection</h2><p>Search all 121 vehicles, orbit and articulate the current rig, display armor, modules, and crew, and export exact-surface review packets.</p><a class="btn" href="/gallery">Open Tank Gallery</a></div></article>
+    <section class="v4-features" aria-labelledby="features-title">
+      <header class="shell v4-section-head"><p class="micro"><em>In the current build</em></p><h2 id="features-title">Every system shows up in the fight</h2></header>
+      <article class="v4-feature v4-feature--wide"><video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/01_desert_duel_leclerc_kill.jpg"><source src="/media/feature-loops-r1/01_desert_duel_leclerc_kill.webm" type="video/webm"></video><div><span>Combat</span><h3>Shots resolve through armor</h3><p>Projectiles leave the modeled muzzle, cross the world, strike authored plates, and damage the modules and crew behind them.</p><a href="/docs/simulation">Combat model →</a></div></article>
+      <article class="v4-feature"><video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/06_verdant_meadow_duel.jpg"><source src="/media/feature-loops-r1/06_verdant_meadow_duel.webm" type="video/webm"></video><div><span>Vehicles</span><h3>Tracks follow the ground</h3><p>Road wheels, suspension, hull attitude, track paths, recoil, steering, and traction respond while the tank moves.</p><a href="/docs/vehicles">Vehicle systems →</a></div></article>
+      <article class="v4-feature"><video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/03_winter_lake_duel.jpg"><source src="/media/feature-loops-r1/03_winter_lake_duel.webm" type="video/webm"></video><div><span>Battlefields</span><h3>Sixteen places to break</h3><p>Terrain, structures, utilities, props, vegetation, collisions, loose debris, and wrecks form each route.</p><a href="/docs/worlds">World systems →</a></div></article>
+      <article class="v4-feature"><img src="/media/presentation-r1/ui_player_view.webp" alt="Current battle HUD and third-person player view" loading="lazy"><div><span>Battle interface</span><h3>Aim with the gun you have</h3><p>Camera aim, bore aim, dispersion, gun limits, reload state, spotting, ammunition, and damage stay distinct.</p><a href="/docs/interface">Interface guide →</a></div></article>
+      <article class="v4-feature"><img src="/media/presentation-r1/ui_garage.webp" alt="Garage with vehicle selection and technical details" loading="lazy"><div><span>Garage</span><h3>Choose, inspect, and deploy</h3><p>Compare the fleet, fit equipment, set camouflage, choose a battlefield, create a room, and enter battle.</p><a href="/docs/vehicles">Fleet guide →</a></div></article>
+      <article class="v4-feature"><img src="/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery with a procedural vehicle and technical dossier" loading="lazy"><div><span>Tank Gallery</span><h3>See the model underneath</h3><p>Orbit every vehicle and inspect armor, modules, crew stations, articulation, ammunition, and exact surfaces.</p><a href="/gallery">Open Tank Gallery →</a></div></article>
+      <article class="v4-feature v4-feature--wide"><video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/04_urban_street_duel.jpg"><source src="/media/feature-loops-r1/04_urban_street_duel.webm" type="video/webm"></video><div><span>Scene Studio</span><h3>Stage the shot and run the timeline</h3><p>Place vehicles, pose turrets and guns, direct effects, build camera rails, record video, and save the complete scene.</p><a href="/studio">Open Scene Studio →</a></div></article>
     </section>
 
-    <section class="home-section v3-performance" aria-labelledby="performance-title"><div class="shell">
-      <div class="v3-performance-copy"><p class="micro section-index"><em>04</em> Rendering performance</p><h2 id="performance-title">Performance budgets and<br>adaptive quality</h2><p>Graphics quality does not change the 60 Hz simulation. The renderer can adjust internal resolution, shadow quality, vegetation density, post-processing, and effect admission. Shader warmup and black-frame recovery protect battle entry, while desktop and mobile use device-appropriate quality profiles.</p><div class="v3-readouts"><span><b>4</b> quality profiles</span><span><b>60</b> simulation steps/s</span><span><b>20</b> network snapshots/s</span><span><b>7v7</b> verified live combat</span></div></div>
-      <figure><img src="/media/presentation-r1/ui_sniper_view.webp" alt="Precision sight running in the browser renderer" loading="lazy"><figcaption>Precision sight // current WebGL frame</figcaption></figure>
-    </div></section>
+    <section class="v4-field-wall" aria-label="Game-rendered field archive">
+      <img src="/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp" alt="AbramsX and T-90M desert battle" loading="lazy">
+      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/02_desert_ram_abramsx_t90m.jpg"><source src="/media/feature-loops-r1/02_desert_ram_abramsx_t90m.webm" type="video/webm"></video>
+      <img src="/media/showcase-r1/83_action_winter_ice_breaker.webp" alt="Winter tank destruction" loading="lazy"><img src="/media/showcase-r1/71_action_urban_street_duel.webp" alt="Urban tank duel" loading="lazy"><img src="/media/showcase-r1/87_action_verdant_column_massacre.webp" alt="Tank column under fire" loading="lazy"><img src="/media/presentation-r1/03_desert_muzzle_worm.webp" alt="Close desert muzzle flash" loading="lazy">
+      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/03_winter_lake_duel.jpg"><source src="/media/feature-loops-r1/03_winter_lake_duel.webm" type="video/webm"></video>
+      <img src="/media/showcase-r1/105_foreground_urban_hero_abramsx.webp" alt="AbramsX in an urban firefight" loading="lazy"><img src="/media/presentation-r1/24_autumn_orchard_stand.webp" alt="Tank fight in an autumn orchard" loading="lazy"><img src="/media/showcase-r1/118_foreground_verdant_meadow_duel.webp" alt="Close tank in a meadow duel" loading="lazy"><img src="/media/showcase-r1/86_action_coastal_harbor_kill.webp" alt="Coastal harbor tank battle" loading="lazy">
+      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/05_urban_hero_abramsx.jpg"><source src="/media/feature-loops-r1/05_urban_hero_abramsx.webm" type="video/webm"></video>
+      <img src="/media/showcase-r1/114_foreground_steppe_horizon_charge.webp" alt="Tank charging across the steppe" loading="lazy"><img src="/media/presentation-r1/08_winter_village_hell.webp" alt="Burning winter village battle" loading="lazy"><img src="/media/showcase-r1/93_foreground_desert_overwatch_line.webp" alt="Desert overwatch line" loading="lazy"><img src="/media/showcase-r1/115_foreground_urban_alley_flash.webp" alt="Tank firing in an urban alley" loading="lazy"><img src="/media/showcase-r1/119_foreground_coastal_beach_storm.webp" alt="Coastal beach armored assault" loading="lazy">
+      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/06_verdant_meadow_duel.jpg"><source src="/media/feature-loops-r1/06_verdant_meadow_duel.webm" type="video/webm"></video>
+      <img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Urban crossfire between several tanks" loading="lazy"><img src="/media/showcase-r1/113_foreground_winter_ice_breaker.webp" alt="Close winter tank battle" loading="lazy"><img src="/media/showcase-r1/102_foreground_urban_ram_plaza.webp" alt="Urban armored collision" loading="lazy"><img src="/media/showcase-r1/110_foreground_desert_wadi_gauntlet.webp" alt="Tank entering a desert gauntlet" loading="lazy"><img src="/media/showcase-r1/108_foreground_verdant_village_brawl.webp" alt="Village armored brawl" loading="lazy"><img src="/media/showcase-r1/116_foreground_coastal_harbor_kill.webp" alt="Close tank at a burning harbor" loading="lazy">
+    </section>
 
-    <section class="home-section home-film" aria-labelledby="film-title"><div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>05</em> Gameplay recording</p><h2 id="film-title">A complete battle<br>from the current build</h2></div><p>This 99-second recording follows a battle from garage selection through the after-action report.</p></div>
-      <div class="home-film-frame reveal"><video controls playsinline preload="metadata" poster="/media/featured/claude-of-tanks-gameplay-poster.webp" aria-label="Claude of Tanks gameplay recording"><source src="/media/featured/claude-of-tanks-gameplay.mp4" type="video/mp4"><a href="/media/featured/claude-of-tanks-gameplay.mp4">Download the gameplay recording</a></video></div>
-    </div></section>
-
-    <section class="closing"><div class="shell"><p class="micro"><em>Free to play</em> // No account required // Runs in the browser</p><h2>Play Claude of Tanks</h2><p>Select a vehicle and battlefield, then start a match in the current build.</p><div class="hero-actions" style="justify-content:center"><a class="btn primary" href="/">Enter the garage</a><a class="btn" href="/docs">Read the field manual</a></div></div></section>
+    <section class="closing"><div class="shell"><p class="micro"><em>Free to play</em> // No account required</p><h2>Take the first shot</h2><div class="hero-actions" style="justify-content:center"><a class="btn primary" href="/">Enter the garage</a><a class="btn" href="/docs">Read the field manual</a></div></div></section>
   </main>
-
-  <footer class="footer"><div class="shell inner"><a class="brand" href="/home" aria-label="Claude of Tanks showcase"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/gallery">Tank Gallery</a><a href="/studio">Studio</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Created by Kevin Liu // 2026</span></div></footer>
-
+  <footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/gallery">Tank Gallery</a><a href="/studio">Studio</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Kevin Liu // 2026</span></div></footer>
   <script type="module" src="/src/presentation/publicPages.js"></script>
-  <script>const reveal=new IntersectionObserver((entries)=>entries.forEach((entry)=>entry.target.classList.toggle('seen',entry.isIntersecting)),{threshold:.08});document.querySelectorAll('.reveal').forEach((node)=>reveal.observe(node));</script>
 </body>
 </html>
