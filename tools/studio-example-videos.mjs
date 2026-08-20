@@ -79,6 +79,84 @@ function featureScenario(file, index) {
 
 const FEATURE_SCENARIOS = FEATURE_SCENE_FILES.map(featureScenario);
 
+const HERO_RAIL_FILES = [
+  {
+    file: '62_action_desert_ram_abramsx_t90m.json',
+    slug: 'desert-ground-rush',
+    rail: [[-5, 0.1, -4], [-2, 0.35, 1], [2.5, 0.9, 4], [6, 2.3, 7]],
+    rolls: [-5, -2, 2, 0], fovs: [46, 40, 36, 39], travel: [3.2, 1.2, 2.4, 2.6],
+  },
+  {
+    file: '83_action_winter_ice_breaker.json',
+    slug: 'winter-ice-orbit',
+    rail: [[0, 0.1, -3], [5, 0.45, 1], [-3.5, 1.5, 4], [4, 3.3, 7]],
+    rolls: [3, -4, 2, 0], fovs: [36, 33, 31, 36], travel: [3.6, 1.0, 1.4, 2.5],
+  },
+  {
+    file: '84_action_steppe_horizon_charge.json',
+    slug: 'steppe-charge-thread',
+    rail: [[-4.5, 0.1, -5], [1, 0.3, 0], [5, 0.8, 3], [-2, 2.9, 8]],
+    rolls: [-3, 2, -2, 0], fovs: [45, 39, 36, 40], travel: [5.8, 4.0, 4.4, 4.8],
+  },
+  {
+    file: '85_action_urban_alley_flash.json',
+    slug: 'urban-overhead-dive',
+    rail: [[2, 8.5, -4], [-3, 5.2, 0], [4, 2.3, 3], [0, 0.6, 7]],
+    rolls: [-8, -4, 3, 0], fovs: [50, 43, 37, 40], travel: [2.6, 2.0, 2.3, 2.8],
+  },
+  {
+    file: '89_action_coastal_beach_storm.json',
+    slug: 'coastal-shell-skim',
+    rail: [[-5, 0.1, -3], [2, 0.3, 1], [-3, 0.9, 4], [5, 2.5, 8]],
+    rolls: [6, -5, 2, 0], fovs: [47, 40, 35, 39], travel: [5.2, 3.6, 4.0, 4.4],
+  },
+];
+
+const HERO_EFFECT_TIMES = [
+  280, 620, 940, 1260, 1580, 1920, 2260, 2610, 2980, 3340, 3710, 4140,
+];
+
+function heroRailScenario(config, index) {
+  const scene = JSON.parse(readFileSync(
+    resolve('tools/marketing-shots/scenes-action-r3', config.file), 'utf8',
+  ));
+  const actors = scene.actors.map((actor) => actor.name);
+  const sourceEffects = scene.effects.map((effect, effectIndex) => ({
+    ...effect,
+    tMs: HERO_EFFECT_TIMES[effectIndex % HERO_EFFECT_TIMES.length],
+  }));
+  const firingActors = actors.filter(Boolean);
+  const target = actors[1] || actors[actors.length - 1];
+  const accentEffects = [
+    { type: 'fire', actor: firingActors[0], tMs: 4480,
+      params: { slot: 0, tracer: true, recoil: true } },
+    { type: 'fire', actor: firingActors[2] || firingActors[0], tMs: 4810,
+      params: { slot: 0, tracer: true, recoil: true } },
+    { type: 'impact', actor: target, tMs: 5110,
+      params: { kind: 'pen', caliberMm: 120, hFrac: 0.56 } },
+    { type: 'tank_kill', actor: target, tMs: 5360,
+      params: { cause: 'ammorack', pop: true } },
+  ];
+  scene.effects = [...sourceEffects, ...accentEffects];
+  scene.fxTime = 0;
+  scene.timeScale = 0;
+  return {
+    index: index + 1,
+    map: scene.map,
+    alpha: scene.actors[0].id,
+    bravo: scene.actors[1]?.id || scene.actors[0].id,
+    seed: scene.seed,
+    scene,
+    slug: config.slug,
+    rail: config.rail,
+    rolls: config.rolls,
+    fovs: config.fovs,
+    travel: config.travel,
+  };
+}
+
+const HERO_RAIL_SCENARIOS = HERO_RAIL_FILES.map(heroRailScenario);
+
 const args = process.argv.slice(2);
 function opt(name, fallback) {
   const index = args.indexOf(`--${name}`);
@@ -87,16 +165,20 @@ function opt(name, fallback) {
 
 const outDir = resolve(opt('out', 'shots/studio-modern-examples'));
 const collection = opt('collection', 'duels');
-const scenarioPool = collection === 'features' ? FEATURE_SCENARIOS : SCENARIOS;
+const scenarioPool = collection === 'hero-rails'
+  ? HERO_RAIL_SCENARIOS
+  : (collection === 'features' ? FEATURE_SCENARIOS : SCENARIOS);
 const count = Math.max(1, Math.min(scenarioPool.length, Number.parseInt(opt('count', String(scenarioPool.length)), 10) || scenarioPool.length));
 const only = new Set(String(opt('only', ''))
   .split(',')
   .map((value) => Number.parseInt(value.trim(), 10))
-  .filter((value) => Number.isInteger(value) && value >= 1 && value <= SCENARIOS.length));
+  .filter((value) => Number.isInteger(value) && value >= 1 && value <= scenarioPool.length));
 const fps = Math.max(24, Math.min(60, Number.parseInt(opt('fps', '30'), 10) || 30));
+const width = Math.max(1280, Math.min(3840, Number.parseInt(opt('width', '1920'), 10) || 1920));
+const height = Math.max(720, Math.min(2160, Number.parseInt(opt('height', '1080'), 10) || 1080));
 const videoBitsPerSecond = Math.max(
   2_000_000,
-  Math.min(30_000_000, Number.parseInt(opt('bitrate', '6000000'), 10) || 6_000_000),
+  Math.min(60_000_000, Number.parseInt(opt('bitrate', '16000000'), 10) || 16_000_000),
 );
 mkdirSync(outDir, { recursive: true });
 
@@ -205,7 +287,7 @@ const manifest = {
   version: 1,
   generatedAt: new Date().toISOString(),
   collection,
-  renderer: { width: 1280, height: 720, fps, videoBitsPerSecond },
+  renderer: { width, height, fps, videoBitsPerSecond },
   videos: [],
 };
 
@@ -238,7 +320,7 @@ try {
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+  await page.setViewport({ width, height, deviceScaleFactor: 1 });
   page.on('console', (message) => {
     if (message.type() === 'error' && !message.text().includes('favicon')) {
       consoleErrors.push(message.text());
@@ -284,7 +366,7 @@ try {
         const durationMs = 6000;
         const actorTracks = job.scene.actors.map((actor, actorIndex) => {
           const heading = (actor.facingDeg || 0) * Math.PI / 180;
-          const travel = actorIndex === 1 ? 0.8 : 1.8;
+          const travel = job.travel?.[actorIndex] ?? (actorIndex === 1 ? 0.8 : 1.8);
           return {
             actor: actor.name,
             keys: [
@@ -296,9 +378,36 @@ try {
             ],
           };
         });
-        board = {
-          durationMs,
-          shots: [
+        let shots;
+        if (job.rail) {
+          const dx = lx - x;
+          const dz = lz - z;
+          const length = Math.max(0.001, Math.hypot(dx, dz));
+          const forwardX = dx / length;
+          const forwardZ = dz / length;
+          const rightX = forwardZ;
+          const rightZ = -forwardX;
+          const times = [0, 1850, 3900, durationMs];
+          shots = job.rail.map(([right, up, forward], railIndex) => ({
+            id: `rail-${railIndex + 1}`,
+            label: ['Contact', 'Crossing fire', 'Impact dive', 'Breakthrough'][railIndex],
+            tMs: times[railIndex],
+            pos: [
+              x + rightX * right + forwardX * forward,
+              y + up,
+              z + rightZ * right + forwardZ * forward,
+            ],
+            lookAt: [
+              lx + rightX * right * 0.22 + forwardX * forward * 0.5,
+              ly + up * 0.14,
+              lz + rightZ * right * 0.22 + forwardZ * forward * 0.5,
+            ],
+            fov: job.fovs?.[railIndex] ?? Math.max(32, base.fov - railIndex),
+            rollDeg: job.rolls?.[railIndex] ?? 0,
+            transition: railIndex === 0 ? 'linear' : 'smooth',
+          }));
+        } else {
+          shots = [
             { id: 'open', label: 'Contact', tMs: 0, pos: [x, y, z], lookAt: [lx, ly, lz],
               fov: base.fov, rollDeg: base.rollDeg || 0, transition: 'linear' },
             { id: 'exchange', label: 'Exchange', tMs: 2900, pos: [x + 0.9, y + 0.25, z + 0.45],
@@ -307,7 +416,11 @@ try {
             { id: 'impact', label: 'Impact', tMs: durationMs, pos: [x + 1.6, y + 0.45, z + 0.75],
               lookAt: [lx + 0.8, ly + 0.15, lz + 0.1], fov: Math.max(32, base.fov - 2),
               rollDeg: 0, transition: 'smooth' },
-          ],
+          ];
+        }
+        board = {
+          durationMs,
+          shots,
           actorTracks,
         };
         S.setStoryboard(board);
@@ -377,6 +490,7 @@ try {
       bytes: result.size,
       cameraShots: result.shots,
       effects: result.effects,
+      rail: !!scenario.rail,
     });
     writeManifest();
     console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);

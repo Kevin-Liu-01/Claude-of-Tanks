@@ -4,7 +4,7 @@ const topics = {
   simulation: {
     label: 'Simulation and combat', title: 'Every hit has a path',
     lede: 'The battle simulation advances at 60 Hz. Movement, aim, ballistics, armor, damage, reloads, spotting, and match results are resolved from authoritative state—not from the rendered frame.',
-    hero: '/media/feature-loops-r1/01_desert_duel_leclerc_kill.gif',
+    hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
     sections: [
       ['Fixed-step battle loop', 'The authoritative step uses metres, seconds, radians, and a fixed 1/60-second interval. Input is sampled into explicit vehicle controls before movement, combat, spotting, and result evaluation run in a stable order. Render rate can change without changing the number or order of simulation steps.', 'Frame-time spikes accumulate into bounded fixed steps. Authoritative randomness is seeded or injected. Wall-clock time and Math.random() are excluded from rules that affect a shot, reload, module state, or match result.'],
       ['Aim and shot creation', 'Camera aim and gun aim are separate. The camera chooses the requested point; traverse, elevation, suspension attitude, and bore obstruction determine where the barrel can actually point. A shot starts at the resolved muzzle transform with the current shell, velocity, dispersion, and owner identity.', 'The HUD draws both states. The camera marker communicates the request. The gun marker communicates the ballistic line. “Path blocked” and gun-limit feedback therefore describe physical constraints instead of repainting the request as truth.'],
@@ -20,7 +20,7 @@ const topics = {
   vehicles: {
     label: 'Vehicles and running gear', title: 'The model moves as one machine',
     lede: 'Every selectable tank is a first-party procedural runtime rig. The same vehicle record drives its geometry, dimensions, armor, internal anatomy, mobility, gun, ammunition, icon set, garage dossier, and battle behavior.',
-    hero: '/media/feature-loops-r1/06_verdant_meadow_duel.gif',
+    hero: '/media/hero-rails-r2/03_steppe-charge-thread.webm',
     sections: [
       ['Vehicle contract', 'A vehicle spec defines identity, class, nation, tier, dimensions, mass, engine output, speed, traverse, gun limits, shells, armor, modules, crew, equipment policy, and builder. Consumers read the registry instead of carrying parallel facts.', 'Entity IDs are not vehicle spec IDs. Multiplayer permits duplicate tank selections, so identity, ownership, and specification remain separate throughout state and presentation.'],
       ['Procedural rig', 'Builders create hull, turret, gun mount, gun, running gear, tracks, optics, fittings, markings, and damage hooks with stable ownership. Tank forward is local +Z. Articulation occurs at explicit pivots, and the muzzle is resolved from the actual barrel hierarchy.', 'Roof equipment can move with the turret without becoming armor. Cupolas participate in hit geometry; machine guns, antennas, baskets, loose stowage, and presentation-only fittings do not.'],
@@ -36,7 +36,7 @@ const topics = {
   rendering: {
     label: 'Renderer and performance', title: 'Rendering can adapt without changing the rules',
     lede: 'Three.js owns presentation only. Adaptive resolution, shadows, vegetation, post-processing, particles, and warmup can change with the device; the 60 Hz battle model remains unchanged.',
-    hero: '/media/feature-loops-r1/05_urban_hero_abramsx.gif',
+    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
     sections: [
       ['Frame composition', 'The render path updates camera, visible vehicle rigs, world detail, presentation effects, lighting, shadows, and post-processing from the latest interpolated state. Established hot loops reuse scratch objects and pools rather than allocating each frame.', 'Late transparent effects share depth information with the main scene. Muzzle light, tracer, sparks, smoke, dust, fire, and debris are admitted by distance and quality policy.'],
       ['Lighting and post-processing', 'Biome lighting supplies sun direction, sky, fog, exposure, and shadow policy. Stable cascaded shadows follow the relevant camera region. The post chain combines ambient occlusion, anti-aliasing, bloom where useful, output grading, and the final dynamic render scale.', 'Capture views pin quality and render scale so comparison images do not drift. Gameplay can reduce expensive layers under sustained load.'],
@@ -52,7 +52,7 @@ const topics = {
   worlds: {
     label: 'Battlefields and destruction', title: 'Battlefields are built for armored movement',
     lede: 'Sixteen battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
-    hero: '/media/feature-loops-r1/03_winter_lake_duel.gif',
+    hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
     sections: [
       ['Map contract', 'Each map provides terrain height, ground materials, obstacles, collision, concealment, spawn groups, capture areas, lighting, weather, sound context, and a deterministic establishing camera. Simulation consumers use these interfaces rather than scene traversal.', 'The registry is the source for selection, loading, Studio, screenshots, and documentation counts.'],
       ['Terrain and movement', 'Height fields answer vehicle support, projectile collision, camera clearance, and prop placement. Surface class affects grip and presentation. Roads, slopes, ridges, water edges, and hull-down positions are composed around the intended armored routes.', 'Vehicle suspension samples the same ground surface used by movement and ballistic terrain queries.'],
@@ -68,7 +68,7 @@ const topics = {
   multiplayer: {
     label: 'Multiplayer authority', title: 'Clients request and the server decides',
     lede: 'The multiplayer path keeps hits, damage, reloads, spotting, bots, and match results on the authoritative side. Clients predict local movement and present filtered snapshots.',
-    hero: '/media/feature-loops-r1/02_desert_ram_abramsx_t90m.gif',
+    hero: '/media/hero-rails-r2/05_coastal-shell-skim.webm',
     sections: [
       ['Room and match lifecycle', 'A room owns members, teams, selected vehicles, camouflage, map choice, readiness, chat, invites, and reconnect state. Match handoff creates an authoritative world with stable player and entity identities.', 'Spectators have an explicit team and perspective. They do not borrow a vehicle ID as their player identity.'],
       ['Inputs and snapshots', 'Clients send normalized control input and an ordered input sequence. Authority advances the same fixed-step movement and combat modules used by solo. Snapshots carry acknowledged input, visible entities, combat state, and presentation events.', 'The local tank predicts and reconciles. Remote tanks interpolate. Neither path changes the authoritative shot result.'],
@@ -100,13 +100,13 @@ const topics = {
   studio: {
     label: 'Scene Studio and capture', title: 'Every public frame can be reproduced',
     lede: 'Scene Studio uses current maps, vehicle builders, articulation, effects, and camera systems to create deterministic stills and video inside the browser.',
-    hero: '/media/feature-loops-r1/04_urban_street_duel.gif',
+    hero: '/media/hero-rails-r2/04_urban-overhead-dive.webm',
     sections: [
       ['Scene document', 'A scene stores map, seed, actor spec IDs, names, positions, headings, turret and gun pose, camouflage, effects, camera, time, and optional storyboard. Loading rebuilds from current first-party assets.', 'The JSON is a reproducibility record, not a baked screenshot description.'],
-      ['Timeline and actors', 'Actor tracks interpolate position and articulation over deterministic time. Storyboard shots animate camera position, target, field of view, roll, and transition. Scrubbing evaluates both without depending on wall-clock time.', 'The six public feature loops use approved still sightlines with narrow rails so scenery cannot erase the vehicles.'],
+      ['Timeline and actors', 'Actor tracks interpolate position and articulation over deterministic time. Storyboard shots animate camera position, target, field of view, roll, and transition. Scrubbing evaluates both without depending on wall-clock time.', 'The five current hero films use four-key rails across five battlefields. Each rail keeps multiple vehicles readable while moving from contact to impact.'],
       ['Effects', 'Fire, tracer, impact, sparks, dust, machine-gun bursts, track damage, fuel kills, and ammunition-rack kills are placed on the same timeline. Effects resolve from actor anchors or explicit world points.', 'Capture masters preserve motion and effects at 30 frames per second before public encodes are made.'],
-      ['Capture pipeline', 'Studio records a VP9 master through the production renderer. The publisher creates a high-quality WebM, true GIF, poster, byte receipts, and a manifest. Public pages prefer WebM; GIF renditions remain available for embedding.', 'Every loop is sampled at 1, 3, and 5 seconds. A loop fails if vehicles disappear behind scenery, effects erase the silhouette, or the rail intersects geometry.'],
-      ['Still-image campaigns', 'Battle campaigns start from scene JSON, render review captures, tile contact sheets, export 4K frames, run image statistics, and require owner approval. The 88-frame public archive retains its scene identifiers and six process sheets.', 'Run `npm run studio:features:render`, `npm run studio:features:publish`, and `npm run showcase:check` to reproduce the current public media.'],
+      ['Capture pipeline', 'Studio records VP9 through the production renderer. The current publisher preserves the 1920 × 1080 hero masters without another lossy video encode, publishes a native 3840 × 2160 gameplay film, and generates still posters and byte receipts. Public playback uses looping video rather than GIF.', 'A rail fails if vehicles disappear behind scenery, effects erase the silhouette, the camera crosses geometry, or the source resolution falls below its delivery contract.'],
+      ['Still-image campaigns', 'Battle campaigns start from scene JSON, render review captures, tile contact sheets, export 4K frames, run image statistics, and require owner approval. The public archive retains its scene identifiers and review sheets.', 'Run `npm run studio:hero:render`, `npm run studio:hero:publish`, `npm run studio:evidence:capture`, and `npm run showcase:check` to reproduce the current public media.'],
     ],
     media: [
       ['/media/presentation-r1/ui_studio.webp', 'Scene Studio workspace with actors, effects, storyboard, and camera'],
@@ -134,7 +134,10 @@ document.title = `${topic.label} — Claude of Tanks Technical Manual`;
 
 const topicNav = TOPIC_ORDER.map((id) => `<a href="/docs/${id}"${id === slug ? ' aria-current="page"' : ''}>${topics[id].label}</a>`).join('');
 const root = document.querySelector('#topicRoot');
+const heroMarkup = topic.hero.endsWith('.webm')
+  ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.webm$/, '.jpg')}" aria-label="${topic.label} shown in the current game renderer"><source src="${topic.hero}" type="video/webm"></video>`
+  : `<img src="${topic.hero}" alt="${topic.label} shown in the current game renderer">`;
 root.innerHTML = `
-  <header class="topic-hero"><img src="${topic.hero}" alt="${topic.label} shown in the current game renderer"><div class="topic-hero-shade"></div><div class="shell"><p class="kicker">Technical manual // ${topic.label}</p><h1>${topic.title}</h1><p>${topic.lede}</p></div></header>
+  <header class="topic-hero">${heroMarkup}<div class="topic-hero-shade"></div><div class="shell"><p class="kicker">Technical manual // ${topic.label}</p><h1>${topic.title}</h1><p>${topic.lede}</p></div></header>
   <nav class="topic-nav" aria-label="Technical manual sections"><div class="shell"><a href="/docs">Manual index</a>${topicNav}</div></nav>
   <div class="shell topic-layout"><article>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === 1 ? 0 : index === 3 ? 1 : -1])).join('')}</article><aside><p>Manual section</p><strong>${topic.label}</strong><span>Current runtime contracts and verification paths.</span><a href="/docs">All documentation →</a></aside></div>`;

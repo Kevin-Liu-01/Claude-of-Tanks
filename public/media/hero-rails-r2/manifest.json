@@ -1,0 +1,143 @@
+{
+  "libraryId": "claude-of-tanks-hero-rails-r2",
+  "schemaVersion": 1,
+  "source": "In-engine Scene Studio recording from deterministic first-party battle scenes",
+  "renderer": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "videoBitsPerSecond": 16000000
+  },
+  "gameplay4k": {
+    "video": "/media/hero-rails-r2/gameplay_urban_overhead_4k.webm",
+    "poster": "/media/hero-rails-r2/gameplay_urban_overhead_4k.jpg",
+    "width": 3840,
+    "height": 2160,
+    "durationMs": 6000,
+    "videoBytes": 9713342,
+    "posterBytes": 2121453
+  },
+  "qualityGate": {
+    "requirements": [
+      "native 1920x1080 VP9 hero masters",
+      "native 3840x2160 VP9 gameplay master",
+      "four-key camera rail",
+      "at least ten timed combat effects",
+      "multiple modern armored vehicles"
+    ],
+    "passed": 5,
+    "failed": 0
+  },
+  "rails": [
+    {
+      "id": "01_desert-ground-rush",
+      "title": "Desert ground rush",
+      "map": "desert",
+      "durationMs": 6000,
+      "video": "/media/hero-rails-r2/01_desert-ground-rush.webm",
+      "poster": "/media/hero-rails-r2/01_desert-ground-rush.jpg",
+      "videoBytes": 7858160,
+      "posterBytes": 387265,
+      "cameraShots": 4,
+      "effects": 14,
+      "actors": [
+        {
+          "id": "challenger_3",
+          "name": "Challenger 3"
+        },
+        {
+          "id": "kf51",
+          "name": "KF51 Panther"
+        }
+      ]
+    },
+    {
+      "id": "02_winter-ice-orbit",
+      "title": "Winter ice orbit",
+      "map": "winter",
+      "durationMs": 6000,
+      "video": "/media/hero-rails-r2/02_winter-ice-orbit.webm",
+      "poster": "/media/hero-rails-r2/02_winter-ice-orbit.jpg",
+      "videoBytes": 8242237,
+      "posterBytes": 321299,
+      "cameraShots": 4,
+      "effects": 10,
+      "actors": [
+        {
+          "id": "strv122",
+          "name": "Stridsvagn 122"
+        },
+        {
+          "id": "type99a",
+          "name": "ZTZ-99A (Type 99A)"
+        }
+      ]
+    },
+    {
+      "id": "03_steppe-charge-thread",
+      "title": "Steppe charge thread",
+      "map": "steppe",
+      "durationMs": 6000,
+      "video": "/media/hero-rails-r2/03_steppe-charge-thread.webm",
+      "poster": "/media/hero-rails-r2/03_steppe-charge-thread.jpg",
+      "videoBytes": 8492006,
+      "posterBytes": 278991,
+      "cameraShots": 4,
+      "effects": 13,
+      "actors": [
+        {
+          "id": "k2",
+          "name": "K2 Black Panther"
+        },
+        {
+          "id": "t14",
+          "name": "T-14 Armata"
+        }
+      ]
+    },
+    {
+      "id": "04_urban-overhead-dive",
+      "title": "Urban overhead dive",
+      "map": "urban",
+      "durationMs": 6000,
+      "video": "/media/hero-rails-r2/04_urban-overhead-dive.webm",
+      "poster": "/media/hero-rails-r2/04_urban-overhead-dive.jpg",
+      "videoBytes": 9349550,
+      "posterBytes": 552348,
+      "cameraShots": 4,
+      "effects": 14,
+      "actors": [
+        {
+          "id": "t90m",
+          "name": "T-90M Proryv"
+        },
+        {
+          "id": "ariete",
+          "name": "C1 Ariete Preserie"
+        }
+      ]
+    },
+    {
+      "id": "05_coastal-shell-skim",
+      "title": "Coastal shell skim",
+      "map": "coastal",
+      "durationMs": 6000,
+      "video": "/media/hero-rails-r2/05_coastal-shell-skim.webm",
+      "poster": "/media/hero-rails-r2/05_coastal-shell-skim.jpg",
+      "videoBytes": 7844098,
+      "posterBytes": 251514,
+      "cameraShots": 4,
+      "effects": 14,
+      "actors": [
+        {
+          "id": "leo2a7v",
+          "name": "Leopard 2A7V"
+        },
+        {
+          "id": "k2",
+          "name": "K2 Black Panther"
+        }
+      ]
+    }
+  ]
+}

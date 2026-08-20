@@ -38,12 +38,10 @@ assert.ok(FEATURED_IMAGES.every((img) => /\/(?:featured\/f\d+_studio_|presentati
   'only handmade Studio or owner-approved presentation captures may enter the loading-screen rotation');
 assert.ok(FEATURED_SHOTS.slice(0, 5).every((shot) => shot.handmade),
   'the complete handmade set must lead the featured gallery');
-assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 1,
-  'the garage gallery should expose one real animated Studio battle');
-assert.ok(FEATURED_SHOTS.find((shot) => shot.animated)?.img.endsWith('.gif'),
-  'the animated Studio battle must be published as the requested GIF');
-assert.ok(!TRANSITION_SHOTS.some((shot) => shot.animated),
-  'the large animated asset must stay out of boot and transition surfaces');
+assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 0,
+  'the image-backed garage gallery must not decode animated GIF assets');
+assert.ok(FEATURED_SHOTS.some((shot) => shot.img === '/media/feature-evidence-r2/studio-action.webp'),
+  'the garage gallery keeps the native 4K Studio evidence frame');
 const approved = [
   '02_desert_rooftop_dive', '03_desert_muzzle_worm', '05_winter_ice_breaker',
   '08_winter_village_hell', '10_urban_overpass_dive', '12_urban_crossfire_x',

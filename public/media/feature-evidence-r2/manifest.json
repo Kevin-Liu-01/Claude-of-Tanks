@@ -1,0 +1,64 @@
+{
+  "libraryId": "claude-of-tanks-feature-evidence-r2",
+  "schemaVersion": 1,
+  "source": "Native 4K in-engine and public-interface captures",
+  "qualityGate": {
+    "requirements": [
+      "3840x2160 raster",
+      "production UI state",
+      "procedural playable vehicle geometry"
+    ],
+    "passed": 6,
+    "failed": 0
+  },
+  "images": [
+    {
+      "id": "killcam-modules",
+      "title": "Killcam module trace",
+      "path": "/media/feature-evidence-r2/killcam-modules.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 2072224
+    },
+    {
+      "id": "garage-fleet",
+      "title": "Garage fleet",
+      "path": "/media/feature-evidence-r2/garage-fleet.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 686046
+    },
+    {
+      "id": "gallery-carro45t-modules",
+      "title": "Carro 45t internal modules",
+      "path": "/media/feature-evidence-r2/gallery-carro45t-modules.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 386746
+    },
+    {
+      "id": "studio-action",
+      "title": "Scene Studio action frame",
+      "path": "/media/feature-evidence-r2/studio-action.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1616030
+    },
+    {
+      "id": "mechanic-mbt70-missile",
+      "title": "MBT-70 Shillelagh missile",
+      "path": "/media/feature-evidence-r2/mechanic-mbt70-missile.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1469498
+    },
+    {
+      "id": "mechanic-strv-suspension",
+      "title": "Stridsvagn 103 hydropneumatic aim",
+      "path": "/media/feature-evidence-r2/mechanic-strv-suspension.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 1220854
+    }
+  ]
+}

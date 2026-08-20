@@ -94,8 +94,8 @@ export const FEATURED_SHOTS = [
     cap: 'Scene Studio — burning advance', focal: '50% 55%',
   },
   {
-    img: '/media/presentation-r1/studio_action_loop.gif',
-    cap: 'Scene Studio — live directed battle', focal: '50% 52%', animated: true,
+    img: '/media/feature-evidence-r2/studio-action.webp',
+    cap: 'Scene Studio — directed urban battle', focal: '50% 52%', handmade: true,
   },
 ];
 
