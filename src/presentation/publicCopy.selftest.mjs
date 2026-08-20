@@ -52,6 +52,7 @@ const docsSource = readFileSync(join(ROOT, 'docs.html'), 'utf8');
 assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/);
 assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
 assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);
+assert.match(docsSource, /<track kind="captions"[^>]+claude-of-tanks-promo-v13\.vtt/);
 
 const promoRoot = join(ROOT, 'public/media/promo-v13');
 const promoManifest = JSON.parse(readFileSync(join(promoRoot, 'manifest.json'), 'utf8'));
@@ -59,6 +60,7 @@ assert.equal(promoManifest.version, 13);
 for (const asset of Object.values(promoManifest.assets)) {
   assert.ok(existsSync(join(ROOT, 'public', asset.file)), `missing approved promo: ${asset.file}`);
   assert.ok(existsSync(join(ROOT, 'public', asset.poster)), `missing approved poster: ${asset.poster}`);
+  if (asset.captions) assert.ok(existsSync(join(ROOT, 'public', asset.captions)), `missing promo captions: ${asset.captions}`);
 }
 
 console.log('public copy selftest passed');

@@ -18,6 +18,7 @@
     "fieldManual": {
       "file": "/media/promo-v13/claude-of-tanks-promo-badged.mp4",
       "poster": "/media/promo-v13/claude-of-tanks-promo-badged.jpg",
+      "captions": "/media/promo-v13/claude-of-tanks-promo-v13.vtt",
       "role": "badged documentation feature reel",
       "audio": true,
       "sha256": "cb1d3ac83deb9c101036ea68c9f17b7a23a33c7d2111ce07a622788a9ad2c8b1",

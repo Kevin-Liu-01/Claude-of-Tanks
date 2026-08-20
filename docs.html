@@ -27,18 +27,23 @@
     <img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Three armored vehicles exchanging fire in Steinburg">
     <div class="docs-hero-shade"></div>
     <div class="shell">
-      <div><p class="kicker">Engineering field manual // Public edition 06</p><h1>Technical<br><span>field manual</span></h1><p class="hero-lede">This guide documents the current <strong>Claude of Tanks</strong> renderer, simulation, vehicle pipeline, worlds, interface, networking, performance policy, mobile runtime, and production tools. Each section links visible behavior to its implementation.</p></div>
-      <div class="doc-status"><div><small>Fleet</small><strong>111</strong><span>production vehicles</span></div><div><small>Worlds</small><strong>16</strong><span>destructible maps</span></div><div><small>Authority</small><strong>60 Hz</strong><span>fixed-step rules</span></div><div><small>Presentation</small><strong class="status-live">120 FPS</strong><span>certified test path</span></div></div>
+      <div class="docs-hero-copy"><p class="kicker">Engineering field manual // Public edition 06</p><h1>Technical<br><span>field manual</span></h1><p class="hero-lede">A practical guide to the <strong>Claude of Tanks</strong> renderer, simulation, vehicles, worlds, interface, networking, performance, and production tools. Each section connects visible behavior to the system that implements it.</p></div>
+      <figure class="doc-hero-reel">
+        <video controls playsinline preload="metadata" poster="/media/promo-v13/claude-of-tanks-promo-badged.jpg" aria-label="Claude of Tanks feature reel with chapter labels and synchronized score"><source src="/media/promo-v13/claude-of-tanks-promo-badged.mp4" type="video/mp4"><track kind="captions" src="/media/promo-v13/claude-of-tanks-promo-v13.vtt" srclang="en" label="English" default></video>
+        <figcaption><span>Current in-engine feature reel</span><strong>Approved v13 // 24 seconds</strong></figcaption>
+      </figure>
     </div>
   </header>
 
-  <section class="docs-promo" aria-labelledby="promoTitle"><div class="shell">
-    <header><p class="kicker">In-engine feature reel // Approved v13</p><h2 id="promoTitle">The complete field reel</h2><p>Garage, battlefields, armor, tracked movement, Scene Studio, Tank Gallery, and destruction. All captured from the current browser runtime.</p></header>
-    <video controls playsinline preload="metadata" poster="/media/promo-v13/claude-of-tanks-promo-badged.jpg" aria-label="Claude of Tanks feature reel with chapter labels and synchronized score"><source src="/media/promo-v13/claude-of-tanks-promo-badged.mp4" type="video/mp4"></video>
-  </div></section>
+  <section class="docs-evidence" aria-label="Current build facts"><div class="shell"><dl>
+    <div><dt>Production fleet</dt><dd>111 vehicles</dd></div>
+    <div><dt>Battlefields</dt><dd>16 maps</dd></div>
+    <div><dt>Simulation</dt><dd>60 Hz fixed step</dd></div>
+    <div><dt>Presentation</dt><dd><span>120 FPS</span> test path</dd></div>
+  </dl></div></section>
 
   <section class="docs-chapters" aria-labelledby="chaptersTitle"><div class="shell">
-    <p class="kicker">Detailed manuals</p><h2 id="chaptersTitle">Choose a system</h2>
+    <p class="kicker">Detailed manuals</p><h2 id="chaptersTitle">System guides</h2>
     <div class="docs-chapter-grid">
       <a href="/docs/simulation"><img src="/media/feature-loops-r1/01_desert_duel_leclerc_kill.jpg" alt="Desert tank engagement"><span>Simulation and combat</span><strong>Shots, armor, modules, reloads, and authority.</strong></a>
       <a href="/docs/vehicles"><img src="/media/feature-loops-r1/06_verdant_meadow_duel.jpg" alt="Tanks moving through a meadow"><span>Vehicles and running gear</span><strong>Procedural rigs, tracks, suspension, and anatomy.</strong></a>
@@ -50,7 +55,7 @@
     </div>
   </div></section>
 
-  <div class="docs-layout shell">
+  <main class="docs-layout shell">
     <aside class="docs-toc" aria-label="Documentation contents">
       <div class="toc-head"><span>Field manual</span><button id="docsMenu" type="button" aria-expanded="false">Menu</button></div>
       <nav>
@@ -133,7 +138,7 @@ node src/engine/shadowStability.selftest.mjs</code></pre></div>
         <p>Open <a class="inline-link" href="/studio">/studio</a> or press F8 in the garage. Studio places any roster vehicle on any map, conforms actors to terrain, applies camouflage and damage states, schedules the game's firing and destruction effects, scrubs a deterministic 20-second timeline, builds camera, actor, and effect tracks, records video, captures high-resolution PNGs, and imports or exports scene JSON. The Field Frames drawer provides the current 88-frame archive beside the authoring controls.</p>
         <h3>Contact-sheet review</h3>
         <p>Each campaign begins with deterministic scene data. Low-resolution captures are then reviewed in groups of ten. The contact sheets reveal weak silhouettes, obstructed cameras, unreadable vehicles, repetitive staging, and effects that hide the action. Approved frames proceed to 4K export, automated image analysis, owner approval, and publication.</p>
-        <div class="review-sequence" aria-label="Marketing frame review sequence"><span>Scene JSON</span><span>Review capture</span><span>Contact sheets</span><span>4K + grade</span><span>Owner approval</span></div>
+        <div class="review-sequence" role="list" aria-label="Marketing frame review sequence"><span role="listitem">Scene JSON</span><span role="listitem">Review capture</span><span role="listitem">Contact sheets</span><span role="listitem">4K + grade</span><span role="listitem">Owner approval</span></div>
         <div class="process-sheet-group">
           <header><span>Action campaign</span><strong>30 frames // 3 review sheets</strong></header>
           <div class="process-sheet-grid">
@@ -173,7 +178,7 @@ npm run build</code></pre></div>
     </article>
 
     <aside class="doc-aside"><div class="aside-card accent"><p>Visual archive</p><strong>88 field frames</strong><p>This manual, the landing page, Tank Gallery, and Scene Studio use the same published archive.</p></div><div class="aside-card"><p>Runtime data</p><strong>Current fleet and map registries</strong><p>Vehicle and battlefield counts are read from the current runtime registries.</p></div><div class="aside-card"><p>Coordinate system</p><strong>Metres · seconds · radians</strong><p>Vehicle forward is local +Z. The authoritative simulation advances at 1/60 second.</p></div></aside>
-  </div>
+  </main>
 
   <footer class="docs-footer"><div class="inner shell"><a class="brand" href="/home" aria-label="Claude of Tanks showcase"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/gallery">Tank Gallery</a><a href="/">Garage</a><a href="/studio">Scene Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="footer-mark">Public field manual // 2026</span></div></footer>
   <div class="docs-toast" id="docsToast" role="status"></div>
