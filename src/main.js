@@ -101,9 +101,6 @@ import {
 import { createBootScreen } from './ui/bootScreen.js';
 import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
 import { createTransition } from './ui/transition.js';
-// SCENE STUDIO (src/game/studio.js): staging rig + scripted-shot API.
-import { createStudio } from './game/studio.js';
-
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
@@ -312,8 +309,15 @@ const worldBuilds = new Map();
 const residentLimits = residentResourceLimits(getDeviceTier());
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
+let pendingMapChoice = 'verdant'; // includes the non-prefetchable Random card
 let worldDormant = false;        // garage: world hidden + per-frame update off
 let worldServicesMapId = null;   // collider/minimap/garage placement prepared
+let worldPrefetchTimer = 0;
+const worldPrefetchStats = {
+  requested: 0, completed: 0, joined: 0, promoted: 0,
+  cancelled: 0, skippedCapacity: 0, lastMap: null, lastMs: 0, active: null,
+};
+if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
 // The sky/fog preset the atmosphere is currently keyed to. Seeded with the
 // boot map so the FIRST activation of 'verdant' behaves exactly like the old
 // boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
@@ -346,17 +350,25 @@ function enforceWorldCacheBudget() {
   }
 }
 
-function beginWorldBuild(mapId, onProgress = null) {
+function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) {
   const id = mapId || pendingMapId;
   const cached = worldCache.get(id);
   if (cached) return { promise: Promise.resolve(cached), listeners: null, f: 1, label: 'Ready' };
   let rec = worldBuilds.get(id);
+  if (rec && !background && rec.background) {
+    rec.background = false;
+    worldPrefetchStats.joined++;
+    worldPrefetchStats.promoted++;
+  }
   if (!rec) {
     rec = {
       id, f: 0, label: 'Surveying terrain',
       listeners: new Set(), promise: null,
       stageTimings: {}, stageLabel: null, stageMark: performance.now(),
+      background, cancelled: false,
     };
+    const startedAt = performance.now();
+    const startedInBackground = background;
     const finishBuildStage = (now = performance.now()) => {
       if (!rec.stageLabel) return;
       const key = ({
@@ -375,8 +387,13 @@ function beginWorldBuild(mapId, onProgress = null) {
     // generation order and geometry stay identical while the user-visible
     // load sheds the scheduling tax.
     const yieldForeground = createFrameBudgetYielder(32);
+    const yieldBackground = createFrameBudgetYielder(4);
     rec.promise = createMapAsync(engineCtx, { mapId: id, seed: 1337 },
       async (label, f) => {
+        if (rec.cancelled) {
+          worldPrefetchStats.cancelled++;
+          throw new Error(`Cancelled stale battlefield prefetch: ${id}`);
+        }
         if (label !== rec.stageLabel) {
           const now = performance.now();
           finishBuildStage(now);
@@ -388,7 +405,19 @@ function beginWorldBuild(mapId, onProgress = null) {
         for (const fn of rec.listeners) {
           try { fn(f, label); } catch (_) { /* advisory */ }
         }
-        await yieldForeground();
+        if (rec.background) {
+          // Background construction runs only during a genuine garage lull.
+          // A BATTLE press promotes this same promise and immediately exits
+          // the wait, so work is never duplicated or stuck behind idle pacing.
+          while (rec.background && (game.phase !== 'garage'
+              || performance.now() - garageActivityAt < 1200)) {
+            await new Promise((resolve) => setTimeout(resolve, 120));
+          }
+          if (rec.background) await yieldBackground(true);
+          else await yieldForeground();
+        } else {
+          await yieldForeground();
+        }
       // Drain the same deterministic generators at their finest checkpoints.
       // The frame-budget yielder above still coalesces cheap work on fast
       // machines, while slow CPUs no longer turn a coarse row/family batch
@@ -398,10 +427,16 @@ function beginWorldBuild(mapId, onProgress = null) {
         finishBuildStage();
         next.group.visible = false;
         worldCache.set(id, next);
+        if (startedInBackground) {
+          worldPrefetchStats.completed++;
+          worldPrefetchStats.lastMap = id;
+          worldPrefetchStats.lastMs = Math.round(performance.now() - startedAt);
+        }
         return next;
       })
       .finally(() => {
         if (worldBuilds.get(id) === rec) worldBuilds.delete(id);
+        if (worldPrefetchStats.active === id) worldPrefetchStats.active = null;
       });
     worldBuilds.set(id, rec);
   }
@@ -410,6 +445,35 @@ function beginWorldBuild(mapId, onProgress = null) {
     try { onProgress(rec.f, rec.label); } catch (_) { /* advisory */ }
   }
   return rec;
+}
+
+/** Build the exact selected battlefield into the normal cache while idle. */
+function prefetchWorld(mapId) {
+  if (!mapId || mapId === 'random' || worldCache.has(mapId) || worldBuilds.has(mapId)) return null;
+  if (Number.isFinite(residentLimits.worldScenes)
+      && worldCache.size >= residentLimits.worldScenes) {
+    worldPrefetchStats.skippedCapacity++;
+    return null;
+  }
+  worldPrefetchStats.requested++;
+  worldPrefetchStats.active = mapId;
+  return beginWorldBuild(mapId, null, { background: true }).promise.catch(() => null);
+}
+
+function cancelBackgroundWorldBuildsExcept(mapId = null) {
+  for (const rec of worldBuilds.values()) {
+    if (rec.background && rec.id !== mapId) rec.cancelled = true;
+  }
+}
+
+function queueWorldPrefetch(mapId, delay = 8000) {
+  if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
+  worldPrefetchTimer = 0;
+  if (!bootComplete || !mapId || mapId === 'random') return;
+  worldPrefetchTimer = setTimeout(() => {
+    worldPrefetchTimer = 0;
+    if (game.phase === 'garage' && pendingMapChoice === mapId) prefetchWorld(mapId);
+  }, delay);
 }
 
 /** World raycast that is safe before any battlefield exists. */
@@ -831,7 +895,10 @@ async function warmPedestalPrograms(vis) {
 let heroUpgradeTimer = 0;
 let heroUpgradeIdle = 0;
 let garageActivityAt = performance.now();
-const noteGarageActivity = () => { garageActivityAt = performance.now(); };
+const noteGarageActivity = () => {
+  garageActivityAt = performance.now();
+  if (bootComplete && game.phase === 'garage') queueWorldPrefetch(pendingMapChoice);
+};
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
   window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
 }
@@ -1152,6 +1219,7 @@ function switchMap(mapId) {
  */
 async function ensureWorld(mapId, onProgress = null, opts = null) {
   const id = mapId || pendingMapId;
+  cancelBackgroundWorldBuildsExcept(id);
   let next = worldCache.get(id);
   const wt = { id, cached: !!next };
   const wtStart = performance.now();
@@ -1168,6 +1236,9 @@ async function ensureWorld(mapId, onProgress = null, opts = null) {
       wt.buildDetail = { ...rec.stageTimings };
       if (next._buildDetail?.vegetation) {
         wt.buildDetail.vegetationDetail = { ...next._buildDetail.vegetation };
+      }
+      if (next._buildDetail?.terrain) {
+        wt.buildDetail.terrainDetail = { ...next._buildDetail.terrain };
       }
     } finally {
       if (onProgress && rec.listeners) rec.listeners.delete(onProgress);
@@ -1437,6 +1508,10 @@ const garage = await bootStage('ui', () => createGarage({
   // inside setCamoBiome; startBattle re-calls setCamoBiome(world.mapId) after
   // the roll, so battle state is always correct regardless.
   onMapSelect: (mapId) => {
+    pendingMapChoice = mapId;
+    if (mapId !== 'random') pendingMapId = mapId;
+    cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
+    queueWorldPrefetch(mapId);
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the
@@ -2365,6 +2440,7 @@ async function startBattleLoading(specId, mapId = null) {
       if (warmGeneration !== battleWarmGeneration) return;
       mark('enemyVisuals');
       battleLoad.progress(0.97, 'Priming combat effects');
+      await fx.preloadTextures?.();
       await warmCombatPipelineChunked(24);
       mark('combatWarm');
       if (warmGeneration !== battleWarmGeneration) return;
@@ -5213,6 +5289,7 @@ function warmStudioPipelineChunked(onProgress = null) {
       // without presenting a useful intermediate frame.  Finish the exact
       // same generator contiguously here; the garage idle warmer remains
       // frame-budgeted because it runs in an already interactive view.
+      await fx.preloadTextures?.();
       if (fx.warmTextures) {
         fx.warmTextures();
       } else if (fx.warmTexturesChunked) {
@@ -5736,33 +5813,67 @@ function* compileHiddenVariantsSteps() {
 // window.__STUDIO (schema in docs/STUDIO.md). main.js only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
-const studio = createStudio({
-  renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
-  hfProxy, getWorld: () => world,
-  ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
-    precompile: false,
-    compilePrograms: true,
-    services: false,
-  }),
-  setWorldDormant,
-  setGarageSpots, setGarageSunTrim, enterGarage,
-  warmStudioPipeline: warmStudioPipelineChunked,
-  transition, // branded loading screen on studio enter/exit
-  autoEnter: !STUDIO_BOOT_INTENT,
-});
+let studio = { active: false, tick() {} };
+let studioRuntimePromise = null;
+async function loadStudioRuntime() {
+  if (studioRuntimePromise) return studioRuntimePromise;
+  studioRuntimePromise = import('./game/studio.js').then(({ createStudio }) => {
+    window.removeEventListener('keydown', lazyStudioKeyDown, true);
+    studio = createStudio({
+      renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
+      hfProxy, getWorld: () => world,
+      ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
+        precompile: false,
+        compilePrograms: true,
+        services: false,
+      }),
+      setWorldDormant,
+      setGarageSpots, setGarageSunTrim, enterGarage,
+      warmStudioPipeline: warmStudioPipelineChunked,
+      transition,
+      // main.js owns both direct boot and the first lazy F8 handoff.
+      autoEnter: false,
+    });
+    return studio;
+  }).catch((error) => {
+    studioRuntimePromise = null;
+    throw error;
+  });
+  return studioRuntimePromise;
+}
+
+function lazyStudioKeyDown(event) {
+  if (event.code !== 'F8' || event.repeat || game.phase !== 'garage') return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  loadStudioRuntime()
+    .then((runtime) => runtime.enter())
+    .catch((error) => console.error('[studio] lazy entry failed', error));
+}
+
+if (!STUDIO_BOOT_INTENT) {
+  // Capture owns the first F8/navigation click until the Studio chunk exists;
+  // createStudio installs the permanent toggle listener after import.
+  window.addEventListener('keydown', lazyStudioKeyDown, true);
+}
 
 if (STUDIO_BOOT_INTENT) {
-  await bootStage('studio', () => studio.enter({
-    map: STUDIO_BOOT_MAP,
-    coveredByBoot: true,
-    onProgress: (fraction, label) => {
-      boot.sub(fraction);
-      if (label) boot.note(label);
-    },
-  }));
+  await bootStage('studio', async () => {
+    const runtime = await loadStudioRuntime();
+    return runtime.enter({
+      map: STUDIO_BOOT_MAP,
+      coveredByBoot: true,
+      onProgress: (fraction, label) => {
+        boot.sub(fraction);
+        if (label) boot.note(label);
+      },
+    });
+  });
 }
 
 bootComplete = true;
+requestQuietIdle(() => { fx.preloadTextures?.().catch(() => {}); });
+queueWorldPrefetch(pendingMapChoice);
 scheduleRaf();
 
 // ---------------------------------------------------------------------------

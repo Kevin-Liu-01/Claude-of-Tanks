@@ -3,6 +3,11 @@
 // Contract: docs/ARCHITECTURE.md §2.7, §3.2; visuals per docs/research/graphics-aaa.md §6–7.
 
 import * as THREE from 'three';
+import {
+  chooseTerrainLodBuild,
+  initialTerrainLods,
+  terrainLodForDistance,
+} from './terrainLodPolicy.js';
 import { SimplexNoise } from '../engine/simplexFast.js';
 import { applySourcedTerrain } from './sourcedTextures.js';
 import { buildHorizonRing } from './maps/horizon.js';
@@ -2481,7 +2486,6 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
 
 const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE / CHUNKS;
 const LOD_SEGS = [96, 48, 24];
-const LOD_DIST = [200, 430]; // near < 200, mid < 430, else far
 // r3: 2.5 -> 6.5 — on the 38 m desert mesa walls the far-LOD (5.3 m verts)
 // vs near-LOD height mismatch across a chunk border exceeded the old skirt
 // and the gap flashed the fog-bright backdrop through as a white sliver in
@@ -2514,7 +2518,9 @@ function buildFineGrid(hf, cx0, cz0) {
 function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
-  const { hgrid, pn, stepF } = fine;
+  const hgrid = fine?.hgrid || null;
+  const pn = fine?.pn || 0;
+  const stepF = fine?.stepF || CHUNK_SIZE / FINE_SEGS;
   const perim = 4 * segs;
   const vcount = n * n + perim;
   const pos = new Float32Array(vcount * 3);
@@ -2523,11 +2529,13 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
   let vi = 0;
   for (let gz = 0; gz < n; gz++) for (let gx = 0; gx < n; gx++) {
     const wx = cx0 + gx * step, wz = cz0 + gz * step;
-    const fi = (gz * stride + 1) * pn + (gx * stride + 1);
-    const h = hgrid[fi];
+    const fi = hgrid ? (gz * stride + 1) * pn + (gx * stride + 1) : 0;
+    const h = hgrid ? hgrid[fi] : hf.getHeightAt(wx, wz);
     pos[vi * 3] = wx; pos[vi * 3 + 1] = h; pos[vi * 3 + 2] = wz;
-    const hl = hgrid[fi - 1], hr = hgrid[fi + 1];
-    const hd = hgrid[fi - pn], hu = hgrid[fi + pn];
+    const hl = hgrid ? hgrid[fi - 1] : hf.getHeightAt(wx - stepF, wz);
+    const hr = hgrid ? hgrid[fi + 1] : hf.getHeightAt(wx + stepF, wz);
+    const hd = hgrid ? hgrid[fi - pn] : hf.getHeightAt(wx, wz - stepF);
+    const hu = hgrid ? hgrid[fi + pn] : hf.getHeightAt(wx, wz + stepF);
     const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
     const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
     nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
@@ -2610,8 +2618,8 @@ export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
  * @param {?function(number, number): (Promise<void>|void)} tick
  */
 export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null, tick = null,
-  fineSlices = false) {
-  const g = terrainBuildSteps(heightField, engineCtx, cfg);
+  fineSlices = false, streamOpts = null) {
+  const g = terrainBuildSteps(heightField, engineCtx, cfg, streamOpts);
   let r = g.next();
   while (!r.done) {
     if (tick && (fineSlices || r.value[2])) await tick(r.value[0], r.value[1]);
@@ -2620,7 +2628,7 @@ export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null
   return r.value;
 }
 
-function* terrainBuildSteps(heightField, engineCtx, cfg) {
+function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
   const group = new THREE.Group();
   group.name = 'terrain';
   group.add(buildHorizonRing(engineCtx, cfg, 1337));
@@ -2628,35 +2636,85 @@ function* terrainBuildSteps(heightField, engineCtx, cfg) {
   const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant', heightField._mesaW || null);
   const chunks = [];
+  const streamFarLods = streamOpts?.streamFarLods === true;
+  const focus = streamOpts?.focus || heightField._layout?.spawns?.player || { x: 0, z: 0 };
+  let initialGeometryCount = 0;
+  let initialFineGridCount = 0;
   yield [1, CHUNKS * CHUNKS + 2, true]; // splat canvas bake done
   for (let cz = 0; cz < CHUNKS; cz++) {
     for (let cx = 0; cx < CHUNKS; cx++) {
       const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
-      // r7: one shared fine grid per chunk — see buildFineGrid (terracing fix)
-      const fine = buildFineGrid(heightField, cx0, cz0);
-      const lods = LOD_SEGS.map((segs) => buildChunkGeometry(heightField, cx0, cz0, segs, fine));
-      const mesh = new THREE.Mesh(lods[2], mat);
+      const ccx = cx0 + CHUNK_SIZE / 2, ccz = cz0 + CHUNK_SIZE / 2;
+      const openingDistance = Math.hypot(focus.x - ccx, focus.z - ccz);
+      const initialLevels = streamFarLods
+        ? initialTerrainLods(openingDistance) : [0, 1, 2];
+      // A far-only chunk computes the same height and fine-step normals just
+      // at its 25×25 visible vertices; avoid paying for a dormant 99×99 grid.
+      // Near/mid levels still share one fine grid, preserving their exact
+      // cross-LOD shading and avoiding duplicate samples.
+      const needsFineGrid = !streamFarLods || initialLevels.some((level) => level < 2);
+      const fine = needsFineGrid ? buildFineGrid(heightField, cx0, cz0) : null;
+      if (fine) initialFineGridCount++;
+      const lods = [null, null, null];
+      for (const level of initialLevels) {
+        lods[level] = buildChunkGeometry(heightField, cx0, cz0, LOD_SEGS[level], fine);
+        initialGeometryCount++;
+      }
+      const openingLevel = streamFarLods ? initialLevels[0] : 2;
+      const mesh = new THREE.Mesh(lods[openingLevel], mat);
       mesh.receiveShadow = true;
       mesh.castShadow = false;
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
       group.add(mesh);
-      chunks.push({ mesh, lods, level: 2, cx: cx0 + CHUNK_SIZE / 2, cz: cz0 + CHUNK_SIZE / 2 });
+      chunks.push({
+        mesh, lods,
+        fine: streamFarLods && initialLevels.length < LOD_SEGS.length ? fine : null,
+        level: openingLevel, cx: ccx, cz: ccz, cx0, cz0,
+      });
       yield [2 + cz * CHUNKS + cx + 1, CHUNKS * CHUNKS + 2, cx === CHUNKS - 1];
     }
   }
+  const streamStats = {
+    enabled: streamFarLods,
+    totalGeometryCount: CHUNKS * CHUNKS * LOD_SEGS.length,
+    initialGeometryCount,
+    initialFineGridCount,
+    streamedGeometryCount: 0,
+  };
+  let streamFrame = 0;
+  const streamJob = { index: -1, level: -1, distanceM: 0, urgent: false };
   group.userData.updateLOD = (camPos) => {
     for (const c of chunks) {
       const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
-      // 10% hysteresis on both thresholds to prevent LOD flicker
-      const t0 = LOD_DIST[0] * (c.level === 0 ? 1.1 : 0.9);
-      const t1 = LOD_DIST[1] * (c.level <= 1 ? 1.1 : 0.9);
-      const want = d < t0 ? 0 : d < t1 ? 1 : 2;
-      if (want !== c.level) {
+      const want = terrainLodForDistance(d, c.level);
+      if (want !== c.level && c.lods[want]) {
         c.level = want;
         c.mesh.geometry = c.lods[want];
       }
     }
+    // One geometry every four rendered updates spreads the remaining visual
+    // detail over following seconds instead of replacing the old load stall
+    // with a burst on the first playable frame.
+    if (!streamFarLods || (++streamFrame & 3) !== 0) return;
+    const job = chooseTerrainLodBuild(chunks, camPos.x, camPos.z, streamJob);
+    if (!job) return;
+    const c = chunks[job.index];
+    if (!c.fine && job.level < 2) {
+      c.fine = buildFineGrid(heightField, c.cx0, c.cz0);
+    }
+    c.lods[job.level] = buildChunkGeometry(
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine,
+    );
+    if (c.lods.every(Boolean)) c.fine = null;
+    streamStats.streamedGeometryCount++;
+    const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
+    const want = terrainLodForDistance(d, c.level);
+    if (want === job.level) {
+      c.level = want;
+      c.mesh.geometry = c.lods[want];
+    }
   };
+  group.userData.streamingStats = streamStats;
   return group;
 }

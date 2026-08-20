@@ -2655,6 +2655,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     warmTextures() { particles.warmTextures(); },
 
+    /** Decode deterministic prebuilt atlases during quiet garage time. */
+    preloadTextures() { return particles.preloadTextures(); },
+
     /** Paint the deferred sprite sheets one deterministic tile per frame. */
     warmTexturesChunked(yieldFrame) {
       return particles.warmTexturesChunked(yieldFrame);

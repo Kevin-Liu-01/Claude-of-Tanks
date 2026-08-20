@@ -56,7 +56,14 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
   const heightField = createHeightField(seed, config);
   await step('Building terrain meshes', 0.34);
   const terrain = await buildTerrainMeshesAsync(heightField, engineCtx, config,
-    sub('Building terrain meshes', 0.34, 0.58), fineSlices);
+    sub('Building terrain meshes', 0.34, 0.58), fineSlices, {
+      // The deployment view gets exact near/mid detail and every other chunk
+      // gets its exact visible coarse level. Missing levels grow one geometry
+      // at a time as the camera approaches.
+      // Heightfield/collision/spotting data remains complete and deterministic.
+      streamFarLods: true,
+      focus: heightField._layout.spawns.player,
+    });
   await step('Planting vegetation', 0.58);
   const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
     sub('Planting vegetation', 0.58, 0.82), fineSlices);
@@ -65,7 +72,10 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
     sub('Placing structures', 0.82, 0.96), fineSlices);
   await step('Sealing the battlefield', 0.96);
   const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
-  world._buildDetail = { vegetation: vegetation._buildDetail || null };
+  world._buildDetail = {
+    vegetation: vegetation._buildDetail || null,
+    terrain: terrain.userData.streamingStats || null,
+  };
   return world;
 }
 

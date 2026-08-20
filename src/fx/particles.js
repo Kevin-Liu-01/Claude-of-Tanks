@@ -24,6 +24,14 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 const POOL_SIZES = { smoke: 2048, fire: 1024, billow: 256, psmoke: 384, dust: 1024, sparks: 512, debris: 256, flash: 128, jet: 64 };
+const PARTICLE_TEXTURE_ASSETS = Object.freeze({
+  smoke: '/fx/particles-smoke.png',
+  fire: '/fx/particles-fire.png',
+  prop: '/fx/particles-prop.png',
+  dust: '/fx/particles-dust.png',
+  flash: '/fx/particles-flash.png',
+  jet: '/fx/particles-jet.png',
+});
 
 // ---------------------------------------------------------------------------
 // GLSL — shared helpers
@@ -1257,6 +1265,8 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const jetTex = lazyTex();
   let texturesBaked = false;
   let textureBakeGen = null;
+  let textureAssetImages = null;
+  let textureAssetPromise = null;
 
   function installBakedTexture(tex, baked) {
     // STUDIO selftest fix: the 4×4 placeholder HAS usually been uploaded by
@@ -1274,6 +1284,47 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     // the baked wrapper itself was never uploaded; dropping it frees only
     // CPU-side state
     baked.dispose();
+  }
+
+  function installTextureImage(tex, image) {
+    tex.dispose();
+    tex.image = image;
+    tex.needsUpdate = true;
+  }
+
+  function loadTextureImage(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error(`Particle atlas failed to load: ${src}`));
+      image.src = src;
+    });
+  }
+
+  function preloadTextures() {
+    if (texturesBaked || textureAssetImages) return Promise.resolve(true);
+    if (!textureAssetPromise) {
+      textureAssetPromise = Promise.all(Object.entries(PARTICLE_TEXTURE_ASSETS).map(
+        async ([name, src]) => [name, await loadTextureImage(src)],
+      )).then((entries) => {
+        textureAssetImages = Object.fromEntries(entries);
+        return true;
+      }).catch(() => false);
+    }
+    return textureAssetPromise;
+  }
+
+  function installTextureAssets() {
+    if (texturesBaked || !textureAssetImages) return texturesBaked;
+    installTextureImage(smokeTex, textureAssetImages.smoke);
+    installTextureImage(fireTex, textureAssetImages.fire);
+    installTextureImage(propTex, textureAssetImages.prop);
+    installTextureImage(dustTex, textureAssetImages.dust);
+    installTextureImage(flashTex, textureAssetImages.flash);
+    installTextureImage(jetTex, textureAssetImages.jet);
+    texturesBaked = true;
+    return true;
   }
 
   function* warmTextureSteps() {
@@ -1307,6 +1358,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
   function warmTextures() {
     if (texturesBaked) return;
+    if (installTextureAssets()) return;
     const g = textureBakeGen || (textureBakeGen = warmTextureSteps());
     try {
       for (;;) {
@@ -1322,6 +1374,10 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
 
   async function warmTexturesChunked(yieldFrame) {
     if (texturesBaked) return;
+    if (await preloadTextures()) {
+      installTextureAssets();
+      return;
+    }
     const g = textureBakeGen || (textureBakeGen = warmTextureSteps());
     try {
       for (;;) {
@@ -1562,6 +1618,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      */
     warmTextures,
     warmTexturesChunked,
+    preloadTextures,
 
     /** Current internal clock (seconds). @returns {number} */
     getTime() { return uTime.value; },

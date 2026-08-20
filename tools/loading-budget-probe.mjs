@@ -16,6 +16,7 @@
 //   node tools/loading-budget-probe.mjs --maps verdant,desert --mode all
 //   node tools/loading-budget-probe.mjs --limit 5000
 //   node tools/loading-budget-probe.mjs --stall-limit 500
+//   node tools/loading-budget-probe.mjs --mode battle --garage-dwell 14000
 //   node tools/loading-budget-probe.mjs --serve dev --mode studio
 
 // Exit 0 means every measured path completed in strictly less than the load
@@ -47,6 +48,7 @@ const stallLimitMs = Math.max(17, Number(option('stall-limit', '500')) || 500);
 const mode = option('mode', 'all');
 const serveMode = option('serve', 'production');
 const deviceTier = option('tier', 'desktop');
+const garageDwellMs = Math.max(0, Number(option('garage-dwell', '0')) || 0);
 const modes = new Set([
   'all', 'boot', 'battle', 'studio', 'studio-switch', 'scene-load',
   'transitions', 'tank-switch',
@@ -362,6 +364,10 @@ async function measureBoot() {
 async function measureBattle(mapId) {
   const opened = await openPage(`?nosplash=1&tier=${deviceTier}&gfxreset=1`);
   try {
+    if (garageDwellMs > 0) {
+      await opened.page.evaluate((map) => window.__DEBUG.garage.setSelectedMap(map), mapId);
+      await new Promise((resolve) => setTimeout(resolve, garageDwellMs));
+    }
     await resetStalls(opened.page, `battle:${mapId}`);
     const result = await opened.page.evaluate(async (map) => {
       const startedAt = performance.now();
@@ -373,6 +379,7 @@ async function measureBattle(mapId) {
         trace: window.__BATTLE_LOAD,
         world: window.__WORLD_LOAD,
         combatWarm: window.__COMBAT_WARM,
+        prefetch: window.__WORLD_PREFETCH,
       };
     }, mapId);
     let warmTimedOut = false;
@@ -394,6 +401,7 @@ async function measureBattle(mapId) {
       tracedTotalMs: result.trace?.totalMs ?? null,
       world: result.world || null,
       combatWarm: result.combatWarm || null,
+      prefetch: result.prefetch || null,
       countdownWarm: result.countdownWarm || null,
       warmTimedOut,
       stall,
