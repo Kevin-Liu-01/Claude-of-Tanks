@@ -158,7 +158,10 @@ function mbt70Armor() {
     side: { ke: 80, ce: 95 }, skirtMm: 18, rear: 45, roof: 38,
     cheek: { ke: 330, ce: 420, phys: 300 }, tSide: { ke: 150, ce: 190 },
     tRear: 55, tRoof: 42, mantlet: { ke: 245, ce: 310 },
-    tHalfW: 1.42, tFrontZ: 1.50, tRearZ: -2.92, tH: 0.84,
+    // The cast shell now spans essentially the complete 3.51 m hull width.
+    // Keep the simulation cheek volume aligned with that widened visual
+    // envelope instead of preserving the former narrow 2.84 m turret.
+    tHalfW: 1.72, tFrontZ: 1.50, tRearZ: -2.92, tH: 0.84,
     glacisNoseZ: 3.65, glacisTopZ: 2.21, bustleAmmo: true,
   });
   armor.modules = armor.modules.filter((m) => m.module !== 'ammoRack');
@@ -341,8 +344,12 @@ const MODERN2_SPECS = {
     },
     armor: mbt70Armor(),
     visual: {
-      scheme: 'olive', base: '#4d533c', weather: '#5b6048',
-      patches: ['#34382d', '#77745b'],
+      // Muted Bundeswehr prototype three-tone.  The previous single olive
+      // field read as bright toy green under the garage key light; neutral
+      // field-gray, charcoal and oxide-brown keep the factory presentation
+      // sober while preserving enough contrast to describe the facets.
+      scheme: 'nato', base: '#56564d', weather: '#66645a',
+      patches: ['#30332f', '#685244'],
       marking: 'cross', number: '70', trackWidthM: 0.58, camoScale: 0.58,
     },
   },
@@ -2425,6 +2432,8 @@ function buildMBT70(P) {
 
   // ---- low cast turret with the source model's rounded front -------------
   const TH = 0.80;
+  const TURRET_HALF_WIDTH_M = 1.74;
+  const TURRET_WIDTH_SCALE = TURRET_HALF_WIDTH_M / 1.45;
   const turretPlan = [
     [-1.34, -2.92], [-1.45, -1.48], [-1.45, -0.62], [-1.42, -0.20],
     // Dense near-circular bow stations replace the former long elliptical
@@ -2435,7 +2444,7 @@ function buildMBT70(P) {
     [0.15, 1.60], [0.44, 1.54], [0.75, 1.40], [1.03, 1.20],
     [1.24, 0.88], [1.37, 0.56], [1.42, 0.19], [1.42, -0.20],
     [1.45, -0.62], [1.45, -1.48], [1.34, -2.92],
-  ];
+  ].map(([x, z]) => [x * TURRET_WIDTH_SCALE, z]);
   const rearBiasedInset = (front, shoulder, rear) => (_point, i) => {
     const z = turretPlan[i][1];
     if (z < -1.30) return rear;
@@ -2455,9 +2464,9 @@ function buildMBT70(P) {
   // long and flat-backed like the M1A1 turret instead of meeting a second
   // overlapping frustum. Rear-biased upper insets keep that bustle angular
   // and spacious while the front remains low and sleek.
-  P.add('turretDark', box(2.54, 0.025, 1.88), 0, 0.69, -1.75);                  // bustle roof seam
-  P.add('turret', box(2.68, 0.48, 0.72), 0, 0.31, -2.64);                      // autoloader bustle
-  P.add('turretDark', box(2.50, 0.025, 0.62), 0, 0.57, -2.64);                 // bustle lid seam
+  P.add('turretDark', box(3.06, 0.025, 1.88), 0, 0.69, -1.75);                  // bustle roof seam
+  P.add('turret', box(3.20, 0.48, 0.72), 0, 0.31, -2.64);                      // autoloader bustle
+  P.add('turretDark', box(3.00, 0.025, 0.62), 0, 0.57, -2.64);                 // bustle lid seam
   // The owner's rear-quarter reference shows the MBT-70's characteristic
   // stepped bustle-roof cassette: three proud rectangular doors run aft
   // into the basket instead of leaving the Abrams-like rear roof bare.
@@ -2482,9 +2491,9 @@ function buildMBT70(P) {
   P.add('turretDetail', box(0.90, 0.035, 0.035), 0.42, 0.90, -2.66);
   // Facet seams and lifting eyes make the broad armor read as assembled plate.
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.018, 0.50, 1.36), s * 1.16, 0.40, -0.62, 0, s * 0.08, 0);
-    P.add('turretDetail', box(0.05, 0.05, 1.30), s * 1.46, 0.54, -1.10);
-    liftEye(P, 'turretDetail', s * 0.94, TH + 0.02, -1.28);
+    P.add('turretDark', box(0.018, 0.50, 1.36), s * 1.39, 0.40, -0.62, 0, s * 0.08, 0);
+    P.add('turretDetail', box(0.05, 0.05, 1.30), s * 1.72, 0.54, -1.10);
+    liftEye(P, 'turretDetail', s * 1.12, TH + 0.02, -1.28);
   }
   // Roof hatches: structural cupolas are explicitly separated from fittings.
   P.addCupola('turret', cylY(0.32, 0.34, 0.12, seg), 0.62, TH + 0.06, -0.72);
@@ -2512,9 +2521,9 @@ function buildMBT70(P) {
   P.add('turretGlass', box(0.22, 0.17, 0.025), -0.64, TH + 0.28, 0.20);
   periscope(P, 'turretDetail', -0.58, TH + 0.16, -0.30);
   // Rear basket, smoke launchers, antennae and securely seated stowage.
-  P.add('turretDetail', box(2.72, 0.05, 0.05), 0, 0.70, -3.06);
-  P.add('turretDetail', box(2.72, 0.05, 0.05), 0, 0.19, -3.06);
-  for (let k = 0; k < 11; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.25 + k * 0.25, 0.45, -3.06);
+  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.06);
+  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.06);
+  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.06);
   stowage(P, 'turretCloth', rng, [[-0.58, 0.36, -2.89, 0.78, 0.30, 0.30], [0.50, 0.34, -2.88, 0.74, 0.28, 0.30]]);
   jerryCan(P, 'turretCloth', 1.08, 0.38, -2.85, 0.18);
   ammoCan(P, 'turretDark', -1.05, 0.38, -2.85, -0.12);
@@ -2552,20 +2561,24 @@ function buildMBT70(P) {
     [0.32, 0.86], [0.50, 0.64], [0.63, 0.36], [0.70, 0.05],
     [0.72, -0.30],
   ];
-  P.addGunExtra(polyMultiLoft(mantletPlan, [
+  // The compound shield was previously authored in its native horizontal
+  // frame: 1.44 m wide but only .66 m tall. Rotate that exact curved mass
+  // around the launcher axis so the rounded arrow stands vertically, as on
+  // the MBT-70, without changing its fore-aft trunnion penetration.
+  P.addGunExtra(xform(polyMultiLoft(mantletPlan, [
     { height: -0.33, inset: 0.70 },
     { height: -0.19, inset: 0.90 },
     { height: 0.00, inset: 1.00 },
     { height: 0.19, inset: 0.91 },
     { height: 0.33, inset: 0.70 },
-  ]), 0, 0, 0.08);
+  ]), 0, 0, 0, 0, 0, Math.PI / 2), 0, 0, 0.08);
   // A shallow cast brow melts the shield into the turret roof. The oval
   // recess follows the parabolic shield, while the only truly circular part
   // is the compact 152 mm launcher throat itself.
   P.addGunExtra(xform(sph(0.28, seg, Math.PI * 0.62), 0, 0, 0, 0, 0, 0,
-    [1.72, 0.64, 1.10]), 0, 0.11, 0.43);
+    [0.68, 1.62, 1.10]), 0, 0.11, 0.43);
   P.addGunExtraDark(xform(cylZ(0.255, 0.045, seg), 0, 0, 0, 0, 0, 0,
-    [1.46, 0.88, 1]), 0, 0, 1.105);
+    [0.88, 1.46, 1]), 0, 0, 1.105);
   P.addGunExtra(cylZ(0.22, 0.25, seg, 0.17), 0, 0, 1.19);
   P.addGunExtraDark(cylZ(0.225, 0.035, seg), 0, 0, 1.085);
   buildGun(P, {
@@ -2582,8 +2595,9 @@ function buildMBT70(P) {
   P.gunG.userData.mbt70MantletReceipt = {
     profile: 'parabolic-arrow',
     circularMainShield: false,
-    widthM: 1.44,
-    heightM: 0.66,
+    orientation: 'vertical',
+    widthM: 0.66,
+    heightM: 1.44,
     depthM: 1.34,
     rearOverlapM: 0.30,
     ringCount: 5,
@@ -2593,14 +2607,16 @@ function buildMBT70(P) {
   };
   P.turretG.userData.mbt70TurretReceipt = {
     forwardOffsetM: P.spec.armor.turretPivot[2],
+    structuralWidthM: TURRET_HALF_WIDTH_M * 2,
+    hullWidthM: P.spec.dims.widthM,
     abramsLikeBustle: true,
     rearQuarterArmorRetained: true,
   };
 
   // The running gear above is the exact M1A1 seven-wheel assembly supplied
   // by buildM1A1BareHull; do not layer a second MBT-70 track loop over it.
-  P.decal('turret', 'crossgrey', null, 0.31, [1.39, 0.44, -0.32], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.31, [-1.39, 0.44, -0.32], -Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.31, [1.68, 0.44, -0.32], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.31, [-1.68, 0.44, -0.32], -Math.PI / 2);
   P.decal('hull', 'number', '70', 0.28, [1.70, 1.20, 1.82], Math.PI / 2);
   // Preserve the certified Abrams hull construction while shortening its
   // longitudinal stations to the MBT-70 wheelbase.  Re-seat that shortened

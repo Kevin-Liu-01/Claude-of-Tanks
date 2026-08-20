@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.js';
 import { getSpec, MODEL_SOURCE } from '../specs.js';
 import { tankTier } from '../tier.js';
 import { wheelPatternFor } from '../wheelPatterns.js';
+import { resolveCamoVisual } from '../materials.js';
 import { createTankState, SIM_DT } from '../../sim/movement.js';
 
 const spec = getSpec('mbt70');
@@ -12,6 +13,9 @@ assert.equal(tankTier('mbt70'), 10, 'MBT-70 occupies the German Tier X missile l
 assert.equal(MODEL_SOURCE.mbt70?.source, 'procedural', 'playable never loads the comparison GLB');
 assert.equal(spec.authorship?.runtimeExternalGeometry, false, 'runtime external geometry is prohibited');
 assert.equal(spec.nation, 'Germany', 'garage nation is Germany');
+const factoryVisual = resolveCamoVisual(spec, 'factory');
+assert.equal(factoryVisual.scheme, 'nato', 'factory paint uses a restrained German three-tone pattern');
+assert.equal(factoryVisual.base, '#56564d', 'factory paint cannot regress to the old bright olive-green coat');
 assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true, 'launcher ATGM is the normal primary weapon');
 assert.equal(spec.gun.shells.length, 1, 'no fictional conventional selector round');
@@ -50,8 +54,10 @@ assert.equal(mantlet?.profile, 'parabolic-arrow',
   'cast shield uses the MBT-70 rounded-arrow/parabolic contour');
 assert.equal(mantlet?.circularMainShield, false,
   'main mantlet cannot regress to a circular cylinder or torus');
-assert.ok(mantlet.widthM > mantlet.heightM * 2,
-  'cast shield is a broad semi-cylindrical mass, not a round plate');
+assert.equal(mantlet?.orientation, 'vertical',
+  'compound mantlet stands vertically around the launcher axis');
+assert.ok(mantlet.heightM > mantlet.widthM * 2,
+  'cast shield is a tall semi-cylindrical mass, not a horizontal plate');
 assert.ok(mantlet.planStations >= 13 && mantlet.ringCount >= 5,
   'mantlet has enough plan and elevation stations to hold the compound curve');
 assert.ok(mantlet.rearOverlapM >= 0.30,
@@ -60,9 +66,14 @@ assert.equal(mantlet.xm150Sleeve, true);
 assert.equal(mantlet.nearMuzzleSensor, true);
 assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretReceipt, {
   forwardOffsetM: 0.57,
+  structuralWidthM: 3.48,
+  hullWidthM: 3.51,
   abramsLikeBustle: true,
   rearQuarterArmorRetained: true,
 });
+assert.ok(Math.abs(tank.root.getObjectByName('rig_turret').userData.mbt70TurretReceipt.structuralWidthM
+  - spec.dims.widthM) <= 0.04,
+  'structural turret shell spans the same visual width as the hull');
 const turretBounds = new THREE.Box3().setFromObject(tank.root.getObjectByName('rig_turret'));
 const bustleAftLocal = turretBounds.min.z - spec.armor.turretPivot[2];
 assert.ok(bustleAftLocal < -3.05,
