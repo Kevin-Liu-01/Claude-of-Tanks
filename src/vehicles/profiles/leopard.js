@@ -496,13 +496,13 @@ function leoMantletGun(P, G) {
 
 // Close the narrow channel above the Leopard 2A6-family mantlet.  This
 // bridge follows the inner arrowhead-cheek edges instead of spanning them
-// with a broad rectangular shelf, and is shared so the A6 and A6M cannot
-// drift into different frontal-roof shapes.
-function leopardA6MantletRoofBridge(P) {
+// with a broad rectangular shelf. Variants share the construction while an
+// optional front width lets applique packages meet their own cheek opening.
+function leopardA6MantletRoofBridge(P, o = {}) {
   const { box, polyMultiLoft } = KIT;
   const frontZ = 2.20;
   const rearZ = 0.50;
-  const frontHalfWidth = 0.39;
+  const frontHalfWidth = o.frontHalfWidth ?? 0.39;
   const rearHalfWidth = 0.28;
   const plan = [
     [-frontHalfWidth, frontZ],
@@ -752,6 +752,46 @@ function leoHullV3(P, H) {
     const nfF = H.noseFillZFront ?? (tip[0] - 0.40);
     const nfB = tip[0] - 1.50;
     P.add('hull', box(GLC ? Math.min(hw * 1.6, GLC.x * 2) : hw * 1.6, 0.5, nfF - nfB), 0, tip[1] - 0.42, (nfF + nfB) / 2);
+  }
+  // Optional Leopard-family lower-front closure. The upper glacis is a
+  // chain of armored slabs, but without this receding lower plate and belly
+  // return the low/front sightline can look through the bow between the tub
+  // and beak. Deriving the stations from the live hull keeps the closure
+  // continuous on both the long-nose 2A4 and shorter 2A6 hulls while staying
+  // inside the track lanes.
+  if (H.underGlacisClosure) {
+    const UGC = H.underGlacisClosure === true ? {} : H.underGlacisClosure;
+    const halfW = UGC.halfW ?? Math.min(GLC?.x ?? hw * 0.62, hw * 0.60);
+    const lowerPlateRearZ = UGC.lowerPlateRearZ ?? (tip[0] - 0.84);
+    const lowerPlateFrontZ = UGC.lowerPlateFrontZ ?? (tip[0] - 0.42);
+    const bellyRunRearZ = UGC.bellyRunRearZ ?? (deck[0][0] - 0.08);
+    const bellyRunFrontZ = UGC.bellyRunFrontZ ?? (lowerPlateRearZ + 0.04);
+    const bellyBottomY = bellyY - 0.06;
+    const bellyTopY = bellyY - 0.01;
+    const beltBottomY = H.beltY - 0.005;
+    const beltTopY = H.beltY + 0.045;
+    P.add('hull', slab(
+      [-halfW, bellyBottomY, lowerPlateRearZ], [halfW, bellyBottomY, lowerPlateRearZ],
+      [halfW, beltBottomY, lowerPlateFrontZ], [-halfW, beltBottomY, lowerPlateFrontZ],
+      [-halfW, bellyTopY, lowerPlateRearZ + 0.02], [halfW, bellyTopY, lowerPlateRearZ + 0.02],
+      [halfW, beltTopY, lowerPlateFrontZ + 0.02], [-halfW, beltTopY, lowerPlateFrontZ + 0.02]));
+    P.add('hull', box(halfW * 2, 0.05, bellyRunFrontZ - bellyRunRearZ),
+      0, bellyY - 0.035, (bellyRunRearZ + bellyRunFrontZ) / 2);
+    if (P.geometryReceipt) {
+      P.hullG.userData.leopardUnderGlacisClosure = {
+        halfW,
+        laneHalfWidth: GLC?.x ?? null,
+        beltY: H.beltY,
+        bellyY,
+        tubFrontZ: deck[0][0] - 0.05,
+        bellyRunRearZ,
+        bellyRunFrontZ,
+        lowerPlateRearZ,
+        lowerPlateFrontZ,
+        lowerPlateRearTopY: bellyTopY,
+        lowerPlateFrontTopY: beltTopY,
+      };
+    }
   }
   // glacis furniture: weld seam, splash V, tow eyes, headlight pods
   const cr = g[0];
@@ -1356,6 +1396,7 @@ function buildLeo2A6(P) {
     // + margin); centre keeps 1.30, side/front rows are skirt/deck-interior.
     sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.50,
+    underGlacisClosure: { halfW: 0.88 },
     // headlight pods: fresh grid reads the ref col 3.267 top at 1.495 =
     // pod top (1.44+0.055r); the old 1.51 center read one row high
     headlightY: 1.44, headlightZ: 3.20,
@@ -4980,6 +5021,7 @@ export function buildLeo2A4(P) {
     sponsonLaneLift: { z0: -3.72, z1: 2.42, x0: 0.94, y: 1.62 },
     rearWallHW: 1.02,
     beltY: 0.62, bellyY: 0.615, headlightY: 1.31, headlightZ: 3.56, headlightX: 0.90,
+    underGlacisClosure: { halfW: 0.92 },
     // rear wall at -3.78 with the deck lip overhanging to the -3.86 tail:
     // hull body spans the published 7.72.
     rear: { wallZ: -3.78, lipZ: -3.86, yTop: 1.69, yBot: 0.75 },
@@ -5071,17 +5113,9 @@ export function buildLeo2A4(P) {
     // vehicle.  It is a supported edge course, not an invisible scale peg.
     P.add('hullDetail', box(0.025, 0.055, 7.18), s * 1.8375, 1.29, 0.0);
   }
-  // §SRCFIX-0808 UNDER-NOSE BELLY CLOSURE (the §5.18 AFV under-glacis
-  // procedure, owner: "eventually do this procedure for other tanks too"):
-  // the front sightline below the 0.62 belt foot ran an OPEN TUNNEL under
-  // the tub (fill face 3.36 + tub front 2.37 + sky between) — the garage
-  // read a flat barn-door band over a void. Real geometry: the lower front
-  // plate RECEDES from the belt foot to the belly line, then the belly
-  // runs flat to the tub front. Inter-track (±1.00 < the 1.02 §B4 lane).
-  P.add('hull', slab(
-    [-0.92, 0.555, 3.02], [0.92, 0.555, 3.02], [0.92, 0.615, 3.44], [-0.92, 0.615, 3.44],
-    [-0.92, 0.605, 3.04], [0.92, 0.605, 3.04], [0.92, 0.665, 3.46], [-0.92, 0.665, 3.46]));
-  P.add('hull', box(1.84, 0.05, 0.72), 0, 0.58, 2.70);                         // belly run to the tub front (z 2.34..3.06)
+  // The under-nose lower plate and belly return are now authored by the
+  // shared leoHullV3 closure above so every requested Leopard hull uses the
+  // same continuous, track-safe construction.
   // §SRCFIX-0808: deflector boards REMOVED — the real Leopard 2 glacis is a
   // CLEAN plate (the a5-recipe boards + the type90 V board read as floating
   // pale sticks in the owner's garage view and match no 2A4 photo).
@@ -10792,7 +10826,11 @@ function leoSlatRun(P, owner, side, o) {
       P.hullG.userData.leopardSlatMountReceipts ||= [];
       P.hullG.userData.leopardSlatMountReceipts.push({
         side,
+        run: o.run ?? null,
         section: sec,
+        z0: o.z0,
+        z1: o.z1,
+        zMid: mid,
         outerX: o.x,
         seatX: o.seat,
         railY: o.y0,
@@ -10840,6 +10878,7 @@ function buildLeo2A6M(P) {
     // M-package belly: the mine kit lifts the visible belly line (family
     // 0.50 -> 0.56); the bolted plate itself is authored below.
     beltY: 0.62, bellyY: 0.56,
+    underGlacisClosure: { halfW: 0.88 },
     headlightY: 1.44, headlightZ: 3.20,
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },
@@ -10887,32 +10926,53 @@ function buildLeo2A6M(P) {
   }
   P.add('hullDetail', box(0.26, 0.035, 0.20), 0, 1.615, 2.40, 0.24, 0, 0);    // center service cover
   P.add('hullDark', box(0.20, 0.012, 0.016), 0, 1.638, 2.335, 0.24, 0, 0);    // cover seam
-  // ---- ISAF bar-armor cage, hull run: rails at the 1.99 width anchor
-  // (spec widthM 3.98 EXACT — the plan 0.35-band datum), seated into the
-  // skirt faces; stern cage panel at -3.80 (the overall/hullLengthM tail
-  // anchor: muzzle 7.18 - (-3.80) = 10.98).
-  // §5.345 gestalt: the hull run hugs the skirt band tighter (top 1.32 ->
-  // 1.26, rails thinned) — accent over the hull line, wheels reading below
-  // (§B9); the ±1.990 rail plane is the widthM 3.98 anchor and HOLDS.
+  // ---- ISAF bar-armor cage, hull run. The rear skirt face is at 1.72 m,
+  // while the armored bow modules stand at 1.875 m; a single 1.99 m rail
+  // plane left the rear two-thirds suspended in an obvious air corridor.
+  // Two supported runs now follow those real seat planes. The short bow run
+  // retains the certified 1.99 m width anchor, and transverse links make the
+  // 19 cm change of plane one continuous cage rather than an abrupt step.
   for (const s of [-1, 1]) {
     leoSlatRun(P, 'hull', s, {
+      run: 'rear-skirt',
+      x: 1.800,
+      seat: 1.720,
+      seatY0: 0.90,
+      y0: 0.78,
+      y1: 1.26,
+      z0: -3.05,
+      z1: 1.44,
+      sections: 4,
+      railTh: 0.020,
+    });
+    leoSlatRun(P, 'hull', s, {
+      run: 'front-skirt',
       x: 1.990,
       seat: 1.875,
       seatY0: 0.90,
       y0: 0.78,
       y1: 1.26,
-      z0: -3.05,
+      z0: 1.44,
       z1: 3.10,
-      sections: 6,
+      sections: 2,
       railTh: 0.020,
     });
-    // §B2 top-flange (PRE-EXISTING §5.248 debt, receipts in the packet: the
-    // pristine build reads the same enclosed cells): the cage<->skirt air
-    // corridor read as enclosed top-down background at (±1.93, z 2.07/2.85)
-    // — the real ISAF cage carries a continuous top mounting flange to the
-    // hull; it closes the corridor. Outer edge 1.99 EXACT (width anchor),
-    // flush with the top rail line (side/plan interior otherwise).
-    P.add('hullDark', box(0.125, 0.018, 6.10), s * 1.9275, 1.26, 0.025);
+    P.add('hullDark', box(0.10, 0.018, 4.45), s * 1.76, 1.26, -0.805);       // rear skirt flange
+    P.add('hullDark', box(0.125, 0.018, 1.62), s * 1.9275, 1.26, 2.27);      // bow-module flange
+    for (let row = 0; row < 7; row++) {
+      P.add('hullDetail', box(0.21, 0.020, 0.026), s * 1.895,
+        0.78 + row * 0.08, 1.44);                                            // cage-plane transition
+    }
+    P.add('hullDark', box(0.29, 0.018, 0.08), s * 1.855, 1.26, 1.44);        // supported top transition
+  }
+  if (P.geometryReceipt) {
+    P.hullG.userData.leopardSlatTransition = {
+      z: 1.44,
+      rearOuterX: 1.800,
+      frontOuterX: 1.990,
+      rearSeatX: 1.720,
+      frontSeatX: 1.875,
+    };
   }
   leoSlatRear(P, { w: 3.10, y0: 0.72, y1: 1.42, z: -3.80, seatZ: -3.62 });
   // §5.299 finish: BOW-CORNER cage flare panels — the ref cage wraps the
@@ -10954,8 +11014,17 @@ function buildLeo2A6M(P) {
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz + bl * 0.28);
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz - bl * 0.28);
     }
-    P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.82, 3.42);   // width-indicator rods
-    P.add('hullDetail', sph(0.016, 8), s * 1.60, 1.98, 3.42);
+    P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.455, 3.42);  // seated width-indicator rods
+    P.add('hullDetail', sph(0.016, 8), s * 1.60, 1.620, 3.42);
+  }
+  if (P.geometryReceipt) {
+    P.hullG.userData.leopardWidthIndicatorSeat = {
+      supportY: 1.305,
+      rodCenterY: 1.455,
+      rodBottomY: 1.305,
+      rodTopY: 1.605,
+      capCenterY: 1.620,
+    };
   }
   P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.47, 3.30);                // Bosch horn
   P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.47, 3.30);
@@ -11049,7 +11118,7 @@ function buildLeo2A6M(P) {
     // spikes: the whole-mask bbox needs them, the p95 law ignores them)
     whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
   });
-  leopardA6MantletRoofBridge(P);
+  leopardA6MantletRoofBridge(P, { frontHalfWidth: 0.13 });
   // The helper's dark basket stopped 35-40 mm above the A6M deck and made
   // the complete rotating package read as a floating shell from the user's
   // front-quarter angle.  This closed bearing collar is buried into both
@@ -11084,8 +11153,8 @@ function buildLeo2A6M(P) {
     // edge overlaps the V-roof by 50 mm.  It remains split around the real
     // gun channel instead of laying a decorative sheet over the mantlet.
     P.add('turret', slab(
-      [s * 0.39, 0.405, 2.20], [s * 0.93, 0.382, 1.69], [s * 0.99, 0.605, 0.50], [s * 0.28, 0.595, 0.50],
-      [s * 0.39, 0.448, 2.18], [s * 0.93, 0.425, 1.67], [s * 0.99, 0.665, 0.49], [s * 0.28, 0.655, 0.49]));
+      [s * 0.13, 0.405, 2.20], [s * 0.93, 0.382, 1.69], [s * 0.99, 0.605, 0.50], [s * 0.28, 0.595, 0.50],
+      [s * 0.13, 0.448, 2.18], [s * 0.93, 0.425, 1.67], [s * 0.99, 0.665, 0.49], [s * 0.28, 0.655, 0.49]));
 
     // Shallow side cassettes sit six millimetres proud of the structural
     // side band and overlap it through their full height.  The former dark
@@ -11360,6 +11429,7 @@ function buildLeo2A4M(P) {
     glacisLaneCut: { x: 0.90, z0: 3.13 },
     sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.56,                                 // mine-belly stance
+    underGlacisClosure: { halfW: 0.88 },
     headlightY: 1.44, headlightZ: 3.20,
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },

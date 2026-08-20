@@ -92,31 +92,60 @@ const hullDeck = new THREE.Raycaster(
 assert.ok(Number.isFinite(hullDeck) && turretBounds.min.y <= hullDeck + 0.002,
   `A6M bearing overlaps hull deck (${turretBounds.min.y} <= ${hullDeck})`);
 
-// The cage keeps its low protective rail, but every lower bracket now rises
-// to the real skirt face before turning inward.  Six sections on each side
-// must therefore report the same continuous rail -> heel -> skirt path.
+// The cage follows the two actual side-skirt planes: the narrower rear run
+// sits close to x=1.72, while only the short armored-bow run retains the
+// 1.99 m certified width anchor. Both runs keep a continuous heel -> skirt
+// support path and meet through the recorded transition at z=1.44.
 const cageReceipts = hullRig.userData.leopardSlatMountReceipts;
 assert.equal(cageReceipts?.length, 12, 'A6M records both six-section cage runs');
+const rearCage = cageReceipts.filter(({ run }) => run === 'rear-skirt');
+const frontCage = cageReceipts.filter(({ run }) => run === 'front-skirt');
+assert.equal(rearCage.length, 8, 'A6M records four rear-skirt sections per side');
+assert.equal(frontCage.length, 4, 'A6M records two front-skirt sections per side');
+for (const receipt of rearCage) {
+  assert.equal(receipt.outerX, 1.800, 'A6M rear cage is pulled close to the rear skirt');
+  assert.equal(receipt.seatX, 1.720, 'A6M rear cage brackets land on the rear skirt face');
+}
+for (const receipt of frontCage) {
+  assert.equal(receipt.outerX, 1.990, 'A6M bow cage retains the certified outer plane');
+  assert.equal(receipt.seatX, 1.875, 'A6M bow cage brackets land on the armor modules');
+}
 for (const receipt of cageReceipts) {
-  assert.equal(receipt.outerX, 1.990, 'A6M cage retains the certified outer plane');
-  assert.equal(receipt.seatX, 1.875, 'A6M cage bracket reaches the skirt seat');
   assert.equal(receipt.railY, 0.78, 'A6M cage retains its lower protective rail');
   assert.equal(receipt.lowerMountY, 0.90, 'A6M lower bracket lands on the skirt face');
+  assert.ok(receipt.outerX - receipt.seatX <= 0.115,
+    'A6M cage standoff remains close enough to read as skirt-mounted');
   assert.ok(receipt.lowerMountY > receipt.railY,
     'A6M cage has a vertical heel between its lower rail and skirt mount');
 }
+assert.deepEqual(hullRig.userData.leopardSlatTransition, {
+  z: 1.44,
+  rearOuterX: 1.800,
+  frontOuterX: 1.990,
+  rearSeatX: 1.720,
+  frontSeatX: 1.875,
+}, 'A6M records a supported transition between the two skirt planes');
 
-// The same cheek-fitting roof bridge is a family component on both the A6M
-// and A6.  Its dimensions follow the crown-return opening exactly.
-const expectedBridge = {
+// The paired bow width indicators land on the 1.305 m skirt/fender crown
+// instead of floating above the upper glacis.
+const widthIndicator = hullRig.userData.leopardWidthIndicatorSeat;
+assert.ok(widthIndicator, 'A6M records the paired width-indicator seat');
+assert.equal(widthIndicator.rodBottomY, widthIndicator.supportY,
+  'A6M width-indicator rods touch the bow support plane');
+assert.ok(widthIndicator.capCenterY - widthIndicator.rodTopY <= 0.016,
+  'A6M width-indicator caps overlap the rod tips');
+
+// The A6M applique narrows the bridge's forward edge to one third of its
+// former 0.78 m span while keeping the shared rear seat and rib cadence.
+const expectedA6MBridge = {
   frontZ: 2.20,
   rearZ: 0.50,
-  frontHalfWidth: 0.39,
+  frontHalfWidth: 0.13,
   rearHalfWidth: 0.28,
   ribZ: [0.82, 1.14, 1.46],
 };
-assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, expectedBridge,
-  'A6M uses the fitted family mantlet-roof bridge');
+assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, expectedA6MBridge,
+  'A6M uses the narrowed fitted mantlet-roof bridge');
 
 const a6 = createTank('leo2a6', null, {
   proceduralOnly: true,
@@ -128,8 +157,10 @@ const a6GunRig = a6.root.getObjectByName('rig_gun');
 const a6MuzzleRig = a6.root.getObjectByName('rig_muzzle');
 assert.ok(a6TurretRig && a6GunRig && a6MuzzleRig,
   'leo2a6 keeps its canonical turret, gun, and muzzle rigs');
-assert.deepEqual(a6TurretRig.userData.leopardA6MantletRoofBridge, expectedBridge,
-  'A6 uses the same fitted family mantlet-roof bridge as the A6M');
+assert.deepEqual(a6TurretRig.userData.leopardA6MantletRoofBridge, {
+  ...expectedA6MBridge,
+  frontHalfWidth: 0.39,
+}, 'A6 retains the full-width family mantlet-roof bridge');
 
 const a6Gun = findMesh(a6GunRig, 'gun');
 const a6GunDark = findMesh(a6GunRig, 'gunDark');
