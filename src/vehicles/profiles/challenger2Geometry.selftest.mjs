@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
 
 const tank = createTank('challenger2', null, {
@@ -24,6 +25,7 @@ const near = (value, target, epsilon = 1e-3) => Math.abs(value - target) < epsil
 const hull = vertices('hull');
 const hullDetail = vertices('hullDetail');
 const turret = vertices('turret');
+const turretDark = vertices('turretDark');
 
 assert.equal(tank.root.getObjectByName('hullRubber'), undefined,
   'former vertical fender bars must not remain as rubber track intrusions');
@@ -45,10 +47,40 @@ assert.equal(turret.filter(([x, y, z]) => x < -1.47
   && y < 0.40 && z > 1.36 && z < 1.44).length, 0,
 'stray loader-side front block must not return');
 
-for (const side of [-1, 1]) {
-  const uprightOuterCorner = [side * 0.892177, 0.399637, 1.695892];
-  assert.ok(turret.some(vertex => vertex.every((value, axis) => near(value, uprightOuterCorner[axis]))),
-    `${side < 0 ? 'left' : 'right'} cheek panel must keep its broad edge upright against the casting`);
+const cheekReceipt = tank.root.getObjectByName('rig_turret')?.userData.challenger2CheekPanelReceipt;
+assert.equal(cheekReceipt?.panels?.length, 2, 'both cheek panels need a seating receipt');
+assert.ok(near(Math.atan2(-cheekReceipt.cheekSetbackM, cheekReceipt.cheekRiseM), -0.970681, 1e-5),
+  'cheek rake must follow the measured lower-to-roof setback');
+for (const panel of cheekReceipt.panels) {
+  const label = panel.side < 0 ? 'left' : 'right';
+  const normal = new THREE.Vector3(...panel.normal);
+  const rotation = new THREE.Euler(...panel.rotation, 'XYZ');
+  const expectedNormal = new THREE.Vector3(0, 0, 1).applyEuler(rotation);
+  assert.ok(normal.dot(expectedNormal) > 0.999999,
+    `${label} cheek panel must be parallel to the sovereign cheek plane`);
+  assert.ok(panel.gasketInnerClearanceM > 0,
+    `${label} cheek gasket must clear rather than intersect the casting`);
+  assert.ok(panel.faceInnerClearanceM >= panel.gasketOuterClearanceM,
+    `${label} cheek face must layer cleanly over its gasket`);
+  assert.ok(panel.weldInnerClearanceM >= panel.faceOuterClearanceM,
+    `${label} cheek welds must remain seated on the armor face`);
+
+  for (const [bucket, center, dimensions] of [
+    [turretDark, panel.gasketCenter, [0.72, 0.58, 0.030]],
+    [turret, panel.faceCenter, [0.58, 0.45, 0.014]],
+  ]) {
+    const q = new THREE.Quaternion().setFromEuler(rotation);
+    for (const x of [-dimensions[0] / 2, dimensions[0] / 2]) {
+      for (const y of [-dimensions[1] / 2, dimensions[1] / 2]) {
+        for (const z of [-dimensions[2] / 2, dimensions[2] / 2]) {
+          const corner = new THREE.Vector3(x, y, z).applyQuaternion(q)
+            .add(new THREE.Vector3(...center));
+          assert.ok(bucket.some(vertex => vertex.every((value, axis) => near(value, corner.getComponent(axis)))),
+            `${label} cheek layer corner must be present in the rendered mesh`);
+        }
+      }
+    }
+  }
 }
 
 for (const point of [
@@ -61,4 +93,4 @@ for (const point of [
     `roof module must remain seated at ${point.join(',')}`);
 }
 
-console.log('challenger2Geometry.selftest: fenders, cheeks, roof seating, and track clearance pass');
+console.log('challenger2Geometry.selftest: fenders, parallel cheeks, roof seating, and track clearance pass');

@@ -3136,27 +3136,63 @@ function buildChallenger2(P) {
     P.add('turretDetail', cylY(0.018, 0.018, 0.016, 10), x, 0.354, z);
   P.add('turretDark', box(0.50, 0.20, 0.05), 0, 0.17, 1.98);                  // recessed L30 slot
   // Layered front cheek plates: dark gasket, inset armor face and diagonal
-  // weld courses.  The old boxes were yawed in plan but remained vertical,
-  // leaving their upper halves visibly proud of the steep Dorchester face.
-  // Rake the complete stack into the sovereign front plane so both panels
-  // are physically seated from the lower cheek to the roof arris.  Positive
-  // pitch is intentional: the panel top follows the casting rearward.  The
-  // former negative pitch inverted the plates and put their broad edge at
-  // the bottom of the cheek.
+  // weld courses.  Their frame is derived from the sovereign cheek vertices
+  // above instead of combining an approximate pitch and yaw.  That two-angle
+  // shortcut twisted the broad panels through the casting; flipping its pitch
+  // only made them stand proud in the opposite direction.  The measured frame
+  // keeps both in-plane axes tangent to the Dorchester face and gives every
+  // layer an explicit outward clearance.
+  const cheekRise = new THREE.Vector3(0, 0.375, -0.548);
+  const cheekPanelReceipt = [];
   for (const side of [-1, 1]) {
-    const cheekYaw = side * 0.367;
-    const cheekRake = 0.96;
-    P.add('turretDark', box(0.72, 0.58, 0.030), side * 0.62, 0.18, 1.56,
-      cheekRake, cheekYaw, 0);
-    P.add('turret', box(0.58, 0.45, 0.014), side * 0.624, 0.18, 1.575,
-      cheekRake, cheekYaw, 0);
-    P.add('turretDark', box(0.49, 0.020, 0.014), side * 0.624, 0.29, 1.43,
-      cheekRake, cheekYaw, side * 0.28);
-    P.add('turretDark', box(0.43, 0.020, 0.014), side * 0.624, 0.09, 1.72,
-      cheekRake, cheekYaw, -side * 0.22);
+    // Lower cheek runs 0.975 m outboard while setting back 0.600 m.  Use it
+    // as the horizontal tangent, then orthogonalize the vertical tangent in
+    // the same plane.  The resulting +Z basis vector is the outward normal.
+    const cheekAcross = new THREE.Vector3(0.975, 0, -side * 0.600).normalize();
+    const cheekNormal = new THREE.Vector3().crossVectors(cheekAcross, cheekRise).normalize();
+    const cheekUp = new THREE.Vector3().crossVectors(cheekNormal, cheekAcross).normalize();
+    const cheekFrame = new THREE.Matrix4().makeBasis(cheekAcross, cheekUp, cheekNormal);
+    const cheekRotation = new THREE.Euler().setFromRotationMatrix(cheekFrame, 'XYZ');
+    const cheekPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      cheekNormal, new THREE.Vector3(side * 0.488, -0.03, 1.907));
+    const seat = (x, y, z, clearance) => {
+      const center = new THREE.Vector3(x, y, z);
+      cheekPlane.projectPoint(center, center);
+      return center.addScaledVector(cheekNormal, clearance);
+    };
+
+    const gasketCenter = seat(side * 0.62, 0.18, 1.56, 0.020);
+    const faceCenter = seat(side * 0.624, 0.18, 1.575, 0.043);
+    const upperWeldCenter = seat(side * 0.624, 0.29, 1.43, 0.058);
+    const lowerWeldCenter = seat(side * 0.624, 0.09, 1.72, 0.058);
+    P.add('turretDark', box(0.72, 0.58, 0.030), ...gasketCenter,
+      cheekRotation.x, cheekRotation.y, cheekRotation.z);
+    P.add('turret', box(0.58, 0.45, 0.014), ...faceCenter,
+      cheekRotation.x, cheekRotation.y, cheekRotation.z);
+    P.add('turretDark', xform(box(0.49, 0.020, 0.014), 0, 0, 0, 0, 0, side * 0.28),
+      ...upperWeldCenter, cheekRotation.x, cheekRotation.y, cheekRotation.z);
+    P.add('turretDark', xform(box(0.43, 0.020, 0.014), 0, 0, 0, 0, 0, -side * 0.22),
+      ...lowerWeldCenter, cheekRotation.x, cheekRotation.y, cheekRotation.z);
     P.add('turretDark', box(0.035, 0.28, 0.050), side * 1.34, 0.15, 1.12,
       0, side * 0.08, side * 0.10);
+    cheekPanelReceipt.push({
+      side,
+      normal: cheekNormal.toArray(),
+      rotation: [cheekRotation.x, cheekRotation.y, cheekRotation.z],
+      gasketCenter: gasketCenter.toArray(),
+      faceCenter: faceCenter.toArray(),
+      gasketInnerClearanceM: 0.005,
+      gasketOuterClearanceM: 0.035,
+      faceInnerClearanceM: 0.036,
+      faceOuterClearanceM: 0.050,
+      weldInnerClearanceM: 0.051,
+    });
   }
+  P.turretG.userData.challenger2CheekPanelReceipt = {
+    cheekRiseM: 0.375,
+    cheekSetbackM: 0.548,
+    panels: cheekPanelReceipt,
+  };
   P.add('turretDark', box(0.12, 0.20, 0.020), -0.27, 0.17, 1.945);
   P.add('turretDark', box(0.12, 0.20, 0.020), 0.27, 0.17, 1.945);
   for (const x of [-0.35, 0.35]) for (const y of [0.10, 0.22, 0.34])
