@@ -56,14 +56,27 @@ assert.equal(mantlet?.circularMainShield, false,
   'main mantlet cannot regress to a circular cylinder or torus');
 assert.equal(mantlet?.orientation, 'vertical',
   'compound mantlet stands vertically around the launcher axis');
-assert.ok(mantlet.heightM > mantlet.widthM * 2,
-  'cast shield is a tall semi-cylindrical mass, not a horizontal plate');
+assert.ok(mantlet.heightM > mantlet.widthM,
+  'cast shield keeps its vertical semi-cylindrical read');
+assert.equal(mantlet.heightM, mantlet.turretHeightM,
+  'cast shield height is capped to the turret shell height');
+assert.ok(Math.abs(mantlet.verticalCenterOffsetM - 0.03) < 1e-9,
+  'cast shield is re-centred from the launcher axis onto the turret shell');
 assert.ok(mantlet.planStations >= 13 && mantlet.ringCount >= 5,
   'mantlet has enough plan and elevation stations to hold the compound curve');
 assert.ok(mantlet.rearOverlapM >= 0.30,
   'mantlet root penetrates the turret nose instead of floating ahead of it');
 assert.equal(mantlet.xm150Sleeve, true);
 assert.equal(mantlet.nearMuzzleSensor, true);
+const turretRig = tank.root.getObjectByName('rig_turret');
+const turretShell = turretRig.getObjectByName('turret');
+const gunMount = gunRig.getObjectByName('gunMount');
+const turretShellBounds = new THREE.Box3().setFromObject(turretShell);
+const gunMountBounds = new THREE.Box3().setFromObject(gunMount);
+assert.ok(gunMountBounds.max.y <= turretShellBounds.max.y + 0.005,
+  `mantlet crown stays at the turret roof (${gunMountBounds.max.y.toFixed(3)} <= ${turretShellBounds.max.y.toFixed(3)})`);
+assert.ok(gunMountBounds.min.y >= turretShellBounds.min.y - 0.005,
+  `mantlet chin stays at the turret base (${gunMountBounds.min.y.toFixed(3)} >= ${turretShellBounds.min.y.toFixed(3)})`);
 assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretReceipt, {
   forwardOffsetM: 0.57,
   structuralWidthM: 3.48,

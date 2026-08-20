@@ -64378,7 +64378,7 @@
           }
         ]
       },
-      "geometryHash": "51aec42d",
+      "geometryHash": "7feef79a",
       "metadataHash": "85ad661b",
       "appearance": {
         "version": 1,
@@ -64420,24 +64420,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78353,
-          "sha256": "9b5784ef855db9bd9ef83443bddd160cfdb82f0645550692cbda8794490c2281"
+          "bytes": 77371,
+          "sha256": "84914bf5029991fb5417b3b455f1b174885f8da623313caf19aa567fdd67f5f2"
         },
         "armorSide": {
           "file": "mbt70_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81300,
-          "sha256": "b9f18040e0130e39bd726a514bbc1b6cedfc674cae400a5a956777bd208780a4"
+          "bytes": 79686,
+          "sha256": "882973ee02cb41d61cfce8ebf8a5b1f4b4cfe1c25bec5a9d9fdac25f178b3fcf"
         },
         "modulesSide": {
           "file": "mbt70_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84107,
-          "sha256": "8ae9f8499418d80a6ef9a8fdb9e14dcfcf0801e98a90de9a8374c3f2e187089d"
+          "bytes": 83363,
+          "sha256": "98952439a4aa90fd3e84682a48ecf716c24d77856e59da9581e5f49b406859da"
         },
         "angle": {
           "file": "mbt70_angle.webp",

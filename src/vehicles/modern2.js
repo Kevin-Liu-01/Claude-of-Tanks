@@ -2561,22 +2561,31 @@ function buildMBT70(P) {
     [0.32, 0.86], [0.50, 0.64], [0.63, 0.36], [0.70, 0.05],
     [0.72, -0.30],
   ];
+  const MANTLET_NATIVE_HEIGHT_M = 1.44;
+  const MANTLET_HEIGHT_M = TH;
+  const MANTLET_VERTICAL_SCALE = MANTLET_HEIGHT_M / MANTLET_NATIVE_HEIGHT_M;
+  // The launcher axis sits 3 cm below the middle of the 0.80 m turret shell.
+  // Re-centre the cast shield on that shell so its chin begins at the turret
+  // base and its crown terminates at the roof instead of rising above it.
+  const MANTLET_VERTICAL_OFFSET_M = TH * 0.5 - P.spec.armor.gunPivot[1];
   // The compound shield was previously authored in its native horizontal
   // frame: 1.44 m wide but only .66 m tall. Rotate that exact curved mass
   // around the launcher axis so the rounded arrow stands vertically, as on
-  // the MBT-70, without changing its fore-aft trunnion penetration.
+  // the MBT-70, then clamp its vertical extent to the turret shell without
+  // changing its fore-aft trunnion penetration or compact launcher width.
   P.addGunExtra(xform(polyMultiLoft(mantletPlan, [
     { height: -0.33, inset: 0.70 },
     { height: -0.19, inset: 0.90 },
     { height: 0.00, inset: 1.00 },
     { height: 0.19, inset: 0.91 },
     { height: 0.33, inset: 0.70 },
-  ]), 0, 0, 0, 0, 0, Math.PI / 2), 0, 0, 0.08);
+  ]), 0, 0, 0, 0, 0, Math.PI / 2, [MANTLET_VERTICAL_SCALE, 1, 1]),
+  0, MANTLET_VERTICAL_OFFSET_M, 0.08);
   // A shallow cast brow melts the shield into the turret roof. The oval
   // recess follows the parabolic shield, while the only truly circular part
   // is the compact 152 mm launcher throat itself.
   P.addGunExtra(xform(sph(0.28, seg, Math.PI * 0.62), 0, 0, 0, 0, 0, 0,
-    [0.68, 1.62, 1.10]), 0, 0.11, 0.43);
+    [0.68, 1.10, 1.10]), 0, 0.11, 0.43);
   P.addGunExtraDark(xform(cylZ(0.255, 0.045, seg), 0, 0, 0, 0, 0, 0,
     [0.88, 1.46, 1]), 0, 0, 1.105);
   P.addGunExtra(cylZ(0.22, 0.25, seg, 0.17), 0, 0, 1.19);
@@ -2597,7 +2606,9 @@ function buildMBT70(P) {
     circularMainShield: false,
     orientation: 'vertical',
     widthM: 0.66,
-    heightM: 1.44,
+    heightM: MANTLET_HEIGHT_M,
+    turretHeightM: TH,
+    verticalCenterOffsetM: MANTLET_VERTICAL_OFFSET_M,
     depthM: 1.34,
     rearOverlapM: 0.30,
     ringCount: 5,
