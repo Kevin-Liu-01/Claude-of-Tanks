@@ -35247,13 +35247,13 @@
             "name": "trackL",
             "min": [
               -1.63,
-              0.005,
-              -3.095
+              -0.035,
+              -3.0949
             ],
             "max": [
               -1.17,
               1.135,
-              3.5549
+              3.5546
             ],
             "turretLocal": false
           },
@@ -35262,13 +35262,13 @@
             "name": "trackR",
             "min": [
               1.17,
-              0.005,
-              -3.095
+              -0.035,
+              -3.0949
             ],
             "max": [
               1.63,
               1.135,
-              3.5549
+              3.5546
             ],
             "turretLocal": false
           }
@@ -35336,8 +35336,8 @@
           }
         ]
       },
-      "geometryHash": "669448ac",
-      "metadataHash": "18431d42",
+      "geometryHash": "9ddbe16f",
+      "metadataHash": "a7c8b6b4",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -35420,24 +35420,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74116,
-          "sha256": "e209ea520f061e78fc0c40828211efb9d644fd911283000fb66e3046276422dc"
+          "bytes": 73743,
+          "sha256": "0860ab173a4d0f166f490dad55c0c6e7976d2c54d62a8d93e906b93c5ccfda39"
         },
         "armorSide": {
           "file": "leo1a5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76527,
-          "sha256": "2eed6068a2519f60a8a572694ab79b15eaf4b7ac914865c1096b705f6d273c57"
+          "bytes": 75648,
+          "sha256": "93eb09203a55e7dc8aa4fbff8314e9d556f6d1e0870a74abddff474a6dee0e2e"
         },
         "modulesSide": {
           "file": "leo1a5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86072,
-          "sha256": "5ce3344ff95561d9321cca78285854c0949570a11320eda2f089134cc64695a7"
+          "bytes": 85776,
+          "sha256": "1c9ad0b1a5f942ffe27e662f0587062d98f53e89b2326801ad383dda1e5ee18f"
         },
         "markings": {
           "file": "leo1a5_markings.png",

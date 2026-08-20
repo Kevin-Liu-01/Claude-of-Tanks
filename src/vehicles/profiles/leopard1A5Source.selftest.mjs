@@ -43,8 +43,8 @@ visual.root.traverse((node) => {
 assert.equal(trackBands.length, 2, 'exactly one linked track band is present per side');
 for (const band of trackBands) {
   const box = bounds(band);
-  assert.ok(box.max.y >= 1.10 && box.min.y <= 0.011,
-    `${band.name} wraps the complete source-height course`);
+  assert.ok(box.max.y >= 1.10 && box.min.y <= -0.034,
+    `${band.name} uses the deepened Leopard course`);
   assert.ok(box.max.z - box.min.z >= 6.60 && box.max.z - box.min.z <= 6.76,
     `${band.name} follows the measured Leopard-family course`);
 }
@@ -59,7 +59,11 @@ assert.deepEqual(finish, {
   fenderLockers: 8,
   rearFuelCans: 2,
   roadWheelStations: 7,
+  roadWheelY: 0.35,
+  trackBotY: 0.015,
   sealedHullSides: true,
+  closedDeckUnderstructure: true,
+  deckSupportSegments: 2,
   leopard2TrackCourse: true,
   frontIdlerZ: 3.17,
   frontIdlerY: 0.66,
@@ -68,8 +72,25 @@ assert.deepEqual(finish, {
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
-assert.ok(gear.idler.y - gear.wheelY >= 0.23 && gear.sprocket.y - gear.wheelY >= 0.29,
-  'both terminal drums rise above the road-wheel axis for the Leopard 2-like trapezoid');
+assert.equal(gear.wheelY, 0.35, 'the seven road-wheel centers move down into the taller track course');
+assert.deepEqual(gear.idler, { z: 3.17, y: 0.66, r: 0.29 },
+  'the front idler retains its authored position and radius');
+assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.72, r: 0.30 },
+  'the rear sprocket retains its authored position and radius');
+assert.ok(gear.idler.y - gear.wheelY >= 0.31 && gear.sprocket.y - gear.wheelY >= 0.37,
+  'the fixed terminal drums now rise strongly above the lowered road-wheel axis');
+
+// The marked rear and center deck skins have structural material directly
+// beneath them. Horizontal probes through the former air layer must now hit
+// the filled hull before reaching the outboard deck edge.
+const deckSupportProbe = (y, z) => new THREE.Raycaster(
+  new THREE.Vector3(2, y, z), new THREE.Vector3(-1, 0, 0), 0, 2,
+).intersectObject(mesh('hull'), false)[0];
+for (const [y, z] of [[1.60, -2.50], [1.55, 0]]) {
+  const hit = deckSupportProbe(y, z);
+  assert.ok(hit && hit.distance <= 0.80,
+    `deck support closes the former internal void at y=${y}, z=${z}`);
+}
 mesh('hullCloth');
 
 // The source ring is 0.50 m forward of hull center. The gun saddle must root

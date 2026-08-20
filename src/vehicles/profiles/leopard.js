@@ -10483,6 +10483,17 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.add('hull', slab(
     [-1.28, 1.71, -1.25], [1.28, 1.71, -1.25], [1.24, 1.54, 1.55], [-1.24, 1.54, 1.55],
     [-1.28, 1.77, -1.25], [1.28, 1.77, -1.25], [1.24, 1.60, 1.55], [-1.24, 1.60, 1.55]));
+  // The two deck skins above used to bridge open air: the central hull core
+  // ends at y=1.52, leaving as much as 30 cm of daylight below the marked
+  // engine-deck crown.  These structural lofts overlap the existing core and
+  // terminate inside the deck skins, turning the rear and center runs into
+  // one continuous armored volume without changing their exterior planes.
+  P.add('hull', slab(
+    [-1.27, 1.46, -3.34], [1.27, 1.46, -3.34], [1.27, 1.47, -1.25], [-1.27, 1.47, -1.25],
+    [-1.28, 1.761, -3.34], [1.28, 1.761, -3.34], [1.28, 1.711, -1.25], [-1.28, 1.711, -1.25]));
+  P.add('hull', slab(
+    [-1.27, 1.47, -1.25], [1.27, 1.47, -1.25], [1.23, 1.44, 1.55], [-1.23, 1.44, 1.55],
+    [-1.28, 1.711, -1.25], [1.28, 1.711, -1.25], [1.24, 1.541, 1.55], [-1.24, 1.541, 1.55]));
   P.add('hull', slab(
     [-1.05, 1.54, 1.55], [1.05, 1.54, 1.55], [0.80, 1.04, 3.54], [-0.80, 1.04, 3.54],
     [-1.05, 1.60, 1.55], [1.05, 1.60, 1.55], [0.80, 1.10, 3.54], [-0.80, 1.10, 3.54]));
@@ -10585,17 +10596,18 @@ function buildLeo1A5ArticulatedProfile(P) {
     P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
   }
 
-  // Seven 660 mm dual wheels on the Leopard-family trapezoid course. Both
-  // terminal drums now sit above the road-wheel axis and the native kit lays
-  // tangent approach/departure runs into them, matching the readable course
-  // shape used by the Leopard 2 family instead of the former low-idler arc.
+  // Seven 660 mm dual wheels on the Leopard-family trapezoid course. Lower
+  // only the road-wheel row into the loaded bottom run; the authored idler,
+  // sprocket and return run remain fixed. This deepens the visible track
+  // course and strengthens both approach shoulders without moving either
+  // terminal wheel or altering the vehicle's certified length anchors.
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: 0.43, xc: 1.40,
+    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: 0.35, xc: 1.40,
     wheelZs: [2.46, 1.64, 0.82, 0, -0.82, -1.64, -2.46],
     sprocket: { z: -2.70, y: 0.72, r: 0.30 }, idler: { z: 3.17, y: 0.66, r: 0.29 },
     rollers: [{ z: 2.12, y: 0.93, r: 0.105 }, { z: 0.72, y: 0.93, r: 0.105 },
       { z: -0.70, y: 0.93, r: 0.105 }, { z: -2.05, y: 0.93, r: 0.105 }],
-    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: 0.055,
+    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: 0.015,
     contactZF: 2.64, contactZR: -2.64,
     linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
     endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
@@ -10607,7 +10619,11 @@ function buildLeo1A5ArticulatedProfile(P) {
     fenderLockers: 8,
     rearFuelCans: 2,
     roadWheelStations: 7,
+    roadWheelY: 0.35,
+    trackBotY: 0.015,
     sealedHullSides: true,
+    closedDeckUnderstructure: true,
+    deckSupportSegments: 2,
     leopard2TrackCourse: true,
     frontIdlerZ: 3.17,
     frontIdlerY: 0.66,
