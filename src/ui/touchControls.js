@@ -633,14 +633,16 @@ export function createTouchControls({
   syncLayout();
 
   const speedValue = root.querySelector('.speed b');
+  let lastSpeedKmh = -1;
   return {
     root,
     get isLayout() { return layout; },
     refresh: syncLayout,
     update(speedMps = 0) {
       const kmh = Math.max(0, Math.min(999, Math.round(Math.abs(Number(speedMps) || 0) * 3.6)));
-      const text = String(kmh);
-      if (speedValue.textContent !== text) speedValue.textContent = text;
+      if (kmh === lastSpeedKmh) return;
+      lastSpeedKmh = kmh;
+      speedValue.textContent = String(kmh);
     },
   };
 }

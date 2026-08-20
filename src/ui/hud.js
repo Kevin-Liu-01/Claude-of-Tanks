@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { createElement as el, ensureStyle } from './dom.js';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
-import { fillDriveTelemetry } from './driveTelemetry.js';
+import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.js';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -387,27 +387,33 @@ const HUD_CSS = `
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
-.cot-drive{--speed-sweep:0deg;--speed-needle:-135deg;position:absolute;left:169px;bottom:12px;
+.cot-drive{position:absolute;left:169px;bottom:12px;
   width:108px;height:108px;border-radius:50%;pointer-events:none;overflow:hidden;
+  contain:layout paint style;
   font-family:${FONT_COND};font-variant-numeric:tabular-nums;color:#edf3f7;
   background:radial-gradient(circle at 50% 42%,rgba(24,32,38,.96),rgba(5,9,12,.93) 72%);
   border:1px solid rgba(190,204,214,.38);box-shadow:0 6px 22px rgba(0,0,0,.48),inset 0 0 16px rgba(0,0,0,.5);
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
 .cot-drive .dial{position:absolute;inset:5px;border-radius:50%;isolation:isolate;
-  background:conic-gradient(from 225deg,transparent 0 216deg,#d94b4b 216deg 270deg,transparent 270deg),
-    conic-gradient(from 225deg,#f1f5f7 0 var(--speed-sweep),rgba(131,149,162,.24) var(--speed-sweep) 270deg,
-    transparent 270deg);}
+  background:transparent;}
 .cot-drive .dial::after{content:'';position:absolute;z-index:0;inset:7px;border-radius:50%;
   background:radial-gradient(circle at 48% 38%,#172027,#090e12 72%);
   border:1px solid rgba(191,207,219,.12);}
-.cot-drive .ticks{position:absolute;z-index:1;inset:0;border-radius:50%;}
+.cot-drive .arc{position:absolute;z-index:1;inset:0;width:100%;height:100%;overflow:visible;}
+.cot-drive .arc circle{fill:none;stroke-width:3;}
+.cot-drive .arc-track{stroke:rgba(131,149,162,.24);stroke-dasharray:75 25;}
+.cot-drive .arc-value{stroke:#f1f5f7;stroke-dasharray:0 100;
+  transition:stroke-dasharray .065s linear;}
+.cot-drive .arc-red{stroke:#d94b4b;stroke-dasharray:15 85;stroke-dashoffset:-60;}
+.cot-drive .ticks{position:absolute;z-index:2;inset:0;border-radius:50%;}
 .cot-drive .ticks i{position:absolute;left:calc(50% - .5px);top:8px;width:1px;height:6px;
   transform-origin:50% 41px;transform:rotate(calc(-135deg + var(--tick) * 13.5deg));
   background:rgba(241,246,249,.88);box-shadow:0 0 2px rgba(255,255,255,.2);}
 .cot-drive .ticks i:nth-child(5n + 1){left:calc(50% - 1px);width:2px;height:9px;background:#fff;}
 .cot-drive .ticks i:nth-last-child(-n + 5){background:#e34f4f;box-shadow:0 0 3px rgba(227,79,79,.45);}
 .cot-drive .needle{position:absolute;z-index:2;left:50%;top:50%;width:2px;height:35px;
-  transform-origin:50% 100%;transform:translate(-50%,-100%) rotate(var(--speed-needle));
+  transform-origin:50% 100%;transform:translate(-50%,-100%);rotate:-135deg;
+  transition:rotate .05s linear;will-change:transform;
   background:linear-gradient(#ff7777,#d82f36);box-shadow:0 0 5px rgba(222,55,62,.62);}
 .cot-drive .hub{position:absolute;z-index:4;left:50%;top:50%;width:8px;height:8px;
   margin:-4px 0 0 -4px;border-radius:50%;background:#f4f7f9;border:2px solid #b8393f;
@@ -418,6 +424,9 @@ const HUD_CSS = `
   font-size:7px;font-weight:800;letter-spacing:.14em;color:#c1ccd4;}
 .cot-drive .zero,.cot-drive .limit{position:absolute;z-index:3;bottom:17px;font-size:6.5px;
   line-height:1;}.cot-drive .zero{left:15px;color:#d8e1e7}.cot-drive .limit{right:13px;color:#ed6262}
+@media (prefers-reduced-motion:reduce){
+  .cot-drive .arc-value,.cot-drive .needle{transition:none;}
+}
 body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
@@ -919,24 +928,35 @@ export function initHud(bus) {
     if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
   }
 
-  // Player speedometer: the retained model updates its CSS needle/arc at
-  // 10 Hz, keeping the per-frame HUD path allocation-free.
+  // Player speedometer: the inexpensive, compositor-owned needle samples at
+  // 30 Hz, the thin SVG arc at 20 Hz, and text at 10 Hz. CSS bridges those
+  // samples, so motion stays responsive without putting DOM work on every RAF.
   const driveEl = el('div', 'cot-drive', root);
   driveEl.setAttribute('aria-label', 'Vehicle speedometer');
   const driveTicks = Array.from({ length: 21 }, (_, index) =>
     `<i style="--tick:${index}"></i>`).join('');
-  driveEl.innerHTML = `<div class="dial"><span class="ticks">${driveTicks}</span></div>` +
+  driveEl.innerHTML = `<div class="dial"><svg class="arc" viewBox="0 0 100 100" aria-hidden="true">` +
+    `<g transform="rotate(135 50 50)"><circle class="arc-track" cx="50" cy="50" r="45" pathLength="100"/>` +
+    `<circle class="arc-value" cx="50" cy="50" r="45" pathLength="100"/>` +
+    `<circle class="arc-red" cx="50" cy="50" r="45" pathLength="100"/></g></svg>` +
+    `<span class="ticks">${driveTicks}</span></div>` +
     `<div class="needle"></div><div class="hub"></div>` +
     `<strong class="speed" data-drive-speed>0</strong><span class="unit">KM/H</span>` +
     `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
   const driveSpeedEl = driveEl.querySelector('[data-drive-speed]');
   const driveLimitEl = driveEl.querySelector('[data-drive-limit]');
+  const driveArcEl = driveEl.querySelector('.arc-value');
+  const driveNeedleEl = driveEl.querySelector('.needle');
   const driveModel = {};
   let drivePlayerId = null;
   let driveLastTimeS = -1;
-  let driveLastPaintS = -1;
-  let driveSweepDeg = -1;
-  let driveNeedleDeg = -999;
+  let driveLastNeedleS = -1;
+  let driveLastArcS = -1;
+  let driveLastTextS = -1;
+  let driveSpeedKmh = -1;
+  let driveLimitKmh = -1;
+  let driveSweepMilli = -1;
+  let driveNeedleMilli = -999000;
 
   function updateDriveReadout(player, timeS) {
     const state = player?.state;
@@ -945,24 +965,43 @@ export function initHud(bus) {
     const freshRun = player.id !== drivePlayerId || nowS < driveLastTimeS;
     if (freshRun) {
       drivePlayerId = player.id;
-      driveLastPaintS = -1;
+      driveLastNeedleS = -1;
+      driveLastArcS = -1;
+      driveLastTextS = -1;
     }
     driveLastTimeS = nowS;
-    if (!freshRun && nowS - driveLastPaintS < 0.1) return;
-    driveLastPaintS = nowS;
+    const needleDue = freshRun || isDriveSampleDue(nowS, driveLastNeedleS, 1 / 30);
+    const arcDue = freshRun || isDriveSampleDue(nowS, driveLastArcS, 1 / 20);
+    const textDue = freshRun || isDriveSampleDue(nowS, driveLastTextS, 0.1);
+    if (!needleDue && !arcDue && !textDue) return;
 
     fillDriveTelemetry(driveModel, state, player.spec);
-    const speedText = String(driveModel.speedKmh);
-    const limitText = String(driveModel.limitKmh);
-    if (driveSpeedEl.textContent !== speedText) driveSpeedEl.textContent = speedText;
-    if (driveLimitEl.textContent !== limitText) driveLimitEl.textContent = limitText;
-    if (driveModel.sweepDeg !== driveSweepDeg) {
-      driveSweepDeg = driveModel.sweepDeg;
-      driveEl.style.setProperty('--speed-sweep', `${driveSweepDeg}deg`);
+    if (textDue) {
+      driveLastTextS = nowS;
+      if (driveModel.speedKmh !== driveSpeedKmh) {
+        driveSpeedKmh = driveModel.speedKmh;
+        driveSpeedEl.textContent = String(driveSpeedKmh);
+      }
+      if (driveModel.limitKmh !== driveLimitKmh) {
+        driveLimitKmh = driveModel.limitKmh;
+        driveLimitEl.textContent = String(driveLimitKmh);
+      }
     }
-    if (driveModel.needleDeg !== driveNeedleDeg) {
-      driveNeedleDeg = driveModel.needleDeg;
-      driveEl.style.setProperty('--speed-needle', `${driveNeedleDeg}deg`);
+    if (arcDue) {
+      driveLastArcS = nowS;
+      const sweepMilli = Math.round(driveModel.sweepLength * 1000);
+      if (sweepMilli !== driveSweepMilli) {
+        driveSweepMilli = sweepMilli;
+        driveArcEl.style.strokeDasharray = `${sweepMilli / 1000} 100`;
+      }
+    }
+    if (needleDue) {
+      driveLastNeedleS = nowS;
+      const needleMilli = Math.round(driveModel.needleDeg * 1000);
+      if (needleMilli !== driveNeedleMilli) {
+        driveNeedleMilli = needleMilli;
+        driveNeedleEl.style.rotate = `${needleMilli / 1000}deg`;
+      }
     }
   }
 
