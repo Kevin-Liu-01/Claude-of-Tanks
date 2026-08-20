@@ -636,6 +636,7 @@ function aaPedestal(P, A, yl, zl) {
 function t26Cast(P, T) {
   const { box, cylY, sph, liftEye, cupola, tarpRoll } = KIT;
   const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
+  const ly = (y) => yl(originalProfileY(T, y));
   const secs = T.sections;
   // r7 B1 (m46, adopting the m47 r4 B5 lane): shared pale-fitting material
   // for the sky-backed M2/pedestal cluster — the shared 'detail' bucket
@@ -711,7 +712,7 @@ function t26Cast(P, T) {
     // the certified loads READ. turret restored in-gate.)
     const R = T.rack;
     P.add('turretCloth', box(0.72, 0.05, 0.17), 0.02, yl(R.floorY + 0.028), zl(-2.115));
-    tarpRoll(P, 'turretCloth', -0.06, yl(2.196), zl(-2.115), 0.66, 0.068, true, P.q ? 12 : 8);
+    tarpRoll(P, 'turretCloth', -0.06, ly(2.196), zl(-2.115), 0.66, 0.068, true, P.q ? 12 : 8);
     // r9 R2 (shaded-parity r7): the load read as ONE uniform dark cloth
     // slab — texture it INSIDE the same certified envelope (tops <= 2.295,
     // z -2.00..-2.352, plan +-0.45; the C3 abort record is the fence).
@@ -1086,6 +1087,7 @@ function m47Cast(P, T) {
   const { box, cylY, cylX, cylZ, sph, liftEye, cupola, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
+  const ly = (y) => yl(originalProfileY(T, y));
   // r4 shared pale-fitting material (B2 cavity + B5 M2 upper works): the
   // shared 'detail' bucket ceilings at ~67 on vertical faces where the
   // ref's lit-fitting class reads 73-80 — leo r9 mgPale recipe, hex
@@ -1234,7 +1236,7 @@ function m47Cast(P, T) {
     const ng = new THREE.BoxGeometry(1.42, 0.17, 0.17);
     const nm = new THREE.Mesh(ng, notchMat);
     nm.name = 'throatNotchShadow';
-    nm.position.set(0, yl(1.845), zl(-1.545));
+    nm.position.set(0, ly(1.845), zl(-1.545));
     nm.castShadow = false;
     nm.receiveShadow = true;
     P.turretG.add(nm);
@@ -1267,8 +1269,8 @@ function m47Cast(P, T) {
   // bustle-roof stowage, r2 (ref side: knob 2.805 over -1.80..-1.96, mid
   // band ~2.71 over -1.70..-2.26, bare 2.613 roof aft): duffel knob box +
   // a low tarp roll ALONG Z carrying the mid band
-  P.add('turretDark', box(0.34, 0.185, 0.159), 0.10, yl(2.71), zl(-1.8825));
-  tarpRoll(P, 'turretDark', -0.05, yl(2.638), zl(-1.98), 0.54, 0.075, false, P.q ? 12 : 8);
+  P.add('turretDark', box(0.34, 0.185, 0.159), 0.10, ly(2.71), zl(-1.8825));
+  tarpRoll(P, 'turretDark', -0.05, ly(2.638), zl(-1.98), 0.54, 0.075, false, P.q ? 12 : 8);
   // rear rack frame on the bustle tail (kept INBOARD of the tail face so the
   // bars never leak a silhouette column past the measured bustle end)
   const rw = Math.min(B.w1, 0.62); // bars stay inside the plan taper columns
@@ -1296,15 +1298,15 @@ function m47Cast(P, T) {
     // -2.683 face, and the proudest face + 5 mm AA bleed stays >= 7 mm
     // clear of the -2.698 trace boundary the r3 anchor law guards.)
     const wallZ = BS[BS.length - 1].z;
-    P.add('turretCloth', box(0.80, 0.42, 0.026), 0.01, yl(2.34), zl(wallZ + 0.011));
-    tarpRoll(P, 'turretCloth', 0.0, yl(2.475), zl(wallZ + 0.0435), 0.74, 0.045, true, P.q ? 12 : 8);
-    tarpRoll(P, 'turretCloth', 0.0, yl(2.205), zl(wallZ + 0.0435), 0.70, 0.045, true, P.q ? 12 : 8);
+    P.add('turretCloth', box(0.80, 0.42, 0.026), 0.01, ly(2.34), zl(wallZ + 0.011));
+    tarpRoll(P, 'turretCloth', 0.0, ly(2.475), zl(wallZ + 0.0435), 0.74, 0.045, true, P.q ? 12 : 8);
+    tarpRoll(P, 'turretCloth', 0.0, ly(2.205), zl(wallZ + 0.0435), 0.70, 0.045, true, P.q ? 12 : 8);
     // r8 S4: strap battens muted to the cloth bucket — the r6 turretDark
     // rails added rectilinear grammar the ref's soft tarp handles don't
     // have (three pale-on-dark verticals at 1x). Same geometry, same trace
     // column (anchor law) — the read is now tone-on-tone sewn straps.
     for (const sx of [-0.27, 0.01, 0.29]) {
-      P.add('turretCloth', box(0.035, 0.38, 0.012), sx, yl(2.335), zl(wallZ + 0.0025));
+      P.add('turretCloth', box(0.035, 0.38, 0.012), sx, ly(2.335), zl(wallZ + 0.0025));
     }
   }
   // LEFT cheek roll wedges (r2): the ref front rolls 2.815 @ x -0.79 down
@@ -1339,10 +1341,10 @@ function m47Cast(P, T) {
       P.add('turretDetail', box(0.012, 0.21, 0.012), 0.0, yl(capY), zl(capZ), 0, 0, 0.42 * sgn);
     }
     for (let k = -2; k <= 2; k++) {
-      P.add('turretDetail', cylZ(0.014, 0.008, 8), k * 0.085, yl(2.145 - Math.abs(k) * 0.008), zl(capZ - 0.002));
+      P.add('turretDetail', cylZ(0.014, 0.008, 8), k * 0.085, ly(2.145 - Math.abs(k) * 0.008), zl(capZ - 0.002));
     }
     for (const side of [-1, 1]) {
-      P.add('turretDetail', box(0.012, 0.012, 0.42), side * 0.408, yl(1.945), zl(0.885), 0.18, -side * 0.316, 0);
+      P.add('turretDetail', box(0.012, 0.012, 0.42), side * 0.408, ly(1.945), zl(0.885), 0.18, -side * 0.316, 0);
     }
   }
   // low-profile cupola (right) + base collar (the ref front rolls 2.905 at
@@ -1354,9 +1356,9 @@ function m47Cast(P, T) {
   cupola(P, 'turret', T.cupola.x, yl(T.cupola.base), zl(T.cupola.z), T.cupola.r, T.cupola.h, 6);
   P.add('turret', cylY(0.17, 0.175, 0.05, 14), T.loader.x, yl(T.loader.y), zl(T.loader.z), 0, 0, 0, [1, 1, 1.25]);
   P.add('turretDark', box(0.05, 0.02, 0.16), T.loader.x + 0.14, yl(T.loader.y) + 0.028, zl(T.loader.z));
-  P.add('turret', sph(0.085, 12, Math.PI / 2), 0.05, yl(2.70), zl(0.32));
+  P.add('turret', sph(0.085, 12, Math.PI / 2), 0.05, ly(2.70), zl(0.32));
   for (const side of [-1, 1]) {
-    liftEye(P, 'turretDetail', side * 0.80, yl(2.55), zl(-0.10));
+    liftEye(P, 'turretDetail', side * 0.80, ly(2.55), zl(-0.10));
     P.add('turretDetail', box(0.02, 0.02, 0.55), side * (B.w1 - 0.02), yl(B.top0 - 0.24), zl(-2.10));
   }
   m2Station(P, mgPale && T.mg.tone === 'two-tone' ? { ...T.mg, paleMat: mgPale } : T.mg, yl, zl);
@@ -1371,14 +1373,14 @@ function m47Cast(P, T) {
   // PHYSICS wants it).
   if (T.mountTruss && T.pedestal) {
     const Tp = T.pedestal;
-    P.add('turretDark', box(0.30, 0.045, 0.36), Tp.x, yl(2.915), zl(Tp.z));
+    P.add('turretDark', box(0.30, 0.045, 0.36), Tp.x, ly(2.915), zl(Tp.z));
     for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      P.add('turretDark', box(0.032, 0.34, 0.032), Tp.x + dx * 0.085, yl(3.08), zl(Tp.z + dz * 0.11),
+      P.add('turretDark', box(0.032, 0.34, 0.032), Tp.x + dx * 0.085, ly(3.08), zl(Tp.z + dz * 0.11),
         dz * -0.35, 0, dx * 0.27);
     }
     // tie beam pedestal head -> M2 mast base (the mounted bridge; pale —
     // it rides the sky-backed band with the rest of the station)
-    P.add('turretDetail', box(0.05, 0.042, 0.45), (Tp.x + T.mg.x) / 2, yl(3.175), zl((Tp.z + T.mg.z) / 2),
+    P.add('turretDetail', box(0.05, 0.042, 0.45), (Tp.x + T.mg.x) / 2, ly(3.175), zl((Tp.z + T.mg.z) / 2),
       0, Math.atan2(T.mg.x - Tp.x, T.mg.z - Tp.z), 0);
   }
   if (T.mg.tone === 'two-tone' && mgPale) {
@@ -1416,11 +1418,11 @@ function m47Cast(P, T) {
   // inside the existing tailLip bar width, rear end 24+ mm clear of the
   // -2.890 trace boundary. Doubles as the D3 era-stowage tell vs m46.
   if (T.rackFill) {
-    P.add('turretCloth', box(1.04, 0.062, 0.155), -0.04, yl(2.041), zl(-2.788));
-    tarpRoll(P, 'turretCloth', -0.30, yl(2.042), zl(-2.72), 0.46, 0.030, true, P.q ? 12 : 8);
-    P.add('turretDetail', box(0.26, 0.05, 0.12), 0.30, yl(2.045), zl(-2.75), 0, 0.09, 0);
+    P.add('turretCloth', box(1.04, 0.062, 0.155), -0.04, ly(2.041), zl(-2.788));
+    tarpRoll(P, 'turretCloth', -0.30, ly(2.042), zl(-2.72), 0.46, 0.030, true, P.q ? 12 : 8);
+    P.add('turretDetail', box(0.26, 0.05, 0.12), 0.30, ly(2.045), zl(-2.75), 0, 0.09, 0);
     for (const sx of [-0.34, 0.04, 0.42]) { // hold-down straps (slat rhythm)
-      P.add('turretDark', box(0.035, 0.012, 0.150), sx, yl(2.064), zl(-2.788));
+      P.add('turretDark', box(0.035, 0.012, 0.150), sx, ly(2.064), zl(-2.788));
     }
   }
   // r4 D1 (m47): the ref carries a whip antenna at dome-rear right (spike
@@ -1441,7 +1443,7 @@ function m47Cast(P, T) {
   // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47 });
-    mg.position.set(0.30, yl(2.96), zl(-0.62));
+    mg.position.set(0.30, ly(2.96), zl(-0.62));
     P.turretG.add(mg);
   }
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 - 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], Math.PI / 2);
@@ -1575,7 +1577,111 @@ function pattonGun(P, G) {
 // (Kept OUT of curveHull/usKit: those are frozen m60a1 code paths — every
 // T26-family extra lives here.)
 // ---------------------------------------------------------------------------
+function applyLowProfileTurret(cfg) {
+  const L = cfg.lowTurret;
+  if (!L) return;
+
+  const T = cfg.turret;
+  if (T.lowProfile) return;
+  const scale = L.scale ?? 0.5;
+  const ringY = T.ringY;
+  const sy = (y) => ringY + (y - ringY) * scale;
+  const mapY = (object, keys) => {
+    if (!object) return;
+    for (const key of keys) if (object[key] != null) object[key] = sy(object[key]);
+  };
+  const shiftAssembly = (object, baseKey, keys) => {
+    if (!object || object[baseKey] == null) return;
+    const dy = sy(object[baseKey]) - object[baseKey];
+    for (const key of keys) if (object[key] != null) object[key] += dy;
+  };
+
+  // The cast shell is genuinely compressed about the fixed turret-ring
+  // plane.  Width is allowed a very small family-specific increase so the
+  // Pershing/Patton castings retain their broad cheek character after the
+  // requested 2:1 height reduction instead of reading as shrunken domes.
+  const widthScale = L.widthScale ?? 1;
+  T.sections = T.sections.map((section) => ({
+    ...section,
+    hw: section.hw * widthScale,
+    ...(section.hwL != null ? { hwL: section.hwL * widthScale } : {}),
+    top: sy(section.top),
+    bot: sy(section.bot),
+  }));
+  mapY(T.basket, ['y0', 'y1']);
+  const podWidthScale = L.podWidthScale ?? widthScale;
+  for (const cheek of T.cheekPods || []) {
+    mapY(cheek, ['y0', 'y1']);
+    if (cheek.roll) cheek.roll = cheek.roll.map(([y, x]) => [sy(y), x * podWidthScale]);
+    if (cheek.chamfer) cheek.chamfer[0] *= scale;
+    cheek.x0 *= podWidthScale;
+    cheek.x1 *= podWidthScale;
+  }
+  for (const wedge of [...(T.zWedges || []), ...(T.rollWedges || [])]) {
+    mapY(wedge, ['y0', 'top0', 'top1']);
+    wedge.x0 *= widthScale;
+    wedge.x1 *= widthScale;
+  }
+  if (T.bustleSecs) {
+    for (const section of T.bustleSecs) {
+      mapY(section, ['top', 'floor']);
+      section.xL *= widthScale;
+      section.xR *= widthScale;
+    }
+  }
+  if (T.bustleSmooth?.tailFloorEase) {
+    T.bustleSmooth.tailFloorEase = T.bustleSmooth.tailFloorEase
+      .map(([z, rise]) => [z, rise * scale]);
+  }
+  if (T.tailLip) T.tailLip[0] = sy(T.tailLip[0]);
+  mapY(T.rack, ['floorY', 'railY', 'loadTop', 'sideFloorY']);
+  mapY(T.cupola, ['base']);
+  if (T.cupola?.ring) mapY(T.cupola.ring, ['top']);
+  mapY(T.cupolaCollar, ['top']);
+  mapY(T.loader, ['y']);
+  mapY(T.vent, ['y']);
+  mapY(T.antenna, ['y']);
+  mapY(T.stowBump, ['y']);
+  mapY(T.sideLinks, ['y']);
+  if (T.stowMG) T.stowMG[1] = sy(T.stowMG[1]);
+  if (T.blisterY != null) T.blisterY = sy(T.blisterY);
+  if (T.whip) T.whip.y = sy(T.whip.y);
+
+  // Roof weapons keep their real dimensions; the whole assemblies move
+  // down with their mounting pads.  This avoids the toy-like flattened M2s
+  // that a group-scale would produce.
+  shiftAssembly(T.mg, 'baseY', ['baseY', 'topY', 'canY']);
+  shiftAssembly(T.pedestal, 'baseY', ['baseY', 'top']);
+
+  cfg.gun.axisY = sy(cfg.gun.axisY);
+  const shield = cfg.gun.shield;
+  if (shield) {
+    const mantletScale = L.mantletScale ?? 0.62;
+    shield.w *= L.mantletWidthScale ?? widthScale;
+    shield.h = Math.max(L.minMantletHeight ?? 0.22, shield.h * mantletScale);
+    shield.dy *= scale;
+    if (shield.chinRise != null) shield.chinRise *= scale;
+    if (shield.rotorR != null) shield.rotorR *= Math.max(mantletScale, 0.78);
+    if (shield.rotorW != null) shield.rotorW *= L.mantletWidthScale ?? widthScale;
+    if (shield.wings) {
+      shield.wings.w *= L.mantletWidthScale ?? widthScale;
+      shield.wings.h *= mantletScale;
+      if (shield.wings.dy != null) shield.wings.dy *= scale;
+    }
+    if (shield.lip) mapY(shield.lip, ['y0', 'y1']);
+  }
+
+  T.lowProfile = { ringY, scale };
+  cfg.topWorld = sy(cfg.topWorld);
+}
+
+function originalProfileY(T, y) {
+  const L = T.lowProfile;
+  return L ? L.ringY + (y - L.ringY) * L.scale : y;
+}
+
 function buildPershing(P, cfg) {
+  applyLowProfileTurret(cfg);
   const { box, cylX } = KIT;
   const hull = curveHull(P, cfg.hull);
   usKit(P, hull, cfg.fit);
@@ -2064,6 +2170,10 @@ function buildPershing(P, cfg) {
     }
   }
   P.turretG.position.set(0, cfg.ring[0], cfg.ring[1]);
+  if (cfg.lowTurret) {
+    P.turretG.userData.castHeightScale = cfg.lowTurret.scale ?? 0.5;
+    P.turretG.userData.castProfile = cfg.lowTurret.profile;
+  }
   P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
   if (cfg.turret.m47) m47Cast(P, cfg.turret); else t26Cast(P, cfg.turret);
   pattonGun(P, cfg.gun);
@@ -4299,6 +4409,10 @@ export const PATTON_PROFILES = {
       gearTone: true,
       hull: M26_HULL, fit: M26_FIT,
       ring: [1.518, -0.454], topWorld: 3.11,
+      lowTurret: {
+        profile: 'm26-broad-cast', scale: 0.5, widthScale: 1.06,
+        mantletScale: 0.62, mantletWidthScale: 1.12, minMantletHeight: 0.42,
+      },
       // m47-r9 fender law: the ref stations alternate 3.3466/3.5045 — the
       // continuous fender line is hw 1.673, full width rides discrete
       // hanger bumps at the ref's own wide slices (i0/i1/i2/i5/i9/i11/i12).
@@ -4526,6 +4640,13 @@ export const PATTON_PROFILES = {
       gearTone: true,
       hull: M45_HULL, fit: M45_FIT,
       ring: [1.548, 0.719], topWorld: 3.05,
+      lowTurret: {
+        profile: 'm45-heavy-howitzer-cast', scale: 0.5, widthScale: 1.06,
+        // Keep the low crew-seat pods inside the track-sweep corridor while
+        // the cast shell itself retains the broader half-height silhouette.
+        podWidthScale: 1.0,
+        mantletScale: 0.62, mantletWidthScale: 1.10, minMantletHeight: 0.40,
+      },
       // m47-r9 fender law: the ref's continuous fender line is 1.676 hw
       // (stations alternate 3.352/3.509) — full width rides discrete hanger
       // bumps at the ref's own 3.509 slice stations, each span clear of the
@@ -4851,6 +4972,10 @@ export const PATTON_PROFILES = {
     build: (P) => buildPershing(P, {
       hull: M46_HULL, fit: M46_FIT,
       ring: [1.56, -0.29], topWorld: 3.18,
+      lowTurret: {
+        profile: 'm46-low-patton-cast', scale: 0.5, widthScale: 1.03,
+        mantletScale: 0.62, mantletWidthScale: 1.08, minMantletHeight: 0.26,
+      },
       // r7 TONE round (shaded-parity r5 orders): GROUP A adopts m47's proven
       // r4+r6 gear recipes OLIVE-variant (the m46 never made m47's tan
       // mistake — the r6 N1 olive constants in the shared cfg.gearTone path
@@ -5111,6 +5236,10 @@ export const PATTON_PROFILES = {
     build: (P) => buildPershing(P, {
       hull: M47_HULL, fit: M47_FIT,
       ring: [1.676, -0.318], topWorld: 3.37,
+      lowTurret: {
+        profile: 'm47-low-t42-cast', scale: 0.5, widthScale: 1.04,
+        mantletScale: 0.72, mantletWidthScale: 1.18, minMantletHeight: 0.24,
+      },
       // r4 TONE round (shaded-parity r3 orders, all material/flush-lane):
       // A1/A2 gear retone + camo wheels, A3 dark gear fittings (with
       // hull.darkGearFit), B2 tail slat tray, D2 hood periscopes.
