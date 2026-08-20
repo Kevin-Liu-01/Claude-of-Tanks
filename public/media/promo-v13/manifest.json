@@ -1,0 +1,27 @@
+{
+  "version": 13,
+  "approvedAt": "2026-08-20",
+  "durationSeconds": 24.933333,
+  "width": 1920,
+  "height": 1080,
+  "fps": 60,
+  "frames": 1496,
+  "assets": {
+    "hero": {
+      "file": "/media/promo-v13/claude-of-tanks-promo-clean.mp4",
+      "poster": "/media/promo-v13/claude-of-tanks-promo-clean.jpg",
+      "role": "unbadged homepage hero",
+      "audio": false,
+      "sha256": "76df648e83a5f728c2ba3eef0eb084eeae7d98f5d8ff49b04032263b5af2ddd0",
+      "sourceMasterSha256": "7b40285378c005c449bc7e4b473a4b0304893def102cd59e2032d98ce21dfd9c"
+    },
+    "fieldManual": {
+      "file": "/media/promo-v13/claude-of-tanks-promo-badged.mp4",
+      "poster": "/media/promo-v13/claude-of-tanks-promo-badged.jpg",
+      "role": "badged documentation feature reel",
+      "audio": true,
+      "sha256": "cb1d3ac83deb9c101036ea68c9f17b7a23a33c7d2111ce07a622788a9ad2c8b1",
+      "sourceMasterSha256": "4728cafd70628121c7abb95471b0dd0edf59e13d40be4516be990c096dc3f967"
+    }
+  }
+}

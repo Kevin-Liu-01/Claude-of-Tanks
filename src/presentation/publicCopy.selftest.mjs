@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,5 +46,19 @@ for (const file of pageFiles) {
 
 const gallerySource = readFileSync(join(ROOT, 'src/gallery/gallery.js'), 'utf8');
 assert.match(gallerySource, /mountMediaArchive\([^\n]+\{ mode: 'wall', limit: 88, filters: false \}\)/);
+
+const homeSource = readFileSync(join(ROOT, 'home.html'), 'utf8');
+const docsSource = readFileSync(join(ROOT, 'docs.html'), 'utf8');
+assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/);
+assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
+assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);
+
+const promoRoot = join(ROOT, 'public/media/promo-v13');
+const promoManifest = JSON.parse(readFileSync(join(promoRoot, 'manifest.json'), 'utf8'));
+assert.equal(promoManifest.version, 13);
+for (const asset of Object.values(promoManifest.assets)) {
+  assert.ok(existsSync(join(ROOT, 'public', asset.file)), `missing approved promo: ${asset.file}`);
+  assert.ok(existsSync(join(ROOT, 'public', asset.poster)), `missing approved poster: ${asset.poster}`);
+}
 
 console.log('public copy selftest passed');

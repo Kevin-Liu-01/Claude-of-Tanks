@@ -5,8 +5,25 @@ autoMountMediaArchives();
 
 function mountHeroRail(root) {
   const videos = [...root.querySelectorAll('video')];
-  if (videos.length < 2) return;
+  if (videos.length === 0) return;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (videos.length === 1) {
+    const [video] = videos;
+    const applyMotionPreference = () => {
+      if (reducedMotion.matches || document.hidden) {
+        video.pause();
+        video.currentTime = 0;
+        return;
+      }
+      video.play().catch(() => {});
+    };
+    reducedMotion.addEventListener('change', applyMotionPreference);
+    document.addEventListener('visibilitychange', applyMotionPreference);
+    applyMotionPreference();
+    return;
+  }
+
   let activeIndex = Math.max(0, videos.findIndex((video) => video.classList.contains('is-active')));
   let advanceTimer = 0;
   let transitionToken = 0;
