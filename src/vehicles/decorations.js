@@ -1323,6 +1323,14 @@ const TANK_MANIFESTS = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
+  // The native 103A profile owns its secured starboard recovery rope. The
+  // generic casemate manifest otherwise adds a second looped cable in the
+  // garage; its side-placement fallback can stand that duplicate nearly
+  // vertical, while procedural-only Gallery builds correctly omit it.
+  // Preserve the rest of the deterministic cold-war dressing, but keep the
+  // recovery rope canonical so both surfaces render the same assembly.
+  strv103a: (spec, rng) => defaultManifest(spec, rng)
+    .map((row) => (row.kit === 'cable' ? { ...row, p: 0 } : row)),
   // --- Modern ---
   leo2a4: () => [
     // The family profile owns the complete hull-and-turret ghillie suit.

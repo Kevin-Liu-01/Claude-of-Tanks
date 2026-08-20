@@ -684,14 +684,14 @@ function buildStrv103A(P) {
   for (const [z0, z1] of [[-2.62, -1.22], [-1.22, 0.18], [0.18, 2.34]]) {
     const segment = new THREE.Mesh(cylZ(0.019, z1 - z0, P.q ? 12 : 8), P.mats.dark);
     segment.name = 'strv103a_side_tow_rope_segment';
-    segment.position.set(1.778, 1.500, (z0 + z1) * 0.5);
+    segment.position.set(1.708, 1.500, (z0 + z1) * 0.5);
     segment.castShadow = true;
     segment.receiveShadow = true;
     sideTowRope.add(segment);
   }
   P.hullG.add(sideTowRope);
   for (const z of [-2.30, -1.05, 0.30, 1.82]) {
-    P.add('hullDark', box(0.042, 0.062, 0.090), 1.750, 1.50, z);             // rope retaining straps
+    P.add('hullDark', box(0.042, 0.062, 0.090), 1.710, 1.50, z);             // rope retaining straps
   }
   // twin raked whip masts (print: pair tips ~2.9 leaning rearward)
   for (const s of [-1, 1]) {
