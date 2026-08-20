@@ -261,11 +261,6 @@ function buildZTZ85III(P) {
   P.add('hullDetail', box(0.28, 0.24, 0.90), 1.40, 1.25, -0.05);
   P.add('hullDark', box(0.24, 0.02, 0.03), 1.40, 1.375, -0.58);
   P.add('hull', box(0.28, 0.28, 0.66), 1.40, 1.28, 1.05);
-  // rear-deck stowage field (print band topping ~1.92 over z -2.0..-2.7)
-  mount(P, 'hull', FITTINGS.stowageRack({
-    mats: P.mats, w: 1.90, d: 0.62, h: 0.24, fill: 0.42, rails: 2, seed: 8551,
-  }), 0, 1.66, -2.35);
-
   // ---- engine deck furniture: transverse louvres, filler caps, splash board
   // and the driver station LEFT (WZ-1227 layout).
   for (let i = 0; i < 5; i++) {
@@ -307,13 +302,23 @@ function buildZTZ85III(P) {
   // apex 2.30 world (the published height datum) falling to 2.18 over the
   // bustle; the commander cupola crown rides the same 2.30 line.
   P.turretG.position.set(0, 1.44, -0.10);
+  // The former 2.28 m plan stopped at the ring and left its gun and two
+  // rear-deck racks reading as independent props.  Keep the same welded
+  // cheek language, but carry the casting into a full 4.55 m turret body:
+  // a slightly longer nose seats the mantlet while almost all of the added
+  // length becomes a low integral bustle over the engine deck.
+  const turretShellFrontZ = 1.55;
+  const turretShellRearZ = -3.00;
   const plan85 = [
-    [0.30, 1.20], [0.66, 0.95], [1.06, 0.15], [1.10, -0.35], [0.92, -0.92],
-    [0.42, -1.08], [-0.42, -1.08], [-0.92, -0.92], [-1.10, -0.35],
-    [-1.06, 0.15], [-0.66, 0.95], [-0.30, 1.20],
+    [0.34, turretShellFrontZ], [0.74, 1.22], [1.12, 0.25], [1.18, -0.55],
+    [1.16, -1.55], [1.05, -2.55], [0.52, turretShellRearZ],
+    [-0.52, turretShellRearZ], [-1.05, -2.55], [-1.16, -1.55],
+    [-1.18, -0.55], [-1.12, 0.25], [-0.74, 1.22], [-0.34, turretShellFrontZ],
   ];
-  const inset85 = [0.55, 0.60, 0.80, 0.80, 0.86, 0.88, 0.88, 0.86, 0.80, 0.80, 0.60, 0.55];
-  const crown85 = [0.86, 0.85, 0.80, 0.78, 0.74, 0.73, 0.73, 0.74, 0.78, 0.80, 0.85, 0.86];
+  const inset85 = [0.54, 0.58, 0.76, 0.82, 0.85, 0.88, 0.90,
+    0.90, 0.88, 0.85, 0.82, 0.76, 0.58, 0.54];
+  const crown85 = [0.86, 0.85, 0.80, 0.78, 0.75, 0.73, 0.72,
+    0.72, 0.73, 0.75, 0.78, 0.80, 0.85, 0.86];
   P.add('turret', KIT.polyMultiLoft(plan85, [
     { height: 0.02, inset: 1.0 },
     { height: 0.30, inset: 1.0 },
@@ -325,8 +330,28 @@ function buildZTZ85III(P) {
   // weld seam beads along the belt/cheek break
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.022, 0.022, 0.86), s * 0.845, 0.315, 0.60, 0, -s * 0.32, 0);
-    P.add('turretDark', box(0.022, 0.022, 0.94), s * 1.075, 0.315, -0.12, 0, -s * 0.06, 0);
+    P.add('turretDark', box(0.022, 0.022, 2.62), s * 1.075, 0.315, -0.98, 0, -s * 0.06, 0);
   }
+
+  // Twin bustle panniers replace the hull-owned floating rack.  Each floor
+  // is planted into the extended crown and the transverse beams overlap the
+  // welded shell, so the complete assembly follows turret yaw as one body.
+  const bustleRackZ = -2.05;
+  for (const s of [-1, 1]) {
+    P.addEquipment('turret', box(0.70, 0.16, 1.48), s * 0.59, 0.79, bustleRackZ);
+    P.add('turretDark', box(0.62, 0.025, 1.34), s * 0.59, 0.8825, bustleRackZ);
+    for (const z of [-1.47, -2.61]) {
+      P.add('turretDetail', box(0.58, 0.16, 0.045), s * 0.59, 0.76, z);
+    }
+    const rack = FITTINGS.stowageRack({
+      mats: P.mats, w: 0.64, d: 1.34, h: 0.20, fill: 0.48, rails: 2,
+      seed: 8551 + (s > 0 ? 1 : 0),
+    });
+    rack.name = `ztz85iii_bustleRack_${s < 0 ? 'left' : 'right'}`;
+    mount(P, 'turret', rack, s * 0.59, 0.885, bustleRackZ);
+  }
+  P.add('turretDetail', box(1.72, 0.09, 0.10), 0, 0.78, -1.42);
+  P.add('turretDetail', box(1.48, 0.09, 0.10), 0, 0.74, -2.68);
 
   // ---- roof stations on the raked roof: cupola RIGHT (crown 2.30 world =
   // the cheek-apex line), flush loader hatch LEFT, low armored gunner-sight
@@ -366,40 +391,42 @@ function buildZTZ85III(P) {
   // walls into a deep rear basket, every rail tied to the shell.
   for (const s of [-1, 1]) {
     for (const y of [0.18, 0.34, 0.50]) {
-      P.add('turretDetail', box(0.032, 0.026, 1.30), s * 1.16, y, -0.36, 0, -s * 0.05, 0);
+      P.add('turretDetail', box(0.032, 0.026, 2.62), s * 1.16, y, -1.04, 0, -s * 0.04, 0);
     }
-    for (const z of [0.24, -0.16, -0.56, -0.94]) {
+    for (const z of [0.24, -0.34, -0.92, -1.50, -2.08, -2.34]) {
       P.add('turretDetail', box(0.035, 0.40, 0.035), s * 1.155, 0.34, z, 0, -s * 0.05, 0);
     }
     // open-slat backing (§5.266 fix 6): four dark slats replace the solid
     // panel — the shell wall behind keeps the side mask, the basket reads
     // see-through like the print's.
     for (const y of [0.205, 0.295, 0.385, 0.475]) {
-      P.add('turretDark', box(0.020, 0.058, 1.26), s * 1.135, y, -0.37, 0, -s * 0.05, 0);
+      P.add('turretDark', box(0.020, 0.058, 2.54), s * 1.135, y, -1.05, 0, -s * 0.04, 0);
     }
     // basket-to-shell tie straps
     P.add('turretDark', box(0.09, 0.030, 0.030), s * 1.06, 0.50, 0.22, 0, -s * 0.05, 0);
-    P.add('turretDark', box(0.09, 0.030, 0.030), s * 1.02, 0.50, -0.86, 0, -s * 0.05, 0);
+    P.add('turretDark', box(0.09, 0.030, 0.030), s * 1.08, 0.50, -1.04, 0, -s * 0.05, 0);
+    P.add('turretDark', box(0.09, 0.030, 0.030), s * 0.99, 0.50, -2.24, 0, -s * 0.05, 0);
   }
   // rear basket: rails + verticals + dark mesh backing, top 1.95 world
+  const rearBasketZ = -3.16;
   for (const y of [0.16, 0.33, 0.50]) {
-    P.add('turretDetail', box(1.84, 0.028, 0.034), 0, y, -1.56);
+    P.add('turretDetail', box(1.84, 0.028, 0.034), 0, y, rearBasketZ);
   }
   for (let i = 0; i < 7; i++) {
-    P.add('turretDetail', box(0.032, 0.40, 0.034), -0.90 + i * 0.30, 0.33, -1.56);
+    P.add('turretDetail', box(0.032, 0.40, 0.034), -0.90 + i * 0.30, 0.33, rearBasketZ);
   }
   // rear backing stays SOLID (a slatted rear was built and measured -0.3 on
   // the rear gate view — the print's own bustle band is solid there; the
   // critic's open-slat ask is carried by the flank baskets, receipt in the
   // fix packet); the tarped stowage fill reads through the side openings.
-  P.add('turretDark', box(1.80, 0.36, 0.022), 0, 0.33, -1.535);
+  P.add('turretDark', box(1.80, 0.36, 0.022), 0, 0.33, rearBasketZ + 0.025);
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.034, 0.028, 0.46), s * 0.92, 0.50, -1.32);
-    P.add('turretDetail', box(0.034, 0.028, 0.46), s * 0.92, 0.16, -1.32);
+    P.add('turretDetail', box(0.034, 0.028, 0.46), s * 0.92, 0.50, -2.94);
+    P.add('turretDetail', box(0.034, 0.028, 0.46), s * 0.92, 0.16, -2.94);
   }
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.56, d: 0.40, h: 0.20, fill: 0.35, rails: 2, seed: 8552,
-  }), 0, 0.40, -1.34);
+  }), 0, 0.40, -2.94);
 
   // command-variant RADIO MAST on the basket's rear-left corner — the
   // print's dominant vertical: staged tube on a planted collar bridging the
@@ -408,20 +435,20 @@ function buildZTZ85III(P) {
   // packet: the fat vertical stack (whole 87.4 -> 85.6) and the print-true
   // aft-raked stack (floaters 0 at yaw poses + P95 3.93 volatility).  The
   // narrow z-column keeps the W-85 cluster on the P95/silhouette row.
-  P.add('turretDark', box(0.16, 0.05, 0.24), -0.85, 0.50, -1.55);
+  P.add('turretDark', box(0.16, 0.05, 0.24), -0.85, 0.50, -3.15);
   // radio junction box at the mast foot (the print's rear-shoulder mass)
-  P.add('turretDark', box(0.24, 0.20, 0.22), -0.83, 0.63, -1.36);
-  P.add('turretDetail', box(0.026, 0.10, 0.16), -0.70, 0.60, -1.28);
-  P.add('turretDetail', cylY(0.055, 0.070, 0.14, 10), -0.85, 0.59, -1.58);
-  P.add('turretDetail', cylY(0.042, 0.050, 0.85, 10), -0.85, 1.08, -1.58);
-  P.add('turretDark', cylY(0.052, 0.052, 0.05, 10), -0.85, 1.52, -1.58);
-  P.add('turretDetail', cylY(0.030, 0.038, 0.75, 10), -0.85, 1.92, -1.58);
-  P.add('turretDark', box(0.10, 0.09, 0.10), -0.85, 2.32, -1.58);
+  P.add('turretDark', box(0.24, 0.20, 0.22), -0.83, 0.63, -2.96);
+  P.add('turretDetail', box(0.026, 0.10, 0.16), -0.70, 0.60, -2.88);
+  P.add('turretDetail', cylY(0.055, 0.070, 0.14, 10), -0.85, 0.59, -3.18);
+  P.add('turretDetail', cylY(0.042, 0.050, 0.85, 10), -0.85, 1.08, -3.18);
+  P.add('turretDark', cylY(0.052, 0.052, 0.05, 10), -0.85, 1.52, -3.18);
+  P.add('turretDetail', cylY(0.030, 0.038, 0.75, 10), -0.85, 1.92, -3.18);
+  P.add('turretDark', box(0.10, 0.09, 0.10), -0.85, 2.32, -3.18);
   // guy stay tying the mast mid-stage to the shell rear wall
-  P.add('turretDark', box(0.026, 0.026, 0.52), -0.85, 0.94, -1.32, -0.55, 0, 0);
+  P.add('turretDark', box(0.026, 0.026, 0.52), -0.85, 0.94, -2.92, -0.55, 0, 0);
   mount(P, 'turret', FITTINGS.antennaWhip({
     mats: P.mats, h: 0.95, r: 0.014, rake: -0.05, seed: 8543,
-  }), -0.85, 2.36, -1.58);
+  }), -0.85, 2.36, -3.18);
   P.add('turretDetail', cylY(0.034, 0.044, 0.055, 10), 0.92, 0.52, -0.95);
   mount(P, 'turret', FITTINGS.antennaWhip({
     mats: P.mats, h: 0.72, r: 0.012, rake: 0.06, seed: 8544,
@@ -439,24 +466,40 @@ function buildZTZ85III(P) {
   // datum via overallLengthM while silhouetteOverallLengthM carries the
   // authored span, and the whole-registered gate frame stays counterweighted
   // (a published-length tube dragged the body registration -0.75 m).
-  P.gunG.position.set(0, 0.26, 0.50);
+  const gunPivotZ = 1.10;
+  P.gunG.position.set(0, 0.26, gunPivotZ);
   // §5.266 critic fix 3: the proud saddle doghouse + brow read against the
   // print's recessed mantlet shadow — the root box is tucked behind the
   // nose line (built shallower/lower) and the brow plate is deleted; the
   // canvas collar and dark recess ring carry the mantlet read.
-  P.addGunExtra(box(0.54, 0.40, 0.20), 0, 0.00, 0.36);
-  P.addGunExtra(cylZ(0.185, 0.24, seg, 0.16), 0, 0, 0.60);
-  P.addGunExtraDark(cylZ(0.19, 0.035, seg), 0, 0, 0.49);
-  P.addGunExtraDark(box(0.50, 0.05, 0.05), 0, -0.20, 0.42);
+  P.addGunExtra(box(0.70, 0.46, 0.34), 0, 0.00, 0.08);
+  P.addGunExtra(cylZ(0.23, 0.38, seg, 0.17), 0, 0, 0.32);
+  P.addGunExtraDark(cylZ(0.235, 0.040, seg), 0, 0, 0.13);
+  P.addGunExtraDark(box(0.62, 0.055, 0.12), 0, -0.225, 0.10);
   // gun-slaved IR illuminator tucked onto the saddle shoulder LEFT
-  P.addGunExtra(cylZ(0.09, 0.13, 12), -0.32, 0.13, 0.44);
-  P.addGunExtraDark(cylZ(0.094, 0.015, 12), -0.32, 0.13, 0.515);
-  P.addGunExtraDark(box(0.05, 0.12, 0.05), -0.32, 0.015, 0.40);
+  P.addGunExtra(cylZ(0.09, 0.13, 12), -0.38, 0.13, 0.24);
+  P.addGunExtraDark(cylZ(0.094, 0.015, 12), -0.38, 0.13, 0.315);
+  P.addGunExtraDark(box(0.05, 0.12, 0.05), -0.38, 0.015, 0.20);
   tubeGun(P, [
-    [0.85, 1.50, 0.108], [1.50, 2.45, 0.098], [2.45, 3.05, 0.126],
+    [0.52, 1.50, 0.108], [1.50, 2.45, 0.098], [2.45, 3.05, 0.126],
     [3.05, 3.72, 0.094], [3.72, 4.03, 0.099],
   ], { rings: [[1.50, 0.112], [2.45, 0.129], [3.05, 0.129], [3.72, 0.103]], muzzle: 4.03 });
   muzzleBore(P, { r: 0.083 }); // §B3.1
+
+  P.turretG.userData.ztz85iiiAttachmentReceipt = Object.freeze({
+    originalShellLengthM: 2.28,
+    shellFrontZ: turretShellFrontZ,
+    shellRearZ: turretShellRearZ,
+    shellLengthM: turretShellFrontZ - turretShellRearZ,
+    lengthRatio: (turretShellFrontZ - turretShellRearZ) / 2.28,
+    gunPivotZ,
+    gunMountRearZ: gunPivotZ - 0.09,
+    gunMountOverlapM: turretShellFrontZ - (gunPivotZ - 0.09),
+    bustleRackFloorY: 0.885,
+    bustleCrownY: 0.72,
+    bustleRackNames: ['ztz85iii_bustleRack_left', 'ztz85iii_bustleRack_right'],
+    rearBasketZ,
+  });
 
   // §5.266 critic fix 2: the mid-wall seats reseated onto the shell BEHIND
   // the basket backing (markings ray only sees the 'turret' bucket) — both
