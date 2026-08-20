@@ -14,7 +14,7 @@ export const DEV_FLEET_LABEL = 'DEV';
 // production exclusion here so UI surfaces cannot quietly diverge.
 export const PRODUCTION_HIDDEN_TANK_IDS = new Set([
   'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
-  'm26_pershing', 'm45_patton', 'isu122s', 'isu152',
+  'm26_pershing', 'm45_patton', 't95', 'isu122s', 'isu152',
   'newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2_legacy',
   'recon_tank', 'q_heavy',
 ]);

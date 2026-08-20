@@ -334,6 +334,7 @@ function curveHull(P, H) {
     style: 'dished', wheelR: G.wheelR, wheelW, wheelY: wy, xc, wheelZs,
     sprocket: G.sprocket, idler: G.idler, rollers, trackW: H.trackW,
     topY: G.rollerY + 0.04, paintedEnds: true, coveredTop: false, arms: true,
+    sprocketTeeth: G.sprocketTeeth,
     // m46 r5 opt-in pass-through: pin the contact patch so the ramp
     // departures match the measured ref lines (the loop eases into its
     // tangent ~0.1 m past the patch end). Undefined = byte-identical.
@@ -3323,6 +3324,33 @@ function buildM60A2(P, cfg) {
   P.add('hull', slab(
     [-1.00, 0.95, -3.60], [1.00, 0.95, -3.60], [1.02, 1.00, -3.47], [-1.02, 1.00, -3.47],
     [-1.00, 1.44, -3.60], [1.00, 1.44, -3.60], [1.02, 1.863, -3.47], [-1.02, 1.863, -3.47]));
+  // Close the two formerly open over-track shoulders. The closures key into
+  // the central rear bulkhead, climb under the fender deck and stop above the
+  // sprocket crest, so the rear reads as one armored structure without hiding
+  // the live track wrap. They merge into the camouflaged hull bucket (zero
+  // additional draw calls and no unpainted void-facing material).
+  for (const side of [-1, 1]) {
+    const inner = side * 1.00;
+    const outer = side * 1.72;
+    P.add('hull', orientedSlab(
+      [inner, 1.40, -3.60], [outer, 1.40, -3.57],
+      [outer, 1.48, -3.42], [side * 1.02, 1.44, -3.47],
+      [inner, 1.85, -3.60], [outer, 1.92, -3.57],
+      [outer, 2.01, -3.42], [side * 1.02, 1.89, -3.47]));
+  }
+  if (P.geometryReceipt) {
+    P.hullG.userData.m60a2RearClosureReceipt = {
+      panels: 2,
+      innerX: 1.00,
+      outerX: 1.72,
+      bottomY: 1.40,
+      topY: 2.01,
+      rearZ: -3.60,
+      frontZ: -3.42,
+      deckOverlapM: 0.02,
+      mergedHullDrawCalls: 0,
+    };
+  }
   for (const side of [-1, 1]) {
     P.add('hullRubber', box(0.50, 0.13, 0.075), side * 1.44, 1.525, -3.6125);
     P.add('hullRubber', box(0.46, 0.08, 0.045), side * 1.44, 1.52, -3.635);
@@ -3547,6 +3575,33 @@ function buildM60A2(P, cfg) {
 // trunnion (0, 2.00, z' 1.28); the resulting whole/turret-root/station-top
 // caps are certified in the packet with the §E _region_pitch repair plan.
 // ---------------------------------------------------------------------------
+function m48RadialRoofSeat(cx, cz, radius, topY, roofYs, ringY, ringZ) {
+  const segments = roofYs.length;
+  const positions = [];
+  const local = (x, y, z) => [x, y - ringY, z - ringZ];
+  const pushTriangle = (a, b, c) => positions.push(...a, ...b, ...c);
+  const topCenter = local(cx, topY, cz);
+  for (let i = 0; i < segments; i++) {
+    const j = (i + 1) % segments;
+    const a0 = (i / segments) * Math.PI * 2;
+    const a1 = (j / segments) * Math.PI * 2;
+    const b0 = local(cx + Math.sin(a0) * radius, roofYs[i], cz + Math.cos(a0) * radius);
+    const b1 = local(cx + Math.sin(a1) * radius, roofYs[j], cz + Math.cos(a1) * radius);
+    const t0 = local(cx + Math.sin(a0) * radius, topY, cz + Math.cos(a0) * radius);
+    const t1 = local(cx + Math.sin(a1) * radius, topY, cz + Math.cos(a1) * radius);
+    // Clockwise plan order viewed from above: outward skirt faces, followed
+    // by a roof-facing cap that disappears inside the supported fitting.
+    pushTriangle(b0, b1, t1);
+    pushTriangle(b0, t1, t0);
+    pushTriangle(topCenter, t0, t1);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((positions.length / 3) * 2), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function buildM48(P, cfg) {
   const { box, cylX, cylY, cylZ, sph, buildGun, tarpRoll } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -3672,6 +3727,48 @@ function buildM48(P, cfg) {
   P.turretG.position.set(0, cfg.ring[0], cfg.ring[1]);
   t26Cast(P, { ringY: cfg.ring[0], ringZ: cfg.ring[1], ...cfg.turret });
   const yl = (y) => y - cfg.ring[0], zl = (z) => z - cfg.ring[1];
+
+  // The source ring and hatch footprints overhang the M48's asymmetric egg
+  // dome. Flat-bottom cylinders therefore left their downhill halves visibly
+  // suspended even though their centres nearly touched the crown. These
+  // camouflaged cast skirts follow the measured roof perimeter and overlap
+  // each fitting underside by 2 mm, preserving one structural draw bucket.
+  const roofSeats = [
+    {
+      id: 'loader-hatch', x: -0.541, z: 0.045, r: 0.470, topY: 2.5345,
+      roofYs: [2.492, 2.492, 2.492, 2.492, 2.492, 2.492, 2.492, 2.492,
+        2.4895, 2.4433, 2.3591, 2.3029, 2.2787, 2.2917, 2.3415, 2.4417],
+    },
+    {
+      id: 'commander-cupola', x: 0.570, z: -0.310, r: 0.3468, topY: 2.672,
+      roofYs: [2.4914, 2.4141, 2.3492, 2.3065, 2.2874, 2.2937, 2.322, 2.3763,
+        2.4499, 2.472, 2.4765, 2.4877, 2.492, 2.492, 2.492, 2.492],
+    },
+  ];
+  for (const seat of roofSeats) {
+    P.add('turret', m48RadialRoofSeat(
+      seat.x, seat.z, seat.r, seat.topY, seat.roofYs, cfg.ring[0], cfg.ring[1]));
+  }
+  // The forward gunner hood sits on a doubly-sloped patch. A four-corner
+  // plinth follows that local cast surface instead of projecting a generic
+  // vertical box through the dome.
+  const sightSeat = orientedSlab(
+    [0.419, yl(2.336), zl(1.312)], [0.621, yl(2.226), zl(1.312)],
+    [0.621, yl(2.366), zl(1.062)], [0.419, yl(2.433), zl(1.062)],
+    [0.419, yl(2.547), zl(1.312)], [0.621, yl(2.547), zl(1.312)],
+    [0.621, yl(2.522), zl(1.062)], [0.419, yl(2.522), zl(1.062)]);
+  P.add('turret', sightSeat);
+  if (P.geometryReceipt) {
+    P.turretG.userData.m48RoofSeatReceipts = [
+      ...roofSeats.map((seat) => ({
+        id: seat.id,
+        roofContactMarginM: 0.008,
+        fittingOverlapM: 0.002,
+        perimeterSamples: seat.roofYs.length,
+      })),
+      { id: 'gunner-sight', roofContactMarginM: 0.008, fittingOverlapM: 0.004, perimeterSamples: 4 },
+    ];
+  }
 
   // M48A5 source-semantic upper works.  These stations are reconstructed
   // from the supplied reference's component envelopes only: no source
@@ -4083,12 +4180,14 @@ const M46_HULL = {
     // slope 0.80/departure ~1.22 to an idler wrap ending by 1.99; rear ramp
     // slope 0.50/departure -2.87 to a SMALL tail wheel (wrap bottom ~0.62
     // flat around z -3.98, gear content gone by -4.07/-4.14 by phase — the
-    // print's chopped rear track: a real-sized r 0.33 sprocket wrap would
+    // print's chopped rear track: the enlarged r 0.14 sprocket remains well
+    // below a full-sized r 0.33 wheel, whose wrap would
     // poke the -4.12..-4.34 columns the ref keeps empty; §B6 holds (both
     // ends raised, tangent ramps), size residual documented in the packet).
     // Wrap radii include bandOuterR 0.09 + ~0.05 link-corner reach.
     wheelR: 0.33, span: [1.035, -2.685], rollerN: 3, rollerY: 1.00, contactZF: 1.08, contactZR: -2.72,
-    idler: { z: 1.64, y: 0.765, r: 0.19 }, sprocket: { z: -3.88, y: 0.815, r: 0.07 },
+    idler: { z: 1.64, y: 0.765, r: 0.19 }, sprocket: { z: -3.88, y: 0.815, r: 0.14 },
+    sprocketTeeth: false,
   },
 };
 const M46_FIT = {
@@ -4145,6 +4244,7 @@ const M47_HULL = {
     // 0.725 @1.977; ref 0.652 @-4.074 -> proc 0.652 @-3.969).
     wheelR: 0.33, span: [0.985, -2.395], rollerN: 3, rollerY: 1.00,
     idler: { z: 1.515, y: 0.94, r: 0.27 }, sprocket: { z: -3.555, y: 0.96, r: 0.325 },
+    sprocketTeeth: false,
   },
 };
 const M47_FIT = {
@@ -4973,8 +5073,8 @@ export const PATTON_PROFILES = {
       hull: M46_HULL, fit: M46_FIT,
       ring: [1.56, -0.29], topWorld: 3.18,
       lowTurret: {
-        profile: 'm46-low-patton-cast', scale: 0.65, widthScale: 1.03,
-        mantletScale: 0.806, mantletWidthScale: 1.08, minMantletHeight: 0.338,
+        profile: 'm46-low-patton-cast', scale: 0.78, widthScale: 1.03,
+        mantletScale: 0.9672, mantletWidthScale: 1.08, minMantletHeight: 0.4056,
       },
       // r7 TONE round (shaded-parity r5 orders): GROUP A adopts m47's proven
       // r4+r6 gear recipes OLIVE-variant (the m46 never made m47's tan
@@ -4991,11 +5091,11 @@ export const PATTON_PROFILES = {
       wheelMul: [0.865, 0.91, 0.845], wheelEnv: 0.15,
       // m46 shade spans (measured off M46_HULL gear): BOTH end wraps sit
       // BELOW the 1.215 top run (idler crest 1.045 @ 1.64, tension-idler-
-      // sized sprocket crest 0.975 @ -3.88 — the m47 covers rose, these
+      // sized sprocket crest 1.045 @ -3.88 — the m47 covers rose, these
       // descend). Covers 5+ cm over the pad crowns, under the 1.369 fender
       // doubler bottom; curtains under the fender lip clear of both wrap
       // zones; backers fill the m46's own wheel->wrap wedges; end rings
-      // sized to the 0.16 carrier discs (sprocket pair shadow-named — the
+      // sized inside the 0.28 carrier discs (sprocket pair shadow-named — the
       // carrier face is the plan-mask edge; idler ring real interior).
       gearShade: {
         covers: [[0.61, 0.016, 1.30, 1.195, -3.10, 0.146], [0.61, 0.016, 3.25, 1.30, -0.825, 0], [0.61, 0.016, 0.80, 1.23, 1.20, -0.14]],

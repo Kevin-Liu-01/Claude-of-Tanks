@@ -2909,7 +2909,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.705,
         4
       ],
-      "sourceHash": "b4268b82ecb90889"
+      "sourceHash": "26e27284911be2d7"
     },
     "turret": {
       "min": [
@@ -2965,7 +2965,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.705,
         4
       ],
-      "sourceHash": "b4268b82ecb90889"
+      "sourceHash": "26e27284911be2d7"
     },
     "turret": {
       "min": [
@@ -3021,7 +3021,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.82,
         3.61
       ],
-      "sourceHash": "21cd586cbd15e04b"
+      "sourceHash": "0cd10f4a172fb319"
     },
     "turret": {
       "min": [
@@ -3133,7 +3133,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.825,
         3.758
       ],
-      "sourceHash": "3eadd25d75c9822b"
+      "sourceHash": "739ada491e42bec3"
     },
     "turret": {
       "min": [
@@ -3189,7 +3189,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.82,
         3.649
       ],
-      "sourceHash": "c0ebaec468ee0052"
+      "sourceHash": "a1fb1399781b2a68"
     },
     "turret": {
       "min": [
@@ -3202,7 +3202,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.254,
         2.8114
       ],
-      "sourceHash": "575ebc5c50da4bec"
+      "sourceHash": "239d4cf951af6e36"
     },
     "tracks": {
       "left": {
@@ -4994,7 +4994,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.275,
         1.273
       ],
-      "sourceHash": "103754aff8076883"
+      "sourceHash": "7b67dfe8f6de695a"
     },
     "tracks": {
       "left": {
@@ -5037,7 +5037,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         2.18,
         3.415
       ],
-      "sourceHash": "d3d1165a52665c6e"
+      "sourceHash": "8c1c38c935e6df4e"
     },
     "turret": {
       "min": [
@@ -5354,42 +5354,42 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
     "turret": {
       "min": [
         -1.0712,
-        -0.195,
+        -0.234,
         -1.774
       ],
       "max": [
         1.2772,
-        0.8177,
+        0.9812,
         1.518
       ],
-      "sourceHash": "67dd90893faa286c"
+      "sourceHash": "e287128ce0d2f6d8"
     },
     "tracks": {
       "left": {
         "min": [
           -1.655,
           0.01,
-          -4.0397
+          -4.1099
         ],
         "max": [
           -1.055,
           1.185,
           1.9172
         ],
-        "sourceHash": "f90360d25b726570"
+        "sourceHash": "12537092ceb36eea"
       },
       "right": {
         "min": [
           1.055,
           0.01,
-          -4.0397
+          -4.1099
         ],
         "max": [
           1.655,
           1.185,
           1.9172
         ],
-        "sourceHash": "ece4dfbd4eb385a0"
+        "sourceHash": "e668ede1d3e548df"
       }
     }
   },

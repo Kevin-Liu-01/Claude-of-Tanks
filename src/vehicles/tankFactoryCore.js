@@ -1137,7 +1137,7 @@ function idlerGeo(r, w, seg, pattern = null) {
 // dark bolt ring, raised hub. `toothOuter` is the band outer radius
 // (r + CLEAR + trackTh/2) supplied by the caller; tips stay a hair proud.
 function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
-  ringSpan = null, pattern = null) {
+  ringSpan = null, pattern = null, includeTeeth = true) {
   // r7b TOOTHED-RING REBUILD (hard critique on both judged WWII closeups AND
   // the Sherman drive-end misread): the r5 "teeth hidden just inside the
   // band" compromise rendered the drive end as a FLAT TOOTHLESS PAINTED DISC
@@ -1166,15 +1166,17 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
     // full discs at the band edges, which visually erased the entire wheel.
     body.push(xform(torus(r * 0.84, r * 0.10, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
     dark.push(xform(torus(r * 0.69, r * 0.055, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
-    for (let k = 0; k < n; k++) {
-      const a = (k / n) * Math.PI * 2;
-      const mid = (rootR + tipR) / 2;
-      // rx = (PI/2 - a) points the long dim RADIALLY around the ring; teeth
-      // taper root->tip (wedge) via a slim tip cap on a wider root block
-      dark.push(xform(box(w * 0.13, tipR - rootR, pitchArc * 0.46),
-        off, Math.sin(a) * mid, Math.cos(a) * mid, Math.PI / 2 - a, 0, 0));
-      dark.push(xform(box(w * 0.13, Math.max(0.02, (tipR - rootR) * 0.3), pitchArc * 0.26),
-        off, Math.sin(a) * (tipR - 0.01), Math.cos(a) * (tipR - 0.01), Math.PI / 2 - a, 0, 0));
+    if (includeTeeth) {
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2;
+        const mid = (rootR + tipR) / 2;
+        // rx = (PI/2 - a) points the long dim RADIALLY around the ring; teeth
+        // taper root->tip (wedge) via a slim tip cap on a wider root block
+        dark.push(xform(box(w * 0.13, tipR - rootR, pitchArc * 0.46),
+          off, Math.sin(a) * mid, Math.cos(a) * mid, Math.PI / 2 - a, 0, 0));
+        dark.push(xform(box(w * 0.13, Math.max(0.02, (tipR - rootR) * 0.3), pitchArc * 0.26),
+          off, Math.sin(a) * (tipR - 0.01), Math.cos(a) * (tipR - 0.01), Math.PI / 2 - a, 0, 0));
+      }
     }
   }
   const boltCount = pattern?.endFasteners ?? 8;
@@ -1307,6 +1309,7 @@ function buildRunningGear(P, cfg) {
       wheelR,
       wheelY,
       sprocket: { z: sprocket.z, y: sprocket.y, r: sprocket.r },
+      sprocketTeeth: cfg.sprocketTeeth !== false,
       idler: { z: idler.z, y: idler.y, r: idler.r },
     });
   }
@@ -1533,7 +1536,7 @@ function buildRunningGear(P, cfg) {
   // the whole build ×0.9921 (probe-frame law receipt in the m48 packet).
   // Radial tooth reach is untouched; the rings pull inboard only.
   const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
-    mats.trackLinkM, cfg.endRingSpan ?? trackW, wheelPattern);
+    mats.trackLinkM, cfg.endRingSpan ?? trackW, wheelPattern, cfg.sprocketTeeth !== false);
   const ig = idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler

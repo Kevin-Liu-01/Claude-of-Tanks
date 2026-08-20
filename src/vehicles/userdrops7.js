@@ -15,6 +15,7 @@
 //     resolve the rows through their procedural family donors
 //     (publicVisualFallback) and tools/strip-nc-assets.mjs deletes the GLBs.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { shell } from './specHelpers.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 // Reference assets never become playables, including in local development.
@@ -185,8 +186,22 @@ const SPECS = [
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
     { hp: 1800, enginePowerHp: 750, weightTons: 52,
-      // 152 mm M162 gun/launcher: big-alpha slow cycle vs its Patton peers
-      gun: { caliberMm: 152, reloadS: 11.5 },
+      // 152 mm M162 gun/launcher: conventional ammunition stays the default
+      // while E arms the slower MGM-51C guidance channel for the next shot.
+      // Per-round counts keep the Starship's compact mixed stowage explicit.
+      gun: { caliberMm: 152, reloadS: 11.5, shells: [
+        shell('M409A1 HEAT-MP', 'HEAT', 152, 380, 380, 560, 689,
+          { reloadS: 11.5, count: 33 }),
+        shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 610, 610, 650, 320, {
+          guided: true,
+          guidanceTurnRateRadS: 0.72,
+          reloadS: 13.5,
+          count: 13,
+          soundProfile: 'shillelagh-launch',
+        }),
+        shell('M657A2 HE-T', 'HE', 152, 45, 45, 680, 683,
+          { reloadS: 11.5, count: 12 }),
+      ] },
       dims: { hullLengthM: 6.95, overallLengthM: 7.27, widthM: 3.63, heightM: 3.11 },
       visual: { marking: 'star', number: 'S12' } }, AHAB_M60A2),
   // donor is chieftain_mk10, NOT centurion5: this module is chain-imported

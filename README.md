@@ -7,7 +7,7 @@
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  Free browser-native armored combat built with <strong>Three.js</strong>. Take 112 production-visible first-party procedural vehicles
+  Free browser-native armored combat built with <strong>Three.js</strong>. Take 111 production-visible first-party procedural vehicles
   across 16 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
@@ -56,7 +56,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 
 | | Current runtime |
 | --- | --- |
-| Fleet | **112** production-visible and **148** keyed local-development procedural vehicles across **150** saved roster records; **0** GLB-sourced playables |
+| Fleet | **111** production-visible and **148** keyed local-development procedural vehicles across **150** saved roster records; **0** GLB-sourced playables |
 | Worlds | **16** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
@@ -143,7 +143,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery showing a procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 112 production vehicles or 148 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery showing a procedural vehicle and technical dossier"><br><sub><b>Tank Gallery:</b> search 111 production vehicles or 148 with the local development fleet enabled, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>

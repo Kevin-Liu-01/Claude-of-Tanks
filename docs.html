@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#080a0c">
   <meta name="author" content="Kevin B. Liu">
   <meta name="copyright" content="Copyright © 2026 Kevin B. Liu">
-  <meta name="description" content="Image-led technical documentation for Claude of Tanks: renderer, graphics drivers, 112 production vehicles, combat, worlds, HUD, multiplayer, performance, mobile, Scene Studio, and Tank Gallery.">
+  <meta name="description" content="Image-led technical documentation for Claude of Tanks: renderer, graphics drivers, 111 production vehicles, combat, worlds, HUD, multiplayer, performance, mobile, Scene Studio, and Tank Gallery.">
   <link rel="canonical" href="https://cot.kevinliu.studio/docs">
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="preload" href="/media/presentation-r1/12_urban_crossfire_x.webp" as="image">
@@ -28,7 +28,7 @@
     <div class="docs-hero-shade"></div>
     <div class="shell">
       <div><p class="kicker">Engineering field manual // Public edition 06</p><h1>Technical<br><span>field manual</span></h1><p class="hero-lede">This guide documents the current <strong>Claude of Tanks</strong> renderer, simulation, vehicle pipeline, worlds, interface, networking, performance policy, mobile runtime, and production tools. Each section links visible behavior to its implementation.</p></div>
-      <div class="doc-status"><div><small>Fleet</small><strong>112</strong><span>production vehicles</span></div><div><small>Worlds</small><strong>16</strong><span>destructible maps</span></div><div><small>Authority</small><strong>60 Hz</strong><span>fixed-step rules</span></div><div><small>Presentation</small><strong class="status-live">120 FPS</strong><span>certified test path</span></div></div>
+      <div class="doc-status"><div><small>Fleet</small><strong>111</strong><span>production vehicles</span></div><div><small>Worlds</small><strong>16</strong><span>destructible maps</span></div><div><small>Authority</small><strong>60 Hz</strong><span>fixed-step rules</span></div><div><small>Presentation</small><strong class="status-live">120 FPS</strong><span>certified test path</span></div></div>
     </div>
   </header>
 
@@ -62,7 +62,7 @@
     <article class="docs-main">
       <section class="doc-section" id="overview">
         <p class="section-index">01 // Current system</p><h2>Current runtime overview</h2>
-        <p class="lead">Claude of Tanks is a browser-based armored combat game built directly on Three.js. Production exposes <strong>112 first-party procedural vehicles</strong>; a keyed local-development build exposes <strong>148 playable models</strong> from <strong>150 saved roster records</strong>. The game contains <strong>16 authored battlefields</strong>, runs combat at a fixed <strong>60 Hz</strong>, and supports local bots, persistent private and LAN rooms, and dedicated ranked authority.</p>
+        <p class="lead">Claude of Tanks is a browser-based armored combat game built directly on Three.js. Production exposes <strong>111 first-party procedural vehicles</strong>; a keyed local-development build exposes <strong>148 playable models</strong> from <strong>150 saved roster records</strong>. The game contains <strong>16 authored battlefields</strong>, runs combat at a fixed <strong>60 Hz</strong>, and supports local bots, persistent private and LAN rooms, and dedicated ranked authority.</p>
         <div class="principles"><article class="principle"><span>01</span><h3>Authoritative simulation</h3><p>Clients request actions. The authority resolves movement, reloads, hits, damage, visibility, destruction, and match results.</p></article><article class="principle"><span>02</span><h3>Measured presentation</h3><p>Three.js renders simulation state and adjusts visual cost without changing combat rate, map dimensions, ballistics, or armor.</p></article><article class="principle"><span>03</span><h3>Verified assets</h3><p>Geometry fingerprints, generated diagrams, deterministic screenshots, browser checks, and release tests verify the current assets.</p></article></div>
         <div class="callout warning"><strong>Scope statement</strong>Vehicle statistics and diagnostic overlays describe this game simulation. They are not real-world protection, engineering, or survivability assessments.</div>
         <div class="doc-media-block" data-media-archive data-mode="rail" data-limit="8"></div>
@@ -78,7 +78,7 @@
 
       <section class="doc-section" id="vehicles">
         <p class="section-index">03 // Tank design</p><h2>Shared vehicle specifications</h2>
-        <p class="lead">The canonical roster reports <strong>112 production-visible vehicles, 148 keyed local-development models, and 150 saved records</strong>, with two reference-only placeholders kept outside the playable path. Every playable remains first-party procedural with zero GLB-sourced playable geometry. A shared vehicle specification supplies data to garage cards, combat authority, bots, icons, anatomy diagrams, Tank Gallery, and Scene Studio.</p>
+        <p class="lead">The canonical roster reports <strong>111 production-visible vehicles, 148 keyed local-development models, and 150 saved records</strong>, with two reference-only placeholders kept outside the playable path. Every playable remains first-party procedural with zero GLB-sourced playable geometry. A shared vehicle specification supplies data to garage cards, combat authority, bots, icons, anatomy diagrams, Tank Gallery, and Scene Studio.</p>
         <div class="system-grid"><article class="system-card"><header><code>specification</code><span>canonical data</span></header><p>Dimensions, mass, engine, movement, weapon, armor, modules, crew, labels, markings, nation, class, and tier.</p></article><article class="system-card"><header><code>procedural rig</code><span>current geometry</span></header><p>Hull, turret, gun, recoil group, fittings, suspension, road wheels, flexible track path, shadow proxies, and LOD.</p></article><article class="system-card"><header><code>combat anatomy</code><span>simulation data</span></header><p>Authored plates, internal volumes, crew stations, muzzle and articulation anchors, hit logic, and damage state.</p></article><article class="system-card"><header><code>release checks</code><span>verification</span></header><p>Current hero, side, and top assets; geometry fingerprints; anatomy diagrams; focused profile tests; and release results.</p></article></div>
         <div class="doc-image-pair"><figure><img src="/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close view of a current first-party tank rig" loading="lazy"><figcaption>First-party rig // armor, fittings, markings, running gear</figcaption></figure><figure><img src="/media/presentation-r1/43_frontier_contact.webp" alt="Bradley fighting in Frontier Basin" loading="lazy"><figcaption>Vehicle diversity // IFV mechanics in a current battlefield</figcaption></figure></div>
         <p>Vehicle systems include class-specific IFV statistics and audio behavior, visible recoil, magazine autoloaders, missiles and special actions, Swedish siege suspension, vehicle-specific fidelity profiles, and component-level geometry reports.</p>
@@ -155,7 +155,7 @@ node src/engine/shadowStability.selftest.mjs</code></pre></div>
 
       <section class="doc-section" id="gallery">
         <p class="section-index">11 // Tank Gallery</p><h2>Interactive vehicle inspection</h2>
-        <figure class="doc-wide-figure"><img src="/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery with an M1A2 procedural rig and technical dossier" loading="lazy"><figcaption>Tank Gallery // 112 production vehicles, 148 in keyed local development, current rig, articulation, armor, modules, crew, exact surfaces</figcaption></figure>
+        <figure class="doc-wide-figure"><img src="/media/presentation-r1/ui_gallery.webp" alt="Tank Gallery with an M1A2 procedural rig and technical dossier" loading="lazy"><figcaption>Tank Gallery // 111 production vehicles, 148 in keyed local development, current rig, articulation, armor, modules, crew, exact surfaces</figcaption></figure>
         <p>The <a class="inline-link" href="/gallery">Tank Gallery</a> searches the current fleet registry and constructs the selected procedural vehicle. Camera presets, hull, turret, and gun articulation, armor, module, and crew overlays, normalized ratings, ammunition tables, and triangle or coplanar-patch markup all use canonical game data. Exported JSON and PNG review packets preserve pose, camera, rig path, mesh identity, bounds, centroid, triangle, and requested operation.</p>
       </section>
 

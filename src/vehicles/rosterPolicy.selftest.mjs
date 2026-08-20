@@ -44,7 +44,7 @@ assert.equal(developmentFleetEnabled({ DEV: true, VITE_COT_DEV_FLEET_KEY: 'wrong
 
 const ownerHidden = [
   'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
-  'm26_pershing', 'm45_patton', 'isu122s', 'isu152',
+  'm26_pershing', 'm45_patton', 't95', 'isu122s', 'isu152',
 ];
 for (const id of ownerHidden) {
   assert(PRODUCTION_HIDDEN_TANK_IDS.has(id), `${id}: owner production exclusion is centralized`);
@@ -66,7 +66,7 @@ assert.deepEqual(new Set(SAVED_TANK_IDS), new Set(Object.keys(TANK_SPECS)),
   'every registered spec belongs to the saved-fleet projection');
 assert.deepEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,
   'bare Node and production use the curated projection');
-assert.equal(PRODUCTION_TANK_IDS.length, 112, 'production fleet count is deliberate');
+assert.equal(PRODUCTION_TANK_IDS.length, 111, 'production fleet count is deliberate');
 for (const id of ownerHidden) {
   assert(ALL_TANK_IDS.includes(id), `${id}: record stays available to local development`);
   assert(!PRODUCTION_TANK_IDS.includes(id), `${id}: record stays out of production`);

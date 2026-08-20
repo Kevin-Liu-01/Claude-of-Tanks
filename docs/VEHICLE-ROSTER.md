@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **150 saved vehicle records**: **112 production-visible**, **36 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **150 saved vehicle records**: **111 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -53,7 +53,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 43 | DEV | `jagdtiger` | Jagdtiger | Germany | IX | ww2 | td | Historical archive |
 | 44 | DEV | `jpz_e100` | Jagdpanzer E100 | Germany | X | ww2 | td | Production curation |
 | 45 | DEV | `sturmtiger` | Sturmtiger | Germany | VIII | ww2 | td | Production curation |
-| 46 | PROD | `t95` | T95 | USA | IX | ww2 | td | Production |
+| 46 | DEV | `t95` | T95 | USA | IX | ww2 | td | Production curation |
 | 47 | DEV | `t30` | T30 | USA | IX | ww2 | td | Historical archive |
 | 48 | DEV | `is7` | IS-7 | USSR | X | ww2 | heavy | Historical archive |
 | 49 | DEV | `object279` | Object 279 | USSR | X | ww2 | heavy | Historical archive |

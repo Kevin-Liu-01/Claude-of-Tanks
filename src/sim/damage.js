@@ -1564,8 +1564,9 @@ function reloadMultiplier(combatState, spec) {
 
   const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
   const missileRack = combatState.modules && combatState.modules.missileRack;
-  const missileRound = loaded && loaded.type === 'HEAT'
-    && Number(loaded.reloadS || spec.gun.reloadS) >= 8;
+  // HEAT is a warhead type, not a delivery system: conventional rounds such
+  // as the M60A2's M409A1 must not inherit launcher-rack damage penalties.
+  const missileRound = loaded?.guided === true;
   if (missileRound && missileRack?.state === 'yellow') mult *= 1.4;
   else if (missileRound && missileRack?.state === 'red') mult *= 1.8;
   return mult;
