@@ -45,6 +45,12 @@ assert.equal(turret.filter(([x, y, z]) => x < -1.47
   && y < 0.40 && z > 1.36 && z < 1.44).length, 0,
 'stray loader-side front block must not return');
 
+for (const side of [-1, 1]) {
+  const uprightOuterCorner = [side * 0.892177, 0.399637, 1.695892];
+  assert.ok(turret.some(vertex => vertex.every((value, axis) => near(value, uprightOuterCorner[axis]))),
+    `${side < 0 ? 'left' : 'right'} cheek panel must keep its broad edge upright against the casting`);
+}
+
 for (const point of [
   [-0.84, 0.43, -0.64],
   [0.90, 0.38, -0.02],

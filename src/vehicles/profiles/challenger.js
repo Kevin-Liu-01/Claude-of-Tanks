@@ -3139,10 +3139,13 @@ function buildChallenger2(P) {
   // weld courses.  The old boxes were yawed in plan but remained vertical,
   // leaving their upper halves visibly proud of the steep Dorchester face.
   // Rake the complete stack into the sovereign front plane so both panels
-  // are physically seated from the lower cheek to the roof arris.
+  // are physically seated from the lower cheek to the roof arris.  Positive
+  // pitch is intentional: the panel top follows the casting rearward.  The
+  // former negative pitch inverted the plates and put their broad edge at
+  // the bottom of the cheek.
   for (const side of [-1, 1]) {
     const cheekYaw = side * 0.367;
-    const cheekRake = -0.96;
+    const cheekRake = 0.96;
     P.add('turretDark', box(0.72, 0.58, 0.030), side * 0.62, 0.18, 1.56,
       cheekRake, cheekYaw, 0);
     P.add('turret', box(0.58, 0.45, 0.014), side * 0.624, 0.18, 1.575,
