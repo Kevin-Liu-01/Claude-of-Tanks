@@ -1,0 +1,140 @@
+{
+  "map": "winter",
+  "seed": 8206,
+  "actors": [
+    {
+      "id": "t80u",
+      "name": "shooter",
+      "pos": [
+        166,
+        -98
+      ],
+      "facingDeg": 118,
+      "gunDeg": 0.5,
+      "camo": "winterbands",
+      "camoSeed": 8060,
+      "turretDeg": 5
+    },
+    {
+      "id": "challenger_3",
+      "name": "victim",
+      "pos": [
+        206,
+        -124
+      ],
+      "facingDeg": 300,
+      "turretDeg": 40,
+      "camo": "merdcwinter",
+      "camoSeed": 8061
+    },
+    {
+      "id": "strv122",
+      "name": "reinforcement",
+      "pos": [
+        181.3,
+        -94.8
+      ],
+      "facingDeg": 139.8,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "washworn",
+      "camoSeed": 9062
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "reinforcement1",
+      "pos": [
+        180.7,
+        -117.2
+      ],
+      "facingDeg": 105.2,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 9063
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "shooter",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "shooter",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 298
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      216.7,
+      1.8,
+      -136.3
+    ],
+    "lookAt": [
+      176,
+      2.2,
+      -106
+    ],
+    "groundRel": true,
+    "fov": 39,
+    "rollDeg": 2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes/09_winter_lake_duel.json"
+  }
+}

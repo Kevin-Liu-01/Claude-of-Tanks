@@ -1,0 +1,193 @@
+{
+  "map": "coastal",
+  "seed": 8228,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "lead",
+      "pos": [
+        168,
+        -54
+      ],
+      "facingDeg": 356,
+      "turretDeg": -6,
+      "gunDeg": 0.5,
+      "camo": "naval",
+      "camoSeed": 8280
+    },
+    {
+      "id": "k2",
+      "name": "w1",
+      "pos": [
+        161,
+        -70
+      ],
+      "facingDeg": 4,
+      "turretDeg": 10,
+      "gunDeg": 1,
+      "camo": "dazzle",
+      "camoSeed": 8281
+    },
+    {
+      "id": "t14",
+      "name": "w2",
+      "pos": [
+        176,
+        -74
+      ],
+      "facingDeg": 350,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 8282
+    },
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "reinforcement",
+      "pos": [
+        177.9,
+        -37.3
+      ],
+      "facingDeg": -152.7,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 9283
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        167,
+        -60
+      ],
+      "tMs": 240,
+      "params": {
+        "count": 18,
+        "intensity": 1.4,
+        "dirDeg": 176
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        162,
+        -76
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 184
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        175,
+        -80
+      ],
+      "tMs": 280,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 170
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "w1",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "w2",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "lead",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "lead",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 536
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        161,
+        -70
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "w2",
+      "tMs": 574,
+      "params": {
+        "count": 10,
+        "gapM": 4,
+        "spreadDeg": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      166.7,
+      1.6,
+      -40.3
+    ],
+    "lookAt": [
+      168.5,
+      2.5,
+      -58
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 5
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes2/48_coastal_beach_storm.json"
+  }
+}

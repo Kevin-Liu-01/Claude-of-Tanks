@@ -1,0 +1,188 @@
+{
+  "map": "winter",
+  "seed": 8207,
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "rammer",
+      "pos": [
+        76,
+        -44
+      ],
+      "facingDeg": 65,
+      "turretDeg": 0,
+      "gunDeg": -2,
+      "camo": "winterbands",
+      "camoSeed": 8070
+    },
+    {
+      "id": "strv122",
+      "name": "victim",
+      "pos": [
+        81.4,
+        -41.6
+      ],
+      "facingDeg": 15,
+      "turretDeg": 100,
+      "gunDeg": 3,
+      "camo": "merdcwinter",
+      "camoSeed": 8071
+    },
+    {
+      "id": "type10",
+      "name": "reinforcement",
+      "pos": [
+        82.6,
+        -29.9
+      ],
+      "facingDeg": -173.9,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "washworn",
+      "camoSeed": 9072
+    },
+    {
+      "id": "type99a",
+      "name": "reinforcement1",
+      "pos": [
+        100.2,
+        -43.8
+      ],
+      "facingDeg": -83.4,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 9073
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 120,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        79,
+        -43
+      ],
+      "tMs": 180,
+      "params": {
+        "count": 26,
+        "intensity": 1.8,
+        "dirDeg": 65
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        72,
+        -48
+      ],
+      "tMs": 200,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 245
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 30,
+        "hFrac": 0.35
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "rammer",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "victim",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "rammer",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "rammer",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 245
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        81.4,
+        -41.6
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      74.3,
+      1.1,
+      -33.1
+    ],
+    "lookAt": [
+      79.5,
+      1.5,
+      -42.8
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes/10_winter_ram_leo2a6.json"
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "map": "urban",
+  "seed": 8214,
+  "actors": [
+    {
+      "id": "m1a2_tusk",
+      "name": "hero",
+      "pos": [
+        36,
+        60
+      ],
+      "facingDeg": 212,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 8140
+    },
+    {
+      "id": "ariete",
+      "name": "reinforcement",
+      "pos": [
+        35.8,
+        38.9
+      ],
+      "facingDeg": -100.3,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "berlin",
+      "camoSeed": 9141
+    },
+    {
+      "id": "t80u",
+      "name": "reinforcement1",
+      "pos": [
+        12.4,
+        42.9
+      ],
+      "facingDeg": 127.2,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 9142
+    },
+    {
+      "id": "t72b3m",
+      "name": "reinforcement2",
+      "pos": [
+        20.6,
+        26
+      ],
+      "facingDeg": 2.9,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "midnight",
+      "camoSeed": 9143
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        32,
+        54
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 6,
+        "intensity": 0.6,
+        "dirDeg": 212
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "ageS": 0.05
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 392
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        35.8,
+        38.9
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      45.3,
+      1.1,
+      51.7
+    ],
+    "lookAt": [
+      34,
+      2.4,
+      61
+    ],
+    "groundRel": true,
+    "fov": 50,
+    "rollDeg": 2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes/22_urban_hero_abramsx.json"
+  }
+}

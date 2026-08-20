@@ -1,0 +1,142 @@
+{
+  "map": "desert",
+  "seed": 9202,
+  "actors": [
+    {
+      "id": "strv122",
+      "name": "left",
+      "pos": [
+        -14,
+        -18
+      ],
+      "facingDeg": 10,
+      "gunDeg": 1.5,
+      "camo": "digitaldesert",
+      "camoSeed": 8020,
+      "turretDeg": -5.6
+    },
+    {
+      "id": "type99a",
+      "name": "mid",
+      "pos": [
+        2,
+        -24
+      ],
+      "facingDeg": 4,
+      "gunDeg": 2,
+      "camo": "chocchip",
+      "camoSeed": 8021,
+      "turretDeg": 1.4
+    },
+    {
+      "id": "pt91m",
+      "name": "right",
+      "pos": [
+        18,
+        -16
+      ],
+      "facingDeg": 358,
+      "gunDeg": 1.5,
+      "camo": "desert",
+      "camoSeed": 8022,
+      "turretDeg": 8
+    },
+    {
+      "id": "type99a",
+      "name": "reinforcement",
+      "pos": [
+        -0.4,
+        -4.2
+      ],
+      "facingDeg": 173.1,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "pinkdesert",
+      "camoSeed": 9023
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "mid",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "right",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "left",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "left",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 190
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        2,
+        -24
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "left",
+      "tMs": 620,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -5,
+      1.7,
+      -24.4
+    ],
+    "lookAt": [
+      -13.5,
+      2.25,
+      -11
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": 3
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/03_desert_overwatch_line.json"
+  }
+}

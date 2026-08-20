@@ -1,0 +1,154 @@
+{
+  "map": "winter",
+  "seed": 9209,
+  "actors": [
+    {
+      "id": "leclerc_xlr",
+      "name": "far",
+      "pos": [
+        -120,
+        60
+      ],
+      "facingDeg": 95,
+      "gunDeg": 1,
+      "camo": "winterbands",
+      "camoSeed": 8090,
+      "turretDeg": -1.2
+    },
+    {
+      "id": "t90m",
+      "name": "near",
+      "pos": [
+        -112,
+        42
+      ],
+      "facingDeg": 100,
+      "turretDeg": -35,
+      "gunDeg": 1,
+      "camo": "merdcwinter",
+      "camoSeed": 8091
+    },
+    {
+      "id": "t80u",
+      "name": "reinforcement",
+      "pos": [
+        -107.2,
+        68.9
+      ],
+      "facingDeg": -169.8,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "washworn",
+      "camoSeed": 9092
+    },
+    {
+      "id": "t72b3m",
+      "name": "reinforcement1",
+      "pos": [
+        -99,
+        48.1
+      ],
+      "facingDeg": -115.1,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 9093
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -101,
+        53
+      ],
+      "tMs": 180,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -119,
+        41
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 280
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "near",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "far",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "far",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 275
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "far",
+      "tMs": 620,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -132.2,
+      2.5,
+      60.7
+    ],
+    "lookAt": [
+      -115,
+      2.25,
+      59.7
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/11_winter_overwatch_birch.json"
+  }
+}

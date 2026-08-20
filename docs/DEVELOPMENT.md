@@ -208,6 +208,17 @@ Encode the deployable set and manifest:
 The checked-in scene JSON is the source. Deployable WebP images are output, not
 hand-edited inputs.
 
+Generate and validate the 60-frame 4K battle campaign:
+
+    npm run shots:battle:generate
+    node tools/marketing-shots/battle-campaign.selftest.mjs
+    npm run shots:battle:grade
+
+The 30 close action scenes and 30 foreground-led scenes use separate checked-in
+directories and require contact-sheet review before the 4K image gate. See
+[MARKETING-BATTLE-CAMPAIGN.md](MARKETING-BATTLE-CAMPAIGN.md) for capture commands
+and acceptance criteria.
+
 ## Tank Gallery markup
 
 Start:

@@ -1,0 +1,173 @@
+{
+  "map": "desert",
+  "seed": 9219,
+  "actors": [
+    {
+      "id": "ariete",
+      "name": "lead",
+      "pos": [
+        44,
+        73
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "digitaldesert",
+      "camoSeed": 8190,
+      "turretDeg": 7
+    },
+    {
+      "id": "m1a2_tusk",
+      "name": "mid",
+      "pos": [
+        24,
+        71
+      ],
+      "facingDeg": 84,
+      "turretDeg": 30,
+      "camo": "chocchip",
+      "camoSeed": 8191
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "tail",
+      "pos": [
+        2,
+        74
+      ],
+      "facingDeg": 106,
+      "turretDeg": -40,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 8192
+    },
+    {
+      "id": "t72b3m",
+      "name": "reinforcement",
+      "pos": [
+        59.6,
+        84.6
+      ],
+      "facingDeg": -110.8,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "pinkdesert",
+      "camoSeed": 9193
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "mid",
+      "tMs": 140,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        6,
+        76
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 16,
+        "intensity": 1.4,
+        "dirDeg": 286
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        40,
+        70
+      ],
+      "tMs": 340,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 268
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "tail",
+      "tMs": 520,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.65
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "tail",
+      "tMs": 605,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 594,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "lead",
+      "hFrac": 0.68,
+      "tMs": 538,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "lead",
+      "tMs": 320,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 268
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "lead",
+      "tMs": 640,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      39.8,
+      1.45,
+      83.4
+    ],
+    "lookAt": [
+      51,
+      2.25,
+      72.4
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -3
+  },
+  "fxTime": 640,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes2/31_desert_wadi_gauntlet.json"
+  }
+}

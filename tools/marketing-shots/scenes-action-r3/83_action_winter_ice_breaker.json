@@ -1,0 +1,138 @@
+{
+  "map": "winter",
+  "seed": 8222,
+  "actors": [
+    {
+      "id": "strv122",
+      "name": "shooter",
+      "pos": [
+        176,
+        -108
+      ],
+      "facingDeg": 122,
+      "gunDeg": 0.5,
+      "camo": "winterbands",
+      "camoSeed": 8220,
+      "turretDeg": -1
+    },
+    {
+      "id": "type99a",
+      "name": "kill1",
+      "pos": [
+        206,
+        -126
+      ],
+      "facingDeg": 300,
+      "turretDeg": 20,
+      "camo": "merdcwinter",
+      "camoSeed": 8221
+    },
+    {
+      "id": "pt91m",
+      "name": "kill2",
+      "pos": [
+        188,
+        -142
+      ],
+      "facingDeg": 350,
+      "turretDeg": -35,
+      "camo": "washworn",
+      "camoSeed": 8222
+    },
+    {
+      "id": "type99a",
+      "name": "reinforcement",
+      "pos": [
+        183.7,
+        -125.8
+      ],
+      "facingDeg": 90.5,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 9223
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "kill1",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "tank_kill",
+      "actor": "kill2",
+      "tMs": 230,
+      "params": {
+        "cause": "fuel",
+        "pop": false
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 611,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 600,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "shooter",
+      "hFrac": 0.68,
+      "tMs": 533,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "shooter",
+      "tMs": 315,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 302
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      163.7,
+      1.1,
+      -132.3
+    ],
+    "lookAt": [
+      193,
+      2.4,
+      -124
+    ],
+    "groundRel": true,
+    "fov": 32,
+    "rollDeg": 2
+  },
+  "fxTime": 635,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes2/35_winter_ice_breaker.json"
+  }
+}

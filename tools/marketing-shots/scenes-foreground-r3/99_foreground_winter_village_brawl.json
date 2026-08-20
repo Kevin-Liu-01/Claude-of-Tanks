@@ -1,0 +1,161 @@
+{
+  "map": "winter",
+  "seed": 9208,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "foe",
+      "pos": [
+        30,
+        30
+      ],
+      "facingDeg": 325,
+      "gunDeg": 0.5,
+      "camo": "winterbands",
+      "camoSeed": 8080,
+      "turretDeg": -14.8
+    },
+    {
+      "id": "k2",
+      "name": "ally2",
+      "pos": [
+        4,
+        52
+      ],
+      "facingDeg": 145,
+      "gunDeg": 0.5,
+      "camo": "merdcwinter",
+      "camoSeed": 8081,
+      "turretDeg": -14.8
+    },
+    {
+      "id": "t14",
+      "name": "ally1",
+      "pos": [
+        -14,
+        24
+      ],
+      "facingDeg": 50,
+      "gunDeg": 0.5,
+      "camo": "washworn",
+      "camoSeed": 8082,
+      "turretDeg": 32.2
+    },
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "reinforcement",
+      "pos": [
+        29.8,
+        49.4
+      ],
+      "facingDeg": -84.3,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 9083
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        18,
+        44
+      ],
+      "tMs": 145,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "foe",
+      "tMs": 550,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 120,
+        "hFrac": 0.65
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "ally2",
+      "tMs": 615,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "ally1",
+      "tMs": 604,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "foe",
+      "hFrac": 0.68,
+      "tMs": 548,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "foe",
+      "tMs": 330,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 505
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "ally1",
+      "tMs": 604,
+      "params": {
+        "count": 10,
+        "gapM": 4,
+        "spreadDeg": 0.7
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "foe",
+      "tMs": 650,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      39.8,
+      1.7,
+      32.8
+    ],
+    "lookAt": [
+      24.7,
+      2.25,
+      34.5
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": 3
+  },
+  "fxTime": 650,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/12_winter_village_brawl.json"
+  }
+}

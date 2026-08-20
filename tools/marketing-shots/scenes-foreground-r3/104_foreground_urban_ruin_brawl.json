@@ -1,0 +1,150 @@
+{
+  "map": "urban",
+  "seed": 9213,
+  "actors": [
+    {
+      "id": "t72b3m",
+      "name": "a1",
+      "pos": [
+        111,
+        40
+      ],
+      "facingDeg": 355,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "turretDeg": 11.6,
+      "camoSeed": 8130
+    },
+    {
+      "id": "leo2a7v",
+      "name": "a2",
+      "pos": [
+        90,
+        58
+      ],
+      "facingDeg": 92,
+      "gunDeg": 0.5,
+      "camo": "berlin",
+      "camoSeed": 8131,
+      "turretDeg": -20.4
+    },
+    {
+      "id": "k2",
+      "name": "cornered",
+      "pos": [
+        114,
+        66
+      ],
+      "facingDeg": 250,
+      "gunDeg": 1,
+      "camo": "digital",
+      "turretDeg": 1.6,
+      "camoSeed": 8132
+    },
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "reinforcement",
+      "pos": [
+        98.6,
+        55
+      ],
+      "facingDeg": -70.8,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "midnight",
+      "camoSeed": 9133
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        122,
+        72
+      ],
+      "tMs": 190,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "a1",
+      "tMs": 540,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "a2",
+      "tMs": 605,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "cornered",
+      "tMs": 594,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "a1",
+      "hFrac": 0.68,
+      "tMs": 538,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "a1",
+      "tMs": 320,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 535
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "a1",
+      "tMs": 640,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      119,
+      2.5,
+      30.7
+    ],
+    "lookAt": [
+      111.6,
+      2.25,
+      45
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -2
+  },
+  "fxTime": 640,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/20_urban_ruin_brawl.json"
+  }
+}

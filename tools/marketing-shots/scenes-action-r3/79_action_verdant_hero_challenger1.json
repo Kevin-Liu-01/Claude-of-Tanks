@@ -1,0 +1,165 @@
+{
+  "map": "verdant",
+  "seed": 8218,
+  "actors": [
+    {
+      "id": "t14",
+      "name": "hero",
+      "pos": [
+        -80,
+        30
+      ],
+      "facingDeg": 200,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "camo": "dpm",
+      "camoSeed": 8180
+    },
+    {
+      "id": "t90sm",
+      "name": "reinforcement",
+      "pos": [
+        -75.8,
+        9.3
+      ],
+      "facingDeg": -112.3,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 9181
+    },
+    {
+      "id": "t14",
+      "name": "reinforcement1",
+      "pos": [
+        -99.6,
+        8.4
+      ],
+      "facingDeg": 115.2,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 9182
+    },
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "reinforcement2",
+      "pos": [
+        -88,
+        -6.5
+      ],
+      "facingDeg": -9.1,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "m90",
+      "camoSeed": 9183
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -82,
+        24.4
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 8,
+        "intensity": 0.8,
+        "dirDeg": 200
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "ageS": 0.05
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 380
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        -75.8,
+        9.3
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "large",
+        "cause": "shot"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -73.9,
+      1.15,
+      21
+    ],
+    "lookAt": [
+      -81.2,
+      2.05,
+      30.8
+    ],
+    "groundRel": true,
+    "fov": 47,
+    "rollDeg": 2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes/29_verdant_hero_challenger1.json"
+  }
+}

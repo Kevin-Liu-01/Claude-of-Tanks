@@ -1,0 +1,174 @@
+{
+  "map": "coastal",
+  "seed": 8204,
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "crest",
+      "pos": [
+        230,
+        50
+      ],
+      "facingDeg": 262,
+      "gunDeg": -5,
+      "turretDeg": 2,
+      "camo": "naval",
+      "camoSeed": 8040
+    },
+    {
+      "id": "ariete",
+      "name": "pyre",
+      "pos": [
+        213,
+        45
+      ],
+      "facingDeg": 10,
+      "turretDeg": 55,
+      "state": "turret-popped",
+      "stateAgeS": 180,
+      "burning": true,
+      "camo": "dazzle",
+      "camoSeed": 8041
+    },
+    {
+      "id": "t80u",
+      "name": "reinforcement",
+      "pos": [
+        219.5,
+        38.4
+      ],
+      "facingDeg": -44.7,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 9042
+    },
+    {
+      "id": "t72b3m",
+      "name": "reinforcement1",
+      "pos": [
+        206.8,
+        56.8
+      ],
+      "facingDeg": 152.4,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 9043
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        227,
+        49.5
+      ],
+      "tMs": 2530,
+      "params": {
+        "count": 16,
+        "intensity": 1.4,
+        "dirDeg": 262
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "crest",
+      "tMs": 2876,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 2865,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 2854,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "crest",
+      "hFrac": 0.68,
+      "tMs": 2798,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "crest",
+      "tMs": 2580,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 442
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        213,
+        45
+      ],
+      "tMs": 2430,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "reinforcement1",
+      "tMs": 2854,
+      "params": {
+        "count": 10,
+        "gapM": 4,
+        "spreadDeg": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      203.7,
+      1.5,
+      50.7
+    ],
+    "lookAt": [
+      223,
+      2.8,
+      48
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -1
+  },
+  "fxTime": 2900,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes2/50_coastal_dune_ambush.json"
+  }
+}

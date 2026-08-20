@@ -1,0 +1,140 @@
+{
+  "map": "urban",
+  "seed": 8210,
+  "actors": [
+    {
+      "id": "type10",
+      "name": "hero",
+      "pos": [
+        36,
+        -64
+      ],
+      "facingDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "turretDeg": 0.7,
+      "camoSeed": 8100
+    },
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "victim",
+      "pos": [
+        37,
+        6
+      ],
+      "facingDeg": 182,
+      "turretDeg": 10,
+      "camo": "berlin",
+      "camoSeed": 8101
+    },
+    {
+      "id": "m1a2_tusk",
+      "name": "reinforcement",
+      "pos": [
+        26,
+        -52
+      ],
+      "facingDeg": 10.7,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 9102
+    },
+    {
+      "id": "challenger_3",
+      "name": "reinforcement1",
+      "pos": [
+        46,
+        -42
+      ],
+      "facingDeg": -10.6,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "midnight",
+      "camoSeed": 9103
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 0,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 180
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      31.7,
+      2.2,
+      -78.3
+    ],
+    "lookAt": [
+      38,
+      2.5,
+      -6
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes/17_urban_street_duel.json"
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "map": "desert",
+  "seed": 9200,
+  "actors": [
+    {
+      "id": "m1a2_sepv3",
+      "name": "hero",
+      "pos": [
+        0,
+        -14
+      ],
+      "facingDeg": 100,
+      "gunDeg": 0.5,
+      "camo": "digitaldesert",
+      "camoSeed": 8000,
+      "turretDeg": -2.4
+    },
+    {
+      "id": "leo2_revolution",
+      "name": "victim",
+      "pos": [
+        30,
+        -18
+      ],
+      "facingDeg": 285,
+      "turretDeg": 15,
+      "gunDeg": 0,
+      "camo": "chocchip",
+      "camoSeed": 8001
+    },
+    {
+      "id": "m1a2_tusk",
+      "name": "reinforcement",
+      "pos": [
+        13.6,
+        -6.2
+      ],
+      "facingDeg": 125.6,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 9002
+    },
+    {
+      "id": "challenger_3",
+      "name": "reinforcement1",
+      "pos": [
+        19.9,
+        -27.7
+      ],
+      "facingDeg": 46.2,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "pinkdesert",
+      "camoSeed": 9003
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 40,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        2,
+        -19
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 280
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "hero",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 280
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "count": 10,
+        "gapM": 4,
+        "spreadDeg": 0.7
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 620,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -5.6,
+      1.2,
+      -21.8
+    ],
+    "lookAt": [
+      6.9,
+      2.25,
+      -14.9
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": 3
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/01_desert_duel_leclerc_kill.json"
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "map": "verdant",
+  "seed": 9217,
+  "actors": [
+    {
+      "id": "type99a",
+      "name": "p1",
+      "pos": [
+        8,
+        74
+      ],
+      "facingDeg": 75,
+      "gunDeg": 0.5,
+      "camo": "dpm",
+      "camoSeed": 8170,
+      "turretDeg": 6
+    },
+    {
+      "id": "pt91m",
+      "name": "p2",
+      "pos": [
+        20,
+        106
+      ],
+      "facingDeg": 175,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "turretDeg": -40,
+      "camoSeed": 8171
+    },
+    {
+      "id": "abramsx",
+      "name": "holdout",
+      "pos": [
+        46,
+        80
+      ],
+      "facingDeg": 250,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 8172,
+      "turretDeg": 11
+    },
+    {
+      "id": "type99a",
+      "name": "reinforcement",
+      "pos": [
+        20.6,
+        88.8
+      ],
+      "facingDeg": -2,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "m90",
+      "camoSeed": 9173
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        30,
+        94
+      ],
+      "tMs": 145,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "holdout",
+      "tMs": 545,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 130,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "p2",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 599,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "p1",
+      "hFrac": 0.68,
+      "tMs": 543,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "p1",
+      "tMs": 325,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 255
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "p1",
+      "tMs": 645,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      1,
+      1.7,
+      82
+    ],
+    "lookAt": [
+      14.9,
+      2.25,
+      75.1
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -3
+  },
+  "fxTime": 645,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/27_verdant_village_brawl.json"
+  }
+}

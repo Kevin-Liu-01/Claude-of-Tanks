@@ -1,0 +1,188 @@
+{
+  "map": "desert",
+  "seed": 8201,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "rammer",
+      "pos": [
+        18,
+        68
+      ],
+      "facingDeg": 66,
+      "turretDeg": 3,
+      "gunDeg": -3,
+      "camo": "digitaldesert",
+      "camoSeed": 8010
+    },
+    {
+      "id": "kf51",
+      "name": "victim",
+      "pos": [
+        23.8,
+        70.6
+      ],
+      "facingDeg": 155,
+      "turretDeg": -55,
+      "gunDeg": 2,
+      "camo": "chocchip",
+      "camoSeed": 8011
+    },
+    {
+      "id": "strv122",
+      "name": "reinforcement",
+      "pos": [
+        24.9,
+        82
+      ],
+      "facingDeg": -174.5,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 9012
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "reinforcement1",
+      "pos": [
+        42.2,
+        67.8
+      ],
+      "facingDeg": -81.4,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "pinkdesert",
+      "camoSeed": 9013
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 150,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        21,
+        69.3
+      ],
+      "tMs": 140,
+      "params": {
+        "count": 22,
+        "intensity": 1.6,
+        "dirDeg": 66
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        15,
+        66
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 246
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 40,
+        "hFrac": 0.45
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "rammer",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "victim",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "rammer",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "rammer",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 246
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        23.8,
+        70.6
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      26.3,
+      1.4,
+      57.4
+    ],
+    "lookAt": [
+      20.5,
+      1.6,
+      70
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes/02_desert_ram_abramsx_t90m.json"
+  }
+}

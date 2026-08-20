@@ -1,0 +1,165 @@
+{
+  "map": "desert",
+  "seed": 8221,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "holdout",
+      "pos": [
+        -48,
+        44
+      ],
+      "facingDeg": 96,
+      "gunDeg": 0.5,
+      "camo": "digitaldesert",
+      "camoSeed": 8210,
+      "turretDeg": -3.1
+    },
+    {
+      "id": "kf51",
+      "name": "atk1",
+      "pos": [
+        30,
+        40
+      ],
+      "facingDeg": 275,
+      "gunDeg": 0.5,
+      "camo": "chocchip",
+      "camoSeed": 8211,
+      "turretDeg": -2.1
+    },
+    {
+      "id": "t90sm",
+      "name": "atk2",
+      "pos": [
+        18,
+        66
+      ],
+      "facingDeg": 246,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 8212,
+      "turretDeg": 6.6
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "reinforcement",
+      "pos": [
+        -30.9,
+        53.3
+      ],
+      "facingDeg": 102.3,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "pinkdesert",
+      "camoSeed": 9213
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -56,
+        50
+      ],
+      "tMs": 160,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "holdout",
+      "tMs": 545,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.75
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        24,
+        52
+      ],
+      "tMs": 380,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 260
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 621,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "atk1",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "atk2",
+      "tMs": 599,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "holdout",
+      "hFrac": 0.68,
+      "tMs": 543,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "holdout",
+      "tMs": 325,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 276
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -59.7,
+      3.1,
+      34.4
+    ],
+    "lookAt": [
+      -22,
+      2,
+      45
+    ],
+    "groundRel": true,
+    "fov": 39,
+    "rollDeg": -5
+  },
+  "fxTime": 645,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes2/34_desert_last_stand.json"
+  }
+}

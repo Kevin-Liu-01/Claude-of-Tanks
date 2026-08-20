@@ -1,0 +1,186 @@
+{
+  "map": "urban",
+  "seed": 9211,
+  "actors": [
+    {
+      "id": "t90sm",
+      "name": "rammer",
+      "pos": [
+        30,
+        -20
+      ],
+      "facingDeg": 78,
+      "turretDeg": -8,
+      "gunDeg": -2,
+      "camo": "urbanblock",
+      "camoSeed": 8110
+    },
+    {
+      "id": "t80u",
+      "name": "victim",
+      "pos": [
+        36.2,
+        -18.6
+      ],
+      "facingDeg": 350,
+      "turretDeg": -95,
+      "gunDeg": 2,
+      "camo": "berlin",
+      "camoSeed": 8111
+    },
+    {
+      "id": "strv122",
+      "name": "reinforcement",
+      "pos": [
+        39.7,
+        -7.7
+      ],
+      "facingDeg": -162.4,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 9112
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "reinforcement1",
+      "pos": [
+        53.6,
+        -25.2
+      ],
+      "facingDeg": -69.2,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "midnight",
+      "camoSeed": 9113
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 150,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        33,
+        -19.5
+      ],
+      "tMs": 130,
+      "params": {
+        "count": 18,
+        "intensity": 1.4,
+        "dirDeg": 78
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        27,
+        -21.5
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 10,
+        "intensity": 1,
+        "dirDeg": 258
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 40,
+        "hFrac": 0.4
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "victim",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "rammer",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "rammer",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 258
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        36.2,
+        -18.6
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "rammer",
+      "tMs": 620,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      21.2,
+      1.7,
+      -12.6
+    ],
+    "lookAt": [
+      36.6,
+      2.25,
+      -17.6
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -3
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes/18_urban_ram_plaza.json"
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "map": "coastal",
+  "seed": 9205,
+  "actors": [
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "west",
+      "pos": [
+        156,
+        -52
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "naval",
+      "camoSeed": 8050,
+      "turretDeg": 0
+    },
+    {
+      "id": "m1a2_sepv3",
+      "name": "east",
+      "pos": [
+        214,
+        -50
+      ],
+      "facingDeg": 268,
+      "gunDeg": 0.5,
+      "camo": "dazzle",
+      "camoSeed": 8051,
+      "turretDeg": 0
+    },
+    {
+      "id": "m1a2_tusk",
+      "name": "reinforcement",
+      "pos": [
+        167.6,
+        -41.6
+      ],
+      "facingDeg": 100.3,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 9052
+    },
+    {
+      "id": "challenger_3",
+      "name": "reinforcement1",
+      "pos": [
+        178.3,
+        -61.2
+      ],
+      "facingDeg": 72.5,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 9053
+    }
+  ],
+  "effects": [
+    {
+      "type": "sparks",
+      "actor": "west",
+      "tMs": 510,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "east",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "west",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "west",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 268
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        214,
+        -50
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium",
+        "cause": "shot"
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "west",
+      "tMs": 620,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      150,
+      1.7,
+      -43.2
+    ],
+    "lookAt": [
+      163,
+      2.25,
+      -51.8
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -3
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "foreground",
+    "sourceComposition": "scenes2/51_coastal_seafront_duel.json"
+  }
+}

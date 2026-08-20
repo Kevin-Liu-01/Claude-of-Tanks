@@ -1,5 +1,9 @@
 # Marketing-Shot Set — Grading Report
 
+The newer 30+30 close-action and foreground campaign is documented in
+[MARKETING-BATTLE-CAMPAIGN.md](MARKETING-BATTLE-CAMPAIGN.md). This report remains
+the grading record for the original 30-frame set.
+
 30 in-engine action screenshots of the sourced modern fleet (Leclerc, T-90M/T-90A,
 Leopard 2A5/2A6/2A7V, M1A2 SEPv3/SEPv2, Challenger 1 Mk.3, AbramsX, KF51 Panther)
 shot through the Scene Studio (`docs/STUDIO.md`) at 3840x2160.

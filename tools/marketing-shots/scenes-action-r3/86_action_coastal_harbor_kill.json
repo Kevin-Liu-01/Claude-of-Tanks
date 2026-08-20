@@ -1,0 +1,153 @@
+{
+  "map": "coastal",
+  "seed": 8225,
+  "actors": [
+    {
+      "id": "ua_t84_oplot_m",
+      "name": "fg",
+      "pos": [
+        150,
+        78
+      ],
+      "facingDeg": 62,
+      "gunDeg": 0.5,
+      "camo": "naval",
+      "camoSeed": 8250,
+      "turretDeg": -11.3
+    },
+    {
+      "id": "m1a2_sepv3",
+      "name": "victim",
+      "pos": [
+        172,
+        96
+      ],
+      "facingDeg": 244,
+      "turretDeg": 30,
+      "camo": "dazzle",
+      "camoSeed": 8251
+    },
+    {
+      "id": "m1a2_tusk",
+      "name": "reinforcement",
+      "pos": [
+        155.9,
+        92.5
+      ],
+      "facingDeg": 77.6,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 9252
+    },
+    {
+      "id": "challenger_3",
+      "name": "reinforcement1",
+      "pos": [
+        174.1,
+        79.5
+      ],
+      "facingDeg": -7.3,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 9253
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 112,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        154,
+        80
+      ],
+      "tMs": 340,
+      "params": {
+        "count": 10,
+        "intensity": 0.8,
+        "dirDeg": 240
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "fg",
+      "tMs": 596,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "reinforcement1",
+      "tMs": 574,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "recoil": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "fg",
+      "hFrac": 0.68,
+      "tMs": 518,
+      "params": {
+        "caliberMm": 125,
+        "kind": "ricochet"
+      }
+    },
+    {
+      "type": "dust",
+      "actor": "fg",
+      "tMs": 300,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "dirDeg": 242
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      136.3,
+      3.6,
+      64.4
+    ],
+    "lookAt": [
+      164,
+      2,
+      90
+    ],
+    "groundRel": true,
+    "fov": 38,
+    "rollDeg": 2
+  },
+  "fxTime": 620,
+  "timeScale": 0,
+  "meta": {
+    "campaign": "marketing-battles-r3",
+    "category": "action",
+    "sourceComposition": "scenes2/49_coastal_harbor_kill.json"
+  }
+}
