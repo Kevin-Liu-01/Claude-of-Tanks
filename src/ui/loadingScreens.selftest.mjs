@@ -11,8 +11,8 @@ import {
 import { BOOT_HERO_SHOTS } from './bootScreen.js';
 import { MAP_THUMBS } from './mapThumbs.js';
 
-assert.equal(FEATURED_SHOTS.length, 10, 'the complete garage gallery stays available');
-assert.equal(TRANSITION_SHOTS.length, 5, 'only the current owner-authored captures rotate');
+assert.equal(FEATURED_SHOTS.length, 15, 'the owner-approved gallery plus Studio sequence stays available');
+assert.equal(TRANSITION_SHOTS.length, 7, 'only lightweight owner-approved captures rotate');
 assert.deepEqual(FEATURED_IMAGES, TRANSITION_SHOTS.map((shot) => shot.img));
 assert.deepEqual(
   BOOT_HERO_SHOTS,
@@ -20,8 +20,25 @@ assert.deepEqual(
   'the first percentage loading screen must use the current curated captures',
 );
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
-assert.ok(FEATURED_IMAGES.every((img) => /\/f(?:[6-9]|[1-9]\d+)_studio_/.test(img)),
-  'legacy marketing renders must not return to loading-screen rotation');
+assert.ok(FEATURED_IMAGES.every((img) => /\/presentation-r1\/\d+_/.test(img)),
+  'only owner-approved presentation captures may enter the loading-screen rotation');
+assert.equal(FEATURED_SHOTS.filter((shot) => shot.animated).length, 1,
+  'the garage gallery should expose one real animated Studio battle');
+assert.ok(FEATURED_SHOTS.find((shot) => shot.animated)?.img.endsWith('.gif'),
+  'the animated Studio battle must be published as the requested GIF');
+assert.ok(!TRANSITION_SHOTS.some((shot) => shot.animated),
+  'the large animated asset must stay out of boot and transition surfaces');
+const approved = [
+  '02_desert_rooftop_dive', '03_desert_muzzle_worm', '05_winter_ice_breaker',
+  '08_winter_village_hell', '10_urban_overpass_dive', '12_urban_crossfire_x',
+  '15_verdant_column_massacre', '16_verdant_meadow_duel', '23_autumn_gold_inferno',
+  '24_autumn_orchard_stand', '25_steppe_horizon_charge',
+  '32_desert_ram_abramsx_t90m', '33_desert_overwatch_line',
+];
+for (const id of approved) {
+  assert.ok(FEATURED_SHOTS.some((shot) => shot.img.endsWith(`/${id}.webp`)),
+    `owner-approved frame dropped from gallery: ${id}`);
+}
 
 for (const shot of FEATURED_SHOTS) {
   assert.ok(shot.cap && shot.focal, `missing loading-screen metadata for ${shot.img}`);
@@ -39,13 +56,13 @@ for (const mapId of Object.keys(MAP_THUMBS)) {
 
 assert.equal(
   featuredShotForMap('fjord').img,
-  '/media/featured/f9_studio_fjord_firefight.webp',
-  'the owner-authored fjord capture should headline Glacier Fjord',
+  '/media/presentation-r1/08_winter_village_hell.webp',
+  'Winter Village Hell should headline Glacier Fjord',
 );
 assert.equal(
   featuredShotForMap('urban').img,
-  '/media/featured/f10_studio_urban_crossfire.webp',
-  'the latest owner-authored urban capture should headline Steinburg',
+  '/media/presentation-r1/12_urban_crossfire_x.webp',
+  'Urban Crossfire X should headline Steinburg',
 );
 
 const cycleSize = TRANSITION_SHOTS.length;

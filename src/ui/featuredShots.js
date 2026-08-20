@@ -5,7 +5,7 @@
  * (garage.js) and the state-transition loading screens (transition.js).
  * It exists because three hand-maintained copies of these filenames drifted
  * from disk twice (r9.1: preload() errored forever and every rotation stuck
- * on frame 1). Names must match public/media/featured/ EXACTLY.
+ * on frame 1). URLs must match a checked-in public asset exactly.
  *
  * `FEATURED_SHOTS` remains the complete garage gallery. Loading and transition
  * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
@@ -13,49 +13,66 @@
  */
 export const FEATURED_SHOTS = [
   {
-    img: '/media/featured/f1_09_winter_lake_duel.webp',
-    cap: 'Frosthollow — ammo-rack kill', focal: '50% 44%',
+    img: '/media/presentation-r1/02_desert_rooftop_dive.webp',
+    cap: 'Sirocco Wadi — rooftop dive',
+    maps: ['desert', 'badlands', 'delta', 'monsoon'], focal: '50% 50%',
   },
   {
-    img: '/media/featured/f2_06_desert_hero_kf51.webp',
-    cap: 'Sirocco Wadi — KF51 firing', focal: '55% 48%',
+    img: '/media/presentation-r1/03_desert_muzzle_worm.webp',
+    cap: 'Sirocco Wadi — muzzle worm', focal: '50% 50%',
   },
   {
-    img: '/media/featured/f3_19_urban_overwatch_church.webp',
-    cap: 'Steinburg — church overwatch', focal: '50% 48%',
+    img: '/media/presentation-r1/05_winter_ice_breaker.webp',
+    cap: 'Frosthollow — ice breaker', focal: '50% 52%',
   },
   {
-    img: '/media/featured/f4_20_urban_ruin_brawl.webp',
-    cap: 'Steinburg — ruin brawl', focal: '50% 48%',
+    img: '/media/presentation-r1/08_winter_village_hell.webp',
+    cap: 'Frosthollow — village hell', maps: ['winter', 'fjord', 'alpine'], focal: '50% 50%',
   },
   {
-    img: '/media/featured/f5_01_desert_duel_leclerc_kill.webp',
-    cap: 'Sirocco Wadi — Leclerc duel', focal: '48% 48%',
+    img: '/media/presentation-r1/10_urban_overpass_dive.webp',
+    cap: 'Steinburg — overpass dive', focal: '50% 52%',
   },
   {
-    img: '/media/featured/f6_studio_strv_steinburg_duel.webp',
-    cap: 'Steinburg — Strv 103 street duel',
-    maps: ['foundry', 'railyard', 'caldera'], focal: '54% 48%',
+    img: '/media/presentation-r1/12_urban_crossfire_x.webp',
+    cap: 'Steinburg — crossfire X',
+    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '50% 52%',
   },
   {
-    img: '/media/featured/f7_studio_t90_column_fire.webp',
-    cap: 'Verdant Fields — T-90 column under fire',
-    maps: ['verdant', 'frontier', 'steppe'], focal: '50% 48%',
+    img: '/media/presentation-r1/15_verdant_column_massacre.webp',
+    cap: 'Verdant Fields — column massacre', maps: ['verdant', 'frontier'], focal: '50% 50%',
   },
   {
-    img: '/media/featured/f8_studio_m1_firefight.webp',
-    cap: 'Verdant Fields — M1 platoon firefight',
-    maps: ['desert', 'badlands', 'autumn', 'delta', 'monsoon', 'coastal'], focal: '50% 48%',
+    img: '/media/presentation-r1/16_verdant_meadow_duel.webp',
+    cap: 'Verdant Fields — meadow duel', maps: ['coastal'], focal: '50% 50%',
   },
   {
-    img: '/media/featured/f9_studio_fjord_firefight.webp',
-    cap: 'Glacier Fjord — armored breakthrough',
-    maps: ['fjord', 'alpine', 'winter'], focal: '52% 48%',
+    img: '/media/presentation-r1/23_autumn_gold_inferno.webp',
+    cap: 'Amberford — gold inferno', focal: '50% 52%',
   },
   {
-    img: '/media/featured/f10_studio_urban_crossfire.webp',
-    cap: 'Steinburg — armored street crossfire',
-    maps: ['urban'], focal: '50% 55%',
+    img: '/media/presentation-r1/24_autumn_orchard_stand.webp',
+    cap: 'Amberford — orchard stand', maps: ['autumn'], focal: '50% 50%',
+  },
+  {
+    img: '/media/presentation-r1/25_steppe_horizon_charge.webp',
+    cap: 'Tarkhan Steppe — horizon charge', maps: ['steppe'], focal: '50% 50%',
+  },
+  {
+    img: '/media/presentation-r1/32_desert_ram_abramsx_t90m.webp',
+    cap: 'Sirocco Wadi — AbramsX versus T-90M', focal: '50% 52%',
+  },
+  {
+    img: '/media/presentation-r1/33_desert_overwatch_line.webp',
+    cap: 'Sirocco Wadi — overwatch line', focal: '50% 50%',
+  },
+  {
+    img: '/media/presentation-r1/studio_action_05_5050ms.webp',
+    cap: 'Scene Studio — burning advance', focal: '50% 55%',
+  },
+  {
+    img: '/media/presentation-r1/studio_action_loop.gif',
+    cap: 'Scene Studio — live directed battle', focal: '50% 52%', animated: true,
   },
 ];
 

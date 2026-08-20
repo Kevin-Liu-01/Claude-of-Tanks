@@ -1,0 +1,3466 @@
+{
+  "libraryId": "claude-of-tanks-showcase-r1",
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-19",
+  "renderer": "Claude of Tanks Scene Studio and deterministic game harness",
+  "firstPartyRuntimeOnly": true,
+  "review": "Owner-approved feature shortlist plus every quality-gated action and foreground campaign frame",
+  "sourceDimensions": {
+    "width": 3840,
+    "height": 2160
+  },
+  "renditionDimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "counts": {
+    "ownerPicks": 13,
+    "action": 30,
+    "foreground": 30,
+    "studio": 5,
+    "interface": 10,
+    "total": 88
+  },
+  "qualityGate": {
+    "report": "shots/marketing-battles-r3/quality-report.json",
+    "required": {
+      "images": 60,
+      "passed": 60,
+      "failed": 0
+    },
+    "thresholds": {
+      "meanLuma": [
+        28,
+        232
+      ],
+      "dynamicRange": 52,
+      "clippedBlackMax": 0.18,
+      "clippedWhiteMax": 0.24,
+      "meanSaturationMin": 0.055,
+      "edgeMeanMin": 3.2
+    }
+  },
+  "animatedPreview": {
+    "src": "/media/presentation-r1/studio_action_loop.gif",
+    "poster": "/media/presentation-r1/studio_action_poster.webp",
+    "durationMs": 6500,
+    "bytes": 8514298
+  },
+  "shots": [
+    {
+      "id": "02_desert_rooftop_dive",
+      "src": "/media/presentation-r1/02_desert_rooftop_dive.webp",
+      "title": "Desert Rooftop Dive",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Desert Rooftop Dive on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9202,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/02_desert_rooftop_dive.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 1
+    },
+    {
+      "id": "03_desert_muzzle_worm",
+      "src": "/media/presentation-r1/03_desert_muzzle_worm.webp",
+      "title": "Desert Muzzle Worm",
+      "map": "Sirocco Wadi",
+      "feature": "Gunnery",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Desert Muzzle Worm on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv103"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9203,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/03_desert_muzzle_worm.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 2
+    },
+    {
+      "id": "05_winter_ice_breaker",
+      "src": "/media/presentation-r1/05_winter_ice_breaker.webp",
+      "title": "Winter Ice Breaker",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Winter Ice Breaker on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "spz_puma",
+        "leclerc_xlr",
+        "t90a_burlak"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire"
+      ],
+      "seed": 9205,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/05_winter_ice_breaker.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 3
+    },
+    {
+      "id": "08_winter_village_hell",
+      "src": "/media/presentation-r1/08_winter_village_hell.webp",
+      "title": "Winter Village Hell",
+      "map": "Frosthollow",
+      "feature": "Armor impacts",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Winter Village Hell on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "merkava4b",
+        "spz_puma",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9208,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/08_winter_village_hell.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 4
+    },
+    {
+      "id": "10_urban_overpass_dive",
+      "src": "/media/presentation-r1/10_urban_overpass_dive.webp",
+      "title": "Urban Overpass Dive",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Urban Overpass Dive on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9210,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/10_urban_overpass_dive.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 5
+    },
+    {
+      "id": "12_urban_crossfire_x",
+      "src": "/media/presentation-r1/12_urban_crossfire_x.webp",
+      "title": "Urban Crossfire X",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Urban Crossfire X on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "udes03",
+        "pl01_105",
+        "challenger_3",
+        "strv103a"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9212,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/12_urban_crossfire_x.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 6
+    },
+    {
+      "id": "15_verdant_column_massacre",
+      "src": "/media/presentation-r1/15_verdant_column_massacre.webp",
+      "title": "Verdant Column Massacre",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Verdant Column Massacre on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "t90a_vladimir",
+        "udes03"
+      ],
+      "effects": [
+        "tank_kill",
+        "detrack",
+        "dust",
+        "impact",
+        "fire"
+      ],
+      "seed": 9215,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/15_verdant_column_massacre.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 7
+    },
+    {
+      "id": "16_verdant_meadow_duel",
+      "src": "/media/presentation-r1/16_verdant_meadow_duel.webp",
+      "title": "Verdant Meadow Duel",
+      "map": "Verdant Fields",
+      "feature": "Armor impacts",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Verdant Meadow Duel on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "merkava4b"
+      ],
+      "effects": [
+        "fire",
+        "dust",
+        "sparks"
+      ],
+      "seed": 9216,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/16_verdant_meadow_duel.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 8
+    },
+    {
+      "id": "23_autumn_gold_inferno",
+      "src": "/media/presentation-r1/23_autumn_gold_inferno.webp",
+      "title": "Autumn Gold Inferno",
+      "map": "Amberford",
+      "feature": "Destruction",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Autumn Gold Inferno on Amberford, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "t90a_vladimir"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9223,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/23_autumn_gold_inferno.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 9
+    },
+    {
+      "id": "24_autumn_orchard_stand",
+      "src": "/media/presentation-r1/24_autumn_orchard_stand.webp",
+      "title": "Autumn Orchard Stand",
+      "map": "Amberford",
+      "feature": "Armor impacts",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Autumn Orchard Stand on Amberford, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3"
+      ],
+      "effects": [
+        "explosion",
+        "dust",
+        "firing_moment",
+        "sparks"
+      ],
+      "seed": 9224,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/24_autumn_orchard_stand.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 10
+    },
+    {
+      "id": "25_steppe_horizon_charge",
+      "src": "/media/presentation-r1/25_steppe_horizon_charge.webp",
+      "title": "Steppe Horizon Charge",
+      "map": "Tarkhan Steppe",
+      "feature": "Gunnery",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Steppe Horizon Charge on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "dust",
+        "fire"
+      ],
+      "seed": 9225,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/25_steppe_horizon_charge.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 11
+    },
+    {
+      "id": "32_desert_ram_abramsx_t90m",
+      "src": "/media/presentation-r1/32_desert_ram_abramsx_t90m.webp",
+      "title": "Desert Ram Abramsx T90m",
+      "map": "Sirocco Wadi",
+      "feature": "Track physics",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Desert Ram Abramsx T90m on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "merkava4b"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "sparks"
+      ],
+      "seed": 9232,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/32_desert_ram_abramsx_t90m.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 12
+    },
+    {
+      "id": "33_desert_overwatch_line",
+      "src": "/media/presentation-r1/33_desert_overwatch_line.webp",
+      "title": "Desert Overwatch Line",
+      "map": "Sirocco Wadi",
+      "feature": "Gunnery",
+      "kind": "owner pick",
+      "collection": "owner-picks-r1",
+      "alt": "Desert Overwatch Line on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "fire"
+      ],
+      "seed": 9233,
+      "sourceScene": "tools/marketing-shots/scenes-presentation-r1/33_desert_overwatch_line.json",
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 13
+    },
+    {
+      "id": "61_action_desert_duel_leclerc_kill",
+      "src": "/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp",
+      "title": "Desert Duel Leclerc Kill",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Desert Duel Leclerc Kill on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "leo2_revolution",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire",
+        "sparks",
+        "mg_burst"
+      ],
+      "seed": 8200,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/61_action_desert_duel_leclerc_kill.json",
+      "sourceMaster": "action-4k/61_action_desert_duel_leclerc_kill.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 137.2892,
+          "p05": 20.9186,
+          "p95": 208.956,
+          "clippedBlack": 0.0161,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4018,
+          "edgeMean": 8.3835
+        }
+      },
+      "sequence": 14
+    },
+    {
+      "id": "62_action_desert_ram_abramsx_t90m",
+      "src": "/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp",
+      "title": "Desert Ram AbramsX T-90M",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Desert Ram AbramsX T-90M on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "kf51",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8201,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/62_action_desert_ram_abramsx_t90m.json",
+      "sourceMaster": "action-4k/62_action_desert_ram_abramsx_t90m.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 131.4417,
+          "p05": 36.9832,
+          "p95": 201.07,
+          "clippedBlack": 0.0022,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4983,
+          "edgeMean": 8.6496
+        }
+      },
+      "sequence": 15
+    },
+    {
+      "id": "63_action_desert_overwatch_line",
+      "src": "/media/showcase-r1/63_action_desert_overwatch_line.webp",
+      "title": "Desert Overwatch Line",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Desert Overwatch Line on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "fire",
+        "sparks",
+        "dust",
+        "explosion"
+      ],
+      "seed": 8202,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/63_action_desert_overwatch_line.json",
+      "sourceMaster": "action-4k/63_action_desert_overwatch_line.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 136.3322,
+          "p05": 49.5496,
+          "p95": 196.5606,
+          "clippedBlack": 0.0002,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4345,
+          "edgeMean": 9.6297
+        }
+      },
+      "sequence": 16
+    },
+    {
+      "id": "64_action_desert_village_brawl",
+      "src": "/media/showcase-r1/64_action_desert_village_brawl.webp",
+      "title": "Desert Village Brawl",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Desert Village Brawl on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "k2",
+        "t14",
+        "t72b3m",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire",
+        "dust"
+      ],
+      "seed": 8203,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/64_action_desert_village_brawl.json",
+      "sourceMaster": "action-4k/64_action_desert_village_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 120.0318,
+          "p05": 37.0642,
+          "p95": 196.2974,
+          "clippedBlack": 0.012,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4236,
+          "edgeMean": 8.8742
+        }
+      },
+      "sequence": 17
+    },
+    {
+      "id": "65_action_coastal_dune_ambush",
+      "src": "/media/showcase-r1/65_action_coastal_dune_ambush.webp",
+      "title": "Coastal Dune Ambush",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Coastal Dune Ambush on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90m",
+        "ariete",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "engine_smoke",
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "mg_burst"
+      ],
+      "seed": 8204,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/65_action_coastal_dune_ambush.json",
+      "sourceMaster": "action-4k/65_action_coastal_dune_ambush.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 178.8459,
+          "p05": 66.8424,
+          "p95": 219.1416,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2797,
+          "edgeMean": 5.2386
+        }
+      },
+      "sequence": 18
+    },
+    {
+      "id": "66_action_coastal_seafront_duel",
+      "src": "/media/showcase-r1/66_action_coastal_seafront_duel.webp",
+      "title": "Coastal Seafront Duel",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Coastal Seafront Duel on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "ua_t84_oplot_m",
+        "m1a2_sepv3",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "sparks",
+        "fire",
+        "dust",
+        "explosion"
+      ],
+      "seed": 8205,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/66_action_coastal_seafront_duel.json",
+      "sourceMaster": "action-4k/66_action_coastal_seafront_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 149.698,
+          "p05": 16.647,
+          "p95": 219.5668,
+          "clippedBlack": 0.0048,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2113,
+          "edgeMean": 8.1002
+        }
+      },
+      "sequence": 19
+    },
+    {
+      "id": "67_action_winter_lake_duel",
+      "src": "/media/showcase-r1/67_action_winter_lake_duel.webp",
+      "title": "Winter Lake Duel",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Winter Lake Duel on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t80u",
+        "challenger_3",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust"
+      ],
+      "seed": 8206,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/67_action_winter_lake_duel.json",
+      "sourceMaster": "action-4k/67_action_winter_lake_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 181.1272,
+          "p05": 88.7404,
+          "p95": 211.1152,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1495,
+          "edgeMean": 5.0324
+        }
+      },
+      "sequence": 20
+    },
+    {
+      "id": "68_action_winter_ram_leo2a6",
+      "src": "/media/showcase-r1/68_action_winter_ram_leo2a6.webp",
+      "title": "Winter Ram Leo2a6",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Winter Ram Leo2a6 on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "abramsx",
+        "strv122",
+        "type10",
+        "type99a"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8207,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/68_action_winter_ram_leo2a6.json",
+      "sourceMaster": "action-4k/68_action_winter_ram_leo2a6.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 173.8446,
+          "p05": 65.6808,
+          "p95": 213.7542,
+          "clippedBlack": 0.0014,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1661,
+          "edgeMean": 4.3044
+        }
+      },
+      "sequence": 21
+    },
+    {
+      "id": "69_action_winter_village_brawl",
+      "src": "/media/showcase-r1/69_action_winter_village_brawl.webp",
+      "title": "Winter Village Brawl",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Winter Village Brawl on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2a7v",
+        "k2",
+        "t14",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire",
+        "sparks",
+        "dust",
+        "mg_burst"
+      ],
+      "seed": 8208,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/69_action_winter_village_brawl.json",
+      "sourceMaster": "action-4k/69_action_winter_village_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 150.7743,
+          "p05": 45.0252,
+          "p95": 211.219,
+          "clippedBlack": 0.0001,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1541,
+          "edgeMean": 5.9039
+        }
+      },
+      "sequence": 22
+    },
+    {
+      "id": "70_action_winter_overwatch_birch",
+      "src": "/media/showcase-r1/70_action_winter_overwatch_birch.webp",
+      "title": "Winter Overwatch Birch",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Winter Overwatch Birch on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leclerc_xlr",
+        "t90m",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "explosion",
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 8209,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/70_action_winter_overwatch_birch.json",
+      "sourceMaster": "action-4k/70_action_winter_overwatch_birch.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 170.9585,
+          "p05": 69.4464,
+          "p95": 214.1886,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.0919,
+          "edgeMean": 5.4929
+        }
+      },
+      "sequence": 23
+    },
+    {
+      "id": "71_action_urban_street_duel",
+      "src": "/media/showcase-r1/71_action_urban_street_duel.webp",
+      "title": "Urban Street Duel",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Urban Street Duel on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type10",
+        "ua_t84_oplot_m",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust"
+      ],
+      "seed": 8210,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/71_action_urban_street_duel.json",
+      "sourceMaster": "action-4k/71_action_urban_street_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 109.735,
+          "p05": 23.3192,
+          "p95": 207.7612,
+          "clippedBlack": 0.0026,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3756,
+          "edgeMean": 13.0396
+        }
+      },
+      "sequence": 24
+    },
+    {
+      "id": "72_action_urban_ram_plaza",
+      "src": "/media/showcase-r1/72_action_urban_ram_plaza.webp",
+      "title": "Urban Ram Plaza",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Urban Ram Plaza on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90sm",
+        "t80u",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8211,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/72_action_urban_ram_plaza.json",
+      "sourceMaster": "action-4k/72_action_urban_ram_plaza.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 158.1512,
+          "p05": 79.0052,
+          "p95": 205.4494,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.363,
+          "edgeMean": 6.6553
+        }
+      },
+      "sequence": 25
+    },
+    {
+      "id": "73_action_urban_overwatch_church",
+      "src": "/media/showcase-r1/73_action_urban_overwatch_church.webp",
+      "title": "Urban Overwatch Church",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Urban Overwatch Church on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "pt91m",
+        "abramsx",
+        "type10",
+        "type99a"
+      ],
+      "effects": [
+        "fire",
+        "sparks",
+        "dust",
+        "explosion",
+        "mg_burst"
+      ],
+      "seed": 8212,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/73_action_urban_overwatch_church.json",
+      "sourceMaster": "action-4k/73_action_urban_overwatch_church.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 133.7271,
+          "p05": 38.992,
+          "p95": 206.8792,
+          "clippedBlack": 0.0011,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3358,
+          "edgeMean": 10.7576
+        }
+      },
+      "sequence": 26
+    },
+    {
+      "id": "74_action_urban_ruin_brawl",
+      "src": "/media/showcase-r1/74_action_urban_ruin_brawl.webp",
+      "title": "Urban Ruin Brawl",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Urban Ruin Brawl on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t72b3m",
+        "leo2a7v",
+        "k2",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire",
+        "dust"
+      ],
+      "seed": 8213,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/74_action_urban_ruin_brawl.json",
+      "sourceMaster": "action-4k/74_action_urban_ruin_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 129.5066,
+          "p05": 24.1272,
+          "p95": 209.87,
+          "clippedBlack": 0.0035,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2778,
+          "edgeMean": 9.9923
+        }
+      },
+      "sequence": 27
+    },
+    {
+      "id": "75_action_urban_hero_abramsx",
+      "src": "/media/showcase-r1/75_action_urban_hero_abramsx.webp",
+      "title": "Urban Hero AbramsX",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Urban Hero AbramsX on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_tusk",
+        "ariete",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8214,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/75_action_urban_hero_abramsx.json",
+      "sourceMaster": "action-4k/75_action_urban_hero_abramsx.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 160.8278,
+          "p05": 80.043,
+          "p95": 207.1824,
+          "clippedBlack": 0.0003,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3506,
+          "edgeMean": 9.1042
+        }
+      },
+      "sequence": 28
+    },
+    {
+      "id": "76_action_verdant_field_duel",
+      "src": "/media/showcase-r1/76_action_verdant_field_duel.webp",
+      "title": "Verdant Field Duel",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Field Duel on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2_revolution",
+        "type10",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 8215,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/76_action_verdant_field_duel.json",
+      "sourceMaster": "action-4k/76_action_verdant_field_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 146.2335,
+          "p05": 33.5162,
+          "p95": 216.2528,
+          "clippedBlack": 0.0009,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3572,
+          "edgeMean": 9.6936
+        }
+      },
+      "sequence": 29
+    },
+    {
+      "id": "77_action_verdant_ram_hedgerow",
+      "src": "/media/showcase-r1/77_action_verdant_ram_hedgerow.webp",
+      "title": "Verdant Ram Hedgerow",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Ram Hedgerow on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "kf51",
+        "t90sm",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion",
+        "mg_burst"
+      ],
+      "seed": 8216,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/77_action_verdant_ram_hedgerow.json",
+      "sourceMaster": "action-4k/77_action_verdant_ram_hedgerow.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 141.6489,
+          "p05": 43.1272,
+          "p95": 213.7296,
+          "clippedBlack": 0.0015,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3799,
+          "edgeMean": 7.3137
+        }
+      },
+      "sequence": 30
+    },
+    {
+      "id": "78_action_verdant_village_brawl",
+      "src": "/media/showcase-r1/78_action_verdant_village_brawl.webp",
+      "title": "Verdant Village Brawl",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Village Brawl on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "pt91m",
+        "abramsx",
+        "type99a"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire",
+        "sparks",
+        "dust"
+      ],
+      "seed": 8217,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/78_action_verdant_village_brawl.json",
+      "sourceMaster": "action-4k/78_action_verdant_village_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 136.8946,
+          "p05": 32.1444,
+          "p95": 215.0012,
+          "clippedBlack": 0.0041,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3307,
+          "edgeMean": 11.5104
+        }
+      },
+      "sequence": 31
+    },
+    {
+      "id": "79_action_verdant_hero_challenger1",
+      "src": "/media/showcase-r1/79_action_verdant_hero_challenger1.webp",
+      "title": "Verdant Hero Challenger1",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Hero Challenger1 on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t14",
+        "t90sm",
+        "t14",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8218,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/79_action_verdant_hero_challenger1.json",
+      "sourceMaster": "action-4k/79_action_verdant_hero_challenger1.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 154.1827,
+          "p05": 77.0494,
+          "p95": 204.7844,
+          "clippedBlack": 0.0013,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4857,
+          "edgeMean": 8.539
+        }
+      },
+      "sequence": 32
+    },
+    {
+      "id": "80_action_desert_wadi_gauntlet",
+      "src": "/media/showcase-r1/80_action_desert_wadi_gauntlet.webp",
+      "title": "Desert Wadi Gauntlet",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Desert Wadi Gauntlet on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "ariete",
+        "m1a2_tusk",
+        "leclerc_xlr",
+        "t72b3m"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "sparks",
+        "fire"
+      ],
+      "seed": 8219,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/80_action_desert_wadi_gauntlet.json",
+      "sourceMaster": "action-4k/80_action_desert_wadi_gauntlet.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 130.2117,
+          "p05": 38.2038,
+          "p95": 205.4374,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5426,
+          "edgeMean": 7.1228
+        }
+      },
+      "sequence": 33
+    },
+    {
+      "id": "81_action_steppe_windbreak_snipe",
+      "src": "/media/showcase-r1/81_action_steppe_windbreak_snipe.webp",
+      "title": "Steppe Windbreak Snipe",
+      "map": "Tarkhan Steppe",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Steppe Windbreak Snipe on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "leo2_revolution",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust",
+        "mg_burst"
+      ],
+      "seed": 8220,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/81_action_steppe_windbreak_snipe.json",
+      "sourceMaster": "action-4k/81_action_steppe_windbreak_snipe.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 159.1128,
+          "p05": 48.5062,
+          "p95": 208.0958,
+          "clippedBlack": 0.0011,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4417,
+          "edgeMean": 7.5757
+        }
+      },
+      "sequence": 34
+    },
+    {
+      "id": "82_action_desert_last_stand",
+      "src": "/media/showcase-r1/82_action_desert_last_stand.webp",
+      "title": "Desert Last Stand",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Desert Last Stand on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "kf51",
+        "t90sm",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "dust",
+        "fire"
+      ],
+      "seed": 8221,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/82_action_desert_last_stand.json",
+      "sourceMaster": "action-4k/82_action_desert_last_stand.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 153.4244,
+          "p05": 60.4694,
+          "p95": 207.5078,
+          "clippedBlack": 0.0007,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3398,
+          "edgeMean": 8.2522
+        }
+      },
+      "sequence": 35
+    },
+    {
+      "id": "83_action_winter_ice_breaker",
+      "src": "/media/showcase-r1/83_action_winter_ice_breaker.webp",
+      "title": "Winter Ice Breaker",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Winter Ice Breaker on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust"
+      ],
+      "seed": 8222,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/83_action_winter_ice_breaker.json",
+      "sourceMaster": "action-4k/83_action_winter_ice_breaker.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 168.0209,
+          "p05": 67.271,
+          "p95": 213.925,
+          "clippedBlack": 0.0002,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1262,
+          "edgeMean": 5.8034
+        }
+      },
+      "sequence": 36
+    },
+    {
+      "id": "84_action_steppe_horizon_charge",
+      "src": "/media/showcase-r1/84_action_steppe_horizon_charge.webp",
+      "title": "Steppe Horizon Charge",
+      "map": "Tarkhan Steppe",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Steppe Horizon Charge on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "k2",
+        "t14",
+        "t72b3m",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8223,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/84_action_steppe_horizon_charge.json",
+      "sourceMaster": "action-4k/84_action_steppe_horizon_charge.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 174.6256,
+          "p05": 123.8214,
+          "p95": 209.042,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4413,
+          "edgeMean": 5.9955
+        }
+      },
+      "sequence": 37
+    },
+    {
+      "id": "85_action_urban_alley_flash",
+      "src": "/media/showcase-r1/85_action_urban_alley_flash.webp",
+      "title": "Urban Alley Flash",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Urban Alley Flash on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90m",
+        "ariete",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "sparks",
+        "dust",
+        "fire",
+        "explosion",
+        "mg_burst"
+      ],
+      "seed": 8224,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/85_action_urban_alley_flash.json",
+      "sourceMaster": "action-4k/85_action_urban_alley_flash.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 154.164,
+          "p05": 52.341,
+          "p95": 207.9606,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3558,
+          "edgeMean": 10.4351
+        }
+      },
+      "sequence": 38
+    },
+    {
+      "id": "86_action_coastal_harbor_kill",
+      "src": "/media/showcase-r1/86_action_coastal_harbor_kill.webp",
+      "title": "Coastal Harbor Kill",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Coastal Harbor Kill on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "ua_t84_oplot_m",
+        "m1a2_sepv3",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 8225,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/86_action_coastal_harbor_kill.json",
+      "sourceMaster": "action-4k/86_action_coastal_harbor_kill.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 169.3428,
+          "p05": 59.5034,
+          "p95": 219.0012,
+          "clippedBlack": 0.0003,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2778,
+          "edgeMean": 8.626
+        }
+      },
+      "sequence": 39
+    },
+    {
+      "id": "87_action_verdant_column_massacre",
+      "src": "/media/showcase-r1/87_action_verdant_column_massacre.webp",
+      "title": "Verdant Column Massacre",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Column Massacre on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t80u",
+        "challenger_3",
+        "kf51",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "tank_kill",
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks"
+      ],
+      "seed": 8226,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/87_action_verdant_column_massacre.json",
+      "sourceMaster": "action-4k/87_action_verdant_column_massacre.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 140.2712,
+          "p05": 46.2234,
+          "p95": 209.748,
+          "clippedBlack": 0.0006,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4145,
+          "edgeMean": 11.7926
+        }
+      },
+      "sequence": 40
+    },
+    {
+      "id": "88_action_verdant_meadow_duel",
+      "src": "/media/showcase-r1/88_action_verdant_meadow_duel.webp",
+      "title": "Verdant Meadow Duel",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Meadow Duel on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "abramsx",
+        "strv122",
+        "type10",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion"
+      ],
+      "seed": 8227,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/88_action_verdant_meadow_duel.json",
+      "sourceMaster": "action-4k/88_action_verdant_meadow_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 127.6405,
+          "p05": 45.1204,
+          "p95": 176.6908,
+          "clippedBlack": 0.0031,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5209,
+          "edgeMean": 14.0762
+        }
+      },
+      "sequence": 41
+    },
+    {
+      "id": "89_action_coastal_beach_storm",
+      "src": "/media/showcase-r1/89_action_coastal_beach_storm.webp",
+      "title": "Coastal Beach Storm",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Coastal Beach Storm on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2a7v",
+        "k2",
+        "t14",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "mg_burst"
+      ],
+      "seed": 8228,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/89_action_coastal_beach_storm.json",
+      "sourceMaster": "action-4k/89_action_coastal_beach_storm.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 172.395,
+          "p05": 12.5828,
+          "p95": 219.0012,
+          "clippedBlack": 0.0164,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2253,
+          "edgeMean": 3.6224
+        }
+      },
+      "sequence": 42
+    },
+    {
+      "id": "90_action_verdant_overwatch_ridge",
+      "src": "/media/showcase-r1/90_action_verdant_overwatch_ridge.webp",
+      "title": "Verdant Overwatch Ridge",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "action",
+      "alt": "Verdant Overwatch Ridge on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leclerc_xlr",
+        "t90m",
+        "ariete",
+        "t72b3m"
+      ],
+      "effects": [
+        "fire",
+        "sparks",
+        "dust",
+        "explosion"
+      ],
+      "seed": 8229,
+      "sourceScene": "tools/marketing-shots/scenes-action-r3/90_action_verdant_overwatch_ridge.json",
+      "sourceMaster": "action-4k/90_action_verdant_overwatch_ridge.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 145.6182,
+          "p05": 74.061,
+          "p95": 202.1864,
+          "clippedBlack": 0.0001,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4734,
+          "edgeMean": 9.2554
+        }
+      },
+      "sequence": 43
+    },
+    {
+      "id": "91_foreground_desert_duel_leclerc_kill",
+      "src": "/media/showcase-r1/91_foreground_desert_duel_leclerc_kill.webp",
+      "title": "Desert Duel Leclerc Kill",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Desert Duel Leclerc Kill on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "leo2_revolution",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire",
+        "sparks",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9200,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/91_foreground_desert_duel_leclerc_kill.json",
+      "sourceMaster": "foreground-4k/91_foreground_desert_duel_leclerc_kill.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 135.6496,
+          "p05": 41.5284,
+          "p95": 207.87,
+          "clippedBlack": 0.0035,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4441,
+          "edgeMean": 8.0331
+        }
+      },
+      "sequence": 44
+    },
+    {
+      "id": "92_foreground_desert_ram_abramsx_t90m",
+      "src": "/media/showcase-r1/92_foreground_desert_ram_abramsx_t90m.webp",
+      "title": "Desert Ram AbramsX T-90M",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Desert Ram AbramsX T-90M on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "kf51",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9201,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/92_foreground_desert_ram_abramsx_t90m.json",
+      "sourceMaster": "foreground-4k/92_foreground_desert_ram_abramsx_t90m.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 148.4861,
+          "p05": 33.1112,
+          "p95": 210.0012,
+          "clippedBlack": 0.0051,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3133,
+          "edgeMean": 6.4003
+        }
+      },
+      "sequence": 45
+    },
+    {
+      "id": "93_foreground_desert_overwatch_line",
+      "src": "/media/showcase-r1/93_foreground_desert_overwatch_line.webp",
+      "title": "Desert Overwatch Line",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Desert Overwatch Line on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "fire",
+        "sparks",
+        "dust",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9202,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/93_foreground_desert_overwatch_line.json",
+      "sourceMaster": "foreground-4k/93_foreground_desert_overwatch_line.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 120.8925,
+          "p05": 33.8336,
+          "p95": 197.705,
+          "clippedBlack": 0.0036,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5957,
+          "edgeMean": 9.3742
+        }
+      },
+      "sequence": 46
+    },
+    {
+      "id": "94_foreground_desert_village_brawl",
+      "src": "/media/showcase-r1/94_foreground_desert_village_brawl.webp",
+      "title": "Desert Village Brawl",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Desert Village Brawl on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "k2",
+        "t14",
+        "t72b3m",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9203,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/94_foreground_desert_village_brawl.json",
+      "sourceMaster": "foreground-4k/94_foreground_desert_village_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 144.597,
+          "p05": 39.1244,
+          "p95": 210.8568,
+          "clippedBlack": 0.0102,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3028,
+          "edgeMean": 8.2695
+        }
+      },
+      "sequence": 47
+    },
+    {
+      "id": "95_foreground_coastal_dune_ambush",
+      "src": "/media/showcase-r1/95_foreground_coastal_dune_ambush.webp",
+      "title": "Coastal Dune Ambush",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Coastal Dune Ambush on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90m",
+        "ariete",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "engine_smoke",
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9204,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/95_foreground_coastal_dune_ambush.json",
+      "sourceMaster": "foreground-4k/95_foreground_coastal_dune_ambush.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 178.4817,
+          "p05": 57.9066,
+          "p95": 217.4946,
+          "clippedBlack": 0.0027,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2501,
+          "edgeMean": 5.5643
+        }
+      },
+      "sequence": 48
+    },
+    {
+      "id": "96_foreground_coastal_seafront_duel",
+      "src": "/media/showcase-r1/96_foreground_coastal_seafront_duel.webp",
+      "title": "Coastal Seafront Duel",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Coastal Seafront Duel on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "ua_t84_oplot_m",
+        "m1a2_sepv3",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "sparks",
+        "fire",
+        "dust",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9205,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/96_foreground_coastal_seafront_duel.json",
+      "sourceMaster": "foreground-4k/96_foreground_coastal_seafront_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 173.2454,
+          "p05": 34.2218,
+          "p95": 220.1416,
+          "clippedBlack": 0.0042,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1733,
+          "edgeMean": 5.757
+        }
+      },
+      "sequence": 49
+    },
+    {
+      "id": "97_foreground_winter_lake_duel",
+      "src": "/media/showcase-r1/97_foreground_winter_lake_duel.webp",
+      "title": "Winter Lake Duel",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Winter Lake Duel on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t80u",
+        "challenger_3",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9206,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/97_foreground_winter_lake_duel.json",
+      "sourceMaster": "foreground-4k/97_foreground_winter_lake_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 173.2694,
+          "p05": 59.0412,
+          "p95": 214.4224,
+          "clippedBlack": 0.0042,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1128,
+          "edgeMean": 4.846
+        }
+      },
+      "sequence": 50
+    },
+    {
+      "id": "98_foreground_winter_ram_leo2a6",
+      "src": "/media/showcase-r1/98_foreground_winter_ram_leo2a6.webp",
+      "title": "Winter Ram Leo2a6",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Winter Ram Leo2a6 on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "abramsx",
+        "strv122",
+        "type10",
+        "type99a"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9207,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/98_foreground_winter_ram_leo2a6.json",
+      "sourceMaster": "foreground-4k/98_foreground_winter_ram_leo2a6.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 169.0862,
+          "p05": 54.2238,
+          "p95": 214.278,
+          "clippedBlack": 0.0045,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1391,
+          "edgeMean": 4.7664
+        }
+      },
+      "sequence": 51
+    },
+    {
+      "id": "99_foreground_winter_village_brawl",
+      "src": "/media/showcase-r1/99_foreground_winter_village_brawl.webp",
+      "title": "Winter Village Brawl",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Winter Village Brawl on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2a7v",
+        "k2",
+        "t14",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire",
+        "sparks",
+        "dust",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9208,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/99_foreground_winter_village_brawl.json",
+      "sourceMaster": "foreground-4k/99_foreground_winter_village_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 170.9621,
+          "p05": 50.878,
+          "p95": 209.4408,
+          "clippedBlack": 0.001,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1375,
+          "edgeMean": 5.2369
+        }
+      },
+      "sequence": 52
+    },
+    {
+      "id": "100_foreground_winter_overwatch_birch",
+      "src": "/media/showcase-r1/100_foreground_winter_overwatch_birch.webp",
+      "title": "Winter Overwatch Birch",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Winter Overwatch Birch on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leclerc_xlr",
+        "t90m",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "explosion",
+        "dust",
+        "fire",
+        "sparks",
+        "firing_moment"
+      ],
+      "seed": 9209,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/100_foreground_winter_overwatch_birch.json",
+      "sourceMaster": "foreground-4k/100_foreground_winter_overwatch_birch.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 173.93,
+          "p05": 60.302,
+          "p95": 214.4906,
+          "clippedBlack": 0.0004,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1022,
+          "edgeMean": 4.8982
+        }
+      },
+      "sequence": 53
+    },
+    {
+      "id": "101_foreground_urban_street_duel",
+      "src": "/media/showcase-r1/101_foreground_urban_street_duel.webp",
+      "title": "Urban Street Duel",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Urban Street Duel on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type10",
+        "ua_t84_oplot_m",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9210,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/101_foreground_urban_street_duel.json",
+      "sourceMaster": "foreground-4k/101_foreground_urban_street_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 119.9893,
+          "p05": 27.538,
+          "p95": 207.6168,
+          "clippedBlack": 0.0028,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3738,
+          "edgeMean": 13.0733
+        }
+      },
+      "sequence": 54
+    },
+    {
+      "id": "102_foreground_urban_ram_plaza",
+      "src": "/media/showcase-r1/102_foreground_urban_ram_plaza.webp",
+      "title": "Urban Ram Plaza",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Urban Ram Plaza on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90sm",
+        "t80u",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9211,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/102_foreground_urban_ram_plaza.json",
+      "sourceMaster": "foreground-4k/102_foreground_urban_ram_plaza.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 159.7357,
+          "p05": 40.396,
+          "p95": 219.4264,
+          "clippedBlack": 0.0044,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2122,
+          "edgeMean": 7.9531
+        }
+      },
+      "sequence": 55
+    },
+    {
+      "id": "103_foreground_urban_overwatch_church",
+      "src": "/media/showcase-r1/103_foreground_urban_overwatch_church.webp",
+      "title": "Urban Overwatch Church",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Urban Overwatch Church on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "pt91m",
+        "abramsx",
+        "type10",
+        "type99a"
+      ],
+      "effects": [
+        "fire",
+        "sparks",
+        "dust",
+        "explosion",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9212,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/103_foreground_urban_overwatch_church.json",
+      "sourceMaster": "foreground-4k/103_foreground_urban_overwatch_church.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 172.843,
+          "p05": 85.4482,
+          "p95": 212.2982,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3032,
+          "edgeMean": 6.9627
+        }
+      },
+      "sequence": 56
+    },
+    {
+      "id": "104_foreground_urban_ruin_brawl",
+      "src": "/media/showcase-r1/104_foreground_urban_ruin_brawl.webp",
+      "title": "Urban Ruin Brawl",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Urban Ruin Brawl on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t72b3m",
+        "leo2a7v",
+        "k2",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9213,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/104_foreground_urban_ruin_brawl.json",
+      "sourceMaster": "foreground-4k/104_foreground_urban_ruin_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 131.8874,
+          "p05": 34.3398,
+          "p95": 208.395,
+          "clippedBlack": 0.0035,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2877,
+          "edgeMean": 9.3503
+        }
+      },
+      "sequence": 57
+    },
+    {
+      "id": "105_foreground_urban_hero_abramsx",
+      "src": "/media/showcase-r1/105_foreground_urban_hero_abramsx.webp",
+      "title": "Urban Hero AbramsX",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Urban Hero AbramsX on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_tusk",
+        "ariete",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9214,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/105_foreground_urban_hero_abramsx.json",
+      "sourceMaster": "foreground-4k/105_foreground_urban_hero_abramsx.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 131.3548,
+          "p05": 21.769,
+          "p95": 217.2138,
+          "clippedBlack": 0.0088,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2644,
+          "edgeMean": 9.5978
+        }
+      },
+      "sequence": 58
+    },
+    {
+      "id": "106_foreground_verdant_field_duel",
+      "src": "/media/showcase-r1/106_foreground_verdant_field_duel.webp",
+      "title": "Verdant Field Duel",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Field Duel on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2_revolution",
+        "type10",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire",
+        "sparks",
+        "firing_moment"
+      ],
+      "seed": 9215,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/106_foreground_verdant_field_duel.json",
+      "sourceMaster": "foreground-4k/106_foreground_verdant_field_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 149.0251,
+          "p05": 54.2118,
+          "p95": 214.1548,
+          "clippedBlack": 0.0007,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3868,
+          "edgeMean": 9.3792
+        }
+      },
+      "sequence": 59
+    },
+    {
+      "id": "107_foreground_verdant_ram_hedgerow",
+      "src": "/media/showcase-r1/107_foreground_verdant_ram_hedgerow.webp",
+      "title": "Verdant Ram Hedgerow",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Ram Hedgerow on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "kf51",
+        "t90sm",
+        "strv122",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "explosion",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9216,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/107_foreground_verdant_ram_hedgerow.json",
+      "sourceMaster": "foreground-4k/107_foreground_verdant_ram_hedgerow.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 152.2379,
+          "p05": 36.4866,
+          "p95": 219.5668,
+          "clippedBlack": 0.0101,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3396,
+          "edgeMean": 8.5941
+        }
+      },
+      "sequence": 60
+    },
+    {
+      "id": "108_foreground_verdant_village_brawl",
+      "src": "/media/showcase-r1/108_foreground_verdant_village_brawl.webp",
+      "title": "Verdant Village Brawl",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Village Brawl on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "pt91m",
+        "abramsx",
+        "type99a"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire",
+        "sparks",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9217,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/108_foreground_verdant_village_brawl.json",
+      "sourceMaster": "foreground-4k/108_foreground_verdant_village_brawl.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 147.2008,
+          "p05": 19.2716,
+          "p95": 220.1284,
+          "clippedBlack": 0.0073,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2599,
+          "edgeMean": 9.386
+        }
+      },
+      "sequence": 61
+    },
+    {
+      "id": "109_foreground_verdant_hero_challenger1",
+      "src": "/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp",
+      "title": "Verdant Hero Challenger1",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Hero Challenger1 on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t14",
+        "t90sm",
+        "t14",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9218,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/109_foreground_verdant_hero_challenger1.json",
+      "sourceMaster": "foreground-4k/109_foreground_verdant_hero_challenger1.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 147.3022,
+          "p05": 32.2218,
+          "p95": 218.7754,
+          "clippedBlack": 0.0111,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3789,
+          "edgeMean": 9.7292
+        }
+      },
+      "sequence": 62
+    },
+    {
+      "id": "110_foreground_desert_wadi_gauntlet",
+      "src": "/media/showcase-r1/110_foreground_desert_wadi_gauntlet.webp",
+      "title": "Desert Wadi Gauntlet",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Desert Wadi Gauntlet on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "ariete",
+        "m1a2_tusk",
+        "leclerc_xlr",
+        "t72b3m"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "sparks",
+        "fire",
+        "firing_moment"
+      ],
+      "seed": 9219,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/110_foreground_desert_wadi_gauntlet.json",
+      "sourceMaster": "foreground-4k/110_foreground_desert_wadi_gauntlet.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 159.3812,
+          "p05": 59.0402,
+          "p95": 210.2138,
+          "clippedBlack": 0.0073,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3076,
+          "edgeMean": 6.0384
+        }
+      },
+      "sequence": 63
+    },
+    {
+      "id": "111_foreground_steppe_windbreak_snipe",
+      "src": "/media/showcase-r1/111_foreground_steppe_windbreak_snipe.webp",
+      "title": "Steppe Windbreak Snipe",
+      "map": "Tarkhan Steppe",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Steppe Windbreak Snipe on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "leo2_revolution",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9220,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/111_foreground_steppe_windbreak_snipe.json",
+      "sourceMaster": "foreground-4k/111_foreground_steppe_windbreak_snipe.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 165.0011,
+          "p05": 70.1782,
+          "p95": 215.2368,
+          "clippedBlack": 0.0003,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4341,
+          "edgeMean": 7.1822
+        }
+      },
+      "sequence": 64
+    },
+    {
+      "id": "112_foreground_desert_last_stand",
+      "src": "/media/showcase-r1/112_foreground_desert_last_stand.webp",
+      "title": "Desert Last Stand",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Desert Last Stand on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "kf51",
+        "t90sm",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "dust",
+        "fire",
+        "firing_moment"
+      ],
+      "seed": 9221,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/112_foreground_desert_last_stand.json",
+      "sourceMaster": "foreground-4k/112_foreground_desert_last_stand.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 159.1392,
+          "p05": 60.3864,
+          "p95": 209.1416,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3026,
+          "edgeMean": 5.6714
+        }
+      },
+      "sequence": 65
+    },
+    {
+      "id": "113_foreground_winter_ice_breaker",
+      "src": "/media/showcase-r1/113_foreground_winter_ice_breaker.webp",
+      "title": "Winter Ice Breaker",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Winter Ice Breaker on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9222,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/113_foreground_winter_ice_breaker.json",
+      "sourceMaster": "foreground-4k/113_foreground_winter_ice_breaker.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 168.0648,
+          "p05": 47.4156,
+          "p95": 214.278,
+          "clippedBlack": 0.0076,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1171,
+          "edgeMean": 4.7192
+        }
+      },
+      "sequence": 66
+    },
+    {
+      "id": "114_foreground_steppe_horizon_charge",
+      "src": "/media/showcase-r1/114_foreground_steppe_horizon_charge.webp",
+      "title": "Steppe Horizon Charge",
+      "map": "Tarkhan Steppe",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Steppe Horizon Charge on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "k2",
+        "t14",
+        "t72b3m",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9223,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/114_foreground_steppe_horizon_charge.json",
+      "sourceMaster": "foreground-4k/114_foreground_steppe_horizon_charge.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 168.2244,
+          "p05": 85.4206,
+          "p95": 209.811,
+          "clippedBlack": 0.0037,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4445,
+          "edgeMean": 8.0914
+        }
+      },
+      "sequence": 67
+    },
+    {
+      "id": "115_foreground_urban_alley_flash",
+      "src": "/media/showcase-r1/115_foreground_urban_alley_flash.webp",
+      "title": "Urban Alley Flash",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Urban Alley Flash on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90m",
+        "ariete",
+        "t80u",
+        "t72b3m"
+      ],
+      "effects": [
+        "sparks",
+        "dust",
+        "fire",
+        "explosion",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9224,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/115_foreground_urban_alley_flash.json",
+      "sourceMaster": "foreground-4k/115_foreground_urban_alley_flash.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 141.8757,
+          "p05": 34.5708,
+          "p95": 207.6168,
+          "clippedBlack": 0.0096,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3453,
+          "edgeMean": 9.1228
+        }
+      },
+      "sequence": 68
+    },
+    {
+      "id": "116_foreground_coastal_harbor_kill",
+      "src": "/media/showcase-r1/116_foreground_coastal_harbor_kill.webp",
+      "title": "Coastal Harbor Kill",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Coastal Harbor Kill on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "ua_t84_oplot_m",
+        "m1a2_sepv3",
+        "m1a2_tusk",
+        "challenger_3"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire",
+        "sparks",
+        "firing_moment"
+      ],
+      "seed": 9225,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/116_foreground_coastal_harbor_kill.json",
+      "sourceMaster": "foreground-4k/116_foreground_coastal_harbor_kill.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 171.934,
+          "p05": 45.2138,
+          "p95": 219.5668,
+          "clippedBlack": 0.0023,
+          "clippedWhite": 0,
+          "meanSaturation": 0.2169,
+          "edgeMean": 7.3548
+        }
+      },
+      "sequence": 69
+    },
+    {
+      "id": "117_foreground_verdant_column_massacre",
+      "src": "/media/showcase-r1/117_foreground_verdant_column_massacre.webp",
+      "title": "Verdant Column Massacre",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Column Massacre on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t80u",
+        "challenger_3",
+        "kf51",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "tank_kill",
+        "detrack",
+        "dust",
+        "impact",
+        "fire",
+        "sparks",
+        "firing_moment"
+      ],
+      "seed": 9226,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/117_foreground_verdant_column_massacre.json",
+      "sourceMaster": "foreground-4k/117_foreground_verdant_column_massacre.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 152.4495,
+          "p05": 47.9198,
+          "p95": 211.3766,
+          "clippedBlack": 0.0024,
+          "clippedWhite": 0,
+          "meanSaturation": 0.4149,
+          "edgeMean": 10.1842
+        }
+      },
+      "sequence": 70
+    },
+    {
+      "id": "118_foreground_verdant_meadow_duel",
+      "src": "/media/showcase-r1/118_foreground_verdant_meadow_duel.webp",
+      "title": "Verdant Meadow Duel",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Meadow Duel on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "abramsx",
+        "strv122",
+        "type10",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9227,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/118_foreground_verdant_meadow_duel.json",
+      "sourceMaster": "foreground-4k/118_foreground_verdant_meadow_duel.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 143.6752,
+          "p05": 50.0582,
+          "p95": 198.7744,
+          "clippedBlack": 0.0017,
+          "clippedWhite": 0,
+          "meanSaturation": 0.5082,
+          "edgeMean": 10.7701
+        }
+      },
+      "sequence": 71
+    },
+    {
+      "id": "119_foreground_coastal_beach_storm",
+      "src": "/media/showcase-r1/119_foreground_coastal_beach_storm.webp",
+      "title": "Coastal Beach Storm",
+      "map": "Breakwater Coast",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Coastal Beach Storm on Breakwater Coast, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2a7v",
+        "k2",
+        "t14",
+        "ua_t84_oplot_m"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks",
+        "explosion",
+        "mg_burst",
+        "firing_moment"
+      ],
+      "seed": 9228,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/119_foreground_coastal_beach_storm.json",
+      "sourceMaster": "foreground-4k/119_foreground_coastal_beach_storm.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 176.301,
+          "p05": 77.4814,
+          "p95": 214.8568,
+          "clippedBlack": 0.002,
+          "clippedWhite": 0,
+          "meanSaturation": 0.1994,
+          "edgeMean": 5.2868
+        }
+      },
+      "sequence": 72
+    },
+    {
+      "id": "120_foreground_verdant_overwatch_ridge",
+      "src": "/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp",
+      "title": "Verdant Overwatch Ridge",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "foreground",
+      "collection": "marketing-battles-r3",
+      "shotStyle": "foreground",
+      "alt": "Verdant Overwatch Ridge on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leclerc_xlr",
+        "t90m",
+        "ariete",
+        "t72b3m"
+      ],
+      "effects": [
+        "fire",
+        "sparks",
+        "dust",
+        "explosion",
+        "firing_moment"
+      ],
+      "seed": 9229,
+      "sourceScene": "tools/marketing-shots/scenes-foreground-r3/120_foreground_verdant_overwatch_ridge.json",
+      "sourceMaster": "foreground-4k/120_foreground_verdant_overwatch_ridge.png",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true,
+        "passed": true,
+        "dimensions": {
+          "width": 3840,
+          "height": 2160
+        },
+        "metrics": {
+          "meanLuma": 170.7289,
+          "p05": 109.6716,
+          "p95": 213.2272,
+          "clippedBlack": 0,
+          "clippedWhite": 0,
+          "meanSaturation": 0.3982,
+          "edgeMean": 6.4781
+        }
+      },
+      "sequence": 73
+    },
+    {
+      "id": "studio_action_01_850ms",
+      "sequence": 74,
+      "src": "/media/presentation-r1/studio_action_01_850ms.webp",
+      "title": "Armored contact",
+      "map": "Frosthollow",
+      "feature": "Studio direction",
+      "kind": "studio",
+      "collection": "studio-action-loop-winter-r1",
+      "alt": "Armored contact in the animated Scene Studio battle sequence",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "dust"
+      ],
+      "seed": 8222,
+      "timeMs": 850,
+      "sourceScene": "shots/studio-action-loop-winter-r1/studio_winter_breakthrough.resolved.json",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true
+      }
+    },
+    {
+      "id": "studio_action_02_1550ms",
+      "sequence": 75,
+      "src": "/media/presentation-r1/studio_action_02_1550ms.webp",
+      "title": "First impact",
+      "map": "Frosthollow",
+      "feature": "Studio direction",
+      "kind": "studio",
+      "collection": "studio-action-loop-winter-r1",
+      "alt": "First impact in the animated Scene Studio battle sequence",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "impact",
+        "sparks"
+      ],
+      "seed": 8222,
+      "timeMs": 1550,
+      "sourceScene": "shots/studio-action-loop-winter-r1/studio_winter_breakthrough.resolved.json",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true
+      }
+    },
+    {
+      "id": "studio_action_03_2600ms",
+      "sequence": 76,
+      "src": "/media/presentation-r1/studio_action_03_2600ms.webp",
+      "title": "Return fire",
+      "map": "Frosthollow",
+      "feature": "Studio direction",
+      "kind": "studio",
+      "collection": "studio-action-loop-winter-r1",
+      "alt": "Return fire in the animated Scene Studio battle sequence",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "impact",
+        "sparks"
+      ],
+      "seed": 8222,
+      "timeMs": 2600,
+      "sourceScene": "shots/studio-action-loop-winter-r1/studio_winter_breakthrough.resolved.json",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true
+      }
+    },
+    {
+      "id": "studio_action_04_3900ms",
+      "sequence": 77,
+      "src": "/media/presentation-r1/studio_action_04_3900ms.webp",
+      "title": "Knockout",
+      "map": "Frosthollow",
+      "feature": "Studio direction",
+      "kind": "studio",
+      "collection": "studio-action-loop-winter-r1",
+      "alt": "Knockout in the animated Scene Studio battle sequence",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "impact",
+        "sparks",
+        "detrack"
+      ],
+      "seed": 8222,
+      "timeMs": 3900,
+      "sourceScene": "shots/studio-action-loop-winter-r1/studio_winter_breakthrough.resolved.json",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true
+      }
+    },
+    {
+      "id": "studio_action_05_5050ms",
+      "sequence": 78,
+      "src": "/media/presentation-r1/studio_action_05_5050ms.webp",
+      "title": "Burning advance",
+      "map": "Frosthollow",
+      "feature": "Studio direction",
+      "kind": "studio",
+      "collection": "studio-action-loop-winter-r1",
+      "alt": "Burning advance in the animated Scene Studio battle sequence",
+      "actors": [
+        "strv122",
+        "type99a",
+        "pt91m",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "impact",
+        "sparks",
+        "detrack",
+        "tank_kill"
+      ],
+      "seed": 8222,
+      "timeMs": 5050,
+      "sourceScene": "shots/studio-action-loop-winter-r1/studio_winter_breakthrough.resolved.json",
+      "quality": {
+        "automated": true,
+        "ownerApproved": true
+      }
+    },
+    {
+      "id": "ui_battlefield_foundry",
+      "src": "/media/presentation-r1/ui_battlefield_foundry.webp",
+      "title": "Ironworks overview",
+      "map": "Live game",
+      "feature": "World system",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Ironworks overview captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 79
+    },
+    {
+      "id": "ui_combat_firing",
+      "src": "/media/presentation-r1/ui_combat_firing.webp",
+      "title": "Live firing cycle",
+      "map": "Live game",
+      "feature": "Gunnery",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Live firing cycle captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 80
+    },
+    {
+      "id": "ui_explosion",
+      "src": "/media/presentation-r1/ui_explosion.webp",
+      "title": "Destruction event",
+      "map": "Live game",
+      "feature": "Destruction",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Destruction event captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 81
+    },
+    {
+      "id": "ui_gallery",
+      "src": "/media/presentation-r1/ui_gallery.webp",
+      "title": "Tank Gallery live dossier",
+      "map": "Live game",
+      "feature": "Tank design",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Tank Gallery live dossier captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 82
+    },
+    {
+      "id": "ui_garage",
+      "src": "/media/presentation-r1/ui_garage.webp",
+      "title": "Garage command deck",
+      "map": "Live game",
+      "feature": "Interface",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Garage command deck captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 83
+    },
+    {
+      "id": "ui_killcam_xray",
+      "src": "/media/presentation-r1/ui_killcam_xray.webp",
+      "title": "Resolved-shot X-ray",
+      "map": "Live game",
+      "feature": "Killcam",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Resolved-shot X-ray captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 84
+    },
+    {
+      "id": "ui_mobile",
+      "src": "/media/presentation-r1/ui_mobile.webp",
+      "title": "Responsive mobile command deck",
+      "map": "Live game",
+      "feature": "Interface",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Responsive mobile command deck captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 85
+    },
+    {
+      "id": "ui_player_view",
+      "src": "/media/presentation-r1/ui_player_view.webp",
+      "title": "Production battle HUD",
+      "map": "Live game",
+      "feature": "Interface",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Production battle HUD captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 86
+    },
+    {
+      "id": "ui_sniper_view",
+      "src": "/media/presentation-r1/ui_sniper_view.webp",
+      "title": "Precision sight",
+      "map": "Live game",
+      "feature": "Gunnery",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "Precision sight captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 87
+    },
+    {
+      "id": "ui_tank_closeup_modern",
+      "src": "/media/presentation-r1/ui_tank_closeup_modern.webp",
+      "title": "First-party vehicle rig",
+      "map": "Live game",
+      "feature": "Tank design",
+      "kind": "interface",
+      "collection": "live-interface-r1",
+      "alt": "First-party vehicle rig captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": [],
+      "quality": {
+        "ownerApproved": true
+      },
+      "sequence": 88
+    }
+  ]
+}

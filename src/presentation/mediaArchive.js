@@ -1,4 +1,4 @@
-const MANIFEST_URL = '/media/presentation-r1/manifest.json';
+const MANIFEST_URL = '/media/showcase-r1/manifest.json';
 let manifestPromise;
 
 export function loadPresentationManifest() {
@@ -68,6 +68,8 @@ export async function mountMediaArchive(root, options = {}) {
   const allowedKinds = options.kinds?.length ? new Set(options.kinds.map(normalize)) : null;
   const source = manifest.shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
   const limit = Number.isFinite(options.limit) ? options.limit : source.length;
+  const pageSize = Number.isFinite(options.pageSize) ? Math.max(1, options.pageSize) : limit;
+  let visibleLimit = Math.min(pageSize, limit);
   let active = normalize(options.feature || 'all');
 
   const toolbar = document.createElement('div');
@@ -78,16 +80,25 @@ export async function mountMediaArchive(root, options = {}) {
   filters.setAttribute('aria-label', 'Filter captured game frames');
   const count = document.createElement('output');
   count.className = 'media-archive-count';
+  const status = document.createElement('div');
+  status.className = 'media-archive-status';
+  const loadMore = document.createElement('button');
+  loadMore.type = 'button';
+  loadMore.className = 'media-archive-more';
   const grid = document.createElement('div');
   grid.className = 'media-archive-grid';
 
-  const featureOrder = ['all', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
+  const featureOrder = ['all', 'studio direction', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
   const available = new Set(source.map((shot) => normalize(shot.feature)));
   const features = featureOrder.filter((feature) => feature === 'all' || available.has(feature));
   function render() {
-    const visible = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
+    const filtered = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
+    const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map(shotCard));
-    count.value = `${String(visible.length).padStart(2, '0')} / ${String(source.filter((shot) => active === 'all' || normalize(shot.feature) === active).length).padStart(2, '0')} frames`;
+    count.value = `${String(visible.length).padStart(2, '0')} / ${String(filtered.length).padStart(2, '0')} frames`;
+    const remaining = filtered.length - visible.length;
+    loadMore.hidden = remaining <= 0;
+    loadMore.textContent = remaining > 0 ? `Load ${Math.min(pageSize, remaining)} more` : '';
     filters.querySelectorAll('button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.feature === active)));
   }
   if (options.filters !== false) {
@@ -98,11 +109,13 @@ export async function mountMediaArchive(root, options = {}) {
       button.dataset.feature = feature;
       button.textContent = feature;
       button.setAttribute('aria-pressed', String(feature === active));
-      button.addEventListener('click', () => { active = feature; render(); });
+      button.addEventListener('click', () => { active = feature; visibleLimit = Math.min(pageSize, limit); render(); });
       filters.appendChild(button);
     }
   }
-  toolbar.append(filters, count);
+  loadMore.addEventListener('click', () => { visibleLimit = Math.min(limit, visibleLimit + pageSize); render(); });
+  status.append(count, loadMore);
+  toolbar.append(filters, status);
   root.replaceChildren(toolbar, grid);
   render();
   return { manifest, render, root };
@@ -114,6 +127,7 @@ export function autoMountMediaArchives(scope = document) {
     mountMediaArchive(root, {
       mode: root.dataset.mode || undefined,
       limit: root.dataset.limit ? Number(root.dataset.limit) : undefined,
+      pageSize: root.dataset.pageSize ? Number(root.dataset.pageSize) : undefined,
       feature: root.dataset.feature || undefined,
       kinds,
       filters: root.dataset.filters !== 'false',
