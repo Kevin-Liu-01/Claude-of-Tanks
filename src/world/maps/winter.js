@@ -242,7 +242,7 @@ export default {
     // a snow map. Snowline dropped to 0.18 (snow-bound to the valley floor,
     // rock only piercing on cliffs), base/rock pushed cold blue-grey and the
     // caps near-white so the ring still reads FROZEN through fog + warm grade.
-    baseHex: 0x76839a, amp: 1.2, style: 'alpine', snowline: 0.18,
+    baseHex: 0x76839a, amp: 1.04, style: 'alpine', snowline: 0.24,
     // r7: haze 0.8 -> 0.68 — the aerial ramp buried the rebuilt ridge detail
     // (sastrugi/rib texture) under fog by the second row; the overcast scene
     // fog still softens the ring, the bake just stops double-fogging it
@@ -262,7 +262,7 @@ export default {
     // turbidity 13 → 8.5: the mie-loaded sky sampled a warm CREAM horizon
     // color that leaked into the fog mix + aerial scatter and tanned the
     // whole alpine ring; 8.5 keeps the milky overcast without the sepia cast
-    turbidity: 8.5, rayleigh: 2.6, mieCoefficient: 0.002, mieDirectionalG: 0.7,
+    turbidity: 7.2, rayleigh: 2.2, mieCoefficient: 0.002, mieDirectionalG: 0.7,
     // 0.0018 fogged the alpine wall to a flat cutout by 800 m — 0.0011 keeps
     // the overcast depth while letting snow/rock contrast survive to the ridge
     // envIntensity raised for the ice sheet's sky reflection; sun dropped and
@@ -279,14 +279,14 @@ export default {
     // alpine recenter finally read; the aerial pass still owns depth grading.
     // terrain_environment r3: envIntensity 0.52 -> 0.60 — the ice sheet's
     // sky-reflection term needs the headroom (roughness floor now 0.13)
-    fogDensity: 0.00064, fogTintHex: 0xb9c4d2, fogMix: 0.94, envIntensity: 0.32, // lighting_post r4: 0.60 -> 0.32 — scene-wide rough-spec env wash was the albedo-independent pale-props root cause; the lake ice keeps its sheen via its own envMapIntensity (terrain.js)
+    fogDensity: 0.00058, fogTintHex: 0xaebdce, fogMix: 0.82, envIntensity: 0.30,
     // lighting_post r3 (round 3): per-map overcast deck tuning (overrides the
     // sky.js overcast auto-detect values) — a lower/darker broken stratus
     // deck (tint 0xaab2bc -> 0x9aa3ae) reads against the bright snow bounce
     // in the 2-12° establishing band.
     cloudOpacity: 1.0, cloudOpacity2: 0.95, cloudTintHex: 0x9aa3ae,
     cloudAltM: 320, cloudHazeK: 0.00013, cloudUvM: 2200,
-    sunIntensity: 1.15, sunColorHex: 0xdfe7f2, hemiIntensity: 0.92,
+    sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.94,
   },
 
   minimap: {

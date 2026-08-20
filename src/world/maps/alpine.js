@@ -10,12 +10,26 @@ export default {
   blurb: 'A frozen alpine lake divides a fortified mountain village and two high passes',
   terrain: {
     hillScale: 1.46, microScale: 0.72, rimH: 52, frozenMarshes: true,
+    roads: { paths: [
+      [[-420, -450], [-346, -278], [-316, -90], [-330, 108], [-276, 290], [-202, 468]],
+      [[-112, -466], [-146, -304], [-154, -168], [-172, -28], [-138, 142], [-86, 316], [-18, 466]],
+      [[330, -452], [286, -282], [246, -122], [226, 42], [258, 218], [212, 410]],
+      [[-316, 204], [-190, 166], [-86, 128], [24, 136], [146, 188], [252, 274]],
+      [[-280, -230], [-166, -208], [-68, -158], [18, -176], [138, -220], [248, -194]],
+    ] },
     lakes: [
       { x: 58, z: -34, r: 116, depth: 1.6 },
       { x: -258, z: 224, r: 42, depth: 1.3 },
     ],
     marshes: [{ x: 280, z: -192, r: 44, dip: 1.4 }],
     village: { x0: -204, x1: 202, z0: -212, z1: 222, cx: -42, cz: 28, feather: 58, flatten: 0.69, relief: 0.3 },
+    landforms: [
+      { kind: 'ridge', x: -286, z: 22, length: 390, width: 86, height: 10.8, yawDeg: 7, corridorScale: 0.78 },
+      { kind: 'ridge', x: 282, z: 28, length: 370, width: 84, height: 10.2, yawDeg: -8, corridorScale: 0.78 },
+      { kind: 'ridge', x: -64, z: 292, length: 230, width: 70, height: 7.0, yawDeg: 80 },
+      { kind: 'knoll', x: 154, z: -254, rx: 86, rz: 64, height: 6.4, yawDeg: 22 },
+      { kind: 'basin', x: -166, z: -218, rx: 96, rz: 70, height: -3.0, yawDeg: -16 },
+    ],
   },
   spawns: {
     player: { x: -222, z: -386 },
@@ -46,7 +60,20 @@ export default {
       'logcabin', 'alpine', 'woodshed', 'chapel', 'depot', 'logcabin', 'alpine', 'ruin',
       'granary', 'logcabin', 'alpine', 'woodshed'],
     destructibleBuildings: ['alpinerefuge', 'saunahut', 'huntingblind', 'fieldhospital'],
+    tacticalBeats: [
+      { id: 'western-pass-redoubt', role: 'brawl', x: -290, z: 84, yawDeg: 8,
+        structure: 'alpinerefuge', redoubt: true, outcrop: { count: 8, radius: 12 }, wreck: true, wreckOffsetZ: -16 },
+      { id: 'lake-overlook', role: 'scout', x: -162, z: -192, yawDeg: -16,
+        structure: 'huntingblind', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'eastern-rescue-station', role: 'support', x: 266, z: 118, yawDeg: -10,
+        structure: 'fieldhospital', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 15 },
+    ],
     extraKits: ['winterLake'], snowCap: true, wallStyle: 'fieldstone', wallStoneChance: 0.82,
+    wallRuns: [
+      [-310, -132, -220, -96, 2], [-298, 132, -210, 168, 3],
+      [210, -140, 304, -104, 3], [204, 132, 300, 168, 2],
+      [-156, 244, -56, 274, 3], [72, -278, 166, -244, 2],
+    ],
     buildingLat: [11, 6], sideSkip: 0.12, maxSpread: 3.2,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     rocks: 275, outcrops: 54, craters: 66, rubblePiles: 20,
@@ -59,15 +86,15 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x708397, amp: 1.78, style: 'alpine', treeline: 0.64,
+    baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.64, snowline: 0.42,
     forestHex: 0x29434a, rockHex: 0x88929d, haze: 0.91, grain: 0.52,
   },
   sky: {
-    sunElevationDeg: 14, sunAzimuthDeg: 132, turbidity: 3.8, rayleigh: 2.1,
-    mieCoefficient: 0.006, mieDirectionalG: 0.78, fogDensity: 0.00118,
-    fogTintHex: 0xa8bacb, fogMix: 0.72, envIntensity: 0.34,
+    sunElevationDeg: 16, sunAzimuthDeg: 132, turbidity: 4.2, rayleigh: 2.0,
+    mieCoefficient: 0.0052, mieDirectionalG: 0.78, fogDensity: 0.00076,
+    fogTintHex: 0x9eb1c3, fogMix: 0.64, envIntensity: 0.31,
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
-    sunIntensity: 3.05, sunColorHex: 0xffddbe, hemiIntensity: 0.62,
+    sunIntensity: 2.85, sunColorHex: 0xffddbe, hemiIntensity: 0.54, postExposure: 0.95,
   },
   minimap: {
     base: [154, 169, 183], hard: [132, 144, 154], soft: [105, 127, 143],

@@ -13,9 +13,14 @@ export default {
     microScale: 0.7,
     rimH: 30,
     dunes: { amp: 7.5 },
-    // taller, harder-edged plateaus: tighter threshold band => steeper cliff
-    // walls that read as true rock mesas on the skyline, not tinted dunes
-    mesas: { amp: 38, thr0: 0.70, thr1: 0.755 },
+    // Broad tablelands with a graded talus shoulder. The former tight
+    // threshold crossed the full mesa rise in roughly one terrain cell and
+    // produced triangular "spike hills" beside the village.
+    mesas: {
+      amp: 36, thr0: 0.70, thr1: 0.755,
+      wallWidth: 2.2, tierWidth: 0.16, tierScale: 0.22,
+      corridorFloor: 1,
+    },
     marshes: [], // no marshes — dry wadi
     // r2 (content_breadth): village footprint widened (-70..74 -> -92..92,
     // -34..112 -> -46..132) — the crossroads settlement read as "a handful of

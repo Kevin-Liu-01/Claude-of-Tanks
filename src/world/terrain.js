@@ -68,6 +68,30 @@ function buildGridRoads(grid) {
   return roads;
 }
 
+// Authored route networks for maps whose identity depends on something more
+// legible than the shared country cross or an infinite street grid. Designers
+// provide a few control points; this resamples them to the same ~32 m spacing
+// as the legacy roads so road-distance queries and prop placement keep their
+// established cost/behavior.
+function buildPathRoads(paths) {
+  const roads = [];
+  for (const path of paths || []) {
+    if (!Array.isArray(path) || path.length < 2) continue;
+    const line = [];
+    for (let pi = 0; pi < path.length - 1; pi++) {
+      const [ax, az] = path[pi], [bx, bz] = path[pi + 1];
+      const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 32));
+      for (let step = 0; step < steps; step++) {
+        const t = step / steps;
+        line.push([ax + (bx - ax) * t, az + (bz - az) * t]);
+      }
+    }
+    line.push([...path[path.length - 1]]);
+    roads.push(line);
+  }
+  return roads;
+}
+
 const DEFAULT_TERRAIN = {
   hillScale: 1.0,
   microScale: 1.0,
@@ -82,7 +106,12 @@ const DEFAULT_TERRAIN = {
   frozenMarshes: false, // marsh/lake ground reads 'hard' (ice) instead of 'soft'
   dunes: null,          // {amp} — long ridged sand dunes
   mesas: null,          // {amp, thr0, thr1} — flat-topped plateaus
-  roads: 'country',     // 'country' | {grid:{xs:[],zs:[],jitter}}
+  // Broad authored tactical forms. These are analytical (no meshes or draw
+  // calls) and are shared by the rendered and headless height fields.
+  // ridge: {kind:'ridge',x,z,length,width,height,yawDeg}; knoll/basin use
+  // {rx,rz,height,yawDeg}. Negative height creates a basin.
+  landforms: [],
+  roads: 'country',     // 'country' | {grid?,paths?}; both may be combined
 };
 
 const DEFAULT_SPAWNS = {
@@ -100,6 +129,10 @@ const DEFAULT_SPAWNS = {
  */
 export function createLayout(cfg) {
   const t = { ...DEFAULT_TERRAIN, ...(cfg && cfg.terrain ? cfg.terrain : {}) };
+  t.landforms = (t.landforms || []).map((form) => {
+    const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
+    return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
+  });
   const village = { ...DEFAULT_TERRAIN.village, ...(t.village || {}) };
   const spawnsSrc = (cfg && cfg.spawns) || DEFAULT_SPAWNS;
   const player = { ...spawnsSrc.player };
@@ -117,9 +150,15 @@ export function createLayout(cfg) {
   for (const enemy of enemies) {
     enemy.yaw = Math.atan2(player.x - enemy.x, player.z - enemy.z);
   }
-  const roads = t.roads === 'country' || !t.roads
-    ? buildCountryRoads()
-    : buildGridRoads(t.roads.grid);
+  let roads;
+  if (t.roads === 'country' || !t.roads) {
+    roads = buildCountryRoads();
+  } else {
+    roads = [];
+    if (t.roads.grid) roads.push(...buildGridRoads(t.roads.grid));
+    if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
+    if (roads.length === 0) roads = buildCountryRoads();
+  }
   return {
     village,
     // maps r1 (ADDITIVE): per-marsh carve depth `dip` (m). Default 2.6 = the
@@ -141,6 +180,31 @@ function segDist(px, pz, ax, az, bx, bz) {
   t = clamp(t, 0, 1);
   const ex = ax + dx * t - px, ez = az + dz * t - pz;
   return { d: Math.sqrt(ex * ex + ez * ez), t };
+}
+
+/** Pure analytical height contribution for an authored tactical landform. */
+export function sampleLandformHeight(form, x, z) {
+  const dx = x - form.x, dz = z - form.z;
+  const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
+  const s = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
+  const lx = dx * c + dz * s;
+  const lz = -dx * s + dz * c;
+  const height = form.height || 0;
+  if (form.kind === 'ridge') {
+    const half = Math.max(1, (form.length || 100) * 0.5);
+    const width = Math.max(1, form.width || 45);
+    const along = 1 - smoothstep(half * 0.72, half, Math.abs(lx));
+    const across = 1 - smoothstep(width * 0.22, width, Math.abs(lz));
+    // A wide crown plus a softer shoulder reads as a natural fold and keeps
+    // tanks stable on the crest; the squared falloff avoids cliff walls.
+    const shoulder = across * across * (3 - 2 * across);
+    return height * along * shoulder;
+  }
+  const rx = Math.max(1, form.rx || form.r || 70);
+  const rz = Math.max(1, form.rz || form.r || rx);
+  const q = Math.sqrt((lx * lx) / (rx * rx) + (lz * lz) / (rz * rz));
+  const w = 1 - smoothstep(0.12, 1, q);
+  return height * w * w * (3 - 2 * w);
 }
 
 // ---------------------------------------------------------------------------
@@ -228,6 +292,12 @@ export function createHeightField(seed = 1337, cfg = null) {
     return a + (b - a) * fz;
   }
 
+  function sampleMesaNoise(x, z) {
+    const mwp = noi.noise(x * 0.0009 + 77, z * 0.0009 - 31) * 95;
+    return noi.noise((x + mwp) * 0.0014 - 310,
+      (z - mwp * 0.8) * 0.0014 + 208) * 0.5 + 0.5;
+  }
+
   const villageY = core(_VILLAGE.cx, _VILLAGE.cz).s;
 
   function villageMask(x, z) {
@@ -267,7 +337,7 @@ export function createHeightField(seed = 1337, cfg = null) {
     // flat shelf into the cliff face with the spawned tank half-EMBEDDED in
     // the rock (desert establishing shot: green hull sunk in the mesa flank).
     let spawnClear = 1;
-    if (T.dunes || T.mesas) {
+    if (T.dunes || T.mesas || T.landforms.length) {
       for (let p = 0; p < padPts.length; p++) {
         const pd = Math.hypot(x - padPts[p].x, z - padPts[p].z);
         if (pd < 90) spawnClear = Math.min(spawnClear, smoothstep(36, 90, pd));
@@ -286,29 +356,66 @@ export function createHeightField(seed = 1337, cfg = null) {
       const dn = 1 - Math.abs(noi.noise(x * 0.0021 + 402, z * 0.0046 + 91));
       const dnu = 1 - Math.abs(noi.noise((x - 12.8) * 0.0021 + 402, (z - 9.6) * 0.0046 + 91));
       const dn2 = noi.noise(x * 0.0064 - 55, z * 0.0064 + 233) * 0.5 + 0.5;
-      const dnc = dn * dn * dn, dnuc = dnu * dnu * dnu;
-      const skew = clamp((dnc - dnuc) * 3.0, -0.45, 0.45);
+      // Two already-required samples across the wind axis form one broad dune mass instead
+      // of cubing a single zero-crossing into a needle ridge. Smoothstep
+      // gives both the toe and crest a zero derivative; the smaller skew
+      // retains a readable lee face without a razor brink. Keeping this to
+      // the original pair preserves the terrain hot-loop noise budget.
+      const dnb = dn * 0.62 + dnu * 0.38;
+      const dnub = dnu * 0.65 + dn * 0.35;
+      const dnc = dnb * dnb * (3 - 2 * dnb);
+      const dnuc = dnub * dnub * (3 - 2 * dnub);
+      const skew = clamp((dnc - dnuc) * 2.0, -0.28, 0.28);
       let duneH = dnc * T.dunes.amp * (0.7 + dn2 * 0.5) * (1 + skew * 0.55);
       duneH += smoothstep(0.55, 0.95, dnc) * noi.noise(x * 0.041 + 17, z * 0.041 - 63)
-        * 0.9 * T.dunes.amp * 0.12;
+        * 0.45 * T.dunes.amp * 0.08;
       h += duneH * (1 - cw * 0.7) * (1 - vm) * spawnClear;
     }
     if (T.mesas) {
       // domain-warped mesa field (r5): unwarped blobs read as lumpy noise
       // mounds; the warp stretches outlines into the irregular embayed
       // escarpment plan real tablelands show from above
-      const mwp = noi.noise(x * 0.0009 + 77, z * 0.0009 - 31) * 95;
-      const mn = noi.noise((x + mwp) * 0.0014 - 310, (z - mwp * 0.8) * 0.0014 + 208) * 0.5 + 0.5;
+      const mn = sampleMesaNoise(x, z);
       // real mesa profile: near-vertical cliff wall, flat cap, plus a smaller
       // second tier so big buttes read stepped. Wall band widened 0.28 -> 0.42
       // and tier2 widened (r5): the old widths crossed the full 38 m rise
       // within ~one far-LOD vertex (5.3 m), leaving single-vertex facet
       // spikes on the escarpment edges (the crimson spike artifact).
       const band = (T.mesas.thr1 - T.mesas.thr0);
-      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * 0.42, mn);
-      const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.085, mn);
+      // Some maps want sheer tableland walls; village-adjacent desert mesas
+      // need a longer talus shoulder so a threshold island cannot collapse
+      // into a one-cell triangular spike. Both controls are map-authored and
+      // preserve the legacy profile when omitted.
+      const wallWidth = T.mesas.wallWidth ?? 0.42;
+      const tierWidth = T.mesas.tierWidth ?? 0.045;
+      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
+      const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.04 + tierWidth, mn);
+      const tierScale = T.mesas.tierScale ?? 0.45;
       const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
-      h += (wall + tier2 * 0.45) * T.mesas.amp * capNoise * (1 - cw) * (1 - vm) * (1 - marshW) * spawnClear;
+      // Never cut the entire mesa height out along a synthetic spawn-to-town
+      // corridor: several converging corridors otherwise leave thin wedges
+      // of full-height rock between them. Those wedges were the dark shark-
+      // fin hills visible behind Sirocco's village. The actual roadbed still
+      // grades the final surface below; this floor only keeps the surrounding
+      // landform continuous.
+      const corridorFloor = T.mesas.corridorFloor ?? 0;
+      const corridorProtect = 1 - cw * (1 - corridorFloor);
+      h += (wall + tier2 * tierScale) * T.mesas.amp * capNoise
+        * corridorProtect * (1 - vm) * (1 - marshW) * spawnClear;
+    }
+    // Authored macro composition: broad ridge lines, knolls, slag heaps,
+    // levees and shallow basins break the expansion maps into distinct lanes
+    // without adding a single render object. Roads are grounded later in the
+    // pipeline; the weights here merely keep their approaches readable.
+    for (let li = 0; li < T.landforms.length; li++) {
+      const form = T.landforms[li];
+      const corridorScale = form.corridorScale ?? 0.62;
+      const settlementScale = form.settlementScale ?? 0.45;
+      const wetScale = form.wetScale ?? 0.30;
+      const protect = (1 - cw * (1 - corridorScale))
+        * (1 - vm * (1 - settlementScale))
+        * (1 - marshW * (1 - wetScale));
+      h += sampleLandformHeight(form, x, z) * spawnClear * protect;
     }
     // tactical micro-terrain: berm crests + shallow scrapes every ~70-110 m so
     // the open midfield offers hull-down folds instead of a flat golf course.
@@ -518,12 +625,12 @@ export function createHeightField(seed = 1337, cfg = null) {
   // horizontal terracing (the "heightmap quantization" critique). Baked to a
   // small mask (createSplatMaterial) so rock/strata live only on real mesas.
   const mesaWeight = T.mesas ? (x, z) => {
-    const mwp = noi.noise(x * 0.0009 + 77, z * 0.0009 - 31) * 95;
-    const mn = noi.noise((x + mwp) * 0.0014 - 310, (z - mwp * 0.8) * 0.0014 + 208) * 0.5 + 0.5;
+    const mn = sampleMesaNoise(x, z);
     const band = (T.mesas.thr1 - T.mesas.thr0);
     // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
     // keeps its rock identity, the open dune field beyond it does not
-    const wall = smoothstep(T.mesas.thr0 - band * 0.55, T.mesas.thr0 + band * 0.42, mn);
+    const wall = smoothstep(T.mesas.thr0 - band * 0.55,
+      T.mesas.thr0 + band * (T.mesas.wallWidth ?? 0.42), mn);
     const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z)));
     return Math.max(wall, rim);
   } : null;
@@ -2229,9 +2336,11 @@ void splatCompute() {
   // stops the sun's GGX lobe washing the whole sheet bright (uSea=0: 0.14)
   rough0 = max(rough0, iceW * mix(0.14, 0.32, uSea));
   rough0 = max(rough0, gSeaFoam * 0.88); // maps r1: foam is matte (0 off sea maps)
-  // matte floor: kills the wet-plastic sheen / white sparkle glints on every
-  // ground type except intentionally glossy lake ice
-  gSplatRough = max(rough0, 0.78 * (1.0 - iceW) + shoreW * -0.12);
+  // Dry terrain stays truly matte. The previous 0.78 floor left a broad GGX
+  // sun lobe on dirt/snow at grazing angles, making the ground look wet even
+  // when its albedo and normal detail were correct. Ice and open water keep
+  // their authored response through iceW; every dry texel is >= 0.92.
+  gSplatRough = max(rough0, 0.92 * (1.0 - iceW) + shoreW * -0.04);
   gSplatNrm = n.xyz * 2.0 - 1.0;
   gSplatFar = farM;
   // steep faces beyond gameplay range: their per-texel normal shading is the
@@ -2362,7 +2471,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v20'; // maps r1: uSea open-water mode (inert at uSea=0)
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v21';
   return mat;
 }
 

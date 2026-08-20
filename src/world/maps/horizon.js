@@ -67,43 +67,26 @@ const PROFILES = {
     const billow = Math.pow(n1, 1.4);
     return row.base + (billow * 0.75 + n2 * 0.25) * row.amp;
   },
-  // glacial ranges REBUILT (r7): multi-octave ridged FBM under a massif
-  // envelope. The r6 profile shaped every summit from ONE ridged frequency
-  // cubed — straight-flanked triangles at near-even spacing, the critic's
-  // "1990s midpoint-displacement sawtooth". Four ridged octaves, each with
-  // its own domain warp and each riding ON the main ridge, give fractal
-  // flanks with secondary spurs, couloirs and shoulder benches; peak
-  // sharpness, height and spacing all wander independently around the ring
-  // so no two summits repeat.
+  // Broad glacial massifs. Earlier versions stacked absolute-value ridge
+  // noise at four frequencies. That looked detailed in the height array but
+  // projected as repeated triangular needles around the skyline. A pair of
+  // low-frequency massif fields now owns the silhouette; finer noise only
+  // moves shoulders and never creates an independent summit.
   alpine(a, noi, row) {
-    // per-octave domain warp: wavelength/spacing wander around the ring
-    const w1 = noi.noise(Math.cos(a) * 1.9 + 55, Math.sin(a) * 1.9 - 41) * 0.16;
-    const w2 = noi.noise(Math.cos(a) * 3.1 - 12, Math.sin(a) * 3.1 + 29) * 0.07;
-    const aw = a + w1, aw2 = a + w1 * 0.6 + w2;
-    // massif envelope (~2 wavelengths around the ring): tall ranges vs
-    // saddle stretches at ~55% height
-    const env = noi.noise(Math.cos(a) * 0.62 + 3.1, Math.sin(a) * 0.62 - 8.7) * 0.5 + 0.5;
-    const mass = 0.55 + 0.65 * smoothstep(0.20, 0.84, env);
-    // peak-shape selector, independent slow noise: 0 = rounded shoulder
-    // domes, 1 = sharp glacial horns — so neighbouring summits differ
-    const sel = smoothstep(0.28, 0.72, noi.noise(Math.cos(a) * 1.15 - 14.2, Math.sin(a) * 1.15 + 6.4) * 0.5 + 0.5);
-    const R = (ang, f, off) => 1 - Math.abs(noi.noise(Math.cos(ang) * f + off, Math.sin(ang) * f - off * 0.7));
-    const o1 = R(aw, row.f0, 21);
-    const o2 = R(aw2, row.f0 * 2.15, 57);
-    const o3 = R(aw, row.f0 * 4.4, 93);
-    const o4 = R(aw2, row.f0 * 8.9, 131);
-    // main ridge NEVER cubed (pow 1.5 dome country -> 2.4 horn country);
-    // finer octaves are amplitude-keyed to the main ridge so spurs grow out
-    // of the massifs instead of filling the saddles with even chop
-    const main = Math.pow(o1, 1.5 + sel * 0.9);
-    const h = main * 0.60
-      + o2 * o2 * 0.20 * (0.45 + 0.55 * o1)
-      + o3 * 0.10 * (0.35 + 0.65 * o1)
-      + o4 * 0.05 * (0.30 + 0.70 * o1);
-    // per-peak amplitude jitter: neighbouring summits differ in height, not
-    // just shape, so the ring never settles into an even-spaced comb
-    const ampJit = 0.76 + 0.48 * (noi.noise(Math.cos(a) * 2.6 - 44, Math.sin(a) * 2.6 + 71) * 0.5 + 0.5);
-    return row.base + h * mass * ampJit * row.amp * 1.15;
+    const warp = noi.noise(Math.cos(a) * 1.15 + 55, Math.sin(a) * 1.15 - 41) * 0.13;
+    const aw = a + warp;
+    const broad = noi.noise(Math.cos(aw) * row.f0 * 0.52 + 21,
+      Math.sin(aw) * row.f0 * 0.52 - 14) * 0.5 + 0.5;
+    const shoulder = noi.noise(Math.cos(aw) * row.f0 * 1.18 - 37,
+      Math.sin(aw) * row.f0 * 1.18 + 28) * 0.5 + 0.5;
+    const spur = noi.noise(Math.cos(a) * row.f0 * 2.65 + 83,
+      Math.sin(a) * row.f0 * 2.65 - 61) * 0.5 + 0.5;
+    const envelope = 0.58 + smoothstep(0.18, 0.86,
+      noi.noise(Math.cos(a) * 0.58 + 3.1, Math.sin(a) * 0.58 - 8.7) * 0.5 + 0.5) * 0.50;
+    const massif = smoothstep(0.12, 0.92, broad) * 0.68
+      + smoothstep(0.18, 0.88, shoulder) * 0.24
+      + (spur - 0.5) * 0.08;
+    return row.base + clamp(massif, 0.12, 1.0) * envelope * row.amp;
   },
   // stepped tablelands: noise pushed through plateau terraces -> long flat
   // caps with cliff edges, plus lone buttes between the tables
@@ -141,6 +124,47 @@ const PROFILES = {
     return row.base + (bench * 0.62 + Math.pow(n2, 2.2) * 0.38) * row.amp * 0.72;
   },
 };
+
+function softenAlpineRing(heights, offset, count, row, amp) {
+  const scratch = new Float32Array(count);
+  for (let pass = 0; pass < 8; pass++) {
+    for (let k = 0; k < count; k++) {
+      const km = (k - 1 + count) % count, kp = (k + 1) % count;
+      scratch[k] = heights[offset + km] * 0.24
+        + heights[offset + k] * 0.52 + heights[offset + kp] * 0.24;
+    }
+    for (let k = 0; k < count; k++) heights[offset + k] = scratch[k];
+  }
+  const maxStep = 1.35 + row.amp * amp * 0.035;
+  for (let pass = 0; pass < 3; pass++) {
+    for (let k = 0; k < count; k++) {
+      const km = (k - 1 + count) % count;
+      heights[offset + k] = clamp(heights[offset + k],
+        heights[offset + km] - maxStep, heights[offset + km] + maxStep);
+    }
+    for (let k = count - 1; k >= 0; k--) {
+      const kp = (k + 1) % count;
+      heights[offset + k] = clamp(heights[offset + k],
+        heights[offset + kp] - maxStep, heights[offset + kp] + maxStep);
+    }
+  }
+}
+
+/** Node-runnable skyline sampler used by the visual-quality regression. */
+export function sampleHorizonSilhouette({
+  style = 'alpine', mapId = 'winter', seed = 1337,
+  row = { base: 50, amp: 76, f0: 2.6, f1: 5.2 }, amp = 1, count = 520,
+} = {}) {
+  const profile = PROFILES[style] || PROFILES.rolling;
+  const noi = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
+  const heights = new Float32Array(count);
+  for (let k = 0; k < count; k++) {
+    const a = (k / count) * Math.PI * 2;
+    heights[k] = profile(a, noi, row) * amp;
+  }
+  if (style === 'alpine') softenAlpineRing(heights, 0, count, row, amp);
+  return heights;
+}
 
 // ---------------------------------------------------------------------------
 // Rock-detail texture — U wraps around the ring (10 repeats), V = absolute
@@ -780,6 +804,15 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       pos0[i * 3] = Math.cos(a) * jr;
       pos0[i * 3 + 1] = hh;
       pos0[i * 3 + 2] = Math.sin(a) * jr;
+    }
+    // Low-pass only the skyline-owning alpine rows. This is deliberately a
+    // geometry operation (rather than a material blur): even at x8 zoom the
+    // silhouette cannot contain a one- or two-vertex needle. Eight compact
+    // passes retain broad peak groups while removing the repeated sawtooth.
+    if (style === 'alpine' && !row.skirt) {
+      const baseI = ri * N;
+      softenAlpineRing(hs0, baseI, N, row, amp);
+      for (let k = 0; k < N; k++) pos0[(baseI + k) * 3 + 1] = hs0[baseI + k];
     }
   }
 

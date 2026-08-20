@@ -8,21 +8,21 @@ import { MAP_IDS } from '../src/world/maps/index.js';
 
 const expected = {
   verdant: [3826, 473, 4114],
-  desert: [1788, 537, 1283],
+  desert: [1749, 550, 1255],
   winter: [3647, 527, 2890],
   urban: [1757, 978, 606],
-  coastal: [2190, 456, 1575],
+  coastal: [2234, 464, 1603],
   autumn: [3747, 477, 3997],
   steppe: [1327, 531, 514],
   railyard: [1112, 459, 425],
-  frontier: [4137, 535, 4376],
-  fjord: [3960, 610, 3206],
-  delta: [4801, 419, 6132],
-  badlands: [2002, 745, 1004],
-  monsoon: [5864, 681, 7733],
-  alpine: [4729, 709, 3809],
-  caldera: [2950, 892, 1820],
-  foundry: [2121, 572, 1211],
+  frontier: [4334, 595, 4512],
+  fjord: [3555, 592, 2752],
+  delta: [4913, 392, 6157],
+  badlands: [2035, 729, 1063],
+  monsoon: [5975, 674, 7754],
+  alpine: [4879, 719, 3897],
+  caldera: [2962, 844, 1868],
+  foundry: [2155, 587, 1167],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');

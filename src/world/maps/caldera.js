@@ -16,8 +16,21 @@ export default {
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 286, z: -220, r: 34, dip: 1.2 },
     ],
-    roads: { grid: { xs: [-224, -64, 98, 250], zs: [-240, -70, 102, 252], jitter: 7.0 } },
+    roads: { paths: [
+      [[-286, -36], [-230, -190], [-74, -282], [104, -264], [242, -160], [286, 8], [238, 174], [82, 270], [-104, 252], [-252, 150], [-286, -36]],
+      [[-434, -448], [-360, -278], [-314, -92], [-286, 92], [-236, 286], [-170, 466]],
+      [[350, -446], [302, -270], [278, -92], [296, 86], [258, 268], [198, 452]],
+      [[-304, -210], [-174, -130], [-34, -68], [108, -92], [244, -182]],
+      [[-280, 216], [-146, 152], [-8, 126], [132, 172], [262, 248]],
+    ] },
     village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
+    landforms: [
+      { kind: 'ridge', x: -278, z: 20, length: 340, width: 82, height: 9.0, yawDeg: 5 },
+      { kind: 'ridge', x: 280, z: 28, length: 330, width: 82, height: 8.8, yawDeg: -6 },
+      { kind: 'ridge', x: -20, z: 282, length: 250, width: 72, height: 7.2, yawDeg: 84 },
+      { kind: 'knoll', x: 136, z: -242, rx: 88, rz: 62, height: 7.0, yawDeg: 18 },
+      { kind: 'basin', x: -132, z: -218, rx: 106, rz: 74, height: -3.8, yawDeg: -19 },
+    ],
   },
   spawns: {
     player: { x: -302, z: -380 },
@@ -45,8 +58,21 @@ export default {
       'containerRow', 'factory', 'warehouse', 'gantry', 'shed', 'stack', 'ruin', 'depot',
       'watertower', 'containerRow', 'factory', 'warehouse', 'shed', 'gantry', 'ruin', 'stack'],
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
+    tacticalBeats: [
+      { id: 'western-lava-cut', role: 'brawl', x: -282, z: 84, yawDeg: 4,
+        structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.6 }, wreck: true, wreckOffsetZ: -16 },
+      { id: 'caldera-survey-post', role: 'scout', x: -46, z: -246, yawDeg: 20,
+        structure: 'guardpost', outcrop: { count: 5, radius: 9, scaleMax: 2.9 } },
+      { id: 'eastern-transformer-yard', role: 'support', x: 276, z: 112, yawDeg: -8,
+        structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
+    ],
     blockFill: true,
     extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
+    wallRuns: [
+      [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],
+      [204, -142, 300, -106, 3], [202, 134, 296, 168, 2],
+      [-144, 248, -42, 278, 3], [68, -270, 164, -238, 2],
+    ],
     buildingLat: [12, 7], sideSkip: 0.08, maxSpread: 3.4,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: true,
     rocks: 310, outcrops: 76, craters: 92, rubblePiles: 36,
@@ -63,13 +89,13 @@ export default {
     forestHex: 0x292d27, rockHex: 0x4a4743, haze: 0.94, grain: 0.48,
   },
   sky: {
-    sunElevationDeg: 20, sunAzimuthDeg: 116, turbidity: 10.5, rayleigh: 1.15,
-    mieCoefficient: 0.022, mieDirectionalG: 0.91, fogDensity: 0.00134,
-    fogTintHex: 0x897b6e, fogMix: 0.77, envIntensity: 0.18,
+    sunElevationDeg: 22, sunAzimuthDeg: 116, turbidity: 8.5, rayleigh: 1.15,
+    mieCoefficient: 0.014, mieDirectionalG: 0.89, fogDensity: 0.00082,
+    fogTintHex: 0x81766d, fogMix: 0.67, envIntensity: 0.18,
     cloudOpacity: 1.28, cloudOpacity2: 1.04, cloudTintHex: 0xc4b7aa,
     // Preserve the smoky low-key grade while keeping direct/ambient
     // separation strong enough for reliable terrain and structure shadows.
-    sunIntensity: 3.7, sunColorHex: 0xffb985, hemiIntensity: 0.46,
+    sunIntensity: 3.5, sunColorHex: 0xffb985, hemiIntensity: 0.40, postExposure: 0.95,
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],

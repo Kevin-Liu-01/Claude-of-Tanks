@@ -14,8 +14,24 @@ export default {
   blurb: 'Braided watercourses divide flooded fields, village compounds and palm thickets',
   terrain: {
     hillScale: 0.64, microScale: 0.82, rimH: 22, clearMarshVeg: true,
+    roads: { paths: [
+      [[-438, -404], [-360, -236], [-270, -72], [-184, 98], [-96, 274], [-20, 466]],
+      [[-244, -466], [-164, -300], [-68, -128], [58, 42], [188, 212], [348, 406]],
+      [[-456, -342], [-422, -142], [-396, 72], [-340, 278], [-270, 452]],
+      [[338, -444], [306, -236], [330, -32], [382, 178], [432, 370]],
+      [[-286, 52], [-144, 34], [8, 54], [162, 38], [302, 8]],
+    ] },
     marshes: river,
     village: { x0: -126, x1: 158, z0: -92, z1: 180, cx: 18, cz: 42, feather: 52, flatten: 0.88, relief: 0.08 },
+    landforms: [
+      { kind: 'ridge', x: -214, z: -108, length: 310, width: 48, height: 3.8, yawDeg: -43, wetScale: 0.82 },
+      { kind: 'ridge', x: 116, z: 158, length: 330, width: 50, height: 4.0, yawDeg: -44, wetScale: 0.82 },
+      { kind: 'ridge', x: -246, z: 176, length: 190, width: 62, height: 4.6, yawDeg: 28 },
+      { kind: 'ridge', x: -46, z: 42, length: 214, width: 42, height: 5.2, yawDeg: 37, wetScale: 0.88, settlementScale: 0.68 },
+      { kind: 'ridge', x: 214, z: -26, length: 186, width: 46, height: 4.8, yawDeg: -24, wetScale: 0.86 },
+      { kind: 'knoll', x: 250, z: -194, rx: 88, rz: 64, height: 4.8, yawDeg: -18 },
+      { kind: 'basin', x: -12, z: -224, rx: 112, rz: 72, height: -2.1, yawDeg: 12, wetScale: 0.9 },
+    ],
   },
   spawns: {
     player: { x: -332, z: -382 },
@@ -43,8 +59,23 @@ export default {
       'boatshed', 'market', 'compound', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
       'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
     destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
+    tacticalBeats: [
+      { id: 'western-levee-fort', role: 'brawl', x: -286, z: -72, yawDeg: -34,
+        structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -14 },
+      { id: 'river-observation-island', role: 'scout', x: 46, z: 192, yawDeg: 34,
+        structure: 'stilthouse', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
+      { id: 'eastern-relief-station', role: 'support', x: 262, z: -164, yawDeg: -20,
+        structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 14 },
+    ],
     extraKits: ['river'], wallStyle: 'adobe', wallStoneChance: 0.18,
-    well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
+    wallRuns: [
+      [-286, 112, -202, 146, 2], [-248, -196, -166, -154, 3],
+      [-82, -204, -6, -170, 2], [134, -164, 218, -126, 3],
+      [178, 202, 270, 236, 2], [-168, 222, -78, 258, 3],
+    ],
+    // Remote levee tracks do not carry a full utility line: marching poles
+    // through the palm canopy produced bright diagonal clutter from above.
+    well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 18, rocks: 148, outcrops: 10, craters: 62, rubblePiles: 10,
     cropFields: 11, sandbagLines: 17, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 6, debris: true },
@@ -60,11 +91,11 @@ export default {
     forestHex: 0x244b2b, rockHex: 0x69705d, haze: 0.96, grain: 0.72,
   },
   sky: {
-    sunElevationDeg: 42, sunAzimuthDeg: 104, turbidity: 7.4, rayleigh: 1.9,
-    mieCoefficient: 0.012, mieDirectionalG: 0.86, fogDensity: 0.00122,
-    fogTintHex: 0x8ea7a0, fogMix: 0.68, envIntensity: 0.24,
+    sunElevationDeg: 38, sunAzimuthDeg: 104, turbidity: 6.2, rayleigh: 1.75,
+    mieCoefficient: 0.0085, mieDirectionalG: 0.84, fogDensity: 0.00076,
+    fogTintHex: 0x849ea0, fogMix: 0.56, envIntensity: 0.22,
     cloudOpacity: 1.16, cloudOpacity2: 0.96, cloudTintHex: 0xdce4df,
-    sunIntensity: 3.75, sunColorHex: 0xffe7c5, hemiIntensity: 0.5,
+    sunIntensity: 3.55, sunColorHex: 0xffe7c5, hemiIntensity: 0.42, postExposure: 0.95,
   },
   minimap: {
     base: [63, 100, 55], hard: [105, 98, 74], soft: [48, 77, 62],

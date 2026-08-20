@@ -522,8 +522,12 @@ function makeCheckpointHut(rng) {
 }
 
 function lightMeta(id, family, hw, hl, h, pal, build, debrisMaterial = 'wood') {
+  const surfaceMaterial = debrisMaterial === 'canvas'
+    ? 'structureCanvas'
+    : debrisMaterial === 'metal' ? 'structureMetal' : 'structureWood';
   const meta = {
-    id, family, cls: 'break', mat: 'baked', contact: 'ob', collider: true,
+    id, family, cls: 'break', mat: surfaceMaterial, surfaceMaterial,
+    contact: 'ob', collider: true,
     hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build,
   };
   meta.broken = (rng) => debris(meta, pal, rng, debrisMaterial);

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.js';
+import { createHeightField } from './terrain.js';
+import { sampleHorizonSilhouette } from './maps/horizon.js';
 
 const EXPANSION = [
   'frontier', 'fjord', 'delta', 'badlands',
@@ -43,6 +45,63 @@ for (const mapId of EXPANSION) {
   assert.ok(config.props.inhabit.modernClutter >= 18,
     `${mapId}: modern roadside and checkpoint clutter budget`);
   assert.ok(config.props.craters >= 48, `${mapId}: battlefield scarring budget`);
+  assert.ok(config.terrain.landforms?.length >= 5,
+    `${mapId}: authored macro terrain breaks the field into tactical lanes`);
+  assert.ok(config.props.wallRuns?.length >= 6,
+    `${mapId}: breached hard-cover lines divide open approaches`);
+  assert.ok(config.sky.fogDensity <= 0.0009,
+    `${mapId}: atmosphere preserves midfield color and structure`);
+  assert.ok(config.sky.fogMix <= 0.68,
+    `${mapId}: fog tint cannot flatten the horizon into a solid card`);
+
+  const hf = createHeightField(1337, config);
+  const routes = hf._layout.roads;
+  assert.ok(routes.length >= 4, `${mapId}: at least four authored movement routes`);
+  assert.ok(routes.every((route) => route.length >= 6), `${mapId}: routes span meaningful map distance`);
+  const routePoints = routes.flat();
+  const routeX = routePoints.map(([x]) => x), routeZ = routePoints.map(([, z]) => z);
+  assert.ok(Math.max(...routeX) - Math.min(...routeX) >= 580,
+    `${mapId}: road network serves both lateral flanks`);
+  assert.ok(Math.max(...routeZ) - Math.min(...routeZ) >= 820,
+    `${mapId}: road network connects both deployment regions`);
+
+  const beats = config.props.tacticalBeats || [];
+  assert.equal(beats.length, 3, `${mapId}: three deliberate lane strongpoints`);
+  assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
+    ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
+  assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
+    `${mapId}: memorable strongpoint identities are unique`);
+  const destructibleBuildingFamilies = new Set(config.props.destructibleBuildings);
+  for (const beat of beats) {
+    assert.ok(Math.max(Math.abs(beat.x), Math.abs(beat.z)) <= 360,
+      `${mapId}/${beat.id}: strongpoint stays in the playable interior`);
+    assert.ok(destructibleBuildingFamilies.has(beat.structure),
+      `${mapId}/${beat.id}: strongpoint uses the map's textured structure family`);
+    const components = [beat.structure, beat.redoubt, beat.outcrop, beat.wreck].filter(Boolean);
+    assert.ok(components.length >= 2,
+      `${mapId}/${beat.id}: strongpoint combines multiple cover layers`);
+  }
+  for (let ai = 0; ai < beats.length; ai++) for (let bi = ai + 1; bi < beats.length; bi++) {
+    assert.ok(Math.hypot(beats[ai].x - beats[bi].x, beats[ai].z - beats[bi].z) >= 180,
+      `${mapId}: strongpoints distribute choices instead of forming one clutter knot`);
+  }
+  const sectorMeans = [];
+  let sampledMin = Infinity, sampledMax = -Infinity;
+  for (let sz = -1; sz <= 1; sz++) for (let sx = -1; sx <= 1; sx++) {
+    let sum = 0, count = 0;
+    for (let z = -320 + (sz + 1) * 210; z <= -320 + (sz + 2) * 210; z += 35) {
+      for (let x = -320 + (sx + 1) * 210; x <= -320 + (sx + 2) * 210; x += 35) {
+        const h = hf.getHeightAt(x, z);
+        sum += h; count++;
+        sampledMin = Math.min(sampledMin, h); sampledMax = Math.max(sampledMax, h);
+      }
+    }
+    sectorMeans.push(sum / count);
+  }
+  const sectorRange = Math.max(...sectorMeans) - Math.min(...sectorMeans);
+  assert.ok(sectorRange >= 1.25, `${mapId}: sectors have distinct elevation identities`);
+  assert.ok(sampledMax - sampledMin >= 12,
+    `${mapId}: playable interior includes meaningful hull-down relief`);
 }
 
 const legacyWreckFamilies = new Set();
@@ -67,4 +126,42 @@ assert.deepEqual([...legacyWreckFamilies].sort(), [...MODERN_FAMILIES].sort(),
 assert.deepEqual([...legacyMobileWreckFamilies].sort(), [...MODERN_FAMILIES].sort(),
   'two-wreck mobile budgets collectively cover the complete modern wreck roster');
 
-console.log('mapQuality.selftest: 16 complete maps; legacy family/wreck backport passed');
+for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
+  const cfg = getMapConfig(mapId);
+  const heights = sampleHorizonSilhouette({
+    style: 'alpine', mapId, amp: cfg.horizon.amp,
+    row: { base: 56, amp: 76, f0: 2.6, f1: 5.2 },
+  });
+  let maxStep = 0;
+  for (let i = 0; i < heights.length; i++) {
+    maxStep = Math.max(maxStep, Math.abs(heights[i] - heights[(i + 1) % heights.length]));
+  }
+  assert.ok(maxStep <= 5.5, `${mapId}: alpine skyline has no needle-like one-segment peaks`);
+}
+
+{
+  // Sirocco's seven synthetic spawn corridors converge behind the village.
+  // Removing 100% of mesa height under each one left narrow full-height rock
+  // wedges between them—the shark-fin hills visible from the battle camera.
+  // Sample the complete village backdrop at half a terrain-cell interval so
+  // that both steep one-cell faces and isolated local peaks stay caught.
+  const desert = createHeightField(1337, getMapConfig('desert'));
+  let maxSlope = 0;
+  let needlePeaks = 0;
+  for (let z = -60; z <= 260; z += 4) for (let x = -190; x <= 190; x += 4) {
+    const h = desert.getHeightAt(x, z);
+    const west = desert.getHeightAt(x - 8, z);
+    const east = desert.getHeightAt(x + 8, z);
+    const north = desert.getHeightAt(x, z - 8);
+    const south = desert.getHeightAt(x, z + 8);
+    maxSlope = Math.max(maxSlope,
+      Math.abs(h - west) / 8, Math.abs(h - east) / 8,
+      Math.abs(h - north) / 8, Math.abs(h - south) / 8);
+    if (h - Math.max(west, east, north, south) > 2.5) needlePeaks++;
+  }
+  assert.ok(maxSlope <= 1.85,
+    `desert: village backdrop has graded hill shoulders (max slope ${maxSlope.toFixed(3)})`);
+  assert.equal(needlePeaks, 0, 'desert: village backdrop has no one-cell shark-fin peaks');
+}
+
+console.log('mapQuality.selftest: 16 complete maps; expansion terrain/atmosphere and legacy backport passed');

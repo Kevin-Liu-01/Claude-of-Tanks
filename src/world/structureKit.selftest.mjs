@@ -39,13 +39,18 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.equal(meta.cls, 'break', `${id}: persistent swap-to-debris destruction`);
   assert.equal(meta.contact, 'ob', `${id}: tank collision participates`);
   assert.equal(meta.collider, true, `${id}: shell/LOS cover while intact`);
+  assert.ok(['structureWood', 'structureCanvas', 'structureMetal'].includes(meta.surfaceMaterial),
+    `${id}: destructible building selects a textured surface family`);
   assert.ok(meta.hw > 1 && meta.hl > 1 && meta.h > 3, `${id}: building-scale footprint`);
   const intact = meta.build(seeded());
   const broken = meta.broken(seeded(0x71f00d));
   for (const [state, geo] of [['intact', intact], ['broken', broken]]) {
-    assert.ok(geo.attributes.position.count >= 120, `${id}: ${state} geometry is detailed`);
-    assert.equal(geo.attributes.color.count, geo.attributes.position.count,
+    const { position, color, uv } = geo.attributes;
+    assert.ok(position.count >= 120, `${id}: ${state} geometry is detailed`);
+    assert.equal(color.count, position.count,
       `${id}: ${state} geometry carries baked colors for one-draw-call rendering`);
+    assert.equal(uv.count, position.count,
+      `${id}: ${state} geometry carries tiled UVs for its surface texture`);
     geo.computeBoundingBox();
     assert.ok(Number.isFinite(geo.boundingBox.min.x) && Number.isFinite(geo.boundingBox.max.z),
       `${id}: ${state} bounds are finite`);

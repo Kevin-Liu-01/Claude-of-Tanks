@@ -242,10 +242,11 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
       if (vegetation.resetToppled) vegetation.resetToppled();
     },
     spawnPoints,
-    /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
+    /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({
       roads: layout.roads.map((nodes) => nodes.map(([x, z]) => [x, z])),
       buildings: props.features.buildings.map((b) => ({ ...b })),
+      tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
       treeClusters: vegetation._clusters.map((c) => ({ x: c.x, z: c.z, r: c.r })),
       waterOrSoft: [...layout.marshes, ...layout.lakes].map((m) => ({ x: m.x, z: m.z, r: m.r })),
     }),

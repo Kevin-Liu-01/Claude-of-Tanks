@@ -222,6 +222,43 @@ function makeStraw(noi, anisotropy, tone = null) {
   return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 2.4, anisotropy) };
 }
 
+// Neutral detail atlases for the vertex-colored destructible building kit.
+// Their RGB stays close to white so the kit palette remains authoritative;
+// the texture contributes grain/weave/corrugation and its normal map adds the
+// readable material response that flat vertex colors could not provide.
+function makeStructureDetail(noi, anisotropy, kind) {
+  const s = 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const i = y * s + x, j = i * 4;
+    const grain = noi.noise(x * 0.17 + (kind === 'steel' ? 70 : 11), y * 0.06 - 31) * 0.5 + 0.5;
+    let h = grain, value = 0.90;
+    if (kind === 'wood') {
+      const plank = (x % 28) / 28;
+      const seam = plank < 0.07 ? 1 : 0;
+      const rings = Math.sin(y * 0.11 + noi.noise(x * 0.08, y * 0.018) * 4) * 0.5 + 0.5;
+      h = seam ? 0.08 : 0.46 + rings * 0.38;
+      value = (0.86 + grain * 0.13) * (seam ? 0.68 : 1);
+    } else if (kind === 'canvas') {
+      const warp = Math.sin(x * Math.PI * 0.52) * 0.5 + 0.5;
+      const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
+      h = warp * 0.45 + weft * 0.45 + grain * 0.10;
+      value = 0.88 + h * 0.10;
+    } else {
+      const corr = Math.sin(x * Math.PI / 5) * 0.5 + 0.5;
+      const scratch = smoothstep(0.72, 0.94, noi.noise(x * 0.09 + 91, y * 0.31 - 17) * 0.5 + 0.5);
+      h = corr * 0.80 + grain * 0.20;
+      value = 0.86 + corr * 0.12 - scratch * 0.10;
+    }
+    const v = clamp(value, 0.55, 1) * 255;
+    px[j] = v; px[j + 1] = v; px[j + 2] = v; px[j + 3] = 255;
+    hgt[i] = h;
+  }
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, kind === 'canvas' ? 0.9 : 1.45, anisotropy),
+  };
+}
+
 function _mustReplace(src, anchor, replacement) {
   const out = src.replace(anchor, replacement);
   if (out === src) throw new Error(`world/props: shader anchor missing: ${anchor}`);
@@ -852,6 +889,11 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
     // tank obstacles scattered on streets/approaches
     cropFields: 0, lampposts: false, hedgehogs: 0,
     destructibleBuildings: [],
+    // Authored composite positions that turn a broad lane into a memorable
+    // decision point. Each beat may combine a destructible structure,
+    // sandbag redoubt, hard rock outcrop and staged wreck while reusing the
+    // existing pooled/merged render families.
+    tacticalBeats: [],
     streetRows: false, curbs: false, monument: false, townCraters: false,
     ...((cfg && cfg.props) || {}),
   };
@@ -884,6 +926,9 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   const stone = makeStone(noi, aniso, T.stone || null);
   const wood = makeWood(noi, aniso, T.wood || null);
   const straw = makeStraw(noi, aniso, T.straw || null);
+  const structureWood = makeStructureDetail(noi, aniso, 'wood');
+  const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
+  const structureMetal = makeStructureDetail(noi, aniso, 'steel');
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -913,9 +958,24 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal, roughness: 0.95, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    structureWood: new THREE.MeshStandardMaterial({
+      map: structureWood.albedo, normalMap: structureWood.normal,
+      vertexColors: true, roughness: 0.94, metalness: 0,
+    }),
+    structureCanvas: new THREE.MeshStandardMaterial({
+      map: structureCanvas.albedo, normalMap: structureCanvas.normal,
+      vertexColors: true, roughness: 0.98, metalness: 0,
+    }),
+    structureMetal: new THREE.MeshStandardMaterial({
+      map: structureMetal.albedo, normalMap: structureMetal.normal,
+      vertexColors: true, roughness: 0.72, metalness: 0.08,
+    }),
   };
   mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
   mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
+  mats.structureWood.envMapIntensity = 0.34;
+  mats.structureCanvas.envMapIntensity = 0.22;
+  mats.structureMetal.envMapIntensity = 0.48;
   mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
   // above this crossed the 1.78 bloom threshold; the post-side firefly clamp
   // is a safety net, not a design allowance)
@@ -1214,6 +1274,7 @@ ${snowCap ? `
   }
 
   const buildingFeatures = [];
+  const tacticalBeatFeatures = [];
   // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
   const bakedInstances = new Map();
   function addBakedInstance(name, geo, x, y, z, yaw, sc = 1, tiltX = 0, tiltZ = 0) {
@@ -1321,6 +1382,18 @@ ${snowCap ? `
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB = [];
+  const tacticalReservations = [];
+  for (const beat of P.tacticalBeats || []) {
+    if (!beat.structure) continue;
+    const meta = DESTRUCTIBLE_BUILDING_TYPES[beat.structure];
+    if (!meta) continue;
+    tacticalReservations.push({
+      x: beat.x, z: beat.z,
+      rr: Math.hypot(meta.hw, meta.hl) * 0.72 + (beat.reservePad ?? 2.5),
+    });
+  }
+  const conflictsTacticalReservation = (x, z, clearance = 10) => tacticalReservations
+    .some((site) => Math.hypot(x - site.x, z - site.z) < site.rr + clearance);
   for (const cand of candidates) {
     if (P.streetRows) break; // town maps: strips own the street frontage
     if (bi >= builders.length) break;
@@ -1332,6 +1405,7 @@ ${snowCap ? `
       const pz = cand.z + cand.tx * side * lat;
       if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) continue;
       if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) continue;
+      if (conflictsTacticalReservation(px, pz)) continue;
       let clear = true;
       for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + P.spacingPad) { clear = false; break; }
       if (!clear) continue;
@@ -1457,7 +1531,8 @@ ${snowCap ? `
           // keep crossings and the central square open
           if (distToOtherRoads(px, pz, ri) < 9.5
             || Math.hypot(px - junction.x, pz - junction.z) < 26
-            || noVeg(px, pz)) { t += 6; continue; }
+            || noVeg(px, pz)
+            || conflictsTacticalReservation(px, pz, Math.hypot(w, d) * 0.5)) { t += 6; continue; }
           const roll = srng();
           if (roll < 0.14) { t += 4 + srng() * 7; continue; } // alley / vacant lot
           const rot = Math.atan2(-nx, -nz); // local +z (door face) toward street
@@ -1565,6 +1640,7 @@ ${snowCap ? `
         const rd = heightField._roadDist(px, pz);
         if (rd < 11 || rd > 60) continue; // off the frontage, inside the block
         if (noVeg(px, pz)) continue;
+        if (conflictsTacticalReservation(px, pz)) continue;
         if (Math.hypot(px - junction.x, pz - junction.z) < 24) continue;
         let clear = true;
         for (const pb of placedB) if (Math.hypot(px - pb.x, pz - pb.z) < pb.rr + P.spacingPad) { clear = false; break; }
@@ -1586,6 +1662,55 @@ ${snowCap ? `
         placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
         bi++;
       }
+    }
+  }
+
+  // Map-specific strongpoints. Random dressing is still valuable between
+  // lanes, but critical cover cannot be left to a scatter pass: these beats
+  // deliberately anchor the brawl, scout and support routes authored by each
+  // expansion map. Structures and redoubts reuse destructible pools, so the
+  // pass adds no new material or draw-call family.
+  if (P.tacticalBeats?.length) {
+    for (const beat of P.tacticalBeats) {
+      const yaw = THREE.MathUtils.degToRad(beat.yawDeg || 0);
+      let structurePlaced = false;
+      if (beat.structure) {
+        const meta = DESTRUCTIBLE_BUILDING_TYPES[beat.structure];
+        if (!meta) throw new Error(`world/props: unknown tactical structure ${beat.structure}`);
+        const fit = groundFit(beat.x, beat.z, meta.hw * 2, meta.hl * 2, yaw);
+        const rr = Math.hypot(meta.hw, meta.hl) * 0.72;
+        let clear = fit.spread <= Math.max(P.maxSpread, beat.maxSpread ?? 3.8)
+          && !noVeg(beat.x, beat.z);
+        for (const pb of placedB) {
+          if (Math.hypot(beat.x - pb.x, beat.z - pb.z) < pb.rr + rr + 1.5) {
+            clear = false; break;
+          }
+        }
+        if (clear) {
+          addDestructible(beat.structure, beat.x, fit.y + 0.04, beat.z, yaw);
+          buildingFeatures.push({ x: beat.x, z: beat.z, w: meta.hw * 2, d: meta.hl * 2, rot: yaw });
+          placedB.push({ x: beat.x, z: beat.z, rr });
+          structurePlaced = true;
+        }
+      }
+      if (beat.redoubt) {
+        const fwdX = Math.sin(yaw), fwdZ = Math.cos(yaw);
+        const sideX = Math.cos(yaw), sideZ = -Math.sin(yaw);
+        const offset = beat.redoubtOffset ?? 8.5;
+        const cx = beat.x + fwdX * offset, cz = beat.z + fwdZ * offset;
+        for (let si = -1; si <= 1; si++) {
+          const sx = cx + sideX * si * 3.05, sz = cz + sideZ * si * 3.05;
+          const sy = heightField.getHeightAt(sx, sz);
+          const kind = si === 0 ? 'sandbagbig' : 'sandbagsmall';
+          addDestructible(kind, sx, sy - 0.04, sz, yaw + (si * 0.12), 1.18);
+        }
+        scatterDestructibles('ammobox', cx - fwdX * 2.2, cz - fwdZ * 2.2, 2, 0.8, 2.2, 0);
+        scatterDestructibles('crate', cx - fwdX * 3.0, cz - fwdZ * 3.0, 1, 0.5, 1.5, 0);
+      }
+      tacticalBeatFeatures.push({
+        id: beat.id, role: beat.role, x: beat.x, z: beat.z,
+        structurePlaced, redoubt: !!beat.redoubt,
+      });
     }
   }
 
@@ -2432,6 +2557,23 @@ ${snowCap ? `
     }
     return true;
   }
+  // Hard cover belonging to the authored tactical beats is added before the
+  // general scatter. It lands in the same three rock instances and therefore
+  // costs geometry instances, not draw calls. A broken crescent leaves two
+  // peek routes instead of forming an impassable wall.
+  for (const beat of P.tacticalBeats || []) {
+    if (!beat.outcrop) continue;
+    const count = beat.outcrop.count ?? 5;
+    const radius = beat.outcrop.radius ?? 9;
+    const yaw = THREE.MathUtils.degToRad(beat.yawDeg || 0);
+    for (let i = 0; i < count; i++) {
+      const arc = count === 1 ? 0 : (i / (count - 1) - 0.5) * Math.PI * 0.92;
+      const a = yaw + Math.PI + arc;
+      const rr = radius * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.17 + seed)));
+      tryRock(beat.x + Math.cos(a) * rr, beat.z + Math.sin(a) * rr,
+        beat.outcrop.scaleMin ?? 1.55, beat.outcrop.scaleMax ?? 3.1, false, 0.24);
+    }
+  }
   // r3: per-map surface-rock sink (winter buries boulders deeper so they
   // read as drift-covered rock shoulders, not loose balls ON the snow)
   const surfSink = P.rockSink ?? 0.22;
@@ -2888,6 +3030,19 @@ ${snowCap ? `
         return true;
       }
       let placedW = 0;
+      // Story-critical wrecks mark crossfires and failed assaults at authored
+      // lane anchors. They consume the existing map wreck budget, remain one
+      // merged mesh, and leave the remaining budget to the road-placement
+      // pass for organic variation.
+      for (const beat of P.tacticalBeats || []) {
+        if (!beat.wreck || placedW >= wreckCount || bakedTris > 260000) continue;
+        const yawW = THREE.MathUtils.degToRad(beat.wreckYawDeg ?? beat.yawDeg ?? 0);
+        if (placeWreck(beat.x + (beat.wreckOffsetX || 0),
+          beat.z + (beat.wreckOffsetZ || 0), yawW)) {
+          placedW++;
+          yield { fine: true };
+        }
+      }
       for (let ri = 0; ri < roads.length && placedW < wreckCount; ri++) {
         const nodes = roads[ri];
         for (let i = 5; i < nodes.length - 1 && placedW < wreckCount; i += 4 + ((wrng() * 3) | 0)) {
@@ -4183,5 +4338,5 @@ ${snowCap ? `
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
-    features: { buildings: buildingFeatures } };
+    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures } };
 }
