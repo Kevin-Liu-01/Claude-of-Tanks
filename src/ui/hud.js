@@ -573,13 +573,16 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#f0b04a;
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .25s ease;}
 .cot-alert.red{color:#f05a5a;}
-/* battle_countdown r2: WoT-style pre-battle freeze — kicker + big numeral,
+/* battle_countdown r3: WoT-style pre-battle freeze — kicker + big numeral,
    center-upper so it never fights the reticle. The numeral pops on each
    second via a keyed scale animation; the release swaps to ROLL OUT! and
-   fades. The kicker uses a dark text edge instead of a backdrop so terrain
-   stays visible behind it. Pure overlay: pointer-events none, no layout impact. */
+   fades. Both lines use dark text edges instead of backdrops so terrain stays
+   visible behind them. Fixed grid rows keep the numeral anchored while the
+   kicker hides for rollout. Pure overlay: pointer-events none, no page layout impact. */
 .cot-prebattle{position:absolute;left:50%;top:22%;transform:translateX(-50%);
-  min-width:min(390px,calc(100vw - 32px));text-align:center;pointer-events:none;
+  width:min(390px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:30px 92px;
+  row-gap:7px;justify-items:center;text-align:center;pointer-events:none;
   opacity:0;transition:opacity .3s ease;}
 .cot-prebattle.on{opacity:1;}
 .cot-prebattle .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};
@@ -587,10 +590,17 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   text-transform:uppercase;color:#ffe0a2;
   text-shadow:-1px -1px 0 rgba(4,7,10,.98),1px -1px 0 rgba(4,7,10,.98),
     -1px 1px 0 rgba(4,7,10,.98),1px 1px 0 rgba(4,7,10,.98),
-    0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);}
-.cot-prebattle .n{margin-top:7px;font-family:${FONT_STACK};font-size:92px;
+    0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);
+  transition:opacity .15s ease;}
+.cot-prebattle.rollout .k{visibility:hidden;opacity:0;}
+.cot-prebattle .n{width:100%;height:92px;display:flex;align-items:center;justify-content:center;
+  font-family:${FONT_STACK};font-size:92px;
   font-weight:800;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;
-  text-shadow:0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
+  text-shadow:-2px -2px 0 rgba(4,7,10,.98),0 -2px 0 rgba(4,7,10,.98),
+    2px -2px 0 rgba(4,7,10,.98),2px 0 0 rgba(4,7,10,.98),
+    2px 2px 0 rgba(4,7,10,.98),0 2px 0 rgba(4,7,10,.98),
+    -2px 2px 0 rgba(4,7,10,.98),-2px 0 0 rgba(4,7,10,.98),
+    0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
 .cot-prebattle .n.tick{animation:cot-pb-pop .5s cubic-bezier(.2,.7,.3,1);}
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
@@ -3654,6 +3664,7 @@ export function initHud(bus) {
       if (secondsLeft > 0) {
         const sec = Math.ceil(secondsLeft);
         clearTimeout(pbHideTimer);
+        preBattleEl.classList.remove('rollout');
         preBattleEl.classList.add('on');
         if (sec !== pbShownSec) {
           pbShownSec = sec;
@@ -3664,7 +3675,7 @@ export function initHud(bus) {
         }
       } else if (pbShownSec !== 0) {
         pbShownSec = 0;
-        pbKick.textContent = '';
+        preBattleEl.classList.add('rollout');
         pbNum.classList.remove('tick');
         pbNum.textContent = 'ROLL OUT!';
         void pbNum.offsetWidth;
@@ -3673,7 +3684,7 @@ export function initHud(bus) {
         pbHideTimer = setTimeout(() => {
           preBattleEl.classList.remove('on');
           // reset for the next battle
-          pbKick.textContent = 'BATTLE BEGINS IN';
+          preBattleEl.classList.remove('rollout');
           pbNum.classList.remove('go');
           pbShownSec = -1;
         }, 1100);
