@@ -712,7 +712,7 @@ export const TANK_SPECS = {
         shell('3OF82 HE-Frag', 'HE', 125, 50, 50, 580, 850),
       ],
     },
-    dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 },
+    dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.39 },
     armor: armorT90M(),
     visual: {
       // r8: FACTORY is the roster-doc "Russian dark forest green overall"

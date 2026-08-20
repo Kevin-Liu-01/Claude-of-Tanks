@@ -6504,30 +6504,34 @@ function replaceT90MProryvHull(P) {
   // A shorter centered cadence opens distinct bays for both raised end
   // wheels without changing the hull or skirt envelope.
   const wheelZs = evenStations(6, 3.30, 0.15);
-  const wheelY = 0.51;
+  // Proryv rides on the taller late T-72/T-90 running-gear silhouette. Keep
+  // the loaded tire foot at the same ground datum while increasing the road
+  // wheel diameter and upper return course together; simply lifting the old
+  // band left the wheel arcs visibly undersized inside the deep side skirts.
+  const wheelY = 0.565;
   const gear = buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.425, wheelW: 0.22, wheelY, xc: 1.435,
+    style: 'rubber', wheelR: 0.48, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
-    sprocket: { z: -2.20, y: 0.80, r: 0.29 },
-    idler: { z: 2.50, y: 0.62, r: 0.24 },
-    rollers: [-1.28, -0.30, 0.70, 1.60].map((z) => ({ z, y: 0.88, r: 0.086 })),
-    trackW: 0.50, topY: 0.86, botY: 0.05, paintedEnds: false,
+    sprocket: { z: -2.20, y: 0.84, r: 0.33 },
+    idler: { z: 2.50, y: 0.69, r: 0.29 },
+    rollers: [-1.28, -0.30, 0.70, 1.60].map((z) => ({ z, y: 0.97, r: 0.096 })),
+    trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.18, contactZR: -1.88,
     padCornerFloor: 0.012, padHugZ0: 2.0,
   });
   // These annuli, hubs and bolts are wheel-face anatomy, so every layer is
   // instanced by the canonical gear unit and follows suspension travel/spin.
-  gear.addRoadWheelLayer(torus(0.365, 0.010, 24).rotateZ(Math.PI / 2), P.mats.detail,
+  gear.addRoadWheelLayer(torus(0.412, 0.011, 24).rotateZ(Math.PI / 2), P.mats.detail,
     { outset: 1.544 - 1.435, name: 'gearRoadWheelOuterRims' });
-  gear.addRoadWheelLayer(torus(0.205, 0.007, 18).rotateZ(Math.PI / 2), P.mats.detail,
+  gear.addRoadWheelLayer(torus(0.232, 0.008, 18).rotateZ(Math.PI / 2), P.mats.detail,
     { outset: 1.545 - 1.435, name: 'gearRoadWheelInnerRims' });
-  gear.addRoadWheelLayer(cylX(0.100, 0.052, 14), P.mats.detail,
+  gear.addRoadWheelLayer(cylX(0.112, 0.052, 14), P.mats.detail,
     { outset: 1.543 - 1.435, name: 'gearRoadWheelHubCaps' });
-  gear.addRoadWheelLayer(cylX(0.055, 0.068, 12), P.mats.dark,
+  gear.addRoadWheelLayer(cylX(0.062, 0.068, 12), P.mats.dark,
     { outset: 1.546 - 1.435, name: 'gearRoadWheelHubInsets' });
   const boltRing = KIT.mergeAll(Array.from({ length: 8 }, (_, k) => {
     const a = k * Math.PI / 4;
-    return KIT.xform(cylX(0.012, 0.070, 8), 0, Math.cos(a) * 0.145, Math.sin(a) * 0.145);
+    return KIT.xform(cylX(0.013, 0.070, 8), 0, Math.cos(a) * 0.164, Math.sin(a) * 0.164);
   }));
   gear.addRoadWheelLayer(boltRing, P.mats.dark,
     { outset: 1.548 - 1.435, name: 'gearRoadWheelBoltRings' });
@@ -6789,13 +6793,35 @@ function replaceT90MProryvTurret(P) {
   P.add('turretGlass', box(0.27, 0.102, 0.008), -0.58, 1.015, -0.686, -0.05, 0, 0);
   P.add('turretGlass', box(0.090, 0.064, 0.010), -0.80, 1.00, -0.80, -0.05, -0.55, 0);
   {
-    const rws = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', tone: 'dark', elev: -0.08, ammo: true, shield: true, scale: 0.95 });
-    rws.position.set(0.43, 0.86, -0.54);
-    rws.rotation.y = 0.25;
+    // Right-side UDP T05BV-1-style remote Kord. A buried slew race, armored
+    // pedestal, fork and EO head make the station read as an automated tower
+    // rather than another hand pintle. Only the low race is structural;
+    // receiver, sight, ammunition and shields live in equipment buckets and
+    // therefore cannot silently enlarge the turret armor receipt.
+    const rwsX = 0.66, rwsZ = -0.52;
+    P.addCupola('turret', cylY(0.19, 0.22, 0.12, 16), rwsX, 0.96, rwsZ);
+    P.add('turretDark', torus(0.205, 0.022, 18), rwsX, 1.025, rwsZ);
+    P.addEquipment('turret', box(0.34, 0.32, 0.30), rwsX, 1.18, rwsZ);
+    P.add('turretDark', box(0.38, 0.055, 0.34), rwsX, 1.35, rwsZ);
+    P.addEquipment('turret', box(0.075, 0.25, 0.27), rwsX - 0.19, 1.34, rwsZ + 0.03, 0, 0, -0.08);
+    P.addEquipment('turret', box(0.075, 0.25, 0.27), rwsX + 0.19, 1.34, rwsZ + 0.03, 0, 0, 0.08);
+    P.addEquipment('turret', box(0.18, 0.22, 0.20), rwsX + 0.26, 1.22, rwsZ + 0.15);
+    P.add('turretGlass', box(0.12, 0.13, 0.014), rwsX + 0.26, 1.24, rwsZ + 0.258);
+    const rws = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'kord', tone: 'two-tone', elev: -0.06,
+      ammo: true, shield: true, scale: 1.08,
+    });
+    rws.name = 't90mProryvRemoteKord';
+    rws.position.set(rwsX, 1.30, rwsZ + 0.02);
+    rws.rotation.y = 0.08;
     P.turretG.add(rws);
-    P.add('turret', cylY(0.15, 0.19, 0.14, 14), 0.43, 0.92, -0.54);
-    P.add('turretDark', box(0.34, 0.07, 0.09), 0.43, 1.00, -0.64);
   }
+  P.turretG.userData.t90mProryvEquipmentReceipt = {
+    remoteWeapon: 'kord',
+    remoteControlled: true,
+    remoteWeaponSide: 'right',
+    armoredTower: true,
+  };
 
   for (const s of [-1, 1]) {
     P.add('turret', box(0.22, 0.24, 0.48), s * 1.24, 0.35, 0.02, 0, 0, -s * 0.16);
@@ -6871,14 +6897,29 @@ function enhanceT90MProryvSurface2026(P) {
   // that frame visually empty, shortening the turret in side/rear-quarter
   // evidence.  This authored cylinder overlaps four longitudinal returns;
   // straps and lower shoes take its load back into the backed magazine face.
-  P.add('turretCloth', cylX(0.22, 1.42, 16), 0, 0.47, -3.47);
+  const rearAssemblyZ = -3.34;
+  P.add('turretCloth', cylX(0.22, 1.42, 16), 0, 0.45, rearAssemblyZ);
   for (const x of [-0.58, -0.20, 0.20, 0.58]) {
-    P.add('turretDark', box(0.040, 0.42, 0.18), x, 0.47, -3.47);
-    P.add('turretDetail', box(0.045, 0.045, 0.26), x, 0.30, -3.35);
+    P.add('turretDark', box(0.040, 0.42, 0.18), x, 0.45, rearAssemblyZ);
+    P.add('turretDetail', box(0.045, 0.055, 0.34), x, 0.30, -3.20);
   }
   for (const x of [-0.62, 0.62]) {
-    P.add('turretDetail', box(0.050, 0.050, 0.26), x, 0.61, -3.35);
+    P.add('turretDetail', box(0.050, 0.055, 0.34), x, 0.59, -3.20);
   }
+  // A cross-shoe and four short returns visibly close the remaining load
+  // path into the backed magazine face instead of leaving the cylinder hung
+  // on the terminal cage.
+  P.add('turretDetail', box(1.34, 0.050, 0.18), 0, 0.27, -3.18);
+  for (const x of [-0.58, -0.20, 0.20, 0.58]) {
+    P.add('turretDark', box(0.052, 0.15, 0.24), x, 0.34, -3.22, -0.18, 0, 0);
+  }
+  P.turretG.userData.t90mProryvRearAssemblyReceipt = {
+    centerZ: rearAssemblyZ,
+    radiusM: 0.22,
+    magazineRearFaceZ: rearFaceZ,
+    forwardOverlapM: (rearAssemblyZ + 0.22) - rearFaceZ,
+    attached: true,
+  };
 }
 
 function finishT90MProryvOwner2026(P) {
@@ -7121,10 +7162,39 @@ function buildT90MProryvNative2026(P) {
   const installedTurretY = 0.65;
   const installedTurretZ = 0.913;
   P.turretG.scale.set(installedTurretX, installedTurretY, installedTurretZ);
-  // Lower the scale origin so the deeper installed section grows into the
-  // ring instead of lifting the already-correct roof/station silhouette.
-  P.turretG.position.y = 1.40;
+  // The taller linked course adds 160 mm of installed ride height while the
+  // band itself keeps the original ground datum. Translate every authored
+  // hull bucket (but not buildRunningGear's animated children), then raise
+  // the turret pivot by the same amount so hull, armor and modules remain one
+  // coherent vehicle. Direct fitting groups such as the rear tow cable must
+  // follow the hull buckets as well.
+  // The extra 40 mm also keeps the visibly thicker instanced shoes clear of
+  // the front shoulder and rear sponson undersides under full-course sweep.
+  const rideHeightIncreaseM = 0.16;
+  P.offsetBuckets([
+    'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
+    'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
+    'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR', 'spareTrack',
+    'hullEquipment', 'hullCupola',
+  ], 0, rideHeightIncreaseM, 0);
+  for (const child of P.hullG.children) {
+    let containsRunningGear = child.userData.runningGear === true;
+    child.traverse((node) => { containsRunningGear ||= node.userData.runningGear === true; });
+    if (!containsRunningGear) child.position.y += rideHeightIncreaseM;
+  }
+  P.turretG.position.y = 1.40 + rideHeightIncreaseM;
   P.gunG.scale.set(1 / installedTurretX, 1 / installedTurretY, 1);
+  const remoteKord = P.turretG.getObjectByName('t90mProryvRemoteKord');
+  if (remoteKord) remoteKord.scale.y /= installedTurretY;
+  P.hullG.userData.t90mProryvTrackReceipt = {
+    roadWheelRadiusM: 0.48,
+    roadWheelCenterY: 0.565,
+    trackBottomY: 0.05,
+    trackTopY: 0.98,
+    trackEnvelopeHeightM: 0.93,
+    rideHeightIncreaseM,
+    roadWheelStations: 6,
+  };
 
   // Proryv's running gear is visually dark and recessive.  The first-party
   // replacement reused the fleet's pale generic wheel steel, producing six
