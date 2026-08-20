@@ -700,6 +700,10 @@ function buildT84(P) {
     P.add('hull', box(0.08, 0.147, 0.33), s * 0.92, 1.2228, -4.695);      // flap finger A -> −4.86 (bins ±1.03/1.14 read the −4.53 base)
     P.add('hull', box(0.08, 0.147, 0.33), s * 1.26, 1.2228, -4.695);      // flap finger B -> −4.86
     P.add('hull', box(0.14, 0.299, 0.11), s * 0.35, 1.000, -4.695);       // stern tow hooks (band-deep −4.769 col; top 1.1495 meets the overhang bottom)
+    // Structural backing for the rubber corner flap. It overlaps both the
+    // stern trench cap and the first fender course, closing the narrow rear
+    // shoulder cell instead of leaving the cosmetic flap over open space.
+    P.add('hull', box(0.22, 0.681, 0.16), s * 1.45, 0.9805, -4.36);
     P.add('hullRubber', box(0.18, 0.607, 0.06), s * 1.45, 0.9437, -4.43); // rear corner flaps (plan −4.43..−4.46 @ ±1.38..1.53; hem 0.64 stays)
   }
   P.add('hull', box(1.00, 0.278, 0.40), 0, 1.004, -4.50);     // rear plate center face −4.70 (|x|<=0.50: the ±0.59 plan bins read −4.50)
@@ -922,6 +926,11 @@ function buildT84(P) {
   // re-authors to the fresh ref plateau 2.20..2.22 abs (heightM p95
   // protection: the datum must stay 2.21-2.23, dims 99.1).
   P.turretG.position.set(0, 1.40, -0.95);
+  const t84CheekEra = [
+    [0.26, 1.64], [0.50, 1.50], [0.74, 1.36], [0.98, 1.22],
+    [0.26, 1.24], [0.50, 1.10], [0.74, 0.96], [0.98, 0.82],
+  ];
+  const t84FlankEraZ = [0.56, 0.22, -0.12, -0.46];
   // low collar (widest band ±1.26, z −1.03..0.50, y 1.344..1.474 — bottom
   // 2.7-5.2 cm into the 1.3714..1.3959 ring deck)
   for (let i = 0; i < 4; i++) P.add('turret', box(2.52, 0.129, 0.3825), 0, 0.009, -0.08 + (i + 0.5) * 0.3825);
@@ -944,6 +953,41 @@ function buildT84(P) {
     P.add('turret', orientedSlab(
       [s * 0.86, -0.0557, 1.80], [s * 0.86, -0.0557, 0.79], [s * 1.22, -0.0557, 0.79], [s * 1.22, -0.0557, 1.36],
       [s * 0.86, 0.2665, 1.80], [s * 0.86, 0.2665, 0.79], [s * 1.22, 0.2665, 0.79], [s * 1.22, 0.2665, 1.36]));
+  }
+  // T-84 welded-cheek Duplet package.  The former exterior stopped at one
+  // broad smooth roof wedge, so the tank read as a generic slab turret and
+  // the outer modules appeared to bridge open air over the chamfers.  These
+  // overlapping carrier wings bury into both the center ramp and the side
+  // chamfers, then carry two discrete swept cassette courses.  Deliberate
+  // 12-20 mm joints remain as service seams, but every joint has camouflaged
+  // carrier steel behind it: there are no through-gaps between panels.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.12, 0.335, 1.78], [s * 1.08, 0.275, 1.34],
+      [s * 1.16, 0.395, 0.72], [s * 0.12, 0.485, 0.72],
+      [s * 0.12, 0.375, 1.78], [s * 1.08, 0.315, 1.34],
+      [s * 1.16, 0.435, 0.72], [s * 0.12, 0.525, 0.72]));
+
+    for (const [xAbs, z] of t84CheekEra) {
+      const y = 0.405 + (1.64 - z) * 0.145;
+      const yaw = s * 0.31;
+      P.add('turret', box(0.225, 0.105, 0.305), s * xAbs, y, z,
+        0.155, yaw, s * 0.025);
+      P.add('turretDark', box(0.165, 0.014, 0.235), s * xAbs,
+        y + 0.061, z, 0.155, yaw, s * 0.025);
+    }
+
+    // The cheek field turns around the shoulder instead of ending in a
+    // floating last brick.  A continuous structural backing strip overlaps
+    // the welded wall; four shallow cassettes share 20 mm along z so no sky
+    // can show through when the turret yaws.
+    P.add('turret', box(0.075, 0.36, 1.42), s * 1.1975, 0.33, 0.05);
+    for (const z of t84FlankEraZ) {
+      P.add('turret', box(0.10, 0.29, 0.36), s * 1.199, 0.34, z,
+        0, s * 0.035, s * 0.018);
+      P.add('turretDark', box(0.012, 0.225, 0.285), s * 1.244, 0.34, z,
+        0, s * 0.035, s * 0.018);
+    }
   }
   // tall body walls, z −0.50..−0.98: the fresh front reads an ASYMMETRIC
   // wall-top stair at |x| 1.13..1.24 (L −1.18: 1.942 / −1.22: 1.884;
@@ -972,6 +1016,13 @@ function buildT84(P) {
   // seam left under it is sub-cluster at render scale)
   P.add('turret', box(1.60, 0.665, 0.42), 0, 0.292, -0.56);
   P.add('turret', box(1.60, 0.575, 0.08), 0, 0.3373, -0.81);
+  // Shoulder close-outs overlap the cheek wall, canyon plug and bustle roof.
+  // They replace the thin open diagonal that was visible between those three
+  // independently stepped sections from both elevated quarter views.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.28, 0.43, 0.68), s * 0.94, 0.295, -0.54,
+      0, -s * 0.055, 0);
+  }
   // roof plates 2.205 ABS @ −0.40..−1.96 (fresh ref side plateau 2.212-2.220;
   // col −2.04 is the bustle's). r33 SPLIT: the fresh FRONT row reads a center
   // roof DIP — 2.10-2.12 at |x|<=0.19 and 2.09 outboard of 0.74 (the flat
@@ -1040,6 +1091,36 @@ function buildT84(P) {
   P.add('turret', box(1.68, 0.159, 0.31), 0, 0.5995, -1.425);  // upper band 2.079 @ −2.22..−2.53 (±0.84: the ±0.86 front col reads the ref's 2.034 in-slope — stairs keep the plan width)
   P.add('turret', box(1.68, 0.159, 0.31), 0, 0.5995, -1.735);  // upper band 2.079 @ −2.53..−2.84 (split: station end-cap law)
   P.add('turret', box(0.88, 0.356, 0.21), 0, 0.501, -1.995);   // tail chamfer ±0.44, 1.723..2.079 @ −2.84..−3.05 (ref plan rear −3.0 only at |x|<=0.46)
+  // Continuous bustle shell.  The calibrated stair core above remains the
+  // load-bearing mass, while this tapered roof, its two full side sheets and
+  // the rear service plate make the exterior read as one attached magazine
+  // bustle.  All sheets overlap their neighbours by >=30 mm; none are
+  // coplanar decals or free-standing boxes.
+  P.add('turret', orientedSlab(
+    [-0.82, 0.625, -0.72], [0.82, 0.625, -0.72],
+    [0.48, 0.545, -2.09], [-0.48, 0.545, -2.09],
+    [-0.82, 0.675, -0.72], [0.82, 0.675, -0.72],
+    [0.48, 0.595, -2.09], [-0.48, 0.595, -2.09]));
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.79, 0.075, -0.76], [s * 0.86, 0.075, -0.76],
+      [s * 0.49, 0.275, -2.09], [s * 0.43, 0.275, -2.09],
+      [s * 0.79, 0.655, -0.76], [s * 0.86, 0.655, -0.76],
+      [s * 0.49, 0.585, -2.09], [s * 0.43, 0.585, -2.09]));
+    // Flush access doors and hinges provide bustle scale without reopening
+    // the shell or expanding the combat volume.
+    P.add('turretDark', box(0.014, 0.235, 0.36), s * 0.852, 0.425, -1.38,
+      0, -s * 0.10, 0);
+    for (const dz of [-0.14, 0.14]) {
+      P.add('turretDetail', box(0.018, 0.045, 0.055), s * 0.858,
+        0.425, -1.38 + dz, 0, -s * 0.10, 0);
+    }
+  }
+  P.add('turret', box(0.94, 0.34, 0.05), 0, 0.43, -2.075);
+  P.add('turretDark', box(0.48, 0.17, 0.014), 0, 0.44, -2.097);
+  for (const x of [-0.18, 0.18]) {
+    P.add('turretDetail', box(0.08, 0.035, 0.018), x, 0.555, -2.096);
+  }
   // left bustle flank to x −0.93 (print asymmetry: ref plan bin −0.916
   // reads −2.92 while the right stops at ±0.86); bottoms TUCK 0.01-0.03
   // above the core line except the −2.913 col, where the flank alone owns
@@ -1134,6 +1215,21 @@ function buildT84(P) {
   // carries a ringed sleeve). r 0.088 stays inside the ±0.1015 plan bins and
   // the 1.94..1.73 side band; zero silhouette-column movement.
   P.addGunExtra(box(0.40, 0.235, 0.71), 0, 0.018, 2.15);       // evac box: band 1.582..1.817 @ world 2.40..3.11, plan halfW 0.20 (gun-local seat unchanged — rides the axis)
+  P.turretG.userData.t84OplotTurretReceipt = Object.freeze({
+    architecture: 'kmdb-welded-duplet',
+    cheekCarrierWings: 2,
+    cheekEraCassettes: t84CheekEra.length * 2,
+    flankEraCassettes: t84FlankEraZ.length * 2,
+    cassetteBackingContinuous: true,
+    minimumPanelOverlapM: 0.03,
+    shoulderCloseoutPanels: 2,
+    bustleRoofPanels: 1,
+    bustleSidePanels: 2,
+    bustleRearClosurePanels: 1,
+    bustleAttached: true,
+    structuralHalfWidthM: 1.26,
+    structuralRearLocalZ: -2.10,
+  });
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [1.215, 0.2665, 0.20], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-1.215, 0.2665, 0.20], -Math.PI / 2);
   addVehicleGhillieSuit(P);
