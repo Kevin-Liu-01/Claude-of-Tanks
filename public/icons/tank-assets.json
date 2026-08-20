@@ -45385,40 +45385,40 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30386,
-          "sha256": "dda21426bb6a5aa1f674e5344918d7ab54fdf5467bfb161be2beaffe6078489d"
+          "bytes": 33936,
+          "sha256": "8f69fcfb9dcefdfb5960fb2a5c943f520d13f1bc88533824328da08c56abaf70"
         },
         "top": {
           "file": "leo1a5_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9776,
-          "sha256": "edada632c551648bd4fe84174480b49b712ca428edf99e53e497db86cb788caa"
+          "bytes": 10702,
+          "sha256": "a354c450390c337cba3ebd8439d438994f49a12f4e828526227dcee8d020c4fd"
         },
         "side": {
           "file": "leo1a5_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10566,
-          "sha256": "fb2b126987e3f6809b653eb702d77b843cc5a617ebb3476b4b384c12bd24685f"
+          "bytes": 10904,
+          "sha256": "46be527f5da35cb8916ef78d4c683f4ff2de172e29e375d2ed847ea0515feb86"
         },
         "topSilhouette": {
           "file": "leo1a5_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1112,
-          "sha256": "e6908ac2dc1b3d23f052096d4b08bf64e17f316262662f30446d8cd7dc9348fd"
+          "bytes": 1106,
+          "sha256": "eec8e768ae421059149554aef02e5885068228ef846b631637600d5d7a80371b"
         },
         "sideSilhouette": {
           "file": "leo1a5_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4749,
-          "sha256": "83cc052c7cf675843e4428d107307d04681ccde082758aa016a3efc3c10f8563"
+          "bytes": 4549,
+          "sha256": "e41e8f27d4c82c11cec158a45f7015c5aa45762efacf91195da9704e52994095"
         },
         "hitZonesSide": {
           "file": "leo1a5_hit_zones_side.png",
