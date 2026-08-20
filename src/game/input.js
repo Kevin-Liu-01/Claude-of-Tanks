@@ -943,7 +943,7 @@ export function createInput(opts = {}) {
      * SIGN CONTRACT (controls-sign fix — do not "simplify" this away):
      *   out.x is a WORLD-YAW delta, not a screen-pixel delta. Its consumer is
      *   cameraRig, which integrates it as `aimYaw += mouseDX * sens` (and
-     *   `freeYaw += ...` for RMB free-look), and this project's yaw convention
+     *   `freeYaw += ...` for held free-look), and this project's yaw convention
      *   is forwardAxis(yaw) = [sin yaw, 0, cos yaw] (ARCHITECTURE §1.1). In a
      *   Y-up right-handed world, a camera looking along +Z has screen-right =
      *   world -X (three.js Matrix4.lookAt: x_axis = up × (eye-target)), so

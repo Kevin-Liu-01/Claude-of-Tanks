@@ -434,7 +434,8 @@ Rig = {
   aimPoint: THREE.Vector3,               // server-aim raycast result, updated each frame
   aimDist: number,
   update(dt, camInput),                  // camInput = { mouseDX, mouseDY, wheel:-1|0|1,
-                                         //   rmb:boolean, shiftPressed:boolean }
+                                         //   rmb:boolean /* generic free-look hold */,
+                                         //   shiftPressed:boolean }
   addTrauma(x),                          // 0..1, shake per graphics doc §11
   enterSniper(), exitSniper(),
   getAimRay(outOrigin: Vector3, outDir: Vector3),

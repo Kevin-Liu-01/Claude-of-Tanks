@@ -330,6 +330,21 @@ const MAX_PAD_BUTTONS = 17;
 // deliberately opening the menu after a skip is always slower than 250 ms.
 const KC_DONE_GRACE_MS = 250;
 
+/** Canonical compact battle-control reference, shared by the hint UI and tests. */
+export function battleControlHintGroups(rmbMode = 'hold') {
+  return [
+    ['Move', ['forward', 'left', 'back', 'right']],
+    ['Fire', ['fire']],
+    ['Sniper', ['sniperToggle']],
+    ['Free Look', ['freeLook']],
+    [rmbMode === 'freelook' ? 'Free Look' : 'Aim', ['freeCamera']],
+    ['Shells', ['shell1', 'shell2', 'shell3']],
+    ['Repairs', ['consumable1', 'consumable2', 'consumable3']],
+    ['Handbrake', ['handbrake']],
+    ['Menu', ['settingsMenu']],
+  ];
+}
+
 /**
  * Create the settings panel + garage gear button + battle controls-hint strip.
  *
@@ -1258,18 +1273,9 @@ export function createSettings(opts) {
 
   function showHints() {
     hideHints();
-    hints.innerHTML =
-      hintGroup('Move', ['forward', 'left', 'back', 'right']) +
-      hintGroup('Fire', ['fire']) +
-      hintGroup('Sniper', ['sniperToggle']) +
-      // gunnery r1: RMB's live role (settings.rmbMode) — aim zoom or free look
-      hintGroup(
-        input.getSettings().rmbMode === 'freelook' ? 'Free Look' : 'Aim',
-        ['freeCamera']) +
-      hintGroup('Shells', ['shell1', 'shell2', 'shell3']) +
-      hintGroup('Repairs', ['consumable1', 'consumable2', 'consumable3']) +
-      hintGroup('Handbrake', ['handbrake']) +
-      hintGroup('Menu', ['settingsMenu']);
+    hints.innerHTML = battleControlHintGroups(input.getSettings().rmbMode)
+      .map(([label, actionIds]) => hintGroup(label, actionIds))
+      .join('');
     hints.style.display = 'flex';
     hints.style.opacity = '1';
     hintTimer = setTimeout(() => {

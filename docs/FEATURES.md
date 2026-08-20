@@ -268,9 +268,12 @@ protection, penetration result, damaged internals, and destruction cause.
 
 ## Desktop, mobile, and accessibility
 
-Desktop controls are remappable. Mobile receives a dedicated touch layout with
-movement joystick, swipe aim, pinch-to-scope, dynamic fire controls, safe-area
-handling, and mobile aim assistance.
+Desktop controls are remappable. The default camera controls use `Shift` for
+sniper mode, hold `Left Alt` (controller `RB`) for free look without moving the
+turret, and configurable `RMB` behavior for hold-to-aim, toggle-aim, or a second
+free-look binding. Mobile receives a dedicated touch layout with movement
+joystick, swipe aim, pinch-to-scope, dynamic fire controls, safe-area handling,
+and mobile aim assistance.
 
 The quality system changes rendering cost rather than combat rules. Resolution,
 shadows, post effects, vegetation, texture sizes, particle budgets, and

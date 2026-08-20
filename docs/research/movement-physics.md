@@ -304,7 +304,9 @@ switching modes never snaps the view.
   at the raycast hit, and the gun converges on that 3-D point (server-aim). Draw a second
   small marker where the gun actually points *now* (gun marker) so the player sees turret lag;
   WoT's optional "server reticle" is exactly this authoritative gun-aim indicator.
-- **Gun lock**: holding RMB frees the camera without moving the turret (aim point frozen).
+- **Gun lock / free look**: hold the dedicated Free Look action (`Left Alt` by
+  default, controller `RB`) to move the camera while freezing the aim point and
+  turret. RMB can provide the same behavior when its setting is `freelook`.
 
 ### 9.2 Sniper — first person from the gun
 
@@ -422,8 +424,8 @@ const SNIPER_ZOOMS = [2, 4, 8, 16, 25];           // ×16/×25 behind settings f
 function updateCamera(cam, tank, input, dt) {
   // shared aim angles from mouse (sensitivity /zoom in sniper)
   const sens = cam.mode === 'SNIPER' ? BASE_SENS / cam.zoom : BASE_SENS;
-  if (!input.rmbHeld) { cam.aimYaw += input.mouseDX * sens;
-                        cam.aimPitch = clamp(cam.aimPitch - input.mouseDY * sens, -65, 15); }
+  if (!input.freeLookHeld) { cam.aimYaw += input.mouseDX * sens;
+                             cam.aimPitch = clamp(cam.aimPitch - input.mouseDY * sens, -65, 15); }
 
   if (input.wheel) stepZoom(cam, input.wheel);    // handles ARCADE<->SNIPER transitions
   if (input.shiftPressed) toggleSniper(cam, tank);

@@ -166,7 +166,8 @@ export function createCameraRig(camera, deps) {
   // Shared aim angles (both modes; switching modes never snaps the view).
   let aimYaw = 0;
   let aimPitch = THREE.MathUtils.degToRad(-10);
-  // RMB free-look offsets (arcade): camera moves, turret/aim stay frozen.
+  // Free-look offsets (arcade): camera moves, turret/aim stay frozen. The
+  // caller routes the dedicated hold action and optional RMB mode here.
   let freeYaw = 0;
   let freePitch = 0;
   // gunnery r1: has the player actively mouse-aimed since the last battle
