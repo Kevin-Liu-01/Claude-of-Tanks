@@ -59,11 +59,22 @@ assert.deepEqual(finish, {
   fenderLockers: 8,
   rearFuelCans: 2,
   roadWheelStations: 7,
-  roadWheelY: 0.35,
-  trackBotY: 0.015,
+  roadWheelY: 0.30,
+  roadWheelPitch: 0.74,
+  roadWheelSpan: 4.44,
+  roadWheelZs: [2.22, 1.48, 0.74, 0, -0.74, -1.48, -2.22],
+  trackBotY: 0.005,
   sealedHullSides: true,
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
+  hullOverFenders: true,
+  hullSponsonBottomY: 1.20,
+  fenderShelfTopY: 1.2275,
+  hullFenderOverlapY: 0.0275,
+  upperGlacisSurfaces: 1,
+  upperGlacisFrontY: 1.04,
+  upperGlacisRearY: 1.54,
+  lowerGlacisJoinY: 1.04,
   leopard2TrackCourse: true,
   frontIdlerZ: 3.17,
   frontIdlerY: 0.66,
@@ -72,13 +83,34 @@ assert.deepEqual(finish, {
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
-assert.equal(gear.wheelY, 0.35, 'the seven road-wheel centers move down into the taller track course');
+assert.equal(gear.wheelY, 0.30, 'the seven road-wheel centers move lower into the taller track course');
+assert.deepEqual(gear.wheelZs, [2.22, 1.48, 0.74, 0, -0.74, -1.48, -2.22],
+  'the seven road wheels use the tighter Leopard 1 pitch');
+for (let i = 1; i < gear.wheelZs.length; i++) {
+  assert.ok(Math.abs((gear.wheelZs[i - 1] - gear.wheelZs[i]) - 0.74) < 1e-8,
+    `road-wheel station ${i} remains on the compact 0.74 m pitch`);
+}
 assert.deepEqual(gear.idler, { z: 3.17, y: 0.66, r: 0.29 },
   'the front idler retains its authored position and radius');
 assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.72, r: 0.30 },
   'the rear sprocket retains its authored position and radius');
 assert.ok(gear.idler.y - gear.wheelY >= 0.31 && gear.sprocket.y - gear.wheelY >= 0.37,
   'the fixed terminal drums now rise strongly above the lowered road-wheel axis');
+
+// The sponson must bear on the fender shelf, while exactly one long shallow
+// upper-glacis surface remains between the deck break and nose. A vertical
+// probe at z=2.50 used to hit the obsolete second plane at y≈1.06 before
+// reaching the correct y≈1.30 surface.
+assert.ok(finish.hullSponsonBottomY < finish.fenderShelfTopY
+  && finish.hullFenderOverlapY >= 0.027,
+  'the armored hull shoulder physically overlaps and rests on the fender shelf');
+const bowHits = new THREE.Raycaster(
+  new THREE.Vector3(0, -1, 2.50), new THREE.Vector3(0, 1, 0), 0, 4,
+).intersectObject(mesh('hull'), false);
+assert.equal(bowHits.filter((hit) => hit.point.y > 0.95 && hit.point.y < 1.20).length, 0,
+  'the obsolete lower duplicate upper-glacis plane is absent');
+assert.ok(bowHits.some((hit) => hit.point.y > 1.28 && hit.point.y < 1.33),
+  'the single shallow upper glacis remains at the authored exterior station');
 
 // The marked rear and center deck skins have structural material directly
 // beneath them. Horizontal probes through the former air layer must now hit

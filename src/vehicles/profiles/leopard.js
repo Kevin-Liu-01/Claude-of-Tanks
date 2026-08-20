@@ -10452,16 +10452,32 @@ function buildLeo1A5ArticulatedProfile(P) {
     shovelTool, xform } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
+  const upperGlacisY = (z) => 1.04 + (3.54 - z) * (0.50 / 1.99);
+  const fenderShelfY = 1.205;
+  const fenderShelfTopY = 1.2275;
+  const hullSponsonBottomY = 1.20;
+  const hullSponsonTopY = 1.44;
+  const roadWheelY = 0.30;
+  const roadWheelZs = [2.22, 1.48, 0.74, 0, -0.74, -1.48, -2.22];
 
   // ---------------------------------------------------------------- hull --
   // Normalized source anchors: x ±1.685, z ±3.541; track y 0..1.185;
   // structural hull y .40..1.82.
   P.add('hull', box(1.90, 0.54, 6.48), 0, 0.68, -0.02);
-  P.add('hull', box(3.26, 0.10, 5.92), 0, 1.39, -0.25);
-  P.add('hull', box(2.58, 0.18, 4.78), 0, 1.43, -0.72);
+  // The sponson is the hull shoulder above the fenders. Its lower face now
+  // overlaps the fender shelf by 27.5 mm instead of hovering 112.5 mm above
+  // it, and it terminates at the real upper-glacis break (z=1.50) rather
+  // than extending a hidden flat plate beneath the bow.
+  P.add('hull', box(3.26, hullSponsonTopY - hullSponsonBottomY, 4.84),
+    0, (hullSponsonBottomY + hullSponsonTopY) / 2, -0.92);
+  P.add('hull', box(2.58, 0.18, 4.84), 0, 1.43, -0.92);
+  // Nose-only lower glacis. The previous slab ran all the way back to
+  // z=1.50 and exposed a second upper-glacis plane from y=.74..1.54. This
+  // compact wedge ends at the shallow glacis' forward edge, sharing its
+  // x=±.80, y=1.04, z=3.54 seam without duplicating the long outer skin.
   P.add('hull', slab(
-    [-0.78, 0.48, 3.30], [0.78, 0.48, 3.30], [0.82, 0.88, 2.88], [-0.82, 0.88, 2.88],
-    [-0.80, 0.74, 3.54], [0.80, 0.74, 3.54], [1.05, 1.54, 1.50], [-1.05, 1.54, 1.50]));
+    [-0.78, 0.48, 3.24], [0.78, 0.48, 3.24], [0.78, 0.48, 2.92], [-0.78, 0.48, 2.92],
+    [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]));
   P.add('hull', slab(
     [-1.05, 1.34, 1.50], [1.05, 1.34, 1.50], [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
     [-1.24, 1.54, 1.50], [1.24, 1.54, 1.50], [1.24, 1.51, -3.34], [-1.24, 1.51, -3.34]));
@@ -10471,8 +10487,8 @@ function buildLeo1A5ArticulatedProfile(P) {
       [m(1.05), 1.34, 1.50], [m(1.63), 1.34, 1.50], [m(1.63), 1.34, -3.34], [m(1.05), 1.34, -3.34],
       [m(1.24), 1.54, 1.50], [m(1.29), 1.49, 1.50], [m(1.29), 1.47, -3.34], [m(1.24), 1.51, -3.34]));
     P.add('hull', slab(
-      [m(0.80), 0.74, 3.54], [m(1.64), 1.34, 3.48], [m(1.63), 1.34, 1.50], [m(1.05), 1.34, 1.50],
-      [m(0.80), 0.80, 3.50], [m(1.64), 1.40, 3.43], [m(1.29), 1.49, 1.50], [m(1.05), 1.54, 1.50]));
+      [m(0.80), 1.04, 3.54], [m(1.64), 1.34, 3.48], [m(1.63), 1.34, 1.50], [m(1.05), 1.34, 1.50],
+      [m(0.80), 1.10, 3.54], [m(1.64), 1.40, 3.43], [m(1.29), 1.49, 1.50], [m(1.05), 1.54, 1.50]));
   }
   // Source-derived deck crown.  The Leopard 1 engine deck is appreciably
   // higher at the stern and falls through two clean breaks into the glacis;
@@ -10514,7 +10530,7 @@ function buildLeo1A5ArticulatedProfile(P) {
     // The shelf bridges the sealed side wall to the outer fender fascia.
     // A shallow camouflaged shoulder below it removes the bright background
     // slit while preserving clearance around the moving top links.
-    P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, 1.205, -0.02);
+    P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, fenderShelfY, -0.02);
     P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.105, -0.08);
     P.add('hullDetail', box(0.024, 0.18, 6.04), s * 1.68, 1.105, -0.10);
     P.add('hullDetail', slab(
@@ -10556,7 +10572,11 @@ function buildLeo1A5ArticulatedProfile(P) {
     P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, 1.37, 3.36, 0, 0, s * 0.08);
     P.addEquipment('hull', sph(0.018, 8), s * 1.60, 1.54, 3.36);
   }
-  towCable(P, [[-0.96, 1.10, 2.70], [0, 1.31, 2.05], [0.96, 1.10, 2.70]], 0.024);
+  towCable(P, [
+    [-0.96, upperGlacisY(2.70) + 0.045, 2.70],
+    [0, upperGlacisY(2.05) + 0.045, 2.05],
+    [0.96, upperGlacisY(2.70) + 0.045, 2.70],
+  ], 0.024);
   shovelTool(P, -1.05, 1.55, -0.25);
   P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, 1.55, -0.48);
 
@@ -10596,18 +10616,18 @@ function buildLeo1A5ArticulatedProfile(P) {
     P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
   }
 
-  // Seven 660 mm dual wheels on the Leopard-family trapezoid course. Lower
-  // only the road-wheel row into the loaded bottom run; the authored idler,
-  // sprocket and return run remain fixed. This deepens the visible track
-  // course and strengthens both approach shoulders without moving either
-  // terminal wheel or altering the vehicle's certified length anchors.
+  // Seven 660 mm dual wheels on the Leopard-family trapezoid course. The
+  // road-wheel pitch tightens from .82 m to .74 m and the row drops another
+  // 5 cm into the loaded bottom run. The authored idler, sprocket and return
+  // run remain fixed, producing the compact Leopard 1 wheel train while
+  // keeping both approach shoulders and certified length anchors intact.
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: 0.35, xc: 1.40,
-    wheelZs: [2.46, 1.64, 0.82, 0, -0.82, -1.64, -2.46],
+    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: roadWheelY, xc: 1.40,
+    wheelZs: roadWheelZs,
     sprocket: { z: -2.70, y: 0.72, r: 0.30 }, idler: { z: 3.17, y: 0.66, r: 0.29 },
     rollers: [{ z: 2.12, y: 0.93, r: 0.105 }, { z: 0.72, y: 0.93, r: 0.105 },
       { z: -0.70, y: 0.93, r: 0.105 }, { z: -2.05, y: 0.93, r: 0.105 }],
-    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: 0.015,
+    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: 0.005,
     contactZF: 2.64, contactZR: -2.64,
     linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
     endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
@@ -10619,11 +10639,22 @@ function buildLeo1A5ArticulatedProfile(P) {
     fenderLockers: 8,
     rearFuelCans: 2,
     roadWheelStations: 7,
-    roadWheelY: 0.35,
-    trackBotY: 0.015,
+    roadWheelY,
+    roadWheelPitch: 0.74,
+    roadWheelSpan: 4.44,
+    roadWheelZs: [...roadWheelZs],
+    trackBotY: 0.005,
     sealedHullSides: true,
     closedDeckUnderstructure: true,
     deckSupportSegments: 2,
+    hullOverFenders: true,
+    hullSponsonBottomY,
+    fenderShelfTopY,
+    hullFenderOverlapY: Number((fenderShelfTopY - hullSponsonBottomY).toFixed(4)),
+    upperGlacisSurfaces: 1,
+    upperGlacisFrontY: upperGlacisY(3.54),
+    upperGlacisRearY: upperGlacisY(1.55),
+    lowerGlacisJoinY: 1.04,
     leopard2TrackCourse: true,
     frontIdlerZ: 3.17,
     frontIdlerY: 0.66,
