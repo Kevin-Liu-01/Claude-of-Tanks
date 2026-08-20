@@ -165,6 +165,8 @@ const CSS = `
   overflow:hidden;text-overflow:ellipsis;}
 .cot-studio .prow .era{font-size:7.5px;font-weight:800;letter-spacing:.12em;color:#8a97a3;
   border:1px solid rgba(190,204,216,.25);padding:1px 4px;text-transform:uppercase;}
+.cot-studio .prow .dev{font-size:7px;font-weight:900;letter-spacing:.12em;color:#8fd0ff;
+  border:1px solid rgba(103,191,255,.55);background:rgba(21,62,92,.32);padding:2px 4px;}
 .cot-studio .pgh{padding:5px 8px 3px;font-size:8px;font-weight:800;letter-spacing:.2em;
   color:#e69a2d;text-transform:uppercase;border-bottom:1px solid rgba(190,204,216,.12);}
 /* --- actor list -------------------------------------------------------------- */
@@ -487,7 +489,10 @@ export function createStudioPanel(S) {
   function buildPickList(filter = '') {
     pickList.textContent = '';
     const f = filter.trim().toLowerCase();
-    const groups = [['Core roster', S.TANK_IDS.slice(0, 8)], ['Extended roster', S.TANK_IDS.slice(8)]];
+    const groups = [
+      ['Production roster', S.TANK_IDS.filter((id) => !specInfo(id).developmentOnly)],
+      ['Development roster', S.TANK_IDS.filter((id) => specInfo(id).developmentOnly)],
+    ];
     for (const [label, ids] of groups) {
       const hits = ids.filter((id) => {
         if (!f) return true;
@@ -501,6 +506,7 @@ export function createStudioPanel(S) {
         const row = el('div', 'prow' + (id === pickedId ? ' cur' : ''));
         row.appendChild(tankIcon(id));
         row.appendChild(el('span', 'nm', info.name));
+        if (info.developmentOnly) row.appendChild(el('span', 'dev', info.rosterTag || 'DEV'));
         if (info.era) row.appendChild(el('span', 'era', String(info.era)));
         row.addEventListener('click', () => {
           setPicked(id);

@@ -38,6 +38,7 @@ component. Six published contact sheets preserve the human visual-review pass.
 | STUDIO.md | Scene Studio interaction, scripted API, scene schema, effects, capture, and determinism |
 | GALLERY.md | Tank Gallery architecture, dossiers, diagnostic overlays, exact-surface markup, exports, interaction, and verification |
 | TANK-ASSET-PIPELINE.md | Generated portraits, silhouettes, armor/module diagrams, manifests, fingerprints, and release gates |
+| VEHICLE-ROSTER.md | Generated complete saved fleet, production/development status, stable IDs, tiers, and visibility reasons |
 | MODULES.md | Internal module and crew damage model |
 | GUNNERY-CAMERA-SPEC.md | Camera, requested aim point, gun solution, scope, and reticle contract |
 | SCREENSHOT_CONTRACT.md | Game-ready and deterministic staged-frame capture contract |

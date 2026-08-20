@@ -6,15 +6,17 @@
 // player match. Keeping the exclusion policy here gives the garage and the
 // battle picker one source of truth.
 
-export const GARAGE_HIDDEN_TANK_IDS = new Set([
-  'newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2_legacy',
-  // Generic community placeholders are useful source/QA references, not
-  // authored vehicles a player should meet in matchmaking.
-  'recon_tank', 'q_heavy',
-]);
+import {
+  DEV_FLEET_ACTIVE,
+  PRODUCTION_HIDDEN_TANK_IDS,
+} from '../vehicles/rosterPolicy.js';
+
+// Compatibility export for existing tests/tools. The policy itself lives with
+// the vehicle registry so every carousel and battle path shares one source.
+export const GARAGE_HIDDEN_TANK_IDS = PRODUCTION_HIDDEN_TANK_IDS;
 
 export const isGarageVisibleTankId = (id) =>
-  typeof id === 'string' && !GARAGE_HIDDEN_TANK_IDS.has(id);
+  typeof id === 'string' && (DEV_FLEET_ACTIVE || !GARAGE_HIDDEN_TANK_IDS.has(id));
 
 /**
  * Curate a pre-shuffled entity pool for a player match.

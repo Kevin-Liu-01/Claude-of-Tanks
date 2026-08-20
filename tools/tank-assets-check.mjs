@@ -11,7 +11,7 @@ import '../src/vehicles/tankFactory.js';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount,
 } from '../src/vehicles/tankAssets.js';
-import { getSpec } from '../src/vehicles/specs.js';
+import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.js';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -133,7 +133,11 @@ try {
   if (manifest && !onlyTanks.length && JSON.stringify(liveIds) !== JSON.stringify(manifestIds)) {
     const missing = liveIds.filter((id) => !manifestIds.includes(id));
     const extra = manifestIds.filter((id) => !liveIds.includes(id));
-    failures.push(`fleet mismatch: missing [${missing.join(', ')}], extra [${extra.join(', ')}]`);
+    const development = new Set(DEVELOPMENT_TANK_IDS);
+    const invalidExtra = extra.filter((id) => !development.has(id));
+    if (missing.length || invalidExtra.length) {
+      failures.push(`fleet mismatch: missing [${missing.join(', ')}], invalid extra [${invalidExtra.join(', ')}]`);
+    }
   }
 
   const ids = onlyTanks.length ? onlyTanks : liveIds;

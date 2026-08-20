@@ -187,10 +187,17 @@ export function createGalleryRecord(spec) {
     era,
     vehicleClass,
     classKey: spec.class || 'vehicle',
+    developmentOnly: Boolean(spec.roster?.developmentOnly),
+    rosterTag: spec.roster?.tag || '',
+    rosterReason: spec.roster?.reason || 'production',
     tier,
     tierNumeral: tierNumeral(spec.id) || String(tier),
     image: `/icons/${spec.id}_angle.webp`,
-    searchText: [label.searchAliases.join(' '), nation, era, vehicleClass, tier, autoloader ? 'magazine autoloader' : ''].join(' ').toLocaleLowerCase('en-US'),
+    searchText: [
+      label.searchAliases.join(' '), nation, era, vehicleClass, tier,
+      autoloader ? 'magazine autoloader' : '',
+      spec.roster?.developmentOnly ? `dev development ${spec.roster.reason || ''}` : 'production',
+    ].join(' ').toLocaleLowerCase('en-US'),
     ratings: Object.freeze(ratings),
     metrics: Object.freeze({
       hp: Number(spec.hp || 0),

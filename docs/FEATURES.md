@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 121 selectable first-party procedural vehicles |
+| Playable fleet | 112 production-visible and 148 keyed local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 16 generated and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
@@ -30,6 +30,8 @@ The executable provenance check is:
 
 At the time of this document update it reports 121 first-party procedural battle
 playables, no GLB-sourced playables, and seven isolated comparison candidates.
+The canonical saved-roster report separately tracks all 150 records, including
+development-only vehicles and two reference-only placeholders.
 
 ## Armored combat
 

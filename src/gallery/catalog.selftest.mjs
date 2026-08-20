@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 // The factory registers every first-party expansion module before finalizing
 // ALL_TANK_IDS. The browser gallery imports it first for the same reason.
 import '../vehicles/tankFactory.js';
-import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {
   buildGalleryRecords,
   createGalleryRecord,
@@ -10,9 +10,11 @@ import {
   serializeGallerySpec,
 } from './catalog.js';
 
-const records = buildGalleryRecords(ALL_TANK_IDS.map(getSpec));
-assert.equal(records.length, ALL_TANK_IDS.length, 'every playable vehicle must appear in the gallery');
+const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
+assert.equal(records.length, VISIBLE_TANK_IDS.length, 'every visible vehicle must appear in the gallery');
 assert.ok(records.length > 0, 'gallery roster must not be empty');
+assert.ok(records.every((record) => !record.developmentOnly),
+  'production gallery must not expose development-only vehicles');
 
 for (const record of records) {
   assert.ok(record.displayName, `${record.id}: missing display name`);
@@ -37,7 +39,7 @@ assert.equal(serialized.authorship.geometry, 'first-party-procedural');
 assert.ok(Array.isArray(serialized.gun.shells));
 assert.ok(Number.isFinite(serialized.protection.armorPlateCount));
 
-const sample = createGalleryRecord(getSpec(ALL_TANK_IDS[0]));
+const sample = createGalleryRecord(getSpec(VISIBLE_TANK_IDS[0]));
 assert.match(sample.brief.join(' '), new RegExp(sample.displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
 const magazineRecord = createGalleryRecord(getSpec('pl01_105'));

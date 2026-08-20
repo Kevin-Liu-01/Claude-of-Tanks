@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createTank } from '../vehicles/tankFactory.js';
-import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {
   buildGalleryRecords,
   classLabel,
@@ -18,7 +18,7 @@ const vehicleList = $('#vehicleList');
 const loadingState = $('#loadingState');
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const viewButtons = [...document.querySelectorAll('[data-view]')];
-const records = buildGalleryRecords(ALL_TANK_IDS.map(getSpec));
+const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
 const recordById = new Map(records.map((record) => [record.id, record]));
 
 const renderer = new THREE.WebGLRenderer({
@@ -244,6 +244,12 @@ function renderRoster() {
     const copy = document.createElement('span');
     const meta = document.createElement('small');
     meta.textContent = `${record.nation} // ${record.vehicleClass}`;
+    if (record.developmentOnly) {
+      const devTag = document.createElement('b');
+      devTag.className = 'vehicle-dev-tag';
+      devTag.textContent = record.rosterTag || 'DEV';
+      meta.append(' ', devTag);
+    }
     const title = document.createElement('strong');
     title.textContent = record.displayName;
     const era = document.createElement('small');

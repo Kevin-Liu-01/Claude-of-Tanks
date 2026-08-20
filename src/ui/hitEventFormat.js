@@ -2,7 +2,7 @@
 // out of individual panels so the kill-cam and shot report cannot drift.
 
 import { penAtDistanceMm } from '../sim/ballistics.js';
-import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.js';
 
 /** Convert a simulation zone id into its player-facing label. */
 export function zoneLabel(zone) {
@@ -43,7 +43,7 @@ export function nominalPenFor(ev) {
 
     if (!shell && ev.shellName) {
       let resolvedPen = -1;
-      for (const id of ALL_TANK_IDS) {
+      for (const id of RUNTIME_TANK_IDS) {
         const candidates = getSpec(id).gun?.shells;
         if (!candidates) continue;
         for (const candidate of candidates) {

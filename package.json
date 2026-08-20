@@ -31,6 +31,8 @@
     "tank:release:check": "node tools/tank-release-check.mjs",
     "tank:native:check": "node tools/native-playables-audit.mjs",
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
+    "tank:roster": "node tools/vehicle-roster-report.mjs",
+    "tank:roster:check": "node tools/vehicle-roster-report.mjs --check",
     "tank:track:duplicates": "node tools/track-duplicate-audit.mjs",
     "tank:freeze": "node tools/fleet-freeze-snapshot.mjs",
     "tank:freeze:check": "node tools/fleet-freeze-snapshot.mjs --check",

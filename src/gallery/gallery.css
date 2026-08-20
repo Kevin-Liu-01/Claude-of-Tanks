@@ -70,6 +70,7 @@ button{cursor:pointer}
 .vehicle-card img{width:74px;height:60px;object-fit:contain;filter:drop-shadow(0 7px 7px rgba(0,0,0,.55));transition:transform .18s ease}
 .vehicle-card:hover img,.vehicle-card.active img{transform:translateX(3px) scale(1.04)}
 .vehicle-card small{display:block;color:var(--dim);font-size:7px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.vehicle-dev-tag{display:inline-block;margin-left:5px;padding:2px 4px;border:1px solid rgba(101,169,255,.58);background:rgba(25,68,103,.32);color:#8fc5ff;font-size:6px;line-height:1;vertical-align:1px}
 .vehicle-card strong{display:block;margin:4px 0 3px;color:#dfe3e2;font-size:11px;line-height:1.08;letter-spacing:.02em}
 .vehicle-card.active strong{color:var(--ink)}
 .vehicle-tier{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--line);color:#879297;font-size:8px;font-weight:900}

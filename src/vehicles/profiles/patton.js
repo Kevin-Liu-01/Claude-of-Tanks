@@ -4410,8 +4410,8 @@ export const PATTON_PROFILES = {
       hull: M26_HULL, fit: M26_FIT,
       ring: [1.518, -0.454], topWorld: 3.11,
       lowTurret: {
-        profile: 'm26-broad-cast', scale: 0.5, widthScale: 1.06,
-        mantletScale: 0.62, mantletWidthScale: 1.12, minMantletHeight: 0.42,
+        profile: 'm26-broad-cast', scale: 0.65, widthScale: 1.06,
+        mantletScale: 0.806, mantletWidthScale: 1.12, minMantletHeight: 0.546,
       },
       // m47-r9 fender law: the ref stations alternate 3.3466/3.5045 — the
       // continuous fender line is hw 1.673, full width rides discrete
@@ -4641,11 +4641,11 @@ export const PATTON_PROFILES = {
       hull: M45_HULL, fit: M45_FIT,
       ring: [1.548, 0.719], topWorld: 3.05,
       lowTurret: {
-        profile: 'm45-heavy-howitzer-cast', scale: 0.5, widthScale: 1.06,
+        profile: 'm45-heavy-howitzer-cast', scale: 0.65, widthScale: 1.06,
         // Keep the low crew-seat pods inside the track-sweep corridor while
-        // the cast shell itself retains the broader half-height silhouette.
+        // the cast shell itself retains its broad, low-profile silhouette.
         podWidthScale: 1.0,
-        mantletScale: 0.62, mantletWidthScale: 1.10, minMantletHeight: 0.40,
+        mantletScale: 0.806, mantletWidthScale: 1.10, minMantletHeight: 0.52,
       },
       // m47-r9 fender law: the ref's continuous fender line is 1.676 hw
       // (stations alternate 3.352/3.509) — full width rides discrete hanger
@@ -4973,8 +4973,8 @@ export const PATTON_PROFILES = {
       hull: M46_HULL, fit: M46_FIT,
       ring: [1.56, -0.29], topWorld: 3.18,
       lowTurret: {
-        profile: 'm46-low-patton-cast', scale: 0.5, widthScale: 1.03,
-        mantletScale: 0.62, mantletWidthScale: 1.08, minMantletHeight: 0.26,
+        profile: 'm46-low-patton-cast', scale: 0.65, widthScale: 1.03,
+        mantletScale: 0.806, mantletWidthScale: 1.08, minMantletHeight: 0.338,
       },
       // r7 TONE round (shaded-parity r5 orders): GROUP A adopts m47's proven
       // r4+r6 gear recipes OLIVE-variant (the m46 never made m47's tan
@@ -5237,8 +5237,8 @@ export const PATTON_PROFILES = {
       hull: M47_HULL, fit: M47_FIT,
       ring: [1.676, -0.318], topWorld: 3.37,
       lowTurret: {
-        profile: 'm47-low-t42-cast', scale: 0.5, widthScale: 1.04,
-        mantletScale: 0.72, mantletWidthScale: 1.18, minMantletHeight: 0.24,
+        profile: 'm47-low-t42-cast', scale: 0.65, widthScale: 1.04,
+        mantletScale: 0.936, mantletWidthScale: 1.18, minMantletHeight: 0.312,
       },
       // r4 TONE round (shaded-parity r3 orders, all material/flush-lane):
       // A1/A2 gear retone + camo wheels, A3 dark gear fittings (with

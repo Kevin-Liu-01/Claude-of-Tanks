@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import { createTank } from './tankFactory.js';
-import { ALL_TANK_IDS, getSpec, RETIRED_EXTERNAL_PLACEHOLDER_IDS } from './specs.js';
+import {
+  ALL_TANK_IDS,
+  DEVELOPMENT_TANK_IDS,
+  RETIRED_EXTERNAL_PLACEHOLDER_IDS,
+  getSpec,
+} from './specs.js';
 import {
   TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetMetadata,
@@ -8,6 +14,16 @@ import {
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
+const assetManifest = JSON.parse(readFileSync(new URL('../../public/icons/tank-assets.json', import.meta.url)));
+for (const id of DEVELOPMENT_TANK_IDS) {
+  const assets = assetManifest.tanks?.[id]?.assets || {};
+  assert.deepEqual(Object.keys(assets).sort(), Object.keys(TANK_ASSET_VIEWS).sort(),
+    `${id}: all nine local-development presentation assets are indexed`);
+  for (const asset of Object.values(assets)) {
+    assert(existsSync(new URL(`../../public/icons/${asset.file}`, import.meta.url)),
+      `${id}: missing ${asset.file}`);
+  }
+}
 assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m')), 1,
   'single-cannon profiles require one bore/rim pair');
 assert.equal(expectedMuzzleBoreCount(getSpec('bmpt_terminator2')), 2,

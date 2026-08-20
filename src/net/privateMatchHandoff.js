@@ -1,5 +1,5 @@
 import { resolveMapId } from '../world/maps/index.js';
-import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
@@ -54,9 +54,9 @@ export function buildPrivateMatchPlayers(lobbyState) {
     throw new Error('human roster exceeds the selected team size');
   }
   const referenceEra = humans[0]?.specId ? getSpec(humans[0].specId)?.era : null;
-  let pool = ALL_TANK_IDS.filter((id) => isGarageVisibleTankId(id) &&
+  let pool = VISIBLE_TANK_IDS.filter((id) => isGarageVisibleTankId(id) &&
     (!referenceEra || getSpec(id)?.era === referenceEra));
-  if (!pool.length) pool = ALL_TANK_IDS.filter(isGarageVisibleTankId);
+  if (!pool.length) pool = VISIBLE_TANK_IDS.filter(isGarageVisibleTankId);
   const random = seededUnit(lobby.matchSeed ^ 0x5b07f11);
   pool = pool.slice();
   for (let index = pool.length - 1; index > 0; index--) {

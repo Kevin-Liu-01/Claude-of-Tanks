@@ -46,7 +46,7 @@ import { createMap, createMapAsync } from './world/map.js';
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
-import { ALL_TANK_IDS, getSpec } from './vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -81,7 +81,6 @@ import { createGarageDressing } from './game/garageDressing.js';
 import { createPerfHud } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
-import { isGarageVisibleTankId } from './game/matchmaking.js';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -129,13 +128,13 @@ const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search
 function loadLastSpecId() {
   try {
     const id = localStorage.getItem(LAST_SPEC_KEY);
-    if (id && ALL_TANK_IDS.includes(id) && isGarageVisibleTankId(id)) return id;
+    if (id && VISIBLE_TANK_IDS.includes(id)) return id;
   } catch (_) { /* storage unavailable/private mode */ }
   return DEFAULT_SPEC_ID;
 }
 
 function rememberSpecId(id) {
-  if (!ALL_TANK_IDS.includes(id) || !isGarageVisibleTankId(id)) return;
+  if (!VISIBLE_TANK_IDS.includes(id)) return;
   try { localStorage.setItem(LAST_SPEC_KEY, id); } catch (_) { /* storage unavailable */ }
 }
 
@@ -1357,7 +1356,7 @@ async function openPlayMenu(request) {
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
         camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
-      isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
+      isVehicleAllowed: (specId) => VISIBLE_TANK_IDS.includes(specId),
       isCamoAllowed: (camo) => CAMO_PATTERN_IDS.includes(camo),
       getCamoName: (camo) => CAMO_PATTERN_LABEL[camo] || 'Factory',
       getVehicleName: (specId) => getSpec(specId).name,
@@ -1389,7 +1388,7 @@ async function openPlayMenu(request) {
 }
 
 const garage = await bootStage('ui', () => createGarage({
-  specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
+  specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
   onSelect: (specId) => {
     selectedSpecId = specId;
@@ -2951,7 +2950,7 @@ async function presentNetworkBattle({
  * without adding any useful authority boundary.
  */
 async function beginSoloBattle({ specId, mapId } = {}) {
-  const selected = ALL_TANK_IDS.includes(specId) ? specId : garage.getSelected();
+  const selected = VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
   return beginBattleEntry(selected, mapId || garage.getSelectedMap());
 }
 

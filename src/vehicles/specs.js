@@ -5,7 +5,14 @@
 
 import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
-import { isRetiredHistoricalTank } from './rosterPolicy.js';
+import {
+  DEV_FLEET_ACTIVE,
+  DEV_FLEET_LABEL,
+  RETIRED_EXTERNAL_PLACEHOLDER_IDS,
+  developmentOnlyReason,
+  isProductionHiddenTankId,
+  isRetiredHistoricalTank,
+} from './rosterPolicy.js';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.js';
 import {
@@ -1607,11 +1614,26 @@ Object.assign(TANK_SPECS, FIRST_PARTY_EXPANSION_SPECS);
 /** Core + first-party expansion ids — the full selectable garage roster. */
 export const ALL_TANK_IDS = [...TANK_IDS, ...FIRST_PARTY_EXPANSION_TANK_IDS];
 
+// Canonical roster projections populated after every registration wave.
+// ALL_TANK_IDS intentionally remains the established release/anatomy roster;
+// consumers choose the projection matching their responsibility.
+export const SAVED_TANK_IDS = Object.keys(TANK_SPECS);
+export const DEVELOPMENT_TANK_IDS = SAVED_TANK_IDS.filter(
+  (id) => !RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id),
+);
+export const PRODUCTION_TANK_IDS = ALL_TANK_IDS.filter((id) => !isProductionHiddenTankId(id));
+export const VISIBLE_TANK_IDS = DEV_FLEET_ACTIVE
+  ? [...DEVELOPMENT_TANK_IDS]
+  : [...PRODUCTION_TANK_IDS];
+export const RUNTIME_TANK_IDS = DEV_FLEET_ACTIVE
+  ? [...DEVELOPMENT_TANK_IDS]
+  : [...ALL_TANK_IDS];
+
 // Generic externally-authored placeholders are useful archaeological/reference
 // records, but they are not historical vehicles authored by this project and
 // therefore cannot be selectable.  Keep their dormant spec/source notes out of
 // ALL_TANK_IDS while retaining the audit trail in this file.
-export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set(['recon_tank', 'q_heavy']);
+export { RETIRED_EXTERNAL_PLACEHOLDER_IDS };
 
 const FIRST_PARTY_DISPLAY_NAMES = {
   t34_85_cad: 'T-34-85 obr. 1944',
@@ -1640,7 +1662,27 @@ export function finalizeFirstPartyRoster() {
       ALL_TANK_IDS.splice(i, 1);
     }
   }
-  for (const id of ALL_TANK_IDS) {
+  const activeRoster = new Set(ALL_TANK_IDS);
+  const savedIds = Object.keys(TANK_SPECS);
+  const developmentIds = savedIds.filter((id) => !RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id));
+  const productionIds = ALL_TANK_IDS.filter((id) => !isProductionHiddenTankId(id));
+
+  SAVED_TANK_IDS.splice(0, SAVED_TANK_IDS.length, ...savedIds);
+  DEVELOPMENT_TANK_IDS.splice(0, DEVELOPMENT_TANK_IDS.length, ...developmentIds);
+  PRODUCTION_TANK_IDS.splice(0, PRODUCTION_TANK_IDS.length, ...productionIds);
+  VISIBLE_TANK_IDS.splice(
+    0,
+    VISIBLE_TANK_IDS.length,
+    ...(DEV_FLEET_ACTIVE ? developmentIds : productionIds),
+  );
+  RUNTIME_TANK_IDS.splice(
+    0,
+    RUNTIME_TANK_IDS.length,
+    ...(DEV_FLEET_ACTIVE ? developmentIds : ALL_TANK_IDS),
+  );
+
+  const productionSet = new Set(productionIds);
+  for (const id of savedIds) {
     const spec = TANK_SPECS[id];
     if (!spec) continue;
     finalizeCombatAnatomy(spec);
@@ -1652,6 +1694,18 @@ export function finalizeFirstPartyRoster() {
     spec.label = label;
     spec.markings = vehicleMarkingRecord(spec);
     spec.authorship = FIRST_PARTY_VEHICLE_AUTHORSHIP;
+    const productionVisible = productionSet.has(id);
+    spec.roster = Object.freeze({
+      productionVisible,
+      localVisible: !RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id),
+      developmentOnly: !productionVisible,
+      tag: productionVisible
+        ? ''
+        : RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id) ? 'REF' : DEV_FLEET_LABEL,
+      reason: productionVisible
+        ? 'production'
+        : developmentOnlyReason(spec, { activeRoster: activeRoster.has(id) }),
+    });
   }
 }
 

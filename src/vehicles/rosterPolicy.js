@@ -1,9 +1,46 @@
-// Player-facing historical fleet policy.
+// Player-facing fleet policy.
 //
 // Source rows and builders remain available as archaeological/reference input,
 // but only the owner-approved legacy vehicles below stay in the selectable
 // roster. This keeps registration history intact while ensuring garage,
 // battles, asset generation and release gates all consume the same policy.
+
+export const DEV_FLEET_ENV_KEY = 'VITE_COT_DEV_FLEET_KEY';
+export const DEV_FLEET_KEY = 'claude-of-tanks-local-dev';
+export const DEV_FLEET_LABEL = 'DEV';
+
+// These records stay registered and usable by local vehicle/gallery tooling,
+// but do not appear in production carousels or matchmaking. Keep every
+// production exclusion here so UI surfaces cannot quietly diverge.
+export const PRODUCTION_HIDDEN_TANK_IDS = new Set([
+  'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
+  'm26_pershing', 'm45_patton', 'isu122s', 'isu152',
+  'newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2_legacy',
+  'recon_tank', 'q_heavy',
+]);
+
+export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set(['recon_tank', 'q_heavy']);
+
+/**
+ * Unlock the full saved fleet only in Vite's local development server.
+ *
+ * This is a presentation/build gate, not a secret or an authorization layer:
+ * VITE_* values are embedded into client code. Production builds remain
+ * curated even if the variable is accidentally present in their environment.
+ */
+export function developmentFleetEnabled(env = {}) {
+  return env?.DEV === true && env?.[DEV_FLEET_ENV_KEY] === DEV_FLEET_KEY;
+}
+
+const VITE_ENV = typeof import.meta !== 'undefined' && import.meta.env
+  ? import.meta.env
+  : {};
+
+export const DEV_FLEET_ACTIVE = developmentFleetEnabled(VITE_ENV);
+
+export function isProductionHiddenTankId(id) {
+  return typeof id === 'string' && PRODUCTION_HIDDEN_TANK_IDS.has(id);
+}
 
 export const RETAINED_WW2_IDS = Object.freeze([
   'tiger1',
@@ -59,4 +96,13 @@ export function historicalRosterClass(spec) {
   if (COLD_WAR.has(spec.id)) return 'coldwar';
   if (spec.era === 'ww2') return 'ww2';
   return 'modern';
+}
+
+/** Stable explanation used by developer tags and the roster report. */
+export function developmentOnlyReason(spec, { activeRoster = false } = {}) {
+  if (!spec?.id) return 'unregistered';
+  if (RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(spec.id)) return 'reference-placeholder';
+  if (isProductionHiddenTankId(spec.id)) return 'production-curation';
+  if (isRetiredHistoricalTank(spec)) return 'historical-archive';
+  return activeRoster ? 'development-only' : 'saved-development-model';
 }

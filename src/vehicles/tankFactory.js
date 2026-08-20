@@ -28,11 +28,26 @@ import './japan.js';
 import './germany.js';
 import './afvFamily.js';
 
-import { finalizeFirstPartyRoster } from './specs.js';
+import {
+  ALL_TANK_IDS,
+  DEVELOPMENT_TANK_IDS,
+  PRODUCTION_TANK_IDS,
+  RUNTIME_TANK_IDS,
+  SAVED_TANK_IDS,
+  VISIBLE_TANK_IDS,
+  finalizeFirstPartyRoster,
+} from './specs.js';
 import { applyNativeFamilyOrder } from './fleetOrder.js';
 
 finalizeFirstPartyRoster();
-applyNativeFamilyOrder();
+for (const ids of [
+  ALL_TANK_IDS,
+  DEVELOPMENT_TANK_IDS,
+  SAVED_TANK_IDS,
+  PRODUCTION_TANK_IDS,
+  VISIBLE_TANK_IDS,
+  RUNTIME_TANK_IDS,
+]) applyNativeFamilyOrder(ids);
 configureTankFactory({
   canonicalBuilderPacks: [
     ['modern1', MODERN1_BUILDERS],

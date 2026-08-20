@@ -4,7 +4,7 @@
  * §2.4, §4 step 2). No rendering here; the render loop lives in main.js.
  */
 import * as THREE from 'three';
-import { getSpec, TANK_IDS, ALL_TANK_IDS } from '../vehicles/specs.js';
+import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
 import { tankTier } from '../vehicles/tier.js';
 import {
@@ -175,7 +175,7 @@ export function spawnTanks(game, engineCtx) {
   // materials.js is refcounted, so eviction frees the canvases/GPU maps).
   game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
   game._groundSampler = null;    // set by main.js; applied to lazy visuals too
-  ALL_TANK_IDS.forEach((specId, i) => {
+  RUNTIME_TANK_IDS.forEach((specId, i) => {
     const spec = getSpec(specId);
     const ent = {
       id: specId,
@@ -206,7 +206,7 @@ export function spawnTanks(game, engineCtx) {
     game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);
   });
-  // ALL_TANK_IDS is garage/family ordered; the staged screenshot battle is
+  // RUNTIME_TANK_IDS is garage/family ordered; the staged screenshot battle is
   // the explicitly locked core roster and must not depend on carousel order.
   game.tanks = TANK_IDS.map((id) => game.tankById.get(id)).filter(Boolean);
   // PERF (performance_budget r3): the staged battle's 7 ENEMY bakes are the

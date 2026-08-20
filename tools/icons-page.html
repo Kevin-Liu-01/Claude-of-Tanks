@@ -7,7 +7,7 @@
 // derives technical diagrams from the same armor/module data used in combat.
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.js';
-import { ALL_TANK_IDS, getSpec } from '/src/vehicles/specs.js';
+import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.js';
 import {
   TANK_ASSET_SCHEMA_VERSION, geometryFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetFile, tankAssetMetadata,
@@ -868,7 +868,7 @@ function boreShotOne(id) {
 }
 
 function idsOrFleet(ids) {
-  return ids && ids.length ? ids : ALL_TANK_IDS;
+  return ids && ids.length ? ids : DEVELOPMENT_TANK_IDS;
 }
 
 window.__WARM = (ids) => {
@@ -894,15 +894,16 @@ window.__GEN = (ids, views) => {
 };
 
 window.__AUDIT = (ids) => {
+  const auditIds = ids && ids.length ? ids : ALL_TANK_IDS;
   const result = { schemaVersion: TANK_ASSET_SCHEMA_VERSION, ids: [...ALL_TANK_IDS], tanks: {} };
-  for (const id of idsOrFleet(ids)) {
+  for (const id of auditIds) {
     try { result.tanks[id] = inspectOne(id, false).meta; }
     catch (error) { result.tanks[id] = { error: String(error && error.stack || error) }; }
   }
   return result;
 };
 
-window.__FLEET_IDS = [...ALL_TANK_IDS];
+window.__FLEET_IDS = [...DEVELOPMENT_TANK_IDS];
 window.__BORE_SHOTS = (ids) => {
   const result = {};
   for (const id of idsOrFleet(ids)) {

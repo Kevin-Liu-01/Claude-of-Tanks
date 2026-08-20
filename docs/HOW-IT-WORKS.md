@@ -39,7 +39,11 @@ failing feature and restore output without changing combat behavior.
 
 ## First-party vehicle pipeline
 
-The selectable roster currently contains **121 original first-party vehicles**.
+The registry currently retains **150 vehicle records**. The production
+projection exposes **112**; an explicit local-development key unlocks all
+**148 first-party playable models** with `DEV` labels, while two generic
+reference placeholders remain report-only. The generated inventory is
+maintained in `VEHICLE-ROSTER.md`.
 Playable geometry is assembled at runtime from authored profile stations,
 armor forms, fittings, and procedural running gear in
 `src/vehicles/tankFactory.js` and `src/vehicles/profiles/`. The public runtime

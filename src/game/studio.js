@@ -29,7 +29,7 @@
  * frames.
  */
 import * as THREE from 'three';
-import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
 import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
@@ -2454,7 +2454,7 @@ export function createStudio(ctx) {
     setCamera: (cfg) => recording ? getCamera() : applyCamera(cfg),
     getCamera,
     // constants for tooling/panel
-    TANK_IDS: ALL_TANK_IDS,
+    TANK_IDS: VISIBLE_TANK_IDS,
     MAP_IDS,
     ACTOR_STATES,
     EFFECT_TYPES,
@@ -2467,6 +2467,8 @@ export function createStudio(ctx) {
       const s = getSpec(id);
       return {
         id: s.id, name: s.name, era: s.era, class: s.class,
+        developmentOnly: Boolean(s.roster?.developmentOnly),
+        rosterTag: s.roster?.tag || '',
         gunElevationDeg: s.gunElevationDeg, gunDepressionDeg: s.gunDepressionDeg,
         shells: s.gun.shells.map((sh) => sh.type),
       };

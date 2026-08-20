@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import {
   COLD_WAR_IDS,
+  DEV_FLEET_KEY,
+  PRODUCTION_HIDDEN_TANK_IDS,
   RETAINED_COLD_WAR_IDS,
   RETAINED_WW2_IDS,
+  developmentFleetEnabled,
   historicalRosterClass,
   isRetiredHistoricalTank,
 } from './rosterPolicy.js';
@@ -34,6 +37,48 @@ assert.equal(historicalRosterClass({ id: 't95', era: 'ww2' }), 'coldwar');
 assert.equal(historicalRosterClass({ id: 'tiger1', era: 'ww2' }), 'ww2');
 assert.equal(historicalRosterClass({ id: 't90m', era: 'modern' }), 'modern');
 
+assert.equal(developmentFleetEnabled({ DEV: true, VITE_COT_DEV_FLEET_KEY: DEV_FLEET_KEY }), true);
+assert.equal(developmentFleetEnabled({ DEV: false, VITE_COT_DEV_FLEET_KEY: DEV_FLEET_KEY }), false,
+  'production ignores the local development key');
+assert.equal(developmentFleetEnabled({ DEV: true, VITE_COT_DEV_FLEET_KEY: 'wrong' }), false);
+
+const ownerHidden = [
+  'panther_g', 'tiger1', 'sturmtiger', 'jpz_e100',
+  'm26_pershing', 'm45_patton', 'isu122s', 'isu152',
+];
+for (const id of ownerHidden) {
+  assert(PRODUCTION_HIDDEN_TANK_IDS.has(id), `${id}: owner production exclusion is centralized`);
+}
+
+await import('./tankFactory.js');
+const {
+  ALL_TANK_IDS,
+  DEVELOPMENT_TANK_IDS,
+  PRODUCTION_TANK_IDS,
+  SAVED_TANK_IDS,
+  TANK_SPECS,
+  VISIBLE_TANK_IDS,
+} = await import('./specs.js');
+
+assert.equal(SAVED_TANK_IDS.length, 150, 'the complete saved procedural fleet is indexed');
+assert.equal(DEVELOPMENT_TANK_IDS.length, 148, 'reference-only placeholders are never playable');
+assert.deepEqual(new Set(SAVED_TANK_IDS), new Set(Object.keys(TANK_SPECS)),
+  'every registered spec belongs to the saved-fleet projection');
+assert.deepEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,
+  'bare Node and production use the curated projection');
+assert.equal(PRODUCTION_TANK_IDS.length, 112, 'production fleet count is deliberate');
+for (const id of ownerHidden) {
+  assert(ALL_TANK_IDS.includes(id), `${id}: record stays available to local development`);
+  assert(!PRODUCTION_TANK_IDS.includes(id), `${id}: record stays out of production`);
+}
+for (const id of SAVED_TANK_IDS) {
+  const roster = TANK_SPECS[id].roster;
+  assert.equal(Boolean(roster), true, `${id}: missing canonical roster metadata`);
+  assert.equal(roster.developmentOnly, !roster.productionVisible, `${id}: inconsistent roster flags`);
+  const expectedTag = roster.productionVisible ? '' : roster.localVisible ? 'DEV' : 'REF';
+  assert.equal(roster.tag, expectedTag, `${id}: incorrect roster tag`);
+}
+
 console.log(
-  `rosterPolicy.selftest: ${retainedWw2.size} WWII and ${retainedColdWar.size} Cold War exceptions retained`,
+  `rosterPolicy.selftest: ${PRODUCTION_TANK_IDS.length} production / ${SAVED_TANK_IDS.length} saved vehicles classified`,
 );

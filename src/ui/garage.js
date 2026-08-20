@@ -485,6 +485,13 @@ const GARAGE_CSS = `
 .cot-card .designation{float:right;font-size:7.5px;font-weight:700;letter-spacing:.10em;
   color:#8a97a3;padding:2px 0;}
 .cot-card.sel .designation{color:#d8a04c;}
+.cot-card .dev-tag{position:absolute;right:8px;top:31px;z-index:2;padding:2px 5px;
+  border:1px solid rgba(103,191,255,.62);background:rgba(7,24,38,.86);color:#8fd0ff;
+  font-size:7px;font-weight:900;letter-spacing:.14em;line-height:1;text-transform:uppercase;
+  box-shadow:0 2px 8px rgba(0,0,0,.45);}
+.cot-card.dev-only{border-color:rgba(103,191,255,.38);}
+.cot-card.dev-only.sel{border-color:#79c8ff;border-top-color:#79c8ff;
+  box-shadow:0 8px 26px rgba(64,154,219,.23);}
 .cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
   object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));transform:scale(1.04);}
 .cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
@@ -873,6 +880,7 @@ const GARAGE_CSS = `
   .cot-card.sel{transform:translateY(-3px);}
   .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
   .cot-card .flag .cot-flag{width:15px;height:auto;}.cot-card .designation{font-size:5.5px;padding:1px 0;}
+  .cot-card .dev-tag{right:4px;top:20px;padding:1px 3px;font-size:5px;}
   .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
   .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
   .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
@@ -2451,17 +2459,19 @@ export function createGarage(opts) {
   // --- build carousel cards ---
   for (const s of specs) {
     const card = document.createElement('div');
-    card.className = 'cot-card';
+    const developmentOnly = Boolean(s.roster?.developmentOnly);
+    card.className = `cot-card${developmentOnly ? ' dev-only' : ''}`;
     card.dataset.specId = s.id; // switch-desync r1: stable hook for tools/tests
     const displayName = s.label?.displayName || s.name;
     const shortName = s.label?.shortName || displayName;
-    card.title = displayName;
-    card.setAttribute('aria-label', `${tierNumeral(s.id) || ''} ${displayName}`.trim());
+    card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
+    card.setAttribute('aria-label', `${tierNumeral(s.id) || ''} ${displayName}${developmentOnly ? ', development vehicle' : ''}`.trim());
     card.style.setProperty('--nation-flag', `url("${flagIconUrl(s.nation)}")`);
     // Stable pre-rendered 3/4 portrait generated from the final first-party
     // procedural build; no live renderer or model swap is needed here.
     card.innerHTML =
       `<span class="designation">${s.markings?.designation || ''}</span>` +
+      (developmentOnly ? `<span class="dev-tag">${s.roster?.tag || 'DEV'}</span>` : '') +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
       `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="${displayName}">` +
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
