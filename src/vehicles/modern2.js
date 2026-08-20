@@ -2451,7 +2451,11 @@ function buildMBT70(P) {
   const GUNNER_SIGHT_HEIGHT_M = 0.435;
   const GUNNER_SIGHT_BASE_Y_M = TH;
   const INSIGNIA_REAR_LOCAL_Z_M = -1.72;
-  const SPARE_TRACK_MOUNT_X_M = 1.47;
+  // The fitting's raised center rib shifts its rotated radial envelope by
+  // 50 mm.  Seat the inner face at x=+/-1.60 m (the aft bustle cheek) rather
+  // than placing the fitting origin on that face and burying the links inside
+  // the turret shell.
+  const SPARE_TRACK_MOUNT_X_M = 1.65;
   const SPARE_TRACK_MOUNT_Z_M = -2.44;
   const TURRET_HALF_WIDTH_M = 1.74;
   const TURRET_WIDTH_SCALE = TURRET_HALF_WIDTH_M / 1.45;
