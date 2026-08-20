@@ -761,8 +761,8 @@ export function createSettings(opts) {
       'Takes effect when the next battle starts.';
 
     const iface = groupCard(body, 'Interface');
-    onOffRow(iface, 'FPS / ping readout (top corner)', 'showPerfMeter',
-      emitPerfMeter); // hud.js follows live (default off — no dev chrome)
+    onOffRow(iface, 'FPS / ping readout (top-right · default on)', 'showPerfMeter',
+      emitPerfMeter);
 
     const pad = groupCard(body, 'Controller');
     sliderRow(pad, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);
@@ -787,10 +787,7 @@ export function createSettings(opts) {
     ['volVoice', 'Crew voices & alarms volume'],
   ];
 
-  /** Broadcast the FPS/ping readout preference (hud.js 'cot-net' element).
-   *  Persisted with the gameplay settings; DEFAULT OFF so the raw
-   *  "NN FPS NN MS" string never ships as apparent developer chrome
-   *  (controls_gunnery r3 minor). */
+  /** Broadcast the persisted FPS/ping preference (default on, user opt-out). */
   function emitPerfMeter() {
     emit('ui:perfMeter', { on: !!input.getSettings().showPerfMeter });
   }
@@ -1317,7 +1314,7 @@ export function createSettings(opts) {
   // directly at build time — this covers a graph that already exists).
   emitBindings();
   emitVolumes();
-  emitPerfMeter(); // HUD net readout follows the persisted opt-in (default off)
+  emitPerfMeter(); // HUD net readout follows the persisted preference (default on)
 
   return api;
 }

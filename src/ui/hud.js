@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { createElement as el, ensureStyle } from './dom.js';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
+import { fillDriveTelemetry } from './driveTelemetry.js';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -384,6 +385,40 @@ const HUD_CSS = `
   font-family:${FONT_COND};letter-spacing:.1em;
   color:#c8d4de;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
+/* Circular analog speedometer beside the damage schematic. The 270° sweep
+   leaves a quiet lower gap for the numeric speed and physical limit. */
+.cot-drive{--speed-sweep:0deg;--speed-needle:-135deg;position:absolute;left:169px;bottom:12px;
+  width:108px;height:108px;border-radius:50%;pointer-events:none;overflow:hidden;
+  font-family:${FONT_COND};font-variant-numeric:tabular-nums;color:#edf3f7;
+  background:radial-gradient(circle at 50% 42%,rgba(24,32,38,.96),rgba(5,9,12,.93) 72%);
+  border:1px solid rgba(190,204,214,.38);box-shadow:0 6px 22px rgba(0,0,0,.48),inset 0 0 16px rgba(0,0,0,.5);
+  text-shadow:0 1px 2px rgba(0,0,0,.9);}
+.cot-drive .dial{position:absolute;inset:5px;border-radius:50%;isolation:isolate;
+  background:conic-gradient(from 225deg,transparent 0 216deg,#d94b4b 216deg 270deg,transparent 270deg),
+    conic-gradient(from 225deg,#f1f5f7 0 var(--speed-sweep),rgba(131,149,162,.24) var(--speed-sweep) 270deg,
+    transparent 270deg);}
+.cot-drive .dial::after{content:'';position:absolute;z-index:0;inset:7px;border-radius:50%;
+  background:radial-gradient(circle at 48% 38%,#172027,#090e12 72%);
+  border:1px solid rgba(191,207,219,.12);}
+.cot-drive .ticks{position:absolute;z-index:1;inset:0;border-radius:50%;}
+.cot-drive .ticks i{position:absolute;left:calc(50% - .5px);top:8px;width:1px;height:6px;
+  transform-origin:50% 41px;transform:rotate(calc(-135deg + var(--tick) * 13.5deg));
+  background:rgba(241,246,249,.88);box-shadow:0 0 2px rgba(255,255,255,.2);}
+.cot-drive .ticks i:nth-child(5n + 1){left:calc(50% - 1px);width:2px;height:9px;background:#fff;}
+.cot-drive .ticks i:nth-last-child(-n + 5){background:#e34f4f;box-shadow:0 0 3px rgba(227,79,79,.45);}
+.cot-drive .needle{position:absolute;z-index:2;left:50%;top:50%;width:2px;height:35px;
+  transform-origin:50% 100%;transform:translate(-50%,-100%) rotate(var(--speed-needle));
+  background:linear-gradient(#ff7777,#d82f36);box-shadow:0 0 5px rgba(222,55,62,.62);}
+.cot-drive .hub{position:absolute;z-index:4;left:50%;top:50%;width:8px;height:8px;
+  margin:-4px 0 0 -4px;border-radius:50%;background:#f4f7f9;border:2px solid #b8393f;
+  box-shadow:0 1px 4px rgba(0,0,0,.8);}
+.cot-drive .speed{position:absolute;z-index:3;left:0;right:0;top:58px;text-align:center;
+  font-size:26px;line-height:1;font-weight:780;letter-spacing:-.04em;}
+.cot-drive .unit{position:absolute;z-index:3;left:0;right:0;top:84px;text-align:center;
+  font-size:7px;font-weight:800;letter-spacing:.14em;color:#c1ccd4;}
+.cot-drive .zero,.cot-drive .limit{position:absolute;z-index:3;bottom:17px;font-size:6.5px;
+  line-height:1;}.cot-drive .zero{left:15px;color:#d8e1e7}.cot-drive .limit{right:13px;color:#ed6262}
+body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
@@ -476,63 +511,55 @@ const HUD_CSS = `
 .cot-dl.out{opacity:0;}
 .cot-dmglayer{position:absolute;inset:0;}
 /* Compact chase-camera identity card. The vehicle portrait anchors the target;
-   controls share one baseline and one 44 px interaction size. */
+   navigation actions remain distinct at narrow desktop widths. */
 .cot-spec{position:absolute;left:50%;bottom:48px;transform:translate(-50%,14px);
   opacity:0;display:none;pointer-events:auto;align-items:stretch;
   grid-template-columns:82px minmax(190px,1fr) auto 82px;column-gap:0;
   width:min(680px,calc(100vw - 32px));min-width:0;min-height:70px;
   background:linear-gradient(105deg,rgba(7,11,14,.97),rgba(14,20,25,.95));
-  border:1px solid rgba(161,181,196,.32);border-top:2px solid rgba(240,160,48,.78);
+  border:1px solid rgba(161,181,196,.28);
   box-shadow:0 14px 42px rgba(0,0,0,.62),inset 0 1px rgba(255,255,255,.035);
   padding:6px;transition:opacity .32s ease .12s,transform .42s cubic-bezier(.2,.7,.3,1) .12s;}
 .cot-spec.show{display:grid;}
 .cot-spec.in{opacity:1;transform:translate(-50%,0);}
 .cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
-  border-right:1px solid rgba(161,181,196,.16);background:linear-gradient(145deg,rgba(240,160,48,.13),rgba(77,96,110,.03));}
-.cot-spec .portrait::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:#f0a030;}
+  border-right:1px solid rgba(161,181,196,.14);background:rgba(93,112,127,.055);}
 .cot-spec .portrait img{display:block;width:76px;height:58px;object-fit:contain;filter:drop-shadow(0 5px 6px rgba(0,0,0,.62));}
-.cot-spec .portrait span{position:absolute;left:12px;right:10px;bottom:8px;height:1px;background:rgba(240,160,48,.42);}
-.cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:5px 15px 6px;}
-.cot-spec .status{display:flex;align-items:center;gap:7px;min-width:0;font-family:${FONT_COND};
-  font-size:8px;font-weight:800;line-height:1;letter-spacing:.16em;text-transform:uppercase;color:#9fb0bf;}
-.cot-spec .status i{width:6px;height:6px;border-radius:50%;background:#70dca0;box-shadow:0 0 9px rgba(112,220,160,.55);}
-.cot-spec .status .counter{margin-left:auto;color:#f0b04a;font:800 8px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.08em;}
-.cot-spec .who{display:flex;min-width:0;flex-direction:column;margin-top:6px;}
-.cot-spec .who b{font-size:15px;line-height:1.05;font-weight:800;color:#f2f7fb;letter-spacing:.015em;
+.cot-spec .identity{display:flex;min-width:0;align-items:flex-start;justify-content:center;padding:6px 15px;}
+.cot-spec .who{display:flex;width:100%;min-width:0;flex-direction:column;}
+.cot-spec .who b{font-size:16px;line-height:1.05;font-weight:800;color:#f2f7fb;letter-spacing:.015em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cot-spec .who span{margin-top:4px;font-family:${FONT_COND};font-weight:700;font-size:9px;line-height:1;
+.cot-spec .who span{margin-top:6px;font-family:${FONT_COND};font-weight:700;font-size:9px;line-height:1;
   letter-spacing:.12em;color:#aab8c2;text-transform:uppercase;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
 @keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
 .cot-spec .who.sw{animation:cotSpecSw .35s ease;}
-.cot-spec .switch{align-self:center;display:grid;grid-template-columns:repeat(2,68px);height:44px;
-  border-left:1px solid rgba(161,181,196,.16);}
-.cot-spec .cycle{height:44px;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
-  padding:0 9px;font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.1em;
-  text-transform:uppercase;color:#aab8c2;cursor:pointer;border:0;border-right:1px solid rgba(161,181,196,.2);
-  background:rgba(146,164,180,.035);transition:transform 160ms ease-out,background-color 120ms ease,color 120ms ease;}
-.cot-spec .cycle kbd{display:grid;place-items:center;width:20px;height:20px;border:1px solid rgba(203,216,226,.34);
-  border-radius:2px;background:rgba(255,255,255,.04);font:800 9px/1 ui-monospace,SFMono-Regular,monospace;color:#f2f7fb;box-shadow:none;}
+.cot-spec .switch{align-self:center;display:grid;grid-template-columns:repeat(2,62px);gap:8px;height:46px;
+  padding:0 10px;border-left:1px solid rgba(161,181,196,.14);}
+.cot-spec .cycle{height:46px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:4px 6px;font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:#9fadb8;cursor:pointer;border:1px solid rgba(176,192,204,.24);border-radius:3px;
+  background:rgba(146,164,180,.045);transition:transform 160ms ease-out,background-color 120ms ease,
+  border-color 120ms ease,color 120ms ease;}
+.cot-spec .cycle kbd{font:800 12px/1 ui-monospace,SFMono-Regular,monospace;color:#f2f7fb;}
 .cot-spec .cycle:active{transform:scale(.97);}
-.cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #ffd27a;
+.cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #d9e4eb;
   outline-offset:2px;}
 .cot-spec .gar{align-self:center;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;
-  margin-left:6px;padding:0 10px;font-family:${FONT_COND};font-weight:800;font-size:8px;letter-spacing:.12em;
-  text-transform:uppercase;color:#d4dee5;cursor:pointer;border:1px solid rgba(240,193,105,.42);
-  background:rgba(240,160,48,.07);white-space:nowrap;transition:transform 160ms ease-out,
+  padding:0 10px;font-family:${FONT_COND};font-weight:800;font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:#d4dee5;cursor:pointer;border:1px solid rgba(176,192,204,.24);border-radius:3px;
+  background:rgba(146,164,180,.045);white-space:nowrap;transition:transform 160ms ease-out,
   background-color 120ms ease,border-color 120ms ease;}
-.cot-spec .gar i{width:8px;height:8px;border-top:1px solid #f0b04a;border-right:1px solid #f0b04a;transform:rotate(45deg);}
+.cot-spec .gar i{width:8px;height:8px;border-top:1px solid #c6d3dc;border-right:1px solid #c6d3dc;transform:rotate(45deg);}
 .cot-spec .gar:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
-  .cot-spec .cycle:hover{background:rgba(146,164,180,.12);color:#f2f7fb;}
-  .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,193,105,.78);}
+  .cot-spec .cycle:hover,.cot-spec .gar:hover{background:rgba(146,164,180,.13);border-color:rgba(203,216,226,.42);color:#f2f7fb;}
 }
 @media (max-width:960px){
   .cot-spec{width:min(680px,calc(100vw - 20px));grid-template-columns:72px minmax(150px,1fr) auto 70px;}
   .cot-spec .portrait img{width:66px;}
   .cot-spec .identity{padding-left:11px;padding-right:11px;}
-  .cot-spec .switch{grid-template-columns:repeat(2,48px);}
-  .cot-spec .cycle span{display:none;}
+  .cot-spec .switch{grid-template-columns:repeat(2,54px);gap:6px;padding:0 7px;}
   .cot-spec .gar{font-size:7px;padding:0 8px;}
 }
 /* The minimap owns the lower-right 236 px. On compact desktop viewports the
@@ -546,14 +573,14 @@ const HUD_CSS = `
   .cot-spec{bottom:252px;}
 }
 @media (max-width:560px){
-  .cot-spec{grid-template-columns:62px minmax(0,1fr) 88px 46px;min-height:62px;padding:4px;}
+  .cot-spec{grid-template-columns:62px minmax(0,1fr) 94px 46px;min-height:62px;padding:4px;}
   .cot-spec .portrait img{width:58px;height:52px;}
   .cot-spec .identity{padding:4px 8px;}
-  .cot-spec .scope{display:none;}
   .cot-spec .who b{font-size:13px;}
   .cot-spec .who span{font-size:8px;}
-  .cot-spec .switch{grid-template-columns:repeat(2,44px);}
-  .cot-spec .gar{width:40px;margin-left:4px;padding:0;}
+  .cot-spec .switch{grid-template-columns:repeat(2,44px);gap:4px;padding:0 3px;}
+  .cot-spec .cycle span{display:none;}
+  .cot-spec .gar{width:40px;padding:0;}
   .cot-spec .gar span{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
@@ -565,6 +592,7 @@ const HUD_CSS = `
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
    information a spectator wants). Removed with the bar (spectate:end). */
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
+body.cot-spectating .cot-drive,
 body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !important;}
 .cot-dmgnum{position:absolute;font-weight:700;font-size:18px;color:#ffd166;white-space:nowrap;
   text-shadow:0 1px 1px rgba(0,0,0,.95),0 0 12px rgba(0,0,0,.5);
@@ -858,7 +886,7 @@ export function initHud(bus) {
   const wedgeL = topPlate.querySelector('.wedge.l');
   const wedgeR = topPlate.querySelector('.wedge.r');
 
-  // --- ping/fps readout (WoT battle constant, top-left corner) ---
+  // --- ping/fps readout (WoT battle constant, top-right corner) ---
   const netEl = el('div', 'cot-net', root);
   netEl.textContent = '';
   netEl.style.display = 'none'; // hidden until live frames are measured
@@ -889,6 +917,53 @@ export function initHud(bus) {
     const ping = Math.max(0, Math.min(999, Math.round(Number(frame?.pingMs) || 0)));
     const txt = `${fps} FPS  ${ping} MS`;
     if (txt !== netLastTxt) { netEl.textContent = txt; netLastTxt = txt; }
+  }
+
+  // Player speedometer: the retained model updates its CSS needle/arc at
+  // 10 Hz, keeping the per-frame HUD path allocation-free.
+  const driveEl = el('div', 'cot-drive', root);
+  driveEl.setAttribute('aria-label', 'Vehicle speedometer');
+  const driveTicks = Array.from({ length: 21 }, (_, index) =>
+    `<i style="--tick:${index}"></i>`).join('');
+  driveEl.innerHTML = `<div class="dial"><span class="ticks">${driveTicks}</span></div>` +
+    `<div class="needle"></div><div class="hub"></div>` +
+    `<strong class="speed" data-drive-speed>0</strong><span class="unit">KM/H</span>` +
+    `<span class="zero">0</span><span class="limit" data-drive-limit>—</span>`;
+  const driveSpeedEl = driveEl.querySelector('[data-drive-speed]');
+  const driveLimitEl = driveEl.querySelector('[data-drive-limit]');
+  const driveModel = {};
+  let drivePlayerId = null;
+  let driveLastTimeS = -1;
+  let driveLastPaintS = -1;
+  let driveSweepDeg = -1;
+  let driveNeedleDeg = -999;
+
+  function updateDriveReadout(player, timeS) {
+    const state = player?.state;
+    if (!state) return;
+    const nowS = Number.isFinite(timeS) ? timeS : 0;
+    const freshRun = player.id !== drivePlayerId || nowS < driveLastTimeS;
+    if (freshRun) {
+      drivePlayerId = player.id;
+      driveLastPaintS = -1;
+    }
+    driveLastTimeS = nowS;
+    if (!freshRun && nowS - driveLastPaintS < 0.1) return;
+    driveLastPaintS = nowS;
+
+    fillDriveTelemetry(driveModel, state, player.spec);
+    const speedText = String(driveModel.speedKmh);
+    const limitText = String(driveModel.limitKmh);
+    if (driveSpeedEl.textContent !== speedText) driveSpeedEl.textContent = speedText;
+    if (driveLimitEl.textContent !== limitText) driveLimitEl.textContent = limitText;
+    if (driveModel.sweepDeg !== driveSweepDeg) {
+      driveSweepDeg = driveModel.sweepDeg;
+      driveEl.style.setProperty('--speed-sweep', `${driveSweepDeg}deg`);
+    }
+    if (driveModel.needleDeg !== driveNeedleDeg) {
+      driveNeedleDeg = driveModel.needleDeg;
+      driveEl.style.setProperty('--speed-needle', `${driveNeedleDeg}deg`);
+    }
   }
 
   // Vehicle-class glyphs — WoT's actual roster grammar (r6-2, round
@@ -953,8 +1028,6 @@ export function initHud(bus) {
   const specNick = specBar.querySelector('.nick');
   const specVeh = specBar.querySelector('.veh');
   const specPortrait = specBar.querySelector('.portrait img');
-  const specScope = specBar.querySelector('.scope');
-  const specCounter = specBar.querySelector('.counter');
   specBar.querySelector('.cycle.prev').addEventListener('click', () => {
     bus.emit('spectate:cycle', { direction: -1 });
     bus.emit('ui:click', {});
@@ -976,8 +1049,6 @@ export function initHud(bus) {
     const numeral = p.specId ? tierNumeral(p.specId) : '';
     const tier = numeral ? `${numeral} · ` : '';
     specVeh.textContent = `${tier}${p.vehicle || 'Unknown vehicle'}`;
-    specScope.textContent = card.scope;
-    specCounter.textContent = card.counter;
     specPortrait.src = card.icon;
     specPortrait.hidden = !card.icon;
     specBar.classList.add('show');
@@ -3637,14 +3708,12 @@ export function initHud(bus) {
       }));
     },
 
-    /** Spectate-bar introspection for probes (visible + labels). */
+    /** Spectate-bar introspection for probes (visible + identity). */
     getSpectateBar() {
       return {
         shown: specBar.classList.contains('show') && specBar.classList.contains('in'),
         nick: specNick.textContent,
         vehicle: specVeh.textContent,
-        counter: specCounter.textContent,
-        scope: specScope.textContent,
       };
     },
 
@@ -3655,9 +3724,6 @@ export function initHud(bus) {
         name: payload.name || 'SteppeWolf_71',
         vehicle: payload.vehicle || 'M1A2 SEP v3',
         specId: payload.specId || 'm1a2_sepv3',
-        count: payload.count || 5,
-        index: payload.index || 2,
-        allTeams: !!payload.allTeams,
       }, true);
     },
 
@@ -3777,6 +3843,7 @@ export function initHud(bus) {
       playerRef = frame.player || playerRef;
       if (frame.player) playerId = frame.player.id;
       updateSpecialAction(frame.player || playerRef);
+      updateDriveReadout(frame.player || playerRef, frame.timeS);
       // damage panel: live pose for its rotating plan view (main.js calls
       // damagePanel.update right after hud.update each frame). The panel is
       // CAMERA-UP — its top is the camera's forward bearing — so it needs

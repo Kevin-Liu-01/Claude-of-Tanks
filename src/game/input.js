@@ -155,13 +155,10 @@ const DEFAULT_SETTINGS = {
   // hold/exit semantics (CamInput.aimHold).
   rmbMode: 'hold',
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
-  // FPS/ping readout (hud.js cot-net corner element). DEFAULT OFF —
-  // controls_gunnery r3 minor: a raw "41 FPS 33 MS" string in the top corner
-  // reads as developer chrome left in the build (and leaked into shipped
-  // contract shots). Players who want the WoT net-stats corner opt in via
-  // the settings GAMEPLAY tab; settings.js broadcasts 'ui:perfMeter' so the
-  // HUD follows live.
-  showPerfMeter: false,
+  // FPS/ping readout (hud.js cot-net top-right element). It is useful live
+  // connection/performance feedback, so new profiles start with it enabled;
+  // the Interface switch remains available as an explicit opt-out.
+  showPerfMeter: true,
   // Sound mix (settings panel SOUND tab). The synth audio stack
   // (src/audio/audio.js) reads these at graph build and live-follows the
   // 'ui:volumes' bus event the panel emits on every slider change.
