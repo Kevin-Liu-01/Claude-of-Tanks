@@ -175,19 +175,17 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 </tr>
 </table>
 
-## Multiplayer and mobile
+## Multiplayer
 
 Local, LAN, browser-hosted private, and dedicated ranked modes share the same renderer-free movement and combat rules.
 Clients send intent, never trusted hits or damage. Snapshot filtering, local prediction/reconciliation, bounded remote
 interpolation, reliable fire edges, reconnectable room state, and separate control/chat delivery keep a moving and firing
 7v7 battle responsive without giving the client authority.
 
-<table>
-<tr>
-<td width="62%"><img src="public/media/presentation-r1/ui_garage.webp" alt="Desktop garage command deck with vehicles, maps, camouflage, equipment, and modes"><br><sub><b>Desktop:</b> nation rail, vehicle deck, map and camouflage previews, dossiers, equipment, local profile, settings, and multiplayer rooms.</sub></td>
-<td width="38%"><img src="public/media/presentation-r1/ui_mobile.webp" alt="Mobile garage with touch-sized command surfaces and safe-area layout"><br><sub><b>Mobile:</b> safe-area layout, touch-sized command surfaces, joystick/swipe aim, pinch-to-scope, dynamic fire, and adaptive graphics.</sub></td>
-</tr>
-</table>
+<p align="center">
+  <img src="public/media/multiplayer-r1/dual-perspective.webp" alt="Side-by-side live browser multiplayer screens showing an M1A2 Abrams and T-90M Proryv facing each other from opposing player perspectives">
+</p>
+<p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures preserve the real battle HUD, authoritative simulation, filtered snapshots, and each commander's view.</sub></p>
 
 ### Controls at a glance
 
@@ -226,6 +224,7 @@ Regenerate the current public archive:
 ```bash
 npm run shots:battle:generate
 npm run shots:battle:grade -- --root shots/marketing-battles-r3
+node tools/marketing-shots/capture-multiplayer-dual-screen.mjs
 npm run studio:action:render
 npm run showcase:publish
 npm run showcase:check
