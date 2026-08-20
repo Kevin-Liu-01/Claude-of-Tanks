@@ -22,6 +22,12 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 The public browser field manual is available at
 https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 
+The current public presentation is image-led and sourced from a reproducible
+61-frame archive: 50 checked-in Scene Studio compositions plus 11 deterministic
+game/interface captures. The manifest lives at
+`../public/media/presentation-r1/manifest.json`; the landing page, field manual,
+Tank Gallery, and Scene Studio share its filtering and inspection component.
+
 ## Current subsystem references
 
 | Document | Authoritative scope |
@@ -34,6 +40,7 @@ https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 | MODULES.md | Internal module and crew damage model |
 | GUNNERY-CAMERA-SPEC.md | Camera, requested aim point, gun solution, scope, and reticle contract |
 | SCREENSHOT_CONTRACT.md | Game-ready and deterministic staged-frame capture contract |
+| ../public/media/presentation-r1/manifest.json | Current 61-frame public visual archive, provenance, maps, actors, effects, and feature tags |
 | DEV-PERF-TRACE.md | Development performance flight recorder |
 | MOBILE-QA.md | Sustained mobile test procedure and evidence ledger |
 | IMPROVEMENT-PROGRAM-2026-08-17.md | Dated implementation and verification record for the 16-map, multiplayer, UI, destruction, and rendering improvement program |

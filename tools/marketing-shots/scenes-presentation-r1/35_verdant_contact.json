@@ -1,0 +1,81 @@
+{
+  "map": "verdant",
+  "seed": 9300,
+  "actors": [
+    {
+      "id": "m1a2_sepv3",
+      "name": "hero",
+      "pos": [
+        -16,
+        -72
+      ],
+      "facingDeg": 28,
+      "turretDeg": -18,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 93000
+    },
+    {
+      "id": "strv103a",
+      "name": "wing",
+      "pos": [
+        -2,
+        -54
+      ],
+      "facingDeg": 196,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 93100
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -13,
+        -74
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -28,
+      4.2,
+      -98
+    ],
+    "lookAt": [
+      -11,
+      2.1,
+      -67
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": -1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Verdant Fields Contact",
+    "map": "Verdant Fields",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 35
+  }
+}

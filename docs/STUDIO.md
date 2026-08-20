@@ -52,7 +52,13 @@ webdriver (and `?nogate`), exactly like the screenshot harness.
   **Direct 12 s Duel** button turns the first two staged tanks into an
   immediately recordable moving battle. Map-card images load only when the picker opens;
   Scene JSON can be downloaded, uploaded, copied, or stored in three local
-  slots (shift-click saves).
+  slots (shift-click saves). The Output section also opens the shared 61-frame
+  field archive as composition, lighting, effect, and vehicle-staging reference.
+
+The archive drawer is the same `src/presentation/mediaArchive.js` component used
+by the landing page, public field manual, and Tank Gallery. It reads the checked-in
+presentation manifest and lazy-loads its compact rail only after the user opens
+it, so the 61 reference frames add no image transfer to Studio's boot path.
 
 ## `window.__STUDIO` (scripted-shoot contract)
 

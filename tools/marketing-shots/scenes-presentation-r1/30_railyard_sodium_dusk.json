@@ -1,0 +1,86 @@
+{
+  "map": "railyard",
+  "seed": 9230,
+  "actors": [
+    {
+      "id": "m2a2_bradley",
+      "name": "hero",
+      "pos": [
+        -32.5,
+        27.8
+      ],
+      "facingDeg": 150,
+      "turretDeg": -20,
+      "gunDeg": 1,
+      "camo": "splinter",
+      "camoSeed": 92300
+    },
+    {
+      "id": "kf51b",
+      "name": "pyre",
+      "pos": [
+        -76.5,
+        43.8
+      ],
+      "facingDeg": 320,
+      "turretDeg": 40,
+      "state": "wrecked-burnt",
+      "stateAgeS": 420,
+      "smoking": true,
+      "camo": "factory",
+      "camoSeed": 92301
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        -33,
+        26
+      ],
+      "tMs": 2550,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 244
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 2800,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -25.1,
+      1.3,
+      19.8
+    ],
+    "lookAt": [
+      -35.5,
+      2.5,
+      29.3
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -4.5
+  },
+  "fxTime": 2800,
+  "timeScale": 0,
+  "meta": {
+    "title": "Railyard Sodium Dusk",
+    "map": "Cinder Junction",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 30
+  }
+}

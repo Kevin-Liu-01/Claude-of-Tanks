@@ -14,7 +14,7 @@ stack, authoring tools, test rigs, and public presentation.
 
 | Area | Current implementation |
 | --- | --- |
-| Playable fleet | 80 selectable first-party procedural vehicles |
+| Playable fleet | 121 selectable first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
 | Battlefields | 16 generated and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
@@ -28,8 +28,8 @@ The executable provenance check is:
 
     npm run tank:native:check
 
-At the time of this document update it reports 80 first-party procedural battle
-playables, no GLB-sourced playables, and eight isolated comparison candidates.
+At the time of this document update it reports 121 first-party procedural battle
+playables, no GLB-sourced playables, and seven isolated comparison candidates.
 
 ## Armored combat
 
@@ -266,6 +266,30 @@ cannot monopolize rendering.
 The X-ray killcam reconstructs the resolved shot path, struck armor, effective
 protection, penetration result, damaged internals, and destruction cause.
 
+## Graphics, drivers, and high-refresh presentation
+
+The renderer identifies device, browser, WebGL, GPU, and driver capabilities
+before selecting a quality contract. That contract governs pixel density,
+render scale, texture and shadow budgets, vegetation, particles, transparent
+depth work, anti-aliasing, post-processing, and shader prewarm. Black-frame and
+context-loss recovery can rebuild presentation state without changing combat
+authority.
+
+Four quality-scaled cascaded shadow maps use stable texel anchoring and
+articulation-aware tank shadow hulls. Output grading and anti-aliasing share a
+fused presentation path, while repeated world objects, particles, and temporary
+vectors use batched, pooled, or reused storage to limit draw calls and garbage
+collection. The game can render above the 60 Hz simulation rate with interpolated
+presentation; the current certified desktop path reaches 120 FPS. This is a
+measured path, not a promise for every browser, resolution, thermal state, GPU,
+or driver.
+
+The diagnostics surface exposes FPS, ping, frame timing, draw calls, triangles,
+memory, quality state, render scale, post path, GPU/driver identity, and network
+telemetry. The compact FPS/ping readout remains available during normal play.
+
+See docs/PERFORMANCE.md and src/engine/SKILL.md.
+
 ## Desktop, mobile, and accessibility
 
 Desktop controls are remappable. The default camera controls use `Shift` for
@@ -292,9 +316,11 @@ turrets, and guns within physical limits, apply camouflage and damage, trigger
 real effects, freeze a deterministic timeline, and capture through the
 production renderer.
 
-The public 30-image modern fleet set is generated from checked-in scene JSON.
-Its manifest records the vehicle, nation, map, turret angle, gun angle, and
-pose. No generative or substituted vehicle imagery is used.
+The current public field archive combines 50 new checked-in Studio scenes with
+11 deterministic game/interface states. Its manifest records titles, maps,
+features, actors, effects, and capture provenance. The landing page, field
+manual, Gallery, and Studio all render the same filterable archive component.
+No generative or substituted vehicle imagery is used.
 
 See docs/STUDIO.md.
 
@@ -307,6 +333,16 @@ transforms, bounds, centroids, and requested changes in portable JSON with a
 matching PNG.
 
 See docs/GALLERY.md.
+
+## Public visual archive
+
+`public/media/presentation-r1/manifest.json` is the contract for the current
+61-frame archive. All 50 Studio scenes render at 1600 x 900 through the shipped
+renderer; the game/interface set records the 1920 x 1080 garage, battle HUD,
+sniper view, firing cycle, destruction event, killcam, Ironworks overview,
+vehicle close-up, Gallery, Studio, and a responsive mobile surface. The checked-in
+scene generator, serialized capture harness, and publisher make the set
+reproducible and prevent hand-curated imagery from drifting away from the game.
 
 ## Verification as a product feature
 

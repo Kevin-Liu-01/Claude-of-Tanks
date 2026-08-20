@@ -1,0 +1,109 @@
+{
+  "map": "steppe",
+  "seed": 9226,
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "holdout",
+      "pos": [
+        32.75,
+        63.1
+      ],
+      "facingDeg": 252,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 92260,
+      "turretDeg": 0.8
+    },
+    {
+      "id": "mbt70",
+      "name": "a1",
+      "pos": [
+        -25.25,
+        45.1
+      ],
+      "facingDeg": 74,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 92261,
+      "turretDeg": -1.2
+    },
+    {
+      "id": "type99a",
+      "name": "a2",
+      "pos": [
+        -3.25,
+        93.1
+      ],
+      "facingDeg": 142,
+      "gunDeg": 0.5,
+      "camo": "splinter",
+      "camoSeed": 92262,
+      "turretDeg": -14.1
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        10,
+        68
+      ],
+      "tMs": 150,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "holdout",
+      "tMs": 535,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "a1",
+      "tMs": 605,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 620,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -11.65,
+      16,
+      25.9
+    ],
+    "lookAt": [
+      14.75,
+      0,
+      65.1
+    ],
+    "groundRel": true,
+    "fov": 45,
+    "rollDeg": -3.5
+  },
+  "fxTime": 645,
+  "timeScale": 0,
+  "meta": {
+    "title": "Steppe Khutor Brawl",
+    "map": "Tarkhan Steppe",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 26
+  }
+}

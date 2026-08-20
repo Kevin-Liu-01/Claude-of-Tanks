@@ -1,0 +1,96 @@
+{
+  "map": "coastal",
+  "seed": 9220,
+  "actors": [
+    {
+      "id": "udes03",
+      "name": "crest",
+      "pos": [
+        227.5,
+        47.8
+      ],
+      "facingDeg": 262,
+      "gunDeg": -5,
+      "turretDeg": 2,
+      "camo": "digital",
+      "camoSeed": 92200
+    },
+    {
+      "id": "pl01_105",
+      "name": "pyre",
+      "pos": [
+        210.5,
+        42.8
+      ],
+      "facingDeg": 10,
+      "turretDeg": 55,
+      "state": "turret-popped",
+      "stateAgeS": 180,
+      "burning": true,
+      "camo": "splinter",
+      "camoSeed": 92201
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        227,
+        49.5
+      ],
+      "tMs": 2530,
+      "params": {
+        "count": 16,
+        "intensity": 1.4,
+        "dirDeg": 262
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "crest",
+      "tMs": 2872,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "crest",
+      "tMs": 2825,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.62
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      202.1,
+      1.5,
+      47.6
+    ],
+    "lookAt": [
+      220.5,
+      2.8,
+      45.8
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -1.5
+  },
+  "fxTime": 2900,
+  "timeScale": 0,
+  "meta": {
+    "title": "Coastal Dune Ambush",
+    "map": "Saltmere Bay",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 20
+  }
+}

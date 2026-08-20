@@ -1,0 +1,92 @@
+{
+  "map": "badlands",
+  "seed": 9311,
+  "actors": [
+    {
+      "id": "mbt70",
+      "name": "hero",
+      "pos": [
+        16,
+        58
+      ],
+      "facingDeg": 215,
+      "turretDeg": -9,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 93011
+    },
+    {
+      "id": "challenger_3",
+      "name": "wing",
+      "pos": [
+        30,
+        76
+      ],
+      "facingDeg": 317,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "splinter",
+      "camoSeed": 93111
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        19,
+        56
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        34,
+        68
+      ],
+      "tMs": 230,
+      "params": {
+        "size": "medium"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -12,
+      4.2,
+      36
+    ],
+    "lookAt": [
+      21,
+      2.1,
+      63
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Redrock Divide Contact",
+    "map": "Redrock Divide",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 46
+  }
+}

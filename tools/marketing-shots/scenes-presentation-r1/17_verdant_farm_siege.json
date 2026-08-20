@@ -1,0 +1,110 @@
+{
+  "map": "verdant",
+  "seed": 9217,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "holdout",
+      "pos": [
+        44,
+        76.9
+      ],
+      "facingDeg": 255,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 92170,
+      "turretDeg": 3.1
+    },
+    {
+      "id": "strv103a",
+      "name": "atk1",
+      "pos": [
+        6,
+        68.9
+      ],
+      "facingDeg": 82,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 92171,
+      "turretDeg": -3.9
+    },
+    {
+      "id": "m2a2_bradley",
+      "name": "atk2",
+      "pos": [
+        34,
+        102.9
+      ],
+      "facingDeg": 168,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 92172,
+      "turretDeg": -14.6
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        30,
+        90
+      ],
+      "tMs": 155,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "holdout",
+      "tMs": 540,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 125,
+        "hFrac": 0.65
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "atk1",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "holdout",
+      "tMs": 625,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      19.6,
+      3.4,
+      55.7
+    ],
+    "lookAt": [
+      36,
+      1.8,
+      78.9
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -1.5
+  },
+  "fxTime": 650,
+  "timeScale": 0,
+  "meta": {
+    "title": "Verdant Farm Siege",
+    "map": "Verdant Fields",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 17
+  }
+}

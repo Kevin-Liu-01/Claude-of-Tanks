@@ -1,0 +1,112 @@
+{
+  "map": "winter",
+  "seed": 9207,
+  "actors": [
+    {
+      "id": "type99a",
+      "name": "charger",
+      "pos": [
+        -20,
+        -83.1
+      ],
+      "facingDeg": 187,
+      "turretDeg": 6,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 92070
+    },
+    {
+      "id": "t90a_vladimir",
+      "name": "wing",
+      "pos": [
+        -26,
+        -67.1
+      ],
+      "facingDeg": 194,
+      "turretDeg": -8,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 92071
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        -14,
+        -88
+      ],
+      "tMs": 170,
+      "params": {
+        "size": "small"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -21,
+        -74
+      ],
+      "tMs": 240,
+      "params": {
+        "count": 20,
+        "intensity": 1.6,
+        "dirDeg": 7
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -27,
+        -58
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 14
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "charger",
+      "tMs": 475,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "detrack",
+      "actor": "charger",
+      "tMs": 320,
+      "params": {
+        "side": "L"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -18.5,
+      1.3,
+      -93.9
+    ],
+    "lookAt": [
+      -21.5,
+      2.3,
+      -83.1
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 4
+  },
+  "fxTime": 500,
+  "timeScale": 0,
+  "meta": {
+    "title": "Winter Road Charge",
+    "map": "Frosthollow",
+    "feature": "Track physics",
+    "kind": "action",
+    "sequence": 7
+  }
+}

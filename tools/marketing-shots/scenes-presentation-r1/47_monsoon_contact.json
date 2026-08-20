@@ -1,0 +1,81 @@
+{
+  "map": "monsoon",
+  "seed": 9312,
+  "actors": [
+    {
+      "id": "pl01_105",
+      "name": "hero",
+      "pos": [
+        20,
+        72
+      ],
+      "facingDeg": 232,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "camo": "tropic",
+      "camoSeed": 93012
+    },
+    {
+      "id": "t90a_vladimir",
+      "name": "wing",
+      "pos": [
+        34,
+        90
+      ],
+      "facingDeg": 328,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 93112
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        23,
+        70
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -9,
+      4.1,
+      49
+    ],
+    "lookAt": [
+      25,
+      2.1,
+      77
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": -1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Monsoon Ridge Contact",
+    "map": "Monsoon Ridge",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 47
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "map": "caldera",
+  "seed": 9314,
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "hero",
+      "pos": [
+        18,
+        62
+      ],
+      "facingDeg": 266,
+      "turretDeg": 18,
+      "gunDeg": 1,
+      "camo": "factory",
+      "camoSeed": 93014
+    },
+    {
+      "id": "merkava4b",
+      "name": "wing",
+      "pos": [
+        32,
+        80
+      ],
+      "facingDeg": 350,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 93114
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        21,
+        60
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        36,
+        72
+      ],
+      "tMs": 230,
+      "params": {
+        "size": "medium"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -12,
+      4.2,
+      39
+    ],
+    "lookAt": [
+      23,
+      2.1,
+      67
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": 1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Obsidian Caldera Contact",
+    "map": "Obsidian Caldera",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 49
+  }
+}

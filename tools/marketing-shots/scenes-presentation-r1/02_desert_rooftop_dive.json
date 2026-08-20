@@ -1,0 +1,101 @@
+{
+  "map": "desert",
+  "seed": 9202,
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "victim",
+      "pos": [
+        16,
+        69.9
+      ],
+      "facingDeg": 320,
+      "turretDeg": 25,
+      "camo": "desert",
+      "camoSeed": 92020
+    },
+    {
+      "id": "mbt70",
+      "name": "runner",
+      "pos": [
+        7,
+        60.9
+      ],
+      "facingDeg": 242,
+      "turretDeg": 168,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 92021
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 118,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        9,
+        64
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 20,
+        "intensity": 1.6,
+        "dirDeg": 62
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        12,
+        67
+      ],
+      "tMs": 420,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 55
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "runner",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      12.6,
+      38,
+      62.7
+    ],
+    "lookAt": [
+      14.2,
+      0,
+      68.4
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 16.5
+  },
+  "fxTime": 610,
+  "timeScale": 0,
+  "meta": {
+    "title": "Desert Rooftop Dive",
+    "map": "Sirocco Wadi",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 2
+  }
+}

@@ -10,6 +10,7 @@
   <link rel="canonical" href="https://cot.kevinliu.studio/gallery">
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/src/presentation/mediaArchive.css">
   <link rel="stylesheet" href="/src/gallery/gallery.css">
   <title>Tank Gallery — Claude of Tanks</title>
 </head>
@@ -63,7 +64,7 @@
       <div class="viewer-atmosphere" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="viewer-head">
         <div class="live-pill"><span></span> Live procedural specimen</div>
-        <div class="viewer-record" id="viewerRecord">Archive record —</div>
+        <div class="viewer-head-actions"><button type="button" class="field-frames-button" id="galleryArchiveOpen">Field frames <span>61</span></button><div class="viewer-record" id="viewerRecord">Archive record —</div></div>
       </div>
 
       <div class="loading-state" id="loadingState" role="status">
@@ -187,6 +188,10 @@
     </aside>
   </main>
 
+  <dialog class="gallery-archive-dialog" id="galleryArchive" aria-labelledby="galleryArchiveTitle">
+    <header><div><p class="eyebrow">Live renderer // production archive</p><h2 id="galleryArchiveTitle">Tanks in context.</h2><p>Inspect the same first-party rigs in battle, destruction, terrain, and cinematic production.</p></div><button type="button" id="galleryArchiveClose" aria-label="Close field frames">×</button></header>
+    <div class="gallery-archive-body" data-media-archive data-mode="compact" data-limit="61"></div>
+  </dialog>
   <div class="toast" id="toast" role="status"></div>
   <script type="module" src="/src/gallery/gallery.js"></script>
 </body>

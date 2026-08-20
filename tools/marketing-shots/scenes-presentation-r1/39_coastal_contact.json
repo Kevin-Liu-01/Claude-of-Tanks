@@ -1,0 +1,90 @@
+{
+  "map": "coastal",
+  "seed": 9304,
+  "actors": [
+    {
+      "id": "merkava4b",
+      "name": "hero",
+      "pos": [
+        168,
+        42
+      ],
+      "facingDeg": 96,
+      "turretDeg": 18,
+      "gunDeg": 1,
+      "camo": "naval",
+      "camoSeed": 93004
+    },
+    {
+      "id": "fv510_milan",
+      "name": "wing",
+      "pos": [
+        182,
+        60
+      ],
+      "facingDeg": 240,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 93104
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        171,
+        40
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "wing",
+      "tMs": 470,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      143,
+      4.2,
+      22
+    ],
+    "lookAt": [
+      173,
+      2.1,
+      47
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 0
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Saltmere Bay Contact",
+    "map": "Saltmere Bay",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 39
+  }
+}

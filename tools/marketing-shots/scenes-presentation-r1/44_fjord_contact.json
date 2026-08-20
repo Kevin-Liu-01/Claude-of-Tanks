@@ -1,0 +1,81 @@
+{
+  "map": "fjord",
+  "seed": 9309,
+  "actors": [
+    {
+      "id": "strv103",
+      "name": "hero",
+      "pos": [
+        78,
+        40
+      ],
+      "facingDeg": 181,
+      "turretDeg": 18,
+      "gunDeg": 1,
+      "camo": "winter",
+      "camoSeed": 93009
+    },
+    {
+      "id": "m1a2_sepv3",
+      "name": "wing",
+      "pos": [
+        92,
+        58
+      ],
+      "facingDeg": 295,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 93109
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        81,
+        38
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      51,
+      4.4,
+      20
+    ],
+    "lookAt": [
+      83,
+      2.1,
+      45
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": -1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Nordhavn Fjord Contact",
+    "map": "Nordhavn Fjord",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 44
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "map": "desert",
+  "seed": 9233,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "left",
+      "pos": [
+        -12.75,
+        -15.8
+      ],
+      "facingDeg": 10,
+      "gunDeg": 1.5,
+      "camo": "summer",
+      "camoSeed": 92330,
+      "turretDeg": -5.6
+    },
+    {
+      "id": "strv103a",
+      "name": "mid",
+      "pos": [
+        3.25,
+        -21.8
+      ],
+      "facingDeg": 4,
+      "gunDeg": 2,
+      "camo": "winter",
+      "camoSeed": 92331,
+      "turretDeg": 1.4
+    },
+    {
+      "id": "m2a2_bradley",
+      "name": "right",
+      "pos": [
+        19.25,
+        -13.8
+      ],
+      "facingDeg": 358,
+      "gunDeg": 1.5,
+      "camo": "urbanblock",
+      "camoSeed": 92332,
+      "turretDeg": 8
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "right",
+      "tMs": 100,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "mid",
+      "tMs": 552,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "left",
+      "tMs": 578,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -26.35,
+      2.6,
+      -31.8
+    ],
+    "lookAt": [
+      3.25,
+      2.6,
+      -7.8
+    ],
+    "groundRel": true,
+    "fov": 35,
+    "rollDeg": -1.5
+  },
+  "fxTime": 600,
+  "timeScale": 0,
+  "meta": {
+    "title": "Desert Overwatch Line",
+    "map": "Sirocco Wadi",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 33
+  }
+}

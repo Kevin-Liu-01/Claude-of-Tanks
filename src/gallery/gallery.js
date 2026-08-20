@@ -10,6 +10,7 @@ import {
 } from './catalog.js';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
+import { mountMediaArchive } from '../presentation/mediaArchive.js';
 
 const $ = (selector) => document.querySelector(selector);
 const viewport = $('#viewport');
@@ -511,6 +512,14 @@ $('#copySpec').addEventListener('click', () => {
   if (!selectedId) return;
   writeClipboard(JSON.stringify(serializeGallerySpec(getSpec(selectedId)), null, 2), 'Vehicle data copied');
 });
+const galleryArchive = $('#galleryArchive');
+$('#galleryArchiveOpen').addEventListener('click', () => {
+  galleryArchive.showModal();
+  mountMediaArchive(galleryArchive.querySelector('[data-media-archive]'), { mode: 'compact', limit: 61 })
+    .catch((error) => showToast(error.message));
+});
+$('#galleryArchiveClose').addEventListener('click', () => galleryArchive.close());
+galleryArchive.addEventListener('click', (event) => { if (event.target === galleryArchive) galleryArchive.close(); });
 
 renderer.domElement.addEventListener('pointerdown', (event) => {
   pointerStart = { x: event.clientX, y: event.clientY };

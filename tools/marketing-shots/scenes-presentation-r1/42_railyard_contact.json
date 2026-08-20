@@ -1,0 +1,90 @@
+{
+  "map": "railyard",
+  "seed": 9307,
+  "actors": [
+    {
+      "id": "kf51b",
+      "name": "hero",
+      "pos": [
+        18,
+        34
+      ],
+      "facingDeg": 147,
+      "turretDeg": 0,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 93007
+    },
+    {
+      "id": "type99a",
+      "name": "wing",
+      "pos": [
+        32,
+        52
+      ],
+      "facingDeg": 273,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 93107
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        21,
+        32
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "wing",
+      "tMs": 470,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -12,
+      4.1,
+      14
+    ],
+    "lookAt": [
+      23,
+      2.1,
+      39
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 0
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Cinder Junction Contact",
+    "map": "Cinder Junction",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 42
+  }
+}

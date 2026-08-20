@@ -1,0 +1,90 @@
+{
+  "map": "desert",
+  "seed": 9301,
+  "actors": [
+    {
+      "id": "leclerc_xlr",
+      "name": "hero",
+      "pos": [
+        56,
+        76
+      ],
+      "facingDeg": 45,
+      "turretDeg": -9,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 93001
+    },
+    {
+      "id": "udes03",
+      "name": "wing",
+      "pos": [
+        70,
+        94
+      ],
+      "facingDeg": 207,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 93101
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        59,
+        74
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "wing",
+      "tMs": 470,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      37,
+      4,
+      58
+    ],
+    "lookAt": [
+      61,
+      2.1,
+      81
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": 0
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Sirocco Wadi Contact",
+    "map": "Sirocco Wadi",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 36
+  }
+}

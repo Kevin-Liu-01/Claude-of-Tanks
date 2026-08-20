@@ -40,7 +40,7 @@ failing feature and restore output without changing combat behavior.
 
 ## First-party vehicle pipeline
 
-The selectable roster currently contains **80 original first-party vehicles**.
+The selectable roster currently contains **121 original first-party vehicles**.
 Playable geometry is assembled at runtime from authored profile stations,
 armor forms, fittings, and procedural running gear in
 `src/vehicles/tankFactory.js` and `src/vehicles/profiles/`. The public runtime
@@ -193,7 +193,7 @@ several remote destructions cannot monopolize one render frame. Critical state
 events apply immediately; smoke, debris, and other expensive effects can be
 staged over subsequent frames without changing the outcome.
 
-## Scene Studio and the 30-image modern set
+## Scene Studio and the 61-frame field archive
 
 Scene Studio (`src/game/studio.js`) runs a live battlefield with combat AI
 paused. It can place any current vehicle, conform it to terrain, pose turret and
@@ -201,18 +201,25 @@ gun within spec limits, apply camouflage/damage states, fire the game's real
 effects, freeze deterministic time, and capture through the full renderer up
 to the GPU's safe output size.
 
-The landing-page fleet reel is modern-only and reproducible source, not
-hand-retouched art. Its 30 checked-in scenes deliberately span broad turret
-search arcs and vehicle-authored gun elevation/depression instead of repeating
-one catalog pose. The generated manifest records the requested turret angle,
-gun angle, pose name, map, nation, and vehicle for every public frame:
+The landing page, public field manual, Gallery, and Studio share one reproducible
+visual archive rather than hand-retouched art. Its 50 checked-in Studio scenes
+cover every battlefield plus combat, recoil, tracers, impacts, destruction,
+debris, track separation, wrecks, and varied camera grammar. Eleven deterministic
+game/interface frames record the current garage, HUD, precision sight, killcam,
+Gallery, Studio, and mobile presentation. The generated manifest records the
+map, feature, actors, effects, and provenance for every public frame:
 
 ```bash
-node tools/marketing-shots/gen-modern-showcase.mjs
+node tools/marketing-shots/gen-presentation-r1.mjs
 node tools/marketing-shots/shoot.mjs \
-  --scenes tools/marketing-shots/scenes-modern \
-  --out shots/marketing-modern/raw --width 1600
-node tools/marketing-shots/encode-modern-showcase.mjs
+  --scenes tools/marketing-shots/scenes-presentation-r1 \
+  --out shots/presentation-r1/raw --width 1600
+node tools/screenshot.mjs \
+  --out shots/presentation-r1/ui-raw \
+  --views garage,player_view,sniper_view,tank_closeup_modern,combat_firing,explosion,battlefield_foundry,killcam_xray \
+  --width 1920 --height 1080
+node tools/marketing-shots/capture-presentation-ui.mjs
+node tools/marketing-shots/publish-presentation-r1.mjs
 ```
 
 ## Verification

@@ -1,0 +1,111 @@
+{
+  "map": "desert",
+  "seed": 9232,
+  "actors": [
+    {
+      "id": "m1a2_sepv3",
+      "name": "rammer",
+      "pos": [
+        18,
+        66.9
+      ],
+      "facingDeg": 66,
+      "turretDeg": 3,
+      "gunDeg": -3,
+      "camo": "factory",
+      "camoSeed": 92320
+    },
+    {
+      "id": "merkava4b",
+      "name": "victim",
+      "pos": [
+        23.8,
+        69.5
+      ],
+      "facingDeg": 155,
+      "turretDeg": -55,
+      "gunDeg": 2,
+      "camo": "desert",
+      "camoSeed": 92321
+    }
+  ],
+  "effects": [
+    {
+      "type": "detrack",
+      "actor": "victim",
+      "tMs": 150,
+      "params": {
+        "side": "L"
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        21,
+        69.3
+      ],
+      "tMs": 140,
+      "params": {
+        "count": 22,
+        "intensity": 1.6,
+        "dirDeg": 66
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        15,
+        66
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 246
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "victim",
+      "tMs": 330,
+      "params": {
+        "kind": "nonpen",
+        "caliberMm": 40,
+        "hFrac": 0.45
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "rammer",
+      "tMs": 385,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.62
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      28.6,
+      1.4,
+      54.7
+    ],
+    "lookAt": [
+      20.5,
+      1.6,
+      68.9
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 1.5
+  },
+  "fxTime": 460,
+  "timeScale": 0,
+  "meta": {
+    "title": "Desert Ram Abramsx T90m",
+    "map": "Sirocco Wadi",
+    "feature": "Track physics",
+    "kind": "action",
+    "sequence": 32
+  }
+}

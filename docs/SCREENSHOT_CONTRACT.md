@@ -38,3 +38,31 @@ MUST uphold this contract at all times or the build is considered broken.
 - Zero console errors during load and capture. The harness exits non-zero on any.
 - Run `node tools/screenshot.mjs` after every change that could affect rendering;
   shots land in `shots/<view>.png` at 1920x1080.
+
+## Public presentation archive
+
+The public image system is a larger, reproducible layer above the minimum critic
+views. `tools/marketing-shots/scenes-presentation-r1/` contains 50 Scene Studio
+compositions spanning all sixteen maps, vehicle families, recoil, tracers,
+impacts, destruction, debris, wrecks, and track separation. The deterministic
+game harness contributes 11 interface/system frames. The publisher compresses
+those captures and writes the public provenance manifest:
+
+```bash
+node tools/marketing-shots/gen-presentation-r1.mjs
+node tools/marketing-shots/shoot.mjs \
+  --scenes tools/marketing-shots/scenes-presentation-r1 \
+  --out shots/presentation-r1/raw --width 1600
+node tools/screenshot.mjs \
+  --out shots/presentation-r1/ui-raw \
+  --views garage,player_view,sniper_view,tank_closeup_modern,combat_firing,explosion,battlefield_foundry,killcam_xray \
+  --width 1920 --height 1080
+node tools/marketing-shots/capture-presentation-ui.mjs
+node tools/marketing-shots/publish-presentation-r1.mjs
+```
+
+`public/media/presentation-r1/manifest.json` must report 50 Studio frames, 11
+interface frames, 61 total frames, and `firstPartyRuntimeOnly: true`. Landing,
+docs, Gallery, and Studio consume that one manifest through the shared media
+archive component. Raw PNGs remain local capture evidence; compressed WebP
+frames and the manifest are the shipped artifacts.

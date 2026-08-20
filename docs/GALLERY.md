@@ -35,7 +35,9 @@ armor plates, modules, crew volumes, and visual rigs come from canonical
   every playable vehicle;
 - inspect dimensions, mobility, weapon, protection, and ammunition data;
 - copy a shareable vehicle/layer URL;
-- copy a versioned normalized data record.
+- copy a versioned normalized data record;
+- open the shared 61-frame field archive to inspect the same procedural rigs
+  in combat, destruction, terrain, HUD, mobile, Gallery, and Studio contexts.
 
 ## Architecture
 
@@ -82,6 +84,14 @@ createTank(id, engineCtx, {
 
 Only one vehicle visual is live. Selecting another vehicle removes and
 disposes the previous visual before constructing the next one.
+
+The viewer header also opens the shared presentation archive. Gallery mounts
+`src/presentation/mediaArchive.js` only when the dialog is requested; the
+component fetches `public/media/presentation-r1/manifest.json`, lazy-loads its
+WebP frames in a horizontally scrollable compact rail, and reuses the same
+lightbox/filter semantics as the landing page, field manual, and Studio. This
+keeps the public route focused on one live vehicle until the user asks for the
+larger context set.
 
 ### Diagnostic overlays
 

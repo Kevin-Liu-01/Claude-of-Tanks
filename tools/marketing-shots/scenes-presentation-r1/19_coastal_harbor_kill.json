@@ -1,0 +1,88 @@
+{
+  "map": "coastal",
+  "seed": 9219,
+  "actors": [
+    {
+      "id": "strv103",
+      "name": "fg",
+      "pos": [
+        152.5,
+        78
+      ],
+      "facingDeg": 62,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 92190,
+      "turretDeg": -11.3
+    },
+    {
+      "id": "fv510_milan",
+      "name": "victim",
+      "pos": [
+        174.5,
+        96
+      ],
+      "facingDeg": 244,
+      "turretDeg": 30,
+      "camo": "urbanblock",
+      "camoSeed": 92191
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 112,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        154,
+        80
+      ],
+      "tMs": 340,
+      "params": {
+        "count": 10,
+        "intensity": 0.8,
+        "dirDeg": 240
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "fg",
+      "tMs": 588,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      139.5,
+      3.6,
+      65.2
+    ],
+    "lookAt": [
+      166.5,
+      2,
+      90
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 4
+  },
+  "fxTime": 612,
+  "timeScale": 0,
+  "meta": {
+    "title": "Coastal Harbor Kill",
+    "map": "Saltmere Bay",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 19
+  }
+}

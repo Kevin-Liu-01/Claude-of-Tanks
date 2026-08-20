@@ -1,0 +1,114 @@
+{
+  "map": "railyard",
+  "seed": 9228,
+  "actors": [
+    {
+      "id": "udes03",
+      "name": "gunner",
+      "pos": [
+        -7.75,
+        -61.8
+      ],
+      "facingDeg": 4,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 92280,
+      "turretDeg": -2.1
+    },
+    {
+      "id": "pl01_105",
+      "name": "victim",
+      "pos": [
+        -6.75,
+        -31.8
+      ],
+      "facingDeg": 188,
+      "turretDeg": 15,
+      "camo": "splinter",
+      "camoSeed": 92281
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 132,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "gunner",
+      "tMs": 520,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -12,
+        -58
+      ],
+      "tMs": 380,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 186
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "gunner",
+      "tMs": 608,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "gunner",
+      "tMs": 557,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.62
+      }
+    },
+    {
+      "type": "detrack",
+      "actor": "gunner",
+      "tMs": 452,
+      "params": {
+        "side": "R"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -22.75,
+      14,
+      -72.6
+    ],
+    "lookAt": [
+      -5.75,
+      0,
+      -39.8
+    ],
+    "groundRel": true,
+    "fov": 45,
+    "rollDeg": -6
+  },
+  "fxTime": 632,
+  "timeScale": 0,
+  "meta": {
+    "title": "Railyard Container Gauntlet",
+    "map": "Cinder Junction",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 28
+  }
+}

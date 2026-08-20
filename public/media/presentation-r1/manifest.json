@@ -1,0 +1,1140 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-19",
+  "renderer": "Claude of Tanks Scene Studio and deterministic game harness",
+  "firstPartyRuntimeOnly": true,
+  "studioShotCount": 50,
+  "interfaceShotCount": 11,
+  "totalShotCount": 61,
+  "shots": [
+    {
+      "id": "ui_battlefield_foundry",
+      "src": "/media/presentation-r1/ui_battlefield_foundry.webp",
+      "title": "Ironworks overview",
+      "map": "Live game",
+      "feature": "World system",
+      "kind": "interface",
+      "alt": "Ironworks overview captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_combat_firing",
+      "src": "/media/presentation-r1/ui_combat_firing.webp",
+      "title": "Live firing cycle",
+      "map": "Live game",
+      "feature": "Gunnery",
+      "kind": "interface",
+      "alt": "Live firing cycle captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_explosion",
+      "src": "/media/presentation-r1/ui_explosion.webp",
+      "title": "Destruction event",
+      "map": "Live game",
+      "feature": "Destruction",
+      "kind": "interface",
+      "alt": "Destruction event captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_gallery",
+      "src": "/media/presentation-r1/ui_gallery.webp",
+      "title": "Tank Gallery live dossier",
+      "map": "Live game",
+      "feature": "Tank design",
+      "kind": "interface",
+      "alt": "Tank Gallery live dossier captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_garage",
+      "src": "/media/presentation-r1/ui_garage.webp",
+      "title": "Garage command deck",
+      "map": "Live game",
+      "feature": "Interface",
+      "kind": "interface",
+      "alt": "Garage command deck captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_killcam_xray",
+      "src": "/media/presentation-r1/ui_killcam_xray.webp",
+      "title": "Resolved-shot X-ray",
+      "map": "Live game",
+      "feature": "Killcam",
+      "kind": "interface",
+      "alt": "Resolved-shot X-ray captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_mobile",
+      "src": "/media/presentation-r1/ui_mobile.webp",
+      "title": "Responsive mobile command deck",
+      "map": "Live game",
+      "feature": "Interface",
+      "kind": "interface",
+      "alt": "Responsive mobile command deck captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_player_view",
+      "src": "/media/presentation-r1/ui_player_view.webp",
+      "title": "Production battle HUD",
+      "map": "Live game",
+      "feature": "HUD",
+      "kind": "interface",
+      "alt": "Production battle HUD captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_sniper_view",
+      "src": "/media/presentation-r1/ui_sniper_view.webp",
+      "title": "Precision sight",
+      "map": "Live game",
+      "feature": "Gunnery",
+      "kind": "interface",
+      "alt": "Precision sight captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_studio",
+      "src": "/media/presentation-r1/ui_studio.webp",
+      "title": "Scene Studio workspace",
+      "map": "Live game",
+      "feature": "Interface",
+      "kind": "interface",
+      "alt": "Scene Studio workspace captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "ui_tank_closeup_modern",
+      "src": "/media/presentation-r1/ui_tank_closeup_modern.webp",
+      "title": "First-party vehicle rig",
+      "map": "Live game",
+      "feature": "Tank design",
+      "kind": "interface",
+      "alt": "First-party vehicle rig captured from the live Claude of Tanks game",
+      "actors": [],
+      "effects": []
+    },
+    {
+      "id": "01_desert_wadi_gauntlet",
+      "sequence": 1,
+      "src": "/media/presentation-r1/01_desert_wadi_gauntlet.webp",
+      "title": "Desert Wadi Gauntlet",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Desert Wadi Gauntlet on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "sparks",
+        "fire"
+      ],
+      "seed": 9201
+    },
+    {
+      "id": "02_desert_rooftop_dive",
+      "sequence": 2,
+      "src": "/media/presentation-r1/02_desert_rooftop_dive.webp",
+      "title": "Desert Rooftop Dive",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Desert Rooftop Dive on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9202
+    },
+    {
+      "id": "03_desert_muzzle_worm",
+      "sequence": 3,
+      "src": "/media/presentation-r1/03_desert_muzzle_worm.webp",
+      "title": "Desert Muzzle Worm",
+      "map": "Sirocco Wadi",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Desert Muzzle Worm on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv103"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9203
+    },
+    {
+      "id": "04_desert_last_stand",
+      "sequence": 4,
+      "src": "/media/presentation-r1/04_desert_last_stand.webp",
+      "title": "Desert Last Stand",
+      "map": "Sirocco Wadi",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Desert Last Stand on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "udes03",
+        "pl01_105",
+        "challenger_3"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire",
+        "dust"
+      ],
+      "seed": 9204
+    },
+    {
+      "id": "05_winter_ice_breaker",
+      "sequence": 5,
+      "src": "/media/presentation-r1/05_winter_ice_breaker.webp",
+      "title": "Winter Ice Breaker",
+      "map": "Frosthollow",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Winter Ice Breaker on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "spz_puma",
+        "leclerc_xlr",
+        "t90a_burlak"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire"
+      ],
+      "seed": 9205
+    },
+    {
+      "id": "06_winter_birch_ambush",
+      "sequence": 6,
+      "src": "/media/presentation-r1/06_winter_birch_ambush.webp",
+      "title": "Winter Birch Ambush",
+      "map": "Frosthollow",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Winter Birch Ambush on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m2a2_bradley",
+        "kf51b"
+      ],
+      "effects": [
+        "engine_smoke",
+        "dust",
+        "fire"
+      ],
+      "seed": 9206
+    },
+    {
+      "id": "07_winter_road_charge",
+      "sequence": 7,
+      "src": "/media/presentation-r1/07_winter_road_charge.webp",
+      "title": "Winter Road Charge",
+      "map": "Frosthollow",
+      "feature": "Track physics",
+      "kind": "action",
+      "alt": "Winter Road Charge on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "t90a_vladimir"
+      ],
+      "effects": [
+        "explosion",
+        "dust",
+        "fire",
+        "detrack"
+      ],
+      "seed": 9207
+    },
+    {
+      "id": "08_winter_village_hell",
+      "sequence": 8,
+      "src": "/media/presentation-r1/08_winter_village_hell.webp",
+      "title": "Winter Village Hell",
+      "map": "Frosthollow",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Winter Village Hell on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "merkava4b",
+        "spz_puma",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9208
+    },
+    {
+      "id": "09_urban_alley_flash",
+      "sequence": 9,
+      "src": "/media/presentation-r1/09_urban_alley_flash.webp",
+      "title": "Urban Alley Flash",
+      "map": "Steinburg",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Urban Alley Flash on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a"
+      ],
+      "effects": [
+        "sparks",
+        "fire",
+        "dust"
+      ],
+      "seed": 9209
+    },
+    {
+      "id": "10_urban_overpass_dive",
+      "sequence": 10,
+      "src": "/media/presentation-r1/10_urban_overpass_dive.webp",
+      "title": "Urban Overpass Dive",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Urban Overpass Dive on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9210
+    },
+    {
+      "id": "11_urban_ruin_stalk",
+      "sequence": 11,
+      "src": "/media/presentation-r1/11_urban_ruin_stalk.webp",
+      "title": "Urban Ruin Stalk",
+      "map": "Steinburg",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Urban Ruin Stalk on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv103",
+        "fv510_milan"
+      ],
+      "effects": [
+        "engine_smoke",
+        "dust",
+        "fire"
+      ],
+      "seed": 9211
+    },
+    {
+      "id": "12_urban_crossfire_x",
+      "sequence": 12,
+      "src": "/media/presentation-r1/12_urban_crossfire_x.webp",
+      "title": "Urban Crossfire X",
+      "map": "Steinburg",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Urban Crossfire X on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "udes03",
+        "pl01_105",
+        "challenger_3",
+        "strv103a"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9212
+    },
+    {
+      "id": "13_urban_hero_leo2a6",
+      "sequence": 13,
+      "src": "/media/presentation-r1/13_urban_hero_leo2a6.webp",
+      "title": "Urban Hero Leo2a6",
+      "map": "Steinburg",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Urban Hero Leo2a6 on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "spz_puma"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9213
+    },
+    {
+      "id": "14_verdant_hedgerow_breakout",
+      "sequence": 14,
+      "src": "/media/presentation-r1/14_verdant_hedgerow_breakout.webp",
+      "title": "Verdant Hedgerow Breakout",
+      "map": "Verdant Fields",
+      "feature": "Track physics",
+      "kind": "action",
+      "alt": "Verdant Hedgerow Breakout on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment",
+        "detrack"
+      ],
+      "seed": 9214
+    },
+    {
+      "id": "15_verdant_column_massacre",
+      "sequence": 15,
+      "src": "/media/presentation-r1/15_verdant_column_massacre.webp",
+      "title": "Verdant Column Massacre",
+      "map": "Verdant Fields",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Verdant Column Massacre on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "t90a_vladimir",
+        "udes03"
+      ],
+      "effects": [
+        "tank_kill",
+        "detrack",
+        "dust",
+        "impact",
+        "fire"
+      ],
+      "seed": 9215
+    },
+    {
+      "id": "16_verdant_meadow_duel",
+      "sequence": 16,
+      "src": "/media/presentation-r1/16_verdant_meadow_duel.webp",
+      "title": "Verdant Meadow Duel",
+      "map": "Verdant Fields",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Verdant Meadow Duel on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "merkava4b"
+      ],
+      "effects": [
+        "fire",
+        "dust",
+        "sparks"
+      ],
+      "seed": 9216
+    },
+    {
+      "id": "17_verdant_farm_siege",
+      "sequence": 17,
+      "src": "/media/presentation-r1/17_verdant_farm_siege.webp",
+      "title": "Verdant Farm Siege",
+      "map": "Verdant Fields",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Verdant Farm Siege on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "explosion",
+        "impact",
+        "fire"
+      ],
+      "seed": 9217
+    },
+    {
+      "id": "18_coastal_beach_storm",
+      "sequence": 18,
+      "src": "/media/presentation-r1/18_coastal_beach_storm.webp",
+      "title": "Coastal Beach Storm",
+      "map": "Saltmere Bay",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Coastal Beach Storm on Saltmere Bay, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire"
+      ],
+      "seed": 9218
+    },
+    {
+      "id": "19_coastal_harbor_kill",
+      "sequence": 19,
+      "src": "/media/presentation-r1/19_coastal_harbor_kill.webp",
+      "title": "Coastal Harbor Kill",
+      "map": "Saltmere Bay",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Coastal Harbor Kill on Saltmere Bay, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv103",
+        "fv510_milan"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9219
+    },
+    {
+      "id": "20_coastal_dune_ambush",
+      "sequence": 20,
+      "src": "/media/presentation-r1/20_coastal_dune_ambush.webp",
+      "title": "Coastal Dune Ambush",
+      "map": "Saltmere Bay",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Coastal Dune Ambush on Saltmere Bay, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "udes03",
+        "pl01_105"
+      ],
+      "effects": [
+        "engine_smoke",
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9220
+    },
+    {
+      "id": "21_coastal_seafront_duel",
+      "sequence": 21,
+      "src": "/media/presentation-r1/21_coastal_seafront_duel.webp",
+      "title": "Coastal Seafront Duel",
+      "map": "Saltmere Bay",
+      "feature": "Track physics",
+      "kind": "action",
+      "alt": "Coastal Seafront Duel on Saltmere Bay, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "spz_puma",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "sparks",
+        "fire",
+        "detrack"
+      ],
+      "seed": 9221
+    },
+    {
+      "id": "22_autumn_ford_ambush",
+      "sequence": 22,
+      "src": "/media/presentation-r1/22_autumn_ford_ambush.webp",
+      "title": "Autumn Ford Ambush",
+      "map": "Amberford",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Autumn Ford Ambush on Amberford, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m2a2_bradley",
+        "kf51b"
+      ],
+      "effects": [
+        "sparks",
+        "explosion",
+        "dust",
+        "fire"
+      ],
+      "seed": 9222
+    },
+    {
+      "id": "23_autumn_gold_inferno",
+      "sequence": 23,
+      "src": "/media/presentation-r1/23_autumn_gold_inferno.webp",
+      "title": "Autumn Gold Inferno",
+      "map": "Amberford",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Autumn Gold Inferno on Amberford, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "t90a_vladimir"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9223
+    },
+    {
+      "id": "24_autumn_orchard_stand",
+      "sequence": 24,
+      "src": "/media/presentation-r1/24_autumn_orchard_stand.webp",
+      "title": "Autumn Orchard Stand",
+      "map": "Amberford",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Autumn Orchard Stand on Amberford, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3"
+      ],
+      "effects": [
+        "explosion",
+        "dust",
+        "firing_moment",
+        "sparks"
+      ],
+      "seed": 9224
+    },
+    {
+      "id": "25_steppe_horizon_charge",
+      "sequence": 25,
+      "src": "/media/presentation-r1/25_steppe_horizon_charge.webp",
+      "title": "Steppe Horizon Charge",
+      "map": "Tarkhan Steppe",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Steppe Horizon Charge on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "dust",
+        "fire"
+      ],
+      "seed": 9225
+    },
+    {
+      "id": "26_steppe_khutor_brawl",
+      "sequence": 26,
+      "src": "/media/presentation-r1/26_steppe_khutor_brawl.webp",
+      "title": "Steppe Khutor Brawl",
+      "map": "Tarkhan Steppe",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Steppe Khutor Brawl on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70",
+        "type99a"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire"
+      ],
+      "seed": 9226
+    },
+    {
+      "id": "27_steppe_windbreak_snipe",
+      "sequence": 27,
+      "src": "/media/presentation-r1/27_steppe_windbreak_snipe.webp",
+      "title": "Steppe Windbreak Snipe",
+      "map": "Tarkhan Steppe",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Steppe Windbreak Snipe on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv103",
+        "fv510_milan"
+      ],
+      "effects": [
+        "tank_kill",
+        "fire"
+      ],
+      "seed": 9227
+    },
+    {
+      "id": "28_railyard_container_gauntlet",
+      "sequence": 28,
+      "src": "/media/presentation-r1/28_railyard_container_gauntlet.webp",
+      "title": "Railyard Container Gauntlet",
+      "map": "Cinder Junction",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Railyard Container Gauntlet on Cinder Junction, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "udes03",
+        "pl01_105"
+      ],
+      "effects": [
+        "tank_kill",
+        "sparks",
+        "dust",
+        "fire",
+        "detrack"
+      ],
+      "seed": 9228
+    },
+    {
+      "id": "29_railyard_crane_dive",
+      "sequence": 29,
+      "src": "/media/presentation-r1/29_railyard_crane_dive.webp",
+      "title": "Railyard Crane Dive",
+      "map": "Cinder Junction",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Railyard Crane Dive on Cinder Junction, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "spz_puma",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9229
+    },
+    {
+      "id": "30_railyard_sodium_dusk",
+      "sequence": 30,
+      "src": "/media/presentation-r1/30_railyard_sodium_dusk.webp",
+      "title": "Railyard Sodium Dusk",
+      "map": "Cinder Junction",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Railyard Sodium Dusk on Cinder Junction, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m2a2_bradley",
+        "kf51b"
+      ],
+      "effects": [
+        "engine_smoke",
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9230
+    },
+    {
+      "id": "31_desert_duel_leclerc_kill",
+      "sequence": 31,
+      "src": "/media/presentation-r1/31_desert_duel_leclerc_kill.webp",
+      "title": "Desert Duel Leclerc Kill",
+      "map": "Sirocco Wadi",
+      "feature": "Destruction",
+      "kind": "action",
+      "alt": "Desert Duel Leclerc Kill on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "t90a_vladimir"
+      ],
+      "effects": [
+        "tank_kill",
+        "dust",
+        "fire"
+      ],
+      "seed": 9231
+    },
+    {
+      "id": "32_desert_ram_abramsx_t90m",
+      "sequence": 32,
+      "src": "/media/presentation-r1/32_desert_ram_abramsx_t90m.webp",
+      "title": "Desert Ram Abramsx T90m",
+      "map": "Sirocco Wadi",
+      "feature": "Track physics",
+      "kind": "action",
+      "alt": "Desert Ram Abramsx T90m on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "merkava4b"
+      ],
+      "effects": [
+        "detrack",
+        "dust",
+        "impact",
+        "sparks"
+      ],
+      "seed": 9232
+    },
+    {
+      "id": "33_desert_overwatch_line",
+      "sequence": 33,
+      "src": "/media/presentation-r1/33_desert_overwatch_line.webp",
+      "title": "Desert Overwatch Line",
+      "map": "Sirocco Wadi",
+      "feature": "Gunnery",
+      "kind": "action",
+      "alt": "Desert Overwatch Line on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "strv103a",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "fire"
+      ],
+      "seed": 9233
+    },
+    {
+      "id": "34_desert_village_brawl",
+      "sequence": 34,
+      "src": "/media/presentation-r1/34_desert_village_brawl.webp",
+      "title": "Desert Village Brawl",
+      "map": "Sirocco Wadi",
+      "feature": "Armor impacts",
+      "kind": "action",
+      "alt": "Desert Village Brawl on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "mbt70",
+        "type99a"
+      ],
+      "effects": [
+        "explosion",
+        "sparks",
+        "fire"
+      ],
+      "seed": 9234
+    },
+    {
+      "id": "35_verdant_contact",
+      "sequence": 35,
+      "src": "/media/presentation-r1/35_verdant_contact.webp",
+      "title": "Verdant Fields Contact",
+      "map": "Verdant Fields",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Verdant Fields Contact on Verdant Fields, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m1a2_sepv3",
+        "strv103a"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9300
+    },
+    {
+      "id": "36_desert_contact",
+      "sequence": 36,
+      "src": "/media/presentation-r1/36_desert_contact.webp",
+      "title": "Sirocco Wadi Contact",
+      "map": "Sirocco Wadi",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Sirocco Wadi Contact on Sirocco Wadi, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leclerc_xlr",
+        "udes03"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9301
+    },
+    {
+      "id": "37_winter_contact",
+      "sequence": 37,
+      "src": "/media/presentation-r1/37_winter_contact.webp",
+      "title": "Frosthollow Contact",
+      "map": "Frosthollow",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Frosthollow Contact on Frosthollow, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv122",
+        "mbt70"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "explosion"
+      ],
+      "seed": 9302
+    },
+    {
+      "id": "38_urban_contact",
+      "sequence": 38,
+      "src": "/media/presentation-r1/38_urban_contact.webp",
+      "title": "Steinburg Contact",
+      "map": "Steinburg",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Steinburg Contact on Steinburg, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "challenger_3",
+        "spz_puma"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9303
+    },
+    {
+      "id": "39_coastal_contact",
+      "sequence": 39,
+      "src": "/media/presentation-r1/39_coastal_contact.webp",
+      "title": "Saltmere Bay Contact",
+      "map": "Saltmere Bay",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Saltmere Bay Contact on Saltmere Bay, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "merkava4b",
+        "fv510_milan"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9304
+    },
+    {
+      "id": "40_autumn_contact",
+      "sequence": 40,
+      "src": "/media/presentation-r1/40_autumn_contact.webp",
+      "title": "Amberford Contact",
+      "map": "Amberford",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Amberford Contact on Amberford, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "leo2a7v",
+        "m2a2_bradley"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "explosion"
+      ],
+      "seed": 9305
+    },
+    {
+      "id": "41_steppe_contact",
+      "sequence": 41,
+      "src": "/media/presentation-r1/41_steppe_contact.webp",
+      "title": "Tarkhan Steppe Contact",
+      "map": "Tarkhan Steppe",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Tarkhan Steppe Contact on Tarkhan Steppe, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_vladimir",
+        "pl01_105"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9306
+    },
+    {
+      "id": "42_railyard_contact",
+      "sequence": 42,
+      "src": "/media/presentation-r1/42_railyard_contact.webp",
+      "title": "Cinder Junction Contact",
+      "map": "Cinder Junction",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Cinder Junction Contact on Cinder Junction, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "kf51b",
+        "type99a"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9307
+    },
+    {
+      "id": "43_frontier_contact",
+      "sequence": 43,
+      "src": "/media/presentation-r1/43_frontier_contact.webp",
+      "title": "Frontier Basin Contact",
+      "map": "Frontier Basin",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Frontier Basin Contact on Frontier Basin, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "m2a2_bradley",
+        "leclerc_xlr"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "explosion"
+      ],
+      "seed": 9308
+    },
+    {
+      "id": "44_fjord_contact",
+      "sequence": 44,
+      "src": "/media/presentation-r1/44_fjord_contact.webp",
+      "title": "Nordhavn Fjord Contact",
+      "map": "Nordhavn Fjord",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Nordhavn Fjord Contact on Nordhavn Fjord, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "strv103",
+        "m1a2_sepv3"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9309
+    },
+    {
+      "id": "45_delta_contact",
+      "sequence": 45,
+      "src": "/media/presentation-r1/45_delta_contact.webp",
+      "title": "Jade River Delta Contact",
+      "map": "Jade River Delta",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Jade River Delta Contact on Jade River Delta, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "type99a",
+        "kf51b"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9310
+    },
+    {
+      "id": "46_badlands_contact",
+      "sequence": 46,
+      "src": "/media/presentation-r1/46_badlands_contact.webp",
+      "title": "Redrock Divide Contact",
+      "map": "Redrock Divide",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Redrock Divide Contact on Redrock Divide, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "mbt70",
+        "challenger_3"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "explosion"
+      ],
+      "seed": 9311
+    },
+    {
+      "id": "47_monsoon_contact",
+      "sequence": 47,
+      "src": "/media/presentation-r1/47_monsoon_contact.webp",
+      "title": "Monsoon Ridge Contact",
+      "map": "Monsoon Ridge",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Monsoon Ridge Contact on Monsoon Ridge, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "pl01_105",
+        "t90a_vladimir"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9312
+    },
+    {
+      "id": "48_alpine_contact",
+      "sequence": 48,
+      "src": "/media/presentation-r1/48_alpine_contact.webp",
+      "title": "Glacier Pass Contact",
+      "map": "Glacier Pass",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Glacier Pass Contact on Glacier Pass, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "udes03",
+        "t90a_burlak"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "sparks"
+      ],
+      "seed": 9313
+    },
+    {
+      "id": "49_caldera_contact",
+      "sequence": 49,
+      "src": "/media/presentation-r1/49_caldera_contact.webp",
+      "title": "Obsidian Caldera Contact",
+      "map": "Obsidian Caldera",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Obsidian Caldera Contact on Obsidian Caldera, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "t90a_burlak",
+        "merkava4b"
+      ],
+      "effects": [
+        "dust",
+        "fire",
+        "explosion"
+      ],
+      "seed": 9314
+    },
+    {
+      "id": "50_foundry_contact",
+      "sequence": 50,
+      "src": "/media/presentation-r1/50_foundry_contact.webp",
+      "title": "Ironworks Contact",
+      "map": "Ironworks",
+      "feature": "World system",
+      "kind": "battlefield",
+      "alt": "Ironworks Contact on Ironworks, captured from the live Claude of Tanks renderer",
+      "actors": [
+        "spz_puma",
+        "strv103"
+      ],
+      "effects": [
+        "dust",
+        "firing_moment"
+      ],
+      "seed": 9315
+    }
+  ]
+}

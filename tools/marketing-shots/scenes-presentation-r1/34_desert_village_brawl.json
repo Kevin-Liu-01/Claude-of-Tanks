@@ -1,0 +1,109 @@
+{
+  "map": "desert",
+  "seed": 9234,
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "push1",
+      "pos": [
+        10.5,
+        50
+      ],
+      "facingDeg": 60,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 92340,
+      "turretDeg": 6.4
+    },
+    {
+      "id": "mbt70",
+      "name": "push2",
+      "pos": [
+        22.5,
+        94
+      ],
+      "facingDeg": 165,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 92341,
+      "turretDeg": -18.7
+    },
+    {
+      "id": "type99a",
+      "name": "defender",
+      "pos": [
+        42.5,
+        64
+      ],
+      "facingDeg": 285,
+      "gunDeg": 1,
+      "camo": "splinter",
+      "turretDeg": 41.3,
+      "camoSeed": 92342
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        30,
+        78
+      ],
+      "tMs": 145,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "push1",
+      "tMs": 550,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "defender",
+      "tMs": 612,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "push1",
+      "tMs": 622,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      8.5,
+      2.2,
+      45.2
+    ],
+    "lookAt": [
+      34.5,
+      2,
+      68
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": 0
+  },
+  "fxTime": 645,
+  "timeScale": 0,
+  "meta": {
+    "title": "Desert Village Brawl",
+    "map": "Sirocco Wadi",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 34
+  }
+}

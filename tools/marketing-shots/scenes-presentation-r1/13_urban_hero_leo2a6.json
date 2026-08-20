@@ -1,0 +1,79 @@
+{
+  "map": "urban",
+  "seed": 9213,
+  "actors": [
+    {
+      "id": "spz_puma",
+      "name": "hero",
+      "pos": [
+        -38.75,
+        62.2
+      ],
+      "facingDeg": 118,
+      "turretDeg": 0,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 92130
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -44,
+        56
+      ],
+      "tMs": 60,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 118
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -36,
+        63
+      ],
+      "tMs": 220,
+      "params": {
+        "count": 6,
+        "intensity": 0.6,
+        "dirDeg": 60
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 320,
+      "params": {
+        "ageS": 0.05
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -26.75,
+      1.25,
+      58.4
+    ],
+    "lookAt": [
+      -40.75,
+      2.6,
+      63.7
+    ],
+    "groundRel": true,
+    "fov": 51,
+    "rollDeg": 0
+  },
+  "fxTime": 320,
+  "timeScale": 0,
+  "meta": {
+    "title": "Urban Hero Leo2a6",
+    "map": "Steinburg",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 13
+  }
+}

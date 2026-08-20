@@ -1,0 +1,92 @@
+{
+  "map": "frontier",
+  "seed": 9308,
+  "actors": [
+    {
+      "id": "m2a2_bradley",
+      "name": "hero",
+      "pos": [
+        28,
+        80
+      ],
+      "facingDeg": 164,
+      "turretDeg": 9,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 93008
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "wing",
+      "pos": [
+        42,
+        98
+      ],
+      "facingDeg": 284,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 93108
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        31,
+        78
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        46,
+        90
+      ],
+      "tMs": 230,
+      "params": {
+        "size": "medium"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      2,
+      4.3,
+      55
+    ],
+    "lookAt": [
+      33,
+      2.1,
+      85
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Frontier Basin Contact",
+    "map": "Frontier Basin",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 43
+  }
+}

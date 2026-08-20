@@ -1,0 +1,88 @@
+{
+  "map": "urban",
+  "seed": 9210,
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "victim",
+      "pos": [
+        33.5,
+        57.8
+      ],
+      "facingDeg": 40,
+      "turretDeg": -20,
+      "camo": "desert",
+      "camoSeed": 92100
+    },
+    {
+      "id": "mbt70",
+      "name": "cutter",
+      "pos": [
+        19.5,
+        41.8
+      ],
+      "facingDeg": 32,
+      "turretDeg": 55,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 92101
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 122,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        24,
+        47
+      ],
+      "tMs": 280,
+      "params": {
+        "count": 18,
+        "intensity": 1.5,
+        "dirDeg": 32
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "cutter",
+      "tMs": 590,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      30.5,
+      48,
+      53
+    ],
+    "lookAt": [
+      33,
+      0,
+      57.3
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 20
+  },
+  "fxTime": 615,
+  "timeScale": 0,
+  "meta": {
+    "title": "Urban Overpass Dive",
+    "map": "Steinburg",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 10
+  }
+}

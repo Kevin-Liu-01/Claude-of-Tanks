@@ -1,0 +1,92 @@
+{
+  "map": "autumn",
+  "seed": 9305,
+  "actors": [
+    {
+      "id": "leo2a7v",
+      "name": "hero",
+      "pos": [
+        4,
+        52
+      ],
+      "facingDeg": 113,
+      "turretDeg": -18,
+      "gunDeg": 1,
+      "camo": "autumn",
+      "camoSeed": 93005
+    },
+    {
+      "id": "m2a2_bradley",
+      "name": "wing",
+      "pos": [
+        18,
+        70
+      ],
+      "facingDeg": 251,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "camoSeed": 93105
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        7,
+        50
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "explosion",
+      "at": [
+        22,
+        62
+      ],
+      "tMs": 230,
+      "params": {
+        "size": "medium"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -18,
+      4.2,
+      33
+    ],
+    "lookAt": [
+      9,
+      2.1,
+      57
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": 1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Amberford Contact",
+    "map": "Amberford",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 40
+  }
+}

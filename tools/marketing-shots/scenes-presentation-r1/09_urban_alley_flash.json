@@ -1,0 +1,107 @@
+{
+  "map": "urban",
+  "seed": 9209,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "south",
+      "pos": [
+        114.5,
+        52
+      ],
+      "facingDeg": 4,
+      "gunDeg": 0,
+      "camo": "summer",
+      "camoSeed": 92090,
+      "turretDeg": -1.4
+    },
+    {
+      "id": "strv103a",
+      "name": "north",
+      "pos": [
+        115.5,
+        74
+      ],
+      "facingDeg": 186,
+      "gunDeg": 0,
+      "camo": "winter",
+      "turretDeg": -3.4,
+      "camoSeed": 92091
+    }
+  ],
+  "effects": [
+    {
+      "type": "sparks",
+      "actor": "south",
+      "tMs": 520,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "north",
+      "tMs": 545,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "south",
+      "tMs": 612,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "north",
+      "tMs": 622,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        112.5,
+        63
+      ],
+      "tMs": 420,
+      "params": {
+        "count": 10,
+        "intensity": 0.9,
+        "dirDeg": 95
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      130.9,
+      2,
+      63
+    ],
+    "lookAt": [
+      106.5,
+      2.2,
+      63
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -1.5
+  },
+  "fxTime": 645,
+  "timeScale": 0,
+  "meta": {
+    "title": "Urban Alley Flash",
+    "map": "Steinburg",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 9
+  }
+}

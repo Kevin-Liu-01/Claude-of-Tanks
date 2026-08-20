@@ -1,0 +1,87 @@
+{
+  "map": "winter",
+  "seed": 9206,
+  "actors": [
+    {
+      "id": "m2a2_bradley",
+      "name": "pyre",
+      "pos": [
+        -27.25,
+        -34.9
+      ],
+      "facingDeg": 318,
+      "turretDeg": 40,
+      "state": "turret-popped",
+      "stateAgeS": 220,
+      "burning": true,
+      "camo": "splinter",
+      "camoSeed": 92060
+    },
+    {
+      "id": "kf51b",
+      "name": "advancer",
+      "pos": [
+        -22.25,
+        -10.9
+      ],
+      "facingDeg": 192,
+      "turretDeg": 4,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "camoSeed": 92061
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        -22,
+        -6
+      ],
+      "tMs": 2550,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 12
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "advancer",
+      "tMs": 2872,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -33.35,
+      1.8,
+      -43.9
+    ],
+    "lookAt": [
+      -23.75,
+      2.2,
+      -22.9
+    ],
+    "groundRel": true,
+    "fov": 41,
+    "rollDeg": -5.5
+  },
+  "fxTime": 2900,
+  "timeScale": 0,
+  "meta": {
+    "title": "Winter Birch Ambush",
+    "map": "Frosthollow",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 6
+  }
+}

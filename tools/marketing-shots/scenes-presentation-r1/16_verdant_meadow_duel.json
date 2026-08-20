@@ -1,0 +1,98 @@
+{
+  "map": "verdant",
+  "seed": 9216,
+  "actors": [
+    {
+      "id": "m1a2_sepv3",
+      "name": "near",
+      "pos": [
+        -21.25,
+        -98.9
+      ],
+      "facingDeg": 272,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "camoSeed": 92160,
+      "turretDeg": 3.2
+    },
+    {
+      "id": "merkava4b",
+      "name": "far",
+      "pos": [
+        -87.25,
+        -92.9
+      ],
+      "facingDeg": 94,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 92161,
+      "turretDeg": 1.2
+    }
+  ],
+  "effects": [
+    {
+      "type": "fire",
+      "actor": "near",
+      "tMs": 575,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "far",
+      "tMs": 552,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -24,
+        -101
+      ],
+      "tMs": 380,
+      "params": {
+        "count": 8,
+        "intensity": 0.7,
+        "dirDeg": 270
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "near",
+      "tMs": 525,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.62
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -9.25,
+      2.8,
+      -101.7
+    ],
+    "lookAt": [
+      -53.25,
+      2.2,
+      -95.9
+    ],
+    "groundRel": true,
+    "fov": 27,
+    "rollDeg": 0
+  },
+  "fxTime": 600,
+  "timeScale": 0,
+  "meta": {
+    "title": "Verdant Meadow Duel",
+    "map": "Verdant Fields",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 16
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "map": "railyard",
+  "seed": 9229,
+  "actors": [
+    {
+      "id": "spz_puma",
+      "name": "victim",
+      "pos": [
+        68.5,
+        30
+      ],
+      "facingDeg": 350,
+      "turretDeg": -25,
+      "camo": "urbanblock",
+      "camoSeed": 92290
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "crosser",
+      "pos": [
+        54.5,
+        18
+      ],
+      "facingDeg": 58,
+      "turretDeg": 30,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 92291
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 75,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        55,
+        20
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 16,
+        "intensity": 1.3,
+        "dirDeg": 58
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "crosser",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      61.1,
+      32,
+      17.8
+    ],
+    "lookAt": [
+      66,
+      0,
+      28.5
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 13.5
+  },
+  "fxTime": 610,
+  "timeScale": 0,
+  "meta": {
+    "title": "Railyard Crane Dive",
+    "map": "Cinder Junction",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 29
+  }
+}

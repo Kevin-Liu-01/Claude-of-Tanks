@@ -1,0 +1,90 @@
+{
+  "map": "alpine",
+  "seed": 9313,
+  "actors": [
+    {
+      "id": "udes03",
+      "name": "hero",
+      "pos": [
+        32,
+        54
+      ],
+      "facingDeg": 249,
+      "turretDeg": 9,
+      "gunDeg": 1,
+      "camo": "winter",
+      "camoSeed": 93013
+    },
+    {
+      "id": "t90a_burlak",
+      "name": "wing",
+      "pos": [
+        46,
+        72
+      ],
+      "facingDeg": 339,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "camoSeed": 93113
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        35,
+        52
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "wing",
+      "tMs": 470,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      4,
+      4.8,
+      31
+    ],
+    "lookAt": [
+      37,
+      2.1,
+      59
+    ],
+    "groundRel": true,
+    "fov": 42,
+    "rollDeg": 0
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Glacier Pass Contact",
+    "map": "Glacier Pass",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 48
+  }
+}

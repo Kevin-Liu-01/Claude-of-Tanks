@@ -1,0 +1,96 @@
+{
+  "map": "winter",
+  "seed": 9205,
+  "actors": [
+    {
+      "id": "spz_puma",
+      "name": "shooter",
+      "pos": [
+        173.5,
+        -110.2
+      ],
+      "facingDeg": 122,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 92050,
+      "turretDeg": -1
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "kill1",
+      "pos": [
+        203.5,
+        -128.2
+      ],
+      "facingDeg": 300,
+      "turretDeg": 20,
+      "camo": "flecktarn",
+      "camoSeed": 92051
+    },
+    {
+      "id": "t90a_burlak",
+      "name": "kill2",
+      "pos": [
+        185.5,
+        -144.2
+      ],
+      "facingDeg": 350,
+      "turretDeg": -35,
+      "camo": "summer",
+      "camoSeed": 92052
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "kill1",
+      "tMs": 60,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "tank_kill",
+      "actor": "kill2",
+      "tMs": 230,
+      "params": {
+        "cause": "fuel",
+        "pop": false
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "shooter",
+      "tMs": 610,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      162.1,
+      1.1,
+      -135.4
+    ],
+    "lookAt": [
+      190.5,
+      2.4,
+      -126.2
+    ],
+    "groundRel": true,
+    "fov": 28,
+    "rollDeg": 1.5
+  },
+  "fxTime": 635,
+  "timeScale": 0,
+  "meta": {
+    "title": "Winter Ice Breaker",
+    "map": "Frosthollow",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 5
+  }
+}

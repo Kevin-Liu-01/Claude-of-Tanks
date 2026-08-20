@@ -1,0 +1,119 @@
+{
+  "map": "coastal",
+  "seed": 9218,
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "lead",
+      "pos": [
+        169.25,
+        -51.8
+      ],
+      "facingDeg": 356,
+      "turretDeg": -6,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 92180
+    },
+    {
+      "id": "mbt70",
+      "name": "w1",
+      "pos": [
+        162.25,
+        -67.8
+      ],
+      "facingDeg": 4,
+      "turretDeg": 10,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 92181
+    },
+    {
+      "id": "type99a",
+      "name": "w2",
+      "pos": [
+        177.25,
+        -71.8
+      ],
+      "facingDeg": 350,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "splinter",
+      "camoSeed": 92182
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        167,
+        -60
+      ],
+      "tMs": 240,
+      "params": {
+        "count": 18,
+        "intensity": 1.4,
+        "dirDeg": 176
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        162,
+        -76
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 184
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        175,
+        -80
+      ],
+      "tMs": 280,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 170
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 495,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      165.65,
+      1.6,
+      -37.8
+    ],
+    "lookAt": [
+      169.75,
+      2.5,
+      -55.8
+    ],
+    "groundRel": true,
+    "fov": 47,
+    "rollDeg": 1.5
+  },
+  "fxTime": 520,
+  "timeScale": 0,
+  "meta": {
+    "title": "Coastal Beach Storm",
+    "map": "Saltmere Bay",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 18
+  }
+}

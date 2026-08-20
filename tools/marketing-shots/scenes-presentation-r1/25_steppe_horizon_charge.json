@@ -1,0 +1,119 @@
+{
+  "map": "steppe",
+  "seed": 9225,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "lead",
+      "pos": [
+        -102.5,
+        -62.2
+      ],
+      "facingDeg": 184,
+      "turretDeg": 5,
+      "gunDeg": -1,
+      "camo": "summer",
+      "camoSeed": 92250
+    },
+    {
+      "id": "strv103a",
+      "name": "w1",
+      "pos": [
+        -88.5,
+        -50.2
+      ],
+      "facingDeg": 190,
+      "turretDeg": -10,
+      "gunDeg": 1,
+      "camo": "winter",
+      "camoSeed": 92251
+    },
+    {
+      "id": "m2a2_bradley",
+      "name": "w2",
+      "pos": [
+        -118.5,
+        -48.2
+      ],
+      "facingDeg": 178,
+      "turretDeg": 12,
+      "gunDeg": 1,
+      "camo": "urbanblock",
+      "camoSeed": 92252
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -100,
+        -52
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 20,
+        "intensity": 1.6,
+        "dirDeg": 4
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -86,
+        -40
+      ],
+      "tMs": 320,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 10
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        -116,
+        -38
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 358
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "lead",
+      "tMs": 500,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -103.5,
+      2,
+      -85
+    ],
+    "lookAt": [
+      -103,
+      2.7,
+      -60.2
+    ],
+    "groundRel": true,
+    "fov": 40,
+    "rollDeg": 3
+  },
+  "fxTime": 525,
+  "timeScale": 0,
+  "meta": {
+    "title": "Steppe Horizon Charge",
+    "map": "Tarkhan Steppe",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 25
+  }
+}

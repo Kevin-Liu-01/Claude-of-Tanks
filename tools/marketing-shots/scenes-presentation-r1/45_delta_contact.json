@@ -1,0 +1,90 @@
+{
+  "map": "delta",
+  "seed": 9310,
+  "actors": [
+    {
+      "id": "type99a",
+      "name": "hero",
+      "pos": [
+        -18,
+        54
+      ],
+      "facingDeg": 198,
+      "turretDeg": -18,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 93010
+    },
+    {
+      "id": "kf51b",
+      "name": "wing",
+      "pos": [
+        -4,
+        72
+      ],
+      "facingDeg": 306,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 93110
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -15,
+        52
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "wing",
+      "tMs": 470,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -46,
+      4.1,
+      34
+    ],
+    "lookAt": [
+      -13,
+      2.1,
+      59
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": 0
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Jade River Delta Contact",
+    "map": "Jade River Delta",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 45
+  }
+}

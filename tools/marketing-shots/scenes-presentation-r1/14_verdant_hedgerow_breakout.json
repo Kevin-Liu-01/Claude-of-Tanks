@@ -1,0 +1,87 @@
+{
+  "map": "verdant",
+  "seed": 9214,
+  "actors": [
+    {
+      "id": "m2a2_bradley",
+      "name": "breaker",
+      "pos": [
+        24.5,
+        -96
+      ],
+      "facingDeg": 262,
+      "turretDeg": 4,
+      "gunDeg": 0.5,
+      "camo": "splinter",
+      "camoSeed": 92140
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        26,
+        -95
+      ],
+      "tMs": 220,
+      "params": {
+        "count": 24,
+        "intensity": 1.8,
+        "dirDeg": 82
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        18,
+        -98
+      ],
+      "tMs": 360,
+      "params": {
+        "count": 12,
+        "intensity": 1.1,
+        "dirDeg": 95
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "breaker",
+      "tMs": 430,
+      "params": {
+        "ageS": 0.05
+      }
+    },
+    {
+      "type": "detrack",
+      "actor": "breaker",
+      "tMs": 250,
+      "params": {
+        "side": "R"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      14.1,
+      1.5,
+      -103.2
+    ],
+    "lookAt": [
+      26.5,
+      2.4,
+      -95
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 4.5
+  },
+  "fxTime": 430,
+  "timeScale": 0,
+  "meta": {
+    "title": "Verdant Hedgerow Breakout",
+    "map": "Verdant Fields",
+    "feature": "Track physics",
+    "kind": "action",
+    "sequence": 14
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "map": "winter",
+  "seed": 9208,
+  "actors": [
+    {
+      "id": "m1a2_sepv3",
+      "name": "pyre",
+      "pos": [
+        9.25,
+        38.2
+      ],
+      "facingDeg": 130,
+      "state": "turret-popped",
+      "stateAgeS": 200,
+      "burning": true,
+      "camo": "factory",
+      "camoSeed": 92080
+    },
+    {
+      "id": "merkava4b",
+      "name": "a1",
+      "pos": [
+        -10.75,
+        62.2
+      ],
+      "facingDeg": 132,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 92081,
+      "turretDeg": -8.3
+    },
+    {
+      "id": "spz_puma",
+      "name": "a2",
+      "pos": [
+        3.25,
+        16.2
+      ],
+      "facingDeg": 52,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 92082,
+      "turretDeg": 5.3
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "foe",
+      "pos": [
+        31.25,
+        34.2
+      ],
+      "facingDeg": 262,
+      "gunDeg": 1,
+      "camo": "splinter",
+      "camoSeed": 92083,
+      "turretDeg": 41.7
+    }
+  ],
+  "effects": [
+    {
+      "type": "explosion",
+      "at": [
+        14,
+        46
+      ],
+      "tMs": 2480,
+      "params": {
+        "size": "medium"
+      }
+    },
+    {
+      "type": "impact",
+      "actor": "foe",
+      "tMs": 2790,
+      "params": {
+        "kind": "pen",
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "a2",
+      "tMs": 2872,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "foe",
+      "tMs": 2882,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "pyre",
+      "tMs": 2830,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.62
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -5.15,
+      22,
+      -5
+    ],
+    "lookAt": [
+      13.25,
+      0,
+      40.2
+    ],
+    "groundRel": true,
+    "fov": 45,
+    "rollDeg": -4.5
+  },
+  "fxTime": 2905,
+  "timeScale": 0,
+  "meta": {
+    "title": "Winter Village Hell",
+    "map": "Frosthollow",
+    "feature": "Armor impacts",
+    "kind": "action",
+    "sequence": 8
+  }
+}

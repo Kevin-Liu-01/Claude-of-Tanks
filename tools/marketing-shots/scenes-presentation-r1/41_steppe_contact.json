@@ -1,0 +1,81 @@
+{
+  "map": "steppe",
+  "seed": 9306,
+  "actors": [
+    {
+      "id": "t90a_vladimir",
+      "name": "hero",
+      "pos": [
+        2,
+        44
+      ],
+      "facingDeg": 130,
+      "turretDeg": -9,
+      "gunDeg": 1,
+      "camo": "amoeba",
+      "camoSeed": 93006
+    },
+    {
+      "id": "pl01_105",
+      "name": "wing",
+      "pos": [
+        16,
+        62
+      ],
+      "facingDeg": 262,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 93106
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        5,
+        42
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -24,
+      4,
+      24
+    ],
+    "lookAt": [
+      7,
+      2.1,
+      49
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": -1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Tarkhan Steppe Contact",
+    "map": "Tarkhan Steppe",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 41
+  }
+}

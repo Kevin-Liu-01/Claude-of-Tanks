@@ -1,0 +1,93 @@
+{
+  "map": "coastal",
+  "seed": 9221,
+  "actors": [
+    {
+      "id": "spz_puma",
+      "name": "west",
+      "pos": [
+        154.75,
+        -50.9
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 92210,
+      "turretDeg": 0
+    },
+    {
+      "id": "leclerc_xlr",
+      "name": "east",
+      "pos": [
+        212.75,
+        -48.9
+      ],
+      "facingDeg": 268,
+      "gunDeg": 0.5,
+      "camo": "flecktarn",
+      "camoSeed": 92211,
+      "turretDeg": 0
+    }
+  ],
+  "effects": [
+    {
+      "type": "sparks",
+      "actor": "west",
+      "tMs": 510,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.6
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "east",
+      "tMs": 572,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "west",
+      "tMs": 590,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "detrack",
+      "actor": "west",
+      "tMs": 435,
+      "params": {
+        "side": "L"
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      143.15,
+      3.4,
+      -55.9
+    ],
+    "lookAt": [
+      214.75,
+      2,
+      -47.9
+    ],
+    "groundRel": true,
+    "fov": 29,
+    "rollDeg": -1.5
+  },
+  "fxTime": 615,
+  "timeScale": 0,
+  "meta": {
+    "title": "Coastal Seafront Duel",
+    "map": "Saltmere Bay",
+    "feature": "Track physics",
+    "kind": "action",
+    "sequence": 21
+  }
+}

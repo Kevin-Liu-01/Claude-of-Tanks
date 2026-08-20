@@ -13,6 +13,7 @@
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
 import { MAP_THUMBS } from './mapThumbs.js';
+import { mountMediaArchive } from '../presentation/mediaArchive.js';
 
 const CSS = `
 .cot-studio{position:fixed;inset:0;z-index:58;display:none;pointer-events:none;
@@ -259,6 +260,18 @@ const CSS = `
   text-shadow:0 1px 4px rgba(0,0,0,.9);line-height:1.7;}
 .cot-studio .foot .cam{color:#ffd27a;font-weight:700;}
 .cot-studio .val{font-size:10px;font-weight:800;color:#ffd27a;min-width:34px;text-align:right;}
+.cot-studio-archive{width:min(94vw,1560px);max-width:none;padding:0;border:1px solid rgba(190,204,216,.32);
+  background:#05080b;color:#e6edf3;box-shadow:0 36px 140px rgba(0,0,0,.82);font-family:${FONT_STACK};}
+.cot-studio-archive::backdrop{background:rgba(1,3,5,.9);backdrop-filter:blur(10px);}
+.cot-studio-archive>header{display:flex;align-items:end;justify-content:space-between;gap:24px;padding:22px 24px 18px;
+  border-bottom:1px solid rgba(190,204,216,.17);background:linear-gradient(120deg,rgba(230,154,45,.1),transparent 55%);}
+.cot-studio-archive>header small,.cot-studio-archive>header strong,.cot-studio-archive>header span{display:block;}
+.cot-studio-archive>header small{color:#e69a2d;font-size:8px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;}
+.cot-studio-archive>header strong{margin-top:5px;font-size:clamp(26px,4vw,50px);line-height:.95;text-transform:uppercase;}
+.cot-studio-archive>header span{margin-top:7px;color:#84939f;font-size:10px;}
+.cot-studio-archive>header button{width:42px;height:42px;padding:0;border:1px solid rgba(190,204,216,.24);
+  background:transparent;color:#ffd27a;font-size:22px;}
+.cot-studio-archive .archiveBody{padding:18px 18px 24px;}
 @media(max-width:720px){
   .cot-studio .badge{top:8px;left:8px;right:8px;gap:6px;padding:6px 8px;}
   .cot-studio .badge .t{font-size:10px;letter-spacing:.16em;}
@@ -929,6 +942,27 @@ export function createStudioPanel(S) {
   }
   secCap.appendChild(slotRow);
   outputGroup.body.appendChild(secCap);
+
+  const secArchive = section('Production archive', '50 new deterministic field frames');
+  const archiveCopy = el('div', 'fxempty', 'Open live gunnery, destruction, terrain, and vehicle references without leaving your scene.');
+  const archiveBtn = el('button', null, 'OPEN FIELD FRAMES · 61');
+  archiveBtn.style.width = '100%';
+  archiveBtn.addEventListener('click', () => {
+    let dialog = document.querySelector('.cot-studio-archive');
+    if (!dialog) {
+      dialog = document.createElement('dialog');
+      dialog.className = 'cot-studio-archive';
+      dialog.innerHTML = '<header><div><small>Scene Studio // shared component</small><strong>Field frames.</strong><span>Current renderer references for composition, lighting, effects, and vehicle staging.</span></div><button type="button" aria-label="Close field frames">×</button></header><div class="archiveBody" data-media-archive></div>';
+      dialog.querySelector('button').addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+      document.body.appendChild(dialog);
+    }
+    dialog.showModal();
+    mountMediaArchive(dialog.querySelector('[data-media-archive]'), { mode: 'compact', limit: 61 })
+      .catch((error) => flashBusy(error.message));
+  });
+  secArchive.append(archiveCopy, archiveBtn);
+  outputGroup.body.appendChild(secArchive);
 
   // --- footer hints ------------------------------------------------------------
   const foot = el('div', 'foot');

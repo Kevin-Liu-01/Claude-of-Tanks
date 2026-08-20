@@ -1,0 +1,88 @@
+{
+  "map": "autumn",
+  "seed": 9223,
+  "actors": [
+    {
+      "id": "type99a",
+      "name": "victim",
+      "pos": [
+        53.25,
+        60.2
+      ],
+      "facingDeg": 210,
+      "turretDeg": 15,
+      "camo": "flecktarn",
+      "camoSeed": 92230
+    },
+    {
+      "id": "t90a_vladimir",
+      "name": "passer",
+      "pos": [
+        31.25,
+        42.2
+      ],
+      "facingDeg": 66,
+      "turretDeg": 40,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 92231
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "victim",
+      "tMs": 70,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "dust",
+      "at": [
+        33,
+        42
+      ],
+      "tMs": 300,
+      "params": {
+        "count": 14,
+        "intensity": 1.2,
+        "dirDeg": 66
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "passer",
+      "tMs": 590,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      20.85,
+      1.5,
+      31
+    ],
+    "lookAt": [
+      45.25,
+      2.6,
+      54.2
+    ],
+    "groundRel": true,
+    "fov": 45,
+    "rollDeg": -2.5
+  },
+  "fxTime": 615,
+  "timeScale": 0,
+  "meta": {
+    "title": "Autumn Gold Inferno",
+    "map": "Amberford",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 23
+  }
+}

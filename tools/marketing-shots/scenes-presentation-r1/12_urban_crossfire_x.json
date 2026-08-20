@@ -1,0 +1,128 @@
+{
+  "map": "urban",
+  "seed": 9212,
+  "actors": [
+    {
+      "id": "udes03",
+      "name": "doomed",
+      "pos": [
+        36,
+        -17.1
+      ],
+      "facingDeg": 300,
+      "turretDeg": 10,
+      "camo": "digital",
+      "camoSeed": 92120
+    },
+    {
+      "id": "pl01_105",
+      "name": "s1",
+      "pos": [
+        36,
+        -69.1
+      ],
+      "facingDeg": 2,
+      "gunDeg": 0.5,
+      "camo": "splinter",
+      "camoSeed": 92121,
+      "turretDeg": -2
+    },
+    {
+      "id": "challenger_3",
+      "name": "s2",
+      "pos": [
+        -8,
+        -17.1
+      ],
+      "facingDeg": 88,
+      "gunDeg": 0.5,
+      "camo": "factory",
+      "camoSeed": 92122,
+      "turretDeg": 2
+    },
+    {
+      "id": "strv103a",
+      "name": "s3",
+      "pos": [
+        36,
+        28.9
+      ],
+      "facingDeg": 182,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 92123,
+      "turretDeg": -3.3
+    }
+  ],
+  "effects": [
+    {
+      "type": "tank_kill",
+      "actor": "doomed",
+      "tMs": 145,
+      "params": {
+        "cause": "ammorack",
+        "pop": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "s1",
+      "tMs": 585,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "s2",
+      "tMs": 600,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "s3",
+      "tMs": 615,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "doomed",
+      "tMs": 565,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.62
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      10.4,
+      28,
+      -45.1
+    ],
+    "lookAt": [
+      32,
+      0,
+      -17.1
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -9.5
+  },
+  "fxTime": 640,
+  "timeScale": 0,
+  "meta": {
+    "title": "Urban Crossfire X",
+    "map": "Steinburg",
+    "feature": "Destruction",
+    "kind": "action",
+    "sequence": 12
+  }
+}

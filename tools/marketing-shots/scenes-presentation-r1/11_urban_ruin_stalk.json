@@ -1,0 +1,87 @@
+{
+  "map": "urban",
+  "seed": 9211,
+  "actors": [
+    {
+      "id": "strv103",
+      "name": "pyre",
+      "pos": [
+        56.75,
+        -14.9
+      ],
+      "facingDeg": 205,
+      "turretDeg": 60,
+      "state": "wrecked-burnt",
+      "stateAgeS": 260,
+      "burning": true,
+      "camo": "winter",
+      "camoSeed": 92110
+    },
+    {
+      "id": "fv510_milan",
+      "name": "crosser",
+      "pos": [
+        22.75,
+        -15.9
+      ],
+      "facingDeg": 88,
+      "turretDeg": 14,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 92111
+    }
+  ],
+  "effects": [
+    {
+      "type": "engine_smoke",
+      "actor": "pyre",
+      "tMs": 0
+    },
+    {
+      "type": "dust",
+      "at": [
+        18,
+        -18
+      ],
+      "tMs": 2550,
+      "params": {
+        "count": 12,
+        "intensity": 1,
+        "dirDeg": 268
+      }
+    },
+    {
+      "type": "fire",
+      "actor": "crosser",
+      "tMs": 2875,
+      "params": {
+        "slot": 0,
+        "tracer": true
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      6.35,
+      1.1,
+      -28.1
+    ],
+    "lookAt": [
+      40.75,
+      2.2,
+      -13.9
+    ],
+    "groundRel": true,
+    "fov": 37,
+    "rollDeg": -1.5
+  },
+  "fxTime": 2900,
+  "timeScale": 0,
+  "meta": {
+    "title": "Urban Ruin Stalk",
+    "map": "Steinburg",
+    "feature": "Gunnery",
+    "kind": "action",
+    "sequence": 11
+  }
+}

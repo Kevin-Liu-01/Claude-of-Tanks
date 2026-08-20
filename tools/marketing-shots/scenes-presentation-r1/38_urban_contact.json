@@ -1,0 +1,81 @@
+{
+  "map": "urban",
+  "seed": 9303,
+  "actors": [
+    {
+      "id": "challenger_3",
+      "name": "hero",
+      "pos": [
+        36,
+        60
+      ],
+      "facingDeg": 79,
+      "turretDeg": 9,
+      "gunDeg": 1,
+      "camo": "urbanblock",
+      "camoSeed": 93003
+    },
+    {
+      "id": "spz_puma",
+      "name": "wing",
+      "pos": [
+        50,
+        78
+      ],
+      "facingDeg": 229,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "splinter",
+      "camoSeed": 93103
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        39,
+        58
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      17,
+      4,
+      43
+    ],
+    "lookAt": [
+      41,
+      2.1,
+      65
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Steinburg Contact",
+    "map": "Steinburg",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 38
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "map": "foundry",
+  "seed": 9315,
+  "actors": [
+    {
+      "id": "spz_puma",
+      "name": "hero",
+      "pos": [
+        26,
+        46
+      ],
+      "facingDeg": 283,
+      "turretDeg": -18,
+      "gunDeg": 1,
+      "camo": "urbanblock",
+      "camoSeed": 93015
+    },
+    {
+      "id": "strv103",
+      "name": "wing",
+      "pos": [
+        40,
+        64
+      ],
+      "facingDeg": 361,
+      "turretDeg": 22,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 93115
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        29,
+        44
+      ],
+      "tMs": 260,
+      "params": {
+        "count": 14,
+        "intensity": 1.05,
+        "dirDeg": 210
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 530,
+      "params": {
+        "slot": 0,
+        "tracer": true,
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -5,
+      4,
+      25
+    ],
+    "lookAt": [
+      31,
+      2.1,
+      51
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": -1
+  },
+  "fxTime": 560,
+  "timeScale": 0,
+  "meta": {
+    "title": "Ironworks Contact",
+    "map": "Ironworks",
+    "feature": "World system",
+    "kind": "battlefield",
+    "sequence": 50
+  }
+}
