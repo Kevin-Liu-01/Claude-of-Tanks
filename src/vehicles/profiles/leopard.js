@@ -7351,6 +7351,12 @@ function buildLeo2Revolution(P) {
   // Preserve every authored zero-pitch station while changing only the
   // rotation center.  The transverse trunnion stays at the new origin.
   P.offsetBuckets(['gunMount', 'gunMountDark', 'gun', 'gunDark'], 0, 0, -gunTrunnionShiftZ);
+  // buildGun publishes its pre-shift `len` as the firing/muzzle datum.  The
+  // counter-translation above moves the real tube face, so move that datum by
+  // the same amount.  Leaving it at 5.005 made the fleet bore fallback hit its
+  // -0.20 m safety clamp and draw the gun hole almost a metre beyond the real
+  // muzzle (the detached ring visible in the garage).
+  P.muzzleZ -= gunTrunnionShiftZ;
   P.addGunExtra(KIT.cylX(0.16, 0.70, P.q ? 20 : 14), 0, 0.03, 0);
   // The old ring/hole stayed buried behind the mantlet face after the pivot
   // repair.  Rebuild the complete aperture in the gun frame: the dark throat

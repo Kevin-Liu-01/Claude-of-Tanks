@@ -36478,7 +36478,7 @@
           }
         ]
       },
-      "geometryHash": "8dddb5d3",
+      "geometryHash": "f7150f71",
       "metadataHash": "2bce27bd",
       "appearance": {
         "version": 1,
@@ -36561,24 +36561,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77108,
-          "sha256": "8a8672b43f31960c55c4ac2e98f463445d7d75d79479e16aab57051ba0e732c5"
+          "bytes": 81122,
+          "sha256": "44eedf6263e82ca8538c3c9cddae0c2ed944a67850afcca9a5fb63d9328b912f"
         },
         "armorSide": {
           "file": "leo2_revolution_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76785,
-          "sha256": "4e54c9a17974681d60491e1928fb70b43473032a7b10ad2b1c0829bfd0129f1f"
+          "bytes": 80740,
+          "sha256": "8a9092bd3de5c1f95e3e4e3a41655e20468252c2279615a3fd75c6bc33ac037b"
         },
         "modulesSide": {
           "file": "leo2_revolution_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81322,
-          "sha256": "3683d7e146219712934065bd6b0b056cc5d4b19112ebcd168bba1dd852e088b9"
+          "bytes": 83845,
+          "sha256": "a7f70c766c5eeb4cf2d5382634829f33f0192926036bf2456042e48ea52b383a"
         },
         "markings": {
           "file": "leo2_revolution_markings.png",
