@@ -152,7 +152,7 @@ function mbt70Armor() {
     // The longer Abrams-like bustle is balanced by moving the complete
     // turret rig forward; the gun and every fitting inherit the same pivot
     // so articulation remains coherent.
-    turretPivot: [0, 1.57, 0.47], gunPivot: [0, 0.37, 1.08],
+    turretPivot: [0, 1.57, 0.57], gunPivot: [0, 0.37, 1.08],
     barrelLenM: 3.88, barrelRadM: 0.098,
     glacis: { ke: 260, ce: 330, phys: 190 }, lower: { ke: 120, ce: 145 },
     side: { ke: 80, ce: 95 }, skirtMm: 18, rear: 45, roof: 38,
@@ -326,7 +326,7 @@ const MODERN2_SPECS = {
       ],
     },
     dims: {
-      hullLengthM: 7.42, overallLengthM: 9.27, widthM: 3.51, heightM: 2.59,
+      hullLengthM: 7.42, overallLengthM: 9.37, widthM: 3.51, heightM: 2.59,
       // Published height is the turret roof.  The fidelity envelope includes
       // the commanded .50-cal station and its attached sighting furniture.
       silhouetteHeightM: 3.28,
@@ -2397,7 +2397,7 @@ function buildLeo1A5(P) {
 // ---------------------------------------------------------------------------
 function buildMBT70(P) {
   const {
-    box, frustum, polyMultiLoft, cylY, cylZ, torus,
+    xform, box, polyMultiLoft, cylY, cylZ, sph, torus,
     buildGun, liftEye, periscope,
     smokeCluster, stowage, jerryCan, ammoCan,
   } = KIT;
@@ -2531,17 +2531,63 @@ function buildMBT70(P) {
   }
 
   // ---- 152 mm XM150 gun/launcher ------------------------------------------
-  // Deep tapered square mantlet, concentric yoke and launcher tube all live
-  // on the gun articulation so pitch never separates them from the turret.
-  P.addGunExtra(frustum(0.34, -0.23, 0.58, 0.22, -0.10, 0.54, -0.28, 0.28), 0, 0, 0.16);
-  // Oversized circular mantlet/yoke: broad enough to dominate the turret
-  // face, deeply overlaps the tapered cheek housing, and pitches as one unit
-  // with the launcher.  The stepped collar keeps the 152 mm tube concentric.
-  P.addGunExtra(cylZ(0.36, 0.52, seg, 0.50), 0, 0, 0.67);
-  P.addGunExtraDark(torus(0.40, 0.045, seg), 0, 0, 0.91);
-  P.addGunExtra(cylZ(0.24, 0.22, seg, 0.30), 0, 0, 0.98);
-  buildGun(P, { len: 3.88, r: 0.098, sleeve: true, evac: 0.50, baseR: 0.19, evacR: 1.24 });
+  // Signature cast gun shield. This is deliberately NOT a circular disc:
+  // thirteen plan stations make a rounded arrow/parabola that is broad at
+  // the turret face and advances progressively toward the launcher axis.
+  // Five vertical rings swell through the middle, then contract into the
+  // crown/chin, producing the MBT-70's bulbous semi-cylindrical contour.
+  // Its rear course reaches behind the shell nose, so pitch reveals a real
+  // trunnion intersection rather than a plate floating ahead of the cheeks.
+  const mantletPlan = [
+    [-0.72, -0.30], [-0.70, 0.05], [-0.63, 0.36], [-0.50, 0.64],
+    [-0.32, 0.86], [-0.12, 1.00], [0, 1.04], [0.12, 1.00],
+    [0.32, 0.86], [0.50, 0.64], [0.63, 0.36], [0.70, 0.05],
+    [0.72, -0.30],
+  ];
+  P.addGunExtra(polyMultiLoft(mantletPlan, [
+    { height: -0.33, inset: 0.70 },
+    { height: -0.19, inset: 0.90 },
+    { height: 0.00, inset: 1.00 },
+    { height: 0.19, inset: 0.91 },
+    { height: 0.33, inset: 0.70 },
+  ]), 0, 0, 0.08);
+  // A shallow cast brow melts the shield into the turret roof. The oval
+  // recess follows the parabolic shield, while the only truly circular part
+  // is the compact 152 mm launcher throat itself.
+  P.addGunExtra(xform(sph(0.28, seg, Math.PI * 0.62), 0, 0, 0, 0, 0, 0,
+    [1.72, 0.64, 1.10]), 0, 0.11, 0.43);
+  P.addGunExtraDark(xform(cylZ(0.255, 0.045, seg), 0, 0, 0, 0, 0, 0,
+    [1.46, 0.88, 1]), 0, 0, 1.105);
+  P.addGunExtra(cylZ(0.22, 0.25, seg, 0.17), 0, 0, 1.19);
+  P.addGunExtraDark(cylZ(0.225, 0.035, seg), 0, 0, 1.085);
+  buildGun(P, {
+    len: 3.88, r: 0.098, sleeve: true, evac: 0.50,
+    baseR: 0.19, evacR: 1.24, collar: true,
+  });
+  // Near-muzzle reference/sensor assembly: a clamp ring supports the small
+  // housing instead of leaving another box suspended above the tube.
+  P.addGunExtraDark(cylZ(0.128, 0.075, seg), 0, 0, 3.38);
+  P.addGunExtra(box(0.18, 0.14, 0.28), 0.14, 0.14, 3.38);
+  P.addGunExtraDark(box(0.10, 0.065, 0.025), 0.14, 0.16, 3.525);
   muzzleBore(P, { len: 3.88, r: 0.098 });
+
+  P.gunG.userData.mbt70MantletReceipt = {
+    profile: 'parabolic-arrow',
+    circularMainShield: false,
+    widthM: 1.44,
+    heightM: 0.66,
+    depthM: 1.34,
+    rearOverlapM: 0.30,
+    ringCount: 5,
+    planStations: mantletPlan.length,
+    xm150Sleeve: true,
+    nearMuzzleSensor: true,
+  };
+  P.turretG.userData.mbt70TurretReceipt = {
+    forwardOffsetM: P.spec.armor.turretPivot[2],
+    abramsLikeBustle: true,
+    rearQuarterArmorRetained: true,
+  };
 
   // The running gear above is the exact M1A1 seven-wheel assembly supplied
   // by buildM1A1BareHull; do not layer a second MBT-70 track loop over it.
