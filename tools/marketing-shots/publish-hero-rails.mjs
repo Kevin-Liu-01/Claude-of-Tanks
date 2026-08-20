@@ -67,6 +67,9 @@ const rails = sourceManifest.videos.map((video, index) => {
   if (video.durationMs !== 6000 || video.cameraShots < 4 || video.effects < 10 || !video.rail) {
     throw new Error(`${video.file}: rail/effect/duration quality gate failed`);
   }
+  if (slug === 'desert-ground-rush' && video.minimumLeadSeparationM < 10) {
+    throw new Error(`${video.file}: Challenger 3 and KF51 motion paths intersect`);
+  }
   copyFileSync(source, publicVideo);
   poster(source, publicPoster, 1920);
   return {
@@ -80,6 +83,9 @@ const rails = sourceManifest.videos.map((video, index) => {
     posterBytes: statSync(publicPoster).size,
     cameraShots: video.cameraShots,
     effects: video.effects,
+    ...(Number.isFinite(video.minimumLeadSeparationM)
+      ? { minimumLeadSeparationM: video.minimumLeadSeparationM }
+      : {}),
     actors: [video.alpha, video.bravo],
   };
 });
@@ -116,6 +122,7 @@ const manifest = {
       'four-key camera rail',
       'at least ten timed combat effects',
       'multiple modern armored vehicles',
+      'Ground Rush lead vehicles remain at least 10 m apart',
     ],
     passed: rails.length,
     failed: 0,

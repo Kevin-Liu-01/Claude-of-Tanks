@@ -51,6 +51,64 @@ function mountHeroRail(root) {
 
 document.querySelectorAll('[data-hero-rail]').forEach(mountHeroRail);
 
+function mountShotRail(rail) {
+  const section = rail.closest('.v5-authored');
+  const cards = [...rail.querySelectorAll('figure')];
+  const previous = section?.querySelector('[data-shot-previous]');
+  const next = section?.querySelector('[data-shot-next]');
+  const position = section?.querySelector('[data-shot-position]');
+  const progress = section?.querySelector('[data-shot-progress]');
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  if (!section || cards.length < 2 || !previous || !next || !position || !progress) return;
+
+  let activeIndex = 0;
+  let updateFrame = 0;
+
+  const nearestCardIndex = () => cards.reduce((nearest, card, index) => (
+    Math.abs(card.offsetLeft - rail.scrollLeft) < Math.abs(cards[nearest].offsetLeft - rail.scrollLeft)
+      ? index
+      : nearest
+  ), 0);
+
+  const update = () => {
+    updateFrame = 0;
+    activeIndex = nearestCardIndex();
+    const maxScroll = Math.max(1, rail.scrollWidth - rail.clientWidth);
+    const minimum = 1 / cards.length;
+    const ratio = minimum + Math.min(1, rail.scrollLeft / maxScroll) * (1 - minimum);
+    position.textContent = `${activeIndex + 1} / ${cards.length}`;
+    progress.style.transform = `scaleX(${ratio})`;
+    previous.disabled = rail.scrollLeft <= 2;
+    next.disabled = rail.scrollLeft >= maxScroll - 2;
+  };
+
+  const requestUpdate = () => {
+    if (updateFrame) return;
+    updateFrame = requestAnimationFrame(update);
+  };
+
+  const showCard = (index) => {
+    activeIndex = Math.max(0, Math.min(cards.length - 1, index));
+    rail.scrollTo({
+      left: cards[activeIndex].offsetLeft,
+      behavior: reducedMotion.matches ? 'auto' : 'smooth',
+    });
+  };
+
+  previous.addEventListener('click', () => showCard(nearestCardIndex() - 1));
+  next.addEventListener('click', () => showCard(nearestCardIndex() + 1));
+  rail.addEventListener('scroll', requestUpdate, { passive: true });
+  rail.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    showCard(nearestCardIndex() + (event.key === 'ArrowRight' ? 1 : -1));
+  });
+  window.addEventListener('resize', requestUpdate, { passive: true });
+  update();
+}
+
+document.querySelectorAll('[data-shot-rail]').forEach(mountShotRail);
+
 function mountViewportVideo(video) {
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let visible = false;

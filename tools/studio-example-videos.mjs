@@ -85,6 +85,7 @@ const HERO_RAIL_FILES = [
     slug: 'desert-ground-rush',
     rail: [[-5, 0.1, -4], [-2, 0.35, 1], [2.5, 0.9, 4], [6, 2.3, 7]],
     rolls: [-5, -2, 2, 0], fovs: [46, 40, 36, 39], travel: [3.2, 1.2, 2.4, 2.6],
+    minimumLeadSeparationM: 10,
   },
   {
     file: '83_action_winter_ice_breaker.json',
@@ -152,6 +153,7 @@ function heroRailScenario(config, index) {
     rolls: config.rolls,
     fovs: config.fovs,
     travel: config.travel,
+    minimumLeadSeparationM: config.minimumLeadSeparationM,
   };
 }
 
@@ -358,6 +360,7 @@ try {
         }
       }
       let board;
+      let minimumLeadSeparationM = null;
       if (job.scene) {
         await S.load(job.scene);
         const base = S.getCamera();
@@ -378,6 +381,29 @@ try {
             ],
           };
         });
+        if (job.minimumLeadSeparationM && actorTracks.length >= 2) {
+          minimumLeadSeparationM = Number.POSITIVE_INFINITY;
+          for (let sample = 0; sample <= 120; sample++) {
+            const progress = sample / 120;
+            const leadPositions = actorTracks.slice(0, 2).map(({ keys }) => [
+              keys[0].pos[0] + (keys[1].pos[0] - keys[0].pos[0]) * progress,
+              keys[0].pos[1] + (keys[1].pos[1] - keys[0].pos[1]) * progress,
+            ]);
+            minimumLeadSeparationM = Math.min(
+              minimumLeadSeparationM,
+              Math.hypot(
+                leadPositions[0][0] - leadPositions[1][0],
+                leadPositions[0][1] - leadPositions[1][1],
+              ),
+            );
+          }
+          if (minimumLeadSeparationM < job.minimumLeadSeparationM) {
+            throw new Error(
+              `Lead vehicles close to ${minimumLeadSeparationM.toFixed(2)} m; ` +
+              `${job.minimumLeadSeparationM.toFixed(2)} m required`,
+            );
+          }
+        }
         let shots;
         if (job.rail) {
           const dx = lx - x;
@@ -463,6 +489,7 @@ try {
         base64: String(dataUrl).split(',')[1],
         shots: board.shots.length,
         effects: S.listEffects().length,
+        minimumLeadSeparationM,
       };
     }, { ...scenario, fps, videoBitsPerSecond });
 
@@ -491,6 +518,7 @@ try {
       cameraShots: result.shots,
       effects: result.effects,
       rail: !!scenario.rail,
+      minimumLeadSeparationM: result.minimumLeadSeparationM,
     });
     writeManifest();
     console.log(`[studio-examples] wrote ${file} (${result.size} bytes)`);

@@ -23,7 +23,8 @@
       "native 3840x2160 VP9 gameplay master",
       "four-key camera rail",
       "at least ten timed combat effects",
-      "multiple modern armored vehicles"
+      "multiple modern armored vehicles",
+      "Ground Rush lead vehicles remain at least 10 m apart"
     ],
     "passed": 5,
     "failed": 0
@@ -36,10 +37,11 @@
       "durationMs": 6000,
       "video": "/media/hero-rails-r2/01_desert-ground-rush.webm",
       "poster": "/media/hero-rails-r2/01_desert-ground-rush.jpg",
-      "videoBytes": 7858160,
-      "posterBytes": 387265,
+      "videoBytes": 7689130,
+      "posterBytes": 379781,
       "cameraShots": 4,
       "effects": 14,
+      "minimumLeadSeparationM": 11.544561523808326,
       "actors": [
         {
           "id": "challenger_3",
@@ -124,8 +126,8 @@
       "durationMs": 6000,
       "video": "/media/hero-rails-r2/05_coastal-shell-skim.webm",
       "poster": "/media/hero-rails-r2/05_coastal-shell-skim.jpg",
-      "videoBytes": 7844098,
-      "posterBytes": 251514,
+      "videoBytes": 8038019,
+      "posterBytes": 253240,
       "cameraShots": 4,
       "effects": 14,
       "actors": [

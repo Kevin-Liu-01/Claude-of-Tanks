@@ -1,4 +1,5 @@
-// Render the presentation's canonical in-engine Studio action loop.
+// Render the presentation's canonical in-engine Studio action loop, including
+// the live Scene Studio controls and cinematic timeline.
 //
 // Usage:
 //   npm run studio:action:render
@@ -6,8 +7,8 @@
 //
 // The staged composition starts from a camera already approved by the battle
 // screenshot campaign, then uses a deliberately narrow rail so scenery cannot
-// occlude the tanks. The WebM is the archival master; the GIF and stills are
-// encoded by publish-curated-media.mjs.
+// occlude the tanks. The WebM records the complete browser viewport so the
+// published film demonstrates the real Studio UI rather than a clean canvas.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -263,47 +264,47 @@ try {
     console.log(`[studio-action] wrote ${file} (${bytes.length} bytes)`);
   }
 
-  const recording = await page.evaluate(async ({ fps: targetFps, bitrate: targetBitrate }) => {
+  const masterFile = 'studio_leclerc_knockout.webm';
+  const masterPath = join(outDir, masterFile);
+  await page.evaluate(() => {
     const S = window.__STUDIO;
     S.seek(0);
-    const result = await S.recordVideo({
-      fps: targetFps,
-      videoBitsPerSecond: targetBitrate,
-      download: false,
-    });
-    const dataUrl = await new Promise((resolveData, rejectData) => {
-      const reader = new FileReader();
-      reader.addEventListener('load', () => resolveData(reader.result), { once: true });
-      reader.addEventListener('error', () => rejectData(reader.error), { once: true });
-      reader.readAsDataURL(result.blob);
-    });
-    return {
-      durationMs: result.durationMs,
-      mimeType: result.mimeType,
-      size: result.size,
-      base64: String(dataUrl).split(',')[1],
-    };
-  }, { fps, bitrate });
-  const extension = recording.mimeType.includes('mp4') ? 'mp4' : 'webm';
-  const masterFile = `studio_leclerc_knockout.${extension}`;
-  const videoBytes = Buffer.from(recording.base64, 'base64');
-  if (videoBytes.length !== recording.size) {
-    throw new Error(`Browser reported ${recording.size} bytes, transferred ${videoBytes.length}`);
-  }
-  writeFileSync(join(outDir, masterFile), videoBytes);
+    const dock = document.querySelector('.cot-studio .dock');
+    if (dock) dock.scrollTop = 0;
+  });
+  const recorder = await page.screencast({
+    path: masterPath,
+    fps,
+    quality: 24,
+    ffmpegPath: '/opt/homebrew/bin/ffmpeg',
+  });
+  await page.evaluate(() => window.__STUDIO.play());
+  await new Promise((done) => setTimeout(done, 1650));
+  await page.evaluate(() => {
+    const timeline = document.querySelector('.cot-studio .timelineBoard');
+    timeline?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+  await page.waitForFunction(
+    'window.__STUDIO.playing === false && window.__STUDIO.fxTimeMs >= window.__STUDIO.durationMs - 1',
+    { timeout: 30_000 },
+  );
+  await new Promise((done) => setTimeout(done, 350));
+  await recorder.stop();
+  const recordingSize = statSync(masterPath).size;
   writeFileSync(join(outDir, 'manifest.json'), `${JSON.stringify({
     version: 1,
     renderer: { width, height, fps, bitrate },
     scene: 'studio_leclerc_knockout.resolved.json',
     master: masterFile,
-    durationMs: recording.durationMs,
-    mimeType: recording.mimeType,
-    bytes: recording.size,
+    durationMs: 6500,
+    mimeType: 'video/webm',
+    bytes: recordingSize,
+    captureMode: 'studio-ui',
     keyframes,
     actors: scene.actors.map(({ id, name }) => ({ id, name })),
     effects: scene.effects.map(({ type, actor, tMs }) => ({ type, actor: actor || null, tMs })),
   }, null, 2)}\n`);
-  console.log(`[studio-action] wrote ${masterFile} (${recording.size} bytes)`);
+  console.log(`[studio-action] wrote ${masterFile} (${recordingSize} bytes)`);
 
   if (consoleErrors.length) {
     throw new Error(`Page emitted ${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 5).join(' | ')}`);

@@ -48,6 +48,16 @@
     "durationMs": 24933,
     "fps": 60
   },
+  "gameplay": {
+    "master": "/media/hero-rails-r2/gameplay_urban_overhead_4k.webm",
+    "video": "/media/landing-r1/gameplay-urban-overhead-1080.mp4",
+    "poster": "/media/hero-rails-r2/gameplay_urban_overhead_4k.jpg",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "durationMs": 7167,
+    "videoBytes": 9641296
+  },
   "relocatedRails": [
     {
       "id": "desert-ground-rush",
@@ -222,13 +232,14 @@
     }
   ],
   "studio": {
-    "video": "/media/landing-r1/studio-leclerc-knockout.webm",
+    "video": "/media/landing-r1/studio-leclerc-knockout.mp4",
     "poster": "/media/landing-r1/studio-leclerc-knockout.jpg",
     "width": 1920,
     "height": 1080,
-    "durationMs": 6500,
-    "videoBytes": 9279659,
-    "posterBytes": 362137,
+    "durationMs": 6767,
+    "videoBytes": 7306133,
+    "posterBytes": 636865,
+    "captureMode": "studio-ui",
     "actors": [
       {
         "id": "strv122",

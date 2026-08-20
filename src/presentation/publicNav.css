@@ -13,8 +13,9 @@
   height:100%;
   margin-inline:auto;
   display:flex;
-  align-items:stretch;
+  align-items:center;
   justify-content:space-between;
+  gap:24px;
 }
 .public-nav__brand{
   display:flex;
@@ -34,13 +35,17 @@
   filter:drop-shadow(0 4px 8px #000);
 }
 .public-nav__brand b{color:#e9a346;font-weight:900}
-.public-nav__links{display:flex;align-items:stretch}
+.public-nav__links{display:flex;align-items:center;gap:8px}
 .public-nav__links a{
   display:flex;
   align-items:center;
   gap:7px;
+  justify-content:center;
+  height:34px;
   padding:0 14px;
-  border-left:1px solid rgba(220,230,233,.08);
+  border:1px solid rgba(220,230,233,.14);
+  border-radius:2px;
+  background:rgba(255,255,255,.018);
   color:#9aa3a7;
   text-decoration:none;
   white-space:nowrap;
@@ -48,7 +53,7 @@
   font-weight:900;
   letter-spacing:.13em;
   text-transform:uppercase;
-  transition:background .16s ease,color .16s ease;
+  transition:background .16s ease,border-color .16s ease,color .16s ease,transform .16s ease;
 }
 .public-nav__icon{
   width:14px;
@@ -61,15 +66,27 @@
 .public-nav__icon--studio{width:15px;height:15px}
 .public-nav__links a:hover,.public-nav__links a[aria-current="page"]{
   color:#efeee9;
-  background:rgba(255,255,255,.035);
+  border-color:rgba(233,163,70,.5);
+  background:rgba(255,255,255,.05);
 }
 .public-nav__links a:hover .public-nav__icon,.public-nav__links a[aria-current="page"] .public-nav__icon{opacity:1;transform:translateY(-1px)}
+.public-nav__links a:hover{transform:translateY(-1px)}
+.public-nav__links a[aria-current="page"]{box-shadow:inset 0 -2px 0 #e9a346}
+.public-nav__links .public-nav__github{gap:8px;padding-inline:12px}
+.public-nav__stars{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding-left:8px;
+  border-left:1px solid rgba(220,230,233,.18);
+  color:#d8dcde;
+  font-variant-numeric:tabular-nums;
+}
+.public-nav__stars svg{width:10px;height:10px;fill:#e9a346}
 .public-nav__links .public-nav__cta{
   height:36px;
-  align-self:center;
-  margin-left:12px;
   padding-inline:18px;
-  border:0;
+  border-color:#e9a346;
   background:#e9a346;
   color:#18130c;
 }
@@ -80,12 +97,19 @@
   .public-nav__inner{width:calc(100% - 20px)}
   .public-nav__brand span{display:none}
   .public-nav__brand img{width:28px;height:34px}
-  .public-nav__links a{gap:5px;padding-inline:9px;font-size:7px;letter-spacing:.08em}
+  .public-nav__links{gap:5px}
+  .public-nav__links a{gap:5px;height:32px;padding-inline:9px;font-size:7px;letter-spacing:.08em}
   .public-nav__icon{width:12px;height:12px}.public-nav__icon--tank{width:15px}.public-nav__icon--studio{width:13px;height:13px}
-  .public-nav__links .public-nav__cta{height:34px;margin-left:7px;padding-inline:12px}
+  .public-nav__links .public-nav__github{padding-inline:9px}
+  .public-nav__links .public-nav__cta{height:34px;padding-inline:12px}
 }
 @media(max-width:520px){
   .public-nav__inner{width:calc(100% - 12px)}
-  .public-nav__links a{gap:3px;padding-inline:6px;font-size:6px;letter-spacing:.06em}
-  .public-nav__links .public-nav__cta{margin-left:4px;padding-inline:8px}
+  .public-nav__inner{gap:6px}
+  .public-nav__links{gap:3px}
+  .public-nav__links>a[href="/home"]{display:none}
+  .public-nav__links a{gap:3px;padding-inline:5px;font-size:6.5px;letter-spacing:.05em}
+  .public-nav__links .public-nav__github{gap:5px;padding-inline:6px}
+  .public-nav__stars{padding-left:5px}
+  .public-nav__links .public-nav__cta{padding-inline:7px}
 }

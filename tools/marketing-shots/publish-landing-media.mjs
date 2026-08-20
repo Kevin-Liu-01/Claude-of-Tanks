@@ -23,8 +23,11 @@ const outputDir = resolve(opt('out', 'public/media/landing-r1'));
 const sourceManifest = JSON.parse(readFileSync(join(sourceDir, 'manifest.json'), 'utf8'));
 const promoManifest = JSON.parse(readFileSync(resolve('public/media/promo-v13/manifest.json'), 'utf8'));
 const sourceVideo = join(sourceDir, sourceManifest.master);
-const studioVideo = join(outputDir, 'studio-leclerc-knockout.webm');
+const studioVideo = join(outputDir, 'studio-leclerc-knockout.mp4');
 const studioPoster = join(outputDir, 'studio-leclerc-knockout.jpg');
+const gameplayMaster = resolve('public/media/hero-rails-r2/gameplay_urban_overhead_4k.webm');
+const gameplayPoster = '/media/hero-rails-r2/gameplay_urban_overhead_4k.jpg';
+const gameplayVideo = join(outputDir, 'gameplay-urban-overhead-1080.mp4');
 mkdirSync(outputDir, { recursive: true });
 
 function ffmpeg(input) {
@@ -32,9 +35,27 @@ function ffmpeg(input) {
   if (result.status !== 0) throw new Error(`ffmpeg ${input.join(' ')}\n${result.stderr}`);
 }
 
+function durationMs(file) {
+  const result = spawnSync('/opt/homebrew/bin/ffprobe', [
+    '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', file,
+  ], { encoding: 'utf8' });
+  if (result.status !== 0) throw new Error(`ffprobe ${file}\n${result.stderr}`);
+  return Math.round(Number.parseFloat(result.stdout) * 1000);
+}
+
+ffmpeg([
+  '-loglevel', 'error', '-y', '-i', gameplayMaster, '-an',
+  '-vf', 'fps=30,scale=1920:1080:flags=lanczos',
+  '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-profile:v', 'high', '-level', '4.1',
+  '-pix_fmt', 'yuv420p', '-g', '60', '-keyint_min', '60', '-movflags', '+faststart',
+  gameplayVideo,
+]);
+
 ffmpeg([
   '-loglevel', 'error', '-y', '-i', sourceVideo, '-an',
-  '-c:v', 'libvpx-vp9', '-crf', '30', '-b:v', '0', '-deadline', 'good', '-row-mt', '1',
+  '-vf', 'fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
+  '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p',
+  '-g', '60', '-keyint_min', '60', '-movflags', '+faststart',
   studioVideo,
 ]);
 ffmpeg([
@@ -105,23 +126,35 @@ const manifest = {
   source: 'Owner-directed selection from first-party Scene Studio and marketing-shot libraries',
   hero,
   featureReel,
+  gameplay: {
+    master: '/media/hero-rails-r2/gameplay_urban_overhead_4k.webm',
+    video: '/media/landing-r1/gameplay-urban-overhead-1080.mp4',
+    poster: gameplayPoster,
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    durationMs: durationMs(gameplayVideo),
+    videoBytes: statSync(gameplayVideo).size,
+  },
   relocatedRails,
   winterDestructionRail: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
   mosaic,
   studio: {
-    video: '/media/landing-r1/studio-leclerc-knockout.webm',
+    video: '/media/landing-r1/studio-leclerc-knockout.mp4',
     poster: '/media/landing-r1/studio-leclerc-knockout.jpg',
     width: sourceManifest.renderer.width,
     height: sourceManifest.renderer.height,
-    durationMs: sourceManifest.durationMs,
+    durationMs: durationMs(studioVideo),
     videoBytes: statSync(studioVideo).size,
     posterBytes: statSync(studioPoster).size,
+    captureMode: sourceManifest.captureMode,
     actors: sourceManifest.actors,
     effects: sourceManifest.effects,
   },
 };
 
 writeFileSync(join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+console.log(`[landing-media] Gameplay proxy: ${manifest.gameplay.videoBytes} bytes at 1920x1080/30`);
 console.log(`[landing-media] Studio video: ${manifest.studio.videoBytes} bytes`);
 console.log(`[landing-media] Studio poster: ${manifest.studio.posterBytes} bytes`);
 console.log(`[landing-media] ${hero.length} hero stills, one relocated feature reel, ${relocatedRails.length} rail films, ${mosaic.length} mosaic frames`);

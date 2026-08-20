@@ -24,6 +24,18 @@ for (const rail of manifest.rails) {
   }
 }
 
+const groundRush = manifest.rails.find((rail) => rail.id === '01_desert-ground-rush');
+assert.ok(groundRush.minimumLeadSeparationM >= 10,
+  'Ground Rush keeps the Challenger 3 clear of the KF51 throughout the rail');
+
+const shellSkimScene = JSON.parse(readFileSync(
+  resolve('tools/marketing-shots/scenes-action-r3/89_action_coastal_beach_storm.json'),
+  'utf8',
+));
+const shellSkimReinforcement = shellSkimScene.actors.find((actor) => actor.name === 'reinforcement');
+assert.ok(shellSkimReinforcement?.pos?.[0] >= 186,
+  'Shell Skim keeps the right-side reinforcement clear of the coastal warehouse');
+
 for (const path of [manifest.gameplay4k.video, manifest.gameplay4k.poster]) {
   const file = resolve('public', path.replace(/^\//, ''));
   assert.ok(statSync(file).size > 250_000, `${path} is present and substantial`);

@@ -24,7 +24,11 @@
 <body class="home-v5">
   <nav class="public-nav" aria-label="Primary navigation"><div class="public-nav__inner">
     <a class="public-nav__brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
-    <div class="public-nav__links"><a href="/home" aria-current="page"><img class="public-nav__icon" src="/brand/nav/home.svg" alt="">Home</a><a href="/gallery"><img class="public-nav__icon public-nav__icon--tank" src="/brand/nav/tank-gallery.svg" alt="">Tank Gallery</a><a href="/docs"><img class="public-nav__icon" src="/brand/nav/docs.svg" alt="">Docs</a><a href="/studio"><img class="public-nav__icon public-nav__icon--studio" src="/brand/nav/studio.svg" alt="">Studio</a><a class="public-nav__cta" href="/">Play Now</a></div>
+    <div class="public-nav__links">
+      <a href="/home" aria-current="page"><img class="public-nav__icon" src="/brand/nav/home.svg" alt="">Home</a><a href="/gallery"><img class="public-nav__icon public-nav__icon--tank" src="/brand/nav/tank-gallery.svg" alt="">Tank Gallery</a><a href="/docs"><img class="public-nav__icon" src="/brand/nav/docs.svg" alt="">Docs</a><a href="/studio"><img class="public-nav__icon public-nav__icon--studio" src="/brand/nav/studio.svg" alt="">Studio</a>
+      <a class="public-nav__github" href="https://github.com/Kevin-Liu-01/claude-of-tanks" target="_blank" rel="noreferrer" aria-label="Claude of Tanks on GitHub"><span class="public-nav__github-label">GitHub</span><span class="public-nav__stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars>Stars</span></span></a>
+      <a class="public-nav__cta" href="/">Play Now</a>
+    </div>
   </div></nav>
 
   <main>
@@ -38,24 +42,34 @@
         <img data-hero-slide src="/media/showcase-r1/113_foreground_winter_ice_breaker.webp" alt="" decoding="async" style="--hero-focus:54% 50%">
       </div>
       <div class="v5-hero-shade"></div>
-      <div class="shell v5-hero-copy"><h1><em>Armored</em> Combat<br><span>In the Browser</span></h1><p>Drive 111 production vehicles across sixteen battlefields with physical armor, internal modules, tracked suspension, missiles, autoloaders, destruction, and multiplayer.</p><div class="hero-actions"><a class="btn primary" href="/">Play free</a><a class="btn" href="/gallery">Inspect the fleet</a></div></div>
+      <div class="shell v5-hero-copy"><h1><em>Armored</em> Combat<br><span>In the Browser</span></h1><p>Drive 111 tanks across 16 battlefields with physical armor, internal modules, tracked suspension, missiles, autoloaders, destruction, and 7v7 multiplayer.</p><div class="hero-actions"><a class="btn primary" href="/">Play free</a><a class="btn" href="/gallery">View all tanks</a></div></div>
       <a class="v5-maker" href="https://github.com/Kevin-Liu-01" rel="author">Designed and built by Kevin Liu <b>Three.js</b></a>
     </header>
 
     <section class="v5-authored" aria-labelledby="authored-title">
-      <div class="shell v5-authored-head"><p class="micro"><em>Directed in Scene Studio</em> // Our in-engine shot library</p><h2 id="authored-title">Handmade combat frames</h2></div>
-      <div class="v5-shot-rail" tabindex="0" aria-label="Handmade combat frames">
-        <figure><img src="/media/presentation-r1/02_desert_rooftop_dive.webp" alt="Desert rooftop dive" loading="lazy"><figcaption>Desert rooftop dive</figcaption></figure>
-        <figure><img src="/media/presentation-r1/03_desert_muzzle_worm.webp" alt="Tank firing at muzzle distance in the desert" loading="lazy"><figcaption>Desert muzzle worm</figcaption></figure>
-        <figure><img src="/media/presentation-r1/05_winter_ice_breaker.webp" alt="Armored battle across a frozen lake" loading="lazy"><figcaption>Winter ice breaker</figcaption></figure>
-        <figure><img src="/media/presentation-r1/08_winter_village_hell.webp" alt="Tank battle in a burning winter village" loading="lazy"><figcaption>Winter village hell</figcaption></figure>
-        <figure><img src="/media/presentation-r1/10_urban_overpass_dive.webp" alt="Overhead view of an urban tank attack" loading="lazy"><figcaption>Urban overpass dive</figcaption></figure>
-        <figure><img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Several tanks crossing fire in a city" loading="lazy"><figcaption>Urban crossfire X</figcaption></figure>
-        <figure><img src="/media/presentation-r1/16_verdant_meadow_duel.webp" alt="Two tanks fighting across a meadow" loading="lazy"><figcaption>Verdant meadow duel</figcaption></figure>
-        <figure><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="Armored column under heavy fire" loading="lazy"><figcaption>Verdant column massacre</figcaption></figure>
-        <figure><img src="/media/presentation-r1/24_autumn_orchard_stand.webp" alt="Tank holding an autumn orchard" loading="lazy"><figcaption>Autumn orchard stand</figcaption></figure>
-        <figure><img src="/media/presentation-r1/23_autumn_gold_inferno.webp" alt="Tank battle in an autumn fire" loading="lazy"><figcaption>Autumn gold inferno</figcaption></figure>
-        <figure><img src="/media/presentation-r1/25_steppe_horizon_charge.webp" alt="Tank column charging across the steppe" loading="lazy"><figcaption>Steppe horizon charge</figcaption></figure>
+      <div class="shell v5-authored-head">
+        <div><h2 id="authored-title">In-engine battle screenshots</h2><p>These scenes were composed and captured directly in Scene Studio.</p></div>
+        <div class="v5-shot-controls" aria-label="Screenshot controls">
+          <button type="button" data-shot-previous aria-label="Previous screenshot">←</button>
+          <span data-shot-position aria-live="polite">1 / 11</span>
+          <button type="button" data-shot-next aria-label="Next screenshot">→</button>
+        </div>
+      </div>
+      <div class="shell v5-shot-stage">
+        <div class="v5-shot-rail" data-shot-rail tabindex="0" aria-label="In-engine battle screenshots">
+          <figure><img src="/media/presentation-r1/02_desert_rooftop_dive.webp" alt="Tank battle in a desert town" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/03_desert_muzzle_worm.webp" alt="Tank firing at close range in the desert" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/05_winter_ice_breaker.webp" alt="Armored battle across a frozen lake" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/08_winter_village_hell.webp" alt="Tank battle in a burning winter village" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/10_urban_overpass_dive.webp" alt="Overhead view of an urban tank attack" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Several tanks exchanging fire in a city" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/16_verdant_meadow_duel.webp" alt="Two tanks fighting across a meadow" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="Armored column under heavy fire" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/24_autumn_orchard_stand.webp" alt="Tank positioned in an autumn orchard" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/23_autumn_gold_inferno.webp" alt="Tank battle during autumn" loading="lazy"></figure>
+          <figure><img src="/media/presentation-r1/25_steppe_horizon_charge.webp" alt="Tank column advancing across the steppe" loading="lazy"></figure>
+        </div>
+        <div class="v5-shot-progress" aria-hidden="true"><span data-shot-progress></span></div>
       </div>
     </section>
 
@@ -63,34 +77,34 @@
 
     <section class="v5-film" aria-labelledby="feature-reel-title">
       <video muted loop playsinline preload="none" poster="/media/promo-v13/claude-of-tanks-promo-clean.jpg" data-autoplay-video aria-label="Claude of Tanks in-engine feature reel"><source src="/media/promo-v13/claude-of-tanks-promo-clean.mp4" type="video/mp4"></video>
-      <div class="v5-film-shade"></div><div class="shell v5-film-copy"><p class="micro"><em>In-engine feature reel</em> // Twenty-five seconds, no overlays</p><h2 id="feature-reel-title">Every system moves<br>through one battle</h2><p>Garage, deployment, armor, guided fire, close combat, destruction, and recovery in a single production-renderer sequence.</p></div>
+      <div class="v5-film-shade"></div><div class="shell v5-film-copy"><h2 id="feature-reel-title">See the complete game in one video</h2><p>This in-engine video shows the garage, deployment, armor, missiles, close combat, destruction, and post-battle results.</p></div>
     </section>
 
     <section class="v5-film" aria-labelledby="gameplay-title">
-      <video autoplay muted loop playsinline preload="metadata" poster="/media/hero-rails-r2/gameplay_urban_overhead_4k.jpg"><source src="/media/hero-rails-r2/gameplay_urban_overhead_4k.webm" type="video/webm"></video>
-      <div class="v5-film-shade"></div><div class="shell v5-film-copy"><p class="micro"><em>Native 4K gameplay</em> // Production renderer</p><h2 id="gameplay-title">Fight from inside the action</h2><p>Live vehicles, recoil, moving tracks, muzzle flash, impacts, smoke, sparks, and destruction—recorded directly from the game.</p></div>
+      <video muted loop playsinline preload="none" poster="/media/hero-rails-r2/gameplay_urban_overhead_4k.jpg" data-autoplay-video data-performance-video="gameplay" aria-label="Urban tank battle recorded in the production renderer"><source src="/media/landing-r1/gameplay-urban-overhead-1080.mp4" type="video/mp4"></video>
+      <div class="v5-film-shade"></div><div class="shell v5-film-copy"><h2 id="gameplay-title">Watch live tank combat</h2><p>The game renders vehicle movement, recoil, tracks, muzzle flashes, impacts, smoke, sparks, and destruction in real time.</p></div>
     </section>
 
-    <section class="v5-split v5-split--garage" aria-labelledby="garage-title"><img src="/media/feature-evidence-r2/garage-fleet.webp" alt="Garage interface displaying the playable vehicle fleet" loading="lazy"><div><p class="micro"><em>111 production vehicles</em> // First-party procedural rigs</p><h2 id="garage-title">A garage built around the complete fleet</h2><p>Compare armor, firepower, mobility, ammunition, equipment, camouflage, and battlefield fit before deployment.</p><a class="btn" href="/gallery">Open Tank Gallery</a></div></section>
+    <section class="v5-split v5-split--garage" aria-labelledby="garage-title"><img src="/media/feature-evidence-r2/garage-fleet.webp" alt="Garage interface displaying the playable vehicle fleet" loading="lazy"><div><h2 id="garage-title">Choose from 111 tanks</h2><p>The garage shows each tank's armor, firepower, mobility, ammunition, equipment, and camouflage.</p><a class="btn" href="/gallery">View all tanks</a></div></section>
 
     <section class="v5-multiplayer" aria-labelledby="multiplayer-title">
-      <header class="shell"><div><p class="micro"><em>Live browser multiplayer</em> // Opposing player perspectives</p><h2 id="multiplayer-title">Two commanders.<br>One rule set.</h2></div><div><p>Each client sends control intent. Browser-hosted or dedicated authority resolves movement, aiming, armor, damage, spotting, and the state each commander is allowed to see.</p><a class="btn" href="/docs#multiplayer">Read the multiplayer model</a></div></header>
+      <header class="shell"><div><h2 id="multiplayer-title">Play 7v7 multiplayer</h2></div><div><p>Browser-hosted or dedicated servers resolve movement, aiming, armor, damage, spotting, and match state for every player.</p><a class="btn" href="/docs#multiplayer">Read multiplayer details</a></div></header>
       <figure><img src="/media/multiplayer-r1/dual-perspective.webp" alt="Opposing live multiplayer views: an M1A2 Abrams and T-90M Proryv aim at each other from mirrored player cameras" loading="lazy"></figure>
     </section>
 
-    <section class="v5-destruction" aria-labelledby="destruction-title"><video autoplay muted loop playsinline preload="metadata" poster="/media/hero-rails-r2/02_winter-ice-orbit.jpg"><source src="/media/hero-rails-r2/02_winter-ice-orbit.webm" type="video/webm"></video><div class="v5-film-shade"></div><div class="shell"><p class="micro"><em>Real-time destruction</em> // Physics, wrecks, detached tracks</p><h2 id="destruction-title">The battle leaves wreckage behind</h2><p>Penetrations damage internal systems. Ammunition racks throw turrets. Tracks detach, debris moves, fires burn, and wrecks remain in the field.</p><a href="/docs/worlds">Destruction systems →</a></div></section>
+    <section class="v5-destruction" aria-labelledby="destruction-title"><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/02_winter-ice-orbit.jpg" data-autoplay-video><source src="/media/hero-rails-r2/02_winter-ice-orbit.webm" type="video/webm"></video><div class="v5-film-shade"></div><div class="shell"><h2 id="destruction-title">Damage tanks and internal modules</h2><p>Penetrations can damage modules, detonate ammunition, throw turrets, detach tracks, scatter debris, and leave burning wrecks.</p><a href="/docs/worlds">Read destruction details →</a></div></section>
 
     <section class="v5-rails" aria-labelledby="rails-title">
-      <header class="shell"><p class="micro"><em>Directed camera rails</em> // Four battlefields, four live passes</p><h2 id="rails-title">Follow the shot through the fight</h2><p>The former hero films now run as complete sequences, with room to see each camera move, firing event, impact, and vehicle crossing.</p></header>
+      <header class="shell"><h2 id="rails-title">Watch battles from four camera paths</h2><p>Each video shows tanks moving, firing, taking hits, and crossing the battlefield from a different camera path.</p></header>
       <div class="v5-rail-grid">
-        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/01_desert-ground-rush.jpg" data-autoplay-video aria-label="Desert ground rush camera rail"><source src="/media/hero-rails-r2/01_desert-ground-rush.webm" type="video/webm"></video><div><span>01 // Desert</span><h3>Ground rush</h3></div></article>
-        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/03_steppe-charge-thread.jpg" data-autoplay-video aria-label="Steppe charge camera rail"><source src="/media/hero-rails-r2/03_steppe-charge-thread.webm" type="video/webm"></video><div><span>02 // Steppe</span><h3>Charge thread</h3></div></article>
-        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/04_urban-overhead-dive.jpg" data-autoplay-video aria-label="Urban overhead dive camera rail"><source src="/media/hero-rails-r2/04_urban-overhead-dive.webm" type="video/webm"></video><div><span>03 // Urban</span><h3>Overhead dive</h3></div></article>
-        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/05_coastal-shell-skim.jpg" data-autoplay-video aria-label="Coastal shell skim camera rail"><source src="/media/hero-rails-r2/05_coastal-shell-skim.webm" type="video/webm"></video><div><span>04 // Coastal</span><h3>Shell skim</h3></div></article>
+        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/01_desert-ground-rush.jpg" data-autoplay-video aria-label="Close-range tank battle in a desert town"><source src="/media/hero-rails-r2/01_desert-ground-rush.webm" type="video/webm"></video><div><p>Tanks fight at close range in a desert town.</p></div></article>
+        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/03_steppe-charge-thread.jpg" data-autoplay-video aria-label="Tank advance across the steppe"><source src="/media/hero-rails-r2/03_steppe-charge-thread.webm" type="video/webm"></video><div><p>Tanks advance and exchange fire across the steppe.</p></div></article>
+        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/04_urban-overhead-dive.jpg" data-autoplay-video aria-label="Overhead view of an urban tank battle"><source src="/media/hero-rails-r2/04_urban-overhead-dive.webm" type="video/webm"></video><div><p>An overhead camera follows an urban tank battle.</p></div></article>
+        <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/05_coastal-shell-skim.jpg" data-autoplay-video aria-label="Tank battle on a coastal map"><source src="/media/hero-rails-r2/05_coastal-shell-skim.webm" type="video/webm"></video><div><p>Tanks move and fire across a coastal battlefield.</p></div></article>
       </div>
     </section>
 
-    <section class="v5-maps" aria-labelledby="maps-title"><header class="shell"><p class="micro"><em>Battle across ten fronts</em> // Two rows, ten distinct routes</p><h2 id="maps-title">Terrain changes the fight</h2></header><div class="v5-map-wall">
+    <section class="v5-maps" aria-labelledby="maps-title"><header class="shell"><h2 id="maps-title">Fight across 16 battlefields</h2></header><div class="v5-map-wall">
       <figure><img src="/media/presentation-r1/32_desert_ram_abramsx_t90m.webp" alt="Desert armored battle" loading="lazy"><figcaption>Desert</figcaption></figure>
       <figure><img src="/media/presentation-r1/05_winter_ice_breaker.webp" alt="Winter armored battle" loading="lazy"><figcaption>Winter</figcaption></figure>
       <figure><img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Urban armored battle" loading="lazy"><figcaption>Urban</figcaption></figure>
@@ -103,50 +117,51 @@
       <figure><img src="/media/presentation-r1/44_fjord_contact.webp" alt="Fjord armored battle" loading="lazy"><figcaption>Fjord</figcaption></figure>
     </div></section>
 
-    <section class="v5-mechanics" aria-labelledby="mechanics-title"><header class="shell"><p class="micro"><em>Unique tank mechanics</em> // Vehicle-specific behavior</p><h2 id="mechanics-title">The fleet does not share one template</h2></header><div class="v5-mechanics-grid">
-      <article><img src="/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t module layout in Tank Gallery" loading="lazy"><div><span>Internal anatomy</span><h3>Carro 45t</h3><p>Armor, crew, ammunition, gun, turret ring, engine, fuel, optics, radio, and tracks occupy distinct damageable volumes.</p></div></article>
-      <article><img src="/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 launching a Shillelagh guided missile" loading="lazy"><div><span>Gun-launched missile</span><h3>MBT-70</h3><p>The XMGM-51C Shillelagh remains a live guided projectile from launch to impact.</p></div></article>
-      <article><img src="/media/feature-evidence-r2/mechanic-strv-suspension.webp" alt="Stridsvagn 103 aiming by elevating its hydropneumatic suspension" loading="lazy"><div><span>Hydropneumatic aim</span><h3>Stridsvagn 103</h3><p>The suspension changes the complete hull attitude while the wheels and track course stay seated on the terrain.</p></div></article>
+    <section class="v5-mechanics" aria-labelledby="mechanics-title"><header class="shell"><h2 id="mechanics-title">Each tank has its own mechanics</h2></header><div class="v5-mechanics-grid">
+      <article><img src="/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t module layout in Tank Gallery" loading="lazy"><div><h3>Carro 45t</h3><p>Armor, crew, ammunition, gun, turret ring, engine, fuel, optics, radio, and tracks use separate damage volumes.</p></div></article>
+      <article><img src="/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 launching a Shillelagh guided missile" loading="lazy"><div><h3>MBT-70</h3><p>The XMGM-51C Shillelagh is a guided projectile from launch to impact.</p></div></article>
+      <article><img src="/media/feature-evidence-r2/mechanic-strv-suspension.webp" alt="Stridsvagn 103 aiming by elevating its hydropneumatic suspension" loading="lazy"><div><h3>Stridsvagn 103</h3><p>The hydropneumatic suspension aims the fixed gun while the wheels and tracks remain seated on the terrain.</p></div></article>
     </div></section>
 
-    <section class="v5-evidence" aria-labelledby="evidence-title"><header class="shell"><p class="micro"><em>4K systems evidence</em> // Current production interfaces</p><h2 id="evidence-title">From resolved impact to directed scene</h2></header>
-      <article><img src="/media/feature-evidence-r2/killcam-modules.webp" alt="4K X-ray killcam showing a shell path through armor and internal modules" loading="lazy"><div><span>01 // X-ray killcam</span><h3>Armor and modules resolve in one path</h3><p>The replay labels the armor crossing, effective protection, penetration, damage, and each internal volume struck.</p><a href="/docs/simulation">Read the combat model →</a></div></article>
-      <article><video muted loop playsinline preload="none" poster="/media/landing-r1/studio-leclerc-knockout.jpg" data-autoplay-video aria-label="Studio-directed battle in which a Stridsvagn 122 fires on and destroys a Leclerc"><source src="/media/landing-r1/studio-leclerc-knockout.webm" type="video/webm"></video><div><span>02 // Scene Studio</span><h3>Direct the shot, then destroy the Leclerc</h3><p>The timeline moves both tanks, fires the Stridsvagn 122, resolves impacts, detaches the track, and triggers the Leclerc ammunition-rack blast.</p><a href="/studio">Open Scene Studio →</a></div></article>
+    <section class="v5-evidence" aria-labelledby="evidence-title"><header class="shell"><h2 id="evidence-title">Inspect armor hits and create battle scenes</h2></header>
+      <article><img src="/media/feature-evidence-r2/killcam-modules.webp" alt="4K X-ray killcam showing a shell path through armor and internal modules" loading="lazy"><div><h3>Review armor and module hits</h3><p>The kill camera shows the shell path, effective armor, penetration, damage, and every internal module hit.</p><a href="/docs/simulation">Read combat details →</a></div></article>
+      <article><video muted loop playsinline preload="none" poster="/media/landing-r1/studio-leclerc-knockout.jpg" data-autoplay-video aria-label="Scene Studio interface staging and replaying a Stridsvagn 122 attack on a Leclerc"><source src="/media/landing-r1/studio-leclerc-knockout.mp4" type="video/mp4"></video><div><h3>Create scenes in Scene Studio</h3><p>Scene Studio controls tanks, cameras, movement, firing, impacts, track damage, and ammunition explosions on a timeline.</p><a href="/studio">Open Scene Studio →</a></div></article>
     </section>
 
     <section class="v5-mosaic" aria-labelledby="mosaic-title">
-      <header class="shell"><p class="micro"><em>Action + foreground archive</em> // Twenty-four additional handmade frames</p><h2 id="mosaic-title">More from the battle library</h2><p>Close contact, long sightlines, winter movement, urban crossfire, coastal attacks, and open-field duels from the approved action and foreground groups.</p></header>
+      <header class="shell"><h2 id="mosaic-title">View more in-engine battle screenshots</h2><p>These screenshots show close combat and long-range fire across desert, winter, urban, coastal, steppe, and open-field maps.</p></header>
       <div class="v5-mosaic-grid">
-        <figure><img src="/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp" alt="Desert tank duel" loading="lazy" decoding="async"><figcaption>Desert duel</figcaption></figure>
-        <figure><img src="/media/showcase-r1/63_action_desert_overwatch_line.webp" alt="Desert overwatch line" loading="lazy" decoding="async"><figcaption>Desert overwatch</figcaption></figure>
-        <figure><img src="/media/showcase-r1/67_action_winter_lake_duel.webp" alt="Tank duel on a frozen lake" loading="lazy" decoding="async"><figcaption>Winter lake duel</figcaption></figure>
-        <figure><img src="/media/showcase-r1/69_action_winter_village_brawl.webp" alt="Tank battle in a winter village" loading="lazy" decoding="async"><figcaption>Winter village brawl</figcaption></figure>
-        <figure><img src="/media/showcase-r1/71_action_urban_street_duel.webp" alt="Tank duel on an urban street" loading="lazy" decoding="async"><figcaption>Urban street duel</figcaption></figure>
-        <figure><img src="/media/showcase-r1/74_action_urban_ruin_brawl.webp" alt="Tanks fighting through urban ruins" loading="lazy" decoding="async"><figcaption>Urban ruin brawl</figcaption></figure>
-        <figure><img src="/media/showcase-r1/76_action_verdant_field_duel.webp" alt="Tank duel across a green field" loading="lazy" decoding="async"><figcaption>Verdant field duel</figcaption></figure>
-        <figure><img src="/media/showcase-r1/78_action_verdant_village_brawl.webp" alt="Tank battle in a green village" loading="lazy" decoding="async"><figcaption>Verdant village brawl</figcaption></figure>
-        <figure><img src="/media/showcase-r1/80_action_desert_wadi_gauntlet.webp" alt="Tanks fighting through a desert wadi" loading="lazy" decoding="async"><figcaption>Wadi gauntlet</figcaption></figure>
-        <figure><img src="/media/showcase-r1/84_action_steppe_horizon_charge.webp" alt="Tank charge across the steppe" loading="lazy" decoding="async"><figcaption>Steppe horizon charge</figcaption></figure>
-        <figure><img src="/media/showcase-r1/86_action_coastal_harbor_kill.webp" alt="Tank battle beside a harbor" loading="lazy" decoding="async"><figcaption>Coastal harbor kill</figcaption></figure>
-        <figure><img src="/media/showcase-r1/89_action_coastal_beach_storm.webp" alt="Tank attack across a coastal beach" loading="lazy" decoding="async"><figcaption>Coastal beach storm</figcaption></figure>
-        <figure><img src="/media/showcase-r1/93_foreground_desert_overwatch_line.webp" alt="Close tank view on a desert overwatch line" loading="lazy" decoding="async"><figcaption>Overwatch, close</figcaption></figure>
-        <figure><img src="/media/showcase-r1/95_foreground_coastal_dune_ambush.webp" alt="Close tank view in a coastal dune ambush" loading="lazy" decoding="async"><figcaption>Coastal dune ambush</figcaption></figure>
-        <figure><img src="/media/showcase-r1/97_foreground_winter_lake_duel.webp" alt="Close tank view during a winter lake duel" loading="lazy" decoding="async"><figcaption>Winter contact</figcaption></figure>
-        <figure><img src="/media/showcase-r1/99_foreground_winter_village_brawl.webp" alt="Close tank view during a winter village battle" loading="lazy" decoding="async"><figcaption>Village contact</figcaption></figure>
-        <figure><img src="/media/showcase-r1/101_foreground_urban_street_duel.webp" alt="Close tank view on an urban street" loading="lazy" decoding="async"><figcaption>Urban street contact</figcaption></figure>
-        <figure><img src="/media/showcase-r1/104_foreground_urban_ruin_brawl.webp" alt="Close tank view in urban ruins" loading="lazy" decoding="async"><figcaption>Ruin contact</figcaption></figure>
-        <figure><img src="/media/showcase-r1/106_foreground_verdant_field_duel.webp" alt="Close tank view across a green field" loading="lazy" decoding="async"><figcaption>Field contact</figcaption></figure>
-        <figure><img src="/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp" alt="Challenger 1 in a green battlefield" loading="lazy" decoding="async"><figcaption>Challenger advance</figcaption></figure>
-        <figure><img src="/media/showcase-r1/111_foreground_steppe_windbreak_snipe.webp" alt="Tank firing from a steppe windbreak" loading="lazy" decoding="async"><figcaption>Windbreak snipe</figcaption></figure>
-        <figure><img src="/media/showcase-r1/115_foreground_urban_alley_flash.webp" alt="Tank firing through an urban alley" loading="lazy" decoding="async"><figcaption>Urban alley flash</figcaption></figure>
-        <figure><img src="/media/showcase-r1/118_foreground_verdant_meadow_duel.webp" alt="Close tank view during a meadow duel" loading="lazy" decoding="async"><figcaption>Meadow duel, close</figcaption></figure>
-        <figure><img src="/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp" alt="Tank holding a green overwatch ridge" loading="lazy" decoding="async"><figcaption>Overwatch ridge</figcaption></figure>
+        <figure><img src="/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp" alt="Desert tank duel" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/63_action_desert_overwatch_line.webp" alt="Tank holding a firing position in the desert" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/67_action_winter_lake_duel.webp" alt="Tank duel on a frozen lake" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/69_action_winter_village_brawl.webp" alt="Tank battle in a winter village" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/71_action_urban_street_duel.webp" alt="Tank duel on an urban street" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/74_action_urban_ruin_brawl.webp" alt="Tanks fighting through urban ruins" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/76_action_verdant_field_duel.webp" alt="Tank duel across a green field" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/78_action_verdant_village_brawl.webp" alt="Tank battle in a green village" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/80_action_desert_wadi_gauntlet.webp" alt="Tanks fighting through a desert wadi" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/84_action_steppe_horizon_charge.webp" alt="Tanks advancing across the steppe" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/86_action_coastal_harbor_kill.webp" alt="Tank battle beside a harbor" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/89_action_coastal_beach_storm.webp" alt="Tank attack across a coastal beach" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/93_foreground_desert_overwatch_line.webp" alt="Close view of a tank in a desert firing position" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/95_foreground_coastal_dune_ambush.webp" alt="Close view of a tank battle in coastal dunes" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/97_foreground_winter_lake_duel.webp" alt="Close view of a tank duel on a frozen lake" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/99_foreground_winter_village_brawl.webp" alt="Close view of a tank battle in a winter village" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/101_foreground_urban_street_duel.webp" alt="Close view of a tank duel on an urban street" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/104_foreground_urban_ruin_brawl.webp" alt="Close view of tanks fighting through urban ruins" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/106_foreground_verdant_field_duel.webp" alt="Close view of a tank duel across a green field" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/109_foreground_verdant_hero_challenger1.webp" alt="Challenger 1 on a green battlefield" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/111_foreground_steppe_windbreak_snipe.webp" alt="Tank firing from cover on the steppe" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/115_foreground_urban_alley_flash.webp" alt="Tank firing through an urban alley" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/118_foreground_verdant_meadow_duel.webp" alt="Close view of a tank duel in a meadow" loading="lazy" decoding="async"></figure>
+        <figure><img src="/media/showcase-r1/120_foreground_verdant_overwatch_ridge.webp" alt="Tank holding a firing position on a green ridge" loading="lazy" decoding="async"></figure>
       </div>
     </section>
 
-    <section class="v5-cta"><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="Several tanks fighting across a green battlefield" loading="lazy"><div></div><section class="shell"><p class="micro"><em>Play today</em> // Free in the browser</p><h2>Join the battle at<br>cot.kevinliu.studio</h2><p>Designed and built by Kevin Liu with Three.js.</p><div class="hero-actions"><a class="btn primary" href="/">Play free</a><a class="btn" href="/docs">Read the field manual</a></div></section></section>
+    <section class="v5-cta"><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="Several tanks fighting across a green battlefield" loading="lazy"><div></div><section class="shell"><h2>Play Claude of Tanks free in your browser</h2><p>No installation is required.</p><div class="hero-actions"><a class="btn primary" href="/">Play free</a><a class="btn" href="/docs">Read the documentation</a></div></section></section>
   </main>
   <footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/gallery">Tank Gallery</a><a href="/studio">Studio</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Kevin Liu // 2026</span></div></footer>
+  <script type="module" src="/src/presentation/publicNav.js"></script>
   <script type="module" src="/src/presentation/publicPages.js"></script>
 </body>
 </html>
