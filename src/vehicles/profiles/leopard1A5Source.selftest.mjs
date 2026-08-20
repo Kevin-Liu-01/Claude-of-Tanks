@@ -45,8 +45,8 @@ for (const band of trackBands) {
   const box = bounds(band);
   assert.ok(box.max.y >= 1.10 && box.min.y <= 0.011,
     `${band.name} wraps the complete source-height course`);
-  assert.ok(box.max.z - box.min.z >= 6.65 && box.max.z - box.min.z <= 6.76,
-    `${band.name} follows the measured asymmetric Leopard course`);
+  assert.ok(box.max.z - box.min.z >= 6.60 && box.max.z - box.min.z <= 6.76,
+    `${band.name} follows the measured Leopard-family course`);
 }
 
 // Finish pass: the fenders form a continuous bridge over the track return,
@@ -59,13 +59,17 @@ assert.deepEqual(finish, {
   fenderLockers: 8,
   rearFuelCans: 2,
   roadWheelStations: 7,
-  frontIdlerZ: 3.18,
-  rearSprocketZ: -2.68,
+  sealedHullSides: true,
+  leopard2TrackCourse: true,
+  frontIdlerZ: 3.17,
+  frontIdlerY: 0.66,
+  rearSprocketZ: -2.70,
+  rearSprocketY: 0.72,
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
-assert.ok(gear.sprocket.y - gear.idler.y >= 0.18,
-  'rear drive sprocket remains visibly raised above the front idler');
+assert.ok(gear.idler.y - gear.wheelY >= 0.23 && gear.sprocket.y - gear.wheelY >= 0.29,
+  'both terminal drums rise above the road-wheel axis for the Leopard 2-like trapezoid');
 mesh('hullCloth');
 
 // The source ring is 0.50 m forward of hull center. The gun saddle must root
@@ -94,5 +98,15 @@ turretRig.traverse((node) => {
 });
 assert.equal(pintleMgs, 1, 'one turret-owned pintle machine gun is retained');
 assert.equal(stowageRacks, 2, 'both turret-side stowage racks are retained');
+assert.deepEqual(turretRig.userData.leopard1A5TurretFinishReceipt, {
+  connectedBustleBasket: true,
+  bustleRearZ: -2.67,
+  shieldedRoofMachineGun: true,
+}, 'turret finish receipt retains the attached bustle and shielded MG station');
+assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
+  seated: true,
+  width: 1.16,
+  height: 0.49,
+}, 'the larger mantlet remains seated in the turret embrasure');
 
 console.log('leopard1A5Source.selftest: source envelope, Leopard course, closed fenders, rear fuel cans, seated rig, and A5 kit pass');

@@ -10456,15 +10456,21 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.add('hull', box(2.62, 0.06, 0.20), 0, 1.50, -3.43);
 
   // The source's fenders are a continuous structural shelf, not two thin
-  // rails floating above the running gear. Close the sponson-to-fender gap,
-  // keep the return run in shadow, and hang shallow segmented rubber aprons
-  // from the outer fascia. The road-wheel faces remain fully exposed below.
+  // rails floating above the running gear. Close the complete suspension-
+  // side wall first: the old profile stopped the lower hull at x=0.95 while
+  // the revised inner shoe edge starts at x=1.17, leaving a literal sightline
+  // through the vehicle. These plates are the real hull side behind the running gear,
+  // with the return run and suspension still outboard of them.
   for (const s of [-1, 1]) {
+    P.add('hull', box(0.08, 0.62, 6.30), s * 0.95, 1.02, -0.05);
+    P.add('hull', box(0.10, 0.30, 0.30), s * 0.95, 1.15, 3.18, -0.28, 0, 0);
+    P.add('hull', box(0.10, 0.32, 0.28), s * 0.95, 1.12, -3.22, 0.12, 0, 0);
+
+    // The shelf bridges the sealed side wall to the outer fender fascia.
+    // A shallow camouflaged shoulder below it removes the bright background
+    // slit while preserving clearance around the moving top links.
     P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, 1.205, -0.02);
-    // The inner closure terminates inboard of the shoe envelope; the narrow
-    // outer fascia starts outboard of it.  Together they seal the sponson
-    // visually without occupying the animated return-run sweep.
-    P.add('hullDetail', box(0.08, 0.22, 6.16), s * 1.01, 1.115, -0.08);
+    P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.105, -0.08);
     P.add('hullDetail', box(0.024, 0.18, 6.04), s * 1.68, 1.105, -0.10);
     P.add('hullDetail', slab(
       [s * 1.10, 1.17, 3.34], [s * 1.67, 1.17, 3.36], [s * 1.67, 1.17, 2.70], [s * 1.13, 1.17, 2.62],
@@ -10545,16 +10551,18 @@ function buildLeo1A5ArticulatedProfile(P) {
     P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
   }
 
-  // Seven 660 mm dual wheels and a source-measured asymmetric Leopard
-  // course: low front idler, raised rear drive sprocket, fine 140 mm shoes,
-  // and a return run tucked directly beneath the closed fender shelf.
+  // Seven 660 mm dual wheels on the Leopard-family trapezoid course. Both
+  // terminal drums now sit above the road-wheel axis and the native kit lays
+  // tangent approach/departure runs into them, matching the readable course
+  // shape used by the Leopard 2 family instead of the former low-idler arc.
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: 0.43, xc: 1.36,
+    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: 0.43, xc: 1.40,
     wheelZs: [2.46, 1.64, 0.82, 0, -0.82, -1.64, -2.46],
-    sprocket: { z: -2.68, y: 0.72, r: 0.32 }, idler: { z: 3.18, y: 0.53, r: 0.34 },
+    sprocket: { z: -2.70, y: 0.72, r: 0.30 }, idler: { z: 3.17, y: 0.66, r: 0.29 },
     rollers: [{ z: 2.12, y: 0.93, r: 0.105 }, { z: 0.72, y: 0.93, r: 0.105 },
       { z: -0.70, y: 0.93, r: 0.105 }, { z: -2.05, y: 0.93, r: 0.105 }],
-    trackW: 0.56, trackTh: 0.10, topY: 1.12, botY: 0.055,
+    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: 0.055,
+    contactZF: 2.64, contactZR: -2.64,
     linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
     endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
@@ -10565,8 +10573,12 @@ function buildLeo1A5ArticulatedProfile(P) {
     fenderLockers: 8,
     rearFuelCans: 2,
     roadWheelStations: 7,
-    frontIdlerZ: 3.18,
-    rearSprocketZ: -2.68,
+    sealedHullSides: true,
+    leopard2TrackCourse: true,
+    frontIdlerZ: 3.17,
+    frontIdlerY: 0.66,
+    rearSprocketZ: -2.70,
+    rearSprocketY: 0.72,
   };
 
   // ------------------------------------------------------------- turret --
@@ -10635,8 +10647,16 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.add('turretGlass', box(0.10, 0.075, 0.014), 0.48, 0.98, -0.165);
   for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, 0.82, 0.28, -0.10, 0, 0);
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.09, scale: 0.88, seed: 15 });
-    mg.position.set(-0.42, 0.86, -0.28);
+    // Low, fully seated loader's MG station: bearing, ammunition box and
+    // shield share one roof footprint instead of a bare fitting hovering
+    // beside the hatch.
+    P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, 0.86, -0.30);
+    P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, 0.91, -0.30);
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.05,
+      scale: 0.96, seed: 15, shield: true, ammo: true,
+    });
+    mg.position.set(-0.45, 0.91, -0.30);
     mg.rotation.y = 0.34;
     P.turretG.add(mg);
   }
@@ -10649,44 +10669,67 @@ function buildLeo1A5ArticulatedProfile(P) {
     }
   }
 
-  // Connected rear/side basket with mixed cargo; no empty floating cage.
-  P.addEquipment('turret', box(1.82, 0.032, 0.032), 0, 0.66, -2.05);
-  P.addEquipment('turret', box(1.82, 0.032, 0.032), 0, 0.18, -2.05);
-  P.addEquipment('turret', box(1.74, 0.018, 0.52), 0, 0.20, -1.79);
-  for (let k = 0; k < 6; k++) P.addEquipment('turret', box(0.026, 0.48, 0.026), -0.87 + k * 0.348, 0.42, -2.05);
+  // Full rear bustle basket. The previous rails ended *inside* the cast
+  // turret tail at z=-2.05 and therefore read as a loose roof rack. A boxed
+  // mounting transom overlaps the cast tail, diagonal heels carry the floor,
+  // and the basket itself projects aft as one coherent stowage assembly.
+  P.addEquipment('turret', box(1.42, 0.22, 0.18), 0, 0.39, -2.20);
+  P.addEquipment('turret', box(1.84, 0.035, 0.035), 0, 0.68, -2.67);
+  P.addEquipment('turret', box(1.84, 0.035, 0.035), 0, 0.18, -2.67);
+  P.addEquipment('turret', box(1.76, 0.020, 0.58), 0, 0.20, -2.38);
+  P.addEquipment('turret', box(1.74, 0.030, 0.08), 0, 0.66, -2.16);
+  for (let k = 0; k < 6; k++) {
+    const x = -0.88 + k * 0.352;
+    P.addEquipment('turret', box(0.028, 0.50, 0.028), x, 0.43, -2.67);
+    P.addEquipment('turret', box(0.030, 0.030, 0.55), x, 0.26, -2.39, -0.10, 0, 0);
+  }
   for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.032, 0.032, 0.62), s * 0.89, 0.66, -1.72);
-    P.addEquipment('turret', box(0.032, 0.032, 0.62), s * 0.89, 0.18, -1.72);
+    P.addEquipment('turret', box(0.035, 0.035, 0.66), s * 0.90, 0.68, -2.34);
+    P.addEquipment('turret', box(0.035, 0.035, 0.66), s * 0.90, 0.18, -2.34);
+    P.addEquipment('turret', box(0.055, 0.055, 0.56), s * 0.76, 0.36, -2.39, -0.42, 0, 0);
     const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.76, d: 0.31, h: 0.29,
       rails: 3, fill: 0.82, seed: s > 0 ? 31 : 32, rotation: [0, s * Math.PI / 2, 0] });
-    rack.position.set(s * 1.20, 0.31, -1.08);
+    rack.position.set(s * 1.20, 0.31, -1.35);
     P.turretG.add(rack);
     P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.79, 0.84, -1.42);
     P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.79, 1.54, -1.42, 0, 0, s * 0.025);
   }
   stowage(P, 'turretCloth', rng, [
-    [-0.50, 0.46, -1.77, 0.55, 0.30, 0.42], [0.15, 0.45, -1.80, 0.48, 0.28, 0.40],
+    [-0.50, 0.46, -2.38, 0.55, 0.30, 0.42], [0.15, 0.45, -2.41, 0.48, 0.28, 0.40],
   ]);
-  jerryCan(P, 'turretCloth', 0.66, 0.42, -1.78, 0.16);
-  tarpRoll(P, 'turretCloth', -0.08, 0.70, -1.58, 0.92, 0.095, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', -0.75, 0.38, -1.72, 0.12);
+  jerryCan(P, 'turretCloth', 0.66, 0.42, -2.39, 0.16);
+  tarpRoll(P, 'turretCloth', -0.08, 0.70, -2.20, 0.92, 0.095, true, P.q ? 12 : 8);
+  ammoCan(P, 'turretDark', -0.75, 0.38, -2.32, 0.12);
+
+  P.turretG.userData.leopard1A5TurretFinishReceipt = {
+    connectedBustleBasket: true,
+    bustleRearZ: -2.67,
+    shieldedRoofMachineGun: true,
+  };
 
   P.decal('turret', 'crossgrey', null, 0.28, [1.225, 0.48, -0.52], Math.PI / 2, 0, 0.18);
   P.decal('turret', 'crossgrey', null, 0.28, [-1.225, 0.48, -0.52], -Math.PI / 2, 0, -0.18);
   P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.17, 0.61, -1.05], Math.PI / 2, 0, 0.14);
 
-  // Compact cast saddle and source-length L7A3. Gun root is carried deep
-  // into the cheeks; muzzle remains at the 9.54 m overall anchor.
+  // Broad cast saddle and source-length L7A3. The rear box overlaps the
+  // turret embrasure, the oval trunnion body spans the cheek opening, and a
+  // dark flexible seam remains visible without becoming a detached ring.
   P.gunG.position.set(0, 0.47, 1.15);
-  P.addGunExtra(cylX(0.22, 1.02, P.q ? 20 : 14), 0, 0, 0.10);
-  P.addGunExtra(xform(sph(0.22, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.72, 1, 1]), -0.51, 0, 0.10);
-  P.addGunExtra(xform(sph(0.22, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.72, 1, 1]), 0.51, 0, 0.10);
-  P.addGunExtra(box(0.96, 0.34, 0.48), 0, 0, -0.18);
-  P.addGunExtra(cylZ(0.155, 0.24, P.q ? 20 : 14, 0.19), 0, 0, 0.34);
+  P.addGunExtra(box(1.16, 0.44, 0.52), 0, 0, -0.20);
+  P.addGunExtra(cylX(0.245, 1.16, P.q ? 22 : 16), 0, 0, 0.07);
+  P.addGunExtra(xform(sph(0.245, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [0.68, 1, 1]), -0.58, 0, 0.07);
+  P.addGunExtra(xform(sph(0.245, P.q ? 22 : 16), 0, 0, 0, 0, 0, 0, [0.68, 1, 1]), 0.58, 0, 0.07);
+  P.addGunExtraDark(cylX(0.19, 1.18, P.q ? 22 : 16), 0, 0, 0.16);
+  P.addGunExtra(cylZ(0.17, 0.28, P.q ? 20 : 14, 0.19), 0, 0, 0.36);
   P.addGunExtraDark(cylZ(0.026, 0.09, 9), 0.34, 0.07, 0.36);
   P.addGunExtraDark(cylZ(0.022, 0.085, 9), -0.34, 0.08, 0.36);
   buildGun(P, { len: 4.35, r: 0.058, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
   muzzleBore(P, { len: 4.35, r: 0.058 });
+  P.gunG.userData.leopard1A5MantletReceipt = {
+    seated: true,
+    width: 1.16,
+    height: 0.49,
+  };
 
   P.mats.glass.color.setHex(0x3e493b);
   P.mats.glass.roughness = 0.48;

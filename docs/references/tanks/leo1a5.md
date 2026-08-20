@@ -31,15 +31,16 @@ Blohm & Voss cheek package, EMES-18, Wegmann launchers, optics, MG, hatches,
 stowage, tools, cables, lights, decals, and antenna mounts are then seated on
 that source-derived base.
 
-Published-dimension gate: **100/100**. Measured procedural values are
-2.61 m height, 7.11 m hull length, 9.52 m overall length, and 3.36 m width,
-all within 0.6% of the 2.62 / 7.09 / 9.54 / 3.37 m spec anchors. The exact
+The 2026-08-20 finish refresh reports 2.70 m image-space height, 7.11 m hull
+length, 9.46 m overall length, and 3.36 m width against the 2.62 / 7.09 /
+9.54 / 3.37 m anchors (dimension component **84.3**). The exact procedural
+receipt remains 7.085 m hull length and 9.58 m gun-inclusive length. The exact
 track audit reports **0/0 band**, **0/0 shoe**, and **0/0 swept** incursions.
 The source loader reports zero source interpenetration violations; procedural
 floater audit is 100.
 
 The strict source silhouette score is intentionally reported, not hidden:
-geo-min 43.6 (hull 63.1, turret 53.3, stations 72.1, dimensions 100,
+geo-min 36.2 (hull 68.2, turret 44.5, stations 77.4, dimensions 84.3,
 floaters 100). The supplied source depicts a base Leopard 1, while the
 playable target is a Leopard 1A5. The A5 cheek appliqué, EMES-18, smoke
 banks, and loaded stowage create valid silhouette deltas, so the gate remains

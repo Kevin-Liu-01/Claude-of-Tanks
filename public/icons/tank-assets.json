@@ -35246,14 +35246,14 @@
             "volumeId": "M09",
             "name": "trackL",
             "min": [
-              -1.64,
+              -1.63,
               0.005,
-              -3.0949
+              -3.095
             ],
             "max": [
-              -1.08,
+              -1.17,
               1.135,
-              3.611
+              3.5549
             ],
             "turretLocal": false
           },
@@ -35261,14 +35261,14 @@
             "volumeId": "M10",
             "name": "trackR",
             "min": [
-              1.08,
+              1.17,
               0.005,
-              -3.0949
+              -3.095
             ],
             "max": [
-              1.64,
+              1.63,
               1.135,
-              3.611
+              3.5549
             ],
             "turretLocal": false
           }
@@ -35336,8 +35336,8 @@
           }
         ]
       },
-      "geometryHash": "a50bcc1b",
-      "metadataHash": "6811bd42",
+      "geometryHash": "669448ac",
+      "metadataHash": "18431d42",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -35355,7 +35355,7 @@
           "opticGlass": 2,
           "wood": 3,
           "canvas": 4,
-          "unclassified": 12,
+          "unclassified": 11,
           "gearShadow": 2
         }
       },
@@ -35420,24 +35420,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73738,
-          "sha256": "ce31c71d176df1a740914d9a6d8b9322294df5eadd123a264f280ab6960fcd32"
+          "bytes": 74116,
+          "sha256": "e209ea520f061e78fc0c40828211efb9d644fd911283000fb66e3046276422dc"
         },
         "armorSide": {
           "file": "leo1a5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76175,
-          "sha256": "2b1442b19a8fb179bc252600f164532a64d634d77ef4586d22d698e12780d67a"
+          "bytes": 76527,
+          "sha256": "2eed6068a2519f60a8a572694ab79b15eaf4b7ac914865c1096b705f6d273c57"
         },
         "modulesSide": {
           "file": "leo1a5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85079,
-          "sha256": "d793289744cb36bdb4c0e3604d4ac9b17b398399c84c436381a445d5dfd51df8"
+          "bytes": 86072,
+          "sha256": "5ce3344ff95561d9321cca78285854c0949570a11320eda2f089134cc64695a7"
         },
         "markings": {
           "file": "leo1a5_markings.png",
