@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
-import { tagVehicleMaterial } from '../appearanceAudit.js';
 import {
   loftHull,
   meshDome,
@@ -24,20 +23,6 @@ import {
   eraRuCheeks,
   ruShtora,
 } from './russia.js';
-
-function coverWithVehicleCamo(material, hullPaint, subtype) {
-  if (!material || !hullPaint?.map) return material;
-  material.map = hullPaint.map;
-  material.color.setHex(0xffffff);
-  material.userData = {
-    ...(material.userData || {}),
-    camouflageCovered: true,
-    camouflageSource: 'vehicle-hull-pattern',
-    camouflageSubtype: subtype,
-  };
-  material.needsUpdate = true;
-  return material;
-}
 
 function buildT72B87(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
@@ -4459,7 +4444,9 @@ function buildT72B3M(P) {
   // r16: lift halved 0.085->0.045 — the r15 lift made the ring lids/tiles
   // the brightest pixels on 4 views (crown-ring p90 85.6 vs ref 67.2); the
   // ring swing now comes from cloth-shadow gaps + a softer lid family.
-  P.mats.detail.color.setHex(0x2d3d2b);       // fittings stay legible without pale olive islands
+  // Keep the detail color supplied by the live scheme-tint registry. A fixed
+  // 4BO override here left winter/desert fittings factory green after every
+  // fresh build; only the low-intensity shade floor remains profile-specific.
   P.mats.detail.emissive.setHex(0x090c07);    // r18 item 10: the ring lids'/rims' SHADE faces measured medL 44 —
                                               // the exact close-roof sub-45 clusters (same rects in the r6
                                               // baseline); +12L floor lands them in the 50-58 order window while
@@ -4479,13 +4466,9 @@ function buildT72B3M(P) {
                                               // (sampled: vertical faces render ~1.16x raw luma under the frontal
                                               // key — 0x474d37 ran the glacis to 86 vs ref 62; raw-57 lands 62-66)
   P.mats.rubber.emissive.setHex(0x080906);    // shade-floor so ring undersides stay in-family
-  P.mats.canvasCloth.color.setHex(0x303b29);  // canvas stays distinct without becoming a tan/light-olive patch
-                                              // above (the top-N med order); sides move 78.6->~82 vs ref 80.9
-                                              // (+1.5 over, traded for the +6 top order)
-                                              // bags/cloth: kill the ochre top-face accent (bar samples H81 = ref
-                                              // family); r2 one step darker — cloth now also dresses the whole
-                                              // bustle rack (tarp cover plates + re-bucketed tail tiers) and must
-                                              // read as the ref's DARK rack mass under the pale dome
+  // Canvas color also remains live scheme-tinted (materials.js keeps it at
+  // 68% of fitting luminance), so it stays distinct without becoming a
+  // factory-green rectangle under winter, desert, or custom camouflage.
   P.mats.canvasCloth.emissive.setHex(0x0d100a); // r17: +6L shade floor (lit rack med 78 vs ref 81 — headroom held)
                                               // r18 item 10: ring-interior/tarp shade faces into the 50-58 window
   P.mats.shadow.color.setHex(0x323a25);       // r17: arch-slot backers — ref wheel band p5 is 60 with NO near-black
@@ -4498,16 +4481,23 @@ function buildT72B3M(P) {
                                               // to p90 95 — the band p10 is carried by the ring/chain/dish lifts)
   P.mats.wheelsRecessed.color.offsetHSL(0, 0.04, 0.10);
   P.mats.wheelsRecessed.emissive.setHex(0x0a0c07);
-  // Owner color cleanup (2026-08-18): the fitting/cloth buckets used solid
-  // fallback tints. Under the garage key those solids resolved to the same
-  // pale rgb(174 182 138) replacement-panel color across ERA lids, engine
-  // covers, roof fittings and bags. These are painted exterior surfaces, so
-  // sample the exact active hull camouflage texture instead. Their semantic
-  // roles and physical roughness remain intact; only the flat fallback
-  // albedo is replaced. BMPT Terminator 2 inherits this pass before adding
-  // its station, so both pictured T-72-family vehicles remain coherent.
-  coverWithVehicleCamo(P.mats.detail, P.mats.hull, 'fittings');
-  coverWithVehicleCamo(P.mats.canvasCloth, P.mats.hull, 'painted-canvas');
+  // MATERIAL HIERARCHY (2026-08-20 owner exact-surface audit): these buckets
+  // intentionally DO NOT sample the hull camouflage atlas. Detail, cloth and
+  // wood geometries keep primitive-local 0..1 UVs, unlike the world-scaled
+  // armor buckets. Reusing the hull map therefore stamped the complete camo,
+  // panel-line and grime bake onto every tiny fitting/bag/deck strip, producing
+  // the dense repeated texture called out in the gallery markup. Scheme-tinted
+  // fittings stay registered with the live camo system as a calm solid paint;
+  // canvas remains dedicated low-sheen OD cloth. Their modeled seams and
+  // relief provide the detail instead of noisy armor maps.
+  P.mats.detail.map = null;
+  P.mats.detail.normalMap = null;
+  P.mats.detail.roughnessMap = null;
+  P.mats.detail.needsUpdate = true;
+  P.mats.canvasCloth.map = null;
+  P.mats.canvasCloth.bumpMap = null;
+  P.mats.canvasCloth.bumpScale = 0;
+  P.mats.canvasCloth.needsUpdate = true;
   // TRACK RUN TONE (merkava r5 run-lift recipe, sampled here: proc track
   // front faces (26,24,20) L9 vs ref (58,63,45) L21 — the band texture is
   // near-black under the board hemi and the emissive floor IS the rendered
@@ -4554,38 +4544,31 @@ function buildT72B3M(P) {
   // BUCKET_DEF merge), so build-time traverses never see them. Use the
   // factory's synchronous postAssemble seam: a microtask raced icon/audit
   // capture and left tan replacement panels in generated assets.
-  //  - turretTrack merged mesh (crown cap + roof-annulus overlay): clone-
-  //    lift to the ref's 62-65 top-face window (spareTrack itself is
-  //    pinned by the banked glacis bow rows 70-74 and the strip median).
+  //  - turretTrack merged mesh (crown cap + roof-annulus overlay): use the
+  //    live scheme-tinted fitting paint. Assigning the hull map here made
+  //    every small Relikt cassette repeat the full camouflage texture.
   //  - recoilG gunDark merged mesh (muzzle collar + bore + seam rings):
   //    clone-darken so the dead-front bore lands the ordered 46-48 luma
   //    ("-2 vs tube, invisible at 1x") without touching shared mats.dark.
   P.postAssemble = () => {
     P.turretG.traverse((ob) => {
       if (ob.isMesh && ob.material === P.mats.spareTrack) {
-        // This profile intentionally uses turretTrack for its painted Relikt
-        // cassette/crown family, not for a working tread course. Retag the
-        // clone so the fleet gear normalizer does not repaint these armor
-        // shapes neutral steel after this post-assembly pass.
-        ob.material = tagVehicleMaterial(
-          ob.material.clone(), 'armorPaint', 'painted-relikt-cassette');
-        coverWithVehicleCamo(ob.material, P.mats.hull, 'relikt-cassette');
+        // This profile intentionally uses turretTrack for painted Relikt,
+        // not for a working tread course. Object ownership overrides the
+        // shared fitting material's diagnostic role for appearance audits.
+        ob.material = P.mats.detail;
+        ob.userData.appearanceRole = 'armorPaint';
+        ob.userData.appearanceSubtype = 'painted-relikt-cassette';
       }
     });
-    // r20 item 1e: the hullWood bucket (unused on this build until now)
-    // carries the aft-deck/glacis dress panels — clone-tint the merged mesh
-    // from kit wood-brown into the crown-olive family so the panels land
-    // the ref's 61-64 top-face window (turretTrack crown precedent; shared
-    // mats.wood untouched for the fleet).
+    // The hullWood bucket is repurposed here for painted splash boards, tool
+    // lids and engine-deck overlays. Route those pieces to the same live,
+    // solid scheme tint rather than cloning the hull atlas onto local UVs.
     P.hullG.traverse((ob) => {
       if (ob.isMesh && ob.material === P.mats.wood) {
-        ob.material = tagVehicleMaterial(
-          ob.material.clone(), 'armorPaint', 'painted-deck-panel');
-        // 0x415238 rendered 69.1 on the flatter deck faces (crown's 60-64
-        // came from the annulus curvature) — one step down lands the ref's
-        // 65.2 deck med
-        coverWithVehicleCamo(ob.material, P.mats.hull, 'deck-panel');
-        if (ob.material.emissive) ob.material.emissive.setHex(0x090c07);
+        ob.material = P.mats.detail;
+        ob.userData.appearanceRole = 'armorPaint';
+        ob.userData.appearanceSubtype = 'painted-deck-panel';
       }
     });
     P.gunG.traverse((ob) => {
@@ -4596,6 +4579,14 @@ function buildT72B3M(P) {
       }
     });
   };
+  P.hullG.userData.t72b3mMaterialReceipt = Object.freeze({
+    armorUsesWorldScaledCamouflage: true,
+    fittingsUseSolidSchemeTint: true,
+    reliktUsesSolidSchemeTint: true,
+    deckPanelsUseSolidSchemeTint: true,
+    canvasUsesDedicatedMatteCloth: true,
+    primitiveLocalCamoRepeatsRemoved: true,
+  });
   P.topY = 1.3;
 }
 

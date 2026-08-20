@@ -111576,24 +111576,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64784,
-          "sha256": "f9179c81cfab1c225bd0395bb2487a4ff7404ddc9eef5e853d7c0247f20e79f6"
+          "bytes": 66262,
+          "sha256": "6e11e2a3ca15dd131cccfeda81569fc8ab0523922b6dd086be50e47373765d7d"
         },
         "armorSide": {
           "file": "t72b3m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64246,
-          "sha256": "f9b781e811bce774fb4a5f77814a1af2e11ae65529f279c2ff027469bdf62f11"
+          "bytes": 69589,
+          "sha256": "514e427a41d2e2ec5789d51aba2adea2e5c2a6c50700d3a13cb5cdb4621909d5"
         },
         "modulesSide": {
           "file": "t72b3m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71585,
-          "sha256": "521994c59ca37d436182ac3a7b7fbfa36666768fc13ac8f4b029212c66c87d09"
+          "bytes": 73313,
+          "sha256": "6c332598de59e56d5a07a85571b1f1a7614d457be305b512ed4ffc69e0c5991f"
         },
         "markings": {
           "file": "t72b3m_markings.png",

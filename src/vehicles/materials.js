@@ -4020,6 +4020,7 @@ const wheelRgbOf = (v) => {
 // rows read as GAPS between sparse floating wheels (r6 Tiger closeup).
 const wheelDarkRgbOf = (v) => scale3(wheelRgbOf(v), 0.66);
 const detailRgbOf = (v) => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
+const canvasRgbOf = (v) => scale3(detailRgbOf(v), 0.68);
 
 function repaintEntry(entry, patternId) {
   const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern' };
@@ -4050,7 +4051,8 @@ function repaintEntry(entry, patternId) {
 function retintEntryFittings(entry, vis) {
   for (const rec of entry.paintable) {
     const c = rec.kind === 'wheels' ? wheelRgbOf(vis)
-      : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis) : detailRgbOf(vis);
+      : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis)
+        : rec.kind === 'canvas' ? canvasRgbOf(vis) : detailRgbOf(vis);
     rec.m.color.set(cssRGB(c));
   }
   if (entry.kitCanvas) {
@@ -4591,7 +4593,6 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
     { m: wheelsRecessed, kind: 'wheelsDark' },
     { m: detail, kind: 'detail' },
   ];
-  for (const rec of paintableRecs) shared.paintable.add(rec);
   // Gun-metal (muzzle brake / bare-steel fittings): roughness floor raised
   // 0.55 -> 0.70 (lighting_post r1) — with the multiplying roughnessMap the
   // old base dipped the effective GGX roughness to ~0.25-0.3 and the barrel
@@ -4666,10 +4667,24 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
   // under the ~4.5x warm key + ACES it tonemapped to flat CREAM while the
   // hull camo stayed green, so every canvas bundle read as an unpainted
   // placeholder primitive. OD canvas is duller, darker and green-biased.
+  const usesSchemeTintedCanvas = spec.id === 't72b3m' || spec.id === 'bmpt_terminator2';
   const canvasCloth = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x42452f, roughness: 0.97, metalness: 0.0,
+    color: usesSchemeTintedCanvas
+      ? new THREE.Color(cssRGB(canvasRgbOf(patVis)))
+      : 0x42452f,
+    roughness: 0.97, metalness: 0.0,
     bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
   })));
+  // The T-72B3M family uses broad modeled canvas aprons and bustle packs.
+  // Keep those surfaces map-free (the profile owns that rule), but tint the
+  // dedicated cloth material with every active camouflage so winter/desert
+  // paints do not leave factory-green rectangles behind. The darker solid
+  // tint preserves a readable canvas-vs-armor hierarchy without repeating a
+  // full camouflage atlas on each local-UV bag or panel.
+  if (usesSchemeTintedCanvas) {
+    paintableRecs.push({ m: canvasCloth, kind: 'canvas' });
+  }
+  for (const rec of paintableRecs) shared.paintable.add(rec);
   const wood = track(setup(new THREE.MeshStandardMaterial({
     color: 0x6b543a, roughness: 0.88, metalness: 0.0,
     bumpMap: roughTex, bumpScale: 0.3,
