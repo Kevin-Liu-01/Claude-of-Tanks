@@ -66,19 +66,19 @@ const SPEC = {
   },
 };
 
-function makeField(fn) {
+function makeField(fn, groundType = 'medium') {
   return {
     getHeightAt: fn,
     getNormalAt: () => null,
-    getGroundType: () => 'medium',
+    getGroundType: () => groundType,
   };
 }
 
-function makeEntity(field, x = 0, z = 0, yaw = 0) {
+function makeEntity(field, x = 0, z = 0, yaw = 0, spec = SPEC) {
   const pos = new Vector3(x, field.getHeightAt(x, z), z);
   return {
-    spec: SPEC,
-    state: createTankState(SPEC, pos, yaw),
+    spec,
+    state: createTankState(spec, pos, yaw),
     input: { throttle: 0, steer: 0, brake: false, aimPoint: null },
     combat: null,
   };
@@ -211,12 +211,12 @@ function gunPoseWorld(state) {
 // more than its authored compression/droop travel.
 // (8, 0.55) is fully climbable (~23° faces) and proves sustained cross-country
 // driving; the steeper pairs stress the contact solve while the tank wallows
-// in troughs walled by >MAX_CLIMB faces (stalling there is correct physics).
+// in troughs bounded by faces beyond the fixture's available force margin.
 for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   const k = (2 * Math.PI) / wl;
   const kx = (2 * Math.PI) / (wl * 1.3);
-  // Spawn just past a crest (downhill start): faces steeper than MAX_CLIMB
-  // stall the drive correctly, so an uphill spawn would park the tank.
+  // Spawn just past a crest (downhill start): faces beyond the fixture's
+  // engine/grip capability stall correctly, so an uphill spawn would park it.
   const field = makeField((x, z) => amp * Math.sin(k * z) + 0.3 * amp * Math.sin(kx * x));
   const ent = makeEntity(field, 0, 0.55 * wl, 0);
   ent.input.throttle = 1;
@@ -224,7 +224,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   let worstFloat = 0;
   let worstCompression = 0;
   let worstDroop = 0;
-  let path = 0; // integrated |v| — steep faces (>MAX_CLIMB) stall correctly,
+  let path = 0; // integrated |v| — capability-limited faces stall correctly,
   //              so wallowing/sliding counts as motion, displacement does not
   run(ent, field, 900, (i) => {
     path += Math.abs(ent.state.speed) * SIM_DT;
@@ -490,12 +490,12 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `airborne hot loop: removes suspension-rock probes (${airField.counts.height} vs ${groundedHeightQueries})`);
 }
 
-// ---------------------------------- 7b. non-traversable slope constraint ----
+// ---------------------------------- 7b. capability-based slope constraint ---
 // Transmission target speed alone is not a contact constraint: a fast tank
 // used to carry momentum straight up a 45-degree face while the support solve
-// lifted it. Above the rated grade the tracks must reject uphill displacement
-// and gravity must return the hull downslope. Ordinary 20-degree grades remain
-// driveable so the rule does not turn rolling terrain into invisible walls.
+// lifted it. When track grip cannot hold a face it must reject uphill
+// displacement and gravity must return the hull downslope. Ordinary 20-degree
+// grades remain driveable for this fixture.
 {
   const steep = makeField((x, z) => z);
   const ent = makeEntity(steep, 0, 0, 0);
@@ -533,6 +533,67 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(ent.state.pos.z > 3,
     `20-degree grade: normal climb remains driveable (${ent.state.pos.z.toFixed(2)} m)`);
   assert(ent.state.grounded === true, '20-degree grade: normal climb retains terrain contact');
+}
+
+// A grade is not globally climbable or blocked. The available engine force
+// determines sustained uphill drive, while the track/ground grip bounds the
+// contact force. All three fixtures face the exact same 32-degree slope.
+{
+  const grade = Math.tan(32 * Math.PI / 180);
+  const field = makeField((x, z) => grade * z);
+  const mobileBase = {
+    ...SPEC,
+    weightTons: 40,
+    terrainResistance: { hard: 0.75, medium: 0.9, soft: 1.6 },
+  };
+  const strong = makeEntity(field, 0, 0, 0, {
+    ...mobileBase,
+    name: 'strong-high-grip',
+    enginePowerHp: 900,
+    trackTraction: 1.15,
+  });
+  const weakEngine = makeEntity(field, 0, 0, 0, {
+    ...mobileBase,
+    name: 'weak-engine',
+    enginePowerHp: 240,
+    trackTraction: 1.15,
+  });
+  const lowGrip = makeEntity(field, 0, 0, 0, {
+    ...mobileBase,
+    name: 'strong-low-grip',
+    enginePowerHp: 900,
+    trackTraction: 0.48,
+  });
+  const damagedEngine = makeEntity(field, 0, 0, 0, {
+    ...mobileBase,
+    name: 'damaged-engine',
+    enginePowerHp: 650,
+    trackTraction: 1.15,
+  });
+  damagedEngine.combat = { modules: { engine: { state: 'yellow' } } };
+  for (const entity of [strong, weakEngine, lowGrip, damagedEngine]) {
+    entity.input.throttle = 1;
+  }
+  let weakReportedBlock = false;
+  let gripReportedBlock = false;
+  let damageReportedBlock = false;
+  run(strong, field, 600);
+  run(weakEngine, field, 600, () => { weakReportedBlock ||= weakEngine.state.slopeBlocked; });
+  run(lowGrip, field, 600, () => { gripReportedBlock ||= lowGrip.state.slopeBlocked; });
+  run(damagedEngine, field, 600, () => {
+    damageReportedBlock ||= damagedEngine.state.slopeBlocked;
+  });
+  assert(strong.state.pos.z > 3,
+    `32-degree capability: strong high-grip tank climbs (${strong.state.pos.z.toFixed(2)} m)`);
+  assert(weakEngine.state.pos.z < 1,
+    `32-degree capability: weak engine cannot sustain climb (${weakEngine.state.pos.z.toFixed(2)} m)`);
+  assert(lowGrip.state.pos.z < 1,
+    `32-degree capability: low-grip tracks cannot hold climb (${lowGrip.state.pos.z.toFixed(2)} m)`);
+  assert(damagedEngine.state.pos.z < 1,
+    `32-degree capability: damaged engine loses rated climb (${damagedEngine.state.pos.z.toFixed(2)} m)`);
+  assert(weakReportedBlock, '32-degree capability: engine-limited climb informs bot recovery');
+  assert(gripReportedBlock, '32-degree capability: traction-limited climb informs bot recovery');
+  assert(damageReportedBlock, '32-degree capability: module-damaged climb informs bot recovery');
 }
 
 // ------------------------------------------------------ 7. accel sanity --

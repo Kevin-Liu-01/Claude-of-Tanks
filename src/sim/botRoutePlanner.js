@@ -1,9 +1,26 @@
+import {
+  TERRAIN_MARGIN_EPS,
+  groundResistanceFor,
+  terrainSlopeMargin,
+  terrainTravelCostFactor,
+} from './terrainMobility.js';
+
 const WORLD_MIN = -500;
 const WORLD_MAX = 500;
 const CELL_M = 25;
 const GRID_N = Math.floor((WORLD_MAX - WORLD_MIN) / CELL_M) + 1;
-const MAX_GRADE = 0.48;
 const SQRT2 = Math.SQRT2;
+const GROUND_HARD = 0;
+const GROUND_MEDIUM = 1;
+const GROUND_SOFT = 2;
+
+function encodeGroundType(type) {
+  return type === 'hard' ? GROUND_HARD : type === 'soft' ? GROUND_SOFT : GROUND_MEDIUM;
+}
+
+function decodeGroundType(type) {
+  return type === GROUND_HARD ? 'hard' : type === GROUND_SOFT ? 'soft' : 'medium';
+}
 
 function clamp(value, min, max) {
   return value < min ? min : value > max ? max : value;
@@ -87,6 +104,7 @@ export function createBotNavigationGrid({
   }
   const heights = new Float32Array(GRID_N * GRID_N);
   const blocked = new Uint8Array(GRID_N * GRID_N);
+  const groundTypes = new Uint8Array(GRID_N * GRID_N);
   const candidates = [];
   const obstacles = getObstacles() || [];
   for (let iz = 0; iz < GRID_N; iz++) {
@@ -95,6 +113,11 @@ export function createBotNavigationGrid({
       const x = worldCoord(ix);
       const z = worldCoord(iz);
       heights[index] = heightField.getHeightAt(x, z);
+      groundTypes[index] = encodeGroundType(
+        typeof heightField.getGroundType === 'function'
+          ? heightField.getGroundType(x, z)
+          : 'medium',
+      );
       const nearby = queryObstacles
         ? queryObstacles(x - 4.5, z - 4.5, x + 4.5, z + 4.5, candidates)
         : obstacles;
@@ -108,13 +131,13 @@ export function createBotNavigationGrid({
       }
     }
   }
-  return Object.freeze({ heights, blocked });
+  return Object.freeze({ heights, blocked, groundTypes });
 }
 
 /**
  * Plan a match-seeded global route over a 25 m battlefield grid.
- * Solid authored cover and excessive grades are rejected before the existing
- * local AI controller receives the waypoints.
+ * Solid authored cover and vehicle-specific terrain limits are rejected
+ * before the existing local AI controller receives the waypoints.
  */
 export function planBotRoute({
   start,
@@ -125,9 +148,14 @@ export function planBotRoute({
   getObstacles = () => [],
   rng = Math.random,
   role = 'flanker',
+  spec,
+  useRoleDetour = true,
 } = {}) {
   if (!start || !goal) {
     throw new TypeError('start and goal are required');
+  }
+  if (!spec || !spec.terrainResistance || !(spec.enginePowerHp > 0) || !(spec.weightTons > 0)) {
+    throw new TypeError('spec with drivetrain and terrain resistance is required');
   }
   const seed = (rng() * 0x100000000) >>> 0;
   const grid = navigation || createBotNavigationGrid({
@@ -135,9 +163,11 @@ export function planBotRoute({
     queryObstacles,
     getObstacles,
   });
-  const { heights, blocked } = grid;
+  const { heights, blocked, groundTypes } = grid;
   if (!(heights instanceof Float32Array) || !(blocked instanceof Uint8Array) ||
-      heights.length !== GRID_N * GRID_N || blocked.length !== GRID_N * GRID_N) {
+      !(groundTypes instanceof Uint8Array) ||
+      heights.length !== GRID_N * GRID_N || blocked.length !== GRID_N * GRID_N ||
+      groundTypes.length !== GRID_N * GRID_N) {
     throw new TypeError('navigation must be a bot navigation grid');
   }
 
@@ -188,10 +218,15 @@ export function planBotRoute({
         if (dx && dz && (blocked[cellIndex(node.ix + dx, node.iz)] ||
           blocked[cellIndex(node.ix, node.iz + dz)])) continue;
         const distance = CELL_M * distanceScale;
-        const grade = Math.abs(heights[nextIndex] - heights[node.index]) / distance;
-        if (grade > MAX_GRADE) continue;
+        const signedGrade = (heights[nextIndex] - heights[node.index]) / distance;
+        const fromGround = decodeGroundType(groundTypes[node.index]);
+        const toGround = decodeGroundType(groundTypes[nextIndex]);
+        const ground = groundResistanceFor(spec, toGround) >= groundResistanceFor(spec, fromGround)
+          ? toGround : fromGround;
+        if (terrainSlopeMargin(spec, ground, signedGrade) <= TERRAIN_MARGIN_EPS) continue;
+        const terrainCost = terrainTravelCostFactor(spec, ground, signedGrade);
         const variability = 1 + hashNoise(seed, nx, nz) * 0.22;
-        const nextCost = costs[node.index] + distance * (1 + grade * 5) * variability;
+        const nextCost = costs[node.index] + distance * terrainCost * variability;
         if (nextCost >= costs[nextIndex]) continue;
         costs[nextIndex] = nextCost;
         parents[nextIndex] = node.index;
@@ -199,7 +234,9 @@ export function planBotRoute({
         heap.push({ index: nextIndex, ix: nx, iz: nz, score: nextCost + heuristic });
       }
     }
-    if (parents[goalIndex] < 0 && goalIndex !== startIndex) return [];
+    if (parents[goalIndex] < 0 && goalIndex !== startIndex) {
+      return { points: [], cost: Infinity };
+    }
     const path = [];
     let current = goalIndex;
     while (current >= 0) {
@@ -210,24 +247,42 @@ export function planBotRoute({
       current = parents[current];
     }
     path.reverse();
-    return path;
+    return { points: path, cost: costs[goalIndex] };
   }
 
   const dx = goal.x - start.x;
   const dz = goal.z - start.z;
-  const distance = Math.hypot(dx, dz) || 1;
-  const lateralX = dz / distance;
-  const lateralZ = -dx / distance;
-  const offset = roleOffset(role, rng);
-  const fraction = role === 'sniper' ? 0.34 + rng() * 0.16 : 0.42 + rng() * 0.2;
-  const via = {
-    x: clamp(start.x + dx * fraction + lateralX * offset, WORLD_MIN + 15, WORLD_MAX - 15),
-    z: clamp(start.z + dz * fraction + lateralZ * offset, WORLD_MIN + 15, WORLD_MAX - 15),
-  };
-  const first = solve(start, via);
-  const second = solve(via, goal);
-  const raw = first.length && second.length ? first.concat(second.slice(1)) : solve(start, goal);
-  if (!raw.length) return [[goal.x, goal.z]];
+  const direct = solve(start, goal);
+  let raw = direct.points;
+  if (useRoleDetour) {
+    const distance = Math.hypot(dx, dz) || 1;
+    const lateralX = dz / distance;
+    const lateralZ = -dx / distance;
+    const offset = roleOffset(role, rng);
+    const fraction = role === 'sniper' ? 0.34 + rng() * 0.16 : 0.42 + rng() * 0.2;
+    const via = {
+      x: clamp(start.x + dx * fraction + lateralX * offset, WORLD_MIN + 15, WORLD_MAX - 15),
+      z: clamp(start.z + dz * fraction + lateralZ * offset, WORLD_MIN + 15, WORLD_MAX - 15),
+    };
+    const first = solve(start, via);
+    const second = solve(via, goal);
+    const viaValid = first.points.length > 0 && second.points.length > 0;
+    const viaCost = first.cost + second.cost;
+    // Role openings intentionally take longer geometric lanes; that spacing
+    // is part of battle pacing and must not be optimized away. Compare only
+    // the EXTRA terrain burden after normalizing the requested detour length.
+    const directDistance = Math.max(distance, 1);
+    const viaDistance = Math.hypot(via.x - start.x, via.z - start.z) +
+      Math.hypot(goal.x - via.x, goal.z - via.z);
+    const geometricDetour = Math.max(1, viaDistance / directDistance);
+    const terrainBurden = direct.points.length
+      ? (viaCost / Math.max(direct.cost, 1)) / geometricDetour
+      : 1;
+    if (viaValid && (!direct.points.length || terrainBurden <= 1.25)) {
+      raw = first.points.concat(second.points.slice(1));
+    }
+  }
+  if (!raw.length) return [];
 
   const points = [];
   for (let index = 1; index < raw.length; index++) {

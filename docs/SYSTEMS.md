@@ -144,7 +144,7 @@ The solver covers:
 - steering and pivot behavior;
 - brake and handbrake;
 - slope and ground resistance;
-- rated-grade traction rejection and gravity-driven downslope return;
+- engine/track/ground-derived climb authority and gravity-driven downslope return;
 - map boundary and obstacle collision;
 - tank-to-tank collision and ramming;
 - crushable prop interaction;
@@ -157,15 +157,20 @@ sprung chassis follows the sampled support plane within the running gear's
 compression and droop limits. When support falls beyond full droop, the tracks
 unload, drive/brake/steering forces stop, horizontal momentum is preserved, and
 `verticalSpeed` integrates gravity. Contact resumes only when the fully
-extended footprint reaches terrain. A slope at or above the 28-degree rated
-grade rejects remaining uphill velocity and applies full along-slope gravity;
-lower grades continue to use the engine, resistance, and creep model.
-The solver raises `slopeBlocked` on a rejected drive tick. Bot controllers
-consume that authoritative contact signal to activate a short-lived,
-fixed-cadence terrain fan, selecting a climbable contour before the generic
-stuck timeout. A sustained block also enters deterministic reverse/detour
-recovery. The richer height probes remain dormant during ordinary traversal,
-so this terrain-aware path correction does not become a per-frame AI cost.
+extended footprint reaches terrain. There is no universal climb angle. The
+solver compares gravity demand with engine acceleration and track grip derived
+from power-to-weight, current engine/module health, the vehicle's per-ground
+resistance, and its optional `trackTraction` multiplier. Insufficient engine
+force produces a natural stall and rollback; exhausted track grip additionally
+rejects wall-like uphill contact.
+
+The solver raises `slopeBlocked` whenever commanded uphill travel exceeds the
+current vehicle capability. Global bot A* and the local recovery fan consume
+the same terrain-mobility functions, including hard/medium/soft ground, so a
+bot routes around a grade its own tank cannot sustain instead of following a
+fleet-wide cutoff. A sustained block still enters deterministic reverse/detour
+recovery. The richer local height probes remain dormant during ordinary
+traversal, so terrain-aware correction does not become a per-frame AI cost.
 
 The movement module is used by solo, browser-hosted authority, dedicated
 authority, local network prediction, bots, and Studio terrain settlement.

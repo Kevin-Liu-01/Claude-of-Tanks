@@ -152,27 +152,34 @@ Ramp yaw rate toward target over ~0.15 s (tracks spool up) rather than stepping 
 
 ## 5. Slope effects
 
-Pitch of the hull along the drive direction modifies the achievable speed:
+Pitch of the hull along the drive direction modifies the achievable speed.
+Climbability is a force budget, not a fleet-wide angle:
 
 ```
-slopePenalty(pitchDeg):
-  climbing (pitch > 0):  penalty = pitch / MAX_CLIMB_DEG        // MAX_CLIMB_DEG ≈ 25–30
-                         at penalty ≥ 1 the tank stalls (v_target → ~0, then slides back)
-  downhill (pitch < 0):  bonus  = min(|pitch| / 45, 0.25)       // up to +25% over the limit,
-                         capped at 1.2 × topSpeed overall
+engineAccel = K_ACCEL × (enginePowerHp / weightTons) / terrainResistance
+trackGrip   = clamp(0.24 × trackTraction / terrainResistance, 0.08, 0.27)
+             × g × cos(pitch)
+gravityLoad = g × sin(pitch) × 0.3
+climbMargin = clamp((min(engineAccel, trackGrip) - gravityLoad)
+                    / min(engineAccel, trackGrip), 0, 1)
+
+climbing: v_target *= climbMargin
+downhill: v_target *= 1 + min(|pitchDeg| / 45, 0.25), capped at 1.2 × topSpeed
 ```
 
-Also add the raw gravity term `a_slope = -9.81 · sin(pitch)` so a stalled tank on a steep
-slope slides backwards and a coasting tank gains speed downhill even at zero throttle.
-Slopes steeper than ~35–40° are effectively walls (WoT maps enforce this by geometry).
-Side slopes (roll) do not affect speed in WoT; they only tilt the hull (and thus the gun).
+The effective tracked gravity share preserves the tuned arcade handling while
+still allowing power-to-weight, engine damage, ground condition, and running
+gear to determine the result. An optional `trackTraction` multiplier covers
+unusual running gear; existing tanks derive grip from their authored terrain
+resistance.
 
-In the shipped kinematic solver, `MAX_CLIMB_DEG` is also a contact constraint.
-Reducing target speed alone is insufficient because a vehicle arriving with
-momentum can otherwise continue uphill while the height solver lifts it. At or
-above the rated grade, remove any uphill velocity before integration and apply
-the full gravity component along the slope. Downhill motion remains valid;
-grades below the threshold retain the tuned engine and creep behavior.
+Also add the raw gravity term `a_slope = -9.81 · sin(pitch)` so a stalled tank
+slides backwards and a coasting tank gains speed downhill. Reducing target
+speed alone is insufficient for wall-like faces because carried momentum can
+make the kinematic support plane lift the tank. The solver therefore computes
+a separate grip-only margin; when track grip is exhausted it removes remaining
+uphill velocity before integration and applies full along-slope gravity.
+Side slopes (roll) do not affect speed; they tilt the hull and gun.
 
 ### 5.1 Ground contact and free flight
 

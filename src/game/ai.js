@@ -20,6 +20,7 @@ import { computeDispersionRadM } from '../sim/movement.js';
 import { solveBallisticGunLay } from '../sim/ballistics.js';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.js';
+import { terrainTravelCostFactor } from '../sim/terrainMobility.js';
 
 /**
  * Canonical deterministic PRNG (ARCHITECTURE.md §1.4, copied verbatim).
@@ -148,9 +149,6 @@ const UNSTICK_TIME_S    = 1.4;
 const SLOPE_BLOCK_RECOVERY_S = 0.35;
 const TERRAIN_ROUTE_LOOK_M = 28;
 const TERRAIN_ROUTE_STEP_M = 4;
-// Keep a small margin inside movement.js's 28° contact constraint so a route
-// does not oscillate on the exact numerical boundary.
-const TERRAIN_ROUTE_MAX_GRADE = Math.tan(27 * Math.PI / 180);
 const TERRAIN_ROUTE_FAN_RAD = Object.freeze([
   0.42, -0.42, 0.78, -0.78, 1.12, -1.12, 1.48, -1.48,
 ]);
@@ -1275,22 +1273,34 @@ export function createAI(entity, opts = {}) {
   // corner along the box instead of re-offering the same cell (the crawl
   // loop the autumn rock-cluster trace measured)
   const lastCorner = { x: 1e9, z: 1e9, untilS: -1 };
-  function terrainLineGrade(sx, sz, startH, ux, uz) {
+  function terrainLineCost(sx, sz, startH, ux, uz) {
     let previousH = startH;
-    let worstRise = 0;
+    let worstCost = 1;
+    const debuff = entity.state._debuff;
+    const powerMult = debuff?.powerMult ?? 1;
+    const accelMult = debuff?.accelMult ?? 1;
     for (let distance = TERRAIN_ROUTE_STEP_M;
       distance <= TERRAIN_ROUTE_LOOK_M; distance += TERRAIN_ROUTE_STEP_M) {
-      const height = hf.getHeightAt(sx + ux * distance, sz + uz * distance);
+      const x = sx + ux * distance;
+      const z = sz + uz * distance;
+      const height = hf.getHeightAt(x, z);
       const rise = (height - previousH) / TERRAIN_ROUTE_STEP_M;
-      if (rise > worstRise) worstRise = rise;
+      const ground = typeof hf.getGroundType === 'function'
+        ? hf.getGroundType(x, z)
+        : 'medium';
+      const cost = terrainTravelCostFactor(
+        spec, ground, rise, powerMult, accelMult,
+      );
+      if (!Number.isFinite(cost)) return Infinity;
+      if (cost > worstCost) worstCost = cost;
       previousH = height;
     }
-    return worstRise;
+    return worstCost;
   }
 
   function planTerrainRoute(sx, sz, dirx, dirz, goalX, goalZ) {
     const startH = hf.getHeightAt(sx, sz);
-    if (terrainLineGrade(sx, sz, startH, dirx, dirz) <= TERRAIN_ROUTE_MAX_GRADE) {
+    if (Number.isFinite(terrainLineCost(sx, sz, startH, dirx, dirz))) {
       return false;
     }
 
@@ -1303,13 +1313,13 @@ export function createAI(entity, opts = {}) {
       const s = Math.sin(angle);
       const ux = dirx * c + dirz * s;
       const uz = -dirx * s + dirz * c;
-      const grade = terrainLineGrade(sx, sz, startH, ux, uz);
-      if (grade > TERRAIN_ROUTE_MAX_GRADE) continue;
+      const terrainCost = terrainLineCost(sx, sz, startH, ux, uz);
+      if (!Number.isFinite(terrainCost)) continue;
       const cx = sx + ux * TERRAIN_ROUTE_LOOK_M;
       const cz = sz + uz * TERRAIN_ROUTE_LOOK_M;
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 480) continue;
       const side = Math.sign(angle) || 1;
-      const score = Math.hypot(goalX - cx, goalZ - cz) + grade * 35 +
+      const score = Math.hypot(goalX - cx, goalZ - cz) + (terrainCost - 1) * 7 +
         Math.abs(angle) * 5 + (side === detourSide ? 0 : 8);
       if (score < bestScore) {
         bestScore = score;
@@ -1473,11 +1483,9 @@ export function createAI(entity, opts = {}) {
       const ex = sx + ux * clear, ez = sz + uz * clear;
       if (Math.max(Math.abs(ex), Math.abs(ez)) > 470) continue;
       const h0 = hf.getHeightAt(sx, sz);
-      const rise = Math.max(
-        hf.getHeightAt(sx + ux * 12, sz + uz * 12) - h0,
-        hf.getHeightAt(sx + ux * 24, sz + uz * 24) - h0);
-      if (rise > 4) continue; // don't escape INTO a wall of terrain
-      const score = clear - rise * 4 + rng() * 3;
+      const terrainCost = terrainLineCost(sx, sz, h0, ux, uz);
+      if (!Number.isFinite(terrainCost)) continue;
+      const score = clear - (terrainCost - 1) * 4 + rng() * 3;
       if (score > bestScore) { bestScore = score; bx = ex; bz = ez; }
     }
     if (bestScore === -Infinity) return false;
@@ -2717,7 +2725,7 @@ export function createAI(entity, opts = {}) {
       const inst = Math.hypot(dx, dz) / Math.max(dt, 1e-4);
       progressRate += (inst - progressRate) * Math.min(1, dt * 2.5);
     }
-    // movement.js reports a rated-grade contact rejection explicitly. Waiting
+    // movement.js reports an engine/traction capability rejection explicitly. Waiting
     // for the generic two-second low-speed heuristic made bots repeatedly
     // grind into short cliffs that the coarse 25 m route grid cannot see.
     // A sustained slope block is definitive terrain feedback: reverse and

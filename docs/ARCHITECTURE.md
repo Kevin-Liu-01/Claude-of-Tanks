@@ -148,6 +148,7 @@ TankSpec = {
   enginePowerHp, weightTons, topSpeedKmh, reverseSpeedKmh: number,
   hullTraverseDegS: number,
   terrainResistance: { hard, medium, soft },   // dimensionless
+  trackTraction?: number,                      // optional running-gear grip multiplier
   pivotStyle: 'pivot'|'neutral',
   // --- turret & gun kinematics ---
   turretTraverseDegS, gunPitchDegS, gunElevationDeg, gunDepressionDeg: number, // depression positive

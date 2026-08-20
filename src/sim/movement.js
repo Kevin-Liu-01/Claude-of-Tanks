@@ -18,6 +18,13 @@
  */
 
 import { Euler, Quaternion, Vector3 } from 'three';
+import {
+  DRIVE_ACCEL_PER_HPT as K_ACCEL,
+  GRAVITY_MPS2 as GRAVITY,
+  TERRAIN_MARGIN_EPS,
+  trackGripMargin,
+  uphillDriveMargin,
+} from './terrainMobility.js';
 
 /** Fixed simulation step in seconds (ARCHITECTURE §1.1). */
 export const SIM_DT = 1 / 60;
@@ -37,7 +44,6 @@ export const SIM_DT = 1 / 60;
 // SPOOL_S 1.05 → 1.2 lands module-measured flat HARD 2.20 s / MEDIUM 2.42 s
 // (scratchpad/gf-r7-tune.mjs) while 43→60 stays 1.37/1.53 s — both launch
 // cases inside/at the WoT band edges, top-half authority untouched.
-const K_ACCEL = 0.165;           // m/s² per (hp/t) on resistance-1 ground
 const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl to v_max (§3)
 // Engine torque spool (r4 crit "initial surge a touch hot"): drive force ramps
 // from SPOOL_FLOOR to 1 over SPOOL_S when the throttle opens, so a 60-ton
@@ -86,12 +92,9 @@ const TURN_POWER_DIVERT = 0.5;   // drive-accel fraction diverted to the tracks 
 // mid band, only the last ~20% of the speed band widens turns (r-crit: the
 // linear 0.4 cut the M1A2 to ~22°/s of its 44°/s spec at 60+ km/h).
 const TRAVERSE_SPEED_SCALE = 0.2;// hull traverse reduction fraction at top speed (× speedFrac²)
-const GRAVITY = 9.81;            // m/s²
-const MAX_CLIMB_DEG = 28;        // slope (deg) at which the drive stalls
-const MAX_CLIMB_RAD = MAX_CLIMB_DEG * (Math.PI / 180);
 const DOWNHILL_BONUS_CAP = 0.25; // up to +25% v_target downhill
 // r4 (round critique: "heavy-tank standing start on a grade reads dead"): an
-// open throttle on a DRIVABLE grade (below the 28° stall) must always win the
+// open throttle on a grade with positive engine/grip margin must always win the
 // tug-of-war with gravity, however slowly — a WoT Tiger on a 12-17° grass
 // slope visibly pulls away at 8-12 km/h, while here SPOOL_FLOOR × accel
 // (Tiger I: 0.25 × 1.9 ≈ 0.47 m/s²) lost to the near-stationary full-gravity
@@ -446,11 +449,13 @@ function chaseAngle(cur, target, maxDelta) {
   return wrapAngle(target);
 }
 
-/** Climb penalty / downhill bonus factor for v_target (movement doc §5). */
-function slopeSpeedFactor(pitchAlongRad) {
+/** Capability-derived climb penalty / downhill bonus for v_target. */
+function slopeSpeedFactor(spec, groundType, pitchAlongRad, powerMult, accelMult) {
   const pitchDeg = pitchAlongRad * RAD2DEG;
   if (pitchDeg > 0) {
-    return clamp(1 - pitchDeg / MAX_CLIMB_DEG, 0, 1);
+    return uphillDriveMargin(
+      spec, groundType, pitchAlongRad, powerMult, accelMult,
+    );
   }
   return 1 + Math.min(-pitchDeg / 45, DOWNHILL_BONUS_CAP);
 }
@@ -784,10 +789,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // ---- longitudinal speed ----
   const pSpec = (spec.enginePowerHp * debuff.powerMult) / spec.weightTons;
   const accel = K_ACCEL * (pSpec / R) * debuff.accelMult;
-  const moveSign = state.speed !== 0 ? Math.sign(state.speed) : Math.sign(throttle);
-  const pitchAlong = terrPitch * (moveSign || 1);
+  const driveSign = throttle !== 0 ? Math.sign(throttle) : Math.sign(state.speed);
+  const pitchAlong = terrPitch * (driveSign || 1);
   let vLim = throttle >= 0 ? topMps : revMps;
-  vLim *= slopeSpeedFactor(pitchAlong);
+  vLim *= slopeSpeedFactor(spec, ground, pitchAlong, debuff.powerMult, debuff.accelMult);
   vLim = Math.min(vLim, topMps * OVERSPEED_CAP);
   let vTarget = (braking || debuff.immobile) ? 0 : vLim * throttle;
   // Turning bleeds the TARGET speed (movement doc §4): the steady-state speed
@@ -861,15 +866,22 @@ export function updateTank(entity, heightField, dt, collide = null) {
     state.speed *= 1 -
       TURN_DIRECT_BLEED * bleedFade * Math.min(Math.abs(state.yawRate) / trMax, 1) * dt;
   }
-  // A grade above rated climbability is a contact constraint, not merely a
-  // zero target speed. Reject any remaining uphill component immediately so
-  // momentum cannot drive the kinematic support plane through wall-like
-  // terrain; the full gravity term below then starts the natural downslope
-  // return. Ordinary grades retain the tuned engine/traction model.
-  const impassableGrade = groundedAtStart && Math.abs(terrPitch) >= MAX_CLIMB_RAD;
-  if (impassableGrade && state.speed * terrPitch > 0) {
+  // Engine strength determines whether open throttle can sustain this climb;
+  // track grip separately determines whether the support contact can hold the
+  // face at all. Only grip failure cancels carried uphill momentum outright.
+  // An engine-limited tank decelerates through the normal target/gravity solve
+  // and rolls back, while both failures publish slopeBlocked for bot recovery.
+  const commandedPitch = terrPitch * Math.sign(throttle || 1);
+  const driveBlocked = groundedAtStart && throttle !== 0 && commandedPitch > 0 &&
+    uphillDriveMargin(
+      spec, ground, commandedPitch, debuff.powerMult, debuff.accelMult,
+    ) <= TERRAIN_MARGIN_EPS;
+  const motionPitch = terrPitch * Math.sign(state.speed || throttle || 1);
+  const gripBlocked = groundedAtStart && motionPitch > 0 &&
+    trackGripMargin(spec, ground, motionPitch) <= TERRAIN_MARGIN_EPS;
+  if (driveBlocked || gripBlocked) state.slopeBlocked = true;
+  if (gripBlocked && state.speed * terrPitch > 0) {
     state.speed = 0;
-    state.slopeBlocked = true;
   }
   if (groundedAtStart && !debuff.immobile) {
     // Gravity along the track line: stalled tanks slide back, coasting gains
@@ -887,22 +899,28 @@ export function updateTank(entity, heightField, dt, collide = null) {
       ? (1 - clamp((Math.abs(state.speed) - 1.0) / 2.0, 0, 1)) * (1 - (state._spool || 0))
       : 0;
     state.speed += -GRAVITY * Math.sin(terrPitch) * dt *
-      (impassableGrade ? 1.0 : (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0));
+      (gripBlocked ? 1.0 : (throttle !== 0 ? 0.3 + 0.7 * slow : 1.0));
   }
   // CLIMB_CREEP floor (r4, see the constant): with the throttle open toward a
   // reachable target, the net of drive − drag − gravity this tick never drops
   // below +creep in the drive direction. The creep is scaled by the DRIVABLE
-  // MARGIN in the throttle direction (§5 slope law): full strength once the
-  // grade sits ≥ ~4° inside the climbable envelope, fading to zero at the
-  // stall grade — a tank at its rated gradeability grinds to a crawl and
-  // holds, past it there is no floor and it slides back per the research
+  // MARGIN in the throttle direction (§5 slope law): full strength when
+  // engine/track force comfortably exceeds gravity, fading to zero as the
+  // available force is exhausted. At zero margin the tank grinds to a crawl
+  // and rolls back; no fleet-wide angle participates in the decision.
   // doc. The pitch is re-derived from throttle sign (not moveSign): while
   // the hull momentarily slides BACKWARD on a steep grade, moveSign flips
   // pitchAlong to "downhill" and vTarget goes positive for a tick — the
   // margin gate must not read that flip as a drivable slope.
   if (groundedAtStart && throttle !== 0 && !braking && !debuff.immobile &&
       vTarget * throttle > 0) {
-    const drivable = slopeSpeedFactor(terrPitch * Math.sign(throttle));
+    const drivable = slopeSpeedFactor(
+      spec,
+      ground,
+      terrPitch * Math.sign(throttle),
+      debuff.powerMult,
+      debuff.accelMult,
+    );
     if (drivable > 0.01) {
       const creep = CLIMB_CREEP_MPS2 * Math.min(1, drivable / 0.15);
       const dir = Math.sign(vTarget);

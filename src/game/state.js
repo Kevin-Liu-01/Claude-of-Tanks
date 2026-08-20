@@ -25,6 +25,7 @@ import {
   specialActionGuidesShell,
 } from '../sim/specialActions.js';
 import { createAI, roleOf } from './ai.js';
+import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { getStoredDifficulty } from './input.js';
 import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.js';
@@ -540,6 +541,14 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // them for repositioning). Absent in headless fixtures.
     getConcealment: () => (world.getConcealment ? world.getConcealment() : []),
   };
+  // One immutable terrain/ground/cover scan is shared by every local bot.
+  // Opening doctrine still authors the tactical points below; A* only expands
+  // each leg into a path this specific drivetrain can actually traverse.
+  const botNavigation = createBotNavigationGrid({
+    heightField: world.heightField,
+    queryObstacles: world.queryObstacles || null,
+    getObstacles: () => world.getObstacles(),
+  });
 
   // SYMMETRIC TEAMS (hud_ui r1) → BATTLE-AI r7 (7v7): random battles field 13
   // non-players and split them 6 ALLIES + 7 ENEMIES with a tier-balanced
@@ -768,9 +777,11 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       game.player = ent;
       ent.aiCtl = null;
     } else {
+      const botRng = mulberry32(7000 + i);
+      const routeRng = mulberry32(17000 + i);
       ent.aiCtl = createAI(ent, {
         difficulty: getStoredDifficulty(),
-        rng: mulberry32(7000 + i),
+        rng: botRng,
         deps: {
           ...aiDeps,
           // SYMMETRIC TEAMS: every bot fights the OPPOSING team (allied bots
@@ -866,9 +877,26 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       }
       // town skirt applies to staging legs only — the FINAL sweep leg keeps
       // hunting through the opposing spawn (proximity-spot guarantee).
-      ent.aiCtl.setWaypoints(W
+      const doctrineWaypoints = W
         .map((pt, wi) => (wi < W.length - 1 ? _skirtWp(pt[0], pt[1]) : pt))
-        .map(([wx, wz]) => [_clampW(wx), _clampW(wz)]));
+        .map(([wx, wz]) => [_clampW(wx), _clampW(wz)]);
+      const terrainWaypoints = [];
+      let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
+      for (const [wx, wz] of doctrineWaypoints) {
+        const leg = planBotRoute({
+          start: routeStart,
+          goal: { x: wx, z: wz },
+          navigation: botNavigation,
+          rng: routeRng,
+          role,
+          spec: ent.spec,
+          useRoleDetour: false,
+        });
+        if (!leg.length) break;
+        terrainWaypoints.push(...leg);
+        routeStart = { x: wx, z: wz };
+      }
+      ent.aiCtl.setWaypoints(terrainWaypoints, { loop: false });
     }
     // Spawn warm-start (r5 terrain-contact gate): run the movement sim for a
     // few ticks so the attitude spring settles and the terrain support solve

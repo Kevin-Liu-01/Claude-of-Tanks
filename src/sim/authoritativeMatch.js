@@ -456,6 +456,7 @@ export function createAuthoritativeMatch({
         navigation: botNavigation,
         rng: botRng,
         role: roleOf(entity.spec),
+        spec: entity.spec,
       }), { loop: false });
     }
   }
