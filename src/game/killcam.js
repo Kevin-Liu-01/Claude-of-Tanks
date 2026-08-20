@@ -1259,6 +1259,10 @@ export function createKillCam(deps) {
       // SPECTATE lifecycle: the chase ends the moment the battle is decided
       // (the end flow takes the camera) or the phase leaves battle (garage).
       bus.on('battle:ended', () => spectate.stop(true));
+      // Pointer/touch controls in the HUD use the same controller as A/D and
+      // arrow keys, so the on-screen keycaps are real controls instead of
+      // decorative hints. cycle() is a no-op outside spectator mode.
+      bus.on('spectate:cycle', (p) => spectate.cycle(p?.direction < 0 ? -1 : 1));
       bus.on('phase:change', (p) => {
         if (!p || p.phase !== 'battle') {
           spectate.stop(true);

@@ -1,4 +1,4 @@
-// src/ui/hud.js — battle HUD overlay: dispersion reticle + reload ring, shell
+// src/ui/hud.js — battle HUD overlay: dispersion/reload reticle, shell
 // selector with ammo counts, consumable slots, penetration indicator, sniper
 // scope, team panels ("ears") + score/timer plate, spotting-driven enemy
 // nameplates and minimap, kill feed, damage log, damage numbers, hit-direction
@@ -26,6 +26,12 @@ export const AUTOLOADER_HUD_SHELLS = 4;
 const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
 const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
+
+/** Remaining authoritative reload fraction painted into the reticle dots. */
+export function reloadHudFraction(reload) {
+  if (!(reload?.totalS > 0) || !(reload?.t > 0.001)) return 0;
+  return Math.max(0, Math.min(1, reload.t / reload.totalS));
+}
 
 /**
  * Normalize authoritative magazine state for the compact reticle indicator.
@@ -311,44 +317,66 @@ const HUD_CSS = `
   -webkit-user-select:none;user-select:none;color:#e6edf3;overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;
-  align-items:center;gap:16px;padding:7px 46px 9px;
-  background:linear-gradient(180deg,rgba(16,21,27,.94),rgba(7,10,14,.68));
-  border:1px solid rgba(146,164,180,.3);border-top:none;
-  box-shadow:0 3px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(232,242,250,.10),
-  inset 0 -1px 0 rgba(0,0,0,.55);
-  clip-path:polygon(0 0,100% 0,calc(100% - 17px) 100%,17px 100%);}
-/* r6-2 (round critique: "0s small and float apart from the ticks"): the frag
-   NUMERALS are the headline — 30px bold — the plate runs ~15% wider, and the
-   segment bar hugs each numeral at a 2px gap so numeral+bar read as one
-   counter unit. */
-.cot-top .fg{color:${PEN_GREEN};font-size:30px;font-weight:700;line-height:1;
-  font-family:${FONT_COND};letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.6);}
-.cot-top .fe{color:${PEN_RED};font-size:30px;font-weight:700;line-height:1;
-  font-family:${FONT_COND};letter-spacing:-.01em;
-  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.6);}
-.cot-top .tm{font-size:15.5px;font-weight:600;color:#d6e2ec;letter-spacing:.1em;
-  font-family:${FONT_COND};text-shadow:0 1px 2px rgba(0,0,0,.8);
-  font-variant-numeric:tabular-nums;line-height:1;padding:0 4px;}
-/* frag counter (WoT tug-of-war semantics): one kill PIP per opposing
-   vehicle under each numeral; each kill fills one pip solid in the scoring
-   team's color, growing outward from the timer. r7-2 (round critique: "the
-   wide-flat slats render as four underscore dashes / placeholder text"):
-   pips are now small 6px FILLED SQUARES hugging the numeral baseline —
-   unlit = dark filled square with a quiet keyline (clearly a socket, not
-   text), lit = solid team color. */
-.cot-top .sc{display:flex;flex-direction:column;align-items:center;gap:1px;}
-.cot-top .wedge{display:flex;gap:3px;align-items:center;}
+.cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
+  min-height:62px;display:grid;grid-template-columns:minmax(78px,1fr) 86px minmax(78px,1fr);
+  align-items:stretch;padding:0 25px 8px;isolation:isolate;overflow:hidden;
+  background:linear-gradient(180deg,rgba(18,24,30,.98),rgba(7,10,14,.93));
+  border:1px solid rgba(176,194,208,.34);border-top:none;
+  box-shadow:inset 0 1px 0 rgba(239,247,252,.12),inset 0 -1px 0 rgba(0,0,0,.68);
+  filter:drop-shadow(0 5px 11px rgba(0,0,0,.5));
+  clip-path:polygon(0 0,100% 0,calc(100% - 25px) 100%,25px 100%);}
+.cot-top::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(126,232,126,.12),transparent 34%,transparent 66%,rgba(240,90,90,.12)),
+    linear-gradient(90deg,transparent 49.7%,rgba(191,207,219,.18) 49.8%,rgba(191,207,219,.18) 50.2%,transparent 50.3%);}
+.cot-top::after{content:"";position:absolute;z-index:2;left:50%;bottom:0;width:72px;height:2px;
+  transform:translateX(-50%);pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(200,216,228,.7),transparent);
+  box-shadow:0 -1px 5px rgba(169,197,216,.18);}
+.cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
+.cot-top .sc{display:grid;grid-template-rows:10px 1fr 7px;place-items:center;gap:1px;
+  min-width:0;padding:6px 7px 5px;}
+.cot-top .sc::after{content:"";position:absolute;left:7px;right:7px;bottom:0;height:2px;}
+.cot-top .sc.ally::after{background:linear-gradient(90deg,transparent,rgba(126,232,126,.86));}
+.cot-top .sc.enemy::after{background:linear-gradient(90deg,rgba(240,90,90,.86),transparent);}
+.cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:7.5px;font-weight:800;
+  line-height:1;letter-spacing:.2em;text-transform:uppercase;color:#8f9eaa;white-space:nowrap;}
+.cot-top .sc.ally .team-label{color:rgba(161,225,170,.76);}
+.cot-top .sc.enemy .team-label{color:rgba(241,148,140,.76);}
+.cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:28px;font-weight:800;line-height:.96;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-shadow:0 2px 3px rgba(0,0,0,.72);}
+.cot-top .fg{color:${PEN_GREEN};}
+.cot-top .fe{color:${PEN_RED};}
+.cot-top .tm-block{align-self:stretch;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding:5px 9px 9px;
+  background:linear-gradient(180deg,rgba(126,148,164,.11),rgba(2,5,8,.2));
+  border-left:1px solid rgba(161,181,196,.16);border-right:1px solid rgba(161,181,196,.16);
+  clip-path:polygon(0 0,100% 0,88% 100%,12% 100%);}
+.cot-top .tm-label{color:#798996;letter-spacing:.24em;}
+.cot-top .tm{font-size:18px;font-weight:750;color:#e2ebf2;letter-spacing:.08em;
+  font-family:${FONT_COND};text-shadow:0 1px 3px rgba(0,0,0,.9);
+  font-variant-numeric:tabular-nums;line-height:1;}
+/* One socket per opposing vehicle; kills illuminate outward from the clock. */
+.cot-top .wedge{display:flex;gap:3px;align-items:center;min-width:0;}
 .cot-top .wedge i{display:block;width:6px;height:6px;
-  background:rgba(12,17,22,.92);border:1px solid rgba(150,166,180,.42);
-  box-shadow:inset 0 1px 1px rgba(0,0,0,.55);}
+  background:rgba(2,5,8,.9);border:1px solid rgba(150,166,180,.38);
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.72);}
 .cot-top .wedge i.on{animation:cotChipIn .18s ease-out;
   background:rgba(134,232,134,.95);border-color:rgba(150,244,150,.95);
   box-shadow:0 0 4px rgba(126,232,126,.4);}
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
   box-shadow:0 0 4px rgba(240,90,90,.4);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
+@media (max-width:480px){
+  .cot-top{width:min(310px,calc(100vw - 16px));min-height:57px;padding:0 19px 7px;
+    grid-template-columns:minmax(70px,1fr) 80px minmax(70px,1fr);
+    clip-path:polygon(0 0,100% 0,calc(100% - 19px) 100%,19px 100%);}
+  .cot-top .sc{padding-left:4px;padding-right:4px;}
+  .cot-top .fg,.cot-top .fe{font-size:25px;}
+  .cot-top .tm{font-size:16px;}
+  .cot-top .team-label,.cot-top .tm-label{font-size:7px;}
+  .cot-top .wedge{gap:2px;}
+  .cot-top .wedge i{width:5px;height:5px;}
+}
 /* net/perf readout (WoT battle constant): fps + ping tokens — r8: TOP-RIGHT
    corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
    weight it read as a dev overlay burned into the frame */
@@ -454,32 +482,80 @@ const HUD_CSS = `
    existing handler. Slides/fades in staggered after the killcam exit fade —
    never pops in a single frame. */
 .cot-spec{position:absolute;left:50%;bottom:56px;transform:translate(-50%,16px);
-  opacity:0;display:none;pointer-events:auto;align-items:center;gap:16px;
+  opacity:0;display:none;pointer-events:auto;align-items:center;
+  grid-template-columns:max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"status identity switch garage";column-gap:18px;
+  width:min(900px,calc(100vw - 32px));min-width:0;
   background:linear-gradient(180deg,rgba(12,16,20,.92),rgba(7,10,13,.95));
   border:1px solid rgba(146,164,180,.3);border-left:3px solid #f0a030;
   box-shadow:0 8px 28px rgba(0,0,0,.55);padding:9px 16px 10px;
   transition:opacity .45s ease .15s,transform .5s cubic-bezier(.2,.7,.3,1) .15s;}
-.cot-spec.show{display:flex;}
+.cot-spec.show{display:grid;}
 .cot-spec.in{opacity:1;transform:translate(-50%,0);}
 .cot-spec .kk{font-family:${FONT_COND};font-weight:800;font-size:9px;
-  letter-spacing:.3em;color:#f0a030;text-transform:uppercase;flex:0 0 auto;}
-.cot-spec .who{display:flex;flex-direction:column;min-width:150px;}
+  letter-spacing:.3em;color:#f0a030;text-transform:uppercase;grid-area:status;}
+.cot-spec .who{display:flex;flex-direction:column;grid-area:identity;min-width:0;}
 .cot-spec .who b{font-size:13.5px;font-weight:800;color:#f2f7fb;letter-spacing:.02em;
-  white-space:nowrap;}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-spec .who span{font-family:${FONT_COND};font-weight:700;font-size:9.5px;
   letter-spacing:.14em;color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
-  font-variant-numeric:tabular-nums;}
+  overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
 @keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
 .cot-spec .who.sw{animation:cotSpecSw .35s ease;}
-.cot-spec .hint{font-family:${FONT_COND};font-weight:700;font-size:9.5px;
-  letter-spacing:.18em;color:#8a97a3;text-transform:uppercase;flex:0 0 auto;}
-.cot-spec .hint i{font-style:normal;color:#cfd9e2;border:1px solid rgba(146,164,180,.4);
-  padding:1px 5px 2px;margin:0 2px;}
+.cot-spec .switch{grid-area:switch;display:grid;grid-template-columns:1fr 1fr;
+  gap:4px;min-width:96px;}
+.cot-spec .switch-label{grid-column:1/-1;font-family:${FONT_COND};font-weight:700;
+  font-size:8px;line-height:1;letter-spacing:.19em;color:#8a97a3;text-align:center;
+  text-transform:uppercase;white-space:nowrap;margin-bottom:1px;}
+.cot-spec .cycle{height:44px;min-width:46px;display:flex;align-items:center;
+  justify-content:center;gap:5px;font-family:${FONT_COND};font-size:10px;font-weight:800;
+  color:#dce5ec;cursor:pointer;border:1px solid rgba(146,164,180,.42);
+  background:rgba(146,164,180,.06);transition:transform 160ms ease-out,background-color 120ms ease,
+  border-color 120ms ease;}
+.cot-spec .cycle kbd{font:inherit;color:#f2f7fb;}
+.cot-spec .cycle .arrow{font-size:11px;color:#95a7b6;}
+.cot-spec .cycle:active{transform:scale(.97);}
+.cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #ffd27a;
+  outline-offset:2px;}
 .cot-spec .gar{font-family:${FONT_COND};font-weight:800;font-size:10px;
   letter-spacing:.2em;text-transform:uppercase;color:#f4e9d8;cursor:pointer;
   border:1px solid rgba(240,193,105,.55);background:rgba(240,160,48,.1);
-  padding:6px 14px 7px;flex:0 0 auto;transition:background .12s ease;}
-.cot-spec .gar:hover{background:rgba(240,160,48,.22);}
+  padding:6px 14px 7px;min-height:44px;grid-area:garage;white-space:nowrap;
+  transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease;}
+.cot-spec .gar-short{display:none;}
+.cot-spec .gar:active{transform:scale(.97);}
+@media (hover:hover) and (pointer:fine){
+  .cot-spec .cycle:hover{background:rgba(146,164,180,.14);border-color:rgba(190,207,220,.66);}
+  .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,193,105,.78);}
+}
+@media (max-width:960px){
+  .cot-spec{column-gap:10px;padding-left:12px;padding-right:12px;
+    width:min(900px,calc(100vw - 20px));}
+  .cot-spec .kk{font-size:8px;letter-spacing:.22em;}
+  .cot-spec .gar{padding-left:11px;padding-right:11px;}
+  .cot-spec .gar-long{display:none;}
+  .cot-spec .gar-short{display:inline;}
+}
+/* The minimap owns the lower-right 236 px. On compact desktop viewports the
+   bar docks into the remaining lower-left lane instead of rendering beneath
+   the map; on phone widths it moves above the map altogether. */
+@media (min-width:721px) and (max-width:1372px){
+  .cot-spec{left:16px;right:252px;width:auto;transform:translateY(16px);}
+  .cot-spec.in{transform:translateY(0);}
+}
+@media (max-width:720px){
+  .cot-spec{bottom:252px;}
+}
+@media (max-width:560px){
+  .cot-spec{grid-template-columns:max-content minmax(0,1fr) max-content;
+    grid-template-areas:"status identity garage" "status switch garage";row-gap:6px;}
+  .cot-spec .switch{justify-self:start;min-width:92px;}
+  .cot-spec .switch-label{display:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  .cot-top .wedge i.on,.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
+    animation:none;transition:none;}
+}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
@@ -750,13 +826,14 @@ export function initHud(bus) {
   let dmgPanelRef = null;   // mounted damage panel (turret-bearing feed)
 
   // --- top score/timer plate ---
-  // r4: each score numeral carries a row of per-team frag SEGMENT ticks under
-  // it (WoT's tug-of-war read) — empty slots are slim dark notches, each kill
-  // fills one in the scoring team's color.
+  // Each score numeral carries per-team frag sockets. The clock occupies its
+  // own center bay so all three live values remain legible over bright maps.
   const topPlate = el('div', 'cot-top', root);
-  topPlate.innerHTML = `<div class="sc"><b class="fg">0</b><div class="wedge l"></div></div>` +
-    `<span class="tm">15:00</span>` +
-    `<div class="sc"><b class="fe">0</b><div class="wedge r"></div></div>`;
+  topPlate.innerHTML = `<div class="sc ally"><span class="team-label">Allies</span>` +
+    `<b class="fg">0</b><div class="wedge l"></div></div>` +
+    `<div class="tm-block"><span class="tm-label">Time</span><span class="tm">15:00</span></div>` +
+    `<div class="sc enemy"><span class="team-label">Enemy</span>` +
+    `<b class="fe">0</b><div class="wedge r"></div></div>`;
   const fgEl = topPlate.querySelector('.fg');
   const feEl = topPlate.querySelector('.fe');
   const tmEl = topPlate.querySelector('.tm');
@@ -856,11 +933,29 @@ export function initHud(bus) {
   specBar.innerHTML =
     '<span class="kk">Spectating</span>' +
     '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
-    '<span class="hint"><i>\u25C0\uFE0E A</i><i>D \u25B6\uFE0E</i> switch vehicle</span>' +
-    '<button type="button" class="gar">Return to garage</button>';
+    '<span class="switch" role="group" aria-label="Switch spectated vehicle">' +
+      '<span class="switch-label" aria-hidden="true">Switch vehicle</span>' +
+      '<button type="button" class="cycle prev" aria-label="Previous vehicle">' +
+        '<span class="arrow" aria-hidden="true">\u25C0\uFE0E</span><kbd aria-hidden="true">A</kbd>' +
+      '</button>' +
+      '<button type="button" class="cycle next" aria-label="Next vehicle">' +
+        '<kbd aria-hidden="true">D</kbd><span class="arrow" aria-hidden="true">\u25B6\uFE0E</span>' +
+      '</button>' +
+    '</span>' +
+    '<button type="button" class="gar" aria-label="Return to garage">' +
+      '<span class="gar-long">Return to garage</span><span class="gar-short" aria-hidden="true">Garage</span>' +
+    '</button>';
   const specWho = specBar.querySelector('.who');
   const specNick = specBar.querySelector('.nick');
   const specVeh = specBar.querySelector('.veh');
+  specBar.querySelector('.cycle.prev').addEventListener('click', () => {
+    bus.emit('spectate:cycle', { direction: -1 });
+    bus.emit('ui:click', {});
+  });
+  specBar.querySelector('.cycle.next').addEventListener('click', () => {
+    bus.emit('spectate:cycle', { direction: 1 });
+    bus.emit('ui:click', {});
+  });
   specBar.querySelector('.gar').addEventListener('click', () => {
     const btn = document.querySelector('.cot-end button')
       || document.querySelector('.cot-es-btn.ghost');
@@ -1173,7 +1268,7 @@ export function initHud(bus) {
   let playerId = null;
   let smoothRadPx = 40;
   let wasReloading = false; // reload-complete edge detector (ready pulse)
-  let readyPulseT = -1;     // sim time the reload ring finished closing
+  let readyPulseT = -1;     // sim time the reload-dot sweep finished draining
   let localSlot = 0;
   let forced = null; // partial FrameInfo.aim override (cleared by next update)
   let lastShells = DEFAULT_SHELLS;
@@ -1886,6 +1981,9 @@ export function initHud(bus) {
     const sniper = mode === 'sniper';
     const cameraCol = view.atGunLimit ? PEN_RED : PEN_NONE;
     lastCameraMarkerCol = cameraCol;
+    const rl0 = view.reload;
+    const reloadFrac = reloadHudFraction(rl0);
+    const isReloading = reloadFrac > 0;
 
     // --- dispersion circle: ONE thin DASHED ring (stock WoT's aim circle),
     // NO outer tick marks. r7-2 MAJOR (round critique: "16-20 chunky
@@ -1925,6 +2023,19 @@ export function initHud(bus) {
     ctx.fillStyle = ringCol;
     ctx.lineWidth = circleLw;
     circlePass();
+    // RELOAD PROGRESS LIVES IN THE DISPERSION DOTS. The old second circle
+    // around the center marker duplicated the same state and cluttered the
+    // point of aim after every shot. The remaining fraction now paints an
+    // amber, clockwise dotted sweep directly over the truthful dispersion
+    // ring: full at fire, draining back to the normal aim dots at ready.
+    if (isReloading) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = RELOAD_ACCENT;
+      ctx.lineWidth = circleLw + 0.8;
+      ctx.beginPath();
+      ctx.arc(ccx, ccy, r, -Math.PI / 2, -Math.PI / 2 + reloadFrac * Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.setLineDash([]);
 
     // --- central CAMERA-AXIS marker: a SMALL CLEAN CROSS (short gapped
@@ -1939,10 +2050,8 @@ export function initHud(bus) {
     // 8px cross would be lost on the target's hull.
     const zs = sniper ? Math.min(1.8, 1.1 + 0.085 * (view.zoom || 8)) : 1;
     ctx.shadowBlur = 0;
-    // reload state hoisted (r7): the ring, the countdown numeral and the
-    // ready-pulse edge detector below all read it
-    const rl0 = view.reload;
-    const isReloading = !!(rl0 && rl0.totalS > 0 && rl0.t > 0.001);
+    // The dotted sweep, countdown numeral and ready-pulse edge detector all
+    // read the same canonical reload state.
     if (wasReloading && !isReloading) readyPulseT = lastTimeS;
     wasReloading = isReloading;
     function markerPass(inkOnly) {
@@ -1968,31 +2077,12 @@ export function initHud(bus) {
     ctx.lineWidth = markLw;
     markerPass(false);
 
-    // --- radial reload arc around the center marker (WoT reload ring):
-    // r7-2 (round critique: "the arc sweep does not obviously correspond to
-    // reload fraction"): the amber arc now DRAINS — it starts as a full
-    // ring the instant the gun fires and empties clockwise from 12 o'clock
-    // in exact proportion to time REMAINING (rl.t / totalS), hitting zero
-    // as the countdown hits zero. The old faint full-circle track is gone
-    // (it read as part of the backing disc); the dark hairline backing
-    // rides only under the lit arc for sky readability.
-    const reloadRing = 14 + (zs - 1) * 9; // clears the zoom-scaled marker arms
-    if (isReloading) {
-      const frac = Math.max(0, Math.min(1, rl0.t / rl0.totalS)); // remaining
-      ctx.strokeStyle = 'rgba(6,9,12,0.45)';
-      ctx.lineWidth = 3.6;
-      ctx.beginPath();
-      ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = RELOAD_ACCENT;
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, reloadRing, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-      ctx.stroke();
-    }
+    // Layout clearance for the center marker's magazine/countdown furniture;
+    // no circle is drawn here (reload progress is on the dispersion dots).
+    const centerClearanceR = 14 + (zs - 1) * 9;
     // Magazine autoloader ready-rack: up to four shells curve directly
     // UNDER the center marker. The outer rounds tilt inward and sit slightly
-    // above the middle round, following the lower arc of the reload ring.
+    // above the middle round, forming a shallow ready-rack arc.
     // Orange means ready; both intra-clip cycling and full-magazine loading
     // turn the rack neutral gray. A full reload fills the silhouettes from
     // the base upward while the timer counts down.
@@ -2007,7 +2097,7 @@ export function initHud(bus) {
       const visibleShells = magazineHud.visibleShells;
       const totalW = visibleShells * shellW
         + (visibleShells - 1) * gap;
-      const y0 = cy + reloadRing + 6;
+      const y0 = cy + centerClearanceR + 6;
       magazineBottomY = y0 + shellH;
       lastMagazineIndicatorY = y0;
       lastMagazineIndicatorState = magazineHud;
@@ -2065,7 +2155,7 @@ export function initHud(bus) {
       lastMagazineIndicatorY = null;
       lastMagazineIndicatorState = null;
     }
-    // ready pulse (r7): the moment the reload arc closes, the center marker
+    // ready pulse (r7): the moment the reload-dot sweep clears, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
     // r8 MAJOR: never in a forced still — with timeS frozen the flash held at
     // full alpha in every captured frame and painted the pen-colored marker
@@ -2126,7 +2216,7 @@ export function initHud(bus) {
     }
 
     // --- readouts (r7, WoT PC layout): everything hangs CENTERED below the
-    // reticle. The reload countdown sits just under the reload ring; the
+    // reticle. The reload countdown sits just under the center marker; the
     // chambered-shell count + aim distance anchor below the dispersion
     // circle's lower rim (the old 4-o'clock side tag collided with the
     // circle stroke); sniper appends the zoom factor to the same stack.
@@ -2136,15 +2226,15 @@ export function initHud(bus) {
     if (isReloading) {
       // r7-2 (round critique: "the countdown floats below the reticle while
       // the arc sits inside it"): the numeral now lives at the RETICLE
-      // CENTER — directly below the cross, inside the reload arc's ring —
-      // the WoT placement that binds numeral and arc into one instrument.
+      // CENTER — directly below the cross — keeping the timer adjacent to
+      // the dotted progress sweep without rebuilding a second center ring.
       // r4: the unit renders as a SEPARATE smaller non-bold ' s' — at bold
       // condensed sizes the lowercase glyph read as a capital "3.4 S".
       ctx.fillStyle = RELOAD_ACCENT;
       const cdTxt = rl0.t >= 10 ? `${Math.ceil(rl0.t)}` : `${rl0.t.toFixed(1)}`;
       const cdY = magazineHud
         ? magazineBottomY + 15
-        : cy + 14 + (zs - 1) * 9 + 15; // just under the reload ring / magazine
+        : cy + centerClearanceR + 15; // below center marker / magazine
       ctx.font = `700 16px ${FONT_COND}`;
       const cdW = ctx.measureText(cdTxt).width;
       ctx.font = `500 10.5px ${FONT_COND}`;

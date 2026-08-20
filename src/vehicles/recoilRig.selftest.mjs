@@ -44,6 +44,35 @@ function rig(id) {
   return { visual, state, recoilG, turretG, muzzle, barrelGs };
 }
 
+// ---- stabilized bore: rendered suspension must not bend the shot line ----
+{
+  const { visual, state } = rig('leclerc');
+  state.yaw = 0.3;
+  state.visualPitch = 0.045;
+  state.visualRoll = -0.03;
+  state.turretYaw = 0.42;
+  state.gunPitch = 0.075;
+  state._susp.p = 0.032;
+  state._susp.r = -0.021;
+  state._swayEst = 0.013;
+  state._flinch.p = 0.018;
+  state._flinch.r = -0.012;
+  visual.syncFromState(state, 0);
+
+  const canonicalHull = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+    -state.visualPitch, state.yaw, state.visualRoll, 'YXZ',
+  ));
+  const expected = new THREE.Vector3(
+    Math.sin(state.turretYaw) * Math.cos(state.gunPitch),
+    Math.sin(state.gunPitch),
+    Math.cos(state.turretYaw) * Math.cos(state.gunPitch),
+  ).applyQuaternion(canonicalHull).normalize();
+  const actual = new THREE.Vector3();
+  visual.gunDirWorld(actual);
+  assert.ok(actual.angleTo(expected) < 1e-5,
+    `leclerc: stabilizer holds canonical shell line through rendered hull rock (${actual.angleTo(expected)} rad)`);
+}
+
 // ---- 120 mm-class cannon: scale-true throw + full recuperate cycle --------
 {
   const { visual, state, recoilG } = rig('leclerc');

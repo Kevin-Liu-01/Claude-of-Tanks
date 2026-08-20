@@ -3,7 +3,20 @@ import {
   AUTOLOADER_HUD_SHELLS,
   autoloaderHudShellPose,
   autoloaderHudState,
+  reloadHudFraction,
 } from './hud.js';
+
+assert.equal(reloadHudFraction(null), 0, 'missing reload state has no dot sweep');
+assert.equal(
+  reloadHudFraction({ t: 6, totalS: 8 }),
+  0.75,
+  'reticle dots expose the exact remaining reload fraction',
+);
+assert.equal(
+  reloadHudFraction({ t: -1, totalS: 8 }),
+  0,
+  'completed reload clears the dot sweep',
+);
 
 assert.equal(AUTOLOADER_HUD_SHELLS, 4, 'the compact rack can draw four shell silhouettes');
 const threeShellPoses = Array.from({ length: 3 }, (_, index) => autoloaderHudShellPose(index, 3));

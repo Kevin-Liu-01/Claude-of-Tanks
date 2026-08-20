@@ -59,9 +59,6 @@ const ES_CSS = `
 .cot-es.result-victory::before{background:linear-gradient(90deg,transparent 8%,${COL.green} 50%,transparent 92%);}
 .cot-es.result-defeat::before{background:linear-gradient(90deg,transparent 8%,${COL.red} 50%,transparent 92%);}
 .cot-es .es-hero{position:relative;width:1160px;max-width:96vw;flex:0 0 auto;overflow:hidden;}
-.cot-es .es-vehicle-watermark{position:absolute;right:2%;top:0;width:min(28vw,330px);height:112px;
-  object-fit:contain;object-position:center;opacity:.14;filter:grayscale(.25) contrast(1.2) drop-shadow(0 12px 20px #000);
-  pointer-events:none;mix-blend-mode:screen}
 /* staggered entrance: hero first, tallies cascade, buttons last (--i steps) */
 @keyframes cotEsIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
 @keyframes cotEsHero{from{opacity:0;transform:translateY(-10px) scale(.96);letter-spacing:.5em;}
@@ -111,6 +108,11 @@ const ES_CSS = `
 .cot-es .es-debrief.teams .es-dh .ey{color:#a8eab1;}
 .cot-es .es-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
   background:rgba(166,184,199,.15);border-bottom:1px solid rgba(166,184,199,.18);}
+.cot-es .es-stat-grid.has-vehicle{grid-template-columns:minmax(112px,.72fr) repeat(2,minmax(0,1fr));}
+.cot-es .es-vehicle-card{position:relative;display:grid;place-items:center;min-width:0;min-height:80px;
+  overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,rgba(240,160,48,.13),rgba(8,12,16,.98) 72%);}
+.cot-es .es-vehicle-card img{display:block;width:100%;height:76px;padding:4px 7px 7px;object-fit:contain;
+  object-position:center;opacity:.84;filter:grayscale(.12) contrast(1.12) drop-shadow(0 9px 11px rgba(0,0,0,.72));}
 .cot-es .es-tal{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;
   min-height:80px;text-align:left;padding:12px 16px;background:rgba(8,12,16,.98);}
 .cot-es .es-tal .v{font-family:${FONT_COND};font-weight:800;font-size:23px;
@@ -166,8 +168,12 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:#53616c;}
 .cot-es .es-rosters{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0;padding:12px;}
 .cot-es .es-roster{display:flex;min-width:0;min-height:0;flex-direction:column;}
-.cot-es .es-roster-list{min-height:0;padding-top:8px;overflow-y:auto;border-top:1px solid rgba(166,184,199,.28);
+.cot-es .es-roster-cols{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:8px;padding:0 28px 6px 54px;
+  font:800 8px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;color:#6f7e8a;}
+.cot-es .es-roster-cols span:last-child{text-align:right;}
+.cot-es .es-roster-list{flex:1;min-height:0;padding-top:7px;overflow-y:auto;border-top:1px solid rgba(166,184,199,.28);
   scrollbar-width:thin;scrollbar-color:rgba(166,184,199,.38) transparent;}
+.cot-es .es-roster-list:focus-visible{outline:2px solid ${COL.amberHi};outline-offset:-2px;}
 .cot-es .es-roster.ally .es-roster-list{border-top-color:rgba(127,220,138,.38)}
 .cot-es .es-roster.foe .es-roster-list{border-top-color:rgba(242,122,114,.38)}
 /* team rows: one readable identity line, one natural-language result line */
@@ -184,7 +190,15 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:800;
   font-size:10px;letter-spacing:.06em;margin-right:5px;vertical-align:1px;}
 .cot-es .es-tr .veh{display:block;margin-top:2px;font-size:10.5px;color:#7f8e9a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-es .es-tr .veh b{color:${COL.gold};font-weight:800}.cot-es .es-tr .st{display:grid;place-items:center;flex:0 0 18px;
+.cot-es .es-tr .veh b{color:${COL.gold};font-weight:800}
+.cot-es .es-tr .output{display:flex;flex:0 0 58px;min-width:0;flex-direction:column;gap:3px;align-items:stretch;}
+.cot-es .es-tr .ov{text-align:right;font:800 11.5px ${FONT_COND};line-height:1;color:#dfe8ef;
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+.cot-es .es-tr .obar{display:block;height:2px;background:rgba(146,164,180,.16);overflow:hidden;}
+.cot-es .es-tr .obar i{display:block;height:100%;background:${COL.green};}
+.cot-es .es-tr.foe .obar i{background:${COL.red};}.cot-es .es-tr.me .obar i{background:${COL.gold};}
+.cot-es .es-tr.me .ov{color:${COL.gold};}
+.cot-es .es-tr .st{display:grid;place-items:center;flex:0 0 18px;
   color:${COL.green};filter:drop-shadow(0 0 5px rgba(127,220,138,.3));}
 /* Dead rows remain legible; status color carries the state instead of a
    line-through that made player/tank names needlessly difficult to scan. */
@@ -309,6 +323,13 @@ export function summarizeTeam(rows = []) {
     summary.damage += Math.max(0, Number(row.dmg) || 0);
     return summary;
   }, { total: 0, alive: 0, kills: 0, damage: 0 });
+}
+
+export function damageComparisonPercent(damage, maxDamage) {
+  const value = Math.max(0, Number(damage) || 0);
+  const ceiling = Math.max(0, Number(maxDamage) || 0);
+  if (ceiling <= 0) return 0;
+  return Math.round(Math.min(1, value / ceiling) * 1000) / 10;
 }
 
 /**
@@ -501,11 +522,6 @@ export function createEndScreen(bus, host) {
 
       // --- hero -----------------------------------------------------------
       const hero = el('div', 'es-hero', host);
-      if (sum.playerSpecId) {
-        const vehicle = el('img', 'es-vehicle-watermark', hero);
-        vehicle.src = iconUrl(sum.playerSpecId, 'angle');
-        vehicle.alt = '';
-      }
       const kick = el('div', 'es-kick es-in', hero);
       kick.style.setProperty('--i', nextI());
       kick.textContent = 'After action report';
@@ -548,6 +564,13 @@ export function createEndScreen(bus, host) {
         '<span class="ey">Your performance</span></span>';
 
       const statGrid = el('div', 'es-stat-grid', personal);
+      if (sum.playerSpecId) {
+        statGrid.classList.add('has-vehicle');
+        const vehicleCard = el('div', 'es-vehicle-card', statGrid);
+        const vehicle = el('img', '', vehicleCard);
+        vehicle.src = iconUrl(sum.playerSpecId, 'angle');
+        vehicle.alt = sum.playerVehicle ? `${sum.playerVehicle} vehicle` : 'Your vehicle';
+      }
       tile(statGrid, 'dealt', 'Damage dealt', { value: Math.round(st.dealt), hot: true, icon: 'damage' });
       tile(statGrid, 'kills', 'Kills', { value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull' });
 
@@ -619,16 +642,25 @@ export function createEndScreen(bus, host) {
         '</div></div>';
 
       const rosters = el('div', 'es-rosters', teams);
+      const maxDamage = Math.max(0, ...sum.allies.map((r) => Number(r.dmg) || 0),
+        ...sum.enemies.map((r) => Number(r.dmg) || 0));
       const teamRoster = (title, list, hostile) => {
         const p = el('div', `es-roster ${hostile ? 'foe' : 'ally'}`, rosters);
+        p.setAttribute('role', 'group');
         p.setAttribute('aria-label', title);
+        const columns = el('div', 'es-roster-cols', p);
+        columns.innerHTML = '<span>Combatant</span><span>Damage</span>';
         const listRoot = el('div', 'es-roster-list', p);
+        listRoot.setAttribute('role', 'list');
+        listRoot.setAttribute('aria-label', `${title} damage results`);
+        listRoot.tabIndex = 0;
         if (!list.length) {
           el('div', 'es-none', listRoot).textContent = 'No combatants recorded.';
           return;
         }
         for (const r of list) {
           const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${r.isPlayer ? ' me' : ''}${r.dead ? ' dead' : ''}`, listRoot);
+          row.setAttribute('role', 'listitem');
           let vehicle = r.specId || '';
           try { vehicle = getSpec(r.specId)?.name || vehicle; } catch (_) { /* raw id */ }
           const details = [vehicle];
@@ -637,7 +669,19 @@ export function createEndScreen(bus, host) {
             '<span class="si"></span>' +
             `<span class="identity"><span class="nm">${r.isPlayer ? '<b class="you">YOU</b>' : ''}${r.name || r.id}</span>` +
             `<span class="veh">${details.filter(Boolean).join(' · ')}</span></span>` +
+            '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
             `<span class="st">${uiIconSVG(r.dead ? 'skull' : 'check', 16)}</span>`;
+          const damage = Math.max(0, Number(r.dmg) || 0);
+          const output = row.querySelector('.output');
+          output.setAttribute('role', 'meter');
+          output.setAttribute('aria-label', 'Damage');
+          output.setAttribute('aria-valuemin', '0');
+          output.setAttribute('aria-valuemax', String(Math.max(1, Math.round(maxDamage))));
+          output.setAttribute('aria-valuenow', String(Math.round(damage)));
+          output.setAttribute('aria-valuetext', `${fmtN(damage)} damage`);
+          output.title = `${fmtN(damage)} damage`;
+          row.querySelector('.ov').textContent = fmtN(damage);
+          row.querySelector('.obar i').style.width = `${damageComparisonPercent(damage, maxDamage)}%`;
           const stateMark = row.querySelector('.st');
           stateMark.setAttribute('role', 'img');
           stateMark.setAttribute('aria-label', r.dead ? 'Destroyed' : 'Survived');
@@ -650,6 +694,8 @@ export function createEndScreen(bus, host) {
       teamRoster('Enemy team', sum.enemies, true);
       host.dataset.rosterAllies = String(sum.allies.length);
       host.dataset.rosterEnemies = String(sum.enemies.length);
+      host.dataset.damageRows = String(sum.allies.length + sum.enemies.length);
+      host.dataset.maxVehicleDamage = String(Math.round(maxDamage));
 
       if (roomContext?.state) {
         rematchPanel = el('section', 'es-rematch es-in', host);

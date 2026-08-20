@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { summarizeTeam } from './endScreen.js';
+import { damageComparisonPercent, summarizeTeam } from './endScreen.js';
 
 const summary = summarizeTeam([
   { dead: false, kills: 2, dmg: 1_480 },
@@ -30,4 +30,10 @@ assert.deepEqual(summarizeTeam([
   damage: 0,
 });
 
-console.log('endScreen summary selftest: PASS');
+assert.equal(damageComparisonPercent(2_200, 2_200), 100);
+assert.equal(damageComparisonPercent(1_100, 2_200), 50);
+assert.equal(damageComparisonPercent(-10, 2_200), 0);
+assert.equal(damageComparisonPercent(500, 0), 0);
+assert.equal(damageComparisonPercent(Number.NaN, 2_200), 0);
+
+console.log('endScreen summary and damage comparison selftest: PASS');

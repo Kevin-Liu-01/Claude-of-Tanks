@@ -59,6 +59,12 @@ const _v = new THREE.Vector3();
 const _s = new THREE.Vector3();
 const _X = new THREE.Vector3(1, 0, 0);
 const _E = new THREE.Euler(); // fallen road-wheel pose (de-track scatter)
+// Gun-stabilizer solve: convert the canonical authority-owned bore direction
+// into the final visibility-amplified rendered hull frame. Dedicated scratch
+// keeps the per-tank render loop allocation-free.
+const _stabilizedDir = new THREE.Vector3();
+const _stabilizedQ = new THREE.Quaternion();
+const _stabilizedEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 
 // ---------------------------------------------------------------------------
 // Geometry helpers
@@ -6145,8 +6151,38 @@ export function createTank(specId, engineCtx, opts = {}) {
             (0.55 + 0.45 * Math.sin(wreckAge * 2.4 + emberPhase));
         }
       } else {
-        turretG.rotation.y = state.turretYaw;
-        gunG.rotation.x = -state.gunPitch;
+        // TWO-PLANE GUN STABILIZATION. movement.js solves turretYaw/gunPitch
+        // in the canonical authority hull (visualPitch/visualRoll), while the
+        // rendered chassis deliberately adds amplified suspension rock, turn
+        // lean and hit/recoil flinch for weight. Applying the canonical angles
+        // verbatim after those layers made the visible bore bob up to several
+        // degrees away from the true shell line. Re-express that canonical
+        // WORLD direction in the final rendered root frame so the gun alone
+        // counter-rotates the cosmetic chassis motion; simulation angles,
+        // traverse limits, snapshots and multiplayer authority stay unchanged.
+        const extraPitch = suspP - flinchP;
+        const extraRoll = suspR + sway + flinchR;
+        if (Math.abs(extraPitch) + Math.abs(extraRoll) > 1e-6) {
+          const cosPitch = Math.cos(state.gunPitch);
+          _stabilizedDir.set(
+            Math.sin(state.turretYaw) * cosPitch,
+            Math.sin(state.gunPitch),
+            Math.cos(state.turretYaw) * cosPitch,
+          );
+          _stabilizedEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
+          _stabilizedQ.setFromEuler(_stabilizedEuler);
+          _stabilizedDir.applyQuaternion(_stabilizedQ);
+          _stabilizedQ.copy(root.quaternion).invert();
+          _stabilizedDir.applyQuaternion(_stabilizedQ).normalize();
+          turretG.rotation.y = Math.atan2(_stabilizedDir.x, _stabilizedDir.z);
+          gunG.rotation.x = -Math.atan2(
+            _stabilizedDir.y,
+            Math.hypot(_stabilizedDir.x, _stabilizedDir.z),
+          );
+        } else {
+          turretG.rotation.y = state.turretYaw;
+          gunG.rotation.x = -state.gunPitch;
+        }
       }
       // PERF (120 Hz): the track dressing below — per-wheel heightAt conform
       // plus link/band/wheel instance matrices — follows elapsed-time cadence
