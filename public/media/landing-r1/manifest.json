@@ -48,16 +48,6 @@
     "durationMs": 24933,
     "fps": 60
   },
-  "gameplay": {
-    "master": "/media/hero-rails-r2/gameplay_urban_overhead_4k.webm",
-    "video": "/media/landing-r1/gameplay-urban-overhead-1080.mp4",
-    "poster": "/media/hero-rails-r2/gameplay_urban_overhead_4k.jpg",
-    "width": 1920,
-    "height": 1080,
-    "fps": 30,
-    "durationMs": 7167,
-    "videoBytes": 9641296
-  },
   "relocatedRails": [
     {
       "id": "desert-ground-rush",

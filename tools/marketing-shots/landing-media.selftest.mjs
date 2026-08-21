@@ -64,21 +64,15 @@ for (const path of [manifest.featureReel.video, manifest.featureReel.poster]) {
   assert.ok((await stat(file)).size > 100_000, `feature reel ${path} exists`);
 }
 
-assert.equal(manifest.gameplay.master, '/media/hero-rails-r2/gameplay_urban_overhead_4k.webm');
-assert.equal(manifest.gameplay.video, '/media/landing-r1/gameplay-urban-overhead-1080.mp4');
-assert.equal(manifest.gameplay.width, 1920);
-assert.equal(manifest.gameplay.height, 1080);
-assert.equal(manifest.gameplay.fps, 30);
-assert.match(home, /<video[^>]*preload="none"[^>]*data-autoplay-video[^>]*data-performance-video="gameplay"/,
-  'gameplay proxy loads and plays only near the viewport');
-assert.equal(home.includes(`src="${manifest.gameplay.video}" type="video/mp4"`), true,
-  'the smooth H.264 gameplay proxy is mounted on the landing page');
-assert.equal(home.includes(`poster="${manifest.gameplay.poster}"`), true,
-  'the optimized proxy retains the native 4K poster');
-assert.equal((await stat(resolve(root, 'public', manifest.gameplay.video.replace(/^\//, '')))).size,
-  manifest.gameplay.videoBytes, 'gameplay proxy byte receipt');
-assert.equal(home.includes(`src="${manifest.gameplay.master}"`), false,
-  'the native 4K VP9 master is not decoded by the landing page');
+assert.equal('gameplay' in manifest, false, 'the retired duplicate gameplay block is absent from the landing contract');
+assert.equal(home.split('Watch live tank combat').length - 1, 1,
+  'the live-combat heading appears once on the complete-game reel');
+assert.equal(home.split('The game renders vehicle movement, recoil, tracks, muzzle flashes, impacts, smoke, sparks, and destruction in real time.').length - 1, 1,
+  'the live-combat description appears once on the complete-game reel');
+assert.equal(home.includes('See the complete game in one video'), false,
+  'the previous feature-reel heading is retired');
+assert.equal(home.includes('gameplay-urban-overhead-1080.mp4'), false,
+  'the duplicate gameplay proxy is not mounted on the landing page');
 
 assert.equal(manifest.relocatedRails.length, 4, 'all non-destruction hero rails move into the film grid');
 for (const rail of manifest.relocatedRails) {
@@ -119,4 +113,4 @@ for (const [path, bytes] of [[manifest.studio.video, manifest.studio.videoBytes]
   assert.equal((await stat(file)).size, bytes, `${path} byte receipt`);
 }
 
-console.log('landing-media.selftest: smooth gameplay proxy, owner-directed hero, relocated rails, Studio knockout, and 24-frame mosaic pass');
+console.log('landing-media.selftest: single combat reel, owner-directed hero, relocated rails, Studio knockout, and 24-frame mosaic pass');
