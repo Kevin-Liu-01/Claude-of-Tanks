@@ -1733,12 +1733,16 @@ function buildPT91M(P) {
   // side. The old print-tuned endpoint drums were less than half road-wheel
   // diameter and relied on detached rectangular "fade" strips to imply the
   // front/rear wraps. Full-size visible end wheels and the linked band now
-  // own the complete shoulder geometry themselves.
+  // own the complete shoulder geometry themselves. Raise both terminal
+  // wheels above the road-wheel axle line so the course forms the distinct
+  // climbing shoulders seen on the Pendekar instead of reading as a flat
+  // conveyor belt.
+  const terminalWheelY = 0.72;
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.395, wheelW: 0.22, wheelY: 0.48, xc: 1.37, dishR: 0.84,
     wheelZs: [-1.68, -1.00, -0.32, 0.36, 1.04, 1.72],
-    sprocket: { z: -2.48, y: 0.55, r: 0.30, trackR: 0.285 },
-    idler: { z: 2.58, y: 0.55, r: 0.30, trackR: 0.275 },
+    sprocket: { z: -2.48, y: terminalWheelY, r: 0.30, trackR: 0.285 },
+    idler: { z: 2.58, y: terminalWheelY, r: 0.30, trackR: 0.275 },
     rollers: [-1.20, 0, 1.20].map((z) => ({ z, y: 0.79, r: 0.07 })),
     trackW: 0.50, trackTh: 0.085, topY: 0.88, botY: 0.055,
     paintedEnds: true, coveredTop: true, arms: true,
@@ -1746,9 +1750,10 @@ function buildPT91M(P) {
     padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   });
   P.hullG.userData.pt91mRunningGearReceipt = {
-    revision: 'pendekar-linked-course-r1', roadWheelsPerSide: 6,
+    revision: 'pendekar-linked-course-r2', roadWheelsPerSide: 6,
     terminalDiameterM: 0.60, detachedTrackTrimRemoved: true,
-    legacySkidPanelsRemoved: true,
+    legacySkidPanelsRemoved: true, sprocketY: terminalWheelY,
+    idlerY: terminalWheelY, terminalLiftM: terminalWheelY - 0.55,
   };
   // High side rails (y 0.85..1.00): carry the plan ±1.676 column (front bow
   // boxes / rear -2.88) that the old 1.70 band face owned; above the ref's

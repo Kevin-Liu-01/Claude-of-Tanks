@@ -91838,12 +91838,12 @@
             "min": [
               -1.62,
               0.0125,
-              -2.8513
+              -2.8522
             ],
             "max": [
               -1.12,
-              0.945,
-              2.9412
+              1.0925,
+              2.9424
             ],
             "turretLocal": false
           },
@@ -91853,12 +91853,12 @@
             "min": [
               1.12,
               0.0125,
-              -2.8513
+              -2.8522
             ],
             "max": [
               1.62,
-              0.945,
-              2.9412
+              1.0925,
+              2.9424
             ],
             "turretLocal": false
           }
@@ -91911,8 +91911,8 @@
           }
         ]
       },
-      "geometryHash": "9eb8bc6f",
-      "metadataHash": "be7e5164",
+      "geometryHash": "3f1a96d6",
+      "metadataHash": "b4190a7a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -91995,24 +91995,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69565,
-          "sha256": "202651295e2d5d481715838a6abacbe6f3c2740bd71cc37a66766cc661581c91"
+          "bytes": 67385,
+          "sha256": "d9fb42d6fe07ed4c3503772c8e2fc243c308fb41260ee9224bc89279ee500920"
         },
         "armorSide": {
           "file": "pt91m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71606,
-          "sha256": "e81c56f8598b77cc66212662e9bd6d83b6da9766ada320e5e618b80fe95e18a7"
+          "bytes": 69915,
+          "sha256": "caeac8ec7c60a5d342f8e5b5d12e66311de94481b90e1d4949268653fae2329c"
         },
         "modulesSide": {
           "file": "pt91m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75187,
-          "sha256": "077eaed2703297a5cddc37b4f06478798a5ce5630118d9adb2c2072784a16939"
+          "bytes": 74634,
+          "sha256": "2e9e5a6ff26fbc77464de606c636b4d6ba37cfabe7fc70af596fecb51f0f28ff"
         },
         "markings": {
           "file": "pt91m_markings.png",

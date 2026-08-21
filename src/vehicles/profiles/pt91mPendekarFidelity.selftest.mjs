@@ -24,6 +24,18 @@ assert.deepEqual(gear?.wheelZs, [-1.68, -1, -0.32, 0.36, 1.04, 1.72],
 assert.ok(gear.wheelR >= 0.39, 'road wheels retain a full-size T-72 family diameter');
 assert.ok(gear.sprocket.r >= 0.29 && gear.idler.r >= 0.29,
   'visible sprocket and idler are no longer miniature endpoint placeholders');
+assert.equal(gear.sprocket.y, 0.72,
+  'drive sprocket is raised above the road-wheel axle line');
+assert.equal(gear.idler.y, 0.72,
+  'idler is raised above the road-wheel axle line');
+assert.ok(gear.sprocket.y - gear.wheelY >= 0.20
+  && gear.idler.y - gear.wheelY >= 0.20,
+  'both terminal wheels create visibly climbing track shoulders');
+assert.equal(hull.userData.pt91mRunningGearReceipt?.revision,
+  'pendekar-linked-course-r2',
+  'PT-91M records the raised-terminal linked-course revision');
+assert.ok(Math.abs(hull.userData.pt91mRunningGearReceipt?.terminalLiftM - 0.17) < 1e-9,
+  'PT-91M records the 17 cm terminal-wheel lift');
 assert.equal(hull.userData.pt91mRunningGearReceipt?.detachedTrackTrimRemoved, true,
   'detached rectangular track-ramp trim is explicitly retired');
 assert.equal(hull.userData.pt91mRunningGearReceipt?.legacySkidPanelsRemoved, true,
