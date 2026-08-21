@@ -467,10 +467,11 @@ body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-ear.r .cot-er{background:rgba(7,10,14,.62);padding:3px 8px 4px 10px;
   border-right:2px solid rgba(240,90,90,.75);flex-direction:row-reverse;
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
-.cot-er .ic{width:14px;height:12px;flex:0 0 auto;display:flex;
-  align-items:center;justify-content:center;
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
-.cot-er .ic svg{display:block;}
+.cot-er .ic{width:29px;height:14px;flex:0 0 auto;display:block;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.78));}
+/* Generated side silhouettes face right. Mirror only the enemy ear so both
+   rosters point inward toward the battlefield instead of toward the bezel. */
+.cot-ear.r .cot-er .ic{transform:scaleX(-1);}
 .cot-er .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
   display:flex;flex-direction:column;gap:0;line-height:1.15;}
 .cot-ear.r .cot-er .n{text-align:right;align-items:flex-end;}
@@ -534,57 +535,84 @@ body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-dl b{color:#ff8f80;font-weight:700;font-variant-numeric:tabular-nums;}
 .cot-dl.out{opacity:0;}
 .cot-dmglayer{position:absolute;inset:0;}
-/* Compact chase-camera identity card. The vehicle portrait anchors the target;
-   navigation actions remain distinct at narrow desktop widths. */
+/* Spectator command strip: battle-HUD steel, amber acquisition marks, and the
+   shared icon set keep this state legible without covering the chase view. */
 .cot-spec{position:absolute;left:50%;bottom:48px;transform:translate(-50%,14px);
-  opacity:0;display:none;pointer-events:auto;align-items:stretch;
-  grid-template-columns:82px minmax(190px,1fr) auto 82px;column-gap:0;
-  width:min(680px,calc(100vw - 32px));min-width:0;min-height:70px;
-  background:linear-gradient(105deg,rgba(7,11,14,.97),rgba(14,20,25,.95));
-  border:1px solid rgba(161,181,196,.28);
-  box-shadow:0 14px 42px rgba(0,0,0,.62),inset 0 1px rgba(255,255,255,.035);
-  padding:6px;transition:opacity .32s ease .12s,transform .42s cubic-bezier(.2,.7,.3,1) .12s;}
+  opacity:0;display:none;pointer-events:auto;align-items:stretch;overflow:hidden;
+  grid-template-columns:92px minmax(220px,1fr) 202px 116px;column-gap:0;
+  width:min(820px,calc(100vw - 32px));min-width:0;min-height:82px;
+  color:#dce6ed;background:
+    linear-gradient(112deg,rgba(17,25,31,.985),rgba(8,13,17,.98) 62%,rgba(13,19,24,.985));
+  border:1px solid rgba(161,181,196,.32);border-top-color:rgba(207,220,229,.38);
+  box-shadow:0 16px 46px rgba(0,0,0,.64),inset 0 1px rgba(255,255,255,.035);
+  padding:6px 7px 6px 6px;transition:opacity .32s ease .12s,
+  transform .42s cubic-bezier(.2,.7,.3,1) .12s;}
+.cot-spec::before{content:"";position:absolute;z-index:2;left:0;top:0;width:132px;height:2px;
+  background:linear-gradient(90deg,#f0a030 0 58%,rgba(240,160,48,0));pointer-events:none;}
+.cot-spec::after{content:"";position:absolute;right:0;bottom:0;width:38px;height:1px;
+  background:#f0a030;opacity:.72;pointer-events:none;}
 .cot-spec.show{display:grid;}
 .cot-spec.in{opacity:1;transform:translate(-50%,0);}
 .cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
-  border-right:1px solid rgba(161,181,196,.14);background:rgba(93,112,127,.055);}
-.cot-spec .portrait img{display:block;width:76px;height:58px;object-fit:contain;filter:drop-shadow(0 5px 6px rgba(0,0,0,.62));}
-.cot-spec .identity{display:flex;min-width:0;align-items:flex-start;justify-content:center;padding:6px 15px;}
+  border:1px solid rgba(161,181,196,.2);border-right-color:rgba(240,160,48,.38);
+  background:linear-gradient(145deg,rgba(99,119,133,.12),rgba(38,50,59,.035));}
+.cot-spec .portrait::after{content:"";position:absolute;inset:0;background:
+  linear-gradient(135deg,transparent 0 64%,rgba(240,160,48,.06) 64% 66%,transparent 66%);pointer-events:none;}
+.cot-spec .portrait img{display:block;width:84px;height:68px;object-fit:contain;
+  filter:drop-shadow(0 6px 7px rgba(0,0,0,.68));}
+.cot-spec .portrait-mark{position:absolute;left:5px;bottom:5px;width:10px;height:10px;
+  border-left:2px solid #f0a030;border-bottom:2px solid #f0a030;opacity:.82;}
+.cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:7px 18px 7px 17px;}
+.cot-spec .spec-status{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-family:${FONT_COND};
+  font-size:8px;font-weight:800;line-height:1;letter-spacing:.18em;text-transform:uppercase;color:#f0b04a;}
+.cot-spec .spec-status svg{width:13px;height:13px;display:block;flex:0 0 auto;}
+.cot-spec .spec-status::after{content:"";width:18px;height:1px;background:rgba(240,176,74,.55);}
+.cot-spec .spec-status .idx{margin-left:1px;color:#8998a4;font-size:8px;font-weight:800;
+  letter-spacing:.12em;font-variant-numeric:tabular-nums;}
 .cot-spec .who{display:flex;width:100%;min-width:0;flex-direction:column;}
-.cot-spec .who b{font-size:16px;line-height:1.05;font-weight:800;color:#f2f7fb;letter-spacing:.015em;
+.cot-spec .who b{font-size:18px;line-height:1.05;font-weight:800;color:#f2f7fb;letter-spacing:.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-spec .who span{margin-top:6px;font-family:${FONT_COND};font-weight:700;font-size:9px;line-height:1;
-  letter-spacing:.12em;color:#aab8c2;text-transform:uppercase;white-space:nowrap;
+  letter-spacing:.14em;color:#aab8c2;text-transform:uppercase;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
 @keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
 .cot-spec .who.sw{animation:cotSpecSw .35s ease;}
-.cot-spec .switch{align-self:center;display:grid;grid-template-columns:repeat(2,62px);gap:8px;height:46px;
-  padding:0 10px;border-left:1px solid rgba(161,181,196,.14);}
-.cot-spec .cycle{height:46px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  padding:4px 6px;font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.1em;
-  text-transform:uppercase;color:#9fadb8;cursor:pointer;border:1px solid rgba(176,192,204,.24);border-radius:3px;
-  background:rgba(146,164,180,.045);transition:transform 160ms ease-out,background-color 120ms ease,
-  border-color 120ms ease,color 120ms ease;}
-.cot-spec .cycle kbd{font:800 12px/1 ui-monospace,SFMono-Regular,monospace;color:#f2f7fb;}
+.cot-spec .switch{align-self:stretch;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+  padding:8px 10px;border-left:1px solid rgba(161,181,196,.14);}
+.cot-spec .cycle{min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:5px 8px;font-family:${FONT_COND};text-transform:uppercase;color:#9fadb8;cursor:pointer;
+  border:1px solid rgba(176,192,204,.22);border-radius:2px;background:rgba(146,164,180,.045);
+  transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease,color 120ms ease;}
+.cot-spec .cycle-icon{display:grid;place-items:center;color:#dce6ed;}
+.cot-spec .cycle-icon svg{display:block;width:12px;height:12px;}
+.cot-spec .cycle-copy{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:4px;}
+.cot-spec .cycle-copy kbd{font:800 10px/1 ui-monospace,SFMono-Regular,monospace;color:#f0b04a;
+  border:1px solid rgba(240,176,74,.34);background:rgba(240,160,48,.055);padding:3px 5px;}
+.cot-spec .cycle-copy span{font-size:7px;font-weight:800;line-height:1;letter-spacing:.12em;color:inherit;}
 .cot-spec .cycle:active{transform:scale(.97);}
 .cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #d9e4eb;
   outline-offset:2px;}
-.cot-spec .gar{align-self:center;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;
-  padding:0 10px;font-family:${FONT_COND};font-weight:800;font-size:8px;letter-spacing:.12em;
-  text-transform:uppercase;color:#d4dee5;cursor:pointer;border:1px solid rgba(176,192,204,.24);border-radius:3px;
-  background:rgba(146,164,180,.045);white-space:nowrap;transition:transform 160ms ease-out,
-  background-color 120ms ease,border-color 120ms ease;}
-.cot-spec .gar i{width:8px;height:8px;border-top:1px solid #c6d3dc;border-right:1px solid #c6d3dc;transform:rotate(45deg);}
+.cot-spec .gar{align-self:stretch;display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;
+  padding:0 12px;font-family:${FONT_COND};font-weight:800;font-size:8px;letter-spacing:.13em;
+  text-transform:uppercase;color:#f0b04a;cursor:pointer;border:1px solid rgba(240,176,74,.48);border-radius:2px;
+  background:linear-gradient(135deg,rgba(240,160,48,.13),rgba(240,160,48,.035));white-space:nowrap;
+  transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease,color 120ms ease;}
+.cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:17px;height:17px;}
 .cot-spec .gar:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
-  .cot-spec .cycle:hover,.cot-spec .gar:hover{background:rgba(146,164,180,.13);border-color:rgba(203,216,226,.42);color:#f2f7fb;}
+  .cot-spec .cycle:hover{background:rgba(146,164,180,.13);border-color:rgba(203,216,226,.42);color:#f2f7fb;}
+  .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,176,74,.8);color:#ffd27a;}
 }
 @media (max-width:960px){
-  .cot-spec{width:min(680px,calc(100vw - 20px));grid-template-columns:72px minmax(150px,1fr) auto 70px;}
-  .cot-spec .portrait img{width:66px;}
+  .cot-spec{width:min(720px,calc(100vw - 20px));grid-template-columns:72px minmax(140px,1fr) 132px 72px;min-height:72px;}
+  .cot-spec .portrait img{width:66px;height:58px;}
   .cot-spec .identity{padding-left:11px;padding-right:11px;}
-  .cot-spec .switch{grid-template-columns:repeat(2,54px);gap:6px;padding:0 7px;}
-  .cot-spec .gar{font-size:7px;padding:0 8px;}
+  .cot-spec .who b{font-size:15px;}
+  .cot-spec .switch{gap:4px;padding:7px 6px;}
+  .cot-spec .cycle{padding:4px;gap:3px;}
+  .cot-spec .cycle-copy span{display:none;}
+  .cot-spec .gar{font-size:7px;padding:0 7px;gap:5px;}
+  .cot-spec .gar-icon,.cot-spec .gar-icon svg{width:14px;height:14px;}
 }
 /* The minimap owns the lower-right 236 px. On compact desktop viewports the
    bar docks into the remaining lower-left lane instead of rendering beneath
@@ -597,15 +625,18 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   .cot-spec{bottom:252px;}
 }
 @media (max-width:560px){
-  .cot-spec{grid-template-columns:62px minmax(0,1fr) 94px 46px;min-height:62px;padding:4px;}
+  .cot-spec{grid-template-columns:62px minmax(0,1fr) 96px 46px;min-height:62px;padding:4px;}
   .cot-spec .portrait img{width:58px;height:52px;}
   .cot-spec .identity{padding:4px 8px;}
+  .cot-spec .spec-status{margin-bottom:5px;font-size:7px;letter-spacing:.12em;}
+  .cot-spec .spec-status::after{display:none;}
+  .cot-spec .spec-status svg{width:11px;height:11px;}
   .cot-spec .who b{font-size:13px;}
   .cot-spec .who span{font-size:8px;}
-  .cot-spec .switch{grid-template-columns:repeat(2,44px);gap:4px;padding:0 3px;}
-  .cot-spec .cycle span{display:none;}
-  .cot-spec .gar{width:40px;padding:0;}
-  .cot-spec .gar span{display:none;}
+  .cot-spec .switch{grid-template-columns:repeat(2,44px);gap:4px;padding:5px 2px;}
+  .cot-spec .cycle-copy{display:none;}
+  .cot-spec .gar{width:40px;padding:0;margin:5px 0;}
+  .cot-spec .gar>span:last-child{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
   .cot-top .wedge i.on,.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
@@ -1081,6 +1112,7 @@ export function initHud(bus) {
   const specWho = specBar.querySelector('.who');
   const specNick = specBar.querySelector('.nick');
   const specVeh = specBar.querySelector('.veh');
+  const specIndex = specBar.querySelector('.idx');
   const specPortrait = specBar.querySelector('.portrait img');
   specBar.querySelector('.cycle.prev').addEventListener('click', () => {
     bus.emit('spectate:cycle', { direction: -1 });
@@ -1103,6 +1135,8 @@ export function initHud(bus) {
     const numeral = p.specId ? tierNumeral(p.specId) : '';
     const tier = numeral ? `${numeral} · ` : '';
     specVeh.textContent = `${tier}${p.vehicle || 'Unknown vehicle'}`;
+    specIndex.textContent = card.position;
+    specIndex.hidden = !card.position;
     specPortrait.src = card.icon;
     specPortrait.hidden = !card.icon;
     specBar.classList.add('show');
@@ -1589,14 +1623,13 @@ export function initHud(bus) {
         const color = ally ? PEN_GREEN : PEN_RED;
         // r7: tier is a BARE roman numeral leading the vehicle-name line
         // (WoT) — no boxed badge chip
-        r.innerHTML = `<span class="ic"></span>` +
+        r.innerHTML = `<span class="ic" aria-hidden="true"></span>` +
           `<span class="n"><span class="nick"></span>` +
           `<span class="veh"><i class="tier"></i><span class="vn"></span></span></span>` +
           `<div class="hpm"><i></i></div>`;
-        // class glyph, team-tinted (r3: per-vehicle side silhouettes at
-        // 28x12 all read as the same tank — WoT parses the roster by CLASS)
-        r.querySelector('.ic').innerHTML =
-          classGlyphSVG(t.spec.class, color, 14, 12);
+        // Per-vehicle generated silhouette, team-tinted. The right ear mirrors
+        // it in CSS so opposing vehicles face inward toward the playfield.
+        maskIcon(r.querySelector('.ic'), t.spec.id, 'side_silhouette', color);
         if (t.isPlayer) r.classList.add('me');
         r.querySelector('.tier').textContent = tierNumeral(t.spec.id) || '–';
         r.querySelector('.nick').textContent = nickFor(t);
@@ -3786,6 +3819,8 @@ export function initHud(bus) {
         name: payload.name || 'SteppeWolf_71',
         vehicle: payload.vehicle || 'M1A2 SEP v3',
         specId: payload.specId || 'm1a2_sepv3',
+        count: payload.count,
+        index: payload.index,
       }, true);
     },
 
