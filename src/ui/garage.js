@@ -538,18 +538,17 @@ const GARAGE_CSS = `
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
-/* MAPS r1: the battlefield roster DOUBLED (8 + Random) — cards run COMPACT
-   so ~7 rows show above the camo section at 1080p, with the next card
-   half-cut at the fold as the scroll affordance (the list wheel-scrolls;
-   taller windows show all nine). */
-.cot-map-card{display:flex;align-items:center;gap:7px;cursor:pointer;margin-bottom:2px;
+/* Two-column map tiles keep the full battlefield roster scannable while
+   giving every map preview enough area to be visually distinct. */
+.cot-map-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 4px;}
+.cot-map-card{display:flex;align-items:center;gap:4px;min-width:0;cursor:pointer;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-left:2px solid rgba(146,164,180,.24);
-  padding:2px 6px 2px 3px;transition:border-color .12s,background .12s;}
+  padding:2px 3px;transition:border-color .12s,background .12s;}
 .cot-map-card:hover{border-color:rgba(210,225,240,.5);}
 .cot-map-card.sel{border-color:#f0a030;border-left-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-map-card .mthumb{width:44px;height:21px;flex:0 0 auto;background-size:112% auto;
+.cot-map-card .mthumb{width:40px;height:20px;flex:0 0 auto;background-size:112% auto;
   background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
   box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
   transition:background-size .18s ease;}
@@ -580,7 +579,8 @@ const GARAGE_CSS = `
 .cot-map-card .mthumb.random::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
   border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 0 9px rgba(3,6,8,.3);}
 .cot-map-card:hover .mthumb.random .random-map-tile{transform:scale(1.08);filter:saturate(1.08) contrast(1.08);}
-.cot-map-card .mname{font-size:10.5px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
+.cot-map-card .mname{min-width:0;font-size:7.5px;font-weight:700;line-height:1.2;
+  color:#e6edf3;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
 .cot-camos{position:static;flex:0 0 auto;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
@@ -590,17 +590,14 @@ const GARAGE_CSS = `
    inflated every track past the panel and CLIPPED the third column. */
 .cot-camos .cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
 /* camo r8: the paint roster grew 6 -> 16 — the CAMO grid scrolls (equipment
-   grid below stays static). Thin styled scrollbar so the affordance reads
-   without stealing column width from the swatches. */
+   grid below stays static). The bottom fade signals overflow without a
+   scrollbar gutter narrowing and misaligning the swatch columns. */
 .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));max-height:min(230px,24vh);
-  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:3px;
-  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+  overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
 .cot-camos .cgrid.camo.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
-.cot-camos .cgrid.camo::-webkit-scrollbar{width:5px;}
-.cot-camos .cgrid.camo::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
-.cot-camos .cgrid.camo::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
+.cot-camos .cgrid.camo::-webkit-scrollbar{display:none;}
 .cot-camo-card{cursor:pointer;text-align:center;padding:5px 4px 4px;min-width:0;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
@@ -1986,9 +1983,13 @@ export function createGarage(opts) {
     title.className = 'mtitle';
     title.innerHTML = `${uiIconSVG('map', 13)}<span>Battlefield</span>`;
     mapsEl.appendChild(title);
+    const mapGrid = document.createElement('div');
+    mapGrid.className = 'cot-map-grid';
+    mapsEl.appendChild(mapGrid);
     for (const m of maps) {
       const card = document.createElement('div');
       card.className = 'cot-map-card';
+      card.title = m.name;
       const thumb = document.createElement('div');
       thumb.className = `mthumb ${m.id}`;
       if (m.id === 'random') thumb.appendChild(createRandomMapMosaic(maps));
@@ -2001,7 +2002,7 @@ export function createGarage(opts) {
         emit('ui:click', {});
         api.setSelectedMap(m.id);
       });
-      mapsEl.appendChild(card);
+      mapGrid.appendChild(card);
       mapCardById.set(m.id, card);
     }
   }
@@ -2093,7 +2094,7 @@ export function createGarage(opts) {
     note.className = 'cnote';
     // r4: complete sentence that WRAPS (the old nowrap line clipped at the
     // column edge and shipped a dangling em-dash mid-sentence)
-    note.textContent = '+3.5% concealment on matching maps · auto always matches';
+    note.textContent = '+3.5% concealment on matching maps';
     camosEl.appendChild(note);
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
       customCamoEl = document.createElement('div');
