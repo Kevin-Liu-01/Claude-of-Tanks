@@ -49,10 +49,30 @@ assert.match(gallerySource, /mountMediaArchive\([^\n]+\{ mode: 'wall', limit: 88
 
 const homeSource = readFileSync(join(ROOT, 'home.html'), 'utf8');
 const docsSource = readFileSync(join(ROOT, 'docs.html'), 'utf8');
+const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
 assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/);
 assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
 assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);
 assert.match(docsSource, /<track kind="captions"[^>]+claude-of-tanks-promo-v13\.vtt/);
+
+const landingIcons = [
+  'play', 'screenshots', 'vehicle', 'battlefield', 'gpu', 'multiplayer',
+  'live-combat', 'modules', 'camera-paths', 'missile', 'armor',
+];
+for (const icon of landingIcons) {
+  const relative = `brand/features/${icon}.svg`;
+  const asset = readFileSync(join(ROOT, 'public', relative), 'utf8');
+  assert.match(asset, /^<svg[^>]+viewBox="0 0 64 64"/, `${icon} icon must use the shared 64 px grid`);
+  assert.match(asset, /role="img" aria-label="[^"]+"/, `${icon} icon must describe its visual concept`);
+  assert.ok(homeSource.includes(`/${relative}`), `landing page must use ${icon}.svg`);
+  assert.ok(readmeSource.includes(`public/${relative}`), `README must show ${icon}.svg`);
+}
+for (const relative of ['brand/nav/docs.svg', 'brand/nav/tank-gallery.svg', 'brand/nav/studio.svg']) {
+  assert.ok(readmeSource.includes(`public/${relative}`), `README must show ${relative}`);
+}
+const docsMark = readFileSync(join(ROOT, 'public/brand/nav/docs.svg'), 'utf8');
+assert.match(docsMark, /data-vehicle="m1a2"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
+assert.match(docsMark, /data:image\/png;base64/, 'Docs mark must remain self-contained');
 
 const promoRoot = join(ROOT, 'public/media/promo-v13');
 const promoManifest = JSON.parse(readFileSync(join(promoRoot, 'manifest.json'), 'utf8'));

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Camera paths">
+  <rect x="7" y="10" width="25" height="18" rx="3" fill="none" stroke="#edf3f7" stroke-width="3"/>
+  <path d="m32 16 10-5v16l-10-5Z" fill="#f0a030"/>
+  <circle cx="19.5" cy="19" r="4.5" fill="#45c7ff"/>
+  <path d="M10 51c6-16 17-10 24-18 8-8 14-5 20 3" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 5"/>
+  <circle cx="10" cy="51" r="4" fill="#ff4d62"/><circle cx="34" cy="33" r="4" fill="#45c7ff"/><circle cx="54" cy="36" r="4" fill="#f0a030"/>
+  <path d="m50 31 7 5-7 5" fill="none" stroke="#edf3f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

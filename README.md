@@ -26,6 +26,33 @@
 
 <table>
 <tr>
+<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/features/play.svg" width="72" alt="Play armored combat icon"><br><sub><b>PLAY</b></sub></td>
+<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/docs.svg" width="72" alt="Armored vehicle field manual icon"><br><sub><b>DOCS</b></sub></td>
+<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/tank-gallery.svg" width="72" alt="Three-tank comparison icon"><br><sub><b>TANK GALLERY</b></sub></td>
+<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio turret explosion icon"><br><sub><b>SCENE STUDIO</b></sub></td>
+</tr>
+<tr>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/screenshots.svg" width="72" alt="Battle screenshots icon"><br><sub><b>BATTLE SCREENSHOTS</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/vehicle.svg" width="72" alt="Modern main battle tank icon"><br><sub><b>VEHICLES</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/battlefield.svg" width="72" alt="Battlefield map icon"><br><sub><b>BATTLEFIELDS</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/gpu.svg" width="72" alt="GPU renderer icon"><br><sub><b>GPU RENDERER</b></sub></td>
+</tr>
+<tr>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/multiplayer.svg" width="72" alt="Multiplayer tanks icon"><br><sub><b>MULTIPLAYER</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/live-combat.svg" width="72" alt="Live tank combat icon"><br><sub><b>LIVE COMBAT</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/modules.svg" width="72" alt="Internal tank modules icon"><br><sub><b>MODULES</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/camera-paths.svg" width="72" alt="Camera path icon"><br><sub><b>CAMERA PATHS</b></sub></td>
+</tr>
+<tr>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/missile.svg" width="72" alt="Guided missile icon"><br><sub><b>MISSILES</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/features/armor.svg" width="72" alt="Armor inspection icon"><br><sub><b>ARMOR INSPECTION</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/nav/home.svg" width="72" alt="Home garage icon"><br><sub><b>HOME</b></sub></td>
+<td align="center" bgcolor="#05080b"><img src="public/brand/nav/garage.svg" width="72" alt="Garage assembly icon"><br><sub><b>GARAGE</b></sub></td>
+</tr>
+</table>
+
+<table>
+<tr>
 <td width="50%"><img src="public/media/featured/f10_studio_urban_crossfire.webp" alt="Armored vehicles exchanging fire in an urban battle"></td>
 <td width="50%"><img src="public/media/featured/f9_studio_fjord_firefight.webp" alt="Tanks fighting across the Fjord battlefield"></td>
 </tr>

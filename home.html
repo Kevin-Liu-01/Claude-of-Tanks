@@ -25,9 +25,9 @@
   <nav class="public-nav" aria-label="Primary navigation"><div class="public-nav__inner">
     <a class="public-nav__brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
     <div class="public-nav__links">
-      <a href="/home" aria-current="page"><img class="public-nav__icon" src="/brand/nav/home.svg" alt="">Home</a><a href="/gallery"><img class="public-nav__icon public-nav__icon--tank" src="/brand/nav/tank-gallery.svg" alt="">Tank Gallery</a><a href="/docs"><img class="public-nav__icon" src="/brand/nav/docs.svg" alt="">Docs</a><a href="/studio"><img class="public-nav__icon public-nav__icon--studio" src="/brand/nav/studio.svg" alt="">Studio</a>
+      <a href="/home" aria-current="page"><img class="public-nav__icon public-nav__icon--home" src="/brand/nav/home.svg" alt="">Home</a><a href="/gallery"><img class="public-nav__icon public-nav__icon--tank" src="/brand/nav/tank-gallery.svg" alt="">Tank Gallery</a><a href="/docs"><img class="public-nav__icon public-nav__icon--docs" src="/brand/nav/docs.svg" alt="">Docs</a><a href="/studio"><img class="public-nav__icon public-nav__icon--studio" src="/brand/nav/studio.svg" alt="">Studio</a>
       <a class="public-nav__github" href="https://github.com/Kevin-Liu-01/claude-of-tanks" target="_blank" rel="noreferrer" aria-label="Claude of Tanks on GitHub"><span class="public-nav__github-label">GitHub</span><span class="public-nav__stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars>Stars</span></span></a>
-      <a class="public-nav__cta" href="/">Play Now</a>
+      <a class="public-nav__cta" href="/"><span class="public-nav__play-icon" aria-hidden="true"></span>Play Now</a>
     </div>
   </div></nav>
 
@@ -50,7 +50,7 @@
         </div>
         <h1><em>Armored</em> Combat<br><span>In the Browser</span></h1>
         <p>Drive 111 tanks across 16 battlefields with physical armor, internal modules, tracked suspension, missiles, autoloaders, destruction, and 7v7 multiplayer.</p>
-        <div class="hero-actions"><a class="btn primary" href="/">Play free</a><a class="btn" href="/gallery">View all tanks</a></div>
+        <div class="hero-actions"><a class="btn primary" href="/"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/features/play.svg')" aria-hidden="true"></span>Play free</a><a class="btn" href="/gallery"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/tank-gallery.svg')" aria-hidden="true"></span>View all tanks</a></div>
       </div>
       <div class="v5-maker">
         <a class="v5-maker-credit" href="https://github.com/Kevin-Liu-01" rel="author">Designed and built by <strong>Kevin Liu</strong></a>
@@ -60,7 +60,7 @@
 
     <section class="v5-authored" aria-labelledby="authored-title">
       <div class="shell v5-authored-head">
-        <div><h2 id="authored-title">In-engine battle screenshots</h2><p>These scenes were composed and captured directly in Scene Studio.</p></div>
+        <div><img class="v5-section-icon" src="/brand/features/screenshots.svg" alt=""><h2 id="authored-title">In-engine battle screenshots</h2><p>These scenes were composed and captured directly in Scene Studio.</p></div>
         <div class="v5-shot-controls" aria-label="Screenshot controls">
           <button type="button" data-shot-previous aria-label="Previous screenshot">←</button>
           <span data-shot-position aria-live="polite">1 / 11</span>
@@ -85,24 +85,24 @@
       </div>
     </section>
 
-    <section class="v5-facts" aria-label="Game facts"><div class="shell"><span><b>111</b> production vehicles</span><span><b>16</b> battlefields</span><span><b>60 Hz</b> simulation</span><span><b>7v7</b> multiplayer</span></div></section>
+    <section class="v5-facts" aria-label="Game facts"><div class="shell"><span><img class="v5-fact-icon" src="/brand/features/vehicle.svg" alt=""><b>111</b> production vehicles</span><span><img class="v5-fact-icon" src="/brand/features/battlefield.svg" alt=""><b>16</b> battlefields</span><span><img class="v5-fact-icon" src="/brand/features/gpu.svg" alt=""><b>GPU</b> WebGL renderer</span><span><img class="v5-fact-icon" src="/brand/features/multiplayer.svg" alt=""><b>7v7</b> multiplayer</span></div></section>
 
     <section class="v5-film" aria-labelledby="feature-reel-title">
       <video muted loop playsinline preload="none" poster="/media/promo-v13/claude-of-tanks-promo-clean.jpg" data-autoplay-video aria-label="Claude of Tanks in-engine feature reel"><source src="/media/promo-v13/claude-of-tanks-promo-clean.mp4" type="video/mp4"></video>
-      <div class="v5-film-shade"></div><div class="shell v5-film-copy"><h2 id="feature-reel-title">Watch live tank combat</h2><p>The game renders vehicle movement, recoil, tracks, muzzle flashes, impacts, smoke, sparks, and destruction in real time.</p></div>
+      <div class="v5-film-shade"></div><div class="shell v5-film-copy"><img class="v5-section-icon" src="/brand/features/live-combat.svg" alt=""><h2 id="feature-reel-title">Watch live tank combat</h2><p>The game renders vehicle movement, recoil, tracks, muzzle flashes, impacts, smoke, sparks, and destruction in real time.</p></div>
     </section>
 
-    <section class="v5-split v5-split--garage" aria-labelledby="garage-title"><img src="/media/feature-evidence-r2/garage-fleet.webp" alt="Garage interface displaying the playable vehicle fleet" loading="lazy"><div><h2 id="garage-title">Choose from 111 tanks</h2><p>The garage shows each tank's armor, firepower, mobility, ammunition, equipment, and camouflage.</p><a class="btn" href="/gallery">View all tanks</a></div></section>
+    <section class="v5-split v5-split--garage" aria-labelledby="garage-title"><img src="/media/feature-evidence-r2/garage-fleet.webp" alt="Garage interface displaying the playable vehicle fleet" loading="lazy"><div><img class="v5-section-icon" src="/brand/nav/tank-gallery.svg" alt=""><h2 id="garage-title">Choose from 111 tanks</h2><p>The garage shows each tank's armor, firepower, mobility, ammunition, equipment, and camouflage.</p><a class="btn" href="/gallery"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/tank-gallery.svg')" aria-hidden="true"></span>View all tanks</a></div></section>
 
     <section class="v5-multiplayer" aria-labelledby="multiplayer-title">
-      <header class="shell"><div><h2 id="multiplayer-title">Play 7v7 multiplayer</h2></div><div><p>Browser-hosted or dedicated servers resolve movement, aiming, armor, damage, spotting, and match state for every player.</p><a class="btn" href="/docs#multiplayer">Read multiplayer details</a></div></header>
+      <header class="shell"><div><img class="v5-section-icon" src="/brand/features/multiplayer.svg" alt=""><h2 id="multiplayer-title">Play 7v7 multiplayer</h2></div><div><p>Browser-hosted or dedicated servers resolve movement, aiming, armor, damage, spotting, and match state for every player.</p><a class="btn" href="/docs#multiplayer"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/docs.svg')" aria-hidden="true"></span>Read multiplayer details</a></div></header>
       <figure><img src="/media/multiplayer-r1/dual-perspective.webp" alt="Opposing live multiplayer views: an M1A2 Abrams and T-90M Proryv aim at each other from mirrored player cameras" loading="lazy"></figure>
     </section>
 
-    <section class="v5-destruction" aria-labelledby="destruction-title"><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/02_winter-ice-orbit.jpg" data-autoplay-video><source src="/media/hero-rails-r2/02_winter-ice-orbit.webm" type="video/webm"></video><div class="v5-film-shade"></div><div class="shell"><h2 id="destruction-title">Damage tanks and internal modules</h2><p>Penetrations can damage modules, detonate ammunition, throw turrets, detach tracks, scatter debris, and leave burning wrecks.</p><a href="/docs/worlds">Read destruction details →</a></div></section>
+    <section class="v5-destruction" aria-labelledby="destruction-title"><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/02_winter-ice-orbit.jpg" data-autoplay-video><source src="/media/hero-rails-r2/02_winter-ice-orbit.webm" type="video/webm"></video><div class="v5-film-shade"></div><div class="shell"><img class="v5-section-icon" src="/brand/features/modules.svg" alt=""><h2 id="destruction-title">Damage tanks and internal modules</h2><p>Penetrations can damage modules, detonate ammunition, throw turrets, detach tracks, scatter debris, and leave burning wrecks.</p><a href="/docs/worlds">Read destruction details →</a></div></section>
 
     <section class="v5-rails" aria-labelledby="rails-title">
-      <header class="shell"><h2 id="rails-title">Watch battles from four camera paths</h2><p>Each video shows tanks moving, firing, taking hits, and crossing the battlefield from a different camera path.</p></header>
+      <header class="shell"><img class="v5-section-icon" src="/brand/features/camera-paths.svg" alt=""><h2 id="rails-title">Watch battles from four camera paths</h2><p>Each video shows tanks moving, firing, taking hits, and crossing the battlefield from a different camera path.</p></header>
       <div class="v5-rail-grid">
         <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/01_desert-ground-rush.jpg" data-autoplay-video aria-label="Close-range tank battle in a desert town"><source src="/media/hero-rails-r2/01_desert-ground-rush.webm" type="video/webm"></video><div><p>Tanks fight at close range in a desert town.</p></div></article>
         <article><video muted loop playsinline preload="none" poster="/media/hero-rails-r2/03_steppe-charge-thread.jpg" data-autoplay-video aria-label="Tank advance across the steppe"><source src="/media/hero-rails-r2/03_steppe-charge-thread.webm" type="video/webm"></video><div><p>Tanks advance and exchange fire across the steppe.</p></div></article>
@@ -111,7 +111,7 @@
       </div>
     </section>
 
-    <section class="v5-maps" aria-labelledby="maps-title"><header class="shell"><h2 id="maps-title">Fight across 16 battlefields</h2></header><div class="v5-map-wall">
+    <section class="v5-maps" aria-labelledby="maps-title"><header class="shell"><img class="v5-section-icon" src="/brand/features/battlefield.svg" alt=""><h2 id="maps-title">Fight across 16 battlefields</h2></header><div class="v5-map-wall">
       <figure><img src="/media/presentation-r1/32_desert_ram_abramsx_t90m.webp" alt="Desert armored battle" loading="lazy"><figcaption>Desert</figcaption></figure>
       <figure><img src="/media/presentation-r1/05_winter_ice_breaker.webp" alt="Winter armored battle" loading="lazy"><figcaption>Winter</figcaption></figure>
       <figure><img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Urban armored battle" loading="lazy"><figcaption>Urban</figcaption></figure>
@@ -124,19 +124,19 @@
       <figure><img src="/media/presentation-r1/44_fjord_contact.webp" alt="Fjord armored battle" loading="lazy"><figcaption>Fjord</figcaption></figure>
     </div></section>
 
-    <section class="v5-mechanics" aria-labelledby="mechanics-title"><header class="shell"><h2 id="mechanics-title">Each tank has its own mechanics</h2></header><div class="v5-mechanics-grid">
+    <section class="v5-mechanics" aria-labelledby="mechanics-title"><header class="shell"><img class="v5-section-icon" src="/brand/features/missile.svg" alt=""><h2 id="mechanics-title">Each tank has its own mechanics</h2></header><div class="v5-mechanics-grid">
       <article><img src="/media/feature-evidence-r2/gallery-carro45t-modules.webp" alt="Carro 45t module layout in Tank Gallery" loading="lazy"><div><h3>Carro 45t</h3><p>Armor, crew, ammunition, gun, turret ring, engine, fuel, optics, radio, and tracks use separate damage volumes.</p></div></article>
       <article><img src="/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 launching a Shillelagh guided missile" loading="lazy"><div><h3>MBT-70</h3><p>The XMGM-51C Shillelagh is a guided projectile from launch to impact.</p></div></article>
       <article><img src="/media/feature-evidence-r2/mechanic-strv-suspension.webp" alt="Stridsvagn 103 aiming by elevating its hydropneumatic suspension" loading="lazy"><div><h3>Stridsvagn 103</h3><p>The hydropneumatic suspension aims the fixed gun while the wheels and tracks remain seated on the terrain.</p></div></article>
     </div></section>
 
-    <section class="v5-evidence" aria-labelledby="evidence-title"><header class="shell"><h2 id="evidence-title">Inspect armor hits and create battle scenes</h2></header>
-      <article><img src="/media/feature-evidence-r2/killcam-modules.webp" alt="4K X-ray killcam showing a shell path through armor and internal modules" loading="lazy"><div><h3>Review armor and module hits</h3><p>The kill camera shows the shell path, effective armor, penetration, damage, and every internal module hit.</p><a href="/docs/simulation">Read combat details →</a></div></article>
-      <article><video muted loop playsinline preload="none" poster="/media/landing-r1/studio-leclerc-knockout.jpg" data-autoplay-video aria-label="Scene Studio interface staging and replaying a Stridsvagn 122 attack on a Leclerc"><source src="/media/landing-r1/studio-leclerc-knockout.mp4" type="video/mp4"></video><div><h3>Create scenes in Scene Studio</h3><p>Scene Studio controls tanks, cameras, movement, firing, impacts, track damage, and ammunition explosions on a timeline.</p><a href="/studio">Open Scene Studio →</a></div></article>
+    <section class="v5-evidence" aria-labelledby="evidence-title"><header class="shell"><div class="v5-section-icons"><img class="v5-section-icon" src="/brand/features/armor.svg" alt=""><img class="v5-section-icon" src="/brand/nav/studio.svg" alt=""></div><h2 id="evidence-title">Inspect armor hits and create battle scenes</h2></header>
+      <article><img src="/media/feature-evidence-r2/killcam-modules.webp" alt="4K X-ray killcam showing a shell path through armor and internal modules" loading="lazy"><div><img class="v5-card-icon" src="/brand/features/armor.svg" alt=""><h3>Review armor and module hits</h3><p>The kill camera shows the shell path, effective armor, penetration, damage, and every internal module hit.</p><a href="/docs/simulation">Read combat details →</a></div></article>
+      <article><video muted loop playsinline preload="none" poster="/media/landing-r1/studio-leclerc-knockout.jpg" data-autoplay-video aria-label="Scene Studio interface staging and replaying a Stridsvagn 122 attack on a Leclerc"><source src="/media/landing-r1/studio-leclerc-knockout.mp4" type="video/mp4"></video><div><img class="v5-card-icon" src="/brand/nav/studio.svg" alt=""><h3>Create scenes in Scene Studio</h3><p>Scene Studio controls tanks, cameras, movement, firing, impacts, track damage, and ammunition explosions on a timeline.</p><a href="/studio">Open Scene Studio →</a></div></article>
     </section>
 
     <section class="v5-mosaic" aria-labelledby="mosaic-title">
-      <header class="shell"><h2 id="mosaic-title">View more in-engine battle screenshots</h2><p>These screenshots show close combat and long-range fire across desert, winter, urban, coastal, steppe, and open-field maps.</p></header>
+      <header class="shell"><img class="v5-section-icon" src="/brand/features/screenshots.svg" alt=""><h2 id="mosaic-title">View more in-engine battle screenshots</h2><p>These screenshots show close combat and long-range fire across desert, winter, urban, coastal, steppe, and open-field maps.</p></header>
       <div class="v5-mosaic-grid">
         <figure><img src="/media/showcase-r1/61_action_desert_duel_leclerc_kill.webp" alt="Desert tank duel" loading="lazy" decoding="async"></figure>
         <figure><img src="/media/showcase-r1/63_action_desert_overwatch_line.webp" alt="Tank holding a firing position in the desert" loading="lazy" decoding="async"></figure>
@@ -165,7 +165,7 @@
       </div>
     </section>
 
-    <section class="v5-cta"><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="Several tanks fighting across a green battlefield" loading="lazy"><div></div><section class="shell"><h2>Play Claude of Tanks free in your browser</h2><p>No installation is required.</p><div class="hero-actions"><a class="btn primary" href="/">Play free</a><a class="btn" href="/docs">Read the documentation</a></div></section></section>
+    <section class="v5-cta"><img src="/media/presentation-r1/15_verdant_column_massacre.webp" alt="Several tanks fighting across a green battlefield" loading="lazy"><div></div><section class="shell"><img class="v5-section-icon" src="/brand/features/play.svg" alt=""><h2>Play Claude of Tanks free in your browser</h2><p>No installation is required.</p><div class="hero-actions"><a class="btn primary" href="/"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/features/play.svg')" aria-hidden="true"></span>Play free</a><a class="btn" href="/docs"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/docs.svg')" aria-hidden="true"></span>Read the documentation</a></div></section></section>
   </main>
   <footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/gallery">Tank Gallery</a><a href="/studio">Studio</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" aria-label="Claude of Tanks on GitHub"><span>GitHub</span><span class="footer-stars"><span aria-hidden="true">★</span><span data-github-stars>Stars</span></span></a></div><span class="micro">Kevin Liu // 2026</span></div></footer>
   <script type="module" src="/src/analytics.js"></script>

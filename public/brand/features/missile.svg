@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Guided missile mechanics">
+  <path d="m16 43 27-27 8-3-3 8-27 27Z" fill="#edf3f7" stroke="#edf3f7" stroke-width="2" stroke-linejoin="round"/>
+  <path d="m22 37-10-1 7-7m9 12 1 10 7-7" fill="#45c7ff" stroke="#45c7ff" stroke-width="2" stroke-linejoin="round"/>
+  <path d="m14 45-6 6m11-3-5 7" stroke="#f0a030" stroke-width="3" stroke-linecap="round"/>
+  <path d="M39 9h16v16M55 39v16H39M25 55H9V39M9 25V9h16" fill="none" stroke="#ff4d62" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="47" cy="17" r="3" fill="#f0a030"/>
+</svg>

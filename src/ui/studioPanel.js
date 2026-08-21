@@ -25,6 +25,8 @@ const CSS = `
 .cot-studio .badge .bm{width:18px;height:18px;object-fit:contain;display:block;}
 .cot-studio .badge .t{font-size:12px;font-weight:800;letter-spacing:.26em;color:#ffd27a;}
 .cot-studio .badge .m{font-size:10px;font-weight:700;letter-spacing:.14em;color:#8a97a3;}
+.cot-studio .badge button{display:inline-flex;align-items:center;gap:5px;}
+.cot-studio .badge button img{display:block;width:18px;height:15px;object-fit:contain;}
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:none;}
@@ -323,12 +325,13 @@ export function createStudioPanel(S) {
   const badge = el('div', 'badge');
   const badgeMark = document.createElement('img');
   badgeMark.className = 'bm';
-  badgeMark.src = '/brand/nav/studio.png'; // the owner's gate-diff studio mark
+  badgeMark.src = '/brand/nav/studio.svg';
   badgeMark.alt = '';
   badgeMark.draggable = false;
   const badgeTitle = el('div', 't', 'SCENE STUDIO');
   const badgeMap = el('div', 'm', '');
-  const galleryBtn = el('button', null, 'TANK GALLERY');
+  const galleryBtn = el('button');
+  galleryBtn.innerHTML = '<img src="/brand/nav/tank-gallery.svg" alt="">TANK GALLERY';
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
     window.location.href = id ? `/gallery?id=${encodeURIComponent(id)}` : '/gallery';

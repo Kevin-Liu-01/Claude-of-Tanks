@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Armor inspection">
+  <path d="m35 6 20 7v14c0 14-8 23-20 30-12-7-20-16-20-30V13Z" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linejoin="round"/>
+  <path d="m35 13 13 5v9c0 9-5 16-13 21" fill="none" stroke="#45c7ff" stroke-width="3"/>
+  <path d="M4 31h28m-8-8 8 8-8 8" fill="none" stroke="#f0a030" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m35 25 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" fill="#ff4d62"/>
+  <path d="M49 16 35 48" stroke="#edf3f7" stroke-width="2" stroke-dasharray="3 4"/>
+</svg>

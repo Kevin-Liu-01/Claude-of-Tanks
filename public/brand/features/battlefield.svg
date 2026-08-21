@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Battlefields">
+  <path d="m7 13 15-5 20 6 15-6v43l-15 5-20-6-15 5Z" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M22 8v42m20-36v42" fill="none" stroke="#edf3f7" stroke-width="2"/>
+  <path d="M13 43c8-9 13-2 20-11s13-5 18-14" fill="none" stroke="#45c7ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 5"/>
+  <path d="M43 19a7 7 0 1 0-14 0c0 8 7 13 7 13s7-5 7-13Z" fill="#f0a030"/>
+  <circle cx="36" cy="19" r="2.5" fill="#05080b"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Multiplayer armored combat">
+  <path d="M5 43h24l4 7H9Zm7-6h13l4 6H8Z" fill="#45c7ff"/>
+  <path d="M59 43H35l-4 7h24Zm-7-6H39l-4 6h21Z" fill="#ff4d62"/>
+  <path d="M20 34h10m14 0H34" fill="none" stroke="#edf3f7" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="32" cy="17" r="5" fill="#f0a030"/>
+  <circle cx="15" cy="21" r="4" fill="#edf3f7"/><circle cx="49" cy="21" r="4" fill="#edf3f7"/>
+  <path d="M19 21h8m10 0h8m-13 1v9" fill="none" stroke="#edf3f7" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

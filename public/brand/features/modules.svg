@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Internal tank modules">
+  <path d="M6 37h43l8 9-5 10H12L6 49Z" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M16 30h25l8 7H11Z" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="19" cy="43" r="6" fill="#45c7ff"/>
+  <path d="M29 38h8v11h-8Z" fill="#f0a030"/>
+  <path d="m45 38 4 7h-8Z" fill="#ff4d62"/>
+  <path d="M15 56h36" stroke="#edf3f7" stroke-width="3" stroke-linecap="round"/>
+  <path d="M19 24V9m0 0-4 5m4-5 4 5" fill="none" stroke="#45c7ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33 24V9m0 0-4 5m4-5 4 5" fill="none" stroke="#f0a030" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

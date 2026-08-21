@@ -3,11 +3,11 @@
 // controls and combat reports read as one authored set at 12-34px.
 
 const P = {
-  garage: '<path d="M3 15.5h18v3H3zM5 12.5h14l2 3H3zM8 9h8l1.5 3.5h-11zM10 6h4v3h-4z" fill="currentColor"/><path d="M4 20.5h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
-  studio: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m4.4 7.7 7.6 4.2 7.6-4.2M12 12v8.6" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.1" fill="currentColor"/>',
-  home: '<path d="m3 11 9-7 9 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10.5V21h13V10.5M10 21v-6h4v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  garage: '<image href="/brand/nav/garage.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
+  studio: '<image href="/brand/nav/studio.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
+  home: '<image href="/brand/nav/home.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
   github: '<path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z" fill="currentColor"/>',
-  gallery: '<path d="M3 4h18v16H3Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 14.5h13l1.5 3H4Zm3-3.2h7l1.2 3.2H7.3Z" fill="currentColor"/><circle cx="7" cy="17.5" r="1" fill="rgba(8,12,16,.58)"/><circle cx="17" cy="17.5" r="1" fill="rgba(8,12,16,.58)"/><path d="M6 7h5m4 0h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  gallery: '<image href="/brand/nav/tank-gallery.svg" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>',
   speed: '<path d="M4 18a8 8 0 1 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m12 16 5.2-5.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="16" r="2" fill="currentColor"/><path d="M7 15H4m4.2-4.2L6 8.6M12 9V6m3.8 4.8L18 8.6M17 15h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
   camouflage: '<path d="M5 18.8c-.7-4.8 1-8.4 5.2-10.8.9 4.7-.8 8.2-5.2 10.8Zm6.6.8c-.2-4.6 2-7.8 6.4-9.6.3 4.5-1.8 7.7-6.4 9.6ZM8.4 9.2C8.8 5.6 11 3.1 15 2.5c-.4 3.6-2.6 5.8-6.6 6.7Z" fill="currentColor"/><path d="M4 21c4.2-4.3 8.6-7.2 15.8-10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   battleBots: '<circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 13.1h10l1.3 3.2H5.7Zm2.2-3.2h5.6l1 3.2H8.2Z" fill="currentColor"/><circle cx="12" cy="12" r="1.15" fill="rgba(8,12,16,.7)"/>',

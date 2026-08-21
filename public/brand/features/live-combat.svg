@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Watch live tank combat">
+  <path d="M7 45h39l8 8H13Z" fill="#edf3f7"/>
+  <path d="M15 38h24l7 7H10Zm11-7h12l4 7H22Z" fill="#45c7ff"/>
+  <path d="M39 33h15" stroke="#edf3f7" stroke-width="3" stroke-linecap="round"/>
+  <path d="m56 26 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" fill="#f0a030"/>
+  <path d="m15 11 15 9-15 9Z" fill="#ff4d62"/>
+  <path d="M10 8h25v24H10Z" fill="none" stroke="#edf3f7" stroke-width="2.5"/>
+</svg>

@@ -62,8 +62,18 @@
   opacity:.72;
   transition:opacity .16s ease,transform .16s ease;
 }
-.public-nav__icon--tank{width:17px}
-.public-nav__icon--studio{width:15px;height:15px}
+.public-nav__icon--tank{width:20px;height:16px}
+.public-nav__icon--studio{width:18px;height:16px}
+.public-nav__icon--home{width:18px;height:16px}
+.public-nav__icon--docs{width:18px;height:16px}
+.public-nav__play-icon{
+  width:17px;
+  height:14px;
+  flex:none;
+  background:currentColor;
+  -webkit-mask:url('/brand/features/play.svg') center/contain no-repeat;
+  mask:url('/brand/features/play.svg') center/contain no-repeat;
+}
 .public-nav__links a:hover,.public-nav__links a[aria-current="page"]{
   color:#efeee9;
   border-color:rgba(233,163,70,.5);
@@ -99,7 +109,8 @@
   .public-nav__brand img{width:28px;height:34px}
   .public-nav__links{gap:5px}
   .public-nav__links a{gap:5px;height:32px;padding-inline:9px;font-size:7px;letter-spacing:.08em}
-  .public-nav__icon{width:12px;height:12px}.public-nav__icon--tank{width:15px}.public-nav__icon--studio{width:13px;height:13px}
+  .public-nav__icon{width:12px;height:12px}.public-nav__icon--tank{width:17px;height:14px}.public-nav__icon--studio,.public-nav__icon--home,.public-nav__icon--docs{width:16px;height:14px}
+  .public-nav__play-icon{width:15px;height:12px}
   .public-nav__links .public-nav__github{padding-inline:9px}
   .public-nav__links .public-nav__cta{height:34px;padding-inline:12px}
 }

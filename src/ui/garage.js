@@ -113,9 +113,9 @@ const GARAGE_CSS = `
 .cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
-/* Garage + Studio use the original authored navigation art; Home keeps the
-   shared vector mark. object-fit preserves both source assets at 15px. */
+/* Product destinations use the same authored marks as the public navigation. */
 .cot-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
+.cot-nav .nv .nvi-product{width:18px;height:16px;}
 .cot-nav .nv .nav-label{display:inline;}
 .cot-nav .cot-record-trigger{position:relative;}
 .cot-nav .cot-record-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
@@ -1652,16 +1652,16 @@ export function createGarage(opts) {
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
     `<nav class="cot-nav" aria-label="Garage navigation">` +
     `<button class="nv on" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
-    `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">` +
+    `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
     `<span class="nav-label">Garage</span></button>` +
     `<button class="nv" data-nav="studio" type="button" aria-label="Studio" title="Studio">` +
-    `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">` +
+    `<img class="nvi nvi-product" src="/brand/nav/studio.svg" alt="" draggable="false">` +
     `<span class="nav-label">Studio</span></button>` +
     `<button class="nv" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
-    `${uiIconSVG('scope', 15, 'currentColor', 'nvi')}` +
+    `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
     `<span class="nav-label">Gallery</span></button>` +
     `<button class="nv" data-nav="home" type="button" aria-label="Home" title="Home">` +
-    `${uiIconSVG('home', 15, 'currentColor', 'nvi')}` +
+    `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
     `<span class="nav-label">Home</span></button>` +
     `<button class="nv cot-record-trigger" type="button" aria-label="Open local service record" ` +
     `title="Local service record" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +

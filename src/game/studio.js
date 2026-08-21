@@ -2427,8 +2427,8 @@ export function createStudio(ctx) {
             };
           }
           for (const l of links) {
-            l.setAttribute('href', '/brand/nav/studio.png');
-            l.setAttribute('type', 'image/png');
+            l.setAttribute('href', '/brand/nav/studio.svg');
+            l.setAttribute('type', 'image/svg+xml');
           }
           document.title = 'Claude of Tanks — Studio';
         } else if (saved) {

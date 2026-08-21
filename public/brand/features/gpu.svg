@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GPU rendering">
+  <rect x="13" y="13" width="38" height="38" rx="3" fill="none" stroke="#edf3f7" stroke-width="3"/>
+  <path d="M20 4v9m12-9v9m12-9v9M20 51v9m12-9v9m12-9v9M4 20h9m-9 12h9m-9 12h9m38-24h9m-9 12h9m-9 12h9" stroke="#f0a030" stroke-width="3" stroke-linecap="round"/>
+  <path d="m23 41 9-21 9 21Zm0 0 18-8m-9-13v17" fill="none" stroke="#45c7ff" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="32" cy="20" r="2.5" fill="#ff4d62"/><circle cx="23" cy="41" r="2.5" fill="#edf3f7"/><circle cx="41" cy="41" r="2.5" fill="#edf3f7"/>
+</svg>

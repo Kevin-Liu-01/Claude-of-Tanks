@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="In-engine battle screenshots">
+  <path d="M7 19V8h11M46 8h11v11M7 45v11h11m28 0h11V45" fill="none" stroke="#f0a030" stroke-width="3" stroke-linecap="round"/>
+  <path d="M13 40h32l7 7H18Z" fill="#edf3f7"/>
+  <path d="M20 34h18l7 6H16Zm8-6h9l4 6H25Z" fill="#45c7ff"/>
+  <path d="M40 22h15" stroke="#ff4d62" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="50" cy="22" r="4" fill="#f0a030"/>
+</svg>

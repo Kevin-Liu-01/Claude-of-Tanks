@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Modern main battle tank side profile">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 42h41l5 5-5 6H16l-8-5z" fill="#17242d" stroke="#edf3f7" stroke-width="2"/>
+    <path d="M18 35h27l7 7H13z" fill="#263844" stroke="#edf3f7" stroke-width="2"/>
+    <path d="M25 28h17l5 7H20z" fill="#45c7ff" stroke="#edf3f7" stroke-width="2"/>
+    <path d="M29 23h10l3 5H27z" fill="#263844" stroke="#edf3f7" stroke-width="2"/>
+    <path d="M42 29 59 24" stroke="#edf3f7" stroke-width="3"/>
+    <path d="m49 25 10-3" stroke="#f0a030" stroke-width="2"/>
+    <path d="M13 40h38" stroke="#f0a030" stroke-width="2"/>
+    <circle cx="18" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
+    <circle cx="28" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
+    <circle cx="38" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
+    <circle cx="48" cy="48" r="4" fill="#05080b" stroke="#edf3f7" stroke-width="2"/>
+    <path d="M7 18h9M11.5 13.5v9" stroke="#ff4d62" stroke-width="2"/>
+  </g>
+</svg>
