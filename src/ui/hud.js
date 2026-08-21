@@ -3801,10 +3801,10 @@ export function initHud(bus) {
         clearTimeout(pbHideTimer);
         pbHideTimer = setTimeout(() => {
           preBattleEl.classList.remove('on');
-          // reset for the next battle
-          preBattleEl.classList.remove('rollout');
-          pbNum.classList.remove('go');
-          pbShownSec = -1;
+          // Keep the rollout typography intact for the entire opacity fade.
+          // The next positive countdown resets these classes before showing,
+          // so the kicker cannot flash back or shift the numeral while this
+          // release is still fading out.
         }, 1100);
       }
     },
