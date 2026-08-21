@@ -1283,6 +1283,12 @@ function buildLeclerc(P, variant = 's2') {
     contactZF: 2.30, contactZR: -2.10,
     endRingSpan: 0.56,
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
+    // The Leclerc's fine, shallow tread cannot carry the fleet-default
+    // exposed connector rails: at this scale they project below the casting
+    // band as a second, offset track course. Keep the recessed web and center
+    // guide horn merged into each shoe while omitting those duplicate-looking
+    // side rails and pin bosses across S2, XLR and AMX 56.
+    integratedLinks: true,
     padCornerFloor: 0.02, padHugZ0: 2.40,
     paintedEnds: true, coveredTop: false, arms: true,
   });

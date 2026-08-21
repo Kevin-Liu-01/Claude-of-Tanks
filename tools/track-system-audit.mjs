@@ -13,7 +13,9 @@ const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
 
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const mapArg = process.argv.find((arg) => arg.startsWith('--maps='));
+const outputArg = process.argv.find((arg) => arg.startsWith('--output='));
 const runBattle = process.argv.includes('--battle');
+const skipStatic = process.argv.includes('--skip-static');
 const ids = idArg
   ? idArg.slice(6).split(',').map((id) => id.trim()).filter(Boolean)
   : [...ALL_TANK_IDS];
@@ -41,24 +43,26 @@ const staticRows = [];
 const battleRows = [];
 let failed = false;
 try {
-  const page = await browser.newPage();
-  page.setDefaultTimeout(180000);
-  for (const [index, id] of ids.entries()) {
-    await page.goto(
-      `http://localhost:${port}/tools/track-system-audit.html?id=${encodeURIComponent(id)}`,
-      { waitUntil: 'domcontentloaded' },
-    );
-    await page.waitForFunction('window.__TRACK_SYSTEM_READY === true', { polling: 40 });
-    const result = await page.evaluate('window.__TRACK_SYSTEM_AUDIT');
-    staticRows.push(result);
-    if (!result.pass) failed = true;
-    const shoes = result.units?.reduce((sum, unit) => sum + unit.shoeCountPerSide * 2, 0) || 0;
-    console.log(`[track-system ${String(index + 1).padStart(3)}/${ids.length}] ${id.padEnd(20)} `
-      + `${result.pass ? 'PASS' : 'FAIL'} ${result.units?.length || 0} course(s), ${shoes} shoes`);
-    for (const failure of result.failures || []) console.error(`  - ${failure}`);
-    if (result.error) console.error(`  - ${result.error.split('\n')[0]}`);
+  if (!skipStatic) {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(180000);
+    for (const [index, id] of ids.entries()) {
+      await page.goto(
+        `http://localhost:${port}/tools/track-system-audit.html?id=${encodeURIComponent(id)}`,
+        { waitUntil: 'domcontentloaded' },
+      );
+      await page.waitForFunction('window.__TRACK_SYSTEM_READY === true', { polling: 40 });
+      const result = await page.evaluate('window.__TRACK_SYSTEM_AUDIT');
+      staticRows.push(result);
+      if (!result.pass) failed = true;
+      const shoes = result.units?.reduce((sum, unit) => sum + unit.shoeCountPerSide * 2, 0) || 0;
+      console.log(`[track-system ${String(index + 1).padStart(3)}/${ids.length}] ${id.padEnd(20)} `
+        + `${result.pass ? 'PASS' : 'FAIL'} ${result.units?.length || 0} course(s), ${shoes} shoes`);
+      for (const failure of result.failures || []) console.error(`  - ${failure}`);
+      if (result.error) console.error(`  - ${result.error.split('\n')[0]}`);
+    }
+    await page.close();
   }
-  await page.close();
 
   if (runBattle) {
     const battlePage = await browser.newPage();
@@ -213,6 +217,7 @@ try {
   await server.close();
 }
 
+const outputPath = outputArg?.slice('--output='.length) || 'shots/track-system-audit.json';
 mkdirSync('shots', { recursive: true });
 const report = {
   generatedAt: new Date().toISOString(),
@@ -222,7 +227,7 @@ const report = {
   battle: battleRows,
   pass: !failed,
 };
-writeFileSync('shots/track-system-audit.json', `${JSON.stringify(report, null, 2)}\n`);
+writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 console.log(`[track-system] ${report.pass ? 'PASS' : 'FAIL'} — ${staticRows.length} static / `
-  + `${battleRows.length} battle-map vehicles -> shots/track-system-audit.json`);
+  + `${battleRows.length} battle-map vehicles -> ${outputPath}`);
 if (failed) process.exitCode = 2;

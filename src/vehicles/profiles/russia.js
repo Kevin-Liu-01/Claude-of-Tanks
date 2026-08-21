@@ -1393,6 +1393,10 @@ function buildT64BV1(P) {
     pinCapOuter: 0.27,
     endRingSpan: 0.51,
     shoeRadialScale: 0.46,
+    // The thin T-64 shoe must not expose the full lower connector rails as a
+    // visually separate second track. Keep its web and guide horn integrated
+    // into the one closed tread course.
+    integratedLinks: true,
     topY: 0.93,
     botY: 0.13,
     contactZF: 2.14,

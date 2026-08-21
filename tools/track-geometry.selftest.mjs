@@ -50,6 +50,8 @@ shoe.inner.computeBoundingBox();
 const padBox=shoe.pad.boundingBox;
 const innerBox=shoe.inner.boundingBox;
 assert.ok(padBox.max.y-padBox.min.y>=0.10,'outer shoe needs real pad/grouser thickness');
+assert.ok((padBox.max.z-padBox.min.z)/0.165>=0.90,
+  'broad tread face must nearly fill its exact pitch so the wrap reads continuously');
 assert.ok(innerBox.min.y<padBox.min.y-0.24,'recessed connector and guide geometry must retain real shoe depth');
 assert.ok(innerBox.max.x>=0.30&&innerBox.min.x<=-0.30,'transverse pin caps must reach both outer faces');
 shoe.pad.dispose();
@@ -87,6 +89,8 @@ shoe.inner.dispose();
   const receipt = P.hullG.userData.runningGearReceipts[0];
   assert.ok(Math.abs(receipt.textureRepeatM - receipt.shoePitchM * 4) < 1e-9,
     'belt texture repeat is derived from the exact closed-course shoe pitch');
+  assert.ok(receipt.shoePadCoverageRatio >= 0.90,
+    'each articulated shoe exposes a nearly pitch-wide tread face around the full loop');
   const drive = P.hullG.children.find((child) =>
     child.userData?.runningGearEndKind === 'sprocket' && child.name === 'gearEndWheelHardware');
   assert.ok(drive?.userData.sprocketToothCount >= 18,

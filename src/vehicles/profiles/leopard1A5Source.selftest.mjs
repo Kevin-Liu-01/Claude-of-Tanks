@@ -58,8 +58,9 @@ assert.equal(visual.root.getObjectByName('gearTrackInnerLinks'), undefined,
 trackPads.geometry.computeBoundingBox();
 const trackShoeBounds = trackPads.geometry.boundingBox;
 assert.ok(trackShoeBounds.max.y - trackShoeBounds.min.y <= 0.27
-  && trackShoeBounds.max.z - trackShoeBounds.min.z <= 0.10,
-  'the redesigned shoe is shallow and fine enough to avoid spiked end wraps');
+  && trackShoeBounds.max.z - trackShoeBounds.min.z <= 0.118
+  && trackPads.userData.trackShoePadCoverageRatio >= 0.90,
+  'the redesigned shoe stays shallow while closing the broad tread around end wraps');
 const matrix = new THREE.Matrix4();
 const instancePosition = new THREE.Vector3();
 const instanceRotation = new THREE.Quaternion();
@@ -74,9 +75,11 @@ for (const [label, end] of [
   ['idler', { y: 0.74, z: 3.17 }],
   ['sprocket', { y: 0.79, z: -2.70 }],
 ]) {
-  const wrapRadii = leftShoeCenters
-    .map(([y, z]) => Math.hypot(y - end.y, z - end.z))
-    .filter((radius) => radius < 0.41);
+  const wrapRadii = [];
+  for (const [y, z] of leftShoeCenters) {
+    const radius = Math.hypot(y - end.y, z - end.z);
+    if (radius < 0.41) wrapRadii.push(radius);
+  }
   assert.ok(wrapRadii.length >= 7 && Math.max(...wrapRadii) - Math.min(...wrapRadii) <= 0.035,
     `linked shoes follow a tight concentric ${label} wrap`);
 }

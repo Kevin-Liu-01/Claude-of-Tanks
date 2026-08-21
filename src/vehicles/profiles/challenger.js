@@ -3684,6 +3684,9 @@ function buildChallenger3(P) {
     // leading road wheel before it rises to the existing front idler.
     trackW: 0.555, topY: 1.26, contactZF: 3.02, contactZR: -2.10,
     shoeRadialScale: 0.55,
+    // Shallow modern shoes use the reduced one-course connector relief so
+    // the rails cannot read as a detached parallel belt around the wraps.
+    integratedLinks: true,
     // §B8.1 NATIVE-TONE wheel countability (acceptance-flagged "wheels
     // render DARK vs the print's pale Hydrogas rims") — merkava r12
     // tireHex mechanism, per-tank param, default byte-identical elsewhere.

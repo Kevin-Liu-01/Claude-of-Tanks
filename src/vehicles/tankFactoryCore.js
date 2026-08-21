@@ -1249,6 +1249,8 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
+const TRACK_SHOE_PAD_COVERAGE = 0.92;
+
 function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
   radialScale = 1, widthScale = 1) {
   // Two authored geometry components form one physical shoe:
@@ -1257,13 +1259,19 @@ function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
   // buildRunningGear merges these components before instancing. They retain
   // their real vertical relief without exposing a second overlapping course.
   const pad = mergeAll([
-    box(trackW * 0.97, 0.072, pitch * 0.72),
-    xform(box(trackW * 0.90, 0.042, pitch * 0.13), 0, 0.052, pitch * 0.22),
-    xform(box(trackW * 0.90, 0.042, pitch * 0.13), 0, 0.052, -pitch * 0.22),
+    // Leave only the narrow articulation joint found between real shoes.
+    // The former 0.72-pitch slab left 28% of every canonical course visibly
+    // empty; on end wraps and distant battle views the remaining islands
+    // looked like a tread run that stopped even though all matrices existed.
+    // Extending the same box changes no vertices, triangles, instances or
+    // draws, while making the broad contact face continuous around the loop.
+    box(trackW * 0.97, 0.072, pitch * TRACK_SHOE_PAD_COVERAGE),
+    xform(box(trackW * 0.90, 0.042, pitch * 0.14), 0, 0.052, pitch * 0.27),
+    xform(box(trackW * 0.90, 0.042, pitch * 0.14), 0, 0.052, -pitch * 0.27),
     // Raised outside shoulders protect the pin bosses and keep the shoe from
     // reading as one featureless rectangle at garage distance.
-    xform(box(trackW * 0.10, 0.060, pitch * 0.58), -trackW * 0.43, 0.006, 0),
-    xform(box(trackW * 0.10, 0.060, pitch * 0.58), trackW * 0.43, 0.006, 0),
+    xform(box(trackW * 0.10, 0.060, pitch * 0.82), -trackW * 0.43, 0.006, 0),
+    xform(box(trackW * 0.10, 0.060, pitch * 0.82), trackW * 0.43, 0.006, 0),
   ]);
   const inner = mergeAll([
     // Recessed web above the road-contact pad on the loaded bottom run.
@@ -1446,6 +1454,12 @@ function buildRunningGear(P, cfg) {
     shoePitchM: lp, textureRepeatM: trackTextureRepeatM,
     frontEnd, rearEnd, contact,
   } = course;
+  const shoeRadialScale = cfg.shoeRadialScale ?? 1;
+  const shoeWidthScale = cfg.shoeWidthScale ?? 1;
+  const shoeDetailMode = cfg.innerLinks === false
+    ? 'pad-only'
+    : (cfg.integratedLinks ? 'integrated' : 'full');
+  const shoeOutboardOffset = cfg.shoeOutboardOffset ?? 0;
   if (P.geometryReceipt) {
     const runningGearReceipts = hullG.userData.runningGearReceipts
       || (hullG.userData.runningGearReceipts = []);
@@ -1467,6 +1481,11 @@ function buildRunningGear(P, cfg) {
       loopLengthM: loopLen,
       shoeCountPerSide: nLinks,
       shoePitchM: lp,
+      shoePadCoverageRatio: TRACK_SHOE_PAD_COVERAGE,
+      shoeDetailMode,
+      shoeRadialScale,
+      shoeWidthScale,
+      shoeOutboardOffset,
       textureRepeatM: trackTextureRepeatM,
       coveredTop: cfg.coveredTop ?? false,
     });
@@ -1837,7 +1856,7 @@ function buildRunningGear(P, cfg) {
   // ---- individual link pads instanced along the loop (both sides) ----------
   const nP = pts.length;
   const shoe = trackShoeGeometries(trackW, lp, cfg.pinCapOuter ?? null,
-    cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1);
+    shoeRadialScale, shoeWidthScale);
   P.disposables.push(shoe.pad,shoe.inner);
   // Fleet law: every canonical running gear owns ONE terrain-conforming shoe
   // instance layer. The normal path merges the complete recessed connector,
@@ -1846,10 +1865,10 @@ function buildRunningGear(P, cfg) {
   // exposed rails themselves read as a second course. `innerLinks:false`
   // keeps the intentionally pad-only profiles pad-only. None of these paths
   // inspect, remove or reshape hull/armor/skirt geometry.
-  const integratedDetail = cfg.innerLinks === false
+  const integratedDetail = shoeDetailMode === 'pad-only'
     ? null
-    : (cfg.integratedLinks
-      ? integratedTrackShoeDetail(trackW, lp, cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1)
+    : (shoeDetailMode === 'integrated'
+      ? integratedTrackShoeDetail(trackW, lp, shoeRadialScale, shoeWidthScale)
       : shoe.inner);
   const integratedShoe = integratedDetail ? mergeAll([shoe.pad, integratedDetail]) : shoe.pad;
   if (integratedDetail && integratedDetail !== shoe.inner) P.disposables.push(integratedDetail);
@@ -1881,6 +1900,11 @@ function buildRunningGear(P, cfg) {
   padIM.userData.trackShoeCountPerSide = nLinks;
   padIM.userData.trackShoePitchM = lp;
   padIM.userData.trackLoopLengthM = loopLen;
+  padIM.userData.trackShoePadCoverageRatio = TRACK_SHOE_PAD_COVERAGE;
+  padIM.userData.trackShoeDetailMode = shoeDetailMode;
+  padIM.userData.trackShoeRadialScale = shoeRadialScale;
+  padIM.userData.trackShoeWidthScale = shoeWidthScale;
+  padIM.userData.trackShoeOutboardOffset = shoeOutboardOffset;
   const linkMeshes=[padIM];
   // The casting band alone casts the continuous shadow; the one detailed
   // instanced shoe follows its deformation and scroll state.
@@ -1898,7 +1922,6 @@ function buildRunningGear(P, cfg) {
   // Bodywork now performs the occlusion; every shoe remains seated on the
   // closed loop. `coveredTop` is retained only in authoring receipts so old
   // profiles do not need a flag migration.
-  const shoeOutboardOffset = cfg.shoeOutboardOffset ?? 0;
   const placeLinks = (l, r) => {
     // Link distances are monotonic around each side's loop. Walk the segment
     // cursor with them instead of restarting a linear nP search for every

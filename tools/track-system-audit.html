@@ -32,6 +32,29 @@ function intersectionsAtZ(points, z) {
   return ys.sort((a, b) => a - b);
 }
 
+function courseStation(points, point) {
+  let bestDistanceSq = Infinity;
+  let bestStation = 0;
+  let cursor = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    const dz = b[0] - a[0], dy = b[1] - a[1];
+    const lengthSq = dz * dz + dy * dy;
+    const length = Math.sqrt(lengthSq) || 1e-6;
+    const t = lengthSq > 1e-12
+      ? Math.max(0, Math.min(1, ((point.z - a[0]) * dz + (point.y - a[1]) * dy) / lengthSq))
+      : 0;
+    const pz = a[0] + dz * t, py = a[1] + dy * t;
+    const distanceSq = (point.z - pz) ** 2 + (point.y - py) ** 2;
+    if (distanceSq < bestDistanceSq) {
+      bestDistanceSq = distanceSq;
+      bestStation = cursor + length * t;
+    }
+    cursor += length;
+  }
+  return bestStation;
+}
+
 function inspectUnit(unitId, receipt, objects) {
   const failures = [];
   const bands = objects.filter((object) => object.userData.runningGearUnitId === unitId
@@ -63,6 +86,18 @@ function inspectUnit(unitId, receipt, objects) {
   if (Math.abs(receipt.textureRepeatM - receipt.shoePitchM * 4) > 1e-7) {
     failures.push('belt texture cadence is not four exact shoes');
   }
+  if (receipt.shoePadCoverageRatio < 0.88) {
+    failures.push(`broad tread covers only ${round(receipt.shoePadCoverageRatio * 100)}% of each pitch`);
+  }
+  if (padMesh.userData.trackShoePadCoverageRatio !== receipt.shoePadCoverageRatio) {
+    failures.push('broad tread coverage drift between geometry and course receipt');
+  }
+  if (receipt.shoeRadialScale < 0.75 && receipt.shoeDetailMode === 'full') {
+    failures.push('shallow shoe profile exposes full connector rails as a second course');
+  }
+  if (padMesh.userData.trackShoeDetailMode !== receipt.shoeDetailMode) {
+    failures.push('shoe detail mode drift between geometry and course receipt');
+  }
   for (const band of bands) {
     if (Math.abs(band.userData.trackTextureRepeatM - receipt.textureRepeatM) > 1e-7) {
       failures.push(`${band.name} texture receipt drift`);
@@ -74,6 +109,23 @@ function inspectUnit(unitId, receipt, objects) {
     for (let i = 0; i < count; i++) poses.push(matrixPose(padMesh, sideIndex * count + i));
     return poses;
   });
+  const bandBySide = new Map(bands.map((band) => [band.userData.runningGearSide, band]));
+  const expectedOffset = receipt.shoeOutboardOffset || 0;
+  for (const [sideIndex, side] of [-1, 1].entries()) {
+    const band = bandBySide.get(side);
+    if (!band) continue;
+    const expectedX = band.position.x + side * expectedOffset;
+    const poses = sidePoses[sideIndex];
+    let maxLaneError = 0;
+    for (const pose of poses) {
+      if (pose.scale.lengthSq() < 0.1) continue;
+      maxLaneError = Math.max(maxLaneError, Math.abs(pose.position.x - expectedX));
+    }
+    if (maxLaneError > 1e-5) {
+      failures.push(`side ${side} shoe/belt lane error ${round(maxLaneError)} m`);
+    }
+  }
+  const courseQuarterCounts = [];
   for (const poses of sidePoses) {
     const hidden = poses.filter(({ scale }) => scale.lengthSq() < 0.1).length;
     if (hidden) failures.push(`${hidden} shoe matrices collapsed instead of completing the loop`);
@@ -96,6 +148,32 @@ function inspectUnit(unitId, receipt, objects) {
     if (maxGap > receipt.shoePitchM * 1.75) {
       failures.push(`closed-course shoe gap ${round(maxGap)} m exceeds pitch ${round(receipt.shoePitchM)} m`);
     }
+    const stations = [];
+    for (const { position, scale } of poses) {
+      if (scale.lengthSq() >= 0.1) stations.push(courseStation(receipt.loopPoints, position));
+    }
+    stations.sort((a, b) => a - b);
+    let maxArcGap = 0;
+    for (let i = 0; i < stations.length; i++) {
+      const next = i + 1 < stations.length ? stations[i + 1] : stations[0] + receipt.loopLengthM;
+      maxArcGap = Math.max(maxArcGap, next - stations[i]);
+    }
+    // Projection at a sharp polygon corner can move the shoe center by up to
+    // roughly half a pitch because the instantiated shoe is offset outward
+    // from the band centerline. A true missing shoe creates a ~2-pitch hole;
+    // keep the gate below that while tolerating the legitimate wrap offset.
+    if (maxArcGap > receipt.shoePitchM * 1.60) {
+      failures.push(`course arc has an uncovered shoe interval ${round(maxArcGap / receipt.shoePitchM)}× pitch`);
+    }
+    const quarters = [0, 0, 0, 0];
+    for (const station of stations) {
+      quarters[Math.min(3, Math.floor((station / receipt.loopLengthM) * 4))]++;
+    }
+    const minimumQuarter = Math.max(1, Math.floor(receipt.shoeCountPerSide / 4) - 1);
+    if (quarters.some((value) => value < minimumQuarter)) {
+      failures.push(`tread does not populate the complete loop (${quarters.join('/')})`);
+    }
+    courseQuarterCounts.push(quarters);
     const tangentMean = tangentSum / Math.max(1, tangentCount);
     if (tangentMean < 0.88) failures.push(`shoe tangent mean ${round(tangentMean)} is misaligned`);
   }
@@ -118,9 +196,11 @@ function inspectUnit(unitId, receipt, objects) {
   }
   for (const side of [-1, 1]) {
     const lane = laneBySide.get(side);
-    const nearestWheel = Math.min(...wheelXs
-      .filter((x) => Math.sign(x || side) === side)
-      .map((x) => Math.abs(Math.abs(x) - lane)));
+    let nearestWheel = Infinity;
+    for (const x of wheelXs) {
+      if (Math.sign(x || side) !== side) continue;
+      nearestWheel = Math.min(nearestWheel, Math.abs(Math.abs(x) - lane));
+    }
     if (!Number.isFinite(nearestWheel) || nearestWheel > receipt.trackW * 0.55) {
       failures.push(`side ${side} wheels do not share the belt lane`);
     }
@@ -142,11 +222,12 @@ function inspectUnit(unitId, receipt, objects) {
   }
 
   for (const drive of drives) {
-    if (!drive.userData.sprocketToothCount) continue;
+    const gear = drive.userData;
+    if (!gear.sprocketToothCount) continue;
     const expected = Math.max(4,
-      Math.round((Math.PI * 2 * drive.userData.trackSpinRadiusM) / receipt.shoePitchM));
-    if (Math.abs(drive.userData.sprocketToothCount - expected) > 1) {
-      failures.push(`sprocket teeth ${drive.userData.sprocketToothCount} drift from ${expected} shoe engagements`);
+      Math.round((Math.PI * 2 * gear.trackSpinRadiusM) / receipt.shoePitchM));
+    if (Math.abs(gear.sprocketToothCount - expected) > 1) {
+      failures.push(`sprocket teeth ${gear.sprocketToothCount} drift from ${expected} shoe engagements`);
     }
   }
 
@@ -154,6 +235,9 @@ function inspectUnit(unitId, receipt, objects) {
     unitId,
     shoeCountPerSide: count,
     shoePitchM: round(receipt.shoePitchM),
+    shoePadCoverageRatio: receipt.shoePadCoverageRatio,
+    shoeDetailMode: receipt.shoeDetailMode,
+    courseQuarterCounts,
     loopLengthM: round(receipt.loopLengthM),
     roadWheelStations: receipt.wheelZs.length,
     failures: [...new Set(failures)],
@@ -179,9 +263,12 @@ try {
     if (object.userData?.runningGear) objects.push(object);
   });
   const receipts = hull?.userData.runningGearReceipts || [];
-  const unitIds = [...new Set(objects
-    .map((object) => object.userData.runningGearUnitId)
-    .filter((value) => Number.isInteger(value)))].sort((a, b) => a - b);
+  const unitIdSet = new Set();
+  for (const object of objects) {
+    const unitId = object.userData.runningGearUnitId;
+    if (Number.isInteger(unitId)) unitIdSet.add(unitId);
+  }
+  const unitIds = [...unitIdSet].sort((a, b) => a - b);
   const units = unitIds.map((unitId) => inspectUnit(
     unitId,
     receipts.find((receipt) => receipt.unitId === unitId),
