@@ -16,7 +16,7 @@ export function spectatorCardModel(payload = {}) {
 }
 
 export function spectatorSwitcherMarkup() {
-  return '<div class="portrait" aria-hidden="true"><img alt=""><span class="portrait-mark"></span></div>' +
+  return '<div class="portrait" aria-hidden="true"><img alt=""></div>' +
     '<div class="identity" aria-live="polite">' +
       '<span class="spec-status">' +
         uiIconSVG('scope', 14) +
@@ -27,10 +27,10 @@ export function spectatorSwitcherMarkup() {
     '<div class="switch" role="group" aria-label="Switch spectated vehicle">' +
       '<button type="button" class="cycle prev" aria-label="Previous vehicle">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronLeft', 13) + '</span>' +
-        '<span class="cycle-copy" aria-hidden="true"><kbd>A</kbd><span>Previous</span></span>' +
+        '<span class="cycle-copy" aria-hidden="true"><span class="cycle-label">Previous</span><kbd>A</kbd></span>' +
       '</button>' +
       '<button type="button" class="cycle next" aria-label="Next vehicle">' +
-        '<span class="cycle-copy" aria-hidden="true"><kbd>D</kbd><span>Next</span></span>' +
+        '<span class="cycle-copy" aria-hidden="true"><kbd>D</kbd><span class="cycle-label">Next</span></span>' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
       '</button>' +
     '</div>' +

@@ -12,10 +12,11 @@ const markup = spectatorSwitcherMarkup();
 assert.match(markup, /class="portrait"/);
 assert.match(markup, /class="spec-status"/);
 assert.match(markup, /class="idx" hidden/);
-assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd>A<\/kbd><span>Previous<\/span>/);
-assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd>D<\/kbd><span>Next<\/span>/);
+assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<span class="cycle-label">Previous<\/span><kbd>A<\/kbd>/);
+assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd>D<\/kbd><span class="cycle-label">Next<\/span>/);
 assert.match(markup, /aria-label="Return to garage"/);
 assert.match(markup, /<svg[^>]*aria-hidden="true"/);
 assert.doesNotMatch(markup, /Allied vehicle/);
+assert.doesNotMatch(markup, /portrait-mark/, 'spectator strip omits decorative corner brackets');
 
 console.log('spectatorSwitcher.selftest: command-style spectator identity and controls passed');
