@@ -12,24 +12,13 @@
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
 
-<p align="center">
-  <a href="https://cot.kevinliu.studio"><strong>PLAY</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://cot.kevinliu.studio/docs">FIELD MANUAL</a>
-  &nbsp;·&nbsp;
-  <a href="https://cot.kevinliu.studio/gallery">TANK GALLERY</a>
-  &nbsp;·&nbsp;
-  <a href="https://cot.kevinliu.studio/studio">SCENE STUDIO</a>
-  &nbsp;·&nbsp;
-  <a href="docs/INDEX.md">ENGINEERING DOCS</a>
-</p>
-
-<table>
+<table width="100%" align="center">
 <tr>
-<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/features/play.svg" width="72" alt="Play armored combat icon"><br><sub><b>PLAY</b></sub></td>
-<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/docs.svg" width="72" alt="Armored vehicle field manual icon"><br><sub><b>DOCS</b></sub></td>
-<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/tank-gallery.svg" width="72" alt="Three-tank comparison icon"><br><sub><b>TANK GALLERY</b></sub></td>
-<td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio turret explosion icon"><br><sub><b>SCENE STUDIO</b></sub></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/"><img src="public/brand/features/play.svg" height="58" alt="Play armored combat"><br><strong>PLAY</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/docs"><img src="public/brand/nav/docs.svg" height="58" alt="Open the armored vehicle field manual"><br><strong>FIELD MANUAL</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/gallery"><img src="public/brand/nav/tank-gallery.svg" height="58" alt="Open Tank Gallery"><br><strong>TANK GALLERY</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/studio"><img src="public/brand/nav/studio.svg" height="58" alt="Open Scene Studio"><br><strong>SCENE STUDIO</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="docs/INDEX.md"><img src="public/brand/features/modules.svg" height="58" alt="Open the engineering documentation"><br><strong>ENGINEERING DOCS</strong></a></td>
 </tr>
 </table>
 
