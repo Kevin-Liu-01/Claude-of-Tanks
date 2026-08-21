@@ -222,7 +222,7 @@ const SPECS = [
       },
       dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
-    { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 },
+    { hp: 2300, topSpeedKmh: 65, gun: { reloadS: 6.6 },
       // Vladimir's retained first-party hull is likewise authored 0.83 m
       // aft of its local origin.  This offset is consumed only by the garage
       // pedestal pose and does not mutate the certified vehicle geometry.
@@ -285,7 +285,7 @@ const SPECS = [
         dmg: index === 0 ? 84 : 76,
         reloadS: 0.78,
       })),
-      shell('MILAN 2', 'HEAT', 115, 800, 800, 480, 200, {
+      shell('MILAN 2', 'HEAT', 115, 800, 800, 480, 130, {
         pen2000Mm: 800, reloadS: 12.5, count: 6, guided: true,
         soundProfile: 'milan-launch',
       }),

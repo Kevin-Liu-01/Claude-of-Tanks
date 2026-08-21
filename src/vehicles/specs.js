@@ -383,8 +383,8 @@ function armorT90M() {
   // r7: hull roof dropped 1.45 -> 1.40 with the barge-hull visual rebuild
   // (deck band rides just above the fender line; turret scaled up instead).
   const trkTop = 1.0, floor = 0.43, roofY = 1.40;
-  const relikt = { keReduction: 0.25, ceFlatMm: 500 };
-  const reliktSkirt = { keReduction: 0.15, ceFlatMm: 350 };
+  const relikt = { keReduction: 0.30, ceFlatMm: 600 };
+  const reliktSkirt = { keReduction: 0.18, ceFlatMm: 400 };
   return {
     boundingRadiusM: 5.1,
     turretPivot: [0, 1.40, 0.15],
@@ -392,12 +392,12 @@ function armorT90M() {
     gunBarrel: { lengthM: 6.0, radiusM: 0.105 },
     hullPlates: [
       fr('glacis_era_L', 15, 0.78, 0.95, 3.42, 1.42, 2.02, { kind: 'era', era: relikt }),
-      fr('upper_glacis', 500, 1.55, 0.85, 3.35, roofY, 1.85, { keMm: 480, ceMm: 650 }), // 68 deg
-      fr('lower_front', 80, 1.55, floor, 3.05, 0.85, 3.35, { keMm: 100, ceMm: 100 }),
-      sR('hull_side_upper_R', 70, 1.89, trkTop, 1.89, roofY, -3.4, 1.9, { keMm: 80, ceMm: 80 }),
-      sL('hull_side_upper_L', 70, 1.89, trkTop, 1.89, roofY, -3.4, 1.9, { keMm: 80, ceMm: 80 }),
-      sR('hull_side_lower_R', 70, 1.31, floor, 1.31, trkTop, -3.3, 3.0, { keMm: 80, ceMm: 80 }),
-      sL('hull_side_lower_L', 70, 1.31, floor, 1.31, trkTop, -3.3, 3.0, { keMm: 80, ceMm: 80 }),
+      fr('upper_glacis', 500, 1.55, 0.85, 3.35, roofY, 1.85, { keMm: 560, ceMm: 760 }), // 68 deg
+      fr('lower_front', 80, 1.55, floor, 3.05, 0.85, 3.35, { keMm: 130, ceMm: 160 }),
+      sR('hull_side_upper_R', 70, 1.89, trkTop, 1.89, roofY, -3.4, 1.9, { keMm: 90, ceMm: 110 }),
+      sL('hull_side_upper_L', 70, 1.89, trkTop, 1.89, roofY, -3.4, 1.9, { keMm: 90, ceMm: 110 }),
+      sR('hull_side_lower_R', 70, 1.31, floor, 1.31, trkTop, -3.3, 3.0, { keMm: 90, ceMm: 110 }),
+      sL('hull_side_lower_L', 70, 1.31, floor, 1.31, trkTop, -3.3, 3.0, { keMm: 90, ceMm: 110 }),
       sR('skirt_era_R', 15, 1.90, 0.45, 1.90, 1.05, 0.2, 3.3, { kind: 'era', era: reliktSkirt }),
       sL('skirt_era_L', 15, 1.90, 0.45, 1.90, 1.05, 0.2, 3.3, { kind: 'era', era: reliktSkirt }),
       sR('skirt_rubber_R', 8, 1.90, 0.45, 1.90, 1.05, -3.3, 0.2, { kind: 'spaced' }),
@@ -411,14 +411,14 @@ function armorT90M() {
     turretPlates: [
       chR('turret_era_R', 15, 0.28, 1.02, 1.10, 0.32, 0.05, 0.68, 0.08, 0, { kind: 'era', era: relikt }),
       chL('turret_era_L', 15, 0.28, 1.02, 1.10, 0.32, 0.05, 0.68, 0.08, 0, { kind: 'era', era: relikt }),
-      chR('turret_cheek_R', 650, 0.22, 0.86, 1.06, 0.18, 0.0, 0.70, 0.08, 0, { keMm: 550, ceMm: 700 }),
-      chL('turret_cheek_L', 650, 0.22, 0.86, 1.06, 0.18, 0.0, 0.70, 0.08, 0, { keMm: 550, ceMm: 700 }),
+      chR('turret_cheek_R', 650, 0.22, 0.86, 1.06, 0.18, 0.0, 0.70, 0.08, 0, { keMm: 700, ceMm: 900 }),
+      chL('turret_cheek_L', 650, 0.22, 0.86, 1.06, 0.18, 0.0, 0.70, 0.08, 0, { keMm: 700, ceMm: 900 }),
       par('mantlet', 300, [-0.22, 0.08, 0.92], [0.22, 0.08, 0.92], [-0.22, 0.48, 0.89],
-        { keMm: 350, ceMm: 400, gunFollow: true }),
+        { keMm: 400, ceMm: 500, gunFollow: true }),
       sR('side_era_R', 15, 1.16, 0.1, 1.16, 0.55, -0.5, 0.2, { kind: 'era', era: reliktSkirt }),
       sL('side_era_L', 15, 1.16, 0.1, 1.16, 0.55, -0.5, 0.2, { kind: 'era', era: reliktSkirt }),
-      sR('turret_side_R', 300, 1.10, 0.0, 1.10, 0.70, -0.95, 0.2, { keMm: 300, ceMm: 450 }),
-      sL('turret_side_L', 300, 1.10, 0.0, 1.10, 0.70, -0.95, 0.2, { keMm: 300, ceMm: 450 }),
+      sR('turret_side_R', 300, 1.10, 0.0, 1.10, 0.70, -0.95, 0.2, { keMm: 350, ceMm: 500 }),
+      sL('turret_side_L', 300, 1.10, 0.0, 1.10, 0.70, -0.95, 0.2, { keMm: 350, ceMm: 500 }),
       rr('turret_bustle', 45, 0.95, 0.0, -1.92, 0.58, -1.92),
       rf('turret_roof', 45, 1.05, 0.74, -0.95, 0.55),
     ],
@@ -704,19 +704,19 @@ export const TANK_SPECS = {
 
   t90m: {
     id: 't90m', name: 'T-90M Proryv', nation: 'Russia', era: 'modern', class: 'mbt',
-    hp: 2000,
-    enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 63, reverseSpeedKmh: 5,
-    hullTraverseDegS: 42,
+    hp: 2700,
+    enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65, reverseSpeedKmh: 12,
+    hullTraverseDegS: 44,
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
-    turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 14, gunDepressionDeg: 6,
+    turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 14, gunDepressionDeg: 6,
     gun: {
-      caliberMm: 125, reloadS: 7.5, baseAccuracy: 0.35, aimTimeS: 2.2,
+      caliberMm: 125, reloadS: 6.4, baseAccuracy: 0.31, aimTimeS: 1.8,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('3BM60 Svinets-2', 'APFSDS', 125, apfsdsPens(640)[0], apfsdsPens(640)[1], 520, 1750, { pen2000Mm: apfsdsPens(640)[2] }),
-        shell('3BK31 HEAT', 'HEAT', 125, 675, 675, 470, 905),
-        shell('3OF82 HE-Frag', 'HE', 125, 50, 50, 580, 850),
+        shell('3BM60 Svinets-2', 'APFSDS', 125, 855, 800, 560, 1800, { pen2000Mm: 720 }),
+        shell('3BK31 HEAT', 'HEAT', 125, 800, 800, 500, 905),
+        shell('3OF82 HE-Frag', 'HE', 125, 55, 55, 600, 850),
       ],
     },
     dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.39 },

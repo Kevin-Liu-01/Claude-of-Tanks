@@ -95,6 +95,25 @@ const UKRAINE_SPECS = {
   }),
 };
 
+// Oplot-M is the tier-X end state of this family, not a tier-IX T-84 stat
+// clone wearing heavier geometry. Its individual ammunition and cycle are
+// authored here so both local and dedicated authority receive the upgrade.
+{
+  const spec = UKRAINE_SPECS.ua_t84_oplot_m;
+  spec.hp = 2800;
+  spec.gun.reloadS = 6.3;
+  spec.gun.baseAccuracy = 0.31;
+  spec.gun.aimTimeS = 1.8;
+  Object.assign(spec.gun.shells[0], {
+    name: '3BM60U APFSDS', pen100Mm: 830, pen1000Mm: 770,
+    pen2000Mm: 700, dmg: 540, velocityMps: 1780,
+  });
+  Object.assign(spec.gun.shells[1], {
+    name: 'Kombat-M HEAT', pen100Mm: 760, pen1000Mm: 760, dmg: 500,
+  });
+  Object.assign(spec.gun.shells[2], { dmg: 600 });
+}
+
 for (const id of UKRAINE_IDS) {
   TANK_SPECS[id] = TANK_SPECS[id] || UKRAINE_SPECS[id];
   MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };

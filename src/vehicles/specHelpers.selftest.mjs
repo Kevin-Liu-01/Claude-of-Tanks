@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {
-  GUIDED_MISSILE_SPEED_MULTIPLIER,
   plate,
   frontPlate,
   moduleBox,
@@ -53,8 +52,8 @@ assert.deepEqual(shell('Round', 'APFSDS', 120, 600, 550, 500, 1600, { pen2000Mm:
 });
 assert.deepEqual(shell('Missile', 'HEAT', 152, 800, 800, 560, 300, { guided: true }), {
   name: 'Missile', type: 'HEAT', caliberMm: 152,
-  pen100Mm: 800, pen1000Mm: 800, dmg: 560, velocityMps: 195,
-  moduleDmg: 152, tracer: 'HEAT', guided: true, authoredVelocityMps: 300,
+  pen100Mm: 800, pen1000Mm: 800, dmg: 560, velocityMps: 300,
+  moduleDmg: 152, tracer: 'HEAT', guided: true,
 });
 assert.deepEqual(apfsdsPenetration(460), [562, 511, 460]);
 
@@ -92,23 +91,13 @@ assert.equal(armor.modules.find((entry) => entry.module === 'ammoRack').turretLo
 assert.equal(armor.hullPlates.find((entry) => entry.name === 'skirt_R').ceMm, 200);
 assert.equal(armor.turretPlates.find((entry) => entry.name === 'mantlet').gunFollow, true);
 
-const guidedRounds = [];
-for (const id of SAVED_TANK_IDS) {
-  for (const round of TANK_SPECS[id]?.gun?.shells || []) {
-    if (round.guided === true) guidedRounds.push({ id, round });
-  }
-}
-assert.ok(guidedRounds.length > 0, 'saved fleet exposes guided missile ammunition');
-for (const { id, round } of guidedRounds) {
-  assert.ok(round.authoredVelocityMps > 0,
-    `${id}/${round.name}: guided rounds use the shared missile-speed policy`);
-  assert.equal(round.velocityMps,
-    round.authoredVelocityMps * GUIDED_MISSILE_SPEED_MULTIPLIER,
-    `${id}/${round.name}: missile travels exactly 35% slower`);
-}
 const bradleyCannon = TANK_SPECS.m2a2_bradley.gun.shells[0];
 assert.equal(bradleyCannon.velocityMps, 1345, 'ordinary cannon velocity is unchanged');
 assert.equal(Object.hasOwn(bradleyCannon, 'authoredVelocityMps'), false,
-  'missile metadata does not leak onto ordinary shells');
+  'balance metadata does not leak onto ordinary shells');
 
-console.log(`specHelpers.selftest: shared armor helpers and ${guidedRounds.length} guided rounds passed`);
+console.log('specHelpers.selftest: shared armor and shell constructors passed');
+
+// The package test command already owns this stable entrypoint. Chain the
+// fleet-wide balance gate here so new spec packs cannot bypass it.
+await import('./fleetBalance.selftest.mjs');

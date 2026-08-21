@@ -245,7 +245,7 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('M919 APFSDS-T', 'APFSDS', 25, 130, 118, 58, 1345, { pen2000Mm: 106, reloadS: 0.42, count: 225 }),
-        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 540, 300,
+        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 540, 195,
           { reloadS: 14, count: 7, guided: true, soundProfile: 'tow-launch' }),
         shell('M792 HEI-T', 'HE', 25, 8, 8, 50, 1100, { reloadS: 0.42, count: 300 }),
       ],
@@ -305,7 +305,7 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('3UBR8 APDS', 'APFSDS', 30, 74, 66, 42, 1120, { pen2000Mm: 58, reloadS: 0.28, count: 160 }),
-        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 430, 250,
+        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 430, 162.5,
           { reloadS: 16, count: 5, guided: true, soundProfile: 'konkurs-launch' }),
         shell('3UOF8 HE-I', 'HE', 30, 6, 6, 38, 960, { reloadS: 0.28, count: 340 }),
       ],
@@ -353,7 +353,7 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('MK30 APFSDS-T', 'APFSDS', 30, 180, 164, 70, 1385, { pen2000Mm: 148, reloadS: 0.35, count: 200 }),
-        shell('Spike LR', 'HEAT', 152, 760, 760, 520, 180,
+        shell('Spike LR', 'HEAT', 152, 760, 760, 520, 117,
           { reloadS: 15, count: 6, guided: true, soundProfile: 'spike-launch' }),
         shell('KETF ABM', 'HE', 30, 10, 10, 72, 1100, { reloadS: 0.35, count: 200 }),
       ],
@@ -428,7 +428,7 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('Type 89 APDS-T', 'APFSDS', 35, 112, 100, 82, 1385, { pen2000Mm: 88, reloadS: 0.52, count: 120 }),
-        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 500, 200,
+        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 500, 130,
           { reloadS: 18, count: 6, guided: true, soundProfile: 'jyu-mat-launch' }),
         shell('35mm HEI-T', 'HE', 35, 8, 8, 78, 1175, { reloadS: 0.52, count: 280 }),
       ],

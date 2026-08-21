@@ -122,6 +122,30 @@ const CHINA_SPECS = {
   }),
 };
 
+// Tier-VIII fire-control package: keep the Type 59 ancestry for geometry,
+// but author the ZTZ-85-III's combat row explicitly instead of inheriting a
+// tier-VII 100 mm gun unchanged.
+{
+  const spec = CHINA_SPECS.ztz85_iii;
+  spec.hp = 2100;
+  spec.gun.reloadS = 6.8;
+  spec.gun.baseAccuracy = 0.33;
+  spec.gun.aimTimeS = 2.0;
+  Object.assign(spec.gun.shells[0], {
+    name: '125-I APFSDS', caliberMm: 125,
+    pen100Mm: 620, pen1000Mm: 570, pen2000Mm: 510, dmg: 500,
+    velocityMps: 1730, moduleDmg: 125,
+  });
+  Object.assign(spec.gun.shells[1], {
+    name: 'DTP-125 HEAT', caliberMm: 125,
+    pen100Mm: 600, pen1000Mm: 600, dmg: 480, velocityMps: 950, moduleDmg: 125,
+  });
+  Object.assign(spec.gun.shells[2], {
+    name: 'DTB-125 HE', caliberMm: 125,
+    pen100Mm: 50, pen1000Mm: 50, dmg: 570, velocityMps: 900, moduleDmg: 125,
+  });
+}
+
 for (const id of CHINA_IDS) {
   TANK_SPECS[id] = TANK_SPECS[id] || CHINA_SPECS[id];
   MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };

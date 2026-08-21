@@ -137,13 +137,13 @@ const SPECS = [
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '117' } }, BERGMAN),
   make('t80u', 't80b', 'T-80B', 'USSR/Russia',
-    { hp: 1830, enginePowerHp: 1100, weightTons: 42.5, gun: { reloadS: 7.6 },
+    { hp: 2100, enginePowerHp: 1100, weightTons: 42.5, gun: { reloadS: 7.4 },
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '225' } }, BERGMAN),
   // full-ERA T-80BV — the scout round's closest silhouette proxy for the
   // roster-listed T-80BVM (Kontakt-1 vs Relikt; PROVENANCE note)
   make('t80u', 't80bv', 'T-80BV', 'USSR/Russia',
-    { hp: 1900, enginePowerHp: 1100, weightTons: 43.7, gun: { reloadS: 7.4 },
+    { hp: 2200, enginePowerHp: 1100, weightTons: 43.7, gun: { reloadS: 7.1 },
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '319' } }, BERGMAN),
   // -- NATO cold-war ---------------------------------------------------------
@@ -164,8 +164,16 @@ const SPECS = [
         heightM: 2.29, silhouetteHeightM: 2.82 },
       visual: { marking: 'number', number: '53' } }, AHAB_AMX30),
   make('leo1a5', 'amx30b2', 'AMX-30B2', 'France',
-    { hp: 1700, enginePowerHp: 750, weightTons: 37, reverseSpeedKmh: 11,
-      gun: { reloadS: 6.6 },
+    { hp: 1950, enginePowerHp: 750, weightTons: 37, reverseSpeedKmh: 15,
+      gun: {
+        reloadS: 6.0, baseAccuracy: 0.29, aimTimeS: 1.7,
+        shells: TANK_SPECS.leo1a5.gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { pen100Mm: 550, pen1000Mm: 510, pen2000Mm: 460, dmg: 430 }
+            : index === 1 ? { pen100Mm: 520, pen1000Mm: 520, dmg: 430 }
+              : { dmg: 510 }),
+        })),
+      },
       // §5.309: same rebuilt base as amx30 (published rows shared); the
       // B2's outboard kit no longer carries a wider silhouette row — the
       // old 3.34 measured the retired donor envelope.
@@ -185,22 +193,22 @@ const SPECS = [
       dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
-    { hp: 1800, enginePowerHp: 750, weightTons: 52,
+    { hp: 2050, enginePowerHp: 750, weightTons: 52,
       // 152 mm M162 gun/launcher: conventional ammunition stays the default
       // while E arms the slower MGM-51C guidance channel for the next shot.
       // Per-round counts keep the Starship's compact mixed stowage explicit.
-      gun: { caliberMm: 152, reloadS: 11.5, shells: [
-        shell('M409A1 HEAT-MP', 'HEAT', 152, 380, 380, 560, 689,
-          { reloadS: 11.5, count: 33 }),
-        shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 610, 610, 650, 320, {
+      gun: { caliberMm: 152, reloadS: 10.5, baseAccuracy: 0.34, aimTimeS: 2.0, shells: [
+        shell('M409A1 HEAT-MP', 'HEAT', 152, 480, 480, 600, 689,
+          { reloadS: 10.5, count: 33 }),
+        shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 760, 760, 720, 208, {
           guided: true,
           guidanceTurnRateRadS: 0.72,
-          reloadS: 13.5,
+          reloadS: 12.5,
           count: 13,
           soundProfile: 'shillelagh-launch',
         }),
-        shell('M657A2 HE-T', 'HE', 152, 45, 45, 680, 683,
-          { reloadS: 11.5, count: 12 }),
+        shell('M657A2 HE-T', 'HE', 152, 45, 45, 720, 683,
+          { reloadS: 10.5, count: 12 }),
       ] },
       dims: { hullLengthM: 6.95, overallLengthM: 7.27, widthM: 3.63, heightM: 3.11 },
       visual: { marking: 'star', number: 'S12' } }, AHAB_M60A2),
@@ -215,8 +223,8 @@ const SPECS = [
       visual: { number: 'V1' } }, JACK),
   // -- Ukraine ---------------------------------------------------------------
   make('t80u', 't84', 'T-84 Oplot', 'Ukraine',
-    { hp: 2100, enginePowerHp: 1200, weightTons: 46, topSpeedKmh: 65,
-      gun: { reloadS: 6.8 },
+    { hp: 2250, enginePowerHp: 1200, weightTons: 46, topSpeedKmh: 65,
+      gun: { reloadS: 6.6 },
       dims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
       visual: { number: '240' } }, T84_REMIX),
   // -- §5.38 T-90 family (owner priority wave 2026-08-08) ---------------------
@@ -227,15 +235,15 @@ const SPECS = [
   // its OWN procedural build (profiles/russia.js, RUSSIA_PROFILES).
   // t90: base 1992 obr. — V-84MS 840 hp, cast turret, K-5 clamshell, NSVT.
   make('t90a', 't90', 'T-90', 'USSR/Russia',
-    { hp: 1880, enginePowerHp: 840, weightTons: 46.5,
-      gun: { reloadS: 7.8 },
+    { hp: 2150, enginePowerHp: 840, weightTons: 46.5,
+      gun: { reloadS: 7.5 },
       visual: { number: '417' } }),
   // t90ms: Tagil export demonstrator — V-92S2F 1130 hp, welded turret with
   // the big bustle + rear cage + UDP T05BV-1 RWS; desert-sand factory paint
   // (the export-demo look; also the garage tell vs the green t90sm).
   make('t90a', 't90ms', 'T-90MS Tagil', 'USSR/Russia',
-    { hp: 2020, enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65,
-      gun: { reloadS: 7.1 },
+    { hp: 2300, enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65,
+      gun: { reloadS: 6.8 },
       visual: { scheme: 'solid', base: '#6a6047', weather: '#75694e', patches: [], number: '340' } }),
   // t90a_burlak: experimental Burlak bustle-autoloader turret on the T-90A
   // hull (t90a stats; height to the taller bustle roof; the rear-rack
@@ -244,7 +252,7 @@ const SPECS = [
   // (print -3.66 corroborates) — 9.76 is the variant's honest gun-forward
   // total (ASK-OWNER note in the packet; §5.38 named only heightM 2.30).
   make('t90a', 't90a_burlak', 'T-90A Burlak', 'USSR/Russia',
-    { gun: { reloadS: 7.0 },
+    { hp: 2250, gun: { reloadS: 6.7 },
       dims: { heightM: 2.30, overallLengthM: 9.76 },
       visual: { number: '059' } }),
 ];

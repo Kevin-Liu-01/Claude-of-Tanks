@@ -131,7 +131,16 @@ const SPECS = [
       // heightM: over-mounted-M2 convention, same ruling as m26 above.
       dims: { hullLengthM: 6.33, overallLengthM: 6.6, widthM: 3.51, heightM: 3.0 } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
-    { hp: 1800, weightTons: 52.6, topSpeedKmh: 48, gun: { reloadS: 7.2 },
+    { hp: 2050, weightTons: 52.6, topSpeedKmh: 50,
+      gun: {
+        reloadS: 6.7, baseAccuracy: 0.32, aimTimeS: 1.9,
+        shells: TANK_SPECS.m60a1.gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { pen100Mm: 540, pen1000Mm: 500, pen2000Mm: 450, dmg: 430 }
+            : index === 1 ? { pen100Mm: 520, pen1000Mm: 520, dmg: 430 }
+              : { dmg: 510 }),
+        })),
+      },
       armor: m60a3Armor(),
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
 ];

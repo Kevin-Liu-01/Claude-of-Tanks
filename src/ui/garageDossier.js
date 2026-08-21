@@ -3,12 +3,18 @@
 
 import { CREW_LABEL, MODULE_LABEL } from './moduleRegistry.js';
 import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActions.js';
+import { tankTier } from '../vehicles/tier.js';
 
 const MODULE_ICON = Object.freeze({ trackL: 'track', trackR: 'track' });
 const CREW_ICON = Object.freeze({
   commander: 'crewCommander', gunner: 'crewGunner',
   driver: 'crewDriver', loader: 'crewLoader',
 });
+
+/** Matchmaking peer key used by every normalized garage stat bar. */
+export function garageStatGroup(spec) {
+  return `${tankTier(spec?.id)}/${spec?.class || 'medium'}`;
+}
 
 /** Canonically ordered, duplicate-free damageable modules for one vehicle. */
 export function garageModuleRows(spec) {

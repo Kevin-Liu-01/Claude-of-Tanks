@@ -135,14 +135,14 @@ const VARIANT_SPECS = {
       source: 'https://sketchfab.com/3d-models/t-90-9bb8af8876a6478aa92089eff058d4db',
       license: 'CC-BY 4.0',
     },
-    hp: 1950,
+    hp: 2200,
     enginePowerHp: 1000, weightTons: 46.5, topSpeedKmh: 60, reverseSpeedKmh: 5,
     hullTraverseDegS: 40,
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 36, gunPitchDegS: 28, gunElevationDeg: 14, gunDepressionDeg: 6,
     gun: {
-      caliberMm: 125, reloadS: 7.5, baseAccuracy: 0.36, aimTimeS: 2.3,
+      caliberMm: 125, reloadS: 7.0, baseAccuracy: 0.34, aimTimeS: 2.1,
       bloom: BLOOM_MODERN,
       shells: [
         shell('3BM42M Lekalo', 'APFSDS', 125, apfsdsPens(590)[0], apfsdsPens(590)[1], 510, 1700, { pen2000Mm: apfsdsPens(590)[2] }),
@@ -154,7 +154,16 @@ const VARIANT_SPECS = {
     // T-90M armor layout shared (identical 6.86 m hull); base composite
     // scaled to the A's cast-turret ratings. Kontakt-5 'era' plates ride
     // along from the t90m layout (roster: reuse the glacis two-tile pattern).
-    armor: derivedArmor(t90m.armor, 0.94),
+    // Proryv's strengthened Relikt/composite package is intentionally not
+    // inherited wholesale by the older T-90A. This explicit factor preserves
+    // the A's tier-IX protection after the tier-X donor hardening pass.
+    armor: (() => {
+      const armor = derivedArmor(t90m.armor, 0.80);
+      for (const plate of [...armor.hullPlates, ...armor.turretPlates]) {
+        if (plate.kind === 'era') plate.era = { keReduction: 0.20, ceFlatMm: 400 };
+      }
+      return armor;
+    })(),
     visual: {
       // Russian dark forest green solid, matching the shipped t90m factory
       scheme: 'solid', base: '#3f5138', weather: '#4a5c42', patches: [],

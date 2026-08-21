@@ -97,7 +97,7 @@ const AFV_FAMILY_SPECS = {
       soundProfile: '2a72' },
     shells: [
       ap('3UBR11 APFSDS', 30, [128, 116, 104], 58, 1120, 180, 0.36),
-      heat('9M117M1 Arkan', 100, 750, 470, 370, 8, 12.5, 'arkan-launch'),
+      heat('9M117M1 Arkan', 100, 750, 470, 240.5, 8, 12.5, 'arkan-launch'),
       he('3UOF19 HE-FRAG', 100, 340, 355, 22, 4.0, 'bmp3-100mm'),
     ],
   }),
@@ -112,7 +112,7 @@ const AFV_FAMILY_SPECS = {
     gun: { reloadS: 0.42, soundProfile: 'm242-bushmaster' },
     shells: [
       ap('M919 APFSDS-T', 25, [142, 128, 116], 64, 1345, 225, 0.42),
-      heat('BGM-71E TOW-2A', 152, 900, 560, 300, 7, 14, 'tow-launch'),
+      heat('BGM-71E TOW-2A', 152, 900, 560, 195, 7, 14, 'tow-launch'),
       he('M792 HEI-T', 25, 56, 1100, 300, 0.42),
     ],
   }),
@@ -142,7 +142,7 @@ const AFV_FAMILY_SPECS = {
       muzzles: [{ x: -0.16, y: 0 }, { x: 0.16, y: 0 }] },
     shells: [
       ap('3UBR8 APDS', 30, [118, 106, 94], 52, 1120, 425, 0.30),
-      heat('9M120-1 Ataka-T', 130, 850, 540, 550, 4, 13.5, 'ataka-launch'),
+      heat('9M120-1 Ataka-T', 130, 850, 540, 357.5, 4, 13.5, 'ataka-launch'),
       he('3UOF8 HE-I', 30, 48, 960, 425, 0.30),
     ],
   }),
@@ -159,7 +159,7 @@ const AFV_FAMILY_SPECS = {
       soundProfile: 'mk30-2' },
     shells: [
       ap('MK30 APFSDS-T', 30, [158, 144, 130], 62, 1385, 220, 0.32),
-      heat('Spike-LR2', 152, 850, 580, 180, 4, 14.5, 'spike-launch'),
+      heat('Spike-LR2', 152, 850, 580, 117, 4, 14.5, 'spike-launch'),
       he('30 mm ABM', 30, 60, 1100, 220, 0.32),
     ],
   }),
@@ -191,7 +191,7 @@ const AFV_FAMILY_SPECS = {
       bloom: BLOOM_IFV,
       shells: [
         shell('DM63 APDS-T', 'APFSDS', 20, 72, 64, 32, 1100, { pen2000Mm: 56, reloadS: 0.20, count: 500 }),
-        shell('MILAN 2', 'HEAT', 115, 720, 720, 450, 200,
+        shell('MILAN 2', 'HEAT', 115, 720, 720, 450, 130,
           { reloadS: 15, count: 4, guided: true, soundProfile: 'milan-launch' }),
         shell('DM81 HEI-T', 'HE', 20, 6, 6, 30, 1045, { reloadS: 0.20, count: 750 }),
       ],
@@ -247,7 +247,7 @@ const AFV_FAMILY_SPECS = {
       bloom: BLOOM_IFV,
       shells: [
         shell('M919 APFSDS-T', 'APFSDS', 25, 136, 122, 62, 1345, { pen2000Mm: 110, reloadS: 0.40, count: 300 }),
-        shell('BGM-71F TOW-2B', 'HEAT', 152, 900, 900, 600, 300,
+        shell('BGM-71F TOW-2B', 'HEAT', 152, 900, 900, 600, 195,
           { reloadS: 14, count: 10, guided: true, soundProfile: 'tow-launch' }),
         shell('M792 HEI-T', 'HE', 25, 8, 8, 56, 1100, { reloadS: 0.40, count: 300 }),
       ],
@@ -300,7 +300,7 @@ const AFV_FAMILY_SPECS = {
       bloom: BLOOM_IFV,
       shells: [
         shell('3UBR11 APFSDS-T', 'APFSDS', 30, 112, 102, 55, 1120, { pen2000Mm: 92, reloadS: 0.34, count: 200 }),
-        shell('9M117M1 Arkan', 'HEAT', 100, 750, 750, 500, 370,
+        shell('9M117M1 Arkan', 'HEAT', 100, 750, 750, 500, 240.5,
           { reloadS: 12, count: 8, guided: true, soundProfile: 'arkan-launch' }),
         shell('3UOF19 HE-FRAG', 'HE', 100, 12, 12, 360, 250,
           { reloadS: 4.0, count: 22, soundProfile: 'bmp3-100mm' }),
@@ -351,7 +351,7 @@ const AFV_FAMILY_SPECS = {
       bloom: BLOOM_IFV,
       shells: [
         shell('3UBR11 APFSDS-T', 'APFSDS', 30, 146, 132, 58, 1120, { pen2000Mm: 118, reloadS: 0.30, count: 220 }),
-        shell('Spike-LR', 'HEAT', 152, 800, 800, 550, 180,
+        shell('Spike-LR', 'HEAT', 152, 800, 800, 550, 117,
           { reloadS: 14, count: 4, guided: true, soundProfile: 'spike-launch' }),
         shell('3UOF8 HE-I', 'HE', 30, 8, 8, 52, 960, { reloadS: 0.30, count: 300 }),
       ],
@@ -422,7 +422,7 @@ AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
     muzzles: [{ x: -0.20, y: 0 }, { x: 0.20, y: 0 }] },
   shells: [
     ap('3UBR8 APDS', 30, [122, 110, 98], 50, 1120, 500, 0.28),
-    heat('9M120-1 Ataka-T', 130, 850, 560, 550, 8, 13.5, 'ataka-launch'),
+    heat('9M120-1 Ataka-T', 130, 850, 560, 357.5, 8, 13.5, 'ataka-launch'),
     he('3UOF8 HE-I', 30, 46, 960, 500, 0.28),
   ],
 });

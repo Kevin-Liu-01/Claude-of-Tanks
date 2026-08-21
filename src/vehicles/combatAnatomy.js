@@ -261,7 +261,22 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
       fitFixedBoxes(fixedModules, armor.turretPivot, compartment);
       fitFixedBoxes(armor.crew || [], armor.turretPivot, compartment);
       const fixedMount = (armor.modules || []).find((box) => box.module === 'turretRing');
-      if (fixedMount) fixedMount.module = 'gunMount';
+      if (fixedMount) {
+        fixedMount.module = 'gunMount';
+      } else if (!(armor.modules || []).some((box) => box.module === 'gunMount')) {
+        // Purpose-built casemate anatomy has no fictional turret ring to
+        // rename. Derive the fixed trunnion/mount from the authored gun box so
+        // module damage remains available without restoring an invisible
+        // rotating volume. This also keeps new turretless specs on the same
+        // contract as older donor-based tank destroyers.
+        const gun = (armor.modules || []).find((box) => box.module === 'gun');
+        if (gun) {
+          const depth = gun.max[2] - gun.min[2];
+          armor.modules.push(shrinkBox(
+            gun, 'gunMount', [1.18, 1.08, 0.42], [0, 0, -depth * 0.25],
+          ));
+        }
+      }
     } else {
       reconcileFrame(armor.hullPlates, hullBoxes, hullTarget);
       reconcileFrame(armor.turretPlates, turretBoxes, calibration.turret);

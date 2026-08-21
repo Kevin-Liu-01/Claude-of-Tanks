@@ -30,7 +30,7 @@ import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
 import { shellIconSVG } from './shellIcons.js';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem,
+  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
 } from './garageDossier.js';
 import { createRandomMapMosaic } from './randomPreviews.js';
 import {
@@ -2353,13 +2353,12 @@ export function createGarage(opts) {
   // arbitrary-looking lengths. Bars now normalize min→max within the
   // vehicle's own ERA + CLASS peer group (an Abrams compares against MBTs,
   // a Bradley against IFVs), higher-is-better on every row (reload
-  // inverted: faster = fuller). garage_ui: stat peers stay ERA-based even
-  // though the catalog chips group by the four-way catalog (Cold War /
-  // Modern / WWII) — a procedurally built Tiger I must range
-  // against WWII heavies, not against a custom Leo 2A7, and a cold-war M60
-  // ranges against the whole modern-era MBT pool it fights alongside.
-  const statGroupOf = (s) => `${s.era === 'ww2' ? 'ww2' : 'modern'}/${s.class || 'medium'}`;
-  const STAT_RANGES = new Map(); // era/class -> {hp,speed,hpt,dmg,reload:[lo,hi]}
+  // inverted: faster = fuller). Bars compare a vehicle against the peers it
+  // can actually meet: canonical matchmaking tier + class. Era-only grouping
+  // made a tier-VII M60 and tier-X Abrams share one scale and hid genuine
+  // balance changes from the player.
+  const statGroupOf = garageStatGroup;
+  const STAT_RANGES = new Map(); // tier/class -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
     const g = statGroupOf(s);
     let r = STAT_RANGES.get(g);
@@ -2553,7 +2552,7 @@ export function createGarage(opts) {
     // (r3: a vehicle-level pen number duplicated the shell table; no AAA tank
     // game headlines a single pen figure)
     const bestDmg = shells.length ? Math.max(...shells.map((s) => s.dmg || 0)) : 0;
-    // r6-2: every bar normalizes within the vehicle's OWN era+class peer
+    // Every bar normalizes within the vehicle's OWN tier+class peer
     // group, higher-is-better (reload inverted) — see STAT_RANGES above
     const grp = statGroupOf(spec);
     // EQUIPMENT SYSTEM: fold the mounted loadout into the displayed stats —

@@ -4,6 +4,10 @@
 import {
   TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims,
 } from './specs.js';
+import {
+  frontPlate, rearPlate, rightSidePlate, leftSidePlate, roofPlate,
+  moduleBox, crewBox,
+} from './specHelpers.js';
 
 const SWEDEN_IDS = Object.freeze(['strv81', 'udes03', 'strv103a', 'strv122']);
 
@@ -81,6 +85,86 @@ function enforceTurretlessArmor(spec) {
   return spec;
 }
 
+/**
+ * Combat envelope for the real hull-aimed Swedish wedge. The old generic
+ * donor retained a conventional turret ring, turret-local crew boxes and a
+ * tall rectangular bow despite the visual having none of those volumes.
+ * This model follows the low glacis/track silhouette and keeps every module
+ * in hull space, so armor, module hits, the reticle and authoritative server
+ * all agree on the same target.
+ */
+function siegeArmor(dims, ratings) {
+  const hl = dims.hullLengthM * 0.5;
+  const hw = dims.widthM * 0.5;
+  const bodyW = hw * 0.73;
+  const floor = 0.20;
+  const trackTop = Math.min(0.88, dims.heightM * 0.43);
+  const roofY = dims.heightM * 0.68;
+  const bowZ = hl * 0.99;
+  const roofNoseZ = hl * 0.48;
+  const gunY = roofY * 0.73;
+  const gunZ = hl * 0.54;
+  const plateRatings = (keMm, ceMm) => ({ keMm, ceMm });
+  return {
+    turretless: true,
+    boundingRadiusM: hl + 3.2,
+    turretPivot: [0, 0, 0],
+    gunPivot: [0, gunY, gunZ],
+    gunBarrel: { lengthM: dims.overallLengthM - dims.hullLengthM + hl * 0.62, radiusM: 0.075 },
+    hullPlates: [
+      frontPlate('upper_glacis', ratings.frontPhysicalMm, bodyW, trackTop * 0.57,
+        bowZ, roofY, roofNoseZ, plateRatings(ratings.frontKeMm, ratings.frontCeMm)),
+      frontPlate('lower_front', ratings.lowerPhysicalMm, bodyW, floor, hl * 0.86,
+        trackTop * 0.57, bowZ, plateRatings(ratings.lowerKeMm, ratings.lowerCeMm)),
+      rightSidePlate('hull_side_upper_R', ratings.sideMm, bodyW, trackTop * 0.70,
+        bodyW * 0.96, roofY, -hl * 0.96, roofNoseZ,
+        plateRatings(ratings.sideKeMm, ratings.sideCeMm)),
+      leftSidePlate('hull_side_upper_L', ratings.sideMm, bodyW, trackTop * 0.70,
+        bodyW * 0.96, roofY, -hl * 0.96, roofNoseZ,
+        plateRatings(ratings.sideKeMm, ratings.sideCeMm)),
+      rightSidePlate('hull_side_lower_R', ratings.sideMm, bodyW * 0.88, floor,
+        bodyW, trackTop * 0.70, -hl * 0.94, hl * 0.86,
+        plateRatings(ratings.sideKeMm, ratings.sideCeMm)),
+      leftSidePlate('hull_side_lower_L', ratings.sideMm, bodyW * 0.88, floor,
+        bodyW, trackTop * 0.70, -hl * 0.94, hl * 0.86,
+        plateRatings(ratings.sideKeMm, ratings.sideCeMm)),
+      rightSidePlate('track_R', ratings.trackMm, hw * 0.88, 0.10, hw * 0.88,
+        trackTop, -hl, hl, { kind: 'external', moduleLink: 'trackR' }),
+      leftSidePlate('track_L', ratings.trackMm, hw * 0.88, 0.10, hw * 0.88,
+        trackTop, -hl, hl, { kind: 'external', moduleLink: 'trackL' }),
+      rearPlate('hull_rear', ratings.rearMm, bodyW, floor, -hl * 0.96, roofY,
+        -hl * 0.96),
+      roofPlate('hull_roof', ratings.roofMm, bodyW * 0.96, roofY, -hl * 0.96,
+        roofNoseZ),
+    ],
+    turretPlates: [],
+    modules: [
+      moduleBox('engine', [-bodyW * 0.92, floor, -hl * 0.93],
+        [bodyW * 0.92, roofY * 0.82, -hl * 0.48]),
+      moduleBox('fuelTank', [-bodyW * 0.90, floor, -hl * 0.45],
+        [bodyW * 0.90, roofY * 0.56, -hl * 0.18]),
+      moduleBox('ammoRack', [-bodyW * 0.86, floor, -hl * 0.14],
+        [bodyW * 0.86, roofY * 0.58, hl * 0.34]),
+      moduleBox('radio', [-bodyW * 0.82, roofY * 0.48, -hl * 0.13],
+        [-bodyW * 0.20, roofY * 0.87, hl * 0.30]),
+      moduleBox('optics', [bodyW * 0.18, roofY * 0.66, hl * 0.12],
+        [bodyW * 0.78, roofY * 1.02, roofNoseZ]),
+      moduleBox('gun', [-0.22, gunY - 0.24, -hl * 0.08],
+        [0.22, gunY + 0.24, gunZ]),
+      moduleBox('trackL', [-hw, 0, -hl], [-bodyW * 0.86, trackTop, hl]),
+      moduleBox('trackR', [bodyW * 0.86, 0, -hl], [hw, trackTop, hl]),
+    ],
+    crew: [
+      crewBox('driver', [-bodyW * 0.72, floor + 0.12, hl * 0.30],
+        [-0.08, roofY * 0.92, hl * 0.66]),
+      crewBox('gunner', [0.08, floor + 0.12, hl * 0.24],
+        [bodyW * 0.72, roofY * 0.90, hl * 0.62]),
+      crewBox('commander', [0.10, floor + 0.12, -hl * 0.18],
+        [bodyW * 0.74, roofY * 0.92, hl * 0.17]),
+    ],
+  };
+}
+
 const SWEDEN_SPECS = {
   strv81: variant('strv81', 'centurion3', {
     name: 'Strv 81', number: '81', scheme: 'woodland',
@@ -113,12 +197,11 @@ const SWEDEN_SPECS = {
         compressionM: 0.50, droopM: 0.50,
       },
       gun: siegeGun({
-        name: '10,5 cm kan m/59', reloadS: 6.8, accuracy: 0.23, aimTimeS: 1.4,
-        damage: 400, apcrPen: 300, apcrPenFar: 278, heatPen: 340,
-        velocityMps: 1420, heDamage: 500,
+        name: '10,5 cm kan m/59', reloadS: 6.6, accuracy: 0.23, aimTimeS: 1.4,
+        damage: 430, apcrPen: 315, apcrPenFar: 292, heatPen: 355,
+        velocityMps: 1420, heDamage: 510,
       }),
     },
-    armorFactor: 0.50,
   }),
   // Strv 103A (§5.317 lane J): the initial-production S-Tank (1967-70,
   // 70 built) ahead of the resident 103B. Same fixed 105 mm L74 and hull,
@@ -136,7 +219,7 @@ const SWEDEN_SPECS = {
     camoScale: 0.5,
     dims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.60, heightM: 2.14 },
     stats: {
-      hp: 1800,
+      hp: 1850,
       enginePowerHp: 650, weightTons: 37.0, topSpeedKmh: 58, reverseSpeedKmh: 44,
       hullTraverseDegS: 48,
       terrainResistance: { hard: 0.62, medium: 0.78, soft: 1.20 },
@@ -148,11 +231,10 @@ const SWEDEN_SPECS = {
       },
       gun: siegeGun({
         name: '10,5 cm kan Strv 103 L/74', reloadS: 5.4, accuracy: 0.21, aimTimeS: 1.25,
-        damage: 420, apcrPen: 320, apcrPenFar: 298, heatPen: 360,
-        velocityMps: 1530, heDamage: 540,
+        damage: 480, apcrPen: 345, apcrPenFar: 318, heatPen: 390,
+        velocityMps: 1530, heDamage: 560,
       }),
     },
-    armorFactor: 1.25,
   }),
   strv122: variant('strv122', 'leo2a5', {
     name: 'Strv 122', number: '122', scheme: 'splinter',
@@ -165,6 +247,19 @@ const SWEDEN_SPECS = {
     armorFactor: 1.14,
   }),
 };
+
+SWEDEN_SPECS.udes03.armor = siegeArmor(SWEDEN_SPECS.udes03.dims, {
+  frontPhysicalMm: 45, frontKeMm: 90, frontCeMm: 125,
+  lowerPhysicalMm: 35, lowerKeMm: 65, lowerCeMm: 85,
+  sideMm: 25, sideKeMm: 35, sideCeMm: 45,
+  rearMm: 25, roofMm: 25, trackMm: 20,
+});
+SWEDEN_SPECS.strv103a.armor = siegeArmor(SWEDEN_SPECS.strv103a.dims, {
+  frontPhysicalMm: 65, frontKeMm: 180, frontCeMm: 240,
+  lowerPhysicalMm: 55, lowerKeMm: 140, lowerCeMm: 180,
+  sideMm: 40, sideKeMm: 55, sideCeMm: 70,
+  rearMm: 35, roofMm: 35, trackMm: 25,
+});
 
 // These hull-aimed vehicles have no rotating turret volume. The generic donor
 // retains turret plates for conventional tanks, so remove them explicitly to
@@ -188,11 +283,16 @@ if (TANK_SPECS.strv103) {
     },
     gun: siegeGun({
       name: '10,5 cm kan Strv 103 L/74B', reloadS: 4.4, accuracy: 0.18, aimTimeS: 1.05,
-      damage: 440, apcrPen: 350, apcrPenFar: 326, heatPen: 390,
-      velocityMps: 1600, heDamage: 580,
+      damage: 520, apcrPen: 380, apcrPenFar: 350, heatPen: 425,
+      velocityMps: 1600, heDamage: 620,
+    }),
+    armor: siegeArmor(TANK_SPECS.strv103.dims, {
+      frontPhysicalMm: 75, frontKeMm: 220, frontCeMm: 300,
+      lowerPhysicalMm: 65, lowerKeMm: 170, lowerCeMm: 220,
+      sideMm: 50, sideKeMm: 65, sideCeMm: 90,
+      rearMm: 40, roofMm: 40, trackMm: 30,
     }),
   });
-  scaleArmorRatings(TANK_SPECS.strv103, 1.60);
   delete TANK_SPECS.strv103.community;
   TANK_SPECS.strv103.visual = {
     ...TANK_SPECS.strv103.visual,

@@ -43,24 +43,23 @@ const communityArmor = (o) => buildCommunityArmor(o, {
   allowTurretless: false,
 });
 
-// Same stats as the (never-registered) userdrops.js TYPE74_SPEC so the
-// authored balance intent carries over unchanged.
+// Same authored combat row as the (never-registered) userdrops.js fallback.
 const TYPE74_SPEC = {
   id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', class: 'mbt',
   variantOf: 'type74',
-  hp: 1750,
+  hp: 1950,
   enginePowerHp: 720, weightTons: 38, topSpeedKmh: 53, reverseSpeedKmh: 20,
   hullTraverseDegS: 38,
   terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.4 },
   pivotStyle: 'neutral',
   turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 15, gunDepressionDeg: 10,
   gun: {
-    caliberMm: 105, reloadS: 5.8, baseAccuracy: 0.30, aimTimeS: 1.8,
+    caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.29, aimTimeS: 1.7,
     bloom: BLOOM_MODERN,
     shells: [
-      shell('Type 93 APFSDS', 'APFSDS', 105, apfsdsPens(380)[0], apfsdsPens(380)[1], 390, 1455, { pen2000Mm: apfsdsPens(380)[2] }),
-      shell('Type 91 HEAT-MP', 'HEAT', 105, 400, 400, 400, 1173),
-      shell('M393 HEP', 'HE', 105, 45, 45, 470, 730),
+      shell('Type 93 APFSDS', 'APFSDS', 105, 540, 500, 430, 1455, { pen2000Mm: 450 }),
+      shell('Type 91 HEAT-MP', 'HEAT', 105, 520, 520, 430, 1173),
+      shell('M393 HEP', 'HE', 105, 45, 45, 500, 730),
     ],
   },
   dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.70 },
