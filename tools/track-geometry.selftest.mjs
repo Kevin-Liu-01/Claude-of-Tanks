@@ -72,6 +72,7 @@ shoe.inner.dispose();
     },
     hullG: new THREE.Group(),
     q: false,
+    geometryReceipt: true,
     disposables: [],
     gear: null,
     add() {},
@@ -81,8 +82,18 @@ shoe.inner.dispose();
     wheelZs: [-2, -1, 0, 1, 2],
     sprocket: { z: 2.75, y: 0.47, r: 0.35 },
     idler: { z: -2.75, y: 0.45, r: 0.33 },
-    trackW: 0.56, topY: 1.05,
+    trackW: 0.56, topY: 1.05, linkPitchM: 0.11, coveredTop: true,
   });
+  const receipt = P.hullG.userData.runningGearReceipts[0];
+  assert.ok(Math.abs(receipt.textureRepeatM - receipt.shoePitchM * 4) < 1e-9,
+    'belt texture repeat is derived from the exact closed-course shoe pitch');
+  const drive = P.hullG.children.find((child) =>
+    child.userData?.runningGearEndKind === 'sprocket' && child.name === 'gearEndWheelHardware');
+  assert.ok(drive?.userData.sprocketToothCount >= 18,
+    `drive teeth use the 0.11 m shoe pitch (${drive?.userData.sprocketToothCount})`);
+  P.gear.update(receipt.shoePitchM, receipt.shoePitchM);
+  assert.ok(Math.abs(P.mats.trackTexL.offset.y + 0.25) < 1e-9,
+    'one shoe of travel advances the four-link belt pattern by one quarter turn');
   const belt = P.hullG.getObjectByName('gearTrackBandL');
   assert.ok(belt, 'procedural gear exposes its deformable left belt');
   const attr = belt.geometry.getAttribute('position');
@@ -125,15 +136,19 @@ shoe.inner.dispose();
   const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
   const e = new THREE.Euler();
   let maxLoadedPitch = 0;
+  let collapsedShoes = 0;
   for (let i = 0; i < pads.count; i++) {
     pads.getMatrixAt(i, matrix);
     matrix.decompose(p, q, s);
+    if (s.lengthSq() < 0.1) collapsedShoes++;
     if (p.x > 0 || p.y > 0.16 || Math.abs(p.z) > 0.80 || Math.abs(p.z) < 0.12) continue;
     e.setFromQuaternion(q, 'XYZ');
     maxLoadedPitch = Math.max(maxLoadedPitch, Math.abs(e.x));
   }
   assert.ok(maxLoadedPitch > 0.07,
     `individual shoes rotate onto the locally bent run (${maxLoadedPitch.toFixed(3)} rad)`);
+  assert.equal(collapsedShoes, 0,
+    'covered return runs keep every shoe in the closed physical chain');
   for (const disposable of P.disposables) disposable.dispose?.();
   for (const material of materials) material.dispose();
 }

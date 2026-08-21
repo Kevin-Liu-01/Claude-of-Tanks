@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-21T00:57:32.278Z",
+ "generatedAt": "2026-08-21T19:59:39.198Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 121,
@@ -316,6 +316,11 @@
    }
   },
   {
+   "id": "leo1a5",
+   "geoMin": 0,
+   "gatePassed": false
+  },
+  {
    "id": "charioteer",
    "geoMin": 0.6,
    "gatePassed": false,
@@ -559,19 +564,6 @@
     "turretCurves": 34.9,
     "stations": 72.6,
     "dims": 96.2,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo1a5",
-   "geoMin": 36.2,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 68.2,
-    "stations": 77.4,
-    "turretCurves": 44.5,
-    "wholeCurves": 36.2,
-    "dims": 84.3,
     "floaters": 100
    }
   },

@@ -1,0 +1,196 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Track system audit</title>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const id = new URLSearchParams(location.search).get('id');
+const round = (value) => Number(value.toFixed(5));
+
+function matrixPose(mesh, index) {
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  mesh.getMatrixAt(index, matrix);
+  matrix.decompose(position, quaternion, scale);
+  return { position, quaternion, scale };
+}
+
+function intersectionsAtZ(points, z) {
+  const ys = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    if ((a[0] - z) * (b[0] - z) > 0) continue;
+    const dz = b[0] - a[0];
+    const y = Math.abs(dz) < 1e-7
+      ? Math.min(a[1], b[1])
+      : a[1] + (b[1] - a[1]) * ((z - a[0]) / dz);
+    if (Number.isFinite(y) && !ys.some((value) => Math.abs(value - y) < 1e-5)) ys.push(y);
+  }
+  return ys.sort((a, b) => a - b);
+}
+
+function inspectUnit(unitId, receipt, objects) {
+  const failures = [];
+  const bands = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && /^gearTrackBand[LR]$/.test(object.name));
+  const pads = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && object.name === 'gearTrackPads');
+  const tires = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && object.name === 'gearRoadWheelTires');
+  const wheelLayers = tires.length ? tires : objects.filter((object) =>
+    object.userData.runningGearUnitId === unitId && object.name === 'gearRoadWheelDiscs');
+  const drives = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && object.name === 'gearEndWheelHardware'
+    && object.userData.runningGearEndKind === 'sprocket');
+
+  if (bands.length !== 2) failures.push(`expected 2 belts, got ${bands.length}`);
+  if (pads.length !== 1) failures.push(`expected 1 integrated shoe layer, got ${pads.length}`);
+  if (!wheelLayers.length) failures.push('missing suspension-driven road-wheel layer');
+  if (!receipt) failures.push('missing closed-course receipt');
+  if (!receipt || !pads.length) return { unitId, failures };
+
+  const padMesh = pads[0];
+  const count = receipt.shoeCountPerSide;
+  if (padMesh.count !== count * 2) {
+    failures.push(`shoe instance count ${padMesh.count} != ${count}×2`);
+  }
+  if (Math.abs(receipt.loopLengthM - receipt.shoePitchM * count) > 1e-6) {
+    failures.push('shoe pitch does not close exactly on loop length');
+  }
+  if (Math.abs(receipt.textureRepeatM - receipt.shoePitchM * 4) > 1e-7) {
+    failures.push('belt texture cadence is not four exact shoes');
+  }
+  for (const band of bands) {
+    if (Math.abs(band.userData.trackTextureRepeatM - receipt.textureRepeatM) > 1e-7) {
+      failures.push(`${band.name} texture receipt drift`);
+    }
+  }
+
+  const sidePoses = [0, 1].map((sideIndex) => {
+    const poses = [];
+    for (let i = 0; i < count; i++) poses.push(matrixPose(padMesh, sideIndex * count + i));
+    return poses;
+  });
+  for (const poses of sidePoses) {
+    const hidden = poses.filter(({ scale }) => scale.lengthSq() < 0.1).length;
+    if (hidden) failures.push(`${hidden} shoe matrices collapsed instead of completing the loop`);
+    let maxGap = 0;
+    let tangentSum = 0;
+    let tangentCount = 0;
+    for (let i = 0; i < poses.length; i++) {
+      const current = poses[i];
+      const next = poses[(i + 1) % poses.length];
+      if (current.scale.lengthSq() < 0.1 || next.scale.lengthSq() < 0.1) continue;
+      const delta = next.position.clone().sub(current.position);
+      const gap = delta.length();
+      maxGap = Math.max(maxGap, gap);
+      if (gap > 1e-6) {
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(current.quaternion);
+        tangentSum += forward.dot(delta.normalize());
+        tangentCount++;
+      }
+    }
+    if (maxGap > receipt.shoePitchM * 1.75) {
+      failures.push(`closed-course shoe gap ${round(maxGap)} m exceeds pitch ${round(receipt.shoePitchM)} m`);
+    }
+    const tangentMean = tangentSum / Math.max(1, tangentCount);
+    if (tangentMean < 0.88) failures.push(`shoe tangent mean ${round(tangentMean)} is misaligned`);
+  }
+
+  const parityCount = Math.min(sidePoses[0].length, sidePoses[1].length);
+  let parityError = 0;
+  for (let i = 0; i < parityCount; i++) {
+    const left = sidePoses[0][i], right = sidePoses[1][i];
+    parityError = Math.max(parityError,
+      Math.abs(left.position.y - right.position.y),
+      Math.abs(left.position.z - right.position.z),
+      1 - Math.abs(left.quaternion.dot(right.quaternion)));
+  }
+  if (parityError > 1e-4) failures.push(`left/right course parity error ${round(parityError)}`);
+
+  const laneBySide = new Map(bands.map((band) => [band.userData.runningGearSide, Math.abs(band.position.x)]));
+  const wheelXs = [];
+  for (const wheelLayer of wheelLayers) {
+    for (let i = 0; i < wheelLayer.count; i++) wheelXs.push(matrixPose(wheelLayer, i).position.x);
+  }
+  for (const side of [-1, 1]) {
+    const lane = laneBySide.get(side);
+    const nearestWheel = Math.min(...wheelXs
+      .filter((x) => Math.sign(x || side) === side)
+      .map((x) => Math.abs(Math.abs(x) - lane)));
+    if (!Number.isFinite(nearestWheel) || nearestWheel > receipt.trackW * 0.55) {
+      failures.push(`side ${side} wheels do not share the belt lane`);
+    }
+  }
+
+  for (const z of receipt.wheelZs) {
+    const crossings = intersectionsAtZ(receipt.loopPoints, z);
+    if (crossings.length < 2) {
+      failures.push(`road wheel z=${z} lies outside closed belt envelope`);
+      continue;
+    }
+    const lower = crossings[0], upper = crossings.at(-1);
+    const bottomGap = receipt.wheelY - receipt.wheelR - lower;
+    const topGap = upper - (receipt.wheelY + receipt.wheelR);
+    if (bottomGap < -0.12 || bottomGap > 0.24) {
+      failures.push(`road wheel z=${z} lower alignment gap ${round(bottomGap)} m`);
+    }
+    if (topGap < -0.16) failures.push(`road wheel z=${z} protrudes above return run by ${round(-topGap)} m`);
+  }
+
+  for (const drive of drives) {
+    if (!drive.userData.sprocketToothCount) continue;
+    const expected = Math.max(4,
+      Math.round((Math.PI * 2 * drive.userData.trackSpinRadiusM) / receipt.shoePitchM));
+    if (Math.abs(drive.userData.sprocketToothCount - expected) > 1) {
+      failures.push(`sprocket teeth ${drive.userData.sprocketToothCount} drift from ${expected} shoe engagements`);
+    }
+  }
+
+  return {
+    unitId,
+    shoeCountPerSide: count,
+    shoePitchM: round(receipt.shoePitchM),
+    loopLengthM: round(receipt.loopLengthM),
+    roadWheelStations: receipt.wheelZs.length,
+    failures: [...new Set(failures)],
+  };
+}
+
+try {
+  if (!id) throw new Error('missing id');
+  const tank = createTank(id, {
+    setupShadowMaterial: (material) => material,
+    anisotropy: 1,
+    renderer: null,
+  }, {
+    camoSeed: 4242,
+    quality: 'high',
+    proceduralOnly: true,
+    geometryReceipt: true,
+  });
+  tank.root.updateMatrixWorld(true);
+  const hull = tank.root.getObjectByName('rig_hull');
+  const objects = [];
+  tank.root.traverse((object) => {
+    if (object.userData?.runningGear) objects.push(object);
+  });
+  const receipts = hull?.userData.runningGearReceipts || [];
+  const unitIds = [...new Set(objects
+    .map((object) => object.userData.runningGearUnitId)
+    .filter((value) => Number.isInteger(value)))].sort((a, b) => a - b);
+  const units = unitIds.map((unitId) => inspectUnit(
+    unitId,
+    receipts.find((receipt) => receipt.unitId === unitId),
+    objects,
+  ));
+  const failures = units.flatMap((unit) => unit.failures.map((failure) => `unit ${unit.unitId}: ${failure}`));
+  window.__TRACK_SYSTEM_AUDIT = { id, units, failures, pass: units.length > 0 && failures.length === 0 };
+} catch (error) {
+  window.__TRACK_SYSTEM_AUDIT = { id, error: String(error?.stack || error), pass: false };
+}
+window.__TRACK_SYSTEM_READY = true;
+</script>

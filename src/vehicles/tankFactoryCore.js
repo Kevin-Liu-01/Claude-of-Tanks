@@ -703,12 +703,15 @@ function recomputeTrackNormals(geometry, triangleStarts = null) {
   normal.needsUpdate = true;
 }
 
+const TRACK_WRAP_CLEARANCE_M = 0.045;
+const TRACK_TEXTURE_LINKS_PER_REPEAT = 4;
+
 function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null }) {
   const pts = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
   // this radial clearance the wrap is buried in the wheel geometry and the
   // front/rear rises never read (r5 track-gate critique).
-  const CLEAR = 0.045;
+  const CLEAR = TRACK_WRAP_CLEARANCE_M;
   const arc = (c, from, to, steps) => {
     for (let k = 0; k <= steps; k++) {
       const a = (from + ((to - from) * k) / steps) * D2R;
@@ -1130,6 +1133,54 @@ function idlerGeo(r, w, seg, pattern = null) {
   return { body: mergeAll(body), dark: mergeAll(dark) };
 }
 
+// One batched ring of tapered square-pyramid engagement teeth: six triangles
+// per tooth versus the old stacked root-block + tip-cap's twenty-four. All
+// stations are authored into one geometry so pitch accuracy also removes the
+// old per-tooth construction/merge overhead.
+function sprocketTeethGeo(width, height, rootDepth, count, rootR, tipR, offsets, phase) {
+  const hx = width / 2;
+  const hy = height / 2;
+  const rootZ = rootDepth / 2;
+  const positions = [];
+  const indices = [];
+  const local = [
+    [-hx, -hy, -rootZ], [hx, -hy, -rootZ], [hx, -hy, rootZ], [-hx, -hy, rootZ],
+    [0, hy, 0],
+  ];
+  const faces = [
+    0, 3, 2, 0, 2, 1,
+    0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4,
+  ];
+  const mid = (rootR + tipR) / 2;
+  for (const offsetX of offsets) {
+    for (let tooth = 0; tooth < count; tooth++) {
+      const angle = (tooth / count) * Math.PI * 2 + phase;
+      const rotationX = Math.PI / 2 - angle;
+      const sinX = Math.sin(rotationX);
+      const cosX = Math.cos(rotationX);
+      const translateY = Math.sin(angle) * mid;
+      const translateZ = Math.cos(angle) * mid;
+      const vertexBase = positions.length / 3;
+      for (const [x, y, z] of local) {
+        positions.push(
+          x + offsetX,
+          y * cosX - z * sinX + translateY,
+          y * sinX + z * cosX + translateZ,
+        );
+      }
+      for (const index of faces) indices.push(vertexBase + index);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Array((positions.length / 3) * 2).fill(0), 2,
+  ));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // Drive sprocket (r9 rework, same hard fail as the idler): the tan-painted
 // tooth boxes poking through the band read as stray rods and the rim plates
 // as flat discs. Now { body, dark }: worn-steel dished rim plates with a dark
@@ -1137,7 +1188,7 @@ function idlerGeo(r, w, seg, pattern = null) {
 // dark bolt ring, raised hub. `toothOuter` is the band outer radius
 // (r + CLEAR + trackTh/2) supplied by the caller; tips stay a hair proud.
 function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
-  ringSpan = null, pattern = null, includeTeeth = true) {
+  ringSpan = null, pattern = null, includeTeeth = true, engagementRadius = null) {
   // r7b TOOTHED-RING REBUILD (hard critique on both judged WWII closeups AND
   // the Sherman drive-end misread): the r5 "teeth hidden just inside the
   // band" compromise rendered the drive end as a FLAT TOOTHLESS PAINTED DISC
@@ -1153,39 +1204,45 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
   //  - tooth + ring recess render dark steel against the painted drum.
   const tipR = (toothOuter ?? r * 1.12) + 0.006;
   const rootR = Math.max(r * 0.72, tipR - Math.max(0.11, r * 0.30));
-  const n = Math.max(10, Math.round((Math.PI * (rootR + tipR)) / linkM));
+  // Count engagement pockets from the exact shoe pitch. Small terminal
+  // wheels legitimately engage fewer links; the old cosmetic minimum of ten
+  // invented intermediate teeth that could never register with the chain.
+  // Angular cadence follows the belt centreline wrapped around the drive,
+  // not the midpoint of the cosmetic tooth mesh. Those radii intentionally
+  // differ on profiles with proud drive hardware or an authored `trackR`.
+  const pitchRadius = engagementRadius ?? (rootR + tipR) / 2;
+  const n = Math.max(4, Math.round((Math.PI * 2 * pitchRadius) / linkM));
   const pitchArc = (Math.PI * (rootR + tipR)) / n;       // circumferential pitch at mid
+  const toothPhase = Math.PI / 2;                         // link zero is top dead centre
   const body = [cylX(r * 0.88, w * 0.80, seg)];          // solid painted body drum
   const dark = [];
   const ringSeg = Math.max(12, seg - 8);
   body.push(cylX(r * 0.30, w * 1.14, 12));               // hub
   body.push(cylX(r * 0.17, w * 1.26, 10));               // hub cap
   const span = ringSpan ?? w;                            // rings ride the BAND edges
-  for (const off of [-(span / 2) * 0.99, (span / 2) * 0.99]) {
+  const ringOffsets = [-(span / 2) * 0.99, (span / 2) * 0.99];
+  for (const off of ringOffsets) {
     // Open carrier rings expose the central drum and hub. These used to be
     // full discs at the band edges, which visually erased the entire wheel.
     body.push(xform(torus(r * 0.84, r * 0.10, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
     dark.push(xform(torus(r * 0.69, r * 0.055, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
-    if (includeTeeth) {
-      for (let k = 0; k < n; k++) {
-        const a = (k / n) * Math.PI * 2;
-        const mid = (rootR + tipR) / 2;
-        // rx = (PI/2 - a) points the long dim RADIALLY around the ring; teeth
-        // taper root->tip (wedge) via a slim tip cap on a wider root block
-        dark.push(xform(box(w * 0.13, tipR - rootR, pitchArc * 0.46),
-          off, Math.sin(a) * mid, Math.cos(a) * mid, Math.PI / 2 - a, 0, 0));
-        dark.push(xform(box(w * 0.13, Math.max(0.02, (tipR - rootR) * 0.3), pitchArc * 0.26),
-          off, Math.sin(a) * (tipR - 0.01), Math.cos(a) * (tipR - 0.01), Math.PI / 2 - a, 0, 0));
-      }
-    }
   }
+  if (includeTeeth) dark.push(sprocketTeethGeo(
+    w * 0.13, tipR - rootR, pitchArc * 0.46,
+    n, rootR, tipR, ringOffsets, toothPhase,
+  ));
   const boltCount = pattern?.endFasteners ?? 8;
   for (let k = 0; k < boltCount; k++) {                  // dark bolt ring on the hub boss
     const a = (k / boltCount) * Math.PI * 2;
     dark.push(xform(cylX(0.02, w * 1.06, 6),
       0, Math.sin(a) * r * 0.44, Math.cos(a) * r * 0.44));
   }
-  return { body: mergeAll(body), dark: mergeAll(dark) };
+  return {
+    body: mergeAll(body),
+    dark: mergeAll(dark),
+    toothCount: includeTeeth ? n : 0,
+    toothPitchRadius: pitchRadius,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1270,6 +1327,83 @@ function runningGearContactPatch(wheelZs, wheelR, cfg = {}) {
   return { zF, zR };
 }
 
+/**
+ * Resolve the one closed course shared by the belt, shoes, sprocket teeth,
+ * hit volume and runtime animation. Keeping this in one receipt prevents a
+ * profile-specific shoe pitch from silently drifting against the textured
+ * belt or drive teeth.
+ */
+function buildTrackCourse({
+  sprocket, idler, rollers, rollerR, trackTh, topY, botY,
+  wheelZs, wheelY, wheelR, layers, cfg,
+}) {
+  const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
+  const maxOffSup = layers ? Math.max(...layers.flat()) : 0;
+  const supports = rollers.length
+    ? rollers.map((rl) => ({ z: rl.z, y: rl.y + (rl.r ?? rollerR) + trackTh / 2 }))
+    : wheelZs
+      .filter((z, i) => !layers || layers[i % layers.length].includes(maxOffSup))
+      .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
+
+  // trackLoopPoints always receives the geometrically front (+Z) end first;
+  // drive location is independent of course winding.
+  const frontEndRaw = sprocket.z >= idler.z ? sprocket : idler;
+  const rearEndRaw = sprocket.z >= idler.z ? idler : sprocket;
+  const frontEnd = { ...frontEndRaw, r: frontEndRaw.trackR ?? frontEndRaw.r };
+  const rearEnd = { ...rearEndRaw, r: rearEndRaw.trackR ?? rearEndRaw.r };
+  const contact = runningGearContactPatch(wheelZs, wheelR, cfg);
+  const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
+    ? cfg.loopPoints.map((p) => [p[0], p[1]])
+    : trackLoopPoints({
+      idler: { ...frontEnd }, sprocket: { ...rearEnd },
+      botY, topY, sag, supports, contact,
+    });
+
+  // Band normals and shoe orientation use a clockwise (z,y) course.
+  let loopArea2 = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    loopArea2 += a[0] * b[1] - b[0] * a[1];
+  }
+  if (loopArea2 > 0) pts.reverse();
+
+  // Add articulation vertices to the loaded run at every road-wheel station
+  // and at the tension-fade shoulders.
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    if (Math.abs(a[1] - botY) > 1e-6 || Math.abs(b[1] - botY) > 1e-6) continue;
+    const lo = Math.min(a[0], b[0]), hi = Math.max(a[0], b[0]);
+    const wheelMinZ = Math.min(...wheelZs), wheelMaxZ = Math.max(...wheelZs);
+    const stations = [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
+      .filter((z) => z > lo + 1e-5 && z < hi - 1e-5)
+      .sort((z0, z1) => (b[0] > a[0] ? z0 - z1 : z1 - z0));
+    if (stations.length) {
+      pts.splice(i + 1, 0, ...stations.map((z) => [z, botY]));
+      i += stations.length;
+    }
+  }
+
+  const segments = [];
+  let loopLengthM = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dz = b[0] - a[0], dy = b[1] - a[1];
+    const lengthM = Math.hypot(dz, dy) || 1e-6;
+    segments.push({
+      z: a[0], y: a[1], tz: dz / lengthM, ty: dy / lengthM,
+      l: lengthM, c0: loopLengthM,
+    });
+    loopLengthM += lengthM;
+  }
+  const shoeCount = Math.max(24, Math.round(loopLengthM / (cfg.linkPitchM ?? 0.165)));
+  const shoePitchM = loopLengthM / shoeCount;
+  return {
+    pts, segments, loopLengthM, shoeCount, shoePitchM,
+    textureRepeatM: shoePitchM * TRACK_TEXTURE_LINKS_PER_REPEAT,
+    frontEnd, rearEnd, contact,
+  };
+}
+
 function buildRunningGear(P, cfg) {
   const { mats, hullG, q } = P;
   const seg = q ? 26 : 12;
@@ -1301,6 +1435,17 @@ function buildRunningGear(P, cfg) {
   const suspensionDroopM = cfg.suspensionDroopM ?? hydraulicAim?.droopM ?? 0.22;
   const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
   const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
+  const runningGearUnitId = hullG.userData.runningGearUnitCount || 0;
+  hullG.userData.runningGearUnitCount = runningGearUnitId + 1;
+  const course = buildTrackCourse({
+    sprocket, idler, rollers, rollerR, trackTh, topY, botY,
+    wheelZs, wheelY, wheelR, layers, cfg,
+  });
+  const {
+    pts, segments: segsT, loopLengthM: loopLen, shoeCount: nLinks,
+    shoePitchM: lp, textureRepeatM: trackTextureRepeatM,
+    frontEnd, rearEnd, contact,
+  } = course;
   if (P.geometryReceipt) {
     const runningGearReceipts = hullG.userData.runningGearReceipts
       || (hullG.userData.runningGearReceipts = []);
@@ -1311,6 +1456,19 @@ function buildRunningGear(P, cfg) {
       sprocket: { z: sprocket.z, y: sprocket.y, r: sprocket.r },
       sprocketTeeth: cfg.sprocketTeeth !== false,
       idler: { z: idler.z, y: idler.y, r: idler.r },
+      unitId: runningGearUnitId,
+      xcLeft,
+      xcRight,
+      trackW,
+      trackTh,
+      botY,
+      topY,
+      loopPoints: pts.map((point) => [...point]),
+      loopLengthM: loopLen,
+      shoeCountPerSide: nLinks,
+      shoePitchM: lp,
+      textureRepeatM: trackTextureRepeatM,
+      coveredTop: cfg.coveredTop ?? false,
     });
   }
   // Machine-readable family receipt. Variant builders still choose their
@@ -1411,6 +1569,7 @@ function buildRunningGear(P, cfg) {
   const mkInst = (geo, mat, list, appearanceRole, name) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     im.userData.runningGear = true;
+    im.userData.runningGearUnitId = runningGearUnitId;
     im.userData.wheelPattern = wheelPattern.id;
     im.userData.wheelPatternLabel = wheelPattern.label;
     if (appearanceRole) im.userData.appearanceRole = appearanceRole;
@@ -1522,7 +1681,7 @@ function buildRunningGear(P, cfg) {
   // separate cleanly from the scheme-painted road wheels.
   const spinners = [];
   const spinnerInstances = [];
-  const bandOuterR = 0.045 + trackTh / 2;   // wrap CLEAR + half band thickness
+  const bandOuterR = TRACK_WRAP_CLEARANCE_M + trackTh / 2;
   // r5 track gate: end drums widened toward the band width — the old 0.7/0.62
   // drums left the outermost interleave row standing PROUD of the sprocket
   // face (the "non-concentric flat camo disc inside the wrap" read) and a
@@ -1535,9 +1694,15 @@ function buildRunningGear(P, cfg) {
   // gear that authored past the committed W/2 and silently width-rescaled
   // the whole build ×0.9921 (probe-frame law receipt in the m48 packet).
   // Radial tooth reach is untouched; the rings pull inboard only.
+  const sprocketEngagementR = (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M;
   const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
-    mats.trackLinkM, cfg.endRingSpan ?? trackW, wheelPattern, cfg.sprocketTeeth !== false);
+    lp, cfg.endRingSpan ?? trackW, wheelPattern, cfg.sprocketTeeth !== false,
+    sprocketEngagementR);
   const ig = idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
+  const sprocketSpinR = sg.toothCount
+    ? sg.toothPitchRadius
+    : (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M;
+  const idlerSpinR = (idler.trackR ?? idler.r) + TRACK_WRAP_CLEARANCE_M;
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
@@ -1569,6 +1734,11 @@ function buildRunningGear(P, cfg) {
         material,
       );
       batch.userData.runningGear = true;
+      batch.userData.runningGearUnitId = runningGearUnitId;
+      batch.userData.trackShoePitchM = lp;
+      batch.userData.runningGearEndKind = 'sprocket';
+      batch.userData.trackSpinRadiusM = sprocketSpinR;
+      batch.userData.sprocketToothCount = sg.toothCount;
       batch.userData.wheelPattern = wheelPattern.id;
       batch.userData.wheelPatternLabel = wheelPattern.label;
       batch.userData.appearanceRole = appearanceRole;
@@ -1576,12 +1746,12 @@ function buildRunningGear(P, cfg) {
       batch.castShadow = false;
       batch.receiveShadow = true;
       const entries = [];
-      for (const { geo, end } of items) {
+      for (const { geo, end, spinR } of items) {
         const geometryId = batch.addGeometry(geo);
         for (const side of [-1, 1]) {
           entries.push({
             instanceId: batch.addInstance(geometryId),
-            side, r: end.r,
+            side, r: spinR,
             x: side * xcForSide(side), y: end.y, z: end.z,
           });
         }
@@ -1590,12 +1760,12 @@ function buildRunningGear(P, cfg) {
       spinnerInstances.push({ batch, entries });
     };
     addSpinnerBatch([
-      { geo: sg.body, end: sprocket },
-      { geo: ig.body, end: idler },
+      { geo: sg.body, end: sprocket, spinR: sprocketSpinR },
+      { geo: ig.body, end: idler, spinR: idlerSpinR },
     ], steelMat, 'gearEndWheelBody', 'wheelDish');
     addSpinnerBatch([
-      { geo: sg.dark, end: sprocket },
-      { geo: ig.dark, end: idler },
+      { geo: sg.dark, end: sprocket, spinR: sprocketSpinR },
+      { geo: ig.dark, end: idler, spinR: idlerSpinR },
     ], darkMat, 'gearEndWheelHardware', 'trackHardware');
   } else {
     for (const [gp, end] of [[sg, sprocket], [ig, idler]]) {
@@ -1608,6 +1778,11 @@ function buildRunningGear(P, cfg) {
           const sideXc = xcForSide(side);
           const m = new THREE.Mesh(geo, mat);
           m.userData.runningGear = true;
+          m.userData.runningGearUnitId = runningGearUnitId;
+          m.userData.runningGearEndKind = gp === sg ? 'sprocket' : 'idler';
+          m.userData.trackShoePitchM = lp;
+          m.userData.trackSpinRadiusM = gp === sg ? sprocketSpinR : idlerSpinR;
+          if (gp === sg) m.userData.sprocketToothCount = sg.toothCount;
           m.userData.wheelPattern = wheelPattern.id;
           m.userData.wheelPatternLabel = wheelPattern.label;
           m.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
@@ -1617,98 +1792,19 @@ function buildRunningGear(P, cfg) {
           m.castShadow = false;
           m.receiveShadow = true;
           hullG.add(m);
-          spinners.push({ mesh: m, r: end.r, side });
+          spinners.push({
+            mesh: m,
+            r: gp === sg ? sprocketSpinR : idlerSpinR,
+            side,
+          });
         }
       }
     }
   }
 
-  // tracks — visible sag on the top run when there are no return rollers
-  // (WW2 dead-track runs droop hard between supports — r5 track gate).
-  // r7: the run rests on REAL supports — return rollers where fitted, else
-  // the proud-row wheel tops — with a catenary dip hanging in every span.
-  // r9 sag-visibility fix: on dead-track rigs the r8 support line sat the
-  // band ABOVE the fender lip (outer face at wheel top + full band thickness),
-  // so the whole top run hid behind the fender and read ruler-straight in the
-  // judged closeup. Supports now press 2 cm INTO the wheel-top rubber (dead
-  // track rests loaded on the wheels) and the catenary dip is deepened, so
-  // the scallops hang visibly below the fender line between wheel stations.
-  const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
-  const maxOffSup = layers ? Math.max(...layers.flat()) : 0;
-  const supports = rollers.length
-    ? rollers.map((rl) => ({ z: rl.z, y: rl.y + (rl.r ?? rollerR) + trackTh / 2 }))
-    : wheelZs
-      .filter((z, i) => !layers || layers[i % layers.length].includes(maxOffSup))
-      .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));
-  // r8 LOOP-ORDER FIX (track hard gate): trackLoopPoints assumes its `idler`
-  // arg is the +z (front) end wheel and `sprocket` the -z (rear) one. German
-  // rigs drive from the FRONT (Tiger/Panther cfg passes sprocket at +z), and
-  // feeding them swapped made the band wrap the WRONG side of both end
-  // wheels — a crossed bowtie loop that left the real sprocket/idler bare
-  // with a mangled link jumble (r7 critique). Order geometrically instead.
-  const frontEndRaw = sprocket.z >= idler.z ? sprocket : idler;
-  const rearEndRaw = sprocket.z >= idler.z ? idler : sprocket;
-  // A few source-accurate end drums carry proud hub/teeth geometry while the
-  // belt seats on a smaller pitch radius. Optional trackR decouples only the
-  // native loop from the visible spinner; default rigs remain byte-identical.
-  const frontEnd = { ...frontEndRaw, r: frontEndRaw.trackR ?? frontEndRaw.r };
-  const rearEnd = { ...rearEndRaw, r: rearEndRaw.trackR ?? rearEndRaw.r };
-  // r5 trapezoid gate: the flat ground run spans only the ROAD-WHEEL contact
-  // patch; approach/departure rise tangentially to the raised end wraps
-  // instead of running at ground level past both end wheels.
-  const contact = {
-    // A real track's loaded ground run spans the ROAD-WHEEL patch only —
-    // the departure ramps from the last road wheel up to raised end-wheel
-    // wraps (references do; the old extension to the end wheels ran the
-    // flat band underneath raised sprockets). The ground run stays the
-    // trapezoid's wide base: the tangent overhang lands outside the patch.
-    // cfg.contactZF/contactZR opt-in (abrams r6 wheel-row round): pin the
-    // contact patch when a wheel-size retune must NOT move the certified
-    // ramp/wrap tangents (m1a2 rides gate-certified 0.399/0.465-0.53 ramp
-    // bins derived at the r4 patch). Defaults byte-identical.
-    ...runningGearContactPatch(wheelZs, wheelR, cfg),
-  };
-  // A measured source may require a non-circular approach/departure course
-  // while still using the native band, linked shoes, animation and spinner
-  // system. Optional loopPoints supplies only that (z,y) centerline; every
-  // historical profile remains byte-identical on the default path.
-  const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
-    ? cfg.loopPoints.map((p) => [p[0], p[1]])
-    : trackLoopPoints({ idler: { ...frontEnd }, sprocket: { ...rearEnd }, botY, topY, sag, supports, contact });
-  // Track-band normals and individual link orientation assume a clockwise
-  // loop in (z,y): top rear->front, front wrap down, ground front->rear. Some
-  // unusual front-drive/interleaved configs used to arrive reversed, placing
-  // the guide horns on the outside. Enforce the winding once, globally.
-  let loopArea2 = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    loopArea2 += a[0] * b[1] - b[0] * a[1];
-  }
-  if (loopArea2 > 0) pts.reverse();
-  // The loaded run used to be one long quad from the front contact tangent
-  // to the rear one. Per-bogie offsets therefore had no vertices to move
-  // between those ends: link shoes articulated, but the dark belt behind
-  // them remained ruler-straight. Split the ground segment at every road-
-  // wheel station so the continuous belt forms the same tensioned,
-  // piecewise-linear terrain profile as the bogies and individual shoes.
-  // Include the 0.5 m tension-fade shoulders too. Without those vertices the
-  // belt linearly interpolated all the way to the contact endpoint while the
-  // shoes' offset correctly reached zero after 0.5 m, opening a visible seam
-  // between the continuous band and its individual links near either wrap.
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
-    if (Math.abs(a[1] - botY) > 1e-6 || Math.abs(b[1] - botY) > 1e-6) continue;
-    const lo = Math.min(a[0], b[0]), hi = Math.max(a[0], b[0]);
-    const wheelMinZ = Math.min(...wheelZs), wheelMaxZ = Math.max(...wheelZs);
-    const stations = [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
-      .filter((z) => z > lo + 1e-5 && z < hi - 1e-5)
-      .sort((z0, z1) => (b[0] > a[0] ? z0 - z1 : z1 - z0));
-    if (stations.length) {
-      pts.splice(i + 1, 0, ...stations.map((z) => [z, botY]));
-      i += stations.length;
-    }
-  }
-  const tg = trackBandGeo(pts, trackW, trackTh, mats.trackLinkM);
+  // The course above is the sole geometry/animation source. Its texture
+  // repeat is exactly four measured shoes, including profile-specific pitch.
+  const tg = trackBandGeo(pts, trackW, trackTh, trackTextureRepeatM);
   P.disposables.push(tg);
   // r1 per-wheel articulation: each side owns its OWN geometry so the bottom
   // run can deform to follow the road wheels' suspension travel (the shared
@@ -1722,11 +1818,17 @@ function buildRunningGear(P, cfg) {
   const tl = new THREE.Mesh(tgL, mats.trackL);
   tl.name = 'gearTrackBandL';
   tl.userData.runningGear = true;
+  tl.userData.runningGearUnitId = runningGearUnitId;
+  tl.userData.runningGearSide = -1;
+  tl.userData.trackTextureRepeatM = trackTextureRepeatM;
   tl.userData.appearanceRole = 'trackBand';
   tl.position.x = -xcLeft;
   const tr = new THREE.Mesh(tgR, mats.trackR);
   tr.name = 'gearTrackBandR';
   tr.userData.runningGear = true;
+  tr.userData.runningGearUnitId = runningGearUnitId;
+  tr.userData.runningGearSide = 1;
+  tr.userData.trackTextureRepeatM = trackTextureRepeatM;
   tr.userData.appearanceRole = 'trackBand';
   tr.position.x = xcRight;
   tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
@@ -1734,20 +1836,6 @@ function buildRunningGear(P, cfg) {
 
   // ---- individual link pads instanced along the loop (both sides) ----------
   const nP = pts.length;
-  const segsT = [];
-  let loopLen = 0;
-  for (let i = 0; i < nP; i++) {
-    const a = pts[i], b = pts[(i + 1) % nP];
-    const dz = b[0] - a[0], dy = b[1] - a[1];
-    const sl = Math.hypot(dz, dy) || 1e-6;
-    segsT.push({ z: a[0], y: a[1], tz: dz / sl, ty: dy / sl, l: sl, c0: loopLen });
-    loopLen += sl;
-  }
-  // cfg.linkPitchM opt-in (leopard-family visual round): per-tank shoe pitch
-  // for fine modern link runs; the 0.165 default keeps every existing tank's
-  // instancing byte-identical.
-  const nLinks = Math.max(24, Math.round(loopLen / (cfg.linkPitchM ?? 0.165)));
-  const lp = loopLen / nLinks;
   const shoe = trackShoeGeometries(trackW, lp, cfg.pinCapOuter ?? null,
     cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1);
   P.disposables.push(shoe.pad,shoe.inner);
@@ -1789,6 +1877,10 @@ function buildRunningGear(P, cfg) {
   const padIM = new THREE.InstancedMesh(integratedShoe,padMat,nLinks*2);
   padIM.name = 'gearTrackPads';
   padIM.userData.appearanceRole = 'trackPad';
+  padIM.userData.runningGearUnitId = runningGearUnitId;
+  padIM.userData.trackShoeCountPerSide = nLinks;
+  padIM.userData.trackShoePitchM = lp;
+  padIM.userData.trackLoopLengthM = loopLen;
   const linkMeshes=[padIM];
   // The casting band alone casts the continuous shadow; the one detailed
   // instanced shoe follows its deformation and scroll state.
@@ -1800,17 +1892,13 @@ function buildRunningGear(P, cfg) {
     lodWrap(hullG,mesh);
   }
   const rOut = trackTh / 2 + 0.012;
-  // tank_models r1 (critic: "exposed 'zipper' top track run rides above the
-  // skirt line" on skirted moderns): cfg.coveredTop suppresses link pads on
-  // the return run between the end wheels — the real vehicles' top runs are
-  // fully enclosed by skirts/sponsons, and the pads peeked through the
-  // sponson-shoulder gap as a toothed strip. Pass `true` (auto: just under
-  // topY) or an explicit cover height.
-  const coverY = cfg.coveredTop === true ? topY - 0.06
-    : (typeof cfg.coveredTop === 'number' ? cfg.coveredTop : Infinity);
+  // A covered return run is still a complete physical chain. Older builds
+  // collapsed its matrices to zero as a visibility workaround, leaving a
+  // real gap in the shoe/grouser course whenever a skirt angle exposed it.
+  // Bodywork now performs the occlusion; every shoe remains seated on the
+  // closed loop. `coveredTop` is retained only in authoring receipts so old
+  // profiles do not need a flag migration.
   const shoeOutboardOffset = cfg.shoeOutboardOffset ?? 0;
-  const coverZ0 = rearEnd.z + rearEnd.r * 0.5;
-  const coverZ1 = frontEnd.z - frontEnd.r * 0.5;
   const placeLinks = (l, r) => {
     // Link distances are monotonic around each side's loop. Walk the segment
     // cursor with them instead of restarting a linear nP search for every
@@ -1832,11 +1920,6 @@ function buildRunningGear(P, cfg) {
         const sg = segsT[segIx];
         const u = s - sg.c0;
         const z = sg.z + sg.tz * u, y = sg.y + sg.ty * u;
-        if (y > coverY && z > coverZ0 && z < coverZ1) {
-          _m.makeScale(0, 0, 0);
-          for (const mesh of linkMeshes) mesh.setMatrixAt(i, _m);
-          continue;
-        }
         const groundRunOff = deformedBandOffset(z, y, side);
         let tz = sg.tz, ty = sg.ty;
         if (Math.abs(groundRunOff) > 1e-5) {
@@ -2300,8 +2383,8 @@ function buildRunningGear(P, cfg) {
         record.batch.setMatrixAt(sp.instanceId, _m);
       }
     }
-    mats.trackTexL.offset.y = -(l / mats.trackLinkM) % 1;
-    mats.trackTexR.offset.y = -(r / mats.trackLinkM) % 1;
+    mats.trackTexL.offset.y = -(l / trackTextureRepeatM) % 1;
+    mats.trackTexR.offset.y = -(r / trackTextureRepeatM) % 1;
   }
 
   const gearUnit = {
