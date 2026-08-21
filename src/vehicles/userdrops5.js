@@ -38,6 +38,44 @@ const make = (baseId, id, name, nation, patch = {}) => {
   return spec;
 };
 
+const merkavaGun = ({
+  reloadS, accuracy, aimTimeS, kinetic, heat, heDamage, moduleDmg, bloom,
+}) => {
+  const gun = copy(TANK_SPECS.merkava4.gun);
+  gun.reloadS = reloadS;
+  gun.baseAccuracy = accuracy;
+  gun.aimTimeS = aimTimeS;
+  gun.bloom = { ...gun.bloom, ...bloom };
+  Object.assign(gun.shells[0], {
+    pen100Mm: kinetic[0], pen1000Mm: kinetic[1], pen2000Mm: kinetic[2],
+    dmg: kinetic[3], velocityMps: kinetic[4], moduleDmg,
+  });
+  Object.assign(gun.shells[1], {
+    pen100Mm: heat[0], pen1000Mm: heat[0], dmg: heat[1], moduleDmg,
+  });
+  Object.assign(gun.shells[2], { dmg: heDamage, moduleDmg });
+  return gun;
+};
+
+const merkavaArmor = ({ glacis, lower, wedge, notch, side }) => {
+  const armor = copy(TANK_SPECS.merkava4.armor);
+  const ratings = {
+    upper_glacis: glacis,
+    lower_front: lower,
+    turret_wedge_R: wedge,
+    turret_wedge_L: wedge,
+    gun_notch: notch,
+    turret_side_R: side,
+    turret_side_L: side,
+  };
+  for (const plate of [...armor.hullPlates, ...armor.turretPlates]) {
+    const rating = ratings[plate.name];
+    if (!rating) continue;
+    [plate.keMm, plate.ceMm] = rating;
+  }
+  return armor;
+};
+
 const SPECS = [
   make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
     { hp: 2100, weightTons: 62, topSpeedKmh: 56, gun: { reloadS: 7.2 },
@@ -128,7 +166,20 @@ const SPECS = [
     { hp: 1900, weightTons: 60, topSpeedKmh: 46, gun: { reloadS: 7.8 },
       dims: { hullLengthM: 7.45, overallLengthM: 8.63, widthM: 3.70, heightM: 2.65 } }),
   make('merkava4', 'merkava2b', 'Merkava Mk.2B', 'Israel',
-    { hp: 2050, weightTons: 63, topSpeedKmh: 46, gun: { reloadS: 7.5 },
+    { hp: 2200, enginePowerHp: 1000, weightTons: 63,
+      topSpeedKmh: 46, reverseSpeedKmh: 18, hullTraverseDegS: 32,
+      turretTraverseDegS: 32, gunPitchDegS: 26, gunDepressionDeg: 8,
+      terrainResistance: { hard: 0.85, medium: 0.95, soft: 1.75 },
+      gun: merkavaGun({
+        reloadS: 6.9, accuracy: 0.31, aimTimeS: 1.9,
+        kinetic: [794, 722, 650, 525, 1680], heat: [600, 485],
+        heDamage: 600, moduleDmg: 120,
+        bloom: { move: 0.075, hullRot: 0.095, turret: 0.075, afterShot: 2.35 },
+      }),
+      armor: merkavaArmor({
+        glacis: [500, 750], lower: [250, 350], wedge: [650, 1000],
+        notch: [380, 450], side: [350, 500],
+      }),
       dims: { hullLengthM: 7.45, overallLengthM: 8.78, widthM: 3.70, heightM: 2.65 } }),
   make('merkava4', 'merkava2d', 'Merkava Mk.2D', 'Israel',
     { hp: 2150, weightTons: 65, topSpeedKmh: 50, gun: { reloadS: 7.2 },
@@ -136,16 +187,55 @@ const SPECS = [
   // merkava3b REMOVED BY OWNER 2026-08-06 ('remove merkava mk 3b') —
   // builder code stays dormant in merkava.js; packet is historical.
   make('merkava4', 'merkava3c', 'Merkava Mk.3C', 'Israel',
-    { hp: 2300, weightTons: 65, topSpeedKmh: 60, gun: { reloadS: 6.6 },
+    { hp: 2450, enginePowerHp: 1200, weightTons: 65,
+      topSpeedKmh: 60, reverseSpeedKmh: 20, hullTraverseDegS: 36,
+      turretTraverseDegS: 36, gunPitchDegS: 28, gunDepressionDeg: 8,
+      terrainResistance: { hard: 0.78, medium: 0.88, soft: 1.60 },
+      gun: merkavaGun({
+        reloadS: 6.2, accuracy: 0.29, aimTimeS: 1.7,
+        kinetic: [830, 755, 680, 540, 1685], heat: [620, 500],
+        heDamage: 610, moduleDmg: 125,
+        bloom: { move: 0.06, hullRot: 0.08, turret: 0.055, afterShot: 2.15 },
+      }),
+      armor: merkavaArmor({
+        glacis: [540, 800], lower: [270, 380], wedge: [700, 1080],
+        notch: [400, 480], side: [360, 520],
+      }),
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   make('merkava4', 'merkava3d', 'Merkava Mk.3D', 'Israel',
-    { hp: 2350, weightTons: 65, topSpeedKmh: 60, gun: { reloadS: 6.4 },
+    { hp: 2700, enginePowerHp: 1200, weightTons: 65,
+      topSpeedKmh: 60, reverseSpeedKmh: 20, hullTraverseDegS: 38,
+      turretTraverseDegS: 38, gunPitchDegS: 30, gunDepressionDeg: 8,
+      terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.50 },
+      gun: merkavaGun({
+        reloadS: 5.9, accuracy: 0.28, aimTimeS: 1.6,
+        kinetic: [891, 810, 730, 560, 1710], heat: [650, 520],
+        heDamage: 630, moduleDmg: 130,
+        bloom: { move: 0.055, hullRot: 0.075, turret: 0.05, afterShot: 2.10 },
+      }),
+      armor: merkavaArmor({
+        glacis: [600, 900], lower: [300, 430], wedge: [780, 1180],
+        notch: [440, 530], side: [400, 580],
+      }),
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   // Restored from the owner's dedicated Mk.4B source archive.  This is the
   // early/non-Trophy 4B fit and uses its own dormant bespoke profile rather
   // than inheriting the Mk.4M/Windbreaker furniture.
   make('merkava4', 'merkava4b', 'Merkava Mk.4B', 'Israel',
-    { hp: 2500, weightTons: 65, topSpeedKmh: 64, gun: { reloadS: 6.2 },
+    { hp: 2800, enginePowerHp: 1500, weightTons: 65,
+      topSpeedKmh: 64, reverseSpeedKmh: 25, hullTraverseDegS: 40,
+      turretTraverseDegS: 40, gunPitchDegS: 32, gunDepressionDeg: 8,
+      terrainResistance: { hard: 0.68, medium: 0.78, soft: 1.40 },
+      gun: merkavaGun({
+        reloadS: 5.6, accuracy: 0.27, aimTimeS: 1.5,
+        kinetic: [916, 833, 750, 550, 1730], heat: [680, 510],
+        heDamage: 620, moduleDmg: 130,
+        bloom: { move: 0.05, hullRot: 0.07, turret: 0.045, afterShot: 2.00 },
+      }),
+      armor: merkavaArmor({
+        glacis: [650, 950], lower: [330, 470], wedge: [850, 1280],
+        notch: [480, 580], side: [450, 650],
+      }),
       publicVisualFallback: null, community: null,
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   make('leo1a5', 't62mv1', 'T-62 obr. 1975', 'USSR/Russia',

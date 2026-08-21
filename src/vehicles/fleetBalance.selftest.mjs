@@ -190,6 +190,46 @@ assert.equal(garageStatGroup(proryv), '10/mbt',
 assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/td',
   'garage normalizes the 103A against tier-IX tank destroyers');
 
+const merkavaProgression = [
+  ['merkava2b', 8, 2200, 1000, 18, 32, 6.9, 525, 794, 650, 500, 650],
+  ['merkava3c', 9, 2450, 1200, 20, 36, 6.2, 540, 830, 680, 540, 700],
+  ['merkava3d', 10, 2700, 1200, 20, 38, 5.9, 560, 891, 730, 600, 780],
+  ['merkava4b', 10, 2800, 1500, 25, 40, 5.6, 550, 916, 750, 650, 850],
+];
+let previousMerkavaDpm = 0;
+for (const [
+  id, tier, hp, engine, reverse, traverse, reload, alpha, pen100, pen2000,
+  glacisKe, turretKe,
+] of merkavaProgression) {
+  const spec = TANK_SPECS[id];
+  const primary = spec.gun.shells[0];
+  assert.equal(tankTier(id), tier, `${id}: intended progression tier`);
+  assert.equal(spec.hp, hp, `${id}: tier-appropriate HP`);
+  assert.equal(spec.enginePowerHp, engine, `${id}: generation-specific power pack`);
+  assert.equal(spec.reverseSpeedKmh, reverse, `${id}: generation-specific reverse`);
+  assert.equal(spec.hullTraverseDegS, traverse, `${id}: generation-specific handling`);
+  assert.equal(spec.gun.reloadS, reload, `${id}: dedicated reload cycle`);
+  assert.equal(primary.dmg, alpha, `${id}: dedicated kinetic damage`);
+  assert.equal(primary.pen100Mm, pen100, `${id}: dedicated close penetration`);
+  assert.equal(primary.pen2000Mm, pen2000, `${id}: dedicated long penetration`);
+  assert.equal(spec.armor.hullPlates.find((plate) => plate.name === 'upper_glacis').keMm,
+    glacisKe, `${id}: generation-specific glacis protection`);
+  assert.equal(spec.armor.turretPlates.find((plate) => plate.name === 'turret_wedge_R').keMm,
+    turretKe, `${id}: generation-specific turret protection`);
+  const dpm = primary.dmg * 60 / reload;
+  assert.ok(dpm > previousMerkavaDpm, `${id}: firepower progresses by generation`);
+  previousMerkavaDpm = dpm;
+
+  const local = createCombatState(spec);
+  startReload(local, spec);
+  assert.equal(local.maxHp, hp, `${id}: local combat consumes canonical HP`);
+  assert.equal(local.reload.totalS, reload, `${id}: local combat consumes canonical reload`);
+  assert.equal(penAtDistanceMm(primary, 2000), pen2000,
+    `${id}: ballistics consumes canonical long-range penetration`);
+  assert.equal(garageStatGroup(spec), `${tier}/mbt`,
+    `${id}: garage compares the tank against its actual tier`);
+}
+
 const authority = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
