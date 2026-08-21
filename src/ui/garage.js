@@ -529,8 +529,8 @@ const GARAGE_CSS = `
   display:flex;align-items:center;gap:7px;}
 .cot-maps .mtitle svg,.cot-camos .ctitle svg,.cot-featured .ftitle > span:first-child svg{
   width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
-.cot-maps{position:static;min-height:96px;max-height:210px;overflow-y:auto;
-  scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
+.cot-maps{position:static;min-height:96px;max-height:280px;overflow-y:auto;
+  scrollbar-width:none;flex:1 1 210px;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
    clip; .can-scroll is toggled by JS only when the list truly overflows */
 .cot-maps.can-scroll{
@@ -619,9 +619,9 @@ const GARAGE_CSS = `
 .cot-camo-card .sw.eq{display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg,#232a31,#12161b);}
 .cot-camo-card .sw.eq svg{display:block;}
-.cot-camo-card .cl{min-height:19px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
-  font-size:8px;font-weight:700;line-height:1.18;letter-spacing:.08em;color:#9fb0bf;
-  text-transform:uppercase;white-space:normal;overflow:hidden;overflow-wrap:anywhere;}
+.cot-camo-card .cl{display:block;min-width:0;font-size:8px;font-weight:700;line-height:1.18;
+  letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
 .cot-camo-card.sel .cl{color:#d8a04c;}
 /* r4: caption WRAPS instead of clipping — the old nowrap line overflowed the
    196px column and cut off mid-sentence, leaving a dangling em-dash */
@@ -870,7 +870,7 @@ const GARAGE_CSS = `
   .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
   .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));max-height:158px;}
   .cot-camo-card{padding:3px 3px 3px;}.cot-camo-card .sw{height:auto;aspect-ratio:2.55;margin-bottom:3px;}
-  .cot-camo-card .cl{min-height:16px;font-size:6.5px;line-height:1.16;letter-spacing:.05em;}
+  .cot-camo-card .cl{font-size:6.5px;line-height:1.16;letter-spacing:.05em;}
   .cot-camos .cnote{display:none;}
   .cot-country-rail{--country-edge:26px;left:208px;right:14px;bottom:82px;
     width:auto;height:42px;transform:none;}
