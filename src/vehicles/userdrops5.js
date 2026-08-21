@@ -3,6 +3,7 @@
 // class stats inherit the nearest researched vehicle and are then adjusted to
 // keep each variant identifiable and matchmaking-safe.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
+import { shell } from './specHelpers.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
 // Reference assets never become playables, including in local development.
@@ -284,12 +285,10 @@ const SPECS = [
         dmg: index === 0 ? 84 : 76,
         reloadS: 0.78,
       })),
-      {
-        name: 'MILAN 2', type: 'HEAT', caliberMm: 115,
-        pen100Mm: 800, pen1000Mm: 800, pen2000Mm: 800,
-        dmg: 480, velocityMps: 200, moduleDmg: 115, tracer: 'HEAT',
-        reloadS: 12.5, count: 6, guided: true, soundProfile: 'milan-launch',
-      },
+      shell('MILAN 2', 'HEAT', 115, 800, 800, 480, 200, {
+        pen2000Mm: 800, reloadS: 12.5, count: 6, guided: true,
+        soundProfile: 'milan-launch',
+      }),
     ],
   };
   // The visible glacis tiles, side packs and turret applique are real armor,

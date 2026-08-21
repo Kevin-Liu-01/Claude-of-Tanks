@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  GUIDED_MISSILE_SPEED_MULTIPLIER,
   plate,
   frontPlate,
   moduleBox,
@@ -9,6 +10,8 @@ import {
   communityArmor,
   modernArmor,
 } from './specHelpers.js';
+import './tankFactory.js';
+import { SAVED_TANK_IDS, TANK_SPECS } from './specs.js';
 
 const quad = plate('test', 40, [0, 0, 0], [2, 0, 0], [0, 3, 1], {
   keMm: 60,
@@ -48,6 +51,11 @@ assert.deepEqual(shell('Round', 'APFSDS', 120, 600, 550, 500, 1600, { pen2000Mm:
   pen100Mm: 600, pen1000Mm: 550, dmg: 500, velocityMps: 1600,
   moduleDmg: 120, tracer: 'APFSDS', pen2000Mm: 500,
 });
+assert.deepEqual(shell('Missile', 'HEAT', 152, 800, 800, 560, 300, { guided: true }), {
+  name: 'Missile', type: 'HEAT', caliberMm: 152,
+  pen100Mm: 800, pen1000Mm: 800, dmg: 560, velocityMps: 195,
+  moduleDmg: 152, tracer: 'HEAT', guided: true, authoredVelocityMps: 300,
+});
 assert.deepEqual(apfsdsPenetration(460), [562, 511, 460]);
 
 const communityInput = {
@@ -84,4 +92,23 @@ assert.equal(armor.modules.find((entry) => entry.module === 'ammoRack').turretLo
 assert.equal(armor.hullPlates.find((entry) => entry.name === 'skirt_R').ceMm, 200);
 assert.equal(armor.turretPlates.find((entry) => entry.name === 'mantlet').gunFollow, true);
 
-console.log('specHelpers.selftest: shared plate, shell, volume, and modern armor contracts passed');
+const guidedRounds = [];
+for (const id of SAVED_TANK_IDS) {
+  for (const round of TANK_SPECS[id]?.gun?.shells || []) {
+    if (round.guided === true) guidedRounds.push({ id, round });
+  }
+}
+assert.ok(guidedRounds.length > 0, 'saved fleet exposes guided missile ammunition');
+for (const { id, round } of guidedRounds) {
+  assert.ok(round.authoredVelocityMps > 0,
+    `${id}/${round.name}: guided rounds use the shared missile-speed policy`);
+  assert.equal(round.velocityMps,
+    round.authoredVelocityMps * GUIDED_MISSILE_SPEED_MULTIPLIER,
+    `${id}/${round.name}: missile travels exactly 35% slower`);
+}
+const bradleyCannon = TANK_SPECS.m2a2_bradley.gun.shells[0];
+assert.equal(bradleyCannon.velocityMps, 1345, 'ordinary cannon velocity is unchanged');
+assert.equal(Object.hasOwn(bradleyCannon, 'authoredVelocityMps'), false,
+  'missile metadata does not leak onto ordinary shells');
+
+console.log(`specHelpers.selftest: shared armor helpers and ${guidedRounds.length} guided rounds passed`);

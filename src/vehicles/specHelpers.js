@@ -34,10 +34,20 @@ export const leftCheekPlate = (name, mm, xIn, zIn, xOut, zOut, y0, y1, tb = 0, x
 export const moduleBox = (module, min, max, turretLocal = false) => ({ module, min, max, turretLocal });
 export const crewBox = (crew, min, max, turretLocal = false) => ({ crew, min, max, turretLocal });
 
-export const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => ({
-  name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-  moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
+/** Global gameplay balance applied to every guided missile in the fleet. */
+export const GUIDED_MISSILE_SPEED_MULTIPLIER = 0.65;
+
+export const shell = (name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps, extra) => {
+  const shellSpec = {
+    name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
+    moduleDmg: caliberMm, tracer: type, ...(extra || {}),
+  };
+  if (shellSpec.guided === true) {
+    shellSpec.authoredVelocityMps = shellSpec.velocityMps;
+    shellSpec.velocityMps *= GUIDED_MISSILE_SPEED_MULTIPLIER;
+  }
+  return shellSpec;
+};
 
 export const apfsdsPenetration = (quoted2km) => {
   const pen1000 = quoted2km / 0.90;

@@ -71,11 +71,10 @@ const ap = (name, caliberMm, pen, damage, velocityMps, count, reloadS = 0.42) =>
   pen2000Mm: Array.isArray(pen) ? pen[2] : pen, dmg: damage,
   moduleDmg: caliberMm, tracer: 'APFSDS', velocityMps, count, reloadS,
 });
-const heat = (name, caliberMm, pen, damage, velocityMps, count, reloadS, soundProfile) => ({
-  name, type: 'HEAT', caliberMm, pen100Mm: pen, pen1000Mm: pen,
-  pen2000Mm: pen, dmg: damage, moduleDmg: caliberMm, tracer: 'HEAT',
-  velocityMps, count, reloadS, guided: true, soundProfile,
-});
+const heat = (name, caliberMm, pen, damage, velocityMps, count, reloadS, soundProfile) =>
+  shell(name, 'HEAT', caliberMm, pen, pen, damage, velocityMps, {
+    pen2000Mm: pen, count, reloadS, guided: true, soundProfile,
+  });
 const he = (name, caliberMm, damage, velocityMps, count, reloadS = 0.42, soundProfile) => ({
   name, type: 'HE', caliberMm, pen100Mm: 8, pen1000Mm: 8, pen2000Mm: 8,
   dmg: damage, moduleDmg: caliberMm, tracer: 'HE', velocityMps, count, reloadS,
