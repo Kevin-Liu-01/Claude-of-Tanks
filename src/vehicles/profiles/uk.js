@@ -3548,14 +3548,11 @@ function fv510MilanBuild(P) {
 // LENGTH LAW (dims sovereign vs a z-short print): the as-loaded oracle hull
 // masks 7.145 m vs the published 7.92 (the width guard's safeScale shrinks
 // the chunky print 5.4%). Every mid-hull feature here is REF-ALIGNED so the
-// curve rows read the print; the published hull length rides on two NARROW
-// (±0.10 — under the plan p95 column threshold) ≥0.33-band carriers:
-//   bow sight/lamp box  z 3.60..3.995  y 1.56..1.91 (over the gun-band line
-//     so side_whole reads gun-vs-box, not gun-vs-void: err 0.16 not 0.42)
-//   tail phone/stow box z −3.60..−3.995  y 1.25..1.60
-// both bracket-mounted (contiguity law), both symmetric about the ref body
-// midpoint so the hull registration (which the turret rows reuse) stays
-// centered. Overall rides the muzzle at +5.75 (9.75, −0.4%); height rides
+// curve rows read the print. The old bow length carrier was a tall box on two
+// exposed struts beyond the beak; it read as detached from the upper glacis.
+// The travel lock is now folded into a shallow, face-following glacis cradle.
+// The tail phone/stow box still carries the rear published-length datum.
+// Overall rides the muzzle at +5.75 (9.75, −0.4%); height rides
 // the cupola+MG crown run at 2.687 (p95 anchor, ref crown 2.664).
 // Published: hull 7.92, overall 9.79, width 3.17, height 2.71.
 const VICKERS_DECK = [
@@ -3660,36 +3657,44 @@ function vickersMk1Build(P) {
       [s * 1.06, 1.24, 3.28], [s * 1.55, 1.24, 3.28], [s * 1.53, 1.06, 3.53], [s * 1.10, 1.06, 3.53],
       [s * 1.06, 1.355, 3.28], [s * 1.55, 1.355, 3.28], [s * 1.53, 1.09, 3.555], [s * 1.10, 1.09, 3.555]));
   }
-  // ---- LENGTH CARRIERS (see header law). Carrier tips are biased 35 mm
-  // rearward so MY body-span midpoint matches the REF's own (its sub-band
-  // tail lip drops out of its body span) — this zeroes the hull dAlong the
-  // turret rows inherit. Bands 0.38 ≥ the 12% rule with margin. ----
-  // bow: travel-lock crutch / lamp box on twin brackets off the beak. The
-  // saddle rides just under the L7 line (tube rests on it at 0°; a real
-  // crutch folds for full depression — accepted pose interpen). Box rear
-  // face starts PAST the ref span + margin (its front-edge smear against
-  // ref idler-tip columns was the r2 worst side_hull cluster).
-  // 0.12 x-narrow (one pixel column per side in plan AND front — under the
-  // p95 column threshold in both views); bow box OFFSET +x, tail box −x so
-  // each plan column carries only ONE end's error (halves the worst-col e)
-  P.add('hull', box(0.10, 0.38, 0.24), 0.07, 1.72, 3.78);
-  P.add('hullDark', box(0.08, 0.22, 0.02), 0.07, 1.72, 3.901);
-  P.add('hullDark', box(0.04, 0.05, 0.24), 0.035, 1.885, 3.79, 0, 0, 0.30);
-  P.add('hullDark', box(0.04, 0.05, 0.24), 0.105, 1.885, 3.79, 0, 0, -0.30);
-  // bracket run tucked under the fender-tip line + DIAGONAL struts through
-  // the 3.59 trace column (bridging arm→box for the floater law: a slanted
-  // strut reads mid-height in its column, so the hull-row interp stays near
-  // the ref tip line; the whole-row cost is one p95-excluded column)
-  P.add('hullDetail', box(0.04, 0.06, 0.36), 0.035, 1.12, 3.46);
-  P.add('hullDetail', box(0.04, 0.06, 0.36), 0.105, 1.12, 3.46);
-  P.add('hullDetail', box(0.04, 0.44, 0.05), 0.035, 1.33, 3.615, -0.32, 0, 0);
-  P.add('hullDetail', box(0.04, 0.44, 0.05), 0.105, 1.33, 3.615, -0.32, 0, 0);
+  // ---- BOW TRAVEL LOCK + REAR LENGTH CARRIER (see header law). ---------
+  // The lock is stowed flat on the center beak. Its twin feet follow the
+  // measured 1.368 -> 1.360 m upper-glacis fall and overlap the armor by
+  // 10 mm; the yoke and saddle ears overlap both feet. This keeps every
+  // visible part in one supported chain and removes the former vertical
+  // daylight. It is external equipment, not part of the armor envelope.
+  const bowLockPitch = 0.034;
+  for (const x of [-0.065, 0.065]) {
+    P.addEquipment('hull', box(0.04, 0.05, 0.40), x, 1.381, 3.06,
+      bowLockPitch, 0, 0);
+  }
+  P.addEquipment('hull', box(0.22, 0.06, 0.11), 0, 1.390, 3.205,
+    bowLockPitch, 0, 0);
+  for (const x of [-0.075, 0.075]) {
+    P.addEquipment('hull', box(0.045, 0.16, 0.055), x, 1.445, 3.205,
+      bowLockPitch, 0, 0);
+    P.add('hullDark', box(0.032, 0.035, 0.018), x, 1.522, 3.224,
+      bowLockPitch, 0, 0);
+  }
   // tail: infantry-telephone / convoy-stow box on brackets off the rear lip
   // (front face past the ref tail + margin so no edge-smear columns).
   P.add('hull', box(0.10, 0.38, 0.31), -0.07, 1.41, -3.815);
   P.add('hullDark', box(0.08, 0.10, 0.02), -0.07, 1.50, -3.966);
   P.add('hullDetail', box(0.04, 0.05, 0.30), -0.035, 1.19, -3.53);
   P.add('hullDetail', box(0.04, 0.05, 0.30), -0.105, 1.19, -3.53);
+  P.hullG.userData.vickersBowLockReceipt = Object.freeze({
+    owner: 'hull',
+    carrier: 'upper-glacis',
+    stowed: true,
+    formerBoxCenter: Object.freeze([0.07, 1.72, 3.78]),
+    formerRailCenterY: 1.12,
+    footCenters: Object.freeze([Object.freeze([-0.065, 1.381, 3.06]),
+      Object.freeze([0.065, 1.381, 3.06])]),
+    carrierFallM: 0.008,
+    contactEmbedM: 0.010,
+    maxSupportGapM: 0,
+    armorEnvelopeExcluded: true,
+  });
   // ---- deck furniture ----
   // engine-deck louvre boxes (ref bumps 1.816 / 1.801: CENTER x ±0.4 only —
   // front_hull reads 1.814 over ±0.4 with the tiers below outboard)

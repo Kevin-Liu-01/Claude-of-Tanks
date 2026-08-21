@@ -3425,21 +3425,34 @@ function buildChallenger2(P) {
   P.add('turretDetail', box(0.31, 0.016, 0.035), 0.6175, 0.553, -0.254, 0, -0.08, 0);
   P.add('turretDark', box(0.092, 0.062, 0.325), 0.814, 0.568, -0.9025);
   P.add('turretGlass', box(0.060, 0.035, 0.060), 0.814, 0.575, -0.735);
+  const roofEmbed = 0.010;
+  const roofSeats = [];
   // The reference's sustained side crest across the crew-roof band comes
-  // from a narrow outboard episcope bank, not a globally raised hatch.  Five
-  // separate heads preserve the open roof and also land on the correct
-  // front-view x=-.8 station.
-  for (const [z, y] of [[-0.55, 0.78], [-0.77, 0.78], [-0.99, 0.78], [-1.21, 0.66], [-1.45, 0.66]]) {
-    P.add('turretDetail', box(0.220, 0.080, 0.18), -0.80, y, z);
+  // from a narrow outboard episcope bank, not a globally raised hatch. Each
+  // head now follows its local roof carrier instead of sharing two arbitrary
+  // heights that left visible daylight below three of the five fittings.
+  for (const [z, carrierY] of [
+    [-0.55, 0.3981], [-0.77, 0.6139], [-0.99, 0.7010],
+    [-1.21, 0.6270], [-1.45, 0.5005],
+  ]) {
+    const height = 0.080;
+    const y = carrierY + height * 0.5 - roofEmbed;
+    P.add('turretDetail', box(0.220, height, 0.18), -0.80, y, z);
     P.add('turretGlass', box(0.170, 0.035, 0.012), -0.80, y + 0.005, z + 0.097);
+    roofSeats.push({ label: `loader-episcope-${z}`, carrierY, bottomY: y - height * 0.5 });
   }
   // Low roof seam and fitting grammar follows the independently bounded
   // plates.  It stays flush to their surfaces and adds no silhouette mass.
   P.add('turretDark', box(0.014, 0.010, 1.20), -0.06, 0.535, -0.62);
   P.add('turretDark', box(0.92, 0.010, 0.014), -0.52, 0.590, -1.05);
   P.add('turretDark', box(0.72, 0.010, 0.014), 0.56, 0.535, -1.02);
-  for (const [x, z] of [[-1.00, -0.18], [-0.92, -1.18], [0.98, -0.92]])
-    KIT.liftEye(P, 'turretDetail', x, 0.59, z);
+  // The forward-left lifting eye was nearly 20 cm above its local roof. Its
+  // foot now overlaps that carrier by the same 10 mm seating allowance used
+  // by the roof optics; the aft pair already sit on their local courses.
+  KIT.liftEye(P, 'turretDetail', -1.00, 0.3896, -0.18);
+  roofSeats.push({ label: 'forward-left-lift-eye', carrierY: 0.3746, bottomY: 0.3646 });
+  for (const [x, z] of [[-0.92, -1.18], [0.98, -0.92]])
+    KIT.liftEye(P, 'turretDetail', x, 0.42, z);
   for (const [x, z, a] of [[-0.84, -0.92, -0.4], [-0.55, -0.94, 0.25], [0.72, -0.92, 0.35]])
     periscope(P, 'turretDetail', x, 0.62, z, a);
   // GPS: the source census resolves a compact independent housing at world
@@ -3461,20 +3474,23 @@ function buildChallenger2(P) {
   // 472-triangle lower tier, exact local bbox x=.654..765/y=.701..811/
   // z=.081..191.  It is the missing mechanical transition between roof and
   // cradle, not a generic pedestal cylinder.
-  P.add('turretDark', box(0.111, 0.110, 0.110), 0.7095, 0.756, 0.136);
-  P.add('turret', box(0.081, 0.080, 0.080), 0.7095, 0.766, 0.136);
+  P.add('turretDark', box(0.111, 0.110, 0.110), 0.7095, 0.7126, 0.136);
+  P.addEquipment('turret', box(0.081, 0.080, 0.080), 0.7095, 0.7226, 0.136);
   // 114-triangle lower receiver support, source bbox
   // x=.572..847/y=.713..842/z=.390..717.  Keep the center open: paired
   // longitudinal cheeks and end braces carry the receiver above the roof.
-  for (const x of [0.595, 0.824]) P.add('turret', box(0.035, 0.129, 0.300),
-    x, 0.7775, 0.5535);
+  // Carry the receiver cheeks forward into the trunnion ring.  The former
+  // z=.4035 front faces stopped 48 mm short of the ring; the extended cheeks
+  // now overlap it by 30 mm in plan and 12 mm vertically.
+  for (const x of [0.605, 0.824]) P.addEquipment('turret', box(0.035, 0.129, 0.380),
+    x, 0.7775, 0.515);
   for (const z of [0.412, 0.695]) P.add('turretDetail', box(0.264, 0.030, 0.026),
     0.7095, 0.810, z);
   P.add('turretGlass', box(0.19, 0.055, 0.014), 0.7095, 0.790, 0.713);
-  P.add('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14), 0.77, 0.690, 0.20);
+  P.addEquipment('turret', cylY(0.145, 0.155, 0.070, P.q ? 22 : 14), 0.77, 0.690, 0.20);
   P.add('turretDark', torus(0.140, 0.010, P.q ? 22 : 14), 0.77, 0.730, 0.20);
   for (const x of [0.70, 0.85]) {
-    P.add('turret', box(0.032, 0.18, 0.12), x, 0.805, 0.20);
+    P.addEquipment('turret', box(0.032, 0.18, 0.12), x, 0.805, 0.20);
     P.add('turretDetail', box(0.018, 0.15, 0.018), x, 0.805, 0.20);
   }
   // Open cradle articulation: paired trunnion discs, diagonal fork braces
@@ -3493,7 +3509,7 @@ function buildChallenger2(P) {
   // marker-carrying exact fitting; keeping them in the merged bucket would
   // visually duplicate the certified assembly.
   P.add('turretGlass', box(0.11, 0.055, 0.012), 0.775, 0.855, 0.282);
-  P.add('turret', box(0.11, 0.105, 0.20), 0.80, 0.865, 0.20);
+  P.addEquipment('turret', box(0.11, 0.105, 0.20), 0.80, 0.865, 0.20);
   P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), 0.98, 0.910, 0.20);
   P.add('turretDark', cylX(0.034, 0.065, P.q ? 16 : 10), 1.16, 0.830, 0.20);
   // Connected-component RWS hierarchy.  The source carries a transverse
@@ -3522,7 +3538,7 @@ function buildChallenger2(P) {
   for (const z of [-0.25, -0.02, 0.27]) {
     P.add('turretDetail', box(0.075, 0.025, 0.025), 0.710, 0.910, z);
   }
-  P.add('turret', box(0.073, 0.060, 0.282), 0.710, 0.921, 0.442);
+  P.addEquipment('turret', box(0.073, 0.060, 0.282), 0.710, 0.921, 0.442);
   P.add('turretGlass', box(0.050, 0.036, 0.012), 0.710, 0.922, 0.589);
   for (const x of [0.680, 0.740]) P.add('turretDark', box(0.010, 0.052, 0.242),
     x, 0.921, 0.442);
@@ -3541,8 +3557,8 @@ function buildChallenger2(P) {
   for (const z of [0.64, 0.96, 1.22]) {
     P.add('turretDetail', cylZ(0.022, 0.055, P.q ? 14 : 10), 0.710, 0.912, z);
   }
-  P.add('turret', box(0.060, 0.10, 0.15), 0.75, 0.940, 0.47);
-  P.add('turret', box(0.060, 0.10, 0.20), 0.75, 0.940, -0.12);
+  P.addEquipment('turret', box(0.060, 0.10, 0.15), 0.75, 0.940, 0.47);
+  P.addEquipment('turret', box(0.060, 0.10, 0.20), 0.75, 0.940, -0.12);
   if (P.q) for (let k = 0; k < 6; k++) {
     const x = 0.708 + k * 0.025;
     P.add('turretDetail', box(0.018, 0.018, 0.13), x, 0.940 - Math.abs(k - 2.5) * 0.003, 0.21);
@@ -3552,33 +3568,72 @@ function buildChallenger2(P) {
   // Source-connected outboard roof modules are low bases plus separated
   // episcope heads.  Collapsing each assembly into one tall cuboid erased
   // the real negative spaces and made the whole roof look overbuilt.
+  const outboardRoofCarriers = {
+    '-1': [0.6132, 0.6050, 0.5891],
+    '1': [0.6065, 0.5900, 0.5821],
+  };
   for (const side of [-1, 1]) {
     cr2Course(P, 'turret', [
       [side * 1.03, -1.18], [side * 1.34, -1.18],
       [side * 1.34, -0.86], [side * 1.03, -0.86],
     ], [0.38, 0.28, 0.30, 0.39], [0.60, 0.57, 0.58, 0.64]);
-    P.add('turret', box(0.066, 0.155, 0.20), side * 1.10, 0.742, -1.02);
-    P.add('turret', box(0.092, 0.155, 0.18), side * 1.185, 0.742, -1.02);
-    P.add('turret', box(0.064, 0.165, 0.17), side * 1.267, 0.742, -1.01);
-    P.add('turretGlass', box(0.052, 0.050, 0.012), side * 1.10, 0.760, -0.913);
-    P.add('turretGlass', box(0.070, 0.050, 0.012), side * 1.185, 0.760, -0.923);
-    P.add('turretGlass', box(0.048, 0.050, 0.012), side * 1.267, 0.760, -0.918);
+    const heads = [
+      [1.10, 0.066, 0.155, 0.20, 0.052, -1.02, -0.913],
+      [1.185, 0.092, 0.155, 0.18, 0.070, -1.02, -0.923],
+      [1.267, 0.064, 0.165, 0.17, 0.048, -1.01, -0.918],
+    ];
+    heads.forEach(([x, width, height, depth, glassWidth, z, glassZ], index) => {
+      const carrierY = outboardRoofCarriers[String(side)][index];
+      const y = carrierY + height * 0.5 - roofEmbed;
+      P.addEquipment('turret', box(width, height, depth), side * x, y, z);
+      P.add('turretGlass', box(glassWidth, 0.050, 0.012), side * x, y + 0.018, glassZ);
+      roofSeats.push({ label: `${side < 0 ? 'left' : 'right'}-outboard-head-${index + 1}`,
+        carrierY, bottomY: y - height * 0.5 });
+    });
   }
-  P.add('turretDetail', box(1.05, 0.050, 0.030), -0.575, 0.655, 0.00);
-  P.add('turret', box(0.060, 0.24, 0.10), 1.09, 0.85, 0.02);
-  P.add('turretGlass', box(0.040, 0.075, 0.012), 1.09, 0.86, 0.077);
+  // Seat the long loader-side bridge on the sloping roof as one continuous
+  // rail. Its roll is derived from the two carrier endpoints, so neither end
+  // hangs in space or buries into the roof.
+  const bridgeLeftY = 0.3567;
+  const bridgeRightY = 0.4977;
+  const bridgeRunX = 1.05;
+  const bridgeHeight = 0.050;
+  const bridgeRoll = Math.atan2(bridgeRightY - bridgeLeftY, bridgeRunX);
+  const bridgeLength = Math.hypot(bridgeRunX, bridgeRightY - bridgeLeftY);
+  const bridgeY = (bridgeLeftY + bridgeRightY) * 0.5 - roofEmbed
+    + Math.cos(bridgeRoll) * bridgeHeight * 0.5;
+  P.add('turretDetail', box(bridgeLength, bridgeHeight, 0.030), -0.575, bridgeY, 0.00,
+    0, 0, bridgeRoll);
+  roofSeats.push({ label: 'loader-side-service-bridge-left', carrierY: bridgeLeftY,
+    bottomY: bridgeLeftY - roofEmbed });
+  roofSeats.push({ label: 'loader-side-service-bridge-right', carrierY: bridgeRightY,
+    bottomY: bridgeRightY - roofEmbed });
+  const rightOpticY = 0.3538 + 0.24 * 0.5 - roofEmbed;
+  P.addEquipment('turret', box(0.060, 0.24, 0.10), 1.09, rightOpticY, 0.02);
+  P.add('turretGlass', box(0.040, 0.075, 0.012), 1.09, rightOpticY + 0.01, 0.077);
+  roofSeats.push({ label: 'right-forward-optic', carrierY: 0.3538,
+    bottomY: rightOpticY - 0.12 });
   P.add('turret', slab(
     [0.34, 0.00, -1.80], [0.43, 0.00, -1.80], [0.43, 0.00, -1.72], [0.34, 0.00, -1.72],
     [0.34, 0.79, -1.80], [0.43, 0.79, -1.80], [0.43, 0.79, -1.72], [0.34, 0.79, -1.72]));
   P.add('turret', box(0.40, 0.30, 0.25), 0.20, 0.255, -2.08);
-  P.add('turret', box(0.018, 0.18, 0.20), 1.332, 0.58, 0.20);
-  P.add('turret', box(0.018, 0.18, 0.20), -1.322, 0.58, 0.20);
+  const rightSideHeadY = 0.1154 + 0.18 * 0.5 - roofEmbed;
+  const leftSideHeadY = 0.1680 + 0.18 * 0.5 - roofEmbed;
+  P.addEquipment('turret', box(0.018, 0.18, 0.20), 1.332, rightSideHeadY, 0.20);
+  P.addEquipment('turret', box(0.018, 0.18, 0.20), -1.322, leftSideHeadY, 0.20);
+  roofSeats.push({ label: 'right-side-head', carrierY: 0.1154,
+    bottomY: rightSideHeadY - 0.09 });
+  roofSeats.push({ label: 'left-side-head', carrierY: 0.1680,
+    bottomY: leftSideHeadY - 0.09 });
   P.add('turret', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42);
   P.add('turret', box(0.04, 0.12, 0.20), -1.41, 0.15, -1.42);
   P.add('turret', box(1.60, 0.05, 0.20), 0, 0.025, 1.85);
   P.add('turretDetail', box(0.10, 0.12, 0.10), -1.57, 0.28, -1.985);
   P.add('turret', box(0.12, 0.15, 0.020), -0.88, 0.63, -1.282);
-  P.add('turret', box(0.08, 0.20, 0.14), 1.15, 0.524, -2.08);
+  const rightRearHeadY = 0.2907 + 0.20 * 0.5 - roofEmbed;
+  P.addEquipment('turret', box(0.08, 0.20, 0.14), 1.15, rightRearHeadY, -2.08);
+  roofSeats.push({ label: 'right-rear-head', carrierY: 0.2907,
+    bottomY: rightRearHeadY - 0.10 });
   P.add('turretDetail', cylY(0.012, 0.018, 1.44, 8), -1.24, 0.71, -0.74);
   // Narrow source-owned high stations: the primary head carries the 3.04 m
   // p95 datum at x=-1.24/world-z=.30; a separate thin episcope at x=-.89
@@ -3587,13 +3642,45 @@ function buildChallenger2(P) {
   P.add('turretGlass', box(0.012, 0.06, 0.025), -1.24, 1.365, -0.702);
   const sourceWhip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.91, r: 0.008, rake: 0.02, seed: 19 });
   sourceWhip.position.set(-0.88, 0.35, -2.906); P.turretG.add(sourceWhip);
-  smokeCluster(P, 1.08, 0.38, 1.25, 5, 0.82, 0.65);
-  smokeCluster(P, -1.08, 0.38, 1.25, 5, -0.82, 0.65);
-  for (const side of [-1, 1]) for (let k = 0; k < 5; k++) {
-    const f = k - 2;
-    P.add('turretDark', cylZ(0.032, 0.016, 10), side * (1.08 + f * 0.063),
-      0.43 + Math.abs(f) * 0.012, 1.39 - Math.abs(f) * 0.026);
+  // Smoke-launcher mouths inherit the exact transform of their canisters.
+  // The former upright dark discs were only approximated in world space and
+  // visibly hovered beside the pitched tube ends.
+  const smokeMouths = [];
+  for (const side of [-1, 1]) {
+    const x = side * 1.08;
+    const y = 0.38;
+    const z = 1.25;
+    const yaw = side * 0.82;
+    for (let k = 0; k < 5; k++) {
+      const f = k - 2;
+      const angle = yaw + f * (0.65 / 5);
+      const dx = Math.cos(yaw) * f * 0.095;
+      const dz = -Math.sin(yaw) * f * 0.095;
+      const tubeX = x + dx;
+      const tubeZ = z + dz;
+      P.addEquipment('turret', cylZ(0.038, 0.24, 8), tubeX, y, tubeZ, -0.5, angle, 0);
+      P.add('turretDark', xform(cylZ(0.032, 0.012, 10), 0, 0, 0.124),
+        tubeX, y, tubeZ, -0.5, angle, 0);
+      smokeMouths.push({ side, tubeCenter: [tubeX, y, tubeZ], rotation: [-0.5, angle, 0],
+        mouthOffsetZ: 0.124 });
+    }
   }
+
+  P.turretG.userData.challenger2RoofSeatingReceipt = {
+    contactEmbedM: roofEmbed,
+    maxRoofGapM: 0,
+    armorEnvelopeExcluded: true,
+    roofSeats,
+    station: {
+      ringRearZ: 0.355,
+      receiverSupportFrontZ: 0.325,
+      planOverlapM: 0.030,
+      ringTopY: 0.725,
+      receiverSupportBottomY: 0.713,
+      verticalOverlapM: 0.012,
+    },
+    smokeMouths,
+  };
 
   // Axis world y=1.68, trunnion world z=1.70. The 5.72 m visual run lands
   // the muzzle at +7.42, exactly matching the repaired 11.50 m oracle.

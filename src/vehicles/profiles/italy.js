@@ -28,6 +28,7 @@
 // The base `ariete` (Preserie) stays its own graduated tank in misc.js —
 // UNTOUCHED donor, byte-held.
 
+import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { buildAriete } from './misc.js';
 
@@ -35,6 +36,48 @@ function addFitting(P, owner, fitting, x, y, z, rotation = null) {
   fitting.position.set(x, y, z);
   if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
   (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
+}
+
+// Sample the actual carrier quad so add-on modules inherit its compound
+// pitch/sweep instead of approximating the surface with hand-tuned Eulers.
+function sampleArmorFace(p00, p10, p11, p01, u, v, outwardHint) {
+  const a = new THREE.Vector3(...p00);
+  const b = new THREE.Vector3(...p10);
+  const c = new THREE.Vector3(...p11);
+  const d = new THREE.Vector3(...p01);
+  const point = a.clone().multiplyScalar((1 - u) * (1 - v))
+    .addScaledVector(b, u * (1 - v))
+    .addScaledVector(c, u * v)
+    .addScaledVector(d, (1 - u) * v);
+  const du = b.clone().sub(a).multiplyScalar(1 - v)
+    .add(c.clone().sub(d).multiplyScalar(v));
+  const dv = d.clone().sub(a).multiplyScalar(1 - u)
+    .add(c.clone().sub(b).multiplyScalar(u));
+  const normal = new THREE.Vector3().crossVectors(du, dv).normalize();
+  if (normal.dot(new THREE.Vector3(...outwardHint)) < 0) normal.negate();
+  return { point, normal, du, dv };
+}
+
+// Local +Y is the carrier normal and local +Z follows the selected course.
+// Extending the normal dimension inward by `embed` guarantees physical
+// overlap while keeping the visible outer face at the requested datum.
+function faceSeatedArmorCassette(P, owner, face, courseAxis, w, h, d, embed) {
+  const normal = face.normal.clone().normalize();
+  const zAxis = courseAxis.clone().addScaledVector(normal,
+    -courseAxis.dot(normal)).normalize();
+  const xAxis = new THREE.Vector3().crossVectors(normal, zAxis).normalize();
+  const basis = new THREE.Matrix4().makeBasis(xAxis, normal, zAxis);
+  const rotation = new THREE.Euler().setFromQuaternion(
+    new THREE.Quaternion().setFromRotationMatrix(basis), 'XYZ');
+  const center = face.point.clone().addScaledVector(normal, h / 2 - embed / 2);
+  const armorBucket = owner === 'hull' ? 'hull' : 'turret';
+  const detailBucket = owner === 'hull' ? 'hullDark' : 'turretDark';
+  P.add(armorBucket, KIT.box(w, h + embed, d), center.x, center.y, center.z,
+    rotation.x, rotation.y, rotation.z);
+  const lidCenter = face.point.clone().addScaledVector(normal, h + 0.006);
+  P.add(detailBucket, KIT.box(w * 0.86, 0.012, d * 0.84),
+    lidCenter.x, lidCenter.y, lidCenter.z,
+    rotation.x, rotation.y, rotation.z);
 }
 
 // flush hatch ring + coaming (shared by the italy builders)
@@ -69,6 +112,17 @@ function buildArieteMk(P, mark) {
   const slab = orientedSlab;
   const { rng } = P;
   const c2 = mark === 'c2';
+  const C2_ERA_EMBED_M = 0.012;
+  const c2EraReceipt = c2 ? {
+    carrierDerivedTransforms: true,
+    contactEmbedM: C2_ERA_EMBED_M,
+    maxSupportGapM: 0,
+    faceNormalAlignmentDeg: 0,
+    turretCheekCassettes: 0,
+    turretSideCassettes: 0,
+    turretBustleCassettes: 0,
+    sideSkirtCassettes: 0,
+  } : null;
   // The supplied Arrafi reference carries a 1.06 m running-gear envelope
   // and ~0.60 m shoes. Keep that mechanical course rooted at the terrain,
   // then raise the armored body on its suspension instead of globally
@@ -252,13 +306,30 @@ function buildArieteMk(P, mark) {
     // every new read stays inside the ±1.80 WIDTH GUARD (max 1.799).
     const panels = c2 ? 13 : 7;
     const z0 = 3.09, panelD = (3.09 - skirtRear) / panels;
+    // C2's visual ERA owns the outer 40 mm of the 1.80 m half-width. Pull
+    // its carrier plates inboard so the cassettes finish exactly on the
+    // published width plane instead of floating beyond the side armor.
+    const panelCenterX = c2 ? 1.7425 : 1.780;
+    const panelCarrierX = c2 ? 1.760 : 1.7975;
     for (let k = 0; k < panels; k++) {
       const zc = z0 - panelD * (k + 0.5);
-      P.add(skirtBucket, box(0.035, 0.68, panelD - 0.025), s * 1.780, 0.94, zc); // heavy applique panels, tops 1.28, hem 0.60 (front_hull 0.53 hem class)
-      P.add(skirtDarkBucket, box(0.012, 0.60, 0.02), s * 1.788, 0.94, zc - panelD / 2 + 0.012); // panel seams (inboard of the guard)
-      P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * 1.7965, 1.09, zc - panelD * 0.22);   // s5322-C1 panel bolts (face-proud 1mm, tone read)
-      P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * 1.7965, 0.79, zc + panelD * 0.22);
-      if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07), s * 1.784, 1.245, zc + panelD / 2 - 0.0125); // s5322-C1 hinge straps rail->panel at every interior seam
+      P.add(skirtBucket, box(0.035, 0.68, panelD - 0.025), s * panelCenterX, 0.94, zc); // heavy applique carrier, physically joined to the hanger rail
+      P.add(skirtDarkBucket, box(0.012, 0.60, 0.02), s * (panelCarrierX - 0.008), 0.94, zc - panelD / 2 + 0.012); // panel seams stay on the carrier face
+      P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), 1.09, zc - panelD * 0.22);
+      P.add(skirtDarkBucket, box(0.004, 0.026, 0.026), s * (panelCarrierX - 0.001), 0.79, zc + panelD * 0.22);
+      if (k > 0) P.add(skirtBucket, box(0.03, 0.14, 0.07), s * (panelCenterX + 0.004), 1.245, zc + panelD / 2 - 0.0125); // hinge straps rail->panel at every interior seam
+      if (c2) {
+        for (const y of [0.79, 1.09]) {
+          const face = {
+            point: new THREE.Vector3(s * panelCarrierX, y, zc),
+            normal: new THREE.Vector3(s, 0, 0),
+            dv: new THREE.Vector3(0, 0, 1),
+          };
+          faceSeatedArmorCassette(P, 'hull', face, face.dv,
+            0.275, 0.040, panelD - 0.055, C2_ERA_EMBED_M);
+          c2EraReceipt.sideSkirtCassettes += 1;
+        }
+      }
     }
     P.add(skirtBucket, box(0.045, 0.56, 0.42), s * 1.7775, 0.92, 2.86);        // widthM edge strip, outer face EXACTLY ±1.80 (WIDTH GUARD)
     P.add(skirtBucket, box(0.14, 0.10, 3.09 - skirtRear), s * 1.72, 1.315, (3.09 + skirtRear) / 2); // hanger rail tying panels to the sponson
@@ -391,12 +462,18 @@ function buildArieteMk(P, mark) {
     }
     P.add('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.155, L(-2.556));        // s5322-B1 rack-end cap plates (inside the certified envelope)
     P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.185, L(-2.572));  // cap end faces (dark hardware read)
-    for (const az of [-0.50, -1.44]) {
-      P.add('turret', box(0.24, 0.06, 0.05), s * 1.38, 0.34, L(az));           // rack arms to the wall (thin: plan cols ±1.2-1.3 stay ref-empty)
+    for (const az of [-0.50, -1.44, -2.10]) {
+      P.add('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.34, L(az));          // rack arms overlap the shell/panel and the outer rail
     }
-    P.add('turret', slab(                                                      // thin side basket bay just inside the rails (floor 1.45)
-      [s * 1.40, 0.15, L(-1.20)], [s * 1.505, 0.15, L(-1.20)], [s * 1.505, 0.15, L(-2.55)], [s * 1.40, 0.15, L(-2.55)],
-      [s * 1.40, 0.58, L(-1.20)], [s * 1.505, 0.58, L(-1.20)], [s * 1.505, 0.58, L(-2.55)], [s * 1.40, 0.58, L(-2.55)]));
+    // Owner-marked panel re-seat. Its old inner face sat at |x|=1.40 while
+    // the turret/bustle carrier is |x|≈1.13, leaving 27 cm of daylight. The
+    // new 115 mm cassette overlaps that carrier by 15 mm and remains wholly
+    // turret-local. An aft bridge returns the cantilever into the rear basket
+    // frame, while the three rack arms tie its outer face to the rail.
+    P.add('turret', slab(
+      [s * 1.115, 0.15, L(-1.20)], [s * 1.235, 0.15, L(-1.20)], [s * 1.235, 0.15, L(-2.55)], [s * 1.115, 0.15, L(-2.55)],
+      [s * 1.115, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-2.55)], [s * 1.115, 0.58, L(-2.55)]));
+    P.add('turret', box(0.22, 0.16, 0.06), s * 1.14, 0.62, L(-2.03));         // rear basket-to-panel bridge; overlaps both structures
     // GALIX 80mm banks on their platform (identity cue; ±1.24-1.40, z -0.30..-0.95)
     P.add('turret', box(0.17, 0.05, 0.66), s * 1.315, 0.475, L(-0.62));        // GALIX platform (ties bank to wall)
     P.add('turretDark', box(0.025, 0.19, 0.64), s * 1.352, 0.585, L(-0.62), 0, 0, s * 0.12); // s5322-B7 GALIX backing plate — tubes read against dark at yaw (ref plan band ±1.31-1.40 owns it)
@@ -511,10 +588,67 @@ function buildArieteMk(P, mark) {
   if (c2) {
     // ---- C2/AMV upgrade package (photo-class; print is C1-only here) -------
     for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                    // add-on cheek armor wedges extending the arrow — module tops ride the
-        [s * 0.40, 0.16, L(2.04)], [s * 1.10, 0.24, L(1.72)], [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.16, L(1.58)],  // §5.299 raked C1 faces (proud panels
-        [s * 0.40, 0.62, L(1.70)], [s * 1.04, 0.56, L(1.48)], [s * 1.12, 0.53, L(1.26)], [s * 0.42, 0.62, L(1.52)]));  // on the slope, seams intact)
+      const cheekBottom = [
+        [s * 0.40, 0.16, L(2.04)], [s * 1.10, 0.24, L(1.72)],
+        [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.16, L(1.58)],
+      ];
+      const cheekTop = [
+        [s * 0.40, 0.62, L(1.70)], [s * 1.04, 0.56, L(1.48)],
+        [s * 1.12, 0.53, L(1.26)], [s * 0.42, 0.62, L(1.52)],
+      ];
+      P.add('turret', slab(...cheekBottom, ...cheekTop));                     // add-on cheek carrier intersects the C1 arrow
       P.add('turretDark', box(0.02, 0.34, 0.34), s * 1.135, 0.38, L(1.44), 0, 0, s * 0.10); // module edge seams
+      // Dense face-following cheek field. The upper and outer courses sample
+      // the same vertices used by the carrier slab, keeping all compound
+      // pitch/sweep and a real 12 mm overlap into the armor.
+      for (const u of [0.18, 0.50, 0.82]) for (const v of [0.30, 0.70]) {
+        const face = sampleArmorFace(...cheekTop, u, v, [0, 1, 0.2]);
+        faceSeatedArmorCassette(P, 'turret', face, face.dv,
+          0.20, 0.055, 0.20, C2_ERA_EMBED_M);
+        c2EraReceipt.turretCheekCassettes += 1;
+      }
+      const cheekOuterFace = [cheekBottom[1], cheekBottom[2], cheekTop[2], cheekTop[1]];
+      for (const u of [0.27, 0.73]) for (const v of [0.34, 0.72]) {
+        const face = sampleArmorFace(...cheekOuterFace, u, v, [s, 0, 0.25]);
+        faceSeatedArmorCassette(P, 'turret', face, face.du,
+          0.18, 0.055, 0.18, C2_ERA_EMBED_M);
+        c2EraReceipt.turretCheekCassettes += 1;
+      }
+
+      // The C2 shoulder boxes are already turret-owned armor carriers. Seat
+      // the side field on their real outer planes, not on a hidden second
+      // plate behind them: four modules per box, two boxes per side.
+      for (const carrier of [
+        { y: localY(1.70), z: L(0.62), h: 0.40, d: 0.62 },
+        { y: localY(1.745), z: L(-0.06), h: 0.49, d: 0.66 },
+      ]) {
+        for (const yOffset of [-0.22, 0.22]) for (const zOffset of [-0.24, 0.24]) {
+          const face = {
+            point: new THREE.Vector3(s * 1.46,
+              carrier.y + carrier.h * yOffset,
+              carrier.z + carrier.d * zOffset),
+            normal: new THREE.Vector3(s, 0, 0),
+            dv: new THREE.Vector3(0, 0, 1),
+          };
+          faceSeatedArmorCassette(P, 'turret', face, face.dv,
+            carrier.h * 0.34, 0.055, carrier.d * 0.37, C2_ERA_EMBED_M);
+          c2EraReceipt.turretSideCassettes += 1;
+        }
+      }
+
+      // Aft courses sit directly on the newly re-seated bustle panel. They
+      // begin behind the left APU envelope, avoiding a cosmetic overlap while
+      // still protecting both rear quarters symmetrically.
+      for (const y of [0.28, 0.48]) for (const zWorld of [-1.74, -2.08, -2.42]) {
+        const face = {
+          point: new THREE.Vector3(s * 1.235, y, L(zWorld)),
+          normal: new THREE.Vector3(s, 0, 0),
+          dv: new THREE.Vector3(0, 0, 1),
+        };
+        faceSeatedArmorCassette(P, 'turret', face, face.dv,
+          0.16, 0.050, 0.26, C2_ERA_EMBED_M);
+        c2EraReceipt.turretBustleCassettes += 1;
+      }
       for (const [i, py, prx] of [[0, 1.364, -0.064], [1, 1.345, -0.10], [2, 1.315, -0.10]]) {
         P.add('hull', box(0.44, 0.09, 0.52), s * (0.28 + i * 0.47), py, 2.30 + i * 0.30, prx, 0, 0); // glacis add-on rows re-seated ON the §5.299 raked plane
       }
@@ -550,6 +684,26 @@ function buildArieteMk(P, mark) {
     loaderMg.name = 'arieteC1LoaderMg';
     addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
     P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
+  }
+  P.turretG.userData.arieteSidePanelReceipt = Object.freeze({
+    owner: 'turret',
+    panels: 2,
+    formerInnerFaceXM: 1.40,
+    carrierFaceXM: 1.13,
+    innerFaceXM: 1.115,
+    outerFaceXM: 1.235,
+    carrierOverlapM: 0.015,
+    rackSupportArmsPerSide: 3,
+    rearBasketBridgesPerSide: 1,
+    maxSupportGapM: 0,
+    followsTurretYaw: true,
+  });
+  if (c2) {
+    c2EraReceipt.totalTurretCassettes = c2EraReceipt.turretCheekCassettes
+      + c2EraReceipt.turretSideCassettes + c2EraReceipt.turretBustleCassettes;
+    c2EraReceipt.totalCassettes = c2EraReceipt.totalTurretCassettes
+      + c2EraReceipt.sideSkirtCassettes;
+    P.turretG.userData.arieteC2EraReceipt = Object.freeze(c2EraReceipt);
   }
   P.turretG.userData.arieteEquipmentReceipt = Object.freeze(c2 ? {
     roofWeaponStations: 1,

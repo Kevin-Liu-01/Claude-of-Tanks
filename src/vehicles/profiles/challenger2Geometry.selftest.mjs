@@ -26,6 +26,7 @@ const hull = vertices('hull');
 const hullDetail = vertices('hullDetail');
 const turret = vertices('turret');
 const turretDark = vertices('turretDark');
+const turretEquipment = vertices('turretEquipment');
 
 assert.equal(tank.root.getObjectByName('hullRubber'), undefined,
   'former vertical fender bars must not remain as rubber track intrusions');
@@ -92,5 +93,45 @@ for (const point of [
   assert.ok(turret.some(vertex => vertex.every((value, axis) => near(value, point[axis]))),
     `roof module must remain seated at ${point.join(',')}`);
 }
+
+const roofReceipt = tank.root.getObjectByName('rig_turret')?.userData.challenger2RoofSeatingReceipt;
+assert.ok(roofReceipt, 'Challenger 2 exposes a roof seating receipt');
+assert.equal(roofReceipt.maxRoofGapM, 0,
+  'marked roof fittings permit no visible daylight below their carriers');
+assert.equal(roofReceipt.armorEnvelopeExcluded, true,
+  'optics, launcher tubes, and weapon-station fittings remain outside structural armor');
+assert.ok(roofReceipt.roofSeats.length >= 17,
+  'all marked roof fittings and both service-bridge endpoints are audited');
+for (const seat of roofReceipt.roofSeats) {
+  assert.ok(near(seat.carrierY - seat.bottomY, roofReceipt.contactEmbedM, 1e-4),
+    `${seat.label} must overlap its roof carrier by 10 mm`);
+}
+
+assert.ok(roofReceipt.station.planOverlapM >= 0.03,
+  'weapon-station receiver cheeks must reach the trunnion ring in plan');
+assert.ok(roofReceipt.station.verticalOverlapM >= 0.01,
+  'weapon-station receiver cheeks must overlap the trunnion ring vertically');
+assert.ok(roofReceipt.station.receiverSupportFrontZ < roofReceipt.station.ringRearZ,
+  'weapon-station support and ring must form one connected assembly');
+assert.ok(turretEquipment.some(([x, y, z]) => x > 0.58 && x < 0.63
+  && y > 0.70 && y < 0.85 && z > 0.32 && z < 0.36),
+'extended receiver cheek must visibly overlap the trunnion envelope');
+
+assert.equal(roofReceipt.smokeMouths.length, 10,
+  'every smoke canister carries one coaxial mouth');
+for (const mouth of roofReceipt.smokeMouths) {
+  const expected = new THREE.Vector3(0, 0, mouth.mouthOffsetZ)
+    .applyEuler(new THREE.Euler(...mouth.rotation))
+    .add(new THREE.Vector3(...mouth.tubeCenter));
+  assert.ok(turretDark.some(([x, y, z]) => expected.distanceTo(new THREE.Vector3(x, y, z)) < 0.04),
+    'smoke-canister mouth geometry must occupy its transformed tube end');
+}
+
+assert.equal(turret.filter(([x, y, z]) => Math.abs(Math.abs(x) - 1.327) < 0.025
+  && y > 0.48 && y < 0.68 && z > 0.09 && z < 0.31).length, 0,
+'former floating side heads must not enlarge structural turret armor');
+assert.equal(turret.filter(([x, y, z]) => x > 1.10 && x < 1.20
+  && y > 0.41 && y < 0.64 && z > -2.16 && z < -2.00).length, 0,
+'former floating rear head must not remain in structural turret armor');
 
 console.log('challenger2Geometry.selftest: fenders, parallel cheeks, roof seating, and track clearance pass');

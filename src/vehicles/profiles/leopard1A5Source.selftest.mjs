@@ -102,7 +102,7 @@ assert.deepEqual(finish, {
   roadWheelForwardShift: 0.30,
   returnRollerZs: [2.40, 1.00, -0.42, -1.77],
   returnRollerY: 1,
-  bodyLiftY: 0.14,
+  bodyLiftY: 0,
   trackWidth: 0.54,
   wheelWidth: 0.225,
   trackOuterEdgeX: 1.67,
@@ -115,13 +115,13 @@ assert.deepEqual(finish, {
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
   hullOverFenders: true,
-  hullSponsonBottomY: 1.34,
-  fenderShelfTopY: 1.3675,
+  hullSponsonBottomY: 1.20,
+  fenderShelfTopY: 1.2275,
   hullFenderOverlapY: 0.0275,
   upperGlacisSurfaces: 1,
-  upperGlacisFrontY: 1.18,
-  upperGlacisRearY: 1.68,
-  lowerGlacisJoinY: 1.18,
+  upperGlacisFrontY: 1.04,
+  upperGlacisRearY: 1.54,
+  lowerGlacisJoinY: 1.04,
   redesignedLeopardTrackCourse: true,
   integratedTrackShoes: true,
   trackLinkPitch: 0.125,
@@ -152,6 +152,8 @@ assert.equal(finish.returnRollerY, 1,
   'the lower return rollers reduce the complete track-assembly height');
 assert.equal(finish.trackTopSupportY, 1.14,
   'the wider upper track course remains seated directly below the fenders');
+assert.equal(finish.bodyLiftY, 0,
+  'the hull returns to its source datum without moving the running gear');
 
 // The sponson must bear on the fender shelf, while exactly one long shallow
 // upper-glacis surface remains between the deck break and nose. A vertical
@@ -163,9 +165,9 @@ assert.ok(finish.hullSponsonBottomY < finish.fenderShelfTopY
 const bowHits = new THREE.Raycaster(
   new THREE.Vector3(0, -1, 2.50), new THREE.Vector3(0, 1, 0), 0, 4,
 ).intersectObject(mesh('hull'), false);
-assert.equal(bowHits.filter((hit) => hit.point.y > 1.09 && hit.point.y < 1.34).length, 0,
+assert.equal(bowHits.filter((hit) => hit.point.y > 0.95 && hit.point.y < 1.20).length, 0,
   'the obsolete lower duplicate upper-glacis plane is absent');
-assert.ok(bowHits.some((hit) => hit.point.y > 1.42 && hit.point.y < 1.47),
+assert.ok(bowHits.some((hit) => hit.point.y > 1.28 && hit.point.y < 1.33),
   'the single shallow upper glacis remains at the authored exterior station');
 
 // The marked rear and center deck skins have structural material directly
@@ -174,7 +176,7 @@ assert.ok(bowHits.some((hit) => hit.point.y > 1.42 && hit.point.y < 1.47),
 const deckSupportProbe = (y, z) => new THREE.Raycaster(
   new THREE.Vector3(2, y, z), new THREE.Vector3(-1, 0, 0), 0, 2,
 ).intersectObject(mesh('hull'), false)[0];
-for (const [y, z] of [[1.74, -2.50], [1.69, 0]]) {
+for (const [y, z] of [[1.60, -2.50], [1.55, 0]]) {
   const hit = deckSupportProbe(y, z);
   assert.ok(hit && hit.distance <= 0.80,
     `deck support closes the former internal void at y=${y}, z=${z}`);
@@ -183,7 +185,7 @@ mesh('hullCloth');
 
 // The source ring is 0.50 m forward of hull center. The gun saddle must root
 // inside the cast turret face so the tube and mantlet remain one assembly.
-assert.ok(turretRig.position.distanceTo(new THREE.Vector3(0, 1.69, 0.50)) < 1e-8,
+assert.ok(turretRig.position.distanceTo(new THREE.Vector3(0, 1.55, 0.50)) < 1e-8,
   'turret ring retains the registered source station');
 assert.ok(gunRig.position.distanceTo(new THREE.Vector3(0, 0.47, 1.15)) < 1e-8,
   'gun saddle retains its authored turret-local station');

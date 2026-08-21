@@ -10457,7 +10457,10 @@ function buildLeo1A5ArticulatedProfile(P) {
   const fenderShelfTopY = 1.2275;
   const hullSponsonBottomY = 1.20;
   const hullSponsonTopY = 1.44;
-  const bodyLiftY = 0.14;
+  // Keep the hull at its authored source datum. The former +140 mm body lift
+  // opened an oversized strip of daylight above the unchanged Leopard track
+  // course and made the complete upper vehicle read detached from its gear.
+  const bodyLiftY = 0;
   const roadWheelY = 0.37;
   const roadWheelZs = [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92];
   const returnRollerZs = [2.40, 1.00, -0.42, -1.77];
@@ -10653,12 +10656,11 @@ function buildLeo1A5ArticulatedProfile(P) {
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
   });
 
-  // Reseat the complete armored body above the suspension datum. Previous
-  // revisions lowered the wheel row and deepened the contact run without
-  // moving the hull, which left the vehicle visually sunk into its running
-  // gear. Running-gear objects and their dedicated buckets stay at the
-  // certified wheel/end-drum stations; every fixed hull skin and fitting is
-  // lifted together, and the turret ring follows the new deck station below.
+  // Keep the complete armored body on the source datum. Running-gear objects
+  // and their dedicated buckets remain at the certified wheel/end-drum
+  // stations; only fixed hull skins and fittings use this body offset, and
+  // the turret ring follows the deck so it cannot float above the lowered
+  // hull.
   P.offsetBuckets([
     'hull', 'hullCupola', 'hullEquipment', 'hullDetail', 'hullDark',
     'hullRubber', 'hullWood', 'hullCloth', 'hullGlass', 'hullTrack',

@@ -4,6 +4,20 @@ import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
 import { vehicleMarkingAnchor } from '../vehicleMarkings.js';
 
+function countPanelCarrierFaces(mesh) {
+  const position = mesh.geometry.getAttribute('position');
+  let count = 0;
+  for (let i = 0; i < position.count; i += 3) {
+    const vertices = [0, 1, 2].map((offset) => new THREE.Vector3(
+      position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)));
+    if (!vertices.every((vertex) => Math.abs(Math.abs(vertex.x) - 1.115) < 1e-5)) continue;
+    const centroid = vertices[0].clone().add(vertices[1]).add(vertices[2]).multiplyScalar(1 / 3);
+    if (centroid.y > 0.15 && centroid.y < 0.58
+        && centroid.z > -2.45 && centroid.z < -1.10) count += 1;
+  }
+  return count;
+}
+
 for (const id of ['ariete_c1', 'ariete_c2']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
@@ -15,6 +29,7 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
 
   const leftBand = tank.root.getObjectByName('gearTrackBandL');
   const turret = tank.root.getObjectByName('rig_turret');
+  const turretArmor = turret.getObjectByName('turret');
   const hull = tank.root.getObjectByName('hull');
   const hullRig = tank.root.getObjectByName('rig_hull');
   assert.ok(leftBand?.geometry, `${id}: one native smart track band exists`);
@@ -38,6 +53,17 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     `${id}: rear terminal reduction is recorded against the original wheel`);
   assert.equal(arieteGear.linkedCourseAdjusted, true, `${id}: linked track course was regenerated`);
 
+  const panel = turret.userData.arieteSidePanelReceipt;
+  assert.equal(panel.owner, 'turret', `${id}: both marked panels belong to the articulated turret`);
+  assert.equal(panel.formerInnerFaceXM, 1.40, `${id}: receipt records the former floating seat`);
+  assert.equal(panel.innerFaceXM, 1.115, `${id}: panel inner faces move onto the bustle carrier`);
+  assert.ok(panel.carrierOverlapM >= 0.01, `${id}: panels overlap the carrier by at least 10 mm`);
+  assert.equal(panel.maxSupportGapM, 0, `${id}: no daylight remains below either panel`);
+  assert.equal(panel.rackSupportArmsPerSide, 3, `${id}: outer rack is tied to the re-seated panel`);
+  assert.equal(panel.rearBasketBridgesPerSide, 1, `${id}: aft panel is returned into the basket frame`);
+  assert.ok(countPanelCarrierFaces(turretArmor) >= 4,
+    `${id}: both panel inner faces exist on the recorded carrier plane`);
+
   const equipment = turret.userData.arieteEquipmentReceipt;
   if (id === 'ariete_c1') {
     assert.equal(equipment.manualPintles, 2, 'C1 carries two manual machine-gun stations');
@@ -52,6 +78,22 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     assert.equal(equipment.rotatingApuAssembly, true, 'marked rear APU assembly is turret owned');
     const remoteRws = turret.getObjectByName('arieteC2RemoteRws');
     assert.ok(remoteRws, 'C2 T-90-style automated tower is present');
+    const era = turret.userData.arieteC2EraReceipt;
+    assert.equal(era.carrierDerivedTransforms, true,
+      'C2 ERA transforms derive from the armor faces they protect');
+    assert.ok(era.contactEmbedM >= 0.01, 'C2 ERA embeds at least 10 mm into every carrier');
+    assert.equal(era.maxSupportGapM, 0, 'C2 ERA permits no support daylight');
+    assert.equal(era.faceNormalAlignmentDeg, 0, 'C2 ERA backs share their carrier normals');
+    assert.equal(era.turretCheekCassettes, 20, 'C2 carries dense paired cheek courses');
+    assert.equal(era.turretSideCassettes, 16, 'C2 carries two complete turret-side courses');
+    assert.equal(era.turretBustleCassettes, 12, 'C2 carries paired aft bustle courses');
+    assert.equal(era.totalTurretCassettes, 48, 'C2 turret receives substantially denser ERA');
+    assert.equal(era.sideSkirtCassettes, 52, 'C2 skirts carry two rows across all 13 bays per side');
+    assert.equal(era.totalCassettes, 100, 'C2 upgrade contains one hundred seated cassettes');
+    hull.geometry.computeBoundingBox();
+    assert.ok(Math.abs(hull.geometry.boundingBox.min.x + 1.80) < 1e-5
+      && Math.abs(hull.geometry.boundingBox.max.x - 1.80) < 1e-5,
+    'C2 skirt ERA finishes flush on the published width plane');
     for (const yaw of [0, Math.PI / 3]) {
       turret.rotation.y = yaw;
       tank.root.updateMatrixWorld(true);

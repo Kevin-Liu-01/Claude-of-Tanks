@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
+import { TYPE10_GUN_SEAT } from './profiles/type10GunSeat.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {
   crewBox as cbox,
@@ -193,7 +194,7 @@ const MODERN3_SPECS = {
     // type90 hit frame stays byte-invariant (guard law §5.336).
     dims: { hullLengthM: 7.524, overallLengthM: 10.439, widthM: 3.564, heightM: 2.948 },
     // Native authored rig at the ×1.10 frame (§5.336): deck 1.6885 mid /
-    // 1.782 engine, ring pivot [1.672, +0.235], bore 1.991, muzzle +6.677 =
+    // 1.782 engine, ring pivot [1.672, +0.235], bore 1.991, muzzle +6.653 =
     // the 10.44 overall on the 7.52 hull. Armor frame scaled in the SAME
     // edit (§D ERA-def/geometry coupling law); protection mm values are
     // gameplay truth and do not scale with visual size.
@@ -202,13 +203,11 @@ const MODERN3_SPECS = {
     // row clones this armor through make() + fitArmorToDims (which scales
     // pivots — the type90 hit frame must stay byte-invariant, guard law
     // §5.336) and japan.js clones it for type10b. The LIVE rig/sim pivots
-    // for type10 + type10b are re-seated post-clone in japan.js: the §5.336
-    // rig was authored THROUGH the old calibrated-pivot remap that §5.361
-    // removed (rig anchors never ride the calibration map), so the certified
-    // seats — turretPivot [0, 1.8028, 0.2713] / gunPivot local z 1.1771,
-    // exactly what the retired remap produced from the arrays below — are
-    // now authored explicitly there. rig_turret itself stays builder-pinned
-    // at [0, 1.672, 0.2354] (see P.turretG.position.set in the builder).
+    // for type10 + type10b are re-seated post-clone in japan.js. Their gun
+    // pivot comes from profiles/type10GunSeat.js so the mantlet meets the
+    // marked turret throat without moving the certified muzzle station.
+    // rig_turret itself stays builder-pinned at [0, 1.672, 0.2354] (see
+    // P.turretG.position.set in the builder).
     armor: modernArmor({
       hl: 3.762, hw: 1.782, inW: 1.144, floor: 0.495, trkTop: 1.045, roofY: 1.683,
       turretPivot: [0, 1.672, 0.231], gunPivot: [0, 0.319, 1.419],
@@ -2491,6 +2490,9 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
   // ---- mantlet + gun (§B3.1 — no prism reads anywhere on the run: the
   // print's big collar ×1.10 with the recessed canvas boot, clamp-ringed,
   // in a real cradle; bore 1.991) -------------------------------------------
+  const type10MuzzleLocalZ = TYPE10_GUN_SEAT.certifiedMuzzleWorldZ
+    - P.turretG.position.z - P.spec.armor.gunPivot[2];
+  const type10GunLen = type10MuzzleLocalZ - 0.033;
   P.add('turretDark', box(0.638, 0.55, 0.055), 0, 0.319, 1.98, 0.55, 0, 0);     // embrasure shadow plate on the prow rake
   P.addGunExtra(box(1.012, 0.572, 0.605), 0, 0.011, 0.462);                     // armored mantlet housing nested in the cheek V
   for (const s of [-1, 1]) {
@@ -2508,17 +2510,14 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
   P.addGunExtraDark(cylZ(0.209, 0.033, P.q ? 18 : 12), 0, 0, 1.062);            // boot clamp ring mid (on the cone surface)
   P.addGunExtraDark(cylZ(0.033, 0.066, 8), 0.297, 0.11, 0.935);                 // coax port, flush in the mantlet face
   P.addGunExtra(box(0.132, 0.121, 0.154), 0.297, 0.11, 0.858);                  // coax armored fairing behind the port
-  P.addGunExtra(cylZ(0.1705, 0.308, P.q ? 16 : 10), 0, 0, 5.0046);              // muzzle REFERENCE COLLAR (§B3.1 collar grammar, print muzzle-zone section ×1.10)
-  P.addGunExtraDark(cylZ(0.1727, 0.044, P.q ? 16 : 10), 0, 0, 4.855);           // collar seam ring
-  // Gun-local run 5.207: the anatomy reconcile (combatAnatomy reconcileFrame
-  // maps armor.gunPivot into the calibrated turret frame) seats the gun
-  // group at world z ~1.41, 0.24 aft of the naive spec sum — measured via
-  // rig probe this round (gunLocal z 1.1771 + ring 0.2354). The exposed run
-  // carries the difference so the muzzle lands at world ~6.65 = the
-  // published 10.439 overall (gate dimRow receipt: 10.26 at the 5.027 cut).
-  buildGun(P, { len: 5.207, r: 0.1045, sleeve: true, evac: 0.52, evacR: 1.6, collar: true, baseR: 0.187 }); // JSW 120 L/44 in its full thermal sleeve
-  muzzleBore(P, 5.24, 0.1045, 0.0605, 14);                                      // §B3.1 recessed bore at the tube terminus
-  P.muzzleZ = 5.24;
+  P.addGunExtra(cylZ(0.1705, 0.308, P.q ? 16 : 10), 0, 0, type10MuzzleLocalZ - 0.2354); // muzzle reference collar
+  P.addGunExtraDark(cylZ(0.1727, 0.044, P.q ? 16 : 10), 0, 0, type10MuzzleLocalZ - 0.385); // collar seam ring
+  // The mantlet now seats at the marked turret throat. Shorten only the
+  // gun-local run by the same longitudinal correction so both variants keep
+  // their certified muzzle station and overall vehicle length.
+  buildGun(P, { len: type10GunLen, r: 0.1045, sleeve: true, evac: 0.52, evacR: 1.6, collar: true, baseR: 0.187 }); // JSW 120 L/44 in its full thermal sleeve
+  muzzleBore(P, type10MuzzleLocalZ, 0.1045, 0.0605, 14);                         // §B3.1 recessed bore at the tube terminus
+  P.muzzleZ = type10MuzzleLocalZ;
   // ---- roof suite at the print's measured stations ×1.10 ------------------
   // One CONTINUOUS central complex (§5.248 print receipt): gunner housing +
   // conduit spine + pano head in line — §B3 sight grammar: hooded windows,
