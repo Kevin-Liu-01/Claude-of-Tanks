@@ -34,7 +34,6 @@ import {
   ruSkirtBand,
   widthAnchor,
   domeRailRu,
-  eraRuCheeks,
 } from './russia.js';
 import { ABRAMS_PROFILES } from './abrams.js';
 
@@ -149,6 +148,87 @@ function uaSmoke(P, o) {
   }
 }
 
+function modernT80CheekCarrier(s) {
+  const bottom = [
+    [s * 0.12, 0.12, 1.62], [s * 1.28, 0.12, 0.79],
+    [s * 1.16, 0.15, -0.12], [s * 0.16, 0.14, 0.38],
+  ];
+  const top = [
+    [s * 0.12, 0.57, 1.54], [s * 1.10, 0.57, 0.76],
+    [s * 0.98, 0.60, -0.14], [s * 0.12, 0.61, 0.34],
+  ];
+  return { bottom, top, front: [bottom[0], bottom[1], top[1], top[0]] };
+}
+
+// Build the frontal ERA from the actual welded cheek plane instead of
+// orbiting generic boxes around the donor dome. Each painted cassette embeds
+// into the faceted carrier, the banks meet beside the mantlet in a clean
+// arrow, and only narrow service seams use the dark material. This removes
+// the former spare-track-steel wedges/V tips while preserving a T-90-family
+// segmented clamshell read from front, quarter and plan views.
+function addFacetedT80FrontERA(P, variant) {
+  const kursk = variant === 'kursk';
+  const receipt = {
+    family: 'ua-t80-faceted-t90-front-r2',
+    paintedArmorOnly: true,
+    cheekCassettes: 0,
+    mantletCassettes: 0,
+    shoulderReturnCassettes: 6,
+  };
+
+  const addCassette = (face, w, h, d, kind) => {
+    const cassette = faceSeatedCassette(P, 'turret',
+      face.point.toArray(), face.normal.toArray(), face.du.toArray(),
+      w, h, d, { embed: 0.040, painted: true, lid: false });
+
+    // A recessed gasket is slightly wider than the cassette and intersects
+    // the carrier plane. Only its narrow perimeter remains visible, producing
+    // a stable modular joint without a coplanar overlay or a dark panel face.
+    P.add('turretDark', KIT.xform(
+      KIT.box(w + 0.040, 0.020, d + 0.040),
+      0, -h * 0.50 + 0.004, 0,
+    ), cassette.center.x, cassette.center.y, cassette.center.z,
+    cassette.rotation.x, cassette.rotation.y, cassette.rotation.z);
+
+    // Short flush service mark: enough contrast to expose the face angle at
+    // garage/game scale, but far smaller than the removed steel/black blocks.
+    P.add('turretDark', KIT.xform(
+      KIT.box(0.026, 0.012, d * 0.52),
+      w * 0.24, h * 0.50 + 0.006, 0,
+    ), cassette.center.x, cassette.center.y, cassette.center.z,
+    cassette.rotation.x, cassette.rotation.y, cassette.rotation.z);
+
+    receipt[kind] += 1;
+  };
+
+  for (const s of [-1, 1]) {
+    const { front: frontFace } = modernT80CheekCarrier(s);
+
+    // Three stepped banks follow the carrier's compound pitch. Their centers
+    // are staggered so the outer silhouette reads as interlocking wedges,
+    // rather than the old ring of unrelated floating boxes.
+    const banks = [
+      { v: 0.72, us: [0.20, 0.49, 0.78], w: 0.17, h: kursk ? 0.115 : 0.105, d: 0.31 },
+      { v: 0.43, us: [0.16, 0.40, 0.64, 0.86], w: 0.18, h: kursk ? 0.125 : 0.115, d: 0.255 },
+      { v: 0.15, us: [0.21, 0.50, 0.79], w: 0.14, h: kursk ? 0.135 : 0.125, d: 0.29 },
+    ];
+    for (const bank of banks) {
+      for (const u of bank.us) {
+        const face = sampleFace(...frontFace, u, bank.v, [0, 0, 1]);
+        addCassette(face, bank.w, bank.h, bank.d, 'cheekCassettes');
+      }
+    }
+
+    // The inner nose panel closes each bank at the mantlet without crossing
+    // the gun aperture. It is seated on the same face, so there is no detached
+    // V-tip or center seam floating ahead of the casting.
+    const nose = sampleFace(...frontFace, 0.055, 0.39, [0, 0, 1]);
+    addCassette(nose, 0.22, kursk ? 0.13 : 0.12, 0.23, 'mantletCassettes');
+  }
+
+  P.turretG.userData.uaT80FrontERAReceipt = Object.freeze(receipt);
+}
+
 // Ukrainian T-80 field-modernization package. The resident cast T-80 dome
 // remains the load-bearing core, while overlapping welded shoulders, a joined
 // rear bustle and a low Relikt/K-5 course give the two modernized vehicles the
@@ -162,15 +242,12 @@ function addModernizedT80TurretSuite(P, variant) {
   P.turretG.userData.uaT80ModernizationSuite = suite;
 
   // Joined faceted cheek carriers: their inner/rear edges are buried in the
-  // casting, so the angular shell reads as one turret rather than applique
-  // hovering around a round donor dome.
+  // casting, while the shared frontal datum stands proud of the cast skin.
+  // ERA derives from this exact face, preventing either daylight or buried
+  // modules when the T-80 dome profile changes.
   for (const s of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [s * 0.12, 0.12, 1.38], [s * 1.28, 0.12, 0.55],
-      [s * 1.16, 0.15, -0.12], [s * 0.16, 0.14, 0.38],
-      [s * 0.12, 0.57, 1.30], [s * 1.10, 0.57, 0.52],
-      [s * 0.98, 0.60, -0.14], [s * 0.12, 0.61, 0.34],
-    ));
+    const carrier = modernT80CheekCarrier(s);
+    P.add('turret', orientedSlab(...carrier.bottom, ...carrier.top));
 
     // Low rear-flank cassettes extend the frontal chevron into the shoulder
     // instead of ending in isolated blocks. They inherit the vehicle camo.
@@ -196,6 +273,8 @@ function addModernizedT80TurretSuite(P, variant) {
     P.addEquipment('turret', box(0.24, 0.028, 0.36), s * 1.18, 0.53,
       -1.31 + (s > 0 ? 0.08 : -0.05), 0, -s * 0.07, 0);
   }
+
+  addFacetedT80FrontERA(P, variant);
 
   // Crown bridge and attached bustle form a continuous T-90-like welded
   // upper silhouette while leaving the gun and two crew stations clear.
@@ -840,33 +919,9 @@ function buildUAT80BV(P) {
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.20);
 
-  // §5.341 T-90-READ FRONT (owner: "a ton more varied era in front that
-  // makes them look like t90 turrets"): the K-1 hand fan is superseded by
-  // the shared t90a clamshell grammar on the rebased rings — scheme-paint
-  // K-5 wedge leaves w/ segment seams + two-leaf lower plates + flank
-  // tiles (eraRuCheeks k5, the t90.js p5 pattern), PLUS a varied dark
-  // brick course on the upper slope (the mix law: wedge + brick, not one
-  // uniform field) and mantlet under-blocks re-seated at the new casting
-  // front.
-  eraRuCheeks(P, {
-    rings, sz: 0.88, rCz: 0.17,
-    k5T: 0.64, k5Y: 0.30, k5Out: 0.10, k5Yaw: 0.40, k5Len: 0.98,
-    k5H: 0.20, k5D: 0.52, k5Seg: 4, k5CapIn: 0.03, k5Pitch: -0.38,
-    k5Lower: { dy: 0.14, h: 0.15, dPitch: 0.33, tuck: 0.05 },
-    k5Bucket: 'turret', k5TileY: 0.30,
-  }, 'k5');
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      const t = Math.PI / 2 + s * (0.26 + i * 0.20);
-      const y = 0.485 + (i & 1) * 0.022;
-      const r = ringSkin(rings, y);
-      const D = 1 / Math.sqrt((Math.cos(t) / r) ** 2 + (Math.sin(t) / (r * 0.88)) ** 2) + 0.025 + (i & 1) * 0.02;
-      P.add('turretTrack', box(0.26, 0.145, 0.12 + (i & 1) * 0.04),
-        Math.cos(t) * D, y, Math.sin(t) * D + 0.17, -0.30 - (i & 1) * 0.05, Math.PI / 2 - t, 0);
-    }
-  }
-  P.add('turretDark', box(0.38, 0.14, 0.06), 0, 0.10, 1.52);
-  P.add('turretDark', box(0.32, 0.20, 0.10), 0, 0.20, 1.42, -0.16, 0, 0);
+  // The frontal package is installed after its welded carrier by
+  // addModernizedT80TurretSuite, so every cassette is surface-seated and
+  // camouflaged rather than emitted as spare-track steel around the dome.
 
   // Commander cupola RIGHT with the NSVT, gunner hatch LEFT, TKN blocks,
   // Luna IR left of the gun — every roof seat recomputed on the rebased
@@ -1123,34 +1178,9 @@ function buildUAT80UKursk(P) {
   P.add('turretDark', cylY(0.88, 0.88, 0.035, 24), 0, 0.02, 0);
   P.add('turretDark', box(1.00, 0.40, 1.20), 0, -0.18, 0.24);
 
-  // §5.341 T-90-READ FRONT: the §5.272 hand clamshell re-lands on the
-  // shared t90a grammar at the rebased rings — DARK K-5 wedge leaves
-  // (kursk identity: steel wedges vs the bv's scheme paint) with segment
-  // seams, two-leaf lower plates + flank tiles, PLUS a varied mixed-bucket
-  // brick course on the upper slope and the V tips re-seated at the new
-  // casting front, meeting over the mantlet.
-  eraRuCheeks(P, {
-    rings, sz: 0.88, rCz: 0.22,
-    k5T: 0.60, k5Y: 0.28, k5Out: 0.12, k5Yaw: 0.44, k5Len: 1.08,
-    k5H: 0.24, k5D: 0.55, k5Seg: 5, k5CapIn: 0.03, k5Pitch: -0.40,
-    k5Lower: { dy: 0.15, h: 0.16, dPitch: 0.35, tuck: 0.05 },
-    k5Bucket: 'turretTrack', k5TileY: 0.28,
-  }, 'k5');
-  for (const s of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      const t = Math.PI / 2 + s * (0.28 + i * 0.19);
-      const y = 0.455 + (i & 1) * 0.02;
-      const r = ringSkin(rings, y);
-      const D = 1 / Math.sqrt((Math.cos(t) / r) ** 2 + (Math.sin(t) / (r * 0.88)) ** 2) + 0.03 + (i & 1) * 0.018;
-      P.add((i & 1) ? 'turret' : 'turretTrack', box(0.25, 0.14, 0.12 + (i & 1) * 0.05),
-        Math.cos(t) * D, y, Math.sin(t) * D + 0.22, -0.32 - (i & 1) * 0.04, Math.PI / 2 - t, 0);
-    }
-    P.add('turretTrack', box(0.30, 0.24, 0.26), s * 0.26, 0.24, 1.56, -0.34, s * 0.30, 0);     // V tip
-    P.add('turretDark', box(0.24, 0.028, 0.030), s * 0.28, 0.355, 1.635, -0.34, s * 0.30, 0);
-  }
-  P.add('turretDark', box(0.035, 0.24, 0.30), 0, 0.25, 1.62, -0.34, 0, 0);                     // center V seam
-  P.add('turretDark', box(0.38, 0.14, 0.06), 0, 0.02, 1.56);
-  P.add('turretDark', box(0.32, 0.20, 0.10), 0, 0.14, 1.48, -0.16, 0, 0);
+  // The frontal package is installed after its welded carrier by
+  // addModernizedT80TurretSuite, replacing the former steel wedge leaves,
+  // mixed dark bricks and detached V tips with one coherent painted array.
 
   // Tall right-forward gunner primary sight — the print's strongest roof
   // tell and this build's ONE budgeted p95 spike window (~3 columns at

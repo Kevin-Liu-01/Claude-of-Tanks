@@ -20,6 +20,7 @@ for (const [id, receipt, weaponName] of variants) {
     const shell = turretRig?.getObjectByName('turret');
     const equipment = turretRig?.getObjectByName('turretEquipment');
     const rws = turretRig?.getObjectByName(weaponName);
+    const frontERA = turretRig?.userData.uaT80FrontERAReceipt;
 
     assert.ok(turretRig && shell?.isMesh && equipment?.isMesh,
       `${id}: modern turret retains structural and equipment ownership`);
@@ -27,9 +28,20 @@ for (const [id, receipt, weaponName] of variants) {
       `${id}: modernization suite is explicitly receipted`);
     assert.ok(rws?.isGroup && rws.parent === turretRig,
       `${id}: Kord RWS yaws with the turret`);
+    assert.deepEqual(frontERA, {
+      family: 'ua-t80-faceted-t90-front-r2',
+      paintedArmorOnly: true,
+      cheekCassettes: 20,
+      mantletCassettes: 2,
+      shoulderReturnCassettes: 6,
+    }, `${id}: frontal T-90-style ERA has the complete receipted cassette set`);
+    assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
+      `${id}: obsolete spare-track-steel frontal blocks are removed`);
 
     shell.geometry.computeBoundingBox();
     equipment.geometry.computeBoundingBox();
+    assert.ok(shell.geometry.boundingBox.max.z >= 1.70,
+      `${id}: faceted carrier and ERA stand proud of the cast dome`);
     assert.ok(shell.geometry.boundingBox.min.z <= -1.77,
       `${id}: welded bustle overlaps the cast turret core`);
     assert.ok(equipment.geometry.boundingBox.min.z <= -1.98,

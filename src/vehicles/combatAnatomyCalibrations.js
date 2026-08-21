@@ -5696,9 +5696,9 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "max": [
         1.457,
         0.7798,
-        1.6914
+        1.7086
       ],
-      "sourceHash": "300d8a47a1c80fc0"
+      "sourceHash": "ac2a23af41cb8bc0"
     },
     "tracks": {
       "left": {
@@ -5752,9 +5752,9 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "max": [
         1.457,
         0.76,
-        1.5092
+        1.7165
       ],
-      "sourceHash": "c93fde0065d5e928"
+      "sourceHash": "4658ee4b70d55f5d"
     },
     "tracks": {
       "left": {
