@@ -412,7 +412,7 @@ const HUD_CSS = `
 .cot-drive .ticks i:nth-child(5n + 1){left:calc(50% - 1px);width:2px;height:9px;background:#fff;}
 .cot-drive .ticks i:nth-last-child(-n + 5){background:#e34f4f;box-shadow:0 0 3px rgba(227,79,79,.45);}
 .cot-drive .needle{position:absolute;z-index:2;left:50%;top:50%;width:2px;height:35px;
-  transform-origin:50% 100%;transform:translate(-50%,-100%);rotate:-135deg;
+  margin:-35px 0 0 -1px;transform-origin:50% 100%;rotate:-135deg;
   transition:rotate .05s linear;will-change:transform;
   background:linear-gradient(#ff7777,#d82f36);box-shadow:0 0 5px rgba(222,55,62,.62);}
 .cot-drive .hub{position:absolute;z-index:4;left:50%;top:50%;width:8px;height:8px;
