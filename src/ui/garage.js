@@ -1670,7 +1670,7 @@ export function createGarage(opts) {
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">GitHub</span><span class="github-stars" data-github-stars>Stars</span></a>` +
+    `<span class="nav-label">GitHub</span><span class="github-stars" data-github-stars>77</span></a>` +
     `<div class="cot-settings-slot"></div></nav>` +
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +

@@ -1,6 +1,7 @@
 const REPOSITORY_API = 'https://api.github.com/repos/Kevin-Liu-01/claude-of-tanks';
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 15 * 60 * 1000;
+export const FALLBACK_GITHUB_STAR_COUNT = 77;
 
 const starNodes = new Set();
 let activeRequest = null;
@@ -57,7 +58,7 @@ async function fetchGitHubStars() {
     writeCachedStars(repository.stargazers_count);
     return repository.stargazers_count;
   } catch (_) {
-    // Keep the readable “Stars” fallback when GitHub is unavailable.
+    // Keep the last verified numeric fallback when GitHub is unavailable.
     return null;
   }
 }
@@ -75,7 +76,7 @@ export function mountGitHubStars(root = document) {
   if (!starNodes.size) return Promise.resolve(null);
 
   const cached = readCachedStars();
-  if (cached) renderGitHubStarCount(cached.count);
+  renderGitHubStarCount(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
   if (cached && Date.now() - cached.savedAt < STAR_CACHE_TTL_MS) {
     return Promise.resolve(cached.count);
   }

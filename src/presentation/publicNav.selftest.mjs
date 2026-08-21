@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { formatGitHubStarCount } from '../ui/githubStars.js';
+import { FALLBACK_GITHUB_STAR_COUNT, formatGitHubStarCount } from '../ui/githubStars.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pages = [
@@ -16,7 +16,7 @@ const expectedLinks = [
   ['/gallery', 'Tank Gallery'],
   ['/docs', 'Docs'],
   ['/studio', 'Studio'],
-  ['https://github.com/Kevin-Liu-01/claude-of-tanks', 'GitHub Stars'],
+  ['https://github.com/Kevin-Liu-01/claude-of-tanks', `GitHub ${FALLBACK_GITHUB_STAR_COUNT}`],
   ['/', 'Play Now'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
@@ -65,6 +65,8 @@ const gameRepositoryLinks = [...gameHtml.matchAll(/<a[^>]+href="https:\/\/github
 assert.equal(gameRepositoryLinks.length, 2, 'loading and credits screens must retain both repository controls');
 for (const [, contents] of gameRepositoryLinks) {
   assert.ok(contents.includes('data-github-stars'), 'every repository control in the loading flow shows stars');
+  assert.ok(contents.includes(`data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}`),
+    'every repository control in the loading flow starts with the numeric fallback');
 }
 
 const garageSource = readFileSync(join(ROOT, 'src/ui/garage.js'), 'utf8');
@@ -72,8 +74,8 @@ const githubControl = garageSource.indexOf('class="nv cot-github"');
 const settingsSlot = garageSource.indexOf('class="cot-settings-slot"');
 assert.ok(githubControl >= 0 && settingsSlot > githubControl,
   'garage GitHub stars must sit immediately before the settings control');
-assert.match(garageSource, /class="github-stars" data-github-stars>Stars<\/span>/,
-  'garage GitHub control exposes the shared live star count');
+assert.match(garageSource, new RegExp(`class="github-stars" data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}<\\/span>`),
+  'garage GitHub control exposes a numeric fallback before the live star count');
 
 for (const file of ['home.html', 'docs.html']) {
   const html = readFileSync(join(ROOT, file), 'utf8');
@@ -81,6 +83,8 @@ for (const file of ['home.html', 'docs.html']) {
   assert.ok(repositoryLinks.length >= 2, `${file} must retain navbar and footer repository controls`);
   for (const [, contents] of repositoryLinks) {
     assert.ok(contents.includes('data-github-stars'), `${file} repository control is missing its star count`);
+    assert.ok(contents.includes(`data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}`),
+      `${file} repository control must render the verified numeric fallback`);
   }
 }
 
