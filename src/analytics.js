@@ -1,5 +1,8 @@
-import { inject } from '@vercel/analytics';
-
-inject({
+const mountAnalytics = () => import('@vercel/analytics').then(({ inject }) => inject({
   mode: import.meta.env.PROD ? 'production' : 'development',
-});
+}));
+
+window.setTimeout(() => {
+  if ('requestIdleCallback' in window) requestIdleCallback(mountAnalytics, { timeout: 4000 });
+  else mountAnalytics();
+}, 3800);

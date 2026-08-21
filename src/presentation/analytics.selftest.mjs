@@ -17,9 +17,10 @@ assert.equal(
 );
 
 const analyticsSource = await readFile('src/analytics.js', 'utf8');
-assert.match(analyticsSource, /from ['"]@vercel\/analytics['"]/, 'analytics module imports the Vercel client');
+assert.match(analyticsSource, /import\(['"]@vercel\/analytics['"]\)/, 'analytics module lazily imports the Vercel client');
 assert.match(analyticsSource, /\binject\s*\(/, 'analytics module injects the Vercel client');
 assert.match(analyticsSource, /import\.meta\.env\.PROD/, 'analytics mode follows the Vite production environment');
+assert.match(analyticsSource, /requestIdleCallback/, 'analytics stays outside the page critical path');
 
 for (const entrypoint of entrypoints) {
   const html = await readFile(entrypoint, 'utf8');

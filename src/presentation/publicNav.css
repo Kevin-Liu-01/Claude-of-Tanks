@@ -103,7 +103,7 @@
 .public-nav__links .public-nav__cta:hover{background:#ffdba1;color:#18130c}
 
 @media(max-width:900px){
-  .public-nav{height:56px}
+  .public-nav{height:56px;background:rgba(6,9,12,.985);backdrop-filter:none;-webkit-backdrop-filter:none}
   .public-nav__inner{width:calc(100% - 20px)}
   .public-nav__brand span{display:none}
   .public-nav__brand img{width:28px;height:34px}

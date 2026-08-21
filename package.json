@@ -52,6 +52,7 @@
     "showcase:publish": "node tools/marketing-shots/publish-showcase-library.mjs",
     "showcase:check": "node tools/marketing-shots/showcase-library.selftest.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs",
+    "perf:public": "node tools/public-page-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs",
     "perf:loading": "node tools/loading-budget-probe.mjs",
     "perf:transitions": "node tools/loading-budget-probe.mjs --mode transitions",

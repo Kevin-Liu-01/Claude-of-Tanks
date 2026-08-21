@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Mobile landing-page video proxies",
+  "encoding": {
+    "codec": "h264",
+    "width": 960,
+    "height": 540,
+    "framesPerSecond": 24,
+    "audio": false
+  },
+  "files": [
+    { "path": "feature-reel-mobile.mp4", "bytes": 3984639, "source": "/media/promo-v13/claude-of-tanks-promo-clean.mp4" },
+    { "path": "desert-ground-rush-mobile.mp4", "bytes": 932397, "source": "/media/hero-rails-r2/01_desert-ground-rush.webm" },
+    { "path": "winter-ice-orbit-mobile.mp4", "bytes": 681513, "source": "/media/hero-rails-r2/02_winter-ice-orbit.webm" },
+    { "path": "steppe-charge-mobile.mp4", "bytes": 904282, "source": "/media/hero-rails-r2/03_steppe-charge-thread.webm" },
+    { "path": "urban-overhead-mobile.mp4", "bytes": 1015300, "source": "/media/hero-rails-r2/04_urban-overhead-dive.webm" },
+    { "path": "coastal-shell-mobile.mp4", "bytes": 856954, "source": "/media/hero-rails-r2/05_coastal-shell-skim.webm" },
+    { "path": "studio-knockout-mobile.mp4", "bytes": 441803, "source": "/media/landing-r1/studio-leclerc-knockout.mp4" }
+  ]
+}

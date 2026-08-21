@@ -4,8 +4,9 @@ import { resolve } from 'node:path';
 
 const root = resolve('.');
 const manifest = JSON.parse(await readFile(resolve(root, 'public/media/landing-r1/manifest.json'), 'utf8'));
+const mobileVideoManifest = JSON.parse(await readFile(resolve(root, 'public/media/web-video-r1/manifest.json'), 'utf8'));
 const home = await readFile(resolve(root, 'home.html'), 'utf8');
-const presentation = await readFile(resolve(root, 'public/presentation.css'), 'utf8');
+const presentation = await readFile(resolve(root, 'public/home.css'), 'utf8');
 const threeMark = await readFile(resolve(root, 'public/brand/threejs-mark.svg'), 'utf8');
 const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.js'), 'utf8');
 const main = home.match(/<main>([\s\S]*?)<\/main>/)?.[1] || '';
@@ -55,6 +56,10 @@ assert.ok(manifest.hero.some((slide) => slide.collection === 'foreground'));
 const heroMarkup = home.match(/<div class="v5-hero-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
 assert.equal(heroMarkup.includes('<video'), false, 'hero uses stills, not video');
 assert.equal((heroMarkup.match(/data-hero-slide/g) || []).length, manifest.hero.length);
+assert.equal((heroMarkup.match(/data-hero-slide src=/g) || []).length, 1,
+  'only the LCP hero is discoverable during initial navigation');
+assert.equal((heroMarkup.match(/data-hero-slide data-src=/g) || []).length, manifest.hero.length - 1,
+  'rotating hero frames are hydrated only when their turn approaches');
 for (const slide of manifest.hero) {
   assert.equal(heroMarkup.includes(`src="${slide.src}"`), true, `${slide.id} is mounted in the hero`);
   const file = resolve(root, 'public', slide.src.replace(/^\//, ''));
@@ -94,8 +99,20 @@ for (const rail of manifest.relocatedRails) {
 assert.equal(home.split(manifest.winterDestructionRail).length - 1, 1,
   'the remaining rail appears once in the destruction section');
 
-const videos = [...home.matchAll(/<source src="([^"]+\.(?:webm|mp4))"/g)].map((match) => match[1]);
+const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].map((match) => match[1]);
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
+assert.equal(videos.length, 7, 'all landing videos remain source-gated until viewport activation');
+assert.equal((home.match(/data-mobile-src="\/media\/web-video-r1\//g) || []).length, videos.length,
+  'every landing video supplies a lightweight mobile proxy');
+assert.equal(mobileVideoManifest.files.length, videos.length, 'mobile proxy manifest covers every landing video');
+assert.ok(mobileVideoManifest.files.reduce((total, file) => total + file.bytes, 0) < 9_000_000,
+  'the complete mobile proxy library stays below the nine-megabyte transfer budget');
+for (const proxy of mobileVideoManifest.files) {
+  const publicPath = `/media/web-video-r1/${proxy.path}`;
+  assert.equal(home.includes(`data-mobile-src="${publicPath}"`), true, `${proxy.path} is wired into the landing page`);
+  assert.equal((await stat(resolve(root, 'public', publicPath.slice(1)))).size, proxy.bytes,
+    `${proxy.path} matches its byte receipt`);
+}
 
 assert.equal(manifest.mosaic.length, 24);
 assert.equal(manifest.mosaic.filter((shot) => shot.collection === 'action').length, 12);
