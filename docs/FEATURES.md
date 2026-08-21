@@ -294,9 +294,9 @@ See docs/PERFORMANCE.md and src/engine/SKILL.md.
 
 ## Desktop, mobile, and accessibility
 
-Desktop controls are remappable. Hold `Shift` (or secondary `Left Alt`,
-controller `RB`) for free look without moving the turret, hull, or gun. Sniper
-mode has no default keyboard binding; configurable `RMB` behavior provides
+Desktop controls are remappable. Hold `Caps Lock` (or secondary `Left Alt`,
+controller `RB`) for free look without moving the turret, hull, or gun. `Shift`
+toggles sniper mode; configurable `RMB` behavior provides
 hold-to-aim, toggle-aim, or a second free-look binding, and wheel-in can enter
 the scope. Mobile receives a dedicated touch layout with movement
 joystick, swipe aim, pinch-to-scope, dynamic fire controls, safe-area handling,

@@ -26,7 +26,7 @@
 
 const BINDINGS_KEY = 'cot.bindings.v1'; // primary keyboard/mouse map (v1 compatible)
 const BINDINGS2_KEY = 'cot.bindings2.v1'; // secondary keyboard/mouse map
-const BINDINGS_LAYOUT_KEY = 'cot.bindings.layout.v2'; // Shift free-look migration receipt
+const BINDINGS_LAYOUT_KEY = 'cot.bindings.layout.v3'; // Shift aim + Caps free-look migration receipt
 const PAD_KEY = 'cot.padBindings.v1'; // gamepad button map (standard-mapping indices)
 const SETTINGS_KEY = 'cot.settings.v1';
 
@@ -71,13 +71,13 @@ const ACTION_DEFS = [
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ];
 
-/** Default primary bindings: WASD move, LMB fire, Shift free look, RMB aim,
+/** Default primary bindings: WASD move, LMB fire, Shift sniper, Caps free look, RMB aim,
  *  1/2/3 shells, E special action, 4/5/6 consumables, wheel zoom,
  *  Space handbrake, Esc menu.
- *  Shift is the always-available gun-lock/free-look hold: it moves the camera
- *  without rotating the turret or hull. Sniper has no default keyboard key;
- *  default RMB hold, wheel-in, controller LT, and the mobile scope control
- *  still enter it. RMB keeps the context-sensitive `freeCamera` binding slot
+ *  Shift toggles sniper mode. Caps Lock is the always-available gun-lock /
+ *  free-look hold: it moves the camera without rotating the turret or hull.
+ *  Default RMB hold, wheel-in, controller LT, and the mobile scope control
+ *  also enter sniper. RMB keeps the context-sensitive `freeCamera` binding slot
  *  (`hold`, `toggle`, or `freelook` via settings.rmbMode).
  *  Mouse buttons are encoded as synthetic codes "Mouse0".."Mouse4"; the wheel
  *  as "WheelUp"/"WheelDown". `null` means unbound. */
@@ -88,7 +88,7 @@ export const DEFAULT_BINDINGS = {
   right: 'KeyD',
   handbrake: 'Space',
   fire: 'Mouse0',
-  sniperToggle: null,
+  sniperToggle: 'ShiftLeft',
   shell1: 'Digit1',
   shell2: 'Digit2',
   shell3: 'Digit3',
@@ -97,7 +97,7 @@ export const DEFAULT_BINDINGS = {
   consumable1: 'Digit4',
   consumable2: 'Digit5',
   consumable3: 'Digit6',
-  freeLook: 'ShiftLeft',
+  freeLook: 'CapsLock',
   freeCamera: 'Mouse2',
   zoomIn: 'WheelUp',
   zoomOut: 'WheelDown',
@@ -275,35 +275,39 @@ function stickCurve(v) {
 }
 
 /**
- * Upgrade the former default keyboard layout without overwriting intentional
- * custom bindings. Shift moves from sniper to free look only when the saved
- * free-look key is still its old Left-Alt default (or predates that action).
- * Left Alt is retained as the secondary free-look key when that slot is free.
+ * Upgrade either former default keyboard layout without overwriting intentional
+ * custom bindings. Shift returns to sniper toggle and Caps Lock becomes the
+ * dedicated hold-to-free-look key. Left Alt remains the secondary free-look
+ * key when that slot is free.
  *
  * @param {Record<string, string|null>} primary
  * @param {Record<string, string|null>} secondary
  * @returns {boolean} whether either map changed
  */
-export function migrateShiftFreeLookBindings(primary, secondary) {
+export function migrateShiftAimCapsFreeLookBindings(primary, secondary) {
   if (!primary || typeof primary !== 'object' ||
       !secondary || typeof secondary !== 'object') return false;
 
   let changed = false;
-  const owns = (map, code, except) => Object.entries(map)
-    .some(([actionId, binding]) => actionId !== except && binding === code);
-  const oldFreeLookDefault = !Object.prototype.hasOwnProperty.call(primary, 'freeLook') ||
-    primary.freeLook === 'AltLeft';
+  const has = (map, actionId) => Object.prototype.hasOwnProperty.call(map, actionId);
+  const ownsOutsideCameraLayout = (code) => [primary, secondary].some((map) =>
+    Object.entries(map).some(([actionId, binding]) =>
+      actionId !== 'sniperToggle' && actionId !== 'freeLook' && binding === code));
+  const ownsOutsideFreeLook = (code) => [primary, secondary].some((map) =>
+    Object.entries(map).some(([actionId, binding]) => actionId !== 'freeLook' && binding === code));
+  const shiftFreeLookDefaults = primary.freeLook === 'ShiftLeft' &&
+    (!has(primary, 'sniperToggle') || primary.sniperToggle == null);
+  const legacyShiftAimDefaults = primary.sniperToggle === 'ShiftLeft' &&
+    (!has(primary, 'freeLook') || primary.freeLook === 'AltLeft');
 
-  if (primary.sniperToggle === 'ShiftLeft') {
-    primary.sniperToggle = null;
+  if ((shiftFreeLookDefaults || legacyShiftAimDefaults) &&
+      !ownsOutsideCameraLayout('ShiftLeft') &&
+      !ownsOutsideCameraLayout('CapsLock')) {
+    primary.sniperToggle = 'ShiftLeft';
+    primary.freeLook = 'CapsLock';
     changed = true;
-  }
-  if (oldFreeLookDefault && !owns(primary, 'ShiftLeft', 'freeLook')) {
-    primary.freeLook = 'ShiftLeft';
-    changed = true;
-    if (!owns(secondary, 'AltLeft', 'freeLook') &&
-        (!Object.prototype.hasOwnProperty.call(secondary, 'freeLook') ||
-          secondary.freeLook == null)) {
+    if (!ownsOutsideFreeLook('AltLeft') &&
+        (!has(secondary, 'freeLook') || secondary.freeLook == null)) {
       secondary.freeLook = 'AltLeft';
     }
   }
@@ -327,17 +331,17 @@ export function createInput(opts = {}) {
   }
   const storedMaps = [loadJson(BINDINGS_KEY), loadJson(BINDINGS2_KEY)];
   // Existing players commonly have a full copy of the previous defaults in
-  // localStorage, so changing DEFAULT_BINDINGS alone would leave Shift aiming.
-  // Migrate that exact legacy shape once and preserve all custom layouts.
-  if (loadJson(BINDINGS_LAYOUT_KEY) !== 2 && storedMaps[0] &&
+  // localStorage, so changing DEFAULT_BINDINGS alone would leave Shift on free
+  // look. Migrate only recognized default shapes and preserve custom layouts.
+  if (loadJson(BINDINGS_LAYOUT_KEY) !== 3 && storedMaps[0] &&
       typeof storedMaps[0] === 'object') {
     if (!storedMaps[1] || typeof storedMaps[1] !== 'object') storedMaps[1] = {};
-    if (migrateShiftFreeLookBindings(storedMaps[0], storedMaps[1])) {
+    if (migrateShiftAimCapsFreeLookBindings(storedMaps[0], storedMaps[1])) {
       saveJson(BINDINGS_KEY, storedMaps[0]);
       saveJson(BINDINGS2_KEY, storedMaps[1]);
     }
   }
-  saveJson(BINDINGS_LAYOUT_KEY, 2);
+  saveJson(BINDINGS_LAYOUT_KEY, 3);
   for (let s = 0; s < 2; s++) {
     const stored = storedMaps[s];
     if (stored && typeof stored === 'object') {
@@ -566,7 +570,7 @@ export function createInput(opts = {}) {
     const actionId = codeToAction.get(code);
     if (actionId && evt && evt.cancelable &&
         (code === 'Space' || code === 'Tab' ||
-         code.startsWith('Arrow') || code.startsWith('Alt'))) {
+         code === 'CapsLock' || code.startsWith('Arrow') || code.startsWith('Alt'))) {
       evt.preventDefault(); // keep bound nav keys from scrolling/refocusing
     }
     const wasDown = down.has(code);

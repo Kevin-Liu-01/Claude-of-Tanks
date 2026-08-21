@@ -311,7 +311,7 @@ switching modes never snaps the view.
   at the raycast hit, and the gun converges on that 3-D point (server-aim). Draw a second
   small marker where the gun actually points *now* (gun marker) so the player sees turret lag;
   WoT's optional "server reticle" is exactly this authoritative gun-aim indicator.
-- **Gun lock / free look**: hold the dedicated Free Look action (`Left Shift`
+- **Gun lock / free look**: hold the dedicated Free Look action (`Caps Lock`
   by default, secondary `Left Alt`, controller `RB`) to move the camera while
   freezing the aim point, turret, and hull. RMB can provide the same behavior
   when its setting is `freelook`.

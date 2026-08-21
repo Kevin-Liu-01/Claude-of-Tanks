@@ -4155,8 +4155,8 @@ function tick(nowMs) {
     camInput.cursorX = _cursorNdc.x;
     camInput.cursorY = _cursorNdc.y;
   }
-  // FREE-LOOK / RMB ROUTING: Shift (the rebindable `freeLook` action; Left Alt
-  // remains its secondary default) always provides classic hold-to-look with
+  // FREE-LOOK / RMB ROUTING: Caps Lock (the rebindable `freeLook` action; Left
+  // Alt remains its secondary default) always provides classic hold-to-look with
   // the aim point and turret frozen. What the RMB-bound `freeCamera` action
   // does is the player's settings.rmbMode pick —
   //   'hold' (DEFAULT, owner ask): hold-to-aim — the rig enters sniper while

@@ -16,7 +16,7 @@
 //     repeated close-aim scope cycles never ratchet the pitch upward (the old
 //     entry scan-lift + keep-pitch exit climbed to PITCH_MAX = sky).
 //     The never-aimed battle opening keeps the gameplay_feel r4 dirt-guard.
-//  3. Dedicated Alt free-look moves the camera while the aim/turret stay put,
+//  3. Dedicated Caps Lock free-look moves the camera while the aim/turret stay put,
 //     independent of the selected RMB mode. RMB aiming (settings rmbMode):
 //     'hold' (default) enters sniper while held
 //     and restores the prior arcade orbit + pitch on release; 'toggle' taps
@@ -327,29 +327,29 @@ const view = (page) => page.evaluate(() => {
   // Dedicated free-look: remains available while RMB is still the default
   // hold-to-aim control. Shift is deliberately not involved (sniper toggle).
   await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'hold'));
-  const alt0 = await view(page);
-  await page.keyboard.down('Alt');
+  const caps0 = await view(page);
+  await page.keyboard.down('CapsLock');
   await sleep(120);
   for (let i = 0; i < 6; i++) {
     await page.mouse.move(800 - (i + 1) * 40, 450, { steps: 1 });
     await sleep(20);
   }
   await sleep(300);
-  const alt1 = await view(page);
-  check(mode, 'Left Alt hold free-looks independently of RMB mode',
-    Math.abs(deg(wrap(alt1.camYaw - alt0.camYaw))) > 8,
-    `dYaw=${deg(wrap(alt1.camYaw - alt0.camYaw)).toFixed(1)} deg`);
-  const altAimFrozen = Math.hypot(
-    alt1.aimPoint[0] - alt0.aimPoint[0], alt1.aimPoint[2] - alt0.aimPoint[2]);
-  check(mode, 'Left Alt hold keeps the aim point and turret frozen', altAimFrozen < 1,
-    `aim point moved ${altAimFrozen.toFixed(2)} m`);
-  await page.screenshot({ path: `${SHOT_DIR}${mode}-04-alt-freelook.png` });
-  await page.keyboard.up('Alt');
+  const caps1 = await view(page);
+  check(mode, 'Caps Lock hold free-looks independently of RMB mode',
+    Math.abs(deg(wrap(caps1.camYaw - caps0.camYaw))) > 8,
+    `dYaw=${deg(wrap(caps1.camYaw - caps0.camYaw)).toFixed(1)} deg`);
+  const capsAimFrozen = Math.hypot(
+    caps1.aimPoint[0] - caps0.aimPoint[0], caps1.aimPoint[2] - caps0.aimPoint[2]);
+  check(mode, 'Caps Lock hold keeps the aim point and turret frozen', capsAimFrozen < 1,
+    `aim point moved ${capsAimFrozen.toFixed(2)} m`);
+  await page.screenshot({ path: `${SHOT_DIR}${mode}-04-caps-freelook.png` });
+  await page.keyboard.up('CapsLock');
   await sleep(400);
-  const alt2 = await view(page);
-  check(mode, 'Left Alt release snaps the camera back to the aim',
-    Math.abs(deg(wrap(alt2.camYaw - alt0.camYaw))) < 2,
-    `dYaw after release ${deg(wrap(alt2.camYaw - alt0.camYaw)).toFixed(2)} deg`);
+  const caps2 = await view(page);
+  check(mode, 'Caps Lock release snaps the camera back to the aim',
+    Math.abs(deg(wrap(caps2.camYaw - caps0.camYaw))) < 2,
+    `dYaw after release ${deg(wrap(caps2.camYaw - caps0.camYaw)).toFixed(2)} deg`);
 
   // freelook (classic): camera moves, aim/turret frozen, snap back on release
   await page.evaluate(() => window.__DEBUG.input.setSetting('rmbMode', 'freelook'));

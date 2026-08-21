@@ -182,6 +182,8 @@ async function runMode(mode, { stubNoLock, width, height }) {
   check(mode, 'default bind LMB=fire', binds.fire === 'Mouse0', `fire=${binds.fire}`);
   check(mode, 'default bind Shift=sniper (desktop classic)', binds.sniperToggle === 'ShiftLeft',
     `sniperToggle=${binds.sniperToggle}`);
+  check(mode, 'default bind Caps Lock=free look', binds.freeLook === 'CapsLock',
+    `freeLook=${binds.freeLook}`);
   check(mode, 'default binds WASD hull', binds.forward === 'KeyW' && binds.back === 'KeyS' &&
     binds.left === 'KeyA' && binds.right === 'KeyD');
 

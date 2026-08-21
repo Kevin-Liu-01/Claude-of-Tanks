@@ -84,10 +84,10 @@ summaries above are reproducible with the commands in the probe header).
    arcade orbit + preserved pitch; `toggle` = tap to toggle scope; `freelook` =
    classic gun-lock free look. Wired
    through the existing `freeCamera` binding + settings GAMEPLAY chips.
-   A separate rebindable `freeLook` action (default `Left Shift`, secondary
+   A separate rebindable `freeLook` action (default `Caps Lock`, secondary
    `Left Alt`, controller
    `RB`) always holds the camera free while freezing the aim point and turret;
-   sniper mode has no default keyboard binding, and the selected RMB mode is
+   `Left Shift` toggles sniper mode, and the selected RMB mode is
    unchanged.
 3. **Narrow-window mouse regression fix.** `input.isTouchLayout()` treated any
    window <= 900 px wide as a touch device (commit 39e43c0), which disabled
