@@ -64,11 +64,11 @@ ffmpeg([
 ]);
 
 const hero = [
-  { id: 'og-t90-column', title: 'T-90 column fire', src: '/media/featured/f7_studio_t90_column_fire.webp', collection: 'handmade' },
-  { id: 'leopard-urban-hero', title: 'Leopard 2A6 urban advance', src: '/media/presentation-r1/13_urban_hero_leo2a6.webp', collection: 'handmade' },
+  { id: 'urban-crossfire', title: 'Urban crossfire', src: '/media/featured/f10_studio_urban_crossfire.webp', collection: 'owner-directed' },
+  { id: 'fjord-firefight', title: 'Fjord firefight', src: '/media/featured/f9_studio_fjord_firefight.webp', collection: 'owner-directed' },
+  { id: 'm1-firefight', title: 'M1 firefight', src: '/media/featured/f8_studio_m1_firefight.webp', collection: 'owner-directed' },
+  { id: 'strv-steinburg-duel', title: 'Strv 103 Steinburg duel', src: '/media/featured/f6_studio_strv_steinburg_duel.webp', collection: 'owner-directed' },
   { id: 'desert-armored-contact', title: 'Desert armored contact', src: '/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp', collection: 'action' },
-  { id: 'urban-overwatch', title: 'Urban overwatch', src: '/media/showcase-r1/103_foreground_urban_overwatch_church.webp', collection: 'foreground' },
-  { id: 'verdant-column-fire', title: 'Verdant column under fire', src: '/media/showcase-r1/87_action_verdant_column_massacre.webp', collection: 'action' },
   { id: 'winter-ice-breaker', title: 'Winter ice breaker', src: '/media/showcase-r1/113_foreground_winter_ice_breaker.webp', collection: 'foreground' },
 ];
 

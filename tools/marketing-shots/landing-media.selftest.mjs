@@ -31,11 +31,15 @@ assert.match(publicPages, /function mountShotRail\(rail\)/,
 
 assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r1');
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.hero.length, 6, 'hero has six reviewed handmade stills');
-assert.ok(manifest.hero.some((slide) => slide.src === '/media/featured/f7_studio_t90_column_fire.webp'),
-  'hero includes the clean image behind the OG composite');
-assert.ok(manifest.hero.some((slide) => slide.src.includes('urban_hero_leo2a6')),
-  'hero includes the handmade Leopard frame');
+assert.equal(manifest.hero.length, 6, 'hero has six reviewed in-engine stills');
+assert.deepEqual(manifest.hero.slice(0, 4).map((slide) => slide.src), [
+  '/media/featured/f10_studio_urban_crossfire.webp',
+  '/media/featured/f9_studio_fjord_firefight.webp',
+  '/media/featured/f8_studio_m1_firefight.webp',
+  '/media/featured/f6_studio_strv_steinburg_duel.webp',
+], 'the four owner-selected battle captures lead the hero in priority order');
+assert.equal(manifest.hero.some((slide) => slide.src.includes('urban_hero_leo2a6')), false,
+  'the washed-out Leopard frame is retired from the hero');
 assert.ok(manifest.hero.some((slide) => slide.collection === 'action'));
 assert.ok(manifest.hero.some((slide) => slide.collection === 'foreground'));
 
@@ -115,4 +119,4 @@ for (const [path, bytes] of [[manifest.studio.video, manifest.studio.videoBytes]
   assert.equal((await stat(file)).size, bytes, `${path} byte receipt`);
 }
 
-console.log('landing-media.selftest: smooth gameplay proxy, handmade hero, relocated rails, Studio knockout, and 24-frame mosaic pass');
+console.log('landing-media.selftest: smooth gameplay proxy, owner-directed hero, relocated rails, Studio knockout, and 24-frame mosaic pass');

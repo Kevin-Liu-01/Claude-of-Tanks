@@ -26,14 +26,12 @@
 
 <table>
 <tr>
-<td width="33%"><img src="public/media/featured/f7_studio_t90_column_fire.webp" alt="T-90 column firing across a green battlefield"></td>
-<td width="33%"><img src="public/media/presentation-r1/13_urban_hero_leo2a6.webp" alt="Leopard 2A6 advancing through an urban battle"></td>
-<td width="34%"><img src="public/media/showcase-r1/62_action_desert_ram_abramsx_t90m.webp" alt="AbramsX and T-90M fighting at close range in the desert"></td>
+<td width="50%"><img src="public/media/featured/f10_studio_urban_crossfire.webp" alt="Armored vehicles exchanging fire in an urban battle"></td>
+<td width="50%"><img src="public/media/featured/f9_studio_fjord_firefight.webp" alt="Tanks fighting across the Fjord battlefield"></td>
 </tr>
 <tr>
-<td width="33%"><img src="public/media/showcase-r1/103_foreground_urban_overwatch_church.webp" alt="Foreground tank overlooking an urban firefight"></td>
-<td width="33%"><img src="public/media/showcase-r1/87_action_verdant_column_massacre.webp" alt="Armored column under fire in a green valley"></td>
-<td width="34%"><img src="public/media/showcase-r1/113_foreground_winter_ice_breaker.webp" alt="Tank leading a battle across a frozen lake"></td>
+<td width="50%"><img src="public/media/featured/f8_studio_m1_firefight.webp" alt="M1 Abrams firing during a close-range tank battle"></td>
+<td width="50%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Strv 103 fighting through Steinburg"></td>
 </tr>
 </table>
 
