@@ -31,24 +31,6 @@
 <td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/tank-gallery.svg" width="72" alt="Three-tank comparison icon"><br><sub><b>TANK GALLERY</b></sub></td>
 <td width="25%" align="center" bgcolor="#05080b"><img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio turret explosion icon"><br><sub><b>SCENE STUDIO</b></sub></td>
 </tr>
-<tr>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/screenshots.svg" width="72" alt="Battle screenshots icon"><br><sub><b>BATTLE SCREENSHOTS</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/vehicle.svg" width="72" alt="Modern main battle tank icon"><br><sub><b>VEHICLES</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/battlefield.svg" width="72" alt="Battlefield map icon"><br><sub><b>BATTLEFIELDS</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/gpu.svg" width="72" alt="GPU renderer icon"><br><sub><b>GPU RENDERER</b></sub></td>
-</tr>
-<tr>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/multiplayer.svg" width="72" alt="Multiplayer tanks icon"><br><sub><b>MULTIPLAYER</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/live-combat.svg" width="72" alt="Live tank combat icon"><br><sub><b>LIVE COMBAT</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/modules.svg" width="72" alt="Internal tank modules icon"><br><sub><b>MODULES</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/camera-paths.svg" width="72" alt="Camera path icon"><br><sub><b>CAMERA PATHS</b></sub></td>
-</tr>
-<tr>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/missile.svg" width="72" alt="Guided missile icon"><br><sub><b>MISSILES</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/features/armor.svg" width="72" alt="Armor inspection icon"><br><sub><b>ARMOR INSPECTION</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/nav/home.svg" width="72" alt="Home garage icon"><br><sub><b>HOME</b></sub></td>
-<td align="center" bgcolor="#05080b"><img src="public/brand/nav/garage.svg" width="72" alt="Garage assembly icon"><br><sub><b>GARAGE</b></sub></td>
-</tr>
 </table>
 
 <table>
@@ -69,6 +51,12 @@ These are handmade, deterministic scenes captured with the current game renderer
 films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now published on the site.
 
 ## Fight, inspect, and direct
+
+<p>
+  <img src="public/brand/features/live-combat.svg" width="52" alt="Live tank combat icon" title="Fight">
+  <img src="public/brand/features/armor.svg" width="52" alt="Armor inspection icon" title="Inspect">
+  <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
+</p>
 
 - **Fight:** enter solo or multiplayer battles with physical shell travel, armor geometry, component damage, spotting,
   terrain, collision, destructible structures, persistent wrecks, and authority-owned results.
@@ -94,6 +82,11 @@ isolated comparison candidates**. Comparison inputs are never a playable loading
 
 ## Field footage
 
+<p>
+  <img src="public/brand/features/screenshots.svg" width="52" alt="In-engine battle screenshot icon" title="In-engine footage">
+  <img src="public/brand/features/camera-paths.svg" width="52" alt="Camera path icon" title="Camera rails">
+</p>
+
 Each frame below opens a looping WebM recorded from the game. The camera rails use live vehicles, maps, ballistics,
 recoil, impacts, sparks, smoke, debris, and destruction effects.
 
@@ -113,6 +106,12 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
 </p>
 
 ## Vehicle-specific mechanics
+
+<p>
+  <img src="public/brand/features/vehicle.svg" width="52" alt="Procedural vehicle icon" title="Vehicle-specific systems">
+  <img src="public/brand/features/missile.svg" width="52" alt="Guided missile icon" title="Guided weapons">
+  <img src="public/brand/features/modules.svg" width="52" alt="Internal tank modules icon" title="Internal anatomy and autoloaders">
+</p>
 
 The fleet does not reduce every vehicle to the same gun and movement model. Specifications can add their own loading,
 guidance, suspension, ammunition, anatomy, and control behavior while remaining inside the fixed-step authority.
@@ -140,6 +139,12 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 ## Combat systems
 
+<p>
+  <img src="public/brand/features/live-combat.svg" width="52" alt="Live combat icon" title="Physical combat">
+  <img src="public/brand/features/armor.svg" width="52" alt="Armor inspection icon" title="Plate-level armor">
+  <img src="public/brand/features/modules.svg" width="52" alt="Internal modules icon" title="Internal damage">
+</p>
+
 <table>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/ui_player_view.webp" alt="Production battle HUD during live armored combat"><br><sub><b>Battle HUD:</b> dual reticle, ammunition, modules, teams, minimap, chat, performance, and authority-owned combat feedback.</sub></td>
@@ -162,6 +167,12 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 ## Worlds and vehicle design
 
+<p>
+  <img src="public/brand/features/battlefield.svg" width="52" alt="Battlefield icon" title="Authored battlefields">
+  <img src="public/brand/features/vehicle.svg" width="52" alt="Procedural tank icon" title="First-party procedural vehicles">
+  <img src="public/brand/nav/tank-gallery.svg" width="72" alt="Tank Gallery icon" title="Tank Gallery">
+</p>
+
 <table>
 <tr>
 <td width="50%"><img src="public/media/presentation-r1/07_winter_road_charge.webp" alt="Vehicles charging through Frosthollow"><br><sub><b>Sixteen worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
@@ -178,6 +189,10 @@ first-party vehicle pipeline. Vehicle changes pass combat-anatomy receipts, gene
 checks, visual fingerprints, and a targeted release gate.
 
 ## Renderer, drivers, and performance
+
+<p>
+  <img src="public/brand/features/gpu.svg" width="52" alt="GPU renderer icon" title="GPU-aware renderer">
+</p>
 
 The renderer treats quality as a device contract instead of a single desktop preset. It selects a GPU/driver-aware
 profile, caps pixel density, prewarms shader paths, adapts costly effects, and can recover from a black frame or WebGL
@@ -201,6 +216,10 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 </table>
 
 ## Multiplayer
+
+<p>
+  <img src="public/brand/features/multiplayer.svg" width="52" alt="Multiplayer tanks icon" title="Authoritative multiplayer">
+</p>
 
 Local, LAN, browser-hosted private, and dedicated ranked modes share the same renderer-free movement and combat rules.
 Clients send intent, never trusted hits or damage. Snapshot filtering, local prediction/reconciliation, bounded remote
@@ -232,6 +251,12 @@ receive dedicated movement, aim, scope, fire, ammunition, equipment, and special
 desktop HUD.
 
 ## Production tools
+
+<p>
+  <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Scene Studio">
+  <img src="public/brand/features/camera-paths.svg" width="52" alt="Camera path icon" title="Camera direction">
+  <img src="public/brand/features/screenshots.svg" width="52" alt="Capture icon" title="Deterministic capture">
+</p>
 
 <table>
 <tr>
