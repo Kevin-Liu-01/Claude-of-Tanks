@@ -45,8 +45,8 @@ for (const [id, asset] of [
 }
 
 const garageMark = await readFile(new URL('../../public/brand/nav/garage.svg', import.meta.url), 'utf8');
-if (!garageMark.includes('data-vehicle="leclerc"') || !garageMark.includes('data:image/png;base64')) {
-  throw new Error('garage mark must embed the Leclerc silhouette');
+if (!garageMark.includes('data-vehicle="leclerc"') || garageMark.includes('<image')) {
+  throw new Error('garage mark must draw the Leclerc silhouette as native vector geometry');
 }
 if (!garageMark.includes('garage-turret') || !garageMark.includes('garage-hull')) {
   throw new Error('garage mark must show the hoist separating the turret from the hull');
@@ -56,8 +56,8 @@ if ((garageMark.match(/data-separation="turret-ring"/g) || []).length !== 2) {
 }
 
 const homeMark = await readFile(new URL('../../public/brand/nav/home.svg', import.meta.url), 'utf8');
-if (!homeMark.includes('data-vehicle="m1a2"') || !homeMark.includes('data:image/png;base64')) {
-  throw new Error('home mark must embed the M1A2 silhouette');
+if (!homeMark.includes('data-vehicle="m1a2"') || homeMark.includes('<image')) {
+  throw new Error('home mark must draw the M1A2 silhouette as native vector geometry');
 }
 if (!homeMark.includes('home-bay')) throw new Error('home mark must frame the tank inside the garage bay');
 
@@ -67,13 +67,13 @@ for (const vehicle of ['strv103a', 't90m', 'm1a2']) {
     throw new Error(`tank gallery mark must include the ${vehicle} silhouette`);
   }
 }
-if ((galleryMark.match(/data:image\/png;base64/g) || []).length !== 3) {
-  throw new Error('tank gallery silhouettes must be embedded for reliable SVG image rendering');
+if (galleryMark.includes('<image') || galleryMark.includes('data:image/')) {
+  throw new Error('tank gallery silhouettes must remain native vector geometry');
 }
 
 const studioMark = await readFile(new URL('../../public/brand/nav/studio.svg', import.meta.url), 'utf8');
-if (!studioMark.includes('data-vehicle="leclerc"') || !studioMark.includes('data:image/png;base64')) {
-  throw new Error('scene studio mark must embed the Leclerc silhouette');
+if (!studioMark.includes('data-vehicle="leclerc"') || studioMark.includes('<image')) {
+  throw new Error('scene studio mark must draw the Leclerc silhouette as native vector geometry');
 }
 if (!studioMark.includes('studio-turret') || !studioMark.includes('studio-hull')) {
   throw new Error('scene studio mark must separate the turret from the hull');

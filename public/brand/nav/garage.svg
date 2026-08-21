@@ -1,25 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64" role="img" aria-label="Garage — workshop crane lifting a tank turret">
-  <defs>
-    <image id="garage-leclerc" data-vehicle="leclerc" href="data:image/png;base64,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" x="3" y="19" width="90" height="45"/>
-    <clipPath id="garage-hull" data-separation="turret-ring"><rect x="0" y="44.5" width="96" height="19.5"/></clipPath>
-    <clipPath id="garage-turret" data-separation="turret-ring"><rect x="0" y="0" width="96" height="44.5"/></clipPath>
-    <filter id="garage-white" color-interpolation-filters="sRGB">
-      <feFlood flood-color="#edf3f7" result="color"/>
-      <feComposite in="color" in2="SourceAlpha" operator="in"/>
-    </filter>
-    <filter id="garage-blue" color-interpolation-filters="sRGB">
-      <feFlood flood-color="#45c7ff" result="color"/>
-      <feComposite in="color" in2="SourceAlpha" operator="in"/>
-    </filter>
-  </defs>
-  <path d="M10 59V9h76v50M6 9h84" fill="none" stroke="#f0a030" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m10 22 12-13m64 13L74 9M5 59h18m50 0h18" fill="none" stroke="#f0a030" stroke-width="2.5" stroke-linecap="round"/>
-  <rect x="42" y="6" width="12" height="8" rx="1" fill="#edf3f7"/>
-  <path d="M46 14v8m4-8v8m-4 0-7 7m11-7 7 7" fill="none" stroke="#edf3f7" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="39" cy="29" r="2" fill="#f0a030"/><circle cx="57" cy="29" r="2" fill="#f0a030"/>
-  <g transform="translate(1.8 -9)" filter="url(#garage-blue)" opacity=".65"><g clip-path="url(#garage-turret)"><use href="#garage-leclerc"/></g></g>
-  <g transform="translate(0 -10)" filter="url(#garage-white)"><g clip-path="url(#garage-turret)"><use href="#garage-leclerc"/></g></g>
-  <g transform="translate(1.5 1)" filter="url(#garage-blue)" opacity=".65"><g clip-path="url(#garage-hull)"><use href="#garage-leclerc"/></g></g>
-  <g filter="url(#garage-white)"><g clip-path="url(#garage-hull)"><use href="#garage-leclerc"/></g></g>
-  <path d="M7 59h82" fill="none" stroke="#edf3f7" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 59V9h76v50M6 9h84m-80 13L22 9m64 13L74 9" stroke="#f0a030" stroke-width="3"/>
+    <rect x="42" y="6" width="12" height="8" rx="1" fill="#edf3f7"/>
+    <path d="M46 14v8m4-8v8m-4 0-7 7m11-7 7 7" stroke="#edf3f7" stroke-width="2"/>
+    <g data-vehicle="leclerc">
+      <g id="garage-turret" data-separation="turret-ring">
+        <path d="M32 29h31l8 7H25Z" fill="#263844" stroke="#edf3f7" stroke-width="3"/>
+        <path d="M42 22h16l5 7H37Z" fill="#45c7ff" stroke="#edf3f7" stroke-width="2.5"/>
+        <path d="m58 24 25-7" stroke="#f0a030" stroke-width="3"/>
+      </g>
+      <g id="garage-hull" data-separation="turret-ring">
+        <path d="M16 46h61l8 6-8 8H24l-11-7Z" fill="#17242d" stroke="#edf3f7" stroke-width="3"/>
+        <path d="M22 53h57" stroke="#45c7ff" stroke-width="2.5"/>
+      </g>
+    </g>
+    <path d="M7 60h82" stroke="#edf3f7" stroke-width="3"/>
+  </g>
 </svg>

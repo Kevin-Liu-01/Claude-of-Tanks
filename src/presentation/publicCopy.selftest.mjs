@@ -72,7 +72,7 @@ for (const relative of ['brand/nav/docs.svg', 'brand/nav/tank-gallery.svg', 'bra
 }
 const docsMark = readFileSync(join(ROOT, 'public/brand/nav/docs.svg'), 'utf8');
 assert.match(docsMark, /data-vehicle="m1a2"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
-assert.match(docsMark, /data:image\/png;base64/, 'Docs mark must remain self-contained');
+assert.doesNotMatch(docsMark, /<image|data:image\//, 'Docs mark must use crisp native vector geometry');
 
 const promoRoot = join(ROOT, 'public/media/promo-v13');
 const promoManifest = JSON.parse(readFileSync(join(promoRoot, 'manifest.json'), 'utf8'));
