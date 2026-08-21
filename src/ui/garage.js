@@ -86,9 +86,10 @@ const GARAGE_CSS = `
   background:linear-gradient(90deg,rgba(5,8,11,.8),rgba(5,8,11,0));}
 .cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
-.cot-garage .title{position:absolute;top:20px;left:34px;font-size:17px;font-weight:800;
+.cot-garage .title{position:absolute;top:31px;left:34px;font-size:17px;font-weight:800;
   letter-spacing:.20em;color:#9fb0bf;text-transform:uppercase;
   display:flex;align-items:center;gap:10px;}
+.cot-garage .title > span{word-spacing:-.12em;}
 .cot-garage .title b{color:#f0a030;}
 /* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
    commander, same art as the boot splash; public/brand/logo-mark.svg)
@@ -101,7 +102,7 @@ const GARAGE_CSS = `
    solely on the stats card. */
 /* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
    Garage (current) / Studio / Tank Gallery / Home. */
-.cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
+.cot-nav{position:absolute;top:32px;right:26px;display:flex;align-items:stretch;gap:4px;
   height:34px;pointer-events:auto;}
 .cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
@@ -539,16 +540,16 @@ const GARAGE_CSS = `
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
   text-transform:uppercase;margin-bottom:7px;}
 /* Two-column map tiles keep the full battlefield roster scannable while
-   giving every map preview enough area to be visually distinct. */
-.cot-map-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 4px;}
-.cot-map-card{display:flex;align-items:center;gap:4px;min-width:0;cursor:pointer;
+   matching the camouflage cards' preview-over-caption layout. */
+.cot-map-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
+.cot-map-card{display:block;min-width:0;cursor:pointer;text-align:center;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
-  border:1px solid rgba(146,164,180,.24);border-left:2px solid rgba(146,164,180,.24);
-  padding:2px 3px;transition:border-color .12s,background .12s;}
+  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
+  padding:5px 4px 4px;transition:border-color .12s,background .12s;}
 .cot-map-card:hover{border-color:rgba(210,225,240,.5);}
-.cot-map-card.sel{border-color:#f0a030;border-left-color:#f0a030;
+.cot-map-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-map-card .mthumb{width:40px;height:20px;flex:0 0 auto;background-size:112% auto;
+.cot-map-card .mthumb{width:100%;height:auto;aspect-ratio:2.55;background-size:112% auto;
   background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
   box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
   transition:background-size .18s ease;}
@@ -579,8 +580,8 @@ const GARAGE_CSS = `
 .cot-map-card .mthumb.random::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
   border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 0 9px rgba(3,6,8,.3);}
 .cot-map-card:hover .mthumb.random .random-map-tile{transform:scale(1.08);filter:saturate(1.08) contrast(1.08);}
-.cot-map-card .mname{min-width:0;font-size:7.5px;font-weight:700;line-height:1.2;
-  color:#e6edf3;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-map-card .mname{margin-top:4px;min-width:0;font-size:8px;font-weight:700;line-height:1.18;
+  color:#e6edf3;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
 .cot-camos{position:static;flex:0 0 auto;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
