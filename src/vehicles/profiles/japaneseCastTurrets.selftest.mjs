@@ -8,13 +8,16 @@ const CASES = {
     planStations: 18,
     width: [2.58, 2.66],
     depth: [3.12, 3.22],
-    shellHeightM: 0.535,
+    height: [1.34, 1.40],
+    heightScale: 1,
+    shellHeightM: 1.07,
   },
   type74: {
     family: 'type74-leopard-generation-cast',
     planStations: 18,
     width: [2.24, 2.32],
     depth: [3.50, 3.60],
+    heightScale: 0.5,
     shellHeightM: 0.48,
   },
 };
@@ -41,7 +44,7 @@ for (const [id, expected] of Object.entries(CASES)) {
     flatCrown: true,
     circularLathe: false,
     creaseAngleDeg: 40,
-    heightScale: 0.5,
+    heightScale: expected.heightScale,
     shellHeightM: expected.shellHeightM,
     roofEquipment: { cupolas: 2, machineGuns: 1, markerLights: 2, opticHeads: 1 },
   }, `${id}: publishes the shared polygonal-cast turret construction receipt`);
@@ -54,6 +57,10 @@ for (const [id, expected] of Object.entries(CASES)) {
     `${id}: clipped cheek envelope stays deliberate (${turretSize.x.toFixed(3)} m)`);
   assert.ok(turretSize.z >= expected.depth[0] && turretSize.z <= expected.depth[1],
     `${id}: tapered cast rear shoulder stays deliberate (${turretSize.z.toFixed(3)} m)`);
+  if (expected.height) assert.ok(
+    turretSize.y >= expected.height[0] && turretSize.y <= expected.height[1],
+    `${id}: restored casting has the requested full-height silhouette (${turretSize.y.toFixed(3)} m)`,
+  );
   assert.ok(turretBounds.min.y <= hullBounds.max.y,
     `${id}: tucked bearing overlaps the hull deck instead of floating`);
   assert.ok(mountBounds.min.z < turretBounds.max.z && mountBounds.max.z > turretBounds.max.z,
