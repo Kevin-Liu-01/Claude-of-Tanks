@@ -111,7 +111,7 @@ body.cot-touch-layout .cot-kf{font-size:9px;padding:3px 7px;background:rgba(7,10
 /* Ammo is directly above the equipment/consumable stack, leaving the top
    edge to the three global mobile controls. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
-  top:auto;bottom:calc(max(22px,env(safe-area-inset-bottom)) + 280px);
+  top:auto;bottom:calc(max(22px,env(safe-area-inset-bottom)) + 302px);
   transform:none;gap:4px;z-index:3;align-items:flex-start;}
 body.cot-touch-layout .cot-shell{width:48px;height:52px;}
 body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.76);}
@@ -202,6 +202,59 @@ body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
     bottom:calc(max(22px,env(safe-area-inset-bottom)) + 168px);}
   body.cot-touch-layout .cot-special{right:174px;
     bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
+}
+/* Landscape phones and tablets are height-constrained even when Safari
+   reports a desktop-like width. Keep every control in a dedicated edge lane,
+   preserve the central aiming field, and leave a baseline for button labels
+   above the home indicator. */
+@media (orientation:landscape) and (max-height:560px){
+  .cot-touch .joy{left:max(12px,env(safe-area-inset-left));
+    bottom:max(24px,env(safe-area-inset-bottom));width:120px;height:120px;}
+  .cot-touch .knob{width:50px;height:50px;margin:-25px;}
+  .cot-touch .arrow.u{left:52px;top:7px}.cot-touch .arrow.d{left:52px;bottom:7px}
+  .cot-touch .arrow.l{left:8px;top:49px}.cot-touch .arrow.r{right:8px;top:49px}
+  .cot-touch .fire{right:max(14px,env(safe-area-inset-right));
+    bottom:max(30px,env(safe-area-inset-bottom));width:82px;height:82px;}
+  .cot-touch .fire svg{width:29px;height:46px;}
+  .cot-touch .scope{right:max(108px,calc(env(safe-area-inset-right) + 108px));
+    bottom:max(39px,calc(env(safe-area-inset-bottom) + 39px));width:54px;height:54px;}
+  .cot-touch .autoaim{right:max(170px,calc(env(safe-area-inset-right) + 170px));
+    bottom:max(39px,calc(env(safe-area-inset-bottom) + 39px));width:54px;height:54px;}
+  .cot-touch .fire.alt{left:max(140px,calc(env(safe-area-inset-left) + 140px));
+    bottom:max(150px,calc(env(safe-area-inset-bottom) + 150px));width:56px;height:56px;}
+  .cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{bottom:-15px;font-size:7px;}
+  .cot-touch .speed{left:max(140px,calc(env(safe-area-inset-left) + 140px));
+    bottom:max(26px,env(safe-area-inset-bottom));min-width:72px;height:39px;}
+  .cot-touch .speed b{font-size:21px;}
+  .cot-touch .aimhint{right:20%;bottom:27%;}
+  body.cot-touch-layout .cot-minimap{width:106px!important;height:106px!important;}
+  body.cot-touch-layout .cot-shells{right:max(10px,env(safe-area-inset-right));
+    bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:4px;}
+  body.cot-touch-layout .cot-shell{width:44px;height:48px;}
+  body.cot-touch-layout .cot-cons{right:max(14px,env(safe-area-inset-right));
+    bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);gap:7px;}
+  body.cot-touch-layout .cot-con{width:44px;height:48px;}
+  body.cot-touch-layout .cot-special{right:108px;
+    bottom:calc(max(28px,env(safe-area-inset-bottom)) + 102px);width:56px;min-width:56px;height:56px;}
+  body.cot-touch-layout .cot-dp{left:max(218px,calc(env(safe-area-inset-left) + 218px));
+    bottom:max(7px,env(safe-area-inset-bottom));transform:scale(.54);}
+  body.cot-touch-layout .cot-alert{bottom:27%;}
+  body.cot-touch-layout .cot-bounce{top:30%;}
+}
+@media (orientation:landscape) and (max-height:430px){
+  .cot-touch .joy{width:108px;height:108px;}
+  .cot-touch .knob{width:46px;height:46px;margin:-23px;}
+  .cot-touch .arrow.u{left:46px}.cot-touch .arrow.d{left:46px}
+  .cot-touch .arrow.l{top:43px}.cot-touch .arrow.r{top:43px}
+  .cot-touch .fire{width:76px;height:76px;}
+  .cot-touch .scope{right:max(100px,calc(env(safe-area-inset-right) + 100px));width:50px;height:50px;}
+  .cot-touch .autoaim{right:max(158px,calc(env(safe-area-inset-right) + 158px));width:50px;height:50px;}
+  .cot-touch .speed{left:max(126px,calc(env(safe-area-inset-left) + 126px));}
+  body.cot-touch-layout .cot-minimap{width:92px!important;height:92px!important;}
+  body.cot-touch-layout .cot-cons{flex-direction:row;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px);}
+  body.cot-touch-layout .cot-shells{bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px);}
+  body.cot-touch-layout .cot-special{right:160px;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px);}
+  body.cot-touch-layout .cot-dp{display:none;}
 }
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}

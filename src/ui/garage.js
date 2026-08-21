@@ -818,7 +818,7 @@ const GARAGE_CSS = `
 /* Mid-size desktop/tablet: preserve the top-right navigation row by reducing
    each destination to its authored icon. aria-label/title retain the full
    destination names for assistive technology and pointer discovery. */
-@media (max-width:1300px){
+@media (max-width:1480px){
   .cot-nav .nv{width:34px;padding:0;justify-content:center;gap:0;}
   .cot-nav .nv .nav-label{display:none;}
   .cot-nav .nv .nvi{width:15px;height:15px;}
@@ -847,10 +847,10 @@ const GARAGE_CSS = `
   .cot-garage .band-r{display:none;}
   .cot-garage .title{top:12px;left:14px;font-size:13px;letter-spacing:.22em;gap:7px;}
   .cot-garage .title .mark{width:22px;height:22px;}
-  .cot-nav{top:62px;right:14px;gap:3px;height:28px;}
-  .cot-nav .nv{width:28px;font-size:7px;padding:0;letter-spacing:.12em;}
+  .cot-nav{top:62px;right:14px;gap:3px;height:40px;}
+  .cot-nav .nv{width:40px;min-height:40px;font-size:7px;padding:0;letter-spacing:.12em;}
   .cot-nav .nv .nvi{width:11px;height:11px;}
-  .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:28px;height:28px;min-height:28px;}
+  .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
   .cot-nav .cot-gear svg{width:17px;height:17px;}
   .cot-battle-control{top:12px;width:214px;height:40px;}
   .cot-battle{font-size:15px;}.cot-battle-mode{font-size:7.5px;}
@@ -893,6 +893,81 @@ const GARAGE_CSS = `
   .cot-record-body{padding:17px 18px 18px;}
   .cot-record-overview{grid-template-columns:145px 1fr;gap:15px;}
   .cot-record-ring{width:132px;}.cot-record-ring-copy strong{font-size:30px;}
+}
+/* Touch tablets report a desktop-class CSS width (an iPad Pro in landscape is
+   1024-1366 px), so the width-only phone query above never ran. Compose the
+   same three functional lanes explicitly for coarse-pointer landscape:
+   header, compact customisation rail, and two non-overlapping fleet rails.
+   The 3D vehicle remains the dominant surface and the dossier stays available
+   from Tank Gallery instead of covering the right half of the bay. */
+@media (min-width:901px) and (orientation:landscape){
+  body.cot-touch-layout .cot-garage .band-top{height:23%;}
+  body.cot-touch-layout .cot-garage .band-bot{height:31%;}
+  body.cot-touch-layout .cot-garage .band-r{display:none;}
+  body.cot-touch-layout .cot-garage .title{top:12px;left:max(14px,env(safe-area-inset-left));
+    font-size:13px;letter-spacing:.22em;gap:7px;}
+  body.cot-touch-layout .cot-garage .title .mark{width:24px;height:24px;}
+  body.cot-touch-layout .cot-nav{top:12px;right:max(14px,env(safe-area-inset-right));
+    gap:3px;height:40px;}
+  body.cot-touch-layout .cot-nav .nv{width:40px;min-height:40px;padding:0;justify-content:center;gap:0;}
+  body.cot-touch-layout .cot-nav .nv .nav-label{display:none;}
+  body.cot-touch-layout .cot-nav .nv .nvi{width:13px;height:13px;}
+  body.cot-touch-layout .cot-nav .cot-settings-slot,
+  body.cot-touch-layout .cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
+  body.cot-touch-layout .cot-nav .cot-gear svg{width:18px;height:18px;}
+  body.cot-touch-layout .cot-battle-control{top:12px;width:224px;height:42px;}
+  body.cot-touch-layout .cot-battle{font-size:16px;}
+  body.cot-touch-layout .cot-battle-mode{font-size:7.5px;}
+  body.cot-touch-layout .cot-garage .stats{display:none;}
+  body.cot-touch-layout .cot-leftcol{left:max(14px,env(safe-area-inset-left));top:86px;
+    bottom:112px;width:180px;gap:7px;overflow:visible;}
+  body.cot-touch-layout .cot-maps,body.cot-touch-layout .cot-featured{display:none;}
+  body.cot-touch-layout .cot-camos{width:180px;margin-top:0;padding:7px;
+    background:rgba(7,11,15,.72);border:1px solid rgba(146,164,180,.22);}
+  body.cot-touch-layout .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
+  body.cot-touch-layout .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));
+    max-height:min(158px,32vh);}
+  body.cot-touch-layout .cot-camo-card{padding:3px;}
+  body.cot-touch-layout .cot-camo-card .sw{height:auto;aspect-ratio:2.55;margin-bottom:3px;}
+  body.cot-touch-layout .cot-camo-card .cl{font-size:6.5px;line-height:1.16;letter-spacing:.05em;}
+  body.cot-touch-layout .cot-camos .cnote{display:none;}
+  body.cot-touch-layout .cot-country-rail{--country-edge:30px;left:208px;
+    right:max(14px,env(safe-area-inset-right));bottom:82px;width:auto;height:42px;transform:none;}
+  body.cot-touch-layout .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise;}
+  body.cot-touch-layout .cot-country-edge{height:40px;}
+  body.cot-touch-layout .cot-country-chips{gap:3px;padding-bottom:3px;scroll-padding-inline:10px;}
+  body.cot-touch-layout .cot-country-chip{min-height:40px;padding:3px 8px 2px;
+    font-size:7px;letter-spacing:.1em;gap:4px;}
+  body.cot-touch-layout .cot-country-chip .cot-flag{width:16px;}
+  body.cot-touch-layout .cot-carousel{bottom:max(8px,env(safe-area-inset-bottom));
+    width:calc(100vw - max(28px,env(safe-area-inset-left) + env(safe-area-inset-right)));
+    height:72px;max-width:none;gap:4px;}
+  body.cot-touch-layout .cot-car-arrow{width:34px;flex:0 0 34px;font-size:16px;}
+  body.cot-touch-layout .cot-cards{min-width:0;flex:1 1 auto;gap:4px;}
+  body.cot-touch-layout .cot-card{width:98px;min-height:72px;padding:4px 5px 3px;}
+  body.cot-touch-layout .cot-card.sel{transform:translateY(-3px);}
+  body.cot-touch-layout .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
+  body.cot-touch-layout .cot-card .flag .cot-flag{width:15px;height:auto;}
+  body.cot-touch-layout .cot-card .designation{font-size:5.5px;padding:1px 0;}
+  body.cot-touch-layout .cot-card .dev-tag{right:4px;top:20px;padding:1px 3px;font-size:5px;}
+  body.cot-touch-layout .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
+  body.cot-touch-layout .cot-card .nm{font-size:7.5px;margin:0 -3px;}
+  body.cot-touch-layout .cot-card .nm .tiern{margin-right:2px;}
+  body.cot-touch-layout .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
+  body.cot-touch-layout .cot-garage .hint{display:none;}
+}
+/* Width-compacted phones still need a height budget: landscape Safari is
+   commonly 360-430 CSS px tall. Scroll the whole camouflage plate inside its
+   assigned lane instead of letting its six swatches and custom-camo button
+   spill across both fleet rails. */
+@media (max-width:900px) and (orientation:landscape) and (max-height:560px){
+  body.cot-touch-layout .cot-leftcol{top:98px;bottom:auto;height:min(190px,calc(100vh - 236px));
+    overflow:hidden;}
+  body.cot-touch-layout .cot-camos{height:100%;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-width:none;}
+  body.cot-touch-layout .cot-camos::-webkit-scrollbar{display:none;}
+  body.cot-touch-layout .cot-camos .cgrid.camo{max-height:none;overflow:visible;
+    -webkit-mask-image:none;mask-image:none;}
 }
 /* MOBILE-QA r2 (iOS simulator, portrait 393pt): the centered BATTLE plate
    overlapped BOTH the wordmark (left) and the currency chips (right) — three
