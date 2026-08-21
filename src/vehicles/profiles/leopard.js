@@ -10458,14 +10458,17 @@ function buildLeo1A5ArticulatedProfile(P) {
   const hullSponsonBottomY = 1.20;
   const hullSponsonTopY = 1.44;
   const bodyLiftY = 0.14;
-  const roadWheelY = 0.25;
-  const roadWheelZs = [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04];
-  const returnRollerZs = [2.30, 0.90, -0.52, -1.87];
+  const roadWheelY = 0.37;
+  const roadWheelZs = [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92];
+  const returnRollerZs = [2.40, 1.00, -0.42, -1.77];
   const returnRollerY = 1.07;
-  const trackTopSupportY = returnRollerY + 0.105 + 0.05;
-  const trackBotY = -0.045;
-  const trackContactZF = 2.82;
-  const trackContactZR = -2.46;
+  const trackThickness = 0.07;
+  const trackTopSupportY = returnRollerY + 0.105 + trackThickness / 2;
+  const trackBotY = 0.04;
+  const trackContactZF = 2.94;
+  const trackContactZR = -2.34;
+  const frontIdler = { z: 3.17, y: 0.78, r: 0.29 };
+  const rearSprocket = { z: -2.70, y: 0.84, r: 0.30 };
 
   // ---------------------------------------------------------------- hull --
   // Normalized source anchors: x ±1.685, z ±3.541; track y 0..1.185;
@@ -10623,21 +10626,23 @@ function buildLeo1A5ArticulatedProfile(P) {
     P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
   }
 
-  // Seven 660 mm dual wheels on the Leopard-family trapezoid course. The
-  // compact .74 m pitch is retained, while the complete row advances 18 cm
-  // to sit centrally between the fixed end drums and drops another 5 cm into
-  // a correspondingly deeper loaded run. The return supports rise with the
-  // reseated hull, while both contact knees remain with the planted road-wheel
-  // pack, so the linked course remains a coherent Leopard trapezoid.
+  // Seven 660 mm dual wheels on a rebuilt Leopard-family trapezoid course.
+  // The complete wheel train rises back into the suspension bay and the road-
+  // wheel row advances another 12 cm without changing its compact .74 m
+  // cadence.  The loaded run rises with the tires, while explicit contact
+  // knees leave both end drums on true tangent ramps.  A fine-pitch integrated
+  // shoe replaces the former deep connector/pin stack: the wrap now reads as
+  // one tight chain around the idler and sprocket instead of a ring of spikes.
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: roadWheelY, xc: 1.40,
     wheelZs: roadWheelZs,
-    sprocket: { z: -2.70, y: 0.72, r: 0.30 }, idler: { z: 3.17, y: 0.66, r: 0.29 },
+    sprocket: rearSprocket, idler: frontIdler,
     rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: 0.105 })),
-    trackW: 0.46, trackTh: 0.10, topY: trackTopSupportY, botY: trackBotY,
+    trackW: 0.46, trackTh: trackThickness, topY: trackTopSupportY, botY: trackBotY,
     contactZF: trackContactZF, contactZR: trackContactZR,
-    linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
-    endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
+    linkPitchM: 0.125, shoeRadialScale: 0.58, shoeWidthScale: 0.97,
+    integratedLinks: true, padGroundCenter: 0.045, padCornerFloor: 0.004,
+    endRingSpan: 0.42, coveredTop: 1.06, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
   });
 
@@ -10662,11 +10667,12 @@ function buildLeo1A5ArticulatedProfile(P) {
     roadWheelPitch: 0.74,
     roadWheelSpan: 4.44,
     roadWheelZs: [...roadWheelZs],
-    roadWheelForwardShift: 0.18,
+    roadWheelForwardShift: 0.30,
     returnRollerZs: [...returnRollerZs],
     returnRollerY,
     bodyLiftY,
     trackTopSupportY: Number(trackTopSupportY.toFixed(4)),
+    trackThickness,
     trackBotY,
     trackContactZF,
     trackContactZR,
@@ -10681,11 +10687,14 @@ function buildLeo1A5ArticulatedProfile(P) {
     upperGlacisFrontY: Number((upperGlacisY(3.54) + bodyLiftY).toFixed(4)),
     upperGlacisRearY: Number((upperGlacisY(1.55) + bodyLiftY).toFixed(4)),
     lowerGlacisJoinY: Number((1.04 + bodyLiftY).toFixed(4)),
-    leopard2TrackCourse: true,
-    frontIdlerZ: 3.17,
-    frontIdlerY: 0.66,
-    rearSprocketZ: -2.70,
-    rearSprocketY: 0.72,
+    redesignedLeopardTrackCourse: true,
+    integratedTrackShoes: true,
+    trackLinkPitch: 0.125,
+    trackShoeRadialScale: 0.58,
+    frontIdlerZ: frontIdler.z,
+    frontIdlerY: frontIdler.y,
+    rearSprocketZ: rearSprocket.z,
+    rearSprocketY: rearSprocket.y,
   };
 
   // ------------------------------------------------------------- turret --

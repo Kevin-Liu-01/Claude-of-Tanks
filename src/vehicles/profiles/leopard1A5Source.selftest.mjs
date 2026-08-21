@@ -43,10 +43,40 @@ visual.root.traverse((node) => {
 assert.equal(trackBands.length, 2, 'exactly one linked track band is present per side');
 for (const band of trackBands) {
   const box = bounds(band);
-  assert.ok(box.max.y >= 1.22 && box.min.y <= -0.034,
-    `${band.name} uses the reseated deep Leopard course`);
+  assert.ok(box.max.y >= 1.20 && box.max.y <= 1.27 && box.min.y >= 0.004,
+    `${band.name} uses the raised, compact Leopard course`);
   assert.ok(box.max.z - box.min.z >= 6.60 && box.max.z - box.min.z <= 6.76,
     `${band.name} follows the measured Leopard-family course`);
+}
+const trackPads = visual.root.getObjectByName('gearTrackPads');
+assert.ok(trackPads?.isInstancedMesh && trackPads.count >= 220,
+  'the rebuilt course uses a fine-pitch linked shoe chain on both sides');
+assert.equal(visual.root.getObjectByName('gearTrackInnerLinks'), undefined,
+  'connector and guide detail is integrated into one physical track shoe');
+trackPads.geometry.computeBoundingBox();
+const trackShoeBounds = trackPads.geometry.boundingBox;
+assert.ok(trackShoeBounds.max.y - trackShoeBounds.min.y <= 0.27
+  && trackShoeBounds.max.z - trackShoeBounds.min.z <= 0.10,
+  'the redesigned shoe is shallow and fine enough to avoid spiked end wraps');
+const matrix = new THREE.Matrix4();
+const instancePosition = new THREE.Vector3();
+const instanceRotation = new THREE.Quaternion();
+const instanceScale = new THREE.Vector3();
+const leftShoeCenters = [];
+for (let i = 0; i < trackPads.count / 2; i++) {
+  trackPads.getMatrixAt(i, matrix);
+  matrix.decompose(instancePosition, instanceRotation, instanceScale);
+  leftShoeCenters.push([instancePosition.y, instancePosition.z]);
+}
+for (const [label, end] of [
+  ['idler', { y: 0.78, z: 3.17 }],
+  ['sprocket', { y: 0.84, z: -2.70 }],
+]) {
+  const wrapRadii = leftShoeCenters
+    .map(([y, z]) => Math.hypot(y - end.y, z - end.z))
+    .filter((radius) => radius < 0.41);
+  assert.ok(wrapRadii.length >= 7 && Math.max(...wrapRadii) - Math.min(...wrapRadii) <= 0.035,
+    `linked shoes follow a tight concentric ${label} wrap`);
 }
 
 // Finish pass: the fenders form a continuous bridge over the track return,
@@ -59,18 +89,19 @@ assert.deepEqual(finish, {
   fenderLockers: 8,
   rearFuelCans: 2,
   roadWheelStations: 7,
-  roadWheelY: 0.25,
+  roadWheelY: 0.37,
   roadWheelPitch: 0.74,
   roadWheelSpan: 4.44,
-  roadWheelZs: [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04],
-  roadWheelForwardShift: 0.18,
-  returnRollerZs: [2.30, 0.90, -0.52, -1.87],
+  roadWheelZs: [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92],
+  roadWheelForwardShift: 0.30,
+  returnRollerZs: [2.40, 1.00, -0.42, -1.77],
   returnRollerY: 1.07,
   bodyLiftY: 0.14,
-  trackTopSupportY: 1.225,
-  trackBotY: -0.045,
-  trackContactZF: 2.82,
-  trackContactZR: -2.46,
+  trackTopSupportY: 1.21,
+  trackThickness: 0.07,
+  trackBotY: 0.04,
+  trackContactZF: 2.94,
+  trackContactZR: -2.34,
   sealedHullSides: true,
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
@@ -82,33 +113,36 @@ assert.deepEqual(finish, {
   upperGlacisFrontY: 1.18,
   upperGlacisRearY: 1.68,
   lowerGlacisJoinY: 1.18,
-  leopard2TrackCourse: true,
+  redesignedLeopardTrackCourse: true,
+  integratedTrackShoes: true,
+  trackLinkPitch: 0.125,
+  trackShoeRadialScale: 0.58,
   frontIdlerZ: 3.17,
-  frontIdlerY: 0.66,
+  frontIdlerY: 0.78,
   rearSprocketZ: -2.70,
-  rearSprocketY: 0.72,
+  rearSprocketY: 0.84,
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
-assert.equal(gear.wheelY, 0.25, 'the seven road-wheel centers move lower into the taller track course');
-assert.deepEqual(gear.wheelZs, [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04],
+assert.equal(gear.wheelY, 0.37, 'the seven road-wheel centers rise into the suspension bay');
+assert.deepEqual(gear.wheelZs, [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92],
   'the seven road wheels advance together on the tighter Leopard 1 pitch');
 for (let i = 1; i < gear.wheelZs.length; i++) {
   assert.ok(Math.abs((gear.wheelZs[i - 1] - gear.wheelZs[i]) - 0.74) < 1e-8,
     `road-wheel station ${i} remains on the compact 0.74 m pitch`);
 }
-assert.deepEqual(gear.idler, { z: 3.17, y: 0.66, r: 0.29 },
-  'the front idler retains its authored position and radius');
-assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.72, r: 0.30 },
-  'the rear sprocket retains its authored position and radius');
-assert.ok(gear.idler.y - gear.wheelY >= 0.41 && gear.sprocket.y - gear.wheelY >= 0.47,
-  'the fixed terminal drums now rise strongly above the lowered road-wheel axis');
-assert.ok(Math.abs(gear.wheelZs.reduce((sum, z) => sum + z, 0) / gear.wheelZs.length - 0.18) < 1e-8,
-  'the complete road-wheel row advances 18 cm without changing its cadence');
+assert.deepEqual(gear.idler, { z: 3.17, y: 0.78, r: 0.29 },
+  'the front idler rises while retaining its authored longitudinal station and radius');
+assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.84, r: 0.30 },
+  'the rear sprocket rises while retaining its authored longitudinal station and radius');
+assert.ok(gear.idler.y - gear.wheelY >= 0.40 && gear.sprocket.y - gear.wheelY >= 0.46,
+  'both terminal drums retain a raised Leopard trapezoid above the road-wheel axis');
+assert.ok(Math.abs(gear.wheelZs.reduce((sum, z) => sum + z, 0) / gear.wheelZs.length - 0.30) < 1e-8,
+  'the complete road-wheel row advances 30 cm without changing its cadence');
 assert.equal(finish.returnRollerY, 1.07,
   'the return rollers lift the upper course into the raised hull datum');
-assert.equal(finish.trackTopSupportY, 1.225,
-  'the upper track course is reseated directly below the fenders');
+assert.equal(finish.trackTopSupportY, 1.21,
+  'the finer upper track course is reseated directly below the fenders');
 
 // The sponson must bear on the fender shelf, while exactly one long shallow
 // upper-glacis surface remains between the deck break and nose. A vertical

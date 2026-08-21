@@ -1118,6 +1118,15 @@ function buildPL01(P) {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const is105 = P.spec.id === 'pl01_105';
+  const turretHeightScale = 1.20;
+  const originalRoofLocalY = 0.72;
+  const turretRoofLocalY = originalRoofLocalY * turretHeightScale;
+  const roofLiftM = turretRoofLocalY - originalRoofLocalY;
+  const shellY = (y) => y * turretHeightScale;
+  const roofY = (y) => y + roofLiftM;
+  P.turretG.userData.pl01TurretHeightScale = turretHeightScale;
+  P.turretG.userData.pl01RoofLocalY = turretRoofLocalY;
+  P.turretG.userData.pl01RoofEquipmentLiftM = roofLiftM;
 
   // ---- center hull body (x ±1.616): tub + faceted glacis ------------------
   // deck line = the measured falling top run (side_hull tops 2.07 rear ->
@@ -1357,7 +1366,9 @@ function buildPL01(P) {
 
   // ---- turret: the faceted diamond (joined two-band loft) -----------------
   // pivot [0, 2.07, -0.90]; stations from the measured plan/side polylines.
-  // Turret-local: y0 = world - 2.07, z0 = world + 0.90.
+  // Turret-local: y0 = world - 2.07, z0 = world + 0.90.  Owner revision r2
+  // raises the complete structural shell 20% about the unchanged ring plane;
+  // roof equipment translates with its support surface instead of stretching.
   {
     const ST = [
       // [zWorld, halfW, roofY, baseY]
@@ -1371,35 +1382,37 @@ function buildPL01(P) {
       [-3.40, 0.66, 2.60, 2.21],
       [-3.60, 0.09, 2.385, 2.355],
     ];
-    const shoulderT = 0.30;  // upper in-lean band depth
+    const shoulderT = 0.30 * turretHeightScale;  // upper in-lean band depth
     const baseIn = 0.26;     // lower wall inboard set-back at the base plane
     for (let i = 0; i < ST.length - 1; i++) {
       const [zA, wA, rA, bA] = ST[i], [zB, wB, rB, bB] = ST[i + 1];
       const zLA = zA + 0.90, zLB = zB + 0.90;
-      const shA = Math.max(rA - shoulderT - 2.07, bA - 2.07);
-      const shB = Math.max(rB - shoulderT - 2.07, bB - 2.07);
+      const roofA = shellY(rA - 2.07), roofB = shellY(rB - 2.07);
+      const baseA = shellY(bA - 2.07), baseB = shellY(bB - 2.07);
+      const shA = Math.max(roofA - shoulderT, baseA);
+      const shB = Math.max(roofB - shoulderT, baseB);
       const bwA = Math.max(0.08, wA - baseIn), bwB = Math.max(0.08, wB - baseIn);
       // lower out-leaning band: base ring -> widest shoulder ring
       P.add('turret', slab(
-        [-bwA, bA - 2.07, zLA], [bwA, bA - 2.07, zLA], [bwB, bB - 2.07, zLB], [-bwB, bB - 2.07, zLB],
+        [-bwA, baseA, zLA], [bwA, baseA, zLA], [bwB, baseB, zLB], [-bwB, baseB, zLB],
         [-wA, shA, zLA], [wA, shA, zLA], [wB, shB, zLB], [-wB, shB, zLB]));
       // upper in-leaning band: shoulder ring -> roof ring
       const rwA = Math.max(0.07, wA - 0.34), rwB = Math.max(0.07, wB - 0.34);
       P.add('turret', slab(
         [-wA, shA, zLA], [wA, shA, zLA], [wB, shB, zLB], [-wB, shB, zLB],
-        [-rwA, rA - 2.07, zLA], [rwA, rA - 2.07, zLA], [rwB, rB - 2.07, zLB], [-rwB, rB - 2.07, zLB]));
+        [-rwA, roofA, zLA], [rwA, roofA, zLA], [rwB, roofB, zLB], [-rwB, roofB, zLB]));
     }
     // nose cap closes the front ring into the gun-cover root (§B2)
     P.add('turret', slab(
-      [-0.34, 0.09, 1.88], [0.34, 0.09, 1.88], [0.30, 0.10, 2.02], [-0.30, 0.10, 2.02],
-      [-0.22, 0.49, 1.88], [0.22, 0.49, 1.88], [0.20, 0.30, 2.02], [-0.20, 0.30, 2.02]));
+      [-0.34, shellY(0.09), 1.88], [0.34, shellY(0.09), 1.88], [0.30, shellY(0.10), 2.02], [-0.30, shellY(0.10), 2.02],
+      [-0.22, shellY(0.49), 1.88], [0.22, shellY(0.49), 1.88], [0.20, shellY(0.30), 2.02], [-0.20, shellY(0.30), 2.02]));
     // tail cap
-    P.add('turret', box(0.18, 0.03, 0.06), 0, 0.30, -2.705);
+    P.add('turret', box(0.18, 0.03 * turretHeightScale, 0.06), 0, shellY(0.30), -2.705);
   }
   // roof plate seams (facet grammar, sub-pixel proud)
-  P.add('turretDark', box(1.60, 0.014, 0.02), 0, 0.722, -0.60);
-  P.add('turretDark', box(0.02, 0.014, 2.10), -0.52, 0.722, -1.35);
-  P.add('turretDark', box(0.02, 0.014, 2.10), 0.52, 0.722, -1.35);
+  P.add('turretDark', box(1.60, 0.014, 0.02), 0, roofY(0.722), -0.60);
+  P.add('turretDark', box(0.02, 0.014, 2.10), -0.52, roofY(0.722), -1.35);
+  P.add('turretDark', box(0.02, 0.014, 2.10), 0.52, roofY(0.722), -1.35);
   // Stealth-compatible applique: shallow faceted side panels, recessed
   // sensor faces and roof strakes.  They add styling/armor subdivision while
   // preserving the PL-01's intentionally clean, low-observable silhouette.
@@ -1407,76 +1420,78 @@ function buildPL01(P) {
     for (let i = 0; i < 4; i++) {
       const z = 0.42 - i * 0.52;
       const x = 1.18 + Math.min(i, 2) * 0.055;
-      P.add('turret', box(0.055, 0.24, 0.42), s * x, 0.40, z,
+      P.add('turret', box(0.055, 0.24 * turretHeightScale, 0.42), s * x, shellY(0.40), z,
         -0.08, s * (0.10 + i * 0.035), 0);
-      P.add('turretDark', box(0.018, 0.16, 0.30), s * (x + 0.032), 0.405, z,
+      P.add('turretDark', box(0.018, 0.16 * turretHeightScale, 0.30), s * (x + 0.032), shellY(0.405), z,
         -0.08, s * (0.10 + i * 0.035), 0);
     }
     // (§5.290 dims-recovery: strake seats 0.755 -> 0.7225 / rib 0.790 ->
     // 0.7505 — the rib tops read 2.8629 across ten side columns and owned
     // heightM's p95 over the 2.828 grace edge; re-seated the runners stay
     // 3 cm proud of the roof plane with the dark rib line intact)
-    P.add('turret', box(0.22, 0.055, 1.28), s * 0.72, 0.7225, -0.76,
+    P.add('turret', box(0.22, 0.055, 1.28), s * 0.72, roofY(0.7225), -0.76,
       0, s * 0.06, 0);
-    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, 0.7505, -0.76,
+    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, roofY(0.7505), -0.76,
       0, s * 0.06, 0);
-    P.add('turret', box(0.24, 0.10, 0.26), s * 1.02, 0.61, -1.86,
+    P.add('turret', box(0.24, 0.10, 0.26), s * 1.02, shellY(0.61), -1.86,
       -0.10, s * 0.14, 0);
-    P.add('turretGlass', box(0.14, 0.055, 0.020), s * 1.02, 0.62, -1.715,
+    P.add('turretGlass', box(0.14, 0.055, 0.020), s * 1.02, shellY(0.62), -1.715,
       -0.10, s * 0.14, 0);
     // Two-stage cheek armor: a faceted carrier, recessed service seam, and
     // fasteners make each side read as layered armor rather than a flat slab.
-    P.add('turret', box(0.075, 0.31, 0.62), s * 1.30, 0.35, 0.18,
+    P.add('turret', box(0.075, 0.31 * turretHeightScale, 0.62), s * 1.30, shellY(0.35), 0.18,
       -0.08, s * 0.18, 0);
-    P.add('turret', box(0.060, 0.27, 0.48), s * 1.36, 0.33, -0.42,
+    P.add('turret', box(0.060, 0.27 * turretHeightScale, 0.48), s * 1.36, shellY(0.33), -0.42,
       -0.06, s * 0.13, 0);
-    P.add('turretDark', box(0.012, 0.20, 0.47), s * 1.342, 0.36, 0.18,
+    P.add('turretDark', box(0.012, 0.20 * turretHeightScale, 0.47), s * 1.342, shellY(0.36), 0.18,
       -0.08, s * 0.18, 0);
     for (const dz of [-0.22, 0.22]) for (const dy of [-0.09, 0.09]) {
-      P.add('turretDetail', cylX(0.018, 0.020, 8), s * 1.39, 0.36 + dy, 0.18 + dz,
+      P.add('turretDetail', cylX(0.018, 0.020, 8), s * 1.39, shellY(0.36 + dy), 0.18 + dz,
         0, 0, Math.PI / 2);
     }
     // Four-corner laser-warning receivers with paired glass apertures.
-    P.add('turretDetail', box(0.115, 0.105, 0.12), s * 1.18, 0.58, 0.62,
+    P.add('turretDetail', box(0.115, 0.105, 0.12), s * 1.18, shellY(0.58), 0.62,
       -0.05, s * 0.32, 0);
-    P.add('turretGlass', box(0.045, 0.045, 0.016), s * 1.225, 0.595, 0.67,
+    P.add('turretGlass', box(0.045, 0.045, 0.016), s * 1.225, shellY(0.595), 0.67,
       -0.05, s * 0.32, 0);
   }
   // (§5.290 dims-recovery: seats 0.755 -> 0.705 — the blocks topped 2.86 on
   // three side columns; at 0.705 they ride 2.5 cm proud, the conformal
   // stealth-roof read, and the glass slits stay above the roof plane)
   for (const [x, z, yaw] of [[-0.34, 0.42, -0.12], [0, 0.34, 0], [0.34, 0.42, 0.12]]) {
-    KIT.periscope(P, 'turretDetail', x, 0.705, z, yaw);
+    KIT.periscope(P, 'turretDetail', x, roofY(0.705), z, yaw);
   }
 
   // paired EO/hatch domes on the shoulders (print Cylinder.002/.004 —
   // crowns held at the published band 2.805, certified vs the print's 2.87)
   for (const s of [-1, 1]) {
-    P.add('turret', cylY(0.275, 0.29, 0.075, 18), s * 1.02, 0.6225, -0.11);
+    P.add('turret', cylY(0.275, 0.29, 0.075, 18), s * 1.02, shellY(0.6225), -0.11);
     P.add('turret', KIT.lathe([[0.275, 0], [0.24, 0.045], [0.13, 0.065], [0.02, 0.075]], 18),
-      s * 1.02, 0.66, -0.11);
-    P.add('turretDark', torus(0.205, 0.012, 18), s * 1.02, 0.685, -0.11);
+      s * 1.02, shellY(0.66), -0.11);
+    P.add('turretDark', torus(0.205, 0.012, 18), s * 1.02, shellY(0.685), -0.11);
   }
   // left EO head (print Cameras.001: x -0.9..-0.58, top 2.43, z 0.03..0.24)
-  P.add('turret', box(0.30, 0.20, 0.20), -0.72, 0.26, 1.02, -0.08, 0, 0);
-  P.add('turretDark', box(0.22, 0.12, 0.03), -0.72, 0.28, 1.125, -0.08, 0, 0);
+  P.add('turret', box(0.30, 0.20, 0.20), -0.72, shellY(0.26), 1.02, -0.08, 0, 0);
+  P.add('turretDark', box(0.22, 0.12, 0.03), -0.72, shellY(0.28), 1.125, -0.08, 0, 0);
   for (const dx of [-0.06, 0.06]) P.add('turretGlass', cylZ(0.042, 0.024, 12),
-    -0.72 + dx, 0.28, 1.148, Math.PI / 2, 0, 0);
+    -0.72 + dx, shellY(0.28), 1.148, Math.PI / 2, 0, 0);
   // central sight mast head (print Cameras @ z 0.09..0.29 — held at the
   // published band 2.80, print's 3.00 certified-capped)
-  P.add('turret', cylY(0.115, 0.13, 0.30, 14), 0, 0.55, 1.09);
-  P.add('turret', box(0.26, 0.185, 0.24), 0, 0.635, 1.09);
-  P.add('turretDark', box(0.20, 0.10, 0.028), 0, 0.645, 1.222);
-  P.add('turretGlass', box(0.13, 0.06, 0.02), 0, 0.645, 1.242);
+  P.add('turret', cylY(0.115, 0.13, 0.30, 14), 0, shellY(0.55), 1.09);
+  P.add('turret', box(0.26, 0.185, 0.24), 0, shellY(0.635), 1.09);
+  P.add('turretDark', box(0.20, 0.10, 0.028), 0, shellY(0.645), 1.222);
+  P.add('turretGlass', box(0.13, 0.06, 0.02), 0, shellY(0.645), 1.242);
   // Roof service panels, lifting eyes, and the modular mission-bay rack.
   for (const x of [-0.38, 0.38]) {
-    P.add('turretDetail', box(0.50, 0.026, 0.34), x, 0.735, -0.58);
-    P.add('turretDark', box(0.42, 0.012, 0.025), x, 0.750, -0.58);
+    P.add('turretDetail', box(0.50, 0.026, 0.34), x, roofY(0.735), -0.58);
+    P.add('turretDark', box(0.42, 0.012, 0.025), x, roofY(0.750), -0.58);
   }
-  mount(P, 'turret', FITTINGS.stowageRack({
+  const roofStowage = FITTINGS.stowageRack({
     mats: P.mats, w: 1.10, d: 0.34, h: 0.17, rails: 2, fill: 0.42,
     seed: is105 ? 1052 : 1051,
-  }), 0, 0.49, -2.12);
+  });
+  roofStowage.name = 'pl01_roof_stowage';
+  mount(P, 'turret', roofStowage, 0, roofY(0.49), -2.12);
 
   // ---- RWS / CROWS -------------------------------------------------------
   // Base PL-01 keeps the print's laterally parked low-observable RWS. The
@@ -1493,25 +1508,27 @@ function buildPL01(P) {
     // (r4 dims receipt: a 0.175-radius ring at 0.795 topped 2.89 across 4
     // columns and OWNED heightM's p95 — the ring now hides inside the tower
     // window and the plinth crown stays under the 1% grace edge 2.828)
-    P.add('turret', box(0.46, 0.035, 0.34), -0.05, 0.7275, -1.33);    // plinth
-    P.add('turret', cylY(0.095, 0.11, 0.05, 16), -0.05, 0.77, -1.33);
-    P.add('turret', box(0.52, 0.46, 0.17), -0.05, 1.03, -1.33);       // tower
-    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, 1.278, -1.33); // cap
-    P.add('turretDetail', box(0.10, 0.05, 0.09), 0.12, 1.315, -1.325); // sensor
-    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, 1.352, -1.325);
+    P.addEquipment('turret', box(0.46, 0.035, 0.34), -0.05, roofY(0.7275), -1.33);    // plinth
+    P.addEquipment('turret', cylY(0.095, 0.11, 0.05, 16), -0.05, roofY(0.77), -1.33);
+    P.addEquipment('turret', box(0.52, 0.46, 0.17), -0.05, roofY(1.03), -1.33);       // tower
+    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, roofY(1.278), -1.33); // cap
+    P.add('turretDetail', box(0.10, 0.05, 0.09), 0.12, roofY(1.315), -1.325); // sensor
+    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofY(1.352), -1.325);
     // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
     // whole envelope shares the tower's 3-column window)
-    mount(P, 'turret', FITTINGS.pintleMG({
+    const rwsWeapon = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
       ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
-    }), -0.05, 1.02, -1.33, [0, Math.PI / 2, 0]);
+    });
+    rwsWeapon.name = 'pl01_rws_weapon';
+    mount(P, 'turret', rwsWeapon, -0.05, roofY(1.02), -1.33, [0, Math.PI / 2, 0]);
     // RWS ammunition chest and independent day/thermal sensor block.
-    P.add('turretDetail', box(0.22, 0.18, 0.15), -0.31, 1.02, -1.33);
-    P.add('turretDark', box(0.16, 0.12, 0.025), 0.24, 1.07, -1.235);
-    P.add('turretGlass', box(0.055, 0.055, 0.014), 0.20, 1.09, -1.218);
-    P.add('turretGlass', box(0.038, 0.038, 0.014), 0.27, 1.04, -1.218);
+    P.add('turretDetail', box(0.22, 0.18, 0.15), -0.31, roofY(1.02), -1.33);
+    P.add('turretDark', box(0.16, 0.12, 0.025), 0.24, roofY(1.07), -1.235);
+    P.add('turretGlass', box(0.055, 0.055, 0.014), 0.20, roofY(1.09), -1.218);
+    P.add('turretGlass', box(0.038, 0.038, 0.014), 0.27, roofY(1.04), -1.218);
   } else {
-    const cx = -0.05, cy = 0.735, cz = -1.26;
+    const cx = -0.05, cy = roofY(0.735), cz = -1.26;
     P.addEquipment('turret', box(0.62, 0.040, 0.50), cx, cy + 0.020, cz);
     P.addEquipment('turretDark', cylY(0.205, 0.215, 0.055, 18),
       cx, cy + 0.0675, cz);
@@ -1547,34 +1564,36 @@ function buildPL01(P) {
   // smoke banks: recessed multi-tube blocks on the tail deck (print
   // ExplosionTubes — held under the roof band)
   for (const s of [-1, 1]) {
-    mount(P, 'turret', FITTINGS.smokeBank({
+    const smokeBank = FITTINGS.smokeBank({
       mats: P.mats, count: 6, r: 0.035, len: 0.24, splay: s * 0.92,
       pitch: -0.35, arc: 0.48, spacing: 0.078, slot: 'detail',
       rotation: [0, s * 0.12, -s * 0.06], seed: 1030 + (s > 0 ? 1 : 0),
-    }), s * 0.42, 0.60, -1.78);
+    });
+    smokeBank.name = `pl01_smoke_bank_${s < 0 ? 'left' : 'right'}`;
+    mount(P, 'turret', smokeBank, s * 0.42, roofY(0.60), -1.78);
   }
   // conformal stub antennas on the tail facet (the real PL-01 carries no
   // whips — stealth conformal; stubs stay under the 2.79 roof line — r5
   // dims receipt: a 0.26 stub owned heightM's p95 column at 2.89)
-  polishWhips(P, [[-0.30, 0.40, -2.32, 0.16, -0.04], [0.30, 0.39, -2.44, 0.13, 0.05]], 1040);
+  polishWhips(P, [[-0.30, roofY(0.40), -2.32, 0.16, -0.04], [0.30, roofY(0.39), -2.44, 0.13, 0.05]], 1040);
 
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
-  // axis world 2.33 (pivot 2.07 + 0.26); gun pivot world z 0.55.
+  // axis world 2.382 (pivot 2.07 + 0.312); gun pivot world z 0.55.
   // The root sleeve now overlaps the turret nose by 10 cm; its cover then
   // runs forward as one pitch-owned assembly to the bare tube.
-  P.addGunExtra(box(0.56, 0.42, 0.90), 0, 0.045, 0.80);            // root sleeve
+  P.addGunExtra(box(0.56, 0.42 * turretHeightScale, 0.90), 0, shellY(0.045), 0.80); // root sleeve
   P.addGunExtra(orientedSlab(
-    [-0.235, -0.12, 1.25], [0.235, -0.12, 1.25], [0.20, -0.115, 3.25], [-0.20, -0.115, 3.25],
-    [-0.235, 0.27, 1.25], [0.235, 0.27, 1.25], [0.20, 0.185, 3.25], [-0.20, 0.185, 3.25]));
-  P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, 0.225, 2.10);        // cover spine seam
-  P.addGunExtraDark(box(0.42, 0.36, 0.03), 0, 0.03, 3.262);        // cover end plate
+    [-0.235, shellY(-0.12), 1.25], [0.235, shellY(-0.12), 1.25], [0.20, shellY(-0.115), 3.25], [-0.20, shellY(-0.115), 3.25],
+    [-0.235, shellY(0.27), 1.25], [0.235, shellY(0.27), 1.25], [0.20, shellY(0.185), 3.25], [-0.20, shellY(0.185), 3.25]));
+  P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, shellY(0.225), 2.10); // cover spine seam
+  P.addGunExtraDark(box(0.42, 0.36 * turretHeightScale, 0.03), 0, shellY(0.03), 3.262); // cover end plate
   // Armored coaxial 7.62 mm fairing and visible receiver beside the main
   // weapon. It follows gun pitch and gives the angular mantlet a second
   // functional layer instead of a single uninterrupted cover.
-  P.addGunExtra(box(0.15, 0.16, 0.52), 0.31, 0.015, 0.82);
-  P.addGunExtraDark(box(0.105, 0.095, 0.30), 0.31, 0.025, 0.93);
-  P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, 0.025, 1.48);
-  P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, 0.025, 1.91);
+  P.addGunExtra(box(0.15, 0.16 * turretHeightScale, 0.52), 0.31, shellY(0.015), 0.82);
+  P.addGunExtraDark(box(0.105, 0.095 * turretHeightScale, 0.30), 0.31, shellY(0.025), 0.93);
+  P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, shellY(0.025), 1.48);
+  P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, shellY(0.025), 1.91);
   const mainTubeR = is105 ? 0.086 : 0.098;
   tubeGun(P, [
     [3.26, 4.20, mainTubeR, mainTubeR * 0.96],
@@ -1586,7 +1605,7 @@ function buildPL01(P) {
   const hullMark = P.spec.visual.number || (is105 ? 'PL-105' : 'PL-01');
   P.decal('hull', 'number', hullMark, 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
   P.decal('hull', 'number', hullMark, 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.48);
+  P.topY = Math.max(P.topY || 0, 1.48 + roofLiftM);
 }
 
 export const POLAND_PROFILES = {
