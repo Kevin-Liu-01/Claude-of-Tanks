@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-20T23:17:42.579Z",
+ "generatedAt": "2026-08-21T00:57:32.278Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 121,
@@ -446,19 +446,6 @@
    }
   },
   {
-   "id": "pt91_twardy",
-   "geoMin": 24.6,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 68.3,
-    "stations": 24.6,
-    "turretCurves": 56.9,
-    "wholeCurves": 37.6,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "ariete",
    "geoMin": 24.8,
    "gatePassed": false,
@@ -533,6 +520,19 @@
     "turretCurves": 29.2,
     "stations": 60,
     "dims": 97.8,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "pt91_twardy",
+   "geoMin": 31.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 65.6,
+    "stations": 40.2,
+    "turretCurves": 41.5,
+    "wholeCurves": 31.6,
+    "dims": 69.3,
     "floaters": 100
    }
   },
@@ -1164,6 +1164,16 @@
    }
   },
   {
+   "id": "t72m1_jaguar",
+   "geoMin": 90.2,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.2,
+    "dims": 97.8,
+    "floaters": 100
+   }
+  },
+  {
    "id": "leo2a4",
    "geoMin": 90.2,
    "gatePassed": true,
@@ -1359,16 +1369,6 @@
     "turretCurves": 91.5,
     "stations": 94.3,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t72m1_jaguar",
-   "geoMin": 91,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 91,
-    "dims": 97.8,
     "floaters": 100
    }
   },

@@ -77,4 +77,17 @@ for (const id of ids) {
   tank.dispose();
 }
 
+const twardy = GHILLIE_SUIT_CONFIGS.pt91_twardy;
+const twardyTop = twardy.turret.top[0];
+assert.ok(twardyTop.yAt(0, 0) > 0.82 && twardyTop.yAt(0, 0) < 0.86,
+  'Twardy net keeps a small suspended air layer over the dome crown');
+assert.ok(twardyTop.yAt(1.05, 0.45) < 0.74,
+  'Twardy net descends onto the ERAWA cheek instead of retaining a flat roof plane');
+assert.ok(twardyTop.yAt(0, -1.48) < 0.72,
+  'Twardy net seats onto the bustle roof instead of floating at crown height');
+assert.ok(twardy.turret.side[0].topAt(0.90) < twardy.turret.side[0].topAt(-0.40),
+  'Twardy side drape follows the falling front shoulder');
+assert.ok(twardy.turret.face[0].zAt(1.0, 0.42) < twardy.turret.face[0].zAt(0.35, 0.42),
+  'Twardy front drape follows the swept ERAWA wedge instead of one flat face');
+
 console.log('Shared physical-ghillie suit selftest passed');

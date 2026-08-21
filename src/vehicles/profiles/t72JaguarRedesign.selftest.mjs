@@ -39,6 +39,20 @@ assert.deepEqual(gun.position.toArray(), spec.armor.gunPivot,
 const wkm = tank.root.getObjectByName('jaguar_wkm_b');
 assert.ok(wkm && wkm.parent === turret,
   'Polish WKM-B is attached to the traversing turret');
+const turretModernization = turret.userData.jaguarModernizationReceipt;
+const hullModernization = hull.userData.jaguarModernizationReceipt;
+assert.ok(turretModernization?.eraTiles >= 17,
+  'Jaguar carries a complete cheek, roof, side-bin and rear ERAWA package');
+assert.ok(turretModernization?.turretEquipmentPieces >= 22,
+  'Jaguar turret carries substantial seated service and observation equipment');
+assert.equal(turretModernization?.panoramicSight, true,
+  'Jaguar commander receives a compact panoramic sight');
+assert.equal(turretModernization?.sideBaskets, 2,
+  'Jaguar has bilateral turret-side stowage baskets');
+assert.ok(hullModernization?.hullEquipmentPieces >= 32,
+  'Jaguar hull carries fender lockers, rolls, spare links and rear fittings');
+assert.equal(hullModernization?.fenderLockers, 6,
+  'Jaguar has three lidded fender lockers on each side');
 
 const bounds = new THREE.Box3().setFromObject(tank.root);
 const size = bounds.getSize(new THREE.Vector3());

@@ -114,12 +114,12 @@ function clothSide(panel, suitSeed) {
 
 function clothFace(panel, suitSeed) {
   const {
-    z, x0, x1, y0, y1, nx = 16, ny = 9, outline = null, holes = [], seed = 0,
+    z, zAt = null, x0, x1, y0, y1, nx = 16, ny = 9, outline = null, holes = [], seed = 0,
   } = panel;
   const positions = [];
   const uvs = [];
   const vertex = (x, y) => [x, y,
-    z + Math.sin(x * 7.3 + y * 6.1 + seed) * 0.010
+    (zAt ? zAt(x, y) : z) + Math.sin(x * 7.3 + y * 6.1 + seed) * 0.010
       + Math.cos(x * 4.1 - y * 8.3 + suitSeed * 0.27) * 0.006];
   const tri = (a, b, c) => {
     for (const p of [a, b, c]) {
@@ -231,7 +231,8 @@ function addFaceFoliage(outA, outB, panel, cfg, seedBase) {
       if (noise01(seed, 13) > cfg.density) continue;
       const target = seed % 2 ? outA : outB;
       const s = (0.66 + noise01(seed, 14) * 0.42) * cfg.leafScale;
-      target.push(xform(leafGeometry(s, seed, cfg.style), px, py, panel.z + 0.014,
+      const pz = panel.zAt ? panel.zAt(px, py) : panel.z;
+      target.push(xform(leafGeometry(s, seed, cfg.style), px, py, pz + 0.014,
         Math.PI / 2, noise01(seed, 15) * 0.25,
         (noise01(seed, 16) - 0.5) * 0.50));
     }
@@ -317,6 +318,53 @@ const ptHullY = (_x, z) => {
   if (z < 2.4) return 1.54 - (z - 1.2) * 0.14;
   return 1.37 - (z - 2.4) * 0.17;
 };
+// PT-91A turret carrier surface. The old blanket used one y=0.88 plane,
+// leaving up to 0.6 m of daylight over the cast shoulders and front wedge.
+// This profile mirrors buildPT91Twardy's authored dome, ERAWA cheeks, flank
+// bins and bustle while preserving the ghillie's small suspended air layer.
+const pt91DomeProfile = Object.freeze([
+  [0.03, 0.81], [0.38, 0.80], [0.72, 0.755], [1.00, 0.64],
+  [1.18, 0.46], [1.26, 0.24],
+]);
+const pt91DomeY = (x, z) => {
+  const r = Math.hypot(x, (z + 0.08) / 0.98);
+  if (r <= pt91DomeProfile[0][0]) return pt91DomeProfile[0][1];
+  for (let i = 1; i < pt91DomeProfile.length; i++) {
+    const [r1, y1] = pt91DomeProfile[i];
+    if (r <= r1) {
+      const [r0, y0] = pt91DomeProfile[i - 1];
+      return THREE.MathUtils.lerp(y0, y1, (r - r0) / (r1 - r0));
+    }
+  }
+  return 0.20;
+};
+const pt91TurretCoverY = (x, z) => {
+  const ax = Math.abs(x);
+  let support = pt91DomeY(x, z);
+  if (z < -1.04 && ax < 0.86) support = Math.max(support, 0.64); // bustle roof
+  if (z >= -1.08 && z < -0.18 && ax > 0.82) support = Math.max(support, 0.61); // flank bins
+  if (z >= 0.16 && z < 1.24 && ax > 0.24) {
+    support = Math.max(support, 0.69 - Math.max(0, z - 0.62) * 0.065); // ERAWA wedge
+  }
+  return support + 0.030;
+};
+const pt91TurretSideTopY = (z) => {
+  if (z < -1.05) return 0.67;
+  if (z < -0.18) return 0.64;
+  if (z < 0.58) return 0.66;
+  return 0.66 - (z - 0.58) * 0.34;
+};
+const pt91TurretSideX = (z, t) => {
+  let armorX;
+  if (z < -1.05) armorX = 0.83;
+  else if (z < 0.55) armorX = 1.31;
+  else armorX = THREE.MathUtils.lerp(1.28, 0.78,
+    THREE.MathUtils.clamp((z - 0.55) / 0.45, 0, 1));
+  return armorX + (1 - t) * 0.032;
+};
+const pt91TurretFrontZ = (x, y) => 1.58
+  - Math.max(0, Math.abs(x) - 0.20) * 0.61
+  - Math.max(0, 0.40 - y) * 0.08;
 const profileY = (stations, z) => {
   if (z <= stations[0][0]) return stations[0][1];
   for (let i = 1; i < stations.length; i++) {
@@ -434,14 +482,16 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outline: [[-0.88, 0.82], [0.88, 0.82], [1.08, 1.00], [0.78, 1.28], [-0.78, 1.28], [-1.08, 1.00]], seed: 19 }],
     },
     turret: {
-      top: [{ x0: -1.17, x1: 1.17, z0: -1.65, z1: 1.25, nx: 20, nz: 28,
-        yAt: () => 0.88,
+      top: [{ x0: -1.17, x1: 1.17, z0: -1.65, z1: 1.25, nx: 26, nz: 34,
+        yAt: pt91TurretCoverY,
         outline: [[-0.82, -1.65], [0.82, -1.65], [1.17, -0.72], [1.10, 0.52], [0.62, 1.25], [-0.62, 1.25], [-1.10, 0.52], [-1.17, -0.72]],
-        holes: [rect(-0.94, -0.34, -0.46, 0.14), rect(0.24, 0.82, -0.42, 0.10), rect(0.28, 0.78, 0.48, 1.02)], seed: 31 }],
-      side: [-1, 1].map((side) => ({ side, z0: -1.58, z1: 0.80, nz: 24, ny: 7,
-        topAt: () => 0.78, bottomAt: (z) => 0.13 + Math.sin(z * 4.0) * 0.025,
-        outAt: (z, t) => (z < -0.90 ? 0.88 : 1.28) + (1 - t) * 0.040, seed: 41 + side })),
+        holes: [rect(-0.94, -0.34, -0.46, 0.14), rect(0.24, 0.82, -0.42, 0.10),
+          rect(-0.48, 0.48, 0.52, 1.30), rect(0.28, 0.78, 0.48, 1.02)], seed: 31 }],
+      side: [-1, 1].map((side) => ({ side, z0: -1.58, z1: 1.00, nz: 28, ny: 8,
+        topAt: pt91TurretSideTopY, bottomAt: (z) => 0.13 + Math.sin(z * 4.0) * 0.025,
+        outAt: pt91TurretSideX, seed: 41 + side })),
       face: [{ z: 1.45, x0: -1.15, x1: 1.15, y0: 0.10, y1: 0.72, nx: 18, ny: 8,
+        zAt: pt91TurretFrontZ,
         outline: [[-0.76, 0.10], [0.76, 0.10], [1.15, 0.34], [0.78, 0.72], [-0.78, 0.72], [-1.15, 0.34]],
         holes: [rect(-0.44, 0.44, 0.02, 0.67)], seed: 47 }],
     },

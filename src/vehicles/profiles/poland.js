@@ -597,7 +597,7 @@ function buildT72M1JaguarCurrentPrototype(P) {
 // This avoids the short-chassis regression of the donor prototype while still
 // making the playable Jaguar visibly part of the live T-72 family.
 function buildT72M1Jaguar(P) {
-  const { box, cylY, torus } = KIT;
+  const { box, cylY, cylZ, torus } = KIT;
   buildT72M1JaguarLegacy(P);
 
   P.hullG.userData.t72FamilyFoundation = 'measured-current-t72-family';
@@ -653,6 +653,130 @@ function buildT72M1Jaguar(P) {
   P.add('turret', cylY(0.305, 0.325, 0.035, 18), -0.38, 0.806, -0.42);
   P.add('turretDark', torus(0.290, 0.010, 18), -0.38, 0.827, -0.42);
   P.add('turretDark', box(0.055, 0.025, 0.11), -0.10, 0.821, -0.42, 0, 0.22, 0);
+
+  // Deep Polish modernization package. ERAWA wraps the side bins and rear
+  // bustle instead of ending at the frontal chevron, while shallow roof
+  // singles fill the exposed shoulder quadrants without blocking either
+  // hatch, the Drawa sight or the gun-recoil corridor.
+  let addedEraTiles = 0;
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const z = -0.94 + i * 0.31;
+      P.add('turret', box(0.055, 0.235, 0.275), s * 1.432, 0.43, z,
+        -0.04, s * (0.10 + i * 0.025), 0);
+      P.add('turretDark', box(0.012, 0.170, 0.225), s * 1.463, 0.43, z,
+        -0.04, s * (0.10 + i * 0.025), 0);
+      addedEraTiles++;
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = s * (0.32 + i * 0.28);
+      const z = 0.24 - i * 0.035;
+      P.add('turret', box(0.245, 0.050, 0.205), x, 0.796 - i * 0.012, z,
+        0.06, s * (0.04 + i * 0.025), 0);
+      P.add('turretDark', box(0.195, 0.012, 0.155), x, 0.827 - i * 0.012, z,
+        0.06, s * (0.04 + i * 0.025), 0);
+      addedEraTiles++;
+    }
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = (i - 2) * 0.275;
+    P.add('turret', box(0.25, 0.19, 0.050), x, 0.44 + (i % 2) * 0.015, -1.676);
+    P.add('turretDark', box(0.195, 0.135, 0.012), x,
+      0.44 + (i % 2) * 0.015, -1.708);
+    addedEraTiles++;
+  }
+
+  // Fender kit: lidded tool lockers, recovery boxes, a strapped canvas roll
+  // and spare links. These are equipment buckets, so they add visible field
+  // detail without inflating the Jaguar's armor or combat-anatomy volumes.
+  let hullEquipmentPieces = 0;
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const z = -1.16 + i * 0.68;
+      const w = i === 1 ? 0.46 : 0.40;
+      P.addEquipment('hull', box(w, 0.16, 0.48), s * 1.43, 1.34, z,
+        0, s * (i - 1) * 0.025, 0);
+      P.addEquipment('hullDark', box(w * 0.92, 0.020, 0.42), s * 1.43, 1.431, z,
+        0, s * (i - 1) * 0.025, 0);
+      P.addEquipment('hullDetail', box(0.035, 0.055, 0.09), s * 1.64, 1.35,
+        z + 0.11, 0, 0, 0);
+      hullEquipmentPieces += 3;
+    }
+    P.addEquipment('hullCloth', cylZ(0.095, 0.72, 12), s * 1.40, 1.45, -1.82);
+    for (const z of [-2.02, -1.62]) {
+      P.addEquipment('hullDark', torus(0.098, 0.012, 12), s * 1.40, 1.45, z,
+        Math.PI / 2, 0, 0);
+    }
+    hullEquipmentPieces += 3;
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = -0.48 + i * 0.24;
+    P.addEquipment('hullDetail', box(0.20, 0.055, 0.16), x, 1.385, 2.72,
+      -0.30, 0, (i - 2) * 0.012);
+    P.addEquipment('hullDark', box(0.155, 0.012, 0.11), x, 1.418, 2.74,
+      -0.30, 0, (i - 2) * 0.012);
+    hullEquipmentPieces += 2;
+  }
+
+  // Turret service furniture: side basket rails, tarp rolls, cable trunks,
+  // extra Obra heads and a compact commander's panoramic sight. Everything
+  // is seated on a visible shoe and traverses with the turret.
+  let turretEquipmentPieces = 0;
+  for (const s of [-1, 1]) {
+    P.addEquipment('turretDark', box(0.035, 0.28, 0.74), s * 1.47, 0.43, -0.70,
+      0, s * 0.10, 0);
+    for (const y of [0.32, 0.54]) {
+      P.addEquipment('turretDark', box(0.035, 0.035, 0.78), s * 1.48, y, -0.70,
+        0, s * 0.10, 0);
+    }
+    P.addEquipment('turretCloth', cylZ(0.105, 0.58, 12), s * 1.40, 0.50, -0.72,
+      0, s * 0.10, 0);
+    P.addEquipment('turretDark', torus(0.108, 0.012, 12), s * 1.40, 0.50, -0.98,
+      Math.PI / 2, 0, 0);
+    P.addEquipment('turretDark', torus(0.108, 0.012, 12), s * 1.40, 0.50, -0.46,
+      Math.PI / 2, 0, 0);
+    P.addEquipment('turret', box(0.13, 0.09, 0.12), s * 1.08, 0.56, -0.92,
+      0, s * 2.55, 0);
+    P.addEquipment('turretGlass', box(0.075, 0.044, 0.014),
+      s * 1.08 + Math.sin(s * 2.55) * 0.066, 0.56,
+      -0.92 + Math.cos(s * 2.55) * 0.066, 0, s * 2.55, 0);
+    turretEquipmentPieces += 8;
+  }
+  P.addEquipment('turret', box(0.34, 0.035, 0.32), -0.12, 0.700, -0.70);
+  P.addEquipment('turretDark', cylY(0.115, 0.135, 0.055, 14), -0.12, 0.746, -0.70);
+  P.addEquipment('turret', box(0.18, 0.10, 0.18), -0.12, 0.790, -0.70,
+    0, -0.20, 0);
+  P.addEquipment('turretGlass', box(0.115, 0.060, 0.014), -0.10, 0.795, -0.602,
+    0, -0.20, 0);
+  P.addEquipment('turretDark', box(0.025, 0.16, 0.030), 0.02, 0.76, -0.96,
+    -0.35, 0, 0);
+  P.addEquipment('turretDark', box(0.025, 0.14, 0.030), 0.10, 0.70, -1.08,
+    -0.48, 0, 0);
+  turretEquipmentPieces += 6;
+
+  // Rear recovery fittings and exhaust service details break up the broad
+  // plate while remaining above the sprocket/track sweep.
+  for (const s of [-1, 1]) {
+    P.addEquipment('hullDark', cylZ(0.070, 0.34, 10), s * 1.12, 1.20, -3.18,
+      Math.PI / 2, 0, 0);
+    P.addEquipment('hullDetail', box(0.18, 0.11, 0.035), s * 1.38, 1.34, -3.17);
+    P.addEquipment('hullDark', box(0.09, 0.06, 0.025), s * 1.38, 1.34, -3.193);
+    hullEquipmentPieces += 3;
+  }
+
+  P.turretG.userData.jaguarModernizationReceipt = Object.freeze({
+    eraTiles: addedEraTiles,
+    turretEquipmentPieces,
+    panoramicSight: true,
+    sideBaskets: 2,
+    rearEraCourse: 5,
+  });
+  P.hullG.userData.jaguarModernizationReceipt = Object.freeze({
+    hullEquipmentPieces,
+    fenderLockers: 6,
+    spareLinks: 5,
+    canvasRolls: 2,
+  });
 }
 
 // ===========================================================================
