@@ -578,3 +578,4 @@ button{font:inherit;color:inherit}
 @media(hover:none){.v5-shot-controls button:hover{border-color:var(--line);background:#0a1015;color:#eef3f6}}
 @media(hover:hover) and (pointer:fine){.v5-shot-rail figure:hover img{transform:scale(1.018);filter:saturate(1.05) contrast(1.03)}.v5-mosaic-grid figure:hover img{transform:scale(1.025);filter:saturate(1.05) contrast(1.035)}}
 @media(prefers-reduced-motion:reduce){.v5-hero-rail [data-hero-slide]{transition:none}.v5-shot-rail img,.v5-map-wall img,.v5-mosaic-grid img{transition:none}}
+.v5-film-copy .btn{margin-top:24px}

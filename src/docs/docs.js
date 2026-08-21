@@ -1,3 +1,5 @@
+import { mountBattleReels } from './battleReels.js';
+
 const navLinks = [...document.querySelectorAll('.docs-toc a[href^="#"]')];
 const sections = navLinks.map((link) => document.querySelector(link.hash)).filter(Boolean);
 
@@ -49,3 +51,5 @@ navLinks.forEach((link) => link.addEventListener('click', () => {
   document.querySelector('.docs-toc').classList.remove('open');
   document.querySelector('#docsMenu')?.setAttribute('aria-expanded', 'false');
 }));
+
+mountBattleReels();

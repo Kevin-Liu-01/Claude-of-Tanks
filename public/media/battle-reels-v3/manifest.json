@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "collection": "studio-modern-all-maps",
+  "count": 20,
+  "source": "claude-of-tanks-studio-cinematics/shots/studio-modern-all-maps-v3",
+  "posterAtSeconds": 2.6,
+  "delivery": {
+    "container": "mp4",
+    "codec": "h264",
+    "width": 1280,
+    "height": 720,
+    "frameRate": 30,
+    "targetVideoBitrate": 3200000,
+    "audio": false,
+    "preload": "selected reel only"
+  }
+}
