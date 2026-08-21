@@ -10457,9 +10457,12 @@ function buildLeo1A5ArticulatedProfile(P) {
   const fenderShelfTopY = 1.2275;
   const hullSponsonBottomY = 1.20;
   const hullSponsonTopY = 1.44;
+  const bodyLiftY = 0.14;
   const roadWheelY = 0.25;
   const roadWheelZs = [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04];
   const returnRollerZs = [2.30, 0.90, -0.52, -1.87];
+  const returnRollerY = 1.07;
+  const trackTopSupportY = returnRollerY + 0.105 + 0.05;
   const trackBotY = -0.045;
   const trackContactZF = 2.82;
   const trackContactZR = -2.46;
@@ -10623,20 +10626,32 @@ function buildLeo1A5ArticulatedProfile(P) {
   // Seven 660 mm dual wheels on the Leopard-family trapezoid course. The
   // compact .74 m pitch is retained, while the complete row advances 18 cm
   // to sit centrally between the fixed end drums and drops another 5 cm into
-  // a correspondingly deeper loaded run. Return supports and both contact
-  // knees advance with the road-wheel pack so the linked course remains a
-  // coherent trapezoid instead of stretching diagonally around the old row.
+  // a correspondingly deeper loaded run. The return supports rise with the
+  // reseated hull, while both contact knees remain with the planted road-wheel
+  // pack, so the linked course remains a coherent Leopard trapezoid.
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.205, wheelY: roadWheelY, xc: 1.40,
     wheelZs: roadWheelZs,
     sprocket: { z: -2.70, y: 0.72, r: 0.30 }, idler: { z: 3.17, y: 0.66, r: 0.29 },
-    rollers: returnRollerZs.map((z) => ({ z, y: 0.93, r: 0.105 })),
-    trackW: 0.46, trackTh: 0.10, topY: 1.12, botY: trackBotY,
+    rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: 0.105 })),
+    trackW: 0.46, trackTh: 0.10, topY: trackTopSupportY, botY: trackBotY,
     contactZF: trackContactZF, contactZR: trackContactZR,
     linkPitchM: 0.14, shoeRadialScale: 0.92, pinCapOuter: 0.274,
     endRingSpan: 0.46, coveredTop: 1.08, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
   });
+
+  // Reseat the complete armored body above the suspension datum. Previous
+  // revisions lowered the wheel row and deepened the contact run without
+  // moving the hull, which left the vehicle visually sunk into its running
+  // gear. Running-gear objects and their dedicated buckets stay at the
+  // certified wheel/end-drum stations; every fixed hull skin and fitting is
+  // lifted together, and the turret ring follows the new deck station below.
+  P.offsetBuckets([
+    'hull', 'hullCupola', 'hullEquipment', 'hullDetail', 'hullDark',
+    'hullRubber', 'hullWood', 'hullCloth', 'hullGlass', 'hullTrack',
+    'hullShadow', 'hullTrackGuardL', 'hullTrackGuardR',
+  ], 0, bodyLiftY, 0);
   P.hullG.userData.leopard1A5FinishReceipt = {
     continuousFenders: true,
     segmentedSideAprons: 14,
@@ -10649,6 +10664,9 @@ function buildLeo1A5ArticulatedProfile(P) {
     roadWheelZs: [...roadWheelZs],
     roadWheelForwardShift: 0.18,
     returnRollerZs: [...returnRollerZs],
+    returnRollerY,
+    bodyLiftY,
+    trackTopSupportY: Number(trackTopSupportY.toFixed(4)),
     trackBotY,
     trackContactZF,
     trackContactZR,
@@ -10656,13 +10674,13 @@ function buildLeo1A5ArticulatedProfile(P) {
     closedDeckUnderstructure: true,
     deckSupportSegments: 2,
     hullOverFenders: true,
-    hullSponsonBottomY,
-    fenderShelfTopY,
+    hullSponsonBottomY: Number((hullSponsonBottomY + bodyLiftY).toFixed(4)),
+    fenderShelfTopY: Number((fenderShelfTopY + bodyLiftY).toFixed(4)),
     hullFenderOverlapY: Number((fenderShelfTopY - hullSponsonBottomY).toFixed(4)),
     upperGlacisSurfaces: 1,
-    upperGlacisFrontY: upperGlacisY(3.54),
-    upperGlacisRearY: upperGlacisY(1.55),
-    lowerGlacisJoinY: 1.04,
+    upperGlacisFrontY: Number((upperGlacisY(3.54) + bodyLiftY).toFixed(4)),
+    upperGlacisRearY: Number((upperGlacisY(1.55) + bodyLiftY).toFixed(4)),
+    lowerGlacisJoinY: Number((1.04 + bodyLiftY).toFixed(4)),
     leopard2TrackCourse: true,
     frontIdlerZ: 3.17,
     frontIdlerY: 0.66,
@@ -10674,7 +10692,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   // The source ring is 0.54 m ahead of the hull origin.  Keep that authored
   // station: the old fleet profile sat the whole turret too far aft and then
   // compensated with an overlong tube.
-  P.turretG.position.set(0, 1.55, 0.50);
+  P.turretG.position.set(0, 1.55 + bodyLiftY, 0.50);
   P.add('turret', cylY(0.98, 1.04, 0.11, P.q ? 28 : 18), 0, -0.055, 0);
   // Source station samples form a long cast teardrop: broad around the ring,
   // tapering gently to z=-2.3 rather than a circular pancake.  Two dense
@@ -10823,7 +10841,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.mats.glass.color.setHex(0x3e493b);
   P.mats.glass.roughness = 0.48;
   P.mats.glass.metalness = 0.30;
-  P.topY = 1.55;
+  P.topY = 1.55 + bodyLiftY;
 }
 
 // ============================================================================

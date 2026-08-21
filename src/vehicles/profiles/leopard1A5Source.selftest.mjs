@@ -43,8 +43,8 @@ visual.root.traverse((node) => {
 assert.equal(trackBands.length, 2, 'exactly one linked track band is present per side');
 for (const band of trackBands) {
   const box = bounds(band);
-  assert.ok(box.max.y >= 1.10 && box.min.y <= -0.034,
-    `${band.name} uses the deepened Leopard course`);
+  assert.ok(box.max.y >= 1.22 && box.min.y <= -0.034,
+    `${band.name} uses the reseated deep Leopard course`);
   assert.ok(box.max.z - box.min.z >= 6.60 && box.max.z - box.min.z <= 6.76,
     `${band.name} follows the measured Leopard-family course`);
 }
@@ -65,6 +65,9 @@ assert.deepEqual(finish, {
   roadWheelZs: [2.40, 1.66, 0.92, 0.18, -0.56, -1.30, -2.04],
   roadWheelForwardShift: 0.18,
   returnRollerZs: [2.30, 0.90, -0.52, -1.87],
+  returnRollerY: 1.07,
+  bodyLiftY: 0.14,
+  trackTopSupportY: 1.225,
   trackBotY: -0.045,
   trackContactZF: 2.82,
   trackContactZR: -2.46,
@@ -72,13 +75,13 @@ assert.deepEqual(finish, {
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
   hullOverFenders: true,
-  hullSponsonBottomY: 1.20,
-  fenderShelfTopY: 1.2275,
+  hullSponsonBottomY: 1.34,
+  fenderShelfTopY: 1.3675,
   hullFenderOverlapY: 0.0275,
   upperGlacisSurfaces: 1,
-  upperGlacisFrontY: 1.04,
-  upperGlacisRearY: 1.54,
-  lowerGlacisJoinY: 1.04,
+  upperGlacisFrontY: 1.18,
+  upperGlacisRearY: 1.68,
+  lowerGlacisJoinY: 1.18,
   leopard2TrackCourse: true,
   frontIdlerZ: 3.17,
   frontIdlerY: 0.66,
@@ -102,6 +105,10 @@ assert.ok(gear.idler.y - gear.wheelY >= 0.41 && gear.sprocket.y - gear.wheelY >=
   'the fixed terminal drums now rise strongly above the lowered road-wheel axis');
 assert.ok(Math.abs(gear.wheelZs.reduce((sum, z) => sum + z, 0) / gear.wheelZs.length - 0.18) < 1e-8,
   'the complete road-wheel row advances 18 cm without changing its cadence');
+assert.equal(finish.returnRollerY, 1.07,
+  'the return rollers lift the upper course into the raised hull datum');
+assert.equal(finish.trackTopSupportY, 1.225,
+  'the upper track course is reseated directly below the fenders');
 
 // The sponson must bear on the fender shelf, while exactly one long shallow
 // upper-glacis surface remains between the deck break and nose. A vertical
@@ -113,9 +120,9 @@ assert.ok(finish.hullSponsonBottomY < finish.fenderShelfTopY
 const bowHits = new THREE.Raycaster(
   new THREE.Vector3(0, -1, 2.50), new THREE.Vector3(0, 1, 0), 0, 4,
 ).intersectObject(mesh('hull'), false);
-assert.equal(bowHits.filter((hit) => hit.point.y > 0.95 && hit.point.y < 1.20).length, 0,
+assert.equal(bowHits.filter((hit) => hit.point.y > 1.09 && hit.point.y < 1.34).length, 0,
   'the obsolete lower duplicate upper-glacis plane is absent');
-assert.ok(bowHits.some((hit) => hit.point.y > 1.28 && hit.point.y < 1.33),
+assert.ok(bowHits.some((hit) => hit.point.y > 1.42 && hit.point.y < 1.47),
   'the single shallow upper glacis remains at the authored exterior station');
 
 // The marked rear and center deck skins have structural material directly
@@ -124,7 +131,7 @@ assert.ok(bowHits.some((hit) => hit.point.y > 1.28 && hit.point.y < 1.33),
 const deckSupportProbe = (y, z) => new THREE.Raycaster(
   new THREE.Vector3(2, y, z), new THREE.Vector3(-1, 0, 0), 0, 2,
 ).intersectObject(mesh('hull'), false)[0];
-for (const [y, z] of [[1.60, -2.50], [1.55, 0]]) {
+for (const [y, z] of [[1.74, -2.50], [1.69, 0]]) {
   const hit = deckSupportProbe(y, z);
   assert.ok(hit && hit.distance <= 0.80,
     `deck support closes the former internal void at y=${y}, z=${z}`);
@@ -133,7 +140,7 @@ mesh('hullCloth');
 
 // The source ring is 0.50 m forward of hull center. The gun saddle must root
 // inside the cast turret face so the tube and mantlet remain one assembly.
-assert.ok(turretRig.position.distanceTo(new THREE.Vector3(0, 1.55, 0.50)) < 1e-8,
+assert.ok(turretRig.position.distanceTo(new THREE.Vector3(0, 1.69, 0.50)) < 1e-8,
   'turret ring retains the registered source station');
 assert.ok(gunRig.position.distanceTo(new THREE.Vector3(0, 0.47, 1.15)) < 1e-8,
   'gun saddle retains its authored turret-local station');
