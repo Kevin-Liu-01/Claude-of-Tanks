@@ -2086,11 +2086,6 @@ function buildRunningGear(P, cfg) {
   let throwCount = 0; // r4: seeds per-throw ribbon pose scatter
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
-  // r5 wheel-bounce state: speed-gated so parked closeups stay clean while a
-  // moving tank shows readable per-wheel travel (the r4 motion sheets showed
-  // rigid road wheels on straight ground — only whole-hull pitch).
-  let bobPrevL = 0, bobPrevR = 0, bobAmpL = 0, bobAmpR = 0;
-
   // ---- movement-solve contact metadata (RUNTIME DATA ONLY — no geometry) ----
   // gameplay_feel MOVEMENT r1 (fidelity-rebuild fallout): the movement.js
   // support solve assumed every procedural visual's contact run spans
@@ -2291,15 +2286,29 @@ function buildRunningGear(P, cfg) {
     recomputeTrackNormals(geo, inf.triangles);
   }
 
+  // Cheap phase lane used on frames where distant terrain conformance is
+  // cadence-limited. Track UV motion and end-wheel spin stay continuous while
+  // the expensive road-wheel/band/link matrix work waits for its next slot.
+  function updateGearSurface(l, r) {
+    for (const sp of spinners) sp.mesh.rotation.x = (sp.side < 0 ? l : r) / sp.r;
+    for (const record of spinnerInstances) {
+      for (const sp of record.entries) {
+        _q.setFromAxisAngle(_X, (sp.side < 0 ? l : r) / sp.r);
+        _v.set(sp.x, sp.y, sp.z);
+        _s.set(1, 1, 1);
+        _m.compose(_v, _q, _s);
+        record.batch.setMatrixAt(sp.instanceId, _m);
+      }
+    }
+    mats.trackTexL.offset.y = -(l / mats.trackLinkM) % 1;
+    mats.trackTexR.offset.y = -(r / mats.trackLinkM) % 1;
+  }
+
   const gearUnit = {
     addRoadWheelLayer,
     roadWheelLayout: { xc, wheelY, wheelR, wheelZs: [...wheelZs] },
-    update(l, r) {
-      const dl = Math.abs(l - bobPrevL), dr = Math.abs(r - bobPrevR);
-      bobPrevL = l; bobPrevR = r;
-      // ~1 at full speed, eases to 0 within ~0.3 s of stopping
-      bobAmpL += (Math.min(1, dl * 7) - bobAmpL) * 0.2;
-      bobAmpR += (Math.min(1, dr * 7) - bobAmpR) * 0.2;
+    updateSurface: updateGearSurface,
+    update(l, r, _dt = SIM_STEP) {
       for (const { im, list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -2320,25 +2329,13 @@ function buildRunningGear(P, cfg) {
             continue;
           }
           const scroll = e.x < 0 ? l : r;
-          // r1: three incommensurate harmonics at ~1.8x the r5 amplitude,
-          // gated by track speed — WoT-signature independent wheel travel
-          // (each station chatters on its own phase over bumps), perfectly
-          // seated when parked (garage/closeup safe).
-          const amp = e.x < 0 ? bobAmpL : bobAmpR;
-          const bob = e.road
-            ? (Math.sin(scroll * 2.7 + e.i * 1.93) * 0.018 +
-               Math.sin(scroll * 6.3 + e.i * 3.17) * 0.009 +
-               Math.sin(scroll * 1.35 + e.i * 2.61) * 0.010) * amp
-            : 0;
-          // Clamp only the COSMETIC downward chatter. Terrain conformance is
-          // real suspension travel and must retain its full droop; clamping
-          // the combined value to -2 cm was the rigid-track/taped-down feel.
+          // Wheel travel comes from sampled terrain contact only. The old
+          // three-harmonic bob was driven by per-call track-scroll deltas, so
+          // it changed amplitude with refresh/cadence and made wheels vibrate
+          // independently of both the terrain and belt. Contact-derived
+          // travel keeps wheels, lower band, and pads mechanically coherent.
           const groundOff = suspensionEntry.off || 0;
-          const voff = groundOff + Math.max(bob, -0.02);
-          // The wheel can chatter against the suspension, but the track belt
-          // remains keyed to the sampled terrain offset. Feeding positive
-          // cosmetic bob into the belt lifted whole link runs 8-11 cm off
-          // flat ground at speed — the visible "floating tracks" defect.
+          const voff = groundOff;
           if (suspensionEntry.road) suspensionEntry.voff = groundOff;
           _q.setFromAxisAngle(_X, scroll / e.r);
           _v.set(e.x, e.y + voff, e.z);
@@ -2348,23 +2345,12 @@ function buildRunningGear(P, cfg) {
         }
         im.instanceMatrix.needsUpdate = true;
       }
-      for (const sp of spinners) sp.mesh.rotation.x = (sp.side < 0 ? l : r) / sp.r;
-      for (const record of spinnerInstances) {
-        for (const sp of record.entries) {
-          _q.setFromAxisAngle(_X, (sp.side < 0 ? l : r) / sp.r);
-          _v.set(sp.x, sp.y, sp.z);
-          _s.set(1, 1, 1);
-          _m.compose(_v, _q, _s);
-          record.batch.setMatrixAt(sp.instanceId, _m);
-        }
-      }
+      updateGearSurface(l, r);
       // band bottom run follows the wheels (skipped on a thrown side — the
       // band is gone there)
       if (!brokenL) deformBand(-1);
       if (!brokenR) deformBand(1);
       placeLinks(l, r);
-      mats.trackTexL.offset.y = -(l / mats.trackLinkM) % 1;
-      mats.trackTexR.offset.y = -(r / mats.trackLinkM) % 1;
     },
 
     /**
@@ -2465,10 +2451,10 @@ function buildRunningGear(P, cfg) {
           const target = dev < -suspensionDroopM
             ? -suspensionDroopM
             : (dev > suspensionCompressionM ? suspensionCompressionM : dev);
-          // Frame-rate independent damping. Distant gear updates at 20 Hz,
+          // Frame-rate independent damping. Distant gear updates at 15/30 Hz,
           // so the caller accumulates skipped dt and lands the same response
           // as a near tank without doing extra terrain work.
-          const alpha = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.12)) * 32);
+          const alpha = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.12)) * 20);
           e.off += (target - e.off) * alpha;
         }
       }
@@ -5874,13 +5860,13 @@ export function createTank(specId, engineCtx, opts = {}) {
   // staged/ghost states without the mirror (killcam ghosts, garage poses).
   let pendFlinchPV = 0, pendFlinchRV = 0;
   const FLINCH_W = 13, FLINCH_Z = 0.32;
-  // suspension spring: underdamped pitch/roll rock layered on the sim's stiff
-  // 4-corner attitude — squat on accel, dive on braking, bounce over ruts.
+  // Suspension spring: restrained pitch/roll movement layered on the sim's
+  // stiff 4-corner attitude — squat on accel, dive on braking, settle over ruts.
   // Works in visualPitch/visualRoll space (nose-up positive / right-down
   // positive) and is ADDED to the sim attitude before the root rotation.
   let suspP = 0, suspR = 0, suspPV = 0, suspRV = 0;
   let prevSpeed = 0;
-  const SUSP_W = 7.5, SUSP_Z = 0.30;
+  const SUSP_W = 7.2, SUSP_Z = 0.65;
   // r6 VISIBLE hull dynamics: the sim spring (movement.js state._susp) is
   // tuned for terrain-contact correctness, but its rock is sub-pixel at
   // gameplay camera distance — no readable squat/dive/roll (r5 critique).
@@ -5888,11 +5874,11 @@ export function createTank(specId, engineCtx, opts = {}) {
   // state is 0, so parked pose is untouched), and lift the hull by half the
   // worst extra corner deficit so the exaggerated lean neither buries nor
   // levitates the tracks visibly.
-  // r1: SWAY_VIS 2.3 -> 3.2 — a hard 12 m/s slide showed near-zero chassis
-  // roll from the chase camera. MUST stay in lockstep with movement.js
+  // r1 smoothing: keep turn lean readable without amplifying it into camera
+  // shake. MUST stay in lockstep with movement.js
   // SWAY_VIS (support solve clears terrain at the amplified pose) — pairing
   // patch in docs/handoff/effects_combat-r1.md.
-  const SUSP_VIS_P = 2.6, SUSP_VIS_R = 2.1, SWAY_VIS = 3.2;
+  const SUSP_VIS_P = 2.2, SUSP_VIS_R = 1.9, SWAY_VIS = 2.4;
   let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
   let mobileDetailObjects = [];
   let mobileDetailsVisible = true;
@@ -6023,8 +6009,15 @@ export function createTank(specId, engineCtx, opts = {}) {
      *   step the recoil by calling this N times) keep their contract; the
      *   render loop should pass its true dt so a 120 Hz client does not
      *   play the recuperator cycle twice as fast.
+     * @param {number} [viewDistM] camera distance for battle-detail LOD
+     * @param {object|null} [presentationState] read-only interpolated pose;
+     *   authority remains in `state` for queued impulses and gameplay.
      */
-    syncFromState(state, dt = SIM_STEP, viewDistM) {
+    syncFromState(state, dt = SIM_STEP, viewDistM, presentationState = null) {
+      // The authority state remains the mutation target for queued recoil /
+      // flinch impulses. A presentation state is a read-only, allocation-free
+      // interpolated view used only for transforms and running-gear phase.
+      const renderState = presentationState || state;
       if (battleDetailGroups.length) {
         // Hysteresis keeps a bot hovering at the handoff from churning scene
         // children. Undefined distance is an inspection/cinematic contract:
@@ -6046,7 +6039,7 @@ export function createTank(specId, engineCtx, opts = {}) {
           }
         }
       }
-      root.position.copy(state.pos);
+      root.position.copy(renderState.pos);
       // r5 fx-clock advancement for the SELF-TIMED timelines (recoil, pop,
       // wreck char/embers): see the lastFxS note above. adv == dt live;
       // adv == 0 while the shared clock is pinned; adv == the pinned step
@@ -6062,15 +6055,16 @@ export function createTank(specId, engineCtx, opts = {}) {
       }
       // Turn-lean sway: the hull banks INTO speed × yaw-rate (visual layer on
       // top of the sim's 4-corner attitude spring).
-      const swayTarget = destroyed ? 0 : Math.max(-0.10, Math.min(0.10, state.yawRate * state.speed * 0.035));
-      sway += (swayTarget - sway) * 0.10;
+      const swayTarget = destroyed ? 0
+        : Math.max(-0.10, Math.min(0.10, renderState.yawRate * renderState.speed * 0.035));
+      sway += (swayTarget - sway) * (1 - Math.exp(-Math.max(0, dt) / 0.158));
       // Gun-fire hull rock: recoil reaction fed through the flinch spring —
       // firing pitches the hull 2-3 deg away from the gun azimuth then
       // settles (r5: the 1.2 magnitude was imperceptible from third person).
       if (recoilPending) {
         recoilPending = false;
         if (!destroyed) {
-          const yawW = state.yaw + state.turretYaw;
+          const yawW = renderState.yaw + renderState.turretYaw;
           // r5: 2.6 -> 3.4 — the fire rock-back must survive 2-3 frames at 60
           // fps from a profile camera (r4: no hull reaction visible post-shot)
           // r5: 3.4 -> 4.4 — the shot must visibly compress the rear
@@ -6102,8 +6096,8 @@ export function createTank(specId, engineCtx, opts = {}) {
           state._flinch.rv += pendFlinchRV;
           pendFlinchPV = pendFlinchRV = 0;
         }
-        flinchP = state._flinch.p;
-        flinchR = state._flinch.r;
+        flinchP = renderState._flinch ? renderState._flinch.p : state._flinch.p;
+        flinchR = renderState._flinch ? renderState._flinch.r : state._flinch.r;
       } else {
         if (pendFlinchPV !== 0 || pendFlinchRV !== 0) {
           flinchPV += pendFlinchPV;
@@ -6132,18 +6126,18 @@ export function createTank(specId, engineCtx, opts = {}) {
         // r6: read the sim spring, then amplify the transient for the
         // RENDERED attitude only (SUSP_VIS_* above) so accel squat, brake
         // dive and turn roll are readable at gameplay camera distances.
-        suspP = state._susp ? state._susp.p * SUSP_VIS_P : suspP;
-        suspR = state._susp ? state._susp.r * SUSP_VIS_R : suspR;
-        if (state._swayEst !== undefined) sway = state._swayEst * SWAY_VIS;
+        suspP = renderState._susp ? renderState._susp.p * SUSP_VIS_P : suspP;
+        suspR = renderState._susp ? renderState._susp.r * SUSP_VIS_R : suspR;
+        if (renderState._swayEst !== undefined) sway = renderState._swayEst * SWAY_VIS;
         // NO height compensation here: movement.js support-solves state.pos.y
         // at the SAME amplified pose (SUSP_VIS_*/SWAY_VIS mirrored there) so
         // the terrain-contact guarantee holds exactly at the rendered
         // attitude — the old half-lift hack floated the whole contact patch
         // 12-17 cm during full-speed turns (r1 drive gate evidence).
       }
-      prevSpeed = state.speed;
-      root.rotation.set(-(state.visualPitch + suspP) + flinchP, state.yaw,
-        state.visualRoll + suspR + sway + flinchR, 'YXZ');
+      prevSpeed = renderState.speed;
+      root.rotation.set(-(renderState.visualPitch + suspP) + flinchP, renderState.yaw,
+        renderState.visualRoll + suspR + sway + flinchR, 'YXZ');
       if (destroyed) {
         // wreck: turret pose owned by the pop/settle animation, gun droops.
         // r5: pop/char/embers advance by the FX CLOCK (adv), so stepped
@@ -6181,13 +6175,14 @@ export function createTank(specId, engineCtx, opts = {}) {
         const extraPitch = suspP - flinchP;
         const extraRoll = suspR + sway + flinchR;
         if (Math.abs(extraPitch) + Math.abs(extraRoll) > 1e-6) {
-          const cosPitch = Math.cos(state.gunPitch);
+          const cosPitch = Math.cos(renderState.gunPitch);
           _stabilizedDir.set(
-            Math.sin(state.turretYaw) * cosPitch,
-            Math.sin(state.gunPitch),
-            Math.cos(state.turretYaw) * cosPitch,
+            Math.sin(renderState.turretYaw) * cosPitch,
+            Math.sin(renderState.gunPitch),
+            Math.cos(renderState.turretYaw) * cosPitch,
           );
-          _stabilizedEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
+          _stabilizedEuler.set(-renderState.visualPitch, renderState.yaw,
+            renderState.visualRoll, 'YXZ');
           _stabilizedQ.setFromEuler(_stabilizedEuler);
           _stabilizedDir.applyQuaternion(_stabilizedQ);
           _stabilizedQ.copy(root.quaternion).invert();
@@ -6198,8 +6193,8 @@ export function createTank(specId, engineCtx, opts = {}) {
             Math.hypot(_stabilizedDir.x, _stabilizedDir.z),
           );
         } else {
-          turretG.rotation.y = state.turretYaw;
-          gunG.rotation.x = -state.gunPitch;
+          turretG.rotation.y = renderState.turretYaw;
+          gunG.rotation.x = -renderState.gunPitch;
         }
       }
       // PERF (120 Hz): the track dressing below — per-wheel heightAt conform
@@ -6218,12 +6213,18 @@ export function createTank(specId, engineCtx, opts = {}) {
       if (P.gear && groundSampler && !destroyed && gearNow) {
         // gameplay_feel r5: conform at the EXACT rendered attitude (see the
         // conform() jsdoc) — root.rotation was just set from these terms.
-        P.gear.conform(state, groundSampler,
-          state.visualPitch + suspP - flinchP,
-          state.visualRoll + suspR + sway + flinchR, gearStepDt);
+        P.gear.conform(renderState, groundSampler,
+          renderState.visualPitch + suspP - flinchP,
+          renderState.visualRoll + suspR + sway + flinchR, gearStepDt);
       }
       if (P.gear && gearNow) {
-        P.gear.update(state.trackScroll.l, state.trackScroll.r);
+        P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);
+      } else if (P.gear && P.gear.updateSurface) {
+        // Keep the cheap visible phase continuous between 30/15 Hz distant
+        // conformance passes. This updates track UVs and end-wheel spin only;
+        // terrain sampling, band deformation, and road-wheel matrices remain
+        // cadence-limited.
+        P.gear.updateSurface(renderState.trackScroll.l, renderState.trackScroll.r);
       }
       if (gearNow) gearAccumDt = 0;
       // §5.362: per-shot stroke profile — cannon recuperate cycle vs the

@@ -87,6 +87,12 @@ import {
   startConsumableCooldown,
 } from './game/consumables.js';
 import { advancePreBattleCountdown } from './game/preBattleCountdown.js';
+import {
+  advanceTankPresentationPose,
+  createTankPresentationPose,
+  resetTankPresentationPose,
+  sampleTankPresentationPose,
+} from './game/presentationPose.js';
 import { PLAYER_ACTION_BITS } from './net/protocol.js';
 import { encodeAimIntent } from './net/aimIntent.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
@@ -2438,6 +2444,10 @@ async function startBattleLoading(specId, mapId = null) {
       });
       if (warmGeneration !== battleWarmGeneration) return;
       mark('enemyVisuals');
+      battleLoad.progress(0.965, 'Warming suspension terrain');
+      await warmBattleTerrainTiles(coveredYield);
+      if (warmGeneration !== battleWarmGeneration) return;
+      mark('terrainGrid');
       battleLoad.progress(0.97, 'Priming combat effects');
       await fx.preloadTextures?.();
       await warmCombatPipelineChunked(24);
@@ -2916,6 +2926,9 @@ async function presentNetworkBattle({
   );
   markLoadStage('initialSnapshot');
   networkBridge.apply(initial, 1 / 60);
+  battleLoad.progress(0.845, 'Warming suspension terrain');
+  await warmBattleTerrainTiles(createFrameBudgetYielder(16));
+  markLoadStage('terrainGrid');
   // Network rosters can contain vehicles the garage-idle solo warmer never
   // touched. Bake every fielded wreck family while the opaque load screen
   // owns the frame, otherwise first blood can synchronously build burn
@@ -3297,6 +3310,12 @@ function startBattle(specId, mapId = null, opts = {}) {
     random: true, deferVisuals: !!opts.deferVisuals,
     deferCamoRepaint: true,
   });
+  primeDeploymentTerrainTiles();
+  // Fixed-step authority starts every round with a matching presentation
+  // history. Without this reset a debug/rematch entry could interpolate from
+  // the previous battlefield pose for one frame.
+  simAcc = 0;
+  resetSoloPresentationPoses();
   battleStaged = true;
   // perf-r2f: ONE chunked sweep covers the biome flip AND the bot camo rolls
   // setupBattle just made (its own trailing sweep is deferred by the flag
@@ -3794,7 +3813,46 @@ let shotMode = false;
 let shotHudFrame = false;
 let lastCineActive = false; // battle-open flyby HUD veil edge latch
 
-function updateDustAndSync(dtFrame) {
+function resetSoloPresentationPoses() {
+  for (const ent of game.tanks) {
+    if (!ent.state) continue;
+    if (!ent._soloRenderPose) ent._soloRenderPose = createTankPresentationPose();
+    resetTankPresentationPose(ent._soloRenderPose, ent.state);
+  }
+}
+
+function primeDeploymentTerrainTiles() {
+  const warmer = world?.heightField?.warmFastTilesAround;
+  if (typeof warmer !== 'function') return;
+  const points = [];
+  for (const ent of game.tanks) {
+    const pos = ent?.state?.pos;
+    if (pos) points.push({ x: pos.x, z: pos.z, radiusM: 0 });
+  }
+  // This runs while battle entry is still covered (or inside a debug start),
+  // preventing deployment first-touch tile bakes from stacking on the first
+  // live simulation frame. The larger player neighborhood remains chunked below.
+  for (const _tile of warmer.call(world.heightField, points)) { /* drain */ }
+}
+
+function captureSoloPresentationPoses() {
+  for (const ent of game.tanks) {
+    if (!ent.state) continue;
+    if (!ent._soloRenderPose) ent._soloRenderPose = createTankPresentationPose(ent.state);
+    else advanceTankPresentationPose(ent._soloRenderPose, ent.state);
+  }
+}
+
+function presentationStateFor(ent, alpha) {
+  // BrowserBattleBridge already supplies Hermite-interpolated remote poses and
+  // corrected local prediction every render frame. Interpolating those again
+  // would add latency and smear corrections, so this buffer is solo-only.
+  if (networkMatch || game.phase !== 'battle') return ent.state;
+  if (!ent._soloRenderPose) ent._soloRenderPose = createTankPresentationPose(ent.state);
+  return sampleTankPresentationPose(ent._soloRenderPose, ent.state, alpha);
+}
+
+function updateDustAndSync(dtFrame, presentationAlpha = 1) {
   const cameraPosition = camera.position;
   for (const ent of game.tanks) {
     // PERF r3: staged-battle visuals are deferred to post-ready idle — skip
@@ -3802,6 +3860,7 @@ function updateDustAndSync(dtFrame) {
     // warmCombatPipeline builds all of them before battle/shot frames).
     if (!ent.state || !ent.combat || !ent.visual) continue;
     const state = ent.state;
+    const presented = presentationStateFor(ent, presentationAlpha);
     const combat = ent.combat;
     const visual = ent.visual;
     const spec = ent.spec;
@@ -3814,13 +3873,13 @@ function updateDustAndSync(dtFrame) {
     // dressing (per-wheel heightAt conform + link/band instance pass) at a
     // reduced cadence beyond fine-detail range — battle loop only; studio,
     // killcam and staged poses omit it and keep full-rate updates.
-    const viewDistM = cameraPosition.distanceTo(state.pos);
+    const viewDistM = cameraPosition.distanceTo(presented.pos);
     // A returned player's already-resident battle visual can become the
     // garage hero. Its simulation entity intentionally retains the last
     // battlefield pose for the next deployment, so do not let the generic
     // visual sync pull the displayed pedestal tank back out of the garage.
     if (game.phase !== 'garage' || visual !== pedestalVisual) {
-      visual.syncFromState(state, dtFrame, viewDistM);
+      visual.syncFromState(state, dtFrame, viewDistM, presented);
     }
     // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
     // Wrecks stay visible; the player is never gated; outside battle
@@ -3861,9 +3920,9 @@ function updateDustAndSync(dtFrame) {
       if (ent._fxAcc < 1 / 60) continue;
       const fxTicks = Math.min(2, Math.floor(ent._fxAcc * 60));
       ent._fxAcc -= fxTicks / 60;
-      const sp = Math.abs(state.speed);
+      const sp = Math.abs(presented.speed);
       const throttle = Math.abs(ent.input.throttle || 0);
-      _fwd.set(Math.sin(state.yaw), 0, Math.cos(state.yaw));
+      _fwd.set(Math.sin(presented.yaw), 0, Math.cos(presented.yaw));
       if (sp > 0.8) {
         const intensity = Math.min(1, sp / topSpeedMps);
         // Distance-driven emission: the old "three puffs per 60 Hz tick per
@@ -3879,7 +3938,7 @@ function updateDustAndSync(dtFrame) {
           ent._dustTravelAcc -= spacingM;
           _v3.set(_fwd.z, 0, -_fwd.x); // right axis
           for (let side = -1; side <= 1; side += 2) {
-            _v1.copy(state.pos)
+            _v1.copy(presented.pos)
               .addScaledVector(_fwd, -dims.hullLengthM * 0.45)
               .addScaledVector(_v3, side * dims.widthM * 0.45);
             fx.dust(_v1, _fwd, intensity);
@@ -3897,7 +3956,7 @@ function updateDustAndSync(dtFrame) {
       {
         const load = Math.max(0.10, (rig.cinematicActive && ent.isPlayer) ? 0.3 : 0,
           Math.min(1, throttle * 0.7 + (sp / topSpeedMps) * 0.5));
-        _v1.copy(state.pos).addScaledVector(_fwd, -dims.hullLengthM * 0.42);
+        _v1.copy(presented.pos).addScaledVector(_fwd, -dims.hullLengthM * 0.42);
         _v1.y += dims.heightM * 0.72;
         fx.exhaust(_v1, load, spec.era === 'ww2');
       }
@@ -4152,6 +4211,7 @@ function tick(nowMs) {
       simAcc = Math.min(simAcc + dtR, SIM_DT * MAX_SIM_STEPS);
       while (simAcc >= SIM_DT) {
         simStep(game, bus, world, rig, collider);
+        captureSoloPresentationPoses();
         simAcc -= SIM_DT;
       }
     }
@@ -4238,7 +4298,14 @@ function tick(nowMs) {
     }
   }
 
-  // 3. camera rig (kill-cam drives the camera through rig.setExternalPose)
+  // 3. presentation pose + camera rig. Resolve the hull/turret hierarchy
+  // BEFORE the camera asks for its turret/gun anchors; both now consume the
+  // same interpolated pose in the same frame instead of the camera chasing
+  // yesterday's visual transform while the tank jumps to today's sim tick.
+  if (!kcActive && !livePaused) {
+    const presentationAlpha = networkMatch ? 1 : simAcc / SIM_DT;
+    updateDustAndSync(dtR, presentationAlpha);
+  }
   camInput.autoAimPoint = null;
   if (mobileAutoAimTargetId && inBattle && !paused && !kcActive) {
     const target = game.tankById.get(mobileAutoAimTargetId);
@@ -4287,19 +4354,14 @@ function tick(nowMs) {
   if (inBattle && !kcActive && rig.mode === 'ARCADE' && !rig.externalActive &&
       cameraFocus && cameraFocus.state &&
       cameraFocus.visual && cameraFocus.visual.root.visible) {
-    occlFocus = _occlFocus.copy(cameraFocus.state.pos);
+    // Keep foliage fading attached to the same interpolated hull pose the
+    // player sees; authority can be up to one fixed step ahead on solo clients.
+    occlFocus = cameraFocus.visual.root.getWorldPosition(_occlFocus);
     occlFocus.y += cameraFocus.spec.dims.heightM * 0.75;
   }
   if (world && !worldDormant) world.update(dtR, camera.position, _fwd, occlFocus);
 
-  // 5. visuals + dust (frozen during the kill-cam replay — tanks hold the
-  // pose they died in; the x-ray reads the snapshot, not live state).
-  // PAUSE: skipped entirely while live-paused — poses hold, self-timed visual
-  // timelines (recoil, embers) don't age, no dust/exhaust pumps off hulls
-  // whose frozen state still carries speed, spot-fades hold.
-  if (!kcActive && !livePaused) updateDustAndSync(dtR);
-
-  // 6. fx — dt 0 while live-paused pins the shared particle clock, which is
+  // 5. fx — dt 0 while live-paused pins the shared particle clock, which is
   // the one timeline every particle/timer/light/decal ages against (the same
   // mechanism deterministic shot captures rely on), so effects hold mid-air.
   // killcam r2: the replay's IMPACT beat briefly dilates the fx clock (~0.55x
@@ -5179,6 +5241,23 @@ await bootStage('post', async () => {
 let combatPipelineWarmed = false;
 let _warmGen = null; // in-flight chunked warm — the sync wrapper drains the remainder
 let networkOpeningEffectsWarmed = false;
+
+async function warmBattleTerrainTiles(yieldForBudget) {
+  const warmer = world?.heightField?.warmFastTilesAround;
+  if (typeof warmer !== 'function') return;
+  const points = [];
+  for (const ent of game.tanks) {
+    const pos = ent?.state?.pos;
+    if (!pos) continue;
+    // The player can turn either way immediately after rollout, so cover the
+    // surrounding 64 m. Bots need their current tile ready before the first
+    // authority tick; later unexpected crossings are bounded by 32 m tiles.
+    points.push({ x: pos.x, z: pos.z, radiusM: ent.isPlayer ? 64 : 0 });
+  }
+  for (const _tile of warmer.call(world.heightField, points)) {
+    if (yieldForBudget) await yieldForBudget();
+  }
+}
 
 async function warmNetworkWrecks(entities) {
   const yieldForFrameBudget = createFrameBudgetYielder(8);
@@ -6181,6 +6260,8 @@ function debugFastForward(seconds) {
       if (ent.state) ent.visual.syncFromState(ent.state);
     }
   }
+  resetSoloPresentationPoses();
+  simAcc = 0;
   return game.timeS;
 }
 

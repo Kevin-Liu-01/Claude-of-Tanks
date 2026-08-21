@@ -214,8 +214,8 @@ const PERCH_W_BOOST = 1.0;       // pitch spring ω multiplier at full perch (×
 const PERCH_RELEASE_S = 0.3;     // s for the perch factor to decay after touchdown
 // The dominant float term during a perch is NOT the main spring but the susp
 // ROCK MIRROR: its terrain-delta target pins at the ±SUSP_P_CLAMP and the
-// ×SUSP_VIS_P render amplification turns that into up to ~10° of COSMETIC
-// nose-dive beyond the two-contact pose (diagnosed at the failing selftest
+// render amplification can still add several degrees of COSMETIC nose-dive
+// beyond the two-contact pose (diagnosed at the failing selftest
 // tick: spring −0.084 rad vs susp contribution −0.136 rad). The solve then
 // must float the whole patch to keep the dove pose clear. Physically a hull
 // hanging off one line end has NO loaded bogies to chatter — the cosmetic
@@ -273,23 +273,25 @@ const RIDE_DETACH_REL_V_MPS = 0.20;
 // fast turn cannot dip the leaned-into track edge below the terrain.
 const SWAY_GAIN = 0.011;
 const SWAY_CLAMP = 0.035;
-const SWAY_SMOOTH = 0.12;
+// Matches the old 0.12-per-60-Hz response while remaining invariant when
+// local multiplayer prediction advances in shorter render-rate substeps.
+const SWAY_TAU_S = -SIM_DT / Math.log(1 - 0.12);
 // Mirror of tankFactory's visual suspension rock layer (suspP/suspR in
-// syncFromState): the renderer adds a self-timed under-damped spring to the
+// syncFromState): the renderer adds a restrained transient spring to the
 // hull rotation on top of visualPitch/visualRoll, so the support solve must
 // clear the terrain at THAT pose. Constants must stay in lockstep with
 // tankFactory.js (SUSP_W/SUSP_Z, accel squat, 4-corner fit, clamps) — see
 // docs/handoff/gameplay_feel-r1.md for the pairing note.
-const SUSP_W = 7.5;
-const SUSP_Z = 0.30;
+const SUSP_W = 7.2;
+const SUSP_Z = 0.65;
 const SUSP_ACCEL_CLAMP = 9;      // m/s²
-const SUSP_ACCEL_GAIN = 0.0052;  // rad per m/s² (nose up under accel)
+const SUSP_ACCEL_GAIN = 0.0044;  // rad per m/s² (nose up under accel)
 const SUSP_FIT_LEN = 0.36;       // × hullLengthM (their corner fit)
 const SUSP_FIT_WID = 0.42;       // × widthM
-const SUSP_P_CLAMP = 0.07;       // rad — terrain-delta pitch authority
-const SUSP_R_CLAMP = 0.06;       // rad — terrain-delta roll authority
+const SUSP_P_CLAMP = 0.065;      // rad — terrain-delta pitch authority
+const SUSP_R_CLAMP = 0.055;      // rad — terrain-delta roll authority
 const SUSP_K_SPEED = 4;          // m/s for full rate scale
-const SUSP_K_GAIN = 0.8;
+const SUSP_K_GAIN = 0.76;
 // Mirror of tankFactory's r6 VISIBLE-dynamics amplification: syncFromState
 // renders the hull at susp.p × SUSP_VIS_P / susp.r × SUSP_VIS_R and sway =
 // _swayEst × SWAY_VIS (readable squat/dive/turn-lean at gameplay camera
@@ -302,9 +304,9 @@ const SUSP_K_GAIN = 0.8;
 // single authority. (The r2 handoff carried the same hunk but it was never
 // applied; the stacked half-lift floated the whole contact patch 12-17 cm
 // during full-speed turns — r1 critique, terrain-contact hard gate.)
-const SUSP_VIS_P = 2.6;
-const SUSP_VIS_R = 2.1;
-const SWAY_VIS = 3.2; // effects_combat r1: pairs with tankFactory SWAY_VIS 3.2
+const SUSP_VIS_P = 2.2;
+const SUSP_VIS_R = 1.9;
+const SWAY_VIS = 2.4;
 // Mirror of tankFactory's hit-flinch rock (FLINCH_W/FLINCH_Z in the visual
 // layer): a large-caliber hit kicks flinchPV up to ~0.36 rad/s ⇒ peak rock
 // ~1.6°, which over a 3.5 m half-length transiently dips a track end ~10 cm —
@@ -998,7 +1000,8 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // it into the effective roll so hard fast turns keep the leaned track edge
   // above ground too.
   const swayTarget = clamp(state.yawRate * state.speed * SWAY_GAIN, -SWAY_CLAMP, SWAY_CLAMP);
-  state._swayEst += (swayTarget - state._swayEst) * SWAY_SMOOTH;
+  state._swayEst += (swayTarget - state._swayEst) *
+    (1 - Math.exp(-dt / SWAY_TAU_S));
 
   // ---- hit-flinch rock: integrate the visual layer's damped oscillator ------
   // (constants in lockstep with tankFactory FLINCH_W/FLINCH_Z; impulses arrive
@@ -1165,7 +1168,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // adds. The susp/sway layers carry the renderer's visibility amplification.
   // Sampling, plane fit and clamp all run at THIS post-step attitude in one
   // pass — sampling at the pre-step attitude left a Δattitude × lever × slope
-  // height error that the ×2.6 visibility amplification turned into multi-cm
+  // height error that the visibility amplification turned into multi-cm
   // track burial on rough ground (r3 drive gate). The fit lands in state._terr
   // for the NEXT tick's spring targets/slope logic (one-tick-old plane —
   // imperceptible at 60 Hz, and exactly the pre-existing contract).

@@ -547,10 +547,11 @@ export function createHeightField(seed = 1337, cfg = null) {
   // discretization of the same function). Everything that SEATS visible
   // geometry (wheel conform, spawns, staged captures, world builders) keeps
   // the exact analytic getHeightAt above, so frozen screenshot/metrology
-  // contracts are untouched. Tiles bake on first touch (65x65 queries,
-  // ~5 ms once per 64 m tile) so map load pays nothing.
+  // contracts are untouched. Deployment tiles are warmed behind the battle
+  // loading veil. Any later first-touch tile is only 32 m (33x33 queries),
+  // keeping an unexpected route change below the old ~5 ms 64 m spike.
   const FGN = MAP_SIZE + 1;                 // 1 m verts, 1025^2 ≈ 4.2 MB
-  const FTILE = 64;                          // bake granularity (cells)
+  const FTILE = 32;                          // bake granularity (cells)
   const FTN = Math.ceil(MAP_SIZE / FTILE);   // tiles per axis
   const fGrid = new Float32Array(FGN * FGN);
   const fBaked = new Uint8Array(FTN * FTN);
@@ -577,6 +578,41 @@ export function createHeightField(seed = 1337, cfg = null) {
     const a = fGrid[i] + (fGrid[i + 1] - fGrid[i]) * fx;
     const b = fGrid[i + FGN] + (fGrid[i + FGN + 1] - fGrid[i + FGN]) * fx;
     return a + (b - a) * fz;
+  }
+
+  /**
+   * Bake fast-grid tiles around known deployment points. This is a generator
+   * so loading-screen callers can yield between tiles and preserve progress
+   * paints on constrained devices. Each point may provide `radiusM`.
+   */
+  function* warmFastTilesAround(points) {
+    const queued = new Set();
+    for (const point of points || []) {
+      if (!point) continue;
+      const radius = Math.max(0, Number(point.radiusM) || 0);
+      const gx0 = clamp(finiteCoord(point.x) + HALF - radius, 0, MAP_SIZE - 1e-4);
+      const gz0 = clamp(finiteCoord(point.z) + HALF - radius, 0, MAP_SIZE - 1e-4);
+      const gx1 = clamp(finiteCoord(point.x) + HALF + radius, 0, MAP_SIZE - 1e-4);
+      const gz1 = clamp(finiteCoord(point.z) + HALF + radius, 0, MAP_SIZE - 1e-4);
+      const tx0 = ((gx0 | 0) / FTILE) | 0;
+      const tz0 = ((gz0 | 0) / FTILE) | 0;
+      const tx1 = ((gx1 | 0) / FTILE) | 0;
+      const tz1 = ((gz1 | 0) / FTILE) | 0;
+      for (let tz = tz0; tz <= tz1; tz++) {
+        for (let tx = tx0; tx <= tx1; tx++) queued.add(tz * FTN + tx);
+      }
+    }
+    for (const key of queued) {
+      const tx = key % FTN;
+      const tz = (key / FTN) | 0;
+      if (fBaked[key]) continue;
+      bakeFastTile(tx, tz);
+      yield key;
+    }
+  }
+
+  function finiteCoord(value) {
+    return Number.isFinite(value) ? value : 0;
   }
 
   const _scratchN = new THREE.Vector3();
@@ -641,7 +677,7 @@ export function createHeightField(seed = 1337, cfg = null) {
   } : null;
 
   return {
-    getHeightAt, getHeightAtFast, getNormalAt, getGroundType,
+    getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x, z) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
