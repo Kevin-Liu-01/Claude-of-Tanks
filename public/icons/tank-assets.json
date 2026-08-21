@@ -87734,7 +87734,7 @@
         "hullLength": 6.95,
         "overallLength": 8.96,
         "width": 3.8,
-        "height": 2.94
+        "height": 2.8
       },
       "gun": {
         "caliberMm": 120,
@@ -88163,12 +88163,12 @@
               ],
               [
                 1.487,
-                0.8818,
+                0.5375,
                 0.7949
               ],
               [
                 0.2379,
-                0.8818,
+                0.5375,
                 1.8738
               ]
             ]
@@ -88194,12 +88194,12 @@
               ],
               [
                 -0.2379,
-                0.8818,
+                0.5375,
                 1.8738
               ],
               [
                 -1.487,
-                0.8818,
+                0.5375,
                 0.7949
               ]
             ]
@@ -88215,22 +88215,22 @@
             "verts": [
               [
                 -0.3569,
-                0.1102,
+                0.0672,
                 2.02
               ],
               [
                 0.3569,
-                0.1102,
+                0.0672,
                 2.02
               ],
               [
                 0.3569,
-                0.6981,
+                0.4255,
                 1.99
               ],
               [
                 -0.3569,
-                0.6981,
+                0.4255,
                 1.99
               ]
             ]
@@ -88256,12 +88256,12 @@
               ],
               [
                 1.487,
-                0.8818,
+                0.5375,
                 -2.735
               ],
               [
                 1.487,
-                0.8818,
+                0.5375,
                 0.9112
               ]
             ]
@@ -88287,12 +88287,12 @@
               ],
               [
                 -1.487,
-                0.8818,
+                0.5375,
                 0.9112
               ],
               [
                 -1.487,
-                0.8818,
+                0.5375,
                 -2.735
               ]
             ]
@@ -88318,12 +88318,12 @@
               ],
               [
                 -1.4126,
-                0.8818,
+                0.5375,
                 -2.735
               ],
               [
                 1.4127,
-                0.8818,
+                0.5375,
                 -2.735
               ]
             ]
@@ -88339,22 +88339,22 @@
             "verts": [
               [
                 -1.487,
-                0.894,
+                0.545,
                 0.9112
               ],
               [
                 1.487,
-                0.894,
+                0.545,
                 0.9112
               ],
               [
                 1.487,
-                0.894,
+                0.545,
                 -2.735
               ],
               [
                 -1.487,
-                0.894,
+                0.545,
                 -2.735
               ]
             ]
@@ -88366,12 +88366,12 @@
             "name": "gun",
             "min": [
               -0.2379,
-              0.1347,
+              0.0821,
               -1.3864
             ],
             "max": [
               0.2379,
-              0.7225,
+              0.4405,
               1.9601
             ],
             "turretLocal": true
@@ -88396,12 +88396,12 @@
             "name": "autoloader",
             "min": [
               -0.7494,
-              0.2034,
+              0.1318,
               -2.5735
             ],
             "max": [
               0.7494,
-              0.542,
+              0.3382,
               -1.7427
             ],
             "turretLocal": true
@@ -88461,7 +88461,7 @@
             ],
             "max": [
               1.0409,
-              0.7054,
+              0.43,
               -1.5812
             ],
             "turretLocal": true
@@ -88471,12 +88471,12 @@
             "name": "radio",
             "min": [
               -0.8922,
-              0.0612,
+              0.0373,
               -2.4203
             ],
             "max": [
               -0.1487,
-              0.485,
+              0.2956,
               -1.5812
             ],
             "turretLocal": true
@@ -88486,12 +88486,12 @@
             "name": "optics",
             "min": [
               0.2974,
-              0.485,
+              0.2956,
               0.142
             ],
             "max": [
               1.0409,
-              0.8377,
+              0.5107,
               1.5705
             ],
             "turretLocal": true
@@ -88548,12 +88548,12 @@
             "name": "gunner",
             "min": [
               0.1784,
-              0.0245,
+              0.0149,
               -1.1617
             ],
             "max": [
               1.1153,
-              0.7495,
+              0.4569,
               0.0371
             ],
             "turretLocal": true
@@ -88563,20 +88563,20 @@
             "name": "commander",
             "min": [
               0.1784,
-              0.0245,
+              0.0149,
               -1.8959
             ],
             "max": [
               1.1896,
-              0.7936,
+              0.4838,
               -1.1617
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "f64134e9",
-      "metadataHash": "24f1cd5b",
+      "geometryHash": "f011ee3e",
+      "metadataHash": "a09c9036",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -88587,10 +88587,10 @@
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "fittingPaint": 9,
+          "fittingPaint": 10,
           "opticGlass": 4,
-          "gunmetal": 16,
-          "armorPaint": 5,
+          "gunmetal": 17,
+          "armorPaint": 6,
           "unclassified": 12,
           "gearShadow": 2,
           "canvas": 1,
@@ -88618,64 +88618,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33714,
-          "sha256": "62fdfc83e14dc3cb3efadd01b68f168530dd79621559bbdb19d291ce7807da20"
+          "bytes": 33166,
+          "sha256": "a8c35ad103e609074e267392677905be6bc1d1c48011d3ac8037920ad245167c"
         },
         "top": {
           "file": "pl01_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14104,
-          "sha256": "77bd8c28354c5d9a40f7781a15d949e770a1f4790f12d96e2234cdc5a1fcad11"
+          "bytes": 14000,
+          "sha256": "cdcc6c975a35d5da9e9083466ba2396dd999cb5d30a33e20d596a4be399c44fc"
         },
         "side": {
           "file": "pl01_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11776,
-          "sha256": "931047e1eaf313f98401599fce1cc45b01e8372b4998dca2bee67de2790dfa60"
+          "bytes": 11362,
+          "sha256": "77e0a98597025c04065f26a23a0e1af847b1fd53d2d39893d7b3252b8111c02b"
         },
         "topSilhouette": {
           "file": "pl01_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1578,
-          "sha256": "f831bc929b976911c0079b02c1e95c3b6cbe162957273cfe9082486109bc080f"
+          "bytes": 1511,
+          "sha256": "711629004690946d670229bd676cab1bae3590e2db90ef811cc685cf18b66a8a"
         },
         "sideSilhouette": {
           "file": "pl01_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4522,
-          "sha256": "87043183a9736198e79a3573501c58d2ca24aa5e04712784b93da400230d1a89"
+          "bytes": 4669,
+          "sha256": "5766198d645f40b29722f6796ff95b2e244f3d0355c76ee29d3b5675402c609f"
         },
         "hitZonesSide": {
           "file": "pl01_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86835,
-          "sha256": "38b508710a11af052a6cdcf2fb7ed8f556d1f2ae55fbf31e116ffd531573a718"
+          "bytes": 81245,
+          "sha256": "d1107cfb44efb788ab537131a956fd6251fafd13158bb8904e25611e137deb7b"
         },
         "armorSide": {
           "file": "pl01_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88080,
-          "sha256": "82d63011050f94a93d2ac7b07f74f88d5ba11e522eb90e64386d3a5038c7d773"
+          "bytes": 81982,
+          "sha256": "0b0ae010970a2e662b464131ab51164ecd710ae2ab08752c488cad5e2db601df"
         },
         "modulesSide": {
           "file": "pl01_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92479,
-          "sha256": "6b77861598a3308decd4adbf5a90662515ccccf0bba654d99cefb6542b67e272"
+          "bytes": 88213,
+          "sha256": "5b46ef8d04fa2a9bb7ed732f9322a5d8f40a018643f6df81547ae01248833159"
         },
         "markings": {
           "file": "pl01_markings.png",
@@ -88723,7 +88723,7 @@
         "hullLength": 6.95,
         "overallLength": 8.96,
         "width": 3.8,
-        "height": 2.94
+        "height": 2.8
       },
       "gun": {
         "caliberMm": 105,
@@ -89152,12 +89152,12 @@
               ],
               [
                 1.487,
-                0.8818,
+                0.5375,
                 0.7949
               ],
               [
                 0.2379,
-                0.8818,
+                0.5375,
                 1.8738
               ]
             ]
@@ -89183,12 +89183,12 @@
               ],
               [
                 -0.2379,
-                0.8818,
+                0.5375,
                 1.8738
               ],
               [
                 -1.487,
-                0.8818,
+                0.5375,
                 0.7949
               ]
             ]
@@ -89204,22 +89204,22 @@
             "verts": [
               [
                 -0.3569,
-                0.1102,
+                0.0672,
                 2.02
               ],
               [
                 0.3569,
-                0.1102,
+                0.0672,
                 2.02
               ],
               [
                 0.3569,
-                0.6981,
+                0.4255,
                 1.99
               ],
               [
                 -0.3569,
-                0.6981,
+                0.4255,
                 1.99
               ]
             ]
@@ -89245,12 +89245,12 @@
               ],
               [
                 1.487,
-                0.8818,
+                0.5375,
                 -2.735
               ],
               [
                 1.487,
-                0.8818,
+                0.5375,
                 0.9112
               ]
             ]
@@ -89276,12 +89276,12 @@
               ],
               [
                 -1.487,
-                0.8818,
+                0.5375,
                 0.9112
               ],
               [
                 -1.487,
-                0.8818,
+                0.5375,
                 -2.735
               ]
             ]
@@ -89307,12 +89307,12 @@
               ],
               [
                 -1.4126,
-                0.8818,
+                0.5375,
                 -2.735
               ],
               [
                 1.4127,
-                0.8818,
+                0.5375,
                 -2.735
               ]
             ]
@@ -89328,22 +89328,22 @@
             "verts": [
               [
                 -1.487,
-                0.894,
+                0.545,
                 0.9112
               ],
               [
                 1.487,
-                0.894,
+                0.545,
                 0.9112
               ],
               [
                 1.487,
-                0.894,
+                0.545,
                 -2.735
               ],
               [
                 -1.487,
-                0.894,
+                0.545,
                 -2.735
               ]
             ]
@@ -89355,12 +89355,12 @@
             "name": "gun",
             "min": [
               -0.2379,
-              0.1347,
+              0.0821,
               -1.3864
             ],
             "max": [
               0.2379,
-              0.7225,
+              0.4405,
               1.9601
             ],
             "turretLocal": true
@@ -89385,12 +89385,12 @@
             "name": "autoloader",
             "min": [
               -0.7494,
-              0.2034,
+              0.1318,
               -2.5735
             ],
             "max": [
               0.7494,
-              0.542,
+              0.3382,
               -1.7427
             ],
             "turretLocal": true
@@ -89450,7 +89450,7 @@
             ],
             "max": [
               1.0409,
-              0.7054,
+              0.43,
               -1.5812
             ],
             "turretLocal": true
@@ -89460,12 +89460,12 @@
             "name": "radio",
             "min": [
               -0.8922,
-              0.0612,
+              0.0373,
               -2.4203
             ],
             "max": [
               -0.1487,
-              0.485,
+              0.2956,
               -1.5812
             ],
             "turretLocal": true
@@ -89475,12 +89475,12 @@
             "name": "optics",
             "min": [
               0.2974,
-              0.485,
+              0.2956,
               0.142
             ],
             "max": [
               1.0409,
-              0.8377,
+              0.5107,
               1.5705
             ],
             "turretLocal": true
@@ -89537,12 +89537,12 @@
             "name": "gunner",
             "min": [
               0.1784,
-              0.0245,
+              0.0149,
               -1.1617
             ],
             "max": [
               1.1153,
-              0.7495,
+              0.4569,
               0.0371
             ],
             "turretLocal": true
@@ -89552,20 +89552,20 @@
             "name": "commander",
             "min": [
               0.1784,
-              0.0245,
+              0.0149,
               -1.8959
             ],
             "max": [
               1.1896,
-              0.7936,
+              0.4838,
               -1.1617
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "7cf7ff3c",
-      "metadataHash": "1dce5e7a",
+      "geometryHash": "a5252777",
+      "metadataHash": "f28470a5",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -89577,10 +89577,10 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackSteel": 1,
-          "fittingPaint": 9,
+          "fittingPaint": 10,
           "opticGlass": 4,
-          "gunmetal": 16,
-          "armorPaint": 5,
+          "gunmetal": 17,
+          "armorPaint": 6,
           "unclassified": 11,
           "gearShadow": 2,
           "canvas": 1,
@@ -89608,64 +89608,64 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87788,
-          "sha256": "b99e1ccedae0788a81786c9dd04ff798f1c0ffb29876d817a13c1a32f2beab34"
+          "bytes": 83959,
+          "sha256": "e62a64ebdb00842bda4446c882c561d5a0b6a17a59818bc04c058bae88f8eb43"
         },
         "armorSide": {
           "file": "pl01_105_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88575,
-          "sha256": "79ba2059f1e2ae63a09ed2fc17c87bd5cf2b04d5a16abee17a8f5c9f63adcb3d"
+          "bytes": 84843,
+          "sha256": "3795bfea84bc84c82506d336685fc73b1f5117c5bc16ed9c07f101307a3d1d4d"
         },
         "modulesSide": {
           "file": "pl01_105_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94289,
-          "sha256": "5592e988203204d795e04e954be64089dea79967c2657dbaf3afbdb07d3a9da9"
+          "bytes": 89173,
+          "sha256": "2af8a1edcbf5ea1f7fb6f3d0ef0c8093dc991985d68329d99ff85cfe50a46612"
         },
         "angle": {
           "file": "pl01_105_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33894,
-          "sha256": "b94d83c931c5e511500bbda7d2832a649fa7ff765432817398692f678d269d12"
+          "bytes": 33642,
+          "sha256": "f5bd257b1028db5e8704a49be3425b2ea1223b300adefb729aa7593fc993b524"
         },
         "top": {
           "file": "pl01_105_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13556,
-          "sha256": "6e04a46cedbad66f7e6baab05e6127ea71872ff001e6cad9ceb558a2b70e7fed"
+          "bytes": 13618,
+          "sha256": "b3aca40c6fc905b4758cc93492b22a8088a81e9e4b86c983b1453fbce0ccae12"
         },
         "side": {
           "file": "pl01_105_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12136,
-          "sha256": "415f9d6e980eec524ba6960d690eab2ca7d396c5eb87d56aaf9503ac7b630e43"
+          "bytes": 12238,
+          "sha256": "75cce27dce2c084fbfcbd0eea01bbcc570e3d08c36fb315c85d823e47fb86a87"
         },
         "topSilhouette": {
           "file": "pl01_105_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1454,
-          "sha256": "5e19ed2e16b7d8da5c169042be0a3e020552a6080571a2ae9aaadc705592b328"
+          "bytes": 1377,
+          "sha256": "f545779437c10653b64345afe229afcbacfe0d84bc212aa1195aadea7a6420b9"
         },
         "sideSilhouette": {
           "file": "pl01_105_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4537,
-          "sha256": "fe07d27c3631be0e45e8c65323c8441436827a31b84fd5c145ca02b5bfcf9cb5"
+          "bytes": 4773,
+          "sha256": "11cf5db045cc389d31fe1f8b6962e637070ce60db911d1b1d6c79ad78b1c62fb"
         },
         "markings": {
           "file": "pl01_105_markings.png",

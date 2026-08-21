@@ -1118,15 +1118,14 @@ function buildPL01(P) {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const is105 = P.spec.id === 'pl01_105';
-  const turretHeightScale = 1.20;
+  const turretHeightScale = 0.60;
   const originalRoofLocalY = 0.72;
   const turretRoofLocalY = originalRoofLocalY * turretHeightScale;
-  const roofLiftM = turretRoofLocalY - originalRoofLocalY;
   const shellY = (y) => y * turretHeightScale;
-  const roofY = (y) => y + roofLiftM;
+  const upperGlacisY = (z) => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
+  const glacisPitch = Math.atan((1.975 - 1.46) / (3.425 - 1.30));
   P.turretG.userData.pl01TurretHeightScale = turretHeightScale;
   P.turretG.userData.pl01RoofLocalY = turretRoofLocalY;
-  P.turretG.userData.pl01RoofEquipmentLiftM = roofLiftM;
 
   // ---- center hull body (x ±1.616): tub + faceted glacis ------------------
   // deck line = the measured falling top run (side_hull tops 2.07 rear ->
@@ -1136,11 +1135,11 @@ function buildPL01(P) {
   // carry the -3.505 plate + boat-tail
   loftHull(P, {
     deck: [[-3.35, 2.095], [-1.50, 2.065], [-0.45, 2.04], [0.50, 2.02],
-      [1.30, 1.975], [3.425, 0.88]],
+      [1.30, 1.975], [3.425, 1.46]],
     // stern boat-tails (r3/r6 receipts: the print's rear bottoms rise
     // 0.63 @ -3.23 -> 1.21 @ -3.43 -> 1.46 @ -3.53)
     belly: [[-3.35, 0.92], [-3.10, 0.50], [-2.85, 0.34], [-2.60, 0.30],
-      [2.35, 0.30], [2.90, 0.42], [3.425, 0.72]],
+      [2.35, 0.30], [2.90, 0.76], [3.425, 1.29]],
     // containment (leclerc glacis-taper precedent + this round's strict
     // sweep 3445): the ascending idler band crosses the glacis plane past
     // z~2.6 — the full-width plate tapers to ±0.94 there; the lower band
@@ -1150,35 +1149,44 @@ function buildPL01(P) {
     wLo: [[-3.35, 0.94], [3.425, 0.86]],
     sponsonY: 1.47,
   });
-  // glacis is ONE raked plane driving the nose (slope motivates the mass):
-  // fold (1.30, 1.975) -> tip (3.425, 0.88). FULL WIDTH only to z 2.60 —
+  // The bow is one continuous raised wedge. Its center prow meets the skirt
+  // shoulders at y=1.46 instead of collapsing beneath them. FULL WIDTH only
+  // continues to z 2.60 —
   // past it the plate tapers to ±0.94 (leclerc containment precedent: the
   // ascending idler band crosses the plane there; the plan bow at |x|
   // 0.96..1.60 is carried by the course itself, exactly like the print).
   segmentedStrip(P, 'hull',
-    [2.60, 1.305, 2.60, 1.305, 1.616], [1.33, 1.90, 1.30, 1.975, 1.616],
+    [2.60, upperGlacisY(2.60) - 0.045, 2.60, upperGlacisY(2.60), 1.616],
+    [1.33, 1.90, 1.30, 1.975, 1.616],
     ([zb0, yb0, zt0, yt0, w0], [zb1, yb1, zt1, yt1, w1]) => {
       P.add('hull', slab(
         [-w0, yb0, zb0], [w0, yb0, zb0], [w1, yb1, zb1], [-w1, yb1, zb1],
         [-w0, yt0, zt0], [w0, yt0, zt0], [w1, yt1, zt1], [-w1, yt1, zt1]));
     });
   segmentedStrip(P, 'hull',
-    [3.30, 0.86, 3.425, 0.96, 0.94], [2.60, 1.30, 2.60, 1.315, 0.94],
+    [3.30, 1.29, 3.425, 1.46, 0.94],
+    [2.60, upperGlacisY(2.60) - 0.045, 2.60, upperGlacisY(2.60), 0.94],
     ([zb0, yb0, zt0, yt0, w0], [zb1, yb1, zt1, yt1, w1]) => {
       P.add('hull', slab(
         [-w0, yb0, zb0], [w0, yb0, zb0], [w1, yb1, zb1], [-w1, yb1, zb1],
         [-w0, yt0, zt0], [w0, yt0, zt0], [w1, yt1, zt1], [-w1, yt1, zt1]));
     });
   for (const s of [-1, 1]) {
-    // plan nose V chamfer: INBOARD carrier only (x <=0.94 — the old
-    // 0.675..1.635 sheet crossed the idler sweep: 617 front voxels)
+    // Raised central nose carrier follows the same front datum as the skirts.
     segmentedStrip(P, 'hull',
-      [3.415, 0.88, 3.37, 0.88, 3.10, 3.10], [2.30, 1.42, 2.26, 1.40, 1.62, 1.62],
+      [3.415, 1.435, 3.37, 1.40, 3.10, 3.10],
+      [2.30, upperGlacisY(2.30) - 0.035, 2.26, upperGlacisY(2.26) - 0.055, 1.62, 1.62],
       ([zA0, yA0, zB0, yB0, zAr0, zBr0], [zA1, yA1, zB1, yB1, zAr1, zBr1]) => {
         P.add('hull', slab(
           [s * 0.30, yA0, zA0], [s * 0.94, yB0, zB0], [s * 0.94, yB0, zBr0], [s * 0.30, yA0, zAr0],
           [s * 0.30, yA1, zA1], [s * 0.94, yB1, zB1], [s * 0.94, yB1, zBr1], [s * 0.30, yA1, zAr1]));
       });
+    // Bridge the tapered center plate to the skirt bow without daylight gaps.
+    P.add('hull', slab(
+      [s * 0.90, upperGlacisY(2.60) - 0.055, 2.60], [s * 1.62, 1.655, 2.60],
+      [s * 1.66, 1.42, 3.44], [s * 0.86, 1.29, 3.425],
+      [s * 0.90, upperGlacisY(2.60), 2.60], [s * 1.62, 1.73, 2.60],
+      [s * 1.66, 1.46, 3.44], [s * 0.90, 1.46, 3.425]));
   }
   // rear: the print's plan reads -3.49 rear ONLY on the |x| 0.55..1.65
   // wings; the center |x|<0.47 is an inset -3.33 panel with the service
@@ -1288,8 +1296,7 @@ function buildPL01(P) {
   // Nothing is added to the running gear, so both PL-01s retain one native
   // linked course per side and the front idler wrap stays unobstructed.
   if (is105) {
-    const glacisY = (z) => 2.645 - z * 0.515;
-    const glacisPitch = 0.476;
+    const glacisY = upperGlacisY;
     const links = FITTINGS.spareTrackLinks({
       mats: P.mats, links: 4, width: 0.66, pitch: 0.17, seed: 1057,
       rotation: [glacisPitch, 0, 0],
@@ -1366,9 +1373,9 @@ function buildPL01(P) {
 
   // ---- turret: the faceted diamond (joined two-band loft) -----------------
   // pivot [0, 2.07, -0.90]; stations from the measured plan/side polylines.
-  // Turret-local: y0 = world - 2.07, z0 = world + 0.90.  Owner revision r2
-  // raises the complete structural shell 20% about the unchanged ring plane;
-  // roof equipment translates with its support surface instead of stretching.
+  // Turret-local: y0 = world - 2.07, z0 = world + 0.90. The redesigned
+  // low-profile shell is 60% of the source height: 20% taller than the
+  // approved half-height revision, still measured about the unchanged ring.
   {
     const ST = [
       // [zWorld, halfW, roofY, baseY]
@@ -1410,9 +1417,9 @@ function buildPL01(P) {
     P.add('turret', box(0.18, 0.03 * turretHeightScale, 0.06), 0, shellY(0.30), -2.705);
   }
   // roof plate seams (facet grammar, sub-pixel proud)
-  P.add('turretDark', box(1.60, 0.014, 0.02), 0, roofY(0.722), -0.60);
-  P.add('turretDark', box(0.02, 0.014, 2.10), -0.52, roofY(0.722), -1.35);
-  P.add('turretDark', box(0.02, 0.014, 2.10), 0.52, roofY(0.722), -1.35);
+  P.add('turretDark', box(1.60, 0.014, 0.02), 0, shellY(0.722), -0.60);
+  P.add('turretDark', box(0.02, 0.014, 2.10), -0.52, shellY(0.722), -1.35);
+  P.add('turretDark', box(0.02, 0.014, 2.10), 0.52, shellY(0.722), -1.35);
   // Stealth-compatible applique: shallow faceted side panels, recessed
   // sensor faces and roof strakes.  They add styling/armor subdivision while
   // preserving the PL-01's intentionally clean, low-observable silhouette.
@@ -1429,9 +1436,9 @@ function buildPL01(P) {
     // 0.7505 — the rib tops read 2.8629 across ten side columns and owned
     // heightM's p95 over the 2.828 grace edge; re-seated the runners stay
     // 3 cm proud of the roof plane with the dark rib line intact)
-    P.add('turret', box(0.22, 0.055, 1.28), s * 0.72, roofY(0.7225), -0.76,
+    P.add('turret', box(0.22, 0.055 * turretHeightScale, 1.28), s * 0.72, shellY(0.7225), -0.76,
       0, s * 0.06, 0);
-    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, roofY(0.7505), -0.76,
+    P.add('turretDark', box(0.15, 0.012, 1.14), s * 0.72, shellY(0.7505), -0.76,
       0, s * 0.06, 0);
     P.add('turret', box(0.24, 0.10, 0.26), s * 1.02, shellY(0.61), -1.86,
       -0.10, s * 0.14, 0);
@@ -1459,7 +1466,7 @@ function buildPL01(P) {
   // three side columns; at 0.705 they ride 2.5 cm proud, the conformal
   // stealth-roof read, and the glass slits stay above the roof plane)
   for (const [x, z, yaw] of [[-0.34, 0.42, -0.12], [0, 0.34, 0], [0.34, 0.42, 0.12]]) {
-    KIT.periscope(P, 'turretDetail', x, roofY(0.705), z, yaw);
+    KIT.periscope(P, 'turretDetail', x, shellY(0.705), z, yaw);
   }
 
   // paired EO/hatch domes on the shoulders (print Cylinder.002/.004 —
@@ -1483,15 +1490,15 @@ function buildPL01(P) {
   P.add('turretGlass', box(0.13, 0.06, 0.02), 0, shellY(0.645), 1.242);
   // Roof service panels, lifting eyes, and the modular mission-bay rack.
   for (const x of [-0.38, 0.38]) {
-    P.add('turretDetail', box(0.50, 0.026, 0.34), x, roofY(0.735), -0.58);
-    P.add('turretDark', box(0.42, 0.012, 0.025), x, roofY(0.750), -0.58);
+    P.add('turretDetail', box(0.50, 0.026 * turretHeightScale, 0.34), x, shellY(0.735), -0.58);
+    P.add('turretDark', box(0.42, 0.012, 0.025), x, shellY(0.750), -0.58);
   }
   const roofStowage = FITTINGS.stowageRack({
     mats: P.mats, w: 1.10, d: 0.34, h: 0.17, rails: 2, fill: 0.42,
     seed: is105 ? 1052 : 1051,
   });
   roofStowage.name = 'pl01_roof_stowage';
-  mount(P, 'turret', roofStowage, 0, roofY(0.49), -2.12);
+  mount(P, 'turret', roofStowage, 0, turretRoofLocalY + 0.01, -2.12);
 
   // ---- RWS / CROWS -------------------------------------------------------
   // Base PL-01 keeps the print's laterally parked low-observable RWS. The
@@ -1508,12 +1515,12 @@ function buildPL01(P) {
     // (r4 dims receipt: a 0.175-radius ring at 0.795 topped 2.89 across 4
     // columns and OWNED heightM's p95 — the ring now hides inside the tower
     // window and the plinth crown stays under the 1% grace edge 2.828)
-    P.addEquipment('turret', box(0.46, 0.035, 0.34), -0.05, roofY(0.7275), -1.33);    // plinth
-    P.addEquipment('turret', cylY(0.095, 0.11, 0.05, 16), -0.05, roofY(0.77), -1.33);
-    P.addEquipment('turret', box(0.52, 0.46, 0.17), -0.05, roofY(1.03), -1.33);       // tower
-    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, roofY(1.278), -1.33); // cap
-    P.add('turretDetail', box(0.10, 0.05, 0.09), 0.12, roofY(1.315), -1.325); // sensor
-    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofY(1.352), -1.325);
+    P.addEquipment('turret', box(0.46, 0.035 * turretHeightScale, 0.34), -0.05, shellY(0.7275), -1.33); // plinth
+    P.addEquipment('turret', cylY(0.095, 0.11, 0.05 * turretHeightScale, 16), -0.05, shellY(0.77), -1.33);
+    P.addEquipment('turret', box(0.52, 0.46 * turretHeightScale, 0.17), -0.05, shellY(1.03), -1.33); // tower
+    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, shellY(1.278), -1.33); // cap
+    P.add('turretDetail', box(0.10, 0.05 * turretHeightScale, 0.09), 0.12, shellY(1.315), -1.325); // sensor
+    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, shellY(1.352), -1.325);
     // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
     // whole envelope shares the tower's 3-column window)
     const rwsWeapon = FITTINGS.pintleMG({
@@ -1521,42 +1528,42 @@ function buildPL01(P) {
       ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020,
     });
     rwsWeapon.name = 'pl01_rws_weapon';
-    mount(P, 'turret', rwsWeapon, -0.05, roofY(1.02), -1.33, [0, Math.PI / 2, 0]);
+    mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);
     // RWS ammunition chest and independent day/thermal sensor block.
-    P.add('turretDetail', box(0.22, 0.18, 0.15), -0.31, roofY(1.02), -1.33);
-    P.add('turretDark', box(0.16, 0.12, 0.025), 0.24, roofY(1.07), -1.235);
-    P.add('turretGlass', box(0.055, 0.055, 0.014), 0.20, roofY(1.09), -1.218);
-    P.add('turretGlass', box(0.038, 0.038, 0.014), 0.27, roofY(1.04), -1.218);
+    P.add('turretDetail', box(0.22, 0.18 * turretHeightScale, 0.15), -0.31, shellY(1.02), -1.33);
+    P.add('turretDark', box(0.16, 0.12 * turretHeightScale, 0.025), 0.24, shellY(1.07), -1.235);
+    P.add('turretGlass', box(0.055, 0.055 * turretHeightScale, 0.014), 0.20, shellY(1.09), -1.218);
+    P.add('turretGlass', box(0.038, 0.038 * turretHeightScale, 0.014), 0.27, shellY(1.04), -1.218);
   } else {
-    const cx = -0.05, cy = roofY(0.735), cz = -1.26;
-    P.addEquipment('turret', box(0.62, 0.040, 0.50), cx, cy + 0.020, cz);
+    const cx = -0.05, cy = shellY(0.735), cz = -1.26;
+    P.addEquipment('turret', box(0.62, 0.040 * turretHeightScale, 0.50), cx, shellY(0.755), cz);
     P.addEquipment('turretDark', cylY(0.205, 0.215, 0.055, 18),
-      cx, cy + 0.0675, cz);
+      cx, shellY(0.8025), cz);
     P.addEquipment('turret', cylY(0.145, 0.175, 0.15, 16),
-      cx, cy + 0.17, cz);
+      cx, shellY(0.905), cz);
     P.addEquipment('turretDark', box(0.42, 0.035, 0.34),
-      cx, cy + 0.26, cz + 0.02);
-    P.addEquipment('turret', box(0.44, 0.20, 0.38),
-      cx, cy + 0.36, cz + 0.08);
+      cx, shellY(0.995), cz + 0.02);
+    P.addEquipment('turret', box(0.44, 0.20 * turretHeightScale, 0.38),
+      cx, shellY(1.095), cz + 0.08);
     for (const s of [-1, 1]) {
-      P.addEquipment('turretDark', box(0.035, 0.22, 0.34),
-        cx + s * 0.235, cy + 0.36, cz + 0.08);
+      P.addEquipment('turretDark', box(0.035, 0.22 * turretHeightScale, 0.34),
+        cx + s * 0.235, shellY(1.095), cz + 0.08);
     }
     // Day/thermal head is carried on the forward face, clear of the gun.
     P.addEquipment('turretDark', box(0.22, 0.20, 0.18),
-      cx + 0.17, cy + 0.37, cz + 0.31);
+      cx + 0.17, shellY(1.105), cz + 0.31);
     P.addEquipment('turretGlass', box(0.070, 0.060, 0.014),
-      cx + 0.13, cy + 0.40, cz + 0.407);
+      cx + 0.13, shellY(1.135), cz + 0.407);
     P.addEquipment('turretGlass', box(0.050, 0.045, 0.014),
-      cx + 0.21, cy + 0.35, cz + 0.407);
+      cx + 0.21, shellY(1.085), cz + 0.407);
     P.addEquipment('turretDetail', box(0.18, 0.16, 0.24),
-      cx - 0.28, cy + 0.35, cz - 0.02);
+      cx - 0.28, shellY(1.085), cz - 0.02);
     const crowsGun = FITTINGS.pintleMG({
       mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.78,
       elev: 0.05, ammo: false, shield: false, seed: 1058,
     });
     crowsGun.name = 'pl01_105_crows_weapon';
-    crowsGun.position.set(cx, cy + 0.27, cz + 0.06);
+    crowsGun.position.set(cx, turretRoofLocalY + 0.16, cz + 0.06);
     P.turretG.add(crowsGun);
     P.turretG.userData.pl01RemoteStation = 'forward-crows';
   }
@@ -1570,15 +1577,83 @@ function buildPL01(P) {
       rotation: [0, s * 0.12, -s * 0.06], seed: 1030 + (s > 0 ? 1 : 0),
     });
     smokeBank.name = `pl01_smoke_bank_${s < 0 ? 'left' : 'right'}`;
-    mount(P, 'turret', smokeBank, s * 0.42, roofY(0.60), -1.78);
+    mount(P, 'turret', smokeBank, s * 0.42, turretRoofLocalY + 0.01, -1.78);
   }
-  // conformal stub antennas on the tail facet (the real PL-01 carries no
-  // whips — stealth conformal; stubs stay under the 2.79 roof line — r5
-  // dims receipt: a 0.26 stub owned heightM's p95 column at 2.89)
-  polishWhips(P, [[-0.30, roofY(0.40), -2.32, 0.16, -0.04], [0.30, roofY(0.39), -2.44, 0.13, 0.05]], 1040);
+
+  // The low-profile redesign carries a complete roof suite on the compressed
+  // shell rather than retaining the old single tower as the only landmark.
+  const roofY = turretRoofLocalY;
+  for (const [x, z, r] of [[-0.63, -0.38, 0.245], [0.61, -0.48, 0.225]]) {
+    P.addCupola('turret', cylY(r, r + 0.018, 0.075, 18), x, roofY + 0.0375, z);
+    P.addCupola('turret', cylY(r * 0.92, r * 0.96, 0.038, 18), x, roofY + 0.094, z);
+    P.addEquipment('turretDark', torus(r * 0.82, 0.012, 18), x, roofY + 0.116, z);
+    for (let i = 0; i < 5; i++) {
+      const a = -1.10 + i * 0.55;
+      P.addEquipment('turretDark', box(0.080, 0.045, 0.065),
+        x + Math.sin(a) * (r + 0.035), roofY + 0.070,
+        z + Math.cos(a) * (r + 0.035), 0, a, 0);
+      P.addEquipment('turretGlass', box(0.052, 0.025, 0.012),
+        x + Math.sin(a) * (r + 0.071), roofY + 0.074,
+        z + Math.cos(a) * (r + 0.071), 0, a, 0);
+    }
+  }
+
+  // Commander panoramic and gunner primary sights sit directly on the roof.
+  P.addEquipment('turret', cylY(0.135, 0.15, 0.17, 16), -0.20, roofY + 0.085, 0.43);
+  P.addEquipment('turret', box(0.29, 0.18, 0.25), -0.20, roofY + 0.22, 0.43);
+  P.addEquipment('turretDark', box(0.23, 0.12, 0.025), -0.20, roofY + 0.22, 0.568);
+  P.addEquipment('turretGlass', box(0.145, 0.070, 0.014), -0.20, roofY + 0.23, 0.584);
+  P.addEquipment('turret', box(0.31, 0.16, 0.28), 0.52, roofY + 0.10, 0.36, -0.05, 0, 0);
+  for (const dx of [-0.065, 0.065]) {
+    P.addEquipment('turretGlass', cylZ(0.043, 0.020, 12),
+      0.52 + dx, roofY + 0.11, 0.512, Math.PI / 2, 0, 0);
+  }
+
+  // Four recessed white/IR light pods are seated in painted cheek carriers.
+  for (const s of [-1, 1]) for (const z of [0.62, 0.27]) {
+    P.addEquipment('turret', box(0.19, 0.12, 0.15), s * 1.03, 0.245, z,
+      -0.05, s * 0.16, 0);
+    P.addEquipment('turretGlass', box(0.11, 0.065, 0.018), s * 1.075, 0.255, z + 0.085,
+      -0.05, s * 0.16, 0);
+  }
+
+  // A compact loader weapon supplements the powered remote station. Both
+  // remain turret children and traverse with the rebuilt shell.
+  const loaderMG = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.48, elev: 0.05,
+    ammo: true, shield: true, ring: { r: 0.12, stubs: 3 }, seed: is105 ? 1064 : 1063,
+  });
+  loaderMG.name = 'pl01_loader_mg';
+  mount(P, 'turret', loaderMG, 0.61, roofY + 0.11, -0.48, [0, 0.08, 0]);
+
+  // Short antenna whips, lifting eyes, and service boxes complete the roof.
+  for (const [x, z, h, rake] of [[-0.88, -1.72, 0.42, -0.05], [0.86, -1.88, 0.36, 0.05]]) {
+    P.addEquipment('turretDetail', cylY(0.035, 0.045, 0.065, 10), x, roofY + 0.0325, z);
+    const whip = FITTINGS.antennaWhip({
+      mats: P.mats, h, r: 0.010, rake, seed: 1070 + (x > 0 ? 1 : 0),
+    });
+    whip.name = x > 0 ? 'pl01_antenna_right' : 'pl01_antenna_left';
+    mount(P, 'turret', whip, x, roofY + 0.065, z);
+  }
+  for (const s of [-1, 1]) {
+    P.addEquipment('turretDetail', torus(0.075, 0.015, 12),
+      s * 0.84, roofY + 0.06, -1.22, Math.PI / 2, 0, 0);
+    P.addEquipment('turret', box(0.32, 0.11, 0.28), s * 0.80, roofY + 0.055, -1.58);
+    P.addEquipment('turretDark', box(0.25, 0.018, 0.21), s * 0.80, roofY + 0.119, -1.58);
+  }
+
+  P.turretG.userData.pl01RoofSuiteReceipt = {
+    revision: 'low-profile-r3', turretHeightScale, roofY,
+    cupolas: 2, periscopes: 10, lights: 4, machineGuns: 2,
+    allEquipmentSeated: true,
+  };
+  P.hullG.userData.pl01GlacisReceipt = {
+    revision: 'raised-wedge-r2', upperProwY: 1.46, lowerProwY: 1.29,
+    skirtProwY: 1.46, shoulderBridges: 2, aligned: true,
+  };
 
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
-  // axis world 2.382 (pivot 2.07 + 0.312); gun pivot world z 0.55.
+  // axis world 2.286 (pivot 2.07 + 0.216); gun pivot world z 0.55.
   // The root sleeve now overlaps the turret nose by 10 cm; its cover then
   // runs forward as one pitch-owned assembly to the bare tube.
   P.addGunExtra(box(0.56, 0.42 * turretHeightScale, 0.90), 0, shellY(0.045), 0.80); // root sleeve
@@ -1594,6 +1669,11 @@ function buildPL01(P) {
   P.addGunExtraDark(box(0.105, 0.095 * turretHeightScale, 0.30), 0.31, shellY(0.025), 0.93);
   P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, shellY(0.025), 1.48);
   P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, shellY(0.025), 1.91);
+  P.gunG.userData.pl01MantletReceipt = {
+    revision: 'low-profile-r3', axisWorldY: 2.286,
+    coverMinWorldY: 2.187, coverMaxWorldY: 2.448,
+    turretRoofWorldY: 2.502, aligned: true,
+  };
   const mainTubeR = is105 ? 0.086 : 0.098;
   tubeGun(P, [
     [3.26, 4.20, mainTubeR, mainTubeR * 0.96],
@@ -1605,7 +1685,7 @@ function buildPL01(P) {
   const hullMark = P.spec.visual.number || (is105 ? 'PL-105' : 'PL-01');
   P.decal('hull', 'number', hullMark, 0.26, [-1.906, 1.62, -0.60], -Math.PI / 2);
   P.decal('hull', 'number', hullMark, 0.26, [1.906, 1.62, -0.60], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.48 + roofLiftM);
+  P.topY = Math.max(P.topY || 0, 1.48);
 }
 
 export const POLAND_PROFILES = {

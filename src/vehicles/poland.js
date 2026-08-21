@@ -92,18 +92,14 @@ const POLAND_SPECS = {
     // §5.248 spec true-up (owner brief "overall 9.20 -> ~8.96, apply with
     // sources" + the landed REG bracket in tools/vertex-extract.mjs): the
     // OBRUM/army-technology concept sheet gives 8.96 m overall / 6.95 m hull
-    // / 3.80 m wide; height 2.80 was the REG-resolved source roof figure (the print's
+    // / 3.80 m wide; height 2.80 is the REG-resolved vehicle figure (the print's
     // own hull is 6.95 native EXACT at that bracket). The old 9.20/7.00 pair
     // was the donor-clone estimate.
-    // The revised presentation raises the 0.72 m turret shell by exactly
-    // 20 percent while leaving the hull/ring datum untouched.  The resulting
-    // structural roof is 2.934 m high, rounded to 2.94 m for the dossier.
-    dims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.94 },
-    // measured rig (§5.248 rebuild): unmanned-turret ring plane 2.07. The
-    // gun axis follows the 20%-taller nose and its root stays buried 10 cm farther into the
-    // nose so the thermal sleeve and mantlet form one connected assembly
-    // instead of hovering just ahead of the turret face.
-    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.312, 1.45],
+    dims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.80 },
+    // Low-profile r3 rig: the 0.60-scale structural turret is exactly 20%
+    // taller than the approved half-height redesign. The gun axis follows
+    // that nose and remains buried in the connected thermal sleeve.
+    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.216, 1.45],
     gunBarrel: { lengthM: 4.71, radiusM: 0.098 },
     stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
       reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
@@ -121,12 +117,8 @@ POLAND_SPECS.pl01_105 = (() => {
   spec.id = 'pl01_105';
   spec.name = 'PL-01 (105)';
   spec.variantOf = 'pl01';
-  // The revised 2.94 m roof remains distinct from the CROWS silhouette. The
-  // roof lift raises the combat-ready silhouette from 3.31 m to 3.45 m; keep
-  // the two dimensions
-  // explicit so visual gates do not pretend the weapon station is a roof
-  // antenna or force it back through the turret.
-  spec.dims = { ...spec.dims, silhouetteHeightM: 3.45 };
+  // Keep the powered CROWS silhouette distinct from the structural roof.
+  spec.dims = { ...spec.dims, silhouetteHeightM: 3.03 };
   spec.gun = {
     ...spec.gun,
     caliberMm: 105,
