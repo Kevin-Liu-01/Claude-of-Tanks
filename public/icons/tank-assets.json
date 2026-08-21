@@ -79916,15 +79916,15 @@
           {
             "name": "M322 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 794,
-            "pen1000Mm": 722,
-            "pen2000Mm": 650
+            "pen100Mm": 830,
+            "pen1000Mm": 755,
+            "pen2000Mm": 680
           },
           {
             "name": "M325 HEAT-MP",
             "type": "HEAT",
-            "pen100Mm": 600,
-            "pen1000Mm": 600,
+            "pen100Mm": 620,
+            "pen1000Mm": 620,
             "pen2000Mm": null
           },
           {
@@ -79948,8 +79948,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 520,
-            "keMm": 500,
-            "ceMm": 750,
+            "keMm": 540,
+            "ceMm": 800,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -79979,8 +79979,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 250,
-            "keMm": 250,
-            "ceMm": 350,
+            "keMm": 270,
+            "ceMm": 380,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -80320,8 +80320,8 @@
             "hitboxId": "T01",
             "name": "turret_wedge_R",
             "physicalMm": 680,
-            "keMm": 650,
-            "ceMm": 1000,
+            "keMm": 700,
+            "ceMm": 1080,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -80351,8 +80351,8 @@
             "hitboxId": "T02",
             "name": "turret_wedge_L",
             "physicalMm": 680,
-            "keMm": 650,
-            "ceMm": 1000,
+            "keMm": 700,
+            "ceMm": 1080,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -80382,8 +80382,8 @@
             "hitboxId": "T03",
             "name": "gun_notch",
             "physicalMm": 350,
-            "keMm": 380,
-            "ceMm": 450,
+            "keMm": 400,
+            "ceMm": 480,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -80475,8 +80475,8 @@
             "hitboxId": "T06",
             "name": "turret_side_R",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 360,
+            "ceMm": 520,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -80506,8 +80506,8 @@
             "hitboxId": "T07",
             "name": "turret_side_L",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 360,
+            "ceMm": 520,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -80812,7 +80812,7 @@
         ]
       },
       "geometryHash": "82713d55",
-      "metadataHash": "6001abec",
+      "metadataHash": "8883a7bf",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -80904,8 +80904,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87994,
-          "sha256": "15db0eebec1063be362d7b3a44bb72204e53f5c6c0a7612bc806fe93234f6a64"
+          "bytes": 87486,
+          "sha256": "021f255311dc59873b05ca7c9008ae4a14901475dbb847ca13697404345b2272"
         },
         "modulesSide": {
           "file": "merkava3c_modules_side.png",
@@ -80965,15 +80965,15 @@
           {
             "name": "M322 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 794,
-            "pen1000Mm": 722,
-            "pen2000Mm": 650
+            "pen100Mm": 891,
+            "pen1000Mm": 810,
+            "pen2000Mm": 730
           },
           {
             "name": "M325 HEAT-MP",
             "type": "HEAT",
-            "pen100Mm": 600,
-            "pen1000Mm": 600,
+            "pen100Mm": 650,
+            "pen1000Mm": 650,
             "pen2000Mm": null
           },
           {
@@ -80997,8 +80997,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 520,
-            "keMm": 500,
-            "ceMm": 750,
+            "keMm": 600,
+            "ceMm": 900,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -81028,8 +81028,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 250,
-            "keMm": 250,
-            "ceMm": 350,
+            "keMm": 300,
+            "ceMm": 430,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -81369,8 +81369,8 @@
             "hitboxId": "T01",
             "name": "turret_wedge_R",
             "physicalMm": 680,
-            "keMm": 650,
-            "ceMm": 1000,
+            "keMm": 780,
+            "ceMm": 1180,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -81400,8 +81400,8 @@
             "hitboxId": "T02",
             "name": "turret_wedge_L",
             "physicalMm": 680,
-            "keMm": 650,
-            "ceMm": 1000,
+            "keMm": 780,
+            "ceMm": 1180,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -81431,8 +81431,8 @@
             "hitboxId": "T03",
             "name": "gun_notch",
             "physicalMm": 350,
-            "keMm": 380,
-            "ceMm": 450,
+            "keMm": 440,
+            "ceMm": 530,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -81524,8 +81524,8 @@
             "hitboxId": "T06",
             "name": "turret_side_R",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 400,
+            "ceMm": 580,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -81555,8 +81555,8 @@
             "hitboxId": "T07",
             "name": "turret_side_L",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 400,
+            "ceMm": 580,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -81861,7 +81861,7 @@
         ]
       },
       "geometryHash": "c0356610",
-      "metadataHash": "712d79c8",
+      "metadataHash": "2067c1c8",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -81952,8 +81952,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89772,
-          "sha256": "6b2d02037a8409693c71c21e397645f5f85693caf6b79c58ffd5537ad3b8b74a"
+          "bytes": 89449,
+          "sha256": "4efb282c97e79d19e47f81206319009b8b24379bcd81e62d9bb68cd23eaf0ccd"
         },
         "modulesSide": {
           "file": "merkava3d_modules_side.png",
@@ -83060,15 +83060,15 @@
           {
             "name": "M322 APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 794,
-            "pen1000Mm": 722,
-            "pen2000Mm": 650
+            "pen100Mm": 916,
+            "pen1000Mm": 833,
+            "pen2000Mm": 750
           },
           {
             "name": "M325 HEAT-MP",
             "type": "HEAT",
-            "pen100Mm": 600,
-            "pen1000Mm": 600,
+            "pen100Mm": 680,
+            "pen1000Mm": 680,
             "pen2000Mm": null
           },
           {
@@ -83092,8 +83092,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 520,
-            "keMm": 500,
-            "ceMm": 750,
+            "keMm": 650,
+            "ceMm": 950,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -83123,8 +83123,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 250,
-            "keMm": 250,
-            "ceMm": 350,
+            "keMm": 330,
+            "ceMm": 470,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -83464,8 +83464,8 @@
             "hitboxId": "T01",
             "name": "turret_wedge_R",
             "physicalMm": 680,
-            "keMm": 650,
-            "ceMm": 1000,
+            "keMm": 850,
+            "ceMm": 1280,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -83495,8 +83495,8 @@
             "hitboxId": "T02",
             "name": "turret_wedge_L",
             "physicalMm": 680,
-            "keMm": 650,
-            "ceMm": 1000,
+            "keMm": 850,
+            "ceMm": 1280,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -83526,8 +83526,8 @@
             "hitboxId": "T03",
             "name": "gun_notch",
             "physicalMm": 350,
-            "keMm": 380,
-            "ceMm": 450,
+            "keMm": 480,
+            "ceMm": 580,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -83619,8 +83619,8 @@
             "hitboxId": "T06",
             "name": "turret_side_R",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 450,
+            "ceMm": 650,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -83650,8 +83650,8 @@
             "hitboxId": "T07",
             "name": "turret_side_L",
             "physicalMm": 320,
-            "keMm": 350,
-            "ceMm": 500,
+            "keMm": 450,
+            "ceMm": 650,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -83956,7 +83956,7 @@
         ]
       },
       "geometryHash": "c1e2cfa8",
-      "metadataHash": "a4f6988e",
+      "metadataHash": "133cc0f3",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -84047,8 +84047,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98378,
-          "sha256": "7efa32bde8e0e9f2442f6542dd544dd59a4ae8d9ed79309652ca9058490c05eb"
+          "bytes": 98173,
+          "sha256": "f6e98afadc2b6852563ca727e18018621425f519c4844288412467b033c02e28"
         },
         "modulesSide": {
           "file": "merkava4b_modules_side.png",
