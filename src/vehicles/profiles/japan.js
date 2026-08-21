@@ -127,13 +127,18 @@ function buildSTB1(P) {
     buildRunningGear, fenders, headlight, liftEye, periscope, cupola,
   } = KIT;
   const seg = P.q ? 36 : 18;
+  // The STB prototype uses the same low cast-turret height class as the
+  // production Type 74.  The shell was previously left at the authoring
+  // construction height (almost exactly 2x Type 74), so compress the entire
+  // completed turret section in its own local frame.  Width and plan remain
+  // untouched; articulated gun geometry stays independently pitchable.
+  const STB_TURRET_HEIGHT_SCALE = 0.45;
 
-  // The source rig carries a lower ring than the inherited Type 74 balance
-  // row and a taller casting above it.  Seat the authored shell at the real
-  // deck break, then restore the gun axis independently so neither the gun
-  // nor the cupolas are bought with an artificial global tank scale.
-  P.turretG.position.set(0, 1.20, 0.22);
-  P.gunG.position.set(0, 0.42, 1.10);
+  // Seat the bearing at the same deck-level datum as the production Type 74
+  // and preserve the shared 1.60 m bore axis. The old low pivot buried most
+  // of the newly shortened casting inside the STB hull.
+  P.turretG.position.set(0, 1.42, 0.22);
+  P.gunG.position.set(0, 0.18, 1.10);
 
   // The owner reference is an unusually low, broad STB prototype—not the
   // taller production Type 74.  This is therefore a complete standalone
@@ -304,8 +309,8 @@ function buildSTB1(P) {
     flatCrown: true,
     circularLathe: false,
     creaseAngleDeg: 40,
-    heightScale: 1,
-    shellHeightM: 1.07,
+    heightScale: STB_TURRET_HEIGHT_SCALE,
+    shellHeightM: 0.48,
     roofEquipment: { cupolas: 2, machineGuns: 1, markerLights: 2, opticHeads: 1 },
   };
   // Buried cast ring skirt, reduced in plan so it no longer reads as a flat
@@ -393,8 +398,7 @@ function buildSTB1(P) {
   }
 
   // Two different roof stations, low hatches, periscopes and the source's
-  // commander-mounted machine gun stay planted on the restored full-height
-  // crown instead of remaining at the former half-height datum.
+  // commander-mounted machine gun stay planted on the corrected low crown.
   cupola(P, 'turret', 0.43, 0.98, -0.38, 0.34, 0.115, 12);
   P.add('turret', cylY(0.285, 0.320, 0.095, 20), 0.43, 1.105, -0.38);
   P.add('turretDark', torus(0.285, 0.016, 24), 0.43, 1.162, -0.38);
@@ -488,8 +492,26 @@ function buildSTB1(P) {
     evacR: 1.72, collar: false, baseR: 0.145 });
   P.add('gunDark', cylZ(0.067, 0.075, 12), 0, 0, 4.695);
 
-  P.decal('turret', 'number', 'STB-1', 0.21, [-1.23, 0.47, -0.54], -Math.PI / 2);
-  P.topY = 1.34;
+  // Compress every already-transformed turret primitive around the local
+  // ring datum. This catches canted cheek plates, baskets and roof hardware
+  // as a single coherent section instead of flattening each primitive in its
+  // own pre-rotation axes. Direct fitting groups are translated to the same
+  // corrected roof datum but retain realistic MG, rack and antenna sizes.
+  P.scaleBuckets(
+    [
+      'turret', 'turretCupola', 'turretEquipment', 'turretDark',
+      'turretDetail', 'turretGlass', 'turretCloth',
+    ],
+    1, STB_TURRET_HEIGHT_SCALE, 1,
+  );
+  for (const child of P.turretG.children) {
+    if (child === P.gunG || !child.name.startsWith('fitting_')) continue;
+    child.position.y *= STB_TURRET_HEIGHT_SCALE;
+  }
+
+  P.decal('turret', 'number', 'STB-1', 0.21,
+    [-1.23, 0.47 * STB_TURRET_HEIGHT_SCALE, -0.54], -Math.PI / 2);
+  P.topY = 0.90;
 }
 
 function addType90APackage(P) {

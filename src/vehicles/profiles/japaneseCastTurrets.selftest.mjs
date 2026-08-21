@@ -8,19 +8,22 @@ const CASES = {
     planStations: 18,
     width: [2.58, 2.66],
     depth: [3.12, 3.22],
-    height: [1.34, 1.40],
-    heightScale: 1,
-    shellHeightM: 1.07,
+    height: [0.60, 0.65],
+    heightScale: 0.45,
+    shellHeightM: 0.48,
   },
   type74: {
     family: 'type74-leopard-generation-cast',
     planStations: 18,
     width: [2.24, 2.32],
     depth: [3.50, 3.60],
+    height: [0.61, 0.66],
     heightScale: 0.5,
     shellHeightM: 0.48,
   },
 };
+
+const measuredTurretHeights = new Map();
 
 for (const [id, expected] of Object.entries(CASES)) {
   const tank = createTank(id, null, {
@@ -53,13 +56,14 @@ for (const [id, expected] of Object.entries(CASES)) {
   const turretBounds = new THREE.Box3().setFromObject(turret);
   const mountBounds = new THREE.Box3().setFromObject(gunMount);
   const turretSize = turretBounds.getSize(new THREE.Vector3());
+  measuredTurretHeights.set(id, turretSize.y);
   assert.ok(turretSize.x >= expected.width[0] && turretSize.x <= expected.width[1],
     `${id}: clipped cheek envelope stays deliberate (${turretSize.x.toFixed(3)} m)`);
   assert.ok(turretSize.z >= expected.depth[0] && turretSize.z <= expected.depth[1],
     `${id}: tapered cast rear shoulder stays deliberate (${turretSize.z.toFixed(3)} m)`);
   if (expected.height) assert.ok(
     turretSize.y >= expected.height[0] && turretSize.y <= expected.height[1],
-    `${id}: restored casting has the requested full-height silhouette (${turretSize.y.toFixed(3)} m)`,
+    `${id}: low cast turret stays within its intended height class (${turretSize.y.toFixed(3)} m)`,
   );
   assert.ok(turretBounds.min.y <= hullBounds.max.y,
     `${id}: tucked bearing overlaps the hull deck instead of floating`);
@@ -81,5 +85,12 @@ for (const [id, expected] of Object.entries(CASES)) {
 
   tank.dispose();
 }
+
+assert.ok(
+  Math.abs(measuredTurretHeights.get('stb1') - measuredTurretHeights.get('type74')) <= 0.03,
+  `STB-1 and Type 74 cast turret heights match within 3 cm `
+    + `(${measuredTurretHeights.get('stb1').toFixed(3)} m vs `
+    + `${measuredTurretHeights.get('type74').toFixed(3)} m)`,
+);
 
 console.log('japaneseCastTurrets.selftest: STB-1 and Type 74 use seated Leopard-generation polygonal cast shells');
