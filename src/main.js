@@ -3566,6 +3566,7 @@ const frameInfo = {
     gunMarker: new THREE.Vector3(),
     gunDistM: 0,
     gunTargetId: null,
+    singleReticle: false,
     atGunLimit: false,
     gunLimitSpec: false, // GUN LIMIT label (movement.js r3: spec pins only)
     reload: { t: 0, totalS: 1, kind: 'ready' },
@@ -3663,6 +3664,10 @@ function playerGunCenterRay(p, aimPoint, outOrigin, outDir, outTarget) {
 function computeAimInfo() {
   const p = game.player;
   const aim = frameInfo.aim;
+  // A hydraulic fixed gun has no independent turret marker to communicate.
+  // Collapse the camera/gun sight pair into one physical-bore reticle while
+  // retaining dual markers for every conventional turret and casemate.
+  aim.singleReticle = !!(p.spec.hydropneumaticAim && p.spec.armor?.turretless);
   aim.point.copy(rig.aimPoint);
   aim.distM = rig.aimDist;
   aim.dispersionRadM = computeDispersionRadM(p.spec, p.state, rig.aimDist);
@@ -4614,6 +4619,8 @@ function forcedHudFrame(mode, forcedAim) {
   aim.penRatio = forcedAim.penRatio;
   aim.gunDistM = forcedAim.gunDistM != null ? forcedAim.gunDistM : forcedAim.distM;
   aim.gunTargetId = forcedAim.gunTargetId != null ? forcedAim.gunTargetId : null;
+  aim.singleReticle = !!(game.player.spec.hydropneumaticAim &&
+    game.player.spec.armor?.turretless);
   aim.blockedDistM = null; // screenshot views never show the blocked warning
   aim.blockedLabel = false;
   aim.atGunLimit = false;
@@ -4630,7 +4637,7 @@ function forcedHudFrame(mode, forcedAim) {
   aim.gunMarker.copy(rig.aimPoint);
   refreshSpotFrame(); // SPOTTING WIRING: camo indicator in forced HUD stills
   hud.update(frameInfo);
-  // Preserve the live dual-reticle fields in deterministic screenshot views;
+  // Preserve the live sight-layout fields in deterministic screenshot views;
   // the recipe only carries scalar aim values.
   hud.forceAimDisplay({
     ...forcedAim,
@@ -4638,6 +4645,7 @@ function forcedHudFrame(mode, forcedAim) {
     gunMarker: aim.gunMarker,
     gunDistM: aim.gunDistM,
     gunTargetId: aim.gunTargetId,
+    singleReticle: aim.singleReticle,
   });
 }
 

@@ -36,6 +36,20 @@ export function reloadHudFraction(reload) {
 }
 
 /**
+ * Resolve the sight anchor without allocating in the live HUD loop. Fixed-gun
+ * hydraulic vehicles expose one gun-true sight; conventional tanks retain the
+ * separate camera request and physical gun markers.
+ */
+export function resolveReticleAnchor(view, out = null) {
+  const result = out || {};
+  const gunPlaced = Number.isFinite(view?.gunX) && Number.isFinite(view?.gunY);
+  result.single = !!view?.singleReticle && gunPlaced;
+  result.x = result.single ? view.gunX : view?.cx;
+  result.y = result.single ? view.gunY : view?.cy;
+  return result;
+}
+
+/**
  * Normalize authoritative magazine state for the compact reticle indicator.
  * The HUD draws the actual capacity through four shells; larger magazines
  * retain an exact overflow read without turning a four-round rack into +1.
@@ -125,6 +139,7 @@ const _cs = new THREE.Vector3();
 const _ndc = new THREE.Vector3();
 const _tmp = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
+const _reticleAnchor = { x: 0, y: 0, single: false };
 
 // spotting model (WoT-style): max spot range + persistence after LOS is lost
 // camo_spotting r3: import the sim's constants instead of duplicating them —
@@ -1647,7 +1662,8 @@ export function initHud(bus) {
     // while the cursor-follow camera is easing onto a newly selected point:
     // the scope remains truthful instead of showing a second cross at screen
     // centre. The optical vignette itself remains centred on the lens.
-    const cx = view.cx, cy = view.cy;
+    const anchor = resolveReticleAnchor(view, _reticleAnchor);
+    const cx = anchor.x, cy = anchor.y;
     const lensCx = w / 2, lensCy = h / 2;
     if (!scopeGrad || scopeGrad._zoom !== zoom) {
       // r7-2 MAJOR (round critique: "vignette nearly imperceptible at the
@@ -2072,7 +2088,8 @@ export function initHud(bus) {
   let lastCameraMarkerCol = PEN_NONE, lastGunMarkerCol = PEN_NONE;
 
   function drawReticle(view, dt) {
-    const cx = view.cx, cy = view.cy;
+    const anchor = resolveReticleAnchor(view, _reticleAnchor);
+    const cx = anchor.x, cy = anchor.y;
     // bloom/shrink smoothing toward the target pixel radius
     const targetR = reticleTargetR(view);
     const k = 1 - Math.exp(-14 * dt);
@@ -2093,13 +2110,11 @@ export function initHud(bus) {
     const ccx = view.gunX != null ? view.gunX : cx;
     const ccy = view.gunY != null ? view.gunY : cy;
     lastCircleX = ccx; lastCircleY = ccy;
-    // Official WoT grammar: this screen-center marker follows the CAMERA and
-    // indicates only where the player is looking. It never carries armor/
-    // penetration color. A red camera marker is reserved for a physical gun
-    // limit; the colored gun marker below remains at the reachable shot point.
+    // Conventional tanks keep a screen-center CAMERA marker plus the physical
+    // gun mark. A hydraulic fixed gun collapses both onto the reachable shot
+    // point because there is no independent turret lay to communicate.
     const sniper = mode === 'sniper';
     const cameraCol = view.atGunLimit ? PEN_RED : PEN_NONE;
-    lastCameraMarkerCol = cameraCol;
     const rl0 = view.reload;
     const reloadFrac = reloadHudFraction(rl0);
     const isReloading = reloadFrac > 0;
@@ -2136,6 +2151,10 @@ export function initHud(bus) {
     // not-ready even though the path itself is clear.
     const blocked = view.blockedDistM != null;
     const limited = !blocked && view.atGunLimit;
+    const gunOnTarget = aimTargetId != null &&
+      (forcedStill || view.gunTargetId === aimTargetId);
+    const gunCol = blocked ? PEN_RED : limited ? 'rgba(160,170,180,0.95)'
+      : penColor(gunOnTarget ? view.penRatio : null);
     const ringCol = blocked ? PEN_RED : limited ? 'rgba(160,170,180,0.95)'
       : sniper ? SNIPER_COL : CIRCLE_COL;
     ctx.strokeStyle = ringCol;
@@ -2157,8 +2176,9 @@ export function initHud(bus) {
     }
     ctx.setLineDash([]);
 
-    // --- central CAMERA-AXIS marker: a SMALL CLEAN CROSS (short gapped
-    // arms + a fine center dot), always neutral because it is direction-only.
+    // --- primary marker: a SMALL CLEAN CROSS (short gapped arms + a fine
+    // center dot). It is camera-neutral for conventional tanks and gun-colored
+    // for the single-reticle hydraulic layout.
     // r7-2 MAJOR (round critique: "the
     // white center cross is oversized relative to the circle and sits on a
     // faint dark backing disc"): the whole marker shrinks ~40% (arms 13 px
@@ -2168,6 +2188,9 @@ export function initHud(bus) {
     // hud_ui r5: the marker SCALES with zoom in sniper mode — at x8 a fixed
     // 8px cross would be lost on the target's hull.
     const zs = sniper ? Math.min(1.8, 1.1 + 0.085 * (view.zoom || 8)) : 1;
+    const primaryMarkerCol = anchor.single ? gunCol : cameraCol;
+    lastCameraMarkerCol = anchor.single ? null : cameraCol;
+    lastGunMarkerCol = anchor.single ? gunCol : PEN_NONE;
     ctx.shadowBlur = 0;
     // The dotted sweep, countdown numeral and ready-pulse edge detector all
     // read the same canonical reload state.
@@ -2191,8 +2214,8 @@ export function initHud(bus) {
     ctx.lineWidth = markLw + 1.2;
     markerPass(true);
     ctx.globalAlpha = 0.97;
-    ctx.strokeStyle = cameraCol;
-    ctx.fillStyle = cameraCol;
+    ctx.strokeStyle = primaryMarkerCol;
+    ctx.fillStyle = primaryMarkerCol;
     ctx.lineWidth = markLw;
     markerPass(false);
 
@@ -2301,7 +2324,7 @@ export function initHud(bus) {
     // barrel's real reachable point. It draws even when aligned, overlaying a
     // colored center dot on the neutral camera cross; when a gun limit pins,
     // it separates and stays at the point where the next shell will go.
-    if (view.gunX != null && view.gunY != null) {
+    if (!anchor.single && view.gunX != null && view.gunY != null) {
       const gx = view.gunX, gy = view.gunY;
       const gzs = 0.9 * zs;
       const gunPass = () => {
@@ -2315,9 +2338,7 @@ export function initHud(bus) {
         ctx.arc(gx, gy, 1.1 * Math.min(gzs, 1.35), 0, Math.PI * 2);
         ctx.fill();
       };
-      const gunOnTarget = aimTargetId != null &&
-        (forcedStill || view.gunTargetId === aimTargetId);
-      const gCol = blocked ? PEN_RED : penColor(gunOnTarget ? view.penRatio : null);
+      const gCol = gunCol;
       lastGunMarkerCol = gCol;
       ctx.globalAlpha = 0.55;
       ctx.strokeStyle = 'rgba(6,9,12,0.9)';
@@ -2330,7 +2351,7 @@ export function initHud(bus) {
       ctx.lineWidth = markLw * 0.9;
       gunPass();
       ctx.globalAlpha = 1;
-    } else {
+    } else if (!anchor.single) {
       lastGunMarkerCol = PEN_NONE;
     }
 
@@ -3640,6 +3661,7 @@ export function initHud(bus) {
     cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null, blockedDistM: null,
     blockedLabel: false, // gameplay_feel r7: dwell-gated PATH BLOCKED text
     gunX: null, gunY: null, gunDistM: null, gunTargetId: null,
+    singleReticle: false,
     atGunLimit: false, gunLimitSpec: false,
     reload: { t: 0, totalS: 1, kind: 'ready' }, magazine: null, zoom: 1,
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
@@ -3650,6 +3672,7 @@ export function initHud(bus) {
     aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
     aimView.gunDistM = aim.gunDistM != null ? aim.gunDistM : null;
     aimView.gunTargetId = aim.gunTargetId != null ? aim.gunTargetId : null;
+    aimView.singleReticle = !!aim.singleReticle;
     aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
     aimView.blockedLabel = !!aim.blockedLabel;
     aimView.distM = aim.distM != null ? aim.distM : null;
@@ -4013,6 +4036,7 @@ export function initHud(bus) {
       // and radPx == dispRadM · pxPerMeter(distM) under the live zoomed FOV.
       getReticleState: () => ({
         mode,
+        singleReticle: aimView.singleReticle,
         w,
         h,
         zoom: aimView.zoom || 1,

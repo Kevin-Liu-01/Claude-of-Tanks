@@ -61,11 +61,16 @@ function variant(id, donorId, options) {
     if (options.fitArmor) fitArmorToDims(spec.armor, donorDims, spec.dims);
   }
   if (options.armorFactor) {
-    for (const armor of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
-      if (armor.kind === 'external') continue;
-      armor.keMm = Math.round(armor.keMm * options.armorFactor);
-      armor.ceMm = Math.round(armor.ceMm * options.armorFactor);
-    }
+    scaleArmorRatings(spec, options.armorFactor);
+  }
+  return spec;
+}
+
+function scaleArmorRatings(spec, factor) {
+  for (const armor of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
+    if (armor.kind === 'external') continue;
+    armor.keMm = Math.round(armor.keMm * factor);
+    armor.ceMm = Math.round(armor.ceMm * factor);
   }
   return spec;
 }
@@ -97,23 +102,23 @@ const SWEDEN_SPECS = {
     dims: { hullLengthM: 5.91, overallLengthM: 7.65, widthM: 2.85, heightM: 1.90 },
     fitArmor: true,
     stats: {
-      hp: 1250,
-      enginePowerHp: 320, weightTons: 17.5, topSpeedKmh: 70, reverseSpeedKmh: 50,
-      hullTraverseDegS: 46,
-      terrainResistance: { hard: 0.70, medium: 0.86, soft: 1.35 },
-      turretTraverseDegS: 30, gunPitchDegS: 28,
+      hp: 1400,
+      enginePowerHp: 340, weightTons: 17.5, topSpeedKmh: 72, reverseSpeedKmh: 52,
+      hullTraverseDegS: 48,
+      terrainResistance: { hard: 0.66, medium: 0.82, soft: 1.28 },
+      turretTraverseDegS: 32, gunPitchDegS: 30,
       gunElevationDeg: 20, gunDepressionDeg: 14, gunArcDeg: 3,
       hydropneumaticAim: {
         noseDownDeg: 14, noseUpDeg: 20, rateDegS: 12,
         compressionM: 0.50, droopM: 0.50,
       },
       gun: siegeGun({
-        name: '10,5 cm kan m/59', reloadS: 7.2, accuracy: 0.25, aimTimeS: 1.6,
-        damage: 390, apcrPen: 288, apcrPenFar: 266, heatPen: 330,
-        velocityMps: 1385, heDamage: 480,
+        name: '10,5 cm kan m/59', reloadS: 6.8, accuracy: 0.23, aimTimeS: 1.4,
+        damage: 400, apcrPen: 300, apcrPenFar: 278, heatPen: 340,
+        velocityMps: 1420, heDamage: 500,
       }),
     },
-    armorFactor: 0.32,
+    armorFactor: 0.50,
   }),
   // Strv 103A (§5.317 lane J): the initial-production S-Tank (1967-70,
   // 70 built) ahead of the resident 103B. Same fixed 105 mm L74 and hull,
@@ -131,22 +136,23 @@ const SWEDEN_SPECS = {
     camoScale: 0.5,
     dims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.60, heightM: 2.14 },
     stats: {
-      hp: 1600,
-      enginePowerHp: 600, weightTons: 37.0, topSpeedKmh: 55, reverseSpeedKmh: 40,
-      hullTraverseDegS: 46,
-      terrainResistance: { hard: 0.66, medium: 0.82, soft: 1.28 },
-      turretTraverseDegS: 36, gunPitchDegS: 32,
+      hp: 1800,
+      enginePowerHp: 650, weightTons: 37.0, topSpeedKmh: 58, reverseSpeedKmh: 44,
+      hullTraverseDegS: 48,
+      terrainResistance: { hard: 0.62, medium: 0.78, soft: 1.20 },
+      turretTraverseDegS: 38, gunPitchDegS: 34,
       gunElevationDeg: 12, gunDepressionDeg: 13, gunArcDeg: 4,
       hydropneumaticAim: {
         noseDownDeg: 13, noseUpDeg: 12, rateDegS: 10,
         compressionM: 0.44, droopM: 0.44,
       },
       gun: siegeGun({
-        name: '10,5 cm kan Strv 103 L/74', reloadS: 5.8, accuracy: 0.23, aimTimeS: 1.45,
-        damage: 400, apcrPen: 308, apcrPenFar: 286, heatPen: 350,
-        velocityMps: 1500, heDamage: 520,
+        name: '10,5 cm kan Strv 103 L/74', reloadS: 5.4, accuracy: 0.21, aimTimeS: 1.25,
+        damage: 420, apcrPen: 320, apcrPenFar: 298, heatPen: 360,
+        velocityMps: 1530, heDamage: 540,
       }),
     },
+    armorFactor: 1.25,
   }),
   strv122: variant('strv122', 'leo2a5', {
     name: 'Strv 122', number: '122', scheme: 'splinter',
@@ -170,22 +176,23 @@ enforceTurretlessArmor(SWEDEN_SPECS.strv103a);
 // identity while keeping its stable public ID and saves/protocol key.
 if (TANK_SPECS.strv103) {
   Object.assign(TANK_SPECS.strv103, {
-    name: 'Strv 103B', nation: 'Sweden', hp: 2050,
-    enginePowerHp: 780, weightTons: 39.7, topSpeedKmh: 60, reverseSpeedKmh: 45,
-    hullTraverseDegS: 50,
-    terrainResistance: { hard: 0.60, medium: 0.76, soft: 1.18 },
-    turretTraverseDegS: 40, gunPitchDegS: 36,
+    name: 'Strv 103B', nation: 'Sweden', hp: 2400,
+    enginePowerHp: 900, weightTons: 39.7, topSpeedKmh: 65, reverseSpeedKmh: 50,
+    hullTraverseDegS: 54,
+    terrainResistance: { hard: 0.55, medium: 0.70, soft: 1.08 },
+    turretTraverseDegS: 44, gunPitchDegS: 40,
     gunElevationDeg: 12, gunDepressionDeg: 13, gunArcDeg: 4,
     hydropneumaticAim: {
       noseDownDeg: 13, noseUpDeg: 12, rateDegS: 11,
       compressionM: 0.46, droopM: 0.46,
     },
     gun: siegeGun({
-      name: '10,5 cm kan Strv 103 L/74B', reloadS: 4.8, accuracy: 0.20, aimTimeS: 1.25,
-      damage: 420, apcrPen: 330, apcrPenFar: 306, heatPen: 375,
-      velocityMps: 1550, heDamage: 560,
+      name: '10,5 cm kan Strv 103 L/74B', reloadS: 4.4, accuracy: 0.18, aimTimeS: 1.05,
+      damage: 440, apcrPen: 350, apcrPenFar: 326, heatPen: 390,
+      velocityMps: 1600, heDamage: 580,
     }),
   });
+  scaleArmorRatings(TANK_SPECS.strv103, 1.60);
   delete TANK_SPECS.strv103.community;
   TANK_SPECS.strv103.visual = {
     ...TANK_SPECS.strv103.visual,

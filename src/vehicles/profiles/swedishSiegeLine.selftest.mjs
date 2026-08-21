@@ -9,9 +9,12 @@ import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialAction
 
 const LINE = ['udes03', 'strv103a', 'strv103'];
 const TIERS = [8, 9, 10];
-const MIN_HP = [1200, 1500, 1900];
-const MIN_ALPHA = [390, 400, 420];
-const MIN_PEN = [285, 305, 325];
+const MIN_HP = [1400, 1800, 2400];
+const MIN_ALPHA = [400, 420, 440];
+const MIN_PEN = [300, 320, 350];
+const MIN_FRONT_ARMOR = [50, 125, 160];
+const MAX_ACCURACY = [0.23, 0.21, 0.18];
+const MAX_AIM_TIME_S = [1.4, 1.25, 1.05];
 
 const specs = LINE.map(getSpec);
 assert.deepEqual(LINE.map(tankTier), TIERS,
@@ -24,9 +27,16 @@ for (let i = 0; i < LINE.length; i++) {
   const spec = specs[i];
   const shell = spec.gun.shells[0];
   const dpm = shell.dmg * 60 / spec.gun.reloadS;
+  const upperGlacis = spec.armor.hullPlates.find((plate) => plate.name === 'upper_glacis');
   assert.ok(spec.hp >= MIN_HP[i], `${spec.id}: survivability is competitive at tier ${TIERS[i]}`);
+  assert.ok(upperGlacis?.keMm >= MIN_FRONT_ARMOR[i],
+    `${spec.id}: frontal protection improves along the siege line`);
   assert.ok(shell.dmg >= MIN_ALPHA[i], `${spec.id}: primary shell has tier-appropriate alpha`);
   assert.ok(shell.pen100Mm >= MIN_PEN[i], `${spec.id}: primary shell has tier-appropriate penetration`);
+  assert.ok(spec.gun.baseAccuracy <= MAX_ACCURACY[i],
+    `${spec.id}: siege accuracy is tier-appropriate`);
+  assert.ok(spec.gun.aimTimeS <= MAX_AIM_TIME_S[i],
+    `${spec.id}: suspension aiming settles promptly`);
   assert.ok(dpm > previousDpm, `${spec.id}: sustained fire improves along the siege line`);
   previousDpm = dpm;
   assert.ok(spec.hydropneumaticAim?.noseDownDeg >= 12,

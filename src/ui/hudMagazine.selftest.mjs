@@ -4,7 +4,24 @@ import {
   autoloaderHudShellPose,
   autoloaderHudState,
   reloadHudFraction,
+  resolveReticleAnchor,
 } from './hud.js';
+
+assert.deepEqual(
+  resolveReticleAnchor({ cx: 640, cy: 360, gunX: 612, gunY: 348, singleReticle: true }),
+  { x: 612, y: 348, single: true },
+  'hydraulic fixed guns collapse the camera and physical-gun marks onto one gun-true reticle',
+);
+assert.deepEqual(
+  resolveReticleAnchor({ cx: 640, cy: 360, gunX: 612, gunY: 348, singleReticle: false }),
+  { x: 640, y: 360, single: false },
+  'conventional tanks retain their independent camera and physical-gun markers',
+);
+assert.deepEqual(
+  resolveReticleAnchor({ cx: 640, cy: 360, singleReticle: true }),
+  { x: 640, y: 360, single: false },
+  'the sight safely falls back to the camera anchor until a gun projection exists',
+);
 
 assert.equal(reloadHudFraction(null), 0, 'missing reload state has no dot sweep');
 assert.equal(

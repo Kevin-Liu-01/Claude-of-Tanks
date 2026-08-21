@@ -95751,15 +95751,15 @@
           {
             "name": "10,5 cm kan Strv 103 L/74B APDS",
             "type": "APCR",
-            "pen100Mm": 330,
-            "pen1000Mm": 306,
+            "pen100Mm": 350,
+            "pen1000Mm": 326,
             "pen2000Mm": null
           },
           {
             "name": "10,5 cm kan Strv 103 L/74B HEAT",
             "type": "HEAT",
-            "pen100Mm": 375,
-            "pen1000Mm": 375,
+            "pen100Mm": 390,
+            "pen1000Mm": 390,
             "pen2000Mm": null
           },
           {
@@ -95783,8 +95783,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 100,
-            "keMm": 100,
-            "ceMm": 100,
+            "keMm": 160,
+            "ceMm": 160,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -95814,8 +95814,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 100,
-            "keMm": 100,
-            "ceMm": 100,
+            "keMm": 160,
+            "ceMm": 160,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -95845,8 +95845,8 @@
             "hitboxId": "H03",
             "name": "hull_side_upper_R",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 48,
+            "ceMm": 48,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -95876,8 +95876,8 @@
             "hitboxId": "H04",
             "name": "hull_side_upper_L",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 48,
+            "ceMm": 48,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -95907,8 +95907,8 @@
             "hitboxId": "H05",
             "name": "hull_side_lower_R",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 48,
+            "ceMm": 48,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -95938,8 +95938,8 @@
             "hitboxId": "H06",
             "name": "hull_side_lower_L",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 48,
+            "ceMm": 48,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96031,8 +96031,8 @@
             "hitboxId": "H09",
             "name": "hull_rear",
             "physicalMm": 25,
-            "keMm": 25,
-            "ceMm": 25,
+            "keMm": 40,
+            "ceMm": 40,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96062,8 +96062,8 @@
             "hitboxId": "H10",
             "name": "hull_roof",
             "physicalMm": 20,
-            "keMm": 20,
-            "ceMm": 20,
+            "keMm": 32,
+            "ceMm": 32,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96306,7 +96306,7 @@
         ]
       },
       "geometryHash": "f073af4e",
-      "metadataHash": "fe84db4f",
+      "metadataHash": "b75d05d7",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -96397,8 +96397,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75128,
-          "sha256": "c4e098d065d7531ad209a7016cd0e7286370578e392fe01b52c2172c451b9285"
+          "bytes": 74544,
+          "sha256": "93d2dcd055d1d8bcb7c868b5e93c6e455ad5df7cca50cf1388f69fe17e64091f"
         },
         "modulesSide": {
           "file": "strv103_modules_side.png",
@@ -96460,15 +96460,15 @@
           {
             "name": "10,5 cm kan Strv 103 L/74 APDS",
             "type": "APCR",
-            "pen100Mm": 308,
-            "pen1000Mm": 286,
+            "pen100Mm": 320,
+            "pen1000Mm": 298,
             "pen2000Mm": null
           },
           {
             "name": "10,5 cm kan Strv 103 L/74 HEAT",
             "type": "HEAT",
-            "pen100Mm": 350,
-            "pen1000Mm": 350,
+            "pen100Mm": 360,
+            "pen1000Mm": 360,
             "pen2000Mm": null
           },
           {
@@ -96492,8 +96492,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 100,
-            "keMm": 100,
-            "ceMm": 100,
+            "keMm": 125,
+            "ceMm": 125,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96523,8 +96523,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 100,
-            "keMm": 100,
-            "ceMm": 100,
+            "keMm": 125,
+            "ceMm": 125,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96554,8 +96554,8 @@
             "hitboxId": "H03",
             "name": "hull_side_upper_R",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 38,
+            "ceMm": 38,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96585,8 +96585,8 @@
             "hitboxId": "H04",
             "name": "hull_side_upper_L",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 38,
+            "ceMm": 38,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96616,8 +96616,8 @@
             "hitboxId": "H05",
             "name": "hull_side_lower_R",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 38,
+            "ceMm": 38,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96647,8 +96647,8 @@
             "hitboxId": "H06",
             "name": "hull_side_lower_L",
             "physicalMm": 30,
-            "keMm": 30,
-            "ceMm": 30,
+            "keMm": 38,
+            "ceMm": 38,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96740,8 +96740,8 @@
             "hitboxId": "H09",
             "name": "hull_rear",
             "physicalMm": 25,
-            "keMm": 25,
-            "ceMm": 25,
+            "keMm": 31,
+            "ceMm": 31,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -96771,8 +96771,8 @@
             "hitboxId": "H10",
             "name": "hull_roof",
             "physicalMm": 20,
-            "keMm": 20,
-            "ceMm": 20,
+            "keMm": 25,
+            "ceMm": 25,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -97014,8 +97014,8 @@
           }
         ]
       },
-      "geometryHash": "509b3f4e",
-      "metadataHash": "24575706",
+      "geometryHash": "385a67f5",
+      "metadataHash": "28cf3f1f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -97066,8 +97066,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77525,
-          "sha256": "5f9dddca4177956b4cec682bb4043b2eaeaef587a12436855a94be69cc50b1d8"
+          "bytes": 76833,
+          "sha256": "6cd63b5a69af1d68842892adcddb4d145d35046079de37d594b5737e696db3b3"
         },
         "modulesSide": {
           "file": "strv103a_modules_side.png",
@@ -146547,15 +146547,15 @@
           {
             "name": "10,5 cm kan m/59 APDS",
             "type": "APCR",
-            "pen100Mm": 288,
-            "pen1000Mm": 266,
+            "pen100Mm": 300,
+            "pen1000Mm": 278,
             "pen2000Mm": null
           },
           {
             "name": "10,5 cm kan m/59 HEAT",
             "type": "HEAT",
-            "pen100Mm": 330,
-            "pen1000Mm": 330,
+            "pen100Mm": 340,
+            "pen1000Mm": 340,
             "pen2000Mm": null
           },
           {
@@ -146579,8 +146579,8 @@
             "hitboxId": "H01",
             "name": "upper_glacis",
             "physicalMm": 100,
-            "keMm": 32,
-            "ceMm": 32,
+            "keMm": 50,
+            "ceMm": 50,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146610,8 +146610,8 @@
             "hitboxId": "H02",
             "name": "lower_front",
             "physicalMm": 100,
-            "keMm": 32,
-            "ceMm": 32,
+            "keMm": 50,
+            "ceMm": 50,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146641,8 +146641,8 @@
             "hitboxId": "H03",
             "name": "hull_side_upper_R",
             "physicalMm": 30,
-            "keMm": 10,
-            "ceMm": 10,
+            "keMm": 15,
+            "ceMm": 15,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146672,8 +146672,8 @@
             "hitboxId": "H04",
             "name": "hull_side_upper_L",
             "physicalMm": 30,
-            "keMm": 10,
-            "ceMm": 10,
+            "keMm": 15,
+            "ceMm": 15,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146703,8 +146703,8 @@
             "hitboxId": "H05",
             "name": "hull_side_lower_R",
             "physicalMm": 30,
-            "keMm": 10,
-            "ceMm": 10,
+            "keMm": 15,
+            "ceMm": 15,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146734,8 +146734,8 @@
             "hitboxId": "H06",
             "name": "hull_side_lower_L",
             "physicalMm": 30,
-            "keMm": 10,
-            "ceMm": 10,
+            "keMm": 15,
+            "ceMm": 15,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146827,8 +146827,8 @@
             "hitboxId": "H09",
             "name": "hull_rear",
             "physicalMm": 25,
-            "keMm": 8,
-            "ceMm": 8,
+            "keMm": 13,
+            "ceMm": 13,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -146858,8 +146858,8 @@
             "hitboxId": "H10",
             "name": "hull_roof",
             "physicalMm": 20,
-            "keMm": 6,
-            "ceMm": 6,
+            "keMm": 10,
+            "ceMm": 10,
             "kind": "main",
             "turretLocal": false,
             "verts": [
@@ -147102,7 +147102,7 @@
         ]
       },
       "geometryHash": "b1f126e8",
-      "metadataHash": "d3474ed0",
+      "metadataHash": "26b39e1c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -147150,8 +147150,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71899,
-          "sha256": "179d7625aa19cd77f4171b987e661e32c6d64a80da3dcfa4e5e7ff5b4281e5b6"
+          "bytes": 71426,
+          "sha256": "43d15916a9c9975450f955ce8b081e7b87ed5b3521e8f410c864c8249dd21250"
         },
         "modulesSide": {
           "file": "udes03_modules_side.png",
