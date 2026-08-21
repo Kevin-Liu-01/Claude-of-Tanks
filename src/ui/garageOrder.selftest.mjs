@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   compareCountryThenTierThenName, countryFilterGroups, defaultGarageMapId,
   horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.js';
+
+const garageSource = await readFile(new URL('./garage.js', import.meta.url), 'utf8');
 
 const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],
@@ -74,5 +77,10 @@ assert.equal(horizontalRailWheelDelta(-38, 6), -38,
   'native horizontal trackpad motion keeps its direction and magnitude');
 assert.equal(horizontalRailWheelDelta(0, 3, 1), 60,
   'line-mode wheel motion is normalized to useful pixels');
+assert.match(garageSource,
+  /\.cot-country-chips\{[^}]*overflow-x:auto;[^}]*scrollbar-width:none;[^}]*\}/,
+  'country selection keeps horizontal scrolling without a visible Firefox scrollbar');
+assert.match(garageSource, /\.cot-country-chips::\-webkit-scrollbar\{display:none;\}/,
+  'country selection hides its Chromium and Safari scrollbar');
 
-console.log('garageOrder.selftest: ordering, map default, filters and horizontal rail behavior verified');
+console.log('garageOrder.selftest: ordering, map default, filters and hidden horizontal rail verified');

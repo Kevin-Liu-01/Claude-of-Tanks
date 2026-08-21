@@ -396,12 +396,8 @@ const GARAGE_CSS = `
 .cot-country-chips{grid-column:2;display:flex;gap:5px;min-width:0;padding:2px 3px 4px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x proximity;scroll-padding-inline:18px;touch-action:pan-x;
-  scrollbar-width:thin;scrollbar-color:rgba(154,174,190,.28) transparent;}
-.cot-country-chips::-webkit-scrollbar{height:3px;}
-.cot-country-chips::-webkit-scrollbar-track{background:transparent;}
-.cot-country-chips::-webkit-scrollbar-thumb{background:rgba(154,174,190,.18);border-radius:3px;}
-.cot-country-rail:hover .cot-country-chips::-webkit-scrollbar-thumb,
-.cot-country-rail:focus-within .cot-country-chips::-webkit-scrollbar-thumb{background:rgba(240,176,74,.42);}
+  scrollbar-width:none;-ms-overflow-style:none;}
+.cot-country-chips::-webkit-scrollbar{display:none;}
 .cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;width:100%;height:48px;
   color:#91a2af;background:linear-gradient(180deg,rgba(16,22,28,.96),rgba(7,10,14,.98));
   border:1px solid rgba(146,164,180,.28);cursor:pointer;opacity:.68;outline:none;
