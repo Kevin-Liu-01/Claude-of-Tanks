@@ -6,6 +6,7 @@ const root = resolve('.');
 const manifest = JSON.parse(await readFile(resolve(root, 'public/media/landing-r1/manifest.json'), 'utf8'));
 const home = await readFile(resolve(root, 'home.html'), 'utf8');
 const presentation = await readFile(resolve(root, 'public/presentation.css'), 'utf8');
+const threeMark = await readFile(resolve(root, 'public/brand/threejs-mark.svg'), 'utf8');
 const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.js'), 'utf8');
 const main = home.match(/<main>([\s\S]*?)<\/main>/)?.[1] || '';
 
@@ -28,6 +29,14 @@ assert.match(presentation, /\.v5-shot-rail::\-webkit-scrollbar\{display:none\}/,
   'the screenshot gallery hides the WebKit scrollbar');
 assert.match(publicPages, /function mountShotRail\(rail\)/,
   'the screenshot gallery mounts accessible controls and progress');
+assert.match(home, /class="v5-maker-mark"[^>]*aria-hidden="true"/,
+  'the landing credit displays the official Three.js mark');
+assert.match(home, /class="v5-maker-engine" href="https:\/\/threejs\.org\/"/,
+  'the Three.js credit links to the official project site');
+assert.match(presentation, /\.v5-maker-mark\{[^}]*width:29px;[^}]*height:29px;/,
+  'the engine mark has a legible display size');
+assert.match(threeMark, /viewBox="0 0 226\.77 226\.77"/,
+  'the local Three.js asset retains the official icon geometry');
 
 assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r1');
 assert.equal(manifest.schemaVersion, 1);
