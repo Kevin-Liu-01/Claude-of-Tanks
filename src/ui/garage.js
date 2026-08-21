@@ -86,10 +86,10 @@ const GARAGE_CSS = `
   background:linear-gradient(90deg,rgba(5,8,11,.8),rgba(5,8,11,0));}
 .cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
-.cot-garage .title{position:absolute;top:31px;left:34px;font-size:17px;font-weight:800;
+.cot-garage .title{position:absolute;top:20px;left:34px;font-size:17px;font-weight:800;
   letter-spacing:.20em;color:#9fb0bf;text-transform:uppercase;
   display:flex;align-items:center;gap:10px;}
-.cot-garage .title > span{word-spacing:-.12em;}
+.cot-garage .title > span{word-spacing:-.36em;}
 .cot-garage .title b{color:#f0a030;}
 /* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
    commander, same art as the boot splash; public/brand/logo-mark.svg)
@@ -102,7 +102,7 @@ const GARAGE_CSS = `
    solely on the stats card. */
 /* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
    Garage (current) / Studio / Tank Gallery / Home. */
-.cot-nav{position:absolute;top:32px;right:26px;display:flex;align-items:stretch;gap:4px;
+.cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
   height:34px;pointer-events:auto;}
 .cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
