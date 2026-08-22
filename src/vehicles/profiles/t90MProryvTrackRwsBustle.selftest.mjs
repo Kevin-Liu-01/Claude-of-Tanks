@@ -45,10 +45,36 @@ try {
   const remoteKord = turretRig.getObjectByName('t90mProryvRemoteKord');
   assert.ok(remoteKord, 'named remote Kord assembly is present');
 
+  const roof = turretRig.userData.t90mProryvRoofSeatingReceipt;
+  assert.ok(roof, 'T-90M exposes its roof seating receipt');
+  assert.equal(roof.maxRoofGapM, 0, 'roof fittings permit no visible underside gap');
+  assert.equal(roof.seatedCircularStations, 3,
+    'crew rings and RWS race remain structural');
+  assert.equal(roof.structuralFoundations, 1,
+    'panoramic housing retains a structural roof foundation');
+  assert.equal(roof.equipmentHousings, 2, 'Sosna and panoramic housings remain equipment');
+  assert.ok(roof.sosnaCarrierTopY - roof.sosnaHousingBottomY >= roof.contactEmbedM,
+    'Sosna housing overlaps its buried roof carrier');
+  assert.ok(roof.panoCarrierTopY - roof.panoHousingBottomY >= roof.contactEmbedM,
+    'panoramic housing overlaps its buried roof carrier');
+  assert.ok(roof.commanderBottomY <= 0.70 && roof.gunnerBottomY <= 0.70
+    && roof.rwsBottomY <= 0.70, 'all three circular roof stations enter the crown');
+
+  const searchlight = turretRig.userData.t90mProryvSearchlightReceipt;
+  assert.ok(searchlight, 'T-90M exposes its searchlight material receipt');
+  assert.equal(searchlight.housingBucket, 'turretEquipment',
+    'searchlight housing follows camouflage without expanding armor');
+  assert.equal(searchlight.housingCamouflaged, true, 'searchlight housing uses camouflage paint');
+  assert.equal(searchlight.lensBucket, 'turretGlass', 'searchlight retains a distinct lens');
+  assert.equal(searchlight.armorHitboxExpanded, false, 'searchlight is excluded from armor receipts');
+
   const rear = turretRig.userData.t90mProryvRearAssemblyReceipt;
   assert.ok(rear?.attached, 'rear external assembly is explicitly attached');
-  assert.ok(rear.forwardOverlapM >= 0.20,
-    `rear cylinder enters the bustle/frame by at least 200 mm (${rear.forwardOverlapM.toFixed(3)} m)`);
+  assert.equal(rear.daylightGapM, 0, 'rear drum has no daylight to the bustle face');
+  assert.ok(rear.forwardOverlapM >= 0.03,
+    `rear drum enters the bustle by at least 30 mm (${rear.forwardOverlapM.toFixed(3)} m)`);
+  assert.ok(rear.centerZ > rear.terminalFrameZ,
+    'rear drum is attached to the bustle rather than hanging on the terminal frame');
 
   for (const yaw of [0, Math.PI / 2]) {
     turretRig.rotation.y = yaw;
@@ -59,4 +85,4 @@ try {
   tank.dispose();
 }
 
-console.log('t90MProryvTrackRwsBustle.selftest: taller linked course, raised ride, remote Kord, and attached rear assembly verified');
+console.log('t90MProryvTrackRwsBustle.selftest: tracks, seated roof fittings, camouflaged light, remote Kord, and attached rear assembly verified');

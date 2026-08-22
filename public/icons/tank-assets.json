@@ -125809,7 +125809,7 @@
           }
         ]
       },
-      "geometryHash": "14327f81",
+      "geometryHash": "18efa1bc",
       "metadataHash": "fa3aa35b",
       "appearance": {
         "version": 1,
@@ -125827,7 +125827,7 @@
           "canvas": 2,
           "fittingPaint": 8,
           "opticGlass": 2,
-          "unclassified": 10,
+          "unclassified": 12,
           "gearShadow": 1
         }
       },
@@ -125892,24 +125892,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76117,
-          "sha256": "4b343088d9cef5a84dcf94245bfdf5bb2af23cb3f7629ca61c1d84f9dec1506c"
+          "bytes": 76511,
+          "sha256": "a9b96955f467eb22cd167b3b0d5efb9d73d513d3a9be240a1f550c806288883d"
         },
         "armorSide": {
           "file": "t90m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78056,
-          "sha256": "d0cf29eed9c942831e06b594e194eb9464d25af326d32b2e9cd54433f9d44d06"
+          "bytes": 78219,
+          "sha256": "0150e01819100c5f41153889f1aa505c456e82fba05e799453c42b78b5ccd3a5"
         },
         "modulesSide": {
           "file": "t90m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85053,
-          "sha256": "ae8825b8a5a85a8ed4553b88c859bd4789d77552e42588b5ca199c080cd97c75"
+          "bytes": 85672,
+          "sha256": "8596485f34563112728bb45d27d034422c1b15ab05f1a381b697fc5e3b6c9eea"
         },
         "markings": {
           "file": "t90m_markings.png",

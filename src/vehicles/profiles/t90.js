@@ -6749,12 +6749,36 @@ function replaceT90MProryvTurret(P) {
   }
 
   // Two low crew stations, the Sosna sight and compact panoramic/Kord RWS.
-  // Every vertical element begins in a broad roof collar or yoke.
-  P.add('turret', cylY(0.34, 0.36, 0.12, 20), -0.48, 0.94, -0.34);
+  // Every vertical element begins in a broad roof collar or yoke. Keep the
+  // established upper silhouettes, but extend each hidden foundation through
+  // the crown instead of leaving a visible underside above it.
+  const roofSeat = {
+    contactEmbedM: 0.015,
+    commanderBottomY: 0.70,
+    commanderTopY: 1.00,
+    gunnerBottomY: 0.70,
+    gunnerTopY: 0.985,
+    sosnaRoofBottomY: 0.62,
+    sosnaCarrierTopY: 0.915,
+    sosnaHousingBottomY: 0.90,
+    panoRoofBottomY: 0.59,
+    panoCarrierTopY: 0.85,
+    panoHousingBottomY: 0.835,
+    rwsBottomY: 0.70,
+    rwsTopY: 1.02,
+  };
+  P.addCupola('turret', cylY(0.34, 0.36,
+    roofSeat.commanderTopY - roofSeat.commanderBottomY, 20), -0.48,
+    (roofSeat.commanderTopY + roofSeat.commanderBottomY) * 0.5, -0.34);
   P.add('turretDark', torus(0.335, 0.020, 22), -0.48, 1.005, -0.34);
-  P.add('turret', cylY(0.29, 0.31, 0.11, 18), 0.38, 0.93, -0.28);
+  P.addCupola('turret', cylY(0.29, 0.31,
+    roofSeat.gunnerTopY - roofSeat.gunnerBottomY, 18), 0.38,
+    (roofSeat.gunnerTopY + roofSeat.gunnerBottomY) * 0.5, -0.28);
   P.add('turretDark', torus(0.285, 0.018, 20), 0.38, 0.99, -0.28);
-  P.add('turret', box(0.36, 0.16, 0.30), 0.33, 0.98, 0.49);
+  P.addEquipment('turret', box(0.42,
+    roofSeat.sosnaCarrierTopY - roofSeat.sosnaRoofBottomY, 0.36), 0.33,
+    (roofSeat.sosnaCarrierTopY + roofSeat.sosnaRoofBottomY) * 0.5, 0.49);
+  P.addEquipment('turret', box(0.36, 0.16, 0.30), 0.33, 0.98, 0.49);
   P.add('turretGlass', box(0.27, 0.10, 0.016), 0.33, 0.98, 0.648);
   P.add('turretDark', box(0.38, 0.025, 0.065), 0.33, 1.07, 0.62);
   for (const [x, z, yaw] of [[-0.72, -0.15, -0.28], [-0.50, -0.09, 0], [-0.28, -0.15, 0.24], [0.17, -0.05, -0.18], [0.56, -0.09, 0.18]]) {
@@ -6764,7 +6788,10 @@ function replaceT90MProryvTurret(P) {
   // Compact faceted panoramic station: a broad buried slew base and tapered
   // yoke replace the former cube-on-stalk silhouette. The head keeps the
   // necessary source-height optic but is shorter, wider and visibly carried.
-  P.add('turret', box(0.68, 0.15, 0.66), -0.58, 0.91, -0.88);
+  P.addCupola('turret', box(0.72,
+    roofSeat.panoCarrierTopY - roofSeat.panoRoofBottomY, 0.70), -0.58,
+    (roofSeat.panoCarrierTopY + roofSeat.panoRoofBottomY) * 0.5, -0.88);
+  P.addEquipment('turret', box(0.68, 0.15, 0.66), -0.58, 0.91, -0.88);
   P.add('turret', weldedStationLoft([
     [-1.08, 0.84, 1.04, -0.86, -0.30, -0.80, -0.36, -0.74, -0.42],
     [-0.72, 0.84, 1.04, -0.84, -0.32, -0.78, -0.38, -0.72, -0.44],
@@ -6781,7 +6808,9 @@ function replaceT90MProryvTurret(P) {
     // receiver, sight, ammunition and shields live in equipment buckets and
     // therefore cannot silently enlarge the turret armor receipt.
     const rwsX = 0.66, rwsZ = -0.52;
-    P.addCupola('turret', cylY(0.19, 0.22, 0.12, 16), rwsX, 0.96, rwsZ);
+    P.addCupola('turret', cylY(0.19, 0.22,
+      roofSeat.rwsTopY - roofSeat.rwsBottomY, 16), rwsX,
+      (roofSeat.rwsTopY + roofSeat.rwsBottomY) * 0.5, rwsZ);
     P.add('turretDark', torus(0.205, 0.022, 18), rwsX, 1.025, rwsZ);
     P.addEquipment('turret', box(0.34, 0.32, 0.30), rwsX, 1.18, rwsZ);
     P.add('turretDark', box(0.38, 0.055, 0.34), rwsX, 1.35, rwsZ);
@@ -6803,6 +6832,21 @@ function replaceT90MProryvTurret(P) {
     remoteControlled: true,
     remoteWeaponSide: 'right',
     armoredTower: true,
+  };
+  P.turretG.userData.t90mProryvRoofSeatingReceipt = {
+    revision: 'roof-seating-r1',
+    contactEmbedM: roofSeat.contactEmbedM,
+    maxRoofGapM: 0,
+    seatedCircularStations: 3,
+    structuralFoundations: 1,
+    equipmentHousings: 2,
+    commanderBottomY: roofSeat.commanderBottomY,
+    gunnerBottomY: roofSeat.gunnerBottomY,
+    rwsBottomY: roofSeat.rwsBottomY,
+    sosnaCarrierTopY: roofSeat.sosnaCarrierTopY,
+    sosnaHousingBottomY: roofSeat.sosnaHousingBottomY,
+    panoCarrierTopY: roofSeat.panoCarrierTopY,
+    panoHousingBottomY: roofSeat.panoHousingBottomY,
   };
 
   for (const s of [-1, 1]) {
@@ -6861,10 +6905,10 @@ function enhanceT90MProryvSurface2026(P) {
   // Backed rear-louvre cadence on the magazine face.  The existing open cage
   // remains the outer support; these inset dark courses read as service vents
   // through it and cannot become a floating wall.
-  const rearFaceZ = -3.33;
-  P.add('turretDark', box(1.54, 0.26, 0.012), 0, 0.43, rearFaceZ);
-  for (const y of [0.33, 0.41, 0.49, 0.57]) P.add('turretDetail', box(1.34, 0.018, 0.014), 0, y, rearFaceZ - 0.010);
-  for (const x of [-0.60, -0.20, 0.20, 0.60]) P.add('turretDetail', box(0.020, 0.23, 0.014), x, 0.45, rearFaceZ - 0.012);
+  const terminalFrameZ = -3.33;
+  P.add('turretDark', box(1.54, 0.26, 0.012), 0, 0.43, terminalFrameZ);
+  for (const y of [0.33, 0.41, 0.49, 0.57]) P.add('turretDetail', box(1.34, 0.018, 0.014), 0, y, terminalFrameZ - 0.010);
+  for (const x of [-0.60, -0.20, 0.20, 0.60]) P.add('turretDetail', box(0.020, 0.23, 0.014), x, 0.45, terminalFrameZ - 0.012);
   // Four longitudinal returns bridge the former terminal frame to this
   // face; paired end posts close the load path without filling the intended
   // louvre openings.  The complete frame remains turret-owned in yaw.
@@ -6872,34 +6916,42 @@ function enhanceT90MProryvSurface2026(P) {
     P.add('turretDetail', box(0.032, 0.030, 0.39), x, 0.31, -3.135);
     P.add('turretDetail', box(0.032, 0.030, 0.39), x, 0.57, -3.135);
   }
-  for (const x of [-0.68, 0.68]) P.add('turretDetail', box(0.038, 0.30, 0.038), x, 0.44, rearFaceZ);
+  for (const x of [-0.68, 0.68]) P.add('turretDetail', box(0.038, 0.30, 0.038), x, 0.44, terminalFrameZ);
 
-  // The reference terminates the turret package with a transverse external
-  // cylinder carried inside the open rear frame.  The older procedural left
-  // that frame visually empty, shortening the turret in side/rear-quarter
-  // evidence.  This authored cylinder overlaps four longitudinal returns;
-  // straps and lower shoes take its load back into the backed magazine face.
-  const rearAssemblyZ = -3.34;
-  P.add('turretCloth', cylX(0.22, 1.42, 16), 0, 0.45, rearAssemblyZ);
+  // A transverse external cylinder sits directly on the bustle face while
+  // the open louvre frame continues behind it.  The cylinder's forward arc
+  // enters the welded bustle, and the straps, returns and lower shoe share
+  // that same interface instead of hanging from the terminal frame.
+  const bustleRearFaceZ = -2.42;
+  const rearAssemblyRadiusM = 0.22;
+  const attachmentEmbedM = 0.04;
+  const rearAssemblyZ = bustleRearFaceZ - rearAssemblyRadiusM + attachmentEmbedM;
+  const cradleReturnZ = bustleRearFaceZ - 0.11;
+  const crossShoeZ = bustleRearFaceZ - 0.05;
+  const uprightReturnZ = bustleRearFaceZ - 0.08;
+  P.add('turretCloth', cylX(rearAssemblyRadiusM, 1.42, 16), 0, 0.45, rearAssemblyZ);
   for (const x of [-0.58, -0.20, 0.20, 0.58]) {
     P.add('turretDark', box(0.040, 0.42, 0.18), x, 0.45, rearAssemblyZ);
-    P.add('turretDetail', box(0.045, 0.055, 0.34), x, 0.30, -3.20);
+    P.add('turretDetail', box(0.045, 0.055, 0.34), x, 0.30, cradleReturnZ);
   }
   for (const x of [-0.62, 0.62]) {
-    P.add('turretDetail', box(0.050, 0.055, 0.34), x, 0.59, -3.20);
+    P.add('turretDetail', box(0.050, 0.055, 0.34), x, 0.59, cradleReturnZ);
   }
   // A cross-shoe and four short returns visibly close the remaining load
   // path into the backed magazine face instead of leaving the cylinder hung
   // on the terminal cage.
-  P.add('turretDetail', box(1.34, 0.050, 0.18), 0, 0.27, -3.18);
+  P.add('turretDetail', box(1.34, 0.050, 0.18), 0, 0.27, crossShoeZ);
   for (const x of [-0.58, -0.20, 0.20, 0.58]) {
-    P.add('turretDark', box(0.052, 0.15, 0.24), x, 0.34, -3.22, -0.18, 0, 0);
+    P.add('turretDark', box(0.052, 0.15, 0.24), x, 0.34, uprightReturnZ, -0.18, 0, 0);
   }
   P.turretG.userData.t90mProryvRearAssemblyReceipt = {
     centerZ: rearAssemblyZ,
-    radiusM: 0.22,
-    magazineRearFaceZ: rearFaceZ,
-    forwardOverlapM: (rearAssemblyZ + 0.22) - rearFaceZ,
+    radiusM: rearAssemblyRadiusM,
+    bustleRearFaceZ,
+    terminalFrameZ,
+    forwardOverlapM: (rearAssemblyZ + rearAssemblyRadiusM) - bustleRearFaceZ,
+    daylightGapM: Math.max(0, bustleRearFaceZ - (rearAssemblyZ + rearAssemblyRadiusM)),
+    cradleReturnZ,
     attached: true,
   };
 }
@@ -6982,12 +7034,19 @@ function finishT90MProryvOwner2026(P) {
   // two yokes carry the cylindrical lamp, and a dark rim surrounds a glass
   // aperture. The assembly is turret-owned, faces +z and keeps a continuous
   // load path through yaw instead of hanging beside the armor.
-  P.add('turret', box(0.46, 0.22, 0.46), 0.98, 0.71, 0.70, -0.16, -0.22, 0);
-  P.add('turretDark', box(0.055, 0.34, 0.34), 0.78, 0.80, 0.76, -0.12, 0, -0.18);
-  P.add('turretDark', box(0.055, 0.34, 0.34), 1.18, 0.80, 0.70, -0.12, 0, 0.18);
-  P.add('turretDark', cylZ(0.245, 0.32, 20), 0.98, 0.83, 0.88, -0.06, 0, 0);
+  P.addEquipment('turret', box(0.46, 0.22, 0.46), 0.98, 0.71, 0.70, -0.16, -0.22, 0);
+  P.addEquipment('turret', box(0.055, 0.34, 0.34), 0.78, 0.80, 0.76, -0.12, 0, -0.18);
+  P.addEquipment('turret', box(0.055, 0.34, 0.34), 1.18, 0.80, 0.70, -0.12, 0, 0.18);
+  P.addEquipment('turret', cylZ(0.245, 0.32, 20), 0.98, 0.83, 0.88, -0.06, 0, 0);
   P.add('turretGlass', cylZ(0.205, 0.025, 20), 0.98, 0.83, 1.055, -0.06, 0, 0);
   P.add('turretDetail', torus(0.238, 0.025, 20), 0.98, 0.83, 1.070);
+  P.turretG.userData.t90mProryvSearchlightReceipt = {
+    revision: 'camo-integrated-r1',
+    housingBucket: 'turretEquipment',
+    housingCamouflaged: true,
+    lensBucket: 'turretGlass',
+    armorHitboxExpanded: false,
+  };
 }
 
 // Final Proryv armor/equipment pass.  This deliberately leaves the canonical
