@@ -389,7 +389,9 @@ function buildAMX40(P) {
   liftEye(P, 'hullDetail', 1.45, 1.658, -3.05);
   // engine plateau furniture: intake mesh + louvre rows + filler caps
   P.add('hullDark', box(2.30, 0.018, 0.80), 0, 1.772, -2.72);
-  if (P.q) for (let k = 0; k < 4; k++) P.add('hullDetail', box(2.20, 0.016, 0.05), 0, 1.776, -2.99 + k * 0.18);
+  for (const k of KIT.grilleIndices(P.q, 4, 2)) {
+    P.add('hullDetail', box(2.20, 0.016, 0.05), 0, 1.776, -2.99 + k * 0.18);
+  }
   P.add('hullDark', box(1.80, 0.016, 0.42), 0, 1.747, -2.02);                   // step-course mesh field
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.085, 0.085, 0.018, 12), s * 1.15, 1.772, -2.42);
   P.add('hullDetail', box(0.30, 0.028, 0.38), -1.18, 1.769, -3.05);             // filler hump (top 1.783 — 2cm over the plateau)

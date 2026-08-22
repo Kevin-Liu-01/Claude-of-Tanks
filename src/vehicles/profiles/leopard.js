@@ -10197,7 +10197,7 @@ function buildLeo1A5Profile(P) {
     P.add('hullDetail', box(0.78, 0.022, 0.03), s * 0.50, 1.363, -2.145);     // frame rear
     P.add('hullDetail', box(0.03, 0.022, 0.96), s * 0.115, 1.364, -1.68);     // frame inner
     P.add('hullDetail', box(0.03, 0.022, 0.96), s * 0.885, 1.364, -1.68);     // frame outer
-    if (P.q) for (let k = 0; k < 5; k++) {
+    for (const k of KIT.grilleIndices(P.q, 5, 3)) {
       P.add('hullDetail', box(0.70, 0.014, 0.045), s * 0.50, 1.370, -1.30 - k * 0.19);
     }
     // cooling-fan rings aft of the intakes
@@ -10214,7 +10214,7 @@ function buildLeo1A5Profile(P) {
   P.add('hullDark', box(1.70, 0.018, 0.42), 0, 1.332, -2.90);                 // transverse exhaust grille
   P.add('hullDetail', box(1.74, 0.020, 0.03), 0, 1.333, -2.675);              // grille frame
   P.add('hullDetail', box(1.74, 0.020, 0.03), 0, 1.331, -3.125);
-  if (P.q) for (let k = 0; k < 3; k++) {
+  for (const k of KIT.grilleIndices(P.q, 3, 2)) {
     P.add('hullDetail', box(1.64, 0.014, 0.05), 0, 1.337, -2.78 - k * 0.11);
   }
   P.add('hullDetail', box(0.90, 0.016, 0.03), 0, 1.368, -1.155);              // access panel seam

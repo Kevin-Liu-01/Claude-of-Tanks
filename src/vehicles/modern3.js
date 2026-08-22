@@ -978,19 +978,19 @@ export function buildK2(P) {
       const base = new THREE.PlaneGeometry(w, h); base.rotateY(Math.PI);
       P.add('hullDark', base, x, 1.34, -3.741);
     }
-    if (P.q) {
-      for (let bi = 0; bi < grilleBays.length; bi++) {
-        const [x, w, h] = grilleBays[bi];
-        const slatCount = [4, 6, 3][bi];
-        for (let k = 0; k < slatCount; k++) {
-          const slat = new THREE.PlaneGeometry(w - 0.05, 0.026); slat.rotateY(Math.PI);
-          P.add('hullDetail', slat, x, 1.34 - h * 0.34 + k * h * 0.68 / Math.max(1, slatCount - 1), -3.743);
-        }
-        for (const dx of (bi === 1 ? [-w * 0.27, w * 0.27] : [0])) {
-          const divider = new THREE.PlaneGeometry(0.022, h - 0.04); divider.rotateY(Math.PI);
-          P.add('hullDetail', divider, x + dx, 1.34, -3.744);
-        }
+    for (let bi = 0; bi < grilleBays.length; bi++) {
+      const [x, w, h] = grilleBays[bi];
+      const slatCount = [4, 6, 3][bi];
+      for (const k of KIT.grilleIndices(P.q, slatCount, 2)) {
+        const slat = new THREE.PlaneGeometry(w - 0.05, 0.026); slat.rotateY(Math.PI);
+        P.add('hullDetail', slat, x, 1.34 - h * 0.34 + k * h * 0.68 / Math.max(1, slatCount - 1), -3.743);
       }
+      for (const dx of (bi === 1 ? [-w * 0.27, w * 0.27] : [0])) {
+        const divider = new THREE.PlaneGeometry(0.022, h - 0.04); divider.rotateY(Math.PI);
+        P.add('hullDetail', divider, x + dx, 1.34, -3.744);
+      }
+    }
+    if (P.q) {
       // Flush service hardware lives inside the certified grille field: a
       // diagonal brace on the left bay, a small access latch in the center,
       // and an offset connector pair on the right.  These enrich dead-rear
@@ -1158,7 +1158,9 @@ export function buildK2(P) {
   // (the turret shell bottom rides at 1.69; sweep law, type10 precedent).
   // Corner kit (bin, lift eyes, links) lives OUTSIDE the 2.62 swing radius.
   P.add('hullDark', box(2.40, 0.02, 1.20), 0, 1.663, -2.70);
-  if (P.q) for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.30, 0.02, 0.06), 0, 1.669, -3.14 + k * 0.22);
+  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+    P.add('hullDetail', box(2.30, 0.02, 0.06), 0, 1.669, -3.14 + k * 0.22);
+  }
   for (const s of [-1, 1]) {
     P.add('hullDark', torus(0.30, 0.014, P.q ? 22 : 14), s * 0.78, 1.664, -1.80); // fan rings (top 1.678)
     P.add('hullDetail', cylY(0.085, 0.085, 0.02, 12), s * 1.25, 1.557, -0.35);    // filler caps
@@ -1875,7 +1877,9 @@ function buildK1A1(P) {
   P.add('hull', box(3.37, 0.32, 0.10), 0, 1.30, -3.66);
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.66, 0.34, 0.05), s * 0.88, 1.30, -3.715);          // exhaust grilles
-    if (P.q) for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.62, 0.04, 0.05), s * 0.88, 1.18 + k * 0.085, -3.722);
+    for (const k of KIT.grilleIndices(P.q, 4, 2)) {
+      P.add('hullDetail', box(0.62, 0.04, 0.05), s * 0.88, 1.18 + k * 0.085, -3.722);
+    }
     P.add('hullDetail', box(0.035, 0.40, 0.045), s * 0.55, 1.30, -3.724);       // unequal grille/service divider
     P.add('hullDark', box(0.14, 0.08, 0.05), s * 1.44, 1.53, -3.725);          // taillights
     P.add('hullRubber', box(0.56, 0.24, 0.026), s * 1.36, 0.95, -3.71);        // rear flaps (ref hem 0.92 at the stern)
@@ -1953,7 +1957,9 @@ function buildK1A1(P) {
   // bustle sweep), tool bin on the left rear corner (outside the swing),
   // filler caps, lift eyes at the corners.
   P.add('hullDark', box(2.30, 0.02, 1.30), 0, 1.613, -2.85);
-  if (P.q) for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
+  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+    P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
+  }
   for (const s of [-1, 1]) {
     P.add('hullDark', torus(0.26, 0.013, P.q ? 22 : 14), s * 0.72, 1.614, -2.35); // fan rings
     P.add('hullDetail', cylY(0.08, 0.08, 0.018, 12), s * 1.30, 1.617, -2.10);     // filler caps
@@ -2389,7 +2395,9 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
   // engine deck: flush radiator field + louvres + intake mesh + filler caps
   // + access seams (real Type 10 powerpack grammar)
   P.add('hullDark', box(2.53, 0.0198, 1.276), 0, 1.7908, -2.662);
-  if (P.q) for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.42, 0.0176, 0.055), 0, 1.7952, -3.146 + k * 0.242);
+  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+    P.add('hullDetail', box(2.42, 0.0176, 0.055), 0, 1.7952, -3.146 + k * 0.242);
+  }
   P.add('hullDetail', box(2.46, 0.022, 0.033), 0, 1.796, -2.035);               // radiator field fore frame
   P.add('hullDetail', box(2.46, 0.022, 0.033), 0, 1.788, -3.29);                // aft frame
   P.add('hullDark', box(1.76, 0.0176, 0.605), 0, 1.6995, -1.562);               // intake mesh ahead of the step

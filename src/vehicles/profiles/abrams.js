@@ -693,7 +693,7 @@ function abramsHull(P, g) {
   if (!g.noRearFace) {
     P.add('hullDark', box(rearHalfW * 2, (rearTop - rearBot) * 0.62, 0.03),
       0, (rearTop + rearBot) / 2, rearZ + 0.02);
-    if (P.q) for (let k = 0; k < 5; k++) {
+    for (const k of KIT.grilleIndices(P.q, 5, 3)) {
       // louvre ladder clamps under the deck line — on short rear faces the
       // top rows rode 0.05-0.08 proud of the tail silhouette (vertex r2).
       const ly = (rearTop + rearBot) / 2 - 0.26 * s + k * 0.13 * s;
@@ -713,13 +713,13 @@ function abramsHull(P, g) {
   }
 
   // Engine deck: inset intake grilles + rib rows + fuel cap.
-  if (P.q && g.engineZ) {
+  if (g.engineZ) {
     const ez = g.engineZ;
     for (const side of [-1, 1]) {
       // (r5 softSeams: from the rear's grazing deck angle the two grille
       // beds read as ink-black slatted bars on a deck the ref fuses)
       P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(bw * 0.48, 0.02, 0.78 * s), side * bw * 0.31, deckAt(g, ez) + 0.006, ez);
-      for (let k = 0; k < 4; k++) {
+      for (const k of KIT.grilleIndices(P.q, 4, 2)) {
         P.add('hullDetail', box(bw * 0.44, 0.018, 0.045), side * bw * 0.31, deckAt(g, ez) + 0.010, ez + (k - 1.5) * 0.18 * s);
       }
     }
@@ -5294,13 +5294,13 @@ function buildM1a2(P, V) {
   // Engine-deck dressing: grille beds re-seated ON the (raised) deck line
   // with pale louver ribs — the r1 flush pair sat 1-2 cm INSIDE the deck
   // loft and never rendered (blank rear deck at toptilt).
-  if (P.q) for (const s of [-1, 1]) {
+  for (const s of [-1, 1]) {
     P.add('hullDark', box(1.10, 0.015, 0.72), s * 0.62, 1.5785, -2.95);
-    for (let k = 0; k < 5; k++) {
+    for (const k of KIT.grilleIndices(P.q, 5, 3)) {
       P.add('hullDetail', box(1.04, 0.010, 0.045), s * 0.62, 1.5835, -3.22 + k * 0.135);
     }
     P.add('hullDark', box(0.9, 0.012, 0.5), s * 0.5, 1.40, 1.3);
-    for (let k = 0; k < 4; k++) {
+    for (const k of KIT.grilleIndices(P.q, 4, 2)) {
       P.add('hullDetail', box(0.84, 0.009, 0.04), s * 0.5, 1.4065, 1.12 + k * 0.12);
     }
     P.add('hullDetail', cylY(0.065, 0.065, 0.014, 12), s * 1.24, 1.582, -3.05);
@@ -5371,7 +5371,7 @@ function buildM1a2(P, V) {
   // grille field. Everything rides the -3.94 plate / -3.905 band faces
   // <= 8 mm proud: same raster bin as the -3.975 tab (hullLengthM safe),
   // |x| <= 1.44 (side-hidden behind the 1.51 body).
-  if (P.q) {
+  {
     // Visual r3 order 4 (grille fuse): the r2 doors ran 4-5 BRIGHT slat rows
     // (rowmax L83-85 vs ref's fused 66-68 louvers). Bucket swap: beds ride
     // the hullWood channel (retuned to the ref's bare-plate L62 class in the
@@ -5379,7 +5379,7 @@ function buildM1a2(P, V) {
     // ordered slat <= bed+6 ceiling); slat count doubled / pitch halved so
     // the field reads as one fused louver bed at 1x. Frames stay legible.
     hb('hullWood', -0.93, 0.95, 1.005, 1.40, -3.9475, -3.9395);      // door bed
-    for (let k = 0; k < 10; k++) {                                   // louvers
+    for (const k of KIT.grilleIndices(P.q, 10, 4)) {                  // louvers
       P.add('hullCloth', box(1.82, 0.015, 0.012), 0.01, 1.046 + k * 0.0375, -3.9495, 0.35, 0, 0);
     }
     for (const vx of [-0.62, 0.005, 0.63]) {                         // door frames
@@ -5408,12 +5408,12 @@ function buildM1a2(P, V) {
     // Outboard grille doors: LEFT band face runs to -3.905; the RIGHT face
     // is notched (-3.775 over x 1.00..1.24) — its door rides the notch wall.
     hb('hullWood', -1.44, -1.08, 1.03, 1.38, -3.9125, -3.9035);
-    for (let k = 0; k < 8; k++) {
+    for (const k of KIT.grilleIndices(P.q, 8, 4)) {
       P.add('hullCloth', box(0.32, 0.012, 0.010), -1.26, 1.056 + k * 0.0385, -3.914, 0.35, 0, 0);
     }
     hb('hullWood', 1.26, 1.44, 1.03, 1.38, -3.9125, -3.9035);
     hb('hullWood', 1.04, 1.22, 1.03, 1.38, -3.7815, -3.7735);
-    for (let k = 0; k < 8; k++) {
+    for (const k of KIT.grilleIndices(P.q, 8, 4)) {
       P.add('hullCloth', box(0.15, 0.012, 0.010), 1.13, 1.056 + k * 0.0385, -3.783, 0.35, 0, 0);
       P.add('hullCloth', box(0.15, 0.012, 0.010), 1.35, 1.056 + k * 0.0385, -3.914, 0.35, 0, 0);
     }
@@ -5471,7 +5471,7 @@ function buildM1a2(P, V) {
     // exhaust stub on the outboard face inside the ±1.51 body band.
     hb('hull', -1.42, -1.02, 1.578, 1.698, -2.86, -2.42);
     hb('hullDark', -1.40, -1.04, 1.660, 1.6985, -2.84, -2.44);      // louver inset field
-    if (P.q) for (let k = 0; k < 3; k++) {
+    for (const k of KIT.grilleIndices(P.q, 3, 2)) {
       hb('hullDetail', -1.39, -1.05, 1.678, 1.690, -2.83 + k * 0.13, -2.80 + k * 0.13); // louver seams
     }
     P.add('hullDark', cylX(0.032, 0.05, 10), -1.445, 1.655, -2.55); // exhaust stub (outboard face)
@@ -7504,11 +7504,11 @@ function buildAbramsX(P) {
   // Hybrid-drive louver panels on the LOW rear deck (current bake: 1.75-1.77).
   // AXDED-R1: stack lowered 0.018 — the 1.79 frame tops owned four rear
   // columns +0.03-0.06 over the ref's 1.742-1.77 deck line.
-  if (P.q) for (const side of [-1, 1]) {
+  for (const side of [-1, 1]) {
     P.add('hullDark', box(1.05, 0.02, 0.75), side * 0.68, 1.744, -3.0);
     // Dense flush radiator mesh.  Five thick raised bars read as a roof rack;
     // the source carries closely pitched slats inside a framed recessed bed.
-    for (let k = 0; k < 14; k++) {
+    for (const k of KIT.grilleIndices(P.q, 14, 5)) {
       P.add(k % 2 ? 'hullDetail' : 'hullShadow', box(0.98, 0.010, 0.018),
         side * 0.68, 1.757, -2.66 - k * 0.052);
     }
@@ -8108,7 +8108,7 @@ function buildAbramsX(P) {
   // it §B3-identifiable (the hybrid pack's roof radiator/APU deck).
   P.add('hull', box(2.86, 0.10, 0.88), 0, 2.26, -1.815);     // deck slab (top 2.31)
   P.add('hullDark', box(2.78, 0.02, 0.80), 0, 2.305, -1.815); // dark inset field
-  if (P.q) for (let k = 0; k < 4; k++) {
+  for (const k of KIT.grilleIndices(P.q, 4, 2)) {
     P.add('hullDetail', box(2.74, 0.014, 0.05), 0, 2.312, -1.50 - k * 0.21); // louver seams
   }
   // AXFIX-O3 (§5.27 order 3, §B2 + the §K merkava closure mechanism): the

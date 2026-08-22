@@ -268,7 +268,7 @@ function challenger1Build(P) {
   P.add('hullDetail', cylY(0.05, 0.05, 0.005), -0.75, 1.6245, -0.90);
   // Engine deck louvres.
   P.add('hull', box(1.9, 0.035, 1.05), 0, 1.72, -2.62);
-  if (P.q) for (let i = 0; i < 6; i++) {
+  for (const i of KIT.grilleIndices(P.q, 6, 3)) {
     P.add('hullDark', box(1.8, 0.016, 0.05), 0, 1.734, -2.25 - i * 0.15);
   }
   // Rear-deck bin (the print's 1.828 bump, held inside the -2.86..-3.07
@@ -2057,7 +2057,9 @@ function buildChallenger2Legacy(P) {
   // kit stays EXACTLY at the r2 stations; it is the length anchor.)
   P.add('hull', box(1.94, 0.62, 0.10), 0, 0.72, -4.10);
   P.add('hullDark', box(1.70, 0.42, 0.05), 0, 0.80, -4.145);
-  if (P.q) for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.62, 0.045, 0.05), 0, 0.64 + k * 0.13, -4.16);
+  for (const k of KIT.grilleIndices(P.q, 4, 2)) {
+    P.add('hullDetail', box(1.62, 0.045, 0.05), 0, 0.64 + k * 0.13, -4.16);
+  }
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.15, 0.08, 0.05), s * 1.28, 1.42, -4.135);          // taillights
     P.addMudguard(`challenger-rear-flap-${s}`, 'hullRubber',
@@ -2128,7 +2130,9 @@ function buildChallenger2Legacy(P) {
   // deck furniture: louvred engine field, fuel caps, lift eyes, sponson
   // bins, strapped kit.
   P.add('hullDark', box(1.90, 0.02, 1.30), 0, 1.556, -2.60);
-  if (P.q) for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.80, 0.025, 0.06), 0, 1.566, -3.10 + k * 0.20);
+  for (const k of KIT.grilleIndices(P.q, 6, 3)) {
+    P.add('hullDetail', box(1.80, 0.025, 0.06), 0, 1.566, -3.10 + k * 0.20);
+  }
   for (const zc of [-1.65, -0.75]) {
     P.add('hullDetail', cylY(0.11, 0.11, 0.03, 12), 1.15, 1.56, zc);           // access caps
     P.add('hullDark', torus(0.11, 0.012, 12), -1.15, 1.565, zc);
@@ -2753,15 +2757,16 @@ function buildChallenger2(P) {
   // seated on the measured profile and remain inside its silhouette except
   // for the source-visible fittings.
   P.add('hullDark', box(1.95, 0.022, 1.20), 0, 1.550, -3.05);
-  if (P.q) for (let k = 0; k < 7; k++) P.add('hullDetail', box(1.82, 0.022, 0.055), 0, 1.567, -3.50 + k * 0.15);
+  for (const k of KIT.grilleIndices(P.q, 7, 3)) {
+    P.add('hullDetail', box(1.82, 0.022, 0.055), 0, 1.567, -3.50 + k * 0.15);
+  }
   // Two-bay radiator field, inset below the existing 1.602 louvre crest.
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.82, 0.012, 1.02), side * 0.50, 1.555, -3.05);
-    if (P.q) {
-      for (const dx of [-0.34, 0, 0.34]) P.add('hullDetail', box(0.018, 0.010, 0.96),
-        side * 0.50 + dx, 1.564, -3.05);
-      for (let k = 0; k < 8; k++) P.add('hullDark', box(0.74, 0.010, 0.020),
-        side * 0.50, 1.565, -3.48 + k * 0.125);
+    for (const dx of [-0.34, 0, 0.34]) P.add('hullDetail', box(0.018, 0.010, 0.96),
+      side * 0.50 + dx, 1.564, -3.05);
+    for (const k of KIT.grilleIndices(P.q, 8, 4)) {
+      P.add('hullDark', box(0.74, 0.010, 0.020), side * 0.50, 1.565, -3.48 + k * 0.125);
     }
   }
   P.add('hull', box(0.70, 0.055, 0.58), 0, 1.525, 0.65);                       // driver hood seated on the physical foredeck
@@ -2928,8 +2933,10 @@ function buildChallenger2(P) {
   }
   P.add('hullDetail', box(1.48, 0.020, 0.012), 0, 1.49, -3.665);
   P.add('hullDetail', box(1.48, 0.020, 0.012), 0, 1.21, -3.665);
-  if (P.q) for (let k = -4; k <= 4; k++) P.add('hullDetail', box(0.014, 0.25, 0.012),
-    k * 0.16, 1.35, -3.668);
+  for (const index of KIT.grilleIndices(P.q, 9, 4)) {
+    const k = index - 4;
+    P.add('hullDetail', box(0.014, 0.25, 0.012), k * 0.16, 1.35, -3.668);
+  }
   for (const side of [-1, 1]) {
     P.add('hullGlass', box(0.10, 0.065, 0.014), side * 1.05, 1.34, -4.083);
     P.add('hullDetail', torus(0.048, 0.010, 12), side * 0.94, 1.25, -4.082, Math.PI / 2, 0, 0);
@@ -2957,8 +2964,10 @@ function buildChallenger2(P) {
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.82, 0.42, 0.014), side * 0.48, 1.30, -3.670);
     P.add('hull', box(0.75, 0.35, 0.010), side * 0.48, 1.30, -3.679);
-    if (P.q) for (let k = -2; k <= 2; k++) P.add('hullDark', box(0.68, 0.016, 0.010),
-      side * 0.48, 1.30 + k * 0.060, -3.687);
+    for (const index of KIT.grilleIndices(P.q, 5, 3)) {
+      const k = index - 2;
+      P.add('hullDark', box(0.68, 0.016, 0.010), side * 0.48, 1.30 + k * 0.060, -3.687);
+    }
     P.add('hullDark', cylZ(0.145, 0.018, P.q ? 22 : 14), side * 0.30, 1.28, -3.694);
     P.add('hullDetail', torus(0.123, 0.010, P.q ? 20 : 14), side * 0.30, 1.28, -3.704, Math.PI / 2, 0, 0);
     P.add('hullDark', cylZ(0.060, 0.012, P.q ? 18 : 12), side * 0.30, 1.28, -3.710);
@@ -2987,8 +2996,11 @@ function buildChallenger2(P) {
   ]) {
     P.add('hullDark', box(w, h, 0.028), x, y, -3.704);
     P.add('hull', box(w - 0.055, h - 0.055, 0.014), x, y, -3.721);
-    if (P.q) for (let k = -2; k <= 2; k++) P.add('hullDark', box(w - 0.09, 0.012, 0.010),
-      x, y + k * (h - 0.08) / 5, -3.730);
+    for (const index of KIT.grilleIndices(P.q, 5, 3)) {
+      const k = index - 2;
+      P.add('hullDark', box(w - 0.09, 0.012, 0.010),
+        x, y + k * (h - 0.08) / 5, -3.730);
+    }
     P.add('hullDetail', cylZ(0.022, 0.014, 10), x + w * 0.30, y, -3.733);
   }
   P.add('hullDetail', box(0.52, 0.024, 0.020), 0.02, 1.45, -3.726, 0, 0, -0.10);
@@ -3212,8 +3224,10 @@ function buildChallenger2(P) {
     // Seven genuinely recessed bustle-side louvres.  No proud perimeter
     // frames: the source reads as one closed side course cut by apertures.
     P.add('turretDark', box(0.010, 0.080, 0.82), side * 1.454, 0.17, -1.02);
-    if (P.q) for (let k = 0; k < 7; k++) P.add('turretDetail', box(0.018, 0.070, 0.070),
-      side * 1.459, 0.175, -1.38 + k * 0.12);
+    for (const k of KIT.grilleIndices(P.q, 7, 3)) {
+      P.add('turretDetail', box(0.018, 0.070, 0.070),
+        side * 1.459, 0.175, -1.38 + k * 0.12);
+    }
     // Forward Dorchester/smoke-bank shoulder.  Keep the commander-side
     // course; the loader-side copy was the broad block called out in the
     // markup, projecting through the otherwise continuous front casting.
@@ -3310,8 +3324,10 @@ function buildChallenger2(P) {
   P.add('turretGlass', box(0.13, 0.08, 0.012), 0, 0.28, -3.018);
   P.add('turretDetail', box(2.18, 0.025, 0.012), 0, 0.38, -3.006);
   P.add('turretDetail', box(2.18, 0.025, 0.012), 0, 0.10, -3.006);
-  if (P.q) for (let k = -5; k <= 5; k++) P.add('turretDetail', box(0.018, 0.32, 0.010),
-    k * 0.19, 0.27, -3.010);
+  for (const index of KIT.grilleIndices(P.q, 11, 5)) {
+    const k = index - 5;
+    P.add('turretDetail', box(0.018, 0.32, 0.010), k * 0.19, 0.27, -3.010);
+  }
   // Full-width bustle basket sits aft of the armor face.  Dark mesh is
   // recessed beneath pale rails so the rear reads as an open rack, not a
   // second flat slab.
@@ -3333,8 +3349,10 @@ function buildChallenger2(P) {
   ].map((p) => new THREE.Vector3(...p)), false, 'centripetal');
   P.add('turretDark', new THREE.TubeGeometry(bustleStrap, P.q ? 20 : 10, 0.012, 6, false));
   for (const y of [0.09, 0.24, 0.40]) P.add('turretDetail', box(2.62, 0.024, 0.024), 0, y, -3.028);
-  if (P.q) for (let k = -6; k <= 6; k++) P.add('turretDetail', box(0.020, 0.34, 0.024),
-    k * 0.20, 0.25, -3.028);
+  for (const index of KIT.grilleIndices(P.q, 13, 5)) {
+    const k = index - 6;
+    P.add('turretDetail', box(0.020, 0.34, 0.024), k * 0.20, 0.25, -3.028);
+  }
   P.add('turretDetail', box(0.024, 0.24, 0.08), -1.30, 0.26, -3.00);
   P.add('turretDetail', box(0.024, 0.24, 0.08), 1.30, 0.26, -3.00);
   // Proud bustle service pods and louvred access faces.  The basket's dark
@@ -3343,8 +3361,11 @@ function buildChallenger2(P) {
   // well inside the existing -3.31 rack/rail plan envelope.
   for (const side of [-1, 1]) {
     P.add('turretDark', box(0.74, 0.22, 0.012), side * 0.49, 0.27, -3.038);
-    if (P.q) for (let k = -2; k <= 2; k++) P.add('turretDetail', box(0.64, 0.014, 0.008),
-      side * 0.49, 0.27 + k * 0.036, -3.047);
+    for (const index of KIT.grilleIndices(P.q, 5, 3)) {
+      const k = index - 2;
+      P.add('turretDetail', box(0.64, 0.014, 0.008),
+        side * 0.49, 0.27 + k * 0.036, -3.047);
+    }
     P.add('turretDark', cylZ(0.145, 0.030, P.q ? 20 : 14), side * 0.98, 0.28, -3.044);
     P.add('turretDetail', torus(0.124, 0.012, P.q ? 18 : 12),
       side * 0.98, 0.28, -3.062, Math.PI / 2, 0, 0);

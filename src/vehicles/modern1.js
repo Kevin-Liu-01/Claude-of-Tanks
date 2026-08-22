@@ -396,7 +396,9 @@ function buildT72B3(P) {
   }
   // engine deck: grille inset + transverse louvers
   P.add('hullDark', box(1.55, 0.02, 0.85), 0, 1.385, -2.05);
-  if (P.q) for (let k = 0; k < 5; k++) P.add('hullDetail', box(1.45, 0.02, 0.05), 0, 1.39, -1.75 - k * 0.15);
+  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+    P.add('hullDetail', box(1.45, 0.02, 0.05), 0, 1.39, -1.75 - k * 0.15);
+  }
   P.add('hull', box(0.85, 0.08, 0.65), -0.55, 1.42, -1.25);                     // intake hump
   headlight(P, 1.42, 1.10, 3.02, -0.2, 0.05);                                   // right-fender light
   liftEye(P, 'hullDetail', -1.18, 1.40, 1.5);
@@ -501,7 +503,9 @@ function buildMerkava4(P) {
   // engine hump FRONT-RIGHT with grilles on the right fender (§21.5)
   P.add('hull', box(1.05, 0.20, 1.6), 0.82, 1.56, 2.15, -0.10, 0, -0.06);
   P.add('hullDark', box(0.72, 0.02, 1.15), 0.86, 1.645, 2.05);                  // hump grille inset
-  if (P.q) for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.66, 0.025, 0.06), 0.86, 1.65, 2.45 - k * 0.2);
+  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+    P.add('hullDetail', box(0.66, 0.025, 0.06), 0.86, 1.65, 2.45 - k * 0.2);
+  }
   P.add('hullDark', box(0.55, 0.06, 0.9), 1.55, 1.13, 2.5);                     // right-fender exhaust grille
   for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.5, 0.05, 0.06), 1.55, 1.16, 2.75 - k * 0.18);
   P.add('hull', box(0.5, 0.13, 1.15), 1.42, 1.55, 0.9);                         // raised air-intake ridge

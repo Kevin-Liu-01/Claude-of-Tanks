@@ -3900,7 +3900,9 @@ function buildAMX30(P, b2) {
   }
   // ---- engine-deck furniture: the AMX-30 transverse louvre field + caps --
   P.add('hullDark', box(2.20, 0.018, 0.72), 0, 1.663, -2.72);                  // plateau intake mesh
-  if (P.q) for (let k = 0; k < 4; k++) P.add('hullDetail', box(2.10, 0.016, 0.05), 0, 1.667, -2.96 + k * 0.16);
+  for (const k of KIT.grilleIndices(P.q, 4, 2)) {
+    P.add('hullDetail', box(2.10, 0.016, 0.05), 0, 1.667, -2.96 + k * 0.16);
+  }
   for (const s of [-1, 1]) {
     for (let row = 0; row < 3; row++) {                                        // stepped-course louvre beds
       const z = -1.36 - row * 0.34;

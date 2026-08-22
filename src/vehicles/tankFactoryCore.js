@@ -2907,6 +2907,29 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
   }
 }
 
+// Identity-defining ventilation must survive the low-geometry gameplay path.
+// Keep the original grille spacing at full quality and retain an evenly
+// distributed relief sample at low quality instead of collapsing to a flat
+// dark rectangle. Results are shared because builders never mutate them.
+const GRILLE_INDEX_CACHE = new Map();
+function grilleIndices(highDetail, count, lowCount = 3) {
+  if (!Number.isInteger(count) || count < 1 ||
+      !Number.isInteger(lowCount) || lowCount < 1) {
+    throw new RangeError('grilleIndices expects positive integer counts');
+  }
+  const visibleCount = highDetail ? count : Math.min(count, lowCount);
+  const key = `${count}:${visibleCount}`;
+  const cached = GRILLE_INDEX_CACHE.get(key);
+  if (cached) return cached;
+  const indices = visibleCount === 1
+    ? [0]
+    : Array.from({ length: visibleCount }, (_, index) =>
+      Math.round(index * (count - 1) / (visibleCount - 1)));
+  const frozen = Object.freeze(indices);
+  GRILLE_INDEX_CACHE.set(key, frozen);
+  return frozen;
+}
+
 // ---------------------------------------------------------------------------
 // EXTENSION HOOK (HD modern roster): shared geometry/greeble kit for builder
 // modules (modern1.js etc.). Everything here is the same battle-tested code
@@ -2919,6 +2942,7 @@ export const KIT = {
   buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
+  grilleIndices,
   // Exposed for the recovered Abrams family: those variants layer their own
   // kits onto the detailed native Abrams rather than replacing it with a
   // generic wedge profile.
@@ -2957,7 +2981,9 @@ function buildM4A3E8(P) {
   // rear deck hatches + grilles
   P.add('hull', box(0.62, 0.05, 0.8), -0.4, 2.205, -2.3);
   P.add('hull', box(0.62, 0.05, 0.8), 0.4, 2.205, -2.3);
-  if (P.q) for (let k = 0; k < 5; k++) P.add('hullDark', box(1.2, 0.02, 0.06), 0, 2.215, -1.5 - k * 0.14);
+  for (const k of grilleIndices(P.q, 5, 3)) {
+    P.add('hullDark', box(1.2, 0.02, 0.06), 0, 2.215, -1.5 - k * 0.14);
+  }
   // glacis details: headlights, siren, spare tracks, lifting eyes
   // (re-seated on the steeper plate after the +0.16 roof raise)
   headlight(P, -0.55, 1.80, 2.42, -0.82);
@@ -3368,7 +3394,7 @@ function buildT34(P) {
   // rear: round transmission hatch ON the sloping rear plate + deck louvers
   P.add('hull', xform(cylY(0.30, 0.30, 0.06, P.q ? 18 : 12), 0, 0, 0), 0, 1.17, -2.385, -1.08, 0, 0);
   P.add('hullDark', xform(torus(0.30, 0.014, P.q ? 18 : 12), 0, 0, 0), 0, 1.185, -2.375, -1.08, 0, 0);
-  if (P.q) for (let k = 0; k < 5; k++) {
+  for (const k of grilleIndices(P.q, 5, 3)) {
     P.add('hullDark', box(1.5, 0.018, 0.09), 0, 1.705, -1.15 - k * 0.17);       // radiator louvers on roof
   }
   P.add('hullDetail', box(1.55, 0.03, 0.95), 0, 1.70, -1.5);                    // engine access deck plate
@@ -3845,7 +3871,9 @@ function buildM1A2(P) {
   P.add('hull', frustum(1.78, 3.50, 3.6, 1.78, 3.90, 3.6, 0.45, 1.0));          // blunt lower front
   // rear turbine grille
   P.add('hull', box(3.5, 0.92, 0.1), 0, 0.96, -3.93);
-  if (P.q) for (let k = 0; k < 6; k++) P.add('hullDark', box(3.3, 0.05, 0.04), 0, 0.62 + k * 0.14, -3.99);
+  for (const k of grilleIndices(P.q, 6, 3)) {
+    P.add('hullDark', box(3.3, 0.05, 0.04), 0, 0.62 + k * 0.14, -3.99);
+  }
   // side skirts: 7 panels, front 3 heavy. Bottom edge rides HIGH enough that
   // the lower run of road wheels and track clearly show beneath (r3 critique:
   // skirts to the ground made the tank hover on a black strip).

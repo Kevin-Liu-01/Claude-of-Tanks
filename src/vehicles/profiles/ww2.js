@@ -1615,7 +1615,9 @@ function buildShermanE8(P) {
   for (const [fx, fz, fy] of [[-0.95, -1.30, 2.20], [0.95, -1.30, 2.20], [0.95, -2.30, 2.09]]) {
     P.add('hull', cylY(0.085, 0.095, 0.045, 10), fx, fy, fz);                // armored filler caps
   }
-  if (P.q) for (let k = 0; k < 4; k++) P.add('hullDark', box(1.05, 0.02, 0.055), 0, 2.185, -0.72 - k * 0.13);
+  for (const k of KIT.grilleIndices(P.q, 4, 2)) {
+    P.add('hullDark', box(1.05, 0.02, 0.055), 0, 2.185, -0.72 - k * 0.13);
+  }
   stowage(P, 'hullCloth', P.rng, [[-1.22, 2.26, -1.55, 0.42, 0.20, 1.35], [1.25, 2.13, -2.35, 0.40, 0.18, 0.95]]);
   shovelTool(P, 1.18, 2.20, -0.65);
   P.add('hullWood', box(0.03, 0.03, 1.05), -1.32, 2.20, -0.55);              // pry bar

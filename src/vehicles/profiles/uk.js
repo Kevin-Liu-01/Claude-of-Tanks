@@ -490,7 +490,7 @@ function chieftain5Build(P) {
   }
   // Engine deck: louvre field + fuel caps + rear grille face.
   P.add('hull', box(2.2, 0.04, 1.15), 0, 1.685, -2.65);
-  if (P.q) for (let i = 0; i < 6; i++) {
+  for (const i of KIT.grilleIndices(P.q, 6, 3)) {
     P.add('hullDark', box(2.05, 0.018, 0.05), 0, 1.70, -2.2 - i * 0.17);
   }
   for (const side of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.03, 10), side * 1.15, 1.715, -1.9);
@@ -1290,7 +1290,7 @@ function chieftainMk10Build(P) {
   towCableUK(P, [[-1.0, 1.44, 2.2], [0, 1.56, 1.7], [1.0, 1.44, 2.2]], 1.37);
   // ---- engine deck: louvre field + fuel caps + rear tow cable run
   P.add('hull', box(2.2, 0.04, 1.15), 0, 1.685, -2.65);
-  if (P.q) for (let i = 0; i < 6; i++) {
+  for (const i of KIT.grilleIndices(P.q, 6, 3)) {
     P.add('hullDark', box(2.05, 0.018, 0.05), 0, 1.70, -2.2 - i * 0.17);
   }
   for (const side of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.03, 10), side * 1.15, 1.715, -1.9);
@@ -1767,7 +1767,7 @@ export function centurionBuild(P, mk) {
   spareTrackStrip(P, 'hull', -0.55, 1.41, 3.05, 3);
   // Engine deck: louvre field + fillers, all under the ref's 1.755 ceiling.
   P.add('hull', box(1.86, 0.05, 1.35), 0, 1.705, -2.2);
-  if (P.q) for (let i = 0; i < 7; i++) {
+  for (const i of KIT.grilleIndices(P.q, 7, 3)) {
     P.add('hullDark', box(1.62, 0.02, 0.05), 0, 1.723, -1.68 - i * 0.17);
     P.add('hullDetail', box(1.72, 0.02, 0.042), 0, 1.729, -1.65 - i * 0.17, 0.5, 0, 0);
   }
@@ -2639,7 +2639,7 @@ function cromwellHull(P, o) {
   }
   // Deck: raised louvred engine bank + fillers + intake mushroom.
   P.add('hull', box(width * 0.58, 0.075, o.hullLength * 0.245), 0, roofY + 0.03, -halfL * 0.42);
-  if (P.q) for (let i = 0; i < 6; i++) {
+  for (const i of KIT.grilleIndices(P.q, 6, 3)) {
     const z = -halfL * 0.42 + (2.5 - i) * o.hullLength * 0.036;
     P.add('hullDark', box(width * 0.5, 0.022, 0.048), 0, roofY + 0.062, z);
     P.add('hullDetail', box(width * 0.53, 0.024, 0.04), 0, roofY + 0.08, z + 0.028, 0.5, 0, 0);
@@ -3702,7 +3702,7 @@ function vickersMk1Build(P) {
   P.add('hull', box(0.8, 0.047, 0.13), 0, 1.7775, -2.365);
   P.add('hullDetail', box(0.84, 0.02, 0.36), 0, 1.755, -2.32);
   P.add('hull', box(0.10, 0.06, 0.30), 0.61, 1.78, -2.45);   // right filler pod
-  if (P.q) for (let i = 0; i < 5; i++) {
+  for (const i of KIT.grilleIndices(P.q, 5, 3)) {
     P.add('hullDark', box(0.9, 0.018, 0.05), 0, 1.788, -1.80 - i * 0.10);
   }
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.035, 10), s * 0.62, 1.75, -1.35);

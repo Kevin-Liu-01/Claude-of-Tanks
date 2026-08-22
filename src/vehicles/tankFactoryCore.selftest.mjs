@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
-import { configureTankFactory, createTank } from './tankFactoryCore.js';
+import { KIT, configureTankFactory, createTank } from './tankFactoryCore.js';
+
+assert.deepEqual(KIT.grilleIndices(true, 6, 3), [0, 1, 2, 3, 4, 5]);
+assert.deepEqual(KIT.grilleIndices(false, 6, 3), [0, 3, 5]);
+assert.deepEqual(KIT.grilleIndices(false, 4, 8), [0, 1, 2, 3]);
+assert.deepEqual(KIT.grilleIndices(false, 1, 1), [0]);
+assert.strictEqual(
+  KIT.grilleIndices(false, 6, 3),
+  KIT.grilleIndices(false, 6, 3),
+  'low-detail grille samples are cached and immutable',
+);
+assert.throws(() => KIT.grilleIndices(false, 0, 3), RangeError);
 
 assert.throws(
   () => createTank('m4a3e8', null, { proceduralOnly: true, geometryReceipt: true }),

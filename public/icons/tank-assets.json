@@ -42424,8 +42424,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74824,
-          "sha256": "f2f649bf44d20d88a51633861c20f06f6a8cebbbbc80d93ade09b0201f11134e"
+          "bytes": 74770,
+          "sha256": "1e688ec863da3bf04d0e914fb69a43381a554d35a310cce8e212907fae1f5e39"
         },
         "markings": {
           "file": "leclerc_markings.png",

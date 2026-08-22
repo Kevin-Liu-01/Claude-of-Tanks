@@ -832,7 +832,9 @@ function buildT80U(P) {
   P.add('hullWood', cylX(0.11, 2.1, 12), 0, 1.22, -3.1);
   // engine deck: turbine intake grilles (big, flat) + louvres
   P.add('hullDark', box(1.7, 0.02, 1.1), 0, 1.385, -2.0);
-  if (P.q) for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.6, 0.02, 0.05), 0, 1.39, -1.6 - k * 0.16);
+  for (const k of KIT.grilleIndices(P.q, 6, 3)) {
+    P.add('hullDetail', box(1.6, 0.02, 0.05), 0, 1.39, -1.6 - k * 0.16);
+  }
   P.add('hull', box(1.0, 0.07, 0.62), 0.45, 1.42, -1.2);                        // intake hump
   headlight(P, -1.45, 1.12, 3.05, -0.2, 0.05);
   liftEye(P, 'hullDetail', -1.15, 1.40, 1.5);
@@ -970,7 +972,9 @@ function buildLeclerc(P) {
   }
   // engine deck fans + caps
   P.add('hullDark', box(1.9, 0.02, 1.35), 0, 1.605, -2.2);
-  if (P.q) for (let k = 0; k < 7; k++) P.add('hullDetail', box(1.8, 0.025, 0.06), 0, 1.615, -1.68 - k * 0.17);
+  for (const k of KIT.grilleIndices(P.q, 7, 3)) {
+    P.add('hullDetail', box(1.8, 0.025, 0.06), 0, 1.615, -1.68 - k * 0.17);
+  }
   for (const s of [-1, 1]) {
     P.add('hullDetail', cylY(0.09, 0.09, 0.028, 12), s * 1.35, 1.61, -0.6);
   }
@@ -1259,7 +1263,9 @@ function buildType99A(P) {
   P.add('hull', box(2.06, 0.55, 0.09), 0, 0.68, -3.48);                        // lower center lane
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.58, 0.26, 0.05), s * 0.86, 1.58, -3.535);          // exhaust grilles
-    if (P.q) for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.54, 0.03, 0.05), s * 0.86, 1.49 + k * 0.06, -3.55);
+    for (const k of KIT.grilleIndices(P.q, 4, 2)) {
+      P.add('hullDetail', box(0.54, 0.03, 0.05), s * 0.86, 1.49 + k * 0.06, -3.55);
+    }
     P.add('hullDark', box(0.15, 0.08, 0.05), s * 1.50, 1.66, -3.54);           // taillights
     P.add('hullRubber', box(0.60, 0.24, 0.028), s * 1.46, 1.62, -3.50);        // compact rear flaps above the wrap
     P.add('hullDetail', box(0.07, 0.10, 0.09), s * 1.62, 1.54, -3.515);        // flap hinge straps bridging the
@@ -1321,7 +1327,9 @@ function buildType99A(P) {
   // ---- decks: seams, engine grille field on the raised deck, intake,
   // fender bins, shadow strips ---------------------------------------------
   P.add('hullDark', box(1.55, 0.02, 1.30), 0, 1.785, -2.35);                   // engine grille inset (deck 1.78)
-  if (P.q) for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.45, 0.02, 0.055), 0, 1.792, -1.90 - k * 0.16);
+  for (const k of KIT.grilleIndices(P.q, 6, 3)) {
+    P.add('hullDetail', box(1.45, 0.02, 0.055), 0, 1.792, -1.90 - k * 0.16);
+  }
   P.add('hullDark', box(0.72, 0.02, 0.52), -0.52, 1.79, -1.62);                // left intake mesh
   P.add('hull', box(0.92, 0.05, 0.72), 0.48, 1.795, -1.72);                    // filter hump (LOW profile)
   P.add('hullDark', box(0.80, 0.02, 0.60), 0.48, 1.825, -1.72);
@@ -2329,7 +2337,9 @@ function buildLeo1A5(P) {
   }
   // engine deck + two-tone exhaust louvres on the rear corners (§10.5)
   P.add('hullDark', box(1.9, 0.02, 1.2), 0, 1.305, -2.4);
-  if (P.q) for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.8, 0.02, 0.055), 0, 1.31, -1.95 - k * 0.16);
+  for (const k of KIT.grilleIndices(P.q, 6, 3)) {
+    P.add('hullDetail', box(1.8, 0.02, 0.055), 0, 1.31, -1.95 - k * 0.16);
+  }
   P.add('hull', box(2.9, 0.42, 0.12), 0, 1.02, -3.52);                          // rear plate
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.62, 0.30, 0.06), s * 0.95, 1.16, -3.5, -0.5, 0, 0); // louvre banks
@@ -2937,7 +2947,7 @@ function buildT14(P) {
     P.add('hull', box(0.50, 0.60, 0.20), s * 1.35, 1.40, -4.235);               // corner posts x 1.10..1.60, z -4.335..-4.135 (BODY anchor col)
     P.add('hullDark', box(0.48, 0.03, 0.16), s * 1.35, 1.715, -4.235);          // post cap seams (clear of the -4.32 col boundary)
     P.add('hullDark', box(1.15, 0.02, 1.5), s * 0.82, 1.75, -3.25);             // rear-deck grille fields
-    if (P.q) for (let k = 0; k < 6; k++) {
+    for (const k of KIT.grilleIndices(P.q, 6, 3)) {
       P.add('hullDetail', box(1.05, 0.025, 0.06), s * 0.82, 1.757, -2.70 - k * 0.2);
     }
     P.add('hullDark', box(0.55, 0.24, 0.05), s * 0.90, 1.46, -4.02, -0.266, 0, 0); // exhaust grilles ON the ramp
