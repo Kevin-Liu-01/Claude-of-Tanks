@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import {
   AUDIO_DISTANCE_MODEL,
+  AUDIO_MIX_PROFILE,
   AUDIO_PERSPECTIVE_MIX,
+  ENGINE_SOUND_PROFILES,
   WEAPON_REPORT_PROFILES,
   distanceLowpassHz,
   engineAudibleAtDistance,
   resolveReloadCuePlan,
+  resolveEngineSoundProfile,
   resolveWeaponReportProfile,
   safeAudioStart,
   worldDistanceGain,
@@ -70,6 +73,35 @@ assert.ok(AUDIO_PERSPECTIVE_MIX.sniper.cannonGain >= 0.9,
   'scope does not mute the occupied cannon');
 assert.ok(AUDIO_PERSPECTIVE_MIX.sniper.cannonDistanceBiasM > 100,
   'scope filters exposed muzzle crack while retaining pressure');
+
+assert.ok(AUDIO_MIX_PROFILE.compressorRatio <= 4,
+  'master dynamics preserve shot transients instead of crushing the mix');
+assert.ok(AUDIO_MIX_PROFILE.compressorAttackS >= 0.008,
+  'master compressor attack leaves the authored pressure front intact');
+assert.ok(AUDIO_MIX_PROFILE.limiterKnee >= 0.7,
+  'volley guard does not saturate ordinary single events');
+assert.ok(AUDIO_MIX_PROFILE.combatPresenceGainDb < 0,
+  'combat mix trims the former tin-can presence region');
+assert.ok(AUDIO_MIX_PROFILE.combatBodyGainDb > 0,
+  'combat mix preserves low-mid physical body');
+
+assert.equal(resolveEngineSoundProfile('m1a2_legacy', { era: 'modern', class: 'mbt' }).kind, 'turbine',
+  'Abrams uses its turbine profile');
+assert.equal(resolveEngineSoundProfile('t80u', { era: 'modern', class: 'mbt' }).kind, 'turbine',
+  'T-80 turbine is not misclassified as a generic diesel');
+assert.equal(resolveEngineSoundProfile('t90m', { era: 'modern', class: 'mbt' }).kind, 'modernDiesel',
+  'modern diesel MBTs retain a distinct powertrain bed');
+assert.equal(resolveEngineSoundProfile('tiger1', { era: 'ww2', class: 'heavy' }).kind, 'legacyDiesel',
+  'WWII heavy tanks use the uneven legacy diesel profile');
+assert.equal(resolveEngineSoundProfile('recon_tank', { era: 'modern', class: 'light', weightTons: 18 }).kind, 'lightDiesel',
+  'light tracked vehicles do not sound like 60-tonne MBTs');
+for (const profile of Object.values(ENGINE_SOUND_PROFILES)) {
+  assert.ok(profile.trackQ < 1, `${profile.kind} tread noise is broad rather than a resonant squeak`);
+  assert.ok(profile.trackGain <= 0.15 && profile.clatterGain <= 0.2,
+    `${profile.kind} running gear stays subordinate to the powertrain`);
+  assert.ok(profile.trackHz < 700 && profile.clatterHz < 700,
+    `${profile.kind} running gear avoids the former 1.45 kHz metal ring`);
+}
 
 const rapidReload = resolveReloadCuePlan(0.3, 'shell', 30);
 assert.equal(rapidReload.profile, 'rapid', 'rapid autocannon cycle reuses the weapon action layer');

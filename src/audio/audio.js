@@ -1,5 +1,5 @@
 /**
- * src/audio/audio.js — the Claude of Tanks sound system (COMBAT-SFX r2).
+ * src/audio/audio.js — the Claude of Tanks sound system (COMBAT-SFX r3).
  *
  * COMBAT one-shots (cannon fire, penetrations, deflections, HE bursts, tank
  * explosions) play BAKED layered samples: dense seeded PCM synthesized
@@ -23,11 +23,11 @@
  *   - equal-power stereo pan from listener-relative azimuth (StereoPannerNode)
  *   - max ~24 simultaneous one-shot voices, steal oldest
  *   - bus graph: {combat, cinematic, engine, ambience, ui, voice} → compressor →
- *     soft-clip stage → master (the tanh waveshaper is the COMBAT-SFX r2
+ *     soft-clip stage → master (the tanh waveshaper is the COMBAT-SFX r3
  *     volley guard: a 7v7 simultaneous barrage saturates musically instead
  *     of folding into digital clip crackle)
  *
- * Baked combat layering (COMBAT-SFX r2):
+ * Baked combat layering (COMBAT-SFX r3):
  *   - cannon fire = sub punch + crack/report + rumble tail per caliber class
  *     (small ≤76 mm | medium ≤105 | large ≤130 | huge >130). Near shots get
  *     all layers; far shots collapse to the tail (+ the distance lowpass), so
@@ -117,6 +117,65 @@ export const AUDIO_PERSPECTIVE_MIX = Object.freeze({
     cannonDistanceBiasM: 220,
   }),
 });
+
+// The mix contract is exported so offline tests can guard the two failure
+// modes players actually hear: a crushed, always-loud mix and bright narrow
+// resonances that turn armor into kitchenware.
+export const AUDIO_MIX_PROFILE = Object.freeze({
+  compressorThresholdDb: -8,
+  compressorRatio: 3,
+  compressorAttackS: 0.012,
+  compressorReleaseS: 0.18,
+  limiterKnee: 0.78,
+  combatBodyHz: 360,
+  combatBodyGainDb: 1.5,
+  combatPresenceHz: 2700,
+  combatPresenceGainDb: -2.4,
+  combatCeilingHz: 14500,
+});
+
+export const ENGINE_SOUND_PROFILES = Object.freeze({
+  legacyDiesel: Object.freeze({
+    kind: 'legacyDiesel', baseHz: 38, toneCutoffHz: 620,
+    pulseGain: 0.10, subGain: 0.13, intakeHz: 155, intakeGain: 0.17,
+    wobbleDepthHz: 2.8, trackHz: 470, trackQ: 0.72, trackGain: 0.13,
+    clatterHz: 350, clatterGain: 0.18, whineGain: 0,
+  }),
+  modernDiesel: Object.freeze({
+    kind: 'modernDiesel', baseHz: 46, toneCutoffHz: 780,
+    pulseGain: 0.085, subGain: 0.12, intakeHz: 230, intakeGain: 0.19,
+    wobbleDepthHz: 1.5, trackHz: 540, trackQ: 0.72, trackGain: 0.11,
+    clatterHz: 410, clatterGain: 0.15, whineGain: 0,
+  }),
+  lightDiesel: Object.freeze({
+    kind: 'lightDiesel', baseHz: 54, toneCutoffHz: 920,
+    pulseGain: 0.075, subGain: 0.09, intakeHz: 290, intakeGain: 0.21,
+    wobbleDepthHz: 1.2, trackHz: 620, trackQ: 0.78, trackGain: 0.09,
+    clatterHz: 480, clatterGain: 0.13, whineGain: 0,
+  }),
+  turbine: Object.freeze({
+    kind: 'turbine', baseHz: 62, toneCutoffHz: 1080,
+    pulseGain: 0.035, subGain: 0.09, intakeHz: 420, intakeGain: 0.25,
+    wobbleDepthHz: 0.35, trackHz: 520, trackQ: 0.74, trackGain: 0.10,
+    clatterHz: 400, clatterGain: 0.14, whineGain: 0.065,
+  }),
+});
+
+/** Resolve an audible powertrain family without adding fields to simulation. */
+export function resolveEngineSoundProfile(specId, spec = null) {
+  const id = String(specId || '').toLowerCase();
+  if (/(^|_)(m1a\d?|abrams|t80|strv103)/.test(id) || /^(m1a|abrams|t80|strv103)/.test(id)) {
+    return ENGINE_SOUND_PROFILES.turbine;
+  }
+  const cls = String(spec && spec.class || '').toLowerCase();
+  const mass = Number(spec && spec.weightTons);
+  if (cls === 'light' || cls === 'ifv' || cls === 'spaa' || (Number.isFinite(mass) && mass < 28)) {
+    return ENGINE_SOUND_PROFILES.lightDiesel;
+  }
+  const era = String(spec && spec.era || '').toLowerCase();
+  if (era === 'modern' || era === 'coldwar') return ENGINE_SOUND_PROFILES.modernDiesel;
+  return ENGINE_SOUND_PROFILES.legacyDiesel;
+}
 
 export function worldDistanceGain(distanceM) {
   const d = Math.max(0.5, Number(distanceM) || 0.5);
@@ -235,7 +294,7 @@ export function createAudio() {
   let ctx = null;
   let master = null;      // final volume gain
   let comp = null;        // safety compressor (24 voices never clip)
-  let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r2 volley guard)
+  let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r3 volley guard)
   let sfxBus = null, cinematicBus = null, engineBus = null;
   let ambientBus = null, musicBus = null, voiceBus = null;
   let whiteBuf = null;    // 2 s seeded white noise, looped everywhere
@@ -243,7 +302,7 @@ export function createAudio() {
   let windBuf = null;     // pink-ish noise for wind bed
   let gunBufs = null;     // pre-synthesized caliber beds (synth-fallback only)
 
-  // BAKED COMBAT SAMPLES (COMBAT-SFX r2): decoded lazily after resume().
+  // BAKED COMBAT SAMPLES (COMBAT-SFX r3): decoded lazily after resume().
   /** @type {Map<string, AudioBuffer>} name → decoded sample */
   const sfxBufs = new Map();
   let sfxReady = false;    // ALL samples decoded — baked paths take over
@@ -381,21 +440,20 @@ export function createAudio() {
 
   function buildGraph() {
     comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -14;
-    comp.knee.value = 18;
-    comp.ratio.value = 8;
-    comp.attack.value = 0.003;
-    comp.release.value = 0.25;
+    comp.threshold.value = AUDIO_MIX_PROFILE.compressorThresholdDb;
+    comp.knee.value = 12;
+    comp.ratio.value = AUDIO_MIX_PROFILE.compressorRatio;
+    comp.attack.value = AUDIO_MIX_PROFILE.compressorAttackS;
+    comp.release.value = AUDIO_MIX_PROFILE.compressorReleaseS;
 
-    // COMBAT-SFX r2 volley guard: transparent below |x| = 0.55, tanh knee
-    // above, asymptote < 1.0 — a 14-tank barrage saturates smoothly instead
-    // of hard-clipping into crackle. Sits before the master volume so the
-    // slider never changes the saturation character.
+    // r3 leaves single-shot transients intact. Only dense simultaneous volleys
+    // reach the soft knee; the former 0.55 knee and 8:1 compressor made every
+    // report sound equally flat and metallic.
     limiter = ctx.createWaveShaper();
     {
       const N = 4097;
       const curve = new Float32Array(N);
-      const knee = 0.55;
+      const knee = AUDIO_MIX_PROFILE.limiterKnee;
       for (let i = 0; i < N; i++) {
         const x = (i / (N - 1)) * 2 - 1;
         const a = Math.abs(x);
@@ -411,12 +469,34 @@ export function createAudio() {
     limiter.connect(master);
     master.connect(ctx.destination);
 
-    sfxBus = ctx.createGain();     sfxBus.gain.value = 1.0;   sfxBus.connect(comp);
-    cinematicBus = ctx.createGain(); cinematicBus.gain.value = 1.0; cinematicBus.connect(comp);
-    engineBus = ctx.createGain();  engineBus.gain.value = 0.75; engineBus.connect(comp);
+    // Combat tone shaping is broad and intentionally low-Q. It adds plate and
+    // blast body, trims the old 2–6 kHz “tin can” emphasis, and keeps ultrasonic
+    // procedural noise out of the limiter without making distant shots dull.
+    const combatHp = flt('highpass', 27, 0.65);
+    const combatBody = flt('peaking', AUDIO_MIX_PROFILE.combatBodyHz, 0.62);
+    combatBody.gain.value = AUDIO_MIX_PROFILE.combatBodyGainDb;
+    const combatPresence = flt('peaking', AUDIO_MIX_PROFILE.combatPresenceHz, 0.72);
+    combatPresence.gain.value = AUDIO_MIX_PROFILE.combatPresenceGainDb;
+    const combatCeiling = flt('lowpass', AUDIO_MIX_PROFILE.combatCeilingHz, 0.55);
+    combatHp.connect(combatBody);
+    combatBody.connect(combatPresence);
+    combatPresence.connect(combatCeiling);
+    combatCeiling.connect(comp);
+
+    sfxBus = ctx.createGain();     sfxBus.gain.value = 1.0;   sfxBus.connect(combatHp);
+    cinematicBus = ctx.createGain(); cinematicBus.gain.value = 1.0; cinematicBus.connect(combatHp);
+
+    const enginePresence = flt('peaking', 1850, 0.68);
+    enginePresence.gain.value = -3.2;
+    const engineCeiling = flt('lowpass', 8200, 0.55);
+    enginePresence.connect(engineCeiling); engineCeiling.connect(comp);
+    engineBus = ctx.createGain();  engineBus.gain.value = 0.78; engineBus.connect(enginePresence);
     ambientBus = ctx.createGain(); ambientBus.gain.value = 0.55; ambientBus.connect(comp);
     musicBus = ctx.createGain();   musicBus.gain.value = 0.9;  musicBus.connect(comp);
-    voiceBus = ctx.createGain();   voiceBus.gain.value = 1.0;  voiceBus.connect(comp);
+    const voicePresence = flt('peaking', 2850, 0.78);
+    voicePresence.gain.value = -1.4;
+    voiceBus = ctx.createGain();   voiceBus.gain.value = 1.0;  voiceBus.connect(voicePresence);
+    voicePresence.connect(comp);
     applyChannelVolumes(false);
   }
 
@@ -635,6 +715,13 @@ export function createAudio() {
     return dist > 40 ? Math.min(1.6, dist / SPEED_OF_SOUND_MPS) : 0;
   }
 
+  // Air absorption already removes most detail at range. A modest tail carry
+  // keeps 600–900 m guns readable as distant battlefield thunder after r3's
+  // lower, cleaner layer mastering without lifting close shots at all.
+  function cannonDistanceCarry(dist) {
+    return 1 + 0.85 * Math.max(0, Math.min(1, (dist - 180) / 720));
+  }
+
   // ------------------------------------------------- baked combat samples ---
 
   /**
@@ -722,7 +809,7 @@ export function createAudio() {
   }
 
   /**
-   * Layered baked cannon shot (COMBAT-SFX r2). Near = sub punch + crack +
+   * Layered baked cannon shot (COMBAT-SFX r3). Near = sub punch + crack +
    * tail; far = tail-dominant (crack fades over ~45-180 m on top of the
    * distance lowpass). Player's own gun: hotter overall, more sub, plus the
    * mechanical action foley (breech clank at end of recoil, brass tinkle).
@@ -736,7 +823,8 @@ export function createAudio() {
       : AUDIO_PERSPECTIVE_MIX.arcade;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'large' : caliberMm > 76 ? 'medium' : 'small';
-    const shotGain = s.gain * (isPlayer ? 1.15 : 1) * report.gain * perspective.cannonGain;
+    const shotGain = s.gain * cannonDistanceCarry(s.dist) *
+      (isPlayer ? 1.15 : 1) * report.gain * perspective.cannonGain;
     // Layer model: crack dies toward 180 m, sub keeps a floor (distant guns
     // still thump), tail always rides — thunder is what distance leaves.
     const crackK = Math.max(0, Math.min(1, 1 - (s.dist - 45) / 135));
@@ -758,8 +846,8 @@ export function createAudio() {
       const tAction = when + (report.kind === 'autocannon' ? 0.035 : 0.12);
       wire(v, osrc(v, 'triangle', report.mechanicalHz, tAction, 0.10),
         env(tAction, 0.001, report.mechanicalGain, 0.07), lp);
-      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.7, 2.2),
-        env(tAction, 0.001, report.mechanicalGain * 0.75, 0.035), lp);
+      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.45, 0.92),
+        env(tAction, 0.001, report.mechanicalGain * 0.62, 0.035), lp);
       if (report.twin) {
         const sidePitch = muzzleIndex === 1 ? 1.08 : 0.94;
         wire(v, osrc(v, 'square', report.mechanicalHz * sidePitch, tAction + 0.014, 0.06),
@@ -773,14 +861,15 @@ export function createAudio() {
       const tCl = when + 0.20 + rng() * 0.05;
       wire(v, osrc(v, 'triangle', 290 * (0.95 + rng() * 0.1), tCl, 0.16),
         env(tCl, 0.002, 0.26, 0.12), lp);
-      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 1150, 1.6), env(tCl, 0.001, 0.28, 0.04), lp);
-      // Brass casing tinkle on the turret floor (autoloaders forgive us).
+      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 720, 0.82), env(tCl, 0.001, 0.18, 0.04), lp);
+      // A restrained casing/loader-floor cue. It must never compete with the
+      // report as a handful of high-pitched loose hardware.
       if (caliberMm <= 105) {
         const tBr = when + 0.65 + rng() * 0.2;
-        for (let i = 0; i < 3; i++) {
-          const at = tBr + i * (0.05 + rng() * 0.05);
-          wire(v, osrc(v, 'triangle', 3400 + rng() * 1600, at, 0.09),
-            env(at, 0.001, 0.05 - i * 0.011, 0.07), lp);
+        for (let i = 0; i < 2; i++) {
+          const at = tBr + i * (0.07 + rng() * 0.05);
+          wire(v, osrc(v, 'triangle', 880 + rng() * 620, at, 0.07),
+            env(at, 0.001, 0.025 - i * 0.006, 0.05), lp);
         }
       }
     }
@@ -1012,7 +1101,8 @@ export function createAudio() {
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'heavy' : caliberMm > 76 ? 'medium' : 'light';
     const dur = { light: 0.55, medium: 1.0, heavy: 1.7, huge: 2.6 }[cls];
     const v = spawnVoice(when, dur + (isPlayer ? 1.0 : 0),
-      s.gain * (isPlayer ? 1.08 : 1) * report.gain * perspective.cannonGain,
+      s.gain * cannonDistanceCarry(s.dist) *
+        (isPlayer ? 1.08 : 1) * report.gain * perspective.cannonGain,
       s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
     const lp = distLowpass(s.dist + (isPlayer ? perspective.cannonDistanceBiasM : 0));
     const src = ctx.createBufferSource();
@@ -1033,8 +1123,8 @@ export function createAudio() {
       const sidePitch = report.twin && muzzleIndex === 1 ? 1.08 : 1;
       wire(v, osrc(v, 'triangle', report.mechanicalHz * sidePitch, tAction, 0.10),
         env(tAction, 0.001, report.mechanicalGain, 0.07), lp);
-      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.7, 2.2),
-        env(tAction, 0.001, report.mechanicalGain * 0.72, 0.035), lp);
+      wire(v, nsrc(v, tAction, 0.045), flt('bandpass', report.mechanicalHz * 1.45, 0.92),
+        env(tAction, 0.001, report.mechanicalGain * 0.60, 0.035), lp);
     }
     if (isPlayer) {
       // Muzzle-blast wind over the hull.
@@ -1043,14 +1133,14 @@ export function createAudio() {
       const tCl = when + 0.20 + rng() * 0.05;
       wire(v, osrc(v, 'triangle', 290 * (0.95 + rng() * 0.1), tCl, 0.16),
         env(tCl, 0.002, 0.28, 0.12), lp);
-      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 1150, 1.6), env(tCl, 0.001, 0.30, 0.04), lp);
-      // Brass casing tinkle on the turret floor (autoloaders forgive us).
+      wire(v, nsrc(v, tCl, 0.05), flt('bandpass', 720, 0.82), env(tCl, 0.001, 0.19, 0.04), lp);
+      // Loader-floor cue kept low and sparse beneath the gun report.
       if (caliberMm <= 105) {
         const tBr = when + 0.65 + rng() * 0.2;
-        for (let i = 0; i < 3; i++) {
-          const at = tBr + i * (0.05 + rng() * 0.05);
-          wire(v, osrc(v, 'triangle', 3400 + rng() * 1600, at, 0.09),
-            env(at, 0.001, 0.055 - i * 0.012, 0.07), lp);
+        for (let i = 0; i < 2; i++) {
+          const at = tBr + i * (0.07 + rng() * 0.05);
+          wire(v, osrc(v, 'triangle', 880 + rng() * 620, at, 0.07),
+            env(at, 0.001, 0.027 - i * 0.006, 0.05), lp);
         }
       }
     }
@@ -1079,7 +1169,7 @@ export function createAudio() {
     if (e.speedMps > 6) {
       // Ram crunch: dragging metal squeal + plate rattle after the initial hit.
       const grind = nsrc(v, when + 0.03, 0.4, 0.9);
-      const gBp = flt('bandpass', 640 + rng() * 260, 6);
+      const gBp = flt('bandpass', 520 + rng() * 260, 0.92);
       wire(v, grind, gBp, env(when + 0.03, 0.02, 0.30 * k, 0.34), lp);
       wire(v, nsrc(v, when + 0.05, 0.35, 1, crackleBuf), flt('bandpass', 900, 1.4),
         env(when + 0.05, 0.01, 0.35 * k, 0.3), lp);
@@ -1108,7 +1198,7 @@ export function createAudio() {
       env(when, 0.002, 0.72, 0.34), lp);
     // Plate fold and track/gear scatter after the body hit.
     wire(v, nsrc(v, when + 0.025, 0.62, 0.82),
-      flt('bandpass', 520 + 260 * k, 4.8),
+      flt('bandpass', 480 + 220 * k, 0.88),
       env(when + 0.025, 0.01, 0.48, 0.52), lp);
     wire(v, nsrc(v, when + 0.045, 0.75, 1, crackleBuf),
       flt('bandpass', 1180, 1.2),
@@ -1158,9 +1248,9 @@ export function createAudio() {
   }
 
   /**
-   * (Pre-COMBAT-SFX-r2 fallback.) Armor penetration clang: inharmonic metal
-   * partials + transient, two short interior echo taps and a spall hiss — a
-   * shell entering a steel box, not a dinner bell.
+   * Live fallback for an armor penetration. It mirrors r3's low-mid armor
+   * flex and short spall burst so a shot fired during asynchronous sample
+   * loading cannot fall back to the old high-Q dinner-bell sound.
    */
   function synthClang(x, y, z) {
     const s = spat(x, y, z);
@@ -1169,29 +1259,29 @@ export function createAudio() {
     const v = spawnVoice(when, 1.0, s.gain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
-    // Ring collector so the interior echo taps hear the whole partial stack.
+    // Plate collector so the two tiny interior taps hear the whole flex.
     const ring = ctx.createGain();
     ring.gain.value = 1;
     ring.connect(lp);
     const d1 = ctx.createDelay(0.2); d1.delayTime.value = 0.055;
-    const g1 = ctx.createGain(); g1.gain.value = 0.24;
+    const g1 = ctx.createGain(); g1.gain.value = 0.14;
     ring.connect(d1); d1.connect(g1); g1.connect(lp);
     const d2 = ctx.createDelay(0.2); d2.delayTime.value = 0.128;
-    const g2 = ctx.createGain(); g2.gain.value = 0.11;
+    const g2 = ctx.createGain(); g2.gain.value = 0.06;
     ring.connect(d2); d2.connect(g2); g2.connect(lp);
-    const partials = [812, 1378, 2466, 3417, 5124];
-    const gains = [1.0, 0.7, 0.5, 0.34, 0.2];
-    const decays = [0.55, 0.42, 0.3, 0.22, 0.14];
+    const partials = [185, 318, 515, 785, 1180];
+    const gains = [1.0, 0.82, 0.60, 0.36, 0.18];
+    const decays = [0.17, 0.14, 0.105, 0.08, 0.055];
     for (let i = 0; i < partials.length; i++) {
       const detune = 1 + (rng() - 0.5) * 0.012;
-      const e = env(when, 0.001, gains[i] * 0.6, decays[i]);
+      const e = env(when, 0.001, gains[i] * 0.42, decays[i]);
       const o = osrc(v, 'triangle', partials[i] * detune, when, decays[i] + 0.25);
       o.connect(e); e.connect(ring);
     }
     // Impact transient.
-    wire(v, nsrc(v, when, 0.06), flt('highpass', 2400, 0.7), env(when, 0.001, 0.9, 0.03), lp);
+    wire(v, nsrc(v, when, 0.06), flt('bandpass', 1450, 0.62), env(when, 0.001, 0.38, 0.03), lp);
     // Spall hiss: fragments sanding the interior right behind the punch.
-    wire(v, nsrc(v, when + 0.01, 0.18), flt('bandpass', 4300, 1.1), env(when + 0.01, 0.004, 0.28, 0.14), lp);
+    wire(v, nsrc(v, when + 0.01, 0.16), flt('bandpass', 1750, 0.58), env(when + 0.01, 0.004, 0.20, 0.09), lp);
     // Interior body thud.
     wire(v, nsrc(v, when, 0.18), flt('lowpass', 500, 0.7), env(when, 0.003, 0.6, 0.14), lp);
   }
@@ -1209,11 +1299,9 @@ export function createAudio() {
   }
 
   /**
-   * (Pre-COMBAT-SFX-r2 fallback.) Deflections play one of THREE distinct
-   * bright metallic zings — classic long whine, double-skip, or short
-   * shriek — each with randomized sweep + shard ticks, so back-to-back
-   * bounces never sound like the same sample. Non-pens are a blunt shell
-   * shatter: hard transient, dull knock, one dry ring.
+   * Live r3 fallback. Deflections retain a brief scrape/flight read over a
+   * compact plate body; non-pens are a blunt shell shatter. Neither path
+   * permits the former long, narrow 3–5 kHz ringing stack.
    * @param {boolean} deflected true = ricochet, false = nonpen/absorb
    */
   function synthPing(x, y, z, deflected) {
@@ -1223,57 +1311,56 @@ export function createAudio() {
     const lp = distLowpass(s.dist);
     if (deflected) {
       const variant = (rng() * 3) | 0;
-      const v = spawnVoice(when, 0.9, s.gain, s.pan, sfxBus);
+      const v = spawnVoice(when, 0.72, s.gain * 0.9, s.pan, sfxBus);
       lp.connect(v.in);
-      // Hard metallic strike transient — every variant opens with the hit.
-      wire(v, nsrc(v, when, 0.04), flt('highpass', 3200, 0.7), env(when, 0.001, 0.95, 0.02), lp);
-      wire(v, nsrc(v, when, 0.1), flt('lowpass', 900, 0.7), env(when, 0.002, 0.4, 0.07), lp);
+      wire(v, nsrc(v, when, 0.04), flt('bandpass', 1650, 0.68), env(when, 0.001, 0.44, 0.02), lp);
+      wire(v, nsrc(v, when, 0.12), flt('bandpass', 520, 0.62), env(when, 0.002, 0.52, 0.08), lp);
       const sweep = (f0, f1, at, dur, peak, q) => {
         const o = osrc(v, 'sine', f0, at, dur + 0.05);
         o.frequency.exponentialRampToValueAtTime(Math.max(80, f1), at + dur);
         const vib = osrc(v, 'sine', 24 + rng() * 10, at, dur);
         const vibG = ctx.createGain();
-        vibG.gain.value = f0 * 0.02;
+        vibG.gain.value = f0 * 0.012;
         vib.connect(vibG); vibG.connect(o.frequency);
         wire(v, o, flt('bandpass', (f0 + f1) * 0.5, q == null ? 0.9 : q), env(at, 0.004, peak, dur));
       };
       if (variant === 0) {
         // Classic long singing whine, falling away with the shell.
-        sweep(2600 + rng() * 700, 720 + rng() * 200, when, 0.55 + rng() * 0.15, 0.5);
+        sweep(2100 + rng() * 350, 720 + rng() * 160, when, 0.30 + rng() * 0.08, 0.26, 0.72);
       } else if (variant === 1) {
         // Double-skip: two falling zings, the second higher and fainter
         // (shell grazing twice along the plate).
-        const d1 = 0.2 + rng() * 0.06;
-        sweep(2400 + rng() * 500, 950, when, d1, 0.48);
+        const d1 = 0.14 + rng() * 0.04;
+        sweep(1900 + rng() * 300, 880, when, d1, 0.25, 0.72);
         const t2 = when + d1 + 0.02 + rng() * 0.03;
-        wire(v, nsrc(v, t2, 0.02), flt('highpass', 3600, 0.8), env(t2, 0.001, 0.4, 0.012), lp);
-        sweep(3100 + rng() * 700, 1250, t2, 0.28 + rng() * 0.08, 0.3);
+        wire(v, nsrc(v, t2, 0.02), flt('bandpass', 2100, 0.72), env(t2, 0.001, 0.20, 0.012), lp);
+        sweep(2450 + rng() * 350, 1080, t2, 0.20 + rng() * 0.05, 0.18, 0.75);
       } else {
         // Short shriek: steep bright sweep, gone in a third of a second.
-        sweep(3900 + rng() * 900, 1350 + rng() * 250, when, 0.30 + rng() * 0.08, 0.55, 1.6);
+        sweep(2850 + rng() * 450, 1180 + rng() * 180, when, 0.20 + rng() * 0.05, 0.24, 0.82);
       }
       // Shard ticks: sparks/fragments pattering off after the deflection.
       const n = 2 + ((rng() * 3) | 0);
       for (let i = 0; i < n; i++) {
         const at = when + 0.05 + rng() * 0.25;
-        wire(v, nsrc(v, at, 0.03), flt('bandpass', 2400 + rng() * 2800, 3),
-          env(at, 0.001, 0.10 + rng() * 0.12, 0.02 + rng() * 0.02), lp);
+        wire(v, nsrc(v, at, 0.03), flt('bandpass', 1250 + rng() * 1700, 0.9),
+          env(at, 0.001, 0.05 + rng() * 0.07, 0.02 + rng() * 0.02), lp);
       }
       // Faint ring partial hanging on the plate.
-      wire(v, osrc(v, 'triangle', 1900 * (0.9 + rng() * 0.2), when, 0.25),
-        env(when, 0.001, 0.2, 0.2), lp);
+      wire(v, osrc(v, 'triangle', 620 * (0.9 + rng() * 0.2), when, 0.18),
+        env(when, 0.001, 0.14, 0.12), lp);
     } else {
       // Non-pen: the shell breaks up on the plate — no flight whine.
       const v = spawnVoice(when, 0.5, s.gain, s.pan, sfxBus);
       lp.connect(v.in);
-      wire(v, nsrc(v, when, 0.05), flt('highpass', 2600, 0.7), env(when, 0.001, 0.85, 0.025), lp);
-      wire(v, nsrc(v, when, 0.15), flt('lowpass', 700 * (0.9 + rng() * 0.2), 0.7), env(when, 0.002, 0.7, 0.12), lp);
-      wire(v, osrc(v, 'triangle', 1750 * (0.92 + rng() * 0.16), when, 0.2),
-        env(when, 0.001, 0.22, 0.16), lp);
+      wire(v, nsrc(v, when, 0.05), flt('bandpass', 1300, 0.65), env(when, 0.001, 0.34, 0.025), lp);
+      wire(v, nsrc(v, when, 0.15), flt('bandpass', 460 * (0.9 + rng() * 0.2), 0.62), env(when, 0.002, 0.78, 0.12), lp);
+      wire(v, osrc(v, 'triangle', 410 * (0.92 + rng() * 0.16), when, 0.18),
+        env(when, 0.001, 0.20, 0.13), lp);
       // Fragments dropping off the plate.
       const at = when + 0.06 + rng() * 0.08;
-      wire(v, nsrc(v, at, 0.04, 1, crackleBuf), flt('bandpass', 1900, 1.6),
-        env(at, 0.002, 0.2, 0.06), lp);
+      wire(v, nsrc(v, at, 0.04, 1, crackleBuf), flt('bandpass', 1100, 0.82),
+        env(at, 0.002, 0.13, 0.06), lp);
     }
   }
 
@@ -1295,15 +1382,16 @@ export function createAudio() {
     // Sub thump.
     const sub = osrc(v, 'sine', 50, when, 0.9 * k);
     sub.frequency.exponentialRampToValueAtTime(26, when + 0.55 * k);
-    wire(v, sub, env(when, 0.008, 1.25, 0.85 * k), lp);
+    wire(v, sub, env(when, 0.008, 0.52, 0.65 * k), lp);
     // Main boom: noise through a collapsing lowpass.
-    const boomLp = flt('lowpass', 1600, 0.7);
-    boomLp.frequency.setValueAtTime(1600, when);
-    boomLp.frequency.exponentialRampToValueAtTime(120, when + 0.6 * k);
-    wire(v, nsrc(v, when, 1.0 * k), boomLp, env(when, 0.008, 1.3, 0.8 * k), lp);
+    const boomLp = flt('lowpass', 2600, 0.65);
+    boomLp.frequency.setValueAtTime(2600, when);
+    boomLp.frequency.exponentialRampToValueAtTime(170, when + 0.6 * k);
+    wire(v, nsrc(v, when, 1.0 * k), flt('highpass', 82, 0.65), boomLp,
+      env(when, 0.006, 1.2, 0.8 * k), lp);
     // Crackle sizzle.
-    wire(v, nsrc(v, when, 0.9 * k, 1, crackleBuf), flt('bandpass', 2400, 0.8),
-      env(when, 0.01, dirt ? 0.25 : 0.55, 0.8 * k), lp);
+    wire(v, nsrc(v, when, 0.9 * k, 1, crackleBuf), flt('bandpass', 1250, 0.72),
+      env(when, 0.01, dirt ? 0.16 : 0.26, 0.8 * k), lp);
     if (dirt) {
       // Dirt/earth slap.
       wire(v, nsrc(v, when, 0.35), flt('lowpass', 420, 0.7), env(when, 0.004, 0.9, 0.28), lp);
@@ -1313,8 +1401,8 @@ export function createAudio() {
       const n = 12 + ((rng() * 8) | 0);
       for (let i = 0; i < n; i++) {
         const at = when + 0.3 + rng() * 1.6;
-        wire(v, nsrc(v, at, 0.05), flt('bandpass', 1400 + rng() * 3200, 2.5),
-          env(at, 0.001, 0.12 + rng() * 0.18, 0.03 + rng() * 0.05), lp);
+        wire(v, nsrc(v, at, 0.05), flt('bandpass', 360 + rng() * 1300, 0.82),
+          env(at, 0.001, 0.07 + rng() * 0.10, 0.03 + rng() * 0.05), lp);
       }
       // Secondary pop.
       const at2 = when + 0.5 + rng() * 0.6;
@@ -1330,7 +1418,7 @@ export function createAudio() {
     synthEraPop(x, y, z);
   }
 
-  /** (Pre-COMBAT-SFX-r2 fallback.) ERA tile: sharp pop + clang overtone. */
+  /** Live ERA fallback: sharp fracture over a short armor-body pulse. */
   function synthEraPop(x, y, z) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
@@ -1338,12 +1426,12 @@ export function createAudio() {
     const v = spawnVoice(when, 0.5, s.gain, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
-    wire(v, nsrc(v, when, 0.15), flt('lowpass', 2800, 0.8), env(when, 0.002, 1.0, 0.1), lp);
+    wire(v, nsrc(v, when, 0.15), flt('lowpass', 3600, 0.7), env(when, 0.002, 0.72, 0.08), lp);
     const sub = osrc(v, 'sine', 70, when, 0.2);
     sub.frequency.exponentialRampToValueAtTime(45, when + 0.12);
-    wire(v, sub, env(when, 0.003, 0.7, 0.15), lp);
-    wire(v, osrc(v, 'triangle', 1620 * (0.95 + rng() * 0.1), when, 0.3),
-      env(when, 0.001, 0.3, 0.25), lp);
+    wire(v, sub, env(when, 0.003, 0.34, 0.12), lp);
+    wire(v, osrc(v, 'triangle', 420 * (0.95 + rng() * 0.1), when, 0.22),
+      env(when, 0.001, 0.24, 0.14), lp);
   }
 
   /** Track link snapped (module trackL/R → red): metal snap + chain clatter. */
@@ -1354,15 +1442,15 @@ export function createAudio() {
     const v = spawnVoice(when, 0.8, s.gain * 0.9, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
-    // Tensioned link letting go: sharp metallic snap.
-    wire(v, nsrc(v, when, 0.03), flt('highpass', 2100, 0.8), env(when, 0.001, 0.9, 0.02), lp);
-    wire(v, osrc(v, 'triangle', 1420 * (0.94 + rng() * 0.12), when, 0.16),
-      env(when, 0.001, 0.4, 0.12), lp);
+    // Tensioned link letting go: broad fracture and plate flex, not a bell.
+    wire(v, nsrc(v, when, 0.04), flt('bandpass', 1250, 0.7), env(when, 0.001, 0.48, 0.025), lp);
+    wire(v, osrc(v, 'triangle', 520 * (0.94 + rng() * 0.12), when, 0.15),
+      env(when, 0.001, 0.25, 0.10), lp);
     // Low clunk of the run dropping onto the wheels.
     wire(v, osrc(v, 'triangle', 128, when + 0.05, 0.24), env(when + 0.05, 0.003, 0.55, 0.2), lp);
     // Chain clatter spilling off.
-    wire(v, nsrc(v, when + 0.06, 0.5, 0.85, crackleBuf), flt('bandpass', 860, 1.3),
-      env(when + 0.06, 0.01, 0.5, 0.45), lp);
+    wire(v, nsrc(v, when + 0.06, 0.5, 0.85, crackleBuf), flt('bandpass', 480, 0.76),
+      env(when + 0.06, 0.01, 0.30, 0.42), lp);
   }
 
   /** Shell landing in dirt with no target (shell:expired hitTerrain). */
@@ -1456,15 +1544,15 @@ export function createAudio() {
     // UI blips route through the UI/music channel so the Interface slider
     // governs clicks as well as the garage sting (hitConfirm stays on sfxBus).
     const v = spawnVoice(when, 0.1, 0.4, 0, musicBus);
-    wire(v, nsrc(v, when, 0.03), flt('highpass', 2200, 0.7), env(when, 0.001, 0.6, 0.015));
-    wire(v, osrc(v, 'sine', 1250, when, 0.06), env(when, 0.001, 0.3, 0.045));
+    wire(v, nsrc(v, when, 0.025), flt('bandpass', 1450, 0.72), env(when, 0.001, 0.34, 0.014));
+    wire(v, osrc(v, 'sine', 820, when, 0.055), env(when, 0.001, 0.24, 0.04));
   }
 
   /** Quieter sibling of uiClick for pointer hover over buttons. */
   function uiHover() {
     const when = ctx.currentTime;
     const v = spawnVoice(when, 0.06, 0.13, 0, musicBus);
-    wire(v, osrc(v, 'sine', 1900, when, 0.035), env(when, 0.001, 0.5, 0.025));
+    wire(v, osrc(v, 'sine', 1260, when, 0.032), env(when, 0.001, 0.34, 0.022));
   }
 
   let _lastHoverEl = null;
@@ -1500,17 +1588,17 @@ export function createAudio() {
     const ricochet = kind === 'ricochet';
     if (pen) {
       const v = spawnVoice(when, 0.3, 0.55, 0, sfxBus);
-      wire(v, osrc(v, 'triangle', 1560, when, 0.09), env(when, 0.002, 0.5, 0.07));
-      wire(v, osrc(v, 'triangle', 2140, when + 0.055, 0.12), env(when + 0.055, 0.002, 0.42, 0.1));
-      wire(v, nsrc(v, when, 0.03), flt('highpass', 4200, 0.8), env(when, 0.001, 0.25, 0.02));
+      wire(v, osrc(v, 'triangle', 720, when, 0.08), env(when, 0.002, 0.34, 0.06));
+      wire(v, osrc(v, 'triangle', 980, when + 0.05, 0.10), env(when + 0.05, 0.002, 0.30, 0.08));
+      wire(v, nsrc(v, when, 0.025), flt('bandpass', 1750, 0.72), env(when, 0.001, 0.14, 0.016));
     } else if (ricochet) {
       // Rising, ringing skid: unmistakably different from the low absorbed
       // thud below even when the spatial target impact is far away.
       const v = spawnVoice(when, 0.34, 0.46, 0, sfxBus);
-      const o = osrc(v, 'triangle', 1150, when, 0.25);
-      o.frequency.exponentialRampToValueAtTime(2350, when + 0.16);
-      wire(v, o, flt('bandpass', 1900, 1.1), env(when, 0.002, 0.55, 0.23));
-      wire(v, nsrc(v, when, 0.035), flt('highpass', 3600, 0.8), env(when, 0.001, 0.34, 0.025));
+      const o = osrc(v, 'triangle', 920, when, 0.22);
+      o.frequency.exponentialRampToValueAtTime(1580, when + 0.14);
+      wire(v, o, flt('bandpass', 1250, 0.75), env(when, 0.002, 0.34, 0.18));
+      wire(v, nsrc(v, when, 0.03), flt('bandpass', 1950, 0.72), env(when, 0.001, 0.16, 0.022));
     } else {
       const v = spawnVoice(when, 0.22, 0.42, 0, sfxBus);
       const o = osrc(v, 'square', 340, when, 0.1);
@@ -1533,10 +1621,10 @@ export function createAudio() {
       wire(v, latch, flt('lowpass', 1350, 0.9), env(when, 0.002, 0.52, 0.15));
       wire(v, nsrc(v, when, 0.055), flt('bandpass', 980, 1.8), env(when, 0.001, 0.42, 0.045));
     } else if (type === 'extract') {
-      wire(v, nsrc(v, when, 0.11), flt('bandpass', 1500, 2.4), env(when, 0.003, 0.32, 0.09));
-      const ring = osrc(v, 'triangle', 2100 / Math.sqrt(mass), when + 0.025, 0.16);
-      ring.frequency.exponentialRampToValueAtTime(1320 / Math.sqrt(mass), when + 0.14);
-      wire(v, ring, env(when + 0.025, 0.001, 0.18, 0.13));
+      wire(v, nsrc(v, when, 0.11), flt('bandpass', 760, 0.82), env(when, 0.003, 0.28, 0.09));
+      const ring = osrc(v, 'triangle', 980 / Math.sqrt(mass), when + 0.025, 0.14);
+      ring.frequency.exponentialRampToValueAtTime(620 / Math.sqrt(mass), when + 0.13);
+      wire(v, ring, env(when + 0.025, 0.001, 0.12, 0.11));
     } else if (type === 'shellLift') {
       const shell = osrc(v, 'sine', 118 / mass, when, 0.20);
       shell.frequency.exponentialRampToValueAtTime(74 / mass, when + 0.16);
@@ -1553,16 +1641,16 @@ export function createAudio() {
       const motor = osrc(v, 'sawtooth', 92 + 36 / mass, when, 0.40);
       motor.frequency.linearRampToValueAtTime(150 + 42 / mass, when + 0.28);
       wire(v, motor, flt('bandpass', 520, 1.5), env(when, 0.025, 0.24, 0.38));
-      wire(v, nsrc(v, when, 0.40), flt('bandpass', 1180, 3.0),
-        env(when, 0.02, 0.13, 0.38));
+      wire(v, nsrc(v, when, 0.40), flt('bandpass', 820, 0.86),
+        env(when, 0.02, 0.10, 0.38));
     } else if (type === 'index') {
       for (let i = 0; i < 3; i++) {
         const at = when + i * 0.047;
         wire(v, osrc(v, 'square', 640 / mass + i * 75, at, 0.055),
-          flt('bandpass', 930, 2.3), env(at, 0.001, 0.22 - i * 0.035, 0.045));
+          flt('bandpass', 760, 0.9), env(at, 0.001, 0.18 - i * 0.03, 0.042));
       }
     } else { // breechClose
-      wire(v, nsrc(v, when, 0.05), flt('bandpass', 1120, 1.7), env(when, 0.001, 0.48, 0.04));
+      wire(v, nsrc(v, when, 0.05), flt('bandpass', 720, 0.82), env(when, 0.001, 0.34, 0.04));
       const close = osrc(v, 'triangle', 285 / mass, when + 0.018, 0.16);
       close.frequency.exponentialRampToValueAtTime(145 / mass, when + 0.14);
       wire(v, close, flt('lowpass', 1200, 0.8), env(when + 0.018, 0.002, 0.58, 0.13));
@@ -1575,7 +1663,7 @@ export function createAudio() {
     const when = ctx.currentTime + 0.004;
     const mass = Math.max(0.7, Math.min(1.35, caliberMm / 100));
     const v = spawnVoice(when, 0.24, 0.32 + mass * 0.06, 0, sfxBus);
-    wire(v, nsrc(v, when, 0.035), flt('bandpass', 1250, 1.8), env(when, 0.001, 0.55, 0.028));
+    wire(v, nsrc(v, when, 0.035), flt('bandpass', 720, 0.82), env(when, 0.001, 0.34, 0.028));
     const latch = osrc(v, 'triangle', 420 / Math.sqrt(mass), when + 0.025, 0.13);
     latch.frequency.exponentialRampToValueAtTime(690 / Math.sqrt(mass), when + 0.1);
     wire(v, latch, flt('lowpass', 1500, 0.8), env(when + 0.025, 0.002, 0.45, 0.11));
@@ -1815,9 +1903,9 @@ export function createAudio() {
   // --------------------------------------------------------- engine loops ---
 
   function createEngineVoice(entity) {
-    const isTurbine = /^(m1a|m1a2|abramsx)/.test(entity.specId || '');
-    const modern = entity.spec && entity.spec.era === 'modern';
-    const f0 = isTurbine ? 58 : modern ? 50 : 41;   // fundamental at idle pitch 1.0
+    const profile = resolveEngineSoundProfile(entity.specId, entity.spec);
+    const isTurbine = profile.kind === 'turbine';
+    const f0 = profile.baseHz;   // fundamental at idle pitch 1.0
 
     const out = ctx.createGain(); out.gain.value = 0;
     const rangeLp = flt('lowpass', 18000, 0.5);
@@ -1825,50 +1913,54 @@ export function createAudio() {
     out.connect(rangeLp); rangeLp.connect(pan); pan.connect(engineBus);
     const now = ctx.currentTime;
 
-    // Twin detuned saws — the mechanical growl.
-    const sawA = ctx.createOscillator(); sawA.type = 'sawtooth'; sawA.frequency.value = f0;
-    const sawB = ctx.createOscillator(); sawB.type = 'sawtooth'; sawB.frequency.value = f0 * 2.02;
+    // Broadly filtered firing pulses. The low-Q filter carries engine mass;
+    // raw oscillator buzz no longer reaches the mix as a synthetic rasp.
+    const sawA = ctx.createOscillator(); sawA.type = isTurbine ? 'triangle' : 'sawtooth'; sawA.frequency.value = f0;
+    const sawB = ctx.createOscillator(); sawB.type = 'triangle'; sawB.frequency.value = f0 * 2.02;
     const sub = ctx.createOscillator();  sub.type = 'sine';      sub.frequency.value = f0 * 0.5;
-    const sawLp = flt('lowpass', 900, 0.7);
-    const gSaw = ctx.createGain(); gSaw.gain.value = isTurbine ? 0.07 : 0.15;
-    const gSub = ctx.createGain(); gSub.gain.value = 0.22;
+    const sawLp = flt('lowpass', profile.toneCutoffHz, 0.58);
+    const gSaw = ctx.createGain(); gSaw.gain.value = profile.pulseGain;
+    const gSub = ctx.createGain(); gSub.gain.value = profile.subGain;
     sawA.connect(sawLp); sawB.connect(sawLp); sawLp.connect(gSaw); gSaw.connect(out);
     sub.connect(gSub); gSub.connect(out);
     // Rattle FM wobble on the saws (diesel unevenness).
     const wob = ctx.createOscillator(); wob.type = 'sine';
     wob.frequency.value = 9 + rng() * 4;
-    const wobG = ctx.createGain(); wobG.gain.value = isTurbine ? 0.6 : 2.4;
+    const wobG = ctx.createGain(); wobG.gain.value = profile.wobbleDepthHz;
     wob.connect(wobG); wobG.connect(sawA.frequency); wobG.connect(sawB.frequency);
 
     // Combustion / intake noise.
     const noi = ctx.createBufferSource();
     noi.buffer = whiteBuf; noi.loop = true; noi.start(now, rng() * 1.7);
-    const noiBp = flt('bandpass', 180, 0.9);
-    const gNoi = ctx.createGain(); gNoi.gain.value = isTurbine ? 0.3 : 0.22;
+    const noiBp = flt('bandpass', profile.intakeHz, 0.62);
+    const gNoi = ctx.createGain(); gNoi.gain.value = profile.intakeGain;
     noi.connect(noiBp); noiBp.connect(gNoi); gNoi.connect(out);
 
-    // Track squeak/rattle: resonant noise band, gated above 2 m/s.
+    // Tread scrub: a wide low-mid texture. The former 1450 Hz / Q=9 band was
+    // the main continuous “metal in a pan” sound while driving.
     const sq = ctx.createBufferSource();
     sq.buffer = whiteBuf; sq.loop = true; sq.playbackRate.value = 0.8; sq.start(now, rng() * 1.7);
-    const sqBp = flt('bandpass', 1450, 9);
+    const sqBp = flt('bandpass', profile.trackHz, profile.trackQ);
     const gSq = ctx.createGain(); gSq.gain.value = 0;
     sq.connect(sqBp); sqBp.connect(gSq); gSq.connect(out);
     const sqLfo = ctx.createOscillator(); sqLfo.type = 'sine';
     sqLfo.frequency.value = 2.3 + rng() * 1.2;
-    const sqLfoG = ctx.createGain(); sqLfoG.gain.value = 320;
+    const sqLfoG = ctx.createGain(); sqLfoG.gain.value = 70;
     sqLfo.connect(sqLfoG); sqLfoG.connect(sqBp.frequency);
-    // Track link clatter band.
+    // Individual link/road-wheel energy stays below 700 Hz and low-Q so it
+    // adds weight without a permanent ringing pitch.
     const clat = ctx.createBufferSource();
     clat.buffer = crackleBuf; clat.loop = true; clat.start(now, rng() * 1.7);
-    const clatBp = flt('bandpass', 900, 1.5);
+    const clatBp = flt('bandpass', profile.clatterHz, 0.76);
     const gClat = ctx.createGain(); gClat.gain.value = 0;
     clat.connect(clatBp); clatBp.connect(gClat); gClat.connect(out);
 
-    // Turbine whine (m1a2 signature): high sine 900 → 1400 Hz with speed.
+    // Turbine whine is a restrained triangle layer, with T-80 and S-tank
+    // families correctly joining Abrams in this powertrain profile.
     let tur = null, gTur = null;
     if (isTurbine) {
-      tur = ctx.createOscillator(); tur.type = 'sine'; tur.frequency.value = 900;
-      gTur = ctx.createGain(); gTur.gain.value = 0.05;
+      tur = ctx.createOscillator(); tur.type = 'triangle'; tur.frequency.value = 620;
+      gTur = ctx.createGain(); gTur.gain.value = profile.whineGain * 0.55;
       tur.connect(gTur); gTur.connect(out);
       tur.start(now);
     }
@@ -1896,24 +1988,26 @@ export function createAudio() {
         const spool = Math.min(1, ent.state._spool || 0);
         const rpm = Math.max(frac, demand * (0.34 + 0.44 * spool));
         const p = 0.8 + 0.6 * rpm;                       // RPM pitch — §3.9
-        sawA.frequency.setTargetAtTime(f0 * p, t, 0.08);
-        sawB.frequency.setTargetAtTime(f0 * 2.02 * p, t, 0.08);
-        sub.frequency.setTargetAtTime(f0 * 0.5 * p, t, 0.08);
-        noiBp.frequency.setTargetAtTime(180 * p, t, 0.08);
+        sawA.frequency.setTargetAtTime(f0 * p, t, 0.12);
+        sawB.frequency.setTargetAtTime(f0 * 2.02 * p, t, 0.12);
+        sub.frequency.setTargetAtTime(f0 * 0.5 * p, t, 0.12);
+        noiBp.frequency.setTargetAtTime(profile.intakeHz * (0.82 + 0.55 * rpm), t, 0.11);
         if (tur) {
-          tur.frequency.setTargetAtTime(900 + 500 * frac, t, 0.12);
-          gTur.gain.setTargetAtTime(0.05 + 0.09 * frac, t, 0.12);
+          tur.frequency.setTargetAtTime(620 + 520 * rpm, t, 0.16);
+          gTur.gain.setTargetAtTime(profile.whineGain * (0.55 + 0.45 * rpm), t, 0.16);
         }
-        const squeak = spd > 2 ? Math.min(1, (spd - 2) / 5) : 0;
-        gSq.gain.setTargetAtTime(squeak * 0.28, t, 0.1);
-        gClat.gain.setTargetAtTime(squeak * 0.4, t, 0.1);
+        const tread = spd > 1.5 ? Math.min(1, (spd - 1.5) / 8) : 0;
+        sqBp.frequency.setTargetAtTime(profile.trackHz * (0.88 + 0.32 * frac), t, 0.16);
+        clatBp.frequency.setTargetAtTime(profile.clatterHz * (0.9 + 0.30 * frac), t, 0.16);
+        gSq.gain.setTargetAtTime(tread * profile.trackGain, t, 0.14);
+        gClat.gain.setTargetAtTime(tread * profile.clatterGain, t, 0.14);
 
         const pos = ent.state.pos;
         const s = spat(pos.x, pos.y, pos.z);
         const perspective = isOwn && scoped
           ? AUDIO_PERSPECTIVE_MIX.sniper
           : AUDIO_PERSPECTIVE_MIX.arcade;
-        gNoi.gain.setTargetAtTime((isTurbine ? 0.3 : 0.22) + demand * 0.12, t, 0.055);
+        gNoi.gain.setTargetAtTime(profile.intakeGain + demand * (isTurbine ? 0.09 : 0.075), t, 0.08);
         const load = 0.44 + 0.30 * frac + 0.26 * demand;
         const gain = s.gain * load * (isOwn ? perspective.engineGain : 1);
         const cutoff = Math.min(distanceLowpassHz(s.dist),
@@ -1948,7 +2042,8 @@ export function createAudio() {
     const now = ctx.currentTime;
     const out = ctx.createGain(); out.gain.value = 1;
     out.connect(engineBus);
-    // Traverse motor: low saw through a resonant band + gear noise.
+    // Traverse motor: low pulse and broad gear-mesh noise. Narrow servo bands
+    // read as an artificial whistle during every aim correction.
     const motor = ctx.createOscillator(); motor.type = 'sawtooth'; motor.frequency.value = 84;
     const mLp = flt('lowpass', 330, 1.2);
     const gMotor = ctx.createGain(); gMotor.gain.value = 0;
@@ -1956,18 +2051,19 @@ export function createAudio() {
     const gearN = ctx.createBufferSource();
     gearN.buffer = whiteBuf; gearN.loop = true; gearN.playbackRate.value = 0.7;
     gearN.start(now, rng() * 1.7);
-    const gearBp = flt('bandpass', 760, 2.2);
+    const gearBp = flt('bandpass', 560, 0.82);
     const gGear = ctx.createGain(); gGear.gain.value = 0;
     gearN.connect(gearBp); gearBp.connect(gGear); gGear.connect(out);
     // Gear-mesh AM texture.
     const am = ctx.createOscillator(); am.type = 'sine'; am.frequency.value = 13;
     const amG = ctx.createGain(); amG.gain.value = 0;
     am.connect(amG); amG.connect(gGear.gain);
-    // Elevation servo: thinner, higher band.
+    // Elevation servo remains distinct, but wide enough to avoid a ringing
+    // stationary pitch.
     const servoN = ctx.createBufferSource();
     servoN.buffer = whiteBuf; servoN.loop = true; servoN.playbackRate.value = 1.1;
     servoN.start(now, rng() * 1.7);
-    const servoBp = flt('bandpass', 1480, 4);
+    const servoBp = flt('bandpass', 980, 0.92);
     const gServo = ctx.createGain(); gServo.gain.value = 0;
     servoN.connect(servoBp); servoBp.connect(gServo); gServo.connect(out);
     motor.start(now); am.start(now);
@@ -1979,13 +2075,13 @@ export function createAudio() {
         const cabinK = scoped ? 1.18 : 1;
         const rate = Math.min(1, Math.abs(ent.state.turretYawRate || 0) / TRAVERSE_RATE_FULL);
         gMotor.gain.setTargetAtTime(rate * 0.085 * cabinK, t, 0.06);
-        gGear.gain.setTargetAtTime(rate * 0.075 * cabinK, t, 0.06);
+        gGear.gain.setTargetAtTime(rate * 0.055 * cabinK, t, 0.06);
         amG.gain.setTargetAtTime(rate * 0.03 * cabinK, t, 0.06);
         motor.frequency.setTargetAtTime(84 * (0.9 + 0.35 * rate), t, 0.08);
         const pitch = ent.state.gunPitch || 0;
         if (lastPitch != null && dt > 0.0001) {
           const pr = Math.min(1, Math.abs(pitch - lastPitch) / dt / 0.35);
-          gServo.gain.setTargetAtTime(pr > 0.06 ? pr * 0.045 * cabinK : 0, t, 0.05);
+          gServo.gain.setTargetAtTime(pr > 0.06 ? pr * 0.032 * cabinK : 0, t, 0.05);
         }
         lastPitch = pitch;
       },
@@ -2074,7 +2170,7 @@ export function createAudio() {
 
   // -------------------------------------------------------- garage ambient ---
 
-  /** One distant workshop clank (or a short ratchet burst), random pan. */
+  /** One distant workshop tool movement (or dry ratchet), random pan. */
   function garageClank() {
     if (!ctx) return;
     const when = ctx.currentTime + rng() * 0.3;
@@ -2085,17 +2181,18 @@ export function createAudio() {
       const v = spawnVoice(when, n * 0.09 + 0.15, 0.05 + rng() * 0.04, panV, ambientBus);
       for (let i = 0; i < n; i++) {
         const at = when + i * (0.07 + rng() * 0.02);
-        wire(v, nsrc(v, at, 0.02), flt('bandpass', 1400 + rng() * 500, 3),
-          env(at, 0.001, 0.7, 0.015));
+        wire(v, nsrc(v, at, 0.025), flt('bandpass', 760 + rng() * 360, 0.82),
+          env(at, 0.001, 0.48, 0.018));
       }
     } else {
-      // Single distant metal clank with a touch of shop-floor ring.
+      // A heavy tool or part set down on a workbench: compact low-mid body,
+      // no lingering high-Q sheet-metal ring.
       const v = spawnVoice(when, 0.7, 0.045 + rng() * 0.05, panV, ambientBus);
-      const f = 520 + rng() * 480;
-      wire(v, osrc(v, 'triangle', f, when, 0.4), flt('lowpass', 2200, 0.8),
-        env(when, 0.002, 0.8, 0.32));
-      wire(v, osrc(v, 'triangle', f * 1.62, when, 0.25), env(when, 0.001, 0.3, 0.2));
-      wire(v, nsrc(v, when, 0.03), flt('highpass', 1800, 0.8), env(when, 0.001, 0.4, 0.02));
+      const f = 300 + rng() * 320;
+      wire(v, osrc(v, 'triangle', f, when, 0.28), flt('lowpass', 1500, 0.72),
+        env(when, 0.002, 0.62, 0.20));
+      wire(v, osrc(v, 'triangle', f * 1.58, when, 0.16), env(when, 0.001, 0.18, 0.11));
+      wire(v, nsrc(v, when, 0.035), flt('bandpass', 1150, 0.76), env(when, 0.001, 0.22, 0.025));
     }
   }
 
@@ -2227,7 +2324,7 @@ export function createAudio() {
 
   function onShellHit(e) {
     const p = e.pos;
-    // Receiving-end feel (COMBAT-SFX r2): a damaging hit on the PLAYER adds
+    // Receiving-end feel: a damaging hit on the PLAYER adds
     // an interior low whump + rumble under the impact sound. Deflections
     // deliberately get NONE — a bounce must feel like relief, not damage.
     const playerHit = (listenerOwnerId != null && e.targetId === listenerOwnerId) ||
@@ -2298,7 +2395,7 @@ export function createAudio() {
 
   function onTankDestroyed(e) {
     const p = e.pos;
-    // COMBAT-SFX r2: the kill blast keys off the destruction CAUSE —
+    // The kill blast keys off the destruction CAUSE —
     // 'ammorack' detonation (turret-pop accent) > 'shot' > 'fire' burn-out.
     if (sfxReady) {
       bakedTankExplosion(p[0], p[1], p[2],
@@ -2793,7 +2890,7 @@ export function createAudio() {
       get ctx() { return ctx; },
       get voiceLog() { return radio.log; },
       get voicesLoaded() { return radio.loaded; },
-      // COMBAT-SFX r2 introspection (tools/sfx-smoke.mjs): baked-sample play
+      // COMBAT-SFX r3 introspection (tools/sfx-smoke.mjs): baked-sample play
       // trail {n,t,g,r} + load state of the baked combat set.
       get sfxLog() { return sfxLog; },
       get sfxLoaded() { return sfxReady; },

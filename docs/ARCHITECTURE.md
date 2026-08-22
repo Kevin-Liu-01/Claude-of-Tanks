@@ -852,9 +852,10 @@ Audio = {
   update(dt, listener /* {pos, forward, kind, ownerId, scoped} */, tanks: TankEntity[]),
                        // engine loops: occupied tank plus nearest audible tanks
                        // (10-voice cap, 900 m enter / 1000 m exit hysteresis),
-                       // saw+noise loop, RPM pitch =
-                       //   0.8 + 0.6×|speed|/topSpeed (turbine whine preset for m1a2:
-                       //   add high sine 900→1400 Hz); track squeak above 2 m/s;
+                       // profile-driven pulse+intake loop, RPM pitch =
+                       //   0.8 + 0.6×max(speed/load spool), with turbine,
+                       //   modern/legacy diesel, and light-diesel families;
+                       //   broad low-mid tread/link texture above 1.5 m/s;
                        //   shell whizz for player-passing shells (dist<15 m, speed>300);
                        //   player turret-traverse whir + gun-elevation servo (from
                        //   state.turretYawRate / gunPitch delta); suspension landing
@@ -866,7 +867,9 @@ Audio = {
   hitConfirm(kind, damage),              // non-spatial player shot-result blip
 }
 ```
-Bus graph: `{combat, cinematic combat, engine, ambience, ui/music, voice} → compressor → master`.
+Bus graph: `{combat, cinematic combat} → broad body/presence EQ`,
+`engine → presence/ceiling EQ`, `voice → presence EQ`, then all channels
+`→ 3:1 transient-preserving compressor → high-knee soft limiter → master`.
 Channel gains follow the settings SOUND tab (`cot.settings.v1`, live via
 'ui:volumes'); crew radio + alarms sit on the voice bus. Distance model:
 gain = `clamp(22/dist, 0, 1)`^1.5, equal-power stereo pan from listener-relative
@@ -879,10 +882,13 @@ cinematic/garage distance follows the camera. This hybrid listener prevents
 third-person camera pullback from muting nearby vehicles. Scoped view is an
 interior/headset perspective, not a mute: the occupied engine and cannon retain
 level while their exposed high-frequency energy and stereo width are reduced.
-Max ~24 simultaneous one-shot voices; steal oldest. Everything is synthesized at
-runtime (oscillators, seeded noise, pre-rendered gun beds) EXCEPT the crew
-radio lines: original macOS-TTS takes processed offline into ~48 KiB of Opus
-under `public/audio/voice/` (`tools/make-voices.mjs`, docs/ATTRIBUTION.md).
+Max ~24 simultaneous one-shot voices; steal oldest. Cannon fire, armor impacts,
+HE/terrain bursts, ERA, and vehicle destruction use 29 deterministic procedural
+assets baked by `tools/make-sfx.mjs` under `public/audio/sfx/`, with equivalent
+live synthesis fallbacks until the complete set decodes. Engines, traverse,
+ambience, UI, alarms, and fanfares remain live Web Audio synthesis. Crew radio
+uses locally synthesized/processed Opus under `public/audio/voice/`
+(`tools/make-voices.mjs`, docs/ATTRIBUTION.md).
 Radio discipline lives in `src/audio/voices.js`: one line at a time, priority
 ladder (survival calls interrupt flavor), per-line cooldowns, ±3% rate jitter.
 Leaving battle stops all engine, burning, traverse, landing, and alarm loops so
@@ -898,9 +904,11 @@ ownership, PCM audibility, monotonic distance falloff/filtering, mix ducking,
 headroom, 0.55x cinematic debris, and garage loop cleanup.
 `node tools/audio-probe.mjs` records the full event/voice/bus matrix and asserts
 every canonical combat event entered its intended audio route.
-`node tools/sfx-smoke.mjs` retains the baked-layer, bass, and volley/no-clipping
-gate; `node tools/make-sfx.mjs --verify` and `node tools/make-voices.mjs --verify`
-enforce asset duration, loudness, peak, and payload budgets.
+`node tools/sfx-smoke.mjs` retains the baked-layer and volley/no-clipping gate;
+`node tools/make-sfx.mjs --verify` additionally rejects sub-only or tin-can
+assets through bass, body, harsh-presence, and air energy bounds.
+`node tools/make-voices.mjs --verify` enforces voice duration, loudness, peak,
+and payload budgets.
 
 ---
 
