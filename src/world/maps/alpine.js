@@ -6,7 +6,6 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 export default {
   id: 'alpine',
   name: 'Glacier Pass',
-  sub: 'Frozen Lake · Mountain Town · Passes',
   blurb: 'A frozen alpine lake divides a fortified mountain village and two high passes',
   terrain: {
     hillScale: 1.46, microScale: 0.72, rimH: 52, frozenMarshes: true,

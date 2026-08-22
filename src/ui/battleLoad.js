@@ -53,8 +53,6 @@ const CSS = `
 .cot-bl .mapname{margin-top:8px;font-size:clamp(28px,4.6vw,50px);font-weight:800;
   letter-spacing:.14em;text-indent:.14em;text-transform:uppercase;color:#f4f8fc;
   text-shadow:0 3px 26px rgba(0,0,0,.85);}
-.cot-bl .mapsub{margin-top:7px;font-family:${FONT_COND};font-size:11.5px;font-weight:600;
-  letter-spacing:.24em;text-indent:.24em;color:#9fb0bf;text-transform:uppercase;}
 /* --- rosters ------------------------------------------------------------- */
 .cot-bl .teams{flex:1 1 auto;display:flex;align-items:stretch;justify-content:center;
   gap:clamp(18px,4vw,74px);padding:22px clamp(18px,5vw,74px) 0;min-height:0;}
@@ -116,7 +114,6 @@ const CSS = `
   .cot-bl .hero{flex-basis:27%;min-height:108px;max-height:150px;}
   .cot-bl .hero .cap{bottom:11px;}
   .cot-bl .mapname{margin-top:4px;font-size:clamp(24px,4vw,38px);}
-  .cot-bl .mapsub{margin-top:4px;font-size:9px;}
   .cot-bl .kicker{font-size:8.5px;}
   .cot-bl .teams{gap:clamp(12px,3vw,34px);padding:9px clamp(12px,5vw,42px) 0;}
   .cot-bl .thead{font-size:9px;padding-bottom:4px;}
@@ -137,7 +134,7 @@ const CSS = `
 @media (max-width:900px){
   .cot-bl .hero{flex-basis:34%;min-height:128px;}
   .cot-bl .hero .cap{bottom:12px}.cot-bl .mapname{margin-top:4px;font-size:clamp(22px,6vw,34px)}
-  .cot-bl .mapsub{margin-top:3px;font-size:9px}.cot-bl .kicker{font-size:8.5px}
+  .cot-bl .kicker{font-size:8.5px}
   .cot-bl .teams{gap:8px;padding:9px 10px 0}.cot-bl .vs{display:none}
   .cot-bl .thead{font-size:9px;padding-bottom:4px}.cot-bl .rows{gap:2px;padding-top:4px}
   .cot-bl .row{height:27px;gap:5px;padding:0 4px}.cot-bl .row .tier{flex-basis:20px;font-size:9px}
@@ -153,7 +150,6 @@ const CSS = `
   .cot-bl .hero{flex:0 0 clamp(100px,25vh,138px);min-height:100px;max-height:138px;}
   .cot-bl .hero .cap{bottom:8px;}
   .cot-bl .mapname{margin-top:3px;font-size:clamp(21px,4vw,34px);}
-  .cot-bl .mapsub{margin-top:2px;font-size:8px;}
   .cot-bl .kicker{font-size:7.5px;}
   .cot-bl .teams{gap:8px;padding:7px max(10px,env(safe-area-inset-left)) 0;}
   .cot-bl .team{justify-content:center;}
@@ -196,7 +192,7 @@ export function createBattleLoadScreen() {
   root.innerHTML =
     `<div class="hero"><div class="art none"></div><div class="scrim"></div><div class="vig"></div>` +
     `<div class="cap"><div class="kicker">Random Battle &middot; Standard</div>` +
-    `<div class="mapname"></div><div class="mapsub"></div></div></div>` +
+    `<div class="mapname"></div></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>Allies</span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -212,7 +208,6 @@ export function createBattleLoadScreen() {
 
   const artEl = root.querySelector('.art');
   const nameEl = root.querySelector('.mapname');
-  const subEl = root.querySelector('.mapsub');
   const kickEl = root.querySelector('.kicker');
   const allyRows = root.querySelector('.team.ally .rows');
   const foeRows = root.querySelector('.team.foe .rows');
@@ -252,12 +247,11 @@ export function createBattleLoadScreen() {
 
     /**
      * Stage and show the screen.
-     * @param {{mapName:string, mapSub?:string, thumb?:string, biome?:string,
+     * @param {{mapName:string, thumb?:string, biome?:string,
      *   mode?:string, allies:Array, enemies:Array}} info
      */
     show(info) {
       nameEl.textContent = info.mapName || 'Battlefield';
-      subEl.textContent = info.mapSub || '';
       if (info.mode) kickEl.textContent = info.mode;
       artEl.className = 'art' + (info.thumb ? '' : ` ${info.biome || 'none'}`);
       artEl.style.backgroundImage = info.thumb ? `url(${info.thumb})` : '';

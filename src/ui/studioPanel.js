@@ -104,8 +104,6 @@ const CSS = `
 .cot-studio .mapBtn .mcopy{position:absolute;left:11px;right:42px;bottom:10px;min-width:0;}
 .cot-studio .mapBtn .mn{display:block;font-size:13px;font-weight:900;letter-spacing:.07em;color:#fff3db;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 7px #000;}
-.cot-studio .mapBtn .ms{display:block;margin-top:3px;font-size:7.5px;font-weight:800;letter-spacing:.1em;
-  color:#aebbc6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 4px #000;}
 .cot-studio .mapBtn .mid{position:absolute;top:9px;left:9px;padding:3px 6px;
   background:rgba(4,7,10,.78);border:1px solid rgba(255,255,255,.2);font-size:7px;font-weight:900;
   letter-spacing:.16em;color:#ffd27a;}
@@ -134,8 +132,6 @@ const CSS = `
   background:#111820;}
 .cot-studio .mapCard .cn{display:block;padding:0 7px;font-size:9px;font-weight:900;letter-spacing:.045em;
   color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cot-studio .mapCard .cs{display:block;padding:2px 7px 0;font-size:7px;font-weight:800;letter-spacing:.1em;
-  color:#71808d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-studio .mapCard .check{position:absolute;top:5px;right:5px;display:none;width:18px;height:18px;
   place-items:center;background:#e69a2d;color:#111820;font-size:10px;box-shadow:0 2px 8px #000;}
 .cot-studio .mapCard[aria-selected="true"] .check{display:grid;}
@@ -369,8 +365,7 @@ export function createStudioPanel(S) {
   const mapShade = el('span', 'mshade');
   const mapCopy = el('span', 'mcopy');
   const mapName = el('span', 'mn');
-  const mapSub = el('span', 'ms');
-  mapCopy.append(mapName, mapSub);
+  mapCopy.append(mapName);
   const mapId = el('span', 'mid');
   const mapArrow = el('span', 'mar', '▼');
   mapBtn.append(mapHero, mapShade, mapCopy, mapId, mapArrow);
@@ -383,7 +378,7 @@ export function createStudioPanel(S) {
   const mapCards = new Map();
   const mapImages = [];
   for (const id of S.MAP_IDS) {
-    const info = S.getMapInfo ? S.getMapInfo(id) : { name: id, sub: '' };
+    const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
     const card = el('button', 'mapCard');
     card.type = 'button';
     card.dataset.mapId = id;
@@ -399,7 +394,6 @@ export function createStudioPanel(S) {
     card.append(
       thumb,
       el('span', 'cn', info.name || id),
-      el('span', 'cs', info.sub || id.toUpperCase()),
       el('span', 'check', '✓'),
     );
     card.addEventListener('click', () => chooseMap(id));
@@ -1327,10 +1321,9 @@ export function createStudioPanel(S) {
       const id = S.mapId;
       badgeMap.textContent = id ? id.toUpperCase() : '';
       if (!id) return;
-      const info = S.getMapInfo ? S.getMapInfo(id) : { name: id, sub: '' };
+      const info = S.getMapInfo ? S.getMapInfo(id) : { name: id };
       mapHero.src = MAP_THUMBS[id] || '';
       mapName.textContent = info.name || id;
-      mapSub.textContent = info.sub || `${id.toUpperCase()} BATTLEFIELD`;
       mapId.textContent = id.toUpperCase();
       mapBtn.setAttribute('aria-label', `Choose battlefield. Current: ${info.name || id}`);
       for (const [cardId, card] of mapCards) {

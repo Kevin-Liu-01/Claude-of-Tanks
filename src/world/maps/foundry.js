@@ -4,7 +4,6 @@
 export default {
   id: 'foundry',
   name: 'Ironworks',
-  sub: 'Factories · Rail Fan · Workers’ Quarter',
   blurb: 'A sprawling foundry district of rail sidings, brick works and container yards',
   terrain: {
     hillScale: 0.62, microScale: 0.66, rimH: 26,

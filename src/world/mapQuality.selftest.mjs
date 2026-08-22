@@ -22,6 +22,7 @@ assert.deepEqual(MAP_IDS.slice(-8), EXPANSION, 'the eight-map expansion stays re
 for (const mapId of MAP_IDS) {
   const config = getMapConfig(mapId);
   assert.equal(config.id, mapId, `${mapId}: config id matches registry`);
+  assert.equal('sub' in config, false, `${mapId}: deprecated map tags stay out of metadata`);
   assert.ok(config.name && config.blurb, `${mapId}: player-facing copy exists`);
   assert.ok(config.terrain && config.vegetation && config.props && config.sky,
     `${mapId}: complete biome configuration`);
@@ -37,7 +38,6 @@ for (const mapId of MAP_IDS) {
 
 for (const mapId of EXPANSION) {
   const config = getMapConfig(mapId);
-  assert.ok(config.sub, `${mapId}: map-card location summary exists`);
   assert.ok(config.props.plan.length >= 14, `${mapId}: authored landmark plan is dense`);
   assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
   assert.ok(config.props.tankWrecks.count >= 5, `${mapId}: multiple wreck story beats`);

@@ -6,7 +6,6 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 export default {
   id: 'badlands',
   name: 'Redrock Divide',
-  sub: 'Mesas · Dry Washes · Outpost',
   blurb: 'Layered red escarpments frame a fortified desert logistics outpost',
   terrain: {
     // The skyline carries the massive mesa identity; playable shelves stay

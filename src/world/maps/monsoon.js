@@ -4,7 +4,6 @@
 export default {
   id: 'monsoon',
   name: 'Monsoon Ridge',
-  sub: 'Jungle · Ruins · Flooded Valleys',
   blurb: 'A storm rolls across jungle ridges and the shattered town in the valley',
   terrain: {
     hillScale: 1.32, microScale: 1.1, rimH: 44,

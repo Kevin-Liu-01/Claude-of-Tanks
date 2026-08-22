@@ -92,7 +92,7 @@ __STUDIO.setRailVisible(on) / .directDuel()
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.setCamera(cfg) / .getCamera()
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
-__STUDIO.getMapInfo(id)             // {id, name, sub}
+__STUDIO.getMapInfo(id)             // {id, name}
 __STUDIO.getSpecInfo(id)            // {name, gunElevationDeg, gunDepressionDeg, shells}
 __STUDIO.performance()              // rendered/skipped frame + pool-sweep counters
 __STUDIO.active / .mapId

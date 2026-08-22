@@ -1376,10 +1376,10 @@ const hud = await bootStage('hud', () => {
 });
 
 const garageMaps = [
-  { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
+  { id: 'random', name: 'Random', thumb: '' },
   ...MAP_IDS.map((id) => {
     const c = getMapConfig(id);
-    return { id, name: c.name, sub: c.sub || '', thumb: MAP_THUMBS[id] || '' };
+    return { id, name: c.name, thumb: MAP_THUMBS[id] || '' };
   }),
 ];
 let pendingSoloStart = null;
@@ -2338,7 +2338,6 @@ async function startBattleLoading(specId, mapId = null) {
   };
   battleLoad.show({
     mapName: cfg.name || resolved,
-    mapSub: cfg.sub || '',
     thumb: MAP_THUMBS[resolved] || '',
     biome: resolved,
     mode: mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard',
@@ -2857,7 +2856,6 @@ async function presentNetworkBattle({
     bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
     battleLoad.show({
       mapName: pendingCfg.name || 'Battle',
-      mapSub: pendingCfg.sub || 'Preparing battlefield',
       thumb: MAP_THUMBS[mapId] || '',
       biome: mapId,
       mode: modeLabel,
@@ -2890,7 +2888,6 @@ async function presentNetworkBattle({
   const cfg = getMapConfig(mapId);
   battleLoad.show({
     mapName: cfg.name || mapId,
-    mapSub: cfg.sub || '',
     thumb: MAP_THUMBS[mapId] || '',
     biome: mapId,
     mode: modeLabel,
@@ -3068,7 +3065,6 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
     });
     battleLoad.show({
       mapName: pendingCfg?.name || 'Battle',
-      mapSub: pendingCfg?.sub || 'Selecting battlefield',
       thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
       biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
       mode: modeLabel,
@@ -3147,7 +3143,6 @@ async function beginNetworkRematch(lobbyState) {
     bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId: lobbyState.mapId });
     battleLoad.show({
       mapName: pendingCfg?.name || 'Next battle',
-      mapSub: pendingCfg?.sub || 'Selecting battlefield',
       thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
       biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
       mode: modeLabel,
@@ -3208,7 +3203,6 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
     });
     battleLoad.show({
       mapName: 'Ranked operation',
-      mapSub: 'Connecting to dedicated authority',
       thumb: '',
       biome: ticket.mapId,
       mode: modeLabel,

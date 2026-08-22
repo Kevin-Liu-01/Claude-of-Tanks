@@ -5,7 +5,6 @@
 export default {
   id: 'frontier',
   name: 'Frontier Basin',
-  sub: 'Fields · Checkpoints · Ridgelines',
   blurb: 'A broad farming basin cut by checkpoints, hedgerows and hull-down ridges',
 
   terrain: {

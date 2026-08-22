@@ -10,7 +10,6 @@ const river = [
 export default {
   id: 'delta',
   name: 'Jade River Delta',
-  sub: 'Fords · Rice Fields · River Town',
   blurb: 'Braided watercourses divide flooded fields, village compounds and palm thickets',
   terrain: {
     hillScale: 0.64, microScale: 0.82, rimH: 22, clearMarshVeg: true,

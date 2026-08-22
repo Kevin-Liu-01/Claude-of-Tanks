@@ -6,7 +6,6 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 export default {
   id: 'caldera',
   name: 'Obsidian Caldera',
-  sub: 'Lava Shelves · Mines · Ash Town',
   blurb: 'Black volcanic shelves and abandoned extraction works ring an ash-choked basin',
   terrain: {
     // Dark splat/ash dressing supplies the volcanic character while lower,

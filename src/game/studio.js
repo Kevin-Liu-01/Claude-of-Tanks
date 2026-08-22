@@ -2548,7 +2548,7 @@ export function createStudio(ctx) {
     CAMO_PATTERN_IDS,
     getMapInfo: (id) => {
       const config = getMapConfig(id);
-      return { id, name: config.name || id, sub: config.sub || '' };
+      return { id, name: config.name || id };
     },
     getSpecInfo: (id) => {
       const s = getSpec(id);

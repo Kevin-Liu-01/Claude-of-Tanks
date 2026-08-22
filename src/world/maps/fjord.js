@@ -6,7 +6,6 @@ const clamp01 = (x) => Math.max(0, Math.min(1, x));
 export default {
   id: 'fjord',
   name: 'Nordhavn Fjord',
-  sub: 'Harbor · Cliffs · Fishing Town',
   blurb: 'A cold fjord harbor where cliff roads descend into a battered fishing town',
   terrain: {
     hillScale: 1.22, microScale: 0.92, rimH: 42, softLakes: true,
