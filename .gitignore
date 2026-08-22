@@ -16,5 +16,6 @@ public/models/tanks/candidates-gen2/
 tools/__pycache__/
 __pycache__/
 .vercel/
+.qa-device/
 .env.local
 public/models/tanks/**/*.glb

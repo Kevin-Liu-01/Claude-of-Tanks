@@ -26,6 +26,109 @@ compiles, camo canvas bakes, texture uploads. So:
 - **Real felt-FPS**: the owner's phone against the QA server. We report
   main-thread deltas; the phone is the final judge.
 
+## Device-less release lane
+
+When physical phones are unavailable, run the optimized build through all
+three deterministic browser profiles. This is the highest-confidence local
+substitute; it is not a claim about a specific phone's GPU driver or thermal
+throttling.
+
+```sh
+npm run qa:trace
+npm run qa:device
+npm run qa:device:stress
+npm run qa:device:software
+```
+
+`qa:trace` proves normal production does not fetch or install the recorder,
+then proves that explicit `?debug=1` QA sessions receive the bounded trace,
+current engine telemetry, and touch-sized mark/copy/export controls.
+
+The device laps use an iPhone-sized DPR-3 touch viewport against `vite
+preview`, not the development server. The native profile measures the host
+GPU path. The constrained profile applies 4x CPU pressure and reports 4 cores
+/ 4 GB through the browser's device hints. The software profile uses
+SwiftShader as a severe portability and shader stress floor; its FPS is not a
+prediction of real hardware.
+
+### Native-output contract
+
+Mobile display density and 3D render density are deliberately independent:
+
+- representative DPR-3 phone viewports receive an exact DPR-3 final WebGL
+  buffer, so the browser never stretches a DPR-2 canvas to physical pixels;
+- large tablets/foldables are capped by a 4-million-pixel output budget rather
+  than silently allocating several 5-10 MP full-screen targets;
+- balanced mobile starts the scene at 1.25 samples per CSS pixel, may rise to
+  1.4, and never falls below one. The final pass reconstructs that scene into
+  the display-native backing store;
+- modest reductions use EASU + RCAS, normal mobile enlargement uses EASU
+  without speckle-amplifying sharpening, and the emergency floor uses one-tap
+  linear reconstruction instead of paying for 12-tap EASU on every native
+  output pixel;
+- close player and preview vehicles retain 75% authored texture density while
+  distant AI and world textures remain at the mobile 50% residency budget;
+- compact/static HUD canvases use native phone density. The full-screen sight
+  canvas remains capped at DPR 2 because it is cleared and uploaded every
+  frame; DOM text and controls remain device-native.
+
+The relevant telemetry fields are `deviceDpr`, `rendererDpr`,
+`nativeOutput`, `outputBudgetLimited`, `outputPixels`, `renderScale`, and
+`reconstruction`. A phone-size lap is correct only when the backing-buffer
+dimensions equal CSS dimensions multiplied by `rendererDpr`, the ratio does
+not exceed the reported device DPR, and any non-native result explicitly says
+it was budget-limited.
+
+In addition to the stations below, each production lap now verifies:
+
+- four repeated map/battle cycles and post-warm same-map program, texture,
+  geometry, and post-GC heap growth (the first return is recorded separately
+  as legitimate cold growth);
+- mobile world/pedestal cache limits across every cycle;
+- portrait-to-landscape canvas and camera recovery without losing the battle,
+  including critical scoreboard/minimap/mobile-command overlap checks;
+- browser lifecycle freeze/resume with neutral input on return;
+- real `WEBGL_lose_context` loss, recovery overlay, state preservation, safe
+  quality fallback, and resumed rendering;
+- a lossless bounded QA trace with engine telemetry and no JavaScript errors;
+- garage, live battle, and portrait screenshots in
+  `.qa-device/<profile>-shots/`; context loss is kept as event/DOM evidence
+  because requesting a GPU screenshot while the context is absent can itself
+  deadlock ANGLE.
+
+The command exits nonzero when a gate fails and writes a scorecard plus the
+full trace under `.qa-device/`. Use `--allow-fail` only when intentionally
+collecting a red baseline. Two clean native and constrained runs are the local
+release bar. A real iOS/Android pass is still required before claiming physical
+GPU, browser-memory-reclamation, touch-latency, battery, or thermal coverage.
+
+### Device-less baseline — 2026-08-22
+
+The first production runs exposed actionable red gates; they are not a mobile
+device certification. A cleaner-host native smoke held active battle stations
+at 17–18 ms rAF-gap p95, while cold battle entry took 15.8 s against the 8 s
+budget. Its portrait pass found `scoreboard:minimap` and
+`scoreboard:mobileChrome` collisions.
+
+The deterministic four-cycle soak reproduced the same post-warm growth in two
+profiles: 26 textures and about 193–195 MB post-GC heap, with programs and
+geometries flat. The 4x-CPU constrained profile reached 33–34 ms active-battle
+p95 and 45.5 s cold battle entry; treat that as a stress result, not an estimate
+of any named phone. Lifecycle resume, WebGL context recovery, cache limits, and
+lossless QA tracing passed in both full runs. Local `.qa-device/` output remains
+ephemeral and must be copied to the release archive when used as release
+evidence.
+
+Native-output follow-up on the same date removed the DPR-2-to-DPR-3 browser
+stretch: the 892x412 landscape viewport now produces an exact 2676x1236 WebGL
+buffer (3.31 MP). A cleaner-host native production run held look/drive/fire/
+fight at 17-18 ms rAF-gap p95 with lifecycle and context recovery green, and
+the captured tank/terrain edges no longer showed the previous blocky sharpened
+speckle. Repeated 4x-CPU runs remained red and host-sensitive (active p95
+spanning roughly 48-81 ms; cold entry about 68 s), so this fixes the output
+contract but does not certify low-end hardware or close the existing cold-load
+and portrait-overlap failures.
+
 ## The Lap (tools/mobilelap.mjs)
 
 Deterministic scripted session, real-time (NEVER fastForward — long tasks
@@ -41,6 +144,7 @@ only exist in real time), one JSON scorecard per run. Stations:
 | fire | 8 s Bradley held auto-fire + fire-button aim drags | zero tasks > 100 ms / 10 s |
 | fight | 20 s drive-at-enemy + fire; records tank:spotted | zero tasks > 100 ms / 10 s; reveal worst task < 50 ms |
 | rematch | second battle start | < 8 s wall |
+| map_cycle | switch to another full battlefield | < 30 s wall; old world evicted |
 
 Per station: long tasks (count, worst, list), rAF gap p95/max, long-task-
 free frame %, sim-time delta (battle stations — load throttling makes

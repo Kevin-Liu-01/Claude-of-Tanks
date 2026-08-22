@@ -1,15 +1,18 @@
 # DEV performance flight recorder
 
 Development builds keep a bounded gameplay and render timeline at
-`window.__DEV_TRACE`. Production builds do not load the recorder and install
-no bus hook, observers, or lifecycle listeners.
+`window.__DEV_TRACE`. Ordinary production sessions do not load the recorder
+and install no bus hook, observers, or lifecycle listeners. An explicit
+optimized-build device-QA session with `?debug=1` lazy-loads the recorder and
+also exposes it as `window.__QA_TRACE`.
 
 The recorder captures:
 
 - every game-bus emission, with an immediate payload snapshot;
 - configured input-action edges and explicit diagnostic marks;
 - every rendered frame's raw rAF gap, clamped game `dt`, phase, simulation
-  time, countdown, input, render calls/triangles/frame, program count, and heap;
+  time, countdown, input, render calls/triangles/frame, program/geometry/
+  texture counts, heap, and dynamic render scale;
 - long tasks, page/focus/visibility changes, JavaScript errors, rejected
   promises, and WebGL context loss/restoration;
 - explicit `screen:freeze`, `sim:freeze`/`sim:resume`, and
@@ -30,6 +33,13 @@ __DEV_TRACE.download()              // complete JSON trace
 __DEV_TRACE.clear()                 // start a fresh relative timeline
 __DEV_TRACE.console(true)           // opt-in mirror of every event (noisy)
 ```
+
+In a production QA URL, substitute `__QA_TRACE`. The visible telemetry panel
+also provides 44 px `MARK ISSUE`, `COPY SUMMARY`, and `EXPORT JSON` controls so
+a remote tester can preserve a useful report without opening DevTools. Marks
+include the current HUD and engine telemetry; exported snapshots embed the
+current quality, resolution, simulation, world, shadow, network, and memory
+state.
 
 The downloaded JSON includes the environment and GPU renderer, summary
 percentiles, a `frameSchema` array, compact frame rows, and the ordered event
@@ -100,3 +110,11 @@ counted as game performance.
 
 The probe is diagnostic evidence. The ratified Mobile QA Lap in
 `docs/MOBILE-QA.md` remains the release-budget gate.
+
+For the optimized-build contract and the full device-less lifecycle lap, run:
+
+```sh
+npm run qa:trace
+npm run qa:device
+npm run qa:device:stress
+```

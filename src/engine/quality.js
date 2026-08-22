@@ -6,9 +6,10 @@
  * composer's High 1.5 pixel ratio rasterizes 2.25x the pixels of a 1080p@dpr1
  * frame through the full HDR post chain. Measured on this class of GPU that
  * requires scaled AO/bloom and adaptive relief to stay inside the budget.
- * (engine-aa r1: the renderer CANVAS may now back at up to dpr 2 — see
- * renderer.js PIXEL_RATIO_CAP — but only the final to-screen AA pass
- * rasterizes there; every cap below still governs the composer chain.)
+ * (native-output r1: the renderer CANVAS may back at mobile DPR 3 under the
+ * output-pixel budget — see resolutionPolicy.js — but only the final
+ * reconstruction pass rasterizes there; every cap below still governs the
+ * expensive composer chain.)
  *
  * Fix = an explicit quality ladder, auto-selected by devicePixelRatio and
  * user-overridable (persisted in localStorage; the settings UI writes through
@@ -33,8 +34,8 @@
  *   tone mapping without making every post pass pay the MSAA bandwidth cost.
  * - `shadowMapSizes` — per-cascade CSM shadow map resolutions (lighting.js).
  *
- * Preset semantics (resolution numbers are the EFFECTIVE pixel ratio at
- * dpr>=2, where the renderer canvas caps at 2.0):
+ * Preset semantics (resolution numbers are the EFFECTIVE internal 3D/post
+ * pixel ratio, independent of the final display canvas density):
  * - ultra : maxed visuals — 4x scene MSAA, full-res AO, native 2.0 ratio, 4096
  *           cascade 2. Explicit
  *           opt-in via settings (r7: auto no longer selects it — see
@@ -128,9 +129,12 @@ export function getDeviceTier() { return _deviceTier || 'desktop'; }
  * @param {number} px authored texture dimension
  * @returns {number} dimension to allocate on the active tier
  */
-export function texSize(px) {
+export function texSize(px, textureClass = 'world') {
   const p = getPreset();
-  const scaled = px * (p.textureScale || 1);
+  const scale = textureClass === 'vehicle'
+    ? (p.vehicleTextureScale || p.textureScale || 1)
+    : (p.textureScale || 1);
+  const scaled = px * scale;
   return Math.max(1, Math.round(Math.min(scaled, p.textureCap || Infinity, _glMaxTexSize)));
 }
 
@@ -228,58 +232,68 @@ export const PRESETS = {
   'mobile-low': {
     label: 'Performance',
     msaaSamples: 0,
-    maxPixelRatio: 0.9,
-    adaptiveBasePixelRatio: 0.78,
+    // Never raster below one 3D sample per CSS pixel. The final DPR-3 output
+    // is reconstructed separately; sub-CSS input was the blocky failure mode.
+    maxPixelRatio: 1.0,
+    adaptiveBasePixelRatio: 1.0,
     aoScale: 0,
     bloomScale: 0.35,
     shadowMapSizes: [768, 768, 512, 512],
     shadowMaxFar: 260,
     textureScale: 0.5,
+    vehicleTextureScale: 0.75,
     textureCap: 2048,
-    dynMin: 0.55,
+    dynMin: 1.0,
   },
   // MOBILE r1: the DEVICE tier for phones/tablets — never offered by the
   // settings picker (PRESET_ORDER below is unchanged) and never resolved on a
   // desktop-class device; resolvePresetName pins it whenever the device tier
   // is mobile. Sized against a ~192 MB GPU texture budget on a 3-4 GB-RAM
   // phone whose browser kills the tab near 1-1.5 GB total:
-  // - textureScale 0.5 / textureCap 2048 — every procedural canvas bake
-  //   (tank albedo/normal/rough sets, world layers) allocates at half its
-  //   authored dimension through the central texSize() lever, and nothing may
-  //   exceed 2048 (or the live gl cap) in any dimension.
+  // - textureScale 0.5 / textureCap 2048 — world layers and distant AI
+  //   allocate at half their authored dimensions. Close player/preview
+  //   vehicles use vehicleTextureScale 0.75 so their markings and material
+  //   breakup survive a phone screen; nothing may exceed 2048 (or the live GL
+  //   cap) in either dimension.
   // - 1024/512 shadow cascades + 300 m range — the desktop 'high' cascades
   //   (2x 4096² + 2x 2048² ≈ 170 MB of RTs) were a third of the whole mobile
   //   budget; lighting.js' penumbra compensation keeps softness constant.
-  // - composer at 1.0x CSS pixels, may earn 1.25x (adaptiveBase/max), scene
-  //   MSAA off, AO off, half bloom chain, governor floor 0.6. The final
+  // - composer starts at 1.25x CSS pixels and may earn 1.4x, scene MSAA off,
+  //   AO off, half bloom chain, and a >1 CSS-pixel governor floor. The final
   //   display-space SMAA still owns edge cleanup; avoiding the multisampled
   //   half-float scene target saves both bandwidth and a meaningful block of
   //   graphics memory on the devices most likely to lose their context.
   mobile: {
     label: 'Balanced',
     msaaSamples: 0,
-    maxPixelRatio: 1.25,
-    adaptiveBasePixelRatio: 1.0,
+    maxPixelRatio: 1.4,
+    adaptiveBasePixelRatio: 1.25,
     aoScale: 0,
     bloomScale: 0.5,
     shadowMapSizes: [1024, 768, 512, 512],
     shadowMaxFar: 300,
     textureScale: 0.5,
+    // Vehicle quality already has high/preview/AI tiers. Applying the generic
+    // 0.5 world scale again reduced the player's close preview to 512 px.
+    // materials.js applies this gentler scale only to preview/high subjects;
+    // distant AI stays compact so battle entry and residency remain bounded.
+    vehicleTextureScale: 0.75,
     textureCap: 2048,
-    dynMin: 0.6,
+    dynMin: 0.715,
   },
   'mobile-high': {
     label: 'Quality',
     msaaSamples: 2,
-    maxPixelRatio: 1.35,
-    adaptiveBasePixelRatio: 1.1,
+    maxPixelRatio: 1.7,
+    adaptiveBasePixelRatio: 1.5,
     aoScale: 0,
     bloomScale: 0.55,
     shadowMapSizes: [1536, 1024, 768, 512],
     shadowMaxFar: 340,
     textureScale: 0.5,
+    vehicleTextureScale: 0.75,
     textureCap: 2048,
-    dynMin: 0.65,
+    dynMin: 0.75,
   },
 };
 

@@ -8,6 +8,8 @@ import * as THREE from 'three';
 import { createElement as el, ensureStyle } from './dom.js';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.js';
+import { uiPixelRatio } from '../engine/resolutionPolicy.js';
+import { getDeviceTier } from '../engine/quality.js';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -222,8 +224,8 @@ const CONSUMABLES = [
 //   APFSDS   finned dart in sabot  HE    fat blunt round-nose
 function drawShellIcon(canvas, type) {
   const S = 46;
-  const dpr = 2; // fixed 2x internal resolution — crisp even at devicePixelRatio 1
-  canvas.width = S * dpr; canvas.height = S * dpr;
+  const dpr = uiPixelRatio(S, S, window.devicePixelRatio || 1, getDeviceTier() === 'mobile');
+  canvas.width = Math.round(S * dpr); canvas.height = Math.round(S * dpr);
   canvas.style.width = `${S}px`; canvas.style.height = `${S}px`;
   const c = canvas.getContext('2d');
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1399,10 +1401,10 @@ export function initHud(bus) {
   const mmWrap = el('div', 'cot-minimap', root);
   const mmCanvas = el('canvas', '', mmWrap);
   const MM = 220;
-  // fixed 2x internal resolution: the map must stay crisp even when the
-  // real devicePixelRatio is 1 (e.g. the screenshot harness)
-  const mmDpr = 2;
-  mmCanvas.width = MM * mmDpr; mmCanvas.height = MM * mmDpr;
+  // Follow the phone's native DPR (bounded by the shared output policy) so a
+  // DPR-3 browser never stretches a DPR-2 tactical map.
+  const mmDpr = uiPixelRatio(MM, MM, window.devicePixelRatio || 1, getDeviceTier() === 'mobile');
+  mmCanvas.width = Math.round(MM * mmDpr); mmCanvas.height = Math.round(MM * mmDpr);
   const mmCtx = mmCanvas.getContext('2d');
   mmCtx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
   let mmBg = null; // offscreen background canvas
@@ -1453,9 +1455,13 @@ export function initHud(bus) {
     h = root.clientHeight || window.innerHeight;
     // The sight is a cheap 2D overlay, so keep it truly retina-sharp even
     // when the 3D scene's dynamic resolution governor scales down under load.
-    // A 2x cap avoids oversized mobile allocations while removing the soft
-    // half-pixel dashes and text produced by the old 1.5x backing store.
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Match the renderer's native-phone output policy. The pixel budget keeps
+    // large tablets bounded while DPR-3 reticles remain 1:1 with the display.
+    // The full-screen sight is repainted every frame. Keep its established 2x
+    // raster on DPR-3 phones; small/static HUD canvases above remain native.
+    // Lines are positioned in CSS space and composite over the native 3D
+    // canvas without forcing a 3.3 MP 2D clear/upload on every mobile frame.
+    dpr = uiPixelRatio(w, h, window.devicePixelRatio || 1, false);
     retCanvas.width = Math.round(w * dpr);
     retCanvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

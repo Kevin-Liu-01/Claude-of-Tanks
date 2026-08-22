@@ -150,12 +150,13 @@ A round is not “fully archived” until all of these exist:
   attached release artifact. A Codex task or local `.qa-*` path alone does not
   satisfy this last requirement.
 
-`window.__DEV_TRACE` is intentionally bounded and production-disabled. Call
-`__DEV_TRACE.download()` during a manual reproduction, or use
-`tools/dev-perf-probe.mjs`, before reloading/closing the page. Perf HUD values
-are live instrumentation, not a log, unless a probe or screenshot records
-them. Console mirroring stays opt-in because printing every event can create
-the very stalls being measured.
+`window.__DEV_TRACE` is intentionally bounded. Ordinary production is still
+recorder-free; the explicit `?debug=1` optimized QA path lazy-loads the same
+bounded recorder as `window.__QA_TRACE`. Call `download()` during a manual
+reproduction, or use `tools/dev-perf-probe.mjs` / `tools/mobilelap.mjs`, before
+reloading or closing the page. Perf HUD values are live instrumentation, not a
+log, unless a probe or screenshot records them. Console mirroring stays opt-in
+because printing every event can create the very stalls being measured.
 
 ## Open archival gaps from this campaign
 

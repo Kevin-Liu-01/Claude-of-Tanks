@@ -78,7 +78,7 @@ import { createGarageStage, GARAGE_TRACK_AXIS_YAW_RAD } from './ui/garageStage.j
 // built lazily from post-ready idle slices, never on the boot-critical path.
 import { createGarageDressing } from './game/garageDressing.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
-import { createPerfHud } from './ui/perfHud.js';
+import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
@@ -247,6 +247,7 @@ const container = document.getElementById('app');
 boot.begin('renderer');
 const renderer = createRenderer(container);
 let graphicsContextLost = false;
+let rearmRafAfterContext = () => {}; // installed when the main loop is ready
 // MOBILE r2: GPU self-test + rescue ladder. The owner's iPhone renders every
 // LIT mesh black (unlit sky/HUD fine) and no desktop browser reproduces it —
 // so the device itself proves at boot which pipeline stage it can render,
@@ -487,8 +488,17 @@ function queueWorldPrefetch(mapId, delay = 8000) {
 function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
 
 // --- game state + tanks -----------------------------------------------------
-const devTrace = import.meta.env.DEV
-  ? (await import('./dev/perfTrace.js')).createDevTrace({ renderer })
+// Device QA: `?debug=1` opts a production build into the same bounded flight
+// recorder used in development. The recorder remains a lazy chunk and has
+// zero listeners/frame work for ordinary players; the explicit QA URL gives
+// remote/mobile testers an optimized-build trace they can export themselves.
+const traceRequested = import.meta.env.DEV || debugModeRequested();
+const devTrace = traceRequested
+  ? (await import('./dev/perfTrace.js')).createDevTrace({
+    renderer,
+    enabled: true,
+    traceMode: import.meta.env.DEV ? 'development' : 'production-qa',
+  })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
@@ -636,7 +646,7 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
 // FEEL r12: corner perf overlay — fps / p95 frame time / worst stall /
 // draw calls / programs / heap / sim%. F8 toggles; probes read
 // window.__PERF_HUD.stats().
-const perfHud = createPerfHud({ renderer, game });
+const perfHud = createPerfHud({ renderer, game, trace: devTrace });
 if (typeof window !== 'undefined') window.__PERF_HUD = perfHud;
 // hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
 // the stage floods and clipped the turntable floor right of the tank to 255.
@@ -1935,6 +1945,12 @@ renderer.userData.contextRecovery = {
     lighting.update(true);
     graphicsContextLost = false;
     post.setAdaptiveSuspended(false);
+    // Some mobile browsers discard the outstanding rAF when the WebGL device
+    // is reclaimed. The loop's queued latch would then stay true forever even
+    // though no callback exists. Cancel/re-arm explicitly after restoration;
+    // restartRaf() owns the handle so a browser that retained it cannot create
+    // a duplicate simulation/render loop.
+    rearmRafAfterContext();
     return true;
   },
 };
@@ -2049,6 +2065,7 @@ devTrace?.configure({
     shotMode,
     studio: !!studio?.active,
     cameraMode: rig.mode,
+    renderScale: post.dynScale,
   }),
 });
 
@@ -2319,7 +2336,7 @@ bus.on('shell:fired', (p) => {
  * @param {?string} mapId picked map id ('random' rolls here)
  * @returns {Promise<void>} resolves when the battle is live
  */
-async function startBattleLoading(specId, mapId = null) {
+async function startBattleLoading(specId, mapId = null, { randomRoster = true } = {}) {
   // Debug/API entry can bypass the garage's ui:battleStart event.
   post.setAdaptiveSuspended(true);
   const shownAt = performance.now();
@@ -2359,7 +2376,11 @@ async function startBattleLoading(specId, mapId = null) {
   battleLoad.progress(0.56, 'Assembling rosters');
   await nextFrame();
   const playerVisualStartedAt = performance.now();
-  startBattle(specId, resolved, { deferVisuals: true, preBattleHold: true });
+  startBattle(specId, resolved, {
+    deferVisuals: true,
+    preBattleHold: true,
+    randomRoster,
+  });
   // Audio's first resume creates the context, synthesis buffers, decoded-SFX
   // requests, and UI hooks. On a cold session that is hundreds of milliseconds
   // of main-thread work. Doing it from openBattle() made the first visible
@@ -2775,11 +2796,11 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   clearActiveNetworkRoom();
 }
 
-async function beginBattleEntry(specId, mapId = null) {
+async function beginBattleEntry(specId, mapId = null, options = undefined) {
   if (battleEntryPending) return;
   battleEntryPending = true;
   try {
-    await startBattleLoading(specId, mapId);
+    await startBattleLoading(specId, mapId, options);
   } catch (error) {
     console.error('[battle] entry failed', error);
     await battleLoad.hide();
@@ -3035,9 +3056,9 @@ async function presentNetworkBattle({
  * intentionally absent here: loading them for a local battle duplicated work
  * without adding any useful authority boundary.
  */
-async function beginSoloBattle({ specId, mapId } = {}) {
+async function beginSoloBattle({ specId, mapId, randomRoster = true } = {}) {
   const selected = VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
-  return beginBattleEntry(selected, mapId || garage.getSelectedMap());
+  return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster });
 }
 
 /** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
@@ -3302,7 +3323,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // player's era first and prefers the closest tiers. The battlefield choice
   // never changes vehicle-era matchmaking.
   setupBattle(game, specId, world, {
-    random: true, deferVisuals: !!opts.deferVisuals,
+    random: opts.randomRoster !== false, deferVisuals: !!opts.deferVisuals,
     deferCamoRepaint: true,
   });
   primeDeploymentTerrainTiles();
@@ -4007,11 +4028,23 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
 // extra rAF callbacks for a speed burst when frames come back.
 let lastTickWallMs = -Infinity;
 let rafQueued = false;
+let rafId = 0;
 function scheduleRaf() {
   if (rafQueued) return;
   rafQueued = true;
-  requestAnimationFrame((t) => { rafQueued = false; tick(t); });
+  rafId = requestAnimationFrame((t) => {
+    rafId = 0;
+    rafQueued = false;
+    tick(t);
+  });
 }
+function restartRaf() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = 0;
+  rafQueued = false;
+  scheduleRaf();
+}
+rearmRafAfterContext = restartRaf;
 setInterval(() => {
   if (!bootComplete) return;
   const now = performance.now();
@@ -6428,6 +6461,7 @@ function getDebugGpuName() {
 /** Low-frequency, read-only provider for the opt-in engineering dashboard. */
 function collectDebugTelemetry() {
   const draw = renderer.getDrawingBufferSize(new THREE.Vector2());
+  const outputResolution = renderer.userData.outputResolution || null;
   const shadow = lighting.getShadowTelemetry();
   const shadowCounts = shadowSceneCounts();
   const loose = world?.getLoosePropStats?.() || { total: 0, active: 0 };
@@ -6437,7 +6471,13 @@ function collectDebugTelemetry() {
     quality: {
       buffer: `${draw.x}×${draw.y}`,
       dpr: Number(renderer.getPixelRatio().toFixed(2)),
+      deviceDpr: Number((window.devicePixelRatio || 1).toFixed(2)),
+      nativeOutput: outputResolution?.native ?? null,
+      outputBudgetLimited: outputResolution?.budgetLimited ?? null,
+      outputPixels: outputResolution?.outputPixels ?? (draw.x * draw.y),
+      renderScale: Number((Number(renderer.domElement.dataset.renderScale) || 0).toFixed(3)),
       dynScale: Number(post.dynScale.toFixed(3)),
+      reconstruction: post.upscaler.telemetry(),
       perfTrim: post.perfTrim,
       preset: resolvePresetName(),
       tier: getDeviceTier(),
@@ -6573,6 +6613,7 @@ async function sampleShadowContribution() {
 }
 
 perfHud.setTelemetryProvider(collectDebugTelemetry);
+devTrace?.configure({ getTelemetry: collectDebugTelemetry });
 
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, fx, rig, bus,
@@ -6645,7 +6686,9 @@ window.__DEBUG = {
   forceHitMark: (bounced) => hud.forceHitMark(!!bounced),
   // damage panel r9: pose/state hooks for probes + deterministic captures
   get damagePanel() { return damagePanel; },
-  devTrace,                              // DEV flight recorder; null in production
+  // Development flight recorder, or production QA recorder with `?debug=1`.
+  // Ordinary production sessions keep this null and never load its chunk.
+  devTrace,
   get network() { return networkDiagnostics(); },
   get networkPresentation() { return networkBridge?.getPresentationEventStats?.() || null; },
   telemetry: collectDebugTelemetry,

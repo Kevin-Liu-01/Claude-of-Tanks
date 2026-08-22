@@ -13,6 +13,16 @@ export function debugModeRequested(search = (typeof location !== 'undefined' ? l
   return value !== '0' && value !== 'false' && value !== 'off';
 }
 
+/** Small, shareable report for issue comments; the full trace stays exportable. */
+export function buildQaSummary({ traceStats, hudSnapshot, telemetry, capturedAt = new Date().toISOString() } = {}) {
+  return {
+    capturedAt,
+    trace: traceStats || null,
+    frame: hudSnapshot?.stats || null,
+    telemetry: telemetry || hudSnapshot?.telemetry || null,
+  };
+}
+
 function fmtCount(value) {
   const n = Number(value) || 0;
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}m`;
@@ -28,7 +38,7 @@ function fmtBytes(value) {
   return `${n.toFixed(0)} B`;
 }
 
-export function createPerfHud({ renderer, game }) {
+export function createPerfHud({ renderer, game, trace = null }) {
   const debugRequested = debugModeRequested();
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
@@ -75,6 +85,64 @@ export function createPerfHud({ renderer, game }) {
   makeSection('shadows', 'SHADOWS', true);
   makeSection('network', 'NETWORK');
   makeSection('memory', 'MEMORY');
+  if (trace?.enabled) {
+    const actions = document.createElement('div');
+    actions.style.cssText = 'grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;pointer-events:auto';
+    const action = (label, title) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.title = title;
+      button.style.cssText = [
+        'min-height:44px', 'padding:8px', 'border:1px solid rgba(117,213,171,.42)',
+        'border-radius:5px', 'background:rgba(117,213,171,.09)', 'color:#c9f4df',
+        'font:700 9px/1 system-ui,sans-serif', 'letter-spacing:.12em', 'cursor:pointer',
+      ].join(';');
+      actions.appendChild(button);
+      return button;
+    };
+    const markButton = action('MARK ISSUE', 'Mark this moment in the QA trace');
+    const copyButton = action('COPY SUMMARY', 'Copy a compact performance report');
+    const exportButton = action('EXPORT JSON', 'Download the complete bounded QA trace');
+    const actionStatus = document.createElement('div');
+    actionStatus.setAttribute('role', 'status');
+    actionStatus.style.cssText = 'grid-column:1/-1;min-height:14px;color:#8eaaa5;text-align:right';
+    actions.appendChild(actionStatus);
+    grid.appendChild(actions);
+
+    const setStatus = (message, error = false) => {
+      actionStatus.textContent = message;
+      actionStatus.style.color = error ? '#ff9d7c' : '#8fe0bd';
+      setTimeout(() => { if (actionStatus.textContent === message) actionStatus.textContent = ''; }, 3500);
+    };
+    markButton.addEventListener('click', () => {
+      trace.mark('tester:issue', { hud: stats(), telemetry: latestTelemetry });
+      setStatus('Issue moment marked');
+    });
+    copyButton.addEventListener('click', async () => {
+      const report = buildQaSummary({
+        traceStats: trace.stats(), hudSnapshot: { stats: stats(), telemetry: latestTelemetry },
+      });
+      const text = JSON.stringify(report, null, 2);
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus('Summary copied');
+      } catch (_) {
+        const field = document.createElement('textarea');
+        field.value = text;
+        field.style.cssText = 'position:fixed;left:-9999px';
+        document.body.appendChild(field);
+        field.select();
+        const copied = document.execCommand('copy');
+        field.remove();
+        setStatus(copied ? 'Summary copied' : 'Copy unavailable', !copied);
+      }
+    });
+    exportButton.addEventListener('click', () => {
+      const filename = trace.download();
+      setStatus(filename ? `Saved ${filename}` : 'Export unavailable', !filename);
+    });
+  }
   document.body.appendChild(el);
 
   // Frame-time ring (240 frames ≈ 4 s @60), long-task observer (5 s window).

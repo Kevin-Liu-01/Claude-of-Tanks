@@ -50,6 +50,7 @@ import {
   dynamicScaleFloor,
   internalPixelRatio,
   overloadReliefLever,
+  reconstructionMode,
   reconstructionSharpness,
 } from './renderScalePolicy.js';
 import { LATE_FX_LAYER } from '../fx/particles.js';
@@ -372,7 +373,9 @@ const FIREFLY_MIN = 1.70; // linear luma floor — below this, never touched
 const FIREFLY_TOL = 1.30; // allowed ratio over the brightest diagonal
 const FIREFLY_PAD = 0.06; // absolute headroom so dim neighborhoods don't crush
 
-// FSR 1 spatial upscale (EASU + RCAS), adapted to a Three ShaderMaterial.
+// Native-output spatial reconstruction, using FSR 1 EASU + RCAS where the
+// surviving source density justifies it and hardware-linear sampling at the
+// most constrained mobile floor.
 // This replaces the old sequence of browser bilinear enlargement followed by
 // a 9-13 tap sub-pixel blur. EASU reconstructs the governor's reduced frame
 // along local edge direction; RCAS restores contrast without sharpening flat
@@ -520,11 +523,21 @@ const FSR_RCAS_FRAG = /* glsl */ `
     gl_FragColor = vec4( mix( c, sharpColor, uSharpness ), 1.0 );
   }`;
 
+// RCAS is useful for modest reconstruction (for example 1.5 -> 2), but at a
+// phone's 1.25 -> 3 ratio it can only amplify undersampled terrain/foliage
+// into the reported grainy blocks. Moderate enlargement keeps EASU without
+// RCAS. Severe reduction uses the GPU's single-sample linear reconstruction:
+// that is intentionally softer, but avoids both 12-tap native EASU cost and
+// invented high-frequency speckle. Only modes with RCAS allocate the full-
+// native intermediate.
 class FsrUpscalePass extends Pass {
   constructor() {
     super();
     this.needsSwap = false;
     this.outputSize = new THREE.Vector2(1, 1);
+    this.inputSize = new THREE.Vector2(1, 1);
+    this.mode = 'native-rcas';
+    this.inputScale = 1;
     this.intermediate = new THREE.WebGLRenderTarget(1, 1, {
       // EASU runs after output conversion/grade/SMAA, so the input is display-space
       // 0..1. RGBA8 halves native-resolution bandwidth/memory vs half-float
@@ -548,45 +561,84 @@ class FsrUpscalePass extends Pass {
         uSharpness: { value: 0.12 } },
       depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
     });
+    this.copyMaterial = new THREE.ShaderMaterial({
+      name: 'NativeOutput.Linear',
+      vertexShader: CopyShader.vertexShader,
+      fragmentShader: CopyShader.fragmentShader,
+      uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
+    });
     this.quad = new FullScreenQuad(this.easuMaterial);
   }
   setOutputSize(width, height) {
     const w = Math.max(1, Math.round(width)), h = Math.max(1, Math.round(height));
     if (this.outputSize.x === w && this.outputSize.y === h) return;
     this.outputSize.set(w, h);
-    this.intermediate.setSize(w, h);
   }
   render(renderer, writeBuffer, readBuffer) {
     const inW = readBuffer.width, inH = readBuffer.height;
     const outW = this.outputSize.x, outH = this.outputSize.y;
     const upscale = inW !== outW || inH !== outH;
+    const inputScale = upscale ? Math.min(inW / outW, inH / outH) : 1;
+    const mode = reconstructionMode(inputScale);
+    const applyRcas = mode.includes('rcas');
+    this.inputSize.set(inW, inH);
+    this.inputScale = inputScale;
+    this.mode = mode;
     let source = readBuffer.texture;
     let sourceW = inW, sourceH = inH;
+    if (mode === 'linear') {
+      this.copyMaterial.uniforms.tDiffuse.value = source;
+      this.quad.material = this.copyMaterial;
+      renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+      if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+      this.quad.render(renderer);
+      return;
+    }
     if (upscale) {
       this.easuMaterial.uniforms.tDiffuse.value = source;
       this.easuMaterial.uniforms.uInputSize.value.set(inW, inH);
       this.quad.material = this.easuMaterial;
-      renderer.setRenderTarget(this.intermediate);
+      if (applyRcas) {
+        if (this.intermediate.width !== outW || this.intermediate.height !== outH) {
+          this.intermediate.setSize(outW, outH);
+        }
+        renderer.setRenderTarget(this.intermediate);
+      } else {
+        renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+        if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+      }
       this.quad.render(renderer);
+      if (!applyRcas) return;
       source = this.intermediate.texture;
       sourceW = outW; sourceH = outH;
     }
     this.rcasMaterial.uniforms.tDiffuse.value = source;
     this.rcasMaterial.uniforms.uTexelDelta.value.set(1 / sourceW, 1 / sourceH);
     // Match contrast recovery to the enlargement. High's normal 1.5→2 path
-    // stays at the proven 0.28; more heavily scaled Medium/Low frames receive
-    // stronger recovery, capped at 0.4 before grass/leaf halos dominate.
-    const inputScale = upscale ? Math.min(inW / outW, inH / outH) : 1;
+    // stays at the proven 0.28. Lower-density modes skip RCAS above, so this
+    // cap cannot manufacture detail from severely undersampled foliage.
     this.rcasMaterial.uniforms.uSharpness.value = reconstructionSharpness(inputScale);
     this.quad.material = this.rcasMaterial;
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
     if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
     this.quad.render(renderer);
   }
+  telemetry() {
+    return {
+      mode: this.mode,
+      input: [this.inputSize.x, this.inputSize.y],
+      output: [this.outputSize.x, this.outputSize.y],
+      inputScale: +this.inputScale.toFixed(3),
+      sharpness: this.mode.includes('rcas')
+        ? +this.rcasMaterial.uniforms.uSharpness.value.toFixed(3) : 0,
+    };
+  }
   dispose() {
     this.intermediate.dispose();
     this.easuMaterial.dispose();
     this.rcasMaterial.dispose();
+    this.copyMaterial.dispose();
     this.quad.dispose();
   }
 }
@@ -1794,10 +1846,12 @@ export function createPost(renderer, scene, camera) {
   }
   composer.addPass(smaa); // 5. edge-pattern AA (geometric silhouettes)
 
-  // 6. Native-output FSR1 spatial reconstruction. SMAA first resolves the
-  // geometric pattern at internal resolution; EASU then follows those edges
-  // while enlarging and RCAS restores local contrast. This avoids both the
-  // browser's bilinear blur and the old post-upscale FXAA-style low-pass.
+  // 6. Native-output spatial reconstruction. SMAA first resolves the geometric
+  // pattern at internal resolution. The reconstruction ladder then chooses
+  // EASU + RCAS for modest enlargement, EASU alone for mobile's normal path,
+  // or inexpensive linear sampling at the emergency floor. In every case the
+  // final pass owns the exact display backing store; the browser never has to
+  // stretch a smaller canvas a second time.
   const upscaler = new FsrUpscalePass();
   composer.addPass(upscaler);
 

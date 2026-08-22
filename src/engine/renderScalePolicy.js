@@ -49,3 +49,15 @@ export function reconstructionSharpness(inputToOutputScale) {
   const scale = Math.min(1, Math.max(0, Number(inputToOutputScale) || 0));
   return Math.min(0.4, Math.max(0.12, 0.12 + (1 - scale) * 0.64));
 }
+
+/**
+ * Reconstruction ladder: large reductions use one hardware-linear sample to
+ * preserve native output cheaply and without ringing; EASU owns moderate
+ * enlargement; RCAS is worthwhile only when enough source detail survives.
+ */
+export function reconstructionMode(inputToOutputScale) {
+  const scale = Math.min(1, Math.max(0, Number(inputToOutputScale) || 0));
+  if (scale < 0.4) return 'linear';
+  if (scale < 0.6) return 'easu';
+  return scale < 1 ? 'easu+rcas' : 'native-rcas';
+}

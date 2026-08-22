@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createDevTraceCore } from './perfTrace.js';
+import { buildQaSummary, debugModeRequested } from '../ui/perfHud.js';
 
 let clock = 1000;
 const game = {
@@ -9,6 +10,7 @@ const game = {
 const renderer = {
   info: {
     programs: [{}, {}],
+    memory: { geometries: 42, textures: 17 },
     render: { frame: 1, calls: 12, triangles: 3456 },
   },
 };
@@ -21,7 +23,11 @@ const trace = createDevTraceCore({
   enabled: true, now: () => clock,
   eventCapacity: 5, frameCapacity: 8,
 });
-trace.configure({ game, renderer, input, getContext: () => ({ cameraMode: 'CHASE' }) });
+trace.configure({
+  game, renderer, input,
+  getContext: () => ({ cameraMode: 'CHASE', renderScale: 0.75 }),
+  getTelemetry: () => ({ quality: { preset: 'mobile' } }),
+});
 trace.clear();
 
 const reused = { id: 7, nested: { hp: 900 }, loop: null };
@@ -74,6 +80,25 @@ const snapshot = trace.snapshot();
 assert.deepEqual(snapshot.frameSchema.slice(0, 5), ['tMs', 'gapMs', 'dtMs', 'simS', 'preBattleS']);
 assert.equal(snapshot.frames[0][0], 16, 'clear resets the trace-relative clock');
 assert.equal(snapshot.frames[0].length, snapshot.frameSchema.length);
-assert.equal(JSON.parse(trace.exportJson()).version, 1);
+const columns = Object.fromEntries(snapshot.frameSchema.map((name, i) => [name, i]));
+assert.equal(snapshot.frames[0][columns.geometries], 42);
+assert.equal(snapshot.frames[0][columns.textures], 17);
+assert.equal(snapshot.frames[0][columns.renderScale], 0.75);
+assert.equal(snapshot.telemetry.quality.preset, 'mobile');
+assert.equal(trace.snapshot({ frames: false, events: false }).frames.length, 0);
+const exported = JSON.parse(trace.exportJson());
+assert.equal(exported?.version, 1);
+const exportedWithoutFrames = JSON.parse(trace.exportJson(false, { frames: false, gpu: false }));
+assert.equal(exportedWithoutFrames?.frames?.length, 0);
+
+assert.equal(debugModeRequested('?debug=1'), true);
+assert.equal(debugModeRequested('?debug=off'), false);
+const qaSummary = buildQaSummary({
+  capturedAt: '2026-08-22T00:00:00.000Z', traceStats: { frames: 120 },
+  hudSnapshot: { stats: { fps: 55.5 }, telemetry: { quality: { preset: 'mobile' } } },
+});
+assert.equal(qaSummary.trace.frames, 120);
+assert.equal(qaSummary.frame.fps, 55.5);
+assert.equal(qaSummary.telemetry.quality.preset, 'mobile');
 
 console.log('perfTrace selftest: pass');

@@ -206,9 +206,14 @@ regression record.
 - No unbounded catch-up loop after a long pause.
 - No replaceable snapshot backlog.
 - No expensive event burst monopolizing a frame.
-- No always-on development trace in production.
+- No trace in ordinary production; optimized QA recording requires explicit
+  `?debug=1` opt-in.
 - No game-graph preload from /home or /docs.
 - No public comparison-asset loading for a playable tank.
 - No quality setting changes simulation truth.
 - No failed diagnostic leaves an off-screen render target bound.
 - No transition certification from a host-contended measurement window.
+- No browser-level second upscale on phone-size viewports: the final WebGL
+  backing store is native through DPR 3 while under the 4 MP mobile output
+  budget. Adaptive scene/post density remains an independent performance
+  lever and its reconstruction mode is exposed in telemetry.

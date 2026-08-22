@@ -1,8 +1,10 @@
-// Development-only gameplay/performance flight recorder.
+// Bounded gameplay/performance flight recorder. Development enables it by
+// default; optimized production builds load it only for the explicit
+// `?debug=1` device-QA path selected in main.js.
 //
-// Event objects are bounded and frames use typed columns so the profiler does
-// not manufacture the GC stalls it is meant to find. Production builds get an
-// inert API and install no observers/listeners.
+// Event objects are bounded and frames use typed columns so the recorder does
+// not manufacture the GC stalls it is meant to find. Normal production never
+// imports this module and therefore installs no observers/listeners.
 
 const VITE_DEV = !!import.meta.env?.DEV;
 export const DEV_TRACE_ACTIVE = typeof window !== 'undefined' && VITE_DEV;
@@ -11,8 +13,8 @@ const PHASES = ['unknown', 'garage', 'battle', 'ended', 'shot', 'studio'];
 const PHASE_CODE = new Map(PHASES.map((name, i) => [name, i]));
 const FRAME_SCHEMA = [
   'tMs', 'gapMs', 'dtMs', 'simS', 'preBattleS', 'phase', 'flags',
-  'renderFrame', 'calls', 'triangles', 'programs', 'heapMB',
-  'throttle', 'steer', 'fire',
+  'renderFrame', 'calls', 'triangles', 'programs', 'geometries', 'textures',
+  'heapMB', 'renderScale', 'throttle', 'steer', 'fire',
 ];
 const FLAGS = {
   hidden: 1 << 0, unfocused: 1 << 1, paused: 1 << 2, countdown: 1 << 3,
@@ -107,10 +109,12 @@ export function createDevTraceCore(options = {}) {
     sim: new Float32Array(frameCap), pre: new Float32Array(frameCap), phase: new Uint8Array(frameCap),
     flags: new Uint16Array(frameCap), renderFrame: new Uint32Array(frameCap),
     calls: new Uint32Array(frameCap), tris: new Uint32Array(frameCap), programs: new Uint16Array(frameCap),
-    heap: new Float32Array(frameCap), throttle: new Float32Array(frameCap),
+    geometries: new Uint16Array(frameCap), textures: new Uint16Array(frameCap),
+    heap: new Float32Array(frameCap), renderScale: new Float32Array(frameCap), throttle: new Float32Array(frameCap),
     steer: new Float32Array(frameCap), fire: new Uint8Array(frameCap),
   };
   const startedPerf = now(), startedWall = Date.now();
+  const traceMode = options.traceMode || (VITE_DEV ? 'development' : 'qa');
   let traceZero = startedPerf;
   const sessionId = `${startedWall.toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
   const counts = Object.create(null);
@@ -175,8 +179,11 @@ export function createDevTraceCore(options = {}) {
     f.phase[i] = PHASE_CODE.get(phase) ?? 0; f.flags[i] = bits; f.renderFrame[i] = rf;
     f.calls[i] = info?.render?.calls || 0; f.tris[i] = info?.render?.triangles || 0;
     f.programs[i] = Math.min((info?.programs || []).length, 65535);
+    f.geometries[i] = Math.min(info?.memory?.geometries || 0, 65535);
+    f.textures[i] = Math.min(info?.memory?.textures || 0, 65535);
     f.heap[i] = typeof performance !== 'undefined' && performance.memory
       ? performance.memory.usedJSHeapSize / 1048576 : -1;
+    f.renderScale[i] = Number.isFinite(ctx.renderScale) ? ctx.renderScale : -1;
     f.throttle[i] = Number(inp?.throttle) || 0; f.steer[i] = Number(inp?.steer) || 0; f.fire[i] = inp?.fire ? 1 : 0;
     if (frameSize === frameCap) frameDropped++; else frameSize++;
     frameNext = (frameNext + 1) % frameCap;
@@ -214,8 +221,8 @@ export function createDevTraceCore(options = {}) {
       out[n] = [
         +f.t[i].toFixed(3), +f.gap[i].toFixed(3), +f.dt[i].toFixed(3), +f.sim[i].toFixed(4),
         +f.pre[i].toFixed(3), PHASES[f.phase[i]], f.flags[i], f.renderFrame[i], f.calls[i],
-        f.tris[i], f.programs[i], +f.heap[i].toFixed(2), +f.throttle[i].toFixed(3),
-        +f.steer[i].toFixed(3), f.fire[i],
+        f.tris[i], f.programs[i], f.geometries[i], f.textures[i], +f.heap[i].toFixed(2),
+        +f.renderScale[i].toFixed(3), +f.throttle[i].toFixed(3), +f.steer[i].toFixed(3), f.fire[i],
       ];
     }
     return out;
@@ -225,7 +232,7 @@ export function createDevTraceCore(options = {}) {
     for (let n = 0; n < frameSize; n++) gaps[n] = f.gap[(start + n) % frameCap];
     gaps.sort((a, b) => a - b);
     return {
-      enabled: true, active, sessionId, durationMs: rel(), frames: frameSize,
+      enabled: true, active, traceMode, sessionId, durationMs: rel(), frames: frameSize,
       framesDropped: frameDropped, events: events.size, eventsDropped: events.dropped,
       eventCounts: { ...counts }, gapP50: +pct(gaps, .5).toFixed(3),
       gapP95: +pct(gaps, .95).toFixed(3), gapP99: +pct(gaps, .99).toFixed(3),
@@ -245,15 +252,21 @@ export function createDevTraceCore(options = {}) {
       deviceMemoryGB: nav.deviceMemory ?? null,
       dpr: typeof devicePixelRatio !== 'undefined' ? devicePixelRatio : null,
       viewport: typeof innerWidth !== 'undefined' ? [innerWidth, innerHeight] : null,
-      gpu: includeGpu ? cachedGpu : null, mode: import.meta.env?.MODE || 'unknown',
+      gpu: includeGpu ? cachedGpu : null, mode: import.meta.env?.MODE || 'unknown', traceMode,
     };
   }
   function snapshot(options = {}) {
     return {
       version: 1, sessionId, startedAt: new Date(startedWall).toISOString(),
       timeOrigin: typeof performance !== 'undefined' ? performance.timeOrigin : null,
-      environment: environment(options.gpu !== false), stats: stats(), frameSchema: FRAME_SCHEMA,
-      frames: rows(), events: events.ordered(),
+      environment: environment(options.gpu !== false),
+      telemetry: (() => {
+        try { return cloneSafe(refs.getTelemetry?.() || null); }
+        catch (error) { return { error: String(error?.message || error) }; }
+      })(),
+      stats: stats(), frameSchema: FRAME_SCHEMA,
+      frames: options.frames === false ? [] : rows(),
+      events: options.events === false ? [] : events.ordered(),
     };
   }
   function clear() {
@@ -285,8 +298,10 @@ export function createDevTraceCore(options = {}) {
     clear, start() { active = true; push('trace', 'started', {}); },
     stop() { push('trace', 'stopped', {}); active = false; },
     console(on = true) { consoleAll = !!on; return consoleAll; }, stats, snapshot,
-    exportJson(pretty = false) { return JSON.stringify(snapshot(), null, pretty ? 2 : 0); },
-    download(filename = `cot-dev-trace-${sessionId}.json`) {
+    exportJson(pretty = false, snapshotOptions = {}) {
+      return JSON.stringify(snapshot(snapshotOptions), null, pretty ? 2 : 0);
+    },
+    download(filename = `cot-${traceMode === 'production-qa' ? 'qa' : 'dev'}-trace-${sessionId}.json`) {
       if (typeof document === 'undefined') return null;
       const url = URL.createObjectURL(new Blob([api.exportJson(false)], { type: 'application/json' }));
       const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
@@ -332,7 +347,8 @@ export function createDevTraceCore(options = {}) {
     const canvas = refs.renderer?.domElement;
     canvas?.addEventListener('webglcontextlost', (e) => anomaly('webgl:context-lost', { statusMessage: e.statusMessage || '' }));
     canvas?.addEventListener('webglcontextrestored', () => push('lifecycle', 'webglcontextrestored', {}));
-    window.__DEV_TRACE = api;
+    window.__DEV_TRACE = api; // backwards-compatible probe name
+    window.__QA_TRACE = api;
   }
   push('trace', 'created', { sessionId, eventCap, frameCap });
   return api;

@@ -2768,7 +2768,7 @@ function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
 
 // One track texture: 4 link rows per repeat, chevron/waffle grousers.
 function paintTrack(rng) {
-  const S = texSize(512); // MOBILE r1: central tier scale (painter is S-relative)
+  const S = texSize(512); // shared/repeating track tile keeps the world-scale budget
   const c = makeCanvas(S, S);
   const ctx = c.getContext('2d');
   // r3 (critic: Tiger "track links are bright sparkly silver-gray instead of
@@ -3023,9 +3023,14 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   // Tier scale is applied at the one place every shared vehicle bake sizes
   // itself; burnt/ember/camo repaints all derive from these canvases.
   const szq = QUALITY_SIZES[normalizeMaterialTextureQuality(quality)];
+  // Preserve extra texels only for the selected/close vehicle. Distant AI is
+  // already authored at its own compact tier and remains on the stricter
+  // world scale so a 14-tank entry does not multiply paint time or residency.
+  const textureClass = quality === 'high' || quality === 'preview'
+    ? 'vehicle' : 'world';
   const sz = {
-    albedo: texSize(szq.albedo),
-    map: texSize(szq.map),
+    albedo: texSize(szq.albedo, textureClass),
+    map: texSize(szq.map, textureClass),
   };
   const { spec, seed } = entry;
   // Welded-composite hulls draw no rivet/bolt rows.
@@ -3259,7 +3264,7 @@ export function* prebakeBurntSteps(specId, aniso, selection = null) {
 
 function* burntBakeSteps(entry, aniso) {
   if (entry.burntTex) return;
-  const S = texSize(1024); // MOBILE r1: central tier scale (S-relative painter)
+  const S = texSize(1024); // transient wreck treatment keeps the world-scale budget
   const cv = makeCanvas(S, S);
   const ctx = cv.getContext('2d');
   ctx.drawImage(entry.camoCanvas, 0, 0, S, S);

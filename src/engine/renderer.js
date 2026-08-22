@@ -13,22 +13,25 @@
  * resolution governor.
  */
 import * as THREE from 'three';
-import { resolveDeviceTier, noteGpuRenderer } from './quality.js';
+import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.js';
+import { outputResolution } from './resolutionPolicy.js';
 
-// engine-aa r1: 1.5 → 2. This caps the CANVAS BACKING STORE, not the render
-// cost: the composer renders the scene + post chain at the preset's
-// maxPixelRatio (1.5 on default High; native 2 on explicit Ultra — quality.js
-// owns that budget lever) and only the
-// final to-screen AA pass rasterizes at the canvas resolution. At the old 1.5
-// cap a dpr-2 display took TWO stacked upscales (composer → 1.5x canvas,
-// then the browser stretching the canvas 1.33x onto physical pixels), which
-// softened every frame and re-magnified whatever stair-steps survived; the
-// final subpix-AA pass also ran below physical resolution. Now the canvas is
-// 1:1 with physical pixels on dpr <= 2 displays, the single linear upscale
-// happens inside the AA pass, and dpr-1 machines are bit-identical (ratio
-// 1.0 either way). Cost: one fullscreen pass + compositor at 2x instead of
-// 1.5x — certified against the dsf-2 budget (see shots/engine-aa-r1/).
-const PIXEL_RATIO_CAP = 2;
+// The canvas is the final display surface, not the expensive scene/post
+// resolution. DPR-3 phones now get a true native backing store instead of a
+// DPR-2 canvas that the browser stretches a second time. Large mobile/tablet
+// viewports remain bounded by resolutionPolicy's output-pixel budget; the
+// composer's independently adaptive resolution still owns the heavy work.
+function applyOutputResolution(renderer, width, height) {
+  const resolution = outputResolution({
+    width,
+    height,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    mobile: getDeviceTier() === 'mobile',
+  });
+  renderer.setPixelRatio(resolution.pixelRatio);
+  renderer.userData.outputResolution = resolution;
+  return resolution;
+}
 
 /**
  * Create the game's WebGLRenderer and append its canvas to `container`.
@@ -100,7 +103,7 @@ export function createRenderer(container) {
   const width = container.clientWidth || window.innerWidth;
   const height = container.clientHeight || window.innerHeight;
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PIXEL_RATIO_CAP));
+  applyOutputResolution(renderer, width, height);
   renderer.setSize(width, height);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -179,7 +182,7 @@ export function onResize(renderer, camera) {
   const width = (parent && parent.clientWidth) || window.innerWidth;
   const height = (parent && parent.clientHeight) || window.innerHeight;
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PIXEL_RATIO_CAP));
+  applyOutputResolution(renderer, width, height);
   renderer.setSize(width, height);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
