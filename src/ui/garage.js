@@ -87,7 +87,9 @@ const GARAGE_CSS = `
   background:linear-gradient(90deg,rgba(5,8,11,.8),rgba(5,8,11,0));}
 .cot-garage .band-r{position:absolute;right:0;top:0;bottom:0;width:30%;
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
-.cot-garage .title{position:absolute;top:20px;left:34px;font-size:17px;font-weight:800;
+.cot-brand-rail{position:absolute;top:20px;left:34px;height:36px;display:flex;align-items:center;
+  gap:14px;pointer-events:auto;}
+.cot-garage .title{position:static;font-size:17px;font-weight:800;
   letter-spacing:.20em;color:#9fb0bf;text-transform:uppercase;
   display:flex;align-items:center;gap:10px;}
 .cot-garage .title > span{word-spacing:-.36em;}
@@ -97,31 +99,36 @@ const GARAGE_CSS = `
    instead of bare text */
 .cot-garage .title .mark{display:block;width:36px;height:36px;flex:0 0 auto;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));}
-/* r6-2 (round critique: vehicle name + flag + class line appeared TWICE —
-   top-left header and right stats panel): the top-left corner now carries
-   only the game logo + a quiet screen-mode tag; the vehicle identity lives
-   solely on the stats card. */
-/* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
-   Garage (current) / Studio / Tank Gallery / Home. */
+/* Vehicle identity remains solely on the stats card; the brand rail is
+   reserved for product identity and quiet player-level destinations. */
+/* Header hierarchy: personal destinations sit with the brand at left, while
+   workspace navigation stays at right and BATTLE owns the center. This keeps
+   the primary action legible without compressing every destination together. */
+.cot-brand-utilities{height:32px;display:flex;align-items:stretch;gap:3px;padding-left:14px;
+  border-left:1px solid rgba(146,164,180,.24);}
 .cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
   height:34px;pointer-events:auto;}
-.cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
+.cot-header-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
   display:inline-flex;align-items:center;gap:6px;
   padding:0 6px;background:rgba(11,15,20,.72);
   border:1px solid rgba(146,164,180,.28);border-bottom-width:2px;
-  text-decoration:none;transition:color .15s,border-color .15s,background .15s;}
-.cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
-.cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
+  text-decoration:none;transition:color .15s,border-color .15s,background .15s,transform .15s ease-out;}
+.cot-header-nav .nv:active{transform:scale(.97);}
+@media (hover:hover) and (pointer:fine){
+  .cot-header-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+}
+.cot-header-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
+.cot-brand-utilities .nv{background:rgba(8,12,16,.58);border-color:rgba(146,164,180,.22);}
 /* Product destinations use the same authored marks as the public navigation. */
-.cot-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
-.cot-nav .nv .nvi-product{width:18px;height:16px;}
-.cot-nav .nv .nav-label{display:inline;}
-.cot-nav .cot-record-trigger{position:relative;}
-.cot-nav .cot-record-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
+.cot-header-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
+.cot-header-nav .nv .nvi-product{width:18px;height:16px;}
+.cot-header-nav .nv .nav-label{display:inline;}
+.cot-header-nav .cot-record-trigger{position:relative;}
+.cot-header-nav .cot-record-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
   background:rgba(35,24,10,.94);}
-.cot-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
+.cot-header-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
   color:#1a1105;background:#f0a030;border:1px solid #ffc46b;font:900 7px ${FONT_COND};
   line-height:1;letter-spacing:0;box-shadow:0 0 12px rgba(240,160,48,.2);}
 .cot-nav .cot-github{position:relative;padding-inline:8px;}
@@ -823,10 +830,11 @@ const GARAGE_CSS = `
    each destination to its authored icon. aria-label/title retain the full
    destination names for assistive technology and pointer discovery. */
 @media (max-width:1480px){
-  .cot-nav .nv{width:34px;padding:0;justify-content:center;gap:0;}
+  .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0;}
   .cot-nav .nv .nav-label{display:none;}
-  .cot-nav .nv .nvi{width:15px;height:15px;}
-  .cot-nav .record-badge{position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;
+  .cot-brand-utilities .nv .nav-label{display:none;}
+  .cot-header-nav .nv .nvi{width:15px;height:15px;}
+  .cot-header-nav .record-badge{position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;
     font-size:6px;}
   .cot-nav .github-stars{position:absolute;right:-7px;top:-6px;min-width:18px;height:14px;padding:0 3px;
     display:grid;place-items:center;border:1px solid #ffc46b;background:#f0a030;color:#1a1105;
@@ -849,11 +857,13 @@ const GARAGE_CSS = `
 @media (max-width:900px){
   .cot-garage .band-top{height:23%;}.cot-garage .band-bot{height:31%;}
   .cot-garage .band-r{display:none;}
-  .cot-garage .title{top:12px;left:14px;font-size:13px;letter-spacing:.22em;gap:7px;}
+  .cot-brand-rail{top:12px;left:14px;height:40px;gap:9px;}
+  .cot-garage .title{font-size:13px;letter-spacing:.22em;gap:7px;}
   .cot-garage .title .mark{width:22px;height:22px;}
+  .cot-brand-utilities{height:40px;padding-left:9px;}
   .cot-nav{top:62px;right:14px;gap:3px;height:40px;}
-  .cot-nav .nv{width:40px;min-height:40px;font-size:7px;padding:0;letter-spacing:.12em;}
-  .cot-nav .nv .nvi{width:11px;height:11px;}
+  .cot-header-nav .nv{width:40px;min-height:40px;font-size:7px;padding:0;letter-spacing:.12em;}
+  .cot-header-nav .nv .nvi{width:11px;height:11px;}
   .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
   .cot-nav .cot-gear svg{width:17px;height:17px;}
   .cot-battle-control{top:12px;width:214px;height:40px;}
@@ -908,14 +918,16 @@ const GARAGE_CSS = `
   body.cot-touch-layout .cot-garage .band-top{height:23%;}
   body.cot-touch-layout .cot-garage .band-bot{height:31%;}
   body.cot-touch-layout .cot-garage .band-r{display:none;}
-  body.cot-touch-layout .cot-garage .title{top:12px;left:max(14px,env(safe-area-inset-left));
-    font-size:13px;letter-spacing:.22em;gap:7px;}
+  body.cot-touch-layout .cot-brand-rail{top:12px;left:max(14px,env(safe-area-inset-left));
+    height:40px;gap:10px;}
+  body.cot-touch-layout .cot-garage .title{font-size:13px;letter-spacing:.22em;gap:7px;}
   body.cot-touch-layout .cot-garage .title .mark{width:24px;height:24px;}
+  body.cot-touch-layout .cot-brand-utilities{height:40px;padding-left:10px;}
   body.cot-touch-layout .cot-nav{top:12px;right:max(14px,env(safe-area-inset-right));
     gap:3px;height:40px;}
-  body.cot-touch-layout .cot-nav .nv{width:40px;min-height:40px;padding:0;justify-content:center;gap:0;}
-  body.cot-touch-layout .cot-nav .nv .nav-label{display:none;}
-  body.cot-touch-layout .cot-nav .nv .nvi{width:13px;height:13px;}
+  body.cot-touch-layout .cot-header-nav .nv{width:40px;min-height:40px;padding:0;justify-content:center;gap:0;}
+  body.cot-touch-layout .cot-header-nav .nv .nav-label{display:none;}
+  body.cot-touch-layout .cot-header-nav .nv .nvi{width:13px;height:13px;}
   body.cot-touch-layout .cot-nav .cot-settings-slot,
   body.cot-touch-layout .cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
   body.cot-touch-layout .cot-nav .cot-gear svg{width:18px;height:18px;}
@@ -979,6 +991,7 @@ const GARAGE_CSS = `
    wordmark text, narrows the plate and shrinks the wallet chips. */
 @media (max-width:520px) and (orientation:portrait){
   .cot-garage .title span{display:none;}
+  .cot-brand-utilities{position:absolute;top:48px;left:0;}
   .cot-nav{top:76px;}
   .cot-battle-control{width:176px;height:44px;}
   .cot-battle{font-size:13px;padding-left:4px;gap:5px;}
@@ -1724,12 +1737,21 @@ export function createGarage(opts) {
   root.innerHTML =
     `<div class="band-top"></div><div class="band-bot"></div>` +
     `<div class="band-l"></div><div class="band-r"></div>` +
-    `<div class="title">` +
+    `<div class="cot-brand-rail"><div class="title">` +
     // brand mark (tank + Claude Code commander) so the garage brand matches
     // the entry screen; master copy public/brand/logo-mark.svg
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
-    `<nav class="cot-nav" aria-label="Garage navigation">` +
+    `<div class="cot-brand-utilities cot-header-nav" aria-label="Home and player record">` +
+    `<button class="nv" data-nav="home" type="button" aria-label="Home" title="Home">` +
+    `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
+    `<span class="nav-label">Home</span></button>` +
+    `<button class="nv cot-record-trigger" type="button" aria-label="Open local service record" ` +
+    `title="Local service record" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
+    `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
+    `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
+    `</div></div>` +
+    `<nav class="cot-nav cot-header-nav" aria-label="Garage navigation">` +
     `<button class="nv on" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
     `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
     `<span class="nav-label">Garage</span></button>` +
@@ -1739,13 +1761,6 @@ export function createGarage(opts) {
     `<button class="nv" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
     `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
     `<span class="nav-label">Gallery</span></button>` +
-    `<button class="nv" data-nav="home" type="button" aria-label="Home" title="Home">` +
-    `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
-    `<span class="nav-label">Home</span></button>` +
-    `<button class="nv cot-record-trigger" type="button" aria-label="Open local service record" ` +
-    `title="Local service record" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
-    `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +

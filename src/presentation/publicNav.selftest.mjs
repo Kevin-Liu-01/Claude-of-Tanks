@@ -70,6 +70,13 @@ for (const [, contents] of gameRepositoryLinks) {
 }
 
 const garageSource = readFileSync(join(ROOT, 'src/ui/garage.js'), 'utf8');
+const brandUtilities = garageSource.indexOf('class="cot-brand-utilities cot-header-nav"');
+const homeControl = garageSource.indexOf('data-nav="home"');
+const recordControl = garageSource.indexOf('class="nv cot-record-trigger"');
+const garageNavigation = garageSource.indexOf('class="cot-nav cot-header-nav"');
+assert.ok(brandUtilities >= 0 && homeControl > brandUtilities && recordControl > homeControl &&
+  garageNavigation > recordControl,
+  'garage Home and Record controls must live with the left-side brand before workspace navigation');
 const githubControl = garageSource.indexOf('class="nv cot-github"');
 const settingsSlot = garageSource.indexOf('class="cot-settings-slot"');
 assert.ok(githubControl >= 0 && settingsSlot > githubControl,
