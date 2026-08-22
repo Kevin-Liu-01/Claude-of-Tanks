@@ -13,7 +13,7 @@ const CREW_ICON = Object.freeze({
 
 /** Matchmaking peer key used by every normalized garage stat bar. */
 export function garageStatGroup(spec) {
-  return `${tankTier(spec?.id)}/${spec?.class || 'medium'}`;
+  return `${tankTier(spec?.id)}/${spec?.era || 'unclassified'}`;
 }
 
 /** Canonically ordered, duplicate-free damageable modules for one vehicle. */

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "partial": false,
   "generator": "tools/genIcons.mjs",
   "requiredViews": [
@@ -37,8 +37,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -980,7 +979,7 @@
         ]
       },
       "geometryHash": "04052ee2",
-      "metadataHash": "107a0478",
+      "metadataHash": "92f3c848",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -1117,8 +1116,7 @@
       },
       "nation": "France",
       "countryCode": "fr",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -1967,7 +1965,7 @@
         ]
       },
       "geometryHash": "dde87dc1",
-      "metadataHash": "308851b8",
+      "metadataHash": "867ff321",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -2107,8 +2105,7 @@
       },
       "nation": "France",
       "countryCode": "fr",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -2956,8 +2953,8 @@
           }
         ]
       },
-      "geometryHash": "70e02385",
-      "metadataHash": "e06301dd",
+      "geometryHash": "d8d00a7d",
+      "metadataHash": "d8067a36",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -2974,7 +2971,7 @@
           "armorPaint": 7,
           "wood": 1,
           "tireRubber": 1,
-          "unclassified": 16,
+          "unclassified": 15,
           "gearShadow": 2,
           "canvas": 1
         }
@@ -3096,8 +3093,7 @@
       },
       "nation": "France",
       "countryCode": "fr",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -3945,8 +3941,8 @@
           }
         ]
       },
-      "geometryHash": "c83c6ca1",
-      "metadataHash": "2553f83e",
+      "geometryHash": "4f51ae5a",
+      "metadataHash": "0e30acc1",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -4087,7 +4083,6 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -5091,7 +5086,7 @@
         ]
       },
       "geometryHash": "545b4cfe",
-      "metadataHash": "14a67401",
+      "metadataHash": "94bf3e4c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -5233,7 +5228,6 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -6082,7 +6076,7 @@
         ]
       },
       "geometryHash": "3ed727cd",
-      "metadataHash": "dd6e07d7",
+      "metadataHash": "cb9995e4",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -6223,7 +6217,6 @@
       "nation": "Italy",
       "countryCode": "it",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -7072,7 +7065,7 @@
         ]
       },
       "geometryHash": "d2b3fd39",
-      "metadataHash": "4c259867",
+      "metadataHash": "8ac4fde4",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -7212,8 +7205,7 @@
       },
       "nation": "Italy",
       "countryCode": "it",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -8062,7 +8054,7 @@
         ]
       },
       "geometryHash": "def0dd55",
-      "metadataHash": "a0b227ce",
+      "metadataHash": "94ec8896",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -8201,8 +8193,7 @@
       },
       "nation": "USSR",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -9003,8 +8994,8 @@
           }
         ]
       },
-      "geometryHash": "f166dff1",
-      "metadataHash": "f67ff90d",
+      "geometryHash": "61eae20b",
+      "metadataHash": "2a0e5a80",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -9023,7 +9014,7 @@
           "tireRubber": 1,
           "wood": 1,
           "canvas": 1,
-          "unclassified": 11,
+          "unclassified": 12,
           "gearShadow": 1
         }
       },
@@ -9146,8 +9137,7 @@
       },
       "nation": "Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -9948,8 +9938,8 @@
           }
         ]
       },
-      "geometryHash": "0c0145d8",
-      "metadataHash": "9ee2a34f",
+      "geometryHash": "665ef7ea",
+      "metadataHash": "700e6f2a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -9969,7 +9959,7 @@
           "tireRubber": 1,
           "wood": 1,
           "canvas": 1,
-          "unclassified": 10
+          "unclassified": 11
         }
       },
       "muzzleBore": {
@@ -10094,7 +10084,6 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "class": "ifv",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -10896,7 +10885,7 @@
         ]
       },
       "geometryHash": "d853a4e8",
-      "metadataHash": "5d963d42",
+      "metadataHash": "90100c09",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -11041,7 +11030,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "ifv",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -12184,7 +12172,7 @@
         ]
       },
       "geometryHash": "d49f9742",
-      "metadataHash": "ef108a8f",
+      "metadataHash": "31265c28",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -12329,7 +12317,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "ifv",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -13379,7 +13366,7 @@
         ]
       },
       "geometryHash": "5b1463cf",
-      "metadataHash": "ac61fc60",
+      "metadataHash": "a2762a55",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -13523,8 +13510,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -14326,7 +14312,7 @@
         ]
       },
       "geometryHash": "d1619873",
-      "metadataHash": "189686cf",
+      "metadataHash": "d041fa58",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -14467,8 +14453,7 @@
       },
       "nation": "Italy",
       "countryCode": "it",
-      "era": "coldwar",
-      "class": "medium",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -15254,8 +15239,8 @@
           }
         ]
       },
-      "geometryHash": "d2e20a19",
-      "metadataHash": "d25e12e5",
+      "geometryHash": "2eb7b1c0",
+      "metadataHash": "888b02b5",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -15395,8 +15380,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -16183,7 +16167,7 @@
         ]
       },
       "geometryHash": "0e53f088",
-      "metadataHash": "a093a308",
+      "metadataHash": "b34b5e33",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -16322,8 +16306,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -17110,7 +17093,7 @@
         ]
       },
       "geometryHash": "4c226f01",
-      "metadataHash": "0f59ad73",
+      "metadataHash": "2d42c38c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -17249,8 +17232,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -18161,7 +18143,7 @@
         ]
       },
       "geometryHash": "f09b07f7",
-      "metadataHash": "f4a34a9d",
+      "metadataHash": "391a125d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -18300,7 +18282,6 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "ww2",
-      "class": "medium",
       "tier": 6,
       "tierNumeral": "VI",
       "dimensionsM": {
@@ -19118,7 +19099,7 @@
         ]
       },
       "geometryHash": "3342cbd1",
-      "metadataHash": "b010014f",
+      "metadataHash": "df3eb132",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -19254,8 +19235,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -20104,7 +20084,7 @@
         ]
       },
       "geometryHash": "511cc1d5",
-      "metadataHash": "0e6a728e",
+      "metadataHash": "80691461",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -20243,7 +20223,6 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -21092,7 +21071,7 @@
         ]
       },
       "geometryHash": "baee5bf5",
-      "metadataHash": "25a6fe77",
+      "metadataHash": "c251d20a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -21229,8 +21208,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "ww2",
-      "class": "td",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -21986,7 +21964,7 @@
         ]
       },
       "geometryHash": "9bcc9958",
-      "metadataHash": "8db51bfe",
+      "metadataHash": "5c12a511",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -22123,8 +22101,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -22911,7 +22888,7 @@
         ]
       },
       "geometryHash": "b0e2487d",
-      "metadataHash": "58824ad6",
+      "metadataHash": "93b9c9b3",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -23050,8 +23027,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -23838,7 +23814,7 @@
         ]
       },
       "geometryHash": "ab701d8e",
-      "metadataHash": "15bd52ca",
+      "metadataHash": "59ed7319",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -23978,7 +23954,6 @@
       "nation": "UK",
       "countryCode": "gb",
       "era": "ww2",
-      "class": "medium",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -24796,7 +24771,7 @@
         ]
       },
       "geometryHash": "c307e4d2",
-      "metadataHash": "01cbc7a9",
+      "metadataHash": "0d8c51b2",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -24932,8 +24907,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -25774,8 +25748,8 @@
           }
         ]
       },
-      "geometryHash": "9b1ffa85",
-      "metadataHash": "0f9104e7",
+      "geometryHash": "34c8e7e9",
+      "metadataHash": "d5042d14",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -25916,8 +25890,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -26780,8 +26753,8 @@
           }
         ]
       },
-      "geometryHash": "4e32cc50",
-      "metadataHash": "64a38a05",
+      "geometryHash": "f9b0982e",
+      "metadataHash": "b5a10dc8",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -26920,7 +26893,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "heavy",
       "tier": 5,
       "tierNumeral": "V",
       "dimensionsM": {
@@ -27676,7 +27648,7 @@
         ]
       },
       "geometryHash": "de9e4840",
-      "metadataHash": "22326f2e",
+      "metadataHash": "b0347e4d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -27813,7 +27785,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "heavy",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -28662,7 +28633,7 @@
         ]
       },
       "geometryHash": "b8b6df02",
-      "metadataHash": "91775255",
+      "metadataHash": "7eb35cce",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -28799,7 +28770,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "heavy",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -29555,7 +29525,7 @@
         ]
       },
       "geometryHash": "581152f0",
-      "metadataHash": "abf8e143",
+      "metadataHash": "0142e6fc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -29693,7 +29663,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "heavy",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -30449,7 +30418,7 @@
         ]
       },
       "geometryHash": "d68c3ddb",
-      "metadataHash": "7bb0eee5",
+      "metadataHash": "52e1382a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -30586,7 +30555,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "heavy",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -31341,8 +31309,8 @@
           }
         ]
       },
-      "geometryHash": "751d8d54",
-      "metadataHash": "7c340a0d",
+      "geometryHash": "3996bb6e",
+      "metadataHash": "09766c98",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -31356,7 +31324,7 @@
           "fittingPaint": 2,
           "opticGlass": 2,
           "wood": 1,
-          "unclassified": 10,
+          "unclassified": 9,
           "gearShadow": 1
         }
       },
@@ -31477,8 +31445,7 @@
       },
       "nation": "USSR",
       "countryCode": "ru",
-      "era": "ww2",
-      "class": "heavy",
+      "era": "cold-war",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -32234,7 +32201,7 @@
         ]
       },
       "geometryHash": "c3c0da7b",
-      "metadataHash": "1d1af613",
+      "metadataHash": "e667d763",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -32367,7 +32334,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "td",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -33123,7 +33089,7 @@
         ]
       },
       "geometryHash": "61021b6d",
-      "metadataHash": "aac723f7",
+      "metadataHash": "8deaae23",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -33264,7 +33230,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "td",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -34013,7 +33978,7 @@
         ]
       },
       "geometryHash": "3ff9b746",
-      "metadataHash": "fde7ae81",
+      "metadataHash": "d4d8354d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -34151,7 +34116,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "td",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -34907,7 +34871,7 @@
         ]
       },
       "geometryHash": "65afdb88",
-      "metadataHash": "c4bb2c87",
+      "metadataHash": "2c56bd97",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -35046,7 +35010,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "td",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -35802,7 +35765,7 @@
         ]
       },
       "geometryHash": "62c7e19e",
-      "metadataHash": "107b7117",
+      "metadataHash": "2f3f38eb",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -35941,7 +35904,6 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -36790,7 +36752,7 @@
         ]
       },
       "geometryHash": "18c0611a",
-      "metadataHash": "ad560009",
+      "metadataHash": "4c8f6e94",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -36933,7 +36895,6 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -37782,7 +37743,7 @@
         ]
       },
       "geometryHash": "ffd66bf2",
-      "metadataHash": "37671721",
+      "metadataHash": "a599acaa",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -37924,7 +37885,6 @@
       "nation": "South Korea",
       "countryCode": "kr",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -38773,7 +38733,7 @@
         ]
       },
       "geometryHash": "7bc751ad",
-      "metadataHash": "7c4dd2ca",
+      "metadataHash": "06a5f501",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -38913,8 +38873,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -39670,7 +39629,7 @@
         ]
       },
       "geometryHash": "d8abc1f9",
-      "metadataHash": "f0efef52",
+      "metadataHash": "49e213fc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -39807,8 +39766,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -40564,7 +40522,7 @@
         ]
       },
       "geometryHash": "bff64537",
-      "metadataHash": "55d7e9b0",
+      "metadataHash": "65bc0340",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -40705,7 +40663,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "heavy",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -41461,7 +41418,7 @@
         ]
       },
       "geometryHash": "8e983d83",
-      "metadataHash": "01a8b981",
+      "metadataHash": "f8090e74",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -41602,7 +41559,6 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -42451,7 +42407,7 @@
         ]
       },
       "geometryHash": "a909e39c",
-      "metadataHash": "532a35d5",
+      "metadataHash": "bbff4fee",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -42592,7 +42548,6 @@
       "nation": "France",
       "countryCode": "fr",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -43596,7 +43551,7 @@
         ]
       },
       "geometryHash": "848e5d56",
-      "metadataHash": "0359dfa8",
+      "metadataHash": "7699bd49",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -43735,8 +43690,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "ww2",
-      "class": "light",
+      "era": "interwar",
       "tier": 1,
       "tierNumeral": "I",
       "dimensionsM": {
@@ -44492,7 +44446,7 @@
         ]
       },
       "geometryHash": "22d93205",
-      "metadataHash": "a28a7f32",
+      "metadataHash": "41e4da54",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -44628,8 +44582,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -45478,7 +45431,7 @@
         ]
       },
       "geometryHash": "0cdb2fd4",
-      "metadataHash": "8a80f86e",
+      "metadataHash": "60dad2fb",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -45619,7 +45572,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -46623,7 +46575,7 @@
         ]
       },
       "geometryHash": "64cf8ca6",
-      "metadataHash": "2bce27bd",
+      "metadataHash": "1ec4866e",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -46761,8 +46713,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -47611,7 +47562,7 @@
         ]
       },
       "geometryHash": "4d032f01",
-      "metadataHash": "f2a3b882",
+      "metadataHash": "5bdb8d99",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -47755,7 +47706,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -48604,7 +48554,7 @@
         ]
       },
       "geometryHash": "cd94d021",
-      "metadataHash": "cc71fae4",
+      "metadataHash": "b5555651",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -48747,7 +48697,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -49596,7 +49545,7 @@
         ]
       },
       "geometryHash": "902e10e2",
-      "metadataHash": "688fce1a",
+      "metadataHash": "619c102b",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -49737,7 +49686,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -50741,7 +50689,7 @@
         ]
       },
       "geometryHash": "41272a98",
-      "metadataHash": "ef1c852e",
+      "metadataHash": "572f9e7b",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -50883,7 +50831,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -51887,7 +51834,7 @@
         ]
       },
       "geometryHash": "b0f05a28",
-      "metadataHash": "e3a9a9a5",
+      "metadataHash": "6ce1f476",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -52030,7 +51977,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -53034,7 +52980,7 @@
         ]
       },
       "geometryHash": "88b93925",
-      "metadataHash": "23463dbe",
+      "metadataHash": "b19adfcf",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -53175,7 +53121,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -54179,7 +54124,7 @@
         ]
       },
       "geometryHash": "29b66891",
-      "metadataHash": "60d2e0fc",
+      "metadataHash": "65605229",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -54318,7 +54263,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -55322,7 +55266,7 @@
         ]
       },
       "geometryHash": "fbbeb0b4",
-      "metadataHash": "b0a7f97e",
+      "metadataHash": "571476c5",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -55462,8 +55406,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -56311,8 +56254,8 @@
           }
         ]
       },
-      "geometryHash": "2671ee53",
-      "metadataHash": "b30f3e8d",
+      "geometryHash": "dab5c7e0",
+      "metadataHash": "d76903b8",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -56451,8 +56394,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -57394,7 +57336,7 @@
         ]
       },
       "geometryHash": "7f465d01",
-      "metadataHash": "70b8bcda",
+      "metadataHash": "cc857027",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -57534,8 +57476,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -58477,7 +58418,7 @@
         ]
       },
       "geometryHash": "c67ec838",
-      "metadataHash": "a926d851",
+      "metadataHash": "1538b9b4",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -58618,7 +58559,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -59560,7 +59500,7 @@
         ]
       },
       "geometryHash": "bccc26f5",
-      "metadataHash": "c3f1914f",
+      "metadataHash": "fc970c24",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -59702,7 +59642,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -60644,7 +60583,7 @@
         ]
       },
       "geometryHash": "038d5262",
-      "metadataHash": "3291df50",
+      "metadataHash": "cab3de69",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -60786,7 +60725,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -61728,7 +61666,7 @@
         ]
       },
       "geometryHash": "f1656e80",
-      "metadataHash": "6c666c8e",
+      "metadataHash": "c83f478f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -61870,7 +61808,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -62812,7 +62749,7 @@
         ]
       },
       "geometryHash": "9ae8e1c3",
-      "metadataHash": "538e87da",
+      "metadataHash": "4ca9a6f3",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -62954,7 +62891,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -63896,7 +63832,7 @@
         ]
       },
       "geometryHash": "fcacd44d",
-      "metadataHash": "2f0cc035",
+      "metadataHash": "04315b4e",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -64037,7 +63973,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "ww2",
-      "class": "medium",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -64855,7 +64790,7 @@
         ]
       },
       "geometryHash": "58817155",
-      "metadataHash": "edfa5885",
+      "metadataHash": "8f2e2d68",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -64992,8 +64927,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -65857,7 +65791,7 @@
         ]
       },
       "geometryHash": "d959c554",
-      "metadataHash": "7609d75d",
+      "metadataHash": "9d9f6516",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -66001,7 +65935,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "class": "ifv",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -66865,7 +66798,7 @@
         ]
       },
       "geometryHash": "2880b06d",
-      "metadataHash": "cd2db7dd",
+      "metadataHash": "b1f6ccb8",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -67006,7 +66939,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "ww2",
-      "class": "medium",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -67824,7 +67756,7 @@
         ]
       },
       "geometryHash": "9e3f9579",
-      "metadataHash": "947753e5",
+      "metadataHash": "35795d26",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -67961,8 +67893,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -68810,8 +68741,8 @@
           }
         ]
       },
-      "geometryHash": "0394a3df",
-      "metadataHash": "250ca841",
+      "geometryHash": "dead3318",
+      "metadataHash": "fa3cc948",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -68949,8 +68880,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -69798,8 +69728,8 @@
           }
         ]
       },
-      "geometryHash": "79fe0117",
-      "metadataHash": "60727eb8",
+      "geometryHash": "f2717ecc",
+      "metadataHash": "a79cb7bd",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -69937,8 +69867,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -70787,7 +70716,7 @@
         ]
       },
       "geometryHash": "06b78413",
-      "metadataHash": "7e273bb2",
+      "metadataHash": "8e36533d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -70926,7 +70855,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "ww2",
-      "class": "medium",
       "tier": 6,
       "tierNumeral": "VI",
       "dimensionsM": {
@@ -71744,7 +71672,7 @@
         ]
       },
       "geometryHash": "0c46f033",
-      "metadataHash": "d9f4f119",
+      "metadataHash": "50b9ea0e",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -71883,8 +71811,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -72733,7 +72660,7 @@
         ]
       },
       "geometryHash": "493d9cc1",
-      "metadataHash": "d457633a",
+      "metadataHash": "584f170b",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -72871,8 +72798,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -73735,8 +73661,8 @@
           }
         ]
       },
-      "geometryHash": "88f3efa3",
-      "metadataHash": "febaa2a0",
+      "geometryHash": "edf12571",
+      "metadataHash": "b3e0df0d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -73873,8 +73799,7 @@
       },
       "nation": "USA",
       "countryCode": "us",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -74847,7 +74772,7 @@
         ]
       },
       "geometryHash": "3638a314",
-      "metadataHash": "755b6579",
+      "metadataHash": "988429fe",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -74988,8 +74913,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -75853,7 +75777,7 @@
         ]
       },
       "geometryHash": "5ed291bd",
-      "metadataHash": "888f9b7f",
+      "metadataHash": "84d50298",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -75993,8 +75917,7 @@
       },
       "nation": "Germany",
       "countryCode": "de",
-      "era": "coldwar",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -76843,8 +76766,8 @@
           }
         ]
       },
-      "geometryHash": "e8e908a7",
-      "metadataHash": "dab22e05",
+      "geometryHash": "be5ae791",
+      "metadataHash": "4304f64f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -76860,7 +76783,7 @@
           "fittingPaint": 7,
           "opticGlass": 2,
           "gunmetal": 14,
-          "unclassified": 15,
+          "unclassified": 16,
           "canvas": 3,
           "wood": 2,
           "trackSteel": 2
@@ -76983,8 +76906,7 @@
       },
       "nation": "Israel",
       "countryCode": "il",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -77894,8 +77816,8 @@
           }
         ]
       },
-      "geometryHash": "cfc8ecc2",
-      "metadataHash": "9b6c4047",
+      "geometryHash": "f31d3746",
+      "metadataHash": "0bff023c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -78034,8 +77956,7 @@
       },
       "nation": "Israel",
       "countryCode": "il",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -78945,8 +78866,8 @@
           }
         ]
       },
-      "geometryHash": "d80c7f5d",
-      "metadataHash": "5882c7a1",
+      "geometryHash": "1bc213b1",
+      "metadataHash": "ba1abfdc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -79085,8 +79006,7 @@
       },
       "nation": "Israel",
       "countryCode": "il",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -79997,7 +79917,7 @@
         ]
       },
       "geometryHash": "0c812791",
-      "metadataHash": "cb5c5dfd",
+      "metadataHash": "4513ae00",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -80137,7 +80057,6 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -81048,7 +80967,7 @@
         ]
       },
       "geometryHash": "94d6eecc",
-      "metadataHash": "8883a7bf",
+      "metadataHash": "ef177ed0",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -81189,7 +81108,6 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -82100,7 +82018,7 @@
         ]
       },
       "geometryHash": "78327205",
-      "metadataHash": "2067c1c8",
+      "metadataHash": "f0bd29d5",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -82240,7 +82158,6 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -83151,7 +83068,7 @@
         ]
       },
       "geometryHash": "8ceba5cf",
-      "metadataHash": "66819fa4",
+      "metadataHash": "ba7ac24f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -83290,7 +83207,6 @@
       "nation": "Israel",
       "countryCode": "il",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -84342,7 +84258,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "medium",
       "tier": 4,
       "tierNumeral": "IV",
       "dimensionsM": {
@@ -85098,7 +85013,7 @@
         ]
       },
       "geometryHash": "ebd43154",
-      "metadataHash": "e97e1a60",
+      "metadataHash": "adb284b7",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -85236,7 +85151,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "heavy",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -85992,7 +85906,7 @@
         ]
       },
       "geometryHash": "2a2a16cb",
-      "metadataHash": "313801b5",
+      "metadataHash": "44f36882",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -86130,8 +86044,7 @@
       },
       "nation": "USSR",
       "countryCode": "ru",
-      "era": "ww2",
-      "class": "heavy",
+      "era": "cold-war",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -86887,7 +86800,7 @@
         ]
       },
       "geometryHash": "7d0ca853",
-      "metadataHash": "d04d765e",
+      "metadataHash": "1c7a0f8c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -87024,7 +86937,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "medium",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -87842,7 +87754,7 @@
         ]
       },
       "geometryHash": "0be4d8da",
-      "metadataHash": "f2fee99f",
+      "metadataHash": "12056796",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -87984,8 +87896,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -88834,7 +88745,7 @@
         ]
       },
       "geometryHash": "c7aed44b",
-      "metadataHash": "a09c9036",
+      "metadataHash": "378bcebe",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -88976,8 +88887,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -89826,7 +89736,7 @@
         ]
       },
       "geometryHash": "94433002",
-      "metadataHash": "f28470a5",
+      "metadataHash": "26055137",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -89969,7 +89879,6 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -91004,7 +90913,7 @@
         ]
       },
       "geometryHash": "a43b956b",
-      "metadataHash": "c07211a8",
+      "metadataHash": "31df0dd3",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -91144,7 +91053,6 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -92179,7 +92087,7 @@
         ]
       },
       "geometryHash": "77774ab4",
-      "metadataHash": "b4190a7a",
+      "metadataHash": "0bb89cb9",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -92320,7 +92228,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "medium",
       "tier": 3,
       "tierNumeral": "III",
       "dimensionsM": {
@@ -93076,7 +92983,7 @@
         ]
       },
       "geometryHash": "eecc07c8",
-      "metadataHash": "33bcc3e8",
+      "metadataHash": "f0897da7",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -93216,7 +93123,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "ww2",
-      "class": "heavy",
       "tier": 6,
       "tierNumeral": "VI",
       "dimensionsM": {
@@ -93972,7 +93878,7 @@
         ]
       },
       "geometryHash": "f5414115",
-      "metadataHash": "108eb80f",
+      "metadataHash": "b7cd54b8",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -94114,7 +94020,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "class": "ifv",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -94978,7 +94883,7 @@
         ]
       },
       "geometryHash": "eb3da479",
-      "metadataHash": "74fd7509",
+      "metadataHash": "0dfe4e28",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -95119,8 +95024,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -95876,7 +95780,7 @@
         ]
       },
       "geometryHash": "da620ab7",
-      "metadataHash": "08a47f28",
+      "metadataHash": "172682fd",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -96017,8 +95921,7 @@
       },
       "nation": "Sweden",
       "countryCode": "se",
-      "era": "modern",
-      "class": "td",
+      "era": "cold-war",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -96588,7 +96491,7 @@
         ]
       },
       "geometryHash": "91474396",
-      "metadataHash": "1a556f2b",
+      "metadataHash": "5c4822c9",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -96729,8 +96632,7 @@
       },
       "nation": "Sweden",
       "countryCode": "se",
-      "era": "modern",
-      "class": "td",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -97300,7 +97202,7 @@
         ]
       },
       "geometryHash": "8298d7e6",
-      "metadataHash": "2494d71a",
+      "metadataHash": "df6500a4",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -97442,7 +97344,6 @@
       "nation": "Sweden",
       "countryCode": "se",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -98446,7 +98347,7 @@
         ]
       },
       "geometryHash": "84ba2747",
-      "metadataHash": "19366e83",
+      "metadataHash": "bd646072",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -98590,8 +98491,7 @@
       },
       "nation": "Sweden",
       "countryCode": "se",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -99378,7 +99278,7 @@
         ]
       },
       "geometryHash": "e4ec8648",
-      "metadataHash": "f4270603",
+      "metadataHash": "574b4efc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -99518,7 +99418,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "td",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -100267,7 +100166,7 @@
         ]
       },
       "geometryHash": "0ec1b639",
-      "metadataHash": "c53fef58",
+      "metadataHash": "ab8dcfcc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -100405,8 +100304,7 @@
       },
       "nation": "Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -101379,7 +101277,7 @@
         ]
       },
       "geometryHash": "8eef0e49",
-      "metadataHash": "c3f7b0ad",
+      "metadataHash": "d9c543a7",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -101517,7 +101415,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "ww2",
-      "class": "td",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -102273,7 +102170,7 @@
         ]
       },
       "geometryHash": "80e4fac0",
-      "metadataHash": "4030a564",
+      "metadataHash": "fad0e750",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -102413,7 +102310,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "medium",
       "tier": 6,
       "tierNumeral": "VI",
       "dimensionsM": {
@@ -103262,7 +103158,7 @@
         ]
       },
       "geometryHash": "5bf70e2d",
-      "metadataHash": "7be31790",
+      "metadataHash": "54ab957f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -103403,7 +103299,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "medium",
       "tier": 6,
       "tierNumeral": "VI",
       "dimensionsM": {
@@ -104159,7 +104054,7 @@
         ]
       },
       "geometryHash": "3e1785e5",
-      "metadataHash": "46ed1a27",
+      "metadataHash": "260d9376",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -104296,7 +104191,6 @@
       "nation": "USSR",
       "countryCode": "ru",
       "era": "ww2",
-      "class": "medium",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -105145,7 +105039,7 @@
         ]
       },
       "geometryHash": "7bb757c4",
-      "metadataHash": "85343a0a",
+      "metadataHash": "a70e9e55",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -105282,8 +105176,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -106132,7 +106025,7 @@
         ]
       },
       "geometryHash": "4c1c3d42",
-      "metadataHash": "8bfc2822",
+      "metadataHash": "5325f087",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -106270,8 +106163,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -107119,8 +107011,8 @@
           }
         ]
       },
-      "geometryHash": "ab9642fb",
-      "metadataHash": "d023f05f",
+      "geometryHash": "95146fce",
+      "metadataHash": "897d31e0",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -107137,7 +107029,7 @@
           "trackPad": 1,
           "armorPaint": 4,
           "opticGlass": 2,
-          "unclassified": 12,
+          "unclassified": 11,
           "gearShadow": 2
         }
       },
@@ -107258,8 +107150,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -108293,8 +108184,8 @@
           }
         ]
       },
-      "geometryHash": "ceae9534",
-      "metadataHash": "9e66b6d3",
+      "geometryHash": "f470b575",
+      "metadataHash": "923ee98c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -108434,8 +108325,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -109469,8 +109359,8 @@
           }
         ]
       },
-      "geometryHash": "4fb92488",
-      "metadataHash": "616318b7",
+      "geometryHash": "a4de9178",
+      "metadataHash": "2384a8cc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -109487,7 +109377,7 @@
           "trackSteel": 2,
           "opticGlass": 2,
           "tireRubber": 1,
-          "unclassified": 5,
+          "unclassified": 7,
           "gearShadow": 2
         }
       },
@@ -109607,7 +109497,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -110642,7 +110531,7 @@
         ]
       },
       "geometryHash": "99fee0c9",
-      "metadataHash": "75432574",
+      "metadataHash": "75b77d2d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -110783,7 +110672,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -111818,7 +111706,7 @@
         ]
       },
       "geometryHash": "0ae5a72e",
-      "metadataHash": "0f03d846",
+      "metadataHash": "5624b69f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -111957,8 +111845,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -113085,8 +112972,8 @@
           }
         ]
       },
-      "geometryHash": "65a5b794",
-      "metadataHash": "eb0501aa",
+      "geometryHash": "ce3347fd",
+      "metadataHash": "57df7081",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -113104,7 +112991,7 @@
           "wood": 1,
           "opticGlass": 2,
           "trackSteel": 2,
-          "unclassified": 10,
+          "unclassified": 12,
           "gearShadow": 2
         }
       },
@@ -113229,7 +113116,6 @@
       "nation": "Poland",
       "countryCode": "pl",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -114264,7 +114150,7 @@
         ]
       },
       "geometryHash": "28e26063",
-      "metadataHash": "b9dd89ee",
+      "metadataHash": "09ff9e09",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -114403,8 +114289,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -115376,8 +115261,8 @@
           }
         ]
       },
-      "geometryHash": "006d17c0",
-      "metadataHash": "557d4773",
+      "geometryHash": "0ea8eb06",
+      "metadataHash": "08ad56c2",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -115395,7 +115280,7 @@
           "opticGlass": 2,
           "tireRubber": 1,
           "wood": 1,
-          "unclassified": 12,
+          "unclassified": 13,
           "gearShadow": 2
         }
       },
@@ -115516,8 +115401,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -116489,8 +116373,8 @@
           }
         ]
       },
-      "geometryHash": "9c51aa89",
-      "metadataHash": "45353d86",
+      "geometryHash": "96b06619",
+      "metadataHash": "6f5d183b",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -116508,7 +116392,7 @@
           "opticGlass": 2,
           "tireRubber": 1,
           "wood": 1,
-          "unclassified": 12,
+          "unclassified": 11,
           "gearShadow": 2
         }
       },
@@ -116629,8 +116513,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -117602,8 +117485,8 @@
           }
         ]
       },
-      "geometryHash": "866c5bc4",
-      "metadataHash": "71bc8a03",
+      "geometryHash": "6d289f4b",
+      "metadataHash": "e488b440",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -117742,8 +117625,7 @@
       },
       "nation": "USSR/Russia",
       "countryCode": "ru",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -118716,7 +118598,7 @@
         ]
       },
       "geometryHash": "3664cff1",
-      "metadataHash": "dff53a53",
+      "metadataHash": "9692263a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -118856,7 +118738,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -119829,7 +119710,7 @@
         ]
       },
       "geometryHash": "511983b0",
-      "metadataHash": "a34dec11",
+      "metadataHash": "f49566a0",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -119970,7 +119851,6 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -121098,7 +120978,7 @@
         ]
       },
       "geometryHash": "2fbccbd4",
-      "metadataHash": "c4004389",
+      "metadataHash": "1ca41370",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -121238,7 +121118,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -122366,7 +122245,7 @@
         ]
       },
       "geometryHash": "5ab17f31",
-      "metadataHash": "57dfb209",
+      "metadataHash": "e9d6a7fc",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -122507,7 +122386,6 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -123635,7 +123513,7 @@
         ]
       },
       "geometryHash": "91c9ac41",
-      "metadataHash": "0d8ded50",
+      "metadataHash": "70284599",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -123776,7 +123654,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -124904,7 +124781,7 @@
         ]
       },
       "geometryHash": "093a5d5b",
-      "metadataHash": "97926baa",
+      "metadataHash": "dc74047d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -125043,7 +124920,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -126171,7 +126047,7 @@
         ]
       },
       "geometryHash": "e530a001",
-      "metadataHash": "fa3aa35b",
+      "metadataHash": "ffdd72ae",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -126310,7 +126186,6 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -127438,7 +127313,7 @@
         ]
       },
       "geometryHash": "01bedaec",
-      "metadataHash": "de5f3d02",
+      "metadataHash": "2e3ae439",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -127578,7 +127453,6 @@
       "nation": "Russia",
       "countryCode": "ru",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -128706,7 +128580,7 @@
         ]
       },
       "geometryHash": "4cee1b74",
-      "metadataHash": "df7942aa",
+      "metadataHash": "04d743cb",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -128846,7 +128720,6 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "ww2",
-      "class": "td",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -129602,7 +129475,7 @@
         ]
       },
       "geometryHash": "abf99852",
-      "metadataHash": "370f9cc5",
+      "metadataHash": "704ca34d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -129739,7 +129612,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "heavy",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -130495,7 +130367,7 @@
         ]
       },
       "geometryHash": "53c2d947",
-      "metadataHash": "2ccba517",
+      "metadataHash": "a7651b3a",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -130636,7 +130508,6 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "ww2",
-      "class": "heavy",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -131392,7 +131263,7 @@
         ]
       },
       "geometryHash": "bc03c475",
-      "metadataHash": "132fa8dd",
+      "metadataHash": "e3279dd2",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -131531,7 +131402,6 @@
       "nation": "Japan",
       "countryCode": "jp",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -132380,7 +132250,7 @@
         ]
       },
       "geometryHash": "ec562017",
-      "metadataHash": "86d2cb27",
+      "metadataHash": "6b7798d0",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -132521,8 +132391,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "modern",
-      "class": "mbt",
+      "era": "next-generation",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -133371,7 +133240,7 @@
         ]
       },
       "geometryHash": "82b04651",
-      "metadataHash": "c4b1cb3c",
+      "metadataHash": "e62dfd38",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -133511,8 +133380,7 @@
       },
       "nation": "China",
       "countryCode": "cn",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -134361,7 +134229,7 @@
         ]
       },
       "geometryHash": "1f83f73a",
-      "metadataHash": "962e51b7",
+      "metadataHash": "01eeb91c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -134500,8 +134368,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -135257,7 +135124,7 @@
         ]
       },
       "geometryHash": "bec765c0",
-      "metadataHash": "b5b629bf",
+      "metadataHash": "5a1a4a86",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -135396,8 +135263,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "modern",
-      "class": "ifv",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -136260,8 +136126,8 @@
           }
         ]
       },
-      "geometryHash": "094b49bc",
-      "metadataHash": "99c8caf4",
+      "geometryHash": "2836abde",
+      "metadataHash": "c22819b7",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -136402,8 +136268,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -137251,8 +137116,8 @@
           }
         ]
       },
-      "geometryHash": "f55f7c15",
-      "metadataHash": "4bab7ebb",
+      "geometryHash": "091e0c3c",
+      "metadataHash": "c54ccd96",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -137268,7 +137133,7 @@
           "tireRubber": 1,
           "fittingPaint": 7,
           "opticGlass": 2,
-          "unclassified": 12,
+          "unclassified": 13,
           "gearShadow": 2,
           "canvas": 1
         }
@@ -137391,8 +137256,7 @@
       },
       "nation": "Japan",
       "countryCode": "jp",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -138240,8 +138104,8 @@
           }
         ]
       },
-      "geometryHash": "fed96671",
-      "metadataHash": "888bd9bb",
+      "geometryHash": "b3d50411",
+      "metadataHash": "5579a83c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -138257,7 +138121,7 @@
           "tireRubber": 1,
           "fittingPaint": 12,
           "opticGlass": 2,
-          "unclassified": 13,
+          "unclassified": 12,
           "gearShadow": 2,
           "canvas": 2,
           "wood": 1
@@ -138384,7 +138248,6 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -140194,7 +140057,7 @@
         ]
       },
       "geometryHash": "71a03483",
-      "metadataHash": "d88d7c23",
+      "metadataHash": "1839fbd6",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -140337,7 +140200,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -141279,7 +141141,7 @@
         ]
       },
       "geometryHash": "e534c5de",
-      "metadataHash": "ddf4ea73",
+      "metadataHash": "36bf785c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -141424,7 +141286,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "ifv",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -142288,7 +142149,7 @@
         ]
       },
       "geometryHash": "33434b14",
-      "metadataHash": "e0eb5704",
+      "metadataHash": "75703a43",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -142430,7 +142291,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "mbt",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -143465,7 +143325,7 @@
         ]
       },
       "geometryHash": "12532dac",
-      "metadataHash": "26d08ce2",
+      "metadataHash": "6866d713",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -143608,7 +143468,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -144581,7 +144440,7 @@
         ]
       },
       "geometryHash": "bbaecf46",
-      "metadataHash": "ffca0d6e",
+      "metadataHash": "09e29ba5",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -144722,7 +144581,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "mbt",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -145695,7 +145553,7 @@
         ]
       },
       "geometryHash": "d7f4aacb",
-      "metadataHash": "ed1f2c57",
+      "metadataHash": "3684bb00",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -145837,7 +145695,6 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -146810,7 +146667,7 @@
         ]
       },
       "geometryHash": "5367c06b",
-      "metadataHash": "04e4becb",
+      "metadataHash": "247d5342",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -146952,8 +146809,7 @@
       },
       "nation": "Sweden",
       "countryCode": "se",
-      "era": "modern",
-      "class": "td",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -147522,8 +147378,8 @@
           }
         ]
       },
-      "geometryHash": "c1afb4d6",
-      "metadataHash": "fd1637c6",
+      "geometryHash": "c1387d7a",
+      "metadataHash": "3a616c4e",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -147661,8 +147517,7 @@
       },
       "nation": "Poland",
       "countryCode": "pl",
-      "era": "modern",
-      "class": "ifv",
+      "era": "next-generation",
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
@@ -148526,7 +148381,7 @@
         ]
       },
       "geometryHash": "2218d00b",
-      "metadataHash": "b64166cb",
+      "metadataHash": "4372bf3d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -148667,8 +148522,7 @@
       },
       "nation": "UK",
       "countryCode": "gb",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
@@ -149454,8 +149308,8 @@
           }
         ]
       },
-      "geometryHash": "23c55bae",
-      "metadataHash": "a176dc0e",
+      "geometryHash": "d546b9ef",
+      "metadataHash": "94ef75e9",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -149473,7 +149327,7 @@
           "opticGlass": 2,
           "trackSteel": 1,
           "canvas": 2,
-          "unclassified": 13,
+          "unclassified": 14,
           "gearShadow": 2
         }
       },
@@ -149597,8 +149451,7 @@
       },
       "nation": "China",
       "countryCode": "cn",
-      "era": "modern",
-      "class": "mbt",
+      "era": "cold-war",
       "tier": 8,
       "tierNumeral": "VIII",
       "dimensionsM": {
@@ -150446,8 +150299,8 @@
           }
         ]
       },
-      "geometryHash": "07f25eed",
-      "metadataHash": "c1b52b05",
+      "geometryHash": "d87124f1",
+      "metadataHash": "cddebe78",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -150463,7 +150316,7 @@
           "gunmetal": 15,
           "tireRubber": 1,
           "opticGlass": 2,
-          "unclassified": 10,
+          "unclassified": 12,
           "gearShadow": 2,
           "canvas": 3,
           "wood": 1
@@ -150589,7 +150442,6 @@
       "nation": "China",
       "countryCode": "cn",
       "era": "modern",
-      "class": "mbt",
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
@@ -152399,7 +152251,7 @@
         ]
       },
       "geometryHash": "edf2b10c",
-      "metadataHash": "c34a32dc",
+      "metadataHash": "e98ee383",
       "appearance": {
         "version": 1,
         "issues": [],

@@ -29,13 +29,15 @@ for (const record of records) {
 const first = records[0];
 assert.deepEqual(filterGalleryRecords(records, { query: first.id }), [first], 'stable id search must find one exact record');
 assert.ok(filterGalleryRecords(records, { nation: first.nation }).every((record) => record.nation === first.nation));
-assert.ok(filterGalleryRecords(records, { vehicleClass: first.classKey }).every((record) => record.classKey === first.classKey));
+assert.ok(filterGalleryRecords(records, { era: first.eraKey }).every((record) => record.eraKey === first.eraKey));
 
 const serialized = serializeGallerySpec(getSpec(first.id));
-assert.equal(serialized.schema, 'claude-of-tanks/gallery-spec@1');
+assert.equal(serialized.schema, 'claude-of-tanks/gallery-spec@2');
 assert.equal(serialized.id, first.id);
 assert.equal(serialized.authorship.creator, 'Kevin B. Liu');
 assert.equal(serialized.authorship.geometry, 'first-party-procedural');
+assert.deepEqual(serialized.era, { id: first.eraKey, label: first.era });
+assert.equal('class' in serialized, false, 'public gallery export must not expose retired classes');
 assert.ok(Array.isArray(serialized.gun.shells));
 assert.ok(Number.isFinite(serialized.protection.armorPlateCount));
 

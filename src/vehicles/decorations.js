@@ -51,6 +51,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
 } from './materials.js';
+import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.js';
 
 // ---------------------------------------------------------------------------
 // Deterministic seeding — spec id ONLY (mandate: stable per vehicle).
@@ -1087,54 +1088,44 @@ export const DECOR_KITS = {
 
 // Kit metadata for the catalog board / docs (era tags + variant lists).
 export const DECOR_KIT_INFO = {
-  cupola: { label: "Commander's cupola ring", eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'ring' }, { v: 'drum' }, { v: 'split' }] },
-  hatch: { label: 'Hatch cover w/ hinges', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'round' }, { v: 'rect' }] },
-  aamg: { label: 'Roof AA MG', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'm2' }, { v: 'm2', shield: true }, { v: 'dshk' }, { v: 'dshk', ring: true }] },
-  light: { label: 'Roof light', eras: ['coldwar', 'modern'], variants: [{ v: 'ir_large' }, { v: 'ir_small' }, { v: 'convoy' }] },
-  antenna: { label: 'Antenna set', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'whip_short' }, { v: 'whip_long' }, { v: 'star' }, { v: 'whip_short', helmet: true }] },
-  sight: { label: 'Sight head / periscope', eras: ['coldwar', 'modern'], variants: [{ v: 'peri' }, { v: 'doghouse' }] },
-  applique: { label: 'Add-on armor plate', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'rect' }, { v: 'wedge' }] },
-  smoke: { label: 'Smoke launcher cluster', eras: ['coldwar', 'modern'], variants: [{ v: '4' }, { v: '6' }, { v: '8' }] },
-  bin: { label: 'Stowage box', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'crate' }, { v: 'steel' }, { v: 'long', w: 1.1, h: 0.24, d: 0.3 }] },
-  tarp: { label: 'Rolled tarp / canvas', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'fat' }, { v: 'thin' }] },
-  camonet: { label: 'Camo net bundle', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'roll' }, { v: 'drape' }] },
-  log: { label: 'Unditching log', eras: ['ww2', 'coldwar'], variants: [{}] },
-  packs: { label: 'Rucksacks / bedrolls', eras: ['ww2', 'coldwar', 'modern'], variants: [{ n: 2 }, { n: 3 }, { n: 4 }] },
-  basket: { label: 'Bustle basket', eras: ['ww2', 'coldwar', 'modern'], variants: [{ w: 1.0 }, { w: 1.3 }] },
-  cable: { label: 'Tow cable', eras: ['ww2', 'coldwar', 'modern'], variants: [{ len: 1.8 }, { len: 2.6 }] },
-  tracks: { label: 'Spare track links', eras: ['ww2', 'coldwar', 'modern'], variants: [{ n: 4 }, { n: 6 }] },
-  tools: { label: 'Pioneer tools', eras: ['ww2', 'coldwar', 'modern'], variants: [{ set: ['shovel', 'axe'] }, { set: ['shovel', 'sledge', 'crowbar'] }] },
-  shackles: { label: 'Tow hooks / shackles', eras: ['ww2', 'coldwar', 'modern'], variants: [{ v: 'hook' }, { v: 'shackle' }] },
-  drums: { label: 'External fuel drums', eras: ['ww2', 'coldwar'], variants: [{ v: 'single' }, { v: 'twin' }] },
-  jerry: { label: 'Jerrycan rack', eras: ['ww2', 'coldwar', 'modern'], variants: [{ n: 2 }, { n: 3 }] },
-  wheel: { label: 'Spare road wheel', eras: ['ww2', 'coldwar'], variants: [{ flat: true }, { flat: false }] },
-  exhaust: { label: 'Exhaust shroud / muffler', eras: ['ww2', 'coldwar'], variants: [{ v: 'muffler' }, { v: 'shield' }] },
+  cupola: { label: "Commander's cupola ring", eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'ring' }, { v: 'drum' }, { v: 'split' }] },
+  hatch: { label: 'Hatch cover w/ hinges', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'round' }, { v: 'rect' }] },
+  aamg: { label: 'Roof AA MG', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'm2' }, { v: 'm2', shield: true }, { v: 'dshk' }, { v: 'dshk', ring: true }] },
+  light: { label: 'Roof light', eras: ['cold-war', 'modern'], variants: [{ v: 'ir_large' }, { v: 'ir_small' }, { v: 'convoy' }] },
+  antenna: { label: 'Antenna set', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'whip_short' }, { v: 'whip_long' }, { v: 'star' }, { v: 'whip_short', helmet: true }] },
+  sight: { label: 'Sight head / periscope', eras: ['cold-war', 'modern'], variants: [{ v: 'peri' }, { v: 'doghouse' }] },
+  applique: { label: 'Add-on armor plate', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'rect' }, { v: 'wedge' }] },
+  smoke: { label: 'Smoke launcher cluster', eras: ['cold-war', 'modern'], variants: [{ v: '4' }, { v: '6' }, { v: '8' }] },
+  bin: { label: 'Stowage box', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'crate' }, { v: 'steel' }, { v: 'long', w: 1.1, h: 0.24, d: 0.3 }] },
+  tarp: { label: 'Rolled tarp / canvas', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'fat' }, { v: 'thin' }] },
+  camonet: { label: 'Camo net bundle', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'roll' }, { v: 'drape' }] },
+  log: { label: 'Unditching log', eras: ['ww2', 'cold-war'], variants: [{}] },
+  packs: { label: 'Rucksacks / bedrolls', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 2 }, { n: 3 }, { n: 4 }] },
+  basket: { label: 'Bustle basket', eras: ['ww2', 'cold-war', 'modern'], variants: [{ w: 1.0 }, { w: 1.3 }] },
+  cable: { label: 'Tow cable', eras: ['ww2', 'cold-war', 'modern'], variants: [{ len: 1.8 }, { len: 2.6 }] },
+  tracks: { label: 'Spare track links', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 4 }, { n: 6 }] },
+  tools: { label: 'Pioneer tools', eras: ['ww2', 'cold-war', 'modern'], variants: [{ set: ['shovel', 'axe'] }, { set: ['shovel', 'sledge', 'crowbar'] }] },
+  shackles: { label: 'Tow hooks / shackles', eras: ['ww2', 'cold-war', 'modern'], variants: [{ v: 'hook' }, { v: 'shackle' }] },
+  drums: { label: 'External fuel drums', eras: ['ww2', 'cold-war'], variants: [{ v: 'single' }, { v: 'twin' }] },
+  jerry: { label: 'Jerrycan rack', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 2 }, { n: 3 }] },
+  wheel: { label: 'Spare road wheel', eras: ['ww2', 'cold-war'], variants: [{ flat: true }, { flat: false }] },
+  exhaust: { label: 'Exhaust shroud / muffler', eras: ['ww2', 'cold-war'], variants: [{ v: 'muffler' }, { v: 'shield' }] },
   sandbags: { label: 'Sandbag applique', eras: ['ww2'], variants: [{ rows: 2 }, { rows: 3, perRow: 5 }] },
-  patch: { label: 'Welded patch plate', eras: ['ww2', 'coldwar'], variants: [{}] },
+  patch: { label: 'Welded patch plate', eras: ['ww2', 'cold-war'], variants: [{}] },
   slat: { label: 'Slat / mesh armor section', eras: ['modern'], variants: [{ mesh: false }, { mesh: true }] },
-  travelLock: { label: 'Barrel travel lock (stowed)', eras: ['coldwar', 'modern'], variants: [{}] },
-  rations: { label: 'Ration box stack', eras: ['ww2', 'coldwar', 'modern'], variants: [{ n: 2 }] },
-  bucket: { label: 'Bucket', eras: ['ww2', 'coldwar'], variants: [{}] },
-  chain: { label: 'Chain segment', eras: ['ww2', 'coldwar', 'modern'], variants: [{ links: 6 }] },
+  travelLock: { label: 'Barrel travel lock (stowed)', eras: ['cold-war', 'modern'], variants: [{}] },
+  rations: { label: 'Ration box stack', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 2 }] },
+  bucket: { label: 'Bucket', eras: ['ww2', 'cold-war'], variants: [{}] },
+  chain: { label: 'Chain segment', eras: ['ww2', 'cold-war', 'modern'], variants: [{ links: 6 }] },
 };
 
 // ---------------------------------------------------------------------------
 // ERA + MANIFESTS
 // ---------------------------------------------------------------------------
 
-// Cold-war override set (specs only carry ww2|modern; these ids read as the
-// transitional generation: IR searchlights, DShK/M2 AA mounts, drums on the
-// Soviet school).
-const COLDWAR_IDS = new Set([
-  'm60a1', 'm60a3', 'm48', 't54', 't55', 't62', 'type59', 'centurion3',
-  'centurion5', 'centurion', 'chieftain5', 'chieftain_mk10', 'charioteer',
-  'leo1a5', 'type74', 't80u', 'amx30', 'm103', 'conqueror', 'is7',
-  'object279', 'is6b', 'strv103', 'strv103a', 'challenger1',
-]);
-
 export function decorEra(spec) {
-  if (COLDWAR_IDS.has(spec.id)) return 'coldwar';
-  return spec.era === 'modern' ? 'modern' : 'ww2';
+  if (spec.era === VEHICLE_ERAS.COLD_WAR) return VEHICLE_ERAS.COLD_WAR;
+  return isContemporaryVehicleEra(spec.era) ? VEHICLE_ERAS.MODERN : VEHICLE_ERAS.WORLD_WAR_II;
 }
 
 const SOVIET_RE = /USSR|Russia|China/i;
@@ -1162,7 +1153,7 @@ function defaultManifest(spec, rng) {
     M.push({ kit: 'antenna', p: 0.9, v: { v: rng() < 0.25 && era !== 'ww2' ? 'whip_long' : 'whip_short', helmet: us && era === 'ww2' && rng() < 0.18 }, slot: ['turretRoof', { rear: true, side: 1 }] });
     if (era !== 'ww2') {
       M.push({ kit: 'smoke', p: 0.75, v: { v: rng() < 0.4 ? '4' : '6' }, slot: ['turretCheekPair', {}] });
-      M.push({ kit: 'aamg', p: era === 'coldwar' ? 0.75 : 0.5, v: { v: sov ? 'dshk' : 'm2', shield: rng() < 0.4, ring: !sov && rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
+      M.push({ kit: 'aamg', p: era === 'cold-war' ? 0.75 : 0.5, v: { v: sov ? 'dshk' : 'm2', shield: rng() < 0.4, ring: !sov && rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
       M.push({ kit: 'light', p: 0.35, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] });
     } else {
       M.push({ kit: 'aamg', p: us ? 0.65 : 0.2, v: { v: sov ? 'dshk' : 'm2', shield: rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });

@@ -1773,7 +1773,7 @@ function armorChallenger3() {
 // ---------------------------------------------------------------------------
 const CHALLENGER_SPECS = {
   challenger2: {
-    id: 'challenger2', name: 'Challenger 2', nation: 'UK', era: 'modern', class: 'mbt',
+    id: 'challenger2', name: 'Challenger 2', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2450,
     enginePowerHp: 1200, weightTons: 62.5, topSpeedKmh: 59, reverseSpeedKmh: 20,
     hullTraverseDegS: 36,
@@ -1802,7 +1802,7 @@ const CHALLENGER_SPECS = {
     },
   },
   challenger_3: {
-    id: 'challenger_3', name: 'Challenger 3', nation: 'UK', era: 'modern', class: 'mbt',
+    id: 'challenger_3', name: 'Challenger 3', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2500,
     // CV12-9A uprate path (1,500 hp program figure), 66 t combat
     enginePowerHp: 1500, weightTons: 66, topSpeedKmh: 60, reverseSpeedKmh: 20,

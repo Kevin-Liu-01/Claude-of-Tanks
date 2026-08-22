@@ -2553,7 +2553,7 @@ export function createStudio(ctx) {
     getSpecInfo: (id) => {
       const s = getSpec(id);
       return {
-        id: s.id, name: s.name, era: s.era, class: s.class,
+        id: s.id, name: s.name, era: s.era,
         developmentOnly: Boolean(s.roster?.developmentOnly),
         rosterTag: s.roster?.tag || '',
         gunElevationDeg: s.gunElevationDeg, gunDepressionDeg: s.gunDepressionDeg,

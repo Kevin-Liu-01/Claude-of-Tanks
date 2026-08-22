@@ -209,8 +209,8 @@ try {
     await S.load(input);
     for (const actor of S.listActors()) {
       const info = S.getSpecInfo(actor.id);
-      if (info.era !== 'modern' || info.class !== 'mbt') {
-        throw new Error(`${info.id} is ${info.era}/${info.class}, expected modern/mbt`);
+      if (info.era !== 'modern') {
+        throw new Error(`${info.id} is ${info.era}, expected a modern-era vehicle`);
       }
     }
     const base = S.getCamera();

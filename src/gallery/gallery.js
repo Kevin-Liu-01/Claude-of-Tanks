@@ -4,10 +4,11 @@ import { createTank } from '../vehicles/tankFactory.js';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {
   buildGalleryRecords,
-  classLabel,
   filterGalleryRecords,
   serializeGallerySpec,
+  technicalLabel,
 } from './catalog.js';
+import { compareVehicleEras } from '../vehicles/taxonomy.js';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
@@ -19,6 +20,30 @@ const vehicleList = $('#vehicleList');
 const loadingState = $('#loadingState');
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const viewButtons = [...document.querySelectorAll('[data-view]')];
+const viewIconIds = {
+  hero: 'star',
+  front: 'optics',
+  left: 'chevronLeft',
+  right: 'chevronRight',
+  rear: 'rematch',
+  top: 'map',
+  'elevated-left': 'chevronLeft',
+  'elevated-right': 'chevronRight',
+};
+for (const button of viewButtons) {
+  const label = button.textContent.trim();
+  button.replaceChildren();
+  button.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${uiIconSVG(viewIconIds[button.dataset.view], 15)}</i><span>${label}</span>`);
+  button.title = `${label} camera view`;
+}
+const autoRotateButton = $('#autoRotate');
+autoRotateButton.replaceChildren();
+autoRotateButton.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${uiIconSVG('rematch', 15)}</i><span>Auto</span>`);
+autoRotateButton.title = 'Toggle automatic rotation';
+document.querySelectorAll('[data-ui-icon]').forEach((element) => {
+  element.innerHTML = uiIconSVG(element.dataset.uiIcon, 16);
+});
+const viewerHelpItem = (icon, label) => `<span><i>${uiIconSVG(icon, 11)}</i>${label}</span>`;
 const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
 const recordById = new Map(records.map((record) => [record.id, record]));
 
@@ -244,7 +269,7 @@ function renderRoster() {
     image.addEventListener('error', () => { image.style.visibility = 'hidden'; }, { once: true });
     const copy = document.createElement('span');
     const meta = document.createElement('small');
-    meta.textContent = `${record.nation} // ${record.vehicleClass}`;
+    meta.textContent = `${record.nation} // ${record.era}`;
     if (record.developmentOnly) {
       const devTag = document.createElement('b');
       devTag.className = 'vehicle-dev-tag';
@@ -276,13 +301,13 @@ function renderRoster() {
 function renderDossier(record) {
   const allIndex = records.findIndex((item) => item.id === record.id) + 1;
   $('#dossierIndex').textContent = String(allIndex).padStart(3, '0');
-  $('#dossierMeta').textContent = `${record.nation} // ${record.vehicleClass} // Tier ${record.tierNumeral}`;
+  $('#dossierMeta').textContent = `${record.nation} // ${record.era} // Tier ${record.tierNumeral}`;
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
   $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship.creator}`;
   $('#dossierTankIcon').src = record.image;
   $('#dossierTankIcon').alt = `${record.displayName} side profile`;
-  $('#viewerRecord').textContent = `Archive record ${String(allIndex).padStart(3, '0')} / ${String(records.length).padStart(3, '0')}`;
+  $('#viewerRecordValue').textContent = `Record ${String(allIndex).padStart(3, '0')} / ${String(records.length).padStart(3, '0')}`;
 
   const ratingPresentation = {
     firepower: { tone: '#e9a346', icon: 'damage' },
@@ -370,7 +395,7 @@ function configureArticulation(spec) {
   const hullInput = $('#hullYaw');
   const turretInput = $('#turretYaw');
   const gunInput = $('#gunPitch');
-  const fixedMount = spec.class === 'td' && Number(spec.turretTraverseDegS || 0) <= 0;
+  const fixedMount = spec.role === 'td' && Number(spec.turretTraverseDegS || 0) <= 0;
   turretInput.min = fixedMount ? String(-(Number(spec.gunTraverseDeg || 12))) : '-180';
   turretInput.max = fixedMount ? String(Number(spec.gunTraverseDeg || 12)) : '180';
   turretInput.value = '0';
@@ -391,8 +416,8 @@ function setMode(nextMode, announce = true) {
   modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === activeMode));
   $('#inspectionReadout').hidden = true;
   $('#viewerHelp').innerHTML = activeMode === 'markup'
-    ? 'Drag to orbit <b>·</b> Shift-click to add <b>·</b> Select exact geometry'
-    : 'Drag to orbit <b>·</b> Scroll to zoom <b>·</b> Select a volume for data';
+    ? `${viewerHelpItem('rematch', 'Orbit')}${viewerHelpItem('check', 'Shift-click adds')}${viewerHelpItem('autoAim', 'Select geometry')}`
+    : `${viewerHelpItem('rematch', 'Orbit')}${viewerHelpItem('optics', 'Zoom')}${viewerHelpItem('autoAim', 'Select volume')}`;
   if (activeMode === 'markup') {
     controls.autoRotate = false;
     $('#autoRotate').setAttribute('aria-pressed', 'false');
@@ -462,7 +487,7 @@ function renderInspection(hit) {
   $('#inspectionOwner').textContent = data.owner;
   $('#inspectionTitle').textContent = data.title;
   if (data.mode === 'armor') {
-    $('#inspectionDetails').textContent = `${classLabel(data.kind)} layer · ${data.physicalMm} mm physical · ${data.keMm} mm KE · ${data.ceMm} mm CE`;
+    $('#inspectionDetails').textContent = `${technicalLabel(data.kind)} layer · ${data.physicalMm} mm physical · ${data.keMm} mm KE · ${data.ceMm} mm CE`;
   } else {
     $('#inspectionDetails').textContent = `${data.mode === 'crew' ? 'Crew station' : 'Internal module'} · ${data.dimensionsM.join(' × ')} m diagnostic volume`;
   }
@@ -481,17 +506,140 @@ function applyFilters() {
   filteredRecords = filterGalleryRecords(records, {
     query: $('#gallerySearch').value,
     nation: $('#nationFilter').value,
-    vehicleClass: $('#classFilter').value,
+    era: $('#eraFilter').value,
   });
   renderRoster();
 }
 
+const gallerySelects = [];
+
+function mountGallerySelect(select) {
+  const field = select.closest('.gallery-filter');
+  const label = field?.querySelector('.filter-label');
+  if (!field || !label) return null;
+
+  const control = document.createElement('div');
+  control.className = 'gallery-select';
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'gallery-select-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  const valueLabel = document.createElement('span');
+  valueLabel.id = `${select.id}Value`;
+  trigger.setAttribute('aria-labelledby', `${label.id} ${valueLabel.id}`);
+  trigger.append(valueLabel);
+
+  const list = document.createElement('div');
+  list.className = 'gallery-select-list';
+  list.id = `${select.id}List`;
+  list.role = 'listbox';
+  list.setAttribute('aria-labelledby', label.id);
+  trigger.setAttribute('aria-controls', list.id);
+  const optionButtons = [...select.options].map((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'gallery-select-option';
+    button.role = 'option';
+    button.tabIndex = -1;
+    button.dataset.value = option.value;
+    button.textContent = option.textContent;
+    list.append(button);
+    return button;
+  });
+
+  function selectedIndex() {
+    const index = optionButtons.findIndex((button) => button.dataset.value === select.value);
+    return index < 0 ? 0 : index;
+  }
+
+  function syncSelection() {
+    const index = selectedIndex();
+    valueLabel.textContent = optionButtons[index]?.textContent || '';
+    optionButtons.forEach((button, buttonIndex) => {
+      button.setAttribute('aria-selected', String(buttonIndex === index));
+    });
+  }
+
+  function close(restoreFocus = false) {
+    if (!control.classList.contains('open')) return;
+    control.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) trigger.focus();
+  }
+
+  function open(index = selectedIndex()) {
+    for (const item of gallerySelects) {
+      if (item.control !== control) item.close();
+    }
+    control.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    optionButtons[Math.max(0, Math.min(optionButtons.length - 1, index))]?.focus();
+  }
+
+  function choose(button) {
+    select.value = button.dataset.value;
+    syncSelection();
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    close(true);
+  }
+
+  trigger.addEventListener('click', () => {
+    if (control.classList.contains('open')) close();
+    else open();
+  });
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      open();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      open(event.key === 'Home' ? 0 : optionButtons.length - 1);
+    }
+  });
+  optionButtons.forEach((button, index) => {
+    button.addEventListener('click', () => choose(button));
+    button.addEventListener('keydown', (event) => {
+      let nextIndex = index;
+      if (event.key === 'ArrowDown') nextIndex = (index + 1) % optionButtons.length;
+      else if (event.key === 'ArrowUp') nextIndex = (index - 1 + optionButtons.length) % optionButtons.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = optionButtons.length - 1;
+      else if (event.key === 'Escape') {
+        event.preventDefault();
+        close(true);
+        return;
+      } else if (event.key === 'Tab') {
+        close();
+        return;
+      } else return;
+      event.preventDefault();
+      optionButtons[nextIndex].focus();
+    });
+  });
+  select.addEventListener('change', syncSelection);
+  select.hidden = true;
+  select.tabIndex = -1;
+  select.setAttribute('aria-hidden', 'true');
+  control.append(trigger, list);
+  field.append(control);
+  syncSelection();
+  const api = { control, close };
+  gallerySelects.push(api);
+  return api;
+}
+
 function populateFilters() {
   const nations = [...new Set(records.map((record) => record.nation))].sort();
-  const classes = [...new Map(records.map((record) => [record.classKey, record.vehicleClass])).entries()]
-    .sort((a, b) => a[1].localeCompare(b[1]));
+  const eras = [...new Map(records.map((record) => [record.eraKey, record.era])).entries()]
+    .sort((a, b) => compareVehicleEras(a[0], b[0]));
   $('#nationFilter').append(...nations.map((nation) => new Option(nation, nation)));
-  $('#classFilter').append(...classes.map(([key, label]) => new Option(label, key)));
+  $('#eraFilter').append(...eras.map(([key, label]) => new Option(label, key)));
+  mountGallerySelect($('#nationFilter'));
+  mountGallerySelect($('#eraFilter'));
 }
 
 async function writeClipboard(text, successMessage) {
@@ -513,7 +661,7 @@ function resize() {
 
 $('#gallerySearch').addEventListener('input', applyFilters);
 $('#nationFilter').addEventListener('change', applyFilters);
-$('#classFilter').addEventListener('change', applyFilters);
+$('#eraFilter').addEventListener('change', applyFilters);
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
@@ -557,12 +705,13 @@ renderer.domElement.addEventListener('pointermove', (event) => {
 renderer.domElement.addEventListener('pointerleave', surfaceMarkup.clearHover);
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === '/' && !/input|select|textarea/i.test(document.activeElement?.tagName || '')) {
+  const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '')
+    || !!document.activeElement?.closest('.gallery-select');
+  if (event.key === '/' && !editing) {
     event.preventDefault();
     $('#gallerySearch').focus();
     return;
   }
-  const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '');
   if (editing) return;
   if (event.shiftKey && /^[1-4]$/.test(event.key) && activeMode === 'markup') {
     surfaceMarkup.setOperation(MARKUP_OPERATIONS[Number(event.key) - 1], true);
@@ -578,6 +727,11 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (event.code === 'Delete' && activeMode === 'markup') surfaceMarkup.deleteSelected();
+});
+document.addEventListener('pointerdown', (event) => {
+  for (const item of gallerySelects) {
+    if (!item.control.contains(event.target)) item.close();
+  }
 });
 
 window.addEventListener('popstate', () => {

@@ -14,6 +14,7 @@ import { FONT_STACK, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
 import { MAP_THUMBS } from './mapThumbs.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
+import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 
 const CSS = `
 .cot-studio{position:fixed;inset:0;z-index:58;display:none;pointer-events:none;
@@ -504,7 +505,7 @@ export function createStudioPanel(S) {
         row.appendChild(tankIcon(id));
         row.appendChild(el('span', 'nm', info.name));
         if (info.developmentOnly) row.appendChild(el('span', 'dev', info.rosterTag || 'DEV'));
-        if (info.era) row.appendChild(el('span', 'era', String(info.era)));
+        if (info.era) row.appendChild(el('span', 'era', vehicleEraLabel(info.era, { short: true })));
         row.addEventListener('click', () => {
           setPicked(id);
           togglePick(false);

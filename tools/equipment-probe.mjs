@@ -276,7 +276,7 @@ try {
     const g = window.__DEBUG.game;
     for (const t of g.tanks) if (!t.isPlayer) t.aiCtl = null; // becalm the bots
     const bots = g.tanks.filter((t) => !t.isPlayer).map((t) => ({
-      cls: t.spec.class, era: t.spec.era, equip: t.equip,
+      role: t.spec.role, era: t.spec.era, equip: t.equip,
       reloadMult: t.combat.equipMults.reload,
     }));
     return {

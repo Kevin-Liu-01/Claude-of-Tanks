@@ -141,8 +141,9 @@ export const TANK_IDS = ['m4a3e8','tiger1','t34_85','is2','panther_g','m1a2','t9
 ### 2.2 `TankSpec` (exported by `src/vehicles/specs.js`)
 ```js
 TankSpec = {
-  id: TankId, name: string, nation: string, era: 'ww2'|'modern',
-  class: 'medium'|'heavy'|'mbt',
+  id: TankId, name: string, nation: string,
+  era: 'interwar'|'ww2'|'cold-war'|'modern'|'next-generation',
+  role: 'light'|'medium'|'heavy'|'td'|'mbt'|'ifv'|'spg', // simulation-only
   hp: number,                                  // locked table §3.3.1
   // --- mobility (schema of movement-physics.md §1) ---
   enginePowerHp, weightTons, topSpeedKmh, reverseSpeedKmh: number,
@@ -768,7 +769,7 @@ Garage = {
 ```
 Full-screen DOM: dark gradient backdrop with a **transparent center band** (the 3D
 pedestal render shows through), bottom carousel of 8 tank cards (name, nation flag as
-colored badge, class, tier era), right-side stats card (HP, top speed, hp/t, pen/dmg of
+colored badge, tier, era), right-side stats card (HP, top speed, hp/t, pen/dmg of
 3 shells, reload, armor highlights — from TankSpec), big orange BATTLE button top-center.
 Emits `ui:battleStart` and `ui:click` on the bus. Keyboard: ←/→ select, Enter battle.
 

@@ -1,7 +1,7 @@
 // Repeatable tank-model structure audit.
 //
 // Scores every selected visual and every retained GLB candidate against the
-// real vehicle contract, then compares it with peers in the same era/class.
+// real vehicle contract, then compares it with peers from the same era.
 // This intentionally measures facts we can prove automatically: source
 // presence, turret/gun separation, hierarchy, pivots, orientation and overall
 // proportions. It does not pretend to replace a human likeness review.
@@ -272,12 +272,11 @@ try {
       ? scoreGlb(id, spec, src.glb, 'selected')
       : scoreProcedural(id, spec, src);
     selected.era = spec.era;
-    selected.class = spec.class;
     selected.name = spec.name;
     rows.push(selected);
     if (src.candidateGlb) {
       const candidate = scoreGlb(id, spec, src.candidateGlb, 'candidate');
-      Object.assign(candidate, { era: spec.era, class: spec.class, name: spec.name });
+      Object.assign(candidate, { era: spec.era, name: spec.name });
       rows.push(candidate);
     }
   }
@@ -285,11 +284,12 @@ try {
   const selected = rows.filter((r) => r.role === 'selected');
   const peerMedians = new Map();
   for (const r of selected) {
-    const key = `${r.era}/${r.class}`;
-    if (!peerMedians.has(key)) peerMedians.set(key, median(selected.filter((x) => `${x.era}/${x.class}` === key).map((x) => x.score)));
+    if (!peerMedians.has(r.era)) {
+      peerMedians.set(r.era, median(selected.filter((x) => x.era === r.era).map((x) => x.score)));
+    }
   }
   for (const r of rows) {
-    const pm = peerMedians.get(`${r.era}/${r.class}`) || 0;
+    const pm = peerMedians.get(r.era) || 0;
     r.peerMedian = round(pm);
     r.peerDelta = round(r.score - pm);
   }
@@ -327,7 +327,7 @@ try {
     '- Automated scores cover structure, articulation, pivots, orientation/proportions, and config hygiene.',
     '- A fused gun may pass, but is capped at 9.0 and called out because visual elevation remains virtual (including casemate tubes).',
     '- A turreted vehicle without a separable turret is rejected. It cannot be activated merely by calling the asset `fixed`.',
-    '- Peer Δ compares the selected score with the median of the same era/class.',
+    '- Peer Δ compares the selected score with the median of the same era.',
     '',
   ].join('\n');
   fs.writeFileSync(path.join(ROOT, 'docs/model-quality-report.md'), md);

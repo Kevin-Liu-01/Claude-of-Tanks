@@ -45,7 +45,7 @@ const communityArmor = (o) => buildCommunityArmor(o, {
 
 // Same authored combat row as the (never-registered) userdrops.js fallback.
 const TYPE74_SPEC = {
-  id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', class: 'mbt',
+  id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', role: 'mbt',
   variantOf: 'type74',
   hp: 1950,
   enginePowerHp: 720, weightTons: 38, topSpeedKmh: 53, reverseSpeedKmh: 20,

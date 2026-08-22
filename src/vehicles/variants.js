@@ -89,7 +89,7 @@ const VARIANT_TANK_IDS = ['m1a1', 't90a', 'm1a2_tusk'];
 const VARIANT_SPECS = {
   // ---- M1A1 Abrams — roster §2 (priority 2) -------------------------------
   m1a1: {
-    id: 'm1a1', name: 'M1A1 Abrams', nation: 'USA', era: 'modern', class: 'mbt',
+    id: 'm1a1', name: 'M1A1 Abrams', nation: 'USA', era: 'modern', role: 'mbt',
     // variantOf: nation-roster derivative (NOT a community-pool vehicle) —
     // garage groups these under their nation's MODERN roster while
     // keeping the CC-BY credit line from `community` visible on cards.
@@ -128,7 +128,7 @@ const VARIANT_SPECS = {
 
   // ---- T-90A — roster §13 (priority 2) ------------------------------------
   t90a: {
-    id: 't90a', name: 'T-90A', nation: 'Russia', era: 'modern', class: 'mbt',
+    id: 't90a', name: 'T-90A', nation: 'Russia', era: 'modern', role: 'mbt',
     variantOf: 't90m', // see m1a1 note
     community: {
       author: 'alexxx_xarchenko (re-materialed, decimated, turret re-parented)',
@@ -173,7 +173,7 @@ const VARIANT_SPECS = {
 
   // ---- M1A2 Abrams TUSK — roster §3 (priority 3) --------------------------
   m1a2_tusk: {
-    id: 'm1a2_tusk', name: 'M1A2 Abrams TUSK', nation: 'USA', era: 'modern', class: 'mbt',
+    id: 'm1a2_tusk', name: 'M1A2 Abrams TUSK', nation: 'USA', era: 'modern', role: 'mbt',
     variantOf: 'm1a2', // see m1a1 note
     community: {
       author: 'dannzjs (base model; ARAT ERA, loader shield, TIP, slat cage added)',

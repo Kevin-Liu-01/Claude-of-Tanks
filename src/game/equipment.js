@@ -29,6 +29,8 @@
 // Nothing in the catalog is cosmetic-only.
 
 
+import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
+
 /** Equipment slots per vehicle (WoT standard). */
 export const EQUIP_SLOTS = 3;
 
@@ -143,7 +145,7 @@ export function equipEligible(item, spec) {
   // mechanism delay remains fixed.
   if (it.id === 'rammer' && spec?.gun?.autoloader) return false;
   if (it.era === 'all') return true;
-  return !!spec && spec.era === it.era;
+  return !!spec && it.era === 'modern' && isPostwarVehicleEra(spec.era);
 }
 
 /**
@@ -266,8 +268,8 @@ export function applyEquipmentToCombat(combat, ids, spec) {
 }
 
 // ---------------------------------------------------------------------------
-// AI parity — per-class default loadouts so bots fight with the same tools.
-// Era-illegal picks are filtered per spec (mbt/ifv are modern anyway).
+// AI parity — per-role default loadouts so bots fight with the same tools.
+// Era-illegal picks are filtered per spec.
 // ---------------------------------------------------------------------------
 export const AI_DEFAULT_LOADOUTS = {
   heavy:  ['rammer', 'spall_liner', 'toolbox'],
@@ -280,15 +282,15 @@ export const AI_DEFAULT_LOADOUTS = {
 };
 
 /**
- * Default loadout for an AI tank (class table, era-filtered).
- * @param {object} spec TankSpec-like ({ class, era })
+ * Default loadout for an AI tank (mechanical-role table, era-filtered).
+ * @param {object} spec TankSpec-like ({ role, era })
  * @returns {Array<string>}
  */
 export function defaultLoadoutFor(spec) {
-  if (spec?.gun?.autoloader && spec.class === 'mbt') {
+  if (spec?.gun?.autoloader && spec.role === 'mbt') {
     return sanitizeLoadout(['vents', 'vstab', 'optics'], spec);
   }
-  const list = (spec && AI_DEFAULT_LOADOUTS[spec.class]) || AI_DEFAULT_LOADOUTS.medium;
+  const list = (spec && AI_DEFAULT_LOADOUTS[spec.role]) || AI_DEFAULT_LOADOUTS.medium;
   return sanitizeLoadout(list, spec);
 }
 

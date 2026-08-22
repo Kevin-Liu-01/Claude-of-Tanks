@@ -70,8 +70,9 @@ const PROBE_SETS = [
 ];
 
 /**
- * BATTLE-AI r7 — per-class doctrine ("good ideas of their tank"). Role is
- * derived from the bot's OWN spec, never assigned externally:
+ * BATTLE-AI r7 — platform-role doctrine ("good ideas of their tank").
+ * Tactical behavior is derived from the bot's OWN mechanical role, never
+ * from its public era category or an external assignment:
  *  - scout   (light/IFV): spotting runs, keeps range, never brawls;
  *  - sniper  (TD/SPG):    sightline posts, hold-until-fired, shoot-and-scoot;
  *  - brawler (heavy + slow/armored MBTs): leads pushes, angles the hull,
@@ -80,11 +81,11 @@ const PROBE_SETS = [
  *            support fire on spotted targets.
  * Modern MBTs split by their own mobility numbers: a 66+ km/h hull with
  * 21+ hp/t fights like a medium, the rest anchor like heavies.
- * @param {object} spec TankSpec-like ({ class, topSpeedKmh, enginePowerHp, weightTons })
+ * @param {object} spec TankSpec-like ({ role, topSpeedKmh, enginePowerHp, weightTons })
  * @returns {'scout'|'sniper'|'brawler'|'flanker'}
  */
 export function roleOf(spec) {
-  const c = spec && spec.class;
+  const c = spec && spec.role;
   if (c === 'light' || c === 'ifv') return 'scout';
   if (c === 'td' || c === 'spg') return 'sniper';
   if (c === 'heavy') return 'brawler';
@@ -92,7 +93,7 @@ export function roleOf(spec) {
     const pw = (spec.enginePowerHp || 0) / Math.max(1, spec.weightTons || 1);
     return (spec.topSpeedKmh >= 66 && pw >= 21) ? 'flanker' : 'brawler';
   }
-  return 'flanker'; // medium + unknown classes
+  return 'flanker'; // medium + unknown roles
 }
 
 /**

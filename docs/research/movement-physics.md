@@ -43,9 +43,9 @@ Every tank is fully described by this record. All movement/aiming code reads onl
 }
 ```
 
-### Typical values per class (tuning table)
+### Typical values per mechanical role (tuning table)
 
-| Class            | hp/t    | Top fwd | Reverse | Hull trav | Turret trav | Elev/Depr | Accuracy | Aim time |
+| Mechanical role  | hp/t    | Top fwd | Reverse | Hull trav | Turret trav | Elev/Depr | Accuracy | Aim time |
 |------------------|---------|---------|---------|-----------|-------------|-----------|----------|----------|
 | Light            | 20–30   | 60–72   | 20–24   | 40–54°/s  | 40–48°/s    | +20/−10   | 0.36–0.42| 1.5–2.0s |
 | Medium           | 14–20   | 45–56   | 18–20   | 36–48°/s  | 36–44°/s    | +18/−8    | 0.33–0.38| 2.0–2.4s |

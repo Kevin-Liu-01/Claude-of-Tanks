@@ -64,7 +64,7 @@ const USERDROP2_SPECS = {
   // BMP-1: the ur-IFV — one tier below the BMP-2, trading the 30mm burst for
   // the low-pressure 73mm Grom thump and the slow manual Malyutka rail.
   bmp1: {
-    id: 'bmp1', name: 'BMP-1', nation: 'USSR', era: 'modern', class: 'ifv',
+    id: 'bmp1', name: 'BMP-1', nation: 'USSR', era: 'modern', role: 'ifv',
     variantOf: 'bmp1',      // self-marker (m1a1 rule): stays on the nation tab
     community: QUAR_BERGMAN,
     hp: 850,
@@ -102,7 +102,7 @@ const USERDROP2_SPECS = {
 
   // M1128 Stryker MGS: a 105mm sniper on a paper-thin 8x8 — glass-cannon TD.
   m1128: {
-    id: 'm1128', name: 'M1128 Stryker MGS', nation: 'USA', era: 'modern', class: 'td',
+    id: 'm1128', name: 'M1128 Stryker MGS', nation: 'USA', era: 'modern', role: 'td',
     variantOf: 'm1128',
     community: QUAR_BERGMAN,
     hp: 1150,
@@ -140,7 +140,7 @@ const USERDROP2_SPECS = {
 
   // M1296 Stryker Dragoon: 30mm unmanned turret on the same 8x8 hull family.
   m1296: {
-    id: 'm1296', name: 'M1296 Stryker Dragoon', nation: 'USA', era: 'modern', class: 'ifv',
+    id: 'm1296', name: 'M1296 Stryker Dragoon', nation: 'USA', era: 'modern', role: 'ifv',
     variantOf: 'm1296',
     community: QUAR_BERGMAN,
     hp: 1000,

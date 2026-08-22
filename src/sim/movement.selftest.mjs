@@ -711,7 +711,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   const field = makeField(() => 0);
   const rapidIfv = {
     ...SPEC,
-    class: 'ifv',
+    role: 'ifv',
     gun: {
       ...SPEC.gun,
       caliberMm: 30,
@@ -754,7 +754,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   near(shotRecoilScale(rapidIfv, { caliberMm: 152, reloadS: 14 }), 1, 1e-9,
     'IFV missile rail keeps full physical/presentation recoil');
 
-  const mbt = { ...rapidIfv, class: 'mbt' };
+  const mbt = { ...rapidIfv, role: 'mbt' };
   const mbtState = createTankState(mbt, new Vector3(), 0);
   fireRecoil(mbtState, mbt, beltRound);
   near(mbtState.bloomF, 2.2, 1e-9, 'rapid non-IFV gun keeps normal after-shot bloom');

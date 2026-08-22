@@ -176,7 +176,7 @@ function reconcileTracks(modules, target) {
 function hasMissile(spec) {
   return (spec.gun?.shells || []).some((shell) => (
     Number(shell.reloadS || spec.gun.reloadS) >= MISSILE_RELOAD_FLOOR_S
-    && (shell.guided || (spec.class === 'ifv' && shell.type === 'HEAT'))
+    && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT'))
   ));
 }
 
@@ -209,12 +209,12 @@ function addDerivedModules(spec) {
 
   const crew = armor.crew || [];
   const hasLoader = crew.some((box) => box.crew === 'loader');
-  if (!hasLoader && spec.class !== 'ifv' && !byName.has('autoloader') && ammo) {
+  if (!hasLoader && spec.role !== 'ifv' && !byName.has('autoloader') && ammo) {
     const autoloader = shrinkBox(ammo, 'autoloader', [0.72, 0.48, 0.72], [0, 0.02, 0]);
     modules.push(autoloader);
     byName.set('autoloader', autoloader);
   }
-  if (spec.class === 'ifv' && !byName.has('feedSystem') && (gun || ammo)) {
+  if (spec.role === 'ifv' && !byName.has('feedSystem') && (gun || ammo)) {
     const source = gun || ammo;
     const feed = shrinkBox(source, 'feedSystem', [0.74, 0.55, 0.58], [0, -0.02, -0.04]);
     modules.push(feed);

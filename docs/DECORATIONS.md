@@ -196,7 +196,7 @@ fuel-tan), wire-grid texture split from camo-net.
 | tiger1 | ww2 | procedural | 11 | 2992 | 7 |
 | t34_85 | ww2 | procedural | 9 | 2592 | 7 |
 | m4a3e8 | ww2 | procedural | 10 | 2472 | 9 |
-| m60a1 | coldwar | procedural | 9 | 2090 | 9 |
+| m60a1 | cold-war | procedural | 9 | 2090 | 9 |
 | kv2 | ww2 | procedural | 11 | 2832 | 7 |
 | leo2a6 | modern | glb | 10 | 2344 | 7 |
 | k2 | modern | procedural | 10 | 1780 | 7 |
@@ -212,7 +212,7 @@ plus the studio selftest scenes.
 
 `TANK_MANIFESTS` carries curated loadouts (tiger1, t34_85, m4a3e8, kv2,
 isu152, m60a1, is7, type74, leo2a6, k2, m1a2, t90m); everything else takes
-the era/nation default (`defaultManifest`) — ww2/coldwar/modern tagged, with
+the era/nation default (`defaultManifest`) — interwar/ww2/cold-war/modern/next-generation tagged, with
 a Soviet school (drums, unditching log, DShK) and US school (M2, sandbags,
 helmet-on-antenna) flavor split. `COLDWAR_IDS` overrides the binary
 `spec.era` for the transitional generation.

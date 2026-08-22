@@ -58,7 +58,7 @@ export const RETAINED_WW2_IDS = Object.freeze([
 // The former garage Cold War catalog boundary. Variants intentionally treated
 // as modern by that catalog (Abrams, T-80/T-90, post-1991 T-72s, Challengers,
 // Merkavas and IFVs) remain in the modern fleet.
-export const COLD_WAR_IDS = Object.freeze([
+export const HISTORICAL_COLD_WAR_CANDIDATE_IDS = Object.freeze([
   'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3', 'mbt70',
   'leo1a5',
   't54', 'type59', 't62mv1', 't64bv1', 't72b_1987',
@@ -80,22 +80,14 @@ export const RETAINED_COLD_WAR_IDS = Object.freeze([
 ]);
 
 const RETAINED_WW2 = new Set(RETAINED_WW2_IDS);
-const COLD_WAR = new Set(COLD_WAR_IDS);
+const HISTORICAL_COLD_WAR_CANDIDATES = new Set(HISTORICAL_COLD_WAR_CANDIDATE_IDS);
 const RETAINED_COLD_WAR = new Set(RETAINED_COLD_WAR_IDS);
 
 /** Whether a registered spec is intentionally absent from the live roster. */
 export function isRetiredHistoricalTank(spec) {
   if (!spec || !spec.id) return false;
-  if (COLD_WAR.has(spec.id)) return !RETAINED_COLD_WAR.has(spec.id);
+  if (HISTORICAL_COLD_WAR_CANDIDATES.has(spec.id)) return !RETAINED_COLD_WAR.has(spec.id);
   return spec.era === 'ww2' && !RETAINED_WW2.has(spec.id);
-}
-
-/** Stable policy label for audit output and tooling. */
-export function historicalRosterClass(spec) {
-  if (!spec || !spec.id) return 'modern';
-  if (COLD_WAR.has(spec.id)) return 'coldwar';
-  if (spec.era === 'ww2') return 'ww2';
-  return 'modern';
 }
 
 /** Stable explanation used by developer tags and the roster report. */

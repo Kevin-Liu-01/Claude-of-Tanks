@@ -6,7 +6,7 @@ import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
 
 const MAPS = MAP_IDS;
 const SPECS = ALL_TANK_IDS
-  .filter((id) => ['light', 'medium', 'heavy'].includes(getSpec(id).class))
+  .filter((id) => ['light', 'medium', 'heavy'].includes(getSpec(id).role))
   .slice(0, 6);
 assert.equal(SPECS.length, 6, 'bot soak requires six mobile registered tanks');
 

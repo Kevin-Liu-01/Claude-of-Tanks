@@ -120,7 +120,7 @@ import {
 } from '../game/consumables.js';
 // Pre-rendered tank icons (tools/genIcons.mjs): side silhouettes drive the
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
-// vector class-glyph/arrow language instead (WoT reads class + heading, not
+// vector vehicle-silhouette/arrow language instead (WoT reads shape + heading, not
 // per-vehicle profiles, at those sizes).
 import { maskIcon, tintedIcon } from './icons.js';
 import { moduleAlertLabel } from './moduleRegistry.js';
@@ -461,7 +461,7 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   border-left:2px solid rgba(126,232,126,.75);
   box-shadow:0 1px 0 rgba(0,0,0,.45);}
 /* battle_hud r1: the right ear is a TRUE mirror of the left — row-reverse
-   flips the flex order but not the padding, so the enemy class glyph sat
+   flips the flex order but not the padding, so the enemy silhouette sat
    10px off its edge vs the ally's 8px. Mirrored padding keeps both panels'
    row metrics identical. */
 .cot-ear.r .cot-er{background:rgba(7,10,14,.62);padding:3px 8px 4px 10px;
@@ -926,7 +926,7 @@ export function initHud(bus) {
     veh: tgtEl.querySelector('.veh'), fl: tgtEl.querySelector('.fl'),
     hp: tgtEl.querySelector('.hp'), cg: tgtEl.querySelector('.cg'),
   };
-  let tgtLastCls = null; // cached class-glyph key (avoid per-frame innerHTML)
+  let tgtLastVehicleId = null; // cached silhouette key (avoid repeated mask writes)
   let tgtShown = false;
   let tgtRect = null; // screen-px rect of the shown plate (sniper hairline gap)
   let aimTargetId = null;
@@ -1059,30 +1059,6 @@ export function initHud(bus) {
     }
   }
 
-  // Vehicle-class glyphs — WoT's actual roster grammar (r6-2, round
-  // critique: "gem/diamond shapes effectively identical across rows"): the
-  // classic trio all share the diamond FOOTPRINT but differ by horizontal
-  // BAR CUTS, exactly like the WoT panel — light = hollow diamond, medium =
-  // solid diamond with ONE knocked-out bar, heavy = solid diamond with TWO
-  // bars, TD = solid inverted triangle, SPG = solid dome. Moderns keep the
-  // trapezoid family (MBT solid, IFV hollow) so eras also separate.
-  // evenodd fill-rule knocks the bars out of the solid diamonds (true
-  // transparent slots — they read at row size where interior dots did not).
-  function classGlyphSVG(cls, ink, w = 10, h = 8) {
-    const diaO = 'M6 .4 11.6 5 6 9.6 .4 5Z';
-    // knockout slats stay INSIDE the diamond's local width at their rows so
-    // the evenodd fill never paints slivers outside the outline
-    const body = {
-      light: `<path d="M6 1 10.9 5 6 9 1.1 5Z" fill="none" stroke="${ink}" stroke-width="1.3" stroke-linejoin="round"/>`,
-      medium: `<path fill-rule="evenodd" d="${diaO} M2.6 4.4h6.8v1.2H2.6Z" fill="${ink}"/>`,
-      heavy: `<path fill-rule="evenodd" d="${diaO} M3 2.95h6v1H3Z M3 6.05h6v1H3Z" fill="${ink}"/>`,
-      td: `<path d="M.9 1.1h10.2L6 9.5Z" fill="${ink}"/>`,
-      mbt: `<path d="M3.4 1.6h5.2l2.6 6.8H.8Z" fill="${ink}"/>`,
-      ifv: `<path d="M3.6 1.8h4.8l2.4 6.4H1.2Z" fill="none" stroke="${ink}" stroke-width="1.3" stroke-linejoin="round"/>`,
-      spg: `<path d="M1.3 8.6a4.7 4.7 0 0 1 9.4 0Z" fill="${ink}"/>`,
-    };
-    return `<svg viewBox="0 0 12 10" width="${w}" height="${h}">${body[cls] || body.medium}</svg>`;
-  }
   // WoT frag-counter (r4): both wedges render the SAME number of identical
   // segment ticks (max team size), always visible as slim dark notches; each
   // kill a team scores fills one tick in that team's color, growing outward
@@ -1453,7 +1429,7 @@ export function initHud(bus) {
   const nameById = new Map();
   const specIdById = new Map(); // entity id -> tank spec id (icon lookups)
   // incoming-hit direction wedges (hitind r1, on the killcam_endscreen r1
-  // world-anchoring): SHOOTER world pos + class — screen angle re-projected
+  // world-anchoring): SHOOTER world pos + impact kind — screen angle re-projected
   // per frame from the camera basis so the wedges counter-rotate with the
   // camera (see pushHitDirection root-cause note). `re` marks a merged
   // repeat (re-pulse attack); max 5 live entries.
@@ -1616,15 +1592,15 @@ export function initHud(bus) {
       lastScore = '';
     }
     let allyAlive = 0, allyTotal = 0, enemyAlive = 0, enemyTotal = 0;
-    const deadEnemies = []; // class ids — fill the ALLY frag chips
-    const deadAllies = [];  // class ids — fill the ENEMY frag chips
+    const deadEnemies = []; // vehicle ids — fill the ALLY frag chips
+    const deadAllies = [];  // vehicle ids — fill the ENEMY frag chips
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!t || !t.spec) continue;
       const ally = t.team === 'player' || t.isPlayer;
       const dead = !!(t.combat && t.combat.destroyed);
-      if (ally) { allyTotal++; if (!dead) allyAlive++; else deadAllies.push(t.spec.class); }
-      else { enemyTotal++; if (!dead) enemyAlive++; else deadEnemies.push(t.spec.class); }
+      if (ally) { allyTotal++; if (!dead) allyAlive++; else deadAllies.push(t.spec.id); }
+      else { enemyTotal++; if (!dead) enemyAlive++; else deadEnemies.push(t.spec.id); }
       let row = earRows.get(t.id);
       if (!row) {
         const r = el('div', 'cot-er');
@@ -1645,7 +1621,7 @@ export function initHud(bus) {
         (ally ? earL : earR).appendChild(r);
         row = {
           root: r, hp: r.querySelector('.hpm i'), ic: r.querySelector('.ic'),
-          ally, cls: t.spec.class, lastFrac: -1, wasDead: null, wasSpotted: ally,
+          ally, lastFrac: -1, wasDead: null, wasSpotted: ally,
         };
         earRows.set(t.id, row);
       }
@@ -2004,7 +1980,7 @@ export function initHud(bus) {
       // the wedge's outer arc at its angular center, on the wedge's OWN
       // envelopes: it scales in with the attack (`grow`, so a re-pulsed merge
       // flashes the new POOLED total — e.dmg accumulates in pushHitDirection)
-      // and fades on the same aEnv as the crescent. Class ink: damage-red
+      // and fades on the same aEnv as the crescent. Marker ink: damage-red
       // family on pen wedges, HE amber, steel for deflects — which carry the
       // RICOCHET/BLOCKED word instead of a number. The wedge geometry itself
       // is untouched; the damage log / shot log keep their entries (the
@@ -2668,11 +2644,10 @@ export function initHud(bus) {
     tgtRefs.nick.textContent = nickFor(best);
     tgtRefs.tier.textContent = (best.spec && tierNumeral(best.spec.id)) || '–';
     tgtRefs.veh.textContent = best.spec ? best.spec.name : String(best.id);
-    // same class-glyph language as the team panels (r6-2)
-    const tCls = best.spec ? best.spec.class : 'medium';
-    if (tCls !== tgtLastCls) {
-      tgtRefs.cg.innerHTML = classGlyphSVG(tCls, '#f0b4ab', 11, 9);
-      tgtLastCls = tCls;
+    const targetVehicleId = best.spec?.id || null;
+    if (targetVehicleId && targetVehicleId !== tgtLastVehicleId) {
+      maskIcon(tgtRefs.cg, targetVehicleId, 'side_silhouette', '#f0b4ab');
+      tgtLastVehicleId = targetVehicleId;
     }
     const frac = Math.max(0, Math.min(1, best.combat.hp / best.combat.maxHp));
     tgtRefs.fl.style.width = `${(frac * 100).toFixed(1)}%`;
@@ -3162,69 +3137,31 @@ export function initHud(bus) {
     return v;
   }
 
-  // vector fallback (first frames while a silhouette PNG is still loading) and
-  // last-known-position ghost marker: class-shaped diamond
-  function drawBlip(c, x, y, cls, color, alpha, ghost) {
-    c.save();
-    c.translate(x, y);
-    c.globalAlpha = alpha;
+  // Last-known contacts use one neutral stale-intel marker. Era is metadata,
+  // never a combat shape, and exact vehicle silhouettes stay in team panels.
+  function ghostMarkerPath(c, s) {
     c.beginPath();
-    c.moveTo(0, -4.4); c.lineTo(4.4, 0); c.lineTo(0, 4.4); c.lineTo(-4.4, 0);
-    c.closePath();
-    if (ghost || cls === 'medium' || cls === 'light') {
-      c.strokeStyle = color;
-      c.lineWidth = 1.4;
-      c.stroke();
-    } else {
-      c.fillStyle = color;
-      c.fill();
-      if (cls === 'mbt') {
-        c.fillStyle = 'rgba(8,12,16,0.9)';
-        c.fillRect(-2.4, -0.9, 4.8, 1.8);
-      }
-    }
-    c.restore();
-  }
-
-  // camo_spotting r6: last-known ghost marker as a WoT class glyph. Mirrors
-  // the classGlyphSVG geometry (12x10 frame) on canvas; the tinted top-down
-  // silhouette PNG at 21 px read as an anonymous red-brown box (critic r6).
-  function ghostGlyphPath(c, cls, s) {
-    c.beginPath();
-    if (cls === 'heavy') {
-      c.moveTo(0, -4.7 * s); c.lineTo(5.7 * s, 0); c.lineTo(0, 4.7 * s); c.lineTo(-5.7 * s, 0);
-    } else if (cls === 'td') {
-      c.moveTo(-5.1 * s, -3.9 * s); c.lineTo(5.1 * s, -3.9 * s); c.lineTo(0, 4.5 * s);
-    } else if (cls === 'spg') {
-      c.arc(0, 1.5 * s, 4.7 * s, Math.PI, 0);
-    } else if (cls === 'mbt') {
-      c.moveTo(-2.6 * s, -3.4 * s); c.lineTo(2.6 * s, -3.4 * s); c.lineTo(5.2 * s, 3.4 * s); c.lineTo(-5.2 * s, 3.4 * s);
-    } else if (cls === 'ifv') {
-      c.moveTo(-2.4 * s, -3.2 * s); c.lineTo(2.4 * s, -3.2 * s); c.lineTo(4.8 * s, 3.2 * s); c.lineTo(-4.8 * s, 3.2 * s);
-    } else { // light / medium: rhombus
-      c.moveTo(0, -4.1 * s); c.lineTo(4.6 * s, 0); c.lineTo(0, 4.1 * s); c.lineTo(-4.6 * s, 0);
-    }
+    c.moveTo(0, -4.1 * s); c.lineTo(4.6 * s, 0);
+    c.lineTo(0, 4.1 * s); c.lineTo(-4.6 * s, 0);
     c.closePath();
   }
-  function drawGhostClassGlyph(c, x, y, cls) {
+  function drawGhostMarker(c, x, y) {
     c.save();
     c.translate(x, y);
     const s = 1.35;                          // ~13 px wide, live-blip footprint
     c.globalAlpha = 0.8;                     // dark keyline pops it off terrain
     c.strokeStyle = 'rgba(8,12,16,0.85)';
     c.lineWidth = 3.2;
-    ghostGlyphPath(c, cls, s); c.stroke();
-    c.globalAlpha = 0.4;                     // ghosted class fill (stale intel)
+    ghostMarkerPath(c, s); c.stroke();
+    c.globalAlpha = 0.4;                     // ghosted stale-intel fill
     c.fillStyle = 'rgb(242,140,132)';
-    ghostGlyphPath(c, cls, s); c.fill();
+    ghostMarkerPath(c, s); c.fill();
     c.globalAlpha = 0.9;                     // thin outline keeps it legible
     c.lineWidth = 1.1;
     c.strokeStyle = 'rgba(255,178,170,0.95)';
-    ghostGlyphPath(c, cls, s); c.stroke();
-    if (cls === 'medium') {                  // core dot separates medium/light
-      c.globalAlpha = 0.75; c.fillStyle = 'rgb(242,140,132)';
-      c.beginPath(); c.arc(0, 0, 1.7, 0, Math.PI * 2); c.fill();
-    }
+    ghostMarkerPath(c, s); c.stroke();
+    c.globalAlpha = 0.75; c.fillStyle = 'rgb(242,140,132)';
+    c.beginPath(); c.arc(0, 0, 1.7, 0, Math.PI * 2); c.fill();
     c.restore();
   }
 
@@ -3309,7 +3246,6 @@ export function initHud(bus) {
         mmCtx.stroke();
         continue;
       }
-      const cls = t.spec ? t.spec.class : 'medium';
       const [jx, jy] = blipJitter(t.id);
       if (ally) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
@@ -3321,14 +3257,14 @@ export function initHud(bus) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
         pushLiveBlip(px + jx, py + jy, t.state.yaw, PEN_RED, 5, 0.95, false);
       } else if (sp && sp.ever) {
-        // last-known-position ghost marker (class diamond — deliberately a
+        // last-known-position ghost marker (neutral diamond — deliberately a
         // DIFFERENT shape from the live arrows: "stale intel" at a glance)
         const [px, py] = worldToMap(sp.lastX, sp.lastZ);
         // camo_spotting r6 (supersedes content_breadth r4): the 21 px tinted
         // top silhouette read as an anonymous red-brown box ambiguous with
-        // map furniture. Ghosted CLASS GLYPH instead — same grammar as the
-        // team rows, 40% fill + thin outline (WoT last-seen marker).
-        drawGhostClassGlyph(mmCtx, px, py, cls);
+        // map furniture. One ghosted mark provides a clear last-seen state
+        // without reintroducing a vehicle category.
+        drawGhostMarker(mmCtx, px, py);
       }
       // never spotted -> nothing on the map
     }

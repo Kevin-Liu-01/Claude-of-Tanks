@@ -1,24 +1,6 @@
 import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
-
-const CLASS_LABELS = Object.freeze({
-  light: 'Light tank',
-  medium: 'Medium tank',
-  heavy: 'Heavy tank',
-  mbt: 'Main battle tank',
-  td: 'Tank destroyer',
-  ifv: 'Infantry fighting vehicle',
-  afv: 'Armored fighting vehicle',
-  spg: 'Self-propelled gun',
-});
-
-const ERA_LABELS = Object.freeze({
-  interwar: 'Interwar',
-  ww2: 'Second World War',
-  postwar: 'Postwar',
-  coldwar: 'Cold War',
-  modern: 'Modern',
-});
+import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 
 function clamp(value, min = 0, max = 100) {
   return Math.min(max, Math.max(min, value));
@@ -89,12 +71,8 @@ function protectionAssessment(bestKe) {
   return 'limited kinetic protection, which increases the importance of positioning';
 }
 
-export function classLabel(value) {
-  return CLASS_LABELS[value] || titleCase(value || 'vehicle');
-}
-
-function eraLabel(value) {
-  return ERA_LABELS[value] || titleCase(value || 'unspecified era');
+export function technicalLabel(value) {
+  return titleCase(value || 'unspecified');
 }
 
 export function createGalleryRecord(spec) {
@@ -132,9 +110,8 @@ export function createGalleryRecord(spec) {
   const modules = spec.armor?.modules || [];
   const crew = spec.armor?.crew || [];
   const tier = tankTier(spec.id);
-  const vehicleClass = classLabel(spec.class);
   const nation = String(spec.nation || 'Unknown nation');
-  const era = eraLabel(spec.era);
+  const era = vehicleEraLabel(spec.era);
 
   const ratings = {
     firepower: rounded(
@@ -164,7 +141,7 @@ export function createGalleryRecord(spec) {
   const armamentSentence = autoloader
     ? `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament uses a ${magazineSize}-round magazine autoloader with a ${rounded(intraClipS)}-second intra-magazine cycle and a complete reload time of ${rounded(fullReloadS)} seconds; the modeled ammunition suite comprises ${shellTypes.length || 1} ${shellTypes.length === 1 ? 'family' : 'families'}.`
     : `Its ${Number(spec.gun?.caliberMm || 0)} mm primary armament is modeled with ${shellTypes.length || 1} ammunition ${shellTypes.length === 1 ? 'family' : 'families'}.`;
-  const firstParagraph = `In Claude of Tanks, ${label.displayName} is a Tier ${tierNumeral(spec.id) || tier} ${nation} ${vehicleClass.toLowerCase()} from the ${era.toLowerCase()} period. ${armamentSentence} Its drivetrain provides ${rounded(powerToWeight)} horsepower per tonne and a maximum forward speed of ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h.`;
+  const firstParagraph = `In Claude of Tanks, ${label.displayName} is a Tier ${tierNumeral(spec.id) || tier} ${nation} vehicle representing the ${era} era. ${armamentSentence} Its drivetrain provides ${rounded(powerToWeight)} horsepower per tonne and a maximum forward speed of ${rounded(Number(spec.topSpeedKmh || 0), 0)} km/h.`;
   const featureSentence = features.length
     ? ` The authored plate set also includes ${joinTechnicalList(features)}.`
     : '';
@@ -185,8 +162,7 @@ export function createGalleryRecord(spec) {
     aliases: label.searchAliases,
     nation,
     era,
-    vehicleClass,
-    classKey: spec.class || 'vehicle',
+    eraKey: spec.era,
     developmentOnly: Boolean(spec.roster?.developmentOnly),
     rosterTag: spec.roster?.tag || '',
     rosterReason: spec.roster?.reason || 'production',
@@ -194,7 +170,7 @@ export function createGalleryRecord(spec) {
     tierNumeral: tierNumeral(spec.id) || String(tier),
     image: `/icons/${spec.id}_angle.webp`,
     searchText: [
-      label.searchAliases.join(' '), nation, era, vehicleClass, tier,
+      label.searchAliases.join(' '), nation, era, tier,
       autoloader ? 'magazine autoloader' : '',
       spec.roster?.developmentOnly ? `dev development ${spec.roster.reason || ''}` : 'production',
     ].join(' ').toLocaleLowerCase('en-US'),
@@ -250,7 +226,7 @@ export function filterGalleryRecords(records, filters = {}) {
   const query = String(filters.query || '').trim().toLocaleLowerCase('en-US');
   return records.filter((record) => {
     if (filters.nation && filters.nation !== 'all' && record.nation !== filters.nation) return false;
-    if (filters.vehicleClass && filters.vehicleClass !== 'all' && record.classKey !== filters.vehicleClass) return false;
+    if (filters.era && filters.era !== 'all' && record.eraKey !== filters.era) return false;
     if (query && !record.searchText.includes(query)) return false;
     return true;
   });
@@ -259,13 +235,12 @@ export function filterGalleryRecords(records, filters = {}) {
 export function serializeGallerySpec(spec) {
   const record = createGalleryRecord(spec);
   return {
-    schema: 'claude-of-tanks/gallery-spec@1',
+    schema: 'claude-of-tanks/gallery-spec@2',
     id: record.id,
     name: record.displayName,
     authorship: record.authorship,
     nation: record.nation,
-    era: record.era,
-    class: record.vehicleClass,
+    era: { id: record.eraKey, label: record.era },
     tier: record.tier,
     dimensionsM: record.dimensions,
     mobility: {

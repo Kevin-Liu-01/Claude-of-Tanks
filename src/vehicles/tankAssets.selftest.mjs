@@ -8,13 +8,16 @@ import {
   getSpec,
 } from './specs.js';
 import {
-  TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
+  TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount, geometryFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
+import { VEHICLE_ERA_META } from './taxonomy.js';
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 const assetManifest = JSON.parse(readFileSync(new URL('../../public/icons/tank-assets.json', import.meta.url)));
+assert.equal(assetManifest.schemaVersion, TANK_ASSET_SCHEMA_VERSION,
+  'generated manifest uses the current public taxonomy schema');
 for (const id of DEVELOPMENT_TANK_IDS) {
   const assets = assetManifest.tanks?.[id]?.assets || {};
   assert.deepEqual(Object.keys(assets).sort(), Object.keys(TANK_ASSET_VIEWS).sort(),
@@ -43,6 +46,8 @@ for (const id of ALL_TANK_IDS) {
   assert.equal(spec.authorship?.runtimeExternalGeometry, false, `${id}: runtime external geometry disabled`);
   assert.equal(spec.publicVisualFallback, undefined, `${id}: own first-party public visuals`);
   const metadata = tankAssetMetadata(spec);
+  assert.equal(Object.hasOwn(metadata, 'class'), false, `${id}: retired class is absent from asset metadata`);
+  assert.ok(VEHICLE_ERA_META[metadata.era], `${id}: asset metadata uses a canonical era`);
   const files = Object.values(requiredTankAssetFiles(id));
   assert.equal(new Set(files).size, 9, `${id}: asset filenames are unique`);
   assert(Number.isInteger(metadata.tier) && metadata.tier >= 1 && metadata.tier <= 10, `${id}: tier`);

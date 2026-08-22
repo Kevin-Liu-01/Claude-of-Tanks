@@ -43,7 +43,7 @@ function variant(id, donorId, o) {
   spec.name = o.name;
   spec.nation = o.nation;
   spec.era = 'modern';
-  spec.class = 'ifv';
+  spec.role = 'ifv';
   spec.variantOf = donorId;
   delete spec.community;
   Object.assign(spec, o.stats || {});
@@ -176,7 +176,7 @@ const AFV_FAMILY_SPECS = {
     // A3 rails); the §5.269 cast turret with the external MK20 carriage is
     // preserved and re-seated. Print marder1a3_arrafi.glb stays fused/
     // suspect (rip-poster account history) — PHOTOS GOVERN (§B7 class).
-    id: 'marder1a3', name: 'Marder 1A3', nation: 'Germany', era: 'modern', class: 'ifv',
+    id: 'marder1a3', name: 'Marder 1A3', nation: 'Germany', era: 'modern', role: 'ifv',
     hp: 1250,
     enginePowerHp: 600, weightTons: 33.5, topSpeedKmh: 65, reverseSpeedKmh: 17,
     hullTraverseDegS: 50,
@@ -234,7 +234,7 @@ const AFV_FAMILY_SPECS = {
     // bustle, glacis appliqué, coax) re-seats on it. Print
     // m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose vertex reads
     // are scattered — the browser gate poses it correctly).
-    id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', class: 'ifv',
+    id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', role: 'ifv',
     hp: 1800,
     enginePowerHp: 600, weightTons: 34.4, topSpeedKmh: 61, reverseSpeedKmh: 20,
     hullTraverseDegS: 40,
@@ -285,7 +285,7 @@ const AFV_FAMILY_SPECS = {
     // envelope, pub-dims sovereignty).
     // NATION: Russia (§5.249 ASK-OWNER default; the print's ROK livery is
     // noted — a ROK-marked variant remains available as bmp3_rok).
-    id: 'bmp3', name: 'BMP-3', nation: 'Russia', era: 'modern', class: 'ifv',
+    id: 'bmp3', name: 'BMP-3', nation: 'Russia', era: 'modern', role: 'ifv',
     hp: 1450,
     enginePowerHp: 500, weightTons: 18.7, topSpeedKmh: 70, reverseSpeedKmh: 20,
     hullTraverseDegS: 48,
@@ -338,7 +338,7 @@ const AFV_FAMILY_SPECS = {
     // reads L 5.11 / H 2.55 at W 3.00 — the REG row's provisional 6.70
     // length was a pre-extraction BMP-2-class guess and is superseded by
     // the print's own proportions (conflict reported to the orchestrator).
-    id: 'upior', name: 'Upiór IFV', nation: 'Poland', era: 'modern', class: 'ifv',
+    id: 'upior', name: 'Upiór IFV', nation: 'Poland', era: 'modern', role: 'ifv',
     hp: 1700,
     enginePowerHp: 800, weightTons: 30.0, topSpeedKmh: 75, reverseSpeedKmh: 30,
     hullTraverseDegS: 52,

@@ -167,9 +167,9 @@ export function resolveEngineSoundProfile(specId, spec = null) {
   if (/(^|_)(m1a\d?|abrams|t80|strv103)/.test(id) || /^(m1a|abrams|t80|strv103)/.test(id)) {
     return ENGINE_SOUND_PROFILES.turbine;
   }
-  const cls = String(spec && spec.class || '').toLowerCase();
+  const role = String(spec && spec.role || '').toLowerCase();
   const mass = Number(spec && spec.weightTons);
-  if (cls === 'light' || cls === 'ifv' || cls === 'spaa' || (Number.isFinite(mass) && mass < 28)) {
+  if (role === 'light' || role === 'ifv' || role === 'spaa' || (Number.isFinite(mass) && mass < 28)) {
     return ENGINE_SOUND_PROFILES.lightDiesel;
   }
   const era = String(spec && spec.era || '').toLowerCase();

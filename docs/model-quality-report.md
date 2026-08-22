@@ -1,106 +1,141 @@
 # Tank model quality audit
 
-Pass bar: **8.5/10**. Selected: **91/91 pass**. Retained rejected candidates: **2/2**.
+Pass bar: **8.5/10**. Selected: **121/121 pass**. Retained rejected candidates: **7/7**.
 
 | Vehicle | Role | Visual | Score | Peer Δ | Turret | Gun | Decision |
 |---|---:|---|---:|---:|---|---|---|
-| T30 (t30) | candidate | glb | 2.78 | -6.15 | procedural | fused/missing | REJECT |
-| IS-1 (is1) | candidate | glb | 2.98 | -5.98 | procedural | fused/missing | REJECT |
-| Leopard 2A7V (leo2a7v) | selected | glb | 8.50 | -1.00 | desirefx_me_003 | fused/missing | PASS |
-| T30 (t30) | selected | procedural | 8.50 | -0.43 | procedural | procedural | PASS |
-| Type 90 Kyu-maru (type90) | selected | glb | 8.50 | -1.00 | Turret | fused/missing | PASS |
-| M45 Patton (m45_patton) | selected | glb | 8.53 | -0.43 | Turret | fused/missing | PASS |
-| M1A1 AIM Abrams (m1a1_aim) | selected | glb | 8.55 | -0.95 | Turret | fused/missing | PASS |
-| T-90A Vladimir (t90a_vladimir) | selected | glb | 8.57 | -0.93 | desirefxme_001 | fused/missing | PASS |
-| T-72BU (t72bu) | selected | glb | 8.65 | -0.85 | Turret | fused/missing | PASS |
-| M26 Pershing (m26_pershing) | selected | glb | 8.69 | -0.27 | Turret | fused/missing | PASS |
-| T95 Doomturtle (t95) | selected | glb | 8.75 | -0.18 | fixed mount | hull gun | PASS |
-| IS-3 (Bergman) (is3_bergman) | selected | glb | 8.77 | -0.19 | Turret | fused/missing | PASS |
-| M47 Patton (m47_patton) | selected | glb | 8.77 | -0.73 | Turret | fused/missing | PASS |
-| Sturmtiger (sturmtiger) | selected | glb | 8.77 | -0.16 | fixed mount | hull gun | PASS |
-| Stridsvagn 103 (strv103) | selected | glb | 8.79 | +0.00 | fixed mount | hull gun | PASS |
-| T-72B obr. 1987 (t72b_1987) | selected | glb | 8.81 | -0.69 | Turret | fused/missing | PASS |
-| M46 Patton (m46_patton) | selected | glb | 8.82 | -0.68 | Turret | fused/missing | PASS |
-| IS-7 (is7) | selected | glb | 8.85 | -0.11 | Turret | fused/missing | PASS |
-| IS-6B (is6b) | selected | glb | 8.86 | -0.10 | Turret | fused/missing | PASS |
-| Leopard 2 Prototype (leopard2_proto) | selected | glb | 8.87 | -0.63 | Turret | fused/missing | PASS |
-| T-64BV1 (t64bv1) | selected | glb | 8.87 | -0.63 | Turret | fused/missing | PASS |
-| T-62MV-1 (t62mv1) | selected | glb | 8.90 | -0.60 | Turret | fused/missing | PASS |
-| A34 Comet (comet) | selected | glb | 8.93 | -0.03 | Turret | fused/missing | PASS |
-| ISU-152 (isu152) | selected | glb | 8.93 | +0.00 | fixed mount | hull gun | PASS |
-| Jagdtiger (jagdtiger) | selected | glb | 8.93 | +0.00 | fixed mount | hull gun | PASS |
-| A30 Challenger (challenger_cruiser) | selected | glb | 8.94 | -0.02 | Turret | fused/missing | PASS |
-| FV4101 Charioteer (charioteer) | selected | glb | 8.94 | +0.01 | Turret | fused/missing | PASS |
-| Object 279 (object279) | selected | glb | 8.95 | -0.01 | Turret | fused/missing | PASS |
-| Panzerkampfwagen III (pziii_konserwa) | selected | glb | 8.95 | -0.01 | Plane000 | fused/missing | PASS |
-| Tiger II (tiger2) | selected | glb | 8.95 | -0.01 | Object_2 | fused/missing | PASS |
-| KV-2 (kv2) | selected | glb | 8.96 | +0.00 | turret | fused/missing | PASS |
-| M4A3E2 Sherman Jumbo (sherman_jumbo) | selected | glb | 8.96 | +0.00 | turret | fused/missing | PASS |
-| ISU-122S (isu122s) | selected | glb | 8.97 | +0.04 | fixed mount | hull gun | PASS |
-| T-34-85 (Wei He) (t34_85_cad) | selected | glb | 8.97 | +0.01 | turret | fused/missing | PASS |
-| Centurion Mk.3 (centurion3) | selected | glb | 8.98 | -0.52 | Turret | fused/missing | PASS |
-| Centurion Mk.5/2 (centurion5) | selected | glb | 8.98 | -0.52 | Turret | fused/missing | PASS |
-| Jagdpanzer E100 (jpz_e100) | selected | glb | 8.99 | +0.06 | fixed mount | hull gun | PASS |
-| IS-1 (is1) | selected | procedural | 9.00 | +0.04 | procedural | procedural | PASS |
-| M1A2 Abrams SEPv3 (m1a2) | selected | glb | 9.20 | -0.30 | TurretPivot | GunPivot | PASS |
-| M1A2 Abrams SEPv2 (m1a2_sepv2) | selected | glb | 9.30 | -0.20 | Turret | misc_b | PASS |
-| Merkava Mk.1B (merkava1b) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| Merkava Mk.2B (merkava2b) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| Merkava Mk.2D (merkava2d) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| Merkava Mk.3B (merkava3b) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| Merkava Mk.3C (merkava3c) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| Merkava Mk.3D (merkava3d) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| Merkava Mk.4B (merkava4b) | selected | glb | 9.30 | -0.20 | Turret | Gun | PASS |
-| AbramsX (abramsx) | selected | glb | 9.35 | -0.15 | Turret | Stvol | PASS |
-| Heavy Tank (Quaternius) (q_heavy) | selected | glb | 9.38 | +0.42 | Tank_Turret | Tank_Gun | PASS |
-| Leopard 2A6 (leo2a6) | selected | glb | 9.40 | -0.10 | turret | gun | PASS |
-| T-72B3M obr. 2022 (t72b3m) | selected | glb | 9.41 | -0.09 | misc_a | misc_b | PASS |
-| Leopard 2A5 (leo2a5) | selected | glb | 9.43 | -0.07 | Turret | Gun | PASS |
-| IS-3 (is3) | selected | glb | 9.49 | +0.53 | turret | gun | PASS |
-| C1 Ariete (ariete) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| BMP-2 (bmp2) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Challenger 2 (challenger2) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Chieftain Mk 10 (chieftain_mk10) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| IS-2 (is2) | selected | procedural | 9.50 | +0.54 | procedural | procedural | PASS |
-| K2 Black Panther (k2) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Leopard 1A5 (leo1a5) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Leopard 2A4 (leo2a4) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Leopard 2A7 (leo2a7) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| M2A2 Bradley (m2a2_bradley) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| M4A3E8 Sherman (m4a3e8) | selected | procedural | 9.50 | +0.54 | procedural | procedural | PASS |
-| Panther Ausf. G (panther_g) | selected | procedural | 9.50 | +0.54 | procedural | procedural | PASS |
-| Recon Tank (Mophs) (recon_tank) | selected | glb | 9.50 | +0.00 | Turret | Barrel | PASS |
+| Jagdpanzer E100 (jpz_e100) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| KV-2 (kv2) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| M1A2 Abrams TUSK (m1a2_tusk) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| M48A5 Patton (m48) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| Sturmtiger (sturmtiger) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| T95 (t95) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| Type 59 (type59) | candidate | glb | 0.00 | -9.00 | procedural | fused/missing | REJECT |
+| Jagdpanzer E100 (jpz_e100) | selected | procedural | 8.50 | -0.50 | fixed mount | procedural | PASS |
+| KV-2 (kv2) | selected | procedural | 8.50 | -0.50 | procedural | procedural | PASS |
+| Sturmtiger (sturmtiger) | selected | procedural | 8.50 | -0.50 | fixed mount | procedural | PASS |
+| T95 (t95) | selected | procedural | 8.50 | -0.50 | fixed mount | procedural | PASS |
+| AbramsX (abramsx) | selected | procedural | 9.00 | -0.50 | procedural | procedural | PASS |
+| AMX-30B (amx30) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| AMX-30B2 (amx30b2) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| BMP-3 (ROK) (bmp3_rok) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| BMPT T-90 (bmpt_t90) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| BMPT Terminator 2 (bmpt_terminator2) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| BWP-1 (Bojowy Wóz Piechoty 1) (bwp1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Centurion Mk 3 (centurion3) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Centurion Mk 5/2 (centurion5) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Challenger 1 Mk 3 (challenger1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Chieftain Mk 5 (chieftain5) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| FV510 Warrior (fv510) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| FV510 Warrior MILAN (fv510_milan) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| ISU-122S (isu122s) | selected | procedural | 9.00 | +0.00 | fixed mount | procedural | PASS |
+| ISU-152 (isu152) | selected | procedural | 9.00 | +0.00 | fixed mount | procedural | PASS |
+| K2B (k2b) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2 Revolution (leo2_revolution) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2A4 OTCO (leo2a4_otco) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2A4M (leo2a4m) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2A5 (leo2a5) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2A6M (leo2a6m) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2A7V (leo2a7v) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Leopard 2 Prototype (leopard2_proto) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M1A1 Abrams (m1a1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M1A1 Abrams HA (m1a1ha) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M1A2 Abrams SEPv2 (m1a2_sepv2) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M1A2 Abrams SEPv3 (m1a2_sepv3) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M1A2 Abrams TUSK (m1a2_tusk) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M26 Pershing (m26_pershing) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M45 Patton (m45_patton) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M46 Patton (m46_patton) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M47 Patton (m47_patton) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M48A5 Patton (m48) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M60A1 Patton (m60a1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M60A2 Starship (m60a2) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M60A3 (m60a3) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Merkava Mk 1B (merkava1b) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Merkava Mk 2B (merkava2b) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Merkava Mk 2D (merkava2d) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Merkava Mk 3C (merkava3c) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Merkava Mk 3D (merkava3d) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Merkava Mk 4B (merkava4b) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| PL-01 (pl01) | selected | procedural | 9.00 | -0.50 | procedural | procedural | PASS |
+| PL-01 (105) (pl01_105) | selected | procedural | 9.00 | -0.50 | procedural | procedural | PASS |
+| PT-91A Twardy (pt91_twardy) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| PT-91M Pendekar (pt91m) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| STB-1 (stb1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Stridsvagn 103A (strv103a) | selected | procedural | 9.00 | +0.00 | fixed mount | procedural | PASS |
+| Stridsvagn 122 (strv122) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Stridsvagn 81 (strv81) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-62 obr. 1975 (t62mv1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-64BV1 (t64bv1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-72B3M obr. 2022 (t72b3m) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-72BU (t72bu) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-72M1 Jaguar (t72m1_jaguar) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-80 (t80) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-80B (t80b) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-80BV (t80bv) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-84 Oplot (t84) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-90 (t90) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-90A (t90a) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-90A Burlak (t90a_burlak) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-90A Vladimir (t90a_vladimir) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-90MS Tagil (t90ms) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-90SM (t90sm) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Type 10B (type10b) | selected | procedural | 9.00 | -0.50 | procedural | procedural | PASS |
+| Type 59 (type59) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Type 90 (Kyū-maru) (type90) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| Type 90A (type90a) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M1A1 Abrams UA (ua_m1a1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| M2A3 Bradley (Ukraine) (ua_m2a3_bradley) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-64BV Donbas (ua_t64bv) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-80BV (Ukraine) (ua_t80bv) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-80U Kursk (ua_t80u_kursk) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| T-84BM Oplot-M (ua_t84_oplot_m) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| UDES 03 (udes03) | selected | procedural | 9.00 | +0.00 | fixed mount | procedural | PASS |
+| Vickers MBT Mk 1 (vickers_mk1) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| ZTZ-85-III (ztz85_iii) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| ZTZ-99A2 (ztz99a2) | selected | procedural | 9.00 | +0.00 | procedural | procedural | PASS |
+| AMX-40 (amx40) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| AMX 56 (amx56) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| C1 Ariete Preserie (ariete) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| C1 Ariete (ariete_c1) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| C2 Ariete (ariete_c2) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
+| BMP-2 (bmp2) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| BMP-3 (bmp3) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Carro 45t (carro45t) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Challenger 3 (challenger_3) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
+| Challenger 2 (challenger2) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Chieftain Mk 10 (chieftain_mk10) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| K1A1 (k1a1) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| K2 Black Panther (k2) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| KF51 Panther (kf51) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
+| KF51B Panther (kf51b) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
+| Leclerc S2 (leclerc) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Leclerc XLR (leclerc_xlr) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Leopard 1A5 (leo1a5) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Leopard 2A4 (leo2a4) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Leopard 2A6 (leo2a6) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| M1A2 Abrams (m1a2) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| M1A2 Abrams (Legacy) (m1a2_legacy) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| M2A2 Bradley (m2a2_bradley) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| M3A3 Bradley CFV (m3a3_bradley) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Schützenpanzer Marder 1A3 (marder1a3) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| MBT-70 (mbt70) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Panther Ausf. G (panther_g) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Schützenpanzer Puma (spz_puma) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Stridsvagn 103B (strv103) | selected | procedural | 9.50 | +0.50 | fixed mount | procedural | PASS |
 | T-14 Armata (t14) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| T-34-85 (t34_85) | selected | procedural | 9.50 | +0.54 | procedural | procedural | PASS |
-| T-72B3 (t72b3) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Tiger I (tiger1) | selected | procedural | 9.50 | +0.54 | procedural | procedural | PASS |
-| Type 10 (type10) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Type 74 (type74) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| Type 99A (ZTZ-99A) (type99a) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
-| M1A1 Abrams (m1a1) | selected | glb | 9.52 | +0.02 | Turret | Gun | PASS |
-| M1A1HA Abrams (m1a1ha) | selected | glb | 9.52 | +0.02 | Turret | Gun | PASS |
-| M1A2 Abrams (Tejas) (m1a2_tejas) | selected | glb | 9.52 | +0.02 | Turret | Gun | PASS |
-| M1A2 Abrams TUSK (m1a2_tusk) | selected | glb | 9.52 | +0.02 | Turret | Gun | PASS |
-| FV510 Warrior (fv510) | selected | glb | 9.55 | +0.05 | Turret | Gun | PASS |
-| PT-91M Pendekar (pt91m) | selected | glb | 9.55 | +0.05 | misc_a | misc_b | PASS |
-| T-90SM (t90sm) | selected | glb | 9.55 | +0.05 | misc_a | misc_b | PASS |
-| Challenger 1 Mk.3 (challenger1) | selected | glb | 9.56 | +0.06 | Turret | Gun | PASS |
-| Leopard 2 Revolution (leo2_revolution) | selected | glb | 9.62 | +0.12 | Turret | Gun | PASS |
-| T-80U (t80u) | selected | glb | 9.64 | +0.14 | Object09_24 | Object1101_22 | PASS |
-| Chieftain Mk.5 (chieftain5) | selected | glb | 9.74 | +0.24 | Turret | Gun | PASS |
-| T-90M Proryv (t90m) | selected | glb | 9.78 | +0.28 | Turret | Main_barrel | PASS |
-| T-90A (t90a) | selected | glb | 9.80 | +0.30 | TurretPivot | GunPivot | PASS |
-| Leclerc S2 (leclerc) | selected | glb | 9.85 | +0.35 | turret | Cylinder086 | PASS |
-| KF51 Panther (kf51) | selected | glb | 9.87 | +0.37 | KF51_Turret_Msh | Gun_Msh | PASS |
-| Leichttraktor (leichttraktor) | selected | glb | 9.88 | +0.00 | Turret | Gun | PASS |
-| Panzer III Ausf. J (newc_pziii) | selected | glb | 9.92 | +0.96 | Turret | Gun | PASS |
-| Tiger I (Newc42) (newc_tiger) | selected | glb | 9.94 | +0.98 | Turret | Barrel | PASS |
-| M60A1 Patton (m60a1) | selected | glb | 9.98 | +0.48 | Turret | weapon | PASS |
-| M60A3 (m60a3) | selected | glb | 9.98 | +0.48 | Turret | weapon | PASS |
+| T-80U (t80u) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| T-90M Proryv (t90m) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Tiger I (tiger1) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Type 10 (type10) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Type 74 (type74) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Type 89 IFV (type89) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| ZTZ-99A (Type 99A) (type99a) | selected | procedural | 9.50 | +0.50 | procedural | procedural | PASS |
+| Upiór IFV (upior) | selected | procedural | 9.50 | +0.00 | procedural | procedural | PASS |
 
 ## Scoring notes
 
 - Automated scores cover structure, articulation, pivots, orientation/proportions, and config hygiene.
 - A fused gun may pass, but is capped at 9.0 and called out because visual elevation remains virtual (including casemate tubes).
 - A turreted vehicle without a separable turret is rejected. It cannot be activated merely by calling the asset `fixed`.
-- Peer Δ compares the selected score with the median of the same era/class.
+- Peer Δ compares the selected score with the median of the same era.

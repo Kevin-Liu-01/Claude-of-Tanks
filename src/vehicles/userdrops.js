@@ -41,12 +41,12 @@ const communityArmor = (o) => buildCommunityArmor(o, { exposeTurretless: false }
 
 // ---------------------------------------------------------------------------
 // NEW VEHICLE: Type 74 (Japan tier VIII, registered in the modern roster).
-// Class-template MBT spec in the 1st-gen 105mm envelope (leo1a5 peer, one
+// Shared-template MBT spec in the 1st-gen 105mm envelope (leo1a5 peer, one
 // tier up on mobility+depression): L7 105 mm, 38 t, hydropneumatic
 // suspension = standout -10 gun depression, thin cast armor.
 // ---------------------------------------------------------------------------
 const TYPE74_SPEC = {
-  id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', class: 'mbt',
+  id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', role: 'mbt',
   // variantOf self-marker (m1a1 rule): nation-roster
   // vehicle with a sourced model — stays on the JAPAN tab / MODERN filter,
   // credit line still renders on its cards via `community`.

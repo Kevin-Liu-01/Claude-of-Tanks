@@ -30,6 +30,7 @@ import { hedgehogBeamSpecs, sampleDiscGround, sampleObbGround } from './propPlac
 import { box, gablePrism, jitterUV, scaleUV, slabBox } from './propGeometry.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
+import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
 import MODELS from './props-models.json';
@@ -3000,7 +3001,7 @@ ${snowCap ? `
         let debrisTris = 0;
         if (wCfg?.debris !== false) {
           const debris = bakeWreckDebris(seed + 17001 + wreckSerial * 97, {
-            modern: era === 'modern',
+            modern: isPostwarVehicleEra(era),
           });
           wreckSerial++;
           debris.geo.rotateY(yaw);

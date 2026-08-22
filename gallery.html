@@ -44,12 +44,12 @@
       <form class="archive-filters" id="archiveFilters" role="search">
         <label class="search-field" for="gallerySearch">
           <span>Search archive</span>
-          <input id="gallerySearch" type="search" placeholder="Name, nation, class…" autocomplete="off" spellcheck="false">
+          <input id="gallerySearch" type="search" placeholder="Name, nation, era…" autocomplete="off" spellcheck="false">
           <kbd>/</kbd>
         </label>
         <div class="filter-row">
-          <label for="nationFilter"><span>Nation</span><select id="nationFilter"><option value="all">All nations</option></select></label>
-          <label for="classFilter"><span>Class</span><select id="classFilter"><option value="all">All classes</option></select></label>
+          <div class="gallery-filter"><span class="filter-label" id="nationFilterLabel">Nation</span><select id="nationFilter" aria-labelledby="nationFilterLabel"><option value="all">All nations</option></select></div>
+          <div class="gallery-filter"><span class="filter-label" id="eraFilterLabel">Era</span><select id="eraFilter" aria-labelledby="eraFilterLabel"><option value="all">All eras</option></select></div>
         </div>
       </form>
 
@@ -68,7 +68,22 @@
       <div class="viewer-atmosphere" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="viewer-head">
         <div class="live-pill"><img src="/brand/nav/tank-gallery.svg" alt=""><span class="live-status"><i></i><b>Active inspection bay</b><small>Current procedural model</small></span></div>
-        <div class="viewer-head-actions"><button type="button" class="field-frames-button" id="galleryArchiveOpen">Field frames <span>88</span></button><div class="viewer-record" id="viewerRecord">Archive record —</div></div>
+        <div class="view-controls" role="group" aria-label="Camera controls">
+          <span class="view-controls-label"><img src="/brand/features/camera-paths.svg" alt=""><span>Camera</span></span>
+          <button type="button" data-view="hero" class="active">Hero</button>
+          <button type="button" data-view="front">Front</button>
+          <button type="button" data-view="left">Left</button>
+          <button type="button" data-view="right">Right</button>
+          <button type="button" data-view="rear">Rear</button>
+          <button type="button" data-view="top">Top</button>
+          <button type="button" data-view="elevated-left">Elev. L</button>
+          <button type="button" data-view="elevated-right">Elev. R</button>
+          <button type="button" id="autoRotate" aria-pressed="false">Auto</button>
+        </div>
+        <div class="viewer-head-actions">
+          <button type="button" class="field-frames-button" id="galleryArchiveOpen"><i data-ui-icon="graphics"></i><span>Field frames</span><b>88</b></button>
+          <div class="viewer-record" id="viewerRecord"><i data-ui-icon="battleRecord"></i><span id="viewerRecordValue">Archive record —</span></div>
+        </div>
       </div>
 
       <div class="loading-state" id="loadingState" role="status">
@@ -82,30 +97,21 @@
         <p id="inspectionDetails">Select a diagnostic volume for exact data.</p>
       </div>
 
-      <div class="view-controls" role="group" aria-label="Camera controls">
-        <span class="view-controls-label"><img src="/brand/features/camera-paths.svg" alt="">Camera</span>
-        <button type="button" data-view="hero" class="active">Hero</button>
-        <button type="button" data-view="front">Front</button>
-        <button type="button" data-view="left">Left</button>
-        <button type="button" data-view="right">Right</button>
-        <button type="button" data-view="rear">Rear</button>
-        <button type="button" data-view="top">Top</button>
-        <button type="button" data-view="elevated-left">Elev. L</button>
-        <button type="button" data-view="elevated-right">Elev. R</button>
-        <button type="button" id="autoRotate" aria-pressed="false">Auto</button>
+      <div class="viewer-bottom-console">
+        <div class="overlay-legend" id="overlayLegend" role="group" aria-label="Overlay legend"></div>
+        <div class="mode-dock" role="group" aria-label="Inspection overlay">
+          <p><i data-ui-icon="graphics"></i><span>Diagnostic layers<small>Keys 1–5</small></span></p>
+          <button type="button" class="active" data-mode="appearance" data-key="1"><img src="/brand/features/vehicle.svg" alt=""><span>Exterior<small>Rendered surface</small></span></button>
+          <button type="button" data-mode="armor" data-key="2"><img src="/brand/features/armor.svg" alt=""><span>Armor<small>Plate volumes</small></span></button>
+          <button type="button" data-mode="modules" data-key="3"><img src="/brand/features/modules.svg" alt=""><span>Modules<small>Internal systems</small></span></button>
+          <button type="button" data-mode="crew" data-key="4"><img src="/brand/features/multiplayer.svg" alt=""><span>Crew<small>Station volumes</small></span></button>
+          <button type="button" data-mode="markup" data-key="5"><img src="/brand/features/camera-paths.svg" alt=""><span>Markup<small>Select geometry</small></span></button>
+        </div>
+        <div class="viewer-footer-row">
+          <p class="viewer-help" id="viewerHelp"><span><i data-ui-icon="rematch"></i>Orbit</span><span><i data-ui-icon="optics"></i>Zoom</span><span><i data-ui-icon="autoAim"></i>Select volume</span></p>
+          <span class="viewer-bay">Bay / G-01</span>
+        </div>
       </div>
-
-      <div class="mode-dock" role="group" aria-label="Inspection overlay">
-        <p><span>Diagnostic layers</span><small>Keys 1–5</small></p>
-        <button type="button" class="active" data-mode="appearance"><img src="/brand/features/vehicle.svg" alt=""><span>Exterior<small>Rendered surface</small></span></button>
-        <button type="button" data-mode="armor"><img src="/brand/features/armor.svg" alt=""><span>Armor<small>Plate volumes</small></span></button>
-        <button type="button" data-mode="modules"><img src="/brand/features/modules.svg" alt=""><span>Modules<small>Internal systems</small></span></button>
-        <button type="button" data-mode="crew"><img src="/brand/features/multiplayer.svg" alt=""><span>Crew<small>Station volumes</small></span></button>
-        <button type="button" data-mode="markup"><img src="/brand/features/camera-paths.svg" alt=""><span>Markup<small>Select geometry</small></span></button>
-      </div>
-
-      <div class="overlay-legend" id="overlayLegend" role="group" aria-label="Overlay legend"></div>
-      <p class="viewer-help" id="viewerHelp">Drag to orbit <b>·</b> Scroll to zoom <b>·</b> Select a volume for data</p>
     </section>
 
     <aside class="dossier" aria-label="Vehicle technical dossier">
@@ -121,7 +127,7 @@
           </div>
           <div class="dossier-identity">
             <div class="dossier-tank-frame"><img id="dossierTankIcon" src="/brand/features/vehicle.svg" alt=""></div>
-            <div><p class="eyebrow" id="dossierMeta">Nation // Class // Tier</p><h2 id="dossierName">Vehicle name</h2><p class="designation" id="dossierDesignation">Registry identifier</p></div>
+            <div><p class="eyebrow" id="dossierMeta">Nation // Era // Tier</p><h2 id="dossierName">Vehicle name</h2><p class="designation" id="dossierDesignation">Registry identifier</p></div>
           </div>
           <div class="dossier-index"><span id="dossierIndex">001</span><small>Fleet record</small></div>
           <p class="model-author" id="dossierAuthor">Original procedural model by Kevin B. Liu</p>

@@ -7,6 +7,8 @@
  * allowlist and remain local single-player presentation only.
  */
 
+import { VEHICLE_ERAS } from './taxonomy.js';
+
 export const CAMO_PATTERN_IDS = Object.freeze([
   'auto', 'factory', 'summer', 'desert', 'winter', 'digital',
   'merdc', 'tropic', 'ambushdot', 'splinter',
@@ -77,7 +79,7 @@ const FACTORY_THEME_POOLS = Object.freeze({
   'China:modern': ['digital'],
   'South Korea:modern': ['digital', 'summer'],
   'Japan:modern': ['digital', 'tigerstripe'],
-  'Italy:coldwar': ['summer'],
+  'Italy:cold-war': ['summer'],
   'Italy:modern': ['summer'],
   'Poland:modern': ['digital'],
   'Sweden:modern': ['m90'],
@@ -99,7 +101,14 @@ export function isPlainGreenFactoryVisual(visual) {
 /** Built-in theme that replaces a plain-green factory coat, or null. */
 export function factoryThemePatternId(spec) {
   if (!spec?.id || !isPlainGreenFactoryVisual(spec.visual)) return null;
-  const pool = FACTORY_THEME_POOLS[`${spec.nation}:${spec.era}`] || ['summer'];
+  const familyEra = spec.era === VEHICLE_ERAS.INTERWAR
+    ? VEHICLE_ERAS.WORLD_WAR_II
+    : spec.era === VEHICLE_ERAS.NEXT_GENERATION ? VEHICLE_ERAS.MODERN : spec.era;
+  const pool = FACTORY_THEME_POOLS[`${spec.nation}:${familyEra}`]
+    || (familyEra === VEHICLE_ERAS.COLD_WAR
+      ? FACTORY_THEME_POOLS[`${spec.nation}:${VEHICLE_ERAS.MODERN}`]
+      : null)
+    || ['summer'];
   let hash = 0;
   for (const char of spec.id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
   return pool[(hash >>> 0) % pool.length];

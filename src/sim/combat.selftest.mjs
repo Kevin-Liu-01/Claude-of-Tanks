@@ -129,7 +129,7 @@ function mkSpec(over) {
     name: 'Fixture',
     nation: 'none',
     era: 'ww2',
-    class: 'medium',
+    role: 'medium',
     hp: 1000,
     gun: { caliberMm: 85, reloadS: 6, baseAccuracy: 0.36, aimTimeS: 2 },
     armor: null,

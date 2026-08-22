@@ -15,6 +15,7 @@ import {
 } from './rosterPolicy.js';
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.js';
+import { applyVehicleTaxonomy } from './taxonomy.js';
 import {
   plate as par,
   frontPlate as fr,
@@ -517,7 +518,7 @@ function armorLeo2A7() {
 
 export const TANK_SPECS = {
   m4a3e8: {
-    id: 'm4a3e8', name: 'M4A3E8 Sherman', nation: 'USA', era: 'ww2', class: 'medium',
+    id: 'm4a3e8', name: 'M4A3E8 Sherman', nation: 'USA', era: 'ww2', role: 'medium',
     hp: 720,
     enginePowerHp: 450, weightTons: 33.7, topSpeedKmh: 42, reverseSpeedKmh: 8,
     hullTraverseDegS: 36,
@@ -546,7 +547,7 @@ export const TANK_SPECS = {
   },
 
   tiger1: {
-    id: 'tiger1', name: 'Tiger I', nation: 'Germany', era: 'ww2', class: 'heavy',
+    id: 'tiger1', name: 'Tiger I', nation: 'Germany', era: 'ww2', role: 'heavy',
     hp: 1000,
     enginePowerHp: 700, weightTons: 57, topSpeedKmh: 45.4, reverseSpeedKmh: 8,
     hullTraverseDegS: 22,
@@ -580,7 +581,7 @@ export const TANK_SPECS = {
   },
 
   t34_85: {
-    id: 't34_85', name: 'T-34-85', nation: 'USSR', era: 'ww2', class: 'medium',
+    id: 't34_85', name: 'T-34-85', nation: 'USSR', era: 'ww2', role: 'medium',
     hp: 750,
     enginePowerHp: 500, weightTons: 32, topSpeedKmh: 55, reverseSpeedKmh: 7,
     hullTraverseDegS: 40,
@@ -610,7 +611,7 @@ export const TANK_SPECS = {
   },
 
   is2: {
-    id: 'is2', name: 'IS-2', nation: 'USSR', era: 'ww2', class: 'heavy',
+    id: 'is2', name: 'IS-2', nation: 'USSR', era: 'ww2', role: 'heavy',
     hp: 1200,
     enginePowerHp: 520, weightTons: 46, topSpeedKmh: 37, reverseSpeedKmh: 5,
     hullTraverseDegS: 20,
@@ -637,7 +638,7 @@ export const TANK_SPECS = {
   },
 
   panther_g: {
-    id: 'panther_g', name: 'Panther Ausf. G', nation: 'Germany', era: 'ww2', class: 'medium',
+    id: 'panther_g', name: 'Panther Ausf. G', nation: 'Germany', era: 'ww2', role: 'medium',
     hp: 900,
     enginePowerHp: 700, weightTons: 45.5, topSpeedKmh: 48, reverseSpeedKmh: 5,
     hullTraverseDegS: 30,
@@ -673,7 +674,7 @@ export const TANK_SPECS = {
     // TANK_IDS mechanism.
     // §5.74: RETIRED-LEGACY (owner 2026-08-08) — carousel-delisted in
     // garage.js; name carries the LEGACY mark everywhere it still appears.
-    id: 'm1a2_legacy', name: 'M1A2 (Legacy)', nation: 'USA', era: 'modern', class: 'mbt',
+    id: 'm1a2_legacy', name: 'M1A2 (Legacy)', nation: 'USA', era: 'modern', role: 'mbt',
     hp: 2600,
     // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the
     // 5-8 km/h WW2 roster and sits far outside the WoT-feel envelope
@@ -703,7 +704,7 @@ export const TANK_SPECS = {
   },
 
   t90m: {
-    id: 't90m', name: 'T-90M Proryv', nation: 'Russia', era: 'modern', class: 'mbt',
+    id: 't90m', name: 'T-90M Proryv', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65, reverseSpeedKmh: 12,
     hullTraverseDegS: 44,
@@ -732,7 +733,7 @@ export const TANK_SPECS = {
   },
 
   leo2a7: {
-    id: 'leo2a7', name: 'Leopard 2A7', nation: 'Germany', era: 'modern', class: 'mbt',
+    id: 'leo2a7', name: 'Leopard 2A7', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2500,
     // 2A7 reverses at ~31 km/h IRL — capped at 25 with the M1A2 (see above).
     enginePowerHp: 1500, weightTons: 67.5, topSpeedKmh: 68, reverseSpeedKmh: 25,
@@ -807,7 +808,7 @@ const FIRST_PARTY_EXPANSION_TANK_IDS = [
 
 const FIRST_PARTY_EXPANSION_SPECS = {
   strv103: {
-    id: 'strv103', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', class: 'td',
+    id: 'strv103', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', role: 'td',
     community: {
       author: 'Lukasz Wesiora (canisferus)',
       source: 'https://opengameart.org/content/stridsvagn-103',
@@ -847,7 +848,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   is3: {
-    id: 'is3', name: 'IS-3', nation: 'USSR', era: 'ww2', class: 'heavy',
+    id: 'is3', name: 'IS-3', nation: 'USSR', era: 'ww2', role: 'heavy',
     community: {
       author: 'Nick Tallon (PanzerFactory)',
       source: 'https://www.thingiverse.com/thing:4137773',
@@ -882,7 +883,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   t34_85_cad: {
-    id: 't34_85_cad', name: 'T-34-85 (Wei He)', nation: 'USSR', era: 'ww2', class: 'medium',
+    id: 't34_85_cad', name: 'T-34-85 (Wei He)', nation: 'USSR', era: 'ww2', role: 'medium',
     community: {
       author: 'Wei He (Xdhsqj)',
       source: 'https://www.thingiverse.com/thing:4326802',
@@ -922,7 +923,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   newc_tiger: {
-    id: 'newc_tiger', name: 'Tiger I (Newc42)', nation: 'Germany', era: 'ww2', class: 'heavy',
+    id: 'newc_tiger', name: 'Tiger I (Newc42)', nation: 'Germany', era: 'ww2', role: 'heavy',
     community: {
       author: 'Newc42',
       source: 'https://newc-42.itch.io/german-low-poly-wwii-tanks',
@@ -958,7 +959,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   newc_pziii: {
-    id: 'newc_pziii', name: 'Panzer III Ausf. J', nation: 'Germany', era: 'ww2', class: 'medium',
+    id: 'newc_pziii', name: 'Panzer III Ausf. J', nation: 'Germany', era: 'ww2', role: 'medium',
     community: {
       author: 'Newc42',
       source: 'https://newc-42.itch.io/german-low-poly-wwii-tanks',
@@ -994,7 +995,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   pziii_konserwa: {
-    id: 'pziii_konserwa', name: 'Panzerkampfwagen III', nation: 'Germany', era: 'ww2', class: 'medium',
+    id: 'pziii_konserwa', name: 'Panzerkampfwagen III', nation: 'Germany', era: 'ww2', role: 'medium',
     community: {
       author: 'konserwa',
       source: 'https://opengameart.org/content/panzerkampfwagen-iii',
@@ -1030,7 +1031,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   leichttraktor: {
-    id: 'leichttraktor', name: 'Leichttraktor', nation: 'Germany', era: 'ww2', class: 'light',
+    id: 'leichttraktor', name: 'Leichttraktor', nation: 'Germany', era: 'ww2', role: 'light',
     community: {
       author: 'Newc42',
       source: 'https://newc-42.itch.io/german-low-poly-wwii-tanks',
@@ -1065,7 +1066,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   recon_tank: {
-    id: 'recon_tank', name: 'Recon Tank (Mophs)', nation: 'Community', era: 'modern', class: 'light',
+    id: 'recon_tank', name: 'Recon Tank (Mophs)', nation: 'Community', era: 'modern', role: 'light',
     community: {
       author: 'Mophs (base mesh: MNDV.ecb / Eric Buisson)',
       source: 'https://opengameart.org/content/recon-tank-update',
@@ -1101,7 +1102,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   q_heavy: {
-    id: 'q_heavy', name: 'Heavy Tank (Quaternius)', nation: 'Community', era: 'ww2', class: 'heavy',
+    id: 'q_heavy', name: 'Heavy Tank (Quaternius)', nation: 'Community', era: 'ww2', role: 'heavy',
     community: {
       author: 'Quaternius',
       source: 'https://poly.pizza/m/FA5daiyZQq',
@@ -1141,7 +1142,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   // =========================================================================
 
   kv2: {
-    id: 'kv2', name: 'KV-2', nation: 'USSR', era: 'ww2', class: 'heavy',
+    id: 'kv2', name: 'KV-2', nation: 'USSR', era: 'ww2', role: 'heavy',
     community: {
       author: 'Comrade1280',
       source: 'https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296',
@@ -1179,7 +1180,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   tiger2: {
-    id: 'tiger2', name: 'Tiger II', nation: 'Germany', era: 'ww2', class: 'heavy',
+    id: 'tiger2', name: 'Tiger II', nation: 'Germany', era: 'ww2', role: 'heavy',
     community: {
       author: 'maximus0075550',
       source: 'https://sketchfab.com/3d-models/tank-tiger-2',
@@ -1222,7 +1223,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   sherman_jumbo: {
-    id: 'sherman_jumbo', name: 'M4A3E2 Sherman Jumbo', nation: 'USA', era: 'ww2', class: 'heavy',
+    id: 'sherman_jumbo', name: 'M4A3E2 Sherman Jumbo', nation: 'USA', era: 'ww2', role: 'heavy',
     community: {
       author: 'manifold_destiny (split by ZEUS_0815)',
       source: 'https://www.thingiverse.com/thing:1065360',
@@ -1257,7 +1258,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   jagdtiger: {
-    id: 'jagdtiger', name: 'Jagdtiger', nation: 'Germany', era: 'ww2', class: 'td',
+    id: 'jagdtiger', name: 'Jagdtiger', nation: 'Germany', era: 'ww2', role: 'td',
     community: {
       author: 'Adi Priatna',
       source: 'https://sketchfab.com/adipriatna',
@@ -1300,7 +1301,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   jpz_e100: {
-    id: 'jpz_e100', name: 'Jagdpanzer E100', nation: 'Germany', era: 'ww2', class: 'td',
+    id: 'jpz_e100', name: 'Jagdpanzer E100', nation: 'Germany', era: 'ww2', role: 'td',
     community: {
       author: 'Haphazard0587',
       source: 'https://www.thingiverse.com/thing:2624802',
@@ -1343,7 +1344,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   sturmtiger: {
-    id: 'sturmtiger', name: 'Sturmtiger', nation: 'Germany', era: 'ww2', class: 'td',
+    id: 'sturmtiger', name: 'Sturmtiger', nation: 'Germany', era: 'ww2', role: 'td',
     community: {
       author: 'Tomrs',
       source: 'https://sketchfab.com/Tomrs',
@@ -1378,7 +1379,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   t95: {
-    id: 't95', name: 'T95 Doomturtle', nation: 'USA', era: 'ww2', class: 'td',
+    id: 't95', name: 'T95 Doomturtle', nation: 'USA', era: 'ww2', role: 'td',
     community: {
       author: 'Haphazard0587',
       source: 'https://www.thingiverse.com/thing:2326342',
@@ -1416,7 +1417,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   t30: {
-    id: 't30', name: 'T30', nation: 'USA', era: 'ww2', class: 'td',
+    id: 't30', name: 'T30', nation: 'USA', era: 'ww2', role: 'td',
     community: {
       author: 'Haphazard0587',
       source: 'https://www.thingiverse.com/thing:2363711',
@@ -1458,7 +1459,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   // =========================================================================
 
   is7: {
-    id: 'is7', name: 'IS-7', nation: 'USSR', era: 'ww2', class: 'heavy',
+    id: 'is7', name: 'IS-7', nation: 'USSR', era: 'ww2', role: 'heavy',
     community: {
       author: 'Jt Steele (SnowLeopard101)',
       source: 'https://www.thingiverse.com/thing:4597176',
@@ -1501,7 +1502,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   object279: {
-    id: 'object279', name: 'Object 279', nation: 'USSR', era: 'ww2', class: 'heavy',
+    id: 'object279', name: 'Object 279', nation: 'USSR', era: 'ww2', role: 'heavy',
     community: {
       author: 'Jt Steele (SnowLeopard101)',
       source: 'https://www.thingiverse.com/thing:4598065',
@@ -1537,7 +1538,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   },
 
   is6b: {
-    id: 'is6b', name: 'IS-6B', nation: 'USSR', era: 'ww2', class: 'heavy',
+    id: 'is6b', name: 'IS-6B', nation: 'USSR', era: 'ww2', role: 'heavy',
     community: {
       author: 'Jt Steele (SnowLeopard101)',
       source: 'https://www.thingiverse.com/thing:4849489',
@@ -1574,7 +1575,7 @@ const FIRST_PARTY_EXPANSION_SPECS = {
   is1: {
     // The IS-1 is a turreted heavy tank. The old fixed-gun handling described
     // the limitations of one fused print, not the real vehicle.
-    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', class: 'heavy', visualBase: 'is2',
+    id: 'is1', name: 'IS-1', nation: 'USSR', era: 'ww2', role: 'heavy', visualBase: 'is2',
     community: {
       author: 'AaronTMG',
       source: 'https://www.printables.com/model/925804-is-1-russian-heavy-tank',
@@ -1685,6 +1686,7 @@ export function finalizeFirstPartyRoster() {
   for (const id of savedIds) {
     const spec = TANK_SPECS[id];
     if (!spec) continue;
+    applyVehicleTaxonomy(spec);
     finalizeCombatAnatomy(spec);
     delete spec.community;
     delete spec.publicVisualFallback;

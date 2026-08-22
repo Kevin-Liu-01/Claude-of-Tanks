@@ -34,8 +34,8 @@ for (const id of SAVED_TANK_IDS) {
   assert.equal(spec.id, id, `${id}: registry key and spec ID agree`);
   assert.ok(Number.isInteger(tankTier(id)) && tankTier(id) >= 1 && tankTier(id) <= 10,
     `${id}: tier is canonical and bounded`);
-  assert.ok(['light', 'medium', 'heavy', 'td', 'mbt', 'ifv'].includes(spec.class),
-    `${id}: supported balance class`);
+  assert.ok(['light', 'medium', 'heavy', 'td', 'mbt', 'ifv'].includes(spec.role),
+    `${id}: supported mechanical role`);
   for (const key of REQUIRED_NUMBERS) {
     assert.ok(finite(spec[key]) && spec[key] >= 0, `${id}.${key}: finite non-negative stat`);
   }
@@ -185,10 +185,10 @@ assert.equal(localProryv.reload.totalS, 6.4,
   'local reload consumes the exact Proryv gun cycle');
 assert.equal(penAtDistanceMm(proryv.gun.shells[0], 2000), 720,
   'ballistics consumes the exact authored long-range penetration');
-assert.equal(garageStatGroup(proryv), '10/mbt',
+assert.equal(garageStatGroup(proryv), '10/modern',
   'garage normalizes Proryv against its actual matchmaking peers');
-assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/td',
-  'garage normalizes the 103A against tier-IX tank destroyers');
+assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
+  'garage normalizes the 103A against its Cold War tier peers');
 
 const merkavaProgression = [
   ['merkava2b', 8, 2200, 1000, 18, 32, 6.9, 525, 794, 650, 500, 650],
@@ -226,7 +226,7 @@ for (const [
   assert.equal(local.reload.totalS, reload, `${id}: local combat consumes canonical reload`);
   assert.equal(penAtDistanceMm(primary, 2000), pen2000,
     `${id}: ballistics consumes canonical long-range penetration`);
-  assert.equal(garageStatGroup(spec), `${tier}/mbt`,
+  assert.equal(garageStatGroup(spec), `${tier}/${spec.era}`,
     `${id}: garage compares the tank against its actual tier`);
 }
 

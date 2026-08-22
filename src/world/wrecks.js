@@ -28,6 +28,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createTank } from '../vehicles/tankFactory.js';
+import { VEHICLE_ERAS } from '../vehicles/taxonomy.js';
 
 function mulberry32(a) {
   return function () {
@@ -220,14 +221,19 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
 /**
  * Era-appropriate wreck id pools (base-roster procedural ids only — always
  * registered, always buildable without a GLB fetch).
- * @param {string} era 'ww2' | 'modern'
+ * @param {string} era canonical vehicle era
  * @returns {string[]}
  */
 export function wreckPool(era) {
-  return era === 'modern'
-    ? ['m1a2', 't90m', 'leo2a7', 'm1a1', 't90a', 't80u', 'challenger2',
-      'leclerc', 'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete']
-    : ['tiger1', 'panther_g', 't34_85', 'm4a3e8', 'is2', 'kv2'];
+  if (era === VEHICLE_ERAS.INTERWAR || era === VEHICLE_ERAS.WORLD_WAR_II) {
+    return ['tiger1', 'panther_g', 't34_85', 'm4a3e8', 'is2', 'kv2'];
+  }
+  if (era === VEHICLE_ERAS.COLD_WAR) {
+    return ['m60a1', 'm48', 't80u', 'type74', 'leo1a5', 'chieftain5',
+      'type59', 'strv103', 'm1a1', 'bmp2'];
+  }
+  return ['m1a2', 't90m', 'leo2a7', 't90a', 'challenger2', 'leclerc',
+    'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete', 'pt91m', 'strv122'];
 }
 
 /**

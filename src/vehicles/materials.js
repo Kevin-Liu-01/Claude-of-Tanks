@@ -22,6 +22,7 @@ import {
 export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.js';
 import { tagVehicleMaterial } from './appearanceAudit.js';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.js';
+import { isPostwarVehicleEra } from './taxonomy.js';
 // MOBILE r1: central texture-resolution lever (quality.js). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
@@ -3028,7 +3029,7 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   };
   const { spec, seed } = entry;
   // Welded-composite hulls draw no rivet/bolt rows.
-  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: spec.era === 'modern' };
+  const vis = { ...resolveCamoVisual(spec, entry.patternId), modernWelds: isPostwarVehicleEra(spec.era) };
   const rng = mulberry32(seed);
   entry.feats = genPlateFeatures(rng);
   // tank_models r5 ("hull sides show a grid of panel seams on what are single
@@ -4023,7 +4024,7 @@ const detailRgbOf = (v) => scale3(mix([65, 70, 58], wheelToneOf(v), 0.5), 0.9);
 const canvasRgbOf = (v) => scale3(detailRgbOf(v), 0.68);
 
 function repaintEntry(entry, patternId) {
-  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: entry.spec.era === 'modern' };
+  const vis = { ...patternVisual(entry.spec, patternId), modernWelds: isPostwarVehicleEra(entry.spec.era) };
   // pattern-specific rng stream; the shared `feats` plan keeps panel lines,
   // welds and bolts aligned with the (unchanged) normal map.
   let ph = 0;
@@ -4217,7 +4218,7 @@ export async function applyCamoPatternsChunked(opts = null) {
       if (c2.patternId !== p2) {
         const vis = {
           ...patternVisual(c2.spec, p2),
-          modernWelds: c2.spec.era === 'modern',
+          modernWelds: isPostwarVehicleEra(c2.spec.era),
         };
         let ph = 0;
         for (const ch of p2) ph = (ph * 31 + ch.charCodeAt(0)) | 0;

@@ -79,6 +79,7 @@ import { getSpec } from '../vehicles/specs.js';
 import { iconUrl } from '../ui/icons.js';
 import { tierNumeral } from '../ui/battleLoad.js';
 import { isKillcamGhostSurface } from './killcamGhostPolicy.js';
+import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 import {
   alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
   replayDistanceAtTime, replayStateFromPose,
@@ -447,7 +448,7 @@ function proxyGroup(bb, poseGrp, turretGrp) {
 function addModuleProxy(bb, mat, poseGrp, turretGrp, disposables, era, calMm) {
   const kind = bb.module;
   if (kind === 'trackL' || kind === 'trackR') return; // real track geometry reads already
-  const modern = era === 'modern';
+  const modern = isPostwarVehicleEra(era);
   // caliber-true CASE radius (case sits ~8% over the projectile diameter)
   const rCal = calMm > 0 ? (calMm / 2000) * 1.08 : 0;
   const sx = bb.max[0] - bb.min[0];

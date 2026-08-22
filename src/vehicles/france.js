@@ -23,7 +23,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 
 const FRANCE_SPECS = {
   amx40: {
-    id: 'amx40', name: 'AMX-40', nation: 'France', era: 'modern', class: 'mbt',
+    id: 'amx40', name: 'AMX-40', nation: 'France', era: 'modern', role: 'mbt',
     hp: 2000,
     // Export prototype (1983-85, 4 built): Poyaud V12X 1100 hp on 43.7 t —
     // leclerc-class mobility (§5.38 brief), lighter protection.

@@ -29,7 +29,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 
 const MODERN3_SPECS = {
   chieftain_mk10: {
-    id: 'chieftain_mk10', name: 'Chieftain Mk 10', nation: 'UK', era: 'modern', class: 'mbt',
+    id: 'chieftain_mk10', name: 'Chieftain Mk 10', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 1750,
     enginePowerHp: 750, weightTons: 55, topSpeedKmh: 48, reverseSpeedKmh: 10,
     hullTraverseDegS: 28,
@@ -67,7 +67,7 @@ const MODERN3_SPECS = {
   },
 
   k2: {
-    id: 'k2', name: 'K2 Black Panther', nation: 'South Korea', era: 'modern', class: 'mbt',
+    id: 'k2', name: 'K2 Black Panther', nation: 'South Korea', era: 'modern', role: 'mbt',
     hp: 2450,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -118,7 +118,7 @@ const MODERN3_SPECS = {
   // full skirts. Print: public/models/community-candidates/k1a1_kojf.glb
   // (semantic re-bake, LOCAL-ONLY quarantine — measurement/influence only).
   k1a1: {
-    id: 'k1a1', name: 'K1A1', nation: 'South Korea', era: 'modern', class: 'mbt',
+    id: 'k1a1', name: 'K1A1', nation: 'South Korea', era: 'modern', role: 'mbt',
     hp: 2200,
     enginePowerHp: 1200, weightTons: 53.2, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 42,
@@ -164,7 +164,7 @@ const MODERN3_SPECS = {
   },
 
   type10: {
-    id: 'type10', name: 'Type 10', nation: 'Japan', era: 'modern', class: 'mbt',
+    id: 'type10', name: 'Type 10', nation: 'Japan', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1200, weightTons: 48, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,
@@ -227,7 +227,7 @@ const MODERN3_SPECS = {
   },
 
   m2a2_bradley: {
-    id: 'm2a2_bradley', name: 'M2A2 Bradley', nation: 'USA', era: 'modern', class: 'ifv',
+    id: 'm2a2_bradley', name: 'M2A2 Bradley', nation: 'USA', era: 'modern', role: 'ifv',
     hp: 1650,
     enginePowerHp: 600, weightTons: 30.4, topSpeedKmh: 61, reverseSpeedKmh: 20,
     hullTraverseDegS: 42,
@@ -289,7 +289,7 @@ const MODERN3_SPECS = {
   },
 
   bmp2: {
-    id: 'bmp2', name: 'BMP-2', nation: 'USSR', era: 'modern', class: 'ifv',
+    id: 'bmp2', name: 'BMP-2', nation: 'USSR', era: 'modern', role: 'ifv',
     hp: 1050,
     enginePowerHp: 300, weightTons: 14.3, topSpeedKmh: 65, reverseSpeedKmh: 12,
     hullTraverseDegS: 50,
@@ -336,7 +336,7 @@ const MODERN3_SPECS = {
   },
 
   spz_puma: {
-    id: 'spz_puma', name: 'SPz Puma', nation: 'Germany', era: 'modern', class: 'ifv',
+    id: 'spz_puma', name: 'SPz Puma', nation: 'Germany', era: 'modern', role: 'ifv',
     hp: 2100,
     enginePowerHp: 1088, weightTons: 31.5, topSpeedKmh: 70, reverseSpeedKmh: 30,
     hullTraverseDegS: 46,
@@ -412,7 +412,7 @@ const MODERN3_SPECS = {
   },
 
   type89: {
-    id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', class: 'ifv',
+    id: 'type89', name: 'Type 89 IFV', nation: 'Japan', era: 'modern', role: 'ifv',
     hp: 1450,
     enginePowerHp: 600, weightTons: 26.5, topSpeedKmh: 70, reverseSpeedKmh: 16,
     hullTraverseDegS: 46,
@@ -462,7 +462,7 @@ const MODERN3_SPECS = {
   },
 
   ariete: {
-    id: 'ariete', name: 'C1 Ariete Preserie', nation: 'Italy', era: 'modern', class: 'mbt',
+    id: 'ariete', name: 'C1 Ariete Preserie', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2150,
     enginePowerHp: 1250, weightTons: 54, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 40,
@@ -499,7 +499,7 @@ const MODERN3_SPECS = {
   },
 
   ariete_c1: {
-    id: 'ariete_c1', name: 'C1 Ariete', nation: 'Italy', era: 'modern', class: 'mbt',
+    id: 'ariete_c1', name: 'C1 Ariete', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1270, weightTons: 56, topSpeedKmh: 63, reverseSpeedKmh: 25,
     hullTraverseDegS: 39,
@@ -540,7 +540,7 @@ const MODERN3_SPECS = {
   },
 
   ariete_c2: {
-    id: 'ariete_c2', name: 'C2 Ariete', nation: 'Italy', era: 'modern', class: 'mbt',
+    id: 'ariete_c2', name: 'C2 Ariete', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2600,
     enginePowerHp: 1500, weightTons: 59, topSpeedKmh: 65, reverseSpeedKmh: 30,
     hullTraverseDegS: 42,
@@ -580,7 +580,7 @@ const MODERN3_SPECS = {
   },
 
   carro45t: {
-    id: 'carro45t', name: 'Carro 45t', nation: 'Italy', era: 'coldwar', class: 'medium',
+    id: 'carro45t', name: 'Carro 45t', nation: 'Italy', era: 'cold-war', role: 'medium',
     hp: 1850,
     enginePowerHp: 850, weightTons: 45, topSpeedKmh: 55, reverseSpeedKmh: 18,
     hullTraverseDegS: 36,

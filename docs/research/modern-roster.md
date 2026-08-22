@@ -73,35 +73,35 @@ ripped channels (see ATTRIBUTION.md evaluation records), so they are procedural 
   family reuse (e.g. Leo 2A6 sharing the 2A7 hull) is noted per vehicle but is not a
   license "variant".
 
-| # | Vehicle | Nation | Class | Route | Base / file | Priority |
+| # | Vehicle | Nation | Era | Route | Base / file | Priority |
 |---|---------|--------|-------|-------|-------------|----------|
-| 1 | M1A2 Abrams SEPv3 | USA | MBT | sourced-ready (SHIPPED) | m1a2_sepv3_dannzjs.glb | 1 |
-| 2 | T-90M Proryv | Russia | MBT | procedural (SHIPPED) | tankFactory | 1 |
-| 3 | Leopard 2A7 | Germany | MBT | procedural (SHIPPED) | tankFactory | 1 |
-| 4 | Stridsvagn 103 | Sweden | TD | sourced-ready (SHIPPED) | strv103_wesiora.glb | 1 |
-| 5 | M1A1 Abrams | USA | MBT | variant | dannzjs M1A2 SEPv3 (strip SEP kit) | 2 |
-| 6 | M60A3 Patton | USA | MBT | sourced-ready | m60a3-toshueyi | 2 |
-| 7 | T-90A | Russia | MBT | variant | alexxx_xarchenko T-90 (re-material) | 2 |
-| 8 | T-72B3 | Russia | MBT | procedural | — | 2 |
-| 9 | Challenger 2 | UK | MBT | procedural | — | 2 |
-| 10 | Merkava IVm | Israel | MBT | procedural | — | 2 |
-| 11 | M1A2 TUSK | USA | MBT | variant | dannzjs M1A2 SEPv3 (add TUSK kit) | 3 |
-| 12 | Leopard 2A6 | Germany | MBT | procedural | Leo 2A7 factory family | 3 |
-| 13 | Leopard 2A4 | Germany | MBT | procedural | Leo 2A7 factory family | 3 |
-| 14 | KF51 Panther | Germany | MBT | sourced-ready | kf51-grip420 | 3 |
-| 15 | T-80U | Russia | MBT | procedural | — | 3 |
-| 16 | Leclerc S2 | France | MBT | procedural | — | 3 |
-| 17 | Type 99A | China | MBT | procedural | — | 3 |
-| 18 | M1 Abrams (105) | USA | MBT | sourced-ready | m1abrams-goyko | 4 |
-| 19 | Leopard 1A5 | Germany | MBT | procedural | — | 4 |
-| 20 | T-14 Armata | Russia | MBT | procedural | — | 4 |
-| 21 | Chieftain Mk 10 | UK | MBT | procedural | — | 4 |
-| 22 | K2 Black Panther | S. Korea | MBT | procedural | — | 4 |
-| 23 | Type 10 | Japan | MBT | procedural | — | 4 |
-| 24 | Type 74 | Japan | MBT | variant | stb1_haphazard (searchlight + paint) | 4 |
-| 25 | M2A2 Bradley | USA | IFV | procedural | — | 5 |
-| 26 | BMP-2 | USSR/Russia | IFV | procedural | — | 5 |
-| 27 | C1 Ariete | Italy | MBT | procedural | — | 5 |
+| 1 | M1A2 Abrams SEPv3 | USA | Modern | sourced-ready (SHIPPED) | m1a2_sepv3_dannzjs.glb | 1 |
+| 2 | T-90M Proryv | Russia | Modern | procedural (SHIPPED) | tankFactory | 1 |
+| 3 | Leopard 2A7 | Germany | Modern | procedural (SHIPPED) | tankFactory | 1 |
+| 4 | Stridsvagn 103 | Sweden | Cold War | sourced-ready (SHIPPED) | strv103_wesiora.glb | 1 |
+| 5 | M1A1 Abrams | USA | Cold War | variant | dannzjs M1A2 SEPv3 (strip SEP kit) | 2 |
+| 6 | M60A3 Patton | USA | Cold War | sourced-ready | m60a3-toshueyi | 2 |
+| 7 | T-90A | Russia | Modern | variant | alexxx_xarchenko T-90 (re-material) | 2 |
+| 8 | T-72B3 | Russia | Modern | procedural | — | 2 |
+| 9 | Challenger 2 | UK | Modern | procedural | — | 2 |
+| 10 | Merkava IVm | Israel | Modern | procedural | — | 2 |
+| 11 | M1A2 TUSK | USA | Modern | variant | dannzjs M1A2 SEPv3 (add TUSK kit) | 3 |
+| 12 | Leopard 2A6 | Germany | Modern | procedural | Leo 2A7 factory family | 3 |
+| 13 | Leopard 2A4 | Germany | Cold War | procedural | Leo 2A7 factory family | 3 |
+| 14 | KF51 Panther | Germany | Next Generation | sourced-ready | kf51-grip420 | 3 |
+| 15 | T-80U | Russia | Cold War | procedural | — | 3 |
+| 16 | Leclerc S2 | France | Modern | procedural | — | 3 |
+| 17 | Type 99A | China | Modern | procedural | — | 3 |
+| 18 | M1 Abrams (105) | USA | Cold War | sourced-ready | m1abrams-goyko | 4 |
+| 19 | Leopard 1A5 | Germany | Cold War | procedural | — | 4 |
+| 20 | T-14 Armata | Russia | Next Generation | procedural | — | 4 |
+| 21 | Chieftain Mk 10 | UK | Cold War | procedural | — | 4 |
+| 22 | K2 Black Panther | S. Korea | Modern | procedural | — | 4 |
+| 23 | Type 10 | Japan | Modern | procedural | — | 4 |
+| 24 | Type 74 | Japan | Cold War | variant | stb1_haphazard (searchlight + paint) | 4 |
+| 25 | M2A2 Bradley | USA | Cold War | procedural | — | 5 |
+| 26 | BMP-2 | USSR/Russia | Cold War | procedural | — | 5 |
+| 27 | C1 Ariete | Italy | Modern | procedural | — | 5 |
 
 Priority: 1 = shipped; 2 = first build wave (cheap sourced/variant wins + the two
 highest-demand procedurals); 3 = second wave (fills every remaining required nation);

@@ -8,6 +8,7 @@ import {
   TANK_SPECS,
 } from '../src/vehicles/specs.js';
 import { tankTier, tierNumeral } from '../src/vehicles/tier.js';
+import { vehicleEraLabel } from '../src/vehicles/taxonomy.js';
 
 const REPORT_URL = new URL('../docs/VEHICLE-ROSTER.md', import.meta.url);
 const REASON_LABELS = Object.freeze({
@@ -33,8 +34,7 @@ function buildReport() {
       id,
       name: spec.name,
       nation: spec.nation || 'Unknown',
-      era: spec.era || 'unspecified',
-      vehicleClass: spec.class || 'vehicle',
+      era: vehicleEraLabel(spec.era),
       tier: tierNumeral(id) || String(tankTier(id)),
       reason: REASON_LABELS[spec.roster?.reason] || spec.roster?.reason || 'Unknown',
     };
@@ -50,13 +50,14 @@ function buildReport() {
     '',
     'To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.',
     '',
-    '| # | Status | Stable ID | Vehicle | Nation | Tier | Era | Class | Roster reason |',
-    '| ---: | :---: | --- | --- | --- | :---: | --- | --- | --- |',
-    ...rows.map((row) => `| ${row.index} | ${row.status} | \`${cell(row.id)}\` | ${cell(row.name)} | ${cell(row.nation)} | ${cell(row.tier)} | ${cell(row.era)} | ${cell(row.vehicleClass)} | ${cell(row.reason)} |`),
+    '| # | Status | Stable ID | Vehicle | Nation | Tier | Era | Roster reason |',
+    '| ---: | :---: | --- | --- | --- | :---: | --- | --- |',
+    ...rows.map((row) => `| ${row.index} | ${row.status} | \`${cell(row.id)}\` | ${cell(row.name)} | ${cell(row.nation)} | ${cell(row.tier)} | ${cell(row.era)} | ${cell(row.reason)} |`),
     '',
     '## Policy ownership',
     '',
     '- `src/vehicles/rosterPolicy.js` owns explicit production exclusions and the local-development gate.',
+    '- `src/vehicles/taxonomy.js` owns the public era taxonomy and every saved vehicle assignment.',
     '- `src/vehicles/specs.js` publishes saved, production, visible, and runtime projections and stamps every spec with canonical roster metadata.',
     '- Production visibility is independent from record retention: hiding a vehicle never deletes its authored spec or tooling access.',
     '',

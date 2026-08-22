@@ -3,6 +3,8 @@ import { bakeWreckDebris, wreckPool } from './wrecks.js';
 
 assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
 assert.ok(wreckPool('ww2').length >= 6, 'WWII wreck pool remains populated');
+assert.ok(wreckPool('cold-war').includes('m60a1'), 'Cold War wreck pool uses period vehicles');
+assert.ok(wreckPool('next-generation').includes('kf51'), 'next-generation maps retain current wreck language');
 
 const first = bakeWreckDebris(91234, { modern: true });
 const second = bakeWreckDebris(91234, { modern: true });

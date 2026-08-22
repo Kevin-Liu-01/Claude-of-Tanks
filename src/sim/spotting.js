@@ -3,7 +3,7 @@
  * node-runnable; selftest: src/sim/spotting.selftest.mjs).
  *
  * Model (locked by the camo/spotting charter):
- *  - Per-tank base camo (stationary / moving), plausible per class per
+ *  - Per-tank base camo (stationary / moving), plausible per platform role per
  *    docs/research/tank-roster.md (heavies are billboards, mediums sneak,
  *    modern MBTs sit between; smaller silhouettes rate higher).
  *  - Firing bloom: a shot costs most of the tank's OWN camo, decaying
@@ -113,8 +113,8 @@ export const BASE_CAMO = {
   leo2a7:    { still: 0.18, moving: 0.13 },
 };
 
-/** Class fallbacks for specs not in the tables (test fixtures, future tanks). */
-const CLASS_CAMO = {
+/** Mechanical-role fallbacks for specs not in the tables. */
+const ROLE_CAMO = {
   light:  { still: 0.34, moving: 0.34 },
   medium: { still: 0.23, moving: 0.17 },
   heavy:  { still: 0.12, moving: 0.08 },
@@ -122,7 +122,7 @@ const CLASS_CAMO = {
   td:     { still: 0.30, moving: 0.18 },
   spg:    { still: 0.08, moving: 0.05 },
 };
-const CLASS_VIEW_M = { light: 390, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340 };
+const ROLE_VIEW_M = { light: 390, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340 };
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -166,13 +166,13 @@ export function signalRangeM(ent) {
 }
 
 /**
- * View range for a spec (table → class fallback → medium default).
- * @param {object} spec TankSpec-like ({ id, class })
+ * View range for a spec (table → mechanical-role fallback → medium default).
+ * @param {object} spec TankSpec-like ({ id, role })
  * @returns {number} meters
  */
 export function viewRangeOf(spec) {
   if (spec && VIEW_RANGE_M[spec.id] != null) return VIEW_RANGE_M[spec.id];
-  return (spec && CLASS_VIEW_M[spec.class]) || 370;
+  return (spec && ROLE_VIEW_M[spec.role]) || 370;
 }
 
 /**
@@ -182,7 +182,7 @@ export function viewRangeOf(spec) {
  * @returns {number} camo in [0,1]
  */
 export function baseCamoOf(spec, moving) {
-  const row = (spec && (BASE_CAMO[spec.id] || CLASS_CAMO[spec.class])) || CLASS_CAMO.medium;
+  const row = (spec && (BASE_CAMO[spec.id] || ROLE_CAMO[spec.role])) || ROLE_CAMO.medium;
   return moving ? row.moving : row.still;
 }
 
@@ -347,7 +347,7 @@ const TEAMS = ['player', 'enemy'];
  *
  * @param {object} deps
  * @param {() => Array<object>} deps.getTanks TankEntity[] — needs
- *   { id, team, spec: {id,class,dims:{heightM}}, state: {pos:{x,y,z}, speed},
+ *   { id, team, spec: {id,role,dims:{heightM}}, state: {pos:{x,y,z}, speed},
  *     combat: {destroyed} } (duck-typed; extra fields ignored)
  * @param {(origin:{x,y,z}, dir:{x,y,z}, maxDist:number) => ?{dist:number}} [deps.raycast]
  *   hard-cover LOS test (terrain + props). Omit/null = always clear.

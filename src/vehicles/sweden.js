@@ -45,7 +45,7 @@ function variant(id, donorId, options) {
   spec.name = options.name;
   spec.nation = 'Sweden';
   spec.era = options.era || 'modern';
-  spec.class = options.class || 'mbt';
+  spec.role = options.role || 'mbt';
   spec.variantOf = donorId;
   delete spec.community;
   Object.assign(spec, options.stats || {});
@@ -180,7 +180,7 @@ const SWEDEN_SPECS = {
   // entry to the Swedish siege-TD line. The supplied image is treated only
   // as a silhouette/detail oracle; runtime geometry is entirely procedural.
   udes03: variant('udes03', 'strv103', {
-    name: 'UDES 03', number: '03', class: 'td', scheme: 'solid',
+    name: 'UDES 03', number: '03', role: 'td', scheme: 'solid',
     base: '#45513f', weather: '#55614d', patches: [],
     camoScale: 0.46,
     dims: { hullLengthM: 5.91, overallLengthM: 7.65, widthM: 2.85, heightM: 1.90 },
@@ -214,7 +214,7 @@ const SWEDEN_SPECS = {
   // forward), width 3.60 bare hull (B's 3.63 includes flotation gear),
   // height 2.14. Plain 1960s Swedish olive, pre-splinter.
   strv103a: variant('strv103a', 'strv103', {
-    name: 'Strv 103A', number: '103A', class: 'td', scheme: 'solid',
+    name: 'Strv 103A', number: '103A', role: 'td', scheme: 'solid',
     base: '#46503b', weather: '#525a44', patches: [],
     camoScale: 0.5,
     dims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.60, heightM: 2.14 },

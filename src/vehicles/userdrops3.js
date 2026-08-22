@@ -51,7 +51,7 @@ const USERDROP3_SPECS = {
   // at the top of the German MBT ladder (autoloader: 120-class reload with
   // a 130's alpha; hull protection trades toward APS, so thinner plate).
   kf51: {
-    id: 'kf51', name: 'KF51 Panther', nation: 'Germany', era: 'modern', class: 'mbt',
+    id: 'kf51', name: 'KF51 Panther', nation: 'Germany', era: 'modern', role: 'mbt',
     variantOf: 'kf51',      // self-marker (m1a1 rule): stays on the nation tab
     community: {
       author: 'GRIP420 (model + textures by David Falke)',

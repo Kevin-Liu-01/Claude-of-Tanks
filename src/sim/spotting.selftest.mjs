@@ -27,7 +27,7 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 function tank(id, team, x, z, opts = {}) {
   return {
     id, team,
-    spec: opts.spec || { id: opts.specId || 'm4a3e8', class: opts.cls || 'medium', dims: { heightM: 2.7 } },
+    spec: opts.spec || { id: opts.specId || 'm4a3e8', role: opts.role || 'medium', dims: { heightM: 2.7 } },
     state: { pos: { x, y: 0, z }, speed: opts.speed || 0 },
     combat: { destroyed: !!opts.destroyed },
   };
@@ -41,7 +41,7 @@ ok(spotRangeM(400, 1) === MIN_SPOT_RANGE_M, 'camo 1 clamps to 50 m');
 ok(spotRangeM(600, 0) === MAX_SPOT_RANGE_M, 'view range clamps to max render');
 ok(spotRangeM(400, 2) === MIN_SPOT_RANGE_M, 'camo > 1 clamps');
 
-console.log('[2] camo & view tables plausible per class');
+console.log('[2] camo & view tables plausible per mechanical role');
 for (const id of Object.keys(BASE_CAMO)) {
   const c = BASE_CAMO[id];
   ok(c.moving <= c.still, `${id}: moving camo <= stationary`);
@@ -50,8 +50,8 @@ for (const id of Object.keys(BASE_CAMO)) {
 ok(BASE_CAMO.tiger1.still < BASE_CAMO.m4a3e8.still, 'heavy rates below medium');
 ok(BASE_CAMO.is2.still < BASE_CAMO.t34_85.still, 'IS-2 below T-34-85');
 ok(VIEW_RANGE_M.m1a2 > VIEW_RANGE_M.tiger1, 'modern optics out-spot WW2');
-ok(viewRangeOf({ id: 'nope', class: 'heavy' }) === 360, 'class view fallback');
-near(baseCamoOf({ id: 'nope', class: 'td' }, false), 0.30, 1e-9, 'class camo fallback');
+ok(viewRangeOf({ id: 'nope', role: 'heavy' }) === 360, 'role view fallback');
+near(baseCamoOf({ id: 'nope', role: 'td' }, false), 0.30, 1e-9, 'role camo fallback');
 
 console.log('[3] fire bloom decays');
 ok(fireBloomAt(10, 10) === 1, 'bloom = 1 at the shot');

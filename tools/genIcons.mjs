@@ -7,6 +7,7 @@
 //   node tools/genIcons.mjs --tanks m1a2,bmp2
 //   node tools/genIcons.mjs --ids=m1a2,bmp2   (compatibility alias)
 //   node tools/genIcons.mjs --views hitZonesSide,armorSide,modulesSide
+//   node tools/genIcons.mjs --metadata-only  (refresh manifest, preserve images)
 //   node tools/genIcons.mjs --out /tmp/icons --ids=m1a2 --allow-partial
 
 import { createHash } from 'node:crypto';
@@ -28,7 +29,8 @@ function opt(name, fallback = '') {
 const outDir = resolve(opt('out', 'public/icons'));
 const selected = opt('tanks') || opt('ids');
 const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(Boolean) : [];
-const selectedViews = opt('views')
+const metadataOnly = args.includes('--metadata-only');
+const selectedViews = metadataOnly ? [] : opt('views')
   ? opt('views').split(',').map((view) => view.trim()).filter(Boolean)
   : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
@@ -61,12 +63,15 @@ if (onlyTanks.length && !startingManifest && !allowPartial) {
   process.exit(1);
 }
 if (startingManifest && startingManifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
-  if (onlyTanks.length) {
+  if (metadataOnly) {
+    console.log(`[tank-assets] metadata schema ${startingManifest.schemaVersion} -> ${TANK_ASSET_SCHEMA_VERSION}; preserving rendered views`);
+  } else if (onlyTanks.length) {
     console.error(`[tank-assets] Manifest schema ${startingManifest.schemaVersion} is incompatible with generator schema ${TANK_ASSET_SCHEMA_VERSION}; regenerate the full fleet.`);
     process.exit(1);
+  } else {
+    console.log(`[tank-assets] schema ${startingManifest.schemaVersion} -> ${TANK_ASSET_SCHEMA_VERSION}; regenerating the complete fleet`);
+    startingManifest = null;
   }
-  console.log(`[tank-assets] schema ${startingManifest.schemaVersion} -> ${TANK_ASSET_SCHEMA_VERSION}; regenerating the complete fleet`);
-  startingManifest = null;
 }
 
 function assetRecord(file, view) {
@@ -112,20 +117,26 @@ let failed = false;
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
-  await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
-  await page.waitForFunction(
-    () => {
-      window.__GLB_POLLS = (window.__GLB_POLLS || 0) + 1;
-      const stats = window.__GLB_STATS;
-      if (!stats) return window.__GLB_POLLS >= 10;
-      const settled = stats.started === stats.settled;
-      window.__GLB_SETTLE_STREAK = settled ? (window.__GLB_SETTLE_STREAK || 0) + 1 : 0;
-      return window.__GLB_SETTLE_STREAK >= 2;
-    },
-    { timeout: 120000, polling: 400 },
-  );
+  if (!metadataOnly) {
+    await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
+    await page.waitForFunction(
+      () => {
+        window.__GLB_POLLS = (window.__GLB_POLLS || 0) + 1;
+        const stats = window.__GLB_STATS;
+        if (!stats) return window.__GLB_POLLS >= 10;
+        const settled = stats.started === stats.settled;
+        window.__GLB_SETTLE_STREAK = settled ? (window.__GLB_SETTLE_STREAK || 0) + 1 : 0;
+        return window.__GLB_SETTLE_STREAK >= 2;
+      },
+      { timeout: 120000, polling: 400 },
+    );
+  }
 
-  const generated = await page.evaluate((ids, views) => window.__GEN(ids, views), onlyTanks, selectedViews);
+  const generated = await page.evaluate((ids, views, auditOnly) => {
+    if (!auditOnly) return window.__GEN(ids, views);
+    const audited = window.__AUDIT(ids && ids.length ? ids : window.__FLEET_IDS);
+    return { ...audited, files: {} };
+  }, onlyTanks, selectedViews, metadataOnly);
   for (const [name, dataUrl] of Object.entries(generated.files)) {
     if (name.endsWith('.error')) {
       failed = true;

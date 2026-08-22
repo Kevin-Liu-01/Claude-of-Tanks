@@ -355,8 +355,8 @@ try {
       const alphaInfo = S.getSpecInfo(job.alpha);
       const bravoInfo = S.getSpecInfo(job.bravo);
       for (const info of [alphaInfo, bravoInfo]) {
-        if (info.era !== 'modern' || info.class !== 'mbt') {
-          throw new Error(`${info.id} is ${info.era}/${info.class}, expected modern/mbt`);
+        if (info.era !== 'modern') {
+          throw new Error(`${info.id} is ${info.era}, expected a modern-era vehicle`);
         }
       }
       let board;

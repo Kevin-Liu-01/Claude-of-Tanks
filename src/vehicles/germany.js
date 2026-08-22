@@ -15,7 +15,7 @@ function variant(id, donorId, options) {
   spec.name = options.name;
   spec.nation = 'Germany';
   spec.era = 'modern';
-  spec.class = 'mbt';
+  spec.role = 'mbt';
   spec.variantOf = donorId;
   delete spec.community;
   Object.assign(spec, options.stats || {});

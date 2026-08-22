@@ -182,7 +182,7 @@ function mbt70Armor() {
 // ---------------------------------------------------------------------------
 const MODERN2_SPECS = {
   leo2a4: {
-    id: 'leo2a4', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', class: 'mbt',
+    id: 'leo2a4', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2200,
     enginePowerHp: 1500, weightTons: 55.15, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -221,7 +221,7 @@ const MODERN2_SPECS = {
   },
 
   t80u: {
-    id: 't80u', name: 'T-80U', nation: 'USSR/Russia', era: 'modern', class: 'mbt',
+    id: 't80u', name: 'T-80U', nation: 'USSR/Russia', era: 'modern', role: 'mbt',
     hp: 1900,
     enginePowerHp: 1250, weightTons: 46, topSpeedKmh: 70, reverseSpeedKmh: 11,
     hullTraverseDegS: 43,
@@ -269,7 +269,7 @@ const MODERN2_SPECS = {
   },
 
   leclerc: {
-    id: 'leclerc', name: 'Leclerc S2', nation: 'France', era: 'modern', class: 'mbt',
+    id: 'leclerc', name: 'Leclerc S2', nation: 'France', era: 'modern', role: 'mbt',
     hp: 2350,
     enginePowerHp: 1500, weightTons: 54.5, topSpeedKmh: 71, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,
@@ -308,7 +308,7 @@ const MODERN2_SPECS = {
   },
 
   mbt70: {
-    id: 'mbt70', name: 'MBT-70', nation: 'Germany', era: 'coldwar', class: 'mbt',
+    id: 'mbt70', name: 'MBT-70', nation: 'Germany', era: 'cold-war', role: 'mbt',
     hp: 2450,
     enginePowerHp: 1475, weightTons: 50.4, topSpeedKmh: 69, reverseSpeedKmh: 32,
     hullTraverseDegS: 42,
@@ -357,7 +357,7 @@ const MODERN2_SPECS = {
   },
 
   type99a: {
-    id: 'type99a', name: 'Type 99A (ZTZ-99A)', nation: 'China', era: 'modern', class: 'mbt',
+    id: 'type99a', name: 'Type 99A (ZTZ-99A)', nation: 'China', era: 'modern', role: 'mbt',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 12,
     hullTraverseDegS: 42,
@@ -406,7 +406,7 @@ const MODERN2_SPECS = {
   },
 
   leo1a5: {
-    id: 'leo1a5', name: 'Leopard 1A5', nation: 'Germany', era: 'modern', class: 'mbt',
+    id: 'leo1a5', name: 'Leopard 1A5', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 1550,
     enginePowerHp: 830, weightTons: 42.2, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 40,
@@ -441,7 +441,7 @@ const MODERN2_SPECS = {
   },
 
   t14: {
-    id: 't14', name: 'T-14 Armata', nation: 'Russia', era: 'modern', class: 'mbt',
+    id: 't14', name: 'T-14 Armata', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 75, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,

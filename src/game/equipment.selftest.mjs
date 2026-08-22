@@ -40,13 +40,13 @@ function near(actual, expected, tol, msg) {
 // ---------------------------------------------------------------- fixtures --
 const V = (x, y, z) => new Vector3(x, y, z);
 const ww2Spec = {
-  id: 'fixture_ww2', era: 'ww2', class: 'heavy', hp: 1000,
+  id: 'fixture_ww2', era: 'ww2', role: 'heavy', hp: 1000,
   hullTraverseDegS: 22,
   gun: { caliberMm: 88, reloadS: 6.5, baseAccuracy: 0.34, aimTimeS: 2.4 },
   armor: null,
 };
 const modernSpec = {
-  id: 'fixture_mbt', era: 'modern', class: 'mbt', hp: 2000,
+  id: 'fixture_mbt', era: 'modern', role: 'mbt', hp: 2000,
   hullTraverseDegS: 40,
   gun: { caliberMm: 120, reloadS: 6.0, baseAccuracy: 0.30, aimTimeS: 1.8 },
   armor: null,
@@ -236,8 +236,8 @@ console.log('[8] spotting table: view/camo items (sim/spotting.js)');
 console.log('[9] AI parity defaults');
 {
   for (const [cls, list] of Object.entries(AI_DEFAULT_LOADOUTS)) {
-    assert(list.length === EQUIP_SLOTS, `class '${cls}' default fills all ${EQUIP_SLOTS} slots`);
-    for (const id of list) assert(EQUIPMENT_BY_ID.has(id), `class '${cls}' id '${id}' exists`);
+    assert(list.length === EQUIP_SLOTS, `role '${cls}' default fills all ${EQUIP_SLOTS} slots`);
+    for (const id of list) assert(EQUIPMENT_BY_ID.has(id), `role '${cls}' id '${id}' exists`);
   }
   const heavyWw2 = defaultLoadoutFor(ww2Spec);
   assert(heavyWw2.length === 3 && heavyWw2.every((id) => equipEligible(id, ww2Spec)),
@@ -247,8 +247,8 @@ console.log('[9] AI parity defaults');
   const autoMbt = defaultLoadoutFor(autoloaderSpec);
   assert(autoMbt.join(',') === 'vents,vstab,optics',
     `autoloading MBT default replaces rammer (${autoMbt.join(', ')})`);
-  const unknown = defaultLoadoutFor({ era: 'ww2', class: 'hovertank' });
-  assert(unknown.length === 3, 'unknown class falls back to the medium kit');
+  const unknown = defaultLoadoutFor({ era: 'ww2', role: 'hovertank' });
+  assert(unknown.length === 3, 'unknown role falls back to the medium kit');
 }
 
 console.log('[10] garage stat helper');

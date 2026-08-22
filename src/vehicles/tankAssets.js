@@ -7,7 +7,9 @@ import { tankTier, tierNumeral } from './tier.js';
 import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 
-export const TANK_ASSET_SCHEMA_VERSION = 3;
+// v4 retires the public vehicle-class field and expands era metadata to the
+// canonical five-era taxonomy. Image formats and dimensions are unchanged.
+export const TANK_ASSET_SCHEMA_VERSION = 4;
 
 export const TANK_ASSET_VIEWS = Object.freeze({
   angle: Object.freeze({ suffix: 'angle', ext: 'webp', width: 512, height: 512, role: 'garage hero' }),
@@ -83,7 +85,6 @@ export function tankAssetMetadata(spec) {
     nation: spec.nation,
     countryCode: flagIconCode(spec.nation),
     era: spec.era,
-    class: spec.class,
     tier: tankTier(spec.id),
     tierNumeral: tierNumeral(spec.id),
     dimensionsM: {

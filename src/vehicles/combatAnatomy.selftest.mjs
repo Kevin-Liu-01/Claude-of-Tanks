@@ -70,10 +70,10 @@ for (const id of ALL_TANK_IDS) {
   const loaderless = !crew.includes('loader');
   const missile = spec.gun.shells.some((shell) => (
     Number(shell.reloadS || spec.gun.reloadS) >= 8
-    && (shell.guided || (spec.class === 'ifv' && shell.type === 'HEAT'))
+    && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT'))
   ));
-  assert.equal(names.includes('autoloader'), loaderless && spec.class !== 'ifv', `${id}: autoloader applicability`);
-  assert.equal(names.includes('feedSystem'), spec.class === 'ifv', `${id}: weapon-feed applicability`);
+  assert.equal(names.includes('autoloader'), loaderless && spec.role !== 'ifv', `${id}: autoloader applicability`);
+  assert.equal(names.includes('feedSystem'), spec.role === 'ifv', `${id}: weapon-feed applicability`);
   assert.equal(names.includes('missileRack'), missile, `${id}: missile-rack applicability`);
   if (names.includes('autoloader')) autoloaders++;
   if (names.includes('feedSystem')) feedSystems++;

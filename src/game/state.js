@@ -33,7 +33,7 @@ import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.js';
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
 // EQUIPMENT SYSTEM (game/equipment.js): per-tank loadouts — the player's
-// persisted picks, per-class AI defaults, and the equipMults record the
+// persisted picks, per-role AI defaults, and the equipMults record the
 // damage/movement/repair hooks read off CombatState.
 import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
@@ -524,7 +524,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     concealers: world.getConcealment ? world.getConcealment() : [],
     getCamoBonus: (ent) => (hasCamoPaint(ent.specId) ? CAMO_PAINT_BONUS : 0),
     // EQUIPMENT layer: vision/concealment items resolve from the loadout
-    // attached at spawn (player = saved picks, AI = class defaults) — the
+    // attached at spawn (player = saved picks, AI = role defaults) — the
     // old per-check localStorage read leaked the PLAYER'S saved loadout onto
     // any bot fielding the same spec.
     getEquipment: (ent) => ent.equip || null,
@@ -620,7 +620,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   _ecz /= sp.enemies.length || 1;
 
   // BATTLE-AI r7 OPENING PLANS: per-team role counters (ai.js roleOf) so each
-  // class opens on its own doctrine lane — see the waypoint block below.
+  // role opens on its own doctrine lane — see the waypoint block below.
   const _roleCounts = { player: {}, enemy: {} };
   const _teamHasBrawler = { player: false, enemy: false };
   const _teamHasScout = { player: false, enemy: false };
@@ -750,7 +750,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.combat = createCombatState(ent.spec);
     ent.specialAction = createSpecialActionState(ent.spec);
     // EQUIPMENT SYSTEM: attach the loadout — player fights with the garage
-    // picks, every bot gets its class-default kit (AI parity: the player is
+    // picks, every bot gets its role-default kit (AI parity: the player is
     // never uniquely advantaged). applyEquipmentToCombat stores the
     // equipMults record the damage/movement/repair hooks read and scales
     // module durability (wet rack / suspension / safety fuel).

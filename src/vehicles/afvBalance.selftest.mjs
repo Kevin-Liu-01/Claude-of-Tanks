@@ -22,7 +22,7 @@ const EXPECTED = Object.freeze({
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 32, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [560, 'ataka-launch'] },
 });
 
-const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.class === 'ifv');
+const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
 assert.equal(ifvIds.length, 15, 'complete selectable IFV fleet');
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');

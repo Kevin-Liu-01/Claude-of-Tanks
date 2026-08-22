@@ -20,6 +20,7 @@ import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.js';
 import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
 import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.js';
+import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -184,7 +185,7 @@ function equipMult(combat, key) {
  * @returns {object} CombatState
  */
 export function createCombatState(spec) {
-  const scale = spec.era === 'modern' ? 2.5 : 1;
+  const scale = isPostwarVehicleEra(spec.era) ? 2.5 : 1;
   const modules = {};
   const authored = spec.armor && Array.isArray(spec.armor.modules) && spec.armor.modules.length
     ? new Set(spec.armor.modules.map((box) => box.module))

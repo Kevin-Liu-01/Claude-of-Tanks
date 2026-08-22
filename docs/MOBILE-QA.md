@@ -94,7 +94,7 @@ spot reveal < 50 ms · garage_idle > 95% clean frames
 ## Mobile fire-gesture contract
 
 Both thumb-side fire buttons use the same Dynamic Aim contract on every
-vehicle class:
+vehicle era:
 
 1. Touching FIRE arms the hybrid gesture; it never fires merely from the
    initial landing.

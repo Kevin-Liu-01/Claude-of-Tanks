@@ -107,6 +107,7 @@ import {
 import { createBootScreen } from './ui/bootScreen.js';
 import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
 import { createTransition } from './ui/transition.js';
+import { isPostwarVehicleEra } from './vehicles/taxonomy.js';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
@@ -3957,7 +3958,7 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
           Math.min(1, throttle * 0.7 + (sp / topSpeedMps) * 0.5));
         _v1.copy(presented.pos).addScaledVector(_fwd, -dims.hullLengthM * 0.42);
         _v1.y += dims.heightM * 0.72;
-        fx.exhaust(_v1, load, spec.era === 'ww2');
+        fx.exhaust(_v1, load, !isPostwarVehicleEra(spec.era));
       }
       // effects_combat r1: crushable props — pole vs hull overlap triggers
       // the hinge-topple (world.crushProp) + wood-splinter burst.

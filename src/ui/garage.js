@@ -39,6 +39,7 @@ import {
 } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
+import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 import { getPlayerRecord } from '../game/profile.js';
 import { mountGitHubStars } from './githubStars.js';
 import {
@@ -500,7 +501,7 @@ const GARAGE_CSS = `
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
 .cot-card .nm .tiern{font-weight:900;color:#d8a04c;margin-right:5px;letter-spacing:.04em;}
 .cot-card.sel .nm .tiern{color:#f0b04a;}
-.cot-card .cls{font-size:8.5px;font-weight:800;letter-spacing:.20em;color:#9aa8b5;
+.cot-card .era{font-size:8.5px;font-weight:800;letter-spacing:.20em;color:#9aa8b5;
   text-transform:uppercase;margin-top:3px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
@@ -526,11 +527,14 @@ const GARAGE_CSS = `
   display:flex;align-items:center;gap:7px;}
 .cot-maps .mtitle svg,.cot-camos .ctitle svg,.cot-featured .ftitle > span:first-child svg{
   width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
-.cot-maps{position:static;min-height:96px;max-height:280px;overflow-y:auto;
-  scrollbar-width:none;flex:1 1 210px;pointer-events:auto;}
+.cot-maps{position:static;min-height:96px;max-height:280px;overflow:hidden;
+  display:flex;flex-direction:column;flex:1 1 210px;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
    clip; .can-scroll is toggled by JS only when the list truly overflows */
-.cot-maps.can-scroll{
+.cot-map-scroll{min-height:0;flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:none;}
+.cot-map-scroll::-webkit-scrollbar{display:none;}
+.cot-map-scroll.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);}
 .cot-maps .mtitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
@@ -885,7 +889,7 @@ const GARAGE_CSS = `
   .cot-card .dev-tag{right:4px;top:20px;padding:1px 3px;font-size:5px;}
   .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
   .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
-  .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
+  .cot-card .era{font-size:6px;margin-top:0;letter-spacing:.12em;}
   .cot-garage .hint{display:none;}
   .cot-record-modal{padding:12px;}
   .cot-record-dialog{width:min(660px,calc(100vw - 24px));max-height:calc(100vh - 24px);}
@@ -953,7 +957,7 @@ const GARAGE_CSS = `
   body.cot-touch-layout .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
   body.cot-touch-layout .cot-card .nm{font-size:7.5px;margin:0 -3px;}
   body.cot-touch-layout .cot-card .nm .tiern{margin-right:2px;}
-  body.cot-touch-layout .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
+  body.cot-touch-layout .cot-card .era{font-size:6px;margin-top:0;letter-spacing:.12em;}
   body.cot-touch-layout .cot-garage .hint{display:none;}
 }
 /* Width-compacted phones still need a height budget: landscape Safari is
@@ -2055,9 +2059,12 @@ export function createGarage(opts) {
     title.className = 'mtitle';
     title.innerHTML = `${uiIconSVG('map', 13)}<span>Battlefield</span>`;
     mapsEl.appendChild(title);
+    const mapScroll = document.createElement('div');
+    mapScroll.className = 'cot-map-scroll';
+    mapsEl.appendChild(mapScroll);
     const mapGrid = document.createElement('div');
     mapGrid.className = 'cot-map-grid';
-    mapsEl.appendChild(mapGrid);
+    mapScroll.appendChild(mapGrid);
     for (const m of maps) {
       const card = document.createElement('div');
       card.className = 'cot-map-card';
@@ -2082,7 +2089,8 @@ export function createGarage(opts) {
   // actually overflows — on tall viewports the whole roster fits and the
   // fade would dim the last row for no reason. Toggle per resize.
   const syncScrollFades = () => {
-    mapsEl.classList.toggle('can-scroll', mapsEl.scrollHeight > mapsEl.clientHeight + 1);
+    const mapScroll = mapsEl.querySelector('.cot-map-scroll');
+    if (mapScroll) mapScroll.classList.toggle('can-scroll', mapScroll.scrollHeight > mapScroll.clientHeight + 1);
     const cg = root.querySelector('.cot-camos .cgrid.camo');
     if (cg) cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
   };
@@ -2093,7 +2101,8 @@ export function createGarage(opts) {
   // so window resize alone is insufficient to keep the fade affordance true.
   if (typeof ResizeObserver === 'function') {
     const scrollFadeObserver = new ResizeObserver(syncScrollFades);
-    scrollFadeObserver.observe(mapsEl);
+    const mapScroll = mapsEl.querySelector('.cot-map-scroll');
+    if (mapScroll) scrollFadeObserver.observe(mapScroll);
   }
 
   // --- CAMO PICKER SECTION: per-tank paint pattern -------------------------
@@ -2421,19 +2430,17 @@ export function createGarage(opts) {
   // ERA is still used for stat-peer normalization, but it is not a catalog
   // partition. Modern, Cold War and WWII vehicles share each country fleet.
 
-  // PER-CLASS stat ranges for the normalized bars. r6-2 (round critique:
+  // PER-ERA stat ranges for the normalized bars. r6-2 (round critique:
   // "6.0 s reload renders ~90% full / bars carry no comparative scale"): the
   // r5-2 per-era ranges let the IFV autocannons (sub-second reload, ~50 hp
   // alpha) stretch every modern range so far that MBT bars parked at
   // arbitrary-looking lengths. Bars now normalize min→max within the
-  // vehicle's own ERA + CLASS peer group (an Abrams compares against MBTs,
-  // a Bradley against IFVs), higher-is-better on every row (reload
-  // inverted: faster = fuller). Bars compare a vehicle against the peers it
-  // can actually meet: canonical matchmaking tier + class. Era-only grouping
-  // made a tier-VII M60 and tier-X Abrams share one scale and hid genuine
-  // balance changes from the player.
+  // vehicle's own matchmaking tier + ERA peer group, higher-is-better on
+  // every row (reload inverted: faster = fuller). The tier boundary keeps a
+  // tier-VII M60 and tier-X Abrams off the same scale without reintroducing a
+  // public vehicle-class taxonomy.
   const statGroupOf = garageStatGroup;
-  const STAT_RANGES = new Map(); // tier/class -> {hp,speed,hpt,dmg,reload:[lo,hi]}
+  const STAT_RANGES = new Map(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
     const g = statGroupOf(s);
     let r = STAT_RANGES.get(g);
@@ -2560,7 +2567,7 @@ export function createGarage(opts) {
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
       `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="${displayName}">` +
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
-      `<div class="cls">${s.class}</div>`;
+      `<div class="era">${vehicleEraLabel(s.era, { short: true })}</div>`;
     card.querySelector('.nmt').textContent = shortName;
     card.addEventListener('click', () => {
       emit('ui:click', {});
@@ -2686,7 +2693,7 @@ export function createGarage(opts) {
       `<div class="cot-dossier-head">` +
       `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
       `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
-      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
+      `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${vehicleEraLabel(spec.era)}</span></div>` +
       `<button class="cot-gallery-link" type="button" data-gallery-layer="appearance">` +
       `${uiIconSVG('gallery', 15)}<span>Open in Tank Gallery</span><span class="go">&#8250;</span></button></div>` +
       `<section class="cot-stat-section">${statSectionTitle('speed', 'Performance', `${spec.weightTons.toFixed(1)} t`)}` +
@@ -2711,7 +2718,7 @@ export function createGarage(opts) {
       specialCard +
       `<section class="cot-stat-section">${statSectionTitle('shell', 'Ammunition', `${shells.length} types`)}` +
       magazineSpec +
-      `<div class="shellhead"><span>Class</span><span>Round</span><span>Pen</span><span>Damage</span></div>` +
+      `<div class="shellhead"><span>Type</span><span>Round</span><span>Pen</span><span>Damage</span></div>` +
       shellRows + `</section>` +
       `<section class="cot-stat-section">${statSectionTitle('shield', 'Protection')}` +
       `<div class="armor-grid">` +

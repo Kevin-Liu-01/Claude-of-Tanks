@@ -805,7 +805,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   }
   // Immobilized tanks brake with locked tracks at a healthy rate.
   const baseRate = debuff.immobile ? K_ACCEL * (spec.enginePowerHp / spec.weightTons) / R : accel;
-  // Class-scaled brake cap (healthy hp/t — brakes are not the engine): heavies
+  // Role-scaled brake cap (healthy hp/t — brakes are not the engine): heavies
   // stop noticeably softer than lights instead of every tank sharing one snap.
   const brakeCap = clamp(
     BRAKE_CAP_BASE + BRAKE_CAP_PER_HPT * (spec.enginePowerHp / spec.weightTons),
@@ -1740,7 +1740,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
 /** Shared selector for sim, tank visual and camera presentation recoil. */
 export function shotRecoilScale(spec, shellSpec = null) {
   const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
-  return spec.class === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S
+  return spec.role === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S
     ? IFV_AUTOCANNON_RECOIL_SCALE : 1;
 }
 
