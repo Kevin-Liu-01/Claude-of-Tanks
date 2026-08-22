@@ -7841,12 +7841,12 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "max": [
         1.487,
-        0.432,
+        0.5184,
         2.02
       ],
-      "bodyRoofY": 0.432,
-      "roofDetailMaxY": 0.48,
-      "sourceHash": "6c525a794edf7469"
+      "bodyRoofY": 0.5184,
+      "roofDetailMaxY": 0.5502,
+      "sourceHash": "fe91eaa326fb1696"
     },
     "hullStructures": [],
     "turretStructures": [
@@ -7854,30 +7854,30 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "kind": "cupola",
         "min": [
           0.3707,
-          0.432,
+          0.5184,
           -0.723
         ],
         "max": [
           0.8493,
-          0.545,
+          0.6314,
           -0.237
         ],
-        "sourceHash": "2d1e08e261fd6fcd",
+        "sourceHash": "52a0721a01edb47f",
         "index": 0
       },
       {
         "kind": "cupola",
         "min": [
           -0.889,
-          0.432,
+          0.5184,
           -0.643
         ],
         "max": [
           -0.371,
-          0.545,
+          0.6314,
           -0.117
         ],
-        "sourceHash": "8a1eb5437521b43c",
+        "sourceHash": "8bf894610aa0502f",
         "index": 1
       }
     ],
@@ -7935,12 +7935,12 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "max": [
         1.487,
-        0.432,
+        0.5184,
         2.02
       ],
-      "bodyRoofY": 0.432,
-      "roofDetailMaxY": 0.48,
-      "sourceHash": "6c525a794edf7469"
+      "bodyRoofY": 0.5184,
+      "roofDetailMaxY": 0.5502,
+      "sourceHash": "fe91eaa326fb1696"
     },
     "hullStructures": [],
     "turretStructures": [
@@ -7948,30 +7948,30 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "kind": "cupola",
         "min": [
           0.3707,
-          0.432,
+          0.5184,
           -0.723
         ],
         "max": [
           0.8493,
-          0.545,
+          0.6314,
           -0.237
         ],
-        "sourceHash": "2d1e08e261fd6fcd",
+        "sourceHash": "52a0721a01edb47f",
         "index": 0
       },
       {
         "kind": "cupola",
         "min": [
           -0.889,
-          0.432,
+          0.5184,
           -0.643
         ],
         "max": [
           -0.371,
-          0.545,
+          0.6314,
           -0.117
         ],
-        "sourceHash": "8a1eb5437521b43c",
+        "sourceHash": "8bf894610aa0502f",
         "index": 1
       }
     ],

@@ -1118,10 +1118,20 @@ function buildPL01(P) {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const slab = orientedSlab;
   const is105 = P.spec.id === 'pl01_105';
-  const turretHeightScale = 0.60;
+  const previousTurretHeightScale = 0.60;
+  const turretHeightScale = previousTurretHeightScale * 1.20;
   const originalRoofLocalY = 0.72;
   const turretRoofLocalY = originalRoofLocalY * turretHeightScale;
+  const roofLiftLocalY = originalRoofLocalY
+    * (turretHeightScale - previousTurretHeightScale);
   const shellY = (y) => y * turretHeightScale;
+  // Turret fittings keep their approved physical proportions and translate
+  // upward with the new roof instead of stretching with the armor shell.
+  const roofEquipmentY = (y) => y * previousTurretHeightScale + roofLiftLocalY;
+  // The complete gun plant is reseated by its rig pivot. Its local sleeve,
+  // coax, and thermal-cover offsets remain unchanged so the weapon itself is
+  // not distorted by the structural height increase.
+  const gunAssemblyY = (y) => y * previousTurretHeightScale;
   const upperGlacisY = (z) => 1.975 + (z - 1.30) * ((1.46 - 1.975) / (3.425 - 1.30));
   const glacisPitch = Math.atan((1.975 - 1.46) / (3.425 - 1.30));
   P.turretG.userData.pl01TurretHeightScale = turretHeightScale;
@@ -1374,8 +1384,8 @@ function buildPL01(P) {
   // ---- turret: the faceted diamond (joined two-band loft) -----------------
   // pivot [0, 2.07, -0.90]; stations from the measured plan/side polylines.
   // Turret-local: y0 = world - 2.07, z0 = world + 0.90. The redesigned
-  // low-profile shell is 60% of the source height: 20% taller than the
-  // approved half-height revision, still measured about the unchanged ring.
+  // low-profile shell is 72% of the source height: exactly 20% taller than
+  // the approved r3 shell, still measured about the unchanged ring.
   {
     const ST = [
       // [zWorld, halfW, roofY, baseY]
@@ -1515,12 +1525,12 @@ function buildPL01(P) {
     // (r4 dims receipt: a 0.175-radius ring at 0.795 topped 2.89 across 4
     // columns and OWNED heightM's p95 — the ring now hides inside the tower
     // window and the plinth crown stays under the 1% grace edge 2.828)
-    P.addEquipment('turret', box(0.46, 0.035 * turretHeightScale, 0.34), -0.05, shellY(0.7275), -1.33); // plinth
-    P.addEquipment('turret', cylY(0.095, 0.11, 0.05 * turretHeightScale, 16), -0.05, shellY(0.77), -1.33);
-    P.addEquipment('turret', box(0.52, 0.46 * turretHeightScale, 0.17), -0.05, shellY(1.03), -1.33); // tower
-    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, shellY(1.278), -1.33); // cap
-    P.add('turretDetail', box(0.10, 0.05 * turretHeightScale, 0.09), 0.12, shellY(1.315), -1.325); // sensor
-    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, shellY(1.352), -1.325);
+    P.addEquipment('turret', box(0.46, 0.035 * previousTurretHeightScale, 0.34), -0.05, roofEquipmentY(0.7275), -1.33); // plinth
+    P.addEquipment('turret', cylY(0.095, 0.11, 0.05 * previousTurretHeightScale, 16), -0.05, roofEquipmentY(0.77), -1.33);
+    P.addEquipment('turret', box(0.52, 0.46 * previousTurretHeightScale, 0.17), -0.05, roofEquipmentY(1.03), -1.33); // tower
+    P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, roofEquipmentY(1.278), -1.33); // cap
+    P.add('turretDetail', box(0.10, 0.05 * previousTurretHeightScale, 0.09), 0.12, roofEquipmentY(1.315), -1.325); // sensor
+    P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofEquipmentY(1.352), -1.325);
     // RWS gun stowed LATERALLY (parked traverse — the fitting yaws 90 so its
     // whole envelope shares the tower's 3-column window)
     const rwsWeapon = FITTINGS.pintleMG({
@@ -1530,34 +1540,34 @@ function buildPL01(P) {
     rwsWeapon.name = 'pl01_rws_weapon';
     mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);
     // RWS ammunition chest and independent day/thermal sensor block.
-    P.add('turretDetail', box(0.22, 0.18 * turretHeightScale, 0.15), -0.31, shellY(1.02), -1.33);
-    P.add('turretDark', box(0.16, 0.12 * turretHeightScale, 0.025), 0.24, shellY(1.07), -1.235);
-    P.add('turretGlass', box(0.055, 0.055 * turretHeightScale, 0.014), 0.20, shellY(1.09), -1.218);
-    P.add('turretGlass', box(0.038, 0.038 * turretHeightScale, 0.014), 0.27, shellY(1.04), -1.218);
+    P.add('turretDetail', box(0.22, 0.18 * previousTurretHeightScale, 0.15), -0.31, roofEquipmentY(1.02), -1.33);
+    P.add('turretDark', box(0.16, 0.12 * previousTurretHeightScale, 0.025), 0.24, roofEquipmentY(1.07), -1.235);
+    P.add('turretGlass', box(0.055, 0.055 * previousTurretHeightScale, 0.014), 0.20, roofEquipmentY(1.09), -1.218);
+    P.add('turretGlass', box(0.038, 0.038 * previousTurretHeightScale, 0.014), 0.27, roofEquipmentY(1.04), -1.218);
   } else {
-    const cx = -0.05, cy = shellY(0.735), cz = -1.26;
-    P.addEquipment('turret', box(0.62, 0.040 * turretHeightScale, 0.50), cx, shellY(0.755), cz);
+    const cx = -0.05, cz = -1.26;
+    P.addEquipment('turret', box(0.62, 0.040 * previousTurretHeightScale, 0.50), cx, roofEquipmentY(0.755), cz);
     P.addEquipment('turretDark', cylY(0.205, 0.215, 0.055, 18),
-      cx, shellY(0.8025), cz);
+      cx, roofEquipmentY(0.8025), cz);
     P.addEquipment('turret', cylY(0.145, 0.175, 0.15, 16),
-      cx, shellY(0.905), cz);
+      cx, roofEquipmentY(0.905), cz);
     P.addEquipment('turretDark', box(0.42, 0.035, 0.34),
-      cx, shellY(0.995), cz + 0.02);
-    P.addEquipment('turret', box(0.44, 0.20 * turretHeightScale, 0.38),
-      cx, shellY(1.095), cz + 0.08);
+      cx, roofEquipmentY(0.995), cz + 0.02);
+    P.addEquipment('turret', box(0.44, 0.20 * previousTurretHeightScale, 0.38),
+      cx, roofEquipmentY(1.095), cz + 0.08);
     for (const s of [-1, 1]) {
-      P.addEquipment('turretDark', box(0.035, 0.22 * turretHeightScale, 0.34),
-        cx + s * 0.235, shellY(1.095), cz + 0.08);
+      P.addEquipment('turretDark', box(0.035, 0.22 * previousTurretHeightScale, 0.34),
+        cx + s * 0.235, roofEquipmentY(1.095), cz + 0.08);
     }
     // Day/thermal head is carried on the forward face, clear of the gun.
     P.addEquipment('turretDark', box(0.22, 0.20, 0.18),
-      cx + 0.17, shellY(1.105), cz + 0.31);
+      cx + 0.17, roofEquipmentY(1.105), cz + 0.31);
     P.addEquipment('turretGlass', box(0.070, 0.060, 0.014),
-      cx + 0.13, shellY(1.135), cz + 0.407);
+      cx + 0.13, roofEquipmentY(1.135), cz + 0.407);
     P.addEquipment('turretGlass', box(0.050, 0.045, 0.014),
-      cx + 0.21, shellY(1.085), cz + 0.407);
+      cx + 0.21, roofEquipmentY(1.085), cz + 0.407);
     P.addEquipment('turretDetail', box(0.18, 0.16, 0.24),
-      cx - 0.28, shellY(1.085), cz - 0.02);
+      cx - 0.28, roofEquipmentY(1.085), cz - 0.02);
     const crowsGun = FITTINGS.pintleMG({
       mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.78,
       elev: 0.05, ammo: false, shield: false, seed: 1058,
@@ -1611,9 +1621,9 @@ function buildPL01(P) {
 
   // Four recessed white/IR light pods are seated in painted cheek carriers.
   for (const s of [-1, 1]) for (const z of [0.62, 0.27]) {
-    P.addEquipment('turret', box(0.19, 0.12, 0.15), s * 1.03, 0.245, z,
+    P.addEquipment('turret', box(0.19, 0.12, 0.15), s * 1.03, shellY(0.4083333333), z,
       -0.05, s * 0.16, 0);
-    P.addEquipment('turretGlass', box(0.11, 0.065, 0.018), s * 1.075, 0.255, z + 0.085,
+    P.addEquipment('turretGlass', box(0.11, 0.065, 0.018), s * 1.075, shellY(0.425), z + 0.085,
       -0.05, s * 0.16, 0);
   }
 
@@ -1643,7 +1653,7 @@ function buildPL01(P) {
   }
 
   P.turretG.userData.pl01RoofSuiteReceipt = {
-    revision: 'low-profile-r3', turretHeightScale, roofY,
+    revision: 'low-profile-r4', turretHeightScale, roofY,
     cupolas: 2, periscopes: 10, lights: 4, machineGuns: 2,
     allEquipmentSeated: true,
   };
@@ -1653,26 +1663,26 @@ function buildPL01(P) {
   };
 
   // ---- gun: angular thermal cover + bare tube to the published muzzle -----
-  // axis world 2.286 (pivot 2.07 + 0.216); gun pivot world z 0.55.
+  // axis world 2.3292 (pivot 2.07 + 0.2592); gun pivot world z 0.55.
   // The root sleeve now overlaps the turret nose by 10 cm; its cover then
   // runs forward as one pitch-owned assembly to the bare tube.
-  P.addGunExtra(box(0.56, 0.42 * turretHeightScale, 0.90), 0, shellY(0.045), 0.80); // root sleeve
+  P.addGunExtra(box(0.56, 0.42 * previousTurretHeightScale, 0.90), 0, gunAssemblyY(0.045), 0.80); // root sleeve
   P.addGunExtra(orientedSlab(
-    [-0.235, shellY(-0.12), 1.25], [0.235, shellY(-0.12), 1.25], [0.20, shellY(-0.115), 3.25], [-0.20, shellY(-0.115), 3.25],
-    [-0.235, shellY(0.27), 1.25], [0.235, shellY(0.27), 1.25], [0.20, shellY(0.185), 3.25], [-0.20, shellY(0.185), 3.25]));
-  P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, shellY(0.225), 2.10); // cover spine seam
-  P.addGunExtraDark(box(0.42, 0.36 * turretHeightScale, 0.03), 0, shellY(0.03), 3.262); // cover end plate
+    [-0.235, gunAssemblyY(-0.12), 1.25], [0.235, gunAssemblyY(-0.12), 1.25], [0.20, gunAssemblyY(-0.115), 3.25], [-0.20, gunAssemblyY(-0.115), 3.25],
+    [-0.235, gunAssemblyY(0.27), 1.25], [0.235, gunAssemblyY(0.27), 1.25], [0.20, gunAssemblyY(0.185), 3.25], [-0.20, gunAssemblyY(0.185), 3.25]));
+  P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, gunAssemblyY(0.225), 2.10); // cover spine seam
+  P.addGunExtraDark(box(0.42, 0.36 * previousTurretHeightScale, 0.03), 0, gunAssemblyY(0.03), 3.262); // cover end plate
   // Armored coaxial 7.62 mm fairing and visible receiver beside the main
   // weapon. It follows gun pitch and gives the angular mantlet a second
   // functional layer instead of a single uninterrupted cover.
-  P.addGunExtra(box(0.15, 0.16 * turretHeightScale, 0.52), 0.31, shellY(0.015), 0.82);
-  P.addGunExtraDark(box(0.105, 0.095 * turretHeightScale, 0.30), 0.31, shellY(0.025), 0.93);
-  P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, shellY(0.025), 1.48);
-  P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, shellY(0.025), 1.91);
+  P.addGunExtra(box(0.15, 0.16 * previousTurretHeightScale, 0.52), 0.31, gunAssemblyY(0.015), 0.82);
+  P.addGunExtraDark(box(0.105, 0.095 * previousTurretHeightScale, 0.30), 0.31, gunAssemblyY(0.025), 0.93);
+  P.addGunExtraDark(cylZ(0.016, 0.82, 10), 0.31, gunAssemblyY(0.025), 1.48);
+  P.addGunExtraDark(cylZ(0.023, 0.065, 10), 0.31, gunAssemblyY(0.025), 1.91);
   P.gunG.userData.pl01MantletReceipt = {
-    revision: 'low-profile-r3', axisWorldY: 2.286,
-    coverMinWorldY: 2.187, coverMaxWorldY: 2.448,
-    turretRoofWorldY: 2.502, aligned: true,
+    revision: 'low-profile-r4', axisWorldY: 2.3292,
+    coverMinWorldY: 2.2302, coverMaxWorldY: 2.4912,
+    turretRoofWorldY: 2.5884, aligned: true,
   };
   const mainTubeR = is105 ? 0.086 : 0.098;
   tubeGun(P, [
