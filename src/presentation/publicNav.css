@@ -35,7 +35,7 @@
   filter:drop-shadow(0 4px 8px #000);
 }
 .public-nav__brand b{color:#e9a346;font-weight:900}
-.public-nav__links{display:flex;align-items:center;gap:8px}
+.public-nav__links{position:relative;display:flex;align-items:center;gap:8px}
 .public-nav__links a{
   display:flex;
   align-items:center;
@@ -101,6 +101,60 @@
   color:#18130c;
 }
 .public-nav__links .public-nav__cta:hover{background:#ffdba1;color:#18130c}
+.public-nav__menu-trigger,.public-nav__menu{display:none}
+.public-nav__menu[hidden]{display:none!important}
+.public-nav__menu-trigger{
+  width:40px;
+  height:40px;
+  align-items:center;
+  justify-content:center;
+  flex:none;
+  padding:0;
+  border:1px solid rgba(220,230,233,.22);
+  border-radius:2px;
+  background:rgba(255,255,255,.025);
+  color:#b6c0c5;
+  cursor:pointer;
+}
+.public-nav__menu-trigger svg{width:19px;height:19px}
+.public-nav__menu-trigger:focus-visible,.public-nav__links a:focus-visible{
+  outline:2px solid #ffd27a;
+  outline-offset:2px;
+}
+.public-nav__menu{
+  position:absolute;
+  top:calc(100% + 9px);
+  right:0;
+  width:min(260px,calc(100vw - 20px));
+  padding:8px;
+  border:1px solid rgba(220,230,233,.25);
+  border-top:2px solid #e9a346;
+  border-radius:2px;
+  background:linear-gradient(155deg,rgba(17,22,27,.995),rgba(6,9,12,.995));
+  box-shadow:0 22px 60px rgba(0,0,0,.72);
+}
+.public-nav__menu::before{
+  content:'Navigate';
+  display:block;
+  padding:5px 8px 9px;
+  color:#e9a346;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+}
+.public-nav__links .public-nav__menu a{
+  width:100%;
+  min-height:44px;
+  height:44px;
+  justify-content:flex-start;
+  gap:11px;
+  padding-inline:12px;
+  font-size:8px;
+  letter-spacing:.13em;
+}
+.public-nav__menu a+a{margin-top:4px}
+.public-nav__menu .public-nav__icon{width:20px;height:18px;opacity:.86}
 
 @media(max-width:900px){
   .public-nav{height:56px;background:rgba(6,9,12,.985);backdrop-filter:none;-webkit-backdrop-filter:none}
@@ -108,17 +162,19 @@
   .public-nav__brand span{display:none}
   .public-nav__brand img{width:28px;height:34px}
   .public-nav__links{gap:5px}
-  .public-nav__links a{gap:5px;height:32px;padding-inline:9px;font-size:7px;letter-spacing:.08em}
+  .public-nav__links>a:not(.public-nav__github):not(.public-nav__cta){display:none}
+  .public-nav__links a{gap:5px;height:40px;padding-inline:10px;font-size:7px;letter-spacing:.08em}
   .public-nav__icon{width:12px;height:12px}.public-nav__icon--tank{width:17px;height:14px}.public-nav__icon--studio,.public-nav__icon--home,.public-nav__icon--docs{width:16px;height:14px}
   .public-nav__play-icon{width:15px;height:12px}
   .public-nav__links .public-nav__github{padding-inline:9px}
-  .public-nav__links .public-nav__cta{height:34px;padding-inline:12px}
+  .public-nav__links .public-nav__cta{height:40px;padding-inline:12px}
+  .public-nav__menu-trigger{display:flex}
+  .public-nav__menu:not([hidden]){display:block}
 }
 @media(max-width:520px){
   .public-nav__inner{width:calc(100% - 12px)}
   .public-nav__inner{gap:6px}
   .public-nav__links{gap:3px}
-  .public-nav__links>a[href="/home"]{display:none}
   .public-nav__links a{gap:3px;padding-inline:5px;font-size:6.5px;letter-spacing:.05em}
   .public-nav__links .public-nav__github{gap:5px;padding-inline:6px}
   .public-nav__stars{padding-left:5px}

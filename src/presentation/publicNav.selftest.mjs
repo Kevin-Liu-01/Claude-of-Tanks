@@ -20,12 +20,21 @@ const expectedLinks = [
   ['/', 'Play Now'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
+const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.js'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
-assert.match(navCss, /\.public-nav__links\{display:flex;align-items:center;gap:8px\}/,
+assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:8px\}/,
   'desktop navigation controls must retain visible spacing');
 assert.doesNotMatch(navCss, /\.public-nav__links\{[^}]*align-items:stretch/,
   'navigation controls must not stretch from the top to the bottom of the bar');
+assert.match(navCss, /\.public-nav__links>a:not\(\.public-nav__github\):not\(\.public-nav__cta\)\{display:none\}/,
+  'mobile public navigation must collapse page links while retaining GitHub and Play Now');
+assert.match(navSource, /className = 'public-nav__menu-trigger'/,
+  'public pages must mount a shared mobile menu trigger');
+assert.match(navSource, /garage\.href = '\/'/,
+  'the public mobile menu must expose the garage alongside every public page');
+assert.match(navSource, /event\.code !== 'Escape'/,
+  'the public mobile navigation must close with Escape');
 
 for (const [file, activeHref] of pages) {
   const html = readFileSync(join(ROOT, file), 'utf8');
@@ -83,8 +92,15 @@ const githubControl = garageSource.indexOf('class="nv cot-github"');
 assert.ok(galleryControl > garageNavigation && docsControl > galleryControl && githubControl > docsControl,
   'garage Docs control must sit immediately after Gallery and before GitHub');
 const settingsSlot = garageSource.indexOf('class="cot-settings-slot"');
-assert.ok(githubControl >= 0 && settingsSlot > githubControl,
-  'garage GitHub stars must sit immediately before the settings control');
+const mobileMenuTrigger = garageSource.indexOf('class="nv cot-mobile-nav-trigger"');
+assert.ok(githubControl >= 0 && settingsSlot > githubControl && mobileMenuTrigger > settingsSlot,
+  'garage mobile utilities must resolve to GitHub, settings, then the menu trigger');
+for (const destination of ['home', 'garage', 'studio', 'gallery', 'docs', 'record']) {
+  assert.ok(garageSource.includes(`data-mobile-nav="${destination}"`),
+    `garage mobile menu must expose ${destination}`);
+}
+assert.match(garageSource, /\.cot-brand-utilities,\.cot-nav \.cot-nav-desktop\{display:none;\}/,
+  'phone layouts must collapse left utilities and desktop workspace links');
 assert.match(garageSource, new RegExp(`class="github-stars" data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}<\\/span>`),
   'garage GitHub control exposes a numeric fallback before the live star count');
 

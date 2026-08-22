@@ -107,7 +107,7 @@ const GARAGE_CSS = `
 .cot-brand-utilities{height:32px;display:flex;align-items:stretch;gap:3px;padding-left:14px;
   border-left:1px solid rgba(146,164,180,.24);}
 .cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
-  height:34px;pointer-events:auto;}
+  height:34px;pointer-events:auto;z-index:8;}
 .cot-header-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
   display:inline-flex;align-items:center;gap:6px;
@@ -137,6 +137,34 @@ const GARAGE_CSS = `
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
   right:auto;top:auto;}
+.cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
+  outline:2px solid #ffd27a;outline-offset:2px;}
+.cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
+.cot-mobile-nav-menu[hidden]{display:none !important;}
+.cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
+  max-height:calc(100vh - 118px);overflow-y:auto;overscroll-behavior:contain;
+  background:linear-gradient(155deg,rgba(17,23,29,.99),rgba(6,10,14,.99));
+  border:1px solid rgba(166,184,199,.38);border-top:2px solid #f0a030;
+  box-shadow:0 22px 60px rgba(0,0,0,.72),0 0 0 1px rgba(0,0,0,.55) inset;}
+.cot-mobile-nav-menu::before{content:'Navigate';padding:6px 8px 7px;color:#f0b04a;
+  font:900 7px ${FONT_COND};letter-spacing:.22em;text-transform:uppercase;}
+.cot-mobile-nav-menu button{width:100%;min-height:44px;padding:7px 9px;display:grid;
+  grid-template-columns:24px 1fr;align-items:center;gap:9px;text-align:left;cursor:pointer;
+  color:#aebac4;background:rgba(255,255,255,.015);border:1px solid rgba(146,164,180,.16);
+  font-family:${FONT_STACK};}
+.cot-mobile-nav-menu button + button{margin-top:3px;}
+.cot-mobile-nav-menu button[aria-current='page']{color:#ffd27a;border-color:rgba(240,176,74,.38);
+  background:rgba(38,27,12,.72);}
+.cot-mobile-nav-menu button img,.cot-mobile-nav-menu button svg{width:20px;height:20px;
+  object-fit:contain;justify-self:center;}
+.cot-mobile-nav-copy{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cot-mobile-nav-copy strong{font-size:8px;letter-spacing:.15em;text-transform:uppercase;}
+.cot-mobile-nav-copy small{color:#71808c;font:700 7px ${FONT_COND};letter-spacing:.08em;
+  text-transform:uppercase;}
+@media (hover:hover) and (pointer:fine){
+  .cot-mobile-nav-menu button:hover{color:#fff0cf;border-color:rgba(240,176,74,.5);
+    background:rgba(240,160,48,.08);}
+}
 /* LOCAL SERVICE RECORD: the old top-left micro-card now lives behind a real
    top-bar control. The modal reports only durable local match history. */
 .cot-record-modal{position:absolute;inset:0;z-index:90;display:none;place-items:center;
@@ -860,8 +888,10 @@ const GARAGE_CSS = `
   .cot-brand-rail{top:12px;left:14px;height:40px;gap:9px;}
   .cot-garage .title{font-size:13px;letter-spacing:.22em;gap:7px;}
   .cot-garage .title .mark{width:22px;height:22px;}
-  .cot-brand-utilities{height:40px;padding-left:9px;}
+  .cot-brand-utilities,.cot-nav .cot-nav-desktop{display:none;}
   .cot-nav{top:62px;right:14px;gap:3px;height:40px;}
+  .cot-nav .cot-mobile-nav-trigger{display:inline-flex;}
+  .cot-mobile-nav-menu:not([hidden]){display:grid;}
   .cot-header-nav .nv{width:40px;min-height:40px;font-size:7px;padding:0;letter-spacing:.12em;}
   .cot-header-nav .nv .nvi{width:11px;height:11px;}
   .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
@@ -922,9 +952,12 @@ const GARAGE_CSS = `
     height:40px;gap:10px;}
   body.cot-touch-layout .cot-garage .title{font-size:13px;letter-spacing:.22em;gap:7px;}
   body.cot-touch-layout .cot-garage .title .mark{width:24px;height:24px;}
-  body.cot-touch-layout .cot-brand-utilities{height:40px;padding-left:10px;}
+  body.cot-touch-layout .cot-brand-utilities,
+  body.cot-touch-layout .cot-nav .cot-nav-desktop{display:none;}
   body.cot-touch-layout .cot-nav{top:12px;right:max(14px,env(safe-area-inset-right));
     gap:3px;height:40px;}
+  body.cot-touch-layout .cot-nav .cot-mobile-nav-trigger{display:inline-flex;}
+  body.cot-touch-layout .cot-mobile-nav-menu:not([hidden]){display:grid;}
   body.cot-touch-layout .cot-header-nav .nv{width:40px;min-height:40px;padding:0;justify-content:center;gap:0;}
   body.cot-touch-layout .cot-header-nav .nv .nav-label{display:none;}
   body.cot-touch-layout .cot-header-nav .nv .nvi{width:13px;height:13px;}
@@ -991,7 +1024,6 @@ const GARAGE_CSS = `
    wordmark text, narrows the plate and shrinks the wallet chips. */
 @media (max-width:520px) and (orientation:portrait){
   .cot-garage .title span{display:none;}
-  .cot-brand-utilities{position:absolute;top:48px;left:0;}
   .cot-nav{top:76px;}
   .cot-battle-control{width:176px;height:44px;}
   .cot-battle{font-size:13px;padding-left:4px;gap:5px;}
@@ -1752,23 +1784,45 @@ export function createGarage(opts) {
     `<span class="nav-label">Record</span><span class="record-badge" aria-hidden="true">0</span></button>` +
     `</div></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="Garage navigation">` +
-    `<button class="nv on" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
+    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
     `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
     `<span class="nav-label">Garage</span></button>` +
-    `<button class="nv" data-nav="studio" type="button" aria-label="Studio" title="Studio">` +
+    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="Studio" title="Studio">` +
     `<img class="nvi nvi-product" src="/brand/nav/studio.svg" alt="" draggable="false">` +
     `<span class="nav-label">Studio</span></button>` +
-    `<button class="nv" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
+    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
     `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
     `<span class="nav-label">Gallery</span></button>` +
-    `<button class="nv" data-nav="docs" type="button" aria-label="Documentation" title="Documentation">` +
+    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="Documentation" title="Documentation">` +
     `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
     `<span class="nav-label">Docs</span></button>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">GitHub</span><span class="github-stars" data-github-stars>77</span></a>` +
-    `<div class="cot-settings-slot"></div></nav>` +
+    `<div class="cot-settings-slot"></div>` +
+    `<button class="nv cot-mobile-nav-trigger" type="button" aria-label="Open navigation menu" ` +
+    `title="Menu" aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
+    `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">Menu</span></button>` +
+    `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="Game pages" hidden>` +
+    `<button type="button" data-mobile-nav="home">` +
+    `<img src="/brand/nav/home.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `<strong>Home</strong><small>Public showcase</small></span></button>` +
+    `<button type="button" data-mobile-nav="garage" aria-current="page">` +
+    `<img src="/brand/nav/garage.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `<strong>Garage</strong><small>Current page</small></span></button>` +
+    `<button type="button" data-mobile-nav="studio">` +
+    `<img src="/brand/nav/studio.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `<strong>Studio</strong><small>Scene tools</small></span></button>` +
+    `<button type="button" data-mobile-nav="gallery">` +
+    `<img src="/brand/nav/tank-gallery.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `<strong>Gallery</strong><small>Fleet dossiers</small></span></button>` +
+    `<button type="button" data-mobile-nav="docs">` +
+    `<img src="/brand/nav/docs.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `<strong>Docs</strong><small>Game handbook</small></span></button>` +
+    `<button type="button" data-mobile-nav="record">` +
+    `${uiIconSVG('battleRecord', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
+    `<strong>Record</strong><small>Local career stats</small></span></button></div></nav>` +
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
     `<section class="cot-record-dialog">` +
@@ -1959,6 +2013,8 @@ export function createGarage(opts) {
   const recordTrigger = root.querySelector('.cot-record-trigger');
   const recordModal = root.querySelector('.cot-record-modal');
   const recordClose = root.querySelector('.cot-record-close');
+  const mobileNavTrigger = root.querySelector('.cot-mobile-nav-trigger');
+  const mobileNavMenu = root.querySelector('.cot-mobile-nav-menu');
 
   let selectedId = specs.length ? specs[0].id : null;
   let battleMode = 'solo';
@@ -1992,6 +2048,38 @@ export function createGarage(opts) {
     if (restoreFocus) (recordRestoreFocus || recordTrigger).focus?.();
     recordRestoreFocus = null;
   };
+  const isMobileNavigationOpen = () => !mobileNavMenu.hidden;
+  const closeMobileNavigation = ({ restoreFocus = false } = {}) => {
+    if (!isMobileNavigationOpen()) return;
+    mobileNavMenu.hidden = true;
+    mobileNavTrigger.setAttribute('aria-expanded', 'false');
+    mobileNavTrigger.setAttribute('aria-label', 'Open navigation menu');
+    if (restoreFocus) mobileNavTrigger.focus();
+  };
+  const openMobileNavigation = () => {
+    closeBattleMenu();
+    mobileNavMenu.hidden = false;
+    mobileNavTrigger.setAttribute('aria-expanded', 'true');
+    mobileNavTrigger.setAttribute('aria-label', 'Close navigation menu');
+  };
+  mobileNavTrigger.addEventListener('click', () => {
+    emit('ui:click', {});
+    if (isMobileNavigationOpen()) closeMobileNavigation();
+    else openMobileNavigation();
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!isMobileNavigationOpen() || event.target === mobileNavTrigger ||
+      mobileNavTrigger.contains(event.target) || mobileNavMenu.contains(event.target)) return;
+    closeMobileNavigation();
+  });
+  // Escape belongs to the open disclosure. Capture it before the game's
+  // rebindable input layer so closing navigation cannot also open Settings.
+  window.addEventListener('keydown', (event) => {
+    if (!isMobileNavigationOpen() || event.code !== 'Escape') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeMobileNavigation({ restoreFocus: true });
+  }, true);
   // Capture before the global rebindable input layer is created. Escape must
   // close this modal without also firing the settings-menu action behind it.
   window.addEventListener('keydown', (event) => {
@@ -2845,6 +2933,7 @@ export function createGarage(opts) {
     if (restoreFocus) battleModeBtn.focus();
   }
   function openBattleMenu() {
+    closeMobileNavigation();
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
     battleChoices.find((choice) => choice.dataset.mode === battleMode)?.focus();
@@ -2997,26 +3086,47 @@ export function createGarage(opts) {
   recordModal.addEventListener('click', (event) => {
     if (event.target === recordModal) closeServiceRecord();
   });
-  root.querySelector('[data-nav="studio"]').addEventListener('click', () => {
+  const openStudio = () => {
     emit('ui:click', {});
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
-  });
-  root.querySelector('[data-nav="gallery"]').addEventListener('click', () => {
-    openSelectedInGallery();
-  });
-  root.querySelector('[data-nav="docs"]').addEventListener('click', () => {
+  };
+  const openDocs = () => {
     emit('ui:click', {});
     window.location.href = '/docs'; // pretty route (vite.config.js rewrite)
-  });
-  root.querySelector('[data-nav="home"]').addEventListener('click', () => {
+  };
+  const openHome = () => {
     emit('ui:click', {});
     window.location.href = '/home'; // pretty route (vite.config.js rewrite)
-  });
+  };
+  root.querySelector('[data-nav="studio"]').addEventListener('click', openStudio);
+  root.querySelector('[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
+  root.querySelector('[data-nav="docs"]').addEventListener('click', openDocs);
+  root.querySelector('[data-nav="home"]').addEventListener('click', openHome);
   root.querySelector('[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
   });
+  for (const item of root.querySelectorAll('[data-mobile-nav]')) {
+    item.addEventListener('click', () => {
+      const destination = item.dataset.mobileNav;
+      closeMobileNavigation();
+      if (destination === 'home') openHome();
+      else if (destination === 'garage') emit('ui:click', {});
+      else if (destination === 'studio') openStudio();
+      else if (destination === 'gallery') openSelectedInGallery();
+      else if (destination === 'docs') openDocs();
+      else if (destination === 'record') {
+        emit('ui:click', {});
+        openServiceRecord();
+      }
+    });
+  }
   function onKey(e) {
     if (!api.isOpen) return;
+    if (e.code === 'Escape' && isMobileNavigationOpen()) {
+      closeMobileNavigation({ restoreFocus: true });
+      e.preventDefault();
+      return;
+    }
     if (e.code === 'Escape' && battleMenu.classList.contains('open')) {
       closeBattleMenu({ restoreFocus: true });
       e.preventDefault();
@@ -3066,6 +3176,7 @@ export function createGarage(opts) {
     /** Close the garage screen. */
     hide() {
       closeServiceRecord({ restoreFocus: false });
+      closeMobileNavigation();
       closeBattleMenu();
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
