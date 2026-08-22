@@ -8,11 +8,12 @@ import {
   serializeGallerySpec,
   technicalLabel,
 } from './catalog.js';
-import { compareVehicleEras } from '../vehicles/taxonomy.js';
+import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.js';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { uiIconSVG } from '../ui/uiIcons.js';
+import { flagIconUrl } from '../ui/flags.js';
 
 const $ = (selector) => document.querySelector(selector);
 const viewport = $('#viewport');
@@ -513,6 +514,46 @@ function applyFilters() {
 
 const gallerySelects = [];
 
+const GALLERY_ERA_ICONS = Object.freeze({
+  [VEHICLE_ERAS.INTERWAR]: 'eraInterwar',
+  [VEHICLE_ERAS.WORLD_WAR_II]: 'eraWorldWarII',
+  [VEHICLE_ERAS.COLD_WAR]: 'eraColdWar',
+  [VEHICLE_ERAS.MODERN]: 'eraModern',
+  [VEHICLE_ERAS.NEXT_GENERATION]: 'eraNextGeneration',
+});
+
+function createGallerySelectIcon(select, option) {
+  const icon = document.createElement('span');
+  icon.className = 'gallery-select-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  if (select.id === 'nationFilter' && option.value !== 'all') {
+    const flag = document.createElement('img');
+    flag.className = 'gallery-select-flag';
+    flag.src = flagIconUrl(option.value);
+    flag.alt = '';
+    flag.draggable = false;
+    icon.append(flag);
+    return icon;
+  }
+  const iconId = select.id === 'eraFilter'
+    ? (GALLERY_ERA_ICONS[option.value] || 'clock')
+    : 'globe';
+  icon.insertAdjacentHTML('beforeend', uiIconSVG(iconId, 16));
+  return icon;
+}
+
+function renderGallerySelectChoice(target, select, option) {
+  target.replaceChildren();
+  if (!option) return;
+  const choice = document.createElement('span');
+  choice.className = 'gallery-select-choice';
+  const text = document.createElement('span');
+  text.className = 'gallery-select-choice-label';
+  text.textContent = option.textContent;
+  choice.append(createGallerySelectIcon(select, option), text);
+  target.append(choice);
+}
+
 function mountGallerySelect(select) {
   const field = select.closest('.gallery-filter');
   const label = field?.querySelector('.filter-label');
@@ -526,6 +567,7 @@ function mountGallerySelect(select) {
   trigger.setAttribute('aria-haspopup', 'listbox');
   trigger.setAttribute('aria-expanded', 'false');
   const valueLabel = document.createElement('span');
+  valueLabel.className = 'gallery-select-value';
   valueLabel.id = `${select.id}Value`;
   trigger.setAttribute('aria-labelledby', `${label.id} ${valueLabel.id}`);
   trigger.append(valueLabel);
@@ -536,14 +578,15 @@ function mountGallerySelect(select) {
   list.role = 'listbox';
   list.setAttribute('aria-labelledby', label.id);
   trigger.setAttribute('aria-controls', list.id);
-  const optionButtons = [...select.options].map((option) => {
+  const options = [...select.options];
+  const optionButtons = options.map((option) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'gallery-select-option';
     button.role = 'option';
     button.tabIndex = -1;
     button.dataset.value = option.value;
-    button.textContent = option.textContent;
+    renderGallerySelectChoice(button, select, option);
     list.append(button);
     return button;
   });
@@ -555,7 +598,7 @@ function mountGallerySelect(select) {
 
   function syncSelection() {
     const index = selectedIndex();
-    valueLabel.textContent = optionButtons[index]?.textContent || '';
+    renderGallerySelectChoice(valueLabel, select, options[index]);
     optionButtons.forEach((button, buttonIndex) => {
       button.setAttribute('aria-selected', String(buttonIndex === index));
     });

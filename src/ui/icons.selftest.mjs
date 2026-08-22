@@ -29,6 +29,10 @@ for (const id of ['damage', 'penetration', 'team', 'check', 'clock', 'rematch', 
   if (!uiIconIds().includes(id)) throw new Error(`missing debrief icon: ${id}`);
 }
 
+for (const id of ['globe', 'eraInterwar', 'eraWorldWarII', 'eraColdWar', 'eraModern', 'eraNextGeneration']) {
+  if (!uiIconIds().includes(id)) throw new Error(`missing gallery filter icon: ${id}`);
+}
+
 for (const id of ['sound', 'soundOff', 'graphics', 'settings']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing mobile HUD icon: ${id}`);
 }
