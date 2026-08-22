@@ -81,16 +81,41 @@ const CSS = `
 .cot-play .room-action-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .cot-play .field{display:grid;gap:5px}.cot-play .field-label{font:800 9px ${FONT_COND};letter-spacing:.16em;
   text-transform:uppercase;color:#8fa1ae}.cot-play .menu-select{position:relative;min-width:0}.cot-play .menu-select-trigger{
-  position:relative;width:100%;height:40px;padding:0 38px 0 12px;text-align:left;color:#edf3f7;background:#090d12;
-  border:1px solid #d98c2d;font:700 12px ${FONT_STACK};cursor:pointer}.cot-play .menu-select-trigger::after{content:"";
+  position:relative;display:flex;align-items:center;gap:9px;width:100%;height:42px;padding:0 38px 0 12px;text-align:left;
+  color:#edf3f7;background:linear-gradient(180deg,#11171d,#080c11);border:1px solid rgba(161,180,195,.36);
+  font:700 12px ${FONT_STACK};cursor:pointer;transition:border-color .14s ease,background .14s ease,box-shadow .14s ease}
+.cot-play .menu-select-trigger:hover{border-color:rgba(230,154,54,.72);background:linear-gradient(180deg,#161c22,#0b1015)}
+.cot-play .menu-select.open .menu-select-trigger{border-color:#e69a36;box-shadow:0 0 0 2px rgba(230,154,54,.1)}
+.cot-play .menu-select-trigger::after{content:"";
   position:absolute;right:13px;top:50%;width:7px;height:7px;border-right:2px solid #cbd6dd;border-bottom:2px solid #cbd6dd;
   transform:translateY(-68%) rotate(45deg);transition:transform .14s ease}.cot-play .menu-select.open .menu-select-trigger::after{
-  transform:translateY(-30%) rotate(225deg)}.cot-play .menu-select-list{position:absolute;left:0;right:0;bottom:calc(100% + 5px);
-  z-index:12;display:none;padding:5px;background:linear-gradient(160deg,rgba(24,29,34,.99),rgba(11,15,19,.995));
-  border:1px solid rgba(230,154,54,.55);box-shadow:0 18px 40px rgba(0,0,0,.58)}.cot-play .menu-select.open .menu-select-list{
-  display:grid}.cot-play .menu-select-option{min-height:40px;padding:0 12px;text-align:left;color:#c8d3db;background:transparent;
-  border:1px solid transparent;font:700 12px ${FONT_STACK};cursor:pointer}.cot-play .menu-select-option:hover,
-.cot-play .menu-select-option.on{color:#fff2df;background:rgba(230,154,54,.12);border-color:rgba(230,154,54,.32)}
+  transform:translateY(-30%) rotate(225deg)}.cot-play .menu-select-list{position:fixed;z-index:112;display:none;gap:3px;
+  padding:6px;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;background:linear-gradient(155deg,#1b2229,#090d12 82%);
+  border:1px solid rgba(230,154,54,.62);box-shadow:0 24px 60px rgba(0,0,0,.72),inset 0 1px rgba(255,255,255,.04)}
+.cot-play .menu-select-list::-webkit-scrollbar{display:none}.cot-play .menu-select.open .menu-select-list{display:grid}
+.cot-play .menu-select-option{position:relative;display:flex;align-items:center;gap:10px;min-height:40px;padding:0 34px 0 11px;
+  overflow:hidden;text-align:left;color:#c8d3db;background:rgba(255,255,255,.015);border:1px solid transparent;
+  font:700 12px ${FONT_STACK};cursor:pointer;transition:border-color .12s ease,background .12s ease,color .12s ease}
+.cot-play .menu-select-option::after{content:"";position:absolute;right:13px;top:50%;width:9px;height:5px;border-left:2px solid transparent;
+  border-bottom:2px solid transparent;transform:translateY(-65%) rotate(-45deg)}.cot-play .menu-select-option:hover,
+.cot-play .menu-select-option.on{color:#fff2df;background:linear-gradient(90deg,rgba(230,154,54,.16),rgba(230,154,54,.05));
+  border-color:rgba(230,154,54,.34)}.cot-play .menu-select-option.on::after{border-color:#ffb452}
+.cot-play .menu-select-option-copy,.cot-play .menu-select-trigger-copy{display:grid;min-width:0;gap:2px}
+.cot-play .menu-select-option-copy b,.cot-play .menu-select-trigger-copy>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-play .menu-select-option-copy small,.cot-play .menu-select-trigger-copy small{color:#7f929f;font:800 7px ${FONT_COND};
+  letter-spacing:.13em;text-transform:uppercase}.cot-play .menu-select-option.on small{color:#d7a767}
+.cot-play .menu-select-mark{width:8px;height:22px;flex:0 0 8px;background:#748593;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.cot-play .menu-select-mark.alpha{background:#5da8e8}.cot-play .menu-select-mark.bravo{background:#e16b5e}
+.cot-play .menu-select-mark.spectator{background:#89949c}
+.cot-play .menu-select--map .menu-select-trigger{height:50px;padding-left:8px}.cot-play .menu-select-thumb{position:relative;display:block;
+  width:60px;height:34px;flex:0 0 60px;overflow:hidden;background-color:#28313a;background-position:center;background-size:cover;
+  border:1px solid rgba(181,197,210,.3);box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)}
+.cot-play .menu-select-thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(255,255,255,.08),transparent 44%,rgba(0,0,0,.28))}
+.cot-play .menu-select-thumb.is-random{background:conic-gradient(from 36deg at 52% 48%,#526473,#9a7a45,#3b5849,#8c9a9f,#526473)}
+.cot-play .menu-select--map .menu-select-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:8px}
+.cot-play .menu-select--map .menu-select-option{min-height:58px;padding-left:7px}.cot-play .menu-select--map .menu-select-option .menu-select-thumb{
+  width:76px;height:44px;flex-basis:76px}.cot-play .menu-select.disabled .menu-select-trigger{cursor:not-allowed;opacity:.62;
+  border-color:rgba(161,180,195,.22);background:#090d12}.cot-play .menu-select.disabled .menu-select-trigger::after{opacity:.45}
 .cot-play .menu-select-trigger:focus-visible,.cot-play .menu-select-option:focus-visible,.cot-play .mode:focus-visible,
 .cot-play .close:focus-visible,.cot-play button.action:focus-visible{outline:2px solid #ffb452;outline-offset:2px}
 .cot-play .code-input{font:900 17px ${FONT_COND}!important;letter-spacing:.16em;text-transform:uppercase}
@@ -123,7 +148,7 @@ const CSS = `
 .cot-play .vehicle-copy{display:grid;min-width:0;gap:3px}.cot-play .vehicle-camo{color:#8fa1ae;font:800 8px ${FONT_COND};
   letter-spacing:.13em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);
-  min-height:108px;margin-top:10px;overflow:hidden;border:1px solid rgba(161,180,195,.24);
+  min-height:108px;margin-top:10px;border:1px solid rgba(161,180,195,.24);
   background:linear-gradient(110deg,rgba(12,18,23,.98),rgba(21,27,33,.88))}
 .cot-play .battlefield-art{position:relative;min-height:108px;background-position:center;background-size:cover;
   overflow:hidden;border-right:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-art::after{content:"";position:absolute;inset:0;z-index:1;
@@ -148,14 +173,14 @@ const CSS = `
 .cot-play .battlefield-id b{display:block;margin-top:7px;color:#f1f5f8;font-size:18px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}.cot-play .battlefield-id span{display:block;margin-top:5px;color:#8597a5;
   font-size:9px;line-height:1.4}.cot-play .battlefield-card.guest .battlefield-id i{color:#8293a0}
-.cot-play .battlefield-card select{width:100%;border-color:#d98c2d}.cot-play .battlefield-card.guest select{border-color:rgba(161,180,195,.3)}
+.cot-play .battlefield-picker{min-width:0}.cot-play .battlefield-card.guest .menu-select-trigger{border-color:rgba(161,180,195,.24)}
 .cot-play .player .team{font:800 10px ${FONT_COND};
   letter-spacing:.08em;text-transform:uppercase;color:#aebfca}.cot-play .player.alpha .team{color:#82c3f4}
 .cot-play .player.bravo .team{color:#f18c82}.cot-play .player .ready{color:#78d78a;text-align:right;font:800 9px ${FONT_COND};
   letter-spacing:.1em}.cot-play .player .wait{color:#e4aa58;text-align:right;font:800 9px ${FONT_COND};letter-spacing:.1em}
 .cot-play .controls{display:flex;align-items:end;gap:8px;margin-top:12px}.cot-play .control-options,.cot-play .control-actions{
   display:flex;flex-wrap:wrap;align-items:end;gap:8px}.cot-play .control-actions{margin-left:auto;justify-content:flex-end}
-.cot-play .controls select{min-width:140px}.cot-play .control-actions .action{min-width:128px}
+.cot-play .control-options .field{width:140px}.cot-play .control-actions .action{min-width:128px}
 .cot-play .leave-room{border-color:rgba(230,113,94,.4)!important;color:#efaaa0!important}
 @keyframes cot-ready-attention{0%,100%{box-shadow:0 0 0 0 rgba(230,154,54,0),0 0 0 rgba(230,154,54,0)}
   48%{box-shadow:0 0 0 4px rgba(230,154,54,.16),0 0 24px rgba(230,154,54,.48);transform:translateY(-1px)}}
@@ -182,12 +207,13 @@ const CSS = `
     grid-column:1/3;grid-row:2;display:flex}.cot-play .player .team{grid-column:3;grid-row:2;display:block;text-align:right;font-size:8px}
   .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}.cot-play .vehicle-name{font-size:10px}.cot-play .controls{
     align-items:stretch;flex-direction:column}.cot-play .control-options,
-  .cot-play .control-actions{width:100%}.cot-play .control-actions{margin-left:0}.cot-play .control-options select{flex:1 1 130px}
+  .cot-play .control-actions{width:100%}.cot-play .control-actions{margin-left:0}.cot-play .control-options .field{flex:1 1 130px;width:auto}
   .cot-play .battlefield-card{grid-template-columns:1fr}.cot-play .battlefield-art{min-height:82px;border-right:0;
     border-bottom:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-copy{grid-template-columns:1fr;padding:12px;gap:10px}
-  .cot-play .control-actions .action{flex:1 1 128px}}
+  .cot-play .control-actions .action{flex:1 1 128px}.cot-play .menu-select--map .menu-select-list{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
-  box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}}
+  box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
+  .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
 `;
 
 function stored(key, fallback) {
@@ -235,10 +261,14 @@ function playerId() {
   return id;
 }
 
-function bindMenuSelect(control) {
+function bindMenuSelect(control, { beforeOpen = null } = {}) {
   const trigger = control.querySelector('[data-select-trigger]');
-  const valueLabel = trigger.querySelector('span');
+  const list = control.querySelector('[role="listbox"]');
+  const valueLabel = trigger.querySelector('[data-select-value]');
+  const metaLabel = trigger.querySelector('[data-select-meta]');
+  const triggerThumb = trigger.querySelector('[data-select-thumb]');
   const options = [...control.querySelectorAll('[role="option"]')];
+  let disabled = false;
 
   function selectedIndex() {
     const index = options.findIndex((option) => option.dataset.value === control.dataset.value);
@@ -249,7 +279,13 @@ function bindMenuSelect(control) {
     const option = options.find((item) => item.dataset.value === String(nextValue));
     if (!option) return;
     control.dataset.value = option.dataset.value;
-    valueLabel.textContent = option.textContent;
+    valueLabel.textContent = option.dataset.label || option.textContent.trim();
+    if (metaLabel) metaLabel.textContent = option.dataset.meta || '';
+    if (triggerThumb) {
+      const thumb = option.dataset.thumb || '';
+      triggerThumb.style.backgroundImage = thumb ? `url("${thumb.replace(/"/g, '%22')}")` : '';
+      triggerThumb.classList.toggle('is-random', !thumb);
+    }
     for (const item of options) {
       const selected = item === option;
       item.classList.toggle('on', selected);
@@ -265,16 +301,59 @@ function bindMenuSelect(control) {
     if (restoreFocus) trigger.focus();
   }
 
+  function positionList() {
+    const rect = trigger.getBoundingClientRect();
+    const margin = 10;
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const wide = control.classList.contains('menu-select--map');
+    const width = wide
+      ? Math.min(540, viewportWidth - margin * 2)
+      : Math.min(Math.max(rect.width, 180), viewportWidth - margin * 2);
+    const left = wide
+      ? Math.max(margin, Math.min(rect.right - width, viewportWidth - width - margin))
+      : Math.max(margin, Math.min(rect.left, viewportWidth - width - margin));
+    list.style.width = `${Math.round(width)}px`;
+    list.style.maxHeight = 'none';
+    const naturalHeight = list.scrollHeight;
+    const below = viewportHeight - rect.bottom - margin - 6;
+    const above = rect.top - margin - 6;
+    const openBelow = below >= Math.min(naturalHeight, 260) || below >= above;
+    const availableHeight = Math.max(104, openBelow ? below : above);
+    const maxHeight = Math.min(naturalHeight, availableHeight, wide ? 420 : 300);
+    const top = openBelow ? rect.bottom + 6 : rect.top - maxHeight - 6;
+    list.style.left = `${Math.round(left)}px`;
+    list.style.top = `${Math.round(Math.max(margin, top))}px`;
+    list.style.maxHeight = `${Math.round(maxHeight)}px`;
+    control.classList.toggle('drop-up', !openBelow);
+  }
+
   function open(index = selectedIndex()) {
+    if (disabled) return;
+    if (beforeOpen) beforeOpen(control);
     control.classList.add('open');
     trigger.setAttribute('aria-expanded', 'true');
-    options[Math.max(0, Math.min(options.length - 1, index))]?.focus();
+    positionList();
+    const option = options[Math.max(0, Math.min(options.length - 1, index))];
+    option?.focus({ preventScroll: true });
+    option?.scrollIntoView({ block: 'nearest' });
   }
 
   Object.defineProperty(control, 'value', {
     configurable: true,
     get: () => control.dataset.value,
     set: (nextValue) => setValue(nextValue),
+  });
+  Object.defineProperty(control, 'disabled', {
+    configurable: true,
+    get: () => disabled,
+    set: (nextDisabled) => {
+      disabled = !!nextDisabled;
+      control.classList.toggle('disabled', disabled);
+      control.setAttribute('aria-disabled', String(disabled));
+      trigger.disabled = disabled;
+      if (disabled) close();
+    },
   });
   setValue(control.dataset.value);
 
@@ -319,7 +398,7 @@ function bindMenuSelect(control) {
     });
   });
 
-  return { close };
+  return { close, positionList };
 }
 
 function defaultSignalUrl(lan = false) {
@@ -383,13 +462,13 @@ export function createPlayMenu({
             <div class="menu-select" data-field="create-size" data-value="2">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-create-size-list" aria-labelledby="cot-create-size-label cot-create-size-value">
-                <span id="cot-create-size-value">2 vs 2</span></button>
+                <span id="cot-create-size-value" data-select-value>2 vs 2</span></button>
               <div class="menu-select-list" id="cot-create-size-list" role="listbox" aria-labelledby="cot-create-size-label">
-                <button class="menu-select-option" type="button" role="option" data-value="1" aria-selected="false">1 vs 1</button>
-                <button class="menu-select-option" type="button" role="option" data-value="2" aria-selected="true">2 vs 2</button>
-                <button class="menu-select-option" type="button" role="option" data-value="3" aria-selected="false">3 vs 3</button>
-                <button class="menu-select-option" type="button" role="option" data-value="5" aria-selected="false">5 vs 5</button>
-                <button class="menu-select-option" type="button" role="option" data-value="7" aria-selected="false">7 vs 7</button>
+                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="1 vs 1" aria-selected="false">1 vs 1</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="2 vs 2" aria-selected="true">2 vs 2</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="3 vs 3" aria-selected="false">3 vs 3</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="5 vs 5" aria-selected="false">5 vs 5</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
               </div>
             </div></div>
             <button class="action" data-action="create" type="button">Create room</button></div></div>
@@ -407,10 +486,38 @@ export function createPlayMenu({
       <div class="battlefield-card"><div class="battlefield-art"><span>Battlefield briefing</span></div>
         <div class="battlefield-copy"><div class="battlefield-id"><i data-map-role>Host selectable</i><b data-map-name>Random battlefield</b>
           <span>Changing the operation resets readiness so every commander sees the final choice.</span></div>
-          <label>Battlefield<select data-control="map" aria-label="Battlefield"></select></label></div></div>
+          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">Battlefield</span>
+            <div class="menu-select menu-select--map" data-control="map" data-value="random">
+              <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
+                aria-controls="cot-room-map-list" aria-labelledby="cot-room-map-label cot-room-map-value">
+                <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true"></span>
+                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value>Random</span>
+                  <small data-select-meta>Any battlefield</small></span></button>
+              <div class="menu-select-list" id="cot-room-map-list" role="listbox" aria-labelledby="cot-room-map-label"></div>
+            </div></div></div></div>
       <div class="players"></div><div class="controls">
-        <div class="control-options"><select data-control="team" aria-label="Team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
-          <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></div>
+        <div class="control-options"><div class="field"><span class="field-label" id="cot-room-team-label">Deployment</span>
+          <div class="menu-select" data-control="team" data-value="alpha">
+            <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
+              aria-controls="cot-room-team-list" aria-labelledby="cot-room-team-label cot-room-team-value">
+              <span id="cot-room-team-value" data-select-value>Team Alpha</span></button>
+            <div class="menu-select-list" id="cot-room-team-list" role="listbox" aria-labelledby="cot-room-team-label">
+              <button class="menu-select-option" type="button" role="option" data-value="alpha" data-label="Team Alpha" aria-selected="true"><span class="menu-select-mark alpha" aria-hidden="true"></span>Team Alpha</button>
+              <button class="menu-select-option" type="button" role="option" data-value="bravo" data-label="Team Bravo" aria-selected="false"><span class="menu-select-mark bravo" aria-hidden="true"></span>Team Bravo</button>
+              <button class="menu-select-option" type="button" role="option" data-value="spectator" data-label="Spectator" aria-selected="false"><span class="menu-select-mark spectator" aria-hidden="true"></span>Spectator</button>
+            </div></div></div>
+          <div class="field"><span class="field-label" id="cot-room-size-label">Battle format</span>
+            <div class="menu-select" data-control="size" data-value="1">
+              <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
+                aria-controls="cot-room-size-list" aria-labelledby="cot-room-size-label cot-room-size-value">
+                <span id="cot-room-size-value" data-select-value>1 vs 1</span></button>
+              <div class="menu-select-list" id="cot-room-size-list" role="listbox" aria-labelledby="cot-room-size-label">
+                <button class="menu-select-option" type="button" role="option" data-value="1" data-label="1 vs 1" aria-selected="true">1 vs 1</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" data-label="2 vs 2" aria-selected="false">2 vs 2</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" data-label="3 vs 3" aria-selected="false">3 vs 3</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" data-label="5 vs 5" aria-selected="false">5 vs 5</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" data-label="7 vs 7" aria-selected="false">7 vs 7</button>
+              </div></div></div></div>
         <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">Leave room</button>
           <button class="action alt" data-action="ready" type="button">I'm ready</button>
           <button class="action" data-action="start" type="button">Start match</button></div>
@@ -425,6 +532,7 @@ export function createPlayMenu({
     </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
   document.body.appendChild(root);
 
+  const panel = root.querySelector('.panel');
   const closeBtn = root.querySelector('.close');
   const room = root.querySelector('.room');
   const ranked = root.querySelector('.ranked');
@@ -437,10 +545,53 @@ export function createPlayMenu({
   const signalInput = root.querySelector('[data-field="signal"]');
   const codeInput = root.querySelector('[data-field="code"]');
   const createSizeSelect = root.querySelector('[data-field="create-size"]');
-  const createSizeMenu = bindMenuSelect(createSizeSelect);
   const teamSelect = root.querySelector('[data-control="team"]');
   const sizeSelect = root.querySelector('[data-control="size"]');
   const mapSelect = root.querySelector('[data-control="map"]');
+  const mapList = mapSelect.querySelector('[role="listbox"]');
+  const mapById = new Map();
+  const battlefieldCount = maps.filter((map) => map.id !== 'random').length;
+  for (const map of maps) {
+    mapById.set(map.id, map);
+    const option = document.createElement('button');
+    option.className = 'menu-select-option';
+    option.type = 'button';
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', 'false');
+    option.dataset.value = map.id;
+    option.dataset.label = map.name;
+    option.dataset.meta = map.id === 'random' ? `${battlefieldCount} battlefields` : 'Battlefield';
+    option.dataset.thumb = map.thumb || '';
+    const thumb = document.createElement('span');
+    thumb.className = `menu-select-thumb${map.thumb ? '' : ' is-random'}`;
+    thumb.setAttribute('aria-hidden', 'true');
+    if (map.thumb) thumb.style.backgroundImage = `url("${map.thumb.replace(/"/g, '%22')}")`;
+    const copy = document.createElement('span');
+    copy.className = 'menu-select-option-copy';
+    const name = document.createElement('b');
+    name.textContent = map.name;
+    const detail = document.createElement('small');
+    detail.textContent = option.dataset.meta;
+    copy.append(name, detail);
+    option.append(thumb, copy);
+    mapList.appendChild(option);
+  }
+  const menuBindings = [];
+  function closeMenuSelects(except = null) {
+    for (const binding of menuBindings) {
+      if (binding.control !== except) binding.controller.close();
+    }
+  }
+  function bindRoomMenu(control) {
+    const binding = { control, controller: null };
+    binding.controller = bindMenuSelect(control, { beforeOpen: closeMenuSelects });
+    menuBindings.push(binding);
+    return binding.controller;
+  }
+  bindRoomMenu(createSizeSelect);
+  bindRoomMenu(teamSelect);
+  bindRoomMenu(sizeSelect);
+  bindRoomMenu(mapSelect);
   const battlefieldCard = root.querySelector('.battlefield-card');
   const battlefieldArt = root.querySelector('.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
@@ -465,14 +616,6 @@ export function createPlayMenu({
   const defaultEyebrow = eyebrow.textContent;
   const defaultMenuTitle = menuTitle.textContent;
   const defaultMenuLead = menuLead.textContent;
-  const mapById = new Map();
-  for (const map of maps) {
-    mapById.set(map.id, map);
-    const option = document.createElement('option');
-    option.value = map.id;
-    option.textContent = map.name;
-    mapSelect.appendChild(option);
-  }
   const ownPlayerId = playerId();
   const storedPlayerName = normalizePlayerName(stored(PLAYER_NAME_KEY, ''));
   nameInput.value = !storedPlayerName || storedPlayerName.toLocaleLowerCase('en-US') === 'commander'
@@ -892,7 +1035,7 @@ export function createPlayMenu({
   function selectMode(nextMode) {
     const button = root.querySelector(`.mode[data-mode="${nextMode}"]`);
     if (!button) return;
-    createSizeMenu.close();
+    closeMenuSelects();
     if (nextMode === 'solo') { hide(); if (onSolo) onSolo(); return; }
     closeCurrentSession('mode_changed');
     mode = nextMode;
@@ -1008,8 +1151,11 @@ export function createPlayMenu({
   signalInput.addEventListener('input', () => setConnecting(connecting));
   root.querySelector('.close').addEventListener('click', () => hide());
   root.addEventListener('pointerdown', (event) => {
-    if (!createSizeSelect.contains(event.target)) createSizeMenu.close();
+    if (!event.target.closest('.menu-select')) closeMenuSelects();
   });
+  panel.addEventListener('scroll', () => closeMenuSelects(), { passive: true });
+  const closeMenusOnResize = () => closeMenuSelects();
+  window.addEventListener('resize', closeMenusOnResize, { passive: true });
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
   function show(initialMode = null, invite = null) {
@@ -1029,7 +1175,7 @@ export function createPlayMenu({
       .catch((error) => setStatus(error.message, true));
   }
   function hide(closeSession = true) {
-    createSizeMenu.close();
+    closeMenuSelects();
     root.classList.remove('show');
     const parkedInGarage = !!(session && state?.phase === 'waiting');
     if (closeSession && !handedOff && !activeRoom && !parkedInGarage) {
@@ -1040,6 +1186,7 @@ export function createPlayMenu({
     handedOff = false;
     if (activeRoom || session) closeCurrentSession('menu_disposed');
     else hide(false);
+    window.removeEventListener('resize', closeMenusOnResize);
     root.remove();
   }
   function attachActiveRoom(adapter) {

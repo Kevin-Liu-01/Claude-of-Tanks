@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [garage, touch, battleLoad, hud, shotInfo, publicNav] = await Promise.all([
+const [garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.js', import.meta.url), 'utf8'),
   readFile(new URL('./battleLoad.js', import.meta.url), 'utf8'),
   readFile(new URL('./hud.js', import.meta.url), 'utf8'),
   readFile(new URL('./shotInfo.js', import.meta.url), 'utf8'),
+  readFile(new URL('./playMenu.js', import.meta.url), 'utf8'),
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
 ]);
 
@@ -56,6 +57,19 @@ assert.doesNotMatch(shotInfo, /\.cot-si-diag\{display:none/,
   'penetration diagrams must not disappear on touch or narrow layouts');
 assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:164px/,
   'the canonical incoming feed must reserve stable space for battle readings');
+
+assert.doesNotMatch(playMenu, /<select data-control="(?:map|team|size)"/,
+  'live room controls must use the game listbox component instead of browser-native selects');
+assert.match(playMenu, /menu-select menu-select--map[^>]*data-control="map"[\s\S]*cot-room-map-list[^>]*role="listbox"/,
+  'the battlefield picker must expose the complete map roster through an accessible styled listbox');
+assert.match(playMenu, /menu-select--map \.menu-select-list\{grid-template-columns:repeat\(2,/,
+  'the battlefield list must present preview tiles in a compact desktop grid');
+assert.match(playMenu, /menu-select-list\{position:fixed;[^}]*overflow:auto;overscroll-behavior:contain/,
+  'custom room lists must stay inside a viewport-aware scroll lane');
+assert.match(playMenu, /@media\(max-width:780px\)[\s\S]*menu-select--map \.menu-select-list\{grid-template-columns:1fr/,
+  'the battlefield picker must collapse to one column on phones');
+assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigger\.disabled = disabled/,
+  'custom room listboxes must preserve native disabled semantics for guests and ready states');
 assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
   'the desktop GitHub star control needs comfortable internal spacing');
 
