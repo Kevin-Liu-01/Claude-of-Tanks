@@ -2835,6 +2835,41 @@ function merkavaSmokeCluster(P, x, y, z, yaw = 0, n = 5, opts = {}) {
   // mostly +y (tubes are near-vertical), so plan/front columns move < 4 mm.
   const tubeL = opts.recessed ? (opts.pale ? 0.125 : 0.09) : 0.15;
   const lift = opts.recessed ? (opts.pale ? 0.036 : 0.015) : 0.035;
+  if (opts.frame) {
+    // Mk.4B's launchers live on a compound-sloped armor course. The legacy
+    // pitch/yaw placement could only align two axes, leaving the backing shoe
+    // visibly clear of the panel at elevated quarter views. Consume the same
+    // surface frame as the armor/ERA instead: the shoe overlaps the panel,
+    // while each tube grows from that shoe along an outward/upward vector.
+    const frame = opts.frame;
+    addMerkava4bFrameBox(P, 'turretDetail', frame, 0.36, 0.20, 0.10, 0.040, true);
+    const tubeAxis = frame.up.clone().multiplyScalar(0.82)
+      .addScaledVector(frame.normal, 0.57).normalize();
+    const tubeEuler = new THREE.Euler().setFromQuaternion(
+      new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tubeAxis),
+      'XYZ',
+    );
+    const rows = [Math.ceil(n / 2), Math.floor(n / 2)];
+    for (let r = 0; r < 2; r++) {
+      for (let k = 0; k < rows[r]; k++) {
+        const u = (k - (rows[r] - 1) / 2) * 0.088;
+        const v = (r - 0.5) * 0.078;
+        const foot = frame.point.clone()
+          .addScaledVector(frame.tangent, u)
+          .addScaledVector(frame.up, v)
+          .addScaledVector(frame.normal, 0.070);
+        const center = foot.clone().addScaledVector(tubeAxis, tubeL * 0.46);
+        P.addEquipment(opts.soft ? 'turretDetail' : 'turretDark', cylY(0.032, 0.036, tubeL, 8),
+          center.x, center.y, center.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
+        if (opts.soft) {
+          const mouth = foot.clone().addScaledVector(tubeAxis, tubeL * 0.92);
+          P.addEquipment('turretDark', cylY(0.030, 0.030, 0.016, 8),
+            mouth.x, mouth.y, mouth.z, tubeEuler.x, tubeEuler.y, tubeEuler.z);
+        }
+      }
+    }
+    return;
+  }
   if (opts.recessed) {
     P.add(opts.pale ? 'turretDetail' : 'turretDark', box(0.30, 0.018, 0.20), x, y, z, pitch, yaw, 0);
   } else {
@@ -6524,137 +6559,320 @@ function merkavaSidePanels(P, p, t, opts = {}) {
   }
 }
 
+const MERKAVA4B_PANEL_COURSES = Object.freeze([
+  Object.freeze({ zF: 1.52, zR: 0.72, yBF: 2.06, yBR: 2.03, yTF: 2.42, yTR: 2.49, thick: 0.10 }),
+  Object.freeze({ zF: 0.76, zR: 0.02, yBF: 2.03, yBR: 2.01, yTF: 2.49, yTR: 2.54, thick: 0.11 }),
+  Object.freeze({ zF: 0.06, zR: -0.76, yBF: 2.01, yBR: 1.99, yTF: 2.54, yTR: 2.56, thick: 0.11 }),
+  Object.freeze({ zF: -0.72, zR: -1.63, yBF: 1.99, yBR: 2.00, yTF: 2.56, yTR: 2.54, thick: 0.10 }),
+  Object.freeze({ zF: -1.58, zR: -2.72, yBF: 2.00, yBR: 2.03, yTF: 2.54, yTR: 2.47, thick: 0.09 }),
+]);
+
+function merkava4bPanelFrame(P, side, worldZ, heightFraction = 0.5) {
+  const receipt = P.turretG.userData.merkava4bFlankPanelReceipt;
+  if (!receipt?.seats?.length) return null;
+  const candidates = receipt.seats.filter(seat => seat.side === side);
+  const seat = candidates.reduce((best, candidate) => {
+    const inRange = worldZ <= candidate.zFrontWorldM + 1e-6 && worldZ >= candidate.zRearWorldM - 1e-6;
+    const distance = inRange ? 0 : Math.min(
+      Math.abs(worldZ - candidate.zFrontWorldM),
+      Math.abs(worldZ - candidate.zRearWorldM),
+    );
+    const centerDistance = Math.abs(worldZ - (candidate.zFrontWorldM + candidate.zRearWorldM) * 0.5);
+    const score = distance * 100 + centerDistance;
+    return !best || score < best.score ? { seat: candidate, score } : best;
+  }, null)?.seat;
+  if (!seat) return null;
+
+  const stations = seat.stations;
+  let a = stations[0], b = stations[1];
+  for (let index = 0; index < stations.length - 1; index++) {
+    if (worldZ <= stations[index].worldZ + 1e-6 && worldZ >= stations[index + 1].worldZ - 1e-6) {
+      a = stations[index];
+      b = stations[index + 1];
+      break;
+    }
+  }
+  const mix = THREE.MathUtils.clamp(
+    (a.worldZ - worldZ) / Math.max(1e-6, a.worldZ - b.worldZ),
+    0,
+    1,
+  );
+  const lerpVector = (key) => new THREE.Vector3(...a[key]).lerp(new THREE.Vector3(...b[key]), mix);
+  const bottom = lerpVector('bottomOuterLocal');
+  const top = lerpVector('topOuterLocal');
+  const bottomNormal = lerpVector('bottomNormalLocal');
+  const topNormal = lerpVector('topNormalLocal');
+  const f = THREE.MathUtils.clamp(heightFraction, 0, 1);
+  const point = bottom.clone().lerp(top, f);
+  const normal = bottomNormal.lerp(topNormal, f).normalize();
+  if (normal.x * side < 0) normal.negate();
+  const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+  const tangent = new THREE.Vector3().crossVectors(up, normal).normalize();
+  const basis = new THREE.Matrix4().makeBasis(tangent, up, normal);
+  return {
+    side,
+    courseIndex: seat.courseIndex,
+    worldZ,
+    heightFraction: f,
+    point,
+    tangent,
+    up,
+    normal,
+    eulerXYZ: new THREE.Euler().setFromRotationMatrix(basis, 'XYZ'),
+    eulerYXZ: new THREE.Euler().setFromRotationMatrix(basis, 'YXZ'),
+  };
+}
+
+function addMerkava4bFrameBox(P, bucket, frame, width, height, depth, outwardOffset = 0, equipment = false) {
+  const center = frame.point.clone().addScaledVector(frame.normal, outwardOffset);
+  const add = equipment ? P.addEquipment : P.add;
+  add(bucket, KIT.box(width, height, depth), center.x, center.y, center.z,
+    frame.eulerXYZ.x, frame.eulerXYZ.y, frame.eulerXYZ.z);
+  return center;
+}
+
 // Mk.4B source-specific modular armor.  The supplied reference does not use
 // the tall rectangular Trophy-era side doors fitted by `merkavaSidePanels`;
 // it has a continuous arrowhead cheek followed by two swept side courses.
 // Build those courses as closed prisms whose inner faces bury into the core,
 // so the silhouette stays faceted without stand-off plates or sky seams.
 function merkava4bArmorPanels(P, p) {
-  const { box } = KIT;
   const L = (z) => z - p.pivotZ;
   const V = (y) => y - (p.deckY + 0.02);
   const slab = orientedSlab;
   const flankPanelEmbedM = 0.012;
   const flankPanelSeats = [];
-  const panel = (s, a) => {
-    const [zF, zR, xF, xR, xTF, xTR, yBF, yBR, yTF, yTR, thick = 0.08] = a;
-    const ixF = xF - thick, ixR = xR - thick;
-    const ixTF = xTF - thick, ixTR = xTR - thick;
-    P.add('turret', slab(
-      [s * ixF, V(yBF), L(zF)], [s * ixR, V(yBR), L(zR)],
-      [s * ixTR, V(yTR), L(zR)], [s * ixTF, V(yTF), L(zF)],
-      [s * xF, V(yBF), L(zF)], [s * xR, V(yBR), L(zR)],
-      [s * xTR, V(yTR), L(zR)], [s * xTF, V(yTF), L(zF)]));
-    // Recessed course break and fasteners remain inside the armor envelope.
-    const xMid = (xF + xR + xTF + xTR) * 0.25 + 0.004;
-    P.add('turretDark', box(0.012, 0.030, Math.max(0.18, Math.abs(zF - zR) - 0.10)),
-      s * xMid, V((yBF + yBR + yTF + yTR) * 0.25), L((zF + zR) * 0.5),
-      -0.04, 0, s * 0.05);
-    for (const f of [0.18, 0.50, 0.82]) {
-      const z = zF + (zR - zF) * f;
-      const x = xTF + (xTR - xTF) * f;
-      const y = yTF + (yTR - yTF) * f - 0.08;
-      P.add('turretDark', box(0.018, 0.022, 0.018), s * (x + 0.008), V(y), L(z));
+  const extensionBackerDepthM = 0.18;
+
+  // Build the same structural surfaces the visible modules must touch: the
+  // main faceted casting, the forward cheek wedges, and the bustle root.
+  // Raycasting these tiny temporary authoring meshes lets every course follow
+  // facet changes in all three axes instead of assuming a vertical X offset.
+  const rw = p.rearWide ?? 0.94;
+  const plan = [
+    [-p.noseHW, L(p.noseZ)], [p.noseHW, L(p.noseZ)],
+    [p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
+    [p.hwMax, L(p.maxWZ)], [p.hwMax * (rw + 0.02), L(p.shellRearZ) + 0.55],
+    [p.hwMax * rw, L(p.shellRearZ)], [-p.hwMax * rw, L(p.shellRearZ)],
+    [-p.hwMax * (rw + 0.02), L(p.shellRearZ) + 0.55], [-p.hwMax, L(p.maxWZ)],
+    [-p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
+  ];
+  const supportGeometries = [KIT.xform(KIT.polyTurret(
+    plan,
+    p.shellTopY - p.shellBotY,
+    1.0,
+    p.roofInset ?? 0.96,
+  ), 0, V(p.shellBotY), 0)];
+  const cheek = p.cheek;
+  if (cheek) {
+    for (const s of [-1, 1]) {
+      const points = cheek.pts;
+      for (let index = 0; index < points.length - 1; index++) {
+        const f0 = index / (points.length - 1);
+        const f1 = (index + 1) / (points.length - 1);
+        const top0 = V(THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, f0));
+        const top1 = V(THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, f1));
+        const bot0 = V(THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, f0));
+        const bot1 = V(THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, f1));
+        const p0z = L(points[index][1]);
+        const p1z = L(points[index + 1][1]);
+        const zR0 = Math.min(p0z - 0.55, L(p.maxWZ) + 0.3);
+        const zR1 = Math.min(p1z - 0.55, L(p.maxWZ) + 0.3);
+        supportGeometries.push(slab(
+          [s * points[index][0], bot0, p0z], [s * points[index + 1][0], bot1, p1z],
+          [s * points[index + 1][0], bot1 - 0.02, zR1], [s * points[index][0], bot0 - 0.02, zR0],
+          [s * points[index][0], top0, p0z - (p.cheekRake ?? 0.06)],
+          [s * points[index + 1][0], top1, p1z - (p.cheekRake ?? 0.06)],
+          [s * points[index + 1][0], top1, zR1], [s * points[index][0], top0, zR0],
+        ));
+      }
     }
+  }
+  supportGeometries.push(KIT.frustum(
+    p.hwMax * rw,
+    L(p.shellRearZ) + 0.30,
+    L(p.bustleZ1),
+    p.hwMax * rw - 0.05,
+    L(p.shellRearZ) + 0.26,
+    L(p.bustleZ1) + 0.05,
+    V(p.bustleBot),
+    V(p.roofLine.at(-1)[1]) - 0.02,
+  ));
+  const supportMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const supportMeshes = supportGeometries.map(geometry => {
+    const mesh = new THREE.Mesh(geometry, supportMaterial);
+    mesh.updateMatrixWorld(true);
+    return mesh;
+  });
+  const raycaster = new THREE.Raycaster();
+  const rayOrigin = new THREE.Vector3();
+  const rayDirection = new THREE.Vector3();
+  const sampleSupport = (side, worldY, worldZ) => {
+    const desiredY = V(Math.min(worldY, p.shellTopY));
+    const desiredZ = L(worldZ);
+    const cast = (sampleY, sampleZ) => {
+      rayOrigin.set(side * 4.5, sampleY, sampleZ);
+      rayDirection.set(-side, 0, 0);
+      raycaster.set(rayOrigin, rayDirection);
+      return raycaster.intersectObjects(supportMeshes, false)
+        .find(hit => hit.point.x * side > 0.08) ?? null;
+    };
+    let hit = cast(desiredY - 1e-4, desiredZ);
+    let extended = false;
+    if (!hit) {
+      extended = true;
+      const clampedZ = L(THREE.MathUtils.clamp(worldZ, p.bustleZ1 + 0.02, p.noseZ - 0.02));
+      for (let sampleY = Math.min(desiredY, V(p.shellTopY) - 0.004);
+        sampleY >= V(p.shellBotY) + 0.004 && !hit; sampleY -= 0.06) {
+        hit = cast(sampleY, clampedZ);
+      }
+    }
+    if (!hit?.face) throw new Error(`Merkava 4B panel support miss at side=${side} z=${worldZ} y=${worldY}`);
+    const normal = hit.face.normal.clone().normalize();
+    if (normal.x * side < 0) normal.negate();
+    const point = new THREE.Vector3(
+      hit.point.x - (normal.y * (desiredY - hit.point.y) + normal.z * (desiredZ - hit.point.z)) / normal.x,
+      desiredY,
+      desiredZ,
+    );
+    return { point, normal, extended };
   };
 
-  // The fourth swept course sits wholly over the main casting's long side
-  // plane. Its old hand-authored inner corners remained 15-37 cm outside
-  // that plane, exposing the back of the panel from elevated quarter views.
-  // Reconstruct the exact side plane used by `merkavaModularTurret`, then
-  // derive both mirrored panels from it. The inner face overlaps the casting
-  // by 12 mm; the outer face stays parallel at the authored armor depth.
-  const conformalFlankPanel = (s, a) => {
-    const [zF, zR, , , , , yBF, yBR, yTF, yTR, thick = 0.08] = a;
-    const baseY = V(p.shellBotY);
-    const topY = V(p.shellTopY);
-    const zForward = L(p.maxWZ);
-    const zRear = L(p.shellRearZ) + 0.55;
-    const xForward = p.hwMax;
-    const xRear = p.hwMax * ((p.rearWide ?? 0.94) + 0.02);
-    const plan = [
-      [-p.noseHW, L(p.noseZ)], [p.noseHW, L(p.noseZ)],
-      [p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
-      [xForward, zForward], [xRear, zRear],
-      [p.hwMax * (p.rearWide ?? 0.94), L(p.shellRearZ)],
-      [-p.hwMax * (p.rearWide ?? 0.94), L(p.shellRearZ)], [-xRear, zRear],
-      [-xForward, zForward],
-      [-p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
-    ];
-    const centerZ = plan.reduce((sum, point) => sum + point[1], 0) / plan.length;
-    const inset = p.roofInset ?? 0.96;
-    const a0 = new THREE.Vector3(xForward, baseY, zForward);
-    const b0 = new THREE.Vector3(
-      xRear * inset,
-      topY,
-      centerZ + (zRear - centerZ) * inset,
-    );
-    const c0 = new THREE.Vector3(
-      xForward * inset,
-      topY,
-      centerZ + (zForward - centerZ) * inset,
-    );
-    const rightNormal = new THREE.Vector3()
-      .crossVectors(b0.clone().sub(a0), c0.clone().sub(a0)).normalize();
-    const normal = new THREE.Vector3(s * rightNormal.x, rightNormal.y, rightNormal.z);
-    const supportAt = (worldY, worldZ) => {
-      const y = V(Math.min(worldY, p.shellTopY));
-      const z = L(worldZ);
-      const x = a0.x - (rightNormal.y * (y - a0.y) + rightNormal.z * (z - a0.z)) / rightNormal.x;
-      return new THREE.Vector3(s * x, y, z);
-    };
-    const surface = [
-      supportAt(yBF, zF), supportAt(yBR, zR),
-      supportAt(yTR, zR), supportAt(yTF, zF),
-    ];
-    const inner = surface.map(point => point.clone().addScaledVector(normal, -flankPanelEmbedM));
-    const outer = surface.map(point => point.clone().addScaledVector(normal, thick - flankPanelEmbedM));
-    P.add('turret', slab(
-      inner[0].toArray(), inner[1].toArray(), inner[2].toArray(), inner[3].toArray(),
-      outer[0].toArray(), outer[1].toArray(), outer[2].toArray(), outer[3].toArray(),
-    ));
+  const panel = (side, course, courseIndex) => {
+    const segments = Math.max(2, Math.ceil(Math.abs(course.zF - course.zR) / 0.18));
+    const stations = [];
+    for (let stationIndex = 0; stationIndex <= segments; stationIndex++) {
+      const f = stationIndex / segments;
+      const worldZ = THREE.MathUtils.lerp(course.zF, course.zR, f);
+      const bottom = sampleSupport(side, THREE.MathUtils.lerp(course.yBF, course.yBR, f), worldZ);
+      const top = sampleSupport(side, THREE.MathUtils.lerp(course.yTF, course.yTR, f), worldZ);
+      const bottomInner = bottom.point.clone().addScaledVector(bottom.normal, -flankPanelEmbedM);
+      const topInner = top.point.clone().addScaledVector(top.normal, -flankPanelEmbedM);
+      const bottomOuter = bottom.point.clone().addScaledVector(bottom.normal, course.thick - flankPanelEmbedM);
+      const topOuter = top.point.clone().addScaledVector(top.normal, course.thick - flankPanelEmbedM);
+      stations.push({ worldZ, bottom, top, bottomInner, topInner, bottomOuter, topOuter });
+    }
+    let backedSegments = 0;
+    for (let index = 0; index < stations.length - 1; index++) {
+      const a = stations[index], b = stations[index + 1];
+      P.add('turret', slab(
+        a.bottomInner.toArray(), b.bottomInner.toArray(), b.topInner.toArray(), a.topInner.toArray(),
+        a.bottomOuter.toArray(), b.bottomOuter.toArray(), b.topOuter.toArray(), a.topOuter.toArray(),
+      ));
+      if (a.bottom.extended || a.top.extended || b.bottom.extended || b.top.extended) {
+        backedSegments++;
+        const aBottomBack = a.bottom.point.clone().addScaledVector(a.bottom.normal, -extensionBackerDepthM);
+        const bBottomBack = b.bottom.point.clone().addScaledVector(b.bottom.normal, -extensionBackerDepthM);
+        const bTopBack = b.top.point.clone().addScaledVector(b.top.normal, -extensionBackerDepthM);
+        const aTopBack = a.top.point.clone().addScaledVector(a.top.normal, -extensionBackerDepthM);
+        P.add('turret', slab(
+          aBottomBack.toArray(), bBottomBack.toArray(), bTopBack.toArray(), aTopBack.toArray(),
+          a.bottom.point.toArray(), b.bottom.point.toArray(), b.top.point.toArray(), a.top.point.toArray(),
+        ));
+      }
+    }
     flankPanelSeats.push(Object.freeze({
-      side: s,
-      normalLocal: Object.freeze(normal.toArray()),
-      surfaceLocal: Object.freeze(surface.map(point => Object.freeze(point.toArray()))),
-      innerLocal: Object.freeze(inner.map(point => Object.freeze(point.toArray()))),
-      outerLocal: Object.freeze(outer.map(point => Object.freeze(point.toArray()))),
-      thicknessM: thick,
+      side,
+      courseIndex,
+      zFrontWorldM: course.zF,
+      zRearWorldM: course.zR,
+      thicknessM: course.thick,
       innerFaceOverlapM: flankPanelEmbedM,
+      segmentCount: segments,
+      backedSegments,
+      stations: Object.freeze(stations.map(station => Object.freeze({
+        worldZ: station.worldZ,
+        bottomSurfaceLocal: Object.freeze(station.bottom.point.toArray()),
+        topSurfaceLocal: Object.freeze(station.top.point.toArray()),
+        bottomNormalLocal: Object.freeze(station.bottom.normal.toArray()),
+        topNormalLocal: Object.freeze(station.top.normal.toArray()),
+        bottomInnerLocal: Object.freeze(station.bottomInner.toArray()),
+        topInnerLocal: Object.freeze(station.topInner.toArray()),
+        bottomOuterLocal: Object.freeze(station.bottomOuter.toArray()),
+        topOuterLocal: Object.freeze(station.topOuter.toArray()),
+        extendedSupport: station.bottom.extended || station.top.extended,
+      }))),
     }));
   };
+
   for (const s of [-1, 1]) {
     // Five shorter interlocking armor modules reproduce the Mk.4B's swept
     // arrowhead and stepped rear flank.  The former three long rectangular
     // courses read as storage doors and dominated the turret; these pieces
     // change plan angle at the real shoulder breaks and bury their inner
     // faces into the connected wedge.
-    panel(s, [1.52, 0.72, 0.54, 1.28, 0.38, 1.10, 2.06, 2.03, 2.42, 2.49, 0.10]);
-    panel(s, [0.76, 0.02, 1.24, 1.67, 1.08, 1.48, 2.03, 2.01, 2.49, 2.54, 0.11]);
-    panel(s, [0.06, -0.76, 1.66, 1.82, 1.48, 1.58, 2.01, 1.99, 2.54, 2.56, 0.11]);
-    conformalFlankPanel(s, [-0.72, -1.63, 1.82, 1.76, 1.58, 1.51, 1.99, 2.00, 2.56, 2.54, 0.10]);
-    panel(s, [-1.58, -2.72, 1.76, 1.45, 1.51, 1.21, 2.00, 2.03, 2.54, 2.47, 0.09]);
-
-    // A single lower locking rail ties the outer armor into the turret ring.
-    // The previous four box modules duplicated the generic side course and
-    // turned the flank into a stack of storage doors.
-    P.add('turret', box(0.12, 0.12, 2.35), s * 1.54, V(2.08), L(-0.76), 0, s * 0.025, s * -0.035);
-    P.add('turretDark', box(0.014, 0.070, 2.08), s * 1.607, V(2.08), L(-0.76), 0, s * 0.025, s * -0.035);
-
-    // Backed service bin and lifting lug observed on each rear flank. These
-    // are equipment—not structural armor—so they live in the semantic
-    // equipment bucket while retaining broad, buried shoes.
-    P.addEquipment('turret', box(0.22, 0.24, 0.36), s * 1.46, V(2.22), L(-2.18), 0, s * 0.08, s * 0.08);
-    P.add('turretDark', box(0.020, 0.18, 0.28), s * 1.585, V(2.22), L(-2.18), 0, s * 0.08, s * 0.08);
-    P.addEquipment('turret', KIT.torus(0.075, 0.018, 14), s * 1.30, V(2.64), L(-2.56), Math.PI / 2, 0, 0);
+    MERKAVA4B_PANEL_COURSES.forEach((course, courseIndex) => panel(s, course, courseIndex));
   }
-  P.turretG.userData.merkava4bFlankPanelReceipt = Object.freeze({
-    revision: 'conformal-casting-side-r1',
+  supportGeometries.forEach(geometry => geometry.dispose());
+  supportMaterial.dispose();
+
+  const receipt = Object.freeze({
+    revision: 'conformal-full-side-course-r2',
     panelCount: flankPanelSeats.length,
+    segmentCount: flankPanelSeats.reduce((sum, seat) => sum + seat.segmentCount, 0),
     maxSurfaceGapM: 0,
     contactEmbedM: flankPanelEmbedM,
+    extensionBackerDepthM,
+    allCoursesUseStructuralSurfaceFrames: true,
+    furnitureUsesPanelFrames: true,
     seats: Object.freeze(flankPanelSeats),
   });
+  P.turretG.userData.merkava4bFlankPanelReceipt = receipt;
+
+  for (const s of [-1, 1]) {
+    // Course seams and keepers inherit the panel's compound surface frame;
+    // no axis-aligned detail strip can hang clear when the turret is viewed
+    // from above or when a course crosses a casting facet.
+    for (const course of MERKAVA4B_PANEL_COURSES) {
+      const seat = receipt.seats.find(candidate => candidate.side === s
+        && candidate.zFrontWorldM === course.zF
+        && candidate.zRearWorldM === course.zR);
+      if (!seat) continue;
+      for (let index = 0; index < seat.stations.length - 1; index++) {
+        const za = seat.stations[index].worldZ;
+        const zb = seat.stations[index + 1].worldZ;
+        const frameA = merkava4bPanelFrame(P, s, za, 0.34);
+        const frameB = merkava4bPanelFrame(P, s, zb, 0.34);
+        const frame = merkava4bPanelFrame(P, s, (za + zb) * 0.5, 0.34);
+        addMerkava4bFrameBox(P, 'turretDark', frame,
+          frameA.point.distanceTo(frameB.point) * 0.92, 0.012, 0.008, 0.004);
+      }
+      for (const f of [0.18, 0.50, 0.82]) {
+        const frame = merkava4bPanelFrame(P, s, THREE.MathUtils.lerp(course.zF, course.zR, f), 0.78);
+        addMerkava4bFrameBox(P, 'turretDark', frame, 0.022, 0.022, 0.012, 0.006);
+      }
+    }
+
+    // A segmented locking rail follows the lower panel edge through every
+    // change in yaw/roll. Its inner 12 mm overlap the armor instead of
+    // spanning the course as one floating world-aligned beam.
+    const railZ = [0.34, 0.02, -0.34, -0.72, -1.10, -1.48, -1.88];
+    for (let index = 0; index < railZ.length - 1; index++) {
+      const a = merkava4bPanelFrame(P, s, railZ[index], 0.14);
+      const b = merkava4bPanelFrame(P, s, railZ[index + 1], 0.14);
+      const frame = merkava4bPanelFrame(P, s, (railZ[index] + railZ[index + 1]) * 0.5, 0.14);
+      const width = a.point.distanceTo(b.point) * 0.96;
+      addMerkava4bFrameBox(P, 'turret', frame, width, 0.10, 0.075, 0.0255);
+      addMerkava4bFrameBox(P, 'turretDark', frame, width * 0.88, 0.040, 0.012, 0.069);
+    }
+
+    // Rear bin, face plate, shoe and lifting eye all use the same rear-course
+    // frame. They are semantic equipment and do not enlarge combat armor.
+    const binFrame = merkava4bPanelFrame(P, s, -2.18, 0.48);
+    addMerkava4bFrameBox(P, 'turret', binFrame, 0.36, 0.24, 0.22, 0.098, true);
+    addMerkava4bFrameBox(P, 'turretDark', binFrame, 0.30, 0.18, 0.020, 0.208, true);
+    const lugFrame = merkava4bPanelFrame(P, s, -2.56, 0.90);
+    addMerkava4bFrameBox(P, 'turret', lugFrame, 0.16, 0.045, 0.040, 0.008, true);
+    const lugCenter = lugFrame.point.clone()
+      .addScaledVector(lugFrame.normal, 0.035)
+      .addScaledVector(lugFrame.up, 0.078);
+    const lugEuler = new THREE.Euler().setFromQuaternion(
+      new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), lugFrame.tangent),
+      'XYZ',
+    );
+    P.addEquipment('turret', KIT.torus(0.075, 0.018, 14),
+      lugCenter.x, lugCenter.y, lugCenter.z, lugEuler.x, lugEuler.y, lugEuler.z);
+  }
 }
 
 // Source-oracle turret shells for the owner-supplied Merkava archive set.
@@ -7392,15 +7610,42 @@ function merkavaSourceFinish(P, p, t) {
     : ((id === 'merkava3c' || id === 'merkava3d')
       ? { x: 1.18, y: 2.13, z: -0.12, n: 6, pitch: -0.34 }
       : { x: 1.08, y: 2.04, z: 0.02, n: 6, pitch: -0.32 });
+  const mk4bPanelEquipmentSeats = [];
   for (const s of [-1, 1]) {
-    merkavaSmokeCluster(P, s * smoke.x, V(smoke.y), L(smoke.z), s * -0.24, smoke.n,
-      { pitch: smoke.pitch, soft: true });
-    // Two short, physically seated armor joints break the monolithic flat
-    // cheek read without becoming stand-off blocks.
-    P.add('turretDark', box(0.020, 0.040, 0.56), s * (smoke.x - 0.09), V(smoke.y - 0.22), L(smoke.z - 0.58),
-      -0.18, s * -0.19, 0);
-    P.add('turretDetail', box(0.16, 0.055, 0.23), s * (smoke.x - 0.18), V(smoke.y - 0.08), L(smoke.z - 0.34),
-      -0.13, s * -0.14, s * 0.07);
+    if (id === 'merkava4b') {
+      const frame = merkava4bPanelFrame(P, s, smoke.z, 0.52);
+      merkavaSmokeCluster(P, frame.point.x, frame.point.y, frame.point.z, 0, smoke.n,
+        { frame, pitch: smoke.pitch, soft: true });
+      const jointFrame = merkava4bPanelFrame(P, s, smoke.z - 0.34, 0.26);
+      addMerkava4bFrameBox(P, 'turretDark', jointFrame, 0.46, 0.040, 0.018, 0.009);
+      const keeperFrame = merkava4bPanelFrame(P, s, smoke.z - 0.16, 0.68);
+      addMerkava4bFrameBox(P, 'turretDetail', keeperFrame, 0.23, 0.055, 0.022, 0.011);
+      mk4bPanelEquipmentSeats.push(Object.freeze({
+        side: s,
+        courseIndex: frame.courseIndex,
+        smokeCenterLocal: Object.freeze(frame.point.toArray()),
+        surfaceNormalLocal: Object.freeze(frame.normal.toArray()),
+        jointCourseIndex: jointFrame.courseIndex,
+        keeperCourseIndex: keeperFrame.courseIndex,
+      }));
+    } else {
+      merkavaSmokeCluster(P, s * smoke.x, V(smoke.y), L(smoke.z), s * -0.24, smoke.n,
+        { pitch: smoke.pitch, soft: true });
+      // Two short, physically seated armor joints break the monolithic flat
+      // cheek read without becoming stand-off blocks.
+      P.add('turretDark', box(0.020, 0.040, 0.56), s * (smoke.x - 0.09), V(smoke.y - 0.22), L(smoke.z - 0.58),
+        -0.18, s * -0.19, 0);
+      P.add('turretDetail', box(0.16, 0.055, 0.23), s * (smoke.x - 0.18), V(smoke.y - 0.08), L(smoke.z - 0.34),
+        -0.13, s * -0.14, s * 0.07);
+    }
+  }
+  if (id === 'merkava4b') {
+    P.turretG.userData.merkava4bPanelEquipmentReceipt = Object.freeze({
+      revision: 'panel-frame-equipment-r1',
+      smokeBanks: mk4bPanelEquipmentSeats.length,
+      allShoesUsePanelFrames: true,
+      seats: Object.freeze(mk4bPanelEquipmentSeats),
+    });
   }
 
   // Mark-specific combat fit.  The owner requested visibly denser equipment
@@ -7462,52 +7707,25 @@ function merkavaSourceFinish(P, p, t) {
   const mk4bEraSeats = [];
   const mk4bEraCells = (side) => {
     if (id !== 'merkava4b') return null;
-    const cheek = t.cheek;
-    const pointAt = (absX, heightFraction) => {
-      const points = cheek.pts;
-      const x = THREE.MathUtils.clamp(absX, points[0][0], points.at(-1)[0]);
-      let segment = points.length - 2;
-      for (let index = 0; index < points.length - 1; index++) {
-        if (x >= points[index][0] && x <= points[index + 1][0]) {
-          segment = index;
-          break;
-        }
-      }
-      const a = points[segment], b = points[segment + 1];
-      const mix = (x - a[0]) / Math.max(0.001, b[0] - a[0]);
-      const course = (segment + mix) / Math.max(1, points.length - 1);
-      const bottomY = THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, course);
-      const topY = THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, course);
-      const bottomZ = THREE.MathUtils.lerp(a[1], b[1], mix);
-      const topZ = bottomZ - (t.cheekRake ?? 0.06);
-      return new THREE.Vector3(
-        side * x,
-        THREE.MathUtils.lerp(bottomY, topY, heightFraction),
-        THREE.MathUtils.lerp(bottomZ, topZ, heightFraction),
-      );
-    };
     const cells = [];
-    for (const heightFraction of [0.54, 0.82]) {
-      for (const absX of [0.70, 0.90, 1.10, 1.30, 1.50]) {
-        const surface = pointAt(absX, heightFraction);
-        const horizontal = pointAt(absX + 0.025, heightFraction)
-          .sub(pointAt(absX - 0.025, heightFraction)).multiplyScalar(side).normalize();
-        const vertical = pointAt(absX, heightFraction + 0.018)
-          .sub(pointAt(absX, heightFraction - 0.018)).normalize();
-        const normal = new THREE.Vector3().crossVectors(horizontal, vertical).normalize();
-        const yAxis = new THREE.Vector3().crossVectors(normal, horizontal).normalize();
-        horizontal.crossVectors(yAxis, normal).normalize();
-        const rotation = new THREE.Matrix4().makeBasis(horizontal, yAxis, normal);
-        const euler = new THREE.Euler().setFromRotationMatrix(rotation, 'YXZ');
+    const zStations = [1.34, 1.08, 0.82, 0.56, 0.28];
+    for (const heightFraction of [0.48, 0.76]) {
+      for (const worldZ of zStations) {
+        const frame = merkava4bPanelFrame(P, side, worldZ, heightFraction);
+        const surface = frame.point.clone();
+        const normal = frame.normal.clone();
         const depth = 0.078;
         const center = surface.clone().addScaledVector(normal, depth / 2 - mk4bEraEmbedM);
         const support = surface.clone().addScaledVector(normal, -0.022);
         cells.push({
           x: center.x, y: center.y, z: center.z,
-          rx: euler.x, ry: euler.y, rz: euler.z,
+          rx: frame.eulerYXZ.x, ry: frame.eulerYXZ.y, rz: frame.eulerYXZ.z,
+          boxRx: frame.eulerXYZ.x, boxRy: frame.eulerXYZ.y, boxRz: frame.eulerXYZ.z,
           nx: normal.x, ny: normal.y, nz: normal.z,
           surface,
           support,
+          courseIndex: frame.courseIndex,
+          worldZ,
           tileW: 0.20, tileH: 0.15, tileD: depth,
         });
       }
@@ -7515,9 +7733,9 @@ function merkavaSourceFinish(P, p, t) {
     return cells;
   };
 
-  // Faceted cheek arrays follow the cast wedge from the mantlet shoulder to
-  // the outer cheek.  Each module overlaps the casting by half its depth;
-  // the visible dark lower seam is a hinge/retainer, not a floating plate.
+  // Faceted cheek arrays follow the Mk.4B's newly seated flank-panel courses.
+  // Each module overlaps its local panel plane; the visible dark lower seam
+  // is a panel-aligned hinge/retainer, not a floating world-space plate.
   for (const s of [-1, 1]) {
     const eraCells = mk4bEraCells(s) ?? [];
     if (id !== 'merkava4b') {
@@ -7555,10 +7773,12 @@ function merkavaSourceFinish(P, p, t) {
           cassetteDepthM: cell.tileD,
           centerProudM: cell.tileD / 2 - mk4bEraEmbedM,
           innerFaceOverlapM: mk4bEraEmbedM,
+          panelCourseIndex: cell.courseIndex,
+          worldZ: cell.worldZ,
         }));
         P.add('turretDark', box(cell.tileW * 0.70, cell.tileH * 0.42, 0.028),
           cell.support.x, cell.support.y, cell.support.z,
-          cell.rx, cell.ry, cell.rz);
+          cell.boxRx, cell.boxRy, cell.boxRz);
       }
     }
     // These are actual ERA placements rather than permanent decorative
@@ -7607,12 +7827,14 @@ function merkavaSourceFinish(P, p, t) {
   }
   if (id === 'merkava4b') {
     P.turretG.userData.merkava4bEraReceipt = Object.freeze({
-      revision: 'conformal-cheek-r1',
+      revision: 'conformal-side-panel-r2',
       cassettesPerSide: combatFit.rows * combatFit.cols,
       totalCassettes: combatFit.rows * combatFit.cols * 2,
       contactEmbedM: mk4bEraEmbedM,
       maxSurfaceGapM: 0,
       surfaceDerivedTransforms: true,
+      supportSurface: 'merkava4b-flank-panels',
+      allCassettesUsePanelFrames: true,
       outwardMirroredNormals: true,
       visualTurretPivot: Object.freeze(P.turretG.position.toArray()),
       combatTurretPivot: Object.freeze([...P.spec.armor.turretPivot]),

@@ -4761,16 +4761,16 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
     },
     "turret": {
       "min": [
-        -1.82,
+        -1.818,
         0,
         -3.351
       ],
       "max": [
-        1.82,
+        1.818,
         0.888,
         3.15
       ],
-      "sourceHash": "a1645d9dcfbe382f"
+      "sourceHash": "fb6dcaedaf202d5f"
     },
     "tracks": {
       "left": {
