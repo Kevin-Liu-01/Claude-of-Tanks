@@ -33,8 +33,10 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
 
     assert.ok(receipt && pads && bands.length === 2,
       `${id} exposes one measured shoe course and both casting bands`);
-    assert.equal(receipt.shoeDetailMode, 'integrated',
-      `${id} uses one-course shallow tread detail`);
+    assert.equal(receipt.shoeDetailMode, 'family-integrated',
+      `${id} uses one centralized one-course tread mesh`);
+    assert.equal(receipt.trackPatternId, 'nato-double-pin',
+      `${id} resolves through the shared NATO double-pin family`);
     assert.equal(pads.userData.trackShoeDetailMode, receipt.shoeDetailMode,
       `${id} shoe geometry matches its course receipt`);
 

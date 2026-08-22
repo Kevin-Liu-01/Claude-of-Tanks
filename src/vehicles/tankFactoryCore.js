@@ -15,6 +15,7 @@ import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.js';
 import { wheelPatternFor } from './wheelPatterns.js';
+import { trackPatternFor } from './trackPatterns.js';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord,
 } from './vehicleMarkings.js';
@@ -1249,76 +1250,113 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
-const TRACK_SHOE_PAD_COVERAGE = 0.92;
+const shoeBox = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
-function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
+function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   radialScale = 1, widthScale = 1) {
-  // Two authored geometry components form one physical shoe:
-  //   1. the broad outer road-contact pad with twin grousers;
-  //   2. the recessed web/connectors/pins and guide horn between the wheels.
-  // buildRunningGear merges these components before instancing. They retain
-  // their real vertical relief without exposing a second overlapping course.
-  const pad = mergeAll([
-    // Leave only the narrow articulation joint found between real shoes.
-    // The former 0.72-pitch slab left 28% of every canonical course visibly
-    // empty; on end wraps and distant battle views the remaining islands
-    // looked like a tread run that stopped even though all matrices existed.
-    // Extending the same box changes no vertices, triangles, instances or
-    // draws, while making the broad contact face continuous around the loop.
-    box(trackW * 0.97, 0.072, pitch * TRACK_SHOE_PAD_COVERAGE),
-    xform(box(trackW * 0.90, 0.042, pitch * 0.14), 0, 0.052, pitch * 0.27),
-    xform(box(trackW * 0.90, 0.042, pitch * 0.14), 0, 0.052, -pitch * 0.27),
-    // Raised outside shoulders protect the pin bosses and keep the shoe from
-    // reading as one featureless rectangle at garage distance.
-    xform(box(trackW * 0.10, 0.060, pitch * 0.82), -trackW * 0.43, 0.006, 0),
-    xform(box(trackW * 0.10, 0.060, pitch * 0.82), trackW * 0.43, 0.006, 0),
-  ]);
-  const inner = mergeAll([
-    // Recessed web above the road-contact pad on the loaded bottom run.
-    xform(box(trackW * 0.82, 0.050, pitch * 0.62), 0, -0.055, 0),
-    // Two longitudinal connector rails: the second visible "layer".
-    xform(box(trackW * 0.20, 0.135, pitch * 0.80), -trackW * 0.34, -0.125, 0),
-    xform(box(trackW * 0.20, 0.135, pitch * 0.80), trackW * 0.34, -0.125, 0),
-    // Center guide tooth rises between the paired road-wheel discs.
-    xform(box(0.070, 0.205, pitch * 0.34), 0, -0.185, 0),
-    xform(box(0.040, 0.090, pitch * 0.20), 0, -0.325, 0),
-    // Proper transverse pin caps. cylX faces the side camera; the previous
-    // cylZ bosses appeared as skinny bars and disappeared into the pad.
-    // cfg.pinCapOuter opt-in (AFV r4 bradley front-row find): the default
-    // caps span to trackW*0.49 + 0.029 half-length = ~0.52*trackW OUTSIDE
-    // the band each side — on a rig whose gate ref keeps the tread edge
-    // clean (bradley ±1.35/0.94 ground-read cols) the caps AA-light whole
-    // trace columns past the band. pinCapOuter clamps the cap OUTER extent
-    // (world m from band center); default byte-identical.
-    ...[-1,1].flatMap((side)=>[-1,1].map((end)=>
-      xform(cylX(0.047,0.058,10),side*(pinCapOuter!=null?pinCapOuter-0.029:trackW*0.49),-0.100,end*pitch*0.30))),
-  ]);
-  // Some fine modern tracks use a materially shallower pad/guide stack than
-  // the fleet default. This scales only the shoe's radial profile; pitch,
-  // width, link count and the animated path remain native and unchanged.
-  if (radialScale !== 1) {
-    pad.scale(1, radialScale, 1);
-    inner.scale(1, radialScale, 1);
-  }
-  if (widthScale !== 1) {
-    pad.scale(widthScale, 1, 1);
-    inner.scale(widthScale, 1, 1);
-  }
-  return { pad, inner };
-}
+  // Every family is authored into ONE geometry and instantiated on ONE
+  // closed course. Surface casting, connector web, transverse pins and guide
+  // horn remain mechanically distinct within that shoe, but none can become
+  // an independently offset or differently animated second track layer.
+  const padCoverage = pattern.padCoverage;
+  const padH = pattern.padHeight;
+  const grouserH = pattern.grouserHeight;
+  const parts = [];
+  const addBox = (w, h, d, x = 0, y = 0, z = 0, ry = 0) => {
+    parts.push(xform(shoeBox(w, h, d), x, y, z, 0, ry, 0));
+  };
+  const addBar = (w, d, x = 0, z = 0, ry = 0, height = grouserH) => {
+    addBox(w, height, d, x, padH / 2 + height / 2, z, ry);
+  };
+  const addChevron = (z, direction = 1, height = grouserH) => {
+    addBar(trackW * 0.47, pitch * 0.12, -trackW * 0.225, z, direction * 0.28, height);
+    addBar(trackW * 0.47, pitch * 0.12, trackW * 0.225, z, -direction * 0.28, height);
+  };
 
-// Reduced one-course detail for profiles where exposed connector rails and
-// transverse pin caps read as a second parallel track. The recessed web keeps
-// the tread closed through end wraps and the center horn guides the wheel pair.
-function integratedTrackShoeDetail(trackW, pitch, radialScale = 1, widthScale = 1) {
-  const detail = mergeAll([
-    xform(box(trackW * 0.82, 0.050, pitch * 0.62), 0, -0.055, 0),
-    xform(box(0.070, 0.205, pitch * 0.34), 0, -0.185, 0),
-    xform(box(0.040, 0.090, pitch * 0.20), 0, -0.325, 0),
-  ]);
-  if (radialScale !== 1) detail.scale(1, radialScale, 1);
-  if (widthScale !== 1) detail.scale(widthScale, 1, 1);
-  return detail;
+  if (pattern.surface === 'paired-pad') {
+    const gap = trackW * 0.055;
+    const halfW = (trackW * 0.97 - gap) / 2;
+    addBox(halfW, padH, pitch * padCoverage, -(halfW + gap) / 2);
+    addBox(halfW, padH, pitch * padCoverage, (halfW + gap) / 2);
+  } else {
+    addBox(trackW * 0.97, padH, pitch * padCoverage);
+  }
+
+  switch (pattern.surface) {
+    case 'triple-bar':
+      for (const z of [-0.28, 0, 0.28]) addBar(trackW * 0.88, pitch * 0.10, 0, pitch * z);
+      break;
+    case 'cast-block':
+      addBar(trackW * 0.86, pitch * 0.13, 0, pitch * 0.25);
+      addBar(trackW * 0.86, pitch * 0.13, 0, -pitch * 0.25);
+      addBar(trackW * 0.24, pitch * 0.34, 0, 0, 0, grouserH * 0.72);
+      break;
+    case 'chevron':
+      addChevron(pitch * 0.17, 1);
+      addChevron(-pitch * 0.17, -1);
+      break;
+    case 'paired-pad':
+      for (const x of [-trackW * 0.245, trackW * 0.245]) {
+        addBar(trackW * 0.40, pitch * 0.12, x, pitch * 0.25);
+        addBar(trackW * 0.40, pitch * 0.12, x, -pitch * 0.25);
+      }
+      break;
+    case 'heavy-chevron':
+      addChevron(pitch * 0.18, 1, grouserH * 1.08);
+      addChevron(-pitch * 0.18, -1, grouserH * 1.08);
+      addBar(trackW * 0.22, pitch * 0.18, 0, 0, 0, grouserH * 0.72);
+      break;
+    case 'fine-rib':
+      for (const z of [-0.25, 0, 0.25]) addBar(trackW * 0.86, pitch * 0.08, 0, pitch * z);
+      break;
+    case 'dead-track':
+      addBar(trackW * 0.90, pitch * 0.18, 0, 0);
+      addBar(trackW * 0.76, pitch * 0.08, 0, pitch * 0.31, 0, grouserH * 0.65);
+      addBar(trackW * 0.76, pitch * 0.08, 0, -pitch * 0.31, 0, grouserH * 0.65);
+      break;
+    default:
+      throw new Error(`Unsupported track shoe surface: ${pattern.surface}`);
+  }
+
+  // Raised shoulders and a shallow central web keep the shoe legible from
+  // oblique angles without recreating the old full-length lower rails.
+  const shoulderLift = pattern.shoulderHeight;
+  for (const side of [-1, 1]) {
+    addBox(trackW * 0.085, padH + shoulderLift, pitch * 0.80,
+      side * trackW * 0.442, shoulderLift / 2, 0);
+  }
+  const webH = pattern.webHeight;
+  addBox(trackW * 0.78, webH, pitch * pattern.webDepth,
+    0, -(padH + webH) / 2 + 0.004, 0);
+
+  // The center guide is a two-stage tooth between paired wheel discs. It is
+  // deliberately centered: side connector rails were the visual source of
+  // the historical parallel-course bug.
+  const hornH = pattern.hornHeight;
+  const hornBaseH = hornH * 0.58;
+  const hornTipH = hornH - hornBaseH;
+  const hornBaseY = -(padH / 2 + webH + hornBaseH / 2 - 0.006);
+  addBox(Math.min(trackW * 0.16, 0.082), hornBaseH, pitch * 0.34,
+    0, hornBaseY, 0);
+  addBox(Math.min(trackW * 0.09, 0.046), hornTipH, pitch * 0.21,
+    0, hornBaseY - hornBaseH / 2 - hornTipH / 2, 0);
+
+  if (pattern.pinStyle === 'end-caps') {
+    const outer = pinCapOuter ?? trackW * 0.48;
+    const capLength = Math.min(0.058, trackW * 0.15);
+    const capX = Math.max(0, outer - capLength / 2);
+    const pinY = -(padH / 2 + webH * 0.38);
+    for (const side of [-1, 1]) {
+      for (const z of [-pitch * 0.30, pitch * 0.30]) {
+        parts.push(xform(cylX(pattern.pinRadius, capLength, 6), side * capX, pinY, z));
+      }
+    }
+  }
+
+  const geometry = mergeAll(parts);
+  if (radialScale !== 1) geometry.scale(1, radialScale, 1);
+  if (widthScale !== 1) geometry.scale(widthScale, 1, 1);
+  return geometry;
 }
 
 function runningGearContactPatch(wheelZs, wheelR, cfg = {}) {
@@ -1443,6 +1481,7 @@ function buildRunningGear(P, cfg) {
   const suspensionDroopM = cfg.suspensionDroopM ?? hydraulicAim?.droopM ?? 0.22;
   const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
   const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
+  const trackPattern = trackPatternFor(P.spec, wheelPattern, cfg.trackPattern ?? null);
   const runningGearUnitId = hullG.userData.runningGearUnitCount || 0;
   hullG.userData.runningGearUnitCount = runningGearUnitId + 1;
   const course = buildTrackCourse({
@@ -1456,9 +1495,12 @@ function buildRunningGear(P, cfg) {
   } = course;
   const shoeRadialScale = cfg.shoeRadialScale ?? 1;
   const shoeWidthScale = cfg.shoeWidthScale ?? 1;
-  const shoeDetailMode = cfg.innerLinks === false
-    ? 'pad-only'
-    : (cfg.integratedLinks ? 'integrated' : 'full');
+  const grouserPeakScale = trackPattern.surface === 'heavy-chevron' ? 1.08 : 1;
+  const shoeOuterReach = Math.max(
+    trackPattern.padHeight / 2 + trackPattern.grouserHeight * grouserPeakScale,
+    trackPattern.padHeight / 2 + trackPattern.shoulderHeight,
+  ) * shoeRadialScale;
+  const shoeDetailMode = 'family-integrated';
   const shoeOutboardOffset = cfg.shoeOutboardOffset ?? 0;
   if (P.geometryReceipt) {
     const runningGearReceipts = hullG.userData.runningGearReceipts
@@ -1481,8 +1523,10 @@ function buildRunningGear(P, cfg) {
       loopLengthM: loopLen,
       shoeCountPerSide: nLinks,
       shoePitchM: lp,
-      shoePadCoverageRatio: TRACK_SHOE_PAD_COVERAGE,
+      shoePadCoverageRatio: trackPattern.padCoverage,
       shoeDetailMode,
+      trackPatternId: trackPattern.id,
+      trackPatternLabel: trackPattern.label,
       shoeRadialScale,
       shoeWidthScale,
       shoeOutboardOffset,
@@ -1505,6 +1549,17 @@ function buildRunningGear(P, cfg) {
     || (hullG.userData.wheelPatternReceipts = []);
   wheelReceipts.push(wheelPatternReceipt);
   hullG.userData.nativeWheelPatterns = [...new Set(wheelReceipts.map((receipt) => receipt.id))];
+  const trackPatternReceipt = {
+    id: trackPattern.id,
+    label: trackPattern.label,
+    surface: trackPattern.surface,
+    shoeDetailMode,
+    padCoverage: trackPattern.padCoverage,
+  };
+  const trackReceipts = hullG.userData.trackPatternReceipts
+    || (hullG.userData.trackPatternReceipts = []);
+  trackReceipts.push(trackPatternReceipt);
+  hullG.userData.nativeTrackPatterns = [...new Set(trackReceipts.map((receipt) => receipt.id))];
 
   // torsion arms: static axle stub + trailing arm per wheel station (merged
   // into the hull detail bucket — zero extra draw calls)
@@ -1855,24 +1910,11 @@ function buildRunningGear(P, cfg) {
 
   // ---- individual link pads instanced along the loop (both sides) ----------
   const nP = pts.length;
-  const shoe = trackShoeGeometries(trackW, lp, cfg.pinCapOuter ?? null,
-    shoeRadialScale, shoeWidthScale);
-  P.disposables.push(shoe.pad,shoe.inner);
-  // Fleet law: every canonical running gear owns ONE terrain-conforming shoe
-  // instance layer. The normal path merges the complete recessed connector,
-  // pin and guide-horn geometry into the pad. `integratedLinks:true` selects a
-  // reduced web/horn component for profiles (currently Revolution) where the
-  // exposed rails themselves read as a second course. `innerLinks:false`
-  // keeps the intentionally pad-only profiles pad-only. None of these paths
-  // inspect, remove or reshape hull/armor/skirt geometry.
-  const integratedDetail = shoeDetailMode === 'pad-only'
-    ? null
-    : (shoeDetailMode === 'integrated'
-      ? integratedTrackShoeDetail(trackW, lp, shoeRadialScale, shoeWidthScale)
-      : shoe.inner);
-  const integratedShoe = integratedDetail ? mergeAll([shoe.pad, integratedDetail]) : shoe.pad;
-  if (integratedDetail && integratedDetail !== shoe.inner) P.disposables.push(integratedDetail);
-  if (integratedShoe !== shoe.pad) P.disposables.push(integratedShoe);
+  const integratedShoe = trackShoeGeometry(
+    trackW, lp, trackPattern, cfg.pinCapOuter ?? null,
+    shoeRadialScale, shoeWidthScale,
+  );
+  P.disposables.push(integratedShoe);
   // Fixed neutral iron tones prevent the garage key light from turning the
   // now-thicker faces into a tan/white necklace.  The inner chain is only a
   // notch lighter, enough to separate the two levels without looking new.
@@ -1900,8 +1942,10 @@ function buildRunningGear(P, cfg) {
   padIM.userData.trackShoeCountPerSide = nLinks;
   padIM.userData.trackShoePitchM = lp;
   padIM.userData.trackLoopLengthM = loopLen;
-  padIM.userData.trackShoePadCoverageRatio = TRACK_SHOE_PAD_COVERAGE;
+  padIM.userData.trackShoePadCoverageRatio = trackPattern.padCoverage;
   padIM.userData.trackShoeDetailMode = shoeDetailMode;
+  padIM.userData.trackPatternId = trackPattern.id;
+  padIM.userData.trackPatternLabel = trackPattern.label;
   padIM.userData.trackShoeRadialScale = shoeRadialScale;
   padIM.userData.trackShoeWidthScale = shoeWidthScale;
   padIM.userData.trackShoeOutboardOffset = shoeOutboardOffset;
@@ -1960,8 +2004,8 @@ function buildRunningGear(P, cfg) {
         _v.set(side * (xcForSide(side) + shoeOutboardOffset),
           y + groundRunOff + tz * rOut, z - ty * rOut);
       // gameplay_feel r5 (terrain-contact hard gate): on the GROUND RUN the
-      // outward rOut offset plus the flipped pad geometry (pad face 0.03 +
-      // grouser bar to 0.07) hung the grouser tips ~7 cm below the sim's
+      // outward rOut offset plus the flipped pad geometry once hung the
+      // grouser tips ~7 cm below the sim's
       // hull-local y=0 contact plane — parked on a FLAT meadow the pads
       // measured 5.6 cm below the heightfield (the last blocker after the
       // r5 lateral-fan support solve). Clamp the pad center on the bottom
@@ -1979,11 +2023,12 @@ function buildRunningGear(P, cfg) {
         for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
         continue;
       }
-      // 7.2 cm pad plus the raised grouser needs a slightly higher centre
-      // than the old paper-thin shoe to keep its tread face on the terrain.
-      // Follow downward terrain travel instead of pinning hollows back to the
-      // rigid hull plane.
-      const padGroundCenter = (cfg.padGroundCenter ?? 0.078) + Math.min(groundRunOff, 0);
+      // Derive the center clamp from the selected family's real outer relief,
+      // so shallow IFV shoes and heavy siege shoes both touch the terrain
+      // without floating or penetrating it. Follow downward terrain travel
+      // instead of pinning hollows back to the rigid hull plane.
+      const padGroundCenter = (cfg.padGroundCenter ?? shoeOuterReach)
+        + Math.min(groundRunOff, 0);
       if (_v.y < padGroundCenter) _v.y = padGroundCenter;
       // cfg.padCornerFloor opt-in (uk 90-push, centurion r6): on the approach/
       // departure RAMPS the tilted pads' lower corners dip below the ground
@@ -1995,7 +2040,8 @@ function buildRunningGear(P, cfg) {
       // Default undefined -> byte-identical for every other tank.
       if (cfg.padCornerFloor !== undefined) {
         const ty = Math.abs(sg.ty);
-        const drop = 0.0825 * ty + 0.036 * Math.sqrt(Math.max(0, 1 - ty * ty));
+        const drop = lp * 0.5 * ty
+          + shoeOuterReach * Math.sqrt(Math.max(0, 1 - ty * ty));
         const need = cfg.padCornerFloor + drop;
         if (_v.y < need) _v.y = need;
         // RAMP-HUG: on tilted segments the outward rOut offset hangs the pad
@@ -2622,7 +2668,7 @@ function buildRunningGear(P, cfg) {
   // createTank hands it to specs.attachTrackShapes so hit resolution and the
   // killcam x-ray follow the true \____/ trapezoid run instead of one AABB
   // (owner order 2026-08-06). Expansion = half band thickness + 0.045 m shoe
-  // pad/grouser depth (trackShoeGeometries pads reach ~0.05-0.073 outward on
+  // pad/grouser depth (family track shoes reach ~0.05-0.08 outward on
   // the running faces; the old hand-authored boxes included none of it).
   gearUnit.trackHitbox = [{
     x0: xc - trackW / 2,
@@ -2937,7 +2983,7 @@ function grilleIndices(highDetail, count, lowCount = 3) {
 // ---------------------------------------------------------------------------
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft, polyMultiLoft,
-  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, trackHitboxHull,
+  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry, trackHitboxHull,
   runningGearContactPatch,
   buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { KIT } from '../src/vehicles/tankFactory.js';
+import { TRACK_PATTERN_DEFINITIONS } from '../src/vehicles/trackPatterns.js';
 
 const signedArea2 = (points) => points.reduce((sum, a, i) => {
   const b = points[(i + 1) % points.length];
@@ -44,18 +45,21 @@ checkLoop('front drive', {z:3.38,y:0.50,r:0.37}, {z:-3.42,y:0.44,r:0.32});
     'opt-in rear containment carries the loaded tread past the final road-wheel quadrant');
 }
 
-const shoe=KIT.trackShoeGeometries(0.58,0.165);
-shoe.pad.computeBoundingBox();
-shoe.inner.computeBoundingBox();
-const padBox=shoe.pad.boundingBox;
-const innerBox=shoe.inner.boundingBox;
-assert.ok(padBox.max.y-padBox.min.y>=0.10,'outer shoe needs real pad/grouser thickness');
-assert.ok((padBox.max.z-padBox.min.z)/0.165>=0.90,
-  'broad tread face must nearly fill its exact pitch so the wrap reads continuously');
-assert.ok(innerBox.min.y<padBox.min.y-0.24,'recessed connector and guide geometry must retain real shoe depth');
-assert.ok(innerBox.max.x>=0.30&&innerBox.min.x<=-0.30,'transverse pin caps must reach both outer faces');
-shoe.pad.dispose();
-shoe.inner.dispose();
+for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
+  const shoe = KIT.trackShoeGeometry(0.58, 0.165, { id, ...definition });
+  shoe.computeBoundingBox();
+  const bounds = shoe.boundingBox;
+  const triangles = shoe.index ? shoe.index.count / 3 : shoe.getAttribute('position').count / 3;
+  assert.ok(bounds.max.y - bounds.min.y >= 0.20,
+    `${id}: integrated shoe needs real pad, web and guide-horn depth`);
+  assert.ok((bounds.max.z - bounds.min.z) / 0.165 >= definition.padCoverage,
+    `${id}: broad tread face must fill its authored pitch coverage`);
+  assert.ok(bounds.max.x >= 0.58 * 0.48 && bounds.min.x <= -0.58 * 0.48,
+    `${id}: transverse pins or shoulders must reach the authored shoe shoulders`);
+  assert.ok(triangles <= 240,
+    `${id}: family shoe stays inside the 240-triangle close-detail budget (${triangles})`);
+  shoe.dispose();
+}
 
 // The loaded run must physically bend with its bogies. This catches both
 // historical clamps that made the wheels move behind an unchanged ruler-flat
@@ -73,6 +77,7 @@ shoe.inner.dispose();
       trackTexR: { offset: { y: 0 } },
     },
     hullG: new THREE.Group(),
+    spec: { id: 'm1a2', nation: 'USA' },
     q: false,
     geometryReceipt: true,
     disposables: [],
@@ -91,6 +96,10 @@ shoe.inner.dispose();
     'belt texture repeat is derived from the exact closed-course shoe pitch');
   assert.ok(receipt.shoePadCoverageRatio >= 0.90,
     'each articulated shoe exposes a nearly pitch-wide tread face around the full loop');
+  assert.equal(receipt.shoeDetailMode, 'family-integrated',
+    'every builder uses the single canonical family-integrated shoe contract');
+  assert.equal(receipt.trackPatternId, 'nato-double-pin',
+    'running gear resolves its era/family track pattern centrally');
   const drive = P.hullG.children.find((child) =>
     child.userData?.runningGearEndKind === 'sprocket' && child.name === 'gearEndWheelHardware');
   assert.ok(drive?.userData.sprocketToothCount >= 18,

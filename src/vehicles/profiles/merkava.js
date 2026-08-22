@@ -1026,7 +1026,6 @@ function merkavaChassis(P, c) {
     contactZR: c.contactZR,
     padCornerFloor: c.padCornerFloor,
     padHugZ0: c.padHugZ0,
-    integratedLinks: true,
     dishR: c.dishR ?? 0.78,
     chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor,
     tireHex: c.tireHex, wheelHex: c.wheelHex, endWheelHex: c.endWheelHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class

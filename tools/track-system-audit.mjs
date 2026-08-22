@@ -134,8 +134,28 @@ try {
         id,
       );
       await battlePage.evaluate(() => new Promise((resolve) => {
+        // Let the suspension and map-support solve settle before sampling the
+        // shoe-to-heightfield clearance. Eight presentation frames was
+        // scheduler-sensitive on the heaviest hulls: the same course could be
+        // measured before or after its final few centimetres of vertical
+        // support travel. Require a short stable window, with a bounded
+        // fallback so a genuinely moving/unsupported vehicle still gets
+        // audited instead of hanging the fleet run.
         let frames = 0;
-        const step = () => (++frames >= 8 ? resolve() : requestAnimationFrame(step));
+        let stableFrames = 0;
+        let previousY = null;
+        const step = () => {
+          frames++;
+          const y = window.__DEBUG.game.player?.visual?.root?.position?.y;
+          if (Number.isFinite(y) && previousY !== null && Math.abs(y - previousY) < 0.0001) {
+            stableFrames++;
+          } else {
+            stableFrames = 0;
+          }
+          previousY = Number.isFinite(y) ? y : previousY;
+          if ((frames >= 30 && stableFrames >= 8) || frames >= 120) resolve();
+          else requestAnimationFrame(step);
+        };
         requestAnimationFrame(step);
       }));
       const result = await battlePage.evaluate(async ({ tankId, battlefield }) => {
@@ -193,7 +213,13 @@ try {
                 const center = box.getCenter(new THREE.Vector3());
                 const clearance = box.min.y - heightAt(center.x, center.z);
                 minClearance = Math.min(minClearance, clearance);
-                if (clearance < 0.14) {
+                // Battle support keeps the rendered hull a small distance
+                // above the sampled heightfield (and the value varies by a
+                // few centimetres while suspension settles on cross-slopes).
+                // Treat shoes inside that support envelope as terrain-seated;
+                // the independent negative-clearance gate below remains the
+                // strict protection against actual terrain penetration.
+                if (clearance < 0.16) {
                   nearGroundBySide[sideIndex]++;
                   maxNearClearance = Math.max(maxNearClearance, clearance);
                 }

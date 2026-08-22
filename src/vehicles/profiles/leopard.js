@@ -131,8 +131,6 @@ function leoGear(P, g) {
     shoeRadialScale: g.shoeRadialScale,
     shoeWidthScale: g.shoeWidthScale,
     shoeOutboardOffset: g.shoeOutboardOffset,
-    innerLinks: g.innerLinks,
-    integratedLinks: g.integratedLinks,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
     // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
@@ -1028,7 +1026,7 @@ function leoHullV3(P, H) {
     // for every other caller: leoGear/buildRunningGear defaults stay
     // byte-identical, sibling hashes hold).
     gearFloor: H.gearFloor, tireHex: H.tireHex, padHex: H.padHex, chainHex: H.chainHex,
-    shoeRadialScale: H.shoeRadialScale, innerLinks: H.innerLinks,
+    shoeRadialScale: H.shoeRadialScale,
     wheelFaceLayers: H.wheelFaceLayers,
     // §5.345 opt-in passthrough (kf51b leopard-descent rebase): undefined
     // for every other caller — leoGear/buildRunningGear defaults hold
@@ -6820,12 +6818,8 @@ function buildLeo2Revolution(P) {
     // Track-only correction: the native band now encloses the complete
     // leading road tire instead of lifting through its forward quadrant.
     contactZF: 2.78,
-    // Owner-marked underside views exposed the recessed connector/guide-horn
-    // instancing as a second complete green track beneath the real tread-pad
-    // course. Keep the useful recessed web and center guide horn, but omit
-    // the exposed parallel connector rails/pin-cap row and merge the retained
-    // detail into the animated outer tread geometry/material.
-    integratedLinks: true,
+    // The canonical family shoe keeps its web, pins and center guide within
+    // the same animated geometry, eliminating the former underside course.
     // Restore the real pin-overhang footprint with the single tread itself;
     // this closes the rear wrap in plan without reintroducing a second rail.
     shoeWidthScale: 1.07,
@@ -10651,7 +10645,7 @@ function buildLeo1A5ArticulatedProfile(P) {
     trackW: trackWidth, trackTh: trackThickness, topY: trackTopSupportY, botY: trackBotY,
     contactZF: trackContactZF, contactZR: trackContactZR,
     linkPitchM: 0.125, shoeRadialScale: 0.58, shoeWidthScale: 0.97,
-    integratedLinks: true, padGroundCenter: 0.045, padCornerFloor: 0.004,
+    padGroundCenter: 0.045, padCornerFloor: 0.004,
     endRingSpan: 0.50, coveredTop: 1.06, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
   });

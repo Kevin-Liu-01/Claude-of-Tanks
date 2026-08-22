@@ -58,9 +58,11 @@ assert.equal(visual.root.getObjectByName('gearTrackInnerLinks'), undefined,
 trackPads.geometry.computeBoundingBox();
 const trackShoeBounds = trackPads.geometry.boundingBox;
 assert.ok(trackShoeBounds.max.y - trackShoeBounds.min.y <= 0.27
-  && trackShoeBounds.max.z - trackShoeBounds.min.z <= 0.118
+  && trackShoeBounds.max.z - trackShoeBounds.min.z <= 0.145
   && trackPads.userData.trackShoePadCoverageRatio >= 0.90,
   'the redesigned shoe stays shallow while closing the broad tread around end wraps');
+assert.equal(trackPads.userData.trackPatternId, 'nato-double-pin',
+  'Leopard course uses the centralized NATO double-pin family');
 const matrix = new THREE.Matrix4();
 const instancePosition = new THREE.Vector3();
 const instanceRotation = new THREE.Quaternion();

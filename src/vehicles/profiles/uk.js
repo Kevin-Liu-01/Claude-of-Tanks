@@ -3213,7 +3213,7 @@ function fv510PhotoBuild(P) {
     trackW: 0.46, trackTh: 0.055, shoeRadialScale: 0.72,
     topY: 1.06, botY: 0.055, deadSag: 0.055,
     contactZF: 2.12, contactZR: -2.12,
-    coveredTop: true, integratedLinks: true, arms: false, paintedEnds: true,
+    coveredTop: true, arms: false, paintedEnds: true,
     // warm-olive pads + ambient floor (merkava r12 gear-tone law; the
     // default near-black band read ambient-dead behind the skirts)
     padHex: 0x333429, chainHex: 0x2b2c24, gearFloor: true,

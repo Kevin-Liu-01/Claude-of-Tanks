@@ -20,6 +20,9 @@ const id = params.get('id');
 const roundMode = params.get('round') === '1';
 const roundView = params.get('view') === 'right' ? 'right' : 'left';
 const round = (value) => Number(value.toFixed(5));
+const triangleCount = (geometry) => geometry?.index
+  ? geometry.index.count / 3
+  : (geometry?.getAttribute('position')?.count || 0) / 3;
 
 async function stageRoundSurface(tank) {
   const radiusM = 18;
@@ -191,11 +194,20 @@ function inspectUnit(unitId, receipt, objects) {
   if (padMesh.userData.trackShoePadCoverageRatio !== receipt.shoePadCoverageRatio) {
     failures.push('broad tread coverage drift between geometry and course receipt');
   }
-  if (receipt.shoeRadialScale < 0.75 && receipt.shoeDetailMode === 'full') {
-    failures.push('shallow shoe profile exposes full connector rails as a second course');
+  if (receipt.shoeDetailMode !== 'family-integrated') {
+    failures.push(`deprecated shoe detail mode ${receipt.shoeDetailMode}`);
+  }
+  if (!receipt.trackPatternId || !receipt.trackPatternLabel) {
+    failures.push('missing centrally resolved track-family receipt');
   }
   if (padMesh.userData.trackShoeDetailMode !== receipt.shoeDetailMode) {
     failures.push('shoe detail mode drift between geometry and course receipt');
+  }
+  if (padMesh.userData.trackPatternId !== receipt.trackPatternId) {
+    failures.push('track-family drift between geometry and course receipt');
+  }
+  if (triangleCount(padMesh.geometry) > 240) {
+    failures.push(`shoe geometry exceeds 240-triangle budget (${triangleCount(padMesh.geometry)})`);
   }
   for (const band of bands) {
     if (Math.abs(band.userData.trackTextureRepeatM - receipt.textureRepeatM) > 1e-7) {
@@ -336,6 +348,11 @@ function inspectUnit(unitId, receipt, objects) {
     shoePitchM: round(receipt.shoePitchM),
     shoePadCoverageRatio: receipt.shoePadCoverageRatio,
     shoeDetailMode: receipt.shoeDetailMode,
+    trackPatternId: receipt.trackPatternId,
+    trackPatternLabel: receipt.trackPatternLabel,
+    shoeGeometryTriangles: triangleCount(padMesh.geometry),
+    shoeInstances: padMesh.count,
+    shoeRenderedTriangles: triangleCount(padMesh.geometry) * padMesh.count,
     courseQuarterCounts,
     loopLengthM: round(receipt.loopLengthM),
     roadWheelStations: receipt.wheelZs.length,
