@@ -404,6 +404,35 @@ const abramsHullY = (x, z) => {
   // the outboard lift is higher where the cloth crosses the fender line.
   return armorY + (Math.abs(x) > 1.04 ? 0.18 : 0.08);
 };
+// Leopard 2A6 UA fitted camouflage carrier. The original blanket used a
+// single y=.98 roof and z=2.72 face, leaving visible daylight over the 2A6M
+// wedge. These profiles follow the authored roof tiers and the ruled cheek
+// surface used by the UA ERA package. Values are turret-local metres.
+const leo2A6UAFrontLowerZ = (x) => profileY([
+  [0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
+], Math.abs(x));
+const leo2A6UAFrontUpperZ = (x) => profileY([
+  [0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16],
+], Math.abs(x));
+const leo2A6UAFrontArmorZ = (x, y) => THREE.MathUtils.lerp(
+  leo2A6UAFrontLowerZ(x),
+  leo2A6UAFrontUpperZ(x),
+  THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1),
+);
+const leo2A6UAFrontNetZ = (x, y) => leo2A6UAFrontArmorZ(x, y) + 0.065;
+const leo2A6UAFrontRoofY = (x, z) => {
+  const armorY = profileY([
+    [0.46, 0.655], [0.72, 0.620], [1.20, 0.535], [1.68, 0.425], [2.18, 0.430],
+  ], z);
+  return armorY - Math.max(0, Math.abs(x) - 0.92) * 0.035 + 0.026;
+};
+const leo2A6UAMidRoofY = (x, z) => {
+  const armorY = z < -0.96 ? 0.78 : 0.75;
+  return armorY - Math.max(0, Math.abs(x) - 0.72) * 0.055 + 0.026;
+};
+const leo2A6UARearRoofY = (_x, z) => profileY([
+  [-3.34, 0.62], [-3.02, 0.64], [-2.30, 0.66], [-1.58, 0.78],
+], z) + 0.026;
 const jpzE100HullY = (_x, z) => {
   if (z > 0.76) return 1.94;
   if (z > -0.50) return 2.76 + (0.76 - z) * 0.15;
@@ -689,19 +718,42 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [], seed: 291 }],
     },
     turret: {
-      top: [{ x0: -1.88, x1: 1.88, z0: -3.48, z1: 2.52, nx: 34, nz: 48,
-        yAt: (x, z) => 0.98 - Math.max(0, z - 1.20) * 0.12 + Math.cos(x * 1.8 + z * 0.7) * 0.018,
-        outline: [[-1.56, -3.48], [1.56, -3.48], [1.88, -2.90], [1.88, 1.20], [1.44, 2.02], [0.54, 2.52], [0.54, 1.70], [-0.54, 1.70], [-0.54, 2.52], [-1.44, 2.02], [-1.88, 1.20], [-1.88, -2.90]],
-        holes: [rect(-1.17, -0.48, -2.20, -1.34), rect(0.38, 1.04, -1.98, -1.10),
-          rect(-0.62, 0.14, -0.96, -0.30), rect(0.34, 0.96, 0.05, 0.78),
-          rect(-0.54, 0.54, 1.54, 2.62)], seed: 299 }],
+      top: [
+        { x0: -1.34, x1: 1.34, z0: -3.34, z1: -1.54, nx: 26, nz: 18,
+          yAt: leo2A6UARearRoofY,
+          outline: [[-1.02, -3.34], [1.02, -3.34], [1.34, -3.00], [1.30, -1.54], [-1.30, -1.54], [-1.34, -3.00]],
+          holes: [rect(-1.17, -0.46, -2.24, -1.30), rect(0.34, 1.04, -2.08, -1.18)],
+          seatGapM: 0.026, seat: 'bustle-roof', seed: 299 },
+        { x0: -1.03, x1: 1.03, z0: -1.58, z1: 0.54, nx: 24, nz: 22,
+          yAt: leo2A6UAMidRoofY,
+          outline: [[-0.86, -1.58], [0.86, -1.58], [1.03, -0.94], [1.00, 0.54], [-1.00, 0.54], [-1.03, -0.94]],
+          holes: [rect(-0.94, -0.34, -0.92, -0.22), rect(0.30, 0.94, -0.80, -0.08),
+            rect(0.32, 0.96, 0.02, 0.52)],
+          seatGapM: 0.026, seat: 'main-roof', seed: 303 },
+        ...[-1, 1].map((side) => ({
+          x0: side < 0 ? -1.30 : 0.22, x1: side < 0 ? -0.22 : 1.30,
+          z0: 0.46, z1: 2.18, nx: 13, nz: 20,
+          yAt: leo2A6UAFrontRoofY,
+          outline: side < 0
+            ? [[-1.02, 0.46], [-0.28, 0.46], [-0.22, 2.18], [-0.54, 2.18], [-1.30, 1.42]]
+            : [[0.28, 0.46], [1.02, 0.46], [1.30, 1.42], [0.54, 2.18], [0.22, 2.18]],
+          holes: side > 0 ? [rect(0.36, 0.96, 0.46, 0.82)] : [],
+          seatGapM: 0.026, seat: 'front-crown', seed: 311 + side,
+        })),
+      ],
       side: [-1, 1].map((side) => ({ side, z0: -3.44, z1: 2.28, nz: 44, ny: 11,
         topAt: (z) => 0.96 - Math.max(0, z - 1.15) * 0.11,
         bottomAt: (z) => 0.02 + Math.sin(z * 3.4) * 0.030,
         outAt: (_z, t) => 1.89 + (1 - t) * 0.045, seed: 307 + side })),
-      face: [{ z: 2.72, x0: -1.70, x1: 1.70, y0: 0.02, y1: 0.88, nx: 28, ny: 10,
-        outline: [[-1.42, 0.02], [1.42, 0.02], [1.70, 0.42], [1.20, 0.88], [0.52, 0.88], [0.52, 0.14], [-0.52, 0.14], [-0.52, 0.88], [-1.20, 0.88], [-1.70, 0.42]],
-        holes: [rect(-0.55, 0.55, -0.02, 0.92)], seed: 317 }],
+      face: [-1, 1].map((side) => ({
+        z: 0, zAt: leo2A6UAFrontNetZ,
+        x0: side < 0 ? -1.32 : 0.34, x1: side < 0 ? -0.34 : 1.32,
+        y0: 0.16, y1: 0.62, nx: 14, ny: 8,
+        outline: side < 0
+          ? [[-1.30, 0.16], [-0.36, 0.16], [-0.34, 0.62], [-1.24, 0.62]]
+          : [[0.36, 0.16], [1.30, 0.16], [1.24, 0.62], [0.34, 0.62]],
+        holes: [], seatGapM: 0.065, seat: 'cheek-era-face', seed: 317 + side,
+      })),
     },
     gun: {
       top: [{ x0: -0.22, x1: 0.22, z0: 0.48, z1: 5.72, nx: 8, nz: 46,

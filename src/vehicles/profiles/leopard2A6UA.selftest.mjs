@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
+import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.js';
 import { getSpec } from '../specs.js';
 import { tankTier } from '../tier.js';
 
@@ -49,6 +50,21 @@ assert.equal(receipt.remoteStationCount, 2, 'two distinct roof RWS towers are au
 assert.equal(receipt.equipmentIsNonArmor, true);
 assert.equal(receipt.staticMergedProtection, true,
   'protection kit is static merged geometry with no per-frame work');
+assert.equal(receipt.frontCageContourStations, 6);
+assert.equal(receipt.frontCageRows, 5);
+assert.equal(receipt.frontCageUprightsPerSide, 4);
+assert.equal(receipt.frontCageTiePointsPerSide, 6);
+assert.equal(receipt.frontCageSurfaceOffsetM, 0.095,
+  'front cage follows the cheek contour at one controlled stand-off');
+assert.equal(receipt.frontEraSeats.length, 36,
+  'every frontal ERA brick publishes its conformal armor seat');
+for (const seat of receipt.frontEraSeats) {
+  assert.equal(seat.innerFaceOverlapM, 0.012,
+    'frontal ERA inner faces overlap the cheek rather than floating');
+  const normalLength = Math.hypot(...seat.normalLocal);
+  assert.ok(Math.abs(normalLength - 1) < 1e-4, 'frontal ERA seat normals are normalized');
+  assert.ok(seat.normalLocal[2] > 0.35, 'frontal ERA faces outward over the arrowhead');
+}
 
 const eraMeshes = [];
 tank.root.traverse((object) => {
@@ -74,6 +90,25 @@ for (const owner of ['hull', 'turret', 'gun']) {
       `${owner} ghillie ${layer} is detailed fitted geometry`);
   }
 }
+
+const ghillie = GHILLIE_SUIT_CONFIGS[id].turret;
+assert.equal(ghillie.top.length, 4,
+  'turret ghillie is split across bustle, main roof and both crown cheeks');
+for (const panel of ghillie.top) {
+  assert.ok(panel.seatGapM <= 0.026,
+    `${panel.seat} net carrier stays within 26 mm of its authored roof surface`);
+}
+assert.equal(ghillie.face.length, 2, 'front ghillie is split around the moving gun channel');
+for (const panel of ghillie.face) {
+  assert.equal(typeof panel.zAt, 'function', 'front net follows the ruled cheek instead of a flat plane');
+  assert.ok(panel.seatGapM <= 0.065, 'front net clears only the seated ERA depth');
+}
+assert.ok(ghillie.top[0].yAt(0, -3.2) < 0.70,
+  'bustle net no longer floats at the former .98 m blanket height');
+assert.ok(ghillie.top[1].yAt(0, 0) < 0.82,
+  'main roof net hugs the wedge roof below its equipment line');
+assert.ok(ghillie.face[1].zAt(1.20, 0.40) < 2.10,
+  'outboard front net follows the swept cheek instead of the old z=2.72 plane');
 
 const gunNet = tank.root.getObjectByName(`${id}_ghillie_gun_net`);
 const gunBounds = new THREE.Box3().setFromObject(gunNet);

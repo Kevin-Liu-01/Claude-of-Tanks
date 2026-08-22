@@ -11414,6 +11414,77 @@ function buildLeopard2A6UA(P) {
   buildLeo2A6M(P);
   P.clearDecals('turret');
 
+  const sample = (stations, x) => {
+    if (x <= stations[0][0]) return stations[0][1];
+    for (let index = 1; index < stations.length; index++) {
+      const [x1, value1] = stations[index];
+      if (x <= x1) {
+        const [x0, value0] = stations[index - 1];
+        return THREE.MathUtils.lerp(value0, value1, (x - x0) / (x1 - x0));
+      }
+    }
+    return stations.at(-1)[1];
+  };
+  const frontLower = [[0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96]];
+  const frontUpper = [[0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16]];
+  const frontSurface = (side, absX, y) => {
+    const t = THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1);
+    const lower = sample(frontLower, absX);
+    const upper = sample(frontUpper, absX);
+    const z = THREE.MathUtils.lerp(lower, upper, t);
+    const epsilon = 0.002;
+    const zLo = THREE.MathUtils.lerp(sample(frontLower, absX - epsilon), sample(frontUpper, absX - epsilon), t);
+    const zHi = THREE.MathUtils.lerp(sample(frontLower, absX + epsilon), sample(frontUpper, absX + epsilon), t);
+    const dzdAbsX = (zHi - zLo) / (epsilon * 2);
+    const dzdY = (upper - lower) / 0.46;
+    const normal = new THREE.Vector3(-side * dzdAbsX, -dzdY, 1).normalize();
+    const tangentX = new THREE.Vector3(1, 0, side * dzdAbsX).normalize();
+    const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
+    const basis = new THREE.Matrix4().makeBasis(tangentX, tangentY, normal);
+    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
+    return { point: new THREE.Vector3(side * absX, y, z), normal, rotation };
+  };
+  const cageSurface = (side, absX, y, offset = 0.095) => {
+    const surface = frontSurface(side, absX, y);
+    return {
+      point: surface.point.clone().addScaledVector(surface.normal, offset),
+      normal: surface.normal,
+    };
+  };
+  const addCageSegment = (a, b, axis) => {
+    const center = a.point.clone().add(b.point).multiplyScalar(0.5);
+    const delta = b.point.clone().sub(a.point);
+    const length = delta.length();
+    const normal = a.normal.clone().add(b.normal).normalize();
+    let xAxis;
+    let yAxis;
+    let zAxis;
+    if (axis === 'x') {
+      xAxis = delta.normalize();
+      zAxis = normal.addScaledVector(xAxis, -normal.dot(xAxis)).normalize();
+      yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+      zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+    } else if (axis === 'y') {
+      yAxis = delta.normalize();
+      zAxis = normal.addScaledVector(yAxis, -normal.dot(yAxis)).normalize();
+      xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
+      zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+    } else {
+      zAxis = delta.normalize();
+      yAxis = new THREE.Vector3(0, 1, 0).addScaledVector(zAxis, -zAxis.y).normalize();
+      xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
+      yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+    }
+    const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
+    const geometry = axis === 'x' ? box(length, 0.026, 0.026)
+      : axis === 'y' ? box(0.028, length, 0.028)
+        : box(0.026, 0.026, length);
+    P.add(axis === 'z' ? 'turretDark' : 'turretDetail', geometry,
+      center.x, center.y, center.z, rotation.x, rotation.y, rotation.z);
+  };
+  const frontEraSeats = [];
+
   const eraReceipt = {
     cheekTilesPerSide: 18,
     turretSideTilesPerSide: 24,
@@ -11426,21 +11497,36 @@ function buildLeopard2A6UA(P) {
     ],
   };
 
-  // Conformal Nizh-style cheek courses. The rows follow the 2A6 arrowhead
-  // tangent and stop well outside the moving mantlet throat.
+  // Conformal Nizh-style cheek courses. Each center is sampled from the
+  // ruled 2A6M cheek rather than sharing one flat diagonal. The brick's back
+  // face overlaps the armor by 12 mm, so all three rows remain visibly seated
+  // while the center gun channel stays clear through elevation and recoil.
   for (const side of [-1, 1]) {
     const sector = `ua_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
     P.eraCluster(sector, (place) => {
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 6; station++) {
-          const t = station / 5;
+          const absX = 0.44 + station * 0.16;
+          const y = 0.22 + row * 0.17;
+          const surface = frontSurface(side, absX, y);
+          const scale = { x: 0.72, y: 1.02, z: 1.14 };
+          const halfDepth = 0.07 * scale.z * 0.5;
+          const overlap = 0.012;
+          const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
           place(
-            side * (0.43 + t * 0.88),
-            turretPivot[1] + 0.17 + row * 0.205 + t * 0.018,
-            turretPivot[2] + 2.43 - t * 0.92,
-            -0.08, side * 0.79, side * 0.018,
-            1.18, 1.30, 1.50,
+            center.x,
+            turretPivot[1] + center.y,
+            turretPivot[2] + center.z,
+            surface.rotation.x, surface.rotation.y, surface.rotation.z,
+            scale.x, scale.y, scale.z,
           );
+          frontEraSeats.push(Object.freeze({
+            side, row, station,
+            surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
+            centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
+            normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
+            innerFaceOverlapM: overlap,
+          }));
         }
       }
     }, true);
@@ -11532,14 +11618,28 @@ function buildLeopard2A6UA(P) {
       P.add('turretDark', cylX(0.018, 0.28, 8), side * 1.70, 0.16, z);
       P.add('turretDark', cylX(0.018, 0.28, 8), side * 1.70, 0.71, z);
     }
-    const cheekYaw = side * 0.78;
-    for (let row = 0; row < 5; row++) {
-      P.add('turretDetail', box(1.18, 0.026, 0.026), side * 0.94, 0.12 + row * 0.16, 2.02,
-        0, cheekYaw, 0);
+    // Front cage rails use the same compound cheek surface as the ERA.
+    // Short segments follow the changing tangent instead of bridging the
+    // arrowhead with one flat yaw plane; six ties terminate on the armor.
+    const contourX = [0.40, 0.58, 0.76, 0.94, 1.12, 1.30];
+    for (const y of [0.16, 0.275, 0.39, 0.505, 0.62]) {
+      for (let station = 0; station < contourX.length - 1; station++) {
+        addCageSegment(
+          cageSurface(side, contourX[station], y),
+          cageSurface(side, contourX[station + 1], y),
+          'x',
+        );
+      }
     }
-    for (const t of [0.08, 0.38, 0.68, 0.94]) {
-      P.add('turretDetail', box(0.028, 0.68, 0.028),
-        side * (0.43 + t * 0.94), 0.44, 2.50 - t * 1.02, 0, cheekYaw, 0);
+    for (const absX of [0.43, 0.70, 0.97, 1.24]) {
+      addCageSegment(cageSurface(side, absX, 0.16), cageSurface(side, absX, 0.62), 'y');
+    }
+    for (const absX of [0.48, 0.84, 1.20]) {
+      for (const y of [0.20, 0.58]) {
+        const armor = cageSurface(side, absX, y, 0.012);
+        const rail = cageSurface(side, absX, y);
+        addCageSegment(armor, rail, 'z');
+      }
     }
   }
   for (let row = 0; row < 6; row++) {
@@ -11592,8 +11692,15 @@ function buildLeopard2A6UA(P) {
   if (P.geometryReceipt) {
     P.turretG.userData.leopard2A6UAProtectionReceipt = Object.freeze({
       ...eraReceipt,
+      frontEraSeats: Object.freeze(frontEraSeats),
+      frontEraInnerFaceOverlapM: 0.012,
       hullCageUprightsPerSide: 11,
       turretCageUprightsPerSide: 8,
+      frontCageContourStations: 6,
+      frontCageRows: 5,
+      frontCageUprightsPerSide: 4,
+      frontCageTiePointsPerSide: 6,
+      frontCageSurfaceOffsetM: 0.095,
       remoteStations,
       remoteStationCount: remoteStations.length,
       equipmentIsNonArmor: true,
