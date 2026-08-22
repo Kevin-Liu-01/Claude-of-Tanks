@@ -978,7 +978,7 @@
           }
         ]
       },
-      "geometryHash": "d505d43e",
+      "geometryHash": "657427f9",
       "metadataHash": "92f3c848",
       "appearance": {
         "version": 1,
@@ -987,6 +987,7 @@
           "wheelTire": 1,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -1964,7 +1965,7 @@
           }
         ]
       },
-      "geometryHash": "c9ae9fe9",
+      "geometryHash": "389d9cfc",
       "metadataHash": "867ff321",
       "appearance": {
         "version": 1,
@@ -1977,6 +1978,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -2953,7 +2955,7 @@
           }
         ]
       },
-      "geometryHash": "2c3896c5",
+      "geometryHash": "d5682ed5",
       "metadataHash": "d8067a36",
       "appearance": {
         "version": 1,
@@ -2965,6 +2967,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -3941,7 +3944,7 @@
           }
         ]
       },
-      "geometryHash": "c4ab5f60",
+      "geometryHash": "9b01e190",
       "metadataHash": "0e30acc1",
       "appearance": {
         "version": 1,
@@ -3950,6 +3953,7 @@
           "wheelTire": 2,
           "wheelDish": 9,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -5085,7 +5089,7 @@
           }
         ]
       },
-      "geometryHash": "ee8f9a57",
+      "geometryHash": "65becf7a",
       "metadataHash": "94bf3e4c",
       "appearance": {
         "version": 1,
@@ -5094,6 +5098,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -6075,7 +6080,7 @@
           }
         ]
       },
-      "geometryHash": "6a855286",
+      "geometryHash": "6206ff6e",
       "metadataHash": "cb9995e4",
       "appearance": {
         "version": 1,
@@ -6083,8 +6088,9 @@
         "roles": {
           "trackSteel": 1,
           "wheelTire": 2,
-          "wheelDish": 10,
+          "wheelDish": 9,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -7064,7 +7070,7 @@
           }
         ]
       },
-      "geometryHash": "7bcbb0a3",
+      "geometryHash": "c9538c90",
       "metadataHash": "8ac4fde4",
       "appearance": {
         "version": 1,
@@ -7072,8 +7078,9 @@
         "roles": {
           "trackSteel": 1,
           "wheelTire": 2,
-          "wheelDish": 7,
+          "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -8053,7 +8060,7 @@
           }
         ]
       },
-      "geometryHash": "bae9642b",
+      "geometryHash": "4257783c",
       "metadataHash": "94ec8896",
       "appearance": {
         "version": 1,
@@ -8061,8 +8068,9 @@
         "roles": {
           "trackSteel": 1,
           "wheelTire": 2,
-          "wheelDish": 7,
+          "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -8994,7 +9002,7 @@
           }
         ]
       },
-      "geometryHash": "0001d15e",
+      "geometryHash": "15508863",
       "metadataHash": "2a0e5a80",
       "appearance": {
         "version": 1,
@@ -9007,6 +9015,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -9938,7 +9947,7 @@
           }
         ]
       },
-      "geometryHash": "78a9dae8",
+      "geometryHash": "3e4ebadc",
       "metadataHash": "700e6f2a",
       "appearance": {
         "version": 1,
@@ -9952,6 +9961,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -10884,7 +10894,7 @@
           }
         ]
       },
-      "geometryHash": "49b580ed",
+      "geometryHash": "42e74bb8",
       "metadataHash": "90100c09",
       "appearance": {
         "version": 1,
@@ -10897,6 +10907,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -12171,7 +12182,7 @@
           }
         ]
       },
-      "geometryHash": "e2ed139f",
+      "geometryHash": "b75c5042",
       "metadataHash": "31265c28",
       "appearance": {
         "version": 1,
@@ -12184,6 +12195,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -13365,7 +13377,7 @@
           }
         ]
       },
-      "geometryHash": "1c17a52d",
+      "geometryHash": "43c99ac6",
       "metadataHash": "a2762a55",
       "appearance": {
         "version": 1,
@@ -13375,6 +13387,7 @@
           "wheelTire": 2,
           "wheelDish": 11,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -14311,7 +14324,7 @@
           }
         ]
       },
-      "geometryHash": "fb98e366",
+      "geometryHash": "84ce143b",
       "metadataHash": "d041fa58",
       "appearance": {
         "version": 1,
@@ -14324,6 +14337,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -15239,7 +15253,7 @@
           }
         ]
       },
-      "geometryHash": "aaa46f18",
+      "geometryHash": "3bf2040a",
       "metadataHash": "888b02b5",
       "appearance": {
         "version": 1,
@@ -15248,8 +15262,9 @@
           "gunmetal": 11,
           "trackSteel": 1,
           "wheelTire": 2,
-          "wheelDish": 7,
+          "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -16166,7 +16181,7 @@
           }
         ]
       },
-      "geometryHash": "fe17233a",
+      "geometryHash": "5ceedf1b",
       "metadataHash": "b34b5e33",
       "appearance": {
         "version": 1,
@@ -16175,6 +16190,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -17092,7 +17108,7 @@
           }
         ]
       },
-      "geometryHash": "3363f2cf",
+      "geometryHash": "1910684a",
       "metadataHash": "2d42c38c",
       "appearance": {
         "version": 1,
@@ -17101,6 +17117,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -18142,7 +18159,7 @@
           }
         ]
       },
-      "geometryHash": "8e0e8e4e",
+      "geometryHash": "2955d414",
       "metadataHash": "391a125d",
       "appearance": {
         "version": 1,
@@ -18151,6 +18168,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -19098,7 +19116,7 @@
           }
         ]
       },
-      "geometryHash": "758ae556",
+      "geometryHash": "77c7c5bc",
       "metadataHash": "df3eb132",
       "appearance": {
         "version": 1,
@@ -19107,6 +19125,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -20083,7 +20102,7 @@
           }
         ]
       },
-      "geometryHash": "88423d6e",
+      "geometryHash": "8196af60",
       "metadataHash": "80691461",
       "appearance": {
         "version": 1,
@@ -20092,6 +20111,7 @@
           "wheelTire": 1,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -21070,7 +21090,7 @@
           }
         ]
       },
-      "geometryHash": "960f6d50",
+      "geometryHash": "4e422ebb",
       "metadataHash": "c251d20a",
       "appearance": {
         "version": 1,
@@ -21079,6 +21099,7 @@
           "wheelTire": 2,
           "wheelDish": 19,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -21963,7 +21984,7 @@
           }
         ]
       },
-      "geometryHash": "66d45741",
+      "geometryHash": "f41db722",
       "metadataHash": "5c12a511",
       "appearance": {
         "version": 1,
@@ -21972,6 +21993,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -22887,7 +22909,7 @@
           }
         ]
       },
-      "geometryHash": "313a4a69",
+      "geometryHash": "312afe5a",
       "metadataHash": "93b9c9b3",
       "appearance": {
         "version": 1,
@@ -22896,6 +22918,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -23813,7 +23836,7 @@
           }
         ]
       },
-      "geometryHash": "4a60d7dc",
+      "geometryHash": "bbd38ebd",
       "metadataHash": "59ed7319",
       "appearance": {
         "version": 1,
@@ -23822,6 +23845,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -24770,7 +24794,7 @@
           }
         ]
       },
-      "geometryHash": "be70eac0",
+      "geometryHash": "a02cf68f",
       "metadataHash": "0d8c51b2",
       "appearance": {
         "version": 1,
@@ -24779,6 +24803,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -25748,7 +25773,7 @@
           }
         ]
       },
-      "geometryHash": "89e00f94",
+      "geometryHash": "bdcabf2a",
       "metadataHash": "d5042d14",
       "appearance": {
         "version": 1,
@@ -25761,6 +25786,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -26753,7 +26779,7 @@
           }
         ]
       },
-      "geometryHash": "6d1cb9cb",
+      "geometryHash": "431c4d99",
       "metadataHash": "b5a10dc8",
       "appearance": {
         "version": 1,
@@ -26766,6 +26792,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -27647,13 +27674,14 @@
           }
         ]
       },
-      "geometryHash": "1de5b4ad",
+      "geometryHash": "4b85655b",
       "metadataHash": "b0347e4d",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelDish": 6,
+          "suspensionLink": 1,
           "wheelTire": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -27731,24 +27759,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74000,
-          "sha256": "3dd93063187bdb674c15958b48408bec4d771293d39ed9272c02edd3dec36aaa"
+          "bytes": 73882,
+          "sha256": "022832da1fce09b4553db143b8c00b615466f6d01b7f1fc1e64eff8dd66673c8"
         },
         "armorSide": {
           "file": "is1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75733,
-          "sha256": "05b7ad639184e21ef4fcd0894c13e82fa6475dfe514e722b2b4caf25c78123ab"
+          "bytes": 76724,
+          "sha256": "fe0e7feb80e744ce5bce4af974d6dc1844979d93d927107ca574f847a0b6dc92"
         },
         "modulesSide": {
           "file": "is1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82650,
-          "sha256": "542415810fc7239643005728c874b984528a93388ceeb400963760b58ffae914"
+          "bytes": 82583,
+          "sha256": "6f8ea448509f82acfa5010c329c34daa029f4460e0045b48a73eebf4b387257a"
         },
         "markings": {
           "file": "is1_markings.png",
@@ -28632,13 +28660,14 @@
           }
         ]
       },
-      "geometryHash": "31f9566b",
+      "geometryHash": "5cebbce5",
       "metadataHash": "7eb35cce",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelDish": 6,
+          "suspensionLink": 1,
           "wheelTire": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -28716,24 +28745,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72025,
-          "sha256": "6f0a6298c78b81b058600653351799576646f77ed881f54edd3556c86c99f8b7"
+          "bytes": 72399,
+          "sha256": "61f37f32d58d1a67c5d71c6eb3db47f40495d4c3b5772524d8ba3d21966b9c2b"
         },
         "armorSide": {
           "file": "is2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73908,
-          "sha256": "5ce0c748b5519e4a1c4b0d71f6c4d9725ad3aa81d8941d37796bbae97184b86f"
+          "bytes": 74070,
+          "sha256": "8fbef8dbd7699b5dfd1dc57cdd7deb34d230e4d7b78332a2279d612aa99f2520"
         },
         "modulesSide": {
           "file": "is2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79721,
-          "sha256": "fffeff773549d1f983d56a7600412b798b1ac56babd8bade3bfc5ba6b001f2cc"
+          "bytes": 79794,
+          "sha256": "3c940e5982a4badf914d485efad6d960905279187742352870d7b0ae20e00ca5"
         },
         "markings": {
           "file": "is2_markings.png",
@@ -29524,13 +29553,14 @@
           }
         ]
       },
-      "geometryHash": "df97bfc4",
+      "geometryHash": "bf7226d7",
       "metadataHash": "0142e6fc",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelDish": 7,
+          "wheelDish": 6,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -29608,24 +29638,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71847,
-          "sha256": "d9afd2adf5017dc2331fe350e53737297c298d6d3e29257dff9dfee173fdb19b"
+          "bytes": 71920,
+          "sha256": "fa54c20b483165025b16680de8c8dd5ee70e38d53f371cf4c6fbe992304aefc4"
         },
         "armorSide": {
           "file": "is3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73477,
-          "sha256": "f779149bd471b7b58989fe2781c1a9a11ba5e3d84adb8e188ed85cc2dc40c620"
+          "bytes": 73509,
+          "sha256": "92214836d532a1a15214a7305c10bacb658788202834a23d90ea5d656fb6c142"
         },
         "modulesSide": {
           "file": "is3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82430,
-          "sha256": "5baaea9ccaaa3d872235bd94c7fc1caedc7dae7690f6f71debde6fbea7183446"
+          "bytes": 82456,
+          "sha256": "46de6d6c6e4c88542b356c0cc4476c1d5e045d268d13c2c512daaf8647704fc7"
         },
         "markings": {
           "file": "is3_markings.png",
@@ -30417,13 +30447,14 @@
           }
         ]
       },
-      "geometryHash": "ad50a6bb",
+      "geometryHash": "24702e64",
       "metadataHash": "52e1382a",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelDish": 7,
+          "wheelDish": 6,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -30501,24 +30532,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70103,
-          "sha256": "b41534d213eec17bd2d90d9d9b1edb10e22cb8ea635f6e5fed56c9f20c00b12f"
+          "bytes": 70141,
+          "sha256": "95bc3ae71f40518c324d336d1daeb612e58125121563bf66d2e64b6616c3d634"
         },
         "armorSide": {
           "file": "is3_bergman_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70936,
-          "sha256": "30b69e456b0ede2858018dcf11e83a5c966c12c015805e9989aff3475528fd42"
+          "bytes": 70978,
+          "sha256": "6837089347bc0c86b759c6e666c0bfe8e2943c4aabd6ed87264d1b6749dd784d"
         },
         "modulesSide": {
           "file": "is3_bergman_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79802,
-          "sha256": "2822852ce5a06c9d20a619891555b7343b88e5e37f37f43c30a28a689585d848"
+          "bytes": 79784,
+          "sha256": "087234d9d2af64d102a1b8e36dca2edcd782e448537701e22e9b2e9b41a6a93b"
         },
         "markings": {
           "file": "is3_bergman_markings.png",
@@ -31309,13 +31340,14 @@
           }
         ]
       },
-      "geometryHash": "512d57b2",
+      "geometryHash": "c7291cd9",
       "metadataHash": "09766c98",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelDish": 7,
+          "wheelDish": 6,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -31392,24 +31424,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74241,
-          "sha256": "c38eaea022a82c5798e26fb4b026151cb85fa15e16db2036543ca27d2f4434f5"
+          "bytes": 74278,
+          "sha256": "bc706612aac73a4f41f520f8950cf8bb7f8a9c0e1579d4c8fb494b1adf383388"
         },
         "armorSide": {
           "file": "is6b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75581,
-          "sha256": "98cdfd5f5e3a3403029ec6254cd73809f36be7e147ac0cec4d719032d4ac93fd"
+          "bytes": 75810,
+          "sha256": "6ee474aafbbe79b002932b2ef8f4cd11bd47297134fde5e94fbb7413c38d555f"
         },
         "modulesSide": {
           "file": "is6b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86615,
-          "sha256": "705fa0ada27716a519c89e3693e30481a840cceb2addaf35fc0b8eaa6d4d87a3"
+          "bytes": 86243,
+          "sha256": "1876becd8f128f67e13062dea6cc430124651392b7f549db2e609a59946bf86d"
         },
         "markings": {
           "file": "is6b_markings.png",
@@ -32200,13 +32232,14 @@
           }
         ]
       },
-      "geometryHash": "da4de3a6",
+      "geometryHash": "68a6e699",
       "metadataHash": "e667d763",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelDish": 7,
+          "wheelDish": 6,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -32280,24 +32313,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66316,
-          "sha256": "031b0d91cb57334ffbd36ce77d673dd84a4bee0e4a1d71202a42152066e6c80d"
+          "bytes": 66369,
+          "sha256": "e013170f91eafae7107338871b9dfa4ca8d83c4a12eed84535465be873e530dc"
         },
         "armorSide": {
           "file": "is7_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69370,
-          "sha256": "c5fffffaa068acc72d34fbfa13c1ded0b29a97dc477943ebc3747765d4b241ed"
+          "bytes": 69399,
+          "sha256": "3062ffe72761790dca83a715c42b82eaba23c56f003a9baa04daae952b023991"
         },
         "modulesSide": {
           "file": "is7_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79287,
-          "sha256": "1886f3caf24d9c30622cedd521bb264d8b02a29ceced7a5c44b3ebb7dea6a3e7"
+          "bytes": 79308,
+          "sha256": "8b369a8eca13a7e650c9f5547a842118433582b0dfff79c7c2fb8e2b6f2faf83"
         },
         "markings": {
           "file": "is7_markings.png",
@@ -33088,7 +33121,7 @@
           }
         ]
       },
-      "geometryHash": "5cd60c74",
+      "geometryHash": "cc19f5d8",
       "metadataHash": "8deaae23",
       "appearance": {
         "version": 1,
@@ -33097,6 +33130,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -33977,13 +34011,14 @@
           }
         ]
       },
-      "geometryHash": "f1766f6f",
+      "geometryHash": "03db9bb8",
       "metadataHash": "d4d8354d",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelDish": 6,
+          "suspensionLink": 1,
           "wheelTire": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -34870,7 +34905,7 @@
           }
         ]
       },
-      "geometryHash": "191a2d9c",
+      "geometryHash": "1447af43",
       "metadataHash": "2c56bd97",
       "appearance": {
         "version": 1,
@@ -34881,6 +34916,7 @@
           "wheelTire": 1,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -35764,7 +35800,7 @@
           }
         ]
       },
-      "geometryHash": "f8036fbe",
+      "geometryHash": "295ea75a",
       "metadataHash": "2f3f38eb",
       "appearance": {
         "version": 1,
@@ -35776,6 +35812,7 @@
           "wheelTire": 1,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -36751,7 +36788,7 @@
           }
         ]
       },
-      "geometryHash": "db0cdf37",
+      "geometryHash": "3960f7a2",
       "metadataHash": "4c8f6e94",
       "appearance": {
         "version": 1,
@@ -36760,6 +36797,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -37742,7 +37780,7 @@
           }
         ]
       },
-      "geometryHash": "92d16c8c",
+      "geometryHash": "a6e662a3",
       "metadataHash": "a599acaa",
       "appearance": {
         "version": 1,
@@ -37751,6 +37789,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -38732,7 +38771,7 @@
           }
         ]
       },
-      "geometryHash": "d20180ff",
+      "geometryHash": "4b51174c",
       "metadataHash": "06a5f501",
       "appearance": {
         "version": 1,
@@ -38741,6 +38780,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -39628,7 +39668,7 @@
           }
         ]
       },
-      "geometryHash": "c46c5877",
+      "geometryHash": "3c30c9c6",
       "metadataHash": "49e213fc",
       "appearance": {
         "version": 1,
@@ -39637,6 +39677,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -40521,7 +40562,7 @@
           }
         ]
       },
-      "geometryHash": "d3526e6c",
+      "geometryHash": "9b61fe07",
       "metadataHash": "65bc0340",
       "appearance": {
         "version": 1,
@@ -40530,6 +40571,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -41417,7 +41459,7 @@
           }
         ]
       },
-      "geometryHash": "d36766f3",
+      "geometryHash": "b58367a6",
       "metadataHash": "f8090e74",
       "appearance": {
         "version": 1,
@@ -41427,8 +41469,9 @@
           "gunmetal": 9,
           "fittingPaint": 4,
           "wheelTire": 2,
-          "wheelDish": 10,
+          "wheelDish": 9,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -42406,7 +42449,7 @@
           }
         ]
       },
-      "geometryHash": "22cbbf99",
+      "geometryHash": "deae55b2",
       "metadataHash": "bbff4fee",
       "appearance": {
         "version": 1,
@@ -42415,6 +42458,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -43550,7 +43594,7 @@
           }
         ]
       },
-      "geometryHash": "fcdb3527",
+      "geometryHash": "1e8ac21c",
       "metadataHash": "7699bd49",
       "appearance": {
         "version": 1,
@@ -43559,6 +43603,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -44445,7 +44490,7 @@
           }
         ]
       },
-      "geometryHash": "50532b20",
+      "geometryHash": "e2e2dd25",
       "metadataHash": "41e4da54",
       "appearance": {
         "version": 1,
@@ -44454,6 +44499,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -45430,7 +45476,7 @@
           }
         ]
       },
-      "geometryHash": "5fc0aac0",
+      "geometryHash": "3589a28d",
       "metadataHash": "60dad2fb",
       "appearance": {
         "version": 1,
@@ -45439,6 +45485,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -46574,7 +46621,7 @@
           }
         ]
       },
-      "geometryHash": "38455b79",
+      "geometryHash": "653961f9",
       "metadataHash": "1ec4866e",
       "appearance": {
         "version": 1,
@@ -46583,6 +46630,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -47561,7 +47609,7 @@
           }
         ]
       },
-      "geometryHash": "a057d189",
+      "geometryHash": "109c9992",
       "metadataHash": "5bdb8d99",
       "appearance": {
         "version": 1,
@@ -47570,6 +47618,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -48553,7 +48602,7 @@
           }
         ]
       },
-      "geometryHash": "71b41f5d",
+      "geometryHash": "bc92302a",
       "metadataHash": "b5555651",
       "appearance": {
         "version": 1,
@@ -48562,6 +48611,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -49544,7 +49594,7 @@
           }
         ]
       },
-      "geometryHash": "bddce17e",
+      "geometryHash": "ab2616af",
       "metadataHash": "619c102b",
       "appearance": {
         "version": 1,
@@ -49553,6 +49603,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -50688,7 +50739,7 @@
           }
         ]
       },
-      "geometryHash": "be217a0f",
+      "geometryHash": "74d07b16",
       "metadataHash": "572f9e7b",
       "appearance": {
         "version": 1,
@@ -50697,6 +50748,7 @@
           "wheelTire": 3,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -51833,7 +51885,7 @@
           }
         ]
       },
-      "geometryHash": "a92d6c89",
+      "geometryHash": "73c11531",
       "metadataHash": "6ce1f476",
       "appearance": {
         "version": 1,
@@ -51842,6 +51894,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -52979,7 +53032,7 @@
           }
         ]
       },
-      "geometryHash": "e2ee7de5",
+      "geometryHash": "7a2e0448",
       "metadataHash": "b19adfcf",
       "appearance": {
         "version": 1,
@@ -52988,6 +53041,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -54123,7 +54177,7 @@
           }
         ]
       },
-      "geometryHash": "183c36e0",
+      "geometryHash": "5b6accc3",
       "metadataHash": "65605229",
       "appearance": {
         "version": 1,
@@ -54132,6 +54186,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -55265,7 +55320,7 @@
           }
         ]
       },
-      "geometryHash": "ce4801c7",
+      "geometryHash": "34261bc1",
       "metadataHash": "571476c5",
       "appearance": {
         "version": 1,
@@ -55274,6 +55329,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -56254,7 +56310,7 @@
           }
         ]
       },
-      "geometryHash": "88c9ca9c",
+      "geometryHash": "e069c4b8",
       "metadataHash": "d76903b8",
       "appearance": {
         "version": 1,
@@ -56263,6 +56319,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -57335,7 +57392,7 @@
           }
         ]
       },
-      "geometryHash": "7cdbff6f",
+      "geometryHash": "2346cfe0",
       "metadataHash": "cc857027",
       "appearance": {
         "version": 1,
@@ -57344,6 +57401,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -58417,7 +58475,7 @@
           }
         ]
       },
-      "geometryHash": "6ee1f6d2",
+      "geometryHash": "915b9419",
       "metadataHash": "1538b9b4",
       "appearance": {
         "version": 1,
@@ -58426,6 +58484,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -59499,7 +59558,7 @@
           }
         ]
       },
-      "geometryHash": "033806db",
+      "geometryHash": "14bdf768",
       "metadataHash": "fc970c24",
       "appearance": {
         "version": 1,
@@ -59508,6 +59567,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -60582,7 +60642,7 @@
           }
         ]
       },
-      "geometryHash": "858aac46",
+      "geometryHash": "06b47dba",
       "metadataHash": "cab3de69",
       "appearance": {
         "version": 1,
@@ -60592,6 +60652,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -61665,7 +61726,7 @@
           }
         ]
       },
-      "geometryHash": "46b658d6",
+      "geometryHash": "7df31e35",
       "metadataHash": "c83f478f",
       "appearance": {
         "version": 1,
@@ -61674,6 +61735,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -62748,7 +62810,7 @@
           }
         ]
       },
-      "geometryHash": "90668269",
+      "geometryHash": "4363834e",
       "metadataHash": "4ca9a6f3",
       "appearance": {
         "version": 1,
@@ -62757,6 +62819,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -63831,7 +63894,7 @@
           }
         ]
       },
-      "geometryHash": "a29cab63",
+      "geometryHash": "2ac08ed4",
       "metadataHash": "04315b4e",
       "appearance": {
         "version": 1,
@@ -63840,6 +63903,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -64789,7 +64853,7 @@
           }
         ]
       },
-      "geometryHash": "9b9da985",
+      "geometryHash": "2c938ea1",
       "metadataHash": "8f2e2d68",
       "appearance": {
         "version": 1,
@@ -64798,14 +64862,15 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "gearShadow": 13,
           "armorPaint": 5,
           "gunmetal": 8,
-          "fittingPaint": 3,
           "tireRubber": 1,
+          "fittingPaint": 3,
           "opticGlass": 2,
           "unclassified": 11
         }
@@ -65790,7 +65855,7 @@
           }
         ]
       },
-      "geometryHash": "5e00e2b4",
+      "geometryHash": "1240ebbc",
       "metadataHash": "9d9f6516",
       "appearance": {
         "version": 1,
@@ -65803,6 +65868,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -66797,7 +66863,7 @@
           }
         ]
       },
-      "geometryHash": "04587d0d",
+      "geometryHash": "e3b99091",
       "metadataHash": "b1f6ccb8",
       "appearance": {
         "version": 1,
@@ -66810,6 +66876,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -67755,7 +67822,7 @@
           }
         ]
       },
-      "geometryHash": "31b78135",
+      "geometryHash": "52154cba",
       "metadataHash": "35795d26",
       "appearance": {
         "version": 1,
@@ -67764,13 +67831,14 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 4,
           "gunmetal": 7,
-          "fittingPaint": 3,
           "tireRubber": 1,
+          "fittingPaint": 3,
           "opticGlass": 1,
           "unclassified": 13,
           "gearShadow": 10
@@ -68741,7 +68809,7 @@
           }
         ]
       },
-      "geometryHash": "e7145e1b",
+      "geometryHash": "5b9d524a",
       "metadataHash": "fa3cc948",
       "appearance": {
         "version": 1,
@@ -68750,6 +68818,7 @@
           "wheelTire": 2,
           "wheelDish": 8,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -69728,7 +69797,7 @@
           }
         ]
       },
-      "geometryHash": "84a2cbd9",
+      "geometryHash": "af71f201",
       "metadataHash": "a79cb7bd",
       "appearance": {
         "version": 1,
@@ -69737,6 +69806,7 @@
           "wheelTire": 2,
           "wheelDish": 9,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -70715,7 +70785,7 @@
           }
         ]
       },
-      "geometryHash": "f4f07e13",
+      "geometryHash": "5196c535",
       "metadataHash": "8e36533d",
       "appearance": {
         "version": 1,
@@ -70724,12 +70794,13 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 4,
-          "fittingPaint": 4,
           "gunmetal": 9,
+          "fittingPaint": 4,
           "opticGlass": 2,
           "tireRubber": 1,
           "unclassified": 12,
@@ -71671,7 +71742,7 @@
           }
         ]
       },
-      "geometryHash": "6a0f012a",
+      "geometryHash": "22f59693",
       "metadataHash": "50b9ea0e",
       "appearance": {
         "version": 1,
@@ -71680,6 +71751,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -72659,7 +72731,7 @@
           }
         ]
       },
-      "geometryHash": "26b02625",
+      "geometryHash": "78cb8d18",
       "metadataHash": "584f170b",
       "appearance": {
         "version": 1,
@@ -72668,12 +72740,13 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 4,
-          "fittingPaint": 3,
           "gunmetal": 8,
+          "fittingPaint": 3,
           "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 15,
@@ -73661,7 +73734,7 @@
           }
         ]
       },
-      "geometryHash": "919e0da5",
+      "geometryHash": "59670c7f",
       "metadataHash": "b3e0df0d",
       "appearance": {
         "version": 1,
@@ -73670,6 +73743,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -74771,7 +74845,7 @@
           }
         ]
       },
-      "geometryHash": "5eab8c84",
+      "geometryHash": "56aecd95",
       "metadataHash": "988429fe",
       "appearance": {
         "version": 1,
@@ -74780,12 +74854,13 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 5,
-          "fittingPaint": 3,
           "gunmetal": 8,
+          "fittingPaint": 3,
           "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 14,
@@ -75776,7 +75851,7 @@
           }
         ]
       },
-      "geometryHash": "280416e5",
+      "geometryHash": "5b23a6f9",
       "metadataHash": "84d50298",
       "appearance": {
         "version": 1,
@@ -75789,6 +75864,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -76766,7 +76842,7 @@
           }
         ]
       },
-      "geometryHash": "132d896b",
+      "geometryHash": "8ce25086",
       "metadataHash": "4304f64f",
       "appearance": {
         "version": 1,
@@ -76775,6 +76851,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -77816,7 +77893,7 @@
           }
         ]
       },
-      "geometryHash": "62129d59",
+      "geometryHash": "45c12d4c",
       "metadataHash": "0bff023c",
       "appearance": {
         "version": 1,
@@ -77825,6 +77902,7 @@
           "wheelTire": 2,
           "wheelDish": 10,
           "wheelInset": 3,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -78866,7 +78944,7 @@
           }
         ]
       },
-      "geometryHash": "03b7df97",
+      "geometryHash": "fe2ced44",
       "metadataHash": "ba1abfdc",
       "appearance": {
         "version": 1,
@@ -78875,6 +78953,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -79916,7 +79995,7 @@
           }
         ]
       },
-      "geometryHash": "4ab8ce0b",
+      "geometryHash": "0748b3bc",
       "metadataHash": "4513ae00",
       "appearance": {
         "version": 1,
@@ -79925,6 +80004,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -80966,7 +81046,7 @@
           }
         ]
       },
-      "geometryHash": "c89e1291",
+      "geometryHash": "0c5ab795",
       "metadataHash": "ef177ed0",
       "appearance": {
         "version": 1,
@@ -80975,6 +81055,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -82017,7 +82098,7 @@
           }
         ]
       },
-      "geometryHash": "9a90e096",
+      "geometryHash": "74c517be",
       "metadataHash": "f0bd29d5",
       "appearance": {
         "version": 1,
@@ -82026,6 +82107,7 @@
           "wheelTire": 2,
           "wheelDish": 10,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -83067,7 +83149,7 @@
           }
         ]
       },
-      "geometryHash": "e5c9a27b",
+      "geometryHash": "50b91034",
       "metadataHash": "ba7ac24f",
       "appearance": {
         "version": 1,
@@ -83076,6 +83158,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -84116,7 +84199,7 @@
           }
         ]
       },
-      "geometryHash": "4a1295fb",
+      "geometryHash": "73034218",
       "metadataHash": "e6f47024",
       "appearance": {
         "version": 1,
@@ -84125,6 +84208,7 @@
           "wheelTire": 2,
           "wheelDish": 10,
           "wheelInset": 3,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -85012,7 +85096,7 @@
           }
         ]
       },
-      "geometryHash": "a3134b2f",
+      "geometryHash": "a8e43852",
       "metadataHash": "adb284b7",
       "appearance": {
         "version": 1,
@@ -85021,12 +85105,13 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "fittingPaint": 3,
           "gunmetal": 7,
           "armorPaint": 4,
+          "fittingPaint": 3,
           "opticGlass": 2,
           "wood": 1,
           "trackSteel": 1,
@@ -85905,7 +85990,7 @@
           }
         ]
       },
-      "geometryHash": "00ef62b3",
+      "geometryHash": "d3a75c0d",
       "metadataHash": "44f36882",
       "appearance": {
         "version": 1,
@@ -85914,6 +85999,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -86799,13 +86885,14 @@
           }
         ]
       },
-      "geometryHash": "f46d6aff",
+      "geometryHash": "99fa9bef",
       "metadataHash": "1c7a0f8c",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelDish": 7,
+          "wheelDish": 6,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -86882,24 +86969,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69600,
-          "sha256": "59cbcda8dd9d2da1d4f8ff5c6e64a877f1be43665d0ba8cb74083ec5171f0302"
+          "bytes": 69617,
+          "sha256": "aa4007a73a640af969a16e596d6ee9ba9fc246ec717be30dc170e1f29852c792"
         },
         "armorSide": {
           "file": "object279_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71502,
-          "sha256": "38ef8805ee9b0ddabf7f3014a0c64e321a2e7b8c0b8923efacb1056d77f42efc"
+          "bytes": 71518,
+          "sha256": "806e33b77f9fb688bcbfdda848c24998383f3ad665676c614354f543e86f1ab0"
         },
         "modulesSide": {
           "file": "object279_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80523,
-          "sha256": "adc61c374d1892083cba2d06e1d43d21f23b43785ee31d741dbad0a4d386d5ab"
+          "bytes": 80619,
+          "sha256": "fff1fa19f8d12c58d74dbca4a94fe7bb3bb04e6c6c7c4cd8be7720832ac126d9"
         },
         "markings": {
           "file": "object279_markings.png",
@@ -87753,7 +87840,7 @@
           }
         ]
       },
-      "geometryHash": "b36dbf9f",
+      "geometryHash": "b522e999",
       "metadataHash": "12056796",
       "appearance": {
         "version": 1,
@@ -87765,6 +87852,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -88744,7 +88832,7 @@
           }
         ]
       },
-      "geometryHash": "991b903a",
+      "geometryHash": "8be08b53",
       "metadataHash": "378bcebe",
       "appearance": {
         "version": 1,
@@ -88753,6 +88841,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -89735,7 +89824,7 @@
           }
         ]
       },
-      "geometryHash": "3d31dedb",
+      "geometryHash": "1b280d3a",
       "metadataHash": "26055137",
       "appearance": {
         "version": 1,
@@ -89744,6 +89833,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -90912,7 +91002,7 @@
           }
         ]
       },
-      "geometryHash": "51731552",
+      "geometryHash": "8302690e",
       "metadataHash": "31df0dd3",
       "appearance": {
         "version": 1,
@@ -90921,6 +91011,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -92086,7 +92177,7 @@
           }
         ]
       },
-      "geometryHash": "8eed4906",
+      "geometryHash": "e8ed12c5",
       "metadataHash": "0bb89cb9",
       "appearance": {
         "version": 1,
@@ -92098,6 +92189,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -92982,7 +93074,7 @@
           }
         ]
       },
-      "geometryHash": "0c32a342",
+      "geometryHash": "1ad638b1",
       "metadataHash": "f0897da7",
       "appearance": {
         "version": 1,
@@ -92991,12 +93083,13 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "fittingPaint": 3,
           "gunmetal": 7,
           "armorPaint": 4,
+          "fittingPaint": 3,
           "opticGlass": 2,
           "wood": 1,
           "trackSteel": 1,
@@ -93877,7 +93970,7 @@
           }
         ]
       },
-      "geometryHash": "2ee29d99",
+      "geometryHash": "a78dedfe",
       "metadataHash": "b7cd54b8",
       "appearance": {
         "version": 1,
@@ -93886,6 +93979,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -94882,7 +94976,7 @@
           }
         ]
       },
-      "geometryHash": "5f6d6acc",
+      "geometryHash": "22c158bc",
       "metadataHash": "0dfe4e28",
       "appearance": {
         "version": 1,
@@ -94897,6 +94991,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -95779,7 +95874,7 @@
           }
         ]
       },
-      "geometryHash": "4f79700c",
+      "geometryHash": "9a91509c",
       "metadataHash": "172682fd",
       "appearance": {
         "version": 1,
@@ -95789,6 +95884,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -96490,7 +96586,7 @@
           }
         ]
       },
-      "geometryHash": "10bc6518",
+      "geometryHash": "e68386ea",
       "metadataHash": "5c4822c9",
       "appearance": {
         "version": 1,
@@ -96501,6 +96597,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -97201,7 +97298,7 @@
           }
         ]
       },
-      "geometryHash": "7d167287",
+      "geometryHash": "c3d981e3",
       "metadataHash": "df6500a4",
       "appearance": {
         "version": 1,
@@ -97217,6 +97314,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -98346,7 +98444,7 @@
           }
         ]
       },
-      "geometryHash": "fe3851e4",
+      "geometryHash": "35cfa10d",
       "metadataHash": "bd646072",
       "appearance": {
         "version": 1,
@@ -98355,6 +98453,7 @@
           "wheelTire": 3,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -99277,7 +99376,7 @@
           }
         ]
       },
-      "geometryHash": "7d5acac2",
+      "geometryHash": "3060b4db",
       "metadataHash": "574b4efc",
       "appearance": {
         "version": 1,
@@ -99286,6 +99385,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -100165,15 +100265,16 @@
           }
         ]
       },
-      "geometryHash": "d4e2a631",
+      "geometryHash": "c83e8785",
       "metadataHash": "ab8dcfcc",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelTire": 1,
-          "wheelDish": 7,
+          "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -101276,7 +101377,7 @@
           }
         ]
       },
-      "geometryHash": "de7fc9ca",
+      "geometryHash": "a5c637d8",
       "metadataHash": "d9c543a7",
       "appearance": {
         "version": 1,
@@ -101288,6 +101389,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -102169,7 +102271,7 @@
           }
         ]
       },
-      "geometryHash": "005dcd97",
+      "geometryHash": "aae08dcc",
       "metadataHash": "fad0e750",
       "appearance": {
         "version": 1,
@@ -102178,12 +102280,13 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "fittingPaint": 3,
           "gunmetal": 8,
           "armorPaint": 4,
+          "fittingPaint": 3,
           "opticGlass": 2,
           "wood": 1,
           "trackSteel": 1,
@@ -103157,15 +103260,16 @@
           }
         ]
       },
-      "geometryHash": "be73deee",
+      "geometryHash": "4499dc0b",
       "metadataHash": "54ab957f",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelTire": 1,
-          "wheelDish": 6,
+          "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -104053,15 +104157,16 @@
           }
         ]
       },
-      "geometryHash": "a126e8dd",
+      "geometryHash": "59fd395d",
       "metadataHash": "260d9376",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelTire": 1,
-          "wheelDish": 6,
+          "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -105038,7 +105143,7 @@
           }
         ]
       },
-      "geometryHash": "35dfe97c",
+      "geometryHash": "a1b40260",
       "metadataHash": "a70e9e55",
       "appearance": {
         "version": 1,
@@ -105047,6 +105152,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -106024,7 +106130,7 @@
           }
         ]
       },
-      "geometryHash": "fcd54fca",
+      "geometryHash": "d1380489",
       "metadataHash": "5325f087",
       "appearance": {
         "version": 1,
@@ -106036,6 +106142,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -107011,7 +107118,7 @@
           }
         ]
       },
-      "geometryHash": "da00717e",
+      "geometryHash": "ad4bf90d",
       "metadataHash": "897d31e0",
       "appearance": {
         "version": 1,
@@ -107024,6 +107131,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -108184,7 +108292,7 @@
           }
         ]
       },
-      "geometryHash": "51c9ab4a",
+      "geometryHash": "e8dcdbbd",
       "metadataHash": "923ee98c",
       "appearance": {
         "version": 1,
@@ -108197,6 +108305,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -109359,7 +109468,7 @@
           }
         ]
       },
-      "geometryHash": "6875e63c",
+      "geometryHash": "98ea9b90",
       "metadataHash": "2384a8cc",
       "appearance": {
         "version": 1,
@@ -109368,6 +109477,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -110530,7 +110640,7 @@
           }
         ]
       },
-      "geometryHash": "53e861d8",
+      "geometryHash": "e6a4b560",
       "metadataHash": "75b77d2d",
       "appearance": {
         "version": 1,
@@ -110539,6 +110649,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -111705,7 +111816,7 @@
           }
         ]
       },
-      "geometryHash": "fd195f75",
+      "geometryHash": "701e6e46",
       "metadataHash": "5624b69f",
       "appearance": {
         "version": 1,
@@ -111715,6 +111826,7 @@
           "wheelTire": 2,
           "wheelDish": 11,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -112972,7 +113084,7 @@
           }
         ]
       },
-      "geometryHash": "ab9a04ab",
+      "geometryHash": "4307635b",
       "metadataHash": "57df7081",
       "appearance": {
         "version": 1,
@@ -112981,6 +113093,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -114149,7 +114262,7 @@
           }
         ]
       },
-      "geometryHash": "51fbb293",
+      "geometryHash": "eb1fe792",
       "metadataHash": "09ff9e09",
       "appearance": {
         "version": 1,
@@ -114158,6 +114271,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -115261,7 +115375,7 @@
           }
         ]
       },
-      "geometryHash": "f7148257",
+      "geometryHash": "25e10ca6",
       "metadataHash": "08ad56c2",
       "appearance": {
         "version": 1,
@@ -115272,6 +115386,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -116373,7 +116488,7 @@
           }
         ]
       },
-      "geometryHash": "32c56288",
+      "geometryHash": "a318b27d",
       "metadataHash": "6f5d183b",
       "appearance": {
         "version": 1,
@@ -116384,6 +116499,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -117485,7 +117601,7 @@
           }
         ]
       },
-      "geometryHash": "292fcee6",
+      "geometryHash": "f19f5423",
       "metadataHash": "e488b440",
       "appearance": {
         "version": 1,
@@ -117496,6 +117612,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -118597,7 +118714,7 @@
           }
         ]
       },
-      "geometryHash": "f8ac93fb",
+      "geometryHash": "060b72cc",
       "metadataHash": "9692263a",
       "appearance": {
         "version": 1,
@@ -118606,6 +118723,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -119709,7 +119827,7 @@
           }
         ]
       },
-      "geometryHash": "93630c1f",
+      "geometryHash": "6811ff08",
       "metadataHash": "f49566a0",
       "appearance": {
         "version": 1,
@@ -119720,6 +119838,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -120977,7 +121096,7 @@
           }
         ]
       },
-      "geometryHash": "8e43c76c",
+      "geometryHash": "2a7aa5fe",
       "metadataHash": "1ca41370",
       "appearance": {
         "version": 1,
@@ -120990,6 +121109,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -122244,7 +122364,7 @@
           }
         ]
       },
-      "geometryHash": "d5a26e30",
+      "geometryHash": "7794fa21",
       "metadataHash": "e9d6a7fc",
       "appearance": {
         "version": 1,
@@ -122257,6 +122377,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -123512,7 +123633,7 @@
           }
         ]
       },
-      "geometryHash": "e50d4af0",
+      "geometryHash": "fe840eb8",
       "metadataHash": "70284599",
       "appearance": {
         "version": 1,
@@ -123528,6 +123649,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -124780,7 +124902,7 @@
           }
         ]
       },
-      "geometryHash": "d58bfde7",
+      "geometryHash": "0004bcf9",
       "metadataHash": "dc74047d",
       "appearance": {
         "version": 1,
@@ -124789,6 +124911,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -126046,7 +126169,7 @@
           }
         ]
       },
-      "geometryHash": "7756ac65",
+      "geometryHash": "3c14d724",
       "metadataHash": "ffdd72ae",
       "appearance": {
         "version": 1,
@@ -126055,6 +126178,7 @@
           "wheelTire": 2,
           "wheelDish": 11,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -127312,7 +127436,7 @@
           }
         ]
       },
-      "geometryHash": "8c5b7d12",
+      "geometryHash": "2f537cbb",
       "metadataHash": "2e3ae439",
       "appearance": {
         "version": 1,
@@ -127325,6 +127449,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -128579,7 +128704,7 @@
           }
         ]
       },
-      "geometryHash": "86e5cc64",
+      "geometryHash": "77dd6d5d",
       "metadataHash": "04d743cb",
       "appearance": {
         "version": 1,
@@ -128590,8 +128715,9 @@
           "gunmetal": 10,
           "trackSteel": 3,
           "wheelTire": 2,
-          "wheelDish": 7,
+          "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -129474,7 +129600,7 @@
           }
         ]
       },
-      "geometryHash": "f90d9ba8",
+      "geometryHash": "936db0d6",
       "metadataHash": "704ca34d",
       "appearance": {
         "version": 1,
@@ -129483,6 +129609,7 @@
           "gunmetal": 4,
           "gearShadow": 2,
           "wheelDish": 12,
+          "suspensionLink": 2,
           "wheelTire": 2,
           "trackHardware": 8,
           "trackBand": 4,
@@ -129558,24 +129685,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62415,
-          "sha256": "010f5ef0ee3e44c40af1f97fb40dc3aa4dc9e102edc99fb6937d2f91c3de10ef"
+          "bytes": 62515,
+          "sha256": "2b687ba4021c79f67d7e4f12683c51e6c560832e8f7f45b0549c310f50bc6b7c"
         },
         "armorSide": {
           "file": "t95_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66155,
-          "sha256": "72c74f2cd76987aca1fbcd93fbc646161c18eccabbb7ec085ddbe896f845cdca"
+          "bytes": 66242,
+          "sha256": "3c8be7c1b33e5755ce05156e56b77e36eed8807474d36fd7dc225af9f6f01dc2"
         },
         "modulesSide": {
           "file": "t95_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71355,
-          "sha256": "a2ed7acae95765317236311fd31f67833d4fd82d6f81fd859b23057b0ec29059"
+          "bytes": 71447,
+          "sha256": "0e1b016add3c3793eb1c584acc3529da80467511f39be16c44ccc6d6f0941be6"
         },
         "markings": {
           "file": "t95_markings.png",
@@ -130366,7 +130493,7 @@
           }
         ]
       },
-      "geometryHash": "c75a6043",
+      "geometryHash": "7ccce2c2",
       "metadataHash": "a7651b3a",
       "appearance": {
         "version": 1,
@@ -130375,6 +130502,7 @@
           "wheelTire": 1,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -131262,7 +131390,7 @@
           }
         ]
       },
-      "geometryHash": "bd39f301",
+      "geometryHash": "89bb0c4b",
       "metadataHash": "e3279dd2",
       "appearance": {
         "version": 1,
@@ -131271,6 +131399,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -132249,7 +132378,7 @@
           }
         ]
       },
-      "geometryHash": "6f6b586e",
+      "geometryHash": "96fe5c9b",
       "metadataHash": "6b7798d0",
       "appearance": {
         "version": 1,
@@ -132258,6 +132387,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -133239,7 +133369,7 @@
           }
         ]
       },
-      "geometryHash": "438bd0ac",
+      "geometryHash": "38531a51",
       "metadataHash": "e62dfd38",
       "appearance": {
         "version": 1,
@@ -133248,6 +133378,7 @@
           "wheelTire": 2,
           "wheelDish": 7,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -134228,7 +134359,7 @@
           }
         ]
       },
-      "geometryHash": "f0ea2539",
+      "geometryHash": "7f8b21af",
       "metadataHash": "01eeb91c",
       "appearance": {
         "version": 1,
@@ -134241,6 +134372,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -135123,7 +135255,7 @@
           }
         ]
       },
-      "geometryHash": "7b5a1b4e",
+      "geometryHash": "f081c03a",
       "metadataHash": "5a1a4a86",
       "appearance": {
         "version": 1,
@@ -135134,6 +135266,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -136126,7 +136259,7 @@
           }
         ]
       },
-      "geometryHash": "9fea2c21",
+      "geometryHash": "ef940919",
       "metadataHash": "c22819b7",
       "appearance": {
         "version": 1,
@@ -136141,6 +136274,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -137116,7 +137250,7 @@
           }
         ]
       },
-      "geometryHash": "a67aeec4",
+      "geometryHash": "46086b3a",
       "metadataHash": "c54ccd96",
       "appearance": {
         "version": 1,
@@ -137126,6 +137260,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -138104,7 +138239,7 @@
           }
         ]
       },
-      "geometryHash": "b14c55f9",
+      "geometryHash": "fd050de3",
       "metadataHash": "5579a83c",
       "appearance": {
         "version": 1,
@@ -138114,6 +138249,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 2,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -140056,7 +140192,7 @@
           }
         ]
       },
-      "geometryHash": "fc80b809",
+      "geometryHash": "881b4f40",
       "metadataHash": "1839fbd6",
       "appearance": {
         "version": 1,
@@ -140065,6 +140201,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -141140,7 +141277,7 @@
           }
         ]
       },
-      "geometryHash": "d97e4700",
+      "geometryHash": "62a77a6b",
       "metadataHash": "36bf785c",
       "appearance": {
         "version": 1,
@@ -141149,6 +141286,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -142148,7 +142286,7 @@
           }
         ]
       },
-      "geometryHash": "37d6b5fc",
+      "geometryHash": "b0f1cbf4",
       "metadataHash": "75703a43",
       "appearance": {
         "version": 1,
@@ -142161,6 +142299,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -143324,7 +143463,7 @@
           }
         ]
       },
-      "geometryHash": "3789a79a",
+      "geometryHash": "1803f7fc",
       "metadataHash": "6866d713",
       "appearance": {
         "version": 1,
@@ -143338,6 +143477,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -144439,7 +144579,7 @@
           }
         ]
       },
-      "geometryHash": "5f865c23",
+      "geometryHash": "854e54a2",
       "metadataHash": "09e29ba5",
       "appearance": {
         "version": 1,
@@ -144451,6 +144591,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -145552,7 +145693,7 @@
           }
         ]
       },
-      "geometryHash": "7fbc5a41",
+      "geometryHash": "54c6dc3e",
       "metadataHash": "3684bb00",
       "appearance": {
         "version": 1,
@@ -145564,6 +145705,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -146666,7 +146808,7 @@
           }
         ]
       },
-      "geometryHash": "459ca3da",
+      "geometryHash": "49e4e986",
       "metadataHash": "247d5342",
       "appearance": {
         "version": 1,
@@ -146680,6 +146822,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -147378,7 +147521,7 @@
           }
         ]
       },
-      "geometryHash": "a313a93b",
+      "geometryHash": "2b0cd349",
       "metadataHash": "3a616c4e",
       "appearance": {
         "version": 1,
@@ -147392,6 +147535,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -148380,7 +148524,7 @@
           }
         ]
       },
-      "geometryHash": "0b371b0d",
+      "geometryHash": "d997430f",
       "metadataHash": "4372bf3d",
       "appearance": {
         "version": 1,
@@ -148391,6 +148535,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -149308,7 +149453,7 @@
           }
         ]
       },
-      "geometryHash": "bafceff5",
+      "geometryHash": "fdee0e15",
       "metadataHash": "94ef75e9",
       "appearance": {
         "version": 1,
@@ -149317,6 +149462,7 @@
           "wheelTire": 2,
           "wheelDish": 6,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -150299,7 +150445,7 @@
           }
         ]
       },
-      "geometryHash": "0791cd1b",
+      "geometryHash": "d583f819",
       "metadataHash": "cddebe78",
       "appearance": {
         "version": 1,
@@ -150308,11 +150454,12 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "fittingPaint": 7,
           "armorPaint": 5,
+          "fittingPaint": 7,
           "gunmetal": 15,
           "tireRubber": 1,
           "opticGlass": 2,
@@ -152250,7 +152397,7 @@
           }
         ]
       },
-      "geometryHash": "562c7211",
+      "geometryHash": "cd724cb3",
       "metadataHash": "e98ee383",
       "appearance": {
         "version": 1,
@@ -152259,6 +152406,7 @@
           "wheelTire": 1,
           "wheelDish": 5,
           "wheelInset": 1,
+          "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,

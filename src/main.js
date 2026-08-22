@@ -6597,6 +6597,13 @@ window.__DEBUG = {
   get lastWorldRelease() { return lastWorldRelease ? { ...lastWorldRelease } : null; },
   get graphicsContextLost() { return graphicsContextLost; },
   selectGarageTank: (id) => garage.setSelected(id),
+  // Geometry probes must also inspect registered procedural variants that do
+  // not own a visible carousel card. Bypass the UI filter while preserving
+  // the exact pedestal construction/pose used by the garage.
+  stagePedestalTank: (id) => {
+    selectedSpecId = id;
+    return setPedestalTank(id, true);
+  },
   get world() { return world; },
   switchMap,
   flags: debugFlags,

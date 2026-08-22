@@ -116,13 +116,18 @@ try {
     await battlePage.evaluate(() => {
       window.__DEBUG.flags.rosterExact = true;
     });
-
     for (const [index, id] of ids.entries()) {
       const mapId = maps[index % maps.length];
       pageError = null;
       await battlePage.evaluate(({ tankId, battlefield }) => {
         const debug = window.__DEBUG;
-        debug.flags.forceRoster = [tankId];
+        // Keep a valid 4v4 control roster around the audited player. A forced
+        // list containing only the player is filtered by pickParticipants and
+        // leaves team assignment with no non-player entities.
+        debug.flags.forceRoster = debug.game.allTanks
+          .map((entity) => entity.specId)
+          .filter((specId) => specId !== tankId)
+          .slice(0, 7);
         debug.flags.rosterExact = true;
         debug.startBattle(tankId, battlefield);
       }, { tankId: id, battlefield: mapId });
@@ -182,10 +187,50 @@ try {
             && object.userData.runningGearUnitId === unitId);
           const tires = objects.filter((object) => /^gearRoadWheel(?:Tires|Discs)$/.test(object.name)
             && object.userData.runningGearUnitId === unitId);
+          const suspension = objects.find((object) => object.name === 'gearSuspensionLinks'
+            && object.userData.runningGearUnitId === unitId);
           const unitFailures = [];
           if (!pads) unitFailures.push('missing live shoe course');
           if (bands.length !== 2) unitFailures.push(`live belt count ${bands.length}`);
           if (!tires.length) unitFailures.push('missing live wheel train');
+          if (!suspension) unitFailures.push('missing live suspension linkage layer');
+          let suspensionMaxAxleGap = null;
+          if (suspension) {
+            const expectedLinks = suspension.userData.suspensionStationCount * 2;
+            if (suspension.count !== expectedLinks) {
+              unitFailures.push(`live suspension link count ${suspension.count} != ${expectedLinks}`);
+            }
+            if (!suspension.userData.suspensionPattern) {
+              unitFailures.push('live suspension pattern receipt missing');
+            }
+            if (suspension.castShadow) {
+              unitFailures.push('live suspension linkage layer casts dynamic shadows');
+            }
+            const linkMatrix = new THREE.Matrix4();
+            const wheelMatrix = new THREE.Matrix4();
+            const axleEnd = new THREE.Vector3();
+            const wheelCenter = new THREE.Vector3();
+            let maxGap = 0;
+            for (let linkIndex = 0; linkIndex < suspension.count; linkIndex++) {
+              suspension.getMatrixAt(linkIndex, linkMatrix);
+              axleEnd.set(0, 0, 0.5).applyMatrix4(linkMatrix);
+              let nearest = Infinity;
+              for (const wheelLayer of tires) {
+                for (let wheelIndex = 0; wheelIndex < wheelLayer.count; wheelIndex++) {
+                  wheelLayer.getMatrixAt(wheelIndex, wheelMatrix);
+                  wheelCenter.setFromMatrixPosition(wheelMatrix);
+                  if (Math.sign(wheelCenter.x) !== Math.sign(axleEnd.x)) continue;
+                  nearest = Math.min(nearest,
+                    Math.hypot(wheelCenter.y - axleEnd.y, wheelCenter.z - axleEnd.z));
+                }
+              }
+              maxGap = Math.max(maxGap, nearest);
+            }
+            suspensionMaxAxleGap = maxGap;
+            if (!Number.isFinite(maxGap) || maxGap > 0.035) {
+              unitFailures.push(`live suspension-to-wheel axle gap ${maxGap.toFixed(3)} m`);
+            }
+          }
           if (pads) {
             pads.geometry.computeBoundingBox();
             const count = pads.userData.trackShoeCountPerSide;
@@ -252,6 +297,10 @@ try {
                 left: nearGroundBySide[0],
                 right: nearGroundBySide[1],
               },
+              suspensionPattern: suspension?.userData.suspensionPattern || null,
+              suspensionLinks: suspension?.count || 0,
+              suspensionMaxAxleGapM: Number.isFinite(suspensionMaxAxleGap)
+                ? Number(suspensionMaxAxleGap.toFixed(4)) : null,
               failures: unitFailures,
             });
           } else {

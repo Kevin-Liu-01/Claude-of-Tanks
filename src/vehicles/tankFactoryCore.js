@@ -16,6 +16,7 @@ import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFlo
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.js';
 import { wheelPatternFor } from './wheelPatterns.js';
 import { trackPatternFor } from './trackPatterns.js';
+import { suspensionPatternFor } from './suspensionPatterns.js';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord,
 } from './vehicleMarkings.js';
@@ -1459,7 +1460,6 @@ function buildRunningGear(P, cfg) {
     layers = null,                       // interleaved x offsets pattern, else null
     sprocket, idler, rollers = [], rollerR = 0.09,
     trackW, trackTh = 0.09, topY, botY = 0.055,
-    arms = false,                        // visible torsion arms + axle stubs
     paintedEnds = false,                 // r5: sprocket/idler bodies in scheme
                                          // paint (modern MBTs paint the whole
                                          // wheel train; the bare-steel drums
@@ -1482,6 +1482,8 @@ function buildRunningGear(P, cfg) {
   const suspensionCompressionM = cfg.suspensionCompressionM ?? hydraulicAim?.compressionM ?? 0.30;
   const wheelPattern = wheelPatternFor(P.spec, style, cfg.wheelPattern ?? null);
   const trackPattern = trackPatternFor(P.spec, wheelPattern, cfg.trackPattern ?? null);
+  const suspensionPattern = suspensionPatternFor(
+    P.spec, wheelPattern, cfg.suspensionPattern ?? null);
   const runningGearUnitId = hullG.userData.runningGearUnitCount || 0;
   hullG.userData.runningGearUnitCount = runningGearUnitId + 1;
   const course = buildTrackCourse({
@@ -1527,6 +1529,10 @@ function buildRunningGear(P, cfg) {
       shoeDetailMode,
       trackPatternId: trackPattern.id,
       trackPatternLabel: trackPattern.label,
+      suspensionPatternId: suspensionPattern.id,
+      suspensionPatternLabel: suspensionPattern.label,
+      suspensionLinkCount: wheelZs.length * 2,
+      suspensionDynamic: true,
       shoeRadialScale,
       shoeWidthScale,
       shoeOutboardOffset,
@@ -1560,21 +1566,6 @@ function buildRunningGear(P, cfg) {
     || (hullG.userData.trackPatternReceipts = []);
   trackReceipts.push(trackPatternReceipt);
   hullG.userData.nativeTrackPatterns = [...new Set(trackReceipts.map((receipt) => receipt.id))];
-
-  // torsion arms: static axle stub + trailing arm per wheel station (merged
-  // into the hull detail bucket — zero extra draw calls)
-  if (arms) {
-    wheelZs.forEach((z, i) => {
-      for (const side of [-1, 1]) {
-        const sideXc = xcForSide(side);
-        const xa = side * (sideXc - wheelW * 0.7);
-        const armBucket = cfg.armBucket ?? 'hullDetail';
-        P.add(armBucket, cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
-        P.add(armBucket, box(0.07, 0.09, wheelR * 0.95),
-          side * (sideXc - wheelW * 1.1), wheelY + wheelR * 0.28, z + wheelR * 0.38, 0.6, 0, 0);
-      }
-    });
-  }
   const entries = [];
   const maxOff = layers ? Math.max(...layers.flat()) : 0;
   wheelZs.forEach((z, i) => {
@@ -1719,6 +1710,78 @@ function buildRunningGear(P, cfg) {
     'wheelDish', 'gearRoadWheelDiscsRecessed');
   // dark inserts (stamped lightening holes on the Christie 'holes' style)
   if (dark) mkInst(dark, mats.rubber, entries, 'wheelInset', 'gearRoadWheelInsets');
+
+  // One suspension-bound linkage layer serves every road-wheel station in
+  // the playable fleet. The old `arms` switch emitted static hull greebles on
+  // only some profiles; those bars stayed behind when terrain conformance
+  // moved a wheel. These instances share one tiny box geometry, never cast a
+  // shadow, disappear through the existing detail LOD, and update on the
+  // already cadence-limited running-gear pass. That keeps the mechanical
+  // connection visible without per-wheel meshes, allocations, or profile
+  // draw-call explosions.
+  const suspensionEntries = [];
+  const suspensionLift = wheelR * suspensionPattern.anchorLiftRatio;
+  const suspensionTrail = wheelR * suspensionPattern.trailRatio;
+  for (let i = 0; i < wheelZs.length; i++) {
+    const z = wheelZs[i];
+    let anchorZ = z + suspensionTrail;
+    if (suspensionPattern.kind === 'paired') {
+      const pairStart = i - (i % 2);
+      const mate = Math.min(pairStart + 1, wheelZs.length - 1);
+      anchorZ = (wheelZs[pairStart] + wheelZs[mate]) * 0.5;
+    }
+    for (const side of [-1, 1]) {
+      let wheel = null;
+      for (const entry of entries) {
+        if (!entry.road || entry.i !== i || (entry.x < 0 ? -1 : 1) !== side) continue;
+        if (!wheel || Math.abs(entry.x) > Math.abs(wheel.x)) wheel = entry;
+      }
+      suspensionEntries.push({
+        side, wheel, anchorY: wheelY + suspensionLift, anchorZ,
+        x: side * (xcForSide(side) - Math.max(wheelW * 0.62, trackW * 0.08)),
+      });
+    }
+  }
+  const suspensionGeo = new THREE.BoxGeometry(
+    Math.max(0.045, wheelW * suspensionPattern.armWidthRatio),
+    Math.max(0.045, wheelR * suspensionPattern.armHeightRatio),
+    1,
+  );
+  const suspensionIM = new THREE.InstancedMesh(
+    suspensionGeo,
+    mats.wheelsRecessed || mats.dark || mats.spareTrack,
+    suspensionEntries.length,
+  );
+  suspensionIM.name = 'gearSuspensionLinks';
+  suspensionIM.userData.runningGear = true;
+  suspensionIM.userData.runningGearUnitId = runningGearUnitId;
+  suspensionIM.userData.appearanceRole = 'suspensionLink';
+  suspensionIM.userData.suspensionPattern = suspensionPattern.id;
+  suspensionIM.userData.suspensionPatternLabel = suspensionPattern.label;
+  suspensionIM.userData.suspensionStationCount = wheelZs.length;
+  suspensionIM.userData.suspensionLinkTriangles = 12;
+  suspensionIM.castShadow = false;
+  suspensionIM.receiveShadow = true;
+  suspensionIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  lodWrap(hullG, suspensionIM);
+  P.disposables.push(suspensionGeo);
+
+  function updateSuspensionLinks() {
+    for (let i = 0; i < suspensionEntries.length; i++) {
+      const link = suspensionEntries[i];
+      const axleY = wheelY + (link.wheel?.off || 0);
+      const dy = axleY - link.anchorY;
+      const dz = link.wheel.z - link.anchorZ;
+      const length = Math.max(Math.hypot(dy, dz), wheelR * 0.25);
+      _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + link.wheel.z) * 0.5);
+      _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
+      _s.set(1, 1, length);
+      _m.compose(_v, _q, _s);
+      suspensionIM.setMatrixAt(i, _m);
+    }
+    suspensionIM.instanceMatrix.needsUpdate = true;
+  }
+  updateSuspensionLinks();
   // Profile-specific dish/rim decoration must participate in the exact same
   // suspension matrices as the canonical road wheels. Historically several
   // builders added shallow cylinders/rings to hullG after this call; those
@@ -2498,6 +2561,7 @@ function buildRunningGear(P, cfg) {
         im.instanceMatrix.needsUpdate = true;
       }
       updateGearSurface(l, r);
+      updateSuspensionLinks();
       // band bottom run follows the wheels (skipped on a thrown side — the
       // band is gone there)
       if (!brokenL) deformBand(-1);

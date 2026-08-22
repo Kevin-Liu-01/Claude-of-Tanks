@@ -165,6 +165,8 @@ function inspectUnit(unitId, receipt, objects) {
     && object.name === 'gearTrackPads');
   const tires = objects.filter((object) => object.userData.runningGearUnitId === unitId
     && object.name === 'gearRoadWheelTires');
+  const suspensionLinks = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && object.name === 'gearSuspensionLinks');
   const wheelLayers = tires.length ? tires : objects.filter((object) =>
     object.userData.runningGearUnitId === unitId && object.name === 'gearRoadWheelDiscs');
   const drives = objects.filter((object) => object.userData.runningGearUnitId === unitId
@@ -174,10 +176,14 @@ function inspectUnit(unitId, receipt, objects) {
   if (bands.length !== 2) failures.push(`expected 2 belts, got ${bands.length}`);
   if (pads.length !== 1) failures.push(`expected 1 integrated shoe layer, got ${pads.length}`);
   if (!wheelLayers.length) failures.push('missing suspension-driven road-wheel layer');
+  if (suspensionLinks.length !== 1) {
+    failures.push(`expected 1 suspension linkage layer, got ${suspensionLinks.length}`);
+  }
   if (!receipt) failures.push('missing closed-course receipt');
   if (!receipt || !pads.length) return { unitId, failures };
 
   const padMesh = pads[0];
+  const suspensionMesh = suspensionLinks[0];
   const count = receipt.shoeCountPerSide;
   if (padMesh.count !== count * 2) {
     failures.push(`shoe instance count ${padMesh.count} != ${count}×2`);
@@ -208,6 +214,47 @@ function inspectUnit(unitId, receipt, objects) {
   }
   if (triangleCount(padMesh.geometry) > 240) {
     failures.push(`shoe geometry exceeds 240-triangle budget (${triangleCount(padMesh.geometry)})`);
+  }
+  if (suspensionMesh) {
+    if (!suspensionMesh.isInstancedMesh) failures.push('suspension linkage layer is not instanced');
+    if (suspensionMesh.count !== receipt.suspensionLinkCount) {
+      failures.push(`suspension link count ${suspensionMesh.count} != ${receipt.suspensionLinkCount}`);
+    }
+    if (suspensionMesh.userData.suspensionPattern !== receipt.suspensionPatternId) {
+      failures.push('suspension pattern drift between geometry and running-gear receipt');
+    }
+    if (triangleCount(suspensionMesh.geometry) > 12) {
+      failures.push(`suspension link geometry exceeds 12-triangle budget (${triangleCount(suspensionMesh.geometry)})`);
+    }
+    if (suspensionMesh.castShadow) failures.push('suspension linkage layer must not cast dynamic shadows');
+
+    const wheelCenters = [];
+    for (const wheelLayer of wheelLayers) {
+      for (let i = 0; i < wheelLayer.count; i++) {
+        wheelCenters.push(matrixPose(wheelLayer, i).position);
+      }
+    }
+    const matrix = new THREE.Matrix4();
+    const axleEnd = new THREE.Vector3();
+    const anchorEnd = new THREE.Vector3();
+    let maxAxleGap = 0;
+    for (let i = 0; i < suspensionMesh.count; i++) {
+      suspensionMesh.getMatrixAt(i, matrix);
+      axleEnd.set(0, 0, 0.5).applyMatrix4(matrix);
+      anchorEnd.set(0, 0, -0.5).applyMatrix4(matrix);
+      let nearest = Infinity;
+      for (const center of wheelCenters) {
+        if (Math.sign(center.x) !== Math.sign(axleEnd.x)) continue;
+        nearest = Math.min(nearest, Math.hypot(center.y - axleEnd.y, center.z - axleEnd.z));
+      }
+      maxAxleGap = Math.max(maxAxleGap, nearest);
+      if (anchorEnd.y <= axleEnd.y + receipt.wheelR * 0.25) {
+        failures.push(`suspension link ${i} lacks an elevated hull anchor`);
+      }
+    }
+    if (!Number.isFinite(maxAxleGap) || maxAxleGap > 0.025) {
+      failures.push(`suspension-to-wheel axle gap ${round(maxAxleGap)} m`);
+    }
   }
   for (const band of bands) {
     if (Math.abs(band.userData.trackTextureRepeatM - receipt.textureRepeatM) > 1e-7) {
@@ -361,6 +408,10 @@ function inspectUnit(unitId, receipt, objects) {
     wheelCenterYM: round(receipt.wheelY),
     trackWidthM: round(receipt.trackW),
     trackThicknessM: round(receipt.trackTh),
+    suspensionPatternId: receipt.suspensionPatternId,
+    suspensionPatternLabel: receipt.suspensionPatternLabel,
+    suspensionLinks: suspensionMesh?.count || 0,
+    suspensionTrianglesPerLink: suspensionMesh ? triangleCount(suspensionMesh.geometry) : 0,
     laneCentersM: { left: round(receipt.xcLeft), right: round(receipt.xcRight) },
     sprocket: { ...receipt.sprocket, z: round(receipt.sprocket.z), y: round(receipt.sprocket.y), r: round(receipt.sprocket.r) },
     idler: { ...receipt.idler, z: round(receipt.idler.z), y: round(receipt.idler.y), r: round(receipt.idler.r) },

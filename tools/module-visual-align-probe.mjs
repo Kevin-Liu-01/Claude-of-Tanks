@@ -70,7 +70,13 @@ try {
 
   for (const row of list) {
     try {
-      await page.evaluate((id) => window.__DEBUG.selectGarageTank(id), row.id);
+      await page.evaluate(async (id) => {
+        if (window.__DEBUG.stagePedestalTank) {
+          await window.__DEBUG.stagePedestalTank(id);
+        } else {
+          window.__DEBUG.selectGarageTank(id);
+        }
+      }, row.id);
       await page.waitForFunction((id) => {
         const v = window.__DEBUG.pedestalVisual;
         return !!v && v.specId === id && v.root.visible;
