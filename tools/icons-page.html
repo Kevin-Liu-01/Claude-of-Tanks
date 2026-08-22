@@ -654,7 +654,15 @@ function visibleBorePart(root, pattern) {
 }
 
 function vehicleMarkingCensus(root) {
-  const result = { total: 0, insignia: 0, designation: 0, codes: [] };
+  const result = {
+    total: 0,
+    insignia: 0,
+    designation: 0,
+    verifiedInsignia: 0,
+    verifiedDesignation: 0,
+    minimumVisibilityRatio: 1,
+    codes: [],
+  };
   const codes = new Set();
   root.traverse((object) => {
     if (!object.userData?.vehicleMarking || !visibleInTree(object, root)) return;
@@ -662,6 +670,12 @@ function vehicleMarkingCensus(root) {
     const kind = object.userData.markingKind;
     if (kind === 'insignia') result.insignia++;
     if (kind === 'designation') result.designation++;
+    if (kind === 'insignia' && object.userData.visibilityVerified) result.verifiedInsignia++;
+    if (kind === 'designation' && object.userData.visibilityVerified) result.verifiedDesignation++;
+    if (Number.isFinite(object.userData.visibilityRatio)) {
+      result.minimumVisibilityRatio = Math.min(
+        result.minimumVisibilityRatio, object.userData.visibilityRatio);
+    }
     if (object.userData.markingCode) codes.add(object.userData.markingCode);
   });
   result.codes = [...codes].sort();

@@ -100,11 +100,31 @@ assert.equal(roofReceipt.maxRoofGapM, 0,
   'marked roof fittings permit no visible daylight below their carriers');
 assert.equal(roofReceipt.armorEnvelopeExcluded, true,
   'optics, launcher tubes, and weapon-station fittings remain outside structural armor');
-assert.ok(roofReceipt.roofSeats.length >= 17,
+assert.ok(roofReceipt.roofSeats.length >= 19,
   'all marked roof fittings and both service-bridge endpoints are audited');
 for (const seat of roofReceipt.roofSeats) {
   assert.ok(near(seat.carrierY - seat.bottomY, roofReceipt.contactEmbedM, 1e-4),
     `${seat.label} must overlap its roof carrier by 10 mm`);
+}
+
+for (const label of ['rear-left-roof-housing', 'right-roof-service-bridge']) {
+  assert.ok(roofReceipt.roofSeats.some(seat => seat.label === label),
+    `${label} must be included in the no-daylight roof audit`);
+}
+
+const cassetteReceipt = tank.root.getObjectByName('rig_turret')
+  ?.userData.challenger2SideCassetteReceipt;
+assert.equal(cassetteReceipt?.panels?.length, 2,
+  'both Challenger 2 side cassettes expose attachment receipts');
+assert.equal(cassetteReceipt.maxVisibleInnerGapM, 0,
+  'side cassettes permit no visible void against the turret shell');
+for (const panel of cassetteReceipt.panels) {
+  assert.ok(panel.bodyJoinOverlapM >= 0.07,
+    'cassette inner course must overlap the x=1.153 service body by at least 70 mm');
+  assert.equal(panel.exteriorSilhouetteDeltaM, 0,
+    'closing the cassette inner wall must not widen the turret silhouette');
+  assert.ok(panel.innerCourseX <= 1.08 && panel.outerLipX >= 1.46,
+    'cassette must bridge from the sovereign shell to the existing outer lip');
 }
 
 assert.ok(roofReceipt.station.planOverlapM >= 0.03,

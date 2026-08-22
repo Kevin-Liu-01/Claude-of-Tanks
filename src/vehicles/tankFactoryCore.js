@@ -5095,11 +5095,20 @@ const MARKING_ARMOR_MESH_NAMES = Object.freeze({
   turret: new Set(['turret']),
 });
 
+function markingObjectVisibleInTree(object, root) {
+  for (let current = object; current; current = current.parent) {
+    if (!current.visible) return false;
+    if (current === root) return true;
+  }
+  return false;
+}
+
 function markingArmorMeshes(owner, ownerName) {
   const names = MARKING_ARMOR_MESH_NAMES[ownerName];
   const meshes = [];
   owner.traverse((object) => {
-    if (!object.isMesh || object.isInstancedMesh || !names.has(object.name)) return;
+    if (!object.isMesh || object.isInstancedMesh || !names.has(object.name)
+        || !markingObjectVisibleInTree(object, owner)) return;
     if (!object.geometry?.attributes?.position) return;
     meshes.push(object);
   });
@@ -5171,18 +5180,127 @@ function markingQuaternion(normalLocal, preferredTangent = null) {
   return new THREE.Quaternion().setFromRotationMatrix(basis);
 }
 
-function solveProfileMarkingSeat(profile, owner, meshes, longitudinal, vertical = profile.vertical) {
+const MARKING_VISIBILITY_SAMPLE_GRID = Object.freeze([
+  [0, 0],
+  [-0.28, -0.28], [0, -0.28], [0.28, -0.28],
+  [-0.28, 0], [0.28, 0],
+  [-0.28, 0.28], [0, 0.28], [0.28, 0.28],
+]);
+
+function markingOccluderMeshes(root) {
+  const meshes = [];
+  root.traverse((object) => {
+    if ((!object.isMesh && !object.isInstancedMesh)
+        || object.userData?.vehicleMarking
+        || !markingObjectVisibleInTree(object, root)
+        || !object.geometry?.attributes?.position) return;
+    meshes.push(object);
+  });
+  return meshes;
+}
+
+function doubleSidedMarkingRaycastScope(meshes) {
+  const originalSides = new Map();
+  for (const mesh of meshes) {
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of materials) {
+      if (!material || originalSides.has(material)) continue;
+      originalSides.set(material, material.side);
+      material.side = THREE.DoubleSide;
+    }
+  }
+  return () => {
+    for (const [material, side] of originalSides) material.side = side;
+  };
+}
+
+function markingVisibilityReceipt(owner, position, quaternion, size, occluders) {
+  owner.updateWorldMatrix(true, true);
+  const centerWorld = owner.localToWorld(position.clone());
+  const worldQuaternion = owner.getWorldQuaternion(new THREE.Quaternion()).multiply(quaternion);
+  const tangentWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(worldQuaternion).normalize();
+  const bitangentWorld = new THREE.Vector3(0, 1, 0).applyQuaternion(worldQuaternion).normalize();
+  const normalWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQuaternion).normalize();
+  const expectedDistance = SURFACE_MARKING_STYLE.visibilityRayLengthM
+    + SURFACE_MARKING_STYLE.surfaceLiftM;
+  let clearSamples = 0;
+  let maximumSurfaceErrorM = 0;
+  for (const [u, v] of MARKING_VISIBILITY_SAMPLE_GRID) {
+    const sample = centerWorld.clone()
+      .addScaledVector(tangentWorld, u * size)
+      .addScaledVector(bitangentWorld, v * size);
+    const origin = sample.clone().addScaledVector(
+      normalWorld, SURFACE_MARKING_STYLE.visibilityRayLengthM);
+    const raycaster = new THREE.Raycaster(
+      origin,
+      normalWorld.clone().multiplyScalar(-1),
+      0,
+      expectedDistance + SURFACE_MARKING_STYLE.visibilityToleranceM,
+    );
+    const hit = raycaster.intersectObjects(occluders, false)[0];
+    if (!hit) {
+      maximumSurfaceErrorM = Infinity;
+      continue;
+    }
+    const surfaceOffsetM = hit.distance - expectedDistance;
+    const surfaceErrorM = Math.abs(surfaceOffsetM);
+    maximumSurfaceErrorM = Math.max(maximumSurfaceErrorM, surfaceErrorM);
+    if (surfaceOffsetM >= -SURFACE_MARKING_STYLE.visibilityOcclusionToleranceM
+        && surfaceOffsetM <= SURFACE_MARKING_STYLE.visibilityToleranceM) clearSamples += 1;
+  }
+  return {
+    visibilitySamples: MARKING_VISIBILITY_SAMPLE_GRID.length,
+    visibilityClearSamples: clearSamples,
+    visibilityRatio: clearSamples / MARKING_VISIBILITY_SAMPLE_GRID.length,
+    maximumSurfaceErrorM,
+    visibilityVerified: clearSamples >= SURFACE_MARKING_STYLE.minimumClearSamples,
+  };
+}
+
+function markingSeatOverlaps(position, quaternion, size, ownerName, avoid) {
+  const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
+  return avoid.some((placed) => {
+    if (placed.parent !== ownerName || !placed.quaternion || !placed.pos) return false;
+    const otherNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(placed.quaternion).normalize();
+    if (normal.dot(otherNormal) < 0.7) return false;
+    const minimumDistance = (size + placed.size) * 0.55
+      + SURFACE_MARKING_STYLE.minimumSeparationM;
+    return position.distanceTo(new THREE.Vector3(...placed.pos)) < minimumDistance;
+  });
+}
+
+function markingSearchOffsets() {
+  const longitudinal = [0, 0.05, -0.05, 0.11, -0.11, 0.18, -0.18, 0.27, -0.27];
+  const vertical = [0, 0.06, -0.06, 0.13, -0.13, 0.21, -0.21, 0.32, -0.32];
+  const offsets = [];
+  for (const dz of longitudinal) {
+    for (const dy of vertical) offsets.push([dz, dy]);
+  }
+  offsets.sort((a, b) => (Math.abs(a[0]) + Math.abs(a[1]))
+    - (Math.abs(b[0]) + Math.abs(b[1])));
+  return offsets;
+}
+
+const MARKING_SEARCH_OFFSETS = markingSearchOffsets();
+
+function solveProfileMarkingSeat(
+  profile,
+  owner,
+  ownerName,
+  meshes,
+  occluders,
+  longitudinal,
+  size,
+  avoid = [],
+  vertical = profile.vertical,
+) {
   const bounds = markingLocalBounds(owner, meshes);
   if (bounds.isEmpty()) return null;
   const width = bounds.max.x - bounds.min.x;
   const rayDirection = new THREE.Vector3(profile.side === 'right' ? -1 : 1, 0, 0);
   const originX = profile.side === 'right' ? bounds.max.x + 0.24 : bounds.min.x - 0.24;
-  const searches = [
-    [0, 0], [0, 0.07], [0, -0.07], [0.06, 0], [-0.06, 0],
-    [0.06, 0.06], [-0.06, 0.06], [0.06, -0.06], [-0.06, -0.06],
-    [0, 0.14], [0, -0.14],
-  ];
-  for (const [dz, dy] of searches) {
+  let best = null;
+  for (const [dz, dy] of MARKING_SEARCH_OFFSETS) {
     const zT = THREE.MathUtils.clamp(longitudinal + dz, 0.08, 0.92);
     const yT = THREE.MathUtils.clamp(vertical + dy, 0.12, 0.90);
     const origin = new THREE.Vector3(
@@ -5193,17 +5311,30 @@ function solveProfileMarkingSeat(profile, owner, meshes, longitudinal, vertical 
     const hit = raySeatMarking(owner, meshes, origin, rayDirection, width + 0.7);
     if (!hit) continue;
     const tangent = new THREE.Vector3(0, 0, profile.side === 'right' ? -1 : 1);
-    return {
+    const position = hit.pointLocal.clone().addScaledVector(
+      hit.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM);
+    const quaternion = markingQuaternion(hit.normalLocal, tangent);
+    if (markingSeatOverlaps(position, quaternion, size, ownerName, avoid)) continue;
+    const receipt = markingVisibilityReceipt(owner, position, quaternion, size, occluders);
+    const candidate = {
       ...hit,
-      position: hit.pointLocal.clone().addScaledVector(
-        hit.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM),
-      quaternion: markingQuaternion(hit.normalLocal, tangent),
+      position,
+      quaternion,
+      ...receipt,
+      searchDistance: Math.abs(dz) + Math.abs(dy),
     };
+    if (!best
+        || candidate.visibilityClearSamples > best.visibilityClearSamples
+        || (candidate.visibilityClearSamples === best.visibilityClearSamples
+          && candidate.searchDistance < best.searchDistance)) best = candidate;
+    if (candidate.visibilityClearSamples === SURFACE_MARKING_STYLE.visibilitySampleCount) {
+      return candidate;
+    }
   }
-  return null;
+  return best;
 }
 
-function reseatAuthoredMarking(decal, owner, meshes) {
+function reseatAuthoredMarking(decal, owner, meshes, occluders) {
   const euler = new THREE.Euler(decal.rotX, decal.rotY, decal.rotZ, 'ZYX');
   const normal = new THREE.Vector3(0, 0, 1).applyEuler(euler).normalize();
   const tangent = new THREE.Vector3(1, 0, 0).applyEuler(euler).normalize();
@@ -5226,15 +5357,22 @@ function reseatAuthoredMarking(decal, owner, meshes) {
   decal.surfaceSupported = true;
   decal.supportGapM = SURFACE_MARKING_STYLE.surfaceLiftM;
   decal.surfaceMesh = best.object.name;
-  return true;
+  const size = Number(decal.size) || 0;
+  const receipt = markingVisibilityReceipt(
+    owner, new THREE.Vector3(...decal.pos), decal.quaternion, size, occluders);
+  Object.assign(decal, receipt);
+  return size >= SURFACE_MARKING_STYLE.minimumReadableSizeM && receipt.visibilityVerified;
 }
 
-function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
+function finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG) {
   const owners = { hull: hullG, turret: turretG };
   const surfaces = {
     hull: markingArmorMeshes(hullG, 'hull'),
     turret: markingArmorMeshes(turretG, 'turret'),
   };
+  const occluders = markingOccluderMeshes(root);
+  const restoreMaterialSides = doubleSidedMarkingRaycastScope(occluders);
+  try {
   // Existing family-authored stars, crosses and tactical numbers stay in
   // their chosen historical stations, but are snapped to the actual armor
   // below them. Unsupported legacy planes are discarded rather than allowed
@@ -5243,7 +5381,8 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
     const decal = decals[index];
     if (decal.kind !== 'insignia' && decal.kind !== 'designation') continue;
     const ownerName = decal.parent === 'turret' ? 'turret' : 'hull';
-    if (!reseatAuthoredMarking(decal, owners[ownerName], surfaces[ownerName])) {
+    if (!reseatAuthoredMarking(
+      decal, owners[ownerName], surfaces[ownerName], occluders)) {
       decals.splice(index, 1);
     } else {
       decal.anchorProfile = 'authored-surface-seat';
@@ -5252,16 +5391,51 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
 
   const profile = vehicleMarkingAnchor(spec.id);
   if (!profile) return;
-  const owner = owners[profile.owner];
-  const meshes = surfaces[profile.owner];
   const addProfileDecal = (kind, longitudinal, size) => {
-    const seat = solveProfileMarkingSeat(profile, owner, meshes, longitudinal);
+    const readableSize = Math.max(size, SURFACE_MARKING_STYLE.minimumReadableSizeM);
+    const candidateSizes = [...new Set([
+      readableSize,
+      Math.max(SURFACE_MARKING_STYLE.minimumReadableSizeM, readableSize * 0.88),
+      SURFACE_MARKING_STYLE.minimumReadableSizeM,
+    ])];
+    const avoid = decals.filter((decal) => decal.kind === 'insignia'
+      || decal.kind === 'designation');
+    const ownerOrder = [profile.owner, profile.owner === 'turret' ? 'hull' : 'turret'];
+    const sideOrder = [profile.side, profile.side === 'right' ? 'left' : 'right'];
+    let seat = null;
+    let selectedOwnerName = profile.owner;
+    let selectedSize = readableSize;
+    for (const candidateSize of candidateSizes) {
+      for (const ownerName of ownerOrder) {
+        for (const side of sideOrder) {
+          const candidate = solveProfileMarkingSeat(
+            { ...profile, owner: ownerName, side },
+            owners[ownerName],
+            ownerName,
+            surfaces[ownerName],
+            occluders,
+            longitudinal,
+            candidateSize,
+            avoid,
+          );
+          if (!candidate) continue;
+          if (!seat || candidate.visibilityClearSamples > seat.visibilityClearSamples) {
+            seat = candidate;
+            selectedOwnerName = ownerName;
+            selectedSize = candidateSize;
+          }
+          if (candidate.visibilityVerified) break;
+        }
+        if (seat?.visibilityVerified) break;
+      }
+      if (seat?.visibilityVerified) break;
+    }
     if (!seat) return false;
     decals.push({
-      parent: profile.owner,
+      parent: selectedOwnerName,
       kind,
       text: kind === 'designation' ? marking.tacticalNumber : null,
-      size,
+      size: selectedSize,
       pos: seat.position.toArray(),
       rotY: 0, rotX: 0, rotZ: 0,
       quaternion: seat.quaternion,
@@ -5269,6 +5443,11 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
       supportGapM: SURFACE_MARKING_STYLE.surfaceLiftM,
       surfaceMesh: seat.object.name,
       anchorProfile: spec.id,
+      visibilitySamples: seat.visibilitySamples,
+      visibilityClearSamples: seat.visibilityClearSamples,
+      visibilityRatio: seat.visibilityRatio,
+      maximumSurfaceErrorM: seat.maximumSurfaceErrorM,
+      visibilityVerified: seat.visibilityVerified,
     });
     return true;
   };
@@ -5278,7 +5457,10 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
   if (!decals.some((decal) => decal.kind === 'designation')) {
     const textZ = THREE.MathUtils.clamp(
       profile.longitudinal + profile.designationDirection * 0.11, 0.10, 0.90);
-    addProfileDecal('designation', textZ, profile.sizeM * 1.06);
+    addProfileDecal('designation', textZ, profile.sizeM);
+  }
+  } finally {
+    restoreMaterialSides();
   }
 }
 
@@ -5620,7 +5802,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // national insignia/designation; historical builder decals are retained
   // only when they can be re-seated on their selected articulation owner.
   root.updateMatrixWorld(true);
-  finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG);
+  finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
   const decalGeo = new THREE.PlaneGeometry(1, 1);
   disposables.push(decalGeo);
   const decalMeshes = [];
@@ -5635,6 +5817,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     mesh.userData.surfaceMesh = d.surfaceMesh || null;
     mesh.userData.markingAnchorProfile = d.anchorProfile || null;
     mesh.userData.surfaceOwner = d.parent === 'turret' ? 'turret' : 'hull';
+    mesh.userData.visibilitySamples = d.visibilitySamples ?? null;
+    mesh.userData.visibilityClearSamples = d.visibilityClearSamples ?? null;
+    mesh.userData.visibilityRatio = d.visibilityRatio ?? null;
+    mesh.userData.maximumSurfaceErrorM = d.maximumSurfaceErrorM ?? null;
+    mesh.userData.visibilityVerified = d.visibilityVerified === true;
     mesh.scale.setScalar(d.size);
     mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
     if (d.quaternion) mesh.quaternion.copy(d.quaternion);

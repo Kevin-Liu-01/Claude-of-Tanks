@@ -12,6 +12,39 @@ const tank = createTank('merkava4b', null, {
 const near = (value, target, epsilon = 1e-5) => Math.abs(value - target) <= epsilon;
 const turret = tank.root.getObjectByName('rig_turret');
 const hull = tank.root.getObjectByName('rig_hull');
+const gun = tank.root.getObjectByName('rig_gun');
+
+const roofSeatReceipt = turret?.userData.merkava4bRoofSeatReceipt;
+assert.ok(roofSeatReceipt, 'Merkava 4B exposes its roof-equipment seating receipt');
+assert.equal(roofSeatReceipt.revision, 'modular-shell-roof-r1');
+assert.equal(roofSeatReceipt.datumSource, 'profile-shell',
+  'roof equipment follows the rendered modular shell rather than the rejected oracle');
+assert.equal(roofSeatReceipt.allSeatsUseRenderedShellDatum, true);
+assert.ok(near(roofSeatReceipt.commanderRoofM, 2.54),
+  'commander fittings sit on the local modular roof');
+assert.ok(near(roofSeatReceipt.loaderRoofM, 2.5218181818181815),
+  'loader fittings sit on the local modular roof');
+assert.ok(near(roofSeatReceipt.sightRoofM, 2.55),
+  'panoramic sight shoe sits on the local modular roof');
+assert.ok(roofSeatReceipt.rearCaseRoofsM.every((value, index) => near(value,
+  [2.496363636363636, 2.4872727272727273, 2.5027272727272725][index])),
+  'each rear case samples its own sloped roof station');
+assert.ok(roofSeatReceipt.maximumFormerStandOffM >= 0.16,
+  'receipt records the removed oracle-to-shell stand-off');
+
+const gunSeatReceipt = gun?.userData.merkava4bGunSeatReceipt;
+assert.ok(gunSeatReceipt, 'Merkava 4B exposes its articulated gun-seat receipt');
+assert.equal(gunSeatReceipt.revision, 'closed-throat-r1');
+assert.ok(near(gunSeatReceipt.turretThroatHalfWidthM, 0.65));
+assert.ok(near(gunSeatReceipt.socketHalfWidthM, 0.64));
+assert.ok(near(gunSeatReceipt.shoulderHalfWidthM, 0.63));
+assert.ok(near(gunSeatReceipt.socketSideClearanceM, 0.01),
+  'gun socket closes each former 19 cm turret-side opening to 1 cm');
+assert.ok(near(gunSeatReceipt.shoulderSideClearanceM, 0.02),
+  'mask shoulder remains within 2 cm of the turret throat');
+assert.ok(near(gunSeatReceipt.mouthHalfWidthM, 0.29),
+  'forward gun mouth retains its compact dimensions');
+assert.equal(gunSeatReceipt.taperBeginsBeyondTurretThroat, true);
 
 const eraReceipt = turret?.userData.merkava4bEraReceipt;
 assert.ok(eraReceipt, 'Merkava 4B exposes its conformal ERA seating receipt');
@@ -64,19 +97,50 @@ for (let instance = 0; instance < eraLayers[0].count; instance++) {
 assert.equal(leftCount, 10, 'ten rendered cassettes cover the left cheek');
 assert.equal(rightCount, 10, 'ten rendered cassettes cover the right cheek');
 
+const flankPanelReceipt = turret?.userData.merkava4bFlankPanelReceipt;
+assert.ok(flankPanelReceipt, 'Merkava 4B exposes its turret-side panel seating receipt');
+assert.equal(flankPanelReceipt.revision, 'conformal-casting-side-r1');
+assert.equal(flankPanelReceipt.panelCount, 2, 'the mirrored side-panel pair is audited');
+assert.equal(flankPanelReceipt.seats.length, 2);
+assert.equal(flankPanelReceipt.maxSurfaceGapM, 0,
+  'the panel pair permits no stand-off from the casting side');
+assert.ok(near(flankPanelReceipt.contactEmbedM, 0.012),
+  'each panel overlaps the casting by twelve millimetres');
+for (const seat of flankPanelReceipt.seats) {
+  const panelNormal = new THREE.Vector3(...seat.normalLocal);
+  assert.ok(near(panelNormal.length(), 1), 'panel normal stays normalized');
+  assert.ok(panelNormal.x * seat.side > 0, 'panel normal faces away from the turret centerline');
+  assert.equal(seat.surfaceLocal.length, 4, 'panel has four casting-side contact corners');
+  for (let corner = 0; corner < 4; corner++) {
+    const surface = new THREE.Vector3(...seat.surfaceLocal[corner]);
+    const inner = new THREE.Vector3(...seat.innerLocal[corner]);
+    const outer = new THREE.Vector3(...seat.outerLocal[corner]);
+    assert.ok(near(surface.clone().sub(inner).dot(panelNormal), seat.innerFaceOverlapM),
+      `panel ${seat.side} corner ${corner} inner face remains embedded`);
+    assert.ok(near(outer.clone().sub(inner).dot(panelNormal), seat.thicknessM),
+      `panel ${seat.side} corner ${corner} preserves its authored armor depth`);
+  }
+  assert.ok(seat.surfaceLocal.slice(2).every(point => near(point[1], 0.71)),
+    'panel crown terminates on the rendered casting roof edge');
+}
+
 const chassisReceipt = hull?.userData.merkava4bChassisReceipt;
 assert.ok(chassisReceipt, 'Merkava 4B exposes its shortened-bow running-gear receipt');
-assert.equal(chassisReceipt.revision, 'short-bow-raised-sprocket-course-r3');
+assert.equal(chassisReceipt.revision, 'connected-short-bow-raised-sprocket-course-r4');
 assert.ok(near(chassisReceipt.hullNoseZ, 3.18), 'upper hull nose is 15 cm shorter');
-assert.ok(near(chassisReceipt.lowerGlacisToeZ, 2.56),
-  'lower glacis toe is shortened by another 30 cm');
-assert.ok(near(chassisReceipt.previousLowerGlacisToeZ, 2.86),
-  'receipt records the prior lower-glacis station');
-assert.ok(near(chassisReceipt.lowerGlacisKneeZ, 2.44),
-  'lower-glacis knee retreats with the toe instead of letting the plate invert');
-assert.ok(near(chassisReceipt.previousLowerGlacisKneeZ, 2.74));
-assert.ok(near(chassisReceipt.additionalLowerGlacisShorteningM, 0.30));
-assert.ok(near(chassisReceipt.totalLowerGlacisShorteningM, 0.75));
+assert.ok(near(chassisReceipt.lowerGlacisToeZ, 3.16),
+  'lower-glacis toe remains structurally joined to the shortened upper bow');
+assert.ok(near(chassisReceipt.previousLowerGlacisToeZ, 2.56),
+  'receipt records the recessed toe that caused the visible regression');
+assert.ok(near(chassisReceipt.lowerGlacisKneeZ, 3.04),
+  'the knee moves forward so the connected lower plate remains short');
+assert.ok(near(chassisReceipt.previousLowerGlacisKneeZ, 2.44));
+assert.ok(near(chassisReceipt.upperLowerGlacisJoinM, 0.02),
+  'upper and lower glacis stations overlap by the original two-centimetre joint');
+assert.ok(near(chassisReceipt.lowerGlacisPlanLengthM, 0.12),
+  'the lower glacis remains a compact twelve-centimetre plan run');
+assert.ok(near(chassisReceipt.recessedToeCorrectionM, 0.60),
+  'the recessed lower face advances sixty centimetres to reconnect');
 assert.ok(near(chassisReceipt.glacisFurnitureToeZ, 3.12),
   'glacis furniture remains seated on the shortened bow');
 assert.ok(near(chassisReceipt.trackRearShiftM, 0.20),
@@ -113,4 +177,4 @@ assert.deepEqual([...new Map(endWheelCenters.map(center => [center.join(':'), ce
   'front sprocket rises without moving fore/aft while the rear idler remains unchanged');
 
 tank.dispose?.();
-console.log('merkava4bGeometry.selftest: flush cheek ERA and shortened rear-shifted chassis passed');
+console.log('merkava4bGeometry.selftest: seated roof, closed gun throat, flush ERA/panels, and connected shortened chassis passed');

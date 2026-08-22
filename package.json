@@ -32,6 +32,7 @@
     "tank:anatomy:update": "node tools/gen-combat-anatomy.mjs && node tools/genIcons.mjs --views hitZonesSide,armorSide,modulesSide",
     "tank:anatomy:check": "node tools/gen-combat-anatomy.mjs --check && node src/vehicles/combatAnatomy.selftest.mjs && node tools/tank-assets-check.mjs --views hitZonesSide,armorSide,modulesSide --skip-bore",
     "tank:appearance:check": "node tools/tank-assets-check.mjs --live-only --skip-bore",
+    "tank:markings:check": "node tools/vehicle-marking-visibility.mjs",
     "tank:release:check": "node tools/tank-release-check.mjs",
     "tank:native:check": "node tools/native-playables-audit.mjs",
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",

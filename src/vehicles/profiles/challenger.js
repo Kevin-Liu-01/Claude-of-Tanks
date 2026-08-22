@@ -3156,6 +3156,7 @@ function buildChallenger2(P) {
   // layer an explicit outward clearance.
   const cheekRise = new THREE.Vector3(0, 0.375, -0.548);
   const cheekPanelReceipt = [];
+  const sideCassetteReceipt = [];
   for (const side of [-1, 1]) {
     // Lower cheek runs 0.975 m outboard while setting back 0.600 m.  Use it
     // as the horizontal tangent, then orthogonalize the vertical tangent in
@@ -3241,23 +3242,37 @@ function buildChallenger2(P) {
     // closed solid.  Its upper course dies into the ruled roof instead of
     // carrying the former full-length cap/rail.
     const cassetteOuter = side < 0 ? 1.55 : 1.46;
+    // The former cassette was only the 60 mm knife-edge lip at x=1.40..
+    // outer. Its inner wall was therefore visible through a 25-32 cm void
+    // between the applique and the sovereign shell/service body. Continue
+    // the same closed armor course inward to x=1.08, where it overlaps the
+    // ruled turret side without altering the certified exterior silhouette.
+    const cassetteInner = 1.08;
     const cassetteFront = side < 0 ? -0.64 : -0.67;
     const cassetteRear = side < 0 ? -1.22 : -2.77;
     cr2Course(P, 'turret', [
-      [side * 1.40, cassetteFront + 0.10], [side * cassetteOuter, cassetteFront],
+      [side * cassetteInner, cassetteFront + 0.10], [side * cassetteOuter, cassetteFront],
       [side * cassetteOuter, cassetteRear],
-      [side * 1.40, cassetteRear - 0.10],
+      [side * cassetteInner, cassetteRear - 0.10],
     ], [0.12, 0.02, 0.05, 0.12], [0.35, 0.05, 0.08, 0.34]);
     // Cassette service fields are separate recessed pannier faces, not
     // painted-on stripes.  Preserve the print's strong left/right
     // asymmetry: one short loader-side field, four commander-side bustle
     // fields.  All hardware stays inside the existing cassette course.
     const cassetteFields = side < 0 ? [-0.90] : [-0.88, -1.34, -1.80, -2.26];
+    const faceX = side * 1.153;
+    sideCassetteReceipt.push({
+      side,
+      innerCourseX: cassetteInner,
+      serviceBodyX: Math.abs(faceX),
+      bodyJoinOverlapM: Math.abs(faceX) - cassetteInner,
+      outerLipX: cassetteOuter,
+      exteriorSilhouetteDeltaM: 0,
+    });
     for (const z of cassetteFields) {
       // The cassette's knife-edge outer lip is only 5-8 cm tall.  Its real
       // access fields mount on the sloped 1.15 m body plane, not outside the
       // 1.55 m lip (that first seat crossed a plan pixel-width guard).
-      const faceX = side * 1.153;
       P.add('turretDark', box(0.014, 0.22, 0.34), faceX, 0.22, z);
       P.add('turretDetail', box(0.009, 0.018, 0.30), faceX + side * 0.009, 0.32, z);
       P.add('turretDetail', box(0.009, 0.018, 0.30), faceX + side * 0.009, 0.12, z);
@@ -3303,6 +3318,10 @@ function buildChallenger2(P) {
       [side * 1.24, -3.26], [side * 0.86, -3.25],
     ], 0.08, [0.15, 0.15, 0.13, 0.14]);
   }
+  P.turretG.userData.challenger2SideCassetteReceipt = {
+    maxVisibleInnerGapM: 0,
+    panels: sideCassetteReceipt,
+  };
   // Bustle face: recessed autoloader panels, rack lattice and two round
   // service modules on the existing -2.99 centre plane.  This replaces the
   // blank stern slab without lengthening the turret.
@@ -3381,6 +3400,8 @@ function buildChallenger2(P) {
   P.add('turretCloth', box(0.16, 0.35, 0.34), -1.05, 0.305, -3.04, 0, 0.15, 0);
   ammoCan(P, 'turretDark', 1.05, 0.32, -3.04, 0.22);
 
+  const roofEmbed = 0.010;
+  const roofSeats = [];
   // Roof hierarchy from connected components, following the Leclerc
   // method.  The source has ONE flattened loader lid at
   // x=-.819..-.233/z=-1.203..-.871 and a thin right-hand plate at
@@ -3416,12 +3437,25 @@ function buildChallenger2(P) {
   P.add('turret', box(0.39, 0.016, 0.085), 0.617, 0.610, -1.021);
   for (const x of [0.42, 0.81]) P.add('turretDetail', box(0.045, 0.026, 0.035),
     x, 0.620, -1.021);
-  // Independent rear-left roof housing, measured from the 670-triangle
-  // source component's connected box (local x -.298..-.112,
-  // y .512..635, z -2.18..-2.107).
-  P.add('turretDark', box(0.186, 0.123, 0.073), -0.205, 0.5735, -2.1435);
-  P.add('turretGlass', box(0.12, 0.050, 0.010), -0.205, 0.585, -2.185);
-  P.add('turretDetail', box(0.15, 0.016, 0.055), -0.205, 0.627, -2.1435);
+  // Independent rear-left roof housing. Its old source-space y=.512 lower
+  // face floated 134 mm above the live center roof. Pitch the complete
+  // housing along that roof's longitudinal fall and embed its foot 10 mm.
+  const rearHousingZ = -2.1435;
+  const rearHousingHeight = 0.123;
+  const rearHousingRoofSlope = (0.44 - 0.36) / (-1.05 - -2.46);
+  const rearHousingCarrierY = 0.44 + rearHousingRoofSlope * (rearHousingZ - -1.05);
+  const rearHousingPitch = -Math.atan(rearHousingRoofSlope);
+  const rearHousingY = rearHousingCarrierY + rearHousingHeight * 0.5 - roofEmbed;
+  P.add('turretDark', box(0.186, rearHousingHeight, 0.073), -0.205, rearHousingY,
+    rearHousingZ, rearHousingPitch, 0, 0);
+  const rearHousingGlassZ = -2.185;
+  P.add('turretGlass', box(0.12, 0.050, 0.010), -0.205,
+    rearHousingY + 0.011 + rearHousingRoofSlope * (rearHousingGlassZ - rearHousingZ),
+    rearHousingGlassZ, rearHousingPitch, 0, 0);
+  P.add('turretDetail', box(0.15, 0.016, 0.055), -0.205,
+    rearHousingY + 0.0535, rearHousingZ, rearHousingPitch, 0, 0);
+  roofSeats.push({ label: 'rear-left-roof-housing', carrierY: rearHousingCarrierY,
+    bottomY: rearHousingCarrierY - roofEmbed });
   if (P.q) for (const [x, z, a] of [
     [-0.77, -1.03, -Math.PI / 2], [-0.68, -1.20, -0.5], [-0.45, -1.25, 0], [-0.28, -1.12, 0.6],
     [0.71, -1.22, 0], [0.83, -1.09, 0.6],
@@ -3442,12 +3476,28 @@ function buildChallenger2(P) {
   // Measured right-roof brackets: a long flush service bridge at
   // x=.418..817/z=-.409..-.099 and the independent rear head at
   // x=.768..860/z=-1.065..-.740.
-  P.add('turretDark', box(0.399, 0.022, 0.310), 0.6175, 0.535, -0.254, 0, -0.08, 0);
-  P.add('turretDetail', box(0.31, 0.016, 0.035), 0.6175, 0.553, -0.254, 0, -0.08, 0);
+  // The bridge crosses the center/outer roof break, so match the ruled
+  // facet's transverse fall instead of leaving its underside flat at y=.524.
+  const rightBridgeX = 0.6175;
+  const rightBridgeZ = -0.254;
+  const rightBridgeHeight = 0.022;
+  const rightBridgeOuterY = cr2At([[-0.10, 0.35], [-1.05, 0.40]], rightBridgeZ);
+  const rightBridgeCenterY = cr2At([[-0.10, 0.51], [-1.05, 0.44]], rightBridgeZ);
+  const rightBridgeOuterX = cr2At([[-0.10, 1.12], [-1.05, 1.08]], rightBridgeZ);
+  const rightBridgeRoofSlope = (rightBridgeOuterY - rightBridgeCenterY)
+    / (rightBridgeOuterX - 0.49);
+  const rightBridgeCarrierY = rightBridgeCenterY
+    + rightBridgeRoofSlope * (rightBridgeX - 0.49);
+  const rightBridgeRoll = Math.atan(rightBridgeRoofSlope);
+  const rightBridgeY = rightBridgeCarrierY + rightBridgeHeight * 0.5 - roofEmbed;
+  P.add('turretDark', box(0.399, rightBridgeHeight, 0.310), rightBridgeX,
+    rightBridgeY, rightBridgeZ, 0, -0.08, rightBridgeRoll);
+  P.add('turretDetail', box(0.31, 0.016, 0.035), rightBridgeX,
+    rightBridgeY + 0.018, rightBridgeZ, 0, -0.08, rightBridgeRoll);
+  roofSeats.push({ label: 'right-roof-service-bridge', carrierY: rightBridgeCarrierY,
+    bottomY: rightBridgeCarrierY - roofEmbed });
   P.add('turretDark', box(0.092, 0.062, 0.325), 0.814, 0.568, -0.9025);
   P.add('turretGlass', box(0.060, 0.035, 0.060), 0.814, 0.575, -0.735);
-  const roofEmbed = 0.010;
-  const roofSeats = [];
   // The reference's sustained side crest across the crew-roof band comes
   // from a narrow outboard episcope bank, not a globally raised hatch. Each
   // head now follows its local roof carrier instead of sharing two arbitrary

@@ -20,6 +20,8 @@ for (const record of records) {
   assert(record.filterLabel.length <= 3, `${record.countryLabel}: compact country filter label`);
 }
 assert.equal(SURFACE_MARKING_STYLE.surfaceLiftM, 0.006, 'paint and impact marks share the 6 mm surface layer');
+assert.equal(SURFACE_MARKING_STYLE.visibilitySampleCount, 9, 'mark visibility covers center, edges, and corners');
+assert(SURFACE_MARKING_STYLE.minimumClearSamples >= 6, 'at least two thirds of every marking footprint must stay clear');
 assert.deepEqual(vehicleMarkingRecord({ id: 'stable', nation: 'USA', visual: {} }), vehicleMarkingRecord({ id: 'stable', nation: 'USA', visual: {} }), 'fallback tactical numbers are deterministic');
 
 // Importing the factory registers every first-party expansion before the
@@ -48,7 +50,13 @@ function markingSupportHit(mark, owner) {
   const ray = new THREE.Raycaster(origin, normal.clone().multiplyScalar(-1), 0, 0.05);
   const candidates = [];
   owner.traverse((object) => {
-    if (object.isMesh && !object.isInstancedMesh && armorNames[mark.userData.surfaceOwner].has(object.name)) {
+    let visible = true;
+    for (let current = object; current; current = current.parent) {
+      if (!current.visible) visible = false;
+      if (current === owner) break;
+    }
+    if (visible && object.isMesh && !object.isInstancedMesh
+        && armorNames[mark.userData.surfaceOwner].has(object.name)) {
       candidates.push(object);
     }
   });
@@ -82,6 +90,24 @@ for (const id of ALL_TANK_IDS) {
     assert.equal(mark.userData.surfaceSupported, true, `${id}/${mark.name}: surface seat solved`);
     assert.equal(mark.userData.supportGapM, SURFACE_MARKING_STYLE.surfaceLiftM, `${id}/${mark.name}: shared paint lift`);
     assert(markingSupportHit(mark, owner), `${id}/${mark.name}: armor is physically present directly behind paint`);
+    assert.equal(mark.userData.visibilitySamples, SURFACE_MARKING_STYLE.visibilitySampleCount, `${id}/${mark.name}: full visibility footprint sampled`);
+    assert(mark.userData.visibilityClearSamples >= SURFACE_MARKING_STYLE.minimumClearSamples, `${id}/${mark.name}: paint is not clipped or hidden by vehicle geometry`);
+    assert.equal(mark.userData.visibilityVerified, true, `${id}/${mark.name}: visibility receipt passes`);
+    assert(mark.scale.x >= SURFACE_MARKING_STYLE.minimumReadableSizeM, `${id}/${mark.name}: marking remains readable at normal presentation scale`);
+  }
+
+  for (let left = 0; left < marks.length; left += 1) {
+    for (let right = left + 1; right < marks.length; right += 1) {
+      const a = marks[left];
+      const b = marks[right];
+      if (a.parent !== b.parent) continue;
+      const aNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(a.quaternion).normalize();
+      const bNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(b.quaternion).normalize();
+      if (aNormal.dot(bNormal) < 0.7) continue;
+      const minimumDistance = (a.scale.x + b.scale.x) * 0.55
+        + SURFACE_MARKING_STYLE.minimumSeparationM;
+      assert(a.position.distanceTo(b.position) >= minimumDistance, `${id}: coplanar vehicle markings do not overlap`);
+    }
   }
 
   // One yaw step proves the metadata agrees with the actual parent tree:
@@ -101,4 +127,4 @@ for (const id of ALL_TANK_IDS) {
   tank.dispose();
 }
 
-console.log(`vehicleMarkings.selftest: ${ALL_TANK_IDS.length} per-tank surface anchors, physical seats, and yaw ownership pass`);
+console.log(`vehicleMarkings.selftest: ${ALL_TANK_IDS.length} per-tank surface anchors, readable visibility, separation, physical seats, and yaw ownership pass`);

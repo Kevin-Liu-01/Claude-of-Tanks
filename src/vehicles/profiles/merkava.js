@@ -1036,18 +1036,19 @@ function merkavaChassis(P, c) {
 
   if (P.spec.id === 'merkava4b') {
     P.hullG.userData.merkava4bChassisReceipt = Object.freeze({
-      revision: 'short-bow-raised-sprocket-course-r3',
+      revision: 'connected-short-bow-raised-sprocket-course-r4',
       hullNoseZ: c.body[0].z,
       previousHullNoseZ: 3.33,
       lowerGlacisToeZ: c.keel.toeZ,
-      previousLowerGlacisToeZ: 2.86,
+      previousLowerGlacisToeZ: 2.56,
       lowerGlacisKneeZ: c.keel.midZ,
-      previousLowerGlacisKneeZ: 2.74,
+      previousLowerGlacisKneeZ: 2.44,
+      upperLowerGlacisJoinM: c.body[0].z - c.keel.toeZ,
+      lowerGlacisPlanLengthM: c.keel.toeZ - c.keel.midZ,
+      recessedToeCorrectionM: c.keel.toeZ - 2.56,
       glacisFurnitureToeZ: c.glacis.z1,
       previousGlacisFurnitureToeZ: 3.27,
       hullShortenedM: 0.15,
-      additionalLowerGlacisShorteningM: 0.30,
-      totalLowerGlacisShorteningM: 0.75,
       trackRearShiftM: c.trackRearShiftM ?? 0,
       frontSprocketZPreserved: true,
       sprocketZ: c.sprocket.z,
@@ -6533,6 +6534,8 @@ function merkava4bArmorPanels(P, p) {
   const L = (z) => z - p.pivotZ;
   const V = (y) => y - (p.deckY + 0.02);
   const slab = orientedSlab;
+  const flankPanelEmbedM = 0.012;
+  const flankPanelSeats = [];
   const panel = (s, a) => {
     const [zF, zR, xF, xR, xTF, xTR, yBF, yBR, yTF, yTR, thick = 0.08] = a;
     const ixF = xF - thick, ixR = xR - thick;
@@ -6554,6 +6557,72 @@ function merkava4bArmorPanels(P, p) {
       P.add('turretDark', box(0.018, 0.022, 0.018), s * (x + 0.008), V(y), L(z));
     }
   };
+
+  // The fourth swept course sits wholly over the main casting's long side
+  // plane. Its old hand-authored inner corners remained 15-37 cm outside
+  // that plane, exposing the back of the panel from elevated quarter views.
+  // Reconstruct the exact side plane used by `merkavaModularTurret`, then
+  // derive both mirrored panels from it. The inner face overlaps the casting
+  // by 12 mm; the outer face stays parallel at the authored armor depth.
+  const conformalFlankPanel = (s, a) => {
+    const [zF, zR, , , , , yBF, yBR, yTF, yTR, thick = 0.08] = a;
+    const baseY = V(p.shellBotY);
+    const topY = V(p.shellTopY);
+    const zForward = L(p.maxWZ);
+    const zRear = L(p.shellRearZ) + 0.55;
+    const xForward = p.hwMax;
+    const xRear = p.hwMax * ((p.rearWide ?? 0.94) + 0.02);
+    const plan = [
+      [-p.noseHW, L(p.noseZ)], [p.noseHW, L(p.noseZ)],
+      [p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
+      [xForward, zForward], [xRear, zRear],
+      [p.hwMax * (p.rearWide ?? 0.94), L(p.shellRearZ)],
+      [-p.hwMax * (p.rearWide ?? 0.94), L(p.shellRearZ)], [-xRear, zRear],
+      [-xForward, zForward],
+      [-p.hwMax * 0.90, L(p.noseZ) - (L(p.noseZ) - L(p.maxWZ)) * 0.55],
+    ];
+    const centerZ = plan.reduce((sum, point) => sum + point[1], 0) / plan.length;
+    const inset = p.roofInset ?? 0.96;
+    const a0 = new THREE.Vector3(xForward, baseY, zForward);
+    const b0 = new THREE.Vector3(
+      xRear * inset,
+      topY,
+      centerZ + (zRear - centerZ) * inset,
+    );
+    const c0 = new THREE.Vector3(
+      xForward * inset,
+      topY,
+      centerZ + (zForward - centerZ) * inset,
+    );
+    const rightNormal = new THREE.Vector3()
+      .crossVectors(b0.clone().sub(a0), c0.clone().sub(a0)).normalize();
+    const normal = new THREE.Vector3(s * rightNormal.x, rightNormal.y, rightNormal.z);
+    const supportAt = (worldY, worldZ) => {
+      const y = V(Math.min(worldY, p.shellTopY));
+      const z = L(worldZ);
+      const x = a0.x - (rightNormal.y * (y - a0.y) + rightNormal.z * (z - a0.z)) / rightNormal.x;
+      return new THREE.Vector3(s * x, y, z);
+    };
+    const surface = [
+      supportAt(yBF, zF), supportAt(yBR, zR),
+      supportAt(yTR, zR), supportAt(yTF, zF),
+    ];
+    const inner = surface.map(point => point.clone().addScaledVector(normal, -flankPanelEmbedM));
+    const outer = surface.map(point => point.clone().addScaledVector(normal, thick - flankPanelEmbedM));
+    P.add('turret', slab(
+      inner[0].toArray(), inner[1].toArray(), inner[2].toArray(), inner[3].toArray(),
+      outer[0].toArray(), outer[1].toArray(), outer[2].toArray(), outer[3].toArray(),
+    ));
+    flankPanelSeats.push(Object.freeze({
+      side: s,
+      normalLocal: Object.freeze(normal.toArray()),
+      surfaceLocal: Object.freeze(surface.map(point => Object.freeze(point.toArray()))),
+      innerLocal: Object.freeze(inner.map(point => Object.freeze(point.toArray()))),
+      outerLocal: Object.freeze(outer.map(point => Object.freeze(point.toArray()))),
+      thicknessM: thick,
+      innerFaceOverlapM: flankPanelEmbedM,
+    }));
+  };
   for (const s of [-1, 1]) {
     // Five shorter interlocking armor modules reproduce the Mk.4B's swept
     // arrowhead and stepped rear flank.  The former three long rectangular
@@ -6563,7 +6632,7 @@ function merkava4bArmorPanels(P, p) {
     panel(s, [1.52, 0.72, 0.54, 1.28, 0.38, 1.10, 2.06, 2.03, 2.42, 2.49, 0.10]);
     panel(s, [0.76, 0.02, 1.24, 1.67, 1.08, 1.48, 2.03, 2.01, 2.49, 2.54, 0.11]);
     panel(s, [0.06, -0.76, 1.66, 1.82, 1.48, 1.58, 2.01, 1.99, 2.54, 2.56, 0.11]);
-    panel(s, [-0.72, -1.63, 1.82, 1.76, 1.58, 1.51, 1.99, 2.00, 2.56, 2.54, 0.10]);
+    conformalFlankPanel(s, [-0.72, -1.63, 1.82, 1.76, 1.58, 1.51, 1.99, 2.00, 2.56, 2.54, 0.10]);
     panel(s, [-1.58, -2.72, 1.76, 1.45, 1.51, 1.21, 2.00, 2.03, 2.54, 2.47, 0.09]);
 
     // A single lower locking rail ties the outer armor into the turret ring.
@@ -6579,6 +6648,13 @@ function merkava4bArmorPanels(P, p) {
     P.add('turretDark', box(0.020, 0.18, 0.28), s * 1.585, V(2.22), L(-2.18), 0, s * 0.08, s * 0.08);
     P.addEquipment('turret', KIT.torus(0.075, 0.018, 14), s * 1.30, V(2.64), L(-2.56), Math.PI / 2, 0, 0);
   }
+  P.turretG.userData.merkava4bFlankPanelReceipt = Object.freeze({
+    revision: 'conformal-casting-side-r1',
+    panelCount: flankPanelSeats.length,
+    maxSurfaceGapM: 0,
+    contactEmbedM: flankPanelEmbedM,
+    seats: Object.freeze(flankPanelSeats),
+  });
 }
 
 // Source-oracle turret shells for the owner-supplied Merkava archive set.
@@ -6830,9 +6906,12 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     merkava2d: { rootZ: 0.17, mouthZ: 1.82, rootHW: 0.34, rootHH: 0.31, mouthHW: 0.22, mouthHH: 0.20, bootLen: 0.43, seatDepth: 0.56, x: -0.01 },
     merkava3c: { rootZ: 0.12, mouthZ: 1.78, rootHW: 0.37, rootHH: 0.34, mouthHW: 0.23, mouthHH: 0.21, bootLen: 0.42, seatDepth: 0.58, x: 0.01 },
     merkava3d: { rootZ: 0.09, mouthZ: 1.88, rootHW: 0.39, rootHH: 0.36, mouthHW: 0.24, mouthHH: 0.22, bootLen: 0.44, seatDepth: 0.60, x: -0.03 },
-    // Mk.4B keeps the largest mask, but its seat is still a compact squared
-    // frustum rather than an armor wing spanning the whole arrowhead cheek.
-    merkava4b: { rootZ: 0.18, mouthZ: 2.43, rootHW: 0.46, rootHH: 0.42, mouthHW: 0.29, mouthHH: 0.26, bootLen: 0.46, seatDepth: 0.68, x: 0.00 },
+    // Mk.4B's articulated mask fills the 65 cm half-width turret throat at
+    // the buried socket and shoulder station.  The old 46 -> 36 cm taper
+    // exposed a 19-29 cm open slot down both sides of the mask.  Hold the
+    // mask at 64/63 cm until it clears the throat, then taper to the same
+    // compact tube mouth so gun elevation remains visually articulated.
+    merkava4b: { rootZ: 0.18, mouthZ: 2.43, rootHW: 0.64, rootHH: 0.42, seatHW: 0.63, mouthHW: 0.29, mouthHH: 0.26, bootLen: 0.46, seatDepth: 0.68, x: 0.00 },
   }[id];
   if (!cfg) return false;
 
@@ -6861,7 +6940,7 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     ];
   };
   const midF = 0.58;
-  const midHW = cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * midF;
+  const midHW = cfg.seatHW ?? (cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * midF);
   const midHH = cfg.rootHH + (cfg.mouthHH - cfg.rootHH) * midF;
   addMask(merkavaAxialLoft([
     ring(cfg.rootHW * 0.98, cfg.rootHH * 0.98, rootZ - cfg.seatDepth),
@@ -6869,6 +6948,20 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     ring(midHW, midHH, rootZ + span * midF),
     ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035),
   ]));
+
+  if (id === 'merkava4b') {
+    const throatHW = p.cheek?.pts?.[0]?.[0] ?? p.notchHW;
+    P.gunG.userData.merkava4bGunSeatReceipt = Object.freeze({
+      revision: 'closed-throat-r1',
+      turretThroatHalfWidthM: throatHW,
+      socketHalfWidthM: cfg.rootHW,
+      shoulderHalfWidthM: midHW,
+      socketSideClearanceM: throatHW - cfg.rootHW,
+      shoulderSideClearanceM: throatHW - midHW,
+      mouthHalfWidthM: cfg.mouthHW,
+      taperBeginsBeyondTurretThroat: true,
+    });
+  }
 
   // Surface finish for the broad mask planes. These are shallow gun-owned
   // reliefs, not turret decals: every seam, stamp and fastener therefore
@@ -7057,7 +7150,11 @@ function merkavaSourceFinish(P, p, t) {
   // station inside the new roof, leaving only their gun barrels visible.
   // These station lines are the same source-measured world-space roof
   // courses used by `merkavaSourceOracleTurret` above.
-  const oracleRoof = (p.sourceOracleTurret || p.mk4bRebuild) ? {
+  // Only a shell actually built by `merkavaSourceOracleTurret` may use its
+  // elevated roof course. Mk.4B deliberately rejected that shell and uses
+  // `merkavaModularTurret`; treating `mk4bRebuild` as an oracle nevertheless
+  // seated its hatches, optics and rack cases 10-20 cm over the real roof.
+  const oracleRoof = p.sourceOracleTurret ? {
     merkava2b: [[1.60, 2.08], [0.82, 2.17], [0.05, 2.31], [-0.70, 2.40], [-1.55, 2.46], [-2.30, 2.42]],
     merkava2d: [[1.61, 2.09], [0.92, 2.18], [0.12, 2.31], [-0.72, 2.39], [-1.62, 2.44], [-2.66, 2.38]],
     merkava3c: [[0.94, 2.16], [0.42, 2.27], [-0.20, 2.36], [-1.25, 2.42], [-2.45, 2.40], [-3.28, 2.31]],
@@ -7269,6 +7366,18 @@ function merkavaSourceFinish(P, p, t) {
     }
     // An armored shoe links the commander's leaf into the turret plateau.
     P.add('turretDetail', box(0.42, 0.055, 0.30), cmdX, V(Math.max(cmdRoof + 0.02, cmdTop - 0.10)), L(-0.55), -0.05, 0, 0);
+    P.turretG.userData.merkava4bRoofSeatReceipt = Object.freeze({
+      revision: 'modular-shell-roof-r1',
+      datumSource: oracleRoof ? 'source-oracle' : 'profile-shell',
+      commanderRoofM: cmdRoof,
+      loaderRoofM: loadRoof,
+      sightRoofM: roofAt(-0.72) + 0.02,
+      rearCaseRoofsM: Object.freeze([-1.72, -1.82, -1.65].map((z) => roofAt(z))),
+      formerOracleCommanderRoofM: 2.73,
+      formerOracleLoaderRoofM: 2.70,
+      maximumFormerStandOffM: Math.max(2.73 - cmdRoof, 2.70 - loadRoof),
+      allSeatsUseRenderedShellDatum: !oracleRoof,
+    });
   };
 
   if (id === 'merkava1b' || id === 'merkava2b' || id === 'merkava2d') addEarlyRoof(id);
@@ -10700,7 +10809,10 @@ export const MERKAVA_PROFILES = {
     // the exterior hull wall, armor skirts and lower silhouette are unchanged.
     bodyTrackClear: { hw: 1.13, y: 1.34 },
     tailNotch: { hw: 0.45 },
-    keel: { toeZ: 2.56, toeY: 0.98, toeHW: 0.60, midZ: 2.44, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -3.70, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
+    // The lower-glacis toe follows the shortened upper bow with the same
+    // 2 cm overlap as the original Mk.4B shell. Shortening happens at the
+    // keel knee; retreating the toe opened a recessed, disconnected step.
+    keel: { toeZ: 3.16, toeY: 0.98, toeHW: 0.60, midZ: 3.04, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -3.70, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
     glacis: { z0: 1.10, z1: 3.12 },
     podX: 0.60, podIn: 0.15,
     fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.05, z1: 2.4, y: 1.46 },

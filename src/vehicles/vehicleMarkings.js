@@ -6,6 +6,13 @@ const VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION = 1;
 
 export const SURFACE_MARKING_STYLE = Object.freeze({
   surfaceLiftM: 0.006,
+  minimumReadableSizeM: 0.20,
+  visibilitySampleCount: 9,
+  minimumClearSamples: 6,
+  visibilityRayLengthM: 8.0,
+  visibilityOcclusionToleranceM: 0.002,
+  visibilityToleranceM: 0.018,
+  minimumSeparationM: 0.05,
   markingPigment: '#d8d5c9',
   markingOutline: '#171815',
   bareMetal: '#d6dce4',

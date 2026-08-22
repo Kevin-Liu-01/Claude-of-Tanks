@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>vehicle marking visibility audit</title></head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const WIDTH = 360;
+const HEIGHT = 240;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(WIDTH, HEIGHT, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.setClearColor(0x11171b, 1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xeaf2f7, 0x252b2c, 2.25));
+const key = new THREE.DirectionalLight(0xffffff, 2.8);
+key.position.set(5, 9, 8);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x9fc8ff, 1.4);
+fill.position.set(-7, 4, -5);
+scene.add(fill);
+
+function markingMeshes(root, kind) {
+  const marks = [];
+  root.traverse((object) => {
+    if (object.userData?.vehicleMarking
+        && object.userData.markingKind === kind) marks.push(object);
+  });
+  marks.sort((a, b) => Number(b.userData.visibilityVerified)
+    - Number(a.userData.visibilityVerified)
+    || (b.userData.visibilityClearSamples || 0)
+    - (a.userData.visibilityClearSamples || 0));
+  return marks;
+}
+
+function cameraForMark(mark) {
+  const point = mark.getWorldPosition(new THREE.Vector3());
+  const normal = new THREE.Vector3(0, 0, 1)
+    .applyQuaternion(mark.getWorldQuaternion(new THREE.Quaternion())).normalize();
+  const halfHeight = Math.max(0.72, mark.scale.x * 3.2);
+  const halfWidth = halfHeight * WIDTH / HEIGHT;
+  const camera = new THREE.OrthographicCamera(
+    -halfWidth, halfWidth, halfHeight, -halfHeight, 0.05, 20);
+  camera.position.copy(point).addScaledVector(normal, 7);
+  camera.up.set(0, 1, 0);
+  if (Math.abs(normal.y) > 0.92) camera.up.set(0, 0, normal.y > 0 ? -1 : 1);
+  camera.lookAt(point);
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+
+function readPixels() {
+  const gl = renderer.getContext();
+  const pixels = new Uint8Array(WIDTH * HEIGHT * 4);
+  gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  return pixels;
+}
+
+function render(camera) {
+  renderer.render(scene, camera);
+  return readPixels();
+}
+
+function pixelDifference(withMark, withoutMark) {
+  let changedPixels = 0;
+  let totalDelta = 0;
+  let minX = WIDTH;
+  let minY = HEIGHT;
+  let maxX = -1;
+  let maxY = -1;
+  for (let index = 0; index < withMark.length; index += 4) {
+    const delta = Math.abs(withMark[index] - withoutMark[index])
+      + Math.abs(withMark[index + 1] - withoutMark[index + 1])
+      + Math.abs(withMark[index + 2] - withoutMark[index + 2]);
+    if (delta < 18) continue;
+    const pixel = index / 4;
+    const x = pixel % WIDTH;
+    const y = Math.floor(pixel / WIDTH);
+    changedPixels += 1;
+    totalDelta += delta;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  return {
+    changedPixels,
+    averageRgbDelta: changedPixels ? totalDelta / changedPixels : 0,
+    boundsWidth: maxX >= minX ? maxX - minX + 1 : 0,
+    boundsHeight: maxY >= minY ? maxY - minY + 1 : 0,
+  };
+}
+
+function drawSheetFrame(sheet, column, row, kind) {
+  const cellWidth = 180;
+  const shotHeight = 110;
+  const labelHeight = 20;
+  const x = column * cellWidth;
+  const y = row * (shotHeight * 2 + labelHeight) + (kind === 'designation' ? shotHeight : 0);
+  sheet.getContext('2d').drawImage(renderer.domElement, x, y, cellWidth, shotHeight);
+}
+
+window.__AUDIT_VEHICLE_MARKINGS = async (ids, includeSheet = false) => {
+  const columns = 11;
+  const rows = Math.ceil(ids.length / columns);
+  const sheet = document.createElement('canvas');
+  sheet.width = columns * 180;
+  sheet.height = rows * 240;
+  const sheetContext = sheet.getContext('2d');
+  sheetContext.fillStyle = '#081015';
+  sheetContext.fillRect(0, 0, sheet.width, sheet.height);
+  sheetContext.font = '700 12px ui-monospace, monospace';
+  sheetContext.textAlign = 'center';
+  sheetContext.fillStyle = '#f3f5f6';
+  const tanks = {};
+  for (let idIndex = 0; idIndex < ids.length; idIndex += 1) {
+    const id = ids[idIndex];
+    const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242 });
+    scene.add(tank.root);
+    tank.root.updateMatrixWorld(true);
+    const result = {};
+    for (const kind of ['insignia', 'designation']) {
+      const mark = markingMeshes(tank.root, kind)[0];
+      if (!mark) {
+        const markingKinds = [];
+        const meshNames = [];
+        tank.root.traverse((object) => {
+          if (object.userData?.vehicleMarking) markingKinds.push(object.userData.markingKind);
+          if (object.isMesh && meshNames.length < 40) meshNames.push(object.name || '(unnamed)');
+        });
+        result[kind] = { error: 'no marking mesh', markingKinds, meshNames };
+        continue;
+      }
+      const camera = cameraForMark(mark);
+      const withMark = render(camera);
+      if (includeSheet) drawSheetFrame(
+        sheet, idIndex % columns, Math.floor(idIndex / columns), kind);
+      mark.visible = false;
+      const withoutMark = render(camera);
+      mark.visible = true;
+      result[kind] = {
+        ...pixelDifference(withMark, withoutMark),
+        clearSamples: mark.userData.visibilityClearSamples,
+        sampleCount: mark.userData.visibilitySamples,
+        visibilityVerified: mark.userData.visibilityVerified,
+        owner: mark.userData.surfaceOwner,
+        debug: {
+          worldPosition: mark.getWorldPosition(new THREE.Vector3()).toArray(),
+          worldNormal: new THREE.Vector3(0, 0, 1)
+            .applyQuaternion(mark.getWorldQuaternion(new THREE.Quaternion())).toArray(),
+          materialSide: mark.material.side,
+          materialOpacity: mark.material.opacity,
+          materialVisible: mark.material.visible,
+          cameraHits: new THREE.Raycaster(
+            camera.position,
+            mark.getWorldPosition(new THREE.Vector3()).sub(camera.position).normalize(),
+            0,
+            20,
+          ).intersectObject(tank.root, true).slice(0, 8).map((hit) => ({
+            name: hit.object.name,
+            distance: Number(hit.distance.toFixed(4)),
+            marking: !!hit.object.userData?.vehicleMarking,
+          })),
+        },
+      };
+    }
+    tanks[id] = result;
+    if (includeSheet) {
+      const cellWidth = 180;
+      const rowHeight = 240;
+      const x = (idIndex % columns) * cellWidth;
+      const y = Math.floor(idIndex / columns) * rowHeight + 220;
+      sheetContext.fillStyle = 'rgba(5,10,13,.9)';
+      sheetContext.fillRect(x, y, cellWidth, 20);
+      sheetContext.fillStyle = '#f3f5f6';
+      sheetContext.fillText(id, x + cellWidth / 2, y + 14);
+    }
+    scene.remove(tank.root);
+    tank.dispose();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+  return {
+    width: WIDTH,
+    height: HEIGHT,
+    tanks,
+    sheet: includeSheet ? sheet.toDataURL('image/png') : null,
+  };
+};
+
+window.__VEHICLE_MARKING_AUDIT_READY = true;
+</script>
+</body>
+</html>

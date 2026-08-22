@@ -166,6 +166,11 @@ try {
         || !markingCensus.codes?.includes(live.markings?.markingCode)) {
       failures.push(`${id}: visible insignia/designation does not match marking code (${JSON.stringify(markingCensus)})`);
     }
+    if (!(markingCensus.verifiedInsignia > 0)
+        || !(markingCensus.verifiedDesignation > 0)
+        || !(markingCensus.minimumVisibilityRatio >= 6 / 9)) {
+      failures.push(`${id}: insignia/designation lacks a clear finished-vehicle visibility receipt (${JSON.stringify(markingCensus)})`);
+    }
     if (!live.gun || !(live.gun.caliberMm > 0) || !live.gun.shells.length) failures.push(`${id}: incomplete gun/penetration metadata`);
     if (!live.armor || !live.armor.plates.length) failures.push(`${id}: no armor hit areas`);
     if (!live.armor || !live.armor.modules.length) failures.push(`${id}: no module volumes`);
