@@ -11,6 +11,7 @@ import {
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
+import { uiIconSVG } from '../ui/uiIcons.js';
 
 const $ = (selector) => document.querySelector(selector);
 const viewport = $('#viewport');
@@ -279,11 +280,22 @@ function renderDossier(record) {
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
   $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship.creator}`;
+  $('#dossierTankIcon').src = record.image;
+  $('#dossierTankIcon').alt = `${record.displayName} side profile`;
   $('#viewerRecord').textContent = `Archive record ${String(allIndex).padStart(3, '0')} / ${String(records.length).padStart(3, '0')}`;
 
-  const ratingTones = { firepower: '#e9a346', protection: '#67d19a', mobility: '#64cfdb', survivability: '#c18cff' };
-  $('#ratingGrid').innerHTML = Object.entries(record.ratings).map(([name, value]) =>
-    `<div class="rating" style="--rating:${value};--tone:${ratingTones[name]}"><small>${name}</small><strong>${value}<span> / 100</span></strong></div>`).join('');
+  const ratingPresentation = {
+    firepower: { tone: '#e9a346', icon: 'damage' },
+    protection: { tone: '#67d19a', icon: 'shield' },
+    mobility: { tone: '#64cfdb', icon: 'speed' },
+    survivability: { tone: '#c18cff', icon: 'crew' },
+  };
+  $('#ratingGrid').innerHTML = Object.entries(record.ratings).map(([name, value]) => {
+    const presentation = ratingPresentation[name];
+    return `<div class="rating" data-rating="${name}" style="--rating:${value};--tone:${presentation.tone}">` +
+      `<span class="rating-icon">${uiIconSVG(presentation.icon, 22)}</span>` +
+      `<span class="rating-metric"><small>${name}</small><strong>${value}<span> / 100</span></strong></span></div>`;
+  }).join('');
 
   const brief = $('#technicalBrief');
   brief.replaceChildren(...record.brief.map((copy) => {
