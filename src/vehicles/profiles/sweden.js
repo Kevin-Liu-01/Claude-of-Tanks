@@ -91,14 +91,10 @@ function addStrv81Package(P) {
   const { box, cylX, cylY, cylZ } = KIT;
   const slab = orientedSlab;
 
-  // Re-form the inherited vertical Centurion box into the oracle's low cast
-  // shell. This closed loft overlaps the ring, cheek field and rear body;
-  // its narrowed crown produces real sloping armor instead of a flat lid.
-  P.add('turret', slab(
-    [-1.10, 0.24, 1.20], [1.10, 0.24, 1.20],
-    [1.23, 0.26, -1.55], [-1.23, 0.26, -1.55],
-    [-0.78, 0.81, 0.95], [0.78, 0.81, 0.95],
-    [0.98, 0.78, -1.40], [-0.98, 0.78, -1.40]));
+  // Preserve the donor Centurion's closed cast shell. The former full-size
+  // Strv loft duplicated its front roof and produced a broad prism through
+  // the correct casting; Swedish-specific armor below is limited to seated
+  // cheek continuations and discrete crown fittings.
   // Unequal crown plates follow the cast slopes and create the broken roof
   // cadence visible on the supplied Strv 81 rather than one broad rectangle.
   P.add('turret', box(0.74, 0.055, 0.58), -0.39, 0.825, -0.52, 0, -0.08, 0);

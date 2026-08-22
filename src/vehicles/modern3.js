@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import { KIT } from './tankFactoryCore.js';
 import { FITTINGS } from './profiles/kit.js';
-import { TYPE10_GUN_SEAT } from './profiles/type10GunSeat.js';
+import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 import {
   crewBox as cbox,
@@ -2495,29 +2495,29 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.0286, 0.022, 1.43), s * 0.748, 0.132 + shellLift, 1.452, 0, s * -0.675, 0);
   }
-  // ---- mantlet + gun (§B3.1 — no prism reads anywhere on the run: the
-  // print's big collar ×1.10 with the recessed canvas boot, clamp-ringed,
-  // in a real cradle; bore 1.991) -------------------------------------------
+  // ---- mantlet + gun (§B3.1 — the moving mask fits inside the compact
+  // +-0.308 m turret throat instead of covering the cheek V; recessed canvas
+  // boot, clamp-ringed, in a real cradle; bore 1.991) -------------------------
   const type10MuzzleLocalZ = TYPE10_GUN_SEAT.certifiedMuzzleWorldZ
     - P.turretG.position.z - P.spec.armor.gunPivot[2];
   const type10GunLen = type10MuzzleLocalZ - 0.033;
   P.add('turretDark', box(0.638, 0.55, 0.055), 0, 0.319, 1.98, 0.55, 0, 0);     // embrasure shadow plate on the prow rake
-  P.addGunExtra(box(1.012, 0.572, 0.605), 0, 0.011, 0.462);                     // armored mantlet housing nested in the cheek V
+  P.addGunExtra(box(TYPE10_MANTLET_FIT.housingWidth, TYPE10_MANTLET_FIT.housingHeight, 0.605), 0, 0.011, 0.462); // compact armored mantlet housing nested in the cheek V
   for (const s of [-1, 1]) {
     P.addGunExtra(slab(                                                         // cradle side cheeks hugging the housing (§B1 raked, one plane each)
-      [s * 0.506, -0.264, 0.187], [s * 0.638, -0.242, 0.187], [s * 0.572, -0.198, 0.737], [s * 0.462, -0.220, 0.737],
-      [s * 0.506, 0.297, 0.187], [s * 0.638, 0.275, 0.187], [s * 0.572, 0.242, 0.737], [s * 0.462, 0.264, 0.737]));
+      [s * 0.285, -0.231, 0.187], [s * 0.308, -0.220, 0.187], [s * 0.295, -0.180, 0.737], [s * 0.270, -0.191, 0.737],
+      [s * 0.285, 0.253, 0.187], [s * 0.308, 0.242, 0.187], [s * 0.295, 0.214, 0.737], [s * 0.270, 0.225, 0.737]));
   }
-  P.addGunExtra(box(0.858, 0.462, 0.198), 0, 0.022, 0.836);                     // face plate course
-  P.addGunExtra(box(0.484, 0.066, 0.594), 0, 0.308, 0.484);                     // top cover plate over the trunnion throat
-  P.addGunExtraDark(box(0.11, 0.033, 0.066), -0.20, 0.352, 0.484);              // its lift lugs
-  P.addGunExtraDark(box(0.11, 0.033, 0.066), 0.20, 0.352, 0.484);
+  P.addGunExtra(box(TYPE10_MANTLET_FIT.faceWidth, TYPE10_MANTLET_FIT.faceHeight, 0.198), 0, 0.022, 0.836); // face plate course
+  P.addGunExtra(box(TYPE10_MANTLET_FIT.topCoverWidth, 0.044, 0.55), 0, 0.225, 0.484); // flush top cover over the trunnion throat
+  P.addGunExtraDark(box(0.09, 0.022, 0.055), -0.15, 0.244, 0.484);              // its lift lugs
+  P.addGunExtraDark(box(0.09, 0.022, 0.055), 0.15, 0.244, 0.484);
   P.addGunExtra(cylZ(0.1705, 0.33, P.q ? 18 : 12, 0.22), 0, 0, 1.045);          // canvas boot collar tapering to the tube
   P.addGunExtraDark(cylZ(0.1782, 0.055, P.q ? 18 : 12), 0, 0, 0.946);           // boot seam ring
   P.addGunExtraDark(cylZ(0.180, 0.033, P.q ? 18 : 12), 0, 0, 1.18);             // boot clamp ring fore (on the cone surface)
   P.addGunExtraDark(cylZ(0.209, 0.033, P.q ? 18 : 12), 0, 0, 1.062);            // boot clamp ring mid (on the cone surface)
-  P.addGunExtraDark(cylZ(0.033, 0.066, 8), 0.297, 0.11, 0.935);                 // coax port, flush in the mantlet face
-  P.addGunExtra(box(0.132, 0.121, 0.154), 0.297, 0.11, 0.858);                  // coax armored fairing behind the port
+  P.addGunExtraDark(cylZ(0.033, 0.066, 8), TYPE10_MANTLET_FIT.auxiliaryPortX, 0.11, 0.935); // coax port, flush in the mantlet face
+  P.addGunExtra(box(0.112, 0.121, 0.154), TYPE10_MANTLET_FIT.auxiliaryPortX, 0.11, 0.858); // coax armored fairing behind the port
   P.addGunExtra(cylZ(0.1705, 0.308, P.q ? 16 : 10), 0, 0, type10MuzzleLocalZ - 0.2354); // muzzle reference collar
   P.addGunExtraDark(cylZ(0.1727, 0.044, P.q ? 16 : 10), 0, 0, type10MuzzleLocalZ - 0.385); // collar seam ring
   // The mantlet now seats at the marked turret throat. Shorten only the

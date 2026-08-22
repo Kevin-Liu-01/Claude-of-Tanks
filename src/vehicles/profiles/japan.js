@@ -8,6 +8,7 @@ import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildType10BBase } from '../modern3.js';
 import { buildType90 } from './misc.js';
+import { TYPE10_MANTLET_FIT } from './type10GunSeat.js';
 
 function mount(P, fitting, x, y, z, rotation = null, owner = 'turret') {
   fitting.position.set(x, y, z);
@@ -714,12 +715,14 @@ function addType10BPackage(P) {
     baseBasketForwardZ: -2.585,
     basketJoinGapM: 0,
   };
-  // Type 10 Kai 120-mm closed mask and strengthened sleeve.
-  P.addGunExtra(box(0.858, 0.55, 0.297), 0, -0.011, 0.44);
+  // Type 10 Kai 120-mm closed mask and strengthened sleeve. The applique
+  // remains inside the shared turret throat instead of restoring the former
+  // oversized rectangular mask.
+  P.addGunExtra(box(TYPE10_MANTLET_FIT.kaiMaskWidth, TYPE10_MANTLET_FIT.kaiMaskHeight, 0.297), 0, 0, 0.44);
   P.addGunExtra(cylZ(0.209, 0.44, 18, 0.165), 0, 0, 0.77);
-  P.addGunExtra(cylZ(0.0825, 0.242, 12), -0.308, 0.165, 0.517);
-  P.addGunExtraDark(cylZ(0.0528, 0.0495, 12), -0.308, 0.165, 0.66);
-  P.addGunExtraDark(cylZ(0.0418, 0.11, 10), 0.319, 0.077, 0.671);
+  P.addGunExtra(cylZ(0.0825, 0.242, 12), -TYPE10_MANTLET_FIT.auxiliaryPortX, 0.145, 0.517);
+  P.addGunExtraDark(cylZ(0.0528, 0.0495, 12), -TYPE10_MANTLET_FIT.auxiliaryPortX, 0.145, 0.66);
+  P.addGunExtraDark(cylZ(0.0418, 0.11, 10), TYPE10_MANTLET_FIT.auxiliaryPortX, 0.077, 0.671);
   P.decal('turret', 'number', '10-B', 0.22, [-1.628, 0.473, -0.902], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.628);
 }

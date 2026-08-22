@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTank } from '../tankFactory.js';
-import { TYPE10_GUN_SEAT } from './type10GunSeat.js';
+import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './type10GunSeat.js';
 
 const closeTo = (actual, expected, tolerance, label) => {
   assert.ok(Math.abs(actual - expected) <= tolerance,
@@ -21,13 +21,23 @@ for (const id of ['type10', 'type10b']) {
   assert.ok(turret && gun && mount?.geometry && muzzle,
     `${id}: complete articulated gun rig exists`);
   mount.geometry.computeBoundingBox();
-  const mantletBackZ = gun.position.z + mount.geometry.boundingBox.min.z;
+  const mountBounds = mount.geometry.boundingBox;
+  const mantletBackZ = gun.position.z + mountBounds.min.z;
+  const mantletHalfWidth = Math.max(Math.abs(mountBounds.min.x), mountBounds.max.x);
+  const mantletBottomY = gun.position.y + mountBounds.min.y;
+  const mantletTopY = gun.position.y + mountBounds.max.y;
 
   closeTo(gun.position.x, 0, 1e-9, `${id}: cannon is centered laterally`);
   closeTo(turret.position.y + gun.position.y, 1.991, 1e-6,
     `${id}: cannon restores the authored bore height`);
   closeTo(mantletBackZ, TYPE10_GUN_SEAT.turretAttachmentCenterZ, 0.001,
     `${id}: mantlet back plane meets the turret attachment area`);
+  assert.ok(mantletHalfWidth <= TYPE10_MANTLET_FIT.throatHalfWidth + 0.001,
+    `${id}: moving mantlet width ${mantletHalfWidth.toFixed(4)} fits the turret throat`);
+  assert.ok(mantletBottomY >= TYPE10_MANTLET_FIT.throatBottomY,
+    `${id}: moving mantlet bottom ${mantletBottomY.toFixed(4)} stays inside the turret throat`);
+  assert.ok(mantletTopY <= TYPE10_MANTLET_FIT.throatTopY + 0.003,
+    `${id}: moving mantlet top ${mantletTopY.toFixed(4)} stays inside the turret throat`);
 
   visual.root.updateMatrixWorld(true);
   const muzzleWorld = muzzle.getWorldPosition(new Vector3());
@@ -46,4 +56,4 @@ for (const id of ['type10', 'type10b']) {
   visual.dispose();
 }
 
-console.log('type10GunSeat.selftest: Type 10 and Type 10B cannons are centered, seated, and length-stable');
+console.log('type10GunSeat.selftest: Type 10 and Type 10B mantlets fit the turret throat while their cannons stay centered, seated, and length-stable');

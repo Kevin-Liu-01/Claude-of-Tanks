@@ -100711,7 +100711,7 @@
           }
         ]
       },
-      "geometryHash": "3060b4db",
+      "geometryHash": "aedcb8f3",
       "metadataHash": "574b4efc",
       "appearance": {
         "version": 1,
@@ -100800,24 +100800,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69313,
-          "sha256": "e3ccbf3f437febbbf65668d063fca928777587a4fa6cc1df6997d6ce9113b8c4"
+          "bytes": 67988,
+          "sha256": "d01531ffd430112232e79bb2f6b5412eb57da0826ba0680b0b6dfbf3381e7aa3"
         },
         "armorSide": {
           "file": "strv81_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68087,
-          "sha256": "77f078514fecbb9c311ea1c08fdd0cb2b81b56d4dead318923e26725bd4416ca"
+          "bytes": 68880,
+          "sha256": "857fe6729fb1f655b2c723e0cd7fe7922aae3e08a4ec4f731f9dbd4f50609a8f"
         },
         "modulesSide": {
           "file": "strv81_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74724,
-          "sha256": "9ed693dc3b0336cea1a9ac4d4e6cef67055e13e2cfac161748fe60de66e3cb2a"
+          "bytes": 74468,
+          "sha256": "cdf269d04a1105c1954de2e404eb8a578e342e87997f5f7fbfd96e193dd5b23a"
         },
         "markings": {
           "file": "strv81_markings.png",
@@ -133713,7 +133713,7 @@
           }
         ]
       },
-      "geometryHash": "96fe5c9b",
+      "geometryHash": "0594e4e1",
       "metadataHash": "6b7798d0",
       "appearance": {
         "version": 1,
@@ -133802,24 +133802,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74683,
-          "sha256": "98f55bb587946b4db9fb1fc8a2cf65b02320f53fd4673e6d5be6cd7b7cb65c3d"
+          "bytes": 73655,
+          "sha256": "484241b10bb89cee8f7561a3a68ac62cf13ea35ef28607f3e546f06eb90f998d"
         },
         "armorSide": {
           "file": "type10_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75275,
-          "sha256": "56a4539e45ed00d4cbf04cb806668edd5b369a83678729a8b94abc291f9cedbe"
+          "bytes": 74823,
+          "sha256": "95bcb940157f70895112ccbee271b8948bc4124b79817e73d0b1c8ad0f9816ad"
         },
         "modulesSide": {
           "file": "type10_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78693,
-          "sha256": "b8b13e754f8ce4fc8114c8acc9d983e35264193c8e25b7fb9fa6cd68eab5d240"
+          "bytes": 78525,
+          "sha256": "31e80e3fffb4f3a6b520bbf36be7fcdb7cf9eae3f267b78a04d98e6af52a7690"
         },
         "markings": {
           "file": "type10_markings.png",
@@ -134704,7 +134704,7 @@
           }
         ]
       },
-      "geometryHash": "38531a51",
+      "geometryHash": "7c44d997",
       "metadataHash": "e62dfd38",
       "appearance": {
         "version": 1,
@@ -134793,24 +134793,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77010,
-          "sha256": "119ed0b683c0844162931d91f834bec39e9794e2a01b14ccacd97879236cec43"
+          "bytes": 76585,
+          "sha256": "e8204bf70eb652b7c6679ae09dd99660555475e7dc4cf4ea6129e5e5af6d7ef4"
         },
         "armorSide": {
           "file": "type10b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79772,
-          "sha256": "fbbf78466b2e90a4ae9cd9741660f2aed0951fa59199e73b0236b95a1034c33e"
+          "bytes": 79605,
+          "sha256": "781b3e1921774327fde35a0f1867d1c4df51934c4aa156dd59f50f19f4596df6"
         },
         "modulesSide": {
           "file": "type10b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83762,
-          "sha256": "1a0558d322fcae21ec8085c44f6a102603904ed6beaf191043c0beebf7c123a3"
+          "bytes": 83473,
+          "sha256": "59e4af8c6141523409b282cf1d0528f625218de932623ccaff1447cb55d42c49"
         },
         "markings": {
           "file": "type10b_markings.png",
