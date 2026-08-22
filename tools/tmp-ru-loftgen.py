@@ -14,6 +14,8 @@ def med(v):
     return v[len(v) // 2]
 
 def main(tid):
+    if not tid or not all(c.isalnum() or c in '-_' for c in tid):
+        raise ValueError(f'Invalid tank id: {tid!r}')
     d = json.load(open(os.path.join(WT, f'{tid}.json')))
     prof = json.load(open(f'docs/references/profiles/{tid}.json'))
     cols = []
