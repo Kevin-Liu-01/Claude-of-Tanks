@@ -2128,9 +2128,28 @@ function buildT80UNative2026(P) {
   P.add('hull', slab(                                                          // stern boat-tail (x ±1.14 inside the tracks)
     [-1.14, 0.26, -2.10], [1.14, 0.26, -2.10], [1.14, 0.26, -2.30], [-1.14, 0.26, -2.30],
     [-1.14, 0.62, -2.10], [1.14, 0.62, -2.10], [1.14, 0.62, -3.12], [-1.14, 0.62, -3.12]));
-  P.add('hull', slab(                                                          // bow belly rise
-    [-1.14, 0.26, 2.46], [1.14, 0.26, 2.46], [1.14, 0.26, 2.66], [-1.14, 0.26, 2.66],
-    [-1.14, 0.66, 2.46], [1.14, 0.66, 2.46], [1.14, 0.66, 3.32], [-1.14, 0.66, 3.32]));
+  // The old lower-bow wedge stopped at y=.66 while the underside of the
+  // steep nose begins at y=.89.  That left a visible 230 mm step/daylight
+  // line across the bow.  Lift the complete closed wedge, not just its top
+  // face: its rear remains buried in the lower tub and its full forward
+  // course now overlaps the nose underside from z=2.96..3.32.
+  const lowerGlacisLiftM = 0.23;
+  const lowerGlacisTopY = 0.66 + lowerGlacisLiftM;
+  P.add('hull', slab(                                                          // raised lower glacis / bow belly rise
+    [-1.14, 0.26 + lowerGlacisLiftM, 2.46], [1.14, 0.26 + lowerGlacisLiftM, 2.46],
+    [1.14, 0.26 + lowerGlacisLiftM, 2.66], [-1.14, 0.26 + lowerGlacisLiftM, 2.66],
+    [-1.14, lowerGlacisTopY, 2.46], [1.14, lowerGlacisTopY, 2.46],
+    [1.14, lowerGlacisTopY, 3.32], [-1.14, lowerGlacisTopY, 3.32]));
+  P.hullG.userData.t80uHullGlacisReceipt = {
+    architecture: 'raised-overlapping-lower-glacis',
+    liftM: lowerGlacisLiftM,
+    lowerGlacisTopY,
+    matingNoseBottomY: 0.89,
+    overlapStartZ: 2.96,
+    overlapEndZ: 3.32,
+    overlapLengthM: 0.36,
+    attachmentGapM: 0,
+  };
   // Continuous inboard hull belt.  The lower tub ended at y=.98 while the
   // upper sponson structure began at y=1.06, leaving a real eight-centimetre
   // air seam through both side profiles.  This closed belt overlaps both
@@ -2476,9 +2495,34 @@ function buildT80UNative2026(P) {
   // in the sleeve gap, no muzzle brake/MRS.
   P.gunG.position.set(0, 0.10, 0.55);
   trunnionRoll(P, 0.17, 0.55, { ballR: 0.145, ballZ: 0.20 });
-  P.addGunExtra(box(0.42, 0.42, 0.28), 0, 0.01, 0.28);                         // embrasure block
-  P.addGunExtra(cylZ(0.125, 0.30, 12, 0.15), 0, 0, 0.50);                      // root collar
+  // Compact 2A46 rocking mask. The former square embrasure left the tube
+  // emerging from a narrow vertical block. This gun-owned package uses a
+  // buried seal, a rounded cast roll spanning the K-5 valley, supported
+  // upper/lower lips, and a canvas-ringed rotor collar. Its rear half enters
+  // the turret nose so pitch cannot reveal daylight around the gun root.
+  P.addGunExtra(box(0.64, 0.36, 0.16), 0, 0.01, 0.06);                         // buried aperture seal
+  P.addGunExtra(
+    KIT.xform(cylX(0.24, 0.70, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [1, 0.92, 1.08]),
+    0, 0.01, 0.22);                                                            // rounded rocking shield
+  P.addGunExtra(box(0.68, 0.055, 0.30), 0, 0.235, 0.23, -0.10, 0, 0);         // cast rain brow
+  P.addGunExtra(box(0.62, 0.065, 0.27), 0, -0.215, 0.22, 0.10, 0, 0);         // supported lower lip
+  for (const [mx, my] of [[-0.29, 0.13], [0.29, 0.13], [-0.29, -0.12], [0.29, -0.12]]) {
+    P.addGunExtraDark(cylZ(0.012, 0.026, 8), mx, my, 0.455);                   // shield fasteners
+  }
+  P.addGunExtra(cylZ(0.145, 0.34, 14, 0.16), 0, 0, 0.46);                     // proud rotor collar
+  P.addGunExtraDark(torus(0.132, 0.020, P.q ? 18 : 14), 0, 0, 0.62);          // canvas boot ring
   P.add('turret', box(0.60, 0.13, 0.30), 0, bodyY(0.44), 0.98, -0.45, 0, 0);
+  P.gunG.userData.t80uMantletReceipt = {
+    architecture: 'compact-rounded-rocking-shield',
+    widthM: 0.70,
+    heightM: 0.48,
+    rearEmbedM: 0.10,
+    supportedUpperLip: true,
+    supportedLowerLip: true,
+    canvasBootRing: true,
+    gunOwned: true,
+    materialBucketMerged: true,
+  };
   // muzzle at REAR+9.65 (dims sovereign — the print's tube is 1.5% short,
   // certified; the normalize plan stretches its barrel zone to match).
   // Right-offset sleeve clamp = the print's asymmetric evac-zone bulge
