@@ -13,9 +13,9 @@ const pages = [
 ];
 const expectedLinks = [
   ['/home', 'Home'],
+  ['/studio', 'Studio'],
   ['/gallery', 'Tank Gallery'],
   ['/docs', 'Docs'],
-  ['/studio', 'Studio'],
   ['https://github.com/Kevin-Liu-01/claude-of-tanks', `GitHub ${FALLBACK_GITHUB_STAR_COUNT}`],
   ['/', 'Play Now'],
 ];
