@@ -1034,6 +1034,32 @@ function merkavaChassis(P, c) {
     wheelFaceLayers,
   });
 
+  if (P.spec.id === 'merkava4b') {
+    P.hullG.userData.merkava4bChassisReceipt = Object.freeze({
+      revision: 'short-bow-raised-sprocket-course-r3',
+      hullNoseZ: c.body[0].z,
+      previousHullNoseZ: 3.33,
+      lowerGlacisToeZ: c.keel.toeZ,
+      previousLowerGlacisToeZ: 2.86,
+      lowerGlacisKneeZ: c.keel.midZ,
+      previousLowerGlacisKneeZ: 2.74,
+      glacisFurnitureToeZ: c.glacis.z1,
+      previousGlacisFurnitureToeZ: 3.27,
+      hullShortenedM: 0.15,
+      additionalLowerGlacisShorteningM: 0.30,
+      totalLowerGlacisShorteningM: 0.75,
+      trackRearShiftM: c.trackRearShiftM ?? 0,
+      frontSprocketZPreserved: true,
+      sprocketZ: c.sprocket.z,
+      sprocketY: c.sprocket.y,
+      previousSprocketY: c.sprocket.y - (c.sprocketRaiseM ?? 0),
+      sprocketRaiseM: c.sprocketRaiseM ?? 0,
+      roadWheelZs: Object.freeze([...c.wheelZs]),
+      rollerZs: Object.freeze([...c.rollers]),
+      idlerZ: c.idler.z,
+    });
+  }
+
   // 1B r10 GEAR READ (c.wheelFace-gated — 1B only, siblings byte-exact;
   // view-right 8.4 driver, measured on the official pair): the ref runs
   // ~0.71-0.73 m wheels with 9-12 px pale windows between them and DISHED
@@ -7323,32 +7349,107 @@ function merkavaSourceFinish(P, p, t) {
     return stations.at(-1)[1];
   };
 
+  const mk4bEraEmbedM = 0.014;
+  const mk4bEraSeats = [];
+  const mk4bEraCells = (side) => {
+    if (id !== 'merkava4b') return null;
+    const cheek = t.cheek;
+    const pointAt = (absX, heightFraction) => {
+      const points = cheek.pts;
+      const x = THREE.MathUtils.clamp(absX, points[0][0], points.at(-1)[0]);
+      let segment = points.length - 2;
+      for (let index = 0; index < points.length - 1; index++) {
+        if (x >= points[index][0] && x <= points[index + 1][0]) {
+          segment = index;
+          break;
+        }
+      }
+      const a = points[segment], b = points[segment + 1];
+      const mix = (x - a[0]) / Math.max(0.001, b[0] - a[0]);
+      const course = (segment + mix) / Math.max(1, points.length - 1);
+      const bottomY = THREE.MathUtils.lerp(cheek.botIn, cheek.botOut, course);
+      const topY = THREE.MathUtils.lerp(cheek.topIn, cheek.topOut, course);
+      const bottomZ = THREE.MathUtils.lerp(a[1], b[1], mix);
+      const topZ = bottomZ - (t.cheekRake ?? 0.06);
+      return new THREE.Vector3(
+        side * x,
+        THREE.MathUtils.lerp(bottomY, topY, heightFraction),
+        THREE.MathUtils.lerp(bottomZ, topZ, heightFraction),
+      );
+    };
+    const cells = [];
+    for (const heightFraction of [0.54, 0.82]) {
+      for (const absX of [0.70, 0.90, 1.10, 1.30, 1.50]) {
+        const surface = pointAt(absX, heightFraction);
+        const horizontal = pointAt(absX + 0.025, heightFraction)
+          .sub(pointAt(absX - 0.025, heightFraction)).multiplyScalar(side).normalize();
+        const vertical = pointAt(absX, heightFraction + 0.018)
+          .sub(pointAt(absX, heightFraction - 0.018)).normalize();
+        const normal = new THREE.Vector3().crossVectors(horizontal, vertical).normalize();
+        const yAxis = new THREE.Vector3().crossVectors(normal, horizontal).normalize();
+        horizontal.crossVectors(yAxis, normal).normalize();
+        const rotation = new THREE.Matrix4().makeBasis(horizontal, yAxis, normal);
+        const euler = new THREE.Euler().setFromRotationMatrix(rotation, 'YXZ');
+        const depth = 0.078;
+        const center = surface.clone().addScaledVector(normal, depth / 2 - mk4bEraEmbedM);
+        const support = surface.clone().addScaledVector(normal, -0.022);
+        cells.push({
+          x: center.x, y: center.y, z: center.z,
+          rx: euler.x, ry: euler.y, rz: euler.z,
+          nx: normal.x, ny: normal.y, nz: normal.z,
+          surface,
+          support,
+          tileW: 0.20, tileH: 0.15, tileD: depth,
+        });
+      }
+    }
+    return cells;
+  };
+
   // Faceted cheek arrays follow the cast wedge from the mantlet shoulder to
   // the outer cheek.  Each module overlaps the casting by half its depth;
   // the visible dark lower seam is a hinge/retainer, not a floating plate.
   for (const s of [-1, 1]) {
-    const eraCells = [];
-    for (let row = 0; row < combatFit.rows; row++) {
-      for (let col = 0; col < combatFit.cols; col++) {
-        const f = col / Math.max(1, combatFit.cols - 1);
-        const x = s * (0.48 + (combatFit.xOut - 0.48) * f);
-        const z = combatFit.z - f * 0.56 - row * 0.045;
-        const tileW = Math.max(0.18, (combatFit.xOut - 0.38) / combatFit.cols * 0.94);
-        const tileH = combatFit.rows === 2 ? 0.19 : 0.16;
-        // These cassettes dress the cast cheek; they must not become a new
-        // box turret. Bury roughly half of a shallow 90-120 mm module in the
-        // slope while preserving the requested multi-cell ERA cadence.
-        const tileD = 0.095 + f * 0.025;
-        const y = roofAt(z) + combatFit.cheekRise - f * 0.08 - row * tileH * 0.92;
-        const yaw = s * (-0.12 - f * 0.24);
-        const roll = s * (0.04 + f * 0.08);
-        // eraCluster turret-local placements use world rest-pose y/z and
-        // convert them around the turret pivot internally.  Feeding V/L
-        // here applied that conversion twice and dropped the cassettes into
-        // the running gear at yaw.
-        eraCells.push({ x, y, z, tileW, tileH, tileD, yaw, roll });
-        P.add('turretDark', box(tileW * 0.78, 0.018, 0.028), x,
-          V(y - tileH * 0.46), L(z + tileD * 0.33), -0.18, yaw, roll);
+    const eraCells = mk4bEraCells(s) ?? [];
+    if (id !== 'merkava4b') {
+      for (let row = 0; row < combatFit.rows; row++) {
+        for (let col = 0; col < combatFit.cols; col++) {
+          const f = col / Math.max(1, combatFit.cols - 1);
+          const x = s * (0.48 + (combatFit.xOut - 0.48) * f);
+          const z = combatFit.z - f * 0.56 - row * 0.045;
+          const tileW = Math.max(0.18, (combatFit.xOut - 0.38) / combatFit.cols * 0.94);
+          const tileH = combatFit.rows === 2 ? 0.19 : 0.16;
+          // These cassettes dress the cast cheek; they must not become a new
+          // box turret. Bury roughly half of a shallow 90-120 mm module in the
+          // slope while preserving the requested multi-cell ERA cadence.
+          const tileD = 0.095 + f * 0.025;
+          const y = roofAt(z) + combatFit.cheekRise - f * 0.08 - row * tileH * 0.92;
+          const yaw = s * (-0.12 - f * 0.24);
+          const roll = s * (0.04 + f * 0.08);
+          // eraCluster turret-local placements use world rest-pose y/z and
+          // convert them around the turret pivot internally. Feeding V/L
+          // here applied that conversion twice and dropped the cassettes into
+          // the running gear at yaw.
+          eraCells.push({ x, y, z, tileW, tileH, tileD, yaw, roll });
+          P.add('turretDark', box(tileW * 0.78, 0.018, 0.028), x,
+            V(y - tileH * 0.46), L(z + tileD * 0.33), -0.18, yaw, roll);
+        }
+      }
+    } else {
+      for (const cell of eraCells) {
+        mk4bEraSeats.push(Object.freeze({
+          side: s,
+          center: Object.freeze([cell.x, cell.y, cell.z]),
+          surface: Object.freeze(cell.surface.toArray()),
+          normal: Object.freeze([cell.nx, cell.ny, cell.nz]),
+          rotation: Object.freeze([cell.rx, cell.ry, cell.rz]),
+          cassetteDepthM: cell.tileD,
+          centerProudM: cell.tileD / 2 - mk4bEraEmbedM,
+          innerFaceOverlapM: mk4bEraEmbedM,
+        }));
+        P.add('turretDark', box(cell.tileW * 0.70, cell.tileH * 0.42, 0.028),
+          cell.support.x, cell.support.y, cell.support.z,
+          cell.rx, cell.ry, cell.rz);
       }
     }
     // These are actual ERA placements rather than permanent decorative
@@ -7357,8 +7458,15 @@ function merkavaSourceFinish(P, p, t) {
     // source-derived faceted field and keeps one instanced mesh per side.
     P.eraCluster(`merkava_${id}_turret_era_${s > 0 ? 'R' : 'L'}`, (put) => {
       for (const cell of eraCells) {
-        put(cell.x, cell.y, cell.z, -0.18, cell.yaw, cell.roll,
-          cell.tileW / 0.28, cell.tileH / 0.13, cell.tileD / 0.07);
+        if (id === 'merkava4b') {
+          const armorPivot = P.spec.armor.turretPivot;
+          put(armorPivot[0] + cell.x, armorPivot[1] + cell.y, armorPivot[2] + cell.z,
+            cell.rx, cell.ry, cell.rz,
+            cell.tileW / 0.28, cell.tileH / 0.13, cell.tileD / 0.07);
+        } else {
+          put(cell.x, cell.y, cell.z, -0.18, cell.yaw, cell.roll,
+            cell.tileW / 0.28, cell.tileH / 0.13, cell.tileD / 0.07);
+        }
       }
     }, true);
 
@@ -7387,6 +7495,21 @@ function merkavaSourceFinish(P, p, t) {
           V(y + h * 0.20), L(z + d * dz), -0.08, yaw, 0);
       }
     }
+  }
+  if (id === 'merkava4b') {
+    P.turretG.userData.merkava4bEraReceipt = Object.freeze({
+      revision: 'conformal-cheek-r1',
+      cassettesPerSide: combatFit.rows * combatFit.cols,
+      totalCassettes: combatFit.rows * combatFit.cols * 2,
+      contactEmbedM: mk4bEraEmbedM,
+      maxSurfaceGapM: 0,
+      surfaceDerivedTransforms: true,
+      outwardMirroredNormals: true,
+      visualTurretPivot: Object.freeze(P.turretG.position.toArray()),
+      combatTurretPivot: Object.freeze([...P.spec.armor.turretPivot]),
+      visualVerticalScale: p.turretScale?.y ?? 1,
+      seats: Object.freeze(mk4bEraSeats),
+    });
   }
 
   // Shallow roof cassettes create visible styling without replacing the cast
@@ -8913,9 +9036,26 @@ function scaleMerkavaCourse(course, {
   };
 }
 
-const MK4B_MK1B_TRACK_COURSE = scaleMerkavaCourse(MK1B_TRACK_COURSE, {
+const MK4B_BASE_TRACK_COURSE = scaleMerkavaCourse(MK1B_TRACK_COURSE, {
   frontZ: 2.90, rearZ: -3.05, outerX: 1.73, hullWidth: 3.72,
 });
+const MK4B_TRACK_REAR_SHIFT_M = 0.20;
+const MK4B_SPROCKET_RAISE_M = 0.20;
+const MK4B_MK1B_TRACK_COURSE = {
+  ...MK4B_BASE_TRACK_COURSE,
+  trackRearShiftM: MK4B_TRACK_REAR_SHIFT_M,
+  sprocketRaiseM: MK4B_SPROCKET_RAISE_M,
+  sprocket: {
+    ...MK4B_BASE_TRACK_COURSE.sprocket,
+    y: MK4B_BASE_TRACK_COURSE.sprocket.y + MK4B_SPROCKET_RAISE_M,
+  },
+  wheelZs: MK4B_BASE_TRACK_COURSE.wheelZs.map((z) => z - MK4B_TRACK_REAR_SHIFT_M),
+  idler: {
+    ...MK4B_BASE_TRACK_COURSE.idler,
+    z: MK4B_BASE_TRACK_COURSE.idler.z - MK4B_TRACK_REAR_SHIFT_M,
+  },
+  rollers: MK4B_BASE_TRACK_COURSE.rollers.map((z) => z - MK4B_TRACK_REAR_SHIFT_M),
+};
 // Mk.3 shared running gear. r2: the refs' rear track RISES from the last
 // road wheel (~-2.6) to a high tail idler — the wheel row ends earlier and
 // the idler sits high/aft so the wrap fills the measured rising band.
@@ -10546,7 +10686,7 @@ export const MERKAVA_PROFILES = {
     width: 3.72, ...MK4B_MK1B_TRACK_COURSE,
     deckY: 1.76, rearDeckZ: -2.75,
     body: [
-      { z: 3.33, yT: 1.12, yB: 0.98, wT: 0.80, wB: 0.75 },
+      { z: 3.18, yT: 1.12, yB: 0.98, wT: 0.80, wB: 0.75 },
       { z: 2.85, yT: 1.44, yB: 1.02, wT: 1.55, wB: 1.30 },
       { z: 1.10, yT: 1.76, yB: 1.00, wT: 1.66, wB: 1.66 },
       { z: -3.20, yT: 1.76, yB: 1.00, wT: 1.66, wB: 1.66 },
@@ -10560,8 +10700,8 @@ export const MERKAVA_PROFILES = {
     // the exterior hull wall, armor skirts and lower silhouette are unchanged.
     bodyTrackClear: { hw: 1.13, y: 1.34 },
     tailNotch: { hw: 0.45 },
-    keel: { toeZ: 3.31, toeY: 0.98, toeHW: 0.60, midZ: 2.74, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -3.70, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
-    glacis: { z0: 1.10, z1: 3.27 },
+    keel: { toeZ: 2.56, toeY: 0.98, toeHW: 0.60, midZ: 2.44, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -3.70, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
+    glacis: { z0: 1.10, z1: 3.12 },
     podX: 0.60, podIn: 0.15,
     fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.05, z1: 2.4, y: 1.46 },
     fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.05, top: 1.52, bot: 1.30 },
@@ -10589,7 +10729,7 @@ export const MERKAVA_PROFILES = {
         { x0: 0.60, x1: 1.10, z1: -3.88, top: 1.47, bot: 1.20 },
       ],
     },
-    hullPosts: [{ x: -0.62, z: 3.43, top: 1.20, base: 1.00 }],
+    hullPosts: [{ x: -0.62, z: 3.28, top: 1.20, base: 1.00 }],
     pivotZ: -0.55,
     turretStyle: 'mod',
     // The supplied Mk.4B oracle carries the compact MG253 gun run. Preserve
