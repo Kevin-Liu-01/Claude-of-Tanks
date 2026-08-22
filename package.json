@@ -40,6 +40,7 @@
     "tank:roster:check": "node tools/vehicle-roster-report.mjs --check",
     "tank:track:duplicates": "node tools/track-duplicate-audit.mjs",
     "tank:track:check": "node tools/track-system-audit.mjs",
+    "tank:track:round": "node tools/track-system-audit.mjs --round",
     "tank:track:maps": "node tools/track-system-audit.mjs --battle --maps=badlands,verdant,steppe,railyard",
     "tank:freeze": "node tools/fleet-freeze-snapshot.mjs",
     "tank:freeze:check": "node tools/fleet-freeze-snapshot.mjs --check",

@@ -3,10 +3,13 @@
 // closed course that drives belts, shoes, grousers, sprocket teeth and wheel
 // lanes. --battle additionally deploys every requested vehicle onto a real
 // battlefield and checks the live, terrain-conformed instance matrices.
+// --round settles each vehicle on a deterministic convex cylindrical course
+// and captures both sides for mandatory visual review of the complete shoe run.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 await import('../src/vehicles/tankFactory.js');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
@@ -14,13 +17,17 @@ const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const mapArg = process.argv.find((arg) => arg.startsWith('--maps='));
 const outputArg = process.argv.find((arg) => arg.startsWith('--output='));
+const roundShotsArg = process.argv.find((arg) => arg.startsWith('--round-shots='));
 const runBattle = process.argv.includes('--battle');
+const runRound = process.argv.includes('--round');
 const skipStatic = process.argv.includes('--skip-static');
 const ids = idArg
   ? idArg.slice(6).split(',').map((id) => id.trim()).filter(Boolean)
   : [...ALL_TANK_IDS];
 const maps = (mapArg ? mapArg.slice(7) : 'badlands')
   .split(',').map((id) => id.trim()).filter(Boolean);
+const roundShotsDir = roundShotsArg?.slice('--round-shots='.length)
+  || 'shots/track-round-audit';
 
 const server = await createServer({
   root: process.cwd(),
@@ -40,6 +47,7 @@ const browser = await puppeteer.launch({
 });
 
 const staticRows = [];
+const roundRows = [];
 const battleRows = [];
 let failed = false;
 try {
@@ -62,6 +70,39 @@ try {
       if (result.error) console.error(`  - ${result.error.split('\n')[0]}`);
     }
     await page.close();
+  }
+
+  if (runRound) {
+    mkdirSync(roundShotsDir, { recursive: true });
+    const roundPage = await browser.newPage();
+    roundPage.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+    roundPage.setDefaultTimeout(180000);
+    for (const [index, id] of ids.entries()) {
+      for (const view of ['left', 'right']) {
+        await roundPage.goto(
+          `http://localhost:${port}/tools/track-system-audit.html?id=${encodeURIComponent(id)}`
+            + `&round=1&view=${view}`,
+          { waitUntil: 'domcontentloaded' },
+        );
+        await roundPage.waitForFunction(
+          'window.__TRACK_SYSTEM_READY === true && window.__TRACK_ROUND_READY === true',
+          { polling: 40 },
+        );
+        const result = await roundPage.evaluate(() => ({
+          staticAudit: window.__TRACK_SYSTEM_AUDIT,
+          roundAudit: window.__TRACK_ROUND_AUDIT,
+        }));
+        const screenshot = resolve(roundShotsDir, `${id}-${view}.png`);
+        await roundPage.screenshot({ path: screenshot });
+        const pass = result.staticAudit?.pass === true && !result.roundAudit?.error;
+        roundRows.push({ id, view, screenshot, pass, ...result.roundAudit });
+        if (!pass) failed = true;
+        console.log(`[track-round  ${String(index + 1).padStart(3)}/${ids.length}] `
+          + `${id.padEnd(20)} ${view.padEnd(5)} ${pass ? 'PASS' : 'FAIL'} -> ${screenshot}`);
+        if (result.roundAudit?.error) console.error(`  - ${result.roundAudit.error.split('\n')[0]}`);
+      }
+    }
+    await roundPage.close();
   }
 
   if (runBattle) {
@@ -224,10 +265,11 @@ const report = {
   ids,
   maps: runBattle ? maps : [],
   static: staticRows,
+  round: roundRows,
   battle: battleRows,
   pass: !failed,
 };
 writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 console.log(`[track-system] ${report.pass ? 'PASS' : 'FAIL'} — ${staticRows.length} static / `
-  + `${battleRows.length} battle-map vehicles -> ${outputPath}`);
+  + `${roundRows.length} round-course views / ${battleRows.length} battle-map vehicles -> ${outputPath}`);
 if (failed) process.exitCode = 2;

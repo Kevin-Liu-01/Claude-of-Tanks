@@ -1,12 +1,111 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Track system audit</title>
+<style>
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #10151a; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #audit-label {
+    position: fixed; left: 20px; top: 18px; padding: 8px 11px;
+    color: #e9eef2; background: rgba(10, 14, 18, .78); border: 1px solid #6f7d86;
+    font: 600 13px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .04em; white-space: pre; pointer-events: none;
+  }
+</style>
 <script type="module">
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { createTank } from '/src/vehicles/tankFactory.js';
 
-const id = new URLSearchParams(location.search).get('id');
+const params = new URLSearchParams(location.search);
+const id = params.get('id');
+const roundMode = params.get('round') === '1';
+const roundView = params.get('view') === 'right' ? 'right' : 'left';
 const round = (value) => Number(value.toFixed(5));
+
+async function stageRoundSurface(tank) {
+  const radiusM = 18;
+  const roundHeight = (_x, z) => {
+    const clampedZ = THREE.MathUtils.clamp(z, -radiusM + 0.001, radiusM - 0.001);
+    return Math.sqrt(radiusM * radiusM - clampedZ * clampedZ) - radiusM;
+  };
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x172027);
+  scene.fog = new THREE.Fog(0x172027, 15, 28);
+  scene.add(tank.root);
+
+  const groundGeometry = new THREE.PlaneGeometry(12, 12, 48, 72);
+  groundGeometry.rotateX(-Math.PI / 2);
+  const groundPositions = groundGeometry.getAttribute('position');
+  for (let index = 0; index < groundPositions.count; index++) {
+    groundPositions.setY(index, roundHeight(
+      groundPositions.getX(index), groundPositions.getZ(index)) - 0.018);
+  }
+  groundPositions.needsUpdate = true;
+  groundGeometry.computeVertexNormals();
+  const ground = new THREE.Mesh(groundGeometry, new THREE.MeshStandardMaterial({
+    color: 0x59635d, roughness: 0.96, metalness: 0.02,
+  }));
+  ground.receiveShadow = true;
+  scene.add(ground);
+  const courseLines = new THREE.Mesh(groundGeometry.clone(), new THREE.MeshBasicMaterial({
+    color: 0x92a49a, wireframe: true, transparent: true, opacity: 0.16,
+  }));
+  courseLines.position.y = 0.004;
+  scene.add(courseLines);
+
+  scene.add(new THREE.HemisphereLight(0xdce8ee, 0x1e2522, 2.1));
+  const key = new THREE.DirectionalLight(0xfff3dc, 3.0);
+  key.position.set(roundView === 'left' ? 6 : -6, 9, 5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = key.shadow.camera.bottom = -6;
+  key.shadow.camera.right = key.shadow.camera.top = 6;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xc6ddff, 2.2);
+  fill.position.set(roundView === 'left' ? 10 : -10, 4, -4);
+  scene.add(fill);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+
+  const contactLift = -(tank.contactGeom?.bottomYM || 0);
+  const state = {
+    pos: new THREE.Vector3(0, contactLift, 0), yaw: 0,
+    turretYaw: 0, gunPitch: 0, speed: 0, yawRate: 0,
+    visualPitch: 0, visualRoll: 0, trackScroll: { l: 0, r: 0 },
+  };
+  tank.setGroundSampler(roundHeight);
+  for (let frame = 0; frame < 48; frame++) tank.syncFromState(state, 1 / 30);
+  tank.root.updateMatrixWorld(true);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  document.body.append(renderer.domElement);
+
+  const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 60);
+  const side = roundView === 'left' ? 1 : -1;
+  camera.position.set(side * 10.8, 2.35, 0.15);
+  camera.lookAt(0, 1.25, 0.15);
+  renderer.render(scene, camera);
+
+  const label = document.createElement('div');
+  label.id = 'audit-label';
+  label.textContent = `${id.toUpperCase()}  •  ROUND COURSE  •  ${roundView.toUpperCase()}\n`
+    + `cylindrical radius ${radiusM.toFixed(1)} m  •  48 settled frames`;
+  document.body.append(label);
+  await new Promise((resolve) => requestAnimationFrame(() => {
+    renderer.render(scene, camera);
+    resolve();
+  }));
+  window.__TRACK_ROUND_AUDIT = {
+    id, view: roundView, radiusM, settledFrames: 48,
+    surfaceDropAt3M: round(roundHeight(0, 3)),
+  };
+  window.__TRACK_ROUND_READY = true;
+}
 
 function matrixPose(mesh, index) {
   const matrix = new THREE.Matrix4();
@@ -240,6 +339,14 @@ function inspectUnit(unitId, receipt, objects) {
     courseQuarterCounts,
     loopLengthM: round(receipt.loopLengthM),
     roadWheelStations: receipt.wheelZs.length,
+    roadWheelZs: receipt.wheelZs.map(round),
+    wheelRadiusM: round(receipt.wheelR),
+    wheelCenterYM: round(receipt.wheelY),
+    trackWidthM: round(receipt.trackW),
+    trackThicknessM: round(receipt.trackTh),
+    laneCentersM: { left: round(receipt.xcLeft), right: round(receipt.xcRight) },
+    sprocket: { ...receipt.sprocket, z: round(receipt.sprocket.z), y: round(receipt.sprocket.y), r: round(receipt.sprocket.r) },
+    idler: { ...receipt.idler, z: round(receipt.idler.z), y: round(receipt.idler.y), r: round(receipt.idler.r) },
     failures: [...new Set(failures)],
   };
 }
@@ -276,8 +383,20 @@ try {
   ));
   const failures = units.flatMap((unit) => unit.failures.map((failure) => `unit ${unit.unitId}: ${failure}`));
   window.__TRACK_SYSTEM_AUDIT = { id, units, failures, pass: units.length > 0 && failures.length === 0 };
+  if (roundMode) {
+    const visualTank = createTank(id, null, {
+      camoSeed: 4242,
+      quality: 'high',
+      proceduralOnly: true,
+    });
+    await stageRoundSurface(visualTank);
+  }
 } catch (error) {
   window.__TRACK_SYSTEM_AUDIT = { id, error: String(error?.stack || error), pass: false };
+  if (roundMode) {
+    window.__TRACK_ROUND_AUDIT = { id, view: roundView, error: String(error?.stack || error) };
+    window.__TRACK_ROUND_READY = true;
+  }
 }
 window.__TRACK_SYSTEM_READY = true;
 </script>
