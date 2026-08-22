@@ -77,7 +77,11 @@ const garageNavigation = garageSource.indexOf('class="cot-nav cot-header-nav"');
 assert.ok(brandUtilities >= 0 && homeControl > brandUtilities && recordControl > homeControl &&
   garageNavigation > recordControl,
   'garage Home and Record controls must live with the left-side brand before workspace navigation');
+const galleryControl = garageSource.indexOf('data-nav="gallery"');
+const docsControl = garageSource.indexOf('data-nav="docs"');
 const githubControl = garageSource.indexOf('class="nv cot-github"');
+assert.ok(galleryControl > garageNavigation && docsControl > galleryControl && githubControl > docsControl,
+  'garage Docs control must sit immediately after Gallery and before GitHub');
 const settingsSlot = garageSource.indexOf('class="cot-settings-slot"');
 assert.ok(githubControl >= 0 && settingsSlot > githubControl,
   'garage GitHub stars must sit immediately before the settings control');

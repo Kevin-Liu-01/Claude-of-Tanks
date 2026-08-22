@@ -1761,6 +1761,9 @@ export function createGarage(opts) {
     `<button class="nv" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
     `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
     `<span class="nav-label">Gallery</span></button>` +
+    `<button class="nv" data-nav="docs" type="button" aria-label="Documentation" title="Documentation">` +
+    `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
+    `<span class="nav-label">Docs</span></button>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="View Claude of Tanks on GitHub" title="GitHub">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
@@ -2980,8 +2983,8 @@ export function createGarage(opts) {
   // --- END DRAG-SCROLL CAROUSEL ---------------------------------------------
 
   // r9.1 header nav — Studio rides the exact F8 production path (studio.js
-  // listens on window keydown and gates on game.phase === 'garage'); Home
-  // goes to the landing page. Garage is the current screen (active chip).
+  // listens on window keydown and gates on game.phase === 'garage'); Home and
+  // Docs use their public pretty routes. Garage is the current screen.
   recordTrigger.addEventListener('click', () => {
     emit('ui:click', {});
     if (isRecordOpen()) closeServiceRecord();
@@ -3000,6 +3003,10 @@ export function createGarage(opts) {
   });
   root.querySelector('[data-nav="gallery"]').addEventListener('click', () => {
     openSelectedInGallery();
+  });
+  root.querySelector('[data-nav="docs"]').addEventListener('click', () => {
+    emit('ui:click', {});
+    window.location.href = '/docs'; // pretty route (vite.config.js rewrite)
   });
   root.querySelector('[data-nav="home"]').addEventListener('click', () => {
     emit('ui:click', {});
