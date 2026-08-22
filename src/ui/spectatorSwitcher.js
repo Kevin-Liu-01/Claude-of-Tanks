@@ -27,10 +27,10 @@ export function spectatorSwitcherMarkup() {
     '<div class="switch" role="group" aria-label="Switch spectated vehicle">' +
       '<button type="button" class="cycle prev" aria-label="Previous vehicle">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronLeft', 13) + '</span>' +
-        '<span class="cycle-copy" aria-hidden="true"><span class="cycle-label">Previous</span><kbd>A</kbd></span>' +
+        '<kbd aria-hidden="true">A</kbd>' +
       '</button>' +
       '<button type="button" class="cycle next" aria-label="Next vehicle">' +
-        '<span class="cycle-copy" aria-hidden="true"><kbd>D</kbd><span class="cycle-label">Next</span></span>' +
+        '<kbd aria-hidden="true">D</kbd>' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
       '</button>' +
     '</div>' +

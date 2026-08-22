@@ -539,8 +539,8 @@ body.cot-touch-layout .cot-drive{display:none!important;}
    shared icon set keep this state legible without covering the chase view. */
 .cot-spec{position:absolute;left:50%;bottom:48px;transform:translate(-50%,14px);
   opacity:0;display:none;pointer-events:auto;align-items:stretch;overflow:hidden;
-  grid-template-columns:92px minmax(220px,1fr) 202px 116px;column-gap:0;
-  width:min(820px,calc(100vw - 32px));min-width:0;min-height:82px;
+  grid-template-columns:88px minmax(210px,1fr) 164px 116px;column-gap:0;
+  width:min(760px,calc(100vw - 32px));min-width:0;min-height:82px;
   color:#dce6ed;background:
     linear-gradient(112deg,rgba(17,25,31,.985),rgba(8,13,17,.98) 62%,rgba(13,19,24,.985));
   border:1px solid rgba(161,181,196,.32);border-top-color:rgba(207,220,229,.38);
@@ -556,9 +556,9 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   background:linear-gradient(145deg,rgba(99,119,133,.12),rgba(38,50,59,.035));}
 .cot-spec .portrait::after{content:"";position:absolute;inset:0;background:
   linear-gradient(135deg,transparent 0 64%,rgba(240,160,48,.06) 64% 66%,transparent 66%);pointer-events:none;}
-.cot-spec .portrait img{display:block;width:84px;height:68px;object-fit:contain;
+.cot-spec .portrait img{display:block;width:80px;height:66px;object-fit:contain;
   filter:drop-shadow(0 6px 7px rgba(0,0,0,.68));}
-.cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:7px 18px 7px 17px;}
+.cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:7px 15px;}
 .cot-spec .spec-status{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-family:${FONT_COND};
   font-size:8px;font-weight:800;line-height:1;letter-spacing:.18em;text-transform:uppercase;color:#f0b04a;}
 .cot-spec .spec-status svg{width:13px;height:13px;display:block;flex:0 0 auto;}
@@ -573,56 +573,61 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
 @keyframes cotSpecSw{0%{opacity:.15;transform:translateY(5px);}100%{opacity:1;transform:none;}}
 .cot-spec .who.sw{animation:cotSpecSw .35s ease;}
-.cot-spec .switch{align-self:center;height:48px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
-  margin:0 10px;overflow:hidden;border:1px solid rgba(176,192,204,.22);border-radius:3px;
+.cot-spec .switch{align-self:center;justify-self:center;width:136px;height:48px;display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:1fr;grid-auto-flow:column;
+  overflow:hidden;border:1px solid rgba(176,192,204,.22);border-radius:3px;
   background:linear-gradient(180deg,rgba(139,157,171,.075),rgba(54,68,78,.035));
   box-shadow:inset 0 1px rgba(255,255,255,.025);}
 .cot-spec .cycle{min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
-  padding:0 9px;font-family:${FONT_COND};text-transform:uppercase;color:#a9b6c0;cursor:pointer;
+  flex-flow:row nowrap;padding:0 10px;font-family:${FONT_COND};text-transform:uppercase;color:#a9b6c0;cursor:pointer;
   border:0;border-radius:0;background:transparent;
   transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease,color 120ms ease;}
 .cot-spec .cycle+.cycle{border-left:1px solid rgba(176,192,204,.18);}
 .cot-spec .cycle-icon{display:grid;place-items:center;color:#e2ebf1;opacity:.82;
   transition:transform 160ms ease-out,color 120ms ease,opacity 120ms ease;}
 .cot-spec .cycle-icon svg{display:block;width:12px;height:12px;}
-.cot-spec .cycle-copy{display:flex;min-width:0;align-items:center;gap:6px;}
-.cot-spec .cycle-copy kbd{font:800 8px/1 ui-monospace,SFMono-Regular,monospace;color:#f0b04a;
-  border:0;background:transparent;padding:0;opacity:.82;}
-.cot-spec .cycle-label{font-size:8px;font-weight:800;line-height:1;letter-spacing:.1em;color:inherit;}
+.cot-spec .cycle kbd{width:24px;height:24px;display:grid;place-items:center;padding:0;
+  font:800 10px/1 ui-monospace,SFMono-Regular,monospace;color:#ffc76b;
+  border:1px solid rgba(240,176,74,.38);border-bottom-color:rgba(240,176,74,.6);border-radius:2px;
+  background:linear-gradient(180deg,rgba(240,176,74,.15),rgba(240,160,48,.055));
+  box-shadow:inset 0 1px rgba(255,229,182,.1),0 2px 0 rgba(3,6,9,.78);
+  transition:transform 100ms ease-out;}
 .cot-spec .cycle:active{transform:scale(.97);}
 .cot-spec .cycle:focus-visible,.cot-spec .gar:focus-visible{outline:2px solid #d9e4eb;
   outline-offset:2px;}
 .cot-spec .gar{align-self:center;height:48px;display:flex;align-items:center;justify-content:center;gap:8px;margin:0 8px 0 0;
-  padding:0 12px;font-family:${FONT_COND};font-weight:800;font-size:8px;letter-spacing:.13em;
+  padding:0 10px;font-family:${FONT_COND};font-weight:800;font-size:9px;letter-spacing:.13em;
   text-transform:uppercase;color:#f0b04a;cursor:pointer;border:1px solid rgba(240,176,74,.48);border-radius:2px;
   background:linear-gradient(180deg,rgba(240,160,48,.16),rgba(240,160,48,.06));white-space:nowrap;
   box-shadow:inset 0 1px rgba(255,224,166,.06),0 5px 18px rgba(0,0,0,.16);
   transition:transform 160ms ease-out,background-color 120ms ease,border-color 120ms ease,color 120ms ease;}
-.cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:17px;height:17px;}
+.cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:19px;height:19px;}
 .cot-spec .gar:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
   .cot-spec .cycle:hover{background:rgba(146,164,180,.12);color:#f2f7fb;}
   .cot-spec .cycle:hover .cycle-icon{color:#f0b04a;opacity:1;}
+  .cot-spec .cycle:hover kbd{color:#ffd995;border-color:rgba(240,176,74,.72);
+    background:linear-gradient(180deg,rgba(240,176,74,.23),rgba(240,160,48,.09));}
   .cot-spec .cycle.prev:hover .cycle-icon{transform:translateX(-2px);}
   .cot-spec .cycle.next:hover .cycle-icon{transform:translateX(2px);}
   .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,176,74,.8);color:#ffd27a;}
 }
+.cot-spec .cycle:active kbd{transform:translateY(1px);box-shadow:inset 0 1px rgba(255,229,182,.06),0 1px 0 rgba(3,6,9,.78);}
 @media (max-width:960px){
-  .cot-spec{width:min(720px,calc(100vw - 20px));grid-template-columns:72px minmax(140px,1fr) 132px 72px;min-height:72px;}
+  .cot-spec{width:min(660px,calc(100vw - 20px));grid-template-columns:72px minmax(140px,1fr) 116px 72px;min-height:72px;}
   .cot-spec .portrait img{width:66px;height:58px;}
   .cot-spec .identity{padding-left:11px;padding-right:11px;}
   .cot-spec .who b{font-size:15px;}
-  .cot-spec .switch{height:44px;margin:0 6px;}
+  .cot-spec .switch{width:104px;height:44px;}
   .cot-spec .cycle{padding:0 5px;gap:4px;}
-  .cot-spec .cycle-label{display:none;}
-  .cot-spec .gar{height:44px;font-size:7px;padding:0 7px;gap:5px;margin-right:5px;}
-  .cot-spec .gar-icon,.cot-spec .gar-icon svg{width:14px;height:14px;}
+  .cot-spec .gar{height:44px;font-size:8px;padding:0 4px;gap:5px;margin-right:5px;}
+  .cot-spec .gar-icon,.cot-spec .gar-icon svg{width:16px;height:16px;}
 }
 /* The minimap owns the lower-right 236 px. On compact desktop viewports the
    bar docks into the remaining lower-left lane instead of rendering beneath
    the map; on phone widths it moves above the map altogether. */
 @media (min-width:721px) and (max-width:1372px){
-  .cot-spec{left:16px;right:252px;width:auto;transform:translateY(16px);}
+  .cot-spec{left:16px;right:auto;width:min(760px,calc(100vw - 268px));transform:translateY(16px);}
   .cot-spec.in{transform:translateY(0);}
 }
 @media (max-width:720px){
@@ -637,8 +642,9 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   .cot-spec .spec-status svg{width:11px;height:11px;}
   .cot-spec .who b{font-size:13px;}
   .cot-spec .who span{font-size:8px;}
-  .cot-spec .switch{height:40px;grid-template-columns:repeat(2,minmax(0,1fr));margin:0 3px;}
-  .cot-spec .cycle-copy{display:none;}
+  .cot-spec .switch{width:88px;height:40px;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .cot-spec .cycle{padding:0 3px;gap:2px;}
+  .cot-spec .cycle kbd{width:20px;height:20px;font-size:9px;}
   .cot-spec .gar{width:40px;height:40px;padding:0;margin:0 2px 0 0;}
   .cot-spec .gar>span:last-child{display:none;}
 }
