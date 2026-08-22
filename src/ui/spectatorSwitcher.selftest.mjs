@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.js';
 
 assert.deepEqual(spectatorCardModel({ count: 7, index: 3, specId: 'm1a2_sepv3' }), {
@@ -19,5 +20,9 @@ assert.match(markup, /aria-label="Return to garage"/);
 assert.match(markup, /<svg[^>]*aria-hidden="true"/);
 assert.doesNotMatch(markup, /Allied vehicle/);
 assert.doesNotMatch(markup, /portrait-mark/, 'spectator strip omits decorative corner brackets');
+
+const hudSource = readFileSync(new URL('./hud.js', import.meta.url), 'utf8');
+assert.doesNotMatch(hudSource, /\.cot-spec \.portrait::after/,
+  'spectator portrait omits the decorative diagonal overlay');
 
 console.log('spectatorSwitcher.selftest: command-style spectator identity and controls passed');

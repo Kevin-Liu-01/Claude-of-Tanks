@@ -554,8 +554,6 @@ body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
   border:1px solid rgba(161,181,196,.2);border-right-color:rgba(240,160,48,.38);
   background:linear-gradient(145deg,rgba(99,119,133,.12),rgba(38,50,59,.035));}
-.cot-spec .portrait::after{content:"";position:absolute;inset:0;background:
-  linear-gradient(135deg,transparent 0 64%,rgba(240,160,48,.06) 64% 66%,transparent 66%);pointer-events:none;}
 .cot-spec .portrait img{display:block;width:80px;height:66px;object-fit:contain;
   filter:drop-shadow(0 6px 7px rgba(0,0,0,.68));}
 .cot-spec .identity{display:flex;min-width:0;flex-direction:column;justify-content:center;padding:7px 15px;}
