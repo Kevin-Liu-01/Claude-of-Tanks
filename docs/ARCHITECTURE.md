@@ -906,7 +906,10 @@ headroom, 0.55x cinematic debris, and garage loop cleanup.
 every canonical combat event entered its intended audio route.
 `node tools/sfx-smoke.mjs` retains the baked-layer and volley/no-clipping gate;
 `node tools/make-sfx.mjs --verify` additionally rejects sub-only or tin-can
-assets through bass, body, harsh-presence, and air energy bounds.
+assets through bass, body, harsh-presence, and air energy bounds. Relative
+family gates enforce increasing cannon pressure/decay by caliber and distinct
+spectral/envelope signatures for penetration, ricochet, non-penetration, HE,
+dirt, ERA, burn-out, and full vehicle destruction.
 `node tools/make-voices.mjs --verify` enforces voice duration, loudness, peak,
 and payload budgets.
 

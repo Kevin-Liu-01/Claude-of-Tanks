@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// sfx-smoke.mjs — end-to-end verification for COMBAT-SFX r3.
+// sfx-smoke.mjs — end-to-end verification for COMBAT-SFX r4.
 //
 // Boots the game headless (own vite on a 7xxx port — NEVER 5001/5002), enters
 // a battle, then drives REAL bus events (window.__DEBUG.bus — the same object
@@ -13,13 +13,13 @@
 //         tail-dominant, the player's own gun must mix more sub)
 //       - asserts audible output per scene and ZERO console errors
 //       - volley stress: 8 rapid heavies + 2 ammo-rack kills must not clip
-//       - writes new_*.wav A/B copies into shots/sfx-r3/ab/ and, when
+//       - writes new_*.wav A/B copies into shots/sfx-r4/ab/ and, when
 //         old-metrics.json exists there (from --capture-old), the README.md
 //         table comparing bass energy (<120 Hz, % of total) old vs new.
 //
 //   node tools/sfx-smoke.mjs --capture-old  # run BEFORE the audio.js swap
 //       - same scenes, no sample assertions (old code has no sfxLog)
-//       - writes old_*.wav + old-metrics.json into shots/sfx-r3/ab/
+//       - writes old_*.wav + old-metrics.json into shots/sfx-r4/ab/
 //
 // Exit 0 = green. Shares the FIFO capture lock with tools/screenshot.mjs.
 
@@ -82,7 +82,7 @@ function releaseLock() {
 // --- args / output -----------------------------------------------------------
 const args = process.argv.slice(2);
 const CAPTURE_OLD = args.includes('--capture-old');
-const outDir = resolve('shots/sfx-r3');
+const outDir = resolve('shots/sfx-r4');
 const abDir = join(outDir, 'ab');
 mkdirSync(abDir, { recursive: true });
 const prefix = CAPTURE_OLD ? 'old' : 'new';
@@ -448,7 +448,7 @@ try {
       return `| ${k} | ${fmt(oldM[k], '%')} | **${metrics[k]}%** | ${fmt(o.peakDb)} | **${fmt(n.peakDb)}** | ${fmt(o.rmsDb)} | **${fmt(n.rmsDb)}** |`;
     });
     writeFileSync(join(abDir, 'README.md'),
-      `# COMBAT-SFX r3 — A/B listening copies\n\n` +
+      `# COMBAT-SFX r4 — A/B listening copies\n\n` +
       `Captured from the live game master bus by \`tools/sfx-smoke.mjs\` — the same\n` +
       `bus events, before (\`old_*\`, pre-redesign runtime synthesis) and after\n` +
       `(\`new_*\`, baked layered samples from \`tools/make-sfx.mjs\`).\n\n` +

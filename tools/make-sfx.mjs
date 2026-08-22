@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-// make-sfx.mjs — bake the combat SFX sample set (COMBAT-SFX r3).
+// make-sfx.mjs — bake the combat SFX sample set (COMBAT-SFX r4).
 //
-// r3 answers player feedback that the previous impacts sounded like loose
+// r3 removed the narrow metal resonances that sounded like loose
 // hardware in a pan: attacks were dominated by narrow 2–6 kHz metal modes,
-// while explosions were almost entirely sub-bass. This script synthesizes
-// broad, pressure-led Float32 PCM offline in
+// while explosions were almost entirely sub-bass. r4 answers the next real
+// listening pass: the safe ranges had homogenized each family and made large
+// weapons feel compact. Families now have explicit contrast and scale gates,
+// deeper pressure progression, and longer terrain decay. This script
+// synthesizes broad, pressure-led Float32 PCM offline in
 // node — 100% procedural, seeded, deterministic, zero downloads, CC0 by
 // construction (same license posture as the voice pipeline,
 // tools/make-voices.mjs) — then masters each file through the local ffmpeg
@@ -45,7 +48,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = path.join(ROOT, 'public', 'audio', 'sfx');
-const PREVIEW_DIR = path.join(ROOT, 'shots', 'sfx-r3', 'bake-previews');
+const PREVIEW_DIR = path.join(ROOT, 'shots', 'sfx-r4', 'bake-previews');
 const FFMPEG = process.env.FFMPEG || '/opt/homebrew/bin/ffmpeg';
 const FFPROBE = process.env.FFPROBE || '/opt/homebrew/bin/ffprobe';
 
@@ -223,26 +226,35 @@ function echoes(dst, src, taps) {
 const FIRE = {
   small:  { subF0: 78, subF1: 50, subTau: 0.10, subDec: 0.14, atk: 0.005, harm: 0.42,
             crackDec: 0.030, blastC0: 4200, blastTau: 0.045, bark: 330, barkDec: 0.045, crackSec: 0.30,
-            tailSec: 0.9, tailTau: 0.24, tailLp: 900, echo: [] },
+            tailSec: 0.75, tailTau: 0.20, tailLp: 1100, sub2At: 0, sub2Gain: 0, echo: [] },
   medium: { subF0: 66, subF1: 42, subTau: 0.14, subDec: 0.22, atk: 0.006, harm: 0.38,
             crackDec: 0.042, blastC0: 3800, blastTau: 0.06, bark: 235, barkDec: 0.062, crackSec: 0.38,
-            tailSec: 1.3, tailTau: 0.34, tailLp: 800, echo: [[0.16, -12, 500]] },
+            tailSec: 1.35, tailTau: 0.38, tailLp: 950, sub2At: 0.045, sub2Gain: 0.18,
+            echo: [[0.18, -10, 650]] },
   large:  { subF0: 56, subF1: 35, subTau: 0.18, subDec: 0.30, atk: 0.008, harm: 0.34,
             crackDec: 0.055, blastC0: 3300, blastTau: 0.08, bark: 190, barkDec: 0.085, crackSec: 0.48,
-            tailSec: 1.7, tailTau: 0.45, tailLp: 720, echo: [[0.18, -10, 480], [0.39, -16, 360]] },
+            tailSec: 2.35, tailTau: 0.62, tailLp: 820, sub2At: 0.07, sub2Gain: 0.40,
+            echo: [[0.20, -7, 620], [0.48, -11, 460], [0.90, -16, 340]] },
   huge:   { subF0: 46, subF1: 28, subTau: 0.26, subDec: 0.44, atk: 0.010, harm: 0.30,
             crackDec: 0.075, blastC0: 2800, blastTau: 0.11, bark: 150, barkDec: 0.115, crackSec: 0.62,
-            tailSec: 2.3, tailTau: 0.60, tailLp: 640, echo: [[0.21, -9, 460], [0.47, -14, 340], [0.85, -19, 260]] },
+            tailSec: 3.6, tailTau: 0.95, tailLp: 720, sub2At: 0.10, sub2Gain: 0.68,
+            echo: [[0.23, -5, 580], [0.55, -9, 430], [1.02, -13, 320], [1.72, -18, 240]] },
 };
 
 function fireSub(P, rng) {
-  const sec = P.subDec * 4 + 0.15;
+  const sec = P.subDec * 4 + 0.25;
   const b = subSweep(sec, P.subF0, P.subF1, P.subTau, P.harm, rng, 0.4);
   envAD(b, P.atk, P.subDec);
   // punch transient: one hard 90 Hz half-cycle knock at t0
   const punch = subSweep(0.03, 110, 70, 0.01, 0.2);
   envAD(punch, 0.001, 0.009);
   mixAt(b, punch, 0, 0.55);
+  if (P.sub2Gain > 0) {
+    const secondary = subSweep(P.subDec * 2.8, P.subF0 * 0.86, P.subF1 * 0.76,
+      P.subTau * 1.2, P.harm * 0.65, rng, 0.25);
+    envAD(secondary, P.atk * 1.2, P.subDec * 0.78);
+    mixAt(b, secondary, P.sub2At, P.sub2Gain);
+  }
   sat(b, 1.45);
   biquad(b, 'lowpass', 300, 0.8); biquad(b, 'lowpass', 380, 0.8);
   return b;
@@ -282,10 +294,10 @@ function fireTail(P, rng) {
   let s = 0;
   for (let i = 0; i < b.length; i++) {
     if (i % 16 === 0) s = s * 0.995 + (rng() * 2 - 1) * 0.02;
-    b[i] *= 1 + 1.1 * s;
+    b[i] *= 1 + 1.35 * s;
   }
   biquad(b, 'lowpass', P.tailLp, 0.6);
-  biquad(b, 'lowshelf', 110, 0.8, 1.5);
+  biquad(b, 'lowshelf', 110, 0.8, 2.5);
   envAD(b, 0.012, P.tailTau);
   echoes(b, Float32Array.from(b.subarray(0, Math.round(0.25 * SR))), P.echo);
   sat(b, 1.25);
@@ -293,12 +305,12 @@ function fireTail(P, rng) {
 }
 
 function penImpact(rng, variant) {
-  const sec = 0.78;
+  const sec = 1.08;
   const b = buf(sec);
   // Contact fracture: broadband and brief, never a full-level cutlery tick.
   const tr = white(Math.round(0.006 * SR), rng);
   envAD(tr, 0.0004, 0.0028);
-  mixAt(b, tr, 0, 0.42);
+  mixAt(b, tr, 0, 0.56);
   const det = variant === 'b' ? 1.075 : 1.0;
   // Armor flex lives in the low mids. Several short, non-harmonic modes read
   // as a massive plate deforming instead of a small hanging sheet of metal.
@@ -307,10 +319,10 @@ function penImpact(rng, variant) {
     [515 * det, 0.105, 0.60], [785 * det, 0.08, 0.36],
     [1180 * det, 0.055, 0.18],
   ], rng, 0.025, -0.035);
-  mixAt(b, plate, 0.002, 0.72);
+  mixAt(b, plate, 0.002, 0.88);
   const th = subSweep(0.42, 112, 58, 0.055, 0.42);
   envAD(th, 0.003, 0.11);
-  mixAt(b, th, 0.004, 0.84);
+  mixAt(b, th, 0.004, 1.12);
   const body = white(Math.round(0.22 * SR), rng);
   biquad(body, 'bandpass', 460 * det, 0.68);
   envAD(body, 0.0015, 0.082);
@@ -319,11 +331,17 @@ function penImpact(rng, variant) {
   const sp = white(Math.round(0.16 * SR), rng);
   biquad(sp, 'bandpass', 1750, 0.58);
   envAD(sp, 0.003, 0.055);
-  mixAt(b, sp, 0.012, 0.22);
+  mixAt(b, sp, 0.012, 0.34);
   const dbr = crackleRing(0.36, 34, 4, 620, 2300, 1.15, rng, 0.14);
-  mixAt(b, dbr, 0.035, 0.18);
+  mixAt(b, dbr, 0.035, 0.24);
+  const shards = white(Math.round(0.11 * SR), rng);
+  biquad(shards, 'bandpass', 2600, 0.65);
+  envAD(shards, 0.001, 0.038);
+  mixAt(b, shards, 0.008, 0.50);
+  const chamber = Float32Array.from(b.subarray(0, Math.round(0.22 * SR)));
+  echoes(b, chamber, [[0.065, -11, 950], [0.145, -17, 620]]);
   sat(b, 1.38);
-  biquad(b, 'lowpass', 4200, 0.7);
+  biquad(b, 'lowpass', 5600, 0.7);
   return b;
 }
 
@@ -347,7 +365,7 @@ function hitWhump(rng) {
 }
 
 function ricochet(rng, variant) {
-  const sec = variant === 'b' ? 0.72 : variant === 'c' ? 0.52 : 0.66;
+  const sec = variant === 'b' ? 0.84 : variant === 'c' ? 0.62 : 0.92;
   const b = buf(sec);
   // A glancing contact still excites the armor plate. Keeping a compact body
   // under the scrape differentiates it without falling back to a dinner bell.
@@ -361,26 +379,26 @@ function ricochet(rng, variant) {
   const scrape = white(Math.round(0.34 * SR), rng);
   biquad(scrape, 'bandpass', variant === 'c' ? 2250 : 1650, 0.72);
   envAD(scrape, 0.002, variant === 'a' ? 0.14 : 0.10);
-  mixAt(b, scrape, 0.003, 0.56);
+  mixAt(b, scrape, 0.003, 0.78);
   if (variant === 'a') {
-    const z = zing(0.40, 2100, 720, 23, 0.014, rng);
-    envAD(z, 0.003, 0.13);
-    mixAt(b, z, 0.004, 0.30);
+    const z = zing(0.58, 2450, 680, 23, 0.014, rng);
+    envAD(z, 0.003, 0.20);
+    mixAt(b, z, 0.004, 0.46);
   } else if (variant === 'b') {
     // Double skip: two dry glances with no sustained singing mode.
     const z1 = zing(0.18, 1900, 880, 26, 0.012, rng);
     envAD(z1, 0.003, 0.07);
-    mixAt(b, z1, 0.004, 0.30);
+    mixAt(b, z1, 0.004, 0.44);
     const tick = white(Math.round(0.003 * SR), rng);
     envAD(tick, 0.0004, 0.0016);
     mixAt(b, tick, 0.205, 0.22);
     const z2 = zing(0.24, 2450, 1080, 29, 0.012, rng);
     envAD(z2, 0.003, 0.085);
-    mixAt(b, z2, 0.208, 0.21);
+    mixAt(b, z2, 0.208, 0.34);
   } else {
     const z = zing(0.24, 2850, 1180, 31, 0.011, rng);
     envAD(z, 0.002, 0.075);
-    mixAt(b, z, 0.003, 0.28);
+    mixAt(b, z, 0.003, 0.42);
   }
   const shards = crackleRing(0.32, 15, 3, 1350, 3600, 1.2, rng, 0.12);
   mixAt(b, shards, 0.035, 0.12);
@@ -391,7 +409,7 @@ function ricochet(rng, variant) {
 }
 
 function absorb(rng, variant) {
-  const sec = 0.55;
+  const sec = 0.48;
   const b = buf(sec);
   const det = variant === 'b' ? 1.12 : 1.0;
   // blunt shell shatter: dull knock, no ring stack, real body
@@ -399,27 +417,27 @@ function absorb(rng, variant) {
   biquad(kn, 'highpass', 105, 0.7);
   biquad(kn, 'lowpass', 520 * det, 0.8);
   envAD(kn, 0.0015, 0.055);
-  mixAt(b, kn, 0, 1.0);
+  mixAt(b, kn, 0, 1.2);
   const th = subSweep(0.35, 128 * det, 74, 0.05, 0.3);
   envAD(th, 0.003, 0.1);
-  mixAt(b, th, 0.004, 0.43);
+  mixAt(b, th, 0.004, 0.62);
   const ring = modal(0.3, [[245 * det, 0.12, 1], [410 * det, 0.08, 0.55], [680 * det, 0.055, 0.25]], rng, 0.03);
-  mixAt(b, ring, 0.004, 0.34);
+  mixAt(b, ring, 0.004, 0.22);
   const frag = crackleRing(0.3, 17, 3, 520, 1750, 1.1, rng, 0.12);
-  mixAt(b, frag, 0.05, 0.18);
+  mixAt(b, frag, 0.05, 0.10);
   sat(b, 1.35);
-  biquad(b, 'lowpass', 2400, 0.8);
+  biquad(b, 'lowpass', 1650, 0.8);
   return b;
 }
 
 function tankCore(rng, variant) {
-  const sec = 3.0;
+  const sec = 4.4;
   const b = buf(sec);
   const dt = variant === 'b' ? 1.07 : 1.0;
   // THE sub drop: 80 -> 30 Hz over ~1.2 s
   const sub = subSweep(1.7, 82 * dt, 29, 0.34, 0.3, rng, 0.3);
-  envAD(sub, 0.012, 0.6);
-  mixAt(b, sub, 0, 0.25);
+  envAD(sub, 0.012, 0.90);
+  mixAt(b, sub, 0, 0.40);
   // double boom
   const b1 = white(Math.round(0.9 * SR), rng);
   tvLowpass(b1, 2450, 150, 0.11);
@@ -440,19 +458,24 @@ function tankCore(rng, variant) {
     if (i % 16 === 0) s = s * 0.995 + (rng() * 2 - 1) * 0.02;
     body[i] *= 1 + 1.2 * s;
   }
-  envAD(body, 0.015, 0.85);
-  mixAt(b, body, 0.03, 0.92);
+  envAD(body, 0.015, 1.18);
+  mixAt(b, body, 0.03, 1.28);
   // Open-air pressure and hull breakup. This band is what survives on small
   // speakers and gives the blast scale without relying on inaudible sub bass.
   const pressure = white(Math.round(1.35 * SR), rng);
   biquad(pressure, 'highpass', 135, 0.7);
   biquad(pressure, 'lowpass', 2700, 0.7);
   envAD(pressure, 0.003, 0.24);
-  mixAt(b, pressure, 0.002, 0.42);
+  mixAt(b, pressure, 0.002, 0.68);
+  const secondary = white(Math.round(1.3 * SR), rng);
+  tvLowpass(secondary, 1300, 95, 0.18);
+  biquad(secondary, 'highpass', 55, 0.7);
+  envAD(secondary, 0.006, 0.48);
+  mixAt(b, secondary, variant === 'b' ? 0.34 : 0.43, 0.90);
   // echoing tail: slapbacks of the booms rolling off terrain
   const boomMix = buf(0.7);
   mixAt(boomMix, b1, 0, 0.7); mixAt(boomMix, b2, 0.06, 0.6);
-  echoes(b, boomMix, [[0.26, -8, 420], [0.55, -13, 300], [0.95, -17, 240], [1.5, -22, 200]]);
+  echoes(b, boomMix, [[0.28, -6, 520], [0.66, -10, 390], [1.22, -14, 300], [2.05, -18, 230], [3.05, -23, 180]]);
   sat(b, 1.45);
   biquad(b, 'lowshelf', 90, 0.8, 0.8);
   biquad(b, 'lowpass', 6200, 0.7);
@@ -501,7 +524,7 @@ function turretPop(rng) {
   mixAt(b, ch, 0, 0.95);
   const sub = subSweep(1.1, 50, 29, 0.3, 0.28, rng, 0.3);
   envAD(sub, 0.012, 0.42);
-  mixAt(b, sub, 0, 0.26);
+  mixAt(b, sub, 0, 0.48);
   // hull groan: low creaking modes bending down
   const gr = modal(1.2, [[138, 0.5, 1], [205, 0.36, 0.6], [311, 0.26, 0.35]], rng, 0.02, -0.06);
   mixAt(b, gr, 0.05, 0.38);
@@ -516,58 +539,60 @@ function turretPop(rng) {
 }
 
 function burnout(rng) {
-  const sec = 2.4;
+  const sec = 3.25;
   const b = buf(sec);
   const wh = subSweep(1.0, 64, 33, 0.22, 0.3, rng, 0.3);
-  envAD(wh, 0.02, 0.4);
-  mixAt(b, wh, 0, 0.25);
+  envAD(wh, 0.02, 0.72);
+  mixAt(b, wh, 0, 0.42);
   const bo = white(Math.round(1.0 * SR), rng);
   tvLowpass(bo, 1850, 125, 0.16);
   biquad(bo, 'highpass', 90, 0.7);
   envAD(bo, 0.012, 0.4);
-  mixAt(b, bo, 0, 1.12);
+  mixAt(b, bo, 0, 1.10);
   const body = brown(Math.round(1.9 * SR), rng);
   biquad(body, 'highpass', 92, 0.7);
   biquad(body, 'lowpass', 520, 0.7);
-  envAD(body, 0.02, 0.6);
-  mixAt(b, body, 0.05, 0.82);
+  envAD(body, 0.02, 1.05);
+  mixAt(b, body, 0.05, 1.30);
   // secondary cook-off pop + fizzing
   const p2 = white(Math.round(0.35 * SR), rng);
   tvLowpass(p2, 1650, 140, 0.09);
   biquad(p2, 'highpass', 95, 0.7);
   envAD(p2, 0.004, 0.16);
-  mixAt(b, p2, 0.48, 0.55);
+  mixAt(b, p2, 0.68, 0.50);
+  const p3 = subSweep(0.75, 58, 28, 0.20, 0.22, rng, 0.25);
+  envAD(p3, 0.012, 0.36);
+  mixAt(b, p3, 1.18, 0.22);
   const fz = crackleRing(1.8, 14, 2, 620, 2200, 1.1, rng, 0.8);
   mixAt(b, fz, 0.15, 0.14);
   sat(b, 1.4);
-  biquad(b, 'lowpass', 4200, 0.7);
+  biquad(b, 'lowpass', 2800, 0.7);
   return b;
 }
 
 function heExpl(rng, variant) {
-  const sec = 1.8;
+  const sec = 1.35;
   const b = buf(sec);
   const dt = variant === 'b' ? 1.08 : 1.0;
   const sub = subSweep(0.8, 74 * dt, 30, 0.16, 0.32, rng, 0.3);
   envAD(sub, 0.006, 0.3);
-  mixAt(b, sub, 0, 0.25);
+  mixAt(b, sub, 0, 0.30);
   const bo = white(Math.round(0.8 * SR), rng);
-  tvLowpass(bo, 2400, 160, 0.09);
+  tvLowpass(bo, 4300, 190, 0.065);
   biquad(bo, 'highpass', 92, 0.7);
   envAD(bo, 0.0015, 0.26);
-  mixAt(b, bo, 0, 1.22);
+  mixAt(b, bo, 0, 1.55);
   const body = brown(Math.round(1.2 * SR), rng);
   biquad(body, 'highpass', 95, 0.7);
   biquad(body, 'lowpass', 680, 0.7);
   envAD(body, 0.01, 0.4);
-  mixAt(b, body, 0.02, 0.78);
+  mixAt(b, body, 0.02, 0.85);
   const sz = crackleRing(1.0, 26, 4, 650, 2600, 1.1, rng, 0.4);
-  mixAt(b, sz, 0.03, 0.18);
-  echoes(b, Float32Array.from(bo.subarray(0, Math.round(0.4 * SR))), [[0.21, -10, 380], [0.5, -16, 280]]);
+  mixAt(b, sz, 0.03, 0.35);
+  echoes(b, Float32Array.from(bo.subarray(0, Math.round(0.32 * SR))), [[0.18, -9, 520], [0.43, -16, 300]]);
   sat(b, 1.45);
   biquad(b, 'lowshelf', 85, 0.8, 0.5);
-  biquad(b, 'lowpass', 4800, 0.7);
-  biquad(b, 'lowpass', 4800, 0.7);
+  biquad(b, 'lowpass', 6500, 0.7);
   return b;
 }
 
@@ -577,16 +602,16 @@ function dirtImpact(rng) {
   const sl = white(Math.round(0.25 * SR), rng);
   biquad(sl, 'bandpass', 520, 0.62);
   envAD(sl, 0.002, 0.09);
-  mixAt(b, sl, 0, 1.42);
+  mixAt(b, sl, 0, 1.70);
   const th = subSweep(0.4, 72, 42, 0.08, 0.3);
   envAD(th, 0.004, 0.16);
-  mixAt(b, th, 0.003, 0.15);
+  mixAt(b, th, 0.003, 0.20);
   const gr = crackleRing(0.6, 34, 5, 430, 1850, 1.05, rng, 0.2);
   mixAt(b, gr, 0.02, 0.32);
   const rum = brown(Math.round(0.6 * SR), rng);
   biquad(rum, 'lowpass', 240, 0.7);
   envAD(rum, 0.01, 0.2);
-  mixAt(b, rum, 0.03, 0.12);
+  mixAt(b, rum, 0.03, 0.15);
   sat(b, 1.32);
   biquad(b, 'lowpass', 2600, 0.8);
   return b;
@@ -596,18 +621,18 @@ function eraPop(rng) {
   const sec = 0.75;
   const b = buf(sec);
   const po = white(Math.round(0.2 * SR), rng);
-  tvLowpass(po, 3600, 320, 0.032);
+  tvLowpass(po, 4800, 360, 0.032);
   envAD(po, 0.001, 0.06);
-  mixAt(b, po, 0, 0.76);
+  mixAt(b, po, 0, 1.15);
   const th = subSweep(0.25, 76, 47, 0.06, 0.3);
   envAD(th, 0.003, 0.1);
   mixAt(b, th, 0.002, 0.25);
   const cl = modal(0.4, [[380, 0.10, 1], [720, 0.07, 0.52], [1210, 0.04, 0.18]], rng, 0.035);
   mixAt(b, cl, 0.002, 0.34);
   const fracture = white(Math.round(0.13 * SR), rng);
-  biquad(fracture, 'bandpass', 1450, 0.65);
+  biquad(fracture, 'bandpass', 2250, 0.68);
   envAD(fracture, 0.001, 0.035);
-  mixAt(b, fracture, 0.002, 0.25);
+  mixAt(b, fracture, 0.002, 0.62);
   sat(b, 1.36);
   biquad(b, 'lowpass', 5200, 0.7);
   return b;
@@ -619,60 +644,67 @@ function eraPop(rng) {
 // ff = per-file ffmpeg character chain (mastering EQ / compression polish).
 const FF_SUB = 'lowpass=f=300,lowpass=f=380';
 const FF_CRACK = 'highpass=f=100,acompressor=threshold=-10dB:ratio=1.7:attack=3:release=75:makeup=0.4dB';
-const FF_TAIL = 'highpass=f=95,lowpass=f=1600,bass=g=-2:f=115:w=0.7';
-const FF_BOOM = 'highpass=f=28,bass=g=-2:f=110:w=0.7,acompressor=threshold=-9dB:ratio=1.7:attack=5:release=150:makeup=0.4dB';
+const FF_TAIL = 'highpass=f=42,lowpass=f=1800,bass=g=2:f=100:w=0.7';
+const FF_BOOM = 'highpass=f=24,bass=g=-0.5:f=105:w=0.7,acompressor=threshold=-8dB:ratio=1.55:attack=7:release=180:makeup=0.3dB';
 const FF_HIT = 'acompressor=threshold=-10dB:ratio=1.5:attack=2:release=95';
 
 function fireRows(cls, peakSub, peakCrack, peakTail) {
   const P = FIRE[cls];
   return [
-    { name: `fire_${cls}_sub`, durS: P.subDec * 4 + 0.15, peakDb: peakSub, ff: FF_SUB, synth: (r) => fireSub(P, r) },
+    { name: `fire_${cls}_sub`, durS: P.subDec * 4 + 0.25, peakDb: peakSub, ff: FF_SUB, synth: (r) => fireSub(P, r) },
     { name: `fire_${cls}_crack`, durS: P.crackSec, peakDb: peakCrack, ff: FF_CRACK, synth: (r) => fireCrack(P, r) },
     { name: `fire_${cls}_tail`, durS: P.tailSec, peakDb: peakTail, ff: FF_TAIL, synth: (r) => fireTail(P, r) },
   ];
 }
 
 const MANIFEST = [
-  ...fireRows('small', -12.0, -2.5, -13.0),
-  ...fireRows('medium', -13.0, -2.5, -13.5),
-  ...fireRows('large', -14.0, -2.5, -14.0),
-  ...fireRows('huge', -15.0, -2.5, -14.5),
-  { name: 'impact_pen_a', durS: 0.78, peakDb: -3.0, ff: FF_HIT, synth: (r) => penImpact(r, 'a') },
-  { name: 'impact_pen_b', durS: 0.78, peakDb: -3.0, ff: FF_HIT, synth: (r) => penImpact(r, 'b') },
+  ...fireRows('small', -14.0, -1.8, -15.0),
+  ...fireRows('medium', -10.5, -1.8, -11.5),
+  ...fireRows('large', -8.5, -1.2, -11.0),
+  ...fireRows('huge', -6.0, -0.5, -9.0),
+  { name: 'impact_pen_a', durS: 1.08, peakDb: -2.5, ff: FF_HIT, synth: (r) => penImpact(r, 'a') },
+  { name: 'impact_pen_b', durS: 1.08, peakDb: -2.5, ff: FF_HIT, synth: (r) => penImpact(r, 'b') },
   { name: 'hit_whump', durS: 0.9, peakDb: -3.0, ff: FF_SUB, synth: (r) => hitWhump(r) },
-  { name: 'ricochet_a', durS: 0.66, peakDb: -2.5, ff: 'highpass=f=100', synth: (r) => ricochet(r, 'a') },
-  { name: 'ricochet_b', durS: 0.72, peakDb: -2.5, ff: 'highpass=f=100', synth: (r) => ricochet(r, 'b') },
-  { name: 'ricochet_c', durS: 0.52, peakDb: -2.5, ff: 'highpass=f=100', synth: (r) => ricochet(r, 'c') },
-  { name: 'impact_absorb_a', durS: 0.55, peakDb: -3.0, ff: FF_HIT, synth: (r) => absorb(r, 'a') },
-  { name: 'impact_absorb_b', durS: 0.55, peakDb: -3.0, ff: FF_HIT, synth: (r) => absorb(r, 'b') },
-  { name: 'expl_tank_core_a', durS: 3.0, peakDb: -2.0, ff: FF_BOOM, synth: (r) => tankCore(r, 'a') },
-  { name: 'expl_tank_core_b', durS: 3.0, peakDb: -2.0, ff: FF_BOOM, synth: (r) => tankCore(r, 'b') },
+  { name: 'ricochet_a', durS: 0.92, peakDb: -2.3, ff: 'highpass=f=85', synth: (r) => ricochet(r, 'a') },
+  { name: 'ricochet_b', durS: 0.84, peakDb: -2.3, ff: 'highpass=f=85', synth: (r) => ricochet(r, 'b') },
+  { name: 'ricochet_c', durS: 0.62, peakDb: -2.3, ff: 'highpass=f=85', synth: (r) => ricochet(r, 'c') },
+  { name: 'impact_absorb_a', durS: 0.48, peakDb: -3.0, ff: FF_HIT, synth: (r) => absorb(r, 'a') },
+  { name: 'impact_absorb_b', durS: 0.48, peakDb: -3.0, ff: FF_HIT, synth: (r) => absorb(r, 'b') },
+  { name: 'expl_tank_core_a', durS: 4.4, peakDb: -1.8, ff: FF_BOOM, synth: (r) => tankCore(r, 'a') },
+  { name: 'expl_tank_core_b', durS: 4.4, peakDb: -1.8, ff: FF_BOOM, synth: (r) => tankCore(r, 'b') },
   { name: 'expl_tank_debris', durS: 3.4, peakDb: -10.0, ff: 'highpass=f=80', synth: (r) => tankDebris(r) },
-  { name: 'expl_turret_pop', durS: 1.7, peakDb: -4.0, ff: FF_BOOM, synth: (r) => turretPop(r) },
-  { name: 'expl_burnout', durS: 2.4, peakDb: -3.0, ff: FF_BOOM, synth: (r) => burnout(r) },
-  { name: 'expl_he_a', durS: 1.8, peakDb: -2.5, ff: FF_BOOM, synth: (r) => heExpl(r, 'a') },
-  { name: 'expl_he_b', durS: 1.8, peakDb: -2.5, ff: FF_BOOM, synth: (r) => heExpl(r, 'b') },
+  { name: 'expl_turret_pop', durS: 1.7, peakDb: -3.5, ff: FF_BOOM, synth: (r) => turretPop(r) },
+  { name: 'expl_burnout', durS: 3.25, peakDb: -2.0, ff: FF_BOOM, synth: (r) => burnout(r) },
+  { name: 'expl_he_a', durS: 1.35, peakDb: -2.5, ff: FF_BOOM, synth: (r) => heExpl(r, 'a') },
+  { name: 'expl_he_b', durS: 1.35, peakDb: -2.5, ff: FF_BOOM, synth: (r) => heExpl(r, 'b') },
   { name: 'impact_dirt', durS: 1.0, peakDb: -5.0, ff: FF_HIT, synth: (r) => dirtImpact(r) },
   { name: 'era_pop', durS: 0.75, peakDb: -4.0, ff: FF_HIT, synth: (r) => eraPop(r) },
 ];
 
 // Preview mixes = what the runtime layers together at default gains/offsets.
 // Gates run on THESE because runtime layering is the sound players hear.
+const FIRE_GATES = Object.freeze({
+  small: { bass: [18, 45], bodyMin: 28 },
+  medium: { bass: [32, 60], bodyMin: 22 },
+  large: { bass: [48, 72], bodyMin: 16 },
+  huge: { bass: [60, 84], bodyMin: 10 },
+});
+
 const PREVIEWS = [
   ...['small', 'medium', 'large', 'huge'].map((cls) => ({
     name: `mix_fire_${cls}`,
     layers: [[`fire_${cls}_sub`, 1, 0], [`fire_${cls}_crack`, 1, 0.004], [`fire_${cls}_tail`, 1, 0.018]],
-    bass: [18, 62], bodyMin: cls === 'huge' ? 16 : 20, harshMax: 12, lufs: [-24, -14],
+    ...FIRE_GATES[cls], harshMax: 14, lufs: [-24, -12],
   })),
-  { name: 'mix_pen', layers: [['impact_pen_a', 1, 0]], bass: [6, 45], bodyMin: 36, harshMax: 16, lufs: [-18, -9] },
-  { name: 'mix_hit_received', layers: [['impact_pen_a', 1, 0], ['hit_whump', 0.72, 0.01]], bass: [22, 72], bodyMin: 22, harshMax: 12, lufs: [-19, -9] },
-  { name: 'mix_ricochet', layers: [['ricochet_a', 1, 0]], bass: [0, 15], bodyMin: 27, harsh: [8, 42], lufs: [-20, -10] },
-  { name: 'mix_absorb', layers: [['impact_absorb_a', 1, 0]], bass: [18, 62], bodyMin: 35, harshMax: 10, lufs: [-20, -10] },
-  { name: 'mix_tank_explosion', layers: [['expl_tank_core_a', 1, 0], ['expl_tank_debris', 0.72, 0.10], ['expl_turret_pop', 0.72, 0.12]], bass: [25, 68], bodyMin: 22, harshMax: 9, lufs: [-20, -10] },
-  { name: 'mix_burnout', layers: [['expl_burnout', 1, 0], ['expl_tank_debris', 0.38, 0.15]], bass: [25, 68], bodyMin: 22, harshMax: 9, lufs: [-21, -10] },
-  { name: 'mix_he', layers: [['expl_he_a', 1, 0]], bass: [25, 68], bodyMin: 22, harshMax: 9, lufs: [-21, -10] },
-  { name: 'mix_dirt', layers: [['impact_dirt', 1, 0]], bass: [25, 72], bodyMin: 20, harshMax: 8, lufs: [-24, -13] },
-  { name: 'mix_era', layers: [['era_pop', 1, 0]], bass: [6, 48], bodyMin: 25, harshMax: 18, lufs: [-23, -11] },
+  { name: 'mix_pen', layers: [['impact_pen_a', 1, 0]], bass: [22, 58], bodyMin: 28, harshMax: 8, lufs: [-19, -8] },
+  { name: 'mix_hit_received', layers: [['impact_pen_a', 1, 0], ['hit_whump', 0.72, 0.01]], bass: [45, 82], bodyMin: 14, harshMax: 12, lufs: [-19, -8] },
+  { name: 'mix_ricochet', layers: [['ricochet_a', 1, 0]], bass: [0, 15], bodyMin: 18, harsh: [12, 45], lufs: [-21, -9] },
+  { name: 'mix_absorb', layers: [['impact_absorb_a', 1, 0]], bass: [28, 68], bodyMin: 25, harshMax: 6, lufs: [-20, -9] },
+  { name: 'mix_tank_explosion', layers: [['expl_tank_core_a', 1, 0], ['expl_tank_debris', 0.9, 0.10], ['expl_turret_pop', 0.95, 0.12]], bass: [42, 75], bodyMin: 16, harshMax: 10, lufs: [-21, -8] },
+  { name: 'mix_burnout', layers: [['expl_burnout', 1, 0], ['expl_tank_debris', 0.45, 0.15]], bass: [55, 84], bodyMin: 9, harshMax: 8, lufs: [-22, -8] },
+  { name: 'mix_he', layers: [['expl_he_a', 1, 0]], bass: [35, 70], bodyMin: 16, harsh: [5, 18], lufs: [-22, -8] },
+  { name: 'mix_dirt', layers: [['impact_dirt', 1, 0]], bass: [32, 68], bodyMin: 24, harshMax: 7, lufs: [-24, -12] },
+  { name: 'mix_era', layers: [['era_pop', 1, 0]], bass: [12, 48], bodyMin: 20, harsh: [4, 22], lufs: [-23, -10] },
 ];
 
 // ---------------------------------------------------------------- ffmpeg ----
@@ -853,6 +885,7 @@ async function verify() {
   mkdirSync(PREVIEW_DIR, { recursive: true });
   console.log(`\npreview mixes (runtime-default layer gains):`);
   console.log(`name                    LUFS      bass<120   body120-1.2k  harsh2-6.5k  air>6.5k`);
+  const previewInfo = new Map();
   for (const pv of PREVIEWS) {
     let n = 0;
     const decoded = [];
@@ -877,6 +910,7 @@ async function verify() {
     const body = bodyEnergyPct(wav);
     const harsh = harshEnergyPct(wav);
     const air = airEnergyPct(wav);
+    previewInfo.set(pv.name, { lufs, bass, body, harsh, air, duration: mix.length / SR });
     const flags = [];
     if (pv.lufs && (lufs < pv.lufs[0] || lufs > pv.lufs[1])) flags.push(`LUFS ${lufs.toFixed(1)} outside [${pv.lufs}]`);
     if (pv.bass && (bass < pv.bass[0] || bass > pv.bass[1])) flags.push(`bass ${bass.toFixed(1)}% outside [${pv.bass}]`);
@@ -885,6 +919,41 @@ async function verify() {
     if (pv.harshMax != null && harsh > pv.harshMax) flags.push(`harsh ${harsh.toFixed(1)}% > ${pv.harshMax}% MAX`);
     console.log(`  ${flags.length ? 'FAIL' : ' ok '} ${pv.name.padEnd(20)} ${lufs.toFixed(1).padStart(6)}   ${bass.toFixed(1).padStart(7)}%     ${body.toFixed(1).padStart(7)}%       ${harsh.toFixed(1).padStart(7)}%    ${air.toFixed(1).padStart(7)}%`);
     if (flags.length) problems.push(`${pv.name}: ${flags.join('; ')}`);
+  }
+
+  // Family contrast gates. Safe per-event ranges alone allowed earlier
+  // revisions to converge on one generic report. These relative contracts
+  // preserve the audible hierarchy and event identity players actually need:
+  // caliber adds pressure + decay; ricochets stay bright against penetrations;
+  // and every explosion recipe occupies a deliberately different envelope.
+  const contrasts = [];
+  function contrast(aName, bName, metric, minDelta, label) {
+    const a = previewInfo.get(aName);
+    const b = previewInfo.get(bName);
+    if (!a || !b) return;
+    const delta = a[metric] - b[metric];
+    const ok = delta >= minDelta;
+    contrasts.push({ ok, label, delta, minDelta, unit: metric === 'duration' ? 's' : '%' });
+    if (!ok) problems.push(`${label}: ${delta.toFixed(1)}${metric === 'duration' ? 's' : '%'} < ${minDelta}${metric === 'duration' ? 's' : '%'} MIN`);
+  }
+  contrast('mix_fire_medium', 'mix_fire_small', 'bass', 12, 'medium vs small cannon bass');
+  contrast('mix_fire_large', 'mix_fire_medium', 'bass', 8, 'large vs medium cannon bass');
+  contrast('mix_fire_huge', 'mix_fire_large', 'bass', 7, 'huge vs large cannon bass');
+  contrast('mix_fire_medium', 'mix_fire_small', 'duration', 0.4, 'medium vs small cannon decay');
+  contrast('mix_fire_large', 'mix_fire_medium', 'duration', 0.8, 'large vs medium cannon decay');
+  contrast('mix_fire_huge', 'mix_fire_large', 'duration', 1.0, 'huge vs large cannon decay');
+  contrast('mix_ricochet', 'mix_pen', 'harsh', 12, 'ricochet vs penetration brightness');
+  contrast('mix_hit_received', 'mix_pen', 'bass', 20, 'received hit vs penetration pressure');
+  contrast('mix_pen', 'mix_absorb', 'duration', 0.4, 'penetration vs non-penetration decay');
+  contrast('mix_absorb', 'mix_ricochet', 'bass', 25, 'non-penetration vs ricochet weight');
+  contrast('mix_burnout', 'mix_tank_explosion', 'bass', 10, 'burnout vs tank destruction bass');
+  contrast('mix_tank_explosion', 'mix_he', 'duration', 2.5, 'tank destruction vs HE decay');
+  contrast('mix_he', 'mix_burnout', 'harsh', 6, 'HE vs burnout attack');
+  contrast('mix_dirt', 'mix_burnout', 'body', 12, 'dirt impact vs burnout body');
+  contrast('mix_era', 'mix_dirt', 'harsh', 1, 'ERA vs dirt fracture');
+  console.log(`\ncontrast gates (minimum family separation):`);
+  for (const c of contrasts) {
+    console.log(`  ${c.ok ? ' ok ' : 'FAIL'} ${c.label.padEnd(43)} +${c.delta.toFixed(1)}${c.unit} (min +${c.minDelta}${c.unit})`);
   }
 
   if (problems.length) {

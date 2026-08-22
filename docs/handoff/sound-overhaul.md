@@ -1,6 +1,6 @@
 # Handoff — sound quality and routing audit (2026-08-22)
 
-## COMBAT-SFX r3 quality round
+## COMBAT-SFX r4 scale and contrast round
 
 The r2 event coverage and spatial model were sound, but its timbre was not.
 Offline analysis reproduced player reports: the penetration sample placed
@@ -9,20 +9,23 @@ there, and the largest explosions placed 88–94% below 120 Hz with only 3–7%
 in the audible 120–1200 Hz body band. In practice that produced small “tin
 can” impacts and muddy blasts, especially on phones and laptop speakers.
 
-r3 replaces all 29 deterministic combat assets and both live fallbacks. Armor
+r4 replaces all 29 deterministic combat assets and both live fallbacks. Armor
 hits now combine short contact fracture with broad 185–1180 Hz plate flex;
 ricochets use compact scrape/glance motion over a plate body; cannon reports
 balance pressure, bark, and outdoor tail; explosions balance sub pressure with
 low-mid blast body and wide debris. Current preview measurements are:
 
-- penetration: 22.2% bass, 56.3% body, 0.1% harsh presence;
-- ricochet: 0.0% bass, 49.8% body, 9.9% presence;
-- tank destruction: 35.0% bass, 31.1% body, 4.9% presence;
-- cannon classes: 40–43% bass, 31–35% body, 3.5–4.1% presence.
+- penetration: 22.7% bass, 56.8% body, 0.2% harsh presence;
+- ricochet: 0.0% bass, 26.6% body, 18.7% presence;
+- tank destruction: 60.7% bass, 18.0% body, 2.0% presence;
+- cannon classes: 34.2% / 57.3% / 68.0% / 78.3% bass from small to huge,
+  with 0.8 / 1.4 / 2.4 / 3.6 second terrain decay.
 
 `tools/make-sfx.mjs --verify` now gates all preview mixes on integrated
-loudness, true peak, payload, bass, body, and harsh-band energy. This prevents
-both narrow metallic ringing and sub-only mud from returning.
+loudness, true peak, payload, bass, body, and harsh-band energy. Relative
+contrast gates require increasing cannon pressure and decay by caliber, plus
+distinct impact and explosion signatures. This prevents both narrow metallic
+ringing, sub-only mud, and the earlier one-generic-sound regression.
 
 The runtime mix also changed. Master compression moved from 8:1 with a 3 ms
 attack to 3:1 with a 12 ms attack, and the soft-clip knee moved from 0.55 to
@@ -33,7 +36,7 @@ families; T-80 and Strv 103 correctly use turbine character. Running gear,
 turret servos, reloads, collisions, UI cues, and garage workshop foley were
 retuned away from narrow high-Q bands.
 
-The browser probes preserve the audible battlefield horizon. r3 adds a modest
+The browser probes preserve the audible battlefield horizon. r4 adds a modest
 long-range cannon-tail carry after 180 m so a 900 m report remains measurable
 without lifting near shots. The real browser mix now records combat one-shots
 at -20.3 dBFS RMS and the representative battle mix at -22.8 dBFS RMS, leaving

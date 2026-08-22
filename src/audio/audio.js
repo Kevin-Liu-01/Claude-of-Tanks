@@ -1,5 +1,5 @@
 /**
- * src/audio/audio.js — the Claude of Tanks sound system (COMBAT-SFX r3).
+ * src/audio/audio.js — the Claude of Tanks sound system (COMBAT-SFX r4).
  *
  * COMBAT one-shots (cannon fire, penetrations, deflections, HE bursts, tank
  * explosions) play BAKED layered samples: dense seeded PCM synthesized
@@ -23,11 +23,11 @@
  *   - equal-power stereo pan from listener-relative azimuth (StereoPannerNode)
  *   - max ~24 simultaneous one-shot voices, steal oldest
  *   - bus graph: {combat, cinematic, engine, ambience, ui, voice} → compressor →
- *     soft-clip stage → master (the tanh waveshaper is the COMBAT-SFX r3
+ *     soft-clip stage → master (the tanh waveshaper is the COMBAT-SFX r4
  *     volley guard: a 7v7 simultaneous barrage saturates musically instead
  *     of folding into digital clip crackle)
  *
- * Baked combat layering (COMBAT-SFX r3):
+ * Baked combat layering (COMBAT-SFX r4):
  *   - cannon fire = sub punch + crack/report + rumble tail per caliber class
  *     (small ≤76 mm | medium ≤105 | large ≤130 | huge >130). Near shots get
  *     all layers; far shots collapse to the tail (+ the distance lowpass), so
@@ -294,7 +294,7 @@ export function createAudio() {
   let ctx = null;
   let master = null;      // final volume gain
   let comp = null;        // safety compressor (24 voices never clip)
-  let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r3 volley guard)
+  let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r4 volley guard)
   let sfxBus = null, cinematicBus = null, engineBus = null;
   let ambientBus = null, musicBus = null, voiceBus = null;
   let whiteBuf = null;    // 2 s seeded white noise, looped everywhere
@@ -302,7 +302,7 @@ export function createAudio() {
   let windBuf = null;     // pink-ish noise for wind bed
   let gunBufs = null;     // pre-synthesized caliber beds (synth-fallback only)
 
-  // BAKED COMBAT SAMPLES (COMBAT-SFX r3): decoded lazily after resume().
+  // BAKED COMBAT SAMPLES (COMBAT-SFX r4): decoded lazily after resume().
   /** @type {Map<string, AudioBuffer>} name → decoded sample */
   const sfxBufs = new Map();
   let sfxReady = false;    // ALL samples decoded — baked paths take over
@@ -446,7 +446,7 @@ export function createAudio() {
     comp.attack.value = AUDIO_MIX_PROFILE.compressorAttackS;
     comp.release.value = AUDIO_MIX_PROFILE.compressorReleaseS;
 
-    // r3 leaves single-shot transients intact. Only dense simultaneous volleys
+    // r4 leaves single-shot transients intact. Only dense simultaneous volleys
     // reach the soft knee; the former 0.55 knee and 8:1 compressor made every
     // report sound equally flat and metallic.
     limiter = ctx.createWaveShaper();
@@ -716,7 +716,7 @@ export function createAudio() {
   }
 
   // Air absorption already removes most detail at range. A modest tail carry
-  // keeps 600–900 m guns readable as distant battlefield thunder after r3's
+  // keeps 600–900 m guns readable as distant battlefield thunder after r4's
   // lower, cleaner layer mastering without lifting close shots at all.
   function cannonDistanceCarry(dist) {
     return 1 + 0.85 * Math.max(0, Math.min(1, (dist - 180) / 720));
@@ -809,7 +809,7 @@ export function createAudio() {
   }
 
   /**
-   * Layered baked cannon shot (COMBAT-SFX r3). Near = sub punch + crack +
+   * Layered baked cannon shot (COMBAT-SFX r4). Near = sub punch + crack +
    * tail; far = tail-dominant (crack fades over ~45-180 m on top of the
    * distance lowpass). Player's own gun: hotter overall, more sub, plus the
    * mechanical action foley (breech clank at end of recoil, brass tinkle).
@@ -880,7 +880,7 @@ export function createAudio() {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
-    const v = spawnVoice(when, 1.0, s.gain * 0.95, s.pan, sfxBus);
+    const v = spawnVoice(when, 1.35, s.gain * 0.95, s.pan, sfxBus);
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
     sampleLayer(v, rng() < 0.5 ? 'impact_pen_a' : 'impact_pen_b', when, 1.0, jitterRate(), lp);
@@ -904,7 +904,7 @@ export function createAudio() {
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const lp = distLowpass(s.dist);
     if (deflected) {
-      const v = spawnVoice(when, 1.0, s.gain * 0.9, s.pan, sfxBus);
+      const v = spawnVoice(when, 1.2, s.gain * 0.9, s.pan, sfxBus);
       lp.connect(v.in);
       const variant = ['ricochet_a', 'ricochet_b', 'ricochet_c'][(rng() * 3) | 0];
       sampleLayer(v, variant, when, 1.0, 0.94 + rng() * 0.12, lp);
@@ -943,7 +943,7 @@ export function createAudio() {
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const lp = distLowpass(s.dist);
     if (cause === 'fire') {
-      const v = spawnVoice(when, 3.6, g * 0.95, s.pan, sfxBus);
+      const v = spawnVoice(when, 4.4, g * 0.95, s.pan, sfxBus);
       lp.connect(v.in);
       sampleLayer(v, 'expl_burnout', when, 1.0, jitterRate(), lp);
       sampleLayer(v, 'expl_tank_debris', when + 0.12 + rng() * 0.08, 0.45, jitterRate(), lp);
@@ -1299,7 +1299,7 @@ export function createAudio() {
   }
 
   /**
-   * Live r3 fallback. Deflections retain a brief scrape/flight read over a
+   * Live r4 fallback. Deflections retain a brief scrape/flight read over a
    * compact plate body; non-pens are a blunt shell shatter. Neither path
    * permits the former long, narrow 3–5 kHz ringing stack.
    * @param {boolean} deflected true = ricochet, false = nonpen/absorb
@@ -2890,7 +2890,7 @@ export function createAudio() {
       get ctx() { return ctx; },
       get voiceLog() { return radio.log; },
       get voicesLoaded() { return radio.loaded; },
-      // COMBAT-SFX r3 introspection (tools/sfx-smoke.mjs): baked-sample play
+      // COMBAT-SFX r4 introspection (tools/sfx-smoke.mjs): baked-sample play
       // trail {n,t,g,r} + load state of the baked combat set.
       get sfxLog() { return sfxLog; },
       get sfxLoaded() { return sfxReady; },
