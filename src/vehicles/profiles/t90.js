@@ -1746,7 +1746,7 @@ function buildPT91M(P) {
     rollers: [-1.20, 0, 1.20].map((z) => ({ z, y: 0.79, r: 0.07 })),
     trackW: 0.50, trackTh: 0.085, topY: 0.88, botY: 0.055,
     paintedEnds: true, coveredTop: true, arms: true,
-    linkPitchM: 0.155, padGroundCenter: 0.078, shoeRadialScale: 0.88,
+    linkPitchM: 0.155, shoeRadialScale: 0.88,
     padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
   });
   P.hullG.userData.pt91mRunningGearReceipt = {
@@ -2369,8 +2369,7 @@ function buildT90MProryv(P) {
     // its 0.81 floor from z 3.02; band/prongs own the window cols), side
     // rows never saw the roof (deck 1.35-1.39 above), tub top rises to the
     // window roof at wLo <=1.08 — inboard of the 1.185 band window.
-    // r7b: window roofs +0.03 — padCornerFloor/padHugZ0 (r1) raised the
-    // wrap-pad crowns and the shoe audit read 18/6 vox into the old
+    // r7b: window roofs +0.03 — the wrap-pad crowns and shoe audit read into the old
     // crown+0.03 roofs (blind-spot class); still interior to every mask
     // (deck 1.35/1.28 above, band/prongs own the window cols).
     sponsonY: [[-2.908, 0.81], [-2.54, 0.81], [-2.50, 1.21], [-1.72, 1.21], [-1.66, 0.81], [2.26, 0.81], [2.32, 1.145], [2.99, 1.145], [3.02, 0.81], [3.06, 0.81]],
@@ -2603,15 +2602,8 @@ function buildT90MProryv(P) {
     // z 2.72-2.85 then 0.058 HIGH at the wrap (my knee sat too far forward;
     // ref ramp line 0.16@2.72 / 0.29@2.85 / 0.38@2.97).
     contactZF: 2.96, contactZR: -1.50,
-    // PERFECTION r1 (centurion r6 class, banked in tankFactory): the pad
-    // corners sagged to -0.015 — procBox.min.y biased EVERY station topPct
-    // +0.67% and the front rows read procBottom -0.012 vs the ref's 0.04
-    // ground line across ~28 track columns; the ramps read 0.05-0.08 low
-    // (pads hang rOut below the band ramp line). padCornerFloor clamps the
-    // rotated pad's lowest corner at/above 0.012; padHugZ0 extends the
-    // band-hug to the front wrap shoulders (idler runs tight on the real
-    // vehicle; the rear sprocket zone keeps the natural drive-teeth hang).
-    padCornerFloor: 0.012, padHugZ0: 2.0,
+    // Shoe relief follows the exact live band normal; support clearance is
+    // measured from the complete shoe envelope instead of a second floor.
   });
   // r8 ORDER 1d (graduation verdict, §B8.1 + INTERIOR-READ TRIAD): the
   // oracle's road wheels read BLACK below with lit MID upper arcs (window
@@ -6499,7 +6491,6 @@ function replaceT90MProryvHull(P) {
     rollers: [-1.28, -0.30, 0.70, 1.60].map((z) => ({ z, y: 0.97, r: 0.096 })),
     trackW: 0.50, topY: 0.98, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.18, contactZR: -1.88,
-    padCornerFloor: 0.012, padHugZ0: 2.0,
   });
   // These annuli, hubs and bolts are wheel-face anatomy, so every layer is
   // instanced by the canonical gear unit and follows suspension travel/spin.

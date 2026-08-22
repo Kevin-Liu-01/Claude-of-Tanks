@@ -102,6 +102,10 @@ console.log(`[tank-assets] studio ${url}`);
 
 const browser = await puppeteer.launch({
   headless: 'new',
+  // A full three-diagram fleet refresh renders hundreds of data-driven views
+  // in one deterministic page evaluation and can exceed Puppeteer's 180 s
+  // protocol default on shared CI/developer machines.
+  protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();

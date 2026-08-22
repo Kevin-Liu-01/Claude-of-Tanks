@@ -137,8 +137,7 @@ const CR1_HULL = {
   // end wheels lagged every climb column 0.10-0.26 on BOTH hull+whole
   // side rows (~10 cols x2). §B6 trapezoid: both ends raised. contactZF/
   // contactZR pin the patch at the ref's own ground-run ends (revolution
-  // r15 / centurion r6 precedent); padCornerFloor clamps the steepened
-  // ramp-pad corners to the ground plane (centurion r6 law).
+  // r15 / centurion r6 precedent); measured shoe relief now owns clearance.
   // r2 retune to the LIVE reads (shoe-hang + §C wrap-end law): idler
   // (3.62, 0.80) — the 3.68 wrap's front face painted the 4.112 col 0.68
   // where the ref shows its 0.974 wing line (wrap+shoes now END 22 mm
@@ -147,10 +146,7 @@ const CR1_HULL = {
   // the -3.16 col 0.52 under the ref's 0.682 rake line and the departure
   // ramp ran 0.06 hot.
   sprocket: { z: -2.64, y: 0.80, r: 0.33 }, idler: { z: 3.62, y: 0.80, r: 0.28 },
-  // (padHugZ0 is NOT plumbed through ukHull's buildRunningGear call — the
-  // centurion entry's `padHugZ0: 0` is dead config; adding the pass-through
-  // would alter the FROZEN centurions mid-critic, so CR1 doesn't carry it.)
-  contactZF: 2.90, contactZR: -2.12, padCornerFloor: 0.012,
+  contactZF: 2.90, contactZR: -2.12,
   trackTop: 0.98, arms: false, coveredTop: true,
   // Decal quads are mask geometry — pin the numbers onto the skirt plates
   // (push-2: re-pinned on the 1.578 face).
@@ -2480,7 +2476,7 @@ function buildChallenger2(P) {
     // The print's outer x=1.60 lane is skirt, not track.  A wide track band
     // falsely carried the procedural stern to -4.02 in that lane.
     trackW: 0.42, topY: 0.98, contactZF: 2.60, contactZR: -2.10,
-    paintedEnds: true, coveredTop: 1.05, padCornerFloor: 0.012,
+    paintedEnds: true, coveredTop: 1.05,
     tireHex: '#545a50', padHex: 0x31332b, chainHex: 0x282b25,
   });
   // Hydrogas face anatomy belongs to the same moving wheel instances as the

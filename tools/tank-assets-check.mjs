@@ -98,6 +98,7 @@ const server = await createServer({
 await server.listen();
 const browser = await puppeteer.launch({
   headless: 'new',
+  protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();

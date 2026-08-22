@@ -418,6 +418,15 @@ function installBattleDetailGroups(records) {
 const LOD1_DIST = 150;
 function lodWrap(parent, obj, dist = LOD1_DIST) {
   const lod = new THREE.LOD();
+  // Preserve mechanical ownership on the wrapper itself. Profile-level hull
+  // datum passes inspect direct children; without this receipt they can move
+  // the LOD while correctly leaving direct belt/wheel meshes untouched,
+  // separating the detailed shoe course by exactly that datum adjustment.
+  if (obj.userData?.runningGear) {
+    lod.userData.runningGear = true;
+    lod.userData.runningGearUnitId = obj.userData.runningGearUnitId;
+    lod.userData.appearanceRole = obj.userData.appearanceRole;
+  }
   lod.addLevel(obj, 0);
   lod.addLevel(new THREE.Object3D(), dist, 0.1);
   parent.add(lod);
@@ -707,6 +716,10 @@ function recomputeTrackNormals(geometry, triangleStarts = null) {
 
 const TRACK_WRAP_CLEARANCE_M = 0.045;
 const TRACK_TEXTURE_LINKS_PER_REPEAT = 4;
+// The detailed shoe center rides this far outside the casting belt's outer
+// face. It is the ONLY independent offset between the two layers: terrain
+// conformance, steering phase and wrap tangents all come from the belt course.
+const TRACK_SHOE_BAND_GAP_M = 0.012;
 
 function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null }) {
   const pts = [];
@@ -1274,7 +1287,8 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
     addBar(trackW * 0.47, pitch * 0.12, trackW * 0.225, z, -direction * 0.28, height);
   };
 
-  if (pattern.surface === 'paired-pad') {
+  if (pattern.surface === 'paired-pad' || pattern.surface === 'rubber-block'
+      || pattern.surface === 'split-chevron') {
     const gap = trackW * 0.055;
     const halfW = (trackW * 0.97 - gap) / 2;
     addBox(halfW, padH, pitch * padCoverage, -(halfW + gap) / 2);
@@ -1309,6 +1323,32 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
       break;
     case 'fine-rib':
       for (const z of [-0.25, 0, 0.25]) addBar(trackW * 0.86, pitch * 0.08, 0, pitch * z);
+      break;
+    case 'open-chevron':
+      addChevron(pitch * 0.18, 1, grouserH * 1.04);
+      addChevron(-pitch * 0.18, -1, grouserH * 1.04);
+      for (const side of [-1, 1]) {
+        addBar(trackW * 0.18, pitch * 0.13, side * trackW * 0.37, 0, 0, grouserH * 0.72);
+      }
+      break;
+    case 'rubber-block':
+      for (const x of [-trackW * 0.245, trackW * 0.245]) {
+        for (const z of [-pitch * 0.23, pitch * 0.23]) {
+          addBar(trackW * 0.37, pitch * 0.25, x, z, 0, grouserH);
+        }
+      }
+      break;
+    case 'split-chevron':
+      addChevron(pitch * 0.19, 1);
+      addChevron(-pitch * 0.19, -1);
+      addBar(trackW * 0.16, pitch * 0.16, 0, 0, 0, grouserH * 0.65);
+      break;
+    case 'staggered-rib':
+      for (let rib = 0; rib < 4; rib++) {
+        const side = rib % 2 ? 1 : -1;
+        addBar(trackW * 0.53, pitch * 0.075, side * trackW * 0.205,
+          pitch * (-0.30 + rib * 0.20), side * 0.08);
+      }
       break;
     case 'dead-track':
       addBar(trackW * 0.90, pitch * 0.18, 0, 0);
@@ -1973,21 +2013,18 @@ function buildRunningGear(P, cfg) {
 
   // ---- individual link pads instanced along the loop (both sides) ----------
   const nP = pts.length;
+  const rOut = trackTh / 2 + TRACK_SHOE_BAND_GAP_M;
   const integratedShoe = trackShoeGeometry(
     trackW, lp, trackPattern, cfg.pinCapOuter ?? null,
     shoeRadialScale, shoeWidthScale,
   );
   P.disposables.push(integratedShoe);
-  // Fixed neutral iron tones prevent the garage key light from turning the
-  // now-thicker faces into a tan/white necklace.  The inner chain is only a
-  // notch lighter, enough to separate the two levels without looking new.
-  // cfg.padHex opt-in (merkava r12 order 2): per-tank shoe-pad tone — the 3D
-  // arch windows keep a >=45L gear floor in the ref where the fixed iron
-  // read sub-30. Default byte-identical.
+  // Family-specific neutral steel palettes keep the shoe constructions
+  // readable without creating a pale second track. Per-instance colors are
+  // assigned once below; this remains one InstancedMesh / one draw call.
   const padMat=(mats.trackLink || mats.dark).clone();
-  // One neutral working-steel tone across the fleet. Per-profile olive/tan
-  // overrides made a second apparent course under direct light.
-  padMat.color=new THREE.Color(0x30312f);
+  padMat.color=new THREE.Color(0xffffff);
+  padMat.vertexColors = true;
   padMat.roughness=0.97;
   padMat.metalness=0.08;
   // cfg.gearFloor opt-in (merkava r12 order 2): Material.clone() drops
@@ -1999,6 +2036,21 @@ function buildRunningGear(P, cfg) {
   padMat.name = 'cot:track-pad';
   P.disposables.push(padMat);
   const padIM = new THREE.InstancedMesh(integratedShoe,padMat,nLinks*2);
+  const shadePalette = trackPattern.shadePalette;
+  let shadePhase = 0;
+  for (const ch of P.spec.id) shadePhase = (shadePhase * 33 + ch.charCodeAt(0)) >>> 0;
+  const shade = new THREE.Color();
+  for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
+    for (let linkI = 0; linkI < nLinks; linkI++) {
+      // Broad, deterministic cadence: adjacent links differ subtly, while
+      // seven-link runs share enough tone to avoid television-static noise.
+      const shadeIndex = (shadePhase + linkI + Math.floor(linkI / 7)
+        + sideIndex * 2) % shadePalette.length;
+      padIM.setColorAt(sideIndex * nLinks + linkI, shade.setHex(shadePalette[shadeIndex]));
+    }
+  }
+  padIM.instanceColor.setUsage(THREE.StaticDrawUsage);
+  padIM.instanceColor.needsUpdate = true;
   padIM.name = 'gearTrackPads';
   padIM.userData.appearanceRole = 'trackPad';
   padIM.userData.runningGearUnitId = runningGearUnitId;
@@ -2012,6 +2064,9 @@ function buildRunningGear(P, cfg) {
   padIM.userData.trackShoeRadialScale = shoeRadialScale;
   padIM.userData.trackShoeWidthScale = shoeWidthScale;
   padIM.userData.trackShoeOutboardOffset = shoeOutboardOffset;
+  padIM.userData.trackShoeBandGapM = TRACK_SHOE_BAND_GAP_M;
+  padIM.userData.trackShoeCenterOffsetM = rOut;
+  padIM.userData.trackShoeShadePalette = [...shadePalette];
   const linkMeshes=[padIM];
   // The casting band alone casts the continuous shadow; the one detailed
   // instanced shoe follows its deformation and scroll state.
@@ -2022,7 +2077,6 @@ function buildRunningGear(P, cfg) {
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     lodWrap(hullG,mesh);
   }
-  const rOut = trackTh / 2 + 0.012;
   // A covered return run is still a complete physical chain. Older builds
   // collapsed its matrices to zero as a visibility workaround, leaving a
   // real gap in the shoe/grouser course whenever a skirt angle exposed it.
@@ -2036,6 +2090,7 @@ function buildRunningGear(P, cfg) {
     for (const side of [-1, 1]) {
       const baseI = side < 0 ? 0 : nLinks;
       const scroll = side < 0 ? l : r;
+      const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
       const s0 = ((scroll % loopLen) + loopLen) % loopLen;
       let segIx = 0;
       while (segIx < nP - 1 && s0 >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
@@ -2049,34 +2104,33 @@ function buildRunningGear(P, cfg) {
         prevS = s;
         const sg = segsT[segIx];
         const u = s - sg.c0;
-        const z = sg.z + sg.tz * u, y = sg.y + sg.ty * u;
-        const groundRunOff = deformedBandOffset(z, y, side);
-        let tz = sg.tz, ty = sg.ty;
-        if (Math.abs(groundRunOff) > 1e-5) {
-          const eps = 0.045;
-          const za = z - sg.tz * eps, ya = y - sg.ty * eps;
-          const zb = z + sg.tz * eps, yb = y + sg.ty * eps;
-          const dz = zb - za;
-          const dy = (yb + deformedBandOffset(zb, yb, side)) -
-            (ya + deformedBandOffset(za, ya, side));
-          const invLen = 1 / Math.max(Math.hypot(dz, dy), 1e-6);
-          tz = dz * invLen;
-          ty = dy * invLen;
-        }
+        const t = Math.max(0, Math.min(1, u / Math.max(sg.l, 1e-6)));
+        const vertexBase = segIx * 24;
+        // Recover this LIVE belt segment's f0/f1 centerline directly from
+        // the deformed outer/inner face vertices. Shoes no longer evaluate a
+        // parallel suspension curve: the visible casting belt is their sole
+        // position/tangent source, with only rOut added along its normal.
+        const y0 = (bandPosition.getY(vertexBase + 2)
+          + bandPosition.getY(vertexBase + 6)) / 2;
+        const z0 = (bandPosition.getZ(vertexBase + 2)
+          + bandPosition.getZ(vertexBase + 6)) / 2;
+        const y1 = (bandPosition.getY(vertexBase)
+          + bandPosition.getY(vertexBase + 8)) / 2;
+        const z1 = (bandPosition.getZ(vertexBase)
+          + bandPosition.getZ(vertexBase + 8)) / 2;
+        const y = y0 + (y1 - y0) * t;
+        const z = z0 + (z1 - z0) * t;
+        const invLen = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
+        const tz = (z1 - z0) * invLen;
+        const ty = (y1 - y0) * invLen;
         _q.setFromAxisAngle(_X, Math.atan2(-ty, tz));
         _v.set(side * (xcForSide(side) + shoeOutboardOffset),
-          y + groundRunOff + tz * rOut, z - ty * rOut);
-      // gameplay_feel r5 (terrain-contact hard gate): on the GROUND RUN the
-      // outward rOut offset plus the flipped pad geometry once hung the
-      // grouser tips ~7 cm below the sim's
-      // hull-local y=0 contact plane — parked on a FLAT meadow the pads
-      // measured 5.6 cm below the heightfield (the last blocker after the
-      // r5 lateral-fan support solve). Clamp the pad center on the bottom
-      // run so grouser tips ride at −1 cm, inside the sim's support margin;
-      // top run, arcs and the de-track slump are untouched (y >= wheel line).
-      // gameplay_feel r1: the clamp moved BELOW the band-offset add so the
-      // wheel-chatter deformation cannot push pads back through the contact
-      // plane (probe: -0.115 m at speed with the clamp applied first).
+          y + tz * rOut, z - ty * rOut);
+      // The shoe stays on this exact deformed belt normal. A historical
+      // hull-local floor clamp moved only the gray shoe layer upward on
+      // slopes / turn roll, creating the visibly detached second course.
+      // Ground clearance now comes from the measured shoe underside in
+      // contactGeom, so no post-course transform is permitted here.
       // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
       // ground ribbon carry the read) — collapse that side's pads to zero
       const broken = side < 0 ? brokenL : brokenR;
@@ -2085,41 +2139,6 @@ function buildRunningGear(P, cfg) {
         _m.compose(_v, _q, _s);
         for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
         continue;
-      }
-      // Derive the center clamp from the selected family's real outer relief,
-      // so shallow IFV shoes and heavy siege shoes both touch the terrain
-      // without floating or penetrating it. Follow downward terrain travel
-      // instead of pinning hollows back to the rigid hull plane.
-      const padGroundCenter = (cfg.padGroundCenter ?? shoeOuterReach)
-        + Math.min(groundRunOff, 0);
-      if (_v.y < padGroundCenter) _v.y = padGroundCenter;
-      // cfg.padCornerFloor opt-in (uk 90-push, centurion r6): on the approach/
-      // departure RAMPS the tilted pads' lower corners dip below the ground
-      // plane (probe: -0.008..-0.016 m at 30-40 deg tilt) — the gate's front
-      // rows read procBottom -0.03 vs the ref's 0.0 ground line on ~35
-      // columns AND visibleBox.min.y biases EVERY station-top error ~+0.55%.
-      // Clamp so the rotated pad's lowest corner stays at/above the floor:
-      // corner drop = halfLen*|sin| + halfH*cos of the segment tilt.
-      // Default undefined -> byte-identical for every other tank.
-      if (cfg.padCornerFloor !== undefined) {
-        const ty = Math.abs(sg.ty);
-        const drop = lp * 0.5 * ty
-          + shoeOuterReach * Math.sqrt(Math.max(0, 1 - ty * ty));
-        const need = cfg.padCornerFloor + drop;
-        if (_v.y < need) _v.y = need;
-        // RAMP-HUG: on tilted segments the outward rOut offset hangs the pad
-        // corners ~0.07 below the band's ramp line — the whole approach/
-        // departure ramp read 0.05-0.08 low vs the ref line. Keep tilted
-        // pads' corners within 15 mm of the band bottom face.
-        // cfg.padHugZ0: z-gated hug extension — FRONT wrap shoulders hug the
-        // band (idler runs tight) while the rear sprocket zone keeps the
-        // natural shoe hang (drive teeth). Without the cfg the hug stays
-        // below the wheel line only.
-        const hugTop = (cfg.padHugZ0 !== undefined && z >= cfg.padHugZ0) ? wheelY + 0.17 : wheelY;
-        if (ty > 0.03 && y < hugTop) {
-          const bandBot = y - trackTh / 2 - 0.015;
-          if (_v.y - drop < bandBot) _v.y = bandBot + drop;
-        }
       }
       _s.set(1, 1, 1);
       _m.compose(_v, _q, _s);
@@ -2315,12 +2334,12 @@ function buildRunningGear(P, cfg) {
   //     trackLoopPoints actually lays down: road-wheel patch ± 0.5 wheelR);
   //   halfWidM          — outer track edge (xc + trackW/2);
   //   bottomYM          — hull-local Y of the lowest RENDERED gear surface at
-  //     rest: min of band outer face, ground-run pad underside (pad centers
-  //     clamp to y ≥ 0.078 in placeLinks, grouser face 0.073 below center),
-  //     road-wheel bottoms and end-wheel wraps. createTank folds in the
+  //     rest: min of band outer face, the shoe underside derived from that
+  //     same face plus the fixed clearance, road-wheel bottoms and end-wheel
+  //     wraps. createTank folds in the
   //     whole-visual rest scan (hull keels can undercut the gear on
   //     mask-sovereign rebuilds), so this is the gear-only floor.
-  const gearPadBotY = Math.max(botY - rOut, 0.078) - 0.073;
+  const gearPadBotY = botY - rOut - shoeOuterReach;
   const gearBandBotY = botY - trackTh / 2;
   let gearWheelBotY = Infinity;
   for (const e of entries) if (e.road) gearWheelBotY = Math.min(gearWheelBotY, e.y - e.r);
@@ -2393,17 +2412,37 @@ function buildRunningGear(P, cfg) {
   // Every band vertex has a fixed rest-space z and therefore a fixed pair of
   // suspension-wheel influences. Resolve that topology once instead of doing
   // a linear wheel search for every vertex of both bands on every animation
-  // update. The dirty triangle list likewise omits the rigid return run and
-  // wrap faces from normal reconstruction without changing any moved face.
+  // update. Crucially, derive the influence from the CROSS-SECTION CENTER,
+  // not each face vertex: weighting outer and inner belt faces independently
+  // sheared the band thickness and moved its visible centerline away from the
+  // shoe course by several centimetres under suspension travel.
+  //
+  // trackBandGeo emits 24 non-indexed vertices per segment. This mask records
+  // whether each duplicate belongs to segment endpoint f1 (otherwise f0).
+  // Every duplicate at an endpoint therefore receives the same translation,
+  // preserving the authored belt thickness while the shoes follow that same
+  // translated center course plus TRACK_SHOE_BAND_GAP_M.
+  const bandVertexUsesF1 = [
+    1, 1, 0, 1, 0, 0,  // outer face
+    0, 0, 1, 0, 1, 1,  // inner face
+    0, 1, 1, 0, 1, 0,  // +X edge
+    0, 0, 1, 0, 1, 1,  // -X edge
+  ];
   function buildBandInfluence(ws) {
     const vertices = [], wheelA = [], wheelB = [], weightA = [], weightB = [];
     const dirtyVertex = new Uint8Array(bandBasePos.length / 3);
     const span = Math.max(wheelY - botY, 1e-3);
     for (let vi = 0, j = 0; j < bandBasePos.length; vi++, j += 3) {
-      const by = bandBasePos[j + 1];
+      const segmentBase = Math.floor(vi / 24) * 24;
+      const usesF1 = bandVertexUsesF1[vi % 24] === 1;
+      const outerVertex = segmentBase + (usesF1 ? 0 : 2);
+      const innerVertex = segmentBase + (usesF1 ? 8 : 6);
+      const by = (bandBasePos[outerVertex * 3 + 1]
+        + bandBasePos[innerVertex * 3 + 1]) / 2;
       if (by >= wheelY || !ws.length) continue;
       const vertical = Math.min((wheelY - by) / span, 1) ** 2;
-      const z = bandBasePos[j + 2];
+      const z = (bandBasePos[outerVertex * 3 + 2]
+        + bandBasePos[innerVertex * 3 + 2]) / 2;
       let a = -1, b = -1, wa = 0, wb = 0;
       if (z <= ws[0].z) {
         const d = ws[0].z - z;
@@ -2441,35 +2480,6 @@ function buildRunningGear(P, cfg) {
     [-1]: buildBandInfluence(suspWheels[-1]),
     [1]: buildBandInfluence(suspWheels[1]),
   };
-
-  /** Interpolated wheel visual offset at hull-local z for one side. */
-  function bandOffsetAt(z, side) {
-    const ws = suspWheels[side];
-    const n = ws.length;
-    if (!n) return 0;
-    if (z <= ws[0].z) {
-      const d = ws[0].z - z;
-      return d > 0.5 ? 0 : (ws[0].voff || 0) * (1 - d / 0.5);
-    }
-    if (z >= ws[n - 1].z) {
-      const d = z - ws[n - 1].z;
-      return d > 0.5 ? 0 : (ws[n - 1].voff || 0) * (1 - d / 0.5);
-    }
-    for (let i = 1; i < n; i++) {
-      if (z <= ws[i].z) {
-        const t = (z - ws[i - 1].z) / Math.max(ws[i].z - ws[i - 1].z, 1e-4);
-        return (ws[i - 1].voff || 0) * (1 - t) + (ws[i].voff || 0) * t;
-      }
-    }
-    return 0;
-  }
-
-  /** Lower-run displacement with a smooth fade to zero at the axle line. */
-  function deformedBandOffset(z, y, side) {
-    if (y >= wheelY) return 0;
-    const w = Math.min((wheelY - y) / Math.max(wheelY - botY, 1e-3), 1);
-    return bandOffsetAt(z, side) * w * w;
-  }
 
   // deform one band's bottom run toward the wheel offset field (weight fades
   // to zero by the axle line so the top run / arcs never move)

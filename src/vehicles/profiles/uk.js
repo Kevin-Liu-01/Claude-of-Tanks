@@ -251,7 +251,7 @@ function ukHull(P, g) {
     gearFloor: g.gearFloor,
     // uk r6 opt-ins (centurion 90-push): ramp-pad corner floor + pinned
     // contact patch (both undefined for every other caller — byte-identical).
-    padCornerFloor: g.padCornerFloor, contactZF: g.contactZF, contactZR: g.contactZR,
+    contactZF: g.contactZF, contactZR: g.contactZR,
   });
   // Mud flaps hang from the FENDER TIPS (hanging them at the hull nose/tail
   // left them floating over the raked plates -> articulation floaters).
@@ -1564,9 +1564,8 @@ const CENTURION_HULL = {
   // default wheel-patch tangents (ref rear ramp fits 0.57/m from z -2.35,
   // front from ~2.6 — the r5 defaults read the ramp bottoms -0.06..-0.13 on
   // 7 side columns both marks) + tilted ramp-pad corners clamped to the
-  // ground plane (they dipped to -0.016, biasing every station top +0.55%
-  // via visibleBox.min.y and the front rows' procBottom).
-  contactZF: 2.50, contactZR: -2.32, padCornerFloor: 0.012, padHugZ0: 0,
+  // ground plane is now owned by the measured complete shoe envelope.
+  contactZF: 2.50, contactZR: -2.32,
 };
 
 export function centurionBuild(P, mk) {

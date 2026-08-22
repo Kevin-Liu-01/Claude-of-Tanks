@@ -1020,12 +1020,9 @@ function merkavaChassis(P, c) {
     shoeRadialScale: c.shoeRadialScale ?? 0.92,
     shoeWidthScale: c.shoeWidthScale ?? 1.00,
     // Source-measured terminal geometry may need a tighter loaded contact
-    // patch and ramp-corner containment. These options still feed the one
-    // canonical suspension-driven loop; they never author a proxy course.
+    // patch; shoe placement still comes only from the canonical live loop.
     contactZF: c.contactZF,
     contactZR: c.contactZR,
-    padCornerFloor: c.padCornerFloor,
-    padHugZ0: c.padHugZ0,
     dishR: c.dishR ?? 0.78,
     chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor,
     tireHex: c.tireHex, wheelHex: c.wheelHex, endWheelHex: c.endWheelHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class

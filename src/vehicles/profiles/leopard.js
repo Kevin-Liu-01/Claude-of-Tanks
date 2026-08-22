@@ -10646,7 +10646,6 @@ function buildLeo1A5ArticulatedProfile(P) {
     trackW: trackWidth, trackTh: trackThickness, topY: trackTopSupportY, botY: trackBotY,
     contactZF: trackContactZF, contactZR: trackContactZR,
     linkPitchM: 0.125, shoeRadialScale: 0.58, shoeWidthScale: 0.97,
-    padGroundCenter: 0.045, padCornerFloor: 0.004,
     endRingSpan: 0.50, coveredTop: 1.06, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
   });

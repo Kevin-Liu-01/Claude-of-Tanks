@@ -13,6 +13,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.035, shoulderHeight: 0.008,
     webHeight: 0.046, webDepth: 0.64, hornHeight: 0.18,
     pinStyle: 'end-caps', pinRadius: 0.038,
+    shadePalette: Object.freeze([0x2a2c2b, 0x323533, 0x3a3c39]),
   }),
   'early-cast-steel': Object.freeze({
     label: 'cast-steel block shoe',
@@ -20,6 +21,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.020, shoulderHeight: 0.003,
     webHeight: 0.050, webDepth: 0.66, hornHeight: 0.20,
     pinStyle: 'end-caps', pinRadius: 0.040,
+    shadePalette: Object.freeze([0x30312f, 0x383936, 0x282a29]),
   }),
   'soviet-single-pin': Object.freeze({
     label: 'single-pin chevron shoe',
@@ -27,6 +29,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.020, shoulderHeight: 0.003,
     webHeight: 0.044, webDepth: 0.62, hornHeight: 0.19,
     pinStyle: 'end-caps', pinRadius: 0.018,
+    shadePalette: Object.freeze([0x292b2a, 0x323432, 0x3b3d3a]),
   }),
   'nato-double-pin': Object.freeze({
     label: 'paired-pad double-pin shoe',
@@ -34,6 +37,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.020, shoulderHeight: 0.003,
     webHeight: 0.044, webDepth: 0.64, hornHeight: 0.18,
     pinStyle: 'end-caps', pinRadius: 0.033,
+    shadePalette: Object.freeze([0x2d2f2e, 0x363937, 0x3d403d]),
   }),
   'merkava-heavy': Object.freeze({
     label: 'heavy chevron double-pin shoe',
@@ -41,6 +45,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.020, shoulderHeight: 0.003,
     webHeight: 0.050, webDepth: 0.68, hornHeight: 0.22,
     pinStyle: 'end-caps', pinRadius: 0.038,
+    shadePalette: Object.freeze([0x282a29, 0x303331, 0x393b38]),
   }),
   'compact-ifv': Object.freeze({
     label: 'fine-pitch IFV shoe',
@@ -48,6 +53,39 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.032, shoulderHeight: 0.006,
     webHeight: 0.040, webDepth: 0.60, hornHeight: 0.16,
     pinStyle: 'end-caps', pinRadius: 0.028,
+    shadePalette: Object.freeze([0x2e302f, 0x373a38, 0x3e413e]),
+  }),
+  'eastern-ifv': Object.freeze({
+    label: 'open-chevron IFV shoe',
+    surface: 'open-chevron', padCoverage: 0.92, padHeight: 0.058,
+    grouserHeight: 0.026, shoulderHeight: 0.004,
+    webHeight: 0.042, webDepth: 0.62, hornHeight: 0.17,
+    pinStyle: 'end-caps', pinRadius: 0.024,
+    shadePalette: Object.freeze([0x292b29, 0x343634, 0x3c3e3b]),
+  }),
+  'british-rubber-pad': Object.freeze({
+    label: 'British split rubber-block shoe',
+    surface: 'rubber-block', padCoverage: 0.93, padHeight: 0.060,
+    grouserHeight: 0.018, shoulderHeight: 0.004,
+    webHeight: 0.046, webDepth: 0.66, hornHeight: 0.19,
+    pinStyle: 'end-caps', pinRadius: 0.032,
+    shadePalette: Object.freeze([0x2c2f2e, 0x353836, 0x3d403e]),
+  }),
+  'franco-italian-modular': Object.freeze({
+    label: 'Franco-Italian split-chevron shoe',
+    surface: 'split-chevron', padCoverage: 0.92, padHeight: 0.060,
+    grouserHeight: 0.021, shoulderHeight: 0.004,
+    webHeight: 0.045, webDepth: 0.64, hornHeight: 0.18,
+    pinStyle: 'end-caps', pinRadius: 0.031,
+    shadePalette: Object.freeze([0x2b2d2c, 0x343735, 0x3b3e3c]),
+  }),
+  'japanese-modular': Object.freeze({
+    label: 'Japanese staggered-rib shoe',
+    surface: 'staggered-rib', padCoverage: 0.92, padHeight: 0.058,
+    grouserHeight: 0.022, shoulderHeight: 0.004,
+    webHeight: 0.043, webDepth: 0.63, hornHeight: 0.17,
+    pinStyle: 'end-caps', pinRadius: 0.030,
+    shadePalette: Object.freeze([0x2f3130, 0x383a38, 0x40423f]),
   }),
   'hydropneumatic-dead-track': Object.freeze({
     label: 'compact dead-track block shoe',
@@ -55,6 +93,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.020, shoulderHeight: 0.003,
     webHeight: 0.046, webDepth: 0.70, hornHeight: 0.17,
     pinStyle: 'end-caps', pinRadius: 0.034,
+    shadePalette: Object.freeze([0x292b2a, 0x313432, 0x393c39]),
   }),
   'siege-wide': Object.freeze({
     label: 'wide siege traction shoe',
@@ -62,6 +101,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
     grouserHeight: 0.038, shoulderHeight: 0.009,
     webHeight: 0.052, webDepth: 0.72, hornHeight: 0.23,
     pinStyle: 'end-caps', pinRadius: 0.042,
+    shadePalette: Object.freeze([0x292b2a, 0x333532, 0x3b3d39]),
   }),
 });
 
@@ -72,7 +112,11 @@ const FAMILY_RULES = Object.freeze([
   [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-cleat'],
   [/(?:m4a3e8|t34_85|kv2|isu152|isu122s)/, 'early-cast-steel'],
   [/(?:udes03|strv103a|strv103)(?:$|_)/, 'hydropneumatic-dead-track'],
-  [/(?:m2a2_bradley|m3a3_bradley|m2a3_bradley|spz_puma|marder1a3|fv510|bwp1|upior|bmp2|bmp3|type89|bmpt)/, 'compact-ifv'],
+  [/(?:bmp2|bmp3|bwp1|upior|bmpt)/, 'eastern-ifv'],
+  [/(?:m2a2_bradley|m3a3_bradley|m2a3_bradley|spz_puma|marder1a3)/, 'compact-ifv'],
+  [/(?:chieftain|challenger|centurion|vickers|fv510)/, 'british-rubber-pad'],
+  [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],
+  [/(?:stb1|type74|type90|type10|type89)(?:$|_)/, 'japanese-modular'],
   [/(?:merkava)/, 'merkava-heavy'],
   [/(?:t62|t64|t72|t80|t84|t90|pt91|type59|ztz85|type99|ztz99|t14|ua_t)/, 'soviet-single-pin'],
 ]);

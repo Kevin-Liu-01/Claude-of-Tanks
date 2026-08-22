@@ -866,7 +866,7 @@ export function buildK2(P) {
     rollers: [1.55, 0.05, -1.45].map((z) => ({ z, y: 0.93, r: 0.08 })),
     trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.10,
     containRearRoadWheel: true,
-    paintedEnds: true, coveredTop: 1.0, padCornerFloor: 0,
+    paintedEnds: true, coveredTop: 1.0,
     padHex: 0x25251f, chainHex: 0x34332c,
   });
   // The track solver's small end hubs preserve the measured contact arc;
@@ -2299,7 +2299,7 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
     trackW: 0.5159, trackTh: 0.072, topY: 0.935, botY: 0.042,
     contactZF: 2.398, contactZR: -2.365,
     arms: true, paintedEnds: true, coveredTop: true,
-    linkPitchM: 0.138, shoeRadialScale: 0.85, padCornerFloor: 0.0132,
+    linkPitchM: 0.138, shoeRadialScale: 0.85,
     pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
     padHex: 0x31322a, chainHex: 0x292a24,
     gearFloor: true, tireHex: 0x24261f, wheelHex: 0x3f4837,

@@ -1282,10 +1282,9 @@ function buildLeclerc(P, variant = 's2') {
     trackW: 0.630, trackTh: 0.07, topY: 0.935, botY: 0.055,
     contactZF: 2.30, contactZR: -2.10,
     endRingSpan: 0.56,
-    linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
+    linkPitchM: 0.11, shoeRadialScale: 0.61,
     // The Leclerc family uses one centrally resolved fine shoe whose web,
     // pins and guide horn remain inside the same animated course.
-    padCornerFloor: 0.02, padHugZ0: 2.40,
     paintedEnds: true, coveredTop: false, arms: true,
   });
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and

@@ -855,7 +855,6 @@ function abramsHull(P, g) {
     dishR: g.dishR, tireHex: g.tireHex, wheelHex: g.wheelHex, deadSag: g.deadSag,
     contactZF: g.contactZF, contactZR: g.contactZR,
     endRingSpan: g.endRingSpan, pinCapOuter: g.pinCapOuter,
-    padCornerFloor: g.padCornerFloor, padHugZ0: g.padHugZ0,
     armBucket: g.armBucket,
   });
 
@@ -7204,7 +7203,7 @@ const AX_HULL = {
   // pads tuck behind the 0.80 skirt hem; the ref's own wheels measure
   // r ~0.28-0.31 nearly touching, span 0.10..0.66.)
   trackXc: 1.375, trackW: 0.57, endRingSpan: 0.42, pinCapOuter: 0.275,
-  padCornerFloor: 0, padHugZ0: 2.0, wheelR: 0.2992, wheelY: 0.4184,
+  wheelR: 0.2992, wheelY: 0.4184,
   dishR: 0.74, tireHex: 0x232220, wheelHex: 0x343830, arms: true,
   armBucket: 'hullRunningGearDetail',
   contactZF: 2.32, contactZR: -2.37,

@@ -16,6 +16,10 @@ const expected = new Map([
   ['m1a2', 'nato-double-pin'],
   ['merkava4b', 'merkava-heavy'],
   ['m3a3_bradley', 'compact-ifv'],
+  ['bmp3', 'eastern-ifv'],
+  ['challenger2', 'british-rubber-pad'],
+  ['leclerc', 'franco-italian-modular'],
+  ['type10', 'japanese-modular'],
   ['strv103', 'hydropneumatic-dead-track'],
   ['t95', 'siege-wide'],
 ]);
@@ -29,6 +33,9 @@ for (const id of ALL_TANK_IDS) {
   assert.ok(TRACK_PATTERN_DEFINITIONS[pattern.id], `${id}: known track pattern`);
   assert.ok(pattern.padCoverage >= 0.90 && pattern.padCoverage <= 0.97,
     `${id}: complete but articulated pad coverage`);
+  assert.equal(pattern.shadePalette.length, 3, `${id}: three-tone working-steel palette`);
+  assert.equal(new Set(pattern.shadePalette).size, pattern.shadePalette.length,
+    `${id}: distinct working-steel shades`);
   counts.set(pattern.id, counts.get(pattern.id) + 1);
 }
 for (const [id, count] of counts) {
@@ -56,6 +63,8 @@ for (const path of jsFiles) {
   const source = readFileSync(path, 'utf8');
   assert.doesNotMatch(source, /\b(?:integratedLinks|innerLinks)\s*:/,
     `${path}: deprecated track detail switch`);
+  assert.doesNotMatch(source, /\b(?:padGroundCenter|padCornerFloor|padHugZ0)\s*:/,
+    `${path}: shoe placement must not diverge from the canonical belt course`);
 }
 
 console.log(`[track-patterns] PASS — ${ALL_TANK_IDS.length} tanks across `
