@@ -34,6 +34,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
+import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -11403,6 +11404,206 @@ function buildLeo2A6M(P) {
   P.topY = Math.max(P.topY || 0, 2.98);
 }
 
+// Leopard 2A6 UA — a field-protection package on the certified 2A6M rig.
+// Added ERA is gameplay-backed through six independently strippable sectors;
+// cages and twin remote weapon stations remain merged visual equipment, so
+// the dramatic silhouette does not create extra simulation or frame work.
+function buildLeopard2A6UA(P) {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const turretPivot = P.spec.armor.turretPivot;
+  buildLeo2A6M(P);
+  P.clearDecals('turret');
+
+  const eraReceipt = {
+    cheekTilesPerSide: 18,
+    turretSideTilesPerSide: 24,
+    skirtTilesPerSide: 30,
+    totalTiles: 144,
+    sectors: [
+      'ua_turret_cheek_era_R', 'ua_turret_cheek_era_L',
+      'ua_turret_side_era_R', 'ua_turret_side_era_L',
+      'ua_skirt_era_R', 'ua_skirt_era_L',
+    ],
+  };
+
+  // Conformal Nizh-style cheek courses. The rows follow the 2A6 arrowhead
+  // tangent and stop well outside the moving mantlet throat.
+  for (const side of [-1, 1]) {
+    const sector = `ua_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(sector, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 6; station++) {
+          const t = station / 5;
+          place(
+            side * (0.43 + t * 0.88),
+            turretPivot[1] + 0.17 + row * 0.205 + t * 0.018,
+            turretPivot[2] + 2.43 - t * 0.92,
+            -0.08, side * 0.79, side * 0.018,
+            1.18, 1.30, 1.50,
+          );
+        }
+      }
+    }, true);
+
+    // Side cassettes continue from the cheeks to the bustle protection. A
+    // thin backed rail visibly seats every course on the welded turret side.
+    P.add('turret', box(0.10, 0.70, 4.18), side * 1.53, 0.40, -0.79);
+    const sideSector = `ua_turret_side_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(sideSector, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 8; station++) {
+          place(
+            side * 1.59,
+            turretPivot[1] + 0.17 + row * 0.205,
+            turretPivot[2] - 2.62 + station * 0.54,
+            0, Math.PI / 2, 0,
+            1.55, 1.30, 1.42,
+          );
+        }
+      }
+    }, true);
+
+    // Full-length hull skirt ERA: visually dense, attached to continuous
+    // camouflaged carrier rails, and kept outboard of the live track sweep.
+    const guardBucket = side > 0 ? 'hullTrackGuardR' : 'hullTrackGuardL';
+    P.add(guardBucket, box(0.20, 0.79, 6.42), side * 1.99, 1.10, 0.04);
+    P.add('hullDetail', box(0.30, 0.035, 6.34), side * 1.80, 1.48, 0.03);
+    // Continuous stand-off backing closes the narrow plan-view trench
+    // between the skirt carrier and outer cage. It sits entirely outside
+    // the live shoe envelope and gives the ERA/cage ties a physical seat.
+    P.add('hullDark', box(0.25, 0.72, 6.58), side * 2.105, 1.11, -0.03);
+    const skirtSector = `ua_skirt_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(skirtSector, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 10; station++) {
+          place(
+            side * 2.055,
+            0.84 + row * 0.215,
+            -2.98 + station * 0.67,
+            0, Math.PI / 2, 0,
+            1.78, 1.38, 1.48,
+          );
+        }
+      }
+    });
+  }
+
+  // Stand-off cage around the skirt package. Long rails merge into one
+  // detail bucket and every upright has a short physical tie back to the ERA
+  // carrier, so the assembly reads attached from front, side and rear views.
+  for (const side of [-1, 1]) {
+    for (let row = 0; row < 6; row++) {
+      P.add('hullDetail', box(0.026, 0.026, 6.45), side * 2.22, 0.76 + row * 0.16, 0.03);
+    }
+    for (let station = 0; station < 11; station++) {
+      const z = -3.18 + station * 0.64;
+      P.add('hullDetail', box(0.028, 0.84, 0.028), side * 2.22, 1.16, z);
+      P.add('hullDark', cylX(0.018, 0.23, 8), side * 2.105, 0.84, z);
+      P.add('hullDark', cylX(0.018, 0.23, 8), side * 2.105, 1.43, z);
+    }
+  }
+  // Keep the transverse stern panel above the sprocket wrap while its lower
+  // courses overlap the two side cages. This preserves the rear protection
+  // read without placing rigid bars inside the articulated track sweep.
+  for (let row = 0; row < 6; row++) {
+    P.add('hullDetail', box(4.42, 0.026, 0.026), 0, 1.46 + row * 0.12, -3.30);
+  }
+  for (let station = 0; station < 9; station++) {
+    P.add('hullDetail', box(0.028, 0.56, 0.028), -2.18 + station * 0.545, 1.75, -3.30);
+  }
+  for (const side of [-1, 1]) {
+    // Upper corner gussets bridge the stern grid into the skirt carriers;
+    // their inner edges remain outside the 1.62 m shoe envelope.
+    P.add('hullDark', box(0.56, 0.035, 0.20), side * 1.94, 1.46, -3.29);
+  }
+  // A shallow center nose tie supports the front net hem on the glacis and
+  // closes the otherwise pin-sized plan gap between the donor tow fittings.
+  P.add('hullDetail', box(0.44, 0.035, 0.20), 0, 1.33, 3.61);
+
+  // A second, wider turret cage wraps the full flank and cheek armor. The
+  // forward rail segments follow the arrowhead rather than bridging the gun.
+  for (const side of [-1, 1]) {
+    for (let row = 0; row < 6; row++) {
+      P.add('turretDetail', box(0.026, 0.026, 4.28), side * 1.84, 0.08 + row * 0.15, -0.72);
+    }
+    for (let station = 0; station < 8; station++) {
+      const z = -2.82 + station * 0.57;
+      P.add('turretDetail', box(0.028, 0.78, 0.028), side * 1.84, 0.455, z);
+      P.add('turretDark', cylX(0.018, 0.28, 8), side * 1.70, 0.16, z);
+      P.add('turretDark', cylX(0.018, 0.28, 8), side * 1.70, 0.71, z);
+    }
+    const cheekYaw = side * 0.78;
+    for (let row = 0; row < 5; row++) {
+      P.add('turretDetail', box(1.18, 0.026, 0.026), side * 0.94, 0.12 + row * 0.16, 2.02,
+        0, cheekYaw, 0);
+    }
+    for (const t of [0.08, 0.38, 0.68, 0.94]) {
+      P.add('turretDetail', box(0.028, 0.68, 0.028),
+        side * (0.43 + t * 0.94), 0.44, 2.50 - t * 1.02, 0, cheekYaw, 0);
+    }
+  }
+  for (let row = 0; row < 6; row++) {
+    P.add('turretDetail', box(3.66, 0.026, 0.026), 0, 0.08 + row * 0.15, -3.58);
+  }
+  for (let station = 0; station < 9; station++) {
+    P.add('turretDetail', box(0.028, 0.78, 0.028), -1.80 + station * 0.45, 0.455, -3.58);
+  }
+
+  // Roof basket rails give the net a believable stand-off support without
+  // closing the hatch, sight or weapon-station service lanes.
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', box(0.032, 0.032, 3.70), side * 1.55, 0.91, -1.05);
+    P.add('turretDetail', box(0.28, 0.032, 0.032), side * 1.42, 0.91, -2.75);
+    P.add('turretDetail', box(0.28, 0.032, 0.032), side * 1.42, 0.91, 0.62);
+  }
+
+  const addRemoteStation = ({ x, z, heavy, seed }) => {
+    const receiverW = heavy ? 0.48 : 0.40;
+    const barrelR = heavy ? 0.040 : 0.032;
+    const barrelLen = heavy ? 1.22 : 1.05;
+    P.addEquipment('turret', cylY(0.22, 0.24, 0.08, P.q ? 20 : 12), x, 0.95, z);
+    P.addEquipment('turret', box(0.16, 0.26, 0.16), x, 1.10, z);
+    P.addEquipment('turret', box(receiverW, 0.26, 0.54), x, 1.32, z + 0.10);
+    P.addEquipment('turret', box(receiverW + 0.08, 0.05, 0.62), x, 1.475, z + 0.10);
+    P.addEquipment('turretDark', cylZ(barrelR, barrelLen, P.q ? 16 : 10),
+      x, 1.34, z + 0.38 + barrelLen / 2);
+    P.addEquipment('turretDark', torus(barrelR * 1.45, barrelR * 0.32, 14, 6),
+      x, 1.34, z + 0.38 + barrelLen);
+    P.addEquipment('turretDark', box(0.18, 0.22, 0.30), x - (heavy ? 0.31 : -0.28), 1.29, z + 0.06);
+    P.addEquipment('turret', box(0.20, 0.28, 0.22), x + (heavy ? 0.31 : -0.29), 1.30, z - 0.02);
+    P.addEquipment('turretGlass', box(0.10, 0.10, 0.018),
+      x + (heavy ? 0.31 : -0.29), 1.34, z + 0.10);
+    for (const side of [-1, 1]) {
+      P.addEquipment('turretDark', box(0.035, 0.28, 0.40),
+        x + side * (receiverW / 2 + 0.025), 1.28, z + 0.08, 0, 0, side * 0.08);
+    }
+    return { x, z, heavy, seed, barrelLen };
+  };
+  const remoteStations = [
+    addRemoteStation({ x: -0.82, z: -1.76, heavy: true, seed: 2601 }),
+    addRemoteStation({ x: 0.73, z: -1.55, heavy: false, seed: 2602 }),
+  ];
+
+  // Leave the Ukrainian tactical number on a backed skirt cassette. The
+  // shared nation marking pass adds the trident on its separately audited
+  // seat; neither marking is borrowed from the German donor.
+  P.decal('hull', 'number', null, 0.19, [2.225, 1.28, -1.30], Math.PI / 2);
+
+  if (P.geometryReceipt) {
+    P.turretG.userData.leopard2A6UAProtectionReceipt = Object.freeze({
+      ...eraReceipt,
+      hullCageUprightsPerSide: 11,
+      turretCageUprightsPerSide: 8,
+      remoteStations,
+      remoteStationCount: remoteStations.length,
+      equipmentIsNonArmor: true,
+      staticMergedProtection: true,
+    });
+  }
+
+  addVehicleGhillieSuit(P);
+}
+
 // ============================================================================
 // §5.299 ITEM 1 — pre-wave WRAPPER-ERA A4M turret package helpers, copied
 // verbatim from b66d6d03^:src/vehicles/profiles/germany.js (the retired
@@ -12067,4 +12268,5 @@ export const LEOPARD_PROFILES = {
   // stay ahead of any legacy same-key row in the profiledProcedurals merge).
   leo2a4m: { build: buildLeo2A4M },
   leo2a6m: { build: buildLeo2A6M },
+  leo2a6_ua: { build: buildLeopard2A6UA },
 };

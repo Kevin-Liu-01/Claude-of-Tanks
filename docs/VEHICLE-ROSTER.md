@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **150 saved vehicle records**: **111 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **151 saved vehicle records**: **112 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -144,20 +144,21 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 134 | PROD | `ua_t80u_kursk` | T-80U Kursk | Ukraine | IX | Modern | Production |
 | 135 | PROD | `ua_t84_oplot_m` | T-84BM Oplot-M | Ukraine | X | Modern | Production |
 | 136 | PROD | `ua_m1a1` | M1A1 Abrams UA | Ukraine | IX | Modern | Production |
-| 137 | PROD | `t72m1_jaguar` | T-72M1 Jaguar | Poland | VIII | Modern | Production |
-| 138 | PROD | `pt91_twardy` | PT-91A Twardy | Poland | IX | Modern | Production |
-| 139 | PROD | `pl01` | PL-01 | Poland | X | Next Generation | Production |
-| 140 | PROD | `pl01_105` | PL-01 (105) | Poland | X | Next Generation | Production |
-| 141 | PROD | `k2b` | K2B | South Korea | X | Modern | Production |
-| 142 | PROD | `bmp3_rok` | BMP-3 (ROK) | South Korea | VIII | Modern | Production |
-| 143 | PROD | `ua_m2a3_bradley` | M2A3 Bradley (Ukraine) | Ukraine | IX | Modern | Production |
-| 144 | PROD | `bmpt_terminator2` | BMPT Terminator 2 | Russia | IX | Modern | Production |
-| 145 | PROD | `bwp1` | BWP-1 (Bojowy Wóz Piechoty 1) | Poland | IX | Cold War | Production |
-| 146 | PROD | `marder1a3` | Schützenpanzer Marder 1A3 | Germany | VII | Cold War | Production |
-| 147 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | VIII | Modern | Production |
-| 148 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
-| 149 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
-| 150 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |
+| 137 | PROD | `leo2a6_ua` | Leopard 2A6 UA | Ukraine | X | Modern | Production |
+| 138 | PROD | `t72m1_jaguar` | T-72M1 Jaguar | Poland | VIII | Modern | Production |
+| 139 | PROD | `pt91_twardy` | PT-91A Twardy | Poland | IX | Modern | Production |
+| 140 | PROD | `pl01` | PL-01 | Poland | X | Next Generation | Production |
+| 141 | PROD | `pl01_105` | PL-01 (105) | Poland | X | Next Generation | Production |
+| 142 | PROD | `k2b` | K2B | South Korea | X | Modern | Production |
+| 143 | PROD | `bmp3_rok` | BMP-3 (ROK) | South Korea | VIII | Modern | Production |
+| 144 | PROD | `ua_m2a3_bradley` | M2A3 Bradley (Ukraine) | Ukraine | IX | Modern | Production |
+| 145 | PROD | `bmpt_terminator2` | BMPT Terminator 2 | Russia | IX | Modern | Production |
+| 146 | PROD | `bwp1` | BWP-1 (Bojowy Wóz Piechoty 1) | Poland | IX | Cold War | Production |
+| 147 | PROD | `marder1a3` | Schützenpanzer Marder 1A3 | Germany | VII | Cold War | Production |
+| 148 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | VIII | Modern | Production |
+| 149 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
+| 150 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
+| 151 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |
 
 ## Policy ownership
 

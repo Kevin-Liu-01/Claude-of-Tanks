@@ -666,13 +666,60 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.56, 0.56, 0.12, 1.22)], seed: 261 }],
     },
   },
+  leo2a6_ua: {
+    id: 'leo2a6_ua', seed: 2606, style: 'leafy', density: 0.99, leafScale: 1.04,
+    light: 0x747b50, dark: 0x34452f, netColor: 'rgba(38,53,32,0.86)',
+    hull: {
+      top: [
+        { x0: -1.86, x1: 1.86, z0: -3.54, z1: -1.28, nx: 30, nz: 24,
+          yAt: (x, z) => 1.91 + Math.cos(x * 1.7 + z) * 0.016,
+          outline: [[-1.42, -3.54], [1.42, -3.54], [1.86, -3.12], [1.86, -1.28], [-1.86, -1.28], [-1.86, -3.12]],
+          holes: [rect(-1.18, -0.35, -3.18, -2.08), rect(0.35, 1.18, -3.18, -2.08)], seed: 271 },
+        { x0: -1.88, x1: 1.88, z0: 1.24, z1: 3.18, nx: 30, nz: 22,
+          yAt: (x, z) => 1.77 - Math.max(0, z - 2.08) * 0.30 + Math.cos(x * 2.0) * 0.012,
+          outline: [[-1.88, 1.24], [1.88, 1.24], [1.84, 2.66], [1.18, 3.18], [-1.18, 3.18], [-1.84, 2.66]],
+          holes: [rect(0.35, 0.92, 1.25, 1.75)], seed: 277 },
+      ],
+      side: [-1, 1].map((side) => ({ side, z0: -3.34, z1: 3.28, nz: 50, ny: 11,
+        topAt: (z) => z > 2.08 ? 1.76 - (z - 2.08) * 0.28 : 1.78,
+        bottomAt: (z) => 0.69 + Math.sin(z * 3.1) * 0.034,
+        outAt: (_z, t) => 2.25 + (1 - t) * 0.055, seed: 283 + side })),
+      face: [{ z: 3.16, x0: -0.90, x1: 0.90, y0: 0.82, y1: 1.40, nx: 14, ny: 8,
+        outline: [[-0.76, 0.82], [0.76, 0.82], [0.90, 1.00], [0.72, 1.40], [-0.72, 1.40], [-0.90, 1.00]],
+        holes: [], seed: 291 }],
+    },
+    turret: {
+      top: [{ x0: -1.88, x1: 1.88, z0: -3.48, z1: 2.52, nx: 34, nz: 48,
+        yAt: (x, z) => 0.98 - Math.max(0, z - 1.20) * 0.12 + Math.cos(x * 1.8 + z * 0.7) * 0.018,
+        outline: [[-1.56, -3.48], [1.56, -3.48], [1.88, -2.90], [1.88, 1.20], [1.44, 2.02], [0.54, 2.52], [0.54, 1.70], [-0.54, 1.70], [-0.54, 2.52], [-1.44, 2.02], [-1.88, 1.20], [-1.88, -2.90]],
+        holes: [rect(-1.17, -0.48, -2.20, -1.34), rect(0.38, 1.04, -1.98, -1.10),
+          rect(-0.62, 0.14, -0.96, -0.30), rect(0.34, 0.96, 0.05, 0.78),
+          rect(-0.54, 0.54, 1.54, 2.62)], seed: 299 }],
+      side: [-1, 1].map((side) => ({ side, z0: -3.44, z1: 2.28, nz: 44, ny: 11,
+        topAt: (z) => 0.96 - Math.max(0, z - 1.15) * 0.11,
+        bottomAt: (z) => 0.02 + Math.sin(z * 3.4) * 0.030,
+        outAt: (_z, t) => 1.89 + (1 - t) * 0.045, seed: 307 + side })),
+      face: [{ z: 2.72, x0: -1.70, x1: 1.70, y0: 0.02, y1: 0.88, nx: 28, ny: 10,
+        outline: [[-1.42, 0.02], [1.42, 0.02], [1.70, 0.42], [1.20, 0.88], [0.52, 0.88], [0.52, 0.14], [-0.52, 0.14], [-0.52, 0.88], [-1.20, 0.88], [-1.70, 0.42]],
+        holes: [rect(-0.55, 0.55, -0.02, 0.92)], seed: 317 }],
+    },
+    gun: {
+      top: [{ x0: -0.22, x1: 0.22, z0: 0.48, z1: 5.72, nx: 8, nz: 46,
+        yAt: (x, z) => 0.17 + Math.cos(z * 3.0 + x) * 0.012,
+        outline: [[-0.18, 0.48], [0.18, 0.48], [0.22, 1.55], [0.15, 5.72], [-0.15, 5.72], [-0.22, 1.55]], seed: 331 }],
+      side: [-1, 1].map((side) => ({ side, z0: 0.50, z1: 5.72, nz: 44, ny: 5,
+        topAt: () => 0.16, bottomAt: () => -0.16,
+        outAt: (z, t) => (z < 2.30 ? 0.22 : 0.16) + (1 - t) * 0.018,
+        seed: 337 + side })),
+    },
+  },
 });
 
 export function addVehicleGhillieSuit(P) {
   const cfg = GHILLIE_SUIT_CONFIGS[P.spec.id];
   if (!cfg || cfg.disabled) return false;
 
-  for (const [owner, parent] of [['hull', P.hullG], ['turret', P.turretG]]) {
+  for (const [owner, parent] of [['hull', P.hullG], ['turret', P.turretG], ['gun', P.gunG]]) {
     const panels = cfg[owner];
     if (!panels) continue;
     const net = [];

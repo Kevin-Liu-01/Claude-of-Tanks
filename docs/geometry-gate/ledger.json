@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-21T19:59:39.198Z",
+ "generatedAt": "2026-08-22T12:17:39.946Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
- "total": 121,
+ "total": 122,
  "rows": [
   {
    "id": "recon_tank",
@@ -317,6 +317,11 @@
   },
   {
    "id": "leo1a5",
+   "geoMin": 0,
+   "gatePassed": false
+  },
+  {
+   "id": "leo2a6_ua",
    "geoMin": 0,
    "gatePassed": false
   },

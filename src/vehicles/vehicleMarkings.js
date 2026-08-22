@@ -137,6 +137,7 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   leo2a4_otco: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
   leo2a4m: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
   leo2a6m: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
+  leo2a6_ua: anchor('hull', 'right', 0.41, 0.61, 0.24, -1),
   leo2_revolution: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
   leo2a7v: anchor('turret', 'left', 0.35, 0.44, 0.25, 1),
   leclerc: anchor('turret', 'right', 0.38, 0.44, 0.24, -1),

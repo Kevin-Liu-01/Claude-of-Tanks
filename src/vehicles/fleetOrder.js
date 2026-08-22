@@ -44,7 +44,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'carro45t', 'ariete', 'ariete_c1', 'ariete_c2',
   ]),
   ukraine: Object.freeze([
-    'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1',
+    'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1', 'leo2a6_ua',
   ]),
   china: Object.freeze([
     'type59', 'ztz85_iii', 'type99a', 'ztz99a2',

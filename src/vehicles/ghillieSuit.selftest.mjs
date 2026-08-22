@@ -5,7 +5,7 @@ import { GHILLIE_SUIT_CONFIGS } from './ghillieSuit.js';
 
 const ids = [
   'jpz_e100', 'ua_t64bv', 'pt91_twardy', 'm1a2_sepv3',
-  'strv103a', 'strv103', 't84', 'ua_m1a1',
+  'strv103a', 'strv103', 't84', 'ua_m1a1', 'leo2a6_ua',
 ];
 
 for (const id of ['t90a', 't90m', 'strv122', 'ua_t84_oplot_m']) {
@@ -33,12 +33,13 @@ for (const id of ids) {
   tank.root.updateMatrixWorld(true);
   const hullRig = tank.root.getObjectByName('rig_hull');
   const turretRig = tank.root.getObjectByName('rig_turret');
-  assert.ok(hullRig && turretRig, `${id} retains canonical hull/turret rigs`);
+  const gunRig = tank.root.getObjectByName('rig_gun');
+  assert.ok(hullRig && turretRig && gunRig, `${id} retains canonical hull/turret/gun rigs`);
   const cfg = GHILLIE_SUIT_CONFIGS[id];
 
-  for (const owner of ['hull', 'turret']) {
+  for (const owner of ['hull', 'turret', 'gun']) {
     if (!cfg[owner]) continue;
-    const rig = owner === 'hull' ? hullRig : turretRig;
+    const rig = owner === 'hull' ? hullRig : owner === 'turret' ? turretRig : gunRig;
     const expectedLayers = cfg.foliage === false ? ['net'] : ['net', 'light', 'dark'];
     for (const layer of expectedLayers) {
       const name = `${id}_ghillie_${owner}_${layer}`;
@@ -72,6 +73,15 @@ for (const id of ids) {
     ).intersectObject(turretNet, false);
     assert.ok(hits.every((hit) => hit.point.z < turretRig.position.z - 0.72),
       `${id} leaves the complete mantlet/gun corridor open`);
+  }
+
+  if (cfg.gun) {
+    const gunNet = tank.root.getObjectByName(`${id}_ghillie_gun_net`);
+    const gunBounds = new THREE.Box3().setFromObject(gunNet);
+    assert.ok(gunBounds.max.z - gunBounds.min.z > 5.0,
+      `${id} gun shroud covers the L55 tube without closing its bore`);
+    assert.ok(gunBounds.max.z < tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
+      `${id} gun shroud stops behind the live muzzle anchor`);
   }
 
   tank.dispose();

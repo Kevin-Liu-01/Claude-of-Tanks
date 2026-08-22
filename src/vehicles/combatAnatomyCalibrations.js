@@ -5897,6 +5897,62 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       }
     }
   },
+  "leo2a6_ua": {
+    "hull": {
+      "min": [
+        -1.875,
+        0.5,
+        -3.74
+      ],
+      "max": [
+        1.875,
+        1.82,
+        3.649
+      ],
+      "sourceHash": "a1fb1399781b2a68"
+    },
+    "turret": {
+      "min": [
+        -1.604,
+        -0.15,
+        -3.02
+      ],
+      "max": [
+        1.604,
+        1.254,
+        2.8114
+      ],
+      "sourceHash": "c838fa7ba8cf49be"
+    },
+    "tracks": {
+      "left": {
+        "min": [
+          -1.6275,
+          0.015,
+          -3.4548
+        ],
+        "max": [
+          -0.9925,
+          1.3495,
+          3.908
+        ],
+        "sourceHash": "4078fb9ff90ecd94"
+      },
+      "right": {
+        "min": [
+          0.9925,
+          0.015,
+          -3.4548
+        ],
+        "max": [
+          1.6275,
+          1.3495,
+          3.908
+        ],
+        "sourceHash": "c00da00c7e7314f2"
+      }
+    }
+  },
   "t72m1_jaguar": {
     "hull": {
       "min": [

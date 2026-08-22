@@ -73,6 +73,10 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'Leopard 2A6M', shortName: 'Leopard 2A6M',
     searchAliases: ['Leopard 2A6M CAN', '2A6M'],
   },
+  leo2a6_ua: {
+    displayName: 'Leopard 2A6 UA', shortName: 'Leopard 2A6 UA',
+    searchAliases: ['Ukrainian Leopard 2A6', 'Leopard 2A6 Ukraine', '2A6 UA'],
+  },
   bmp3_rok: {
     displayName: 'BMP-3 (ROK)', shortName: 'BMP-3 ROK',
     searchAliases: ['South Korean BMP-3', 'ROK BMP-3'],

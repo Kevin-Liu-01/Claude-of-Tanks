@@ -4,6 +4,9 @@
 // leo2a4m/leo2a6m per §5.248; profiles/germany.js keeps the OTCO package).
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import {
+  rightSidePlate, leftSidePlate, rightCheekPlate, leftCheekPlate,
+} from './specHelpers.js';
 
 const GERMANY_IDS = Object.freeze(['leo2a4_otco', 'leo2a4m', 'leo2a6m']);
 
@@ -13,7 +16,7 @@ function variant(id, donorId, options) {
   const spec = structuredClone(donor);
   spec.id = id;
   spec.name = options.name;
-  spec.nation = 'Germany';
+  spec.nation = options.nation || 'Germany';
   spec.era = 'modern';
   spec.role = 'mbt';
   spec.variantOf = donorId;
@@ -127,3 +130,43 @@ for (const id of GERMANY_IDS) {
   MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
   if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
 }
+
+// Ukrainian field-modernized 2A6M. Keep this registration after the German
+// family loop because it deliberately inherits the certified A6M anatomy,
+// then adds its own consumable ERA sectors and visual protection package.
+const LEOPARD_2A6_UA_ID = 'leo2a6_ua';
+const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a6m', {
+  name: 'Leopard 2A6 UA', nation: 'Ukraine', number: 'UA 26', scheme: 'digital',
+  base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'],
+  camoScale: 0.46,
+  dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.44, heightM: 3.28 },
+  stats: { hp: 2850, enginePowerHp: 1500, weightTons: 72.4, topSpeedKmh: 64,
+    reverseSpeedKmh: 29, turretTraverseDegS: 38, gunPitchDegS: 32 },
+  reloadS: 5.8, shellName: 'DM63A1 APFSDS', armorFactor: 1.06,
+});
+
+const ukrainianNizh = Object.freeze({ keReduction: 0.22, ceFlatMm: 480 });
+const ukrainianNizhSkirt = Object.freeze({ keReduction: 0.12, ceFlatMm: 320 });
+const eraLayer = (era, keMm, ceMm) => ({ kind: 'era', era, keMm, ceMm });
+
+leopard2A6UA.armor.hullPlates.push(
+  rightSidePlate('ua_skirt_era_R', 18, 2.04, 0.72, 2.04, 1.48, -3.08, 3.22,
+    eraLayer(ukrainianNizhSkirt, 145, 520)),
+  leftSidePlate('ua_skirt_era_L', 18, 2.04, 0.72, 2.04, 1.48, -3.08, 3.22,
+    eraLayer(ukrainianNizhSkirt, 145, 520)),
+);
+leopard2A6UA.armor.turretPlates.push(
+  rightCheekPlate('ua_turret_cheek_era_R', 18, 0.34, 2.58, 1.48, 1.30,
+    0.05, 0.78, 0.14, 0, eraLayer(ukrainianNizh, 780, 1280)),
+  leftCheekPlate('ua_turret_cheek_era_L', 18, 0.34, 2.58, 1.48, 1.30,
+    0.05, 0.78, 0.14, 0, eraLayer(ukrainianNizh, 780, 1280)),
+  rightSidePlate('ua_turret_side_era_R', 18, 1.56, 0.05, 1.56, 0.76,
+    -2.86, 1.22, eraLayer(ukrainianNizhSkirt, 320, 720)),
+  leftSidePlate('ua_turret_side_era_L', 18, 1.56, 0.05, 1.56, 0.76,
+    -2.86, 1.22, eraLayer(ukrainianNizhSkirt, 320, 720)),
+);
+
+TANK_SPECS[LEOPARD_2A6_UA_ID] = TANK_SPECS[LEOPARD_2A6_UA_ID] || leopard2A6UA;
+MODEL_SOURCE[LEOPARD_2A6_UA_ID] = MODEL_SOURCE[LEOPARD_2A6_UA_ID]
+  || { source: 'procedural' };
+if (!ALL_TANK_IDS.includes(LEOPARD_2A6_UA_ID)) ALL_TANK_IDS.push(LEOPARD_2A6_UA_ID);
