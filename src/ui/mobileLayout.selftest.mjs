@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [garage, touch, battleLoad] = await Promise.all([
+const [garage, touch, battleLoad, hud, shotInfo, publicNav] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.js', import.meta.url), 'utf8'),
   readFile(new URL('./battleLoad.js', import.meta.url), 'utf8'),
+  readFile(new URL('./hud.js', import.meta.url), 'utf8'),
+  readFile(new URL('./shotInfo.js', import.meta.url), 'utf8'),
+  readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
 ]);
 
 assert.match(garage,
@@ -31,5 +34,29 @@ assert.match(battleLoad,
   'short battle rosters need a height-aware vertical composition');
 assert.match(battleLoad, /\.cot-bl \.count:empty\{display:none/,
   'an empty countdown must not reserve footer height over the final roster row');
+
+assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
+  'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
+assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:31px[^}]*contain:layout paint style/,
+  'world tank labels must reserve fixed geometry to avoid per-frame layout shifts');
+assert.match(hud, /targetX = Math\.max\(92, Math\.min\(w - 92, _sx\)\)/,
+  'target labels must remain clamped within the viewport while tracking a tank');
+assert.doesNotMatch(hud, /tgtEl\.offsetHeight/,
+  'target tracking must not force a layout read in the render loop');
+assert.match(hud, /layout\.sort\(\(a, b\) => b\.layoutY - a\.layoutY[\s\S]*placed\.layoutY - 36/,
+  'clustered world labels must resolve into stable lanes instead of overlapping');
+
+assert.match(shotInfo,
+  /@media \(max-width:700px\), \(pointer:coarse\)[\s\S]*\.cot-si-diag\{grid-template-columns:84px 116px/,
+  'mobile combat cards must reflow and retain both penetration diagram views');
+assert.match(shotInfo,
+  /body\.cot-touch-layout \.cot-si-cardhost[\s\S]*body\.cot-touch-layout \.cot-si-diag\{grid-template-columns:84px 116px/,
+  'the game touch-layout state must drive mobile shot-card composition independently of pointer heuristics');
+assert.doesNotMatch(shotInfo, /\.cot-si-diag\{display:none/,
+  'penetration diagrams must not disappear on touch or narrow layouts');
+assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:164px/,
+  'the canonical incoming feed must reserve stable space for battle readings');
+assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
+  'the desktop GitHub star control needs comfortable internal spacing');
 
 console.log('mobile responsive layout contracts: PASS');

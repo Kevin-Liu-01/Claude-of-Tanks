@@ -529,13 +529,6 @@ body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-kf .d{color:#8a97a3;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
-.cot-dlog{position:absolute;left:12px;bottom:248px;display:flex;flex-direction:column;gap:2px;}
-.cot-dl{font-size:11px;font-weight:600;letter-spacing:.03em;padding:2px 10px 2px 8px;
-  background:linear-gradient(90deg,rgba(8,12,16,.75),rgba(8,12,16,.1));
-  border-left:2px solid #f05a5a;color:#f2b1a8;text-shadow:0 1px 2px rgba(0,0,0,.85);
-  transition:opacity .8s ease;}
-.cot-dl b{color:#ff8f80;font-weight:700;font-variant-numeric:tabular-nums;}
-.cot-dl.out{opacity:0;}
 .cot-dmglayer{position:absolute;inset:0;}
 /* Spectator command strip: battle-HUD steel, amber acquisition marks, and the
    shared icon set keep this state legible without covering the chase view. */
@@ -790,42 +783,47 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con.deny{animation:cotConDeny .3s;}
 @keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
 .cot-hpbars{position:absolute;inset:0;}
-.cot-hpb{position:absolute;width:108px;transform:translate(-50%,-100%);text-align:center;will-change:transform;}
-.cot-hpb .nm{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#ff5555;
+.cot-hpb{position:absolute;width:128px;height:31px;text-align:center;will-change:transform;
+  contain:layout paint style;transform:translate3d(0,0,0);}
+.cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:11px;font-weight:750;letter-spacing:.045em;color:#ff746a;
   font-family:${FONT_COND};
-  text-shadow:0 0 3px #000,0 1px 2px #000,1px 0 2px #000,-1px 0 2px #000,0 -1px 2px #000;
-  margin-bottom:2px;white-space:nowrap;
-  display:flex;align-items:center;justify-content:center;gap:4px;}
-.cot-hpb.ally .nm{color:#8df08d;}
-.cot-hpb .nm .si{width:24px;height:10px;flex:0 0 auto;display:block;}
-.cot-hpb .tr{height:5px;background:rgba(4,6,8,.9);border:1px solid rgba(0,0,0,.85);
-  box-shadow:0 1px 3px rgba(0,0,0,.8);position:relative;}
-.cot-hpb .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);transition:width .15s linear;}
+  text-shadow:0 1px 2px rgba(0,0,0,.95);white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  background:linear-gradient(90deg,rgba(8,12,16,.18),rgba(8,12,16,.86) 18%,rgba(8,12,16,.86) 82%,rgba(8,12,16,.18));}
+.cot-hpb.ally .nm{color:#9af09a;}
+.cot-hpb .nm .si{width:26px;height:11px;flex:0 0 auto;display:block;}
+.cot-hpb .nm span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-hpb .tr{height:6px;margin:0 7px;background:rgba(4,6,8,.94);border:1px solid rgba(0,0,0,.9);
+  box-shadow:0 2px 4px rgba(0,0,0,.72);position:relative;overflow:hidden;}
+.cot-hpb .fl{height:100%;background:linear-gradient(90deg,#d63a30,#ff746a);transition:width .15s linear;}
 .cot-hpb.ally .fl{background:linear-gradient(180deg,#9df09d,#3fae3f);}
-/* over-target marker (WoT aiming loop): shown for the enemy vehicle sitting
-   under the gun — nickname, tier + vehicle, segmented HP bar with numerals.
-   FREE-FLOATING shadowed text, NO card background or border (r3: the old
-   opaque bordered plate parked on the aim point occluded the target at the
-   exact moment of aiming — WoT floats shadowed text above the vehicle). */
-.cot-tgt{position:absolute;width:150px;transform:translate(-50%,-100%);
-  text-align:center;display:none;will-change:transform;}
-.cot-tgt .bk{padding:0 0 4px;}
+.cot-hpb::after{content:"";display:block;width:0;height:0;margin:1px auto 0;
+  border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:5px solid rgba(255,116,106,.9);filter:drop-shadow(0 1px 1px #000);}
+.cot-hpb.ally::after{border-top-color:rgba(154,240,154,.9);}
+/* Over-target marker: a fixed-size translucent instrument follows the exact
+   projected turret roof, clamps inside the viewport, and reserves every text
+   lane so name/HP updates cannot reflow the aiming UI. */
+.cot-tgt{position:absolute;width:176px;height:64px;text-align:center;display:none;
+  will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
+.cot-tgt .bk{height:64px;padding:4px 8px 3px;background:
+  linear-gradient(90deg,rgba(7,10,14,.08),rgba(7,10,14,.82) 18%,rgba(7,10,14,.82) 82%,rgba(7,10,14,.08));}
 /* r5: soft 60%-black DROP SHADOW only — the old five-direction shadow stack
    rendered as a cheap outline stroke around the name text.
    r7-2: nickname in WoT crimson (#fa5252) — the salmon-pink read as damage
    text, not an enemy nameplate. */
-.cot-tgt .nick{font-size:13px;font-weight:700;color:#fa5252;letter-spacing:.02em;
+.cot-tgt .nick{height:17px;font-size:13px;font-weight:750;color:#ff6a60;letter-spacing:.025em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.55);}
-.cot-tgt .vrow{display:flex;align-items:center;justify-content:center;gap:5px;
-  margin-top:1px;}
+.cot-tgt .vrow{height:17px;display:grid;grid-template-columns:30px 18px minmax(0,1fr);
+  align-items:center;justify-content:center;gap:4px;margin-top:1px;}
 .cot-tgt .cg{display:inline-flex;align-items:center;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
-.cot-tgt .cg svg{display:block;}
+.cot-tgt .cg{justify-content:flex-end;}.cot-tgt .cg svg{display:block;}
 .cot-tgt .tier{font-size:9px;font-weight:800;line-height:1;color:#e8bcb5;
   font-family:${FONT_COND};letter-spacing:.04em;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
-.cot-tgt .veh{font-size:10px;font-weight:700;color:#f0d4ce;letter-spacing:.08em;
+.cot-tgt .veh{font-size:10px;font-weight:750;color:#f0d4ce;letter-spacing:.075em;text-align:left;
   font-family:${FONT_COND};text-transform:uppercase;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
@@ -833,12 +831,12 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
    makes the plate feel oversized"): the HP bar slims to ~60% plate width at
    4px and the WHITE numerals move INLINE to its right — one quiet gauge
    line instead of two stacked rows. */
-.cot-tgt .hrow{display:flex;align-items:center;justify-content:center;gap:5px;
-  margin-top:4px;}
-.cot-tgt .tr{height:4px;width:88px;flex:0 0 auto;background:rgba(4,6,8,.88);
+.cot-tgt .hrow{height:16px;display:grid;grid-template-columns:104px 44px;align-items:center;
+  justify-content:center;gap:6px;margin-top:2px;}
+.cot-tgt .tr{height:6px;width:104px;background:rgba(4,6,8,.92);
   border:1px solid rgba(0,0,0,.9);box-shadow:0 1px 3px rgba(0,0,0,.7);}
 .cot-tgt .fl{height:100%;background:linear-gradient(180deg,#ff7a6e,#d63a30);}
-.cot-tgt .hp{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.92);line-height:1;
+.cot-tgt .hp{width:44px;font-size:9.5px;font-weight:700;color:rgba(255,255,255,.92);line-height:1;
   font-family:${FONT_COND};font-variant-numeric:tabular-nums;
   letter-spacing:.04em;
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
@@ -1086,7 +1084,6 @@ export function initHud(bus) {
   const earRows = new Map(); // tank id -> { root, hp, dead, name }
 
   const killfeed = el('div', 'cot-killfeed', root);
-  const dlog = el('div', 'cot-dlog', root);
 
   // ===================== SPECTATE BAR (killcam_endscreen r1) ================
   // Driven by killcam.js's ally-spectate controller over the bus (additive
@@ -1818,7 +1815,7 @@ export function initHud(bus) {
   //   bounce — thin steel-white arc, ~44° span, light body, ~2.5 s decay
   // Crits ride the pen wedge as a hot core flash (~2 Hz, first ~1.4 s) — no
   // separate class. Numbers/chevrons no longer ride the arcs: WoT keeps the
-  // received-damage figures in the damage log (pushDamageLog carries them).
+  // received-damage figures live in shotInfo's one canonical incoming feed.
   const ARC_IN_S = 0.12; // shared fast pulse-in attack
   const ARC_CLASS = {
     pen: {
@@ -2528,7 +2525,9 @@ export function initHud(bus) {
   function updateHpBars(frame) {
     const camera = frame.camera;
     const seen = updateHpBars._seen || (updateHpBars._seen = new Set());
+    const layout = updateHpBars._layout || (updateHpBars._layout = []);
     seen.clear();
+    layout.length = 0;
     const tanks = frame.tanks || [];
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
@@ -2541,7 +2540,7 @@ export function initHud(bus) {
         _tmp.copy(t.state.pos);
         _tmp.y += (t.spec && t.spec.dims ? t.spec.dims.heightM : 2.5);
       } else continue;
-      project(camera, _tmp.x, _tmp.y + 2, _tmp.z);
+      project(camera, _tmp.x, _tmp.y, _tmp.z);
       if (!_sVisible || _sDist > SPOT_RANGE_M + 60) continue;
       seen.add(t.id);
       let bar = hpPool.get(t.id);
@@ -2562,13 +2561,16 @@ export function initHud(bus) {
       }
       // keep the plate clear of the dispersion circle: if it would overlap
       // the reticle region, lift it above the circle's top arc.
-      let plateY = _sy - 34;
+      const plateX = Math.max(8, Math.min(w - 136, _sx - 64));
+      let plateY = Math.max(8, Math.min(h - 44, _sy - 42));
       const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
       if (Math.abs(_sx - aimView.cx) < rNow + 58 &&
-          plateY + 30 > aimView.cy - rNow - 4 && plateY < aimView.cy + rNow) {
-        plateY = aimView.cy - rNow - 38;
+          plateY + 34 > aimView.cy - rNow - 4 && plateY < aimView.cy + rNow) {
+        plateY = Math.max(8, aimView.cy - rNow - 40);
       }
-      bar.root.style.transform = `translate(${_sx - 54}px,${plateY.toFixed(1)}px)`;
+      bar.layoutX = plateX;
+      bar.layoutY = plateY;
+      layout.push(bar);
       bar.root.style.display = 'block';
       // fade with distance (fully readable close, slightly ghosted near spot range)
       const op = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
@@ -2580,6 +2582,22 @@ export function initHud(bus) {
         bar.fill.style.width = `${(frac * 100).toFixed(1)}%`;
         bar.lastFrac = frac;
       }
+    }
+    // Keep clustered contacts readable without adding DOM measurement to the
+    // render loop. Bottom-most labels keep their exact projected anchor;
+    // colliding labels above them move upward in fixed 36 px lanes. The pool
+    // array and per-label coordinates are reused every frame.
+    layout.sort((a, b) => b.layoutY - a.layoutY || a.layoutX - b.layoutX);
+    for (let i = 0; i < layout.length; i++) {
+      const cur = layout[i];
+      for (let j = 0; j < i; j++) {
+        const placed = layout[j];
+        if (Math.abs(cur.layoutX - placed.layoutX) >= 128) continue;
+        if (cur.layoutY + 34 <= placed.layoutY || cur.layoutY >= placed.layoutY + 34) continue;
+        cur.layoutY = Math.max(8, placed.layoutY - 36);
+      }
+      cur.root.style.transform =
+        `translate3d(${cur.layoutX.toFixed(1)}px,${cur.layoutY.toFixed(1)}px,0)`;
     }
     for (const [id, bar] of hpPool) {
       if (!seen.has(id)) bar.root.style.display = 'none';
@@ -2645,26 +2663,32 @@ export function initHud(bus) {
       tgtRect = null;
       return;
     }
+    const targetX = Math.max(92, Math.min(w - 92, _sx));
+    const targetBottom = Math.max(72, Math.min(h - 12, _sy - 14));
     tgtEl.style.transform =
-      `translate(${_sx.toFixed(1)}px,${(_sy - 24).toFixed(1)}px) translate(-50%,-100%)`;
-    tgtRefs.nick.textContent = nickFor(best);
-    tgtRefs.tier.textContent = (best.spec && tierNumeral(best.spec.id)) || '–';
-    tgtRefs.veh.textContent = best.spec ? best.spec.name : String(best.id);
+      `translate3d(${(targetX - 88).toFixed(1)}px,${(targetBottom - 64).toFixed(1)}px,0)`;
+    const targetNick = nickFor(best);
+    const targetTier = (best.spec && tierNumeral(best.spec.id)) || '–';
+    const targetName = best.spec ? best.spec.name : String(best.id);
+    if (tgtRefs.nick.textContent !== targetNick) tgtRefs.nick.textContent = targetNick;
+    if (tgtRefs.tier.textContent !== targetTier) tgtRefs.tier.textContent = targetTier;
+    if (tgtRefs.veh.textContent !== targetName) tgtRefs.veh.textContent = targetName;
     const targetVehicleId = best.spec?.id || null;
     if (targetVehicleId && targetVehicleId !== tgtLastVehicleId) {
       maskIcon(tgtRefs.cg, targetVehicleId, 'side_silhouette', '#f0b4ab');
       tgtLastVehicleId = targetVehicleId;
     }
     const frac = Math.max(0, Math.min(1, best.combat.hp / best.combat.maxHp));
-    tgtRefs.fl.style.width = `${(frac * 100).toFixed(1)}%`;
-    tgtRefs.hp.textContent =
-      `${Math.max(0, Math.round(best.combat.hp))} / ${Math.round(best.combat.maxHp)}`;
+    const hpWidth = `${(frac * 100).toFixed(1)}%`;
+    if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
+    const hpText = `${Math.max(0, Math.round(best.combat.hp))}/${Math.round(best.combat.maxHp)}`;
+    if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
     if (!tgtShown) { tgtEl.style.display = 'block'; tgtShown = true; }
     // record the plate's screen rect so the sniper hairlines gap behind it
     // (drawScope runs after this in both the live and forced-still paths)
     tgtRect = {
-      cx: _sx, hw: 75,
-      top: _sy - 24 - (tgtEl.offsetHeight || 62), bottom: _sy - 24,
+      cx: targetX, hw: 88,
+      top: targetBottom - 64, bottom: targetBottom,
     };
     // the ambient plate for this tank (if it was already mounted) yields
     const bar = hpPool.get(best.id);
@@ -3391,17 +3415,6 @@ export function initHud(bus) {
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
   }
 
-  function pushDamageLog(hit) {
-    const attacker = nameById.get(hit.attackerId) || 'Enemy';
-    const item = el('div', 'cot-dl');
-    if (hit.damage > 0) item.innerHTML = `<b>−${Math.round(hit.damage)}</b>&nbsp; ${attacker}`;
-    else item.innerHTML = `<b>BLOCKED</b>&nbsp; ${attacker}`;
-    dlog.prepend(item);
-    while (dlog.children.length > 4) dlog.lastChild.remove();
-    setTimeout(() => item.classList.add('out'), 5000);
-    setTimeout(() => { if (item.parentNode) item.remove(); }, 6000);
-  }
-
   function pushDamageNumber(hit) {
     if (!lastCamera || mode === 'hidden') return;
     project(lastCamera, hit.pos[0], hit.pos[1] + 1.5, hit.pos[2]);
@@ -3626,7 +3639,6 @@ export function initHud(bus) {
     }
     if (playerId != null && hit.targetId === playerId) {
       pushHitDirection(hit, playerRef);
-      pushDamageLog(hit);
     }
   });
   bus.on('module:state', (p) => {

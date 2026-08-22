@@ -82,12 +82,12 @@
 .public-nav__links a:hover .public-nav__icon,.public-nav__links a[aria-current="page"] .public-nav__icon{opacity:1;transform:translateY(-1px)}
 .public-nav__links a:hover{transform:translateY(-1px)}
 .public-nav__links a[aria-current="page"]{box-shadow:inset 0 -2px 0 #e9a346}
-.public-nav__links .public-nav__github{gap:8px;padding-inline:12px}
+.public-nav__links .public-nav__github{gap:9px;padding-inline:15px}
 .public-nav__stars{
   display:inline-flex;
   align-items:center;
   gap:4px;
-  padding-left:8px;
+  padding-left:10px;
   border-left:1px solid rgba(220,230,233,.18);
   color:#d8dcde;
   font-variant-numeric:tabular-nums;

@@ -100,8 +100,7 @@ const CSS = `
 /* Recompose the existing live HUD instead of duplicating ammo/state UI. */
 body.cot-touch-layout{overscroll-behavior:none;}
 body.cot-touch-layout #app canvas{touch-action:none;}
-body.cot-touch-layout .cot-hints,body.cot-touch-layout .cot-ear,
-body.cot-touch-layout .cot-dlog{display:none!important;}
+body.cot-touch-layout .cot-hints,body.cot-touch-layout .cot-ear{display:none!important;}
 body.cot-touch-layout button[aria-label="Leave battle and return to garage"]{display:none!important;}
 body.cot-touch-layout .cot-top{top:max(4px,env(safe-area-inset-top));padding:5px 29px 7px;gap:10px;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}

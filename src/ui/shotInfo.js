@@ -80,26 +80,37 @@ GLYPH.skull = uiIconSVG('skull', 12);
 const SI_CSS = `
 .cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
 .cot-si *{box-sizing:border-box;margin:0;padding:0;}
-.cot-si-cardhost{position:absolute;right:16px;top:288px;width:286px;display:flex;
-  flex-direction:column;gap:6px;align-items:stretch;}
-.cot-si-card{background:linear-gradient(180deg,rgba(10,14,18,.88),rgba(6,9,12,.9));
-  border:1px solid rgba(146,164,180,.3);border-right:2px solid rgba(146,164,180,.3);
-  box-shadow:0 6px 22px rgba(0,0,0,.5);padding:0 0 7px;transition:opacity .8s ease;}
+.cot-si-cardhost{position:absolute;right:16px;top:clamp(272px,30vh,336px);width:340px;display:flex;
+  flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
+.cot-si-card{position:relative;min-height:260px;overflow:hidden;contain:layout paint style;
+  background:linear-gradient(145deg,rgba(16,23,29,.96),rgba(7,11,15,.96) 64%,rgba(11,16,21,.98));
+  border:1px solid rgba(174,192,205,.3);border-right:3px solid rgba(146,164,180,.3);
+  box-shadow:0 12px 34px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
+  padding:0 0 9px;transition:opacity .8s ease;}
+.cot-si-card::before{content:"";position:absolute;left:0;top:0;width:82px;height:2px;
+  background:linear-gradient(90deg,#f0a030,rgba(240,160,48,0));}
 .cot-si-card.out{opacity:0;}
-.cot-si-hd{display:flex;align-items:baseline;justify-content:space-between;
-  padding:5px 9px 4px;border-bottom:1px solid rgba(146,164,180,.18);}
+.cot-si-hd{min-height:52px;display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px 7px;border-bottom:1px solid rgba(146,164,180,.2);}
+.cot-si-state{display:flex;min-width:0;flex-direction:column;gap:3px;}
+.cot-si-kicker{font-family:${FONT_COND};font-size:7.5px;font-weight:800;line-height:1;
+  letter-spacing:.2em;color:#778692;text-transform:uppercase;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:800;
-  font-size:12.5px;letter-spacing:.12em;}
-.cot-si-dmg{font-family:${FONT_COND};letter-spacing:-.01em;font-weight:800;font-size:16px;
+  font-size:13px;line-height:1;letter-spacing:.13em;white-space:nowrap;}
+.cot-si-dmg{min-width:66px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:800;font-size:22px;
   font-variant-numeric:tabular-nums;color:#ffd166;}
-.cot-si-sub{padding:4px 9px 0;font-size:10.5px;color:#c6d2dc;letter-spacing:.03em;
-  display:flex;justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
+.cot-si-sub{height:28px;padding:6px 12px 5px;font-size:10px;color:#c6d2dc;letter-spacing:.03em;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;
+  background:rgba(149,168,184,.045);font-variant-numeric:tabular-nums;}
+.cot-si-sub>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-si-sub>span:last-child{text-align:right;color:#e4ebf0;font-weight:700;}
 .cot-si-sub .ty{font-weight:800;font-size:9.5px;letter-spacing:.08em;
   font-family:${FONT_COND};}
-.cot-si-rows{padding:3px 9px 0;display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;}
-.cot-si-kv{display:flex;justify-content:space-between;font-size:10px;color:${COL.dim};
-  font-variant-numeric:tabular-nums;letter-spacing:.03em;}
-.cot-si-kv b{color:#dbe6ef;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
+.cot-si-rows{padding:7px 12px 0;display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;}
+.cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
+  align-items:baseline;font-size:9.5px;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.045em;}
+.cot-si-kv b{min-width:0;text-align:right;color:#dbe6ef;font-weight:750;font-family:${FONT_COND};
+  letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
    across two lines and the value wrapped, r7 critic); the ERA/screens
    qualifier is an unbreakable suffix chip and a dim caption legends the
@@ -109,10 +120,16 @@ const SI_CSS = `
 .cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
   border:1px solid currentColor;font-size:7.5px;letter-spacing:.12em;
   vertical-align:1px;line-height:1.25;font-weight:800;}
-.cot-si-pencap{grid-column:1/-1;font-size:8px;color:#647180;letter-spacing:.05em;
-  text-align:right;margin-top:-1px;}
-.cot-si-diag{display:flex;gap:8px;align-items:center;padding:6px 9px 0;}
+.cot-si-kv.armor{padding:3px 0;border-top:1px solid rgba(146,164,180,.12);border-bottom:1px solid rgba(146,164,180,.12);}
+.cot-si-kv.result b{color:#f2c06d;letter-spacing:.06em;}
+.cot-si-pencap{grid-column:1/-1;font-size:7.5px;color:#687683;letter-spacing:.07em;
+  text-align:right;margin-top:-3px;text-transform:uppercase;}
+.cot-si-diag{display:grid;grid-template-columns:84px 116px minmax(0,1fr);gap:8px;align-items:center;
+  margin:7px 12px 0;padding:8px 8px 7px;border:1px solid rgba(146,164,180,.16);
+  background:linear-gradient(110deg,rgba(146,164,180,.075),rgba(146,164,180,.018));}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
+.cot-si-diag .box::after{content:attr(data-view);position:absolute;left:2px;bottom:0;
+  font:800 6.5px/1 ${FONT_COND};letter-spacing:.14em;color:#758491;text-transform:uppercase;}
 .cot-si-diag .sil{position:absolute;inset:0;}
 /* shaded per-tank plan-form render (icons pipeline <id>_top/_side.png)
    layered over the silhouette base: a canvas-baked NEUTRAL-GRAY schematic
@@ -128,17 +145,15 @@ const SI_CSS = `
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
 @keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
-.cot-si-zone{font-size:10px;color:#f0c987;font-weight:700;letter-spacing:.06em;
-  text-transform:uppercase;font-family:${FONT_COND};flex:1;
-  text-align:right;line-height:1.35;}
-.cot-si-zone .tn{display:block;color:${COL.dim};font-weight:600;text-transform:none;
-  letter-spacing:.02em;font-size:9.5px;}
+.cot-si-zone{min-width:0;font-size:10.5px;color:#f2ca82;font-weight:800;letter-spacing:.07em;
+  text-transform:uppercase;font-family:${FONT_COND};text-align:right;line-height:1.3;}
+.cot-si-zone .cap{display:block;color:#778692;font-weight:800;letter-spacing:.15em;font-size:7px;}
 .cot-si-mods{display:flex;flex-wrap:wrap;gap:4px;padding:6px 9px 0;}
 .cot-si-mod{display:flex;align-items:center;gap:3px;font-size:8.5px;font-weight:800;
   letter-spacing:.06em;font-family:${FONT_COND};text-transform:uppercase;
   border:1px solid currentColor;padding:1.5px 4px 1.5px 3px;line-height:1;}
 .cot-si-mod svg{width:11px;height:11px;display:block;}
-.cot-si-log{position:absolute;right:16px;top:288px;width:286px;display:none;
+.cot-si-log{position:absolute;right:16px;top:clamp(272px,30vh,336px);width:340px;display:none;
   pointer-events:auto;background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.94));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 6px 22px rgba(0,0,0,.55);
   max-height:calc(100vh - 560px);min-height:120px;overflow-y:auto;}
@@ -156,18 +171,23 @@ const SI_CSS = `
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-lrow .z{color:${COL.dim};font-size:9px;flex:0 0 auto;}
 .cot-si-empty{padding:6px 9px;font-size:9.5px;color:${COL.dim};letter-spacing:.04em;}
-.cot-si-toasthost{position:absolute;left:16px;bottom:452px;display:flex;
-  flex-direction:column;gap:4px;width:250px;}
-.cot-si-toast{background:linear-gradient(90deg,rgba(20,8,8,.9),rgba(10,7,7,.55));
-  border-left:2px solid ${COL.red};padding:4px 9px 5px;transition:opacity .7s ease;
-  text-shadow:0 1px 2px rgba(0,0,0,.85);}
+.cot-si-toasthost{position:absolute;left:16px;bottom:452px;width:270px;min-height:164px;
+  display:flex;flex-direction:column;justify-content:flex-end;gap:5px;contain:layout style;}
+.cot-si-toasthost:not(:empty)::before{content:"INCOMING FIRE";align-self:flex-start;
+  padding-left:8px;font:800 7.5px/1 ${FONT_COND};letter-spacing:.2em;color:#c06f66;}
+.cot-si-toast{height:48px;overflow:hidden;contain:layout paint style;
+  background:linear-gradient(100deg,rgba(38,12,12,.94),rgba(11,10,12,.84) 78%,rgba(8,10,13,.3));
+  border:1px solid rgba(240,90,90,.2);border-left:3px solid ${COL.red};padding:6px 10px 6px;
+  box-shadow:0 6px 18px rgba(0,0,0,.3);transition:opacity .7s ease;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 .cot-si-toast.out{opacity:0;}
-.cot-si-toast .l1{display:flex;justify-content:space-between;align-items:baseline;gap:6px;
-  font-size:11px;font-weight:700;color:#f2c6bf;}
+.cot-si-toast .l1{height:18px;display:flex;justify-content:space-between;align-items:baseline;gap:6px;
+  font-size:11px;font-weight:750;color:#f2c6bf;}
+.cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 b{color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
   font-variant-numeric:tabular-nums;font-size:13px;}
-.cot-si-toast .l2{font-size:9.5px;color:#c9a9a2;letter-spacing:.04em;display:flex;
+.cot-si-toast .l2{height:16px;font-size:9px;color:#c9a9a2;letter-spacing:.04em;display:flex;
   justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums;}
+.cot-si-toast .l2>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l2 .m{font-weight:800;text-transform:uppercase;
   font-family:${FONT_COND};letter-spacing:.07em;text-align:right;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
@@ -195,7 +215,7 @@ body.cot-si-report .cot-end{align-items:center !important;
    VICTORY banner). Hidden only while body.cot-si-report is set — hideStats()
    and reset() restore everything for the next battle. */
 body.cot-si-report .cot-killfeed,body.cot-si-report .cot-ear,
-body.cot-si-report .cot-top,body.cot-si-report .cot-dlog,
+body.cot-si-report .cot-top,
 body.cot-si-report .cot-alert,body.cot-si-report .cot-bounce,
 body.cot-si-report .cot-sixth,body.cot-si-report .cot-tgt,
 body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
@@ -335,8 +355,79 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
 .cot-si-kill.cap span{color:${COL.dim} !important;font-size:7.5px;font-weight:700;
   letter-spacing:.12em;text-transform:uppercase;font-family:${FONT_COND};
   }
+/* The game owns an explicit touch-layout state; do not make battle UI depend
+   on browser pointer heuristics alone (desktop emulation and hybrid tablets
+   can report a fine pointer while touch controls are active). */
+body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
+  top:max(64px,calc(env(safe-area-inset-top) + 54px));right:max(10px,env(safe-area-inset-right));
+  width:min(300px,calc(100vw - 20px));}
+body.cot-touch-layout .cot-si-card{min-height:0;}
+body.cot-touch-layout .cot-si-hd{min-height:44px;padding:6px 9px;}
+body.cot-touch-layout .cot-si-kicker{font-size:6.5px;}
+body.cot-touch-layout .cot-si-badge{font-size:11px;}
+body.cot-touch-layout .cot-si-dmg{font-size:18px;}
+body.cot-touch-layout .cot-si-sub{height:25px;padding:4px 9px;font-size:9px;}
+body.cot-touch-layout .cot-si-rows{padding:5px 9px 0;gap:3px 9px;}
+body.cot-touch-layout .cot-si-kv{font-size:8.5px;gap:4px;}
+body.cot-touch-layout .cot-si-pencap{font-size:6.5px;}
+body.cot-touch-layout .cot-si-diag{grid-template-columns:84px 116px;margin:6px 9px 0;
+  padding:5px 7px;justify-content:center;gap:5px 9px;}
+body.cot-touch-layout .cot-si-zone{grid-column:1/-1;text-align:center;font-size:9px;}
+body.cot-touch-layout .cot-si-zone .cap{display:inline;margin-right:7px;}
+body.cot-touch-layout .cot-si-mods{padding:5px 9px 0;}
+body.cot-touch-layout .cot-si-toasthost{top:max(62px,calc(env(safe-area-inset-top) + 52px));
+  bottom:auto;left:max(8px,env(safe-area-inset-left));width:min(236px,42vw);min-height:143px;}
+body.cot-touch-layout .cot-si-toast{height:41px;padding:4px 7px;}
+body.cot-touch-layout .cot-si-toast .l1{height:17px;font-size:9.5px;}
+body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
+body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
 @media (max-width:700px), (pointer:coarse) and (max-width:1024px){
-  .cot-si-diag{display:none;}
+  .cot-si-cardhost,.cot-si-log{top:max(64px,calc(env(safe-area-inset-top) + 54px));
+    right:max(10px,env(safe-area-inset-right));width:min(300px,calc(100vw - 20px));}
+  .cot-si-card{min-height:0;}
+  .cot-si-hd{min-height:44px;padding:6px 9px;}
+  .cot-si-kicker{font-size:6.5px}.cot-si-badge{font-size:11px}.cot-si-dmg{font-size:18px;}
+  .cot-si-sub{height:25px;padding:4px 9px;font-size:9px;}
+  .cot-si-rows{padding:5px 9px 0;gap:3px 9px;}
+  .cot-si-kv{font-size:8.5px;gap:4px;}.cot-si-pencap{font-size:6.5px;}
+  .cot-si-diag{grid-template-columns:84px 116px;margin:6px 9px 0;padding:5px 7px;
+    justify-content:center;gap:5px 9px;}
+  .cot-si-zone{grid-column:1/-1;text-align:center;font-size:9px;}
+  .cot-si-zone .cap{display:inline;margin-right:7px;}
+  .cot-si-mods{padding:5px 9px 0;}
+  .cot-si-toasthost{top:max(62px,calc(env(safe-area-inset-top) + 52px));bottom:auto;
+    left:max(8px,env(safe-area-inset-left));width:min(236px,42vw);min-height:143px;}
+  .cot-si-toast{height:41px;padding:4px 7px;}
+  .cot-si-toast .l1{height:17px;font-size:9.5px}.cot-si-toast .l1 b{font-size:11px;}
+  .cot-si-toast .l2{height:14px;font-size:7.5px;}
+}
+@media (max-width:520px){
+  .cot-si-cardhost,.cot-si-log{width:min(276px,calc(100vw - 16px));right:max(8px,env(safe-area-inset-right));}
+  .cot-si-diag{grid-template-columns:74px 102px;}
+  .cot-si-diag .box:first-child{width:74px!important;height:74px!important;}
+  .cot-si-diag .box:nth-child(2){width:102px!important;height:51px!important;}
+}
+@media (orientation:landscape) and (max-height:430px){
+  body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
+    left:max(120px,calc(env(safe-area-inset-left) + 120px));right:auto;
+    top:max(58px,calc(env(safe-area-inset-top) + 54px));width:276px;}
+  body.cot-touch-layout .cot-si-toasthost{left:auto;right:max(8px,env(safe-area-inset-right));
+    top:max(60px,calc(env(safe-area-inset-top) + 54px));width:210px;min-height:96px;}
+  body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+3){display:none;}
+  body.cot-touch-layout .cot-si-hd{min-height:38px;padding-block:4px;}
+  body.cot-touch-layout .cot-si-sub{height:22px;padding-block:3px;}
+  body.cot-touch-layout .cot-si-rows{padding-top:4px;gap:2px 8px;}
+  body.cot-touch-layout .cot-si-kv{font-size:8px;}
+  body.cot-touch-layout .cot-si-diag{grid-template-columns:60px 82px minmax(0,1fr);
+    margin-top:4px;padding:4px;gap:4px;}
+  body.cot-touch-layout .cot-si-diag .box:first-child{width:60px!important;height:60px!important;}
+  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:82px!important;height:41px!important;}
+  body.cot-touch-layout .cot-si-zone{grid-column:auto;text-align:right;font-size:8px;}
+  body.cot-touch-layout .cot-si-zone .cap{display:block;margin-right:0;font-size:6px;}
+  body.cot-touch-layout .cot-si-mods{padding-top:3px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .cot-si-card,.cot-si-toast,.cot-si-diag svg.ov .wdg{animation:none;transition:none;}
 }
 `;
 
@@ -502,8 +593,12 @@ export function createShotInfo(bus) {
 
   const root = el('div', 'cot-si');
   const cardHost = el('div', 'cot-si-cardhost', root);
+  cardHost.setAttribute('role', 'status');
+  cardHost.setAttribute('aria-live', 'polite');
   const logPanel = el('div', 'cot-si-log', root);
   const toastHost = el('div', 'cot-si-toasthost', root);
+  toastHost.setAttribute('role', 'status');
+  toastHost.setAttribute('aria-live', 'polite');
   const statsRoot = el('div', 'cot-si-stats');
   document.body.appendChild(statsRoot);
   // END SCREEN renders into statsRoot so the integration seams keep holding:
@@ -653,6 +748,7 @@ export function createShotInfo(bus) {
     // --- top view (84x84; icon: forward = up, screen right = -X world) ---
     const TS = CARD_TOP_S;
     const top = el('div', 'box', wrap);
+    top.dataset.view = 'Top';
     top.style.width = `${TS}px`; top.style.height = `${TS}px`;
     const topSil = el('div', 'sil', top);
     maskIcon(topSil, specId, 'top_silhouette', SIL_FILL);
@@ -745,6 +841,7 @@ export function createShotInfo(bus) {
     // --- side view (aspect 2:1; icon: front = right, up = +Y) ---
     const SW = CARD_SIDE_W, SH = CARD_SIDE_H;
     const side = el('div', 'box', wrap);
+    side.dataset.view = 'Side';
     side.style.width = `${SW}px`; side.style.height = `${SH}px`;
     const sideSil = el('div', 'sil', side);
     maskIcon(sideSil, specId, 'side_silhouette', SIL_FILL);
@@ -811,7 +908,10 @@ export function createShotInfo(bus) {
     card.style.borderRightColor = cls.col;
 
     const hd = el('div', 'cot-si-hd', card);
-    const badge = el('span', 'cot-si-badge', hd);
+    const state = el('div', 'cot-si-state', hd);
+    const kicker = el('span', 'cot-si-kicker', state);
+    kicker.textContent = 'Ballistic readout';
+    const badge = el('span', 'cot-si-badge', state);
     badge.textContent = cls.badge;
     badge.style.color = cls.col;
     const dmg = el('span', 'cot-si-dmg', hd);
@@ -839,7 +939,7 @@ export function createShotInfo(bus) {
     let penQual = '';
     let penLegend = '';
     if (ev.kind === 'screen_pierce') {
-      kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm)} mm screen` : 'screen');
+      kv('Armor', (ev.physicalMm || 0) > 0 ? `${Math.round(ev.physicalMm)} mm screen` : 'screen', 'w armor');
       penHtml = 'passed through';
     } else {
       // 'N → M mm eff.' labels the angle-adjusted number (r5: nothing said
@@ -852,7 +952,7 @@ export function createShotInfo(bus) {
         && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
       kv('Armor', hasArmor
         ? `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`
-        : extNoArmor ? 'external — no armor' : '—');
+        : extNoArmor ? 'external — no armor' : '—', 'w armor');
       // roll / nominal baseline: a bare '986 mm' beside a 63 mm plate looks
       // like a bug to anyone who knows the shell's paper pen (r4 critique).
       // Roll colored green/red vs the nominal it was rolled from.
@@ -901,12 +1001,12 @@ export function createShotInfo(bus) {
       r.title = penLegend ? `Penetration (mm): ${penLegend}` : 'Penetration roll at impact';
       if (penLegend) el('div', 'cot-si-pencap', rows).textContent = penLegend;
     }
-    kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`, 'w');
+    kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`, 'w result');
 
     const diag = diagramFor(ev, cls);
     if (diag) {
       const zone = el('div', 'cot-si-zone', diag);
-      zone.innerHTML = `${zoneLabel(ev.zone)}<span class="tn">${ev.targetName || ''}</span>`;
+      zone.innerHTML = `<span class="cap">Impact zone</span>${zoneLabel(ev.zone)}`;
       card.appendChild(diag);
     }
     modChips(ev, card);
