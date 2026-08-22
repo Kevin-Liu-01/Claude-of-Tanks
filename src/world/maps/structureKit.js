@@ -1,5 +1,5 @@
-// src/world/maps/structureKit.js — twenty-four additional battlefield
-// structures. Eight heavyweight landmarks merge into the existing textured
+// src/world/maps/structureKit.js — twenty-eight additional battlefield
+// structures. Twelve heavyweight landmarks merge into the existing textured
 // building buckets; sixteen light buildings use one vertex-painted geometry
 // per family and have persistent broken-state debris for the destructible
 // instance system in props.js.
@@ -279,6 +279,155 @@ export function makeRangerLodge(rng, buckets, wallBucket = 'wood') {
   return { w: w + 2.0, d: d + 3.0, h: wallH + roofH + 3.2 };
 }
 
+// -------------------------------------------------------------------------
+// Megacity landmarks. These remain ordinary material-bucket geometry: an
+// entire skyline still resolves to the same handful of merged draw calls as
+// a village. Damage is authored into the silhouette (missing corners,
+// exposed slabs and bridge stumps) instead of adding transparent shell meshes.
+// -------------------------------------------------------------------------
+
+function addTowerWindowBands(out, w, d, y0, y1, step = 3.1) {
+  for (let y = y0; y < y1; y += step) {
+    out.dark.push(box(w * 0.76, 1.0, 0.10, 0.9).translate(0, y, d / 2 + 0.06));
+    out.dark.push(box(w * 0.76, 1.0, 0.10, 0.9).translate(0, y, -d / 2 - 0.06));
+    out.glass.push(box(0.10, 1.0, d * 0.68, 0.9).translate(w / 2 + 0.06, y, 0));
+    out.glass.push(box(0.10, 1.0, d * 0.68, 0.9).translate(-w / 2 - 0.06, y, 0));
+  }
+  for (const side of [-1, 1]) {
+    out.stone.push(box(0.42, y1 - y0 + 1.0, 0.52).translate(side * (w * 0.40), (y0 + y1) / 2, d / 2 + 0.11));
+    out.stone.push(box(0.42, y1 - y0 + 1.0, 0.52).translate(side * (w * 0.40), (y0 + y1) / 2, -d / 2 - 0.11));
+  }
+}
+
+/** Bombed 55 m office tower with an asymmetrical collapsed crown. */
+export function makeMegatower(rng, buckets, wallBucket = 'plaster3') {
+  const out = parts(), w = 18.5, d = 20.5, podiumH = 6.0;
+  out.stone.push(box(w + 5.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
+  out.dark.push(box(w * 0.55, 3.5, 0.16).translate(0, 1.75, d / 2 + 2.08));
+  for (const x of [-8.0, -4.0, 4.0, 8.0]) {
+    out.stone.push(box(0.8, podiumH + 0.4, 1.2).translate(x, podiumH / 2, d / 2 + 2.25));
+  }
+  const lowerH = 28, upperH = 18;
+  out[wallBucket].push(box(w, lowerH, d).translate(0, podiumH + lowerH / 2, 0));
+  const upperBase = podiumH + lowerH;
+  // The crown is genuinely missing a quadrant: a short surviving transfer
+  // floor, a tall west spine and a torn rear core replace the old solid box.
+  // This reads as structural destruction in silhouette instead of a dark
+  // decal painted onto an otherwise pristine tower.
+  out.plaster2.push(box(w * 0.72, 5.8, d * 0.78)
+    .translate(-w * 0.08, upperBase + 2.9, -d * 0.04));
+  out.plaster2.push(box(w * 0.34, upperH - 2.0, d * 0.70)
+    .translate(-w * 0.25, upperBase + (upperH - 2.0) / 2, -d * 0.06));
+  out.stone.push(box(w * 0.25, upperH - 7.0, d * 0.28)
+    .translate(w * 0.11, upperBase + (upperH - 7.0) / 2, -d * 0.25));
+  addTowerWindowBands(out, w, d, podiumH + 3.0, podiumH + lowerH - 1.0, 3.0);
+  for (let y = upperBase + 3.0; y < upperBase + upperH - 2.0; y += 3.0) {
+    out.dark.push(box(w * 0.27, 0.9, 0.10).translate(-w * 0.25, y, d * 0.29));
+    out.glass.push(box(0.10, 0.9, d * 0.48).translate(-w * 0.08, y, -d * 0.06));
+  }
+  // Torn-away southeast crown: exposed floor plates, snapped columns and a
+  // leaning service mast give the skyline a clear destroyed read.
+  for (let i = 0; i < 4; i++) {
+    const y = podiumH + lowerH + 4.5 + i * 4.0;
+    out.stone.push(slab(7.5 - i * 0.7, 0.28, 6.4 - i * 0.55)
+      .translate(w * 0.24, y, d * 0.18));
+  }
+  for (const [x, z, h] of [[5.4, 4.8, 14], [2.1, 5.0, 9], [5.2, 1.7, 7]]) {
+    const col = box(0.36, h, 0.36); col.rotateZ((rng() - 0.5) * 0.18);
+    out.dark.push(col.translate(x, podiumH + lowerH + h / 2, z));
+  }
+  const mast = box(0.28, 10.0, 0.28); mast.rotateZ(-0.22);
+  out.dark.push(mast.translate(-2.8, podiumH + lowerH + upperH + 4.2, -1.5));
+  finish(buckets, out);
+  return { w: w + 5.2, d: d + 4.2, h: podiumH + lowerH + upperH + 9.2 };
+}
+
+/** Twin stepped arcology slabs joined by a damaged high skybridge. */
+export function makeArcology(rng, buckets, wallBucket = 'stone') {
+  const out = parts(), towerW = 12.0, d = 22.0, hA = 39.0, hB = 33.0;
+  for (const [x, h, bucket] of [[-9.0, hA, wallBucket], [9.0, hB, 'plaster3']]) {
+    const intactH = h - 8.0;
+    out[bucket].push(box(towerW, intactH, d).translate(x, intactH / 2, 0));
+    // Unequal surviving roof lobes leave a deep shell-bite through the crown.
+    out[bucket].push(box(towerW * 0.46, 8.0, d * 0.82)
+      .translate(x - towerW * 0.25, intactH + 4.0, -d * 0.04));
+    out.stone.push(box(towerW * 0.28, 4.2, d * 0.34)
+      .translate(x + towerW * 0.26, intactH + 2.1, -d * 0.23));
+    for (let i = 0; i < 3; i++) {
+      const deck = slab(towerW * (0.34 - i * 0.035), 0.24, d * (0.42 - i * 0.035));
+      deck.rotateZ((i - 1) * 0.055);
+      out.stone.push(deck.translate(x + towerW * 0.22, intactH + 1.1 + i * 2.2, d * 0.20));
+    }
+  }
+  // Explicit facade ribbons preserve the gap between both towers.
+  for (const [x, h] of [[-9.0, hA], [9.0, hB]]) {
+    for (let y = 3.2; y < h - 8.5; y += 3.2) {
+      out.dark.push(box(towerW * 0.78, 0.95, 0.10).translate(x, y, d / 2 + 0.06));
+      out.glass.push(box(0.10, 0.95, d * 0.7).translate(x + towerW / 2 + 0.06, y, 0));
+      out.glass.push(box(0.10, 0.95, d * 0.7).translate(x - towerW / 2 - 0.06, y, 0));
+    }
+  }
+  out.stone.push(box(30.5, 3.4, 5.2).translate(0, 22.0, -1.2));
+  out.dark.push(box(8.0, 2.7, 5.35).translate(2.5, 22.0, -1.2)); // blown bridge bay
+  for (const x of [-13.0, -5.0, 5.0, 13.0]) {
+    const brace = box(0.42, 13.0, 0.42); brace.rotateZ(x < 0 ? -0.18 : 0.18);
+    out.stone.push(brace.translate(x, 6.3, d / 2 + 0.4));
+  }
+  out.roof.push(slab(6.0, 0.4, d * 0.84).translate(-12.0, hA + 0.2, -d * 0.04));
+  out.roof.push(slab(6.0, 0.4, d * 0.84).translate(6.0, hB + 0.2, -d * 0.04));
+  finish(buckets, out);
+  return { w: 31.0, d: d + 1.2, h: hA + 0.5 };
+}
+
+/** Open-sided concrete parking deck: a broad, tank-scale urban landmark. */
+export function makeParkingDeck(rng, buckets) {
+  const out = parts(), w = 27.0, d = 22.0, floors = 5, floorH = 2.65;
+  for (let i = 0; i <= floors; i++) {
+    out.stone.push(slab(w, 0.32, d).translate(0, i * floorH + 0.16, 0));
+  }
+  for (const x of [-w / 2 + 1.2, -4.2, 4.2, w / 2 - 1.2]) {
+    for (const z of [-d / 2 + 1.1, d / 2 - 1.1]) {
+      out.stone.push(box(0.62, floors * floorH, 0.62)
+        .translate(x, floors * floorH / 2, z));
+    }
+  }
+  for (let i = 0; i < floors; i++) {
+    out.dark.push(box(w - 3.0, 1.15, 0.08).translate(0, i * floorH + 1.4, d / 2 + 0.05));
+  }
+  const ramp = slab(7.0, 0.28, d * 0.68); ramp.rotateX(-0.24);
+  out.plaster3.push(ramp.translate(-5.0, 5.8, 0));
+  // Collapsed outer bay.
+  for (let i = 1; i <= 3; i++) {
+    const deck = slab(6.5, 0.30, 8.0); deck.rotateZ(0.08 * i);
+    out.stone.push(deck.translate(w / 2 - 2.6, i * floorH - 0.4, -3.0));
+  }
+  finish(buckets, out);
+  return { w: w + 0.4, d: d + 0.4, h: floors * floorH + 0.4 };
+}
+
+/** Monumental civic hall with bombed rotunda and deep colonnade. */
+export function makeCivicHall(rng, buckets, wallBucket = 'plaster2') {
+  const out = parts(), w = 31.0, d = 18.0, h = 10.5;
+  out[wallBucket].push(box(w, h, d).translate(0, h / 2, 0));
+  out.stone.push(slab(w + 2.0, 0.55, d + 2.0).translate(0, 0.28, 0));
+  out.stone.push(slab(w + 1.2, 0.42, d + 1.2).translate(0, h + 0.21, 0));
+  for (let x = -12.5; x <= 12.5; x += 3.1) {
+    out.stone.push(cylinder(0.34, 0.42, 8.2, 10).translate(x, 4.1, d / 2 + 2.2));
+  }
+  out.roof.push(slab(w - 1.0, 0.45, 4.8).translate(0, 8.5, d / 2 + 1.2));
+  const dome = new THREE.SphereGeometry(6.8, 18, 9, 0, Math.PI * 1.55, 0, Math.PI / 2);
+  dome.scale(1, 0.52, 1); dome.translate(-3.0, h, -1.0); out.roof.push(dome);
+  // Missing dome quarter and exposed ribs are suggested with black blast
+  // panels and leaning steel members rather than overlapping alpha geometry.
+  out.dark.push(box(5.2, 3.2, 0.18).rotateZ(-0.22).translate(1.8, h + 2.0, 4.1));
+  for (let i = 0; i < 6; i++) {
+    const rib = box(0.18, 7.0, 0.18); rib.rotateZ(-0.42 + i * 0.16);
+    out.dark.push(rib.translate(-3.0 + (i - 2.5) * 0.7, h + 2.1, -1.0));
+  }
+  finish(buckets, out);
+  return { w: w + 2.2, d: d + 4.8, h: h + 4.2 };
+}
+
 export const STRUCTURE_BUILDERS = {
   tavern: makeTavern,
   schoolhouse: makeSchoolhouse,
@@ -288,6 +437,10 @@ export const STRUCTURE_BUILDERS = {
   caravanserai: makeCaravanserai,
   foundryoffice: makeFoundryOffice,
   rangerlodge: makeRangerLodge,
+  megatower: makeMegatower,
+  arcology: makeArcology,
+  parkingdeck: makeParkingDeck,
+  civichall: makeCivicHall,
 };
 
 // -------------------------------------------------------------------------

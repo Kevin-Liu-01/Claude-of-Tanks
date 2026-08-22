@@ -31,6 +31,10 @@ const VIEWS = {
   alpine: 'battlefield_alpine',
   caldera: 'battlefield_caldera',
   foundry: 'battlefield_foundry',
+  ruinspires: 'battlefield_ruinspires',
+  blackglass: 'battlefield_blackglass',
+  titan_gorge: 'battlefield_titan_gorge',
+  skybridge: 'battlefield_skybridge',
 };
 const W = 1280, H = 720;
 const QUALITY = 88;
@@ -57,7 +61,7 @@ for (const [id, view] of Object.entries(VIEWS)) {
     console.error(`[thumbs] missing ${src} — run node tools/screenshot.mjs first`);
     process.exit(1);
   }
-  // A 1280-wide, sharp-YUV WebP remains inexpensive enough for the sixteen-
+  // A 1280-wide, sharp-YUV WebP remains inexpensive enough for the twenty-
   // map picker while staying crisp in the large briefing and Studio hero
   // surfaces on high-DPI displays. Source captures are native 4K, so this is
   // a single high-quality downsample rather than an upscaled thumbnail.

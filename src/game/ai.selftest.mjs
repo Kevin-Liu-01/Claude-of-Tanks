@@ -33,9 +33,9 @@ function entity(id, specId, team, x, z, yaw = 0) {
   };
 }
 
-function controller(bot, enemies, allies, seed = 41) {
+function controller(bot, enemies, allies, seed = 41, difficulty = 'normal') {
   const ctl = createAI(bot, {
-    difficulty: 'normal',
+    difficulty,
     rng: mulberry32(seed),
     deps: {
       heightField: hf,
@@ -152,6 +152,56 @@ function survival(team, enemyTeam) {
   const ctl = controller(bot, [target], [support], 19);
   tick(ctl, bot, 1);
   return ctl.debugInfo();
+}
+
+console.log('[7] ally right-of-way and predictive yielding');
+{
+  const follower = entity('z-follower', 'm4a3e8', 'player', 0, 0, 0);
+  const stopped = entity('a-lead', 'tiger1', 'player', 0, 12, 0);
+  follower.state.speed = 8;
+  const ctl = controller(follower, [], [stopped], 73);
+  ctl.setWaypoints([[0, 220]], { loop: false });
+  ctl.update(SIM_DT, 20);
+  const dbg = ctl.debugInfo();
+  ok(dbg.allyYielding && dbg.allyAvoidingId === stopped.id,
+    'following bot yields to the teammate occupying its lane');
+  ok(follower.input.brake && follower.input.throttle === 0,
+    'closing-speed guard brakes before physical hull contact');
+}
+{
+  const crossingBot = entity('z-crossing-yield', 'm4a3e8', 'player', 0, 0, 0);
+  const crossingAlly = entity('a-crossing-priority', 'm4a3e8', 'player', -12, 10, Math.PI / 2);
+  crossingBot.state.speed = 7;
+  crossingAlly.state.speed = 8;
+  const ctl = controller(crossingBot, [], [crossingAlly], 79);
+  ctl.setWaypoints([[0, 220]], { loop: false });
+  ctl.update(SIM_DT, 20);
+  const dbg = ctl.debugInfo();
+  ok(dbg.allyYielding && dbg.allyAvoidingId === crossingAlly.id,
+    'predicts crossing traffic and assigns one deterministic yielding hull');
+  ok(Math.abs(crossingBot.input.steer) >= 0.5 && crossingBot.input.throttle <= 0.32,
+    'yield combines an evasive lane with a meaningful speed cap');
+}
+
+console.log('[8] humanized fire-control estimate');
+{
+  const bot = entity('aim-bot', 'tiger1', 'player', 0, 0);
+  const mover = entity('mover', 'm4a3e8', 'enemy', 0, 120, Math.PI / 2);
+  mover.state.speed = 12;
+  const ctl = controller(bot, [mover], [], 101);
+  tick(ctl, bot, 0.6);
+  const first = ctl.debugInfo();
+  ok(first.targetTrackLagS >= 0.25 && first.targetTrackLagS <= 0.57,
+    'normal bots aim from a delayed target track instead of the live transform');
+  ok(Math.abs(first.targetLeadScale - 1) >= 0.01,
+    'normal bots estimate mover lead instead of solving it exactly');
+  ok(!bot.input.fire,
+    'normal reaction window prevents an instant first-sight trigger');
+  tick(ctl, bot, 0.5);
+  const held = ctl.debugInfo();
+  ok(held.targetTrackLagS === first.targetTrackLagS &&
+      held.targetLeadScale === first.targetLeadScale,
+    'one imperfect estimate persists instead of jittering every frame');
 }
 {
   const allied = survival('player', 'enemy');

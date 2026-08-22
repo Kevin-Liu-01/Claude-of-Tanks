@@ -1396,7 +1396,9 @@ ${snowCap ? `
   const conflictsTacticalReservation = (x, z, clearance = 10) => tacticalReservations
     .some((site) => Math.hypot(x - site.x, z - site.z) < site.rr + clearance);
   for (const cand of candidates) {
-    if (P.streetRows) break; // town maps: strips own the street frontage
+    // Monumental-city maps place their landmark plan first, then let the
+    // rowhouse strips knit dense street walls around those reserved masses.
+    if (P.streetRows && !P.streetRowsAfterLandmarks) break;
     if (bi >= builders.length) break;
     for (const side of [-1, 1]) {
       if (bi >= builders.length) break;
@@ -1501,7 +1503,9 @@ ${snowCap ? `
   if (P.streetRows) {
     const srng = mulberry32(seed + 505);
     const stripAABBs = []; // {x,z,hx,hz} world-AABB approximations
+    const frontageReservations = placedB.slice();
     for (let ri = 0; ri < roads.length; ri++) {
+      if (ri % Math.max(1, P.streetRowRoadStride || 1) !== 0) continue;
       const pts = roads[ri];
       const cum = [0];
       for (let i = 1; i < pts.length; i++) {
@@ -1534,6 +1538,11 @@ ${snowCap ? `
             || Math.hypot(px - junction.x, pz - junction.z) < 26
             || noVeg(px, pz)
             || conflictsTacticalReservation(px, pz, Math.hypot(w, d) * 0.5)) { t += 6; continue; }
+          if (frontageReservations.some((site) =>
+            Math.hypot(px - site.x, pz - site.z) < site.rr + Math.hypot(w, d) * 0.34)) {
+            t += w;
+            continue;
+          }
           const roll = srng();
           if (roll < 0.14) { t += 4 + srng() * 7; continue; } // alley / vacant lot
           const rot = Math.atan2(-nx, -nz); // local +z (door face) toward street

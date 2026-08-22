@@ -23,6 +23,10 @@ const expected = {
   alpine: [4879, 719, 3897],
   caldera: [2962, 844, 1868],
   foundry: [2155, 587, 1167],
+  ruinspires: [1716, 1254, 22],
+  blackglass: [1976, 905, 737],
+  titan_gorge: [1962, 1008, 669],
+  skybridge: [2245, 964, 1052],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
@@ -61,4 +65,4 @@ const origin = new Vector3(collider.min[0] - 2, centerY, centerZ);
 const hit = world.raycast(origin, new Vector3(1, 0, 0), collider.max[0] - collider.min[0] + 4);
 assert.equal(hit?.kind, 'prop', 'headless raycast resolves captured shell cover');
 
-console.log('dedicatedWorldCollision.selftest: all sixteen exact map manifests passed');
+console.log('dedicatedWorldCollision.selftest: all twenty exact map manifests passed');

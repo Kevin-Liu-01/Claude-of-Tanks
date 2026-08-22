@@ -4502,6 +4502,10 @@ const VIEW_TIME = {
   battlefield_alpine: 2.0,
   battlefield_caldera: 2.0,
   battlefield_foundry: 2.0,
+  battlefield_ruinspires: 2.0,
+  battlefield_blackglass: 2.0,
+  battlefield_titan_gorge: 2.0,
+  battlefield_skybridge: 2.0,
   killcam_xray: 1.0, // KILL-CAM
 };
 
@@ -4523,6 +4527,10 @@ const VIEW_MAP = {
   battlefield_alpine: 'alpine',
   battlefield_caldera: 'caldera',
   battlefield_foundry: 'foundry',
+  battlefield_ruinspires: 'ruinspires',
+  battlefield_blackglass: 'blackglass',
+  battlefield_titan_gorge: 'titan_gorge',
+  battlefield_skybridge: 'skybridge',
 };
 
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
@@ -5038,6 +5046,10 @@ const SHOT_VIEWS = {
   battlefield_alpine() { mapEstablishingShot(); },
   battlefield_caldera() { mapEstablishingShot(); },
   battlefield_foundry() { mapEstablishingShot(); },
+  battlefield_ruinspires() { mapEstablishingShot(); },
+  battlefield_blackglass() { mapEstablishingShot(); },
+  battlefield_titan_gorge() { mapEstablishingShot(); },
+  battlefield_skybridge() { mapEstablishingShot(); },
   // KILL-CAM: deterministic staged x-ray replay frame. A synthetic T-90M
   // flank shot into the player's M1A2 SEPv3 is resolved through the
   // REAL sim pipeline (traceTank + resolveShellHit, seeded rng, throwaway
@@ -5141,6 +5153,8 @@ window.__SHOTS = {
     'battlefield_frontier', 'battlefield_fjord', 'battlefield_delta',
     'battlefield_badlands', 'battlefield_monsoon', 'battlefield_alpine',
     'battlefield_caldera', 'battlefield_foundry',
+    'battlefield_ruinspires', 'battlefield_blackglass',
+    'battlefield_titan_gorge', 'battlefield_skybridge',
     'killcam_xray', // KILL-CAM
   ],
   set(name) {

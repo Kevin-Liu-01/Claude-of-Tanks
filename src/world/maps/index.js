@@ -20,16 +20,23 @@ import monsoon from './monsoon.js';
 import alpine from './alpine.js';
 import caldera from './caldera.js';
 import foundry from './foundry.js';
+// Extreme-environment expansion — vertical ruins and canyon-scale terrain.
+import ruinspires from './ruinspires.js';
+import blackglass from './blackglass.js';
+import titanGorge from './titanGorge.js';
+import skybridge from './skybridge.js';
 
 /** Ordered map ids (garage picker order). @type {string[]} */
 export const MAP_IDS = ['verdant', 'desert', 'winter', 'urban',
   'coastal', 'autumn', 'steppe', 'railyard',
   'frontier', 'fjord', 'delta', 'badlands',
-  'monsoon', 'alpine', 'caldera', 'foundry'];
+  'monsoon', 'alpine', 'caldera', 'foundry',
+  'ruinspires', 'blackglass', 'titan_gorge', 'skybridge'];
 
 const CONFIGS = {
   verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
   frontier, fjord, delta, badlands, monsoon, alpine, caldera, foundry,
+  ruinspires, blackglass, titan_gorge: titanGorge, skybridge,
 };
 
 /**

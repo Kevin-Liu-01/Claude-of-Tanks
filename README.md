@@ -8,7 +8,7 @@
 
 <p align="center">
   Free browser-native armored combat built with <strong>Three.js</strong>. Take 111 production-visible first-party procedural vehicles
-  across 16 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
+  across 20 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
 
@@ -59,7 +59,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | | Current runtime |
 | --- | --- |
 | Fleet | **111** production-visible and **148** keyed local-development procedural vehicles across **150** saved roster records; **0** GLB-sourced playables |
-| Worlds | **16** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
+| Worlds | **20** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
 | Play | Solo bots, persistent private rooms, LAN rooms, room chat, spectators, rematches, and dedicated ranked authority |
@@ -164,7 +164,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/presentation-r1/07_winter_road_charge.webp" alt="Vehicles charging through Frosthollow"><br><sub><b>Sixteen worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
+<td width="50%"><img src="public/media/presentation-r1/07_winter_road_charge.webp" alt="Vehicles charging through Frosthollow"><br><sub><b>Twenty worlds:</b> terrain, roads, structures, foliage, fog, sky, lighting, cover, collision, minimap, and dedicated-server descriptors.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/50_foundry_contact.webp" alt="Armored contact inside Ironworks"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
@@ -330,7 +330,7 @@ controls ──► deterministic authority ──► filtered state + reliable e
 
 ```text
 src/engine/    renderer, camera, lighting, post, quality, telemetry, GPU recovery
-src/world/     sixteen maps, terrain, vegetation, props, collision, destruction
+src/world/     twenty maps, terrain, vegetation, props, collision, destruction
 src/vehicles/  specs, procedural geometry, materials, profiles, asset verification
 src/sim/       DOM-free movement, aiming, ballistics, armor, damage, spotting
 src/game/      local composition, bots, input, profile, killcam, Scene Studio

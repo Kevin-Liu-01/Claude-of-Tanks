@@ -19,4 +19,8 @@ export const MAP_THUMBS = {
   alpine: '/maps/alpine.webp',
   caldera: '/maps/caldera.webp',
   foundry: '/maps/foundry.webp',
+  ruinspires: '/maps/ruinspires.webp',
+  blackglass: '/maps/blackglass.webp',
+  titan_gorge: '/maps/titan_gorge.webp',
+  skybridge: '/maps/skybridge.webp',
 };

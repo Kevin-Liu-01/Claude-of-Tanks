@@ -16,9 +16,9 @@ function seeded(seed = 0x51a7c7) {
 }
 
 const ids = STRUCTURE_CATALOG.map(({ id }) => id);
-assert.equal(ids.length, 24, 'twenty-four new building types are registered');
+assert.equal(ids.length, 28, 'twenty-eight new building types are registered');
 assert.equal(new Set(ids).size, ids.length, 'new building ids are unique');
-assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 8, 'eight heavyweight merged buildings');
+assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 12, 'twelve heavyweight merged buildings');
 assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 16,
   'sixteen light buildings have destruction states');
 
@@ -73,6 +73,6 @@ for (const mapId of MAP_IDS) {
   }
 }
 assert.deepEqual([...used].sort(), [...ids].sort(),
-  'all twenty-four new structure types are deliberately assigned to maps');
+  'all twenty-eight new structure types are deliberately assigned to maps');
 
-console.log('structureKit.selftest: 24 new types; 16 destructible; all maps covered');
+console.log('structureKit.selftest: 28 new types; 16 destructible; all maps covered');

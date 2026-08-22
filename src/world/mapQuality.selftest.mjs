@@ -7,6 +7,7 @@ const EXPANSION = [
   'frontier', 'fjord', 'delta', 'badlands',
   'monsoon', 'alpine', 'caldera', 'foundry',
 ];
+const EXTREME = ['ruinspires', 'blackglass', 'titan_gorge', 'skybridge'];
 const LEGACY = ['verdant', 'desert', 'winter', 'urban',
   'coastal', 'autumn', 'steppe', 'railyard'];
 const MODERN_FAMILIES = [
@@ -15,9 +16,10 @@ const MODERN_FAMILIES = [
 ];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 
-assert.equal(MAP_IDS.length, 16, 'the battlefield roster contains sixteen maps');
+assert.equal(MAP_IDS.length, 20, 'the battlefield roster contains twenty maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
-assert.deepEqual(MAP_IDS.slice(-8), EXPANSION, 'the eight-map expansion stays registered');
+assert.deepEqual(MAP_IDS.slice(8, 16), EXPANSION, 'the eight-map expansion stays registered');
+assert.deepEqual(MAP_IDS.slice(-4), EXTREME, 'the extreme-environment expansion stays registered');
 
 for (const mapId of MAP_IDS) {
   const config = getMapConfig(mapId);
@@ -36,7 +38,7 @@ for (const mapId of MAP_IDS) {
   assert.equal(config.shot.look.length, 3, `${mapId}: establishing camera target`);
 }
 
-for (const mapId of EXPANSION) {
+for (const mapId of [...EXPANSION, ...EXTREME]) {
   const config = getMapConfig(mapId);
   assert.ok(config.props.plan.length >= 14, `${mapId}: authored landmark plan is dense`);
   assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
@@ -104,6 +106,32 @@ for (const mapId of EXPANSION) {
     `${mapId}: playable interior includes meaningful hull-down relief`);
 }
 
+for (const mapId of ['ruinspires', 'blackglass']) {
+  const config = getMapConfig(mapId);
+  const monumental = config.props.plan.filter((kind) =>
+    ['megatower', 'arcology', 'parkingdeck', 'civichall'].includes(kind));
+  assert.ok(monumental.length >= 18,
+    `${mapId}: destroyed city skyline has at least eighteen monumental structures`);
+  assert.ok(config.props.rubblePiles >= 150,
+    `${mapId}: collapsed blocks carry a city-scale rubble budget`);
+  assert.equal(config.props.streetRowsAfterLandmarks, true,
+    `${mapId}: dense frontage grows around reserved monumental footprints`);
+  assert.ok(config.props.streetRowRoadStride <= 2 && config.props.ruinChance >= 0.45,
+    `${mapId}: street walls stay dense and visibly battle-damaged`);
+  assert.ok(config.props.tones?.plaster && config.props.tones?.stone,
+    `${mapId}: skyline uses authored weathered material tones`);
+}
+
+for (const mapId of ['titan_gorge', 'skybridge']) {
+  const config = getMapConfig(mapId);
+  const majorWalls = config.terrain.landforms.filter((form) =>
+    form.kind === 'ridge' && form.height >= 17 && form.length >= 700);
+  assert.ok(majorWalls.length >= 2,
+    `${mapId}: paired canyon walls span most of the battlefield`);
+  assert.ok(config.horizon.style === 'mesa' && config.horizon.amp >= 1.9,
+    `${mapId}: distant skyline reads at Grand Canyon scale`);
+}
+
 const legacyWreckFamilies = new Set();
 const legacyMobileWreckFamilies = new Set();
 for (const mapId of LEGACY) {
@@ -164,4 +192,4 @@ for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
   assert.equal(needlePeaks, 0, 'desert: village backdrop has no one-cell shark-fin peaks');
 }
 
-console.log('mapQuality.selftest: 16 complete maps; expansion terrain/atmosphere and legacy backport passed');
+console.log('mapQuality.selftest: 20 complete maps; extreme terrain/atmosphere and legacy backport passed');

@@ -42,7 +42,9 @@ const DEFAULT_SEED = 7001;
  *  - fireFactor: dispersion gate — fire when r(dist) < targetWidth/2 × fireFactor.
  *  - reactionS:  delay between first sighting a target and being allowed to fire.
  *  - aimErrMult: inflates effective sigma; extra aim-point error so the combined
- *                sigma equals baseSigma × aimErrMult (hard = 1.0 → no extra error).
+ *                sigma equals baseSigma × aimErrMult.
+ *  - trackLagS/leadSigma: persistent human fire-control estimation error. The
+ *                barrel visibly follows the estimate; shells are never bent.
  *  - probeLevel: index into PROBE_SETS (easy center-mass, hard weak-spot hunting).
  */
 const DIFFICULTY_TIERS = {
@@ -50,12 +52,12 @@ const DIFFICULTY_TIERS = {
   // (~350-450 m on every map) or bots idle outside it while spotted targets
   // trade: r7 raised normal 330→400 and hard 420→500 so a known contact is
   // always worth advancing on at full throttle.
-  easy:   { fireFactor: 0.6, reactionS: 1.2, aimErrMult: 2.0, playerSpreadMult: 1.3, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35 },
+  easy:   { fireFactor: 0.55, reactionS: 1.65, aimErrMult: 5.0, playerSpreadMult: 1.5, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35, trackLagS: 0.46, leadSigma: 0.34 },
   // Shared-combat r1: normal is the default live battle tier. Faster target
   // confirmation, tighter lays and stronger reload-cover discipline make
   // both allied and enemy bots competent without hard-tier perfect aim.
-  normal: { fireFactor: 1.0, reactionS: 0.55, aimErrMult: 1.25, playerSpreadMult: 0.85, probeLevel: 1, engageRangeM: 450, holdRangeM: 260, coverIQ: 0.82 },
-  hard:   { fireFactor: 1.2, reactionS: 0.3, aimErrMult: 1.0, playerSpreadMult: 0,   probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0  },
+  normal: { fireFactor: 0.85, reactionS: 1.3, aimErrMult: 4.0, playerSpreadMult: 1.0, probeLevel: 1, engageRangeM: 450, holdRangeM: 260, coverIQ: 0.82, trackLagS: 0.36, leadSigma: 0.28 },
+  hard:   { fireFactor: 1.0, reactionS: 0.8, aimErrMult: 2.5, playerSpreadMult: 0.4, probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0, trackLagS: 0.18, leadSigma: 0.16 },
 };
 
 /**
@@ -136,7 +138,9 @@ const FRIENDLY_CORRIDOR_PAD_M = 1.25;
 const FRIENDLY_HE_PAD_M = 1.5;
 const FRIENDLY_PREDICT_MAX_S = 1.5;
 const FRIENDLY_LANE_RELOCATE_S = 1.2;
-const FRIENDLY_SEPARATION_LOOK_M = 18;
+const FRIENDLY_SEPARATION_LOOK_M = 26;
+const FRIENDLY_SEPARATION_PREDICT_S = 1.8;
+const FRIENDLY_STOP_DECEL_MPS2 = 4.0;
 
 const LOS_INTERVAL_S    = 0.14;   // target-acquisition / LOS cadence
 const PROBE_INTERVAL_S  = 0.55;   // weak-spot + shell-slot probe cadence
@@ -576,6 +580,8 @@ export function createAI(entity, opts = {}) {
   // Persistent aim error (resampled periodically and after every shot result).
   let errYawRad = 0;
   let errPitchRad = 0;
+  let targetTrackLagS = 0;
+  let targetLeadScale = 1;
   // Blind-fire spread (camo_spotting r5) — see resampleAimError.
   let blindYawRad = 0;
   let blindPitchRad = 0;
@@ -588,6 +594,17 @@ export function createAI(entity, opts = {}) {
   let coverTimer = 0;
   let errTimer = 0;
   let obstacleTimer = 0;
+
+  // Formation deconfliction is a movement authority, not a cosmetic steer
+  // nudge. It survives route/unstick logic and is exposed to headless soaks.
+  let allyYielding = false;
+  let allyAvoidingId = null;
+  let allyClosestM = Infinity;
+  let allyYieldT = 0;
+  let allyDeadlockT = 0;
+  let allyEmergencyActive = false;
+  let allyEmergencyStops = 0;
+  let allyReverseEscapes = 0;
 
   // Stuck / gun-limit recovery.
   let lowSpeedT = 0;
@@ -649,6 +666,9 @@ export function createAI(entity, opts = {}) {
     const sigma = ((spec.gun.baseAccuracy / 2) / 100) * extra;
     errYawRad = gauss(rng) * sigma;
     errPitchRad = gauss(rng) * sigma;
+    targetTrackLagS = Math.max(0.02,
+      tier.trackLagS * (0.72 + rng() * 0.56));
+    targetLeadScale = clamp(1 + gauss(rng) * tier.leadSigma, 0.55, 1.35);
     // camo_spotting r5: blind-fire spread — shelling a REMEMBERED muzzle
     // position is area fire, not a lay on a seen hull. Sampled separately
     // (additive with the tier error) because the hard tier's aimErrMult of
@@ -659,7 +679,9 @@ export function createAI(entity, opts = {}) {
     blindPitchRad = gauss(rng) * 0.006;
     playerYawRad = gauss(rng) * 0.0045;
     playerPitchRad = gauss(rng) * 0.0030;
-    errTimer = 1.1 + rng() * 0.5;
+    // Hold one imperfect estimate long enough to read as a human correction,
+    // not per-frame aim jitter or omniscient tracking.
+    errTimer = 1.8 + rng() * 1.25;
   }
 
   function aliveEnemies() {
@@ -1212,44 +1234,168 @@ export function createAI(entity, opts = {}) {
   }
 
   /**
-   * Formation separation: steer around a teammate in the forward corridor
-   * and shed closing speed before the collision solver has to push the hulls
-   * apart. This keeps both teams from forming muzzle-blocking tank piles.
+   * Formation separation with deterministic right-of-way. It predicts
+   * crossing traffic, gives a following tank responsibility for the gap,
+   * makes one tank yield in head-on/crossing deadlocks, and performs a short
+   * reverse escape only after both hulls have settled. The final guard runs
+   * after stuck recovery so an unstick burst can never drive through an ally.
    */
-  function avoidAllies(input) {
-    if (!getAllies || input.throttle <= 0.05) return;
+  function avoidAllies(input, dt) {
+    if (!getAllies || Math.abs(input.throttle) <= 0.05) {
+      allyYieldT = Math.max(0, allyYieldT - dt * 2);
+      allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
+      allyEmergencyActive = false;
+      return;
+    }
     const st = entity.state;
-    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
-    const look = FRIENDLY_SEPARATION_LOOK_M + Math.max(0, st.speed || 0) * 0.8;
+    const motionSign = input.throttle >= 0 ? 1 : -1;
+    const fx = Math.sin(st.yaw) * motionSign;
+    const fz = Math.cos(st.yaw) * motionSign;
+    const speed = Math.abs(st.speed || 0);
+    const stoppingM = speed * speed / (2 * FRIENDLY_STOP_DECEL_MPS2);
+    const look = FRIENDLY_SEPARATION_LOOK_M + stoppingM + speed * 0.8;
     const friends = getAllies();
-    const ownR = tankSafetyRadius(entity) * 0.72;
+    const ownR = tankSafetyRadius(entity) * 0.74;
+    const ownHalfL = (spec.dims.hullLengthM || spec.dims.lengthM || 6) * 0.5;
+    const ownHalfW = (spec.dims.widthM || 3) * 0.5;
     let best = null;
-    let bestAlong = Infinity;
+    let bestScore = Infinity;
+    let bestAlong = 0;
     let bestCross = 0;
-    let bestSafe = 0;
+    let bestDistance = Infinity;
+    let bestLongSafe = 0;
+    let bestHeadingDot = 1;
+    let bestPredCross = 0;
     for (let i = 0; i < friends.length; i++) {
       const ally = friends[i];
       if (!ally || !ally.state || (ally.combat && ally.combat.destroyed)) continue;
       const rx = ally.state.pos.x - st.pos.x;
       const rz = ally.state.pos.z - st.pos.z;
+      const distance = Math.hypot(rx, rz);
+      if (distance >= look) continue;
       const along = rx * fx + rz * fz;
-      if (along <= 0 || along >= look) continue;
       const cross = fz * rx - fx * rz; // >0 = teammate to hull-right
-      const safe = ownR + tankSafetyRadius(ally) * 0.72 + 1.5;
-      if (Math.abs(cross) >= safe || along >= bestAlong) continue;
+      const allyFx = Math.sin(ally.state.yaw);
+      const allyFz = Math.cos(ally.state.yaw);
+      const allyMotionSign = (ally.state.speed || 0) < -0.2 ? -1 : 1;
+      const headingDot = fx * allyFx * allyMotionSign + fz * allyFz * allyMotionSign;
+      const allyVx = allyFx * (ally.state.speed || 0);
+      const allyVz = allyFz * (ally.state.speed || 0);
+      const selfVx = Math.sin(st.yaw) * (st.speed || 0);
+      const selfVz = Math.cos(st.yaw) * (st.speed || 0);
+      const rvx = allyVx - selfVx;
+      const rvz = allyVz - selfVz;
+      const rv2 = rvx * rvx + rvz * rvz;
+      const closestT = rv2 > 0.01
+        ? clamp(-(rx * rvx + rz * rvz) / rv2, 0, FRIENDLY_SEPARATION_PREDICT_S)
+        : 0;
+      const predX = rx + rvx * closestT;
+      const predZ = rz + rvz * closestT;
+      const predAlong = predX * fx + predZ * fz;
+      const predCross = fz * predX - fx * predZ;
+      const allyHalfL = ((ally.spec?.dims?.hullLengthM || ally.spec?.dims?.lengthM || 6) * 0.5);
+      const allyHalfW = (ally.spec?.dims?.widthM || 3) * 0.5;
+      const longSafe = ownHalfL + allyHalfL + 2.2;
+      const laneSafe = ownHalfW + allyHalfW + 1.6;
+      const radialSafe = ownR + tankSafetyRadius(ally) * 0.74 + 1.4;
+      const aheadRisk = along > -1 && along < look && Math.abs(cross) < laneSafe;
+      const crossingRisk = closestT > 0 && predAlong > -longSafe &&
+        Math.hypot(predX, predZ) < radialSafe;
+      if (!aheadRisk && !crossingRisk) continue;
+      const score = Math.min(
+        aheadRisk ? Math.max(0, along) : Infinity,
+        crossingRisk ? Math.hypot(predX, predZ) + closestT * 2 : Infinity,
+      );
+      if (score >= bestScore) continue;
       best = ally;
+      bestScore = score;
       bestAlong = along;
       bestCross = cross;
-      bestSafe = safe;
+      bestDistance = distance;
+      bestLongSafe = longSafe;
+      bestHeadingDot = headingDot;
+      bestPredCross = predCross;
     }
-    if (!best) return;
-    const side = Math.sign(bestCross || (entity.id < best.id ? 1 : -1));
-    input.steer = clamp(input.steer - side * 0.85, -1, 1);
-    const closing = Math.max(0, (st.speed || 0) - (best.state.speed || 0));
-    const cap = bestAlong < bestSafe * 1.15 ? 0.12
-      : bestAlong < bestSafe * 1.8 ? 0.35 : 0.6;
-    input.throttle = Math.min(input.throttle, Math.max(0.08, cap - closing * 0.025));
-    if (bestAlong < bestSafe * 0.9 && Math.abs(st.speed || 0) > 1.5) input.brake = true;
+    if (!best) {
+      allyYieldT = Math.max(0, allyYieldT - dt * 2);
+      allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
+      allyEmergencyActive = false;
+      return;
+    }
+
+    allyAvoidingId = best.id;
+    allyClosestM = bestDistance;
+    const following = bestHeadingDot > 0.55 && bestAlong > 0;
+    const headOn = bestHeadingDot < -0.25;
+    const hasPriority = String(entity.id) < String(best.id);
+    const mustYield = following || !hasPriority;
+    allyYielding = mustYield;
+    if (mustYield) allyYieldT += dt;
+    else allyYieldT = Math.max(0, allyYieldT - dt);
+
+    // Both head-on hulls take their own right; otherwise split a perfectly
+    // centered convoy by stable entity id and move away from the crossing.
+    const side = headOn ? 1 : Math.sign(
+      (Math.abs(bestPredCross) > 0.2 ? -bestPredCross : -bestCross) ||
+      (hasPriority ? -1 : 1));
+    input.steer = clamp(input.steer + side * (headOn ? 1.0 : 0.9), -1, 1);
+
+    const longitudinalGap = bestAlong - bestLongSafe;
+    const emergency = bestDistance < ownR + tankSafetyRadius(best) * 0.74 + 0.55 ||
+      (bestAlong > 0 && longitudinalGap < 0.8);
+    const closing = Math.max(0,
+      speed - Math.max(0, Math.abs(best.state.speed || 0) * bestHeadingDot));
+    if (emergency) {
+      if (!allyEmergencyActive) allyEmergencyStops++;
+      allyEmergencyActive = true;
+      input.throttle = 0;
+      input.brake = speed > 0.45;
+      allyDeadlockT += speed < 0.7 ? dt : 0;
+      // The yielding hull backs out only after settling, and only if its aft
+      // corridor is clear. This resolves nose-to-nose doorways without the
+      // generic stuck recovery randomly reversing into a third teammate.
+      if (mustYield && allyDeadlockT > 0.9 && speed < 0.45) {
+        const backFx = -Math.sin(st.yaw), backFz = -Math.cos(st.yaw);
+        let aftClear = true;
+        for (let i = 0; i < friends.length; i++) {
+          const other = friends[i];
+          if (!other || other === best || !other.state || (other.combat && other.combat.destroyed)) continue;
+          const arx = other.state.pos.x - st.pos.x;
+          const arz = other.state.pos.z - st.pos.z;
+          const aAlong = arx * backFx + arz * backFz;
+          const aCross = backFz * arx - backFx * arz;
+          if (aAlong > 0 && aAlong < 10 && Math.abs(aCross) < ownHalfW + 2.4) {
+            aftClear = false;
+            break;
+          }
+        }
+        if (aftClear) {
+          input.throttle = -0.42;
+          input.brake = false;
+          allyReverseEscapes++;
+          allyDeadlockT = 0;
+        }
+      }
+      return;
+    }
+
+    allyEmergencyActive = false;
+    allyDeadlockT = Math.max(0, allyDeadlockT - dt * 2);
+    const stopBuffer = stoppingM + bestLongSafe;
+    let cap = bestAlong < stopBuffer ? 0.1
+      : bestAlong < stopBuffer + 8 ? 0.32 : 0.58;
+    if (!mustYield) cap = Math.max(cap, 0.38);
+    if (mustYield && bestAlong > 0 && bestAlong < stopBuffer && speed > 1.5) {
+      input.throttle = 0;
+      input.brake = true;
+      return;
+    }
+    if (motionSign > 0) {
+      input.throttle = Math.min(input.throttle,
+        Math.max(0.06, cap - closing * 0.035));
+    } else {
+      input.throttle = Math.max(input.throttle, -Math.max(0.08, cap * 0.7));
+    }
   }
 
   // BATTLE-AI r7 CORNER-HOP ROUTER: reactive avoidance + unstick could not
@@ -1600,7 +1746,6 @@ export function createAI(entity, opts = {}) {
     // 0.2 throttle and wedge; r7 autumn trace)
     if (!viaCorner) input.throttle *= clamp(dist / 10, 0.35, 1);
     avoidObstacles(input);
-    avoidAllies(input);
     return false;
   }
 
@@ -2138,13 +2283,19 @@ export function createAI(entity, opts = {}) {
     const shell = spec.gun.shells[clamp(chosenSlot, 0, spec.gun.shells.length - 1)];
     const tvx = Math.sin(target.state.yaw) * target.state.speed;
     const tvz = Math.cos(target.state.yaw) * target.state.speed;
+    // A bot observes a delayed track and estimates lead; it does not read the
+    // exact current transform as a perfect fire-control solution. The error is
+    // correlated for a few seconds so aim visibly walks onto a mover.
+    _vC.x -= tvx * targetTrackLagS;
+    _vC.z -= tvz * targetTrackLagS;
     _vD.copy(_vC);
     let dist = 0;
     for (let i = 0; i < 2; i++) {
       _vE.set(_vD.x - ex, _vD.y - ey, _vD.z - ez);
       dist = _vE.length();
       const t = dist / shell.velocityMps;
-      _vD.set(_vC.x + tvx * t, _vC.y, _vC.z + tvz * t);
+      _vD.set(_vC.x + tvx * t * targetLeadScale,
+        _vC.y, _vC.z + tvz * t * targetLeadScale);
     }
 
     // r4 BLIND-FIRE FALLBACK (WoT bush-fire): a bot with a live
@@ -2457,6 +2608,10 @@ export function createAI(entity, opts = {}) {
     const input = entity.input;
     const st = entity.state;
     const cb = entity.combat;
+    const allyYieldingPrev = allyYielding;
+    allyYielding = false;
+    allyAvoidingId = null;
+    allyClosestM = Infinity;
 
     if (cb && cb.destroyed) {
       input.throttle = 0; input.steer = 0; input.brake = false; input.fire = false;
@@ -2762,7 +2917,7 @@ export function createAI(entity, opts = {}) {
       lowSpeedT = 0;
       navNoProgressT = 0; // r6: reversing away — give the goal a fresh chance
       navBestD = Infinity;
-    } else if (driveIntent &&
+    } else if (driveIntent && !allyYieldingPrev &&
                (Math.abs(st.speed) < 0.3 || progressRate < 0.45)) {
       // r6: arming keys on driveIntent, NOT |throttle|>0.25 — avoidObstacles'
       // x0.6 damping and the arrival ease-in put wedged bots at 0.07-0.24
@@ -2797,7 +2952,7 @@ export function createAI(entity, opts = {}) {
     // end, and the whole enemy team contributed 0 shells for 60 s). Six
     // seconds without closing on the goal is a strike through the SAME
     // unstick/detour/waypoint-skip machinery.
-    if (driveIntent && timeS >= unstickUntilS) {
+    if (driveIntent && !allyYieldingPrev && timeS >= unstickUntilS) {
       navNoProgressT += dt;
       if (navNoProgressT > 6) {
         navNoProgressT = 0;
@@ -2810,6 +2965,9 @@ export function createAI(entity, opts = {}) {
       navNoProgressT = 0;
     }
 
+    // Last movement authority: applies to ordinary routes, fallback reverse,
+    // and generic unstick bursts alike.
+    avoidAllies(input, dt);
     aimAndFire(input, dt, timeS);
     controller.state = mode;
   }
@@ -3030,6 +3188,10 @@ export function createAI(entity, opts = {}) {
       friendlyLaneMoves,
       friendlyBlockKind: lastFriendlyRisk ? lastFriendlyRisk.kind : null,
       friendlyBlockId: lastFriendlyRisk ? lastFriendlyRisk.allyId : null,
+      allyYielding, allyAvoidingId,
+      allyClosestM: Number.isFinite(allyClosestM) ? +allyClosestM.toFixed(2) : null,
+      allyYieldT: +allyYieldT.toFixed(2),
+      allyEmergencyStops, allyReverseEscapes,
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm
@@ -3040,6 +3202,8 @@ export function createAI(entity, opts = {}) {
       // asserts a hardClaim keeps the MUZZLE stamp, never the live position,
       // while the spotting sim hides the shooter.
       lastSeenX: lastSeen.x, lastSeenZ: lastSeen.z, lastSeenAtS,
+      targetTrackLagS: +targetTrackLagS.toFixed(3),
+      targetLeadScale: +targetLeadScale.toFixed(3),
       ..._dbg,
     }),
     state: mode,

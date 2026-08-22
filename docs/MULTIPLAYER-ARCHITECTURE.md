@@ -35,7 +35,7 @@ damage, spotting, and AI modules.
 - `server/dedicatedMatchServer.js` and `dedicatedMatchRegistry.js` own ranked
   WebSocket authority and reconnectable match lifetimes.
 
-All sixteen maps use the same authored collision, terrain, foliage concealment,
+All twenty maps use the same authored collision, terrain, foliage concealment,
 destructible indices, and loadout rules in solo, browser-hosted, and dedicated play.
 Dedicated Node matches inflate collision from the generated
 `server/world-collision-manifests.json`; browser hosts use the live `World`

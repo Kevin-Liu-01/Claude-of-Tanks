@@ -20,7 +20,8 @@ export const FEATURED_SHOTS = [
   {
     img: '/media/featured/f6_studio_strv_steinburg_duel.webp',
     cap: 'Scene Studio — Strv Steinburg duel',
-    maps: ['urban', 'foundry', 'railyard', 'caldera'], focal: '50% 52%', handmade: true,
+    maps: ['urban', 'foundry', 'railyard', 'caldera', 'ruinspires', 'blackglass'],
+    focal: '50% 52%', handmade: true,
   },
   {
     img: '/media/featured/f9_studio_fjord_firefight.webp',
@@ -43,7 +44,8 @@ export const FEATURED_SHOTS = [
   {
     img: '/media/presentation-r1/02_desert_rooftop_dive.webp',
     cap: 'Sirocco Wadi — rooftop dive',
-    maps: ['desert', 'badlands', 'delta', 'monsoon'], focal: '50% 50%',
+    maps: ['desert', 'badlands', 'delta', 'monsoon', 'titan_gorge', 'skybridge'],
+    focal: '50% 50%',
   },
   {
     img: '/media/presentation-r1/03_desert_muzzle_worm.webp',

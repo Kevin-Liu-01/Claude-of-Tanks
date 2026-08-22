@@ -145,7 +145,7 @@ Relevant implementation:
 - src/game/ai.js
 - server/authoritativeBots.selftest.mjs
 
-## Sixteen generated battlefields
+## Twenty generated battlefields
 
 The game includes:
 
@@ -165,13 +165,17 @@ The game includes:
 14. Glacier Pass
 15. Obsidian Caldera
 16. Ironworks
+17. Ruinspires
+18. Blackglass District
+19. Titan Gorge
+20. Skybridge Chasm
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,
 destructibles, sky, lighting, fog, and minimap. Browser-hosted and dedicated
 matches use matching collision descriptions.
 
-All sixteen maps use the same modern world-quality vocabulary: 24 procedural
+All twenty maps use the same modern world-quality vocabulary: 28 procedural
 structure families, independently destructible huts and camps, persistent
 debris, vehicle wreck families and detached remnants, topple interactions,
 connected utility networks, loose physical props, terrain attachment, and
