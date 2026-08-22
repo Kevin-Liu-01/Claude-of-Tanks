@@ -272,6 +272,27 @@ function mkShell(shellSpec, distM = 100) {
   const hitsGun = traceTank(V(5, 1.9, 2), V(-5, 1.9, 2), pose0, armorModel);
   assert(hitsGun.some((h) => h.kind === 'module' && h.module === 'gun'), 'barrel cylinder intersected');
 
+  // One gameplay module may have multiple visible components. The broad
+  // min/max union remains useful metadata, but empty space between those
+  // components must not become a damageable hit volume.
+  const segmentedModel = {
+    ...armorModel,
+    modules: [{
+      module: 'optics', min: [-1.5, 0.5, -0.3], max: [1.5, 1.5, 0.3],
+      turretLocal: false,
+      parts: [
+        { min: [-1.5, 0.5, -0.3], max: [-1.0, 1.5, 0.3] },
+        { min: [1.0, 0.5, -0.3], max: [1.5, 1.5, 0.3] },
+      ],
+    }],
+  };
+  const hitsModuleGap = traceTank(V(0, 1, 1), V(0, 1, -1), pose0, segmentedModel);
+  assert(!hitsModuleGap.some((h) => h.kind === 'module' && h.module === 'optics'),
+    'segmented module union gap is not damageable');
+  const hitsModulePart = traceTank(V(1.2, 1, 1), V(1.2, 1, -1), pose0, segmentedModel);
+  assert(hitsModulePart.some((h) => h.kind === 'module' && h.module === 'optics'),
+    'segmented module component remains damageable');
+
   // queryAimArmor returns the first main/spaced plate with range.
   const aim = queryAimArmor(V(0, 1, 10), V(0, 0, -1), 30, pose0, armorModel);
   assert(!!aim && aim.plate.name === 'front', 'queryAimArmor finds front plate');

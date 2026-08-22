@@ -3258,7 +3258,12 @@ export function createKillCam(deps) {
       const prism = (mb.module === 'trackL' || mb.module === 'trackR')
         ? trackShapesOf(mb.module) : null;
       if (prism) addTrackPrism(prism, `m:${mb.module}`, mat, fill);
-      else addBox(mb, `m:${mb.module}`, mat, fill);
+      else {
+        const parts = Array.isArray(mb.parts) && mb.parts.length ? mb.parts : [mb];
+        for (const part of parts) {
+          addBox({ ...mb, min: part.min, max: part.max }, `m:${mb.module}`, mat, fill);
+        }
+      }
     }
     for (const cb of armor.crew || []) {
       const hit = crewHit.has(cb.crew);
@@ -3294,8 +3299,12 @@ export function createKillCam(deps) {
       victimCalMm = (sh0 && sh0.caliberMm) || 0;
     } catch (_) { victimCalMm = 0; }
     for (const mb of armor.modules || []) {
-      addModuleProxy(clampBB(mb), proxMatForState(effState(mb.module)),
-        poseGrp, turretGrp, pb.disposables, specEra, victimCalMm);
+      const parts = Array.isArray(mb.parts) && mb.parts.length ? mb.parts : [mb];
+      for (const part of parts) {
+        addModuleProxy(clampBB({ ...mb, min: part.min, max: part.max }),
+          proxMatForState(effState(mb.module)), poseGrp, turretGrp,
+          pb.disposables, specEra, victimCalMm);
+      }
     }
     // hull anatomy between the boxes: driveshaft spine + transmission block
     addDrivetrainProxy(armor, poseGrp, pb.disposables);

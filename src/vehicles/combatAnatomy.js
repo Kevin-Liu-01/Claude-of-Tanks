@@ -29,11 +29,12 @@ function shrinkBox(box, module, scale, offset = [0, 0, 0]) {
   return out;
 }
 
-function plateBounds(plates) {
+function plateBounds(plates, mainOnly = false) {
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
   for (const plate of plates || []) {
     if (plate.kind === 'external') continue;
+    if (mainOnly && (plate.kind || 'main') !== 'main') continue;
     for (const point of plate.verts || []) {
       for (let axis = 0; axis < 3; axis++) {
         min[axis] = Math.min(min[axis], point[axis]);
@@ -120,7 +121,10 @@ function fitFixedBoxes(boxes, pivot, target) {
 // floating-turret regression: pl01 +0.63 m, pt91_twardy +0.28 m). Plates and
 // boxes calibrate; pivots stay profile-authored.
 function reconcileFrame(plates, boxes, target) {
-  const from = plateBounds(plates);
+  // ERA, tracks, cages and spaced appliques are add-on layers. They follow
+  // the same transform as the base shell, but may not choose that transform:
+  // otherwise one proud tile or roof cage stretches the whole hull/turret.
+  const from = plateBounds(plates, true);
   if (!from || !target) return;
   const seen = new Set();
   for (const plate of plates || []) {
@@ -132,6 +136,68 @@ function reconcileFrame(plates, boxes, target) {
     }
   }
   for (const box of boxes) mapBox(box, from, target);
+}
+
+function structurePlate(name, stats, verts) {
+  return {
+    name,
+    verts,
+    physicalMm: stats.physicalMm,
+    keMm: stats.keMm,
+    ceMm: stats.ceMm,
+    kind: 'main',
+    era: null,
+    moduleLink: null,
+    gunFollow: false,
+  };
+}
+
+function appendStructurePlates(plates, structures, frame) {
+  if (!Array.isArray(structures) || !structures.length) return;
+  const roof = (plates || []).find((plate) =>
+    (plate.kind || 'main') === 'main' && /roof|deck/i.test(plate.name || ''))
+    || (plates || []).find((plate) => (plate.kind || 'main') === 'main');
+  if (!roof) return;
+  const stats = {
+    physicalMm: Math.max(8, Number(roof.physicalMm) || 8),
+    keMm: Math.max(8, Number(roof.keMm ?? roof.physicalMm) || 8),
+    ceMm: Math.max(8, Number(roof.ceMm ?? roof.physicalMm) || 8),
+  };
+  structures.forEach((structure, index) => {
+    const [x0, y0, z0] = structure.min;
+    const [x1, y1, z1] = structure.max;
+    if (!(x1 > x0 && y1 > y0 && z1 > z0)) return;
+    const prefix = `${frame}_${structure.kind || 'roof_structure'}_${String(index + 1).padStart(2, '0')}`;
+    plates.push(
+      structurePlate(`${prefix}_front`, stats,
+        [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]]),
+      structurePlate(`${prefix}_rear`, stats,
+        [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]]),
+      structurePlate(`${prefix}_right`, stats,
+        [[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]]),
+      structurePlate(`${prefix}_left`, stats,
+        [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]]),
+      structurePlate(`${prefix}_top`, stats,
+        [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]]),
+    );
+  });
+}
+
+function applyModuleShapes(armor, receipts) {
+  if (!Array.isArray(receipts) || !receipts.length) return;
+  for (const receipt of receipts) {
+    const box = (armor.modules || []).find((entry) =>
+      entry.module === receipt.module && !!entry.turretLocal === !!receipt.turretLocal);
+    if (!box || !Array.isArray(receipt.parts) || !receipt.parts.length) continue;
+    box.parts = receipt.parts.map((part) => ({
+      min: part.min.slice(),
+      max: part.max.slice(),
+    }));
+    const bounds = boxBounds(box.parts);
+    if (!bounds) continue;
+    box.min.splice(0, 3, ...bounds.min);
+    box.max.splice(0, 3, ...bounds.max);
+  }
 }
 
 function reconcileChildFrame(plates, boxes, pivot, from, to) {
@@ -242,7 +308,7 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
   if (calibration) {
     // Preserve the authored lower-belly datum; receipts deliberately own the
     // side, roof and longitudinal faces that players can actually aim at.
-    const hullFrom = plateBounds(armor.hullPlates);
+    const hullFrom = plateBounds(armor.hullPlates, true);
     const hullTarget = hullFrom && calibration.hull ? {
       min: [calibration.hull.min[0], hullFrom.min[1], calibration.hull.min[2]],
       max: calibration.hull.max.slice(),
@@ -283,6 +349,9 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
     }
     reconcileTracks(armor.modules || [], calibration.tracks || null);
     alignTurretRing(armor, calibration);
+    applyModuleShapes(armor, calibration.moduleShapes);
+    appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
+    appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
   }
   addDerivedModules(spec);
   Object.defineProperty(spec, FINALIZED, { value: true, enumerable: false });

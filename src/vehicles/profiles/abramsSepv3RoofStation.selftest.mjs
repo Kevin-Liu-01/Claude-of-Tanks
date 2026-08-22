@@ -9,10 +9,12 @@ const tank = createTank('m1a2_sepv3', null, {
 });
 
 const turretRig = tank.root.getObjectByName('rig_turret');
-const turret = tank.root.getObjectByName('turret');
+const turretEquipment = tank.root.getObjectByName('turretEquipment');
 const receipt = turretRig?.userData?.m1a2Sepv3RoofStationReceipt;
 assert.ok(receipt, 'SEPv3 roof-station geometry receipt exists');
-assert.ok(turret?.geometry?.attributes?.position, 'SEPv3 turret geometry exists');
+assert.ok(turretEquipment?.geometry?.attributes?.position, 'SEPv3 roof equipment geometry exists');
+assert.equal(turretEquipment.userData.combatHitboxRole, 'equipment',
+  'SEPv3 roof carrier does not stretch the base turret armor envelope');
 
 const near = (value, expected, epsilon = 1e-4) =>
   Math.abs(value - expected) <= epsilon;
@@ -29,7 +31,7 @@ assert.ok(roofCarrier.rearBottomY - roofCarrier.frontBottomY > 0.095,
 assert.ok(near(roofCarrier.thicknessM, 0.11),
   'carrier retains a substantial but compact plate thickness');
 
-const positions = turret.geometry.attributes.position;
+const positions = turretEquipment.geometry.attributes.position;
 const hasPoint = (target) => {
   for (let index = 0; index < positions.count; index += 1) {
     if (near(positions.getX(index), target[0])
@@ -39,9 +41,9 @@ const hasPoint = (target) => {
   return false;
 };
 assert.ok(hasPoint([-1.07, roofCarrier.rearBottomY, roofCarrier.zRear]),
-  'carrier rear underside vertex is present in the merged turret');
+  'carrier rear underside vertex is present in the merged roof equipment');
 assert.ok(hasPoint([-1.07, roofCarrier.frontBottomY, roofCarrier.zFront]),
-  'carrier front underside vertex is present in the merged turret');
+  'carrier front underside vertex is present in the merged roof equipment');
 
 assert.ok(crows.previousBaseY - crows.baseY >= 0.075,
   'CROWS-LP pedestal is at least 75 mm lower');

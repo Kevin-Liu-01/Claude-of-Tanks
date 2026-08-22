@@ -68,6 +68,9 @@ function boxMetadata(box, key, index, prefix) {
     name: String(box[key] || key),
     min: point3(box.min),
     max: point3(box.max),
+    parts: Array.isArray(box.parts)
+      ? box.parts.map((part) => ({ min: point3(part.min), max: point3(part.max) }))
+      : undefined,
     turretLocal: !!box.turretLocal,
   };
 }
@@ -104,7 +107,7 @@ export function tankAssetMetadata(spec) {
       })),
     },
     armor: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       turretPivot: point3(armor.turretPivot) || [0, 0, 0],
       plates: [
         ...(armor.hullPlates || []).map((plate, index) => plateMetadata(plate, false, index)),

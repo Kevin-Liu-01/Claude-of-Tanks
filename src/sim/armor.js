@@ -424,11 +424,23 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
     for (const box of armorModel.modules) {
       if (trackCovered(box.module)) continue;
       const fr = box.turretLocal ? FR_TURRET : FR_HULL;
-      const t = intersectAABB(fr, box.min, box.max);
-      if (t < 0) continue;
+      let t = Infinity;
+      let tExit = 1;
+      if (Array.isArray(box.parts) && box.parts.length) {
+        for (const shape of box.parts) {
+          const shapeT = intersectAABB(fr, shape.min, shape.max);
+          if (shapeT < 0 || shapeT >= t) continue;
+          t = shapeT;
+          tExit = _aabbExitT;
+        }
+      } else {
+        t = intersectAABB(fr, box.min, box.max);
+        tExit = _aabbExitT;
+      }
+      if (t < 0 || !Number.isFinite(t)) continue;
       out.push({
         t,
-        tExit: _aabbExitT,
+        tExit,
         kind: 'module',
         module: box.module,
         // Damageable without hull penetration (armor doc §12: viewports are
@@ -539,19 +551,24 @@ export function blastTargets(pose, armorModel) {
   if (armorModel.modules) {
     for (const box of armorModel.modules) {
       const m = box.turretLocal ? _turretM : _hullM;
-      out.push({
-        kind: 'module',
-        name: box.module,
-        external:
-          box.external !== undefined
-            ? !!box.external
-            : box.module === 'optics' || box.module === 'trackL' || box.module === 'trackR',
-        point: new Vector3(
-          (box.min[0] + box.max[0]) * 0.5,
-          (box.min[1] + box.max[1]) * 0.5,
-          (box.min[2] + box.max[2]) * 0.5
-        ).applyMatrix4(m),
-      });
+      const parts = Array.isArray(box.parts) && box.parts.length ? box.parts : null;
+      const shapeCount = parts ? parts.length : 1;
+      for (let index = 0; index < shapeCount; index++) {
+        const shape = parts ? parts[index] : box;
+        out.push({
+          kind: 'module',
+          name: box.module,
+          external:
+            box.external !== undefined
+              ? !!box.external
+              : box.module === 'optics' || box.module === 'trackL' || box.module === 'trackR',
+          point: new Vector3(
+            (shape.min[0] + shape.max[0]) * 0.5,
+            (shape.min[1] + shape.max[1]) * 0.5,
+            (shape.min[2] + shape.max[2]) * 0.5
+          ).applyMatrix4(m),
+        });
+      }
     }
   }
   if (armorModel.crew) {

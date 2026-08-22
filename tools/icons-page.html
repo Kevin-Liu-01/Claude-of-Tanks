@@ -460,21 +460,34 @@ function moduleLabel(name) {
 
 function drawBox(c, box, projection, turretPivot, color) {
   if (!box.min || !box.max) return null;
-  const a = projection.point(box.min, box.turretLocal, turretPivot);
-  const b = projection.point(box.max, box.turretLocal, turretPivot);
-  const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
-  const w = Math.max(3, Math.abs(b[0] - a[0])), h = Math.max(3, Math.abs(b[1] - a[1]));
-  c.fillStyle = `${color}99`;
-  c.fillRect(x, y, w, h);
-  c.strokeStyle = color;
-  c.lineWidth = 1.2;
-  c.strokeRect(x, y, w, h);
-  if (w > 18 && h > 9) {
+  const shapes = Array.isArray(box.parts) && box.parts.length ? box.parts : [box];
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  let labelRect = null;
+  for (const shape of shapes) {
+    const a = projection.point(shape.min, box.turretLocal, turretPivot);
+    const b = projection.point(shape.max, box.turretLocal, turretPivot);
+    const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
+    const w = Math.max(3, Math.abs(b[0] - a[0])), h = Math.max(3, Math.abs(b[1] - a[1]));
+    c.fillStyle = `${color}99`;
+    c.fillRect(x, y, w, h);
+    c.strokeStyle = color;
+    c.lineWidth = 1.2;
+    c.strokeRect(x, y, w, h);
+    x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x + w); y1 = Math.max(y1, y + h);
+    if (!labelRect || w * h > labelRect.w * labelRect.h) labelRect = { x, y, w, h };
+  }
+  if (labelRect && labelRect.w > 18 && labelRect.h > 9) {
     c.fillStyle = '#fff';
     c.textAlign = 'center';
-    c.fillText(box.volumeId, x + w / 2, y + h / 2 + 3);
+    c.fillText(box.volumeId,
+      labelRect.x + labelRect.w / 2, labelRect.y + labelRect.h / 2 + 3);
   }
-  return { center: [x + w / 2, y + h / 2], label: `${box.volumeId} ${moduleLabel(box.name)}`, color };
+  return {
+    center: [(x0 + x1) / 2, (y0 + y1) / 2],
+    label: `${box.volumeId} ${moduleLabel(box.name)}`,
+    color,
+  };
 }
 
 function crewScreenRect(box, projection, turretPivot) {

@@ -4861,11 +4861,13 @@ function buildCommunityPlaceholder(P) {
 
 // Bucket -> [parent group key, material key]
 const BUCKET_DEF = {
-  hull: ['hullG', 'hull'], hullCupola: ['hullG', 'hull'], hullEquipment: ['hullG', 'hull'],
+  hull: ['hullG', 'hull'], hullCupola: ['hullG', 'hull'], hullHatch: ['hullG', 'hull'],
+  hullExternalArmor: ['hullG', 'hull'], hullEquipment: ['hullG', 'hull'],
   hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
   hullRubber: ['hullG', 'rubber'], hullWood: ['hullG', 'wood'], hullCloth: ['hullG', 'canvasCloth'],
   hullGlass: ['hullG', 'glass'],
-  turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
+  turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
+  turretExternalArmor: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
   turretDetail: ['turretG', 'detail'], turretDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
@@ -4915,8 +4917,10 @@ const BUCKET_DEF = {
   hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
 const CAMO_BUCKETS = new Set([
-  'hull', 'hullCupola', 'hullEquipment', 'hullTrackGuardL', 'hullTrackGuardR',
-  'turret', 'turretCupola', 'turretEquipment', 'gun', 'gunMount',
+  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+  'hullTrackGuardL', 'hullTrackGuardR',
+  'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
+  'turretEquipment', 'gun', 'gunMount',
 ]);
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
@@ -5636,6 +5640,7 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   const buckets = {};
   const mudguardParts = [];
+  const moduleVisualParts = new Map();
   const eraClusters = new Map();
   const eraPlacements = [];
   const decals = [];
@@ -5690,6 +5695,36 @@ export function createTank(specId, engineCtx, opts = {}) {
       const structuralBucket = bucket === 'hull' ? 'hullCupola'
         : bucket === 'turret' ? 'turretCupola' : bucket;
       P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s);
+    },
+    // Hatches are structural armor, but they are not part of the broad hull
+    // or turret shell. Keeping them separate lets the anatomy generator emit
+    // their own close-fitting hit surfaces instead of lifting the entire roof
+    // plate to the top of a hatch rim.
+    addHatch(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      const structuralBucket = bucket === 'hull' ? 'hullHatch'
+        : bucket === 'turret' ? 'turretHatch' : bucket;
+      P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s);
+    },
+    // ERA, cages and bolt-on applique remain visible and may have authored
+    // external/ERA plates in the combat spec, but they must never resize the
+    // base hull/turret armor envelope.
+    addExternalArmor(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      const externalBucket = bucket === 'hull' ? 'hullExternalArmor'
+        : bucket === 'turret' ? 'turretExternalArmor' : bucket;
+      P.add(externalBucket, geo, x, y, z, rx, ry, rz, s);
+    },
+    // Visible damageable systems can publish one or more close-fitting source
+    // parts. The generator unions/segments these receipts under the existing
+    // module id, so gameplay state still owns one module while the hit shape
+    // follows the actual sight, launcher or roof station instead of a generic
+    // affine box floating elsewhere on the turret.
+    addModuleVisual(module, bucket, geo, x = 0, y = 0, z = 0,
+      rx = 0, ry = 0, rz = 0, s = 1) {
+      const visualBucket = bucket === 'hull' ? 'hullEquipment'
+        : bucket === 'turret' ? 'turretEquipment' : bucket;
+      const part = xform(geo, x, y, z, rx, ry, rz, s);
+      (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
+      moduleVisualParts.set(part, module);
     },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an
@@ -5753,6 +5788,30 @@ export function createTank(specId, engineCtx, opts = {}) {
   };
 
   (resolveBuilder(specId, spec) || buildCommunityPlaceholder)(P);
+
+  // Preserve the builder's unmerged semantic parts only for offline geometry
+  // receipts. Runtime meshes stay merged exactly as before. Each AABB is in
+  // the eventual bucket mesh's local coordinates; the generator reapplies the
+  // final mesh transform, so profile post-assembly regrouping remains valid.
+  if (geometryReceipt) {
+    root.userData.combatGeometryParts = [];
+    for (const [bucket, list] of Object.entries(buckets)) {
+      const def = BUCKET_DEF[bucket];
+      if (!def) continue;
+      for (const part of list) {
+        if (!part.boundingBox) part.computeBoundingBox();
+        const box = part.boundingBox;
+        if (!box || box.isEmpty()) continue;
+        root.userData.combatGeometryParts.push({
+          bucket,
+          parent: def[0],
+          min: box.min.toArray(),
+          max: box.max.toArray(),
+          module: moduleVisualParts.get(part) || null,
+        });
+      }
+    }
+  }
 
   // ---- mudguard/fender physical seating receipts -----------------------
   // Work on the still-unmerged primitive AABBs. A guard may comprise a
@@ -5856,12 +5915,16 @@ export function createTank(specId, engineCtx, opts = {}) {
     mesh.name = bucket;
     mesh.userData.combatHitboxRole = bucket === 'hull' || bucket === 'turret'
         || bucket === 'hullCupola' || bucket === 'turretCupola'
+        || bucket === 'hullHatch' || bucket === 'turretHatch'
       ? 'armor'
+      : bucket === 'hullExternalArmor' || bucket === 'turretExternalArmor'
+        ? 'externalArmor'
       : bucket === 'hullEquipment' || bucket === 'turretEquipment'
         ? 'equipment'
         : 'nonArmor';
-    if (bucket === 'hullCupola' || bucket === 'turretCupola') {
-      mesh.userData.combatHitboxPart = 'cupola';
+    if (bucket === 'hullCupola' || bucket === 'turretCupola'
+        || bucket === 'hullHatch' || bucket === 'turretHatch') {
+      mesh.userData.combatHitboxPart = bucket.endsWith('Hatch') ? 'hatch' : 'cupola';
     }
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;

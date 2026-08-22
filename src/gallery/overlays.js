@@ -101,7 +101,7 @@ function addPlate(container, plate, index, turretLocal, resources, pickables) {
   resources.push(edgeGeometry, edgeMaterial);
 }
 
-function addVolume(container, volume, index, mode, resources, pickables) {
+function addVolume(container, volume, index, mode, resources, pickables, partIndex = 0, partCount = 1) {
   const min = new THREE.Vector3().fromArray(volume.min || [0, 0, 0]);
   const max = new THREE.Vector3().fromArray(volume.max || [0, 0, 0]);
   const size = max.clone().sub(min);
@@ -113,11 +113,12 @@ function addVolume(container, volume, index, mode, resources, pickables) {
   const material = inspectionMaterial(color, 0.24);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.copy(center);
-  mesh.name = `gallery_${mode}_${key}_${index}`;
+  mesh.name = `gallery_${mode}_${key}_${index}_${partIndex}`;
   mesh.renderOrder = 84;
   mesh.userData.inspection = {
     mode,
-    id: `${mode === 'modules' ? 'M' : 'C'}${String(index + 1).padStart(2, '0')}`,
+    id: `${mode === 'modules' ? 'M' : 'C'}${String(index + 1).padStart(2, '0')}`
+      + (partCount > 1 ? `.${partIndex + 1}` : ''),
     title: key.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' '),
     owner: volume.turretLocal ? 'Turret-local volume' : 'Hull-local volume',
     dimensionsM: size.toArray().map((value) => Number(value.toFixed(2))),
@@ -157,14 +158,19 @@ export function createInspectionOverlay(spec, visual, mode) {
       addPlate(turretContainer, plate, index, true, resources, pickables));
   } else {
     const source = mode === 'modules' ? spec.armor?.modules : spec.armor?.crew;
-    (source || []).forEach((volume, index) => addVolume(
-      volume.turretLocal ? turretContainer : hullContainer,
-      volume,
-      index,
-      mode,
-      resources,
-      pickables,
-    ));
+    (source || []).forEach((volume, index) => {
+      const parts = Array.isArray(volume.parts) && volume.parts.length ? volume.parts : [volume];
+      parts.forEach((part, partIndex) => addVolume(
+        volume.turretLocal ? turretContainer : hullContainer,
+        { ...volume, min: part.min, max: part.max },
+        index,
+        mode,
+        resources,
+        pickables,
+        partIndex,
+        parts.length,
+      ));
+    });
   }
 
   let emphasized = null;

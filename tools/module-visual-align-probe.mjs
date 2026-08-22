@@ -248,7 +248,8 @@ try {
         const boundsOf = (plates) => {
           const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
           for (const plate of plates || []) {
-            if (plate.kind === 'external') continue;
+            if ((plate.kind || 'main') !== 'main') continue;
+            if (/^(?:hull|turret)_(?:hatch|cupola)_\d+_/.test(plate.name || '')) continue;
             for (const point of plate.verts || []) {
               for (let axis = 0; axis < 3; axis++) {
                 min[axis] = Math.min(min[axis], point[axis]);
@@ -269,6 +270,31 @@ try {
         };
         const hullArmor = boundsOf(armor.hullPlates);
         const turretArmor = boundsOf(armor.turretPlates);
+        const structureGap = (frame, receipts, plates) => {
+          let gap = 0;
+          for (let index = 0; index < (receipts || []).length; index++) {
+            const kind = receipts[index].kind || 'roof_structure';
+            const prefix = `${frame}_${kind}_${String(index + 1).padStart(2, '0')}_`;
+            const actual = boundsOf((plates || []).filter((plate) =>
+              String(plate.name || '').startsWith(prefix)));
+            gap = Math.max(gap, faceGap(actual, receipts[index]));
+          }
+          return gap;
+        };
+        const hullStructureGap = structureGap('hull', calibration?.hullStructures, armor.hullPlates);
+        const turretStructureGap = structureGap('turret', calibration?.turretStructures, armor.turretPlates);
+        let moduleShapeGap = 0;
+        for (const shape of calibration?.moduleShapes || []) {
+          const actual = (armor.modules || []).find((entry) =>
+            entry.module === shape.module && !!entry.turretLocal === !!shape.turretLocal);
+          if (!actual || !Array.isArray(actual.parts) || actual.parts.length !== shape.parts.length) {
+            moduleShapeGap = Infinity;
+            break;
+          }
+          for (let index = 0; index < shape.parts.length; index++) {
+            moduleShapeGap = Math.max(moduleShapeGap, faceGap(actual.parts[index], shape.parts[index]));
+          }
+        }
         let trackGap = 0;
         for (const [name, side] of [['trackL', 'left'], ['trackR', 'right']]) {
           const module = (armor.modules || []).find((entry) => entry.module === name);
@@ -281,19 +307,24 @@ try {
           const externalVolume = entry.external === true || entry.module === 'optics'
             || entry.module === 'turretRing' || entry.module === 'gunMount';
           const envelope = entry.turretLocal ? turretArmor : hullArmor;
-          for (let axis = 0; axis < 3; axis++) {
-            minVolumeDepth = Math.min(minVolumeDepth, entry.max[axis] - entry.min[axis]);
-            if (!envelope || externalVolume) continue;
-            volumeOverflow = Math.max(
-              volumeOverflow,
-              envelope.min[axis] - entry.min[axis],
-              entry.max[axis] - envelope.max[axis],
-            );
+          const shapes = Array.isArray(entry.parts) && entry.parts.length ? entry.parts : [entry];
+          for (const shape of shapes) {
+            for (let axis = 0; axis < 3; axis++) {
+              minVolumeDepth = Math.min(minVolumeDepth, shape.max[axis] - shape.min[axis]);
+              if (!envelope || externalVolume) continue;
+              volumeOverflow = Math.max(
+                volumeOverflow,
+                envelope.min[axis] - shape.min[axis],
+                shape.max[axis] - envelope.max[axis],
+              );
+            }
           }
         }
         const receipt = {
           hullFaceGap: faceGap(hullArmor, calibration?.hull, true),
           turretFaceGap: calibration?.turret ? faceGap(turretArmor, calibration.turret) : 0,
+          structureFaceGap: Math.max(hullStructureGap, turretStructureGap),
+          moduleShapeGap,
           trackFaceGap: trackGap,
           volumeOverflow: Math.max(0, volumeOverflow),
           minVolumeDepth: Number.isFinite(minVolumeDepth) ? minVolumeDepth : 0,
@@ -335,6 +366,8 @@ try {
       if (receipt.hullFaceGap > FACE_TOL) flags.push(`hull-face+${receipt.hullFaceGap.toFixed(3)}`);
       if (receipt.turretFaceGap > FACE_TOL) flags.push(`turret-face+${receipt.turretFaceGap.toFixed(3)}`);
       if (receipt.trackFaceGap > FACE_TOL) flags.push(`track-face+${receipt.trackFaceGap.toFixed(3)}`);
+      if (receipt.structureFaceGap > FACE_TOL) flags.push(`structure-face+${receipt.structureFaceGap.toFixed(3)}`);
+      if (receipt.moduleShapeGap > FACE_TOL) flags.push(`module-shape+${receipt.moduleShapeGap.toFixed(3)}`);
       if (receipt.volumeOverflow > TOL) flags.push(`volume-out+${receipt.volumeOverflow.toFixed(2)}`);
       if (receipt.minVolumeDepth < MIN_VOLUME_DEPTH_M) flags.push(`shallow-${receipt.minVolumeDepth.toFixed(3)}`);
       rows.push({
@@ -346,6 +379,8 @@ try {
         ` hull ${receipt.hullFaceGap.toFixed(3)}` +
         ` turret ${receipt.turretFaceGap.toFixed(3)}` +
         ` track ${receipt.trackFaceGap.toFixed(3)}` +
+        ` structure ${receipt.structureFaceGap.toFixed(3)}` +
+        ` modules ${receipt.moduleShapeGap.toFixed(3)}` +
         ` overflow ${receipt.volumeOverflow.toFixed(2)}` +
         ` depth ${receipt.minVolumeDepth.toFixed(2)}` +
         (flags.length ? `  [${flags.join(' ')}]` : ''),

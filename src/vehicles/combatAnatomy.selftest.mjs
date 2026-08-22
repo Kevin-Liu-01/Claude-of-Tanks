@@ -39,8 +39,14 @@ let autoloaders = 0;
 let feedSystems = 0;
 let missileRacks = 0;
 let cupolaMeshes = 0;
+let hatchMeshes = 0;
+let segmentedModules = 0;
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
+  const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
+  assert(Array.isArray(calibration.hullStructures), `${id}: hull structure receipts`);
+  assert(Array.isArray(calibration.turretStructures), `${id}: turret structure receipts`);
+  assert(Array.isArray(calibration.moduleShapes), `${id}: module shape receipts`);
   const boxes = spec.armor.modules;
   const names = boxes.map((box) => box.module);
   assert.equal(new Set(names).size, names.length, `${id}: one damage volume per module`);
@@ -63,6 +69,21 @@ for (const id of ALL_TANK_IDS) {
       assert(Number.isFinite(box.min[axis]) && box.min[axis] < box.max[axis],
         `${id}/${box.module || box.crew}: positive axis ${axis} depth`);
     }
+    if (!Array.isArray(box.parts)) continue;
+    assert(box.parts.length > 0, `${id}/${box.module || box.crew}: segmented volume has parts`);
+    const unionMin = [Infinity, Infinity, Infinity];
+    const unionMax = [-Infinity, -Infinity, -Infinity];
+    for (const part of box.parts) {
+      for (let axis = 0; axis < 3; axis++) {
+        assert(Number.isFinite(part.min[axis]) && part.min[axis] < part.max[axis],
+          `${id}/${box.module || box.crew}: positive part ${axis} depth`);
+        unionMin[axis] = Math.min(unionMin[axis], part.min[axis]);
+        unionMax[axis] = Math.max(unionMax[axis], part.max[axis]);
+      }
+    }
+    assert.deepEqual(unionMin, box.min, `${id}/${box.module || box.crew}: part union minimum`);
+    assert.deepEqual(unionMax, box.max, `${id}/${box.module || box.crew}: part union maximum`);
+    segmentedModules++;
   }
 
   const crew = spec.armor.crew.map((box) => box.crew);
@@ -93,9 +114,13 @@ for (const id of ALL_TANK_IDS) {
       if (!object.geometry) return;
       const role = object.userData?.combatHitboxRole;
       if (object.name === 'hull' || object.name === 'turret'
-          || object.name === 'hullCupola' || object.name === 'turretCupola') {
+          || object.name === 'hullCupola' || object.name === 'turretCupola'
+          || object.name === 'hullHatch' || object.name === 'turretHatch') {
         assert.equal(role, 'armor', `${id}/${object.name}: structural calibration role`);
         if (object.name === 'hull') hullArmor++;
+      }
+      if (object.name === 'hullExternalArmor' || object.name === 'turretExternalArmor') {
+        assert.equal(role, 'externalArmor', `${id}/${object.name}: add-on armor excluded from base shell`);
       }
       if (object.name === 'hullEquipment' || object.name === 'turretEquipment') {
         assert.equal(role, 'equipment', `${id}/${object.name}: roof equipment excluded`);
@@ -103,6 +128,10 @@ for (const id of ALL_TANK_IDS) {
       if (object.name === 'hullCupola' || object.name === 'turretCupola') {
         assert.equal(object.userData.combatHitboxPart, 'cupola', `${id}: cupola remains a hit surface`);
         cupolaMeshes++;
+      }
+      if (object.name === 'hullHatch' || object.name === 'turretHatch') {
+        assert.equal(object.userData.combatHitboxPart, 'hatch', `${id}: hatch remains a hit surface`);
+        hatchMeshes++;
       }
       for (let parent = object; parent && parent !== visual.root; parent = parent.parent) {
         if (parent.userData?.fittingRoot) {
@@ -118,6 +147,25 @@ for (const id of ALL_TANK_IDS) {
 }
 
 assert(cupolaMeshes > 0, 'shared structural cupolas are represented in fleet hitboxes');
+assert(hatchMeshes > 0, 'authored structural hatches are represented separately from broad roof armor');
+assert(segmentedModules > 0, 'visible module geometry publishes segmented hit volumes');
+
+const sepv2Calibration = COMBAT_ANATOMY_CALIBRATIONS.m1a2_sepv2;
+const sepv2Spec = getSpec('m1a2_sepv2');
+const sepv2Optics = sepv2Spec.armor.modules.find((box) => box.module === 'optics');
+assert(sepv2Calibration.turret.max[1] <= 0.8,
+  'SEPv2 broad turret roof stops at the actual welded shell instead of the roof weapon');
+assert(sepv2Calibration.turretStructures.filter((entry) => entry.kind === 'hatch').length >= 2,
+  'SEPv2 commander and loader hatches retain independent structural armor');
+assert(sepv2Optics.parts.length >= 4,
+  'SEPv2 CROWS and gunner sights retain separate close-fitting optic volumes');
+assert(sepv2Optics.max[1] - sepv2Calibration.turret.max[1] > 0.8,
+  'SEPv2 roof optics remain damageable without stretching the turret armor into empty air');
+const sepv2BaseRoofY = Math.max(...sepv2Spec.armor.turretPlates
+  .filter((plate) => !/^turret_(?:hatch|cupola)_\d+_/.test(plate.name))
+  .flatMap((plate) => plate.verts.map((point) => point[1])));
+assert(sepv2BaseRoofY <= sepv2Calibration.turret.max[1] + 1e-6,
+  'SEPv2 base turret plates do not climb roof decorations');
 
 const autoSpec = getSpec('t90m');
 const autoCombat = createCombatState(autoSpec);
@@ -135,4 +183,4 @@ startReload(ifvCombat, ifvSpec);
 assert(ifvCombat.reload.totalS > ifvSpec.gun.shells[missileSlot].reloadS * 1.8,
   'damaged feed and missile rack stack for guided rounds');
 
-console.log(`combatAnatomy.selftest: ${ALL_TANK_IDS.length} tanks, ${autoloaders} autoloaders, ${feedSystems} IFV feeds, ${missileRacks} missile racks, ${cupolaMeshes} cupola meshes`);
+console.log(`combatAnatomy.selftest: ${ALL_TANK_IDS.length} tanks, ${autoloaders} autoloaders, ${feedSystems} IFV feeds, ${missileRacks} missile racks, ${cupolaMeshes} cupola meshes, ${hatchMeshes} hatch meshes, ${segmentedModules} segmented modules`);

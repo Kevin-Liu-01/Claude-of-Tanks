@@ -65,10 +65,16 @@ for (const id of ALL_TANK_IDS) {
   assert(metadata.gun.shells.length > 0, `${id}: penetration data`);
   assert(metadata.armor.plates.length > 0, `${id}: armor hit areas`);
   assert(metadata.armor.modules.length > 0, `${id}: module volumes`);
+  assert.equal(metadata.armor.schemaVersion, 3, `${id}: segmented combat-anatomy schema`);
   assert.equal(new Set(metadata.armor.plates.map((plate) => plate.hitboxId)).size, metadata.armor.plates.length, `${id}: unique hitbox ids`);
   assert.equal(new Set(metadata.armor.modules.map((box) => box.volumeId)).size, metadata.armor.modules.length, `${id}: unique module ids`);
   assert.equal(metadataFingerprint(metadata), metadataFingerprint(tankAssetMetadata(spec)), `${id}: stable metadata hash`);
 }
+
+const sepv2Metadata = tankAssetMetadata(getSpec('m1a2_sepv2'));
+const sepv2OpticsMetadata = sepv2Metadata.armor.modules.find((box) => box.name === 'optics');
+assert(sepv2OpticsMetadata.parts.length >= 4,
+  'SEPv2 asset metadata fingerprints the separate CROWS and sight volumes');
 
 for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
   assert.equal(ALL_TANK_IDS.includes(id), false, `${id}: retired external placeholder is not selectable`);
