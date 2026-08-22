@@ -1791,6 +1791,12 @@ export function centurionBuild(P, mk) {
   // world vs the old 1.935; chieftain law — mask reads under-report it, the
   // r4 mask numbers said 1.912/1.943 with the same 0.03 delta).
   P.gunG.position.set(0, 0.125, 0.6);
+  const gunHousing = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0, scale = 1) => {
+    const movingBucket = bucket === 'turretDark' ? 'gunMountDark'
+      : bucket === 'turretCloth' ? 'gunMountCloth' : 'gunMount';
+    P.add(movingBucket, geo, x - P.gunG.position.x, y - P.gunG.position.y,
+      z - P.gunG.position.z, rx, ry, rz, scale);
+  };
   P.add('turret', slab(                       // nose plate -> forward cheeks
     // r5: front bottom pair raised/undercut (ref chin rises -0.27 -> -0.24
     // over local 1.30..1.43 into the mantlet throat; the flat -0.29 lip read
@@ -2354,23 +2360,23 @@ export function centurionBuild(P, mk) {
   }
   // Recessed internal mantlet + canvas hood: the print's hood is RIGHT-
   // biased (plan front: right to local 1.83, LEFT recedes at 1.48).
-  P.add('turretDark', box(0.85, 0.34, 0.06), 0, 0.10, 1.50);
+  gunHousing('turretDark', box(0.85, 0.34, 0.06), 0, 0.10, 1.50);
   // r8 (c3 X1c): soften the mantlet-recess hard rectangle — the dark plate
   // read as a punched rectangle at 3-4x. An olive lintel bevel eases the top
   // edge and two side bevels ease the verticals; every piece sits INSIDE the
   // recess plate's own footprint (x<=0.425, y<=0.27, z>=1.47) or inside the
   // nose-slab face span (x<=0.35 at the lintel's 0.245..0.295 band), so
   // silhouettes are identical by construction.
-  P.add('turret', slab(
+  gunHousing('turret', slab(
     [-0.35, 0.245, 1.532], [0.35, 0.245, 1.532], [0.35, 0.245, 1.505], [-0.35, 0.245, 1.505],
-    [-0.35, 0.295, 1.541], [0.35, 0.295, 1.541], [0.35, 0.295, 1.528], [-0.35, 0.295, 1.528]));
+    [-0.35, 0.295, 1.541], [0.35, 0.295, 1.541], [0.35, 0.295, 1.528], [-0.35, 0.295, 1.528]), 0, 0, 0);
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.035, 0.295, 0.014), s * 0.405, 0.0975, 1.535);
+    gunHousing('turret', box(0.035, 0.295, 0.014), s * 0.405, 0.0975, 1.535);
   }
   // r6: hood +0.03 to the live 2.115 column (both marks read 2.085 at the
   // build +1.90 column)
-  P.add('turretCloth', box(0.42, 0.24, 0.34), 0.23, 0.155, 1.63, -0.42, 0, 0);
-  P.add('turretCloth', box(0.30, 0.16, 0.22), 0.24, 0.14, 1.72, -0.1, 0, 0);
+  gunHousing('turretCloth', box(0.42, 0.24, 0.34), 0.23, 0.155, 1.63, -0.42, 0, 0);
+  gunHousing('turretCloth', box(0.30, 0.16, 0.22), 0.24, 0.14, 1.72, -0.1, 0, 0);
   // r8 (c3 X1a): hood rear-corner chamfer INTO the casting line — the box
   // exits the nose-slab face at y~0.246/z~1.54 and its top-rear corners read
   // free past the casting. A canvas lap rides the face plane (z(y) = 1.46 +
@@ -2378,9 +2384,9 @@ export function centurionBuild(P, mk) {
   // pixel, no column risk) from under the hood exit up to the slab's 0.31
   // top edge, so the cover visibly continues onto the casting. x 0.04..0.35
   // stays inside the slab face span at every y it paints.
-  P.add('turretCloth', slab(
+  gunHousing('turretCloth', slab(
     [0.04, 0.185, 1.5312], [0.35, 0.185, 1.5312], [0.35, 0.185, 1.42], [0.04, 0.185, 1.42],
-    [0.04, 0.305, 1.5512], [0.35, 0.305, 1.5512], [0.35, 0.305, 1.44], [0.04, 0.305, 1.44]));
+    [0.04, 0.305, 1.5512], [0.35, 0.305, 1.5512], [0.35, 0.305, 1.44], [0.04, 0.305, 1.44]), 0, 0, 0);
   const gunLen = 5.15;
   if (mk === 5) {
     // L7: the print tube reads ~0.28 thick the whole way (sleeved); the
@@ -2422,6 +2428,10 @@ export function centurionBuild(P, mk) {
     P.add('gun', cylZ(0.138, 0.6, 12, 0.148), 0, 0, 0.5);
     P.add('gun', cylZ(0.145, 0.5, 10), 0, 0, gunLen - 0.25);
   }
+  P.turretG.userData.centurionGunHousingRig = {
+    gunPivotLocal: [0, 0.125, 0.6],
+    movingHousingBuckets: ['gunMount', 'gunMountDark', 'gunMountCloth'],
+  };
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [1.17, 0.2, -0.3], Math.PI / 2);
   // ------------------------------------------------------------------
   // r7 COMBINED TONE ROUND (c5 r6 O2/O4/O5 + c3 r6 Groups 1-2)

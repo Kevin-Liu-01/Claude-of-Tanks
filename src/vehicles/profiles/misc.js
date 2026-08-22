@@ -1306,6 +1306,17 @@ function buildLeclerc(P, variant = 's2') {
   // a fixed collar wraps the tube root out to world 2.90 (ref side band
   // 2.10..1.70 there); MG lowered to the 2.43 line by the mast columns.
   P.turretG.position.set(0, 1.60, -0.10);
+  // CN120-26 trunnion.  Author the flexible boot and its gun-side clamps in
+  // the gun frame even though the fidelity packet below is measured in the
+  // turret frame.  Keeping this transform at the ownership boundary makes
+  // the neutral silhouette byte-for-byte equivalent while guaranteeing that
+  // every registered housing surface follows elevation/depression.
+  P.gunG.position.set(0, 0.27, 0.50);
+  const gunHousing = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0, scale = 1) => {
+    const movingBucket = bucket === 'turretDark' ? 'gunMountDark' : 'gunMount';
+    P.add(movingBucket, geo, x, y - P.gunG.position.y, z - P.gunG.position.z,
+      rx, ry, rz, scale);
+  };
   const LH = 0.752;                                                            // roof plateau 2.352
   const roofAt = (z) => (z >= -1.32 ? LH : Math.max(0.575, LH + (z + 1.32) * 0.201));
   P.add('turret', slab(                                                        // rear/autoloader box — right-rear roof corner CLIPPED (print); photo
@@ -1366,7 +1377,7 @@ function buildLeclerc(P, variant = 's2') {
       [s * 0.435, 0.53, 2.06], [s * 0.445, 0.53, 2.06], [s * 0.445, 0.648, 1.36], [s * 0.435, 0.648, 1.36]));
   }
   P.add('turret', box(0.88, 0.075, 0.085), 0, 0.4925, 2.0825);                 // BROW: flat strip x +-0.44, top 2.13w, z_w 1.94..2.025
-  P.add('turret', box(0.42, 0.115, 0.235), 0, 0.5855, 2.1725);                 // mantlet ROTOR housing bulge above the brow (x +-0.21, top 0.643 = 2.243w, z_w 1.955..2.19 — the ref's own gun-frame rotor mass owns side cols 1.955/2.065/2.176 at 2.243; the §B3.1 rotor the real vehicle carries)
+  gunHousing('turret', box(0.42, 0.115, 0.235), 0, 0.5855, 2.1725);            // mantlet ROTOR housing bulge above the brow (x +-0.21, top 0.643 = 2.243w, z_w 1.955..2.19 — gun-frame rotor mass)
   P.add('turret', box(0.23, 0.10, 0.36), 0, 0.593, 1.875);                     // rotor SPINE strip riding the center slope (x +-0.115, top 0.643, z_w 1.595..1.955 — continues the rotor line aft; the ref's 2.243 band covers cols 1.733/1.844 the slope alone undershot 0.044)
   P.add('turret', slab(                                                        // right main cheek core (re-topped to the FIELD line — the swept-planar
     [0.33, 0, 1.12], [1.30, 0, -0.10], [1.30, 0, -0.5], [0.33, 0, 0.68],
@@ -1553,30 +1564,30 @@ function buildLeclerc(P, variant = 's2') {
   // OWNS plan cols +-0.29 (ref 2.091, err 0.005 — the old spine read
   // +0.054). Envelope holds the priced side shelves: top 2.13w over z_w
   // 2.09..2.62, bottom 1.727w.
-  P.add('turret', box(0.42, 0.328, 0.53), 0, 0.291, 2.455);                    // boot body: x +-0.21, bottom 1.727w, z_w 2.09..2.62
-  P.add('turret', box(0.29, 0.075, 0.53), 0, 0.4925, 2.455);                   // boot cap: top 2.13w held (priced side shelf)
+  gunHousing('turret', box(0.42, 0.328, 0.53), 0, 0.291, 2.455);               // boot body: x +-0.21, bottom 1.727w, z_w 2.09..2.62 at neutral
+  gunHousing('turret', box(0.29, 0.075, 0.53), 0, 0.4925, 2.455);              // boot cap: top 2.13w held at neutral
   for (const s of [-1, 1]) {
-    P.add('turret', slab(                                                      // canvas shoulder chamfer closing body->cap (soft edge)
+    gunHousing('turret', slab(                                                 // canvas shoulder chamfer closing body->cap (soft edge)
       [s * 0.21, 0.455, 2.19], [s * 0.21, 0.455, 2.72], [s * 0.145, 0.53, 2.72], [s * 0.145, 0.53, 2.19],
-      [s * 0.155, 0.455, 2.19], [s * 0.155, 0.455, 2.72], [s * 0.10, 0.53, 2.72], [s * 0.10, 0.53, 2.19]));
-    P.add('turretDark', box(0.004, 0.36, 0.030), s * 0.212, 0.32, 2.38);       // side sag creases (2 mm proud)
-    P.add('turretDark', box(0.004, 0.34, 0.030), s * 0.212, 0.30, 2.58);
+      [s * 0.155, 0.455, 2.19], [s * 0.155, 0.455, 2.72], [s * 0.10, 0.53, 2.72], [s * 0.10, 0.53, 2.19]), 0, 0, 0);
+    gunHousing('turretDark', box(0.004, 0.36, 0.030), s * 0.212, 0.32, 2.38);  // side sag creases (2 mm proud)
+    gunHousing('turretDark', box(0.004, 0.34, 0.030), s * 0.212, 0.30, 2.58);
   }
-  P.add('turretDark', box(0.36, 0.026, 0.004), 0, 0.415, 2.722);               // face sag creases (gun-plan-hidden cols)
-  P.add('turretDark', box(0.33, 0.024, 0.004), 0, 0.30, 2.722);
-  P.add('turretDark', box(0.30, 0.022, 0.004), 0, 0.19, 2.722);
-  P.add('turret', box(0.52, 0.44, 0.028), 0, 0.26, 2.182);                     // clamp frame: face z_w 2.096 owns plan +-0.29
-  P.add('turretDark', box(0.46, 0.38, 0.006), 0, 0.26, 2.20);                  // frame inner shadow inset
+  gunHousing('turretDark', box(0.36, 0.026, 0.004), 0, 0.415, 2.722);          // face sag creases (gun-plan-hidden cols)
+  gunHousing('turretDark', box(0.33, 0.024, 0.004), 0, 0.30, 2.722);
+  gunHousing('turretDark', box(0.30, 0.022, 0.004), 0, 0.19, 2.722);
+  gunHousing('turret', box(0.52, 0.44, 0.028), 0, 0.26, 2.182);                // clamp frame: face z_w 2.096 owns plan +-0.29 at neutral
+  gunHousing('turretDark', box(0.46, 0.38, 0.006), 0, 0.26, 2.20);             // frame inner shadow inset
   // §5.329 item 3 (§B2): CANVAS BASE FOLD closing the brow->boot slot. The
   // 6 cm z-gap between the brow strip rear (z_w 2.025) and the boot mouth
   // (z_w 2.09) read SKY above the clamp frame (sweep [±0.01, 2.05, 2.05],
   // 0.056 x 0.139 both flanks). Same canvas class as the boot: the fold
   // bridges brow to cap at the 2.13w line, clamp-frame plan footprint
   // (x ±0.26 — no new plan extreme), tube passes through like the frame.
-  P.add('turret', box(0.52, 0.194, 0.10), 0, 0.433, 2.155);
-  P.add('turret', box(0.34, 0.36, 0.27), 0, 0.305, 2.835);                     // root collar: top 2.085w, z_w 2.60..2.87 — rear held 25 mm clear of the col-2.951 window (the wide face at 2.90 lit it +0.027 in loop 1; the old narrow collar's 4.5 mm sliver never did)
-  P.add('turret', box(0.38, 0.15, 0.12), 0, 0.025, 2.25);                      // mantlet LOWER LIP under the boot mouth: restores the col-2.176 turret-row bottom (ref 1.551) the old cheek-complex base carried
-  P.add('turretDark', cylZ(0.14, 0.05, 14), 0, 0.25, 3.02);                    // §B3.1 thermal-sleeve clamp ring at the root exit (top 1.99w — also the honest owner of side col 2.951's 1.99 line the old collar held by an AA sliver)
+  gunHousing('turret', box(0.52, 0.194, 0.10), 0, 0.433, 2.155);
+  gunHousing('turret', box(0.34, 0.36, 0.27), 0, 0.305, 2.835);                // root collar: top 2.085w, z_w 2.60..2.87 at neutral
+  gunHousing('turret', box(0.38, 0.15, 0.12), 0, 0.025, 2.25);                 // mantlet LOWER LIP under the boot mouth
+  gunHousing('turretDark', cylZ(0.14, 0.05, 14), 0, 0.25, 3.02);               // §B3.1 thermal-sleeve clamp ring at the root exit
   // §B3.1 GUN-RUN TELLS (owner directive 2026-08-06 — no bare prisms on the
   // gun run): the root collar + chin stack read as plain cuboids at 1x. The
   // real CN120-26 root wears a bolted face frame with the tube passing a
@@ -1584,12 +1595,12 @@ function buildLeclerc(P, variant = 's2') {
   // All pieces INTERIOR to the priced collar envelope (y band 1.70..2.10w,
   // x inside the ±0.15 plan cols the junction collars own; face plate 5 mm
   // proud at z 3.0 sits mid-span of the tube's plan run — zero row change).
-  P.add('turretDark', box(0.17, 0.36, 0.012), 0, 0.305, 2.976);                // bolted face frame plate (on the root collar face, clear of the col-2.951 window)
-  P.add('turretDark', torus(0.105, 0.014, 14), 0, 0.305, 2.983, Math.PI / 2, 0, 0); // tube aperture ring on the face
+  gunHousing('turretDark', box(0.17, 0.36, 0.012), 0, 0.305, 2.976);           // bolted face frame plate
+  gunHousing('turretDark', torus(0.105, 0.014, 14), 0, 0.305, 2.983, Math.PI / 2, 0, 0); // tube aperture ring on the face
   for (const bs of [-1, 1]) {
-    P.add('turretDark', box(0.013, 0.30, 0.04), bs * 0.1965, 0.3285, 2.40);    // boot side flange bolt strips (6.5 mm proud of the boot flanks — y inside the boot band, x under the gun's plan cols)
-    P.add('turretDark', box(0.013, 0.30, 0.04), bs * 0.1965, 0.3285, 2.62);    // second row at the boot/root joint
-    P.add('turretDark', box(0.013, 0.28, 0.04), bs * 0.1765, 0.305, 2.80);     // root flange row
+    gunHousing('turretDark', box(0.013, 0.30, 0.04), bs * 0.1965, 0.3285, 2.40); // boot side flange bolt strips
+    gunHousing('turretDark', box(0.013, 0.30, 0.04), bs * 0.1965, 0.3285, 2.62); // second row at the boot/root joint
+    gunHousing('turretDark', box(0.013, 0.28, 0.04), bs * 0.1765, 0.305, 2.80);  // root flange row
   }
   for (const s of [-1, 1]) P.add('turret', box(0.34, 0.38, 0.60), s * 0.45, 0.21, 1.06); // cheek fills beside sleeve (tops 0.40 — under the field line)
   // side ARMOR BOXES (tops chamfered 2.13 -> 1.92w outboard), LOW outer
@@ -1845,10 +1856,12 @@ function buildLeclerc(P, variant = 's2') {
   P.decal('turret', 'number', tacticalNumber, 0.30, [1.30, 0.35, -1.0], Math.PI / 2);
   P.decal('turret', 'number', tacticalNumber, 0.30, [-1.30, 0.35, -1.0], -Math.PI / 2);
   // CN120-26 L/52 seated LOW (measured ref axis ~1.85, band half 0.14):
-  // moving mantlet plate on the gun; root/collar mass is turret-frame above
-  P.gunG.position.set(0, 0.27, 0.50);
+  // The sealing backplate is turret-side structure: it closes the recess but
+  // must not orbit with the barrel.  Its former gun-local neutral transform
+  // is preserved here in turret coordinates.  The flexible boot, rotor and
+  // collars above own the actual pitch motion.
   trunnionRoll(P, 0.21, 0.68);
-  P.addGunExtra(box(0.92, 0.62, 0.85), 0, 0.07, 0.55);                         // moving mantlet plate
+  P.add('turret', box(0.92, 0.62, 0.85), 0, 0.34, 1.05);                       // fixed turret-side sealing backplate
   P.addGunExtraDark(cylZ(0.12, 0.06, 14), 0, 0, 0.985);                        // §B3.1 dust-boot ring where the tube exits the plate face (r 0.12 < the 0.132 junction collar — interior to the priced sleeve band)
   P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
   P.addGunExtraDark(box(0.07, 0.05, 0.05), 0.34, 0.145, 0.44);                 // §5.14 coax hood tell (§B3 sight grammar: hood + port)
@@ -1891,6 +1904,18 @@ function buildLeclerc(P, variant = 's2') {
     highRoofSupportBridges: 2,
     anf1RoofContactY: 0.610,
     anf1BarrelBridge: true,
+  };
+  P.turretG.userData.leclercGunHousingRig = {
+    gunPivotLocal: [0, 0.27, 0.50],
+    fixedSealingBackplateCenter: [0, 0.34, 1.05],
+    movingHousingBucket: 'gunMount',
+    movingDarkBucket: 'gunMountDark',
+    neutralHousingSurfaceAnchors: [
+      [0.127, 0.53, 2.455],
+      [-0.21, 0.291, 2.455],
+      [0, 0.5855, 2.29],
+      [0, 0.25, 3.045],
+    ],
   };
   P.topY = LH + 0.55;
 }
