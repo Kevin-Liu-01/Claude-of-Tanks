@@ -80,36 +80,34 @@ GLYPH.skull = uiIconSVG('skull', 12);
 const SI_CSS = `
 .cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
 .cot-si *{box-sizing:border-box;margin:0;padding:0;}
-.cot-si-cardhost{position:absolute;right:16px;top:var(--cot-si-roster-bottom,272px);width:340px;display:flex;
+.cot-si-cardhost{position:absolute;right:16px;top:var(--cot-si-card-top,var(--cot-si-roster-bottom,272px));width:320px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
 .cot-si-card{position:relative;min-height:0;overflow:hidden;contain:layout paint style;
   background:linear-gradient(145deg,rgba(16,23,29,.96),rgba(7,11,15,.96) 64%,rgba(11,16,21,.98));
   border:1px solid rgba(174,192,205,.3);border-right:3px solid rgba(146,164,180,.3);
   box-shadow:0 12px 34px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
   padding:0 0 4px;transition:opacity .8s ease;}
-.cot-si-card::before{content:"";position:absolute;left:0;top:0;width:82px;height:2px;
-  background:linear-gradient(90deg,#f0a030,rgba(240,160,48,0));}
 .cot-si-card.out{opacity:0;}
-.cot-si-hd{min-height:40px;display:flex;align-items:center;justify-content:space-between;
-  padding:5px 10px 4px;border-bottom:1px solid rgba(146,164,180,.2);}
+.cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;
+  padding:4px 9px 3px;border-bottom:1px solid rgba(146,164,180,.2);}
 .cot-si-state{display:flex;min-width:0;flex-direction:column;gap:3px;}
-.cot-si-kicker{font-family:${FONT_COND};font-size:7.5px;font-weight:800;line-height:1;
+.cot-si-kicker{font-family:${FONT_COND};font-size:7px;font-weight:800;line-height:1;
   letter-spacing:.2em;color:#778692;text-transform:uppercase;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:800;
-  font-size:13px;line-height:1;letter-spacing:.13em;white-space:nowrap;}
-.cot-si-dmg{min-width:66px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:800;font-size:22px;
+  font-size:12px;line-height:1;letter-spacing:.13em;white-space:nowrap;}
+.cot-si-dmg{min-width:62px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:800;font-size:20px;
   font-variant-numeric:tabular-nums;color:#ffd166;}
-.cot-si-sub{height:22px;padding:3px 10px;font-size:9.5px;color:#c6d2dc;letter-spacing:.03em;
+.cot-si-sub{height:21px;padding:3px 9px;font-size:9px;color:#c6d2dc;letter-spacing:.03em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;
   background:rgba(149,168,184,.045);font-variant-numeric:tabular-nums;}
 .cot-si-sub>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-sub>span:last-child{text-align:right;color:#e4ebf0;font-weight:700;}
-.cot-si-sub .ty{font-weight:800;font-size:9.5px;letter-spacing:.08em;
+.cot-si-sub .ty{font-weight:800;font-size:9px;letter-spacing:.08em;
   font-family:${FONT_COND};}
-.cot-si-body{display:flex;flex-direction:column;gap:3px;padding:4px 10px 0;}
+.cot-si-body{display:flex;flex-direction:column;gap:3px;padding:4px 9px 0;}
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
-  align-items:baseline;font-size:9.5px;line-height:1.15;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.045em;}
+  align-items:baseline;font-size:9px;line-height:1.15;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.045em;}
 .cot-si-kv b{min-width:0;text-align:right;color:#dbe6ef;font-weight:750;font-family:${FONT_COND};
   letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
@@ -125,12 +123,12 @@ const SI_CSS = `
 .cot-si-kv.result b{color:#f2c06d;letter-spacing:.06em;}
 .cot-si-pencap{grid-column:1/-1;font-size:7.5px;color:#687683;letter-spacing:.07em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
-.cot-si-diag{display:grid;grid-template-columns:96px 184px;gap:10px;align-items:center;
-  justify-content:center;width:100%;margin:0;padding:5px 6px;border:1px solid rgba(146,164,180,.16);
+.cot-si-diag{display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
+  justify-content:center;width:100%;margin:0;padding:4px 5px;border:1px solid rgba(146,164,180,.16);
   background:linear-gradient(110deg,rgba(146,164,180,.075),rgba(146,164,180,.018));}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
-.cot-si-diag .box:first-child{width:96px!important;height:96px!important;}
-.cot-si-diag .box:nth-child(2){width:184px!important;height:92px!important;}
+.cot-si-diag .box:first-child{width:90px!important;height:90px!important;}
+.cot-si-diag .box:nth-child(2){width:172px!important;height:86px!important;}
 .cot-si-diag .box::after{content:attr(data-view);position:absolute;left:2px;bottom:0;
   font:800 6.5px/1 ${FONT_COND};letter-spacing:.14em;color:#758491;text-transform:uppercase;}
 .cot-si-diag .sil{position:absolute;inset:0;}
@@ -379,19 +377,19 @@ body.cot-touch-layout .cot-si-toast .l1{height:17px;font-size:9.5px;}
 body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
 body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
 @media (max-width:700px), (pointer:coarse) and (max-width:760px){
-  .cot-si-cardhost,.cot-si-log{top:max(var(--cot-si-roster-bottom,252px),calc(env(safe-area-inset-top) + 242px));
-    right:max(10px,env(safe-area-inset-right));width:min(300px,calc(100vw - 20px));}
+  .cot-si-cardhost,.cot-si-log{top:max(var(--cot-si-card-top,var(--cot-si-roster-bottom,252px)),calc(env(safe-area-inset-top) + 242px));
+    right:max(10px,env(safe-area-inset-right));width:min(286px,calc(100vw - 20px));}
   .cot-si-card{min-height:0;}
-  .cot-si-hd{min-height:44px;padding:6px 9px;}
+  .cot-si-hd{min-height:40px;padding:5px 8px;}
   .cot-si-kicker{font-size:6.5px}.cot-si-badge{font-size:11px}.cot-si-dmg{font-size:18px;}
-  .cot-si-sub{height:25px;padding:4px 9px;font-size:9px;}
-  .cot-si-body{display:block;padding:5px 9px 0;}
+  .cot-si-sub{height:23px;padding:3px 8px;font-size:8.5px;}
+  .cot-si-body{display:block;padding:4px 8px 0;}
   .cot-si-rows{gap:2px 9px;}
   .cot-si-kv{font-size:8.5px;gap:4px;}.cot-si-pencap{font-size:6.5px;}
-  .cot-si-diag{grid-template-columns:82px 164px;margin:5px 0 0;padding:5px 7px;
+  .cot-si-diag{grid-template-columns:78px 154px;margin:4px 0 0;padding:4px 6px;
     justify-content:center;gap:8px;}
-  .cot-si-diag .box:first-child{width:82px!important;height:82px!important;}
-  .cot-si-diag .box:nth-child(2){width:164px!important;height:82px!important;}
+  .cot-si-diag .box:first-child{width:78px!important;height:78px!important;}
+  .cot-si-diag .box:nth-child(2){width:154px!important;height:77px!important;}
   .cot-si-zone{grid-column:auto;text-align:right;font-size:8px;}
   .cot-si-zone .cap{display:block;margin-right:0;}
   .cot-si-mods{padding:5px 9px 0;}
@@ -402,15 +400,15 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
   .cot-si-toast .l2{height:14px;font-size:7.5px;}
 }
 @media (max-width:520px){
-  .cot-si-cardhost,.cot-si-log{width:min(276px,calc(100vw - 16px));right:max(8px,env(safe-area-inset-right));}
-  .cot-si-diag{grid-template-columns:76px 150px;gap:8px;}
-  .cot-si-diag .box:first-child{width:76px!important;height:76px!important;}
-  .cot-si-diag .box:nth-child(2){width:150px!important;height:75px!important;}
+  .cot-si-cardhost,.cot-si-log{width:min(260px,calc(100vw - 16px));right:max(8px,env(safe-area-inset-right));}
+  .cot-si-diag{grid-template-columns:70px 140px;gap:8px;}
+  .cot-si-diag .box:first-child{width:70px!important;height:70px!important;}
+  .cot-si-diag .box:nth-child(2){width:140px!important;height:70px!important;}
 }
 @media (orientation:landscape) and (max-height:430px){
   body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
     left:max(110px,calc(env(safe-area-inset-left) + 110px));right:auto;
-    top:max(72px,calc(env(safe-area-inset-top) + 60px));bottom:auto;width:276px;}
+    top:max(72px,calc(env(safe-area-inset-top) + 60px));bottom:auto;width:260px;}
   body.cot-touch-layout .cot-si-toasthost{left:auto;right:max(8px,env(safe-area-inset-right));
     top:max(60px,calc(env(safe-area-inset-top) + 54px));width:210px;min-height:96px;}
   body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+3){display:none;}
@@ -419,10 +417,10 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
   body.cot-touch-layout .cot-si-body{display:flex;gap:4px;padding:4px 7px 0;}
   body.cot-touch-layout .cot-si-rows{gap:2px 8px;}
   body.cot-touch-layout .cot-si-kv{font-size:8px;}
-  body.cot-touch-layout .cot-si-diag{grid-template-columns:72px 152px;
-    margin:0;padding:4px;gap:6px;}
-  body.cot-touch-layout .cot-si-diag .box:first-child{width:72px!important;height:72px!important;}
-  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:152px!important;height:76px!important;}
+  body.cot-touch-layout .cot-si-diag{grid-template-columns:66px 140px;
+    margin:0;padding:4px;gap:5px;}
+  body.cot-touch-layout .cot-si-diag .box:first-child{width:66px!important;height:66px!important;}
+  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:140px!important;height:70px!important;}
 }
 @media (orientation:landscape) and (max-height:430px) and (max-width:700px){
   body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
@@ -1014,12 +1012,18 @@ export function createShotInfo(bus) {
     while (cardHost.firstChild) cardHost.firstChild.remove();
     const card = buildCard(ev, cls);
     cardHost.appendChild(card);
-    // The report belongs directly below the ENEMY roster. Measure that one
-    // event-time footprint so 1v1 and 7v7 share the same precise 8 px gap;
-    // this is deliberately not a render-loop layout read.
+    // Center the report in the open vertical lane between the ENEMY roster
+    // and minimap. These event-time reads keep 1v1 and 7v7 equally balanced
+    // without putting layout work in the render loop.
     const rosterBottom = document.querySelector('.cot-ear.r')?.getBoundingClientRect().bottom || 0;
+    const minimapTop = document.querySelector('.cot-minimap')?.getBoundingClientRect().top || 0;
+    const cardHeight = card.getBoundingClientRect().height;
     if (rosterBottom > 0) {
-      cardHost.style.setProperty('--cot-si-roster-bottom', `${Math.ceil(rosterBottom + 8)}px`);
+      const laneTop = rosterBottom + 8;
+      const laneBottom = minimapTop > laneTop ? minimapTop - 8 : laneTop + cardHeight;
+      const centeredTop = laneTop + Math.max(0, (laneBottom - laneTop - cardHeight) / 2);
+      cardHost.style.setProperty('--cot-si-roster-bottom', `${Math.ceil(laneTop)}px`);
+      cardHost.style.setProperty('--cot-si-card-top', `${Math.ceil(centeredTop)}px`);
     }
     const fade = setTimeout(() => card.classList.add('out'), 6200);
     setTimeout(() => { clearTimeout(fade); if (card.parentNode) card.remove(); }, 7200);
