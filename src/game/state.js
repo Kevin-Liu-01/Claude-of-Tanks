@@ -329,8 +329,8 @@ function textureQualityFor(game, ent) {
   // Mobile keeps that close camera subject at hero resolution, but distant
   // bots use the AI tier. Garage selection still upgrades its shared entry.
   // 1024/512 is still finer than the chase-camera projection, while the old
-  // 2048/1024 player bake created the single largest cold-entry task. Garage
-  // heroes retain their delayed full-quality upgrade for close inspection.
+  // 2048/1024 player bake created the single largest cold-entry task. The
+  // garage uses this same dedicated close-up preview tier.
   if (ent.isPlayer || ent === game.tanks[0]) return 'preview';
   return getDeviceTier() !== 'mobile' && HERO_TEX_SPECS.has(ent.specId)
     ? 'preview' : 'ai';

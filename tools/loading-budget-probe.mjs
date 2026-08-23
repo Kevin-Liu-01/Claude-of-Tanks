@@ -49,6 +49,7 @@ const mode = option('mode', 'all');
 const serveMode = option('serve', 'production');
 const deviceTier = option('tier', 'desktop');
 const garageDwellMs = Math.max(0, Number(option('garage-dwell', '0')) || 0);
+const battleSpecOption = option('battle-spec', 'm1a2');
 const modes = new Set([
   'all', 'boot', 'battle', 'studio', 'studio-switch', 'scene-load',
   'transitions', 'tank-switch',
@@ -309,8 +310,15 @@ async function openPage(search = '', { transitions = false } = {}) {
     : { width: 1920, height: 1080, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
+  page.on('response', (response) => {
+    if (response.status() >= 400 && !response.url().includes('/_vercel/insights/')) {
+      errors.push(`HTTP ${response.status()} ${response.url()}`);
+    }
+  });
   page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().includes('favicon')) {
+    if (message.type() === 'error'
+        && !message.text().includes('favicon')
+        && !message.text().includes('Failed to load resource')) {
       errors.push(message.text());
     }
   });
@@ -369,19 +377,29 @@ async function measureBattle(mapId) {
       await new Promise((resolve) => setTimeout(resolve, garageDwellMs));
     }
     await resetStalls(opened.page, `battle:${mapId}`);
-    const result = await opened.page.evaluate(async (map) => {
+    const result = await opened.page.evaluate(async ({ map, requestedSpec }) => {
+      const debug = window.__DEBUG;
+      const specId = requestedSpec === 'selected' ? debug.selectedSpecId : requestedSpec;
+      const pedestalBefore = debug.pedestalVisual;
       const startedAt = performance.now();
-      await window.__DEBUG.beginBattleEntry('m1a2', map);
+      await debug.beginBattleEntry(specId, map);
       return {
         ms: performance.now() - startedAt,
-        phase: window.__DEBUG.game.phase,
+        specId,
+        phase: debug.game.phase,
         loadScreen: !!document.querySelector('.cot-bl.on'),
         trace: window.__BATTLE_LOAD,
         world: window.__WORLD_LOAD,
         combatWarm: window.__COMBAT_WARM,
         prefetch: window.__WORLD_PREFETCH,
+        reusedPedestal: debug.game.player?.visual === pedestalBefore,
+        playerContactReady: !!debug.game.player?.visual?.contactGeom,
+        markingSeatPaths: debug.game.tanks.map((entity) =>
+          entity.visual?.root?.userData?.markingSeatPath || null),
+        pedestalTrace: window.__PED_TRACE?.slice(-12) || [],
+        startBattle: window.__START_BATTLE_TIMINGS || null,
       };
-    }, mapId);
+    }, { map: mapId, requestedSpec: battleSpecOption });
     let warmTimedOut = false;
     try {
       await opened.page.waitForFunction(
@@ -395,6 +413,7 @@ async function measureBattle(mapId) {
     const stall = await captureStalls(opened.page);
     record('battle', mapId, result.ms, {
       bootMs: opened.readyWallMs,
+      specId: result.specId,
       phase: result.phase,
       loadScreen: result.loadScreen,
       stages: result.trace?.stages || null,
@@ -402,6 +421,11 @@ async function measureBattle(mapId) {
       world: result.world || null,
       combatWarm: result.combatWarm || null,
       prefetch: result.prefetch || null,
+      reusedPedestal: result.reusedPedestal,
+      playerContactReady: result.playerContactReady,
+      markingSeatPaths: result.markingSeatPaths,
+      pedestalTrace: result.pedestalTrace,
+      startBattle: result.startBattle,
       countdownWarm: result.countdownWarm || null,
       warmTimedOut,
       stall,

@@ -32,8 +32,10 @@ const cores = Math.max(0, Number(opt('cores', '0')) || 0);
 const memoryGB = Math.max(0, Number(opt('memory', '0')) || 0);
 const deviceTier = opt('tier', 'desktop');
 const limitMs = Math.max(1, Number(opt('limit', '5000')) || 5000);
+const profileTarget = opt('profile', '');
+const sequenceOption = opt('sequence', '');
 
-const SEQUENCE = [
+const DEFAULT_SEQUENCE = [
   'm1a1', 'leclerc', 'tiger1',           // cold representatives
   'm1a1', 'leclerc',                     // warm revisits (LRU hits)
   't90m', 'kv2', 'tiger1',               // cold proc, cold community GLB, warm proc
@@ -56,6 +58,7 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
+const cdp = await page.createCDPSession();
 await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
 if (cores || memoryGB) {
   await page.evaluateOnNewDocument((reportedCores, reportedMemory) => {
@@ -68,7 +71,6 @@ if (cores || memoryGB) {
   }, cores, memoryGB);
 }
 if (cpuRate > 1) {
-  const cdp = await page.createCDPSession();
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
 }
 const pageErrors = [];
@@ -92,16 +94,44 @@ await page.waitForFunction(() => {
 }, { timeout: 60000, polling: 100 });
 // Post-ready dwell: idle bakes + (when present) neighbor prefetch — part of
 // the system under test; identical dwell for baseline and candidate runs.
+await page.evaluate(() => window.__DEV_TRACE?.clear());
 await sleep(3500);
+const idleWarmStats = await page.evaluate(() => window.__DEV_TRACE?.stats() || null);
 await page.evaluate(() => window.__DEV_TRACE?.clear());
 
+let sequence = sequenceOption
+  ? sequenceOption.split(',').map((id) => id.trim()).filter(Boolean)
+  : DEFAULT_SEQUENCE;
+if (sequenceOption === 'neighbors') {
+  sequence = await page.evaluate(() => {
+    const D = window.__DEBUG;
+    const selected = D.selectedSpecId;
+    const neighbors = D.garage.getNeighborIds(2);
+    return [...neighbors, selected, ...neighbors.slice(0, 2)];
+  });
+}
+
 const rows = [];
-for (const id of SEQUENCE) {
+let capturedProfile = null;
+for (const id of sequence) {
+  const captureThisSwitch = profileTarget === id && capturedProfile === null;
+  if (captureThisSwitch) {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 100 });
+    await cdp.send('Profiler.start');
+  }
   const row = await page.evaluate(async (specId) => {
     const D = window.__DEBUG;
-    if (!D || !D.selectGarageTank) return { id: specId, ms: -2 };
+    if (!D || (!D.stagePedestalTank && !D.selectGarageTank)) return { id: specId, ms: -2 };
+    // Reproduce the pointer activity preceding a real card click so optional
+    // background map streaming yields to the interaction under test.
+    window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     const t0 = performance.now();
-    D.selectGarageTank(specId);
+    // stagePedestalTank bypasses the currently visible nation rail while
+    // preserving the exact production pedestal pipeline. The old direct UI
+    // call silently rejected cross-nation representatives (for example
+    // Tiger I while the US rail was active), creating two 20 s false timeouts.
+    (D.stagePedestalTank || D.selectGarageTank)(specId);
     return await new Promise((res) => {
       const check = () => {
         const v = D.pedestalVisual;
@@ -116,15 +146,45 @@ for (const id of SEQUENCE) {
       setTimeout(() => { clearInterval(iv); res({ id: specId, ms: -1 }); }, 20000);
     });
   }, id);
+  if (captureThisSwitch) {
+    ({ profile: capturedProfile } = await cdp.send('Profiler.stop'));
+    await cdp.send('Profiler.disable');
+  }
   rows.push(row);
   console.log(`  switch ${String(rows.length).padStart(2)}: ${row.id.padEnd(10)} ${row.ms} ms`);
   await sleep(dwellMs);
 }
 
+if (capturedProfile) {
+  const nodes = new Map(capturedProfile.nodes.map((node) => [node.id, node]));
+  const selfUs = new Map();
+  for (let index = 0; index < (capturedProfile.samples?.length || 0); index++) {
+    const nodeId = capturedProfile.samples[index];
+    selfUs.set(nodeId, (selfUs.get(nodeId) || 0) + (capturedProfile.timeDeltas?.[index] || 0));
+  }
+  const hot = [...selfUs.entries()]
+    .map(([nodeId, us]) => ({ node: nodes.get(nodeId), us }))
+    .filter(({ node }) => node?.callFrame)
+    .sort((a, b) => b.us - a.us)
+    .slice(0, 30);
+  console.log(`[switch-probe] CPU profile for first cold ${profileTarget} switch (self time):`);
+  for (const { node, us } of hot) {
+    const frame = node.callFrame;
+    const fn = frame.functionName || '(anonymous)';
+    const source = frame.url ? `${frame.url.split('/').pop()}:${frame.lineNumber + 1}` : '(runtime)';
+    console.log(`    ${(us / 1000).toFixed(1).padStart(8)} ms  ${fn}  ${source}`);
+  }
+}
+
 const timings = await page.evaluate(() => window.__SWITCH_TIMINGS || null);
 if (timings) {
   console.log('[switch-probe] in-page __SWITCH_TIMINGS cross-check:');
-  for (const t of timings) console.log(`    ${t.id.padEnd(10)} ${String(t.ms).padStart(5)} ms  (${t.path})`);
+  for (const t of timings) {
+    const phases = t.path === 'procedural'
+      ? ` bake=${t.prebakeMs ?? '-'} build=${t.buildMs ?? '-'} compile=${t.compileMs ?? '-'}`
+      : '';
+    console.log(`    ${t.id.padEnd(10)} ${String(t.ms).padStart(5)} ms  (${t.path}${phases})`);
+  }
 }
 
 const ok = rows.filter((r) => r.ms >= 0).map((r) => r.ms).sort((a, b) => a - b);
@@ -135,6 +195,9 @@ console.log(`[switch-probe] n=${ok.length}/${rows.length} median=${median}ms p95
 const traceStats = await page.evaluate(() => window.__DEV_TRACE?.stats() || null);
 if (traceStats) {
   console.log(`[switch-probe] frames p95=${traceStats.gapP95}ms p99=${traceStats.gapP99}ms max=${traceStats.maxGapMs}ms longTasks=${traceStats.longTasks} freezes=${traceStats.freezes}`);
+}
+if (idleWarmStats) {
+  console.log(`[switch-probe] idle prefetch frames p95=${idleWarmStats.gapP95}ms p99=${idleWarmStats.gapP99}ms max=${idleWarmStats.maxGapMs}ms longTasks=${idleWarmStats.longTasks} freezes=${idleWarmStats.freezes}`);
 }
 if (pageErrors.length) {
   console.error(`[switch-probe] PAGE ERRORS (${pageErrors.length}):`);

@@ -1,4 +1,8 @@
 import { flagIconCode } from '../ui/flagCodes.js';
+import {
+  VEHICLE_MARKING_SEAT_SCHEMA_VERSION,
+  VEHICLE_MARKING_SEATS,
+} from './vehicleMarkingSeats.generated.js';
 
 const VEHICLE_MARKING_SCHEMA_VERSION = 1;
 
@@ -211,6 +215,21 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
 export function vehicleMarkingAnchor(specOrId) {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
   return VEHICLE_MARKING_ANCHORS[id] || null;
+}
+
+/**
+ * Return the release-verified, geometry-local paint seats for a vehicle.
+ *
+ * The expensive surface search remains part of geometryReceipt builds and
+ * the fleet verification gate. Runtime visuals consume these generated
+ * receipts directly instead of ray-testing every armor triangle again on
+ * each garage switch or bot spawn.
+ */
+export function vehicleMarkingSeats(specOrId) {
+  const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
+  const record = VEHICLE_MARKING_SEATS[id];
+  if (!record || record.schemaVersion !== VEHICLE_MARKING_SEAT_SCHEMA_VERSION) return null;
+  return record.seats;
 }
 
 function stableNumber(id) {

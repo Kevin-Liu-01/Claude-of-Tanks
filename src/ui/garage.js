@@ -3475,6 +3475,23 @@ export function createGarage(opts) {
     /** Currently highlighted vehicle id (probe/tooling hook). @returns {?string} */
     getSelected() { return selectedId; },
 
+    /** Adjacent cards in the active national carousel, forward then back. */
+    getNeighborIds(radius = 2) {
+      const selected = specById.get(selectedId);
+      if (!selected) return [];
+      const pool = specs.filter((spec) => countryCodeOf(spec) === countryCodeOf(selected));
+      const index = pool.findIndex((spec) => spec.id === selectedId);
+      if (index < 0 || pool.length < 2) return [];
+      const result = [];
+      for (let distance = 1; distance <= Math.min(radius, pool.length - 1); distance++) {
+        for (const offset of [distance, -distance]) {
+          const id = pool[(index + offset + pool.length) % pool.length]?.id;
+          if (id && id !== selectedId && !result.includes(id)) result.push(id);
+        }
+      }
+      return result;
+    },
+
     /** Reflect persistent multiplayer membership beneath the main battle action. */
     setRoomStatus(status = null) {
       if (!status) {

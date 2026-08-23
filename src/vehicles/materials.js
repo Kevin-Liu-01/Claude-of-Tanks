@@ -3134,7 +3134,7 @@ function acquireSharedTextures(spec, aniso, quality = 'high', selection = null) 
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
     TEX_CACHE.set(key, entry);
   } else if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
-    // in-place hero upgrade (garage selection of an AI-baked spec)
+    // In-place quality promotion when a closer presentation reuses an entry.
     upgradeEntry(entry, quality);
   }
   entry.refs++;
@@ -3162,8 +3162,8 @@ function upgradeEntry(entry, quality = 'high') {
   finalizeEntryResize(entry);
 }
 
-/** Post-resize texture ritual shared by the sync hero upgrade and the chunked
- * prebake upgrade (see the camo r8 immutable-storage note above). */
+/** Post-resize texture ritual shared by synchronous acquisition and chunked
+ * prebake promotion (see the camo r8 immutable-storage note above). */
 function finalizeEntryResize(entry) {
   entry.camoTex.dispose();
   entry.normalTex.dispose();
@@ -3226,30 +3226,6 @@ export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = 
 }
 
 /**
- * Upgrade a live spec's shared bake from the AI tier to hero quality without
- * blocking one frame. Live materials retain the old bake until finalization.
- * re-bake to 'high' was a ~0.9 s ATOM landing ~350 ms after every pedestal
- * reveal of an 'ai'-baked spec (owner: "switching between tanks laggy").
- * Yields between painter stages; live materials keep showing the 'ai' bake
- * until the finalize flips the textures.
- * @param {string} specId spec whose cached entry should be re-baked
- * @param {?function(): (Promise<void>|void)} tick awaited between stages
- * @returns {Promise<boolean>} true when an upgrade ran
- */
-export async function upgradeSharedTexturesChunked(specId, tick = null) {
-  const entry = TEX_CACHE.get(specId);
-  if (!entry || entry.refs <= 0 || entry.quality === 'high') return false;
-  const g = bakeSharedCanvasesSteps(entry, 'high');
-  let r = g.next();
-  while (!r.done) {
-    if (tick) await tick();
-    r = g.next();
-  }
-  finalizeEntryResize(entry);
-  return true;
-}
-
-/**
  * PERF (perf-budget handoff): pre-upload every cached spec's burnt/ember maps
  * so the first kill of a battle doesn't pay a texture-upload stall inside a
  * combat frame (probe measured a 125 ms frame at first blood). Call once at
@@ -3263,18 +3239,31 @@ export function warmWreckTextures(renderer) {
   }
 }
 
+function disposeSharedTextureEntry(entry) {
+  entry.camoTex?.dispose();
+  entry.normalTex?.dispose();
+  entry.roughTex?.dispose();
+  entry.burntTex?.dispose();
+  entry.emberTex?.dispose();
+  entry.kitTex?.dispose();
+  TEX_CACHE.delete(entry.cacheKey);
+}
+
 function releaseSharedTextures(shared) {
   const entry = shared && TEX_CACHE.get(shared.cacheKey);
   if (!entry) return;
-  if (--entry.refs <= 0) {
-    entry.camoTex.dispose();
-    entry.normalTex.dispose();
-    entry.roughTex.dispose();
-    if (entry.burntTex) entry.burntTex.dispose();
-    if (entry.emberTex) entry.emberTex.dispose();
-    if (entry.kitTex) entry.kitTex.dispose();
-    TEX_CACHE.delete(entry.cacheKey);
-  }
+  if (--entry.refs <= 0) disposeSharedTextureEntry(entry);
+}
+
+/**
+ * Drop a texture-only speculative bake when it is no longer adjacent to the
+ * garage selection. Live visuals own positive refs and are never affected.
+ */
+export function discardPrebakedSharedTextures(specId) {
+  const entry = TEX_CACHE.get(specId);
+  if (!entry || entry.refs > 0) return false;
+  disposeSharedTextureEntry(entry);
+  return true;
 }
 
 /**
@@ -4543,7 +4532,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
   const track = (r) => { disposables.push(r); return r; };
 
   // PERF r3: static wreck, battle AI, player, and garage-preview tiers are
-  // resolution-bounded in QUALITY_SIZES; only the final hero upgrade keeps
+  // resolution-bounded in QUALITY_SIZES; authored inspection callers retain
   // the full tier. Keep `low` explicit here: falling through to `high` made
   // every transient world-wreck collapse bake 2048/1024 canvases that were
   // immediately discarded.

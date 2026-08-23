@@ -18,7 +18,7 @@ import { wheelPatternFor } from './wheelPatterns.js';
 import { trackPatternFor } from './trackPatterns.js';
 import { suspensionPatternFor } from './suspensionPatterns.js';
 import {
-  SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord,
+  SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
 } from './vehicleMarkings.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
@@ -5588,6 +5588,38 @@ function finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG
   }
 }
 
+function applyVerifiedVehicleMarkingSeats(marking, decals, seats) {
+  // Builder-authored identity planes are inputs to the authoritative solver,
+  // not a second runtime layer. Replace them with the exact generated output
+  // of that solver so the visible result remains identical without repeating
+  // hundreds of full-triangle raycasts during an interactive tank switch.
+  for (let index = decals.length - 1; index >= 0; index -= 1) {
+    if (decals[index].kind === 'insignia' || decals[index].kind === 'designation') {
+      decals.splice(index, 1);
+    }
+  }
+  for (const seat of seats) {
+    decals.push({
+      parent: seat.parent,
+      kind: seat.kind,
+      text: seat.kind === 'designation' ? marking.tacticalNumber : null,
+      size: seat.size,
+      pos: [...seat.pos],
+      rotY: 0, rotX: 0, rotZ: 0,
+      quaternion: new THREE.Quaternion(...seat.quaternion),
+      surfaceSupported: true,
+      supportGapM: SURFACE_MARKING_STYLE.surfaceLiftM,
+      surfaceMesh: seat.surfaceMesh,
+      anchorProfile: seat.anchorProfile,
+      visibilitySamples: seat.visibilitySamples,
+      visibilityClearSamples: seat.visibilityClearSamples,
+      visibilityRatio: seat.visibilityRatio,
+      maximumSurfaceErrorM: seat.maximumSurfaceErrorM,
+      visibilityVerified: true,
+    });
+  }
+}
+
 export function createTank(specId, engineCtx, opts = {}) {
   if (!factoryConfigured) {
     throw new Error('Import tankFactory.js instead of the unconfigured tankFactoryCore.js');
@@ -5984,8 +6016,15 @@ export function createTank(specId, engineCtx, opts = {}) {
   // the final armor position. A per-ID surface profile supplies any missing
   // national insignia/designation; historical builder decals are retained
   // only when they can be re-seated on their selected articulation owner.
-  root.updateMatrixWorld(true);
-  finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
+  const verifiedMarkingSeats = geometryReceipt ? null : vehicleMarkingSeats(spec.id);
+  if (verifiedMarkingSeats) {
+    applyVerifiedVehicleMarkingSeats(marking, decals, verifiedMarkingSeats);
+    root.userData.markingSeatPath = 'generated';
+  } else {
+    root.updateMatrixWorld(true);
+    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
+    root.userData.markingSeatPath = 'surface-solver';
+  }
   const decalGeo = new THREE.PlaneGeometry(1, 1);
   disposables.push(decalGeo);
   const decalMeshes = [];
@@ -6227,13 +6266,14 @@ export function createTank(specId, engineCtx, opts = {}) {
   // rebuilt hull keel can undercut the gear floor).
   if (P.gear) P.gear.update(0, 0);
   // MOBILE-QA r14: static showroom previews never enter game state, so their
-  // movement contact metadata has no consumer. The full-tree vertex scan was
-  // measurable cold-switch work; keep it for every simulated visual.
+  // movement contact metadata normally has no consumer. The full-tree vertex
+  // scan was measurable cold-switch work, so defer it until a caller elects
+  // to reuse this exact visual for simulation (prepareForSimulation below).
   const staticPreview = opts.staticPreview === true;
   const restScan = staticPreview ? null : measureRestContact(root);
-  const gearCG = staticPreview ? null : (P.gear ? P.gear.contactGeom : null);
-  let contactGeom = null;
-  if (gearCG || restScan) {
+  const gearCG = P.gear ? P.gear.contactGeom : null;
+  const composeContactGeom = (scan) => {
+    if (!gearCG && !scan) return null;
     // Floor selection: the gear's analytic flat-run underside is the
     // load-bearing surface and the anchor. The scan's ABSOLUTE min only
     // overrides when a real surface sits well below the gear line (> 2.5 cm —
@@ -6246,19 +6286,19 @@ export function createTank(specId, engineCtx, opts = {}) {
     let bottomYM;
     if (gearCG) {
       bottomYM = gearCG.bottomYM;
-      if (restScan && restScan.absMinYM < bottomYM - 0.025) {
-        bottomYM = Math.max(restScan.absMinYM, bottomYM - 0.12);
+      if (scan && scan.absMinYM < bottomYM - 0.025) {
+        bottomYM = Math.max(scan.absMinYM, bottomYM - 0.12);
       }
     } else {
-      bottomYM = restScan.bottomYM;
+      bottomYM = scan.bottomYM;
     }
-    contactGeom = {
-      halfLenM: gearCG ? gearCG.halfLenM : restScan.halfLenM,
-      halfWidM: gearCG ? gearCG.halfWidM : restScan.halfWidM,
-      zCenterM: gearCG ? gearCG.zCenterM : restScan.zCenterM,
+    return {
+      halfLenM: gearCG ? gearCG.halfLenM : scan.halfLenM,
+      halfWidM: gearCG ? gearCG.halfWidM : scan.halfWidM,
+      zCenterM: gearCG ? gearCG.zCenterM : scan.zCenterM,
       bottomYM,
       // measured hull-pan floor (belly-guard line — see measureRestContact)
-      panYM: restScan ? restScan.panYM : null,
+      panYM: scan ? scan.panYM : null,
       // wrap approach-rise for the line-end guard samples (see buildRunningGear)
       endRise: gearCG ? gearCG.endRise : null,
       // gear-only floor, for diagnostics: bottomYM < gearBottomYM means a
@@ -6266,6 +6306,9 @@ export function createTank(specId, engineCtx, opts = {}) {
       // rest-geometry fidelity defect the runtime can only split, not fix.
       gearBottomYM: gearCG ? gearCG.bottomYM : null,
     };
+  };
+  let contactGeom = staticPreview ? null : composeContactGeom(restScan);
+  if (contactGeom) {
     root.userData.contactGeom = contactGeom;
   }
 
@@ -6503,6 +6546,23 @@ export function createTank(specId, engineCtx, opts = {}) {
     // as-built rest contact metadata for the movement support solve (see the
     // measureRestContact note; state.js stamps it onto the battle entity)
     contactGeom,
+
+    /**
+     * Promote a showroom visual into a simulation-ready actor without
+     * rebuilding its procedural geometry, textures, or shaders. Static
+     * previews deliberately defer the exact rest-contact scan; the first
+     * promotion performs that scan once and publishes the same receipt a
+     * normal battle build would have produced.
+     */
+    prepareForSimulation() {
+      if (this.contactGeom) return this.contactGeom;
+      const prepared = composeContactGeom(measureRestContact(root));
+      if (!prepared) return null;
+      contactGeom = prepared;
+      this.contactGeom = prepared;
+      root.userData.contactGeom = prepared;
+      return prepared;
+    },
 
     /**
      * Apply a TankState (§2.4) to the visual hierarchy.

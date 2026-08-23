@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   SURFACE_MARKING_STYLE, VEHICLE_MARKING_ANCHORS, vehicleMarkingAnchor,
-  vehicleMarkingRecord,
+  vehicleMarkingRecord, vehicleMarkingSeats,
 } from './vehicleMarkings.js';
 
 const nations = ['USA', 'Germany', 'USSR', 'Russia', 'UK', 'France', 'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Ukraine'];
@@ -81,6 +81,21 @@ for (const id of ALL_TANK_IDS) {
     if (object.userData?.vehicleMarking
         && (object.userData.markingKind === 'insignia'
           || object.userData.markingKind === 'designation')) marks.push(object);
+  });
+  const generatedSeats = vehicleMarkingSeats(id);
+  assert(generatedSeats, `${id}: generated runtime paint receipt exists`);
+  assert.equal(generatedSeats.length, marks.length, `${id}: generated/runtime marking count`);
+  assert.equal(tank.root.userData.markingSeatPath, 'surface-solver', `${id}: release receipt runs authoritative solver`);
+  marks.forEach((mark, index) => {
+    const seat = generatedSeats[index];
+    assert.equal(seat.kind, mark.userData.markingKind, `${id}/${index}: generated kind`);
+    assert.equal(seat.parent, mark.userData.surfaceOwner, `${id}/${index}: generated owner`);
+    assert(Math.abs(seat.size - mark.scale.x) < 1e-6, `${id}/${index}: generated size`);
+    assert(mark.position.distanceTo(new THREE.Vector3(...seat.pos)) < 1e-6,
+      `${id}/${index}: generated position matches solved surface`);
+    const seatQuaternion = new THREE.Quaternion(...seat.quaternion);
+    assert(1 - Math.abs(seatQuaternion.dot(mark.quaternion)) < 1e-6,
+      `${id}/${index}: generated orientation matches solved surface`);
   });
   assert(marks.some((mark) => mark.userData.markingKind === 'insignia'), `${id}: national insignia exists`);
   assert(marks.some((mark) => mark.userData.markingKind === 'designation'), `${id}: tactical designation exists`);

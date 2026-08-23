@@ -13,11 +13,11 @@
 //  - 100% procedural (canvas textures + primitives + tankFactory procedural
 //    builds) — no downloads, no GLB jobs, shares the stage's texture language
 //    via the helpers exported from ui/garageStage.js.
-//  - BUILDS IN CHUNKS: main.js pumps static clutter → repair bays → modern
-//    component displays behind the boot veil, with a painted frame between
-//    chunks. The complete
-//    workshop is present when the garage becomes interactive, so no later
-//    repair-bay build can interrupt a tank switch.
+//  - BUILDS IN CHUNKS: normal play pumps only the static workshop shell. The
+//    repair bays and modern component displays each require another complete
+//    procedural tank build, so they remain lazy and deterministic captures
+//    call ensureBuilt(). This keeps optional corner scenery off boot and tank-
+//    switch critical paths without maintaining a second model format.
 //  - PEDESTAL READABILITY IS SACRED: everything sits outside the painted
 //    KEEP-CLEAR ring, in the r≥14 m wall/corner band, dim (low-albedo mats,
 //    one whisper-level fill light, emissive-faked lamp pools) — the hero on
