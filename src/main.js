@@ -2585,6 +2585,13 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // first visible battle frame.
   post.setAdaptiveSuspended(false);
   bltStage('restoreRenderer');
+  // The render loop is deliberately paused while the opaque roster screen
+  // owns the page. Prime one real battlefield frame before opacity can fall;
+  // otherwise the loader fade exposes the last framebuffer content, which is
+  // the Garage even though its DOM panel has already been hidden.
+  hud.preBattleCountdown(PRE_BATTLE_HOLD_S);
+  await primeSoloBattleRevealFrame();
+  bltStage('primeReveal');
   await battleLoad.hide();
   bltStage('hide');
   openBattle();
@@ -2602,6 +2609,35 @@ let battleEntryPending = false;
 // loader/progress UI, but suppress redundant scene frames until the covered
 // warm is complete and the loader is being dismissed.
 let battleLoadRenderingCovered = false;
+let presentedBattleFrameSerial = 0;
+
+/**
+ * Release the covered render gate and wait until the active battlefield has
+ * actually reached the default framebuffer. The loader remains fully opaque
+ * throughout this wait, so its exit can never reveal the retained Garage
+ * frame left behind when covered rendering began.
+ */
+async function primeSoloBattleRevealFrame() {
+  const firstRequiredSerial = presentedBattleFrameSerial + 1;
+  const startedAt = performance.now();
+  battleLoadRenderingCovered = false;
+  while (presentedBattleFrameSerial < firstRequiredSerial) {
+    if (performance.now() - startedAt > 1500) {
+      throw new Error('Battlefield did not present before the loading screen exit.');
+    }
+    await nextFrame();
+  }
+  if (typeof window !== 'undefined') {
+    window.__BATTLE_REVEAL = {
+      primed: true,
+      phase: game.phase,
+      garageHidden: !garage.isOpen,
+      loaderVisible: battleLoad.visible,
+      frameSerial: presentedBattleFrameSerial,
+      waitMs: Math.round(performance.now() - startedAt),
+    };
+  }
+}
 let networkMatch = null;
 let networkBridge = null;
 let networkStatus = null;
@@ -2880,8 +2916,14 @@ async function beginBattleEntry(specId, mapId = null, options = undefined) {
     await startBattleLoading(specId, mapId, options);
   } catch (error) {
     console.error('[battle] entry failed', error);
-    await battleLoad.hide();
+    // Failure exits obey the same covered-frame rule in the opposite
+    // direction: restore and paint the Garage while the loader is opaque,
+    // then let the loader fade. Never expose whichever old WebGL frame was
+    // retained when the failure occurred.
     enterGarage();
+    battleLoadRenderingCovered = false;
+    await nextFrame();
+    await battleLoad.hide();
   } finally {
     battleLoadRenderingCovered = false;
     battleEntryPending = false;
@@ -4565,6 +4607,7 @@ function tick(nowMs) {
   if (camera.fov !== lastFov) { lighting.updateFov(); lastFov = camera.fov; }
   lighting.update(false, dtR);
   post.render(dtR);
+  if (game.phase === 'battle') presentedBattleFrameSerial++;
   perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
 }
 

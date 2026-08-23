@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
   FEATURED_IMAGES,
@@ -90,4 +90,17 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
   'refilled rotation visits every capture');
 
 await import('./imagePreload.selftest.mjs');
+
+const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const revealPrimeAt = mainSource.indexOf('await primeSoloBattleRevealFrame();');
+const loaderFadeAt = mainSource.indexOf('await battleLoad.hide();', revealPrimeAt);
+const battleOpenAt = mainSource.indexOf('openBattle();', loaderFadeAt);
+assert.ok(revealPrimeAt >= 0 && loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
+  'solo battle entry must paint the battlefield before the roster loader begins fading');
+assert.match(mainSource,
+  /post\.render\(dtR\);\s*if \(game\.phase === 'battle'\) presentedBattleFrameSerial\+\+;/,
+  'the reveal barrier must advance only after a real battle frame is rendered');
+assert.match(mainSource,
+  /enterGarage\(\);\s*battleLoadRenderingCovered = false;\s*await nextFrame\(\);\s*await battleLoad\.hide\(\);/,
+  'battle-entry failures must paint the restored Garage before fading the loader');
 console.log('loading screen featured-capture selftest: PASS');
