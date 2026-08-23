@@ -1103,7 +1103,10 @@ function adoptBattlePlayerAsPedestal(specId) {
   // when it is a different, dedicated garage visual.
   if (cached?.root?.parent && cached !== incoming) return false;
   const outgoing = pedestalVisual;
-  try { incoming.resetDestroyed?.(); } catch (_) { /* presentation recovery */ }
+  try {
+    if (incoming.resetForGaragePresentation) incoming.resetForGaragePresentation();
+    else incoming.resetDestroyed?.();
+  } catch (_) { /* presentation recovery */ }
   incoming.spec = getSpec(specId);
   incoming.root.rotation.y =
     (162 + (incoming.spec?.visual?.garageYawDeg || 0)) * DEG;

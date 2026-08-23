@@ -2533,6 +2533,17 @@ function buildRunningGear(P, cfg) {
     addRoadWheelLayer,
     roadWheelLayout: { xc, wheelY, wheelR, wheelZs: [...wheelZs] },
     updateSurface: updateGearSurface,
+    /** Restore the authored flat-ground running-gear pose for showroom use. */
+    resetPose() {
+      for (const { list } of made) {
+        for (const e of list) {
+          const source = e.suspensionSource || e;
+          source.off = 0;
+          if (source.road) source.voff = 0;
+        }
+      }
+      this.update(0, 0, 0);
+    },
     update(l, r, _dt = SIM_STEP) {
       for (const { im, list } of made) {
         for (let i = 0; i < list.length; i++) {
@@ -2795,6 +2806,7 @@ function registerGearUnit(P, unit) {
   P.gear = {
     __units: units,
     update(l, r) { for (const u of units) u.update(l, r); },
+    resetPose() { for (const u of units) u.resetPose?.(); },
     conform(state, sampler, pitchEff, rollEff, dt) {
       for (const u of units) u.conform(state, sampler, pitchEff, rollEff, dt);
     },
@@ -7154,6 +7166,30 @@ export function createTank(specId, engineCtx, opts = {}) {
         P.gear.setBroken('trackR', false);
       }
       if (eraPlacements.length) seatEraBricks();
+    },
+
+    /**
+     * Convert a live battle actor back into the canonical static showroom
+     * presentation. The garage intentionally reuses the player's resident
+     * visual to avoid rebuilding its geometry, so every battle-owned pose
+     * layer must be cleared before the garage render loop stops syncing it.
+     */
+    resetForGaragePresentation() {
+      this.resetDestroyed();
+      groundSampler = null;
+      gearAccumDt = 0;
+      lastFxS = null;
+      root.rotation.set(0, 0, 0, 'YXZ');
+      turretG.rotation.set(0, 0, 0);
+      gunG.rotation.set(0, 0, 0);
+      P.gear?.resetPose?.();
+      setBattleDetailsAttached(true);
+      if (!mobileDetailsVisible) {
+        mobileDetailsVisible = true;
+        for (const record of mobileDetailObjects) {
+          record.object.visible = record.baseVisible;
+        }
+      }
     },
 
     setVisible(v) { root.visible = v; },

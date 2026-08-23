@@ -24,6 +24,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.js';
 import { getSpec, TANK_SPECS } from './specs.js';
 import { createTankState } from '../sim/movement.js';
+import './garagePresentation.selftest.mjs';
 
 const near = (a, b, eps, label) => assert.ok(
   Number.isFinite(a) && Math.abs(a - b) <= eps,
