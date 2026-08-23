@@ -1508,6 +1508,8 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   let crowsBaseY = null;
   let sepv3LoaderReceiverY = null;
   let roofCarrierReceipt = null;
+  let forwardRoofPanelReceipt = null;
+  let cwsStationReceipt = null;
   let loaderMountReceipt = null;
   let loaderWeaponReceipt = null;
   let gunnerSightReceipt = null;
@@ -1515,16 +1517,12 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // Direct-mask law (r5): the ref's tall band ENDS at z world ~1.19 — tops
   // step 2.55 (to 1.05) / 2.46 (1.07..1.18) / 2.24..2.19 (1.29..1.95). The
   // r2 base ran its 2.46 top to world 1.62 and owned four +0.12 columns. --
-  if (station !== 'cws') {
-    const carrierThickness = lowProfileStation ? 0.11 : 0.12;
-    roofCarrierReceipt = addRoofConformingPlate(
-      'turret', -1.07, -0.33, -0.43, 0.84, carrierThickness);
-    addRoofConformingPlate('turret', -1.05, -0.35, 0.715, 0.835,
-      lowProfileStation ? 0.105 : 0.14, -0.012);
-  } else {
-    P.addEquipment('turret', box(0.74, 0.12, 1.27), -0.70, plat2 - 0.06, 0.205);
-    P.addEquipment('turret', box(0.70, 0.14, 0.12), -0.70, plat2 - 0.07, 0.775);
-  }
+  const carrierThickness = lowProfileStation ? 0.11 : 0.12;
+  roofCarrierReceipt = addRoofConformingPlate(
+    'turret', -1.07, -0.33, -0.43, 0.84, carrierThickness);
+  forwardRoofPanelReceipt = addRoofConformingPlate(
+    'turret', -1.05, -0.35, 0.715, 0.835,
+    lowProfileStation ? 0.105 : 0.14, -0.012);
   const carrierTopAt = (z) => roofCarrierReceipt
     ? transitionRoofAt(z) + roofCarrierReceipt.seat + roofCarrierReceipt.thickness
     : platformTopAt(z);
@@ -1540,18 +1538,12 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // 0.30 rear (0.42 -> 0.12 behind the base wall's own -0.43 rear span
   // start) AND the strip rides the mid-shade channel (soft AO, not ink);
   // the side under-rim read survives on the rear 0.55.
-  if (station !== 'cws') {
-    addRoofConformingPlate('turretTrack', -1.00, -0.40, -0.43, 0.12,
-      lowProfileStation ? 0.045 : 0.05, -0.018);
-    addRoofConformingPlate('turret', -1.07, -1.01, -0.415, 0.785,
-      lowProfileStation ? 0.080 : 0.09, -0.008);
-    addRoofConformingPlate('turret', -0.39, -0.33, -0.415, 0.785,
-      lowProfileStation ? 0.080 : 0.09, -0.008);
-  } else {
-    P.add('turretTrack', box(0.60, 0.05, 0.55), -0.70, plat2 - 0.125, -0.155);
-    P.addEquipment('turret', box(0.06, 0.09, 1.20), -1.04, plat2 - 0.08, 0.185);
-    P.addEquipment('turret', box(0.06, 0.09, 1.20), -0.36, plat2 - 0.08, 0.185);
-  }
+  addRoofConformingPlate('turretTrack', -1.00, -0.40, -0.43, 0.12,
+    lowProfileStation ? 0.045 : 0.05, -0.018);
+  addRoofConformingPlate('turret', -1.07, -1.01, -0.415, 0.785,
+    lowProfileStation ? 0.080 : 0.09, -0.008);
+  addRoofConformingPlate('turret', -0.39, -0.33, -0.415, 0.785,
+    lowProfileStation ? 0.080 : 0.09, -0.008);
   // Visual r3 item 2 (roof-ridge DENSITY): the r2 dressing (dark top-edge
   // trim rails, wall seam sticks, sunken top split, front-face inset panels)
   // turned the certified band into a busy dark-lined crate — the warped ref
@@ -1559,12 +1551,16 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
   // All r2 trim DELETED; only the under-rim shadow (side read) survives.
   if (station === 'cws') {
     // CWS drum + hatch ring dressing on the base (drum top at the knee).
-    P.addEquipment('turret', cylY(0.26, 0.29, 0.09, 16), -0.70, plat2 - 0.048, 0.42);
+    const drumCarrierTopY = carrierTopAt(0.42);
+    P.addEquipment('turret', cylY(0.26, 0.29, 0.09, 16),
+      -0.70, drumCarrierTopY - 0.048, 0.42);
     for (let k = 0; k < 6; k++) {
       const a = (k / 6) * Math.PI * 2;
       // (r5: lugs mid-shade — the six black chips ringed the CWS drum as a
       // bold ink circle from the top; ref rings are faint)
-      P.add('turretTrack', box(0.08, 0.04, 0.05), -0.70 + Math.sin(a) * 0.23, plat2 - 0.026, 0.42 + Math.cos(a) * 0.23, 0, a, 0);
+      P.add('turretTrack', box(0.08, 0.04, 0.05),
+        -0.70 + Math.sin(a) * 0.23, drumCarrierTopY - 0.026,
+        0.42 + Math.cos(a) * 0.23, 0, a, 0);
     }
   } else {
     // CROWS slew ring on the base.
@@ -1618,16 +1614,19 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // real forward barrel at the 1.082 bore lights every column it crosses
     // and zeroes dims. Connections (§4.999a) held: post->cradle->receiver,
     // can GUN-LEFT (+x at A = 0) on bracket + chute nesting the receiver
-    // flank. Receiver heights byte-identical (frame/body-filter anchors).
+    // flank. Receiver proportions stay byte-identical while the complete
+    // station follows the carrier down to the pitched roof.
     const A = 0;
     const cA = Math.cos(A), sA = Math.sin(A);
     const rd = 0.185;                                      // receiver width across aim (certified class)
+    const carrierMountTopY = carrierTopAt(0.2565);
+    const cwsStationDy = carrierMountTopY - plat2;
     const at = (u, v) => [-0.70 - u * cA + v * sA, 0.2565 + u * sA + v * cA];
     const part = (bk, geo, u, v, y) => {
       const [px, pz] = at(u, v);
-      P.addEquipment(bk, geo, px, y, pz, 0, A, 0);
+      P.addEquipment(bk, geo, px, y + cwsStationDy, pz, 0, A, 0);
     };
-    part('turretDark', box(0.075, 0.155, 0.055), 0, 0, 0.958);            // pintle post (base 0.8805 into the 0.883 base top)
+    part('turretDark', box(0.075, 0.155, 0.055), 0, 0, 0.958);            // pintle post (base seats 2.5 mm into the carrier top)
     part('turretDark', box(0.155, 0.045, 0.13), 0, 0.035, 1.035);         // cradle (bottom 1.0125 on the post top 1.0355)
     part('turretDark', box(rd, 0.095, 0.26), 0, 0.03, 1.075);             // receiver (long axis ALONG aim; z [0.1565..0.4165] pinned in-window)
     part('turretDetail', box(rd - 0.015, 0.012, 0.22), 0, 0.03, 1.128);   // top cover lick
@@ -1639,24 +1638,34 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // barrel + §B3.1 dark tip continue the 1.082 bore line out of the
     // receiver face (z local 0.4165) over the forward base edge.
     shadowBarrel(P, P.turretG, [
-      [0.0148, 0.115, -0.70, 1.082, 0.474],
-      [0.0145, 0.30, -0.70, 1.082, 0.6815],
-      [0.0155, 0.012, -0.70, 1.082, 0.8375],
+      [0.0148, 0.115, -0.70, 1.082 + cwsStationDy, 0.474],
+      [0.0145, 0.30, -0.70, 1.082 + cwsStationDy, 0.6815],
+      [0.0155, 0.012, -0.70, 1.082 + cwsStationDy, 0.8375],
     ]);
     // Powered-ring conduit: flush dark cable run on the base top from the
-    // ring drum to the mast root (§4.999a cabling; top 0.883 = base plane,
+    // ring drum to the mast root (§4.999a cabling; top follows carrier plane,
     // zero-silhouette tone line).
-    P.add('turretDark', box(0.03, 0.006, 0.17), -0.70, 0.880, 0.335);
+    P.add('turretDark', box(0.03, 0.006, 0.17),
+      -0.70, carrierTopAt(0.335) - 0.003, 0.335);
     if (P.spec.id === 'm1a1ha') {
       // §H.4 tell: the HA carries its CWS gun SHIELDED (m1a1 bare). The
       // shield re-seats ON the gun line for the forward station (owner
       // order): re-centered x -0.575 -> -0.70 and moved to the receiver
       // face plane (z 0.4295, still inside the certified spike window),
-      // notch enlarged so the shadow barrel passes through it. Top 1.1215
-      // = the receiver's own line (the certified height class).
-      P.addEquipment('turret', box(0.30, 0.115, 0.019), -0.70, 1.064, 0.4295);
-      P.add('turretDark', box(0.10, 0.06, 0.008), -0.70, 1.075, 0.4325);
+      // notch enlarged so the shadow barrel passes through it. Its top stays
+      // on the receiver's own line after the station is re-seated.
+      P.addEquipment('turret', box(0.30, 0.115, 0.019),
+        -0.70, 1.064 + cwsStationDy, 0.4295);
+      P.add('turretDark', box(0.10, 0.06, 0.008),
+        -0.70, 1.075 + cwsStationDy, 0.4325);
     }
+    cwsStationReceipt = {
+      carrierMountTopY,
+      stationOffsetY: cwsStationDy,
+      pedestalBottomY: 0.8805 + cwsStationDy,
+      drumCarrierTopY: carrierTopAt(0.42),
+      drumTopY: carrierTopAt(0.42) - 0.003,
+    };
   } else {
     // TEJAS/TUSK CROWS II — CROWS-FORWARD LAW (owner 2026-08-07, §5.07:
     // "focus on making the crows machine guns point forward, not to the
@@ -1693,8 +1702,8 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // the mandatory-kit P95 envelope, so the station is allowed to occupy a
     // real side-view band.  The common gun-over-sensor anatomy below is
     // deliberately broad/deep; each mark then gets a different armor/riser
-    // treatment.  The cws branch above is untouched, keeping m1a1/m1a1ha
-    // byte-guarded.
+    // treatment. The CWS keeps its authored weapon proportions while its
+    // carrier and complete station are independently roof-seated above.
     const tusk = P.spec.id === 'm1a2_tusk';
     const tall = station === 'crows2tall' ? 0.15 : 0;
     const lp = lowProfileStation;
@@ -2319,6 +2328,14 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     seatDepthM: -plate.seat,
     thicknessM: plate.thickness,
   }) : null;
+  if (station === 'cws' && roofCarrierReceipt && cwsStationReceipt) {
+    P.turretG.userData.abramsCwsRoofSeatingReceipt = Object.freeze({
+      variant: P.spec.id,
+      roofCarrier: freezeRoofPlateReceipt(roofCarrierReceipt),
+      forwardPanel: freezeRoofPlateReceipt(forwardRoofPanelReceipt),
+      cws: Object.freeze(cwsStationReceipt),
+    });
+  }
   if (station !== 'cws' && roofCarrierReceipt) {
     const crowsCarrierTopY = carrierTopAt(0.2565);
     const mountTopY = loaderMountTopAt(loaderMountZ);

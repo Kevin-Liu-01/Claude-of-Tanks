@@ -61183,7 +61183,7 @@
           }
         ]
       },
-      "geometryHash": "b62c4765",
+      "geometryHash": "9f39c809",
       "metadataHash": "f52371e9",
       "appearance": {
         "version": 1,
@@ -61272,24 +61272,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81777,
-          "sha256": "2d912bf55e492a126b4fda67de99cf6e9ebadb740eef849e0b825d44d5463532"
+          "bytes": 82343,
+          "sha256": "f32f718d2bc6da9f726dd6c93cd37d5389824f850d4a144c409c2cbd7111d53e"
         },
         "armorSide": {
           "file": "m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81841,
-          "sha256": "cd81bb3eb198800750e1fe76d94267536ab1d872ec9e2257284594f784447090"
+          "bytes": 81935,
+          "sha256": "41fc6ab97e4f0a1e4fc4c55d905376e187ef62db63010f193becaed6ea734ebe"
         },
         "modulesSide": {
           "file": "m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83501,
-          "sha256": "3190f74a505ab46c9cc5060ebccd3224ba5bf112c739dbb31c61b643df82dc19"
+          "bytes": 83470,
+          "sha256": "60df84fb7e82f58b257b86e1d6d4221df35b8bbd864a0dcfd17fb8dcf9e642c8"
         },
         "markings": {
           "file": "m1a1_markings.png",
@@ -62614,7 +62614,7 @@
           }
         ]
       },
-      "geometryHash": "f3af9bff",
+      "geometryHash": "d5f19235",
       "metadataHash": "a351b644",
       "appearance": {
         "version": 1,
@@ -62703,24 +62703,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81948,
-          "sha256": "7187eade692ff0a0225f01148103e3cec0fa362bfb18669cd1aea1e3d39ae7c8"
+          "bytes": 81873,
+          "sha256": "10e2c196ba4e53ae7968da64fdc6cbcac57a7d5eeda9b0c7153cbe2dfa73ce91"
         },
         "armorSide": {
           "file": "m1a1ha_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82901,
-          "sha256": "7dd7e0139eb1f64ea85881bf9fbbb69e3335530949d3b4d95446d249b163a2a0"
+          "bytes": 82744,
+          "sha256": "4becae402bc5193f71bebacb430b2d1e5eecd1979113bdb25289ccc87e536dc1"
         },
         "modulesSide": {
           "file": "m1a1ha_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84196,
-          "sha256": "5f1b28981827a3db7da248a98038d7d328d09a2f7ad4813777f6acb3652a4a16"
+          "bytes": 84231,
+          "sha256": "32e283bdee6a51721bc2579850937558aadf119234355496f3f3857a95ff3b40"
         },
         "markings": {
           "file": "m1a1ha_markings.png",
@@ -150614,7 +150614,7 @@
           }
         ]
       },
-      "geometryHash": "c0512a53",
+      "geometryHash": "489d7307",
       "metadataHash": "ca05246c",
       "appearance": {
         "version": 1,
@@ -150652,7 +150652,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "UA:ua-trident:UA M1"
         ]
@@ -150703,24 +150703,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 114310,
-          "sha256": "fbd1b1a52e5aea6f866cfb6cc4dba8fd40019c1679d2fb34a0a074ddf9b3b95b"
+          "bytes": 114254,
+          "sha256": "14923459ed638d40b83f447517da90d6955fcd7ff70ed431379b777bdb6cf389"
         },
         "armorSide": {
           "file": "ua_m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 114134,
-          "sha256": "8cb51629a9035f53b8cda9078eb54df80bb95db1effbd0195c5921ee7edabd15"
+          "bytes": 114044,
+          "sha256": "8f1a3faa8960d3c1e5895db7618cef93a139db8841f6295d739f8ab8b83f64de"
         },
         "modulesSide": {
           "file": "ua_m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 113107,
-          "sha256": "31c8691fad97b60ca09739f531ef25218d919b797ec41bb8a4b4db20708105ed"
+          "bytes": 113167,
+          "sha256": "455f2a007f11a19736061356239cdf0a36735079befaef5d2212693411f01a50"
         },
         "markings": {
           "file": "ua_m1a1_markings.png",
