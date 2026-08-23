@@ -6832,11 +6832,9 @@ function buildLeo2Revolution(P) {
     padHex: 0x24231f, gearFloor: true,
   });
 
-  // ---- turret: ring pivot (0, 1.60, -0.50); local z = w + 0.50, y = w - 1.60
-  // OWNER CENTERING PASS (2026-08-18): move the complete rotating package
-  // 15 cm rearward so its fighting compartment, bustle and roof equipment
-  // sit over the hull ring in side profile.  This is deliberately a parent-
-  // rig translation: gun, cheeks, RWS, racks and markings keep one yaw frame.
+  // ---- turret: authored at the legacy ring datum first.  A final rigid
+  // rebase below moves the yaw origin to the structural turret center without
+  // changing a single zero-yaw world-space station.
   P.turretG.position.set(0, 1.60, -0.50);
   // RESTORED NATIVE PRIMARY CASTING (2026-08): the strongest pre-wrapper
   // Revolution retained excellent authored hull, track, armor-course and
@@ -7105,39 +7103,42 @@ function buildLeo2Revolution(P) {
   // The later metric-shaped two-storey tub made the roof read like cargo.
   // These parts are rebuilt directly from procedural primitives and use
   // broad collars, pads and conduits so every load path remains explicit.
-  P.add('turretDark', cylY(0.13, 0.13, 0.022, P.q ? 20 : 14), -0.80, 0.781, -0.575);
-  P.add('turret', cylY(0.085, 0.095, 0.075, P.q ? 16 : 12), -0.80, 0.8275, -0.575);
-  P.add('turret', box(0.46, 0.22, 0.36), -0.80, 0.95, -0.575);                 // compact SEOSS head
-  P.add('turret', box(0.06, 0.135, 0.30), -1.00, 0.8275, -0.575);              // buried outboard bracket
-  P.add('turretDark', box(0.42, 0.05, 0.03), -0.80, 1.032, -0.4175);           // visor
-  P.add('turretDark', box(0.24, 0.15, 0.014), -0.78, 0.947, -0.409);           // aperture frame
-  P.add('turretGlass', box(0.17, 0.10, 0.012), -0.78, 0.947, -0.412);          // recessed lens
-  P.add('turretDark', box(0.10, 0.06, 0.02), -0.80, 0.92, -0.75);              // rear cable box
+  // Seat the combat suite on the 0.66 m local roof plane.  These are
+  // fittings, not base armor, so painted housings stay in turretEquipment
+  // and cannot inflate the structural hit volume.
+  P.addEquipment('turretDark', cylY(0.13, 0.13, 0.022, P.q ? 20 : 14), -0.80, 0.671, -0.575);
+  P.addEquipment('turret', cylY(0.085, 0.095, 0.075, P.q ? 16 : 12), -0.80, 0.7175, -0.575);
+  P.addEquipment('turret', box(0.46, 0.22, 0.36), -0.80, 0.84, -0.575);        // compact SEOSS head
+  P.addEquipment('turret', box(0.06, 0.135, 0.30), -1.00, 0.7175, -0.575);     // buried outboard bracket
+  P.add('turretDark', box(0.42, 0.05, 0.03), -0.80, 0.922, -0.4175);           // visor
+  P.add('turretDark', box(0.24, 0.15, 0.014), -0.78, 0.837, -0.409);           // aperture frame
+  P.add('turretGlass', box(0.17, 0.10, 0.012), -0.78, 0.837, -0.412);          // recessed lens
+  P.add('turretDark', box(0.10, 0.06, 0.02), -0.80, 0.81, -0.75);              // rear cable box
 
-  P.add('turret', box(0.82, 0.225, 0.78), -0.85, 0.8625, -1.26);               // closed electronics module
+  P.addEquipment('turret', box(0.82, 0.225, 0.78), -0.85, 0.7725, -1.26);      // closed electronics module
   for (let k = 0; k < 4; k++) {
-    P.add('turretDetail', box(0.70, 0.007, 0.055), -0.85, 0.9785, -1.01 - k * 0.14);
+    P.add('turretDetail', box(0.70, 0.007, 0.055), -0.85, 0.8885, -1.01 - k * 0.14);
   }
-  P.add('turretDark', box(0.72, 0.004, 0.010), -0.85, 0.977, -0.90);           // lid seam
-  P.add('turretDark', box(0.010, 0.004, 0.70), -0.55, 0.977, -1.26);
-  P.add('turretDetail', box(0.014, 0.05, 0.06), -1.263, 0.90, -1.05);          // latches
-  P.add('turretDetail', box(0.014, 0.05, 0.06), -1.263, 0.90, -1.45);
-  P.add('turretDark', box(0.03, 0.03, 0.30), -0.80, 0.79, -0.72);              // module-to-SEOSS conduit
-  P.add('turret', box(0.36, 0.09, 0.02), -0.85, 0.9295, -0.99);
-  P.add('turret', box(0.36, 0.09, 0.02), -0.85, 0.9295, -1.11);
+  P.add('turretDark', box(0.72, 0.004, 0.010), -0.85, 0.887, -0.90);           // lid seam
+  P.add('turretDark', box(0.010, 0.004, 0.70), -0.55, 0.887, -1.26);
+  P.add('turretDetail', box(0.014, 0.05, 0.06), -1.263, 0.81, -1.05);          // latches
+  P.add('turretDetail', box(0.014, 0.05, 0.06), -1.263, 0.81, -1.45);
+  P.add('turretDark', box(0.03, 0.03, 0.30), -0.80, 0.69, -0.72);              // module-to-SEOSS conduit
+  P.addEquipment('turret', box(0.36, 0.09, 0.02), -0.85, 0.8395, -0.99);
+  P.addEquipment('turret', box(0.36, 0.09, 0.02), -0.85, 0.8395, -1.11);
 
-  P.addEquipment('turret', box(0.20, 0.025, 0.20), 0.43, 0.7725, -1.25);               // RWS base plate
-  P.add('turretDark', cylY(0.115, 0.115, 0.022, P.q ? 18 : 12), 0.43, 0.772, -1.25);
-  P.add('turret', cylY(0.075, 0.095, 0.06, P.q ? 16 : 12), 0.43, 0.79, -1.25);
-  P.add('turretDark', box(0.09, 0.09, 0.15), 0.43, 0.945, -1.50);              // RWS sensor pack
-  P.add('turretGlass', box(0.055, 0.05, 0.012), 0.43, 0.95, -1.42);
-  P.add('turret', box(0.24, 0.19, 0.40), 0.22, 0.855, -1.20);                  // ready-ammunition bin
-  P.add('turretDark', box(0.22, 0.004, 0.010), 0.22, 0.948, -1.10);
-  P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.90, -1.10);
-  P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.90, -1.32);
-  P.addEquipment('turret', box(0.05, 0.05, 0.05), -0.30, 0.785, -1.57);                 // crosswind mast base
-  P.add('turretDetail', box(0.016, 0.20, 0.016), -0.30, 0.90, -1.57);
-  P.add('turretDetail', cylZ(0.013, 0.10, 8), -0.30, 1.008, -1.57);
+  P.addEquipment('turret', box(0.20, 0.025, 0.20), 0.43, 0.6725, -1.25);      // RWS base plate
+  P.add('turretDark', cylY(0.115, 0.115, 0.022, P.q ? 18 : 12), 0.43, 0.672, -1.25);
+  P.addEquipment('turret', cylY(0.075, 0.095, 0.06, P.q ? 16 : 12), 0.43, 0.69, -1.25);
+  P.add('turretDark', box(0.09, 0.09, 0.15), 0.43, 0.845, -1.50);              // RWS sensor pack
+  P.add('turretGlass', box(0.055, 0.05, 0.012), 0.43, 0.85, -1.42);
+  P.addEquipment('turret', box(0.24, 0.19, 0.40), 0.22, 0.755, -1.20);         // ready-ammunition bin
+  P.add('turretDark', box(0.22, 0.004, 0.010), 0.22, 0.848, -1.10);
+  P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.80, -1.10);
+  P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.80, -1.32);
+  P.addEquipment('turret', box(0.05, 0.05, 0.05), -0.30, 0.685, -1.57);       // crosswind mast base
+  P.add('turretDetail', box(0.016, 0.20, 0.016), -0.30, 0.80, -1.57);
+  P.add('turretDetail', cylZ(0.013, 0.10, 8), -0.30, 0.908, -1.57);
 
   // The low coaxial sensor and aft pelmet remain structurally tied to the
   // roof and basket; neither is used as a silhouette proxy.
@@ -7249,35 +7250,35 @@ function buildLeo2Revolution(P) {
   P.add('turretDark', box(0.44, 0.10, 0.113), 0.62, 0.67, 0.767);
   P.add('turret', box(0.38, 0.12, 0.113), 0.62, 0.66, 0.767);
   P.add('turretGlass', box(0.20, 0.07, 0.018), 0.62, 0.685, 0.815);
-  P.add('turret', cylY(0.24, 0.24, 0.05, P.q ? 18 : 14), 0.55, 0.785, -0.10);
-  P.add('turret', cylY(0.215, 0.215, 0.028, P.q ? 18 : 14), 0.55, 0.824, -0.10);
-  P.add('turretDark', torus(0.20, 0.006, P.q ? 18 : 14), 0.55, 0.838, -0.10);
-  P.add('turretDetail', box(0.05, 0.018, 0.04), 0.47, 0.845, 0.135);
-  P.add('turretDetail', box(0.05, 0.018, 0.04), 0.63, 0.845, 0.135);
-  P.add('turretDark', box(0.02, 0.012, 0.10), 0.55, 0.843, -0.28);
-  periscope(P, 'turretDetail', 0.35, 0.795, 0.10, 0.5);
-  periscope(P, 'turretDetail', 0.55, 0.795, 0.16);
-  periscope(P, 'turretDetail', 0.75, 0.795, 0.10, -0.5);
+  P.addHatch('turret', cylY(0.24, 0.24, 0.05, P.q ? 18 : 14), 0.55, 0.685, -0.10);
+  P.addHatch('turret', cylY(0.215, 0.215, 0.028, P.q ? 18 : 14), 0.55, 0.724, -0.10);
+  P.add('turretDark', torus(0.20, 0.006, P.q ? 18 : 14), 0.55, 0.738, -0.10);
+  P.add('turretDetail', box(0.05, 0.018, 0.04), 0.47, 0.745, 0.135);
+  P.add('turretDetail', box(0.05, 0.018, 0.04), 0.63, 0.745, 0.135);
+  P.add('turretDark', box(0.02, 0.012, 0.10), 0.55, 0.743, -0.28);
+  periscope(P, 'turretDetail', 0.35, 0.695, 0.10, 0.5);
+  periscope(P, 'turretDetail', 0.55, 0.695, 0.16);
+  periscope(P, 'turretDetail', 0.75, 0.695, 0.10, -0.5);
 
-  P.add('turret', cylY(0.21, 0.21, 0.05, P.q ? 18 : 14), -0.60, 0.785, 0.05);
-  P.add('turret', cylY(0.185, 0.185, 0.028, P.q ? 18 : 14), -0.60, 0.824, 0.05);
-  P.add('turretDark', torus(0.17, 0.006, P.q ? 16 : 12), -0.60, 0.838, 0.05);
-  P.add('turretDetail', box(0.05, 0.018, 0.04), -0.68, 0.845, 0.28);
-  P.add('turretDetail', box(0.05, 0.018, 0.04), -0.52, 0.845, 0.28);
-  periscope(P, 'turretDetail', -0.60, 0.795, 0.32);
+  P.addHatch('turret', cylY(0.21, 0.21, 0.05, P.q ? 18 : 14), -0.60, 0.685, 0.05);
+  P.addHatch('turret', cylY(0.185, 0.185, 0.028, P.q ? 18 : 14), -0.60, 0.724, 0.05);
+  P.add('turretDark', torus(0.17, 0.006, P.q ? 16 : 12), -0.60, 0.738, 0.05);
+  P.add('turretDetail', box(0.05, 0.018, 0.04), -0.68, 0.745, 0.28);
+  P.add('turretDetail', box(0.05, 0.018, 0.04), -0.52, 0.745, 0.28);
+  periscope(P, 'turretDetail', -0.60, 0.695, 0.32);
 
   // The right RWS carries a real authored M2 fitting through the collar.
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 5,
       elev: 0.02 });
-    mg.position.set(0.43, 0.70, -1.25);
+    mg.position.set(0.43, 0.60, -1.25);
     P.turretG.add(mg);
   }
   for (const s of [-1, 1]) {
     // r5: left cluster forward 0.07 — its tubes printed -2.54 into the
     // -1.375 plan column where the ref basket edge reads -2.375
     KIT.smokeCluster(P, s * (s > 0 ? 1.18 : 1.22), 0.53, s > 0 ? -1.90 : -1.98, 4, s * 0.9, 0.8);
-    liftEye(P, 'turretDetail', s * 0.95, 0.762, 0.35, s * 0.4);
+    liftEye(P, 'turretDetail', s * 0.95, 0.685, 0.35, s * 0.4);
   }
   // r9 D3(ii): the 88 px enclosed-sky pocket in the front view (px x124..142
   // = world x -1.293..-1.424, u 2.255..2.292) threads between the left
@@ -7307,8 +7308,8 @@ function buildLeo2Revolution(P) {
   // y 0.30L printed 1.72 bottoms into the ref's 2.084 ring columns AND sat
   // buried 0.2 inside the wall solid — now sized into the wall's 1.88..2.12
   // side band and pinned ON the wall faces
-  P.decal('turret', 'crossgrey', null, 0.22, [1.612, 0.42, 1.475], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.22, [-1.652, 0.42, 1.475], -Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.22, [1.612, 0.42, 0.525], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.22, [-1.652, 0.42, 0.525], -Math.PI / 2);
   // mantlet back wall behind the notch (cheeks pulled to the ref 2.30w
   // plan line — the old 2.58w reach was the top plan-turret error)
   // r5: top 2.15 -> 2.02 (its AA read 2.185 on the lone 2.21w column where
@@ -7727,6 +7728,22 @@ function buildLeo2Revolution(P) {
       name: 'gearRoadWheelPaleHubCaps',
     });
   }
+  // The structural turret AABB is z -1.92..+3.82 at the legacy authoring
+  // datum, so its actual longitudinal center is +0.95 m.  Move the yaw
+  // parent to that center and counter-shift every turret-owned child and
+  // still-unmerged turret bucket.  Zero-yaw appearance is unchanged, while
+  // non-zero yaw now rotates around the middle of the fighting compartment
+  // instead of the rear edge.  The gun and manually assembled fittings are
+  // already direct turret children and receive the same rigid counter-shift.
+  const turretYawCenterShiftZ = 0.95;
+  P.turretG.position.z += turretYawCenterShiftZ;
+  P.offsetBuckets([
+    'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
+    'turretEquipment', 'turretDetail', 'turretDark', 'turretCloth',
+    'turretGlass', 'turretTrack',
+  ], 0, 0, -turretYawCenterShiftZ);
+  for (const child of P.turretG.children) child.position.z -= turretYawCenterShiftZ;
+
   P.topY = 1.9;
 }
 
