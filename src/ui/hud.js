@@ -787,12 +787,12 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:11px;font-weight:750;letter-spacing:.045em;color:#ff746a;
   font-family:${FONT_COND};
-  text-shadow:0 1px 2px rgba(0,0,0,.95);white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.92),0 0 3px rgba(0,0,0,.68);white-space:nowrap;
   display:flex;align-items:center;justify-content:center;gap:5px;
-  background:linear-gradient(90deg,rgba(8,12,16,.18),rgba(8,12,16,.86) 18%,rgba(8,12,16,.86) 82%,rgba(8,12,16,.18));}
+  background:none;}
 .cot-hpb.ally .nm{color:#9af09a;}
 .cot-hpb .nm .si{width:26px;height:11px;flex:0 0 auto;display:block;}
-.cot-hpb .nm span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-hpb .nm span{min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
 .cot-hpb .tr{height:6px;margin:0 7px;background:rgba(4,6,8,.94);border:1px solid rgba(0,0,0,.9);
   box-shadow:0 2px 4px rgba(0,0,0,.72);position:relative;overflow:hidden;}
 .cot-hpb .fl{height:100%;background:linear-gradient(90deg,#d63a30,#ff746a);transition:width .15s linear;}
@@ -801,21 +801,20 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   border-left:4px solid transparent;border-right:4px solid transparent;
   border-top:5px solid rgba(255,116,106,.9);filter:drop-shadow(0 1px 1px #000);}
 .cot-hpb.ally::after{border-top-color:rgba(154,240,154,.9);}
-/* Over-target marker: a fixed-size translucent instrument follows the exact
-   projected turret roof, clamps inside the viewport, and reserves every text
-   lane so name/HP updates cannot reflow the aiming UI. */
+/* Over-target marker: a stable-height instrument follows the exact projected
+   turret roof. Width changes only when its target copy changes, preserving
+   complete names without causing steady-state frame reflow. */
 .cot-tgt{position:absolute;width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
-.cot-tgt .bk{height:64px;padding:4px 8px 3px;background:
-  linear-gradient(90deg,rgba(7,10,14,.08),rgba(7,10,14,.82) 18%,rgba(7,10,14,.82) 82%,rgba(7,10,14,.08));}
-/* r5: soft 60%-black DROP SHADOW only — the old five-direction shadow stack
-   rendered as a cheap outline stroke around the name text.
+.cot-tgt .bk{height:64px;padding:4px 8px 3px;background:none;}
+/* Tight glyph shadows preserve contrast without painting a dark rectangle
+   across the battlefield behind the whole label.
    r7-2: nickname in WoT crimson (#fa5252) — the salmon-pink read as damage
    text, not an enemy nameplate. */
 .cot-tgt .nick{height:17px;font-size:13px;font-weight:750;color:#ff6a60;letter-spacing:.025em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.55);}
-.cot-tgt .vrow{height:17px;display:grid;grid-template-columns:30px 18px minmax(0,1fr);
+  white-space:nowrap;overflow:visible;text-overflow:clip;
+  text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.65);}
+.cot-tgt .vrow{height:17px;display:grid;grid-template-columns:30px 18px max-content;
   align-items:center;justify-content:center;gap:4px;margin-top:1px;}
 .cot-tgt .cg{display:inline-flex;align-items:center;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
@@ -825,8 +824,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
 .cot-tgt .veh{font-size:10px;font-weight:750;color:#f0d4ce;letter-spacing:.075em;text-align:left;
   font-family:${FONT_COND};text-transform:uppercase;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
+  white-space:nowrap;overflow:visible;text-overflow:clip;
+  text-shadow:0 1px 2px rgba(0,0,0,.86),0 0 3px rgba(0,0,0,.58);}
 /* r7-2 (round critique: "thick full-width red bar + separate 1000/1000 line
    makes the plate feel oversized"): the HP bar slims to ~60% plate width at
    4px and the WHITE numerals move INLINE to its right — one quiet gauge
@@ -929,6 +928,7 @@ export function initHud(bus) {
   let tgtLastVehicleId = null; // cached silhouette key (avoid repeated mask writes)
   let tgtShown = false;
   let tgtRect = null; // screen-px rect of the shown plate (sniper hairline gap)
+  let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
   let aimTargetId = null;
   let lastTanksRef = null;  // roster snapshot for the forced-still target scan
   let forcedStill = false;  // true between forceAimDisplay and the next update
@@ -2556,12 +2556,23 @@ export function initHud(bus) {
         bar = {
           root: rootEl, nm: rootEl.querySelector('.nm span'),
           fill: rootEl.querySelector('.fl'), lastFrac: -1, lastName: '', lastOp: -1,
+          layoutW: 128,
         };
         hpPool.set(t.id, bar);
       }
+      const nm = t.spec ? t.spec.name : t.id;
+      if (bar.lastName !== nm) {
+        bar.nm.textContent = nm;
+        bar.lastName = nm;
+        // Read only when a label string changes, never in the steady-state
+        // render loop. The plate then keeps stable geometry until renamed.
+        const measured = Math.ceil(bar.nm.scrollWidth) + 26 + 5 + 14;
+        bar.layoutW = Math.max(128, Math.min(280, measured));
+        bar.root.style.width = `${bar.layoutW}px`;
+      }
       // keep the plate clear of the dispersion circle: if it would overlap
       // the reticle region, lift it above the circle's top arc.
-      const plateX = Math.max(8, Math.min(w - 136, _sx - 64));
+      const plateX = Math.max(8, Math.min(w - bar.layoutW - 8, _sx - bar.layoutW * 0.5));
       let plateY = Math.max(8, Math.min(h - 44, _sy - 42));
       const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
       if (Math.abs(_sx - aimView.cx) < rNow + 58 &&
@@ -2575,8 +2586,6 @@ export function initHud(bus) {
       // fade with distance (fully readable close, slightly ghosted near spot range)
       const op = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
       if (Math.abs(op - bar.lastOp) > 0.03) { bar.root.style.opacity = op.toFixed(2); bar.lastOp = op; }
-      const nm = t.spec ? t.spec.name : t.id;
-      if (bar.lastName !== nm) { bar.nm.textContent = nm; bar.lastName = nm; }
       const frac = Math.max(0, Math.min(1, t.combat.hp / t.combat.maxHp));
       if (Math.abs(frac - bar.lastFrac) > 0.001) {
         bar.fill.style.width = `${(frac * 100).toFixed(1)}%`;
@@ -2592,7 +2601,8 @@ export function initHud(bus) {
       const cur = layout[i];
       for (let j = 0; j < i; j++) {
         const placed = layout[j];
-        if (Math.abs(cur.layoutX - placed.layoutX) >= 128) continue;
+        if (cur.layoutX + cur.layoutW + 4 <= placed.layoutX ||
+            cur.layoutX >= placed.layoutX + placed.layoutW + 4) continue;
         if (cur.layoutY + 34 <= placed.layoutY || cur.layoutY >= placed.layoutY + 34) continue;
         cur.layoutY = Math.max(8, placed.layoutY - 36);
       }
@@ -2663,16 +2673,33 @@ export function initHud(bus) {
       tgtRect = null;
       return;
     }
-    const targetX = Math.max(92, Math.min(w - 92, _sx));
-    const targetBottom = Math.max(72, Math.min(h - 12, _sy - 14));
-    tgtEl.style.transform =
-      `translate3d(${(targetX - 88).toFixed(1)}px,${(targetBottom - 64).toFixed(1)}px,0)`;
     const targetNick = nickFor(best);
     const targetTier = (best.spec && tierNumeral(best.spec.id)) || '–';
     const targetName = best.spec ? best.spec.name : String(best.id);
-    if (tgtRefs.nick.textContent !== targetNick) tgtRefs.nick.textContent = targetNick;
+    let targetCopyChanged = false;
+    if (tgtRefs.nick.textContent !== targetNick) {
+      tgtRefs.nick.textContent = targetNick;
+      targetCopyChanged = true;
+    }
     if (tgtRefs.tier.textContent !== targetTier) tgtRefs.tier.textContent = targetTier;
-    if (tgtRefs.veh.textContent !== targetName) tgtRefs.veh.textContent = targetName;
+    if (tgtRefs.veh.textContent !== targetName) {
+      tgtRefs.veh.textContent = targetName;
+      targetCopyChanged = true;
+    }
+    if (targetCopyChanged) {
+      // The aimed-at plate grows around complete strings instead of replacing
+      // the end of a vehicle name with an ellipsis. Measurements happen only
+      // when the selected target or its display name changes.
+      const nickWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 16;
+      const vehicleWidth = Math.ceil(tgtRefs.veh.scrollWidth) + 72;
+      tgtPlateWidth = Math.max(176, Math.min(320, Math.max(nickWidth, vehicleWidth)));
+      tgtEl.style.width = `${tgtPlateWidth}px`;
+    }
+    const plateHalf = tgtPlateWidth * 0.5;
+    const targetX = Math.max(plateHalf + 4, Math.min(w - plateHalf - 4, _sx));
+    const targetBottom = Math.max(72, Math.min(h - 12, _sy - 14));
+    tgtEl.style.transform =
+      `translate3d(${(targetX - plateHalf).toFixed(1)}px,${(targetBottom - 64).toFixed(1)}px,0)`;
     const targetVehicleId = best.spec?.id || null;
     if (targetVehicleId && targetVehicleId !== tgtLastVehicleId) {
       maskIcon(tgtRefs.cg, targetVehicleId, 'side_silhouette', '#f0b4ab');
@@ -2687,7 +2714,7 @@ export function initHud(bus) {
     // record the plate's screen rect so the sniper hairlines gap behind it
     // (drawScope runs after this in both the live and forced-still paths)
     tgtRect = {
-      cx: targetX, hw: 88,
+      cx: targetX, hw: plateHalf,
       top: targetBottom - 64, bottom: targetBottom,
     };
     // the ambient plate for this tank (if it was already mounted) yields

@@ -39,11 +39,19 @@ assert.match(battleLoad, /\.cot-bl \.count:empty\{display:none/,
 assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
   'incoming hits must have one canonical combat-intelligence feed, not a duplicate HUD log');
 assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:31px[^}]*contain:layout paint style/,
-  'world tank labels must reserve fixed geometry to avoid per-frame layout shifts');
-assert.match(hud, /targetX = Math\.max\(92, Math\.min\(w - 92, _sx\)\)/,
-  'target labels must remain clamped within the viewport while tracking a tank');
+  'world tank labels must start from stable geometry before one-time name measurement');
+assert.match(hud, /bar\.layoutW = Math\.max\(128, Math\.min\(280, measured\)\)/,
+  'ambient labels must expand once to preserve complete vehicle names');
+assert.match(hud, /targetX = Math\.max\(plateHalf \+ 4, Math\.min\(w - plateHalf - 4, _sx\)\)/,
+  'variable-width target labels must remain clamped within the viewport while tracking a tank');
 assert.doesNotMatch(hud, /tgtEl\.offsetHeight/,
   'target tracking must not force a layout read in the render loop');
+assert.match(hud, /\.cot-hpb \.nm\{[\s\S]*?background:none;\}/,
+  'ambient labels must use glyph shadows rather than full-width dark panels');
+assert.match(hud, /\.cot-tgt \.bk\{[^}]*background:none/,
+  'aimed-at labels must not paint a broad dark rectangle over the battlefield');
+assert.doesNotMatch(hud, /\.cot-(?:hpb \.nm span|tgt \.nick|tgt \.veh)\{[^}]*text-overflow:ellipsis/,
+  'world-space player and vehicle labels must never replace names with ellipses');
 assert.match(hud, /layout\.sort\(\(a, b\) => b\.layoutY - a\.layoutY[\s\S]*placed\.layoutY - 36/,
   'clustered world labels must resolve into stable lanes instead of overlapping');
 
