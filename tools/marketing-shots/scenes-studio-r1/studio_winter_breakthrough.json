@@ -1,0 +1,43 @@
+{
+  "map": "winter",
+  "seed": 8222,
+  "actors": [
+    { "id": "strv122", "name": "shooter", "pos": [176, -108], "facingDeg": 122, "turretDeg": -1, "gunDeg": 0.5, "camo": "winterbands", "camoSeed": 8220 },
+    { "id": "leclerc", "name": "victim", "pos": [198, -123], "facingDeg": 300, "turretDeg": 20, "gunDeg": 0.5, "camo": "winterbands", "camoSeed": 8221 }
+  ],
+  "effects": [
+    { "type": "dust", "actor": "shooter", "tMs": 250, "params": { "count": 14, "intensity": 0.8, "dirDeg": 302 } },
+    { "type": "fire", "actor": "shooter", "tMs": 1120, "params": { "slot": 0, "tracer": true, "recoil": true } },
+    { "type": "impact", "actor": "victim", "tMs": 1450, "params": { "kind": "nonpen", "caliberMm": 120, "hFrac": 0.56 } },
+    { "type": "sparks", "actor": "victim", "tMs": 1520, "params": { "caliberMm": 120, "kind": "ricochet", "hFrac": 0.58 } },
+    { "type": "fire", "actor": "victim", "tMs": 2720, "params": { "slot": 0, "tracer": true, "recoil": true } },
+    { "type": "sparks", "actor": "shooter", "tMs": 2960, "params": { "caliberMm": 125, "kind": "ricochet", "hFrac": 0.68 } },
+    { "type": "fire", "actor": "shooter", "tMs": 3580, "params": { "slot": 0, "tracer": true, "recoil": true } },
+    { "type": "detrack", "actor": "victim", "tMs": 3740, "params": { "side": "L" } },
+    { "type": "tank_kill", "actor": "victim", "tMs": 3980, "params": { "cause": "ammorack", "pop": true } }
+  ],
+  "storyboard": {
+    "durationMs": 6500,
+    "shots": [
+      { "id": "open", "label": "Armored contact", "tMs": 0, "pos": [164.5, 1.1, -132.8], "lookAt": [187, 2.4, -118.5], "fov": 30, "rollDeg": 1, "transition": "linear" },
+      { "id": "push", "label": "Return fire", "tMs": 2200, "pos": [166.3, 1.5, -132.3], "lookAt": [187.8, 2.5, -118.3], "fov": 31, "rollDeg": 0.5, "transition": "smooth" },
+      { "id": "impact", "label": "Knockout", "tMs": 3850, "pos": [167.6, 1.9, -131.9], "lookAt": [195, 2.5, -122.5], "fov": 30, "rollDeg": -0.75, "transition": "smooth" },
+      { "id": "aftermath", "label": "Breakthrough", "tMs": 6500, "pos": [165.3, 2.35, -133.5], "lookAt": [192, 2.6, -121], "fov": 31, "rollDeg": 0, "transition": "smooth" }
+    ],
+    "actorTracks": [
+      { "actor": "shooter", "keys": [
+        { "id": "shooter-0", "tMs": 0, "pos": [176, -108], "facingDeg": 122, "turretDeg": -1, "gunDeg": 0.5 },
+        { "id": "shooter-1", "tMs": 3500, "pos": [178.2, -109.4], "facingDeg": 122, "turretDeg": -1, "gunDeg": 0.5 },
+        { "id": "shooter-2", "tMs": 6500, "pos": [179.4, -110.1], "facingDeg": 122, "turretDeg": -1, "gunDeg": 0.5 }
+      ] },
+      { "actor": "victim", "keys": [
+        { "id": "victim-0", "tMs": 0, "pos": [198, -123], "facingDeg": 300, "turretDeg": 20, "gunDeg": 0.5 },
+        { "id": "victim-1", "tMs": 3700, "pos": [196.8, -122.5], "facingDeg": 300, "turretDeg": 18, "gunDeg": 0.5 },
+        { "id": "victim-2", "tMs": 6500, "pos": [196.8, -122.5], "facingDeg": 300, "turretDeg": 18, "gunDeg": 0.5 }
+      ] }
+    ]
+  },
+  "camera": { "pos": [164.5, 1.1, -132.8], "lookAt": [187, 2.4, -118.5], "groundRel": true, "fov": 30, "rollDeg": 1 },
+  "fxTime": 0,
+  "timeScale": 0
+}

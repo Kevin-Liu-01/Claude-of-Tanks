@@ -35,9 +35,20 @@ const custom = normalizeCustomCamo({
 const encoded = customCamoPatternId(custom);
 assert.deepEqual(parseCustomCamoPatternId(encoded), custom,
   'custom cache key round-trips every painter input');
+const drawn = normalizeCustomCamo({
+  style: 'drawn', base: '#123456', colorA: '#abcdef', colorB: '#010203',
+  repeatX: 5, repeatY: 3, rotation: -45, mirror: false,
+  strokes: [
+    { color: 0, size: 12, points: [[4, 8], [37, 44], [91, 72]] },
+    { color: 1, size: 6, points: [[18, 90]] },
+  ],
+});
+assert.deepEqual(parseCustomCamoPatternId(customCamoPatternId(drawn)), drawn,
+  'drawn vector tiles round-trip every repeat and brush input');
 assert.equal(parseCustomCamoPatternId('custom~invalid'), null);
 assert.deepEqual(normalizeCustomCamo({ style: 'bad', base: 'red', repeat: 999 }), {
-  style: 'blotch', base: '#46513d', colorA: '#252a24', colorB: '#73563a', repeat: 100,
+  style: 'drawn', base: '#46513d', colorA: '#252a24', colorB: '#73563a', repeat: 100,
+  repeatX: 3, repeatY: 2, rotation: 0, mirror: true, strokes: [],
 });
 
 console.log('camoPolicy.selftest: network boundary and custom pattern codec passed');

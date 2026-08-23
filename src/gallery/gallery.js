@@ -14,8 +14,68 @@ import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { uiIconSVG } from '../ui/uiIcons.js';
 import { flagIconUrl } from '../ui/flags.js';
+import { createInfoButton } from '../ui/contextInfo.js';
+import { loadCaptureRecipes, recipeForMedia } from '../presentation/captureRecipes.js';
 
 const $ = (selector) => document.querySelector(selector);
+
+const GALLERY_SECTION_INFO = Object.freeze({
+  'Operational profile': 'Normalized combat-role ratings derived from the currently selected gameplay specification.',
+  'Technical summary': 'A concise description and authored highlights for the selected first-party procedural vehicle.',
+  Articulation: 'Live controls for the same hull, turret, and gun rig used by the game.',
+  'Surface markup': 'Select exact rendered triangles and export a reproducible geometry review packet.',
+  Specification: 'Canonical dimensions, mobility, firepower, and survivability values from current game data.',
+  'Ammunition suite': 'The selected vehicle’s shell families, 1 km penetration, damage, and ballistic role.',
+});
+
+function appendGalleryInfo(target, options) {
+  if (target && !target.querySelector(':scope > .cot-info-trigger')) {
+    target.appendChild(createInfoButton(options));
+  }
+}
+
+async function mountGalleryInfo() {
+  const workspaceHeads = document.querySelectorAll('.workspace-group-head');
+  appendGalleryInfo(workspaceHeads[0], {
+    label: 'About the fleet archive', title: 'Fleet archive',
+    text: 'Search and filter the complete public first-party vehicle roster, then select a model for live inspection.',
+  });
+  appendGalleryInfo(workspaceHeads[1], {
+    label: 'About the technical dossier', title: 'Technical dossier',
+    text: 'Live gameplay data, articulation, diagnostic overlays, and exact-surface review tools for the selected vehicle.',
+  });
+  appendGalleryInfo(document.querySelector('.view-controls-label'), {
+    label: 'About camera controls', title: 'Camera controls',
+    text: 'Choose a deterministic inspection angle, orbit freely, or enable automatic rotation around the current model.',
+  });
+  appendGalleryInfo(document.querySelector('.mode-dock > p'), {
+    label: 'About diagnostic layers', title: 'Diagnostic layers',
+    text: 'Switch between rendered appearance, armor volumes, internal modules, crew stations, and exact triangle markup.',
+  });
+  document.querySelectorAll('.section-label').forEach((heading) => {
+    const label = heading.querySelector('span')?.textContent.trim();
+    if (GALLERY_SECTION_INFO[label]) appendGalleryInfo(heading, {
+      label: `About ${label}`, title: label, text: GALLERY_SECTION_INFO[label],
+    });
+  });
+  const catalog = await loadCaptureRecipes().catch(() => null);
+  if (!catalog) return;
+  document.querySelectorAll('.gallery-motion-grid video').forEach((video) => {
+    const source = video.currentSrc || video.querySelector('source')?.src || video.poster;
+    const recipe = recipeForMedia(catalog, source);
+    if (!recipe) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'gallery-motion-item';
+    video.replaceWith(wrap);
+    wrap.append(video, createInfoButton({
+      label: 'Show the Scene Studio JSON for this video',
+      title: 'Replicate this Studio video',
+      json: recipe,
+    }));
+  });
+}
+
+void mountGalleryInfo();
 const viewport = $('#viewport');
 const vehicleList = $('#vehicleList');
 const loadingState = $('#loadingState');

@@ -15,6 +15,26 @@ import { iconUrl } from './icons.js';
 import { MAP_THUMBS } from './mapThumbs.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';
+import { createInfoButton } from './contextInfo.js';
+
+const STUDIO_GROUP_INFO = Object.freeze({
+  Battlefield: 'Choose the live battlefield, seed, and environmental foundation used by the current composition.',
+  Tanks: 'Add first-party playable vehicles, then stage their position, facing, turret, gun, camouflage, and damage state.',
+  Effects: 'Schedule the same pooled firing, impact, destruction, weather, and battlefield effects used by the game.',
+  Cinematics: 'Build a bounded camera storyboard and actor tracks on the deterministic Scene Studio timeline.',
+  Output: 'Capture stills or video, copy the complete scene JSON, and restore a composition with the same Studio load contract.',
+});
+
+const STUDIO_SECTION_INFO = Object.freeze({
+  Map: 'Select any live battlefield and preserve its deterministic environment in the scene JSON.',
+  'Add tanks': 'Add a vehicle from the shipped roster to the current composition.',
+  'Selected tank': 'Edit the selected actor’s pose, paint, state, and scene identity.',
+  'Layers & events': 'Place and time gameplay-authentic effects against actors or a terrain marker.',
+  Storyboard: 'Camera shots, actor keys, effects, and the playhead share one bounded deterministic timeline.',
+  Camera: 'Move the live camera or capture its current transform into the storyboard.',
+  'Video · Stills · Scene': 'The complete JSON in this info panel can be copied and passed directly to window.__STUDIO.load(recipe).',
+  'Production archive': 'Each field frame with an info icon exposes the complete Scene Studio JSON used to reproduce it.',
+});
 
 const CSS = `
 .cot-studio{position:fixed;inset:0;z-index:58;display:none;pointer-events:none;
@@ -40,7 +60,7 @@ const CSS = `
 .cot-studio .dock::-webkit-scrollbar-thumb{background:rgba(230,154,45,.35);}
 .cot-studio .pgroup{position:relative;margin-bottom:19px;}
 .cot-studio .pgroup+.pgroup{padding-top:2px;}
-.cot-studio .ghead{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;
+.cot-studio .ghead{display:grid;grid-template-columns:28px minmax(0,1fr) 24px;align-items:center;
   column-gap:8px;margin:0 2px 8px;}
 .cot-studio .gnum{grid-row:1 / 3;align-self:stretch;display:flex;align-items:center;justify-content:center;
   border-right:1px solid rgba(230,154,45,.42);font-size:9px;font-weight:900;letter-spacing:.08em;
@@ -49,6 +69,7 @@ const CSS = `
   line-height:1.25;text-transform:uppercase;}
 .cot-studio .gsub{font-size:7.5px;font-weight:700;letter-spacing:.12em;color:#65727d;
   line-height:1.45;text-transform:uppercase;}
+.cot-studio .ghead>.cot-info-trigger{grid-column:3;grid-row:1/3;align-self:center}
 .cot-studio .gbody{display:grid;gap:7px;}
 .cot-studio .sec{position:relative;border:1px solid rgba(190,204,216,.17);
   background:rgba(10,15,20,.68);padding:10px 10px 9px;}
@@ -58,6 +79,7 @@ const CSS = `
   text-transform:uppercase;margin-bottom:9px;border-bottom:1px solid rgba(190,204,216,.16);
   padding-bottom:6px;padding-left:7px;display:flex;justify-content:space-between;align-items:baseline;}
 .cot-studio .sec>.h .sub{font-size:8px;color:#5f6b76;letter-spacing:.1em;font-weight:700;}
+.cot-studio .sec>.h .sub{margin-left:auto}.cot-studio .sec>.h>.cot-info-trigger{margin-left:6px;flex:none}
 .cot-studio .row{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
 .cot-studio label.k{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8a97a3;
   text-transform:uppercase;min-width:52px;}
@@ -243,7 +265,7 @@ const CSS = `
 .cot-studio .playhead{position:absolute;top:0;bottom:0;width:1px;background:#fff2d9;
   box-shadow:0 0 5px #ffd27a;pointer-events:none;z-index:3;}
 .cot-studio .shotboard{display:grid;gap:4px;max-height:154px;overflow-y:auto;margin:6px 0 8px;}
-.cot-studio .shotcard{display:grid;grid-template-columns:28px minmax(0,1fr) 72px 28px;align-items:center;
+.cot-studio .shotcard{display:grid;grid-template-columns:28px minmax(0,1fr) 66px 24px 28px;align-items:center;
   gap:5px;padding:5px;background:rgba(14,19,24,.72);border:1px solid rgba(190,204,216,.17);}
 .cot-studio .shotcard.sel{border-color:#e69a2d;background:rgba(52,36,12,.62);}
 .cot-studio .shotcard .num{font-size:8px;font-weight:900;color:#e69a2d;text-align:center;}
@@ -283,7 +305,7 @@ const CSS = `
   .cot-studio .mapPop{max-height:calc(100vh - 150px);}
   .cot-studio button{min-height:32px;}
   .cot-studio .tlmarker{width:14px;height:14px;top:2px;min-height:0;}
-  .cot-studio .shotcard{grid-template-columns:28px minmax(0,1fr) 82px 34px;}
+  .cot-studio .shotcard{grid-template-columns:28px minmax(0,1fr) 72px 28px 34px;}
   .cot-studio .foot{display:none;}
   .cot-studio .busy{top:64px;max-width:calc(100vw - 24px);white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;}
@@ -988,6 +1010,13 @@ export function createStudioPanel(S) {
     const s = el('div', 'sec');
     const h = el('div', 'h', title);
     if (sub) h.appendChild(el('span', 'sub', sub));
+    const help = STUDIO_SECTION_INFO[title];
+    if (help) h.appendChild(createInfoButton({
+      label: `About ${title}`,
+      title,
+      text: help,
+      json: title === 'Video · Stills · Scene' ? () => S.state() : null,
+    }));
     s.appendChild(h);
     return s;
   }
@@ -1000,6 +1029,8 @@ export function createStudioPanel(S) {
       el('div', 'gtitle', title),
       el('div', 'gsub', sub),
     );
+    const help = STUDIO_GROUP_INFO[title];
+    if (help) head.appendChild(createInfoButton({ label: `About ${title}`, title, text: help }));
     const body = el('div', 'gbody');
     groupRoot.append(head, body);
     return { root: groupRoot, body };
@@ -1138,6 +1169,7 @@ export function createStudioPanel(S) {
     cameraLane.textContent = '';
     actorLane.textContent = '';
     effectLane.textContent = '';
+    shotboard.querySelectorAll('.cot-info-trigger').forEach((button) => button.disposeInfo?.());
     shotboard.textContent = '';
     board.shots.forEach((shot, index) => {
       addTimelineMarker(
@@ -1170,6 +1202,11 @@ export function createStudioPanel(S) {
         transition: transition.value,
       }));
       card.appendChild(transition);
+      card.appendChild(createInfoButton({
+        label: `Show the Scene Studio JSON for ${shot.label}`,
+        title: `Replicate ${shot.label}`,
+        json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
+      }));
       const del = el('button', 'del warn', '✕');
       del.title = `Remove ${shot.label}`;
       del.setAttribute('aria-label', del.title);

@@ -47,13 +47,21 @@ export const CAMO_PATTERN_LABEL = Object.freeze({
 });
 
 export const CUSTOM_CAMO_ID = 'custom';
-export const CUSTOM_CAMO_STYLES = Object.freeze(['blotch', 'digital', 'stripes', 'splinter']);
+// The legacy procedural styles remain readable so existing local saves keep
+// working. New authoring uses `drawn`: a compact, normalized vector tile that
+// is repeated by the material painter without adding runtime textures.
+export const CUSTOM_CAMO_STYLES = Object.freeze(['drawn', 'blotch', 'digital', 'stripes', 'splinter']);
 const DEFAULT_CUSTOM_CAMO = Object.freeze({
-  style: 'blotch',
+  style: 'drawn',
   base: '#46513d',
   colorA: '#252a24',
   colorB: '#73563a',
   repeat: 55,
+  repeatX: 3,
+  repeatY: 2,
+  rotation: 0,
+  mirror: true,
+  strokes: [],
 });
 
 const BUILT_IN = new Set(CAMO_PATTERN_IDS);
@@ -131,22 +139,68 @@ export function normalizeCustomCamo(value = null) {
     return HEX.test(next) ? next : fallback;
   };
   const repeat = Math.round(Number(source.repeat));
+  const clamp = (value, min, max, fallback) => {
+    const number = Math.round(Number(value));
+    return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+  };
+  const strokes = Array.isArray(source.strokes) ? source.strokes.slice(0, 48).map((stroke) => ({
+    color: stroke?.color === 1 ? 1 : 0,
+    size: clamp(stroke?.size, 1, 30, 8),
+    points: Array.isArray(stroke?.points) ? stroke.points.slice(0, 64).map((point) => [
+      clamp(point?.[0], 0, 100, 50),
+      clamp(point?.[1], 0, 100, 50),
+    ]) : [],
+  })).filter((stroke) => stroke.points.length) : [];
   return {
     style,
     base: color(source.base, DEFAULT_CUSTOM_CAMO.base),
     colorA: color(source.colorA, DEFAULT_CUSTOM_CAMO.colorA),
     colorB: color(source.colorB, DEFAULT_CUSTOM_CAMO.colorB),
     repeat: Number.isFinite(repeat) ? Math.max(20, Math.min(100, repeat)) : DEFAULT_CUSTOM_CAMO.repeat,
+    repeatX: clamp(source.repeatX, 1, 8, DEFAULT_CUSTOM_CAMO.repeatX),
+    repeatY: clamp(source.repeatY, 1, 8, DEFAULT_CUSTOM_CAMO.repeatY),
+    rotation: clamp(source.rotation, -180, 180, DEFAULT_CUSTOM_CAMO.rotation),
+    mirror: source.mirror == null ? DEFAULT_CUSTOM_CAMO.mirror : !!source.mirror,
+    strokes,
   };
 }
 
 /** Encode all painter inputs into the cache key so old bakes stay immutable. */
 export function customCamoPatternId(value) {
   const c = normalizeCustomCamo(value);
+  if (c.style === 'drawn') {
+    const strokes = c.strokes.map((stroke) => `${stroke.color},${stroke.size},` +
+      stroke.points.map(([x, y]) => `${x}.${y}`).join('_')).join(';');
+    return `custom2~${c.base.slice(1)}~${c.colorA.slice(1)}~${c.colorB.slice(1)}~` +
+      `${c.repeatX}~${c.repeatY}~${c.rotation}~${c.mirror ? 1 : 0}~${strokes}`;
+  }
   return `custom~${c.style}~${c.base.slice(1)}~${c.colorA.slice(1)}~${c.colorB.slice(1)}~${c.repeat}`;
 }
 
 export function parseCustomCamoPatternId(value) {
+  const drawn = /^custom2~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)$/i
+    .exec(String(value || ''));
+  if (drawn) {
+    const strokes = drawn[8] ? drawn[8].split(';').map((encoded) => {
+      const [color, size, points = ''] = encoded.split(',');
+      return {
+        color: Number(color),
+        size: Number(size),
+        points: points.split('_').filter(Boolean).map((point) => point.split('.').map(Number)),
+      };
+    }) : [];
+    return normalizeCustomCamo({
+      style: 'drawn',
+      base: `#${drawn[1].toLowerCase()}`,
+      colorA: `#${drawn[2].toLowerCase()}`,
+      colorB: `#${drawn[3].toLowerCase()}`,
+      repeatX: Number(drawn[4]),
+      repeatY: Number(drawn[5]),
+      rotation: Number(drawn[6]),
+      mirror: drawn[7] === '1',
+      strokes,
+    });
+  }
   const match = /^custom~(blotch|digital|stripes|splinter)~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~(\d{2,3})$/i
     .exec(String(value || ''));
   if (!match) return null;

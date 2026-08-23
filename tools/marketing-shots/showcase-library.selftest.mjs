@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'public/media/showcase-r1/manifest.json'), 'utf8'));
+const captureRecipes = JSON.parse(readFileSync(join(ROOT, 'public/media/capture-recipes-r1.json'), 'utf8'));
 
 assert.equal(manifest.libraryId, 'claude-of-tanks-showcase-r1');
 assert.deepEqual(manifest.counts, {
@@ -25,6 +26,26 @@ assert.ok(manifest.shots.filter((shot) => ['action', 'foreground'].includes(shot
 assert.ok(manifest.shots.every((shot) => existsSync(join(ROOT, 'public', shot.src))));
 assert.ok(existsSync(join(ROOT, 'public', manifest.animatedPreview.src)));
 assert.ok(existsSync(join(ROOT, 'public', manifest.animatedPreview.poster)));
+
+assert.equal(captureRecipes.schemaVersion, 1);
+for (const shot of manifest.shots.filter((entry) => entry.sourceScene)) {
+  const recipeId = captureRecipes.media[shot.src];
+  const recipe = captureRecipes.recipes[recipeId];
+  assert.ok(recipeId && recipe, `${shot.id} must publish copyable Studio JSON`);
+  assert.ok(recipe.map && Number.isFinite(recipe.seed) && Array.isArray(recipe.actors),
+    `${shot.id} recipe must satisfy the Studio load contract`);
+  assert.equal(recipe.timeScale, 0, `${shot.id} recipe must open frozen`);
+  if (Number.isFinite(shot.timeMs)) assert.equal(recipe.fxTime, shot.timeMs);
+}
+for (const slug of [
+  '01_desert_duel_leclerc_kill', '03_winter_lake_duel',
+  '04_urban_street_duel', '06_verdant_meadow_duel',
+]) {
+  const path = `/media/feature-loops-r1/${slug}.webm`;
+  const recipe = captureRecipes.recipes[captureRecipes.media[path]];
+  assert.ok(recipe?.storyboard?.shots?.length >= 3, `${path} must publish its complete video storyboard`);
+  assert.ok(recipe.storyboard.actorTracks.length >= 2, `${path} must publish actor choreography`);
+}
 
 assert.deepEqual(manifest.process.sequence, [
   'deterministic scene JSON',

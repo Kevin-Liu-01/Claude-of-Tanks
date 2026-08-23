@@ -460,7 +460,49 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     strokeWrapped(ctx, S, p, rgb(col, 0.5), 2.2);
     ctx.setLineDash([]);
   };
-  if (scheme === 'stripes' && patches.length) {
+  if (scheme === 'drawn' && patches.length) {
+    // Device-local vector tile authored in the Garage. The drawing is baked
+    // once with the rest of the material, so custom paint adds no draw calls,
+    // runtime canvases, or per-frame work.
+    const repeatX = Math.max(1, Math.min(8, visual.drawRepeatX || 1));
+    const repeatY = Math.max(1, Math.min(8, visual.drawRepeatY || 1));
+    const cellW = S / repeatX;
+    const cellH = S / repeatY;
+    const angle = (visual.drawRotation || 0) * Math.PI / 180;
+    const strokes = visual.drawStrokes || [];
+    for (let gy = -1; gy <= repeatY; gy++) {
+      for (let gx = -1; gx <= repeatX; gx++) {
+        ctx.save();
+        ctx.translate((gx + 0.5) * cellW, (gy + 0.5) * cellH);
+        ctx.rotate(angle);
+        if (visual.drawMirror && ((gx + gy) & 1)) ctx.scale(-1, 1);
+        ctx.translate(-cellW / 2, -cellH / 2);
+        for (const stroke of strokes) {
+          const points = stroke.points || [];
+          if (!points.length) continue;
+          ctx.strokeStyle = rgb(patches[stroke.color === 1 ? 1 : 0] || patches[0], 0.97);
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineWidth = Math.max(1, (stroke.size || 8) / 100 * Math.min(cellW, cellH));
+          if (points.length === 1) {
+            ctx.beginPath();
+            ctx.arc(points[0][0] / 100 * cellW, points[0][1] / 100 * cellH,
+              ctx.lineWidth / 2, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(points[0][0] / 100 * cellW, points[0][1] / 100 * cellH);
+            for (let i = 1; i < points.length; i++) {
+              ctx.lineTo(points[i][0] / 100 * cellW, points[i][1] / 100 * cellH);
+            }
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+    }
+  } else if (scheme === 'stripes' && patches.length) {
     // tank_models r5 REWRITE ("2-tone tan/brown leopard spots instead of the
     // roster Dunkelgelb + olive-green + red-brown soft-edge stripes"): the
     // 1943 factory scheme is BROAD sprayed BANDS — 20-40 cm wide sweeping
@@ -3619,6 +3661,11 @@ function patternVisual(spec, patternId) {
       // Higher repeat means smaller, more frequent shapes on the hull.
       camoScale: 0.72 - (custom.repeat / 100) * 0.47,
       patternRepeat: custom.repeat,
+      drawStrokes: custom.strokes,
+      drawRepeatX: custom.repeatX,
+      drawRepeatY: custom.repeatY,
+      drawRotation: custom.rotation,
+      drawMirror: custom.mirror,
     };
   }
   if (patternId === 'factory') {

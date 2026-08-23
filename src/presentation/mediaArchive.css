@@ -28,7 +28,8 @@
 .media-archive-more:active{transform:scale(.98)}
 .media-archive-more[hidden]{display:none}
 .media-archive-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:1px;background:var(--cot-line)}
-.media-archive-card{position:relative;grid-column:span 4;min-width:0;aspect-ratio:16/10;padding:0;border:0;background:#030608;overflow:hidden;text-align:left;cursor:zoom-in;color:var(--cot-ink)}
+.media-archive-card{position:relative;grid-column:span 4;min-width:0;aspect-ratio:16/10;padding:0;border:0;background:#030608;overflow:hidden;color:var(--cot-ink)}
+.media-archive-card-open{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:#030608;overflow:hidden;text-align:left;cursor:zoom-in;color:var(--cot-ink)}
 .media-archive-card:nth-child(11n+1),.media-archive-card:nth-child(11n+8){grid-column:span 8;grid-row:span 2;aspect-ratio:auto;min-height:clamp(420px,50vw,760px)}
 .media-archive-card:nth-child(11n+4),.media-archive-card:nth-child(11n+5){grid-column:span 6}
 .media-archive-card img{width:100%;height:100%;object-fit:cover;filter:saturate(.94) contrast(1.035);transition:transform .5s cubic-bezier(.2,.7,.2,1),filter .3s ease}
@@ -41,6 +42,7 @@
 .media-archive-card-copy strong{font-size:clamp(14px,1.35vw,21px);line-height:1.05;letter-spacing:.01em;text-transform:uppercase}
 .media-archive-card-copy small{color:#c1ccd4;font-size:7px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
 .media-archive-card-index{position:absolute;z-index:2;top:13px;right:14px;padding:5px 7px;border:1px solid rgba(255,255,255,.18);background:rgba(3,6,8,.55);color:#dbe5eb;font:800 8px/1 ui-monospace,SFMono-Regular,monospace;letter-spacing:.1em}
+.media-archive-card>.media-archive-recipe{position:absolute;z-index:4;left:13px;top:13px;background:rgba(3,6,8,.72)}
 
 .media-archive--rail .media-archive-grid{display:flex;gap:1px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--cot-amber) transparent;background:transparent}
 .media-archive--rail .media-archive-card,.media-archive--rail .media-archive-card:nth-child(n){flex:0 0 min(72vw,920px);width:auto;min-height:0;aspect-ratio:16/9;scroll-snap-align:start}

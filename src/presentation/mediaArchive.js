@@ -1,3 +1,6 @@
+import { createInfoButton } from '../ui/contextInfo.js';
+import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.js';
+
 const MANIFEST_URL = '/media/showcase-r1/manifest.json';
 let manifestPromise;
 
@@ -34,10 +37,12 @@ function openShot(shot) {
   dialog.showModal();
 }
 
-function shotCard(shot, index) {
+function shotCard(shot, index, recipe) {
+  const card = document.createElement('article');
+  card.className = 'media-archive-card';
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'media-archive-card';
+  button.className = 'media-archive-card-open';
   button.setAttribute('aria-label', `Open ${shot.title}`);
   const image = document.createElement('img');
   image.src = shot.src;
@@ -52,7 +57,16 @@ function shotCard(shot, index) {
   count.textContent = String(shot.sequence || index + 1).padStart(2, '0');
   button.append(image, copy, count);
   button.addEventListener('click', () => openShot(shot));
-  return button;
+  card.appendChild(button);
+  if (recipe) {
+    card.appendChild(createInfoButton({
+      label: `Show the Scene Studio JSON for ${shot.title}`,
+      title: `Replicate ${shot.title}`,
+      json: recipe,
+      className: 'media-archive-recipe',
+    }));
+  }
+  return card;
 }
 
 function normalize(value) {
@@ -64,7 +78,10 @@ export async function mountMediaArchive(root, options = {}) {
   root.dataset.mediaMounted = 'true';
   root.classList.add('media-archive');
   if (options.mode) root.classList.add(`media-archive--${options.mode}`);
-  const manifest = await loadPresentationManifest();
+  const [manifest, recipes] = await Promise.all([
+    loadPresentationManifest(),
+    loadCaptureRecipes().catch(() => ({ media: {}, recipes: {} })),
+  ]);
   const allowedKinds = options.kinds?.length ? new Set(options.kinds.map(normalize)) : null;
   const source = manifest.shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
   const limit = Number.isFinite(options.limit) ? options.limit : source.length;
@@ -92,9 +109,11 @@ export async function mountMediaArchive(root, options = {}) {
   const available = new Set(source.map((shot) => normalize(shot.feature)));
   const features = featureOrder.filter((feature) => feature === 'all' || available.has(feature));
   function render() {
+    grid.querySelectorAll('.cot-info-trigger').forEach((button) => button.disposeInfo?.());
     const filtered = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
     const visible = filtered.slice(0, visibleLimit);
-    grid.replaceChildren(...visible.map(shotCard));
+    grid.replaceChildren(...visible.map((shot, index) =>
+      shotCard(shot, index, recipeForMedia(recipes, shot.src))));
     count.value = `${String(visible.length).padStart(2, '0')} / ${String(filtered.length).padStart(2, '0')} frames`;
     const remaining = filtered.length - visible.length;
     loadMore.hidden = remaining <= 0;
