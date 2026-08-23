@@ -978,7 +978,7 @@
           }
         ]
       },
-      "geometryHash": "b6b8eae3",
+      "geometryHash": "f047fcb9",
       "metadataHash": "3625dd2c",
       "appearance": {
         "version": 1,
@@ -1013,7 +1013,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "US:us-star:X1"
         ]
@@ -1965,7 +1965,7 @@
           }
         ]
       },
-      "geometryHash": "ee14ca66",
+      "geometryHash": "087f1588",
       "metadataHash": "7f56a754",
       "appearance": {
         "version": 1,
@@ -2003,7 +2003,7 @@
         "designation": 4,
         "verifiedInsignia": 1,
         "verifiedDesignation": 4,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "FR:fr-roundel:53"
         ]
@@ -2955,7 +2955,7 @@
           }
         ]
       },
-      "geometryHash": "fb0dc3cb",
+      "geometryHash": "11ee2ad5",
       "metadataHash": "7faaa8ed",
       "appearance": {
         "version": 1,
@@ -2992,7 +2992,7 @@
         "designation": 4,
         "verifiedInsignia": 1,
         "verifiedDesignation": 4,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "FR:fr-roundel:68"
         ]
@@ -3944,7 +3944,7 @@
           }
         ]
       },
-      "geometryHash": "6a21cb67",
+      "geometryHash": "a7c84be9",
       "metadataHash": "c67a9f19",
       "appearance": {
         "version": 1,
@@ -5399,7 +5399,7 @@
           }
         ]
       },
-      "geometryHash": "abb70ff7",
+      "geometryHash": "78553e97",
       "metadataHash": "51e04150",
       "appearance": {
         "version": 1,
@@ -5437,7 +5437,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "FR:fr-roundel:056"
         ]
@@ -6390,7 +6390,7 @@
           }
         ]
       },
-      "geometryHash": "da482a7b",
+      "geometryHash": "0e937f08",
       "metadataHash": "8f7f16bc",
       "appearance": {
         "version": 1,
@@ -7380,7 +7380,7 @@
           }
         ]
       },
-      "geometryHash": "bcdd01f6",
+      "geometryHash": "95f37f05",
       "metadataHash": "c7e0b11e",
       "appearance": {
         "version": 1,
@@ -8525,7 +8525,7 @@
           }
         ]
       },
-      "geometryHash": "2f7bbdd2",
+      "geometryHash": "65c719c8",
       "metadataHash": "3129d649",
       "appearance": {
         "version": 1,
@@ -9467,7 +9467,7 @@
           }
         ]
       },
-      "geometryHash": "e64cc7fd",
+      "geometryHash": "5ead9738",
       "metadataHash": "e62505d8",
       "appearance": {
         "version": 1,
@@ -10412,7 +10412,7 @@
           }
         ]
       },
-      "geometryHash": "8c44c855",
+      "geometryHash": "85d16283",
       "metadataHash": "d4e3f879",
       "appearance": {
         "version": 1,
@@ -11359,7 +11359,7 @@
           }
         ]
       },
-      "geometryHash": "5a18b642",
+      "geometryHash": "afb55764",
       "metadataHash": "f964471b",
       "appearance": {
         "version": 1,
@@ -12647,7 +12647,7 @@
           }
         ]
       },
-      "geometryHash": "d9d15913",
+      "geometryHash": "d5b6b288",
       "metadataHash": "2df45374",
       "appearance": {
         "version": 1,
@@ -13842,7 +13842,7 @@
           }
         ]
       },
-      "geometryHash": "c9a96e1f",
+      "geometryHash": "bcf6ba70",
       "metadataHash": "c6960c59",
       "appearance": {
         "version": 1,
@@ -13879,7 +13879,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "RU:ru-star:BMPT-2"
         ]
@@ -14789,7 +14789,7 @@
           }
         ]
       },
-      "geometryHash": "5b5c5e35",
+      "geometryHash": "d5f6675a",
       "metadataHash": "9479cdb8",
       "appearance": {
         "version": 1,
@@ -15718,7 +15718,7 @@
           }
         ]
       },
-      "geometryHash": "cf7c9346",
+      "geometryHash": "e3b45e85",
       "metadataHash": "e20b7538",
       "appearance": {
         "version": 1,
@@ -16801,7 +16801,7 @@
           }
         ]
       },
-      "geometryHash": "eebf5d66",
+      "geometryHash": "d1e23f0e",
       "metadataHash": "84f12942",
       "appearance": {
         "version": 1,
@@ -17883,7 +17883,7 @@
           }
         ]
       },
-      "geometryHash": "33a64621",
+      "geometryHash": "86643a48",
       "metadataHash": "b146b474",
       "appearance": {
         "version": 1,
@@ -18934,7 +18934,7 @@
           }
         ]
       },
-      "geometryHash": "d8729d4a",
+      "geometryHash": "f06c791d",
       "metadataHash": "4d11afaa",
       "appearance": {
         "version": 1,
@@ -18969,7 +18969,7 @@
         "designation": 3,
         "verifiedInsignia": 1,
         "verifiedDesignation": 3,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "GB:gb-roundel:30"
         ]
@@ -20877,7 +20877,7 @@
           }
         ]
       },
-      "geometryHash": "dbc2b75d",
+      "geometryHash": "06a7698b",
       "metadataHash": "250564d5",
       "appearance": {
         "version": 1,
@@ -21865,7 +21865,7 @@
           }
         ]
       },
-      "geometryHash": "8355970c",
+      "geometryHash": "735a3531",
       "metadataHash": "84f1a35a",
       "appearance": {
         "version": 1,
@@ -21900,7 +21900,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "GB:gb-roundel:22"
         ]
@@ -23684,7 +23684,7 @@
           }
         ]
       },
-      "geometryHash": "30ca0916",
+      "geometryHash": "9c94346d",
       "metadataHash": "724d7258",
       "appearance": {
         "version": 1,
@@ -24611,7 +24611,7 @@
           }
         ]
       },
-      "geometryHash": "f3a8049a",
+      "geometryHash": "62b8c61f",
       "metadataHash": "4266e054",
       "appearance": {
         "version": 1,
@@ -26548,7 +26548,7 @@
           }
         ]
       },
-      "geometryHash": "23c71cb5",
+      "geometryHash": "a33cd831",
       "metadataHash": "1ac7b36e",
       "appearance": {
         "version": 1,
@@ -27554,7 +27554,7 @@
           }
         ]
       },
-      "geometryHash": "cd12588e",
+      "geometryHash": "6e178119",
       "metadataHash": "0e4034fe",
       "appearance": {
         "version": 1,
@@ -27590,7 +27590,7 @@
         "designation": 3,
         "verifiedInsignia": 1,
         "verifiedDesignation": 3,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "GB:gb-roundel:M9"
         ]
@@ -33896,7 +33896,7 @@
           }
         ]
       },
-      "geometryHash": "fa8c25d1",
+      "geometryHash": "dd1fce6b",
       "metadataHash": "1b0b133d",
       "appearance": {
         "version": 1,
@@ -33934,7 +33934,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "RU:ru-star:314"
         ]
@@ -34786,7 +34786,7 @@
           }
         ]
       },
-      "geometryHash": "505cc104",
+      "geometryHash": "ad03c453",
       "metadataHash": "7cf3f6bd",
       "appearance": {
         "version": 1,
@@ -36575,7 +36575,7 @@
           }
         ]
       },
-      "geometryHash": "e53a0c26",
+      "geometryHash": "d6f61a0e",
       "metadataHash": "6316423c",
       "appearance": {
         "version": 1,
@@ -37563,7 +37563,7 @@
           }
         ]
       },
-      "geometryHash": "bb397a2f",
+      "geometryHash": "9b4aa2d4",
       "metadataHash": "5e65642f",
       "appearance": {
         "version": 1,
@@ -38482,11 +38482,11 @@
             "min": [
               -1.675,
               0.01,
-              -3.42
+              -3.4169
             ],
             "max": [
               -1.075,
-              1.4395,
+              1.4397,
               3.4298
             ],
             "turretLocal": false
@@ -38497,11 +38497,11 @@
             "min": [
               1.075,
               0.01,
-              -3.42
+              -3.4169
             ],
             "max": [
               1.675,
-              1.4395,
+              1.4397,
               3.4298
             ],
             "turretLocal": false
@@ -38555,8 +38555,8 @@
           }
         ]
       },
-      "geometryHash": "d8653242",
-      "metadataHash": "b94b431c",
+      "geometryHash": "94190419",
+      "metadataHash": "c25b1d90",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -38593,7 +38593,7 @@
         "designation": 4,
         "verifiedInsignia": 1,
         "verifiedDesignation": 4,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "KR:kr-taeguk:325"
         ]
@@ -38644,24 +38644,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69212,
-          "sha256": "b17cc294e6cc60605007fa907b98e4681a3358b866a75d56559f66f04e5d6506"
+          "bytes": 69232,
+          "sha256": "3df01a670f377297785db8288c3907efd290039b7da82ea62909b7a77b6d9e55"
         },
         "armorSide": {
           "file": "k2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70734,
-          "sha256": "46def689c7ca5ced0e634c5fe01185fbbc9aeaea407c21b8577879304de7d736"
+          "bytes": 70773,
+          "sha256": "3a0757f106febcbf0a7c56ef7a96073d70e47d7db88bb04bf26d5ab94f7d1545"
         },
         "modulesSide": {
           "file": "k2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75583,
-          "sha256": "d8e854dedf41677577cb97f1fe7e51f1c1e03e29ad74c52f6b40837c9f629f55"
+          "bytes": 74587,
+          "sha256": "c26f920077d09aa0521fe38fd5e30666fce5f268aac573943f72eeae393ff1f0"
         },
         "markings": {
           "file": "k2_markings.png",
@@ -39473,11 +39473,11 @@
             "min": [
               -1.675,
               0.01,
-              -3.42
+              -3.4169
             ],
             "max": [
               -1.075,
-              1.4395,
+              1.4397,
               3.4298
             ],
             "turretLocal": false
@@ -39488,11 +39488,11 @@
             "min": [
               1.075,
               0.01,
-              -3.42
+              -3.4169
             ],
             "max": [
               1.675,
-              1.4395,
+              1.4397,
               3.4298
             ],
             "turretLocal": false
@@ -39546,8 +39546,8 @@
           }
         ]
       },
-      "geometryHash": "d7eed251",
-      "metadataHash": "f42a6d69",
+      "geometryHash": "fa47d18d",
+      "metadataHash": "adca52bd",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -39584,7 +39584,7 @@
         "designation": 3,
         "verifiedInsignia": 1,
         "verifiedDesignation": 3,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "KR:kr-taeguk:K2B"
         ]
@@ -39595,24 +39595,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73040,
-          "sha256": "c693aed64afcb27a6568d98bf87a3cc99be3fb9734510d233ec08a6f32a98c2d"
+          "bytes": 74908,
+          "sha256": "13e8261ba9eb733d9c21a2abe42fc70d040ea58f65b2863efafc2fc45a3e13d0"
         },
         "armorSide": {
           "file": "k2b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72731,
-          "sha256": "6e42f8e4378b1d21a51d7a7468711b50a7e43a6d0a9eace4025518b41973687a"
+          "bytes": 75178,
+          "sha256": "66da271326df095f130db4e341c9fff1fa67b1fb0cb648fb5abc70b50ef4cd22"
         },
         "modulesSide": {
           "file": "k2b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78577,
-          "sha256": "efe001e1b98a1308b8d7c0dfa0320880debbc491759b4d26a2706c7eef5dddc5"
+          "bytes": 79203,
+          "sha256": "0682de8f31cde7ee5565a3a91193dc0fb3265ea11b7fce6871e6aa7f105dd243"
         },
         "angle": {
           "file": "k2b_angle.webp",
@@ -40443,7 +40443,7 @@
           }
         ]
       },
-      "geometryHash": "acbc6f49",
+      "geometryHash": "bb1d43ca",
       "metadataHash": "e40e36f5",
       "appearance": {
         "version": 1,
@@ -41337,7 +41337,7 @@
           }
         ]
       },
-      "geometryHash": "b11ec7b8",
+      "geometryHash": "b8795196",
       "metadataHash": "eef3cd79",
       "appearance": {
         "version": 1,
@@ -42234,7 +42234,7 @@
           }
         ]
       },
-      "geometryHash": "745ba985",
+      "geometryHash": "6e1fb395",
       "metadataHash": "8103d306",
       "appearance": {
         "version": 1,
@@ -43224,7 +43224,7 @@
           }
         ]
       },
-      "geometryHash": "d0a35b3a",
+      "geometryHash": "1b20325e",
       "metadataHash": "2dc995ed",
       "appearance": {
         "version": 1,
@@ -43262,7 +43262,7 @@
         "designation": 3,
         "verifiedInsignia": 1,
         "verifiedDesignation": 3,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "FR:fr-roundel:33"
         ]
@@ -44679,7 +44679,7 @@
           }
         ]
       },
-      "geometryHash": "c20cbbd7",
+      "geometryHash": "3d78069f",
       "metadataHash": "1f7f79a2",
       "appearance": {
         "version": 1,
@@ -44717,7 +44717,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "FR:fr-roundel:104"
         ]
@@ -44768,24 +44768,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75459,
-          "sha256": "4926ee55cb00c4f95650cfaccba8ab3f52d931a5e1419e65044d3a07fd0f30d4"
+          "bytes": 74868,
+          "sha256": "f7725248a3aa22699fecceb06cd0cb48cdd1ef3624436ebc39762df3184177ca"
         },
         "armorSide": {
           "file": "leclerc_xlr_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76146,
-          "sha256": "197c04c744a298ed79b6db8da226c665ee39c797270c5b4a5f9319560b87bff0"
+          "bytes": 76052,
+          "sha256": "b9103c364d5146c6b26a046928c3b9c396b5787f0664ee831674667d85f47f71"
         },
         "modulesSide": {
           "file": "leclerc_xlr_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76952,
-          "sha256": "38763bacc0bae642167126dd2f78ca9a4216b67a200f65af5d155d3d9a0c2d15"
+          "bytes": 76837,
+          "sha256": "9fb9330ccf31b9c8f2915dbee00fa6ca4e6d8e1aed988c515e56d82de7a65b44"
         },
         "markings": {
           "file": "leclerc_xlr_markings.png",
@@ -47181,7 +47181,7 @@
           }
         ]
       },
-      "geometryHash": "17decee1",
+      "geometryHash": "9346c543",
       "metadataHash": "5f5bb849",
       "appearance": {
         "version": 1,
@@ -48636,7 +48636,7 @@
           }
         ]
       },
-      "geometryHash": "f09bd4ed",
+      "geometryHash": "2f260cbe",
       "metadataHash": "92d46aff",
       "appearance": {
         "version": 1,
@@ -49624,7 +49624,7 @@
           }
         ]
       },
-      "geometryHash": "fca0b03c",
+      "geometryHash": "318dd707",
       "metadataHash": "cf1f0e79",
       "appearance": {
         "version": 1,
@@ -49662,7 +49662,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "DE:de-cross:414"
         ]
@@ -50617,7 +50617,7 @@
           }
         ]
       },
-      "geometryHash": "2caa025c",
+      "geometryHash": "55af0654",
       "metadataHash": "a2a33e81",
       "appearance": {
         "version": 1,
@@ -51609,7 +51609,7 @@
           }
         ]
       },
-      "geometryHash": "4f182089",
+      "geometryHash": "5b339a63",
       "metadataHash": "1151dffc",
       "appearance": {
         "version": 1,
@@ -52754,7 +52754,7 @@
           }
         ]
       },
-      "geometryHash": "67988ef7",
+      "geometryHash": "fe008f97",
       "metadataHash": "4098b454",
       "appearance": {
         "version": 1,
@@ -53900,7 +53900,7 @@
           }
         ]
       },
-      "geometryHash": "e8b225ec",
+      "geometryHash": "4d3a1644",
       "metadataHash": "5094d9ef",
       "appearance": {
         "version": 1,
@@ -55235,7 +55235,7 @@
           }
         ]
       },
-      "geometryHash": "63eedd36",
+      "geometryHash": "6664e78b",
       "metadataHash": "4cdc8b6f",
       "appearance": {
         "version": 1,
@@ -55273,7 +55273,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "UA:ua-trident:UA 26"
         ]
@@ -56475,7 +56475,7 @@
           }
         ]
       },
-      "geometryHash": "abad800b",
+      "geometryHash": "a8d1549c",
       "metadataHash": "530d6d3b",
       "appearance": {
         "version": 1,
@@ -58763,7 +58763,7 @@
           }
         ]
       },
-      "geometryHash": "948adda1",
+      "geometryHash": "2c210163",
       "metadataHash": "c6affeba",
       "appearance": {
         "version": 1,
@@ -59753,7 +59753,7 @@
           }
         ]
       },
-      "geometryHash": "e6e05229",
+      "geometryHash": "5f754892",
       "metadataHash": "4d1e14ea",
       "appearance": {
         "version": 1,
@@ -64057,7 +64057,7 @@
           }
         ]
       },
-      "geometryHash": "5854727a",
+      "geometryHash": "5d83d43d",
       "metadataHash": "7c71d087",
       "appearance": {
         "version": 1,
@@ -64095,7 +64095,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "US:us-star:23"
         ]
@@ -65141,7 +65141,7 @@
           }
         ]
       },
-      "geometryHash": "95a38a73",
+      "geometryHash": "c5759e49",
       "metadataHash": "0eb31a43",
       "appearance": {
         "version": 1,
@@ -66585,7 +66585,7 @@
           }
         ]
       },
-      "geometryHash": "365278fe",
+      "geometryHash": "49762f43",
       "metadataHash": "dfa37f99",
       "appearance": {
         "version": 1,
@@ -66623,7 +66623,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "US:us-star:23"
         ]
@@ -68029,7 +68029,7 @@
           }
         ]
       },
-      "geometryHash": "b4a42c5a",
+      "geometryHash": "50f1d876",
       "metadataHash": "6f2a021d",
       "appearance": {
         "version": 1,
@@ -68067,7 +68067,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "US:us-star:34"
         ]
@@ -69473,7 +69473,7 @@
           }
         ]
       },
-      "geometryHash": "a3bc8c0d",
+      "geometryHash": "355fe62e",
       "metadataHash": "a4f53af2",
       "appearance": {
         "version": 1,
@@ -69511,7 +69511,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "US:us-star:T-2"
         ]
@@ -70587,7 +70587,7 @@
           }
         ]
       },
-      "geometryHash": "ea3cfb2f",
+      "geometryHash": "48040295",
       "metadataHash": "1e4db4a4",
       "appearance": {
         "version": 1,
@@ -71589,7 +71589,7 @@
           }
         ]
       },
-      "geometryHash": "312f0c17",
+      "geometryHash": "e91f503d",
       "metadataHash": "942f6609",
       "appearance": {
         "version": 1,
@@ -72907,7 +72907,7 @@
           }
         ]
       },
-      "geometryHash": "3486d356",
+      "geometryHash": "35275f62",
       "metadataHash": "4bb5c1bb",
       "appearance": {
         "version": 1,
@@ -73866,7 +73866,7 @@
           }
         ]
       },
-      "geometryHash": "e1f67497",
+      "geometryHash": "6b7c5df1",
       "metadataHash": "24dd6a44",
       "appearance": {
         "version": 1,
@@ -73901,7 +73901,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "US:us-star:3070512"
         ]
@@ -75008,7 +75008,7 @@
           }
         ]
       },
-      "geometryHash": "dc551953",
+      "geometryHash": "106df72a",
       "metadataHash": "4618c133",
       "appearance": {
         "version": 1,
@@ -76151,7 +76151,7 @@
           }
         ]
       },
-      "geometryHash": "622de982",
+      "geometryHash": "e8d96b05",
       "metadataHash": "aa555076",
       "appearance": {
         "version": 1,
@@ -76187,7 +76187,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "US:us-star:123"
         ]
@@ -77139,7 +77139,7 @@
           }
         ]
       },
-      "geometryHash": "a75c60b3",
+      "geometryHash": "7f3f1ae9",
       "metadataHash": "0b170cca",
       "appearance": {
         "version": 1,
@@ -79085,7 +79085,7 @@
           }
         ]
       },
-      "geometryHash": "8bb85ce4",
+      "geometryHash": "183aa076",
       "metadataHash": "e2c52262",
       "appearance": {
         "version": 1,
@@ -80088,7 +80088,7 @@
           }
         ]
       },
-      "geometryHash": "31fcb069",
+      "geometryHash": "63d7111f",
       "metadataHash": "d14575ae",
       "appearance": {
         "version": 1,
@@ -81199,7 +81199,7 @@
           }
         ]
       },
-      "geometryHash": "538b220d",
+      "geometryHash": "cb562896",
       "metadataHash": "aed98847",
       "appearance": {
         "version": 1,
@@ -82205,7 +82205,7 @@
           }
         ]
       },
-      "geometryHash": "427fff5e",
+      "geometryHash": "4121fdc0",
       "metadataHash": "54740a76",
       "appearance": {
         "version": 1,
@@ -83506,7 +83506,7 @@
           }
         ]
       },
-      "geometryHash": "e4f9499a",
+      "geometryHash": "7f11c17b",
       "metadataHash": "9bc617d4",
       "appearance": {
         "version": 1,
@@ -83543,7 +83543,7 @@
         "designation": 1,
         "verifiedInsignia": 2,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "DE:de-cross:70"
         ]
@@ -84557,7 +84557,7 @@
           }
         ]
       },
-      "geometryHash": "872f7d9c",
+      "geometryHash": "54f4ea35",
       "metadataHash": "db821e7b",
       "appearance": {
         "version": 1,
@@ -84594,7 +84594,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "IL:il-star:11"
         ]
@@ -85608,7 +85608,7 @@
           }
         ]
       },
-      "geometryHash": "992cfc97",
+      "geometryHash": "ae32aadc",
       "metadataHash": "539ffb1a",
       "appearance": {
         "version": 1,
@@ -86659,7 +86659,7 @@
           }
         ]
       },
-      "geometryHash": "28d6a1b3",
+      "geometryHash": "f546914e",
       "metadataHash": "eb82a52a",
       "appearance": {
         "version": 1,
@@ -86696,7 +86696,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.8888888888888888,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "IL:il-star:11"
         ]
@@ -87710,7 +87710,7 @@
           }
         ]
       },
-      "geometryHash": "86769ec3",
+      "geometryHash": "efda2761",
       "metadataHash": "1e141cc0",
       "appearance": {
         "version": 1,
@@ -88762,7 +88762,7 @@
           }
         ]
       },
-      "geometryHash": "2387bbaf",
+      "geometryHash": "f29fc51e",
       "metadataHash": "dfec1e22",
       "appearance": {
         "version": 1,
@@ -91018,7 +91018,7 @@
           }
         ]
       },
-      "geometryHash": "97c2674d",
+      "geometryHash": "243cefb5",
       "metadataHash": "d507b70d",
       "appearance": {
         "version": 1,
@@ -94814,7 +94814,7 @@
           }
         ]
       },
-      "geometryHash": "1b1f1898",
+      "geometryHash": "8e8a3a1f",
       "metadataHash": "dfea49c8",
       "appearance": {
         "version": 1,
@@ -94852,7 +94852,7 @@
         "designation": 2,
         "verifiedInsignia": 2,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "DE:de-cross:435"
         ]
@@ -96116,7 +96116,7 @@
           }
         ]
       },
-      "geometryHash": "6f067af7",
+      "geometryHash": "13fa6115",
       "metadataHash": "80fbdf66",
       "appearance": {
         "version": 1,
@@ -97418,7 +97418,7 @@
           }
         ]
       },
-      "geometryHash": "967521fd",
+      "geometryHash": "28c58d43",
       "metadataHash": "40ca699d",
       "appearance": {
         "version": 1,
@@ -98596,7 +98596,7 @@
           }
         ]
       },
-      "geometryHash": "271d4dd5",
+      "geometryHash": "57491ba2",
       "metadataHash": "eb0c8a64",
       "appearance": {
         "version": 1,
@@ -100081,7 +100081,7 @@
           }
         ]
       },
-      "geometryHash": "01203e38",
+      "geometryHash": "d8e0a32a",
       "metadataHash": "63db9a32",
       "appearance": {
         "version": 1,
@@ -100118,7 +100118,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "PL:pl-checker:312"
         ]
@@ -102880,7 +102880,7 @@
           }
         ]
       },
-      "geometryHash": "86a1b29b",
+      "geometryHash": "9cf99d96",
       "metadataHash": "ec238c1c",
       "appearance": {
         "version": 1,
@@ -103933,7 +103933,7 @@
           }
         ]
       },
-      "geometryHash": "704d88ce",
+      "geometryHash": "861cc692",
       "metadataHash": "438d3d33",
       "appearance": {
         "version": 1,
@@ -104645,7 +104645,7 @@
           }
         ]
       },
-      "geometryHash": "46d8a51c",
+      "geometryHash": "e3e84614",
       "metadataHash": "e81daf96",
       "appearance": {
         "version": 1,
@@ -105357,7 +105357,7 @@
           }
         ]
       },
-      "geometryHash": "fd72c946",
+      "geometryHash": "0e300fc9",
       "metadataHash": "88ec6c23",
       "appearance": {
         "version": 1,
@@ -106503,7 +106503,7 @@
           }
         ]
       },
-      "geometryHash": "0a3a9044",
+      "geometryHash": "98f52189",
       "metadataHash": "5f5d4e84",
       "appearance": {
         "version": 1,
@@ -107590,7 +107590,7 @@
           }
         ]
       },
-      "geometryHash": "4486bd95",
+      "geometryHash": "fb9256d9",
       "metadataHash": "fcb8725d",
       "appearance": {
         "version": 1,
@@ -108479,7 +108479,7 @@
           }
         ]
       },
-      "geometryHash": "d07ffe47",
+      "geometryHash": "5525dfff",
       "metadataHash": "831626c9",
       "appearance": {
         "version": 1,
@@ -109591,7 +109591,7 @@
           }
         ]
       },
-      "geometryHash": "e0bb1bfb",
+      "geometryHash": "f986a293",
       "metadataHash": "40ae40a5",
       "appearance": {
         "version": 1,
@@ -109627,7 +109627,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "RU:ru-star:512"
         ]
@@ -115332,7 +115332,7 @@
           }
         ]
       },
-      "geometryHash": "028f75f7",
+      "geometryHash": "3457cfcd",
       "metadataHash": "c7749d4f",
       "appearance": {
         "version": 1,
@@ -116506,7 +116506,7 @@
           }
         ]
       },
-      "geometryHash": "1861187a",
+      "geometryHash": "818f4bc2",
       "metadataHash": "0ad74de9",
       "appearance": {
         "version": 1,
@@ -120030,7 +120030,7 @@
           }
         ]
       },
-      "geometryHash": "cf4969bb",
+      "geometryHash": "3b7f367b",
       "metadataHash": "b9d13fe3",
       "appearance": {
         "version": 1,
@@ -121298,7 +121298,7 @@
           }
         ]
       },
-      "geometryHash": "b3690685",
+      "geometryHash": "69d7994e",
       "metadataHash": "8dbf017e",
       "appearance": {
         "version": 1,
@@ -121335,7 +121335,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "RU:ru-star:112"
         ]
@@ -122476,7 +122476,7 @@
           }
         ]
       },
-      "geometryHash": "ccb725ac",
+      "geometryHash": "25a9ceda",
       "metadataHash": "fc3c3db3",
       "appearance": {
         "version": 1,
@@ -123589,7 +123589,7 @@
           }
         ]
       },
-      "geometryHash": "1250f583",
+      "geometryHash": "48563f31",
       "metadataHash": "6365382c",
       "appearance": {
         "version": 1,
@@ -124702,7 +124702,7 @@
           }
         ]
       },
-      "geometryHash": "a8a2e1d4",
+      "geometryHash": "439a429e",
       "metadataHash": "6aa05e67",
       "appearance": {
         "version": 1,
@@ -125815,7 +125815,7 @@
           }
         ]
       },
-      "geometryHash": "b948c72e",
+      "geometryHash": "fc493851",
       "metadataHash": "7f38061a",
       "appearance": {
         "version": 1,
@@ -127083,7 +127083,7 @@
           }
         ]
       },
-      "geometryHash": "fb3ee8bd",
+      "geometryHash": "26837ec6",
       "metadataHash": "037cb30c",
       "appearance": {
         "version": 1,
@@ -128196,7 +128196,7 @@
           }
         ]
       },
-      "geometryHash": "75f4f31b",
+      "geometryHash": "72e7aae2",
       "metadataHash": "0bc4e325",
       "appearance": {
         "version": 1,
@@ -128339,8 +128339,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 9.53,
@@ -129392,11 +129392,11 @@
             "min": [
               -1.7,
               0.005,
-              -2.8
+              -2.84
             ],
             "max": [
               -1.09,
-              1.2595,
+              1.2993,
               3.0587
             ],
             "turretLocal": false
@@ -129407,11 +129407,11 @@
             "min": [
               1.09,
               0.005,
-              -2.8
+              -2.84
             ],
             "max": [
               1.7,
-              1.2595,
+              1.2993,
               3.0587
             ],
             "turretLocal": false
@@ -129465,8 +129465,8 @@
           }
         ]
       },
-      "geometryHash": "4ed03fb4",
-      "metadataHash": "96f4c00e",
+      "geometryHash": "739eef5f",
+      "metadataHash": "4632c39b",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -129553,24 +129553,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79113,
-          "sha256": "19564b627a1d4777bf3adf3112b8809786e506502dd4597e468378be06e0c3cb"
+          "bytes": 78670,
+          "sha256": "266465ba3065a48354dadc5491f9d0e42db27896cb082673343fa9eae8401e5d"
         },
         "armorSide": {
           "file": "t90_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79678,
-          "sha256": "3f978f1eb2a28e3c27ed1090397a91a7766fed6d0b1ae9aa9a581a4ec59b0587"
+          "bytes": 80013,
+          "sha256": "8d72f8b06e93864d62f10a8b34c039238314522353cdb63c12b3b0a7b3eb7758"
         },
         "modulesSide": {
           "file": "t90_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83481,
-          "sha256": "04d3c1f56fa83a3e8c89b5773c1d0343cc7b561aca4e0f3002359322cba4eefa"
+          "bytes": 82967,
+          "sha256": "bbad109e43cb9fc55f5433842b5550fdbf0bcb398cfbcc1bd91e6c53b9ee7876"
         },
         "markings": {
           "file": "t90_markings.png",
@@ -130733,7 +130733,7 @@
           }
         ]
       },
-      "geometryHash": "8f50a8fd",
+      "geometryHash": "c3d3dea9",
       "metadataHash": "a59bd3a0",
       "appearance": {
         "version": 1,
@@ -130876,8 +130876,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 9.76,
@@ -132002,8 +132002,8 @@
           }
         ]
       },
-      "geometryHash": "e7440028",
-      "metadataHash": "6890b2f9",
+      "geometryHash": "3b362b24",
+      "metadataHash": "00d4b572",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -132090,24 +132090,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82537,
-          "sha256": "291151bb4dec12c931995a526f83453eafcd38dd624ff82ba9e7c5e9508cca7e"
+          "bytes": 81881,
+          "sha256": "ffd265bbc63980ddf566399682df79dd3d6b9dc9de1544bac6b3b1b3fd73b6f9"
         },
         "armorSide": {
           "file": "t90a_burlak_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84502,
-          "sha256": "512962ea8f19cd6177c230631d8c873553e835f128ea0b3fdca2adde8b114faf"
+          "bytes": 84490,
+          "sha256": "0f177604113fa8f05db2d0c3b8a9983350695e13f7fda820974cefefd01a506f"
         },
         "modulesSide": {
           "file": "t90a_burlak_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85150,
-          "sha256": "1d2ef481354c49da3ba0c8cbee56a9360d14efdca903ae8eb502e2c114a0daae"
+          "bytes": 85120,
+          "sha256": "0c65f1455a0385e42eabd53fda4889201154e950f2bb4a2f1af30a4f589b77c5"
         },
         "markings": {
           "file": "t90a_burlak_markings.png",
@@ -133271,7 +133271,7 @@
           }
         ]
       },
-      "geometryHash": "1bc12834",
+      "geometryHash": "61720452",
       "metadataHash": "1d11e04a",
       "appearance": {
         "version": 1,
@@ -134848,7 +134848,7 @@
           }
         ]
       },
-      "geometryHash": "ae2f8d0e",
+      "geometryHash": "5aefe965",
       "metadataHash": "74666568",
       "appearance": {
         "version": 1,
@@ -134884,7 +134884,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "RU:ru-star:527"
         ]
@@ -134989,8 +134989,8 @@
       "nation": "USSR/Russia",
       "countryCode": "ru",
       "era": "modern",
-      "tier": 9,
-      "tierNumeral": "IX",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 6.86,
         "overallLength": 9.53,
@@ -136042,11 +136042,11 @@
             "min": [
               -1.7,
               0.005,
-              -2.7098
+              -2.8683
             ],
             "max": [
               -1.09,
-              1.1995,
+              1.2396,
               3.0961
             ],
             "turretLocal": false
@@ -136057,11 +136057,11 @@
             "min": [
               1.09,
               0.005,
-              -2.7098
+              -2.8683
             ],
             "max": [
               1.7,
-              1.1995,
+              1.2396,
               3.0961
             ],
             "turretLocal": false
@@ -136115,8 +136115,8 @@
           }
         ]
       },
-      "geometryHash": "869b7ef8",
-      "metadataHash": "ebea8806",
+      "geometryHash": "4db7eaff",
+      "metadataHash": "a7bd700d",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -136203,24 +136203,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80352,
-          "sha256": "57cd445694dfac6c1e8ed4f71a04d38247a411a230814b449a44f8b24f6ed09f"
+          "bytes": 80783,
+          "sha256": "619b810ce484ba3f9a1e24909ddd12ca005327f3ea9f2bc84fe09ec67d850ae6"
         },
         "armorSide": {
           "file": "t90ms_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81115,
-          "sha256": "1a36917c9c1134b7daa17054a845194722d6c87bdbf6ff482765cb48a4037510"
+          "bytes": 81155,
+          "sha256": "dcdcae1c816a745441e29b8210d20a1db326795e6172856b2a44afc14908e2ad"
         },
         "modulesSide": {
           "file": "t90ms_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85844,
-          "sha256": "0d2e8ffebb1891314ccf55d6f1b0d4e7466d31c54593e68924a59b2038c02fbf"
+          "bytes": 85361,
+          "sha256": "30af9fb1aacd5ebefbdd3b12b69cf11aa06544a2cf3e75b346ddfc48e5dcc1b7"
         },
         "markings": {
           "file": "t90ms_markings.png",
@@ -137383,7 +137383,7 @@
           }
         ]
       },
-      "geometryHash": "9aafda71",
+      "geometryHash": "cb842eb5",
       "metadataHash": "56f3c494",
       "appearance": {
         "version": 1,
@@ -137420,7 +137420,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "RU:ru-star:527"
         ]
@@ -138279,7 +138279,7 @@
           }
         ]
       },
-      "geometryHash": "a503621e",
+      "geometryHash": "963f0d66",
       "metadataHash": "324d55e0",
       "appearance": {
         "version": 1,
@@ -139327,7 +139327,7 @@
           }
         ]
       },
-      "geometryHash": "58e53876",
+      "geometryHash": "32f4bd73",
       "metadataHash": "339ccc97",
       "appearance": {
         "version": 1,
@@ -141212,7 +141212,7 @@
           }
         ]
       },
-      "geometryHash": "be15dbb7",
+      "geometryHash": "64cc4aa0",
       "metadataHash": "3c72047e",
       "appearance": {
         "version": 1,
@@ -141250,7 +141250,7 @@
         "designation": 4,
         "verifiedInsignia": 1,
         "verifiedDesignation": 4,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "JP:jp-roundel:73"
         ]
@@ -142203,7 +142203,7 @@
           }
         ]
       },
-      "geometryHash": "d8bb923f",
+      "geometryHash": "b1cc9c7a",
       "metadataHash": "386cf8f9",
       "appearance": {
         "version": 1,
@@ -142241,7 +142241,7 @@
         "designation": 4,
         "verifiedInsignia": 1,
         "verifiedDesignation": 4,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "JP:jp-roundel:10-B"
         ]
@@ -143193,7 +143193,7 @@
           }
         ]
       },
-      "geometryHash": "e205f4c9",
+      "geometryHash": "b22a0388",
       "metadataHash": "46ec70da",
       "appearance": {
         "version": 1,
@@ -144244,7 +144244,7 @@
           }
         ]
       },
-      "geometryHash": "55b0d94f",
+      "geometryHash": "6243544d",
       "metadataHash": "442a8ae7",
       "appearance": {
         "version": 1,
@@ -144281,7 +144281,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "JP:jp-roundel:74"
         ]
@@ -145248,7 +145248,7 @@
           }
         ]
       },
-      "geometryHash": "7c3f5199",
+      "geometryHash": "805449dc",
       "metadataHash": "3cfb3c31",
       "appearance": {
         "version": 1,
@@ -146239,7 +146239,7 @@
           }
         ]
       },
-      "geometryHash": "4a1fe9ea",
+      "geometryHash": "2e774bc0",
       "metadataHash": "d109ac74",
       "appearance": {
         "version": 1,
@@ -147228,7 +147228,7 @@
           }
         ]
       },
-      "geometryHash": "78c9dae3",
+      "geometryHash": "620918c6",
       "metadataHash": "13c21f74",
       "appearance": {
         "version": 1,
@@ -147265,7 +147265,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "JP:jp-roundel:90-A"
         ]
@@ -149181,7 +149181,7 @@
           }
         ]
       },
-      "geometryHash": "3dd643d5",
+      "geometryHash": "e59bfdc3",
       "metadataHash": "4c068649",
       "appearance": {
         "version": 1,
@@ -151623,7 +151623,7 @@
           }
         ]
       },
-      "geometryHash": "1a499cc3",
+      "geometryHash": "d2dc57c5",
       "metadataHash": "40298468",
       "appearance": {
         "version": 1,
@@ -152800,7 +152800,7 @@
           }
         ]
       },
-      "geometryHash": "73fa14cc",
+      "geometryHash": "78b4379d",
       "metadataHash": "93af5b0c",
       "appearance": {
         "version": 1,
@@ -152838,7 +152838,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "UA:ua-trident:UA 64"
         ]
@@ -153916,7 +153916,7 @@
           }
         ]
       },
-      "geometryHash": "6e049caf",
+      "geometryHash": "aeff4eaf",
       "metadataHash": "7b9fbdcb",
       "appearance": {
         "version": 1,
@@ -153953,7 +153953,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "UA:ua-trident:UA 80"
         ]
@@ -155030,7 +155030,7 @@
           }
         ]
       },
-      "geometryHash": "4db3da3d",
+      "geometryHash": "af9a14be",
       "metadataHash": "957c75dd",
       "appearance": {
         "version": 1,
@@ -156145,7 +156145,7 @@
           }
         ]
       },
-      "geometryHash": "0697821d",
+      "geometryHash": "c881e6c9",
       "metadataHash": "29b792f9",
       "appearance": {
         "version": 1,
@@ -156858,7 +156858,7 @@
           }
         ]
       },
-      "geometryHash": "92db48bc",
+      "geometryHash": "f1a0ddb4",
       "metadataHash": "5ce0b74a",
       "appearance": {
         "version": 1,
@@ -156892,7 +156892,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "SE:se-crowns:03"
         ]
@@ -157861,7 +157861,7 @@
           }
         ]
       },
-      "geometryHash": "9157d3d7",
+      "geometryHash": "194764c4",
       "metadataHash": "57e9f2c0",
       "appearance": {
         "version": 1,
@@ -158790,7 +158790,7 @@
           }
         ]
       },
-      "geometryHash": "6015b462",
+      "geometryHash": "ca90e4df",
       "metadataHash": "587d89dc",
       "appearance": {
         "version": 1,
@@ -159782,7 +159782,7 @@
           }
         ]
       },
-      "geometryHash": "c155ecae",
+      "geometryHash": "47dbf0c6",
       "metadataHash": "e974c001",
       "appearance": {
         "version": 1,
@@ -159819,7 +159819,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.6666666666666666,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "CN:cn-star:85-III"
         ]
@@ -161734,7 +161734,7 @@
           }
         ]
       },
-      "geometryHash": "b6d47f6b",
+      "geometryHash": "831cb53f",
       "metadataHash": "de1853d6",
       "appearance": {
         "version": 1,
@@ -161771,7 +161771,7 @@
         "designation": 2,
         "verifiedInsignia": 1,
         "verifiedDesignation": 2,
-        "minimumVisibilityRatio": 0.7777777777777778,
+        "minimumVisibilityRatio": 0.7777778,
         "codes": [
           "CN:cn-star:99A2"
         ]
