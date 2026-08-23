@@ -112,7 +112,10 @@ const GERMANY_SPECS = {
     // published over-PERI figure — the PERI crown is authored 3+ side
     // columns deep so the p95 law lands ON it (whip spikes stay inside
     // the 3-column p95 budget).
-    dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.98, heightM: 3.03 },
+    // The UA-derived ERA skirt cassettes are now part of this playable fit.
+    // Their 2.11 m outer faces supersede the former 1.99 m cage width anchor
+    // while the certified hull, gun and roof heights stay put.
+    dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.22, heightM: 3.03 },
     // measured rig (§5.248 rebuild): ring plane 1.80, gun axis 2.13; tube
     // authored 5.98 so the LIT bore mouth lands ~7.15 world (the r1 5.88
     // tube read 0.13 short on the lit-pixel span) = spec overall off the
@@ -149,22 +152,31 @@ const ukrainianNizh = Object.freeze({ keReduction: 0.22, ceFlatMm: 480 });
 const ukrainianNizhSkirt = Object.freeze({ keReduction: 0.12, ceFlatMm: 320 });
 const eraLayer = (era, keMm, ceMm) => ({ kind: 'era', era, keMm, ceMm });
 
-leopard2A6UA.armor.hullPlates.push(
-  rightSidePlate('ua_skirt_era_R', 18, 2.04, 0.72, 2.04, 1.48, -3.08, 3.22,
+const addLeopard2A6FieldEraSectors = (spec, prefix) => {
+  spec.armor.hullPlates.push(
+    rightSidePlate(`${prefix}_skirt_era_R`, 18, 2.04, 0.72, 2.04, 1.48, -3.08, 3.22,
     eraLayer(ukrainianNizhSkirt, 145, 520)),
-  leftSidePlate('ua_skirt_era_L', 18, 2.04, 0.72, 2.04, 1.48, -3.08, 3.22,
+    leftSidePlate(`${prefix}_skirt_era_L`, 18, 2.04, 0.72, 2.04, 1.48, -3.08, 3.22,
     eraLayer(ukrainianNizhSkirt, 145, 520)),
-);
-leopard2A6UA.armor.turretPlates.push(
-  rightCheekPlate('ua_turret_cheek_era_R', 18, 0.34, 2.58, 1.48, 1.30,
-    0.05, 0.78, 0.14, 0, eraLayer(ukrainianNizh, 780, 1280)),
-  leftCheekPlate('ua_turret_cheek_era_L', 18, 0.34, 2.58, 1.48, 1.30,
-    0.05, 0.78, 0.14, 0, eraLayer(ukrainianNizh, 780, 1280)),
-  rightSidePlate('ua_turret_side_era_R', 18, 1.56, 0.05, 1.56, 0.76,
-    -2.86, 1.22, eraLayer(ukrainianNizhSkirt, 320, 720)),
-  leftSidePlate('ua_turret_side_era_L', 18, 1.56, 0.05, 1.56, 0.76,
-    -2.86, 1.22, eraLayer(ukrainianNizhSkirt, 320, 720)),
-);
+  );
+  spec.armor.turretPlates.push(
+    rightCheekPlate(`${prefix}_turret_cheek_era_R`, 18, 0.34, 2.58, 1.48, 1.30,
+      0.05, 0.78, 0.14, 0, eraLayer(ukrainianNizh, 780, 1280)),
+    leftCheekPlate(`${prefix}_turret_cheek_era_L`, 18, 0.34, 2.58, 1.48, 1.30,
+      0.05, 0.78, 0.14, 0, eraLayer(ukrainianNizh, 780, 1280)),
+    rightSidePlate(`${prefix}_turret_side_era_R`, 18, 1.56, 0.05, 1.56, 0.76,
+      -2.86, 1.22, eraLayer(ukrainianNizhSkirt, 320, 720)),
+    leftSidePlate(`${prefix}_turret_side_era_L`, 18, 1.56, 0.05, 1.56, 0.76,
+      -2.86, 1.22, eraLayer(ukrainianNizhSkirt, 320, 720)),
+  );
+};
+
+// Construct the UA clone before enriching the German donor, then add the
+// same six-sector ERA footprint to each identity under distinct sector ids.
+// That keeps stripping/damage state deterministic without duplicating the
+// package when the UA procedural builder reuses the 2A6M hull and turret.
+addLeopard2A6FieldEraSectors(TANK_SPECS.leo2a6m, 'a6m');
+addLeopard2A6FieldEraSectors(leopard2A6UA, 'ua');
 
 TANK_SPECS[LEOPARD_2A6_UA_ID] = TANK_SPECS[LEOPARD_2A6_UA_ID] || leopard2A6UA;
 MODEL_SOURCE[LEOPARD_2A6_UA_ID] = MODEL_SOURCE[LEOPARD_2A6_UA_ID]

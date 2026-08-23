@@ -10999,7 +10999,127 @@ function leoSlatRear(P, o) {
 // + stern + turret flanks), raised belly line with the bolted mine plate,
 // reinforced crew-hatch hardware, ISAF stowage density; L55 at the
 // 7.18 bore mouth (spec overall 10.97 exactly).
-function buildLeo2A6M(P) {
+function addLeo2A6MFieldERA(P, sectorPrefix) {
+  const { box } = KIT;
+  const turretPivot = P.spec.armor.turretPivot;
+  const sample = (stations, x) => {
+    if (x <= stations[0][0]) return stations[0][1];
+    for (let index = 1; index < stations.length; index++) {
+      const [x1, value1] = stations[index];
+      if (x <= x1) {
+        const [x0, value0] = stations[index - 1];
+        return THREE.MathUtils.lerp(value0, value1, (x - x0) / (x1 - x0));
+      }
+    }
+    return stations.at(-1)[1];
+  };
+  const frontLower = [[0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96]];
+  const frontUpper = [[0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16]];
+  const frontSurface = (side, absX, y) => {
+    const t = THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1);
+    const lower = sample(frontLower, absX);
+    const upper = sample(frontUpper, absX);
+    const z = THREE.MathUtils.lerp(lower, upper, t);
+    const epsilon = 0.002;
+    const zLo = THREE.MathUtils.lerp(sample(frontLower, absX - epsilon), sample(frontUpper, absX - epsilon), t);
+    const zHi = THREE.MathUtils.lerp(sample(frontLower, absX + epsilon), sample(frontUpper, absX + epsilon), t);
+    const dzdAbsX = (zHi - zLo) / (epsilon * 2);
+    const dzdY = (upper - lower) / 0.46;
+    const normal = new THREE.Vector3(-side * dzdAbsX, -dzdY, 1).normalize();
+    const tangentX = new THREE.Vector3(1, 0, side * dzdAbsX).normalize();
+    const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
+    const basis = new THREE.Matrix4().makeBasis(tangentX, tangentY, normal);
+    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
+    return { point: new THREE.Vector3(side * absX, y, z), normal, rotation };
+  };
+  const frontEraSeats = [];
+  const sectors = [
+    `${sectorPrefix}_turret_cheek_era_R`, `${sectorPrefix}_turret_cheek_era_L`,
+    `${sectorPrefix}_turret_side_era_R`, `${sectorPrefix}_turret_side_era_L`,
+    `${sectorPrefix}_skirt_era_R`, `${sectorPrefix}_skirt_era_L`,
+  ];
+
+  for (const side of [-1, 1]) {
+    const suffix = side > 0 ? 'R' : 'L';
+    P.eraCluster(`${sectorPrefix}_turret_cheek_era_${suffix}`, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 6; station++) {
+          const absX = 0.44 + station * 0.16;
+          const y = 0.22 + row * 0.17;
+          const surface = frontSurface(side, absX, y);
+          const scale = { x: 0.72, y: 1.02, z: 1.14 };
+          const halfDepth = 0.07 * scale.z * 0.5;
+          const overlap = 0.012;
+          const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
+          place(
+            center.x,
+            turretPivot[1] + center.y,
+            turretPivot[2] + center.z,
+            surface.rotation.x, surface.rotation.y, surface.rotation.z,
+            scale.x, scale.y, scale.z,
+          );
+          frontEraSeats.push(Object.freeze({
+            side, row, station,
+            surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
+            centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
+            normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
+            innerFaceOverlapM: overlap,
+          }));
+        }
+      }
+    }, true);
+
+    P.add('turret', box(0.10, 0.70, 4.18), side * 1.53, 0.40, -0.79);
+    P.eraCluster(`${sectorPrefix}_turret_side_era_${suffix}`, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 8; station++) {
+          place(
+            side * 1.59,
+            turretPivot[1] + 0.17 + row * 0.205,
+            turretPivot[2] - 2.62 + station * 0.54,
+            0, Math.PI / 2, 0,
+            1.55, 1.30, 1.42,
+          );
+        }
+      }
+    }, true);
+
+    const guardBucket = side > 0 ? 'hullTrackGuardR' : 'hullTrackGuardL';
+    P.add(guardBucket, box(0.20, 0.79, 6.42), side * 1.99, 1.10, 0.04);
+    P.add('hullDetail', box(0.30, 0.035, 6.34), side * 1.80, 1.48, 0.03);
+    // The UA's 2.105 m outer cage backing would sit in front of this donor's
+    // narrower ISAF cage and bury the ERA faces. Seat a slim backing at 1.96
+    // instead: its outer face overlaps the cassette backs by 7 mm while all
+    // three rows remain exposed and readable.
+    P.add('hullDark', box(0.10, 0.72, 6.58), side * 1.96, 1.11, -0.03);
+    P.eraCluster(`${sectorPrefix}_skirt_era_${suffix}`, (place) => {
+      for (let row = 0; row < 3; row++) {
+        for (let station = 0; station < 10; station++) {
+          place(
+            side * 2.055,
+            0.84 + row * 0.215,
+            -2.98 + station * 0.67,
+            0, Math.PI / 2, 0,
+            1.78, 1.38, 1.48,
+          );
+        }
+      }
+    });
+  }
+
+  return Object.freeze({
+    cheekTilesPerSide: 18,
+    turretSideTilesPerSide: 24,
+    skirtTilesPerSide: 30,
+    totalTiles: 144,
+    sectors: Object.freeze(sectors),
+    frontEraSeats: Object.freeze(frontEraSeats),
+    frontEraInnerFaceOverlapM: 0.012,
+    staticMergedProtection: true,
+  });
+}
+
+function buildLeo2A6M(P, { fieldEra = true } = {}) {
   const { box, cylX, cylY, cylZ, torus, xform, sph, periscope, shovelTool, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -11431,6 +11551,10 @@ function buildLeo2A6M(P) {
   P.decal('turret', 'cross', null, 0.17, [1.44, 0.21, -0.55], Math.PI / 2);
   P.decal('turret', 'number', 'A6M', 0.16, [-1.44, 0.21, -0.55], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 2.98);
+  if (fieldEra) {
+    const eraReceipt = addLeo2A6MFieldERA(P, 'a6m');
+    if (P.geometryReceipt) P.turretG.userData.leopard2A6MERAReceipt = eraReceipt;
+  }
 }
 
 // Leopard 2A6 UA — a field-protection package on the certified 2A6M rig.
@@ -11440,7 +11564,7 @@ function buildLeo2A6M(P) {
 function buildLeopard2A6UA(P) {
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const turretPivot = P.spec.armor.turretPivot;
-  buildLeo2A6M(P);
+  buildLeo2A6M(P, { fieldEra: false });
   P.clearDecals('turret');
 
   const sample = (stations, x) => {

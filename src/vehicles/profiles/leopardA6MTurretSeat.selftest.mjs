@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
+import { getSpec } from '../specs.js';
+
+const eraSectorNames = [
+  'a6m_turret_cheek_era_R', 'a6m_turret_cheek_era_L',
+  'a6m_turret_side_era_R', 'a6m_turret_side_era_L',
+  'a6m_skirt_era_R', 'a6m_skirt_era_L',
+];
+const spec = getSpec('leo2a6m');
+const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
+  .filter((plate) => eraSectorNames.includes(plate.name));
+assert.deepEqual(eraSectors.map((plate) => plate.name).sort(), [...eraSectorNames].sort(),
+  'leo2a6m exposes all six UA-derived ERA sectors to combat');
+for (const plate of eraSectors) {
+  assert.equal(plate.kind, 'era', `${plate.name} is consumable rather than permanent armor`);
+  assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} retains the UA chemical protection`);
+}
 
 const visual = createTank('leo2a6m', null, {
   proceduralOnly: true,
@@ -24,6 +40,32 @@ const findMesh = (root, name) => {
 const turret = findMesh(turretRig, 'turret');
 const detail = findMesh(turretRig, 'turretDetail');
 const hull = findMesh(hullRig, 'hull');
+
+const eraReceipt = turretRig.userData.leopard2A6MERAReceipt;
+assert.ok(eraReceipt, 'leo2a6m publishes its fitted ERA receipt');
+assert.equal(eraReceipt.totalTiles, 144, 'leo2a6m receives the complete UA tile count');
+assert.deepEqual([...eraReceipt.sectors].sort(), [...eraSectorNames].sort(),
+  'visual ERA clusters map one-to-one to the standard tank sectors');
+assert.equal(eraReceipt.frontEraSeats.length, 36,
+  'all frontal tiles publish conformal cheek seats');
+assert.equal(eraReceipt.staticMergedProtection, true,
+  'the added package creates no per-frame geometry work');
+for (const seat of eraReceipt.frontEraSeats) {
+  assert.equal(seat.innerFaceOverlapM, 0.012,
+    'frontal ERA is inset into the cheek rather than floating');
+}
+
+const eraMeshes = [];
+visual.root.traverse((object) => {
+  if (object.isInstancedMesh
+      && object.geometry?.type === 'BoxGeometry'
+      && Math.abs(object.geometry.parameters?.width - 0.28) < 1e-6
+      && Math.abs(object.geometry.parameters?.height - 0.13) < 1e-6
+      && Math.abs(object.geometry.parameters?.depth - 0.07) < 1e-6) eraMeshes.push(object);
+});
+assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 144,
+  'all gameplay ERA sectors have matching instanced visual tiles');
+assert.equal(eraMeshes.length, 2, 'hull and turret ERA remain two shared draw buckets');
 
 const downHits = (mesh, x, localZ) => {
   const ray = new THREE.Raycaster(
