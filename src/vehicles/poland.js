@@ -96,10 +96,10 @@ const POLAND_SPECS = {
     // own hull is 6.95 native EXACT at that bracket). The old 9.20/7.00 pair
     // was the donor-clone estimate.
     dims: { hullLengthM: 6.95, overallLengthM: 8.96, widthM: 3.80, heightM: 2.80 },
-    // Low-profile r4 rig: the structural turret is 20% taller than the r3
-    // 0.60-scale shell. The ring stays fixed while the trunnion follows the
-    // taller nose and remains buried in the connected thermal sleeve.
-    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.2592, 1.45],
+    // Low-profile r5 rig: the structural turret receives a second 20% height
+    // increase (0.72 -> 0.864). The ring stays fixed while the trunnion
+    // follows the taller nose and remains buried in the thermal sleeve.
+    turretPivot: [0, 2.07, -0.90], gunPivot: [0, 0.31104, 1.45],
     gunBarrel: { lengthM: 4.71, radiusM: 0.098 },
     stats: { hp: 2300, enginePowerHp: 1000, weightTons: 35.0, topSpeedKmh: 70,
       reverseSpeedKmh: 30, turretTraverseDegS: 44, gunPitchDegS: 36 },
@@ -118,7 +118,7 @@ POLAND_SPECS.pl01_105 = (() => {
   spec.name = 'PL-01 (105)';
   spec.variantOf = 'pl01';
   // Keep the powered CROWS silhouette distinct from the structural roof.
-  spec.dims = { ...spec.dims, silhouetteHeightM: 3.12 };
+  spec.dims = { ...spec.dims, silhouetteHeightM: 3.22368 };
   spec.gun = {
     ...spec.gun,
     caliberMm: 105,
