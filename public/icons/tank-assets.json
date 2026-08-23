@@ -47181,8 +47181,8 @@
           }
         ]
       },
-      "geometryHash": "bdd4265f",
-      "metadataHash": "ad097da3",
+      "geometryHash": "17decee1",
+      "metadataHash": "5f5bb849",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -47269,24 +47269,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81473,
-          "sha256": "10153f66135ce86b79ae34f1f2bdc95bea7c4b09ec2ee9e4d1ab4fd19510dd5f"
+          "bytes": 80823,
+          "sha256": "0c33cd426674cae9988ab8e43844afcd83fb4184bc380056b3baa7798807e4c6"
         },
         "armorSide": {
           "file": "leo1a5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79829,
-          "sha256": "07c9a90583531906b0a7f99f7776787d6ad6509bdefac6696aad0f6107fd01d6"
+          "bytes": 79535,
+          "sha256": "300de87973c4e4797cf6688fde65065bfc7677de25c40f3711126f1c643f422d"
         },
         "modulesSide": {
           "file": "leo1a5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86385,
-          "sha256": "a0463a4ab94145fe2fe7ec1301e508064c1041241558d6a7aa045297b87cfb75"
+          "bytes": 86439,
+          "sha256": "53895000d8a15b267fda1bcc1f908d039fc6fda7f495c75c68f168ed56bfe9d6"
         },
         "markings": {
           "file": "leo1a5_markings.png",
@@ -55385,7 +55385,7 @@
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 10.97,
-        "width": 3.98,
+        "width": 4.22,
         "height": 3.03
       },
       "gun": {
@@ -55857,6 +55857,68 @@
             ]
           },
           {
+            "hitboxId": "H15",
+            "name": "a6m_skirt_era_R",
+            "physicalMm": 18,
+            "keMm": 145,
+            "ceMm": 520,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                2.04,
+                0.7377,
+                3.0629
+              ],
+              [
+                2.04,
+                0.7377,
+                -2.9905
+              ],
+              [
+                2.04,
+                1.559,
+                -2.9905
+              ],
+              [
+                2.04,
+                1.559,
+                3.0629
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H16",
+            "name": "a6m_skirt_era_L",
+            "physicalMm": 18,
+            "keMm": 145,
+            "ceMm": 520,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -2.04,
+                0.7377,
+                -2.9905
+              ],
+              [
+                -2.04,
+                0.7377,
+                3.0629
+              ],
+              [
+                -2.04,
+                1.559,
+                3.0629
+              ],
+              [
+                -2.04,
+                1.559,
+                -2.9905
+              ]
+            ]
+          },
+          {
             "hitboxId": "T01",
             "name": "turret_wedge_R",
             "physicalMm": 90,
@@ -56165,6 +56227,130 @@
                 -2.9673
               ]
             ]
+          },
+          {
+            "hitboxId": "T11",
+            "name": "a6m_turret_cheek_era_R",
+            "physicalMm": 18,
+            "keMm": 780,
+            "ceMm": 1280,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.447,
+                -0.1015,
+                5.165
+              ],
+              [
+                1.9458,
+                -0.1015,
+                2.9168
+              ],
+              [
+                1.9458,
+                0.6071,
+                2.6709
+              ],
+              [
+                0.447,
+                0.6071,
+                4.9191
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T12",
+            "name": "a6m_turret_cheek_era_L",
+            "physicalMm": 18,
+            "keMm": 780,
+            "ceMm": 1280,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.9458,
+                -0.1015,
+                2.9168
+              ],
+              [
+                -0.447,
+                -0.1015,
+                5.165
+              ],
+              [
+                -0.447,
+                0.6071,
+                4.9191
+              ],
+              [
+                -1.9458,
+                0.6071,
+                2.6709
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T13",
+            "name": "a6m_turret_side_era_R",
+            "physicalMm": 18,
+            "keMm": 320,
+            "ceMm": 720,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                2.051,
+                -0.1015,
+                2.7763
+              ],
+              [
+                2.051,
+                -0.1015,
+                -4.39
+              ],
+              [
+                2.051,
+                0.5876,
+                -4.39
+              ],
+              [
+                2.051,
+                0.5876,
+                2.7763
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T14",
+            "name": "a6m_turret_side_era_L",
+            "physicalMm": 18,
+            "keMm": 320,
+            "ceMm": 720,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -2.051,
+                -0.1015,
+                -4.39
+              ],
+              [
+                -2.051,
+                -0.1015,
+                2.7763
+              ],
+              [
+                -2.051,
+                0.5876,
+                2.7763
+              ],
+              [
+                -2.051,
+                0.5876,
+                -4.39
+              ]
+            ]
           }
         ],
         "modules": [
@@ -56382,8 +56568,8 @@
           }
         ]
       },
-      "geometryHash": "e36dbb02",
-      "metadataHash": "0545e46a",
+      "geometryHash": "a7310450",
+      "metadataHash": "ff5ce63f",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -56396,7 +56582,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackSteel": 1,
-          "armorPaint": 4,
+          "armorPaint": 8,
           "gunmetal": 12,
           "fittingPaint": 7,
           "opticGlass": 2,
@@ -56420,7 +56606,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 1,
+        "minimumVisibilityRatio": 0.7777777777777778,
         "codes": [
           "DE:de-cross:A6M"
         ]
@@ -56431,64 +56617,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35698,
-          "sha256": "0e201803fbf042bb2b18be96274d86906cfcaebbe53862ccae4b56b4381bcf68"
+          "bytes": 33546,
+          "sha256": "ed938515617a2d7e24555d55841b1adeaf77acc2d8d9970668832d3410a69649"
         },
         "top": {
           "file": "leo2a6m_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11300,
-          "sha256": "58f905c37b51a68c66fe69b6d00c5812a91648a41784e95b5322de766d7c3363"
+          "bytes": 12758,
+          "sha256": "031b4e53ef98384ba0df7cd0a6237abec0fd5c82db61b1925a93702587d53e81"
         },
         "side": {
           "file": "leo2a6m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9598,
-          "sha256": "7d01b00ad45d68aa2e09c772db2c646bb803c7a7f9ce32b225fe27863e55e60e"
+          "bytes": 12058,
+          "sha256": "0d945ed3850626deac0598787d80f17b0e58f3a519de47dce9c210c869d16307"
         },
         "topSilhouette": {
           "file": "leo2a6m_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1352,
-          "sha256": "481477a6aa5fa2a5e13c11b26f154f7133d32d22d5eaa1240f5fa89ef176b2b8"
+          "bytes": 1429,
+          "sha256": "bd4cc9a3989fe825094b028ce5ff7dc7d39bd9a7c5ade2af92570f1ce9da3a84"
         },
         "sideSilhouette": {
           "file": "leo2a6m_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4723,
-          "sha256": "6e2e4a728e479141e47985066a5c3ac37b9b4382f65ac90386007f9aaa282a2d"
+          "bytes": 4628,
+          "sha256": "5007d4f28eda765eb0481bcbf93001162352f34f81024dd5b55fb58c7f54887a"
         },
         "hitZonesSide": {
           "file": "leo2a6m_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80645,
-          "sha256": "dda1ff93d81b4dd903aa59479bb6b21d6e0b8ce106dea939d911b3da5de4129a"
+          "bytes": 83519,
+          "sha256": "dad6029ad8f68608bcd2152a42af862dbd77dacf1bc59ad12ae22f20cf95ae5e"
         },
         "armorSide": {
           "file": "leo2a6m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82278,
-          "sha256": "967be1920ef6890edcdd663254936a124ffc19314320348379dde5294cd3b5b7"
+          "bytes": 84050,
+          "sha256": "d8ab4303acfd5c03f0f9b869c3fa84f8f0f90983050d542fda9bbfd239e2e93b"
         },
         "modulesSide": {
           "file": "leo2a6m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86255,
-          "sha256": "d2719661ce6a944fbacaad5ffb982e579debf74e76b208d2fa584aca9aeeabf0"
+          "bytes": 89195,
+          "sha256": "3281b496ba1c6bce561c9c81223762f893569a6b02c8fd3c7f0c3f5aa7b27383"
         },
         "markings": {
           "file": "leo2a6m_markings.png",
