@@ -6,13 +6,13 @@ const EPSILON = 1e-6;
 const CONFIGS = Object.freeze({
   t90: Object.freeze({
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
-    sprocket: { z: -2.73, y: 1.02, r: 0.23 },
+    sprocket: { z: -2.52, y: 0.98, r: 0.23 },
     idler: { z: 2.70, y: 0.68, r: 0.27 },
     rearContactZ: -2.16,
   }),
   t90ms: Object.freeze({
     wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
-    sprocket: { z: -2.67, y: 0.99, r: 0.20 },
+    sprocket: { z: -2.58, y: 0.95, r: 0.20 },
     idler: { z: 2.76, y: 0.69, r: 0.25 },
     rearContactZ: -2.0325,
   }),
