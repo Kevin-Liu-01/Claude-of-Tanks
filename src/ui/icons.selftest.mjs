@@ -1,6 +1,7 @@
 /** Plain-node coverage for the shared UI and equipment vector icon sets. */
 
 import { readFile } from 'node:fs/promises';
+import './contextInfo.selftest.mjs';
 import './garageDossier.selftest.mjs';
 import { EQUIPMENT_CATALOG } from '../game/equipment.js';
 import { equipIconIds, equipIconSVG } from './equipIcons.js';

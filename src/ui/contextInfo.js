@@ -2,6 +2,8 @@
 // Gallery, and game-rendered media.  The panel is fixed to the viewport so it
 // cannot be clipped by the many scrolling/overflow-hidden workspaces.
 
+import { uiIconSVG } from './uiIcons.js';
+
 let serial = 0;
 let active = null;
 let hideTimer = 0;
@@ -9,8 +11,9 @@ let hideTimer = 0;
 const CSS = `
 .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px;padding:0;display:inline-grid;
   place-items:center;flex:0 0 auto;border:1px solid rgba(154,174,189,.3);border-radius:50%;
-  background:rgba(8,12,16,.76);color:#9aabb8;cursor:help;font:900 11px/1 ui-monospace,SFMono-Regular,monospace;
+  background:rgba(8,12,16,.76);color:#9aabb8;cursor:help;
   text-transform:none;letter-spacing:0;vertical-align:middle;transition:color .14s,border-color .14s,background .14s}
+.cot-info-trigger__icon{display:block;pointer-events:none}
 .cot-info-trigger:hover,.cot-info-trigger:focus-visible,.cot-info-trigger[aria-expanded='true']{
   color:#ffd27a;border-color:#f0a030;background:rgba(240,160,48,.13);outline:none}
 .cot-info-popover{position:fixed;z-index:10020;width:min(360px,calc(100vw - 20px));max-height:min(520px,calc(100vh - 20px));
@@ -23,6 +26,16 @@ const CSS = `
 .cot-info-popover__copy{min-height:28px;padding:0 9px;border:1px solid rgba(240,176,74,.42);background:rgba(240,160,48,.08);
   color:#ffd27a;cursor:pointer;font:900 7px/1 "ABC Monument Grotesk",Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase}
 .cot-info-popover__copy:hover,.cot-info-popover__copy:focus-visible{border-color:#f0a030;background:#f0a030;color:#171008;outline:none}
+.cot-info-popover__media{position:relative;height:142px;margin:0;overflow:hidden;border-bottom:1px solid rgba(154,174,189,.18);
+  background:radial-gradient(circle at 50% 32%,rgba(78,96,107,.2),transparent 58%),#070b0e}
+.cot-info-popover__media[hidden]{display:none}.cot-info-popover__media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;
+  filter:saturate(.88) contrast(1.04);transition:opacity .16s ease}
+.cot-info-popover__media[data-fit='contain'] img{object-fit:contain;padding:10px 13px;background:linear-gradient(145deg,rgba(12,18,23,.95),rgba(4,7,9,.98))}
+.cot-info-popover__media::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,transparent 56%,rgba(3,6,8,.78))}
+.cot-info-popover__media figcaption{position:absolute;z-index:1;left:11px;right:11px;bottom:8px;overflow:hidden;text-overflow:ellipsis;
+  color:#d7e0e6;font-size:6.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap}
+.cot-info-popover__media figcaption:empty{display:none}
 .cot-info-popover__body{margin:0;padding:11px 12px 13px;color:#aebdc8;font-size:9.5px;line-height:1.55;white-space:normal}
 pre.cot-info-popover__body{max-width:100%;overflow:auto;color:#cad6df;background:rgba(1,4,6,.58);font:500 8.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
   tab-size:2;white-space:pre;overscroll-behavior:contain}
@@ -84,17 +97,39 @@ function scheduleClose(instance) {
   }, 120);
 }
 
+/** Resolve static or live media options without coupling callers to the DOM. */
+export function resolveInfoImage(image, { alt = '', fit = 'cover', caption = '' } = {}) {
+  let value = image;
+  try {
+    if (typeof value === 'function') value = value();
+  } catch (_) {
+    return null;
+  }
+  if (!value) return null;
+  if (typeof value === 'string') return { src: value, alt, fit, caption };
+  if (typeof value !== 'object' || !value.src) return null;
+  return {
+    src: String(value.src),
+    alt: String(value.alt ?? alt),
+    fit: value.fit ? (value.fit === 'contain' ? 'contain' : 'cover') : fit,
+    caption: String(value.caption ?? caption),
+  };
+}
+
 /**
  * Create an icon button with a portal-mounted help panel.
- * `json` may be an object or a function returning the current object.
+ * `json` and `image` may be values or functions returning current values.
  */
-export function createInfoButton({ label, title, text = '', json = null, className = '' } = {}) {
+export function createInfoButton({
+  label, title, text = '', json = null, className = '',
+  image = null, imageAlt = '', imageFit = 'cover', imageCaption = '',
+} = {}) {
   ensureCss();
   const id = `cot-info-${++serial}`;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = `cot-info-trigger${className ? ` ${className}` : ''}`;
-  button.textContent = 'i';
+  button.innerHTML = uiIconSVG('info', 13, 'currentColor', 'cot-info-trigger__icon');
   button.setAttribute('aria-label', label || `About ${title || 'this section'}`);
   button.setAttribute('aria-controls', id);
   button.setAttribute('aria-expanded', 'false');
@@ -112,7 +147,15 @@ export function createInfoButton({ label, title, text = '', json = null, classNa
   head.appendChild(heading);
   const body = document.createElement(json ? 'pre' : 'p');
   body.className = 'cot-info-popover__body';
-  panel.append(head, body);
+  const media = document.createElement('figure');
+  media.className = 'cot-info-popover__media';
+  media.hidden = true;
+  const mediaImage = document.createElement('img');
+  mediaImage.decoding = 'async';
+  mediaImage.loading = 'lazy';
+  const mediaCaption = document.createElement('figcaption');
+  media.append(mediaImage, mediaCaption);
+  panel.append(head, media, body);
   document.body.appendChild(panel);
 
   const instance = { button, panel };
@@ -120,6 +163,24 @@ export function createInfoButton({ label, title, text = '', json = null, classNa
     const value = typeof json === 'function' ? json() : json;
     return json ? JSON.stringify(value ?? {}, null, 2) : String(typeof text === 'function' ? text() : text);
   };
+  const renderMedia = () => {
+    const resolved = resolveInfoImage(image, {
+      alt: imageAlt,
+      fit: imageFit,
+      caption: imageCaption,
+    });
+    if (!resolved) {
+      media.hidden = true;
+      mediaImage.removeAttribute('src');
+      return;
+    }
+    media.dataset.fit = resolved.fit;
+    mediaImage.alt = resolved.alt;
+    mediaCaption.textContent = resolved.caption;
+    media.hidden = false;
+    if (mediaImage.getAttribute('src') !== resolved.src) mediaImage.src = resolved.src;
+  };
+  mediaImage.addEventListener('error', () => { media.hidden = true; });
   if (json) {
     const copy = document.createElement('button');
     copy.type = 'button';
@@ -138,6 +199,7 @@ export function createInfoButton({ label, title, text = '', json = null, classNa
     clearTimeout(hideTimer);
     if (active && active !== instance) closeActive();
     body.textContent = content();
+    renderMedia();
     panel.hidden = false;
     button.setAttribute('aria-expanded', 'true');
     active = instance;
@@ -168,9 +230,11 @@ export function createInfoButton({ label, title, text = '', json = null, classNa
   return button;
 }
 
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && active) closeActive({ focus: true });
-});
-document.addEventListener('pointerdown', (event) => {
-  if (active && !active.button.contains(event.target) && !active.panel.contains(event.target)) closeActive();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && active) closeActive({ focus: true });
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (active && !active.button.contains(event.target) && !active.panel.contains(event.target)) closeActive();
+  });
+}

@@ -2223,6 +2223,15 @@ export function createGarage(opts) {
       label: 'About battlefield selection',
       title: 'Battlefield',
       text: 'Choose the terrain used by the next battle. Random rolls from the full available battlefield roster when deployment begins; room hosts make the final selection for multiplayer matches.',
+      image: () => {
+        const selected = maps.find((map) => map.id === selectedMapId && map.thumb)
+          || maps.find((map) => map.thumb);
+        return selected ? {
+          src: selected.thumb,
+          alt: `${selected.name} battlefield preview`,
+          caption: `${selected.name} // battlefield preview`,
+        } : null;
+      },
     }));
     mapsEl.appendChild(title);
     const mapScroll = document.createElement('div');
@@ -2354,6 +2363,15 @@ export function createGarage(opts) {
       label: 'About camouflage concealment',
       title: 'Camouflage concealment',
       text: '+3.5% concealment on matching maps. Auto always selects a matching seasonal pattern; manually selected camouflage only receives the bonus on compatible battlefields.',
+      image: () => {
+        const selected = specById.get(selectedId);
+        return selected ? {
+          src: iconUrl(selected.id, 'angle'),
+          alt: `${selected.label?.displayName || selected.name} camouflage reference`,
+          fit: 'contain',
+          caption: `${selected.label?.displayName || selected.name} // current vehicle`,
+        } : null;
+      },
     }));
     let customOpenButton = null;
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
@@ -2950,6 +2968,24 @@ export function createGarage(opts) {
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
+  function garageInfoImage(spec, label) {
+    const name = spec.label?.displayName || spec.name;
+    const technicalViews = {
+      Protection: ['armor_side', 'Armor protection diagram'],
+      Modules: ['modules_side', 'Internal module diagram'],
+      Crew: ['modules_side', 'Crew and module diagram'],
+      Armament: ['side', 'Armament profile'],
+      Ammunition: ['side', 'Ammunition platform profile'],
+    };
+    const [view, caption] = technicalViews[label] || ['angle', 'Procedural vehicle render'];
+    return {
+      src: iconUrl(spec.id, view),
+      alt: `${name} ${caption.toLowerCase()}`,
+      fit: 'contain',
+      caption: `${name} // ${caption}`,
+    };
+  }
+
   let statsFor = null; // last spec rendered — gates the swap micro-fade
   function renderStats(spec) {
     statsEl.querySelectorAll('.cot-info-trigger').forEach((button) => button.disposeInfo?.());
@@ -3097,15 +3133,22 @@ export function createGarage(opts) {
       label: 'About the vehicle dossier',
       title: 'Vehicle dossier',
       text: 'This panel is built from the selected vehicle’s authoritative gameplay specification. Tier, origin, combat values, ammunition, modules, crew, and equipment all update with the selected vehicle.',
+      image: garageInfoImage(spec, 'Vehicle dossier'),
     }));
     statsEl.querySelectorAll('[data-stat-info]').forEach((heading) => {
       const label = heading.dataset.statInfo;
       const text = GARAGE_INFO[label];
-      if (text) heading.appendChild(createInfoButton({ label: `About ${label}`, title: label, text }));
+      if (text) heading.appendChild(createInfoButton({
+        label: `About ${label}`,
+        title: label,
+        text,
+        image: garageInfoImage(spec, label),
+      }));
     });
     const equipmentHead = statsEl.querySelector('.eqhead');
     equipmentHead?.appendChild(createInfoButton({
       label: 'About equipment', title: 'Equipment', text: GARAGE_INFO.Equipment,
+      image: garageInfoImage(spec, 'Equipment'),
     }));
     if (vehicleChanged) statsEl.scrollTop = 0;
   }

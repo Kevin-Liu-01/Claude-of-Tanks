@@ -13,6 +13,7 @@ import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { uiIconSVG } from '../ui/uiIcons.js';
+import { iconUrl } from '../ui/icons.js';
 import { flagIconUrl } from '../ui/flags.js';
 import { createInfoButton } from '../ui/contextInfo.js';
 import { loadCaptureRecipes, recipeForMedia } from '../presentation/captureRecipes.js';
@@ -34,28 +35,49 @@ function appendGalleryInfo(target, options) {
   }
 }
 
+function galleryVehicleImage(view = 'angle', caption = 'Procedural vehicle render') {
+  if (!selectedId) return null;
+  const spec = getSpec(selectedId);
+  const name = spec.label?.displayName || spec.name;
+  return {
+    src: iconUrl(spec.id, view),
+    alt: `${name} ${caption.toLowerCase()}`,
+    fit: 'contain',
+    caption: `${name} // ${caption}`,
+  };
+}
+
 async function mountGalleryInfo() {
   const workspaceHeads = document.querySelectorAll('.workspace-group-head');
   appendGalleryInfo(workspaceHeads[0], {
     label: 'About the fleet archive', title: 'Fleet archive',
     text: 'Search and filter the complete public first-party vehicle roster, then select a model for live inspection.',
+    image: () => galleryVehicleImage('angle', 'Selected archive vehicle'),
   });
   appendGalleryInfo(workspaceHeads[1], {
     label: 'About the technical dossier', title: 'Technical dossier',
     text: 'Live gameplay data, articulation, diagnostic overlays, and exact-surface review tools for the selected vehicle.',
+    image: () => galleryVehicleImage('side', 'Technical vehicle profile'),
   });
   appendGalleryInfo(document.querySelector('.view-controls-label'), {
     label: 'About camera controls', title: 'Camera controls',
     text: 'Choose a deterministic inspection angle, orbit freely, or enable automatic rotation around the current model.',
+    image: () => galleryVehicleImage('angle', 'Inspection camera reference'),
   });
   appendGalleryInfo(document.querySelector('.mode-dock > p'), {
     label: 'About diagnostic layers', title: 'Diagnostic layers',
     text: 'Switch between rendered appearance, armor volumes, internal modules, crew stations, and exact triangle markup.',
+    image: () => galleryVehicleImage(activeMode === 'modules' || activeMode === 'crew'
+      ? 'modules_side' : (activeMode === 'armor' ? 'armor_side' : 'angle'), 'Active diagnostic layer'),
   });
   document.querySelectorAll('.section-label').forEach((heading) => {
     const label = heading.querySelector('span')?.textContent.trim();
     if (GALLERY_SECTION_INFO[label]) appendGalleryInfo(heading, {
       label: `About ${label}`, title: label, text: GALLERY_SECTION_INFO[label],
+      image: () => galleryVehicleImage(
+        label === 'Specification' || label === 'Ammunition suite' ? 'side' : 'angle',
+        `${label} reference`,
+      ),
     });
   });
   const catalog = await loadCaptureRecipes().catch(() => null);
@@ -71,6 +93,11 @@ async function mountGalleryInfo() {
       label: 'Show the Scene Studio JSON for this video',
       title: 'Replicate this Studio video',
       json: recipe,
+      image: video.poster ? {
+        src: video.poster,
+        alt: 'Scene Studio video frame',
+        caption: 'Game-rendered Studio frame',
+      } : null,
     }));
   });
 }

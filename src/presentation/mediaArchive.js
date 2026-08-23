@@ -64,6 +64,11 @@ function shotCard(shot, index, recipe) {
       title: `Replicate ${shot.title}`,
       json: recipe,
       className: 'media-archive-recipe',
+      image: {
+        src: shot.src,
+        alt: shot.alt || `${shot.title} game-rendered frame`,
+        caption: `${shot.title} // ${shot.map}`,
+      },
     }));
   }
   return card;

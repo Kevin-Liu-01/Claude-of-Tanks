@@ -229,7 +229,7 @@ button{cursor:pointer}
 .section-label small{font-size:5.5px;letter-spacing:.12em}
 .section-label>.cot-info-trigger{grid-column:4}
 .view-controls-label>.cot-info-trigger{margin-left:3px}
-.mode-dock>p>.cot-info-trigger{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;margin:0 0 0 auto!important;padding:0!important;border:1px solid rgba(154,174,189,.3)!important;border-radius:50%!important;background:rgba(8,12,16,.76)!important;box-shadow:none!important;color:#9aabb8!important;font:900 11px/1 ui-monospace,SFMono-Regular,monospace!important}
+.mode-dock>p>.cot-info-trigger{margin:0 0 0 auto!important}
 .gallery-motion-item{position:relative;min-width:0;background:#030506}.gallery-motion-item video{height:100%}.gallery-motion-item>.cot-info-trigger{position:absolute;z-index:3;right:10px;top:10px;background:rgba(3,6,8,.78)}
 .rating{border-color:rgba(174,190,197,.14);background:linear-gradient(#11171b,#090d10)}
 .technical-brief p{font-size:9px}.highlights li{font-size:8px}.highlights li::before{border-radius:50%;transform:none}

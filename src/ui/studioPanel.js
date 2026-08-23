@@ -1006,6 +1006,27 @@ export function createStudioPanel(S) {
     if (text != null) d.textContent = text;
     return d;
   }
+  function studioInfoImage(title) {
+    if (title === 'Tanks' || title === 'Add tanks' || title === 'Selected tank') {
+      const id = S._internal.selected?.spec?.id || pickedId;
+      if (!id) return null;
+      const info = specInfo(id);
+      return {
+        src: iconUrl(id, 'angle'),
+        alt: `${info.name || id} Studio vehicle render`,
+        fit: 'contain',
+        caption: `${info.name || id} // Studio actor`,
+      };
+    }
+    const src = MAP_THUMBS[S.mapId];
+    if (!src) return null;
+    const info = S.getMapInfo ? S.getMapInfo(S.mapId) : { name: S.mapId };
+    return {
+      src,
+      alt: `${info.name || S.mapId} Studio battlefield`,
+      caption: `${info.name || S.mapId} // current production canvas`,
+    };
+  }
   function section(title, sub) {
     const s = el('div', 'sec');
     const h = el('div', 'h', title);
@@ -1016,6 +1037,7 @@ export function createStudioPanel(S) {
       title,
       text: help,
       json: title === 'Video · Stills · Scene' ? () => S.state() : null,
+      image: () => studioInfoImage(title),
     }));
     s.appendChild(h);
     return s;
@@ -1030,7 +1052,12 @@ export function createStudioPanel(S) {
       el('div', 'gsub', sub),
     );
     const help = STUDIO_GROUP_INFO[title];
-    if (help) head.appendChild(createInfoButton({ label: `About ${title}`, title, text: help }));
+    if (help) head.appendChild(createInfoButton({
+      label: `About ${title}`,
+      title,
+      text: help,
+      image: () => studioInfoImage(title),
+    }));
     const body = el('div', 'gbody');
     groupRoot.append(head, body);
     return { root: groupRoot, body };
@@ -1206,6 +1233,7 @@ export function createStudioPanel(S) {
         label: `Show the Scene Studio JSON for ${shot.label}`,
         title: `Replicate ${shot.label}`,
         json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
+        image: () => studioInfoImage('Storyboard'),
       }));
       const del = el('button', 'del warn', '✕');
       del.title = `Remove ${shot.label}`;
