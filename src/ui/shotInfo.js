@@ -80,18 +80,18 @@ GLYPH.skull = uiIconSVG('skull', 12);
 const SI_CSS = `
 .cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}
 .cot-si *{box-sizing:border-box;margin:0;padding:0;}
-.cot-si-cardhost{position:absolute;right:16px;top:clamp(272px,30vh,336px);width:340px;display:flex;
+.cot-si-cardhost{position:absolute;right:210px;top:72px;width:420px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
-.cot-si-card{position:relative;min-height:260px;overflow:hidden;contain:layout paint style;
+.cot-si-card{position:relative;min-height:0;overflow:hidden;contain:layout paint style;
   background:linear-gradient(145deg,rgba(16,23,29,.96),rgba(7,11,15,.96) 64%,rgba(11,16,21,.98));
   border:1px solid rgba(174,192,205,.3);border-right:3px solid rgba(146,164,180,.3);
   box-shadow:0 12px 34px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
-  padding:0 0 9px;transition:opacity .8s ease;}
+  padding:0 0 7px;transition:opacity .8s ease;}
 .cot-si-card::before{content:"";position:absolute;left:0;top:0;width:82px;height:2px;
   background:linear-gradient(90deg,#f0a030,rgba(240,160,48,0));}
 .cot-si-card.out{opacity:0;}
-.cot-si-hd{min-height:52px;display:flex;align-items:center;justify-content:space-between;
-  padding:8px 12px 7px;border-bottom:1px solid rgba(146,164,180,.2);}
+.cot-si-hd{min-height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:6px 10px 5px;border-bottom:1px solid rgba(146,164,180,.2);}
 .cot-si-state{display:flex;min-width:0;flex-direction:column;gap:3px;}
 .cot-si-kicker{font-family:${FONT_COND};font-size:7.5px;font-weight:800;line-height:1;
   letter-spacing:.2em;color:#778692;text-transform:uppercase;}
@@ -99,14 +99,16 @@ const SI_CSS = `
   font-size:13px;line-height:1;letter-spacing:.13em;white-space:nowrap;}
 .cot-si-dmg{min-width:66px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:800;font-size:22px;
   font-variant-numeric:tabular-nums;color:#ffd166;}
-.cot-si-sub{height:28px;padding:6px 12px 5px;font-size:10px;color:#c6d2dc;letter-spacing:.03em;
+.cot-si-sub{height:24px;padding:4px 10px;font-size:9.5px;color:#c6d2dc;letter-spacing:.03em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;
   background:rgba(149,168,184,.045);font-variant-numeric:tabular-nums;}
 .cot-si-sub>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-sub>span:last-child{text-align:right;color:#e4ebf0;font-weight:700;}
 .cot-si-sub .ty{font-weight:800;font-size:9.5px;letter-spacing:.08em;
   font-family:${FONT_COND};}
-.cot-si-rows{padding:7px 12px 0;display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;}
+.cot-si-body{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;
+  align-items:start;padding:6px 10px 0;}
+.cot-si-rows{padding:0;display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;}
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
   align-items:baseline;font-size:9.5px;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.045em;}
 .cot-si-kv b{min-width:0;text-align:right;color:#dbe6ef;font-weight:750;font-family:${FONT_COND};
@@ -120,14 +122,16 @@ const SI_CSS = `
 .cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
   border:1px solid currentColor;font-size:7.5px;letter-spacing:.12em;
   vertical-align:1px;line-height:1.25;font-weight:800;}
-.cot-si-kv.armor{padding:3px 0;border-top:1px solid rgba(146,164,180,.12);border-bottom:1px solid rgba(146,164,180,.12);}
+.cot-si-kv.armor{padding:2px 0;border-top:1px solid rgba(146,164,180,.12);border-bottom:1px solid rgba(146,164,180,.12);}
 .cot-si-kv.result b{color:#f2c06d;letter-spacing:.06em;}
 .cot-si-pencap{grid-column:1/-1;font-size:7.5px;color:#687683;letter-spacing:.07em;
-  text-align:right;margin-top:-3px;text-transform:uppercase;}
-.cot-si-diag{display:grid;grid-template-columns:84px 116px minmax(0,1fr);gap:8px;align-items:center;
-  margin:7px 12px 0;padding:8px 8px 7px;border:1px solid rgba(146,164,180,.16);
+  text-align:right;margin-top:-2px;text-transform:uppercase;}
+.cot-si-diag{display:grid;grid-template-columns:60px 82px minmax(0,1fr);gap:5px;align-items:center;
+  margin:0;padding:5px;border:1px solid rgba(146,164,180,.16);
   background:linear-gradient(110deg,rgba(146,164,180,.075),rgba(146,164,180,.018));}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
+.cot-si-diag .box:first-child{width:60px!important;height:60px!important;}
+.cot-si-diag .box:nth-child(2){width:82px!important;height:41px!important;}
 .cot-si-diag .box::after{content:attr(data-view);position:absolute;left:2px;bottom:0;
   font:800 6.5px/1 ${FONT_COND};letter-spacing:.14em;color:#758491;text-transform:uppercase;}
 .cot-si-diag .sil{position:absolute;inset:0;}
@@ -145,10 +149,10 @@ const SI_CSS = `
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
 @keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
-.cot-si-zone{min-width:0;font-size:10.5px;color:#f2ca82;font-weight:800;letter-spacing:.07em;
+.cot-si-zone{min-width:0;font-size:8.5px;color:#f2ca82;font-weight:800;letter-spacing:.07em;
   text-transform:uppercase;font-family:${FONT_COND};text-align:right;line-height:1.3;}
 .cot-si-zone .cap{display:block;color:#778692;font-weight:800;letter-spacing:.15em;font-size:7px;}
-.cot-si-mods{display:flex;flex-wrap:wrap;gap:4px;padding:6px 9px 0;}
+.cot-si-mods{display:flex;flex-wrap:wrap;gap:4px;padding:5px 10px 0;}
 .cot-si-mod{display:flex;align-items:center;gap:3px;font-size:8.5px;font-weight:800;
   letter-spacing:.06em;font-family:${FONT_COND};text-transform:uppercase;
   border:1px solid currentColor;padding:1.5px 4px 1.5px 3px;line-height:1;}
@@ -358,22 +362,16 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
 /* The game owns an explicit touch-layout state; do not make battle UI depend
    on browser pointer heuristics alone (desktop emulation and hybrid tablets
    can report a fine pointer while touch controls are active). */
-body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
-  top:max(64px,calc(env(safe-area-inset-top) + 54px));right:max(10px,env(safe-area-inset-right));
-  width:min(300px,calc(100vw - 20px));}
 body.cot-touch-layout .cot-si-card{min-height:0;}
 body.cot-touch-layout .cot-si-hd{min-height:44px;padding:6px 9px;}
 body.cot-touch-layout .cot-si-kicker{font-size:6.5px;}
 body.cot-touch-layout .cot-si-badge{font-size:11px;}
 body.cot-touch-layout .cot-si-dmg{font-size:18px;}
 body.cot-touch-layout .cot-si-sub{height:25px;padding:4px 9px;font-size:9px;}
-body.cot-touch-layout .cot-si-rows{padding:5px 9px 0;gap:3px 9px;}
+body.cot-touch-layout .cot-si-rows{gap:2px 9px;}
 body.cot-touch-layout .cot-si-kv{font-size:8.5px;gap:4px;}
 body.cot-touch-layout .cot-si-pencap{font-size:6.5px;}
-body.cot-touch-layout .cot-si-diag{grid-template-columns:84px 116px;margin:6px 9px 0;
-  padding:5px 7px;justify-content:center;gap:5px 9px;}
-body.cot-touch-layout .cot-si-zone{grid-column:1/-1;text-align:center;font-size:9px;}
-body.cot-touch-layout .cot-si-zone .cap{display:inline;margin-right:7px;}
+body.cot-touch-layout .cot-si-diag{justify-content:center;}
 body.cot-touch-layout .cot-si-mods{padding:5px 9px 0;}
 body.cot-touch-layout .cot-si-toasthost{top:max(62px,calc(env(safe-area-inset-top) + 52px));
   bottom:auto;left:max(8px,env(safe-area-inset-left));width:min(236px,42vw);min-height:143px;}
@@ -381,19 +379,22 @@ body.cot-touch-layout .cot-si-toast{height:41px;padding:4px 7px;}
 body.cot-touch-layout .cot-si-toast .l1{height:17px;font-size:9.5px;}
 body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
 body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
-@media (max-width:700px), (pointer:coarse) and (max-width:1024px){
-  .cot-si-cardhost,.cot-si-log{top:max(64px,calc(env(safe-area-inset-top) + 54px));
+@media (max-width:700px), (pointer:coarse) and (max-width:760px){
+  .cot-si-cardhost,.cot-si-log{top:max(var(--cot-si-roster-bottom,252px),calc(env(safe-area-inset-top) + 242px));
     right:max(10px,env(safe-area-inset-right));width:min(300px,calc(100vw - 20px));}
   .cot-si-card{min-height:0;}
   .cot-si-hd{min-height:44px;padding:6px 9px;}
   .cot-si-kicker{font-size:6.5px}.cot-si-badge{font-size:11px}.cot-si-dmg{font-size:18px;}
   .cot-si-sub{height:25px;padding:4px 9px;font-size:9px;}
-  .cot-si-rows{padding:5px 9px 0;gap:3px 9px;}
+  .cot-si-body{display:block;padding:5px 9px 0;}
+  .cot-si-rows{gap:2px 9px;}
   .cot-si-kv{font-size:8.5px;gap:4px;}.cot-si-pencap{font-size:6.5px;}
-  .cot-si-diag{grid-template-columns:84px 116px;margin:6px 9px 0;padding:5px 7px;
+  .cot-si-diag{grid-template-columns:60px 82px minmax(0,1fr);margin:5px 0 0;padding:5px 7px;
     justify-content:center;gap:5px 9px;}
-  .cot-si-zone{grid-column:1/-1;text-align:center;font-size:9px;}
-  .cot-si-zone .cap{display:inline;margin-right:7px;}
+  .cot-si-diag .box:first-child{width:60px!important;height:60px!important;}
+  .cot-si-diag .box:nth-child(2){width:82px!important;height:41px!important;}
+  .cot-si-zone{grid-column:auto;text-align:right;font-size:8px;}
+  .cot-si-zone .cap{display:block;margin-right:0;}
   .cot-si-mods{padding:5px 9px 0;}
   .cot-si-toasthost{top:max(62px,calc(env(safe-area-inset-top) + 52px));bottom:auto;
     left:max(8px,env(safe-area-inset-left));width:min(236px,42vw);min-height:143px;}
@@ -403,28 +404,31 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
 }
 @media (max-width:520px){
   .cot-si-cardhost,.cot-si-log{width:min(276px,calc(100vw - 16px));right:max(8px,env(safe-area-inset-right));}
-  .cot-si-diag{grid-template-columns:74px 102px;}
-  .cot-si-diag .box:first-child{width:74px!important;height:74px!important;}
-  .cot-si-diag .box:nth-child(2){width:102px!important;height:51px!important;}
 }
 @media (orientation:landscape) and (max-height:430px){
   body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
-    left:max(120px,calc(env(safe-area-inset-left) + 120px));right:auto;
-    top:max(58px,calc(env(safe-area-inset-top) + 54px));width:276px;}
+    left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
+    top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:auto;}
   body.cot-touch-layout .cot-si-toasthost{left:auto;right:max(8px,env(safe-area-inset-right));
     top:max(60px,calc(env(safe-area-inset-top) + 54px));width:210px;min-height:96px;}
   body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+3){display:none;}
   body.cot-touch-layout .cot-si-hd{min-height:38px;padding-block:4px;}
   body.cot-touch-layout .cot-si-sub{height:22px;padding-block:3px;}
-  body.cot-touch-layout .cot-si-rows{padding-top:4px;gap:2px 8px;}
+  body.cot-touch-layout .cot-si-body{display:grid;grid-template-columns:minmax(0,1fr) 190px;
+    gap:7px;padding:4px 7px 0;}
+  body.cot-touch-layout .cot-si-rows{gap:2px 8px;}
   body.cot-touch-layout .cot-si-kv{font-size:8px;}
-  body.cot-touch-layout .cot-si-diag{grid-template-columns:60px 82px minmax(0,1fr);
-    margin-top:4px;padding:4px;gap:4px;}
-  body.cot-touch-layout .cot-si-diag .box:first-child{width:60px!important;height:60px!important;}
-  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:82px!important;height:41px!important;}
+  body.cot-touch-layout .cot-si-diag{grid-template-columns:56px 76px minmax(0,1fr);
+    margin:0;padding:4px;gap:4px;}
+  body.cot-touch-layout .cot-si-diag .box:first-child{width:56px!important;height:56px!important;}
+  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:76px!important;height:38px!important;}
   body.cot-touch-layout .cot-si-zone{grid-column:auto;text-align:right;font-size:8px;}
   body.cot-touch-layout .cot-si-zone .cap{display:block;margin-right:0;font-size:6px;}
   body.cot-touch-layout .cot-si-mods{padding-top:3px;}
+}
+@media (orientation:landscape) and (max-height:430px) and (min-width:701px){
+  body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
+    right:auto;width:min(620px,calc(100vw - 224px));}
 }
 @media (prefers-reduced-motion:reduce){
   .cot-si-card,.cot-si-toast,.cot-si-diag svg.ov .wdg{animation:none;transition:none;}
@@ -924,7 +928,8 @@ export function createShotInfo(bus) {
       `<span><span class="ty" style="color:${tyCol}">${ev.shellType}</span> ${shellDisplayName(ev)}</span>` +
       `<span>${ev.targetName || ''}</span>`;
 
-    const rows = el('div', 'cot-si-rows', card);
+    const body = el('div', 'cot-si-body', card);
+    const rows = el('div', 'cot-si-rows', body);
     const kv = (k, v, cls) => {
       const r = el('div', `cot-si-kv${cls ? ` ${cls}` : ''}`, rows);
       r.innerHTML = `<span>${k}</span><b>${v}</b>`;
@@ -993,7 +998,8 @@ export function createShotInfo(bus) {
         penHtml = roll > 0 ? `${arrow}${roll} mm` : '—';
       }
     }
-    kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`);
+    kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
+    kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`, 'w result');
     {
       const r = kv('Pen', penHtml + (penQual
         ? `<span class="q" style="color:${penQual === 'ERA' ? COL.yellow : '#9fb0bf'}">${penQual}</span>`
@@ -1001,13 +1007,11 @@ export function createShotInfo(bus) {
       r.title = penLegend ? `Penetration (mm): ${penLegend}` : 'Penetration roll at impact';
       if (penLegend) el('div', 'cot-si-pencap', rows).textContent = penLegend;
     }
-    kv('Result', ev.destroyed ? 'DESTROYED' : `${Math.max(0, Math.round(ev.targetHpAfter || 0))} hp left`, 'w result');
-
     const diag = diagramFor(ev, cls);
     if (diag) {
       const zone = el('div', 'cot-si-zone', diag);
       zone.innerHTML = `<span class="cap">Impact zone</span>${zoneLabel(ev.zone)}`;
-      card.appendChild(diag);
+      body.appendChild(diag);
     }
     modChips(ev, card);
     return card;
@@ -1018,6 +1022,16 @@ export function createShotInfo(bus) {
     while (cardHost.firstChild) cardHost.firstChild.remove();
     const card = buildCard(ev, cls);
     cardHost.appendChild(card);
+    // Narrow HUDs cannot place the report beside both team rosters. Measure
+    // their event-time footprint once and reserve the exact lane below them;
+    // this is deliberately not a render-loop layout read.
+    let rosterBottom = 0;
+    for (const ear of document.querySelectorAll('.cot-ear')) {
+      rosterBottom = Math.max(rosterBottom, ear.getBoundingClientRect().bottom);
+    }
+    if (rosterBottom > 0) {
+      cardHost.style.setProperty('--cot-si-roster-bottom', `${Math.ceil(rosterBottom + 8)}px`);
+    }
     const fade = setTimeout(() => card.classList.add('out'), 6200);
     setTimeout(() => { clearTimeout(fade); if (card.parentNode) card.remove(); }, 7200);
   }
