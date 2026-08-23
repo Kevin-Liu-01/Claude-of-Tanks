@@ -6855,7 +6855,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "size": 0.26,
         "pos": [
           -1.906,
-          1.5261001,
+          1.39495,
           -0.10195
         ],
         "quaternion": [
@@ -6926,7 +6926,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "size": 0.26,
         "pos": [
           -1.906,
-          1.5261001,
+          1.39495,
           -0.10195
         ],
         "quaternion": [
