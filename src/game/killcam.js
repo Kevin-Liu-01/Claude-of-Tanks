@@ -73,6 +73,7 @@
 import * as THREE from 'three';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.js';
 import { createElement as el, ensureStyle } from '../ui/dom.js';
+import { uiIconSVG } from '../ui/uiIcons.js';
 import { nominalPenFor, shellDisplayName, zoneLabel } from '../ui/hitEventFormat.js';
 import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.js';
 import { getSpec } from '../vehicles/specs.js';
@@ -130,6 +131,23 @@ const TRAJ_KEEP = 32;          // shell traces retained (oldest evicted)
 const TRAJ_MAX_PTS = 400 * 3;  // ≥ SHELL_MAX_LIFETIME_S at 60 Hz
 const ORBIT_RAD_S = 0.05;      // x-ray camera drift
 const VICTORY_WINDOW_S = 1.0;  // final blow must be this fresh at battle end
+
+const KC_MODULE_ICON = Object.freeze({
+  trackL: 'track', trackR: 'track', engine: 'engine', transmission: 'transmission',
+  fuelTank: 'fuelTank', ammoRack: 'ammoRack', gun: 'gun', gunMount: 'gunMount',
+  radio: 'radio', optics: 'optics', turretRing: 'turretRing', autoloader: 'autoloader',
+  feedSystem: 'feedSystem', missileRack: 'missileRack',
+});
+const KC_CREW_ICON = Object.freeze({
+  commander: 'crewCommander', gunner: 'crewGunner', driver: 'crewDriver', loader: 'crewLoader',
+});
+
+function killcamLabelIcon(key, fallback = 'penetration') {
+  if (!key) return fallback;
+  if (key.startsWith('m:')) return KC_MODULE_ICON[key.slice(2)] || 'repair';
+  if (key.startsWith('c:')) return KC_CREW_ICON[key.slice(2)] || 'crew';
+  return fallback;
+}
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -795,10 +813,14 @@ function addDrivetrainProxy(armor, poseGrp, disposables) {
 // DOM overlay (letterbox + title + annotation block + projected labels)
 // ---------------------------------------------------------------------------
 const KC_CSS = `
-.cot-kc{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;
-  font-family:${FONT_STACK};color:#e6edf3;}
+.cot-kc{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;isolation:isolate;
+  --kc-panel:rgba(7,12,16,.95);--kc-panel-hi:rgba(17,25,31,.96);
+  --kc-line:rgba(139,158,173,.3);--kc-line-soft:rgba(139,158,173,.16);
+  --kc-muted:#8b9aa6;--kc-text:#e7eef4;--kc-amber:#f2a536;--kc-red:#f05b50;
+  font-family:${FONT_STACK};color:var(--kc-text);}
 .cot-kc.on{display:block;}
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
+.cot-kc svg{display:block;flex:0 0 auto;}
 /* REPLAY OWNS THE SCREEN (r4 critical): while a replay is live, no battle-HUD
    chrome may render over the cinematic — a one-frame race in the integration
    flyby edge-latch (main.js snapshots kcActive at frame top, the death path
@@ -830,13 +852,19 @@ body.cot-kc-live .cot-si-stats{visibility:hidden !important;}
 .cot-kc-anim{opacity:0;animation:cotKcIn .35s ease forwards;}
 line.cot-kc-anim{animation-name:cotKcInLine;}
 @keyframes cotKcInLine{from{opacity:0;}to{opacity:.85;}}
-.cot-kc-micro{position:absolute;white-space:nowrap;background:rgba(6,9,12,.6);
-  border:1px solid rgba(146,164,180,.25);color:#9fc0da;padding:1px 5px 2px;
+.cot-kc-micro{position:absolute;z-index:8;display:flex;align-items:center;gap:5px;white-space:nowrap;
+  background:linear-gradient(135deg,rgba(17,25,31,.92),rgba(6,10,14,.94));
+  border:1px solid var(--kc-line);border-left:2px solid #86a9bf;color:#b8d3e4;padding:2px 6px 3px;
   font-family:${FONT_COND};font-weight:700;font-size:9px;
-  letter-spacing:.14em;text-transform:uppercase;line-height:1.2;}
+  letter-spacing:.14em;text-transform:uppercase;line-height:1.2;
+  box-shadow:0 4px 12px rgba(0,0,0,.38);}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
-.cot-kc-bart{top:0;background:linear-gradient(180deg,rgba(0,0,0,.94),rgba(0,0,0,.6) 70%,transparent);}
-.cot-kc-barb{bottom:0;background:linear-gradient(0deg,#000 38%,rgba(0,0,0,.72) 68%,transparent);}
+.cot-kc-bart{top:0;border-bottom:1px solid rgba(242,165,54,.18);
+  background:repeating-linear-gradient(90deg,transparent 0 63px,rgba(139,158,173,.035) 64px),
+    linear-gradient(180deg,rgba(1,4,6,.98),rgba(3,7,10,.78) 70%,transparent);}
+.cot-kc-barb{bottom:0;border-top:1px solid rgba(242,165,54,.16);
+  background:repeating-linear-gradient(90deg,transparent 0 63px,rgba(139,158,173,.03) 64px),
+    linear-gradient(0deg,#010304 38%,rgba(3,7,10,.82) 68%,transparent);}
 /* ENTRY / EXIT TRANSITIONS (killcam_endscreen r1): the replay never pops in a
    single frame. Entry: the letterbox bars SLIDE shut while title/annot/skip
    fade-slide in staggered behind them (.in); a shock flash (.cot-kc-flash)
@@ -889,51 +917,80 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 /* KILLER CARD (killcam_endscreen r1): who killed you — name, vehicle, shell,
    damage, distance — revealed during the x-ray hold in the Inter/amber HUD
    language. Right side; the armor annotation block owns the left. */
-.cot-kc-killer{position:absolute;right:30px;bottom:11.5vh;width:266px;
-  background:linear-gradient(180deg,rgba(12,16,20,.94),rgba(7,10,13,.95));
-  border:1px solid rgba(146,164,180,.32);border-right:2px solid #ff5a4a;
-  box-shadow:0 8px 28px rgba(0,0,0,.6);padding:9px 12px 10px;opacity:0;
+.cot-kc-killer{position:absolute;z-index:9;right:28px;bottom:11.5vh;width:282px;
+  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,rgba(5,8,11,.97));
+  border:1px solid var(--kc-line);border-right:3px solid var(--kc-red);
+  box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
+  padding:0 12px 10px;opacity:0;
   transform:translateY(12px);transition:opacity .55s ease,transform .55s ease;
   display:none;}
+.cot-kc-killer::before{content:"";position:absolute;left:0;top:0;width:78px;height:2px;
+  background:linear-gradient(90deg,var(--kc-red),transparent);}
 .cot-kc-killer.on{display:block;}
 .cot-kc-killer.rv{opacity:1;transform:none;}
-.cot-kc-killer .kk{font-family:${FONT_COND};font-weight:800;font-size:9px;
-  letter-spacing:.3em;color:#ff8a7a;text-transform:uppercase;}
-.cot-kc-killer .nm{margin-top:4px;font-weight:800;font-size:14.5px;
+.cot-kc-killer .kk{display:flex;align-items:center;gap:7px;padding:8px 0 6px;
+  border-bottom:1px solid var(--kc-line-soft);font-family:${FONT_COND};font-weight:800;font-size:8px;
+  letter-spacing:.26em;color:#ff8d83;text-transform:uppercase;}
+.cot-kc-killer .kk svg{color:var(--kc-red);filter:drop-shadow(0 0 5px rgba(240,91,80,.48));}
+.cot-kc-killer .nm{margin-top:7px;font-weight:800;font-size:14.5px;
   letter-spacing:.01em;color:#f4f8fc;display:flex;align-items:center;gap:8px;}
-.cot-kc-killer .nm .sil{width:46px;height:20px;flex:0 0 auto;
+.cot-kc-killer .nm .sil{width:50px;height:24px;flex:0 0 auto;padding:2px;
   background-repeat:no-repeat;background-position:center;background-size:contain;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));}
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));
+  border:1px solid var(--kc-line-soft);background-color:rgba(139,158,173,.045);}
 .cot-kc-killer .nm .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;}
 .cot-kc-killer .nm .t i{display:block;font-style:normal;font-family:${FONT_COND};
   font-weight:700;font-size:9px;letter-spacing:.16em;color:#9fb0bf;
   text-transform:uppercase;margin-top:1px;}
 .cot-kc-killer .rows{margin-top:7px;display:grid;grid-template-columns:1fr 1fr;
-  gap:2px 12px;border-top:1px solid rgba(146,164,180,.18);padding-top:6px;}
+  gap:3px 12px;border-top:1px solid var(--kc-line-soft);padding-top:6px;}
 .cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:10.5px;
-  color:#8a97a3;font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+  color:var(--kc-muted);font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+.cot-kc-killer .kv>span,.cot-kc-kv>span{display:flex;align-items:center;gap:5px;}
+.cot-kc-killer .kv>span svg,.cot-kc-kv>span svg{color:#71818d;}
 .cot-kc-killer .kv b{color:#ffd9a0;font-weight:700;font-family:${FONT_COND};
   letter-spacing:-.01em;}
 .cot-kc-killer .kv.dmg b{color:#ffd166;font-size:12px;}
 .cot-kc-killer .kv.w{grid-column:1/-1;}
-.cot-kc-title{position:absolute;top:2.4vh;left:50%;transform:translateX(-50%);text-align:center;}
+.cot-kc-title{position:absolute;z-index:10;top:1.3vh;left:50%;min-width:330px;
+  transform:translateX(-50%);text-align:center;padding:7px 28px 8px;
+  background:linear-gradient(90deg,transparent,rgba(6,11,15,.88) 18%,rgba(12,18,23,.94) 50%,rgba(6,11,15,.88) 82%,transparent);
+  border-bottom:1px solid rgba(242,165,54,.28);}
+.cot-kc-title::before,.cot-kc-title::after{content:"";position:absolute;bottom:-1px;width:48px;height:1px;
+  background:var(--kc-amber);opacity:.78;}
+.cot-kc-title::before{left:16px;}.cot-kc-title::after{right:16px;}
+.cot-kc-title .tl{display:flex;align-items:center;justify-content:center;gap:8px;}
+.cot-kc-title .tl svg{color:var(--kc-amber);filter:drop-shadow(0 0 7px rgba(242,165,54,.26));}
 .cot-kc-title .t{font-family:${FONT_COND};font-weight:800;
-  font-size:17px;letter-spacing:.46em;color:#ffd9a0;text-shadow:0 1px 10px rgba(0,0,0,.9);}
-.cot-kc-title .s{font-size:10.5px;letter-spacing:.18em;color:#aeb9c4;margin-top:3px;
+  font-size:15px;letter-spacing:.42em;color:#ffd59b;text-shadow:0 1px 10px rgba(0,0,0,.9);}
+.cot-kc-title .s{font-family:${FONT_COND};font-size:9.5px;font-weight:700;
+  letter-spacing:.16em;color:#9fadb8;margin-top:3px;text-transform:uppercase;
   font-variant-numeric:tabular-nums;}
-.cot-kc-skip{position:absolute;bottom:1.6vh;right:30px;font-family:${FONT_COND};
-  font-weight:700;font-size:10.5px;letter-spacing:.26em;color:#93a1ad;}
-.cot-kc-annot{position:absolute;left:28px;bottom:11.5vh;width:272px;
-  background:linear-gradient(180deg,rgba(10,14,18,.9),rgba(6,9,12,.92));
-  border:1px solid rgba(146,164,180,.32);border-left:2px solid #ffb04a;
-  box-shadow:0 6px 24px rgba(0,0,0,.55);padding:0 0 8px;}
-.cot-kc-annot .hd{padding:6px 10px 5px;border-bottom:1px solid rgba(146,164,180,.18);}
+.cot-kc-skip{position:absolute;z-index:10;bottom:1.4vh;right:28px;display:flex;align-items:center;
+  gap:8px;font-family:${FONT_COND};font-weight:700;font-size:8px;letter-spacing:.18em;
+  color:#83919c;text-transform:uppercase;}
+.cot-kc-skip .ico{color:#a7b3bd;}
+.cot-kc-skip kbd{min-width:58px;padding:3px 6px 4px;border:1px solid var(--kc-line);
+  border-bottom-color:rgba(242,165,54,.5);background:rgba(13,20,25,.85);color:#c9d3db;
+  font:800 8px/1 ${FONT_COND};letter-spacing:.13em;text-align:center;}
+.cot-kc-annot{position:absolute;z-index:9;left:28px;bottom:11.5vh;width:300px;
+  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,rgba(5,8,11,.97));
+  border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
+  box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);padding:0 0 9px;}
+.cot-kc-annot::before{content:"";position:absolute;left:0;top:0;width:86px;height:2px;
+  background:linear-gradient(90deg,var(--kc-amber),transparent);}
+.cot-kc-annot .hd{padding:7px 11px 6px;border-bottom:1px solid var(--kc-line-soft);}
+.cot-kc-annot .hd .m{display:flex;align-items:center;gap:6px;margin-bottom:3px;
+  font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.2em;color:#8796a1;text-transform:uppercase;}
+.cot-kc-annot .hd .m svg{color:var(--kc-amber);}
+.cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
+.cot-kc-annot .shellrow>svg{color:#ffd49a;}
 .cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:800;
-  font-size:13px;letter-spacing:.1em;color:#ffcf8a;}
-.cot-kc-annot .hd .w{font-size:10.5px;color:#c6d2dc;margin-top:2px;letter-spacing:.03em;}
-.cot-kc-rows{padding:5px 10px 0;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;}
-.cot-kc-kv{display:flex;justify-content:space-between;font-size:10.5px;color:#8a97a3;
+  font-size:12.5px;letter-spacing:.08em;color:#ffd49a;}
+.cot-kc-annot .hd .w{font-size:9.5px;color:#bcc8d1;margin-top:2px;letter-spacing:.03em;}
+.cot-kc-rows{padding:6px 11px 0;display:grid;grid-template-columns:1fr 1fr;gap:3px 13px;}
+.cot-kc-kv{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--kc-muted);
   font-variant-numeric:tabular-nums;letter-spacing:.03em;}
 .cot-kc-kv b{color:#e4edf4;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
 /* r8: the pen row spans the card on ONE line (it wrapped into a mangled
@@ -946,38 +1003,72 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   vertical-align:1.5px;line-height:1.25;font-weight:800;}
 .cot-kc-pencap{grid-column:1/-1;font-size:8.5px;color:#5f6d7a;letter-spacing:.05em;
   text-align:right;margin-top:-2px;}
-.cot-kc-banner{margin:7px 10px 0;padding:3px 8px;text-align:center;display:none;
+.cot-kc-banner{margin:7px 11px 0;padding:4px 8px;text-align:center;display:none;
   font-family:${FONT_COND};font-weight:800;font-size:11px;
-  letter-spacing:.2em;color:#ff6a5a;border:1px solid rgba(255,106,90,.7);
-  background:rgba(120,20,10,.35);}
-.cot-kc-banner.on{display:block;}
-.cot-kc-label{position:absolute;white-space:nowrap;
-  background:rgba(6,9,12,.86);border:1px solid currentColor;padding:3px 8px 4px;
+  letter-spacing:.18em;color:#ff8a7d;border:1px solid rgba(240,91,80,.55);
+  border-left:3px solid var(--kc-red);background:linear-gradient(90deg,rgba(111,24,18,.42),rgba(62,15,12,.26));}
+.cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
+.cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
+.cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,rgba(18,26,32,.94),rgba(5,9,12,.96));
+  border:1px solid var(--kc-line);border-left:2px solid currentColor;padding:4px 8px 5px;
   font-family:${FONT_COND};font-weight:800;font-size:11.5px;
   letter-spacing:.09em;text-transform:uppercase;line-height:1.25;
-  box-shadow:0 2px 10px rgba(0,0,0,.6);}
+  box-shadow:0 7px 18px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.025);}
+.cot-kc-label .ico,.cot-kc-micro .ico{display:flex;align-items:center;color:currentColor;}
+.cot-kc-label .copy{display:block;min-width:0;}
+.cot-kc-label .main{display:block;}
 .cot-kc-label .s{display:block;font-size:9.5px;font-weight:700;letter-spacing:.06em;
   color:#e8f0f6;font-variant-numeric:tabular-nums;}
-.cot-kc-label.ok{color:#8a97a3;border-color:rgba(138,151,163,.5);
-  background:rgba(6,9,12,.6);box-shadow:none;font-weight:700;}
+.cot-kc-label.ok{color:#8a97a3;border-color:var(--kc-line);border-left-color:currentColor;
+  background:linear-gradient(135deg,rgba(16,22,27,.82),rgba(5,8,11,.86));
+  box-shadow:0 4px 12px rgba(0,0,0,.34);font-weight:700;}
 .cot-kc-label.ok .s{color:#7d8a96;font-weight:600;}
 /* r8 near-miss tier (critic: the gray chip language read as a damaged-module
    callout): dashed border, smaller caps, one line, no leader dot — sits ON
    its organ like the micro identity tags, so it can never straddle the hull
    silhouette edge. Informational, never a casualty. */
-.cot-kc-label.nm{color:#9fb0bf;border:1px dashed rgba(150,166,180,.55);
-  background:rgba(6,9,12,.72);box-shadow:none;font-weight:700;font-size:9.5px;
+.cot-kc-label.nm{color:#9fb0bf;border:1px dashed rgba(150,166,180,.48);border-left:2px solid #758896;
+  background:rgba(7,12,16,.82);box-shadow:0 4px 12px rgba(0,0,0,.3);font-weight:700;font-size:9.5px;
   letter-spacing:.11em;padding:2px 6px 3px;opacity:.85;}
+.cot-kc-label.nm .copy{display:flex;align-items:center;}
 .cot-kc-label.nm .s{display:inline;font-size:9.5px;font-weight:600;color:#788695;}
-.cot-kc-dot{position:absolute;width:7px;height:7px;border-radius:50%;
-  transform:translate(-50%,-50%);background:currentColor;box-shadow:0 0 9px currentColor;}
-.cot-kc-dot.ok{background:transparent;border:1.5px solid currentColor;box-shadow:none;}
-.cot-kc-dmg{position:absolute;font-family:${FONT_COND};
-  font-weight:800;font-size:24px;color:#ffd166;
-  letter-spacing:.04em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;
-  background:rgba(6,9,12,.6);border:1px solid rgba(255,209,102,.4);
-  padding:1px 9px 2px;line-height:1.2;}
-.cot-kc-leader{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.cot-kc-dot{position:absolute;z-index:8;width:8px;height:8px;border-radius:1px;
+  transform:translate(-50%,-50%) rotate(45deg);background:currentColor;box-shadow:0 0 10px currentColor;}
+.cot-kc-dot.ok{background:rgba(7,12,16,.8);border:1.5px solid currentColor;box-shadow:none;}
+.cot-kc-dmg{position:absolute;z-index:8;display:flex;align-items:center;gap:7px;font-family:${FONT_COND};
+  font-weight:800;font-size:25px;color:#ffd166;
+  letter-spacing:.045em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;
+  background:linear-gradient(135deg,rgba(22,27,28,.96),rgba(7,11,14,.96));
+  border:1px solid var(--kc-line);border-right:3px solid var(--kc-amber);
+  box-shadow:0 9px 22px rgba(0,0,0,.52);padding:10px 10px 5px;line-height:1.1;}
+.cot-kc-dmg::before{content:"DAMAGE";position:absolute;top:3px;right:9px;font:800 6.5px/1 ${FONT_COND};
+  letter-spacing:.2em;color:#8f9ca6;text-align:right;}
+.cot-kc-dmg .ico{color:var(--kc-amber);}
+.cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
+.cot-kc-flash{z-index:12;}
+@media (max-width:760px){
+  .cot-kc-title{top:8px;min-width:270px;padding-inline:18px;}
+  .cot-kc-title .t{font-size:13px;letter-spacing:.34em;}
+  .cot-kc-title .s{font-size:8px;}
+  .cot-kc-annot{left:10px;bottom:max(68px,11.5vh);width:min(280px,calc(100vw - 20px));}
+  .cot-kc-killer{right:10px;top:74px;bottom:auto;width:min(244px,calc(100vw - 20px));}
+  .cot-kc-skip{right:10px;bottom:10px;}
+  .cot-kc-label{font-size:9.5px;padding:3px 6px 4px;}
+  .cot-kc-label .s{font-size:8px;}
+  .cot-kc-dmg{font-size:20px;padding:3px 7px 4px;}
+}
+@media (max-width:760px) and (orientation:portrait){
+  .cot-kc-annot{bottom:40px;}
+}
+@media (orientation:landscape) and (max-height:480px){
+  .cot-kc-title{top:4px;min-width:280px;padding-block:5px 6px;}
+  .cot-kc-annot{left:10px;top:auto;bottom:48px;width:260px;}
+  .cot-kc-killer{right:10px;top:auto;bottom:48px;width:244px;}
+  .cot-kc-skip{bottom:8px;}
+  .cot-kc-annot .hd{padding-block:5px 4px;}
+  .cot-kc-rows{padding-top:4px;gap-block:2px;}
+}
 `;
 
 /** Cylinder mesh between two points (local space of `parent`). */
@@ -1104,20 +1195,33 @@ export function createKillCam(deps) {
     el('div', 'cot-kc-bart', root);
     el('div', 'cot-kc-barb', root);
     const title = el('div', 'cot-kc-title', root);
-    const titleT = el('div', 't', title);
+    const titleLine = el('div', 'tl', title);
+    const titleIcon = el('span', 'ico', titleLine);
+    titleIcon.innerHTML = uiIconSVG('autoAim', 13);
+    const titleT = el('div', 't', titleLine);
     const titleS = el('div', 's', title);
     const skip = el('div', 'cot-kc-skip', root);
-    skip.textContent = 'ANY KEY — SKIP';
+    const skipIcon = el('span', 'ico', skip);
+    skipIcon.innerHTML = uiIconSVG('chevronRight', 10);
+    const skipKey = el('kbd', '', skip);
+    skipKey.textContent = 'ANY KEY';
+    const skipText = el('span', '', skip);
+    skipText.textContent = 'Skip replay';
     const annot = el('div', 'cot-kc-annot', root);
     const hd = el('div', 'hd', annot);
-    const hdK = el('div', 'k', hd);
+    const hdMeta = el('div', 'm', hd);
+    hdMeta.innerHTML = `${uiIconSVG('battleRecord', 10)}<span>Ballistic analysis</span>`;
+    const shellRow = el('div', 'shellrow', hd);
+    const shellIcon = el('span', 'ico', shellRow);
+    shellIcon.innerHTML = uiIconSVG('shell', 12);
+    const hdK = el('div', 'k', shellRow);
     const hdW = el('div', 'w', hd);
     const rows = el('div', 'cot-kc-rows', annot);
     const banner = el('div', 'cot-kc-banner', annot);
-    banner.textContent = 'AMMO RACK DETONATION';
+    banner.innerHTML = `${uiIconSVG('ammoRack', 11)}<span>AMMO RACK DETONATION</span>`;
     // killer card (death view only — populated per replay in beginXray)
     const killer = el('div', 'cot-kc-killer', root);
-    killer.innerHTML = '<div class="kk">Destroyed by</div>' +
+    killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>Destroyed by</span></div>` +
       '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
       '<div class="rows"></div>';
     const killerRefs = {
@@ -1133,8 +1237,8 @@ export function createKillCam(deps) {
     const leader = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     leader.setAttribute('class', 'cot-kc-leader');
     root.appendChild(leader);
-    const labelHost = el('div', '', root);
-    dom = { root, titleT, titleS, hdK, hdW, rows, banner, labelHost, leader, flash, killer: killerRefs };
+    const labelHost = el('div', 'cot-kc-labelhost', root);
+    dom = { root, titleT, titleS, hdK, hdW, rows, banner, annot, labelHost, leader, flash, killer: killerRefs };
     return dom;
   }
 
@@ -1654,9 +1758,18 @@ export function createKillCam(deps) {
     d.hdK.textContent = cleanName ? `${ev.shellType || ''} · ${cleanName}` : (ev.shellType || '');
     d.hdW.textContent = `${ev.attackerName || 'Enemy'} → ${ev.targetName || ''}`;
     d.rows.textContent = '';
+    const statIcon = {
+      Distance: 'scope',
+      'Impact angle': 'turretRing',
+      Armor: 'shield',
+      Damage: 'damage',
+      Pen: 'penetration',
+      Zone: 'autoAim',
+    };
     const kv = (k, v, wide) => {
       const r = el('div', `cot-kc-kv${wide ? ' w' : ''}`, d.rows);
-      const ks = el('span', '', r); ks.textContent = k;
+      const ks = el('span', '', r);
+      ks.innerHTML = `${uiIconSVG(statIcon[k] || 'battleRecord', 10)}<span>${k}</span>`;
       const vs = el('b', '', r); vs.textContent = v;
       return r;
     };
@@ -3582,15 +3695,16 @@ export function createKillCam(deps) {
       d.killer.sil.style.backgroundImage = ev.attackerSpecId
         ? `url(${iconUrl(ev.attackerSpecId, 'side_silhouette')})` : 'none';
       d.killer.rows.textContent = '';
-      const kkv = (k2, v2, cls2) => {
+      const kkv = (k2, v2, cls2, iconId) => {
         const r2 = el('div', `kv${cls2 ? ` ${cls2}` : ''}`, d.killer.rows);
-        const ks2 = el('span', '', r2); ks2.textContent = k2;
+        const ks2 = el('span', '', r2);
+        ks2.innerHTML = `${uiIconSVG(iconId, 10)}<span>${k2}</span>`;
         const vs2 = el('b', '', r2); vs2.textContent = v2;
       };
       const cleanShell = shellDisplayName(ev);
-      kkv('Shell', `${ev.shellType || ''}${cleanShell ? ` ${cleanShell}` : ''}`.trim() || '—', 'w');
-      kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0', 'dmg');
-      kkv('Distance', `${Math.round(ev.flightDistM || 0)} m`);
+      kkv('Shell', `${ev.shellType || ''}${cleanShell ? ` ${cleanShell}` : ''}`.trim() || '—', 'w', 'shell');
+      kkv('Damage', (ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0', 'dmg', 'damage');
+      kkv('Distance', `${Math.round(ev.flightDistM || 0)} m`, '', 'scope');
       d.killer.root.classList.add('on');
       if (staged) d.killer.root.classList.add('rv'); // deterministic frames skip the reveal timer
     } else {
@@ -3607,7 +3721,13 @@ export function createKillCam(deps) {
       let line = null;
       if (!big) {
         label.style.color = color;
-        label.innerHTML = `${main}<span class="s">${sub}</span>`;
+        const icon = el('span', 'ico', label);
+        icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 11);
+        const copy = el('span', 'copy', label);
+        const mainText = el('span', 'main', copy);
+        mainText.textContent = main;
+        const subText = el('span', 's', copy);
+        subText.textContent = sub;
         dot = el('div', `cot-kc-dot${ok ? ' ok' : ''}`, d.labelHost);
         dot.style.color = color;
         line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -3616,7 +3736,10 @@ export function createKillCam(deps) {
         line.setAttribute('opacity', ok ? '0.45' : '0.85');
         d.leader.appendChild(line);
       } else {
-        label.textContent = main;
+        const icon = el('span', 'ico', label);
+        icon.innerHTML = uiIconSVG('damage', 15);
+        const value = el('span', 'val', label);
+        value.textContent = main;
       }
       pb.labels.push({
         label, dot, line, big: !!big, world: world.clone(), key: key || null,
@@ -3625,7 +3748,10 @@ export function createKillCam(deps) {
     /** Idle micro-label (no dot/leader): WT-style always-on internals tag. */
     const addMicro = (world, text, key) => {
       const label = el('div', 'cot-kc-micro', d.labelHost);
-      label.textContent = text;
+      const icon = el('span', 'ico', label);
+      icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
+      const copy = el('span', 'copy', label);
+      copy.textContent = text;
       pb.labels.push({
         label, dot: null, line: null, big: false, micro: true,
         world: world.clone(), key: key || null,
@@ -3641,7 +3767,13 @@ export function createKillCam(deps) {
      */
     const addNearMiss = (world, text, key) => {
       const label = el('div', 'cot-kc-label nm', d.labelHost);
-      label.innerHTML = `${text}<span class="s"> · near miss</span>`;
+      const icon = el('span', 'ico', label);
+      icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
+      const copy = el('span', 'copy', label);
+      const mainText = el('span', 'main', copy);
+      mainText.textContent = text;
+      const subText = el('span', 's', copy);
+      subText.textContent = ' · near miss';
       pb.labels.push({
         label, dot: null, line: null, big: false, micro: true,
         world: world.clone(), key: key || null,
@@ -3860,10 +3992,33 @@ export function createKillCam(deps) {
         }
       }
     }
+    // pass 2c: keep projected callouts out of the fixed analysis/killer
+    // cards. This matters most in portrait, where the lower-hull labels and
+    // the compact ballistic card share the bottom third of the frame. Move a
+    // colliding callout toward the unobstructed center instead of letting its
+    // text ghost through a panel; leaders retain the anchor relationship.
+    if (dom) {
+      const panelEls = [dom.annot, dom.killer && dom.killer.root].filter(Boolean);
+      const panelRects = panelEls
+        .filter((node) => getComputedStyle(node).display !== 'none')
+        .map((node) => node.getBoundingClientRect())
+        .filter((r) => r.width > 0 && r.height > 0);
+      for (const it of pb.labels) {
+        if (it.hidden) continue;
+        for (const r of panelRects) {
+          if (it.left < r.right + 6 && r.left < it.left + it.lw + 6 &&
+              it.top < r.bottom + 6 && r.top < it.top + it.lh + 6) {
+            it.top = (r.top + r.bottom) * 0.5 > h * 0.5
+              ? r.top - it.lh - 8
+              : r.bottom + 8;
+          }
+        }
+      }
+    }
     // pass 3: write DOM positions + leader lines dot -> chip edge
     for (const it of pb.labels) {
       const off = it.hidden;
-      it.label.style.display = off ? 'none' : 'block';
+      it.label.style.display = off ? 'none' : 'flex';
       if (it.dot) it.dot.style.display = off ? 'none' : 'block';
       if (it.line) it.line.style.display = off ? 'none' : 'block';
       if (off) continue;
