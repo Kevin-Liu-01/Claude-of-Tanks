@@ -379,7 +379,22 @@ async function measureBattle(mapId) {
     await resetStalls(opened.page, `battle:${mapId}`);
     const result = await opened.page.evaluate(async ({ map, requestedSpec }) => {
       const debug = window.__DEBUG;
-      const specId = requestedSpec === 'selected' ? debug.selectedSpecId : requestedSpec;
+      const stagedSpec = requestedSpec.startsWith('staged:')
+        ? requestedSpec.slice('staged:'.length) : null;
+      const specId = requestedSpec === 'selected'
+        ? debug.selectedSpecId : (stagedSpec || requestedSpec);
+      if (stagedSpec) {
+        debug.stagePedestalTank(stagedSpec);
+        await new Promise((resolve, reject) => {
+          const deadline = performance.now() + 10000;
+          const check = () => {
+            if (debug.pedestalVisual?.specId === stagedSpec) resolve();
+            else if (performance.now() > deadline) reject(new Error(`staging ${stagedSpec} timed out`));
+            else requestAnimationFrame(check);
+          };
+          check();
+        });
+      }
       const pedestalBefore = debug.pedestalVisual;
       const startedAt = performance.now();
       await debug.beginBattleEntry(specId, map);
@@ -398,6 +413,7 @@ async function measureBattle(mapId) {
           entity.visual?.root?.userData?.markingSeatPath || null),
         pedestalTrace: window.__PED_TRACE?.slice(-12) || [],
         startBattle: window.__START_BATTLE_TIMINGS || null,
+        visualLoadTimings: window.__VISUAL_LOAD_TIMINGS || [],
       };
     }, { map: mapId, requestedSpec: battleSpecOption });
     let warmTimedOut = false;
@@ -426,6 +442,7 @@ async function measureBattle(mapId) {
       markingSeatPaths: result.markingSeatPaths,
       pedestalTrace: result.pedestalTrace,
       startBattle: result.startBattle,
+      visualLoadTimings: result.visualLoadTimings,
       countdownWarm: result.countdownWarm || null,
       warmTimedOut,
       stall,

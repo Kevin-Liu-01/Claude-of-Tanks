@@ -34,6 +34,7 @@ const deviceTier = opt('tier', 'desktop');
 const limitMs = Math.max(1, Number(opt('limit', '5000')) || 5000);
 const profileTarget = opt('profile', '');
 const sequenceOption = opt('sequence', '');
+const screenshotPath = opt('screenshot', '');
 
 const DEFAULT_SEQUENCE = [
   'm1a1', 'leclerc', 'tiger1',           // cold representatives
@@ -202,6 +203,10 @@ if (idleWarmStats) {
 if (pageErrors.length) {
   console.error(`[switch-probe] PAGE ERRORS (${pageErrors.length}):`);
   for (const e of pageErrors.slice(0, 5)) console.error('  - ' + e);
+}
+if (screenshotPath) {
+  await page.screenshot({ path: screenshotPath, fullPage: false });
+  console.log(`[switch-probe] screenshot ${screenshotPath}`);
 }
 
 await browser.close();

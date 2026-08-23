@@ -877,15 +877,20 @@ function touchCache(specId, vis) {
 }
 /**
  * Build a pedestal-grade visual for the LRU (shared camoSeed/pose contract).
- * Texture tier is 'preview' — half-res bake, roughly 4x cheaper on the
- * switch/boot path while retaining the full showroom geometry and markings.
+ * Cold interactive switches use the AI texture tier: the complete showroom
+ * geometry, markings, materials and shaders are unchanged, but the initial
+ * procedural canvases are bounded to 512/256 instead of 1024/512. At normal
+ * showroom projection this remains above the tank's screen-space texel count
+ * and removes the only remaining hundreds-of-milliseconds switch atom.
+ * The first boot hero is prebaked at preview quality below, and a selected
+ * cold hero is promoted under the opaque battle loader before combat.
  */
 function buildPedestalVisual(specId, parked = false) {
   // The showroom hero never enters the simulation. Avoid deriving movement
   // contact metadata from its full rendered subtree; battle/player/AI builds
   // still run that solve normally.
   const vis = createTank(specId, engineCtx, {
-    camoSeed: 4200, quality: 'preview', staticPreview: true,
+    camoSeed: 4200, quality: 'ai', staticPreview: true,
   });
   const pedSpec = getSpec(specId);
   vis.spec = pedSpec;
@@ -956,7 +961,7 @@ function queuePedestalTexturePrefetch() {
           throw PEDESTAL_PREFETCH_CANCELLED;
         }
         const budgetTick = frameBudgetTick(3);
-        await prebakeSharedTextures(getSpec(id), engineCtx.anisotropy ?? 4, 'preview', async () => {
+        await prebakeSharedTextures(getSpec(id), engineCtx.anisotropy ?? 4, 'ai', async () => {
           if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
             throw PEDESTAL_PREFETCH_CANCELLED;
           }
@@ -1041,7 +1046,7 @@ function setPedestalTank(specId, force = false) {
   let phaseAt = performance.now();
   const phases = { prebakeMs: 0, buildMs: 0, compileMs: 0 };
   return prebakeSharedTextures(
-    getSpec(specId), engineCtx.anisotropy ?? 4, 'preview', frameBudgetTick(6),
+    getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', frameBudgetTick(6),
   )
     .catch(() => { /* buildPedestalVisual can still acquire synchronously */ })
     .then(async () => {
@@ -2443,15 +2448,27 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     buildMs: Math.round(performance.now() - playerVisualStartedAt),
     prebakeMs: 0,
   };
+  // Garage prioritizes response and initially reveals a never-seen vehicle
+  // with a 512/256 paint set. When that exact visual becomes the player actor,
+  // promote its shared canvases to the normal 1024/512 player tier while the
+  // opaque battle loader owns the screen. The Texture objects stay stable, so
+  // every material on the borrowed visual receives the sharper bake in place.
+  if (game.player?.visual && game.player.visual === pedestalVisual) {
+    const playerPrebakeStartedAt = performance.now();
+    await prebakeSharedTextures(
+      game.player.spec, engineCtx.anisotropy ?? 4, 'preview', loadYield,
+    );
+    playerVisualTiming.prebakeMs = Math.round(performance.now() - playerPrebakeStartedAt);
+  }
   if (typeof window !== 'undefined') {
     (window.__VISUAL_LOAD_TIMINGS ||= []).push(playerVisualTiming);
   }
   const playerUploadStartedAt = performance.now();
-  // setupBattle must construct the player synchronously so simulation and HUD
-  // state are valid, but it does not have to upload every map in the same
-  // frame. Detach and stage that already-built root just like the streamed
-  // allies; otherwise the first hidden battle render pays the whole upload as
-  // one 500-700 ms "Ready" freeze.
+  // setupBattle must provide a player visual synchronously (either borrowed
+  // from the showroom or constructed as fallback) so simulation and HUD state
+  // are valid, but it does not have to upload every map in the same frame.
+  // Detach and stage that root just like the streamed allies; otherwise the
+  // first hidden battle render pays the whole upload as one 500-700 ms freeze.
   await stageBattleVisualReveal(game.player, loadYield);
   playerVisualTiming.uploadMs = Math.round(performance.now() - playerUploadStartedAt);
   playerVisualTiming.totalMs = Math.round(performance.now() - playerVisualStartedAt);
