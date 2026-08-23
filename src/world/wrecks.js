@@ -48,6 +48,12 @@ function hash3(x, y, z) {
 
 const _m = new THREE.Matrix4();
 const _c = new THREE.Color();
+// Static battlefield wrecks are never inspection heroes. Match the proven
+// low-geometry battle handoff used by live tanks beyond 66 m: retain the
+// load-bearing road-wheel/tire silhouettes, but omit sub-wheel recesses,
+// return rollers and end-wheel fasteners that disappear under the charred
+// track band at gameplay scale.
+const WRECK_FINE_GEAR = /^(?:gearRoadWheel.*(?:Inset|Ring|Rim|Bowl|Hub|Dish|Recess)|gearReturnRoller|gearEndWheelHardware)/;
 
 /** true when o and every ancestor up to (incl.) root renders */
 function chainVisible(o, root) {
@@ -104,7 +110,16 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
     visual.root.traverse((o) => {
       if (!o.isMesh && !o.isInstancedMesh) return;
       if (!o.geometry || !o.geometry.attributes || !o.geometry.attributes.position) return;
-      if (!chainVisible(o, visual.root)) return; // hidden placeholders/decals
+      const simplifiedTrackPads = o.name === 'gearTrackPadsSimplified';
+      const hasSimplifiedTrackSibling = o.name === 'gearTrackPads'
+        && o.parent?.children.some((child) => child.name === 'gearTrackPadsSimplified');
+      // Wreck dressing bakes the existing 22-triangle distance shoe instead
+      // of expanding the 164-196 triangle inspection shoe hundreds of times.
+      // Both LOD levels share the exact instance matrices, width and grouser
+      // peak, so this changes neither the course nor the visible silhouette.
+      if (hasSimplifiedTrackSibling) return;
+      if (!simplifiedTrackPads && !chainVisible(o, visual.root)) return;
+      if (WRECK_FINE_GEAR.test(o.name || '')) return;
       const m0 = Array.isArray(o.material) ? o.material[0] : o.material;
       if (m0 && m0.colorWrite === false) {
         // PERF: the factory's articulation-aware low-poly shadow proxies —

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { box, gablePrism, jitterUV, scaleUV, slabBox } from './propGeometry.js';
+import {
+  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
+} from './propGeometry.js';
 
 const scaled = new THREE.PlaneGeometry(2, 2);
 const scaledBefore = Array.from(scaled.attributes.uv.array);
@@ -37,6 +39,22 @@ for (let i = 0; i < jitterBefore.length; i += 2) {
   assert.equal(jittered.attributes.uv.array[i + 1], Math.fround(jitterBefore[i + 1] * 0.98 + 1.034));
 }
 
-for (const geometry of [scaled, ordinary, ordinaryBase, slab, gable, jittered]) geometry.dispose();
+const poleDistance = makeTelephonePoleDistanceGeometry();
+assert.equal((poleDistance.index?.count || poleDistance.attributes.position.count) / 3, 340,
+  'distance pole has a fixed 340-triangle silhouette');
+assert.equal(poleDistance.userData.distanceRepresentation, 'telephone-pole');
+assert.equal(poleDistance.attributes.color.count, poleDistance.attributes.position.count,
+  'every distance-pole vertex carries authored color');
+assert.ok(poleDistance.boundingBox.min.y < 0 && poleDistance.boundingBox.min.y > -0.16,
+  'distance pole retains the authored ground sink');
+assert.ok(poleDistance.boundingBox.max.y > 7 && poleDistance.boundingBox.max.y < 7.02,
+  'distance pole retains the full-height silhouette');
+assert.ok(poleDistance.boundingBox.max.x - poleDistance.boundingBox.min.x >= 3.15,
+  'distance pole retains the widest crossarm span');
+for (const value of poleDistance.attributes.position.array) {
+  assert.ok(Number.isFinite(value), 'distance pole positions stay finite');
+}
+
+for (const geometry of [scaled, ordinary, ordinaryBase, slab, gable, jittered, poleDistance]) geometry.dispose();
 
 console.log('propGeometry.selftest: shared UV geometry contracts passed');

@@ -1,0 +1,227 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fleet geometry audit</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { getSpec } from '/src/vehicles/specs.js';
+import { createTankState } from '/src/sim/movement.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'm1a2';
+const mode = params.get('mode') || 'gallery';
+
+const MODES = Object.freeze({
+  gallery: {
+    proceduralOnly: true,
+    quality: 'high',
+    geometryQuality: 'high',
+    viewDistanceM: 10,
+  },
+  garage: {
+    quality: 'ai',
+    geometryQuality: 'high',
+    staticPreview: true,
+    decor: true,
+    viewDistanceM: 10,
+  },
+  'battle-player': {
+    quality: 'high',
+    geometryQuality: 'high',
+    batchStatic: true,
+    decor: true,
+    viewDistanceM: 12,
+  },
+  'battle-bot-near': {
+    quality: 'ai',
+    geometryQuality: 'low',
+    batchStatic: true,
+    battleDetailLod: true,
+    decor: true,
+    viewDistanceM: 40,
+  },
+  'battle-bot-far': {
+    quality: 'ai',
+    geometryQuality: 'low',
+    batchStatic: true,
+    battleDetailLod: true,
+    decor: true,
+    viewDistanceM: 180,
+  },
+  'battle-mobile-player-far': {
+    quality: 'high',
+    geometryQuality: 'low',
+    batchStatic: true,
+    decor: true,
+    viewDistanceM: 90,
+  },
+});
+
+function ancestors(object) {
+  const names = [];
+  for (let node = object; node; node = node.parent) names.push(node.name || node.type || 'Object3D');
+  return names;
+}
+
+function categoryFor(object) {
+  const names = ancestors(object);
+  const path = names.join('/');
+  const role = object.userData?.combatHitboxRole;
+  if (object.userData?.authoredShadowProxy || /shadow/i.test(object.name || '')) return 'shadow';
+  if (object.userData?.vehicleMarking || /vehicleMarking/i.test(path)) return 'marking';
+  if (names.some((name) => /^rig_decor_/.test(name)) || /^fitting_/.test(object.name || '')) return 'decoration';
+  if (object.userData?.runningGear || /(?:gear|track|tread|wheel|idler|sprocket)/i.test(object.name || '')) return 'runningGear';
+  if (role === 'externalArmor') return 'externalArmor';
+  if (role === 'armor') return 'armor';
+  if (role === 'equipment') return 'equipment';
+  if (names.some((name) => /^(?:rig_gun|rig_recoil|rig_barrel_)/.test(name))) return 'weapon';
+  return 'other';
+}
+
+function effectivelyVisible(object, root) {
+  for (let node = object; node; node = node.parent) {
+    if (!node.visible) return false;
+    if (node === root) return true;
+  }
+  return false;
+}
+
+function basePrimitiveCount(object) {
+  if (object.isBatchedMesh && object._multiDrawCounts) {
+    let count = 0;
+    for (let i = 0; i < object._multiDrawCount; i++) count += Math.abs(object._multiDrawCounts[i] || 0);
+    return count;
+  }
+  const geometry = object.geometry;
+  if (!geometry) return 0;
+  const position = geometry.getAttribute('position');
+  if (!position) return 0;
+  const fullCount = geometry.index?.count || position.count;
+  const drawCount = geometry.drawRange?.count;
+  return Number.isFinite(drawCount) ? Math.min(fullCount, drawCount) : fullCount;
+}
+
+function instanceCount(object) {
+  if (object.isInstancedMesh) return Math.max(0, object.count || 0);
+  if (object.isBatchedMesh) return Math.max(1, object._multiDrawCount || object._geometryCount || 1);
+  return 1;
+}
+
+function blankCategory() {
+  return { objects: 0, instances: 0, triangles: 0, points: 0, lines: 0, bufferVertices: 0 };
+}
+
+function auditRoot(root) {
+  const totals = blankCategory();
+  const categories = {};
+  const seenGeometries = new Set();
+  const rows = [];
+  let uniqueGeometries = 0;
+  let uniqueBufferVertices = 0;
+  let uniqueBufferTriangles = 0;
+  let hiddenRenderableObjects = 0;
+  root.updateMatrixWorld(true);
+
+  root.traverse((object) => {
+    if (!(object.isMesh || object.isPoints || object.isLine) || !object.geometry) return;
+    if (!effectivelyVisible(object, root)) {
+      hiddenRenderableObjects++;
+      return;
+    }
+    const position = object.geometry.getAttribute('position');
+    if (!position) return;
+    const category = categoryFor(object);
+    const bucket = categories[category] || (categories[category] = blankCategory());
+    const instances = instanceCount(object);
+    const primitives = basePrimitiveCount(object);
+    // BatchedMesh primitive counts already include every active draw range.
+    // InstancedMesh geometry counts describe one instance, so account for all
+    // visible copies to match the raster workload reported by the renderer.
+    const renderInstances = object.isInstancedMesh ? instances : 1;
+    const triangles = object.isMesh
+      ? Math.floor(primitives / 3) * renderInstances
+      : 0;
+    const points = object.isPoints ? primitives : 0;
+    const lines = object.isLine ? Math.floor(primitives / 2) : 0;
+    const bufferVertices = object.isBatchedMesh && Number.isFinite(object._nextVertexStart)
+      ? object._nextVertexStart : position.count;
+
+    for (const target of [totals, bucket]) {
+      target.objects++;
+      target.instances += instances;
+      target.triangles += triangles;
+      target.points += points;
+      target.lines += lines;
+      target.bufferVertices += bufferVertices;
+    }
+    if (!seenGeometries.has(object.geometry)) {
+      seenGeometries.add(object.geometry);
+      uniqueGeometries++;
+      uniqueBufferVertices += bufferVertices;
+      const sourceCount = object.isBatchedMesh ? primitives
+        : (object.geometry.index?.count || position.count);
+      if (object.isMesh) uniqueBufferTriangles += Math.floor(sourceCount / 3);
+    }
+    rows.push({
+      name: object.name || '(unnamed)',
+      path: ancestors(object).reverse().join('/'),
+      category,
+      type: object.type,
+      triangles,
+      points,
+      lines,
+      instances,
+      bufferVertices,
+      indexed: !!object.geometry.index,
+      material: Array.isArray(object.material)
+        ? object.material.map((material) => material?.name || '').join(',')
+        : object.material?.name || '',
+    });
+  });
+  rows.sort((a, b) => b.triangles - a.triangles || b.bufferVertices - a.bufferVertices);
+  return {
+    totals,
+    uniqueGeometries,
+    uniqueBufferVertices,
+    uniqueBufferTriangles,
+    hiddenRenderableObjects,
+    categories,
+    topObjects: rows.slice(0, 24),
+  };
+}
+
+try {
+  const definition = MODES[mode];
+  if (!definition) throw new Error(`unknown audit mode: ${mode}`);
+  const { viewDistanceM, ...options } = definition;
+  const visual = createTank(id, null, { camoSeed: 4242, ...options });
+  if (Number.isFinite(viewDistanceM)) {
+    const state = createTankState(getSpec(id), new THREE.Vector3(), 0);
+    visual.syncFromState(state, 0, viewDistanceM);
+    // A normal WebGLRenderer updates THREE.LOD during projection. This audit
+    // never renders a frame, so reproduce that visibility decision explicitly
+    // or far-range totals would incorrectly include every close-only level.
+    const camera = new THREE.PerspectiveCamera(45, 16 / 9, 0.1, 1000);
+    camera.position.set(0, 3, -viewDistanceM);
+    camera.updateMatrixWorld(true);
+    visual.root.updateMatrixWorld(true);
+    visual.root.traverse((object) => {
+      if (object.isLOD) object.update(camera);
+    });
+  }
+  window.__GEOMETRY_AUDIT = {
+    id,
+    mode,
+    textureQuality: visual.root.userData.textureQuality,
+    geometryQuality: visual.root.userData.geometryQuality,
+    staticBatchSavedDraws: visual.root.userData.staticBatchSavedDraws || 0,
+    battleDetailObjectCount: visual.root.userData.battleDetailObjectCount || 0,
+    ...auditRoot(visual.root),
+  };
+  visual.dispose();
+} catch (error) {
+  window.__GEOMETRY_AUDIT = { id, mode, error: error?.stack || String(error) };
+}
+window.__GEOMETRY_AUDIT_READY = true;
+document.body.textContent = JSON.stringify(window.__GEOMETRY_AUDIT);
+</script>

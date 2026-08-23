@@ -47,18 +47,30 @@ checkLoop('front drive', {z:3.38,y:0.50,r:0.37}, {z:-3.42,y:0.44,r:0.32});
 
 for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
   const shoe = KIT.trackShoeGeometry(0.58, 0.165, { id, ...definition });
+  const simplified = KIT.simplifiedTrackShoeGeometry(0.58, 0.165, { id, ...definition });
   shoe.computeBoundingBox();
+  simplified.computeBoundingBox();
   const bounds = shoe.boundingBox;
   const triangles = shoe.index ? shoe.index.count / 3 : shoe.getAttribute('position').count / 3;
+  const simplifiedTriangles = simplified.index
+    ? simplified.index.count / 3 : simplified.getAttribute('position').count / 3;
   assert.ok(bounds.max.y - bounds.min.y >= 0.20,
     `${id}: integrated shoe needs real pad, web and guide-horn depth`);
   assert.ok((bounds.max.z - bounds.min.z) / 0.165 >= definition.padCoverage,
     `${id}: broad tread face must fill its authored pitch coverage`);
   assert.ok(bounds.max.x >= 0.58 * 0.48 && bounds.min.x <= -0.58 * 0.48,
     `${id}: transverse pins or shoulders must reach the authored shoe shoulders`);
-  assert.ok(triangles <= 240,
-    `${id}: family shoe stays inside the 240-triangle close-detail budget (${triangles})`);
+  assert.ok(triangles <= 200,
+    `${id}: lossless close shoe stays inside the 200-triangle budget (${triangles})`);
+  assert.ok(simplifiedTriangles <= 24,
+    `${id}: distance shoe stays inside the 24-triangle budget (${simplifiedTriangles})`);
+  assert.ok(Math.abs(simplified.boundingBox.max.x - bounds.max.x) < 1e-6 &&
+    Math.abs(simplified.boundingBox.min.x - bounds.min.x) < 1e-6,
+  `${id}: distance shoe preserves the exact track-width silhouette`);
+  assert.ok(Math.abs(simplified.boundingBox.max.y - bounds.max.y) < 1e-6,
+    `${id}: distance shoe preserves the exact grouser peak`);
   shoe.dispose();
+  simplified.dispose();
 }
 
 // The loaded run must physically bend with its bogies. This catches both
@@ -142,7 +154,16 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
   // loaded run with every pad still parallel to the hull was the remaining
   // visual tell that the tracks were a texture strip rather than a chain.
   const pads = P.hullG.getObjectByName('gearTrackPads');
+  const simplifiedPads = P.hullG.getObjectByName('gearTrackPadsSimplified');
   assert.ok(pads?.isInstancedMesh, 'procedural gear exposes linked track pads');
+  assert.ok(simplifiedPads?.isInstancedMesh,
+    'procedural gear exposes the distance-simplified shoe level');
+  assert.equal(simplifiedPads.instanceMatrix, pads.instanceMatrix,
+    'shoe LOD levels share one articulated instance transform buffer');
+  assert.equal(simplifiedPads.instanceColor, pads.instanceColor,
+    'shoe LOD levels share one deterministic per-link color buffer');
+  assert.equal(pads.parent?.levels?.[1]?.distance, 55,
+    'distance-simplified shoes engage at the reviewed 55 m threshold');
   assert.equal(P.hullG.getObjectByName('gearTrackInnerLinks'), undefined,
     'connector, pin and guide detail is integrated into the one smart shoe layer');
   const matrix = new THREE.Matrix4();

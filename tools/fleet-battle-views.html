@@ -1,0 +1,64 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fleet battle-distance visual audit</title>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { getSpec } from '/src/vehicles/specs.js';
+import { createTankState } from '/src/sim/movement.js';
+
+const WIDTH = 640;
+const HEIGHT = 360;
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true,
+  preserveDrawingBuffer: true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(1);
+renderer.setSize(WIDTH, HEIGHT, false);
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xcbd8e6, 0x2b261f, 1.65));
+const key = new THREE.DirectionalLight(0xfff1d2, 3.1);
+key.position.set(-18, 28, -22);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x9fc4ff, 1.0);
+fill.position.set(22, 12, 18);
+scene.add(fill);
+
+const camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 800);
+const target = new THREE.Vector3(0, 1.1, 0);
+
+window.__RENDER_BATTLE_VIEW = async (id, distanceM) => {
+  const visual = createTank(id, { renderer, scene }, {
+    camoSeed: 4242,
+    quality: 'ai',
+    geometryQuality: 'low',
+    batchStatic: true,
+    battleDetailLod: true,
+    decor: true,
+    proceduralOnly: true,
+  });
+  const state = createTankState(getSpec(id), new THREE.Vector3(), 0);
+  visual.syncFromState(state, 0, distanceM);
+  scene.add(visual.root);
+  camera.position.set(-distanceM * 0.16, Math.min(5.5, 2.8 + distanceM * 0.018), -distanceM);
+  camera.lookAt(target);
+  camera.updateMatrixWorld(true);
+  renderer.render(scene, camera);
+  renderer.render(scene, camera);
+  const dataUrl = renderer.domElement.toDataURL('image/png');
+  scene.remove(visual.root);
+  visual.dispose();
+  renderer.render(scene, camera);
+  return { dataUrl, width: WIDTH, height: HEIGHT };
+};
+window.__BATTLE_VIEW_READY = true;
+</script>

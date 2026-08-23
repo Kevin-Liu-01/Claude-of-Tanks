@@ -416,7 +416,7 @@ function installBattleDetailGroups(records) {
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
 const LOD1_DIST = 150;
-function lodWrap(parent, obj, dist = LOD1_DIST) {
+function lodWrap(parent, obj, dist = LOD1_DIST, midLevel = null) {
   const lod = new THREE.LOD();
   // Preserve mechanical ownership on the wrapper itself. Profile-level hull
   // datum passes inspect direct children; without this receipt they can move
@@ -428,6 +428,9 @@ function lodWrap(parent, obj, dist = LOD1_DIST) {
     lod.userData.appearanceRole = obj.userData.appearanceRole;
   }
   lod.addLevel(obj, 0);
+  if (midLevel?.object && Number.isFinite(midLevel.distance)) {
+    lod.addLevel(midLevel.object, midLevel.distance, midLevel.hysteresis ?? 0.08);
+  }
   lod.addLevel(new THREE.Object3D(), dist, 0.1);
   parent.add(lod);
   return obj;
@@ -1264,7 +1267,64 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165,
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
-const shoeBox = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+// BoxGeometry face-group order is ±X, ±Y, ±Z. Track shoes are assemblies of
+// intersecting castings, so the mating face between two parts is never
+// visible. Omitting only those sealed faces preserves the exact exterior and
+// shadow silhouette while avoiding millions of rasterized internal triangles
+// across the fleet's instanced shoe courses.
+const SHOE_BOX_TOP = 2;
+const SHOE_BOX_BOTTOM = 3;
+function shoeBox(w, h, d, omittedFaceGroups = null) {
+  const geometry = new THREE.BoxGeometry(w, h, d);
+  if (!omittedFaceGroups?.length) return geometry;
+  const omitted = new Set(omittedFaceGroups);
+  const sourceIndex = geometry.index.array;
+  const retained = [];
+  for (const group of geometry.groups) {
+    if (omitted.has(group.materialIndex)) continue;
+    for (let i = group.start; i < group.start + group.count; i++) {
+      retained.push(sourceIndex[i]);
+    }
+  }
+  geometry.setIndex(retained);
+  geometry.clearGroups();
+  return geometry;
+}
+
+function oneCappedCylinderX(radius, length, segments, outerSide) {
+  const wall = xform(
+    new THREE.CylinderGeometry(radius, radius, length, segments, 1, true),
+    0, 0, 0, 0, 0, Math.PI / 2,
+  );
+  const cap = xform(
+    new THREE.CircleGeometry(radius, segments),
+    outerSide * length / 2, 0, 0, 0, outerSide * Math.PI / 2, 0,
+  );
+  return mergeAll([wall, cap]);
+}
+
+const TRACK_SHOE_SIMPLIFIED_DIST_M = 55;
+
+function simplifiedTrackShoeGeometry(trackW, pitch, pattern,
+  radialScale = 1, widthScale = 1) {
+  // At this distance one shoe spans only a handful of pixels. Retain its
+  // authored pitch, width, pad depth and grouser peak so the track silhouette
+  // and deterministic per-link color cadence remain intact. Guide horns,
+  // split-pad gaps, pins and family-specific rib layouts stay on the exact
+  // close level, where they are actually resolvable.
+  const pad = shoeBox(trackW * 0.97, pattern.padHeight, pitch * pattern.padCoverage);
+  const grouserPeakScale = pattern.surface === 'heavy-chevron'
+    ? 1.08 : pattern.surface === 'open-chevron' ? 1.04 : 1;
+  const grouserHeight = pattern.grouserHeight * grouserPeakScale;
+  const grouser = xform(
+    shoeBox(trackW * 0.86, grouserHeight, pitch * 0.14, [SHOE_BOX_BOTTOM]),
+    0, pattern.padHeight / 2 + grouserHeight / 2, 0,
+  );
+  const geometry = mergeAll([pad, grouser]);
+  if (radialScale !== 1) geometry.scale(1, radialScale, 1);
+  if (widthScale !== 1) geometry.scale(widthScale, 1, 1);
+  return geometry;
+}
 
 function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   radialScale = 1, widthScale = 1) {
@@ -1276,11 +1336,11 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   const padH = pattern.padHeight;
   const grouserH = pattern.grouserHeight;
   const parts = [];
-  const addBox = (w, h, d, x = 0, y = 0, z = 0, ry = 0) => {
-    parts.push(xform(shoeBox(w, h, d), x, y, z, 0, ry, 0));
+  const addBox = (w, h, d, x = 0, y = 0, z = 0, ry = 0, omittedFaces = null) => {
+    parts.push(xform(shoeBox(w, h, d, omittedFaces), x, y, z, 0, ry, 0));
   };
   const addBar = (w, d, x = 0, z = 0, ry = 0, height = grouserH) => {
-    addBox(w, height, d, x, padH / 2 + height / 2, z, ry);
+    addBox(w, height, d, x, padH / 2 + height / 2, z, ry, [SHOE_BOX_BOTTOM]);
   };
   const addChevron = (z, direction = 1, height = grouserH) => {
     addBar(trackW * 0.47, pitch * 0.12, -trackW * 0.225, z, direction * 0.28, height);
@@ -1363,12 +1423,13 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   // oblique angles without recreating the old full-length lower rails.
   const shoulderLift = pattern.shoulderHeight;
   for (const side of [-1, 1]) {
-    addBox(trackW * 0.085, padH + shoulderLift, pitch * 0.80,
-      side * trackW * 0.442, shoulderLift / 2, 0);
+    addBox(trackW * 0.085, shoulderLift, pitch * 0.80,
+      side * trackW * 0.442, padH / 2 + shoulderLift / 2, 0, 0,
+      [SHOE_BOX_BOTTOM]);
   }
   const webH = pattern.webHeight;
   addBox(trackW * 0.78, webH, pitch * pattern.webDepth,
-    0, -(padH + webH) / 2 + 0.004, 0);
+    0, -(padH + webH) / 2 + 0.004, 0, 0, [SHOE_BOX_TOP]);
 
   // The center guide is a two-stage tooth between paired wheel discs. It is
   // deliberately centered: side connector rails were the visual source of
@@ -1378,9 +1439,9 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
   const hornTipH = hornH - hornBaseH;
   const hornBaseY = -(padH / 2 + webH + hornBaseH / 2 - 0.006);
   addBox(Math.min(trackW * 0.16, 0.082), hornBaseH, pitch * 0.34,
-    0, hornBaseY, 0);
+    0, hornBaseY, 0, 0, [SHOE_BOX_TOP]);
   addBox(Math.min(trackW * 0.09, 0.046), hornTipH, pitch * 0.21,
-    0, hornBaseY - hornBaseH / 2 - hornTipH / 2, 0);
+    0, hornBaseY - hornBaseH / 2 - hornTipH / 2, 0, 0, [SHOE_BOX_TOP]);
 
   if (pattern.pinStyle === 'end-caps') {
     const outer = pinCapOuter ?? trackW * 0.48;
@@ -1389,7 +1450,10 @@ function trackShoeGeometry(trackW, pitch, pattern, pinCapOuter = null,
     const pinY = -(padH / 2 + webH * 0.38);
     for (const side of [-1, 1]) {
       for (const z of [-pitch * 0.30, pitch * 0.30]) {
-        parts.push(xform(cylX(pattern.pinRadius, capLength, 6), side * capX, pinY, z));
+        parts.push(xform(
+          oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
+          side * capX, pinY, z,
+        ));
       }
     }
   }
@@ -1567,6 +1631,8 @@ function buildRunningGear(P, cfg) {
       shoePitchM: lp,
       shoePadCoverageRatio: trackPattern.padCoverage,
       shoeDetailMode,
+      shoeSimplifiedDetailMode: 'distance-simplified',
+      shoeSimplifiedDistanceM: TRACK_SHOE_SIMPLIFIED_DIST_M,
       trackPatternId: trackPattern.id,
       trackPatternLabel: trackPattern.label,
       suspensionPatternId: suspensionPattern.id,
@@ -2045,7 +2111,10 @@ function buildRunningGear(P, cfg) {
     trackW, lp, trackPattern, cfg.pinCapOuter ?? null,
     shoeRadialScale, shoeWidthScale,
   );
-  P.disposables.push(integratedShoe);
+  const simplifiedShoe = simplifiedTrackShoeGeometry(
+    trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
+  );
+  P.disposables.push(integratedShoe, simplifiedShoe);
   // Family-specific neutral steel palettes keep the shoe constructions
   // readable without creating a pale second track. Per-instance colors are
   // assigned once below; this remains one InstancedMesh / one draw call.
@@ -2095,6 +2164,24 @@ function buildRunningGear(P, cfg) {
   padIM.userData.trackShoeCenterOffsetM = rOut;
   padIM.userData.trackShoeShadePalette = [...shadePalette];
   const linkMeshes=[padIM];
+  const simplifiedPadIM = new THREE.InstancedMesh(
+    simplifiedShoe, padMat, nLinks * 2,
+  );
+  // Both levels represent the same articulated chain. Sharing the exact
+  // matrix/color attributes avoids a second per-frame instance-buffer upload.
+  simplifiedPadIM.instanceMatrix = padIM.instanceMatrix;
+  simplifiedPadIM.instanceColor = padIM.instanceColor;
+  simplifiedPadIM.name = 'gearTrackPadsSimplified';
+  simplifiedPadIM.userData = {
+    ...padIM.userData,
+    appearanceRole: 'trackPadSimplified',
+    trackShoeDetailMode: 'distance-simplified',
+    trackShoeSourceDetailMode: shoeDetailMode,
+    trackShoeSimplifiedDistanceM: TRACK_SHOE_SIMPLIFIED_DIST_M,
+    runningGear: true,
+  };
+  simplifiedPadIM.castShadow = false;
+  simplifiedPadIM.receiveShadow = true;
   // The casting band alone casts the continuous shadow; the one detailed
   // instanced shoe follows its deformation and scroll state.
   for(const mesh of linkMeshes) {
@@ -2102,8 +2189,12 @@ function buildRunningGear(P, cfg) {
     mesh.castShadow=false;
     mesh.receiveShadow=true;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    lodWrap(hullG,mesh);
   }
+  lodWrap(hullG, padIM, LOD1_DIST, {
+    object: simplifiedPadIM,
+    distance: TRACK_SHOE_SIMPLIFIED_DIST_M,
+    hysteresis: 0.08,
+  });
   // A covered return run is still a complete physical chain. Older builds
   // collapsed its matrices to zero as a visibility workaround, leaving a
   // real gap in the shoe/grouser course whenever a skirt angle exposed it.
@@ -3096,7 +3187,8 @@ function grilleIndices(highDetail, count, lowCount = 3) {
 // ---------------------------------------------------------------------------
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft, polyMultiLoft,
-  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry, trackHitboxHull,
+  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
+  simplifiedTrackShoeGeometry, trackHitboxHull,
   runningGearContactPatch,
   buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,

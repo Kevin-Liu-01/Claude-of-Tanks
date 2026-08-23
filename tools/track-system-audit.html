@@ -163,6 +163,8 @@ function inspectUnit(unitId, receipt, objects) {
     && /^gearTrackBand[LR]$/.test(object.name));
   const pads = objects.filter((object) => object.userData.runningGearUnitId === unitId
     && object.name === 'gearTrackPads');
+  const simplifiedPads = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && object.name === 'gearTrackPadsSimplified');
   const tires = objects.filter((object) => object.userData.runningGearUnitId === unitId
     && object.name === 'gearRoadWheelTires');
   const suspensionLinks = objects.filter((object) => object.userData.runningGearUnitId === unitId
@@ -175,6 +177,9 @@ function inspectUnit(unitId, receipt, objects) {
 
   if (bands.length !== 2) failures.push(`expected 2 belts, got ${bands.length}`);
   if (pads.length !== 1) failures.push(`expected 1 integrated shoe layer, got ${pads.length}`);
+  if (simplifiedPads.length !== 1) {
+    failures.push(`expected 1 distance shoe layer, got ${simplifiedPads.length}`);
+  }
   if (!wheelLayers.length) failures.push('missing suspension-driven road-wheel layer');
   if (suspensionLinks.length !== 1) {
     failures.push(`expected 1 suspension linkage layer, got ${suspensionLinks.length}`);
@@ -212,8 +217,15 @@ function inspectUnit(unitId, receipt, objects) {
   if (padMesh.userData.trackPatternId !== receipt.trackPatternId) {
     failures.push('track-family drift between geometry and course receipt');
   }
-  if (triangleCount(padMesh.geometry) > 240) {
-    failures.push(`shoe geometry exceeds 240-triangle budget (${triangleCount(padMesh.geometry)})`);
+  if (triangleCount(padMesh.geometry) > 200) {
+    failures.push(`shoe geometry exceeds 200-triangle budget (${triangleCount(padMesh.geometry)})`);
+  }
+  const simplifiedPadMesh = simplifiedPads[0];
+  if (simplifiedPadMesh && triangleCount(simplifiedPadMesh.geometry) > 24) {
+    failures.push(`distance shoe exceeds 24-triangle budget (${triangleCount(simplifiedPadMesh.geometry)})`);
+  }
+  if (simplifiedPadMesh && simplifiedPadMesh.instanceMatrix !== padMesh.instanceMatrix) {
+    failures.push('shoe LOD levels do not share the articulated instance buffer');
   }
   if (suspensionMesh) {
     if (!suspensionMesh.isInstancedMesh) failures.push('suspension linkage layer is not instanced');

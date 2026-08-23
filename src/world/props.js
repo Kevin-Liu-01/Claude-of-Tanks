@@ -27,7 +27,9 @@ import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
 import { hedgehogBeamSpecs, sampleDiscGround, sampleObbGround } from './propPlacement.js';
-import { box, gablePrism, jitterUV, scaleUV, slabBox } from './propGeometry.js';
+import {
+  box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
+} from './propGeometry.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
@@ -3662,7 +3664,51 @@ ${snowCap ? `
   }
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
-  let poleIM = null; // effects_combat r1: kept for hinge-topple matrix writes
+  let poleIM = null; // effects_combat r1: virtual writer for hinge-topple matrices
+  let poleFullIM = null;
+  let poleDistanceIM = null;
+  let poleMatrices = null;
+  let poleHigh = null;
+  let poleLodDirty = false;
+  const lastPoleCamera = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN);
+
+  function rebuildPoleInstances() {
+    if (!poleFullIM || !poleDistanceIM || !poleMatrices) return;
+    let fullCount = 0, distanceCount = 0;
+    for (let i = 0; i < poleMatrices.length; i++) {
+      if (poleHigh[i]) poleFullIM.setMatrixAt(fullCount++, poleMatrices[i]);
+      else poleDistanceIM.setMatrixAt(distanceCount++, poleMatrices[i]);
+    }
+    poleFullIM.count = fullCount;
+    poleDistanceIM.count = distanceCount;
+    poleFullIM.visible = fullCount > 0;
+    poleDistanceIM.visible = distanceCount > 0;
+    poleFullIM.instanceMatrix.needsUpdate = true;
+    poleDistanceIM.instanceMatrix.needsUpdate = true;
+    poleLodDirty = false;
+  }
+
+  function updatePoleLod(cameraPos, force = false) {
+    if (!poleMatrices) return;
+    let changed = force;
+    if (cameraPos && Number.isFinite(cameraPos.x) && Number.isFinite(cameraPos.z)) {
+      const moved = !Number.isFinite(lastPoleCamera.x)
+        || lastPoleCamera.distanceToSquared(cameraPos) > 64;
+      if (moved || force) {
+        lastPoleCamera.copy(cameraPos);
+        for (let i = 0; i < poleMatrices.length; i++) {
+          const e = poleMatrices[i].elements;
+          const d = Math.hypot(e[12] - cameraPos.x, e[14] - cameraPos.z);
+          // Hysteresis keeps a moving chase camera from repartitioning at the
+          // boundary. The full model remains exact through 105 m and only
+          // yields after 120 m, where the compact crossarm is screen-equivalent.
+          const high = poleHigh[i] ? d <= 120 : d < 105;
+          if (high !== poleHigh[i]) { poleHigh[i] = high; changed = true; }
+        }
+      }
+    }
+    if (changed || poleLodDirty) rebuildPoleInstances();
+  }
   // r3 terrain_environment: the pale-sand baked sandbag models rendered as
   // raw white lumps on the winter snowfield (probed: the "foreground white
   // icosphere" of the critique was a sack_trench instance at 87 m). Per-map
@@ -3671,6 +3717,39 @@ ${snowCap ? `
   const bakedTint = snowCap ? new THREE.Color(0.52, 0.50, 0.47) : null;
   for (const [name, e] of bakedInstances) {
     if (e.list.length === 0) continue;
+    if (name === 'pole') {
+      poleMatrices = e.list.map((matrix) => matrix.clone());
+      poleHigh = new Uint8Array(e.list.length);
+      poleHigh.fill(1);
+      poleFullIM = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
+      poleDistanceIM = new THREE.InstancedMesh(
+        makeTelephonePoleDistanceGeometry(), mats.baked, e.list.length);
+      for (const mesh of [poleFullIM, poleDistanceIM]) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.matrixAutoUpdate = false;
+        mesh.frustumCulled = false;
+        group.add(mesh);
+      }
+      poleFullIM.name = 'baked-pole-full';
+      poleDistanceIM.name = 'baked-pole-distance';
+      poleFullIM.userData.distanceSplitM = 120;
+      poleDistanceIM.userData.distanceSplitM = 105;
+      poleDistanceIM.count = 0;
+      poleDistanceIM.visible = false;
+      rebuildPoleInstances();
+      // Crush/topple records retain their stable authored index. The renderer
+      // is free to pack near/far instances independently behind this writer.
+      poleIM = {
+        instanceMatrix: { needsUpdate: false },
+        getMatrixAt(index, target) { target.copy(poleMatrices[index]); },
+        setMatrixAt(index, matrix) {
+          poleMatrices[index].copy(matrix);
+          poleLodDirty = true;
+        },
+      };
+      continue;
+    }
     const im = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
     const tint = bakedTint && name.startsWith('sb') ? bakedTint : null;
     for (let i = 0; i < e.list.length; i++) {
@@ -3681,8 +3760,8 @@ ${snowCap ? `
     im.receiveShadow = true;
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
+    im.name = `baked-${name}`;
     group.add(im);
-    if (name === 'pole') { poleIM = im; im.frustumCulled = false; }
   }
 
   // Linked utility conductors: one four-sided unit cylinder, instanced along
@@ -4234,7 +4313,8 @@ ${snowCap ? `
     }
   }
 
-  function updateProps(dt) {
+  function updateProps(dt, cameraPos = null) {
+    updatePoleLod(cameraPos);
     fxBudget = 6; // per-frame kind-burst cap refill
     // DESTRUCTIBLES r1: deferred explosive-drum blasts (max 2/tick so chains
     // ripple instead of detonating as one frame spike)
@@ -4277,6 +4357,7 @@ ${snowCap ? `
       poseToppled(a, ang);
       if (a.t >= 1.1) crushAnims.splice(k, 1);
     }
+    updatePoleLod(cameraPos);
   }
 
   /**
@@ -4345,6 +4426,7 @@ ${snowCap ? `
         }
       }
       if (dirty) poleIM.instanceMatrix.needsUpdate = true;
+      updatePoleLod(lastPoleCamera, true);
     }
     if (utilityNetwork) {
       utilityNetwork.reset();

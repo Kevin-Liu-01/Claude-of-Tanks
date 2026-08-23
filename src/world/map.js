@@ -272,7 +272,7 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     update(dt, cameraPos, cameraFwd = null, focusPos = null) {
       terrain.userData.updateLOD(cameraPos);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
-      if (props.updateProps) props.updateProps(dt); // pole hinge-topple anims
+      if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t) { vegetation.setWindTime(t); },

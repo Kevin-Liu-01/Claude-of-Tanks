@@ -2837,7 +2837,11 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     decTex.colorSpace = THREE.SRGBColorSpace;
     const sunAzV = (((cfg && cfg.sky && cfg.sky.sunAzimuthDeg) ?? 115) * Math.PI) / 180;
     const shX = -Math.sin(sunAzV), shZ = -Math.cos(sunAzV); // ground shadow dir
-    const segs = 12, rings = [0.5, 1.0];
+    // The outer edge samples fully transparent texels, so its polygonal
+    // contour is invisible; eight terrain-conforming sectors preserve the
+    // same soft contact-shadow footprint while removing one third of this
+    // map-wide merged mesh's triangles (thousands of decals per map).
+    const segs = 8, rings = [0.5, 1.0];
     const drng = mulberry32((seed ^ 0xdeca) >>> 0);
     const pos = [], uv2 = [], idx = [];
     let vb = 0;

@@ -534,7 +534,8 @@ try {
     // control so each rAF sample sees the FULL frame (shadow + composer passes).
     R.info.autoReset = false;
     window.__PERF = {
-      deltas: [], times: [], calls: [], tris: [], shadowMasks: [], heap: [], done: false,
+      deltas: [], times: [], calls: [], tris: [], points: [], lines: [],
+      shadowMasks: [], heap: [], done: false,
     };
     const P = window.__PERF;
     let last = -1;
@@ -560,6 +561,8 @@ try {
         // counters accumulated since our reset at the previous rAF = one frame
         P.calls.push(R.info.render.calls);
         P.tris.push(R.info.render.triangles);
+        P.points.push(R.info.render.points);
+        P.lines.push(R.info.render.lines);
         P.shadowMasks.push(window.__DEBUG.lighting.scheduledMask | 0);
       }
       R.info.reset();
@@ -654,6 +657,63 @@ try {
       // are still scene children. Attribute every procedural tank root that
       // can render, rather than only the current game.tanks array.
       const tankRoots = D.scene.children.filter((o) => (o.name || '').startsWith('tank_'));
+      const renderedPrimitiveCount = (object) => {
+        if (object.isBatchedMesh && object._multiDrawCounts) {
+          let count = 0;
+          for (let i = 0; i < object._multiDrawCount; i++) {
+            count += Math.abs(object._multiDrawCounts[i] || 0);
+          }
+          return count;
+        }
+        const positionCount = object.geometry?.getAttribute?.('position')?.count || 0;
+        const baseCount = object.geometry?.index?.count || positionCount;
+        return baseCount * (object.isInstancedMesh ? Math.max(0, object.count || 0) : 1);
+      };
+      const effectivelyVisible = (object, root) => {
+        for (let node = object; node; node = node.parent) {
+          if (node.visible === false) return false;
+          if (node === root) return true;
+        }
+        return false;
+      };
+      const worldInventory = [];
+      world.group.traverse((object) => {
+        if (!(object.isMesh || object.isPoints || object.isLine) || !object.geometry ||
+            !effectivelyVisible(object, world.group)) return;
+        let subsystem = object;
+        while (subsystem.parent && subsystem.parent !== world.group) subsystem = subsystem.parent;
+        const primitives = renderedPrimitiveCount(object);
+        worldInventory.push({
+          name: object.name || '(unnamed)',
+          path: `${subsystem.name || subsystem.type}/${object.name || object.type}`,
+          type: object.type,
+          subsystem: subsystem.name || subsystem.type,
+          instances: object.isInstancedMesh ? object.count : 1,
+          triangles: object.isMesh ? Math.floor(primitives / 3) : 0,
+          points: object.isPoints ? primitives : 0,
+          lines: object.isLine ? Math.floor(primitives / 2) : 0,
+          castShadow: !!object.castShadow,
+        });
+      });
+      worldInventory.sort((a, b) => b.triangles - a.triangles || b.points - a.points);
+      const worldBySubsystem = Object.values(worldInventory.reduce((groups, entry) => {
+        const group = groups[entry.subsystem] ||= {
+          subsystem: entry.subsystem,
+          objects: 0,
+          instances: 0,
+          triangles: 0,
+          points: 0,
+          lines: 0,
+          shadowTriangles: 0,
+        };
+        group.objects += 1;
+        group.instances += entry.instances;
+        group.triangles += entry.triangles;
+        group.points += entry.points;
+        group.lines += entry.lines;
+        if (entry.castShadow) group.shadowTriangles += entry.triangles;
+        return groups;
+      }, {})).sort((a, b) => b.triangles - a.triangles || b.points - a.points);
       const tankInventory = tankRoots.map((root) => {
         let meshes = 0;
         let visibleMeshes = 0;
@@ -671,9 +731,7 @@ try {
           if (!shown || root.visible === false || !root.parent) return;
           visibleMeshes++;
           if (object.castShadow) shadowCasters++;
-          const positionCount = object.geometry?.getAttribute?.('position')?.count || 0;
-          visibleTriangles += Math.round((object.geometry?.index?.count || positionCount) / 3)
-            * Math.max(1, object.count || 1);
+          visibleTriangles += Math.floor(renderedPrimitiveCount(object) / 3);
           if (object.isMesh && !object.isInstancedMesh && !object.children.length
               && !Array.isArray(object.material)) {
             const attrs = Object.entries(object.geometry?.attributes || {})
@@ -711,7 +769,7 @@ try {
         R.info.autoReset = false;
         // let the toggles settle (LOD/wind updates react to visibility)
         for (let i = 0; i < 3; i++) await nextFrame();
-        const calls = []; const tris = []; const ms = [];
+        const calls = []; const tris = []; const points = []; const lines = []; const ms = [];
         let last = performance.now();
         for (let i = 0; i < frames; i++) {
           R.info.reset();
@@ -719,12 +777,21 @@ try {
           const now = performance.now();
           calls.push(R.info.render.calls);
           tris.push(R.info.render.triangles);
+          points.push(R.info.render.points);
+          lines.push(R.info.render.lines);
           ms.push(now - last);
           last = now;
         }
         R.info.autoReset = true;
         const med = (a) => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)];
-        return { label, calls: med(calls), triangles: med(tris), frameMs: +med(ms).toFixed(2) };
+        return {
+          label,
+          calls: med(calls),
+          triangles: med(tris),
+          points: med(points),
+          lines: med(lines),
+          frameMs: +med(ms).toFixed(2),
+        };
       }
 
       const out = [];
@@ -768,7 +835,14 @@ try {
 
       for (const [o, v] of state) o.visible = v;
       await nextFrame();
-      return { phase: D.game.phase, frames, tanks: tankInventory, samples: out };
+      return {
+        phase: D.game.phase,
+        frames,
+        tanks: tankInventory,
+        worldBySubsystem,
+        worldTopGeometry: worldInventory.slice(0, 80),
+        samples: out,
+      };
     }, 30);
   }
 
@@ -791,6 +865,8 @@ try {
       deltas: perf.deltas,
       calls: perf.calls,
       tris: perf.tris,
+      points: perf.points,
+      lines: perf.lines,
       shadowMasks: perf.shadowMasks,
     }));
     console.error(`[perf] raw frame series dumped to ${dumpFile}`);
@@ -862,6 +938,14 @@ try {
     triangles: {
       median: q(perf.tris.slice().sort((a, b) => a - b), 0.5),
       max: Math.max(...perf.tris),
+    },
+    points: {
+      median: q(perf.points.slice().sort((a, b) => a - b), 0.5),
+      max: Math.max(...perf.points),
+    },
+    lines: {
+      median: q(perf.lines.slice().sort((a, b) => a - b), 0.5),
+      max: Math.max(...perf.lines),
     },
     adaptive,
     rendererInfo: perf.info || null,
