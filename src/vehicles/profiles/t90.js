@@ -4092,7 +4092,10 @@ function buildT90(P) {
     // made the authored hull look perched on an underscale suspension.
     style: 'rubber', wheelR: 0.52, wheelW: 0.22, wheelY: 0.51, xc: 1.395, dishR: 0.74,
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
-    sprocket: { z: -2.48, y: 0.94, r: 0.23 }, idler: { z: 2.70, y: 0.68, r: 0.27 },
+    // Seat the final drive under the rear transom instead of crowding the
+    // last road wheel. The shared course generator rebuilds the rear rise,
+    // wrap pads, belt and hit volume around this raised/aft station.
+    sprocket: { z: -2.73, y: 1.02, r: 0.23 }, idler: { z: 2.70, y: 0.68, r: 0.27 },
     rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     tireHex: 0x292a25, wheelHex: 0x394431,
@@ -5520,7 +5523,9 @@ function buildT90MS(P) {
     style: 'rubber', wheelR: 0.505, wheelW: 0.22, wheelY: 0.515, xc: 1.395, dishR: 0.72,
     tireHex: 0x34372f, wheelHex: 0x68684d,
     wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
-    sprocket: { z: -2.42, y: 0.91, r: 0.20 }, idler: { z: 2.76, y: 0.69, r: 0.25 },
+    // Tagil uses the same aft/up final-drive correction while preserving
+    // its own smaller sprocket, road-wheel cadence and front-idler station.
+    sprocket: { z: -2.67, y: 0.99, r: 0.20 }, idler: { z: 2.76, y: 0.69, r: 0.25 },
     rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
   });
