@@ -97,6 +97,7 @@ assert.deepEqual(finish, {
   rearFuelCans: 2,
   rearFuelCanSize: [0.56, 0.66, 0.24],
   roadWheelStations: 7,
+  roadWheelR: 0.345,
   roadWheelY: 0.37,
   roadWheelPitch: 0.74,
   roadWheelSpan: 4.44,
@@ -111,8 +112,8 @@ assert.deepEqual(finish, {
   trackTopSupportY: 1.14,
   trackThickness: 0.07,
   trackBotY: 0.05,
-  trackContactZF: 2.94,
-  trackContactZR: -2.34,
+  trackContactZF: 2.865,
+  trackContactZR: -2.265,
   sealedHullSides: true,
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
@@ -156,6 +157,14 @@ assert.equal(finish.trackTopSupportY, 1.14,
   'the wider upper track course remains seated directly below the fenders');
 assert.equal(finish.bodyLiftY, 0,
   'the hull returns to its source datum without moving the running gear');
+const loadedRun = gear.loopPoints.filter(([, y]) => Math.abs(y - finish.trackBotY) < 1e-8);
+assert.ok(loadedRun.length >= 7, 'the loaded track run retains articulated road-wheel stations');
+assert.ok(Math.abs(Math.max(...loadedRun.map(([z]) => z))
+  - (gear.wheelZs[0] + gear.wheelR)) < 1e-8,
+  'the front lower bend begins at the leading road-wheel tangent');
+assert.ok(Math.abs(Math.min(...loadedRun.map(([z]) => z))
+  - (gear.wheelZs.at(-1) - gear.wheelR)) < 1e-8,
+  'the rear lower bend begins at the trailing road-wheel tangent');
 
 // The sponson must bear on the fender shelf, while exactly one long shallow
 // upper-glacis surface remains between the deck break and nose. A vertical
@@ -205,20 +214,28 @@ mesh('turretEquipment');
 mesh('turretCupola');
 let pintleMgs = 0;
 let stowageRacks = 0;
+const stowageRackZs = [];
 turretRig.traverse((node) => {
   if (node.userData?.fittingRoot && node.userData.fitting === 'pintleMG') pintleMgs += 1;
-  if (node.userData?.fittingRoot && node.userData.fitting === 'stowageRack') stowageRacks += 1;
+  if (node.userData?.fittingRoot && node.userData.fitting === 'stowageRack') {
+    stowageRacks += 1;
+    stowageRackZs.push(node.position.z);
+  }
 });
 assert.equal(pintleMgs, 1, 'one turret-owned pintle machine gun is retained');
 assert.equal(stowageRacks, 2, 'both turret-side stowage racks are retained');
+assert.deepEqual(stowageRackZs.sort((a, b) => a - b), [-1.68, -1.68],
+  'both side racks sit aft against the compact rear bustle');
 assert.deepEqual(turretRig.userData.leopard1A5TurretFinishReceipt, {
   connectedBustleBasket: true,
-  enlargedBustleBasket: true,
-  bustleRearZ: -2.96,
-  bustleWidth: 2.20,
+  compactBustleBasket: true,
+  bustleRearZ: -2.84,
+  bustleWidth: 1.88,
+  bustleDepth: 0.60,
   bustleFloorY: 0.31,
+  sideRackZ: -1.68,
   shieldedRoofMachineGun: true,
-}, 'turret finish receipt retains the enlarged attached bustle and shielded MG station');
+}, 'turret finish receipt retains the compact tail-aligned bustle and shielded MG station');
 assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   seated: true,
   shapedButterflyCasting: true,

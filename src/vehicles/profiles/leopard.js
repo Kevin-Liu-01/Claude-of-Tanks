@@ -10456,6 +10456,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   // opened an oversized strip of daylight above the unchanged Leopard track
   // course and made the complete upper vehicle read detached from its gear.
   const bodyLiftY = 0;
+  const roadWheelR = 0.345;
   const roadWheelY = 0.37;
   const roadWheelZs = [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92];
   const returnRollerZs = [2.40, 1.00, -0.42, -1.77];
@@ -10464,8 +10465,11 @@ function buildLeo1A5ArticulatedProfile(P) {
   const trackThickness = 0.07;
   const trackTopSupportY = returnRollerY + 0.105 + trackThickness / 2;
   const trackBotY = 0.05;
-  const trackContactZF = 2.94;
-  const trackContactZR = -2.34;
+  // End the loaded run at the outer tangent of the first and last road
+  // wheels. The previous pins extended another 75 mm at both ends, so the
+  // visible lower corners bent outside the wheel row instead of following it.
+  const trackContactZF = Number((roadWheelZs[0] + roadWheelR).toFixed(3));
+  const trackContactZR = Number((roadWheelZs.at(-1) - roadWheelR).toFixed(3));
   const frontIdler = { z: 3.17, y: 0.74, r: 0.29 };
   const rearSprocket = { z: -2.70, y: 0.79, r: 0.30 };
 
@@ -10639,7 +10643,7 @@ function buildLeo1A5ArticulatedProfile(P) {
   // shoe replaces the former deep connector/pin stack: the wrap now reads as
   // one tight chain around the idler and sprocket instead of a ring of spikes.
   buildRunningGear(P, {
-    style: 'rubber', dishR: 0.77, wheelR: 0.345, wheelW: 0.225, wheelY: roadWheelY, xc: 1.40,
+    style: 'rubber', dishR: 0.77, wheelR: roadWheelR, wheelW: 0.225, wheelY: roadWheelY, xc: 1.40,
     wheelZs: roadWheelZs,
     sprocket: rearSprocket, idler: frontIdler,
     rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: 0.105 })),
@@ -10667,6 +10671,7 @@ function buildLeo1A5ArticulatedProfile(P) {
     rearFuelCans: 2,
     rearFuelCanSize: [0.56, 0.66, 0.24],
     roadWheelStations: 7,
+    roadWheelR,
     roadWheelY,
     roadWheelPitch: 0.74,
     roadWheelSpan: 4.44,
@@ -10792,45 +10797,53 @@ function buildLeo1A5ArticulatedProfile(P) {
     }
   }
 
-  // Deep Leopard bustle basket: a broad mounting transom overlaps the cast
-  // tail, triangulated heels carry a raised perforated floor clear of the
-  // engine deck, and a full-width rail cage projects aft as one assembly.
-  P.addEquipment('turret', box(1.72, 0.28, 0.24), 0, 0.45, -2.19);
-  P.addEquipment('turret', box(2.20, 0.040, 0.040), 0, 0.82, -2.96);
-  P.addEquipment('turret', box(2.20, 0.040, 0.040), 0, 0.29, -2.96);
-  P.addEquipment('turret', box(2.08, 0.025, 0.78), 0, 0.31, -2.57);
-  P.addEquipment('turret', box(2.04, 0.035, 0.10), 0, 0.78, -2.20);
-  P.addEquipment('turret', box(2.04, 0.030, 0.035), 0, 0.55, -2.58);
+  // Compact Leopard bustle basket: its 1.88 m width now follows the cast
+  // tail instead of overhanging it by a broad shelf. The shorter floor is
+  // biased aft while the mounting transom still overlaps the armored rear,
+  // so the basket reads as one rear assembly rather than an oversized box.
+  const bustleWidth = 1.88;
+  const bustleFrontZ = -2.24;
+  const bustleRearZ = -2.84;
+  const bustleCenterZ = (bustleFrontZ + bustleRearZ) / 2;
+  const bustleDepth = bustleFrontZ - bustleRearZ;
+  P.addEquipment('turret', box(1.60, 0.25, 0.20), 0, 0.44, -2.20);
+  P.addEquipment('turret', box(bustleWidth, 0.040, 0.040), 0, 0.78, bustleRearZ);
+  P.addEquipment('turret', box(bustleWidth, 0.040, 0.040), 0, 0.29, bustleRearZ);
+  P.addEquipment('turret', box(1.80, 0.025, bustleDepth), 0, 0.31, bustleCenterZ);
+  P.addEquipment('turret', box(1.84, 0.035, 0.10), 0, 0.74, bustleFrontZ);
+  P.addEquipment('turret', box(1.82, 0.030, 0.035), 0, 0.53, bustleCenterZ);
   for (let k = 0; k < 7; k++) {
-    const x = -1.02 + k * 0.34;
-    P.addEquipment('turret', box(0.030, 0.53, 0.030), x, 0.555, -2.96);
-    P.addEquipment('turret', box(0.034, 0.034, 0.76), x, 0.37, -2.57, -0.10, 0, 0);
+    const x = -0.86 + k * (1.72 / 6);
+    P.addEquipment('turret', box(0.030, 0.49, 0.030), x, 0.535, bustleRearZ);
+    P.addEquipment('turret', box(0.034, 0.034, bustleDepth - 0.03), x, 0.37, bustleCenterZ, -0.10, 0, 0);
   }
   for (const s of [-1, 1]) {
-    P.addEquipment('turret', box(0.040, 0.040, 0.82), s * 1.08, 0.82, -2.55);
-    P.addEquipment('turret', box(0.040, 0.040, 0.82), s * 1.08, 0.29, -2.55);
-    P.addEquipment('turret', box(0.060, 0.060, 0.80), s * 0.88, 0.49, -2.57, -0.50, 0, 0);
-    const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.76, d: 0.31, h: 0.29,
+    P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.92, 0.78, bustleCenterZ);
+    P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.92, 0.29, bustleCenterZ);
+    P.addEquipment('turret', box(0.055, 0.055, bustleDepth + 0.02), s * 0.76, 0.47, bustleCenterZ, -0.50, 0, 0);
+    const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.64, d: 0.27, h: 0.26,
       rails: 3, fill: 0.82, seed: s > 0 ? 31 : 32, rotation: [0, s * Math.PI / 2, 0] });
-    rack.position.set(s * 1.20, 0.31, -1.35);
+    rack.position.set(s * 1.09, 0.31, -1.68);
     P.turretG.add(rack);
     P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.79, 0.84, -1.42);
     P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.79, 1.54, -1.42, 0, 0, s * 0.025);
   }
   stowage(P, 'turretCloth', rng, [
-    [-0.68, 0.55, -2.57, 0.66, 0.36, 0.62], [0.04, 0.53, -2.60, 0.62, 0.34, 0.60],
-    [0.70, 0.54, -2.58, 0.50, 0.35, 0.58],
+    [-0.56, 0.51, -2.54, 0.52, 0.32, 0.48], [0, 0.50, -2.55, 0.50, 0.31, 0.48],
+    [0.56, 0.51, -2.54, 0.46, 0.31, 0.46],
   ]);
-  jerryCan(P, 'turretCloth', 0.82, 0.50, -2.72, 0.18);
-  tarpRoll(P, 'turretCloth', -0.08, 0.82, -2.46, 1.16, 0.105, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', -0.90, 0.47, -2.72, 0.13);
+  jerryCan(P, 'turretCloth', 0.68, 0.47, -2.65, 0.16);
+  tarpRoll(P, 'turretCloth', -0.04, 0.76, -2.45, 0.96, 0.095, true, P.q ? 12 : 8);
+  ammoCan(P, 'turretDark', -0.72, 0.45, -2.66, 0.12);
 
   P.turretG.userData.leopard1A5TurretFinishReceipt = {
     connectedBustleBasket: true,
-    enlargedBustleBasket: true,
-    bustleRearZ: -2.96,
-    bustleWidth: 2.20,
+    compactBustleBasket: true,
+    bustleRearZ,
+    bustleWidth,
+    bustleDepth: Number(bustleDepth.toFixed(2)),
     bustleFloorY: 0.31,
+    sideRackZ: -1.68,
     shieldedRoofMachineGun: true,
   };
 
