@@ -18,7 +18,7 @@ import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
   ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone,
 } from './russia.js';
-import { buildT72B87Native } from './t72.js';
+import { buildT72B87Native, t72TrackFinishFor } from './t72.js';
 
 // ---------------------------------------------------------------------------
 // Shared Polish fittings (fresh authorship — the old clone-package helpers
@@ -174,6 +174,7 @@ function buildT72M1JaguarLegacy(P) {
   // ---- running gear: T-72 family stance (six dished pairs) ---------------
   const wheelZs = [-2.01, -1.19, -0.37, 0.45, 1.27, 2.09];
   buildRunningGear(P, {
+    ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: 0.455, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
     dishR: 0.79, wheelZs,
     sprocket: { z: -2.36, y: 0.68, r: 0.32 },

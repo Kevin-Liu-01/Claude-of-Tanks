@@ -1992,7 +1992,34 @@ function buildRunningGear(P, cfg) {
   tgR.getAttribute('position').setUsage(THREE.DynamicDrawUsage);
   const bandBasePos = tg.getAttribute('position').array.slice();
   P.disposables.push(tgL, tgR);
-  const tl = new THREE.Mesh(tgL, mats.trackL);
+  // Most tanks use the shared neutral track texture at full strength. Some
+  // families need a warmer oxidized-steel response to keep the band from
+  // inheriting a green/blue environmental cast under their dark camouflage.
+  // Clone only for explicit profile overrides so the fleet default and the
+  // independently scrolling texture maps remain unchanged.
+  const trackBandMaterial = (source) => {
+    if (cfg.trackBandHex == null
+      && cfg.trackBandRoughness == null
+      && cfg.trackBandEnvMapIntensity == null) return source;
+    const material = source.clone();
+    if (cfg.trackBandHex != null) material.color.setHex(cfg.trackBandHex);
+    if (cfg.trackBandRoughness != null) material.roughness = cfg.trackBandRoughness;
+    if (cfg.trackBandEnvMapIntensity != null) {
+      material.envMapIntensity = cfg.trackBandEnvMapIntensity;
+    }
+    material.name = source.name;
+    material.userData = {
+      ...(source.userData || {}),
+      trackBandFinish: {
+        colorHex: material.color.getHex(),
+        roughness: material.roughness,
+        envMapIntensity: material.envMapIntensity,
+      },
+    };
+    P.disposables.push(material);
+    return material;
+  };
+  const tl = new THREE.Mesh(tgL, trackBandMaterial(mats.trackL));
   tl.name = 'gearTrackBandL';
   tl.userData.runningGear = true;
   tl.userData.runningGearUnitId = runningGearUnitId;
@@ -2000,7 +2027,7 @@ function buildRunningGear(P, cfg) {
   tl.userData.trackTextureRepeatM = trackTextureRepeatM;
   tl.userData.appearanceRole = 'trackBand';
   tl.position.x = -xcLeft;
-  const tr = new THREE.Mesh(tgR, mats.trackR);
+  const tr = new THREE.Mesh(tgR, trackBandMaterial(mats.trackR));
   tr.name = 'gearTrackBandR';
   tr.userData.runningGear = true;
   tr.userData.runningGearUnitId = runningGearUnitId;

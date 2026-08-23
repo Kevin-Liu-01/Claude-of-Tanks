@@ -24,6 +24,19 @@ import {
   ruShtora,
 } from './russia.js';
 
+// The T-72 family wears dark, warm oxidized manganese steel rather than
+// scheme-painted track bands. A warm-neutral multiplier plus a near-diffuse
+// response keeps woodland lighting from turning the continuous belt green;
+// road-wheel paint and rubber skirts remain in the active camouflage scheme.
+export const T72_TRACK_FINISH = Object.freeze({
+  trackBandHex: 0xb8afa0,
+  trackBandRoughness: 0.96,
+  trackBandEnvMapIntensity: 0.03,
+});
+export function t72TrackFinishFor(P) {
+  return String(P.spec?.id || '').startsWith('t72') ? T72_TRACK_FINISH : {};
+}
+
 function buildT72B87(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
   // VERTEX ROUND r3 (batch-13 tube split): the gunNode registration re-keys
@@ -115,6 +128,7 @@ function buildT72B87(P) {
   // prong-to-flap bridges above the idler wrap (§B2/§B4)
   for (const s of [-1, 1]) P.add('hull', box(0.28, 0.06, 0.22), s * 1.55, 1.23, 3.17);
   buildRunningGear(P, {
+    ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.46, xc: 1.355, dishR: 0.84,
     wheelZs: evenStations(6, 3.88, 0.36),
     // gear-fade softening (ref print class): sprocket/idler higher+smaller
@@ -453,6 +467,7 @@ export function buildT72B87Native(P, variant = 'b87') {
 
   const wheelZs = evenStations(6, b3 ? 4.02 : 4.10, b3 ? 0.02 : 0.04);
   buildRunningGear(P, {
+    ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: b3 ? 0.455 : 0.455, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.47, xc: 1.37,
     dishR: b3 ? 0.77 : 0.79, wheelZs,
     sprocket: { z: -2.36, y: b3 ? 0.63 : 0.68, r: b3 ? 0.33 : 0.32 },
@@ -2017,6 +2032,7 @@ function buildT72B3M(P) {
     P.add('hullRubber', box(0.11, 0.105, 0.045), s * 1.655, 1.02, 1.9865);
   }
   buildRunningGear(P, {
+    ...t72TrackFinishFor(P),
     // r22 item 1 RADIUS CONSTRAINT (bisect-proved ANCHOR): the ref renders
     // its six discs at R ~0.34 (40 px dia, 4-9 px sky gaps at 44-48 px
     // pitch); R 0.375 discs at the same 0.782 pitch leave only 2-3 px
@@ -4710,6 +4726,7 @@ function buildT72BU(P) {
   }
   ruFlaps(P, { x: 1.64, w: 0.36, front: [1.06, 0.38], frontZ: 3.55 });
   buildRunningGear(P, {
+    ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: 0.39, wheelW: 0.21, wheelY: 0.45, xc: 1.42, dishR: 0.84,
     // Keep the native six-station datum, but leave a real mechanical interval
     // between each terminal drum and the adjacent road wheel. The former
@@ -4894,6 +4911,7 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
   // One fleet-native six-wheel linked course per side. The shallow segmented
   // skirt protects the upper return while leaving all six dished faces clear.
   buildRunningGear(P, {
+    ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: 0.465, wheelW: 0.23, wheelY: 0.47, xc: 1.38,
     dishR: 0.74, wheelZs: evenStations(6, 4.04, 0.05),
     sprocket: { z: -2.46, y: 0.61, r: 0.325 },
