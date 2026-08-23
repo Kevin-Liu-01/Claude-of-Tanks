@@ -5,14 +5,22 @@ import { getSpec } from '../specs.js';
 
 const eraSectorNames = [
   'a6m_turret_cheek_era_R', 'a6m_turret_cheek_era_L',
+  'a6m_upper_glacis_era',
+];
+const retiredEraSectorNames = [
   'a6m_turret_side_era_R', 'a6m_turret_side_era_L',
   'a6m_skirt_era_R', 'a6m_skirt_era_L',
 ];
 const spec = getSpec('leo2a6m');
 const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => eraSectorNames.includes(plate.name));
-assert.deepEqual(eraSectors.map((plate) => plate.name).sort(), [...eraSectorNames].sort(),
-  'leo2a6m exposes all six UA-derived ERA sectors to combat');
+assert.deepEqual(new Set(eraSectors.map((plate) => plate.name)), new Set(eraSectorNames),
+  'leo2a6m exposes only the requested frontal ERA sectors to combat');
+assert.equal(spec.dims.widthM, 3.98,
+  'leo2a6m restores the certified ISAF cage width after removing skirt ERA');
+assert.equal([...spec.armor.hullPlates, ...spec.armor.turretPlates]
+  .filter((plate) => retiredEraSectorNames.includes(plate.name)).length, 0,
+  'leo2a6m no longer carries the inherited turret-side or skirt ERA sectors');
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable rather than permanent armor`);
   assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} retains the UA chemical protection`);
@@ -43,16 +51,34 @@ const hull = findMesh(hullRig, 'hull');
 
 const eraReceipt = turretRig.userData.leopard2A6MERAReceipt;
 assert.ok(eraReceipt, 'leo2a6m publishes its fitted ERA receipt');
-assert.equal(eraReceipt.totalTiles, 144, 'leo2a6m receives the complete UA tile count');
-assert.deepEqual([...eraReceipt.sectors].sort(), [...eraSectorNames].sort(),
+assert.equal(eraReceipt.totalTiles, 120,
+  'leo2a6m receives the expanded cheeks and upper-glacis field only');
+assert.deepEqual(new Set(eraReceipt.sectors), new Set(eraSectorNames),
   'visual ERA clusters map one-to-one to the standard tank sectors');
-assert.equal(eraReceipt.frontEraSeats.length, 36,
-  'all frontal tiles publish conformal cheek seats');
+assert.equal(eraReceipt.cheekEraSeats.length, 70,
+  'five complete courses publish conformal seats across both turret cheeks');
+assert.equal(eraReceipt.glacisEraSeats.length, 50,
+  'the upper-glacis field publishes a fitted seat for every cassette');
 assert.equal(eraReceipt.staticMergedProtection, true,
   'the added package creates no per-frame geometry work');
-for (const seat of eraReceipt.frontEraSeats) {
-  assert.equal(seat.innerFaceOverlapM, 0.012,
-    'frontal ERA is inset into the cheek rather than floating');
+const assertSurfaceSeat = (seat, halfDepth, expectedOverlap, label) => {
+  const surface = new THREE.Vector3(...seat.surfaceLocal);
+  const center = new THREE.Vector3(...seat.centerLocal);
+  const normal = new THREE.Vector3(...seat.normalLocal);
+  const offset = center.sub(surface);
+  assert.ok(Math.abs(normal.length() - 1) < 2e-5, `${label} has a unit surface normal`);
+  assert.ok(offset.clone().cross(normal).length() < 2e-5,
+    `${label} center advances only along the sampled surface normal`);
+  assert.ok(Math.abs(offset.dot(normal) - (halfDepth - expectedOverlap)) < 2e-5,
+    `${label} back face overlaps its armor seat by ${expectedOverlap} m`);
+  assert.equal(seat.innerFaceOverlapM, expectedOverlap,
+    `${label} records its physical overlap`);
+};
+for (const seat of eraReceipt.cheekEraSeats) {
+  assertSurfaceSeat(seat, 0.07 * 1.05 * 0.5, 0.016, 'cheek ERA');
+}
+for (const seat of eraReceipt.glacisEraSeats) {
+  assertSurfaceSeat(seat, 0.07 * 1.08 * 0.5, 0.015, 'glacis ERA');
 }
 
 const eraMeshes = [];
@@ -63,7 +89,7 @@ visual.root.traverse((object) => {
       && Math.abs(object.geometry.parameters?.height - 0.13) < 1e-6
       && Math.abs(object.geometry.parameters?.depth - 0.07) < 1e-6) eraMeshes.push(object);
 });
-assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 144,
+assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 120,
   'all gameplay ERA sectors have matching instanced visual tiles');
 assert.equal(eraMeshes.length, 2, 'hull and turret ERA remain two shared draw buckets');
 

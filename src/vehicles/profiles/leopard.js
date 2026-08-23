@@ -11006,16 +11006,16 @@ function leoSlatRear(P, o) {
 // + stern + turret flanks), raised belly line with the bolted mine plate,
 // reinforced crew-hatch hardware, ISAF stowage density; L55 at the
 // 7.18 bore mouth (spec overall 10.97 exactly).
-function addLeo2A6MFieldERA(P, sectorPrefix) {
-  const { box } = KIT;
+function addLeo2A6MFrontalERA(P, sectorPrefix) {
   const turretPivot = P.spec.armor.turretPivot;
-  const sample = (stations, x) => {
-    if (x <= stations[0][0]) return stations[0][1];
+  const sample = (stations, coordinate) => {
+    if (coordinate <= stations[0][0]) return stations[0][1];
     for (let index = 1; index < stations.length; index++) {
-      const [x1, value1] = stations[index];
-      if (x <= x1) {
-        const [x0, value0] = stations[index - 1];
-        return THREE.MathUtils.lerp(value0, value1, (x - x0) / (x1 - x0));
+      const [coordinate1, value1] = stations[index];
+      if (coordinate <= coordinate1) {
+        const [coordinate0, value0] = stations[index - 1];
+        return THREE.MathUtils.lerp(value0, value1,
+          (coordinate - coordinate0) / (coordinate1 - coordinate0));
       }
     }
     return stations.at(-1)[1];
@@ -11039,24 +11039,44 @@ function addLeo2A6MFieldERA(P, sectorPrefix) {
     const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
     return { point: new THREE.Vector3(side * absX, y, z), normal, rotation };
   };
-  const frontEraSeats = [];
+  const glacisStations = [
+    [2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21],
+  ];
+  const glacisSurface = (x, z) => {
+    const y = sample(glacisStations, z);
+    const epsilon = 0.002;
+    const dydZ = (sample(glacisStations, z + epsilon)
+      - sample(glacisStations, z - epsilon)) / (epsilon * 2);
+    const tangentX = new THREE.Vector3(1, 0, 0);
+    const normal = new THREE.Vector3(0, 1, -dydZ).normalize();
+    const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
+    const basis = new THREE.Matrix4().makeBasis(tangentX, tangentY, normal);
+    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
+    return { point: new THREE.Vector3(x, y, z), normal, rotation };
+  };
+  const cheekEraSeats = [];
+  const glacisEraSeats = [];
   const sectors = [
     `${sectorPrefix}_turret_cheek_era_R`, `${sectorPrefix}_turret_cheek_era_L`,
-    `${sectorPrefix}_turret_side_era_R`, `${sectorPrefix}_turret_side_era_L`,
-    `${sectorPrefix}_skirt_era_R`, `${sectorPrefix}_skirt_era_L`,
+    `${sectorPrefix}_upper_glacis_era`,
   ];
 
+  // Five close-pitched courses cover the full ruled cheek face without
+  // crossing the gun throat. Every cassette is oriented from the sampled
+  // local surface and its back face penetrates the armor by 16 mm, so the
+  // field follows both the plan sweep and vertical rake instead of reading
+  // as a flat applique sheet.
   for (const side of [-1, 1]) {
     const suffix = side > 0 ? 'R' : 'L';
     P.eraCluster(`${sectorPrefix}_turret_cheek_era_${suffix}`, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 6; station++) {
-          const absX = 0.44 + station * 0.16;
-          const y = 0.22 + row * 0.17;
+      for (let row = 0; row < 5; row++) {
+        for (let station = 0; station < 7; station++) {
+          const absX = 0.40 + station * 0.145;
+          const y = 0.16 + row * 0.115;
           const surface = frontSurface(side, absX, y);
-          const scale = { x: 0.72, y: 1.02, z: 1.14 };
+          const scale = { x: 0.56, y: 0.82, z: 1.05 };
           const halfDepth = 0.07 * scale.z * 0.5;
-          const overlap = 0.012;
+          const overlap = 0.016;
           const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
           place(
             center.x,
@@ -11065,7 +11085,7 @@ function addLeo2A6MFieldERA(P, sectorPrefix) {
             surface.rotation.x, surface.rotation.y, surface.rotation.z,
             scale.x, scale.y, scale.z,
           );
-          frontEraSeats.push(Object.freeze({
+          cheekEraSeats.push(Object.freeze({
             side, row, station,
             surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
             centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
@@ -11075,53 +11095,47 @@ function addLeo2A6MFieldERA(P, sectorPrefix) {
         }
       }
     }, true);
-
-    P.add('turret', box(0.10, 0.70, 4.18), side * 1.53, 0.40, -0.79);
-    P.eraCluster(`${sectorPrefix}_turret_side_era_${suffix}`, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 8; station++) {
-          place(
-            side * 1.59,
-            turretPivot[1] + 0.17 + row * 0.205,
-            turretPivot[2] - 2.62 + station * 0.54,
-            0, Math.PI / 2, 0,
-            1.55, 1.30, 1.42,
-          );
-        }
-      }
-    }, true);
-
-    const guardBucket = side > 0 ? 'hullTrackGuardR' : 'hullTrackGuardL';
-    P.add(guardBucket, box(0.20, 0.79, 6.42), side * 1.99, 1.10, 0.04);
-    P.add('hullDetail', box(0.30, 0.035, 6.34), side * 1.80, 1.48, 0.03);
-    // The UA's 2.105 m outer cage backing would sit in front of this donor's
-    // narrower ISAF cage and bury the ERA faces. Seat a slim backing at 1.96
-    // instead: its outer face overlaps the cassette backs by 7 mm while all
-    // three rows remain exposed and readable.
-    P.add('hullDark', box(0.10, 0.72, 6.58), side * 1.96, 1.11, -0.03);
-    P.eraCluster(`${sectorPrefix}_skirt_era_${suffix}`, (place) => {
-      for (let row = 0; row < 3; row++) {
-        for (let station = 0; station < 10; station++) {
-          place(
-            side * 2.055,
-            0.84 + row * 0.215,
-            -2.98 + station * 0.67,
-            0, Math.PI / 2, 0,
-            1.78, 1.38, 1.48,
-          );
-        }
-      }
-    });
   }
 
+  // The upper-glacis field stops before the track-containment lane cut at
+  // z=3.13. Fifty cassettes follow the builder's exact five-station hull
+  // slope, retain a clear border around the lights, and overlap the plate by
+  // 15 mm rather than hovering over its piecewise surface.
+  P.eraCluster(`${sectorPrefix}_upper_glacis_era`, (place) => {
+    for (let row = 0; row < 5; row++) {
+      for (let station = 0; station < 10; station++) {
+        const x = -1.30 + station * (2.60 / 9);
+        const z = 2.15 + row * 0.22;
+        const surface = glacisSurface(x, z);
+        const scale = { x: 0.96, y: 1.48, z: 1.08 };
+        const halfDepth = 0.07 * scale.z * 0.5;
+        const overlap = 0.015;
+        const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
+        place(
+          center.x, center.y, center.z,
+          surface.rotation.x, surface.rotation.y, surface.rotation.z,
+          scale.x, scale.y, scale.z,
+        );
+        glacisEraSeats.push(Object.freeze({
+          row, station,
+          surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
+          centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
+          normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
+          innerFaceOverlapM: overlap,
+        }));
+      }
+    }
+  });
+
   return Object.freeze({
-    cheekTilesPerSide: 18,
-    turretSideTilesPerSide: 24,
-    skirtTilesPerSide: 30,
-    totalTiles: 144,
+    cheekTilesPerSide: 35,
+    glacisTiles: 50,
+    totalTiles: 120,
     sectors: Object.freeze(sectors),
-    frontEraSeats: Object.freeze(frontEraSeats),
-    frontEraInnerFaceOverlapM: 0.012,
+    cheekEraSeats: Object.freeze(cheekEraSeats),
+    glacisEraSeats: Object.freeze(glacisEraSeats),
+    cheekInnerFaceOverlapM: 0.016,
+    glacisInnerFaceOverlapM: 0.015,
     staticMergedProtection: true,
   });
 }
@@ -11559,7 +11573,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   P.decal('turret', 'number', 'A6M', 0.16, [-1.44, 0.21, -0.55], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 2.98);
   if (fieldEra) {
-    const eraReceipt = addLeo2A6MFieldERA(P, 'a6m');
+    const eraReceipt = addLeo2A6MFrontalERA(P, 'a6m');
     if (P.geometryReceipt) P.turretG.userData.leopard2A6MERAReceipt = eraReceipt;
   }
 }
