@@ -125,12 +125,12 @@ const SI_CSS = `
 .cot-si-kv.result b{color:#f2c06d;letter-spacing:.06em;}
 .cot-si-pencap{grid-column:1/-1;font-size:7.5px;color:#687683;letter-spacing:.07em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
-.cot-si-diag{display:grid;grid-template-columns:58px 82px;gap:8px;align-items:center;
-  justify-content:center;margin:0;padding:3px;border:1px solid rgba(146,164,180,.16);
+.cot-si-diag{display:grid;grid-template-columns:96px 184px;gap:10px;align-items:center;
+  justify-content:center;width:100%;margin:0;padding:5px 6px;border:1px solid rgba(146,164,180,.16);
   background:linear-gradient(110deg,rgba(146,164,180,.075),rgba(146,164,180,.018));}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
-.cot-si-diag .box:first-child{width:58px!important;height:58px!important;}
-.cot-si-diag .box:nth-child(2){width:82px!important;height:41px!important;}
+.cot-si-diag .box:first-child{width:96px!important;height:96px!important;}
+.cot-si-diag .box:nth-child(2){width:184px!important;height:92px!important;}
 .cot-si-diag .box::after{content:attr(data-view);position:absolute;left:2px;bottom:0;
   font:800 6.5px/1 ${FONT_COND};letter-spacing:.14em;color:#758491;text-transform:uppercase;}
 .cot-si-diag .sil{position:absolute;inset:0;}
@@ -139,7 +139,7 @@ const SI_CSS = `
    (luminance-normalized, see schematicUrl) carries the turret/barrel/fender
    read the flat mask lacked (r7: top view parsed as a generic rounded box).
    r2: full grayscale(1) fallback while the bake lands — grayscale(.85)+
-   brightness(2) left bright camo a fuzzy yellow-green blob at 84 px. The
+   brightness(2) left bright camo a fuzzy yellow-green blob at compact sizes. The
    layer is slightly translucent so the zone glow now drawn UNDER it tints
    through without burying the plan shape. */
 .cot-si-diag .pf{position:absolute;inset:0;background-size:contain;
@@ -388,10 +388,10 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
   .cot-si-body{display:block;padding:5px 9px 0;}
   .cot-si-rows{gap:2px 9px;}
   .cot-si-kv{font-size:8.5px;gap:4px;}.cot-si-pencap{font-size:6.5px;}
-  .cot-si-diag{grid-template-columns:60px 82px;margin:5px 0 0;padding:5px 7px;
-    justify-content:center;gap:9px;}
-  .cot-si-diag .box:first-child{width:60px!important;height:60px!important;}
-  .cot-si-diag .box:nth-child(2){width:82px!important;height:41px!important;}
+  .cot-si-diag{grid-template-columns:82px 164px;margin:5px 0 0;padding:5px 7px;
+    justify-content:center;gap:8px;}
+  .cot-si-diag .box:first-child{width:82px!important;height:82px!important;}
+  .cot-si-diag .box:nth-child(2){width:164px!important;height:82px!important;}
   .cot-si-zone{grid-column:auto;text-align:right;font-size:8px;}
   .cot-si-zone .cap{display:block;margin-right:0;}
   .cot-si-mods{padding:5px 9px 0;}
@@ -403,6 +403,9 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
 }
 @media (max-width:520px){
   .cot-si-cardhost,.cot-si-log{width:min(276px,calc(100vw - 16px));right:max(8px,env(safe-area-inset-right));}
+  .cot-si-diag{grid-template-columns:76px 150px;gap:8px;}
+  .cot-si-diag .box:first-child{width:76px!important;height:76px!important;}
+  .cot-si-diag .box:nth-child(2){width:150px!important;height:75px!important;}
 }
 @media (orientation:landscape) and (max-height:430px){
   body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
@@ -416,10 +419,10 @@ body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
   body.cot-touch-layout .cot-si-body{display:flex;gap:4px;padding:4px 7px 0;}
   body.cot-touch-layout .cot-si-rows{gap:2px 8px;}
   body.cot-touch-layout .cot-si-kv{font-size:8px;}
-  body.cot-touch-layout .cot-si-diag{grid-template-columns:56px 76px;
-    margin:0;padding:4px;gap:4px;}
-  body.cot-touch-layout .cot-si-diag .box:first-child{width:56px!important;height:56px!important;}
-  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:76px!important;height:38px!important;}
+  body.cot-touch-layout .cot-si-diag{grid-template-columns:72px 152px;
+    margin:0;padding:4px;gap:6px;}
+  body.cot-touch-layout .cot-si-diag .box:first-child{width:72px!important;height:72px!important;}
+  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:152px!important;height:76px!important;}
 }
 @media (orientation:landscape) and (max-height:430px) and (max-width:700px){
   body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
@@ -458,7 +461,7 @@ const fmtTime = (s) => {
 // ---------------------------------------------------------------------------
 // Plan-form schematic bake (r2 minor): the raw icons-pipeline top render is a
 // CAMO paint job — a CSS grayscale(.85)+brightness(2) declutter left bright
-// winter/NATO schemes as a fuzzy yellow-green blob at 84 px (Leopard 2A4
+// winter/NATO schemes as a fuzzy yellow-green blob at compact sizes (Leopard 2A4
 // evidence). Bake a NEUTRAL-GRAY schematic once per icon: full luminance
 // desaturation, then normalization around the sprite's own mean luminance so
 // every tank lands at the same light-gray tone whatever its paint, with the
@@ -469,8 +472,8 @@ const fmtTime = (s) => {
 const schemCache = new Map();
 // Card box sizes (shared with warmSchematics so the pre-warm hits the exact
 // cache keys the live cards request).
-const CARD_TOP_S = 84;
-const CARD_SIDE_W = 116, CARD_SIDE_H = 58;
+const CARD_TOP_S = 96;
+const CARD_SIDE_W = 184, CARD_SIDE_H = 92;
 function schematicUrl(id, view, outW, outH) {
   const key = `${id}|${view}|${outW}x${outH}`;
   let p = schemCache.get(key);
@@ -744,7 +747,7 @@ export function createShotInfo(bus) {
         `${badgeCol}ff 0%,${badgeCol}c0 55%,${badgeCol}00 100%)`;
     };
 
-    // --- top view (84x84; icon: forward = up, screen right = -X world) ---
+    // --- top view (96x96; icon: forward = up, screen right = -X world) ---
     const TS = CARD_TOP_S;
     const top = el('div', 'box', wrap);
     top.dataset.view = 'Top';
@@ -816,7 +819,7 @@ export function createShotInfo(bus) {
       const barrelLen = (arm.gunBarrel && arm.gunBarrel.lengthM)
         ? arm.gunBarrel.lengthM : dims.overallLengthM * 0.45;
       const [gx, gy] = topPx(arm.turretPivot[0], arm.turretPivot[2] + barrelLen);
-      // 2.5px barrel + brighter ring (r6 minor: at 84px the facing cue was
+      // 2.5px barrel + brighter ring (r6 minor: at compact sizes the facing cue was
       // the only readable orientation signal and it sat too faint to carry)
       facing =
         `<circle cx="${tcx.toFixed(1)}" cy="${tcy.toFixed(1)}" r="${ringR.toFixed(1)}"

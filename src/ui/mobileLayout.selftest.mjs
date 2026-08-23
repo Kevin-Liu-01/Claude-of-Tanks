@@ -59,8 +59,14 @@ assert.match(shotInfo,
   /\.cot-si-cardhost\{position:absolute;right:16px;top:var\(--cot-si-roster-bottom,272px\);width:340px[\s\S]*\.cot-si-body\{display:flex;flex-direction:column/,
   'desktop ballistic reports must stack vertically below the enemy roster');
 assert.match(shotInfo,
-  /@media \(max-width:700px\), \(pointer:coarse\) and \(max-width:760px\)[\s\S]*\.cot-si-body\{display:block[\s\S]*\.cot-si-diag\{grid-template-columns:60px 82px/,
+  /\.cot-si-diag\{display:grid;grid-template-columns:96px 184px[\s\S]*\.cot-si-diag \.box:first-child\{width:96px!important;height:96px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:184px!important;height:92px!important;\}/,
+  'desktop penetration schematics must fill the available report frame');
+assert.match(shotInfo,
+  /@media \(max-width:700px\), \(pointer:coarse\) and \(max-width:760px\)[\s\S]*\.cot-si-body\{display:block[\s\S]*\.cot-si-diag\{grid-template-columns:82px 164px/,
   'mobile combat cards must reflow and retain both penetration diagram views');
+assert.match(shotInfo,
+  /@media \(max-width:520px\)[\s\S]*\.cot-si-diag\{grid-template-columns:76px 150px[\s\S]*\.box:nth-child\(2\)\{width:150px!important;height:75px!important;\}/,
+  'narrow phones must retain large two-view schematics without overflowing the report');
 assert.match(shotInfo,
   /top:max\(var\(--cot-si-roster-bottom,252px\)[\s\S]*document\.querySelector\('\.cot-ear\.r'\)[\s\S]*rosterBottom \+ 8/,
   'ballistic reports must reserve the live enemy-roster footprint before placement');
@@ -75,7 +81,7 @@ assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
   'the compact report must not append module chips, zone copy, or a penetration caption');
 assert.match(shotInfo,
-  /@media \(orientation:landscape\) and \(max-height:430px\)[\s\S]*width:276px[\s\S]*\.cot-si-body\{display:flex/,
+  /@media \(orientation:landscape\) and \(max-height:430px\)[\s\S]*width:276px[\s\S]*\.cot-si-body\{display:flex[\s\S]*\.cot-si-diag\{grid-template-columns:72px 152px/,
   'short landscape touch screens must retain the vertical report composition');
 assert.doesNotMatch(shotInfo, /\.cot-si-diag\{display:none/,
   'penetration diagrams must not disappear on touch or narrow layouts');
