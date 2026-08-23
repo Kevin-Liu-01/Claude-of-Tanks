@@ -1839,7 +1839,7 @@ function buildK1A1(P) {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, wheelY: 0.46, xc: 1.31,
     wheelZs: [2.10, 1.35, 0.60, -0.15, -0.90, -1.65],
-    sprocket: { z: -2.58, y: 0.64, r: 0.33 }, idler: { z: 2.73, y: 0.68, r: 0.33 },
+    sprocket: { z: -2.88, y: 0.69, r: 0.33 }, idler: { z: 3.00, y: 0.79, r: 0.33 },
     rollers: [1.25, 0.10, -1.05].map((z) => ({ z, y: 0.95, r: 0.075 })),
     trackW: 0.57, topY: 0.95, paintedEnds: true, coveredTop: 1.0,
   });
@@ -1848,7 +1848,7 @@ function buildK1A1(P) {
   // the strict clearance gate does not mistake this visual wheel-well liner
   // for a structural side plate pierced by the shoes.
   for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', box(0.02, 0.90, 5.60), s * 1.06, 0.52, 0.05);
+    P.add('hullRunningGearDark', box(0.02, 1.06, 6.24), s * 1.06, 0.60, 0.04);
   }
 
   // hull: belly tub, sponson band with the print's TWO deck levels (raised
@@ -1856,7 +1856,7 @@ function buildK1A1(P) {
   // glacis plane to the 1.24 bow lip, pointed prow over the 40° chin.
   P.add('hull', box(1.96, 0.60, 6.90), 0, 0.70, -0.05);                        // closed belly ±0.98: stays inside both native track lanes through the terminal wraps
   P.add('hull', slab(                                                          // outward-canted sponson shoulders replace the former vertical body box
-    [-1.42, 1.14, 1.75], [1.42, 1.14, 1.75], [1.42, 1.14, -3.70], [-1.42, 1.14, -3.70],
+    [-1.42, 1.22, 1.75], [1.42, 1.22, 1.75], [1.42, 1.22, -3.70], [-1.42, 1.22, -3.70],
     [-1.685, 1.475, 1.75], [1.685, 1.475, 1.75], [1.685, 1.475, -3.70], [-1.685, 1.475, -3.70]));
   P.add('hull', slab(                                                          // raised engine deck retains the same sovereign top plane
     [-1.60, 1.475, -2.00], [1.60, 1.475, -2.00], [1.60, 1.475, -3.70], [-1.60, 1.475, -3.70],
@@ -1870,6 +1870,27 @@ function buildK1A1(P) {
   P.add('hull', slab(                                                          // 40° chin plane up to the lip (the K1 pointed prow)
     [-0.98, 0.40, 3.00], [0.98, 0.40, 3.00], [0.98, 0.40, 2.80], [-0.98, 0.40, 2.80],
     [-0.98, 1.02, 3.68], [0.98, 1.02, 3.68], [0.98, 1.00, 3.58], [-0.98, 1.00, 3.58]));
+  // Continuous inter-track bow volume. The upper glacis previously floated
+  // over the narrow belly from z=1.42 through the chin shoulder at z=2.80,
+  // leaving daylight below the entire plate in low/front views. This closed
+  // wedge overlaps the belly at y=0.98, follows the live glacis underside to
+  // y=1.20/1.475, and stays at ±0.98: 45 mm inside each animated track lane.
+  P.add('hull', slab(
+    [-0.98, 0.98, 1.32], [0.98, 0.98, 1.32], [0.98, 0.98, 3.58], [-0.98, 0.98, 3.58],
+    [-0.98, 1.475, 1.42], [0.98, 1.475, 1.42], [0.98, 1.20, 3.58], [-0.98, 1.20, 3.58]));
+  if (P.geometryReceipt) {
+    P.hullG.userData.k1a1RunningGearClosure = Object.freeze({
+      idler: Object.freeze({ z: 3.00, y: 0.79, r: 0.33 }),
+      sprocket: Object.freeze({ z: -2.88, y: 0.69, r: 0.33 }),
+      trackLaneInnerX: 1.31 - 0.57 / 2,
+      closureHalfWidth: 0.98,
+      closureRearZ: 1.32,
+      closureFrontZ: 3.58,
+      closureFloorY: 0.98,
+      upperRearJoin: Object.freeze({ y: 1.475, z: 1.42 }),
+      upperFrontJoin: Object.freeze({ y: 1.20, z: 3.58 }),
+    });
+  }
   P.add('hull', box(1.92, 0.12, 0.24), 0, 0.36, 3.10);                         // closed toe beam remains inboard of the rising idler wraps
   for (const s of [-1, 1]) P.add('hullDetail', box(0.13, 0.11, 0.15), s * 0.60, 0.62, 3.42); // bow tow hooks
   // rear: center-lane lower plate + full-width upper, louvred exhaust
@@ -2081,24 +2102,40 @@ function buildK1A1(P) {
   // (critic r1: the solid rail read; the m1a1 basket grammar): three
   // pipe rails + posts + individual duffels/cases with visible gaps.
   for (const s of [-1, 1]) {
-    P.add('turretDetail', cylZ(0.016, 3.20, 8), s * 1.632, 0.545, -0.35);      // top pipe rail (2.045 world = the ref cage line)
-    P.add('turretDetail', cylZ(0.016, 3.20, 8), s * 1.632, 0.36, -0.35);       // mid pipe rail
-    P.add('turretDetail', cylZ(0.016, 3.20, 8), s * 1.632, 0.175, -0.35);      // bottom pipe rail
-    for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.024, 0.40, 0.024), s * 1.632, 0.36, 1.10 - k * 0.58); // posts
-    for (const z of [0.90, 0.20, -0.50, -1.18]) {
-      P.add('turretDetail', box(0.34, 0.025, 0.025), s * 1.47, 0.36, z);        // transverse basket brackets visibly land on the shell
+    const cageX = 1.54;
+    P.add('turretDetail', cylZ(0.016, 3.20, 8), s * cageX, 0.545, -0.35);      // top pipe rail (2.045 world = the ref cage line)
+    P.add('turretDetail', cylZ(0.016, 3.20, 8), s * cageX, 0.36, -0.35);       // mid pipe rail
+    P.add('turretDetail', cylZ(0.016, 3.20, 8), s * cageX, 0.175, -0.35);      // bottom pipe rail
+    for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.024, 0.40, 0.024), s * cageX, 0.36, 1.10 - k * 0.58); // posts
+    for (const [z, shellX] of [[0.90, 1.16], [0.20, 1.28], [-0.50, 1.30], [-1.18, 1.17]]) {
+      // Deep transverse arms overlap both the shell and outer rail; a broad
+      // vertical weld foot at the local loft station makes the load path
+      // visible instead of leaving a narrow bracket suspended in air.
+      P.add('turretDetail', box(0.50, 0.035, 0.035), s * 1.29, 0.36, z);
+      P.add('turretDetail', box(0.055, 0.19, 0.12), s * shellX, 0.36, z);
     }
     for (const y of [0.175, 0.36, 0.545]) {
       P.add('turretDetail', box(0.025, 0.025, 0.56), s * 1.44, y, -1.84, 0, s * 0.76, 0); // chamfered wraparound corner rail
     }
     stowage(P, 'turretCloth', rng, [
-      [s * 1.598, 0.36, -1.42, 0.05, 0.155, 0.40],                             // duffel aft
-      [s * 1.598, 0.35, -0.42, 0.05, 0.14, 0.30],                              // duffel mid (gaps between items)
+      [s * 1.505, 0.36, -1.42, 0.05, 0.155, 0.40],                             // duffel aft
+      [s * 1.505, 0.35, -0.42, 0.05, 0.14, 0.30],                              // duffel mid (gaps between items)
     ]);
-    P.add('turretDark', box(0.075, 0.20, 0.34), s * 1.598, 0.36, 0.45);        // hard case fwd
+    P.add('turretDark', box(0.075, 0.20, 0.34), s * 1.505, 0.36, 0.45);        // hard case fwd
   }
-  ammoCan(P, 'turretDark', -1.598, 0.30, 0.90, 0.12);
-  ammoCan(P, 'turretDark', 1.598, 0.30, -0.95, -0.15);
+  ammoCan(P, 'turretDark', -1.505, 0.30, 0.90, 0.12);
+  ammoCan(P, 'turretDark', 1.505, 0.30, -0.95, -0.15);
+  if (P.geometryReceipt) {
+    P.turretG.userData.k1a1SideCageSeating = Object.freeze({
+      outerRailX: 1.54,
+      bracketInnerX: 1.04,
+      bracketOuterX: 1.54,
+      shellFootXs: Object.freeze([1.16, 1.28, 1.30, 1.17]),
+      bracketStationsZ: Object.freeze([0.90, 0.20, -0.50, -1.18]),
+      bracketCount: 8,
+      weldFootCount: 8,
+    });
+  }
   // twin 6-tube K5 smoke banks seated ON the cheek rake with base plates
   // (critic r1: the buried banks vanished; print smokecaps z_w +1.4..+2.1)
   for (const s of [-1, 1]) {
@@ -2126,8 +2163,8 @@ function buildK1A1(P) {
   // 4.35 muzzle line (+5.90 world = 9.64 overall, −0.72% inside grace)
   muzzleBore(P, 4.35, 0.105, 0.052, 14);
   P.muzzleZ = 4.35;
-  P.decal('turret', 'number', '110', 0.28, [1.605, 0.36, -0.80], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', '110', 0.28, [-1.605, 0.36, -0.80], -Math.PI / 2, 0, -0.05);
+  P.decal('turret', 'number', '110', 0.28, [1.56, 0.36, -0.80], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', '110', 0.28, [-1.56, 0.36, -0.80], -Math.PI / 2, 0, -0.05);
   P.decal('hull', 'number', '110', 0.22, [1.755, 1.02, 0.60], Math.PI / 2);
   P.decal('hull', 'number', '110', 0.22, [-1.755, 1.02, 0.60], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.75, [0.88, 1.28, -3.73], Math.PI);

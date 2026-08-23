@@ -6,6 +6,8 @@ import {
   suspensionPatternFor,
 } from './suspensionPatterns.js';
 
+await import('./profiles/k1a1Geometry.selftest.mjs');
+
 // Profile registration expands the base spec table to the complete playable
 // fleet; this test intentionally certifies that full runtime registry.
 await import('./tankFactory.js');
