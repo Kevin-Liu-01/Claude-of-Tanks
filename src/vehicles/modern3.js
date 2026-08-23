@@ -853,18 +853,19 @@ export function buildK2(P) {
     return m;
   };
 
-  // Six evenly pitched ISU stations, with the idler and sprocket seated in
-  // the same low track loop as the road wheels.  The rejected r3 candidate
-  // raised both end wheels and ended its ground run at -1.80: that produced
-  // two black hanging strips in the rear-quarter views.  These stations are
-  // read directly from the reference side silhouette before lofting.
+  // Six evenly pitched K2 stations, compressed toward the fixed front road
+  // wheel so the rear station no longer hangs beneath the boat-tail.  The
+  // return rollers and rear track contact follow the same forward seat; the
+  // idler and sprocket retain their certified locations and contact arcs.
+  const k2RoadWheelZs = [2.48, 1.55, 0.62, -0.31, -1.24, -2.17];
+  const k2ReturnRollerZs = [1.61, 0.20, -1.21];
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.45, wheelW: 0.23, wheelY: 0.55, xc: 1.375,
     dishR: 0.80,
-    wheelZs: [2.48, 1.49, 0.50, -0.49, -1.48, -2.47],
+    wheelZs: k2RoadWheelZs,
     sprocket: { z: -3.08, y: 1.10, r: 0.25 }, idler: { z: 3.10, y: 0.72, r: 0.24 },
-    rollers: [1.55, 0.05, -1.45].map((z) => ({ z, y: 0.93, r: 0.08 })),
-    trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.10,
+    rollers: k2ReturnRollerZs.map((z) => ({ z, y: 0.93, r: 0.08 })),
+    trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.395,
     containRearRoadWheel: true,
     paintedEnds: true, coveredTop: 1.0,
     padHex: 0x25251f, chainHex: 0x34332c,
@@ -881,7 +882,7 @@ export function buildK2(P) {
     // Visible ISU knuckles and canted arms sit in the open skirt cuts.  They
     // are nested inside the certified shoe lane, adding the source model's
     // suspension depth without widening the running-gear silhouette.
-    for (const z of [2.48, 1.49, 0.50, -0.49, -1.48, -2.47]) {
+    for (const z of k2RoadWheelZs) {
       P.add('hullRunningGearDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, 0.55, z);
       P.add('hullRunningGearDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, 0.55, z);
       P.add('hullRunningGearDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);

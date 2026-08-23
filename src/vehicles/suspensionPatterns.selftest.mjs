@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import './profiles/k2RunningGearSeat.selftest.mjs';
 import {
   SUSPENSION_PATTERN_DEFINITIONS,
   SUSPENSION_PATTERN_IDS,
