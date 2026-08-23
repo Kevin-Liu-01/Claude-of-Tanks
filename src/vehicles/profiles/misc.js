@@ -2391,34 +2391,53 @@ function buildT80UNative2026(P) {
     else P.add('turret', box(0.20, 0.252, 1.44), 0.68, bodyY(0.625), 0.62);
     P.add('turretDetail', box(0.32, 0.162, 0.62), s * 1.30, bodyY(0.47), -0.10, 0, s * 0.10, 0);
   }
-  // Readable Kontakt-5 modules on top of the structural clamshell.  The
-  // former silhouette had the correct broad carriers, but their unbroken
-  // faces made the T-80U look like a smooth appliqué turret.  Five varied
-  // front leaves and four falling flank cassettes now follow each cast
-  // shoulder.  Every leaf overlaps the large carrier above, so this is a
-  // planted armor package rather than a necklace of stand-off boxes.
+  // Dense T-90-family Kontakt-5 fan on the T-80U casting.  Keep the pear-
+  // shaped dome and its broad clamshell carriers, but break the visible
+  // armor into seven closely nested cheek cassettes and five falling flank
+  // returns per side.  Each cassette has a smaller shoe buried into the
+  // carrier by 45-65 mm, so no module reads as a loose box hovering over the
+  // casting.  The tighter cadence also carries the protection all the way
+  // from the mantlet valley into the smoke-bank shoulder.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, roll, w, h, d] of [
-      [0.30, 0.43, 1.37, 0.17, -0.37, 0.34, 0.18, 0.36],
-      [0.53, 0.49, 1.24, 0.31, -0.40, 0.39, 0.19, 0.40],
-      [0.78, 0.51, 1.07, 0.44, -0.37, 0.43, 0.20, 0.42],
-      [1.03, 0.49, 0.84, 0.56, -0.33, 0.42, 0.19, 0.39],
-      [1.25, 0.44, 0.57, 0.66, -0.29, 0.38, 0.18, 0.35],
+      [0.25, 0.42, 1.43, 0.12, -0.39, 0.30, 0.17, 0.32],
+      [0.42, 0.46, 1.35, 0.22, -0.41, 0.33, 0.18, 0.35],
+      [0.61, 0.49, 1.24, 0.32, -0.41, 0.36, 0.19, 0.38],
+      [0.81, 0.51, 1.08, 0.43, -0.39, 0.39, 0.20, 0.40],
+      [1.00, 0.50, 0.89, 0.53, -0.36, 0.38, 0.20, 0.39],
+      [1.17, 0.47, 0.68, 0.61, -0.32, 0.35, 0.19, 0.36],
+      [1.30, 0.43, 0.43, 0.68, -0.27, 0.31, 0.18, 0.33],
     ]) {
-      P.add('turret', KIT.xform(box(w * 0.84, h * 0.52, d * 0.78), 0, -h * 0.18, -0.08), s * (x - 0.035), bodyY(y), z, roll, -s * yaw, 0);
-      P.add('turret', KIT.xform(box(w, h * 0.90, d), 0, 0, -0.05), s * x, bodyY(y), z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.68), 0, h * 0.47, 0.035), s * x, bodyY(y), z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.018, h * 0.67, d * 0.64), w * 0.44, 0, 0.03), s * x, bodyY(y), z, roll, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(w * 0.86, h * 0.55, d * 0.80), 0, -h * 0.23, -0.075), s * (x - 0.028), bodyY(y), z, roll, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(w, h * 0.90, d), 0, 0, -0.045), s * x, bodyY(y), z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.68), 0, h * 0.47, 0.030), s * x, bodyY(y), z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.016, h * 0.67, d * 0.62), w * 0.45, 0, 0.025), s * x, bodyY(y), z, roll, -s * yaw, 0);
     }
     for (const [x, y, z, yaw, w, h, d] of [
-      [1.43, 0.38, 0.26, 0.42, 0.30, 0.17, 0.31],
-      [1.49, 0.36, -0.04, 0.24, 0.29, 0.17, 0.30],
-      [1.48, 0.35, -0.34, 0.08, 0.30, 0.16, 0.30],
-      [1.40, 0.34, -0.64, -0.10, 0.28, 0.15, 0.28],
+      [1.40, 0.39, 0.22, 0.40, 0.28, 0.17, 0.29],
+      [1.46, 0.375, -0.05, 0.27, 0.27, 0.17, 0.28],
+      [1.47, 0.36, -0.32, 0.13, 0.27, 0.16, 0.28],
+      [1.44, 0.345, -0.59, -0.01, 0.27, 0.16, 0.28],
+      [1.36, 0.325, -0.85, -0.15, 0.25, 0.15, 0.26],
     ]) {
-      P.add('turret', box(w * 0.84, h * 0.54, d * 0.80), s * (x - 0.045), bodyY(y - 0.035), z, -0.08, -s * yaw, 0);
+      P.add('turret', box(w * 0.86, h * 0.56, d * 0.80), s * (x - 0.040), bodyY(y - 0.040), z, -0.08, -s * yaw, 0);
       P.add('turret', box(w, h * 0.90, d), s * x, bodyY(y), z, -0.08, -s * yaw, 0);
       P.add('turretDark', box(w * 0.74, 0.012, d * 0.68), s * x, bodyY(y + h * 0.54), z, -0.08, -s * yaw, 0);
+    }
+  }
+  // Low crown tiles continue the T-90 visual language without turning the
+  // cast T-80U roof into a new welded turret.  Their inboard edges overlap
+  // the dome, while the central hatch, sight and gun-recoil lanes remain
+  // open and readable from gameplay height.
+  for (const s of [-1, 1]) {
+    for (const [x, y, z, yaw, roll, w, d] of [
+      [0.34, 0.61, 0.64, 0.10, -0.11, 0.34, 0.39],
+      [0.58, 0.625, 0.33, 0.06, -0.08, 0.36, 0.36],
+      [0.83, 0.59, 0.02, -0.04, -0.06, 0.34, 0.34],
+    ]) {
+      P.add('turret', box(w * 0.84, 0.055, d * 0.82), s * (x - 0.02), roofY(y - 0.055), z, roll, -s * yaw, 0);
+      P.add('turret', box(w, 0.105, d), s * x, roofY(y), z, roll, -s * yaw, 0);
+      P.add('turretDark', box(w * 0.74, 0.010, d * 0.68), s * x, roofY(y + 0.058), z, roll, -s * yaw, 0);
     }
   }
   // Continuous cast shoulder wedges.  These replace the old rectangular
@@ -2446,8 +2465,11 @@ function buildT80UNative2026(P) {
   P.add('turretDetail', box(0.32, 0.117, 1.16), 1.40, bodyY(0.37), -0.14);
   P.add('turretDetail', box(0.34, 0.126, 1.14), -1.42, bodyY(0.34), -0.02);
   P.add('turret', box(0.50, 0.198, 0.40), 0, bodyY(0.47), 1.16, -0.35, 0, 0);
-  // commander cupola RIGHT + Utyos NSVT on the AA ring; gunner hatch left
-  // (receiver/barrel are the 1-2 spike columns; ring held at the 2.20 line)
+  // Commander cupola RIGHT + Utyos NSVT on the AA ring; gunner hatch left.
+  // A broad buried collar and rear equipment shoe give both stations the
+  // planted hierarchy of the late T-90 family without replacing the T-80U
+  // roof layout.
+  P.add('turret', cylY(0.30, 0.32, 0.075, 18), 0.52, roofY(0.575), -0.35);
   cupola(P, 'turret', 0.52, roofY(0.40), -0.35, 0.22, 0.10, 5);
   P.add('turretDetail', torus(0.30, 0.02, 14), 0.52, roofY(0.63), -0.35);
   // NSVT "Utyos" — §B3 KIT fitting (replaces the r2 hand-authored gun; the
@@ -2455,11 +2477,17 @@ function buildT80UNative2026(P) {
   const utyos = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'two-tone', seed: 3, shield: true, ammo: true, elev: -0.06, scale: 0.94 });
   utyos.position.set(0.52, roofY(0.42), -0.32);
   P.turretG.add(utyos);
+  P.addEquipment('turret', box(0.38, 0.11, 0.30), 0.52, roofY(0.655), -0.60, 0, -0.08, 0);
   P.add('turret', cylY(0.23, 0.23, 0.04, 14), -0.48, roofY(0.64), -0.30);
   P.add('turretDark', cylY(0.235, 0.235, 0.012, 14), -0.48, roofY(0.675), -0.30);
-  // 1G46 sight doghouse left of gun + Luna IR right — held at the 2.20 roof
-  sightBox(P, 'turret', -0.52, roofY(0.72), 0.26, 0.40, 0.20, 0.40);
-  P.add('turret', box(0.44, 0.045, 0.44), -0.52, roofY(0.822), 0.26);
+  // Modernized gunner's sight doghouse left of gun + Luna IR right.  The
+  // armor plinth intersects the crown while the taller hood and twin glass
+  // apertures remain visible between the new crown tiles.
+  P.add('turret', box(0.46, 0.09, 0.48), -0.52, roofY(0.61), 0.26, 0, 0.04, 0);
+  P.addEquipment('turret', box(0.40, 0.22, 0.40), -0.52, roofY(0.72), 0.26, 0, 0.04, 0);
+  P.add('turret', box(0.44, 0.045, 0.44), -0.52, roofY(0.842), 0.26, 0, 0.04, 0);
+  P.add('turretGlass', box(0.23, 0.095, 0.018), -0.52, roofY(0.735), 0.47, 0, 0.04, 0);
+  P.add('turretGlass', box(0.075, 0.095, 0.020), -0.36, roofY(0.735), 0.45, 0, 0.04, 0);
   P.add('turretDetail', box(0.26, 0.22, 0.24), 0.55, bodyY(0.40), 0.96);
   P.add('turretGlass', box(0.18, 0.15, 0.02), 0.55, bodyY(0.40), 1.09);
   // Cupola/periscope cadence remains low and asymmetric, but is large
@@ -2480,9 +2508,10 @@ function buildT80UNative2026(P) {
   // shoes and rotate with the complete turret package.
   for (const s of [-1, 1]) {
     const count = s < 0 ? 4 : 5;
+    P.add('turret', box(0.28, 0.13, s < 0 ? 0.50 : 0.56), s * 1.24, bodyY(0.34), -0.05, 0, s * 0.05, -s * 0.18);
     P.add('turret', box(0.20, 0.16, s < 0 ? 0.48 : 0.54), s * 1.30, bodyY(0.38), -0.05, 0, 0, -s * 0.18);
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count, r: 0.043, len: 0.28, pitch: -0.40, splay: 0.30, arc: 0.56, spacing: 0.095, seed: 80 + count });
-    smoke.position.set(s * 1.31, roofY(0.49), -0.03);
+    smoke.position.set(s * 1.29, roofY(0.47), -0.03);
     smoke.rotation.y = s * 1.04;
     P.turretG.add(smoke);
   }
@@ -2499,6 +2528,8 @@ function buildT80UNative2026(P) {
   P.add('turretDark', box(2.30, 0.05, 0.76), 0, roofY(0.49), -1.55);
   P.add('turretCloth', box(1.18, 0.12, 0.66), 0.10, roofY(0.55), -1.43);
   P.add('turretCloth', box(1.20, 0.23, 0.15), 0, roofY(0.60), -1.205);
+  P.addEquipment('turret', box(0.44, 0.16, 0.36), -0.74, roofY(0.59), -1.23, 0, -0.10, 0);
+  P.addEquipment('turret', box(0.36, 0.14, 0.32), 0.72, roofY(0.58), -1.25, 0, 0.12, 0);
   basket(P, 1.15, -1.96, -2.24, 0.25, 0.46, 0.5);
   P.add('turretDetail', box(0.05, 0.05, 0.72), 0.78, roofY(0.50), -0.95, 0, 0.5, 0);
   P.add('turretDetail', box(0.05, 0.05, 0.72), -0.78, roofY(0.50), -0.95, 0, -0.5, 0);
@@ -2509,6 +2540,23 @@ function buildT80UNative2026(P) {
     antenna.position.set(-0.62, roofY(0.62), -0.85);
     P.turretG.add(antenna);
   }
+  {
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 1.12, r: 0.011, rake: 0.028, seed: 19 });
+    antenna.position.set(0.78, roofY(0.59), -0.98);
+    P.turretG.add(antenna);
+  }
+  P.turretG.userData.t80uT90StyleTurretReceipt = Object.freeze({
+    architecture: 'cast-dome-t90-k5-package',
+    replacementTurret: false,
+    frontEraModulesPerSide: 7,
+    flankEraModulesPerSide: 5,
+    crownEraModulesPerSide: 3,
+    eraSupportEmbedM: 0.045,
+    plantedSightFoundation: true,
+    plantedCommanderStation: true,
+    plantedSmokeFoundations: true,
+    rearEquipmentReseated: true,
+  });
   P.decal('turret', 'number', '518', 0.28, [1.05, 0.28, -0.15], Math.PI / 2, 0, 0.1);
   P.decal('turret', 'number', '518', 0.28, [-1.05, 0.28, -0.15], -Math.PI / 2, 0, -0.1);
   // 2A46M-1 at axis 1.66: sealed embrasure roll, sleeve pair, fat evacuator

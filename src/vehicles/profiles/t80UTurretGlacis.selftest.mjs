@@ -56,6 +56,25 @@ try {
   assert.equal(turretRig.userData.t80uTurretEraReceipt, undefined,
     'owner-rejected replacement turret/ERA architecture stays removed');
 
+  const modernizedTurret = turretRig.userData.t80uT90StyleTurretReceipt;
+  assert.ok(modernizedTurret,
+    'T-80U exposes its cast-dome T-90-style protection and equipment receipt');
+  assert.equal(modernizedTurret.architecture, 'cast-dome-t90-k5-package');
+  assert.equal(modernizedTurret.replacementTurret, false,
+    'modernized protection preserves the characteristic T-80U cast dome');
+  assert.ok(modernizedTurret.frontEraModulesPerSide >= 7,
+    'each turret cheek carries a dense seven-module Kontakt-5 fan');
+  assert.ok(modernizedTurret.flankEraModulesPerSide >= 5,
+    'Kontakt-5 continues into at least five flank return modules per side');
+  assert.ok(modernizedTurret.crownEraModulesPerSide >= 3,
+    'low crown protection covers both roof shoulders without blocking hatches');
+  assert.ok(modernizedTurret.eraSupportEmbedM >= 0.04,
+    'ERA support shoes overlap their armor carriers instead of floating');
+  assert.equal(modernizedTurret.plantedSightFoundation, true);
+  assert.equal(modernizedTurret.plantedCommanderStation, true);
+  assert.equal(modernizedTurret.plantedSmokeFoundations, true);
+  assert.equal(modernizedTurret.rearEquipmentReseated, true);
+
   const mantlet = gunRig.userData.t80uMantletReceipt;
   assert.ok(mantlet, 'T-80U exposes its compact mantlet receipt');
   assert.equal(mantlet.architecture, 'compact-rounded-rocking-shield');
@@ -90,4 +109,4 @@ try {
   tank.dispose();
 }
 
-console.log('t80UTurretGlacis.selftest: raised bow joint, restored turret, and compact rounded mantlet verified');
+console.log('t80UTurretGlacis.selftest: raised bow joint, dense cast-dome K-5 turret, and compact rounded mantlet verified');
