@@ -80,6 +80,30 @@ try {
     'muzzle anchor follows the counter-shifted physical tube face');
 
   const parts = tank.root.userData.combatGeometryParts;
+  const turretRingApron = parts.find((part) =>
+    part.bucket === 'turret'
+    && Math.abs(part.min[1] - 0.035) < 0.002
+    && Math.abs(part.max[1] - 0.18) < 0.002
+    && Math.abs((part.max[0] - part.min[0]) - 2.68) < 0.01
+    && Math.abs((part.max[2] - part.min[2]) - 2.68) < 0.01);
+  assert.ok(turretRingApron, 'the closed turret-ring apron remains present');
+  const ringCenterLocal = new THREE.Vector3(
+    (turretRingApron.min[0] + turretRingApron.max[0]) * 0.5,
+    (turretRingApron.min[1] + turretRingApron.max[1]) * 0.5,
+    (turretRingApron.min[2] + turretRingApron.max[2]) * 0.5,
+  );
+  assert.ok(Math.abs(ringCenterLocal.x) < 0.002 && Math.abs(ringCenterLocal.z) < 0.002,
+    'the closed turret-ring apron is centered on the corrected yaw axis');
+  for (const yawDeg of [0, 78, -78, 180]) {
+    turret.rotation.y = yawDeg * Math.PI / 180;
+    tank.root.updateMatrixWorld(true);
+    const ringCenterWorld = turret.localToWorld(ringCenterLocal.clone());
+    const pivotWorld = turret.getWorldPosition(new THREE.Vector3());
+    assert.ok(Math.hypot(ringCenterWorld.x - pivotWorld.x, ringCenterWorld.z - pivotWorld.z) < 0.002,
+      `turret-ring apron stays on the yaw axis at ${yawDeg} degrees`);
+  }
+  turret.rotation.y = 0;
+
   const centerOf = (part) => ({
     x: (part.min[0] + part.max[0]) * 0.5,
     z: (part.min[2] + part.max[2]) * 0.5,

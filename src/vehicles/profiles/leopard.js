@@ -6835,6 +6835,7 @@ function buildLeo2Revolution(P) {
   // ---- turret: authored at the legacy ring datum first.  A final rigid
   // rebase below moves the yaw origin to the structural turret center without
   // changing a single zero-yaw world-space station.
+  const turretYawCenterShiftZ = 0.95;
   P.turretG.position.set(0, 1.60, -0.50);
   // RESTORED NATIVE PRIMARY CASTING (2026-08): the strongest pre-wrapper
   // Revolution retained excellent authored hull, track, armor-course and
@@ -6880,13 +6881,20 @@ function buildLeo2Revolution(P) {
     { height: revolutionShoulder, inset: 0.985 },
     { height: revolutionCrown, inset: revolutionCrownInset },
   ]));
-  // Closed ring apron overlaps the recovered hull ring and the new shell
-  // floor, preserving a visible rotation gap without a sky-through wound.
-  P.add('turret', polyMultiLoft([
+  // Closed ring apron belongs on the corrected yaw axis.  The original plan
+  // was centered at legacy-local z 0.08, so preserving it during the rigid
+  // rebase left the apron 0.87 m aft of the new pivot.  Pre-shift only this
+  // bearing geometry to the new structural center; the common counter-shift
+  // below then leaves it centered at turret-local z 0 while the surrounding
+  // shell keeps its certified zero-yaw silhouette.
+  const revolutionRingLegacyCenterZ = (1.42 + -1.26) * 0.5;
+  const revolutionRingCenterCorrectionZ = turretYawCenterShiftZ - revolutionRingLegacyCenterZ;
+  const revolutionRingPlan = [
     [-0.34, 1.42], [0.34, 1.42], [1.08, 0.92], [1.34, 0.18],
     [1.18, -0.92], [0.72, -1.26], [-0.72, -1.26], [-1.18, -0.92],
     [-1.34, 0.18], [-1.08, 0.92],
-  ], [
+  ].map(([x, z]) => [x, z + revolutionRingCenterCorrectionZ]);
+  P.add('turret', polyMultiLoft(revolutionRingPlan, [
     { height: 0.035, inset: 1.00 },
     { height: 0.18, inset: 0.96 },
   ]));
@@ -7735,7 +7743,6 @@ function buildLeo2Revolution(P) {
   // non-zero yaw now rotates around the middle of the fighting compartment
   // instead of the rear edge.  The gun and manually assembled fittings are
   // already direct turret children and receive the same rigid counter-shift.
-  const turretYawCenterShiftZ = 0.95;
   P.turretG.position.z += turretYawCenterShiftZ;
   P.offsetBuckets([
     'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
