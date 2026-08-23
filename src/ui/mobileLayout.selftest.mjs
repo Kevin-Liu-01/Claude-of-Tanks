@@ -56,26 +56,27 @@ assert.match(hud, /layout\.sort\(\(a, b\) => b\.layoutY - a\.layoutY[\s\S]*place
   'clustered world labels must resolve into stable lanes instead of overlapping');
 
 assert.match(shotInfo,
-  /\.cot-si-cardhost\{position:absolute;right:210px;top:72px;width:420px[\s\S]*\.cot-si-body\{display:grid;grid-template-columns:minmax\(0,1fr\) 210px/,
-  'desktop ballistic reports must use the compact analysis strip beside the enemy roster');
+  /\.cot-si-cardhost\{position:absolute;right:16px;top:var\(--cot-si-roster-bottom,272px\);width:340px[\s\S]*\.cot-si-body\{display:flex;flex-direction:column/,
+  'desktop ballistic reports must stack vertically below the enemy roster');
 assert.match(shotInfo,
-  /@media \(max-width:700px\), \(pointer:coarse\) and \(max-width:760px\)[\s\S]*\.cot-si-body\{display:block[\s\S]*\.cot-si-diag\{grid-template-columns:60px 82px minmax\(0,1fr\)/,
+  /@media \(max-width:700px\), \(pointer:coarse\) and \(max-width:760px\)[\s\S]*\.cot-si-body\{display:block[\s\S]*\.cot-si-diag\{grid-template-columns:60px 82px/,
   'mobile combat cards must reflow and retain both penetration diagram views');
 assert.match(shotInfo,
-  /top:max\(var\(--cot-si-roster-bottom,252px\)[\s\S]*document\.querySelectorAll\('\.cot-ear'\)[\s\S]*rosterBottom \+ 8/,
-  'narrow ballistic reports must reserve the live team-roster footprint before placement');
+  /top:max\(var\(--cot-si-roster-bottom,252px\)[\s\S]*document\.querySelector\('\.cot-ear\.r'\)[\s\S]*rosterBottom \+ 8/,
+  'ballistic reports must reserve the live enemy-roster footprint before placement');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-card\{min-height:0;\}[\s\S]*body\.cot-touch-layout \.cot-si-diag\{justify-content:center/,
   'the game touch-layout state must keep the compact shot-card composition independently of pointer heuristics');
 assert.match(shotInfo,
-  /kv\('Damage',[^\n]*'w'\);[\s\S]*kv\('Result',[^\n]*'w result'\);[\s\S]*const r = kv\('Pen'/,
-  'damage and result must keep full-width values before the penetration analysis');
+  /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,
+  'the report must keep only angle, armor, damage, and penetration analysis rows');
+assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
+  'the compact report must not render distance or result rows');
+assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
+  'the compact report must not append module chips, zone copy, or a penetration caption');
 assert.match(shotInfo,
-  /@media \(orientation:landscape\) and \(max-height:430px\)[\s\S]*top:auto;bottom:max\(8px,env\(safe-area-inset-bottom\)\)[\s\S]*\.cot-si-body\{display:grid/,
-  'short landscape touch screens must dock a horizontal report below the team rosters');
-assert.match(shotInfo,
-  /@media \(orientation:landscape\) and \(max-height:430px\) and \(min-width:701px\)[\s\S]*width:min\(620px,calc\(100vw - 224px\)\)/,
-  'wide landscape touch screens must keep the report clear of the right-side combat controls');
+  /@media \(orientation:landscape\) and \(max-height:430px\)[\s\S]*width:276px[\s\S]*\.cot-si-body\{display:flex/,
+  'short landscape touch screens must retain the vertical report composition');
 assert.doesNotMatch(shotInfo, /\.cot-si-diag\{display:none/,
   'penetration diagrams must not disappear on touch or narrow layouts');
 assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:164px/,
