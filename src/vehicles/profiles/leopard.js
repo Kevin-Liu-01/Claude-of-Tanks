@@ -11006,6 +11006,227 @@ function leoSlatRear(P, o) {
 // + stern + turret flanks), raised belly line with the bolted mine plate,
 // reinforced crew-hatch hardware, ISAF stowage density; L55 at the
 // 7.18 bore mouth (spec overall 10.97 exactly).
+const LEO2A6M_CHEEK_NOSE = Object.freeze([
+  [0.26, 2.74], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96],
+]);
+const LEO2A6M_CHEEK_CREST_R = Object.freeze([
+  [0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73],
+  [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.32, 0.58, -0.12],
+]);
+const LEO2A6M_CHEEK_CREST_L = Object.freeze([
+  [0.16, 0.70, 1.62], [0.55, 0.73, 1.45], [0.90, 0.72, 0.73],
+  [0.93, 0.60, 0.71], [1.02, 0.61, 0.02], [1.30, 0.61, -0.10],
+]);
+
+function sampleLeo2A6MProfile(stations, coordinate, valueIndex = 1) {
+  if (coordinate <= stations[0][0]) return stations[0][valueIndex];
+  for (let index = 1; index < stations.length; index++) {
+    const coordinate1 = stations[index][0];
+    const value1 = stations[index][valueIndex];
+    if (coordinate <= coordinate1) {
+      const coordinate0 = stations[index - 1][0];
+      const value0 = stations[index - 1][valueIndex];
+      return THREE.MathUtils.lerp(value0, value1,
+        (coordinate - coordinate0) / (coordinate1 - coordinate0));
+    }
+  }
+  return stations.at(-1)[valueIndex];
+}
+
+// Point and tangent frame on the real A6M upper-cheek plate. The plate is a
+// ruled surface from the low 2A6 nose line to the asymmetric falling crest;
+// sampling by course fraction keeps the outer cassettes down on the turret
+// instead of letting fixed-y rows drift into the air as the crest falls.
+function leo2A6MCheekSurface(side, absX, courseFraction) {
+  const crest = side > 0 ? LEO2A6M_CHEEK_CREST_R : LEO2A6M_CHEEK_CREST_L;
+  const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
+  const lowerY = 0.235;
+  const noseZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, absX);
+  const crestY = sampleLeo2A6MProfile(crest, absX, 1);
+  const crestZ = sampleLeo2A6MProfile(crest, absX, 2);
+  const point = new THREE.Vector3(
+    side * absX,
+    THREE.MathUtils.lerp(lowerY, crestY, fraction),
+    THREE.MathUtils.lerp(noseZ, crestZ, fraction),
+  );
+
+  const epsilon = 0.002;
+  const framePoint = (x) => {
+    const nZ = sampleLeo2A6MProfile(LEO2A6M_CHEEK_NOSE, x);
+    const cY = sampleLeo2A6MProfile(crest, x, 1);
+    const cZ = sampleLeo2A6MProfile(crest, x, 2);
+    return new THREE.Vector3(
+      side * x,
+      THREE.MathUtils.lerp(lowerY, cY, fraction),
+      THREE.MathUtils.lerp(nZ, cZ, fraction),
+    );
+  };
+  const tangentX = framePoint(absX + epsilon).sub(framePoint(absX - epsilon));
+  if (side < 0) tangentX.multiplyScalar(-1);
+  tangentX.normalize();
+  const tangentCourse = new THREE.Vector3(0, crestY - lowerY, crestZ - noseZ).normalize();
+  const normal = new THREE.Vector3().crossVectors(tangentX, tangentCourse).normalize();
+  if (normal.z < 0) normal.multiplyScalar(-1);
+  const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
+  const basis = new THREE.Matrix4().makeBasis(tangentX, tangentY, normal);
+  const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
+  return {
+    point,
+    normal,
+    rotation,
+    courseLength: Math.hypot(crestY - lowerY, crestZ - noseZ),
+  };
+}
+
+function addLeo2A6MCheekCage(P) {
+  const { box } = KIT;
+  const surfaceOffsetM = 0.085;
+  const armorTieOffsetM = 0.018;
+  let railSegments = 0;
+  let tieSegments = 0;
+
+  const cageSurface = (side, absX, fraction, offset = surfaceOffsetM) => {
+    const surface = leo2A6MCheekSurface(side, absX, fraction);
+    return {
+      point: surface.point.clone().addScaledVector(surface.normal, offset),
+      normal: surface.normal,
+    };
+  };
+  const addSegment = (a, b, axis, tie = false) => {
+    const center = a.point.clone().add(b.point).multiplyScalar(0.5);
+    const delta = b.point.clone().sub(a.point);
+    const length = delta.length();
+    const normal = a.normal.clone().add(b.normal).normalize();
+    let xAxis;
+    let yAxis;
+    let zAxis;
+    if (axis === 'x') {
+      xAxis = delta.normalize();
+      zAxis = normal.addScaledVector(xAxis, -normal.dot(xAxis)).normalize();
+      yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+      zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+    } else if (axis === 'y') {
+      yAxis = delta.normalize();
+      zAxis = normal.addScaledVector(yAxis, -normal.dot(yAxis)).normalize();
+      xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
+      zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+    } else {
+      zAxis = delta.normalize();
+      yAxis = new THREE.Vector3(0, 1, 0).addScaledVector(zAxis, -zAxis.y).normalize();
+      xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
+      yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+    }
+    const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'XYZ');
+    const geometry = axis === 'x' ? box(length, 0.028, 0.028)
+      : axis === 'y' ? box(0.030, length, 0.030)
+        : box(0.028, 0.028, length);
+    P.addEquipment(tie ? 'turretDark' : 'turretDetail', geometry,
+      center.x, center.y, center.z, rotation.x, rotation.y, rotation.z);
+    if (tie) tieSegments++;
+    else railSegments++;
+  };
+
+  const contourX = [0.40, 0.58, 0.76, 0.94, 1.11, 1.28];
+  const courseFractions = [0.055, 0.235, 0.415, 0.595, 0.775, 0.955];
+  const uprightX = [0.42, 0.63, 0.84, 1.06, 1.27];
+  for (const side of [-1, 1]) {
+    for (const fraction of courseFractions) {
+      for (let station = 0; station < contourX.length - 1; station++) {
+        addSegment(
+          cageSurface(side, contourX[station], fraction),
+          cageSurface(side, contourX[station + 1], fraction),
+          'x',
+        );
+      }
+    }
+    for (const absX of uprightX) {
+      addSegment(
+        cageSurface(side, absX, courseFractions[0]),
+        cageSurface(side, absX, courseFractions.at(-1)),
+        'y',
+      );
+    }
+    for (const absX of [0.46, 0.82, 1.18]) {
+      for (const fraction of [0.12, 0.88]) {
+        addSegment(
+          cageSurface(side, absX, fraction, armorTieOffsetM),
+          cageSurface(side, absX, fraction),
+          'z', true,
+        );
+      }
+    }
+  }
+
+  return Object.freeze({
+    contourStations: contourX.length,
+    rows: courseFractions.length,
+    uprightsPerSide: uprightX.length,
+    tiePointsPerSide: 6,
+    railSegments,
+    tieSegments,
+    surfaceOffsetM,
+    armorTieOffsetM,
+    equipmentIsNonArmor: true,
+    turretOwned: true,
+  });
+}
+
+function addLeo2A6MRoofAutocannon(P) {
+  const { box, cylX, cylY, cylZ, torus } = KIT;
+  const x = 0.08;
+  const z = -1.50;
+  const roofSeatY = 0.735;
+
+  // A 35 mm remote station, deliberately broad and long but kept below the
+  // existing PERI crown. Its buried bearing and overlapping riser establish
+  // one continuous load path into the rear roof-V instead of a floating gun.
+  P.addEquipment('turret', cylY(0.34, 0.38, 0.12, P.q ? 24 : 16), x, roofSeatY + 0.06, z);
+  P.addEquipment('turretDark', torus(0.30, 0.024, P.q ? 24 : 16, 8), x, roofSeatY + 0.125, z);
+  P.addEquipment('turret', box(0.50, 0.18, 0.48), x, 0.91, z);
+  P.addEquipment('turretDark', cylX(0.10, 0.78, P.q ? 18 : 12), x, 1.04, z + 0.06);
+  P.addEquipment('turret', box(0.78, 0.35, 0.78), x, 1.075, z + 0.12);
+  P.addEquipment('turretDetail', box(0.70, 0.035, 0.68), x, 1.2675, z + 0.12);
+
+  // Armored trunnion cheeks, recoil rails and the oversized 35 mm barrel.
+  for (const side of [-1, 1]) {
+    P.addEquipment('turret', box(0.12, 0.42, 0.62), x + side * 0.45, 1.075, z + 0.13,
+      0, 0, side * 0.06);
+    P.addEquipment('turretDark', box(0.050, 0.075, 1.14), x + side * 0.17, 1.12, z + 0.73);
+  }
+  const barrelLengthM = 1.86;
+  const barrelStartZ = z + 0.54;
+  P.addEquipment('turretDark', cylZ(0.052, barrelLengthM, P.q ? 20 : 12),
+    x, 1.12, barrelStartZ + barrelLengthM * 0.5);
+  P.addEquipment('turretDetail', cylZ(0.073, 0.24, P.q ? 18 : 12),
+    x, 1.12, barrelStartZ + 0.16);
+  P.addEquipment('turretDark', cylZ(0.074, 0.25, P.q ? 18 : 12),
+    x, 1.12, barrelStartZ + barrelLengthM - 0.05);
+  P.addEquipment('turretDark', box(0.18, 0.10, 0.13),
+    x, 1.12, barrelStartZ + barrelLengthM + 0.045);
+
+  // Dual feed boxes and an independent day/thermal head make the station
+  // read as an autocannon system rather than an enlarged pintle MG.
+  P.addEquipment('turret', box(0.38, 0.36, 0.52), x - 0.56, 1.04, z - 0.02);
+  P.addEquipment('turretDetail', box(0.035, 0.28, 0.46), x - 0.765, 1.04, z - 0.02);
+  P.addEquipment('turret', box(0.28, 0.30, 0.36), x + 0.55, 1.08, z - 0.08);
+  P.addEquipment('turretDark', box(0.22, 0.20, 0.24), x + 0.55, 1.17, z + 0.16);
+  P.addEquipment('turretGlass', box(0.14, 0.105, 0.018), x + 0.55, 1.18, z + 0.291);
+  P.addEquipment('turretGlass', box(0.075, 0.075, 0.019), x + 0.46, 1.11, z + 0.292);
+
+  return Object.freeze({
+    caliberMm: 35,
+    roofSeatLocal: Object.freeze([x, roofSeatY, z]),
+    bearingBottomLocalY: roofSeatY,
+    roofTopLocalY: 0.84,
+    receiverTopLocalY: 1.25,
+    barrelAxisLocalY: 1.12,
+    barrelLengthM,
+    equipmentIsNonArmor: true,
+    turretOwned: true,
+  });
+}
+
 function addLeo2A6MFrontalERA(P, sectorPrefix) {
   const turretPivot = P.spec.armor.turretPivot;
   const sample = (stations, coordinate) => {
@@ -11019,25 +11240,6 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
       }
     }
     return stations.at(-1)[1];
-  };
-  const frontLower = [[0.32, 2.70], [0.40, 2.64], [0.94, 2.26], [1.30, 1.96]];
-  const frontUpper = [[0.32, 2.02], [0.55, 1.87], [0.90, 1.62], [1.08, 1.40], [1.30, 1.16]];
-  const frontSurface = (side, absX, y) => {
-    const t = THREE.MathUtils.clamp((y - 0.16) / 0.46, 0, 1);
-    const lower = sample(frontLower, absX);
-    const upper = sample(frontUpper, absX);
-    const z = THREE.MathUtils.lerp(lower, upper, t);
-    const epsilon = 0.002;
-    const zLo = THREE.MathUtils.lerp(sample(frontLower, absX - epsilon), sample(frontUpper, absX - epsilon), t);
-    const zHi = THREE.MathUtils.lerp(sample(frontLower, absX + epsilon), sample(frontUpper, absX + epsilon), t);
-    const dzdAbsX = (zHi - zLo) / (epsilon * 2);
-    const dzdY = (upper - lower) / 0.46;
-    const normal = new THREE.Vector3(-side * dzdAbsX, -dzdY, 1).normalize();
-    const tangentX = new THREE.Vector3(1, 0, side * dzdAbsX).normalize();
-    const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
-    const basis = new THREE.Matrix4().makeBasis(tangentX, tangentY, normal);
-    const rotation = new THREE.Euler().setFromRotationMatrix(basis, 'YXZ');
-    return { point: new THREE.Vector3(side * absX, y, z), normal, rotation };
   };
   const glacisStations = [
     [2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21],
@@ -11061,22 +11263,23 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
     `${sectorPrefix}_upper_glacis_era`,
   ];
 
-  // Five close-pitched courses cover the full ruled cheek face without
-  // crossing the gun throat. Every cassette is oriented from the sampled
-  // local surface and its back face penetrates the armor by 16 mm, so the
-  // field follows both the plan sweep and vertical rake instead of reading
-  // as a flat applique sheet.
+  // Seven adaptive courses cover the actual ruled cheek face without
+  // crossing the gun throat. Their height follows each local nose-to-crest
+  // run, so the outboard courses descend and sweep rearward with the armor
+  // rather than hovering on a rectangular fixed-y grid. Thinner cassettes
+  // bury their backs by 24 mm for a visibly flush installation.
   for (const side of [-1, 1]) {
     const suffix = side > 0 ? 'R' : 'L';
     P.eraCluster(`${sectorPrefix}_turret_cheek_era_${suffix}`, (place) => {
-      for (let row = 0; row < 5; row++) {
-        for (let station = 0; station < 7; station++) {
-          const absX = 0.40 + station * 0.145;
-          const y = 0.16 + row * 0.115;
-          const surface = frontSurface(side, absX, y);
-          const scale = { x: 0.56, y: 0.82, z: 1.05 };
+      for (let row = 0; row < 7; row++) {
+        for (let station = 0; station < 8; station++) {
+          const absX = 0.40 + station * (0.88 / 7);
+          const courseFraction = (row + 0.5) / 7;
+          const surface = leo2A6MCheekSurface(side, absX, courseFraction);
+          const coursePitch = surface.courseLength / 7;
+          const scale = { x: 0.47, y: coursePitch * 0.93 / 0.13, z: 0.84 };
           const halfDepth = 0.07 * scale.z * 0.5;
-          const overlap = 0.016;
+          const overlap = 0.024;
           const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
           place(
             center.x,
@@ -11086,7 +11289,8 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
             scale.x, scale.y, scale.z,
           );
           cheekEraSeats.push(Object.freeze({
-            side, row, station,
+            side, row, station, courseFraction,
+            scaleY: Number(scale.y.toFixed(5)),
             surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
             centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
             normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
@@ -11128,13 +11332,13 @@ function addLeo2A6MFrontalERA(P, sectorPrefix) {
   });
 
   return Object.freeze({
-    cheekTilesPerSide: 35,
+    cheekTilesPerSide: 56,
     glacisTiles: 50,
-    totalTiles: 120,
+    totalTiles: 162,
     sectors: Object.freeze(sectors),
     cheekEraSeats: Object.freeze(cheekEraSeats),
     glacisEraSeats: Object.freeze(glacisEraSeats),
-    cheekInnerFaceOverlapM: 0.016,
+    cheekInnerFaceOverlapM: 0.024,
     glacisInnerFaceOverlapM: 0.015,
     staticMergedProtection: true,
   });
@@ -11574,7 +11778,15 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   P.topY = Math.max(P.topY || 0, 2.98);
   if (fieldEra) {
     const eraReceipt = addLeo2A6MFrontalERA(P, 'a6m');
-    if (P.geometryReceipt) P.turretG.userData.leopard2A6MERAReceipt = eraReceipt;
+    const cheekCage = addLeo2A6MCheekCage(P);
+    const roofAutocannon = addLeo2A6MRoofAutocannon(P);
+    if (P.geometryReceipt) {
+      P.turretG.userData.leopard2A6MERAReceipt = Object.freeze({
+        ...eraReceipt,
+        cheekCage,
+        roofAutocannon,
+      });
+    }
   }
 }
 

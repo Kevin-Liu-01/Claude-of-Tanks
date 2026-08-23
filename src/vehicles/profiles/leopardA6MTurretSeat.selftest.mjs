@@ -47,16 +47,17 @@ const findMesh = (root, name) => {
 
 const turret = findMesh(turretRig, 'turret');
 const detail = findMesh(turretRig, 'turretDetail');
+const equipment = findMesh(turretRig, 'turretEquipment');
 const hull = findMesh(hullRig, 'hull');
 
 const eraReceipt = turretRig.userData.leopard2A6MERAReceipt;
 assert.ok(eraReceipt, 'leo2a6m publishes its fitted ERA receipt');
-assert.equal(eraReceipt.totalTiles, 120,
+assert.equal(eraReceipt.totalTiles, 162,
   'leo2a6m receives the expanded cheeks and upper-glacis field only');
 assert.deepEqual(new Set(eraReceipt.sectors), new Set(eraSectorNames),
   'visual ERA clusters map one-to-one to the standard tank sectors');
-assert.equal(eraReceipt.cheekEraSeats.length, 70,
-  'five complete courses publish conformal seats across both turret cheeks');
+assert.equal(eraReceipt.cheekEraSeats.length, 112,
+  'seven complete courses publish conformal seats across both turret cheeks');
 assert.equal(eraReceipt.glacisEraSeats.length, 50,
   'the upper-glacis field publishes a fitted seat for every cassette');
 assert.equal(eraReceipt.staticMergedProtection, true,
@@ -75,7 +76,7 @@ const assertSurfaceSeat = (seat, halfDepth, expectedOverlap, label) => {
     `${label} records its physical overlap`);
 };
 for (const seat of eraReceipt.cheekEraSeats) {
-  assertSurfaceSeat(seat, 0.07 * 1.05 * 0.5, 0.016, 'cheek ERA');
+  assertSurfaceSeat(seat, 0.07 * 0.84 * 0.5, 0.024, 'cheek ERA');
 }
 for (const seat of eraReceipt.glacisEraSeats) {
   assertSurfaceSeat(seat, 0.07 * 1.08 * 0.5, 0.015, 'glacis ERA');
@@ -89,9 +90,44 @@ visual.root.traverse((object) => {
       && Math.abs(object.geometry.parameters?.height - 0.13) < 1e-6
       && Math.abs(object.geometry.parameters?.depth - 0.07) < 1e-6) eraMeshes.push(object);
 });
-assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 120,
+assert.equal(eraMeshes.reduce((total, mesh) => total + mesh.count, 0), 162,
   'all gameplay ERA sectors have matching instanced visual tiles');
 assert.equal(eraMeshes.length, 2, 'hull and turret ERA remain two shared draw buckets');
+
+const cageReceipt = eraReceipt.cheekCage;
+assert.ok(cageReceipt, 'leo2a6m publishes its conformal cheek-cage receipt');
+assert.equal(cageReceipt.rows, 6, 'cheek cage has six face-following horizontal rails');
+assert.equal(cageReceipt.contourStations, 6,
+  'each cheek-cage row follows all six arrowhead contour stations');
+assert.equal(cageReceipt.uprightsPerSide, 5,
+  'five uprights retain each cheek cage on the compound face');
+assert.equal(cageReceipt.tiePointsPerSide, 6,
+  'six physical stand-off ties connect each cage to the cheek armor');
+assert.equal(cageReceipt.surfaceOffsetM, 0.085,
+  'cage clears the flush ERA faces without drifting away from the cheek');
+assert.equal(cageReceipt.equipmentIsNonArmor, true,
+  'cheek cage is visual equipment rather than duplicate combat armor');
+assert.equal(cageReceipt.turretOwned, true,
+  'cheek cage follows turret traverse');
+
+const autocannonReceipt = eraReceipt.roofAutocannon;
+assert.ok(autocannonReceipt, 'leo2a6m publishes its roof-autocannon receipt');
+assert.equal(autocannonReceipt.caliberMm, 35,
+  'roof station is autocannon-scale rather than another pintle MG');
+assert.ok(autocannonReceipt.bearingBottomLocalY <= autocannonReceipt.roofTopLocalY,
+  'autocannon bearing is buried into the turret roof');
+assert.ok(autocannonReceipt.receiverTopLocalY <= 1.27,
+  'autocannon receiver stays below the existing PERI crown height budget');
+assert.ok(autocannonReceipt.barrelLengthM >= 1.8,
+  'autocannon carries a visibly full-size barrel');
+assert.equal(autocannonReceipt.equipmentIsNonArmor, true,
+  'autocannon is visual equipment rather than structural armor');
+assert.equal(autocannonReceipt.turretOwned, true,
+  'autocannon follows turret traverse');
+let equipmentOwner = equipment;
+while (equipmentOwner && equipmentOwner !== turretRig) equipmentOwner = equipmentOwner.parent;
+assert.ok(equipmentOwner === turretRig,
+  'merged cage and autocannon equipment remain under the turret rig');
 
 const downHits = (mesh, x, localZ) => {
   const ray = new THREE.Raycaster(
