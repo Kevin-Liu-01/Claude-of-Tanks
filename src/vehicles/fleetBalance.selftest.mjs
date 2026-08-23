@@ -190,6 +190,43 @@ assert.equal(garageStatGroup(proryv), '10/modern',
 assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
   'garage normalizes the 103A against its Cold War tier peers');
 
+const japaneseMbtProgression = [
+  ['type90', 9, 2250, 1500, 25, 44, 40, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90a', 9, 2400, 1500, 30, 46, 42, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
+  ['type10', 10, 2550, 1200, 35, 48, 46, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
+  ['type10b', 10, 2700, 1200, 45, 50, 48, 40, 4.7, 0, 0, 550, 916, 750, 145, 726],
+];
+for (const [
+  id, tier, hp, engine, reverse, hullTraverse, turretTraverse, gunPitch,
+  reload, magazine, intraClip, alpha, pen100, pen2000, glacisKe, turretKe,
+] of japaneseMbtProgression) {
+  const spec = TANK_SPECS[id];
+  const primary = spec.gun.shells[0];
+  assert.equal(tankTier(id), tier, `${id}: intended Japanese MBT tier`);
+  assert.equal(spec.hp, hp, `${id}: tier-appropriate HP`);
+  assert.equal(spec.enginePowerHp, engine, `${id}: generation-specific power pack`);
+  assert.equal(spec.reverseSpeedKmh, reverse, `${id}: generation-specific reverse`);
+  assert.equal(spec.hullTraverseDegS, hullTraverse, `${id}: hull handling progression`);
+  assert.equal(spec.turretTraverseDegS, turretTraverse, `${id}: turret handling progression`);
+  assert.equal(spec.gunPitchDegS, gunPitch, `${id}: gun handling progression`);
+  assert.equal(spec.gun.reloadS, reload, `${id}: canonical reload cycle`);
+  assert.equal(spec.gun.autoloader?.magazineSize || 0, magazine,
+    `${id}: intended magazine configuration`);
+  assert.equal(spec.gun.autoloader?.intraClipS || 0, intraClip,
+    `${id}: intended intra-clip cycle`);
+  assert.equal(spec.gun.autoloader?.fullReloadS || reload, reload,
+    `${id}: headline and full-magazine reload agree`);
+  assert.equal(primary.dmg, alpha, `${id}: generation-specific kinetic damage`);
+  assert.equal(primary.pen100Mm, pen100, `${id}: generation-specific close penetration`);
+  assert.equal(primary.pen2000Mm, pen2000, `${id}: generation-specific long penetration`);
+  assert.equal(spec.armor.hullPlates.find((plate) => plate.name === 'upper_glacis').keMm,
+    glacisKe, `${id}: generation-specific glacis protection`);
+  assert.equal(spec.armor.turretPlates.find((plate) => plate.name === 'turret_cheek_R').keMm,
+    turretKe, `${id}: generation-specific turret protection`);
+  assert.equal(garageStatGroup(spec), `${tier}/${spec.era}`,
+    `${id}: garage compares the tank against its actual tier`);
+}
+
 const merkavaProgression = [
   ['merkava2b', 8, 2200, 1000, 18, 32, 6.9, 525, 794, 650, 500, 650],
   ['merkava3c', 9, 2450, 1200, 20, 36, 6.2, 540, 830, 680, 540, 700],

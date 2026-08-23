@@ -19,6 +19,11 @@ assert.equal(tankTier('kv2'), 7, 'KV-2 is balanced and presented as a Tier VII v
 assert.equal(tankTier('t80bv'), 9, 'T-80BV UI and matchmaking agree at tier IX');
 assert.equal(tierNumeral('k2b'), 'X', 'K2B is presented and matched as a Tier X vehicle');
 assert.deepEqual(
+  ['type90', 'type90a', 'type10', 'type10b'].map(tankTier),
+  [9, 9, 10, 10],
+  'Japanese Type 90 and Type 10 families occupy tiers IX and X respectively',
+);
+assert.deepEqual(
   ['merkava2b', 'merkava3c', 'merkava3d', 'merkava4b'].map(tankTier),
   [8, 9, 10, 10],
   'Merkava 2B/3C/3D/4B progression is VIII/IX/X/X everywhere',

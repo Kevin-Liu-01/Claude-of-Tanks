@@ -7,6 +7,14 @@ import { TYPE10_GUN_SEAT } from './profiles/type10GunSeat.js';
 
 const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b']);
 
+function scaleFightingArmor(spec, factor) {
+  for (const plate of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
+    if (plate.kind === 'external') continue;
+    plate.keMm = Math.round(plate.keMm * factor);
+    plate.ceMm = Math.round(plate.ceMm * factor);
+  }
+}
+
 function variant(id, donorId, options) {
   const donor = TANK_SPECS[donorId];
   if (!donor) throw new Error(`Japanese family donor missing: ${donorId}`);
@@ -21,6 +29,10 @@ function variant(id, donorId, options) {
   Object.assign(spec, options.stats || {});
   if (Number.isFinite(options.reloadS)) spec.gun.reloadS = options.reloadS;
   if (options.shellName && spec.gun?.shells?.[0]) spec.gun.shells[0].name = options.shellName;
+  if (options.gun) spec.gun = { ...spec.gun, ...options.gun };
+  if (options.primaryShell && spec.gun?.shells?.[0]) {
+    spec.gun.shells[0] = { ...spec.gun.shells[0], ...options.primaryShell };
+  }
   if (options.dims) spec.dims = { ...spec.dims, ...options.dims };
   spec.visual = {
     ...spec.visual,
@@ -32,14 +44,55 @@ function variant(id, donorId, options) {
     number: options.number,
     camoScale: options.camoScale,
   };
-  if (options.armorFactor) {
-    for (const plate of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
-      if (plate.kind === 'external') continue;
-      plate.keMm = Math.round(plate.keMm * options.armorFactor);
-      plate.ceMm = Math.round(plate.ceMm * options.armorFactor);
-    }
-  }
+  if (options.armorFactor) scaleFightingArmor(spec, options.armorFactor);
   return spec;
+}
+
+// The Japanese MBT line is intentionally split into two matchmaking bands:
+// Type 90 / 90A are mobile three-round Tier IX autoloaders, while Type 10 /
+// 10B are Tier X single-shot vehicles with stronger fire control, ammunition,
+// durability and composite protection. Keep the base rows explicit here so
+// the A/B derivatives clone the same canonical balance ladder.
+{
+  const type90 = TANK_SPECS.type90;
+  Object.assign(type90, {
+    hp: 2250,
+    enginePowerHp: 1500,
+    reverseSpeedKmh: 25,
+    hullTraverseDegS: 44,
+    turretTraverseDegS: 40,
+    gunPitchDegS: 30,
+  });
+  Object.assign(type90.gun, {
+    reloadS: 18.5,
+    baseAccuracy: 0.30,
+    aimTimeS: 1.8,
+    autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
+  });
+  Object.assign(type90.gun.shells[0], {
+    name: 'JM33 APFSDS', dmg: 500,
+    pen100Mm: 806, pen1000Mm: 733, pen2000Mm: 660,
+  });
+
+  const type10 = TANK_SPECS.type10;
+  Object.assign(type10, {
+    hp: 2550,
+    reverseSpeedKmh: 35,
+    hullTraverseDegS: 48,
+    turretTraverseDegS: 46,
+    gunPitchDegS: 36,
+  });
+  Object.assign(type10.gun, {
+    reloadS: 5.2,
+    baseAccuracy: 0.27,
+    aimTimeS: 1.5,
+  });
+  delete type10.gun.autoloader;
+  Object.assign(type10.gun.shells[0], {
+    name: 'Type 10 APFSDS', dmg: 540,
+    pen100Mm: 891, pen1000Mm: 811, pen2000Mm: 730,
+  });
+  scaleFightingArmor(type10, 1.12);
 }
 
 const JAPAN_SPECS = {
@@ -57,9 +110,18 @@ const JAPAN_SPECS = {
     base: '#3f4c39', weather: '#5c624d', patches: ['#253127', '#6b5d3c', '#807458'],
     camoScale: 0.44,
     dims: { hullLengthM: 7.55, overallLengthM: 9.80, widthM: 3.43, heightM: 2.34 },
-    stats: { hp: 2350, enginePowerHp: 1500, weightTons: 52.0, topSpeedKmh: 70,
-      reverseSpeedKmh: 42, turretTraverseDegS: 40, gunPitchDegS: 34 },
-    reloadS: 5.2, shellName: 'Type 10 APFSDS', armorFactor: 1.12,
+    stats: { hp: 2400, enginePowerHp: 1500, weightTons: 52.0, topSpeedKmh: 70,
+      reverseSpeedKmh: 30, hullTraverseDegS: 46, turretTraverseDegS: 42,
+      gunPitchDegS: 34 },
+    gun: {
+      reloadS: 17.0, baseAccuracy: 0.29, aimTimeS: 1.65,
+      autoloader: { magazineSize: 3, intraClipS: 2.0, fullReloadS: 17.0 },
+    },
+    primaryShell: {
+      name: 'Type 10 APFSDS', dmg: 510,
+      pen100Mm: 855, pen1000Mm: 778, pen2000Mm: 700,
+    },
+    armorFactor: 1.12,
   }),
   type10b: variant('type10b', 'type10', {
     name: 'Type 10B', number: '10-B', scheme: 'stripes',
@@ -68,9 +130,15 @@ const JAPAN_SPECS = {
     // §5.336 owner-decreed ×1.10 enlargement (rides the rebuilt shared base;
     // §5.304-class divergence documented in the type10 spec row).
     dims: { hullLengthM: 7.513, overallLengthM: 10.439, widthM: 3.564, heightM: 2.838 },
-    stats: { hp: 2450, enginePowerHp: 1200, weightTons: 48.0, topSpeedKmh: 70,
-      reverseSpeedKmh: 45, turretTraverseDegS: 46, gunPitchDegS: 38 },
-    reloadS: 4.7, shellName: 'Type 10 Kai APFSDS', armorFactor: 1.16,
+    stats: { hp: 2700, enginePowerHp: 1200, weightTons: 48.0, topSpeedKmh: 70,
+      reverseSpeedKmh: 45, hullTraverseDegS: 50, turretTraverseDegS: 48,
+      gunPitchDegS: 40 },
+    gun: { reloadS: 4.7, baseAccuracy: 0.25, aimTimeS: 1.35 },
+    primaryShell: {
+      name: 'Type 10 Kai APFSDS', dmg: 550,
+      pen100Mm: 916, pen1000Mm: 833, pen2000Mm: 750,
+    },
+    armorFactor: 1.08,
   }),
 };
 
