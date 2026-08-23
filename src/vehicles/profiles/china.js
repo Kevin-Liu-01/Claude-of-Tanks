@@ -930,12 +930,29 @@ function buildZTZ99A2(P) {
 // gate deltas are documented in docs/references/tanks/type59.md §5.304,
 // never chased back toward the print.
 function buildType59(P) {
-  const { box, cylX, cylY, cylZ } = KIT;
+  const {
+    box, cylX, cylY, cylZ, stowage, tarpRoll, shovelTool, spareTrackStrip,
+  } = KIT;
+  const vehicleScale = 0.95;
 
   // ---- widened obr-1975 chassis with the T-54A wheel-gap pattern (span,
-  // idler, sprocket and both contact tangents byte-held from the base) ----
+  // idler, sprocket and both contact tangents rebuilt as one linked course.
+  // The donor course's unsupported terminal ramps made the tracks read
+  // borrowed from the larger T-62.  Explicitly re-seating both end wheels,
+  // contact tangents and return height keeps every shoe visibly supported
+  // after the whole vehicle's restrained 5% trim.
   buildT62Obr1975Chassis(P, {
-    gear: { wheelZs: [2.235, 1.08, 0.10, -0.92, -1.933] },
+    gear: {
+      wheelZs: [2.235, 1.08, 0.10, -0.92, -1.933],
+      wheelY: 0.455,
+      xc: 1.45,
+      sprocket: { z: -2.795, y: 0.79, r: 0.32 },
+      idler: { z: 3.01, y: 0.83, r: 0.30 },
+      topY: 1.185,
+      botY: 0.02,
+      contactZF: 2.66,
+      contactZR: -2.36,
+    },
   });
 
   // ---- Chinese hull dressing --------------------------------------------
@@ -962,6 +979,39 @@ function buildType59(P) {
   // Stowed OPVT snorkel ridge across the rear deck (saddled, §B2-connected).
   P.add('hullDetail', cylX(0.09, 1.672, 12), 0, 1.62, -2.35);
   for (const s of [-1, 1]) P.add('hullDark', box(0.06, 0.14, 0.22), s * 0.682, 1.56, -2.35);
+
+  // ---- Type 59 field-modernization armor and hull equipment --------------
+  // Three shallow applique plates follow the actual upper-glacis rake.  They
+  // are external armor rather than hull shell, so the base plate keeps its
+  // close combat envelope while the visual reads as a deliberate refit.
+  for (const x of [-0.78, 0, 0.78]) {
+    const w = x === 0 ? 0.70 : 0.62;
+    P.addExternalArmor('hull', box(w, 0.075, 1.18), x, 1.405, 2.31, -0.18, 0, 0);
+    for (const bx of [-0.34, 0.34]) {
+      P.add('hullDark', cylY(0.022, 0.022, 0.022, 8),
+        x + bx * w, 1.447, 1.88, -0.18, 0, 0);
+    }
+  }
+  // Segmented steel/rubber skirt armor hangs from the existing fender line;
+  // broad hangers visibly transfer each panel into the hull instead of
+  // leaving another parallel floating wall outside the track.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      const z = 2.18 - i * 0.73;
+      P.addExternalArmor('hull', box(0.055, 0.48, 0.66), side * 1.86, 1.02, z);
+      P.add('hullDark', box(0.18, 0.08, 0.58), side * 1.77, 1.29, z);
+      for (const dz of [-0.25, 0.25]) {
+        P.add('hullDark', cylZ(0.019, 0.025, 8), side * 1.894, 1.19, z + dz,
+          0, side * Math.PI / 2, 0);
+      }
+    }
+  }
+  // Crew field kit: spare links and pioneer tools on the glacis, plus a
+  // strapped canvas roll on the right rear fender. All are non-armor
+  // equipment and remain inside the new skirt/fender envelope.
+  spareTrackStrip(P, 'hull', -0.74, 1.515, 1.73, 4, -0.18, 0);
+  shovelTool(P, 0.83, 1.565, -1.28, 1.05);
+  tarpRoll(P, 'hullCloth', 1.49, 1.63, -0.83, 0.72, 0.095, false, 12);
 
   // ---- WZ-120 (T-54A-family) mushroom dome on the widened base ring ------
   // Ring profile = the certified §5.45 type59 dome ×1.10 laterally (the
@@ -999,8 +1049,9 @@ function buildType59(P) {
   // Chinese service-rack grammar) + dark saddle straps into the skin.
   {
     const rack = FITTINGS.stowageRack({
-      mats: P.mats, w: 1.30, d: 0.35, h: 0.22, fill: 0.30, rails: 2, seed: 590,
+      mats: P.mats, w: 1.42, d: 0.38, h: 0.24, fill: 0.62, rails: 2, seed: 590,
     });
+    rack.name = 'type59RearStowageRack';
     rack.position.set(0, 0.42, -1.50);
     P.turretG.add(rack);
     for (const s of [-1, 1]) P.add('turretDark', box(0.06, 0.16, 0.30), s * 0.46, 0.34, -1.44);
@@ -1022,10 +1073,12 @@ function buildType59(P) {
   P.add('turretDetail', box(0.065, 0.26, 0.075), 0.674, 0.886, 0.294, -0.50, 0, -0.35);
   {
     const dshk = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'dshk', scale: 0.78, tone: 'two-tone', elev: 0.12, ammo: true,
-      ring: { r: 0.17, stubs: 3 }, rotation: [0, -0.22, 0], seed: 6,
+      mats: P.mats, cls: 'dshk', scale: 0.94, tone: 'two-tone', elev: 0.14,
+      ammo: true, shield: true, barrelBridge: true,
+      rotation: [0, -0.18, 0], seed: 6,
     });
-    dshk.position.set(0.638, 0.78, 0.24);
+    dshk.name = 'type59RoofDShK';
+    dshk.position.set(0.638, 0.81, 0.24);
     P.turretG.add(dshk);
   }
   // paired four-tube smoke banks on the dome shoulders (dark pads bridge
@@ -1044,6 +1097,52 @@ function buildType59(P) {
     P.turretG.add(whip);
   }
   domeRailRu(P, rings59, 1.0, 0.50, 1.1);
+
+  // ---- modular turret applique and denser crew equipment -----------------
+  // Forward cassettes are tangent to the mushroom cheek; the side course is
+  // embedded into the cast shoulder by 20-30 mm.  The two courses overlap at
+  // the transition so there is no daylight wedge when the camera moves from
+  // the front quarter to a true side view.
+  let turretArmorPanels = 0;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const x = side * (0.58 + i * 0.23);
+      const z = 0.88 - i * 0.16;
+      P.addExternalArmor('turret', box(0.11, 0.25, 0.34),
+        x, 0.52 - i * 0.012, z, 0, -side * 0.68, side * 0.035);
+      P.add('turretDark', box(0.018, 0.20, 0.29),
+        x + side * 0.050, 0.52 - i * 0.012, z, 0, -side * 0.68, side * 0.035);
+      turretArmorPanels++;
+    }
+    for (let i = 0; i < 4; i++) {
+      const z = 0.38 - i * 0.35;
+      P.addExternalArmor('turret', box(0.12, 0.28, 0.30),
+        side * 1.49, 0.43, z, 0, side * 0.055, 0);
+      P.add('turretDark', box(0.020, 0.22, 0.24),
+        side * 1.556, 0.43, z, 0, side * 0.055, 0);
+      turretArmorPanels++;
+    }
+    // Full-depth support rail and two return brackets make the cassette
+    // course visibly load-bearing rather than a row of boxes hovering beside
+    // the casting.
+    P.add('turretDetail', box(0.055, 0.055, 1.55), side * 1.405, 0.36, -0.12);
+    for (const z of [0.56, -0.76]) {
+      P.add('turretDetail', box(0.22, 0.055, 0.055), side * 1.31, 0.36, z);
+    }
+  }
+  stowage(P, 'turretCloth', P.rng, [
+    [-0.74, 0.68, -1.12, 0.42, 0.20, 0.34],
+    [0.72, 0.64, -1.12, 0.38, 0.18, 0.32],
+  ]);
+  // Second rear radio whip and its armored socket balance the existing
+  // forward-left antenna without creating another tall combat structure.
+  P.add('turret', cylY(0.052, 0.065, 0.075, 10), 0.94, 0.50, -0.91);
+  {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.66, r: 0.016, rake: -0.20, seed: 14 });
+    whip.name = 'type59RearRadioWhip';
+    whip.position.set(0.94, 0.53, -0.91);
+    P.turretG.add(whip);
+  }
 
   // ---- 100 mm Type 59 gun (licensed D-10T class): measured tube grammar,
   // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Axis world 1.767
@@ -1100,6 +1199,61 @@ function buildType59(P) {
   const dxT59 = ringSkin(rings59, 0.40) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT59 * 0.98, 0.40, -0.21], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-dxT59 * 0.98, 0.40, -0.21], -Math.PI / 2);
+
+  // Apply the requested modest overall reduction at the articulated owners,
+  // not by baking hundreds of unrelated station constants.  Hull gear,
+  // turret armor, equipment and gun therefore retain their exact attachment
+  // relationships. The turret pivot follows the reduced deck, while the gun
+  // remains a clean child of the uniformly scaled yaw rig.
+  P.hullG.scale.setScalar(vehicleScale);
+  P.turretG.scale.setScalar(vehicleScale);
+  P.turretG.position.multiplyScalar(vehicleScale);
+  // Geometry-receipt builds publish authored local course coordinates. Keep
+  // that receipt in the same reduced frame as the rendered hull so exact
+  // track containment audits test the real scaled course, not the donor's
+  // pre-scale station table.
+  for (const receipt of P.hullG.userData.runningGearReceipts || []) {
+    receipt.wheelZs = receipt.wheelZs.map((z) => z * vehicleScale);
+    for (const key of ['wheelR', 'wheelY', 'xcLeft', 'xcRight', 'trackW',
+      'trackTh', 'botY', 'topY', 'loopLengthM', 'shoePitchM',
+      'shoeOutboardOffset', 'textureRepeatM']) {
+      receipt[key] *= vehicleScale;
+    }
+    for (const end of [receipt.sprocket, receipt.idler]) {
+      for (const key of ['z', 'y', 'r']) end[key] *= vehicleScale;
+    }
+    receipt.loopPoints = receipt.loopPoints.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
+  }
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
+      P.gear.contactGeom[key] *= vehicleScale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM']) P.gear.contactGeom.endRise[key] *= vehicleScale;
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= vehicleScale;
+    lane.x1 *= vehicleScale;
+    lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
+  }
+  P.hullG.userData.type59OverhaulReceipt = Object.freeze({
+    revision: 'type59-compact-field-refit-r1',
+    vehicleScale,
+    roadWheelStations: 5,
+    linkedTrackCourseReseated: true,
+    glacisAppliquePanels: 3,
+    sideSkirtPanels: 14,
+    equipmentAttached: true,
+  });
+  P.turretG.userData.type59OverhaulReceipt = Object.freeze({
+    revision: 'type59-compact-field-refit-r1',
+    vehicleScale,
+    roofMachineGun: 'Type 54 DShK',
+    roofMachineGunScale: 0.94,
+    turretArmorPanels,
+    equipmentAttached: true,
+  });
   P.topY = 1.15;
 }
 
