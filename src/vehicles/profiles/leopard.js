@@ -646,6 +646,38 @@ function leoHullV3(P, H) {
   // view is centre-carried; front tops are deck-carried; plan front stays
   // band/pad/wing-carried on the vacated columns (audited per tank).
   const GLC = H.glacisLaneCut;
+  const UGC = H.underGlacisClosure
+    ? (H.underGlacisClosure === true ? {} : H.underGlacisClosure)
+    : null;
+  const upperFillEnabled = UGC?.upperFill === true;
+  const upperFillHalfW = UGC?.upperFillHalfW ?? UGC?.halfW ?? 0.88;
+  const upperFillSideInsetM = UGC?.upperFillSideInsetM ?? 0.012;
+  const upperFillOverlapM = UGC?.upperFillOverlapM ?? 0.015;
+  const upperFillRearZ = g[0][0];
+  const upperFillFrontZ = g[g.length - 1][0];
+  const upperFillRearSupportY = UGC?.upperFillRearSupportY ?? (H.sponsonY - 0.02);
+  const upperFillFrontSupportY = UGC?.upperFillFrontSupportY
+    ?? (g[g.length - 1][1] - 0.17);
+  let upperFillSegments = 0;
+  const upperFillSupportYAt = (z) => THREE.MathUtils.lerp(
+    upperFillRearSupportY,
+    upperFillFrontSupportY,
+    THREE.MathUtils.clamp((z - upperFillRearZ) / (upperFillFrontZ - upperFillRearZ), 0, 1),
+  );
+  const addUpperGlacisFill = (za, ya, wa, zb, yb, wb, depthA, depthB) => {
+    if (!upperFillEnabled) return;
+    // Keep the deep structural backer inside the inter-track hull corridor.
+    // The armor slab itself remains full width; this infill blocks the lateral
+    // sightline without entering either animated shoe envelope.
+    const fillWA = Math.min(upperFillHalfW, Math.max(0.08, wa - upperFillSideInsetM));
+    const fillWB = Math.min(upperFillHalfW, Math.max(0.08, wb - upperFillSideInsetM));
+    P.add('hull', slab(
+      [-fillWA, upperFillSupportYAt(za), za], [fillWA, upperFillSupportYAt(za), za],
+      [fillWB, upperFillSupportYAt(zb), zb], [-fillWB, upperFillSupportYAt(zb), zb],
+      [-fillWA, ya - depthA + upperFillOverlapM, za], [fillWA, ya - depthA + upperFillOverlapM, za],
+      [fillWB, yb - depthB + upperFillOverlapM, zb], [-fillWB, yb - depthB + upperFillOverlapM, zb]));
+    upperFillSegments++;
+  };
   for (let i = 0; i < g.length - 1; i++) {
     const [zF, yF] = g[i], [zR, yR] = g[i + 1];
     const wF = hw * (1 - gwid * Math.max(0, zF - g[0][0]) / (g[g.length - 1][0] - g[0][0]));
@@ -654,11 +686,15 @@ function leoHullV3(P, H) {
       P.add('hull', slab(
         [-wF, yF - 0.16, zF], [wF, yF - 0.16, zF], [wR, yR - 0.14, zR], [-wR, yR - 0.14, zR],
         [-wF, yF, zF], [wF, yF, zF], [wR, yR, zR], [-wR, yR, zR]));
+      addUpperGlacisFill(zF, yF, wF, zR, yR, wR, 0.16, 0.14);
       continue;
     }
-    const cutSlab = (za, ya, wa, zb, yb, wb, dA, dB) => P.add('hull', slab(
-      [-wa, ya - dA, za], [wa, ya - dA, za], [wb, yb - dB, zb], [-wb, yb - dB, zb],
-      [-wa, ya, za], [wa, ya, za], [wb, yb, zb], [-wb, yb, zb]));
+    const cutSlab = (za, ya, wa, zb, yb, wb, dA, dB) => {
+      P.add('hull', slab(
+        [-wa, ya - dA, za], [wa, ya - dA, za], [wb, yb - dB, zb], [-wb, yb - dB, zb],
+        [-wa, ya, za], [wa, ya, za], [wb, yb, zb], [-wb, yb, zb]));
+      addUpperGlacisFill(za, ya, wa, zb, yb, wb, dA, dB);
+    };
     if (zF >= GLC.z0) {                                                        // fully beyond the cut: centre-only
       cutSlab(zF, yF, Math.min(wF, GLC.x), zR, yR, Math.min(wR, GLC.x), 0.16, 0.14);
     } else {                                                                   // straddles: split at z0
@@ -759,7 +795,6 @@ function leoHullV3(P, H) {
   // continuous on both the long-nose 2A4 and shorter 2A6 hulls while staying
   // inside the track lanes.
   if (H.underGlacisClosure) {
-    const UGC = H.underGlacisClosure === true ? {} : H.underGlacisClosure;
     const halfW = UGC.halfW ?? Math.min(GLC?.x ?? hw * 0.62, hw * 0.60);
     const lowerPlateRearZ = UGC.lowerPlateRearZ ?? (tip[0] - 0.84);
     const lowerPlateFrontZ = UGC.lowerPlateFrontZ ?? (tip[0] - 0.42);
@@ -789,6 +824,15 @@ function leoHullV3(P, H) {
         lowerPlateFrontZ,
         lowerPlateRearTopY: bellyTopY,
         lowerPlateFrontTopY: beltTopY,
+        upperFillEnabled,
+        upperFillSegments,
+        upperFillRearZ,
+        upperFillFrontZ,
+        upperFillRearSupportY,
+        upperFillFrontSupportY,
+        upperFillHalfW,
+        upperFillSideInsetM,
+        upperFillOverlapM,
       };
     }
   }
@@ -1395,7 +1439,7 @@ function buildLeo2A6(P) {
     // + margin); centre keeps 1.30, side/front rows are skirt/deck-interior.
     sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.50,
-    underGlacisClosure: { halfW: 0.88 },
+    underGlacisClosure: { halfW: 0.88, upperFill: true },
     // headlight pods: fresh grid reads the ref col 3.267 top at 1.495 =
     // pod top (1.44+0.055r); the old 1.51 center read one row high
     headlightY: 1.44, headlightZ: 3.20,
@@ -11172,56 +11216,64 @@ function addLeo2A6MCheekCage(P) {
   });
 }
 
-function addLeo2A6MRoofAutocannon(P) {
-  const { box, cylX, cylY, cylZ, torus } = KIT;
+function addLeo2A6MRoofRCWS(P) {
+  const { box, cylY, torus } = KIT;
   const x = 0.08;
   const z = -1.50;
   const roofSeatY = 0.735;
 
-  // A 35 mm remote station, deliberately broad and long but kept below the
-  // existing PERI crown. Its buried bearing and overlapping riser establish
-  // one continuous load path into the rear roof-V instead of a floating gun.
-  P.addEquipment('turret', cylY(0.34, 0.38, 0.12, P.q ? 24 : 16), x, roofSeatY + 0.06, z);
-  P.addEquipment('turretDark', torus(0.30, 0.024, P.q ? 24 : 16, 8), x, roofSeatY + 0.125, z);
-  P.addEquipment('turret', box(0.50, 0.18, 0.48), x, 0.91, z);
-  P.addEquipment('turretDark', cylX(0.10, 0.78, P.q ? 18 : 12), x, 1.04, z + 0.06);
-  P.addEquipment('turret', box(0.78, 0.35, 0.78), x, 1.075, z + 0.12);
-  P.addEquipment('turretDetail', box(0.70, 0.035, 0.68), x, 1.2675, z + 0.12);
+  // Compact remote machine-gun station. The bearing is buried into the
+  // rear roof-V and the housing overlaps it, preserving a continuous load
+  // path without retaining the former 35 mm autocannon silhouette.
+  const bearingRadiusM = 0.20;
+  P.addEquipment('turret', cylY(bearingRadiusM, 0.22, 0.08, P.q ? 20 : 14),
+    x, roofSeatY + 0.04, z);
+  P.addEquipment('turretDark', torus(0.19, 0.018, P.q ? 20 : 14, 8),
+    x, roofSeatY + 0.085, z);
+  P.addEquipment('turret', box(0.36, 0.16, 0.34), x, 0.91, z);
+  P.addEquipment('turretDetail', box(0.32, 0.025, 0.30), x, 1.0025, z);
 
-  // Armored trunnion cheeks, recoil rails and the oversized 35 mm barrel.
-  for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.12, 0.42, 0.62), x + side * 0.45, 1.075, z + 0.13,
-      0, 0, side * 0.06);
-    P.addEquipment('turretDark', box(0.050, 0.075, 1.14), x + side * 0.17, 1.12, z + 0.73);
-  }
-  const barrelLengthM = 1.86;
-  const barrelStartZ = z + 0.54;
-  P.addEquipment('turretDark', cylZ(0.052, barrelLengthM, P.q ? 20 : 12),
-    x, 1.12, barrelStartZ + barrelLengthM * 0.5);
-  P.addEquipment('turretDetail', cylZ(0.073, 0.24, P.q ? 18 : 12),
-    x, 1.12, barrelStartZ + 0.16);
-  P.addEquipment('turretDark', cylZ(0.074, 0.25, P.q ? 18 : 12),
-    x, 1.12, barrelStartZ + barrelLengthM - 0.05);
-  P.addEquipment('turretDark', box(0.18, 0.10, 0.13),
-    x, 1.12, barrelStartZ + barrelLengthM + 0.045);
+  // Independent day/thermal head keeps the station visibly remote-operated.
+  const sensorX = x + 0.24;
+  const sensorZ = z - 0.03;
+  P.addEquipment('turretDark', box(0.14, 0.16, 0.15), sensorX, 0.92, sensorZ);
+  P.addEquipment('turretGlass', box(0.10, 0.07, 0.014),
+    sensorX, 0.93, sensorZ + 0.082);
 
-  // Dual feed boxes and an independent day/thermal head make the station
-  // read as an autocannon system rather than an enlarged pintle MG.
-  P.addEquipment('turret', box(0.38, 0.36, 0.52), x - 0.56, 1.04, z - 0.02);
-  P.addEquipment('turretDetail', box(0.035, 0.28, 0.46), x - 0.765, 1.04, z - 0.02);
-  P.addEquipment('turret', box(0.28, 0.30, 0.36), x + 0.55, 1.08, z - 0.08);
-  P.addEquipment('turretDark', box(0.22, 0.20, 0.24), x + 0.55, 1.17, z + 0.16);
-  P.addEquipment('turretGlass', box(0.14, 0.105, 0.018), x + 0.55, 1.18, z + 0.291);
-  P.addEquipment('turretGlass', box(0.075, 0.075, 0.019), x + 0.46, 1.11, z + 0.292);
+  const machineGunScale = 0.72;
+  const weaponFootY = 0.99;
+  const remoteMachineGun = FITTINGS.pintleMG({
+    mats: P.mats,
+    cls: 'm2',
+    scale: machineGunScale,
+    tone: 'two-tone',
+    elev: 0.035,
+    ammo: true,
+    shield: false,
+    ring: false,
+    seed: 26024,
+  });
+  remoteMachineGun.name = 'leo2A6MRemoteMachineGun';
+  remoteMachineGun.position.set(x, weaponFootY, z + 0.05);
+  remoteMachineGun.userData.remoteControlled = true;
+  P.turretG.add(remoteMachineGun);
+
+  const weaponBounds = remoteMachineGun.userData.aabb;
+  const receiverTopLocalY = weaponFootY + weaponBounds.max[1];
+  const barrelLengthM = 0.52 * machineGunScale;
 
   return Object.freeze({
-    caliberMm: 35,
+    weaponClass: 'remote-machine-gun',
+    caliberMm: 12.7,
     roofSeatLocal: Object.freeze([x, roofSeatY, z]),
     bearingBottomLocalY: roofSeatY,
     roofTopLocalY: 0.84,
-    receiverTopLocalY: 1.25,
-    barrelAxisLocalY: 1.12,
+    receiverTopLocalY,
+    barrelAxisLocalY: weaponFootY + 0.19,
     barrelLengthM,
+    bearingDiameterM: bearingRadiusM * 2,
+    weaponScale: machineGunScale,
+    remoteControlled: true,
     equipmentIsNonArmor: true,
     turretOwned: true,
   });
@@ -11358,7 +11410,7 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     // M-package belly: the mine kit lifts the visible belly line (family
     // 0.50 -> 0.56); the bolted plate itself is authored below.
     beltY: 0.62, bellyY: 0.56,
-    underGlacisClosure: { halfW: 0.88 },
+    underGlacisClosure: { halfW: 0.88, upperFill: true },
     headlightY: 1.44, headlightZ: 3.20,
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },
@@ -11779,12 +11831,12 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
   if (fieldEra) {
     const eraReceipt = addLeo2A6MFrontalERA(P, 'a6m');
     const cheekCage = addLeo2A6MCheekCage(P);
-    const roofAutocannon = addLeo2A6MRoofAutocannon(P);
+    const roofRemoteWeapon = addLeo2A6MRoofRCWS(P);
     if (P.geometryReceipt) {
       P.turretG.userData.leopard2A6MERAReceipt = Object.freeze({
         ...eraReceipt,
         cheekCage,
-        roofAutocannon,
+        roofRemoteWeapon,
       });
     }
   }
@@ -12228,7 +12280,7 @@ function buildLeo2A4M(P) {
     glacisLaneCut: { x: 0.90, z0: 3.13 },
     sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.56,                                 // mine-belly stance
-    underGlacisClosure: { halfW: 0.88 },
+    underGlacisClosure: { halfW: 0.88, upperFill: true },
     headlightY: 1.44, headlightZ: 3.20,
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },

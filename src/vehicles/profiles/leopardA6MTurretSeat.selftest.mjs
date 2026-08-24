@@ -110,24 +110,37 @@ assert.equal(cageReceipt.equipmentIsNonArmor, true,
 assert.equal(cageReceipt.turretOwned, true,
   'cheek cage follows turret traverse');
 
-const autocannonReceipt = eraReceipt.roofAutocannon;
-assert.ok(autocannonReceipt, 'leo2a6m publishes its roof-autocannon receipt');
-assert.equal(autocannonReceipt.caliberMm, 35,
-  'roof station is autocannon-scale rather than another pintle MG');
-assert.ok(autocannonReceipt.bearingBottomLocalY <= autocannonReceipt.roofTopLocalY,
-  'autocannon bearing is buried into the turret roof');
-assert.ok(autocannonReceipt.receiverTopLocalY <= 1.27,
-  'autocannon receiver stays below the existing PERI crown height budget');
-assert.ok(autocannonReceipt.barrelLengthM >= 1.8,
-  'autocannon carries a visibly full-size barrel');
-assert.equal(autocannonReceipt.equipmentIsNonArmor, true,
-  'autocannon is visual equipment rather than structural armor');
-assert.equal(autocannonReceipt.turretOwned, true,
-  'autocannon follows turret traverse');
+const remoteWeaponReceipt = eraReceipt.roofRemoteWeapon;
+assert.ok(remoteWeaponReceipt, 'leo2a6m publishes its roof remote-weapon receipt');
+assert.equal(remoteWeaponReceipt.weaponClass, 'remote-machine-gun',
+  'roof station is classified as a compact RCWS');
+assert.equal(remoteWeaponReceipt.caliberMm, 12.7,
+  'roof station carries a machine-gun caliber rather than a 35 mm autocannon');
+assert.ok(remoteWeaponReceipt.bearingBottomLocalY <= remoteWeaponReceipt.roofTopLocalY,
+  'RCWS bearing is buried into the turret roof');
+assert.ok(remoteWeaponReceipt.receiverTopLocalY <= 1.24,
+  'RCWS receiver stays below the existing PERI crown height budget');
+assert.ok(remoteWeaponReceipt.barrelLengthM <= 0.40,
+  'machine-gun barrel is less than one quarter of the retired autocannon length');
+assert.ok(remoteWeaponReceipt.bearingDiameterM <= 0.40,
+  'RCWS bearing is compact enough for the rear roof-V');
+assert.equal(remoteWeaponReceipt.weaponScale, 0.72,
+  'M2-class fitting uses the accepted compact station scale');
+assert.equal(remoteWeaponReceipt.remoteControlled, true,
+  'sensor-equipped roof weapon records remote operation');
+assert.equal(remoteWeaponReceipt.equipmentIsNonArmor, true,
+  'RCWS is visual equipment rather than structural armor');
+assert.equal(remoteWeaponReceipt.turretOwned, true,
+  'RCWS follows turret traverse');
+const remoteMachineGun = turretRig.getObjectByName('leo2A6MRemoteMachineGun');
+assert.ok(remoteMachineGun && remoteMachineGun.parent === turretRig,
+  'compact remote machine gun is directly owned by the turret rig');
+assert.equal(remoteMachineGun.userData.remoteControlled, true,
+  'roof weapon group exposes its remote-control contract');
 let equipmentOwner = equipment;
 while (equipmentOwner && equipmentOwner !== turretRig) equipmentOwner = equipmentOwner.parent;
 assert.ok(equipmentOwner === turretRig,
-  'merged cage and autocannon equipment remain under the turret rig');
+  'merged cage and RCWS equipment remain under the turret rig');
 
 const downHits = (mesh, x, localZ) => {
   const ray = new THREE.Raycaster(
