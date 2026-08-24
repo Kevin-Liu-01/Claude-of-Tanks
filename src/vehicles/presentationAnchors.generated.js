@@ -5,7 +5,7 @@
 export const TANK_PRESENTATION_ANCHOR_SCHEMA_VERSION = 1;
 
 export const TANK_PRESENTATION_ANCHORS = Object.freeze({
-  abramsx: Object.freeze({ xM: 0.0033, zM: -0.0222 }),
+  abramsx: Object.freeze({ xM: 0.0033, zM: -0.0227 }),
   amx30: Object.freeze({ xM: 0.0001, zM: 0.0067 }),
   amx30b2: Object.freeze({ xM: 0.0001, zM: 0.0065 }),
   amx40: Object.freeze({ xM: -0.0003, zM: 0.0379 }),
@@ -82,7 +82,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   m60a2: Object.freeze({ xM: 0.0002, zM: -0.0841 }),
   m60a3: Object.freeze({ xM: 0, zM: 0.0181 }),
   marder1a3: Object.freeze({ xM: 0.0552, zM: 0.0064 }),
-  mbt70: Object.freeze({ xM: 0.0002, zM: -0.1142 }),
+  mbt70: Object.freeze({ xM: 0.0002, zM: -0.1156 }),
   merkava1b: Object.freeze({ xM: -0.0001, zM: -0.6281 }),
   merkava2b: Object.freeze({ xM: -0.0001, zM: -0.551 }),
   merkava2d: Object.freeze({ xM: -0.0001, zM: -0.4749 }),
@@ -137,12 +137,12 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   tiger2: Object.freeze({ xM: -0.0018, zM: -1.1786 }),
   type10: Object.freeze({ xM: -0.0012, zM: -0.0143 }),
   type10b: Object.freeze({ xM: -0.0015, zM: -0.0123 }),
-  type59: Object.freeze({ xM: -0.0001, zM: 0.0163 }),
+  type59: Object.freeze({ xM: 0.0001, zM: 0.0517 }),
   type74: Object.freeze({ xM: 0, zM: -0.0958 }),
   type89: Object.freeze({ xM: 0.0003, zM: -0.034 }),
   type90: Object.freeze({ xM: 0, zM: -0.2075 }),
   type90a: Object.freeze({ xM: 0.0008, zM: -0.2184 }),
-  type99a: Object.freeze({ xM: -0.0004, zM: -0.2709 }),
+  type99a: Object.freeze({ xM: -0.0004, zM: -0.271 }),
   ua_m1a1: Object.freeze({ xM: 0.0036, zM: 0.0415 }),
   ua_m2a3_bradley: Object.freeze({ xM: 0.011, zM: -0.0129 }),
   ua_t64bv: Object.freeze({ xM: 0.0019, zM: -0.032 }),
@@ -152,7 +152,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   udes03: Object.freeze({ xM: 0.0006, zM: -0.0225 }),
   upior: Object.freeze({ xM: 0.0004, zM: -0.0234 }),
   vickers_mk1: Object.freeze({ xM: 0.0004, zM: -0.0655 }),
-  ztz85_iii: Object.freeze({ xM: 0.0003, zM: -0.7776 }),
+  ztz85_iii: Object.freeze({ xM: 0.0003, zM: -0.7847 }),
   ztz99a2: Object.freeze({ xM: 0.0001, zM: -0.425 }),
 });
 
