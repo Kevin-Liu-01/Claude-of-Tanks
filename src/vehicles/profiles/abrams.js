@@ -2944,10 +2944,10 @@ function tejasEndWheelAndBayKit(P, g) {
   // tire/dish/hub set and moves it with suspension travel + wheel rotation.
   // Do not add fixed road-wheel faces here: the former seven-station overlay
   // stayed at the parked pose while the native wheels moved, producing the
-  // owner's visible doubled wheel train.  This kit is intentionally limited
-  // to the independently seated idler/sprocket faces and the wheel-bay AO
-  // wall; skirts, armor, track shoes and suspension geometry are untouched.
-  const gearGeos = { dark: [], detail: [], hull: [], shadow: [] };
+  // owner's visible doubled wheel train. Keep only the independently seated
+  // idler/sprocket faces; the broad wheel-bay AO walls were visible as flat
+  // side panels behind the open wheels and are intentionally omitted.
+  const gearGeos = { dark: [], detail: [], hull: [] };
   const addGear = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
     gearGeos[bucket].push(xform(geo, x, y, z, rx, ry, rz));
   };
@@ -2959,20 +2959,15 @@ function tejasEndWheelAndBayKit(P, g) {
     addGear('dark', cylX(0.062, 0.026, 10), side * (iFace + 0.006), g.idlerY, g.idlerZ);
     addGear('detail', torus(0.205, 0.016, 18), side * (g.trackXc + g.trackW * 0.40), g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
     addGear('dark', cylX(0.075, 0.028, 10), side * (g.trackXc + g.trackW * 0.40 + 0.006), g.sprocketY, g.sprocketZ);
-    // Bay AO wall: near-black backer behind the wheel row — the inter-wheel
-    // gaps showed the far-side gear in scheme green and the row fused.
-    // Overlaps the belly box at x 1.09..1.095 (floater contract).
-    addGear('shadow', box(0.13, 0.66, 4.85), side * 1.155, 0.42, 0.0);
   }
   for (const [bucket, geos] of Object.entries(gearGeos)) {
     if (!geos.length) continue;
     const mat = bucket === 'dark' ? P.mats.dark
-      : bucket === 'detail' ? P.mats.detail
-        : bucket === 'shadow' ? P.mats.shadow : P.mats.hull;
+      : bucket === 'detail' ? P.mats.detail : P.mats.hull;
     const mesh = new THREE.Mesh(mergeAll(geos), mat);
-    mesh.name = bucket === 'shadow' ? 'gear_wheelBayAO' : `gear_endWheelDress_${bucket}`;
+    mesh.name = `gear_endWheelDress_${bucket}`;
     mesh.userData.runningGear = true;
-    mesh.userData.endWheelFace = bucket !== 'shadow';
+    mesh.userData.endWheelFace = true;
     mesh.castShadow = mesh.receiveShadow = true;
     P.hullG.add(mesh);
     P.disposables.push(mesh.geometry);

@@ -61531,7 +61531,7 @@
           }
         ]
       },
-      "geometryHash": "6971abd6",
+      "geometryHash": "87160683",
       "metadataHash": "3f9f8299",
       "presentationAnchor": {
         "xM": 0.0011,
@@ -61552,9 +61552,9 @@
           "trackPadSimplified": 1,
           "gunmetal": 9,
           "fittingPaint": 3,
-          "gearShadow": 8,
           "trackSteel": 3,
           "armorPaint": 6,
+          "gearShadow": 7,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 1,
@@ -61626,24 +61626,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72887,
-          "sha256": "cdeded0040e1da5784f91d420232f5e856764e98f28d2ade1494659661bbc870"
+          "bytes": 73057,
+          "sha256": "3c0f2bda22ac7719641a62a2cd223c149fe40d74a6ae2bc9863be5c8b7592db8"
         },
         "armorSide": {
           "file": "m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73486,
-          "sha256": "846562d6f4aa50d3c1f228145727ebbe48892b2db7405239728c74b1a037049c"
+          "bytes": 73444,
+          "sha256": "0b4d4c301bc8eaf83e8cde8fac06cf2e68fdbe07504e0319c563455c27a11a97"
         },
         "modulesSide": {
           "file": "m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76429,
-          "sha256": "e3d075911ca65b93cb8eb0c24fc74e3a3bd4c56dea669248e986fca23ee77562"
+          "bytes": 76021,
+          "sha256": "1546749901ca6bd017035637039c601ea7cca1562319100e359ce102bd026ab5"
         },
         "markings": {
           "file": "m1a1_markings.png",
@@ -62968,7 +62968,7 @@
           }
         ]
       },
-      "geometryHash": "4fb3a25a",
+      "geometryHash": "5622ce03",
       "metadataHash": "1bc4b3d4",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -62989,9 +62989,9 @@
           "trackPadSimplified": 1,
           "gunmetal": 9,
           "fittingPaint": 3,
-          "gearShadow": 9,
           "trackSteel": 3,
           "armorPaint": 6,
+          "gearShadow": 8,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 1,
@@ -63063,24 +63063,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74133,
-          "sha256": "3cb594bfc5f2e7d50f486ab68498e28e0bd29340a0b8dfd714e57ca7e9a8b462"
+          "bytes": 74152,
+          "sha256": "9e486d90ac5f76cdaee88d4b3ad44629c6b6ad4c73efa7734c6b71ee39219a31"
         },
         "armorSide": {
           "file": "m1a1ha_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75119,
-          "sha256": "8ec7e8cd8176ebc4814946118edf2cb2813db3930062511f5a104fc1ece8e498"
+          "bytes": 75150,
+          "sha256": "9754ae907359519f6f8e25466ec8ca44f20881e5590bd02e499bc7982d2d90ae"
         },
         "modulesSide": {
           "file": "m1a1ha_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77011,
-          "sha256": "8cf55651ea612fccd8bbed576e8ca3e3e49ac5ef6ee810c9f9b5a1af8fe6ade3"
+          "bytes": 76868,
+          "sha256": "292ec4ec765205de26b4cd8fbc8f31ac4f4c7de8fe60c66473e2f4aa976165f9"
         },
         "markings": {
           "file": "m1a1ha_markings.png",
@@ -64417,7 +64417,7 @@
           }
         ]
       },
-      "geometryHash": "a93730be",
+      "geometryHash": "a63e341b",
       "metadataHash": "af921217",
       "presentationAnchor": {
         "xM": 0.0006,
@@ -64438,9 +64438,9 @@
           "trackPadSimplified": 1,
           "gunmetal": 9,
           "fittingPaint": 4,
-          "gearShadow": 8,
           "trackSteel": 4,
           "armorPaint": 6,
+          "gearShadow": 7,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 1,
@@ -64512,24 +64512,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72581,
-          "sha256": "0ee22243963b7e552e9dcc9879129e75f23879e98c85078766fa2f6c16aab8d8"
+          "bytes": 72937,
+          "sha256": "9b41cd0e4ab09fa49217e7ea020cc09c2168b24098997c774aa5403a32c12e90"
         },
         "armorSide": {
           "file": "m1a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72029,
-          "sha256": "d3380dba46eef1cd6a7602b3d39f2a3425c35a67aa73d132ecfbada70b186008"
+          "bytes": 72132,
+          "sha256": "ea08562999d50744dee8ed87606804ce29eaf3acf07f39e8f0a92bad99865a02"
         },
         "modulesSide": {
           "file": "m1a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74939,
-          "sha256": "b0664a7b8e1b50ec042d5b7d18c3b73760449a2e16d33f6482786f7793469256"
+          "bytes": 74677,
+          "sha256": "9c7864078c990bf2044f242581749f8986f7a7ad252c633aaf1f5cdd96251016"
         },
         "markings": {
           "file": "m1a2_markings.png",
@@ -66957,7 +66957,7 @@
           }
         ]
       },
-      "geometryHash": "83e433ac",
+      "geometryHash": "1b7e060d",
       "metadataHash": "1bbf843d",
       "presentationAnchor": {
         "xM": 0,
@@ -66978,9 +66978,9 @@
           "trackPadSimplified": 1,
           "gunmetal": 10,
           "fittingPaint": 4,
-          "gearShadow": 8,
           "trackSteel": 5,
           "armorPaint": 6,
+          "gearShadow": 7,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 1,
@@ -67052,24 +67052,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77150,
-          "sha256": "62e35a5bf324c4627b2c54d3022458eac8a531a1515bbeca9ebcab64a03b3437"
+          "bytes": 77195,
+          "sha256": "3a999db4dca5a62406b07110f23692a3fd088c22f447f78df70764f27c99de51"
         },
         "armorSide": {
           "file": "m1a2_sepv2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76979,
-          "sha256": "01670a59466333fbd8adaa9f6a1c8b1fdd671a5c17d9ff4f5aa0725571c994f4"
+          "bytes": 77117,
+          "sha256": "7ec4fbcffef26ee911b4e50c0eb4ce2d8981d0164a0cdb5fe1f895adbc1c7b46"
         },
         "modulesSide": {
           "file": "m1a2_sepv2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80754,
-          "sha256": "f30491e20192ac31f16ba15c242ae151a51eaab9d58a8bc3e2ac02d2a2b6bfd6"
+          "bytes": 80638,
+          "sha256": "a5c8215aa9de8c5d7065008066f9059794fbe9f5c82acd76c7196332df3ac6c7"
         },
         "markings": {
           "file": "m1a2_sepv2_markings.png",
@@ -68407,7 +68407,7 @@
           }
         ]
       },
-      "geometryHash": "29e15185",
+      "geometryHash": "86b14004",
       "metadataHash": "897b972d",
       "presentationAnchor": {
         "xM": 0.0003,
@@ -68428,10 +68428,10 @@
           "trackPadSimplified": 1,
           "gunmetal": 9,
           "fittingPaint": 4,
-          "gearShadow": 8,
           "trackSteel": 3,
           "canvas": 7,
           "armorPaint": 6,
+          "gearShadow": 7,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 1,
@@ -68502,24 +68502,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82313,
-          "sha256": "5e967598e410ab73829243ae0cb88ccc8680d93c8b22bcc3ac8317902d963f18"
+          "bytes": 82266,
+          "sha256": "b4373fe624ebc206e533f7f89751a1010f265f0cd564579549b024e613d4fe5c"
         },
         "armorSide": {
           "file": "m1a2_sepv3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81990,
-          "sha256": "feee86ab917f5faf5dfa3e4ac2eb21c43b38d9de2aa59fe149ebd51a8a79e2da"
+          "bytes": 81819,
+          "sha256": "9c8e5a75d0d487780227da27ce7d52b71f0648906ddb36896be52b22eb9d0a38"
         },
         "modulesSide": {
           "file": "m1a2_sepv3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84042,
-          "sha256": "c51cc9e1bfa3fbb8ea969b1d2122065cf80210548aa238ece308f0c653520997"
+          "bytes": 83940,
+          "sha256": "6b82c2e8bfeb4b17372766ef7c85b905b319748ce792d9204f0358ceedcdd346"
         },
         "markings": {
           "file": "m1a2_sepv3_markings.png",
@@ -69857,7 +69857,7 @@
           }
         ]
       },
-      "geometryHash": "88aeb945",
+      "geometryHash": "154681fc",
       "metadataHash": "3f063012",
       "presentationAnchor": {
         "xM": 0.0004,
@@ -69878,10 +69878,10 @@
           "trackPadSimplified": 1,
           "gunmetal": 14,
           "fittingPaint": 6,
-          "gearShadow": 8,
           "trackSteel": 5,
           "opticGlass": 4,
           "armorPaint": 6,
+          "gearShadow": 7,
           "tireRubber": 1,
           "wood": 1,
           "unclassified": 13,
@@ -69952,24 +69952,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75877,
-          "sha256": "7775ff09faf069d346e1701d9f972abca44002e90f874185b6b0cfde3143e25a"
+          "bytes": 75751,
+          "sha256": "1c8e393da362c48565c6294f1a00faa09bb39238f379ab93a351c550c434ad95"
         },
         "armorSide": {
           "file": "m1a2_tusk_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75023,
-          "sha256": "62e9e399636125b826600d66569cf3366e4f347a9e56c751951602a3289c1746"
+          "bytes": 74981,
+          "sha256": "384636ffd7748c33ce90b8a1515c960453a28500a1a4e359d26001471d28b7cb"
         },
         "modulesSide": {
           "file": "m1a2_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78892,
-          "sha256": "bd462efada86d9de94cfa2556cbba7f110288f89c1f2bffcd4795ffc6fc55174"
+          "bytes": 78500,
+          "sha256": "4243afc4231658a22420e35d9d93082fd53f26732310a6762d95f07d78078f33"
         },
         "markings": {
           "file": "m1a2_tusk_markings.png",
@@ -151442,7 +151442,7 @@
           }
         ]
       },
-      "geometryHash": "9e8d9524",
+      "geometryHash": "b5830afd",
       "metadataHash": "08b6b87c",
       "presentationAnchor": {
         "xM": 0.0036,
@@ -151463,10 +151463,10 @@
           "trackPadSimplified": 1,
           "gunmetal": 12,
           "fittingPaint": 6,
-          "gearShadow": 9,
           "trackSteel": 3,
           "canvas": 8,
           "armorPaint": 6,
+          "gearShadow": 8,
           "tireRubber": 1,
           "opticGlass": 2,
           "wood": 2,
@@ -151537,24 +151537,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98504,
-          "sha256": "fd985d302baaf9d32658ebd9fb43bbcead795ea3d79bd7a195e0f48f8787dfdc"
+          "bytes": 98770,
+          "sha256": "7cf3103cb3cbd0588ecb991f8249081a5808a68026be8a47f9d5e557bf3a0f79"
         },
         "armorSide": {
           "file": "ua_m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98742,
-          "sha256": "d27c286cdb0f1514f328ec0f114f60ed2d724e8c016f314a49e63a4df40d21b6"
+          "bytes": 99133,
+          "sha256": "00f2b76a89b2a630cb8c0beafc7da3874bd7a6856375b1018d4a16dad2efd615"
         },
         "modulesSide": {
           "file": "ua_m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99218,
-          "sha256": "f097a1699f1e2933bd76ed568a0427c74de621af9586ca79b09bc4b4bd5e36d8"
+          "bytes": 99256,
+          "sha256": "02460bc870546a063495c438ff9989ed2fdb546197082396b7ee4e89391cc249"
         },
         "markings": {
           "file": "ua_m1a1_markings.png",
