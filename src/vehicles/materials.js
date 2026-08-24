@@ -4501,6 +4501,7 @@ function supportsShadowHook(engineCtx) {
   } catch {
     // A tooling stub that rejects real materials uses the direct hook path.
   }
+  engineCtx.releaseShadowMaterial?.(probe);
   probe.dispose();
   SHADOW_CONTEXT_SUPPORT.set(engineCtx, supported);
   return supported;
@@ -4860,7 +4861,10 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     decal,
     dispose() {
       for (const rec of paintableRecs) shared.paintable.delete(rec);
-      for (const r of disposables) r.dispose();
+      for (const resource of disposables) {
+        if (resource?.isMaterial) engineCtx?.releaseShadowMaterial?.(resource);
+        resource.dispose();
+      }
       releaseSharedTextures(shared);
     },
   };

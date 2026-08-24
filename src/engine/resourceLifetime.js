@@ -55,10 +55,10 @@ function collectTreeResources(root, bag) {
  * cache later reuses their JS object.
  *
  * @param {import('three').Object3D} root
- * @param {{preserveRoots?: import('three').Object3D[]}} [opts]
+ * @param {{preserveRoots?: import('three').Object3D[], onDispose?: Function}} [opts]
  * @returns {{objects:number, geometries:number, materials:number, textures:number}}
  */
-export function disposeObject3DResources(root, { preserveRoots = [] } = {}) {
+export function disposeObject3DResources(root, { preserveRoots = [], onDispose = null } = {}) {
   const keep = { geometries: new Set(), materials: new Set(), textures: new Set() };
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
@@ -87,18 +87,21 @@ export function disposeObject3DResources(root, { preserveRoots = [] } = {}) {
   let geometries = 0;
   for (const geometry of owned.geometries) {
     if (keep.geometries.has(geometry)) continue;
+    onDispose?.('geometry', geometry);
     geometry.dispose?.();
     geometries += 1;
   }
   let materials = 0;
   for (const material of owned.materials) {
     if (keep.materials.has(material)) continue;
+    onDispose?.('material', material);
     material.dispose?.();
     materials += 1;
   }
   let textures = 0;
   for (const texture of owned.textures) {
     if (keep.textures.has(texture)) continue;
+    onDispose?.('texture', texture);
     texture.dispose?.();
     textures += 1;
   }

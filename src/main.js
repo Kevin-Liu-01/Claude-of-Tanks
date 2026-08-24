@@ -294,6 +294,7 @@ const engineCtx = {
   scene,
   camera,
   setupShadowMaterial: (mat, extraHook = null) => lighting.setupShadowMaterial(mat, extraHook),
+  releaseShadowMaterial: (mat) => lighting.releaseShadowMaterial(mat),
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
 };
@@ -351,7 +352,12 @@ function enforceWorldCacheBudget() {
     if (cached === world || worldBuilds.has(id)) continue;
     worldCache.delete(id);
     const preserveRoots = scene.children.filter((child) => child !== cached.group);
-    const released = disposeObject3DResources(cached.group, { preserveRoots });
+    const released = disposeObject3DResources(cached.group, {
+      preserveRoots,
+      onDispose: (type, resource) => {
+        if (type === 'material') lighting.releaseShadowMaterial(resource);
+      },
+    });
     // Render lists retain object references independently of the scene graph.
     // Clear them after a whole battlefield leaves so its JS graph and buffers
     // can be reclaimed before the next mobile frame.

@@ -714,11 +714,35 @@ ${endHead}`);
  * @typedef {object} Lighting
  * @property {CSM} csm - four quality-scaled cascaded shadow maps
  * @property {(mat: THREE.Material, extraHook?: ?Function) => THREE.Material} setupShadowMaterial
+ * @property {(mat: ?THREE.Material) => boolean} releaseShadowMaterial
  * @property {() => void} update - per-frame `csm.update()`; call AFTER the camera is final
  * @property {() => void} updateFrustums - call on resize / camera fov or aspect change
  * @property {(i: number) => void} setSunIntensity
  * @property {THREE.HemisphereLight} hemi
  */
+
+/**
+ * Remove one dead material from Three's long-lived CSM shader registry.
+ * CSM only clears this Map when the complete lighting rig is disposed, while
+ * battles, showroom tanks, and cached worlds have shorter lifetimes.
+ *
+ * @param {{shaders?: Map}|null} csm
+ * @param {THREE.Material|null} material
+ * @returns {boolean} whether a live registration was removed
+ */
+export function releaseCsmShaderMaterial(csm, material) {
+  if (!csm?.shaders || !material || typeof material !== 'object') return false;
+  if (!csm.shaders.has(material)) return false;
+  csm.shaders.delete(material);
+  delete material.onBeforeCompile;
+  if (material.defines) {
+    delete material.defines.USE_CSM;
+    delete material.defines.CSM_CASCADES;
+    delete material.defines.CSM_FADE;
+  }
+  material.needsUpdate = true;
+  return true;
+}
 
 /**
  * Build the full light rig: CSM sun cascades + hemisphere sky/ground bounce.
@@ -902,6 +926,10 @@ export function createLighting(scene, camera, sunDir) {
         buildCoverageMipmaps(mat.map, mat.alphaTest);
       }
       return mat;
+    },
+
+    releaseShadowMaterial(material) {
+      return releaseCsmShaderMaterial(csm, material);
     },
 
     /**

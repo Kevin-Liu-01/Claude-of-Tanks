@@ -7495,6 +7495,9 @@ export function createTank(specId, engineCtx, opts = {}) {
       // Detached detail is intentionally outside root traversal while far.
       // Reattach before resource disposal so no retained mesh is skipped.
       setBattleDetailsAttached(true);
+      for (const resource of disposables) {
+        if (resource?.isMaterial) engineCtx?.releaseShadowMaterial?.(resource);
+      }
       for (const g of disposables) g.dispose();
       root.traverse((o) => {
         if (o.isBatchedMesh) o.dispose();
