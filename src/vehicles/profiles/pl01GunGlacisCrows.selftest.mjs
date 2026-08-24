@@ -6,8 +6,8 @@ import { getSpec } from '../specs.js';
 
 const near = (actual, expected, epsilon = 1e-6) => Math.abs(actual - expected) <= epsilon;
 const driverSeatHullHashes = Object.freeze({
-  pl01: '1e50a2760f77589f4e33babb9bf866f13fd3d4c4f71b5869b3b67dc64e63b021',
-  pl01_105: 'fc6ee4e7ead9803eb86791fd9f11537e93c4ee9785a3331dcb03b617234b01a5',
+  pl01: 'c24e14e93cebfc4d73e8781ee4b92efd1ce6c4470416d4d167b600e3f9d6b4e1',
+  pl01_105: '3a11d88bce59a0d37ca8d93caded3d3e2ef214997bbcb514091770645f70362a',
 });
 
 function geometryHash(group) {

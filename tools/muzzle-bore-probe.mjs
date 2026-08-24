@@ -42,7 +42,14 @@ const openProbePage = async () => {
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });
   page = await browser.newPage();
-  await page.goto(`${origin}/tools/icons-page.html`, { waitUntil: 'domcontentloaded' });
+  // A cold Vite transform of the complete procedural fleet can exceed
+  // Puppeteer's 30 s navigation default when another release probe is using
+  // the local GPU. Keep the readiness assertion bounded separately below,
+  // but allow the document transform enough time to finish.
+  await page.goto(`${origin}/tools/icons-page.html`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 120000,
+  });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
 };
 const failures = [];
