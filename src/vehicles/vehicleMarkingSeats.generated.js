@@ -4166,41 +4166,41 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "designation",
+        "kind": "insignia",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.7450225,
-          0.42,
-          -0.72018
+          -1.302853,
+          0.688,
+          -0.424775
         ],
         "quaternion": [
           0,
-          0.7176334,
+          -0.705632,
           0,
-          0.6964211
+          0.7085785
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
+        "anchorProfile": "type99a",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
       },
       {
-        "kind": "insignia",
+        "kind": "designation",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.3032626,
-          0.688,
-          -0.4643771
+          -1.3481984,
+          0.6881721,
+          0.023985
         ],
         "quaternion": [
-          0,
-          -0.7057531,
-          0,
-          0.7084579
+          -0.0101551,
+          -0.7079153,
+          -0.0101298,
+          0.7061517
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type99a",

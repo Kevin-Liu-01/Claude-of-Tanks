@@ -550,21 +550,35 @@ function addZTZ99AOraclePackage(P) {
   // the hull powerpack, so they stay fixed when the turret yaws.
   addRearFuelDrums(P, 1.67, -3.72, 9910);
 
-  // Broad wedge modules reinforce—not replace—the certified arrow cheeks.
+  // The base builder now owns the 99A2-style two-course arrow cheeks.  Keep
+  // this resident package to low-profile seam hardware instead of stacking
+  // four cuboid cassettes over those diagonals and blunting the new rake.
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      armorCassette(P, 'turret', side * (0.48 + i * 0.25),
-        0.64 - i * 0.018, 1.16 - i * 0.20, 0.23, 0.25, 0.27,
-        [-0.16, side * (0.05 + i * 0.065), side * 0.025], true);
+    for (let i = 0; i < 3; i++) {
+      const x = side * (0.52 + i * 0.30);
+      const z = 1.30 - i * 0.29;
+      P.add('turretDark', box(0.19, 0.026, 0.035), x, 0.795 - i * 0.012, z,
+        -0.24, side * 0.70, 0);
+      P.add('turretDetail', cylY(0.018, 0.018, 0.024, 8), x, 0.816 - i * 0.012, z);
     }
   }
 
-  // Compact commander station and backed laser-warning pair.
+  // The second crew-served QJC-88 sits ahead of the left cupola.  This low
+  // bridge closes the visual load path to the hatch rim; the gun's spade
+  // grips extend aft over the opening for a standing operator.
+  P.add('turretDetail', box(0.19, 0.035, 0.22), -0.50, 1.097, -0.30);
+
+  // Compact panoramic station, left-cupola weapon and backed warning pair.
   addChineseRoofSuite(P, { y: 1.09, panoX: -0.64, panoZ: -0.84,
-    mgX: 0.48, mgZ: -0.43, mgScale: 0.78, seed: 9920, whipZ: -1.78 });
+    mgX: -0.50, mgZ: -0.24, mgScale: 1.08, mgYaw: 0, elev: 0.04,
+    seed: 9920, whipZ: -1.78 });
   for (const side of [-1, 1]) {
-    P.add('turret', box(0.20, 0.08, 0.19), side * 1.06, 0.87, 0.35);
-    P.add('turretGlass', box(0.12, 0.07, 0.022), side * 1.06, 0.88, 0.455);
+    P.add('turretDetail', box(0.32, 0.045, 0.19), side * 1.00, 0.825, 0.35,
+      0, side * 0.30, 0);                                                      // cheek-to-LWR bracket
+    P.addEquipment('turret', box(0.20, 0.08, 0.19), side * 1.06, 0.87, 0.35,
+      0, side * 0.30, 0);
+    P.add('turretGlass', box(0.12, 0.07, 0.022), side * 1.06, 0.88, 0.455,
+      0, side * 0.30, 0);
   }
   P.add('turretDetail', cylY(0.035, 0.045, 0.30, 10), 0.20, 1.16, -1.06);
   P.add('turretDark', box(0.16, 0.05, 0.05), 0.20, 1.32, -1.06);
