@@ -60,7 +60,7 @@ const CSS = `
 .cot-studio .dock::-webkit-scrollbar-thumb{background:rgba(230,154,45,.35);}
 .cot-studio .pgroup{position:relative;margin-bottom:19px;}
 .cot-studio .pgroup+.pgroup{padding-top:2px;}
-.cot-studio .ghead{display:grid;grid-template-columns:28px minmax(0,1fr) 24px;align-items:center;
+.cot-studio .ghead{display:grid;grid-template-columns:28px minmax(0,1fr) 20px;align-items:center;
   column-gap:8px;margin:0 2px 8px;}
 .cot-studio .gnum{grid-row:1 / 3;align-self:stretch;display:flex;align-items:center;justify-content:center;
   border-right:1px solid rgba(230,154,45,.42);font-size:9px;font-weight:900;letter-spacing:.08em;
@@ -69,7 +69,7 @@ const CSS = `
   line-height:1.25;text-transform:uppercase;}
 .cot-studio .gsub{font-size:7.5px;font-weight:700;letter-spacing:.12em;color:#65727d;
   line-height:1.45;text-transform:uppercase;}
-.cot-studio .ghead>.cot-info-trigger{grid-column:3;grid-row:1/3;align-self:center}
+.cot-studio .ghead>.cot-info-trigger{grid-column:3;grid-row:1/3;align-self:center;justify-self:end}
 .cot-studio .gbody{display:grid;gap:7px;}
 .cot-studio .sec{position:relative;border:1px solid rgba(190,204,216,.17);
   background:rgba(10,15,20,.68);padding:10px 10px 9px;}
@@ -79,7 +79,11 @@ const CSS = `
   text-transform:uppercase;margin-bottom:9px;border-bottom:1px solid rgba(190,204,216,.16);
   padding-bottom:6px;padding-left:7px;display:flex;justify-content:space-between;align-items:baseline;}
 .cot-studio .sec>.h .sub{font-size:8px;color:#5f6b76;letter-spacing:.1em;font-weight:700;}
-.cot-studio .sec>.h .sub{margin-left:auto}.cot-studio .sec>.h>.cot-info-trigger{margin-left:6px;flex:none}
+.cot-studio .sec>.h .sub{min-width:0;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-studio .sec>.h>.cot-info-trigger{margin-left:6px;flex:none}
+.cot-studio .cot-info-trigger{width:20px;height:20px;min-width:20px;min-height:20px;max-width:20px;max-height:20px;
+  padding:0;display:inline-grid;place-items:center;border:1px solid rgba(154,174,189,.3);border-radius:50%;
+  background:rgba(8,12,16,.76);color:#9aabb8;font-size:inherit;line-height:1;letter-spacing:0;text-transform:none;box-shadow:none}
 .cot-studio .row{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;}
 .cot-studio label.k{font-size:9px;font-weight:700;letter-spacing:.12em;color:#8a97a3;
   text-transform:uppercase;min-width:52px;}

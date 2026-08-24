@@ -9,10 +9,12 @@ let active = null;
 let hideTimer = 0;
 
 const CSS = `
-.cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px;padding:0;display:inline-grid;
-  place-items:center;flex:0 0 auto;border:1px solid rgba(154,174,189,.3);border-radius:50%;
+.cot-info-trigger{position:relative;box-sizing:border-box;width:20px;height:20px;min-width:20px;min-height:20px;
+  max-width:20px;max-height:20px;margin:0;padding:0;display:inline-grid;overflow:visible;line-height:1;
+  place-items:center;flex:0 0 20px;border:1px solid rgba(154,174,189,.3);border-radius:50%;
   background:rgba(8,12,16,.76);color:#9aabb8;cursor:help;
   text-transform:none;letter-spacing:0;vertical-align:middle;transition:color .14s,border-color .14s,background .14s}
+.cot-info-trigger::after{content:"";position:absolute;inset:-5px;border-radius:50%}
 .cot-info-trigger__icon{display:block;pointer-events:none}
 .cot-info-trigger:hover,.cot-info-trigger:focus-visible,.cot-info-trigger[aria-expanded='true']{
   color:#ffd27a;border-color:#f0a030;background:rgba(240,160,48,.13);outline:none}
@@ -39,7 +41,7 @@ const CSS = `
 .cot-info-popover__body{margin:0;padding:11px 12px 13px;color:#aebdc8;font-size:9.5px;line-height:1.55;white-space:normal}
 pre.cot-info-popover__body{max-width:100%;overflow:auto;color:#cad6df;background:rgba(1,4,6,.58);font:500 8.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
   tab-size:2;white-space:pre;overscroll-behavior:contain}
-@media(max-width:700px){.cot-info-popover{width:min(420px,calc(100vw - 16px));max-height:min(66vh,520px)}.cot-info-trigger{width:28px;height:28px;min-width:28px;min-height:28px}}
+@media(max-width:700px){.cot-info-popover{width:min(420px,calc(100vw - 16px));max-height:min(66vh,520px)}}
 @media(prefers-reduced-motion:reduce){.cot-info-trigger{transition:none}}
 `;
 

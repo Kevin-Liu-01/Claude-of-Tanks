@@ -17,6 +17,7 @@ import { iconUrl } from '../ui/icons.js';
 import { flagIconUrl } from '../ui/flags.js';
 import { createInfoButton } from '../ui/contextInfo.js';
 import { loadCaptureRecipes, recipeForMedia } from '../presentation/captureRecipes.js';
+import { cameraViewGlyphSVG } from './viewGlyphs.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -108,25 +109,15 @@ const vehicleList = $('#vehicleList');
 const loadingState = $('#loadingState');
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const viewButtons = [...document.querySelectorAll('[data-view]')];
-const viewIconIds = {
-  hero: 'star',
-  front: 'optics',
-  left: 'chevronLeft',
-  right: 'chevronRight',
-  rear: 'rematch',
-  top: 'map',
-  'elevated-left': 'chevronLeft',
-  'elevated-right': 'chevronRight',
-};
 for (const button of viewButtons) {
   const label = button.textContent.trim();
   button.replaceChildren();
-  button.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${uiIconSVG(viewIconIds[button.dataset.view], 15)}</i><span>${label}</span>`);
+  button.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view)}</i><span>${label}</span>`);
   button.title = `${label} camera view`;
 }
 const autoRotateButton = $('#autoRotate');
 autoRotateButton.replaceChildren();
-autoRotateButton.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${uiIconSVG('rematch', 15)}</i><span>Auto</span>`);
+autoRotateButton.insertAdjacentHTML('beforeend', `<i class="view-button-icon">${cameraViewGlyphSVG('auto')}</i><span>Auto</span>`);
 autoRotateButton.title = 'Toggle automatic rotation';
 document.querySelectorAll('[data-ui-icon]').forEach((element) => {
   element.innerHTML = uiIconSVG(element.dataset.uiIcon, 16);
@@ -395,8 +386,6 @@ function renderDossier(record) {
   $('#dossierAuthor').textContent = `Original procedural model by ${record.authorship.creator}`;
   $('#dossierTankIcon').src = record.image;
   $('#dossierTankIcon').alt = `${record.displayName} side profile`;
-  $('#viewerRecordValue').textContent = `Record ${String(allIndex).padStart(3, '0')} / ${String(records.length).padStart(3, '0')}`;
-
   const ratingPresentation = {
     firepower: { tone: '#e9a346', icon: 'damage' },
     protection: { tone: '#67d19a', icon: 'shield' },
