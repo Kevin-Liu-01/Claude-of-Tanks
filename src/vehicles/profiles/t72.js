@@ -34,7 +34,9 @@ export const T72_TRACK_FINISH = Object.freeze({
   trackBandEnvMapIntensity: 0.03,
 });
 export function t72TrackFinishFor(P) {
-  return String(P.spec?.id || '').startsWith('t72') ? T72_TRACK_FINISH : {};
+  const id = String(P.spec?.id || '');
+  const usesT72RunningGear = id.startsWith('t72') || id === 'bmpt_terminator2';
+  return usesT72RunningGear ? T72_TRACK_FINISH : {};
 }
 
 function buildT72B87(P) {

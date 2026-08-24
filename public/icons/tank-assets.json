@@ -13943,24 +13943,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78379,
-          "sha256": "6280634b032016834a316a643a00b56c77d458d85fcc557cafa4618b12407460"
+          "bytes": 78078,
+          "sha256": "a7b5855079c68baf10dadd652133abe1a6a091e364867ceb549b71510a71f999"
         },
         "armorSide": {
           "file": "bmpt_terminator2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79450,
-          "sha256": "ca2b423e64b5f126f51e738f768929cd298ee35fc6791b668edef019fc038f73"
+          "bytes": 79324,
+          "sha256": "4dfef986482c378727f9b0c151a12b2472ac0b2375d8c4d2d3bcffedff880ad9"
         },
         "modulesSide": {
           "file": "bmpt_terminator2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82260,
-          "sha256": "ce65cb936115b1e9c82fe0adbec3d8f0a6142d75f248f6284112358717bf2eb2"
+          "bytes": 82431,
+          "sha256": "fb53ba31d2a072abc60c5b5631794e0eac4367c8881fb60fa63b5c4ee664b1a7"
         },
         "markings": {
           "file": "bmpt_terminator2_markings.png",

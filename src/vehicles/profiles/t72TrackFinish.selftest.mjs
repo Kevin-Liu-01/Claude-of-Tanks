@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.js';
 import { T72_TRACK_FINISH } from './t72.js';
 
-const playableT72Ids = ['t72b3m', 't72bu', 't72m1_jaguar'];
+const t72RunningGearIds = ['t72b3m', 't72bu', 't72m1_jaguar', 'bmpt_terminator2'];
 
-for (const id of playableT72Ids) {
+for (const id of t72RunningGearIds) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',
@@ -44,4 +44,4 @@ for (const id of playableT72Ids) {
   tank.dispose();
 }
 
-console.log('t72TrackFinish.selftest: all playable T-72 bands use neutral oxidized steel');
+console.log('t72TrackFinish.selftest: all T-72-derived bands use neutral oxidized steel');
