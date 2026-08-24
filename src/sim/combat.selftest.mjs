@@ -1374,6 +1374,20 @@ function mkShell(shellSpec, distM = 100) {
     'ram: missing masses fall back sanely');
   assert(ramDamage(45, 45, -8).total === ramDamage(45, 45, 8).total,
     'ram: closing speed sign is ignored');
+  const invalid = ramDamage(45, 45, NaN);
+  assert(invalid.total === 0 && invalid.toA === 0 && invalid.toB === 0,
+    'ram: non-finite closing speed cannot poison combat state');
+  assert(Number.isFinite(ramDamage(45, 45, Infinity).total),
+    'ram: infinite closing speed remains capped');
+}
+
+// Invalid HE metadata must fail safe without leaking NaN through blast
+// falloff, damage, HP, or network snapshots.
+{
+  assert(blastRadiusM(-30) === 1, 'HE: negative caliber clamps to minimum blast radius');
+  assert(blastRadiusM(0) === 1, 'HE: zero caliber clamps to minimum blast radius');
+  assert(blastRadiusM(NaN) === 1, 'HE: non-finite caliber clamps to minimum blast radius');
+  near(blastRadiusM(122), 4.0884, 1e-3, 'HE: valid caliber blast radius is unchanged');
 }
 
 // ------------------------------------------------------------------ report --
