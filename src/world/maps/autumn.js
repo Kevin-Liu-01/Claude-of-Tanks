@@ -41,6 +41,13 @@ export default {
     marshes: RIVER, // the river IS the marsh chain (soft, wadeable)
     clearMarshVeg: true, // keep the channel clear of tufts; reeds stay on the banks
     village: { x0: -60, x1: 80, z0: -40, z1: 120, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
+    landforms: [
+      { kind: 'ridge', x: -246, z: 36, length: 320, width: 74, height: 6.6, yawDeg: 10, wetScale: 0.76 },
+      { kind: 'ridge', x: 246, z: 58, length: 306, width: 74, height: 6.2, yawDeg: -12, wetScale: 0.76 },
+      { kind: 'ridge', x: -52, z: 240, length: 212, width: 60, height: 4.8, yawDeg: 76 },
+      { kind: 'knoll', x: 174, z: -272, rx: 88, rz: 66, height: 5.4, yawDeg: 20, wetScale: 0.8 },
+      { kind: 'basin', x: -148, z: -268, rx: 108, rz: 74, height: -2.2, yawDeg: -14, wetScale: 0.88 },
+    ],
   },
 
   spawns: {
@@ -76,7 +83,7 @@ export default {
     seaRamp: [0.10, 0.45],
     iceDrift: 0.06,
     marshGloss: 0.85,
-    iceSky: [0.44, 0.52, 0.60], // muted autumn sky sheen (r3: darker — grazing views own the sheet)
+    iceSky: [0.26, 0.34, 0.42], // muted reflection; the river stays dark beneath it
     // the fall macro range: hay-gold lift, RUSSET-BROWN darkener, pale straw
     tintA: [1.18, 1.05, 0.72], tintB: [0.78, 0.70, 0.52], tintC: [1.10, 1.02, 0.78],
     roadTint: [1.0, 0.94, 0.82],
@@ -125,6 +132,14 @@ export default {
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'barn', 'granary', 'ruin',
       'cottage', 'barn', 'farmhouse', 'cottage', 'barn', 'granary', 'cottage'],
     destructibleBuildings: ['fieldhut', 'leanto', 'longhouse', 'commandtent'],
+    tacticalBeats: [
+      { id: 'western-river-farm', role: 'brawl', x: -254, z: 64, yawDeg: 10,
+        structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
+      { id: 'eastern-orchard-watch', role: 'scout', x: 246, z: 70, yawDeg: -10,
+        structure: 'fieldhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'northern-supply-camp', role: 'support', x: 24, z: 270, yawDeg: 4,
+        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+    ],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.75 + 0.05), clamp01(l * 1.02 + 0.02)],
       roof: (h, s, l) => [0.045, clamp01(s * 0.85), clamp01(l * 0.92)], // weathered red-brown tile

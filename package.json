@@ -10,6 +10,7 @@
     "agent-docs": "node scripts/run-agent-docs.ts",
     "fx:textures:bake": "node tools/bake-fx-textures.mjs",
     "perf:terrain-stream": "node tools/terrain-stream-benchmark.mjs",
+    "qa:maps": "node tools/map-environment-audit.mjs",
     "test:public-copy": "node src/presentation/publicCopy.selftest.mjs",
     "test:analytics": "node src/presentation/analytics.selftest.mjs",
     "test:public-nav": "node src/presentation/publicNav.selftest.mjs",

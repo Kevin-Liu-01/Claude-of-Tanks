@@ -19,6 +19,13 @@ export default {
     rimH: 18,
     marshes: [],       // bone dry
     village: { x0: -70, x1: 70, z0: -20, z1: 110, cx: 0, cz: 45, feather: 40, flatten: 0.82 },
+    landforms: [
+      { kind: 'ridge', x: -252, z: 24, length: 390, width: 62, height: 5.8, yawDeg: 6 },
+      { kind: 'ridge', x: 252, z: 48, length: 382, width: 62, height: 5.6, yawDeg: -8 },
+      { kind: 'ridge', x: -48, z: 244, length: 260, width: 54, height: 4.6, yawDeg: 82 },
+      { kind: 'ridge', x: 74, z: -236, length: 248, width: 52, height: 4.4, yawDeg: 78 },
+      { kind: 'basin', x: -146, z: -176, rx: 124, rz: 72, height: -2.4, yawDeg: -12 },
+    ],
   },
 
   spawns: {
@@ -104,6 +111,14 @@ export default {
     plan: ['farmhouse', 'barn', 'tavern', 'mill', 'cottage', 'barn', 'ruin',
       'granary', 'barn', 'farmhouse', 'cottage'],
     destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'fieldhut'],
+    tacticalBeats: [
+      { id: 'western-armored-farm', role: 'brawl', x: -254, z: 64, yawDeg: 8,
+        structure: 'motorpool', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'eastern-windbreak-post', role: 'scout', x: 246, z: 62, yawDeg: -8,
+        structure: 'fieldhut', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
+      { id: 'northern-khutor', role: 'support', x: 24, z: 270, yawDeg: 4,
+        structure: 'longhouse', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+    ],
     tones: {
       plaster: (h, s, l) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
       roof: (h, s, l) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],

@@ -81,6 +81,10 @@ export default {
     inhabit: {
       stalls: 2, benches: 3, coreClutter: 20, sleds: 14, firewood: 10,
       trucks: 5, jeeps: 4, drumClusters: 4, camps: 3, modernClutter: 18,
+      // Populate the pass with recoverable tools/cans/roadside hardware.
+      // Existing instanced loose-prop families absorb these extra sleepers,
+      // so the lived-in threshold rises without another draw/material family.
+      looseClutter: 26,
       roadFence: 'fencerail', yardFence: 'fencepicket',
     },
   },

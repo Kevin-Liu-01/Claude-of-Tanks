@@ -18,6 +18,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters
 
 const _c = new THREE.Color();
+const _detailRng = () => 0.5;
 
 function scaleUV(geo, su, sv) {
   const uv = geo.attributes.uv;
@@ -1131,6 +1132,13 @@ function bBarrier(rng) {
   for (const z of [-0.92, 0.92]) {
     parts.push(P(box(0.78, 0.12, 0.22).translate(0, 0.06, z), CONC, 0.08, rng));
   }
+  // Recessed reflective panels make these read as purpose-built traffic
+  // barriers instead of unmarked concrete blocks. They stay in the same
+  // vertex-colour destructible pool (zero additional material/draw family).
+  for (const side of [-1, 1]) for (const z of [-0.82, 0, 0.82]) {
+    parts.push(P(box(0.025, 0.20, 0.42).translate(side * 0.185, 0.72, z),
+      z === 0 ? [0.055, 0.48, 0.68] : [0.52, 0.46, 0.10], 0.06, _detailRng));
+  }
   return merge(parts);
 }
 function bBarrierBroken(rng) {
@@ -1155,6 +1163,20 @@ function bRoadsign(rng) {
   parts.push(P(sign.translate(0, 2.45, 0), [0.58, 0.56, 0.12], 0.08, rng));
   const inset = box(0.92, 0.52, 0.025);
   parts.push(P(inset.translate(0, 2.45, 0.052), [0.02, 0.12, 0.48], 0.05, rng));
+  // Direction chevron, border and mounting bolts remain geometric at this
+  // scale, so the sign retains meaning when texture mip levels collapse.
+  for (const x of [-0.36, 0.36]) {
+    parts.push(P(box(0.06, 0.06, 0.035).translate(x, 2.45, 0.084), STEEL, 0.03, _detailRng));
+  }
+  for (const y of [2.22, 2.68]) {
+    parts.push(P(box(0.92, 0.035, 0.024).translate(0, y, 0.083), [0.58, 0.56, 0.12], 0.03, _detailRng));
+  }
+  const shaft = box(0.48, 0.07, 0.026).translate(-0.10, 2.45, 0.085);
+  parts.push(P(shaft, [0.58, 0.56, 0.12], 0.03, _detailRng));
+  const up = box(0.24, 0.07, 0.026); up.rotateZ(Math.PI / 4);
+  parts.push(P(up.translate(0.26, 2.54, 0.085), [0.58, 0.56, 0.12], 0.03, _detailRng));
+  const dn = box(0.24, 0.07, 0.026); dn.rotateZ(-Math.PI / 4);
+  parts.push(P(dn.translate(0.26, 2.36, 0.085), [0.58, 0.56, 0.12], 0.03, _detailRng));
   return merge(parts);
 }
 
@@ -1178,6 +1200,13 @@ function bTransformer(rng) {
     const ins = new THREE.CylinderGeometry(0.08, 0.1, 0.34, 7, 1);
     parts.push(P(ins.translate(x, 1.68, 0), [0.32, 0.18, 0.32], 0.06, rng));
   }
+  for (let i = 0; i < 5; i++) {
+    parts.push(P(box(0.72, 0.035, 0.035).translate(0, 0.42 + i * 0.11, 0.414),
+      STEEL, 0.04, _detailRng));
+  }
+  parts.push(P(box(0.24, 0.22, 0.028).translate(0.35, 1.12, 0.416),
+    [0.55, 0.50, 0.08], 0.04, _detailRng));
+  parts.push(P(box(0.06, 0.30, 0.055).translate(-0.34, 1.08, 0.43), STEEL, 0.04, _detailRng));
   parts.push(P(box(1.45, 0.12, 0.95).translate(0, 0.06, 0), [0.08, 0.05, 0.4], 0.08, rng));
   return merge(parts);
 }
@@ -1205,6 +1234,11 @@ function bCableSpool(rng) {
     const cheek = new THREE.CylinderGeometry(0.74, 0.74, 0.12, 12, 1);
     cheek.rotateZ(Math.PI / 2);
     parts.push(P(cheek.translate(x, 0.68, 0), WOOD, 0.15, rng));
+    for (let i = 0; i < 4; i++) {
+      const spoke = box(0.04, 1.18, 0.08);
+      spoke.rotateX(i * Math.PI / 4);
+      parts.push(P(spoke.translate(x + Math.sign(x) * 0.07, 0.68, 0), WOOD, 0.10, _detailRng));
+    }
   }
   const cable = new THREE.CylinderGeometry(0.49, 0.49, 0.96, 12, 1);
   cable.rotateZ(Math.PI / 2);

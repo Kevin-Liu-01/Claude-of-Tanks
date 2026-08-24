@@ -27,6 +27,13 @@ export default {
     // isolated boxes along the road"; more road frontage inside the box means
     // more placement slots for the longer adobe/bazaar plan below
     village: { x0: -92, x1: 92, z0: -46, z1: 132, cx: 4, cz: 40, feather: 40, flatten: 0.9 },
+    landforms: [
+      { kind: 'ridge', x: -250, z: 26, length: 300, width: 82, height: 5.4, yawDeg: 8 },
+      { kind: 'ridge', x: 246, z: 60, length: 284, width: 78, height: 5.0, yawDeg: -12 },
+      { kind: 'ridge', x: -40, z: 246, length: 208, width: 66, height: 4.2, yawDeg: 78 },
+      { kind: 'knoll', x: 178, z: -226, rx: 92, rz: 70, height: 5.8, yawDeg: 22 },
+      { kind: 'basin', x: -154, z: -184, rx: 118, rz: 78, height: -3.0, yawDeg: -18 },
+    ],
   },
 
   spawns: {
@@ -220,6 +227,14 @@ export default {
       'adobe', 'ruin', 'compound', 'bathhouse', 'marketRow', 'adobe', 'adobe',
       'compoundSouk', 'adobe', 'market', 'ruin', 'adobe'],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
+    tacticalBeats: [
+      { id: 'western-wadi-camp', role: 'brawl', x: -254, z: 64, yawDeg: 10,
+        structure: 'deserttent', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'eastern-mesa-watch', role: 'scout', x: 254, z: 70, yawDeg: -10,
+        structure: 'guardpost', outcrop: { count: 5, radius: 9, scaleMax: 3.0 } },
+      { id: 'northern-relay-camp', role: 'support', x: 28, z: 270, yawDeg: 2,
+        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+    ],
     // denser packing: fill both road sides more often and let neighbouring
     // adobes huddle (flat-roof villages cluster tight around their souk)
     sideSkip: 0.12, spacingPad: 7,

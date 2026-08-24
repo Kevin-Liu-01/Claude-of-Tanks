@@ -900,6 +900,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   };
   const mapId = cfg ? cfg.id : 'verdant';
   const rng = mulberry32(seed);
+  const detailUvRng = () => 0.5;
   const L = heightField._layout;
   const noVeg = heightField._noVeg || (() => false);
   const noi = new SimplexNoise({ random: mulberry32(seed + 7) });
@@ -1418,7 +1419,9 @@ ${snowCap ? `
       const fit = groundFit(px, pz, info.w, info.d, rot);
       if (fit.spread > P.maxSpread) continue;
       // per-building texture phase: no two facades repeat the same grid
-      for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
+      for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) {
+        jitterUV(g, g.userData?.detailUv ? detailUvRng : rng);
+      }
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
       mergeInto(buckets, tmp, _mat4);
@@ -1562,7 +1565,9 @@ ${snowCap ? `
             : makeRowhouse(rng, tmp, pickWall(srng), { w, d });
           const fit = groundFit(px, pz, info.w, info.d, rot);
           if (fit.spread > 3.2) { t += w; continue; }
-          for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
+          for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) {
+            jitterUV(g, g.userData?.detailUv ? detailUvRng : rng);
+          }
           _quat.setFromAxisAngle(_upAxis, rot);
           _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
           mergeInto(buckets, tmp, _mat4);
@@ -1660,7 +1665,9 @@ ${snowCap ? `
         const info = builders[bi](rng, tmp, pickWall(rng));
         const fit = groundFit(px, pz, info.w, info.d, rot);
         if (fit.spread > P.maxSpread) continue;
-        for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) jitterUV(g, rng);
+        for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) {
+          jitterUV(g, g.userData?.detailUv ? detailUvRng : rng);
+        }
         _quat.setFromAxisAngle(_upAxis, rot);
         _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
         mergeInto(buckets, tmp, _mat4);

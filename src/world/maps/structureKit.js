@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const _color = new THREE.Color();
+const _detailRng = () => 0.5;
 
 function scaleUV(geo, su = 1, sv = 1) {
   const uv = geo.attributes.uv;
@@ -18,6 +19,11 @@ function scaleUV(geo, su = 1, sv = 1) {
 
 function box(w, h, d, uv = 0.55) {
   return scaleUV(new THREE.BoxGeometry(w, h, d), Math.max(w, d) * uv, h * uv);
+}
+
+function detailUv(geo) {
+  geo.userData.detailUv = true;
+  return geo;
 }
 
 function slab(w, h, d, uv = 0.45) {
@@ -118,6 +124,24 @@ function addWindow(out, x, y, z, face = 'z', wide = 0.9, tall = 1.15) {
   const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
   out.glass.push(pane.translate(x, y, z));
   out.stone.push(sill.translate(x, y - tall / 2 - 0.08, z));
+  // Full recessed surround: the former pane+sill treatment read as a flat
+  // dark sticker at street distance. Jambs, lintel and divided glazing reuse
+  // the already-required stone bucket, so every facade gains real silhouette
+  // depth without activating another material or texture family.
+  const jambH = tall + 0.22;
+  if (face === 'z') {
+    out.stone.push(detailUv(box(0.11, jambH, 0.13).translate(x - wide / 2 - 0.07, y, z + 0.01)));
+    out.stone.push(detailUv(box(0.11, jambH, 0.13).translate(x + wide / 2 + 0.07, y, z + 0.01)));
+    out.stone.push(detailUv(box(wide + 0.32, 0.12, 0.15).translate(x, y + tall / 2 + 0.08, z + 0.01)));
+    out.stone.push(detailUv(box(0.055, tall - 0.08, 0.09).translate(x, y, z + 0.055)));
+    out.stone.push(detailUv(box(wide - 0.06, 0.055, 0.09).translate(x, y, z + 0.055)));
+  } else {
+    out.stone.push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z - wide / 2 - 0.07)));
+    out.stone.push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z + wide / 2 + 0.07)));
+    out.stone.push(detailUv(box(0.15, 0.12, wide + 0.32).translate(x + 0.01, y + tall / 2 + 0.08, z)));
+    out.stone.push(detailUv(box(0.09, tall - 0.08, 0.055).translate(x + 0.055, y, z)));
+    out.stone.push(detailUv(box(0.09, 0.055, wide - 0.06).translate(x + 0.055, y, z)));
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -484,8 +508,19 @@ function gableLight({ w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = 
   for (let i = 0; i < windows; i++) {
     const x = windows === 1 ? -w * 0.25 : -w * 0.3 + i * (w * 0.6 / Math.max(1, windows - 1));
     if (Math.abs(x) < w * 0.16) continue;
-    colored(out, box(w * 0.17, wallH * 0.34, 0.06).translate(x, y0 + wallH * 0.58, d / 2 + 0.05), trim, rng);
-    colored(out, box(0.04, wallH * 0.34, 0.07).translate(x, y0 + wallH * 0.58, d / 2 + 0.09), dark, rng);
+    const ww = w * 0.17, wh = wallH * 0.34, wy = y0 + wallH * 0.58;
+    colored(out, box(ww, wh, 0.06).translate(x, wy, d / 2 + 0.05), 0x52656a, rng, 0.04);
+    // A complete trim surround and cross mullion keeps these lightweight
+    // destructibles legible as occupied buildings before they are broken.
+    // Detail-only paint uses a neutral sampler. Preserve the caller RNG
+    // sequence so adding facade geometry cannot reshuffle later prop variants
+    // or activate an otherwise-unused material family on a map.
+    for (const sx of [-1, 1]) colored(out,
+      box(0.065, wh + 0.16, 0.09).translate(x + sx * (ww / 2 + 0.045), wy, d / 2 + 0.09), trim, _detailRng);
+    for (const sy of [-1, 1]) colored(out,
+      box(ww + 0.19, 0.065, 0.09).translate(x, wy + sy * (wh / 2 + 0.045), d / 2 + 0.09), trim, _detailRng);
+    colored(out, box(0.045, wh - 0.05, 0.08).translate(x, wy, d / 2 + 0.12), dark, rng);
+    colored(out, box(ww - 0.04, 0.045, 0.08).translate(x, wy, d / 2 + 0.12), dark, _detailRng);
   }
   if (porch > 0) {
     colored(out, box(w * 0.9, 0.12, porch).translate(0, y0 + 0.08, d / 2 + porch / 2), trim, rng);

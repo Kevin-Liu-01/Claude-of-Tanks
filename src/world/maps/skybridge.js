@@ -9,7 +9,7 @@ export default {
   name: 'Skybridge Chasm',
   blurb: 'A broken high crossing and fortress-scale control works span a deep flooded canyon',
   terrain: {
-    hillScale: 0.80, microScale: 0.82, rimH: 58,
+    hillScale: 0.80, microScale: 0.82, rimH: 58, softLakes: true,
     mesas: { amp: 18, thr0: 0.76, thr1: 0.82, wallWidth: 0.64, corridorFloor: 0.34 },
     marshes: [],
     lakes: [
@@ -45,6 +45,12 @@ export default {
     dirtTone: (h, s, l) => [0.06, clamp01(s * 0.42), clamp01(l * 0.48 + 0.04)],
     sandstone: true,
     rockTone: (h, s, l) => [0.045, clamp01(s * 0.56), clamp01(0.40 + (l - 0.5) * 0.72)],
+    mudTone: (h, s, l) => [0.54, clamp01(s * 0.72), clamp01(l * 0.58)],
+    // The drowned gorge is navigable liquid, not a blue-grey terrain stain.
+    // It shares the terrain material and interaction mask, so this adds no
+    // water mesh or draw pass while tracks receive the common wake/spray path.
+    seaLake: true, seaFoam: 0.10, seaRamp: [0.18, 0.54], iceDrift: 0.02,
+    marshGloss: 0.90, iceSky: [0.18, 0.30, 0.38],
     tintA: [1.02, 0.67, 0.49], tintB: [0.61, 0.40, 0.34], tintC: [1.00, 0.69, 0.49],
     roadTint: [0.61, 0.53, 0.47], strata: 0.18, sandMacro: 0.62,
     rippleAmp: 0.14, midRelief: 1.0, midReliefFar: 840,

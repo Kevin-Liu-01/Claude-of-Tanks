@@ -36,6 +36,35 @@ for (const mapId of MAP_IDS) {
   }
   assert.equal(config.shot.pos.length, 3, `${mapId}: establishing camera position`);
   assert.equal(config.shot.look.length, 3, `${mapId}: establishing camera target`);
+  assert.ok(config.terrain.landforms?.length >= 5,
+    `${mapId}: authored macro terrain breaks the field into tactical lanes`);
+  const beats = config.props.tacticalBeats || [];
+  assert.equal(beats.length, 3, `${mapId}: three deliberate lane strongpoints`);
+  assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
+    ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
+  assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
+    `${mapId}: memorable strongpoint identities are unique`);
+  const structureFamilies = new Set(config.props.destructibleBuildings);
+  const hf = createHeightField(1337, config);
+  for (const beat of beats) {
+    assert.ok(Math.max(Math.abs(beat.x), Math.abs(beat.z)) <= 360,
+      `${mapId}/${beat.id}: strongpoint stays in the playable interior`);
+    assert.ok(structureFamilies.has(beat.structure),
+      `${mapId}/${beat.id}: strongpoint uses the map's textured structure family`);
+    const components = [beat.structure, beat.redoubt, beat.outcrop, beat.wreck].filter(Boolean);
+    assert.ok(components.length >= 2,
+      `${mapId}/${beat.id}: strongpoint combines multiple cover layers`);
+    if (LEGACY.includes(mapId)) {
+      assert.notEqual(hf.getGroundType(beat.x, beat.z), 'soft',
+        `${mapId}/${beat.id}: legacy strongpoint stays out of liquid/marsh ground`);
+      assert.ok(hf.getNormalAt(beat.x, beat.z).y >= 0.78,
+        `${mapId}/${beat.id}: legacy strongpoint avoids cliff-grade terrain`);
+    }
+  }
+  for (let ai = 0; ai < beats.length; ai++) for (let bi = ai + 1; bi < beats.length; bi++) {
+    assert.ok(Math.hypot(beats[ai].x - beats[bi].x, beats[ai].z - beats[bi].z) >= 180,
+      `${mapId}: strongpoints distribute choices instead of forming one clutter knot`);
+  }
 }
 
 for (const mapId of [...EXPANSION, ...EXTREME]) {

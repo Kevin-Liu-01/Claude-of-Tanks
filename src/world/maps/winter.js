@@ -26,6 +26,13 @@ export default {
     // wider settlement footprint: the hamlet reads as a proper village core
     // instead of one lonely building cluster on an empty snowfield
     village: { x0: -84, x1: 100, z0: -56, z1: 150, cx: 10, cz: 40, feather: 42, flatten: 0.85 },
+    landforms: [
+      { kind: 'ridge', x: -246, z: 20, length: 322, width: 80, height: 7.2, yawDeg: 12 },
+      { kind: 'ridge', x: 248, z: 56, length: 304, width: 82, height: 6.8, yawDeg: -14 },
+      { kind: 'ridge', x: -48, z: 242, length: 206, width: 66, height: 5.4, yawDeg: 76 },
+      { kind: 'knoll', x: 172, z: -222, rx: 88, rz: 68, height: 6.2, yawDeg: 20 },
+      { kind: 'basin', x: -146, z: -178, rx: 104, rz: 76, height: -2.7, yawDeg: -16 },
+    ],
   },
 
   spawns: {
@@ -157,6 +164,14 @@ export default {
       'woodshed', 'alpine', 'cottage', 'logcabin', 'barn', 'woodshed',
       'alpine', 'ruin', 'logcabin', 'barn'],
     destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind'],
+    tacticalBeats: [
+      { id: 'western-moraine-refuge', role: 'brawl', x: -254, z: 64, yawDeg: 12,
+        structure: 'alpinerefuge', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'eastern-snow-watch', role: 'scout', x: 246, z: 70, yawDeg: -12,
+        structure: 'huntingblind', outcrop: { count: 5, radius: 9, scaleMax: 2.8 } },
+      { id: 'northern-aid-station', role: 'support', x: 24, z: 270, yawDeg: 4,
+        structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+    ],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
       roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped

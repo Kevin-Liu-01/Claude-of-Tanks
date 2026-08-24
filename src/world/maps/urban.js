@@ -45,6 +45,13 @@ export default {
     // terrain drift inside the town rect so the grid rolls over 1-3 m of
     // elevation instead of sitting on a perfectly flat pancake
     village: { x0: -168, x1: 168, z0: -152, z1: 176, cx: 36, cz: -16, feather: 55, flatten: 0.92, relief: 0.30 },
+    landforms: [
+      { kind: 'ridge', x: -274, z: -18, length: 330, width: 72, height: 5.8, yawDeg: 4, settlementScale: 0.82 },
+      { kind: 'ridge', x: 276, z: 18, length: 326, width: 72, height: 5.6, yawDeg: -4, settlementScale: 0.82 },
+      { kind: 'ridge', x: -12, z: 274, length: 240, width: 64, height: 5.0, yawDeg: 88, settlementScale: 0.84 },
+      { kind: 'knoll', x: 208, z: -232, rx: 82, rz: 64, height: 4.8, yawDeg: 18 },
+      { kind: 'basin', x: -214, z: -226, rx: 92, rz: 68, height: -2.2, yawDeg: -16 },
+    ],
     roads: { grid: { xs: [-112, -40, 36, 112], zs: [-96, -16, 60, 136], jitter: 0.8 } },
   },
 
@@ -105,6 +112,14 @@ export default {
   props: {
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: ['guardpost', 'checkpointhut', 'fieldhospital', 'transformershed'],
+    tacticalBeats: [
+      { id: 'western-ringroad-gate', role: 'brawl', x: -250, z: -60, yawDeg: 2,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
+      { id: 'eastern-overwatch-post', role: 'scout', x: 245, z: -70, yawDeg: -2,
+        structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'northern-relief-yard', role: 'support', x: 8, z: 252, yawDeg: 0,
+        structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -14 },
+    ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
     streetRows: true,

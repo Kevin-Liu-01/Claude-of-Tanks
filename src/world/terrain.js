@@ -223,6 +223,7 @@ export function sampleLandformHeight(form, x, z) {
  * @returns {{getHeightAt:function(number,number):number,
  *   getNormalAt:function(number,number):THREE.Vector3,
  *   getGroundType:function(number,number):('hard'|'medium'|'soft'),
+ *   getWaterMaskAt:function(number,number):number,
  *   size:number, minY:number, maxY:number}} HeightField (ARCHITECTURE §2.7)
  */
 export function createHeightField(seed = 1337, cfg = null) {
@@ -637,6 +638,37 @@ export function createHeightField(seed = 1337, cfg = null) {
     return 'medium';
   }
 
+  /**
+   * Return the authored liquid-water coverage at a world-space point.
+   *
+   * This deliberately mirrors the sea/lake splat inputs instead of sampling
+   * pixels or allocating a surface descriptor. Battle hot paths use it for
+   * track wakes, so the query stays numeric, deterministic and allocation
+   * free. Frozen marshes/lakes remain solid ground even when they reuse the
+   * wetness channel for ice rendering.
+   *
+   * @returns {number} 0 for dry/ice, otherwise a 0..1 liquid coverage mask
+   */
+  function getWaterMaskAt(x, z) {
+    if (T.frozenMarshes || !cfg?.splat?.seaLake) return 0;
+    for (let i = 0; i < _LAKES.length; i++) {
+      const lk = _LAKES[i];
+      const radius = Math.max(0.001, lk.r * 0.95);
+      const d = Math.hypot(x - lk.x, z - lk.z);
+      if (d < radius) return Math.max(0, Math.min(1, (radius - d) / Math.max(2, radius * 0.08)));
+    }
+    for (let i = 0; i < _MARSHES.length; i++) {
+      const m = _MARSHES[i];
+      const radius = Math.max(0.001, m.r);
+      const d = Math.hypot(x - m.x, z - m.z);
+      // The shader's water body is the marsh core (same threshold used by
+      // getGroundType); feather the final few metres for bank transitions.
+      const core = 1 - d / radius;
+      if (core > 0.35) return Math.max(0, Math.min(1, (core - 0.35) / 0.12));
+    }
+    return 0;
+  }
+
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x, z) {
     for (const lk of _LAKES) {
@@ -678,6 +710,7 @@ export function createHeightField(seed = 1337, cfg = null) {
 
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
+    getWaterMaskAt,
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x, z) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
@@ -2174,8 +2207,8 @@ void splatCompute() {
       float deepW = smoothstep(0.45, 0.95, fMs) * (1.0 - driftW);
       // maps r1: open water deepens toward a darker blue-green (uSea-gated);
       // ice keeps its pale blue depth cue
-      vec3 deepTint = mix(vec3(0.74, 0.86, 1.05), vec3(0.52, 0.72, 0.80), uSea);
-      a.rgb *= mix(vec3(1.0), deepTint, deepW * mix(0.5, 0.65, uSea));
+      vec3 deepTint = mix(vec3(0.74, 0.86, 1.05), vec3(0.34, 0.56, 0.66), uSea);
+      a.rgb *= mix(vec3(1.0), deepTint, deepW * mix(0.5, 0.72, uSea));
       vec3 iceN = texture2D(uNrmM, uv * 0.0134).xyz * 2.0 - 1.0;
       n.xy += iceN.xy * 0.5 * fMs * (1.0 - driftW);
     }
@@ -2193,7 +2226,10 @@ void splatCompute() {
       // maps r1: open water runs the sheen a step weaker than clear ice —
       // at establishing grazing angles the full 0.62 painted the whole
       // sea/river pale sky-grey (uSea=0 keeps the winter value exactly)
-      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * mix(0.62, 0.42, uSea));
+      // Liquid water should reflect the sky without becoming a white sheet.
+      // The sea keeps the same draw path as ice, but uses a lower-energy
+      // grazing glaze so the authored depth and chop remain visible.
+      a.rgb = mix(a.rgb, uIceSky, fresI * clearIce * mix(0.62, 0.24, uSea));
     }
     // >>> maps r1 (uSea-gated): surf line + sparse whitecaps. The surf band
     // rides the RAW fM ramp (it peaks just shoreward of where fMs starts),
@@ -2207,7 +2243,7 @@ void splatCompute() {
       float caps = fMs * smoothstep(0.87, 0.97, texture2D(uNoise, uvW * 0.031 + vec2(0.51, 0.07)).r)
                  * 0.45 * uSeaFoam * (1.0 - farM * 0.6);
       gSeaFoam = clamp(foam + caps, 0.0, 1.0);
-      a.rgb = mix(a.rgb, vec3(0.84, 0.89, 0.91), gSeaFoam * 0.9);
+      a.rgb = mix(a.rgb, vec3(0.68, 0.80, 0.84), gSeaFoam * 0.72);
     }
     // <<< maps r1 -------------------------------------------------------------
   }
@@ -2375,7 +2411,7 @@ void splatCompute() {
   // r4: 0.17 -> 0.14 — one step glossier with the stronger fresnel term
   // maps r1: water is choppier than clear ice — a higher roughness floor
   // stops the sun's GGX lobe washing the whole sheet bright (uSea=0: 0.14)
-  rough0 = max(rough0, iceW * mix(0.14, 0.32, uSea));
+  rough0 = max(rough0, iceW * mix(0.14, 0.54, uSea));
   rough0 = max(rough0, gSeaFoam * 0.88); // maps r1: foam is matte (0 off sea maps)
   // Dry terrain stays truly matte. The previous 0.78 floor left a broad GGX
   // sun lobe on dirt/snow at grazing angles, making the ground look wet even

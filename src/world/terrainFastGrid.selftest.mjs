@@ -19,3 +19,28 @@ for (const [x, z] of [[0.25, 0.75], [31.9, -32.1], [240.4, -169.6], [-511, 510]]
 }
 
 console.log('terrainFastGrid selftest: chunked deployment warm and 32 m fallback tiles passed');
+
+const liquid = createHeightField(1337, {
+  terrain: {
+    softLakes: true,
+    lakes: [{ x: 80, z: 30, r: 42, level: -2 }],
+    marshes: [{ x: -70, z: -20, r: 36, dip: 1.1 }],
+  },
+  splat: { seaLake: true },
+});
+assert.ok(liquid.getWaterMaskAt(80, 30) > 0.95, 'liquid lake core is queryable');
+assert.ok(liquid.getWaterMaskAt(-70, -20) > 0.95, 'liquid marsh core is queryable');
+assert.equal(liquid.getWaterMaskAt(0, 0), 0, 'dry terrain reports no liquid coverage');
+
+const ice = createHeightField(1337, {
+  terrain: {
+    frozenMarshes: true,
+    lakes: [{ x: 80, z: 30, r: 42, level: -2 }],
+    marshes: [{ x: -70, z: -20, r: 36, dip: 1.1 }],
+  },
+  splat: { seaLake: true },
+});
+assert.equal(ice.getWaterMaskAt(80, 30), 0, 'frozen lake never emits a liquid wake');
+assert.equal(ice.getWaterMaskAt(-70, -20), 0, 'frozen marsh never emits a liquid wake');
+
+console.log('terrainFastGrid selftest: liquid coverage query distinguishes water from ice');

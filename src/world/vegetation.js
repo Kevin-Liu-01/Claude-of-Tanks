@@ -712,7 +712,12 @@ function buildBroadleafCards(rng, nCards, sizeMul, pal = {}, shape = {}) {
     const pz = lobe[2] + dz * rad * rz * lr;
     // r6: wider card size spread — same-size clusters read as one repeated
     // stamp; a few big mass cards + many small filler tufts read as foliage
-    const wsz = (1.30 + rng() * 1.45) * sizeMul;
+    // Keep the shell clusters below the size at which a single atlas card
+    // spans an entire crown quadrant. The previous 2.75 m upper bound made
+    // its rectangular overlap readable from ground-level cameras; the same
+    // card count at 1.20..2.40 m produces a denser ragged silhouette while
+    // reducing alpha overdraw.
+    const wsz = (1.20 + rng() * 1.20) * sizeMul;
     // r6 TANGENT-BIASED shell orientation: ~2/3 of the shell cards lie
     // roughly tangent to the crown hull (leaf clusters as seen from outside
     // a real tree), the rest stay fully random interior fill. The old
@@ -770,7 +775,7 @@ function buildBroadleafCards(rng, nCards, sizeMul, pal = {}, shape = {}) {
     const lobe = lobes[(rng() * lobes.length) | 0];
     const a = rng() * Math.PI * 2, rr = Math.pow(rng(), 1.5) * 0.4;
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
-    parts.push(foliageCard(2.1 * sizeMul, 1.8 * sizeMul,
+    parts.push(foliageCard(1.92 * sizeMul, 1.64 * sizeMul,
       lobe[0] + Math.cos(a) * rr * rx, lobe[1] + (rng() - 0.5) * ry * 0.7,
       lobe[2] + Math.sin(a) * rr * rz,
       _e, 0.40 + rng() * 0.10, hue0 + 0.01, sat0 * 0.8, 0.25, 0, cy, 0));

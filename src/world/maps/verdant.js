@@ -10,6 +10,13 @@ export default {
 
   terrain: {
     // defaults: country roads, classic village rect, three marshes
+    landforms: [
+      { kind: 'ridge', x: -244, z: 18, length: 318, width: 70, height: 6.4, yawDeg: 10 },
+      { kind: 'ridge', x: 246, z: 54, length: 304, width: 72, height: 6.0, yawDeg: -14 },
+      { kind: 'ridge', x: -54, z: 232, length: 190, width: 56, height: 4.6, yawDeg: 74 },
+      { kind: 'knoll', x: 168, z: -218, rx: 82, rz: 62, height: 5.2, yawDeg: 22 },
+      { kind: 'basin', x: -142, z: -176, rx: 96, rz: 72, height: -2.4, yawDeg: -16 },
+    ],
   },
 
   spawns: {
@@ -67,6 +74,14 @@ export default {
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
       'granary', 'schoolhouse', 'mill', 'cottage', 'farmhouse', 'cottage'],
     destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'commandtent'],
+    tacticalBeats: [
+      { id: 'western-hedgerow-post', role: 'brawl', x: -254, z: 64, yawDeg: 12,
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
+      { id: 'eastern-field-observer', role: 'scout', x: 246, z: 70, yawDeg: -12,
+        structure: 'huntingblind', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'northern-command-fold', role: 'support', x: 24, z: 270, yawDeg: 4,
+        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -14 },
+    ],
     wallRuns: [
       // village walls (relative to the classic village rect)
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],

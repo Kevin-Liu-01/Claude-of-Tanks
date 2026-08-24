@@ -882,8 +882,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const printPos = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4 * 3), 3);
   const printUv = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4 * 2), 2);
   const printBirth = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4).fill(-1e9), 1);
+  // 0 = dry tread print, 1 = churned-water wake. Sharing the same dynamic
+  // quad ring keeps wet interaction inside the existing single draw call.
+  const printSurface = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4), 1);
   printPos.setUsage(THREE.DynamicDrawUsage);
   printBirth.setUsage(THREE.DynamicDrawUsage);
+  printSurface.setUsage(THREE.DynamicDrawUsage);
   {
     const idx = [];
     const uvArr = printUv.array;
@@ -898,6 +902,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     printGeo.setAttribute('position', printPos);
     printGeo.setAttribute('uv', printUv);
     printGeo.setAttribute('aBirth', printBirth);
+    printGeo.setAttribute('aSurface', printSurface);
     printGeo.setIndex(idx);
   }
   const printUniforms = { uTime: { value: 0 }, uMap: { value: printTex } };
@@ -905,14 +910,18 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     uniforms: printUniforms,
     vertexShader: `
       attribute float aBirth;
+      attribute float aSurface;
       varying vec2 vUv;
       varying float vFade;
+      varying float vWater;
       uniform float uTime;
       void main() {
         vUv = uv;
+        vWater = aSurface;
         float age = uTime - aBirth;
-        vFade = ( age >= 0.0 && age < ${PRINT_DUR.toFixed(1)} )
-          ? 1.0 - age / ${PRINT_DUR.toFixed(1)} : 0.0;
+        float duration = mix(${PRINT_DUR.toFixed(1)}, 4.6, vWater);
+        vFade = ( age >= 0.0 && age < duration )
+          ? 1.0 - age / duration : 0.0;
         gl_Position = vFade <= 0.0 ? vec4( 0.0, 0.0, 2.0, 1.0 )
           : projectionMatrix * viewMatrix * vec4( position, 1.0 );
       }`,
@@ -920,10 +929,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       uniform sampler2D uMap;
       varying vec2 vUv;
       varying float vFade;
+      varying float vWater;
       void main() {
-        float a = texture2D( uMap, vUv ).a * vFade * 0.34;
+        float strength = mix(0.34, 0.52, vWater);
+        float a = texture2D( uMap, vUv ).a * vFade * strength;
         if ( a < 0.01 ) discard;
-        gl_FragColor = vec4( vec3( 0.055, 0.05, 0.042 ), a );
+        vec3 color = mix(vec3(0.055, 0.05, 0.042), vec3(0.74, 0.84, 0.84), vWater);
+        gl_FragColor = vec4(color, a);
       }`,
     transparent: true,
     depthWrite: false,
@@ -939,8 +951,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const printCenters = new Float32Array(MAX_PRINTS * 2).fill(1e9);
   let printCursor = 0;
 
-  /** Stamp one track print at (pos) aligned to dir if none is nearby. */
-  function stampTrackPrint(pos, dir) {
+  /** Stamp one dry print or water wake at (pos) aligned to dir. */
+  function stampTrackPrint(pos, dir, water = false) {
     for (let i = 0; i < MAX_PRINTS; i++) {
       const dx = pos.x - printCenters[i * 2], dz = pos.z - printCenters[i * 2 + 1];
       if (dx * dx + dz * dz < 0.85) return; // a print already covers this spot
@@ -952,7 +964,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const fl = Math.hypot(fx2, fz2) || 1;
     fx2 /= fl; fz2 /= fl;
     const rx = fz2, rz = -fx2;
-    const hw = 0.30, hl = 0.62;
+    const hw = water ? 0.38 : 0.30;
+    const hl = water ? 0.78 : 0.62;
     const arr = printPos.array;
     const v = i * 4 * 3;
     const corners = [
@@ -963,15 +976,19 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     ];
     for (let k = 0; k < 4; k++) {
       arr[v + k * 3] = corners[k][0];
-      arr[v + k * 3 + 1] = groundY(corners[k][0], corners[k][1]) + 0.035;
+      arr[v + k * 3 + 1] = groundY(corners[k][0], corners[k][1]) + (water ? 0.065 : 0.035);
       arr[v + k * 3 + 2] = corners[k][1];
     }
     const b = printBirth.array;
     b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = b[i * 4 + 3] = particles.getTime();
+    const s = printSurface.array;
+    s[i * 4] = s[i * 4 + 1] = s[i * 4 + 2] = s[i * 4 + 3] = water ? 1 : 0;
     printPos.addUpdateRange(v, 12);
     printBirth.addUpdateRange(i * 4, 4);
+    printSurface.addUpdateRange(i * 4, 4);
     printPos.needsUpdate = true;
     printBirth.needsUpdate = true;
+    printSurface.needsUpdate = true;
   }
 
   const _coreArr = [0, 0, 0];
@@ -3367,6 +3384,54 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     dust(pos, dir, intensity) {
       if (intensity <= 0.02) return;
+      const waterMask = heightField && heightField.getWaterMaskAt
+        ? heightField.getWaterMaskAt(pos.x, pos.z) : 0;
+      if (waterMask > 0.02) {
+        // Wet running gear replaces, rather than supplements, the dry dust
+        // path. The shared print ring becomes a short pale tread wake and the
+        // shared dust pool becomes low spray, preserving all draw families.
+        if (intensity > 0.06 && !frozen) stampTrackPrint(pos, dir, true);
+        if (frozen || rng() > intensity * (0.72 + waterMask * 0.36)) return;
+        const gy = groundY(pos.x, pos.z);
+        _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.45;
+        _puffO.pos[1] = Math.max(pos.y, gy) + 0.20 + waterMask * 0.16;
+        _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.45;
+        _puffO.vel[0] = -dir.x * (1.8 + intensity * 2.6) + (rng() - 0.5) * 1.2;
+        _puffO.vel[1] = 1.15 + intensity * 1.55 + rng() * 0.65;
+        _puffO.vel[2] = -dir.z * (1.8 + intensity * 2.6) + (rng() - 0.5) * 1.2;
+        _puffO.life = 0.34 + rng() * 0.30;
+        _puffO.size0 = 0.10 + intensity * 0.10;
+        _puffO.size1 = 0.42 + intensity * 0.54;
+        _puffO.rot = rng() * Math.PI * 2;
+        _puffO.rotVel = (rng() - 0.5) * 2.2;
+        col3(0xd8e2dc, _puffO.col0);
+        col3(0x8ca9aa, _puffO.col1);
+        _puffO.alpha = (0.12 + intensity * 0.17) * (0.55 + waterMask * 0.45);
+        _puffO.grav = -0.85;
+        _puffO.birthOffset = 0;
+        particles.emit('dust', _puffO);
+        // A fine ballistic droplet supplies the vertical splash cue that the
+        // soft mist card cannot. Reuse the existing streak pool; no water-only
+        // material, geometry or draw call is introduced.
+        if (rng() < 0.82) {
+          _strkO.pos[0] = pos.x + (rng() - 0.5) * 0.35;
+          _strkO.pos[1] = Math.max(pos.y, gy) + 0.22;
+          _strkO.pos[2] = pos.z + (rng() - 0.5) * 0.35;
+          _strkO.vel[0] = (rng() - 0.5) * 2.4 - dir.x * intensity;
+          _strkO.vel[1] = 2.1 + rng() * 2.2;
+          _strkO.vel[2] = (rng() - 0.5) * 2.4 - dir.z * intensity;
+          _strkO.life = 0.25 + rng() * 0.24;
+          _strkO.width = 0.018 + rng() * 0.012;
+          _strkO.stretch = 0.022;
+          _strkO.grav = -13.5;
+          col3(0xb7d0cf, _strkO.col);
+          _strkO.alpha = 0.34 + rng() * 0.20;
+          _strkO.seed = rng();
+          _strkO.birthOffset = 0;
+          particles.emit('sparks', _strkO);
+        }
+        return;
+      }
       // track prints: stamped ahead of the probability gate so the corridor
       // is continuous regardless of the dust dice
       if (intensity > 0.08 && !frozen) stampTrackPrint(pos, dir);
@@ -4101,7 +4166,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       for (const m of scorchMeshes) m.visible = false;
       scorchCursor = 0;
       printBirth.array.fill(-1e9);
+      printSurface.array.fill(0);
       printBirth.needsUpdate = true;
+      printSurface.needsUpdate = true;
       printCenters.fill(1e9);
       printCursor = 0;
       for (const r of shockRings) { r.bornAt = -1e9; r.mesh.visible = false; r.mat.opacity = 0; }

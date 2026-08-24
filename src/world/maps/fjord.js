@@ -46,7 +46,7 @@ export default {
     rockTone: (h, s, l) => [0.58, clamp01(s * 0.18), clamp01(l * 0.92 + 0.04)],
     mudTone: (h, s, l) => [0.54, clamp01(s * 0.85), clamp01(l * 0.68)],
     seaLake: true, seaFoam: 0.54, seaRamp: [0.22, 0.58], iceDrift: 0.08,
-    marshGloss: 0.94, iceSky: [0.40, 0.55, 0.66],
+    marshGloss: 0.94, iceSky: [0.24, 0.39, 0.50],
     tintA: [0.86, 0.94, 0.92], tintB: [0.63, 0.72, 0.70], tintC: [0.98, 1.04, 1.02],
     roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
   },

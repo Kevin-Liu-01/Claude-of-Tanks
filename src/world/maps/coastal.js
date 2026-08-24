@@ -39,6 +39,13 @@ export default {
     // (r2: the mesa bluffs are OUT — the noise-placed walls landed as grey
     // slab cliffs mid-meadow and read as artifacts, not headlands)
     village: { x0: 40, x1: 250, z0: -80, z1: 150, cx: 150, cz: 30, feather: 45, flatten: 0.86 },
+    landforms: [
+      { kind: 'ridge', x: -252, z: -34, length: 322, width: 78, height: 6.6, yawDeg: 4 },
+      { kind: 'ridge', x: 212, z: 54, length: 266, width: 68, height: 5.2, yawDeg: -10, wetScale: 0.72 },
+      { kind: 'ridge', x: -44, z: 246, length: 226, width: 62, height: 5.0, yawDeg: 80 },
+      { kind: 'knoll', x: -170, z: -224, rx: 92, rz: 68, height: 5.8, yawDeg: -20 },
+      { kind: 'basin', x: 88, z: -250, rx: 112, rz: 72, height: -2.2, yawDeg: 10, wetScale: 0.76 },
+    ],
     // E-W lanes CLIP at the strand (hi: 262) so no road paves into the bay
     roads: { grid: { xs: [-90, 168], zs: [{ at: -52, hi: 262 }, { at: 96, hi: 262 }], jitter: 2.2 } },
   },
@@ -72,11 +79,11 @@ export default {
     mudTone: (h, s, l) => [clamp01(h * 0.98), clamp01(s * 1.1), clamp01(l * 0.82)],
     // open-water mode: surf line + whitecaps + sand shoals in the shallows
     seaLake: true,
-    seaFoam: 0.9,
+    seaFoam: 0.62,
     seaRamp: [0.30, 0.62], // the lake mask is hard-edged — water reads to shore
     iceDrift: 0.12,     // sand-shoal coverage in the SHALLOWS (D layer)
     marshGloss: 0.95,   // water gloss response
-    iceSky: [0.55, 0.68, 0.78], // maritime sky sheen (r3: darker — it owns the far sheet)
+    iceSky: [0.30, 0.46, 0.58], // restrained reflection; water keeps visible depth
     tintA: [1.10, 1.04, 0.82], tintB: [0.80, 0.82, 0.68], tintC: [1.06, 1.05, 0.92],
     roadTint: [0.96, 0.90, 0.78], // sandy coast lanes
     microAmp: 0.8,
@@ -125,6 +132,14 @@ export default {
       'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',
       'netyard', 'cottage', 'tower', 'cottage'],
     destructibleBuildings: ['fishershack', 'saunahut', 'leanto', 'guardpost'],
+    tacticalBeats: [
+      { id: 'western-coast-road-croft', role: 'brawl', x: -250, z: -60, yawDeg: 0,
+        structure: 'saunahut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'strand-observation-shack', role: 'scout', x: 245, z: -70, yawDeg: -8,
+        structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
+      { id: 'northern-headland-post', role: 'support', x: -48, z: 260, yawDeg: 8,
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+    ],
     sideSkip: 0.12, spacingPad: 7,
     buildingLat: [11, 4.5], maxSpread: 2.2,
     tones: {

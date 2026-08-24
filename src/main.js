@@ -335,6 +335,7 @@ const hfProxy = {
   getHeightAt: (x, z) => (world ? world.heightField.getHeightAt(x, z) : 0),
   getNormalAt: (x, z) => (world ? world.heightField.getNormalAt(x, z) : _upNormal),
   getGroundType: (x, z) => (world ? world.heightField.getGroundType(x, z) : 'hard'),
+  getWaterMaskAt: (x, z) => (world ? world.heightField.getWaterMaskAt(x, z) : 0),
   get size() { return world ? world.heightField.size : 1000; },
   get minY() { return world ? world.heightField.minY : 0; },
   get maxY() { return world ? world.heightField.maxY : 0; },

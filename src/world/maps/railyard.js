@@ -37,6 +37,13 @@ export default {
     // the yard: one big graded rect with a whisper of elevation drift
     village: { x0: -200, x1: 200, z0: -170, z1: 190, cx: -10, cz: 10, feather: 55, flatten: 0.93, relief: 0.25 },
     roads: { grid: { xs: [-120, 0, 130], zs: [-110, 30, 150], jitter: 0.6 } },
+    landforms: [
+      { kind: 'ridge', x: -286, z: -8, length: 348, width: 76, height: 5.2, yawDeg: 2, settlementScale: 0.86 },
+      { kind: 'ridge', x: 286, z: 12, length: 344, width: 76, height: 5.0, yawDeg: -2, settlementScale: 0.86 },
+      { kind: 'ridge', x: -8, z: 286, length: 270, width: 66, height: 4.8, yawDeg: 88, settlementScale: 0.86 },
+      { kind: 'knoll', x: 226, z: -248, rx: 82, rz: 62, height: 5.6, yawDeg: 18 },
+      { kind: 'basin', x: -224, z: -244, rx: 92, rz: 68, height: -2.0, yawDeg: -16 },
+    ],
   },
 
   spawns: {
@@ -96,6 +103,14 @@ export default {
   props: {
     plan: PLAN,
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
+    tacticalBeats: [
+      { id: 'western-freight-gate', role: 'brawl', x: -250, z: -68, yawDeg: 0,
+        structure: 'motorpool', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -15 },
+      { id: 'eastern-switch-post', role: 'scout', x: 245, z: -70, yawDeg: 0,
+        structure: 'guardpost', outcrop: { count: 4, radius: 8, scaleMax: 2.5 } },
+      { id: 'northern-power-yard', role: 'support', x: -8, z: 260, yawDeg: 0,
+        structure: 'transformershed', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+    ],
     blockFill: true, // r3: leftover plan slots fill the block interiors
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,
