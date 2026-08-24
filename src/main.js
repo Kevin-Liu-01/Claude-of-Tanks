@@ -807,16 +807,16 @@ function recordSwitch(specId, t0, path, phases = null) {
   if (bootComplete && game.phase === 'garage') queuePedestalTexturePrefetch();
 }
 function pedestalPose(vis) {
-  // A small number of recovered-coordinate first-party builders retain an
-  // intentionally off-origin local hull datum.  Their battle/armor geometry
-  // must not be translated just to fix showroom framing, so the spec may
-  // provide a presentation-only longitudinal correction.  Rotate that local
-  // +Z correction through the current garage yaw: the physical hull center,
-  // not the rig's historical origin, lands on the platform datum.
-  const localZ = Number(vis.spec?.visual?.garageHullOffsetZ) || 0;
-  const yaw = vis.root.rotation.y;
-  vis.root.position.x = GARAGE_POS.x + Math.sin(yaw) * localZ;
-  vis.root.position.z = GARAGE_POS.z + Math.cos(yaw) * localZ;
+  // Center the rendered body mass, never the historical rig origin, contact
+  // midpoint or complete gun/antenna silhouette. This factory-owned anchor
+  // covers every fleet member, including casemates and recovered-frame
+  // builders, without translating battle/armor geometry.
+  if (vis.centerOnPresentationPoint) {
+    vis.centerOnPresentationPoint(GARAGE_POS.x, GARAGE_POS.z);
+  } else {
+    vis.root.position.x = GARAGE_POS.x;
+    vis.root.position.z = GARAGE_POS.z;
+  }
   if (vis.seatOnFloor) {
     vis.seatOnFloor(GARAGE_POS.y + GARAGE_PODIUM_TOP_Y_M);
   } else {

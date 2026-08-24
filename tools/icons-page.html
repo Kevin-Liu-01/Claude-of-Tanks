@@ -72,7 +72,7 @@ function silhouette(srcCanvas, outW, outH) {
   return out;
 }
 
-function autoCropSquare(src, outSize, marginFrac = 0.05) {
+function autoCropSquare(src, outSize, marginFrac = 0.05, preserveCenter = false) {
   const c = src.getContext('2d');
   const img = c.getImageData(0, 0, src.width, src.height);
   const d = img.data;
@@ -89,8 +89,12 @@ function autoCropSquare(src, outSize, marginFrac = 0.05) {
   }
   if (x1 <= x0) return src;
   const w = x1 - x0 + 1, h = y1 - y0 + 1;
-  const side = Math.max(w, h) * (1 + marginFrac * 2);
-  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const cx = preserveCenter ? src.width / 2 : (x0 + x1) / 2;
+  const cy = preserveCenter ? src.height / 2 : (y0 + y1) / 2;
+  const centeredSide = preserveCenter
+    ? Math.max(Math.abs(x0 - cx), Math.abs(x1 - cx), Math.abs(y0 - cy), Math.abs(y1 - cy)) * 2
+    : Math.max(w, h);
+  const side = centeredSide * (1 + marginFrac * 2);
   const out = document.createElement('canvas');
   out.width = outSize; out.height = outSize;
   const oc = out.getContext('2d');
@@ -112,6 +116,160 @@ function autoCropSquare(src, outSize, marginFrac = 0.05) {
   return out;
 }
 
+/**
+ * Resolve the rendered body-mass center from a neutral top-down mask.
+ *
+ * A tank's rig origin, track-run midpoint and full bounding box are all useful
+ * engineering datums, but none of them certify the thing a player sees. This
+ * mask deliberately measures finished pixels. Rows narrower than 28% of the
+ * widest opaque row are rejected, which removes cannon tubes, antennas and
+ * tow cables without teaching the audit any vehicle-specific dimensions.
+ */
+function opaqueBodyCentroid(canvas) {
+  const pixels = canvas.getContext('2d', { willReadFrequently: true })
+    .getImageData(0, 0, canvas.width, canvas.height).data;
+  const rowWeights = new Float64Array(canvas.height);
+  let widestRow = 0;
+  for (let y = 0; y < canvas.height; y++) {
+    let weight = 0;
+    for (let x = 0; x < canvas.width; x++) {
+      const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+      if (alpha > 8) weight += alpha / 255;
+    }
+    rowWeights[y] = weight;
+    widestRow = Math.max(widestRow, weight);
+  }
+
+  const minimumBodyRow = widestRow * 0.28;
+  let weightSum = 0;
+  let weightedX = 0;
+  let weightedY = 0;
+  let acceptedRows = 0;
+  for (let y = 0; y < canvas.height; y++) {
+    if (rowWeights[y] < minimumBodyRow) continue;
+    acceptedRows++;
+    for (let x = 0; x < canvas.width; x++) {
+      const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+      if (alpha <= 8) continue;
+      const weight = alpha / 255;
+      weightSum += weight;
+      weightedX += (x + 0.5) * weight;
+      weightedY += (y + 0.5) * weight;
+    }
+  }
+  if (!(weightSum > 0) || !(acceptedRows > 0)) {
+    throw new Error('empty presentation mask');
+  }
+  return {
+    pixelX: weightedX / weightSum,
+    pixelY: weightedY / weightSum,
+    bodyPixels: Math.round(weightSum),
+    acceptedRows,
+    widestRowPx: Number(widestRow.toFixed(1)),
+  };
+}
+
+function renderedPresentationCenter(visual) {
+  const root = visual.root;
+  const hidden = [];
+  root.traverse((object) => {
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    const renderless = materials.length > 0 && materials.every((material) => material
+      && (material.colorWrite === false || material.visible === false || material.opacity <= 0));
+    if (!object.userData?.authoredShadowProxy && !renderless) return;
+    hidden.push([object, object.visible]);
+    object.visible = false;
+  });
+
+  let canvas;
+  let boundsCenter;
+  let half;
+  try {
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().makeEmpty();
+    root.traverse((object) => {
+      if (!(object.isMesh || object.isInstancedMesh) || !object.geometry
+          || !visibleInTree(object, root)) return;
+      if (object.isInstancedMesh) {
+        object.computeBoundingBox();
+        if (object.boundingBox && !object.boundingBox.isEmpty()) {
+          box.union(object.boundingBox.clone().applyMatrix4(object.matrixWorld));
+        }
+        return;
+      }
+      if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+      box.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+    });
+    if (box.isEmpty()) throw new Error(`${visual.specId}: empty visible presentation bounds`);
+    boundsCenter = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    half = Math.max(size.x, size.z) * 0.5 * 1.025;
+    const cam = orthoCam(boundsCenter, size, [0, 1, 0], [0, 0, 1], half, half);
+    // Measure the same authored materials and transparency that ship in the
+    // top asset. A flat override hid small asymmetric alpha differences on a
+    // handful of vehicles (notably Marder 1A3 and Chieftain 5), allowing the
+    // synthetic mask to pass while the real icon still looked off-center.
+    canvas = capture(cam, BASE, BASE);
+  } finally {
+    for (const [object, visible] of hidden) object.visible = visible;
+  }
+
+  let body;
+  try {
+    body = opaqueBodyCentroid(canvas);
+  } catch (error) {
+    throw new Error(`${visual.specId}: ${error.message}`);
+  }
+  const { pixelX, pixelY } = body;
+  // With a downward camera and +Z as screen-up, screen-right maps to world
+  // -X. Preserve that handedness when converting the measured pixel centroid
+  // back into the vehicle's local presentation coordinates.
+  const xM = boundsCenter.x - (pixelX / canvas.width - 0.5) * half * 2;
+  const zM = boundsCenter.z + (0.5 - pixelY / canvas.height) * half * 2;
+  const anchorPixelX = canvas.width * (0.5
+    - (visual.presentationAnchor.xM - boundsCenter.x) / (half * 2));
+  const anchorPixelY = canvas.height * (0.5
+    - (visual.presentationAnchor.zM - boundsCenter.z) / (half * 2));
+  return {
+    xM: Number(xM.toFixed(4)),
+    zM: Number(zM.toFixed(4)),
+    currentAnchor: {
+      xM: Number(visual.presentationAnchor.xM.toFixed(4)),
+      zM: Number(visual.presentationAnchor.zM.toFixed(4)),
+    },
+    residualPx: Number(Math.hypot(pixelX - anchorPixelX, pixelY - anchorPixelY).toFixed(2)),
+    deltaM: Number(Math.hypot(
+      xM - visual.presentationAnchor.xM,
+      zM - visual.presentationAnchor.zM,
+    ).toFixed(4)),
+    bodyPixels: body.bodyPixels,
+    acceptedRows: body.acceptedRows,
+    widestRowPx: body.widestRowPx,
+  };
+}
+
+async function exportedTopPresentationCenter(id) {
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = `/icons/${id}_top.webp?presentation-audit=${Date.now()}`;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  canvas.getContext('2d', { willReadFrequently: true }).drawImage(image, 0, 0);
+  const body = opaqueBodyCentroid(canvas);
+  const deltaX = body.pixelX - canvas.width * 0.5;
+  const deltaY = body.pixelY - canvas.height * 0.5;
+  return {
+    residualPx: Number(Math.hypot(deltaX, deltaY).toFixed(2)),
+    deltaXPx: Number(deltaX.toFixed(2)),
+    deltaYPx: Number(deltaY.toFixed(2)),
+    bodyPixels: body.bodyPixels,
+    acceptedRows: body.acceptedRows,
+    widestRowPx: body.widestRowPx,
+  };
+}
+
 function orthoCam(center, size, dir, up, halfW, halfH) {
   const dist = Math.max(size.x, size.y, size.z) * 2 + 6;
   const cam = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, dist * 3);
@@ -122,9 +280,9 @@ function orthoCam(center, size, dir, up, halfW, halfH) {
   return cam;
 }
 
-function sideProjection(center, size) {
+function sideProjection(center, size, extentZ = size.z / 2) {
   const aspect = 2;
-  const halfH = Math.max(size.y / 2, size.z / 2 / aspect) * MARGIN;
+  const halfH = Math.max(size.y / 2, extentZ / aspect) * MARGIN;
   const halfW = halfH * aspect;
   return {
     halfW, halfH,
@@ -704,12 +862,25 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     const box = new THREE.Box3().setFromObject(root);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
+    // The full box is a fit envelope, not a body center. Long cannons and
+    // antennae must influence zoom without dragging the hull away from the
+    // shared garage/gallery presentation anchor.
+    center.x = visual.presentationAnchor.xM;
+    center.z = visual.presentationAnchor.zM;
+    const extentX = Math.max(center.x - box.min.x, box.max.x - center.x);
+    const extentZ = Math.max(center.z - box.min.z, box.max.z - center.z);
     const metadata = tankAssetMetadata(getSpec(id));
     const geometryHash = geometryFingerprint(root);
+    const presentationAnchor = {
+      xM: Number(visual.presentationAnchor.xM.toFixed(4)),
+      zM: Number(visual.presentationAnchor.zM.toFixed(4)),
+    };
     const meta = {
       ...metadata,
       geometryHash,
       metadataHash: metadataFingerprint(metadata),
+      presentationAnchor,
+      presentationHash: metadataFingerprint(presentationAnchor),
       appearance: auditTankAppearance(root),
       muzzleBore: muzzleBoreCensus(root),
       vehicleMarkings: vehicleMarkingCensus(root),
@@ -720,7 +891,7 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     const files = {};
     const wants = (view) => !requestedViews || requestedViews.includes(view);
     if (wants('top') || wants('topSilhouette')) {
-      const topHalf = (Math.max(size.x, size.z) / 2) * MARGIN;
+      const topHalf = Math.max(extentX, extentZ) * MARGIN;
       const topCam = orthoCam(center, size, [0, 1, 0], [0, 0, 1], topHalf, topHalf);
       const topCanvas = capture(topCam, BASE, BASE);
       if (wants('top')) files[tankAssetFile(id, 'top')] = topCanvas.toDataURL('image/webp', 0.9);
@@ -729,7 +900,7 @@ function inspectOne(id, renderFiles, requestedViews = null) {
 
     if (wants('side') || wants('sideSilhouette') || wants('hitZonesSide')
         || wants('armorSide') || wants('modulesSide')) {
-      const projection = sideProjection(center, size);
+      const projection = sideProjection(center, size, extentZ);
       const sideCam = orthoCam(center, size, [-1, 0, 0], [0, 1, 0], projection.halfW, projection.halfH);
       const sideCanvas = capture(sideCam, BASE, BASE / 2);
       if (wants('side')) files[tankAssetFile(id, 'side')] = sideCanvas.toDataURL('image/webp', 0.9);
@@ -743,14 +914,16 @@ function inspectOne(id, renderFiles, requestedViews = null) {
 
     if (wants('angle')) {
       const fov = 28;
-      const sphere = box.getBoundingSphere(new THREE.Sphere());
-      const dist = (sphere.radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
+      const radius = Math.hypot(extentX,
+        Math.max(center.y - box.min.y, box.max.y - center.y), extentZ);
+      const dist = (radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
       const dir = new THREE.Vector3(-0.56, 0.34, 1.0).normalize();
       const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
       angleCam.position.copy(center).addScaledVector(dir, dist);
       angleCam.lookAt(center);
       angleCam.updateMatrixWorld();
-      const angleCanvas = autoCropSquare(capture(angleCam, BASE * 2, BASE * 2), BASE, 0.035);
+      const angleCanvas = autoCropSquare(
+        capture(angleCam, BASE * 2, BASE * 2), BASE, 0.035, true);
       files[tankAssetFile(id, 'angle')] = angleCanvas.toDataURL('image/webp', 0.9);
     }
     return { files, meta };
@@ -900,7 +1073,9 @@ function idsOrFleet(ids) {
 
 window.__WARM = (ids) => {
   for (const id of idsOrFleet(ids)) {
-    const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+    const visual = createTank(id, null, {
+      camoSeed: 4100, quality: 'high', staticPreview: true,
+    });
     visual.dispose();
   }
   return true;
@@ -927,6 +1102,30 @@ window.__AUDIT = (ids) => {
     try { result.tanks[id] = inspectOne(id, false).meta; }
     catch (error) { result.tanks[id] = { error: String(error && error.stack || error) }; }
   }
+  return result;
+};
+
+window.__CENTER_AUDIT = (ids) => {
+  const result = {};
+  for (const id of idsOrFleet(ids)) {
+    const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+    scene.add(visual.root);
+    try { result[id] = renderedPresentationCenter(visual); }
+    catch (error) { result[id] = { error: String(error && error.stack || error) }; }
+    finally {
+      scene.remove(visual.root);
+      visual.dispose();
+    }
+  }
+  return result;
+};
+
+window.__TOP_ASSET_CENTER_AUDIT = async (ids) => {
+  const result = {};
+  await Promise.all(idsOrFleet(ids).map(async (id) => {
+    try { result[id] = await exportedTopPresentationCenter(id); }
+    catch (error) { result[id] = { error: String(error && error.stack || error) }; }
+  }));
   return result;
 };
 

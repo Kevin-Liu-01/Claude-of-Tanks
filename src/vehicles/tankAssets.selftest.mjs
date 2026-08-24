@@ -13,17 +13,30 @@ import {
   requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
 import { VEHICLE_ERA_META } from './taxonomy.js';
+import { TANK_PRESENTATION_ANCHORS } from './presentationAnchors.generated.js';
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
 import { FIRST_PARTY_LICENSE } from '../authorship.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
+assert.equal(Object.keys(TANK_PRESENTATION_ANCHORS).length, DEVELOPMENT_TANK_IDS.length,
+  'rendered-pixel presentation receipt count matches the development fleet');
+for (const id of DEVELOPMENT_TANK_IDS) {
+  assert.ok(TANK_PRESENTATION_ANCHORS[id],
+    `${id}: rendered-pixel presentation receipt covers the saved development tank`);
+}
 const assetManifest = JSON.parse(readFileSync(new URL('../../public/icons/tank-assets.json', import.meta.url)));
 assert.equal(assetManifest.schemaVersion, TANK_ASSET_SCHEMA_VERSION,
   'generated manifest uses the current public taxonomy schema');
 for (const id of DEVELOPMENT_TANK_IDS) {
-  const assets = assetManifest.tanks?.[id]?.assets || {};
+  const record = assetManifest.tanks?.[id] || {};
+  const assets = record.assets || {};
   assert.deepEqual(Object.keys(assets).sort(), Object.keys(TANK_ASSET_VIEWS).sort(),
     `${id}: all nine local-development presentation assets are indexed`);
+  assert.ok(Number.isFinite(record.presentationAnchor?.xM)
+    && Number.isFinite(record.presentationAnchor?.zM),
+  `${id}: generated assets record their rendered-body presentation center`);
+  assert.match(record.presentationHash || '', /^[0-9a-f]{8}$/,
+    `${id}: generated assets fingerprint their structural presentation center`);
   for (const asset of Object.values(assets)) {
     assert(existsSync(new URL(`../../public/icons/${asset.file}`, import.meta.url)),
       `${id}: missing ${asset.file}`);

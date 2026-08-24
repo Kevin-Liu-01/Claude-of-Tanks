@@ -156,6 +156,13 @@ try {
     }
     if (!skipGeometry && saved && saved.geometryHash !== live.geometryHash) failures.push(`${id}: stale geometry ${saved.geometryHash} != ${live.geometryHash}`);
     if (saved && saved.metadataHash !== live.metadataHash) failures.push(`${id}: stale tier/armor/module metadata ${saved.metadataHash} != ${live.metadataHash}`);
+    if (saved && saved.presentationHash !== live.presentationHash) {
+      failures.push(`${id}: stale presentation center ${saved.presentationHash || 'missing'} != ${live.presentationHash}`);
+    }
+    if (!Number.isFinite(live.presentationAnchor?.xM)
+        || !Number.isFinite(live.presentationAnchor?.zM)) {
+      failures.push(`${id}: missing finite presentation center`);
+    }
     if (!Number.isInteger(live.tier) || live.tier < 1 || live.tier > 10 || !live.tierNumeral) failures.push(`${id}: invalid tier metadata`);
     if (!live.countryCode) failures.push(`${id}: missing country code`);
     if (!live.markings || live.markings.countryCode !== live.countryCode

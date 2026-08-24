@@ -17,6 +17,7 @@ import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.j
 import { wheelPatternFor } from './wheelPatterns.js';
 import { trackPatternFor } from './trackPatterns.js';
 import { suspensionPatternFor } from './suspensionPatterns.js';
+import { presentationAnchorFor } from './presentationAnchors.generated.js';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
 } from './vehicleMarkings.js';
@@ -6565,6 +6566,22 @@ export function createTank(specId, engineCtx, opts = {}) {
   const staticPreview = opts.staticPreview === true;
   const restScan = staticPreview ? null : measureRestContact(root);
   const gearCG = P.gear ? P.gear.contactGeom : null;
+  // Canonical neutral-presentation anchor. The articulation rig origin, the
+  // load-bearing track midpoint and a full barrel-inclusive bounding box are
+  // engineering datums, not proof of visual centering. The generated receipt
+  // is derived from each finished vehicle's opaque top-down body pixels after
+  // cannon/antenna-width rows are rejected. Unknown development builders keep
+  // the analytic contact midpoint as a safe fallback until the receipt is
+  // regenerated.
+  const renderedAnchor = presentationAnchorFor(specId);
+  const presentationAnchor = Object.freeze({
+    xM: Number.isFinite(renderedAnchor?.xM) ? renderedAnchor.xM : 0,
+    zM: Number.isFinite(renderedAnchor?.zM)
+      ? renderedAnchor.zM
+      : (Number.isFinite(gearCG?.zCenterM)
+        ? gearCG.zCenterM
+        : (Number.isFinite(restScan?.zCenterM) ? restScan.zCenterM : 0)),
+  });
   const composeContactGeom = (scan) => {
     if (!gearCG && !scan) return null;
     // Floor selection: the gear's analytic flat-run underside is the
@@ -6847,6 +6864,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     specId,
     dims: { lengthM: spec.dims.overallLengthM, widthM: spec.dims.widthM, heightM: spec.dims.heightM },
     boundingRadiusM: armor.boundingRadiusM,
+    // Horizontal body-mass anchor used by every neutral presentation surface.
+    // Keep this separate from battle transforms and full-silhouette bounds:
+    // the latter must still include a long cannon so captures never clip it.
+    presentationAnchor,
     // as-built rest contact metadata for the movement support solve (see the
     // measureRestContact note; state.js stamps it onto the battle entity)
     contactGeom,
@@ -6869,6 +6890,28 @@ export function createTank(specId, engineCtx, opts = {}) {
       }
       root.position.y = floorYM - this.presentationFloorYM;
       return root.position.y;
+    },
+
+    /**
+     * Put the neutral vehicle's structural center on a point in its parent's
+     * X/Z plane. Presentation roots use yaw-only rotation, so solving the
+     * rotated local anchor here keeps garage/gallery placement independent of
+     * the historical rig origin without mutating certified vehicle geometry.
+     */
+    centerOnPresentationPoint(xM = 0, zM = 0) {
+      const yaw = root.rotation.y;
+      const ax = presentationAnchor.xM;
+      const az = presentationAnchor.zM;
+      root.position.x = xM - (Math.cos(yaw) * ax + Math.sin(yaw) * az);
+      root.position.z = zM - (-Math.sin(yaw) * ax + Math.cos(yaw) * az);
+      return root.position;
+    },
+
+    /** Resolve the canonical anchor in world space into caller-owned storage. */
+    presentationAnchorWorld(out) {
+      root.updateMatrixWorld(true);
+      return out.set(presentationAnchor.xM, 0, presentationAnchor.zM)
+        .applyMatrix4(root.matrixWorld);
     },
 
     /**

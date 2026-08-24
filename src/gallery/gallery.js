@@ -193,8 +193,8 @@ const raycaster = new THREE.Raycaster();
 const pointerNdc = new THREE.Vector2();
 const currentBounds = new THREE.Box3();
 const currentCenter = new THREE.Vector3();
-const currentSize = new THREE.Vector3();
 const viewDirection = new THREE.Vector3();
+const presentationCenter = new THREE.Vector3();
 
 let visual = null;
 let overlay = createInspectionOverlay(null, null, 'appearance');
@@ -256,9 +256,18 @@ function frameView(name = 'hero') {
   if (!visual) return;
   const bounds = visibleBox(visual.root);
   bounds.getCenter(currentCenter);
-  bounds.getSize(currentSize);
+  // Keep the platform and rendered body mass at the view center. Full visible
+  // bounds still determine distance so long guns and roof kit remain in frame.
+  if (visual.presentationAnchorWorld) {
+    visual.presentationAnchorWorld(presentationCenter);
+    currentCenter.x = presentationCenter.x;
+    currentCenter.z = presentationCenter.z;
+  }
   viewDirection.fromArray(VIEW_DIRECTIONS[name] || VIEW_DIRECTIONS.hero).normalize();
-  const radius = Math.max(currentSize.x, currentSize.y * 1.3, currentSize.z * 0.78) * 0.64;
+  const extentX = Math.max(currentCenter.x - bounds.min.x, bounds.max.x - currentCenter.x);
+  const extentY = Math.max(currentCenter.y - bounds.min.y, bounds.max.y - currentCenter.y);
+  const extentZ = Math.max(currentCenter.z - bounds.min.z, bounds.max.z - currentCenter.z);
+  const radius = Math.max(extentX, extentY * 1.3, extentZ * 0.78) * 1.28;
   const distance = radius / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
   camera.up.set(0, 1, 0);
   if (name === 'top') camera.up.set(0, 0, -1);
@@ -539,6 +548,7 @@ async function loadTank(id, options = {}) {
   const spec = getSpec(id);
   const record = recordById.get(id);
   visual = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  visual.centerOnPresentationPoint?.(0, 0);
   visual.seatOnFloor?.(GALLERY_FLOOR_Y_M);
   scene.add(visual.root);
   forceHeroLod(visual.root);
