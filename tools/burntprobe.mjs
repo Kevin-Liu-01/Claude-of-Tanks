@@ -10,9 +10,9 @@ const page = await browser.newPage();
 await page.setViewport({ width: 640, height: 360 });
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
-const out = await page.evaluate(() => {
+const out = await page.evaluate(async () => {
   const D = window.__DEBUG;
-  D.startBattle('m1a2');
+  await D.startBattle('m1a2');
   const res = {};
   for (const t of D.game.tanks) {
     if (t.isPlayer) continue;

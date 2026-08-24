@@ -18,7 +18,7 @@ Module ownership (file paths are FIXED):
 |---|---|
 | engine   | `src/engine/renderer.js`, `src/engine/lighting.js`, `src/engine/post.js`, `src/engine/sky.js`, `src/engine/cameraRig.js` |
 | world    | `src/world/terrain.js`, `src/world/vegetation.js`, `src/world/props.js`, `src/world/map.js` |
-| vehicles | `src/vehicles/specs.js`, `src/vehicles/tankFactory.js`, `src/vehicles/materials.js` |
+| vehicles | `src/vehicles/specs.js`, `src/vehicles/fleetFactory.js`, `src/vehicles/tankFactoryCore.js`, `src/vehicles/materials.js` |
 | movement | `src/sim/movement.js` |
 | combat   | `src/sim/ballistics.js`, `src/sim/armor.js`, `src/sim/damage.js`, `src/sim/combat.selftest.mjs` |
 | ai       | `src/game/ai.js` |
@@ -460,6 +460,9 @@ other freely (single builder).
 
 ### 3.2 world — `src/world/`
 Exports locked in §2.7. Additional requirements:
+- Browser integration imports `map.js` dynamically on first battlefield use.
+  A cold debug/capture switch is asynchronous; production battle and Studio
+  entry already await the same cached `ensureWorld` promise.
 - `terrain.js` also exports `buildTerrainMeshes(heightField, engineCtx) => THREE.Group`
   (chunked LOD meshes + splat material per graphics doc §6–7; uses
   `engineCtx.setupShadowMaterial(mat, splatHook)`); `map.js` calls it.
@@ -504,8 +507,10 @@ engine hp, speeds, shell pens/dmg: from the roster tables verbatim. Shell veloci
 is2 795/800/770 (slot1 = BR-471B AP); panther_g 935/1120/700; m1a2 1670/1400/1000;
 t90m 1750/905/850; leo2a7 1750/1400/1000. (slots: standard/special/HE.)
 
-#### 3.3.2 `tankFactory.js`
+#### 3.3.2 `fleetFactory.js` / `tankFactoryCore.js`
 ```js
+export function ensureTankBuilder(specId) => Promise<void>
+export function ensureTankBuilders(specIds) => Promise<void>
 export function createTank(specId, engineCtx, opts = {}) => TankVisual
 // opts = { camoSeed = 4000, quality = 'high' }
 TankVisual = {
@@ -527,6 +532,11 @@ TankVisual = {
   dims: { lengthM, widthM, heightM }, boundingRadiusM,
 }
 ```
+Browser consumers must await the builder gate before the first synchronous
+`createTank` for an id. The import-free fleet manifest owns the id-to-family
+mapping, and a missing gate throws instead of silently constructing a legacy
+fallback. `tankFactory.js` remains the eager facade for Node audits and release
+tools that intentionally sweep the whole roster.
 Geometry bar: per tank-roster.md §*.5 visual specs — composed BufferGeometries
 (mergeGeometries), correct silhouettes, road wheels + sprocket/idler + track band,
 signature details per Appendix B. ~8–15k tris full LOD; build a `THREE.LOD` with a

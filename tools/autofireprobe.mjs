@@ -27,12 +27,12 @@ const ok = (m) => console.log(`  ok  ${m}`);
 async function boot(page) {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 360000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 360000 });
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     window.__playerShots = [];
     window.__DEBUG.bus.on('shell:fired', (p) => {
       if (p.isPlayer) window.__playerShots.push(performance.now());
     });
-    window.__DEBUG.startBattle('m2a2_bradley');
+    await window.__DEBUG.startBattle('m2a2_bradley');
   });
   await page.waitForFunction(
     () => window.__DEBUG.game.phase === 'battle' && window.__DEBUG.game.preBattleS <= 0,

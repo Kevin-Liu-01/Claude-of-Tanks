@@ -395,7 +395,7 @@ const liveDrive = evaluate(`(async () => {
   D.quality.setPresetName('high');
   D.post.pinDynScale(1);
   window.__AO_EMA_OFF = false;
-  D.startBattle('m1a1', 'verdant');
+  await D.startBattle('m1a1', 'verdant');
   await new Promise((resolve) => setTimeout(resolve, 700));
 
   const key = (type, code, value) => window.dispatchEvent(new KeyboardEvent(type, {

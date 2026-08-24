@@ -96,9 +96,9 @@ try {
 
   if (phases.includes('live')) {
     await ready();
-    const fired = await page.evaluate(() => {
+    const fired = await page.evaluate(async () => {
       const D = window.__DEBUG;
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       D.rig.update(10, { mouseDX: 3, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false }); // skip flyby
       D.aimAtNearest();
       D.fastForward(4); // gun settles on target
@@ -144,7 +144,7 @@ try {
     }
     await page.evaluate(() => { window.__DEBUG.game.phase = 'battle'; });
     // sniper-scope flood check: re-fire scoped after reload
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       const D = window.__DEBUG;
       D.fx.setFrozen(false);
       D.rig.release();
@@ -163,9 +163,9 @@ try {
 
   if (phases.includes('destroy')) {
     await ready();
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       const D = window.__DEBUG;
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       D.rig.update(10, { mouseDX: 3, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false });
       const tgt = D.game.tanks.find((t) => t.team === 'enemy' && t.combat && !t.combat.destroyed);
       tgt.combat.hp = 0; tgt.combat.destroyed = true; tgt._destroyedAnnounced = true;
@@ -190,9 +190,9 @@ try {
 
   if (phases.includes('detrack')) {
     await ready();
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       const D = window.__DEBUG;
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       D.rig.update(10, { mouseDX: 3, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false });
       // ally: enemies are spotting-gated invisible in battle phase
       const tgt = D.game.tanks.find((t) => !t.isPlayer && t.team !== 'enemy' && t.combat && !t.combat.destroyed);
@@ -220,7 +220,7 @@ try {
 
   if (phases.includes('flyby')) {
     await ready();
-    await page.evaluate(() => { window.__DEBUG.startBattle('m1a2'); });
+    await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
     await sleep(250);
     await shot('flyby_start');
     await sleep(950);

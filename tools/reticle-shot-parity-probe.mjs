@@ -115,7 +115,7 @@ try {
   // Freeze the simulation but keep the camera/HUD render loop live. Skewing
   // state (instead of an arbitrary mesh) keeps this an honest articulated-gun
   // pose and lets computeAimInfo read exactly what a player sees.
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     const D = window.__DEBUG;
     const p = D.game.player;
     D.game.preBattleS = Infinity;
@@ -253,10 +253,10 @@ try {
   // Reproduce the owner-visible worst case too: the 180 m/s Spike previously
   // received the generic 2.2g arc and launched about 5.76° / 78 px above the
   // center plus at 300 m. A guided round must now leave on the exact sightline.
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     const D = window.__DEBUG;
     if (D.settings.isOpen()) D.settings.close();
-    D.startBattle('spz_puma');
+    await D.startBattle('spz_puma');
   });
   await sleep(500);
   const guidedReport = await page.evaluate(() => {

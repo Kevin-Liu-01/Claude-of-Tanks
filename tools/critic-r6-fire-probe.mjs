@@ -55,7 +55,10 @@ try {
   // map picker thumbs (garage is the boot screen)
   out.mapThumbs = await page.evaluate(() => [...document.querySelectorAll('.mthumb')].map((e) => (e.style.backgroundImage || 'none').slice(0, 60)));
 
-  await page.evaluate(() => { window.__DEBUG.shotMode = false; window.__DEBUG.startBattle('kv2'); });
+  await page.evaluate(async () => {
+    window.__DEBUG.shotMode = false;
+    await window.__DEBUG.startBattle('kv2');
+  });
   await new Promise((r) => setTimeout(r, 6000));
   out.center = await page.evaluate(() => {
     const el = document.elementFromPoint(960, 540);

@@ -173,9 +173,9 @@ async function install() {
 
 /** Stage a battle and return {procId, glbId} target ids. */
 async function stage(specId = 'm1a2', expectPlayerGlb = true) {
-  await page.evaluate((sid) => {
+  await page.evaluate(async (sid) => {
     const { D } = window.__IDP;
-    D.startBattle(sid);
+    await D.startBattle(sid);
     // kill the battle-open flyby so setExternalPose sticks (fxprobe pattern)
     D.rig.update(10, { mouseDX: 3, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false });
     D.fastForward(0.6);
@@ -345,7 +345,7 @@ try {
   if (phases.includes('realfire')) {
     const res = await page.evaluate(async () => {
       const { D, camAt, freeze } = window.__IDP;
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       D.rig.update(10, { mouseDX: 3, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false });
       // teleport the nearest live enemy 55 m ahead of the player, flat side-on
       const p = D.game.player;
@@ -407,9 +407,9 @@ try {
   }
 
   if (phases.includes('wreck')) {
-    const res = await page.evaluate(() => {
+    const res = await page.evaluate(async () => {
       const { D, hit, sidePoint } = window.__IDP;
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       D.rig.update(10, { mouseDX: 3, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false });
       D.fastForward(0.6);
       const enemy = D.game.tanks.find((t) => !t.isPlayer && t.team === 'enemy' && t.visual && !t.combat.destroyed);
@@ -463,7 +463,7 @@ try {
   if (phases.includes('perf')) {
     const res = await page.evaluate(async () => {
       const { D, hit, sidePoint } = window.__IDP;
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       D.fastForward(0.6);
       const enemy = D.game.tanks.find((t) => !t.isPlayer && t.team === 'enemy' && t.visual && !t.combat.destroyed);
       if (!enemy) return { err: 'no enemy' };

@@ -275,12 +275,12 @@ try {
   out.killcamOverflow = await page.evaluate(OVERFLOW_SCAN_JS);
 
   // -------- 8. LIVE BATTLE -> RESULTS REPORT --------
-  const battleUp = await page.evaluate(() => {
+  const battleUp = await page.evaluate(async () => {
     try {
       const g = window.__DEBUG.game;
       const id = g.tankById.has('m1a2') ? 'm1a2' : [...g.tankById.keys()][0];
       window.__DEBUG.shotMode = false;
-      window.__DEBUG.startBattle(id);
+      await window.__DEBUG.startBattle(id);
       return id;
     } catch (e) { return 'ERR:' + e.message; }
   });

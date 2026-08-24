@@ -58,7 +58,7 @@ for (const mapId of requestedMapIds) {
     D.post.pinDynScale(1);
     D.post.forcePerfTrim(0);
     window.__AO_EMA_OFF = false;
-    D.startBattle('m1a1', ${JSON.stringify(mapId)}, { randomRoster: false });
+    await D.startBattle('m1a1', ${JSON.stringify(mapId)}, { randomRoster: false });
     await new Promise((resolve) => setTimeout(resolve, 900));
     const heapStartBytes = performance.memory?.usedJSHeapSize || 0;
 

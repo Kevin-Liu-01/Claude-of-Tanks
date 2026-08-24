@@ -41,7 +41,6 @@ import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
 import { createCameraRig, createShowroomOrbit } from './engine/cameraRig.js';
-import { createMap, createMapAsync } from './world/map.js';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
@@ -318,6 +317,7 @@ initTopMaskRig(engineCtx);
 // call. Boot never touches them.
 const worldCache = new Map();
 const worldBuilds = new Map();
+let worldModulePromise = null;
 const residentLimits = residentResourceLimits(getDeviceTier());
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
@@ -347,6 +347,11 @@ const hfProxy = {
 };
 
 let lastWorldRelease = null;
+function loadWorldModule() {
+  if (!worldModulePromise) worldModulePromise = import('./world/map.js');
+  return worldModulePromise;
+}
+
 function enforceWorldCacheBudget() {
   if (!Number.isFinite(residentLimits.worldScenes)) return;
   for (const [id, cached] of worldCache) {
@@ -406,7 +411,8 @@ function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) 
     // load sheds the scheduling tax.
     const yieldForeground = createFrameBudgetYielder(32);
     const yieldBackground = createFrameBudgetYielder(4);
-    rec.promise = createMapAsync(engineCtx, { mapId: id, seed: 1337 },
+    rec.promise = loadWorldModule().then(({ createMapAsync }) => createMapAsync(
+      engineCtx, { mapId: id, seed: 1337 },
       async (label, f) => {
         if (rec.cancelled) {
           worldPrefetchStats.cancelled++;
@@ -440,7 +446,7 @@ function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) 
       // The frame-budget yielder above still coalesces cheap work on fast
       // machines, while slow CPUs no longer turn a coarse row/family batch
       // into a multi-hundred-millisecond loading-screen stall.
-      }, { fineSlices: true })
+      }, { fineSlices: true }))
       .then((next) => {
         finishBuildStage();
         next.group.visible = false;
@@ -1236,7 +1242,7 @@ function placeGarage() {
  * and optionally prepare the battle/garage-only services.
  * @param {object} next a World from createMap/createMapAsync
  * @param {{services?:boolean}} [opts]
- * @returns {object} the active World
+ * @returns {object|Promise<object>} active World, immediately when cached
  */
 function prepareWorldServices(next = world) {
   if (!next || world !== next) return;
@@ -1282,20 +1288,15 @@ function activateWorld(next, { services = true } = {}) {
 }
 
 /**
- * MAP-CONFIG WIRING: lazily build + cache a battlefield and activate it.
- * Synchronous (screenshot-contract safe) — the chunked variant used behind the
- * pre-battle loading screen is ensureWorld().
+ * MAP-CONFIG WIRING: activate a cached battlefield immediately, or return the
+ * asynchronous world-build promise for callers that deliberately switch cold.
  * @param {string} mapId concrete map id (never 'random' — resolve first)
  * @returns {object} the active World
  */
 function switchMap(mapId) {
   if (world && world.mapId === mapId) return world;
-  let next = worldCache.get(mapId);
-  if (!next) {
-    next = createMap(engineCtx, { mapId, seed: 1337 });
-    worldCache.set(mapId, next);
-  }
-  return activateWorld(next);
+  const next = worldCache.get(mapId);
+  return next ? activateWorld(next) : ensureWorld(mapId);
 }
 
 /**
@@ -3554,6 +3555,17 @@ function startBattle(specId, mapId = null, opts = {}) {
   if (!opts.deferVisuals) openBattle();
 }
 
+/** QA-only cold entry. Production paths already own a loading veil and call
+ * startBattle only after the selected world and roster builders are ready. */
+async function debugStartBattle(specId, mapId = null, opts = {}) {
+  const resolved = resolveMapId(mapId || pendingMapId);
+  await Promise.all([
+    ensureFullFleet(),
+    ensureWorld(resolved, null, { precompile: false }),
+  ]);
+  return startBattle(specId, resolved, opts);
+}
+
 /** Hand the screen to the battle in an immediately readable chase pose. */
 function openBattle() {
   // battle_countdown r1: the loading screen is down and the world is live —
@@ -4748,12 +4760,11 @@ const VIEW_MAP = {
 
 // MAP-CONFIG WIRING: pin the shot to its map, re-seating the staged battle
 // (deterministic spawns) whenever the map actually changes.
-function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
-  // boot r8: the battlefield is deferred, so a staged capture may well be the
-  // first thing that needs one at all. Synchronous by contract (__SHOTS.set
-  // must fully determine the frame) — this is why createMap keeps its
-  // non-chunked form alongside createMapAsync.
-  if (!world || world.mapId !== mapId) switchMap(mapId);
+async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
+  // Capture callers await the same chunked builder as gameplay. Keeping a
+  // second synchronous map constructor in the entry graph defeated genuine
+  // world lazy loading and froze first-time authored captures.
+  if (!world || world.mapId !== mapId) await switchMap(mapId);
   setWorldDormant(false);
   // camo_spotting r2: staged captures must show biome-correct AUTO paint —
   // startBattle resolves the camo biome but the contract views do not pass
@@ -5391,7 +5402,7 @@ window.__SHOTS = {
     setGarageSpots(true); // shot staging keeps the boot-time light set
     zeroInputs();
     killcam.cancel(); // KILL-CAM: clear any staged/active replay (restores materials)
-    ensureShotWorld(VIEW_MAP[name] || 'verdant',
+    await ensureShotWorld(VIEW_MAP[name] || 'verdant',
       name === 'killcam_xray' ? 'm1a2_sepv3' : 'm1a2'); // MAP-CONFIG WIRING
     // camo_spotting r2: garage shot keeps the neutral pedestal key; every
     // battlefield shot gets the authored map sun.
@@ -6937,7 +6948,7 @@ window.__DEBUG = {
   aimState: debugAimState, // {errMrad,bloomF,reticleRadM,aimDistM,reloadT}
   fastForward: debugFastForward,
   slayEnemies: debugSlayEnemies,
-  startBattle,
+  startBattle: debugStartBattle,
   // perf-smooth r1: the legacy player battle-entry path (loading screen ->
   // chunked world build -> roster bake -> countdown), so probes can
   // measure the real pre-battle timeline instead of only the synchronous

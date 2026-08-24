@@ -45,9 +45,9 @@ await page.evaluate(() => {
 });
 
 async function battle(specId) {
-  await page.evaluate((id) => {
+  await page.evaluate(async (id) => {
     window.__DEBUG.flags.forceFire = false;
-    window.__DEBUG.startBattle(id);
+    await window.__DEBUG.startBattle(id);
   }, specId);
   await page.waitForFunction(
     () => window.__DEBUG.game.phase === 'battle' &&

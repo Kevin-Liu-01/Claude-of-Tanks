@@ -107,7 +107,10 @@ try {
   const pick = commIds.includes('kv2') ? 'kv2' : commIds[0];
   out.e2ePick = pick;
   if (pick) {
-    await page.evaluate((id) => { window.__DEBUG.shotMode = false; window.__DEBUG.startBattle(id); }, pick);
+    await page.evaluate(async (id) => {
+      window.__DEBUG.shotMode = false;
+      await window.__DEBUG.startBattle(id);
+    }, pick);
     await new Promise((r) => setTimeout(r, 5000));
     const pos0 = await page.evaluate(() => {
       const p = window.__DEBUG.game.player;

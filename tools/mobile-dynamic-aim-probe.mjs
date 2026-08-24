@@ -40,8 +40,8 @@ async function box(selector) {
 }
 const playerShots = () => page.evaluate(() => window.__DEBUG.playerShellLog.length);
 async function readyTank(id) {
-  await page.evaluate((tankId) => {
-    window.__DEBUG.startBattle(tankId);
+  await page.evaluate(async (tankId) => {
+    await window.__DEBUG.startBattle(tankId);
     window.__DEBUG.game.preBattleS = 0;
     window.__DEBUG.game.player.combat.reload.t = 0;
   }, id);

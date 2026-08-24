@@ -27,10 +27,15 @@ spotting, bot, destructible, and outcome rules.
 
 `src/main.js` owns application composition. The first visible garage frame is
 kept deliberately narrow: renderer, garage, selected vehicle, and essential UI
-arrive first. Combat shaders, additional tank families, wreck treatments, map
-chunks, and optional diagnostics are prepared in post-ready idle slices. The
-garage and battle transitions remain painted while asynchronous work proceeds,
-so low-end hardware sees progress instead of a blocked black canvas.
+arrive first. `fleetFactory.js` maps each tank id to an import-free ownership
+manifest and downloads only that profile family before its first real build.
+The battlefield constructor is a separate dynamic module; terrain, vegetation,
+structures, and wreck code do not enter the startup graph. During a map build,
+each deterministically selected tank wreck yields once so its exact vehicle
+family can load before baking resumes. Studio and deterministic screenshot
+authoring are the only explicit full-fleet gates. Garage and battle transitions
+remain painted while this asynchronous work proceeds, so low-end hardware sees
+progress instead of a blocked black canvas.
 
 The quality system combines capability checks with a boot-time render probe.
 Resolution, shadows, post effects, texture sizes, vegetation density, and
@@ -46,7 +51,9 @@ reference placeholders remain report-only. The generated inventory is
 maintained in `VEHICLE-ROSTER.md`.
 Playable geometry is assembled at runtime from authored profile stations,
 armor forms, fittings, and procedural running gear in
-`src/vehicles/tankFactory.js` and `src/vehicles/profiles/`. The public runtime
+`src/vehicles/tankFactoryCore.js`, `src/vehicles/fleetFactory.js`, and
+`src/vehicles/profiles/`. Node audits retain the eager `tankFactory.js` facade;
+the browser runtime uses the demand-loaded facade. The public runtime
 does not swap those vehicles for community GLBs. Historical source assets are
 quarantined comparison material and are stripped from public builds.
 

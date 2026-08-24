@@ -428,10 +428,10 @@ try {
         { timeout: 120000 },
       );
     } else {
-      await page.evaluate((roster, map) => {
+      await page.evaluate(async (roster, map) => {
         const D = window.__DEBUG;
         if (roster) D.flags.forceRoster = roster;
-        D.startBattle('m1a2', map);
+        await D.startBattle('m1a2', map);
         D.flags.forceFire = true;
       }, forceRoster, mapId);
     }

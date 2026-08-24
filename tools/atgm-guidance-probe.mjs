@@ -41,9 +41,9 @@ try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
 
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
     const D = window.__DEBUG;
-    D.startBattle('bwp1');
+    await D.startBattle('bwp1');
     D.game.player.combat.reload.t = 0;
   });
 

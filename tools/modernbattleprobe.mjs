@@ -64,7 +64,7 @@ try {
       const offH = D.bus.on('shell:hit', (ev) => {
         if (ev.attackerId === id && ev.targetId && ev.targetId !== id) hitsN++;
       });
-      D.startBattle(id, 'verdant');
+      await D.startBattle(id, 'verdant');
       res.count = D.game.tanks.length;
       res.rosterEras = D.game.tanks.map((t) => t.spec.era);
       const p0 = { x: D.game.player.state.pos.x, z: D.game.player.state.pos.z };
@@ -110,7 +110,7 @@ try {
   // 4. RANDOM battlefield may mix eras (mixedEra path exercises without throwing)
   const rnd = await page.evaluate(async () => {
     const D = window.__DEBUG;
-    D.startBattle('m4a3e8', 'random');
+    await D.startBattle('m4a3e8', 'random');
     return { count: D.game.tanks.length, eras: D.game.tanks.map((t) => t.spec.era) };
   });
   ok(rnd.count === 8, `random battlefield battle fields 8 (got ${rnd.count})`);
@@ -119,7 +119,7 @@ try {
   // WW2 era-matching sanity
   const ww2 = await page.evaluate(async () => {
     const D = window.__DEBUG;
-    D.startBattle('m4a3e8', 'verdant');
+    await D.startBattle('m4a3e8', 'verdant');
     return D.game.tanks.map((t) => t.spec.era);
   });
   ok(ww2.every((e) => e === 'ww2'), `WWII battle era-matched (got [${ww2.join(',')}])`);

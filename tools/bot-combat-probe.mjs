@@ -42,7 +42,7 @@ try {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
-  result = await page.evaluate(({ durationS, tankId: playerTank, mapId: battleMap }) => {
+  result = await page.evaluate(async ({ durationS, tankId: playerTank, mapId: battleMap }) => {
     const D = window.__DEBUG;
     const g = D.game;
     if (D.devTrace) D.devTrace.clear();
@@ -89,7 +89,7 @@ try {
       }),
     ];
 
-    D.startBattle(playerTank, battleMap);
+    await D.startBattle(playerTank, battleMap);
     const roster = g.tanks.map((t) => ({
       id: t.id, specId: t.specId, team: t.team, isPlayer: !!t.isPlayer,
       hasSharedController: t.isPlayer ? true : !!(t.aiCtl &&

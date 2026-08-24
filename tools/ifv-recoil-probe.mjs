@@ -81,7 +81,7 @@ try {
   async function fireCase(specId, shellSlot) {
     const setup = await page.evaluate(async ({ specId, shellSlot }) => {
       const D = window.__DEBUG;
-      D.startBattle(specId);
+      await D.startBattle(specId);
       D.game.preBattleS = 0;
       D.flags.forceFire = false;
       const p = D.game.player;

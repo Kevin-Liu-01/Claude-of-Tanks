@@ -34,8 +34,8 @@ if (!ready) throw new Error('game debug facade is not ready in the capture brows
 
 const maps = {};
 for (const mapId of MAP_IDS) {
-  const script = `(() => {
-    const world = window.__DEBUG.switchMap(${JSON.stringify(mapId)});
+  const script = `(async () => {
+    const world = await window.__DEBUG.switchMap(${JSON.stringify(mapId)});
     const n = (value) => Math.round(value * 10000) / 10000;
     const pack = (record) => {
       const out = { b: [

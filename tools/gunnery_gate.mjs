@@ -82,7 +82,7 @@ try {
     const g = D.game;
     const out = { battles: [], convergeFails: 0, convergeLimitSkips: 0, convergeTravelSkips: 0, convergeDetails: [] };
     for (let b = 0; b < BATTLES; b++) {
-      D.startBattle('m1a2');
+      await D.startBattle('m1a2');
       // LANE STAGING (controls_gunnery r4, critic minor #3): the gate's job
       // is measuring GUNNERY, not spawn luck — a 4x5 run gated only 5/20
       // shots because most spawn standoffs offer no settled <=350 m LOS

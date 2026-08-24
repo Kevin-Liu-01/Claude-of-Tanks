@@ -340,7 +340,7 @@ try {
 
   console.log('[5] BATTLE B (t90m + WetRack/Optics/VStab) — durability + view');
   const battleB = await page.evaluate(async () => {
-    window.__DEBUG.startBattle('t90m', 'desert');
+    await window.__DEBUG.startBattle('t90m', 'desert');
     await new Promise((r) => setTimeout(r, 400));
     const g = window.__DEBUG.game;
     for (const t of g.tanks) if (!t.isPlayer) t.aiCtl = null;
@@ -367,7 +367,7 @@ try {
   console.log('[6] BATTLE C (control: loadout cleared) — reload back to spec');
   const control = await page.evaluate(async () => {
     localStorage.removeItem('cot.equip.tiger1');
-    window.__DEBUG.startBattle('tiger1', 'verdant');
+    await window.__DEBUG.startBattle('tiger1', 'verdant');
     await new Promise((r) => setTimeout(r, 400));
     const g = window.__DEBUG.game;
     for (const t of g.tanks) if (!t.isPlayer) t.aiCtl = null;

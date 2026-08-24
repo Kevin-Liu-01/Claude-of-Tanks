@@ -247,7 +247,7 @@ try {
     setTimeout(async () => {
       window.__DEV_TRACE.mark('battle:start-request', { tank: 'm1a2', entry });
       if (entry === 'real') await window.__DEBUG.beginSoloBattle({ specId: 'm1a2', mapId: 'verdant' });
-      else window.__DEBUG.startBattle('m1a2');
+      else await window.__DEBUG.startBattle('m1a2');
       window.__DEV_TRACE.mark('battle:start-returned', { entry });
     }, 0);
   }, entryMode);
