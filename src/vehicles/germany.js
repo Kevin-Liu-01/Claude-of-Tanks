@@ -181,6 +181,21 @@ TANK_SPECS.leo2a6m.armor.turretPlates.push(
   leftCheekPlate('a6m_turret_cheek_era_L', 18, 0.32, 2.66, 1.48, 1.30,
     0.05, 0.78, 0.16, 0, eraLayer(ukrainianNizh, 780, 1280)),
 );
+
+// The A7V's fitted frontal package follows its native arrowhead cheeks and
+// five-station upper glacis. Keep the destructible combat sectors named
+// exactly like the procedural clusters so stripEra() removes the same area
+// the armor solver consumes.
+TANK_SPECS.leo2a7v.armor.hullPlates.push(
+  frontPlate('a7v_upper_glacis_era', 18, 1.50, 1.60, 2.10, 1.43, 2.84,
+    eraLayer(ukrainianNizh, 620, 1120)),
+);
+TANK_SPECS.leo2a7v.armor.turretPlates.push(
+  rightCheekPlate('a7v_turret_cheek_era_R', 18, 0.36, 1.90, 1.40, 1.02,
+    0.30, 0.80, 0.82, 0, eraLayer(ukrainianNizh, 780, 1280)),
+  leftCheekPlate('a7v_turret_cheek_era_L', 18, 0.36, 1.90, 1.40, 1.02,
+    0.30, 0.80, 0.82, 0, eraLayer(ukrainianNizh, 780, 1280)),
+);
 addLeopard2A6UAFieldEraSectors(leopard2A6UA);
 
 TANK_SPECS[LEOPARD_2A6_UA_ID] = TANK_SPECS[LEOPARD_2A6_UA_ID] || leopard2A6UA;

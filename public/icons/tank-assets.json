@@ -58574,6 +58574,37 @@
             ]
           },
           {
+            "hitboxId": "H15",
+            "name": "a7v_upper_glacis_era",
+            "physicalMm": 18,
+            "keMm": 620,
+            "ceMm": 1120,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.5021,
+                1.4567,
+                2.2008
+              ],
+              [
+                1.5021,
+                1.4567,
+                2.2008
+              ],
+              [
+                1.5021,
+                1.3098,
+                2.9533
+              ],
+              [
+                -1.5021,
+                1.3098,
+                2.9533
+              ]
+            ]
+          },
+          {
             "hitboxId": "T01",
             "name": "turret_wedge_R",
             "physicalMm": 90,
@@ -58882,6 +58913,68 @@
                 -3.0044
               ]
             ]
+          },
+          {
+            "hitboxId": "T11",
+            "name": "a7v_turret_cheek_era_R",
+            "physicalMm": 18,
+            "keMm": 780,
+            "ceMm": 1280,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.4482,
+                0.1453,
+                3.0039
+              ],
+              [
+                1.7428,
+                0.1453,
+                1.6654
+              ],
+              [
+                1.7428,
+                0.5623,
+                0.4181
+              ],
+              [
+                0.4482,
+                0.5623,
+                1.7566
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T12",
+            "name": "a7v_turret_cheek_era_L",
+            "physicalMm": 18,
+            "keMm": 780,
+            "ceMm": 1280,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.7428,
+                0.1453,
+                1.6654
+              ],
+              [
+                -0.4482,
+                0.1453,
+                3.0039
+              ],
+              [
+                -0.4482,
+                0.5623,
+                1.7566
+              ],
+              [
+                -1.7428,
+                0.5623,
+                0.4181
+              ]
+            ]
           }
         ],
         "modules": [
@@ -59099,8 +59192,8 @@
           }
         ]
       },
-      "geometryHash": "99318a2c",
-      "metadataHash": "c6affeba",
+      "geometryHash": "2f762564",
+      "metadataHash": "ff4c0f91",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0066
@@ -59118,7 +59211,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 4,
+          "armorPaint": 6,
           "gunmetal": 9,
           "fittingPaint": 4,
           "opticGlass": 2,
@@ -59193,24 +59286,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65523,
-          "sha256": "bc722d0994e52f7c9a1f33cab28c353806623529a427887789dc1dd0d3b0f7ce"
+          "bytes": 67820,
+          "sha256": "5e31e898a6c488be2a04305629058414fd6bfd123fbff56369a4aeb416ec0b11"
         },
         "armorSide": {
           "file": "leo2a7v_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65682,
-          "sha256": "c1f3123216ded97400f518da26b7741d91430e694b26985879a26d8dc122aab7"
+          "bytes": 68030,
+          "sha256": "26bb234829403ba6e4ee8fe0aa6dd24e430663ad40204eefe94a6a4cd25c3196"
         },
         "modulesSide": {
           "file": "leo2a7v_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72712,
-          "sha256": "9b4a3a3e1b033fbac6f2bb950091b03f75ed296132456988fe7b134e27f92a6c"
+          "bytes": 72411,
+          "sha256": "f9839d4b9ccd12982a15bc98dd5d83627c4c1a7d639da4eab4441e13403bed1c"
         },
         "markings": {
           "file": "leo2a7v_markings.png",

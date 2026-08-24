@@ -5493,6 +5493,170 @@ export function buildLeo2A4(P) {
   P.topY = 1.24;
 }
 
+const LEO2A7V_CHEEK_NOSE = Object.freeze([
+  [0.30, 1.90], [1.38, 1.86], [1.57, 0.98],
+]);
+const LEO2A7V_CHEEK_CREST = Object.freeze([
+  [0.20, 0.80, 0.44], [1.03, 0.775, 0.40], [1.08, 0.67, -0.55],
+  [1.40, 0.66, -0.95], [1.53, 0.32, -1.10],
+]);
+const LEO2A7V_GLACIS = Object.freeze([
+  [2.05, 1.60], [2.45, 1.50], [2.95, 1.44], [3.55, 1.40], [3.86, 1.26],
+]);
+
+function sampleLeo2A7VSurface(stations, coordinate, valueIndex = 1) {
+  if (coordinate <= stations[0][0]) return stations[0][valueIndex];
+  for (let index = 1; index < stations.length; index++) {
+    const coordinate1 = stations[index][0];
+    if (coordinate <= coordinate1) {
+      const coordinate0 = stations[index - 1][0];
+      return THREE.MathUtils.lerp(
+        stations[index - 1][valueIndex], stations[index][valueIndex],
+        (coordinate - coordinate0) / (coordinate1 - coordinate0),
+      );
+    }
+  }
+  return stations.at(-1)[valueIndex];
+}
+
+// Point and tangent frame on the A7V's real ruled upper-cheek plate. ERA
+// courses use this surface directly so their inner faces follow the falling
+// crest and arrowhead sweep rather than bridging it with a flat tile wall.
+function leo2A7VCheekSurface(side, absX, courseFraction) {
+  const fraction = THREE.MathUtils.clamp(courseFraction, 0, 1);
+  const lowerY = 0.35;
+  const surfacePoint = (x) => {
+    const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_NOSE, x);
+    const crestY = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, x, 1);
+    const crestZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, x, 2);
+    return new THREE.Vector3(
+      side * x,
+      THREE.MathUtils.lerp(lowerY, crestY, fraction),
+      THREE.MathUtils.lerp(noseZ, crestZ, fraction),
+    );
+  };
+  const point = surfacePoint(absX);
+  const epsilon = 0.002;
+  const tangentX = surfacePoint(absX + epsilon).sub(surfacePoint(absX - epsilon));
+  if (side < 0) tangentX.multiplyScalar(-1);
+  tangentX.normalize();
+  const noseZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_NOSE, absX);
+  const crestY = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, absX, 1);
+  const crestZ = sampleLeo2A7VSurface(LEO2A7V_CHEEK_CREST, absX, 2);
+  const tangentCourse = new THREE.Vector3(0, crestY - lowerY, crestZ - noseZ).normalize();
+  const normal = new THREE.Vector3().crossVectors(tangentX, tangentCourse).normalize();
+  if (normal.z < 0) normal.multiplyScalar(-1);
+  const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
+  const rotation = new THREE.Euler().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(tangentX, tangentY, normal), 'YXZ',
+  );
+  return {
+    point,
+    normal,
+    rotation,
+    courseLength: Math.hypot(crestY - lowerY, crestZ - noseZ),
+  };
+}
+
+function addLeo2A7VFrontalERA(P) {
+  const turretPivot = P.spec.armor.turretPivot;
+  const cheekSeats = [];
+  const glacisSeats = [];
+  const sectors = [
+    'a7v_turret_cheek_era_R', 'a7v_turret_cheek_era_L',
+    'a7v_upper_glacis_era',
+  ];
+
+  for (const side of [-1, 1]) {
+    const sector = `a7v_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
+    P.eraCluster(sector, (place) => {
+      for (let row = 0; row < 6; row++) {
+        for (let station = 0; station < 7; station++) {
+          const absX = 0.42 + station * 0.15;
+          const courseFraction = (row + 0.5) / 6;
+          const surface = leo2A7VCheekSurface(side, absX, courseFraction);
+          const scale = {
+            x: 0.47,
+            y: (surface.courseLength / 6) * 0.93 / 0.13,
+            z: 0.86,
+          };
+          const overlap = 0.022;
+          const halfDepth = 0.07 * scale.z * 0.5;
+          const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
+          place(
+            center.x,
+            turretPivot[1] + center.y,
+            turretPivot[2] + center.z,
+            surface.rotation.x, surface.rotation.y, surface.rotation.z,
+            scale.x, scale.y, scale.z,
+          );
+          cheekSeats.push(Object.freeze({
+            side, row, station, courseFraction,
+            surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
+            centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
+            normalLocal: surface.normal.toArray().map((value) => Number(value.toFixed(5))),
+            scaleY: Number(scale.y.toFixed(5)),
+            innerFaceOverlapM: overlap,
+          }));
+        }
+      }
+    }, true);
+  }
+
+  // Four rows occupy only the broad upper plate behind the A7V's lane cut.
+  // They sample the exact five-station profile and sink their backs 18 mm,
+  // leaving the headlight and articulated idler corridors untouched.
+  P.eraCluster('a7v_upper_glacis_era', (place) => {
+    for (let row = 0; row < 4; row++) {
+      for (let station = 0; station < 11; station++) {
+        const x = -1.45 + station * 0.29;
+        const z = 2.14 + row * 0.21;
+        const y = sampleLeo2A7VSurface(LEO2A7V_GLACIS, z);
+        const epsilon = 0.002;
+        const dydZ = (
+          sampleLeo2A7VSurface(LEO2A7V_GLACIS, z + epsilon)
+          - sampleLeo2A7VSurface(LEO2A7V_GLACIS, z - epsilon)
+        ) / (epsilon * 2);
+        const tangentX = new THREE.Vector3(1, 0, 0);
+        const normal = new THREE.Vector3(0, 1, -dydZ).normalize();
+        const tangentY = new THREE.Vector3().crossVectors(normal, tangentX).normalize();
+        const rotation = new THREE.Euler().setFromRotationMatrix(
+          new THREE.Matrix4().makeBasis(tangentX, tangentY, normal), 'YXZ',
+        );
+        const surface = new THREE.Vector3(x, y, z);
+        const scale = { x: 0.96, y: 1.45, z: 1.00 };
+        const overlap = 0.018;
+        const halfDepth = 0.07 * scale.z * 0.5;
+        const center = surface.clone().addScaledVector(normal, halfDepth - overlap);
+        place(
+          center.x, center.y, center.z,
+          rotation.x, rotation.y, rotation.z,
+          scale.x, scale.y, scale.z,
+        );
+        glacisSeats.push(Object.freeze({
+          row, station,
+          surfaceLocal: surface.toArray().map((value) => Number(value.toFixed(5))),
+          centerLocal: center.toArray().map((value) => Number(value.toFixed(5))),
+          normalLocal: normal.toArray().map((value) => Number(value.toFixed(5))),
+          innerFaceOverlapM: overlap,
+        }));
+      }
+    }
+  });
+
+  return Object.freeze({
+    cheekTilesPerSide: 42,
+    glacisTiles: 44,
+    totalTiles: 128,
+    sectors: Object.freeze(sectors),
+    cheekSeats: Object.freeze(cheekSeats),
+    glacisSeats: Object.freeze(glacisSeats),
+    cheekInnerFaceOverlapM: 0.022,
+    glacisInnerFaceOverlapM: 0.018,
+    staticMergedProtection: true,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Leopard 2A7V — docs/references/tanks/leo2a7v.md (desirefx oracle).
 // GATE-V9 DIMS-SOVEREIGN build: the print is proportionally defective
@@ -5846,15 +6010,34 @@ function buildLeo2A7V(P) {
   // -3.86 tail = overall 10.95 (published 10.97, 0.18%). The v1 len 5.45
   // predates the honest ±3.86 hull and read overall 10.84 (-1.8 dims).
   P.gunG.position.set(0, 0.18, 1.20);
-  // Layered native trunnion saddle. The former deep rectangular block read
-  // as a loose box in front of the cheeks. This cradle is broad where it
-  // enters the armor, then narrows in both axes around the tube.
+  // Compact, deeply seated trunnion saddle. The prior rear face was 0.68 m
+  // wide and 0.54 m tall; it still read as a separate armored prism despite
+  // the taper. Pulling the rear edge 18 cm into the throat and reducing both
+  // layers makes the housing terminate inside the cheek opening instead of
+  // sitting over it.
   P.addGunExtra(orientedSlab(
-    [-0.34, -0.27, 0.66], [0.34, -0.27, 0.66], [0.25, -0.18, 1.56], [-0.25, -0.18, 1.56],
-    [-0.30,  0.27, 0.66], [0.30,  0.27, 0.66], [0.21,  0.18, 1.56], [-0.21,  0.18, 1.56]));
-  P.addGunExtraDark(box(0.46, 0.055, 0.62), 0, -0.245, 1.03);                 // flexible boot lower seam
-  P.addGunExtraDark(KIT.cylZ(0.205, 0.05, P.q ? 20 : 14), 0, 0, 1.47);       // forward boot clamp
-  leoMantletGun(P, { rollR: 0.29, rollW: 0.70, plateW: 0.64, plateH: 0.50, len: 5.53, r: 0.073, evac: 0.58, evacR: 1.75 });
+    [-0.28, -0.21, 0.48], [0.28, -0.21, 0.48], [0.19, -0.13, 1.40], [-0.19, -0.13, 1.40],
+    [-0.25,  0.21, 0.48], [0.25,  0.21, 0.48], [0.17,  0.13, 1.40], [-0.17,  0.13, 1.40]));
+  P.addGunExtraDark(box(0.36, 0.045, 0.52), 0, -0.190, 0.91);                 // flexible boot lower seam
+  P.addGunExtraDark(KIT.cylZ(0.160, 0.045, P.q ? 20 : 14), 0, 0, 1.34);      // forward boot clamp
+  leoMantletGun(P, { rollR: 0.23, rollW: 0.52, plateW: 0.48, plateH: 0.36, len: 5.53, r: 0.073, evac: 0.58, evacR: 1.75 });
+  const eraReceipt = addLeo2A7VFrontalERA(P);
+  if (P.geometryReceipt) {
+    P.gunG.userData.leopard2A7VGunHousingReceipt = Object.freeze({
+      rearWidthM: 0.56,
+      rearHeightM: 0.42,
+      frontWidthM: 0.38,
+      frontHeightM: 0.26,
+      rearGunLocalZ: 0.48,
+      frontGunLocalZ: 1.40,
+      rearTurretLocalZ: 1.68,
+      cheekNoseCenterLocalZ: 1.90,
+      insertionDepthM: 0.22,
+      trunnionRollDiameterM: 0.46,
+      gunOwned: true,
+    });
+    P.turretG.userData.leopard2A7VProtectionReceipt = eraReceipt;
+  }
   P.topY = 1.24;
 }
 
