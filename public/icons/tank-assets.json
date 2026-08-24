@@ -141269,12 +141269,12 @@
             "min": [
               -1.5917,
               0.006,
-              -3.4445
+              -3.4528
             ],
             "max": [
               -1.0757,
-              1.4555,
-              3.589
+              1.4644,
+              3.5979
             ],
             "turretLocal": false
           },
@@ -141284,12 +141284,12 @@
             "min": [
               1.0757,
               0.006,
-              -3.4445
+              -3.4528
             ],
             "max": [
               1.5917,
-              1.4555,
-              3.589
+              1.4644,
+              3.5979
             ],
             "turretLocal": false
           }
@@ -141342,8 +141342,8 @@
           }
         ]
       },
-      "geometryHash": "fec1370c",
-      "metadataHash": "71d85f04",
+      "geometryHash": "f49450eb",
+      "metadataHash": "e2af61e4",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -141432,24 +141432,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74773,
-          "sha256": "0060ccbbfc843faf02f315e08507ffa7ad806bdb26399b020afe0b14e326acf1"
+          "bytes": 73757,
+          "sha256": "fda8ca0843c23d9545211c6b1bab8e06f1bfc304841aa1bc8a23967208e0cd9b"
         },
         "armorSide": {
           "file": "type10_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76016,
-          "sha256": "eeffb6f13071e47f25563fb03f9f67d9d59034447d04ef13c21425b46ec3d15a"
+          "bytes": 75431,
+          "sha256": "c93397ebf5acfcf88acc0f255ac72777f2505f3baf8c3904d1b24c7616fa4549"
         },
         "modulesSide": {
           "file": "type10_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79515,
-          "sha256": "32e9de72c9a5f48ce2a5965fcfcafd1085035374df3b302999a3199381706e99"
+          "bytes": 79023,
+          "sha256": "173623677d0aaaa77bd07241ae33d0949b9791cebbf4952972f7fa142da96d76"
         },
         "markings": {
           "file": "type10_markings.png",
@@ -142261,12 +142261,12 @@
             "min": [
               -1.5917,
               0.006,
-              -3.4445
+              -3.4528
             ],
             "max": [
               -1.0757,
-              1.4555,
-              3.589
+              1.4644,
+              3.5979
             ],
             "turretLocal": false
           },
@@ -142276,12 +142276,12 @@
             "min": [
               1.0757,
               0.006,
-              -3.4445
+              -3.4528
             ],
             "max": [
               1.5917,
-              1.4555,
-              3.589
+              1.4644,
+              3.5979
             ],
             "turretLocal": false
           }
@@ -142334,8 +142334,8 @@
           }
         ]
       },
-      "geometryHash": "7f189512",
-      "metadataHash": "ef99f6e8",
+      "geometryHash": "c5a68915",
+      "metadataHash": "5fa4e3f8",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -142424,24 +142424,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77459,
-          "sha256": "2bf781c75042f880d05c8aba8d469b65ddd3ef69fcbf7727b7767cfbdc122706"
+          "bytes": 76901,
+          "sha256": "dd0a2282841926e80fc67525e4380f2823c3f0fb6d3e3c8def3608172b39cd32"
         },
         "armorSide": {
           "file": "type10b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80420,
-          "sha256": "859108017aaab9bfcc0ef71c14c4ab3c95eace5db93cb23dec5b2ae954803648"
+          "bytes": 79879,
+          "sha256": "0497eb34b856c19811dd560e75aa55091fe15abeea97116793b18b0a5097d6b0"
         },
         "modulesSide": {
           "file": "type10b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84654,
-          "sha256": "1f76cb07e99b1bcdc2cfd78c72be694c69825dd23c7547c9a41aa7d9d93cb2b8"
+          "bytes": 84489,
+          "sha256": "29d204bb8e7d3c2feb9cdaa3fb875cac1e8238e48315755f868997ba94ecdb7e"
         },
         "markings": {
           "file": "type10b_markings.png",

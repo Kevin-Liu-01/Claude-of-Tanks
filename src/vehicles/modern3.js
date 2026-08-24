@@ -2319,10 +2319,11 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
     style: 'rubber', dishR: 0.82,
     wheelR: 0.385, wheelW: 0.275, wheelY: 0.462, xc: 1.3337,
     wheelZs: [2.2358, 1.1957, 0.1555, -0.8845, -1.9247],
-    // rear drive HIGH in the print's own bay (bay floor step ×1.10; wrap
-    // top ~1.49 under the 1.562 bay roof), front idler far + low on the
-    // rising bow run. trackR keeps the certified §5.248 wrap-solver ratio
-    // (0.20/0.21 ×1.10) — the visible drums carry the honest full radii.
+    // The visible end-drum faces retain their print radii while the belt runs
+    // on the recessed engagement rings inside the armored front/rear bays.
+    // Those smaller course radii are necessary to clear the sealed hull
+    // hardware above the wraps; wheel/belt seating is handled by the lower
+    // band and loaded-run changes below.
     sprocket: { z: -3.146, y: 1.155, r: 0.352, trackR: 0.22 },
     idler: { z: 3.278, y: 0.88, r: 0.385, trackR: 0.231 },
     rollers: [2.97, 1.595, 0.165, -1.32].map((z) => ({ z, y: 0.8525, r: 0.0935 })),
@@ -2333,9 +2334,15 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
     // guide-horn / pin-cap anatomy every other track carries, no longer
     // half-squashed), pitch 0.112 -> 0.138 for chunkier links. botY rises
     // 9 mm so the thicker band still clears the ground plane. Lateral
-    // stations (trackW/xc/pinCapOuter) are §B4-certified — untouched.
-    trackW: 0.5159, trackTh: 0.072, topY: 0.935, botY: 0.042,
-    contactZF: 2.398, contactZR: -2.365,
+    // stations (trackW/xc/pinCapOuter) are §B4-certified — untouched. The
+    // 90 mm band grows inward only: botY rises by half the thickness delta,
+    // preserving the exact 6 mm lower belt surface and -6 mm shoe centerline
+    // while giving the road-wheel rims a robust 19 mm seat instead of a
+    // sub-2 mm near-tangent that flickered through the band. The loaded run
+    // ends at the outer half-radius of the terminal road wheels so its ramps
+    // leave the wheel train cleanly rather than climbing from stale pins.
+    trackW: 0.5159, trackTh: 0.09, topY: 0.935, botY: 0.051,
+    contactZF: 2.4283, contactZR: -2.1172,
     arms: true, paintedEnds: true, coveredTop: true,
     linkPitchM: 0.138, shoeRadialScale: 0.85,
     pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
