@@ -27,21 +27,21 @@ authored silhouettes.
 
 | Scenario | Before | After | Reduction |
 |---|---:|---:|---:|
-| Gallery, high detail | 12,073,215 | 10,979,411 | 9.06% |
-| Garage, high detail | 12,341,011 | 11,247,207 | 8.86% |
-| Player battle | 11,638,003 | 10,544,199 | 9.40% |
-| Bot at 40 m | 10,876,837 | 9,783,033 | 10.06% |
-| Bot at 180 m | 2,902,967 | 2,902,967 | 0% |
-| Mobile player at 90 m | 8,718,575 | 3,496,151 | 59.90% |
+| Gallery, high detail | 12,088,893 | 10,994,333 | 9.05% |
+| Garage, high detail | 12,356,441 | 11,261,881 | 8.86% |
+| Player battle | 11,653,457 | 10,558,897 | 9.39% |
+| Bot at 40 m | 10,892,027 | 9,797,467 | 10.05% |
+| Bot at 180 m | 2,907,471 | 2,907,471 | 0% |
+| Mobile player at 90 m | 8,727,135 | 3,501,051 | 59.88% |
 
 All 149 tanks improved in every close-mode census. Gallery reductions range
-from 3.96% to 12.63% (9.21% median); mobile 90 m reductions range from 38.99%
+from 3.96% to 12.63% (9.24% median); mobile 90 m reductions range from 38.99%
 to 75.28% (60.84% median). The 180 m bot result is intentionally unchanged:
 the existing LOD already removes track shoes completely by that distance.
 
-Running gear was the dominant source: 8,867,124 triangles, or 73.4% of the
-gallery fleet. It is now 7,773,320 triangles (-12.34%). At mobile 90 m it fell
-from 7,389,864 to 2,167,440 (-70.67%). Armor, weapons, markings, equipment and
+Running gear was the dominant source: 8,871,268 triangles, or 73.4% of the
+gallery fleet. It is now 7,776,708 triangles (-12.34%). At mobile 90 m it fell
+from 7,393,936 to 2,167,852 (-70.68%). Armor, weapons, markings, equipment and
 shadow silhouettes are unchanged.
 
 ### Track changes
