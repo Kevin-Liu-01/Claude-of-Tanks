@@ -194,11 +194,59 @@ function loadImage(url) {
   return _imgCache.get(url);
 }
 
+// Readback-heavy AO and roughness decoding shares one opted-in scratch
+// surface. Creating two fresh default contexts for every layer triggered the
+// browser's Canvas2D readback slow-path and repeated allocations during map
+// switches.
+let _readbackCanvas = null;
+let _readbackCtx = null;
+let _readbackSize = 0;
+function readScaledPixels(image, size) {
+  if (!image) return null;
+  if (!_readbackCanvas) {
+    _readbackCanvas = document.createElement('canvas');
+    _readbackCtx = _readbackCanvas.getContext('2d', { willReadFrequently: true });
+  }
+  if (_readbackSize !== size) {
+    _readbackCanvas.width = size;
+    _readbackCanvas.height = size;
+    _readbackSize = size;
+  }
+  _readbackCtx.drawImage(image, 0, 0, size, size);
+  return _readbackCtx.getImageData(0, 0, size, size).data;
+}
+
+function touchLru(cache, key, value, limit) {
+  cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > limit) cache.delete(cache.keys().next().value);
+  return value;
+}
+
+// A recent battlefield's expensive color/AO/roughness composites survive a
+// rematch without retaining the fork's 16 full-size canvases. Normals are
+// cheaper but still reused for the four most recent source sets.
+const _compositeCache = new Map();
+const _normalCache = new Map();
+const COMPOSITE_CACHE_MAX = 8;
+const NORMAL_CACHE_MAX = 4;
+
+function compositeKey(setKey, opts = {}) {
+  const {
+    roughInAlpha = false,
+    roughMul = 1,
+    tint = null,
+    desat = 0,
+    lift = 0,
+  } = opts;
+  return `${setKey}|${roughInAlpha ? 1 : 0}|${roughMul}|${tint ? tint.join(',') : '-'}|${desat}|${lift}`;
+}
+
 /**
  * Compose color * AO with roughness packed into alpha (terrain contract) or
  * alpha=255 (props). Returns a canvas sized to the color map (max 1024).
  */
-function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, tint = null, desat = 0, lift = 0 } = {}) {
+export function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, tint = null, desat = 0, lift = 0 } = {}) {
   const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -206,21 +254,8 @@ function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul = 1, t
   ctx.drawImage(color, 0, 0, s, s);
   const px = ctx.getImageData(0, 0, s, s);
   const d = px.data;
-  let aod = null, rgd = null;
-  if (ao) {
-    const c2 = document.createElement('canvas');
-    c2.width = c2.height = s;
-    const x2 = c2.getContext('2d');
-    x2.drawImage(ao, 0, 0, s, s);
-    aod = x2.getImageData(0, 0, s, s).data;
-  }
-  if (rough) {
-    const c3 = document.createElement('canvas');
-    c3.width = c3.height = s;
-    const x3 = c3.getContext('2d');
-    x3.drawImage(rough, 0, 0, s, s);
-    rgd = x3.getImageData(0, 0, s, s).data;
-  }
+  const aod = readScaledPixels(ao, s);
+  const rgd = readScaledPixels(rough, s);
   const tr = tint ? tint[0] : 1, tg = tint ? tint[1] : 1, tb = tint ? tint[2] : 1;
   for (let i = 0; i < d.length; i += 4) {
     const a = aod ? aod[i] / 255 : 1;
@@ -274,8 +309,21 @@ async function applySet(setKey, layer, opts) {
     set.rough ? loadImage(set.rough).catch(() => null) : null,
     set.ao ? loadImage(set.ao).catch(() => null) : null,
   ]);
-  swapTexture(layer.albedo, composeAlbedo(color, ao, rough, opts));
-  swapTexture(layer.normal, normalCanvas(normal));
+  const size = Math.min(color.width, texSize(1024));
+  const key = compositeKey(setKey, opts);
+  let composite = _compositeCache.get(key);
+  if (!composite || composite.size !== size) {
+    composite = { size, canvas: composeAlbedo(color, ao, rough, opts) };
+  }
+  touchLru(_compositeCache, key, composite, COMPOSITE_CACHE_MAX);
+  swapTexture(layer.albedo, composite.canvas);
+
+  let normalEntry = _normalCache.get(setKey);
+  if (!normalEntry || normalEntry.size !== size) {
+    normalEntry = { size, canvas: normalCanvas(normal) };
+  }
+  touchLru(_normalCache, setKey, normalEntry, NORMAL_CACHE_MAX);
+  swapTexture(layer.normal, normalEntry.canvas);
 }
 
 /**

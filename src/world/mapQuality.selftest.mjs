@@ -223,3 +223,4 @@ for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
 }
 
 console.log('mapQuality.selftest: 20 complete maps; extreme terrain/atmosphere and legacy backport passed');
+await import('./sourcedTextures.selftest.mjs');
