@@ -1520,12 +1520,11 @@ function buildT72B3M(P) {
     P.add('hull', box(0.20, 0.035, 0.18), s * 1.58, 1.2925, 1.91);
   }
   // 2022 SIDE BIN COURSE (obr_2022 print, Object_4 class): the original
-  // implementation put the entire run in hullG.  That was wrong for the
-  // three aft/ring-zone cells: at yaw 90 the visible bin belt split, leaving
-  // those cells beside the hull while the casting departed.  The aft cells
-  // and their lid/latch hardware are now expressed in turret-local
-  // coordinates (world y/z at yaw 0 are unchanged).  Only the small forward
-  // fender cells remain hull-owned.
+  // implementation put the entire run in hullG. That was wrong for the
+  // complete visible bin belt: every cell and lid seam belongs to the turret,
+  // including the three short cells ahead of the ring. Keep their authored
+  // zero-yaw world seats, but express the complete course in turret-local
+  // coordinates so it remains continuous through yaw.
   //
   // Long bins run BOTH sides around the ring zone — the print's hull-mask
   // tops 1.686w over z -0.73..+0.07 falling 1.659/1.606/1.579 forward and
@@ -1538,16 +1537,16 @@ function buildT72B3M(P) {
     P.add('turret', box(0.36, 0.265, 0.1525), s * 1.24, 0.1125, -0.15275);
     P.add('turret', box(0.36, 0.292, 0.4265), s * 1.24, 0.126, 0.13675);
     P.add('turret', box(0.36, 0.292, 0.4315), s * 1.24, 0.126, 0.56575);
-    P.add('hull', box(0.36, 0.265, 0.103), s * 1.24, 1.5325, 0.183);
-    P.add('hull', box(0.36, 0.212, 0.107), s * 1.24, 1.506, 0.288);
-    P.add('hull', box(0.36, 0.185, 0.0855), s * 1.24, 1.4925, 0.38425);
+    addTurretPackWorld('hull', box(0.36, 0.265, 0.103), s * 1.24, 1.5325, 0.183);
+    addTurretPackWorld('hull', box(0.36, 0.212, 0.107), s * 1.24, 1.506, 0.288);
+    addTurretPackWorld('hull', box(0.36, 0.185, 0.0855), s * 1.24, 1.4925, 0.38425);
     // lid seams + latch blocks (identifiable-bin grammar)
     P.add('turretDark', box(0.352, 0.005, 0.014), s * 1.24, 0.2685, 0.05);
     P.add('turretDark', box(0.352, 0.005, 0.014), s * 1.24, 0.2685, 0.49);
     P.add('turretDark', box(0.014, 0.04, 0.05), s * 1.065, 0.244, 0.27);
     P.add('turretDark', box(0.014, 0.04, 0.05), s * 1.065, 0.244, 0.67);
-    P.add('hullDark', box(0.30, 0.006, 0.012), s * 1.24, 1.662, 0.135);
-    P.add('hullDark', box(0.30, 0.006, 0.012), s * 1.24, 1.609, 0.2375);
+    addTurretPackWorld('hullDark', box(0.30, 0.006, 0.012), s * 1.24, 1.662, 0.135);
+    addTurretPackWorld('hullDark', box(0.30, 0.006, 0.012), s * 1.24, 1.609, 0.2375);
   }
   // right-fender latch box — the new print's 1.413 read at the +0.501 col
   P.add('hull', box(0.14, 0.017, 0.08), 1.17, 1.4085, 0.495);
@@ -1558,21 +1557,23 @@ function buildT72B3M(P) {
   // 1.52/1.56 take the new prints). Inner tall row ends x 1.4975 (22mm
   // clear of the 1.525 col boundary), outer lip 1.5065..1.545.
   for (const s of [-1, 1]) {
-    for (const [bz, bd] of [[-0.735, 0.27], [-0.44, 0.29], [-0.145, 0.28]]) {
+    for (const [bz, bd] of [[-0.735, 0.27], [-0.44, 0.29], [-0.145, 0.28], [0.145, 0.27], [0.35, 0.13]]) {
       P.add('turretCloth', box(0.0575, 0.29, bd - 0.02), s * 1.46875, -0.013, bz + 0.65);
       P.add('turretCloth', box(0.0385, 0.225, bd - 0.05), s * 1.52575, -0.039, bz + 0.65);
     }
-    // The two short cells ahead of the ring are true fender protection.
-    for (const [bz, bd] of [[0.145, 0.27], [0.35, 0.13]]) {
-      P.add('hullCloth', box(0.0575, 0.29, bd - 0.02), s * 1.46875, 1.407, bz);
-      P.add('hullCloth', box(0.0385, 0.225, bd - 0.05), s * 1.52575, 1.381, bz);
-    }
     // dark parting creases between bags
-    for (const cz of [-0.59, -0.295, 0.0]) {
+    for (const cz of [-0.59, -0.295, 0.0, 0.26]) {
       P.add('turretDark', box(0.055, 0.20, 0.016), s * 1.468, -0.02, cz + 0.65);
     }
-    P.add('hullDark', box(0.055, 0.20, 0.016), s * 1.468, 1.40, 0.26);
   }
+  P.turretG.userData.t72b3mForwardAttachmentReceipt = Object.freeze({
+    owner: 'rig_turret',
+    binCellsPerSide: 6,
+    forwardBinCellsPerSide: 3,
+    softCaseCellsPerSide: 5,
+    forwardSoftCaseCellsPerSide: 2,
+    zeroYawSeatPreserved: true,
+  });
   // r21 item 2b (hull side of the razor kill): deck sliver under the
   // turret-foot chord wall — its 1.4025 top prints the same deck row band
   // ([1.3945..1.4215]) as the local 1.39-1.40 line, closing the last 7 mm
