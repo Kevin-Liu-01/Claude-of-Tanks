@@ -2669,6 +2669,13 @@ const pendingNetworkRoomChat = [];
 let networkRoomChat = null;
 let networkRoomChatPromise = null;
 
+// Persistent subject-owned FX resolve against the presentation entity the
+// player actually sees. Network entities take priority during online battles;
+// solo falls back to the fixed-step roster.
+function resolveFxSubject(id) {
+  return networkBridge?.entities.get(id) || game.tankById.get(id) || null;
+}
+
 function roomChatVisible() {
   return !!(networkMatch && activeNetworkRoom && game.phase === 'battle');
 }
@@ -4239,7 +4246,7 @@ function tick(nowMs) {
     camera.getWorldDirection(_fwd);
     if (world) world.update(0, camera.position, _fwd, null);
     updateSniperFill(); // same close-scope fill state as live play
-    fx.update(dtR, game.shells, camera);
+    fx.update(dtR, game.shells, camera, resolveFxSubject);
     // controls_gunnery r5: staged HUD views redraw the reticle canvas every
     // frame from the FROZEN frameInfo — the old early-return skipped
     // hud.update entirely, so any post-set() canvas state change (e.g. the
@@ -4557,7 +4564,7 @@ function tick(nowMs) {
   // through the turret launch) — the same clock drives the pop arc, so the
   // whole destruction slows coherently. 1 everywhere else.
   fx.update(livePaused ? 0 : dtR * (kcActive ? killcam.fxTimeScale : 1),
-    game.shells, camera);
+    game.shells, camera, resolveFxSubject);
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   // NOTE: live isActive() check — the replay may have STARTED in step 2 of

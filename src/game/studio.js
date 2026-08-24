@@ -494,6 +494,15 @@ export function createStudio(ctx) {
     return actors.find((a) => a.uid === ref || a.name === ref) || null;
   }
 
+  // Allocation-free: fx.update invokes this once per active keyed emitter per
+  // frame. Studio actor uids are the ids carried by tank:fire events.
+  function resolveFxSubject(id) {
+    for (let i = 0; i < actors.length; i++) {
+      if (actors[i].uid === id) return actors[i];
+    }
+    return null;
+  }
+
   /**
    * Add a tank actor to the stage.
    * @param {object} cfg { id, pos:[x,z]|[x,y,z], facingDeg, turretDeg, gunDeg,
@@ -1351,7 +1360,7 @@ export function createStudio(ctx) {
         }
       }
     }
-    fx.update(dt, shells, camera);
+    fx.update(dt, shells, camera, resolveFxSubject);
   }
 
   /**

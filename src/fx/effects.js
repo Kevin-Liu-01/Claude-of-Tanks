@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { createParticleSystem, LATE_FX_LAYER, mulberry32, makeFbm } from './particles.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
 import { createImpactDecals } from './impactDecals.js';
+import { syncSubjectEmitterAnchor } from './effectAttachments.js';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
@@ -257,6 +258,7 @@ const _camV = new THREE.Vector3(); // camera-relative scratch (never aliased by 
 const _mfPos = new THREE.Vector3(); // spawnMuzzleFlash-private origin copy
 const _mfDir = new THREE.Vector3(); // spawnMuzzleFlash-private direction copy
 const _sv = new THREE.Vector3();     // recipe-internal scratch (never an argument carrier)
+const _subjectAnchor = new THREE.Vector3(); // moving-emitter attachment scratch
 const _UP = new THREE.Vector3(0, 1, 0);  // read-only
 const _c0 = new THREE.Color();
 
@@ -1046,7 +1048,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   // --- timers, continuous emitters, event bookkeeping ------------------------
   /** @type {{t:number, fn:Function}[]} pending one-shot callbacks (sim-frozen aware) */
   const timers = [];
-  /** @type {{key:string|null, pos:number[], acc:number, ttl:number, scale:number}[]} smoke-column emitters */
+  /** @type {{key:string|null, pos:number[], localPos?:number[], anchorSpace?:object,
+   * anchorMode?:string, attachmentResolved?:boolean, acc:number, ttl:number,
+   * scale:number}[]} smoke-column emitters */
   const columns = [];
   /** last known world position per tank id (fed by bus events that carry pos) */
   const lastKnownPos = new Map();
@@ -2652,6 +2656,13 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     }
   }
 
+  /** Remove a live subject-following column; wreck columns are world-fixed. */
+  function retireSubjectColumn(key) {
+    let live = 0;
+    for (const col of columns) if (col.key !== key) columns[live++] = col;
+    columns.length = live;
+  }
+
   const _due = []; // reused timer-fire scratch (cleared after each use)
 
   const fx = {
@@ -2662,6 +2673,32 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       return {
         bodies: renderedAtgmBodies,
         trailSegments: renderedAtgmTrailSegments,
+      };
+    },
+
+    /** Moving-emitter telemetry for deterministic browser/lifecycle probes. */
+    getAttachmentDebug() {
+      let keyed = 0;
+      let resolved = 0;
+      const subjects = [];
+      for (const col of columns) {
+        if (col.key == null) continue;
+        keyed++;
+        if (col.attachmentResolved) resolved++;
+        subjects.push({
+          id: col.key,
+          resolved: !!col.attachmentResolved,
+          pos: [col.pos[0], col.pos[1], col.pos[2]],
+          localPos: col.localPos
+            ? [col.localPos[0], col.localPos[1], col.localPos[2]] : null,
+        });
+      }
+      return {
+        keyedColumns: keyed,
+        resolvedKeyedColumns: resolved,
+        unresolvedKeyedColumns: keyed - resolved,
+        worldFixedColumns: columns.length - keyed,
+        subjects,
       };
     },
 
@@ -2703,8 +2740,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * @param {number} dt render delta seconds
      * @param {object[]} shells live ShellEntity[] (§2.5)
      * @param {THREE.Camera} camera active camera (billboarding is GPU-side; unused)
+     * @param {(id:string)=>object|null} [resolveSubject] live entity/actor lookup
      */
-    update(dt, shells, camera) {
+    update(dt, shells, camera, resolveSubject = null) {
       particles.update(dt);
       printUniforms.uTime.value = particles.getTime();
       // r4 CLOCK-DELTA driving: timers, smoke columns and tracer afterglow
@@ -2722,6 +2760,17 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       if (!(tickDt > 0)) tickDt = 0;
       else if (tickDt > 8) tickDt = 8;
       battleFreshS += tickDt;
+      // Only the SOURCE of a continuous burning effect follows the tank.
+      // Previously emitted smoke stays world-space and trails naturally.
+      // Refresh outside tickDt so a frozen Studio/capture pose still moves
+      // the emitter and its parked light with an edited actor.
+      if (columns.length && resolveSubject) {
+        for (const col of columns) {
+          if (col.key == null) continue; // destroyed wrecks stay world-fixed
+          const subject = resolveSubject(col.key);
+          col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
+        }
+      }
       // lights + rings are pure functions of the SHARED clock (r1: the old
       // self-timers were gated on !frozen, so stepped-frozen captures held
       // the 430-peak blast light forever — every destroy frame's deck cooked
@@ -3064,6 +3113,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         dirtPlume(_v3, 76, false);
       });
       bus.on('tank:destroyed', (e) => {
+        // Transition from a moving live-tank emitter to one world-fixed wreck
+        // emitter. Fire deaths otherwise left both columns alive for 40 s.
+        retireSubjectColumn(e.id);
         lastKnownPos.set(e.id, [e.pos[0], e.pos[1], e.pos[2]]);
         // wreck burnt-swap clears the battle scarring (same beat that hides
         // the profile decalMeshes in setDestroyed) — and guarantees the burn
@@ -3135,9 +3187,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
             capColumns();
           }
         } else {
-          let live = 0;
-          for (const col of columns) if (col.key !== e.id) columns[live++] = col;
-          columns.length = live;
+          retireSubjectColumn(e.id);
         }
       });
     },
