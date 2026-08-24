@@ -120,12 +120,12 @@ const SPECS = [
     // (docs/references/tanks/type59.md §5.304), never chased back.
     { hp: 1580, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
       gun: { caliberMm: 100, reloadS: 8.8 },
-      dims: { hullLengthM: 6.30, overallLengthM: 9.04, widthM: 3.45, heightM: 2.48,
+      dims: { hullLengthM: 5.67, overallLengthM: 8.14, widthM: 3.11, heightM: 2.23,
         // gate-measured authored envelope (§5.304 run receipts: 12%-band
         // body trace includes the base's drum/fender tail like t62mv1's;
         // height p95 = the cupola crown band)
-        silhouetteHullLengthM: 6.77, silhouetteOverallLengthM: 9.04,
-        silhouetteHeightM: 2.49 },
+        silhouetteHullLengthM: 6.09, silhouetteOverallLengthM: 8.14,
+        silhouetteHeightM: 2.24 },
       // china-palette hooks (PLA green family, ztz85_iii grammar — values
       // distinct per §H.4 family separation)
       visual: { marking: 'number', number: '406', base: '#374836',
