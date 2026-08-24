@@ -365,6 +365,9 @@ have executable checks.
 simulation, networking, design, performance, quality assurance, documentation, and deployment. They are development
 tools, not co-authors or copyright holders.
 
-All gameplay code and every selectable procedural vehicle model are original first-party work by Kevin B. Liu. See
-[`NOTICE.md`](NOTICE.md), [`LICENSE`](LICENSE), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md). External models may be
+All gameplay code and every selectable procedural vehicle model are original first-party work by Kevin B. Liu. The
+repository is MIT-licensed by default, with procedural vehicle and battlefield source, fleet and map data, generated game
+assets, capture recipes, authored media, and first-party branding expressly excluded as proprietary Reserved Content.
+Earlier public revisions remain available under the MIT terms under which they were released. See [`LICENSE`](LICENSE), [`LICENSE-POLICY.md`](LICENSE-POLICY.md),
+[`NOTICE.md`](NOTICE.md), and [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) before reusing any file. External models may be
 retained only as quarantined research references; they are never loaded as playable geometry.

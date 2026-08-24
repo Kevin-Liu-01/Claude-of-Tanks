@@ -1,0 +1,81 @@
+CLAUDE OF TANKS PROPRIETARY CONTENT LICENSE
+Version 1.0 — 24 August 2026
+
+Copyright (c) 2026 Kevin B. Liu. All rights reserved.
+
+This license applies to the Reserved Content identified by the repository's
+root LICENSE-POLICY.md file. It is a proprietary, source-available content
+license, not an open-source license.
+
+1. Limited permission
+
+Subject to these terms, the copyright owner grants an individual a limited,
+non-exclusive, non-transferable, revocable permission to:
+
+  a. view the Reserved Content in the public repository and through the
+     project's published website;
+  b. use the hosting service's standard viewing and forking functionality as
+     permitted by that service's terms; and
+  c. download, install, execute, and privately modify a copy solely for
+     personal, non-commercial evaluation, gameplay, education, or
+     experimentation.
+
+Private modifications may not be published or distributed. No permission is
+granted to a company or other organization for internal, commercial, training,
+or production use without separate written authorization.
+
+2. Restrictions
+
+Except with the copyright owner's prior written permission, you may not:
+
+  a. publish, distribute, sublicense, sell, rent, host, or commercially use
+     the Reserved Content or a derivative of it;
+  b. reuse the Reserved Content in another game, application, asset pack,
+     model library, product, service, or public repository;
+  c. extract, convert, reconstruct, or redistribute vehicle or battlefield
+     geometry, map layouts, terrain, structures, props, textures, diagrams,
+     renders, animations, source coordinates, procedural definitions, scene
+     recipes, or substantially similar generated output;
+  d. use the Reserved Content to train, fine-tune, evaluate, or populate a
+     machine-learning system, generative model, or dataset;
+  e. remove or alter copyright, license, attribution, provenance, or
+     trademark notices; or
+  f. imply that the copyright owner endorses a modified or third-party work.
+
+3. No trademark license
+
+This license grants no right to use CLAUDE OF TANKS, project logos, trade
+dress, or other brand identifiers as trademarks or branding. Factual
+identification of the project remains permitted where required by law.
+
+4. Third-party material
+
+This license does not cover material identified as third-party. Such material
+remains governed by its original copyright owner and license. You are
+responsible for complying with those terms.
+
+5. Ownership and reservations
+
+The Reserved Content is licensed, not sold. The copyright owner retains every
+right not expressly granted. Publication of source code or deployment to a
+web browser does not waive copyright or grant an implied license.
+
+6. Termination
+
+Your permission under this license terminates automatically if you violate its
+terms. On termination, you must stop using the Reserved Content and delete
+copies under your control, except where retention is required by law.
+
+7. Disclaimer and limitation of liability
+
+THE RESERVED CONTENT IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT
+PERMITTED BY LAW, THE COPYRIGHT OWNER WILL NOT BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY ARISING FROM THE RESERVED CONTENT OR ITS USE.
+
+8. Separate permission
+
+Commercial licensing, redistribution, publication, integration, or other uses
+outside this limited permission require a separate written agreement with the
+copyright owner.

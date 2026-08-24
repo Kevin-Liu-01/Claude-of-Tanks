@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import '../src/vehicles/tankFactory.js';
 import {
   FIRST_PARTY_LICENSE,
+  PROJECT_PACKAGE_LICENSE,
   PROJECT_COPYRIGHT,
   PROJECT_CREATOR,
 } from '../src/authorship.js';
@@ -26,16 +27,33 @@ const trackedFiles = execFileSync(
 assert.ok(trackedFiles.length > 0, 'attribution audit requires a tracked repository');
 
 const license = read('LICENSE');
+const licensePolicy = read('LICENSE-POLICY.md');
+const contentLicense = read('LICENSES/Proprietary-Content-License.txt');
+const priorMitLicense = read('LICENSES/MIT-prior-revisions.txt');
 const notice = read('NOTICE.md');
 const attribution = read('docs/ATTRIBUTION.md');
 const packageJson = JSON.parse(read('package.json'));
 
-assert.match(license, /MIT License/);
+assert.match(license, /^MIT License/);
 assert.match(license, /Copyright \(c\) 2026 Kevin B\. Liu/);
+assert.equal(license, priorMitLicense, 'root MIT text must remain standard and detectable');
+assert.match(licensePolicy, /MIT-licensed by default/i);
+assert.match(licensePolicy, /src\/vehicles\/\*\*/);
+assert.match(licensePolicy, /src\/world\/\*\*/);
+assert.match(licensePolicy, /public\/media\/\*\*/);
+assert.match(licensePolicy, /tools\/marketing-shots\/\*\*/);
+assert.match(contentLicense, /PROPRIETARY CONTENT LICENSE/);
+assert.match(contentLicense, /not\s+an open-source license/i);
+assert.match(priorMitLicense, /^MIT License/);
+for (const path of ['src/vehicles/LICENSE.md', 'src/world/LICENSE.md', 'tools/marketing-shots/LICENSE.md']) {
+  assert.match(read(path), /expressly excluded from\s+the root MIT grant/i, `${path}: reserved-content marker`);
+}
 assert.match(notice, /every original file and asset/i);
 assert.match(notice, /Every selectable vehicle model/i);
 assert.equal(packageJson.author, PROJECT_CREATOR);
-assert.equal(packageJson.license, FIRST_PARTY_LICENSE);
+assert.equal(packageJson.private, true, 'package must not be publishable to npm');
+assert.equal(packageJson.license, PROJECT_PACKAGE_LICENSE);
+assert.doesNotMatch(attribution, /private, personal-use, never-published/i);
 
 const publicPages = ['home.html', 'index.html', 'docs.html', 'gallery.html'];
 for (const path of publicPages) {

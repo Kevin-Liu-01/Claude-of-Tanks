@@ -14,6 +14,7 @@ import {
 } from './tankAssets.js';
 import { VEHICLE_ERA_META } from './taxonomy.js';
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
+import { FIRST_PARTY_LICENSE } from '../authorship.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 const assetManifest = JSON.parse(readFileSync(new URL('../../public/icons/tank-assets.json', import.meta.url)));
@@ -42,7 +43,7 @@ for (const id of ALL_TANK_IDS) {
   assert.notEqual(String(spec.nation || '').toLowerCase(), 'community', `${id}: Community nation is not selectable`);
   assert.equal(spec.authorship?.creator, 'Kevin B. Liu', `${id}: named first-party creator`);
   assert.equal(spec.authorship?.copyright, 'Copyright © 2026 Kevin B. Liu', `${id}: first-party copyright`);
-  assert.equal(spec.authorship?.license, 'MIT', `${id}: first-party license`);
+  assert.equal(spec.authorship?.license, FIRST_PARTY_LICENSE, `${id}: first-party license`);
   assert.equal(spec.authorship?.geometry, 'first-party-procedural', `${id}: first-party geometry authorship`);
   assert.equal(spec.authorship?.runtimeExternalGeometry, false, `${id}: runtime external geometry disabled`);
   assert.equal(spec.publicVisualFallback, undefined, `${id}: own first-party public visuals`);

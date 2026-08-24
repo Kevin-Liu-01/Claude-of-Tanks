@@ -9,6 +9,7 @@ import {
   filterGalleryRecords,
   serializeGallerySpec,
 } from './catalog.js';
+import { FIRST_PARTY_LICENSE } from '../authorship.js';
 
 const records = buildGalleryRecords(VISIBLE_TANK_IDS.map(getSpec));
 assert.equal(records.length, VISIBLE_TANK_IDS.length, 'every visible vehicle must appear in the gallery');
@@ -19,7 +20,7 @@ assert.ok(records.every((record) => !record.developmentOnly),
 for (const record of records) {
   assert.ok(record.displayName, `${record.id}: missing display name`);
   assert.equal(record.authorship?.creator, 'Kevin B. Liu', `${record.id}: missing named model creator`);
-  assert.equal(record.authorship?.license, 'MIT', `${record.id}: missing first-party model license`);
+  assert.equal(record.authorship?.license, FIRST_PARTY_LICENSE, `${record.id}: missing first-party model license`);
   assert.equal(record.brief.length, 2, `${record.id}: expected two readable paragraphs`);
   assert.ok(record.brief.every((paragraph) => paragraph.length > 100), `${record.id}: brief is too thin`);
   assert.ok(Object.values(record.ratings).every((value) => value >= 0 && value <= 100), `${record.id}: rating outside 0..100`);

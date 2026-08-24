@@ -377,7 +377,7 @@ export function createSurfaceMarkup({
         creator: spec?.authorship?.creator || 'Kevin B. Liu',
         creatorUrl: spec?.authorship?.creatorUrl || 'https://github.com/Kevin-Liu-01',
         copyright: spec?.authorship?.copyright || 'Copyright © 2026 Kevin B. Liu',
-        license: spec?.authorship?.license || 'MIT',
+        license: spec?.authorship?.license || 'LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0',
         mode: 'first-party-procedural-only',
         createTankOptions: { proceduralOnly: true, quality: 'high', camoSeed: 4242 },
         externalGeometryLoaded: false,

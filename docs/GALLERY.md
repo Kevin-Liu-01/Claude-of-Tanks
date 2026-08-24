@@ -161,7 +161,7 @@ Copy data emits `claude-of-tanks/gallery-spec@1`:
   "authorship": {
     "creator": "Kevin B. Liu",
     "copyright": "Copyright © 2026 Kevin B. Liu",
-    "license": "MIT",
+    "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
     "geometry": "first-party-procedural",
     "runtimeExternalGeometry": false
   },

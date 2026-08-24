@@ -50,7 +50,9 @@ component. Six published contact sheets preserve the human visual-review pass.
 | IMPROVEMENT-PROGRAM-2026-08-17.md | Dated implementation and verification record for the 16-map, multiplayer, UI, destruction, and rendering improvement program |
 | ATTRIBUTION.md | Kevin B. Liu project authorship, asset provenance, third-party licenses, and quarantine record |
 | ../NOTICE.md | Repository-wide authorship rule for every original file, model, and generated asset |
-| ../LICENSE | MIT terms for Kevin B. Liu's first-party work |
+| ../LICENSE | Default MIT terms for first-party work not identified as an exception |
+| ../LICENSE-POLICY.md | Path-level map separating MIT material, proprietary Reserved Content, third-party works, and prior revisions |
+| ../LICENSES/ | Proprietary content terms and preserved historical MIT text |
 
 ## Vehicle-authoring law
 

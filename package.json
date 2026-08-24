@@ -1,5 +1,6 @@
 {
   "name": "claude-of-tanks",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -81,7 +82,7 @@
   },
   "keywords": [],
   "author": "Kevin B. Liu",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE-POLICY.md",
   "type": "module",
   "dependencies": {
     "@upstash/redis": "^1.38.2",
