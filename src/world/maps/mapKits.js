@@ -20,6 +20,18 @@
 
 import * as THREE from 'three';
 import { box, jitterUV, scaleUV } from '../propGeometry.js';
+import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.js';
+
+const _groundUp = new THREE.Vector3(0, 1, 0);
+const _groundRight = new THREE.Vector3(1, 0, 0);
+const _groundNormal = new THREE.Vector3();
+const _groundQuat = new THREE.Quaternion();
+
+function applyGroundNormal(geometry, pose) {
+  _groundNormal.set(pose.normalX, pose.normalY, pose.normalZ);
+  _groundQuat.setFromUnitVectors(_groundUp, _groundNormal);
+  geometry.applyQuaternion(_groundQuat);
+}
 
 // =============================================================================
 // DESERT BAZAAR — plan builders ('market', 'marketRow')
@@ -445,9 +457,10 @@ function pressureRidge(buckets, rng, cx, cz, y, ang, len) {
 
 // Weathered rowboat frozen into the sheet near the shore — planked sides,
 // transom and two bench thwarts, listing a few degrees.
-function frozenRowboat(buckets, rng, x, y, z, yaw) {
+function frozenRowboat(buckets, rng, heightField, x, z, yaw, groundingReceipts) {
   const parts = [];
   const L = 3.4, W = 1.25, H = 0.52;
+  const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.10);
   for (const s of [-1, 1]) { // side planks (two lapped strakes each)
     for (let r = 0; r < 2; r++) {
       const pl = box(L - r * 0.5, 0.20, 0.06, 1.2);
@@ -471,9 +484,14 @@ function frozenRowboat(buckets, rng, x, y, z, yaw) {
   for (const g of parts) {
     g.rotateZ(0.06 + rng() * 0.05); // frozen-in list
     g.rotateY(yaw);
-    g.translate(x, y - 0.10, z);    // hull bitten into the ice
+    applyGroundNormal(g, pose);
+    g.translate(x, pose.y, z);    // hull bitten into the ice
     buckets.wood.push(jitterUV(g, rng));
   }
+  groundingReceipts?.push({
+    kind: 'frozen-rowboat', x, y: pose.y, z, relief: pose.spread,
+    baseClearance: pose.maxFloat, supportMin: pose.min, supportMax: pose.max,
+  });
 }
 
 // Short timber jetty walking off the shore onto the ice: paired piles with a
@@ -506,7 +524,9 @@ function jetty(buckets, rng, x0, z0, ang, y, len = 7.5) {
  * the bucket merge ("--- merge buckets into one mesh per material ---").
  * @param {object} ctx {mapId, L (layout), heightField, rng, buckets}
  */
-export function dressMapExtras({ mapId, extraKits = null, L, heightField, rng, buckets }) {
+export function dressMapExtras({
+  mapId, extraKits = null, L, heightField, rng, buckets, groundingReceipts = null,
+}) {
   // Configurable kit dispatch lets new maps compose the production dressing
   // vocabulary without cloning geometry builders. Legacy ids resolve to the
   // exact one kit they used before, preserving their RNG stream and output.
@@ -514,7 +534,9 @@ export function dressMapExtras({ mapId, extraKits = null, L, heightField, rng, b
     : mapId === 'autumn' ? ['river']
       : mapId === 'railyard' ? ['rail']
         : mapId === 'winter' ? ['winterLake'] : []);
-  if (kits.includes('coastal')) dressCoastalShore({ L, heightField, rng, buckets });
+  if (kits.includes('coastal')) {
+    dressCoastalShore({ L, heightField, rng, buckets, groundingReceipts });
+  }
   if (kits.includes('river')) dressAutumnRiver({ L, heightField, rng, buckets });
   if (kits.includes('rail')) dressRailYard({ L, heightField, rng, buckets });
   if (!kits.includes('winterLake') || !L.lakes || !L.lakes.length) return;
@@ -632,7 +654,7 @@ export function dressMapExtras({ mapId, extraKits = null, L, heightField, rng, b
     const ba = Math.PI * 1.32 + rng() * 0.2;
     const bx = lake.x + Math.cos(ba) * lake.r * 0.86;
     const bz = lake.z + Math.sin(ba) * lake.r * 0.86;
-    frozenRowboat(buckets, rng, bx, heightField.getHeightAt(bx, bz), bz, ba + Math.PI / 2);
+    frozenRowboat(buckets, rng, heightField, bx, bz, ba + Math.PI / 2, groundingReceipts);
     const ja = ba + 0.45;
     const jx = lake.x + Math.cos(ja) * lake.r * 1.02;
     const jz = lake.z + Math.sin(ja) * lake.r * 1.02;
@@ -646,9 +668,10 @@ export function dressMapExtras({ mapId, extraKits = null, L, heightField, rng, b
 
 // Open clinker fishing boat beached above the surf: planked sides, transom,
 // thwarts, a short mast with a furled boom. Reads "working beach" at range.
-function beachedBoat(buckets, rng, x, y, z, yaw, withMast) {
+function beachedBoat(buckets, rng, heightField, x, z, yaw, withMast, groundingReceipts) {
   const parts = [];
   const L = 4.6 + rng() * 1.2, W = 1.6, H = 0.72;
+  const pose = planGroundedObbPose(heightField, x, z, L * 0.5, W * 0.5, yaw, 0.06);
   for (const s of [-1, 1]) {
     for (let r = 0; r < 3; r++) { // three lapped strakes each side
       const pl = box(L - r * 0.55, 0.20, 0.07, 1.2);
@@ -673,23 +696,30 @@ function beachedBoat(buckets, rng, x, y, z, yaw, withMast) {
   for (const g of parts) {
     g.rotateZ(keelList);
     g.rotateY(yaw);
-    g.translate(x, y - 0.06, z);
+    applyGroundNormal(g, pose);
+    g.translate(x, pose.y, z);
     buckets.wood.push(jitterUV(g, rng));
   }
   if (withMast) {
     const mast = box(0.11, 3.4, 0.11, 2.0);
     mast.rotateZ(keelList);
     mast.rotateY(yaw);
-    mast.translate(x, y + 1.7, z);
+    applyGroundNormal(mast, pose);
+    mast.translate(x, pose.y + 1.76, z);
     buckets.wood.push(mast);
     const boom = box(0.08, 0.08, 2.3, 2.0);
     boom.rotateY(yaw + (rng() - 0.5) * 0.4);
-    boom.translate(x, y + 1.15, z);
+    applyGroundNormal(boom, pose);
+    boom.translate(x, pose.y + 1.21, z);
     buckets.wood.push(boom);
   }
+  groundingReceipts?.push({
+    kind: 'beached-boat', x, y: pose.y, z, relief: pose.spread,
+    baseClearance: pose.maxFloat, supportMin: pose.min, supportMax: pose.max,
+  });
 }
 
-function dressCoastalShore({ L, heightField, rng, buckets }) {
+function dressCoastalShore({ L, heightField, rng, buckets, groundingReceipts }) {
   if (!L.lakes || !L.lakes.length) return;
   // land direction: the sea circles sit on the east edge, land is -x — the
   // dressing hugs whichever shore arc faces the map interior
@@ -703,8 +733,8 @@ function dressCoastalShore({ L, heightField, rng, buckets }) {
       const x = lake.x + Math.cos(a) * rr, z = lake.z + Math.sin(a) * rr;
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
       if (heightField._roadDist(x, z) < 7) continue;
-      beachedBoat(buckets, rng, x, heightField.getHeightAt(x, z), z,
-        a + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55);
+      beachedBoat(buckets, rng, heightField, x, z,
+        a + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts);
     }
     // driftwood: silvered logs strewn along the wrack line
     const nDrift = Math.round(lake.r * 0.14);
@@ -715,10 +745,23 @@ function dressCoastalShore({ L, heightField, rng, buckets }) {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
       if (heightField._roadDist(x, z) < 6) continue;
       const len = 1.6 + rng() * 2.6;
+      const yaw = a + Math.PI / 2 + (rng() - 0.5) * 0.8;
+      const pose = planGroundedSegment(
+        heightField, x, z, Math.cos(yaw), -Math.sin(yaw), len, 0.12, 0.03,
+      );
       const log = box(len, 0.16 + rng() * 0.12, 0.16 + rng() * 0.12, 1.4);
-      log.rotateY(a + Math.PI / 2 + (rng() - 0.5) * 0.8);
-      log.translate(x, heightField.getHeightAt(x, z) + 0.06, z);
+      // The driftwood box is authored along local X. Align that axis to the
+      // two endpoint supports in one rotation so pitch cannot skew its shore
+      // bearing on diagonal placements.
+      _groundNormal.set(pose.axisX, pose.axisY, pose.axisZ);
+      _groundQuat.setFromUnitVectors(_groundRight, _groundNormal);
+      log.applyQuaternion(_groundQuat);
+      log.translate(x, pose.y, z);
       buckets.wood.push(jitterUV(log, rng));
+      groundingReceipts?.push({
+        kind: 'driftwood', x, y: pose.y, z, relief: pose.relief,
+        baseClearance: -0.03, start: pose.start, end: pose.end,
+      });
     }
     // mooring buoys bobbing in the shallows (plaster = whitewash tone)
     const nBuoy = big ? 5 : 2;

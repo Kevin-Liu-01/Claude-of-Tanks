@@ -166,6 +166,7 @@ async function collectMap(mapId, frames) {
   return page.evaluate(({ id, frameStats, includeInventory: withInventory }) => {
     const D = window.__DEBUG;
     const world = D.world;
+    const roundValue = (value, digits = 3) => Number(Number(value || 0).toFixed(digits));
     const triangleCount = (geometry) => {
       if (!geometry) return 0;
       const index = geometry.getIndex?.() || geometry.index;
@@ -267,6 +268,12 @@ async function collectMap(mapId, frames) {
     const looseKinds = new Set(world.looseProps.map((record) => record.kind));
     const info = D.renderer.info;
     const waterFeatures = [...(terrain.marshes || []), ...(terrain.lakes || [])];
+    const poleStations = world.utilityPolePlacements || [];
+    const polePosts = poleStations.flatMap((station) => station.poles || []);
+    const fullPoleMesh = world.group.getObjectByName('baked-pole-full');
+    const groundedDestructibles = world.destructibles
+      .filter((record) => record.groundSupport);
+    const groundingReceipts = world.decorationGroundingReceipts || [];
     return {
       id,
       name: config.name,
@@ -307,6 +314,36 @@ async function collectMap(mapId, frames) {
           wrecks: world.tankWreckSpots.length,
           craters: props.craters || 0,
           rubblePiles: props.rubblePiles || 0,
+          utilityPoles: {
+            enabled: !!props.telegraph,
+            stations: poleStations.length,
+            pairedStations: poleStations.filter((station) => station.paired).length,
+            singleStations: poleStations.filter((station) => !station.paired).length,
+            physicalPosts: polePosts.length,
+            sourceTrianglesPerPost: fullPoleMesh ? triangleCount(fullPoleMesh.geometry) : 0,
+            maxPairRelief: roundValue(Math.max(0, ...poleStations.map((station) => station.pairRelief))),
+            maxAcceptedPairRelief: roundValue(Math.max(0,
+              ...poleStations.filter((station) => station.paired)
+                .map((station) => station.pairRelief))),
+            maxLocalRelief: roundValue(Math.max(0, ...polePosts.map((post) => post.supportSpread))),
+            unsupportedPosts: polePosts.filter((post) =>
+              Math.abs(post.y - (post.supportMin - 0.035)) > 0.001).length,
+            pairedReliefs: poleStations.filter((station) => station.paired)
+              .map((station) => roundValue(station.pairRelief)),
+            singleReliefs: poleStations.filter((station) => !station.paired)
+              .map((station) => roundValue(station.pairRelief)),
+          },
+          grounding: {
+            destructibleReceipts: groundedDestructibles.length,
+            unsupportedDestructibles: groundedDestructibles.filter((record) =>
+              record.y > record.groundSupport.min + 0.001).length,
+            wideDecorationReceipts: groundingReceipts.length,
+            unsupportedWideDecorations: groundingReceipts.filter((record) =>
+              record.baseClearance > 0.001).length,
+            maxBaseClearance: roundValue(Math.max(0,
+              ...groundingReceipts.map((record) => record.baseClearance))),
+            kinds: [...new Set(groundingReceipts.map((record) => record.kind))].sort(),
+          },
         },
         foliage: {
           configuredSpecies: new Set(vegetation.species || []).size,
@@ -338,6 +375,14 @@ function evaluateQuality(row) {
     decorationQuality: q.decorations.destructibles >= 350
       && q.decorations.destructibleKinds >= 32 && q.decorations.looseProps >= 50
       && q.decorations.wrecks >= 4,
+    utilityPoleGrounding: !q.decorations.utilityPoles.enabled
+      || (q.decorations.utilityPoles.stations > 0
+        && q.decorations.utilityPoles.unsupportedPosts === 0
+        && q.decorations.utilityPoles.sourceTrianglesPerPost > 0
+        && q.decorations.utilityPoles.sourceTrianglesPerPost <= 3000
+        && q.decorations.utilityPoles.maxAcceptedPairRelief <= 0.401),
+    decorationGrounding: q.decorations.grounding.unsupportedDestructibles === 0
+      && q.decorations.grounding.unsupportedWideDecorations === 0,
     foliageQuality: q.foliage.configuredSpecies >= 2 && q.foliage.concealers >= 20,
     waterQuality: q.water.features === 0 || q.water.liquid || q.water.frozen
       || q.water.softInteraction,
@@ -349,6 +394,88 @@ async function captureMapShots(mapId) {
   const dir = path.join(outDir, 'shots', mapId);
   fs.mkdirSync(dir, { recursive: true });
   await page.screenshot({ path: path.join(dir, 'establishing.png') });
+
+  const poleDetail = await page.evaluate(() => {
+    const D = window.__DEBUG;
+    const world = D.world;
+    const stations = world.utilityPolePlacements || [];
+    if (!stations.length) return null;
+    const paired = stations.filter((station) => station.paired);
+    const singles = stations.filter((station) => !station.paired);
+    // Titan's reported defect is a pair spanning a gorge shelf. Review the
+    // steepest rejected station there; other maps show a retained flat pair
+    // when available so both policy branches have visual evidence.
+    const pool = world.mapId === 'titan_gorge' && singles.length
+      ? singles : paired.length ? paired : stations;
+    const station = [...pool].sort((a, b) => b.pairRelief - a.pairRelief)[0];
+    const posts = station.poles || [];
+    const target = posts.length > 1 ? {
+      x: (posts[0].x + posts[1].x) * 0.5,
+      z: (posts[0].z + posts[1].z) * 0.5,
+    } : posts[0];
+    const hf = world.heightField;
+    const hAt = hf.getHeightAtFast || hf.getHeightAt;
+    const angle = station.yaw + Math.PI * 0.58;
+    const distance = posts.length > 1 ? 30 : 24;
+    const x = target.x + Math.sin(angle) * distance;
+    const z = target.z + Math.cos(angle) * distance;
+    D.camera.position.set(x, Math.max(hAt(x, z) + 5.2, hAt(target.x, target.z) + 6.8), z);
+    D.camera.fov = 45;
+    D.camera.lookAt(target.x, hAt(target.x, target.z) + 3.5, target.z);
+    D.camera.updateProjectionMatrix();
+    D.camera.updateMatrixWorld(true);
+    world.update(0, D.camera.position);
+    D.lighting.updateFrustums();
+    D.lighting.update(true);
+    return { paired: station.paired, pairRelief: station.pairRelief, posts: posts.length };
+  });
+  if (poleDetail) {
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await page.screenshot({ path: path.join(dir, 'utility-poles.png') });
+    fs.writeFileSync(path.join(dir, 'utility-poles.json'), `${JSON.stringify(poleDetail, null, 2)}\n`);
+  }
+
+  const decorationDetail = await page.evaluate(() => {
+    const D = window.__DEBUG;
+    const world = D.world;
+    const receipts = world.decorationGroundingReceipts || [];
+    const priorities = [
+      'beached-boat', 'frozen-rowboat', 'tank-wreck',
+      'felled-utility-pole', 'fallen-log', 'stump',
+    ];
+    let subject = null;
+    for (const kind of priorities) {
+      subject = receipts.find((receipt) => receipt.kind === kind);
+      if (subject) break;
+    }
+    if (!subject) return null;
+    const hf = world.heightField;
+    const hAt = hf.getHeightAtFast || hf.getHeightAt;
+    const seed = [...world.mapId].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const angle = (seed % 360) * Math.PI / 180;
+    const distance = subject.kind === 'tank-wreck' ? 16 : 12;
+    const x = subject.x + Math.sin(angle) * distance;
+    const z = subject.z + Math.cos(angle) * distance;
+    D.camera.position.set(x, Math.max(hAt(x, z) + 3.4, hAt(subject.x, subject.z) + 4.2), z);
+    D.camera.fov = 46;
+    D.camera.lookAt(subject.x, hAt(subject.x, subject.z) + 0.8, subject.z);
+    D.camera.updateProjectionMatrix();
+    D.camera.updateMatrixWorld(true);
+    world.update(0, D.camera.position);
+    D.lighting.updateFrustums();
+    D.lighting.update(true);
+    return {
+      kind: subject.kind,
+      relief: subject.relief,
+      baseClearance: subject.baseClearance,
+    };
+  });
+  if (decorationDetail) {
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await page.screenshot({ path: path.join(dir, 'grounded-decoration.png') });
+    fs.writeFileSync(path.join(dir, 'grounded-decoration.json'),
+      `${JSON.stringify(decorationDetail, null, 2)}\n`);
+  }
 
   const details = await page.evaluate(() => {
     const D = window.__DEBUG;

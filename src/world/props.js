@@ -26,7 +26,10 @@ import {
 import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
-import { hedgehogBeamSpecs, sampleDiscGround, sampleObbGround } from './propPlacement.js';
+import {
+  hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
+  sampleDiscGround, sampleObbGround,
+} from './propPlacement.js';
 import {
   box, gablePrism, jitterUV, makeTelephonePoleDistanceGeometry, scaleUV, slabBox,
 } from './propGeometry.js';
@@ -304,7 +307,7 @@ const _bakedCache = new Map();
  * XZ-centered, base at y=0, optional color grading (burn/darken for wrecks).
  * @param {string} name key in props-models.json
  * @param {{targetH?:number,targetW?:number,scale?:number,burn?:number,
- *   mul?:number,sink?:number}} [opts]
+ *   mul?:number,sink?:number,sourceZMin?:number,sourceZMax?:number}} [opts]
  * @returns {THREE.BufferGeometry} indexed geometry with position/normal/color
  */
 function bakedGeometry(name, opts = {}) {
@@ -313,19 +316,65 @@ function bakedGeometry(name, opts = {}) {
   if (hit) return hit;
   const m = MODELS[name];
   if (!m) throw new Error('world/props: missing baked model ' + name);
-  const [minX, minY, minZ] = m.bbox.min, [maxX, maxY, maxZ] = m.bbox.max;
+  let [minX, minY, minZ] = m.bbox.min, [maxX, maxY, maxZ] = m.bbox.max;
+  let sourceVertexIds = null;
+  let sourceIndices = m.indices;
+  if (opts.sourceZMin != null || opts.sourceZMax != null) {
+    const zMin = opts.sourceZMin ?? -Infinity;
+    const zMax = opts.sourceZMax ?? Infinity;
+    const vertexCount = m.positions.length / 3;
+    const remap = new Int32Array(vertexCount);
+    remap.fill(-1);
+    const compactIds = [];
+    const compactIndices = [];
+    for (let i = 0; i < m.indices.length; i += 3) {
+      const a = m.indices[i], b = m.indices[i + 1], c = m.indices[i + 2];
+      const az = m.positions[a * 3 + 2];
+      const bz = m.positions[b * 3 + 2];
+      const cz = m.positions[c * 3 + 2];
+      // Long conductor faces span the two authored posts. Requiring the whole
+      // triangle inside the slice removes those faces instead of leaving wires
+      // suspended from the retained post to a missing partner.
+      if (az < zMin || az > zMax || bz < zMin || bz > zMax || cz < zMin || cz > zMax) continue;
+      for (const id of [a, b, c]) {
+        if (remap[id] < 0) {
+          remap[id] = compactIds.length;
+          compactIds.push(id);
+        }
+        compactIndices.push(remap[id]);
+      }
+    }
+    if (!compactIndices.length) throw new Error(`world/props: empty baked slice ${name}`);
+    sourceVertexIds = compactIds;
+    sourceIndices = compactIndices;
+    minX = minY = minZ = Infinity;
+    maxX = maxY = maxZ = -Infinity;
+    for (const id of compactIds) {
+      const x = m.positions[id * 3];
+      const y = m.positions[id * 3 + 1];
+      const z = m.positions[id * 3 + 2];
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+    }
+  }
   let s = opts.scale ?? 1;
   if (opts.targetH) s = opts.targetH / Math.max(1e-6, maxY - minY);
   else if (opts.targetW) s = opts.targetW / Math.max(1e-6, Math.max(maxX - minX, maxZ - minZ));
   const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
-  const n = m.positions.length / 3;
-  const pos = new Float32Array(m.positions.length);
+  const n = sourceVertexIds ? sourceVertexIds.length : m.positions.length / 3;
+  const pos = new Float32Array(n * 3);
+  const nrm = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
-    pos[i * 3] = (m.positions[i * 3] - cx) * s;
-    pos[i * 3 + 1] = (m.positions[i * 3 + 1] - minY) * s - (opts.sink ?? 0);
-    pos[i * 3 + 2] = (m.positions[i * 3 + 2] - cz) * s;
+    const sourceIndex = sourceVertexIds ? sourceVertexIds[i] : i;
+    pos[i * 3] = (m.positions[sourceIndex * 3] - cx) * s;
+    pos[i * 3 + 1] = (m.positions[sourceIndex * 3 + 1] - minY) * s - (opts.sink ?? 0);
+    pos[i * 3 + 2] = (m.positions[sourceIndex * 3 + 2] - cz) * s;
+    nrm[i * 3] = m.normals[sourceIndex * 3];
+    nrm[i * 3 + 1] = m.normals[sourceIndex * 3 + 1];
+    nrm[i * 3 + 2] = m.normals[sourceIndex * 3 + 2];
   }
-  const col = new Float32Array(m.colors.length);
+  const col = new Float32Array(n * 3);
   const burn = opts.burn ?? 0, mul = opts.mul ?? 1;
   // r7 terrain_environment: opts.whiteCap = [r,g,b] remaps NEAR-WHITE source
   // vertices (min channel > 0.72, low chroma) to the given tone. The
@@ -333,8 +382,12 @@ function bakedGeometry(name, opts = {}) {
   // blobs at noon — "lit streetlamps" (critique); remapped to dark glazed
   // ceramic they read as insulators.
   const wc = opts.whiteCap || null;
-  for (let i = 0; i < m.colors.length; i += 3) {
-    let r = m.colors[i] * mul, g = m.colors[i + 1] * mul, b = m.colors[i + 2] * mul;
+  for (let i = 0; i < n; i++) {
+    const sourceIndex = sourceVertexIds ? sourceVertexIds[i] : i;
+    const colorIndex = sourceIndex * 3;
+    let r = m.colors[colorIndex] * mul;
+    let g = m.colors[colorIndex + 1] * mul;
+    let b = m.colors[colorIndex + 2] * mul;
     if (wc && Math.min(r, g, b) > 0.72 && Math.max(r, g, b) - Math.min(r, g, b) < 0.10) {
       r = wc[0]; g = wc[1]; b = wc[2];
     }
@@ -343,13 +396,13 @@ function bakedGeometry(name, opts = {}) {
       g = (g + (0.038 - g) * burn) * (1 - burn * 0.25);
       b = (b + (0.032 - b) * burn) * (1 - burn * 0.25);
     }
-    col[i] = r; col[i + 1] = g; col[i + 2] = b;
+    col[i * 3] = r; col[i * 3 + 1] = g; col[i * 3 + 2] = b;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(m.normals), 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  geo.setIndex(m.indices);
+  geo.setIndex(sourceIndices);
   geo.userData.size = {
     w: (maxX - minX) * s, h: (maxY - minY) * s, d: (maxZ - minZ) * s,
   };
@@ -911,6 +964,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
+  const decorationGroundingReceipts = [];
   const v = L.village;
 
   const T = P.tones || {};
@@ -1110,13 +1164,16 @@ ${snowCap ? `
   function addDestructible(kind, x, y, z, yaw = 0, sc = 1, tiltX = 0, tiltZ = 0) {
     const meta = LOCAL_TYPES[kind] || DESTRUCTIBLE_BUILDING_TYPES[kind] || DESTRUCTIBLE_TYPES[kind];
     if (!meta) throw new Error('world/props: unknown destructible kind ' + kind);
+    let groundSupport = null;
     // Center-point placement left wide props hovering over terrain shoulders.
     // Ground against the authored footprint once at map build time. Explicitly
     // pitched fence/wall modules already fit their endpoints and keep that pose.
     if ((meta.fence || meta.wall)) {
       // Runs are pitched from their endpoints, but a concave terrain sample
       // can still rise beneath the module midpoint. Keep that midpoint buried.
-      y = Math.min(y, heightField.getHeightAt(x, z) - 0.025);
+      const centerY = heightField.getHeightAt(x, z);
+      y = Math.min(y, centerY - 0.025);
+      groundSupport = { mode: 'pitched', min: centerY, max: centerY, spread: 0 };
     } else if (Math.abs(tiltX) < 0.08 && Math.abs(tiltZ) < 0.08) {
       const support = (meta.hw != null || meta.hl != null)
         ? sampleObbGround(heightField, x, z,
@@ -1124,6 +1181,7 @@ ${snowCap ? `
         : sampleDiscGround(heightField, x, z,
           (meta.groundR ?? meta.collisionR ?? meta.r) * sc, 0.025);
       y = Math.min(y, support.y);
+      groundSupport = { mode: meta.hw != null || meta.hl != null ? 'obb' : 'disc', ...support };
     }
     let pool = dPools.get(kind);
     if (!pool) { pool = { meta, mats4: [], records: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
@@ -1134,7 +1192,7 @@ ${snowCap ? `
     const rec = {
       kind, cls: meta.cls, x, y, z, yaw, sc,
       r: meta.r * sc, h: meta.h * sc,
-      slot: pool.mats4.length - 1, state: 0, ob: null,
+      slot: pool.mats4.length - 1, state: 0, ob: null, groundSupport,
     };
     const idx = destructibles.length;
     destructibles.push(rec);
@@ -2332,6 +2390,7 @@ ${snowCap ? `
   // world-dressing r1: road fences are now DESTRUCTIBLE fence-kit modules
   // (per-map type, drive-through-able like saplings, shell-breakable) with
   // the odd open gate where field entrances meet the road.
+  const utilityPolePlacements = [];
   {
     const roadsL = L.roads;
     const roadFence = (P.inhabit && P.inhabit.roadFence) || 'fenceplank';
@@ -2356,9 +2415,16 @@ ${snowCap ? `
     // r7 terrain_environment: whiteCap remaps the model's 0.90-white insulator
     // caps to dark glazed glass-green — they rendered as blown "daytime
     // streetlamp" blobs on every pole (player_view critique)
+    // The source model is a whole two-station segment: two posts roughly
+    // 9.5 source metres apart plus conductor faces between them. Use its
+    // near-post slice as the physical primitive, then let terrain policy and
+    // the live utility network decide whether a station has one or two posts.
     const poleGeo = SOURCED.poles && P.telegraph
       ? bakedGeometry('telephone_pole_polygoogle',
-        { targetH: 7.4, sink: 0.15, whiteCap: [0.14, 0.21, 0.16] }) : null;
+        {
+          targetH: 7.4, sink: 0.15, sourceZMin: -1,
+          whiteCap: [0.14, 0.21, 0.16],
+        }) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -2371,53 +2437,70 @@ ${snowCap ? `
     for (let i = 8; P.telegraph && i < roadsL[0].length - 1; i += 1) {
       const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
       const tl = Math.hypot(bx - ax, bz - az);
-      const px = ax - ((bz - az) / tl) * 6.9, pz = az + ((bx - ax) / tl) * 6.9;
+      const tx = (bx - ax) / tl, tz = (bz - az) / tl;
+      const px = ax - tz * 6.9, pz = az + tx * 6.9;
       if (Math.max(Math.abs(px), Math.abs(pz)) > 470 || noVeg(px, pz)) continue;
-      // A pole occupies more than one height-field sample. Plant its full base
-      // against the lowest nearby terrain so a verge shoulder cannot leave it
-      // visibly suspended above the map.
-      const py = sampleDiscGround(heightField, px, pz, 0.30, 0.035).y;
-      const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
-      const networkIndex = poleLine.length;
-      const poleRec = {
-        x: px, y: py, z: pz, yaw: armYaw, sourced: !!SOURCED.poles,
-        attachH: SOURCED.poles ? 6.5 : 5.75,
-      };
-      if (SOURCED.poles) {
-        addBakedInstance('pole', poleGeo, px, py, pz, armYaw, 1);
-        poleRec.instanceIndex = bakedInstances.get('pole').list.length - 1;
+      const partnerX = px + tx * 6.5, partnerZ = pz + tz * 6.5;
+      const allowPair = Math.max(Math.abs(partnerX), Math.abs(partnerZ)) <= 470
+        && !noVeg(partnerX, partnerZ);
+      const station = planUtilityPoleStation(heightField, px, pz, tx, tz, { allowPair });
+      const physicalPoles = station.partner
+        ? [station.primary, station.partner] : [station.primary];
+      utilityPolePlacements.push({
+        station: i,
+        paired: station.paired,
+        pairRelief: station.pairRelief,
+        yaw: station.yaw,
+        poles: physicalPoles.map((post) => ({
+          x: post.x, y: post.y, z: post.z,
+          supportMin: post.support.min,
+          supportMax: post.support.max,
+          supportSpread: post.support.spread,
+        })),
+      });
+      for (const post of physicalPoles) {
+        const networkIndex = poleLine.length;
+        const poleRec = {
+          x: post.x, y: post.y, z: post.z, yaw: station.yaw,
+          sourced: !!SOURCED.poles, attachH: SOURCED.poles ? 6.5 : 5.75,
+        };
         poleLine.push(poleRec);
-        // effects_combat r1: poles are CRUSHABLE — record the instance index
-        // so a driving tank can hinge-topple it (crushProp) instead of
-        // ghosting through.
-        crushables.push({
-          x: px, y: py, z: pz, r: 0.45, h: 7.4,
-          index: poleRec.instanceIndex, wirePoleIndex: networkIndex, toppled: false,
-        });
-        continue;
-      }
-      poleLine.push(poleRec);
-      const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
-      scaleUV(pole, 0.8, 3.0);
-      pole.translate(px, py + 3.0, pz);
-      buckets.wood.push(pole);
-      for (const armY of [5.75, 5.15]) {
-        const arm = box(1.5, 0.11, 0.09, 1.0);
-        arm.rotateY(armYaw);
-        arm.translate(px, py + armY, pz);
-        buckets.wood.push(arm);
-        for (const s of [-1, 1]) { // insulator pegs
-          const peg = box(0.07, 0.16, 0.07, 2.0);
-          peg.rotateY(armYaw);
-          peg.translate(px + Math.cos(armYaw) * 0.6 * s, py + armY + 0.13, pz - Math.sin(armYaw) * 0.6 * s);
-          buckets.wood.push(peg);
+        if (SOURCED.poles) {
+          addBakedInstance('pole', poleGeo, post.x, post.y, post.z, station.yaw, 1);
+          poleRec.instanceIndex = bakedInstances.get('pole').list.length - 1;
+          // Each physical post owns its collision/topple record. A paired
+          // station therefore cannot keep an invisible second collision after
+          // one post falls.
+          crushables.push({
+            x: post.x, y: post.y, z: post.z, r: 0.45, h: 7.4,
+            index: poleRec.instanceIndex, wirePoleIndex: networkIndex, toppled: false,
+          });
+          continue;
         }
+        const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
+        scaleUV(pole, 0.8, 3.0);
+        pole.translate(post.x, post.y + 3.0, post.z);
+        buckets.wood.push(pole);
+        for (const armY of [5.75, 5.15]) {
+          const arm = box(1.5, 0.11, 0.09, 1.0);
+          arm.rotateY(station.yaw);
+          arm.translate(post.x, post.y + armY, post.z);
+          buckets.wood.push(arm);
+          for (const s of [-1, 1]) { // insulator pegs
+            const peg = box(0.07, 0.16, 0.07, 2.0);
+            peg.rotateY(station.yaw);
+            peg.translate(post.x + Math.cos(station.yaw) * 0.6 * s,
+              post.y + armY + 0.13, post.z - Math.sin(station.yaw) * 0.6 * s);
+            buckets.wood.push(peg);
+          }
+        }
+        const brace = box(0.06, 1.1, 0.06, 1.5);
+        brace.rotateZ(0.6);
+        brace.rotateY(station.yaw);
+        brace.translate(post.x + Math.cos(station.yaw) * 0.26,
+          post.y + 4.8, post.z - Math.sin(station.yaw) * 0.26);
+        buckets.wood.push(brace);
       }
-      const brace = box(0.06, 1.1, 0.06, 1.5);
-      brace.rotateZ(0.6);
-      brace.rotateY(armYaw);
-      brace.translate(px + Math.cos(armYaw) * 0.26, py + 4.8, pz - Math.sin(armYaw) * 0.26);
-      buckets.wood.push(brace);
     }
     // Catenary topology. Geometry is instantiated after material finalization;
     // keeping the spans out of the static dark bucket lets adjacent wires be
@@ -2442,7 +2525,8 @@ ${snowCap ? `
         const ox = pl.x + (prng2() - 0.5) * 4, oz = pl.z + (prng2() - 0.5) * 4;
         if (Math.max(Math.abs(ox), Math.abs(oz)) > 460 || noVeg(ox, oz)) continue;
         if (heightField._roadDist(ox, oz) < 4.2) continue;
-        const oy = heightField.getHeightAt(ox, oz);
+        const stumpSupport = sampleDiscGround(heightField, ox, oz, 0.17, 0.03);
+        const oy = stumpSupport.y;
         const yawD = prng2() * Math.PI * 2;
         // snapped stump
         const stump = new THREE.CylinderGeometry(0.13, 0.17, 0.9 + prng2() * 0.6, 7, 1);
@@ -2450,16 +2534,31 @@ ${snowCap ? `
         stump.rotateZ((prng2() - 0.5) * 0.24);
         stump.translate(ox, oy + 0.45, oz);
         buckets.wood.push(stump);
-        // felled pole lying along yawD, slightly proud of the grass
-        const fall = new THREE.CylinderGeometry(0.09, 0.15, 5.6 + prng2() * 1.2, 7, 1);
+        // Felled poles are long enough to span a verge shoulder. Align the
+        // rigid body to terrain at both ends instead of floating its far end
+        // from the stump's one center sample.
+        const fallLength = 5.6 + prng2() * 1.2;
+        const dirX = Math.sin(yawD), dirZ = Math.cos(yawD);
+        const fallX = ox + dirX * (fallLength * 0.5 + 0.4);
+        const fallZ = oz + dirZ * (fallLength * 0.5 + 0.4);
+        const fallPose = planGroundedSegment(
+          heightField, fallX, fallZ, dirX, dirZ, fallLength, 0.13, 0.02,
+        );
+        const fall = new THREE.CylinderGeometry(0.09, 0.15, fallLength, 7, 1);
         scaleUV(fall, 0.8, 3.0);
-        fall.rotateX(Math.PI / 2);
-        fall.rotateY(yawD);
-        fall.translate(ox + Math.sin(yawD) * 3.4, oy + 0.16, oz + Math.cos(yawD) * 3.4);
+        _quat.setFromUnitVectors(_upAxis,
+          _posv.set(fallPose.axisX, fallPose.axisY, fallPose.axisZ));
+        fall.applyQuaternion(_quat);
+        fall.translate(fallPose.x, fallPose.y, fallPose.z);
         buckets.wood.push(fall);
+        decorationGroundingReceipts.push({
+          kind: 'felled-utility-pole', x: fallPose.x, y: fallPose.y, z: fallPose.z,
+          relief: fallPose.relief, baseClearance: -0.02,
+          start: fallPose.start, end: fallPose.end,
+        });
         const arm = box(1.4, 0.10, 0.09, 1.0); // crossarm knocked loose
         arm.rotateY(yawD + 0.5 + prng2());
-        arm.translate(ox + Math.sin(yawD) * 5.6, oy + 0.10, oz + Math.cos(yawD) * 5.6);
+        arm.translate(fallPose.end.x, fallPose.end.support.min + 0.05, fallPose.end.z);
         buckets.wood.push(arm);
       }
     }
@@ -2661,22 +2760,35 @@ ${snowCap ? `
     if (x > v.x0 - 6 && x < v.x1 + 6 && z > v.z0 - 6 && z < v.z1 + 6) continue;
     if (heightField._roadDist(x, z) < 7) continue;
     if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
-    const y = heightField.getHeightAt(x, z);
     if (rng() < 0.6) { // log
       const r = 0.16 + rng() * 0.13, len = 2.2 + rng() * 1.9;
+      const yaw = rng() * Math.PI * 2;
+      const pose = planGroundedSegment(
+        heightField, x, z, Math.cos(yaw), -Math.sin(yaw), len, r * 0.85, r * 0.1,
+      );
       const log = new THREE.CylinderGeometry(r * 0.85, r, len, 7, 1);
       scaleUV(log, 1.0, len * 0.5);
-      log.rotateZ(Math.PI / 2 + (rng() - 0.5) * 0.1);
-      log.rotateY(rng() * Math.PI * 2);
-      log.translate(x, y + r * 0.75, z);
+      _quat.setFromUnitVectors(_upAxis, _posv.set(pose.axisX, pose.axisY, pose.axisZ));
+      log.applyQuaternion(_quat);
+      log.translate(pose.x, pose.y, pose.z);
       buckets.wood.push(log);
+      decorationGroundingReceipts.push({
+        kind: 'fallen-log', x: pose.x, y: pose.y, z: pose.z,
+        relief: pose.relief, baseClearance: -r * 0.1,
+        start: pose.start, end: pose.end,
+      });
     } else { // stump
       const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
+      const support = sampleDiscGround(heightField, x, z, r, 0.06);
       const st = new THREE.CylinderGeometry(r * 0.92, r * 1.15, h, 8, 1);
       scaleUV(st, 1.5, 0.5);
       st.rotateY(rng() * Math.PI);
-      st.translate(x, y + h / 2 - 0.06, z);
+      st.translate(x, support.y + h / 2, z);
       buckets.wood.push(st);
+      decorationGroundingReceipts.push({
+        kind: 'stump', x, y: support.y, z, relief: support.spread, baseClearance: -0.06,
+        supportMin: support.min, supportMax: support.max,
+      });
     }
     placed++;
   }
@@ -3011,13 +3123,21 @@ ${snowCap ? `
         yield { fine: true, tankBuilder: specId };
         const baked = bakeFor(specId, pop);
         if (!baked) return false;
+        const support = planGroundedObbPose(
+          heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
+        );
+        // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
+        // those candidates and let the seeded road pass find a supported
+        // site instead of either floating a track or burying half the tank.
+        if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return false;
         bakedTris += baked.tris; // budget counts PLACED tris (clones render too)
-        const y = heightField.getHeightAt(x, z);
-        const tilt = (wrng() - 0.5) * 0.10;
+        const y = support.y;
+        _quat.setFromUnitVectors(_upAxis,
+          _posv.set(support.normalX, support.normalY, support.normalZ));
         const g = baked.geo.clone();
-        g.rotateZ(tilt);
         g.rotateY(yaw);
-        g.translate(x, y - 0.14, z); // settled on dead suspension
+        g.applyQuaternion(_quat);
+        g.translate(x, y, z); // settled on dead suspension across its whole footprint
         wreckGeos.push(g);
         // Secondary destruction stays inside the same static merged wreck
         // mesh: torn track runs, wheels and armor plates improve the scene
@@ -3029,16 +3149,17 @@ ${snowCap ? `
           });
           wreckSerial++;
           debris.geo.rotateY(yaw);
-          debris.geo.translate(x, y - 0.13, z);
+          debris.geo.applyQuaternion(_quat);
+          debris.geo.translate(x, y + 0.01, z);
           wreckGeos.push(debris.geo);
           debrisTris = debris.tris;
           bakedTris += debrisTris;
         }
         if (baked.shadowGeo) {
           const sg = baked.shadowGeo.clone();
-          sg.rotateZ(tilt);
           sg.rotateY(yaw);
-          sg.translate(x, y - 0.14, z);
+          sg.applyQuaternion(_quat);
+          sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
         // solid obstacle + shell collider from the yaw-rotated footprint
@@ -3051,7 +3172,16 @@ ${snowCap ? `
         obstacles.push(rec);
         colliders.push(cloneCollisionRecord(rec));
         wreckScorch.push([x, z]);
-        tankWreckSpots.push({ specId, x, z, yaw, hx, hz, h: baked.h, debrisTris });
+        tankWreckSpots.push({
+          specId, x, y, z, yaw, hx, hz, h: baked.h, debrisTris,
+          supportMin: support.min, supportMax: support.max, supportSpread: support.spread,
+          supportMaxEmbed: support.maxEmbed, supportMaxFloat: support.maxFloat,
+        });
+        decorationGroundingReceipts.push({
+          kind: 'tank-wreck', specId, x, y, z, relief: support.spread,
+          baseClearance: support.maxFloat,
+          supportMin: support.min, supportMax: support.max,
+        });
         return true;
       }
       let placedW = 0;
@@ -3070,7 +3200,7 @@ ${snowCap ? `
       }
       for (let ri = 0; ri < roads.length && placedW < wreckCount; ri++) {
         const nodes = roads[ri];
-        for (let i = 5; i < nodes.length - 1 && placedW < wreckCount; i += 4 + ((wrng() * 3) | 0)) {
+        for (let i = 5; i < nodes.length - 1 && placedW < wreckCount; i += 3 + ((wrng() * 2) | 0)) {
           if (bakedTris > 260000) break; // perf stop — enough hulks for one map
           const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
           const tl = Math.hypot(bx - ax, bz - az) || 1;
@@ -3841,7 +3971,10 @@ ${snowCap ? `
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing only: pushes into the existing material buckets, no colliders.
-  dressMapExtras({ mapId, extraKits: P.extraKits, L, heightField, rng, buckets });
+  dressMapExtras({
+    mapId, extraKits: P.extraKits, L, heightField, rng, buckets,
+    groundingReceipts: decorationGroundingReceipts,
+  });
 
   // --- merge buckets into one mesh per material ---
   for (const key of Object.keys(buckets)) {
@@ -4460,6 +4593,7 @@ ${snowCap ? `
 
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
+    utilityPolePlacements, decorationGroundingReceipts,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures } };
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.js';
 import { createHeightField } from './terrain.js';
 import { sampleHorizonSilhouette } from './maps/horizon.js';
+import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.js';
 import './treeGrounding.selftest.mjs';
 
 const EXPANSION = [
@@ -16,6 +17,7 @@ const MODERN_FAMILIES = [
   'leclerc', 'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete',
 ];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
+const polePolicyByMap = new Map();
 
 assert.equal(MAP_IDS.length, 20, 'the battlefield roster contains twenty maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
@@ -47,6 +49,43 @@ for (const mapId of MAP_IDS) {
     `${mapId}: memorable strongpoint identities are unique`);
   const structureFamilies = new Set(config.props.destructibleBuildings);
   const hf = createHeightField(1337, config);
+  if (config.props.telegraph) {
+    const stations = [];
+    const nodes = hf._layout.roads[0];
+    const noPlacement = hf._noVeg || (() => false);
+    for (let i = 8; i < nodes.length - 1; i++) {
+      const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+      const length = Math.hypot(bx - ax, bz - az) || 1;
+      const tx = (bx - ax) / length, tz = (bz - az) / length;
+      const x = ax - tz * 6.9, z = az + tx * 6.9;
+      if (Math.max(Math.abs(x), Math.abs(z)) > 470 || noPlacement(x, z)) continue;
+      const partnerX = x + tx * 6.5, partnerZ = z + tz * 6.5;
+      const allowPair = Math.max(Math.abs(partnerX), Math.abs(partnerZ)) <= 470
+        && !noPlacement(partnerX, partnerZ);
+      const station = planUtilityPoleStation(hf, x, z, tx, tz, { allowPair });
+      stations.push(station);
+      assert.ok(station.primary.y <= station.primary.support.min - 0.0349,
+        `${mapId}: every primary utility post is planted into its terrain support`);
+      if (station.partner) {
+        assert.ok(station.partner.y <= station.partner.support.min - 0.0349,
+          `${mapId}: every paired utility post has its own terrain support`);
+        assert.ok(station.pairRelief <= UTILITY_POLE_PAIR_MAX_RELIEF + 1e-9,
+          `${mapId}: paired utility stations only survive on flat ground`);
+      }
+    }
+    assert.ok(stations.length >= 20, `${mapId}: complete utility line audited`);
+    const policy = { pairs: 0, singles: 0, maxRejectedRelief: 0 };
+    for (const station of stations) {
+      if (station.paired) policy.pairs++;
+      else {
+        policy.singles++;
+        policy.maxRejectedRelief = Math.max(policy.maxRejectedRelief, station.pairRelief);
+      }
+    }
+    polePolicyByMap.set(mapId, policy);
+  } else {
+    polePolicyByMap.set(mapId, { pairs: 0, singles: 0, maxRejectedRelief: 0 });
+  }
   for (const beat of beats) {
     assert.ok(Math.max(Math.abs(beat.x), Math.abs(beat.z)) <= 360,
       `${mapId}/${beat.id}: strongpoint stays in the playable interior`);
@@ -67,6 +106,16 @@ for (const mapId of MAP_IDS) {
       `${mapId}: strongpoints distribute choices instead of forming one clutter knot`);
   }
 }
+
+assert.ok(polePolicyByMap.get('verdant').pairs > 0 && polePolicyByMap.get('verdant').singles > 0,
+  'Verdant Fields keeps flat-ground pairs while its uneven stations become single posts');
+assert.ok(polePolicyByMap.get('titan_gorge').singles >= 20
+  && polePolicyByMap.get('titan_gorge').singles > polePolicyByMap.get('titan_gorge').pairs * 3,
+  'Titan Gorge uses single posts throughout its steep utility corridor');
+assert.ok(polePolicyByMap.get('titan_gorge').maxRejectedRelief > 2,
+  'Titan Gorge audit covers the cliff shelves that previously suspended a second post');
+assert.deepEqual(polePolicyByMap.get('delta'), { pairs: 0, singles: 0, maxRejectedRelief: 0 },
+  'Mekong Delta intentionally has no utility-pole line to audit');
 
 for (const mapId of [...EXPANSION, ...EXTREME]) {
   const config = getMapConfig(mapId);

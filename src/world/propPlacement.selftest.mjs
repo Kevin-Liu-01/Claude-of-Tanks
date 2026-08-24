@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { pushHullFromObstacle, rayCollisionRecord, setObbShape } from './collision.js';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.js';
-import { hedgehogBeamSpecs, sampleDiscGround, sampleObbGround } from './propPlacement.js';
+import {
+  UTILITY_POLE_PAIR_MAX_RELIEF,
+  hedgehogBeamSpecs,
+  planGroundedObbPose,
+  planGroundedSegment,
+  planUtilityPoleStation,
+  sampleDiscGround,
+  sampleObbGround,
+} from './propPlacement.js';
 
 const heightField = {
   getHeightAt(x, z) { return x * 0.21 - z * 0.13 + 2; },
@@ -32,6 +40,50 @@ for (let ix = -1; ix <= 1; ix++) for (let iz = -1; iz <= 1; iz++) {
 const obbMin = Math.min(...obbSamples.map(([x, z]) => heightField.getHeightAt(x, z)));
 assert.ok(Math.abs(obb.y - (obbMin - 0.03)) < 1e-10,
   'oriented props use their real rotated footprint instead of an enclosing AABB');
+
+const flatField = { getHeightAt() { return 3.25; } };
+const flatStation = planUtilityPoleStation(flatField, 2, -4, 0.6, 0.8);
+assert.equal(flatStation.paired, true, 'flat verges retain a two-post utility station');
+assert.ok(flatStation.partner, 'paired utility stations expose the second physical post');
+assert.ok(Math.abs(flatStation.primary.y - (3.25 - 0.035)) < 1e-10,
+  'the first utility post is independently planted below terrain support');
+assert.ok(Math.abs(flatStation.partner.y - (3.25 - 0.035)) < 1e-10,
+  'the second utility post is independently planted below terrain support');
+
+const shelfField = {
+  getHeightAt(x) { return x < 3.2 ? 5 : 3.8; },
+};
+const shelfStation = planUtilityPoleStation(shelfField, 0, 0, 1, 0);
+assert.equal(shelfStation.paired, false,
+  'a utility station drops to one post when its pair would hang over a shelf');
+assert.equal(shelfStation.partner, null, 'rejected shelf partners are not emitted');
+assert.ok(shelfStation.pairRelief > UTILITY_POLE_PAIR_MAX_RELIEF,
+  'pair rejection reports the terrain relief that caused it');
+
+const mildGradeField = {
+  getHeightAt(x, z) { return 1.7 + x * 0.015 - z * 0.012; },
+};
+const mildStation = planUtilityPoleStation(mildGradeField, -4, 7, 0.4, 0.9);
+assert.equal(mildStation.paired, true,
+  'a visually flat mild grade can retain the authored paired rhythm');
+assert.notEqual(mildStation.primary.y, mildStation.partner.y,
+  'paired posts keep separate terrain supports instead of sharing one origin height');
+
+const segment = planGroundedSegment(heightField, 1, -2, 0.8, -0.6, 5.5, 0.2, 0.03);
+assert.ok(Math.abs(Math.hypot(segment.axisX, segment.axisY, segment.axisZ) - 1) < 1e-10,
+  'wide decoration grounding returns a normalized terrain-aligned axis');
+assert.notEqual(segment.start.support.min, segment.end.support.min,
+  'wide decorations sample both physical ends instead of only their center');
+assert.ok(Math.abs(segment.y - ((segment.start.support.min + segment.end.support.min) * 0.5 + 0.17)) < 1e-10,
+  'wide cylindrical decorations rest on their two terrain supports');
+
+const rigidPose = planGroundedObbPose(heightField, 3, -6, 2.2, 4.5, 0.37, 0.08);
+assert.ok(rigidPose.maxFloat <= -0.079999999,
+  'terrain-fitted rigid decorations have no floating footprint sample');
+assert.ok(rigidPose.maxEmbed < 0.09,
+  'a planar grade does not bury a terrain-fitted rigid decoration');
+assert.ok(Math.abs(Math.hypot(rigidPose.normalX, rigidPose.normalY, rigidPose.normalZ) - 1) < 1e-10,
+  'terrain-fitted rigid decorations return a normalized support-plane normal');
 
 const specs = hedgehogBeamSpecs(0, 0, 0, 0.23, 1, [0.04, -0.03, 0.02]);
 assert.equal(specs.length, 3, 'hedgehog exposes one collision slab per visible beam');

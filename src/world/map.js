@@ -231,6 +231,11 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
       ? props.getLoosePropStats() : { total: 0, active: 0 },
     // DESTRUCTIBLES r1: baked real-tank wreck placements (probes/debug)
     tankWreckSpots: props.tankWreckSpots || [],
+    // Authored utility stations with exact terrain-support receipts. Visual
+    // audits use these to distinguish intentional flat-ground pairs from the
+    // single posts required on shelves and gorge shoulders.
+    utilityPolePlacements: props.utilityPolePlacements || [],
+    decorationGroundingReceipts: props.decorationGroundingReceipts || [],
     // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
     // queues the hull overrun, marks the record `crushed`, then calls this
     // for the world-side fall/break. Tree trunks (treeIdx, vegetation.js)
