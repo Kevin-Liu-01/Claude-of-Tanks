@@ -2319,14 +2319,22 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
     style: 'rubber', dishR: 0.82,
     wheelR: 0.385, wheelW: 0.275, wheelY: 0.462, xc: 1.3337,
     wheelZs: [2.2358, 1.1957, 0.1555, -0.8845, -1.9247],
-    // The visible end-drum faces retain their print radii while the belt runs
-    // on the recessed engagement rings inside the armored front/rear bays.
-    // Those smaller course radii are necessary to clear the sealed hull
-    // hardware above the wraps; wheel/belt seating is handled by the lower
-    // band and loaded-run changes below.
-    sprocket: { z: -3.146, y: 1.155, r: 0.352, trackR: 0.22 },
-    idler: { z: 3.278, y: 0.88, r: 0.385, trackR: 0.231 },
-    rollers: [2.97, 1.595, 0.165, -1.32].map((z) => ({ z, y: 0.8525, r: 0.0935 })),
+    // Terminal wheel rim and tread course share one visible engagement radius.
+    // Keep the front idler near road-wheel scale, but move its complete station
+    // aft/down so the larger wrap remains inside the certified bow envelope.
+    // The old bug paired a 0.385 m painted idler with a 0.231 m wrap, letting
+    // the olive disc physically pierce the shoes at low front angles.
+    sprocket: { z: -3.146, y: 1.155, r: 0.22 },
+    // idlerGeo's contact rim ends at 97.5% of its nominal radius, so this
+    // tiny compensation seats that real rim exactly at the 0.33 m band bore.
+    idler: { z: 3.17, y: 0.82, r: 0.33 / 0.975, trackR: 0.33 },
+    // The leading return roller meets the enlarged idler at exactly the same
+    // 1.195 m track centerline. That makes the upper run tangent at 12 o'clock
+    // instead of kinking downward immediately behind the wheel.
+    rollers: [
+      { z: 2.80, y: 1.0565, r: 0.0935 },
+      ...[1.595, 0.165, -1.32].map((z) => ({ z, y: 0.8525, r: 0.0935 })),
+    ],
     // §5.364 owner order ("make the tracks beefier and have the same
     // decorations as other tracks"): the fine-pitch course keeps its Type 10
     // identity but at fleet gauge — band 0.055 -> 0.072, shoe relief
@@ -2344,6 +2352,12 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
     trackW: 0.5159, trackTh: 0.09, topY: 0.935, botY: 0.051,
     contactZF: 2.4283, contactZR: -2.1172,
     arms: true, paintedEnds: true, coveredTop: true,
+    // Recess every painted terminal-wheel face well behind the 1.5857 m tread
+    // plane. Merely clearing the shoes by a few millimetres still read as a
+    // green plate in front at low oblique angles; this keeps 5+ cm of visible
+    // depth between the tread face and both the idler and sprocket faces.
+    sprocketDepthScale: 0.68, idlerDepthScale: 0.78,
+    frontArcSteps: 12, tautFrontSpan: true,
     linkPitchM: 0.138, shoeRadialScale: 0.85,
     pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
     padHex: 0x31322a, chainHex: 0x292a24,
@@ -2354,13 +2368,14 @@ function buildType10Native2026(P, { compactRightGunnerSight = true } = {}) {
   // while the drums spin. Radially inside the shoe guide-horn sweep
   // (annulus inner ~0.17 from each axis; rings <=0.155) and laterally at
   // the band face, 5 cm inside the 1.6556 skirt inner (§B4).
+  const endFaceX = 1.515; // rim outer edge 1.5355: 50.2 mm behind shoe face
   for (const s of [-1, 1]) {
-    P.add('hullTrack', KIT.xform(torus(0.148, 0.0205, P.q ? 20 : 12), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.604, 0.88, 3.278);  // idler rim lip
-    P.add('hullTrack', KIT.xform(torus(0.080, 0.0165, P.q ? 16 : 10), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.607, 0.88, 3.278);  // idler inner ring
-    P.add('hullTrack', cylX(0.050, 0.038, 10), s * 1.607, 0.88, 3.278);         // idler hub cap
-    P.add('hullTrack', KIT.xform(torus(0.150, 0.0195, P.q ? 20 : 12), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.604, 1.155, -3.146); // sprocket carrier ring
-    P.add('hullTrack', KIT.xform(torus(0.078, 0.0155, P.q ? 16 : 10), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.607, 1.155, -3.146);
-    P.add('hullTrack', cylX(0.048, 0.036, 10), s * 1.607, 1.155, -3.146);       // sprocket hub cap
+    P.add('hullTrack', KIT.xform(torus(0.148, 0.0205, P.q ? 20 : 12), 0, 0, 0, 0, 0, Math.PI / 2), s * endFaceX, 0.82, 3.17);   // inset idler rim dress; native spinner supplies full-size rim
+    P.add('hullTrack', KIT.xform(torus(0.080, 0.0165, P.q ? 16 : 10), 0, 0, 0, 0, 0, Math.PI / 2), s * endFaceX, 0.82, 3.17);   // idler inner ring
+    P.add('hullTrack', cylX(0.050, 0.038, 10), s * endFaceX, 0.82, 3.17);          // idler hub cap
+    P.add('hullTrack', KIT.xform(torus(0.150, 0.0195, P.q ? 20 : 12), 0, 0, 0, 0, 0, Math.PI / 2), s * endFaceX, 1.155, -3.146); // sprocket carrier ring
+    P.add('hullTrack', KIT.xform(torus(0.078, 0.0155, P.q ? 16 : 10), 0, 0, 0, 0, 0, Math.PI / 2), s * endFaceX, 1.155, -3.146);
+    P.add('hullTrack', cylX(0.048, 0.036, 10), s * endFaceX, 1.155, -3.146);       // sprocket hub cap
   }
   // §5.364 BAY FILL (owner: "see through" + "fill up the insides"): the old
   // 0.616-tall near-black hullShadow liner topped out at 1.10, leaving a

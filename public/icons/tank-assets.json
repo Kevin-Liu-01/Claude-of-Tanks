@@ -141274,7 +141274,7 @@
             "max": [
               -1.0757,
               1.4644,
-              3.5979
+              3.59
             ],
             "turretLocal": false
           },
@@ -141289,7 +141289,7 @@
             "max": [
               1.5917,
               1.4644,
-              3.5979
+              3.59
             ],
             "turretLocal": false
           }
@@ -141342,8 +141342,8 @@
           }
         ]
       },
-      "geometryHash": "f49450eb",
-      "metadataHash": "e2af61e4",
+      "geometryHash": "65a67f92",
+      "metadataHash": "f746ef7c",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -141432,24 +141432,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73757,
-          "sha256": "fda8ca0843c23d9545211c6b1bab8e06f1bfc304841aa1bc8a23967208e0cd9b"
+          "bytes": 74258,
+          "sha256": "41eff9aa04d877f815e0984e80a82e722b2f1fd6912a0ec2f71789dd611199be"
         },
         "armorSide": {
           "file": "type10_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75431,
-          "sha256": "c93397ebf5acfcf88acc0f255ac72777f2505f3baf8c3904d1b24c7616fa4549"
+          "bytes": 75452,
+          "sha256": "984074449686803ed5494e6f57d31500d45ef5894135bb0e6a200a28c790e23c"
         },
         "modulesSide": {
           "file": "type10_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79023,
-          "sha256": "173623677d0aaaa77bd07241ae33d0949b9791cebbf4952972f7fa142da96d76"
+          "bytes": 79411,
+          "sha256": "51922250bf0e6693e13b7b77c101a61cad07f4e92e0c501ffa7becac4aab5bd0"
         },
         "markings": {
           "file": "type10_markings.png",
@@ -142266,7 +142266,7 @@
             "max": [
               -1.0757,
               1.4644,
-              3.5979
+              3.59
             ],
             "turretLocal": false
           },
@@ -142281,7 +142281,7 @@
             "max": [
               1.5917,
               1.4644,
-              3.5979
+              3.59
             ],
             "turretLocal": false
           }
@@ -142334,8 +142334,8 @@
           }
         ]
       },
-      "geometryHash": "c5a68915",
-      "metadataHash": "5fa4e3f8",
+      "geometryHash": "1312484a",
+      "metadataHash": "b354eed0",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -142424,24 +142424,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76901,
-          "sha256": "dd0a2282841926e80fc67525e4380f2823c3f0fb6d3e3c8def3608172b39cd32"
+          "bytes": 77435,
+          "sha256": "02655d846f2d7f9cdeabadaff8c8949634c1eeb22dcf992b000a8623d9729e63"
         },
         "armorSide": {
           "file": "type10b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79879,
-          "sha256": "0497eb34b856c19811dd560e75aa55091fe15abeea97116793b18b0a5097d6b0"
+          "bytes": 79684,
+          "sha256": "90ecc4bb0ae93586e1e282abd11ebd84acb82405f257f9ef67ad5a1102c9ec3f"
         },
         "modulesSide": {
           "file": "type10b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84489,
-          "sha256": "29d204bb8e7d3c2feb9cdaa3fb875cac1e8238e48315755f868997ba94ecdb7e"
+          "bytes": 84409,
+          "sha256": "211ebd1113ba32bd6bfb244b9850c8113f5fe15199c8f8e9a85bba763bf1bf10"
         },
         "markings": {
           "file": "type10b_markings.png",

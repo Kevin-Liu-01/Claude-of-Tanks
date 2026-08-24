@@ -788,7 +788,10 @@ const TRACK_TEXTURE_LINKS_PER_REPEAT = 4;
 // conformance, steering phase and wrap tangents all come from the belt course.
 const TRACK_SHOE_BAND_GAP_M = 0.012;
 
-function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null }) {
+function trackLoopPoints({
+  idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
+  frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
+}) {
   const pts = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
   // this radial clearance the wrap is buried in the wheel geometry and the
@@ -837,7 +840,9 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   for (let k = 0; k < sup.length - 1; k++) {
     const [z0, y0] = sup[k], [z1, y1] = sup[k + 1];
     const span = Math.abs(z1 - z0);
-    const dip = Math.min(sag, sag * span * 1.6);
+    const dip = tautFrontSpan && k === sup.length - 2
+      ? 0
+      : Math.min(sag, sag * span * 1.6);
     const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
     for (let j = k === 0 ? 0 : 1; j <= steps; j++) {
       const t = j / steps;
@@ -876,7 +881,7 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   const aF = Math.min(aIdler, 176, gF);        // front arc end
   const aGR = 360 - gR;                        // rear crossing in arc() angles
   const aR = Math.max(aSprk, 184, aGR);        // rear arc start
-  arc(idler, 0, aF, 7);                        // around the idler (front)
+  arc(idler, 0, aF, frontArcSteps);             // around the idler (front)
   // bottom run: approach point -> flat contact span -> departure point.
   // A ground-terminated wrap enters the ground at its own crossing point —
   // never emit a flat-run endpoint past it (a contact span reaching beyond a
@@ -889,7 +894,7 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   } else {
     for (let k = 1; k <= 5; k++) pts.push([zi + (zs - zi) * (k / 6), botY]);
   }
-  arc(sprocket, aR, 360, 7);                   // around the sprocket (rear)
+  arc(sprocket, aR, 360, rearArcSteps);         // around the sprocket (rear)
   // drop duplicate closing point
   pts.pop();
   // ground clamp, kept as the last-resort safety net (pathological cfgs
@@ -1572,6 +1577,9 @@ function buildTrackCourse({
     : trackLoopPoints({
       idler: { ...frontEnd }, sprocket: { ...rearEnd },
       botY, topY, sag, supports, contact,
+      frontArcSteps: cfg.frontArcSteps ?? 7,
+      rearArcSteps: cfg.rearArcSteps ?? 7,
+      tautFrontSpan: cfg.tautFrontSpan ?? false,
     });
 
   // Band normals and shoe orientation use a clockwise (z,y) course.
@@ -2006,6 +2014,21 @@ function buildRunningGear(P, cfg) {
     lp, cfg.endRingSpan ?? trackW, wheelPattern, cfg.sprocketTeeth !== false,
     sprocketEngagementR);
   const ig = idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
+  // Some armored bays require full-radius terminal wheels but expose only a
+  // narrow shoe corridor. Keep their radial anatomy and spin unchanged while
+  // seating the complete wheel face behind the tread's outboard plane. This
+  // is a geometry-space depth correction, not renderOrder/polygonOffset, so
+  // it remains correct from every camera and costs no additional draw call.
+  const sprocketDepthScale = cfg.sprocketDepthScale ?? cfg.endWheelDepthScale ?? 1;
+  const idlerDepthScale = cfg.idlerDepthScale ?? cfg.endWheelDepthScale ?? 1;
+  if (sprocketDepthScale !== 1) {
+    sg.body.scale(sprocketDepthScale, 1, 1);
+    sg.dark.scale(sprocketDepthScale, 1, 1);
+  }
+  if (idlerDepthScale !== 1) {
+    ig.body.scale(idlerDepthScale, 1, 1);
+    ig.dark.scale(idlerDepthScale, 1, 1);
+  }
   const sprocketSpinR = sg.toothCount
     ? sg.toothPitchRadius
     : (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M;
