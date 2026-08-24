@@ -26,7 +26,7 @@ function cassette(P, owner, x, y, z, w, h, d, rotation = null, fastener = true) 
 }
 
 function seatedArmorCassette(P, owner, x, y, z, w, h, d, rotation = null, {
-  axis = 'y', contactSide = -1, embed = 0.012, lid = true,
+  axis = 'y', contactSide = -1, embed = 0.012, lid = true, lidEmbed = 0.002,
 } = {}) {
   const bucket = owner === 'hull' ? 'hull' : 'turret';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
@@ -42,7 +42,14 @@ function seatedArmorCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   const lidDims = { x: w * 0.76, y: h * 0.76, z: d * 0.76 };
   lidDims[axis] = Math.min(0.020, dims[axis] * 0.22);
   const lidShift = { x: 0, y: 0, z: 0 };
-  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5 - lidDims[axis] * 0.5);
+  // The old subtraction placed the lid's OUTER face exactly on the carrier's
+  // outer face. Both same-facing triangles then wrote the same depth and the
+  // camouflage/dark panel alternated as the camera moved. Seat the lid by its
+  // inner face instead: a 2 mm lap keeps physical contact while the remaining
+  // 18 mm is real geometric relief, independent of draw order or depth bias.
+  const resolvedLidEmbed = Math.min(lidEmbed, lidDims[axis] * 0.25);
+  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
+    + lidDims[axis] * 0.5 - resolvedLidEmbed);
   P.add(detail, KIT.xform(KIT.box(lidDims.x, lidDims.y, lidDims.z),
     lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
 }
@@ -711,6 +718,8 @@ function addType10BPackage(P) {
     eraCarrierDerivedTransforms: true,
     turretEraEmbedM: eraEmbed,
     hullEraEmbedM: 0.010,
+    eraLidEmbedM: 0.002,
+    eraLidReliefM: 0.018,
     kaiBasketRearZ: kaiBasketZ - 0.77 - 0.025 * 1.1,
     baseBasketForwardZ: -2.585,
     basketJoinGapM: 0,

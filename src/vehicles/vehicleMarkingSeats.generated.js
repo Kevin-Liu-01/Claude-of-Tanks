@@ -2637,9 +2637,9 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          -1.716,
-          1.25301,
-          -0.4514679
+          -1.568,
+          1.55562,
+          -0.8276704
         ],
         "quaternion": [
           0,
@@ -2672,9 +2672,9 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 8,
-        "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": 0.0025206
+        "visibilityClearSamples": 7,
+        "visibilityRatio": 0.7777778,
+        "maximumSurfaceErrorM": 0.0219783
       },
       {
         "kind": "designation",

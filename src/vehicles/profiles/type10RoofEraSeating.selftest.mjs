@@ -58,6 +58,10 @@ assert.ok(kaiReceipt.turretEraEmbedM >= 0.01,
   'Type 10B turret ERA embeds at least 10 mm into its carrier');
 assert.ok(kaiReceipt.hullEraEmbedM >= 0.01,
   'Type 10B hull ERA embeds at least 10 mm into its carrier');
+assert.ok(kaiReceipt.eraLidEmbedM > 0,
+  'Type 10B ERA lids retain physical contact with their cassette carriers');
+assert.ok(kaiReceipt.eraLidReliefM >= 0.015,
+  'Type 10B ERA lid faces stand clear of carrier faces instead of sharing depth');
 assert.equal(kaiReceipt.basketJoinGapM, 0,
   'Type 10B Kai basket and shared bustle rack have no open seam');
 assert.ok(kaiReceipt.kaiBasketRearZ <= kaiReceipt.baseBasketForwardZ + 0.002,

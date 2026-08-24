@@ -412,6 +412,70 @@ function installBattleDetailGroups(records) {
   return { groups, objectCount };
 }
 
+// Exact cross-mesh contact is common in the procedural fleet: access plates,
+// rubber lips, spare track, wheel hardware and armor seams often share a
+// mathematically identical carrier plane. The meshes must remain separate
+// for materials, articulation and damage ownership, but equal depth leaves
+// their visible winner implementation-dependent as the camera moves.
+//
+// Give every raster-visible mesh a deterministic sub-depth in semantic order.
+// `polygonOffsetFactor = 0` avoids slope-dependent crawling; one depth-buffer
+// unit between layers is enough to break equality without changing silhouette
+// geometry or pulling a fitting visibly away from its support. The callback is
+// object-local even though materials are shared: Three invokes it immediately
+// before applying the material's raster state for that draw. Shadow materials
+// are deliberately ignored, so the arbitration cannot introduce shadow acne.
+function installCoplanarDepthLayers(root) {
+  const records = [];
+  let traversalIndex = 0;
+  const semanticPriority = (object) => {
+    const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    const role = material?.userData?.vehicleMaterialRole || object.userData?.appearanceRole || '';
+    const priorities = {
+      gearShadow: 0,
+      armorPaint: 10,
+      wheelPaint: 20,
+      tireRubber: 30,
+      canvas: 40,
+      fittingPaint: 50,
+      wood: 55,
+      trackSteel: 60,
+      gunmetal: 70,
+      opticGlass: 80,
+    };
+    let priority = priorities[role] ?? 45;
+    if (object.userData?.combatHitboxRole === 'externalArmor') priority += 2;
+    else if (object.userData?.combatHitboxRole === 'equipment') priority += 4;
+    return priority;
+  };
+  root.traverse((object) => {
+    if (!object.isMesh || object.userData?.vehicleMarking
+        || object.userData?.authoredShadowProxy) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (!materials.some((material) => material && material.visible !== false
+        && material.colorWrite !== false && (material.opacity ?? 1) > 0)) return;
+    records.push({ object, materials, priority: semanticPriority(object), traversalIndex: traversalIndex++ });
+  });
+  records.sort((lhs, rhs) => lhs.priority - rhs.priority
+    || lhs.traversalIndex - rhs.traversalIndex);
+  records.forEach((record, index) => {
+    const layer = index + 1;
+    const { object, materials } = record;
+    object.userData.coplanarDepthLayer = layer;
+    const previous = object.onBeforeRender;
+    object.onBeforeRender = function applyCoplanarDepthLayer(
+      renderer, scene, camera, geometry, renderedMaterial, group,
+    ) {
+      if (previous) previous.call(this, renderer, scene, camera, geometry, renderedMaterial, group);
+      if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
+      renderedMaterial.polygonOffset = true;
+      renderedMaterial.polygonOffsetFactor = 0;
+      renderedMaterial.polygonOffsetUnits = -layer;
+    };
+  });
+  root.userData.coplanarDepthLayerCount = records.length;
+}
+
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
 // shells, wheels and track band carry the silhouette. The renderer drives
 // THREE.LOD automatically, so articulation (turret yaw) is unaffected.
@@ -7398,6 +7462,10 @@ export function createTank(specId, engineCtx, opts = {}) {
       root.userData.battleDetailObjectCount = installed.objectCount;
     }
   }
+
+  // Run after decoration, static batching and battle-detail regrouping so
+  // every final color-pass mesh receives exactly one stable layer.
+  installCoplanarDepthLayers(root);
 
   return visual;
 }

@@ -176,3 +176,54 @@ node tools/perfprobe.mjs --seconds 60 --breakdown --no-trend --out=/tmp/perf.jso
 
 Geometry changes still require the normal anatomy refresh/check and the full
 playable-roster release gate before publication.
+
+## Coplanar surface stability — 2026-08-24
+
+The fleet now has an explicit no-unresolved-coplanar-overlap invariant. The
+baseline audit found 1,223 exterior, same-facing cross-mesh overlap groups on
+148 of 149 registered tanks, covering 33.870773 m². These were the depth ties
+behind camera-dependent paint swaps, stippling and flicker on armor panels,
+rubber lips, wheel hardware, spare track and roof fittings.
+
+The repair has two parts:
+
+1. Incorrect authored geometry is separated physically. On the Type 10B, the
+   ERA lid calculation had placed each lid's outer face exactly on its carrier
+   face. The lids now retain a 2 mm attachment lap while standing 18 mm proud
+   of the carrier. This removed both marked hull-side conflicts and all forty
+   turret-lid conflicts without relying on render order.
+2. Intentional cross-mesh contacts remain separate for material, articulation
+   and damage ownership, but every final color-pass tank mesh receives a
+   unique deterministic sub-depth. Semantic ordering keeps armor behind
+   fittings, track steel and optics; a zero slope factor prevents angled-face
+   crawl. Shadow materials are excluded so the rule cannot introduce shadow
+   acne. Assignment happens after static batching and battle-detail grouping,
+   so gallery, garage, player, bot and mobile paths use the same policy.
+
+The final fleet gate reports 0 affected tanks, 0 unresolved overlap groups and
+0.000000 m² unresolved area. It also records 1,184 intentional exterior
+contact groups as deterministically depth-mitigated. Close angle/top/side and
+battle 40/60/90/180 m comparisons cover all 149 tanks: all 1,043 images retain
+their reference silhouette with zero measured edge displacement. The handful
+of strict SSIM outliers are material-winner changes at the repaired seams (or
+one-to-three pixels on ten-pixel-wide 180 m vehicles), not geometry movement.
+
+Run the invariant locally with:
+
+```bash
+npm run tank:surface-overlap:check
+```
+
+The command first self-tests positive-area overlap, separation, facing and
+depth mitigation, then audits every registered high-quality procedural tank.
+New broad coplanar overlays must be physically seated where possible; the
+depth layer is the fallback for legitimate coincident boundaries, not a
+substitute for correcting detached or malformed geometry.
+
+Type 10B has no independent local GLB measurement oracle. The repaired base
+Type 10 print is not substituted for that gate because the B protection
+package intentionally changes the measured whole/hull silhouette. Its repair
+is instead certified by current anatomy and technical assets, zero module
+overflow, track/contiguity/muzzle checks, the fleet overlap gate, and the
+all-fleet close/battle comparisons above. No GLB is introduced into the
+playable loading path.

@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fleet coplanar surface overlap audit</title>
+<script type="module">
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { findCoplanarSurfaceOverlaps } from '/tools/coplanar-surface-overlap.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'type10b';
+
+try {
+  const visual = createTank(id, null, {
+    proceduralOnly: true,
+    quality: 'high',
+    geometryQuality: 'high',
+    geometryReceipt: true,
+    camoSeed: 4242,
+  });
+  window.__SURFACE_OVERLAP_AUDIT = {
+    id,
+    ...findCoplanarSurfaceOverlaps(visual.root),
+  };
+  visual.dispose();
+} catch (error) {
+  window.__SURFACE_OVERLAP_AUDIT = { id, error: error?.stack || error?.message || String(error) };
+}
+window.__SURFACE_OVERLAP_AUDIT_READY = true;
+</script>

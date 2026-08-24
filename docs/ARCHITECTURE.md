@@ -535,6 +535,14 @@ instanced links — builder's choice, must respond to `state.trackScroll`.
 All materials through `materials.js`; every lit material passes through
 `engineCtx.setupShadowMaterial`.
 
+Final color-pass meshes receive deterministic semantic coplanar depth layers
+after decoration, static batching and battle-detail grouping. This resolves
+equal-depth seams between objects that must stay separate for materials,
+articulation or damage ownership; shadow-pass materials are never offset.
+Incorrect broad overlays must still be fixed geometrically. The fleet-wide
+invariant is `npm run tank:surface-overlap:check`, which must report zero
+unresolved positive-area, same-facing exterior overlaps.
+
 #### 3.3.3 `materials.js` (vehicles-internal; exact API is the builder's choice, but:)
 ```js
 export function createTankMaterials(spec, engineCtx, camoSeed) => { hull, tracks, wheels, detail, ... }
