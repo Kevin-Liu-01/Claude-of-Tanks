@@ -962,11 +962,12 @@ const GARAGE_CSS = `
   .cot-record-ring{width:132px;}.cot-record-ring-copy strong{font-size:30px;}
 }
 /* Touch tablets report a desktop-class CSS width (an iPad Pro in landscape is
-   1024-1366 px), so the width-only phone query above never ran. Compose the
-   same three functional lanes explicitly for coarse-pointer landscape:
-   header, compact customisation rail, and two non-overlapping fleet rails.
-   The 3D vehicle remains the dominant surface and the dossier stays available
-   from Tank Gallery instead of covering the right half of the bay. */
+   1024-1366 px), so the width-only phone query above never runs. Keep both
+   authored garage sidebars available at that size, but bound them above the
+   fleet rails: camouflage is a compact, content-sized card on the left and
+   the vehicle dossier is an independently scrolling card on the right. The
+   previous tablet rules hid the dossier and stretched camouflage from top to
+   bottom, producing a giant empty translucent column on 4:3 iPads. */
 @media (min-width:901px) and (orientation:landscape){
   body.cot-touch-layout .cot-garage .band-top{height:23%;}
   body.cot-touch-layout .cot-garage .band-bot{height:31%;}
@@ -990,17 +991,23 @@ const GARAGE_CSS = `
   body.cot-touch-layout .cot-battle-control{top:12px;width:224px;height:42px;}
   body.cot-touch-layout .cot-battle{font-size:16px;}
   body.cot-touch-layout .cot-battle-mode{font-size:7.5px;}
-  body.cot-touch-layout .cot-garage .stats{display:none;}
+  body.cot-touch-layout .cot-garage .stats{display:block;
+    right:max(14px,env(safe-area-inset-right));top:86px;bottom:134px;
+    width:clamp(220px,19vw,252px);max-height:none;overflow-y:auto;
+    overscroll-behavior:contain;scrollbar-width:none;}
+  body.cot-touch-layout .cot-garage .stats::-webkit-scrollbar{display:none;}
   body.cot-touch-layout .cot-leftcol{left:max(14px,env(safe-area-inset-left));top:86px;
-    bottom:112px;width:180px;gap:7px;overflow:visible;}
+    bottom:auto;width:180px;height:auto;max-height:calc(100vh - 220px);gap:7px;overflow:visible;}
   body.cot-touch-layout .cot-maps,body.cot-touch-layout .cot-featured{display:none;}
   body.cot-touch-layout .cot-camos{width:180px;margin-top:0;padding:7px;
-    height:100%;flex:1 1 auto;background:rgba(7,11,15,.72);border:1px solid rgba(146,164,180,.22);}
+    height:auto;min-height:0;max-height:100%;flex:0 0 auto;overflow:hidden;
+    background:rgba(7,11,15,.72);border:1px solid rgba(146,164,180,.22);}
+  body.cot-touch-layout .cot-camos.custom-open{height:min(360px,calc(100vh - 220px));}
   body.cot-touch-layout .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
   body.cot-touch-layout .cot-camos .ctitle .cot-custom-open{width:28px;padding:0;font-size:0}
   body.cot-touch-layout .cot-camos .ctitle .cot-custom-open::after{content:'+';font-size:14px;line-height:1}
   body.cot-touch-layout .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));
-    max-height:min(158px,32vh);}
+    max-height:min(158px,24vh);flex:0 1 auto;}
   body.cot-touch-layout .cot-camo-card{padding:3px;}
   body.cot-touch-layout .cot-camo-card .sw{height:auto;aspect-ratio:2.55;margin-bottom:3px;}
   body.cot-touch-layout .cot-camo-card .cl{font-size:6.5px;line-height:1.16;letter-spacing:.05em;}

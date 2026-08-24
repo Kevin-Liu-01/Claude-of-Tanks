@@ -14,6 +14,15 @@ const [garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav] = await Pr
 assert.match(garage,
   /@media \(min-width:901px\) and \(orientation:landscape\)[\s\S]*body\.cot-touch-layout \.cot-country-rail/,
   'coarse-pointer tablets need a compact Garage rail layout above the phone width breakpoint');
+assert.match(garage,
+  /body\.cot-touch-layout \.cot-garage \.stats\{display:block;[\s\S]*bottom:134px;[\s\S]*width:clamp\(220px,19vw,252px\);max-height:none;overflow-y:auto/,
+  'landscape tablets must retain a bounded, independently scrolling vehicle dossier');
+assert.match(garage,
+  /body\.cot-touch-layout \.cot-leftcol\{[^}]*bottom:auto;[^}]*height:auto;[^}]*max-height:calc\(100vh - 220px\)/,
+  'landscape tablets must not stretch the left customization rail to the fleet carousel');
+assert.match(garage,
+  /body\.cot-touch-layout \.cot-camos\{[^}]*height:auto;min-height:0;max-height:100%;flex:0 0 auto;overflow:hidden/,
+  'landscape tablet camouflage must size to its content instead of painting an empty full-height shell');
 assert.match(garage, /@media \(max-width:1480px\)[\s\S]*\.cot-nav \.nv \.nav-label\{display:none/,
   'mid-size desktop navigation must collapse before it intersects the centered Battle control');
 assert.match(garage,
