@@ -409,14 +409,15 @@ const GARAGE_CSS = `
   font:800 6px ${FONT_COND};letter-spacing:.04em;text-transform:uppercase;}
 .cot-crew-chip svg{width:16px;height:16px;color:#b8c5cf;}
 .cot-crew-chip span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* One combined historical fleet, filtered by national flag. The outer rail
-   owns fixed edge controls/fades while the inner strip scrolls underneath;
-   this prevents the hard half-chip cutoff that used to appear at both ends. */
-.cot-country-rail{--country-edge:32px;position:absolute;z-index:5;
-  left:calc(50% - 34px);bottom:186px;transform:translateX(-50%);
+/* One combined historical fleet, filtered by national flag. Compact arrow
+   gutters balance the rail without reading as extra nation tiles. The chips
+   are deliberately dense enough for the complete selector to center at a
+   desktop viewport; narrower widths retain honest horizontal overflow. */
+.cot-country-rail{--country-edge:34px;position:absolute;z-index:5;
+  left:50%;bottom:186px;transform:translateX(-50%);
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
   grid-template-columns:var(--country-edge) minmax(0,1fr) var(--country-edge);
-  align-items:stretch;pointer-events:auto;isolation:isolate;}
+  align-items:center;pointer-events:auto;isolation:isolate;}
 .cot-country-rail::before,.cot-country-rail::after{content:'';position:absolute;z-index:2;
   top:0;bottom:4px;width:54px;opacity:0;pointer-events:none;
   transition:opacity .16s,width .16s;}
@@ -430,25 +431,30 @@ const GARAGE_CSS = `
 .cot-country-rail.has-more-left:hover::before,.cot-country-rail.has-more-right:hover::after,
 .cot-country-rail.has-more-left:focus-within::before,
 .cot-country-rail.has-more-right:focus-within::after{opacity:1;}
-.cot-country-chips{grid-column:2;display:flex;gap:5px;min-width:0;padding:2px 3px 4px;
+.cot-country-chips{grid-column:2;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
+  height:52px;padding:2px 3px 4px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x proximity;scroll-padding-inline:18px;touch-action:pan-x;
   scrollbar-width:none;-ms-overflow-style:none;}
 .cot-country-chips::-webkit-scrollbar{display:none;}
-.cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;width:100%;height:48px;
+.cot-country-edge{position:relative;z-index:3;display:grid;place-items:center;justify-self:center;
+  width:26px;height:36px;
   color:#91a2af;background:linear-gradient(180deg,rgba(16,22,28,.96),rgba(7,10,14,.98));
   border:1px solid rgba(146,164,180,.28);cursor:pointer;opacity:.68;outline:none;
-  transition:color .14s,border-color .14s,background .14s,opacity .14s,box-shadow .14s;}
-.cot-country-edge.prev{grid-column:1;border-right-color:rgba(146,164,180,.16);}
-.cot-country-edge.next{grid-column:3;border-left-color:rgba(146,164,180,.16);}
+  box-shadow:0 5px 14px rgba(0,0,0,.34);
+  transition:color .14s,border-color .14s,background .14s,opacity .14s,
+    box-shadow .14s,transform .12s ease-out;}
+.cot-country-edge.prev{grid-column:1;}
+.cot-country-edge.next{grid-column:3;}
 .cot-country-edge:hover,.cot-country-edge:focus-visible{color:#ffd27a;border-color:rgba(240,176,74,.72);
   background:linear-gradient(180deg,rgba(42,30,14,.98),rgba(13,10,7,.98));opacity:1;
   box-shadow:0 0 18px rgba(240,160,48,.12);}
+.cot-country-edge:active{transform:scale(.96);}
 .cot-country-edge.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
 .cot-country-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
   border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
   color:#9fb0bf;font-family:${FONT_STACK};font-size:10px;font-weight:800;
-  letter-spacing:.14em;text-transform:uppercase;padding:6px 11px 5px;
+  letter-spacing:.12em;text-transform:uppercase;padding:6px 7px 5px;
   display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:0 0 auto;
   scroll-snap-align:center;
   transition:color .15s,border-color .15s,background .15s,transform .15s;outline:none;}
