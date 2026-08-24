@@ -30,6 +30,7 @@
     "icons": "node tools/genIcons.mjs",
     "tank:assets": "node tools/genIcons.mjs",
     "tank:assets:check": "node tools/tank-assets-check.mjs",
+    "tank:floor:check": "node src/vehicles/fleetFloorClearance.selftest.mjs",
     "tank:anatomy:update": "node tools/gen-combat-anatomy.mjs && node tools/gen-vehicle-marking-seats.mjs && node tools/genIcons.mjs --views hitZonesSide,armorSide,modulesSide",
     "tank:anatomy:check": "node tools/gen-combat-anatomy.mjs --check && node tools/gen-vehicle-marking-seats.mjs --check && node src/vehicles/combatAnatomy.selftest.mjs && node tools/tank-assets-check.mjs --views hitZonesSide,armorSide,modulesSide --skip-bore",
     "tank:marking-seats:update": "node tools/gen-vehicle-marking-seats.mjs",

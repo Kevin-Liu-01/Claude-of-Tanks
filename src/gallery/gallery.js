@@ -162,12 +162,13 @@ const fillLight = new THREE.DirectionalLight(0x8ea2b0, 0.95);
 fillLight.position.set(0, 4, 10);
 scene.add(fillLight);
 
+const GALLERY_FLOOR_Y_M = -0.025;
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(13, 96),
   new THREE.MeshStandardMaterial({ color: 0x11171a, roughness: 0.93, metalness: 0.13 }),
 );
 ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.025;
+ground.position.y = GALLERY_FLOOR_Y_M;
 scene.add(ground);
 const grid = new THREE.GridHelper(25, 25, 0x775a36, 0x283137);
 grid.position.y = -0.015;
@@ -536,6 +537,7 @@ async function loadTank(id, options = {}) {
   const spec = getSpec(id);
   const record = recordById.get(id);
   visual = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  visual.seatOnFloor?.(GALLERY_FLOOR_Y_M);
   scene.add(visual.root);
   forceHeroLod(visual.root);
   visual.root.updateMatrixWorld(true);

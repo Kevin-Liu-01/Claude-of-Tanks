@@ -5215,6 +5215,13 @@ function robustFloorY(ys) {
   return ys[0];
 }
 
+// Presentation surfaces are rigid, unlike the terrain support solve. Track
+// approach/departure pads can rotate one outer corner up to ~24 mm below the
+// analytic flat-run contact plane, so seating only bottomYM visibly buries
+// those corners in the gallery/garage floor. Keep the battle contact plane
+// exact and publish a separate conservative envelope for static presentation.
+const PRESENTATION_TRACK_TIP_ALLOWANCE_M = 0.025;
+
 /**
  * Exact +Z-most intersection of a local-space Z ray with a BufferGeometry.
  * Muzzle seating needs one centerline hit, but THREE.Raycaster pays generic
@@ -5353,6 +5360,56 @@ function measureRestContact(root) {
     };
   } catch (e) {
     return null; // best-effort: the solve falls back to spec fractions
+  }
+}
+
+// Exact conservative lower bound of the attached, color-writing rest-pose
+// subtree in root-local space. This is intentionally lazy: battle actors do
+// not need a rigid presentation seat, while a garage/gallery hero pays this
+// cheap bounding-box walk once when seatOnFloor is first called.
+const _pfM = new THREE.Matrix4();
+const _pfM2 = new THREE.Matrix4();
+const _pfV = new THREE.Vector3();
+function measurePresentationFloor(root) {
+  try {
+    root.updateMatrixWorld(true);
+    const invRoot = _pfM2.copy(root.matrixWorld).invert().clone();
+    let minY = Infinity;
+    const considerBox = (box, matrix) => {
+      for (const x of [box.min.x, box.max.x]) {
+        for (const y of [box.min.y, box.max.y]) {
+          for (const z of [box.min.z, box.max.z]) {
+            _pfV.set(x, y, z).applyMatrix4(matrix);
+            minY = Math.min(minY, _pfV.y);
+          }
+        }
+      }
+    };
+    root.traverse((object) => {
+      if (!object.geometry || !(object.isMesh || object.isInstancedMesh)) return;
+      if (object.material?.colorWrite === false) return;
+      for (let current = object; current && current !== root; current = current.parent) {
+        if (!current.visible) return;
+      }
+      if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+      const box = object.geometry.boundingBox;
+      if (!box || box.isEmpty()) return;
+      _pfM2.multiplyMatrices(invRoot, object.matrixWorld);
+      if (!object.isInstancedMesh) {
+        considerBox(box, _pfM2);
+        return;
+      }
+      for (let instance = 0; instance < object.count; instance++) {
+        object.getMatrixAt(instance, _pfM);
+        const elements = _pfM.elements;
+        if (Math.abs(elements[0]) + Math.abs(elements[5]) + Math.abs(elements[10]) < 1e-5) continue;
+        _pfM.multiplyMatrices(_pfM2, _pfM);
+        considerBox(box, _pfM);
+      }
+    });
+    return Number.isFinite(minY) ? minY : null;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -6506,6 +6563,17 @@ export function createTank(specId, engineCtx, opts = {}) {
   if (contactGeom) {
     root.userData.contactGeom = contactGeom;
   }
+  const presentationFloorFrom = (scan, contact) => {
+    const floors = [];
+    if (Number.isFinite(scan?.absMinYM)) floors.push(scan.absMinYM);
+    if (Number.isFinite(contact?.bottomYM)) floors.push(contact.bottomYM);
+    if (Number.isFinite(gearCG?.bottomYM)) {
+      floors.push(gearCG.bottomYM - PRESENTATION_TRACK_TIP_ALLOWANCE_M);
+    }
+    return floors.length ? Math.min(...floors) : null;
+  };
+  let presentationFloorYM = presentationFloorFrom(restScan, contactGeom);
+  let presentationFloorMeasured = false;
 
   // ---- track hitbox attach (combat data only — no geometry writes) --------
   // Derived by buildRunningGear from the as-built band loop; attached onto
@@ -6741,6 +6809,26 @@ export function createTank(specId, engineCtx, opts = {}) {
     // as-built rest contact metadata for the movement support solve (see the
     // measureRestContact note; state.js stamps it onto the battle entity)
     contactGeom,
+    // Lowest conservative rest-pose envelope used only to seat a neutral
+    // showroom/gallery visual on a rigid surface. Battle movement continues
+    // to use contactGeom.bottomYM, the load-bearing flat track run.
+    presentationFloorYM,
+
+    /** Seat the neutral rest-pose envelope on a world-space horizontal plane. */
+    seatOnFloor(floorYM = 0) {
+      if (!presentationFloorMeasured) {
+        const measured = measurePresentationFloor(root);
+        presentationFloorYM = Number.isFinite(measured)
+          ? measured
+          : presentationFloorFrom(null, this.contactGeom);
+        this.presentationFloorYM = Number.isFinite(presentationFloorYM)
+          ? presentationFloorYM
+          : 0;
+        presentationFloorMeasured = true;
+      }
+      root.position.y = floorYM - this.presentationFloorYM;
+      return root.position.y;
+    },
 
     /**
      * Promote a showroom visual into a simulation-ready actor without
@@ -6756,6 +6844,9 @@ export function createTank(specId, engineCtx, opts = {}) {
       contactGeom = prepared;
       this.contactGeom = prepared;
       root.userData.contactGeom = prepared;
+      presentationFloorYM = presentationFloorFrom(null, prepared);
+      this.presentationFloorYM = presentationFloorYM;
+      presentationFloorMeasured = false;
       return prepared;
     },
 

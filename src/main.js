@@ -72,7 +72,9 @@ import { createDamagePanel } from './ui/damagePanel.js';
 import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
-import { createGarageStage, GARAGE_TRACK_AXIS_YAW_RAD } from './ui/garageStage.js';
+import {
+  createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
+} from './ui/garageStage.js';
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
 import { createGarageDressing } from './game/garageDressing.js';
@@ -798,11 +800,13 @@ function pedestalPose(vis) {
   // not the rig's historical origin, lands on the platform datum.
   const localZ = Number(vis.spec?.visual?.garageHullOffsetZ) || 0;
   const yaw = vis.root.rotation.y;
-  vis.root.position.set(
-    GARAGE_POS.x + Math.sin(yaw) * localZ,
-    GARAGE_POS.y + 0.35,
-    GARAGE_POS.z + Math.cos(yaw) * localZ,
-  );
+  vis.root.position.x = GARAGE_POS.x + Math.sin(yaw) * localZ;
+  vis.root.position.z = GARAGE_POS.z + Math.cos(yaw) * localZ;
+  if (vis.seatOnFloor) {
+    vis.seatOnFloor(GARAGE_POS.y + GARAGE_PODIUM_TOP_Y_M);
+  } else {
+    vis.root.position.y = GARAGE_POS.y + 0.35;
+  }
 }
 function parkVisual(vis) {
   if (!vis || vis === pedestalVisual) return; // re-selected while retiring
@@ -1180,7 +1184,8 @@ await bootStage('vehicle', async () => {
 
 // GARAGE FRAMING ANCHOR (garage r9): the fixed point every showroom pose
 // looks at — the stage center at hull mid-height. The pedestal hull sits at
-// GARAGE_POS.y + 0.35, so +1.6 is the middle of a ~2.5 m tank.
+// the authored running-gear envelope on the 0.36 m podium, so +1.6 remains
+// the middle of a typical ~2.5 m tank.
 const GARAGE_LOOK_Y = 1.6;
 // Canonical hero box (half-extents, metres) the showroom frames INSTEAD of
 // each hull's own measured box — sized to the M1A2 reference (≈3.9 × 2.5 ×

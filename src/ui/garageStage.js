@@ -15,6 +15,7 @@ import * as THREE from 'three';
 // toward -Z (the nearest exact floor-track heading to the old 162-degree pose)
 // and use this same axis for the podium guides and camera composition.
 export const GARAGE_TRACK_AXIS_YAW_RAD = Math.PI;
+export const GARAGE_PODIUM_TOP_Y_M = 0.36;
 const PODIUM_TREAD_UV_YAW_OFFSET_RAD = -Math.PI / 2;
 const GARAGE_FLOOR_SIZE_M = 46;
 const GARAGE_PODIUM_RADIUS_M = 6;
@@ -483,10 +484,12 @@ export function createGarageStage(engineCtx, pos) {
   }));
   track(podSideMat); track(podTopMat);
   const podium = new THREE.Mesh(
-    track(new THREE.CylinderGeometry(GARAGE_PODIUM_RADIUS_M, 6.35, 0.36, 56)),
+    track(new THREE.CylinderGeometry(
+      GARAGE_PODIUM_RADIUS_M, 6.35, GARAGE_PODIUM_TOP_Y_M, 56,
+    )),
     [podSideMat, podTopMat, podTopMat],
   );
-  podium.position.y = 0.18;
+  podium.position.y = GARAGE_PODIUM_TOP_Y_M / 2;
   // Cylinder cap UVs lay the baked tread guides along local X, 90 degrees
   // across tank-forward. Offset the podium so its guides continue the two
   // world-Z tread scuffs painted onto the surrounding garage floor.
@@ -503,7 +506,7 @@ export function createGarageStage(engineCtx, pos) {
   }));
   const rimRing = new THREE.Mesh(track(new THREE.TorusGeometry(6.0, 0.035, 8, 96)), rimRingMat);
   rimRing.rotation.x = Math.PI / 2;
-  rimRing.position.y = 0.362;
+  rimRing.position.y = GARAGE_PODIUM_TOP_Y_M + 0.002;
   group.add(rimRing);
   // stripe self-lift so the hazard band reads ALL the way around the dais —
   // r4: 0.07 was below the key light's falloff and the band fell to black
