@@ -1313,12 +1313,18 @@ const TEJAS_HULL = {
   // rings INTO the ±1.755 bin (ground-to-fender phantom columns). At
   // 1.405/0.58: pins 1.092..1.718, rings to 1.728, band 1.115..1.695 — the
   // ±1.09/±1.71 bins read solid track, ±1.05/±1.755 stay clear.
-  trackXc: 1.405, trackW: 0.58, wheelR: 0.42, wheelY: 0.53,
-  // End wheels pulled a further 0.09 in (2.26->2.17, -2.31->-2.22): the
-  // band's flat run ends ~z0+0.12 past the contact patch and the ref ramps
-  // lift from 2.48/-2.55 (post-warp rows: our flat still read 0 at 2.59 and
-  // -2.67 with the ±2.26/2.31 patch).
-  wheelZs: [2.11, 1.49, 0.73, -0.03, -0.79, -1.55, -2.10],
+  // The seven M1 stations use the real-scale 620 mm visible tire envelope.
+  // The former 840 mm discs were larger than every 0.55-0.76 m station pitch,
+  // causing all adjacent wheels to intersect.  A regular 0.73 m cadence now
+  // leaves 110 mm of daylight while retaining the complete seven-wheel train.
+  // Lowering the axle by the same radius delta preserves the 0.11 m tire-bottom
+  // datum, so the wheels remain loaded into the existing ground run.
+  trackXc: 1.405, trackW: 0.58, wheelR: 0.31, wheelY: 0.42,
+  wheelZs: [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19],
+  // Pin the previously certified flat-run departure points.  Reseating the
+  // road wheels must not pull either tangent ramp inward or disturb the raised
+  // idler / rear-drive wraps.
+  contactZF: 2.32, contactZR: -2.31,
   trackBotY: 0.043,
   // Post-warp workorder: both ramp/wrap bottoms ran 0.08-0.14 BELOW the ref
   // line — idler/sprocket raised so the tangent ramps and wrap bottoms lift
