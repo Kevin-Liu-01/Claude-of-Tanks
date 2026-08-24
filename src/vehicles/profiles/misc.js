@@ -52,6 +52,15 @@ const TYPE74_SPEC = {
   hullTraverseDegS: 38,
   terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.4 },
   pivotStyle: 'neutral',
+  // Type 74 and its STB-1 prototype derivative use their real adjustable
+  // hydropneumatic suspension as an active aiming system.  Keeping the
+  // envelope on the shared donor spec lets both vehicles articulate their
+  // existing five wheel stations and deformable track course without an
+  // ID-specific simulation path.
+  hydropneumaticAim: {
+    noseDownDeg: 8, noseUpDeg: 8, rateDegS: 7,
+    compressionM: 0.32, droopM: 0.32,
+  },
   turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 15, gunDepressionDeg: 10,
   gun: {
     caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.29, aimTimeS: 1.7,
@@ -3409,7 +3418,11 @@ function buildType74(P) {
     style: 'rubber', wheelR: 0.42, wheelW: 0.26, wheelY: 0.475, xc: XC,
     wheelZs,
     sprocket: { z: -3.00, y: 0.90, r: 0.26 }, idler: { z: 2.93, y: 0.64, r: 0.28 },
-    rollers: [], trackW: 0.55, topY: 1.00, botY: -0.08, deadSag: 0.09,
+    // The road-wheel tire datum is +0.055 m.  The former -0.08 m course
+    // parked the grouser tips almost 0.19 m below the vehicle origin, so the
+    // complete lower run visibly cut through the garage floor.  Seat the
+    // track centerline on the same loaded contact datum as the tires.
+    rollers: [], trackW: 0.55, topY: 1.00, botY: 0.055, deadSag: 0.09,
     paintedEnds: true, coveredTop: false, arms: true,
   });
   // The animated native wheel faces already carry their own deep dishes.
