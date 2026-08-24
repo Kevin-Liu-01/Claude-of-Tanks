@@ -405,10 +405,20 @@ const liveDrive = evaluate(`(async () => {
   const cameraStart = D.camera.position.clone();
   const externalAtStart = D.rig.externalActive;
   const frameTimes = [];
+  const frameSamples = [];
   let sampling = true;
   let previous = performance.now();
+  const sampleStart = previous;
   const sample = (now) => {
-    frameTimes.push(now - previous);
+    const frameMs = now - previous;
+    frameTimes.push(frameMs);
+    frameSamples.push({
+      frameMs,
+      elapsedMs: now - sampleStart,
+      programs: D.renderer.info.programs?.length || 0,
+      drawCalls: D.renderer.info.render.calls,
+      triangles: D.renderer.info.render.triangles,
+    });
     previous = now;
     if (sampling) requestAnimationFrame(sample);
   };
@@ -439,7 +449,20 @@ const liveDrive = evaluate(`(async () => {
   let treeFoliageShadowCasters = 0;
   let treeTrunkShadowCasters = 0;
   let treeTrunkShadowReceivers = 0;
+  let treeRootDecalMeshes = 0;
+  let treeRootDecalReceivers = 0;
+  let treeRootDecalTriangles = 0;
+  let treeRootDecalCount = 0;
+  let treeRootDecalAreaM2 = 0;
+  let treeRootDecalMaxRadiusM = 0;
+  let groundContactDecalMeshes = 0;
+  let groundContactDecalReceivers = 0;
   D.scene.traverse((object) => {
+    let worldVisible = object.visible;
+    for (let parent = object.parent; worldVisible && parent; parent = parent.parent) {
+      worldVisible = parent.visible;
+    }
+    if (!worldVisible) return;
     if (object.userData?.canopyShadowProxy && object.castShadow) {
       canopyShadowProxyCasters++;
       canopyShadowProxyVertices += object.geometry?.attributes?.position?.count || 0;
@@ -451,8 +474,22 @@ const liveDrive = evaluate(`(async () => {
       if (object.castShadow) treeTrunkShadowCasters++;
       if (object.receiveShadow) treeTrunkShadowReceivers++;
     }
+    if (object.userData?.treeRootDecal) {
+      treeRootDecalMeshes++;
+      if (object.receiveShadow) treeRootDecalReceivers++;
+      treeRootDecalTriangles += (object.geometry?.index?.count || 0) / 3;
+      treeRootDecalCount += object.userData.decalCount || 0;
+      treeRootDecalAreaM2 += object.userData.projectedAreaM2 || 0;
+      treeRootDecalMaxRadiusM = Math.max(
+        treeRootDecalMaxRadiusM, object.userData.maxRadiusM || 0);
+    }
+    if (object.userData?.groundContactDecal) {
+      groundContactDecalMeshes++;
+      if (object.receiveShadow) groundContactDecalReceivers++;
+    }
   });
   frameTimes.sort((a, b) => a - b);
+  frameSamples.sort((a, b) => b.frameMs - a.frameMs);
   const percentile = (q) => frameTimes[Math.min(
     frameTimes.length - 1, Math.floor(frameTimes.length * q))] || 0;
   return {
@@ -465,6 +502,10 @@ const liveDrive = evaluate(`(async () => {
     frames: frameTimes.length,
     frameMsP50: percentile(0.50),
     frameMsP95: percentile(0.95),
+    frameMsP99: percentile(0.99),
+    frameMsMax: percentile(1),
+    framesOver33Ms: frameTimes.filter((ms) => ms > 33.4).length,
+    slowestFrames: frameSamples.slice(0, 8),
     glError,
     shaderErrors: telemetry.shadows.shaderErrors,
     canopyShadowProxyCasters,
@@ -472,6 +513,14 @@ const liveDrive = evaluate(`(async () => {
     treeFoliageShadowCasters,
     treeTrunkShadowCasters,
     treeTrunkShadowReceivers,
+    treeRootDecalMeshes,
+    treeRootDecalReceivers,
+    treeRootDecalTriangles,
+    treeRootDecalCount,
+    treeRootDecalAreaM2,
+    treeRootDecalMaxRadiusM,
+    groundContactDecalMeshes,
+    groundContactDecalReceivers,
     shadowThrottle: telemetry.shadows.throttle,
     nearAutoUpdate: telemetry.shadows.cascades
       .slice(0, 2).map((cascade) => cascade.autoUpdate),
@@ -517,6 +566,33 @@ if (liveDrive.treeTrunkShadowReceivers !== 0) {
     `${liveDrive.treeTrunkShadowReceivers} tree-trunk meshes still receive unstable canopy/self shadows`,
   );
 }
+if (liveDrive.treeRootDecalMeshes !== 1 || liveDrive.treeRootDecalCount < 1) {
+  liveDriveReasons.push(
+    `expected one active bounded root-contact mesh, found ${liveDrive.treeRootDecalMeshes}`,
+  );
+}
+if (liveDrive.treeRootDecalReceivers !== 0) {
+  liveDriveReasons.push(
+    `${liveDrive.treeRootDecalReceivers} tree-root decals still receive stacked CSM shadows`,
+  );
+}
+if (liveDrive.treeRootDecalMaxRadiusM > 2.4 + 1e-6) {
+  liveDriveReasons.push(
+    `tree-root decal radius ${liveDrive.treeRootDecalMaxRadiusM.toFixed(2)}m exceeds contact scale`,
+  );
+}
+if (liveDrive.treeRootDecalCount > 0 &&
+    liveDrive.treeRootDecalTriangles / liveDrive.treeRootDecalCount > 8.01) {
+  liveDriveReasons.push('tree-root contact layer rebuilt the high-overdraw multi-ring geometry');
+}
+if (liveDrive.groundContactDecalMeshes < 1) {
+  liveDriveReasons.push('live world has no tagged prop/foundation contact layer');
+}
+if (liveDrive.groundContactDecalReceivers !== 0) {
+  liveDriveReasons.push(
+    `${liveDrive.groundContactDecalReceivers} prop contact decals still receive stacked CSM shadows`,
+  );
+}
 if (liveDriveReasons.length) failures.push({ preset: 'live-drive', reasons: liveDriveReasons });
 console.log(
   `${liveDriveReasons.length ? 'FAIL' : 'PASS'} live-drive `
@@ -527,7 +603,7 @@ console.log(
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify({
-  version: 4,
+  version: 5,
   capturedAt: new Date().toISOString(),
   deviceTier,
   failures,

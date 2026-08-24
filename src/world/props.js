@@ -3477,19 +3477,32 @@ ${snowCap ? `
       geo.computeVertexNormals();
       return geo;
     }
-    function addDecalMesh(geos, tex) {
+    function addDecalMesh(geos, tex, {
+      receiveShadow = true,
+      groundContact = false,
+      decalKind = 'surface',
+    } = {}) {
       if (geos.length === 0) return;
       const mat = new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         roughness: 0.97, metalness: 0,
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
-      engineCtx.setupShadowMaterial(mat);
+      if (receiveShadow) engineCtx.setupShadowMaterial(mat);
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
-      mesh.receiveShadow = true;
+      // Foundation/contact tint already supplies the small-scale grounding
+      // term. Letting the live CSM shade that translucent layer again stacks
+      // two darkening systems and makes cascade movement read as a flashing
+      // ground texture. Authored surface decals (craters, aprons, churn) still
+      // receive directional shadows; only the contact layer opts out.
+      mesh.receiveShadow = receiveShadow;
       mesh.castShadow = false;
       mesh.matrixAutoUpdate = false;
       mesh.renderOrder = 1;
+      mesh.userData.groundContactDecal = groundContact;
+      mesh.userData.terrainDecal = true;
+      mesh.userData.terrainDecalKind = decalKind;
+      mesh.userData.decalParts = geos.length;
       group.add(mesh);
     }
     const dirtDiscs = [];
@@ -3543,8 +3556,12 @@ ${snowCap ? `
         placed++;
       }
     }
-    addDecalMesh(dirtDiscs, makeDecalTexture('dirt'));
-    addDecalMesh(apronGeos, makeDecalTexture('apron'));
+    addDecalMesh(dirtDiscs, makeDecalTexture('dirt'), {
+      receiveShadow: false,
+      groundContact: true,
+      decalKind: 'ground-contact',
+    });
+    addDecalMesh(apronGeos, makeDecalTexture('apron'), { decalKind: 'apron' });
     // craters: scattered shell holes with a raised rim mound. Town maps
     // (P.townCraters) let them pock the streets and squares themselves —
     // the contract's shelled-town read needs impact scars ON the asphalt,
@@ -3624,8 +3641,8 @@ ${snowCap ? `
     for (const [wx, wz] of wreckScorch) {
       burnDiscs.push(conformedDisc(wx, wz, 5.6, [0.03, 0.04, 0.05, 0.02]));
     }
-    addDecalMesh(craterDiscs, makeDecalTexture('crater'));
-    addDecalMesh(burnDiscs, makeDecalTexture('scorch'));
+    addDecalMesh(craterDiscs, makeDecalTexture('crater'), { decalKind: 'crater' });
+    addDecalMesh(burnDiscs, makeDecalTexture('scorch'), { decalKind: 'scorch' });
     // r5 terrain_environment: TRACK-TEAR strips along the AI corridors —
     // tread-churned earth runs (14-26 m) with twin rut lanes, conformed to
     // the terrain, so the approaches read driven-over ("no tread-torn earth
@@ -3659,7 +3676,7 @@ ${snowCap ? `
           3.2 + trng() * 0.8));
         placed++;
       }
-      addDecalMesh(tearGeos, makeChurnTexture());
+      addDecalMesh(tearGeos, makeChurnTexture(), { decalKind: 'churn' });
     }
   }
 

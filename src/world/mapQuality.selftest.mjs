@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.js';
 import { createHeightField } from './terrain.js';
 import { sampleHorizonSilhouette } from './maps/horizon.js';
+import './treeGrounding.selftest.mjs';
 
 const EXPANSION = [
   'frontier', 'fjord', 'delta', 'badlands',

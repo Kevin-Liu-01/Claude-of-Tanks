@@ -194,11 +194,13 @@ export const PRESETS = {
     dynMin: 0.9,
     aoScale: 0.5,
     bloomScale: 0.6,
-    // Keep the hero/contact cascade at 4096. Cascade 1 and the far band do
-    // not need equal allocations: this drops the live high-tier shadow RT
-    // footprint from ~160 MB to ~100 MB and halves the second every-frame
-    // shadow raster, while lighting.js preserves physical penumbra width.
-    shadowMapSizes: [4096, 2048, 2048, 1024],
+    // 4K hero shadows belong to explicit Ultra. A continuously refreshed 4K
+    // map cost ~5.8 ms together with the remaining cascades at 1080p and was
+    // immune to the adaptive AO trim, turning ordinary Verdant motion into
+    // frame spikes. High keeps both near cascades continuous (no cadence
+    // flashing) on the stable 2K grid and preserves physical penumbra width
+    // in lighting.js. The shadow RT footprint falls from ~100 MB to ~52 MB.
+    shadowMapSizes: [2048, 2048, 2048, 1024],
     shadowMaxFar: 700,
   },
   medium: {

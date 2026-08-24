@@ -10,6 +10,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { sampleSplatNoise, applyTone } from './terrain.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { setCircleShape } from './collision.js';
+import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.js';
 
@@ -2808,68 +2809,56 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   }
 
   yield { stage: 'treeRimAndMeshes' };
-  // ---- tree root decals (r7) ---------------------------------------------
-  // Terrain-conformed dark elliptical blend discs under every trunk: the
-  // trunk-meets-ground contact was a hard unshaded seam and trees read as
-  // pasted on. One merged static mesh, radial-gradient canvas texture,
-  // polygon-offset over the terrain like the props.js building skirts.
-  // r6 (content_breadth): the discs now double as BLOB CONTACT SHADOWS.
-  // Trees past the far partition cast no real shadow (castShadow off beyond
-  // ~260 m for perf), so mid/far instances — desert palms worst — read as
-  // ungrounded cutouts floating over bright terrain (critique, major). The
-  // decal is CROWN-sized (max of the old root ring and the canopy proxy
-  // radius), elongated and offset along the map sun's shadow azimuth, and a
-  // step cooler/more neutral: at range it reads as the canopy's soft cast
-  // shadow, up close it still grounds the trunk like the old root ring.
+  // ---- tree root decals --------------------------------------------------
+  // This layer is only a small, static trunk/soil contact cue. It must never
+  // impersonate a canopy shadow: Verdant has thousands of clustered trees,
+  // and the former crown-sized translucent discs overlapped into near-black
+  // patches underneath both GTAO and the real CSM shadows. Those stacked
+  // sheets also paid hundreds of thousands of shadow-receiving transparent
+  // triangles while driving. Canopy proxies own cast shadows; GTAO owns
+  // broad contact; this decal owns only the final root seam.
   if (trees.length > 0) {
     const ds = 128;
     const dc = document.createElement('canvas');
     dc.width = dc.height = ds;
     const dctx = dc.getContext('2d');
     const dg = dctx.createRadialGradient(ds / 2, ds / 2, 0, ds / 2, ds / 2, ds / 2);
-    dg.addColorStop(0, 'rgba(20,20,15,0.85)');
-    dg.addColorStop(0.34, 'rgba(27,28,21,0.62)');
-    dg.addColorStop(0.68, 'rgba(36,38,29,0.28)');
+    dg.addColorStop(0, 'rgba(28,26,20,0.56)');
+    dg.addColorStop(0.38, 'rgba(35,33,25,0.32)');
+    dg.addColorStop(0.72, 'rgba(42,41,32,0.10)');
     dg.addColorStop(1, 'rgba(42,44,34,0)');
     dctx.fillStyle = dg;
     dctx.fillRect(0, 0, ds, ds);
     const decTex = new THREE.CanvasTexture(dc);
     decTex.colorSpace = THREE.SRGBColorSpace;
-    const sunAzV = (((cfg && cfg.sky && cfg.sky.sunAzimuthDeg) ?? 115) * Math.PI) / 180;
-    const shX = -Math.sin(sunAzV), shZ = -Math.cos(sunAzV); // ground shadow dir
     // The outer edge samples fully transparent texels, so its polygonal
     // contour is invisible; eight terrain-conforming sectors preserve the
-    // same soft contact-shadow footprint while removing one third of this
-    // map-wide merged mesh's triangles (thousands of decals per map).
-    const segs = 8, rings = [0.5, 1.0];
+    // same soft root-contact footprint while minimizing this map-wide merged
+    // mesh's triangles across thousands of decals.
+    const segs = 8;
     const drng = mulberry32((seed ^ 0xdeca) >>> 0);
     const pos = [], uv2 = [], idx = [];
     let vb = 0;
+    let projectedAreaM2 = 0;
+    let maxRadiusM = 0;
     for (const t of trees) {
-      const r = Math.max(t.dr, t.cr * 0.85);
-      const cx0 = t.x + shX * r * 0.42, cz0 = t.z + shZ * r * 0.42;
-      const eMaj = 1.28, eMin = 0.92; // stretched along the shadow axis
+      const r = treeRootDecalRadius(t.dr);
+      if (r <= 0) continue;
+      const cx0 = t.x, cz0 = t.z;
+      projectedAreaM2 += treeRootDecalAreaM2(r);
+      maxRadiusM = Math.max(maxRadiusM, r);
       pos.push(cx0, heightField.getHeightAt(cx0, cz0) + 0.05, cz0);
       uv2.push(0.5, 0.5);
       const a0 = drng() * Math.PI * 2;
-      for (let ri = 0; ri < rings.length; ri++) {
-        for (let k = 0; k < segs; k++) {
-          const a = a0 + (k / segs) * Math.PI * 2;
-          const rr = r * rings[ri] * (ri === 1 ? 0.85 + drng() * 0.3 : 1);
-          const ex = Math.cos(a) * rr * eMaj, ez = Math.sin(a) * rr * eMin;
-          const px = cx0 + shX * ex - shZ * ez, pz = cz0 + shZ * ex + shX * ez;
-          pos.push(px, heightField.getHeightAt(px, pz) + 0.05, pz);
-          uv2.push(0.5 + Math.cos(a) * 0.5 * rings[ri], 0.5 + Math.sin(a) * 0.5 * rings[ri]);
-        }
+      for (let k = 0; k < segs; k++) {
+        const a = a0 + (k / segs) * Math.PI * 2;
+        const rr = r * (0.90 + drng() * 0.18);
+        const px = cx0 + Math.cos(a) * rr, pz = cz0 + Math.sin(a) * rr;
+        pos.push(px, heightField.getHeightAt(px, pz) + 0.05, pz);
+        uv2.push(0.5 + Math.cos(a) * 0.5, 0.5 + Math.sin(a) * 0.5);
       }
       for (let k = 0; k < segs; k++) idx.push(vb, vb + 1 + k, vb + 1 + ((k + 1) % segs));
-      for (let k = 0; k < segs; k++) {
-        const k1 = (k + 1) % segs;
-        const a0i = vb + 1 + k, a1i = vb + 1 + k1;
-        const b0i = vb + 1 + segs + k, b1i = vb + 1 + segs + k1;
-        idx.push(a0i, b0i, a1i, a1i, b0i, b1i);
-      }
-      vb += 1 + segs * 2;
+      vb += 1 + segs;
     }
     const dgeo = new THREE.BufferGeometry();
     dgeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
@@ -2881,13 +2870,18 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
       roughness: 0.97, metalness: 0,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     });
-    engineCtx.setupShadowMaterial(dmat);
     const dmesh = new THREE.Mesh(dgeo, dmat);
-    dmesh.receiveShadow = true;
+    // An AO/contact decal receiving the directional shadow darkens twice and
+    // makes a snapped cascade edge look like the ground texture is flashing.
+    dmesh.receiveShadow = false;
     dmesh.castShadow = false;
     dmesh.matrixAutoUpdate = false;
     dmesh.renderOrder = 1;
     dmesh.userData.aoExclude = true;
+    dmesh.userData.treeRootDecal = true;
+    dmesh.userData.decalCount = trees.length;
+    dmesh.userData.projectedAreaM2 = projectedAreaM2;
+    dmesh.userData.maxRadiusM = maxRadiusM;
     group.add(dmesh);
   }
 
