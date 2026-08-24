@@ -178,6 +178,7 @@ const BATTLE_TIPS = [
  * @returns {{show:(info:object)=>void, rosters:(allies:Array,enemies:Array)=>void,
  *   progress:(f:number,label?:string)=>void,
  *   countdown:(n:number)=>void, hide:()=>Promise<void>, readonly visible:boolean,
+ *   readonly covering:boolean,
  *   root:HTMLElement}}
  */
 export function createBattleLoadScreen() {
@@ -220,6 +221,10 @@ export function createBattleLoadScreen() {
   const tipEl = root.querySelector('.tip');
 
   let visible = false;
+  // `visible` is the requested open state and flips false when hide() starts.
+  // `covering` follows the actual composited surface through its exit fade so
+  // battle input cannot steer a camera that is only partly exposed yet.
+  let covering = false;
 
   function fillTeam(host, countEl2, rows) {
     host.textContent = '';
@@ -244,6 +249,7 @@ export function createBattleLoadScreen() {
   const api = {
     root,
     get visible() { return visible; },
+    get covering() { return covering; },
 
     /**
      * Stage and show the screen.
@@ -262,6 +268,7 @@ export function createBattleLoadScreen() {
       countEl.textContent = '';
       api.progress(0, 'Loading battlefield');
       visible = true;
+      covering = true;
       // Entry is a safety cover, not an animation: it must own the very next
       // composited frame on slower guests. Only the exit is allowed to fade.
       root.classList.remove('leaving');
@@ -303,7 +310,10 @@ export function createBattleLoadScreen() {
       root.classList.add('leaving');
       root.classList.remove('on');
       return new Promise((resolve) => setTimeout(() => {
-        if (!visible) root.classList.remove('leaving');
+        if (!visible) {
+          root.classList.remove('leaving');
+          covering = false;
+        }
         resolve();
       }, 320));
     },

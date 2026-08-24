@@ -2591,6 +2591,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // otherwise the loader fade exposes the last framebuffer content, which is
   // the Garage even though its DOM panel has already been hidden.
   hud.preBattleCountdown(PRE_BATTLE_HOLD_S);
+  prepareBattleRevealCamera();
   await primeSoloBattleRevealFrame();
   bltStage('primeReveal');
   await battleLoad.hide();
@@ -2638,6 +2639,18 @@ async function primeSoloBattleRevealFrame() {
       waitMs: Math.round(performance.now() - startedAt),
     };
   }
+}
+
+/**
+ * Establish the exact camera pose that the loader fade will reveal. Covered
+ * warm-up frames and pointer-lock acquisition can leave aim deltas queued;
+ * the render loop drains those deltas while battleLoad.covering is true, so
+ * this pose remains unchanged until the loader has fully left the viewport.
+ */
+function prepareBattleRevealCamera() {
+  if (!game.player || !game.player.state) return;
+  rig.release();
+  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
 }
 let networkMatch = null;
 let networkBridge = null;
@@ -3520,14 +3533,6 @@ function startBattle(specId, mapId = null, opts = {}) {
 
 /** Hand the screen to the battle in an immediately readable chase pose. */
 function openBattle() {
-  // Re-snap here because the loading screen may have covered several warm-up
-  // frames. Starting aligned behind the hull avoids the old front/side flyby
-  // that made the selected tank appear to face the wrong direction, and it
-  // avoids a large vegetation repartition/upload during the first seconds.
-  if (game.player && game.player.state) {
-    rig.release();
-    rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
-  }
   // battle_countdown r1: the loading screen is down and the world is live —
   // resolve the entry hold armed at roster spawn into the visible countdown.
   // Camera look stays free; hulls, turrets and triggers release at zero.
@@ -4250,6 +4255,11 @@ function tick(nowMs) {
 
   const inBattle = game.phase === 'battle';
   const paused = settings.isOpen(); // settings panel freezes the battle
+  // The load screen remains physically composited for its 280 ms fade after
+  // hide() is requested. Drain input during that complete interval without
+  // applying it to the rig; otherwise the battle-button/pointer-lock gesture
+  // can reveal a steep orbit and openBattle() used to snap it back afterward.
+  const battleEntryCameraLocked = inBattle && battleLoad.covering;
   // KILL-CAM: while the replay runs, the sim/rig/visual-sync are all frozen —
   // resuming just continues the fixed-step loop (no drifted timers).
   const kcActive = killcam.isActive();
@@ -4314,13 +4324,13 @@ function tick(nowMs) {
   }
   // smoothed + sensitivity/invert-scaled aim delta (extra scale in sniper)
   input.consumeMouseDelta(_mouse, dtR, rig.mode === 'SNIPER');
-  camInput.mouseDX = paused ? 0 : _mouse.x;
-  camInput.mouseDY = paused ? 0 : _mouse.y;
-  camInput.wheel = paused ? 0 : wheelStep;
+  camInput.mouseDX = (paused || battleEntryCameraLocked) ? 0 : _mouse.x;
+  camInput.mouseDY = (paused || battleEntryCameraLocked) ? 0 : _mouse.y;
+  camInput.wheel = (paused || battleEntryCameraLocked) ? 0 : wheelStep;
   // CURSOR-AIM FALLBACK: pointer lock unavailable — the rig raycasts through
   // the real cursor instead of screen center and the turret chases that point.
   const cursorAimNow = input.isCursorAim();
-  camInput.cursorAim = inBattle && !paused && cursorAimNow;
+  camInput.cursorAim = inBattle && !paused && !battleEntryCameraLocked && cursorAimNow;
   if (camInput.cursorAim) {
     input.getCursorNdc(_cursorNdc);
     camInput.cursorX = _cursorNdc.x;
@@ -4343,12 +4353,15 @@ function tick(nowMs) {
   const rmbMode = input.getSettings().rmbMode || 'hold';
   const rmbHeld = input.isDown('freeCamera');
   const freeLookHeld = input.isDown('freeLook');
-  camInput.rmb = inBattle && !paused && !cursorAimNow &&
+  const sniperToggleHeld = input.isDown('sniperToggle');
+  camInput.rmb = inBattle && !paused && !battleEntryCameraLocked && !cursorAimNow &&
     (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
-  camInput.aimHold = inBattle && !paused && rmbMode === 'hold' && rmbHeld;
-  camInput.shiftPressed = input.isDown('sniperToggle') ||
+  camInput.aimHold = inBattle && !paused && !battleEntryCameraLocked &&
+    rmbMode === 'hold' && rmbHeld;
+  camInput.shiftPressed = !battleEntryCameraLocked && (
+    sniperToggleHeld ||
     (rmbMode === 'toggle' && rmbHeld) ||
-    (rmbMode === 'freelook' && cursorAimNow && rmbHeld);
+    (rmbMode === 'freelook' && cursorAimNow && rmbHeld));
   wheelStep = 0;
 
   // Network authority keeps pumping while the loading screen owns the page,

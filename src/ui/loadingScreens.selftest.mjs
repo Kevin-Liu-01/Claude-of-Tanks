@@ -92,14 +92,28 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const cameraPrepareAt = mainSource.indexOf('prepareBattleRevealCamera();');
 const revealPrimeAt = mainSource.indexOf('await primeSoloBattleRevealFrame();');
 const loaderFadeAt = mainSource.indexOf('await battleLoad.hide();', revealPrimeAt);
 const battleOpenAt = mainSource.indexOf('openBattle();', loaderFadeAt);
-assert.ok(revealPrimeAt >= 0 && loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
-  'solo battle entry must paint the battlefield before the roster loader begins fading');
+assert.ok(cameraPrepareAt >= 0 && revealPrimeAt > cameraPrepareAt &&
+  loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
+  'solo battle entry must lock the chase camera and paint it before the roster loader fades');
 assert.match(mainSource,
   /post\.render\(dtR\);\s*if \(game\.phase === 'battle'\) presentedBattleFrameSerial\+\+;/,
   'the reveal barrier must advance only after a real battle frame is rendered');
+assert.match(mainSource,
+  /const battleEntryCameraLocked = inBattle && battleLoad\.covering;/,
+  'camera input must stay locked through the complete loader fade');
+assert.match(mainSource,
+  /camInput\.mouseDX = \(paused \|\| battleEntryCameraLocked\) \? 0 : _mouse\.x;/,
+  'queued mouse input must be drained without moving the covered battle camera');
+const openBattleBody = mainSource.slice(
+  mainSource.indexOf('function openBattle()'),
+  mainSource.indexOf('const PRE_BATTLE_HOLD_S'),
+);
+assert.doesNotMatch(openBattleBody, /snapArcade/,
+  'openBattle must never visibly re-snap the camera after the loader fade');
 assert.match(mainSource,
   /enterGarage\(\);\s*battleLoadRenderingCovered = false;\s*await nextFrame\(\);\s*await battleLoad\.hide\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
