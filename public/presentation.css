@@ -280,9 +280,6 @@ button{font:inherit;color:inherit}
 .home-film{position:relative;overflow:hidden;background:radial-gradient(circle at 76% 18%,rgba(238,143,38,.1),transparent 34%),#05090c}
 .home-film::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0 49.95%,rgba(255,255,255,.025) 50%,transparent 50.05%);pointer-events:none}
 .home-film-frame{position:relative;padding:clamp(6px,1vw,12px);border:1px solid var(--line);background:#020405;box-shadow:0 28px 80px rgba(0,0,0,.46)}
-.home-film-frame::before,.home-film-frame::after{content:'';position:absolute;width:34px;height:34px;border-color:var(--amber);pointer-events:none}
-.home-film-frame::before{left:-1px;top:-1px;border-left:2px solid var(--amber);border-top:2px solid var(--amber)}
-.home-film-frame::after{right:-1px;bottom:-1px;border-right:2px solid var(--amber);border-bottom:2px solid var(--amber)}
 .home-film video{display:block;width:100%;aspect-ratio:16/9;background:#020304;object-fit:contain}
 .home-proof-rail span,.home-proof-rail strong,.home-proof-rail small{display:block}
 .home-proof-rail strong{font-size:13px;letter-spacing:.05em;text-transform:uppercase}

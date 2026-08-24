@@ -19,7 +19,7 @@ const CSS = `
 .cot-info-popover{position:fixed;z-index:10020;width:min(360px,calc(100vw - 20px));max-height:min(520px,calc(100vh - 20px));
   overflow:auto;padding:0;color:#e6edf3;background:linear-gradient(155deg,rgba(17,23,29,.99),rgba(5,8,11,.995));
   border:1px solid rgba(240,176,74,.48);box-shadow:0 20px 64px rgba(0,0,0,.72);font-family:"ABC Monument Grotesk",Arial,sans-serif}
-.cot-info-popover[hidden]{display:none}.cot-info-popover::before{content:"";position:absolute;left:0;top:0;width:48px;height:2px;background:#f0a030}
+.cot-info-popover[hidden]{display:none}
 .cot-info-popover__head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:11px 12px 9px;
   border-bottom:1px solid rgba(154,174,189,.18);background:rgba(8,12,16,.97)}
 .cot-info-popover__head strong{min-width:0;flex:1;color:#f1f5f8;font-size:10px;line-height:1.25;letter-spacing:.12em;text-transform:uppercase}

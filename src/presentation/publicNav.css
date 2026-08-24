@@ -128,7 +128,6 @@
   width:min(260px,calc(100vw - 20px));
   padding:8px;
   border:1px solid rgba(220,230,233,.25);
-  border-top:2px solid #e9a346;
   border-radius:2px;
   background:linear-gradient(155deg,rgba(17,22,27,.995),rgba(6,9,12,.995));
   box-shadow:0 22px 60px rgba(0,0,0,.72);

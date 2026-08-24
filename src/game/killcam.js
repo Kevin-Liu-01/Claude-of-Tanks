@@ -924,8 +924,6 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   padding:0 12px 10px;opacity:0;
   transform:translateY(12px);transition:opacity .55s ease,transform .55s ease;
   display:none;}
-.cot-kc-killer::before{content:"";position:absolute;left:0;top:0;width:78px;height:2px;
-  background:linear-gradient(90deg,var(--kc-red),transparent);}
 .cot-kc-killer.on{display:block;}
 .cot-kc-killer.rv{opacity:1;transform:none;}
 .cot-kc-killer .kk{display:flex;align-items:center;gap:7px;padding:8px 0 6px;
@@ -978,8 +976,6 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,rgba(5,8,11,.97));
   border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
   box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);padding:0 0 9px;}
-.cot-kc-annot::before{content:"";position:absolute;left:0;top:0;width:86px;height:2px;
-  background:linear-gradient(90deg,var(--kc-amber),transparent);}
 .cot-kc-annot .hd{padding:7px 11px 6px;border-bottom:1px solid var(--kc-line-soft);}
 .cot-kc-annot .hd .m{display:flex;align-items:center;gap:6px;margin-bottom:3px;
   font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.2em;color:#8796a1;text-transform:uppercase;}

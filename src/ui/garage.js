@@ -145,7 +145,7 @@ const GARAGE_CSS = `
 .cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
   max-height:calc(100vh - 118px);overflow-y:auto;overscroll-behavior:contain;
   background:linear-gradient(155deg,rgba(17,23,29,.99),rgba(6,10,14,.99));
-  border:1px solid rgba(166,184,199,.38);border-top:2px solid #f0a030;
+  border:1px solid rgba(166,184,199,.38);
   box-shadow:0 22px 60px rgba(0,0,0,.72),0 0 0 1px rgba(0,0,0,.55) inset;}
 .cot-mobile-nav-menu::before{content:'Navigate';padding:6px 8px 7px;color:#f0b04a;
   font:900 7px ${FONT_COND};letter-spacing:.22em;text-transform:uppercase;}
@@ -175,7 +175,7 @@ const GARAGE_CSS = `
 .cot-record-dialog{position:relative;width:min(720px,calc(100vw - 48px));max-height:calc(100vh - 48px);
   overflow-y:auto;overscroll-behavior:contain;color:#dce6ee;
   background:linear-gradient(155deg,rgba(18,24,30,.99),rgba(7,11,15,.99) 70%);
-  border:1px solid rgba(166,184,199,.38);border-top:2px solid #f0a030;
+  border:1px solid rgba(166,184,199,.38);
   box-shadow:0 28px 90px rgba(0,0,0,.78),0 0 0 1px rgba(0,0,0,.6) inset;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
 .cot-record-dialog::before{content:'';position:absolute;inset:0;pointer-events:none;
@@ -217,7 +217,7 @@ const GARAGE_CSS = `
   letter-spacing:.17em;text-transform:uppercase;}
 .cot-record-outcome strong{display:block;margin-top:6px;font-size:20px;color:#eef4f9;
   font-variant-numeric:tabular-nums;}
-.cot-record-outcome.win{border-top-color:#dd9d3d;}.cot-record-outcome.win strong{color:#ffc66c;}
+.cot-record-outcome.win strong{color:#ffc66c;}
 .cot-record-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
 .cot-record-metric{min-height:77px;}
 .cot-record-metric strong{display:block;margin-top:8px;color:#eef4f9;font-size:18px;
@@ -295,7 +295,7 @@ const GARAGE_CSS = `
 .cot-garage .stats::before{display:none;}
 .cot-dossier-head{position:relative;padding:14px 16px 13px;min-height:104px;margin-bottom:8px;
   background:linear-gradient(150deg,rgba(22,28,34,.97),rgba(8,11,14,.97) 72%);
-  border:1px solid rgba(166,184,199,.3);border-top:2px solid #d99531;
+  border:1px solid rgba(166,184,199,.3);
   box-shadow:0 14px 36px rgba(0,0,0,.48),inset 0 0 0 1px rgba(255,255,255,.015);}
 .cot-dossier-head::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(circle at 86% 0,rgba(240,160,48,.105),transparent 30%);}
@@ -325,7 +325,6 @@ const GARAGE_CSS = `
   background:linear-gradient(155deg,rgba(16,22,28,.96),rgba(7,10,13,.96) 76%);
   border:1px solid rgba(146,164,180,.2);box-shadow:0 10px 28px rgba(0,0,0,.36);}
 .cot-stat-section:last-child{margin-bottom:0;}
-.cot-stat-section::before{content:'';position:absolute;left:-1px;top:-1px;width:38px;height:2px;background:#d99531;}
 .cot-stat-title{margin-bottom:10px;color:#8fa0ad;display:flex;align-items:center;gap:7px;}
 .cot-stat-title svg{width:13px;height:13px;color:#f0a030;flex:0 0 auto;}
 .cot-stat-title span{min-width:0;}
@@ -504,7 +503,7 @@ const GARAGE_CSS = `
 .cot-card{width:156px;min-height:150px;flex:0 0 auto;cursor:pointer;position:relative;
   isolation:isolate;overflow:hidden;
   background:linear-gradient(180deg,rgba(13,18,23,.90),rgba(8,11,14,.96));
-  border:1px solid rgba(146,164,180,.26);border-top:2px solid rgba(146,164,180,.26);
+  border:1px solid rgba(146,164,180,.26);
   padding:9px 10px 8px;transition:border-color .15s,transform .15s,box-shadow .15s;}
 .cot-card::before{content:"";position:absolute;z-index:-2;inset:-10%;pointer-events:none;
   background-image:var(--nation-flag);background-size:cover;background-position:center;
@@ -516,7 +515,7 @@ const GARAGE_CSS = `
 .cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
 .cot-card:hover::before{opacity:.32;filter:saturate(.96) contrast(1.08);}
 .cot-card.sel:hover{transform:translateY(-6px);}
-.cot-card.sel{border-color:#f0a030;border-top-color:#f0a030;transform:translateY(-6px);
+.cot-card.sel{border-color:#f0a030;transform:translateY(-6px);
   box-shadow:0 8px 26px rgba(240,140,20,.28);
   background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
 .cot-card.sel::before{opacity:.38;filter:saturate(1.02) contrast(1.08);}
@@ -534,7 +533,7 @@ const GARAGE_CSS = `
   font-size:7px;font-weight:900;letter-spacing:.14em;line-height:1;text-transform:uppercase;
   box-shadow:0 2px 8px rgba(0,0,0,.45);}
 .cot-card.dev-only{border-color:rgba(103,191,255,.38);}
-.cot-card.dev-only.sel{border-color:#79c8ff;border-top-color:#79c8ff;
+.cot-card.dev-only.sel{border-color:#79c8ff;
   box-shadow:0 8px 26px rgba(64,154,219,.23);}
 .cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
   object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));transform:scale(1.04);}

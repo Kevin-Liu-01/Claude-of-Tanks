@@ -62,10 +62,6 @@ const SETTINGS_CSS = `
 .cot-settings.open .cot-set-panel{animation:cotSetIn .26s cubic-bezier(.21,.9,.24,1) backwards;}
 @keyframes cotSetVeil{from{opacity:0;}}
 @keyframes cotSetIn{from{opacity:0;transform:translateY(14px) scale(.985);}}
-/* top amber strip — full-bleed hairline accent with soft ends + faint glow */
-.cot-set-panel::before{content:'';position:absolute;left:0;right:0;top:0;height:2px;
-  background:linear-gradient(90deg,rgba(240,160,48,.25),#f0a030 16%,#f0a030 84%,rgba(240,160,48,.25));
-  box-shadow:0 0 12px rgba(240,160,48,.35);}
 .cot-set-hdr{display:flex;align-items:center;gap:12px;padding:15px 22px 11px;}
 .cot-set-hdr h2{font-size:15px;font-weight:800;letter-spacing:.18em;color:#d5dfe7;
   text-transform:uppercase;margin-right:auto;}

@@ -90,5 +90,10 @@ assert.match(garageSource,
   'country overflow arrows use compact balanced gutters instead of looking like nation tiles');
 assert.match(garageSource, /\.cot-country-rail\{[^}]*left:50%;[^}]*transform:translateX\(-50%\);/,
   'the desktop nation rail is centered on the Garage stage');
+assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
+  'the vehicle dossier header uses one consistent neutral border');
+assert.doesNotMatch(garageSource, /\.cot-stat-section::before\{/,
+  'dossier sections do not draw stray orange rules across their top edges');
+await import('./topAccentBorders.selftest.mjs');
 
 console.log('garageOrder.selftest: ordering, map default, filters and hidden horizontal rail verified');

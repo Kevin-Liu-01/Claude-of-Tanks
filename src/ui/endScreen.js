@@ -97,8 +97,6 @@ const ES_CSS = `
 .cot-es .es-debrief{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;
   overflow:hidden;background:linear-gradient(155deg,rgba(13,18,23,.96),rgba(6,9,12,.97));
   border:1px solid rgba(166,184,199,.3);box-shadow:0 12px 36px rgba(0,0,0,.42);pointer-events:auto;}
-.cot-es .es-debrief.personal{border-top:2px solid ${COL.amber};}
-.cot-es .es-debrief.teams{border-top:2px solid rgba(127,220,138,.72);}
 .cot-es .es-dh{display:flex;align-items:center;justify-content:space-between;gap:12px;
   min-height:41px;padding:9px 14px;border-bottom:1px solid rgba(166,184,199,.2);}
 .cot-es .es-dh .titleline{display:flex;align-items:center;gap:9px}.cot-es .es-dh .titleline svg{flex:0 0 auto;opacity:.92}

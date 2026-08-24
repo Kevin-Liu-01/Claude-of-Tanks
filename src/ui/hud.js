@@ -538,12 +538,10 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   width:min(760px,calc(100vw - 32px));min-width:0;min-height:82px;
   color:#dce6ed;background:
     linear-gradient(112deg,rgba(17,25,31,.985),rgba(8,13,17,.98) 62%,rgba(13,19,24,.985));
-  border:1px solid rgba(161,181,196,.32);border-top-color:rgba(207,220,229,.38);
+  border:1px solid rgba(161,181,196,.32);
   box-shadow:0 16px 46px rgba(0,0,0,.64),inset 0 1px rgba(255,255,255,.035);
   padding:6px 7px 6px 6px;transition:opacity .32s ease .12s,
   transform .42s cubic-bezier(.2,.7,.3,1) .12s;}
-.cot-spec::before{content:"";position:absolute;z-index:2;left:0;top:0;width:132px;height:2px;
-  background:linear-gradient(90deg,#f0a030 0 58%,rgba(240,160,48,0));pointer-events:none;}
 .cot-spec.show{display:grid;}
 .cot-spec.in{opacity:1;transform:translate(-50%,0);}
 .cot-spec .portrait{position:relative;display:grid;place-items:center;overflow:hidden;
