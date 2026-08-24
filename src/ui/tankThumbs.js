@@ -15,7 +15,7 @@ import { iconUrl } from './icons.js';
 // layer and turret+gun layer separately), replacing the baked one-piece
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank } from '../vehicles/fleetFactory.js';
 
 const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'];
 let errorGuardInstalled = false;

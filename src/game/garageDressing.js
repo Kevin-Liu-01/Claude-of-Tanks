@@ -32,7 +32,7 @@ import * as THREE from 'three';
 import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.js';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank } from '../vehicles/fleetFactory.js';
 import { DECOR_KITS } from '../vehicles/decorations.js';
 
 // Repair-bay residents use the same first-party builders as playable tanks;

@@ -32,6 +32,7 @@ import {
 } from './propGeometry.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
+import { ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
@@ -870,6 +871,7 @@ export async function createPropsAsync(heightField, engineCtx, seed = 2002, cfg 
   let i = 0;
   const total = fineSlices ? 48 : 9;
   while (!r.done) {
+    if (r.value?.tankBuilder) await ensureTankBuilder(r.value.tankBuilder);
     if (tick && (fineSlices || !r.value || !r.value.fine)) await tick(++i, total);
     r = g.next();
   }
@@ -2995,7 +2997,7 @@ ${snowCap ? `
         bakeCache.set(key, baked);
         return baked;
       }
-      function placeWreck(x, z, yaw) {
+      function* placeWreck(x, z, yaw) {
         // Explicit map pools are deliberate story casts: consume them in
         // order so the complete modern wreck vocabulary is guaranteed across
         // the legacy-map set. Unauthored pools retain seeded random variety.
@@ -3003,6 +3005,10 @@ ${snowCap ? `
           ? pool[wreckPickSerial++ % pool.length]
           : pool[(wrng() * pool.length) | 0];
         const pop = wrng() < 0.45; // mix ammo-rack tosses with unseated kills
+        // The async world builder resolves only the selected wreck's authored
+        // family before this synchronous bake resumes. No full-fleet barrier,
+        // speculative preload, or legacy fallback is involved.
+        yield { fine: true, tankBuilder: specId };
         const baked = bakeFor(specId, pop);
         if (!baked) return false;
         bakedTris += baked.tris; // budget counts PLACED tris (clones render too)
@@ -3056,7 +3062,7 @@ ${snowCap ? `
       for (const beat of P.tacticalBeats || []) {
         if (!beat.wreck || placedW >= wreckCount || bakedTris > 260000) continue;
         const yawW = THREE.MathUtils.degToRad(beat.wreckYawDeg ?? beat.yawDeg ?? 0);
-        if (placeWreck(beat.x + (beat.wreckOffsetX || 0),
+        if (yield* placeWreck(beat.x + (beat.wreckOffsetX || 0),
           beat.z + (beat.wreckOffsetZ || 0), yawW)) {
           placedW++;
           yield { fine: true };
@@ -3086,7 +3092,7 @@ ${snowCap ? `
           }
           if (bad || Math.hypot(px - junction.x, pz - junction.z) < 20) continue;
           const yawW = Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9;
-          if (!placeWreck(px, pz, yawW)) continue;
+          if (!(yield* placeWreck(px, pz, yawW))) continue;
           placedW++;
           yield { fine: true }; // loading-speed r1: one static tank bake per idle slice
           // paired DUEL beat: a second hulk 9-14 m off, guns facing the first
@@ -3098,7 +3104,8 @@ ${snowCap ? `
               && heightField._roadDist(qx, qz) >= 5.2
               && heightField.getGroundType(qx, qz) !== 'soft' && !noVeg(qx, qz)
               && heightField.getNormalAt(qx, qz).y >= 0.88) {
-              if (placeWreck(qx, qz, Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3)) {
+              if (yield* placeWreck(qx, qz,
+                Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3)) {
                 placedW++;
                 yield { fine: true };
               }

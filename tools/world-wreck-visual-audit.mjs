@@ -46,8 +46,8 @@ try {
     timeout: 120000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
-  const receipt = await page.evaluate(() => {
-    window.__SHOTS.set('battlefield');
+  const receipt = await page.evaluate(async () => {
+    await window.__SHOTS.set('battlefield');
     const debug = window.__DEBUG;
     const spot = debug.world?.tankWreckSpots?.[0];
     if (!spot) throw new Error('verdant exposes no tank wreck spot');

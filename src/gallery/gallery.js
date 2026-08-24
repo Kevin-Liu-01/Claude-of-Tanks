@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
 import {
   buildGalleryRecords,
@@ -534,6 +534,8 @@ async function loadTank(id, options = {}) {
 
   disposeTank();
   selectedId = id;
+  await ensureTankBuilder(id);
+  if (version !== loadVersion) return;
   const spec = getSpec(id);
   const record = recordById.get(id);
   visual = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });

@@ -47,7 +47,9 @@ import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
-import { createTank } from './vehicles/tankFactory.js';
+import {
+  createTank, ensureFullFleet, ensureTankBuilder,
+} from './vehicles/fleetFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
@@ -548,6 +550,7 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
       ? (window.__VISUAL_LOAD_TIMINGS ||= []) : null;
     visualTimings?.push(visualTiming);
     let visualMark = performance.now();
+    await ensureTankBuilder(next.ent.specId);
     try {
       await prebakeSharedTextures(getSpec(next.ent.specId),
         engineCtx.anisotropy ?? 4, next.quality, () => yieldForBudget());
@@ -1056,10 +1059,12 @@ function setPedestalTank(specId, force = false) {
   const buildToken = pedestalPollToken;
   let phaseAt = performance.now();
   const phases = { prebakeMs: 0, buildMs: 0, compileMs: 0 };
-  return prebakeSharedTextures(
-    getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', frameBudgetTick(6),
-  )
-    .catch(() => { /* buildPedestalVisual can still acquire synchronously */ })
+  return Promise.all([
+    ensureTankBuilder(specId),
+    prebakeSharedTextures(
+      getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', frameBudgetTick(6),
+    ).catch(() => { /* buildPedestalVisual can still acquire synchronously */ }),
+  ])
     .then(async () => {
       phases.prebakeMs = Math.round(performance.now() - phaseAt);
       if (buildToken !== pedestalPollToken) {
@@ -5230,9 +5235,9 @@ const SHOT_VIEWS = {
     // above the fireball with spin at the 0.6 s composed moment
     ent.visual.setDestroyed({ pop: true, ageS: 0.6 });
   },
-  garage() {
+  async garage() {
     hud.setMode('hidden');
-    setPedestalTank('m1a2');
+    await setPedestalTank('m1a2');
     garage.show('m1a2');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
     garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
@@ -5365,9 +5370,13 @@ window.__SHOTS = {
     'battlefield_titan_gorge', 'battlefield_skybridge',
     'killcam_xray', // KILL-CAM
   ],
-  set(name) {
+  async set(name) {
     const recipe = SHOT_VIEWS[name];
     if (!recipe) throw new Error(`Unknown screenshot view: ${name}`);
+    // Deterministic authoring views can reference several families in one
+    // synchronous recipe. This capture-only gate is deliberately exhaustive;
+    // normal game, gallery and network flows remain per-id demand loaded.
+    await ensureFullFleet();
     // PERF (performance_budget r1): shot recipes must never race the deferred
     // post-ready warm — run it now (idempotent, no-op once idle fired).
     warmCombatPipeline();
@@ -5393,7 +5402,7 @@ window.__SHOTS = {
     fx.resetSeed(5000);
     fx.setFrozen(true, VIEW_TIME[name]);
     if (world) world.setWindTime(VIEW_TIME[name]);
-    recipe();
+    await recipe();
     // Shot mode runs world.update with dt=0 (frozen), so the eased sniper
     // grass fade would never move — snap it to match the rig mode instead.
     // (r5: aim distance opens the scope-ray corridor to the staged target.)

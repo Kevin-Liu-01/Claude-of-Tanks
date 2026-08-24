@@ -5005,10 +5005,11 @@ export function configureTankFactory({ canonicalBuilderPacks, profiledBuilders, 
     }
   }
 
-  if (!profiledBuilders || typeof profiledBuilders !== 'object') {
+  if (profiledBuilders !== undefined
+      && (profiledBuilders === null || typeof profiledBuilders !== 'object')) {
     throw new TypeError('profiledBuilders must be an object');
   }
-  const profileEntries = Object.entries(profiledBuilders);
+  const profileEntries = profiledBuilders ? Object.entries(profiledBuilders) : [];
   for (const [id, builder] of profileEntries) {
     if (typeof builder !== 'function') throw new TypeError(`Profiled builder ${id} must be a function`);
   }
@@ -5024,6 +5025,23 @@ export function configureTankFactory({ canonicalBuilderPacks, profiledBuilders, 
   for (const [id, builder] of profileEntries) BUILDERS[id] = builder;
   KIT_FITTINGS = fittings;
   factoryConfigured = true;
+}
+
+/**
+ * Register one demand-loaded profile family after the canonical factory has
+ * been configured. Re-registering a family is intentionally idempotent: ES
+ * module evaluation is cached, while this also makes retrying a resolved
+ * loader harmless.
+ */
+export function registerProfiledBuilders(profiledBuilders) {
+  if (!factoryConfigured) throw new Error('Tank factory is not configured yet');
+  if (!profiledBuilders || typeof profiledBuilders !== 'object') {
+    throw new TypeError('profiledBuilders must be an object');
+  }
+  for (const [id, builder] of Object.entries(profiledBuilders)) {
+    if (typeof builder !== 'function') throw new TypeError(`Profiled builder ${id} must be a function`);
+    BUILDERS[id] = builder;
+  }
 }
 
 function buildCanonical(P, id) {

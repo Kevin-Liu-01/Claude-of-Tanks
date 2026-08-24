@@ -43,7 +43,7 @@ async function sampleRegion(tag) {
 }
 
 // ---- battlefield white-ground bisect --------------------------------------
-await page.evaluate(() => { window.__SHOTS.set('battlefield'); });
+await page.evaluate(() => window.__SHOTS.set('battlefield'));
 const base = await sampleRegion('baseline    ');
 writeFileSync('shots/crops_r5lp/probe_baseline.png', Buffer.from(base, 'base64'));
 
@@ -70,9 +70,9 @@ await sampleRegion('env-99(sanity)');
 await page.evaluate(() => { window.__DEBUG.scene.environmentIntensity = 0.32; });
 
 // ---- combat_firing muzzle anchor offset -----------------------------------
-const muz = await page.evaluate(() => {
+const muz = await page.evaluate(async () => {
   const D = window.__DEBUG;
-  window.__SHOTS.set('combat_firing');
+  await window.__SHOTS.set('combat_firing');
   const THREEV = D.rig.aimPoint.constructor; // Vector3 class
   const p = D.game.player.visual;
   const muzW = new THREEV(); p.gunMuzzleWorld(muzW);

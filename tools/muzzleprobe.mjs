@@ -10,9 +10,9 @@ const page = await browser.newPage();
 await page.setViewport({ width: 640, height: 360 });
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
-const out = await page.evaluate(() => {
+const out = await page.evaluate(async () => {
   const D = window.__DEBUG;
-  window.__SHOTS.set('combat_firing');
+  await window.__SHOTS.set('combat_firing');
   const res = {};
   for (const id of ['m1a2', 'tiger1', 't90m', 'leo2a7', 'is2']) {
     const ent = D.game.tankById.get(id);

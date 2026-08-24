@@ -14,8 +14,8 @@ await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
 const settle = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const info = await page.evaluate(() => {
-  window.__SHOTS.set('battlefield');
+const info = await page.evaluate(async () => {
+  await window.__SHOTS.set('battlefield');
   const D = window.__DEBUG;
   return {
     density: D.scene.fog ? D.scene.fog.density : null,

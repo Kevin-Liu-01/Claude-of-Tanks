@@ -46,7 +46,7 @@ for (const preset of presets) {
     } else {
       D.quality.setPresetName(${JSON.stringify(preset)});
     }
-    window.__SHOTS.set('battlefield');
+    await window.__SHOTS.set('battlefield');
     D.post.pinDynScale(1);
     await new Promise((resolve) => setTimeout(resolve, 700));
 

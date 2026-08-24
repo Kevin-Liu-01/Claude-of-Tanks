@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import { createCombatState } from '../sim/damage.js';
 import { createTankState, shotRecoilScale } from '../sim/movement.js';
 import { getSpec } from '../vehicles/specs.js';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.js';
@@ -162,6 +162,7 @@ export function createBrowserBattleBridge({
     const warmed = new Set();
     for (let index = 0; index < active.length; index++) {
       const player = active[index];
+      await ensureTankBuilder(player.specId);
       const quality = !spectator && player.id === id ? 'high' : 'ai';
       const camo = player.camo || 'factory';
       const warmKey = `${player.specId}:${camo}:${quality}`;

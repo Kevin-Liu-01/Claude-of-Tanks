@@ -245,7 +245,7 @@ try {
     if (target.setup) {
       await page.evaluate(async (setup) => {
         if (setup.kind === 'garage') {
-          window.__SHOTS.set('garage');
+          await window.__SHOTS.set('garage');
         } else if (setup.kind === 'gallery-modules') {
           window.__TANK_GALLERY.setMode('modules', false);
           window.__TANK_GALLERY.frameView('hero');

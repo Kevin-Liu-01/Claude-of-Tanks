@@ -8,6 +8,7 @@
     "doc": "docs"
   },
   "scripts": {
+    "pretest": "node src/vehicles/fleetLazy.selftest.mjs",
     "agent-docs": "node scripts/run-agent-docs.ts",
     "fx:textures:bake": "node tools/bake-fx-textures.mjs",
     "perf:terrain-stream": "node tools/terrain-stream-benchmark.mjs",

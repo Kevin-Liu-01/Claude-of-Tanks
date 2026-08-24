@@ -27,7 +27,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank } from '../vehicles/fleetFactory.js';
 import { VEHICLE_ERAS } from '../vehicles/taxonomy.js';
 
 function mulberry32(a) {

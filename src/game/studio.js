@@ -30,7 +30,7 @@
  */
 import * as THREE from 'three';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.js';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank, ensureFullFleet } from '../vehicles/fleetFactory.js';
 import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
 } from '../sim/movement.js';
@@ -2234,6 +2234,7 @@ export function createStudio(ctx) {
         label,
       );
       await Promise.all([
+        ensureFullFleet(),
         ensureWorld(mapId, (f, label) => {
           worldProgress = Math.max(worldProgress, f);
           report(label);

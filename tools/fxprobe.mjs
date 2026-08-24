@@ -75,9 +75,9 @@ try {
   if (phases.includes('composed')) {
     await ready();
     for (const ageMs of [17, 50]) {
-      await page.evaluate((age) => {
+      await page.evaluate(async (age) => {
         const D = window.__DEBUG;
-        window.__SHOTS.set('combat_firing');
+        await window.__SHOTS.set('combat_firing');
         if (age !== 50) {
           D.fx.resetAll(); D.fx.resetSeed(5000);
           const p = D.game.player;

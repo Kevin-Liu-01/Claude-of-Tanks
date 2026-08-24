@@ -45,8 +45,8 @@ try {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
-  const receipt = await page.evaluate(() => {
-    window.__SHOTS.set('battlefield');
+  const receipt = await page.evaluate(async () => {
+    await window.__SHOTS.set('battlefield');
     const debug = window.__DEBUG;
     const full = debug.world.group.getObjectByName('baked-pole-full');
     const distance = debug.world.group.getObjectByName('baked-pole-distance');

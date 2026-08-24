@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import { getSpec, TANK_IDS, RUNTIME_TANK_IDS } from '../vehicles/specs.js';
-import { createTank } from '../vehicles/tankFactory.js';
+import { createTank } from '../vehicles/fleetFactory.js';
 import { tankTier } from '../vehicles/tier.js';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
