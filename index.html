@@ -269,7 +269,10 @@
       font-size: 9.5px; font-weight: 700; letter-spacing: .3em; color: #f0a030;
       text-transform: uppercase;
     }
-    .cot-boot-links { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+    .cot-boot-links {
+      display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
+      gap: 10px; margin: 14px auto 0;
+    }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 10px 15px; border: 1px solid rgba(159,176,191,.34);
@@ -280,7 +283,7 @@
         background .18s ease, box-shadow .18s ease;
     }
     .cot-boot-links > .cot-boot-link {
-      width: 132px; min-width: 132px; height: 38px; padding: 0 14px;
+      width: auto; min-width: 0; height: 38px; padding: 0 16px;
       animation: cot-boot-rise .48s cubic-bezier(.18,.7,.3,1) backwards;
     }
     .cot-boot-links > .cot-boot-link:first-child { animation-delay: .54s; }
@@ -304,6 +307,10 @@
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
     .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    @media (max-width: 370px) {
+      .cot-boot-links { gap: 8px; }
+      .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
+    }
     @media (prefers-reduced-motion: reduce) {
       .cot-boot-links > .cot-boot-link { animation: none; }
       .cot-boot-link, .cot-boot-link-icon { transition: none; }

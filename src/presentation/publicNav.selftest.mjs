@@ -70,6 +70,14 @@ for (const [file, activeHref] of pages) {
 }
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+assert.match(gameHtml,
+  /\.cot-boot-links\s*\{[^}]*display: grid; grid-template-columns: repeat\(2, 1fr\); width: max-content;/,
+  'boot utility controls must share the widest control\'s intrinsic width');
+assert.match(gameHtml,
+  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 16px;/,
+  'boot utility controls must keep balanced content-driven horizontal padding');
+assert.doesNotMatch(gameHtml, /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: 132px;/,
+  'boot utility controls must not return to the fixed width that cramped GitHub');
 const gameRepositoryLinks = [...gameHtml.matchAll(/<a[^>]+href="https:\/\/github\.com\/Kevin-Liu-01\/Claude-of-Tanks"[^>]*>([\s\S]*?)<\/a>/g)];
 assert.equal(gameRepositoryLinks.length, 2, 'loading and credits screens must retain both repository controls');
 for (const [, contents] of gameRepositoryLinks) {
