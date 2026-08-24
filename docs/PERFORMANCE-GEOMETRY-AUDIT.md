@@ -6,6 +6,38 @@ unchanged, or substitute a measured distance representation after the original
 detail is no longer resolvable. Close gallery and battle heroes keep their
 authored silhouettes.
 
+## Outcome at a glance
+
+The shipped changes reduce geometry work where it is least visible while
+preserving close-range tank silhouettes and authored gameplay geometry. The
+largest practical gain is on lower-end and mobile hardware: the audited 90 m
+mobile fleet census falls from 8.73 M to 3.50 M triangles (-59.88%). Close
+gallery and battle views are 9-10% lighter across all 149 registered tanks,
+and a representative live battlefield inventory is 13.43% lighter.
+
+| Area | Accomplished | Player-facing result |
+|---|---:|---|
+| All close-view tanks | 9.05-10.05% fewer triangles | Less vertex/raster work without changing armor, weapons, equipment, markings, shadows, or exterior silhouettes |
+| Mobile tanks at 90 m | 59.88% fewer triangles | Substantially more GPU headroom at normal mobile combat distance |
+| Running gear | 12.34% lighter close; 70.68% lighter at 90 m | Exact exterior shoes nearby, measured 22-triangle shoes after detail is no longer resolvable |
+| Representative visible world | 13.43% fewer triangles | Lower battlefield scene cost from props, vegetation decals, wrecks, and distance-aware poles |
+| Tank wrecks | 48.04% fewer triangles | Complete wreck silhouette and track course retained while sealed fine furniture is omitted |
+| Far telephone poles | Up to 94.79% fewer triangles | Exact pole nearby and a stable hysteretic distance representation beyond 120 m |
+| Tree contact decals | 33.33% fewer triangles | Same transparent visible boundary with fewer terrain-conforming sectors |
+| Point primitives | Already zero in the live probe | No hidden point-particle geometry remained to optimize |
+
+These figures are aggregate fleet-census comparisons—one rendering of every
+registered tank per scenario—not a claim that all 149 tanks are rendered in a
+single battle frame. The reductions directly remove geometry processing and
+associated bandwidth, but actual frame-rate improvement remains dependent on
+device bottlenecks, resolution, shadows, and scene composition.
+
+Visual parity was established with 447/447 close fleet comparisons and
+596/596 battle-distance comparisons, plus original-resolution wreck and pole
+checks and inspection of all twenty battlefield maps. The complete project
+suite, 149-vehicle muzzle visual gate, anatomy/asset receipts, and public and
+private production builds also passed before publication.
+
 ## Measurement contract
 
 - Fleet: 149 registered procedural tanks, including all 122 playable tanks.
