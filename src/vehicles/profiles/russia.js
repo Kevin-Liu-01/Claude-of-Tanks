@@ -484,6 +484,7 @@ export function ruFlaps(P, o) {
 // 59 wheel-gap pattern); defaults are byte-identical to the widened T-62.
 export function buildT62Obr1975Chassis(P, o = {}) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  const bowService = o.bowService || {};
   // §5.304 OWNER-DECREED WIDEN (2026-08-17, order verbatim: "update our t62
   // obr 1975 10% wider ..."): every LATERAL (x) station below is the
   // certified obr-1975 line ×1.10 — loft width curves, V-nose corners, track
@@ -555,12 +556,25 @@ export function buildT62Obr1975Chassis(P, o = {}) {
   KIT.headlight(P, -0.506, 1.12, 2.92, -0.28, 0.07);
   KIT.headlight(P, 0.506, 1.12, 2.92, -0.28, 0.07);
   for (const x of [-0.792, -0.264, 0.264, 0.792]) {
-    P.add('hullDetail', box(0.13, 0.15, 0.035), x, 0.66, 3.555, -0.05, 0, 0);
+    P.add('hullDetail', box(0.13, 0.15, 0.035), x,
+      bowService.stiffenerY ?? 0.66, bowService.stiffenerZ ?? 3.555,
+      bowService.stiffenerPitch ?? -0.05, 0, 0);
   }
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.16, 0.10, 0.08), s * 1.012, 0.55, 3.515);
-    P.add('hullDetail', cylZ(0.065, 0.035, 10), s * 1.012, 0.55, 3.570);
+    P.add('hullDark', box(0.16, 0.10, 0.08), s * 1.012,
+      bowService.recoveryY ?? 0.55, bowService.recoveryBodyZ ?? 3.515);
+    P.add('hullDetail', cylZ(0.065, 0.035, 10), s * 1.012,
+      bowService.recoveryY ?? 0.55, bowService.recoveryEyeZ ?? 3.570);
   }
+  P.hullG.userData.t62BowServiceReceipt = Object.freeze({
+    stiffenerCount: 4,
+    stiffenerY: bowService.stiffenerY ?? 0.66,
+    stiffenerZ: bowService.stiffenerZ ?? 3.555,
+    recoveryCount: 2,
+    recoveryY: bowService.recoveryY ?? 0.55,
+    recoveryBodyZ: bowService.recoveryBodyZ ?? 3.515,
+    recoveryEyeZ: bowService.recoveryEyeZ ?? 3.570,
+  });
   ruDeck(P, { deckY: 1.482, hatchX: -0.605, hatchZ: 2.13, hatchY: 1.40, periY: 1.42, gz: -1.435, grilles: 4, gw: 1.54 });
   KIT.towCable(P, [[-1.265, 1.43, 1.11], [0, 1.482, 0.65], [1.265, 1.43, 1.11]]);
   // Twin backed engine-deck louvre beds. The shallow ribs are planted on

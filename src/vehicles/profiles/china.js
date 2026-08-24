@@ -933,7 +933,12 @@ function buildType59(P) {
   const {
     box, cylX, cylY, cylZ, stowage, tarpRoll, shovelTool, spareTrackStrip,
   } = KIT;
-  const vehicleScale = 0.95;
+  // The previous compact refit already rendered at 95% of the authored
+  // frame.  The owner-requested 10% reduction is relative to that live
+  // vehicle, so the final articulated scale is 0.95 * 0.90 = 0.855.
+  const vehicleScale = 0.855;
+  const browDropM = 0.08;
+  const gunRaiseM = 0.08;
 
   // ---- widened obr-1975 chassis with the T-54A wheel-gap pattern (span,
   // idler, sprocket and both contact tangents rebuilt as one linked course.
@@ -953,7 +958,26 @@ function buildType59(P) {
       contactZF: 2.66,
       contactZR: -2.36,
     },
+    // Re-seat the donor bow-service cadence into the Type 59's V-nose. The
+    // former y=.55/.66 seats hung visibly below the lower glacis after the
+    // compact scale pass; these centers overlap the 3.53 m nose section
+    // (belly ~.90, deck ~.98) while their front faces remain just proud.
+    bowService: {
+      stiffenerY: 0.93,
+      stiffenerZ: 3.53,
+      recoveryY: 0.92,
+      recoveryBodyZ: 3.51,
+      recoveryEyeZ: 3.558,
+    },
   });
+  // Close the two enclosed plan pockets between the Type 59 V-nose and the
+  // inner idler shoulders.  Their centers are the standard gate's former
+  // ±0.91 / +2.62 m sky cells after the 0.855 owner scale.  These narrow
+  // inboard bridges stop 20 mm short of the animated shoe envelope, overlap
+  // the lower bow vertically, and never become track covers.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.20, 0.35, 0.30), side * 1.04, 0.90, 3.064, -0.12, 0, 0);
+  }
 
   // ---- Chinese hull dressing --------------------------------------------
   // Type 69-family glacis IR pod: big IR drum right of the driver line on a
@@ -1026,7 +1050,8 @@ function buildType59(P) {
   for (const s of [-1, 1]) P.add('turret', box(0.264, 0.15, 1.22), s * 1.232, 0.58, -0.25);
   // cast nose BROW over the mantlet (the T-54A casting rises over the gun):
   // bottom ring buried under the dome skin / into the gun collar (§B2).
-  const ringsBrow = [[0.726, 0.40], [0.715, 0.62], [0.682, 0.76], [0.572, 0.85], [0.022, 0.87]];
+  const ringsBrow = [[0.726, 0.40], [0.715, 0.62], [0.682, 0.76], [0.572, 0.85], [0.022, 0.87]]
+    .map(([r, y]) => [r, y - browDropM]);
   meshDome(P, ringsBrow, 0.909, 0, 0.95);
   // closed race collar under the casting (the widened base ring).
   P.add('turret', cylY(0.748, 0.7865, 0.10, 20), 0, 0.025, -0.05);
@@ -1056,30 +1081,34 @@ function buildType59(P) {
     P.turretG.add(rack);
     for (const s of [-1, 1]) P.add('turretDark', box(0.06, 0.16, 0.30), s * 0.46, 0.34, -1.44);
   }
-  // Type 54 12.7 mm (DShK-class) census MG at the loader ring — barrel
-  // FORWARD (CROWS law), cluster under the cupola crown. §5.327 MG order a:
-  // the classic Type 59 RING MOUNT read — a race ring biting the loader
-  // hatch collar (torus inner edge 0.266 < collar outer 0.27) with carriage
-  // stubs, and a raked carriage arm dropping from the ring's forward-right
-  // quadrant onto the pintle foot. The MG keeps its STOWED/LOW-FORWARD seat
-  // (foot y 0.78 on the dome skin): p95 receipt — cluster crown world 2.57,
-  // ring crown 2.49, arm crown ~2.50, all under the 2.59 cupola-lid datum
-  // (heightM published 2.59 HOLDS, no new side column above published).
-  P.add('turretDetail', KIT.torus(0.286, 0.020, 22), 0.55, 0.985, 0.11);
-  for (const a of [0.5, 2.6, 4.7]) {
-    P.add('turretDark', box(0.05, 0.045, 0.05),
-      0.55 + 0.286 * Math.cos(a), 0.985, 0.11 + 0.286 * Math.sin(a));
-  }
-  P.add('turretDetail', box(0.065, 0.26, 0.075), 0.674, 0.886, 0.294, -0.50, 0, -0.35);
+  // One enlarged, crew-served weapon AHEAD of each cupola.  Short bridge
+  // plates overlap the hatch crowns and carry the pintle feet out to the
+  // forward rims; the guns' aft spade grips still reach back over the
+  // openings for standing operators.  Barrels remain forward (+Z), and both
+  // groups are turret children so every part follows yaw.
+  P.addEquipment('turretDetail', box(0.18, 0.035, 0.32), 0.55, 1.015, 0.245);
   {
     const dshk = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'dshk', scale: 0.94, tone: 'two-tone', elev: 0.14,
+      mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.08,
       ammo: true, shield: true, barrelBridge: true,
-      rotation: [0, -0.18, 0], seed: 6,
+      rotation: [0, -0.04, 0], seed: 6,
     });
     dshk.name = 'type59RoofDShK';
-    dshk.position.set(0.638, 0.81, 0.24);
+    dshk.userData.cupolaSeat = 'loader';
+    dshk.position.set(0.55, 1.021, 0.36);
     P.turretG.add(dshk);
+  }
+  P.addEquipment('turretDetail', box(0.16, 0.035, 0.30), -0.605, 1.105, 0.02);
+  {
+    const commanderMG = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', scale: 1.12, tone: 'two-tone', elev: 0.06,
+      ammo: true, shield: false, barrelBridge: true,
+      rotation: [0, 0.05, 0], seed: 59,
+    });
+    commanderMG.name = 'type59CommanderCupolaMG';
+    commanderMG.userData.cupolaSeat = 'commander';
+    commanderMG.position.set(-0.605, 1.111, 0.13);
+    P.turretG.add(commanderMG);
   }
   // paired four-tube smoke banks on the dome shoulders (dark pads bridge
   // the bank bodies onto the casting skin).
@@ -1145,9 +1174,10 @@ function buildType59(P) {
   }
 
   // ---- 100 mm Type 59 gun (licensed D-10T class): measured tube grammar,
-  // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Axis world 1.767
-  // on the widened base trunnion; muzzle world +5.99.
-  P.gunG.position.set(0, 0.2866, 1.019);
+  // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Raise the axis
+  // into the lowered brow opening instead of leaving the tube under the
+  // cast nose.
+  P.gunG.position.set(0, 0.2866 + gunRaiseM, 1.019);
   // §5.327 MANTLET READ: the buried collar alone left the tube exiting the
   // casting bare (§B3.1 failing read — the dome front plane at gun height is
   // world z ~1.97, past the whole old collar). rootL 0.48→0.30 tucks the
@@ -1238,23 +1268,29 @@ function buildType59(P) {
     lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
   }
   P.hullG.userData.type59OverhaulReceipt = Object.freeze({
-    revision: 'type59-compact-field-refit-r1',
+    revision: 'type59-compact-twin-mg-r3',
     vehicleScale,
     roadWheelStations: 5,
     linkedTrackCourseReseated: true,
+    bowServiceAttached: true,
+    bowShoulderClosureCount: 2,
     glacisAppliquePanels: 3,
     sideSkirtPanels: 14,
     equipmentAttached: true,
   });
   P.turretG.userData.type59OverhaulReceipt = Object.freeze({
-    revision: 'type59-compact-field-refit-r1',
+    revision: 'type59-compact-twin-mg-r3',
     vehicleScale,
-    roofMachineGun: 'Type 54 DShK',
-    roofMachineGunScale: 0.94,
+    browDropM,
+    gunRaiseM,
+    roofMachineGuns: Object.freeze(['Type 54 DShK', 'Type 59 7.62 mm']),
+    roofMachineGunCount: 2,
+    roofMachineGunScale: 1.08,
+    roofMachineGunScales: Object.freeze([1.08, 1.12]),
     turretArmorPanels,
     equipmentAttached: true,
   });
-  P.topY = 1.15;
+  P.topY = 1.035;
 }
 
 export const CHINA_PROFILES = {
