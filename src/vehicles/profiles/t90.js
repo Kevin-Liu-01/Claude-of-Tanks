@@ -370,7 +370,24 @@ function addT90SMTurretFoundation(P, { position = [0, 1.40, 0.09] } = {}) {
   return { tw, f, b, h };
 }
 
-function buildT90ALegacy(P) {
+const T90A_ORIGINAL_TURRET_SEAT_Z_M = 0.12;
+const T90A_TURRET_SEAT_Z_M = 0.02;
+const T90A_TURRET_REARWARD_SHIFT_M = T90A_ORIGINAL_TURRET_SEAT_Z_M - T90A_TURRET_SEAT_Z_M;
+const T90A_ORIGINAL_SHTORA_EYE_Z_M = 1.80;
+const T90A_SHTORA_EYE_Z_M = 1.73;
+const T90A_SHTORA_LOCAL_REARWARD_SHIFT_M = T90A_ORIGINAL_SHTORA_EYE_Z_M - T90A_SHTORA_EYE_Z_M;
+const T90A_SHTORA_SUPPORT_FRONT_Z_M = T90A_SHTORA_EYE_Z_M - 0.04;
+const T90A_GUN_RADIUS_SCALE = 1.08;
+
+function buildT90ALegacy(P, {
+  turretSeatZ = T90A_TURRET_SEAT_Z_M,
+  turretRearwardShiftM = T90A_TURRET_REARWARD_SHIFT_M,
+  shtoraEyeZ = T90A_SHTORA_EYE_Z_M,
+  shtoraLocalRearwardShiftM = T90A_SHTORA_LOCAL_REARWARD_SHIFT_M,
+  shtoraSupportFrontZ = T90A_SHTORA_SUPPORT_FRONT_Z_M,
+  gunRadiusScale = T90A_GUN_RADIUS_SCALE,
+  recordSeatReceipt = true,
+} = {}) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
@@ -638,7 +655,7 @@ function buildT90ALegacy(P) {
   // exaggerated gap behind the shell.  This is a turret-group correction:
   // gun, ERA, optics and bustle retain their local construction and move as
   // one package in both yaw states.
-  addT90SMTurretFoundation(P, { position: [0, 1.335, 0.12] });
+  addT90SMTurretFoundation(P, { position: [0, 1.335, turretSeatZ] });
   const rings = [[1.02, -0.022], [1.36, 0.097], [1.29, 0.28], [1.10, 0.35], [0.82, 0.405], [0.48, 0.445], [0.18, 0.47], [0.02, 0.475]];
   // TKN/cross-wind spike pair FIRST in the bucket (heightM p95 anchors +
   // the r12 merge-order law). T4A: x narrowed to the +0.31 column family
@@ -673,7 +690,7 @@ function buildT90ALegacy(P) {
   // |x| 1.30-1.49 and repaint the guarded ±1.14-1.46 plan cliff — the
   // broad-plate read comes from the TWO-LEAF clamshell (k5Lower) + the
   // axis-aligned under-roots below instead.)
-  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: 1.80 };
+  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: shtoraEyeZ };
   eraRuCheeks(P, p5, 'k5');
   for (const s2 of [-1, 1]) {
     // The Shtora lane is now a deliberate opening in the K-5 staircase.
@@ -691,8 +708,8 @@ function buildT90ALegacy(P) {
     // dazzler a supported armor station instead of simply pushing a lamp in
     // front of the ERA.
     P.add('turret', orientedSlab(
-      [s2 * 0.54, 0.08, 1.30], [s2 * 0.86, 0.08, 1.30], [s2 * 0.86, 0.18, 1.76], [s2 * 0.54, 0.18, 1.76],
-      [s2 * 0.54, 0.37, 1.30], [s2 * 0.86, 0.37, 1.30], [s2 * 0.86, 0.50, 1.76], [s2 * 0.54, 0.50, 1.76],
+      [s2 * 0.54, 0.08, 1.30], [s2 * 0.86, 0.08, 1.30], [s2 * 0.86, 0.18, shtoraSupportFrontZ], [s2 * 0.54, 0.18, shtoraSupportFrontZ],
+      [s2 * 0.54, 0.37, 1.30], [s2 * 0.86, 0.37, 1.30], [s2 * 0.86, 0.50, shtoraSupportFrontZ], [s2 * 0.54, 0.50, shtoraSupportFrontZ],
     ));
   }
   ruShtora(P, p5, 0.38);  // T3A-b3: eyes raised (ref side bottoms 1.397+ at the eye cols)
@@ -827,7 +844,7 @@ function buildT90ALegacy(P) {
   addT90CastFlankCassettes(P, { y: 0.24, raisedLeftRear: true });
   // ---- 2A46M-2 on the normalized contour: axis 1.50, muzzle world +6.10 ----
   P.gunG.position.set(0, 0.165, 0.825);
-  ruSaddle(P, { rollR: 0.22, rollW: 0.62, tubeR: 0.117, rootL: 0.69 });
+  ruSaddle(P, { rollR: 0.22, rollW: 0.62, tubeR: 0.117 * gunRadiusScale, rootL: 0.69 });
   // §B3.1 (prism sweep 2026-08-06): the bare mantlet block becomes the cast
   // collar — elliptical frustum with the SAME plan (±0.28) and side (±0.20)
   // extremes at center axes; masks read identical rectangles, only the
@@ -884,20 +901,30 @@ function buildT90ALegacy(P) {
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.54, 0.30, 1]), 0, 0.0, 0.21);
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.36);
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.52);
-  P.addGunExtraDark(KIT.xform(cylZ(0.150, 0.04, 14), 0, 0, 0), 0, 0, 0.645);
+  P.addGunExtraDark(KIT.xform(cylZ(0.150 * gunRadiusScale, 0.04, 14), 0, 0, 0), 0, 0, 0.645);
   tubeGun(P, [
     // §K.2 independent tube section: longitudinal breaks/axis remain exact;
     // only radii contract to the source's 162 mm root band and 108 mm
     // forward band.  The former tube repeated a +27/-27 mm silhouette error
     // over more than thirty side columns.
-    [0.65, 1.47, 0.085, undefined, undefined, undefined, 0.112],
-    [1.47, 3.17, 0.090, undefined, undefined, undefined, 0.117],
-    [3.17, 4.72, 0.045, 0.045, 0, 0.005, 0.072],
-    [4.72, 4.816, 0.045, 0.045, 0, 0.005, 0.064],
-  ], { rings: [[1.47, 0.092, undefined, undefined, 0.119], [2.12, 0.093, undefined, undefined, 0.120], [3.17, 0.072, undefined, undefined, 0.099], [3.87, 0.050, undefined, undefined, 0.074], [4.30, 0.050, undefined, undefined, 0.074]], muzzle: 4.816 });  // T3A-b4: 4.90 trial broke overallLengthM grace (dims 95.5) — the end cover col is cheaper (dims sovereign)
-  muzzleBore(P, { r: 0.045, y: 0.005 });  // §B3.1 (shadow-named, mask/frame-neutral)
-  P.add('gun', cylZ(0.098, 0.42, 14, 0.090), 0, 0, 2.88);   // bore-evacuator swell
-  P.add('gunDark', cylZ(0.100, 0.04, 14), 0, 0, 3.09);
+    [0.65, 1.47, 0.085 * gunRadiusScale, undefined, undefined, undefined, 0.112 * gunRadiusScale],
+    [1.47, 3.17, 0.090 * gunRadiusScale, undefined, undefined, undefined, 0.117 * gunRadiusScale],
+    [3.17, 4.72, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005, 0.072 * gunRadiusScale],
+    [4.72, 4.816, 0.045 * gunRadiusScale, 0.045 * gunRadiusScale, 0, 0.005, 0.064 * gunRadiusScale],
+  ], { rings: [[1.47, 0.092 * gunRadiusScale, undefined, undefined, 0.119 * gunRadiusScale], [2.12, 0.093 * gunRadiusScale, undefined, undefined, 0.120 * gunRadiusScale], [3.17, 0.072 * gunRadiusScale, undefined, undefined, 0.099 * gunRadiusScale], [3.87, 0.050 * gunRadiusScale, undefined, undefined, 0.074 * gunRadiusScale], [4.30, 0.050 * gunRadiusScale, undefined, undefined, 0.074 * gunRadiusScale]], muzzle: 4.816 });  // T3A-b4: 4.90 trial broke overallLengthM grace (dims 95.5) — the end cover col is cheaper (dims sovereign)
+  muzzleBore(P, { r: 0.045 * gunRadiusScale, y: 0.005 });  // §B3.1 (shadow-named, mask/frame-neutral)
+  P.add('gun', cylZ(0.098 * gunRadiusScale, 0.42, 14, 0.090 * gunRadiusScale), 0, 0, 2.88);   // bore-evacuator swell
+  P.add('gunDark', cylZ(0.100 * gunRadiusScale, 0.04, 14), 0, 0, 3.09);
+  if (recordSeatReceipt) {
+    P.turretG.userData.t90aSeatReceipt = {
+      turretSeatZ,
+      turretRearwardShiftM,
+      shtoraEyeZ,
+      shtoraLocalRearwardShiftM,
+      shtoraSupportFrontZ,
+      gunRadiusScale,
+    };
+  }
   // T5F-d: numbers on the VERTICAL flank-wall faces — the prism wall is
   // side-occluded by the flank walls (render check), and the old ringSkin
   // dome seat floats inside the welded shell (§5.04 DECAL FLOAT class).
@@ -5204,8 +5231,8 @@ function replaceT90BurlakTurret(P, { preserveGun = false } = {}) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-1.67, 0.28, -0.42], -Math.PI / 2);
 }
 
-function buildT90A(P) {
-  buildT90ALegacy(P);
+function buildT90A(P, legacyOptions) {
+  buildT90ALegacy(P, legacyOptions);
   // The mature T4A/T5F assembly already passed its independent 14-view
   // sitting.  Family harmony is not permission to replace its measured
   // wedge, K-5 and roof kit with a generic shared casting.
@@ -7458,7 +7485,15 @@ function replaceT90BurlakCoreNative2026(P) {
 }
 
 function buildT90BurlakHybridNative2026(P) {
-  buildT90A(P);
+  buildT90A(P, {
+    turretSeatZ: T90A_ORIGINAL_TURRET_SEAT_Z_M,
+    turretRearwardShiftM: 0,
+    shtoraEyeZ: T90A_ORIGINAL_SHTORA_EYE_Z_M,
+    shtoraLocalRearwardShiftM: 0,
+    shtoraSupportFrontZ: T90A_ORIGINAL_SHTORA_EYE_Z_M - 0.04,
+    gunRadiusScale: 1,
+    recordSeatReceipt: false,
+  });
   // Burlak's hull shoulders sit inside the common T-90A track lanes.  Keep
   // the certified native six-wheel course at full gauge, but narrow the
   // authored armor/service buckets to the prototype's measured body section
