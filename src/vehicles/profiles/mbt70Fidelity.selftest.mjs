@@ -188,6 +188,18 @@ assert(tank.root.getObjectByName('gearTrackBandL') && tank.root.getObjectByName(
   'both continuous track loops exist');
 assert.equal(tank.root.getObjectByName('gearRoadWheelDiscs')?.count, 14,
   'M1A1 donor running gear retains seven road wheels per exposed side');
+assert.equal(tank.root.getObjectByName('gearReturnRollerTires')?.count, 6,
+  'MBT-70 carries three return rollers per exposed side');
+assert.equal(tank.root.getObjectByName('gearReturnRollerDiscs')?.count, 6,
+  'MBT-70 return rollers retain separate painted hubs and rubber tires');
+const mbt70GearReceipt = tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.[0];
+assert.ok(mbt70GearReceipt.topY >= 1.06 - 1e-6,
+  'MBT-70 upper track runs well above the road-wheel crowns');
+for (const rollerZ of [1.46, 0, -1.46]) {
+  assert.ok(mbt70GearReceipt.loopPoints.some(([z, y]) => Math.abs(z - rollerZ) <= 1e-6
+    && Math.abs(y - mbt70GearReceipt.topY) <= 1e-6),
+  `MBT-70 upper track is supported by the return roller at z=${rollerZ}`);
+}
 assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.nativeWheelPatterns,
   ['split-rim-ten'], 'native running gear records one Abrams wheel pattern');
 assert(tank.root.getObjectByName('muzzleBoreShadowDisc'), '152 mm launcher has an open bore');
@@ -249,3 +261,7 @@ assert.ok(raisedFrontWheelY >= 0.72,
 contactTank.dispose();
 
 console.log('mbt70Fidelity.selftest: source proportions, procedural ownership, anatomy and ATGM contract pass');
+
+// Keep the donor-family roller and turret-seat regressions on the existing
+// MBT-70 pretest route without widening package.json's generated command line.
+await import('./abramsRoadWheelSpacing.selftest.mjs');

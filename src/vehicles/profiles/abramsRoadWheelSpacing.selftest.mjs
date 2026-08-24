@@ -16,6 +16,18 @@ const ABRAMS_FAMILY_IDS = [
 const EXPECTED_WHEEL_ZS = [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19];
 const EXPECTED_CONTACT_ZS = [2.32, -2.31];
 const EPSILON = 1e-6;
+const ABRAMS_RETURN_ROLLER_CASES = [
+  ['m1a2', 2],
+  ['m1a1', 2],
+  ['m1a1ha', 2],
+  ['m1a2_tusk', 2],
+  ['m1a2_sepv2', 2],
+  ['m1a2_sepv3', 2],
+  ['ua_m1a1', 2],
+  ['m1a2_legacy', 2],
+  ['abramsx', 2],
+  ['mbt70', 3],
+];
 
 function uniqueInstanceZs(mesh) {
   const matrix = new THREE.Matrix4();
@@ -27,6 +39,18 @@ function uniqueInstanceZs(mesh) {
     zs.add(Number(position.z.toFixed(4)));
   }
   return [...zs].sort((a, b) => b - a);
+}
+
+function uniqueInstanceYs(mesh) {
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const ys = new Set();
+  for (let i = 0; i < mesh.count; i++) {
+    mesh.getMatrixAt(i, matrix);
+    position.setFromMatrixPosition(matrix);
+    ys.add(Number(position.y.toFixed(4)));
+  }
+  return [...ys].sort((a, b) => b - a);
 }
 
 for (const id of ABRAMS_FAMILY_IDS) {
@@ -81,4 +105,52 @@ for (const id of ABRAMS_FAMILY_IDS) {
   }
 }
 
-console.log('abramsRoadWheelSpacing.selftest: M1-family road wheels clear and tracks remain seated');
+for (const [id, stationsPerSide] of ABRAMS_RETURN_ROLLER_CASES) {
+  const tank = createTank(id, null, {
+    proceduralOnly: true,
+    quality: 'high',
+    camoSeed: 4242,
+    geometryReceipt: true,
+  });
+
+  try {
+    const hull = tank.root.getObjectByName('rig_hull');
+    const receipt = hull?.userData.runningGearReceipts?.[0];
+    const tires = hull?.getObjectByName('gearReturnRollerTires');
+    const discs = hull?.getObjectByName('gearReturnRollerDiscs');
+
+    assert.ok(receipt && tires?.isInstancedMesh && discs?.isInstancedMesh,
+      `${id}: exposes return rollers through the canonical running-gear rig`);
+    assert.equal(tires.count, stationsPerSide * 2,
+      `${id}: has the intended number of return rollers on both sides`);
+    assert.equal(discs.count, tires.count, `${id}: every return roller retains a painted hub`);
+
+    const rollerZs = uniqueInstanceZs(tires);
+    assert.equal(rollerZs.length, stationsPerSide,
+      `${id}: has the intended longitudinal support stations`);
+    for (const z of rollerZs) {
+      assert.ok(receipt.loopPoints.some(([pointZ, pointY]) => Math.abs(pointZ - z) <= 1e-4
+        && Math.abs(pointY - receipt.topY) <= EPSILON),
+      `${id}: upper track rests on the return roller at z=${z}`);
+    }
+
+    // The legacy AIM hull has an intentionally oversized overlapping wheel
+    // train under a closed skirt. All other Abrams presentations must keep
+    // the roller axle visibly above the road-wheel crown instead of merging
+    // the two rows as the rejected first placement did.
+    if (id !== 'm1a2_legacy') {
+      const [rollerY] = uniqueInstanceYs(tires);
+      const roadWheelCrownY = receipt.wheelY + receipt.wheelR;
+      assert.ok(rollerY - roadWheelCrownY >= 0.05 - EPSILON,
+        `${id}: return-roller axle clears the road-wheel crown by at least 50 mm`);
+      assert.ok(receipt.topY - roadWheelCrownY >= 0.19 - EPSILON,
+        `${id}: upper track has a distinct elevated return course`);
+    }
+  } finally {
+    tank.dispose();
+  }
+}
+
+console.log('abramsRoadWheelSpacing.selftest: M1-family wheels clear and elevated return rollers support the tracks');
+
+await import('./abramsTurretLift.selftest.mjs');

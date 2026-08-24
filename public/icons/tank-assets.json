@@ -894,7 +894,7 @@
             ],
             "max": [
               -1.09,
-              1.2874,
+              1.2898,
               3.4207
             ],
             "turretLocal": false
@@ -909,7 +909,7 @@
             ],
             "max": [
               1.66,
-              1.2874,
+              1.2898,
               3.4207
             ],
             "turretLocal": false
@@ -978,8 +978,8 @@
           }
         ]
       },
-      "geometryHash": "fa2fc9db",
-      "metadataHash": "3625dd2c",
+      "geometryHash": "897ed9f5",
+      "metadataHash": "7ec942c8",
       "presentationAnchor": {
         "xM": 0.0033,
         "zM": -0.0222
@@ -989,8 +989,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 6,
+          "wheelTire": 2,
+          "wheelDish": 7,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -1070,24 +1070,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69927,
-          "sha256": "a0b90c26ad3da67d566ab6cb828c4bb07e7d4faf8511732e6ed056411032e291"
+          "bytes": 71117,
+          "sha256": "bb5083b15d291b5423021f70bbb15c3d4378e7c76c2e4cd4c00d77161a798b87"
         },
         "armorSide": {
           "file": "abramsx_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71365,
-          "sha256": "41cb1bae95b6602cb97a81ebd23694d6b0ce98831a7f712f36b6ec7ad9204eec"
+          "bytes": 71377,
+          "sha256": "9eec7b4899ba1fabbea9c73b7ac51475e7374cb10f9c678020729a2dafff315a"
         },
         "modulesSide": {
           "file": "abramsx_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77056,
-          "sha256": "b5cd2f76cbec6e81639c9e530cf0c50401ef7256e4af0116c0a31e1c70dc87db"
+          "bytes": 78109,
+          "sha256": "6b92ef8aec3e4244557b43448377696f73ce10109f3c286570f0cab5af6047b4"
         },
         "markings": {
           "file": "abramsx_markings.png",
@@ -61447,7 +61447,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -61462,7 +61462,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -61531,8 +61531,8 @@
           }
         ]
       },
-      "geometryHash": "87160683",
-      "metadataHash": "3f9f8299",
+      "geometryHash": "04092295",
+      "metadataHash": "6e0661c5",
       "presentationAnchor": {
         "xM": 0.0011,
         "zM": 0.036
@@ -61542,8 +61542,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -61626,24 +61626,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73057,
-          "sha256": "3c0f2bda22ac7719641a62a2cd223c149fe40d74a6ae2bc9863be5c8b7592db8"
+          "bytes": 73202,
+          "sha256": "908d38a6cbb69963aa2b8e2ef49f8116a4a78e8a982cdd278b72196e53af20b8"
         },
         "armorSide": {
           "file": "m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73444,
-          "sha256": "0b4d4c301bc8eaf83e8cde8fac06cf2e68fdbe07504e0319c563455c27a11a97"
+          "bytes": 73278,
+          "sha256": "108406a9e664f15356249a8a796d45f461d246fbe1e700e4db7d6ae21c3578f7"
         },
         "modulesSide": {
           "file": "m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76021,
-          "sha256": "1546749901ca6bd017035637039c601ea7cca1562319100e359ce102bd026ab5"
+          "bytes": 75770,
+          "sha256": "78653f64b4febefe4ef428e80c860331edaf97896268eb6e671c57b6a54b9e3f"
         },
         "markings": {
           "file": "m1a1_markings.png",
@@ -62884,7 +62884,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -62899,7 +62899,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -62968,8 +62968,8 @@
           }
         ]
       },
-      "geometryHash": "5622ce03",
-      "metadataHash": "1bc4b3d4",
+      "geometryHash": "588d3302",
+      "metadataHash": "f2025050",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0789
@@ -62979,8 +62979,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -63063,24 +63063,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74152,
-          "sha256": "9e486d90ac5f76cdaee88d4b3ad44629c6b6ad4c73efa7734c6b71ee39219a31"
+          "bytes": 74205,
+          "sha256": "28804d6964642189c4583c97b867a60c3e5bd0416682e647d8ff6f23ea3d98f8"
         },
         "armorSide": {
           "file": "m1a1ha_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75150,
-          "sha256": "9754ae907359519f6f8e25466ec8ca44f20881e5590bd02e499bc7982d2d90ae"
+          "bytes": 75133,
+          "sha256": "c4a6cc217d2d076a09f0048d7dbaa011aa43213d5867edcc98c53a28670bca96"
         },
         "modulesSide": {
           "file": "m1a1ha_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76868,
-          "sha256": "292ec4ec765205de26b4cd8fbc8f31ac4f4c7de8fe60c66473e2f4aa976165f9"
+          "bytes": 76166,
+          "sha256": "00471a1827a5c2836a45585aa6c4623bfaf2805bf757ca9e9c5e8962a8b7216c"
         },
         "markings": {
           "file": "m1a1ha_markings.png",
@@ -64333,7 +64333,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -64348,7 +64348,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -64417,8 +64417,8 @@
           }
         ]
       },
-      "geometryHash": "a63e341b",
-      "metadataHash": "af921217",
+      "geometryHash": "f94cb6a7",
+      "metadataHash": "b7527cab",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": 0.0558
@@ -64428,8 +64428,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -64512,24 +64512,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72937,
-          "sha256": "9b41cd0e4ab09fa49217e7ea020cc09c2168b24098997c774aa5403a32c12e90"
+          "bytes": 73037,
+          "sha256": "8d82cb899583d0b76d9bfd32691231037c01e32fd2f31a40acaa680997e92caa"
         },
         "armorSide": {
           "file": "m1a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72132,
-          "sha256": "ea08562999d50744dee8ed87606804ce29eaf3acf07f39e8f0a92bad99865a02"
+          "bytes": 71938,
+          "sha256": "5e52b6d1cf3c2907f0f9f4b69039aaa4c3516766fc4322f545c8b1aa9fd5d786"
         },
         "modulesSide": {
           "file": "m1a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74677,
-          "sha256": "9c7864078c990bf2044f242581749f8986f7a7ad252c633aaf1f5cdd96251016"
+          "bytes": 74600,
+          "sha256": "071afbed98e1b2fb6e74b2746fb27115ad2a4c5188028ce0f0f157c147635ffc"
         },
         "markings": {
           "file": "m1a2_markings.png",
@@ -65423,7 +65423,7 @@
             ],
             "max": [
               -0.977,
-              1.1856,
+              1.19,
               3.2223
             ],
             "turretLocal": false
@@ -65438,7 +65438,7 @@
             ],
             "max": [
               1.417,
-              1.1856,
+              1.19,
               3.2223
             ],
             "turretLocal": false
@@ -65507,8 +65507,8 @@
           }
         ]
       },
-      "geometryHash": "621fca4c",
-      "metadataHash": "0eb31a43",
+      "geometryHash": "4b79b99a",
+      "metadataHash": "de8b738f",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0603
@@ -65519,8 +65519,8 @@
         "issues": [],
         "roles": {
           "fittingPaint": 4,
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -65602,24 +65602,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65861,
-          "sha256": "1e0539701139d46cc8a72261224d4312270a504221273ce3db7dbe05379374b9"
+          "bytes": 66376,
+          "sha256": "9972ce3d18fdb54bf607b6b384231f7c2b35c7c8b2d6eed9ca362a684be4ba58"
         },
         "armorSide": {
           "file": "m1a2_legacy_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66034,
-          "sha256": "ddf6d0e53627ed5dcf31b2084a8c3c3d09b540a7184c5d00d9101e8ca5922302"
+          "bytes": 66784,
+          "sha256": "c6be9892fab0f7f7c8d45235fd06f85010f67735f103b0dc8fe4377d41ebd962"
         },
         "modulesSide": {
           "file": "m1a2_legacy_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73685,
-          "sha256": "c55d13b3b477f1ae8987b4867bf968706ddd57aa546724340eb6fc59e2384b77"
+          "bytes": 74031,
+          "sha256": "e9798f0d8deda8afd2322d6176d885cf390bae62be5b449427d3c2b24f3c92e5"
         },
         "markings": {
           "file": "m1a2_legacy_markings.png",
@@ -66873,7 +66873,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -66888,7 +66888,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -66957,8 +66957,8 @@
           }
         ]
       },
-      "geometryHash": "1b7e060d",
-      "metadataHash": "1bbf843d",
+      "geometryHash": "156b20aa",
+      "metadataHash": "f1427ce1",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0233
@@ -66968,8 +66968,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -67052,24 +67052,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77195,
-          "sha256": "3a999db4dca5a62406b07110f23692a3fd088c22f447f78df70764f27c99de51"
+          "bytes": 76741,
+          "sha256": "e6324101900ba2e40bd884be5e29c8b9d3a3ae3ee357c46572f8125a6499429e"
         },
         "armorSide": {
           "file": "m1a2_sepv2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77117,
-          "sha256": "7ec4fbcffef26ee911b4e50c0eb4ce2d8981d0164a0cdb5fe1f895adbc1c7b46"
+          "bytes": 76917,
+          "sha256": "e1bad34f98cc51049ae49c8bf19ebee33f6e2764c1d3b82f2129c8379a896bec"
         },
         "modulesSide": {
           "file": "m1a2_sepv2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80638,
-          "sha256": "a5c8215aa9de8c5d7065008066f9059794fbe9f5c82acd76c7196332df3ac6c7"
+          "bytes": 80563,
+          "sha256": "f4fd4ae2ad9b031d167d709bb841f25579d3b9c09079057cb95312b64057f294"
         },
         "markings": {
           "file": "m1a2_sepv2_markings.png",
@@ -68323,7 +68323,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -68338,7 +68338,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -68407,8 +68407,8 @@
           }
         ]
       },
-      "geometryHash": "86b14004",
-      "metadataHash": "897b972d",
+      "geometryHash": "910159e8",
+      "metadataHash": "6be43fe1",
       "presentationAnchor": {
         "xM": 0.0003,
         "zM": 0.0335
@@ -68418,8 +68418,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -68502,24 +68502,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82266,
-          "sha256": "b4373fe624ebc206e533f7f89751a1010f265f0cd564579549b024e613d4fe5c"
+          "bytes": 82526,
+          "sha256": "55de7b1366f171bb87c50a58c817ffb617e7cc210eea6a0bcabd417d8281d03d"
         },
         "armorSide": {
           "file": "m1a2_sepv3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81819,
-          "sha256": "9c8e5a75d0d487780227da27ce7d52b71f0648906ddb36896be52b22eb9d0a38"
+          "bytes": 81949,
+          "sha256": "376baac20adade4a45d7b3966260aeb1c935593a5bde95c4cf672fa12aeca753"
         },
         "modulesSide": {
           "file": "m1a2_sepv3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83940,
-          "sha256": "6b82c2e8bfeb4b17372766ef7c85b905b319748ce792d9204f0358ceedcdd346"
+          "bytes": 83762,
+          "sha256": "1621777ca574b926e1430fe9705e62767d06579bd15d274c948568e9f1e488e3"
         },
         "markings": {
           "file": "m1a2_sepv3_markings.png",
@@ -69773,7 +69773,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -69788,7 +69788,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -69857,8 +69857,8 @@
           }
         ]
       },
-      "geometryHash": "154681fc",
-      "metadataHash": "3f063012",
+      "geometryHash": "2f26a9ef",
+      "metadataHash": "b9b22d9e",
       "presentationAnchor": {
         "xM": 0.0004,
         "zM": -0.014
@@ -69868,8 +69868,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -69952,24 +69952,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75751,
-          "sha256": "1c8e393da362c48565c6294f1a00faa09bb39238f379ab93a351c550c434ad95"
+          "bytes": 75681,
+          "sha256": "ee48fd06f19690d641de12b60a91657ff29981552da06bc2011c68f18b66458f"
         },
         "armorSide": {
           "file": "m1a2_tusk_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74981,
-          "sha256": "384636ffd7748c33ce90b8a1515c960453a28500a1a4e359d26001471d28b7cb"
+          "bytes": 75369,
+          "sha256": "bcffe3878e07bae5a24c42f81c58e2993ffb337f2c235011eac6277a20f2205f"
         },
         "modulesSide": {
           "file": "m1a2_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78500,
-          "sha256": "4243afc4231658a22420e35d9d93082fd53f26732310a6762d95f07d78078f33"
+          "bytes": 78398,
+          "sha256": "134d1556774756317e035efc715c20e54ec132ff3c1ff9f9f512f9a0b2025831"
         },
         "markings": {
           "file": "m1a2_tusk_markings.png",
@@ -83899,7 +83899,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.4494
             ],
             "turretLocal": false
@@ -83914,7 +83914,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.4494
             ],
             "turretLocal": false
@@ -83968,8 +83968,8 @@
           }
         ]
       },
-      "geometryHash": "a41f3010",
-      "metadataHash": "f6e67bd6",
+      "geometryHash": "6d6ba7ab",
+      "metadataHash": "f33b826e",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.1142
@@ -83979,8 +83979,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -84062,24 +84062,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75492,
-          "sha256": "340512df8a9e78ee8ca6130bb9b91bf8af9db9f2a2f009b37ae8c8dcac3032a3"
+          "bytes": 75720,
+          "sha256": "701c0fa4be49eb6cf43256a13830cd70b862e6e15c8c0fa1f7ab0cd7b2f2365c"
         },
         "armorSide": {
           "file": "mbt70_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76355,
-          "sha256": "657abb91e6254aae5d044f0a59c4e4f4024d15dc1329a10d290896b86ad44cf9"
+          "bytes": 76495,
+          "sha256": "280bc22824b12988b950ddbae13a1982fc2e38e263d3f6e50397a584a006dcaa"
         },
         "modulesSide": {
           "file": "mbt70_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80428,
-          "sha256": "830522eb6c99e0c13af0ab7d0a7f2cc478c82a93dbe1947bbe995a422471d8de"
+          "bytes": 80592,
+          "sha256": "307a4d62cbf1265933b5e3f4e48c6417732a3deb1118bb76e75a180614c1738a"
         },
         "markings": {
           "file": "mbt70_markings.png",
@@ -151358,7 +151358,7 @@
             ],
             "max": [
               -1.115,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -151373,7 +151373,7 @@
             ],
             "max": [
               1.695,
-              1.5056,
+              1.5097,
               3.5068
             ],
             "turretLocal": false
@@ -151442,8 +151442,8 @@
           }
         ]
       },
-      "geometryHash": "b5830afd",
-      "metadataHash": "08b6b87c",
+      "geometryHash": "12d3288d",
+      "metadataHash": "4244a998",
       "presentationAnchor": {
         "xM": 0.0036,
         "zM": 0.0415
@@ -151453,8 +151453,8 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 1,
-          "wheelDish": 5,
+          "wheelTire": 2,
+          "wheelDish": 6,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
@@ -151537,24 +151537,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98770,
-          "sha256": "7cf3103cb3cbd0588ecb991f8249081a5808a68026be8a47f9d5e557bf3a0f79"
+          "bytes": 98362,
+          "sha256": "2316b7b10f0015c5d74984952609e00e8f95dc05b8010a58f2d890614a74a256"
         },
         "armorSide": {
           "file": "ua_m1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99133,
-          "sha256": "00f2b76a89b2a630cb8c0beafc7da3874bd7a6856375b1018d4a16dad2efd615"
+          "bytes": 99445,
+          "sha256": "360b76a565ad02fad1e21d36ff71d6a96d9a2fbff3187cc34599c08a252a5bc1"
         },
         "modulesSide": {
           "file": "ua_m1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99256,
-          "sha256": "02460bc870546a063495c438ff9989ed2fdb546197082396b7ee4e89391cc249"
+          "bytes": 98730,
+          "sha256": "3b605e8de7a74ca0f0648ddfbcc64152b70774a62854524c797c65ba6f912971"
         },
         "markings": {
           "file": "ua_m1a1_markings.png",

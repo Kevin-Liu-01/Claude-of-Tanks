@@ -550,6 +550,14 @@ function shadowBarrel(P, group, segs) {
   }
 }
 
+// Lift the complete Abrams turret rig just clear of the hull deck while
+// retaining enough bearing overlap to avoid a visible ring gap.
+const ABRAMS_TURRET_LIFT_M = 0.012;
+function seatAbramsTurret(turretG, x, y, z) {
+  turretG.position.set(x, y + ABRAMS_TURRET_LIFT_M, z);
+  turretG.userData.abramsTurretLiftM = ABRAMS_TURRET_LIFT_M;
+}
+
 // ---------------------------------------------------------------------------
 // Hull: three curve-lofted bands — bow wedge (belly rake -> glacis line),
 // full band (belt top -> deck line), stern wedge (tail rake -> deck) plus an
@@ -559,6 +567,21 @@ function shadowBarrel(P, group, segs) {
 function abramsHull(P, g) {
   const bw = g.bodyHalfW;
   const s = g.s ?? 1;
+  const trackTh = g.trackTh ?? 0.09;
+  const roadWheelY = g.wheelY ?? g.wheelR + 0.11;
+  const returnRollerR = g.returnRollerR ?? 0.10;
+  // Keep the return course high enough to separate its rollers from the road
+  // wheels, but below the sponson floor. The previous 2 cm lift visually
+  // collapsed both wheel systems into one row.
+  const returnTrackTopY = g.returnTrackTopY ?? Math.min(
+    g.beltTop - 0.10,
+    roadWheelY + g.wheelR + 0.33,
+  );
+  const returnRollerZs = g.returnRollerZs ?? [
+    (g.wheelZs[1] + g.wheelZs[2]) / 2,
+    (g.wheelZs[4] + g.wheelZs[5]) / 2,
+  ];
+  const returnRollerY = returnTrackTopY - returnRollerR - trackTh / 2;
   const noseRake = g.noseRake;               // [[z,y]...] rear->tip ascending y
   const tailRake = g.tailRake;               // [[z,y]...] toward tail
   const bowZ = noseRake[0][0];               // where the lower bow leaves the belly
@@ -847,11 +870,13 @@ function abramsHull(P, g) {
   // undefined on every other family caller, cfg defaults byte-identical.)
   buildRunningGear(P, {
     style: 'rubber', wheelR: g.wheelR, wheelW: Math.min(0.23, g.trackW * 0.38),
-    wheelY: g.wheelY ?? g.wheelR + 0.11, xc: g.trackXc,
+    wheelY: roadWheelY, xc: g.trackXc,
     wheelZs: g.wheelZs, botY: g.trackBotY ?? 0.055,
     sprocket: { z: g.sprocketZ, y: g.sprocketY ?? g.wheelR + 0.24, r: g.sprocketR ?? g.wheelR * 0.9 },
     idler: { z: g.idlerZ, y: g.idlerY ?? g.wheelR + 0.26, r: g.idlerR ?? g.wheelR * 0.84 },
-    trackW: g.trackW, topY: g.beltTop - 0.06, paintedEnds: true, coveredTop: true,
+    rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: returnRollerR })),
+    trackW: g.trackW, trackTh, topY: returnTrackTopY,
+    paintedEnds: true, coveredTop: true,
     arms: g.arms,
     dishR: g.dishR, tireHex: g.tireHex, wheelHex: g.wheelHex, deadSag: g.deadSag,
     contactZF: g.contactZF, contactZR: g.contactZR,
@@ -1421,9 +1446,14 @@ const TEJAS_TURRET = {
 // shares the certified M1A1 loft and suspension instead of maintaining a
 // second approximate Abrams hull, while deliberately omitting the deep skirt
 // wall so its wheels and track return remain exposed.
-export function buildM1A1BareHull(P) {
+export function buildM1A1BareHull(P, {
+  returnRollerZs, returnTrackTopY, returnRollerR,
+} = {}) {
   abramsHull(P, {
     ...TEJAS_HULL,
+    returnRollerZs,
+    returnTrackTopY,
+    returnRollerR,
     noSkirt: true,
     noFlaps: true,
     noNumber: true,
@@ -3641,7 +3671,7 @@ function buildTejasFamily(P, p) {
     P.add('hullDetail', box(0.020, 0.115, 0.030), side * 1.455, 1.575, -3.7855);
     P.add('hullDetail', box(0.210, 0.020, 0.030), side * 1.36, 1.633, -3.7855);
   }
-  P.turretG.position.set(t.ring[0], t.ring[1], t.ring[2]);
+  seatAbramsTurret(P.turretG, t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
   abramsShell(P, t);
   abramsBustleRack(P, t, 1);
@@ -5181,7 +5211,8 @@ function buildM1a2(P, V) {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.25, wheelW: 0.20, wheelY: 0.46, xc: 1.197,
     wheelZs: [2.10, 1.347, 0.593, -0.16, -0.913, -1.667, -2.42],
-    botY: 0.28, trackW: 0.44, topY: 1.10, trackTh: 0.09,
+    botY: 0.28, trackW: 0.44, topY: 1.02, trackTh: 0.09,
+    rollers: [0.97, -1.29].map((z) => ({ z, y: 0.865, r: 0.11 })),
     contactZF: 2.30, contactZR: -2.62,
     sprocket: { z: -3.00, y: 0.86, r: 0.24 },
     idler: { z: 2.92, y: 0.7675, r: 0.2125 },
@@ -5648,7 +5679,7 @@ function buildM1a2(P, V) {
   }
 
   // ---- turret: full shell + rack yaw with the ring (ref node split) ------
-  P.turretG.position.set(M1A2_RING[0], M1A2_RING[1], M1A2_RING[2]);
+  seatAbramsTurret(P.turretG, M1A2_RING[0], M1A2_RING[1], M1A2_RING[2]);
   P.gunG.position.set(M1A2_GUNP[0] - M1A2_RING[0], M1A2_GUNP[1] - M1A2_RING[1],
     M1A2_GUNP[2] - M1A2_RING[2]);
   // Body core (bottom knees rise rearward: 1.36 fwd -> 1.55 at the bustle).
@@ -7140,7 +7171,7 @@ function buildAim(P) {
   // like the tejas print: right front cols read ~0.4 rearward + narrower).
   // Turret rows re-measured per column after the swap (aim packet, this
   // round) — the plan-center columns stay the certified short-tube cap.
-  P.turretG.position.set(0, 1.82, -0.55);
+  seatAbramsTurret(P.turretG, 0, 1.82, -0.55);
   P.gunG.position.set(0, 0.22, 1.15);
   abramsShell(P, {
     // zWide 0.30 + throatDepth 1.02: the print's face VALLEY (side cols
@@ -7757,7 +7788,7 @@ function buildAbramsX(P) {
   // offset, so the live turret now sits on the oracle's actual ring datum.
   // This also aligns the XM914 muzzle, roof sights and bustle whips without
   // any component-specific compensating shifts.
-  P.turretG.position.set(0, 1.95, -0.39);
+  seatAbramsTurret(P.turretG, 0, 1.95, -0.39);
   P.gunG.position.set(0, -0.02, 2.539);
   const axHullAdd = P.add;
   let axKitY = { src: 1.50, dst: 1.413, scale: (2.53 - 1.413) / (2.44 - 1.50) };
@@ -8656,7 +8687,7 @@ function buildAbramsX(P) {
   // front face at z 2.55, roof rising 2.13 -> 2.46 plateau (z 0.65..-0.55),
   // 2.39 shelf to -1.85, tail taper to 2.13 at -2.45; bottom 1.57 forward
   // rising to 2.04 at the tail. Local to ring (0, 1.95, -0.39).
-  P.turretG.position.set(0, 1.95, -0.39);
+  seatAbramsTurret(P.turretG, 0, 1.95, -0.39);
   P.gunG.position.set(0, -0.02, 2.539);
   // Hexagonal plan (current bake): face 2.34 wide ±0.6 chamfering to the
   // ±1.70 flanks at z 1.9, flank run to -1.29, rear chamfer to the flat
