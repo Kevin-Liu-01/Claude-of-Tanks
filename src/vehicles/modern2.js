@@ -1308,11 +1308,11 @@ function buildType99A(P) {
   periscope(P, 'hullDetail', 0.14, 1.505, 1.94);
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.80, 0.045, 0.07), s * 0.40, 1.335, 2.62, -16.3 * D2R, s * 0.42, 0); // splash V
-    // driving-mirror stalks RAKED BACK over the cheek flanks (curve-probe
-    // r3: the print strand runs y 2.11@z1.95 -> 2.42@z0.45 — a long raked
-    // stalk line, not an upright post); rooted in the fender plane
-    P.add('hullDetail', cylY(0.016, 0.016, 1.16, 8), s * 1.26, 1.88, 1.55, -0.76, 0, 0);
-    P.add('hullDark', box(0.16, 0.22, 0.03), s * 1.26, 2.26, 1.10, -0.20, 0, 0);
+    // Compact driving mirrors: retain the characteristic rearward rake but
+    // plant the heads close to the glacis shoulder.  The former 1.16 m rods
+    // rose almost a metre above their fender feet and read as antennae.
+    P.add('hullDetail', cylY(0.016, 0.016, 0.56, 8), s * 1.26, 1.68, 1.76, -0.76, 0, 0);
+    P.add('hullDark', box(0.16, 0.18, 0.03), s * 1.26, 1.93, 1.53, -0.20, 0, 0);
     P.add('hullDetail', box(0.05, 0.05, 0.05), s * 1.26, 1.47, 1.96);          // stalk foot on the fender
     const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.045, rake: -0.28, seed: 5 + s });
     lc.position.set(s * 0.88, 1.33, 2.78);
@@ -1432,10 +1432,14 @@ function buildType99A(P) {
   // turns through a real armor break into the smaller roof, so the measured
   // 1.11 m total station height does not become a 1.11 m vertical cabinet.
   const type99ShellPlan = [
-    [0.00, 1.77], [0.44, 1.68], [0.88, 1.42], [1.18, 1.04],
-    [1.30, 0.52], [1.30, -1.18], [1.12, -1.96],
-    [-1.12, -1.96], [-1.30, -1.18], [-1.30, 0.52],
-    [-1.18, 1.04], [-0.88, 1.42], [-0.44, 1.68],
+    // The 99A2-family arrow is defined by long diagonal cheek chords, not a
+    // broad rounded fan.  Pull the first shoulder inward, lengthen the nose
+    // and move the outboard break aft so the front resolves as two decisive
+    // armor planes while the gun channel stays open on the centreline.
+    [0.00, 1.86], [0.34, 1.78], [0.78, 1.43], [1.14, 0.92],
+    [1.30, 0.38], [1.30, -1.18], [1.12, -1.96],
+    [-1.12, -1.96], [-1.30, -1.18], [-1.30, 0.38],
+    [-1.14, 0.92], [-0.78, 1.43], [-0.34, 1.78],
   ];
   P.add('turret', polyMultiLoft(type99ShellPlan, [
     {
@@ -1451,25 +1455,33 @@ function buildType99A(P) {
       inset: [0.78, 0.79, 0.82, 0.85, 0.88, 0.90, 0.91, 0.91, 0.90, 0.88, 0.85, 0.82, 0.79],
     },
   ]));
-  // WEDGE APPLIQUÉ CHEEKS on the print lines (inner x 0.52 @ z 0.92, outer
-  // x 1.74 @ z 0.30; base local 0.05 -> shoulder 0.88 = world 2.30 — the
-  // print's front roof steps to a ±0.9 spine above the cheek shoulders).
-  // Face lean = uniform 0.08 top pullback (planarity exact; ~5.5 deg).
-  P.add('turret', slab(                                                        // R wedge cheek
-    [0.42, 0.05, 1.56], [1.36, 0.05, 0.55], [1.36, 0.05, -0.15], [0.42, 0.05, 0.68],
-    [0.42, 0.84, 1.48], [1.34, 0.80, 0.48], [1.34, 0.76, -0.15], [0.42, 0.80, 0.62]));
-  P.add('turret', slab(                                                        // L wedge cheek (corner-swapped
-    [-1.36, 0.05, 0.55], [-0.42, 0.05, 1.56], [-0.42, 0.05, 0.68], [-1.36, 0.05, -0.15], // mirror, §C winding)
-    [-1.34, 0.80, 0.48], [-0.42, 0.84, 1.48], [-0.42, 0.80, 0.62], [-1.34, 0.76, -0.15]));
+  // TWO-COURSE WEDGE APPLIQUÉ, following the later 99A2 grammar.  The inner
+  // course makes the sharp mantlet-adjacent arrow; the outer course carries
+  // that rake continuously into the side belt.  Their lower noses project
+  // well ahead of their roof edges, giving the complete front a real
+  // rearward elevation slope instead of a vertical forward wall.  Both
+  // overlap the welded shell so there is no daylight seam under the armor.
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(
+      [s * 0.30, 0.05, 1.70], [s * 0.86, 0.05, 1.16], [s * 0.78, 0.05, 0.70], [s * 0.28, 0.05, 1.16],
+      [s * 0.28, 0.84, 1.42], [s * 0.72, 0.82, 0.98], [s * 0.66, 0.78, 0.52], [s * 0.26, 0.80, 0.90]));
+    P.add('turret', slab(
+      [s * 0.86, 0.05, 1.16], [s * 1.42, 0.06, 0.42], [s * 1.36, 0.05, -0.18], [s * 0.78, 0.05, 0.70],
+      [s * 0.72, 0.82, 0.98], [s * 1.34, 0.78, 0.20], [s * 1.34, 0.74, -0.26], [s * 0.66, 0.78, 0.52]));
+    P.add('turretDark', box(0.035, 0.56, 0.035), s * 0.79, 0.46, 1.13,
+      -0.30, s * 0.70, 0);                                                     // course seam batten
+    P.add('turretDetail', box(1.05, 0.024, 0.038), s * 0.82, 0.815, 0.64,
+      0, s * 0.66, 0);                                                         // seated upper edge rail
+  }
   P.add('turret', slab(                                                        // ARROW SEAM prism, R half —
     [0, 0.38, 1.70], [0.42, 0.38, 1.56], [0.42, 0.38, 0.82], [0, 0.38, 0.98],  // the two planes meet at the tip
-    [0, 0.84, 1.62], [0.42, 0.84, 1.48], [0.42, 0.80, 0.74], [0, 0.80, 0.90]));
+    [0, 0.84, 1.42], [0.42, 0.84, 1.32], [0.42, 0.80, 0.58], [0, 0.80, 0.78]));
   P.add('turret', slab(                                                        // ARROW SEAM prism, L half
     [-0.42, 0.38, 1.56], [0, 0.38, 1.70], [0, 0.38, 0.98], [-0.42, 0.38, 0.82],
-    [-0.42, 0.84, 1.48], [0, 0.84, 1.62], [0, 0.80, 0.90], [-0.42, 0.80, 0.74]));
-  P.add('turretDark', box(0.05, 0.48, 0.05), 0, 0.65, 1.66, -6 * D2R, 0, 0);  // ridge seam strip down the arrow
+    [-0.42, 0.84, 1.32], [0, 0.84, 1.42], [0, 0.80, 0.78], [-0.42, 0.80, 0.58]));
+  P.add('turretDark', box(0.05, 0.54, 0.05), 0, 0.61, 1.56, -31 * D2R, 0, 0); // ridge seam follows the raked arrow
   for (const s of [-1, 1]) {                                                   // wedge top-edge catch-light strips
-    P.add('turretDetail', box(0.96, 0.022, 0.035), s * 0.88, 0.805, 0.86, 0, s * 47 * D2R, 0);
+    P.add('turretDetail', box(0.96, 0.022, 0.035), s * 0.88, 0.805, 0.70, 0, s * 47 * D2R, 0);
   }
   P.add('turretDark', box(0.50, 0.34, 0.06), 0, 0.20, 0.70);                   // gun-slot dark recess wall under
                                                                                //   the boot (print slot z_w ~0.8)
@@ -1478,11 +1490,11 @@ function buildType99A(P) {
     [-0.27, 0.40, 0.78], [0.27, 0.40, 0.78], [0.27, 0.32, 1.42], [-0.27, 0.32, 1.42])); // y 1.49 (Object_7 floor)
   for (const s of [-1, 1]) {                                                   // long wiper arms over the
     P.add('turretDetail', box(0.03, 0.035, 0.85), s * 0.60, 0.62, 1.18, -0.06, s * 0.05, 0); // mantlet flanks (ref plan
-    P.add('turretDetail', box(0.028, 0.032, 0.70), s * 0.88, 0.58, 1.05, -0.06, s * 0.08, 0); // front ~z 2.0 @ x .5-1.1)
+    P.add('turretDetail', box(0.028, 0.032, 0.70), s * 0.88, 0.58, 0.90, -0.06, s * 0.08, 0); // front ~z 2.0 @ x .5-1.1)
   }
   for (const s of [-1, 1]) {                                                   // cheek-face sight-wiper rails
-    P.add('turretDetail', box(0.035, 0.05, 0.42), s * 1.12, 0.72, 0.78, -0.10, s * 0.44, 0); // (print Object_10/23:
-    P.add('turretDetail', box(0.03, 0.04, 0.30), s * 1.28, 0.60, 0.62, -0.10, s * 0.44, 0);  // rails to z_w 1.25 at
+    P.add('turretDetail', box(0.035, 0.05, 0.42), s * 1.12, 0.72, 0.52, -0.10, s * 0.44, 0); // (print Object_10/23:
+    P.add('turretDetail', box(0.03, 0.04, 0.30), s * 1.28, 0.60, 0.36, -0.10, s * 0.44, 0);  // rails to z_w 1.25 at
   }                                                                            //   x 1.0..1.4 on the wedges)
   // CHEEK ERA arrays ON the new deeply swept face planes.  Roots stay
   // buried in the authored cheek; only the replaceable bricks stand proud.
@@ -1493,7 +1505,7 @@ function buildType99A(P) {
     for (const v of [0.30, 0.68]) for (let c = 0; c < 4; c++) {
       const u = 0.10 + c * 0.185;
       put(s * (0.42 + 0.94 * u + 0.72 * 0.04), 1.47 + 0.87 * v + 0.10 * 0.04,
-        1.66 - 1.01 * u - 0.08 * v + 0.69 * 0.04, -0.10, s * 0.78, 0);
+        1.66 - 1.01 * u - 0.26 * v + 0.69 * 0.04, -0.10, s * 0.78, 0);
     }
   };
   P.eraCluster('turret_era_R', (put) => cheekEra(put, 1), true);
@@ -1504,16 +1516,31 @@ function buildType99A(P) {
     smokeCluster(P, s * 1.34, 0.62, 0.42, 5, s * 0.46, 0.55);
     smokeCluster(P, s * 1.29, 0.42, 0.47, 5, s * 0.46, 0.55);
   }
-  // side wall stowage (print bins x to ±1.75, z -0.9..-2.3): rails + bins
+  // ANGLED SIDE SERVICE MODULES + CAGE.  The old cuboids were thin vertical
+  // slabs parked at x=±1.68 beside the swept wall.  These panniers begin
+  // inside the welded side belt, flare to the service envelope and carry
+  // explicit cross-brackets; the cage rails therefore have a visible load
+  // path into the turret and remain convincing at non-zero yaw.
   for (const s of [-1, 1]) {
-    // Keep external bins within the measured ±1.75 m turret envelope. The
-    // former ±1.80 m lids made the fighting compartment wider than the
-    // reference even though the welded cheek itself was correct.
-    P.add('turret', box(0.10, 0.40, 0.80), s * 1.68, 0.45, -1.02, 0, s * 0.03, 0);  // forward side bin
-    P.add('turretDark', box(0.11, 0.014, 0.82), s * 1.68, 0.66, -1.02, 0, s * 0.03, 0);
-    P.add('turret', box(0.10, 0.36, 0.55), s * 1.69, 0.42, -1.90, 0, s * 0.02, 0);  // rear side bin
-    P.add('turretDark', box(0.11, 0.014, 0.57), s * 1.69, 0.61, -1.90, 0, s * 0.02, 0);
-    P.add('turretDetail', box(0.03, 0.03, 1.30), s * 1.66, 0.80, -0.45);       // wall handrails
+    P.addEquipment('turret', slab(
+      [s * 1.24, 0.24, -0.52], [s * 1.30, 0.24, -1.38], [s * 1.30, 0.62, -1.38], [s * 1.24, 0.62, -0.52],
+      [s * 1.64, 0.25, -0.58], [s * 1.67, 0.25, -1.34], [s * 1.67, 0.58, -1.34], [s * 1.64, 0.64, -0.58]));
+    P.addEquipment('turret', slab(
+      [s * 1.26, 0.24, -1.42], [s * 1.18, 0.27, -2.12], [s * 1.18, 0.57, -2.12], [s * 1.26, 0.60, -1.42],
+      [s * 1.67, 0.25, -1.46], [s * 1.63, 0.28, -2.08], [s * 1.63, 0.55, -2.08], [s * 1.67, 0.58, -1.46]));
+    for (const z of [-0.66, -1.30, -1.52, -2.02]) {
+      P.add('turretDetail', box(0.42, 0.065, 0.065), s * 1.47, 0.31, z,
+        0, s * 0.04, 0);                                                       // pannier-to-wall bracket
+    }
+    P.add('turretDark', box(0.075, 0.026, 0.72), s * 1.675, 0.64, -0.96, 0, s * 0.04, 0);
+    P.add('turretDark', box(0.075, 0.026, 0.58), s * 1.655, 0.59, -1.78, 0, s * 0.04, 0);
+    for (const y of [0.72, 0.82]) {
+      P.add('turretDetail', box(0.035, 0.035, 1.52), s * 1.70, y, -1.19, 0, s * 0.035, 0);
+    }
+    for (const z of [-0.52, -1.18, -1.90]) {
+      P.add('turretDetail', box(0.34, 0.035, 0.035), s * 1.53, 0.77, z,
+        0, s * 0.035, 0);                                                      // cage standoff into shell
+    }
   }
   // ---- BUSTLE + BASKET (print: turret bottom rises aft of z_w -1.1; the
   // bustle band y_w 2.0..2.5 runs to -2.1, basket frame to -2.42) ----------
@@ -1641,12 +1668,15 @@ function buildType99A(P) {
     awL.position.set(-1.06, 1.07, -0.72);
     P.turretG.add(awL);
     // QJC-88 12.7 at the COMMANDER station, FORWARD (owner MG law §5.38;
-    // NSVT-class silhouette — §H.4 national grammar)
+    // NSVT-class silhouette — §H.4 national grammar).  Its enlarged foot is
+    // carried just ahead of the hatch while the aft spade grips overlap the
+    // cupola rim, so a standing commander can actually reach the weapon.
+    P.add('turretDetail', box(0.20, 0.035, 0.22), 0.52, 1.097, -0.22);
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 0.85, ammo: true,
-      elev: 0, rotation: [0, 0, 0], seed: 18,
+      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1.08, ammo: true,
+      elev: 0.02, rotation: [0, 0, 0], seed: 18,
     });
-    mg.position.set(0.62, 1.09, -0.73);
+    mg.position.set(0.52, 1.11, -0.17);
     P.turretG.add(mg);
   }
   // rear roof rail rack between the masts (print band capped to the roof
