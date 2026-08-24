@@ -15620,6 +15620,21 @@
           },
           {
             "volumeId": "M03",
+            "name": "autoloader",
+            "min": [
+              -0.7812,
+              0.2146,
+              -1.7735
+            ],
+            "max": [
+              0.7812,
+              0.5185,
+              -1.0202
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "M04",
             "name": "engine",
             "min": [
               -1.2569,
@@ -15634,7 +15649,7 @@
             "turretLocal": false
           },
           {
-            "volumeId": "M04",
+            "volumeId": "M05",
             "name": "transmission",
             "min": [
               -1.0809,
@@ -15649,7 +15664,7 @@
             "turretLocal": false
           },
           {
-            "volumeId": "M05",
+            "volumeId": "M06",
             "name": "fuelTank",
             "min": [
               -1.2569,
@@ -15664,7 +15679,7 @@
             "turretLocal": false
           },
           {
-            "volumeId": "M06",
+            "volumeId": "M07",
             "name": "ammoRack",
             "min": [
               -1.085,
@@ -15679,7 +15694,7 @@
             "turretLocal": true
           },
           {
-            "volumeId": "M07",
+            "volumeId": "M08",
             "name": "radio",
             "min": [
               -0.93,
@@ -15694,7 +15709,7 @@
             "turretLocal": true
           },
           {
-            "volumeId": "M08",
+            "volumeId": "M09",
             "name": "optics",
             "min": [
               0.31,
@@ -15709,7 +15724,7 @@
             "turretLocal": true
           },
           {
-            "volumeId": "M09",
+            "volumeId": "M10",
             "name": "trackL",
             "min": [
               -1.58,
@@ -15724,7 +15739,7 @@
             "turretLocal": false
           },
           {
-            "volumeId": "M10",
+            "volumeId": "M11",
             "name": "trackR",
             "min": [
               1.02,
@@ -15784,26 +15799,11 @@
               -0.5497
             ],
             "turretLocal": true
-          },
-          {
-            "volumeId": "C04",
-            "name": "loader",
-            "min": [
-              -1.1625,
-              0.0472,
-              -0.4737
-            ],
-            "max": [
-              -0.186,
-              0.6631,
-              0.6662
-            ],
-            "turretLocal": true
           }
         ]
       },
-      "geometryHash": "90eac609",
-      "metadataHash": "e20b7538",
+      "geometryHash": "fa56a06b",
+      "metadataHash": "2b386d6f",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0184
@@ -15857,24 +15857,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23082,
-          "sha256": "b46bb2b086f9f46eda1a8d464c8033ae2f0ac197cc80f581c571db7f342a9e74"
+          "bytes": 23058,
+          "sha256": "052b53c7bff51e07576b1fec3af0f2b392d4e283d66861307eaca5c7c52dcee8"
         },
         "top": {
           "file": "carro45t_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 5718,
-          "sha256": "d97ad54818980c435653cee1db2af49727931d71c27f3d1b0bc9ad73dcab0ddf"
+          "bytes": 5732,
+          "sha256": "e782a2bf8e3e86605b4eb96293af1120d704040f2ff3a790d2c66a427a810474"
         },
         "side": {
           "file": "carro45t_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 6524,
-          "sha256": "e5002ad6d2a9b15a3f6f899dca110977ebbb749ef2d3e9dd3dd08e7740f3a242"
+          "bytes": 6506,
+          "sha256": "257d548dd8263c0c22dd2f575c9bb432385088304e731e1ff5a53489cd37c2a9"
         },
         "topSilhouette": {
           "file": "carro45t_top_silhouette.png",
@@ -15889,32 +15889,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3642,
-          "sha256": "4cce27803f0633967160976ae91e4ba3acc1f1ba48ec7fef8f7081810e996cbd"
+          "bytes": 3594,
+          "sha256": "74d9ed1aee41f1646f00e5a71cd426fc93c2f42f2694c4c98b8c32b5c1680b07"
         },
         "hitZonesSide": {
           "file": "carro45t_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 55736,
-          "sha256": "fead54e5b303e7605702db74d947b11dea119dd287ff84562f6bf9a0755459f8"
+          "bytes": 56077,
+          "sha256": "c2ecf770a4103bc4977389eff762fdce963d3ae5e98612bc9bb412fadb9eb646"
         },
         "armorSide": {
           "file": "carro45t_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 57299,
-          "sha256": "0d3af05843c4a82511ba269abb76eb343752f7d156432ec0b2413cfb1a12e28a"
+          "bytes": 57074,
+          "sha256": "be3c8511a55a9dbd416044ebcf9614cf424363f270f85318c390030e80333ffb"
         },
         "modulesSide": {
           "file": "carro45t_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65832,
-          "sha256": "2917d33ae9f2fa3a36416982a984bf2d92b85ca321c60fc884f68f6410110c85"
+          "bytes": 66029,
+          "sha256": "10617cf46f157fe47b36ebef548576a9371085d9513415e62cafb341f14bb796"
         },
         "markings": {
           "file": "carro45t_markings.png",

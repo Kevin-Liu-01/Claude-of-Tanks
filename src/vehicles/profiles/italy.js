@@ -909,9 +909,17 @@ function buildCarro45T(P) {
   P.add('turret', slab(                                                        // plateau front sloping 2.35@-0.44 -> 2.25@+0.99 (gate 2.283@+0.25)
     [-1.14, 0.70, L(-0.44)], [0.48, 0.70, L(-0.44)], [0.48, 0.64, L(0.99)], [-1.14, 0.64, L(0.99)],
     [-1.14, 0.85, L(-0.44)], [0.48, 0.85, L(-0.44)], [0.48, 0.75, L(0.99)], [-1.14, 0.75, L(0.99)]));
-  P.add('turret', slab(                                                        // plateau front fairing: 2.21@+0.97 -> 2.14@+1.77 (gate ref line
-    [-1.10, 0.62, L(0.99)], [0.44, 0.62, L(0.99)], [0.31, 0.52, L(1.70)], [-0.31, 0.52, L(1.70)], // 2.21@+1.47, 2.19@+1.71, 2.02@+1.83 — the crest ENDS
-    [-1.10, 0.71, L(0.97)], [0.44, 0.71, L(0.97)], [0.31, 0.62, L(1.72)], [-0.31, 0.62, L(1.72)]));  // by +1.77: the mantlet owns the next column)
+  // Cheek-aligned crown transition. The former single skewed patch tapered
+  // only on vehicle-left, so its vehicle-right edge cut across the cheek
+  // sweep instead of following it. Two joined courses now inherit the left
+  // plateau and right closure heights independently, while their outer edges
+  // converge symmetrically on the mantlet throat.
+  P.add('turret', slab(                                                        // left crown course
+    [-1.10, 0.62, L(0.99)], [0.44, 0.62, L(0.99)], [0, 0.52, L(1.70)], [-0.31, 0.52, L(1.70)],
+    [-1.10, 0.71, L(0.97)], [0.44, 0.75, L(0.99)], [0, 0.62, L(1.72)], [-0.31, 0.62, L(1.72)]));
+  P.add('turret', slab(                                                        // right crown course
+    [0.44, 0.62, L(0.99)], [1.02, 0.53, L(0.99)], [0.31, 0.52, L(1.70)], [0, 0.52, L(1.70)],
+    [0.44, 0.75, L(0.99)], [1.02, 0.63, L(0.99)], [0.31, 0.62, L(1.72)], [0, 0.62, L(1.72)]));
   P.add('turret', slab(                                                        // crest chin: closes the fairing underside to the shell nose (bottom
     [-0.31, 0.08, L(1.68)], [0.31, 0.08, L(1.68)], [0.28, 0.05, L(1.30)], [-0.28, 0.05, L(1.30)],  // rises like the ref's 1.58@+1.71 step)
     [-0.31, 0.52, L(1.70)], [0.31, 0.52, L(1.70)], [0.28, 0.30, L(1.32)], [-0.28, 0.30, L(1.32)]));
@@ -964,12 +972,19 @@ function buildCarro45T(P) {
   P.add('turret', slab(                                                        // bustle underside closure to the rear face
     [-1.24, 0.045, L(-1.70)], [1.24, 0.045, L(-1.70)], [1.20, 0.14, L(-2.12)], [-1.20, 0.14, L(-2.12)],
     [-1.24, 0.145, L(-1.70)], [1.24, 0.145, L(-1.70)], [1.20, 0.24, L(-2.12)], [-1.20, 0.24, L(-2.12)]));
+  // Structural transition between the shell's raked rear and the vertical
+  // bustle wall. This fills the 5-30 cm wedge that was previously open above
+  // the underplate, without flattening the shell's rear armor angle.
+  P.add('turret', slab(
+    [-1.24, 0.24, L(-1.74)], [1.24, 0.24, L(-1.74)], [1.06, 0.66, L(-1.44)], [-1.06, 0.66, L(-1.44)],
+    [-1.18, 0.24, L(-1.79)], [1.18, 0.24, L(-1.79)], [1.18, 0.60, L(-1.79)], [-1.18, 0.60, L(-1.79)]));
   P.add('turret', box(2.40, 0.40, 0.30), 0, 0.42, L(-1.94));                   // backed rear service wall (to -2.09; face pairs the print's -2.13..-2.24 read)
   P.add('turretDark', box(2.28, 0.30, 0.04), 0, 0.42, L(-2.10));               // rear louvre field
   for (let i = 0; i < 9; i++) P.add('turretDetail', box(0.028, 0.34, 0.05), -1.12 + i * 0.28, 0.42, L(-2.11)); // rib cadence (owner)
   for (const s2 of [-1, 1]) P.add('turretDetail', box(0.032, 0.34, 0.42), s2 * 1.19, 0.42, L(-1.92)); // corner stanchions
   addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.30, d: 0.14,
-    h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, L(-1.80));        // rear rack on the service wall (census-true fitting)
+    h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, L(-2.10),
+    [0, Math.PI, 0]);                                                          // rear rack: embedded feet, open face points outboard (-Z)
   addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
     elev: 0, shield: false, scale: 0.50, seed: 72 }), 0.30, 0.72, L(-0.62), [0, 2.85, 0]); // commander's Breda stowed LOW at the cupola (top under the 2.42 p95 datum; owner c425f495 carried one)
   // The print carries canted corner launchers rather than a featureless rear

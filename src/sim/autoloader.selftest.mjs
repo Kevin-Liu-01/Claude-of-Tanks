@@ -123,6 +123,7 @@ for (const [id, capacity, cycleS, reloadS] of [
   ['type90', 3, 2.2, 18.5],
   ['pl01', 3, 2.4, 20],
   ['pl01_105', 4, 2.0, 18],
+  ['carro45t', 4, 2.5, 21],
 ]) {
   const spec = getSpec(id);
   assert.equal(spec.gun.autoloader.magazineSize, capacity, `${id}: magazine capacity`);
@@ -132,5 +133,9 @@ for (const [id, capacity, cycleS, reloadS] of [
 }
 assert.equal(getSpec('pl01_105').gun.caliberMm, 105);
 assert.equal(getSpec('pl01_105').gun.shells[0].caliberMm, 105);
+assert.equal(getSpec('carro45t').armor.crew.some(({ crew }) => crew === 'loader'), false,
+  'carro45t: bustle autoloader replaces the manual loader station');
+assert.equal(getSpec('carro45t').armor.modules.some(({ module }) => module === 'autoloader'), true,
+  'carro45t: damage anatomy exposes the autoloader mechanism');
 
 console.log('autoloader.selftest: all assertions passed');

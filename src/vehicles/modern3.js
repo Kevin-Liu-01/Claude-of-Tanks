@@ -588,7 +588,11 @@ const MODERN3_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 30, gunPitchDegS: 24, gunElevationDeg: 18, gunDepressionDeg: 8,
     gun: {
-      caliberMm: 105, reloadS: 7.2, baseAccuracy: 0.31, aimTimeS: 2.0,
+      caliberMm: 105, reloadS: 21.0, baseAccuracy: 0.31, aimTimeS: 2.0,
+      // Four-round bustle magazine. The 2.5 s presentation cycle and 21 s
+      // replenishment preserve the former single-shot gun's sustained output
+      // while giving the Carro its intended burst-fire identity.
+      autoloader: { magazineSize: 4, intraClipS: 2.5, fullReloadS: 21.0 },
       bloom: { move: 0.08, hullRot: 0.10, turret: 0.08, afterShot: 2.5 },
       shells: [
         shell('OTO 105 APDS', 'APFSDS', 105, 345, 315, 430, 1475, { pen2000Mm: 280 }),
@@ -614,7 +618,7 @@ const MODERN3_SPECS = {
       skirt: null, rear: 35, roof: 28,
       tw: 1.55, tFrontZ: 2.11, tRearZ: -1.94, tH: 0.92,
       cheek: [120, 210, 240], tSide: [80, 115, 135], tRear: 45, tRoof: 30,
-      mantlet: [150, 250, 280], loader: true, bustleAmmo: true,
+      mantlet: [150, 250, 280], loader: false, bustleAmmo: true,
     }),
     visual: {
       scheme: 'solid', base: '#53604a', weather: '#5f6b55',
