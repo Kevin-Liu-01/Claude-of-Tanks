@@ -1552,10 +1552,17 @@ function buildTrackCourse({
   sprocket, idler, rollers, rollerR, trackTh, topY, botY,
   wheelZs, wheelY, wheelR, layers, cfg,
 }) {
-  const sag = rollers.length ? 0.022 : (cfg.deadSag ?? 0.085);
+  const sag = rollers.length ? (cfg.returnSag ?? 0.022) : (cfg.deadSag ?? 0.085);
   const maxOffSup = layers ? Math.max(...layers.flat()) : 0;
   const supports = rollers.length
-    ? rollers.map((rl) => ({ z: rl.z, y: rl.y + (rl.r ?? rollerR) + trackTh / 2 }))
+    ? [
+      ...rollers.map((rl) => ({ z: rl.z, y: rl.y + (rl.r ?? rollerR) + trackTh / 2 })),
+      // A high end wheel may need the upper course to finish descending at
+      // the outer road-wheel shoulder before it reaches the first physical
+      // return roller. Profiles opt into these mechanical tangent supports;
+      // they do not create extra rendered rollers.
+      ...(cfg.upperCourseSupports ?? []),
+    ]
     : wheelZs
       .filter((z, i) => !layers || layers[i % layers.length].includes(maxOffSup))
       .map((z) => ({ z, y: wheelY + wheelR + trackTh / 2 - 0.02 }));

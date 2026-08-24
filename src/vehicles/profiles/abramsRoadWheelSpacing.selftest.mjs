@@ -16,6 +16,17 @@ const ABRAMS_FAMILY_IDS = [
 const EXPECTED_WHEEL_ZS = [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19];
 const EXPECTED_CONTACT_ZS = [2.32, -2.31];
 const EPSILON = 1e-6;
+const ABRAMS_RETURN_ROLLER_IDS = [
+  'm1a2',
+  'm1a1',
+  'm1a1ha',
+  'm1a2_tusk',
+  'm1a2_sepv2',
+  'm1a2_sepv3',
+  'ua_m1a1',
+  'm1a2_legacy',
+  'abramsx',
+];
 
 function uniqueInstanceZs(mesh) {
   const matrix = new THREE.Matrix4();
@@ -81,4 +92,39 @@ for (const id of ABRAMS_FAMILY_IDS) {
   }
 }
 
-console.log('abramsRoadWheelSpacing.selftest: M1-family road wheels clear and tracks remain seated');
+for (const id of ABRAMS_RETURN_ROLLER_IDS) {
+  const tank = createTank(id, null, {
+    proceduralOnly: true,
+    quality: 'high',
+    camoSeed: 4242,
+    geometryReceipt: true,
+  });
+
+  try {
+    const hull = tank.root.getObjectByName('rig_hull');
+    const receipt = hull?.userData.runningGearReceipts?.[0];
+    const tires = hull?.getObjectByName('gearReturnRollerTires');
+    const discs = hull?.getObjectByName('gearReturnRollerDiscs');
+
+    assert.ok(receipt && tires?.isInstancedMesh && discs?.isInstancedMesh,
+      `${id}: exposes return rollers through the canonical running-gear rig`);
+    assert.equal(tires.count, 4, `${id}: keeps two return rollers per side`);
+    assert.equal(discs.count, 4, `${id}: return rollers retain painted hubs`);
+
+    const rollerZs = uniqueInstanceZs(tires);
+    assert.equal(rollerZs.length, 2, `${id}: has two longitudinal support stations`);
+    for (const z of rollerZs) {
+      assert.ok(receipt.loopPoints.some(([pointZ, pointY]) => Math.abs(pointZ - z) <= 1e-4
+        && Math.abs(pointY - receipt.topY) <= EPSILON),
+      `${id}: upper track is lifted onto the return roller at z=${z}`);
+    }
+  } finally {
+    tank.dispose();
+  }
+}
+
+console.log('abramsRoadWheelSpacing.selftest: M1-family wheels clear, return rollers support the lifted tracks');
+
+// Keep the paired Abrams running-gear and turret-seat regressions on the
+// existing pretest route without widening the already long package script.
+await import('./abramsTurretLift.selftest.mjs');

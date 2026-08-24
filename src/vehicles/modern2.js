@@ -2431,7 +2431,15 @@ function buildMBT70(P) {
   const seg = P.q ? 24 : 14;
 
   // ---- certified M1A1 hull, intentionally without side skirts ------------
-  buildM1A1BareHull(P);
+  buildM1A1BareHull(P, {
+    returnRollerZs: [1.46, 0, -1.46],
+    // Keep the donor hull's certified end-wrap catenary while the higher
+    // three-point roller line lifts the exposed middle return course.
+    returnSag: 0.085,
+    // Preserve the donor's 96-link cadence after the tauter return course
+    // shortens the loop; otherwise every shoe after the first wrap shifts.
+    linkPitchM: 0.1635,
+  });
   for (const s of [-1, 1]) {
     P.addMudguard(`mbt70_m1_front_fender_${s}`, 'hull',
       box(0.42, 0.09, 1.18), s * 1.54, 1.37, 3.10, -0.055, 0, 0);
@@ -2441,14 +2449,14 @@ function buildMBT70(P) {
     P.add('hullDetail', box(0.06, 0.08, 5.46), s * 1.69, 1.39, 0.10);
 
     // Close the open stern shoulder behind the final drive without turning
-    // the skirtless MBT-70 back into a full-skirt Abrams.  The inboard wall
-    // backs the sprocket cavity; the upper shelf overlaps the rear fender so
-    // the quarter reads as one armored assembly from side and rear views.
-    P.add('hull', box(0.12, 0.48, 1.38), s * 1.11, 1.41, -3.05, 0.025 * s, 0, 0);
-    P.add('hull', box(0.48, 0.10, 1.34), s * 1.31, 1.61, -3.05, 0.025 * s, 0, 0);
-    P.add('hullDetail', box(0.035, 0.34, 1.18), s * 1.18, 1.43, -3.05, 0.025 * s, 0, 0);
+    // the skirtless MBT-70 back into a full-skirt Abrams.  Seat the wall
+    // inboard and the shelf/braces above the shoe sweep so the quarter reads
+    // as one armored assembly without clipping the sprocket return wrap.
+    P.add('hull', box(0.12, 0.48, 1.38), s * 0.96, 1.41, -3.05, 0.025 * s, 0, 0);
+    P.add('hull', box(0.48, 0.10, 1.34), s * 1.31, 1.69, -3.05, 0.025 * s, 0, 0);
+    P.add('hullDetail', box(0.035, 0.34, 1.18), s * 1.00, 1.43, -3.05, 0.025 * s, 0, 0);
     for (const z of [-3.48, -3.05, -2.62]) {
-      P.add('hullDetail', box(0.11, 0.035, 0.035), s * 1.20, 1.57, z);
+      P.add('hullDetail', box(0.11, 0.035, 0.035), s * 1.20, 1.66, z);
     }
   }
 
