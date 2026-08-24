@@ -73,6 +73,12 @@ assert.match(shotInfo,
 assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
   'ballistic reports must not retain the orange top-edge accent');
 assert.match(shotInfo,
+  /ballistic: uiIconSVG\('scope', 10\)[\s\S]*shell: uiIconSVG\('shell', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
+  'ballistic reports must use the shared vector icon language for their key readings');
+assert.match(shotInfo,
+  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid rgba\(146,164,180,\.24\);\}/,
+  'penetration analysis must be separated visually from the damage row');
+assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-card\{min-height:0;\}[\s\S]*body\.cot-touch-layout \.cot-si-diag\{justify-content:center/,
   'the game touch-layout state must keep the compact shot-card composition independently of pointer heuristics');
 assert.match(shotInfo,

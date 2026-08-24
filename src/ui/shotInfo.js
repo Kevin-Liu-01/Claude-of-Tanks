@@ -56,6 +56,13 @@ const PEN_KINDS = new Set(['pen', 'he_pen']);
 // Crisp 12px module/crew glyphs (currentColor) — same visual language as the
 // damage panel's canvas icons, redrawn as inline SVG for DOM cards.
 const GLYPH = {
+  ballistic: uiIconSVG('scope', 10),
+  shell: uiIconSVG('shell', 10),
+  target: uiIconSVG('autoAim', 10),
+  angle: uiIconSVG('scope', 10),
+  armor: uiIconSVG('shield', 10),
+  damage: uiIconSVG('damage', 10),
+  pen: uiIconSVG('penetration', 10),
   trackL: uiIconSVG('track', 12),
   engine: uiIconSVG('engine', 12),
   fuelTank: uiIconSVG('fuelTank', 12),
@@ -92,22 +99,30 @@ const SI_CSS = `
   padding:4px 9px 3px;border-bottom:1px solid rgba(146,164,180,.2);}
 .cot-si-state{display:flex;min-width:0;flex-direction:column;gap:3px;}
 .cot-si-kicker{font-family:${FONT_COND};font-size:7px;font-weight:800;line-height:1;
-  letter-spacing:.2em;color:#778692;text-transform:uppercase;}
+  letter-spacing:.2em;color:#778692;text-transform:uppercase;display:flex;align-items:center;gap:4px;}
+.cot-si-kicker svg{width:9px;height:9px;flex:0 0 auto;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:800;
   font-size:12px;line-height:1;letter-spacing:.13em;white-space:nowrap;}
 .cot-si-dmg{min-width:62px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:800;font-size:20px;
-  font-variant-numeric:tabular-nums;color:#ffd166;}
+  font-variant-numeric:tabular-nums;color:#ffd166;display:flex;justify-content:flex-end;align-items:center;gap:4px;}
+.cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:9px;color:#c6d2dc;letter-spacing:.03em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;
   background:rgba(149,168,184,.045);font-variant-numeric:tabular-nums;}
-.cot-si-sub>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap;}
 .cot-si-sub>span:last-child{text-align:right;color:#e4ebf0;font-weight:700;}
+.cot-si-sub>span:last-child{justify-content:flex-end;}
+.cot-si-sub svg{width:9px;height:9px;flex:0 0 auto;color:#81909d;}
+.cot-si-sub .cot-si-subtext{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-si-sub .ty{font-weight:800;font-size:9px;letter-spacing:.08em;
-  font-family:${FONT_COND};}
+  font-family:${FONT_COND};display:inline-flex;align-items:center;gap:3px;}
+.cot-si-sub .ty svg{color:inherit;}
 .cot-si-body{display:flex;flex-direction:column;gap:3px;padding:4px 9px 0;}
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
-  align-items:baseline;font-size:9px;line-height:1.15;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.045em;}
+  align-items:center;font-size:9px;line-height:1.15;color:${COL.dim};font-variant-numeric:tabular-nums;letter-spacing:.045em;}
+.cot-si-kv .cot-si-k{display:flex;align-items:center;gap:4px;}
+.cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:#7f8f9c;}
 .cot-si-kv b{min-width:0;text-align:right;color:#dbe6ef;font-weight:750;font-family:${FONT_COND};
   letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
@@ -115,6 +130,7 @@ const SI_CSS = `
    qualifier is an unbreakable suffix chip and a dim caption legends the
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
+.cot-si-kv.pen{margin-top:2px;padding-top:3px;border-top:1px solid rgba(146,164,180,.24);}
 .cot-si-kv.pen b{white-space:nowrap;}
 .cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
   border:1px solid currentColor;font-size:7.5px;letter-spacing:.12em;
@@ -910,25 +926,26 @@ export function createShotInfo(bus) {
     const hd = el('div', 'cot-si-hd', card);
     const state = el('div', 'cot-si-state', hd);
     const kicker = el('span', 'cot-si-kicker', state);
-    kicker.textContent = 'Ballistic readout';
+    kicker.innerHTML = `${GLYPH.ballistic}<span>Ballistic readout</span>`;
     const badge = el('span', 'cot-si-badge', state);
     badge.textContent = cls.badge;
     badge.style.color = cls.col;
     const dmg = el('span', 'cot-si-dmg', hd);
-    dmg.textContent = (ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0';
+    dmg.innerHTML = `${GLYPH.damage}<span>${(ev.damage || 0) > 0 ? `−${Math.round(ev.damage)}` : '0'}</span>`;
     if (!(ev.damage > 0)) dmg.style.color = COL.dim;
 
     const sub = el('div', 'cot-si-sub', card);
     const tyCol = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
     sub.innerHTML =
-      `<span><span class="ty" style="color:${tyCol}">${ev.shellType}</span> ${shellDisplayName(ev)}</span>` +
-      `<span>${ev.targetName || ''}</span>`;
+      `<span><span class="ty" style="color:${tyCol}">${GLYPH.shell}${ev.shellType}</span>` +
+      `<span class="cot-si-subtext">${shellDisplayName(ev)}</span></span>` +
+      `<span>${GLYPH.target}<span class="cot-si-subtext">${ev.targetName || ''}</span></span>`;
 
     const body = el('div', 'cot-si-body', card);
     const rows = el('div', 'cot-si-rows', body);
     const kv = (k, v, cls) => {
       const r = el('div', `cot-si-kv${cls ? ` ${cls}` : ''}`, rows);
-      r.innerHTML = `<span>${k}</span><b>${v}</b>`;
+      r.innerHTML = `<span class="cot-si-k">${GLYPH[k.toLowerCase()] || ''}<span>${k}</span></span><b>${v}</b>`;
       return r;
     };
     const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
