@@ -2918,6 +2918,18 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       post.setAdaptiveSuspended(false);
       mark('restoreRenderer');
       prepareBattleRevealCamera();
+      // Submit the exact visible deployment programs before the first scene
+      // render, then give ANGLE two painted loader frames to link them in the
+      // background. Do not query completion: KHR_parallel_shader_compile is
+      // unreliable on affected Metal drivers and can itself block for many
+      // seconds. The first covered battle frame still renders the identical
+      // final-quality CSM/post scene; this only moves driver submission ahead
+      // of its onFirstUse queue.
+      const deploymentCompileStartedAt = performance.now();
+      try { renderer.compile(scene, camera, scene); } catch (_) { /* first render fallback */ }
+      trace.deploymentCompileMs = Math.round(performance.now() - deploymentCompileStartedAt);
+      await nextFrame();
+      await nextFrame();
       await primeSoloBattleRevealFrame();
       entryRevealPrimed = true;
       battleLoadRenderingCovered = true;
