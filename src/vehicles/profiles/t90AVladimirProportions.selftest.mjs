@@ -12,11 +12,54 @@ const tank = createTank('t90a_vladimir', null, {
 });
 
 try {
+  const hullRig = tank.root.getObjectByName('rig_hull');
   const turretRig = tank.root.getObjectByName('rig_turret');
   const gunRig = tank.root.getObjectByName('rig_gun');
   const turret = turretRig?.getObjectByName('turret');
   assert.ok(turretRig && gunRig && turret?.isMesh,
     'T-90A Vladimir keeps structural turret and gun geometry on articulated rigs');
+
+  const hull = hullRig?.getObjectByName('hull');
+  const hullReceipt = hullRig?.userData.t90aVladimirHullReceipt;
+  assert.ok(hullRig && hull?.isMesh && hullReceipt,
+    'T-90A Vladimir exposes its running-gear and glacis geometry receipt');
+  assert.ok(near(hullReceipt.roadWheelBottomY, 0.125),
+    'road-wheel tangent remains at the measured 125-mm station');
+  assert.ok(near(hullReceipt.trackBandTopY, 0.125),
+    'loaded track upper face reaches the road-wheel tangent');
+  assert.ok(near(hullReceipt.roadWheelToTrackGapM, 0),
+    'no air gap remains between road wheels and the loaded track course');
+  assert.ok(near(hullReceipt.trackEnvelopeHeightM, 0.79),
+    'track envelope is 60 mm shorter while its return run remains fixed');
+  assert.deepEqual(hullReceipt.upperGlacisRear, [0, 1.29, 1.68],
+    'upper glacis starts at the accepted deck shoulder');
+  assert.deepEqual(hullReceipt.lowerGlacisRear, [0, 0.60, 1.68],
+    'lower glacis starts at the accepted belly shoulder');
+  assert.deepEqual(hullReceipt.prow, [0, 1.08, 2.10],
+    'upper and lower glacis converge at one shared prow');
+  assert.ok(hullReceipt.upperGlacisPitchRad > 0.45,
+    'upper glacis is visibly raked instead of a terminal wall');
+  assert.ok(hullReceipt.lowerGlacisPitchRad < -0.84,
+    'lower glacis is visibly raked instead of flat');
+  assert.equal(hullReceipt.bowArmorRows, 2,
+    'both bow armor rows are reseated on the upper glacis');
+
+  const hullPosition = hull.geometry.attributes.position;
+  let prowVertices = 0;
+  let upperShoulderVertices = 0;
+  let lowerShoulderVertices = 0;
+  for (let index = 0; index < hullPosition.count; index += 1) {
+    const y = hullPosition.getY(index);
+    const z = hullPosition.getZ(index);
+    if (near(y, 1.08, 1e-5) && near(z, 2.10, 1e-5)) prowVertices += 1;
+    if (near(y, 1.29, 1e-5) && near(z, 1.68, 1e-5)) upperShoulderVertices += 1;
+    if (near(y, 0.60, 1e-5) && near(z, 1.68, 1e-5)) lowerShoulderVertices += 1;
+  }
+  assert.ok(prowVertices >= 4, `shared prow exists in structural hull geometry (${prowVertices} vertices)`);
+  assert.ok(upperShoulderVertices >= 2,
+    `upper glacis shoulder exists in structural hull geometry (${upperShoulderVertices} vertices)`);
+  assert.ok(lowerShoulderVertices >= 2,
+    `lower glacis shoulder exists in structural hull geometry (${lowerShoulderVertices} vertices)`);
 
   const proportion = turretRig.userData.t90aVladimirProportionReceipt;
   assert.ok(proportion, 'T-90A Vladimir exposes its cheek proportion receipt');
@@ -95,4 +138,4 @@ try {
   tank.dispose();
 }
 
-console.log('t90AVladimirProportions.selftest: aligned Shtora, connected cheeks, raised ERA, smoke banks, RWS, and enlarged cannon verified');
+console.log('t90AVladimirProportions.selftest: compact tracks, raked glacis, reseated bow fittings, aligned Shtora, connected cheeks, ERA, smoke banks, RWS, and enlarged cannon verified');

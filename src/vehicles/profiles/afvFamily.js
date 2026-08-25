@@ -1356,12 +1356,12 @@ function addTerminatorT90Station(P) {
   const { box, cylY, cylZ } = KIT;
   clearUpperStructure(P);
   // The T-90A donor also dresses its dome through the turretTrack /
-  // turretCupola / turretEquipment buckets, which the shared helper leaves
+  // turretCupola / turretHatch / turretEquipment buckets, which the shared helper leaves
   // alone (t72/bmp2/bradley donors never use them — widening the shared
   // clear would strip live donor equipment on the other residents). Clear
   // them HERE so no donor spare-track course or cupola floats around the
   // replacement station.
-  P.clear('turretTrack', 'turretCupola', 'turretEquipment');
+  P.clear('turretTrack', 'turretCupola', 'turretHatch', 'turretEquipment');
   // Deterministic rig seats: the donor family may adjust group transforms in
   // its own turret passes — reset scale and re-seat the pivots at this spec's
   // own armor anchors (§5.361 rig-anchor law: the ring rides turretPivot).

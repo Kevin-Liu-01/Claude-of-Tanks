@@ -128,7 +128,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   t90: Object.freeze({ xM: 0.0027, zM: -0.0384 }),
   t90a: Object.freeze({ xM: 0.0028, zM: 0.025 }),
   t90a_burlak: Object.freeze({ xM: 0.002, zM: 0.0425 }),
-  t90a_vladimir: Object.freeze({ xM: -0.0002, zM: -1.2682 }),
+  t90a_vladimir: Object.freeze({ xM: -0.0001, zM: -1.1868 }),
   t90m: Object.freeze({ xM: -0.0001, zM: -0.0001 }),
   t90ms: Object.freeze({ xM: -0.001, zM: 0.0153 }),
   t90sm: Object.freeze({ xM: -0.0008, zM: 0.09 }),

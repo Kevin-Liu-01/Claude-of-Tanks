@@ -32,10 +32,15 @@ try {
   assert.ok(receipt, 'T-90A exposes its turret, Shtora, and cannon adjustment receipt');
   near(turret.position.z, 0.02, 'turret yaw seat moves rearward to the accepted station');
   near(receipt.turretRearwardShiftM, 0.10, 'turret moves rearward by 100 mm');
-  near(receipt.shtoraEyeZ, 1.73, 'Shtora eyes move rearward on the turret');
-  near(receipt.shtoraLocalRearwardShiftM, 0.07, 'Shtora eyes move rearward by 70 mm locally');
-  near(receipt.shtoraSupportFrontZ, 1.69, 'Shtora support shoes follow the emitters');
+  near(receipt.shtoraEyeZ, 1.60, 'Shtora eyes move rearward against the turret cheeks');
+  near(receipt.shtoraLocalRearwardShiftM, 0.20, 'Shtora eyes move rearward by 200 mm locally');
+  near(receipt.shtoraSupportFrontZ, 1.56, 'Shtora support shoes follow the emitters');
   near(receipt.gunRadiusScale, 1.08, 'cannon cross-section grows by eight percent');
+  assert.equal(receipt.cupolaCount, 2, 'RU-112 carries two complete roof cupolas');
+  assert.deepEqual(receipt.leftCupola, [-0.35, -0.48], 'left cupola occupies the left roof station');
+  assert.deepEqual(receipt.rightCupola, [0.52, -0.42], 'right cupola occupies the right roof station');
+  assert.equal(receipt.rightCupolaLightCount, 2, 'right cupola carries two forward lights');
+  assert.equal(receipt.leftCupolaMannedMg, 'nsvt', 'left cupola carries the manually served NSVT');
   assert.deepEqual(gun.position.toArray(), [0, 0.165, 0.825],
     'cannon trunnion remains fixed in turret-local space');
 
@@ -46,6 +51,37 @@ try {
   near(barrel.geometry.boundingBox.max.z, 4.816, 'cannon length remains unchanged while its diameter grows', 2e-6);
 
   const parts = tank.root.userData.combatGeometryParts;
+  const cupolaParts = parts.filter((part) => part.bucket === 'turretCupola');
+  const hatchParts = parts.filter((part) => part.bucket === 'turretHatch');
+  assert.equal(cupolaParts.length, 4,
+    'each roof station has a structural cupola base and upper rim');
+  assert.equal(hatchParts.length, 2,
+    'each cupola is closed by its own structural hatch lid');
+
+  const rightLampLenses = parts.filter((part) => {
+    if (part.bucket !== 'turretGlass') return false;
+    const width = part.max[0] - part.min[0];
+    const depth = part.max[2] - part.min[2];
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    return Math.abs(width - 0.084) < 2e-3
+      && Math.abs(depth - 0.012) < 2e-5
+      && centerX > 0.3;
+  });
+  assert.equal(rightLampLenses.length, 2,
+    'two recessed lenses physically occupy the right cupola lamp housings');
+
+  const leftMgBarrels = parts.filter((part) => {
+    if (part.bucket !== 'turretDark') return false;
+    const width = part.max[0] - part.min[0];
+    const depth = part.max[2] - part.min[2];
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    return Math.abs(width - 0.058) < 2e-4
+      && Math.abs(depth - 0.64) < 2e-5
+      && Math.abs(centerX + 0.35) < 2e-5;
+  });
+  assert.equal(leftMgBarrels.length, 1,
+    'the left cupola carries one full-length forward NSVT barrel');
+
   const shtoraBodies = parts.filter((part) => {
     if (part.bucket !== 'turretDark') return false;
     const width = part.max[0] - part.min[0];
@@ -55,7 +91,7 @@ try {
     return Math.abs(width - 0.24 * 1.32) < 2e-5
       && Math.abs(height - 0.27 * 1.32) < 2e-5
       && Math.abs(depth - 0.22 * 1.32) < 2e-5
-      && Math.abs(centerZ - 1.73) < 2e-5;
+      && Math.abs(centerZ - 1.60) < 2e-5;
   });
   assert.equal(shtoraBodies.length, 2,
     'both Shtora emitter bodies occupy the rearward seat');
@@ -82,8 +118,25 @@ try {
     'Burlak preserves its independently accepted turret seat');
   assert.equal(burlakTurret.userData.t90aSeatReceipt, undefined,
     'RU-112 adjustment receipt does not leak into Burlak');
+  assert.equal(burlak.root.userData.combatGeometryParts.some((part) =>
+    part.bucket === 'turretCupola' || part.bucket === 'turretHatch'), false,
+  'RU-112 structural roof buckets do not leak through Burlak rebuild');
 } finally {
   burlak.dispose();
+}
+
+const terminator = createTank('bmpt_t90', null, {
+  proceduralOnly: true,
+  quality: 'high',
+  camoSeed: 4242,
+  geometryReceipt: true,
+});
+try {
+  assert.equal(terminator.root.userData.combatGeometryParts.some((part) =>
+    part.bucket === 'turretCupola' || part.bucket === 'turretHatch'), false,
+  'RU-112 structural roof buckets do not leak into the BMPT replacement station');
+} finally {
+  terminator.dispose();
 }
 
 console.log('t90ATurretSeat.selftest: RU-112 turret, Shtora eyes, and enlarged cannon verified');

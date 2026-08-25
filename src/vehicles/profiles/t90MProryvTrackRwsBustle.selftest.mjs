@@ -18,13 +18,13 @@ try {
 
   const track = hullRig.userData.t90mProryvTrackReceipt;
   assert.ok(track, 'T-90M exposes its installed running-gear receipt');
-  assert.ok(near(track.roadWheelRadiusM, 0.48), 'road wheels use the taller 480-mm radius');
+  assert.ok(near(track.roadWheelRadiusM, 0.31), 'road wheels use the non-overlapping 310-mm radius');
   assert.ok(near(track.trackEnvelopeHeightM, 0.93), 'linked course spans the 930-mm vertical envelope');
   assert.ok(near(track.rideHeightIncreaseM, 0.16), 'finished hull and turret gain 160 mm of ride height');
   assert.equal(track.roadWheelStations, 6, 'native six-station cadence is preserved');
   assert.ok(near(getSpec('t90m').dims.heightM, 2.39), 'published vehicle height follows the raised ride datum');
   const finalGear = hullRig.userData.runningGearReceipts.at(-1);
-  assert.ok(near(finalGear.wheelR, 0.48), 'canonical gear receipt records the larger wheels');
+  assert.ok(near(finalGear.wheelR, 0.31), 'canonical gear receipt records the smaller wheels');
   assert.ok(near(finalGear.wheelY - finalGear.wheelR, 0.085), 'loaded tire foot remains on its original ground datum');
 
   tank.root.updateMatrixWorld(true);
