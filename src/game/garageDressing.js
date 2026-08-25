@@ -13,11 +13,11 @@
 //  - 100% procedural (canvas textures + primitives + tankFactory procedural
 //    builds) — no downloads, no GLB jobs, shares the stage's texture language
 //    via the helpers exported from ui/garageStage.js.
-//  - BUILDS IN CHUNKS: normal play pumps only the static workshop shell. The
-//    repair bays and modern component displays each require another complete
-//    procedural tank build, so they remain lazy and deterministic captures
-//    call ensureBuilt(). This keeps optional corner scenery off boot and tank-
-//    switch critical paths without maintaining a second model format.
+//  - BUILDS IN CHUNKS: first paint pumps only the static workshop shell. Main
+//    then resolves the exact source families and streams repair bays + modern
+//    component displays one at a time during genuine garage-idle windows.
+//    Deterministic captures still call ensureBuilt(). This keeps the complete
+//    authored workshop without putting four full tank builds on boot/switch.
 //  - PEDESTAL READABILITY IS SACRED: everything sits outside the painted
 //    KEEP-CLEAR ring, in the r≥14 m wall/corner band, dim (low-albedo mats,
 //    one whisper-level fill light, emissive-faked lamp pools) — the hero on
@@ -1149,9 +1149,20 @@ export function createGarageDressing(engineCtx, pos) {
     /** Build the next chunk. @returns {boolean} true while more chunks remain */
     pump() {
       if (next >= chunks.length) return false;
-      const fn = chunks[next++];
-      try { fn(); } catch (e) {
+      const fn = chunks[next];
+      const startedAt = performance.now();
+      try {
+        fn();
+        next++;
+        group.userData.lastBuildError = null;
+        (group.userData.buildTimings ||= []).push({
+          chunk: fn.name,
+          ms: Math.round(performance.now() - startedAt),
+        });
+      } catch (e) {
+        group.userData.lastBuildError = { chunk: fn.name, message: e.message };
         console.warn(`[garageDressing] chunk '${fn.name}' failed —`, e.message);
+        throw e;
       }
       return next < chunks.length;
     },

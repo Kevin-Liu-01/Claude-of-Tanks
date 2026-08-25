@@ -1151,6 +1151,52 @@ const requestQuietIdle = (fn) => {
   if (window.requestIdleCallback) return window.requestIdleCallback(fn);
   return setTimeout(fn, 800);
 };
+
+// The workshop's repair bays and component displays are intentionally kept
+// off first paint, but they are still part of the normal garage—not a capture-
+// only extra. Stream one complete set-piece chunk at a time after a genuine
+// interaction lull. Fleet families must resolve first: demand-loaded T-90
+// builders otherwise make pump() fail and permanently skip those exhibits.
+let garageDressingBuildScheduled = false;
+let garageDressingSourcesPromise = null;
+function scheduleGarageDressingBuild() {
+  if (garageDressing.isBuilt() || garageDressingBuildScheduled) return;
+  garageDressingBuildScheduled = true;
+  requestQuietIdle(async () => {
+    garageDressingBuildScheduled = false;
+    if (garageDressing.isBuilt() || game.phase !== 'garage') return;
+    if (performance.now() - garageActivityAt < 1600) {
+      setTimeout(scheduleGarageDressingBuild, 600);
+      return;
+    }
+    try {
+      if (!garageDressingSourcesPromise) {
+        const request = ensureTankBuilders(
+          garageDressing.group.userData.modernComponentSources,
+        );
+        garageDressingSourcesPromise = request;
+        request.catch(() => {
+          if (garageDressingSourcesPromise === request) garageDressingSourcesPromise = null;
+        });
+      }
+      await garageDressingSourcesPromise;
+      // Module parsing can overlap new input; re-check the lull before paying
+      // the synchronous procedural build for this one set piece.
+      if (game.phase !== 'garage') return;
+      if (performance.now() - garageActivityAt < 1600) {
+        setTimeout(scheduleGarageDressingBuild, 600);
+        return;
+      }
+      garageDressing.pump();
+    } catch (error) {
+      console.warn('[garageDressing] quiet build failed —', error.message);
+    }
+    if (!garageDressing.isBuilt() && game.phase === 'garage') {
+      setTimeout(scheduleGarageDressingBuild, 350);
+    }
+  });
+}
+
 function frameBudgetTick(budgetMs = 6) {
   let sliceAt = performance.now();
   return () => {
@@ -4077,6 +4123,7 @@ function enterGarage({ preserveRoom = !!(
   perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   game.phase = 'garage';
+  scheduleGarageDressingBuild();
   // Direct Studio activation deliberately skips battle-only collision and
   // minimap capture. The garage needs only its placement; building the
   // collider plus an offscreen top-down render here was a repeatable ~330 ms
@@ -7726,12 +7773,12 @@ if (pendingRoomInvitePromise) {
 }
 window.__GAME_READY = true;
 queuePedestalTexturePrefetch();
+if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 // Direct Studio navigation skips garage-only construction on the critical
-// path. Build only the normal workshop shell while idle; the heavyweight
-// repair exhibits remain capture/on-demand detail for the same reason as the
-// normal garage boot above.
+// path. Build the workshop shell while idle; enterGarage() resumes the normal
+// quiet set-piece stream if the user later leaves Studio for the garage.
 if (STUDIO_BOOT_INTENT) {
   requestQuietIdle(async () => {
     garageDressing.pump();

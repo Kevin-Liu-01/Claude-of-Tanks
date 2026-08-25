@@ -30,3 +30,5 @@ assert.throws(
 );
 
 console.log('garageTankLifecycle.selftest: FX and tank state end at the garage boundary');
+
+await import('./garageDressingLifecycle.selftest.mjs');
