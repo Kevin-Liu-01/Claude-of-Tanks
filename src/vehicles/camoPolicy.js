@@ -8,6 +8,7 @@
  */
 
 import { VEHICLE_ERAS } from './taxonomy.js';
+import { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './customCamoCanvas.js';
 
 export const CAMO_PATTERN_IDS = Object.freeze([
   'auto', 'factory', 'summer', 'desert', 'winter', 'digital',
@@ -143,10 +144,13 @@ export function normalizeCustomCamo(value = null) {
     const number = Math.round(Number(value));
     return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
   };
-  const strokes = Array.isArray(source.strokes) ? source.strokes.slice(0, 48).map((stroke) => ({
+  const strokes = Array.isArray(source.strokes) ? source.strokes.slice(0, 96).map((stroke) => ({
     color: stroke?.color === 1 ? 1 : 0,
-    size: clamp(stroke?.size, 1, 30, 8),
-    points: Array.isArray(stroke?.points) ? stroke.points.slice(0, 64).map((point) => [
+    size: clamp(stroke?.size, 1, 40, 8),
+    brush: CUSTOM_CAMO_BRUSHES.includes(stroke?.brush) ? stroke.brush : 'round',
+    asset: CUSTOM_CAMO_ASSETS.includes(stroke?.asset) ? stroke.asset : 'star',
+    rotation: clamp(stroke?.rotation, -180, 180, 0),
+    points: Array.isArray(stroke?.points) ? stroke.points.slice(0, 96).map((point) => [
       clamp(point?.[0], 0, 100, 50),
       clamp(point?.[1], 0, 100, 50),
     ]) : [],
@@ -169,15 +173,37 @@ export function normalizeCustomCamo(value = null) {
 export function customCamoPatternId(value) {
   const c = normalizeCustomCamo(value);
   if (c.style === 'drawn') {
-    const strokes = c.strokes.map((stroke) => `${stroke.color},${stroke.size},` +
+    const strokes = c.strokes.map((stroke) => `${stroke.color},${stroke.size},${stroke.brush},${stroke.asset},${stroke.rotation},` +
       stroke.points.map(([x, y]) => `${x}.${y}`).join('_')).join(';');
-    return `custom2~${c.base.slice(1)}~${c.colorA.slice(1)}~${c.colorB.slice(1)}~` +
+    return `custom3~${c.base.slice(1)}~${c.colorA.slice(1)}~${c.colorB.slice(1)}~` +
       `${c.repeatX}~${c.repeatY}~${c.rotation}~${c.mirror ? 1 : 0}~${strokes}`;
   }
   return `custom~${c.style}~${c.base.slice(1)}~${c.colorA.slice(1)}~${c.colorB.slice(1)}~${c.repeat}`;
 }
 
 export function parseCustomCamoPatternId(value) {
+  const authored = /^custom3~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)$/i
+    .exec(String(value || ''));
+  if (authored) {
+    const strokes = authored[8] ? authored[8].split(';').map((encoded) => {
+      const [color, size, brush, asset, rotation, points = ''] = encoded.split(',');
+      return {
+        color: Number(color), size: Number(size), brush, asset, rotation: Number(rotation),
+        points: points.split('_').filter(Boolean).map((point) => point.split('.').map(Number)),
+      };
+    }) : [];
+    return normalizeCustomCamo({
+      style: 'drawn',
+      base: `#${authored[1].toLowerCase()}`,
+      colorA: `#${authored[2].toLowerCase()}`,
+      colorB: `#${authored[3].toLowerCase()}`,
+      repeatX: Number(authored[4]),
+      repeatY: Number(authored[5]),
+      rotation: Number(authored[6]),
+      mirror: authored[7] === '1',
+      strokes,
+    });
+  }
   const drawn = /^custom2~([0-9a-f]{6})~([0-9a-f]{6})~([0-9a-f]{6})~([1-8])~([1-8])~(-?\d{1,3})~([01])~(.*)$/i
     .exec(String(value || ''));
   if (drawn) {

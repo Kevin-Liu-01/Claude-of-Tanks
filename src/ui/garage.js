@@ -19,6 +19,10 @@ import {
   CUSTOM_CAMO_ID, customCamoPatternId, normalizeCustomCamo,
 } from '../vehicles/camoPolicy.js';
 import { createInfoButton } from './contextInfo.js';
+import { createModal } from './modal.js';
+import {
+  CUSTOM_CAMO_ASSETS, paintCustomCamoStrokes,
+} from '../vehicles/customCamoCanvas.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -647,7 +651,7 @@ const GARAGE_CSS = `
   text-transform:uppercase;margin-bottom:7px;}
 .cot-camos .ctitle .cot-camo-title-actions{margin-left:auto;display:flex;align-items:center;gap:5px;letter-spacing:0}
 .cot-camos .ctitle .cot-info-trigger,.cot-maps .mtitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
-.cot-custom-open{min-height:24px;height:24px;padding:0 8px;border:1px solid rgba(240,176,74,.36);
+.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border:1px solid rgba(240,176,74,.36);
   background:rgba(240,160,48,.08);color:#ffd27a;cursor:pointer;font:900 6.5px ${FONT_COND};
   letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
 .cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
@@ -665,7 +669,6 @@ const GARAGE_CSS = `
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 16px),transparent 100%);}
 .cot-camos .cgrid.camo::-webkit-scrollbar{display:none;}
-.cot-camos.custom-open .cgrid.camo{display:none}
 .cot-camo-card{cursor:pointer;text-align:center;padding:5px 4px 4px;min-width:0;
   background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
   border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
@@ -691,39 +694,50 @@ const GARAGE_CSS = `
 /* r4: caption WRAPS instead of clipping — the old nowrap line overflowed the
    196px column and cut off mid-sentence, leaving a dangling em-dash */
 .cot-camos .cnote{display:none}
-.cot-custom-camo{display:none;margin-top:7px;border:1px solid rgba(146,164,180,.24);
-  background:linear-gradient(180deg,rgba(16,22,28,.9),rgba(7,10,13,.94));}
-.cot-custom-camo.sel{border-color:rgba(240,160,48,.7);box-shadow:0 0 12px rgba(240,160,48,.12);}
-.cot-custom-camo.open{display:block;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.cot-custom-body{display:grid;gap:8px;padding:8px;}
-.cot-custom-preview{position:relative;height:46px;overflow:hidden;border:1px solid rgba(0,0,0,.55);
+.cot-camo-lab{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:18px;min-height:460px}
+.cot-camo-lab__canvas,.cot-camo-lab__controls{min-width:0;display:flex;flex-direction:column;gap:12px}
+.cot-camo-lab__panel{padding:13px;border:1px solid rgba(146,164,180,.2);background:rgba(7,11,14,.58)}
+.cot-camo-lab__heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px;color:#d5e0e8;
+  font:900 10px/1.2 ${FONT_COND};letter-spacing:.16em;text-transform:uppercase}.cot-camo-lab__heading small{color:#6f818e;font-size:8px}
+.cot-custom-preview{position:relative;height:124px;overflow:hidden;border:1px solid rgba(0,0,0,.55);
   background:#242a26;box-shadow:inset 0 0 0 1px rgba(235,243,250,.1);}
 .cot-custom-preview canvas{width:100%;height:100%;display:block;object-fit:cover;object-position:center;}
-.cot-custom-local{position:absolute;left:6px;bottom:5px;padding:3px 5px;color:#ffd17f;
-  background:rgba(7,10,13,.82);font:900 6.5px ${FONT_COND};letter-spacing:.15em;text-transform:uppercase;}
-.cot-custom-draw-wrap{position:relative;height:118px;border:1px solid rgba(146,164,180,.28);overflow:hidden;
+.cot-custom-local{position:absolute;left:10px;bottom:9px;padding:5px 7px;color:#ffd17f;
+  background:rgba(7,10,13,.86);font:900 8px ${FONT_COND};letter-spacing:.15em;text-transform:uppercase;}
+.cot-custom-draw-wrap{position:relative;min-height:250px;flex:1;border:1px solid rgba(146,164,180,.28);overflow:hidden;
   background-color:#202722;background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),
-  linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:16px 16px}
-.cot-custom-draw{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
-.cot-custom-draw-label{position:absolute;left:6px;top:5px;padding:3px 5px;background:rgba(4,7,9,.78);color:#aebcc6;
-  pointer-events:none;font:900 6px ${FONT_COND};letter-spacing:.13em;text-transform:uppercase}
-.cot-custom-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
-.cot-custom-tool{min-height:26px;padding:0 4px;border:1px solid rgba(146,164,180,.22);background:rgba(9,13,17,.82);
-  color:#8d9da9;font:900 6.5px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
+  linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);background-size:24px 24px}
+.cot-custom-draw{display:block;width:100%;height:100%;min-height:250px;touch-action:none;cursor:crosshair}
+.cot-custom-draw-label{position:absolute;left:10px;top:9px;padding:5px 7px;background:rgba(4,7,9,.8);color:#aebcc6;
+  pointer-events:none;font:900 8px ${FONT_COND};letter-spacing:.13em;text-transform:uppercase}
+.cot-custom-tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cot-custom-tool{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 8px;border:1px solid rgba(146,164,180,.22);
+  background:rgba(9,13,17,.82);color:#8d9da9;cursor:pointer;font:900 8.5px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase;
+  transition:color .12s,border-color .12s,background .12s,transform .12s}.cot-custom-tool:active{transform:scale(.97)}
+.cot-custom-tool:hover,.cot-custom-tool:focus-visible{border-color:rgba(230,154,45,.7);color:#dce6ed;outline:none}
 .cot-custom-tool.on{border-color:#f0a030;color:#ffd27a;background:rgba(240,160,48,.1)}
-.cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
-.cot-custom-color{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:5px;color:#7f909d;
-  font:900 6.5px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;}
-.cot-custom-color input{width:24px;height:24px;padding:1px;background:#090d11;border:1px solid rgba(146,164,180,.3);}
-.cot-custom-repeat{display:grid;grid-template-columns:auto 1fr 26px;gap:6px;align-items:center;color:#8a9aa7;
-  font:900 7px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;}
+.cot-custom-assets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.cot-custom-assets .cot-custom-tool{min-height:46px;flex-direction:column;gap:3px}
+.cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cot-custom-color{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:8px;color:#8d9eaa;
+  font:900 8.5px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;}
+.cot-custom-color input{width:34px;height:34px;padding:2px;background:#090d11;border:1px solid rgba(146,164,180,.3);}
+.cot-custom-repeat{display:grid;grid-template-columns:auto 1fr 38px;gap:8px;align-items:center;color:#91a2ae;
+  font:900 8.5px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;}
 .cot-custom-repeat input{width:100%;accent-color:#f0a030;}.cot-custom-repeat output{text-align:right;color:#f0b04a;}
-.cot-custom-repeat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.cot-custom-check{display:flex;align-items:center;gap:6px;color:#8a9aa7;font:900 7px ${FONT_COND};letter-spacing:.09em;text-transform:uppercase}
+.cot-custom-repeat-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.cot-custom-check{display:flex;align-items:center;gap:8px;color:#9aabb7;font:900 8.5px ${FONT_COND};letter-spacing:.09em;text-transform:uppercase}
 .cot-custom-check input{accent-color:#f0a030}
-.cot-custom-apply{height:29px;color:#1c1003;background:linear-gradient(#efaa45,#c8731d);border:1px solid #f0b04a;
-  cursor:pointer;font:900 7.5px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;}
-.cot-custom-help{color:#6f808d;font:700 7px ${FONT_COND};line-height:1.45;letter-spacing:.06em;text-transform:uppercase;}
+.cot-custom-transfer{display:grid;grid-template-columns:1fr 1fr;gap:6px}.cot-custom-status{min-height:18px;color:#7f919e;
+  font:750 9px/1.45 ${FONT_STACK}}.cot-custom-status.ok{color:#98cda0}.cot-custom-status.error{color:#ef8b7e}
+.cot-custom-help{color:#7f919e;font:650 11px ${FONT_STACK};line-height:1.55}.cot-custom-help strong{color:#d9a44e}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab{grid-template-columns:1fr;min-height:0}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:220px}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-camo-lab__controls{display:grid;grid-template-columns:1fr}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-custom-preview{height:100px}
+body[data-cot-width='phone'] .cot-custom-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-custom-assets{grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-cot-width='phone'] .cot-custom-colors{grid-template-columns:1fr}
+body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-height:190px}
 
 /* EQUIPMENT SYSTEM: 3 loadout slots at the foot of the stats card. Same
    plate/border language as the camo cards; equipped slots carry the item's
@@ -1168,25 +1182,13 @@ function paintCamoSwatch(canvas, spec, pid) {
         c.rotate(angle);
         if (vis.drawMirror && ((gx + gy) & 1)) c.scale(-1, 1);
         c.translate(-cellW / 2, -cellH / 2);
-        for (const stroke of vis.drawStrokes || []) {
-          const points = stroke.points || [];
-          if (!points.length) continue;
-          c.strokeStyle = swRgb(patches[stroke.color === 1 ? 1 : 0] || patches[0], 0.97);
-          c.fillStyle = c.strokeStyle;
-          c.lineCap = 'round';
-          c.lineJoin = 'round';
-          c.lineWidth = Math.max(1, (stroke.size || 8) / 100 * Math.min(cellW, cellH));
-          c.beginPath();
-          c.moveTo(points[0][0] / 100 * cellW, points[0][1] / 100 * cellH);
-          for (let i = 1; i < points.length; i++) {
-            c.lineTo(points[i][0] / 100 * cellW, points[i][1] / 100 * cellH);
-          }
-          if (points.length === 1) {
-            c.arc(points[0][0] / 100 * cellW, points[0][1] / 100 * cellH,
-              c.lineWidth / 2, 0, Math.PI * 2);
-            c.fill();
-          } else c.stroke();
-        }
+        paintCustomCamoStrokes(c, vis.drawStrokes || [], {
+          width: cellW,
+          height: cellH,
+          colorA: swRgb(patches[0], 0.97),
+          colorB: swRgb(patches[1] || patches[0], 0.97),
+          eraseColor: swRgb(base),
+        });
         c.restore();
       }
     }
@@ -2273,15 +2275,25 @@ export function createGarage(opts) {
       label: 'About battlefield selection',
       title: 'Battlefield',
       text: 'Choose the terrain used by the next battle. Random rolls from the full available battlefield roster when deployment begins; room hosts make the final selection for multiplayer matches.',
-      image: () => {
+      images: () => {
         const selected = maps.find((map) => map.id === selectedMapId && map.thumb)
           || maps.find((map) => map.thumb);
-        return selected ? {
+        if (!selected) return [];
+        const action = FEATURED_SHOTS.find((shot) => shot.maps?.includes(selected.id));
+        return [{
           src: selected.thumb,
           alt: `${selected.name} battlefield preview`,
           caption: `${selected.name} // battlefield preview`,
-        } : null;
+        }, action ? {
+          src: action.img,
+          alt: action.cap,
+          caption: `${action.cap} // live game capture`,
+        } : null].filter(Boolean);
       },
+      sections: [
+        { icon: 'map', title: 'Solo deployment', text: 'Your selection is resolved when the battle begins.' },
+        { icon: 'team', title: 'Multiplayer rooms', text: 'The room host owns the final battlefield choice.' },
+      ],
     }));
     mapsEl.appendChild(title);
     const mapScroll = document.createElement('div');
@@ -2340,9 +2352,12 @@ export function createGarage(opts) {
   const camosEl = root.querySelector('.cot-camos');
   const camoCardById = new Map();
   let customCamoEl = null;
+  let customCamoModal = null;
   let customPreview = null;
   let customDraw = null;
   let customTone = 0;
+  let customBrush = 'round';
+  let customAsset = 'star';
   let drawingStroke = -1;
   let customDraft = normalizeCustomCamo();
   const drawCustomTile = () => {
@@ -2353,28 +2368,9 @@ export function createGarage(opts) {
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = customDraft.base;
     ctx.fillRect(0, 0, width, height);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (const stroke of customDraft.strokes) {
-      const points = stroke.points || [];
-      if (!points.length) continue;
-      ctx.strokeStyle = stroke.color === 1 ? customDraft.colorB : customDraft.colorA;
-      ctx.fillStyle = ctx.strokeStyle;
-      ctx.lineWidth = Math.max(2, (stroke.size / 100) * height);
-      if (points.length === 1) {
-        ctx.beginPath();
-        ctx.arc((points[0][0] / 100) * width, (points[0][1] / 100) * height,
-          ctx.lineWidth * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-        continue;
-      }
-      ctx.beginPath();
-      ctx.moveTo((points[0][0] / 100) * width, (points[0][1] / 100) * height);
-      for (let index = 1; index < points.length; index++) {
-        ctx.lineTo((points[index][0] / 100) * width, (points[index][1] / 100) * height);
-      }
-      ctx.stroke();
-    }
+    paintCustomCamoStrokes(ctx, customDraft.strokes, {
+      width, height, colorA: customDraft.colorA, colorB: customDraft.colorB, eraseColor: customDraft.base,
+    });
   };
   const repaintCustomPreview = () => {
     drawCustomTile();
@@ -2386,6 +2382,16 @@ export function createGarage(opts) {
     if (!customCamoEl) return;
     customCamoEl.querySelectorAll('[data-custom-tone]').forEach((button) => {
       const on = Number(button.dataset.customTone) === customTone;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-pressed', String(on));
+    });
+    customCamoEl.querySelectorAll('[data-custom-brush-type]').forEach((button) => {
+      const on = button.dataset.customBrushType === customBrush;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-pressed', String(on));
+    });
+    customCamoEl.querySelectorAll('[data-custom-asset]').forEach((button) => {
+      const on = button.dataset.customAsset === customAsset && customBrush === 'stamp';
       button.classList.toggle('on', on);
       button.setAttribute('aria-pressed', String(on));
     });
@@ -2413,22 +2419,38 @@ export function createGarage(opts) {
       label: 'About camouflage concealment',
       title: 'Camouflage concealment',
       text: '+3.5% concealment on matching maps. Auto always selects a matching seasonal pattern; manually selected camouflage only receives the bonus on compatible battlefields.',
-      image: () => {
+      images: () => {
         const selected = specById.get(selectedId);
-        return selected ? {
+        if (!selected) return [];
+        const tile = document.createElement('canvas');
+        tile.width = 480;
+        tile.height = 180;
+        const current = camoOpts.get(selected.id);
+        paintCamoSwatch(tile, selected, current === CUSTOM_CAMO_ID && camoOpts.getCustom
+          ? customCamoPatternId(camoOpts.getCustom(selected.id)) : current);
+        return [{
+          src: tile.toDataURL('image/png'),
+          alt: 'Selected camouflage pattern tile',
+          caption: 'Current paint // material swatch',
+        }, {
           src: iconUrl(selected.id, 'angle'),
           alt: `${selected.label?.displayName || selected.name} camouflage reference`,
           fit: 'contain',
-          caption: `${selected.label?.displayName || selected.name} // current vehicle`,
-        } : null;
+          caption: `${selected.label?.displayName || selected.name} // vehicle application`,
+        }];
       },
+      sections: [
+        { icon: 'camouflage', title: 'Matching biome', text: 'Compatible seasonal paint adds 3.5% concealment.' },
+        { icon: 'brush', title: 'Local studio', text: 'Custom recipes are device-local and convert to Factory paint online.' },
+      ],
     }));
     let customOpenButton = null;
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
       customOpenButton = document.createElement('button');
       customOpenButton.type = 'button';
       customOpenButton.className = 'cot-custom-open';
-      customOpenButton.textContent = 'Create your own';
+      customOpenButton.innerHTML = `${uiIconSVG('brush', 12)}<span>Create your own</span>`;
+      customOpenButton.setAttribute('aria-haspopup', 'dialog');
       customOpenButton.setAttribute('aria-expanded', 'false');
       titleActions.appendChild(customOpenButton);
     }
@@ -2463,10 +2485,114 @@ export function createGarage(opts) {
       camoCardById.set(pid, card);
     }
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
+      customCamoModal = createModal({
+        title: 'Custom camouflage studio',
+        eyebrow: 'Local paint laboratory',
+        subtitle: 'Author one seamless tile, preview it on the selected vehicle, then save it to this device.',
+        size: 'wide',
+        onOpen: () => customOpenButton?.setAttribute('aria-expanded', 'true'),
+        onClose: () => customOpenButton?.setAttribute('aria-expanded', 'false'),
+      });
       customCamoEl = document.createElement('div');
-      customCamoEl.className = 'cot-custom-camo';
-      const body = document.createElement('div');
-      body.className = 'cot-custom-body';
+      customCamoEl.className = 'cot-camo-lab';
+      const canvasColumn = document.createElement('section');
+      canvasColumn.className = 'cot-camo-lab__canvas';
+      const canvasHeading = document.createElement('div');
+      canvasHeading.className = 'cot-camo-lab__heading';
+      canvasHeading.innerHTML = `<span>Pattern tile</span><small>512 × 256 authoring surface</small>`;
+      const drawWrap = document.createElement('div');
+      drawWrap.className = 'cot-custom-draw-wrap';
+      customDraw = document.createElement('canvas');
+      customDraw.className = 'cot-custom-draw';
+      customDraw.width = 512;
+      customDraw.height = 256;
+      customDraw.tabIndex = 0;
+      customDraw.setAttribute('aria-label', 'Paint a repeating camouflage tile');
+      customDraw.setAttribute('role', 'application');
+      const drawLabel = document.createElement('span');
+      drawLabel.className = 'cot-custom-draw-label';
+      drawLabel.textContent = 'Drag to paint · tap to stamp';
+      drawWrap.append(customDraw, drawLabel);
+      const tools = document.createElement('div');
+      tools.className = 'cot-custom-tools';
+      const brushDefs = [
+        ['round', 'brush', 'Round'], ['flat', 'stamp', 'Flat'], ['spray', 'spray', 'Spray'],
+        ['pixel', 'pixels', 'Pixel'], ['eraser', 'eraser', 'Eraser'],
+      ];
+      for (const [id, icon, label] of brushDefs) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cot-custom-tool';
+        button.dataset.customBrushType = id;
+        button.innerHTML = `${uiIconSVG(icon, 17)}<span>${label}</span>`;
+        button.addEventListener('click', () => {
+          customBrush = id;
+          syncCustomControls();
+        });
+        tools.appendChild(button);
+      }
+      for (const [tone, label] of [[0, 'Tone 1'], [1, 'Tone 2']]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cot-custom-tool';
+        button.dataset.customTone = String(tone);
+        button.innerHTML = `${uiIconSVG('camouflage', 17)}<span>${label}</span>`;
+        button.addEventListener('click', () => {
+          customTone = tone;
+          if (customBrush === 'eraser') customBrush = 'round';
+          syncCustomControls();
+        });
+        tools.appendChild(button);
+      }
+      const undoDraft = () => {
+        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: customDraft.strokes.slice(0, -1) });
+        syncCustomControls();
+      };
+      const undo = document.createElement('button');
+      undo.type = 'button';
+      undo.className = 'cot-custom-tool';
+      undo.innerHTML = `${uiIconSVG('undo', 17)}<span>Undo</span>`;
+      undo.addEventListener('click', undoDraft);
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'cot-custom-tool';
+      clear.innerHTML = `${uiIconSVG('trash', 17)}<span>Clear</span>`;
+      clear.addEventListener('click', () => {
+        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: [] });
+        syncCustomControls();
+      });
+      tools.append(undo, clear);
+      const assetPanel = document.createElement('div');
+      assetPanel.className = 'cot-camo-lab__panel';
+      const assetHeading = document.createElement('div');
+      assetHeading.className = 'cot-camo-lab__heading';
+      assetHeading.innerHTML = '<span>Stencil assets</span><small>Select, then place on the tile</small>';
+      const assets = document.createElement('div');
+      assets.className = 'cot-custom-assets';
+      const assetIcons = { star: 'star', chevron: 'chevronRight', leaf: 'camouflage', hex: 'pixels', cross: 'repair' };
+      for (const asset of CUSTOM_CAMO_ASSETS) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cot-custom-tool';
+        button.dataset.customAsset = asset;
+        button.innerHTML = `${uiIconSVG(assetIcons[asset], 18)}<span>${asset}</span>`;
+        button.addEventListener('click', () => {
+          customAsset = asset;
+          customBrush = 'stamp';
+          syncCustomControls();
+        });
+        assets.appendChild(button);
+      }
+      assetPanel.append(assetHeading, assets);
+      canvasColumn.append(canvasHeading, tools, drawWrap, assetPanel);
+
+      const controlsColumn = document.createElement('aside');
+      controlsColumn.className = 'cot-camo-lab__controls';
+      const previewPanel = document.createElement('div');
+      previewPanel.className = 'cot-camo-lab__panel';
+      const previewHeading = document.createElement('div');
+      previewHeading.className = 'cot-camo-lab__heading';
+      previewHeading.innerHTML = '<span>Vehicle preview</span><small>Live material bake</small>';
       const preview = document.createElement('div');
       preview.className = 'cot-custom-preview';
       customPreview = document.createElement('canvas');
@@ -2474,55 +2600,13 @@ export function createGarage(opts) {
       localOnly.className = 'cot-custom-local';
       localOnly.textContent = 'Solo · this device only';
       preview.append(customPreview, localOnly);
-      const drawWrap = document.createElement('div');
-      drawWrap.className = 'cot-custom-draw-wrap';
-      customDraw = document.createElement('canvas');
-      customDraw.className = 'cot-custom-draw';
-      customDraw.width = 512;
-      customDraw.height = 256;
-      customDraw.setAttribute('aria-label', 'Draw a repeating camouflage tile');
-      customDraw.setAttribute('role', 'img');
-      const drawLabel = document.createElement('span');
-      drawLabel.className = 'cot-custom-draw-label';
-      drawLabel.textContent = 'Draw one repeat tile';
-      drawWrap.append(customDraw, drawLabel);
-      const tools = document.createElement('div');
-      tools.className = 'cot-custom-tools';
-      for (const [tone, label] of [[0, 'Tone 1'], [1, 'Tone 2']]) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'cot-custom-tool';
-        button.dataset.customTone = String(tone);
-        button.textContent = label;
-        button.addEventListener('click', () => {
-          customTone = tone;
-          syncCustomControls();
-        });
-        tools.appendChild(button);
-      }
-      const undo = document.createElement('button');
-      undo.type = 'button';
-      undo.className = 'cot-custom-tool';
-      undo.textContent = 'Undo';
-      undo.addEventListener('click', () => {
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: customDraft.strokes.slice(0, -1) });
-        syncCustomControls();
-      });
-      const clear = document.createElement('button');
-      clear.type = 'button';
-      clear.className = 'cot-custom-tool';
-      clear.textContent = 'Clear';
-      clear.addEventListener('click', () => {
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: [] });
-        syncCustomControls();
-      });
-      tools.append(undo, clear);
-      const brush = document.createElement('label');
-      brush.className = 'cot-custom-repeat';
-      brush.innerHTML = '<span>Brush</span><input type="range" min="2" max="30" step="1" value="8" data-custom-brush><output data-custom-brush-value>8</output>';
-      const brushInput = brush.querySelector('input');
-      const brushOutput = brush.querySelector('output');
-      brushInput.addEventListener('input', () => { brushOutput.value = brushInput.value; });
+      previewPanel.append(previewHeading, preview);
+
+      const colorPanel = document.createElement('div');
+      colorPanel.className = 'cot-camo-lab__panel';
+      const colorHeading = document.createElement('div');
+      colorHeading.className = 'cot-camo-lab__heading';
+      colorHeading.innerHTML = '<span>Palette</span><small>Base + two field tones</small>';
       const colors = document.createElement('div');
       colors.className = 'cot-custom-colors';
       for (const [key, label] of [['base', 'Base'], ['colorA', 'Tone 1'], ['colorB', 'Tone 2']]) {
@@ -2531,6 +2615,7 @@ export function createGarage(opts) {
         const input = document.createElement('input');
         input.type = 'color';
         input.dataset.customColor = key;
+        input.setAttribute('aria-label', `${label} color`);
         const text = document.createElement('span');
         text.textContent = label;
         input.addEventListener('input', () => {
@@ -2540,8 +2625,17 @@ export function createGarage(opts) {
         wrap.append(input, text);
         colors.appendChild(wrap);
       }
-      const repeats = document.createElement('div');
-      repeats.className = 'cot-custom-repeat-grid';
+      colorPanel.append(colorHeading, colors);
+
+      const repeatPanel = document.createElement('div');
+      repeatPanel.className = 'cot-camo-lab__panel cot-custom-repeat-grid';
+      const brush = document.createElement('label');
+      brush.className = 'cot-custom-repeat';
+      brush.innerHTML = '<span>Brush size</span><input type="range" min="2" max="40" step="1" value="8" data-custom-brush><output data-custom-brush-value>8</output>';
+      const brushInput = brush.querySelector('input');
+      const brushOutput = brush.querySelector('output');
+      brushInput.addEventListener('input', () => { brushOutput.value = brushInput.value; });
+      repeatPanel.appendChild(brush);
       for (const [key, label] of [['repeat-x', 'Repeat X'], ['repeat-y', 'Repeat Y']]) {
         const control = document.createElement('label');
         control.className = 'cot-custom-repeat';
@@ -2552,39 +2646,99 @@ export function createGarage(opts) {
           customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', [field]: Number(input.value) });
           syncCustomControls();
         });
-        repeats.appendChild(control);
+        repeatPanel.appendChild(control);
       }
       const rotation = document.createElement('label');
       rotation.className = 'cot-custom-repeat';
-      rotation.innerHTML = '<span>Rotation</span><input type="range" min="-180" max="180" step="15" data-custom-rotation><output data-custom-rotation-value></output>';
+      rotation.innerHTML = '<span>Tile rotation</span><input type="range" min="-180" max="180" step="15" data-custom-rotation><output data-custom-rotation-value></output>';
       rotation.querySelector('input').addEventListener('input', (event) => {
         customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', rotation: Number(event.target.value) });
         syncCustomControls();
       });
       const mirror = document.createElement('label');
       mirror.className = 'cot-custom-check';
-      mirror.innerHTML = '<input type="checkbox" data-custom-mirror><span>Mirror alternate tiles</span>';
+      mirror.innerHTML = '<input type="checkbox" data-custom-mirror><span>Mirror alternate tiles to hide seams</span>';
       mirror.querySelector('input').addEventListener('change', (event) => {
         customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', mirror: event.target.checked });
         syncCustomControls();
       });
+      repeatPanel.append(rotation, mirror);
+
+      const transferPanel = document.createElement('div');
+      transferPanel.className = 'cot-camo-lab__panel';
+      const transferHeading = document.createElement('div');
+      transferHeading.className = 'cot-camo-lab__heading';
+      transferHeading.innerHTML = '<span>Copy & paste</span><small>Share pattern recipes between local vehicles</small>';
+      const transfer = document.createElement('div');
+      transfer.className = 'cot-custom-transfer';
+      const status = document.createElement('div');
+      status.className = 'cot-custom-status';
+      status.setAttribute('role', 'status');
+      const setStatus = (message, kind = '') => {
+        status.textContent = message;
+        status.className = `cot-custom-status${kind ? ` ${kind}` : ''}`;
+      };
+      const copyPattern = document.createElement('button');
+      copyPattern.type = 'button';
+      copyPattern.className = 'cot-custom-tool';
+      copyPattern.innerHTML = `${uiIconSVG('copy', 17)}<span>Copy pattern</span>`;
+      copyPattern.addEventListener('click', async () => {
+        const recipe = JSON.stringify({ schemaVersion: 1, tool: 'claude-of-tanks-camo', pattern: customDraft }, null, 2);
+        try {
+          if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(recipe);
+          else {
+            const textarea = document.createElement('textarea');
+            textarea.value = recipe; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); textarea.remove();
+          }
+          setStatus('Pattern recipe copied to the clipboard.', 'ok');
+        } catch (_) { setStatus('Clipboard access was blocked by the browser.', 'error'); }
+      });
+      const pastePattern = document.createElement('button');
+      pastePattern.type = 'button';
+      pastePattern.className = 'cot-custom-tool';
+      pastePattern.innerHTML = `${uiIconSVG('paste', 17)}<span>Paste pattern</span>`;
+      pastePattern.addEventListener('click', async () => {
+        try {
+          const raw = await navigator.clipboard?.readText?.();
+          if (!raw) throw new Error('Clipboard is empty');
+          const parsed = JSON.parse(raw);
+          const candidate = parsed?.pattern || parsed;
+          if (!candidate || typeof candidate !== 'object' || candidate.style !== 'drawn' || !Array.isArray(candidate.strokes)) {
+            throw new Error('Unsupported pattern');
+          }
+          const next = normalizeCustomCamo(candidate);
+          customDraft = next;
+          syncCustomControls();
+          setStatus('Pattern recipe loaded. Apply when the preview looks right.', 'ok');
+        } catch (_) { setStatus('Paste a copied Claude of Tanks camo recipe.', 'error'); }
+      });
+      transfer.append(copyPattern, pastePattern);
+      transferPanel.append(transferHeading, transfer, status);
+      const help = document.createElement('div');
+      help.className = 'cot-custom-help';
+      help.innerHTML = '<strong>Local-only paint:</strong> custom recipes stay on this device. Multiplayer automatically substitutes Factory camouflage, so authored patterns never add network or match-time texture work.';
+      controlsColumn.append(previewPanel, colorPanel, repeatPanel, transferPanel, help);
+      customCamoEl.append(canvasColumn, controlsColumn);
+      customCamoModal.body.appendChild(customCamoEl);
+
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'cot-modal__button';
+      cancel.textContent = 'Close';
+      cancel.addEventListener('click', () => customCamoModal.close());
       const apply = document.createElement('button');
       apply.type = 'button';
-      apply.className = 'cot-custom-apply';
-      apply.textContent = 'Apply to solo vehicle';
+      apply.className = 'cot-modal__button cot-modal__button--primary';
+      apply.innerHTML = `${uiIconSVG('check', 17)}<span>Apply to solo vehicle</span>`;
       apply.addEventListener('click', () => {
         if (!selectedId) return;
         emit('ui:click', {});
         camoOpts.setCustom(selectedId, customDraft);
         refreshCamoSel();
         requeueTankThumbs(selectedId);
+        setStatus('Saved locally and applied to the selected vehicle.', 'ok');
       });
-      const help = document.createElement('div');
-      help.className = 'cot-custom-help';
-      help.textContent = 'Draw one tile, then repeat, rotate, and mirror it across the vehicle. Custom paint stays local; multiplayer automatically uses Factory.';
-      body.append(preview, drawWrap, tools, brush, colors, repeats, rotation, mirror, apply, help);
-      customCamoEl.append(body);
-      camosEl.appendChild(customCamoEl);
+      customCamoModal.footer.append(cancel, apply);
       const pointFromEvent = (event) => {
         const rect = customDraw.getBoundingClientRect();
         return [
@@ -2596,10 +2750,14 @@ export function createGarage(opts) {
         event.preventDefault();
         customDraw.setPointerCapture(event.pointerId);
         const strokes = customDraft.strokes.map((stroke) => ({ ...stroke, points: stroke.points.map((point) => [...point]) }));
-        strokes.push({ color: customTone, size: Number(brushInput.value), points: [pointFromEvent(event)] });
+        strokes.push({
+          color: customTone, size: Number(brushInput.value), brush: customBrush,
+          asset: customAsset, rotation: 0, points: [pointFromEvent(event)],
+        });
         customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes });
-        drawingStroke = customDraft.strokes.length - 1;
+        drawingStroke = customBrush === 'stamp' ? -1 : customDraft.strokes.length - 1;
         drawCustomTile();
+        if (customBrush === 'stamp') repaintCustomPreview();
       });
       customDraw.addEventListener('pointermove', (event) => {
         if (drawingStroke < 0 || !customDraw.hasPointerCapture(event.pointerId)) return;
@@ -2619,17 +2777,19 @@ export function createGarage(opts) {
       };
       customDraw.addEventListener('pointerup', finishDrawing);
       customDraw.addEventListener('pointercancel', finishDrawing);
+      customCamoEl.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+          event.preventDefault();
+          undoDraft();
+        }
+      });
       customOpenButton.addEventListener('click', () => {
-        const open = !customCamoEl.classList.contains('open');
-        customCamoEl.classList.toggle('open', open);
-        camosEl.classList.toggle('custom-open', open);
-        customOpenButton.setAttribute('aria-expanded', String(open));
-        if (open && selectedId) {
+        if (selectedId) {
           customDraft = normalizeCustomCamo(camoOpts.getCustom(selectedId));
           if (customDraft.style !== 'drawn') customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: [] });
           syncCustomControls();
         }
-        requestAnimationFrame(() => { syncScrollFades(); syncSidebarPanelHeight(); });
+        customCamoModal.open({ trigger: customOpenButton });
       });
     }
   }
@@ -2655,8 +2815,7 @@ export function createGarage(opts) {
     const camoTitle = camosEl.querySelector('.ctitle');
     const camoGrid = camosEl.querySelector('.cgrid.camo');
     const mapIntrinsic = (mapTitle?.offsetHeight || 0) + (mapGrid?.scrollHeight || 0) + 25;
-    const customIntrinsic = customCamoEl?.classList.contains('open') ? customCamoEl.scrollHeight + 7 : 0;
-    const camoIntrinsic = (camoTitle?.offsetHeight || 0) + (camoGrid?.scrollHeight || 0) + customIntrinsic + 25;
+    const camoIntrinsic = (camoTitle?.offsetHeight || 0) + (camoGrid?.scrollHeight || 0) + 25;
     const contentCap = Math.max(108, mapIntrinsic, camoIntrinsic);
     const height = Math.floor(Math.min(pairBudget / 2, contentCap));
     const next = `${height}px`;
@@ -2807,7 +2966,6 @@ export function createGarage(opts) {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
     if (customCamoEl) {
-      customCamoEl.classList.toggle('sel', cur === CUSTOM_CAMO_ID);
       customDraft = normalizeCustomCamo(camoOpts.getCustom(selectedId));
       syncCustomControls();
     }
@@ -3018,22 +3176,27 @@ export function createGarage(opts) {
       `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
   }
 
-  function garageInfoImage(spec, label) {
+  function garageInfoImages(spec, label) {
     const name = spec.label?.displayName || spec.name;
     const technicalViews = {
-      Protection: ['armor_side', 'Armor protection diagram'],
-      Modules: ['modules_side', 'Internal module diagram'],
-      Crew: ['modules_side', 'Crew and module diagram'],
-      Armament: ['side', 'Armament profile'],
-      Ammunition: ['side', 'Ammunition platform profile'],
+      'Vehicle dossier': [
+        ['angle', 'Procedural vehicle render'], ['armor_side', 'Armor protection diagram'], ['modules_side', 'Internal module diagram'],
+      ],
+      Performance: [['angle', 'Vehicle profile'], ['side', 'Mobility silhouette']],
+      'Special system': [['modules_side', 'Special system placement'], ['angle', 'Vehicle profile']],
+      Protection: [['armor_side', 'Armor protection diagram'], ['hit_zones_side', 'Hit-zone layout']],
+      Modules: [['modules_side', 'Internal module diagram'], ['hit_zones_side', 'Damage-zone layout']],
+      Crew: [['modules_side', 'Crew and module diagram'], ['side', 'Crew platform profile']],
+      Armament: [['side', 'Armament profile'], ['top', 'Weapon plan view']],
+      Ammunition: [['side', 'Ammunition platform profile'], ['modules_side', 'Ammunition and module layout']],
+      Equipment: [['modules_side', 'Equipment integration diagram'], ['angle', 'Vehicle profile']],
     };
-    const [view, caption] = technicalViews[label] || ['angle', 'Procedural vehicle render'];
-    return {
+    return (technicalViews[label] || [['angle', 'Procedural vehicle render']]).map(([view, caption]) => ({
       src: iconUrl(spec.id, view),
       alt: `${name} ${caption.toLowerCase()}`,
       fit: 'contain',
       caption: `${name} // ${caption}`,
-    };
+    }));
   }
 
   let statsFor = null; // last spec rendered — gates the swap micro-fade
@@ -3183,7 +3346,11 @@ export function createGarage(opts) {
       label: 'About the vehicle dossier',
       title: 'Vehicle dossier',
       text: 'This panel is built from the selected vehicle’s authoritative gameplay specification. Tier, origin, combat values, ammunition, modules, crew, and equipment all update with the selected vehicle.',
-      image: garageInfoImage(spec, 'Vehicle dossier'),
+      images: garageInfoImages(spec, 'Vehicle dossier'),
+      sections: [
+        { icon: 'shield', title: 'Authoritative data', text: 'Armor, modules, crew, shells, and mobility come from the playable vehicle specification.' },
+        { icon: 'gallery', title: 'Technical views', text: 'Open Tank Gallery for interactive armor, module, and appearance layers.' },
+      ],
     }));
     statsEl.querySelectorAll('[data-stat-info]').forEach((heading) => {
       const label = heading.dataset.statInfo;
@@ -3192,13 +3359,13 @@ export function createGarage(opts) {
         label: `About ${label}`,
         title: label,
         text,
-        image: garageInfoImage(spec, label),
+        images: garageInfoImages(spec, label),
       }));
     });
     const equipmentHead = statsEl.querySelector('.eqhead');
     equipmentHead?.appendChild(createInfoButton({
       label: 'About equipment', title: 'Equipment', text: GARAGE_INFO.Equipment,
-      image: garageInfoImage(spec, 'Equipment'),
+      images: garageInfoImages(spec, 'Equipment'),
     }));
     if (vehicleChanged) statsEl.scrollTop = 0;
   }
@@ -3483,6 +3650,7 @@ export function createGarage(opts) {
   }
   function onKey(e) {
     if (!api.isOpen) return;
+    if (e.target?.closest?.('.cot-modal')) return;
     if (e.code === 'Escape' && openGaragePanel()) {
       setGaragePanel('', { restoreFocus: true });
       e.preventDefault();
@@ -3542,6 +3710,7 @@ export function createGarage(opts) {
 
     /** Close the garage screen. */
     hide() {
+      customCamoModal?.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
       closeMobileNavigation();
       closeBattleMenu();

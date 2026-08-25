@@ -1,46 +1,43 @@
-// Accessible, portal-mounted context help used by Garage, Scene Studio,
-// Gallery, and game-rendered media.  The panel is fixed to the viewport so it
-// cannot be clipped by the many scrolling/overflow-hidden workspaces.
+// Accessible modal-backed context help shared by Garage and Scene Studio.
+// Info triggers deliberately open on activation (never hover) so the same
+// interaction works with mouse, keyboard, touch, and gamepad-emulated focus.
 
+import { createModal } from './modal.js';
 import { uiIconSVG } from './uiIcons.js';
-
-let serial = 0;
-let active = null;
-let hideTimer = 0;
 
 const CSS = `
 .cot-info-trigger{position:relative;box-sizing:border-box;width:20px;height:20px;min-width:20px;min-height:20px;
-  max-width:20px;max-height:20px;margin:0;padding:0;display:inline-grid;overflow:visible;line-height:1;
-  place-items:center;flex:0 0 20px;border:1px solid rgba(154,174,189,.3);border-radius:50%;
-  background:rgba(8,12,16,.76);color:#9aabb8;cursor:help;
-  text-transform:none;letter-spacing:0;vertical-align:middle;transition:color .14s,border-color .14s,background .14s}
-.cot-info-trigger::after{content:"";position:absolute;inset:-5px;border-radius:50%}
-.cot-info-trigger__icon{display:block;pointer-events:none}
-.cot-info-trigger:hover,.cot-info-trigger:focus-visible,.cot-info-trigger[aria-expanded='true']{
-  color:#ffd27a;border-color:#f0a030;background:rgba(240,160,48,.13);outline:none}
-.cot-info-popover{position:fixed;z-index:10020;width:min(360px,calc(100vw - 20px));max-height:min(520px,calc(100vh - 20px));
-  overflow:auto;padding:0;color:#e6edf3;background:linear-gradient(155deg,rgba(17,23,29,.99),rgba(5,8,11,.995));
-  border:1px solid rgba(240,176,74,.48);box-shadow:0 20px 64px rgba(0,0,0,.72);font-family:"ABC Monument Grotesk",Arial,sans-serif}
-.cot-info-popover[hidden]{display:none}
-.cot-info-popover__head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:11px 12px 9px;
-  border-bottom:1px solid rgba(154,174,189,.18);background:rgba(8,12,16,.97)}
-.cot-info-popover__head strong{min-width:0;flex:1;color:#f1f5f8;font-size:10px;line-height:1.25;letter-spacing:.12em;text-transform:uppercase}
-.cot-info-popover__copy{min-height:28px;padding:0 9px;border:1px solid rgba(240,176,74,.42);background:rgba(240,160,48,.08);
-  color:#ffd27a;cursor:pointer;font:900 7px/1 "ABC Monument Grotesk",Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase}
-.cot-info-popover__copy:hover,.cot-info-popover__copy:focus-visible{border-color:#f0a030;background:#f0a030;color:#171008;outline:none}
-.cot-info-popover__media{position:relative;height:142px;margin:0;overflow:hidden;border-bottom:1px solid rgba(154,174,189,.18);
-  background:radial-gradient(circle at 50% 32%,rgba(78,96,107,.2),transparent 58%),#070b0e}
-.cot-info-popover__media[hidden]{display:none}.cot-info-popover__media img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;
-  filter:saturate(.88) contrast(1.04);transition:opacity .16s ease}
-.cot-info-popover__media[data-fit='contain'] img{object-fit:contain;padding:10px 13px;background:linear-gradient(145deg,rgba(12,18,23,.95),rgba(4,7,9,.98))}
-.cot-info-popover__media::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,transparent 56%,rgba(3,6,8,.78))}
-.cot-info-popover__media figcaption{position:absolute;z-index:1;left:11px;right:11px;bottom:8px;overflow:hidden;text-overflow:ellipsis;
-  color:#d7e0e6;font-size:6.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap}
-.cot-info-popover__media figcaption:empty{display:none}
-.cot-info-popover__body{margin:0;padding:11px 12px 13px;color:#aebdc8;font-size:9.5px;line-height:1.55;white-space:normal}
-pre.cot-info-popover__body{max-width:100%;overflow:auto;color:#cad6df;background:rgba(1,4,6,.58);font:500 8.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
-  tab-size:2;white-space:pre;overscroll-behavior:contain}
+  max-width:20px;max-height:20px;margin:0;padding:0;display:inline-grid;overflow:visible;line-height:1;place-items:center;
+  flex:0 0 20px;border:1px solid rgba(154,174,189,.3);border-radius:50%;background:rgba(8,12,16,.76);
+  color:#9aabb8;cursor:pointer;text-transform:none;letter-spacing:0;vertical-align:middle;
+  transition:color .14s,border-color .14s,background .14s,transform .12s}
+.cot-info-trigger::after{content:"";position:absolute;inset:-5px;border-radius:50%}.cot-info-trigger__icon{display:block;pointer-events:none}
+.cot-info-trigger:hover,.cot-info-trigger:focus-visible,.cot-info-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
+  background:rgba(240,160,48,.13);outline:none}.cot-info-trigger:active{transform:scale(.94)}
+.cot-info-modal{display:grid;gap:22px}.cot-info-modal__lead{max-width:760px;margin:0;color:#bcc9d2;font-size:15px;line-height:1.68}
+.cot-info-modal__media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cot-info-modal__media[data-count='1']{grid-template-columns:1fr}.cot-info-modal__media[data-count='3'] figure:first-child{grid-row:span 2}
+.cot-info-modal__media figure{position:relative;min-height:220px;margin:0;overflow:hidden;border:1px solid rgba(154,174,189,.22);
+  background:radial-gradient(circle at 50% 35%,rgba(75,94,108,.22),transparent 62%),#070b0e}
+.cot-info-modal__media img{display:block;width:100%;height:100%;min-height:220px;max-height:390px;object-fit:cover;object-position:center;
+  filter:saturate(.92) contrast(1.03)}.cot-info-modal__media figure[data-fit='contain'] img{object-fit:contain;padding:16px;
+  background:linear-gradient(145deg,rgba(13,19,24,.97),rgba(4,7,9,.99))}
+.cot-info-modal__media figure::after{content:"";position:absolute;inset:55% 0 0;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(3,6,8,.9))}
+.cot-info-modal__media figcaption{position:absolute;z-index:1;left:14px;right:14px;bottom:12px;color:#dce5eb;
+  font-size:10px;font-weight:850;line-height:1.35;letter-spacing:.13em;text-transform:uppercase}
+.cot-info-modal__sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}
+.cot-info-modal__section{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:14px;border:1px solid rgba(154,174,189,.18);
+  background:rgba(8,12,16,.5)}.cot-info-modal__section-icon{color:#e6a03a}.cot-info-modal__section h3{margin:0 0 5px;color:#e4ebf0;
+  font-size:12px;line-height:1.25;letter-spacing:.1em;text-transform:uppercase}.cot-info-modal__section p{margin:0;color:#91a2ae;font-size:12px;line-height:1.55}
+.cot-info-modal__json{max-height:360px;margin:0;overflow:auto;padding:16px;border:1px solid rgba(154,174,189,.18);
+  background:rgba(1,4,6,.64);color:#cbd7df;font:500 12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2;white-space:pre}
+body[data-cot-width='phone'] .cot-info-modal{gap:15px}body[data-cot-width='phone'] .cot-info-modal__lead{font-size:14px}
+body[data-cot-width='phone'] .cot-info-modal__media{grid-template-columns:1fr!important}
+body[data-cot-width='phone'] .cot-info-modal__media figure{min-height:180px}
+body[data-cot-width='phone'] .cot-info-modal__media img{min-height:180px;max-height:280px}
+body[data-cot-width='phone'] .cot-info-modal__media[data-count='3'] figure:first-child{grid-row:auto}
+@media(hover:hover){.cot-info-trigger:hover{transform:translateY(-1px)}}
 @media(prefers-reduced-motion:reduce){.cot-info-trigger{transition:none}}
 `;
 
@@ -65,39 +62,6 @@ function clipboardWrite(value) {
   return Promise.resolve();
 }
 
-function position(button, panel) {
-  const rect = button.getBoundingClientRect();
-  const margin = 10;
-  panel.style.left = '0px';
-  panel.style.top = '0px';
-  const width = panel.offsetWidth;
-  const height = panel.offsetHeight;
-  let left = Math.min(window.innerWidth - width - margin, Math.max(margin, rect.left + rect.width - width));
-  let top = rect.bottom + 7;
-  if (top + height > window.innerHeight - margin) top = Math.max(margin, rect.top - height - 7);
-  panel.style.left = `${Math.round(left)}px`;
-  panel.style.top = `${Math.round(top)}px`;
-}
-
-function closeActive({ focus = false } = {}) {
-  clearTimeout(hideTimer);
-  if (!active) return;
-  const { button, panel } = active;
-  panel.hidden = true;
-  button.setAttribute('aria-expanded', 'false');
-  if (focus) button.focus();
-  active = null;
-}
-
-function scheduleClose(instance) {
-  clearTimeout(hideTimer);
-  hideTimer = window.setTimeout(() => {
-    if (active !== instance) return;
-    if (instance.button.matches(':hover,:focus-visible') || instance.panel.matches(':hover,:focus-within')) return;
-    closeActive();
-  }, 120);
-}
-
 /** Resolve static or live media options without coupling callers to the DOM. */
 export function resolveInfoImage(image, { alt = '', fit = 'cover', caption = '' } = {}) {
   let value = image;
@@ -112,130 +76,152 @@ export function resolveInfoImage(image, { alt = '', fit = 'cover', caption = '' 
   return {
     src: String(value.src),
     alt: String(value.alt ?? alt),
-    fit: value.fit ? (value.fit === 'contain' ? 'contain' : 'cover') : fit,
+    fit: value.fit === 'contain' ? 'contain' : fit === 'contain' ? 'contain' : 'cover',
     caption: String(value.caption ?? caption),
   };
 }
 
-/**
- * Create an icon button with a portal-mounted help panel.
- * `json` and `image` may be values or functions returning current values.
- */
+/** Resolve a live gallery and discard missing/invalid entries. */
+export function resolveInfoImages(images, fallback = {}) {
+  let values = images;
+  try {
+    if (typeof values === 'function') values = values();
+  } catch (_) {
+    return [];
+  }
+  if (!Array.isArray(values)) values = values ? [values] : [];
+  return values.map((value) => resolveInfoImage(value, fallback)).filter(Boolean);
+}
+
+function resolveValue(value, fallback = '') {
+  try { return typeof value === 'function' ? value() : value; } catch (_) { return fallback; }
+}
+
+/** Create an icon button that opens a rich shared modal dossier. */
 export function createInfoButton({
-  label, title, text = '', json = null, className = '',
-  image = null, imageAlt = '', imageFit = 'cover', imageCaption = '',
+  label, title, text = '', json = null, className = '', eyebrow = 'Field manual',
+  subtitle = '', size = 'large', image = null, images = null,
+  imageAlt = '', imageFit = 'cover', imageCaption = '', sections = null,
 } = {}) {
   ensureCss();
-  const id = `cot-info-${++serial}`;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = `cot-info-trigger${className ? ` ${className}` : ''}`;
   button.innerHTML = uiIconSVG('info', 13, 'currentColor', 'cot-info-trigger__icon');
   button.setAttribute('aria-label', label || `About ${title || 'this section'}`);
-  button.setAttribute('aria-controls', id);
+  button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-expanded', 'false');
 
-  const panel = document.createElement('aside');
-  panel.id = id;
-  panel.className = 'cot-info-popover';
-  panel.hidden = true;
-  panel.setAttribute('role', json ? 'dialog' : 'tooltip');
-  panel.setAttribute('aria-label', title || label || 'More information');
-  const head = document.createElement('div');
-  head.className = 'cot-info-popover__head';
-  const heading = document.createElement('strong');
-  heading.textContent = title || 'More information';
-  head.appendChild(heading);
-  const body = document.createElement(json ? 'pre' : 'p');
-  body.className = 'cot-info-popover__body';
-  const media = document.createElement('figure');
-  media.className = 'cot-info-popover__media';
-  media.hidden = true;
-  const mediaImage = document.createElement('img');
-  mediaImage.decoding = 'async';
-  mediaImage.loading = 'lazy';
-  const mediaCaption = document.createElement('figcaption');
-  media.append(mediaImage, mediaCaption);
-  panel.append(head, media, body);
-  document.body.appendChild(panel);
-
-  const instance = { button, panel };
-  const content = () => {
-    const value = typeof json === 'function' ? json() : json;
-    return json ? JSON.stringify(value ?? {}, null, 2) : String(typeof text === 'function' ? text() : text);
-  };
-  const renderMedia = () => {
-    const resolved = resolveInfoImage(image, {
-      alt: imageAlt,
-      fit: imageFit,
-      caption: imageCaption,
+  let modal = null;
+  let copyButton = null;
+  const content = () => JSON.stringify(resolveValue(json, {}) ?? {}, null, 2);
+  const ensureModal = () => {
+    if (modal) return modal;
+    modal = createModal({
+      title: title || 'More information', eyebrow, subtitle, size,
+      className: 'cot-info-dialog',
+      onOpen: () => button.setAttribute('aria-expanded', 'true'),
+      onClose: () => button.setAttribute('aria-expanded', 'false'),
     });
-    if (!resolved) {
-      media.hidden = true;
-      mediaImage.removeAttribute('src');
-      return;
+    if (json) {
+      copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'cot-modal__button';
+      copyButton.innerHTML = `${uiIconSVG('copy', 16)}<span>Copy JSON</span>`;
+      copyButton.addEventListener('click', () => {
+        clipboardWrite(content()).then(() => {
+          copyButton.querySelector('span').textContent = 'Copied';
+          window.setTimeout(() => {
+            if (copyButton?.isConnected) copyButton.querySelector('span').textContent = 'Copy JSON';
+          }, 1200);
+        }).catch(() => { copyButton.querySelector('span').textContent = 'Copy failed'; });
+      });
+      modal.footer.appendChild(copyButton);
     }
-    media.dataset.fit = resolved.fit;
-    mediaImage.alt = resolved.alt;
-    mediaCaption.textContent = resolved.caption;
-    media.hidden = false;
-    if (mediaImage.getAttribute('src') !== resolved.src) mediaImage.src = resolved.src;
+    return modal;
   };
-  mediaImage.addEventListener('error', () => { media.hidden = true; });
-  if (json) {
-    const copy = document.createElement('button');
-    copy.type = 'button';
-    copy.className = 'cot-info-popover__copy';
-    copy.textContent = 'Copy JSON';
-    copy.addEventListener('click', () => {
-      clipboardWrite(content()).then(() => {
-        copy.textContent = 'Copied';
-        window.setTimeout(() => { copy.textContent = 'Copy JSON'; }, 1200);
-      }).catch(() => { copy.textContent = 'Copy failed'; });
-    });
-    head.appendChild(copy);
-  }
 
-  const open = () => {
-    clearTimeout(hideTimer);
-    if (active && active !== instance) closeActive();
-    body.textContent = content();
-    renderMedia();
-    panel.hidden = false;
-    button.setAttribute('aria-expanded', 'true');
-    active = instance;
-    position(button, panel);
+  const render = () => {
+    const dialog = ensureModal();
+    dialog.setTitle(title || 'More information');
+    dialog.setEyebrow(resolveValue(eyebrow, 'Field manual'));
+    dialog.setSubtitle(resolveValue(subtitle, ''));
+    dialog.body.textContent = '';
+    const root = document.createElement('article');
+    root.className = 'cot-info-modal';
+    const mediaValues = resolveInfoImages(images || image, { alt: imageAlt, fit: imageFit, caption: imageCaption });
+    if (mediaValues.length) {
+      const media = document.createElement('div');
+      media.className = 'cot-info-modal__media';
+      media.dataset.count = String(Math.min(3, mediaValues.length));
+      for (const item of mediaValues.slice(0, 4)) {
+        const figure = document.createElement('figure');
+        figure.dataset.fit = item.fit;
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = item.alt;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.addEventListener('error', () => {
+          figure.remove();
+          media.dataset.count = String(media.children.length);
+          if (!media.children.length) media.remove();
+        });
+        const caption = document.createElement('figcaption');
+        caption.textContent = item.caption;
+        figure.append(img, caption);
+        media.appendChild(figure);
+      }
+      root.appendChild(media);
+    }
+    const textValue = String(resolveValue(text, '') || '');
+    if (textValue) {
+      const lead = document.createElement('p');
+      lead.className = 'cot-info-modal__lead';
+      lead.textContent = textValue;
+      root.appendChild(lead);
+    }
+    let sectionValues = resolveValue(sections, []);
+    if (!Array.isArray(sectionValues)) sectionValues = [];
+    if (sectionValues.length) {
+      const sectionGrid = document.createElement('div');
+      sectionGrid.className = 'cot-info-modal__sections';
+      for (const entry of sectionValues) {
+        if (!entry) continue;
+        const card = document.createElement('section');
+        card.className = 'cot-info-modal__section';
+        const icon = document.createElement('span');
+        icon.className = 'cot-info-modal__section-icon';
+        icon.innerHTML = uiIconSVG(entry.icon || 'info', 24);
+        const copy = document.createElement('div');
+        const heading = document.createElement('h3');
+        heading.textContent = entry.title || 'Details';
+        const paragraph = document.createElement('p');
+        paragraph.textContent = entry.text || '';
+        copy.append(heading, paragraph);
+        card.append(icon, copy);
+        sectionGrid.appendChild(card);
+      }
+      root.appendChild(sectionGrid);
+    }
+    if (json) {
+      const pre = document.createElement('pre');
+      pre.className = 'cot-info-modal__json';
+      pre.textContent = content();
+      root.appendChild(pre);
+    }
+    dialog.body.appendChild(root);
   };
-  // A mouse click is often preceded by mouseenter. Keep the panel open in
-  // that case instead of interpreting the click as an immediate close.
-  const activate = () => { if (active !== instance) open(); };
-  button.addEventListener('mouseenter', open);
-  button.addEventListener('focus', open);
-  button.addEventListener('mouseleave', () => scheduleClose(instance));
-  button.addEventListener('blur', () => scheduleClose(instance));
-  button.addEventListener('click', (event) => { event.stopPropagation(); activate(); });
-  panel.addEventListener('mouseenter', () => clearTimeout(hideTimer));
-  panel.addEventListener('mouseleave', () => scheduleClose(instance));
-  panel.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') { event.preventDefault(); closeActive({ focus: true }); }
+
+  button.addEventListener('click', (event) => {
+    event.stopPropagation();
+    render();
+    modal.open({ trigger: button });
   });
-  const reposition = () => { if (active === instance) position(button, panel); };
-  window.addEventListener('resize', reposition);
-  window.addEventListener('scroll', reposition, true);
   button.disposeInfo = () => {
-    if (active === instance) closeActive();
-    window.removeEventListener('resize', reposition);
-    window.removeEventListener('scroll', reposition, true);
-    panel.remove();
+    modal?.dispose();
+    modal = null;
+    copyButton = null;
   };
   return button;
-}
-
-if (typeof document !== 'undefined') {
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && active) closeActive({ focus: true });
-  });
-  document.addEventListener('pointerdown', (event) => {
-    if (active && !active.button.contains(event.target) && !active.panel.contains(event.target)) closeActive();
-  });
 }

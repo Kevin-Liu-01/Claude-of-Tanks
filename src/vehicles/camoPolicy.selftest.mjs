@@ -39,12 +39,16 @@ const drawn = normalizeCustomCamo({
   style: 'drawn', base: '#123456', colorA: '#abcdef', colorB: '#010203',
   repeatX: 5, repeatY: 3, rotation: -45, mirror: false,
   strokes: [
-    { color: 0, size: 12, points: [[4, 8], [37, 44], [91, 72]] },
-    { color: 1, size: 6, points: [[18, 90]] },
+    { color: 0, size: 12, brush: 'spray', points: [[4, 8], [37, 44], [91, 72]] },
+    { color: 1, size: 6, brush: 'eraser', points: [[18, 90]] },
+    { color: 1, size: 18, brush: 'stamp', asset: 'chevron', rotation: 30, points: [[50, 50]] },
   ],
 });
 assert.deepEqual(parseCustomCamoPatternId(customCamoPatternId(drawn)), drawn,
   'drawn vector tiles round-trip every repeat and brush input');
+assert.equal(parseCustomCamoPatternId(
+  'custom2~123456~abcdef~010203~2~3~0~1~0,8,10.20_30.40',
+)?.strokes[0].brush, 'round', 'legacy custom2 recipes upgrade to the round brush');
 assert.equal(parseCustomCamoPatternId('custom~invalid'), null);
 assert.deepEqual(normalizeCustomCamo({ style: 'bad', base: 'red', repeat: 999 }), {
   style: 'drawn', base: '#46513d', colorA: '#252a24', colorB: '#73563a', repeat: 100,

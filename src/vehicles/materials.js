@@ -18,6 +18,7 @@ import {
   normalizeCustomCamo,
   parseCustomCamoPatternId,
 } from './camoPolicy.js';
+import { paintCustomCamoStrokes } from './customCamoCanvas.js';
 
 export { CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID } from './camoPolicy.js';
 import { tagVehicleMaterial } from './appearanceAudit.js';
@@ -477,28 +478,13 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         ctx.rotate(angle);
         if (visual.drawMirror && ((gx + gy) & 1)) ctx.scale(-1, 1);
         ctx.translate(-cellW / 2, -cellH / 2);
-        for (const stroke of strokes) {
-          const points = stroke.points || [];
-          if (!points.length) continue;
-          ctx.strokeStyle = rgb(patches[stroke.color === 1 ? 1 : 0] || patches[0], 0.97);
-          ctx.fillStyle = ctx.strokeStyle;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.lineWidth = Math.max(1, (stroke.size || 8) / 100 * Math.min(cellW, cellH));
-          if (points.length === 1) {
-            ctx.beginPath();
-            ctx.arc(points[0][0] / 100 * cellW, points[0][1] / 100 * cellH,
-              ctx.lineWidth / 2, 0, Math.PI * 2);
-            ctx.fill();
-          } else {
-            ctx.beginPath();
-            ctx.moveTo(points[0][0] / 100 * cellW, points[0][1] / 100 * cellH);
-            for (let i = 1; i < points.length; i++) {
-              ctx.lineTo(points[i][0] / 100 * cellW, points[i][1] / 100 * cellH);
-            }
-            ctx.stroke();
-          }
-        }
+        paintCustomCamoStrokes(ctx, strokes, {
+          width: cellW,
+          height: cellH,
+          colorA: rgb(patches[0], 0.97),
+          colorB: rgb(patches[1] || patches[0], 0.97),
+          eraseColor: rgb(base, 1),
+        });
         ctx.restore();
       }
     }

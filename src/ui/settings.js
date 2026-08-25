@@ -31,6 +31,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { uiIconSVG } from './uiIcons.js';
+import { isAnyModalOpen } from './modal.js';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.js';
 import { createElement as el, ensureStyle } from './dom.js';
 import {
@@ -1160,7 +1161,9 @@ export function createSettings(opts) {
   // layer is live. NOT while a kill-cam replay owns the screen: there Esc is
   // just another ANY-KEY skip (the replay handles it in capture phase), and
   // the done-grace absorbs the skip keypress itself — see KC_DONE_GRACE_MS.
-  input.onAction('settingsMenu', () => { if (!open && !replayOwnsScreen()) openPanel(); });
+  input.onAction('settingsMenu', () => {
+    if (!open && !replayOwnsScreen() && !isAnyModalOpen()) openPanel();
+  });
 
   // WoT behavior: pressing Esc under pointer lock is swallowed by the browser
   // as the unlock gesture — detect the unexpected unlock mid-battle and treat

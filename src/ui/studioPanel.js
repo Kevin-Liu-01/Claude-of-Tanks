@@ -13,6 +13,7 @@
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { iconUrl } from './icons.js';
 import { MAP_THUMBS } from './mapThumbs.js';
+import { FEATURED_SHOTS } from './featuredShots.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 import { createInfoButton } from './contextInfo.js';
@@ -995,26 +996,36 @@ export function createStudioPanel(S) {
     if (text != null) d.textContent = text;
     return d;
   }
-  function studioInfoImage(title) {
+  function studioInfoImages(title) {
     if (title === 'Tanks' || title === 'Add tanks' || title === 'Selected tank') {
       const id = S._internal.selected?.spec?.id || pickedId;
-      if (!id) return null;
+      if (!id) return [];
       const info = specInfo(id);
-      return {
+      return [{
         src: iconUrl(id, 'angle'),
         alt: `${info.name || id} Studio vehicle render`,
         fit: 'contain',
         caption: `${info.name || id} // Studio actor`,
-      };
+      }, {
+        src: iconUrl(id, 'modules_side'),
+        alt: `${info.name || id} internal module layout`,
+        fit: 'contain',
+        caption: `${info.name || id} // module layout`,
+      }];
     }
     const src = MAP_THUMBS[S.mapId];
-    if (!src) return null;
+    if (!src) return [];
     const info = S.getMapInfo ? S.getMapInfo(S.mapId) : { name: S.mapId };
-    return {
+    const shot = FEATURED_SHOTS.find((entry) => entry.maps?.includes(S.mapId)) || FEATURED_SHOTS[0];
+    return [{
       src,
       alt: `${info.name || S.mapId} Studio battlefield`,
       caption: `${info.name || S.mapId} // current production canvas`,
-    };
+    }, shot ? {
+      src: shot.img,
+      alt: shot.cap,
+      caption: `${shot.cap} // authored Scene Studio output`,
+    } : null].filter(Boolean);
   }
   function section(title, sub) {
     const s = el('div', 'sec');
@@ -1026,7 +1037,7 @@ export function createStudioPanel(S) {
       title,
       text: help,
       json: title === 'Video · Stills · Scene' ? () => S.state() : null,
-      image: () => studioInfoImage(title),
+      images: () => studioInfoImages(title),
     }));
     s.appendChild(h);
     return s;
@@ -1045,7 +1056,7 @@ export function createStudioPanel(S) {
       label: `About ${title}`,
       title,
       text: help,
-      image: () => studioInfoImage(title),
+      images: () => studioInfoImages(title),
     }));
     const body = el('div', 'gbody');
     groupRoot.append(head, body);
@@ -1222,7 +1233,7 @@ export function createStudioPanel(S) {
         label: `Show the Scene Studio JSON for ${shot.label}`,
         title: `Replicate ${shot.label}`,
         json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
-        image: () => studioInfoImage('Storyboard'),
+        images: () => studioInfoImages('Storyboard'),
       }));
       const del = el('button', 'del warn', '✕');
       del.title = `Remove ${shot.label}`;
