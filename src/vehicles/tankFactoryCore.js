@@ -5256,13 +5256,82 @@ function bakeDirt(geo, yOffset, strength = 1, deckEq = false) {
 const _rcM = new THREE.Matrix4();
 const _rcM2 = new THREE.Matrix4();
 const _rcV = new THREE.Vector3();
-function robustFloorY(ys) {
-  ys.sort((a, b) => a - b);
-  if (ys.length < 12) return ys[0];
-  for (let i = 0; i + 11 < ys.length; i++) {
-    if (ys[i + 11] - ys[i] <= 0.015) return ys[i];
+const _floorHeap = [];
+const FLOOR_DENSE_SAMPLES = 12;
+const FLOOR_DENSE_BAND_M = 0.015;
+
+function maxHeapPush(heap, value) {
+  let index = heap.length;
+  heap.push(value);
+  while (index > 0) {
+    const parent = (index - 1) >> 1;
+    if (heap[parent] >= value) break;
+    heap[index] = heap[parent];
+    index = parent;
   }
-  return ys[0];
+  heap[index] = value;
+}
+
+function maxHeapReplaceRoot(heap, value) {
+  const length = heap.length;
+  let index = 0;
+  for (;;) {
+    const left = index * 2 + 1;
+    if (left >= length) break;
+    const right = left + 1;
+    const child = right < length && heap[right] > heap[left] ? right : left;
+    if (heap[child] <= value) break;
+    heap[index] = heap[child];
+    index = child;
+  }
+  heap[index] = value;
+}
+
+/**
+ * Exact lowest dense rest-contact shell without sorting every sampled vertex.
+ *
+ * A detailed vehicle can contribute tens of thousands of running-gear
+ * samples. The old full-array sort dominated multi-tank roster construction
+ * even though the answer virtually always lives in the first few dozen
+ * values. Keep the K smallest samples in a max heap, sort only that bounded
+ * prefix, and expand K only when the exact 12-sample window is not yet
+ * present. Once a window is found, every earlier candidate is already in the
+ * prefix, so the result is byte-identical to a complete ascending sort.
+ *
+ * @param {number[]} ys root-local vertical samples
+ * @returns {number|undefined} exact robust floor sample
+ */
+function robustFloorYStrided(values, offset = 0, stride = 1) {
+  const length = values.length <= offset
+    ? 0 : Math.floor((values.length - 1 - offset) / stride) + 1;
+  if (!length) return undefined;
+  if (length < FLOOR_DENSE_SAMPLES) {
+    let lowest = values[offset];
+    for (let index = offset + stride; index < values.length; index += stride) {
+      if (values[index] < lowest) lowest = values[index];
+    }
+    return lowest;
+  }
+  let limit = Math.min(64, length);
+  for (;;) {
+    _floorHeap.length = 0;
+    for (let index = offset; index < values.length; index += stride) {
+      const value = values[index];
+      if (_floorHeap.length < limit) maxHeapPush(_floorHeap, value);
+      else if (value < _floorHeap[0]) maxHeapReplaceRoot(_floorHeap, value);
+    }
+    _floorHeap.sort((a, b) => a - b);
+    for (let i = 0; i + FLOOR_DENSE_SAMPLES - 1 < limit; i++) {
+      if (_floorHeap[i + FLOOR_DENSE_SAMPLES - 1] - _floorHeap[i]
+          <= FLOOR_DENSE_BAND_M) return _floorHeap[i];
+    }
+    if (limit === length) return _floorHeap[0];
+    limit = Math.min(length, limit * 4);
+  }
+}
+
+export function robustFloorY(ys) {
+  return robustFloorYStrided(ys);
 }
 
 // Presentation surfaces are rigid, unlike the terrain support solve. Track
@@ -5317,7 +5386,7 @@ function measureRestContact(root) {
       return true;
     };
     const pts = [];
-    const ys = [];
+    let absMinYM = Infinity;
     // Hull-pan floor candidates: lowest root-local bbox bottom over
     // non-instanced meshes whose bbox SPANS the centerline (vertex sampling
     // cannot see a wide belly plate — a 1.9 m box face crossing the center
@@ -5361,7 +5430,7 @@ function measureRestContact(root) {
           for (let k = 0; k < pa.count; k += per) {
             _rcV.fromBufferAttribute(pa, k).applyMatrix4(_rcM2);
             pts.push(_rcV.x, _rcV.y, _rcV.z);
-            ys.push(_rcV.y);
+            if (_rcV.y < absMinYM) absMinYM = _rcV.y;
           }
         }
       } else if (o.isMesh) {
@@ -5370,16 +5439,12 @@ function measureRestContact(root) {
         for (let i = 0; i < pa.count; i += step) {
           _rcV.fromBufferAttribute(pa, i).applyMatrix4(_rcM2);
           pts.push(_rcV.x, _rcV.y, _rcV.z);
-          ys.push(_rcV.y);
+          if (_rcV.y < absMinYM) absMinYM = _rcV.y;
         }
       }
     });
-    if (!ys.length) return null;
-    let absMinYM = Infinity;
-    for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i + 1] < absMinYM) absMinYM = pts[i + 1];
-    }
-    const bottomYM = robustFloorY(ys);
+    if (!pts.length) return null;
+    const bottomYM = robustFloorYStrided(pts, 1, 3);
     // Hull-pan floor (see panConsider above). The movement belly guard used a
     // fixed 0.34 m line on the premise every pan sits ≥ 0.40 m — stale on the
     // rebuilt profiles (soviet-heavy/sepv2 bellies at 0.30): sharing the fan

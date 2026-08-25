@@ -2649,6 +2649,33 @@ function paintHeight(canvas, visual, rng, feats, seed) {
   return canvas;
 }
 
+/** Fill an exact wrapped Sobel row range without per-pixel helper calls or
+ * modulo. Exported for byte-parity regression coverage. */
+export function fillHeightNormalRows(src, d, S, strength, yStart = 0, yEnd = S) {
+  for (let y = yStart; y < yEnd; y++) {
+    const ym = y === 0 ? S - 1 : y - 1;
+    const yp = y + 1 === S ? 0 : y + 1;
+    const row = y * S;
+    const rowM = ym * S;
+    const rowP = yp * S;
+    for (let x = 0; x < S; x++) {
+      const xm = x === 0 ? S - 1 : x - 1;
+      const xp = x + 1 === S ? 0 : x + 1;
+      const dx = (src[(row + xp) * 4] - src[(row + xm) * 4]) / 255;
+      const dy = (src[(rowP + x) * 4] - src[(rowM + x) * 4]) / 255;
+      let nx = -dx * strength, ny = dy * strength, nz = 1;
+      const il = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
+      nx *= il; ny *= il; nz *= il;
+      const i = (row + x) * 4;
+      d[i] = (nx * 0.5 + 0.5) * 255;
+      d[i + 1] = (ny * 0.5 + 0.5) * 255;
+      d[i + 2] = (nz * 0.5 + 0.5) * 255;
+      d[i + 3] = 255;
+    }
+  }
+  return d;
+}
+
 // Sobel the heightfield into a tangent-space normal map (wrapping edges).
 function* heightToNormalSteps(hCanvas, strength = 1.6) {
   const S = hCanvas.width;
@@ -2657,24 +2684,12 @@ function* heightToNormalSteps(hCanvas, strength = 1.6) {
   const octx = out.getContext('2d');
   const img = octx.createImageData(S, S);
   const d = img.data;
-  const h = (x, y) => src[(((y + S) % S) * S + ((x + S) % S)) * 4];
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const dx = (h(x + 1, y) - h(x - 1, y)) / 255;
-      const dy = (h(x, y + 1) - h(x, y - 1)) / 255;
-      let nx = -dx * strength, ny = dy * strength, nz = 1;
-      const il = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
-      nx *= il; ny *= il; nz *= il;
-      const i = (y * S + x) * 4;
-      d[i] = (nx * 0.5 + 0.5) * 255;
-      d[i + 1] = (ny * 0.5 + 0.5) * 255;
-      d[i + 2] = (nz * 0.5 + 0.5) * 255;
-      d[i + 3] = 255;
-    }
-    // A 1024-row Sobel pass was one several-hundred-millisecond task during
-    // battle/garage entry. Async prebakes can now yield every 32 rows while
-    // the synchronous authoring path drains the identical generator.
-    if ((y & 31) === 31 && y + 1 < S) yield;
+  // A 1024-row Sobel pass was one several-hundred-millisecond task during
+  // battle/garage entry. Async prebakes yield after the same 32-row work
+  // units; the synchronous authoring path drains the identical generator.
+  for (let y = 0; y < S; y += 32) {
+    fillHeightNormalRows(src, d, S, strength, y, Math.min(S, y + 32));
+    if (y + 32 < S) yield;
   }
   octx.putImageData(img, 0, 0);
   return out;
@@ -2729,6 +2744,43 @@ function paintRoughness(canvas, rng, feats, base = 0.84) {
   return canvas;
 }
 
+/**
+ * Apply patch-tone roughness to full-resolution pixels. Classification is
+ * half-resolution, so its two horizontal output pixels share the same tone
+ * and boundary decision. Process that pair together while retaining the
+ * original row-major LCG sequence and arithmetic; output stays byte-exact.
+ */
+export function applyPatchRoughnessPixels(pixels, size, classes, classSize, offsets) {
+  let state = 0x51ab7 ^ size;
+  for (let y = 0; y < size; y++) {
+    const cy = y >> 1;
+    const row = cy * classSize;
+    const south = (cy + 2 < classSize ? cy + 2 : cy + 2 - classSize) * classSize;
+    let pixel = y * size * 4;
+    for (let cx = 0; cx < classSize; cx++) {
+      const tone = classes[row + cx];
+      const east = cx + 2 < classSize ? cx + 2 : cx + 2 - classSize;
+      let baseDelta = offsets[tone];
+      if (classes[row + east] !== tone || classes[south + cx] !== tone) baseDelta += 0.035;
+
+      state = (state * 1664525 + 1013904223) >>> 0;
+      let value = pixels[pixel]
+        + (baseDelta + (((state >>> 16) & 255) / 255 - 0.5) * 0.024) * 255;
+      value = value < 0 ? 0 : (value > 255 ? 255 : value);
+      pixels[pixel] = pixels[pixel + 1] = pixels[pixel + 2] = value;
+      pixel += 4;
+
+      state = (state * 1664525 + 1013904223) >>> 0;
+      value = pixels[pixel]
+        + (baseDelta + (((state >>> 16) & 255) / 255 - 0.5) * 0.024) * 255;
+      value = value < 0 ? 0 : (value > 255 ? 255 : value);
+      pixels[pixel] = pixels[pixel + 1] = pixels[pixel + 2] = value;
+      pixel += 4;
+    }
+  }
+  return pixels;
+}
+
 // ===================== CAMO PATTERN SECTION =====================
 // camo_spotting r4: pattern-keyed roughness modulation. Every pattern was an
 // ALBEDO-only repaint — one constant-response roughness field under all
@@ -2772,24 +2824,7 @@ function paintPatchRoughness(roughCanvas, camoCanvas, visual) {
   const rctx = roughCanvas.getContext('2d', { willReadFrequently: true });
   const rimg = rctx.getImageData(0, 0, S, S);
   const rd = rimg.data;
-  let s0 = 0x51ab7 ^ S;
-  for (let y = 0; y < S; y++) {
-    const yc = (y >> 1) * Sd;
-    const ycE = (((y >> 1) + 2) % Sd) * Sd;                // wraps: tileable
-    for (let x = 0; x < S; x++) {
-      const xc = x >> 1;
-      const k = cls[yc + xc];
-      let dv = offs[k];
-      // tone boundary → overspray rim catches dust, reads rougher
-      if (cls[yc + ((xc + 2) % Sd)] !== k || cls[ycE + xc] !== k) dv += 0.035;
-      s0 = (s0 * 1664525 + 1013904223) >>> 0;
-      dv += (((s0 >>> 16) & 255) / 255 - 0.5) * 0.024;     // paint-batch speckle
-      const i4 = (y * S + x) * 4;
-      let v = rd[i4] + dv * 255;
-      v = v < 0 ? 0 : (v > 255 ? 255 : v);
-      rd[i4] = rd[i4 + 1] = rd[i4 + 2] = v;
-    }
-  }
+  applyPatchRoughnessPixels(rd, S, cls, Sd, offs);
   rctx.putImageData(rimg, 0, 0);
 }
 // ===================== END CAMO PATTERN SECTION =================
