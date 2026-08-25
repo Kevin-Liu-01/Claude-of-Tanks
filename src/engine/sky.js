@@ -19,6 +19,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // read inside the bake functions (post-renderer), never at module eval.
 import { texSize } from './quality.js';
 import { enforceEnvValidity } from './deviceDiag.js';
+import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.js';
 
 const SUN_ELEVATION_DEG = 32; // slightly lower sun → longer, more readable shadows
 // 140° put the sun almost directly BEHIND the standard chase/establishing
@@ -300,6 +301,25 @@ const CIRRUS_HAZE_K = 0.00010;
 // color, so no hard silhouettes against the terrain edge).
 const CLOUD_Y_FADE = [0.007, 0.034];
 const CLOUD_MAX_ALPHA = 0.94;
+const CLOUD_BAKE_CONFIG = Object.freeze({
+  seed: CLOUD_SEED,
+  warp: CLOUD_WARP,
+  macroAniso: CLOUD_MACRO_ANISO,
+  threshold: CLOUD_THR,
+  cluster: CLOUD_CLUSTER,
+  edge: CLOUD_EDGE,
+  edgeWisp: CLOUD_EDGE_WISP,
+  coreWidth: CLOUD_CORE,
+  marchSteps: CLOUD_MARCH_STEPS,
+  marchStepPx: CLOUD_MARCH_STEP_PX,
+  shadeK: CLOUD_SHADE_K,
+  lit: CLOUD_LIT,
+  shade: CLOUD_SHADE,
+  silver: CLOUD_SILVER,
+  detailAmp: CLOUD_DETAIL_AMP,
+  alphaVariation: CLOUD_ALPHA_VAR,
+  maxAlpha: CLOUD_MAX_ALPHA,
+});
 // r2: 0.6 → 0.5 — the cirrus veil is the main "directional streaking"
 // contributor in the establishing shots; thinner default keeps it a subtle
 // high veil (map presets still override).
@@ -431,254 +451,44 @@ function configureSkyUniforms(sky, sunDir, preset = DEFAULT_PRESET) {
   sky.material.needsUpdate = true;
 }
 
-/** Deterministic PRNG (Mulberry32). @param {number} a seed @returns {() => number} */
-function mulberry32(a) {
-  return function next() {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+/**
+ * Wrap deterministic RGBA bytes in the same CanvasTexture used by the deck
+ * shaders. Pixel generation may happen on this thread as a compatibility
+ * fallback or arrive from skyCloudWorker.
+ */
+function cloudTextureFromPixels(pixels, width, height) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const image = ctx.createImageData(width, height);
+  image.data.set(pixels);
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = CLOUD_ANISOTROPY;
+  return texture;
 }
 
 /**
- * Build a multi-octave value-noise FBM sampler tileable in BOTH axes
- * (period 1 in u and v) — required so the planar cloud decks repeat
- * seamlessly across the world with no visible tile boundary.
- *
- * @param {() => number} rng - seeded PRNG that fills the per-octave lattices
- * @param {number} octaves
- * @param {number} base - lattice resolution of octave 0 (doubles per octave)
- * @returns {(u: number, v: number) => number} fbm in ~[0,1], tileable in u AND v
+ * Bake or install the low cumulus deck. Worker results retain the exact
+ * authored bytes; the synchronous path is the compatibility fallback.
  */
-function makeFbm(rng, octaves, base) {
-  const lattices = [];
-  for (let o = 0; o < octaves; o++) {
-    const n = base << o;
-    const grid = new Float32Array(n * n);
-    for (let i = 0; i < grid.length; i++) grid[i] = rng();
-    lattices.push({ n, grid });
-  }
-  const smooth = (t) => t * t * (3 - 2 * t);
-  return function fbm(u, v) {
-    let sum = 0;
-    let amp = 0.55;
-    let tot = 0;
-    for (let o = 0; o < octaves; o++) {
-      const { n, grid } = lattices[o];
-      let uu = (u + o * 0.37) % 1;
-      if (uu < 0) uu += 1;
-      let vv = (v + o * 0.61) % 1;
-      if (vv < 0) vv += 1;
-      const x = uu * n;
-      const y = vv * n;
-      const x0 = Math.floor(x);
-      const y0 = Math.floor(y);
-      const fx = smooth(x - x0);
-      const fy = smooth(y - y0);
-      const xa = x0 % n;
-      const xb = (x0 + 1) % n;
-      const ya = y0 % n;
-      const yb = (y0 + 1) % n;
-      const g00 = grid[ya * n + xa];
-      const g10 = grid[ya * n + xb];
-      const g01 = grid[yb * n + xa];
-      const g11 = grid[yb * n + xb];
-      sum += (g00 + (g10 - g00) * fx + (g01 - g00) * fy + (g00 - g10 - g01 + g11) * fx * fy) * amp;
-      tot += amp;
-      amp *= 0.5;
-    }
-    return sum / tot;
-  };
+function makeCloudTexture(prebaked = null) {
+  const width = prebaked?.size || texSize(CLOUD_TEX);
+  const pixels = prebaked?.pixels
+    || bakeCumulusPixels(width, width, CLOUD_BAKE_CONFIG);
+  return cloudTextureFromPixels(pixels, width, width);
 }
 
-/**
- * Bake the cumulus deck texture (see the CLOUD_* constant block for the
- * recipe): domain-warped FBM carved by a hard coverage threshold into
- * distinct cloud masses, then shaded per-texel by a light march toward -v —
- * warm-white sun-facing rims, cool grey-blue shaded cores. Tileable in both
- * axes (the march wraps too); the deck shader rotates its sampling so the
- * baked -v march direction always points at the map's sun azimuth.
- *
- * @returns {THREE.CanvasTexture}
- */
-function makeCloudTexture() {
-  const W = texSize(CLOUD_TEX); // MOBILE r1: tier-scaled bake (u/v-relative painter)
-  const H = texSize(CLOUD_TEX);
-  const rng = mulberry32(CLOUD_SEED);
-  // NOTE: keep fbmD at 6 octaves — a 7th octave shifts the seeded rng stream
-  // and re-rolls the whole deck LAYOUT (the composed masses in the frozen
-  // shots vanished). Interior high-frequency detail comes from fbmHF below.
-  const fbmD = makeFbm(rng, 6, 8); // density field — primary cloud forms
-  const fbmWX = makeFbm(rng, 3, 5); // domain warp u
-  const fbmWY = makeFbm(rng, 3, 5); // domain warp v
-  const fbmM = makeFbm(rng, 2, 3); // macro clustering (masses + clear gaps)
-  const fbmHF = makeFbm(rng, 3, 48); // high-frequency interior alpha detail (r7)
-
-  // Pass 1 — carve the coverage field. mask = alpha shape (hard edge),
-  // core = interior opacity ramp, sigma = optical density for the light march.
-  const mask = new Float32Array(W * H);
-  const core = new Float32Array(W * H);
-  const sigma = new Float32Array(W * H);
-  for (let y = 0; y < H; y++) {
-    const v = y / H;
-    for (let x = 0; x < W; x++) {
-      const u = x / W;
-      let wu = (u + (fbmWX(u, v) - 0.5) * CLOUD_WARP) % 1;
-      if (wu < 0) wu += 1;
-      let wv = (v + (fbmWY(u, v) - 0.5) * CLOUD_WARP) % 1;
-      if (wv < 0) wv += 1;
-      const d = fbmD(wu, wv);
-      // anisotropic macro sampling: higher frequency ALONG the wind/march
-      // axis (v) breaks along-wind arms into separate masses (r4 LP2)
-      const mac = fbmM(u, (v * CLOUD_MACRO_ANISO) % 1);
-      const thr = CLOUD_THR + (mac - 0.5) * 2 * CLOUD_CLUSTER;
-      const i = y * W + x;
-      // edge sharpness varies with the macro field: dense clusters carve
-      // crisp cauliflower cores, sparse outliers tear into soft wisps
-      const edgeW = CLOUD_EDGE + CLOUD_EDGE_WISP * (1 - smoothstepNum(0.35, 0.62, mac));
-      // terrain_environment r2: gate the mask edge with the high-frequency
-      // field so mass borders read as cauliflower turbulence rather than
-      // smooth threshold contours (multiplier floor >= ~0.7 or thin rims
-      // dither out and the deck loses its silver lining).
-      const m = smoothstepNum(thr, thr + edgeW, d)
-        * (0.72 + 0.28 * smoothstepNum(0.25, 0.75, fbmHF(u * 0.25, v * 0.25)));
-      const c = smoothstepNum(thr + edgeW, thr + edgeW + CLOUD_CORE, d);
-      mask[i] = m;
-      core[i] = c;
-      sigma[i] = m * (0.3 + 0.7 * c);
-    }
-  }
-
-  // Pass 2 — shade + write pixels. Transmittance from the accumulated density
-  // toward -v (the in-texture sun): thin rims facing the sun stay near 1
-  // (bright, silver-lined), texels behind thick cloud fall toward 0.
-  const cnv = document.createElement('canvas');
-  cnv.width = W;
-  cnv.height = H;
-  const ctx = cnv.getContext('2d');
-  const img = ctx.createImageData(W, H);
-  const px = img.data;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = y * W + x;
-      const o = i * 4;
-      const m = mask[i];
-      if (m <= 0) {
-        px[o + 3] = 0;
-        continue;
-      }
-      let occl = 0;
-      for (let s = 1; s <= CLOUD_MARCH_STEPS; s++) {
-        let yy = (y - s * CLOUD_MARCH_STEP_PX) % H; // wraps: tileable shading
-        if (yy < 0) yy += H;
-        occl += sigma[yy * W + x];
-      }
-      const lit = Math.pow(Math.exp(-CLOUD_SHADE_K * occl), 0.85);
-      // silver lining: thin (low-core) texels whose light march came back
-      // unoccluded are the sun-facing rim — push them toward warm white so
-      // every mass carries a bright sun-lit edge against its shaded belly
-      const silver = 1 + CLOUD_SILVER * (1 - core[i]) * lit;
-      px[o] = Math.min(255, Math.round(255 * (CLOUD_SHADE[0] + (CLOUD_LIT[0] - CLOUD_SHADE[0]) * lit) * silver));
-      px[o + 1] = Math.min(255, Math.round(255 * (CLOUD_SHADE[1] + (CLOUD_LIT[1] - CLOUD_SHADE[1]) * lit) * silver));
-      px[o + 2] = Math.min(255, Math.round(255 * (CLOUD_SHADE[2] + (CLOUD_LIT[2] - CLOUD_SHADE[2]) * lit) * silver * 0.97));
-      // per-cloud opacity variation keyed on the macro clustering field: each
-      // mass gets its own density so the deck never reads as uniform cotton;
-      // a high-frequency octave breaks the smooth interior alpha gradients
-      const macroA = 1 - CLOUD_ALPHA_VAR * (1 - fbmM(x / W, ((y / H) * CLOUD_MACRO_ANISO) % 1));
-      const hfA = 1 - CLOUD_DETAIL_AMP * (1 - core[i]) * fbmHF(x / W, y / H);
-      // r6: rim floor 0.42 → 0.30 — denser cores against thinner rims give
-      // the masses a modeled 3D read instead of one flat translucency.
-      px[o + 3] = Math.round(255 * CLOUD_MAX_ALPHA * macroA * hfA * m * (0.30 + 0.70 * core[i]));
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  const tex = new THREE.CanvasTexture(cnv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = CLOUD_ANISOTROPY; // grazing-angle sharpness (see const block)
-  return tex;
-}
-
-/**
- * Bake the thin high-altitude veil: wind-sheared streaks (fbm sampled with a
- * 4x faster v frequency elongates features along u), low alpha, near-white.
- * Tileable in both axes.
- *
- * @returns {THREE.CanvasTexture}
- */
-function makeCirrusTexture() {
-  const W = texSize(CIRRUS_TEX); // MOBILE r1: tier-scaled bake
-  const H = texSize(CIRRUS_TEX);
-  const rng = mulberry32(CLOUD_SEED + 11);
-  const fbm = makeFbm(rng, 4, 4);
-  const fbmW = makeFbm(rng, 2, 3);
-  // r8 ("cirrus smears diagonally with uniform soft edges — no lit/shadowed
-  // cloud faces anywhere"): the veil was a single sheared fbm at one flat
-  // near-white tone. Three additions:
-  //  - a slow BANK mask splits the endless filament field into separate
-  //    cloud banks with real gaps (no more one continuous smear),
-  //  - a second, higher-frequency domain-warp octave crinkles the filament
-  //    edges so they stop being uniformly soft,
-  //  - TWO-TONE shading from the filament field's own directional
-  //    derivative: one edge of every filament is lit warm-white, the other
-  //    falls to the same cool grey-blue the cumulus shade pole uses.
-  const fbmB = makeFbm(rng, 2, 2); // bank mask (~whole-sky patches)
-  const fbmE = makeFbm(rng, 3, 14); // edge-crinkle octave
-  const cnv = document.createElement('canvas');
-  cnv.width = W;
-  cnv.height = H;
-  const ctx = cnv.getContext('2d');
-  const img = ctx.createImageData(W, H);
-  const px = img.data;
-  const LIT = [1.0, 0.99, 0.955];
-  const SHD = [0.66, 0.72, 0.85];
-  for (let y = 0; y < H; y++) {
-    const v = y / H;
-    for (let x = 0; x < W; x++) {
-      const u = x / W;
-      // r2: edge crinkle 0.035 → 0.06 — the sheared filaments read as one
-      // smooth diagonal smear ("stretched low-res texture"); harder crinkle
-      // tears the filament edges so the veil reads fibrous at 1080p.
-      let wu = (u + (fbmW(u, v) - 0.5) * 0.16 + (fbmE(u, v) - 0.5) * 0.06) % 1;
-      if (wu < 0) wu += 1;
-      const sv = (v * 3) % 1;
-      const s = fbm(wu, sv);
-      const bank = smoothstepNum(0.34, 0.60, fbmB(u, v));
-      const a = smoothstepNum(0.56, 0.88, s) * bank
-        * (0.62 + 0.38 * smoothstepNum(0.3, 0.7, fbmE(u + 0.31, v + 0.57)));
-      // directional derivative across the shear axis — lit edge vs shaded
-      // body (the deck shader rides this texture perpendicular to the
-      // cumulus sun rotation, so the axis choice reads as oblique sunlight)
-      const s2 = fbm(wu, (sv + 0.018) % 1);
-      const lit = clampNum((s - s2) * 9 + 0.55, 0, 1);
-      const o = (y * W + x) * 4;
-      px[o] = Math.round(255 * (SHD[0] + (LIT[0] - SHD[0]) * lit));
-      px[o + 1] = Math.round(255 * (SHD[1] + (LIT[1] - SHD[1]) * lit));
-      px[o + 2] = Math.round(255 * (SHD[2] + (LIT[2] - SHD[2]) * lit));
-      px[o + 3] = Math.round(255 * a * 0.6);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  const tex = new THREE.CanvasTexture(cnv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = CLOUD_ANISOTROPY; // grazing-angle sharpness (see const block)
-  return tex;
-}
-
-/** Numeric smoothstep. @param {number} a @param {number} b @param {number} x @returns {number} */
-function smoothstepNum(a, b, x) {
-  const t = clampNum((x - a) / (b - a), 0, 1);
-  return t * t * (3 - 2 * t);
-}
-
-/** Numeric clamp. @param {number} x @param {number} lo @param {number} hi @returns {number} */
-function clampNum(x, lo, hi) {
-  return x < lo ? lo : (x > hi ? hi : x);
+/** Bake or install the high cirrus deck with the same byte-exact contract. */
+function makeCirrusTexture(prebaked = null) {
+  const width = prebaked?.size || texSize(CIRRUS_TEX);
+  const pixels = prebaked?.pixels
+    || bakeCirrusPixels(width, width, CLOUD_BAKE_CONFIG);
+  return cloudTextureFromPixels(pixels, width, width);
 }
 
 /**
@@ -888,16 +698,10 @@ export function createSky(scene, renderer) {
     scene.add(mesh);
     return mesh;
   };
-  // LOADING PERF (boot r9): the two cloud sprite bakes (makeCloudTexture +
-  // makeCirrusTexture, ~330 ms of fbm/canvas work — the bulk of the boot 'sky'
-  // stage) are DEFERRED. The garage bay is fully enclosed, so nothing on the
-  // boot path can see a cloud; each deck starts on a transparent placeholder
-  // (alpha 0 → the deck shader outputs nothing) and ensureCloudTextures()
-  // image-swaps the real bakes in later. Every path that can show the outdoor
-  // sky funnels through world activation / applyPreset, and both call it —
-  // main.js also runs it from a post-ready idle slice so a long garage dwell
-  // absorbs the cost first. The bakes are seed-deterministic and order-
-  // independent (separate mulberry32 streams), so deferral changes no pixels.
+  // The garage bay cannot see the outdoor cloud decks. Start their exact
+  // deterministic FBM bakes in a worker while the main thread finishes boot,
+  // then install the transferred RGBA buffers before a world becomes visible.
+  // Browsers without Worker keep the synchronous compatibility path below.
   const lazyCloudTex = () => {
     const cv = document.createElement('canvas');
     cv.width = cv.height = 4;
@@ -908,9 +712,44 @@ export function createSky(scene, renderer) {
     tex.anisotropy = CLOUD_ANISOTROPY;
     return tex;
   };
-  // perf-r5c: per-deck flags — the chunked twin bakes one deck per tick and
-  // a mid-chunk SYNC call (world activation is a finish-now guarantee) still
-  // bakes exactly the remainder.
+  let cloudWorkerResults = null;
+  let cloudWorkerSettled = false;
+  const cloudWorkerPromise = typeof Worker === 'undefined' ? null : new Promise((resolve) => {
+    let worker;
+    try {
+      worker = new Worker(new URL('./skyCloudWorker.js', import.meta.url), { type: 'module' });
+    } catch (error) {
+      cloudWorkerSettled = true;
+      console.warn('[sky] cloud worker unavailable; using synchronous fallback:', error.message);
+      resolve(null);
+      return;
+    }
+    const result = {};
+    let finished = false;
+    const finish = (value) => {
+      if (finished) return;
+      finished = true;
+      worker.terminate();
+      cloudWorkerResults = cirrusBaked && cumulusBaked ? null : value;
+      cloudWorkerSettled = true;
+      resolve(value);
+    };
+    worker.onmessage = ({ data }) => {
+      result[data.kind] = { size: data.size, pixels: data.pixels };
+      if (result.cirrus && result.cumulus) finish(result);
+    };
+    worker.onerror = (error) => {
+      console.warn('[sky] cloud worker failed; using synchronous fallback:', error.message);
+      finish(Object.keys(result).length ? result : null);
+    };
+    worker.postMessage({
+      cumulusSize: texSize(CLOUD_TEX),
+      cirrusSize: texSize(CIRRUS_TEX),
+      config: CLOUD_BAKE_CONFIG,
+    });
+  });
+
+  // Per-deck flags keep a mid-flight synchronous activation idempotent.
   let cirrusBaked = false;
   let cumulusBaked = false;
   const swapCloudTexture = (deck, baked) => {
@@ -927,21 +766,30 @@ export function createSky(scene, renderer) {
     baked.dispose(); // wrapper never uploaded — frees only CPU-side state
   };
   const ensureCloudTextures = () => {
-    if (!cirrusBaked) { cirrusBaked = true; swapCloudTexture(cloudsFar, makeCirrusTexture()); }
-    if (!cumulusBaked) { cumulusBaked = true; swapCloudTexture(clouds, makeCloudTexture()); }
-  };
-  /** perf-r5c: one ~350-600 ms fbm deck bake per tick (loading-bar path). */
-  const ensureCloudTexturesChunked = async (tick) => {
     if (!cirrusBaked) {
       cirrusBaked = true;
-      swapCloudTexture(cloudsFar, makeCirrusTexture());
+      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus));
+    }
+    if (!cumulusBaked) {
+      cumulusBaked = true;
+      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus));
+    }
+    if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
+  };
+  /** Await off-main FBM, then install at most one canvas texture per tick. */
+  const ensureCloudTexturesChunked = async (tick) => {
+    if (cloudWorkerPromise && !cloudWorkerSettled) await cloudWorkerPromise;
+    if (!cirrusBaked) {
+      cirrusBaked = true;
+      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus));
       if (tick) await tick();
     }
     if (!cumulusBaked) {
       cumulusBaked = true;
-      swapCloudTexture(clouds, makeCloudTexture());
+      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus));
       if (tick) await tick();
     }
+    if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
   };
   const cloudsFar = mkCloudDeck(
     lazyCloudTex(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
