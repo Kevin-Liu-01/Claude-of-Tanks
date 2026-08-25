@@ -299,6 +299,14 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
+    /**
+     * Build exact terrain lookahead meshes in an explicitly bounded batch.
+     * Used only during the frozen deployment countdown; live streaming keeps
+     * its conservative one-job-per-four-frames fallback.
+     */
+    warmTerrainLookahead(cameraPos, maxJobs = 1) {
+      return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
+    },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t) { vegetation.setWindTime(t); },
     /**

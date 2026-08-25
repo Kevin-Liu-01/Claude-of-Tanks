@@ -3255,6 +3255,19 @@ export function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, 
       trackCanvas: paintTrack(mulberry32(seed + 17)),
     };
     await run(bakeSharedCanvasesSteps(entry, quality));
+    // A synchronous createTank() can acquire this key while the chunked
+    // pre-bake is between painter stages (battlefield wreck construction and
+    // roster preparation intentionally overlap). Never overwrite that live,
+    // ref-counted cache entry with our detached draft. Upgrade the acquired
+    // entry in place if needed; otherwise let the draft canvases be collected.
+    const acquiredDuringBake = TEX_CACHE.get(key);
+    if (acquiredDuringBake) {
+      if (isMaterialTextureQualityUpgrade(acquiredDuringBake.quality, quality)) {
+        await run(bakeSharedCanvasesSteps(acquiredDuringBake, quality));
+        finalizeEntryResize(acquiredDuringBake);
+      }
+      return;
+    }
     entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
     entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
     entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });

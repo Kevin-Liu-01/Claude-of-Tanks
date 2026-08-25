@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import '../game/rosterPlanning.selftest.mjs';
 import {
   FEATURED_IMAGES,
   FEATURED_SHOTS,
@@ -135,6 +136,9 @@ assert.doesNotMatch(preRosterBattleLoad, /renderer\.compile\(world\.group, camer
 assert.match(preRosterBattleLoad,
   /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,180}stageRootTextureUploads\(world\.group, loadYield\)/,
   'battle entry must stage current world textures before the first full deployment frame');
+assert.match(preRosterBattleLoad,
+  /const plannedRoster = planBattleParticipantIds[\s\S]{0,900}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,900}Promise\.all\(\[[\s\S]{0,500}rosterTextureP/,
+  'exact cold roster camouflage and texture preparation must overlap battlefield construction');
 const stageRevealBody = mainSource.slice(
   mainSource.indexOf('async function stageBattleVisualReveal('),
   mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),

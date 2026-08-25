@@ -72,3 +72,31 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
   result.urgent = bestUrgent;
   return result;
 }
+
+/**
+ * Drain a bounded number of terrain streaming jobs for one camera position.
+ * The callback owns the actual geometry build and must make the completed
+ * level visible through `chunk.present`/`chunk.lods` before it returns. This
+ * keeps the scheduling policy Node-testable while letting the live terrain
+ * implementation reuse its fine-grid cache.
+ *
+ * @param {Array<object>} chunks
+ * @param {number} camX
+ * @param {number} camZ
+ * @param {number} maxJobs
+ * @param {function(object):void} build
+ * @returns {number} number of completed jobs
+ */
+export function warmTerrainLodBuilds(chunks, camX, camZ, maxJobs, build) {
+  const limit = Math.max(0, Math.floor(Number(maxJobs) || 0));
+  if (!limit || typeof build !== 'function') return 0;
+  const job = { index: -1, level: -1, distanceM: 0, urgent: false };
+  let completed = 0;
+  while (completed < limit) {
+    const next = chooseTerrainLodBuild(chunks, camX, camZ, job);
+    if (!next) break;
+    build(next);
+    completed++;
+  }
+  return completed;
+}

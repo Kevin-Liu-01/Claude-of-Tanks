@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   applyPatchRoughnessPixels,
   fillHeightNormalRows,
@@ -40,6 +41,11 @@ assert.equal(isMaterialTextureQualityUpgrade('ai', 'preview'), true);
 assert.equal(isMaterialTextureQualityUpgrade('preview', 'high'), true);
 assert.equal(isMaterialTextureQualityUpgrade('high', 'preview'), false);
 assert.equal(isMaterialTextureQualityUpgrade('preview', 'preview'), false);
+
+const materialsSource = await readFile(new URL('./materials.js', import.meta.url), 'utf8');
+assert.match(materialsSource,
+  /await run\(bakeSharedCanvasesSteps\(entry, quality\)\);[\s\S]{0,900}const acquiredDuringBake = TEX_CACHE\.get\(key\);[\s\S]{0,700}finalizeEntryResize\(acquiredDuringBake\);[\s\S]{0,200}return;/,
+  'chunked pre-bake must preserve a live cache entry acquired during a yielded painter pass');
 
 {
   const size = 19;

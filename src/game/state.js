@@ -422,6 +422,33 @@ export function planBattleParticipantIds(game, playerSpecId, randomize = true) {
     .map((entity) => entity.specId);
 }
 
+function autoCamoIdsForBattle(participants, playerSpecId, mapId, randomize, battleOrdinal) {
+  if (!randomize) return [];
+  const camoRng = mulberry32(8600 + battleOrdinal);
+  const forceAuto = mapId === 'winter' || mapId === 'desert';
+  const autoIds = [];
+  for (const ent of participants) {
+    if (ent.specId === playerSpecId) continue;
+    const roll = camoRng();
+    if (forceAuto || roll < 0.6) autoIds.push(ent.specId);
+  }
+  return autoIds;
+}
+
+/**
+ * Resolve the next battle's deterministic bot AUTO-camouflage overrides
+ * without mutating game or material state. The loading coordinator uses this
+ * to paint the exact roster while the independent world is still building;
+ * setupBattle consumes the same helper after it commits the battle ordinal.
+ */
+export function planBattleCamoOverrides(game, playerSpecId, mapId, randomize = true) {
+  const battleOrdinal = game.battleCount + 1;
+  const participants = pickParticipants(game, playerSpecId, randomize, battleOrdinal);
+  return autoCamoIdsForBattle(
+    participants, playerSpecId, mapId, randomize, battleOrdinal,
+  );
+}
+
 /**
  * (Re)start a battle: place the chosen tank at the player spawn, the other
  * seven at the enemy spawns, reset movement/combat state and attach AI.
@@ -474,7 +501,6 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   // PREVIOUS battle's overrides repainted (cheap no-op otherwise).
   clearCamoOverrides();
   if (opts.random) {
-    const camoRng = mulberry32(8600 + game.battleCount);
     // camo_spotting r6 (critic: factory-green ally on open snow in the winter
     // AUTO battle): on high-contrast biomes (winter/desert) a parade-green
     // bot is never plausible — the AUTO roll is ~100% there, with variety
@@ -482,11 +508,10 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // seeded per tank). Verdant/urban keep the 60% mix: green factory paint
     // is plausible against grass and rubble. camoRng is still drawn per bot
     // so the battle seed stream stays position-identical across biomes.
-    const forceAuto = game.mapId === 'winter' || game.mapId === 'desert';
-    for (const ent of game.tanks) {
-      if (ent.specId === playerSpecId) continue;
-      const roll = camoRng();
-      if (forceAuto || roll < 0.6) setCamoOverride(ent.specId, 'auto');
+    for (const specId of autoCamoIdsForBattle(
+      game.tanks, playerSpecId, game.mapId, true, game.battleCount,
+    )) {
+      setCamoOverride(specId, 'auto');
     }
   }
   // perf-r2f: real battle entries defer this sweep to the caller's CHUNKED

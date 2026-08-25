@@ -4,9 +4,9 @@
 
 import * as THREE from 'three';
 import {
-  chooseTerrainLodBuild,
   initialTerrainLods,
   terrainLodForDistance,
+  warmTerrainLodBuilds,
 } from './terrainLodPolicy.js';
 import { SimplexNoise } from '../engine/simplexFast.js';
 import { applySourcedTerrain } from './sourcedTextures.js';
@@ -2757,7 +2757,33 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
     streamedGeometryCount: 0,
   };
   let streamFrame = 0;
-  const streamJob = { index: -1, level: -1, distanceM: 0, urgent: false };
+  const buildStreamJob = (job) => {
+    const c = chunks[job.index];
+    if (!c.fine && job.level < 2) {
+      c.fine = buildFineGrid(heightField, c.cx0, c.cz0);
+    }
+    c.lods[job.level] = buildChunkGeometry(
+      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine,
+    );
+    if (c.lods.every(Boolean)) c.fine = null;
+    streamStats.streamedGeometryCount++;
+    const d = Math.hypot(streamCameraX - c.cx, streamCameraZ - c.cz);
+    const want = terrainLodForDistance(d, c.level);
+    if (want === job.level) {
+      c.level = want;
+      c.mesh.geometry = c.lods[want];
+    }
+  };
+  let streamCameraX = 0;
+  let streamCameraZ = 0;
+  const warmStreamJobs = (camPos, maxJobs) => {
+    if (!streamFarLods || !camPos) return 0;
+    streamCameraX = camPos.x;
+    streamCameraZ = camPos.z;
+    return warmTerrainLodBuilds(
+      chunks, streamCameraX, streamCameraZ, maxJobs, buildStreamJob,
+    );
+  };
   group.userData.updateLOD = (camPos) => {
     for (const c of chunks) {
       const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
@@ -2771,24 +2797,13 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
     // detail over following seconds instead of replacing the old load stall
     // with a burst on the first playable frame.
     if (!streamFarLods || (++streamFrame & 3) !== 0) return;
-    const job = chooseTerrainLodBuild(chunks, camPos.x, camPos.z, streamJob);
-    if (!job) return;
-    const c = chunks[job.index];
-    if (!c.fine && job.level < 2) {
-      c.fine = buildFineGrid(heightField, c.cx0, c.cz0);
-    }
-    c.lods[job.level] = buildChunkGeometry(
-      heightField, c.cx0, c.cz0, LOD_SEGS[job.level], c.fine,
-    );
-    if (c.lods.every(Boolean)) c.fine = null;
-    streamStats.streamedGeometryCount++;
-    const d = Math.hypot(camPos.x - c.cx, camPos.z - c.cz);
-    const want = terrainLodForDistance(d, c.level);
-    if (want === job.level) {
-      c.level = want;
-      c.mesh.geometry = c.lods[want];
-    }
+    warmStreamJobs(camPos, 1);
   };
+  // Countdown warm seam: the ordinary update path deliberately builds at
+  // most one geometry every four live frames. Deployment can instead call
+  // this with a one-job budget between painted countdown frames, completing
+  // the same exact meshes before controls unlock without a quality change.
+  group.userData.warmStreaming = warmStreamJobs;
   group.userData.streamingStats = streamStats;
   group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;
   return group;

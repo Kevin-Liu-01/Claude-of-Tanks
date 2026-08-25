@@ -53,7 +53,8 @@ import {
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
-  setCamoBiome, applyCamoPatterns, applyCamoPatternsChunked, clearCamoOverrides, warmWreckTextures,
+  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
+  clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, shotRecoilScale, SIM_DT } from './sim/movement.js';
@@ -107,7 +108,7 @@ import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
   mulberry32, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
-  prepareNextOpeningRoute,
+  planBattleCamoOverrides, prepareNextOpeningRoute,
 } from './game/state.js';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -591,7 +592,7 @@ function resolveBattleIntentMap(specId, mapId) {
   return resolved;
 }
 
-function preloadBattleRosterTextures(specId, plannedIds) {
+function preloadBattleRosterTextures(specId, plannedIds, foregroundYield = null) {
   const ids = [...new Set((plannedIds || []).filter(Boolean))];
   const key = `${game.battleCount}:${specId}:${ids.join(',')}`;
   if (battleIntentTexturePromise && battleIntentTextureKey === key) {
@@ -603,11 +604,12 @@ function preloadBattleRosterTextures(specId, plannedIds) {
     await ensureTankBuilders(ids);
     for (const id of ids) {
       if (generation !== battleIntentTextureGeneration) return;
-      // This path runs only after explicit Battle hover/focus/touch intent.
-      // Use the exact eventual tier, but yield every ~3 ms so it cannot turn
-      // garage browsing into a background hitch. If the click arrives first,
-      // materials.js coalesces the transition with this same in-flight bake.
-      const tick = frameBudgetTick(3);
+      // Hover/focus intent uses a conservative garage budget. Once the opaque
+      // battle loader owns the page, the click promotes a cold preparation to
+      // its faster covered-frame yielder. materials.js coalesces either path
+      // into the same per-spec texture promise, so an in-flight intent warm is
+      // never duplicated and every eventual raster remains byte-identical.
+      const tick = foregroundYield || frameBudgetTick(3);
       await prebakeSharedTextures(
         getSpec(id), engineCtx.anisotropy ?? 4,
         id === specId ? 'preview' : 'ai', tick,
@@ -620,6 +622,14 @@ function preloadBattleRosterTextures(specId, plannedIds) {
   });
   battleIntentTexturePromise = pending;
   return pending;
+}
+
+function cancelBattleIntentTextureWarm() {
+  const pending = battleIntentTexturePromise;
+  ++battleIntentTextureGeneration;
+  battleIntentTexturePromise = null;
+  battleIntentTextureKey = '';
+  return pending || Promise.resolve();
 }
 
 function preloadBattleIntent({ specId, mapId } = {}) {
@@ -2846,6 +2856,25 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // not a state mutation; setupBattle below remains the sole roster owner.
   battleLoad.progress(0.02, 'Loading battlefield');
   const plannedRoster = planBattleParticipantIds(game, specId, randomRoster);
+  const plannedAutoCamoIds = planBattleCamoOverrides(
+    game, specId, resolved, randomRoster,
+  );
+  // The roster and its seeded battle camouflage are both known before the
+  // independent battlefield build begins. Finish/cancel any hover-time bake
+  // first so a repaint can never race an in-flight resize of the same canvas,
+  // then paint existing cache entries and create missing exact-tier textures
+  // under the loader. This whole chain overlaps terrain/vegetation/props.
+  const staleIntentTextureP = cancelBattleIntentTextureWarm();
+  const rosterTextureP = (async () => {
+    await staleIntentTextureP;
+    setCamoBiome(resolved);
+    clearCamoOverrides();
+    for (const id of plannedAutoCamoIds) setCamoOverride(id, 'auto');
+    await applyCamoPatternsChunked({
+      priorityIds: [specId], onlySpecIds: plannedRoster,
+    });
+    await preloadBattleRosterTextures(specId, plannedRoster, loadYield);
+  })();
   // Legacy battlefields author an exact wreck cast. Those synchronous wreck
   // bakes are part of world construction, so start their profile transfers in
   // the same barrier instead of discovering and awaiting each family late in
@@ -2859,6 +2888,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
+    rosterTextureP,
   ]);
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   battleLoad.progress(0.55, 'Uploading battlefield textures');
@@ -6372,6 +6402,21 @@ function scheduleDeferredCombatWarm(generation) {
     // cache were already prepared under the opaque loader.
     await warmBattleTerrainTiles(guardedYield, { primePresentation: false });
     trace.stages.navigation = Math.round(performance.now() - navigationStartedAt);
+    // Far terrain retains only its visible coarse mesh during map creation.
+    // Previously its exact one-band lookahead baked every fourth playable
+    // frame for the first 0.5-1.2 s after rollout (7-18 jobs depending on the
+    // battlefield, each up to ~8.5 ms in the terrain benchmark). Build the
+    // identical meshes one at a time during the frozen countdown instead.
+    const terrainLookaheadStartedAt = performance.now();
+    let terrainLookaheadJobs = 0;
+    while (world?.warmTerrainLookahead?.(camera.position, 1) > 0) {
+      terrainLookaheadJobs++;
+      await guardedYield();
+    }
+    trace.stages.terrainLookahead = Math.round(
+      performance.now() - terrainLookaheadStartedAt,
+    );
+    trace.terrainLookaheadJobs = terrainLookaheadJobs;
     await warmCombatRarePipelineChunked(6, guardedYield);
     if (typeof window !== 'undefined') {
       Object.assign(trace.stages, window.__COMBAT_RARE_WARM?.stages || {});
