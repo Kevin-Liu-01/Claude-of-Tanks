@@ -149,6 +149,7 @@ export function createGameState() {
     result: null,               // null | 'victory' | 'defeat'
     resultReason: null,         // null | 'elimination' | 'time_limit' | 'network_disconnect'
     spotting: null,             // SPOTTING WIRING: SpottingSystem (per battle)
+    openingRouteJobs: [],       // solo deployment A* jobs, drained before rollout
   };
 }
 
@@ -351,7 +352,7 @@ function textureQualityFor(game, ent) {
  * rosters include community vehicles.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
-function pickParticipants(game, playerSpecId, randomize) {
+function pickParticipants(game, playerSpecId, randomize, battleOrdinal = game.battleCount) {
   const player = game.tankById.get(playerSpecId);
   const enemySlots = randomize ? 13 : 7;
   // PERF (performance_budget r3, certification determinism): an explicit
@@ -376,7 +377,7 @@ function pickParticipants(game, playerSpecId, randomize) {
     const exact = typeof window !== 'undefined' && window.__DEBUG &&
       window.__DEBUG.flags && window.__DEBUG.flags.rosterExact;
     if (randomize && !exact && list.length < enemySlots) {
-      const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
+      const rng = mulberry32(0x51e57 ^ (battleOrdinal * 2654435761));
       const pool = game.allTanks.filter((e) =>
         e !== player && !list.includes(e) && isGarageVisibleTankId(e.specId));
       for (let i = pool.length - 1; i > 0; i--) {
@@ -392,7 +393,7 @@ function pickParticipants(game, playerSpecId, randomize) {
   }
   let others;
   if (randomize) {
-    const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
+    const rng = mulberry32(0x51e57 ^ (battleOrdinal * 2654435761));
     others = game.allTanks.filter((e) => e !== player && isGarageVisibleTankId(e.specId));
     for (let i = others.length - 1; i > 0; i--) {       // Fisher-Yates
       const j = (rng() * (i + 1)) | 0;
@@ -408,6 +409,17 @@ function pickParticipants(game, playerSpecId, randomize) {
     others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
   }
   return [player, ...others.slice(0, enemySlots)];
+}
+
+/**
+ * Resolve the next battle's deterministic participant ids without mutating
+ * game state. Battle entry uses this while the battlefield chunk/build is in
+ * flight so every required procedural profile can transfer and parse in
+ * parallel instead of waiting behind world construction.
+ */
+export function planBattleParticipantIds(game, playerSpecId, randomize = true) {
+  return pickParticipants(game, playerSpecId, randomize, game.battleCount + 1)
+    .map((entity) => entity.specId);
 }
 
 /**
@@ -445,6 +457,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   game.result = null;
   game.resultReason = null;
   game.battleCount++;
+  game.openingRouteJobs.length = 0;
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
@@ -765,6 +778,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     ent.input.shellSlot = 0;
     ent.input.aimPoint.copy(ent.state.aimPoint);
     ent._destroyedAnnounced = false;
+    ent._openingRoute = null;
     ent._lastImpactT = -1; // impact-event cooldown must not carry across battles
     ent.ai = null;
     // Rematch: undo any wreck look / thrown tracks / stripped ERA from the
@@ -876,26 +890,34 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       }
       // town skirt applies to staging legs only — the FINAL sweep leg keeps
       // hunting through the opposing spawn (proximity-spot guarantee).
-      const doctrineWaypoints = W
-        .map((pt, wi) => (wi < W.length - 1 ? _skirtWp(pt[0], pt[1]) : pt))
-        .map(([wx, wz]) => [_clampW(wx), _clampW(wz)]);
-      const terrainWaypoints = [];
-      let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
-      for (const [wx, wz] of doctrineWaypoints) {
-        const leg = planBotRoute({
-          start: routeStart,
-          goal: { x: wx, z: wz },
-          navigation: botNavigation,
-          rng: routeRng,
-          role,
-          spec: ent.spec,
-          useRoleDetour: false,
-        });
-        if (!leg.length) break;
-        terrainWaypoints.push(...leg);
-        routeStart = { x: wx, z: wz };
-      }
-      ent.aiCtl.setWaypoints(terrainWaypoints, { loop: false });
+      const doctrineWaypoints = W.map((pt, wi) => {
+        const [wx, wz] = wi < W.length - 1 ? _skirtWp(pt[0], pt[1]) : pt;
+        return [_clampW(wx), _clampW(wz)];
+      });
+      const prepareOpeningRoute = () => {
+        const terrainWaypoints = [];
+        let routeStart = { x: spawn.pos[0], z: spawn.pos[2] };
+        for (const [wx, wz] of doctrineWaypoints) {
+          const leg = planBotRoute({
+            start: routeStart,
+            goal: { x: wx, z: wz },
+            navigation: botNavigation,
+            rng: routeRng,
+            role,
+            spec: ent.spec,
+            useRoleDetour: false,
+          });
+          if (!leg.length) break;
+          terrainWaypoints.push(...leg);
+          routeStart = { x: wx, z: wz };
+        }
+        ent.aiCtl.setWaypoints(terrainWaypoints, { loop: false });
+        // Retain the immutable battle-start copy so main can prime the fast
+        // terrain grid before rollout instead of baking under moving bots.
+        ent._openingRoute = terrainWaypoints;
+      };
+      if (opts.deferOpeningRoutes) game.openingRouteJobs.push(prepareOpeningRoute);
+      else prepareOpeningRoute();
     }
     // Spawn warm-start (r5 terrain-contact gate): run the movement sim for a
     // few ticks so the attitude spring settles and the terrain support solve
@@ -910,6 +932,19 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       ent.visual.setVisible(true);
     }
   });
+}
+
+/**
+ * Prepare one deterministic solo-bot opening route. Player battle entry calls
+ * this behind the frozen deployment countdown; synchronous tests/captures keep
+ * setupBattle's original eager behavior by omitting deferOpeningRoutes.
+ * @returns {boolean} true when a job was consumed
+ */
+export function prepareNextOpeningRoute(game) {
+  const job = game.openingRouteJobs.shift();
+  if (!job) return false;
+  job();
+  return true;
 }
 
 // ---------------------------------------------------------------------------

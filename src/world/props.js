@@ -2805,7 +2805,7 @@ ${snowCap ? `
     const cs = 256;
     const cc = document.createElement('canvas');
     cc.width = cc.height = cs;
-    const cctx = cc.getContext('2d');
+    const cctx = cc.getContext('2d', { willReadFrequently: true });
     cctx.clearRect(0, 0, cs, cs);
     for (let b = 0; b < 260; b++) { // wheat stalks with seed heads
       const x = crng() * cs;
@@ -3380,7 +3380,7 @@ ${snowCap ? `
       const s = 128;
       const c = document.createElement('canvas');
       c.width = c.height = s;
-      const ctx = c.getContext('2d');
+      const ctx = c.getContext('2d', { willReadFrequently: true });
       ctx.clearRect(0, 0, s, s);
       const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
       if (kind === 'scorch') {
@@ -3479,7 +3479,7 @@ ${snowCap ? `
       const w = 128, h = 256;
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
+      const ctx = c.getContext('2d', { willReadFrequently: true });
       ctx.clearRect(0, 0, w, h);
       const trng = mulberry32(9131);
       // churned base band

@@ -425,7 +425,22 @@ async function measureBattle(mapId) {
     } catch (_) {
       warmTimedOut = true;
     }
-    result.countdownWarm = await opened.page.evaluate(() => window.__BATTLE_COUNTDOWN_WARM);
+    let deferredWarmTimedOut = false;
+    try {
+      await opened.page.waitForFunction(
+        'window.__BATTLE_DEFERRED_WARM?.done === true',
+        { timeout: 20000 },
+      );
+    } catch (_) {
+      deferredWarmTimedOut = true;
+    }
+    Object.assign(result, await opened.page.evaluate(() => ({
+      countdownWarm: window.__BATTLE_COUNTDOWN_WARM,
+      deferredWarm: window.__BATTLE_DEFERRED_WARM,
+      combatOpeningWarm: window.__COMBAT_OPENING_WARM,
+      combatRareWarm: window.__COMBAT_RARE_WARM,
+      combatWarm: window.__COMBAT_WARM,
+    })));
     const stall = await captureStalls(opened.page);
     record('battle', mapId, result.ms, {
       bootMs: opened.readyWallMs,
@@ -436,6 +451,9 @@ async function measureBattle(mapId) {
       tracedTotalMs: result.trace?.totalMs ?? null,
       world: result.world || null,
       combatWarm: result.combatWarm || null,
+      combatOpeningWarm: result.combatOpeningWarm || null,
+      combatRareWarm: result.combatRareWarm || null,
+      deferredWarm: result.deferredWarm || null,
       prefetch: result.prefetch || null,
       reusedPedestal: result.reusedPedestal,
       playerContactReady: result.playerContactReady,
@@ -445,8 +463,10 @@ async function measureBattle(mapId) {
       visualLoadTimings: result.visualLoadTimings,
       countdownWarm: result.countdownWarm || null,
       warmTimedOut,
+      deferredWarmTimedOut,
       stall,
-      invariantPass: result.countdownWarm?.doneBeforeRollout === true,
+      invariantPass: result.countdownWarm?.doneBeforeRollout === true
+        && result.deferredWarm?.doneBeforeRollout === true,
       errors: opened.errors,
     });
   } finally {
@@ -628,6 +648,9 @@ async function measureTransitionsAndRematch() {
     await battlePage.page.waitForFunction(
       'window.__BATTLE_COUNTDOWN_WARM?.done === true', { timeout: pageTimeoutMs },
     );
+    await battlePage.page.waitForFunction(
+      'window.__BATTLE_DEFERRED_WARM?.done === true', { timeout: pageTimeoutMs },
+    );
     const entryStall = await captureStalls(battlePage.page);
     const entryVisuals = await battlePage.page.evaluate(
       () => window.__VISUAL_LOAD_TIMINGS?.slice() || []);
@@ -635,8 +658,10 @@ async function measureTransitionsAndRematch() {
       phase: await battlePage.page.evaluate(() => window.__DEBUG.game.phase),
       stall: entryStall,
       visuals: entryVisuals,
-      invariantPass: await battlePage.page.evaluate(
-        () => window.__BATTLE_COUNTDOWN_WARM?.doneBeforeRollout === true),
+      invariantPass: await battlePage.page.evaluate(() => (
+        window.__BATTLE_COUNTDOWN_WARM?.doneBeforeRollout === true
+        && window.__BATTLE_DEFERRED_WARM?.doneBeforeRollout === true
+      )),
       errors: battlePage.errors.splice(0),
     });
     await resetStalls(battlePage.page, 'battle-exit:garage');
@@ -663,10 +688,10 @@ async function measureTransitionsAndRematch() {
       errors: battlePage.errors.splice(0),
     });
 
-    await resetStalls(battlePage.page, 'battle-rematch:urban');
+    await resetStalls(battlePage.page, 'battle-rematch:urban:leo2a7v');
     const rematch = await battlePage.page.evaluate(async () => {
       const startedAt = performance.now();
-      await window.__DEBUG.beginBattleEntry('m1a2', 'urban');
+      await window.__DEBUG.beginBattleEntry('leo2a7v', 'urban');
       return {
         ms: performance.now() - startedAt,
         phase: window.__DEBUG.game.phase,
@@ -676,14 +701,27 @@ async function measureTransitionsAndRematch() {
     await battlePage.page.waitForFunction(
       'window.__BATTLE_COUNTDOWN_WARM?.done === true', { timeout: pageTimeoutMs },
     );
-    const countdownWarm = await battlePage.page.evaluate(() => window.__BATTLE_COUNTDOWN_WARM);
+    await battlePage.page.waitForFunction(
+      'window.__BATTLE_DEFERRED_WARM?.done === true', { timeout: pageTimeoutMs },
+    );
+    const rematchWarm = await battlePage.page.evaluate(() => ({
+      countdown: window.__BATTLE_COUNTDOWN_WARM,
+      deferred: window.__BATTLE_DEFERRED_WARM,
+      opening: window.__COMBAT_OPENING_WARM,
+      rare: window.__COMBAT_RARE_WARM,
+    }));
     const rematchStall = await captureStalls(battlePage.page);
     record('battle-rematch', 'urban', rematch.ms, {
       phase: rematch.phase,
       stages: rematch.trace?.stages || null,
-      countdownWarm,
+      countdownWarm: rematchWarm.countdown,
+      deferredWarm: rematchWarm.deferred,
+      combatOpeningWarm: rematchWarm.opening,
+      combatRareWarm: rematchWarm.rare,
       stall: rematchStall,
-      invariantPass: rematch.phase === 'battle' && countdownWarm?.doneBeforeRollout === true,
+      invariantPass: rematch.phase === 'battle'
+        && rematchWarm.countdown?.doneBeforeRollout === true
+        && rematchWarm.deferred?.doneBeforeRollout === true,
       errors: battlePage.errors.splice(0),
     });
 

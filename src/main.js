@@ -47,7 +47,7 @@ import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
-  createTank, ensureFullFleet, ensureTankBuilder,
+  createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
@@ -64,8 +64,6 @@ import {
 } from './sim/damage.js';
 import { createShell } from './sim/ballistics.js';
 import { activateSpecialAction, specialActionLocksShell } from './sim/specialActions.js';
-import { createKillCam } from './game/killcam.js';
-import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
 import { createDamagePanel } from './ui/damagePanel.js';
 // damage panel r9: the panel's top-down plan layers are offscreen renders of
@@ -103,7 +101,8 @@ import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
-  mulberry32, ensureStagedVisuals, nextStagedBake,
+  mulberry32, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
+  prepareNextOpeningRoute,
 } from './game/state.js';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -216,6 +215,35 @@ function createFrameBudgetYielder(budgetMs = 12) {
     sliceStart = performance.now();
   };
 }
+
+/**
+ * Yield long work behind an opaque loading veil without paying a full rAF for
+ * every generator checkpoint. A task yield keeps input/watchdogs responsive;
+ * a real frame is still guaranteed at a bounded cadence so progress never
+ * freezes. This is deliberately separate from garage/live idle work, whose
+ * visible scene retains the strict per-frame yielder above.
+ */
+function createOpaqueLoadingYielder(budgetMs = 12, paintEveryMs = 80) {
+  let sliceStart = performance.now();
+  let lastPaint = sliceStart;
+  const taskYield = () => {
+    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+      return globalThis.scheduler.yield();
+    }
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  };
+  return async (force = false) => {
+    const now = performance.now();
+    if (!force && now - sliceStart < budgetMs) return;
+    if (now - lastPaint >= paintEveryMs) {
+      await nextFrame();
+      lastPaint = performance.now();
+    } else {
+      await taskYield();
+    }
+    sliceStart = performance.now();
+  };
+}
 /**
  * Run one named boot stage with progress reporting around it.
  * @param {string} key stage key (bootScreen.js STAGES)
@@ -262,6 +290,11 @@ installShaderErrorCollector(renderer);
 const _diag = runDeviceDiag(renderer);
 const _diagRescue = applyDiagRescue(renderer, _diag);
 const scene = new THREE.Scene();
+// The scene root is permanently identity. Leaving matrixAutoUpdate enabled
+// marks it dirty every render and propagates `force=true` through every world
+// and vehicle descendant, defeating the static-world matrix freeze below.
+// Dynamic child roots still update themselves during the normal traversal.
+scene.matrixAutoUpdate = false;
 // zero-viewport boot hardening: booting inside a pane that has not laid out
 // yet (innerWidth/innerHeight 0) used to seed a NaN aspect (0/0) that poisons
 // the projection matrix; fall back to 16:9 — the first real layout re-derives
@@ -411,7 +444,7 @@ function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) 
     // cannot present meaningfully faster than a frame. Coalesce to 32 ms;
     // generation order and geometry stay identical while the user-visible
     // load sheds the scheduling tax.
-    const yieldForeground = createFrameBudgetYielder(32);
+    const yieldForeground = createOpaqueLoadingYielder(24, 80);
     const yieldBackground = createFrameBudgetYielder(4);
     rec.promise = loadWorldModule().then(({ createMapAsync }) => createMapAsync(
       engineCtx, { mapId: id, seed: 1337 },
@@ -492,19 +525,43 @@ function cancelBackgroundWorldBuildsExcept(mapId = null) {
   }
 }
 
-// Start the exact selected battlefield shortly after the garage has genuinely
-// settled. The async builder pauses at its fine-grained checkpoints whenever
-// input resumes, so this improves ordinary click-to-battle latency without
-// competing with boot or tank browsing. The former eight-second delay meant
-// most players could press BATTLE before prefetch had even started.
+// Prime the heavy battlefield module after the garage settles, but do not
+// construct an entire world merely because someone is inspecting vehicles.
+// Building terrain/vegetation/props in the visible garage was the source of
+// otherwise mysterious navigation and carousel stalls on constrained Macs.
+// The explicit Battle hover/focus intent below starts the real world promise;
+// a click promotes that same promise without duplicating any work.
 function queueWorldPrefetch(mapId, delay = 1800) {
   if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
   worldPrefetchTimer = 0;
   if (!bootComplete || !mapId || mapId === 'random') return;
   worldPrefetchTimer = setTimeout(() => {
     worldPrefetchTimer = 0;
-    if (game.phase === 'garage' && pendingMapChoice === mapId) prefetchWorld(mapId);
+    if (game.phase === 'garage' && pendingMapChoice === mapId) {
+      loadWorldModule().catch(() => null);
+      ensureTankBuilder(selectedSpecId).catch(() => null);
+    }
   }, delay);
+}
+
+function preloadBattleIntent({ specId, mapId } = {}) {
+  loadWorldModule().catch(() => null);
+  preloadKillcamModule().catch(() => null);
+  // A pointer/focus/touch on BATTLE is stronger intent than ordinary garage
+  // browsing. Transfer the deterministic next roster's exact family chunks
+  // now, not only the selected hero, so the click can overlap parsing with
+  // the player's natural hover. No visual or battlefield is constructed.
+  if (specId) {
+    const planned = planBattleParticipantIds(game, specId, true);
+    ensureTankBuilders(planned).catch(() => null);
+  }
+  // Decode the shipped deterministic sprite atlases after explicit intent.
+  // The fallback procedural generator and every rendered texture are
+  // unchanged; this only moves module transfer/PNG decode ahead of the veil.
+  ensureFxRuntime()
+    .then((live) => live.preloadTextures?.())
+    .catch(() => null);
+  if (mapId && mapId !== 'random') prefetchWorld(mapId);
 }
 
 /** World raycast that is safe before any battlefield exists. */
@@ -543,8 +600,14 @@ let battleWarmPending = false;
 let battleWarmGeneration = 0;
 
 async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null) {
-  const total = game.tanks.filter((ent) =>
-    !ent.visual && (!predicate || predicate(ent))).length;
+  const pending = game.tanks.filter((ent) =>
+    !ent.visual && (!predicate || predicate(ent)));
+  const total = pending.length;
+  // Resolve every profile chunk needed by this cohort concurrently before
+  // procedural construction begins. The old per-vehicle await serialized a
+  // network/parse boundary ahead of each country's first tank even though
+  // the roster is already known and all chunks are independent.
+  await ensureTankBuilders(pending.map((ent) => ent.specId));
   let built = 0;
   for (;;) {
     const next = nextStagedBake(game, predicate);
@@ -558,7 +621,6 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
       ? (window.__VISUAL_LOAD_TIMINGS ||= []) : null;
     visualTimings?.push(visualTiming);
     let visualMark = performance.now();
-    await ensureTankBuilder(next.ent.specId);
     try {
       await prebakeSharedTextures(getSpec(next.ent.specId),
         engineCtx.anisotropy ?? 4, next.quality, () => yieldForBudget());
@@ -577,10 +639,10 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
   }
 }
 
-/** Separate visual construction, texture upload, and first scene render into
- * distinct painted frames. Shader submission stays on the real render path;
- * compileAsync was tested here and made the transition materially worse on
- * ANGLE because its initial traversal became another large atomic task. */
+/** Separate visual construction, texture upload, and reveal into bounded
+ * tasks. Shader submission stays on the real render path; compileAsync was
+ * tested here and made the transition materially worse on ANGLE because its
+ * initial traversal became another large atomic task. */
 async function stageBattleVisualReveal(ent, yieldForBudget) {
   const visual = ent?.visual;
   const root = visual?.root;
@@ -615,9 +677,38 @@ async function stageBattleVisualReveal(ent, yieldForBudget) {
 }
 
 // --- fx ----------------------------------------------------------------------
-const fx = createFx(engineCtx, hfProxy, { seed: 5000 });
-scene.add(fx.group);
-fx.bindBus(bus);
+// The complete particles/effects graph is battle-only. Parsing and building it
+// during garage boot delayed first interaction and created GPU objects the
+// garage could not display. Intent preloads the module; the opaque battle,
+// Studio, and deterministic-shot entry gates below construct exactly one live
+// instance before any consumer can emit an effect.
+let fx = null;
+let fxModulePromise = null;
+let fxRuntimePromise = null;
+function preloadFxModule() {
+  if (!fxModulePromise) {
+    fxModulePromise = import('./fx/effects.js').catch((error) => {
+      fxModulePromise = null;
+      throw error;
+    });
+  }
+  return fxModulePromise;
+}
+function ensureFxRuntime() {
+  if (fx) return Promise.resolve(fx);
+  if (fxRuntimePromise) return fxRuntimePromise;
+  fxRuntimePromise = preloadFxModule().then(({ createFx }) => {
+    const live = createFx(engineCtx, hfProxy, { seed: 5000 });
+    scene.add(live.group);
+    live.bindBus(bus);
+    fx = live;
+    return live;
+  }).catch((error) => {
+    fxRuntimePromise = null;
+    throw error;
+  });
+  return fxRuntimePromise;
+}
 
 // Per-wheel suspension: give every battle tank the live heightfield so road
 // wheels conform to terrain (garage pedestal tank stays rigid on its disc).
@@ -733,6 +824,13 @@ let pedestalVisual = null;
 // First visit opens on the M1A1 Abrams; later visits resume the last playable
 // tank the user selected. Invalid/stale ids safely fall back to the M1A1.
 let selectedSpecId = loadLastSpecId();
+// Start the exact hero profile transfer as soon as persistence resolves. The
+// module is independent of the garage UI assembled below; waiting until
+// setPedestalTank() serialized this network/parse boundary behind the preview
+// texture bake on a genuinely cold connection.
+const bootSelectedBuilderP = STUDIO_BOOT_INTENT
+  ? Promise.resolve()
+  : ensureTankBuilder(selectedSpecId);
 let pedestalPollToken = 0; // cancels superseded asynchronous hero builds
 // switch-desync r1: convergence bookkeeping. A switch is "pending" from the
 // moment its call bumps pedestalPollToken until any reveal path records it
@@ -1186,8 +1284,15 @@ setInterval(() => {
 // quality tiers; this changes only the garage presentation cache.
 await bootStage('vehicle', async () => {
   if (STUDIO_BOOT_INTENT) return;
-  await prebakeSharedTextures(getSpec(selectedSpecId), engineCtx.anisotropy ?? 4,
-    'preview', () => nextFrame());
+  // The branded boot screen is opaque. Keep its animation painting at a
+  // bounded cadence, but do not charge one entire display frame for every
+  // procedural texture checkpoint in the selected hero's cold bake.
+  const bootVehicleYield = createOpaqueLoadingYielder(12, 80);
+  await Promise.all([
+    bootSelectedBuilderP,
+    prebakeSharedTextures(getSpec(selectedSpecId), engineCtx.anisotropy ?? 4,
+      'preview', bootVehicleYield),
+  ]);
   await setPedestalTank(selectedSpecId);
 });
 // LOADING PERF note (boot r9): a KHR_parallel_shader_compile overlap
@@ -1282,7 +1387,6 @@ function activateWorld(next, { services = true } = {}) {
   // and applyPreset below re-asserts it on map re-keys).
   sky.ensureCloudTextures();
   pendingMapId = world.mapId;
-  collider = createCollider(game, world);
   const skyCfg = world.config.sky || {};
   // Only re-key the atmosphere when the map actually changed — the first
   // activation of the boot map keeps createSky's DEFAULT_PRESET exactly as the
@@ -1501,6 +1605,8 @@ function loadPlayMenuModule() {
   return playMenuModulePromise;
 }
 function preloadPlayMode(mode) {
+  preloadFxModule().catch(() => null);
+  preloadKillcamModule().catch(() => null);
   loadPlayMenuModule()
     .then((module) => module.preloadPlayMode(mode))
     .catch(() => { /* battle click remains the retry/fallback path */ });
@@ -1583,6 +1689,7 @@ const garage = await bootStage('ui', () => createGarage({
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: preloadPlayMode,
+  onBattleIntent: preloadBattleIntent,
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
   maps: garageMaps,
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
@@ -1814,17 +1921,46 @@ function updateSniperFill() {
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
 // module breakdown. Capture hooks live in the KILL-CAM sections of state.js
 // (game.killcam); the camera is driven only via rig.setExternalPose.
-const killcam = createKillCam({
-  scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
-  getEntity: (id) => game.tankById.get(id),
-  getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
-  // killcam r2 (owner: "show the actual animations of popping turrets and
-  // exploding, especially during kill cam"): the replay's live-action IMPACT
-  // beat re-fires the real destruction FX (fireball/debris/smoke) on the
-  // restaged victim between the flight and the x-ray hold.
-  getFx: () => fx,
-});
-killcam.bindBus(bus);
+const dormantSpectate = {
+  active: false, targetId: null,
+  startObserver: () => false, stop() {},
+};
+let killcam = {
+  fxTimeScale: 1, lastBeginWallMs: 0, spectate: dormantSpectate,
+  isActive: () => false, cancel() {}, update() {},
+  playForResult: () => false, stageXrayShot() {},
+};
+let killcamModulePromise = null;
+let killcamRuntimePromise = null;
+function preloadKillcamModule() {
+  if (!killcamModulePromise) {
+    killcamModulePromise = import('./game/killcam.js').catch((error) => {
+      killcamModulePromise = null;
+      throw error;
+    });
+  }
+  return killcamModulePromise;
+}
+function ensureKillcamRuntime() {
+  if (killcamRuntimePromise) return killcamRuntimePromise;
+  killcamRuntimePromise = preloadKillcamModule().then(({ createKillCam }) => {
+    const live = createKillCam({
+      scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
+      getEntity: (id) => game.tankById.get(id),
+      getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
+      // Replay impact uses the real pooled destruction effects.
+      getFx: () => fx,
+    });
+    live.bindBus(bus);
+    killcam = live;
+    game.killcam = live;
+    return live;
+  }).catch((error) => {
+    killcamRuntimePromise = null;
+    throw error;
+  });
+  return killcamRuntimePromise;
+}
 game.killcam = killcam;
 
 /**
@@ -1856,7 +1992,7 @@ bus.on('shell:hit', (ev) => {
         target.state ? target.state.yaw : undefined,
       );
     }
-    if (pen && ev.pos && fx.armorScar) {
+    if (pen && ev.pos && fx?.armorScar) {
       _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
       _v2.set(ev.normal[0], ev.normal[1], ev.normal[2]);
       fx.armorScar(target.visual, _v1, _v2, ev.caliberMm || 90);
@@ -1968,6 +2104,7 @@ bus.on('shell:expired', (ev) => {
 // (the same fx the pole hinge-topple uses; the fall anim itself runs in
 // vegetation.js via world.crushObstacle).
 bus.on('prop:crushed', (ev) => {
+  if (!fx) return;
   _v1.set(ev.pos[0], ev.pos[1], ev.pos[2]);
   _fwd.set(ev.dir[0], 0, ev.dir[2]);
   fx.propCrush(_v1, _fwd, ev.h);
@@ -2434,7 +2571,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   post.setAdaptiveSuspended(true);
   const shownAt = performance.now();
   if (typeof window !== 'undefined') window.__VISUAL_LOAD_TIMINGS = [];
-  const loadYield = createFrameBudgetYielder(12);
+  const loadYield = createOpaqueLoadingYielder(12, 80);
   const resolved = resolveMapId(mapId || pendingMapId);
   const cfg = getMapConfig(resolved);
   // perf-smooth r1: per-stage wall-clock telemetry for the player battle-entry
@@ -2457,10 +2594,25 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   await nextFrame();
 
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
+  // The next roster is deterministic from battleCount, so resolve its exact
+  // profile chunks alongside the independent world build. This is a plan,
+  // not a state mutation; setupBattle below remains the sole roster owner.
   battleLoad.progress(0.02, 'Loading battlefield');
-  await ensureWorld(resolved,
-    (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
-    { precompile: false });
+  const plannedRoster = planBattleParticipantIds(game, specId, randomRoster);
+  // Legacy battlefields author an exact wreck cast. Those synchronous wreck
+  // bakes are part of world construction, so start their profile transfers in
+  // the same barrier instead of discovering and awaiting each family late in
+  // the serial props generator. Random-pool maps keep their seeded on-demand
+  // path rather than speculatively downloading the entire modern fleet.
+  const plannedWorldVehicles = cfg.props?.tankWrecks?.ids || [];
+  await Promise.all([
+    ensureWorld(resolved,
+      (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
+      { precompile: false }),
+    ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
+    ensureFxRuntime(),
+    ensureKillcamRuntime(),
+  ]);
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   bltStage('world');
 
@@ -2527,20 +2679,16 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   });
   bltStage('bake');
 
-  // Complete hidden enemy visuals and exhaustive first-use caches while the
-  // opaque transition still owns the screen. This work used to begin after
-  // battleLoad.hide(), spending up to 8 ms on every visible countdown frame
-  // and occasionally blocking one for a procedural canvas/shader atom. The
-  // result looked like a 47-52 FPS countdown followed by a perfectly smooth
-  // battle. Preserve the old ordering (camouflage must settle before burnt
-  // variants copy those canvases), but make the phase boundary honest: once
-  // the world is visible, loading is finished.
+  // Complete the exact roster visuals and opening-critical caches while the
+  // opaque transition owns the screen. Rare variants continue in bounded
+  // slices during the frozen deployment countdown; rollout cannot release
+  // until that queue has produced its receipt.
   battleLoad.progress(0.90, 'Preparing deployment');
   const entryCamoSweep = camoSweepP;
-  const finishEntryWarm = () => {
+  const finishEntryWarm = async () => {
     const warmGeneration = ++battleWarmGeneration;
     battleWarmPending = true;
-    return (async () => {
+    await (async () => {
       const countdownWarmStartedAt = performance.now();
       const trace = { done: false, phase: 'transition', stages: {} };
       if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
@@ -2559,7 +2707,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // preserves regular progress paints while avoiding the old interactive
       // 8 ms duty cycle, which added several seconds of pure rAF waiting once
       // this work moved out of the visible countdown.
-      const coveredYield = createFrameBudgetYielder(24);
+      const coveredYield = createOpaqueLoadingYielder(18, 80);
       await streamBattleVisuals((ent) => ent.team === 'player', coveredYield, (fraction) => {
         battleLoad.progress(0.91 + fraction * 0.02, 'Preparing allied vehicles');
       });
@@ -2574,10 +2722,23 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       await warmBattleTerrainTiles(coveredYield);
       if (warmGeneration !== battleWarmGeneration) return;
       mark('terrainGrid');
+      // Render exactly the deployment camera once while the roster screen is
+      // still opaque. This single real frame compiles the visible world,
+      // roster, CSM and post paths that the countdown will actually use. The
+      // old opening warm exhaustively traversed every off-camera node and all
+      // shadow variants before revealing anything, then rendered this same
+      // frame anyway. Re-cover rendering after the receipt so later budget
+      // yields do not redraw the whole battlefield behind the loader.
+      battleLoad.progress(0.968, 'Priming deployment view');
+      prepareBattleRevealCamera();
+      await primeSoloBattleRevealFrame();
+      battleLoadRenderingCovered = true;
+      if (warmGeneration !== battleWarmGeneration) return;
+      mark('openingFrame');
       battleLoad.progress(0.97, 'Priming combat effects');
       await fx.preloadTextures?.();
-      await warmCombatPipelineChunked(24);
-      mark('combatWarm');
+      await warmCombatOpeningPipelineChunked(18, coveredYield);
+      mark('combatOpeningWarm');
       if (warmGeneration !== battleWarmGeneration) return;
       trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
       trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
@@ -2593,11 +2754,13 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
           error: String(error),
         };
       }
-    }).finally(() => {
-      if (warmGeneration === battleWarmGeneration) battleWarmPending = false;
     });
+    // The opening-critical subset is ready. Keep battleWarmPending armed
+    // until the rare/full-quality deployment queue below finishes; the
+    // visible countdown may advance but cannot release controls early.
+    return warmGeneration;
   };
-  await finishEntryWarm();
+  const entryWarmGeneration = await finishEntryWarm();
   bltStage('warm');
   // Start the cheap ambient graph before reveal as well. openBattle keeps its
   // idempotent calls for debug/direct entry paths, but the normal player path
@@ -2632,6 +2795,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   await battleLoad.hide();
   bltStage('hide');
   openBattle();
+  scheduleDeferredCombatWarm(entryWarmGeneration);
   bltStage('open');
   blt.totalMs = Math.round(performance.now() - shownAt);
 }
@@ -3073,6 +3237,8 @@ async function presentNetworkBattle({
   const [{ createBrowserBattleBridge }, { createNetworkStatus }] = await Promise.all([
     import('./net/browserBattleBridge.js'),
     import('./ui/networkStatus.js'),
+    ensureFxRuntime(),
+    ensureKillcamRuntime(),
   ]);
   markLoadStage('modules');
   networkStatus = createNetworkStatus();
@@ -3463,11 +3629,6 @@ function startBattle(specId, mapId = null, opts = {}) {
   // Debug/probe entries (opts.preBattleHold unset) keep preBattleS = 0 and
   // are driveable immediately, exactly as before.
   game.preBattleS = opts.preBattleHold ? Infinity : 0;
-  // PERF (performance_budget r1): first-combat fallback for the post-ready
-  // idle warm — no-op when the idle callback already ran (the common case).
-  // The loading-screen path warms explicitly AFTER the roster is picked, so it
-  // skips this (the pick is what decides which visuals are needed).
-  if (!opts.deferVisuals) warmCombatPipeline();
   // SHOT-MODE RESET (effects_combat/content_breadth r2): __SHOTS.set() freezes
   // fx and stops the sim tick; any UI path out of shot mode (garage BATTLE
   // button) must resume it or the battle is permanently frozen.
@@ -3512,8 +3673,14 @@ function startBattle(specId, mapId = null, opts = {}) {
   sbtStage('lendPlayerVisual');
   setupBattle(game, specId, world, {
     random: opts.randomRoster !== false, deferVisuals: !!opts.deferVisuals,
-    deferCamoRepaint: true,
+    deferCamoRepaint: true, deferOpeningRoutes: !!opts.deferVisuals,
   });
+  // Programs and source canvases remain cached by WebGL/the browser, but the
+  // receipt itself is round-scoped: a rematch can select a different map,
+  // roster, camouflage set and freshly constructed visual graph. Treating a
+  // prior round as globally warm skipped the new wreck textures and hidden
+  // LOD/shadow variants, moving their first touch into live combat.
+  resetCombatRoundWarmState();
   sbtStage('setupRoster');
   primeDeploymentTerrainTiles();
   sbtStage('terrainTiles');
@@ -3568,6 +3735,10 @@ function startBattle(specId, mapId = null, opts = {}) {
   sbtStage('uiAndCamera');
   sbt.totalMs = Math.round(performance.now() - sbtStartedAt);
   if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = sbt;
+  // Debug/capture entries do not use the branded loader or its deployment
+  // queue. Drain the same round receipt synchronously after the actual roster
+  // exists; the player path owns it explicitly in startBattleLoading().
+  if (!opts.deferVisuals) warmCombatPipeline();
   // The battle-open flyby is armed only once the player can actually SEE it:
   // the loading-screen path calls openBattle() when the screen clears.
   if (!opts.deferVisuals) openBattle();
@@ -3580,6 +3751,8 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
   await Promise.all([
     ensureFullFleet(),
     ensureWorld(resolved, null, { precompile: false }),
+    ensureFxRuntime(),
+    ensureKillcamRuntime(),
   ]);
   return startBattle(specId, resolved, opts);
 }
@@ -3646,6 +3819,7 @@ function enterGarage({ preserveRoom = !!(
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
   game.preBattleS = 0;
   battleWarmGeneration++;
+  cancelDeferredCombatWarm();
   battleWarmPending = false;
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
   shotMode = false;
@@ -4077,8 +4251,14 @@ function presentationStateFor(ent, alpha) {
   return sampleTankPresentationPose(ent._soloRenderPose, ent.state, alpha);
 }
 
+const _detailScreenPos = new THREE.Vector3();
 function updateDustAndSync(dtFrame, presentationAlpha = 1) {
   const cameraPosition = camera.position;
+  // Renderer frustum-culls individual meshes later, but running-gear
+  // conformance happens before that traversal. Build one conservative screen
+  // guard so an actor just outside the view cannot upload hundreds of hidden
+  // wheel/link matrices every render frame.
+  camera.updateMatrixWorld();
   for (const ent of game.tanks) {
     // PERF r3: staged-battle visuals are deferred to post-ready idle — skip
     // entities whose visual has not streamed in yet (garage phase only;
@@ -4099,12 +4279,19 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
     // reduced cadence beyond fine-detail range — battle loop only; studio,
     // killcam and staged poses omit it and keep full-rate updates.
     const viewDistM = cameraPosition.distanceTo(presented.pos);
+    _detailScreenPos.copy(presented.pos);
+    _detailScreenPos.y += dims.heightM * 0.5;
+    _detailScreenPos.project(camera);
+    const detailVisible = ent.isPlayer || game.phase !== 'battle'
+      || (_detailScreenPos.z >= -1.2 && _detailScreenPos.z <= 1.2
+        && Math.abs(_detailScreenPos.x) <= 1.35
+        && Math.abs(_detailScreenPos.y) <= 1.45);
     // A returned player's already-resident battle visual can become the
     // garage hero. Its simulation entity intentionally retains the last
     // battlefield pose for the next deployment, so do not let the generic
     // visual sync pull the displayed pedestal tank back out of the garage.
     if (game.phase !== 'garage' || visual !== pedestalVisual) {
-      visual.syncFromState(state, dtFrame, viewDistM, presented);
+      visual.syncFromState(state, dtFrame, viewDistM, presented, detailVisible);
     }
     // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
     // Wrecks stay visible; the player is never gated; outside battle
@@ -4614,8 +4801,10 @@ function tick(nowMs) {
   // killcam r2: the replay's IMPACT beat briefly dilates the fx clock (~0.55x
   // through the turret launch) — the same clock drives the pop arc, so the
   // whole destruction slows coherently. 1 everywhere else.
-  fx.update(livePaused ? 0 : dtR * (kcActive ? killcam.fxTimeScale : 1),
-    game.shells, camera, resolveFxSubject);
+  if (fx) {
+    fx.update(livePaused ? 0 : dtR * (kcActive ? killcam.fxTimeScale : 1),
+      game.shells, camera, resolveFxSubject);
+  }
 
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   // NOTE: live isActive() check — the replay may have STARTED in step 2 of
@@ -4797,6 +4986,7 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // Always restage deterministically: a prior random-roster battle must not
   // leak into the screenshot contract (recipes reference tiger1/t90m/etc).
   setupBattle(game, playerSpecId, world);
+  resetCombatRoundWarmState();
   battleStaged = true;
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec, game.player.visual);
@@ -5410,10 +5600,11 @@ window.__SHOTS = {
     // Deterministic authoring views can reference several families in one
     // synchronous recipe. This capture-only gate is deliberately exhaustive;
     // normal game, gallery and network flows remain per-id demand loaded.
-    await ensureFullFleet();
-    // PERF (performance_budget r1): shot recipes must never race the deferred
-    // post-ready warm — run it now (idempotent, no-op once idle fired).
-    warmCombatPipeline();
+    await Promise.all([
+      ensureFullFleet(),
+      ensureFxRuntime(),
+      ensureKillcamRuntime(),
+    ]);
     showroom.stop(); // reset drag/inertia before any deterministic shot recipe
     shotMode = true;
     perfHud.setCaptureHidden(true);
@@ -5427,6 +5618,9 @@ window.__SHOTS = {
     killcam.cancel(); // KILL-CAM: clear any staged/active replay (restores materials)
     await ensureShotWorld(VIEW_MAP[name] || 'verdant',
       name === 'killcam_xray' ? 'm1a2_sepv3' : 'm1a2'); // MAP-CONFIG WIRING
+    // Capture recipes bypass the battle transition. Warm only after the exact
+    // deterministic roster/map has replaced any prior live round.
+    warmCombatPipeline();
     // camo_spotting r2: garage shot keeps the neutral pedestal key; every
     // battlefield shot gets the authored map sun.
     setGarageSunTrim(name === 'garage');
@@ -5506,11 +5700,26 @@ await bootStage('post', async () => {
 // - light-set warm (r4): garage spots hidden changes the program hash (see
 //   setGarageSpots), so entering battle swaps programs instead of compiling
 //   ~70 of them inside the opening frames.
+let combatOpeningWarmed = false;
 let combatPipelineWarmed = false;
-let _warmGen = null; // in-flight chunked warm — the sync wrapper drains the remainder
+let _openingWarmGen = null;
+let _rareWarmGen = null;
 let networkOpeningEffectsWarmed = false;
 
-async function warmBattleTerrainTiles(yieldForBudget) {
+function resetCombatRoundWarmState() {
+  if (_openingWarmGen) {
+    try { _openingWarmGen.return(); } catch (_) { /* stale round cleanup */ }
+  }
+  if (_rareWarmGen) {
+    try { _rareWarmGen.return(); } catch (_) { /* stale round cleanup */ }
+  }
+  _openingWarmGen = null;
+  _rareWarmGen = null;
+  combatOpeningWarmed = false;
+  combatPipelineWarmed = false;
+}
+
+async function warmBattleTerrainTiles(yieldForBudget, { primePresentation = true } = {}) {
   const warmer = world?.heightField?.warmFastTilesAround;
   if (typeof warmer !== 'function') return;
   const points = [];
@@ -5521,9 +5730,54 @@ async function warmBattleTerrainTiles(yieldForBudget) {
     // surrounding 64 m. Bots need their current tile ready before the first
     // authority tick; later unexpected crossings are bounded by 32 m tiles.
     points.push({ x: pos.x, z: pos.z, radiusM: ent.isPlayer ? 64 : 0 });
+    if (ent.isPlayer || !Array.isArray(ent._openingRoute)) continue;
+    // Prime roughly the first 70 m of each deterministic opening plan. Route
+    // points are densely A*-expanded, so sample at a fixed spatial cadence
+    // rather than baking the same tile dozens of times. Later unscripted
+    // turns still use the bounded 16 m first-touch fallback in terrain.js.
+    let lastX = pos.x;
+    let lastZ = pos.z;
+    let routeM = 0;
+    let sinceWarmM = 0;
+    for (const waypoint of ent._openingRoute) {
+      if (!waypoint) continue;
+      const wx = Number(waypoint[0]);
+      const wz = Number(waypoint[1]);
+      if (!Number.isFinite(wx) || !Number.isFinite(wz)) continue;
+      const stepM = Math.hypot(wx - lastX, wz - lastZ);
+      routeM += stepM;
+      sinceWarmM += stepM;
+      lastX = wx;
+      lastZ = wz;
+      if (sinceWarmM >= 24 || routeM >= 70) {
+        points.push({ x: wx, z: wz, radiusM: 10 });
+        sinceWarmM = 0;
+      }
+      if (routeM >= 70) break;
+    }
   }
   for (const _tile of warmer.call(world.heightField, points)) {
     if (yieldForBudget) await yieldForBudget();
+  }
+
+  // Prime the first real presentation update while the opaque screen still
+  // owns the frame. This populates the camera-centred grass-cell cache and
+  // uploads its initial inactive instance set; previously both happened on
+  // the first rollout frame and showed up as a terrain/vegetation hitch even
+  // though the world itself had finished loading.
+  const focus = game.player || game.tanks.find((ent) => ent?.state);
+  if (primePresentation && focus?.state && typeof world?.update === 'function') {
+    const yaw = focus.state.yaw || 0;
+    const warmCamera = new THREE.Vector3(
+      focus.state.pos.x - Math.sin(yaw) * 12,
+      focus.state.pos.y + 5,
+      focus.state.pos.z - Math.cos(yaw) * 12,
+    );
+    const warmForward = new THREE.Vector3(
+      Math.sin(yaw), -0.16, Math.cos(yaw),
+    ).normalize();
+    world.update(0, warmCamera, warmForward, focus.state.pos);
+    if (yieldForBudget) await yieldForBudget(true);
   }
 }
 
@@ -5691,32 +5945,131 @@ function warmStudioPipelineChunked(onProgress = null) {
 // load / __SHOTS — the screen owns those frames) drains it whole, the
 // chunked wrapper gives the garage a painted frame between steps. A battle
 // entered mid-chunk simply drains the REMAINDER synchronously.
-function warmCombatPipeline() {
-  if (combatPipelineWarmed && !_warmGen) return;
-  const g = _warmGen || warmCombatPipelineSteps();
-  _warmGen = null;
+function drainGenerator(g) {
   let r = g.next();
   while (!r.done) r = g.next();
 }
-async function warmCombatPipelineChunked(budgetMs = 8) {
-  if (combatPipelineWarmed && !_warmGen) return;
-  const g = _warmGen || (_warmGen = warmCombatPipelineSteps());
-  // Generator yields mark safe preemption points, not mandatory 16 ms
-  // sleeps. Drain cheap/cache-hit steps within one small main-thread budget
-  // and yield only when that budget is spent. The old one-rAF-per-marker
-  // policy added well over a second of pure frame latency across effect,
-  // wreck, and hidden-variant markers on constrained machines.
-  const yieldForFrameBudget = createFrameBudgetYielder(budgetMs);
+function warmCombatPipeline() {
+  // Deterministic captures/debug entry need the exhaustive cache state before
+  // their next synchronous frame. Player entry uses the two chunked wrappers
+  // below so only opening-critical work owns the opaque transition.
+  if (!combatOpeningWarmed) {
+    const g = _openingWarmGen || warmCombatOpeningPipelineSteps();
+    _openingWarmGen = null;
+    drainGenerator(g);
+  }
+  if (!combatPipelineWarmed) {
+    const g = _rareWarmGen || warmCombatRarePipelineSteps();
+    _rareWarmGen = null;
+    drainGenerator(g);
+  }
+}
+async function warmGeneratorChunked(kind, factory, budgetMs, providedYielder) {
+  let g = kind === 'opening' ? _openingWarmGen : _rareWarmGen;
+  if (!g) {
+    g = factory();
+    if (kind === 'opening') _openingWarmGen = g;
+    else _rareWarmGen = g;
+  }
+  const yieldForFrameBudget = providedYielder || createFrameBudgetYielder(budgetMs);
   for (;;) {
-    if (_warmGen !== g) return; // the sync wrapper took over and finished
+    const live = kind === 'opening' ? _openingWarmGen : _rareWarmGen;
+    if (live !== g) return; // a synchronous capture/debug drain took over
     const r = g.next();
-    if (r.done) { if (_warmGen === g) _warmGen = null; return; }
+    if (r.done) {
+      if (kind === 'opening' && _openingWarmGen === g) _openingWarmGen = null;
+      if (kind === 'rare' && _rareWarmGen === g) _rareWarmGen = null;
+      return;
+    }
     await yieldForFrameBudget();
   }
 }
-function* warmCombatPipelineSteps() {
-  if (combatPipelineWarmed) return;
-  combatPipelineWarmed = true;
+function warmCombatOpeningPipelineChunked(budgetMs = 8, providedYielder = null) {
+  if (combatOpeningWarmed && !_openingWarmGen) return Promise.resolve();
+  return warmGeneratorChunked(
+    'opening', warmCombatOpeningPipelineSteps, budgetMs, providedYielder,
+  );
+}
+function warmCombatRarePipelineChunked(budgetMs = 6, providedYielder = null) {
+  if (combatPipelineWarmed && !_rareWarmGen) return Promise.resolve();
+  return warmGeneratorChunked(
+    'rare', warmCombatRarePipelineSteps, budgetMs, providedYielder,
+  );
+}
+let deferredCombatWarmPromise = null;
+function cancelDeferredCombatWarm() {
+  if (_rareWarmGen) {
+    try { _rareWarmGen.return(); } catch (_) { /* cancellation cleanup only */ }
+    _rareWarmGen = null;
+  }
+  deferredCombatWarmPromise = null;
+}
+function scheduleDeferredCombatWarm(generation) {
+  if (!Number.isFinite(generation) || generation !== battleWarmGeneration) {
+    battleWarmPending = false;
+    return Promise.resolve();
+  }
+  if (deferredCombatWarmPromise) return deferredCombatWarmPromise;
+  const trace = { done: false, generation, stages: {} };
+  if (typeof window !== 'undefined') window.__BATTLE_DEFERRED_WARM = trace;
+  const startedAt = performance.now();
+  const pending = (async () => {
+    // Guarantee that the first battlefield frame and countdown numeral reach
+    // the default framebuffer before any deferred atom starts.
+    await nextFrame();
+    if (generation !== battleWarmGeneration || game.phase !== 'battle') return;
+    const visibleYield = createFrameBudgetYielder(6);
+    const guardedYield = async (force = false) => {
+      await visibleYield(force);
+      if (generation !== battleWarmGeneration || game.phase !== 'battle') {
+        const error = new Error('deferred combat warm cancelled');
+        error.code = 'combat_warm_cancelled';
+        throw error;
+      }
+    };
+    const navigationStartedAt = performance.now();
+    while (prepareNextOpeningRoute(game)) await guardedYield();
+    // The exact first 70 m of each route must be in the fast terrain cache
+    // before bots can move. Position tiles and the vegetation presentation
+    // cache were already prepared under the opaque loader.
+    await warmBattleTerrainTiles(guardedYield, { primePresentation: false });
+    trace.stages.navigation = Math.round(performance.now() - navigationStartedAt);
+    await warmCombatRarePipelineChunked(6, guardedYield);
+    if (typeof window !== 'undefined') {
+      Object.assign(trace.stages, window.__COMBAT_RARE_WARM?.stages || {});
+    }
+    trace.done = true;
+    trace.totalMs = Math.round(performance.now() - startedAt);
+    trace.finishedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
+    trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
+    devTrace?.mark('battle:deferred-warm-end', { totalMs: trace.totalMs });
+  })().catch((error) => {
+    if (error?.code !== 'combat_warm_cancelled') {
+      trace.error = String(error);
+      console.warn('[warm] deferred deployment warm failed (continuing):', error);
+    } else {
+      trace.cancelled = true;
+    }
+    trace.done = true;
+    trace.doneBeforeRollout = false;
+    if (generation !== battleWarmGeneration) cancelDeferredCombatWarm();
+  }).finally(() => {
+    if (generation === battleWarmGeneration) battleWarmPending = false;
+    // A cancelled old round can settle after a rematch has already installed
+    // its own queue. Never let that stale finally clear the new promise.
+    const ownsSlot = deferredCombatWarmPromise === pending;
+    if (ownsSlot) deferredCombatWarmPromise = null;
+    if (typeof window !== 'undefined'
+        && generation === battleWarmGeneration
+        && (ownsSlot || window.__BATTLE_DEFERRED_WARM === trace)) {
+      window.__BATTLE_DEFERRED_WARM = trace;
+    }
+  });
+  deferredCombatWarmPromise = pending;
+  return pending;
+}
+function* warmCombatOpeningPipelineSteps() {
+  if (combatOpeningWarmed) return;
   const warmTrace = { stages: {} };
   const warmStartedAt = performance.now();
   let warmMarkedAt = warmStartedAt;
@@ -5736,50 +6089,21 @@ function* warmCombatPipelineSteps() {
   while (!ensureStagedVisuals(game, 1)) yield;
   yield;
   markWarmStage('visuals');
-  const warm = game.tanks.find((e) => !e.isPlayer && e.visual);
-  if (warm) {
-    warm.visual.setDestroyed({});
-    try { renderer.compile(warm.visual.root, camera, scene); } catch (_) { /* fine */ }
-    warm.visual.resetDestroyed();
-  }
-  // KILL-HITCH FIX: the single-tank wreck dance above only compiles THAT
-  // tank's burn program variants — programs are cached per material
-  // param-class, so every other tank family still paid its burn-hook shader
-  // compiles synchronously on its first kill (the visible pause right before
-  // a destruction played). Install the DISARMED hook on every battle tank
-  // now; the scene compile below then builds all the '|burn-r6' variants
-  // behind the loading screen. Late-created first-party visuals receive the
-  // same hook at construction.
+  // Install the disarmed burn shader hook on the exact roster now; this is
+  // cheap and makes the ordinary live materials compile against their final
+  // cache keys. Per-spec char canvases and destroyed clones are deliberately
+  // left to the bounded deployment-countdown pass below.
   for (const e of game.tanks) {
     if (e.visual && e.visual.prewarmBurn) e.visual.prewarmBurn();
   }
-  markWarmStage('wrecks');
-  // EVENT-SPIKE WARM part 1 (perf-r2b, measured by tmp-eventspike-probe):
-  // the shared WRECK canvases (heightToNormal / roughness patch bakes via
-  // getImageData in materials.js) bake per FAMILY on the first setDestroyed —
-  // the probe still measured a 215 ms first-kill frame with everything else
-  // warm. Run the destroyed/restore dance for EVERY fielded visual, not just
-  // one: per-family bakes are cached, so repeats are free and each family's
-  // one-time cost lands here behind the loading screen instead of on its
-  // first kill.
-  for (const e of game.tanks) {
-    if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
-      // perf-r5: the char/ember canvases are the dance's hidden atom — bake
-      // them CHUNKED first (a slice per painter stage), then the dance and
-      // every later kill hit the cache.
-      try { yield* prebakeBurntSteps(e.specId, engineCtx.anisotropy ?? 4); } catch (_) { /* warm only */ }
-      try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
-      // Build the lazy thrown-track ribbon before the hidden-variant compile
-      // so a first live de-track never allocates or links it mid-fight.
-      if (e.visual.setTrackState) {
-        try {
-          e.visual.setTrackState('trackL', true);
-          e.visual.setTrackState('trackL', false);
-        } catch (_) { /* warm only */ }
-      }
-      yield; // one wreck-dance per slice
-    }
-  }
+  markWarmStage('rosterHooks');
+  // Destroyed-state material swaps mutate the live visual while compiling.
+  // Keep that small roster-specific pass under the opaque veil; all other
+  // rare effects remain deferred. This prevents a tank from disappearing or
+  // flashing as a wreck between countdown frames and removes the last two
+  // >50 ms countdown tasks measured by the entry probe.
+  yield* warmDestroyedRosterVariantsSteps();
+  markWarmStage('wreckVariants');
   const effectDetail = {};
   let effectDetailAt = performance.now();
   const markEffectDetail = (name) => {
@@ -5787,7 +6111,7 @@ function* warmCombatPipelineSteps() {
     effectDetail[name] = Math.round(now - effectDetailAt);
     effectDetailAt = now;
   };
-  markEffectDetail('wreckFamilies');
+  markEffectDetail('start');
   // EVENT-SPIKE WARM part 2: fire one silent instance of every combat effect
   // family at a far map corner while the loading screen owns the frame — the
   // lazy sprite-atlas bakes (flash/fbm getImageData work inside particles.js)
@@ -5813,22 +6137,7 @@ function* warmCombatPipelineSteps() {
       fx.dust(wp, wd, 1);
       fx.exhaust(wp, 1, true);
       yield;
-      fx.destruction(wp, null, 'shot');
-      yield;
-      fx.destruction(wp, null, 'ammorack');
-      yield;
-      // perf-r2f (journey probe): the prop-destruction families bake their
-      // splinter/debris sprites on FIRST break — ramming your first fence
-      // measured a 1.1 s frame. One silent break per family joins the volley
-      // (same corner, cleared by the resetAll below).
-      _v3.set(1, 0, 0);
-      for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
-        fx.propBreak(kind, wp, _v3, 1.5);
-        yield; // r11: one splinter/debris sprite bake per slice
-      }
-      fx.propCrush(wp, _v3, 7);
-      yield;
-      markEffectDetail('effectFamilies');
+      markEffectDetail('openingEffects');
       // perf-r2e: one scar stamp per fielded visual — the impact-decal
       // system bakes its shared scar canvases (heightToNormal/roughness
       // getImageData work) per FAMILY on the first stamp, which used to be
@@ -5859,13 +6168,18 @@ function* warmCombatPipelineSteps() {
       const warmLayerMask = camera.layers.mask;
       camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
       try {
-        const forwardPrograms = {};
         const forwardAt = performance.now();
-        yield* initializeForwardProgramsSteps(forwardPrograms);
-        forwardPrograms.wallMs = Math.round(performance.now() - forwardAt);
-        forwardPrograms.totalCompileMs = Math.round(forwardPrograms.totalCompileMs || 0);
-        forwardPrograms.maxCompileMs = Math.round(forwardPrograms.maxCompileMs || 0);
-        effectDetail.forwardPrograms = forwardPrograms;
+        const before = (renderer.info.programs || []).length;
+        renderer.compile(fx.group, camera, scene);
+        const programs = renderer.info.programs || [];
+        for (let i = before; i < programs.length; i++) {
+          try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
+          yield;
+        }
+        effectDetail.forwardPrograms = {
+          added: Math.max(0, programs.length - before),
+          wallMs: Math.round(performance.now() - forwardAt),
+        };
         const warmRenderAt = performance.now();
         warmRenderIsolated(fx.group);
         effectDetail.warmRender = Math.round(performance.now() - warmRenderAt);
@@ -5879,7 +6193,6 @@ function* warmCombatPipelineSteps() {
   }
   warmTrace.effectDetail = effectDetail;
   markWarmStage('effects');
-  warmWreckTextures(renderer);
   fx.group.traverse((o) => {
     const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
     for (const m of mats) {
@@ -5891,46 +6204,105 @@ function* warmCombatPipelineSteps() {
   });
   yield;
   markWarmStage('textures');
-  const spotsWereOn = game.phase !== 'battle';
-  if (spotsWereOn) setGarageSpots(false);
-  // MOBILE-QA r10 (idle profiler): this scene-wide compile ran as ONE
-  // generator slice on the post-ready idle pump — a +157-program burst
-  // measured 609-1130 ms of garage-idle jank. Same compile, chunked per
-  // top-level scene child with a yield between slices.
-  {
-    const kids = scene.children.slice();
-    for (const kid of kids) {
-      try { renderer.compile(kid, camera, scene); } catch (_) { /* fine */ }
-      if (spotsWereOn) setGarageSpots(true);
-      yield;
-      if (spotsWereOn) setGarageSpots(false);
-    }
-  }
-  if (spotsWereOn) setGarageSpots(true);
-  yield;
-  markWarmStage('sceneCompile');
-  // MOBILE-QA r1: depth-variant warm for the boot/debug entry paths too —
-  // the loading-screen path re-runs it per battle (worlds swap casters).
-  yield* warmShadowProgramSteps();
-  markWarmStage('shadows');
-  yield* compileHiddenVariantsSteps();
-  markWarmStage('hiddenVariants');
+  combatOpeningWarmed = true;
   warmTrace.totalMs = Math.round(performance.now() - warmStartedAt);
-  if (typeof window !== 'undefined') window.__COMBAT_WARM = warmTrace;
+  if (typeof window !== 'undefined') window.__COMBAT_OPENING_WARM = warmTrace;
 }
 
 /**
- * EVENT-SPIKE WARM part 4 (perf-r2c): shader programs cache by cacheKey, not
- * by material INSTANCE — and setDestroyed() creates fresh cloned materials
- * (char/burn variants, addon keeps) every kill. The old wreck dance created
- * and discarded those clones BEFORE any compile pass saw them, so the first
- * kill of each variant still linked its programs on the event frame (+6/7
- * programs, 200-600 ms worst frames measured: AddOnTuskCamo/Rail, addon_keep
- * burn variants). Compile each tank's subtree twice — once IN the destroyed
- * state (the clones' programs enter the cache and outlive the clones) and
- * once live — using the object-form compile, which traverses regardless of
- * visibility (unspotted enemies included). Called from warmCombatPipeline
- * after the complete first-party roster is staged.
+ * Full-quality but non-opening combat variants. Nothing here changes what a
+ * kill, de-track, crush, prop break, or hidden LOD looks like; it changes only
+ * when their one-time canvases/programs are prepared. The player path runs
+ * this generator in small slices during the frozen five-second deployment
+ * countdown and holds at one second if it somehow has not finished. Thus rare
+ * work leaves the opaque loader without leaking into live controls.
+ */
+function* warmCombatRarePipelineSteps() {
+  if (combatPipelineWarmed) return;
+  if (!combatOpeningWarmed) yield* warmCombatOpeningPipelineSteps();
+  const rareTrace = { stages: {} };
+  const startedAt = performance.now();
+  let markedAt = startedAt;
+  const mark = (name) => {
+    const now = performance.now();
+    rareTrace.stages[name] = Math.round(now - markedAt);
+    markedAt = now;
+  };
+
+  // Destruction and crush families are not emitted before rollout. Spawn one
+  // silent instance of each, initialize their exact forward pipelines, then
+  // reset every pool before the countdown can release controls.
+  {
+    const wp = new THREE.Vector3(-460, 0, -460);
+    _v3.set(1, 0, 0);
+    try {
+      fx.destruction(wp, null, 'shot');
+      yield;
+      fx.destruction(wp, null, 'ammorack');
+      yield;
+      for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+        fx.propBreak(kind, wp, _v3, 1.5);
+        yield;
+      }
+      fx.propCrush(wp, _v3, 7);
+      yield;
+      try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+      post.prepareSoftParticles();
+      const mask = camera.layers.mask;
+      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+      try {
+        // Only the newly spawned destruction/prop pools are cold here. The
+        // previous implementation walked the entire visible scene, repeating
+        // every world and tank program during the live countdown.
+        yield* initializeForwardProgramsSteps(fx.group);
+        warmRenderIsolated(fx.group);
+      } finally {
+        camera.layers.mask = mask;
+      }
+    } catch (error) {
+      console.warn('[warm] deferred combat variants failed (continuing):', error);
+    } finally {
+      fx.resetAll();
+    }
+  }
+  mark('destructionEffects');
+
+  warmWreckTextures(renderer);
+  fx.group.traverse((o) => {
+    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    for (const material of mats) {
+      for (const key of Object.keys(material)) {
+        const value = material[key];
+        if (value?.isTexture) {
+          try { renderer.initTexture(value); } catch (_) { /* first render fallback */ }
+        }
+      }
+    }
+  });
+  yield;
+  mark('textures');
+
+  yield* warmShadowProgramSteps();
+  mark('shadows');
+  rareTrace.hiddenDetail = {};
+  yield* compileHiddenVariantsSteps(rareTrace.hiddenDetail);
+  mark('hiddenVariants');
+  combatPipelineWarmed = true;
+  rareTrace.totalMs = Math.round(performance.now() - startedAt);
+  if (typeof window !== 'undefined') {
+    window.__COMBAT_RARE_WARM = rareTrace;
+    window.__COMBAT_WARM = {
+      opening: window.__COMBAT_OPENING_WARM || null,
+      rare: rareTrace,
+      totalMs: (window.__COMBAT_OPENING_WARM?.totalMs || 0) + rareTrace.totalMs,
+    };
+  }
+}
+
+/**
+ * Prepare the per-round destroyed material clones and burnt canvases while the
+ * opaque loader owns the frame. Live and node-hidden variants are compiled by
+ * the bounded rare pass below after the first deployment frame is visible.
  */
 // MOBILE-QA r1 (tools/tmp-fightprof evidence, docs/MOBILE-QA.md ledger):
 // renderer.compile builds FORWARD programs only — shadow-DEPTH variants link
@@ -5947,6 +6319,24 @@ function* warmShadowProgramSteps() {
   const csm = lighting && lighting.csm;
   const light = csm && csm.lights && csm.lights[csm.lights.length - 1];
   if (!light || !light.shadow) return;
+  // Each isolated root/cohort below exists only to submit a distinct caster
+  // class through ONE stretched depth cascade. The near cascades normally
+  // auto-refresh every render, so leaving them armed made every warm slice
+  // redraw the same near-field depth maps again (four cascades × every root)
+  // even though no new near-cascade program could result. Keep the lights and
+  // shadow count intact for the forward program key, but park sibling shadow
+  // updates until the warm is complete. Live rendering restores and refreshes
+  // every cascade immediately afterward.
+  const siblingShadowState = [];
+  for (const sibling of csm.lights) {
+    if (sibling === light || !sibling.shadow) continue;
+    siblingShadowState.push({
+      shadow: sibling.shadow,
+      autoUpdate: sibling.shadow.autoUpdate,
+    });
+    sibling.shadow.autoUpdate = false;
+    sibling.shadow.needsUpdate = false;
+  }
   const cam = light.shadow.camera;
   const save = {
     left: cam.left, right: cam.right, top: cam.top, bottom: cam.bottom,
@@ -6013,6 +6403,12 @@ function* warmShadowProgramSteps() {
     cam.updateProjectionMatrix();
     light.shadow.autoUpdate = save.auto;
     light.shadow.needsUpdate = true; // real cascade re-renders next frame
+    for (const state of siblingShadowState) {
+      state.shadow.autoUpdate = state.autoUpdate;
+      // A warm may have overlapped a forced refresh edge. Always request one
+      // real map after restoring so the optimization cannot expose stale CSM.
+      state.shadow.needsUpdate = true;
+    }
   }
 }
 
@@ -6048,10 +6444,10 @@ function warmRenderIsolated(root) {
 // Fall back to the same Three program objects, but consume each newly-created
 // forward variant separately and yield before creating the next. The final
 // warmRender still owns real texture/state/depth initialization.
-function* initializeForwardProgramsSteps(stats = null) {
+function* initializeForwardProgramsSteps(root = scene, stats = null) {
   let sliceAt = performance.now();
   const objects = [];
-  scene.traverseVisible((object) => {
+  root.traverseVisible((object) => {
     if (object.isMesh || object.isPoints || object.isLine || object.isSprite) objects.push(object);
   });
   for (const object of objects) {
@@ -6105,7 +6501,41 @@ function* linkerBreathingSlices(maxSlices) {
   } catch (_) { /* best-effort — the render below still resolves links */ }
 }
 
-function* compileHiddenVariantsSteps() {
+function* warmDestroyedRosterVariantsSteps() {
+  const gameplayTarget = post?.composer?.renderTarget1 || null;
+  for (const entity of game.tanks.slice()) {
+    const visual = entity?.visual;
+    if (!visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
+    try { yield* prebakeBurntSteps(entity.specId, engineCtx.anisotropy ?? 4); } catch (_) { /* warm only */ }
+    const rootWasVisible = visual.root.visible;
+    const targetBefore = renderer.getRenderTarget();
+    try {
+      visual.setDestroyed({ pop: true, ageS: 0 });
+      visual.root.visible = true;
+      if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
+      const before = (renderer.info.programs || []).length;
+      renderer.compile(visual.root, camera, scene);
+      const programs = renderer.info.programs || [];
+      for (let i = before; i < programs.length; i++) {
+        try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
+      }
+    } catch (_) { /* warm only */ }
+    finally {
+      renderer.setRenderTarget(targetBefore);
+      try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
+      visual.root.visible = rootWasVisible;
+    }
+    if (visual.setTrackState) {
+      try {
+        visual.setTrackState('trackL', true);
+        visual.setTrackState('trackL', false);
+      } catch (_) { /* warm only */ }
+    }
+    yield;
+  }
+}
+
+function* compileHiddenVariantsSteps(detail = null) {
   // MOBILE-QA r5: renderer.compile does NOT traverse visible:false subtrees
   // (three's projectObject early-out — the old comment claiming otherwise
   // was wrong), so non-active LOD levels and node-hidden addons never
@@ -6113,42 +6543,40 @@ function* compileHiddenVariantsSteps() {
   // last per-fight >100 ms task; owner-binding evidence in MOBILE-QA.md
   // r4/r5: hidden LOD meshes + kit decor). Force-visible window
   // around each compile, then restore.
-  const _cv = [];
-  const compileAll = (root) => {
-    _cv.length = 0;
-    root.traverse((o) => { if (o.visible === false) { _cv.push(o); o.visible = true; } });
-    // MOBILE-QA r13: the live scene pass renders into post's linear HDR
-    // target. The default-framebuffer compile warms an `srgb` sibling, not
-    // the `srgb-linear` key used when a spotted tank first enters the post
-    // chain (owner-bound probe: exactly +5 programs at t+4.5..8.9 s).
-    const priorTarget = renderer.getRenderTarget();
-    const gameplayTarget = post && post.composer ? post.composer.renderTarget1 : null;
-    try {
-      if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
-      renderer.compile(root, camera, scene);
-    } finally {
-      renderer.setRenderTarget(priorTarget);
-      for (const o of _cv) o.visible = false;
+  const compileAll = function* (root) {
+    const objects = [];
+    root.traverse((object) => {
+      if (object.isMesh || object.isPoints || object.isLine || object.isSprite) objects.push(object);
+    });
+    const gameplayTarget = post?.composer?.renderTarget1 || null;
+    let sliceAt = performance.now();
+    for (const object of objects) {
+      const wasVisible = object.visible;
+      const priorTarget = renderer.getRenderTarget();
+      try {
+        object.visible = true;
+        if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
+        const before = (renderer.info.programs || []).length;
+        renderer.compile(object, camera, scene);
+        const programs = renderer.info.programs || [];
+        for (let i = before; i < programs.length; i++) {
+          try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
+        }
+      } catch (_) { /* warm only */ }
+      finally {
+        renderer.setRenderTarget(priorTarget);
+        object.visible = wasVisible;
+      }
+      if (performance.now() - sliceAt >= 6) {
+        yield;
+        sliceAt = performance.now();
+      }
     }
   };
   for (const e of game.tanks) {
     if (!e.visual || !e.visual.root) continue;
     try {
-      if (e.visual.setDestroyed && e.visual.resetDestroyed) {
-        // pop:true — the REAL kill path's variant set (flying-turret clone,
-        // popped-state addon keeps); a {} dance warmed a different clone
-        // family and the pop set still linked on the first rack kill.
-        e.visual.setDestroyed({ pop: true, ageS: 0 });
-        compileAll(e.visual.root); // destroyed-state clones
-        e.visual.resetDestroyed();
-      }
-    } catch (_) { /* warm only */ }
-    // MOBILE-QA r10: yield BETWEEN the destroyed-state and live-state
-    // compiles — one whole tank per slice (heavier since r5's force-visible
-    // LOD coverage) was half of the garage-idle monster tasks.
-    yield;
-    try {
-      compileAll(e.visual.root);   // live-state materials
+      yield* compileAll(e.visual.root);   // live + node-hidden materials
     } catch (_) { /* warm only */ }
     yield; // one compile pass per slice
   }
@@ -6160,7 +6588,7 @@ function* compileHiddenVariantsSteps() {
   // renderer.compile() is frustum-independent for color programs: one walk
   // of the world group links them all here, behind the loading screen.
   if (world && world.group) {
-    try { renderer.compile(world.group, camera, scene); } catch (_) { /* warm only */ }
+    try { yield* compileAll(world.group); } catch (_) { /* warm only */ }
     yield;
     // perf-r5c (retina probe: one slice resolved 55 links at once, 653 ms):
     // give the driver's parallel linker breathing slices before any warm
@@ -6196,7 +6624,9 @@ function* compileHiddenVariantsSteps() {
     try {
       collectFlips();
       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+      const renderAt = performance.now();
       warmRender();
+      if (detail) detail.baseRenderMs = Math.round(performance.now() - renderAt);
       unflip();
     } catch (_) { unflip(); }
     yield;
@@ -6211,37 +6641,19 @@ function* compileHiddenVariantsSteps() {
         camera.fov = f;
         camera.updateProjectionMatrix();
         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+        const renderAt = performance.now();
         warmRender();
+        if (detail) detail[`scope${f}RenderMs`] = Math.round(performance.now() - renderAt);
         camera.fov = fov0;
         camera.updateProjectionMatrix();
         unflip();
       } catch (_) { unflip(); }
       yield;
     }
-    // perf-r4a: one hidden frame from the player spawn's chase pose — links
-    // exactly what the first battle frame will draw (world grass/props/wreck
-    // proxies included), color and shadow-depth variants alike.
-    try {
-      if (battleStaged && game.player && game.player.state) {
-        collectFlips();
-        const p = game.player.state.pos;
-        const yaw = game.player.state.yaw || 0;
-        _v1.set(p.x - Math.sin(yaw) * -14, p.y + 7.5, p.z - Math.cos(yaw) * -14);
-        _v2.set(p.x, p.y + 1.5, p.z);
-        const camPos0 = camera.position.clone();
-        const camQuat0 = camera.quaternion.clone();
-        camera.position.copy(_v1);
-        camera.lookAt(_v2);
-        if (world && world.update) world.update(0.016, camera.position, null, null);
-        if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-        warmRender();
-        camera.position.copy(camPos0);
-        camera.quaternion.copy(camQuat0);
-        if (world && world.update) world.update(0, camera.position, null, null);
-        unflip();
-      }
-      if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-    } catch (_) { unflip(); }
+    // The opaque entry path now presents and records the exact deployment
+    // camera before this deferred pass starts. Re-rendering a synthetic spawn
+    // pose here was duplicate work and the last 50-90 ms countdown task.
+    if (lighting && lighting.updateFrustums) lighting.updateFrustums();
   }
 }
 // Heavy combat caches intentionally do not warm in the interactive garage or
@@ -6257,7 +6669,10 @@ let studio = { active: false, tick() {} };
 let studioRuntimePromise = null;
 async function loadStudioRuntime() {
   if (studioRuntimePromise) return studioRuntimePromise;
-  studioRuntimePromise = import('./game/studio.js').then(({ createStudio }) => {
+  studioRuntimePromise = Promise.all([
+    import('./game/studio.js'),
+    ensureFxRuntime(),
+  ]).then(([{ createStudio }]) => {
     window.removeEventListener('keydown', lazyStudioKeyDown, true);
     studio = createStudio({
       renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
@@ -6312,7 +6727,6 @@ if (STUDIO_BOOT_INTENT) {
 }
 
 bootComplete = true;
-requestQuietIdle(() => { fx.preloadTextures?.().catch(() => {}); });
 queueWorldPrefetch(pendingMapChoice);
 scheduleRaf();
 
@@ -6928,7 +7342,8 @@ perfHud.setTelemetryProvider(collectDebugTelemetry);
 devTrace?.configure({ getTelemetry: collectDebugTelemetry });
 
 window.__DEBUG = {
-  scene, camera, renderer, post, lighting, game, fx, rig, bus,
+  scene, camera, renderer, post, lighting, game, rig, bus,
+  get fx() { return fx; },
   input, // controls probe: isLocked/isCursorAim/binding introspection
   settings, // PAUSE probe: isOpen/open/close introspection
   pauseInfo, // PAUSE probe: { paused, resumes, lastDtR, lastResumeDtR }
@@ -6986,7 +7401,7 @@ window.__DEBUG = {
   leaveBattleToGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks
   get spotting() { return game.spotting; },
-  killcam,                             // KILL-CAM introspection (phase, cancel)
+  get killcam() { return killcam; },   // KILL-CAM introspection (phase, cancel)
   showroom,                            // garage orbit introspection (debugState)
   garageDressing,                      // garage-scene r1: workshop dressing rig
   spawnKillShell: debugSpawnKillShell, // KILL-CAM: die on purpose

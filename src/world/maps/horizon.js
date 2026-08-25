@@ -487,7 +487,7 @@ function makeTreeLineTexture(rng) {
   const w = texSize(768), h = texSize(128); // distant alpha comb; see loading-speed r1 above
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, w, h);
   const base = h - 2;
   // lighting_post r7 (CRITICAL "flat teal paint-smear impostor forest 2-3

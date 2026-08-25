@@ -10,14 +10,15 @@ export function terrainLodForDistance(distanceM, currentLevel = 2) {
 }
 
 /**
- * Geometry required before the opening frame. Every chunk gets exactly the
- * level visible from deployment; other levels have a valid mesh to fall back
- * to until their identical-detail replacement is streamed.
+ * Geometry required before the opening frame. Chunks inside the opening
+ * near/mid region already pay for the shared 97x97 height/normal grid, so
+ * derive all three index densities from that same grid while it is hot. The
+ * extra coarse vertices are cheap; leaving them missing made the renderer
+ * rebuild dozens of geometries during the rollout. Truly far chunks retain
+ * only their visible coarse level and stream if the battle travels there.
  */
 export function initialTerrainLods(distanceM) {
-  const want = distanceM < TERRAIN_LOD_DIST[0]
-    ? 0 : distanceM < TERRAIN_LOD_DIST[1] ? 1 : 2;
-  return [want];
+  return distanceM < TERRAIN_LOD_DIST[1] ? [0, 1, 2] : [2];
 }
 
 /**

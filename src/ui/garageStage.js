@@ -101,7 +101,7 @@ function makeFloorTexture(rng) {
   const S = 1024;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   g.fillStyle = '#4e5154'; // r5: a step darker — keeps the key-spot pool below clip
   g.fillRect(0, 0, S, S);
   // large tonal blotches
@@ -187,7 +187,7 @@ function makeWallTexture(rng) {
   const W = 1024, H = 512;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   // base panel color
   g.fillStyle = '#3d4349';
   g.fillRect(0, 0, W, H);
@@ -406,7 +406,7 @@ export function createGarageStage(engineCtx, pos) {
   const podTopC = document.createElement('canvas');
   podTopC.width = podTopC.height = 1024;
   {
-    const g = podTopC.getContext('2d');
+    const g = podTopC.getContext('2d', { willReadFrequently: true });
     const C = 512;
     g.fillStyle = '#45484c';
     g.fillRect(0, 0, 1024, 1024);

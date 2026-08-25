@@ -5,8 +5,10 @@ import {
   terrainLodForDistance,
 } from './terrainLodPolicy.js';
 
-assert.deepEqual(initialTerrainLods(50), [0], 'opening near chunk creates only visible detail');
-assert.deepEqual(initialTerrainLods(300), [1], 'opening mid chunk creates only visible detail');
+assert.deepEqual(initialTerrainLods(50), [0, 1, 2],
+  'opening near chunk derives every LOD from its already-required fine grid');
+assert.deepEqual(initialTerrainLods(300), [0, 1, 2],
+  'opening mid chunk finishes its shared-grid LOD family before rollout');
 assert.deepEqual(initialTerrainLods(600), [2], 'opening far chunk creates only visible detail');
 
 assert.equal(terrainLodForDistance(170, 1), 0, 'near detail enters inside hysteresis');

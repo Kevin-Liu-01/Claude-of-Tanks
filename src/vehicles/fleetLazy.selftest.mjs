@@ -5,20 +5,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PROCEDURAL_PROFILES } from './profiledProcedurals.js';
 import { MISC_PROFILES } from './profiles/misc.js';
 import { FLEET_GROUP_IDS } from './fleetManifest.js';
-import { GROUP_PROFILES as nato } from './fleet/g1Nato.js';
-import { GROUP_PROFILES as east } from './fleet/g2East.js';
-import { GROUP_PROFILES as us } from './fleet/g3Us.js';
-import { GROUP_PROFILES as casemateAsia } from './fleet/g4CasemateAsia.js';
-
-const groups = { nato, east, us, casemateAsia };
 const owners = new Map();
-for (const [group, profiles] of Object.entries(groups)) {
-  assert.deepEqual(Object.keys(profiles).sort(), [...FLEET_GROUP_IDS[group]].sort(),
-    `${group} manifest exactly matches its dynamic profile chunk`);
-  for (const [id, profile] of Object.entries(profiles)) {
+for (const [group, ids] of Object.entries(FLEET_GROUP_IDS)) {
+  for (const id of ids) {
+    const profile = PROCEDURAL_PROFILES[id];
+    assert.ok(profile, `${group}:${id} resolves to a canonical profile`);
     assert.equal(owners.has(id), false, `${id} has exactly one dynamic owner`);
     owners.set(id, group);
-    assert.equal(profile, PROCEDURAL_PROFILES[id], `${group}:${id} preserves eager profile identity`);
   }
 }
 for (const [id, profile] of Object.entries(MISC_PROFILES)) {
@@ -40,11 +33,15 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(fleet.isTankBuilderReady('merkava4'), false);
   await fleet.ensureTankBuilder('m1a2');
   assert.equal(fleet.isTankBuilderReady('m1a2'), true);
-  assert.equal(fleet.isTankBuilderReady('m60a3'), true);
+  assert.equal(fleet.isTankBuilderReady('m1a2_sepv3'), true);
+  assert.equal(fleet.isTankBuilderReady('m60a3'), false);
   assert.equal(fleet.isTankBuilderReady('t90m'), false);
   assert.throws(() => fleet.createTank('t90m', null, { geometryReceipt: true }), /not loaded/);
   const abrams = fleet.createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
   abrams.dispose();
+  await fleet.ensureTankBuilders(['m60a3', 't90m']);
+  assert.equal(fleet.isTankBuilderReady('m60a3'), true);
+  assert.equal(fleet.isTankBuilderReady('t90m'), true);
   await fleet.ensureFullFleet();
   const { VISIBLE_TANK_IDS } = await import(${JSON.stringify(specsUrl)});
   for (const id of VISIBLE_TANK_IDS) {

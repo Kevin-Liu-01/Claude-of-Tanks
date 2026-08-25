@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.js';
 import { getSpec } from './specs.js';
 import { createTankState } from '../sim/movement.js';
+import './runningGearCadence.selftest.mjs';
 
 const visual = createTank('m1a2', null, {
   proceduralOnly: true,

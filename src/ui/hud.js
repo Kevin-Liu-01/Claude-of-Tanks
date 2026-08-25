@@ -1707,6 +1707,7 @@ export function initHud(bus) {
     // via forceAimDisplay
     const fadeK = scopeFadeMs >= 0
       ? Math.min(1, (performance.now() - scopeFadeMs) / 100) : 1;
+    if (fadeK >= 1) scopeFadeMs = -1;
     const sy = h / w; // elliptical space: y compressed so edges are equal
     ctx.save();
     ctx.translate(lensCx, lensCy);
@@ -2104,6 +2105,69 @@ export function initHud(bus) {
   let lastGunOutside = false;      // actual gun marker lies outside dispersion radius
   let lastCircleX = 0, lastCircleY = 0;
   let lastCameraMarkerCol = PEN_NONE, lastGunMarkerCol = PEN_NONE;
+
+  // A settled reticle is usually pixel-identical for dozens of frames while
+  // a parked/reloading-ready tank holds aim. Keep the live canvas (no bitmap
+  // resampling or visual downgrade), but avoid clearing and replaying its
+  // several hundred 2D path operations until an input actually changes.
+  // Transient arcs, confirmations, reloads, scope fades and radius smoothing
+  // deliberately bypass this cache so their animation remains full-rate.
+  const reticlePaint = {
+    valid: false, mode: '', w: 0, h: 0,
+    cx: 0, cy: 0, radPx: 0, gunX: null, gunY: null,
+    penRatio: null, distM: null, blockedDistM: null,
+    gunDistM: null, gunTargetId: null, aimTargetId: null,
+    singleReticle: false, atGunLimit: false, gunLimitSpec: false,
+    zoom: 1, reloadKind: '', magazineCapacity: 0, magazineRounds: 0,
+    shellType: '', shellCount: 0, drawnR: 0,
+  };
+  const nearPaint = (a, b, eps = 0.02) =>
+    (a == null && b == null) || (Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= eps);
+  function reticleCanReuse(view) {
+    if (!reticlePaint.valid || hitDirs.length || hitMark || readyPulseT >= 0 || scopeFadeMs >= 0) return false;
+    if (reloadHudFraction(view.reload) > 0) return false;
+    const targetR = clampRetR(reticleTargetR(view));
+    if (Math.abs(targetR - smoothRadPx) > 0.01) return false;
+    const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
+    const mag = view.magazine;
+    return reticlePaint.mode === mode && reticlePaint.w === w && reticlePaint.h === h
+      && nearPaint(reticlePaint.cx, view.cx) && nearPaint(reticlePaint.cy, view.cy)
+      && nearPaint(reticlePaint.radPx, view.radPx, 0.01)
+      && nearPaint(reticlePaint.gunX, view.gunX) && nearPaint(reticlePaint.gunY, view.gunY)
+      && nearPaint(reticlePaint.penRatio, view.penRatio, 0.001)
+      && nearPaint(reticlePaint.distM, view.distM, 0.25)
+      && nearPaint(reticlePaint.blockedDistM, view.blockedDistM, 0.05)
+      && nearPaint(reticlePaint.gunDistM, view.gunDistM, 0.05)
+      && reticlePaint.gunTargetId === view.gunTargetId
+      && reticlePaint.aimTargetId === aimTargetId
+      && reticlePaint.singleReticle === !!view.singleReticle
+      && reticlePaint.atGunLimit === !!view.atGunLimit
+      && reticlePaint.gunLimitSpec === !!view.gunLimitSpec
+      && nearPaint(reticlePaint.zoom, view.zoom || 1, 0.001)
+      && reticlePaint.reloadKind === (view.reload?.kind || '')
+      && reticlePaint.magazineCapacity === (mag?.capacity | 0)
+      && reticlePaint.magazineRounds === (mag?.rounds | 0)
+      && reticlePaint.shellType === (shell.type || '')
+      && reticlePaint.shellCount === shellCount(shell)
+      && nearPaint(reticlePaint.drawnR, lastDrawnR, 0.01);
+  }
+  function captureReticlePaint(view) {
+    const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
+    const mag = view.magazine;
+    reticlePaint.valid = true;
+    reticlePaint.mode = mode; reticlePaint.w = w; reticlePaint.h = h;
+    reticlePaint.cx = view.cx; reticlePaint.cy = view.cy; reticlePaint.radPx = view.radPx;
+    reticlePaint.gunX = view.gunX; reticlePaint.gunY = view.gunY;
+    reticlePaint.penRatio = view.penRatio; reticlePaint.distM = view.distM;
+    reticlePaint.blockedDistM = view.blockedDistM; reticlePaint.gunDistM = view.gunDistM;
+    reticlePaint.gunTargetId = view.gunTargetId; reticlePaint.aimTargetId = aimTargetId;
+    reticlePaint.singleReticle = !!view.singleReticle;
+    reticlePaint.atGunLimit = !!view.atGunLimit; reticlePaint.gunLimitSpec = !!view.gunLimitSpec;
+    reticlePaint.zoom = view.zoom || 1; reticlePaint.reloadKind = view.reload?.kind || '';
+    reticlePaint.magazineCapacity = mag?.capacity | 0; reticlePaint.magazineRounds = mag?.rounds | 0;
+    reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
+    reticlePaint.drawnR = lastDrawnR;
+  }
 
   function drawReticle(view, dt) {
     const anchor = resolveReticleAnchor(view, _reticleAnchor);
@@ -3729,13 +3793,22 @@ export function initHud(bus) {
     }
   }
 
-  function renderCanvas(dt) {
+  function renderCanvas(dt, force = false) {
+    if (!force && reticleCanReuse(aimView)) return;
     ctx.clearRect(0, 0, w, h);
-    if (mode === 'hidden') return;
+    // Clearing for a cinematic/garage invalidates the pixels represented by
+    // the last battle signature. Without this reset, returning to an
+    // otherwise-identical aim state could reuse the signature while the
+    // actual canvas remained blank.
+    if (mode === 'hidden') {
+      reticlePaint.valid = false;
+      return;
+    }
     if (mode === 'sniper') drawScope(aimView);
     drawHitIndicators(lastTimeS);
     drawReticle(aimView, dt);
     drawHitMark(aimView, lastTimeS);
+    captureReticlePaint(aimView);
   }
 
   // Sniper keeps the ARCADE grading untouched: real WoT sniper mode is the
@@ -4042,7 +4115,7 @@ export function initHud(bus) {
       renderShells(lastShells, slot);
       updateShellCooldown(forced.reload, slot);
       updateTargetPlate(); // over-target marker for the vehicle under the gun
-      renderCanvas(1);     // after the plate: hairlines gap around its rect
+      renderCanvas(1, true); // after the plate: hairlines gap around its rect
     },
   };
 

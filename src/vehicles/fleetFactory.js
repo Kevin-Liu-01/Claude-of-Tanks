@@ -73,10 +73,31 @@ configureTankFactory({
 registerProfiledBuilders(toBuilders(MISC_PROFILES));
 
 const GROUP_LOADERS = Object.freeze({
-  nato: () => import('./fleet/g1Nato.js'),
-  east: () => import('./fleet/g2East.js'),
-  us: () => import('./fleet/g3Us.js'),
-  casemateAsia: () => import('./fleet/g4CasemateAsia.js'),
+  uk: () => import('./profiles/uk.js').then((mod) => mod.UK_PROFILES),
+  challenger: () => import('./profiles/challenger.js').then((mod) => mod.CHALLENGER_PROFILES),
+  leopard: () => import('./profiles/leopard.js').then((mod) => mod.LEOPARD_PROFILES),
+  italy: () => import('./profiles/italy.js').then((mod) => mod.ITALY_PROFILES),
+  sweden: () => import('./profiles/sweden.js').then((mod) => mod.SWEDEN_PROFILES),
+  sovietHeavy: () => import('./profiles/soviet-heavy.js').then((mod) => mod.SOVIET_HEAVY_PROFILES),
+  t90: () => import('./profiles/t90.js').then((mod) => mod.T90_PROFILES),
+  russia: () => import('./profiles/russia.js').then((mod) => mod.RUSSIA_PROFILES),
+  t72: () => import('./profiles/t72.js').then((mod) => mod.T72_PROFILES),
+  t80: () => import('./profiles/t80.js').then((mod) => mod.T80_PROFILES),
+  ukraine: () => import('./profiles/ukraine.js').then((mod) => mod.UKRAINE_PROFILES),
+  poland: () => import('./profiles/poland.js').then((mod) => mod.POLAND_PROFILES),
+  abrams: () => import('./profiles/abrams.js').then((mod) => mod.ABRAMS_PROFILES),
+  patton: () => import('./profiles/patton.js').then((mod) => mod.PATTON_PROFILES),
+  ww2: () => import('./profiles/ww2.js').then((mod) => mod.WW2_PROFILES),
+  casemate: () => import('./profiles/casemate.js').then((mod) => {
+    const { strv103: _swedenOwnsStrv103, ...profiles } = mod.CASEMATE_PROFILES;
+    return profiles;
+  }),
+  merkava: () => import('./profiles/merkava.js').then((mod) => mod.MERKAVA_PROFILES),
+  afv: () => import('./profiles/afvFamily.js').then((mod) => mod.AFV_FAMILY_PROFILES),
+  china: () => import('./profiles/china.js').then((mod) => mod.CHINA_PROFILES),
+  korea: () => import('./profiles/korea.js').then((mod) => mod.KOREA_PROFILES),
+  japan: () => import('./profiles/japan.js').then((mod) => mod.JAPAN_PROFILES),
+  germany: () => import('./profiles/germany.js').then((mod) => mod.GERMANY_PROFILES),
 });
 const groupPromises = new Map();
 const readyGroups = new Set();
@@ -85,8 +106,8 @@ function ensureGroup(group) {
   if (!group || readyGroups.has(group)) return Promise.resolve();
   let pending = groupPromises.get(group);
   if (!pending) {
-    pending = GROUP_LOADERS[group]().then((mod) => {
-      registerProfiledBuilders(toBuilders(mod.GROUP_PROFILES));
+    pending = GROUP_LOADERS[group]().then((profiles) => {
+      registerProfiledBuilders(toBuilders(profiles));
       readyGroups.add(group);
     }).catch((error) => {
       groupPromises.delete(group);

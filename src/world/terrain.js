@@ -549,10 +549,11 @@ export function createHeightField(seed = 1337, cfg = null) {
   // geometry (wheel conform, spawns, staged captures, world builders) keeps
   // the exact analytic getHeightAt above, so frozen screenshot/metrology
   // contracts are untouched. Deployment tiles are warmed behind the battle
-  // loading veil. Any later first-touch tile is only 32 m (33x33 queries),
-  // keeping an unexpected route change below the old ~5 ms 64 m spike.
+  // loading veil. Any later first-touch tile is only 16 m (17x17 queries),
+  // bounding an unexpected route change to one quarter of the former 32 m
+  // bake while returning the exact same bilinear samples.
   const FGN = MAP_SIZE + 1;                 // 1 m verts, 1025^2 ≈ 4.2 MB
-  const FTILE = 32;                          // bake granularity (cells)
+  const FTILE = 16;                          // bake granularity (cells)
   const FTN = Math.ceil(MAP_SIZE / FTILE);   // tiles per axis
   const fGrid = new Float32Array(FGN * FGN);
   const fBaked = new Uint8Array(FTN * FTN);
@@ -879,7 +880,7 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
   const rng = mulberry32(seed ^ 0x7f4a);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   // macro base: soil showing through + moss/dry patches at 3-7 tile frequency
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
@@ -964,7 +965,7 @@ function makeDirtLayer(seed, anisotropy, tone = null) {
   const rng = mulberry32(seed ^ 0x2e91);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
@@ -1057,7 +1058,7 @@ function makeIceLayer(seed, anisotropy) {
   const rng = mulberry32(seed ^ 0x1cE5);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
     const v = y / s;
@@ -1178,7 +1179,7 @@ function makeSeaLayer(seed, anisotropy, tone = null) {
   const rng = mulberry32(seed ^ 0x5EA1);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   const base = ctx.createImageData(s, s);
   for (let y = 0; y < s; y++) {
     const v = y / s;

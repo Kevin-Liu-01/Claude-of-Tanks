@@ -15,7 +15,7 @@ import { iconUrl } from './icons.js';
 // layer and turret+gun layer separately), replacing the baked one-piece
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
-import { createTank } from '../vehicles/fleetFactory.js';
+import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 
 const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'];
 let errorGuardInstalled = false;
@@ -309,10 +309,15 @@ export function getTopDownMasks(spec, onReady, sourceVisual = null) {
   // constructing and texture-baking a duplicate tank during a transition.
   const clonedRoot = sourceVisual?.root?.clone?.(true) || null;
   // defer off the caller's frame (setTank runs on the boot path)
-  setTimeout(() => {
+  setTimeout(async () => {
     let visual = null;
     let entry = null;
     try {
+      // Exact fleet chunks can still be in flight when the damage panel asks
+      // for its first mask. Join that same demand-load promise before the
+      // synchronous factory call instead of permanently caching a race as
+      // `failed` and dropping to the generic vector silhouette.
+      if (!clonedRoot) await ensureTankBuilder(id);
       visual = clonedRoot
         ? { root: clonedRoot, dispose() {} }
         : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' });

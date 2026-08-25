@@ -13,11 +13,12 @@
  * createParticleSystem().
  */
 import * as THREE from 'three';
+import { LATE_FX_LAYER } from './layers.js';
 
 // Transparent combat FX render after the opaque/world post passes so their
 // shaders can sample resolved scene depth without a framebuffer feedback loop.
 // Layer 30 is reserved for this late pass by engine/post.js.
-export const LATE_FX_LAYER = 30;
+export { LATE_FX_LAYER };
 
 /** Canonical PRNG (ARCHITECTURE §1.4). @param {number} a seed @returns {() => number} */
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
@@ -791,7 +792,7 @@ export function makeFbm(rng, octaves = 4) {
  */
 function applyFbmAlpha(cv, rng, strength, alphaPower = 1) {
   const fbm = makeFbm(rng);
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
   const img = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = img.data;
   const w = cv.width, h = cv.height;
@@ -952,7 +953,7 @@ function makeFlashTexture(rng) {
   const s = 128;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'lighter';
   const c = s / 2;
@@ -1296,7 +1297,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.decoding = 'async';
-      image.onload = () => resolve(image);
+      image.onload = async () => {
+        // onload guarantees bytes/dimensions, not that every browser has
+        // completed PNG decode. Resolve only after decode so the first
+        // renderer.initTexture cannot inherit a synchronous image decode.
+        try { await image.decode?.(); } catch (_) { /* onload is fallback */ }
+        resolve(image);
+      };
       image.onerror = () => reject(new Error(`Particle atlas failed to load: ${src}`));
       image.src = src;
     });

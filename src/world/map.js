@@ -101,6 +101,15 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   // static matrices.
   group.updateMatrixWorld(true);
   group.traverse((o) => { o.matrixAutoUpdate = false; });
+  // Object3D.updateMatrixWorld still recursively visits every descendant even
+  // when matrixAutoUpdate is false. This world owns thousands of immutable
+  // nodes; all legitimate motion is expressed through instance buffers,
+  // uniforms, geometry LOD swaps, and visibility flags. Its world matrices
+  // were just finalized, so make the subtree an explicit traversal leaf.
+  // getWorldPosition/updateWorldMatrix remains available for diagnostics and
+  // no visual/simulation detail is removed.
+  group.userData.matrixTraversalFrozen = true;
+  group.updateMatrixWorld = () => {};
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   // Static spatial broad phases: movement queries only the handful of props

@@ -142,7 +142,7 @@ function makeBarkTexture(seed) {
   const rng = mulberry32(seed);
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.fillStyle = '#aea89f'; // near-neutral: species vertex tints own the hue (birch stays pale)
   ctx.fillRect(0, 0, s, s);
   // broad plate tone variation
@@ -216,7 +216,7 @@ function makeGrassCardTexture(rng, variant, tone = null) {
   const s = 128;
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   // r7: fewer, dimmer dry blades (the bright dry tips read as white speckle
   // dust over the dark carpet in player_view) + livelier green tips so near
@@ -284,7 +284,7 @@ function makeLeafClusterTexture(rng, tone = null) {
   const s = texSize(512), K = s / 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   const cx = s / 2, cy = s / 2;
   // r8: three distinct clump FAMILIES on the one atlas (sun-bleached yellow-
@@ -380,7 +380,7 @@ function makeNeedleSprayTexture(rng, tone = null) {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   const cx = s / 2, cy = s / 2;
   ctx.lineCap = 'round';
@@ -413,7 +413,7 @@ function makePalmFrondTexture(rng, tone = null) {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   const bx = s / 2;
   // two passes: dark under-layer slightly wider, lit top layer
@@ -473,7 +473,7 @@ function makeTwigTexture(rng, tone = null) {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   ctx.lineCap = 'round';
   // r9: soft twig-HAZE underlay first — real winter birch crowns read as a

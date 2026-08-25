@@ -1,5 +1,6 @@
 import { IMPACT_DECAL_CAP, IMPACT_DECAL_LIFT_M } from './impactDecals.js';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.js';
+import './lazyRuntime.selftest.mjs';
 
 if (IMPACT_DECAL_CAP < 16) throw new Error('impact decal vehicle budget regressed');
 if (IMPACT_DECAL_LIFT_M <= 0 || IMPACT_DECAL_LIFT_M > 0.01) {

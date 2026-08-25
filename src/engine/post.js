@@ -53,7 +53,7 @@ import {
   reconstructionMode,
   reconstructionSharpness,
 } from './renderScalePolicy.js';
-import { LATE_FX_LAYER } from '../fx/particles.js';
+import { LATE_FX_LAYER } from '../fx/layers.js';
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian
 // bloom blobs"): strength 0.34 → 0.20 and radius 0.4 → 0.28 so bloom is a

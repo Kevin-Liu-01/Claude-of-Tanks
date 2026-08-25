@@ -29,6 +29,24 @@ renderer, selected vehicle, garage environment, and primary interface work
 arrives before optional combat and fleet work. Additional families, maps,
 effects, wrecks, and diagnostics can warm in idle slices.
 
+Fleet demand loading is profile-module granular. The plain-data fleet manifest
+maps every playable id to its owning profile module, and a known battle roster
+loads all required modules concurrently before visual construction begins. Do
+not put the fleet builders back into four country-sized chunks or await the
+first builder of each family inside a serial vehicle loop.
+
+Battle hover/focus/touch is an explicit preload boundary. It resolves the
+deterministic next solo roster without mutating the battle ordinal, transfers
+only those profile families, starts the selected map promise, and decodes the
+shipped deterministic FX atlases. Ordinary vehicle browsing does none of that
+work, so the garage remains responsive.
+
+The selected battlefield module may preload after the garage settles, but the
+world itself starts only from explicit Battle intent (hover, focus, touch, or
+click). Combat FX and killcam code are battle/Studio chunks and are constructed
+once behind an opaque entry gate. Garage browsing must not compete with a
+background terrain, vegetation, or shader build.
+
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one
 garage frame during a cold network handoff.
@@ -72,6 +90,22 @@ updates game state; the main loop owns the final visual sync. Performing both
 inside the bridge and again in the main loop doubles terrain support, wheel,
 track, and transform work.
 
+Running gear is presentation-dirty, not frame-dirty. Track deformation and
+instance-buffer uploads run when pose, scroll, terrain settling, damage state,
+or visibility changes. Off-screen remote actors retain their last exact gear
+matrices and force one exact catch-up when they return to the camera guard.
+Nearby and player running gear keeps the full authored update rate.
+
+Immutable battlefield subtrees finalize their world matrices once and opt out
+of recursive matrix traversal. Legitimate runtime world motion continues
+through instance buffers, uniforms, geometry-LOD swaps, and visibility. Do not
+freeze a subtree that owns an animated Object3D transform.
+
+The HUD reticle keeps its live CanvasTexture and caches the last complete paint
+signature. It repaints for aim, reload, shell, hit, fade, viewport, or mode
+changes, but a stable sight picture does not replay the same Canvas2D commands
+at the display refresh rate.
+
 Common arrays and entity records in snapshot sampling and browser presentation
 are reused. At 120 Hz, allocating a new scene-state graph every frame would
 create avoidable garbage collection pressure even if the simulation itself is
@@ -79,6 +113,15 @@ fast.
 
 Diagnostics remain dormant unless requested. F3 panels and traces must not
 become hidden always-on observers in production play.
+
+Combat warming has two ownership phases. The opaque loader builds the exact
+roster, presents one real deployment-camera frame, and prepares only opening
+effects plus per-roster wreck materials. Full destruction/prop families,
+hidden LODs, remaining shadows, scope variants, and deterministic bot routes
+run in bounded slices during the frozen deployment countdown. Rollout holds at
+one second until that queue finishes. Warm receipts are round-scoped so a new
+map, camouflage set, or vehicle family cannot inherit a false "already warm"
+state from the previous match; WebGL and browser caches remain reusable.
 
 ## Solo composition
 
@@ -146,8 +189,17 @@ Generated worlds can be cached by map. Re-entry restores visibility and resets
 match-specific destructible state without rebuilding immutable terrain,
 materials, and dressing unless required.
 
-Map building is chunked and transition-covered. Dedicated authority uses
-pre-generated collision manifests and does not instantiate Three.js worlds.
+Map building is chunked and transition-covered. Opaque loaders yield tasks at a
+tight CPU budget while guaranteeing periodic progress paints; visible garage
+work continues to use the stricter per-frame yielder. The deployment area's
+fast height tiles, bot spawn tiles, initial bot routes, visible grass cache, and
+near/mid terrain LODs are complete before rollout. Distant terrain remains
+streamed. Dedicated authority uses pre-generated collision manifests and does
+not instantiate Three.js worlds.
+
+Deferred combat compilation must receive the FX subtree explicitly. Passing the
+whole scene to an effects-only warm repeats every terrain/tank program and can
+turn a bounded countdown job into a second-scale stall.
 
 ## Measurement
 
@@ -181,6 +233,33 @@ Use the network render probe:
 See DEV-PERF-TRACE.md for trace fields and MOBILE-QA.md for sustained mobile
 test procedure and evidence history.
 
+### 2026-08-24 loading and rollout receipt
+
+The exact comparison base for this pass is `de2b45c3`. Repeated, alternating
+production probes on the same host measured:
+
+- main entry gzip: 370.61 kB -> 299.32 kB (-19.2%);
+- complete garage JavaScript transfer: 1,034,013 B -> approximately 941 kB
+  (-9.0%);
+- 1.6 Mbit/s, 150 ms RTT, 4x-CPU cold load: 9.13 s -> 8.24 s;
+- cold hero-vehicle stage: 0.96 s -> 0.47 s;
+- cold first-battle diagnostic: 7.85 s -> 5.78 s (-26.3%);
+- the accidental effects-only full-scene pass: 1.68 s -> 0.24 s;
+- final constrained first-live ten seconds: 52.5 FPS, p95 24.3 ms, maximum
+  32.1 ms, zero program births, zero natural long tasks, and zero freezes;
+- final normal first-live ten seconds: 53.9 FPS in the headless harness, p95
+  23.3 ms, maximum 26.8 ms, with the same zero-birth/zero-stall result;
+- visible native-browser validation: 117-125 FPS with p95 10.3-10.6 ms. The
+  final intent-preloaded Ruinspires entry took 4.80 s from click to reveal.
+
+The transition tool correctly refused formal certification for the first-battle
+pair because unrelated interactive GPU and geometry-audit processes exceeded
+the host-contention limits; preserve that caveat rather than promoting the
+diagnostic pair to release evidence. The independently scoped normal and
+constrained entry gates passed. In the final cold trace the round-specific
+deferred queue took 0.27 s, finished with 4.72 s left in deployment, and
+produced no post-rollout shader work.
+
 ## Reporting a performance result
 
 Record:
@@ -213,6 +292,10 @@ regression record.
 - No quality setting changes simulation truth.
 - No failed diagnostic leaves an off-screen render target bound.
 - No transition certification from a host-contended measurement window.
+- No full battlefield construction from passive garage idle.
+- No serial profile-chunk await inside roster visual construction.
+- No track deformation or instance upload for an unchanged parked/off-screen actor.
+- No stable reticle Canvas2D repaint at the display refresh rate.
 - No browser-level second upscale on phone-size viewports: the final WebGL
   backing store is native through DPR 3 while under the 4 MP mobile output
   budget. Adaptive scene/post density remains an independent performance

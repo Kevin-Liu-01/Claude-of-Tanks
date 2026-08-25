@@ -499,7 +499,7 @@ function schematicUrl(id, view, outW, outH) {
           const c = document.createElement('canvas');
           c.width = img.naturalWidth;
           c.height = img.naturalHeight;
-          const x = c.getContext('2d');
+          const x = c.getContext('2d', { willReadFrequently: true });
           x.drawImage(img, 0, 0);
           const d = x.getImageData(0, 0, c.width, c.height);
           const px = d.data;
@@ -526,7 +526,7 @@ function schematicUrl(id, view, outW, outH) {
           const t = document.createElement('canvas');
           t.width = outW;
           t.height = outH;
-          const tx = t.getContext('2d');
+          const tx = t.getContext('2d', { willReadFrequently: true });
           const fit = Math.min(outW / c.width, outH / c.height);
           const fw = c.width * fit;
           const fh = c.height * fit;

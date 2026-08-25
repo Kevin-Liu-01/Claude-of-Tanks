@@ -1812,7 +1812,7 @@ function frontArmorMm(plates, keys) {
 /**
  * Create the garage/tank-select screen. Appends its root to document.body (hidden).
  * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function,
- *   onPlayRequest?:Function,onPlayModeIntent?:Function}} opts
+ *   onPlayRequest?:Function,onPlayModeIntent?:Function,onBattleIntent?:Function}} opts
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
 export function createGarage(opts) {
@@ -3271,6 +3271,13 @@ export function createGarage(opts) {
   }
 
   battleBtn.addEventListener('click', battle);
+  const signalBattleIntent = () => {
+    if (!opts.onBattleIntent || !selectedId) return;
+    try { opts.onBattleIntent({ specId: selectedId, mapId: selectedMapId }); } catch (_) { /* optional */ }
+  };
+  battleControl.addEventListener('pointerenter', signalBattleIntent, { passive: true });
+  battleControl.addEventListener('focusin', signalBattleIntent);
+  battleControl.addEventListener('touchstart', signalBattleIntent, { passive: true });
   roomReminder.addEventListener('click', () => emit('ui:roomOpen', {}));
   battleModeBtn.addEventListener('click', () => {
     emit('ui:click', {});

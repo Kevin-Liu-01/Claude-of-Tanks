@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import './rosterPlanning.selftest.mjs';
 import { getSpec } from '../vehicles/specs.js';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.js';
 import { botFriendlyFireRisk, createAI, mulberry32 } from './ai.js';

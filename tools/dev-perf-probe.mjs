@@ -313,20 +313,28 @@ try {
     battle: window.__BATTLE_LOAD || null,
     network: window.__NETWORK_LOAD || null,
     combatWarm: window.__COMBAT_WARM || null,
+    combatOpeningWarm: window.__COMBAT_OPENING_WARM || null,
+    combatRareWarm: window.__COMBAT_RARE_WARM || null,
     countdownWarm: window.__BATTLE_COUNTDOWN_WARM || null,
+    deferredWarm: window.__BATTLE_DEFERRED_WARM || null,
     glb: window.__GLB_STATS || null,
     worldPrefetch: window.__WORLD_PREFETCH || null,
     rosterPrefetch: window.__ROSTER_PREFETCH || null,
   }));
   const countdown = countdownWindow(naturalTrace);
   const firstLive5s = firstLiveWindow(naturalTrace);
-  const cleanVisibleWindow = (window) => !!window
-    && window.programBirths === 0 && window.longTasks === 0 && window.freezes === 0
+  const cleanVisibleWindow = (window, { allowProgramBirths = false } = {}) => !!window
+    && (allowProgramBirths || window.programBirths === 0)
+    && window.longTasks === 0 && window.freezes === 0
     && window.gapP95 <= 50 && window.maxGapMs <= 100;
   const entryHealth = entryMode === 'real' ? {
     warmOwnedByTransition: loading.countdownWarm?.done === true
       && loading.countdownWarm?.phase === 'transition',
-    countdownClean: cleanVisibleWindow(countdown),
+    deferredWarmComplete: loading.deferredWarm?.done === true
+      && loading.deferredWarm?.doneBeforeRollout === true,
+    countdownClean: cleanVisibleWindow(countdown, {
+      allowProgramBirths: loading.deferredWarm?.doneBeforeRollout === true,
+    }),
     firstLive5sClean: cleanVisibleWindow(firstLive5s),
   } : null;
   if (entryHealth) entryHealth.pass = Object.values(entryHealth).every(Boolean);

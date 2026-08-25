@@ -250,7 +250,7 @@ export function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul
   const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(color, 0, 0, s, s);
   const px = ctx.getImageData(0, 0, s, s);
   const d = px.data;

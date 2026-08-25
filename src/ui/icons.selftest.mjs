@@ -87,6 +87,11 @@ if ((studioMark.match(/data-separation="turret-ring"/g) || []).length !== 2) {
   throw new Error('scene studio mark must split both masks at the turret ring');
 }
 
+const tankThumbs = await readFile(new URL('./tankThumbs.js', import.meta.url), 'utf8');
+if (!tankThumbs.includes('await ensureTankBuilder(id)')) {
+  throw new Error('top-down mask fallback must join the exact fleet demand-load before createTank');
+}
+
 for (const id of ['gallery', 'speed', 'camouflage', 'shield', 'engine', 'scope', 'damage', 'optics']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing garage dossier icon: ${id}`);
 }

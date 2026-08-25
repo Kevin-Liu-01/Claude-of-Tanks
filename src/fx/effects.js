@@ -11,7 +11,8 @@
  * through update(dt), so setFrozen() fully pins the frame for screenshots.
  */
 import * as THREE from 'three';
-import { createParticleSystem, LATE_FX_LAYER, mulberry32, makeFbm } from './particles.js';
+import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
+import { LATE_FX_LAYER } from './layers.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
 import { createImpactDecals } from './impactDecals.js';
 import { syncSubjectEmitterAnchor } from './effectAttachments.js';
@@ -345,7 +346,7 @@ function makeShockRingTexture(rng) {
   const s = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = s;
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, s, s);
   const c = s / 2;
   // soft band: wide feathered shoulders on BOTH edges (the r5 hard inner
@@ -857,7 +858,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const s = 64, h = 128;
     const cv = document.createElement('canvas');
     cv.width = s; cv.height = h;
-    const ctx = cv.getContext('2d');
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
     ctx.clearRect(0, 0, s, h);
     // ladder of track-pad rungs with ragged edges
     for (let y = 4; y < h - 4; y += 11) {
@@ -2897,7 +2898,8 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         if (sh.dead) continue;
         const shPos = sh.pos;
         const shVel = sh.vel;
-        const tracerId = sh.spec?.guided ? 'ATGM' : sh.spec?.tracer;
+        const guided = !!sh.spec?.guided;
+        const tracerId = guided ? 'ATGM' : sh.spec?.tracer;
         const preset = TRACER_PRESETS[tracerId] || TRACER_PRESETS.AP;
         const speed = shVel.length();
         // r7 (critic: "30 m uniform laser beam no shell ever produced"): the
@@ -2909,7 +2911,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
           Math.max(sh.distM || 0, 0.08));
         _v1.copy(shVel).normalize();
         _v2.copy(shPos).addScaledVector(_v1, -len);
-        if (sh.spec?.guided) {
+        if (guided) {
           // A physical missile body rides at the live authoritative position;
           // the exhaust flare sits just behind it. The shell position is the
           // nose, so offset the body rearward along its instantaneous heading.
@@ -2966,9 +2968,9 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
         const bw = Math.min(preset.width * wide, 0.15);
         writeTracer(n++, _v2.x, _v2.y, _v2.z, shPos.x, shPos.y, shPos.z,
           bw, bright,
-          sh.spec?.guided ? _atgmCore : _coreArr,
-          sh.spec?.guided ? _atgmGlow : _glowArr,
-          sh.spec?.guided ? 1 : 0);
+          guided ? _atgmCore : _coreArr,
+          guided ? _atgmGlow : _glowArr,
+          guided ? 1 : 0);
         // record/refresh the afterglow trail for this shell — stored as a
         // VAPOR ribbon (r4): what lingers after the bolt passes is powder
         // vapor, not light. Grey-tinted, alpha-capped low, only the bolt's

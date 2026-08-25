@@ -2832,6 +2832,7 @@ function buildRunningGear(P, cfg) {
       const hpy = hullG.position.y;
       const hpz = hullG.position.z;
       const invHsy = 1 / Math.max(Math.abs(hsy), 1e-6);
+      let settling = false;
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -2899,8 +2900,10 @@ function buildRunningGear(P, cfg) {
           // as a near tank without doing extra terrain work.
           const alpha = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.12)) * 20);
           e.off += (target - e.off) * alpha;
+          if (Math.abs(target - e.off) > 0.0005) settling = true;
         }
       }
+      return settling;
     },
 
     /**
@@ -3014,7 +3017,11 @@ function registerGearUnit(P, unit) {
     update(l, r) { for (const u of units) u.update(l, r); },
     resetPose() { for (const u of units) u.resetPose?.(); },
     conform(state, sampler, pitchEff, rollEff, dt) {
-      for (const u of units) u.conform(state, sampler, pitchEff, rollEff, dt);
+      let settling = false;
+      for (const u of units) {
+        if (u.conform(state, sampler, pitchEff, rollEff, dt)) settling = true;
+      }
+      return settling;
     },
     setBroken(module, broken) { for (const u of units) u.setBroken(module, broken); },
     // multi-unit rigs (t95 four-track): one hitbox hull PER UNIT, per side —
@@ -6716,6 +6723,12 @@ export function createTank(specId, engineCtx, opts = {}) {
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
   let gearAccumDt = 0;               // elapsed time across distance-cadence skips
+  let gearForceUpdate = true;
+  let gearSettling = true;
+  let gearWasVisible = true;
+  let gearLastL = NaN, gearLastR = NaN;
+  let gearLastX = NaN, gearLastY = NaN, gearLastZ = NaN;
+  let gearLastYaw = NaN, gearLastPitch = NaN, gearLastRoll = NaN;
   let sway = 0;                      // turn-lean roll (rad), smoothed
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
   let flinchPV = 0, flinchRV = 0;
@@ -6946,8 +6959,10 @@ export function createTank(specId, engineCtx, opts = {}) {
      * @param {number} [viewDistM] camera distance for battle-detail LOD
      * @param {object|null} [presentationState] read-only interpolated pose;
      *   authority remains in `state` for queued impulses and gameplay.
+     * @param {boolean} [detailVisible] false when the actor is outside the
+     *   camera guard band; exact running gear catches up on re-entry.
      */
-    syncFromState(state, dt = SIM_STEP, viewDistM, presentationState = null) {
+    syncFromState(state, dt = SIM_STEP, viewDistM, presentationState = null, detailVisible = true) {
       // The authority state remains the mutation target for queued recoil /
       // flinch impulses. A presentation state is a read-only, allocation-free
       // interpolated view used only for transforms and running-gear phase.
@@ -7137,23 +7152,51 @@ export function createTank(specId, engineCtx, opts = {}) {
       // track scroll, so skipped presentation frames cannot accumulate drift.
       // Callers that omit viewDistM (studio, killcam, staged poses, probes)
       // always retain full-rate animation.
-      gearAccumDt += Math.max(0, dt || 0);
+      gearAccumDt = Math.min(0.12, gearAccumDt + Math.max(0, dt || 0));
       const gearInterval = viewDistM === undefined || viewDistM <= GEAR_FULL_RATE_M
         ? 0
         : (viewDistM <= GEAR_MID_RATE_M ? GEAR_MID_INTERVAL_S : GEAR_FAR_INTERVAL_S);
       const gearNow = gearInterval === 0 || gearAccumDt + 1e-6 >= gearInterval;
       const gearStepDt = gearAccumDt;
-      // per-wheel suspension conformance before the gear placement pass
-      if (P.gear && groundSampler && !destroyed && gearNow) {
+      const gearVisible = root.visible !== false && detailVisible !== false;
+      if (gearVisible !== gearWasVisible) {
+        if (gearVisible) gearForceUpdate = true;
+        gearWasVisible = gearVisible;
+      }
+      const gearPitch = renderState.visualPitch + suspP - flinchP;
+      const gearRoll = renderState.visualRoll + suspR + sway + flinchR;
+      const gearPoseDirty = gearForceUpdate || gearSettling
+        || Math.abs(renderState.trackScroll.l - gearLastL) > 0.001
+        || Math.abs(renderState.trackScroll.r - gearLastR) > 0.001
+        || Math.abs(renderState.pos.x - gearLastX) > 0.0025
+        || Math.abs(renderState.pos.y - gearLastY) > 0.0025
+        || Math.abs(renderState.pos.z - gearLastZ) > 0.0025
+        || Math.abs(renderState.yaw - gearLastYaw) > 0.0004
+        || Math.abs(gearPitch - gearLastPitch) > 0.0004
+        || Math.abs(gearRoll - gearLastRoll) > 0.0004;
+      // Per-wheel suspension conformance before the gear placement pass.
+      // Parked and hidden actors retain their last exact matrices instead of
+      // re-uploading every wheel and shoe buffer at the render refresh rate.
+      if (P.gear && gearVisible && gearNow && gearPoseDirty) {
+        gearSettling = false;
+        if (groundSampler && !destroyed) {
         // gameplay_feel r5: conform at the EXACT rendered attitude (see the
         // conform() jsdoc) — root.rotation was just set from these terms.
-        P.gear.conform(renderState, groundSampler,
-          renderState.visualPitch + suspP - flinchP,
-          renderState.visualRoll + suspR + sway + flinchR, gearStepDt);
-      }
-      if (P.gear && gearNow) {
+          gearSettling = !!P.gear.conform(
+            renderState, groundSampler, gearPitch, gearRoll, gearStepDt,
+          );
+        }
         P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);
-      } else if (P.gear && P.gear.updateSurface) {
+        gearLastL = renderState.trackScroll.l;
+        gearLastR = renderState.trackScroll.r;
+        gearLastX = renderState.pos.x;
+        gearLastY = renderState.pos.y;
+        gearLastZ = renderState.pos.z;
+        gearLastYaw = renderState.yaw;
+        gearLastPitch = gearPitch;
+        gearLastRoll = gearRoll;
+        gearForceUpdate = false;
+      } else if (P.gear && gearVisible && P.gear.updateSurface) {
         // Keep the cheap visible phase continuous between 30/15 Hz distant
         // conformance passes. This updates track UVs and end-wheel spin only;
         // terrain sampling, band deformation, and road-wheel matrices remain
@@ -7293,7 +7336,11 @@ export function createTank(specId, engineCtx, opts = {}) {
      * Give the visual a terrain sampler for per-wheel suspension conformance.
      * @param {?(x:number, z:number) => number} fn ground height query (null disables)
      */
-    setGroundSampler(fn) { groundSampler = fn; },
+    setGroundSampler(fn) {
+      groundSampler = fn;
+      gearForceUpdate = true;
+      gearSettling = true;
+    },
 
     /**
      * Receiving-end hull flinch: a caliber-scaled damped rock away from the
@@ -7323,6 +7370,7 @@ export function createTank(specId, engineCtx, opts = {}) {
      */
     setTrackState(module, broken) {
       if (P.gear && P.gear.setBroken) P.gear.setBroken(module, broken);
+      gearForceUpdate = true;
     },
 
     /** Remove one ERA brick cluster (t90m). */

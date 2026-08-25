@@ -77,8 +77,8 @@ assert.deepEqual([...canvas.pixels], [
   40, 75, 50, 250, 64, 40, 10, 125,
   51, 32, 8, 62, 0, 0, 0, 255,
 ], 'composer preserves the color × AO × tint and packed-roughness contract');
-assert.equal(contextOptions.filter((options) => options?.willReadFrequently).length, 1,
-  'AO and roughness share one readback-optimized Canvas2D context');
+assert.equal(contextOptions.filter((options) => options?.willReadFrequently).length, 2,
+  'output plus shared AO/roughness surfaces opt into readback-optimized Canvas2D');
 assert.equal(contextOptions.length, 2,
   'one output context plus one reusable readback context are allocated');
 

@@ -1,0 +1,64 @@
+import { readFile } from 'node:fs/promises';
+
+const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const post = await readFile(new URL('../engine/post.js', import.meta.url), 'utf8');
+const state = await readFile(new URL('../game/state.js', import.meta.url), 'utf8');
+const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
+
+if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
+  throw new Error('combat effects must not return to the garage boot graph');
+}
+if (!main.includes("import('./fx/effects.js')")) {
+  throw new Error('combat effects must retain an explicit demand-loaded chunk');
+}
+if (post.includes("../fx/particles.js") || !post.includes("../fx/layers.js")) {
+  throw new Error('the post stack must not pull the particle engine into the garage graph');
+}
+
+const requiredGates = [
+  ['solo battle', /ensureTankBuilders\([\s\S]{0,100}plannedRoster[\s\S]{0,220}ensureFxRuntime\(\)/],
+  ['network battle', /import\('\.\/ui\/networkStatus\.js'\)[\s\S]{0,180}ensureFxRuntime\(\)/],
+  ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
+  ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
+  ['deterministic shots', /window\.__SHOTS[\s\S]{0,1200}ensureFxRuntime\(\)/],
+];
+for (const [name, pattern] of requiredGates) {
+  if (!pattern.test(main)) throw new Error(`${name} can enter without the live effects runtime`);
+}
+if (!/function preloadBattleIntent[\s\S]{0,700}planBattleParticipantIds\(game, specId, true\)[\s\S]{0,220}ensureTankBuilders\(planned\)[\s\S]{0,420}live\.preloadTextures/.test(main)) {
+  throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');
+}
+if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
+  throw new Error('particle preload must finish PNG decode before texture upload');
+}
+
+if (!/await warmCombatOpeningPipelineChunked\(18, coveredYield\)/.test(main)) {
+  throw new Error('solo entry must await only the opening-critical combat warm');
+}
+if (!/openBattle\(\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
+  throw new Error('rare combat variants must start only after the first battle reveal');
+}
+if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(main)
+  || !/function\* warmCombatRarePipelineSteps\(\)[\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*compileHiddenVariantsSteps/.test(main)) {
+  throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
+}
+if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*battleWarmPending = false/.test(main)) {
+  throw new Error('deferred warm must retain the one-second rollout hold and record completion');
+}
+if (!/setupBattle\(game, specId, world,[\s\S]{0,900}resetCombatRoundWarmState\(\)/.test(main)
+  || !/function resetCombatRoundWarmState\(\)[\s\S]{0,520}combatOpeningWarmed = false;[\s\S]{0,80}combatPipelineWarmed = false;/.test(main)) {
+  throw new Error('each new map/roster must receive a fresh opening and rare warm receipt');
+}
+if (!/deferredCombatWarmPromise === pending/.test(main)) {
+  throw new Error('a cancelled round must not clear a newer deferred warm queue');
+}
+if (!/warmCombatRarePipelineSteps\(\)[\s\S]*initializeForwardProgramsSteps\(fx\.group\)/.test(main)) {
+  throw new Error('rare effects must never recompile the entire visible battlefield');
+}
+if (!/deferOpeningRoutes: !!opts\.deferVisuals/.test(main)
+  || !/while \(prepareNextOpeningRoute\(game\)\)[\s\S]{0,500}warmBattleTerrainTiles\(guardedYield, \{ primePresentation: false \}\)/.test(main)
+  || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
+  throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');
+}
+
+console.log('lazyRuntime.selftest: garage boot exclusion and opening/rare warm split passed');
