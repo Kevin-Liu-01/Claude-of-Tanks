@@ -216,6 +216,25 @@ function merkavaChassis(P, c) {
     [kihw, k.bellyY, k.groundZ], [-kihw, k.bellyY, k.groundZ],
     [-kihw, k.midY + 0.16, k.midZ - 0.10], [kihw, k.midY + 0.16, k.midZ - 0.10],
     [kihw, k.bellyY + 0.2, k.groundZ - 0.3], [-kihw, k.bellyY + 0.2, k.groundZ - 0.3]));
+  if (c.glacisClosure) {
+    const gc = c.glacisClosure;
+    // Closed internal armor web between the lower-glacis crown and the
+    // upper-body floor.  Every edge is deliberately buried in an existing
+    // hull plane, so low side views cannot look through the bow cavity.
+    P.add('hull', slab(
+      [-gc.hw0, gc.lower0, gc.z0], [gc.hw0, gc.lower0, gc.z0],
+      [gc.hw1, gc.lower1, gc.z1], [-gc.hw1, gc.lower1, gc.z1],
+      [-gc.hw0, gc.upper0, gc.z0], [gc.hw0, gc.upper0, gc.z0],
+      [gc.hw1, gc.upper1, gc.z1], [-gc.hw1, gc.upper1, gc.z1]));
+    P.hullG.userData[`${P.spec.id}GlacisClosureReceipt`] = Object.freeze({
+      revision: 'upper-lower-glacis-web-r1',
+      rearStationZM: gc.z0,
+      frontStationZM: gc.z1,
+      lowerRangeM: Object.freeze([gc.lower0, gc.lower1]),
+      upperRangeM: Object.freeze([gc.upper0, gc.upper1]),
+      buriedEdgeOverlap: true,
+    });
+  }
   // c.glacisBreak (3D structure r3 minor): the blank lower-glacis apron
   // gets a value break — a dark tow-lip rub strip across mid-slope plus a
   // pale step plate pair riding the plane (all <= 10 mm proud; ref scatters
@@ -608,12 +627,29 @@ function merkavaChassis(P, c) {
       P.add('hullDark', box(0.075, 0.014, 0.016), -0.10, gTop(1.95) + 0.014, 1.95, rxAt(1.95), -0.2, 0);
     }
   }
+  const podSupportSeats = [];
   for (const s of [-1, 1]) {
     const hx = s * (c.podX ?? w * 0.33), hz0 = g.z1 - (c.podIn ?? 0.02);
     const hz = Array.isArray(c.podDeep) ? c.podDeep[s < 0 ? 0 : 1] : hz0;
     const hy = c.podY ?? (gTop(hz + 0.15) + 0.10);
     const pdep = 0.13 + Math.max(0, hz - hz0) * 0;
     P.add('hullDetail', box(0.17, 0.11, pdep), hx, hy - 0.01, hz - 0.10);
+    if (c.podSupport) {
+      const podRearZ = hz - 0.10 - pdep / 2;
+      const hullAnchorZ = Math.min(g.z1 - 0.015, podRearZ - 0.08);
+      const supportDepth = podRearZ - hullAnchorZ + 0.10;
+      const supportY = Math.min(hy - 0.035, gTop(hullAnchorZ) - 0.025);
+      P.add('hull', box(0.23, 0.12, supportDepth), hx, supportY,
+        (podRearZ + hullAnchorZ) / 2 + 0.025, -0.10, 0, 0);
+      P.add('hullDetail', box(0.18, 0.024, supportDepth * 0.88), hx,
+        supportY + 0.067, (podRearZ + hullAnchorZ) / 2 + 0.015, -0.10, 0, 0);
+      podSupportSeats.push(Object.freeze({
+        side: s,
+        podRearZM: podRearZ,
+        hullAnchorZM: hullAnchorZ,
+        buriedOverlapM: 0.05,
+      }));
+    }
     if (c.paleVents && c.towLit) {
       // r7 3D DIAMOND DE-PUNCH, second half (the pixel map pinned the
       // ~53L "diamond tow-plates" on THIS cluster — the dark lens disc +
@@ -715,6 +751,13 @@ function merkavaChassis(P, c) {
     } else {
       P.add('hullDark', KIT.cylX(0.018, 0.10, 8), tx, tyE - 0.012, c.keel.toeZ + 0.042);
     }
+  }
+  if (podSupportSeats.length) {
+    P.hullG.userData[`${P.spec.id}HullAttachmentReceipt`] = Object.freeze({
+      revision: 'bow-pod-support-shoes-r1',
+      supports: Object.freeze(podSupportSeats),
+      allSupportsOverlapHullAndPod: true,
+    });
   }
   if (c.glacisQuilt) {
     // r13b order 2c (1B, critic r12 driver B): the glacis-top band read
@@ -1030,21 +1073,40 @@ function merkavaChassis(P, c) {
     wheelFaceLayers,
   });
 
+  if (P.spec.id === 'merkava1b' || P.spec.id === 'merkava2d') {
+    P.hullG.userData[`${P.spec.id}RunningGearReceipt`] = Object.freeze({
+      revision: 'front-terminal-forward-r1',
+      previousSprocketZM: c.sprocket.z - (c.sprocketForwardM ?? 0),
+      previousSprocketYM: c.sprocket.y - (c.sprocketRaiseM ?? 0),
+      sprocketZM: c.sprocket.z,
+      sprocketYM: c.sprocket.y,
+      sprocketForwardM: c.sprocketForwardM ?? 0,
+      sprocketRaiseM: c.sprocketRaiseM ?? 0,
+      trackCourseUsesSprocketEndpoint: true,
+      roadWheelZs: Object.freeze([...c.wheelZs]),
+      idlerZM: c.idler.z,
+    });
+  }
+
   if (P.spec.id === 'merkava4b') {
     P.hullG.userData.merkava4bChassisReceipt = Object.freeze({
-      revision: 'connected-short-bow-raised-sprocket-course-r4',
+      revision: 'projected-closed-bow-rear-exit-clearance-r5',
       hullNoseZ: c.body[0].z,
-      previousHullNoseZ: 3.33,
+      previousHullNoseZ: 3.18,
+      bowProjectionM: c.body[0].z - 3.18,
       lowerGlacisToeZ: c.keel.toeZ,
-      previousLowerGlacisToeZ: 2.56,
+      previousLowerGlacisToeZ: 3.16,
       lowerGlacisKneeZ: c.keel.midZ,
-      previousLowerGlacisKneeZ: 2.44,
+      previousLowerGlacisKneeZ: 3.04,
       upperLowerGlacisJoinM: c.body[0].z - c.keel.toeZ,
       lowerGlacisPlanLengthM: c.keel.toeZ - c.keel.midZ,
-      recessedToeCorrectionM: c.keel.toeZ - 2.56,
       glacisFurnitureToeZ: c.glacis.z1,
-      previousGlacisFurnitureToeZ: 3.27,
-      hullShortenedM: 0.15,
+      previousGlacisFurnitureToeZ: 3.12,
+      lowerHullRearZ: c.keel.tailLowZ,
+      previousLowerHullRearZ: -3.70,
+      lowerHullForwardShiftM: c.keel.tailLowZ - (-3.70),
+      rearExitDoorPlaneZ: c.body[c.body.length - 2].z,
+      rearExitClearanceM: c.keel.tailLowZ - c.body[c.body.length - 2].z,
       trackRearShiftM: c.trackRearShiftM ?? 0,
       frontSprocketZPreserved: true,
       sprocketZ: c.sprocket.z,
@@ -3494,8 +3556,11 @@ function merkavaRingTub(P, t) {
 function merkavaRearTurretBulkhead(P, t) {
   if (!t.basket || !Number.isFinite(t.basketHW)) return;
   const { box } = KIT;
+  const id = P.spec.id;
   const rearFaceZ = t.basket.z0 - 0.025;
-  const depth = 0.16;
+  const closesEarlyMark = ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d'].includes(id);
+  const depth = closesEarlyMark ? 0.30 : 0.16;
+  const rearOverlap = closesEarlyMark ? 0.12 : 0;
   const hw = Math.min(t.basketHW * 0.96, t.hwMax * 0.95);
   const top = t.basket.top - 0.025;
   const bot = Math.min(t.basket.bot - 0.035, top - 0.30);
@@ -3503,7 +3568,44 @@ function merkavaRearTurretBulkhead(P, t) {
 
   // Main transverse plate: 13.5 cm remain buried in the turret/bustle and
   // the final 2.5 cm overlap the rack root, producing one visible load path.
-  P.add('turret', box(hw * 2, top - bot, depth), 0, midY, rearFaceZ + depth / 2);
+  P.add('turret', box(hw * 2, top - bot, depth), 0, midY,
+    rearFaceZ + depth / 2 - rearOverlap);
+
+  if (closesEarlyMark) {
+    // The source shell terminates in a shallow sloped tail while the basket
+    // starts on a flat transverse plane.  The former 16 cm plate projected
+    // only forward, leaving a visible air slot between those two solids.
+    // This buried crown/floor pair bridges both directions around the seam.
+    P.add('turret', box(hw * 1.82, 0.10, 0.30), 0, top - 0.045, rearFaceZ - 0.005,
+      -0.055, 0, 0);
+    P.add('turret', box(hw * 1.70, 0.09, 0.28), 0, bot + 0.035, rearFaceZ - 0.005,
+      0.045, 0, 0);
+    let basketTieCount = 0;
+    if (id !== 'merkava1b') {
+      // Two low longitudinal shoes join the bulkhead to the rear basket rail.
+      // They replace the old full-width hanger that read as a bar floating in
+      // the open rack, while preserving the intended see-through basket.
+      const railZ = t.basket.z1 - (t.chainGap ?? 0.16);
+      const tieDepth = Math.max(0.18, rearFaceZ - railZ + 0.10);
+      for (const s of [-1, 1]) {
+        P.add('turretDark', box(0.075, 0.060, tieDepth),
+          s * hw * 0.66, bot + 0.075, (rearFaceZ + railZ) / 2 - 0.025,
+          0.025, 0, s * 0.015);
+        P.add('turretDetail', box(0.14, 0.050, 0.16),
+          s * hw * 0.66, bot + 0.075, rearFaceZ - 0.055);
+        basketTieCount += 1;
+      }
+    }
+    P.turretG.userData[`${id}RearClosureReceipt`] = Object.freeze({
+      revision: 'turret-bustle-closure-r1',
+      bulkheadDepthM: depth,
+      rearOverlapM: rearOverlap,
+      shellRearLocalZM: rearFaceZ - rearOverlap,
+      basketRootLocalZM: t.basket.z0,
+      closedCrownAndFloor: true,
+      basketTieCount,
+    });
+  }
 
   // Recessed service breaks keep the new flat face from reading as a blank
   // cuboid.  Relief is only 4 mm proud and remains inside the basket width.
@@ -3522,6 +3624,45 @@ function merkavaRearTurretBulkhead(P, t) {
     P.add('turretDark', box(0.026, 0.026, 0.014),
       i * hw * 0.30, top - 0.055, rearFaceZ - 0.006);
   }
+}
+
+// The third-generation source shell begins above the hull deck after its
+// vertical presentation scale is applied. A shallow, buried collar carries
+// that lower ring down to the deck without moving the turret pivot or changing
+// the gun articulation. The collar is solid armor rather than a decorative
+// torus so low side views cannot see through the turret race.
+function merkavaThirdGenTurretSeat(P, p) {
+  if (!['merkava3c', 'merkava3d'].includes(P.spec.id)) return;
+  const pivotY = p.deckY + 0.02;
+  const verticalScale = p.turretScale?.y ?? 1;
+  const shellBaseWorldY = 1.78;
+  const collarBottomWorldY = p.deckY - 0.010;
+  const collarTopWorldY = shellBaseWorldY + 0.020;
+  const localBottom = collarBottomWorldY - pivotY;
+  const localTop = collarTopWorldY - pivotY;
+  const localHeight = localTop - localBottom;
+  const localCenter = (localTop + localBottom) / 2;
+  const ringRadius = P.spec.id === 'merkava3d' ? 1.22 : 1.18;
+
+  P.add('turretDark', KIT.cylY(ringRadius, ringRadius * 0.985, localHeight, P.q ? 40 : 24),
+    0, localCenter, 0);
+  P.add('turret', KIT.torus(ringRadius * 0.95, 0.034, P.q ? 40 : 24, 8),
+    0, localTop - 0.025, 0);
+
+  const restWorldBottomY = pivotY + localBottom * verticalScale;
+  const restWorldTopY = pivotY + localTop * verticalScale;
+  P.turretG.userData[`${P.spec.id}TurretSeatReceipt`] = Object.freeze({
+    revision: 'turret-ring-hull-seat-r1',
+    hullDeckWorldYM: p.deckY,
+    authoredShellBaseWorldYM: shellBaseWorldY,
+    restWorldBottomYM: restWorldBottomY,
+    restWorldTopYM: restWorldTopY,
+    ringRadiusM: ringRadius,
+    visualVerticalScale: verticalScale,
+    deckEmbedM: p.deckY - restWorldBottomY,
+    shellOverlapM: restWorldTopY - (pivotY + (shellBaseWorldY - pivotY) * verticalScale),
+    continuousStructuralSeat: true,
+  });
 }
 
 function merkavaSmallTurret(P, t) {
@@ -5763,6 +5904,7 @@ function buildMerkavaMark(P, p) {
   if (['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b'].includes(P.spec.id)) {
     merkavaRearTurretBulkhead(P, t);
   }
+  merkavaThirdGenTurretSeat(P, p);
   // r2: the old `ringFloor` interior column (bot y~0.6) is DELETED — it
   // mimicked the pre-repair oracles' fused crew-tunnel interiors; the
   // repaired references carve at the ring plane (repair 86d1071), so the
@@ -5903,31 +6045,94 @@ function buildMerkavaMark(P, p) {
   // Free-standing roof pots/cans (measured 1-2 column bumps beside the
   // whips; tops capped under the published-height p95 line).
   if (p.pots) {
+    const tankId = P.spec.id;
+    const earlyOracle = MERKAVA_EARLY_ORACLE[tankId];
+    const isMk1B = tankId === 'merkava1b';
+    const earlyPotSeats = [];
     for (const pot of p.pots) { // { x, z, top, base?, w?, d?, bin? }
-      const base = pot.base ?? (pot.top - 0.30);
-      P.add('turretDetail', box(pot.w ?? 0.18, pot.top - base, pot.d ?? 0.18), pot.x, V((pot.top + base) / 2), L(pot.z));
+      const authoredBase = pot.base ?? (pot.top - 0.30);
+      const authoredHeight = pot.top - authoredBase;
+      const seatRoof = pot.seatRoof || (!!earlyOracle && !isMk1B && !pot.bin);
+      const surfacePanel = pot.surfacePanel || (!!earlyOracle && !isMk1B && pot.bin);
+      const oracleRoof = earlyOracle ? merkavaEarlyOracleRoofAt(tankId, pot.z) : null;
+      const base = seatRoof
+        ? Math.min(authoredBase, oracleRoof - 0.012)
+        : authoredBase;
+      const top = base + authoredHeight;
+      const potW = pot.w ?? 0.18;
+      const potD = pot.d ?? 0.18;
+      const surfaceFrame = surfacePanel
+        ? merkavaEarlySurfaceFrame(P, p, {
+          side: Math.sign(pot.x) || 1,
+          worldY: Math.min((top + base) / 2, oracleRoof - 0.035),
+          worldZ: pot.z,
+        })
+        : null;
+      if (surfaceFrame) {
+        const surfaceOffset = pot.surfaceOffset ?? 0;
+        const center = addMerkavaEarlyFrameBox(P, 'turretDetail', surfaceFrame,
+          potD, top - base, potW, surfaceOffset + potW / 2 - 0.014);
+        addMerkavaEarlyFrameBox(P, 'turretDark', surfaceFrame,
+          potD * 0.82, 0.020, 0.014, surfaceOffset + potW - 0.016);
+        for (const tangentOffset of [-0.36, 0.36]) {
+          const latchFrame = {
+            ...surfaceFrame,
+            point: surfaceFrame.point.clone().addScaledVector(surfaceFrame.tangent, potD * tangentOffset),
+          };
+          addMerkavaEarlyFrameBox(P, 'turretDark', latchFrame,
+            0.035, Math.min(0.08, (top - base) * 0.28), 0.016,
+            surfaceOffset + potW - 0.012);
+        }
+        earlyPotSeats.push(Object.freeze({
+          kind: 'side-panel',
+          side: Math.sign(pot.x) || 1,
+          worldZ: pot.z,
+          centerLocal: Object.freeze(center.toArray()),
+          normalLocal: Object.freeze(surfaceFrame.normal.toArray()),
+          contactEmbedM: 0.014,
+          surfaceOffsetM: surfaceOffset,
+        }));
+        continue;
+      }
+      P.add('turretDetail', box(potW, top - base, potD), pot.x, V((top + base) / 2), L(pot.z));
       if (pot.bin) {
         // §B3 bin identity (2026-08-05, per-pot opt-in — every sibling pot
         // byte-identical): the big shoulder bins read as bare crates beside
         // the casting; lid seam + latch pair + face stiffener give them the
         // stowage-bin tell. All faces <= 4 mm proud, inside the footprint.
-        const bw = pot.w ?? 0.18, bd = pot.d ?? 0.18;
+        const bw = potW, bd = potD;
         const sgn = Math.sign(pot.x) || 1;
-        P.add('turretDark', box(0.003, 0.010, bd * 0.92), pot.x + sgn * (bw / 2 + 0.0015), V(pot.top - 0.06), L(pot.z));   // lid seam (outer face)
-        P.add('turretDark', box(bw * 0.92, 0.010, 0.003), pot.x, V(pot.top - 0.06), L(pot.z) + bd / 2 + 0.0015);           // lid seam (front face)
-        P.add('turretDark', box(0.004, 0.030, 0.022), pot.x + sgn * (bw / 2 + 0.002), V((pot.top + base) / 2), L(pot.z) - bd * 0.22); // latch
-        P.add('turretDark', box(0.004, 0.030, 0.022), pot.x + sgn * (bw / 2 + 0.002), V((pot.top + base) / 2), L(pot.z) + bd * 0.22); // latch
+        P.add('turretDark', box(0.003, 0.010, bd * 0.92), pot.x + sgn * (bw / 2 + 0.0015), V(top - 0.06), L(pot.z));   // lid seam (outer face)
+        P.add('turretDark', box(bw * 0.92, 0.010, 0.003), pot.x, V(top - 0.06), L(pot.z) + bd / 2 + 0.0015);           // lid seam (front face)
+        P.add('turretDark', box(0.004, 0.030, 0.022), pot.x + sgn * (bw / 2 + 0.002), V((top + base) / 2), L(pot.z) - bd * 0.22); // latch
+        P.add('turretDark', box(0.004, 0.030, 0.022), pot.x + sgn * (bw / 2 + 0.002), V((top + base) / 2), L(pot.z) + bd * 0.22); // latch
         P.add('turretDark', box(0.004, 0.012, bd * 0.34), pot.x + sgn * (bw / 2 + 0.0015), V(base + 0.05), L(pot.z));      // stiffener line
       }
       if (p.softGoods) {
         // r4 kit-lid de-maroon (critic: "kit lids warm-maroon cast" + the
         // top views read rows of dark chips): the 70%-width near-black lid
         // becomes a detail-tone lid with one small dark latch chip.
-        P.add('turretDetail', box((pot.w ?? 0.18) * 0.7, 0.04, (pot.d ?? 0.18) * 0.7), pot.x, V(pot.top - 0.02), L(pot.z));
-        P.add('turretDark', box((pot.w ?? 0.18) * 0.26, 0.012, (pot.d ?? 0.18) * 0.30), pot.x + (pot.w ?? 0.18) * 0.14, V(pot.top) + 0.001, L(pot.z));
+        P.add('turretDetail', box(potW * 0.7, 0.04, potD * 0.7), pot.x, V(top - 0.02), L(pot.z));
+        P.add('turretDark', box(potW * 0.26, 0.012, potD * 0.30), pot.x + potW * 0.14, V(top) + 0.001, L(pot.z));
       } else {
-        P.add('turretDark', box((pot.w ?? 0.18) * 0.7, 0.04, (pot.d ?? 0.18) * 0.7), pot.x, V(pot.top - 0.02), L(pot.z));
+        P.add('turretDark', box(potW * 0.7, 0.04, potD * 0.7), pot.x, V(top - 0.02), L(pot.z));
       }
+      if (seatRoof) {
+        earlyPotSeats.push(Object.freeze({
+          kind: 'roof-equipment',
+          worldZ: pot.z,
+          authoredBaseM: authoredBase,
+          seatedBaseM: base,
+          standOffRemovedM: authoredBase - base,
+        }));
+      }
+    }
+    if (earlyOracle) {
+      P.turretG.userData[`${tankId}LegacyEquipmentSeatReceipt`] = Object.freeze({
+        revision: 'source-shell-equipment-seating-r1',
+        sourceRoofDatum: true,
+        seats: Object.freeze(earlyPotSeats),
+      });
     }
   }
 
@@ -6871,6 +7076,213 @@ function merkava4bArmorPanels(P, p) {
   }
 }
 
+const MERKAVA1B_ORACLE_PLAN = Object.freeze([
+  Object.freeze([-0.30, 1.10]), Object.freeze([0.30, 1.10]),
+  Object.freeze([0.72, 0.66]), Object.freeze([1.10, 0.12]),
+  Object.freeze([1.29, -0.55]), Object.freeze([1.18, -2.12]),
+  Object.freeze([0.90, -2.38]), Object.freeze([-0.90, -2.38]),
+  Object.freeze([-1.18, -2.12]), Object.freeze([-1.29, -0.55]),
+  Object.freeze([-1.10, 0.12]), Object.freeze([-0.72, 0.66]),
+]);
+const MERKAVA1B_ORACLE_ROOF = Object.freeze([
+  Object.freeze([1.10, 2.10]), Object.freeze([0.55, 2.18]),
+  Object.freeze([-0.20, 2.28]), Object.freeze([-1.20, 2.34]),
+  Object.freeze([-2.38, 2.31]),
+]);
+const MERKAVA1B_ORACLE_BASE_Y = 1.62;
+const MERKAVA1B_ORACLE_INSET = 0.62;
+const MERKAVA1B_ORACLE_SHOULDER_RISE = 0.12;
+const MERKAVA2B_ORACLE_PLAN = Object.freeze([
+  Object.freeze([-0.28, 1.60]), Object.freeze([0.28, 1.60]),
+  Object.freeze([0.82, 1.02]), Object.freeze([1.22, 0.34]),
+  Object.freeze([1.33, -0.48]), Object.freeze([1.24, -1.78]),
+  Object.freeze([0.98, -2.30]), Object.freeze([-0.98, -2.30]),
+  Object.freeze([-1.24, -1.78]), Object.freeze([-1.33, -0.48]),
+  Object.freeze([-1.22, 0.34]), Object.freeze([-0.82, 1.02]),
+]);
+const MERKAVA2B_ORACLE_ROOF = Object.freeze([
+  Object.freeze([1.60, 2.08]), Object.freeze([0.82, 2.17]),
+  Object.freeze([0.05, 2.31]), Object.freeze([-0.70, 2.40]),
+  Object.freeze([-1.55, 2.46]), Object.freeze([-2.30, 2.42]),
+]);
+const MERKAVA2D_ORACLE_PLAN = Object.freeze([
+  Object.freeze([-0.30, 1.61]), Object.freeze([0.30, 1.61]),
+  Object.freeze([0.94, 1.05]), Object.freeze([1.46, 0.35]),
+  Object.freeze([1.66, -0.52]), Object.freeze([1.48, -2.25]),
+  Object.freeze([1.02, -2.66]), Object.freeze([-1.02, -2.66]),
+  Object.freeze([-1.48, -2.25]), Object.freeze([-1.66, -0.52]),
+  Object.freeze([-1.46, 0.35]), Object.freeze([-0.94, 1.05]),
+]);
+const MERKAVA2D_ORACLE_ROOF = Object.freeze([
+  Object.freeze([1.61, 2.09]), Object.freeze([0.92, 2.18]),
+  Object.freeze([0.12, 2.31]), Object.freeze([-0.72, 2.39]),
+  Object.freeze([-1.62, 2.44]), Object.freeze([-2.66, 2.38]),
+]);
+const MERKAVA3C_ORACLE_PLAN = Object.freeze([
+  Object.freeze([-0.26, 0.94]), Object.freeze([0.26, 0.94]),
+  Object.freeze([0.84, 0.58]), Object.freeze([1.30, -0.10]),
+  Object.freeze([1.39, -1.28]), Object.freeze([1.30, -2.74]),
+  Object.freeze([1.06, -3.28]), Object.freeze([-1.06, -3.28]),
+  Object.freeze([-1.30, -2.74]), Object.freeze([-1.39, -1.28]),
+  Object.freeze([-1.30, -0.10]), Object.freeze([-0.84, 0.58]),
+]);
+const MERKAVA3C_ORACLE_ROOF = Object.freeze([
+  Object.freeze([0.94, 2.16]), Object.freeze([0.42, 2.27]),
+  Object.freeze([-0.20, 2.36]), Object.freeze([-1.25, 2.42]),
+  Object.freeze([-2.45, 2.40]), Object.freeze([-3.28, 2.31]),
+]);
+const MERKAVA3D_ORACLE_PLAN = Object.freeze([
+  Object.freeze([-0.28, 0.93]), Object.freeze([0.28, 0.93]),
+  Object.freeze([0.96, 0.60]), Object.freeze([1.54, -0.10]),
+  Object.freeze([1.79, -0.92]), Object.freeze([1.64, -2.52]),
+  Object.freeze([1.30, -3.20]), Object.freeze([-1.30, -3.20]),
+  Object.freeze([-1.64, -2.52]), Object.freeze([-1.79, -0.92]),
+  Object.freeze([-1.54, -0.10]), Object.freeze([-0.96, 0.60]),
+]);
+const MERKAVA3D_ORACLE_ROOF = Object.freeze([
+  Object.freeze([0.93, 2.15]), Object.freeze([0.42, 2.26]),
+  Object.freeze([-0.20, 2.36]), Object.freeze([-1.20, 2.42]),
+  Object.freeze([-2.36, 2.41]), Object.freeze([-3.20, 2.30]),
+]);
+const MERKAVA_EARLY_ORACLE = Object.freeze({
+  merkava1b: Object.freeze({
+    plan: MERKAVA1B_ORACLE_PLAN,
+    roof: MERKAVA1B_ORACLE_ROOF,
+    base: MERKAVA1B_ORACLE_BASE_Y,
+    inset: MERKAVA1B_ORACLE_INSET,
+    shoulderRise: MERKAVA1B_ORACLE_SHOULDER_RISE,
+  }),
+  merkava2b: Object.freeze({
+    plan: MERKAVA2B_ORACLE_PLAN,
+    roof: MERKAVA2B_ORACLE_ROOF,
+    base: 1.72,
+    inset: 0.64,
+    shoulderRise: 0.12,
+  }),
+  merkava2d: Object.freeze({
+    plan: MERKAVA2D_ORACLE_PLAN,
+    roof: MERKAVA2D_ORACLE_ROOF,
+    base: 1.72,
+    inset: 0.68,
+    shoulderRise: 0.12,
+  }),
+  merkava3c: Object.freeze({
+    plan: MERKAVA3C_ORACLE_PLAN,
+    roof: MERKAVA3C_ORACLE_ROOF,
+    base: 1.78,
+    inset: 0.69,
+    shoulderRise: 0.10,
+  }),
+  merkava3d: Object.freeze({
+    plan: MERKAVA3D_ORACLE_PLAN,
+    roof: MERKAVA3D_ORACLE_ROOF,
+    base: 1.78,
+    inset: 0.68,
+    shoulderRise: 0.10,
+  }),
+});
+const merkavaSurfaceOracleCache = new WeakMap();
+
+function merkavaCourseAt(stations, z) {
+  if (z >= stations[0][0]) return stations[0][1];
+  for (let index = 0; index < stations.length - 1; index++) {
+    const [za, ya] = stations[index];
+    const [zb, yb] = stations[index + 1];
+    if (z <= za && z >= zb) {
+      const f = (za - z) / Math.max(0.001, za - zb);
+      return THREE.MathUtils.lerp(ya, yb, f);
+    }
+  }
+  return stations.at(-1)[1];
+}
+
+function merkavaEarlyOracleRoofAt(id, zWorld) {
+  const cfg = MERKAVA_EARLY_ORACLE[id];
+  return cfg ? merkavaCourseAt(cfg.roof, zWorld) : null;
+}
+
+// Authoring-only copy of each early source-oracle casting. Ray hits on this
+// support mesh give side armor, bins and ERA the actual sloped surface
+// point/normal instead of the old constant-X approximation.  It never enters
+// the scene graph or the playable geometry buckets.
+function merkavaEarlySurfaceOracle(P, p) {
+  const cfg = MERKAVA_EARLY_ORACLE[P.spec.id];
+  if (!cfg) return null;
+  let support = merkavaSurfaceOracleCache.get(P.turretG);
+  if (support) return support;
+  const pivotY = p.deckY + 0.02;
+  const plan = cfg.plan.map(([x, z]) => [x, z - p.pivotZ]);
+  const roof = cfg.plan.map(([, z]) => merkavaCourseAt(cfg.roof, z) - pivotY);
+  const zMin = Math.min(...cfg.plan.map(([, z]) => z));
+  const zMax = Math.max(...cfg.plan.map(([, z]) => z));
+  const maxX = Math.max(...cfg.plan.map(([x]) => Math.abs(x)));
+  const shoulder = cfg.plan.map(([x, z]) => {
+    const fore = THREE.MathUtils.clamp((z - zMin) / Math.max(0.01, zMax - zMin), 0, 1);
+    const flank = Math.min(1, Math.abs(x) / maxX);
+    return cfg.base + cfg.shoulderRise
+      + fore * 0.05 - flank * 0.025 - pivotY;
+  });
+  support = new THREE.Mesh(KIT.polyMultiLoft(plan, [
+    { height: cfg.base - pivotY, inset: 0.94 },
+    { height: shoulder, inset: 1.00 },
+    { height: roof, inset: cfg.inset },
+  ]), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  support.geometry.computeBoundingSphere();
+  support.updateMatrixWorld(true);
+  merkavaSurfaceOracleCache.set(P.turretG, support);
+  return support;
+}
+
+function merkavaEarlySurfaceFrame(P, p, {
+  side, worldY, worldZ, nominalX = null,
+}) {
+  if (!MERKAVA_EARLY_ORACLE[P.spec.id]) return null;
+  const support = merkavaEarlySurfaceOracle(P, p);
+  if (!support) return null;
+  const localY = worldY - (p.deckY + 0.02);
+  const localZ = worldZ - p.pivotZ;
+  const raycaster = new THREE.Raycaster();
+  let origin;
+  let direction;
+  if (nominalX == null) {
+    origin = new THREE.Vector3(side * 4, localY, localZ);
+    direction = new THREE.Vector3(-side, 0, 0);
+  } else {
+    const centerZ = support.geometry.boundingSphere?.center.z ?? 0;
+    const radial = new THREE.Vector3(nominalX, 0, localZ - centerZ).normalize();
+    origin = new THREE.Vector3(0, localY, centerZ).addScaledVector(radial, 4);
+    direction = radial.clone().negate();
+  }
+  raycaster.set(origin, direction);
+  const hit = raycaster.intersectObject(support, false)[0];
+  if (!hit?.face) return null;
+  const point = hit.point.clone();
+  const normal = hit.face.normal.clone().normalize();
+  const expected = nominalX == null
+    ? new THREE.Vector3(side, 0, 0)
+    : origin.clone().sub(point).normalize();
+  if (normal.dot(expected) < 0) normal.negate();
+  const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+  const tangent = new THREE.Vector3().crossVectors(up, normal).normalize();
+  const basis = new THREE.Matrix4().makeBasis(tangent, up, normal);
+  return {
+    point,
+    normal,
+    up,
+    tangent,
+    eulerXYZ: new THREE.Euler().setFromRotationMatrix(basis, 'XYZ'),
+    eulerYXZ: new THREE.Euler().setFromRotationMatrix(basis, 'YXZ'),
+  };
+}
+
+function addMerkavaEarlyFrameBox(P, bucket, frame, width, height, depth, outwardOffset = 0, equipment = false) {
+  const center = frame.point.clone().addScaledVector(frame.normal, outwardOffset);
+  const add = equipment ? P.addEquipment : P.add;
+  add(bucket, KIT.box(width, height, depth), center.x, center.y, center.z,
+    frame.eulerXYZ.x, frame.eulerXYZ.y, frame.eulerXYZ.z);
+  return center;
+}
+
 // Source-oracle turret shells for the owner-supplied Merkava archive set.
 //
 // The older profiles below were optimized against silhouette masks and could
@@ -6890,39 +7302,39 @@ function merkavaSourceOracleTurret(P, p, t) {
   const M = (pt) => [pt[0], V(pt[1]), L(pt[2])];
   const profiles = {
     merkava1b: {
-      plan: [[-0.30, 1.10], [0.30, 1.10], [0.72, 0.66], [1.10, 0.12], [1.29, -0.55], [1.18, -2.12], [0.90, -2.38], [-0.90, -2.38], [-1.18, -2.12], [-1.29, -0.55], [-1.10, 0.12], [-0.72, 0.66]],
-      base: 1.62,
-      roof: [[1.10, 2.10], [0.55, 2.18], [-0.20, 2.28], [-1.20, 2.34], [-2.38, 2.31]],
-      inset: 0.62,
-      shoulderRise: 0.12,
+      plan: MERKAVA1B_ORACLE_PLAN,
+      base: MERKAVA1B_ORACLE_BASE_Y,
+      roof: MERKAVA1B_ORACLE_ROOF,
+      inset: MERKAVA1B_ORACLE_INSET,
+      shoulderRise: MERKAVA1B_ORACLE_SHOULDER_RISE,
     },
     merkava2b: {
-      plan: [[-0.28, 1.60], [0.28, 1.60], [0.82, 1.02], [1.22, 0.34], [1.33, -0.48], [1.24, -1.78], [0.98, -2.30], [-0.98, -2.30], [-1.24, -1.78], [-1.33, -0.48], [-1.22, 0.34], [-0.82, 1.02]],
+      plan: MERKAVA2B_ORACLE_PLAN,
       base: 1.72,
-      roof: [[1.60, 2.08], [0.82, 2.17], [0.05, 2.31], [-0.70, 2.40], [-1.55, 2.46], [-2.30, 2.42]],
+      roof: MERKAVA2B_ORACLE_ROOF,
       inset: 0.64,
       shoulderRise: 0.12,
     },
     merkava2d: {
-      plan: [[-0.30, 1.61], [0.30, 1.61], [0.94, 1.05], [1.46, 0.35], [1.66, -0.52], [1.48, -2.25], [1.02, -2.66], [-1.02, -2.66], [-1.48, -2.25], [-1.66, -0.52], [-1.46, 0.35], [-0.94, 1.05]],
+      plan: MERKAVA2D_ORACLE_PLAN,
       base: 1.72,
-      roof: [[1.61, 2.09], [0.92, 2.18], [0.12, 2.31], [-0.72, 2.39], [-1.62, 2.44], [-2.66, 2.38]],
+      roof: MERKAVA2D_ORACLE_ROOF,
       inset: 0.68,
       shoulderRise: 0.12,
       applique: true,
     },
     merkava3c: {
-      plan: [[-0.26, 0.94], [0.26, 0.94], [0.84, 0.58], [1.30, -0.10], [1.39, -1.28], [1.30, -2.74], [1.06, -3.28], [-1.06, -3.28], [-1.30, -2.74], [-1.39, -1.28], [-1.30, -0.10], [-0.84, 0.58]],
+      plan: MERKAVA3C_ORACLE_PLAN,
       base: 1.78,
-      roof: [[0.94, 2.16], [0.42, 2.27], [-0.20, 2.36], [-1.25, 2.42], [-2.45, 2.40], [-3.28, 2.31]],
+      roof: MERKAVA3C_ORACLE_ROOF,
       inset: 0.69,
       shoulderRise: 0.10,
       modular: true,
     },
     merkava3d: {
-      plan: [[-0.28, 0.93], [0.28, 0.93], [0.96, 0.60], [1.54, -0.10], [1.79, -0.92], [1.64, -2.52], [1.30, -3.20], [-1.30, -3.20], [-1.64, -2.52], [-1.79, -0.92], [-1.54, -0.10], [-0.96, 0.60]],
+      plan: MERKAVA3D_ORACLE_PLAN,
       base: 1.78,
-      roof: [[0.93, 2.15], [0.42, 2.26], [-0.20, 2.36], [-1.20, 2.42], [-2.36, 2.41], [-3.20, 2.30]],
+      roof: MERKAVA3D_ORACLE_ROOF,
       inset: 0.68,
       shoulderRise: 0.10,
       modular: true,
@@ -7369,10 +7781,11 @@ function merkavaSourceFinish(P, p, t) {
   // `merkavaModularTurret`; treating `mk4bRebuild` as an oracle nevertheless
   // seated its hatches, optics and rack cases 10-20 cm over the real roof.
   const oracleRoof = p.sourceOracleTurret ? {
-    merkava2b: [[1.60, 2.08], [0.82, 2.17], [0.05, 2.31], [-0.70, 2.40], [-1.55, 2.46], [-2.30, 2.42]],
-    merkava2d: [[1.61, 2.09], [0.92, 2.18], [0.12, 2.31], [-0.72, 2.39], [-1.62, 2.44], [-2.66, 2.38]],
-    merkava3c: [[0.94, 2.16], [0.42, 2.27], [-0.20, 2.36], [-1.25, 2.42], [-2.45, 2.40], [-3.28, 2.31]],
-    merkava3d: [[0.93, 2.15], [0.42, 2.26], [-0.20, 2.36], [-1.20, 2.42], [-2.36, 2.41], [-3.20, 2.30]],
+    merkava1b: MERKAVA1B_ORACLE_ROOF,
+    merkava2b: MERKAVA2B_ORACLE_ROOF,
+    merkava2d: MERKAVA2D_ORACLE_ROOF,
+    merkava3c: MERKAVA3C_ORACLE_ROOF,
+    merkava3d: MERKAVA3D_ORACLE_ROOF,
     merkava4b: [[0.66, 2.58], [0.10, 2.67], [-0.82, 2.73], [-1.86, 2.70], [-2.72, 2.64], [-3.36, 2.54]],
   }[id] : null;
   const roofCourse = oracleRoof ?? p.roofLine;
@@ -7701,6 +8114,10 @@ function merkavaSourceFinish(P, p, t) {
 
   const mk4bEraEmbedM = 0.014;
   const mk4bEraSeats = [];
+  const earlyEraEmbedM = 0.014;
+  const earlyEraSeats = [];
+  const earlySidePanelSeats = [];
+  const earlyOracle = MERKAVA_EARLY_ORACLE[id];
   const mk4bEraCells = (side) => {
     if (id !== 'merkava4b') return null;
     const cells = [];
@@ -7749,6 +8166,38 @@ function merkavaSourceFinish(P, p, t) {
           const y = roofAt(z) + combatFit.cheekRise - f * 0.08 - row * tileH * 0.92;
           const yaw = s * (-0.12 - f * 0.24);
           const roll = s * (0.04 + f * 0.08);
+          if (earlyOracle) {
+            const shellRoof = merkavaEarlyOracleRoofAt(id, z);
+            const heightFractions = combatFit.rows === 3 ? [0.79, 0.58, 0.37] : [0.73, 0.47];
+            const surfaceY = THREE.MathUtils.lerp(
+              earlyOracle.base + earlyOracle.shoulderRise,
+              shellRoof - 0.025,
+              heightFractions[row],
+            );
+            const frame = merkavaEarlySurfaceFrame(P, p, {
+              side: s,
+              nominalX: x,
+              worldY: surfaceY,
+              worldZ: z,
+            });
+            if (frame) {
+              const center = frame.point.clone().addScaledVector(frame.normal,
+                tileD / 2 - earlyEraEmbedM);
+              eraCells.push({
+                x: center.x, y: center.y, z: center.z,
+                rx: frame.eulerYXZ.x, ry: frame.eulerYXZ.y, rz: frame.eulerYXZ.z,
+                boxRx: frame.eulerXYZ.x, boxRy: frame.eulerXYZ.y, boxRz: frame.eulerXYZ.z,
+                nx: frame.normal.x, ny: frame.normal.y, nz: frame.normal.z,
+                surface: frame.point.clone(),
+                tileW, tileH, tileD,
+                sourceConformal: true,
+                worldZ: z,
+              });
+              addMerkavaEarlyFrameBox(P, 'turretDark', frame,
+                tileW * 0.74, tileH * 0.42, 0.026, 0.006);
+              continue;
+            }
+          }
           // eraCluster turret-local placements use world rest-pose y/z and
           // convert them around the turret pivot internally. Feeding V/L
           // here applied that conversion twice and dropped the cassettes into
@@ -7777,13 +8226,26 @@ function merkavaSourceFinish(P, p, t) {
           cell.boxRx, cell.boxRy, cell.boxRz);
       }
     }
+    if (earlyOracle) {
+      for (const cell of eraCells.filter((candidate) => candidate.sourceConformal)) {
+        earlyEraSeats.push(Object.freeze({
+          side: s,
+          centerLocal: Object.freeze([cell.x, cell.y, cell.z]),
+          surfaceLocal: Object.freeze(cell.surface.toArray()),
+          normalLocal: Object.freeze([cell.nx, cell.ny, cell.nz]),
+          cassetteDepthM: cell.tileD,
+          contactEmbedM: earlyEraEmbedM,
+          worldZ: cell.worldZ,
+        }));
+      }
+    }
     // These are actual ERA placements rather than permanent decorative
     // boxes: damage stripping now removes the cassette while the seated
     // retainer remains on the cheek.  Per-cell scaling preserves the
     // source-derived faceted field and keeps one instanced mesh per side.
     P.eraCluster(`merkava_${id}_turret_era_${s > 0 ? 'R' : 'L'}`, (put) => {
       for (const cell of eraCells) {
-        if (id === 'merkava4b') {
+        if (id === 'merkava4b' || (earlyOracle && cell.sourceConformal)) {
           const armorPivot = P.spec.armor.turretPivot;
           put(armorPivot[0] + cell.x, armorPivot[1] + cell.y, armorPivot[2] + cell.z,
             cell.rx, cell.ry, cell.rz,
@@ -7808,6 +8270,29 @@ function merkavaSourceFinish(P, p, t) {
         / Math.max(1, combatFit.side - 1) * 0.88);
       const y = combatFit.sideY - f * 0.07;
       const yaw = s * (-0.035 + f * 0.055);
+      if (earlyOracle) {
+        const frame = merkavaEarlySurfaceFrame(P, p, { side: s, worldY: y, worldZ: z });
+        if (frame) {
+          const panelDepth = 0.075;
+          const panelCenter = addMerkavaEarlyFrameBox(P, 'turret', frame,
+            d, h * 0.88, panelDepth, panelDepth / 2 - 0.014);
+          const lowerFrame = { ...frame, point: frame.point.clone().addScaledVector(frame.up, -h * 0.31) };
+          const upperFrame = { ...frame, point: frame.point.clone().addScaledVector(frame.up, h * 0.31) };
+          const rearFrame = { ...frame, point: frame.point.clone().addScaledVector(frame.tangent, d * 0.39) };
+          addMerkavaEarlyFrameBox(P, 'turretDark', lowerFrame, d * 0.76, 0.020, 0.018, panelDepth - 0.010);
+          addMerkavaEarlyFrameBox(P, 'turretDetail', upperFrame, d * 0.76, 0.026, 0.014, panelDepth - 0.006);
+          addMerkavaEarlyFrameBox(P, 'turretDark', rearFrame, 0.022, h * 0.76, 0.018, panelDepth - 0.009);
+          earlySidePanelSeats.push(Object.freeze({
+            side: s,
+            worldZ: z,
+            centerLocal: Object.freeze(panelCenter.toArray()),
+            surfaceLocal: Object.freeze(frame.point.toArray()),
+            normalLocal: Object.freeze(frame.normal.toArray()),
+            contactEmbedM: 0.014,
+          }));
+          continue;
+        }
+      }
       P.add('turret', box(0.065, h * 0.88, d), x, V(y), L(z), -0.10, yaw, s * -0.070);
       P.add('turretDark', box(0.018, h * 0.78, 0.022), s * (faceX + 0.094),
         V(y - 0.01), L(z - d * 0.43), -0.08, yaw, s * -0.055);
@@ -7948,6 +8433,21 @@ function merkavaSourceFinish(P, p, t) {
     'turretDark', 0.020, 0.030);
   deckRod([[0.94, roofAt(-1.30), -1.30], [0.72, roofAt(-1.66), -1.66], [0.90, roofAt(-2.10), -2.10]],
     'turretDetail', 0.018, 0.032);
+  if (earlyOracle) {
+    P.turretG.userData[`${id}SourceFitReceipt`] = Object.freeze({
+      revision: 'source-shell-conformal-fit-r1',
+      roofDatumSource: 'source-oracle',
+      roofCourse: Object.freeze(earlyOracle.roof.map((station) => Object.freeze([...station]))),
+      sidePanelsPerSide: combatFit.side,
+      sidePanelSeats: Object.freeze(earlySidePanelSeats),
+      eraCassettesPerSide: combatFit.rows * combatFit.cols,
+      eraSeats: Object.freeze(earlyEraSeats),
+      panelContactEmbedM: 0.014,
+      eraContactEmbedM: earlyEraEmbedM,
+      maximumSurfaceGapM: 0,
+      outwardMirroredNormals: true,
+    });
+  }
 }
 
 // §B3 NO-MYSTERY-BOXES cheek-pod tell (owner directive 2026-08-05, the
@@ -9496,6 +9996,12 @@ export const MERKAVA_PROFILES = {
     // 3-series-cleared class); the certified keelDarkTail rear panel
     // narrows 0.88..1.28 -> 0.88..1.15 (re-measured this round, §4b lane).
     keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58, hwClamp: 1.15 },
+    glacisClosure: {
+      z0: 2.52, z1: 2.91,
+      lower0: 0.62, lower1: 0.86,
+      upper0: 1.035, upper1: 1.055,
+      hw0: 1.14, hw1: 0.47,
+    },
     glacis: { z0: 0.85, z1: 2.975 },
     podX: 0.60, podIn: -0.085, podY: 0.99,
     // Fender planks at the measured y 1.43 line; the corner mud flaps drop
@@ -9548,7 +10054,8 @@ export const MERKAVA_PROFILES = {
     louvreTrackClearY: 1.27,
     runningGearBuckets: true,
     wheelZs: [1.46, 0.62, -0.23, -1.07, -1.91, -2.65],
-    sprocket: { z: 1.95, y: 0.66, r: 0.28 }, idler: { z: -3.65, y: 0.80, r: 0.28 },
+    sprocketForwardM: 0.18,
+    sprocket: { z: 2.13, y: 0.66, r: 0.28 }, idler: { z: -3.65, y: 0.80, r: 0.28 },
     rollers: [1.0, 0.12, -0.75, -1.62, -2.45],
     // Hull tail: center notch to -3.79, rack band [0.92..1.58] to -4.215
     // full width, deep run x 0.35..1.02 to -4.29 (= the ref body-span end),
@@ -9735,7 +10242,7 @@ export const MERKAVA_PROFILES = {
       { x: -0.855, z: -2.96, top: 2.772, base: 2.40, w: 0.04, d: 0.05 },  // left whip feather col (front 2.772; p95 spike #3)
       // r5 crown dominance: the peak pot out-crowned the dome by 2 cm as a
       // fat block — slimmed to a knob (same top: the ref -1.76 col spike)
-      { x: -0.73, z: -1.74, top: 2.652, base: 2.52, w: 0.08, d: 0.06 },   // dome-band peak 2.655 @ -1.74
+      { x: -0.73, z: -1.74, top: 2.652, base: 2.52, w: 0.08, d: 0.06, seatRoof: true },   // dome-band peak 2.655 @ -1.74
       // r5 plan item: right-cheek casting fitting — the ref's right plan
       // front edge holds 0.48-0.55 at x 0.45..0.65 (the shell wedge alone
       // under-read it 0.12-0.24; sits under the roof so side/front-free).
@@ -9743,7 +10250,7 @@ export const MERKAVA_PROFILES = {
       // close-roof — re-authored as a cast WEDGE in merkava1bKit (identical
       // plan footprint x 0.45..0.65 / z 0.125..0.545; front edge drops to
       // 1.96 so it hugs the casting like the ref's low rounded bump).
-      { x: 0.03, z: -1.00, top: 2.635, base: 2.40, w: 0.12, d: 0.12 },    // center head (front ±0.06 @ 2.635)
+      { x: 0.03, z: -1.00, top: 2.635, base: 2.40, w: 0.12, d: 0.12, seatRoof: true },    // center head (front ±0.06 @ 2.635)
       // visual r2 roof shoulders (paired with the roofLine crown narrow):
       // left shelf holds the ref's 2.513 line, right the 2.441-2.461 line
       // (right pot starts x 0.66 so the loader MG crown at 2.451 owns its
@@ -9758,21 +10265,21 @@ export const MERKAVA_PROFILES = {
       // the heroes; the aft segments keep the certified 2.497/2.512
       // side-row carriers (ref rear shelf 2.508-2.516 to -2.13) and the
       // front columns via max-over-z.
-      { x: -0.625, z: -1.40, top: 2.415, base: 2.35, w: 0.19, d: 0.70 },
-      { x: -0.625, z: -1.975, top: 2.512, base: 2.35, w: 0.19, d: 0.45 },
-      { x: -0.805, z: -1.39, top: 2.405, base: 2.35, w: 0.17, d: 0.68 },
-      { x: -0.805, z: -1.955, top: 2.497, base: 2.35, w: 0.17, d: 0.35 },
+      { x: -0.625, z: -1.40, top: 2.415, base: 2.35, w: 0.19, d: 0.70, seatRoof: true },
+      { x: -0.625, z: -1.975, top: 2.512, base: 2.35, w: 0.19, d: 0.45, seatRoof: true },
+      { x: -0.805, z: -1.39, top: 2.405, base: 2.35, w: 0.17, d: 0.68, seatRoof: true },
+      { x: -0.805, z: -1.955, top: 2.497, base: 2.35, w: 0.17, d: 0.35, seatRoof: true },
       // r3: right shoulder pot shortened (was z -1.62 d 1.16 -> -1.04..-2.20)
       // so the loader MG owns the -1.04..-1.42 window in the right ortho;
       // front col x 0.66..0.88 keeps 2.446 via max-over-z (side cols there
       // are roof-ruled 2.50+).
-      { x: 0.77, z: -1.81, top: 2.446, base: 2.32, w: 0.22, d: 0.78 },
+      { x: 0.77, z: -1.81, top: 2.446, base: 2.32, w: 0.22, d: 0.78, seatRoof: true },
       // right furniture band, r4d split (its 0.265-wide ruled cap was the
       // last >40 px crown run in the elevated front cam): inner lane keeps
       // the ref 2.567-2.58 cols at 0.98..1.12, outer drops to the ref's own
       // 2.565 class at 1.13+.
-      { x: 1.0575, z: -1.25, top: 2.578, base: 2.20, w: 0.135, d: 1.30 },
-      { x: 1.1925, z: -1.25, top: 2.556, base: 2.20, w: 0.125, d: 1.30 },
+      { x: 1.0575, z: -1.25, top: 2.578, base: 2.20, w: 0.135, d: 1.30, surfacePanel: true },
+      { x: 1.1925, z: -1.25, top: 2.556, base: 2.20, w: 0.125, d: 1.30, surfacePanel: true, surfaceOffset: 0.14 },
       // r4 FRONT-CROWN ARC (order item 5): three staggered lanes carried the
       // ref's own camber rows 2.533-2.548.
       // r6 DEAD-FRONT DECODE (critic r5 holder 2: ".50 absent dead-front —
@@ -9787,13 +10294,13 @@ export const MERKAVA_PROFILES = {
       // z -0.12..-0.28 turret rows (the pair-visible 2.55 fitting there is
       // ROOT-RIGGED, mask-absent in BOTH ref masks); their x-spans
       // (-0.30..-0.04 / 0.21..0.34) never blocked the gun's float lane.
-      { x: -0.17, z: 0.46, top: 2.544, base: 2.42, w: 0.26, d: 0.92 },
-      { x: 0.275, z: 0.44, top: 2.538, base: 2.42, w: 0.125, d: 0.84 },
+      { x: -0.17, z: 0.46, top: 2.544, base: 2.42, w: 0.26, d: 0.92, seatRoof: true },
+      { x: 0.275, z: 0.44, top: 2.538, base: 2.42, w: 0.125, d: 0.84, seatRoof: true },
       // r6 flank camber pots: carry the 2.492 crest line the lowered z 0.03
       // roof station vacated (side col z 0.03 via max-over-x; front cols
       // |x| 0.30..0.51 via max-over-z ride these + the rear 2.50 roof)
-      { x: -0.44, z: 0.035, top: 2.492, base: 2.40, w: 0.22, d: 0.15 },
-      { x: 0.44, z: 0.035, top: 2.492, base: 2.40, w: 0.22, d: 0.15 },
+      { x: -0.44, z: 0.035, top: 2.492, base: 2.40, w: 0.22, d: 0.15, seatRoof: true },
+      { x: 0.44, z: 0.035, top: 2.492, base: 2.40, w: 0.22, d: 0.15, seatRoof: true },
       { x: -0.30, z: -3.42, top: 2.53, base: 2.30, w: 0.06, d: 0.10 },     // basket-run pot (ref side -3.41..-3.45 col 2.53-2.56)
       // r6: the loader gun leaves the bin lane (center-post re-lay below) —
       // the bin rises back to its r4-certified 2.565 top and carries its
@@ -9802,7 +10309,7 @@ export const MERKAVA_PROFILES = {
       { x: 1.275, z: -1.33, top: 2.565, base: 2.35, w: 0.05, d: 0.24 },
       { x: 1.3275, z: -1.065, top: 2.565, base: 2.35, w: 0.045, d: 0.71 },  // outer bin (ref plan 1.31-1.35: -0.71..-1.42)
       { x: 1.3725, z: -1.2355, top: 2.56, base: 2.40, w: 0.045, d: 0.075 }, // edge nub (ref plan 1.39-1.43: -1.20..-1.27)
-      { x: -1.175, z: -1.345, top: 2.26, base: 1.90, w: 0.09, d: 1.71 },  // left casting wall strip (ref plan -1.16..-1.25 spans -0.49..-2.20)
+      { x: -1.175, z: -1.345, top: 2.26, base: 1.90, w: 0.09, d: 1.71, surfacePanel: true },  // left casting wall strip (ref plan -1.16..-1.25 spans -0.49..-2.20)
       { x: -1.235, z: -0.94, top: 1.84, base: 1.58, w: 0.155, d: 0.52 },  // left plan bulge (ref -1.26..-1.29 @ z -0.68..-1.20, front top 1.85)
     ],
     // r5: the 2.53 brow was the .50-barrel-as-structure misread (ref cols
@@ -9844,7 +10351,7 @@ export const MERKAVA_PROFILES = {
     glacis: { z0: 1.30, z1: 2.95 },
     // pods pushed to 3.37: they carry the dims hullLength bow columns (the
     // ref hull is ~0.3 short of published; certified sub-margin cover)
-    podX: 0.62, podIn: -0.42, podY: 0.98,
+    podX: 0.62, podIn: -0.42, podY: 0.98, podSupport: true,
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.02, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
@@ -9930,12 +10437,19 @@ export const MERKAVA_PROFILES = {
     ],
     tailNotch: { hw: 0.30 },
     keel: { toeZ: 3.10, toeY: 0.98, toeHW: 0.55, midZ: 2.35, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
+    glacisClosure: {
+      z0: 2.20, z1: 3.12,
+      lower0: 0.46, lower1: 0.91,
+      upper0: 1.04, upper1: 1.10,
+      hw0: 1.12, hw1: 0.58,
+    },
     glacis: { z0: 1.30, z1: 3.14 },
     podX: 0.62, podIn: 0.0, podY: 0.98,
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.00, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.05, y: 0.54, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.24, y: 0.66, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
+    sprocketForwardM: 0.19, sprocketRaiseM: 0.12,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.46, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
     markerRods: { x: 1.76, y: 1.62, z: -3.50, h: [0.93, 0.89] },
@@ -10320,6 +10834,12 @@ export const MERKAVA_PROFILES = {
     tailNotch: { hw: 0.33 },
     keel: { toeZ: 2.77, toeY: 0.90, toeHW: 0.70, midZ: 2.58, midY: 0.57, groundZ: 2.15, bellyY: 0.41, bellyMidY: 0.35, bellyMidX: 1.10, bellySideY: 0.24, tailLowZ: -3.55, hwClamp: 1.13 },
     glacis: { z0: 1.60, z1: 2.75 },
+    glacisClosure: {
+      z0: 2.30, z1: 2.66,
+      lower0: 0.69, lower1: 0.94,
+      upper0: 1.11, upper1: 0.99,
+      hw0: 1.10, hw1: 0.78,
+    },
     // §B5-r2 podDeep + left-deeper tips (see the 3B pod note).
     podX: 0.62, podIn: -0.245, podY: 0.93, podDeep: [3.005, 2.985],
     bodyHW: 1.70,
@@ -10523,6 +11043,12 @@ export const MERKAVA_PROFILES = {
     // face (1.12) — the default half-width 1.23 ran 0.11 inside it.
     keel: { toeZ: 2.89, toeY: 0.88, toeHW: 0.75, midZ: 2.62, midY: 0.55, groundZ: 2.15, bellyY: 0.34, tailLowZ: -3.56, hwClamp: 1.09 },
     glacis: { z0: 1.70, z1: 2.81 },
+    glacisClosure: {
+      z0: 2.30, z1: 2.72,
+      lower0: 0.65, lower1: 0.90,
+      upper0: 1.11, upper1: 0.98,
+      hw0: 1.07, hw1: 0.76,
+    },
     // pods ARE the ref's side nose tip (x ±0.56..0.67, y 0.87..1.00, poking
     // to 3.047-3.073 = the hull mask front edge and the dims hullLength bow).
     podX: 0.62, podIn: -0.245, podY: 0.93,
@@ -11013,7 +11539,10 @@ export const MERKAVA_PROFILES = {
     width: 3.72, ...MK4B_MK1B_TRACK_COURSE,
     deckY: 1.76, rearDeckZ: -2.75,
     body: [
-      { z: 3.18, yT: 1.12, yB: 0.98, wT: 0.80, wB: 0.75 },
+      // Project the prow far enough ahead of the full-width shoulder to
+      // recover the Mk.4's arrowhead read in head-on views.  The two-
+      // centimetre overlap with the lower toe is preserved below.
+      { z: 3.42, yT: 1.12, yB: 0.98, wT: 0.80, wB: 0.75 },
       { z: 2.85, yT: 1.44, yB: 1.02, wT: 1.55, wB: 1.30 },
       { z: 1.10, yT: 1.76, yB: 1.00, wT: 1.66, wB: 1.66 },
       { z: -3.20, yT: 1.76, yB: 1.00, wT: 1.66, wB: 1.66 },
@@ -11027,14 +11556,25 @@ export const MERKAVA_PROFILES = {
     // the exterior hull wall, armor skirts and lower silhouette are unchanged.
     bodyTrackClear: { hw: 1.13, y: 1.34 },
     tailNotch: { hw: 0.45 },
-    // The lower-glacis toe follows the shortened upper bow with the same
-    // 2 cm overlap as the original Mk.4B shell. Shortening happens at the
-    // keel knee; retreating the toe opened a recessed, disconnected step.
-    keel: { toeZ: 3.16, toeY: 0.98, toeHW: 0.60, midZ: 3.04, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -3.70, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
-    glacis: { z0: 1.10, z1: 3.12 },
+    // The lower bow follows the projected upper prow and opens into a real
+    // plan-length plate rather than the old 12 cm lip.  At the opposite end
+    // the concealed belly and its rear wedge stop 25 cm AHEAD of the
+    // clamshell-door plane (-3.20), clearing the Merkava rear exit while the
+    // exterior tail corners and stowage rack keep their authored stations.
+    keel: { toeZ: 3.40, toeY: 0.98, toeHW: 0.60, midZ: 3.05, midY: 0.42, groundZ: 2.30, bellyY: 0.24, tailLowZ: -2.95, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
+    // Buried armor web closes the cavity between the upper-body floor and
+    // lower-glacis crown.  Its end edges sit inside both adjacent shells, so
+    // it fills low-angle sight lines without adding an exterior applique.
+    glacisClosure: {
+      z0: 2.94, z1: 3.28,
+      lower0: 0.56, lower1: 0.92,
+      upper0: 1.02, upper1: 1.00,
+      hw0: 1.12, hw1: 0.60,
+    },
+    glacis: { z0: 1.10, z1: 3.36 },
     podX: 0.60, podIn: 0.15,
-    fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.05, z1: 2.4, y: 1.46 },
-    fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.05, top: 1.52, bot: 1.30 },
+    fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.29, z1: 2.4, y: 1.46 },
+    fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.29, top: 1.52, bot: 1.30 },
     // Course geometry above is mechanically inherited from Mk.1B.  Skirts
     // remain Mk.4B armor and merely cover the upper return; they do not
     // replace or duplicate any part of the running gear.
@@ -11059,7 +11599,7 @@ export const MERKAVA_PROFILES = {
         { x0: 0.60, x1: 1.10, z1: -3.88, top: 1.47, bot: 1.20 },
       ],
     },
-    hullPosts: [{ x: -0.62, z: 3.28, top: 1.20, base: 1.00 }],
+    hullPosts: [{ x: -0.62, z: 3.52, top: 1.20, base: 1.00 }],
     pivotZ: -0.55,
     turretStyle: 'mod',
     // The supplied Mk.4B oracle carries the compact MG253 gun run. Preserve

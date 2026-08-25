@@ -5892,22 +5892,22 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 1.725,
       "roofDetailMaxY": 1.768,
-      "sourceHash": "34ad7b1b5ca7603e"
+      "sourceHash": "a54cdeb10fd61444"
     },
     "turret": {
       "min": [
-        -1.352,
+        -1.29,
         0.015,
         -2.6805
       ],
       "max": [
-        1.352,
+        1.29,
         0.7116,
         2.26
       ],
       "bodyRoofY": 0.7116,
-      "roofDetailMaxY": 0.9571,
-      "sourceHash": "cb9704274aad13bd"
+      "roofDetailMaxY": 0.8525,
+      "sourceHash": "841df9b0129e95ed"
     },
     "hullStructures": [],
     "turretStructures": [],
@@ -5922,9 +5922,9 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "max": [
           -1.16,
           1.164,
-          2.3115
+          2.4937
         ],
-        "sourceHash": "2bc73eaafed56b31"
+        "sourceHash": "37614b9f6dcc1408"
       },
       "right": {
         "min": [
@@ -5935,9 +5935,9 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "max": [
           1.7,
           1.164,
-          2.3115
+          2.4937
         ],
-        "sourceHash": "f0e06630e7e973aa"
+        "sourceHash": "2faccbd79a2de0fc"
       }
     }
   },
@@ -5951,26 +5951,26 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "max": [
         1.84,
         1.75,
-        3.02
+        3.2827
       ],
       "bodyRoofY": 1.75,
       "roofDetailMaxY": 1.7659,
-      "sourceHash": "1ff16f1463f7f8eb"
+      "sourceHash": "2c1992a7de341606"
     },
     "turret": {
       "min": [
-        -1.3986,
+        -1.33,
         0.02,
         -3.3255
       ],
       "max": [
-        1.3986,
+        1.33,
         0.7477,
         2.15
       ],
       "bodyRoofY": 0.7477,
       "roofDetailMaxY": 0.8427,
-      "sourceHash": "3cb57e29993f7196"
+      "sourceHash": "5fd5b4394dae73e2"
     },
     "hullStructures": [],
     "turretStructures": [],
@@ -6018,22 +6018,22 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 1.75,
       "roofDetailMaxY": 1.772,
-      "sourceHash": "585984cc63f9a070"
+      "sourceHash": "7610073b6f9bd745"
     },
     "turret": {
       "min": [
-        -1.7306,
+        -1.66,
         -0.12,
         -3.2955
       ],
       "max": [
-        1.7306,
+        1.66,
         0.6637,
         2.16
       ],
       "bodyRoofY": 0.6637,
       "roofDetailMaxY": 0.7863,
-      "sourceHash": "0613cb2f25ce611c"
+      "sourceHash": "d34f35c032999ae3"
     },
     "hullStructures": [],
     "turretStructures": [],
@@ -6048,9 +6048,9 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "max": [
           -1.14,
           1.073,
-          2.4207
+          2.6114
         ],
-        "sourceHash": "e9403ae1574d3d74"
+        "sourceHash": "a0a2d88e29205406"
       },
       "right": {
         "min": [
@@ -6061,9 +6061,9 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         "max": [
           1.72,
           1.073,
-          2.4207
+          2.6114
         ],
-        "sourceHash": "6a0bc2b435afe97a"
+        "sourceHash": "4df2e552dfa5ebe3"
       }
     }
   },
@@ -6081,12 +6081,12 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 1.73,
       "roofDetailMaxY": 1.7714,
-      "sourceHash": "6e65f8bfcc3be0b4"
+      "sourceHash": "7f9267dd3ecf3b0a"
     },
     "turret": {
       "min": [
         -1.48,
-        0.1,
+        0.091,
         -3.3732
       ],
       "max": [
@@ -6096,7 +6096,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 0.7695,
       "roofDetailMaxY": 0.958,
-      "sourceHash": "e7fff8c2971d8714"
+      "sourceHash": "548a6563d4b0c7c5"
     },
     "hullStructures": [],
     "turretStructures": [],
@@ -6144,22 +6144,22 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 1.725,
       "roofDetailMaxY": 1.7713,
-      "sourceHash": "f4b5812e07f270f7"
+      "sourceHash": "c8c9c7d11a9efc41"
     },
     "turret": {
       "min": [
-        -1.8646,
-        0.132,
+        -1.79,
+        0.123,
         -3.0655
       ],
       "max": [
-        1.8646,
+        1.79,
         0.7852,
         2
       ],
       "bodyRoofY": 0.7852,
       "roofDetailMaxY": 0.91,
-      "sourceHash": "87fcc78710a2a2c5"
+      "sourceHash": "30c88e9f793eaf0e"
     },
     "hullStructures": [],
     "turretStructures": [],
@@ -6203,11 +6203,11 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "max": [
         1.8613,
         1.76,
-        3.18
+        3.42
       ],
       "bodyRoofY": 1.76,
       "roofDetailMaxY": 1.7923,
-      "sourceHash": "0845db7870e32d6c"
+      "sourceHash": "c73aa4b62a4653dc"
     },
     "turret": {
       "min": [

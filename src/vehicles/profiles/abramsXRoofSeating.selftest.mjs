@@ -71,5 +71,28 @@ assert.equal(turretDark.filter(([x, y, z]) => Math.abs(x) > 0.59
   && z > 2.24 && z < 2.75).length, 0,
 'floating cheek weld bars must not return');
 
+// These manually-parented shadow solids bypassed Gallery Studio selection and
+// appeared as two detached near-black panels behind the turret.
+assert.equal(tank.root.getObjectByName('abramsxAftDeckShadow_0'), undefined,
+  'detached center aft-deck shadow panel must not return');
+assert.equal(tank.root.getObjectByName('abramsxBustleUndercutShadow'), undefined,
+  'detached bustle-undercut shadow panel must not return');
+
+// The visible cartridge arc now continues into a feed mouth which overlaps
+// the marked ammunition-box lid instead of terminating in free air above it.
+const rigTurret = tank.root.getObjectByName('rig_turret');
+const feed = rigTurret?.userData?.abramsxRwsFeedReceipt;
+assert.ok(feed, 'AbramsX RWS feed receipt is present');
+assert.equal(feed.returnLinkCount, 8, 'belt has an articulated box return');
+assert.ok(hasPoint(turretDark, [0.5242, 1.110, 0.0392])
+  && hasPoint(turretDark, [0.6158, 1.190, 0.1408]),
+  'feed mouth is present in the merged turret mesh');
+assert.ok(feed.feedMouthCenter[1] - 0.040 <= feed.ammoBoxTopY,
+  'feed mouth is buried through the ammunition-box lid');
+assert.ok(Math.abs(feed.beltTailEnd[0] - feed.feedMouthCenter[0]) < 1e-6
+  && Math.abs(feed.beltTailEnd[2] - feed.feedMouthCenter[2]) < 1e-6
+  && Math.abs(feed.beltTailEnd[1] - feed.feedMouthCenter[1]) <= 0.040,
+  'belt terminal overlaps the seated feed mouth');
+
 tank.dispose();
-console.log('abramsXRoofSeating.selftest: roof equipment, electronics, and strip cleanup pass');
+console.log('abramsXRoofSeating.selftest: roof seating, shadow cleanup, and RWS feed closure pass');

@@ -163,24 +163,31 @@ for (const seat of panelEquipmentReceipt.seats) {
 }
 
 const chassisReceipt = hull?.userData.merkava4bChassisReceipt;
-assert.ok(chassisReceipt, 'Merkava 4B exposes its shortened-bow running-gear receipt');
-assert.equal(chassisReceipt.revision, 'connected-short-bow-raised-sprocket-course-r4');
-assert.ok(near(chassisReceipt.hullNoseZ, 3.18), 'upper hull nose is 15 cm shorter');
-assert.ok(near(chassisReceipt.lowerGlacisToeZ, 3.16),
-  'lower-glacis toe remains structurally joined to the shortened upper bow');
-assert.ok(near(chassisReceipt.previousLowerGlacisToeZ, 2.56),
-  'receipt records the recessed toe that caused the visible regression');
-assert.ok(near(chassisReceipt.lowerGlacisKneeZ, 3.04),
-  'the knee moves forward so the connected lower plate remains short');
-assert.ok(near(chassisReceipt.previousLowerGlacisKneeZ, 2.44));
+assert.ok(chassisReceipt, 'Merkava 4B exposes its projected-bow and rear-exit receipt');
+assert.equal(chassisReceipt.revision, 'projected-closed-bow-rear-exit-clearance-r5');
+assert.ok(near(chassisReceipt.hullNoseZ, 3.42), 'upper hull prow projects 24 cm farther forward');
+assert.ok(near(chassisReceipt.previousHullNoseZ, 3.18));
+assert.ok(near(chassisReceipt.bowProjectionM, 0.24));
+assert.ok(near(chassisReceipt.lowerGlacisToeZ, 3.40),
+  'lower-glacis toe remains structurally joined to the projected upper bow');
+assert.ok(near(chassisReceipt.previousLowerGlacisToeZ, 3.16));
+assert.ok(near(chassisReceipt.lowerGlacisKneeZ, 3.05),
+  'the knee leaves a visible lower-glacis plan run behind the projected toe');
+assert.ok(near(chassisReceipt.previousLowerGlacisKneeZ, 3.04));
 assert.ok(near(chassisReceipt.upperLowerGlacisJoinM, 0.02),
   'upper and lower glacis stations overlap by the original two-centimetre joint');
-assert.ok(near(chassisReceipt.lowerGlacisPlanLengthM, 0.12),
-  'the lower glacis remains a compact twelve-centimetre plan run');
-assert.ok(near(chassisReceipt.recessedToeCorrectionM, 0.60),
-  'the recessed lower face advances sixty centimetres to reconnect');
-assert.ok(near(chassisReceipt.glacisFurnitureToeZ, 3.12),
-  'glacis furniture remains seated on the shortened bow');
+assert.ok(near(chassisReceipt.lowerGlacisPlanLengthM, 0.35),
+  'the lower glacis projects as a 35 cm plan run');
+assert.ok(near(chassisReceipt.glacisFurnitureToeZ, 3.36),
+  'glacis furniture advances with the projected bow');
+assert.ok(near(chassisReceipt.previousGlacisFurnitureToeZ, 3.12));
+assert.ok(near(chassisReceipt.lowerHullRearZ, -2.95));
+assert.ok(near(chassisReceipt.previousLowerHullRearZ, -3.70));
+assert.ok(near(chassisReceipt.lowerHullForwardShiftM, 0.75),
+  'concealed lower hull and rear wedge advance 75 cm away from the rear exit');
+assert.ok(near(chassisReceipt.rearExitDoorPlaneZ, -3.20));
+assert.ok(near(chassisReceipt.rearExitClearanceM, 0.25),
+  'lower hull terminates 25 cm forward of the clamshell-door plane');
 assert.ok(near(chassisReceipt.trackRearShiftM, 0.20),
   'road wheels, return rollers, idlers, and track course move 20 cm rearward');
 assert.ok(near(chassisReceipt.sprocketZ, 2.90), 'front sprocket keeps its original station');
@@ -188,6 +195,13 @@ assert.ok(near(chassisReceipt.sprocketY, 0.896875), 'front sprocket rises 20 cm'
 assert.ok(near(chassisReceipt.previousSprocketY, 0.696875));
 assert.ok(near(chassisReceipt.sprocketRaiseM, 0.20));
 assert.ok(near(chassisReceipt.idlerZ, -3.25), 'rear idler follows the shifted course');
+
+const glacisClosureReceipt = hull?.userData.merkava4bGlacisClosureReceipt;
+assert.ok(glacisClosureReceipt, 'Merkava 4B closes the upper/lower glacis cavity');
+assert.equal(glacisClosureReceipt.revision, 'upper-lower-glacis-web-r1');
+assert.ok(near(glacisClosureReceipt.rearStationZM, 2.94));
+assert.ok(near(glacisClosureReceipt.frontStationZM, 3.28));
+assert.equal(glacisClosureReceipt.buriedEdgeOverlap, true);
 
 const tireLayer = tank.root.getObjectByName('gearRoadWheelTires');
 assert.ok(tireLayer?.isInstancedMesh, 'road wheels remain on the suspension-driven layer');
@@ -215,4 +229,4 @@ assert.deepEqual([...new Map(endWheelCenters.map(center => [center.join(':'), ce
   'front sprocket rises without moving fore/aft while the rear idler remains unchanged');
 
 tank.dispose?.();
-console.log('merkava4bGeometry.selftest: seated roof, closed gun throat, flush ERA/panels, and connected shortened chassis passed');
+console.log('merkava4bGeometry.selftest: seated roof, closed gun throat, flush ERA/panels, projected closed bow, and clear rear exit passed');

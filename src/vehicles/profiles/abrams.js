@@ -8153,13 +8153,12 @@ function buildAbramsX(P) {
       3.335 - fi * 0.018 - 1.95, -0.300 - fi * 0.022 + 0.39,
       0, -0.22 - fi * 0.06, 0);
   }
-  if (P.q) for (let ai = 0; ai < 28; ai++) {
+  if (P.q) {
     // Twenty-eight authored cartridges follow the measured component-AABB
     // centerline.  It curls from a longitudinal stack into a transverse
     // return while arching over the feed wheel—the distinctive AbramsX
     // belt path that neither a solid drum nor a two-dimensional fan can
     // reproduce.  Cylinders are oriented to the analytic path tangent.
-    const t = ai / 27;
     const beltAt = (u) => {
       const q = Math.max(0, Math.min(1, u));
       const x = 0.085 + 0.515 * Math.pow(Math.sin(q * Math.PI / 2), 0.70);
@@ -8170,14 +8169,48 @@ function buildAbramsX(P) {
       const y = 3.230 + 0.140 * q + 0.200 * Math.sin(q * Math.PI);
       return [x, y, z];
     };
-    const [x, y, z] = beltAt(t);
-    const [xa, ya, za] = beltAt(t - 0.003);
-    const [xb, yb, zb] = beltAt(t + 0.003);
-    const dx = xb - xa, dy = yb - ya, dz = zb - za;
-    const rx = -Math.atan2(dy, Math.hypot(dx, dz));
-    const ry = Math.atan2(dx, dz);
-    P.add(ai % 5 ? 'turretDetail' : 'turretDark', cylZ(0.016, 0.200, 8),
-      x, y - 1.95, z + 0.39, rx, ry, 0);
+    const addBeltLink = (index, at, before, after) => {
+      const [x, y, z] = at;
+      const dx = after[0] - before[0];
+      const dy = after[1] - before[1];
+      const dz = after[2] - before[2];
+      const rx = -Math.atan2(dy, Math.hypot(dx, dz));
+      const ry = Math.atan2(dx, dz);
+      P.add(index % 5 ? 'turretDetail' : 'turretDark', cylZ(0.016, 0.200, 8),
+        x, y - 1.95, z + 0.39, rx, ry, 0);
+    };
+    for (let ai = 0; ai < 28; ai++) {
+      const t = ai / 27;
+      addBeltLink(ai, beltAt(t), beltAt(t - 0.003), beltAt(t + 0.003));
+    }
+
+    // The measured arc used to stop in free air above the gun-right box.
+    // Continue it as a flexible eight-link return and bury the final link in
+    // a small feed mouth seated through the box lid.  This preserves the
+    // characteristic high crown while giving the ammunition a physical load
+    // path into the enclosure instead of a hovering terminal cartridge.
+    const returnStart = beltAt(1);
+    const returnEnd = [0.570, 3.130, -0.300];
+    const returnAt = (u) => {
+      const q = Math.max(0, Math.min(1, u));
+      const s = q * q * (3 - 2 * q);
+      return returnStart.map((value, axis) => value + (returnEnd[axis] - value) * s);
+    };
+    const returnLinkCount = 8;
+    for (let ri = 1; ri <= returnLinkCount; ri++) {
+      const t = ri / returnLinkCount;
+      addBeltLink(27 + ri, returnAt(t), returnAt(t - 0.01), returnAt(t + 0.01));
+    }
+    P.add('turretDark', box(0.130, 0.080, 0.140), 0.570,
+      3.100 - 1.95, -0.300 + 0.39);
+    P.add('turretDetail', box(0.165, 0.025, 0.175), 0.570,
+      3.1375 - 1.95, -0.300 + 0.39);
+    P.turretG.userData.abramsxRwsFeedReceipt = {
+      ammoBoxTopY: 1.122,
+      feedMouthCenter: [0.570, 1.150, 0.090],
+      beltTailEnd: [0.570, 1.180, 0.090],
+      returnLinkCount,
+    };
   }
   // Curved-looking feed bridge, built from three articulated links rather
   // than a solid box between drum and receiver.
@@ -8934,7 +8967,10 @@ function buildAbramsX(P) {
   // tiers preserve the real step instead of drawing one false full-width
   // stripe through the recessed channels.  Shadow naming keeps this
   // articulated interior seam frame- and mask-neutral.
-  for (const [sx, sw, sy] of [[0, 1.48, 0.346], [-1.11, 0.60, 0.219], [1.11, 0.60, 0.219]]) {
+  // Keep only the short, inset shoulder seams.  The former 1.48 m center
+  // strip was a freestanding unselectable panel behind the turret, not an
+  // armor joint, and is intentionally omitted.
+  for (const [sx, sw, sy] of [[-1.11, 0.60, 0.219], [1.11, 0.60, 0.219]]) {
     const geo = box(sw, 0.008, 0.035);
     const mesh = new THREE.Mesh(geo, P.mats.dark);
     mesh.name = `abramsxAftDeckShadow_${sx}`;
@@ -8944,21 +8980,9 @@ function buildAbramsX(P) {
     P.turretG.add(mesh);
     P.disposables.push(geo);
   }
-  // Deep under-bustle shadow box: the measured shell floor already clears
-  // the hull deck, but ambient light made that real air gap read as filled
-  // camouflage in rear elevations.  This yaw-parented AO surface terminates
-  // inside both silhouettes and exposes a continuous 12 cm dark void/lip;
-  // Shadow naming keeps it outside every measurement and framing recipe.
-  {
-    const geo = box(2.90, 0.18, 0.018);
-    const mesh = new THREE.Mesh(geo, P.mats.shadow);
-    mesh.name = 'abramsxBustleUndercutShadow';
-    mesh.position.set(0, -0.095, -2.061);
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    P.turretG.add(mesh);
-    P.disposables.push(geo);
-  }
+  // Do not add an AO backer under the bustle.  The old 2.90 m rectangle was
+  // visible as a second unselectable dark panel floating behind the turret;
+  // the actual shell and hull deck now define this negative space themselves.
   // The loft's real station facets are the cassette boundaries.  Applied
   // black strips—transverse or longitudinal—read as grooves detached from
   // the armor in the close view, so no cosmetic seam geometry is emitted.
