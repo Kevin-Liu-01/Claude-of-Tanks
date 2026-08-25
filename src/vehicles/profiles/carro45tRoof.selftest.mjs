@@ -47,6 +47,22 @@ try {
   assert(roofHeight(1.35, -0.40) < 2.05,
     'retired outboard shelf no longer floats above the turret wall');
 
+  const fitReceipt = tank.root.getObjectByName('rig_turret')?.userData.carro45tFitReceipt;
+  assert.deepEqual(fitReceipt, {
+    frontCrownJoiners: 2,
+    crownCourseOverlapM: 0.01,
+    rearPlateauSeat: true,
+    rearPlateauOverlapM: 0.0075,
+  }, 'Carro 45t records its paired crown joiners and seated rear plateau');
+  for (const [x, z] of [[-0.95, 0.90], [0.95, 0.90]]) {
+    assert(roofHeight(x, z) > 2.05,
+      `crown shoulder remains covered at x=${x}, z=${z}`);
+  }
+  for (const [x, z] of [[-0.90, -0.80], [0, -0.80], [0.40, -0.50]]) {
+    assert(roofHeight(x, z) > 2.34,
+      `raised rear plateau stays continuously seated at x=${x}, z=${z}`);
+  }
+
   const rack = tank.root.getObjectByName('fitting_stowageRack');
   assert(rack, 'Carro 45t exposes its rear stowage rack fitting');
   const rackOutward = new THREE.Vector3(0, 0, 1).applyQuaternion(rack.getWorldQuaternion(new THREE.Quaternion()));
@@ -67,4 +83,4 @@ try {
   tank.dispose();
 }
 
-console.log('carro45tRoof.selftest: cheek-aligned crown, closed bustle seam, outward rack');
+console.log('carro45tRoof.selftest: joined crown, seated plateau, closed bustle seam, outward rack');

@@ -3089,7 +3089,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 0.83,
       "roofDetailMaxY": 0.921,
-      "sourceHash": "66552c37695b0d2f"
+      "sourceHash": "282250d8c5e73e7a"
     },
     "hullStructures": [],
     "turretStructures": [],

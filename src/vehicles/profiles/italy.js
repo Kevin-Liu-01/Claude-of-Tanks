@@ -905,6 +905,13 @@ function buildCarro45T(P) {
   ]), 0, 0.045, 0);
   // LEFT raised roof plateau 2.353 (x -1.14..+0.48) — extends aft to -1.40
   // (gate: 2.35@-1.40 before the rear slope)
+  // The plateau used to be a shallow box resting above the shell's fan cap.
+  // Give it a conforming armored seat whose upper ring overlaps that box by
+  // 7.5 mm and whose lower ring sinks into the shell. This removes the dark
+  // horizontal air seam without flattening either neighboring roof course.
+  P.add('turret', slab(
+    [-1.12, 0.64, L(-1.42)], [0.46, 0.64, L(-1.42)], [0.46, 0.61, L(-0.42)], [-1.12, 0.68, L(-0.42)],
+    [-1.12, 0.785, L(-1.40)], [0.46, 0.785, L(-1.40)], [0.46, 0.785, L(-0.44)], [-1.12, 0.785, L(-0.44)]));
   P.add('turret', box(1.62, 0.075, 0.96), -0.33, 0.815, L(-0.92));            // plateau rear flat 2.353 (z -1.40..-0.44)
   P.add('turret', slab(                                                        // plateau front sloping 2.35@-0.44 -> 2.25@+0.99 (gate 2.283@+0.25)
     [-1.14, 0.70, L(-0.44)], [0.48, 0.70, L(-0.44)], [0.48, 0.64, L(0.99)], [-1.14, 0.64, L(0.99)],
@@ -920,6 +927,24 @@ function buildCarro45T(P) {
   P.add('turret', slab(                                                        // right crown course
     [0.44, 0.62, L(0.99)], [1.02, 0.53, L(0.99)], [0.31, 0.52, L(1.70)], [0, 0.52, L(1.70)],
     [0.44, 0.75, L(0.99)], [1.02, 0.63, L(0.99)], [0.31, 0.62, L(1.72)], [0, 0.62, L(1.72)]));
+  // Paired crown-to-cheek joiners. Their outer vertices are the shell loft's
+  // exact crown-ring stations, while the inner vertices overlap the two crown
+  // courses by 5-10 mm. The former arrangement merely projected those courses
+  // over the fan cap, leaving shadowed triangular slots at both shoulders.
+  P.add('turret', slab(                                                        // vehicle-left crown shoulder
+    [-0.49, 0.29, 2.045], [-0.30, 0.49, L(1.70)], [-1.105, 0.58, L(0.99)], [-1.135, 0.64, 0.78],
+    [-0.48, 0.32, 2.03947], [-0.31, 0.625, L(1.72)], [-1.105, 0.715, L(0.975)], [-1.125, 0.825, 0.79167]));
+  P.add('turret', slab(                                                        // vehicle-right crown shoulder
+    [0.30, 0.49, L(1.70)], [0.49, 0.29, 2.045], [1.21, 0.58, 0.81], [1.015, 0.48, L(0.99)],
+    [0.31, 0.625, L(1.72)], [0.48, 0.32, 2.03947], [1.20, 0.685, 0.82133], [1.025, 0.635, L(0.985)]));
+  if (P.geometryReceipt) {
+    P.turretG.userData.carro45tFitReceipt = Object.freeze({
+      frontCrownJoiners: 2,
+      crownCourseOverlapM: 0.01,
+      rearPlateauSeat: true,
+      rearPlateauOverlapM: 0.0075,
+    });
+  }
   P.add('turret', slab(                                                        // crest chin: closes the fairing underside to the shell nose (bottom
     [-0.31, 0.08, L(1.68)], [0.31, 0.08, L(1.68)], [0.28, 0.05, L(1.30)], [-0.28, 0.05, L(1.30)],  // rises like the ref's 1.58@+1.71 step)
     [-0.31, 0.52, L(1.70)], [0.31, 0.52, L(1.70)], [0.28, 0.30, L(1.32)], [-0.28, 0.30, L(1.32)]));

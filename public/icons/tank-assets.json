@@ -15802,7 +15802,7 @@
           }
         ]
       },
-      "geometryHash": "fa56a06b",
+      "geometryHash": "08d3f053",
       "metadataHash": "2b386d6f",
       "presentationAnchor": {
         "xM": 0,
@@ -15897,24 +15897,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 56077,
-          "sha256": "c2ecf770a4103bc4977389eff762fdce963d3ae5e98612bc9bb412fadb9eb646"
+          "bytes": 55612,
+          "sha256": "833dd41e542408dc6330b291e9db07b4d54c2110c1f5066ce231471ef9b8af03"
         },
         "armorSide": {
           "file": "carro45t_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 57074,
-          "sha256": "be3c8511a55a9dbd416044ebcf9614cf424363f270f85318c390030e80333ffb"
+          "bytes": 57078,
+          "sha256": "256fc206ba45e69ec602ae832385e1db7f03458b4c49f0911e2dabac3294ebdf"
         },
         "modulesSide": {
           "file": "carro45t_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66029,
-          "sha256": "10617cf46f157fe47b36ebef548576a9371085d9513415e62cafb341f14bb796"
+          "bytes": 66172,
+          "sha256": "ef20ff22bc804a036c547acb008f21d8fa93a2bea9f963ba400f362dbaf5ed05"
         },
         "markings": {
           "file": "carro45t_markings.png",
