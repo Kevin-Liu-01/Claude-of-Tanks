@@ -52,4 +52,67 @@ navLinks.forEach((link) => link.addEventListener('click', () => {
   document.querySelector('#docsMenu')?.setAttribute('aria-expanded', 'false');
 }));
 
+const archiveDialog = document.querySelector('#docsArchive');
+const archiveOpen = document.querySelector('#docsArchiveOpen');
+const archiveClose = document.querySelector('#docsArchiveClose');
+let archiveMountPromise = null;
+let archiveMotionPromise = null;
+
+function stopArchiveMotion() {
+  archiveDialog?.querySelectorAll('video').forEach((video) => video.pause());
+}
+
+function mountArchiveMotionInfo() {
+  archiveMotionPromise ??= Promise.all([
+    import('../presentation/captureRecipes.js'),
+    import('../ui/contextInfo.js'),
+  ]).then(async ([{ loadCaptureRecipes, recipeForMedia }, { createInfoButton }]) => {
+    const catalog = await loadCaptureRecipes();
+    archiveDialog.querySelectorAll('.docs-motion-grid video').forEach((video) => {
+      if (video.parentElement?.classList.contains('docs-motion-item')) return;
+      const source = video.currentSrc || video.querySelector('source')?.src || video.poster;
+      const recipe = recipeForMedia(catalog, source);
+      if (!recipe) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'docs-motion-item';
+      video.replaceWith(wrap);
+      wrap.append(video, createInfoButton({
+        label: 'Show the Scene Studio JSON for this video',
+        title: 'Replicate this Studio video',
+        json: recipe,
+        image: video.poster ? {
+          src: video.poster,
+          alt: 'Scene Studio video frame',
+          caption: 'Game-rendered Studio frame',
+        } : null,
+      }));
+    });
+  }).catch((error) => {
+    archiveMotionPromise = null;
+    announce(error.message);
+  });
+}
+
+archiveOpen?.addEventListener('click', () => {
+  archiveDialog.showModal();
+  archiveDialog.querySelectorAll('video').forEach((video) => {
+    video.play().catch(() => {});
+  });
+  archiveMountPromise ??= import('../presentation/mediaArchive.js')
+    .then(({ mountMediaArchive }) => mountMediaArchive(
+      document.querySelector('#docsArchiveBody'),
+      { mode: 'wall', limit: 88, filters: false },
+    ))
+    .catch((error) => {
+      archiveMountPromise = null;
+      announce(error.message);
+    });
+  mountArchiveMotionInfo();
+});
+archiveClose?.addEventListener('click', () => archiveDialog.close());
+archiveDialog?.addEventListener('close', stopArchiveMotion);
+archiveDialog?.addEventListener('click', (event) => {
+  if (event.target === archiveDialog) archiveDialog.close();
+});
+
 mountBattleReels();

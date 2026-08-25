@@ -78,9 +78,6 @@
           <button type="button" data-view="elevated-right">Elev. R</button>
           <button type="button" id="autoRotate" aria-pressed="false">Auto</button>
         </div>
-        <div class="viewer-head-actions">
-          <button type="button" class="field-frames-button" id="galleryArchiveOpen"><i data-ui-icon="graphics"></i><span>Field frames</span><b>88</b></button>
-        </div>
       </div>
 
       <div class="loading-state" id="loadingState" role="status">
@@ -116,7 +113,7 @@
         <header class="dossier-head">
           <div class="workspace-group-head dossier-group-head">
             <span class="workspace-number">02</span>
-            <div><p class="workspace-title">Technical dossier</p><p class="workspace-subtitle">Live simulation data</p></div>
+            <div><p class="workspace-title">Technical dossier</p></div>
           </div>
           <div class="dossier-actions">
             <button type="button" id="copyLink" title="Copy a link to this vehicle">Link</button>
@@ -201,16 +198,6 @@
     </aside>
   </main>
 
-  <dialog class="gallery-archive-dialog" id="galleryArchive" aria-labelledby="galleryArchiveTitle">
-    <header><div><p class="eyebrow">Game-rendered showcase archive</p><h2 id="galleryArchiveTitle">Vehicles in game scenes</h2><p>Review the same first-party vehicle rigs in battle, destruction, terrain, and Scene Studio compositions.</p></div><button type="button" id="galleryArchiveClose" aria-label="Close field frames">×</button></header>
-    <div class="gallery-motion-grid" aria-label="Animated game scenes">
-      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/01_desert_duel_leclerc_kill.jpg"><source src="/media/feature-loops-r1/01_desert_duel_leclerc_kill.webm" type="video/webm"></video>
-      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/03_winter_lake_duel.jpg"><source src="/media/feature-loops-r1/03_winter_lake_duel.webm" type="video/webm"></video>
-      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/04_urban_street_duel.jpg"><source src="/media/feature-loops-r1/04_urban_street_duel.webm" type="video/webm"></video>
-      <video autoplay muted loop playsinline preload="metadata" poster="/media/feature-loops-r1/06_verdant_meadow_duel.jpg"><source src="/media/feature-loops-r1/06_verdant_meadow_duel.webm" type="video/webm"></video>
-    </div>
-    <div class="gallery-archive-body" data-media-archive data-mode="wall" data-limit="88" data-filters="false"></div>
-  </dialog>
   <div class="toast" id="toast" role="status"></div>
   <script type="module" src="/src/analytics.js"></script>
   <script type="module" src="/src/presentation/publicNav.js"></script>

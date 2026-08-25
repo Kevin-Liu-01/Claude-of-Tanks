@@ -11,12 +11,10 @@ import {
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.js';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
 import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
-import { mountMediaArchive } from '../presentation/mediaArchive.js';
 import { uiIconSVG } from '../ui/uiIcons.js';
 import { iconUrl } from '../ui/icons.js';
 import { flagIconUrl } from '../ui/flags.js';
 import { createInfoButton } from '../ui/contextInfo.js';
-import { loadCaptureRecipes, recipeForMedia } from '../presentation/captureRecipes.js';
 import { cameraViewGlyphSVG } from './viewGlyphs.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -48,7 +46,7 @@ function galleryVehicleImage(view = 'angle', caption = 'Procedural vehicle rende
   };
 }
 
-async function mountGalleryInfo() {
+function mountGalleryInfo() {
   const workspaceHeads = document.querySelectorAll('.workspace-group-head');
   appendGalleryInfo(workspaceHeads[0], {
     label: 'About the fleet archive', title: 'Fleet archive',
@@ -81,29 +79,9 @@ async function mountGalleryInfo() {
       ),
     });
   });
-  const catalog = await loadCaptureRecipes().catch(() => null);
-  if (!catalog) return;
-  document.querySelectorAll('.gallery-motion-grid video').forEach((video) => {
-    const source = video.currentSrc || video.querySelector('source')?.src || video.poster;
-    const recipe = recipeForMedia(catalog, source);
-    if (!recipe) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'gallery-motion-item';
-    video.replaceWith(wrap);
-    wrap.append(video, createInfoButton({
-      label: 'Show the Scene Studio JSON for this video',
-      title: 'Replicate this Studio video',
-      json: recipe,
-      image: video.poster ? {
-        src: video.poster,
-        alt: 'Scene Studio video frame',
-        caption: 'Game-rendered Studio frame',
-      } : null,
-    }));
-  });
 }
 
-void mountGalleryInfo();
+mountGalleryInfo();
 const viewport = $('#viewport');
 const vehicleList = $('#vehicleList');
 const loadingState = $('#loadingState');
@@ -811,15 +789,6 @@ $('#copySpec').addEventListener('click', () => {
   if (!selectedId) return;
   writeClipboard(JSON.stringify(serializeGallerySpec(getSpec(selectedId)), null, 2), 'Vehicle data copied');
 });
-const galleryArchive = $('#galleryArchive');
-$('#galleryArchiveOpen').addEventListener('click', () => {
-  galleryArchive.showModal();
-  mountMediaArchive(galleryArchive.querySelector('[data-media-archive]'), { mode: 'wall', limit: 88, filters: false })
-    .catch((error) => showToast(error.message));
-});
-$('#galleryArchiveClose').addEventListener('click', () => galleryArchive.close());
-galleryArchive.addEventListener('click', (event) => { if (event.target === galleryArchive) galleryArchive.close(); });
-
 renderer.domElement.addEventListener('pointerdown', (event) => {
   pointerStart = { x: event.clientX, y: event.clientY };
 });

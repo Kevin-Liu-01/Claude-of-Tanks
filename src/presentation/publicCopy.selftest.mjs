@@ -45,11 +45,17 @@ for (const file of pageFiles) {
 }
 
 const gallerySource = readFileSync(join(ROOT, 'src/gallery/gallery.js'), 'utf8');
-assert.match(gallerySource, /mountMediaArchive\([^\n]+\{ mode: 'wall', limit: 88, filters: false \}\)/);
+const docsScriptSource = readFileSync(join(ROOT, 'src/docs/docs.js'), 'utf8');
+assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
+assert.match(docsScriptSource, /mountMediaArchive\([\s\S]*?\{ mode: 'wall', limit: 88, filters: false \}/);
 
 const homeSource = readFileSync(join(ROOT, 'home.html'), 'utf8');
 const docsSource = readFileSync(join(ROOT, 'docs.html'), 'utf8');
+const galleryHtmlSource = readFileSync(join(ROOT, 'gallery.html'), 'utf8');
 const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
+assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|galleryArchiveTitle/);
+assert.match(docsSource, /id="docsArchiveOpen"[\s\S]*?Visual archive[\s\S]*?88 field frames/);
+assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
 assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/);
 assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
 assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);

@@ -5,7 +5,7 @@ const css = readFileSync(new URL('./gallery.css', import.meta.url), 'utf8');
 
 assert.match(
   css,
-  /\.viewer-bottom-console \.mode-dock\{[^}]*width:min\(760px,100%\)[^}]*grid-template-columns:148px repeat\(5,minmax\(0,1fr\)\)/,
+  /\.viewer-bottom-console \.mode-dock\{[^}]*width:min\(800px,100%\)[^}]*grid-template-columns:168px repeat\(5,minmax\(0,1fr\)\)/,
   'desktop diagnostic dock must reserve enough width for its label and five modes',
 );
 assert.match(
@@ -20,8 +20,18 @@ assert.match(
 );
 assert.match(
   css,
-  /:where\(body\[data-cot-width='laptop'\],[\s\S]*?\.viewer-bottom-console \.mode-dock\{grid-template-columns:132px repeat\(5,minmax\(0,1fr\)\)\}/,
+  /:where\(body\[data-cot-width='laptop'\],[\s\S]*?\.viewer-bottom-console \.mode-dock\{grid-template-columns:150px repeat\(5,minmax\(0,1fr\)\)\}/,
   'compact desktop dock must retain a readable diagnostic label column',
+);
+assert.match(
+  css,
+  /\.view-controls\{[^}]*grid-template-columns:112px repeat\(9,minmax\(34px,1fr\)\)[^}]*width:min\(760px,calc\(100% - 28px\)\)/,
+  'desktop camera controls must reserve separate space for Tank views and its info control',
+);
+assert.doesNotMatch(
+  css,
+  /(?:mode-dock button|vehicle-card|panel-heading|archive-filters|dossier-section|gallery-select-option\[aria-selected="true"\])(?:::[a-z]+|\.active::before)[^{]*\{[^}]*height:(?:12|15|16)px/,
+  'selection states must not use clipped decorative border fragments',
 );
 assert.doesNotMatch(css, /@media[^\n]*(?:width|height|orientation)/,
   'Gallery layout must consume semantic viewport attributes instead of device media queries');
