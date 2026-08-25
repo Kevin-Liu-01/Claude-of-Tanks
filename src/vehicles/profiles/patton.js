@@ -3868,10 +3868,24 @@ function buildM48(P, cfg) {
     P.add('hullDetail', cylZ(0.045, 0.19, 10), 0, 0.83, rearZ + 0.050, Math.PI / 2, 0, 0);
   }
 
-  // turret: measured egg dome + ring cupola + wrap rack (t26Cast grammar)
-  P.turretG.position.set(0, cfg.ring[0], cfg.ring[1]);
-  t26Cast(P, { ringY: cfg.ring[0], ringZ: cfg.ring[1], ...cfg.turret });
-  const yl = (y) => y - cfg.ring[0], zl = (z) => z - cfg.ring[1];
+  // Turret: measured egg dome + ring cupola + wrap rack (t26Cast grammar).
+  // M48 geometry is authored in world-height source coordinates, so keep the
+  // source ring as the local-coordinate datum and apply any seating correction
+  // at the articulated rig. This lifts the casting, gun, and every roof fitting
+  // as one assembly instead of changing the pear-shaped casting proportions.
+  const sourceRingY = cfg.ring[0];
+  const turretSeatLiftM = cfg.turretSeatLiftM ?? 0;
+  const seatedRingY = sourceRingY + turretSeatLiftM;
+  P.turretG.position.set(0, seatedRingY, cfg.ring[1]);
+  t26Cast(P, { ringY: sourceRingY, ringZ: cfg.ring[1], ...cfg.turret });
+  const yl = (y) => y - sourceRingY, zl = (z) => z - cfg.ring[1];
+  if (P.geometryReceipt) {
+    P.turretG.userData.m48TurretSeatReceipt = Object.freeze({
+      sourceRingY,
+      liftM: turretSeatLiftM,
+      seatedRingY,
+    });
+  }
 
   // The source ring and hatch footprints overhang the M48's asymmetric egg
   // dome. Flat-bottom cylinders therefore left their downhill halves visibly
@@ -4098,7 +4112,7 @@ function buildM48(P, cfg) {
 
   // M68 105 mm — the m60a1 recipe verbatim (level axis at the measured
   // trunnion; the print's pitched tube is the certified §E defect)
-  P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
+  P.gunG.position.set(0, cfg.gun.axisY - sourceRingY, cfg.gun.rootZ - cfg.ring[1]);
   // mantlet: the M48's wide rounded shield casting at the dome face —
   // rounded core + shield slab + rotor boot (§B3.1 MANTLETS-MANDATORY),
   // all riding the gun (gun-local coords)
@@ -5746,11 +5760,11 @@ export const PATTON_PROFILES = {
     // packet's configuration-datum cert, ASK-OWNER row flag banked).
     build: (P) => buildM48(P, {
       hull: M48_HULL, fit: M48_FIT,
-      ring: [1.595, 0.563], topWorld: 3.62,
+      ring: [1.595, 0.563], turretSeatLiftM: 0.055, topWorld: 3.62,
       turret: {
-        // Use the source ring plane directly.  A prior mask-score sweep
-        // lifted the complete casting 0.18 m, clipping away the low pear
-        // shoulder that defines the M48 in front and quarter views.
+        // Preserve the source ring as the casting datum. A measured 55 mm
+        // rig-level reseat clears the central deck without repeating the prior
+        // 0.18 m mask-score lift that clipped away the M48's low pear shoulder.
         loft: { wall: 0.35, mid: 0.73, midW: 0.82, crownW: 0.50, shiftX: -0.04, smooth: true },
         sections: [
           { z: 1.836, hw: 0.415, top: 2.03, bot: 1.593 },

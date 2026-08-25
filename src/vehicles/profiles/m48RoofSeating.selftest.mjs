@@ -20,6 +20,19 @@ for (const receipt of receipts) {
     `${receipt.id}: support follows the local roof instead of using a point mount`);
 }
 
+const seatReceipt = turretRig.userData.m48TurretSeatReceipt;
+assert.deepEqual(seatReceipt, {
+  sourceRingY: 1.595,
+  liftM: 0.055,
+  seatedRingY: 1.65,
+}, 'M48 turret uses the measured 55 mm deck-clearance reseat');
+assert(Math.abs(turretRig.position.y - seatReceipt.seatedRingY) < 1e-9,
+  'complete articulated turret is placed at the reseated ring height');
+const gunRig = tank.root.getObjectByName('rig_gun');
+const gunWorld = gunRig.getWorldPosition(new THREE.Vector3());
+assert(Math.abs(gunWorld.y - 1.93) < 1e-9,
+  'gun, mantlet, and recoil rig rise with the turret instead of remaining in the hull');
+
 const position = turret.geometry.getAttribute('position');
 assert(position && position.count / 3 >= 1120,
   'M48 turret contains the three merged roof-seat solids without extra draw meshes');
