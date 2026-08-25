@@ -23,6 +23,26 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
 
 /**
+ * Pin every generated build asset to the deployment that emitted its HTML.
+ * Vercel keeps prior deployments addressable through the same-origin `dpl`
+ * query. Without it, a garage tab opened before a deploy asks the newest
+ * deployment for its old lazy fleet/map/kill-cam hashes and receives 404s.
+ * Public files keep their stable root URLs; only Vite-owned hashed assets need
+ * the version lock.
+ */
+export function deploymentPinnedAssetUrl(
+  filename,
+  { type } = {},
+  deploymentId = process.env.VERCEL_DEPLOYMENT_ID,
+) {
+  const id = String(deploymentId || '').trim();
+  if (!id || type === 'public') return undefined;
+  return `/${filename}?dpl=${encodeURIComponent(id)}`;
+}
+
+const deploymentId = String(process.env.VERCEL_DEPLOYMENT_ID || '').trim();
+
+/**
  * Transitive relative-import closure starting at src/main.js.
  * Cheap regex scan (static `import ... from '...'`, bare `import '...'`, and
  * `export ... from '...'`); only ./ and ../
@@ -85,6 +105,14 @@ function rewriteRoutes(req, res, next) {
 }
 
 export default {
+  // Vite does not enable Vercel Skew Protection automatically. Supplying the
+  // deployment id on the entry, static dependencies, module-preload graph,
+  // and later dynamic imports keeps one browser document on one module graph.
+  experimental: deploymentId ? {
+    renderBuiltUrl(filename, context) {
+      return deploymentPinnedAssetUrl(filename, context, deploymentId);
+    },
+  } : undefined,
   plugins: [
     {
       name: 'cot-routes',

@@ -386,17 +386,17 @@
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-load { margin-top: 32px; }
   </style>
   <script>
-    // BOOT RECOVERY r1: a deploy can replace hashed chunks while an older
-    // HTML document is still cached, and weak/mobile browsers can abort a
-    // large module fetch under memory pressure. Previously either case left
-    // the branded loading screen alive forever until the user guessed that a
-    // reload would fix it. Recover once automatically, then expose an honest
-    // retry button instead of entering a reload loop.
+    // CHUNK RECOVERY r2: production assets are deployment-pinned by Vite, but
+    // documents loaded before that contract shipped can still request an old
+    // lazy hash after a deploy. Weak/mobile browsers can also abort a large
+    // module fetch. Keep the rejected import rejected so its real cause is
+    // observable, recover the document once, then expose an honest retry.
     (() => {
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 1;
       const WATCHDOG_MS = 45000;
-      let settled = false;
+      let navigating = false;
+      let recoveryScheduled = false;
 
       function state() {
         try {
@@ -411,8 +411,8 @@
       }
 
       function reload(reason) {
-        if (settled || window.__GAME_READY) return;
-        settled = true;
+        if (navigating) return;
+        navigating = true;
         const prev = state();
         remember({ count: prev.count + 1, at: Date.now(), reason });
         const url = new URL(location.href);
@@ -421,12 +421,22 @@
       }
 
       function showRetry(reason) {
-        if (settled || window.__GAME_READY) return;
+        if (navigating) return;
         const stage = document.getElementById('cot-boot-stage');
-        const retry = document.getElementById('cot-boot-retry');
+        let retry = document.getElementById('cot-boot-retry');
         if (stage) stage.textContent = reason === 'timeout'
           ? 'Loading is taking longer than expected'
           : 'A game file did not load';
+        // bootScreen removes its DOM after entry. A post-boot network failure
+        // still needs a visible recovery action if the one automatic reload
+        // has already been spent.
+        if (!retry && window.__GAME_READY) {
+          retry = document.createElement('button');
+          retry.id = 'cot-runtime-retry';
+          retry.textContent = 'A game file did not load — reload';
+          retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px sans-serif;cursor:pointer';
+          document.body.appendChild(retry);
+        }
         if (retry) {
           retry.classList.add('on');
           retry.onclick = () => reload(`manual:${reason}`);
@@ -434,8 +444,10 @@
       }
 
       function recover(reason) {
-        if (settled || window.__GAME_READY) return;
+        if (navigating || recoveryScheduled) return;
         if (state().count < MAX_AUTO_RELOADS) {
+          recoveryScheduled = true;
+          window.__CHUNK_RECOVERY_PENDING = true;
           // Let the failed request unwind before replacing the document.
           setTimeout(() => reload(reason), 150);
         } else {
@@ -443,12 +455,13 @@
         }
       }
 
-      addEventListener('vite:preloadError', (event) => {
-        event.preventDefault();
+      addEventListener('vite:preloadError', () => {
+        // Preventing this event tells Vite that the failed import was handled,
+        // so it resolves the import as `undefined`. That manufactured the
+        // later Object.entries/createKillCam errors seen on battle re-entry.
         recover('preload');
       });
       addEventListener('error', (event) => {
-        if (window.__GAME_READY) return;
         const node = event.target;
         const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
         const message = String(event.message || '');
@@ -457,7 +470,6 @@
         }
       }, true);
       addEventListener('unhandledrejection', (event) => {
-        if (window.__GAME_READY) return;
         const message = String(event.reason && (event.reason.message || event.reason) || '');
         if (/module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
           recover('module-promise');
@@ -466,9 +478,10 @@
 
       const health = setInterval(() => {
         if (!window.__GAME_READY) return;
-        settled = true;
         clearInterval(health);
-        try { sessionStorage.removeItem(KEY); } catch (_) { /* ok */ }
+        // Keep the short-lived receipt. Clearing it immediately at ready made
+        // a persistently missing post-boot chunk eligible for another reload
+        // before the user could request it again.
         try {
           const url = new URL(location.href);
           if (url.searchParams.has('_bootretry')) {
