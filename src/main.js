@@ -1101,6 +1101,7 @@ function buildPedestalVisual(specId, parked = false) {
 }
 async function warmPedestalPrograms(vis) {
   if (!vis || !vis.root) return;
+  if (getDeviceTier() === 'mobile') return;
   try {
     // ANGLE's KHR_parallel_shader_compile completion query is not reliably
     // non-blocking: profiling a cold Abrams switch attributed 442 ms to
