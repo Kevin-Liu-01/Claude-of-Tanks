@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
+import { M46_M47_TRACK_FINISH } from './patton.js';
 
 const CASES = {
   m26_pershing: { profile: 'm26-broad-cast', castScale: 0.65, gunY: 0.27846, mantletW: 1.50 },
   m45_patton: { profile: 'm45-heavy-howitzer-cast', castScale: 0.65, gunY: 0.26, mantletW: 1.53 },
   m46_patton: {
     profile: 'm46-low-patton-cast', castScale: 0.78, gunY: 0.37089, mantletW: 1.40,
-    sprocketR: 0.14, sprocketTeeth: false,
+    idlerR: 0.38, sprocketR: 0.28, sprocketTeeth: false,
   },
   m47_patton: {
     profile: 'm47-low-t42-cast', castScale: 0.65, gunY: 0.2405, mantletW: 0.70,
-    sprocketR: 0.325, sprocketTeeth: false,
+    idlerR: 0.27, sprocketR: 0.325, sprocketTeeth: false,
   },
 };
 
@@ -42,8 +43,30 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.ok(gearReceipt, `${id}: running-gear geometry receipt remains available`);
     assert.equal(gearReceipt.sprocket.r, expected.sprocketR,
       `${id}: rear drive sprocket keeps its authored radius`);
+    assert.equal(gearReceipt.idler.r, expected.idlerR,
+      `${id}: front idler keeps its authored radius`);
     assert.equal(gearReceipt.sprocketTeeth, expected.sprocketTeeth,
       `${id}: non-camouflaged radial sprocket blocks stay removed`);
+  }
+
+  if (expected.sprocketR != null) {
+    const forbiddenShadeMeshes = [];
+    const trackBands = [];
+    tank.root.traverse((object) => {
+      if (object.name === 'gearShadowProxy' || object.name === 'gearRunCover') forbiddenShadeMeshes.push(object);
+      if (object.name === 'gearTrackBandL' || object.name === 'gearTrackBandR') trackBands.push(object);
+    });
+    assert.equal(forbiddenShadeMeshes.length, 0,
+      `${id}: non-selectable wheel-bay shade panels are removed from the live track volume`);
+    assert.equal(trackBands.length, 2, `${id}: exactly one continuous track band remains per side`);
+    for (const band of trackBands) {
+      assert.equal(band.material.color.getHex(), M46_M47_TRACK_FINISH.trackBandHex,
+        `${id} ${band.name}: track uses neutral weathered steel`);
+      assert.equal(band.material.roughness, M46_M47_TRACK_FINISH.trackBandRoughness,
+        `${id} ${band.name}: track remains matte`);
+      assert.equal(band.material.envMapIntensity, M46_M47_TRACK_FINISH.trackBandEnvMapIntensity,
+        `${id} ${band.name}: environment lighting cannot turn the track olive or bronze`);
+    }
   }
 
   const repeat = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });

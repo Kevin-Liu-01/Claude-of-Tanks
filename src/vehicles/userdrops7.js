@@ -189,26 +189,38 @@ const SPECS = [
     // SAME hull (the A5 is a rebuilt A3), and the Hunnicutt-class table
     // gives 687.1 cm "length without gun, with fenders" for A2/A3/A5
     // (docs/references/tanks/m48.md, two-source rule).
-    { hp: 1700, enginePowerHp: 750, weightTons: 49.6, gun: { reloadS: 7.8 },
+    { hp: 1950, enginePowerHp: 750, weightTons: 49.6, topSpeedKmh: 48,
+      gun: {
+        reloadS: 7.2, baseAccuracy: 0.31, aimTimeS: 1.9,
+        shells: TANK_SPECS.m60a1.gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0
+            ? { pen100Mm: 540, pen1000Mm: 500, pen2000Mm: 450, dmg: 430 }
+            : index === 1
+              ? { pen100Mm: 520, pen1000Mm: 520, dmg: 430 }
+              : { dmg: 510 }),
+        })),
+      },
       dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
-    { hp: 2050, enginePowerHp: 750, weightTons: 52,
+    { hp: 2250, enginePowerHp: 750, weightTons: 52, reverseSpeedKmh: 18,
+      turretTraverseDegS: 38,
       // 152 mm M162 gun/launcher: conventional ammunition stays the default
       // while E arms the slower MGM-51C guidance channel for the next shot.
       // Per-round counts keep the Starship's compact mixed stowage explicit.
-      gun: { caliberMm: 152, reloadS: 10.5, baseAccuracy: 0.34, aimTimeS: 2.0, shells: [
-        shell('M409A1 HEAT-MP', 'HEAT', 152, 480, 480, 600, 689,
-          { reloadS: 10.5, count: 33 }),
-        shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 760, 760, 720, 208, {
+      gun: { caliberMm: 152, reloadS: 9.6, baseAccuracy: 0.32, aimTimeS: 1.8, shells: [
+        shell('M409A1 HEAT-MP', 'HEAT', 152, 560, 560, 650, 689,
+          { reloadS: 9.6, count: 33 }),
+        shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 900, 900, 780, 208, {
           guided: true,
           guidanceTurnRateRadS: 0.72,
-          reloadS: 12.5,
+          reloadS: 11.5,
           count: 13,
           soundProfile: 'shillelagh-launch',
         }),
-        shell('M657A2 HE-T', 'HE', 152, 45, 45, 720, 683,
-          { reloadS: 10.5, count: 12 }),
+        shell('M657A2 HE-T', 'HE', 152, 45, 45, 760, 683,
+          { reloadS: 9.6, count: 12 }),
       ] },
       dims: { hullLengthM: 6.95, overallLengthM: 7.27, widthM: 3.63, heightM: 3.11 },
       visual: { marking: 'star', number: 'S12' } }, AHAB_M60A2),

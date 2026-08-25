@@ -72230,8 +72230,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "modern",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 10,
+      "tierNumeral": "X",
       "dimensionsM": {
         "hullLength": 6.55,
         "overallLength": 6.55,
@@ -72244,15 +72244,15 @@
           {
             "name": "M919 APFSDS-T",
             "type": "APFSDS",
-            "pen100Mm": 136,
-            "pen1000Mm": 122,
-            "pen2000Mm": 110
+            "pen100Mm": 185,
+            "pen1000Mm": 170,
+            "pen2000Mm": 155
           },
           {
             "name": "BGM-71F TOW-2B",
             "type": "HEAT",
-            "pen100Mm": 900,
-            "pen1000Mm": 900,
+            "pen100Mm": 1050,
+            "pen1000Mm": 1050,
             "pen2000Mm": null
           },
           {
@@ -72260,7 +72260,7 @@
             "type": "HE",
             "pen100Mm": 8,
             "pen1000Mm": 8,
-            "pen2000Mm": null
+            "pen2000Mm": 8
           }
         ]
       },
@@ -73403,7 +73403,7 @@
         ]
       },
       "geometryHash": "2d2f593d",
-      "metadataHash": "4bb5c1bb",
+      "metadataHash": "9df4de30",
       "presentationAnchor": {
         "xM": 0.0037,
         "zM": 0.001
@@ -73497,24 +73497,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94817,
-          "sha256": "2cba61831df48f1981ad50400b7f8c79d2710b955b6c94c6b04772c248459b52"
+          "bytes": 95077,
+          "sha256": "6951b8d2ba99e284cfb70a8441e9f20b73fbcd484a77492f123e36f1664ca971"
         },
         "armorSide": {
           "file": "m3a3_bradley_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96746,
-          "sha256": "16b7ff1e90345ef294f750b4ac80762ab429dddbb43c92c9526840d25e7e2898"
+          "bytes": 96704,
+          "sha256": "cf5ae509668b66da77f0ecf22c6f77214d27273e664bea6ac9886e5b68cc51a1"
         },
         "modulesSide": {
           "file": "m3a3_bradley_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 101607,
-          "sha256": "29685ee269471e16ccef161e15e06bffba5a45b86c60e0033f50b652d2610e98"
+          "bytes": 101972,
+          "sha256": "1efd47de975e790e89002b408f8b85586220e455f669e10a282e435895f0ca87"
         },
         "markings": {
           "file": "m3a3_bradley_markings.png",
@@ -74527,15 +74527,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
-            "pen2000Mm": 390
+            "pen100Mm": 570,
+            "pen1000Mm": 530,
+            "pen2000Mm": 480
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 540,
+            "pen1000Mm": 540,
             "pen2000Mm": null
           },
           {
@@ -75427,12 +75427,12 @@
             "min": [
               -1.655,
               0.01,
-              -4.1099
+              -4.2499
             ],
             "max": [
               -1.055,
               1.185,
-              1.9172
+              2.1095
             ],
             "turretLocal": false
           },
@@ -75442,12 +75442,12 @@
             "min": [
               1.055,
               0.01,
-              -4.1099
+              -4.2499
             ],
             "max": [
               1.655,
               1.185,
-              1.9172
+              2.1095
             ],
             "turretLocal": false
           }
@@ -75515,26 +75515,26 @@
           }
         ]
       },
-      "geometryHash": "fb0e5ec9",
-      "metadataHash": "4618c133",
+      "geometryHash": "07b9418f",
+      "metadataHash": "8d7a0de0",
       "presentationAnchor": {
-        "xM": -0.0019,
-        "zM": -1.1915
+        "xM": -0.0025,
+        "zM": -1.1629
       },
-      "presentationHash": "08302a62",
+      "presentationHash": "484732eb",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelTire": 2,
-          "wheelDish": 8,
+          "wheelDish": 7,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gearShadow": 38,
+          "gearShadow": 16,
           "gunmetal": 9,
           "armorPaint": 5,
           "fittingPaint": 3,
@@ -75568,64 +75568,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28592,
-          "sha256": "4ff069fd34fface4c7da06948b0fed5289ff8e010c5472a29aed0793e9249e7d"
+          "bytes": 28414,
+          "sha256": "a5e0a10d6f88960d57fe9180a9e2abd859dba5fc37ec6ad01888d887f5082c20"
         },
         "top": {
           "file": "m46_patton_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8884,
-          "sha256": "b3d712e8a3b53888fd0473ae3432e8d3d2c7bcbf2928058f99958c6b5488c370"
+          "bytes": 8938,
+          "sha256": "a38a743a63b557e3fe2b93a317b5b1491787f2d71a50ce3bad5faf1dd92cb2fa"
         },
         "side": {
           "file": "m46_patton_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9290,
-          "sha256": "256b0e3aa0973f6ad145d9ecd539a89c1569772ff49fba3bb3472f568a060f59"
+          "bytes": 9884,
+          "sha256": "a458ff12fb8e11fcfa0315fcdc362c97529ee6237016af0ba5e0b9c4beab2cb7"
         },
         "topSilhouette": {
           "file": "m46_patton_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1144,
-          "sha256": "e0c94ba0574ca29af7f982a8203258b09669af10112f01bfe011a8173417f006"
+          "bytes": 1223,
+          "sha256": "3a310cdf5a08fabf7cc08815958d9207a0bb433454b462e24db7fb38bf4df5b8"
         },
         "sideSilhouette": {
           "file": "m46_patton_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4611,
-          "sha256": "9a999a27dcd430201b1ccc6e124eb53b57250a2ea5c4d1e1ee098d0b0b970c16"
+          "bytes": 5275,
+          "sha256": "2b300364c2fd2940dab65710878ba5dd7598391da79515735b1b9f07b91a0757"
         },
         "hitZonesSide": {
           "file": "m46_patton_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67510,
-          "sha256": "ccd3316e88467e16fb04b08302a7fd80e56ce5b50d5536fbe28d595f8f15fb17"
+          "bytes": 67768,
+          "sha256": "74dcb3cedbfe429be740121f4fcc90b08598bc124d946ad5e175617cfb9c6298"
         },
         "armorSide": {
           "file": "m46_patton_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69321,
-          "sha256": "d78d88623a5435d4deb05ec0005fc5595264575bd5389593e9c0fa39f9ca2998"
+          "bytes": 69608,
+          "sha256": "f93158ebae29ea4d742f91420490d410b1da02854bd14546091fc6f349f2318b"
         },
         "modulesSide": {
           "file": "m46_patton_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78223,
-          "sha256": "1160756f1ab240dc85fec1ea6762cc5bbe93d81fac3537790d0000e9b8fe64a9"
+          "bytes": 78401,
+          "sha256": "f3e49bcd5b16be233af3c0b6e54d1a44fc2bd09b6b7c0a9652ae49b697e7e47c"
         },
         "markings": {
           "file": "m46_patton_markings.png",
@@ -75676,15 +75676,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
-            "pen2000Mm": 390
+            "pen100Mm": 570,
+            "pen1000Mm": 530,
+            "pen2000Mm": 480
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 540,
+            "pen1000Mm": 540,
             "pen2000Mm": null
           },
           {
@@ -76664,33 +76664,33 @@
           }
         ]
       },
-      "geometryHash": "f531a53e",
-      "metadataHash": "aa555076",
+      "geometryHash": "1cf6f24f",
+      "metadataHash": "d587f42d",
       "presentationAnchor": {
         "xM": -0.0007,
-        "zM": -1.0541
+        "zM": -1.0526
       },
-      "presentationHash": "ee08add9",
+      "presentationHash": "77bcdb14",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "wheelTire": 2,
-          "wheelDish": 9,
+          "wheelDish": 7,
           "wheelInset": 1,
           "suspensionLink": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gearShadow": 44,
           "armorPaint": 5,
           "gunmetal": 9,
           "fittingPaint": 4,
           "opticGlass": 2,
           "canvas": 2,
           "wood": 1,
-          "unclassified": 11
+          "unclassified": 11,
+          "gearShadow": 24
         }
       },
       "muzzleBore": {
@@ -76717,64 +76717,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28762,
-          "sha256": "157523d5b2b045ee02b61be51b53ba452ed702c1917ec192d633c8d12ebddaa4"
+          "bytes": 28020,
+          "sha256": "5c7d0d0bcb773f05cc2f247926383e171dc45f72a95612fb5bce21898b0f0adb"
         },
         "top": {
           "file": "m47_patton_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9242,
-          "sha256": "6fb8e1bd52702a35ccb4e605d33c1176baece880c8514a836efdbd88736dde71"
+          "bytes": 9120,
+          "sha256": "ac8b8453e6e88b977f869e5f3a41b82296a9f443e5b00641e426394a745f8db3"
         },
         "side": {
           "file": "m47_patton_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10322,
-          "sha256": "dafc82e57cd61d4795a955ad48ee5d7f428a4e5b18d732c9af0f33330667d809"
+          "bytes": 8696,
+          "sha256": "725ab943b3fac2e7fce73a95e0ea3b024c2f973d47e12f3cfef4243012ce3adf"
         },
         "topSilhouette": {
           "file": "m47_patton_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1322,
-          "sha256": "7cc0eaafb3b838fec44d2f4ec053f75f3781af82c71559a545caad58af80a36e"
+          "bytes": 1308,
+          "sha256": "76d3fa9d1854d8e0f0334f3d5496210f7c0995b299e5185860dbe2a902afebd1"
         },
         "sideSilhouette": {
           "file": "m47_patton_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4735,
-          "sha256": "7ef21c1a5652dee670f6d31750a9dfb623d2b5afd5f0c5529b7b07d2bf11aac3"
+          "bytes": 5003,
+          "sha256": "0758137c7f68bfe9b5f1151f2f91051c02a394083248ebdb407e22e86e99f036"
         },
         "hitZonesSide": {
           "file": "m47_patton_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69572,
-          "sha256": "2c5fa38c337aa195878862d2f384797ff15cb54aca5d612835b866c8cbc4dc6f"
+          "bytes": 68326,
+          "sha256": "2d9ae9fb2b5f2145795a19e2a024af530454f40724991d4e1ba8fe215152e1cd"
         },
         "armorSide": {
           "file": "m47_patton_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70778,
-          "sha256": "6a44a5154025178450e7c8ad4d307c95d117890a8e33d9372f9a09ab856956b3"
+          "bytes": 69430,
+          "sha256": "eac9691d3bcdfa08779ac2094fca19f6c2ba9598734ac7cf4969aad04f07027d"
         },
         "modulesSide": {
           "file": "m47_patton_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79374,
-          "sha256": "063059bd7c4c9f88f3fcf4cfb9461ead4e6b1274a84fe4fe08ea2cb41786ff17"
+          "bytes": 77926,
+          "sha256": "010fb7fe24c35a5eddd2940c5fbdcddb6ce4e73090f511a9012e63d7358d2be8"
         },
         "markings": {
           "file": "m47_patton_markings.png",
@@ -76811,8 +76811,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 6.87,
         "overallLength": 9.31,
@@ -76825,15 +76825,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
-            "pen2000Mm": 390
+            "pen100Mm": 540,
+            "pen1000Mm": 500,
+            "pen2000Mm": 450
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 520,
+            "pen1000Mm": 520,
             "pen2000Mm": null
           },
           {
@@ -77659,7 +77659,7 @@
         ]
       },
       "geometryHash": "2412687c",
-      "metadataHash": "0b170cca",
+      "metadataHash": "8e046b26",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0182
@@ -77751,24 +77751,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71071,
-          "sha256": "96a28cbd6b1a3ed5a2e3d2008f0b4a8b1b1f20209b7083f2fc123899bcf0f20d"
+          "bytes": 71012,
+          "sha256": "3f4812cdb5beadcfb2bd65d078eec3e917a9fcadf035a40a1bda9614e3733477"
         },
         "armorSide": {
           "file": "m48_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72844,
-          "sha256": "eb937dd8058b1fc279a4207b483c43cd290bff23eb656940f58e25f0acb08bc1"
+          "bytes": 72580,
+          "sha256": "49073d4f76d8c71960e831e0a4c7add11c3ef4cb96407c2776d9bd0518bf6acd"
         },
         "modulesSide": {
           "file": "m48_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78474,
-          "sha256": "ebadbc6bd4c8b6c17a64c85f5eb970f51f68822d6fa40b304e2a4ec33f82b8bc"
+          "bytes": 78504,
+          "sha256": "a1febe6422539d5ca0933009a29b93c7951b2a8f62e2a735310048126c023ee1"
         },
         "markings": {
           "file": "m48_markings.png",
@@ -78769,8 +78769,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 8,
+      "tierNumeral": "VIII",
       "dimensionsM": {
         "hullLength": 6.946,
         "overallLength": 9.436,
@@ -78783,15 +78783,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 476,
-            "pen1000Mm": 433,
-            "pen2000Mm": 390
+            "pen100Mm": 570,
+            "pen1000Mm": 530,
+            "pen2000Mm": 480
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 400,
-            "pen1000Mm": 400,
+            "pen100Mm": 540,
+            "pen1000Mm": 540,
             "pen2000Mm": null
           },
           {
@@ -79193,7 +79193,7 @@
             "turretLocal": true,
             "verts": [
               [
-                0.3654,
+                0.3535,
                 -0.003,
                 1.8174
               ],
@@ -79208,7 +79208,7 @@
                 -0.2056
               ],
               [
-                0.3654,
+                0.3535,
                 1.293,
                 1.6045
               ]
@@ -79224,22 +79224,22 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.3141,
+                -1.3449,
                 -0.003,
                 0.0074
               ],
               [
-                -0.2595,
+                -0.2784,
                 -0.003,
                 1.8174
               ],
               [
-                -0.2595,
+                -0.2784,
                 1.293,
                 1.6045
               ],
               [
-                -1.3141,
+                -1.3449,
                 1.293,
                 -0.2056
               ]
@@ -79255,22 +79255,22 @@
             "turretLocal": true,
             "verts": [
               [
-                -0.2856,
+                -0.3048,
                 0.2192,
                 1.86
               ],
               [
-                0.3915,
+                0.3799,
                 0.2192,
                 1.86
               ],
               [
-                0.3915,
+                0.3799,
                 1.1078,
                 1.7748
               ],
               [
-                -0.2856,
+                -0.3048,
                 1.1078,
                 1.7748
               ]
@@ -79296,12 +79296,12 @@
                 -2.2285
               ],
               [
-                1.338,
+                1.3371,
                 1.293,
                 -2.2285
               ],
               [
-                1.338,
+                1.3371,
                 1.293,
                 0.1139
               ]
@@ -79317,22 +79317,22 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.3141,
+                -1.3449,
                 -0.04,
                 -2.2285
               ],
               [
-                -1.3141,
+                -1.3449,
                 -0.04,
                 0.1139
               ],
               [
-                -1.2321,
+                -1.262,
                 1.293,
                 0.1139
               ],
               [
-                -1.2321,
+                -1.262,
                 1.293,
                 -2.2285
               ]
@@ -79348,22 +79348,22 @@
             "turretLocal": true,
             "verts": [
               [
-                1.2833,
+                1.2818,
                 -0.04,
                 -2.2285
               ],
               [
-                -1.1774,
+                -1.2067,
                 -0.04,
                 -2.2285
               ],
               [
-                -1.1774,
+                -1.2067,
                 1.293,
                 -2.335
               ],
               [
-                1.2833,
+                1.2818,
                 1.293,
                 -2.335
               ]
@@ -79379,22 +79379,22 @@
             "turretLocal": true,
             "verts": [
               [
-                -1.2457,
+                -1.2758,
                 1.33,
                 0.6462
               ],
               [
-                1.3516,
+                1.3509,
                 1.33,
                 0.6462
               ],
               [
-                1.3516,
+                1.3509,
                 1.33,
                 -2.2285
               ],
               [
-                -1.2457,
+                -1.2758,
                 1.33,
                 -2.2285
               ]
@@ -79406,12 +79406,12 @@
             "volumeId": "M01",
             "name": "gun",
             "min": [
-              -0.2074,
+              -0.2258,
               0.2562,
               -0.7592
             ],
             "max": [
-              0.3133,
+              0.3009,
               1.1449,
               1.8174
             ],
@@ -79511,12 +79511,12 @@
             "volumeId": "M08",
             "name": "optics",
             "min": [
-              0.2482,
+              0.235,
               0.6931,
               0.2203
             ],
             "max": [
-              0.8732,
+              0.867,
               1.5707,
               1.498
             ],
@@ -79573,12 +79573,12 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.2482,
+              0.235,
               0.0526,
               -0.7379
             ],
             "max": [
-              1.0099,
+              1.0053,
               1.093,
               0.9656
             ],
@@ -79588,12 +79588,12 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.2482,
+              0.235,
               0.0526,
               -1.1265
             ],
             "max": [
-              1.0782,
+              1.0744,
               1.1597,
               -0.147
             ],
@@ -79603,12 +79603,12 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.904,
+              -0.9302,
               0.0526,
               -1.0041
             ],
             "max": [
-              -0.1423,
+              -0.1599,
               1.093,
               -0.0991
             ],
@@ -79616,8 +79616,8 @@
           }
         ]
       },
-      "geometryHash": "a6aa6016",
-      "metadataHash": "e2c52262",
+      "geometryHash": "2bfaa679",
+      "metadataHash": "e243ac57",
       "presentationAnchor": {
         "xM": 0.0022,
         "zM": 0.0051
@@ -79639,7 +79639,7 @@
           "gunmetal": 8,
           "fittingPaint": 3,
           "tireRubber": 1,
-          "opticGlass": 2,
+          "opticGlass": 3,
           "unclassified": 15,
           "gearShadow": 2,
           "canvas": 1
@@ -79669,24 +79669,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30768,
-          "sha256": "6c9fd4fdc9c0ffe9e1c0f51f65b770836f37d532b96513073f64eeea107d118e"
+          "bytes": 29764,
+          "sha256": "25a9f6296600d2aded2da7174218926707e070b1bb2880d0386cf2820e50752c"
         },
         "top": {
           "file": "m60a1_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9058,
-          "sha256": "3ba627240341018a584f572936cf7bdb297743a82cb1038e212fe483d584ada0"
+          "bytes": 8704,
+          "sha256": "b2e11540314634e404d9d0386f9b02a3e1883f519172187638df14e7ddf484a4"
         },
         "side": {
           "file": "m60a1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10250,
-          "sha256": "cdcc88f7ea9d07dee90688c7a3f452e71a9fda080ac5b763dead3453adee1d1d"
+          "bytes": 9778,
+          "sha256": "8fe493b3ef4c8c9d9f0ebb73f78af57b7a1748f302114af0f7be55282089e702"
         },
         "topSilhouette": {
           "file": "m60a1_top_silhouette.png",
@@ -79701,32 +79701,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5015,
-          "sha256": "4de6dbf5dc5d32f648b884a7f85ce56c48784f9151ff98f955041d2f21140fe7"
+          "bytes": 5030,
+          "sha256": "6fd721fb1bc892d9d151eeeb3ab0498550bbc184f313042e1c7e267268d93e8f"
         },
         "hitZonesSide": {
           "file": "m60a1_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69294,
-          "sha256": "2806fc058d0f3b3aa944c025d9b8cd28a40c4b5e07459ed5dbeff6ebf069a451"
+          "bytes": 68654,
+          "sha256": "3bbbbcaed7d21da286c9f72acd70d961ae2f07e405abcd14c46b7bcb7ed0e925"
         },
         "armorSide": {
           "file": "m60a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71393,
-          "sha256": "953fab64f87802f7c26ddbb940b7f2bc4b857f9e5433cd7a62a2d236e99bae11"
+          "bytes": 70609,
+          "sha256": "19001bb6b7c9a9018c72c9b922ef408d67bd2db3403e1183cf7c30d12b4aeffe"
         },
         "modulesSide": {
           "file": "m60a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79673,
-          "sha256": "4573dfcbf6c96be0a2618bc35dc41c013db1a22705c33c5071bac0273b0441b6"
+          "bytes": 79313,
+          "sha256": "4cc9094c2342f28a4d386fc7c6839d8bd9c02c81234a51d5d5ccb051fd928ac5"
         },
         "markings": {
           "file": "m60a1_markings.png",
@@ -79763,8 +79763,8 @@
       "nation": "USA",
       "countryCode": "us",
       "era": "cold-war",
-      "tier": 8,
-      "tierNumeral": "VIII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 6.95,
         "overallLength": 7.27,
@@ -79777,15 +79777,15 @@
           {
             "name": "M409A1 HEAT-MP",
             "type": "HEAT",
-            "pen100Mm": 480,
-            "pen1000Mm": 480,
+            "pen100Mm": 560,
+            "pen1000Mm": 560,
             "pen2000Mm": null
           },
           {
             "name": "MGM-51C Shillelagh ATGM",
             "type": "HEAT",
-            "pen100Mm": 760,
-            "pen1000Mm": 760,
+            "pen100Mm": 900,
+            "pen1000Mm": 900,
             "pen2000Mm": null
           },
           {
@@ -80625,8 +80625,8 @@
           }
         ]
       },
-      "geometryHash": "b5b04dbc",
-      "metadataHash": "d14575ae",
+      "geometryHash": "c4fbcfb9",
+      "metadataHash": "e77c4a71",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0841
@@ -80678,24 +80678,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34830,
-          "sha256": "27657e075311cdae8aadd8fc42373f1a4fe402464bf3716cb60c74772da69c52"
+          "bytes": 34080,
+          "sha256": "3e381b969276c4b0739ab0df5c2e241c9b7a7058c425babec30d627ab8f6da0b"
         },
         "top": {
           "file": "m60a2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15412,
-          "sha256": "df12f256b555b5be5ebe19d022d847abad2b9dbbe9d6a42ebb705fd41a65c427"
+          "bytes": 15416,
+          "sha256": "eb303f568ea2761d2714c1e5f2af7696f849a8a60346002737fc7a26399b3eba"
         },
         "side": {
           "file": "m60a2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14236,
-          "sha256": "210d35aa9e51ec19643349ba871decc29372bdcd92e21b84df727a22d8ec57a7"
+          "bytes": 14138,
+          "sha256": "fd68a71839553cd0f87668085e116c0c9e6ef1857b554cf896b56ff0e193e329"
         },
         "topSilhouette": {
           "file": "m60a2_top_silhouette.png",
@@ -80718,24 +80718,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86662,
-          "sha256": "055af1e99956c57ebbb483f31288c866d879a07131c8a6e45bd1f8293119404f"
+          "bytes": 86489,
+          "sha256": "7b347a01190dc85b4018482ec8639fb8a1412f142d4f3f60210caccf04ef38aa"
         },
         "armorSide": {
           "file": "m60a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89100,
-          "sha256": "ac5d7700c0cc6b793c3a51abdbfab247ee649527b49aabe9044c769be6a23ee9"
+          "bytes": 88685,
+          "sha256": "995da67eb84f1dd88cc2f3cc8b3b28a1815d55236fa92b5385fa446b81f30b39"
         },
         "modulesSide": {
           "file": "m60a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94610,
-          "sha256": "8329ea08b497b415cb57242e6686a26f2685bbe570f068edfaccaf4834fc6049"
+          "bytes": 95462,
+          "sha256": "9ad6290379a008784e8896f1958d3585f8ea7d3464dc14de08f99125e584bc68"
         },
         "markings": {
           "file": "m60a2_markings.png",
@@ -80785,15 +80785,15 @@
           {
             "name": "DM63 (105) APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 540,
-            "pen1000Mm": 500,
-            "pen2000Mm": 450
+            "pen100Mm": 610,
+            "pen1000Mm": 570,
+            "pen2000Mm": 520
           },
           {
             "name": "DM512 HEAT",
             "type": "HEAT",
-            "pen100Mm": 520,
-            "pen1000Mm": 520,
+            "pen100Mm": 560,
+            "pen1000Mm": 560,
             "pen2000Mm": null
           },
           {
@@ -81742,8 +81742,8 @@
           }
         ]
       },
-      "geometryHash": "e21df276",
-      "metadataHash": "aed98847",
+      "geometryHash": "f4507991",
+      "metadataHash": "f28ca850",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0181
@@ -81761,11 +81761,11 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 5,
+          "armorPaint": 6,
           "gunmetal": 8,
           "fittingPaint": 3,
           "tireRubber": 1,
-          "opticGlass": 2,
+          "opticGlass": 3,
           "unclassified": 14,
           "gearShadow": 2,
           "canvas": 1
@@ -81795,24 +81795,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30294,
-          "sha256": "0ea8822f4e3720ec3fdad8f077c644df8b35c76e4a4b3f39b35fb7c9b8ecf7c6"
+          "bytes": 28366,
+          "sha256": "0508545a86ef7ad18a36ae9ac4a83d7a97f394b37b5b0bd5d9433b6a776b28de"
         },
         "top": {
           "file": "m60a3_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9040,
-          "sha256": "27105d4f45835f240183209cb5aed96b11ac0937a809967b0e0a301e78b78b34"
+          "bytes": 8702,
+          "sha256": "f70a2dc2905a5092fb9cbd9da0a7eeb90c42933d6d081321b74ebf6381d5f1af"
         },
         "side": {
           "file": "m60a3_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10532,
-          "sha256": "a3b7ec5a5775e8de830dfe88b0f9837d92b832830f8174a485929c768f456ec5"
+          "bytes": 9894,
+          "sha256": "b5c14b2e11f1cc02a45e69fd785b0e8557fc628a41ab48cab8a2a131c03f54d8"
         },
         "topSilhouette": {
           "file": "m60a3_top_silhouette.png",
@@ -81827,32 +81827,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4841,
-          "sha256": "b59e49efca7f88dfff61ea665780512c9b44ef58c9b8c4edcb00697c50bdc634"
+          "bytes": 4913,
+          "sha256": "3c51a63182b376275b0382b8c1c1be001227eac786fbe47d865293763e770e28"
         },
         "hitZonesSide": {
           "file": "m60a3_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67075,
-          "sha256": "57a90a80443c2e811fdd66725482c85257aabc3dff5b4c684bd98bfd0206463b"
+          "bytes": 66958,
+          "sha256": "94d2bca92617f81998ae45fdd257dc3b0b98bba7998d750b391de48a706302bc"
         },
         "armorSide": {
           "file": "m60a3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68757,
-          "sha256": "dfe5aa10f274be7269cde17eac7c0c70c689e9336782e4071e328863d12bb52d"
+          "bytes": 68189,
+          "sha256": "7c111b71e6498334ab14489f698890654c781d0b87ca3f8c6c1ccecacfad0648"
         },
         "modulesSide": {
           "file": "m60a3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78750,
-          "sha256": "981a760284097e353e5eeaf2c0050f27158f482937f9b55e9691d9e9105f13dc"
+          "bytes": 78013,
+          "sha256": "35c7891b59811311108ec8ef20d7e83d976302015e530380d4da805c702fb5e5"
         },
         "markings": {
           "file": "m60a3_markings.png",

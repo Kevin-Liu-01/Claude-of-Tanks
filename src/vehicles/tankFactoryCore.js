@@ -5116,6 +5116,7 @@ const BUCKET_DEF = {
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
+  gunMountGlass: ['gunG', 'glass'],
   // Opt-in independent twin-gun tubes. Only authored multi-muzzle profiles
   // use these buckets; the rest of the fleet retains the merged recoilG path.
   gunBarrel0: ['barrel0G', 'barrel'], gunBarrel0Dark: ['barrel0G', 'dark'],

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import './m60FamilyAttachments.selftest.mjs';
 import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
 

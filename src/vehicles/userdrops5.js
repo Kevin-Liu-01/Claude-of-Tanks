@@ -151,7 +151,18 @@ const SPECS = [
   // retired and the procedural model ships EVERYWHERE (local + public), so no
   // publicVisualFallback: its own regenerated icons are legal to distribute.
   make('leo1a5', 'm60a1', 'M60A1 Patton', 'USA',
-    { hp: 1750, weightTons: 49.7, topSpeedKmh: 48, reverseSpeedKmh: 16, gun: { reloadS: 7.6 },
+    { hp: 2050, weightTons: 49.7, topSpeedKmh: 50, reverseSpeedKmh: 16,
+      gun: {
+        reloadS: 6.8, baseAccuracy: 0.30, aimTimeS: 1.8,
+        shells: TANK_SPECS.leo1a5.gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0
+            ? { pen100Mm: 570, pen1000Mm: 530, pen2000Mm: 480, dmg: 440 }
+            : index === 1
+              ? { pen100Mm: 540, pen1000Mm: 540, dmg: 440 }
+              : { dmg: 520 }),
+        })),
+      },
       publicVisualFallback: null, community: null,
       dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
   make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',

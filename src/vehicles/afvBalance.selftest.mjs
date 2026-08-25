@@ -16,7 +16,7 @@ const EXPECTED = Object.freeze({
   bmpt_terminator2:   { hp: 2700, speed: 60, reverse: 18, traverse: 34, damage: 52, pen: [118, 106, 94], reload: 0.30, sound: 'twin-2a42', missile: [540, 'ataka-launch'] },
   bwp1:               { hp: 1850, speed: 68, reverse: 28, traverse: 48, damage: 62, pen: [158, 144, 130], reload: 0.32, sound: 'mk30-2', missile: [580, 'spike-launch'] },
   marder1a3:          { hp: 1250, speed: 65, reverse: 17, traverse: 50, damage: 32, pen: [72, 64, 56], reload: 0.20, sound: 'rh202', missile: [450, 'milan-launch'] },
-  m3a3_bradley:       { hp: 1800, speed: 61, reverse: 20, traverse: 40, damage: 62, pen: [136, 122, 110], reload: 0.40, sound: 'm242-bushmaster', missile: [600, 'tow-launch'] },
+  m3a3_bradley:       { hp: 2300, speed: 61, reverse: 20, traverse: 44, damage: 70, pen: [185, 170, 155], reload: 0.33, sound: 'm242-bushmaster', missile: [700, 'tow-launch'] },
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 48, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
   upior:              { hp: 1700, speed: 75, reverse: 30, traverse: 52, damage: 58, pen: [146, 132, 118], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 32, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [560, 'ataka-launch'] },

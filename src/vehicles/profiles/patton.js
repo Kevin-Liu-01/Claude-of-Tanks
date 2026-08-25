@@ -49,6 +49,25 @@ import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js'
 import { vehicleAmbientFloorHook } from '../materials.js';
 import { tagVehicleMaterial } from '../appearanceAudit.js';
 
+// The M60 family uses exposed manganese-steel tracks. Keep the continuous
+// band neutral and matte so woodland camouflage and the garage environment
+// cannot wash it green or clamp it to the old near-white multiplier.
+export const M60_TRACK_FINISH = Object.freeze({
+  trackBandHex: 0x8f887d,
+  trackBandRoughness: 0.97,
+  trackBandEnvMapIntensity: 0.02,
+});
+
+// M46/M47 tracks are exposed weathered manganese steel, not camouflage and
+// not the old olive multiplier used by the gear-tone pass. Keep enough value
+// contrast to read the cast links while preventing the garage environment
+// from turning the bands bronze or green.
+export const M46_M47_TRACK_FINISH = Object.freeze({
+  trackBandHex: 0x82796e,
+  trackBandRoughness: 0.96,
+  trackBandEnvMapIntensity: 0.035,
+});
+
 // ---------------------------------------------------------------------------
 // Piecewise deck lookup (z descending front->rear).
 // ---------------------------------------------------------------------------
@@ -351,6 +370,9 @@ function curveHull(P, H) {
     // Undefined remains byte-identical for every sibling Patton.
     shoeRadialScale: G.shoeRadialScale,
     shoeWidthScale: G.shoeWidthScale,
+    trackBandHex: H.trackBandHex,
+    trackBandRoughness: H.trackBandRoughness,
+    trackBandEnvMapIntensity: H.trackBandEnvMapIntensity,
   });
   // readable hub ring + bolts on every outer wheel face
   for (const z of wheelZs) {
@@ -2672,6 +2694,80 @@ function m60CastingPointAt(side, worldZ, heightFraction) {
   return new THREE.Vector3(x, y - 1.76, worldZ - 0.30);
 }
 
+function m60CastingSurfaceYAt(worldX, worldZ) {
+  const section = m60SectionAt(worldZ);
+  const halfWidth = worldX >= 0 ? section.hwR : section.hw;
+  const fx = Math.max(-1, Math.min(1, worldX / Math.max(halfWidth, 0.001)));
+  let a = M60_PROFILE[0], b = M60_PROFILE[1];
+  for (let index = 0; index < M60_PROFILE.length - 1; index++) {
+    if (fx >= M60_PROFILE[index][0] && fx <= M60_PROFILE[index + 1][0]) {
+      a = M60_PROFILE[index];
+      b = M60_PROFILE[index + 1];
+      break;
+    }
+  }
+  const mix = (fx - a[0]) / Math.max(0.001, b[0] - a[0]);
+  const heightFraction = a[1] + (b[1] - a[1]) * mix;
+  return section.bot + (section.top - section.bot) * heightFraction;
+}
+
+function m60RoofShelfGeometry(py, pz) {
+  const x0 = 0.06, x1 = 0.84;
+  const z0 = -0.42, z1 = 0.58;
+  const topY = 2.715;
+  const embeddedY = (x, z) => m60CastingSurfaceYAt(x, z) - 0.015;
+  return orientedSlab(
+    [x0, embeddedY(x0, z0) - py, z0 - pz],
+    [x1, embeddedY(x1, z0) - py, z0 - pz],
+    [x1, embeddedY(x1, z1) - py, z1 - pz],
+    [x0, embeddedY(x0, z1) - py, z1 - pz],
+    [x0, topY - py, z0 - pz],
+    [x1, topY - py, z0 - pz],
+    [x1, topY - py, z1 - pz],
+    [x0, topY - py, z1 - pz],
+  );
+}
+
+function addM60MantletSearchlight(P, scale = 1) {
+  const { box, cylX, cylZ, xform } = KIT;
+  const width = 0.40 * scale;
+  const height = 0.34 * Math.min(scale, 1.28);
+  const depth = 0.73 * Math.min(scale, 1.20);
+  const bodyBottomY = 0.265;
+  const bodyY = bodyBottomY + height / 2;
+  const bodyZ = 0.79;
+  const frontZ = bodyZ + depth / 2;
+  const lensRadius = 0.12 * Math.min(scale, 1.45);
+
+  P.addGunExtraDark(box(width, height, depth), 0, bodyY, bodyZ);
+  P.addGunExtraDark(box(width, 0.06, depth * 0.47), 0, bodyY + height / 2 + 0.03,
+    bodyZ + depth * 0.18);
+  P.addGunExtraDark(xform(cylZ(lensRadius + 0.028, 0.045, 22), 0, 0, 0),
+    0, bodyY, frontZ + 0.015);
+  P.add('gunMountGlass', cylZ(lensRadius, 0.018, 24), 0, bodyY, frontZ + 0.042);
+
+  const armX = width * 0.40;
+  const armHeight = Math.max(0.12, bodyBottomY - 0.12);
+  for (const side of [-1, 1]) {
+    P.addGunExtraDark(box(0.06, armHeight, 0.07), side * armX,
+      0.12 + armHeight / 2, bodyZ + 0.02);
+  }
+  P.addGunExtraDark(xform(cylX(0.035, armX * 2 + 0.06, 10), 0, 0, 0),
+    0, 0.215, bodyZ + 0.02);
+
+  P.gunG.userData.m60SearchlightReceipt = {
+    owner: 'rig_gun',
+    housingBucket: 'gunMountDark',
+    lensBucket: 'gunMountGlass',
+    widthM: width,
+    lensDiameterM: lensRadius * 2,
+    gunMountTopY: 0.23,
+    housingBottomY: bodyBottomY,
+    supportGapM: bodyBottomY - 0.23,
+    footprintZ: [bodyZ - depth / 2, bodyZ + depth / 2],
+  };
+}
+
 function m60EraCellAt(side, worldZ, heightFraction, w, h, d, castEmbedM) {
   const point = m60CastingPointAt(side, worldZ, heightFraction);
   // Two finite tangents reconstruct the actual loft patch under this one
@@ -2806,14 +2902,31 @@ function finishM60Variant(P, variant) {
     addM60A3TurretEra(P);
   } else {
     const cheekZ = [1.30, 0.84, 0.38];
+    const cheekWorldY = 2.36;
+    const castEmbedM = 0.025;
+    const cells = [];
     for (const side of [-1, 1]) {
       for (let i = 0; i < cheekZ.length; i++) {
-        const z = cheekZ[i];
-        const x = side * (0.52 + i * 0.27);
-        pattonFaceCassette(P, 'turret', x, 0.60, z, 0.50,
-          0.36, 0.15, -0.10, side * 0.29, 0, 1, 1);
+        const worldZ = cheekZ[i] + P.spec.armor.turretPivot[2];
+        const section = m60SectionAt(worldZ);
+        const heightFraction = Math.max(0.31, Math.min(0.79,
+          (cheekWorldY - section.bot) / Math.max(0.001, section.top - section.bot)));
+        const cell = m60EraCellAt(side, worldZ, heightFraction,
+          0.50, 0.36, 0.15, castEmbedM);
+        cells.push(cell);
+        pattonFaceCassette(P, 'turret', cell.x, cell.y, cell.z, cell.w,
+          cell.h, cell.d, cell.rx, cell.ry, cell.rz, 1, 1);
       }
     }
+    P.turretG.userData.m60VariantAttachmentReceipt = {
+      ...(P.turretG.userData.m60VariantAttachmentReceipt || {}),
+      cheekPanels: {
+        count: cells.length,
+        conformalSurfaceNormals: cells.length,
+        castEmbedM,
+        targetWorldY: cheekWorldY,
+      },
+    };
   }
 
   // Variant-specific roof and fire-control grammar taken from the supplied
@@ -2823,8 +2936,25 @@ function finishM60Variant(P, variant) {
   if (a3) {
     pattonSmokeBank(P, -1, 0.61, 0.60, 0.92);
     pattonSmokeBank(P, 1, 0.61, 0.60, 0.92);
-    P.add('turret', box(0.36, 0.25, 0.38), 0.72, 1.03, 0.64, -0.05, 0, 0);
-    P.add('turretGlass', box(0.22, 0.13, 0.022), 0.72, 1.06, 0.844, -0.05, 0, 0);
+    const pivotY = P.spec.armor.turretPivot[1];
+    const pivotZ = P.spec.armor.turretPivot[2];
+    const x0 = 0.54, x1 = 0.90, z0 = 0.745, z1 = 1.135;
+    const topY = 2.72;
+    const bottomY = (x, z) => m60CastingSurfaceYAt(x, z) - 0.015;
+    P.addEquipment('turret', orientedSlab(
+      [x0, bottomY(x0, z0) - pivotY, z0 - pivotZ],
+      [x1, bottomY(x1, z0) - pivotY, z0 - pivotZ],
+      [x1, bottomY(x1, z1) - pivotY, z1 - pivotZ],
+      [x0, bottomY(x0, z1) - pivotY, z1 - pivotZ],
+      [x0, topY - pivotY, z0 - pivotZ],
+      [x1, topY - pivotY, z0 - pivotZ],
+      [x1, topY - pivotY, z1 - pivotZ],
+      [x0, topY - pivotY, z1 - pivotZ],
+    ));
+    P.add('turretDark', box(0.32, 0.035, 0.34), 0.72, topY - pivotY + 0.0175,
+      0.94 - pivotZ);
+    P.add('turretGlass', box(0.24, 0.16, 0.022), 0.72, 2.59 - pivotY,
+      z1 - pivotZ + 0.012);
     P.add('turretDark', cylY(0.035, 0.045, 0.42, 10), -0.92, 1.22, -1.12);
     P.add('turretDetail', box(0.18, 0.06, 0.16), -0.92, 1.45, -1.12);
     P.add('turretGlass', box(0.10, 0.035, 0.018), -0.92, 1.45, -1.03);
@@ -2834,6 +2964,17 @@ function finishM60Variant(P, variant) {
   } else {
     for (const z of [1.56, 2.30, 3.18]) P.add('gunDark', cylZ(0.096, 0.032, 16), 0, 0, z);
   }
+
+  P.turretG.userData.m60VariantAttachmentReceipt = {
+    ...(P.turretG.userData.m60VariantAttachmentReceipt || {}),
+    ttsHousing: a3 ? {
+      owner: 'rig_turret',
+      housingBucket: 'turretEquipment',
+      lensBucket: 'turretGlass',
+      surfaceEmbeddedM: 0.015,
+      duplicateHousingRemoved: true,
+    } : null,
+  };
 
   // Complete marker-carrying M85-style plant.  The fitting's flanged foot
   // is sunk into the cupola crown, so receiver, ammo can and forward tube
@@ -2872,41 +3013,7 @@ function buildM60(P, cfg) {
   P.mats.glass.roughness = 0.52;
   P.mats.glass.metalness = 0.50;
   const hull = curveHull(P, cfg.hull);
-  // r4 tell 5 (undercarriage tone wash, MATERIAL-ONLY, m60-scoped): the proc
-  // track rendered near-black gunmetal against the reference's camo-washed
-  // grey-olive band — the largest-area delta in every side/3-4 view, with the
-  // guide-horn comb reading as a crisp black sawtooth above the wheels.
-  // Direction note: r3 called the band "slightly warm/tan", r4 measured it
-  // too DARK (the fleet shade fix re-based both models) — land in the middle:
-  // dusty grey-olive, measured against the ref band in the board pairs
-  // (ref dark-hardware luma ~53-61 under the board rig vs proc ~25-32).
-  // Mechanics: the shoe-pad / inner-chain materials are per-build CLONES
-  // whose colors buildRunningGear pins (0x171614 / 0x27251f) — retone them by
-  // hex match on this build's own subtree; the band meshes and the
-  // sprocket/idler dark rings share this instance's live mats (trackL/R
-  // color is a linear multiplier over the band map, so link shading/grouser
-  // variation survives the lift). Wheels/tires stay untouched — the r4 crop
-  // measures proc wheels already at/above the ref wheel tone.
-  P.mats.trackL.color.setRGB(1.82, 1.78, 1.52);
-  P.mats.trackR.color.setRGB(1.82, 1.78, 1.52);
-  P.mats.spareTrack.color.setHex(0x4d4838);
-  {
-    // pads (0x171614) and the inner chain/guide-horn layer (0x27251f) — the
-    // env bump gives the down-facing horn teeth sky fill in the wheel-bay
-    // shade (the r4 "crisp black horn-comb" is mostly self-shadowed geometry
-    // once the albedo is in the ref's grey-olive family).
-    const retone = new Map([[0x171614, [0x423e33, 0.22]], [0x27251f, [0x4e4a3c, 0.30]]]);
-    P.hullG.traverse((o) => {
-      const m = o.material;
-      if (m && m.color && m.color.getHex && retone.has(m.color.getHex())) {
-        const [hex, env] = retone.get(m.color.getHex());
-        m.color.setHex(hex);
-        m.envMapIntensity = env;
-      }
-    });
-  }
-  P.mats.trackL.envMapIntensity = 0.2;
-  P.mats.trackR.envMapIntensity = 0.2;
+  P.mats.spareTrack.color.setHex(0x403c35);
   // centre engine crown over the fender-level band deck, CAMBERED: full
   // height only |x|<=0.78, wing wedges taper to the band by |x| 1.02 (the
   // reference front-hull columns read 1.82 at x 0.88, 1.79 by 1.08).
@@ -3077,9 +3184,20 @@ function buildM60(P, cfg) {
   // low right roof) and the flat-roofed bustle (roof 2.664 to -2.02).
   m60Loft(P, 'turret', cfg.sections, M60_PROFILE, py, pz, M60_PROFILE_CREASES);
   m60Loft(P, 'turret', cfg.bustle, M60_BUSTLE_PROFILE, py, pz, M60_BUSTLE_CREASES);
-  // right roof shelf: the measured flat 2.716-2.72 band (x 0.06..0.80 over
-  // the crest zone) with the loader hatch riding it at 2.80
-  P.add('turret', box(0.78, 0.10, 1.00), 0.45, yl(2.665), zl(0.08), 0.006, 0, 0);
+  // Right roof shelf: keep the measured flat 2.715 m crown for the loader
+  // hatch, but extend its underside down into the rounded casting at every
+  // corner. The old horizontal box touched only its inner edge and visibly
+  // floated over the outer roof slope.
+  P.add('turret', m60RoofShelfGeometry(py, pz));
+  P.turretG.userData.m60VariantAttachmentReceipt = {
+    ...(P.turretG.userData.m60VariantAttachmentReceipt || {}),
+    roofShelf: {
+      owner: 'rig_turret',
+      topWorldY: 2.715,
+      surfaceEmbeddedM: 0.015,
+      conformalCorners: 4,
+    },
+  };
   P.add('turret', cylY(0.115, 0.12, 0.055, 14), 0.56, yl(2.745), zl(-0.05));
   P.add('turretDark', box(0.05, 0.014, 0.15), 0.625, yl(2.782), zl(-0.05));
 
@@ -3234,15 +3352,9 @@ function buildM60(P, cfg) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.28, [1.225, yl(2.30), zl(-1.20)], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.28, [-1.225, yl(2.30), zl(-1.20)], -Math.PI / 2);
 
-  if (cfg.a3) { // crosswind sensor stub + TTS blister (A3 fire-control kit).
-    // Both stay LOW: the shared reference has no A3 kit, so every proud pixel
-    // is pure deduction — the stub reads in exactly one side column and stays
-    // under the 2% station-top line (the searchlight cap already consumes
-    // both station trim slots on this variant).
+  if (cfg.a3) { // crosswind sensor stub (the TTS housing is authored once below).
     P.add('turretDetail', cylY(0.030, 0.042, 0.046, 8), 0.35, yl(2.687), zl(-1.62));
     P.add('turretDark', box(0.05, 0.028, 0.05), 0.35, yl(2.696), zl(-1.62));
-    P.add('turret', box(0.28, 0.14, 0.24), 0.75, yl(2.75), zl(1.02));
-    P.add('turretDark', box(0.16, 0.07, 0.02), 0.75, yl(2.76), zl(1.15));
   }
 
   // M140 mount: cast rotor + canvas boot at the nose throat (kept inside the
@@ -3251,25 +3363,8 @@ function buildM60(P, cfg) {
   P.addGunExtra(xform(cylX(0.17, 0.56, 12), 0, 0, 0), 0, 0.03, 0.97);
   P.addGunExtra(cylZ(0.12, 0.30, 12, 0.10), 0, 0, 1.18);
   P.addGunExtraDark(box(0.48, 0.26, 0.05), 0, -0.03, 0.98);
-  if (cfg.searchlight) { // AN/VSS-1 over the mantlet (pitches with the gun)
-    // measured: rear roof 2.66 rising to the 2.765 front lip, z 2.02..2.75;
-    // plan reads only |x| < 0.22 (the ±0.27 trace columns stay clean).
-    // r3 critique ("two stacked camo boxes ... lens is a 2.5 cm dark disc
-    // ... no yoke read"): body + lid are DARK STEEL now (gunMountDark rides
-    // the lifted per-instance dark mat), the face carries a proud bezel
-    // ring with a recessed lens disc, and a real two-arm yoke + trunnion
-    // pin bridges the mantlet gap. Everything stays inside the prior
-    // envelope: bezel face 2.705 (< the 2.73 column boundary), bezel top
-    // 0.615 under the 0.62 body top, yoke |x| <= 0.19.
-    P.addGunExtraDark(box(0.40, 0.34, 0.73), 0.0, 0.45, 0.79);
-    P.addGunExtraDark(box(0.40, 0.06, 0.34), 0.0, 0.645, 0.945);
-    P.addGunExtraDark(xform(cylZ(0.145, 0.04, 18), 0, 0, 0), 0.0, 0.47, 1.135);
-    P.addGunExtraDark(xform(cylZ(0.120, 0.014, 18), 0, 0, 0), 0.0, 0.47, 1.138);
-    for (const side of [-1, 1]) {
-      P.addGunExtraDark(box(0.06, 0.30, 0.06), side * 0.16, 0.27, 0.83, 0.22, 0, 0);
-    }
-    P.addGunExtraDark(xform(cylX(0.035, 0.36, 10), 0, 0, 0), 0, 0.24, 0.86);
-  }
+  if (cfg.searchlight) addM60MantletSearchlight(P,
+    typeof cfg.searchlight === 'number' ? cfg.searchlight : 1);
   // M68: bare tube dia 0.164 (measured band 2.001-2.162, axis 2.08), muzzle
   // +5.96, no brake. r3 critique: the kit drum (0.62-long body) read
   // "~0.50 m long ... root-biased; the reference carries a compact
@@ -3388,39 +3483,79 @@ function buildM60A2(P, cfg) {
       }
     }
   }
-  // Full Starship fender course.  The legacy print only carried the raised
-  // engine-deck fender aft of z=-0.60, which left the idler and all six road
-  // wheels without a visible shelf above the moving track.  These segmented
-  // plates begin on the glacis shoulder, follow the deck rise, and meet the
-  // retained high rear fender at z=-0.92.  Their inboard edge is buried in
-  // the 1.19 m hull band; the outboard rail stays above the exact track sweep.
-  const FENDER_RUN = [
+  // Full Starship upper-side course. The segmented roof plates begin on the
+  // glacis shoulder, follow the deck rise and meet the raised rear sponson at
+  // z=-0.92. Their inboard edge is buried in the 1.19 m hull band; the
+  // outboard rail stays above the exact moving-track sweep.
+  const UPPER_SIDE_RUN = [
     [3.30, 1.50], [2.95, 1.66], [2.35, 1.76], [1.82, 1.82],
     [0.62, 1.84], [-0.60, 1.86], [-0.92, 2.005],
   ];
-  const fenderInner = 1.185;
-  const fenderOuter = 1.765;
+  const shoulderInner = 1.185;
+  const shoulderOuter = 1.765;
   for (const side of [-1, 1]) {
-    for (let i = 0; i < FENDER_RUN.length - 1; i++) {
-      const [z0, y0] = FENDER_RUN[i];
-      const [z1, y1] = FENDER_RUN[i + 1];
+    for (let i = 0; i < UPPER_SIDE_RUN.length - 1; i++) {
+      const [z0, y0] = UPPER_SIDE_RUN[i];
+      const [z1, y1] = UPPER_SIDE_RUN[i + 1];
       const dz = z0 - z1;
       const dy = y0 - y1;
       const run = Math.hypot(dz, dy);
       const rx = -Math.atan2(dy, dz);
       const z = (z0 + z1) * 0.5;
       const y = (y0 + y1) * 0.5;
-      P.add('hull', box(fenderOuter - fenderInner, 0.055, run),
-        side * (fenderInner + fenderOuter) * 0.5, y, z, rx, 0, 0);
+      P.add('hull', box(shoulderOuter - shoulderInner, 0.055, run),
+        side * (shoulderInner + shoulderOuter) * 0.5, y, z, rx, 0, 0);
       P.add('hullDetail', box(0.045, 0.085, run),
-        side * (fenderOuter - 0.012), y - 0.012, z, rx, 0, 0);
+        side * (shoulderOuter - 0.012), y - 0.012, z, rx, 0, 0);
     }
     // Backed hangers make the long shelves read as hull-supported rather
     // than thin decoration, while remaining well above the shoe envelope.
-    for (const [z, y] of FENDER_RUN.slice(1, -1)) {
+    for (const [z, y] of UPPER_SIDE_RUN.slice(1, -1)) {
       P.add('hullDetail', box(0.075, 0.16, 0.075),
-        side * (fenderOuter - 0.055), y - 0.095, z);
+        side * (shoulderOuter - 0.055), y - 0.095, z);
     }
+  }
+  // The raised Starship rear course is an armored sponson shoulder, not an
+  // unsupported fender.  The old hull stopped at |x|=1.19 and left only the
+  // 35 mm roof plate spanning to the track edge, so low quarter views could
+  // see straight through the volume below it.  Seal that volume with a
+  // mirrored, camouflaged hull wall: the front wedge follows the exact
+  // -0.60 -> -0.92 roof rise and the two aft cells continue to the rear deck.
+  // Its 1.48 m floor clears the authored track crown (1.41 m) by 70 mm while
+  // overlapping both the native hull band inboard and the roof plate above.
+  const shoulderBottomY = 1.48;
+  const SHOULDER_RUN = [
+    [-0.60, 1.86], [-0.92, 2.005], [-2.45, 2.005], [-3.50, 2.005],
+  ];
+  for (const side of [-1, 1]) {
+    const innerX = side * shoulderInner;
+    const outerX = side * shoulderOuter;
+    for (let i = 0; i < SHOULDER_RUN.length - 1; i++) {
+      const [z0, topY0] = SHOULDER_RUN[i];
+      const [z1, topY1] = SHOULDER_RUN[i + 1];
+      P.add('hull', slab(
+        [innerX, shoulderBottomY, z0], [outerX, shoulderBottomY, z0],
+        [outerX, shoulderBottomY, z1], [innerX, shoulderBottomY, z1],
+        [innerX, topY0, z0], [outerX, topY0, z0],
+        [outerX, topY1, z1], [innerX, topY1, z1]));
+    }
+  }
+  if (P.geometryReceipt) {
+    const trackCrownY = cfg.hull.gear.sprocket.y + cfg.hull.gear.sprocket.r + 0.09;
+    P.hullG.userData.m60a2SideShoulderReceipt = {
+      panels: 6,
+      innerX: shoulderInner,
+      outerX: shoulderOuter,
+      bottomY: shoulderBottomY,
+      frontZ: SHOULDER_RUN[0][0],
+      rearZ: SHOULDER_RUN.at(-1)[0],
+      roofMinY: SHOULDER_RUN[0][1],
+      roofMaxY: SHOULDER_RUN.at(-1)[1],
+      trackCrownY,
+      trackClearanceM: shoulderBottomY - trackCrownY,
+      roofOverlapM: 0.0175,
+      mergedHullDrawCalls: 0,
+    };
   }
   // outer skirt lip to 1.78 (ref front 1.85 at 1.75-1.79), then the LOW
   // full-length side flap panels at 1.79-1.815 (ref front band 0.76..1.40
@@ -4310,6 +4445,7 @@ const M45_FIT = {
 // ref dump, gate-parity station slices; tools/tmp-m46-retrace.mjs).
 const M46_HULL = {
   W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
+  ...M46_M47_TRACK_FINISH,
   bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
   deckCorridor: { x: 1.02, floor: 1.28, z0: -2.70, z1: 1.40 },
   runningGearFit: true, runningGearFace: true,
@@ -4339,13 +4475,13 @@ const M46_HULL = {
     // slope 0.80/departure ~1.22 to an idler wrap ending by 1.99; rear ramp
     // slope 0.50/departure -2.87 to a SMALL tail wheel (wrap bottom ~0.62
     // flat around z -3.98, gear content gone by -4.07/-4.14 by phase — the
-    // print's chopped rear track: the enlarged r 0.14 sprocket remains well
-    // below a full-sized r 0.33 wheel, whose wrap would
-    // poke the -4.12..-4.34 columns the ref keeps empty; §B6 holds (both
-    // ends raised, tangent ramps), size residual documented in the packet).
+    // Both terminal wheels are intentionally doubled from the undersized
+    // 0.19/0.14 m radii. The larger 0.38 m idler and 0.28 m sprocket remain
+    // below the fenders while giving the track a readable, mechanically
+    // supported wrap instead of disappearing behind wheel-bay fill panels.
     // Wrap radii include bandOuterR 0.09 + ~0.05 link-corner reach.
     wheelR: 0.33, span: [1.035, -2.685], rollerN: 3, rollerY: 1.00, contactZF: 1.08, contactZR: -2.72,
-    idler: { z: 1.64, y: 0.765, r: 0.19 }, sprocket: { z: -3.88, y: 0.815, r: 0.14 },
+    idler: { z: 1.64, y: 0.68, r: 0.38 }, sprocket: { z: -3.88, y: 0.815, r: 0.28 },
     sprocketTeeth: false,
   },
 };
@@ -4382,6 +4518,7 @@ const M47_HULL = {
   // (centre dip 1.602 @ -0.05..-0.22, muffler saddle 1.698 @ -2.95, plateau
   // 1.774 @ -3.25..-3.47, stepped tail descent).
   W: 3.51, bandHW: 1.40, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.468, bellyHW: 1.025, noseW: 1.30,
+  ...M46_M47_TRACK_FINISH,
   glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90,
   deckCorridor: { x: 1.02, floor: 1.34, z0: -2.90, z1: 1.40 },
   runningGearFit: true, runningGearFace: true,
@@ -4482,6 +4619,7 @@ const M48_FIT = {
 
 const M60_HULL = {
   W: 3.631, bandHW: 1.70, trackW: 0.69, trackInset: 0.037,
+  ...M60_TRACK_FINISH,
   sponsonY: 1.16, sponsonBandY: 1.40, bellyY: 0.47, noseW: 1.66,
   glacisWingY0: 1.42, glacisWingDrop: 0.02, glacisWingZ0: 2.72,
   runningGearFit: true,
@@ -4593,8 +4731,8 @@ const M60A2_HULL = {
   deck: [[3.31, 1.483], [2.95, 1.657], [2.33, 1.66], [2.28, 1.68], [2.24, 1.796],
     [1.82, 1.80], [1.62, 1.787], [1.58, 1.858], [-0.60, 1.860], [-3.40, 1.862],
     [-3.47, 1.863]],
-  // push round r5: fender edge 1.755 — curveHull's plate outer edge lands
-  // at fenderHW+0.005, and the ref's 2.008 band covers the +-1.74 column
+  // push round r5: raised shoulder roof edge 1.755 — curveHull's plate outer
+  // edge lands at fenderHW+0.005, and the ref's 2.008 band covers the +-1.74 column
   // (1.996) but not +-1.78 (1.853): outer 1.760 threads both boundaries
   fenderY: [2.005, -0.92, -3.50], fenderHW: 1.755,
   toeBot: 1.06, bellyFrontZ: 2.35, bellyRearZ: -2.62, tailBotY: 0.95,
@@ -5235,46 +5373,16 @@ export const PATTON_PROFILES = {
         profile: 'm46-low-patton-cast', scale: 0.78, widthScale: 1.03,
         mantletScale: 0.9672, mantletWidthScale: 1.08, minMantletHeight: 0.4056,
       },
-      // r7 TONE round (shaded-parity r5 orders): GROUP A adopts m47's proven
-      // r4+r6 gear recipes OLIVE-variant (the m46 never made m47's tan
-      // mistake — the r6 N1 olive constants in the shared cfg.gearTone path
-      // ARE the pre-priced recipe: hue r/g <=1.0 per hex, env floors 0.30/
-      // 0.32 for the shade-side wrap faces, N2 drum-face world-box UV
-      // re-projection). A4/A5 ride cfg.gearShade with m46's OWN gear spans
-      // (object form; `true` keeps the m47 literals byte-identical).
+      // Keep the camouflaged wheel treatment, but let the real track geometry
+      // carry the wheel-bay silhouette. The former gearShade curtain/backer
+      // proxies were non-selectable in Gallery Studio and intersected the
+      // moving bands at oblique angles.
       gearTone: true, fenderSkirtB: 'hullDark',
       // drum dial (ordered-class law, sampled on the render): the shared
       // (1.05,1.10,1.02) multiplier read the m46 drum band p75 81.0 / med
       // 69.1 vs ref 67.6 / 62.7 — the m46 camo instance is hotter than
       // m47's. Same r/g (olive), luma x0.905.
       wheelMul: [0.865, 0.91, 0.845], wheelEnv: 0.15,
-      // m46 shade spans (measured off M46_HULL gear): BOTH end wraps sit
-      // BELOW the 1.215 top run (idler crest 1.045 @ 1.64, tension-idler-
-      // sized sprocket crest 1.045 @ -3.88 — the m47 covers rose, these
-      // descend). Covers 5+ cm over the pad crowns, under the 1.369 fender
-      // doubler bottom; curtains under the fender lip clear of both wrap
-      // zones; backers fill the m46's own wheel->wrap wedges; end rings
-      // sized inside the 0.28 carrier discs (sprocket pair shadow-named — the
-      // carrier face is the plan-mask edge; idler ring real interior).
-      gearShade: {
-        covers: [[0.61, 0.016, 1.30, 1.195, -3.10, 0.146], [0.61, 0.016, 3.25, 1.30, -0.825, 0], [0.61, 0.016, 0.80, 1.23, 1.20, -0.14]],
-        // r9 R3 (m47 r8-T1 recipe): outboard curtain deepened 0.19 -> 0.34
-        // (top tucked to the 1.370..1.405 fender plate, bottom 1.065 —
-        // 20 mm above the 1.045 idler crest) and extended over the full
-        // fender run (z 1.30..-3.55 -> 1.58..-4.10) so the lit fender-wall
-        // gaps between the skirt-tab verticals drop the ordered tone step
-        // at close-front (done-gate: no >12L lit gap between curtain
-        // columns). Third segment: the z 1.58..1.71 wedge UNDER the bow
-        // fender ramp (top 1.235 < the ramp's 1.26 @ z 1.71) backs the
-        // front-most tab. §C proxies (mask-excluded), gate x2 verified.
-        curtains: [[0.016, 0.34, 5.68, 1.63, 1.235, -1.26], [0.014, 0.22, 0.44, 1.18, 1.27, -2.50], [0.016, 0.17, 0.13, 1.63, 1.15, 1.645]],
-        backers: [[0.05, 0.90, 0.80, 0.75, -3.35], [0.05, 0.80, 0.40, 0.80, 1.45]],
-        endRings: [
-          [0.126, 0.342, 0.815, -3.88, 'gearShadowGlint'],
-          [0.082, 0.342, 0.815, -3.88, 'gearShadowGlint'],
-          [0.145, 0.235, 0.765, 1.64],
-        ],
-      },
       // width slices: the REF's slice grid FLICKERS ±0.05 between runs (its
       // side-mask end columns are AA-marginal slivers), so the i4/i12-class
       // hanger plates STRADDLE the proc slice boundaries (-2.0125 / 1.6315
@@ -5502,10 +5610,9 @@ export const PATTON_PROFILES = {
       // r4 TONE round (shaded-parity r3 orders, all material/flush-lane):
       // A1/A2 gear retone + camo wheels, A3 dark gear fittings (with
       // hull.darkGearFit), B2 tail slat tray, D2 hood periscopes.
-      // r6 GROUP-N (gear unification): gearShade = under-fender shadow
-      // proxies (§C mask-excluded, verified per-harness) + ramp-wedge
-      // backers + wheel-rim glints; N1/N2 hue+drum work rides gearTone.
-      gearTone: true, gearShade: true, fenderSkirtB: 'hullDark', hoodScopes: true, deckKit: true,
+      // Keep the camouflaged wheel treatment without the old non-selectable
+      // gearShadowProxy curtains/backers that crossed the live track course.
+      gearTone: true, fenderSkirtB: 'hullDark', hoodScopes: true, deckKit: true,
       // (r8 cycle-3: fenderSkirtSlim [0.012, 0.006] tried for the rear-view
       // ±1.707 tab pair — the slim tabs did NOT merge into the ±1.751 fender
       // line; instead the uncovered track band printed a NEW 0.72 m vertical
@@ -5863,5 +5970,5 @@ export const PATTON_PROFILES = {
   // A3 TTS: the supplied A3 oracle resolves the correct variant package —
   // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
   // the A1's large AN/VSS-1 mantlet searchlight.
-  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: false, sleeve: true, a3: true, gunLen: 4.435 }) },
+  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: 1.42, sleeve: true, a3: true, gunLen: 4.435 }) },
 };

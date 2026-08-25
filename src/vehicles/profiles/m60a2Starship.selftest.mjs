@@ -64,6 +64,16 @@ try {
   assert.equal(receipt?.panels, 2, 'both over-track rear shoulders are structurally closed');
   assert.ok(receipt.deckOverlapM >= 0.02, 'closures overlap the deck instead of floating below it');
 
+  const sideShoulder = hullRig.userData.m60a2SideShoulderReceipt;
+  assert.equal(sideShoulder?.panels, 6,
+    'both raised side shoulders are sealed from the transition through the aft deck');
+  assert.ok(sideShoulder.roofOverlapM >= 0.015,
+    'side shoulder volumes overlap the marked roof course instead of leaving a seam');
+  assert.ok(sideShoulder.trackClearanceM >= 0.069,
+    'side shoulder floors retain visible clearance over the moving track crown');
+  assert.equal(sideShoulder.mergedHullDrawCalls, 0,
+    'structural side fills merge into the existing camouflaged hull bucket');
+
   const gear = hullRig.userData.runningGearReceipts?.at(-1);
   const sprocketCrestY = gear.sprocket.y + gear.sprocket.r;
   assert.ok(receipt.bottomY - sprocketCrestY >= 0.07,
@@ -82,9 +92,35 @@ try {
     assert.ok(hit, `${side < 0 ? 'left' : 'right'} rear shoulder has a camouflaged structural panel`);
     assert.ok(hit.point.z <= -3.40 && hit.point.z >= -3.70,
       `${side < 0 ? 'left' : 'right'} closure is seated against the rear deck edge`);
+
+    for (const [y, label] of [[1.70, 'lower'], [1.90, 'upper']]) {
+      const shoulderRay = new THREE.Raycaster(
+        new THREE.Vector3(side * 2.5, y, -3.0),
+        new THREE.Vector3(-side, 0, 0),
+        0,
+        1.5,
+      );
+      const shoulderHit = shoulderRay.intersectObject(hullRig, true)
+        .find((intersection) => intersection.object.name === 'hull');
+      assert.ok(shoulderHit,
+        `${side < 0 ? 'left' : 'right'} ${label} side shoulder is backed by structural hull`);
+      assert.ok(Math.abs(Math.abs(shoulderHit.point.x) - sideShoulder.outerX) <= 0.015,
+        `${side < 0 ? 'left' : 'right'} ${label} shoulder reaches the marked outer hull edge`);
+    }
+
+    const transitionRay = new THREE.Raycaster(
+      new THREE.Vector3(side * 1.47, 1.72, -1.10),
+      new THREE.Vector3(0, 0, 1),
+      0,
+      0.7,
+    );
+    const transitionHit = transitionRay.intersectObject(hullRig, true)
+      .find((intersection) => intersection.object.name === 'hull');
+    assert.ok(transitionHit,
+      `${side < 0 ? 'left' : 'right'} sloped shoulder transition is structurally filled`);
   }
 } finally {
   tank.dispose();
 }
 
-console.log('m60a2Starship.selftest: rear shoulders closed and 152 mm Shillelagh channel verified');
+console.log('m60a2Starship.selftest: side/rear shoulders closed and 152 mm Shillelagh channel verified');

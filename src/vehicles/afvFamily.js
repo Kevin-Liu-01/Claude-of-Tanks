@@ -235,21 +235,26 @@ const AFV_FAMILY_SPECS = {
     // m3a3_bradley_sipriv.glb is a rigged lowpoly (bind-pose vertex reads
     // are scattered — the browser gate poses it correctly).
     id: 'm3a3_bradley', name: 'M3A3 Bradley CFV', nation: 'USA', era: 'modern', role: 'ifv',
-    hp: 1800,
+    // Tier X reconnaissance support: materially lower durability than the
+    // T-90-based Terminator, paid back through fast acquisition, a modern
+    // M919 belt and the fleet's strongest Bradley TOW channel.
+    hp: 2300,
     enginePowerHp: 600, weightTons: 34.4, topSpeedKmh: 61, reverseSpeedKmh: 20,
-    hullTraverseDegS: 40,
+    hullTraverseDegS: 44,
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.4 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
     gun: {
-      caliberMm: 25, reloadS: 0.40, baseAccuracy: 0.28, aimTimeS: 1.25,
+      caliberMm: 25, reloadS: 0.33, baseAccuracy: 0.25, aimTimeS: 1.05,
       soundProfile: 'm242-bushmaster',
       bloom: BLOOM_IFV,
       shells: [
-        shell('M919 APFSDS-T', 'APFSDS', 25, 136, 122, 62, 1345, { pen2000Mm: 110, reloadS: 0.40, count: 300 }),
-        shell('BGM-71F TOW-2B', 'HEAT', 152, 900, 900, 600, 195,
-          { reloadS: 14, count: 10, guided: true, soundProfile: 'tow-launch' }),
-        shell('M792 HEI-T', 'HE', 25, 8, 8, 56, 1100, { reloadS: 0.40, count: 300 }),
+        shell('M919 APFSDS-T', 'APFSDS', 25, 185, 170, 70, 1345,
+          { pen2000Mm: 155, reloadS: 0.33, count: 300 }),
+        shell('BGM-71F TOW-2B', 'HEAT', 152, 1050, 1050, 700, 195,
+          { reloadS: 12, count: 10, guided: true, soundProfile: 'tow-launch' }),
+        shell('M792 HEI-T', 'HE', 25, 8, 8, 62, 1100,
+          { pen2000Mm: 8, reloadS: 0.33, count: 300 }),
       ],
     },
     // §5.306 base revert: the pre-§5.286 declared dims return with the

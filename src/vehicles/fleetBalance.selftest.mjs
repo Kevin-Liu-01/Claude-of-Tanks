@@ -267,6 +267,67 @@ for (const [
     `${id}: garage compares the tank against its actual tier`);
 }
 
+const pattonProgression = [
+  // id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000
+  ['m48', 8, 1950, 48, 7.2, 430, 540, 500, 450],
+  ['m60a1', 8, 2050, 50, 6.8, 440, 570, 530, 480],
+  ['m60a3', 8, 2200, 50, 6.4, 450, 610, 570, 520],
+];
+let previousPattonDpm = 0;
+for (const [id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000]
+  of pattonProgression) {
+  const spec = TANK_SPECS[id];
+  const primary = spec.gun.shells[0];
+  assert.equal(tankTier(id), tier, `${id}: intended Patton tier`);
+  assert.equal(spec.hp, hp, `${id}: tier-appropriate HP`);
+  assert.equal(spec.topSpeedKmh, speed, `${id}: authored mobility identity`);
+  assert.equal(spec.gun.reloadS, reload, `${id}: dedicated reload cycle`);
+  assert.deepEqual(
+    [primary.dmg, primary.pen100Mm, primary.pen1000Mm, primary.pen2000Mm],
+    [alpha, pen100, pen1000, pen2000],
+    `${id}: dedicated Tier VIII kinetic round`,
+  );
+  const dpm = primary.dmg * 60 / reload;
+  assert.ok(dpm > previousPattonDpm, `${id}: family firepower progresses within Tier VIII`);
+  previousPattonDpm = dpm;
+  assert.equal(garageStatGroup(spec), `${tier}/${spec.era}`,
+    `${id}: garage compares the tank against its Tier VIII peers`);
+}
+
+const starship = TANK_SPECS.m60a2;
+const starshipHeat = starship.gun.shells.find((round) => round.guided !== true
+  && round.type === 'HEAT');
+const starshipMissile = starship.gun.shells.find((round) => round.guided === true);
+assert.equal(tankTier('m60a2'), 9, 'Starship occupies Tier IX');
+assert.equal(starship.hp, 2250, 'Starship carries a Tier IX HP pool');
+assert.equal(starship.gun.reloadS, 9.6, 'Starship conventional channel keeps its deliberate cycle');
+assert.deepEqual([starshipHeat.dmg, starshipHeat.pen100Mm, starshipHeat.reloadS],
+  [650, 560, 9.6], 'Starship conventional HEAT-MP is the faster general-purpose channel');
+assert.deepEqual(
+  [starshipMissile.dmg, starshipMissile.pen100Mm, starshipMissile.reloadS],
+  [780, 900, 11.5],
+  'Starship Shillelagh is the slower high-penetration Tier IX channel',
+);
+assert.equal(garageStatGroup(starship), '9/cold-war',
+  'garage compares the Starship against its Tier IX peers');
+
+const m3a3 = TANK_SPECS.m3a3_bradley;
+const m3a3Primary = m3a3.gun.shells[0];
+const m3a3Missile = m3a3.gun.shells.find((round) => round.guided === true);
+assert.equal(tankTier('m3a3_bradley'), 10, 'M3A3 occupies Tier X');
+assert.deepEqual(
+  [m3a3.hp, m3a3.gun.reloadS, m3a3Primary.dmg,
+    m3a3Primary.pen100Mm, m3a3Primary.pen2000Mm],
+  [2300, 0.33, 70, 185, 155],
+  'M3A3 owns a Tier X scout/autocannon envelope',
+);
+assert.deepEqual([m3a3Missile.dmg, m3a3Missile.pen100Mm, m3a3Missile.reloadS],
+  [700, 1050, 12], 'M3A3 TOW-2B is its Tier X anti-armor channel');
+assert.ok(m3a3.hp < TANK_SPECS.bmpt_t90.hp,
+  'M3A3 remains a lighter glass-cannon scout than the Tier X Terminator');
+assert.equal(garageStatGroup(m3a3), '10/modern',
+  'garage compares the M3A3 against its Tier X peers');
+
 const authority = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [

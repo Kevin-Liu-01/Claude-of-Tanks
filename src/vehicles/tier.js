@@ -19,7 +19,7 @@ export const TANK_TIER = Object.freeze({
   m1a2_legacy: 10, abramsx: 10,
   challenger1: 8, chieftain5: 7, fv510: 7, fv510_milan: 9,
   leo2_revolution: 10, leo2a5: 9, leo2a7v: 10,
-  m1a1ha: 9, m1a2_sepv2: 10, m1a2_sepv3: 10, m60a1: 7, pt91m: 8,
+  m1a1ha: 9, m1a2_sepv2: 10, m1a2_sepv3: 10, m60a1: 8, pt91m: 8,
   merkava1b: 7, merkava2b: 8, merkava2d: 8,
   merkava3b: 8, merkava3c: 9, merkava3d: 10, merkava4: 9, merkava4b: 10,
   t62mv1: 7, t64bv1: 8, t72b_1987: 8, t72b3m: 9,
@@ -30,7 +30,7 @@ export const TANK_TIER = Object.freeze({
   leopard2_proto: 8, m1a1_aim: 9, m46_patton: 7, m47_patton: 7,
   m26_pershing: 8, m45_patton: 8, m60a3: 8,
   t44: 7, t54: 7, type59: 7, t80: 8, t80b: 9, t80bv: 9,
-  amx30: 7, amx30b2: 8, m48: 7, m60a2: 8, vickers_mk1: 7, t84: 9,
+  amx30: 7, amx30b2: 8, m48: 8, m60a2: 9, vickers_mk1: 7, t84: 9,
   ua_t64bv: 8, ua_t80bv: 9, ua_t80u_kursk: 9, ua_t84_oplot_m: 10, ua_m1a1: 9,
   ztz85_iii: 8, ztz99a2: 10,
   // Dedicated Swedish siege-TD progression: prototype -> A -> B.
@@ -39,7 +39,7 @@ export const TANK_TIER = Object.freeze({
   stb1: 7, type90a: 9, type10b: 10,
   leo2a4_otco: 8, leo2a4m: 9, leo2a6m: 10, leo2a6_ua: 10,
   bmp3_rok: 8, ua_m2a3_bradley: 9, bmpt_terminator2: 9,
-  bwp1: 9, marder1a3: 7, m3a3_bradley: 8,
+  bwp1: 9, marder1a3: 7, m3a3_bradley: 10,
   bmp3: 8, upior: 9,
   // §5.363: the T-90-hull Terminator sits one over bmpt_terminator2.
   bmpt_t90: 10,

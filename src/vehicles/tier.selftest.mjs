@@ -28,6 +28,11 @@ assert.deepEqual(
   [8, 9, 10, 10],
   'Merkava 2B/3C/3D/4B progression is VIII/IX/X/X everywhere',
 );
+assert.deepEqual(
+  ['m48', 'm60a1', 'm60a3', 'm60a2', 'm3a3_bradley'].map(tankTier),
+  [8, 8, 8, 9, 10],
+  'Patton family and M3A3 assignments are VIII/VIII/VIII/IX/X everywhere',
+);
 assert.equal(tierNumeral('unknown-dev-row'), '', 'unknown UI tiers stay visible as missing');
 assert.equal(tankTier('unknown-dev-row'), 6, 'unknown matchmaking tier keeps the legacy fallback');
 
