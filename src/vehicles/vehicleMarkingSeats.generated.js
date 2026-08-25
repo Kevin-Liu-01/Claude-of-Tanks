@@ -3833,28 +3833,6 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "maximumSurfaceErrorM": null
       },
       {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.3,
-        "pos": [
-          -1.1421037,
-          0.3525373,
-          -1
-        ],
-        "quaternion": [
-          -0.1531477,
-          -0.690323,
-          -0.1531477,
-          0.690323
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.3264494
-      },
-      {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.24,

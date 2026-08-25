@@ -1385,6 +1385,17 @@ function buildLeclerc(P, variant = 's2') {
       [s * 0.435, 0.355, 1.90], [s * 0.445, 0.355, 1.90], [s * 0.445, 0.435, 1.10], [s * 0.435, 0.435, 1.10],
       [s * 0.435, 0.53, 2.06], [s * 0.445, 0.53, 2.06], [s * 0.445, 0.648, 1.36], [s * 0.435, 0.648, 1.36]));
   }
+  // STRUCTURAL INNER SHELL. The outer brow slopes, forward roof risers and
+  // aft side-roof wings are armor skins, not empty canopies. Their marked
+  // downward faces previously looked straight through the turret at low and
+  // grazing camera angles. These overlapping cores stop immediately below
+  // those skins and remain inside every established exterior datum. The
+  // right-cheek gunner sight well stays deliberately open and functional.
+  P.add('turret', box(0.86, 0.358, 0.68), 0, 0.349, 1.70);                    // center brow bridge: y 0.17..0.528, z 1.36..2.04
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.905, 0.238, 0.18), s * 0.5675, 0.319, 1.02);        // solid bulkhead beneath field->mid riser
+    P.add('turret', box(0.42, 0.318, 1.28), s * 1.19, 0.399, -0.66);          // side-wing core beneath aft roof chamfer
+  }
   P.add('turret', box(0.88, 0.075, 0.085), 0, 0.4925, 2.0825);                 // BROW: flat strip x +-0.44, top 2.13w, z_w 1.94..2.025
   gunHousing('turret', box(0.42, 0.115, 0.235), 0, 0.5855, 2.1725);            // mantlet ROTOR housing bulge above the brow (x +-0.21, top 0.643 = 2.243w, z_w 1.955..2.19 — gun-frame rotor mass)
   P.add('turret', box(0.23, 0.10, 0.36), 0, 0.593, 1.875);                     // rotor SPINE strip riding the center slope (x +-0.115, top 0.643, z_w 1.595..1.955 — continues the rotor line aft; the ref's 2.243 band covers cols 1.733/1.844 the slope alone undershot 0.044)
@@ -1913,6 +1924,12 @@ function buildLeclerc(P, variant = 's2') {
     highRoofSupportBridges: 2,
     anf1RoofContactY: 0.610,
     anf1BarrelBridge: true,
+  };
+  P.turretG.userData.leclercTurretClosure = {
+    centerBrowBridgeBounds: { x: [-0.43, 0.43], y: [0.17, 0.528], z: [1.36, 2.04] },
+    forwardRoofBulkheads: 2,
+    aftSideWingCores: 2,
+    gunnerSightWellPreserved: true,
   };
   P.turretG.userData.leclercGunHousingRig = {
     gunPivotLocal: [0, 0.27, 0.50],

@@ -5423,7 +5423,7 @@
           }
         ]
       },
-      "geometryHash": "4bc2d7bd",
+      "geometryHash": "2d6bc67b",
       "metadataHash": "51e04150",
       "presentationAnchor": {
         "xM": 0.0028,
@@ -5518,24 +5518,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66818,
-          "sha256": "389f83c8278d5524ec146aa637ab6ec7b26cce858c156fbc5636849ed037674f"
+          "bytes": 66938,
+          "sha256": "c5a569890da388ef950f012dc6dc09e13e6a6b53642768f90badc3fbd0bfe3fb"
         },
         "armorSide": {
           "file": "amx56_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66692,
-          "sha256": "6ffe3c6696061c9f403e39cd1dd73ca74e8feed299499f16767c9b2fb03a5ddf"
+          "bytes": 66387,
+          "sha256": "1e86d5f30dae8d09263940187a6a0b7aa3358ea5e87ebb2607980be054acb4b8"
         },
         "modulesSide": {
           "file": "amx56_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68403,
-          "sha256": "d2a4779219d90786b39551b276b51610c3a57ee5a4972d24fc7785679a28d4ec"
+          "bytes": 68600,
+          "sha256": "d76f7289015a138eb24cbee6fbfd40e4fcc56ab1680d64d7d77637d4e1f8a471"
         },
         "markings": {
           "file": "amx56_markings.png",
@@ -43482,7 +43482,7 @@
           }
         ]
       },
-      "geometryHash": "3a610e40",
+      "geometryHash": "e03fb245",
       "metadataHash": "2dc995ed",
       "presentationAnchor": {
         "xM": 0.0031,
@@ -43508,7 +43508,7 @@
           "opticGlass": 2,
           "canvas": 2,
           "wood": 1,
-          "unclassified": 12,
+          "unclassified": 11,
           "gearShadow": 2,
           "trackSteel": 1
         }
@@ -43521,11 +43521,11 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 4,
+        "total": 3,
         "insignia": 1,
-        "designation": 3,
+        "designation": 2,
         "verifiedInsignia": 1,
-        "verifiedDesignation": 3,
+        "verifiedDesignation": 2,
         "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "FR:fr-roundel:33"
@@ -43577,24 +43577,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 58126,
-          "sha256": "2375aeb138dd6f1cd554be5383afd1d73f4fa9d907dcac2587a2504bcec8e087"
+          "bytes": 57688,
+          "sha256": "2c349a7830f02a393927cc5a8ba2663da44a004cc1e6ade79a87bfd40f31bbe2"
         },
         "armorSide": {
           "file": "leclerc_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59693,
-          "sha256": "017b7bcbc3cb830ee03e5c226e9fe385131e21f6030180c3bec47476ad0ec73c"
+          "bytes": 59851,
+          "sha256": "50af1cab0aad7f1a69c5b00e5caa95ebc9cfd190d96225b164d201142f4d0de5"
         },
         "modulesSide": {
           "file": "leclerc_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68007,
-          "sha256": "0825b2f484797afd84099a1f39a1c91c51143c34532875fe9ddca531725b46e3"
+          "bytes": 68190,
+          "sha256": "4afe319b312e9d2222c1cd52e8d801aec370f5c88c0c74135c7a95265af0ac20"
         },
         "markings": {
           "file": "leclerc_markings.png",
@@ -44943,7 +44943,7 @@
           }
         ]
       },
-      "geometryHash": "273d4d45",
+      "geometryHash": "db909600",
       "metadataHash": "1f7f79a2",
       "presentationAnchor": {
         "xM": 0.0031,
@@ -45038,24 +45038,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66273,
-          "sha256": "d829b667b5e5feb6a7ff2b45b921cf70f54b680afba09750b64d6d87e55e83bf"
+          "bytes": 65732,
+          "sha256": "e46e01b2f2dbede736461fa9d67e66a9dec7ca2051213755c4249af1184ce0f8"
         },
         "armorSide": {
           "file": "leclerc_xlr_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66691,
-          "sha256": "840be06df1bf13740fba675d0815773b6070a3cc296769dd05293d6026e7278d"
+          "bytes": 66829,
+          "sha256": "f9ee180308da4bea0e429cba9a5e38a1b8dba4d4568b1c84458c45ffff7924d7"
         },
         "modulesSide": {
           "file": "leclerc_xlr_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69324,
-          "sha256": "217d702f52b3ca403149d3088aa1430ba60d6ccf21c3efc7aae544ab95fb25a8"
+          "bytes": 69153,
+          "sha256": "2e826b16e7b76cf98f7c794f4dc84aef19cccb814c758215cd1a4582b25f7992"
         },
         "markings": {
           "file": "leclerc_xlr_markings.png",

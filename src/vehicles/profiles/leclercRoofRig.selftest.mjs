@@ -23,6 +23,14 @@ const hasLongSideRailFace = (mesh, x, epsilon = 1e-4) => {
   }
   return false;
 };
+const localRayHits = (mesh, origin, direction, far = 4) => {
+  mesh.updateWorldMatrix(true, false);
+  const worldOrigin = mesh.localToWorld(new THREE.Vector3(...origin));
+  const worldDirection = new THREE.Vector3(...direction).transformDirection(mesh.matrixWorld);
+  return new THREE.Raycaster(worldOrigin, worldDirection, 0, far)
+    .intersectObject(mesh, false)
+    .map((hit) => mesh.worldToLocal(hit.point.clone()));
+};
 
 for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
   const tank = createTank(id, null, {
@@ -52,6 +60,24 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       anf1RoofContactY: 0.610,
       anf1BarrelBridge: true,
     }, `${id} records both roof returns and the connected ANF1`);
+    assert.deepEqual(turretRig.userData.leclercTurretClosure, {
+      centerBrowBridgeBounds: { x: [-0.43, 0.43], y: [0.17, 0.528], z: [1.36, 2.04] },
+      forwardRoofBulkheads: 2,
+      aftSideWingCores: 2,
+      gunnerSightWellPreserved: true,
+    }, `${id} records the shared structural shell beneath its outer turret panels`);
+
+    const centerHits = localRayHits(turret, [0.25, 0, 1.70], [0, 1, 0], 0.8);
+    assert.ok(centerHits.some((point) => near(point.y, 0.17, 0.002)),
+      `${id} center brow panel has solid armor immediately beneath it`);
+    for (const side of [-1, 1]) {
+      const riserHits = localRayHits(turret, [side * 0.72, 0, 1.02], [0, 1, 0], 0.8);
+      assert.ok(riserHits.some((point) => near(point.y, 0.20, 0.002)),
+        `${id} ${side < 0 ? 'left' : 'right'} forward roof riser closes into the turret core`);
+      const wingHits = localRayHits(turret, [side * 1.55, 0.45, -0.66], [-side, 0, 0], 1.0);
+      assert.ok(wingHits.some((point) => near(point.x, side * 1.40, 0.002)),
+        `${id} ${side < 0 ? 'left' : 'right'} aft roof wing has a full-depth side core`);
+    }
 
     assert.ok(hasVertexAtX(hull, -1.644) && hasVertexAtX(hull, 1.644),
       `${id} side applique is merged into hull-owned armor`);
