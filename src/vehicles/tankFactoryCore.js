@@ -6809,6 +6809,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   let gearSettling = true;
   let gearWasVisible = true;
   let gearLastL = NaN, gearLastR = NaN;
+  let gearSurfaceLastL = NaN, gearSurfaceLastR = NaN;
   let gearLastX = NaN, gearLastY = NaN, gearLastZ = NaN;
   let gearLastYaw = NaN, gearLastPitch = NaN, gearLastRoll = NaN;
   let sway = 0;                      // turn-lean roll (rad), smoothed
@@ -7271,6 +7272,8 @@ export function createTank(specId, engineCtx, opts = {}) {
         P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);
         gearLastL = renderState.trackScroll.l;
         gearLastR = renderState.trackScroll.r;
+        gearSurfaceLastL = renderState.trackScroll.l;
+        gearSurfaceLastR = renderState.trackScroll.r;
         gearLastX = renderState.pos.x;
         gearLastY = renderState.pos.y;
         gearLastZ = renderState.pos.z;
@@ -7278,12 +7281,18 @@ export function createTank(specId, engineCtx, opts = {}) {
         gearLastPitch = gearPitch;
         gearLastRoll = gearRoll;
         gearForceUpdate = false;
-      } else if (P.gear && gearVisible && P.gear.updateSurface) {
+      } else if (P.gear && gearVisible && P.gear.updateSurface
+          && (!Number.isFinite(gearSurfaceLastL) || !Number.isFinite(gearSurfaceLastR)
+            || Math.abs(renderState.trackScroll.l - gearSurfaceLastL) > 1e-6
+            || Math.abs(renderState.trackScroll.r - gearSurfaceLastR) > 1e-6)) {
         // Keep the cheap visible phase continuous between 30/15 Hz distant
         // conformance passes. This updates track UVs and end-wheel spin only;
         // terrain sampling, band deformation, and road-wheel matrices remain
-        // cadence-limited.
+        // cadence-limited. Parked tanks now retain the identical phase
+        // without rewriting every BatchedMesh matrix texture each frame.
         P.gear.updateSurface(renderState.trackScroll.l, renderState.trackScroll.r);
+        gearSurfaceLastL = renderState.trackScroll.l;
+        gearSurfaceLastR = renderState.trackScroll.r;
       }
       if (gearNow) gearAccumDt = 0;
       // §5.362: per-shot stroke profile — cannon recuperate cycle vs the

@@ -726,18 +726,14 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
   }
 }
 
-/** Separate visual construction, texture upload, shader submission, and
- * reveal into bounded tasks. compileAsync was tested here and made the
- * transition materially worse on ANGLE because its completion polling became
- * another large atomic task; synchronous compile only submits work, then the
- * remaining roster gives the driver time to link it. */
-async function stageBattleVisualReveal(ent, yieldForBudget) {
-  const visual = ent?.visual;
-  const root = visual?.root;
-  if (!root || root.userData.loadStaged) return;
-  const parent = root.parent;
-  if (parent) parent.remove(root);
-  await yieldForBudget(true);
+/** Upload every texture currently referenced by one scene subtree without
+ * drawing or compiling it. Texture initialization is independent of the
+ * garage/battle light set, so world maps can be staged as soon as their graph
+ * exists while the correct battle shaders remain deferred until startBattle
+ * has disabled the garage lights. */
+async function stageRootTextureUploads(root, yieldForBudget) {
+  if (!root) return { textures: 0, totalMs: 0 };
+  const startedAt = performance.now();
   const textures = new Set();
   root.traverse((object) => {
     const materials = Array.isArray(object.material)
@@ -751,12 +747,31 @@ async function stageBattleVisualReveal(ent, yieldForBudget) {
   });
   for (const texture of textures) {
     try { renderer.initTexture(texture); } catch (_) { /* first render fallback */ }
-    // A visual can reference dozens of tiny maps. Force a paint only when
-    // their accumulated upload work crosses the countdown's frame budget;
-    // one unconditional frame per texture stretched an eight-vehicle cold
-    // deployment beyond the five-second rollout hold.
-    await yieldForBudget();
+    if (yieldForBudget) await yieldForBudget();
   }
+  return {
+    textures: textures.size,
+    totalMs: Math.round(performance.now() - startedAt),
+  };
+}
+
+/** Separate visual construction, texture upload, shader submission, and
+ * reveal into bounded tasks. compileAsync was tested here and made the
+ * transition materially worse on ANGLE because its completion polling became
+ * another large atomic task; synchronous compile only submits work, then the
+ * remaining roster gives the driver time to link it. */
+async function stageBattleVisualReveal(ent, yieldForBudget) {
+  const visual = ent?.visual;
+  const root = visual?.root;
+  if (!root || root.userData.loadStaged) return;
+  const parent = root.parent;
+  if (parent) parent.remove(root);
+  await yieldForBudget(true);
+  // A visual can reference dozens of tiny maps. The shared helper forces a
+  // paint only when their accumulated upload work crosses the countdown's
+  // frame budget; one unconditional frame per texture stretched an
+  // eight-vehicle cold deployment beyond the five-second rollout hold.
+  await stageRootTextureUploads(root, yieldForBudget);
   root.userData.loadStaged = true;
   (parent || scene).add(root);
   if (ent.state && visual.syncFromState) visual.syncFromState(ent.state);
@@ -2846,15 +2861,15 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     ensureKillcamRuntime(),
   ]);
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
+  battleLoad.progress(0.55, 'Uploading battlefield textures');
+  blt.worldTextureUpload = await stageRootTextureUploads(world.group, loadYield);
   bltStage('world');
-  // Submit the world's forward programs as soon as its graph exists. The
-  // roster still has substantial independent construction ahead, giving
-  // ANGLE real linker time instead of discovering the entire battlefield two
-  // frames before the first deployment render.
-  battleLoad.progress(0.555, 'Submitting battlefield shaders');
-  const worldProgramSubmitAt = performance.now();
-  try { renderer.compile(world.group, camera, scene); } catch (_) { /* first render fallback */ }
-  blt.worldProgramSubmitMs = Math.round(performance.now() - worldProgramSubmitAt);
+  // Do not compile the world yet. Battle mode deliberately removes the two
+  // garage spotlights below in startBattle(); compiling here would submit a
+  // different light-count program family, then make the correct battle
+  // family link again during deployment. That redundant wrong-state pass was
+  // a measured 0.49-0.55 s main-thread task on ANGLE/Metal.
+  battleLoad.progress(0.555, 'Battlefield ready');
   await nextFrame();
 
   // 2. roster: pick the participants, then bake any visual still missing one
@@ -4583,12 +4598,35 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
     // warmCombatPipeline builds all of them before battle/shot frames).
     if (!ent.state || !ent.combat || !ent.visual) continue;
     const state = ent.state;
-    const presented = presentationStateFor(ent, presentationAlpha);
     const combat = ent.combat;
     const visual = ent.visual;
     const spec = ent.spec;
     const dims = spec.dims;
     const topSpeedMps = spec.topSpeedKmh / 3.6;
+    // Resolve spotting before any presentation work. A fully faded enemy has
+    // no legal pixels or presentation FX, so interpolating/projecting its
+    // pose and walking its complete visual hierarchy every render frame was
+    // pure hidden work. The first fade-in frame resumes from the current
+    // authoritative pose before the root becomes visible.
+    let actorVisible = true;
+    if (game.phase === 'battle' && game.spotting && ent.team === 'enemy') {
+      const spotted = combat.destroyed ||
+        game.spotting.isSpotted(ent.id, 'player', game.player);
+      const target = spotted ? 1 : 0;
+      if (ent._spotFade === undefined) ent._spotFade = target;
+      // eased fade to avoid popping (0 -> 1 in ~0.35 s); no dt (boot) = snap
+      ent._spotFade += (target - ent._spotFade) *
+        (dtFrame === undefined ? 1 : Math.min(1, dtFrame / 0.35));
+      actorVisible = ent._spotFade > 0.02;
+      visual.setVisible(actorVisible);
+    } else if (game.phase === 'battle' && !ent.isPlayer) {
+      // Allies (and enemies in the no-spotting fallback) are force-shown; the
+      // player's hull visibility remains owned by the camera rig below.
+      visual.setVisible(true);
+    }
+    if (!actorVisible) continue;
+
+    const presented = presentationStateFor(ent, presentationAlpha);
     // effects_combat r1: pass the real frame dt so self-timed visual
     // timelines (recuperator recoil, turret-pop arc, ember cooldown) play at
     // wall-clock speed on 120 Hz displays (undefined at boot -> 1/60 default).
@@ -4611,29 +4649,9 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
     if (game.phase !== 'garage' || visual !== pedestalVisual) {
       visual.syncFromState(state, dtFrame, viewDistM, presented, detailVisible);
     }
-    // SPOTTING WIRING: unspotted live enemies do not render (WoT rule).
-    // Wrecks stay visible; the player is never gated; outside battle
-    // (garage/shot/killcam) everything renders. isSpotted already includes
-    // the 5 s linger, so the eased fade flips out of contact, not mid-fight.
-    if (game.phase === 'battle' && game.spotting && ent.team === 'enemy') {
-      const visible = combat.destroyed ||
-        game.spotting.isSpotted(ent.id, 'player', game.player);
-      const target = visible ? 1 : 0;
-      if (ent._spotFade === undefined) ent._spotFade = target;
-      // eased fade to avoid popping (0 -> 1 in ~0.35 s); no dt (boot) = snap
-      ent._spotFade += (target - ent._spotFade) *
-        (dtFrame === undefined ? 1 : Math.min(1, dtFrame / 0.35));
-      visual.setVisible(ent._spotFade > 0.02);
-    } else if (game.phase === 'battle' && !ent.isPlayer) {
-      // Allies (and enemies in the no-spotting fallback) are force-shown; the
-      // PLAYER's hull visibility is OWNED by the camera rig — it hides the
-      // hull while scoped (sniper). Force-showing it here every frame put the
-      // own tank back IN FRONT of the sniper camera one step after the rig
-      // hid it: the scope rendered the inside of the hull/mantlet (a
-      // near-black frame the grade pass then crushed to pure black at every
-      // zoom).
-      visual.setVisible(true);
-    }
+    // The PLAYER's hull visibility is OWNED by the camera rig — it hides the
+    // hull while scoped (sniper). Never force-show it here: doing so one step
+    // after the rig hid it renders the inside of the hull/mantlet.
     // Presentation FX must obey the same visibility boundary as the actor.
     // Emitting dust for an unspotted enemy both leaks its position and burns
     // transparent overdraw on a vehicle the player is not allowed to see.

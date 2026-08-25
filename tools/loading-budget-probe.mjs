@@ -471,6 +471,7 @@ async function measureBattle(mapId) {
       phase: result.phase,
       loadScreen: result.loadScreen,
       stages: result.trace?.stages || null,
+      worldTextureUpload: result.trace?.worldTextureUpload || null,
       tracedTotalMs: result.trace?.totalMs ?? null,
       rolloutMs: result.rolloutMs,
       world: result.world || null,

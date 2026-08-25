@@ -123,11 +123,18 @@ assert.match(openingWarmBody, /renderer\.compile\(fx\.group, camera, scene\)/,
   'opening combat warm must still submit the exact FX programs');
 assert.match(openingWarmBody, /warmRenderIsolated\(fx\.group\)/,
   'opening combat warm must still bind FX through a real offscreen render');
-const worldSubmitAt = mainSource.indexOf("battleLoad.progress(0.555, 'Submitting battlefield shaders')");
-const rosterAssemblyAt = mainSource.indexOf("battleLoad.progress(0.56, 'Assembling rosters')", worldSubmitAt);
-assert.ok(worldSubmitAt >= 0 &&
-  mainSource.indexOf('renderer.compile(world.group, camera, scene)', worldSubmitAt) < rosterAssemblyAt,
-  'battlefield shaders must be submitted before roster construction can overlap driver linking');
+const worldReadyAt = mainSource.indexOf("battleLoad.progress(0.555, 'Battlefield ready')");
+const rosterAssemblyAt = mainSource.indexOf("battleLoad.progress(0.56, 'Assembling rosters')", worldReadyAt);
+const preRosterBattleLoad = mainSource.slice(
+  mainSource.indexOf('async function startBattleLoading('), rosterAssemblyAt,
+);
+assert.ok(worldReadyAt >= 0 && rosterAssemblyAt > worldReadyAt,
+  'battlefield completion must paint before roster construction begins');
+assert.doesNotMatch(preRosterBattleLoad, /renderer\.compile\(world\.group, camera, scene\)/,
+  'the world must not compile against the garage spotlight program family before battle mode');
+assert.match(preRosterBattleLoad,
+  /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,180}stageRootTextureUploads\(world\.group, loadYield\)/,
+  'battle entry must stage current world textures before the first full deployment frame');
 const stageRevealBody = mainSource.slice(
   mainSource.indexOf('async function stageBattleVisualReveal('),
   mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),
