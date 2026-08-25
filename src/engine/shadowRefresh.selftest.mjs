@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   SHADOW_REFRESH_INTERVAL_S,
+  canDormantShadowCascades,
   createShadowRefreshScheduler,
   isContinuousShadowCascade,
   mergeRequiredShadowWork,
@@ -10,6 +12,24 @@ assert.equal(isContinuousShadowCascade(0), true, 'hero cascade refreshes every p
 assert.equal(isContinuousShadowCascade(1), true, 'contact cascade refreshes every presented frame');
 assert.equal(isContinuousShadowCascade(2), false, 'far cascade is eligible for rate limiting');
 assert.equal(isContinuousShadowCascade(-1), false, 'invalid cascade is never continuous');
+
+{
+  const depth = () => ({ shadow: { map: { depthTexture: { isDepthTexture: true } } } });
+  const missing = () => ({ shadow: { map: null } });
+  assert.equal(canDormantShadowCascades([depth(), depth(), missing(), missing()]), false,
+    'unallocated PCF cascades must render before dormancy can bind their samplers');
+  assert.equal(canDormantShadowCascades([depth(), depth(), depth(), depth()]), true,
+    'initialized native depth maps may be safely reused while dormant');
+  assert.equal(canDormantShadowCascades([depth(), depth(), depth()], 2), true,
+    'the mobile three-cascade rig follows the same native-depth contract');
+  assert.equal(canDormantShadowCascades(null), false,
+    'missing light state must fail closed');
+}
+
+const lightingSource = await readFile(new URL('./lighting.js', import.meta.url), 'utf8');
+assert.match(lightingSource,
+  /function applyFarCascadeDormancy\(\)[\s\S]{0,700}canDormantShadowCascades\(csm\.lights, FAR_CASCADE_START\)[\s\S]{0,500}shadow\.autoUpdate = false/,
+  'the live CSM path must gate dormancy on native depth-map readiness');
 
 function sample(hz, seconds = 2, cascades = 4) {
   const scheduler = createShadowRefreshScheduler(cascades);

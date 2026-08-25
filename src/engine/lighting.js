@@ -12,6 +12,7 @@ import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
 import { getDeviceTier, getPreset, onPresetChange } from './quality.js';
 import {
+  canDormantShadowCascades,
   createShadowRefreshScheduler,
   isContinuousShadowCascade,
   mergeRequiredShadowWork,
@@ -855,12 +856,11 @@ export function createLighting(scene, camera, sunDir) {
   });
   let shFrame = 0;
   let lastScheduledMask = 0;
-  // The enclosed garage never exposes the 100-700 m cascade bands. Keeping
-  // those maps live there spent most of cold boot allocating and drawing
-  // invisible battlefield depth. They remain part of the shader/light rig,
-  // then allocate and warm at the existing opaque Battle/Studio boundary.
-  // Near/contact cascades stay fully live, so the visible showroom image is
-  // unchanged.
+  // The enclosed garage never exposes the 100-700 m cascade bands. Their
+  // redraws can sleep there, but every CSM sampler still participates in the
+  // compiled PCF shader. Therefore cold boot must render each native depth map
+  // once before dormancy; otherwise strict WebGL2 drivers bind a color
+  // fallback to sampler2DShadow and reject every affected scene draw.
   let farCascadeDormant = false;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
@@ -885,6 +885,11 @@ export function createLighting(scene, camera, sunDir) {
 
   function applyFarCascadeDormancy() {
     if (!farCascadeDormant) return;
+    // Fail open for rendering: `lighting.update(true)` at boot leaves all
+    // cascades scheduled, the first post render creates valid DepthTextures,
+    // and the following frame begins steady-state garage dormancy. This keeps
+    // the repeated far-cascade saving without an invalid first frame.
+    if (!canDormantShadowCascades(csm.lights, FAR_CASCADE_START)) return;
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.autoUpdate = false;
       csm.lights[i].shadow.needsUpdate = false;
@@ -1147,6 +1152,8 @@ export function createLighting(scene, camera, sunDir) {
         frame: shFrame,
         forceFrames,
         scheduledMask: lastScheduledMask,
+        farCascadeDormancyRequested: farCascadeDormant,
+        farCascadeDepthReady: canDormantShadowCascades(csm.lights, FAR_CASCADE_START),
         cascades: csm.lights.map((light) => {
           const shadow = light.shadow;
           return {

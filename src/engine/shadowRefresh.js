@@ -17,6 +17,25 @@ export function isContinuousShadowCascade(cascadeIndex, nearCount = 2) {
 }
 
 /**
+ * A PCF shadow sampler may only be left dormant after Three has created its
+ * native depth texture. Binding Three's ordinary fallback texture to a
+ * `sampler2DShadow` is invalid on strict WebGL2 drivers (notably ANGLE/Metal)
+ * and causes every affected draw to be rejected with GL_INVALID_OPERATION.
+ *
+ * @param {Array<{shadow?:{map?:{depthTexture?:{isDepthTexture?:boolean}}}}>} lights
+ * @param {number} [startIndex=2]
+ * @returns {boolean}
+ */
+export function canDormantShadowCascades(lights, startIndex = 2) {
+  if (!Array.isArray(lights)) return false;
+  const start = Math.max(0, startIndex | 0);
+  for (let i = start; i < lights.length; i++) {
+    if (lights[i]?.shadow?.map?.depthTexture?.isDepthTexture !== true) return false;
+  }
+  return true;
+}
+
+/**
  * Add one required cascade job without letting a live transition exceed the
  * high-refresh per-frame map budget. Existing scheduled work keeps its bit
  * order; a required bit replaces excess work instead of stacking onto it.

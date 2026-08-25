@@ -332,9 +332,10 @@ const bootCloudWarmP = sky.ensureCloudTexturesChunked
   ? sky.ensureCloudTexturesChunked(() => nextFrame()).catch(() => {})
   : Promise.resolve();
 const lighting = await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir));
-// The sealed garage can only see the near/contact shadow bands. Leave the two
-// long-range battlefield maps unallocated until an opaque Battle/Studio entry
-// starts; this removes invisible 100-700 m shadow work from cold garage boot.
+// The sealed garage can only see the near/contact shadow bands. Request far
+// dormancy now; lighting deliberately renders every native CSM depth map once
+// before honoring it because all PCF samplers remain active in the shader.
+// Subsequent garage frames skip the invisible 100-700 m shadow redraws.
 if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
