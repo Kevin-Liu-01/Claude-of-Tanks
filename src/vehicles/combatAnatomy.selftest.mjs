@@ -159,11 +159,17 @@ assert(sepv2Calibration.turretStructures.filter((entry) => entry.kind === 'hatch
   'SEPv2 commander and loader hatches retain independent structural armor');
 assert(sepv2Optics.parts.length >= 4,
   'SEPv2 CROWS and gunner sights retain separate close-fitting optic volumes');
-assert(sepv2Optics.max[1] - sepv2Calibration.turret.max[1] > 0.8,
+const sepv2RoofOptics = sepv2Optics.parts.filter(
+  (part) => part.min[1] > sepv2Calibration.turret.max[1]);
+assert(sepv2RoofOptics.length >= 1,
   'SEPv2 roof optics remain damageable without stretching the turret armor into empty air');
-const sepv2BaseRoofY = Math.max(...sepv2Spec.armor.turretPlates
-  .filter((plate) => !/^turret_(?:hatch|cupola)_\d+_/.test(plate.name))
-  .flatMap((plate) => plate.verts.map((point) => point[1])));
+assert(sepv2Optics.max[1] - sepv2Calibration.turret.max[1] <= 0.6,
+  'SEPv2 roof optics follow the compact CROWS pedestal instead of the retired tall tower');
+let sepv2BaseRoofY = -Infinity;
+for (const plate of sepv2Spec.armor.turretPlates) {
+  if (/^turret_(?:hatch|cupola)_\d+_/.test(plate.name)) continue;
+  for (const point of plate.verts) sepv2BaseRoofY = Math.max(sepv2BaseRoofY, point[1]);
+}
 assert(sepv2BaseRoofY <= sepv2Calibration.turret.max[1] + 1e-6,
   'SEPv2 base turret plates do not climb roof decorations');
 

@@ -1542,6 +1542,7 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     return plate;
   };
   let crowsBaseY = null;
+  let crowsRiserH = null;
   let sepv3LoaderReceiverY = null;
   let roofCarrierReceipt = null;
   let forwardRoofPanelReceipt = null;
@@ -1719,15 +1720,11 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // is inside the head at forward yaw). Barrel run past the window
     // ships SHADOW-NAMED (shadowBarrel — §C, mask/frame-excluded): a real
     // forward barrel at the 1.322 bore zeroes dims (measured this round).
-    // SEP REBUILD-ON-BASE (§5.19/§5.19a owner order 2026-08-07): the SEP
-    // variants ride THIS station code as param deltas —
-    // - 'crows2tall' (m1a2_sepv2): the ELEVATED CROWS II — riser grows
-    //   +0.075 and the whole head/gun group rides up with it (the mark's
-    //   signature tall-mast read) + §4.999a partial armor (armored crown
-    //   over the receiver, brow plate on the head). Solids keep the SAME
-    //   z-local window [0.135..0.422] — the spike-column math is
-    //   z-driven, so the raise spends zero new columns (heights are
-    //   p95-free inside the 3-col budget).
+    // SEP variants ride this station code as param deltas. SEPv2 retains a
+    // slightly taller armored CROWS II than the base M1A2/TUSK, but the
+    // powered risers are compact roof pedestals rather than observation
+    // towers. The head, receiver and gun translate down as one connected
+    // assembly; their plan envelope and combat ownership remain unchanged.
     // - 'crowslp' (m1a2_sepv3): the CROWS-LP — shorter riser, wide-flat
     //   low-profile head (0.26 x 0.145 vs the II's 0.20 x 0.195), gun
     //   group nested lower. FALSE-0 id (never gates); knee/window
@@ -1741,7 +1738,6 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // treatment. The CWS keeps its authored weapon proportions while its
     // carrier and complete station are independently roof-seated above.
     const tusk = P.spec.id === 'm1a2_tusk';
-    const tall = station === 'crows2tall' ? 0.15 : 0;
     const lp = lowProfileStation;
     const A = 0;
     // TUSK GRID SHIFT (gate run 1 this round): the tusk chimera oracle's
@@ -1772,8 +1768,9 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
     // global plateau height. This keeps the complete M2/CROWS stack seated
     // when the carrier follows the sloped roof.
     const baseY = carrierTopAt(0.2565) - 0.010;
-    const riserH = lp ? 0.205 : 0.30 + tall;
+    const riserH = lp ? 0.205 : station === 'crows2tall' ? 0.18 : 0.14;
     crowsBaseY = baseY;
+    crowsRiserH = riserH;
     const slewY = baseY + riserH + 0.02;
     const headH = lp ? 0.22 : 0.28;
     const headW = lp ? 0.46 : 0.36;
@@ -2380,6 +2377,8 @@ function tejasRoofKit(P, t, station = 'crows', abramsKit = null) {
       roofCarrier: freezeRoofPlateReceipt(roofCarrierReceipt),
       crows: Object.freeze({
         baseBottomY: crowsBaseY,
+        riserHeightM: crowsRiserH,
+        riserTopY: crowsBaseY + crowsRiserH,
         carrierTopY: crowsCarrierTopY,
         contactOverlapM: crowsCarrierTopY - crowsBaseY,
         equipmentOwned: true,

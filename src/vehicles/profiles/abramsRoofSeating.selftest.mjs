@@ -3,6 +3,11 @@ import { createTank } from '../tankFactory.js';
 
 const near = (value, expected, epsilon = 1e-4) =>
   Math.abs(value - expected) <= epsilon;
+const EXPECTED_CROWS_RISER_HEIGHT_M = Object.freeze({
+  m1a2: 0.14,
+  m1a2_tusk: 0.14,
+  m1a2_sepv2: 0.18,
+});
 
 for (const id of ['m1a2', 'm1a2_tusk', 'm1a2_sepv2']) {
   const tank = createTank(id, null, {
@@ -39,6 +44,12 @@ for (const id of ['m1a2', 'm1a2_tusk', 'm1a2_sepv2']) {
   `${id}: CROWS pedestal is derived from the carrier top`);
   assert.ok(crows.contactOverlapM >= 0.009 && crows.contactOverlapM <= 0.011,
     `${id}: CROWS pedestal overlaps its carrier by about 10 mm`);
+  assert.ok(near(crows.riserHeightM, EXPECTED_CROWS_RISER_HEIGHT_M[id]),
+    `${id}: CROWS powered riser uses the compact variant height`);
+  assert.ok(near(crows.riserTopY - crows.baseBottomY, crows.riserHeightM),
+    `${id}: CROWS riser top is derived from its seated base`);
+  assert.ok(crows.riserHeightM <= 0.18,
+    `${id}: CROWS pedestal cannot regress to the former gun-tower height`);
   assert.equal(crows.equipmentOwned, true,
     `${id}: CROWS remains equipment-owned`);
 
