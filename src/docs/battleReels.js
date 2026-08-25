@@ -88,7 +88,7 @@ export function mountBattleReels(scope = document) {
     const current = buttons.indexOf(scope.activeElement);
     if (current < 0) return;
     event.preventDefault();
-    const columns = matchMedia('(max-width: 620px)').matches ? 2 : 4;
+    const columns = ['phone', 'compact'].includes(scope.body?.dataset?.cotWidth) ? 2 : 4;
     const offset = event.key === 'ArrowLeft' ? -1
       : event.key === 'ArrowRight' ? 1
         : event.key === 'ArrowUp' ? -columns : columns;

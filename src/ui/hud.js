@@ -384,17 +384,6 @@ const HUD_CSS = `
 .cot-top .wedge.r i.on{background:rgba(242,110,100,.95);border-color:rgba(250,130,120,.95);
   box-shadow:0 0 4px rgba(240,90,90,.4);}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
-@media (max-width:480px){
-  .cot-top{width:min(310px,calc(100vw - 16px));min-height:57px;padding:0 19px 7px;
-    grid-template-columns:minmax(70px,1fr) 80px minmax(70px,1fr);
-    clip-path:polygon(0 0,100% 0,calc(100% - 19px) 100%,19px 100%);}
-  .cot-top .sc{padding-left:4px;padding-right:4px;}
-  .cot-top .fg,.cot-top .fe{font-size:25px;}
-  .cot-top .tm{font-size:16px;}
-  .cot-top .team-label,.cot-top .tm-label{font-size:7px;}
-  .cot-top .wedge{gap:2px;}
-  .cot-top .wedge i{width:5px;height:5px;}
-}
 /* net/perf readout (WoT battle constant): fps + ping tokens — r8: TOP-RIGHT
    corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
    weight it read as a dev overlay burned into the frame */
@@ -604,41 +593,6 @@ body.cot-touch-layout .cot-drive{display:none!important;}
   .cot-spec .gar:hover{background:rgba(240,160,48,.22);border-color:rgba(240,176,74,.8);color:#ffd27a;}
 }
 .cot-spec .cycle:active kbd{transform:translateY(1px);box-shadow:inset 0 1px rgba(255,229,182,.06),0 1px 0 rgba(3,6,9,.78);}
-@media (max-width:960px){
-  .cot-spec{width:min(660px,calc(100vw - 20px));grid-template-columns:72px minmax(140px,1fr) 116px 72px;min-height:72px;}
-  .cot-spec .portrait img{width:66px;height:58px;}
-  .cot-spec .identity{padding-left:11px;padding-right:11px;}
-  .cot-spec .who b{font-size:15px;}
-  .cot-spec .switch{width:104px;height:44px;}
-  .cot-spec .cycle{padding:0 5px;gap:4px;}
-  .cot-spec .gar{height:44px;font-size:8px;padding:0 4px;gap:5px;margin-right:5px;}
-  .cot-spec .gar-icon,.cot-spec .gar-icon svg{width:16px;height:16px;}
-}
-/* The minimap owns the lower-right 236 px. On compact desktop viewports the
-   bar docks into the remaining lower-left lane instead of rendering beneath
-   the map; on phone widths it moves above the map altogether. */
-@media (min-width:721px) and (max-width:1372px){
-  .cot-spec{left:16px;right:auto;width:min(760px,calc(100vw - 268px));transform:translateY(16px);}
-  .cot-spec.in{transform:translateY(0);}
-}
-@media (max-width:720px){
-  .cot-spec{bottom:252px;}
-}
-@media (max-width:560px){
-  .cot-spec{grid-template-columns:62px minmax(0,1fr) 96px 46px;min-height:62px;padding:4px;}
-  .cot-spec .portrait img{width:58px;height:52px;}
-  .cot-spec .identity{padding:4px 8px;}
-  .cot-spec .spec-status{margin-bottom:5px;font-size:7px;letter-spacing:.12em;}
-  .cot-spec .spec-status::after{display:none;}
-  .cot-spec .spec-status svg{width:11px;height:11px;}
-  .cot-spec .who b{font-size:13px;}
-  .cot-spec .who span{font-size:8px;}
-  .cot-spec .switch{width:88px;height:40px;grid-template-columns:repeat(2,minmax(0,1fr));}
-  .cot-spec .cycle{padding:0 3px;gap:2px;}
-  .cot-spec .cycle kbd{width:20px;height:20px;font-size:9px;}
-  .cot-spec .gar{width:40px;height:40px;padding:0;margin:0 2px 0 0;}
-  .cot-spec .gar>span:last-child{display:none;}
-}
 @media (prefers-reduced-motion:reduce){
   .cot-top .wedge i.on,.cot-spec,.cot-spec .who.sw,.cot-spec .cycle,.cot-spec .gar{
     animation:none;transition:none;}

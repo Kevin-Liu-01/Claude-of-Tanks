@@ -51,6 +51,35 @@ GPU path. The constrained profile applies 4x CPU pressure and reports 4 cores
 SwiftShader as a severe portability and shader stress floor; its FPS is not a
 prediction of real hardware.
 
+## Responsive composition contract
+
+All active game and public surfaces consume `src/ui/responsiveLayout.js`.
+Individual components must not add device-width, orientation, or viewport-
+height media queries. The shared contract publishes semantic body attributes:
+
+- width pressure: `phone`, `compact`, `tablet`, `laptop`, `desktop`;
+- height pressure: `short`, `compact`, `standard`, `tall`, plus the `tight`
+  sub-tier for extremely short landscape screens;
+- input pressure: `coarse` or `fine`, derived from the primary pointer and
+  hover capabilities;
+- panel mode: `overlay` or `persistent`.
+
+Large iPads commonly expose 1194-1366 CSS-pixel landscape viewports. They are
+therefore not identified by width. A laptop-width viewport with a coarse or
+non-hovering primary input uses overlay garage panels and compact public
+navigation; the same viewport with fine mouse input keeps persistent side
+panels. Phone widths at or below 380 CSS pixels receive an additional narrow
+density tier, while viewport height independently controls landscape battle
+controls, loading rosters, Studio, Gallery, killcam, chat, and after-action
+composition.
+
+`node src/ui/responsiveLayout.selftest.mjs` covers the canonical representative
+matrix. `node src/ui/mobileLayout.selftest.mjs` additionally prevents active
+surfaces from reintroducing independent device breakpoints. Browser QA must
+still inspect Garage, battle HUD, loading, private rooms, Settings, Studio,
+Gallery, killcam, after-action reports, home, and docs in both portrait and
+landscape; the matrix is a contract, not a substitute for visual review.
+
 ### Native-output contract
 
 Mobile display density and 3D render density are deliberately independent:

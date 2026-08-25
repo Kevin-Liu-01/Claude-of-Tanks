@@ -307,10 +307,8 @@
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
     .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
-    @media (max-width: 370px) {
-      .cot-boot-links { gap: 8px; }
-      .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
-    }
+    body[data-cot-width-density='narrow'] .cot-boot-links { gap: 8px; }
+    body[data-cot-width-density='narrow'] .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
     @media (prefers-reduced-motion: reduce) {
       .cot-boot-links > .cot-boot-link { animation: none; }
       .cot-boot-link, .cot-boot-link-icon { transition: none; }
@@ -331,7 +329,10 @@
     .cot-credits p { margin: 0 0 13px; color: #aebbc7; font-size: 13px; line-height: 1.62; }
     .cot-credits-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
     .cot-credits-close { position: absolute; top: 15px; right: 17px; border: 0; background: transparent; color: #aebbc7; cursor: pointer; font-size: 24px; line-height: 1; }
-    @media(max-width:620px){.cot-credits-grid{grid-template-columns:1fr}.cot-credits-portrait{height:150px;min-height:150px;object-position:center 24%}.cot-credits-copy{padding:27px 24px}.cot-credits h2{font-size:24px}}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{height:150px;min-height:150px;object-position:center 24%}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-copy{padding:27px 24px}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits h2{font-size:24px}
     .cot-boot-gate {
       margin-top: 26px; height: 22px;
       font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
@@ -357,7 +358,8 @@
       text-transform: uppercase; text-align: center;
       animation: cot-boot-fade .6s ease-out .55s backwards;
     }
-    @media (max-width: 760px) { .cot-boot-mark { width: 92px; height: 92px; } .cot-boot-load { margin-top: 32px; } }
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-mark { width: 92px; height: 92px; }
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-load { margin-top: 32px; }
   </style>
   <script>
     // BOOT RECOVERY r1: a deploy can replace hashed chunks while an older

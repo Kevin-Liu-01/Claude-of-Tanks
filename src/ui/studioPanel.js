@@ -299,21 +299,6 @@ const CSS = `
 .cot-studio-archive>header button{width:42px;height:42px;padding:0;border:1px solid rgba(190,204,216,.24);
   background:transparent;color:#ffd27a;font-size:22px;}
 .cot-studio-archive .archiveBody{padding:18px 18px 24px;}
-@media(max-width:720px){
-  .cot-studio .badge{top:8px;left:8px;right:8px;gap:6px;padding:6px 8px;}
-  .cot-studio .badge .t{font-size:10px;letter-spacing:.16em;}
-  .cot-studio .badge button{font-size:8px;padding:5px 6px;}
-  .cot-studio .dock{top:43%;width:100%;padding:12px 10px 22px;background:rgba(5,8,11,.97);
-    border-left:0;border-top:1px solid rgba(230,154,45,.45);box-shadow:0 -10px 24px rgba(0,0,0,.25);}
-  .cot-studio .mapBtn{height:126px;}
-  .cot-studio .mapPop{max-height:calc(100vh - 150px);}
-  .cot-studio button{min-height:32px;}
-  .cot-studio .tlmarker{width:14px;height:14px;top:2px;min-height:0;}
-  .cot-studio .shotcard{grid-template-columns:28px minmax(0,1fr) 72px 28px 34px;}
-  .cot-studio .foot{display:none;}
-  .cot-studio .busy{top:64px;max-width:calc(100vw - 24px);white-space:nowrap;overflow:hidden;
-    text-overflow:ellipsis;}
-}
 `;
 
 /**

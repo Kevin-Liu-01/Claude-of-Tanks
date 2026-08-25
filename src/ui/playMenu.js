@@ -197,20 +197,6 @@ const CSS = `
   grid-template-columns:34px 1fr 100px 90px;gap:10px;padding:8px 10px;background:rgba(13,18,24,.88);
   color:#aebdc8;font-size:10px}.cot-play .ladder-row b{color:#edf3f7}.cot-play .rank-profile{margin-top:10px;
   color:#eeb46b;font:800 10px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase}
-@media(max-width:780px){.cot-play{padding:8px}.cot-play .panel{padding:20px 14px}.cot-play .modes{grid-template-columns:1fr 1fr}
-  .cot-play .mode{min-height:120px}.cot-play .room-actions{grid-template-columns:1fr}.cot-play .identity{display:grid;gap:7px}
-  .cot-play .identity-note{padding:0}.cot-play .room-action{min-height:124px}
-  .cot-play .ranked-form{grid-template-columns:1fr 1fr}.cot-play .ranked-form label:nth-child(-n+2){grid-column:1/-1}
-  .cot-play .player{grid-template-columns:32px minmax(0,1fr) 72px;grid-template-rows:auto auto;min-height:80px;
-    padding:7px 9px;column-gap:8px;row-gap:3px}.cot-play .player .host{grid-column:1;grid-row:1}.cot-play .player .name{
-    grid-column:2;grid-row:1}.cot-play .player .ready,.cot-play .player .wait{grid-column:3;grid-row:1}.cot-play .player .vehicle{
-    grid-column:1/3;grid-row:2;display:flex}.cot-play .player .team{grid-column:3;grid-row:2;display:block;text-align:right;font-size:8px}
-  .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}.cot-play .vehicle-name{font-size:10px}.cot-play .controls{
-    align-items:stretch;flex-direction:column}.cot-play .control-options,
-  .cot-play .control-actions{width:100%}.cot-play .control-actions{margin-left:0}.cot-play .control-options .field{flex:1 1 130px;width:auto}
-  .cot-play .battlefield-card{grid-template-columns:1fr}.cot-play .battlefield-art{min-height:82px;border-right:0;
-    border-bottom:1px solid rgba(161,180,195,.2)}.cot-play .battlefield-copy{grid-template-columns:1fr;padding:12px;gap:10px}
-  .cot-play .control-actions .action{flex:1 1 128px}.cot-play .menu-select--map .menu-select-list{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
   box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}.cot-play .menu-select-trigger,
   .cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}

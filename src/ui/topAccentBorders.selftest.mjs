@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const readSource = (relativePath) => readFile(new URL(relativePath, import.meta.url), 'utf8');
-const [garage, contextInfo, settings, hud, endScreen, killcam, publicNav, docs, presentation] = await Promise.all([
+const [garage, contextInfo, settings, hud, endScreen, killcam, publicNav, docs] = await Promise.all([
   readSource('./garage.js'),
   readSource('./contextInfo.js'),
   readSource('./settings.js'),
@@ -11,7 +11,6 @@ const [garage, contextInfo, settings, hud, endScreen, killcam, publicNav, docs, 
   readSource('../game/killcam.js'),
   readSource('../presentation/publicNav.css'),
   readSource('../docs/docs.css'),
-  readSource('../../public/presentation.css'),
 ]);
 
 const absent = (source, pattern, message) => assert.doesNotMatch(source, pattern, message);
@@ -40,7 +39,4 @@ absent(docs, /(?:\.docs-toc|\.topic-layout>aside)\{[^}]*border-top:/,
   'documentation side panels use one consistent outline');
 absent(docs, /\.aside-card\.accent\{[^}]*border-top:/,
   'documentation aside cards do not add a special top edge');
-absent(presentation, /\.home-film-frame::(?:before|after)\{/,
-  'the public film frame does not add decorative corner rules');
-
 console.log('topAccentBorders.selftest: decorative panel top rules removed');

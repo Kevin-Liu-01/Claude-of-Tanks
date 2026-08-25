@@ -273,6 +273,22 @@ const GARAGE_CSS = `
   text-transform:uppercase;cursor:pointer;white-space:nowrap}.cot-room-reminder.show{display:flex;align-items:center;gap:9px}
 .cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:#e5a347;box-shadow:0 0 12px #e5a347}
 .cot-room-reminder.ready .rr-dot{background:#73d58a;box-shadow:0 0 12px #73d58a}.cot-room-reminder b{color:#ffca78}
+.cot-garage-tools,.cot-garage-panel-scrim{display:none}
+.cot-garage-tools{position:absolute;z-index:12;pointer-events:auto;align-items:stretch;gap:4px}
+.cot-garage-tool{min-width:0;height:44px;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid rgba(156,177,193,.3);border-bottom:2px solid rgba(156,177,193,.36);
+  background:linear-gradient(180deg,rgba(17,23,29,.96),rgba(7,11,15,.97));color:#a8b7c2;
+  font:900 7.5px ${FONT_COND};letter-spacing:.13em;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 6px 18px rgba(0,0,0,.32);transition:color .14s,border-color .14s,background .14s,transform .12s}
+.cot-garage-tool svg{width:17px;height:17px;flex:0 0 auto;color:#d89531}
+.cot-garage-tool:active{transform:scale(.97)}
+.cot-garage-tool[aria-expanded='true']{color:#ffe0aa;border-color:#f0a030;border-bottom-color:#f0a030;
+  background:linear-gradient(180deg,rgba(49,34,15,.98),rgba(20,14,8,.98));box-shadow:0 0 18px rgba(240,160,48,.16)}
+@media (hover:hover) and (pointer:fine){
+  .cot-garage-tool:hover{color:#ffe0aa;border-color:rgba(240,176,74,.7)}
+}
+.cot-garage-panel-scrim{position:absolute;z-index:9;inset:0;border:0;background:rgba(3,6,9,.46);
+  pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
 .cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
 .cot-garage.vehicle-locked .cot-camo-card,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
 .cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:'VEHICLE LOCKED · UNREADY TO CHANGE';
@@ -875,202 +891,183 @@ const GARAGE_CSS = `
   .cot-garage.enter,.cot-garage.enter *{animation:none !important;}
 }
 
-/* Mid-size desktop/tablet: preserve the top-right navigation row by reducing
-   each destination to its authored icon. aria-label/title retain the full
-   destination names for assistive technology and pointer discovery. */
-@media (max-width:1480px){
-  .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0;}
-  .cot-nav .nv .nav-label{display:none;}
-  .cot-brand-utilities .nv .nav-label{display:none;}
-  .cot-header-nav .nv .nvi{width:15px;height:15px;}
-  .cot-header-nav .record-badge{position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;
-    font-size:6px;}
-  .cot-nav .github-stars{position:absolute;right:-7px;top:-6px;min-width:18px;height:14px;padding:0 3px;
-    display:grid;place-items:center;border:1px solid #ffc46b;background:#f0a030;color:#1a1105;
-    font-size:5.5px;line-height:1;letter-spacing:0;box-shadow:0 0 10px rgba(240,160,48,.22);}
+/* RESPONSIVE COMPOSITION r1 -------------------------------------------------
+   Width/height/input semantics come from responsiveLayout.js. These rules are
+   are the canonical garage composition. The Battle dropdown behavior remains
+   untouched; only its containing control is fitted to the available top lane. */
+body[data-cot-width='laptop'] .cot-garage{
+  --cot-garage-sidebar-width:clamp(232px,20vw,272px);
+}
+body[data-cot-width='laptop'] .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0}
+body[data-cot-width='laptop'] .cot-header-nav .nav-label{display:none}
+body[data-cot-width='laptop'] .cot-header-nav .record-badge{
+  position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:6px;
+}
+body[data-cot-width='laptop'] .cot-nav .github-stars{
+  position:absolute;right:-7px;top:-6px;min-width:18px;height:14px;padding:0 3px;display:grid;place-items:center;
+  border:1px solid #ffc46b;background:#f0a030;color:#1a1105;font-size:5.5px;line-height:1;letter-spacing:0;
+}
+body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
+body[data-cot-width='laptop'] .cot-garage .stats{right:clamp(18px,2vw,30px)}
+body[data-cot-width='laptop'] .cot-country-rail{
+  width:min(920px,calc(100vw - (var(--cot-garage-sidebar-width) * 2) - 92px));
 }
 
-/* Short desktop viewports have spare room beside the country/carousel rail,
-   not underneath it. Compact the two scrolling previews and let the left
-   stack use that lane so Battle Gallery remains a complete section instead
-   of a clipped title at 720–820 px heights. */
-@media (min-width:901px) and (max-height:820px){
-  .cot-leftcol{bottom:176px;}
-  .cot-camos .cgrid.camo{max-height:min(150px,20vh);}
-  .cot-featured .fshot{height:74px;}
+body[data-cot-panels='overlay'] .cot-garage{
+  --cot-overlay-edge:clamp(10px,2vw,18px);
+  --cot-roster-height:86px;
+  --cot-country-bottom:100px;
+  --cot-tools-bottom:152px;
 }
+body[data-cot-panels='overlay'] .cot-garage .band-top{height:22%}
+body[data-cot-panels='overlay'] .cot-garage .band-bot{height:29%}
+body[data-cot-panels='overlay'] .cot-garage .band-r{display:none}
+body[data-cot-panels='overlay'] .cot-brand-rail{
+  top:max(12px,env(safe-area-inset-top));left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
+  height:44px;gap:9px;z-index:13;
+}
+body[data-cot-panels='overlay'] .cot-garage .title{font-size:12px;letter-spacing:.2em;gap:8px}
+body[data-cot-panels='overlay'] .cot-garage .title .mark{width:28px;height:28px}
+body[data-cot-panels='overlay'] .cot-brand-utilities,
+body[data-cot-panels='overlay'] .cot-nav .cot-nav-desktop{display:none}
+body[data-cot-panels='overlay'] .cot-nav{
+  top:max(12px,env(safe-area-inset-top));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
+  height:44px;gap:4px;z-index:15;
+}
+body[data-cot-panels='overlay'] .cot-nav .cot-mobile-nav-trigger{display:inline-flex}
+body[data-cot-panels='overlay'] .cot-mobile-nav-menu:not([hidden]){display:grid}
+body[data-cot-panels='overlay'] .cot-header-nav .nv{
+  width:44px;height:44px;min-height:44px;padding:0;justify-content:center;gap:0;
+}
+body[data-cot-panels='overlay'] .cot-header-nav .nv .nav-label{display:none}
+body[data-cot-panels='overlay'] .cot-header-nav .nv .nvi{width:16px;height:16px}
+body[data-cot-panels='overlay'] .cot-nav .cot-settings-slot,
+body[data-cot-panels='overlay'] .cot-nav .cot-gear{width:44px;height:44px;min-height:44px}
+body[data-cot-panels='overlay'] .cot-battle-control{
+  top:max(12px,env(safe-area-inset-top));width:clamp(196px,28vw,238px);height:44px;z-index:14;
+}
+body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px)}
+body[data-cot-panels='overlay'] .cot-battle-mode{font-size:7.5px}
+body[data-cot-panels='overlay'] .cot-garage-tools{
+  display:flex;left:50%;bottom:var(--cot-tools-bottom);transform:translateX(-50%);
+  width:min(430px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+}
+body[data-cot-panels='overlay'] .cot-garage-tool{flex:1 1 0}
+body[data-cot-panels='overlay'] .cot-leftcol,
+body[data-cot-panels='overlay'] .cot-garage .stats{display:none}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
+  display:flex;z-index:11;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
+  top:76px;bottom:206px;width:min(360px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+  max-height:none;padding:8px;gap:0;overflow:hidden;
+  background:linear-gradient(160deg,rgba(11,16,21,.99),rgba(5,8,11,.99));
+  border:1px solid rgba(174,194,209,.32);box-shadow:0 20px 54px rgba(0,0,0,.66);
+}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-maps,
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-camos{
+  display:flex;width:100%;height:100%;min-height:0;max-height:none;flex:1 1 auto;padding:10px;
+}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-camos,
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-maps,
+body[data-cot-panels='overlay'] .cot-leftcol .cot-featured{display:none}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='dossier'] .stats{
+  display:block;z-index:11;right:max(var(--cot-overlay-edge),env(safe-area-inset-right));left:auto;
+  top:76px;bottom:206px;width:min(380px,calc(100vw - (var(--cot-overlay-edge) * 2)));
+  max-height:none;padding:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  background:transparent;box-shadow:0 20px 54px rgba(0,0,0,.66);
+}
+body[data-cot-panels='overlay'] .cot-country-rail{
+  --country-edge:32px;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
+  right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-country-bottom);
+  width:auto;height:44px;transform:none;
+}
+body[data-cot-panels='overlay'] .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise}
+body[data-cot-panels='overlay'] .cot-country-chips{height:44px;gap:4px;padding:2px 3px}
+body[data-cot-panels='overlay'] .cot-country-edge{width:30px;height:42px}
+body[data-cot-panels='overlay'] .cot-country-chip{
+  min-height:42px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px;
+}
+body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
+body[data-cot-panels='overlay'] .cot-carousel{
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
+  right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));
+  width:auto;height:var(--cot-roster-height);max-width:none;transform:none;gap:5px;
+}
+body[data-cot-panels='overlay'] .cot-garage.enter .cot-carousel{animation-name:cot-g-rise}
+body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
+body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
+body[data-cot-panels='overlay'] .cot-card{
+  width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:5px 6px 4px;
+}
+body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
+body[data-cot-panels='overlay'] .cot-card .flag{margin-bottom:1px;font-size:6px;gap:3px}
+body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
+body[data-cot-panels='overlay'] .cot-card .designation{font-size:5.5px;padding:1px 0}
+body[data-cot-panels='overlay'] .cot-card .dev-tag{right:4px;top:22px;padding:1px 3px;font-size:5px}
+body[data-cot-panels='overlay'] .cot-card .ti{width:92px;height:48px;margin:-4px auto -2px;transform:none}
+body[data-cot-panels='overlay'] .cot-card .nm{font-size:8px;margin:0 -2px}
+body[data-cot-panels='overlay'] .cot-card .era{font-size:6px;margin-top:1px;letter-spacing:.12em}
+body[data-cot-panels='overlay'] .cot-garage .hint{display:none}
 
-/* Compact touch garage: keep the tank, BATTLE action and vehicle roster
-   dominant on a phone-sized landscape screen. The full stat sheet remains
-   available on desktop, while mobile keeps the interactive loadout column. */
-@media (max-width:900px){
-  .cot-garage .band-top{height:23%;}.cot-garage .band-bot{height:31%;}
-  .cot-garage .band-r{display:none;}
-  .cot-brand-rail{top:12px;left:14px;height:40px;gap:9px;}
-  .cot-garage .title{font-size:13px;letter-spacing:.22em;gap:7px;}
-  .cot-garage .title .mark{width:22px;height:22px;}
-  .cot-brand-utilities,.cot-nav .cot-nav-desktop{display:none;}
-  .cot-nav{top:62px;right:14px;gap:3px;height:40px;}
-  .cot-nav .cot-mobile-nav-trigger{display:inline-flex;}
-  .cot-mobile-nav-menu:not([hidden]){display:grid;}
-  .cot-header-nav .nv{width:40px;min-height:40px;font-size:7px;padding:0;letter-spacing:.12em;}
-  .cot-header-nav .nv .nvi{width:11px;height:11px;}
-  .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
-  .cot-nav .cot-gear svg{width:17px;height:17px;}
-  .cot-battle-control{top:12px;width:214px;height:40px;}
-  .cot-battle{font-size:15px;}.cot-battle-mode{font-size:7.5px;}
-  .cot-garage .stats{display:none;}
-  .cot-topbar{top:8px;right:8px;gap:3px;transform:scale(.72);transform-origin:right top;}
-  .cot-leftcol{left:14px;top:106px;bottom:112px;width:180px;gap:7px;overflow:visible;}
-  .cot-maps{display:none;}
-  .cot-featured{display:none;}
-  .cot-camos{width:180px;margin-top:0;padding:7px;
-    height:100%;flex:1 1 auto;background:rgba(7,11,15,.62);border:1px solid rgba(146,164,180,.18);}
-  .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
-  .cot-camos .ctitle .cot-custom-open{width:28px;padding:0;font-size:0}
-  .cot-camos .ctitle .cot-custom-open::after{content:'+';font-size:14px;line-height:1}
-  .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));max-height:158px;}
-  .cot-camo-card{padding:3px 3px 3px;}.cot-camo-card .sw{height:auto;aspect-ratio:2.55;margin-bottom:3px;}
-  .cot-camo-card .cl{font-size:6.5px;line-height:1.16;letter-spacing:.05em;}
-  .cot-camos .cnote{display:none;}
-  .cot-country-rail{--country-edge:26px;left:208px;right:14px;bottom:82px;
-    width:auto;height:42px;transform:none;}
-  .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise;}
-  .cot-country-edge{height:38px;}
-  .cot-country-chips{gap:3px;padding-bottom:3px;scroll-padding-inline:10px;}
-  .cot-country-chip{padding:3px 6px 2px;font-size:7px;letter-spacing:.10em;gap:3px;}
-  .cot-country-chip .cot-flag{width:15px;}
-  .cot-carousel{bottom:8px;gap:4px;height:72px;max-width:98vw;}
-  .cot-car-arrow{width:24px;font-size:16px;}
-  .cot-cards{gap:4px;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
-    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);}
-  .cot-card{width:98px;min-height:72px;padding:4px 5px 3px;}
-  .cot-card::before{opacity:.20;}.cot-card.sel::before{opacity:.28;}
-  .cot-card.sel{transform:translateY(-3px);}
-  .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
-  .cot-card .flag .cot-flag{width:15px;height:auto;}.cot-card .designation{font-size:5.5px;padding:1px 0;}
-  .cot-card .dev-tag{right:4px;top:20px;padding:1px 3px;font-size:5px;}
-  .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
-  .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
-  .cot-card .era{font-size:6px;margin-top:0;letter-spacing:.12em;}
-  .cot-garage .hint{display:none;}
-  .cot-record-modal{padding:12px;}
-  .cot-record-dialog{width:min(660px,calc(100vw - 24px));max-height:calc(100vh - 24px);}
-  .cot-record-head{padding:17px 18px 14px;}.cot-record-head h2{font-size:20px;}
-  .cot-record-body{padding:17px 18px 18px;}
-  .cot-record-overview{grid-template-columns:145px 1fr;gap:15px;}
-  .cot-record-ring{width:132px;}.cot-record-ring-copy strong{font-size:30px;}
+body[data-cot-width='phone'] .cot-garage .title span,
+body[data-cot-width='compact'] .cot-garage .title span{display:none}
+body[data-cot-width='phone'] .cot-garage{
+  --cot-roster-height:82px;--cot-country-bottom:94px;--cot-tools-bottom:144px;
 }
-/* Touch tablets report a desktop-class CSS width (an iPad Pro in landscape is
-   1024-1366 px), so the width-only phone query above never runs. Keep both
-   authored garage sidebars available at that size, but bound them above the
-   fleet rails: camouflage is a compact, content-sized card on the left and
-   the vehicle dossier is an independently scrolling card on the right. The
-   previous tablet rules hid the dossier and stretched camouflage from top to
-   bottom, producing a giant empty translucent column on 4:3 iPads. */
-@media (min-width:901px) and (orientation:landscape){
-  body.cot-touch-layout .cot-garage .band-top{height:23%;}
-  body.cot-touch-layout .cot-garage .band-bot{height:31%;}
-  body.cot-touch-layout .cot-garage .band-r{display:none;}
-  body.cot-touch-layout .cot-brand-rail{top:12px;left:max(14px,env(safe-area-inset-left));
-    height:40px;gap:10px;}
-  body.cot-touch-layout .cot-garage .title{font-size:13px;letter-spacing:.22em;gap:7px;}
-  body.cot-touch-layout .cot-garage .title .mark{width:24px;height:24px;}
-  body.cot-touch-layout .cot-brand-utilities,
-  body.cot-touch-layout .cot-nav .cot-nav-desktop{display:none;}
-  body.cot-touch-layout .cot-nav{top:12px;right:max(14px,env(safe-area-inset-right));
-    gap:3px;height:40px;}
-  body.cot-touch-layout .cot-nav .cot-mobile-nav-trigger{display:inline-flex;}
-  body.cot-touch-layout .cot-mobile-nav-menu:not([hidden]){display:grid;}
-  body.cot-touch-layout .cot-header-nav .nv{width:40px;min-height:40px;padding:0;justify-content:center;gap:0;}
-  body.cot-touch-layout .cot-header-nav .nv .nav-label{display:none;}
-  body.cot-touch-layout .cot-header-nav .nv .nvi{width:13px;height:13px;}
-  body.cot-touch-layout .cot-nav .cot-settings-slot,
-  body.cot-touch-layout .cot-nav .cot-gear{width:40px;height:40px;min-height:40px;}
-  body.cot-touch-layout .cot-nav .cot-gear svg{width:18px;height:18px;}
-  body.cot-touch-layout .cot-battle-control{top:12px;width:224px;height:42px;}
-  body.cot-touch-layout .cot-battle{font-size:16px;}
-  body.cot-touch-layout .cot-battle-mode{font-size:7.5px;}
-  body.cot-touch-layout .cot-garage .stats{display:block;
-    right:max(14px,env(safe-area-inset-right));top:86px;bottom:134px;
-    width:clamp(220px,19vw,252px);max-height:none;overflow-y:auto;
-    overscroll-behavior:contain;scrollbar-width:none;}
-  body.cot-touch-layout .cot-garage .stats::-webkit-scrollbar{display:none;}
-  body.cot-touch-layout .cot-leftcol{left:max(14px,env(safe-area-inset-left));top:86px;
-    bottom:auto;width:180px;height:auto;max-height:calc(100vh - 220px);gap:7px;overflow:visible;}
-  body.cot-touch-layout .cot-maps,body.cot-touch-layout .cot-featured{display:none;}
-  body.cot-touch-layout .cot-camos{width:180px;margin-top:0;padding:7px;
-    height:auto;min-height:0;max-height:100%;flex:0 0 auto;overflow:hidden;
-    background:rgba(7,11,15,.72);border:1px solid rgba(146,164,180,.22);}
-  body.cot-touch-layout .cot-camos.custom-open{height:min(360px,calc(100vh - 220px));}
-  body.cot-touch-layout .cot-camos .ctitle{font-size:8px;margin-bottom:5px;}
-  body.cot-touch-layout .cot-camos .ctitle .cot-custom-open{width:28px;padding:0;font-size:0}
-  body.cot-touch-layout .cot-camos .ctitle .cot-custom-open::after{content:'+';font-size:14px;line-height:1}
-  body.cot-touch-layout .cot-camos .cgrid.camo{grid-template-columns:repeat(2,minmax(0,1fr));
-    max-height:min(158px,24vh);flex:0 1 auto;}
-  body.cot-touch-layout .cot-camo-card{padding:3px;}
-  body.cot-touch-layout .cot-camo-card .sw{height:auto;aspect-ratio:2.55;margin-bottom:3px;}
-  body.cot-touch-layout .cot-camo-card .cl{font-size:6.5px;line-height:1.16;letter-spacing:.05em;}
-  body.cot-touch-layout .cot-camos .cnote{display:none;}
-  body.cot-touch-layout .cot-country-rail{--country-edge:30px;left:208px;
-    right:max(14px,env(safe-area-inset-right));bottom:82px;width:auto;height:42px;transform:none;}
-  body.cot-touch-layout .cot-garage.enter .cot-country-rail{animation-name:cot-g-rise;}
-  body.cot-touch-layout .cot-country-edge{height:40px;}
-  body.cot-touch-layout .cot-country-chips{gap:3px;padding-bottom:3px;scroll-padding-inline:10px;}
-  body.cot-touch-layout .cot-country-chip{min-height:40px;padding:3px 8px 2px;
-    font-size:7px;letter-spacing:.1em;gap:4px;}
-  body.cot-touch-layout .cot-country-chip .cot-flag{width:16px;}
-  body.cot-touch-layout .cot-carousel{bottom:max(8px,env(safe-area-inset-bottom));
-    width:calc(100vw - max(28px,env(safe-area-inset-left) + env(safe-area-inset-right)));
-    height:72px;max-width:none;gap:4px;}
-  body.cot-touch-layout .cot-car-arrow{width:34px;flex:0 0 34px;font-size:16px;}
-  body.cot-touch-layout .cot-cards{min-width:0;flex:1 1 auto;gap:4px;}
-  body.cot-touch-layout .cot-card{width:98px;min-height:72px;padding:4px 5px 3px;}
-  body.cot-touch-layout .cot-card.sel{transform:translateY(-3px);}
-  body.cot-touch-layout .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
-  body.cot-touch-layout .cot-card .flag .cot-flag{width:15px;height:auto;}
-  body.cot-touch-layout .cot-card .designation{font-size:5.5px;padding:1px 0;}
-  body.cot-touch-layout .cot-card .dev-tag{right:4px;top:20px;padding:1px 3px;font-size:5px;}
-  body.cot-touch-layout .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
-  body.cot-touch-layout .cot-card .nm{font-size:7.5px;margin:0 -3px;}
-  body.cot-touch-layout .cot-card .nm .tiern{margin-right:2px;}
-  body.cot-touch-layout .cot-card .era{font-size:6px;margin-top:0;letter-spacing:.12em;}
-  body.cot-touch-layout .cot-garage .hint{display:none;}
+body[data-cot-width='phone'] .cot-battle-control{width:152px}
+body[data-cot-width='phone'] .cot-battle{font-size:13px;padding-left:5px;gap:5px}
+body[data-cot-width='phone'] .cot-battle .battle-active-icon{width:18px;height:18px}
+body[data-cot-width='phone'] .cot-battle-mode{font-size:7px;padding-right:7px}
+body[data-cot-width='phone'] .cot-battle-mode::after{right:5px}
+body[data-cot-width-density='narrow'] .cot-battle-control{top:max(64px,calc(env(safe-area-inset-top) + 58px))}
+body[data-cot-width='phone'] .cot-garage-tools{width:calc(100vw - (var(--cot-overlay-edge) * 2))}
+body[data-cot-width='phone'] .cot-garage-tool{padding:0 7px;gap:5px;font-size:6.5px;letter-spacing:.08em}
+body[data-cot-width='phone'] .cot-garage-tool svg{width:15px;height:15px}
+body[data-cot-width='phone'] .cot-card{width:102px}
+body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
+body[data-cot-width='phone'] .cot-record-overview{grid-template-columns:1fr}
+body[data-cot-width='phone'] .cot-record-dialog{width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}
+body[data-cot-width='phone'] .cot-record-head{padding:15px 14px 12px}
+body[data-cot-width='phone'] .cot-record-body{padding:14px}
+body[data-cot-width='phone'] .cot-record-ring{width:116px}
+body[data-cot-width='phone'] .cot-record-metrics,
+body[data-cot-width='phone'] .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* Short viewports use vertical panel tabs, keeping the center sightline and
+   both horizontal roster rails usable down to 360 CSS px of height. */
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage{
+  --cot-roster-height:62px;--cot-country-bottom:70px;
 }
-/* Width-compacted phones still need a height budget: landscape Safari is
-   commonly 360-430 CSS px tall. Scroll the whole camouflage plate inside its
-   assigned lane instead of letting its six swatches and custom-camo button
-   spill across both fleet rails. */
-@media (max-width:900px) and (orientation:landscape) and (max-height:560px){
-  body.cot-touch-layout .cot-leftcol{top:98px;bottom:auto;height:min(190px,calc(100vh - 236px));
-    overflow:hidden;}
-  body.cot-touch-layout .cot-camos{height:100%;overflow-y:auto;overscroll-behavior:contain;
-    scrollbar-width:none;}
-  body.cot-touch-layout .cot-camos::-webkit-scrollbar{display:none;}
-  body.cot-touch-layout .cot-camos .cgrid.camo{max-height:none;overflow:visible;
-    -webkit-mask-image:none;mask-image:none;}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tools{
+  left:max(8px,env(safe-area-inset-left));right:auto;top:72px;bottom:auto;transform:none;
+  width:44px;flex-direction:column;
 }
-/* MOBILE-QA r2 (iOS simulator, portrait 393pt): the centered BATTLE plate
-   overlapped BOTH the wordmark (left) and the currency chips (right) — three
-   clusters sharing one 393px band. Portrait keeps the crest, drops the
-   wordmark text, narrows the plate and shrinks the wallet chips. */
-@media (max-width:520px) and (orientation:portrait){
-  .cot-garage .title span{display:none;}
-  .cot-nav{top:76px;}
-  .cot-battle-control{width:176px;height:44px;}
-  .cot-battle{font-size:13px;padding-left:4px;gap:5px;}
-  .cot-battle .battle-active-icon{width:17px;height:17px;}
-  .cot-battle .battle-active-icon svg{width:16px;height:16px;}
-  .cot-battle-mode{font-size:7px;padding-right:7px;}
-  .cot-battle-mode::after{right:5px;}.cot-battle-menu{width:160px;}
-  .cot-battle-choice{grid-template-columns:24px 1fr auto;gap:6px;padding-left:6px;}
-  .cot-battle-choice .choice-icon{width:24px;height:24px;}
-  .cot-record-overview{grid-template-columns:1fr;}.cot-record-ring{width:118px;}
-  .cot-record-outcomes{gap:5px;}.cot-record-outcome{padding:9px 8px;}
-  .cot-record-outcome strong{font-size:17px;}.cot-record-metrics{grid-template-columns:repeat(2,1fr);gap:5px;}
-  .cot-record-metric{min-height:66px;padding:10px;}.cot-record-metric strong{font-size:15px;}
-  .cot-last-battle-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tool{
+  width:44px;height:44px;flex:0 0 44px;padding:0;
 }
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage-tool span{display:none}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='maps'] .cot-leftcol,
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
+  left:max(60px,calc(env(safe-area-inset-left) + 60px));top:72px;bottom:118px;
+  width:min(310px,calc(100vw - 128px));
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='dossier'] .stats{
+  top:72px;bottom:118px;width:min(340px,calc(100vw - 72px));
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-rail{height:38px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chips{height:38px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
+  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding-block:3px;
+}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:76px;height:34px;margin:-4px auto -2px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .era{display:none}
+
+body[data-cot-input='coarse'] .cot-garage button,
+body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}
+body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 `;
 
 // garage_ui: one shared accessibility gate for the WAAPI micro-transitions
@@ -1920,7 +1917,15 @@ export function createGarage(opts) {
     `<span class="choice-name">Ranked</span><small>ELO</small></button>` +
     `</div><button class="cot-room-reminder" type="button" aria-label="Open active room">` +
     `<span class="rr-dot"></span><span class="rr-copy"></span></button></div>` +
-    `<div class="stats"></div>` +
+    `<div class="cot-garage-tools" role="toolbar" aria-label="Garage panels">` +
+    `<button class="cot-garage-tool" type="button" data-garage-panel="maps" aria-expanded="false" ` +
+    `aria-controls="cot-garage-maps">${uiIconSVG('map', 17)}<span>Battlefields</span></button>` +
+    `<button class="cot-garage-tool" type="button" data-garage-panel="appearance" aria-expanded="false" ` +
+    `aria-controls="cot-garage-camos">${uiIconSVG('camouflage', 17)}<span>Appearance</span></button>` +
+    `<button class="cot-garage-tool" type="button" data-garage-panel="dossier" aria-expanded="false" ` +
+    `aria-controls="cot-garage-dossier">${uiIconSVG('battleRecord', 17)}<span>Dossier</span></button></div>` +
+    `<button class="cot-garage-panel-scrim" type="button" aria-label="Close garage panel"></button>` +
+    `<div class="stats" id="cot-garage-dossier"></div>` +
     `<div class="cot-country-rail">` +
     `<button class="cot-country-edge prev is-unavailable" type="button" disabled aria-hidden="true" ` +
     `aria-label="Scroll countries left">${uiIconSVG('chevronLeft', 14)}</button>` +
@@ -1935,8 +1940,8 @@ export function createGarage(opts) {
     `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="Next vehicle">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
-    `<div class="cot-leftcol"><div class="cot-maps"></div>` +
-    `<div class="cot-camos"></div></div>` +
+    `<div class="cot-leftcol"><div class="cot-maps" id="cot-garage-maps"></div>` +
+    `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
   mountGitHubStars(root);
@@ -2082,6 +2087,8 @@ export function createGarage(opts) {
   const recordClose = root.querySelector('.cot-record-close');
   const mobileNavTrigger = root.querySelector('.cot-mobile-nav-trigger');
   const mobileNavMenu = root.querySelector('.cot-mobile-nav-menu');
+  const garagePanelButtons = [...root.querySelectorAll('.cot-garage-tool')];
+  const garagePanelScrim = root.querySelector('.cot-garage-panel-scrim');
 
   let selectedId = specs.length ? specs[0].id : null;
   let battleMode = 'solo';
@@ -2123,6 +2130,35 @@ export function createGarage(opts) {
     mobileNavTrigger.setAttribute('aria-label', 'Open navigation menu');
     if (restoreFocus) mobileNavTrigger.focus();
   };
+  const isOverlayPanelLayout = () => document.body.dataset.cotPanels === 'overlay';
+  const openGaragePanel = () => root.dataset.garagePanel || '';
+  const setGaragePanel = (panel = '', { restoreFocus = false } = {}) => {
+    const previous = openGaragePanel();
+    const next = isOverlayPanelLayout() && panel ? panel : '';
+    if (next) root.dataset.garagePanel = next;
+    else delete root.dataset.garagePanel;
+    garagePanelButtons.forEach((button) => {
+      const expanded = button.dataset.garagePanel === next;
+      button.setAttribute('aria-expanded', String(expanded));
+    });
+    if (restoreFocus && previous) {
+      garagePanelButtons.find((button) => button.dataset.garagePanel === previous)?.focus();
+    }
+    requestAnimationFrame(() => {
+      syncSidebarPanelHeight();
+      queueCountryRailAffordances();
+    });
+  };
+  garagePanelButtons.forEach((button) => button.addEventListener('click', () => {
+    emit('ui:click', {});
+    const panel = button.dataset.garagePanel;
+    setGaragePanel(openGaragePanel() === panel ? '' : panel);
+  }));
+  garagePanelScrim.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
+  window.addEventListener('cot:layoutchange', () => {
+    if (!isOverlayPanelLayout()) setGaragePanel('');
+    syncSidebarPanelHeight();
+  });
   const openMobileNavigation = () => {
     closeBattleMenu();
     mobileNavMenu.hidden = false;
@@ -2601,7 +2637,7 @@ export function createGarage(opts) {
   // pair for Battle Gallery rather than stretching either plate into a void.
   function syncSidebarPanelHeight() {
     const leftcol = root.querySelector('.cot-leftcol');
-    if (!leftcol || window.innerWidth <= 900 || getComputedStyle(mapsEl).display === 'none') {
+    if (!leftcol || isOverlayPanelLayout() || getComputedStyle(mapsEl).display === 'none') {
       leftcol?.style.removeProperty('--cot-sidebar-panel-height');
       return;
     }
@@ -3445,6 +3481,11 @@ export function createGarage(opts) {
   }
   function onKey(e) {
     if (!api.isOpen) return;
+    if (e.code === 'Escape' && openGaragePanel()) {
+      setGaragePanel('', { restoreFocus: true });
+      e.preventDefault();
+      return;
+    }
     if (e.code === 'Escape' && isMobileNavigationOpen()) {
       closeMobileNavigation({ restoreFocus: true });
       e.preventDefault();
@@ -3474,6 +3515,7 @@ export function createGarage(opts) {
      */
     show(selected = 'm1a1') {
       refreshServiceRecord();
+      setGaragePanel('');
       root.style.display = 'block';
       // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
       // and battle-exit both used to hard-cut the whole screen in one frame).
@@ -3501,6 +3543,7 @@ export function createGarage(opts) {
       closeServiceRecord({ restoreFocus: false });
       closeMobileNavigation();
       closeBattleMenu();
+      setGaragePanel('');
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
@@ -3515,9 +3558,10 @@ export function createGarage(opts) {
       const left = root.querySelector('.cot-leftcol')?.getBoundingClientRect();
       const stats = statsEl.getBoundingClientRect();
       const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
-      const x0 = Math.max(rr.left, left && left.width ? left.right + 14 : rr.left + 24);
-      const x1 = Math.min(rr.right, stats.width ? stats.left - 14 : rr.right - 24);
-      const y0 = rr.top + 78;
+      const reservePanels = !isOverlayPanelLayout();
+      const x0 = reservePanels && left && left.width ? left.right + 14 : rr.left + 18;
+      const x1 = reservePanels && stats.width ? stats.left - 14 : rr.right - 18;
+      const y0 = rr.top + (isOverlayPanelLayout() ? 66 : 78);
       const y1 = Math.min(rr.bottom, carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
       return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
     },

@@ -41,7 +41,6 @@ const CSS = `
 .cot-info-popover__body{margin:0;padding:11px 12px 13px;color:#aebdc8;font-size:9.5px;line-height:1.55;white-space:normal}
 pre.cot-info-popover__body{max-width:100%;overflow:auto;color:#cad6df;background:rgba(1,4,6,.58);font:500 8.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
   tab-size:2;white-space:pre;overscroll-behavior:contain}
-@media(max-width:700px){.cot-info-popover{width:min(420px,calc(100vw - 16px));max-height:min(66vh,520px)}}
 @media(prefers-reduced-motion:reduce){.cot-info-trigger{transition:none}}
 `;
 

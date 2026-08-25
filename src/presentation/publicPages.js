@@ -1,3 +1,8 @@
+import { installResponsiveLayout } from '../ui/responsiveLayout.js';
+
+const responsiveLayout = installResponsiveLayout();
+const isCompactSurface = () => ['phone', 'compact'].includes(responsiveLayout.snapshot()?.widthBand);
+
 // The media archive is used by docs, not the landing page. Keep its manifest,
 // rendering code, and CSS out of the home critical path.
 if (document.querySelector('[data-media-archive]')) {
@@ -11,9 +16,8 @@ function mountHeroRail(root) {
   const slides = [...root.querySelectorAll('[data-hero-slide]')];
   if (slides.length < 2) return;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const compactViewport = matchMedia('(max-width: 760px)');
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  const limitsMotion = () => reducedMotion.matches || compactViewport.matches || connection?.saveData;
+  const limitsMotion = () => reducedMotion.matches || isCompactSurface() || connection?.saveData;
   let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
   let advanceTimer = 0;
 
@@ -60,7 +64,7 @@ function mountHeroRail(root) {
     else scheduleAdvance();
   };
   reducedMotion.addEventListener('change', applyMotionPreference);
-  compactViewport.addEventListener('change', applyMotionPreference);
+  window.addEventListener('cot:layoutchange', applyMotionPreference);
   connection?.addEventListener?.('change', applyMotionPreference);
   document.addEventListener('visibilitychange', applyMotionPreference);
   expose(activeIndex);
@@ -145,15 +149,14 @@ document.querySelectorAll('img[data-deferred-src]').forEach((image) => {
 
 function mountViewportVideo(video) {
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const mobileViewport = matchMedia('(max-width: 760px)');
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const source = video.querySelector('source[data-src]');
   if (!source) return;
 
   const lowPowerDevice = Number.isFinite(navigator.deviceMemory) && navigator.deviceMemory <= 4;
-  const manualPlayback = reducedMotion.matches || connection?.saveData
+  const manualPlayback = () => reducedMotion.matches || connection?.saveData
     || /(^|-)2g$/.test(connection?.effectiveType || '')
-    || (mobileViewport.matches && lowPowerDevice);
+    || (isCompactSurface() && lowPowerDevice);
   let visible = false;
   let loaded = false;
   let releaseTimer = 0;
@@ -165,7 +168,7 @@ function mountViewportVideo(video) {
 
   const loadSource = () => {
     if (loaded) return;
-    const useMobileProxy = mobileViewport.matches && source.dataset.mobileSrc;
+    const useMobileProxy = isCompactSurface() && source.dataset.mobileSrc;
     source.src = useMobileProxy ? source.dataset.mobileSrc : source.dataset.src;
     source.type = useMobileProxy ? (source.dataset.mobileType || 'video/mp4') : source.dataset.type;
     video.load();
@@ -180,7 +183,7 @@ function mountViewportVideo(video) {
     video.load();
     loaded = false;
     video.classList.remove('is-playing');
-    setControlVisible(manualPlayback);
+    setControlVisible(manualPlayback());
   };
 
   const sync = () => {
@@ -191,7 +194,7 @@ function mountViewportVideo(video) {
       if (loaded) releaseTimer = window.setTimeout(releaseSource, 1200);
       return;
     }
-    if (manualPlayback) {
+    if (manualPlayback()) {
       setControlVisible(!loaded || video.paused);
       return;
     }
@@ -207,7 +210,7 @@ function mountViewportVideo(video) {
     sync();
   }, { threshold: [0, 0.12, 0.55] });
 
-  if (manualPlayback) {
+  if (manualPlayback()) {
     control = document.createElement('button');
     control.type = 'button';
     control.className = 'v5-video-control';
@@ -224,6 +227,7 @@ function mountViewportVideo(video) {
   video.addEventListener('play', () => video.classList.add('is-playing'));
   video.addEventListener('pause', () => video.classList.remove('is-playing'));
   reducedMotion.addEventListener('change', sync);
+  window.addEventListener('cot:layoutchange', sync);
   document.addEventListener('visibilitychange', sync);
 }
 

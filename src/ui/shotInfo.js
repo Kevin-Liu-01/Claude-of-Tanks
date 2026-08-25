@@ -392,56 +392,6 @@ body.cot-touch-layout .cot-si-toast{height:41px;padding:4px 7px;}
 body.cot-touch-layout .cot-si-toast .l1{height:17px;font-size:9.5px;}
 body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
 body.cot-touch-layout .cot-si-toast .l2{height:14px;font-size:7.5px;}
-@media (max-width:700px), (pointer:coarse) and (max-width:760px){
-  .cot-si-cardhost,.cot-si-log{top:max(var(--cot-si-card-top,var(--cot-si-roster-bottom,252px)),calc(env(safe-area-inset-top) + 242px));
-    right:max(10px,env(safe-area-inset-right));width:min(286px,calc(100vw - 20px));}
-  .cot-si-card{min-height:0;}
-  .cot-si-hd{min-height:40px;padding:5px 8px;}
-  .cot-si-kicker{font-size:6.5px}.cot-si-badge{font-size:11px}.cot-si-dmg{font-size:18px;}
-  .cot-si-sub{height:23px;padding:3px 8px;font-size:8.5px;}
-  .cot-si-body{display:block;padding:4px 8px 0;}
-  .cot-si-rows{gap:2px 9px;}
-  .cot-si-kv{font-size:8.5px;gap:4px;}.cot-si-pencap{font-size:6.5px;}
-  .cot-si-diag{grid-template-columns:78px 154px;margin:4px 0 0;padding:4px 6px;
-    justify-content:center;gap:8px;}
-  .cot-si-diag .box:first-child{width:78px!important;height:78px!important;}
-  .cot-si-diag .box:nth-child(2){width:154px!important;height:77px!important;}
-  .cot-si-zone{grid-column:auto;text-align:right;font-size:8px;}
-  .cot-si-zone .cap{display:block;margin-right:0;}
-  .cot-si-mods{padding:5px 9px 0;}
-  .cot-si-toasthost{top:max(62px,calc(env(safe-area-inset-top) + 52px));bottom:auto;
-    left:max(8px,env(safe-area-inset-left));width:min(236px,42vw);min-height:143px;}
-  .cot-si-toast{height:41px;padding:4px 7px;}
-  .cot-si-toast .l1{height:17px;font-size:9.5px}.cot-si-toast .l1 b{font-size:11px;}
-  .cot-si-toast .l2{height:14px;font-size:7.5px;}
-}
-@media (max-width:520px){
-  .cot-si-cardhost,.cot-si-log{width:min(260px,calc(100vw - 16px));right:max(8px,env(safe-area-inset-right));}
-  .cot-si-diag{grid-template-columns:70px 140px;gap:8px;}
-  .cot-si-diag .box:first-child{width:70px!important;height:70px!important;}
-  .cot-si-diag .box:nth-child(2){width:140px!important;height:70px!important;}
-}
-@media (orientation:landscape) and (max-height:430px){
-  body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
-    left:max(110px,calc(env(safe-area-inset-left) + 110px));right:auto;
-    top:max(72px,calc(env(safe-area-inset-top) + 60px));bottom:auto;width:260px;}
-  body.cot-touch-layout .cot-si-toasthost{left:auto;right:max(8px,env(safe-area-inset-right));
-    top:max(60px,calc(env(safe-area-inset-top) + 54px));width:210px;min-height:96px;}
-  body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+3){display:none;}
-  body.cot-touch-layout .cot-si-hd{min-height:38px;padding-block:4px;}
-  body.cot-touch-layout .cot-si-sub{height:22px;padding-block:3px;}
-  body.cot-touch-layout .cot-si-body{display:flex;gap:4px;padding:4px 7px 0;}
-  body.cot-touch-layout .cot-si-rows{gap:2px 8px;}
-  body.cot-touch-layout .cot-si-kv{font-size:8px;}
-  body.cot-touch-layout .cot-si-diag{grid-template-columns:66px 140px;
-    margin:0;padding:4px;gap:5px;}
-  body.cot-touch-layout .cot-si-diag .box:first-child{width:66px!important;height:66px!important;}
-  body.cot-touch-layout .cot-si-diag .box:nth-child(2){width:140px!important;height:70px!important;}
-}
-@media (orientation:landscape) and (max-height:430px) and (max-width:700px){
-  body.cot-touch-layout .cot-si-cardhost,body.cot-touch-layout .cot-si-log{
-    left:max(8px,env(safe-area-inset-left));top:max(110px,calc(env(safe-area-inset-top) + 102px));}
-}
 @media (prefers-reduced-motion:reduce){
   .cot-si-card,.cot-si-toast,.cot-si-diag svg.ov .wdg{animation:none;transition:none;}
 }

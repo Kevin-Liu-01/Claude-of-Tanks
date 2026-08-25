@@ -99,6 +99,8 @@ import { encodeAimIntent } from './net/aimIntent.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
+import { installResponsiveLayout } from './ui/responsiveLayout.js';
+import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
   mulberry32, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
@@ -174,6 +176,11 @@ const _aimPose = { pos: new THREE.Vector3() };
 // top-level consts are still in their temporal dead zone.
 // ---------------------------------------------------------------------------
 const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' });
+// Every UI surface consumes the same semantic viewport contract. Install it
+// before HUD/garage construction so their first visible frame already has the
+// correct width, height, orientation and interaction-mode attributes.
+installResponsiveLayout();
+installResponsiveSurfaceStyles();
 const BOOT_TIMINGS = {};
 let bootComplete = false;
 // LOADING PERF: attribute the WHOLE boot, not just the staged work. `_lastMark`
