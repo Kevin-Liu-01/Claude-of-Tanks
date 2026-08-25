@@ -334,13 +334,10 @@ const CHIEFTAIN_HULL = {
   fenderY: 1.575, fenderZ0: -3.70, fenderZ1: 1.9, fenderHalfW: 1.50, fenderHalfWL: 1.75,
   fenderSegLen: 0.45,
   rakeHalfW: 0.86, // containment law: rake lofts clear of the track channel (dilated)
-  // 610 mm Chieftain track. r4: pads pulled to |x| 1.0765..1.4845 — the ref
-  // grounds the RIGHT side only to x 1.48 (front col boundary 1.4993, the
-  // certified left-shifted print: the old 1.512 pad edge painted the 1.519
-  // front column to the ground for a 0.26 m error) and its INNER ground
-  // edge reads |x| >= 1.062 (the -1.042 column keeps the 0.374 sponson
-  // channel floor). Both pad faces hold ~15 mm off the column boundaries.
-  trackXc: 1.2805, trackW: 0.328, wheelW: 0.20, flapDrop: 0.055,
+  // Owner-directed wide-course Mk.5 fit. Double the complete native shoe/band
+  // width while preserving the original 1.1165 m inner running clearance;
+  // the added course therefore grows outward, clear of the hull sweep.
+  trackXc: 1.4445, trackW: 0.656, wheelW: 0.20, flapDrop: 0.055,
   // r5 O2a gear tones (critic: guide-horn/pad luma p5 3-7 as 'glitch zipper
   // teeth' on pale discs vs the ref's whole-zone 26..76 band): the russia
   // r-series dark-olive recipe + gearFloor ambient re-attach.
@@ -3949,6 +3946,33 @@ const CHIEFTAIN_UPPER_BUCKETS = [
   'gun', 'gunDark', 'gunMount', 'gunMountDark',
 ];
 
+const CHIEFTAIN_TURRET_BUCKETS = CHIEFTAIN_UPPER_BUCKETS.filter((bucket) =>
+  !bucket.startsWith('gun'));
+const CHIEFTAIN_TURRET_HEIGHT_SCALE = 0.80;
+const CHIEFTAIN_TURRET_SEAT_Y = -0.18;
+
+function compressedChieftainTurretY(y) {
+  return CHIEFTAIN_TURRET_SEAT_Y
+    + (y - CHIEFTAIN_TURRET_SEAT_Y) * CHIEFTAIN_TURRET_HEIGHT_SCALE;
+}
+
+function compressChieftainTurretHeight(P) {
+  // Compress around the buried ring seat, not local zero. That keeps the
+  // casting planted on the hull while lowering its crown by a true 20%.
+  P.scaleBuckets(CHIEFTAIN_TURRET_BUCKETS, 1, CHIEFTAIN_TURRET_HEIGHT_SCALE, 1);
+  P.offsetBuckets(CHIEFTAIN_TURRET_BUCKETS, 0,
+    CHIEFTAIN_TURRET_SEAT_Y * (1 - CHIEFTAIN_TURRET_HEIGHT_SCALE), 0);
+
+  // Gun pitch remains rigid and dimensionally unchanged; only its trunnion
+  // follows the lowered mask. Direct child fittings (the pintle GPMG) are
+  // likewise reseated without being squashed with the cast armour.
+  P.gunG.position.y = compressedChieftainTurretY(P.gunG.position.y);
+  for (const child of P.turretG.children) {
+    if (child !== P.gunG) child.position.y = compressedChieftainTurretY(child.position.y);
+  }
+  P.topY = compressedChieftainTurretY(P.topY);
+}
+
 function clearChieftainUpper(P) {
   P.clear(CHIEFTAIN_UPPER_BUCKETS);
   P.clearDecals('turret');
@@ -4032,8 +4056,8 @@ function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
     // leaving a visible open trench from high front-quarter views.  This
     // closed bridge carries the roof into the mantlet throat on broad faces.
     P.add('turret', slab(
-      [-0.74, 0.48, 1.36], [0.74, 0.48, 1.36], [0.98, 0.52, 0.56], [-0.98, 0.52, 0.56],
-      [-0.63, 0.80, 1.25], [0.63, 0.80, 1.25], [0.82, 0.88, 0.50], [-0.82, 0.88, 0.50]));
+      [-0.74, 0.48, 1.52], [0.74, 0.48, 1.52], [0.98, 0.52, 0.56], [-0.98, 0.52, 0.56],
+      [-0.63, 0.80, 1.46], [0.63, 0.80, 1.46], [0.82, 0.88, 0.50], [-0.82, 0.88, 0.50]));
     P.add('turretDetail', box(1.46, 0.025, 0.055), 0, 0.865, 0.58);
     P.add('turret', slab(
       [-0.35, 0.06, 1.46], [0.35, 0.06, 1.46], [0.48, 0.10, 0.68], [-0.48, 0.10, 0.68],
@@ -4184,6 +4208,7 @@ function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
     [1.34, 0.33, -0.72], Math.PI / 2);
   ukToneKit(P, { cloth: stillbrew ? 0x41493b : 0x3d4634, dark: 0x292f29 });
   P.topY = 1.13;
+  compressChieftainTurretHeight(P);
 }
 
 function chieftain5OwnerRebuild2026(P) {

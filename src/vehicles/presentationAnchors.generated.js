@@ -27,7 +27,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   challenger_3: Object.freeze({ xM: 0, zM: -0.0058 }),
   challenger_cruiser: Object.freeze({ xM: 0.0001, zM: 0.0119 }),
   charioteer: Object.freeze({ xM: 0, zM: 0.0393 }),
-  chieftain5: Object.freeze({ xM: -0.0943, zM: -0.0387 }),
+  chieftain5: Object.freeze({ xM: -0.0008, zM: -0.0402 }),
   chieftain_mk10: Object.freeze({ xM: 0.0002, zM: -0.0018 }),
   comet: Object.freeze({ xM: 0, zM: 0.0459 }),
   fv510: Object.freeze({ xM: 0.0002, zM: 0.0818 }),

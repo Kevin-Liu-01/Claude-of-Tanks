@@ -1764,7 +1764,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "size": 0.25,
         "pos": [
           -1.361,
-          0.439944,
+          0.2524608,
           -0.4739999
         ],
         "quaternion": [
@@ -1778,29 +1778,29 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0089542
+        "maximumSurfaceErrorM": 0.0041422
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.345609,
-          0.4403163,
-          -0.0396186
+          -1.3456026,
+          0.3164201,
+          -0.0396184
         ],
         "quaternion": [
-          -0.0221687,
-          -0.7137186,
-          -0.0217347,
-          0.6997442
+          -0.0276881,
+          -0.7135183,
+          -0.0271466,
+          0.6995628
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "chieftain5",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 8e-7
+        "maximumSurfaceErrorM": 0.0000028
       }
     ]
   },
@@ -1852,13 +1852,13 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "maximumSurfaceErrorM": 0
       },
       {
-        "kind": "designation",
+        "kind": "insignia",
         "parent": "turret",
-        "size": 0.28,
+        "size": 0.25,
         "pos": [
           1.361,
-          0.33,
-          -0.72
+          0.2630432,
+          -1.0269999
         ],
         "quaternion": [
           0,
@@ -1867,33 +1867,11 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "insignia",
-        "parent": "turret",
-        "size": 0.25,
-        "pos": [
-          1.3377581,
-          0.4535443,
-          -0.3951191
-        ],
-        "quaternion": [
-          -0.0221702,
-          0.7137491,
-          0.0217343,
-          0.6997131
-        ],
-        "surfaceMesh": "turret",
         "anchorProfile": "chieftain_mk10",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0000137
+        "maximumSurfaceErrorM": 0
       }
     ]
   },

@@ -82,6 +82,7 @@ const SPECS = [
       dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } }),
   make('chieftain_mk10', 'chieftain5', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
+      visual: { trackWidthM: 0.656 },
       dims: { hullLengthM: 7.52, overallLengthM: 10.79, widthM: 3.50, heightM: 2.90 } }),
   // Warrior gun rebuild (AFV support round): the cloned Bradley loadout left
   // 25 mm ammo + a TOW rail on a vehicle that mounts neither — and the old
