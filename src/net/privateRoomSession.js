@@ -177,6 +177,11 @@ export class PrivateRoomClientSession {
       }
     });
     this.ready = this.peer.transportReady.then((transport) => {
+      // Once RTC is established, pub/sub remains the fast path and the
+      // durable mailbox only needs a low-frequency closure/rejoin safety net.
+      if (typeof signaling.setEventPollInterval === 'function') {
+        signaling.setEventPollInterval(2_000);
+      }
       const client = new MatchClientRuntime({ transport, playerId: roomInfo.peerId });
       client.connect({ mode: roomInfo.mode || 'private', phase: 'lobby' });
       this.runtime = client;

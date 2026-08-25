@@ -164,6 +164,11 @@ export function createSignalingServer({
               await sendNotifications([notification]);
               break;
             }
+            case 'room_poll':
+              if (typeof store.poll === 'function') {
+                await sendNotifications(await store.poll(connection));
+              }
+              break;
             case 'room_leave':
               await sendNotifications(await store.leave(connection, 'client_leave'));
               break;

@@ -848,6 +848,30 @@ assert.equal(interpolation.sample(28).entities[0], reusedEntity,
     `airborne extrapolation advances Y between authority packets (y=${extrapolated.y})`);
 }
 
+// Grounded ride velocity may briefly disagree with support height when the
+// winning wheel/track probe changes. Vertical interpolation must stay inside
+// the two authoritative heights instead of manufacturing a visible hop.
+{
+  const grounded = new SnapshotBuffer({ interpolationDelayMs: 0 });
+  grounded.push(captureWorldSnapshot({
+    tick: 20, serverTimeMs: 0,
+    entities: [entity('grounded', 'm1a2', 'bravo', 0,
+      { y: 2, verticalSpeed: 5, grounded: true })],
+    viewerId: 'viewer',
+  }));
+  grounded.push(captureWorldSnapshot({
+    tick: 23, serverTimeMs: 100,
+    entities: [entity('grounded', 'm1a2', 'bravo', 0,
+      { y: 2.02, verticalSpeed: -5, grounded: true })],
+    viewerId: 'viewer',
+  }));
+  for (let timeMs = 0; timeMs <= 100; timeMs += 5) {
+    const y = grounded.sample(timeMs).entities[0].y;
+    assert.ok(y >= 2 - 1e-8 && y <= 2.02 + 1e-8,
+      `grounded vertical interpolation stays monotone at ${timeMs} ms (y=${y})`);
+  }
+}
+
 // Remote tanks at rest must not visibly seesaw between centimeter/angle
 // quantization bins. This is presentation stabilization only: meaningful
 // authority motion and independent turret/gun articulation still pass.

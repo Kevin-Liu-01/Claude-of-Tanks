@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { WebSocket } from 'ws';
 import { DistributedSignalingRoomStore } from './distributedRoomStore.js';
+import { SignalingRoomStore } from './roomStore.js';
 import { createSignalingServer } from './signalingServer.js';
+import { RoomSignalingClient } from '../src/net/signalingClient.js';
 
 class FlakySubscriber extends EventEmitter {
   static failuresRemaining = 0;
@@ -180,5 +182,70 @@ assert.equal(closed.payload.reason, 'host_left');
 guest.close();
 await new Promise((resolve) => guest.once('close', resolve));
 await signaling.close();
+
+// Pub/sub delivery is intentionally modeled as fully unavailable here. A
+// room_poll must recover the durable notification so an RTC offer is never
+// contingent on a transient subscriber wake-up.
+class PollOnlyRoomStore extends SignalingRoomStore {
+  constructor() {
+    super();
+    this.deliveryHandler = null;
+    this.mailboxes = new Map();
+    this.pollCount = 0;
+  }
+
+  setDeliveryHandler(handler) { this.deliveryHandler = handler; }
+
+  deliver({ connection, message, fromPoll = false }) {
+    if (fromPoll) return this.deliveryHandler(connection, message);
+    const queued = this.mailboxes.get(connection) || [];
+    queued.push(message);
+    this.mailboxes.set(connection, queued);
+    return true;
+  }
+
+  poll(connection) {
+    this.pollCount++;
+    const queued = this.mailboxes.get(connection) || [];
+    this.mailboxes.delete(connection);
+    return queued.map((message) => ({ connection, message, fromPoll: true }));
+  }
+}
+
+const pollStore = new PollOnlyRoomStore();
+const pollServer = createSignalingServer({ host: '127.0.0.1', port: 0, store: pollStore });
+const pollAddress = await pollServer.listen();
+const pollUrl = `ws://127.0.0.1:${pollAddress.port}/signal`;
+const pollHost = new RoomSignalingClient({
+  url: pollUrl,
+  WebSocketImpl: WebSocket,
+  eventPollIntervalMs: 20,
+});
+const pollGuest = new RoomSignalingClient({
+  url: pollUrl,
+  WebSocketImpl: WebSocket,
+  eventPollIntervalMs: 20,
+});
+const pollRoom = await pollHost.createRoom({
+  player: { id: 'poll-host', name: 'Poll Host' },
+  maxPlayers: 4,
+});
+const recoveredJoin = new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error('durable signaling poll timed out')), 1_000);
+  pollHost.onEvent((message) => {
+    if (message.type !== 'peer_joined') return;
+    clearTimeout(timer);
+    resolve(message);
+  });
+});
+await pollGuest.joinRoom({
+  roomCode: pollRoom.roomCode,
+  player: { id: 'poll-guest', name: 'Poll Guest' },
+});
+assert.equal((await recoveredJoin).payload.peerId, 'poll-guest');
+assert.ok(pollStore.pollCount > 0, 'room clients poll when pub/sub delivery is missed');
+pollHost.close('poll_test_complete');
+pollGuest.close('poll_test_complete');
+await pollServer.close();
 
 console.log('signaling.selftest: room codes, join, relay, health, and host-loss closure passed');

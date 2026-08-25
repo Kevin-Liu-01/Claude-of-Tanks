@@ -318,13 +318,38 @@ function hermite(p0, v0, p1, v1, t, durationS) {
   return h00 * p0 + h10 * durationS * v0 + h01 * p1 + h11 * durationS * v1;
 }
 
+// Grounded support samples can change which wheel/track probe owns the
+// chassis floor. Their reported vertical velocity remains useful as a tangent
+// but is not allowed to overshoot the two authoritative heights. Airborne
+// motion keeps ordinary Hermite so ballistic arcs remain velocity-correct.
+function monotoneHermite(p0, v0, p1, v1, t, durationS) {
+  if (!(durationS > 0)) return p1;
+  const slope = (p1 - p0) / durationS;
+  if (Math.abs(slope) < 1e-8) return p0;
+  let m0 = v0 * slope > 0 ? v0 : 0;
+  let m1 = v1 * slope > 0 ? v1 : 0;
+  const alpha = m0 / slope;
+  const beta = m1 / slope;
+  const magnitude = alpha * alpha + beta * beta;
+  if (magnitude > 9) {
+    const scale = 3 / Math.sqrt(magnitude);
+    m0 = scale * alpha * slope;
+    m1 = scale * beta * slope;
+  }
+  return hermite(p0, m0, p1, m1, t, durationS);
+}
+
 function interpolateEntity(aRaw, bRaw, t, durationS, target = null,
   scratchA = null, scratchB = null) {
   const a = decodeEntitySnapshot(aRaw, scratchA);
   const b = decodeEntitySnapshot(bRaw, scratchB);
   const out = decodeEntitySnapshot(bRaw, target);
   out.x = hermite(a.x, a.vx, b.x, b.vx, t, durationS);
-  out.y = hermite(a.y, a.vy, b.y, b.vy, t, durationS);
+  const grounded = !(a.flags & SNAPSHOT_FLAGS.AIRBORNE) &&
+    !(b.flags & SNAPSHOT_FLAGS.AIRBORNE);
+  out.y = grounded
+    ? monotoneHermite(a.y, a.vy, b.y, b.vy, t, durationS)
+    : hermite(a.y, a.vy, b.y, b.vy, t, durationS);
   out.z = hermite(a.z, a.vz, b.z, b.vz, t, durationS);
   out.vx = a.vx + (b.vx - a.vx) * t;
   out.vy = a.vy + (b.vy - a.vy) * t;

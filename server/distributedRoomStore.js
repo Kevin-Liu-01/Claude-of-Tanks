@@ -11,7 +11,33 @@ import IORedis from 'ioredis';
 import { createRoomCode } from '../src/net/protocol.js';
 
 const DEFAULT_ROOM_TTL_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_DELIVERY_TTL_MS = 2 * 60 * 1000;
 const REDIS_READY_TIMEOUT_MS = 6_000;
+const MAX_MAILBOX_MESSAGES = 256;
+const MAX_DRAIN_MESSAGES = 64;
+
+// Pub/sub is a latency hint, not the source of truth. Serverless Redis
+// subscribers can reconnect between a room mutation and its notification;
+// retaining each delivery in a short-lived mailbox lets the owning WebSocket
+// recover it on its next room_poll instead of hanging RTC negotiation forever.
+const ENQUEUE_DELIVERY_SCRIPT = `
+redis.call('RPUSH', KEYS[1], ARGV[1])
+redis.call('LTRIM', KEYS[1], -tonumber(ARGV[2]), -1)
+redis.call('PEXPIRE', KEYS[1], ARGV[3])
+redis.call('PUBLISH', KEYS[2], ARGV[4])
+return 1
+`;
+
+const DRAIN_DELIVERY_SCRIPT = `
+local messages = {}
+for index = 1, tonumber(ARGV[1]) do
+  local message = redis.call('LPOP', KEYS[1])
+  if not message then break end
+  table.insert(messages, message)
+end
+if redis.call('LLEN', KEYS[1]) == 0 then redis.call('DEL', KEYS[1]) end
+return messages
+`;
 
 const JOIN_ROOM_SCRIPT = `
 local raw = redis.call('GET', KEYS[1])
@@ -137,6 +163,7 @@ export class DistributedSignalingRoomStore {
     restToken,
     namespace = 'cot:signaling:v1',
     roomTtlMs = DEFAULT_ROOM_TTL_MS,
+    deliveryTtlMs = DEFAULT_DELIVERY_TTL_MS,
     now = () => Date.now(),
     roomCodeFactory = () => createRoomCode(randomUnit),
     peerIdFactory = randomPeerId,
@@ -151,6 +178,7 @@ export class DistributedSignalingRoomStore {
     this.namespace = namespace;
     this.channel = `${namespace}:delivery`;
     this.roomTtlMs = roomTtlMs;
+    this.deliveryTtlMs = deliveryTtlMs;
     this.now = now;
     this.roomCodeFactory = roomCodeFactory;
     this.peerIdFactory = peerIdFactory;
@@ -182,6 +210,7 @@ export class DistributedSignalingRoomStore {
     this._startPromise = null;
     this._subscribed = false;
     this._closed = false;
+    this._drains = new Map();
     this._lastErrorLogAt = 0;
     const noteError = (role, error) => {
       const now = Date.now();
@@ -195,8 +224,12 @@ export class DistributedSignalingRoomStore {
       if (channel !== this.channel) return;
       try {
         const delivery = JSON.parse(raw);
-        const connection = this.connections.get(String(delivery.peerId || ''));
-        if (connection && this.deliveryHandler) this.deliveryHandler(connection, delivery.message);
+        const peerId = String(delivery.peerId || '');
+        if (peerId && this.connections.has(peerId)) {
+          this.#flushMailbox(peerId).catch((error) => {
+            console.error('[signal] Failed to drain Redis delivery mailbox', error);
+          });
+        }
       } catch (error) {
         console.error('[signal] Invalid Redis delivery', error);
       }
@@ -205,6 +238,10 @@ export class DistributedSignalingRoomStore {
 
   roomKey(roomCode) {
     return `${this.namespace}:room:${roomCode}`;
+  }
+
+  mailboxKey(peerId) {
+    return `${this.namespace}:mailbox:${peerId}`;
   }
 
   setDeliveryHandler(handler) {
@@ -286,6 +323,47 @@ export class DistributedSignalingRoomStore {
         cause,
       });
     }
+  }
+
+  async #drainMailbox(peerId) {
+    const id = String(peerId || '');
+    if (!id) return [];
+    // Chain drains instead of sharing one result: a pub/sub wake and a client
+    // poll can arrive together, and both consumers must not receive the same
+    // RTC offer/candidate batch.
+    const previous = this._drains.get(id) || Promise.resolve();
+    const attempt = previous.catch(() => {}).then(async () => {
+      const raw = await this.#runCommand('eval', DRAIN_DELIVERY_SCRIPT,
+        [this.mailboxKey(id)], [MAX_DRAIN_MESSAGES]);
+      if (!Array.isArray(raw)) return [];
+      const messages = [];
+      for (const item of raw) {
+        try {
+          const message = typeof item === 'string' ? JSON.parse(item) : item;
+          if (message && typeof message.type === 'string') messages.push(message);
+        } catch (_) { /* discard malformed mailbox entries */ }
+      }
+      return messages;
+    });
+    this._drains.set(id, attempt);
+    try {
+      return await attempt;
+    } finally {
+      if (this._drains.get(id) === attempt) this._drains.delete(id);
+    }
+  }
+
+  async #flushMailbox(peerId) {
+    const id = String(peerId || '');
+    const connection = this.connections.get(id);
+    if (!connection || !this.deliveryHandler) return 0;
+    const messages = await this.#drainMailbox(id);
+    let delivered = 0;
+    for (const message of messages) {
+      if (this.connections.get(id) !== connection) break;
+      if (this.deliveryHandler(connection, message)) delivered++;
+    }
+    return delivered;
   }
 
   #remember(connection, roomCode, peerId) {
@@ -404,12 +482,27 @@ export class DistributedSignalingRoomStore {
   }
 
   async deliver({ peerId, connection, message }) {
-    if (connection && this.deliveryHandler) return this.deliveryHandler(connection, message);
+    if (connection && this.deliveryHandler && this.deliveryHandler(connection, message)) return true;
     const target = this.connections.get(String(peerId || ''));
-    if (target && this.deliveryHandler) return this.deliveryHandler(target, message);
+    if (target && this.deliveryHandler && this.deliveryHandler(target, message)) return true;
+    const id = String(peerId || '');
+    if (!id || !message || typeof message.type !== 'string') {
+      throw codedError('invalid_delivery', 'invalid signaling delivery');
+    }
     await this.#ready();
-    await this.#runCommand('publish', this.channel, JSON.stringify({ peerId, message }));
+    await this.#runCommand('eval', ENQUEUE_DELIVERY_SCRIPT,
+      [this.mailboxKey(id), this.channel],
+      [JSON.stringify(message), MAX_MAILBOX_MESSAGES, this.deliveryTtlMs, JSON.stringify({ peerId: id })],
+    );
     return true;
+  }
+
+  /** Recover durable notifications when Redis pub/sub missed a wake-up. */
+  async poll(connection) {
+    const membership = this.membership.get(connection);
+    if (!membership || this.connections.get(membership.peerId) !== connection) return [];
+    const messages = await this.#drainMailbox(membership.peerId);
+    return messages.map((message) => ({ connection, message }));
   }
 
   async leave(connection, reason = 'peer_left') {
@@ -422,6 +515,7 @@ export class DistributedSignalingRoomStore {
     this.membership.delete(connection);
     this.connections.delete(membership.peerId);
     await this.#ready();
+    await this.#runCommand('del', this.mailboxKey(membership.peerId));
     const result = parseResult(await this.#runCommand('eval',
       LEAVE_ROOM_SCRIPT,
       [this.roomKey(membership.roomCode)],
@@ -455,6 +549,7 @@ export class DistributedSignalingRoomStore {
     this._closed = true;
     this.membership.clear();
     this.connections.clear();
+    this._drains.clear();
     try { await this.subscriber.unsubscribe(this.channel); } catch (_) { /* already offline */ }
     this.subscriber.disconnect();
   }

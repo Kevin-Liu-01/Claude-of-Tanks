@@ -301,7 +301,14 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `16 cm hollow: chassis does not snap down in one tick (${(before - ent.state.pos.y).toFixed(3)} m)`);
   assert(ent.state.pos.y - ent.state._sup.y > 0.10,
     `16 cm hollow: track droop absorbs the first hit (${(ent.state.pos.y - ent.state._sup.y).toFixed(3)} m)`);
-  run(ent, field, 300);
+  let previousY = ent.state.pos.y;
+  let reboundM = 0;
+  run(ent, field, 300, () => {
+    reboundM = Math.max(reboundM, ent.state.pos.y - previousY);
+    previousY = ent.state.pos.y;
+  });
+  assert(reboundM < 0.003,
+    `16 cm hollow: critically damped chassis rebound stays sub-3 mm (${reboundM.toFixed(4)} m)`);
   near(ent.state.pos.y, ent.state._sup.y, 0.01, '16 cm hollow: sprung mass settles onto support');
 }
 {
@@ -319,7 +326,14 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `14 cm crest: suspension compresses first (${(ent.state._sup.y - ent.state.pos.y).toFixed(3)} m)`);
   assert(ent.state.pos.y >= ent.state._sup.floorY - 1e-9,
     '14 cm crest: compression stop remains collision-safe');
-  run(ent, field, 300);
+  let previousY = ent.state.pos.y;
+  let reboundM = 0;
+  run(ent, field, 300, () => {
+    reboundM = Math.max(reboundM, previousY - ent.state.pos.y);
+    previousY = ent.state.pos.y;
+  });
+  assert(reboundM < 0.003,
+    `14 cm crest: critically damped chassis rebound stays sub-3 mm (${reboundM.toFixed(4)} m)`);
   near(ent.state.pos.y, ent.state._sup.y, 0.01, '14 cm crest: sprung mass settles onto support');
 }
 

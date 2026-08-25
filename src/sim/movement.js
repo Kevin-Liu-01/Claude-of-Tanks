@@ -256,11 +256,11 @@ const SUPPORT_MARGIN_ATT_RAD = 35 * (Math.PI / 180);
 // 0.20 m, so the limits below keep the chassis inside the visual suspension
 // envelope while giving it enough inertia to round crests instead of snapping.
 const RIDE_OMEGA = 2 * Math.PI * 1.8; // 1.8 Hz sprung-mass heave
-const RIDE_ZETA = 0.84;               // quick settle, one restrained rebound
+const RIDE_ZETA = 1.0;                // critical damping: no chassis heave rebound
 const RIDE_COMPRESSION_M = 0.20;      // track/wheel up-travel over a local crest
 const RIDE_DROOP_M = 0.18;            // max chassis separation from support plane
-const RIDE_GROUND_V_TAU = 0.09;       // smooth noisy max-contact handoffs
-const RIDE_SUPPORT_V_CAP = 12;         // m/s; rejects pathological height steps
+const RIDE_GROUND_V_TAU = 0.09;       // smooth terrain-following launch velocity
+const RIDE_SUPPORT_V_CAP = 12;         // m/s; bounds extreme launch ramps
 // Contact is released once the terrain falls beyond full track droop. The old
 // solver clamped the root to `support + droop` forever, effectively applying
 // an unbounded downward constraint across cliffs. Free flight preserves the

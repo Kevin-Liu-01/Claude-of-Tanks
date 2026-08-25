@@ -40,6 +40,7 @@ export class RoomSignalingClient {
     WebSocketImpl = null,
     connectTimeoutMs = 5000,
     requestTimeoutMs = 30000,
+    eventPollIntervalMs = 500,
   } = {}) {
     if (!url) throw new TypeError('signaling URL is required');
     if (!/^wss?:\/\//i.test(url)) throw new TypeError('signaling URL must use ws or wss');
@@ -50,6 +51,10 @@ export class RoomSignalingClient {
     this.WebSocketImpl = websocketConstructor(WebSocketImpl);
     this.connectTimeoutMs = connectTimeoutMs;
     this.requestTimeoutMs = requestTimeoutMs;
+    if (!Number.isFinite(eventPollIntervalMs) || eventPollIntervalMs < 10) {
+      throw new TypeError('signaling event poll interval must be at least 10 ms');
+    }
+    this.eventPollIntervalMs = eventPollIntervalMs;
     this.socket = null;
     this.requestSeq = 0;
     this.pending = new Map();
@@ -59,6 +64,7 @@ export class RoomSignalingClient {
     this.roomCode = null;
     this.peerId = null;
     this._connectPromise = null;
+    this._pollTimer = null;
   }
 
   connect() {
@@ -193,6 +199,29 @@ export class RoomSignalingClient {
       pending.reject(new Error(reason));
     }
     this.pending.clear();
+    if (this._pollTimer) clearInterval(this._pollTimer);
+    this._pollTimer = null;
+  }
+
+  #startEventPolling() {
+    if (this._pollTimer || !this.roomCode || !this.peerId) return;
+    this._pollTimer = setInterval(() => {
+      if (this.state !== 'open' || !this.roomCode || !this.peerId) return;
+      try { this.#send({ type: 'room_poll', payload: { roomCode: this.roomCode } }); }
+      catch (_) { /* socket close handling owns recovery */ }
+    }, this.eventPollIntervalMs);
+    if (typeof this._pollTimer.unref === 'function') this._pollTimer.unref();
+  }
+
+  setEventPollInterval(intervalMs) {
+    if (!Number.isFinite(intervalMs) || intervalMs < 10) {
+      throw new TypeError('signaling event poll interval must be at least 10 ms');
+    }
+    this.eventPollIntervalMs = intervalMs;
+    if (!this._pollTimer) return;
+    clearInterval(this._pollTimer);
+    this._pollTimer = null;
+    this.#startEventPolling();
   }
 
   async createRoom({ player, maxPlayers = 14, mode = 'private' } = {}) {
@@ -206,6 +235,7 @@ export class RoomSignalingClient {
     if (code.length !== 6 || !result.peerId) throw new Error('invalid room_create response');
     this.roomCode = code;
     this.peerId = String(result.peerId);
+    this.#startEventPolling();
     return { ...result, roomCode: code, peerId: this.peerId };
   }
 
@@ -220,6 +250,7 @@ export class RoomSignalingClient {
     if (!result || !result.peerId || !result.hostId) throw new Error('invalid room_join response');
     this.roomCode = code;
     this.peerId = String(result.peerId);
+    this.#startEventPolling();
     return { ...result, roomCode: code, peerId: this.peerId };
   }
 
