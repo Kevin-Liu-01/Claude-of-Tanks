@@ -868,6 +868,11 @@ export function createLighting(scene, camera, sunDir) {
   // staleness optimization can never hold a teleported vehicle out of the
   // far maps for even one presented frame.
   let forceFrames = 0;
+  // A covered battle-entry warm can render the exact current cascade maps in
+  // separate offscreen frames. The following default-framebuffer render must
+  // consume those maps once instead of immediately redrawing all four in one
+  // task; normal live scheduling resumes on the next frame.
+  let preservePrimedFrame = false;
 
   /** Mark every rate-capped cascade for re-render on the next frame. */
   function forceRateCappedCascades() {
@@ -929,6 +934,22 @@ export function createLighting(scene, camera, sunDir) {
     },
 
     /**
+     * Reuse freshly rendered cascade maps for exactly one normal frame. The
+     * caller must have rendered every cascade from the same camera/scene pose
+     * while its transition remained opaque.
+     */
+    preservePrimedCascadesForNextFrame() {
+      preservePrimedFrame = true;
+      forceFrames = 0;
+      shadowScheduler.reset();
+      lastScheduledMask = 0;
+      for (const light of csm.lights) {
+        light.shadow.autoUpdate = false;
+        light.shadow.needsUpdate = false;
+      }
+    },
+
+    /**
      * Register a material for cascaded shadows, then (optionally) chain a
      * custom `onBeforeCompile` shader-injection hook AFTER the CSM hook —
      * the required wrap pattern from graphics-aaa.md §3, since
@@ -971,6 +992,20 @@ export function createLighting(scene, camera, sunDir) {
      * @returns {void}
      */
     update(force = false, dt = 1 / 60) {
+      // Keep both matrices and depth maps bit-for-bit aligned with the
+      // covered warm pose for the first full post frame. A forced capture or
+      // pending quality resize invalidates the receipt and takes precedence.
+      if (preservePrimedFrame && !force && !pendingShadowMask) {
+        preservePrimedFrame = false;
+        lastScheduledMask = 0;
+        for (const light of csm.lights) {
+          light.shadow.autoUpdate = false;
+          light.shadow.needsUpdate = false;
+        }
+        applyFarCascadeDormancy();
+        return;
+      }
+      preservePrimedFrame = false;
       let transitionCascade = -1;
       if (pendingShadowMask) {
         for (let offset = 0; offset < csm.lights.length; offset++) {

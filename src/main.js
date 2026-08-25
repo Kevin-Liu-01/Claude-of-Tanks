@@ -717,6 +717,7 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
     visualMark = performance.now();
     await stageBattleVisualReveal(next.ent, yieldForBudget);
     visualTiming.uploadMs = Math.round(performance.now() - visualMark);
+    visualTiming.compileMs = next.ent.visual?.root?.userData.loadCompileMs || 0;
     visualTiming.totalMs = Math.round(performance.now() - visualTiming.startedAt);
     built++;
     if (onProgress) onProgress(built / Math.max(1, total));
@@ -724,10 +725,11 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
   }
 }
 
-/** Separate visual construction, texture upload, and reveal into bounded
- * tasks. Shader submission stays on the real render path; compileAsync was
- * tested here and made the transition materially worse on ANGLE because its
- * initial traversal became another large atomic task. */
+/** Separate visual construction, texture upload, shader submission, and
+ * reveal into bounded tasks. compileAsync was tested here and made the
+ * transition materially worse on ANGLE because its completion polling became
+ * another large atomic task; synchronous compile only submits work, then the
+ * remaining roster gives the driver time to link it. */
 async function stageBattleVisualReveal(ent, yieldForBudget) {
   const visual = ent?.visual;
   const root = visual?.root;
@@ -758,6 +760,9 @@ async function stageBattleVisualReveal(ent, yieldForBudget) {
   (parent || scene).add(root);
   if (ent.state && visual.syncFromState) visual.syncFromState(ent.state);
   visual.setVisible?.(true);
+  const compileAt = performance.now();
+  try { renderer.compile(root, camera, scene); } catch (_) { /* first render fallback */ }
+  root.userData.loadCompileMs = Math.round(performance.now() - compileAt);
   await yieldForBudget(true);
 }
 
@@ -2841,6 +2846,15 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   ]);
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   bltStage('world');
+  // Submit the world's forward programs as soon as its graph exists. The
+  // roster still has substantial independent construction ahead, giving
+  // ANGLE real linker time instead of discovering the entire battlefield two
+  // frames before the first deployment render.
+  battleLoad.progress(0.555, 'Submitting battlefield shaders');
+  const worldProgramSubmitAt = performance.now();
+  try { renderer.compile(world.group, camera, scene); } catch (_) { /* first render fallback */ }
+  blt.worldProgramSubmitMs = Math.round(performance.now() - worldProgramSubmitAt);
+  await nextFrame();
 
   // 2. roster: pick the participants, then bake any visual still missing one
   //    chunk-by-chunk (55 → 88%) so the bar moves through the texture bakes.
@@ -2970,12 +2984,16 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       trace.deploymentCompileMs = Math.round(performance.now() - deploymentCompileStartedAt);
       await nextFrame();
       await nextFrame();
+      battleLoad.progress(0.969, 'Priming deployment shadows');
+      trace.deploymentShadowWarm = await primeDeploymentShadowMaps(coveredYield);
+      mark('shadowMaps');
+      battleLoad.progress(0.97, 'Priming deployment view');
       await primeSoloBattleRevealFrame();
       entryRevealPrimed = true;
       battleLoadRenderingCovered = true;
       if (warmGeneration !== battleWarmGeneration) return;
       mark('openingFrame');
-      battleLoad.progress(0.97, 'Priming combat effects');
+      battleLoad.progress(0.975, 'Priming combat effects');
       await fx.preloadTextures?.();
       await warmCombatOpeningPipelineChunked(18, coveredYield);
       mark('combatOpeningWarm');
@@ -6452,14 +6470,18 @@ function* warmCombatOpeningPipelineSteps() {
         const before = (renderer.info.programs || []).length;
         renderer.compile(fx.group, camera, scene);
         const programs = renderer.info.programs || [];
-        for (let i = before; i < programs.length; i++) {
-          try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
-          yield;
-        }
         effectDetail.forwardPrograms = {
           added: Math.max(0, programs.length - before),
           wallMs: Math.round(performance.now() - forwardAt),
         };
+        // Do not force WebGLProgram.getUniforms() here. On ANGLE/Metal that
+        // read is a shader-completion query and cold battle profiles charge
+        // its entire 400-900 ms wait to one "Priming combat effects" frame.
+        // Submit the exact same programs, give the parallel linker two
+        // painted loader frames, then bind them through the real isolated
+        // render below. Visual output and first-use coverage stay identical.
+        yield;
+        yield;
         const warmRenderAt = performance.now();
         warmRenderIsolated(fx.group);
         effectDetail.warmRender = Math.round(performance.now() - warmRenderAt);
@@ -6720,6 +6742,58 @@ function* warmShadowProgramSteps() {
 // during the live countdown when a first-use compile blocked the next rAF,
 // producing a one-off black screen with the world in the lower-left corner.
 const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
+
+/**
+ * Render the exact deployment CSM maps one cascade per covered frame. The
+ * first full battlefield frame then reuses those maps, so CSM depth, the main
+ * scene and the post chain never collapse into one long transition task.
+ * Shadow count, resolution, camera fit, and live refresh cadence are unchanged.
+ */
+async function primeDeploymentShadowMaps(yieldForBudget) {
+  const lights = lighting?.csm?.lights || [];
+  if (!lights.length) return { cascades: 0, totalMs: 0, maxMs: 0 };
+  const prior = lights.map((light) => ({
+    shadow: light.shadow,
+    autoUpdate: light.shadow.autoUpdate,
+    needsUpdate: light.shadow.needsUpdate,
+  }));
+  const startedAt = performance.now();
+  const cascadeMs = [];
+  let primed = false;
+  try {
+    camera.updateMatrixWorld(true);
+    lighting.updateFov();
+    lastFov = camera.fov;
+    lighting.update(true, SIM_DT);
+    for (const light of lights) {
+      light.shadow.autoUpdate = false;
+      light.shadow.needsUpdate = false;
+    }
+    for (const light of lights) {
+      light.shadow.needsUpdate = true;
+      const cascadeAt = performance.now();
+      warmRender();
+      cascadeMs.push(Math.round(performance.now() - cascadeAt));
+      light.shadow.needsUpdate = false;
+      if (yieldForBudget) await yieldForBudget(true);
+    }
+    lighting.preservePrimedCascadesForNextFrame();
+    primed = true;
+  } finally {
+    if (!primed) {
+      for (const state of prior) {
+        state.shadow.autoUpdate = state.autoUpdate;
+        state.shadow.needsUpdate = state.needsUpdate;
+      }
+    }
+  }
+  return {
+    cascades: cascadeMs.length,
+    cascadeMs,
+    maxMs: cascadeMs.length ? Math.max(...cascadeMs) : 0,
+    totalMs: Math.round(performance.now() - startedAt),
+  };
+}
 
 function warmRenderIsolated(root) {
   const hidden = [];

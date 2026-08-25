@@ -112,6 +112,34 @@ assert.doesNotMatch(pedestalWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\
   'cold garage switches must not force ANGLE program-completion queries');
 assert.match(pedestalWarmBody, /renderer\.compile\(vis\.root, camera, scene\)/,
   'cold garage switches still submit their exact shader programs before reveal');
+const openingWarmBody = mainSource.slice(
+  mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),
+  mainSource.indexOf('function* warmCombatRarePipelineSteps('),
+);
+const openingWarmCode = openingWarmBody.replace(/\/\/.*$/gm, '');
+assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(/,
+  'opening combat warm must not force ANGLE program-completion queries');
+assert.match(openingWarmBody, /renderer\.compile\(fx\.group, camera, scene\)/,
+  'opening combat warm must still submit the exact FX programs');
+assert.match(openingWarmBody, /warmRenderIsolated\(fx\.group\)/,
+  'opening combat warm must still bind FX through a real offscreen render');
+const worldSubmitAt = mainSource.indexOf("battleLoad.progress(0.555, 'Submitting battlefield shaders')");
+const rosterAssemblyAt = mainSource.indexOf("battleLoad.progress(0.56, 'Assembling rosters')", worldSubmitAt);
+assert.ok(worldSubmitAt >= 0 &&
+  mainSource.indexOf('renderer.compile(world.group, camera, scene)', worldSubmitAt) < rosterAssemblyAt,
+  'battlefield shaders must be submitted before roster construction can overlap driver linking');
+const stageRevealBody = mainSource.slice(
+  mainSource.indexOf('async function stageBattleVisualReveal('),
+  mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),
+);
+assert.match(stageRevealBody, /renderer\.compile\(root, camera, scene\)[\s\S]{0,180}await yieldForBudget\(true\)/,
+  'each streamed vehicle must submit its shaders before yielding to later roster construction');
+assert.match(mainSource,
+  /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,180}primeSoloBattleRevealFrame\(\)/,
+  'solo entry must split cascade warming before the first full deployment frame');
+assert.match(mainSource,
+  /async function primeDeploymentShadowMaps[\s\S]{0,6000}preservePrimedCascadesForNextFrame\(\)/,
+  'covered cascade slices must hand their exact maps to the first full frame');
 assert.match(mainSource,
   /const plannedMapId = specId && mapId[\s\S]*resolveBattleIntentMap\(specId, mapId\)[\s\S]*prefetchWorld\(plannedMapId(?:,[^;]*)?\)/,
   'explicit Battle intent must turn the default Random card into a prefetchable concrete world');
