@@ -47,6 +47,22 @@ const receipt = turret.userData.leopard2A6UAProtectionReceipt;
 assert.ok(receipt, 'UA model publishes a protection/equipment receipt');
 assert.equal(receipt.totalTiles, 144);
 assert.equal(receipt.remoteStationCount, 2, 'two distinct roof RWS towers are authored');
+assert.equal(receipt.remoteStations.length, 2);
+for (const station of receipt.remoteStations) {
+  assert.equal(station.seatPenetrationM, 0.012,
+    'each RWS pedestal is keyed 12 mm into the actual turret roof');
+  assert.ok(station.baseBottomY < station.roofMinY,
+    'each RWS pedestal reaches below the lowest armor in its footprint');
+  assert.ok(station.baseTopY > station.roofMaxY,
+    'each RWS pedestal bridges above the highest armor in its footprint');
+  assert.ok(Math.abs(station.roofMinY - station.baseBottomY - 0.012) < 1e-9,
+    'RWS low-edge overlap remains tightly controlled');
+  assert.ok(Math.abs(station.baseTopY - station.roofMaxY - 0.030) < 1e-9,
+    'RWS adapter exposes only a compact cap above the high roof edge');
+}
+const forwardStation = receipt.remoteStations.find((station) => !station.heavy);
+assert.ok(forwardStation.z > -0.80,
+  'the lighter RWS is brought forward onto the main turret roof');
 assert.equal(receipt.equipmentIsNonArmor, true);
 assert.equal(receipt.staticMergedProtection, true,
   'protection kit is static merged geometry with no per-frame work');
@@ -81,6 +97,22 @@ assert.equal(eraMeshes.length, 2, 'hull and turret ERA use two shared draw bucke
 const equipment = tank.root.getObjectByName('turretEquipment');
 assert.equal(equipment?.userData.combatHitboxRole, 'equipment',
   'RWS receiver bodies cannot inflate the armor hitbox');
+assert.equal(turret.getObjectByName('turretEquipment'), equipment,
+  'both RWS towers remain children of the rotating turret rig');
+const equipmentPositions = equipment.geometry.getAttribute('position');
+for (const station of receipt.remoteStations) {
+  let baseVertexCount = 0;
+  for (let index = 0; index < equipmentPositions.count; index++) {
+    const dx = equipmentPositions.getX(index) - station.x;
+    const dz = equipmentPositions.getZ(index) - station.z;
+    if (Math.hypot(dx, dz) <= 0.25
+        && Math.abs(equipmentPositions.getY(index) - station.baseBottomY) < 1e-6) {
+      baseVertexCount++;
+    }
+  }
+  assert.ok(baseVertexCount >= 8,
+    'merged RWS geometry retains the authored roof-contact ring');
+}
 
 for (const owner of ['hull', 'turret', 'gun']) {
   for (const layer of ['net', 'light', 'dark']) {
@@ -94,6 +126,8 @@ for (const owner of ['hull', 'turret', 'gun']) {
 const ghillie = GHILLIE_SUIT_CONFIGS[id].turret;
 assert.equal(ghillie.top.length, 4,
   'turret ghillie is split across bustle, main roof and both crown cheeks');
+assert.equal(ghillie.top[0].holes.length, 1,
+  'the obsolete aft cutout is closed after moving the lighter RWS forward');
 for (const panel of ghillie.top) {
   assert.ok(panel.seatGapM <= 0.026,
     `${panel.seat} net carrier stays within 26 mm of its authored roof surface`);

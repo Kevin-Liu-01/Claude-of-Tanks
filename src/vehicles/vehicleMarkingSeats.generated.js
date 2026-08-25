@@ -6619,28 +6619,6 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -0.154,
-          1.1136,
-          -0.6291143
-        ],
-        "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "leo2a6_ua",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
-        "pos": [
           0.9021321,
           0.7925773,
           -1.2705714
@@ -6657,6 +6635,28 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
         "maximumSurfaceErrorM": 0.0804266
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -0.426,
+          1.1136,
+          -0.6291143
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "leo2a6_ua",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.3119488
       }
     ]
   },

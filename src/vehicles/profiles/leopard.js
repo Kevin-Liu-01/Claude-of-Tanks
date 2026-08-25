@@ -12278,31 +12278,56 @@ function buildLeopard2A6UA(P) {
     P.add('turretDetail', box(0.28, 0.032, 0.032), side * 1.42, 0.91, 0.62);
   }
 
-  const addRemoteStation = ({ x, z, heavy, seed }) => {
+  const addRemoteStation = ({ x, z, roofMinY, roofMaxY, heavy, seed }) => {
     const receiverW = heavy ? 0.48 : 0.40;
     const barrelR = heavy ? 0.040 : 0.032;
     const barrelLen = heavy ? 1.22 : 1.05;
-    P.addEquipment('turret', cylY(0.22, 0.24, 0.08, P.q ? 20 : 12), x, 0.95, z);
-    P.addEquipment('turret', box(0.16, 0.26, 0.16), x, 1.10, z);
-    P.addEquipment('turret', box(receiverW, 0.26, 0.54), x, 1.32, z + 0.10);
-    P.addEquipment('turret', box(receiverW + 0.08, 0.05, 0.62), x, 1.475, z + 0.10);
+    const seatPenetrationM = 0.012;
+    const capRevealM = 0.030;
+    const baseBottomY = roofMinY - seatPenetrationM;
+    const baseTopY = roofMaxY + capRevealM;
+    const baseHeight = baseTopY - baseBottomY;
+    const baseCenterY = baseBottomY + baseHeight * 0.5;
+    const yShiftM = baseTopY - 0.99;
+    const seatedY = (y) => y + yShiftM;
+    P.addEquipment('turret', cylY(0.22, 0.24, baseHeight, P.q ? 20 : 12),
+      x, baseCenterY, z);
+    P.addEquipment('turret', box(0.16, 0.26, 0.16), x, seatedY(1.10), z);
+    P.addEquipment('turret', box(receiverW, 0.26, 0.54), x, seatedY(1.32), z + 0.10);
+    P.addEquipment('turret', box(receiverW + 0.08, 0.05, 0.62),
+      x, seatedY(1.475), z + 0.10);
     P.addEquipment('turretDark', cylZ(barrelR, barrelLen, P.q ? 16 : 10),
-      x, 1.34, z + 0.38 + barrelLen / 2);
+      x, seatedY(1.34), z + 0.38 + barrelLen / 2);
     P.addEquipment('turretDark', torus(barrelR * 1.45, barrelR * 0.32, 14, 6),
-      x, 1.34, z + 0.38 + barrelLen);
-    P.addEquipment('turretDark', box(0.18, 0.22, 0.30), x - (heavy ? 0.31 : -0.28), 1.29, z + 0.06);
-    P.addEquipment('turret', box(0.20, 0.28, 0.22), x + (heavy ? 0.31 : -0.29), 1.30, z - 0.02);
+      x, seatedY(1.34), z + 0.38 + barrelLen);
+    P.addEquipment('turretDark', box(0.18, 0.22, 0.30),
+      x - (heavy ? 0.31 : -0.28), seatedY(1.29), z + 0.06);
+    P.addEquipment('turret', box(0.20, 0.28, 0.22),
+      x + (heavy ? 0.31 : -0.29), seatedY(1.30), z - 0.02);
     P.addEquipment('turretGlass', box(0.10, 0.10, 0.018),
-      x + (heavy ? 0.31 : -0.29), 1.34, z + 0.10);
+      x + (heavy ? 0.31 : -0.29), seatedY(1.34), z + 0.10);
     for (const side of [-1, 1]) {
       P.addEquipment('turretDark', box(0.035, 0.28, 0.40),
-        x + side * (receiverW / 2 + 0.025), 1.28, z + 0.08, 0, 0, side * 0.08);
+        x + side * (receiverW / 2 + 0.025), seatedY(1.28), z + 0.08,
+        0, 0, side * 0.08);
     }
-    return { x, z, heavy, seed, barrelLen };
+    return Object.freeze({
+      x, z, heavy, seed, barrelLen, roofMinY, roofMaxY,
+      baseBottomY, baseTopY, seatPenetrationM, capRevealM, yShiftM,
+    });
   };
   const remoteStations = [
-    addRemoteStation({ x: -0.82, z: -1.76, heavy: true, seed: 2601 }),
-    addRemoteStation({ x: 0.73, z: -1.55, heavy: false, seed: 2602 }),
+    // Each min/max pair brackets the authored armor under the full pedestal,
+    // not just its center. The adapter reaches 12 mm into the low edge and
+    // clears the high edge by 30 mm, closing the stepped-roof daylight gap.
+    addRemoteStation({
+      x: -0.70, z: -2.00, roofMinY: 0.640, roofMaxY: 0.778,
+      heavy: true, seed: 2601,
+    }),
+    addRemoteStation({
+      x: 0.70, z: -0.70, roofMinY: 0.780, roofMaxY: 0.855,
+      heavy: false, seed: 2602,
+    }),
   ];
 
   // Leave the Ukrainian tactical number on a backed skirt cassette. The
