@@ -11,8 +11,15 @@ if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main
 if (!main.includes("import('./fx/effects.js')")) {
   throw new Error('combat effects must retain an explicit demand-loaded chunk');
 }
+if (!/scene\.add\(live\.group\)[\s\S]{0,480}post\.attachLateFxState\(live\.group\.userData\.softParticles\)/.test(main)) {
+  throw new Error('demand-loaded FX must register with the already-live late composite pass');
+}
 if (post.includes("../fx/particles.js") || !post.includes("../fx/layers.js")) {
   throw new Error('the post stack must not pull the particle engine into the garage graph');
+}
+if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState\)/.test(post)
+  || !/setSoftState\(softState\)[\s\S]{0,260}this\.prepared = false/.test(post)) {
+  throw new Error('late composite must support explicit post-boot FX registration and re-prepare depth state');
 }
 
 const requiredGates = [

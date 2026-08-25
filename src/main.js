@@ -782,6 +782,10 @@ function ensureFxRuntime() {
     const live = createFx(engineCtx, hfProxy, { seed: 5000 });
     scene.add(live.group);
     live.bindBus(bus);
+    // createPost runs during garage boot, before this demand-loaded graph
+    // exists. Hand its late-composite activity/depth state to the existing
+    // pass now; otherwise every layer-30 effect is simulated but invisible.
+    post.attachLateFxState(live.group.userData.softParticles);
     fx = live;
     return live;
   }).catch((error) => {

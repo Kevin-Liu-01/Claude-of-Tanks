@@ -1401,6 +1401,22 @@ class LateFxPass extends Pass {
     });
     this.copyQuad = new FullScreenQuad(this.copyMaterial);
   }
+  /**
+   * Bind the demand-loaded combat FX state after the post stack already
+   * exists. Garage boot deliberately constructs this pass before importing
+   * effects.js, so constructor-time scene discovery alone cannot be the
+   * ownership seam.
+   */
+  setSoftState(softState) {
+    if (this.softState === softState) return;
+    this.softState = softState || null;
+    this.prepared = false;
+    if (this.softState) {
+      this.softState.uSoftViewport.value.set(this.target.width, this.target.height);
+      this.softState.uCameraNear.value = this.camera.near;
+      this.softState.uCameraFar.value = this.camera.far;
+    }
+  }
   setSize(width, height) {
     this.target.setSize(width, height);
     if (this.softState) this.softState.uSoftViewport.value.set(width, height);
@@ -2335,6 +2351,15 @@ export function createPost(renderer, scene, camera) {
     /** Allocate the late-FX color/depth targets behind a loading screen. */
     prepareSoftParticles() {
       lateFx.prepare(renderer);
+    },
+
+    /**
+     * Register the battle-only effects graph after its lazy chunk is created.
+     * This is explicit instead of a per-frame scene traversal, preserving the
+     * garage boot win and the render loop's allocation/work budget.
+     */
+    attachLateFxState(softState) {
+      lateFx.setSoftState(softState);
     },
 
     bloom,

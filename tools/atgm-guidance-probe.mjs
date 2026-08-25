@@ -114,6 +114,11 @@ try {
       speed: shell.vel.length(),
       aim: [p.input.aimPoint.x, p.input.aimPoint.y, p.input.aimPoint.z],
       visual: D.fx.getGuidedMissileDebug?.() || null,
+      composite: {
+        bound: D.post.lateFx.softState === D.fx.group.userData.softParticles,
+        needsSwap: D.post.lateFx.needsSwap,
+        depthCopies: D.post.lateFx.softDepthCopies,
+      },
     } : null;
   });
   if (!launched) fail('click did not launch the engaged ATGM');
@@ -122,6 +127,10 @@ try {
   }
   if (!launched.visual || launched.visual.bodies < 1 || launched.visual.trailSegments < 2) {
     fail(`ATGM is not visibly rendered with a sustained trail: ${JSON.stringify(launched.visual)}`);
+  }
+  if (!launched.composite?.bound || !launched.composite.needsSwap
+    || launched.composite.depthCopies < 1) {
+    fail(`ATGM exists but its late composite is not presenting it: ${JSON.stringify(launched.composite)}`);
   }
 
   await page.mouse.move(900, 160, { steps: 10 });
