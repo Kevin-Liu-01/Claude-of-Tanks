@@ -1943,9 +1943,11 @@ function addAbramsDroneCage(P) {
     }
   }
 
-  // Transverse roof ribs join both side frames.  The front two are split at
+  // Transverse roof ribs join both side frames.  The front rib is split at
   // x ±0.50 to preserve the gun/elevation corridor; aft ribs cross the full
   // canopy above the turret equipment.
+  const frontTieOverlap = t * 0.50;
+  const frontTieSpan = 0.50 + frontTieOverlap * 2;
   for (let k = 0; k < stations.length; k++) {
     const st = stations[k];
     if (k === 0) {
@@ -1962,6 +1964,22 @@ function addAbramsDroneCage(P) {
         -Math.atan2(dy, dz), 0, 0);
     }
   }
+
+  // The longitudinal centre rail used to end unsupported inside the split
+  // front rib.  Two slim lap-jointed ties now bridge it to the left/right
+  // rib halves.  Each tie overlaps both the centre rail and its outer rib,
+  // eliminating the visible floating prong while retaining a light cage.
+  for (const s of [-1, 1]) addCageBar(P, frontTieSpan, t * 0.76, t * 0.76,
+    s * 0.25, stations[0].roof, stations[0].z);
+  P.turretG.userData.uaM1A1CageRailReceipt = Object.freeze({
+    centerRailHalfWidthM: t * 0.76 * 0.5,
+    frontRibInnerXM: 0.50,
+    connectorSpanM: frontTieSpan,
+    connectorCenterXM: 0.25,
+    overlapM: frontTieOverlap,
+    yM: stations[0].roof,
+    zM: stations[0].z,
+  });
 
   // Tapered front shoulder screens frame the mantlet rather than crossing
   // it. Their upper rail follows the pitched first bay.

@@ -44,6 +44,21 @@ for (const id of ['m1a1', 'm1a1ha', 'ua_m1a1']) {
   assert.ok(near(receipt.cws.drumTopY,
     receipt.cws.drumCarrierTopY - 0.003),
   `${id}: hatch ring remains flush with the carrier surface`);
+
+  if (id === 'ua_m1a1') {
+    const cage = turretRig.userData.uaM1A1CageRailReceipt;
+    assert.ok(cage, `${id}: cage publishes its front centre-rail receipt`);
+    const connectorInnerX = cage.connectorCenterXM - cage.connectorSpanM * 0.5;
+    const connectorOuterX = cage.connectorCenterXM + cage.connectorSpanM * 0.5;
+    assert.ok(connectorInnerX <= -cage.centerRailHalfWidthM,
+      `${id}: each front tie overlaps the longitudinal centre rail`);
+    assert.ok(connectorOuterX >= cage.frontRibInnerXM + cage.overlapM * 0.5,
+      `${id}: each front tie overlaps its transverse outer rib`);
+    assert.ok(near(cage.yM, 1.16),
+      `${id}: front ties follow the pitched canopy height`);
+    assert.ok(near(cage.zM, 2.62),
+      `${id}: front ties terminate at the marked centre-rail end`);
+  }
 }
 
-console.log('abramsCwsRoofSeating.selftest: M1A1, HA and UA roof panels are flush');
+console.log('abramsCwsRoofSeating.selftest: M1A1, HA and UA roof panels are flush; UA cage rail is tied');
