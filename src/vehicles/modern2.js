@@ -3016,8 +3016,13 @@ function buildT14(P) {
   // 0.86..1.12 — the ref bow bottom line; orbit far edge 3.995 clears)
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.14, 0.12, 0.18), s * 0.72, 0.62, 3.78);
-    P.add('hullRubber', box(0.42, 0.26, 0.026), s * 1.51, 0.99, 4.275);         // faces 4.288 — 25 mm clear of the 4.313 col boundary (partial-pixel law)
-    P.add('hullDetail', box(0.07, 0.04, 0.14), s * 1.51, 1.14, 4.24);           // flap hangers
+    // A high outer rail and vertical hanger carry each terminal flap back to
+    // the side-skirt shoulder. The load path stays above and outboard of the
+    // idler sweep; the old 7 cm hanger simply ended in open air.
+    P.add('hull', box(0.08, 0.08, 0.58), s * 1.75, 1.50, 4.02);                // high rail into the skirt shoulder
+    P.add('hullDetail', box(0.08, 0.38, 0.12), s * 1.71, 1.31, 4.22);          // rail-to-flap hanger
+    P.addMudguard(`t14_front_mudguard_${s < 0 ? 'left' : 'right'}`,
+      'hullRubber', box(0.42, 0.26, 0.026), s * 1.51, 0.99, 4.275);             // faces 4.288 — clear of the idler wrap
     P.add('hullRubber', box(0.16, 0.28, 0.026), s * 1.81, 1.00, 4.25);          // LOW corner flaps to x 1.89 (ref bow corners sit under the 1.24 nose line)
   }
   {
@@ -3041,7 +3046,10 @@ function buildT14(P) {
   // z +0.11w, tip 3.40), RWS + EO stack on the bustle front (tops
   // 3.03-3.15w). The knuckle-facet architecture (r7 lineage) stays.
   const AH = 0.845;                                  // front roof crown (2.53 world)
-  const BK = 0.40;                                   // knuckle line height (2.085 world)
+  // Keep the broad belt's deck contact and plan footprint, but lower its
+  // knuckle 6 cm so the unmanned shell no longer reads as a tall crewed
+  // turret. The upper facets still terminate at the certified crown.
+  const BK = 0.34;                                   // knuckle line height (2.025 world)
   // lower belt: leans OUT (base narrower than knuckle) — R / L / front pair / rear
   // LOWER BELT (leans OUT, deck -> knuckle). Knuckle ring (print plan):
   // apex (0.06,2.22) arrow (0.80,1.77) shoulder (1.44,1.04) side rear
@@ -3183,17 +3191,41 @@ function buildT14(P) {
   // Pulling both forward faces back to that line was TRIED and measured
   // turret 76.1 (flat) with whole 77.5 -> 76.4 — the exposed crown re-phases
   // the whole row for no turret gain. Reverted; the r1 stations stand.
+  const rwsPedestalTopY = 1.055;
+  const rwsRearTierCenterY = rwsPedestalTopY + 0.13;
+  const rwsFrontTierCenterY = rwsPedestalTopY + 0.10;
   P.add('turret', box(0.78, 0.22, 1.10), -0.23, 0.945, -0.75);                  // stack pedestal (z_w -0.80..-1.90)
-  P.add('turret', box(0.74, 0.26, 0.555), -0.23, 1.285, -1.1125);               // housing rear tier (top 3.10w, spans z_w -1.435..-1.99 = ref plateau)
-  P.add('turretDark', box(0.26, 0.15, 0.26), -0.45, 1.385, -0.90);              // EO head (top 3.145w)
-  P.add('turretGlass', box(0.18, 0.09, 0.02), -0.45, 1.40, -0.76);
-  P.add('turret', box(0.60, 0.20, 0.55), -0.25, 1.24, -0.395);                  // front tier (top 3.02w, front edge z_w -0.725 clear of the -0.63 col)
-  P.add('turretGlass', box(0.16, 0.08, 0.02), -0.25, 1.28, -0.11);
+  // These two electronics tiers were hovering 85-100 mm over the pedestal.
+  // Seat their lower faces on its roof and keep them in the equipment bucket
+  // so they do not inflate the base-turret armor envelope.
+  P.addEquipment('turret', box(0.74, 0.26, 0.555), -0.23, rwsRearTierCenterY, -1.1125);
+  P.addEquipment('turretDark', box(0.26, 0.15, 0.26), -0.45, 1.285, -0.90);
+  P.add('turretGlass', box(0.18, 0.09, 0.02), -0.45, 1.30, -0.76);
+  P.addEquipment('turret', box(0.60, 0.20, 0.55), -0.25, rwsFrontTierCenterY, -0.395);
+  P.add('turretGlass', box(0.16, 0.08, 0.02), -0.25, 1.195, -0.11);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', scale: 0.78, tone: 'dark', seed: 16, elev: 0.03, ammo: true, rotation: [0, Math.PI - 0.35, 0] });
     mg.position.set(0.10, 0.94, -0.80);                                         // stowed aft-right, SUNK into a pedestal tray (PROPORTION ROUND: the
     P.turretG.add(mg);                                                          // 1.06 seat's 3.02w receiver tops owned 8 front cols vs the ref's
                                                                                 // clean 2.58-2.71 crown; §B3 census MG holds, tops now ~2.88w)
+  }
+  // Compact T-90-style remote station on the vehicle-left crown. Every
+  // component begins at the 1.035 m roof datum and remains turret equipment.
+  const leftRwsX = -0.82;
+  const leftRwsZ = -0.10;
+  P.addEquipment('turretDetail', cylY(0.15, 0.17, 0.06, 12), leftRwsX, 1.065, leftRwsZ);
+  P.addEquipment('turretDetail', cylY(0.065, 0.08, 0.16, 10), leftRwsX, 1.175, leftRwsZ);
+  P.addEquipment('turret', box(0.24, 0.22, 0.30), leftRwsX, 1.36, leftRwsZ);
+  P.add('turretDark', box(0.14, 0.09, 0.045), leftRwsX, 1.34, leftRwsZ + 0.17);
+  P.add('turretGlass', box(0.095, 0.055, 0.012), leftRwsX, 1.34, leftRwsZ + 0.195);
+  {
+    const leftRwsMg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', scale: 0.62, tone: 'dark', seed: 24,
+      elev: 0.03, ammo: true, rotation: [0, 0, 0],
+    });
+    leftRwsMg.name = 't14_left_remote_weapon';
+    leftRwsMg.position.set(leftRwsX, 1.47, leftRwsZ + 0.02);
+    P.turretG.add(leftRwsMg);
   }
   // meteo mast front-LEFT (print spike col: tip 3.37w at z_w 0.12, ONE
   // grid-centered column): base block + slim mast + crossbar vanes + tip
@@ -3206,7 +3238,21 @@ function buildT14(P) {
   P.add('turretDark', box(0.045, 0.09, 0.045), -0.70, 1.64, 0.72);              // tip sensor (3.37w)
   P.add('turretDark', box(0.04, 0.06, 0.04), -0.70, 1.32, 0.83);                // aft sensor pod (3.06w — ref's second meteo column)
   for (const s of [-1, 1]) {                                                    // Afganit AESA plates
-    P.add('turretDark', box(0.30, 0.30, 0.04), s * 0.90, BK + 0.16, 1.367, -0.1, s * 0.55, 0);
+    // Square cheek apertures: a painted boss intersects the facet, the dark
+    // socket sits behind its lip, and a smaller lens is inset into the hole.
+    const sensorYaw = s * 0.55;
+    const sensorPitch = -0.10;
+    const sensorCenter = new THREE.Vector3(s * 0.90, 0.56, 1.367);
+    const sensorNormal = new THREE.Vector3(0, 0, 1)
+      .applyEuler(new THREE.Euler(sensorPitch, sensorYaw, 0, 'XYZ'));
+    const socketCenter = sensorCenter.clone().addScaledVector(sensorNormal, -0.008);
+    const lensCenter = sensorCenter.clone().addScaledVector(sensorNormal, 0.002);
+    P.addEquipment('turret', box(0.36, 0.36, 0.055),
+      sensorCenter.x, sensorCenter.y, sensorCenter.z, sensorPitch, sensorYaw, 0);
+    P.add('turretDark', box(0.29, 0.29, 0.038),
+      socketCenter.x, socketCenter.y, socketCenter.z, sensorPitch, sensorYaw, 0);
+    P.add('turretGlass', box(0.22, 0.22, 0.012),
+      lensCenter.x, lensCenter.y, lensCenter.z, sensorPitch, sensorYaw, 0);
     P.add('turretDark', box(0.28, 0.26, 0.04), s * 1.19, BK + 0.10, -0.24, 0.1, s * 2.6, 0); // rear pair tucked to the trimmed shoulder (was 1.24 —
   }                                                                             // proud of the new belt edge at the ±1.42 plan cols)
   // vertical smoke-tube banks on the bustle flanks
@@ -3222,6 +3268,15 @@ function buildT14(P) {
   // under the ref's 3.15 center plateau, mask-interior from side/plan)
   P.add('turretDark', cylY(0.05, 0.05, 0.045, 10), 0.05, 1.0575, -0.30);
   P.add('turretDetail', cylY(0.062, 0.062, 0.014, 10), 0.05, 1.028, -0.30);     // mount collar
+  // Paired rear communications whips overlap the 0.835 m bustle roof through
+  // armored collars instead of starting in free air.
+  for (const [x, rake, seed] of [[-0.66, -0.035, 22], [0.46, 0.035, 23]]) {
+    P.addEquipment('turretDark', cylY(0.055, 0.065, 0.055, 10), x, 0.8625, -1.88);
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 0.78, r: 0.010, rake, seed });
+    antenna.name = `t14_rear_antenna_${x < 0 ? 'left' : 'right'}`;
+    antenna.position.set(x, 0.89, -1.88);
+    P.turretG.add(antenna);
+  }
   // clean 2A82 tube: thermal sleeve, NO evacuator (§16.1 key barrel read).
   // The current reference packet measures a 9.97 m overall envelope over
   // the −4.32 m tail.  Preserve the wholly authored 2A82 construction but
@@ -3268,7 +3323,11 @@ function buildT14(P) {
   // mounting bed under the rows so the seams read recessed)
   const t14GlacisZ = (y) => 2.15 + (1.665 - y) * 6.43;
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(1.44, 0.025, 1.55), s * 0.80, 1.48, 3.03, -8.8 * D2R, 0, 0);
+    // The backing sheet had the opposite pitch from the glacis, so its rear
+    // edge dove through the hull while its forward edge floated. Match the
+    // actual 8.8-degree nose plane; the tiles already use the equivalent
+    // face-normal rotation below.
+    P.add('hullDark', box(1.44, 0.025, 1.55), s * 0.80, 1.50, 3.03, 8.8 * D2R, 0, 0);
   }
   P.eraCluster('glacis_era_R', (put) => {
     for (let row = 0; row < 4; row++) for (let c = 0; c < 5; c++) {
@@ -3300,6 +3359,23 @@ function buildT14(P) {
   // phantom-column hazard) and was the single widest point on the model.
   P.decal('hull', 'number', '512', 0.30, [1.905, 1.22, 3.05], Math.PI / 2);
   P.decal('hull', 'number', '512', 0.30, [-1.905, 1.22, 3.05], -Math.PI / 2);
+  P.turretG.userData.t14RoofFidelityReceipt = {
+    lowerBeltHeightM: BK,
+    roofDatumM: 1.035,
+    mainRwsPedestalTopM: rwsPedestalTopY,
+    mainRwsRearTierBottomM: rwsRearTierCenterY - 0.13,
+    mainRwsFrontTierBottomM: rwsFrontTierCenterY - 0.10,
+    leftRemoteWeaponStation: true,
+    leftRemoteWeaponStationX: leftRwsX,
+    rearAntennaCount: 2,
+    cheekSensorRecessCount: 2,
+    cheekSensorLensCount: 2,
+  };
+  P.hullG.userData.t14HullFidelityReceipt = {
+    glacisAngleDeg: 8.8,
+    glacisBackingFacesOutward: true,
+    frontMudguardsSupported: true,
+  };
   P.topY = AH + 0.85;                                                           // sensor mast top
 }
 

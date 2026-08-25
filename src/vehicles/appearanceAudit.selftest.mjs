@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import './profiles/t14RoofFidelity.selftest.mjs';
 import {
   auditTankAppearance, normalizeTankAppearance, tagVehicleMaterial,
   VEHICLE_APPEARANCE_PALETTE,

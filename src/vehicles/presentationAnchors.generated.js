@@ -107,7 +107,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   strv122: Object.freeze({ xM: -0.0005, zM: 0.1194 }),
   strv81: Object.freeze({ xM: 0.0007, zM: 0.0003 }),
   sturmtiger: Object.freeze({ xM: 0, zM: -0.0049 }),
-  t14: Object.freeze({ xM: 0, zM: -0.0817 }),
+  t14: Object.freeze({ xM: 0, zM: -0.0762 }),
   t30: Object.freeze({ xM: 0.0007, zM: -0.008 }),
   t34_85: Object.freeze({ xM: 0, zM: -0.0312 }),
   t34_85_cad: Object.freeze({ xM: 0.0005, zM: -1.1137 }),
