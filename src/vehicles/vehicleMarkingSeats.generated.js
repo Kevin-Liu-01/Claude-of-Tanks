@@ -5091,22 +5091,22 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.3726227,
-          0.4063643,
-          0.8000901
+          -1.4932342,
+          0.2888803,
+          -0.6770924
         ],
         "quaternion": [
-          -0.0316859,
-          -0.4105802,
-          -0.0701176,
-          0.9085722
+          -0.0621567,
+          -0.7179865,
+          -0.0597939,
+          0.6906928
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava2d",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0512853
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.0030026
       }
     ]
   },
@@ -5216,31 +5216,9 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.6969981,
-          0.3913416,
-          -2.0508
-        ],
-        "quaternion": [
-          -0.0366796,
-          0.7061548,
-          0.0366796,
-          0.7061548
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "merkava4b",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0011358
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
-        "pos": [
           1.1807999,
           0.39072,
-          -2.31084
+          -2.2579873
         ],
         "quaternion": [
           0,
@@ -5254,6 +5232,28 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          1.7025481,
+          0.3380616,
+          -1.8754328
+        ],
+        "quaternion": [
+          -0.0366797,
+          0.7061546,
+          0.0366797,
+          0.706155
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "merkava4b",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.1868234
       }
     ]
   },

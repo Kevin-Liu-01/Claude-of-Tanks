@@ -9,6 +9,15 @@ const MERKAVA_IDS = [
   'merkava3c', 'merkava3d', 'merkava4b',
 ];
 
+const GLACIS_CLOSURES = Object.freeze({
+  merkava1b: [2.28, 2.91],
+  merkava2b: [1.95, 2.98],
+  merkava2d: [1.95, 3.12],
+  merkava3c: [2.15, 2.71],
+  merkava3d: [1.85, 2.83],
+  merkava4b: [2.10, 3.30],
+});
+
 const REMOVED_SURFACES = [
   { id: 'merkava3c', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.20], max: [-1.72, 0.445, 1.70] },
   { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.28], max: [-1.72, 0.300, 1.70] },
@@ -98,6 +107,24 @@ for (const id of MERKAVA_IDS) {
   assert.equal(tires.count, 12, `${id}: exactly six canonical road wheels per side`);
   assert.equal(visual.root.getObjectByName('rig_hull')?.userData.nativeRoadWheelStations, 6,
     `${id}: running-gear receipt records six road-wheel stations`);
+  const hull = visual.root.getObjectByName('rig_hull');
+  const gearReceipt = hull.userData[`${id}RunningGearReceipt`];
+  assert.equal(gearReceipt?.revision, 'terminal-course-reseat-r2',
+    `${id}: terminal-course reseat is audited`);
+  assert.ok(Math.abs(gearReceipt.idlerForwardM - 0.15) < 1e-9,
+    `${id}: idler moves forward by 15 cm`);
+  assert.ok(Math.abs(gearReceipt.idlerZM - gearReceipt.previousIdlerZM - 0.15) < 1e-9,
+    `${id}: idler receipt preserves the previous station`);
+  assert.equal(gearReceipt.trackCourseUsesIdlerEndpoint, true,
+    `${id}: live tread course uses the reseated idler endpoint`);
+
+  const closureReceipt = hull.userData[`${id}GlacisClosureReceipt`];
+  assert.equal(closureReceipt?.revision, 'upper-lower-glacis-web-r1',
+    `${id}: lower glacis cavity has a structural closure`);
+  assert.ok(Math.abs(closureReceipt.rearStationZM - GLACIS_CLOSURES[id][0]) < 1e-9);
+  assert.ok(Math.abs(closureReceipt.frontStationZM - GLACIS_CLOSURES[id][1]) < 1e-9);
+  assert.equal(closureReceipt.buriedEdgeOverlap, true,
+    `${id}: closure terminates inside adjacent armor planes`);
   assert.deepEqual(staticWheelRings(visual.root, roadWheelStations(tires)), [],
     `${id}: no static wheel cylinders remain inside the suspension-driven road wheels`);
 }
@@ -147,4 +174,4 @@ for (const mark of REMOVED_SURFACES) {
     `${mark.id}: owner-marked ${mark.mesh} patch stays removed`);
 }
 
-console.log('merkavaRunningGear.selftest: one suspended wheel course and four owner removals passed');
+console.log('merkavaRunningGear.selftest: six reseated idlers, closed glacis webs, and one wheel course passed');

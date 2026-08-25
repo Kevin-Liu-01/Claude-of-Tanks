@@ -11,9 +11,16 @@ function verifyThirdGenerationMark(id, expectedPanels) {
   const turret = visual.root.getObjectByName('rig_turret');
 
   const fit = turret.userData[`${id}SourceFitReceipt`];
+  assert.equal(fit.revision, 'outer-carrier-era-ring-r2', `${id} uses the visible ERA carrier-ring fit`);
   assert.equal(fit.roofDatumSource, 'source-oracle', `${id} uses its measured roof course`);
   assert.equal(fit.sidePanelSeats.length, expectedPanels, `${id} seats every side panel`);
   assert.equal(fit.eraSeats.length, 36, `${id} seats all turret ERA cells`);
+  assert.equal(fit.eraMountSeats.length, 36, `${id} gives every turret ERA cell a structural cradle`);
+  assert.equal(fit.eraSupportRule, 'outermost-armor-carrier',
+    `${id} cannot bury ERA below its modular armor shell`);
+  assert.equal(fit.secondaryArmorCarriesEra, true, `${id} records its modular shell as the ERA carrier`);
+  assert.equal(fit.connectionPointsPerCassette, 3,
+    `${id} gives every cassette one cradle and two edge cleats`);
   assert.equal(fit.maximumSurfaceGapM, 0, `${id} has no authored side-panel stand-off`);
 
   for (const seat of fit.sidePanelSeats) {
@@ -34,8 +41,15 @@ function verifyThirdGenerationMark(id, expectedPanels) {
     const proud = center.clone().sub(surface).dot(normal);
     assert.ok(normal.x * seat.side > 0.02, `${id} ERA normal points outward`);
     assert.ok(Math.abs(proud - (seat.cassetteDepthM / 2 - seat.contactEmbedM)) < 1e-6,
-      `${id} ERA inner face overlaps its cheek`);
+      `${id} ERA inner face overlaps its outermost carrier`);
   }
+  const secondarySeats = fit.eraSeats.filter((seat) => seat.supportLayer === 'secondary-armor');
+  assert.ok(secondarySeats.length >= Math.floor(fit.eraSeats.length * 0.80),
+    `${id} puts the visible ERA ring on top of its modular shell`);
+  assert.ok(secondarySeats.every((seat) => seat.carrierProudOfSourceM > 0.001),
+    `${id} modular-shell ERA stays measurably outside the cast turret`);
+  assert.ok(fit.eraMountSeats.every((seat) => seat.structuralOverlapM > 0 && seat.cleats === 2),
+    `${id} ERA cradles positively overlap their carrier and retain both edge cleats`);
 
   const rear = turret.userData[`${id}RearClosureReceipt`];
   assert.equal(rear.closedCrownAndFloor, true, `${id} closes the turret/bustle cavity`);

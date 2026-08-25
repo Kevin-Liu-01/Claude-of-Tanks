@@ -85030,7 +85030,7 @@
             "min": [
               -1.7,
               0.016,
-              -4.0139
+              -3.8632
             ],
             "max": [
               -1.16,
@@ -85045,7 +85045,7 @@
             "min": [
               1.16,
               0.016,
-              -4.0139
+              -3.8632
             ],
             "max": [
               1.7,
@@ -85118,8 +85118,8 @@
           }
         ]
       },
-      "geometryHash": "d24181b6",
-      "metadataHash": "8711e80e",
+      "geometryHash": "d17d7098",
+      "metadataHash": "c971f6dc",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -0.628
@@ -85212,24 +85212,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86499,
-          "sha256": "554b12fdb40b1c44d01fed1047e54e6c9e680543590f6ba772184fa49d00ff05"
+          "bytes": 85894,
+          "sha256": "53ad04694b6d3fbcbb2010bc959ab5161fee3e8523567105331d797ead46eaad"
         },
         "armorSide": {
           "file": "merkava1b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86717,
-          "sha256": "70c016b32717bc5e2ecac8c49f9f5e48abaf4678bd6b32c16bdcc52680ec8f1f"
+          "bytes": 86212,
+          "sha256": "2cf9b9fb12f5c936c6c68f808f5f21fd8fc3b6e03f81743770d2af82f42702c5"
         },
         "modulesSide": {
           "file": "merkava1b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93838,
-          "sha256": "0d09b404c8a723bff26be6a003e15d417233d2427cf1c372121b3a8188c8f602"
+          "bytes": 93390,
+          "sha256": "cc84ee02a238c3b3c73c6150f7273e3864b8b08677edf555b0fbf77f85aec107"
         },
         "markings": {
           "file": "merkava1b_markings.png",
@@ -86087,7 +86087,7 @@
             "min": [
               -1.72,
               0.016,
-              -3.6736
+              -3.5221
             ],
             "max": [
               -1.14,
@@ -86102,7 +86102,7 @@
             "min": [
               1.14,
               0.016,
-              -3.6736
+              -3.5221
             ],
             "max": [
               1.72,
@@ -86175,8 +86175,8 @@
           }
         ]
       },
-      "geometryHash": "0e18e2a0",
-      "metadataHash": "7422613f",
+      "geometryHash": "0340fe7f",
+      "metadataHash": "0c58b70b",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -0.5467
@@ -86269,24 +86269,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79915,
-          "sha256": "3be609da522f9415910ef93dafdc53486658d0640af62b027eeea6df50263429"
+          "bytes": 80296,
+          "sha256": "0ab5aee2c43e2b77b53bef211c11f8bc6a4249e6a49e9648f0c818481129e803"
         },
         "armorSide": {
           "file": "merkava2b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81672,
-          "sha256": "f58bbe25c0553512e5375c8529bf00fd00611ef029f8560ee557e9b2fa025789"
+          "bytes": 81935,
+          "sha256": "9dfe0707bd0b05fa12fa871950505b165ec8fa3ae370690e938654322bbe42cf"
         },
         "modulesSide": {
           "file": "merkava2b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90249,
-          "sha256": "a9906858e92796a0956bf7ddff880023f153394bcfa5a75808b1039ccc7e90f7"
+          "bytes": 89655,
+          "sha256": "83e6ac57aa74e93d1fc5abbfb03629a6e7f7ee2430e5b937131cf191f50a1f19"
         },
         "markings": {
           "file": "merkava2b_markings.png",
@@ -87144,7 +87144,7 @@
             "min": [
               -1.72,
               0.016,
-              -3.6736
+              -3.5221
             ],
             "max": [
               -1.14,
@@ -87159,7 +87159,7 @@
             "min": [
               1.14,
               0.016,
-              -3.6736
+              -3.5221
             ],
             "max": [
               1.72,
@@ -87232,8 +87232,8 @@
           }
         ]
       },
-      "geometryHash": "97b6f74b",
-      "metadataHash": "d3a2de17",
+      "geometryHash": "66c73511",
+      "metadataHash": "75f2c447",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.4725
@@ -87275,7 +87275,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 0.7777778,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "IL:il-star:11"
         ]
@@ -87326,24 +87326,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84969,
-          "sha256": "f3d225fd08b31379725d9b1227aa2e5778472838b8b4cb97d59dc3484f4e7203"
+          "bytes": 84868,
+          "sha256": "69f7fe2f8dd52401eea88f45be8777815f37c3a313875629e0cd6d72d29bd9f6"
         },
         "armorSide": {
           "file": "merkava2d_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85929,
-          "sha256": "e277cef0b84ae87a0c752ec2bff164c2dab996f97fb5333f898c2416e03dab35"
+          "bytes": 86048,
+          "sha256": "5a7a9e28729eab840f67229db9828dd90c3b976838438c32be61056880890a7b"
         },
         "modulesSide": {
           "file": "merkava2d_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95271,
-          "sha256": "79cd80a4fd7e6a1af071f2727091f1c56db4e56a79fb32106c29243ec5811443"
+          "bytes": 95471,
+          "sha256": "40906a730048d4a58015f8e4f30f22b693ee9c7821ec7e5ca989c50e25758c3d"
         },
         "markings": {
           "file": "merkava2d_markings.png",
@@ -88201,7 +88201,7 @@
             "min": [
               -1.72,
               0.016,
-              -3.8838
+              -3.7324
             ],
             "max": [
               -1.16,
@@ -88216,7 +88216,7 @@
             "min": [
               1.16,
               0.016,
-              -3.8838
+              -3.7324
             ],
             "max": [
               1.72,
@@ -88289,8 +88289,8 @@
           }
         ]
       },
-      "geometryHash": "29c31435",
-      "metadataHash": "133ca020",
+      "geometryHash": "da949617",
+      "metadataHash": "00bdb550",
       "presentationAnchor": {
         "xM": -0.001,
         "zM": -0.768
@@ -88384,24 +88384,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79231,
-          "sha256": "920aea5d9093e5f3fb35faa2e78b6bebc82b3da2477219381e8dd040f46802e6"
+          "bytes": 78220,
+          "sha256": "59f526adbde579c6cb5e4fb7626503227fb32840d3a367eb1028333f9cc08702"
         },
         "armorSide": {
           "file": "merkava3c_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80172,
-          "sha256": "179558f5e9fe844acde184294b6e193b520a1fe6fdf7440d4f989264504d3980"
+          "bytes": 79300,
+          "sha256": "8047b6116766508a10f046efd2fc3aeb06d2a26505302809f2d3c0d82bd76d46"
         },
         "modulesSide": {
           "file": "merkava3c_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90704,
-          "sha256": "56228cfe3da7197ba06b349c1df317722b18a0358c59397feb8ba16fc1908ab0"
+          "bytes": 89390,
+          "sha256": "798707eaee5dd1f84eb419064dff3163cd2eb3433057f5446ab8df78c6ab5305"
         },
         "markings": {
           "file": "merkava3c_markings.png",
@@ -89259,7 +89259,7 @@
             "min": [
               -1.72,
               0.016,
-              -3.9133
+              -3.7612
             ],
             "max": [
               -1.12,
@@ -89274,7 +89274,7 @@
             "min": [
               1.12,
               0.016,
-              -3.9133
+              -3.7612
             ],
             "max": [
               1.72,
@@ -89347,8 +89347,8 @@
           }
         ]
       },
-      "geometryHash": "1a2049b3",
-      "metadataHash": "e1d5f52a",
+      "geometryHash": "fd54b526",
+      "metadataHash": "2579fb02",
       "presentationAnchor": {
         "xM": -0.0018,
         "zM": -0.7475
@@ -89441,24 +89441,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78196,
-          "sha256": "8a8eb2c46626c0ec4499277ece1849bde492dc2cc57a2107b57180b466374685"
+          "bytes": 77603,
+          "sha256": "7e7ca9a05377585b91c518b91a90cbd19e948dab41eb005270d737a8e0896aef"
         },
         "armorSide": {
           "file": "merkava3d_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79911,
-          "sha256": "231354597c5a7431a145a5c664ee71c05c8d91ab0baa0b2a168857da82f5d809"
+          "bytes": 80145,
+          "sha256": "7dd8a52439387fe3a83fcbcc0409c8d182ab021147eeb31fc53aebff6a0c2e4a"
         },
         "modulesSide": {
           "file": "merkava3d_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88578,
-          "sha256": "e41def82fef62d45bd1a032c400029b87395c76a790a2138b39c14a969a91b83"
+          "bytes": 88579,
+          "sha256": "df269a5e1d303cd072081a327edcec2523176f62e3d19cbd571de933d22fc585"
         },
         "markings": {
           "file": "merkava3d_markings.png",
@@ -90977,22 +90977,22 @@
               [
                 0.2233,
                 0,
-                3.15
+                2.1141
               ],
               [
                 1.818,
                 0,
-                -0.6324
+                -1.0656
               ],
               [
                 1.818,
                 0.7215,
-                -1.6253
+                -1.9003
               ],
               [
                 0.2233,
                 0.7215,
-                2.1571
+                1.2794
               ]
             ]
           },
@@ -91008,22 +91008,22 @@
               [
                 -1.818,
                 0,
-                -0.6324
+                -1.0656
               ],
               [
                 -0.2233,
                 0,
-                3.15
+                2.1141
               ],
               [
                 -0.2233,
                 0.7215,
-                2.1571
+                1.2794
               ],
               [
                 -1.818,
                 0.7215,
-                -1.6253
+                -1.9003
               ]
             ]
           },
@@ -91039,22 +91039,22 @@
               [
                 -0.2552,
                 0.074,
-                2.9136
+                1.9154
               ],
               [
                 0.2552,
                 0.074,
-                2.9136
+                1.9154
               ],
               [
                 0.2552,
                 0.4625,
-                2.7245
+                1.7564
               ],
               [
                 -0.2552,
                 0.4625,
-                2.7245
+                1.7564
               ]
             ]
           },
@@ -91070,22 +91070,22 @@
               [
                 1.7861,
                 0.0462,
-                -0.1596
+                -0.6681
               ],
               [
                 1.7861,
                 0.0462,
-                -2.76
+                -2.8542
               ],
               [
                 1.7861,
                 0.5088,
-                -2.76
+                -2.8542
               ],
               [
                 1.7861,
                 0.5088,
-                -0.1596
+                -0.6681
               ]
             ]
           },
@@ -91101,22 +91101,22 @@
               [
                 -1.7861,
                 0.0462,
-                -2.76
+                -2.8542
               ],
               [
                 -1.7861,
                 0.0462,
-                -0.1596
+                -0.6681
               ],
               [
                 -1.7861,
                 0.5088,
-                -0.1596
+                -0.6681
               ],
               [
                 -1.7861,
                 0.5088,
-                -2.76
+                -2.8542
               ]
             ]
           },
@@ -91132,22 +91132,22 @@
               [
                 1.5947,
                 0,
-                0.5496
+                -0.0719
               ],
               [
                 1.5947,
                 0,
-                -3.1146
+                -3.1523
               ],
               [
                 1.3555,
                 0.7215,
-                -3.1146
+                -3.1523
               ],
               [
                 1.3555,
                 0.7215,
-                0.5496
+                -0.0719
               ]
             ]
           },
@@ -91163,22 +91163,22 @@
               [
                 -1.5947,
                 0,
-                -3.1146
+                -3.1523
               ],
               [
                 -1.5947,
                 0,
-                0.5496
+                -0.0719
               ],
               [
                 -1.3555,
                 0.7215,
-                0.5496
+                -0.0719
               ],
               [
                 -1.3555,
                 0.7215,
-                -3.1146
+                -3.1523
               ]
             ]
           },
@@ -91225,22 +91225,22 @@
               [
                 -1.5947,
                 0.74,
-                2.2044
+                1.3192
               ],
               [
                 1.5947,
                 0.74,
-                2.2044
+                1.3192
               ],
               [
                 1.5947,
                 0.74,
-                -3.2328
+                -3.2516
               ],
               [
                 -1.5947,
                 0.74,
-                -3.2328
+                -3.2516
               ]
             ]
           },
@@ -91407,12 +91407,12 @@
             "min": [
               -0.2871,
               0.0925,
-              -0.8688
+              -1.2643
             ],
             "max": [
               0.2871,
               0.555,
-              1.7316
+              0.9217
             ],
             "turretLocal": true
           },
@@ -91497,12 +91497,12 @@
             "min": [
               0.4784,
               0.0925,
-              -2.76
+              -2.8542
             ],
             "max": [
               1.2758,
               0.5088,
-              -1.578
+              -1.8605
             ],
             "turretLocal": true
           },
@@ -91512,12 +91512,12 @@
             "min": [
               0,
               0.555,
-              -0.396
+              -0.8669
             ],
             "max": [
               0.7974,
               0.8787,
-              0.786
+              0.1268
             ],
             "turretLocal": true
           },
@@ -91527,7 +91527,7 @@
             "min": [
               -1.73,
               0.016,
-              -3.6314
+              -3.4807
             ],
             "max": [
               -1.1871,
@@ -91542,7 +91542,7 @@
             "min": [
               1.1871,
               0.016,
-              -3.6314
+              -3.4807
             ],
             "max": [
               1.73,
@@ -91574,12 +91574,12 @@
             "min": [
               0.3987,
               0,
-              -0.1596
+              -0.6681
             ],
             "max": [
               1.2758,
               0.629,
-              1.377
+              0.6236
             ],
             "turretLocal": true
           },
@@ -91589,12 +91589,12 @@
             "min": [
               0.3987,
               0.0462,
-              -2.169
+              -2.3573
             ],
             "max": [
               1.3555,
               0.6937,
-              -0.396
+              -0.8669
             ],
             "turretLocal": true
           },
@@ -91604,19 +91604,19 @@
             "min": [
               -1.3555,
               0,
-              -1.3416
+              -1.6618
             ],
             "max": [
               -0.3987,
               0.666,
-              0.786
+              0.1268
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "7c933121",
-      "metadataHash": "55de2381",
+      "geometryHash": "247285f1",
+      "metadataHash": "540ce3eb",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.3181
@@ -91658,7 +91658,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 1,
+        "minimumVisibilityRatio": 0.8888889,
         "codes": [
           "IL:il-star:11"
         ]
@@ -91709,24 +91709,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93445,
-          "sha256": "0a8ef5c854318d69fc2c08730c2853a82c639900a746258f9da9639bd3e24ce6"
+          "bytes": 94699,
+          "sha256": "e061cf012e7149baeb02bbf06f4d0b5c824974f446fd0632b7adaa4580dee5c5"
         },
         "armorSide": {
           "file": "merkava4b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93629,
-          "sha256": "43eaafedcc72b521bceacb15f1633a607c4749965e66cfee06d65e2f93f72cdc"
+          "bytes": 94518,
+          "sha256": "a35c23eb9ab0de87289e88c72a62576827bc66fb888754b951965dc9caafbb81"
         },
         "modulesSide": {
           "file": "merkava4b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 100067,
-          "sha256": "451248e80b5a7ddfa53ab70a713a85e6a8a84918d1018ab5e83e664522fbf93c"
+          "bytes": 101867,
+          "sha256": "59b6c74e231cc717ff1ea233ef1e1bb3cc37263e81764a130f57e6493afe6a60"
         },
         "markings": {
           "file": "merkava4b_markings.png",

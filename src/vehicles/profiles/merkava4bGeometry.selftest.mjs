@@ -189,18 +189,20 @@ assert.ok(near(chassisReceipt.rearExitDoorPlaneZ, -3.20));
 assert.ok(near(chassisReceipt.rearExitClearanceM, 0.25),
   'lower hull terminates 25 cm forward of the clamshell-door plane');
 assert.ok(near(chassisReceipt.trackRearShiftM, 0.20),
-  'road wheels, return rollers, idlers, and track course move 20 cm rearward');
+  'road wheels and return rollers retain their 20 cm rearward cadence shift');
 assert.ok(near(chassisReceipt.sprocketZ, 2.90), 'front sprocket keeps its original station');
 assert.ok(near(chassisReceipt.sprocketY, 0.896875), 'front sprocket rises 20 cm');
 assert.ok(near(chassisReceipt.previousSprocketY, 0.696875));
 assert.ok(near(chassisReceipt.sprocketRaiseM, 0.20));
-assert.ok(near(chassisReceipt.idlerZ, -3.25), 'rear idler follows the shifted course');
+assert.ok(near(chassisReceipt.previousIdlerZ, -3.25));
+assert.ok(near(chassisReceipt.idlerZ, -3.10), 'rear idler moves 15 cm forward');
+assert.ok(near(chassisReceipt.idlerForwardM, 0.15));
 
 const glacisClosureReceipt = hull?.userData.merkava4bGlacisClosureReceipt;
 assert.ok(glacisClosureReceipt, 'Merkava 4B closes the upper/lower glacis cavity');
 assert.equal(glacisClosureReceipt.revision, 'upper-lower-glacis-web-r1');
-assert.ok(near(glacisClosureReceipt.rearStationZM, 2.94));
-assert.ok(near(glacisClosureReceipt.frontStationZM, 3.28));
+assert.ok(near(glacisClosureReceipt.rearStationZM, 2.10));
+assert.ok(near(glacisClosureReceipt.frontStationZM, 3.30));
 assert.equal(glacisClosureReceipt.buriedEdgeOverlap, true);
 
 const tireLayer = tank.root.getObjectByName('gearRoadWheelTires');
@@ -225,8 +227,8 @@ hull.traverse((object) => {
   }
 });
 assert.deepEqual([...new Map(endWheelCenters.map(center => [center.join(':'), center])).values()]
-  .sort((a, b) => b[1] - a[1]), [[0.896875, 2.9], [0.845625, -3.25]],
-  'front sprocket rises without moving fore/aft while the rear idler remains unchanged');
+  .sort((a, b) => b[1] - a[1]), [[0.896875, 2.9], [0.845625, -3.1]],
+  'front sprocket keeps its station while the rear idler moves forward inside the track loop');
 
 tank.dispose?.();
 console.log('merkava4bGeometry.selftest: seated roof, closed gun throat, flush ERA/panels, projected closed bow, and clear rear exit passed');

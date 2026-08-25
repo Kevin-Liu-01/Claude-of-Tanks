@@ -1073,9 +1073,10 @@ function merkavaChassis(P, c) {
     wheelFaceLayers,
   });
 
-  if (P.spec.id === 'merkava1b' || P.spec.id === 'merkava2d') {
+  if (['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b']
+    .includes(P.spec.id)) {
     P.hullG.userData[`${P.spec.id}RunningGearReceipt`] = Object.freeze({
-      revision: 'front-terminal-forward-r1',
+      revision: 'terminal-course-reseat-r2',
       previousSprocketZM: c.sprocket.z - (c.sprocketForwardM ?? 0),
       previousSprocketYM: c.sprocket.y - (c.sprocketRaiseM ?? 0),
       sprocketZM: c.sprocket.z,
@@ -1084,7 +1085,10 @@ function merkavaChassis(P, c) {
       sprocketRaiseM: c.sprocketRaiseM ?? 0,
       trackCourseUsesSprocketEndpoint: true,
       roadWheelZs: Object.freeze([...c.wheelZs]),
+      previousIdlerZM: c.idler.z - (c.idlerForwardM ?? 0),
       idlerZM: c.idler.z,
+      idlerForwardM: c.idlerForwardM ?? 0,
+      trackCourseUsesIdlerEndpoint: true,
     });
   }
 
@@ -1115,7 +1119,9 @@ function merkavaChassis(P, c) {
       sprocketRaiseM: c.sprocketRaiseM ?? 0,
       roadWheelZs: Object.freeze([...c.wheelZs]),
       rollerZs: Object.freeze([...c.rollers]),
+      previousIdlerZ: c.idler.z - (c.idlerForwardM ?? 0),
       idlerZ: c.idler.z,
+      idlerForwardM: c.idlerForwardM ?? 0,
     });
   }
 
@@ -4630,11 +4636,36 @@ function merkavaModularTurret(P, t) {
     // columns vacate (certified-0 on m4; measured on 4b). Absent params
     // reproduce the old slabs exactly (graduate marks byte-identical).
     const rT0 = cr.rakeTop ?? cr.hw0, rT1 = cr.rakeTop1 ?? cr.hw1;
-    P.add('turret', slab(
+    const forwardCrest = slab(
       [-cr.hw0, cr.bot, cr.z0], [cr.hw0, cr.bot, cr.z0],
       [cr.hw0, cr.bot - 0.06, cr.zW], [-cr.hw0, cr.bot - 0.06, cr.zW],
       [-rT0, cr.top0, cr.z0], [rT0, cr.top0, cr.z0],
-      [rT0, cr.top0, cr.zW], [-rT0, cr.top0, cr.zW]));
+      [rT0, cr.top0, cr.zW], [-rT0, cr.top0, cr.zW]);
+    if (t.gunOwnedCrestFront) {
+      const gunFrame = t.gunFrame;
+      // The narrow Mk.4B gun hood was authored in turret coordinates even
+      // though it encloses the moving cannon cradle. Convert it into the
+      // zero-pose gun frame before bucketing it under rig_gun, so elevation
+      // carries the complete hood instead of revealing a fixed brick.
+      P.addGunExtra(xform(forwardCrest,
+        -gunFrame.x, -gunFrame.y, -gunFrame.z));
+      P.gunG.userData[`${P.spec.id}ArticulatedGunHoodReceipt`] = Object.freeze({
+        revision: 'complete-moving-gun-assembly-r1',
+        owner: 'rig_gun',
+        movesWithGunPitch: true,
+        gunFrameLocal: Object.freeze([gunFrame.x, gunFrame.y, gunFrame.z]),
+        turretLocalTopSurfaceBounds: Object.freeze({
+          min: Object.freeze([-rT0, cr.top0, cr.zW]),
+          max: Object.freeze([rT0, cr.top0, cr.z0]),
+        }),
+        gunLocalTopSurfaceBounds: Object.freeze({
+          min: Object.freeze([-rT0 - gunFrame.x, cr.top0 - gunFrame.y, cr.zW - gunFrame.z]),
+          max: Object.freeze([rT0 - gunFrame.x, cr.top0 - gunFrame.y, cr.z0 - gunFrame.z]),
+        }),
+      });
+    } else {
+      P.add('turret', forwardCrest);
+    }
     P.add('turret', slab(
       [-cr.hw1, cr.bot - 0.06, cr.zW], [cr.hw1, cr.bot - 0.06, cr.zW],
       [cr.hw1, shellTop - 0.02, cr.z1], [-cr.hw1, shellTop - 0.02, cr.z1],
@@ -5746,6 +5777,11 @@ function buildMerkavaMark(P, p) {
   P.turretG.position.set(0, pivotY, p.pivotZ);
   const L = (z) => z - p.pivotZ;
   const V = (y) => y - pivotY;
+  const gunFrame = {
+    x: p.gunXoff ?? 0,
+    y: V(p.gunAxisY),
+    z: p.gunZL ?? 0.32,
+  };
 
   const t = {
     apexZ: L(p.apexZ), apexY: V(p.gunAxisY),
@@ -5887,6 +5923,8 @@ function buildMerkavaMark(P, p) {
     basketRimJit: p.basketRimJit, basketVoids: p.basketVoids,
     rackShelf: p.rackShelf, // r8 3D rack relay (pot-shelf basket)
     crestChamfer: p.crestChamfer,
+    gunOwnedCrestFront: p.gunOwnedCrestFront,
+    gunFrame,
     roofSpine: p.roofSpine ? { z0: L(p.roofSpine.z0), zR: L(p.roofSpine.zR), z1: L(p.roofSpine.z1),
       hw: p.roofSpine.hw, top: V(p.roofSpine.top) } : undefined,
     cupolaRing: p.cupolaRing ? { x: p.cupolaRing.x, z: L(p.cupolaRing.z), r: p.cupolaRing.r,
@@ -6139,10 +6177,10 @@ function buildMerkavaMark(P, p) {
   // Gun: trunnions behind the cheek apex; external mantlet sleeve laid on
   // the MEASURED band (m.z0 world start when given — the repaired refs read
   // a fat 0.5-0.7 m drum just past the crest face, tube-only beyond).
-  const gunZL = p.gunZL ?? 0.32;
+  const gunZL = gunFrame.z;
   // gunXoff (3D batch-18): the warped 3D ref's gun/sleeve plan spans
   // x -0.115..+0.064 — its rig_gun is seated ~35 mm left in its own frame.
-  P.gunG.position.set(p.gunXoff ?? 0, V(p.gunAxisY), gunZL);
+  P.gunG.position.set(gunFrame.x, gunFrame.y, gunZL);
   const gLen = p.gunTipZ - p.pivotZ - gunZL + 0.03;
   const apexG = t.apexZ - gunZL;
   const m = p.mantlet; // { r0, r1, len, drop, z0?, legacy? } external cast sleeve
@@ -7181,7 +7219,38 @@ const MERKAVA_EARLY_ORACLE = Object.freeze({
     shoulderRise: 0.10,
   }),
 });
+// The Mk.2D and Mk.3 marks carry a second, serviceable armor shell over the
+// cast turret.  ERA must be seated on this outer shell, not ray-seated on the
+// casting underneath it.  Keeping these measured corners in one table lets
+// both the rendered armor and the authoring-only contact oracle use exactly
+// the same surface.
+const MERKAVA_EARLY_SECONDARY_ARMOR = Object.freeze({
+  merkava2d: Object.freeze([
+    Object.freeze([0.22, 1.72, 1.48]), Object.freeze([1.58, 1.62, 0.10]),
+    Object.freeze([1.52, 1.70, -1.85]), Object.freeze([0.70, 1.80, -1.95]),
+    Object.freeze([0.28, 2.36, 1.43]), Object.freeze([1.50, 2.25, 0.08]),
+    Object.freeze([1.42, 2.28, -1.82]), Object.freeze([0.66, 2.39, -1.92]),
+  ]),
+  merkava3c: Object.freeze([
+    Object.freeze([0.18, 1.80, 0.88]), Object.freeze([1.34, 1.75, -0.02]),
+    Object.freeze([1.48, 1.79, -1.62]), Object.freeze([0.72, 1.84, -1.72]),
+    Object.freeze([0.22, 2.36, 0.84]), Object.freeze([1.34, 2.30, -0.05]),
+    Object.freeze([1.32, 2.31, -1.58]), Object.freeze([0.66, 2.39, -1.68]),
+  ]),
+  merkava3d: Object.freeze([
+    Object.freeze([0.18, 1.80, 0.88]), Object.freeze([1.34, 1.75, -0.02]),
+    Object.freeze([1.48, 1.79, -1.62]), Object.freeze([0.72, 1.84, -1.72]),
+    Object.freeze([0.22, 2.36, 0.84]), Object.freeze([1.68, 2.30, -0.05]),
+    Object.freeze([1.58, 2.31, -1.58]), Object.freeze([0.66, 2.39, -1.68]),
+  ]),
+});
 const merkavaSurfaceOracleCache = new WeakMap();
+const merkavaEraCarrierOracleCache = new WeakMap();
+
+function merkavaEarlySecondaryArmorPoints(id, side) {
+  const points = MERKAVA_EARLY_SECONDARY_ARMOR[id];
+  return points?.map(([x, y, z]) => [side * x, y, z]) ?? null;
+}
 
 function merkavaCourseAt(stations, z) {
   if (z >= stations[0][0]) return stations[0][1];
@@ -7233,11 +7302,43 @@ function merkavaEarlySurfaceOracle(P, p) {
   return support;
 }
 
+// The ERA contact oracle contains the same cast shell plus the optional
+// outer applique/modular slabs.  Rays therefore stop at the actual outermost
+// armor course.  This is the critical distinction from the r1 fit, which
+// attached ERA to the hidden casting and allowed the secondary shell to draw
+// over it.
+function merkavaEarlyEraCarrierOracle(P, p) {
+  let support = merkavaEraCarrierOracleCache.get(P.turretG);
+  if (support) return support;
+  const pivotY = p.deckY + 0.02;
+  support = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const shell = merkavaEarlySurfaceOracle(P, p);
+  if (shell) {
+    const shellMesh = new THREE.Mesh(shell.geometry, material);
+    shellMesh.userData.merkavaSupportLayer = 'source-shell';
+    support.add(shellMesh);
+  }
+  for (const side of [-1, 1]) {
+    const points = merkavaEarlySecondaryArmorPoints(P.spec.id, side);
+    if (!points) continue;
+    const local = points.map(([x, y, z]) => [x, y - pivotY, z - p.pivotZ]);
+    const armorMesh = new THREE.Mesh(orientedSlab(...local), material);
+    armorMesh.userData.merkavaSupportLayer = 'secondary-armor';
+    support.add(armorMesh);
+  }
+  support.updateMatrixWorld(true);
+  merkavaEraCarrierOracleCache.set(P.turretG, support);
+  return support;
+}
+
 function merkavaEarlySurfaceFrame(P, p, {
-  side, worldY, worldZ, nominalX = null,
+  side, worldY, worldZ, nominalX = null, outermost = false,
 }) {
   if (!MERKAVA_EARLY_ORACLE[P.spec.id]) return null;
-  const support = merkavaEarlySurfaceOracle(P, p);
+  const support = outermost
+    ? merkavaEarlyEraCarrierOracle(P, p)
+    : merkavaEarlySurfaceOracle(P, p);
   if (!support) return null;
   const localY = worldY - (p.deckY + 0.02);
   const localZ = worldZ - p.pivotZ;
@@ -7248,13 +7349,15 @@ function merkavaEarlySurfaceFrame(P, p, {
     origin = new THREE.Vector3(side * 4, localY, localZ);
     direction = new THREE.Vector3(-side, 0, 0);
   } else {
-    const centerZ = support.geometry.boundingSphere?.center.z ?? 0;
+    const shellGeometry = merkavaEarlySurfaceOracle(P, p)?.geometry;
+    const centerZ = support.geometry?.boundingSphere?.center.z
+      ?? shellGeometry?.boundingSphere?.center.z ?? 0;
     const radial = new THREE.Vector3(nominalX, 0, localZ - centerZ).normalize();
     origin = new THREE.Vector3(0, localY, centerZ).addScaledVector(radial, 4);
     direction = radial.clone().negate();
   }
   raycaster.set(origin, direction);
-  const hit = raycaster.intersectObject(support, false)[0];
+  const hit = raycaster.intersectObject(support, outermost)[0];
   if (!hit?.face) return null;
   const point = hit.point.clone();
   const normal = hit.face.normal.clone().normalize();
@@ -7270,6 +7373,7 @@ function merkavaEarlySurfaceFrame(P, p, {
     normal,
     up,
     tangent,
+    supportLayer: hit.object.userData.merkavaSupportLayer ?? 'source-shell',
     eulerXYZ: new THREE.Euler().setFromRotationMatrix(basis, 'XYZ'),
     eulerYXZ: new THREE.Euler().setFromRotationMatrix(basis, 'YXZ'),
   };
@@ -7392,17 +7496,10 @@ function merkavaSourceOracleTurret(P, p, t) {
   P.add('turretDark', polyTurret(apronPlan, 0.15, 0.98, 0.94), 0, V(cfg.base - 0.10), 0);
 
   const addArmorSlab = (pts) => P.add('turret', slab(...pts.map(M)));
-  if (cfg.applique) {
-    for (const s of [-1, 1]) addArmorSlab([
-      [s * 0.22, 1.72, 1.48], [s * 1.58, 1.62, 0.10], [s * 1.52, 1.70, -1.85], [s * 0.70, 1.80, -1.95],
-      [s * 0.28, 2.36, 1.43], [s * 1.50, 2.25, 0.08], [s * 1.42, 2.28, -1.82], [s * 0.66, 2.39, -1.92],
-    ]);
-  }
-  if (cfg.modular) {
-    for (const s of [-1, 1]) addArmorSlab([
-      [s * 0.18, 1.80, 0.88], [s * 1.34, 1.75, -0.02], [s * 1.48, 1.79, -1.62], [s * 0.72, 1.84, -1.72],
-      [s * 0.22, 2.36, 0.84], [s * (id === 'merkava3d' ? 1.68 : 1.34), 2.30, -0.05], [s * (id === 'merkava3d' ? 1.58 : 1.32), 2.31, -1.58], [s * 0.66, 2.39, -1.68],
-    ]);
+  if (cfg.applique || cfg.modular) {
+    for (const side of [-1, 1]) {
+      addArmorSlab(merkavaEarlySecondaryArmorPoints(id, side));
+    }
   }
 
   // The source applique is built from long, individually serviced armor
@@ -8116,8 +8213,10 @@ function merkavaSourceFinish(P, p, t) {
   const mk4bEraSeats = [];
   const earlyEraEmbedM = 0.014;
   const earlyEraSeats = [];
+  const earlyEraMountSeats = [];
   const earlySidePanelSeats = [];
   const earlyOracle = MERKAVA_EARLY_ORACLE[id];
+  const restoresVisibleEraRing = ['merkava2b', 'merkava2d', 'merkava3c', 'merkava3d'].includes(id);
   const mk4bEraCells = (side) => {
     if (id !== 'merkava4b') return null;
     const cells = [];
@@ -8174,27 +8273,64 @@ function merkavaSourceFinish(P, p, t) {
               shellRoof - 0.025,
               heightFractions[row],
             );
-            const frame = merkavaEarlySurfaceFrame(P, p, {
+            const sourceFrame = merkavaEarlySurfaceFrame(P, p, {
               side: s,
               nominalX: x,
               worldY: surfaceY,
               worldZ: z,
             });
+            const frame = restoresVisibleEraRing
+              ? merkavaEarlySurfaceFrame(P, p, {
+                side: s,
+                nominalX: x,
+                worldY: surfaceY,
+                worldZ: z,
+                outermost: true,
+              })
+              : sourceFrame;
             if (frame) {
               const center = frame.point.clone().addScaledVector(frame.normal,
                 tileD / 2 - earlyEraEmbedM);
+              // A low cradle and two edge cleats visibly return every ERA
+              // cell into the armor beneath it.  They sit below the cassette
+              // face so the connection remains readable instead of being
+              // swallowed between the outer armor and the ERA block.
+              let mountCenter = null;
+              if (restoresVisibleEraRing) {
+                const mountFrame = {
+                  ...frame,
+                  point: frame.point.clone().addScaledVector(frame.up, -tileH * 0.47),
+                };
+                mountCenter = addMerkavaEarlyFrameBox(P, 'turretDark', mountFrame,
+                  tileW * 0.72, tileH * 0.28, 0.036, 0.006);
+                for (const lateral of [-1, 1]) {
+                  const cleatFrame = {
+                    ...frame,
+                    point: mountFrame.point.clone()
+                      .addScaledVector(frame.tangent, lateral * tileW * 0.30)
+                      .addScaledVector(frame.up, tileH * 0.08),
+                  };
+                  addMerkavaEarlyFrameBox(P, 'turretDark', cleatFrame,
+                    0.026, tileH * 0.34, 0.040, 0.005);
+                }
+              } else {
+                addMerkavaEarlyFrameBox(P, 'turretDark', frame,
+                  tileW * 0.74, tileH * 0.42, 0.026, 0.006);
+              }
+              const sourceSurface = sourceFrame?.point ?? frame.point;
               eraCells.push({
                 x: center.x, y: center.y, z: center.z,
                 rx: frame.eulerYXZ.x, ry: frame.eulerYXZ.y, rz: frame.eulerYXZ.z,
                 boxRx: frame.eulerXYZ.x, boxRy: frame.eulerXYZ.y, boxRz: frame.eulerXYZ.z,
                 nx: frame.normal.x, ny: frame.normal.y, nz: frame.normal.z,
                 surface: frame.point.clone(),
+                sourceSurface: sourceSurface.clone(),
+                supportLayer: frame.supportLayer,
+                mountCenter: mountCenter?.clone() ?? null,
                 tileW, tileH, tileD,
                 sourceConformal: true,
                 worldZ: z,
               });
-              addMerkavaEarlyFrameBox(P, 'turretDark', frame,
-                tileW * 0.74, tileH * 0.42, 0.026, 0.006);
               continue;
             }
           }
@@ -8228,7 +8364,7 @@ function merkavaSourceFinish(P, p, t) {
     }
     if (earlyOracle) {
       for (const cell of eraCells.filter((candidate) => candidate.sourceConformal)) {
-        earlyEraSeats.push(Object.freeze({
+        const seat = {
           side: s,
           centerLocal: Object.freeze([cell.x, cell.y, cell.z]),
           surfaceLocal: Object.freeze(cell.surface.toArray()),
@@ -8236,7 +8372,26 @@ function merkavaSourceFinish(P, p, t) {
           cassetteDepthM: cell.tileD,
           contactEmbedM: earlyEraEmbedM,
           worldZ: cell.worldZ,
-        }));
+        };
+        if (restoresVisibleEraRing) {
+          Object.assign(seat, {
+            supportLayer: cell.supportLayer,
+            sourceSurfaceLocal: Object.freeze(cell.sourceSurface.toArray()),
+            carrierProudOfSourceM: cell.surface.clone().sub(cell.sourceSurface)
+              .dot(new THREE.Vector3(cell.nx, cell.ny, cell.nz)),
+            mountCenterLocal: Object.freeze(cell.mountCenter.toArray()),
+          });
+          earlyEraMountSeats.push(Object.freeze({
+            side: s,
+            centerLocal: Object.freeze(cell.mountCenter.toArray()),
+            supportLocal: Object.freeze(cell.surface.toArray()),
+            normalLocal: Object.freeze([cell.nx, cell.ny, cell.nz]),
+            supportLayer: cell.supportLayer,
+            structuralOverlapM: 0.012,
+            cleats: 2,
+          }));
+        }
+        earlyEraSeats.push(Object.freeze(seat));
       }
     }
     // These are actual ERA placements rather than permanent decorative
@@ -8435,13 +8590,19 @@ function merkavaSourceFinish(P, p, t) {
     'turretDetail', 0.018, 0.032);
   if (earlyOracle) {
     P.turretG.userData[`${id}SourceFitReceipt`] = Object.freeze({
-      revision: 'source-shell-conformal-fit-r1',
+      revision: restoresVisibleEraRing ? 'outer-carrier-era-ring-r2' : 'source-shell-conformal-fit-r1',
       roofDatumSource: 'source-oracle',
       roofCourse: Object.freeze(earlyOracle.roof.map((station) => Object.freeze([...station]))),
       sidePanelsPerSide: combatFit.side,
       sidePanelSeats: Object.freeze(earlySidePanelSeats),
       eraCassettesPerSide: combatFit.rows * combatFit.cols,
       eraSeats: Object.freeze(earlyEraSeats),
+      ...(restoresVisibleEraRing ? {
+        eraMountSeats: Object.freeze(earlyEraMountSeats),
+        eraSupportRule: 'outermost-armor-carrier',
+        secondaryArmorCarriesEra: Boolean(MERKAVA_EARLY_SECONDARY_ARMOR[id]),
+        connectionPointsPerCassette: 3,
+      } : {}),
       panelContactEmbedM: 0.014,
       eraContactEmbedM: earlyEraEmbedM,
       maximumSurfaceGapM: 0,
@@ -9825,7 +9986,7 @@ const MK1B_TRACK_COURSE = {
   wheelR: 0.355, wheelFace: true, runningGearBuckets: true,
   wheelZs: [1.46, 0.62, -0.23, -1.07, -1.91, -2.65],
   sprocket: { z: 1.95, y: 0.66, r: 0.28 },
-  idler: { z: -3.65, y: 0.80, r: 0.28 },
+  idler: { z: -3.50, y: 0.80, r: 0.28 }, idlerForwardM: 0.15,
   rollers: [1.0, 0.12, -0.75, -1.62, -2.45],
   linkPitchM: 0.11, shoeRadialScale: 0.92, shoeWidthScale: 1.0,
   dishR: 0.78,
@@ -9863,15 +10024,25 @@ function scaleMerkavaCourse(course, {
   };
 }
 
-const MK4B_BASE_TRACK_COURSE = scaleMerkavaCourse(MK1B_TRACK_COURSE, {
+// Preserve the already-certified Mk.4B cadence/diameters while applying the
+// new idler reseat in its target frame. The Mk.1B donor itself now has the
+// same 15 cm forward correction, so retaining its pre-reseat rear datum here
+// avoids accidentally rescaling every Mk.4B road wheel and sprocket.
+const MK4B_DONOR_TRACK_COURSE = {
+  ...MK1B_TRACK_COURSE,
+  idler: { ...MK1B_TRACK_COURSE.idler, z: -3.65 },
+};
+const MK4B_BASE_TRACK_COURSE = scaleMerkavaCourse(MK4B_DONOR_TRACK_COURSE, {
   frontZ: 2.90, rearZ: -3.05, outerX: 1.73, hullWidth: 3.72,
 });
 const MK4B_TRACK_REAR_SHIFT_M = 0.20;
 const MK4B_SPROCKET_RAISE_M = 0.20;
+const MK4B_IDLER_FORWARD_M = 0.15;
 const MK4B_MK1B_TRACK_COURSE = {
   ...MK4B_BASE_TRACK_COURSE,
   trackRearShiftM: MK4B_TRACK_REAR_SHIFT_M,
   sprocketRaiseM: MK4B_SPROCKET_RAISE_M,
+  idlerForwardM: MK4B_IDLER_FORWARD_M,
   sprocket: {
     ...MK4B_BASE_TRACK_COURSE.sprocket,
     y: MK4B_BASE_TRACK_COURSE.sprocket.y + MK4B_SPROCKET_RAISE_M,
@@ -9879,7 +10050,8 @@ const MK4B_MK1B_TRACK_COURSE = {
   wheelZs: MK4B_BASE_TRACK_COURSE.wheelZs.map((z) => z - MK4B_TRACK_REAR_SHIFT_M),
   idler: {
     ...MK4B_BASE_TRACK_COURSE.idler,
-    z: MK4B_BASE_TRACK_COURSE.idler.z - MK4B_TRACK_REAR_SHIFT_M,
+    z: MK4B_BASE_TRACK_COURSE.idler.z - MK4B_TRACK_REAR_SHIFT_M
+      + MK4B_IDLER_FORWARD_M,
   },
   rollers: MK4B_BASE_TRACK_COURSE.rollers.map((z) => z - MK4B_TRACK_REAR_SHIFT_M),
 };
@@ -9997,9 +10169,9 @@ export const MERKAVA_PROFILES = {
     // narrows 0.88..1.28 -> 0.88..1.15 (re-measured this round, §4b lane).
     keel: { toeZ: 2.90, toeY: 0.90, toeHW: 0.42, midZ: 2.66, midY: 0.50, groundZ: 2.28, bellyY: 0.43, bellyMidX: 0.88, bellyMidY: 0.40, bellySideY: 0.235, tailLowZ: -3.58, hwClamp: 1.15 },
     glacisClosure: {
-      z0: 2.52, z1: 2.91,
-      lower0: 0.62, lower1: 0.86,
-      upper0: 1.035, upper1: 1.055,
+      z0: 2.28, z1: 2.91,
+      lower0: 0.52, lower1: 0.86,
+      upper0: 1.02, upper1: 1.055,
       hw0: 1.14, hw1: 0.47,
     },
     glacis: { z0: 0.85, z1: 2.975 },
@@ -10055,7 +10227,8 @@ export const MERKAVA_PROFILES = {
     runningGearBuckets: true,
     wheelZs: [1.46, 0.62, -0.23, -1.07, -1.91, -2.65],
     sprocketForwardM: 0.18,
-    sprocket: { z: 2.13, y: 0.66, r: 0.28 }, idler: { z: -3.65, y: 0.80, r: 0.28 },
+    sprocket: { z: 2.13, y: 0.66, r: 0.28 }, idler: { z: -3.50, y: 0.80, r: 0.28 },
+    idlerForwardM: 0.15,
     rollers: [1.0, 0.12, -0.75, -1.62, -2.45],
     // Hull tail: center notch to -3.79, rack band [0.92..1.58] to -4.215
     // full width, deep run x 0.35..1.02 to -4.29 (= the ref body-span end),
@@ -10348,6 +10521,12 @@ export const MERKAVA_PROFILES = {
     ],
     tailNotch: { hw: 0.30 },
     keel: { toeZ: 3.02, toeY: 0.98, toeHW: 0.55, midZ: 2.30, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round): MK12 band inner face 1.14 - 0.01
+    glacisClosure: {
+      z0: 1.95, z1: 2.98,
+      lower0: 0.58, lower1: 0.90,
+      upper0: 0.96, upper1: 1.02,
+      hw0: 1.12, hw1: 0.56,
+    },
     glacis: { z0: 1.30, z1: 2.95 },
     // pods pushed to 3.37: they carry the dims hullLength bow columns (the
     // ref hull is ~0.3 short of published; certified sub-margin cover)
@@ -10355,7 +10534,8 @@ export const MERKAVA_PROFILES = {
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.02, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.05, y: 0.54, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.05, y: 0.54, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
+    idlerForwardM: 0.15,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.50, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
     // Rack wall hangs LOW on the repaired print (band 0.46..1.62); wings
@@ -10438,9 +10618,9 @@ export const MERKAVA_PROFILES = {
     tailNotch: { hw: 0.30 },
     keel: { toeZ: 3.10, toeY: 0.98, toeHW: 0.55, midZ: 2.35, midY: 0.40, groundZ: 1.95, bellyY: 0.42, tailLowZ: -3.30, hwClamp: 1.13 }, // r12 §B4 recipe (2026-08-05 round)
     glacisClosure: {
-      z0: 2.20, z1: 3.12,
+      z0: 1.95, z1: 3.12,
       lower0: 0.46, lower1: 0.91,
-      upper0: 1.04, upper1: 1.10,
+      upper0: 0.96, upper1: 1.10,
       hw0: 1.12, hw1: 0.58,
     },
     glacis: { z0: 1.30, z1: 3.14 },
@@ -10448,7 +10628,8 @@ export const MERKAVA_PROFILES = {
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.00, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.24, y: 0.66, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.24, y: 0.66, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
+    idlerForwardM: 0.15,
     sprocketForwardM: 0.19, sprocketRaiseM: 0.12,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.46, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
@@ -10804,7 +10985,8 @@ export const MERKAVA_PROFILES = {
     // at -2.56..-2.61, wider/lower left plinth band, near-center pano head.
     trackW: 0.56, // ref inner track face >= 1.16 (the 1.14 edge aliased into the x 1.11 front column)
     wheelZs: [1.20, 0.45, -0.37, -1.18, -2.00, -2.81],
-    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.53, y: 0.66, r: 0.27 },
+    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.38, y: 0.66, r: 0.27 },
+    idlerForwardM: 0.15,
     rollers: [0.95, 0.10, -0.75, -1.60, -2.45],
     deckY: 1.63, rearDeckZ: -2.65,
     // r12 TRACK CONTAINMENT (§B4 graduate-change round — see the 3B note).
@@ -10835,8 +11017,8 @@ export const MERKAVA_PROFILES = {
     keel: { toeZ: 2.77, toeY: 0.90, toeHW: 0.70, midZ: 2.58, midY: 0.57, groundZ: 2.15, bellyY: 0.41, bellyMidY: 0.35, bellyMidX: 1.10, bellySideY: 0.24, tailLowZ: -3.55, hwClamp: 1.13 },
     glacis: { z0: 1.60, z1: 2.75 },
     glacisClosure: {
-      z0: 2.30, z1: 2.66,
-      lower0: 0.69, lower1: 0.94,
+      z0: 2.15, z1: 2.71,
+      lower0: 0.55, lower1: 0.94,
       upper0: 1.11, upper1: 0.99,
       hw0: 1.10, hw1: 0.78,
     },
@@ -11004,7 +11186,8 @@ export const MERKAVA_PROFILES = {
     // 3.055 are sub-threshold hullLength carriers (metrology-selective law).
     trackW: 0.60, // 3D ref front track inner face reads ~1.10-1.13 (x ±1.11 cols carry 0.24 bots)
     wheelZs: [1.20, 0.45, -0.37, -1.18, -2.00, -2.81],
-    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.56, y: 0.72, r: 0.27 },
+    sprocket: { z: 2.00, y: 0.72, r: 0.29 }, idler: { z: -3.41, y: 0.72, r: 0.27 },
+    idlerForwardM: 0.15,
     rollers: [0.95, 0.10, -0.75, -1.60, -2.45],
     deckY: 1.598, rearDeckZ: -2.65,
     // Warped-ref hull: plan face 2.865-2.89, glacis 1.13@2.89 -> 1.49@2.37,
@@ -11044,9 +11227,9 @@ export const MERKAVA_PROFILES = {
     keel: { toeZ: 2.89, toeY: 0.88, toeHW: 0.75, midZ: 2.62, midY: 0.55, groundZ: 2.15, bellyY: 0.34, tailLowZ: -3.56, hwClamp: 1.09 },
     glacis: { z0: 1.70, z1: 2.81 },
     glacisClosure: {
-      z0: 2.30, z1: 2.72,
-      lower0: 0.65, lower1: 0.90,
-      upper0: 1.11, upper1: 0.98,
+      z0: 1.85, z1: 2.83,
+      lower0: 0.54, lower1: 0.90,
+      upper0: 1.13, upper1: 1.00,
       hw0: 1.07, hw1: 0.76,
     },
     // pods ARE the ref's side nose tip (x ±0.56..0.67, y 0.87..1.00, poking
@@ -11531,6 +11714,7 @@ export const MERKAVA_PROFILES = {
     // silhouettes; source-measured roof fittings still run in the shared
     // finish pass.
     build: buildMerkavaMark, sourceOracleTurret: false, mk4bRebuild: true,
+    gunOwnedCrestFront: true,
     turretScale: { y: 0.86 },
     // Owner-directed donor law: Mk.4B uses Mk.1B's complete smart track and
     // wheel recipe, uniformly extended to the Mk.4B running-gear envelope.
@@ -11566,9 +11750,9 @@ export const MERKAVA_PROFILES = {
     // lower-glacis crown.  Its end edges sit inside both adjacent shells, so
     // it fills low-angle sight lines without adding an exterior applique.
     glacisClosure: {
-      z0: 2.94, z1: 3.28,
-      lower0: 0.56, lower1: 0.92,
-      upper0: 1.02, upper1: 1.00,
+      z0: 2.10, z1: 3.30,
+      lower0: 0.44, lower1: 0.92,
+      upper0: 1.00, upper1: 1.00,
       hw0: 1.12, hw1: 0.60,
     },
     glacis: { z0: 1.10, z1: 3.36 },

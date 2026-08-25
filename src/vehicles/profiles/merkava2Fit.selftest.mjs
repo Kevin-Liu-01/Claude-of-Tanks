@@ -14,12 +14,19 @@ function build(id) {
   };
 }
 
-function assertConformalTurret(id, expectedPanels, expectedEra) {
+function assertConformalTurret(id, expectedPanels, expectedEra, expectsSecondaryCarrier) {
   const { visual, hull, turret } = build(id);
   const fit = turret.userData[`${id}SourceFitReceipt`];
+  assert.equal(fit.revision, 'outer-carrier-era-ring-r2', `${id} uses the visible ERA carrier-ring fit`);
   assert.equal(fit.roofDatumSource, 'source-oracle', `${id} equipment uses the rendered roof`);
   assert.equal(fit.sidePanelSeats.length, expectedPanels, `${id} seats every side panel`);
   assert.equal(fit.eraSeats.length, expectedEra, `${id} seats every turret ERA cassette`);
+  assert.equal(fit.eraMountSeats.length, expectedEra, `${id} gives every ERA cassette a structural cradle`);
+  assert.equal(fit.eraSupportRule, 'outermost-armor-carrier', `${id} cannot seat ERA below an outer armor layer`);
+  assert.equal(fit.secondaryArmorCarriesEra, expectsSecondaryCarrier,
+    `${id} records whether an applique shell carries its ERA`);
+  assert.equal(fit.connectionPointsPerCassette, 3,
+    `${id} gives every cassette one cradle and two edge cleats`);
   assert.equal(fit.maximumSurfaceGapM, 0, `${id} conformal armor has no authored gap`);
 
   for (const seat of fit.sidePanelSeats) {
@@ -39,10 +46,23 @@ function assertConformalTurret(id, expectedPanels, expectedEra) {
     const normal = new THREE.Vector3(...seat.normalLocal);
     const proud = center.clone().sub(surface).dot(normal);
     assert.ok(normal.x * seat.side > 0.08, `${id} turret ERA normal points outward`);
-    assert.ok(normal.y > 0.60, `${id} turret ERA follows the sloped cheek/crown surface`);
+    assert.ok(normal.y > (seat.supportLayer === 'secondary-armor' ? -0.05 : 0.60),
+      `${id} turret ERA follows the actual outer cheek/crown surface`);
     assert.ok(Math.abs(proud - (seat.cassetteDepthM / 2 - seat.contactEmbedM)) < 1e-6,
-      `${id} ERA inner face overlaps the turret by the authored embed`);
+      `${id} ERA inner face overlaps its outermost carrier by the authored embed`);
   }
+  if (expectsSecondaryCarrier) {
+    assert.ok(fit.eraSeats.filter((seat) => seat.supportLayer === 'secondary-armor').length
+      >= Math.floor(expectedEra * 0.80), `${id} puts the visible ring on top of the applique shell`);
+    assert.ok(fit.eraSeats.filter((seat) => seat.supportLayer === 'secondary-armor')
+      .every((seat) => seat.carrierProudOfSourceM > 0.02),
+    `${id} applique-supported ERA is measurably outside the cast shell`);
+  } else {
+    assert.ok(fit.eraSeats.every((seat) => seat.supportLayer === 'source-shell'),
+      `${id} without applique seats its ERA directly on the cast shell`);
+  }
+  assert.ok(fit.eraMountSeats.every((seat) => seat.structuralOverlapM > 0 && seat.cleats === 2),
+    `${id} ERA cradles positively overlap their carrier and retain both edge cleats`);
 
   const rear = turret.userData[`${id}RearClosureReceipt`];
   assert.equal(rear.closedCrownAndFloor, true, `${id} closes the turret-to-bustle seam`);
@@ -52,7 +72,7 @@ function assertConformalTurret(id, expectedPanels, expectedEra) {
   return { visual, hull, turret };
 }
 
-const mk2b = assertConformalTurret('merkava2b', 12, 20);
+const mk2b = assertConformalTurret('merkava2b', 12, 20, false);
 const mk2bLegacy = mk2b.turret.userData.merkava2bLegacyEquipmentSeatReceipt;
 assert.equal(mk2bLegacy.seats.filter((seat) => seat.kind === 'roof-equipment').length, 2,
   'Mk 2B roof fittings are lowered onto the rendered roof');
@@ -68,7 +88,7 @@ assert.equal(mk2bHullAttachment.allSupportsOverlapHullAndPod, true,
 assert.ok(mk2bHullAttachment.supports.every((seat) => seat.buriedOverlapM > 0),
   'Mk 2B bow supports have positive structural overlap');
 
-const mk2d = assertConformalTurret('merkava2d', 14, 30);
+const mk2d = assertConformalTurret('merkava2d', 14, 30, true);
 const mk2dLegacy = mk2d.turret.userData.merkava2dLegacyEquipmentSeatReceipt;
 assert.equal(mk2dLegacy.seats.filter((seat) => seat.kind === 'roof-equipment').length, 1,
   'Mk 2D roof fitting is lowered onto the rendered roof');
