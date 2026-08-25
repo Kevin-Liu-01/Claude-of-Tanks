@@ -37697,11 +37697,11 @@
             "min": [
               -1.595,
               0.01,
-              -3.2983
+              -3.2999
             ],
             "max": [
               -1.025,
-              1.2098,
+              1.27,
               3.4199
             ],
             "turretLocal": false
@@ -37712,11 +37712,11 @@
             "min": [
               1.025,
               0.01,
-              -3.2983
+              -3.2999
             ],
             "max": [
               1.595,
-              1.2098,
+              1.27,
               3.4199
             ],
             "turretLocal": false
@@ -37785,8 +37785,8 @@
           }
         ]
       },
-      "geometryHash": "b32a06f1",
-      "metadataHash": "aad832c7",
+      "geometryHash": "eec5e494",
+      "metadataHash": "7b54d1c5",
       "presentationAnchor": {
         "xM": -0.0001,
         "zM": -0.0409
@@ -37806,7 +37806,7 @@
           "trackPadSimplified": 1,
           "fittingPaint": 7,
           "opticGlass": 4,
-          "gunmetal": 16,
+          "gunmetal": 15,
           "trackSteel": 1,
           "armorPaint": 5,
           "tireRubber": 1,
@@ -37880,24 +37880,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63696,
-          "sha256": "0311324dd25cf2b31643fdbf4080ba94a85a47191556f9b9456275768462fe70"
+          "bytes": 63534,
+          "sha256": "beba422e8294d733dddf1edf8842664bd2a6a52e303119159e1941e1c6a229a6"
         },
         "armorSide": {
           "file": "k1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65818,
-          "sha256": "6b509cfbb057a2b38519afbd3fe126dd9089a83f70f1b26e758bae1ee5b7356e"
+          "bytes": 65371,
+          "sha256": "d1b876ea7b1c59a4a6f78d57bc91cad8f00b82026d7728ce6cbc6ce64a1f46c1"
         },
         "modulesSide": {
           "file": "k1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75553,
-          "sha256": "c835dd78143398670b7021c40678774efc75355fc48acd52a8f2fed969f1ce92"
+          "bytes": 74917,
+          "sha256": "cc4c76706b67797456f04350fc4f7e2668c5da68a3d1751ea02bb86c1c7a922f"
         },
         "markings": {
           "file": "k1a1_markings.png",

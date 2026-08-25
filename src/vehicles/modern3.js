@@ -1832,6 +1832,8 @@ function buildK1A1(P) {
     liftEye, periscope, smokeCluster, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
   const { rng } = P;
+  const idler = Object.freeze({ z: 3.00, y: 0.79, r: 0.33 });
+  const sprocket = Object.freeze({ z: -2.88, y: 0.85, r: 0.33 });
 
   // running gear (§B6 trapezoid; print track band x 1.02..1.60): 6 stations
   // + 3 covered rollers, a raised rear drive and raised far-forward idler
@@ -1843,22 +1845,23 @@ function buildK1A1(P) {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, wheelY: 0.46, xc: 1.31,
     wheelZs: [2.10, 1.35, 0.60, -0.15, -0.90, -1.65],
-    sprocket: { z: -2.88, y: 0.69, r: 0.33 }, idler: { z: 3.00, y: 0.79, r: 0.33 },
+    sprocket, idler,
     rollers: [1.25, 0.10, -1.05].map((z) => ({ z, y: 0.95, r: 0.075 })),
     trackW: 0.57, topY: 0.95, paintedEnds: true, coveredTop: 1.0,
   });
-  // Near-black bay walls behind the wheel line are running-gear backdrop,
-  // not hull armor.  Keep them explicitly in the native-course family so
-  // the strict clearance gate does not mistake this visual wheel-well liner
-  // for a structural side plate pierced by the shoes.
-  for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', box(0.02, 1.06, 6.24), s * 1.06, 0.60, 0.04);
-  }
 
   // hull: belly tub, sponson band with the print's TWO deck levels (raised
   // 1.61 engine deck aft of −2.00, 1.475 forward deck), §B1 ONE 6.4°
   // glacis plane to the 1.24 bow lip, pointed prow over the 40° chin.
   P.add('hull', box(1.96, 0.60, 6.90), 0, 0.70, -0.05);                        // closed belly ±0.98: stays inside both native track lanes through the terminal wraps
+  // Structural lower-side closure. The former pair of full-length dark
+  // wheel-well liners sat directly behind the shoes and read as artificial
+  // panels. Remove those liners entirely and close the real hull instead:
+  // this shallow flare overlaps the belly roof at ±0.98/y 1.00, meets the
+  // sponson floor at ±1.42/y 1.22, and rises outside the animated top run.
+  P.add('hull', slab(
+    [-0.98, 1.00, 1.80], [0.98, 1.00, 1.80], [0.98, 1.00, -3.66], [-0.98, 1.00, -3.66],
+    [-1.42, 1.22, 1.75], [1.42, 1.22, 1.75], [1.42, 1.22, -3.70], [-1.42, 1.22, -3.70]));
   P.add('hull', slab(                                                          // outward-canted sponson shoulders replace the former vertical body box
     [-1.42, 1.22, 1.75], [1.42, 1.22, 1.75], [1.42, 1.22, -3.70], [-1.42, 1.22, -3.70],
     [-1.685, 1.475, 1.75], [1.685, 1.475, 1.75], [1.685, 1.475, -3.70], [-1.685, 1.475, -3.70]));
@@ -1884,8 +1887,16 @@ function buildK1A1(P) {
     [-0.98, 1.475, 1.42], [0.98, 1.475, 1.42], [0.98, 1.20, 3.58], [-0.98, 1.20, 3.58]));
   if (P.geometryReceipt) {
     P.hullG.userData.k1a1RunningGearClosure = Object.freeze({
-      idler: Object.freeze({ z: 3.00, y: 0.79, r: 0.33 }),
-      sprocket: Object.freeze({ z: -2.88, y: 0.69, r: 0.33 }),
+      idler,
+      sprocket,
+      previousSprocketY: 0.69,
+      sprocketLiftM: 0.16,
+      removedInnerTrackPanelCount: 2,
+      lowerHullClosure: Object.freeze({
+        lowerHalfWidth: 0.98, lowerY: 1.00,
+        upperHalfWidth: 1.42, upperY: 1.22,
+        rearZ: -3.70, frontZ: 1.80,
+      }),
       trackLaneInnerX: 1.31 - 0.57 / 2,
       closureHalfWidth: 0.98,
       closureRearZ: 1.32,
