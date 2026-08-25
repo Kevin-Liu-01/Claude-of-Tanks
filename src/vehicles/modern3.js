@@ -2794,6 +2794,105 @@ export function buildType10BBase(P) {
 // §6.5: tall slab aluminum box, one-piece 60° glacis, nose shelf, rear troop
 // ramp, RIGHT-offset two-man turret with 25 mm + elevating twin TOW box,
 // A2 appliqué side slabs with stand-off bolts, front drive sprocket.
+function addBradleyUpperHullClosure(P) {
+  const { box } = KIT;
+
+  // The Bradley donor is shared by M2A2, M3A3, UA M2A3 and Marder 1A3. Its
+  // exterior was authored as separate tub, flare, camber and glacis skins,
+  // leaving a vehicle-length hollow between the 1.05 m tub roof and the
+  // 1.60 m upper hull. Keep the closure buried inside those sovereign skins:
+  // a narrow center core stays inside the track lanes, flank wedges rise
+  // outward only above the shoe crown, and the front backer follows the
+  // marked upper-glacis underside instead of presenting a flat bulkhead.
+  const centralHalfWidthM = 0.94;
+  const centralFloorY = 1.03;
+  const centralRoofY = 1.61;
+  const centralRearZ = -3.20;
+  const centralFrontZ = 1.62;
+  P.add('hull', box(
+    centralHalfWidthM * 2,
+    centralRoofY - centralFloorY,
+    centralFrontZ - centralRearZ,
+  ), 0, (centralFloorY + centralRoofY) / 2, (centralRearZ + centralFrontZ) / 2);
+
+  const flankInnerHalfWidthM = 0.92;
+  const flankWideFloorHalfWidthM = 0.97;
+  const flankWideFloorY = 1.23;
+  const flankRoofY = 1.61;
+  const flankRearZ = -3.16;
+  const flankFrontZ = 1.65;
+  const flankRoofHalfWidthsM = Object.freeze({ left: 1.375, right: 1.39 });
+  for (const side of [-1, 1]) {
+    const m = (x) => side * x;
+    const roofHalfWidthM = side < 0
+      ? flankRoofHalfWidthsM.left
+      : flankRoofHalfWidthsM.right;
+    P.add('hull', orientedSlab(
+      [m(flankInnerHalfWidthM), centralFloorY, flankFrontZ],
+      [m(flankWideFloorHalfWidthM), flankWideFloorY, flankFrontZ],
+      [m(flankWideFloorHalfWidthM), flankWideFloorY, flankRearZ],
+      [m(flankInnerHalfWidthM), centralFloorY, flankRearZ],
+      [m(flankInnerHalfWidthM), flankRoofY, flankFrontZ],
+      [m(roofHalfWidthM), flankRoofY, flankFrontZ],
+      [m(roofHalfWidthM), flankRoofY, flankRearZ],
+      [m(flankInnerHalfWidthM), flankRoofY, flankRearZ],
+    ));
+  }
+
+  const glacisFloorHalfWidthM = 0.94;
+  const glacisFloorY = 1.03;
+  const glacisRearZ = 1.57;
+  const glacisFrontZ = 2.40;
+  const glacisRearRoofHalfWidthM = 1.18;
+  const glacisFrontRoofHalfWidthM = 1.40;
+  const glacisRearRoofY = 1.88;
+  const glacisFrontRoofY = 1.50;
+  P.add('hull', orientedSlab(
+    [-glacisFloorHalfWidthM, glacisFloorY, glacisFrontZ],
+    [glacisFloorHalfWidthM, glacisFloorY, glacisFrontZ],
+    [glacisFloorHalfWidthM, glacisFloorY, glacisRearZ],
+    [-glacisFloorHalfWidthM, glacisFloorY, glacisRearZ],
+    [-glacisFrontRoofHalfWidthM, glacisFrontRoofY, 2.39],
+    [glacisFrontRoofHalfWidthM, glacisFrontRoofY, 2.39],
+    [glacisRearRoofHalfWidthM, glacisRearRoofY, 1.62],
+    [-glacisRearRoofHalfWidthM, glacisRearRoofY, 1.62],
+  ));
+
+  P.hullG.userData.bradleyUpperHullClosureReceipt = Object.freeze({
+    revision: 'continuous-upper-hull-volume-r1',
+    centralCore: Object.freeze({
+      halfWidthM: centralHalfWidthM,
+      floorY: centralFloorY,
+      roofY: centralRoofY,
+      rearZ: centralRearZ,
+      frontZ: centralFrontZ,
+    }),
+    flankWedges: Object.freeze({
+      count: 2,
+      innerHalfWidthM: flankInnerHalfWidthM,
+      wideFloorHalfWidthM: flankWideFloorHalfWidthM,
+      wideFloorY: flankWideFloorY,
+      roofY: flankRoofY,
+      rearZ: flankRearZ,
+      frontZ: flankFrontZ,
+      roofHalfWidthsM: flankRoofHalfWidthsM,
+    }),
+    upperGlacisBacker: Object.freeze({
+      floorHalfWidthM: glacisFloorHalfWidthM,
+      floorY: glacisFloorY,
+      rearZ: glacisRearZ,
+      frontZ: glacisFrontZ,
+      rearRoofHalfWidthM: glacisRearRoofHalfWidthM,
+      frontRoofHalfWidthM: glacisFrontRoofHalfWidthM,
+      rearRoofY: glacisRearRoofY,
+      frontRoofY: glacisFrontRoofY,
+    }),
+    tubRoofY: 1.05,
+    upperHullFloorY: 1.59,
+    upperGlacisOverlapM: 0.02,
+  });
+}
+
 export function buildBradley(P) {
   // AFV r1 REBUILD against the 42manako oracle (vertex report docs/
   // references/vertex/m2a2_bradley.json — all targets below are that
@@ -3026,6 +3125,7 @@ export function buildBradley(P) {
       [m(1.345), 0.876, 3.13], [m(1.415), 0.876, 3.13], [m(1.415), 0.876, 2.94], [m(1.345), 0.876, 2.94],
       [m(1.345), 1.30, 3.13], [m(1.415), 1.30, 3.13], [m(1.415), 1.30, 2.94], [m(1.345), 1.30, 2.94]));
   }
+  addBradleyUpperHullClosure(P);
   // driver hatch front-LEFT on the plateau + periscope row (§6.5)
   // 90-ladder r2 driver plateau: the ref side line is 1.607 over z 2.42..
   // 2.56 then 1.57 out to ~2.94, but its STATION tops print 1.564/1.508
