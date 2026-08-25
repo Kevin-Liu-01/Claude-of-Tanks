@@ -117179,12 +117179,12 @@
             "name": "trackL",
             "min": [
               -1.569,
-              0.085,
+              0.245,
               -2.9597
             ],
             "max": [
               -0.991,
-              1.1929,
+              1.3529,
               2.9018
             ],
             "turretLocal": false
@@ -117194,12 +117194,12 @@
             "name": "trackR",
             "min": [
               0.991,
-              0.085,
+              0.245,
               -2.9597
             ],
             "max": [
               1.569,
-              1.1929,
+              1.3529,
               2.9018
             ],
             "turretLocal": false
@@ -117253,8 +117253,8 @@
           }
         ]
       },
-      "geometryHash": "2b7d7a36",
-      "metadataHash": "0ad74de9",
+      "geometryHash": "a615a859",
+      "metadataHash": "352d594d",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0994
@@ -117347,24 +117347,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60179,
-          "sha256": "dfa20d63390ff37a85bb2b30caa2c30c9b82f5a8e01bd636c64a0b62bc34335f"
+          "bytes": 56799,
+          "sha256": "2dfbfd24b132394b1c83d7bf186ed2318d79e28153c1ceb8a96c7b5efd0e1ae7"
         },
         "armorSide": {
           "file": "t64bv1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60747,
-          "sha256": "f8f7e178052ef3d431f4e72215bb49cf764fe114a9ebce4274e663994b388199"
+          "bytes": 58832,
+          "sha256": "3f6bf684b3aff3434d54264a02dd9b5748b9a89e07109b521b739914bf1ff74f"
         },
         "modulesSide": {
           "file": "t64bv1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67487,
-          "sha256": "f5afe4000de60165d3692b2e576a795ce5e510129e9ff626f4a9e9fde78bf5e0"
+          "bytes": 65064,
+          "sha256": "12929c80165c2496caf948fa48f0aa2373ff77cbe048b195cec337e6b5f2d4b6"
         },
         "markings": {
           "file": "t64bv1_markings.png",
@@ -153659,12 +153659,12 @@
             "name": "trackL",
             "min": [
               -1.565,
-              0.095,
+              0.255,
               -3.0199
             ],
             "max": [
               -0.995,
-              1.1499,
+              1.3099,
               3.1019
             ],
             "turretLocal": false
@@ -153674,12 +153674,12 @@
             "name": "trackR",
             "min": [
               0.995,
-              0.095,
+              0.255,
               -3.0199
             ],
             "max": [
               1.565,
-              1.1499,
+              1.3099,
               3.1019
             ],
             "turretLocal": false
@@ -153733,8 +153733,8 @@
           }
         ]
       },
-      "geometryHash": "d7941d3f",
-      "metadataHash": "93af5b0c",
+      "geometryHash": "bd8c7071",
+      "metadataHash": "c1382c04",
       "presentationAnchor": {
         "xM": 0.0019,
         "zM": -0.032
@@ -153828,24 +153828,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68517,
-          "sha256": "a4fadfdc1dd81650e37ef5c5621eff00f75307f0739ade2031ce343c0e11d5c1"
+          "bytes": 64791,
+          "sha256": "78a8379cb998c24af181002607d0f3370f35c6b56d033192f34584b6fa37945c"
         },
         "armorSide": {
           "file": "ua_t64bv_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70682,
-          "sha256": "e8dd538ad186141bfe492c4024fe433eab280bada51cb0a9ce94feecb6338c4a"
+          "bytes": 67123,
+          "sha256": "90734645e55ea1b8c7d1e439ebe6e18a5a1b2bde1092a111fad74535b3addf4e"
         },
         "modulesSide": {
           "file": "ua_t64bv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76392,
-          "sha256": "0d9385a93d98bc718b68a5670fe4bccbc97d33605220137d389e037ee5236225"
+          "bytes": 72936,
+          "sha256": "3d1ce5fd7585fa55928002e37e2e44c1ff5d1d909b4770c7448706882293d728"
         },
         "markings": {
           "file": "ua_t64bv_markings.png",

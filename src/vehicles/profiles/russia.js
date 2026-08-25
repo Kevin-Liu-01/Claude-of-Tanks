@@ -1233,6 +1233,12 @@ function buildT44(P) {
 // (same world seats) so the component masks compare like for like.
 function buildT64BV1(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  // Lift the complete running-gear course by 20% of its authored 0.80 m
+  // envelope. Keeping every axle, return roller and tread datum on the same
+  // offset preserves the suspension/track relationship while seating the
+  // wheel train in the existing hull bay.
+  const runningGearLiftM = 0.16;
+  const turretForwardShiftM = 0.20;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement
   // oracle: the owner-supplied t-64bv1_ussr print (SHA-256 608336f2...,
@@ -1396,21 +1402,22 @@ function buildT64BV1(P) {
     style: 'holes',
     wheelR: 0.267,
     wheelW: 0.30,
-    wheelY: 0.315,
+    wheelY: 0.315 + runningGearLiftM,
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.875, 1.125, 0.40, -0.325, -1.075, -1.775],
-    idler: { z: 2.55, y: 0.665, r: 0.262 },
-    sprocket: { z: -2.555, y: 0.788, r: 0.315 },
-    rollers: [-1.85, -0.60, 0.70, 1.95].map((z) => ({ z, y: 0.90, r: 0.078 })),
+    idler: { z: 2.55, y: 0.665 + runningGearLiftM, r: 0.262 },
+    sprocket: { z: -2.555, y: 0.788 + runningGearLiftM, r: 0.315 },
+    rollers: [-1.85, -0.60, 0.70, 1.95]
+      .map((z) => ({ z, y: 0.90 + runningGearLiftM, r: 0.078 })),
     trackW: 0.578,
     pinCapOuter: 0.27,
     endRingSpan: 0.51,
     shoeRadialScale: 0.46,
     // The thin T-64 shoe uses the canonical single-pin family geometry; its
     // web, pins and guide horn remain within the one closed tread course.
-    topY: 0.93,
-    botY: 0.13,
+    topY: 0.93 + runningGearLiftM,
+    botY: 0.13 + runningGearLiftM,
     contactZF: 2.14,
     contactZR: -2.04,
     paintedEnds: false,
@@ -1441,7 +1448,7 @@ function buildT64BV1(P) {
   // at the chord center, §5.31), max half-width 1.30, low ~1.97 center
   // crown, and the print's asymmetric roof — a low right half against the
   // raised LEFT commander gallery carrying the 2.28 height datum.
-  P.turretG.position.set(0, 1.30, -0.06);
+  P.turretG.position.set(0, 1.30, -0.06 + turretForwardShiftM);
   // §5.256 fix: the owner print's CASTING measures ~2.28 m across the
   // cheeks (140/210 of hull width) — the 2.82 m dome was the donbass broad
   // read reserved for ua_t64bv. Rings x0.82 (seats kept); the wide flat

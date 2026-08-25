@@ -376,6 +376,11 @@ function addModernizedT80TurretSuite(P, variant) {
 // ---------------------------------------------------------------------------
 function buildUAT64BV(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
+  // Lift the complete running-gear course by 20% of its authored 0.80 m
+  // envelope so wheels, terminal gears, rollers, links and treads remain one
+  // mechanically coherent assembly inside the existing hull bay.
+  const runningGearLiftM = 0.16;
+  const turretForwardShiftM = 0.20;
 
   // Hull loft to the print lines (deck plateau 1.315 T-64 datum; glacis
   // break +0.53 falling to the 0.70 nose; flat 0.38 belly; transom at
@@ -540,17 +545,18 @@ function buildUAT64BV(P) {
     style: 'holes',
     wheelR: 0.267,
     wheelW: 0.30,
-    wheelY: 0.315,
+    wheelY: 0.315 + runningGearLiftM,
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.92, 1.17, 0.29, -0.45, -1.25, -2.06],
-    idler: { z: 2.75, y: 0.675, r: 0.262 },
-    sprocket: { z: -2.63, y: 0.76, r: 0.30 },
-    rollers: [-1.95, -0.65, 0.62, 1.85].map((z) => ({ z, y: 0.90, r: 0.078 })),
+    idler: { z: 2.75, y: 0.675 + runningGearLiftM, r: 0.262 },
+    sprocket: { z: -2.63, y: 0.76 + runningGearLiftM, r: 0.30 },
+    rollers: [-1.95, -0.65, 0.62, 1.85]
+      .map((z) => ({ z, y: 0.90 + runningGearLiftM, r: 0.078 })),
     trackW: 0.57,
     pinCapOuter: 0.27,
-    topY: 0.93,
-    botY: 0.14,
+    topY: 0.93 + runningGearLiftM,
+    botY: 0.14 + runningGearLiftM,
     contactZF: 2.20,
     contactZR: -2.10,
     paintedEnds: false,
@@ -577,7 +583,7 @@ function buildUAT64BV(P) {
   // Low cast turret at the print seat: chord -1.83..+1.30, ring center
   // -0.26, crown at the 2.10 line under the 2.17 published p95 datum with
   // the raised LEFT commander gallery carrying it.
-  P.turretG.position.set(0, 1.30, -0.26);
+  P.turretG.position.set(0, 1.30, -0.26 + turretForwardShiftM);
   const rings = [
     [1.12, -0.02], [1.26, 0.07], [1.30, 0.18], [1.27, 0.32],
     [1.18, 0.44], [1.02, 0.55], [0.80, 0.615], [0.46, 0.66], [0.12, 0.675],
