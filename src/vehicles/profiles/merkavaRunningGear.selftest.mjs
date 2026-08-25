@@ -28,6 +28,8 @@ const REMOVED_SURFACES = [
   { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.28], max: [-1.72, 0.300, 1.70] },
   { id: 'merkava3d', mesh: 'hullCloth', min: [-1.716, 0.375, -3.13], max: [-1.716, 0.420, 1.59] },
   { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.716, 0.300, -3.13], max: [-1.716, 0.375, 1.59] },
+  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.092, 0.14, -3.60], max: [-1.092, 0.70, 2.20] },
+  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [1.092, 0.14, -3.60], max: [1.092, 0.70, 2.20] },
 ];
 
 const round = (value, places = 4) => Number(value.toFixed(places));

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PRODUCT_STATS, renderProductStats } from '../productStats.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SITE = 'https://cot.kevinliu.studio';
@@ -29,7 +30,7 @@ function attribute(html, element, key, value, wanted = 'content') {
 const titles = new Set();
 const descriptions = new Set();
 for (const [file, canonical] of indexedPages) {
-  const html = readFileSync(join(ROOT, file), 'utf8');
+  const html = renderProductStats(readFileSync(join(ROOT, file), 'utf8'));
   const title = html.match(/<title>([^<]+)<\/title>/i)?.[1] ?? '';
   const description = attribute(html, 'meta', 'name', 'description');
   assert.ok(title.length >= 30 && title.length <= 80, `${file} needs a descriptive title`);
@@ -62,7 +63,7 @@ for (const [file, canonical] of indexedPages) {
   for (const [, json] of blocks) assert.doesNotThrow(() => JSON.parse(json), `${file} has invalid JSON-LD`);
 }
 
-const topicFallback = readFileSync(join(ROOT, 'docs-topic.html'), 'utf8');
+const topicFallback = renderProductStats(readFileSync(join(ROOT, 'docs-topic.html'), 'utf8'));
 assert.match(attribute(topicFallback, 'meta', 'name', 'robots'), /noindex, follow/);
 assert.equal(attribute(topicFallback, 'link', 'rel', 'canonical', 'href'), `${SITE}/docs`);
 
@@ -83,8 +84,8 @@ for (const file of ['llms.txt', 'llms-full.txt', 'docs/llms.txt', 'humans.txt', 
 }
 const llms = readFileSync(join(ROOT, 'public/llms.txt'), 'utf8');
 assert.match(llms, /^# Claude of Tanks\n\n>/);
-assert.match(llms, /112 first-party procedural vehicles/);
-assert.match(llms, /20 authored battlefields/);
+assert.match(llms, new RegExp(`${PRODUCT_STATS.productionVehicles} first-party procedural vehicles`));
+assert.match(llms, new RegExp(`${PRODUCT_STATS.battlefields} authored battlefields`));
 assert.match(llms, /## Technical documentation/);
 assert.match(llms, new RegExp(`${SITE.replace(/[.]/g, '\\.')}\/llms-full\\.txt`));
 const llmsFull = readFileSync(join(ROOT, 'public/llms-full.txt'), 'utf8');
@@ -102,16 +103,18 @@ const publicMetadata = [
   ...indexedPages.keys(), 'docs-topic.html', 'public/robots.txt', 'public/sitemap.xml',
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 assert.doesNotMatch(publicMetadata, /https:\/\/claude-of-tanks\.vercel\.app/, 'former deployment must not remain canonical');
-const homeVisibleText = readFileSync(join(ROOT, 'home.html'), 'utf8').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+const homeVisibleText = renderProductStats(readFileSync(join(ROOT, 'home.html'), 'utf8'))
+  .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 assert.doesNotMatch(homeVisibleText, /16 battlefields/);
 assert.doesNotMatch(homeVisibleText, /(?:Choose from |Drive )111 tanks|111 production vehicles/);
 const currentPublicCopy = [
   'index.html', 'home.html', 'gallery.html', 'docs.html', 'docs-vehicles.html',
   'README.md', 'public/llms.txt', 'public/llms-full.txt', 'public/docs/llms.txt',
-].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
+].map((file) => renderProductStats(readFileSync(join(ROOT, file), 'utf8'))).join('\n');
 assert.doesNotMatch(currentPublicCopy, /111 (?:production|first-party procedural)|148 keyed|150 saved/,
-  'public fleet facts must track the canonical 112 / 149 / 151 roster projections');
-assert.doesNotMatch(readFileSync(join(ROOT, 'docs.html'), 'utf8'), /16 (?:maps|authored battlefields)/);
+  `public fleet facts must track the canonical ${PRODUCT_STATS.productionVehicles} / ${PRODUCT_STATS.developmentVehicles} / ${PRODUCT_STATS.savedVehicleRecords} roster projections`);
+assert.doesNotMatch(renderProductStats(readFileSync(join(ROOT, 'docs.html'), 'utf8')),
+  /16 (?:maps|authored battlefields)/);
 assert.doesNotMatch(readFileSync(join(ROOT, 'src/docs/topics.js'), 'utf8'), /Sixteen battlefields/);
 
 const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));

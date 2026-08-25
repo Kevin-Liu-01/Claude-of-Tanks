@@ -25,12 +25,12 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 15 | PROD | `t80bv` | T-80BV | USSR/Russia | IX | Cold War | Production |
 | 16 | PROD | `t80u` | T-80U | USSR/Russia | VIII | Cold War | Production |
 | 17 | PROD | `t84` | T-84 Oplot | Ukraine | IX | Modern | Production |
-| 18 | PROD | `t90` | T-90 | USSR/Russia | IX | Modern | Production |
+| 18 | PROD | `t90` | T-90 | USSR/Russia | X | Modern | Production |
 | 19 | PROD | `t90a` | T-90A | Russia | IX | Modern | Production |
 | 20 | PROD | `t90a_vladimir` | T-90A Vladimir | Russia | IX | Modern | Production |
-| 21 | PROD | `t90a_burlak` | T-90A Burlak | USSR/Russia | IX | Modern | Production |
+| 21 | PROD | `t90a_burlak` | T-90A Burlak | USSR/Russia | X | Modern | Production |
 | 22 | PROD | `t90sm` | T-90SM | Russia | IX | Modern | Production |
-| 23 | PROD | `t90ms` | T-90MS Tagil | USSR/Russia | IX | Modern | Production |
+| 23 | PROD | `t90ms` | T-90MS Tagil | USSR/Russia | X | Modern | Production |
 | 24 | PROD | `t90m` | T-90M Proryv | Russia | X | Modern | Production |
 | 25 | DEV | `leo2a7` | Leopard 2A7 | Germany | X | Modern | Saved development model |
 | 26 | PROD | `m1a2` | M1A2 Abrams | USA | X | Modern | Production |
@@ -69,8 +69,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 59 | PROD | `stb1` | STB-1 | Japan | VII | Cold War | Production |
 | 60 | PROD | `type74` | Type 74 | Japan | VIII | Cold War | Production |
 | 61 | PROD | `type90` | Type 90 (Kyū-maru) | Japan | IX | Cold War | Production |
-| 62 | PROD | `type90a` | Type 90A | Japan | X | Cold War | Production |
-| 63 | PROD | `type10` | Type 10 | Japan | IX | Modern | Production |
+| 62 | PROD | `type90a` | Type 90A | Japan | IX | Cold War | Production |
+| 63 | PROD | `type10` | Type 10 | Japan | X | Modern | Production |
 | 64 | PROD | `type10b` | Type 10B | Japan | X | Next Generation | Production |
 | 65 | PROD | `m2a2_bradley` | M2A2 Bradley | USA | VIII | Cold War | Production |
 | 66 | PROD | `bmp2` | BMP-2 | USSR | VII | Cold War | Production |
@@ -111,7 +111,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 101 | PROD | `m1a1ha` | M1A1 Abrams HA | USA | IX | Cold War | Production |
 | 102 | PROD | `m1a2_sepv2` | M1A2 Abrams SEPv2 | USA | X | Modern | Production |
 | 103 | PROD | `m1a2_sepv3` | M1A2 Abrams SEPv3 | USA | X | Modern | Production |
-| 104 | PROD | `m60a1` | M60A1 Patton | USA | VII | Cold War | Production |
+| 104 | PROD | `m60a1` | M60A1 Patton | USA | VIII | Cold War | Production |
 | 105 | PROD | `merkava1b` | Merkava Mk 1B | Israel | VII | Cold War | Production |
 | 106 | PROD | `merkava2b` | Merkava Mk 2B | Israel | VIII | Cold War | Production |
 | 107 | PROD | `merkava2d` | Merkava Mk 2D | Israel | VIII | Cold War | Production |
@@ -123,8 +123,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 113 | DEV | `t54` | T-54 | USSR/Russia | VII | Cold War | Historical archive |
 | 114 | PROD | `amx30` | AMX-30B | France | VII | Cold War | Production |
 | 115 | PROD | `amx30b2` | AMX-30B2 | France | VIII | Cold War | Production |
-| 116 | PROD | `m48` | M48A5 Patton | USA | VII | Cold War | Production |
-| 117 | PROD | `m60a2` | M60A2 Starship | USA | VIII | Cold War | Production |
+| 116 | PROD | `m48` | M48A5 Patton | USA | VIII | Cold War | Production |
+| 117 | PROD | `m60a2` | M60A2 Starship | USA | IX | Cold War | Production |
 | 118 | PROD | `vickers_mk1` | Vickers MBT Mk 1 | UK | VII | Cold War | Production |
 | 119 | DEV | `is3_bergman` | IS-3 Late | USSR | VIII | World War II | Historical archive |
 | 120 | DEV | `isu152` | ISU-152 | USSR | VIII | World War II | Production curation |
@@ -155,7 +155,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 145 | PROD | `bmpt_terminator2` | BMPT Terminator 2 | Russia | IX | Modern | Production |
 | 146 | PROD | `bwp1` | BWP-1 (Bojowy Wóz Piechoty 1) | Poland | IX | Cold War | Production |
 | 147 | PROD | `marder1a3` | Schützenpanzer Marder 1A3 | Germany | VII | Cold War | Production |
-| 148 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | VIII | Modern | Production |
+| 148 | PROD | `m3a3_bradley` | M3A3 Bradley CFV | USA | X | Modern | Production |
 | 149 | PROD | `bmp3` | BMP-3 | Russia | VIII | Cold War | Production |
 | 150 | PROD | `upior` | Upiór IFV | Poland | IX | Next Generation | Production |
 | 151 | PROD | `bmpt_t90` | BMPT T-90 | Russia | X | Modern | Production |

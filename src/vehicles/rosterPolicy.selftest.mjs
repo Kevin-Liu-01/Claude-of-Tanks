@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { PRODUCT_STATS } from '../productStats.js';
 import {
   DEV_FLEET_KEY,
   HISTORICAL_COLD_WAR_CANDIDATE_IDS,
@@ -55,13 +56,16 @@ const {
   VISIBLE_TANK_IDS,
 } = await import('./specs.js');
 
-assert.equal(SAVED_TANK_IDS.length, 151, 'the complete saved procedural fleet is indexed');
-assert.equal(DEVELOPMENT_TANK_IDS.length, 149, 'reference-only placeholders are never playable');
+assert.equal(SAVED_TANK_IDS.length, PRODUCT_STATS.savedVehicleRecords,
+  'the complete saved procedural fleet is indexed');
+assert.equal(DEVELOPMENT_TANK_IDS.length, PRODUCT_STATS.developmentVehicles,
+  'reference-only placeholders are never playable');
 assert.deepEqual(new Set(SAVED_TANK_IDS), new Set(Object.keys(TANK_SPECS)),
   'every registered spec belongs to the saved-fleet projection');
 assert.deepEqual(VISIBLE_TANK_IDS, PRODUCTION_TANK_IDS,
   'bare Node and production use the curated projection');
-assert.equal(PRODUCTION_TANK_IDS.length, 112, 'production fleet count is deliberate');
+assert.equal(PRODUCTION_TANK_IDS.length, PRODUCT_STATS.productionVehicles,
+  'production fleet count is deliberate');
 for (const id of ownerHidden) {
   assert(ALL_TANK_IDS.includes(id), `${id}: record stays available to local development`);
   assert(!PRODUCTION_TANK_IDS.includes(id), `${id}: record stays out of production`);

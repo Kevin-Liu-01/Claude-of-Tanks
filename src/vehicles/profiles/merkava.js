@@ -1365,14 +1365,10 @@ function merkavaChassis(P, c) {
             s * ((c.gearOut ?? hw - 0.036) - 0.008), (fTop9 + 0.145) / 2, (fcz0 + fcz1) / 2);
         }
         if (sk.soft) {
-          // r11 second wall RETIRED (r12 order 2): it stood OUTBOARD of the
-          // wheels and curtained the whole window flat-56 — the ref shows
-          // WHEELS there. The see-through it closed is now caught by an
-          // INBOARD backer behind the wheel row (x 1.10, clear of the band's
-          // 1.12 inner face — no §B4 interaction, full length) at the same
-          // ~50 dusty shade; the wheel faces + dish anatomy own the window.
-          P.add('hullRunningGearDark', box(0.016, 0.56, 5.8),
-            s * 1.10, 0.42, -0.70);
+          // Owner surface review r14: the full-height inboard backer at
+          // x ±1.10 read as a solid side panel behind the tracks instead of
+          // open running gear. Keep the Mk.3D wheel window open; canonical
+          // wheel faces, suspension arms, and the track course now own it.
           // ...and a LOW LIT CURTAIN at the proven outboard plane for the
           // hem-shadow rows only (y 0.30..0.42): everything at depth there
           // reads ambient-black (13.8L at any albedo — r12 probe), while

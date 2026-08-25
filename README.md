@@ -66,7 +66,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
 
-The provenance gate currently reports **122 first-party procedural battle playables, 0 GLB-sourced playables, and 4
+The provenance gate currently reports **122 first-party procedural battle playables, 0 GLB-sourced playables, and 7
 tracked external comparison models with exact source records**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
 ## Field footage

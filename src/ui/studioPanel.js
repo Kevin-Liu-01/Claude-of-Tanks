@@ -15,6 +15,7 @@ import { iconUrl } from './icons.js';
 import { MAP_THUMBS } from './mapThumbs.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
 import { mountMediaArchive } from '../presentation/mediaArchive.js';
+import { PRODUCT_STATS } from '../productStats.js';
 import { vehicleEraLabel } from '../vehicles/taxonomy.js';
 import { createInfoButton } from './contextInfo.js';
 
@@ -364,7 +365,7 @@ export function createStudioPanel(S) {
   // === BATTLEFIELD group ===
   const battlefieldGroup = panelGroup('01', 'Battlefield', 'Map & environment');
   dock.appendChild(battlefieldGroup.root);
-  const secScene = section('Map', '16 live battlefields');
+  const secScene = section('Map', `${PRODUCT_STATS.battlefields} live battlefields`);
   const mapPick = el('div', 'mapPick');
   const mapBtn = el('button', 'mapBtn');
   mapBtn.type = 'button';

@@ -21,6 +21,7 @@
 // and every headless tool that calls createServer() inherits this config.
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
+import { renderProductStats } from './src/productStats.js';
 
 /**
  * Pin every generated build asset to the deployment that emitted its HTML.
@@ -114,6 +115,12 @@ export default {
     },
   } : undefined,
   plugins: [
+    {
+      name: 'cot-product-stats',
+      transformIndexHtml(html) {
+        return renderProductStats(html);
+      },
+    },
     {
       name: 'cot-routes',
       configureServer(server) {
