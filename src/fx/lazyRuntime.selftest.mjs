@@ -24,7 +24,7 @@ if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState
 
 const requiredGates = [
   ['solo battle', /ensureTankBuilders\([\s\S]{0,100}plannedRoster[\s\S]{0,220}ensureFxRuntime\(\)/],
-  ['network battle', /import\('\.\/ui\/networkStatus\.js'\)[\s\S]{0,180}ensureFxRuntime\(\)/],
+  ['network battle', /async function presentNetworkBattle[\s\S]{0,4200}preloadNetworkBattleModules\(\)[\s\S]{0,100}ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
   ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
   ['deterministic shots', /window\.__SHOTS[\s\S]{0,1200}ensureFxRuntime\(\)/],

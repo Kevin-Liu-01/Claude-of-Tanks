@@ -40,3 +40,4 @@ console.log(`analytics selftest passed (${entrypoints.length} HTML entrypoints)`
 // The production test chain invokes this file directly, so keep the public
 // discovery/metadata contract coupled to every analytics entrypoint check.
 await import('./seoMetadata.selftest.mjs');
+await import('./publicLoading.selftest.mjs');

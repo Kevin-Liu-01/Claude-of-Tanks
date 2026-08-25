@@ -154,6 +154,11 @@ function mountViewportVideo(video) {
   if (!source) return;
 
   const lowPowerDevice = Number.isFinite(navigator.deviceMemory) && navigator.deviceMemory <= 4;
+  const releaseGraceMs = () => {
+    if (document.hidden) return 5000;
+    if (lowPowerDevice || connection?.saveData) return 8000;
+    return isCompactSurface() ? 15000 : 30000;
+  };
   const manualPlayback = () => reducedMotion.matches || connection?.saveData
     || /(^|-)2g$/.test(connection?.effectiveType || '')
     || (isCompactSurface() && lowPowerDevice);
@@ -191,7 +196,10 @@ function mountViewportVideo(video) {
     releaseTimer = 0;
     if (!visible || document.hidden) {
       video.pause();
-      if (loaded) releaseTimer = window.setTimeout(releaseSource, 1200);
+      // A 1.2 s teardown made normal scroll reversals repeatedly reset the
+      // fetch/demux/decode pipeline. Retain the paused source through a human
+      // scroll-back window, then reclaim it sooner on constrained devices.
+      if (loaded) releaseTimer = window.setTimeout(releaseSource, releaseGraceMs());
       return;
     }
     if (manualPlayback()) {
@@ -202,10 +210,19 @@ function mountViewportVideo(video) {
     video.play().catch(() => {});
   };
 
-  const observer = new IntersectionObserver(([entry]) => {
-    if (entry.isIntersecting && video.dataset.poster && !video.poster) {
+  const warmObserver = new IntersectionObserver(([entry]) => {
+    if (!entry.isIntersecting) return;
+    if (video.dataset.poster && !video.poster) {
       video.poster = video.dataset.poster;
     }
+    // Begin transfer just before the section reaches the viewport, but keep
+    // playback on the separate true-viewport observer below. One expanded
+    // observer cannot do both: its threshold may be crossed before the real
+    // viewport and never fire again at the screen edge.
+    if (!loaded && !manualPlayback()) loadSource();
+  }, { rootMargin: '25% 0px', threshold: 0 });
+
+  const observer = new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting && entry.intersectionRatio >= 0.12;
     sync();
   }, { threshold: [0, 0.12, 0.55] });
@@ -223,6 +240,7 @@ function mountViewportVideo(video) {
     video.parentElement?.append(control);
   }
 
+  warmObserver.observe(video);
   observer.observe(video);
   video.addEventListener('play', () => video.classList.add('is-playing'));
   video.addEventListener('pause', () => video.classList.remove('is-playing'));

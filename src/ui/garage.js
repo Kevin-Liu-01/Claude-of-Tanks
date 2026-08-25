@@ -1813,7 +1813,8 @@ function frontArmorMm(plates, keys) {
 /**
  * Create the garage/tank-select screen. Appends its root to document.body (hidden).
  * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function,
- *   onPlayRequest?:Function,onPlayModeIntent?:Function,onBattleIntent?:Function}} opts
+ *   onPlayRequest?:Function,onPlayModeIntent?:Function,onBattleIntent?:Function,
+ *   onStudioIntent?:Function}} opts
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
 export function createGarage(opts) {
@@ -3477,8 +3478,17 @@ export function createGarage(opts) {
 
   battleBtn.addEventListener('click', battle);
   const signalBattleIntent = () => {
-    if (!opts.onBattleIntent || !selectedId) return;
-    try { opts.onBattleIntent({ specId: selectedId, mapId: selectedMapId }); } catch (_) { /* optional */ }
+    if (!selectedId) return;
+    try {
+      if (battleMode === 'solo') {
+        opts.onBattleIntent?.({ specId: selectedId, mapId: selectedMapId });
+      } else {
+        // Opening a room is not solo-battle intent. Warming the bot roster and
+        // current garage map here made the lobby compete with irrelevant
+        // terrain generation; transfer only the selected network path.
+        opts.onPlayModeIntent?.(battleMode);
+      }
+    } catch (_) { /* optional warm path */ }
   };
   battleControl.addEventListener('pointerenter', signalBattleIntent, { passive: true });
   battleControl.addEventListener('focusin', signalBattleIntent);
@@ -3633,6 +3643,16 @@ export function createGarage(opts) {
   root.querySelector('[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
   });
+  for (const studioIntent of root.querySelectorAll(
+    '[data-nav="studio"], [data-mobile-nav="studio"]',
+  )) {
+    const signalStudioIntent = () => {
+      try { opts.onStudioIntent?.(); } catch (_) { /* optional warm path */ }
+    };
+    studioIntent.addEventListener('pointerenter', signalStudioIntent, { passive: true });
+    studioIntent.addEventListener('focusin', signalStudioIntent);
+    studioIntent.addEventListener('touchstart', signalStudioIntent, { passive: true });
+  }
   for (const item of root.querySelectorAll('[data-mobile-nav]')) {
     item.addEventListener('click', () => {
       const destination = item.dataset.mobileNav;

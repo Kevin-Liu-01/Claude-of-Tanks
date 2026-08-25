@@ -35,17 +35,24 @@ loads all required modules concurrently before visual construction begins. Do
 not put the fleet builders back into four country-sized chunks or await the
 first builder of each family inside a serial vehicle loop.
 
-Battle hover/focus/touch is an explicit preload boundary. It resolves the
+Solo Battle hover/focus/touch is an explicit preload boundary. It resolves the
 deterministic next solo roster without mutating the battle ordinal, transfers
 only those profile families, starts the selected map promise, and decodes the
-shipped deterministic FX atlases. Ordinary vehicle browsing does none of that
-work, so the garage remains responsive.
+shipped deterministic FX atlases. Private/LAN/Ranked intent must not start that
+solo warm: it transfers the selected network handoff instead. Once a room is
+joined, its exact roster families transfer concurrently and a fixed host map
+may build behind the garage-lull gate; Random remains unresolved until start.
 
 The selected battlefield module may preload after the garage settles, but the
-world itself starts only from explicit Battle intent (hover, focus, touch, or
-click). Combat FX and killcam code are battle/Studio chunks and are constructed
-once behind an opaque entry gate. Garage browsing must not compete with a
-background terrain, vegetation, or shader build.
+world itself starts only from explicit solo Battle intent or a joined room's
+fixed host-map intent. Combat FX and killcam code are battle/Studio chunks and
+are constructed once behind an opaque entry gate. Garage browsing must not
+compete with a background terrain, vegetation, or shader build.
+
+Adjacent garage cards prefetch both their texture bakes and their owning
+profile-family chunks. Studio transfers its route chunk on nav hover/focus/
+touch but does not construct the authoring runtime until entry. These boundaries
+keep demand loading without making a card or route click pay the cold parse.
 
 An opaque transition must be visible before asynchronous battle imports or
 world loading. Hiding the menu before painting the transition can expose one
@@ -259,6 +266,33 @@ diagnostic pair to release evidence. The independently scoped normal and
 constrained entry gates passed. In the final cold trace the round-specific
 deferred queue took 0.27 s, finished with 4.72 s left in deployment, and
 produced no post-rollout shader work.
+
+### 2026-08-25 lazy-boundary audit
+
+The production bundle inventory confirmed that the expensive runtime chunks
+should remain split: the battlefield runtime is 1,498 kB raw / 276 kB gzip,
+profile families range up to 241 kB raw / 72 kB gzip, FX is 130/41 kB,
+killcam 81/29 kB, audio 64/21 kB, and Studio 96/31 kB. Eagerly restoring those
+to the initial garage graph would regress first-useful-frame transfer and parse
+cost. The audit changed where their existing promises begin instead:
+
+- adjacent garage cards transfer their family chunks in the same quiet window
+  that already pre-bakes their textures;
+- Private/LAN/Ranked Battle hover no longer starts an irrelevant solo roster
+  and battlefield build;
+- multiplayer mode intent transfers the bridge, status, chat, and matching
+  handoff; a joined waiting room transfers its exact roster families and may
+  build a fixed host map only behind the garage-lull gate;
+- Studio transfers on desktop/mobile nav intent and constructs its runtime only
+  after entry.
+- landing-page videos transfer just before their section enters view and retain
+  a paused source for 8-30 seconds by device class, avoiding the former 1.2-second
+  scroll-away/scroll-back reload loop.
+
+Random room maps, actual vehicle geometry, combat FX construction, AudioContext
+creation, and full world construction without explicit intent remain deferred.
+Wall-clock certification still requires an uncontended `npm run perf:loading`
+run; bundle sizes and the loading-intent self-test are host-independent gates.
 
 ## Reporting a performance result
 

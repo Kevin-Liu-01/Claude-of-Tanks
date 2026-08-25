@@ -21,3 +21,7 @@ assert.equal(resolveVisiblePreBattleSeconds(5, -1), 5);
 assert.equal(resolveVisiblePreBattleSeconds(5, Number.NaN), 5);
 
 console.log('preBattleCountdown.selftest: warm hold, loader credit, and rollout release passed');
+
+// Keep the player-entry countdown and the intent-loading policy in the same
+// normal npm-test gate: both determine what work may happen before rollout.
+await import('./loadingIntent.selftest.mjs');

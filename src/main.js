@@ -1178,6 +1178,15 @@ function queuePedestalTexturePrefetch() {
       pedestalTexturePrefetchedIds.delete(id);
     }
     try {
+      // The neighboring textures are only half of a cold switch. Profile
+      // families are separate production chunks (some exceed 200 kB), so a
+      // country/family boundary otherwise discovers and parses its builder on
+      // the actual card click. Transfer both adjacent families in this same
+      // quiet, cancellable window before spending CPU on their paint.
+      await ensureTankBuilders(ids);
+      if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
+        throw PEDESTAL_PREFETCH_CANCELLED;
+      }
       for (const id of ids) {
         if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
           throw PEDESTAL_PREFETCH_CANCELLED;
@@ -1696,6 +1705,10 @@ const garageMaps = [
 let pendingSoloStart = null;
 let playMenuPromise = null;
 let playMenuModulePromise = null;
+let networkBattleModulesPromise = null;
+let privateMatchHandoffModulePromise = null;
+let dedicatedClientModulePromise = null;
+let networkRoomChatModulePromise = null;
 let pendingLobbyRoom = null;
 function loadPlayMenuModule() {
   if (!playMenuModulePromise) {
@@ -1707,9 +1720,64 @@ function loadPlayMenuModule() {
   }
   return playMenuModulePromise;
 }
+
+function preloadNetworkBattleModules() {
+  if (!networkBattleModulesPromise) {
+    const request = Promise.all([
+      import('./net/browserBattleBridge.js'),
+      import('./ui/networkStatus.js'),
+    ]);
+    networkBattleModulesPromise = request;
+    request.catch(() => {
+      if (networkBattleModulesPromise === request) networkBattleModulesPromise = null;
+    });
+  }
+  return networkBattleModulesPromise;
+}
+
+function preloadPrivateMatchHandoffModule() {
+  if (!privateMatchHandoffModulePromise) {
+    const request = import('./net/privateMatchHandoff.js');
+    privateMatchHandoffModulePromise = request;
+    request.catch(() => {
+      if (privateMatchHandoffModulePromise === request) privateMatchHandoffModulePromise = null;
+    });
+  }
+  return privateMatchHandoffModulePromise;
+}
+
+function preloadDedicatedClientModule() {
+  if (!dedicatedClientModulePromise) {
+    const request = import('./net/dedicatedClient.js');
+    dedicatedClientModulePromise = request;
+    request.catch(() => {
+      if (dedicatedClientModulePromise === request) dedicatedClientModulePromise = null;
+    });
+  }
+  return dedicatedClientModulePromise;
+}
+
+function preloadNetworkRoomChatModule() {
+  if (!networkRoomChatModulePromise) {
+    const request = import('./ui/roomChat.js');
+    networkRoomChatModulePromise = request;
+    request.catch(() => {
+      if (networkRoomChatModulePromise === request) networkRoomChatModulePromise = null;
+    });
+  }
+  return networkRoomChatModulePromise;
+}
+
 function preloadPlayMode(mode) {
   preloadFxModule().catch(() => null);
   preloadKillcamModule().catch(() => null);
+  preloadNetworkBattleModules().catch(() => null);
+  preloadNetworkRoomChatModule().catch(() => null);
+  if (mode === 'private' || mode === 'lan') {
+    preloadPrivateMatchHandoffModule().catch(() => null);
+  } else if (mode === 'ranked') {
+    preloadDedicatedClientModule().catch(() => null);
+  }
   loadPlayMenuModule()
     .then((module) => module.preloadPlayMode(mode))
     .catch(() => { /* battle click remains the retry/fallback path */ });
@@ -1794,6 +1862,7 @@ const garage = await bootStage('ui', () => createGarage({
   }),
   onPlayModeIntent: preloadPlayMode,
   onBattleIntent: preloadBattleIntent,
+  onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
   maps: garageMaps,
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
@@ -3024,7 +3093,7 @@ function handleNetworkRoomChat(message) {
 
 async function ensureNetworkRoomChat() {
   if (!networkRoomChatPromise) {
-    networkRoomChatPromise = import('./ui/roomChat.js').then(({ createRoomChat }) => {
+    networkRoomChatPromise = preloadNetworkRoomChatModule().then(({ createRoomChat }) => {
       networkRoomChat = createRoomChat({
         input,
         onSend: (text) => networkMatch?.sendRoomChat?.(text) || false,
@@ -3061,8 +3130,34 @@ function garageRoomStatus(state, playerId) {
   };
 }
 
+/**
+ * A joined lobby is stronger intent than browsing the multiplayer picker, but
+ * weaker than starting a round. Transfer the exact roster code immediately;
+ * build only a fixed host-selected battlefield, and let the existing garage-
+ * lull gate keep terrain work out of active room interaction.
+ */
+function preloadNetworkLobbyIntent(state) {
+  if (!state || game.phase !== 'garage' || state.phase !== 'waiting') return;
+  preloadNetworkBattleModules().catch(() => null);
+  preloadNetworkRoomChatModule().catch(() => null);
+  const rosterIds = [];
+  for (const player of state.players || []) {
+    if (player.specId) rosterIds.push(player.specId);
+  }
+  ensureTankBuilders(rosterIds).catch(() => null);
+  loadWorldModule().catch(() => null);
+  const mapId = state.mapId;
+  if (!mapId || mapId === 'random') {
+    cancelBackgroundWorldBuildsExcept(null);
+    return;
+  }
+  cancelBackgroundWorldBuildsExcept(mapId);
+  prefetchWorld(mapId);
+}
+
 function handleLobbyRoomChange(context) {
   pendingLobbyRoom = context?.state ? context : null;
+  if (pendingLobbyRoom) preloadNetworkLobbyIntent(pendingLobbyRoom.state);
   if (activeNetworkRoom) return;
   garage.setRoomStatus(pendingLobbyRoom
     ? garageRoomStatus(pendingLobbyRoom.state, pendingLobbyRoom.playerId)
@@ -3093,6 +3188,7 @@ function syncActiveRoomCamo(specId) {
 }
 
 function updateActiveRoomPresentation(state) {
+  preloadNetworkLobbyIntent(state);
   garage.setRoomStatus(garageRoomStatus(state, networkMatch?.playerId));
   bus.emit('network:roomState', {
     state,
@@ -3368,12 +3464,12 @@ async function presentNetworkBattle({
   }
   battleLoad.progress(0.02, 'Securing match channel');
   await nextFrame();
-  const [{ createBrowserBattleBridge }, { createNetworkStatus }] = await Promise.all([
-    import('./net/browserBattleBridge.js'),
-    import('./ui/networkStatus.js'),
+  const [networkModules] = await Promise.all([
+    preloadNetworkBattleModules(),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
+  const [{ createBrowserBattleBridge }, { createNetworkStatus }] = networkModules;
   markLoadStage('modules');
   networkStatus = createNetworkStatus();
   battleLoad.progress(0.08, 'Loading battlefield');
@@ -3578,7 +3674,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       beginPrivateClientMatch,
       buildPrivateMatchPlayers,
       resolvePrivateMatchMap,
-    } = await import('./net/privateMatchHandoff.js');
+    } = await preloadPrivateMatchHandoffModule();
     const mapId = resolvePrivateMatchMap(lobbyState);
     const matchPlayers = buildPrivateMatchPlayers(lobbyState);
     await presentNetworkBattle({
@@ -3657,7 +3753,7 @@ async function beginNetworkRematch(lobbyState) {
     disposeNetworkPresentation();
     latestNetworkSnapshot = null;
     const { buildPrivateMatchPlayers, resolvePrivateMatchMap } =
-      await import('./net/privateMatchHandoff.js');
+      await preloadPrivateMatchHandoffModule();
     const mapId = resolvePrivateMatchMap(lobbyState);
     const matchPlayers = buildPrivateMatchPlayers(lobbyState);
     await presentNetworkBattle({
@@ -3717,7 +3813,7 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
     audio.resume();
     audio.loadingOn(true);
     battleLoad.progress(0.01, 'Opening dedicated channel');
-    const { beginDedicatedClientMatch } = await import('./net/dedicatedClient.js');
+    const { beginDedicatedClientMatch } = await preloadDedicatedClientModule();
     await presentNetworkBattle({
       viewerId,
       own,
@@ -6809,11 +6905,28 @@ function* compileHiddenVariantsSteps(detail = null) {
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
 let studio = { active: false, tick() {} };
+let studioModulePromise = null;
 let studioRuntimePromise = null;
+function preloadStudioModule() {
+  if (!studioModulePromise) {
+    const request = import('./game/studio.js');
+    studioModulePromise = request;
+    request.catch(() => {
+      if (studioModulePromise === request) studioModulePromise = null;
+    });
+  }
+  return studioModulePromise;
+}
+
+function preloadStudioIntent() {
+  preloadStudioModule().catch(() => null);
+  preloadFxModule().catch(() => null);
+}
+
 async function loadStudioRuntime() {
   if (studioRuntimePromise) return studioRuntimePromise;
   studioRuntimePromise = Promise.all([
-    import('./game/studio.js'),
+    preloadStudioModule(),
     ensureFxRuntime(),
   ]).then(([{ createStudio }]) => {
     window.removeEventListener('keydown', lazyStudioKeyDown, true);
