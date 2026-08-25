@@ -112,8 +112,8 @@ assert.deepEqual(finish, {
   trackTopSupportY: 1.14,
   trackThickness: 0.07,
   trackBotY: 0.05,
-  trackContactZF: 2.865,
-  trackContactZR: -2.265,
+  trackContactZF: 2.52,
+  trackContactZR: -1.92,
   sealedHullSides: true,
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
@@ -122,13 +122,18 @@ assert.deepEqual(finish, {
   fenderShelfTopY: 1.2275,
   hullFenderOverlapY: 0.0275,
   upperGlacisSurfaces: 1,
+  upperGlacisAngleFromVerticalDeg: 60,
+  upperGlacisFrontZ: 3.54,
+  upperGlacisRearZ: 2.674,
   upperGlacisFrontY: 1.04,
   upperGlacisRearY: 1.54,
+  deckEquipmentReseated: true,
   lowerGlacisJoinY: 1.04,
   redesignedLeopardTrackCourse: true,
   integratedTrackShoes: true,
   trackLinkPitch: 0.125,
   trackShoeRadialScale: 0.58,
+  trackEndArcSteps: 12,
   frontIdlerZ: 3.17,
   frontIdlerY: 0.74,
   rearSprocketZ: -2.70,
@@ -160,26 +165,34 @@ assert.equal(finish.bodyLiftY, 0,
 const loadedRun = gear.loopPoints.filter(([, y]) => Math.abs(y - finish.trackBotY) < 1e-8);
 assert.ok(loadedRun.length >= 7, 'the loaded track run retains articulated road-wheel stations');
 assert.ok(Math.abs(Math.max(...loadedRun.map(([z]) => z))
-  - (gear.wheelZs[0] + gear.wheelR)) < 1e-8,
-  'the front lower bend begins at the leading road-wheel tangent');
+  - gear.wheelZs[0]) < 1e-8,
+  'the front lower bend begins directly below the first road-wheel centre');
 assert.ok(Math.abs(Math.min(...loadedRun.map(([z]) => z))
-  - (gear.wheelZs.at(-1) - gear.wheelR)) < 1e-8,
-  'the rear lower bend begins at the trailing road-wheel tangent');
+  - gear.wheelZs.at(-1)) < 1e-8,
+  'the rear lower bend begins directly below the last road-wheel centre');
+assert.ok(Math.abs((gear.wheelY - finish.trackBotY) - gear.wheelR)
+  <= finish.trackThickness / 2,
+  'the loaded band physically meets the terminal road-wheel tire envelopes');
 
-// The sponson must bear on the fender shelf, while exactly one long shallow
-// upper-glacis surface remains between the deck break and nose. A vertical
-// probe at z=2.50 used to hit the obsolete second plane at y≈1.06 before
-// reaching the correct y≈1.30 surface.
+// The sponson must bear on the fender shelf, while exactly one upper-glacis
+// surface holds the requested 60-degree angle from vertical. Its deck break
+// is solved from the fixed source nose/deck heights rather than leaving the
+// former long, shallow plate in place.
 assert.ok(finish.hullSponsonBottomY < finish.fenderShelfTopY
   && finish.hullFenderOverlapY >= 0.027,
   'the armored hull shoulder physically overlaps and rests on the fender shelf');
+const glacisRise = finish.upperGlacisRearY - finish.upperGlacisFrontY;
+const glacisRun = finish.upperGlacisFrontZ - finish.upperGlacisRearZ;
+const glacisAngleFromVerticalDeg = THREE.MathUtils.radToDeg(Math.atan2(glacisRun, glacisRise));
+assert.ok(Math.abs(glacisAngleFromVerticalDeg - 60) <= 0.01,
+  `upper glacis remains 60 degrees from vertical (${glacisAngleFromVerticalDeg} deg)`);
 const bowHits = new THREE.Raycaster(
-  new THREE.Vector3(0, -1, 2.50), new THREE.Vector3(0, 1, 0), 0, 4,
+  new THREE.Vector3(0, 4, 3.00), new THREE.Vector3(0, -1, 0), 0, 4,
 ).intersectObject(mesh('hull'), false);
 assert.equal(bowHits.filter((hit) => hit.point.y > 0.95 && hit.point.y < 1.20).length, 0,
   'the obsolete lower duplicate upper-glacis plane is absent');
-assert.ok(bowHits.some((hit) => hit.point.y > 1.28 && hit.point.y < 1.33),
-  'the single shallow upper glacis remains at the authored exterior station');
+assert.ok(bowHits.some((hit) => hit.point.y > 1.40 && hit.point.y < 1.43),
+  'the single 60-degree upper glacis remains at its solved exterior station');
 
 // The marked rear and center deck skins have structural material directly
 // beneath them. Horizontal probes through the former air layer must now hit

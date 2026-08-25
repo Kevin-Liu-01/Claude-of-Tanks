@@ -10698,7 +10698,30 @@ function buildLeo1A5ArticulatedProfile(P) {
     shovelTool, xform } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
-  const upperGlacisY = (z) => 1.04 + (3.54 - z) * (0.50 / 1.99);
+  // Leopard 1 upper glacis: 60 degrees from vertical (30 degrees above the
+  // ground plane). Keep the source nose/deck heights and solve the deck break
+  // from that angle instead of stretching a shallow plate back to z=1.55.
+  const upperGlacisAngleFromVerticalDeg = 60;
+  const upperGlacisFrontZ = 3.54;
+  const upperGlacisFrontY = 1.04;
+  const upperGlacisRearY = 1.54;
+  const upperGlacisRisePerRun = Math.tan(
+    THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg),
+  );
+  const upperGlacisRearZ = upperGlacisFrontZ
+    - (upperGlacisRearY - upperGlacisFrontY) / upperGlacisRisePerRun;
+  const upperGlacisY = (z) => upperGlacisFrontY
+    + (upperGlacisFrontZ - z) * upperGlacisRisePerRun;
+  const centerDeckRearZ = -1.25;
+  const centerDeckTopY = (z) => THREE.MathUtils.lerp(
+    1.77,
+    1.60,
+    THREE.MathUtils.clamp(
+      (z - centerDeckRearZ) / (upperGlacisRearZ - centerDeckRearZ),
+      0,
+      1,
+    ),
+  );
   const fenderShelfY = 1.205;
   const fenderShelfTopY = 1.2275;
   const hullSponsonBottomY = 1.20;
@@ -10716,11 +10739,12 @@ function buildLeo1A5ArticulatedProfile(P) {
   const trackThickness = 0.07;
   const trackTopSupportY = returnRollerY + 0.105 + trackThickness / 2;
   const trackBotY = 0.05;
-  // End the loaded run at the outer tangent of the first and last road
-  // wheels. The previous pins extended another 75 mm at both ends, so the
-  // visible lower corners bent outside the wheel row instead of following it.
-  const trackContactZF = Number((roadWheelZs[0] + roadWheelR).toFixed(3));
-  const trackContactZR = Number((roadWheelZs.at(-1) - roadWheelR).toFixed(3));
+  // Put both ground-course knees directly below the terminal road-wheel
+  // centres. The old +/- radius stations left long flat overhangs before the
+  // end rises; these contact pins let the tangent solver wrap the first and
+  // last wheels as one coherent course.
+  const trackContactZF = roadWheelZs[0];
+  const trackContactZR = roadWheelZs.at(-1);
   const frontIdler = { z: 3.17, y: 0.74, r: 0.29 };
   const rearSprocket = { z: -2.70, y: 0.79, r: 0.30 };
 
@@ -10728,13 +10752,15 @@ function buildLeo1A5ArticulatedProfile(P) {
   // Normalized source anchors: x ±1.685, z ±3.541; track y 0..1.185;
   // structural hull y .40..1.82.
   P.add('hull', box(1.90, 0.54, 6.48), 0, 0.68, -0.02);
-  // The sponson is the hull shoulder above the fenders. Its lower face now
-  // overlaps the fender shelf by 27.5 mm instead of hovering 112.5 mm above
-  // it, and it terminates at the real upper-glacis break (z=1.50) rather
-  // than extending a hidden flat plate beneath the bow.
-  P.add('hull', box(3.26, hullSponsonTopY - hullSponsonBottomY, 4.84),
-    0, (hullSponsonBottomY + hullSponsonTopY) / 2, -0.92);
-  P.add('hull', box(2.58, 0.18, 4.84), 0, 1.43, -0.92);
+  // The sponson is the hull shoulder above the fenders. It terminates at the
+  // angle-derived deck break so the shortened 60-degree glacis has a closed,
+  // load-bearing hull volume behind it.
+  const sponsonRearZ = -3.34;
+  const sponsonLength = upperGlacisRearZ - sponsonRearZ;
+  const sponsonCenterZ = (upperGlacisRearZ + sponsonRearZ) / 2;
+  P.add('hull', box(3.26, hullSponsonTopY - hullSponsonBottomY, sponsonLength),
+    0, (hullSponsonBottomY + hullSponsonTopY) / 2, sponsonCenterZ);
+  P.add('hull', box(2.58, 0.18, sponsonLength), 0, 1.43, sponsonCenterZ);
   // Nose-only lower glacis. The previous slab ran all the way back to
   // z=1.50 and exposed a second upper-glacis plane from y=.74..1.54. This
   // compact wedge ends at the shallow glacis' forward edge, sharing its
@@ -10743,16 +10769,22 @@ function buildLeo1A5ArticulatedProfile(P) {
     [-0.78, 0.48, 3.24], [0.78, 0.48, 3.24], [0.78, 0.48, 2.92], [-0.78, 0.48, 2.92],
     [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]));
   P.add('hull', slab(
-    [-1.05, 1.34, 1.50], [1.05, 1.34, 1.50], [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
-    [-1.24, 1.54, 1.50], [1.24, 1.54, 1.50], [1.24, 1.51, -3.34], [-1.24, 1.51, -3.34]));
+    [-1.05, 1.34, upperGlacisRearZ], [1.05, 1.34, upperGlacisRearZ],
+    [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
+    [-1.24, 1.54, upperGlacisRearZ], [1.24, 1.54, upperGlacisRearZ],
+    [1.24, 1.51, -3.34], [-1.24, 1.51, -3.34]));
   for (const s of [-1, 1]) {
     const m = (x) => s * x;
     P.add('hull', slab(
-      [m(1.05), 1.34, 1.50], [m(1.63), 1.34, 1.50], [m(1.63), 1.34, -3.34], [m(1.05), 1.34, -3.34],
-      [m(1.24), 1.54, 1.50], [m(1.29), 1.49, 1.50], [m(1.29), 1.47, -3.34], [m(1.24), 1.51, -3.34]));
+      [m(1.05), 1.34, upperGlacisRearZ], [m(1.63), 1.34, upperGlacisRearZ],
+      [m(1.63), 1.34, -3.34], [m(1.05), 1.34, -3.34],
+      [m(1.24), 1.54, upperGlacisRearZ], [m(1.29), 1.49, upperGlacisRearZ],
+      [m(1.29), 1.47, -3.34], [m(1.24), 1.51, -3.34]));
     P.add('hull', slab(
-      [m(0.80), 1.04, 3.54], [m(1.64), 1.34, 3.48], [m(1.63), 1.34, 1.50], [m(1.05), 1.34, 1.50],
-      [m(0.80), 1.10, 3.54], [m(1.64), 1.40, 3.43], [m(1.29), 1.49, 1.50], [m(1.05), 1.54, 1.50]));
+      [m(0.80), 1.04, upperGlacisFrontZ], [m(1.64), 1.34, 3.48],
+      [m(1.63), 1.34, upperGlacisRearZ], [m(1.05), 1.34, upperGlacisRearZ],
+      [m(0.80), 1.10, upperGlacisFrontZ], [m(1.64), 1.40, 3.43],
+      [m(1.29), 1.49, upperGlacisRearZ], [m(1.05), 1.54, upperGlacisRearZ]));
   }
   // Source-derived deck crown.  The Leopard 1 engine deck is appreciably
   // higher at the stern and falls through two clean breaks into the glacis;
@@ -10761,8 +10793,10 @@ function buildLeo1A5ArticulatedProfile(P) {
     [-1.28, 1.76, -3.34], [1.28, 1.76, -3.34], [1.28, 1.71, -1.25], [-1.28, 1.71, -1.25],
     [-1.28, 1.82, -3.34], [1.28, 1.82, -3.34], [1.28, 1.77, -1.25], [-1.28, 1.77, -1.25]));
   P.add('hull', slab(
-    [-1.28, 1.71, -1.25], [1.28, 1.71, -1.25], [1.24, 1.54, 1.55], [-1.24, 1.54, 1.55],
-    [-1.28, 1.77, -1.25], [1.28, 1.77, -1.25], [1.24, 1.60, 1.55], [-1.24, 1.60, 1.55]));
+    [-1.28, 1.71, centerDeckRearZ], [1.28, 1.71, centerDeckRearZ],
+    [1.24, upperGlacisRearY, upperGlacisRearZ], [-1.24, upperGlacisRearY, upperGlacisRearZ],
+    [-1.28, 1.77, centerDeckRearZ], [1.28, 1.77, centerDeckRearZ],
+    [1.24, 1.60, upperGlacisRearZ], [-1.24, 1.60, upperGlacisRearZ]));
   // The two deck skins above used to bridge open air: the central hull core
   // ends at y=1.52, leaving as much as 30 cm of daylight below the marked
   // engine-deck crown.  These structural lofts overlap the existing core and
@@ -10772,11 +10806,19 @@ function buildLeo1A5ArticulatedProfile(P) {
     [-1.27, 1.46, -3.34], [1.27, 1.46, -3.34], [1.27, 1.47, -1.25], [-1.27, 1.47, -1.25],
     [-1.28, 1.761, -3.34], [1.28, 1.761, -3.34], [1.28, 1.711, -1.25], [-1.28, 1.711, -1.25]));
   P.add('hull', slab(
-    [-1.27, 1.47, -1.25], [1.27, 1.47, -1.25], [1.23, 1.44, 1.55], [-1.23, 1.44, 1.55],
-    [-1.28, 1.711, -1.25], [1.28, 1.711, -1.25], [1.24, 1.541, 1.55], [-1.24, 1.541, 1.55]));
+    [-1.27, 1.47, centerDeckRearZ], [1.27, 1.47, centerDeckRearZ],
+    [1.23, 1.44, upperGlacisRearZ], [-1.23, 1.44, upperGlacisRearZ],
+    [-1.28, 1.711, centerDeckRearZ], [1.28, 1.711, centerDeckRearZ],
+    [1.24, 1.541, upperGlacisRearZ], [-1.24, 1.541, upperGlacisRearZ]));
   P.add('hull', slab(
-    [-1.05, 1.54, 1.55], [1.05, 1.54, 1.55], [0.80, 1.04, 3.54], [-0.80, 1.04, 3.54],
-    [-1.05, 1.60, 1.55], [1.05, 1.60, 1.55], [0.80, 1.10, 3.54], [-0.80, 1.10, 3.54]));
+    [-1.05, upperGlacisRearY, upperGlacisRearZ],
+    [1.05, upperGlacisRearY, upperGlacisRearZ],
+    [0.80, upperGlacisFrontY, upperGlacisFrontZ],
+    [-0.80, upperGlacisFrontY, upperGlacisFrontZ],
+    [-1.05, upperGlacisRearY + 0.06, upperGlacisRearZ],
+    [1.05, upperGlacisRearY + 0.06, upperGlacisRearZ],
+    [0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ],
+    [-0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ]));
   P.add('hull', box(2.50, 0.60, 0.15), 0, 1.21, -3.47);
   P.add('hull', box(2.62, 0.06, 0.20), 0, 1.50, -3.43);
 
@@ -10821,28 +10863,31 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.mats.rubber.color.setHex(0x34372d);
 
   // Driver station, lamps, guards, towing gear and source-visible deck kit.
-  P.addCupola('hull', box(0.68, 0.08, 0.42), -0.45, 1.585, 0.86, -0.04, 0, 0);
+  const driverHatchY = centerDeckTopY(0.86);
+  P.addCupola('hull', box(0.68, 0.08, 0.42), -0.45, driverHatchY + 0.04, 0.86, -0.04, 0, 0);
+  const driverPeriscopeY = centerDeckTopY(1.03);
   for (const x of [-0.66, -0.45, -0.24]) {
-    P.addEquipment('hull', box(0.13, 0.07, 0.05), x, 1.635, 1.03, -0.10, 0, 0);
-    P.add('hullGlass', box(0.09, 0.035, 0.014), x, 1.638, 1.061, -0.10, 0, 0);
+    P.addEquipment('hull', box(0.13, 0.07, 0.05), x, driverPeriscopeY + 0.035, 1.03, -0.10, 0, 0);
+    P.add('hullGlass', box(0.09, 0.035, 0.014), x, driverPeriscopeY + 0.072, 1.061, -0.10, 0, 0);
   }
-  P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, 1.565, 0.70);
-  P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, 1.582, 0.70);
+  const roundHatchY = centerDeckTopY(0.70);
+  P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
+  P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, roundHatchY + 0.031, 0.70);
   for (const s of [-1, 1]) {
     headlight(P, s * 1.31, 1.19, 3.27, -0.26);
     P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.22, 3.30, -0.26, 0, 0);
     P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
-    liftEye(P, 'hullDetail', s * 1.17, 1.555, 1.65, s * 0.45);
+    liftEye(P, 'hullDetail', s * 1.17, centerDeckTopY(1.65) + 0.015, 1.65, s * 0.45);
     P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, 1.37, 3.36, 0, 0, s * 0.08);
     P.addEquipment('hull', sph(0.018, 8), s * 1.60, 1.54, 3.36);
   }
   towCable(P, [
-    [-0.96, upperGlacisY(2.70) + 0.045, 2.70],
-    [0, upperGlacisY(2.05) + 0.045, 2.05],
-    [0.96, upperGlacisY(2.70) + 0.045, 2.70],
+    [-0.76, upperGlacisY(3.18) + 0.07, 3.18],
+    [0, upperGlacisY(2.82) + 0.07, 2.82],
+    [0.76, upperGlacisY(3.18) + 0.07, 3.18],
   ], 0.024);
-  shovelTool(P, -1.05, 1.55, -0.25);
-  P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, 1.55, -0.48);
+  shovelTool(P, -1.05, centerDeckTopY(-0.25) + 0.015, -0.25);
+  P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, centerDeckTopY(-0.48) + 0.015, -0.48);
 
   // Leopard engine deck: long intake fields, twin fan rings, transverse
   // exhaust bank and rear louvres, all below the rotating basket.
@@ -10900,6 +10945,7 @@ function buildLeo1A5ArticulatedProfile(P) {
     rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: 0.105 })),
     trackW: trackWidth, trackTh: trackThickness, topY: trackTopSupportY, botY: trackBotY,
     contactZF: trackContactZF, contactZR: trackContactZR,
+    frontArcSteps: 12, rearArcSteps: 12,
     linkPitchM: 0.125, shoeRadialScale: 0.58, shoeWidthScale: 0.97,
     endRingSpan: 0.50, coveredTop: 1.06, arms: true, paintedEnds: true,
     padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true, tireHex: 0x242720,
@@ -10947,13 +10993,18 @@ function buildLeo1A5ArticulatedProfile(P) {
     fenderShelfTopY: Number((fenderShelfTopY + bodyLiftY).toFixed(4)),
     hullFenderOverlapY: Number((fenderShelfTopY - hullSponsonBottomY).toFixed(4)),
     upperGlacisSurfaces: 1,
-    upperGlacisFrontY: Number((upperGlacisY(3.54) + bodyLiftY).toFixed(4)),
-    upperGlacisRearY: Number((upperGlacisY(1.55) + bodyLiftY).toFixed(4)),
+    upperGlacisAngleFromVerticalDeg,
+    upperGlacisFrontZ,
+    upperGlacisRearZ: Number(upperGlacisRearZ.toFixed(4)),
+    upperGlacisFrontY: Number((upperGlacisY(upperGlacisFrontZ) + bodyLiftY).toFixed(4)),
+    upperGlacisRearY: Number((upperGlacisY(upperGlacisRearZ) + bodyLiftY).toFixed(4)),
+    deckEquipmentReseated: true,
     lowerGlacisJoinY: Number((1.04 + bodyLiftY).toFixed(4)),
     redesignedLeopardTrackCourse: true,
     integratedTrackShoes: true,
     trackLinkPitch: 0.125,
     trackShoeRadialScale: 0.58,
+    trackEndArcSteps: 12,
     frontIdlerZ: frontIdler.z,
     frontIdlerY: frontIdler.y,
     rearSprocketZ: rearSprocket.z,

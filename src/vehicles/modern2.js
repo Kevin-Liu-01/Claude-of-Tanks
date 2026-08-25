@@ -431,7 +431,10 @@ const MODERN2_SPECS = {
       cheek: { ke: 120, ce: 120, phys: 120 }, tSide: { ke: 45, ce: 45 },
       tRear: 35, tRoof: 20, mantlet: { ke: 120, ce: 120 },
       tHalfW: 1.05, tFrontZ: 0.75, tRearZ: -1.15, tH: 0.72,
-      glacisNoseZ: 3.50, glacisTopZ: 1.45, crew4: true,
+      // The procedural exterior breaks at z=2.674 to hold the Leopard 1's
+      // 60-degree-from-vertical upper glacis. Keep the combat surface on the
+      // same station so visual and hit geometry agree.
+      glacisNoseZ: 3.54, glacisTopZ: 2.674, crew4: true,
     }),
     visual: {
       scheme: 'nato', base: '#49543c', weather: '#525f45',

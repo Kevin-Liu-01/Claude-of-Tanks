@@ -51,7 +51,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   leclerc: Object.freeze({ xM: 0.0031, zM: 0.1097 }),
   leclerc_xlr: Object.freeze({ xM: 0.0031, zM: 0.1018 }),
   leichttraktor: Object.freeze({ xM: 0, zM: 0.0192 }),
-  leo1a5: Object.freeze({ xM: 0, zM: 0.0053 }),
+  leo1a5: Object.freeze({ xM: 0.0001, zM: 0.0361 }),
   leo2_revolution: Object.freeze({ xM: 0.0002, zM: -0.0864 }),
   leo2a4: Object.freeze({ xM: -0.0002, zM: 0.0467 }),
   leo2a4_otco: Object.freeze({ xM: -0.0003, zM: 0.0289 }),
