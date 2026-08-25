@@ -89,12 +89,12 @@ summaries above are reproducible with the commands in the probe header).
    `RB`) always holds the camera free while freezing the aim point and turret;
    `Left Shift` toggles sniper mode, and the selected RMB mode is
    unchanged.
-3. **Narrow-window mouse regression fix.** `input.isTouchLayout()` treated any
-   window <= 900 px wide as a touch device (commit 39e43c0), which disabled
-   pointer lock AND the cursor-aim fallback in embedded desktop panes — mouse
-   aim went completely dead there (the deployment has this latent bug too; it
-   never fires in a full-width browser tab). Width now only counts when the
-   device has no fine pointer.
+3. **Interaction-mode regression fix.** `input.isTouchLayout()` once treated a
+   narrow window as a touch device (commit 39e43c0), which disabled pointer
+   lock AND the cursor-aim fallback in embedded desktop panes. It now consumes
+   the shared responsive contract's coarse/fine input signal, independent of
+   width: a resized mouse window keeps desktop aim while an iPad with a
+   laptop-class CSS width still receives touch controls and overlay panels.
 4. **Physical-bore cannon-marker parity (owner follow-up, 2026-08-15).** The
    fixed camera marker is only the requested look direction. The aiming circle
    and gun marker expose the actual articulated bore as it traverses and as it

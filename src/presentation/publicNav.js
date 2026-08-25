@@ -1,3 +1,7 @@
+import { installResponsiveLayout } from '../ui/responsiveLayout.js';
+
+installResponsiveLayout();
+
 const mountStars = () => import('../ui/githubStars.js')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
 
@@ -72,9 +76,9 @@ function mountMobileNavigation() {
     event.preventDefault();
     close({ restoreFocus: true });
   });
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 900) close();
-  }, { passive: true });
+  window.addEventListener('cot:layoutchange', (event) => {
+    if (!event.detail?.overlayPanels) close();
+  });
 
   links.append(trigger, menu);
 }

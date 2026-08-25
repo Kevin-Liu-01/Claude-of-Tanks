@@ -1043,28 +1043,6 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-dmg .ico{color:var(--kc-amber);}
 .cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
 .cot-kc-flash{z-index:12;}
-@media (max-width:760px){
-  .cot-kc-title{top:8px;min-width:270px;padding-inline:18px;}
-  .cot-kc-title .t{font-size:13px;letter-spacing:.34em;}
-  .cot-kc-title .s{font-size:8px;}
-  .cot-kc-annot{left:10px;bottom:max(68px,11.5vh);width:min(280px,calc(100vw - 20px));}
-  .cot-kc-killer{right:10px;top:74px;bottom:auto;width:min(244px,calc(100vw - 20px));}
-  .cot-kc-skip{right:10px;bottom:10px;}
-  .cot-kc-label{font-size:9.5px;padding:3px 6px 4px;}
-  .cot-kc-label .s{font-size:8px;}
-  .cot-kc-dmg{font-size:20px;padding:3px 7px 4px;}
-}
-@media (max-width:760px) and (orientation:portrait){
-  .cot-kc-annot{bottom:40px;}
-}
-@media (orientation:landscape) and (max-height:480px){
-  .cot-kc-title{top:4px;min-width:280px;padding-block:5px 6px;}
-  .cot-kc-annot{left:10px;top:auto;bottom:48px;width:260px;}
-  .cot-kc-killer{right:10px;top:auto;bottom:48px;width:244px;}
-  .cot-kc-skip{bottom:8px;}
-  .cot-kc-annot .hd{padding-block:5px 4px;}
-  .cot-kc-rows{padding-top:4px;gap-block:2px;}
-}
 `;
 
 /** Cylinder mesh between two points (local space of `parent`). */

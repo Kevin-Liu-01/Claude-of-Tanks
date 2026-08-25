@@ -51,11 +51,6 @@ body.cot-touch-layout .cot-room-chat-log{max-height:105px;padding-left:0}
 body.cot-touch-layout .cot-room-chat-message{font-size:10px}
 body.cot-touch-layout .cot-room-chat-controls{padding:6px}
 body.cot-touch-layout .cot-room-chat-toggle{min-width:82px;height:38px;background:rgba(7,11,15,.9)}
-@media(max-height:700px){.cot-room-chat{top:50%}.cot-room-chat-log{max-height:105px}}
-@media(max-width:760px){.cot-room-chat{top:clamp(340px,calc(50% + 20px),calc(100vh - 80px));
-    bottom:auto;width:min(360px,44vw);min-width:220px}
-  .cot-room-chat-log{max-height:clamp(48px,calc(100vh - 440px),92px)}
-  body.cot-touch-layout .cot-room-chat{top:180px}}
 @media(prefers-reduced-motion:reduce){.cot-room-chat-log{transition:none}}
 `;
   document.head.appendChild(style);

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav] = await Promise.all([
+await import('./responsiveLayout.selftest.mjs');
+
+const [
+  garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav, responsiveSurfaces, input,
+  networkStatus, transition, perfHud, deviceDiag, renderer, main, gallery, docs,
+] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.js', import.meta.url), 'utf8'),
   readFile(new URL('./battleLoad.js', import.meta.url), 'utf8'),
@@ -9,40 +14,60 @@ const [garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav] = await Pr
   readFile(new URL('./shotInfo.js', import.meta.url), 'utf8'),
   readFile(new URL('./playMenu.js', import.meta.url), 'utf8'),
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
+  readFile(new URL('./responsiveSurfaces.js', import.meta.url), 'utf8'),
+  readFile(new URL('../game/input.js', import.meta.url), 'utf8'),
+  readFile(new URL('./networkStatus.js', import.meta.url), 'utf8'),
+  readFile(new URL('./transition.js', import.meta.url), 'utf8'),
+  readFile(new URL('./perfHud.js', import.meta.url), 'utf8'),
+  readFile(new URL('../engine/deviceDiag.js', import.meta.url), 'utf8'),
+  readFile(new URL('../engine/renderer.js', import.meta.url), 'utf8'),
+  readFile(new URL('../main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
+  readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
 ]);
 
+assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
+  'Garage composition must not retain independent device-width breakpoint logic');
+assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
+  'Garage composition must consume semantic orientation attributes instead of media-query guesses');
+assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
+  'laptop navigation must collapse through the shared width-band contract');
 assert.match(garage,
-  /@media \(min-width:901px\) and \(orientation:landscape\)[\s\S]*body\.cot-touch-layout \.cot-country-rail/,
-  'coarse-pointer tablets need a compact Garage rail layout above the phone width breakpoint');
+  /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"[\s\S]*data-garage-panel="dossier"/,
+  'overlay garages must expose explicit Battlefield, Appearance, and Dossier drawers');
 assert.match(garage,
-  /body\.cot-touch-layout \.cot-garage \.stats\{display:block;[\s\S]*bottom:134px;[\s\S]*width:clamp\(220px,19vw,252px\);max-height:none;overflow-y:auto/,
-  'landscape tablets must retain a bounded, independently scrolling vehicle dossier');
+  /body\[data-cot-panels='overlay'\] \.cot-leftcol,[\s\S]*\.cot-garage \.stats\{display:none\}/,
+  'tablet and phone side panels must stay out of the tank stage until requested');
 assert.match(garage,
-  /body\.cot-touch-layout \.cot-leftcol\{[^}]*bottom:auto;[^}]*height:auto;[^}]*max-height:calc\(100vh - 220px\)/,
-  'landscape tablets must not stretch the left customization rail to the fleet carousel');
-assert.match(garage,
-  /body\.cot-touch-layout \.cot-camos\{[^}]*height:auto;min-height:0;max-height:100%;flex:0 0 auto;overflow:hidden/,
-  'landscape tablet camouflage must size to its content instead of painting an empty full-height shell');
-assert.match(garage, /@media \(max-width:1480px\)[\s\S]*\.cot-nav \.nv \.nav-label\{display:none/,
-  'mid-size desktop navigation must collapse before it intersects the centered Battle control');
-assert.match(garage,
-  /@media \(max-width:900px\) and \(orientation:landscape\) and \(max-height:560px\)[\s\S]*\.cot-camos\{height:100%;overflow-y:auto/,
-  'short landscape phones must contain camouflage within its own scroll lane');
+  /body\[data-cot-width-density='narrow'\] \.cot-battle-control\{top:max\(64px/,
+  'narrow phones must place Battle below the brand and global controls instead of overlapping them');
 
+assert.doesNotMatch(touch, /@media \([^)]*(?:width|height|orientation)/,
+  'touch controls must consume the canonical semantic viewport contract');
 assert.match(touch,
-  /@media \(orientation:landscape\) and \(max-height:560px\)/,
-  'battle controls need a height-aware landscape tier');
-assert.match(touch,
-  /body\.cot-touch-layout \.cot-shells[\s\S]*bottom:calc\(max\(28px,[^;]+\) \+ 274px\)[\s\S]*body\.cot-touch-layout \.cot-cons[\s\S]*\+ 112px/,
+  /body\.cot-touch-layout \.cot-shells[\s\S]*bottom:calc\(max\(22px,[^;]+\) \+ 302px\)[\s\S]*body\.cot-touch-layout \.cot-cons[\s\S]*\+ 124px/,
   'ammo and consumables must occupy separate vertical lanes');
-assert.match(touch,
-  /@media \(orientation:landscape\) and \(max-height:430px\)[\s\S]*\.cot-dp\{display:none/,
-  'very short phones must shed the secondary damage panel before it overlaps driving controls');
+assert.match(responsiveSurfaces,
+  /body\.cot-touch-layout\[data-cot-width='phone'\] \.cot-dp\{display:none\}/,
+  'phone touch layouts must shed the secondary damage panel before it overlaps driving controls');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-height-density='tight'\]\[data-cot-orientation='landscape'\] \.cot-touch \.joy/,
+  'very short landscape controls must use the shared tight-height tier');
+assert.match(responsiveSurfaces,
+  /data-cot-width-density='narrow'\]\[data-cot-orientation='portrait'\] \.cot-touch \.autoaim\{right:152px\}[\s\S]*\.cot-special\{right:96px\}/,
+  'ultra-narrow portrait controls must separate auto-aim from the joystick and special action');
+assert.match(input,
+  /document\.body\?\.dataset\?\.cotInput[\s\S]*responsiveInput === 'coarse'[\s\S]*responsiveInput === 'fine'/,
+  'battle input must consume the canonical interaction-mode contract');
+assert.doesNotMatch(input, /innerWidth\s*(?:<|<=|>|>=)/,
+  'battle input must never infer touch controls from viewport width');
 
-assert.match(battleLoad,
-  /@media \(orientation:landscape\) and \(max-height:560px\)[\s\S]*\.cot-bl \.team\{justify-content:center/,
+assert.doesNotMatch(battleLoad, /@media \([^)]*(?:width|height|orientation)/,
+  'battle loading must not retain independent device breakpoint logic');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-height='short'\] \.cot-bl \.team\{justify-content:center/,
   'short battle rosters need a height-aware vertical composition');
-assert.match(battleLoad, /\.cot-bl \.count:empty\{display:none/,
+assert.match(responsiveSurfaces, /\.cot-bl \.count:empty\{display:none/,
   'an empty countdown must not reserve footer height over the final roster row');
 
 assert.doesNotMatch(hud, /cot-dlog|pushDamageLog/,
@@ -70,14 +95,14 @@ assert.match(shotInfo,
 assert.match(shotInfo,
   /\.cot-si-diag\{display:grid;grid-template-columns:90px 172px[\s\S]*\.cot-si-diag \.box:first-child\{width:90px!important;height:90px!important;\}[\s\S]*\.cot-si-diag \.box:nth-child\(2\)\{width:172px!important;height:86px!important;\}/,
   'desktop penetration schematics must fill the available report frame');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='compact'\] \.cot-si-diag\{[\s\S]*grid-template-columns:78px 154px/,
+  'compact combat cards must preserve readable penetration diagrams');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] \.cot-si-diag\{display:none\}/,
+  'phone combat cards must remove side diagrams to preserve the battlefield and controls');
 assert.match(shotInfo,
-  /@media \(max-width:700px\), \(pointer:coarse\) and \(max-width:760px\)[\s\S]*\.cot-si-body\{display:block[\s\S]*\.cot-si-diag\{grid-template-columns:78px 154px/,
-  'mobile combat cards must reflow and retain both penetration diagram views');
-assert.match(shotInfo,
-  /@media \(max-width:520px\)[\s\S]*\.cot-si-diag\{grid-template-columns:70px 140px[\s\S]*\.box:nth-child\(2\)\{width:140px!important;height:70px!important;\}/,
-  'narrow phones must retain large two-view schematics without overflowing the report');
-assert.match(shotInfo,
-  /top:max\(var\(--cot-si-card-top,var\(--cot-si-roster-bottom,252px\)\)[\s\S]*document\.querySelector\('\.cot-ear\.r'\)[\s\S]*document\.querySelector\('\.cot-minimap'\)[\s\S]*centeredTop/,
+  /top:var\(--cot-si-card-top,var\(--cot-si-roster-bottom,272px\)\)[\s\S]*document\.querySelector\('\.cot-ear\.r'\)[\s\S]*document\.querySelector\('\.cot-minimap'\)[\s\S]*centeredTop/,
   'ballistic reports must center in the live lane between the enemy roster and minimap');
 assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
   'ballistic reports must not retain the orange top-edge accent');
@@ -88,7 +113,7 @@ assert.match(shotInfo,
   /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid rgba\(146,164,180,\.24\);\}/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
-  /body\.cot-touch-layout \.cot-si-card\{min-height:0;\}[\s\S]*body\.cot-touch-layout \.cot-si-diag\{justify-content:center/,
+  /body\.cot-touch-layout \.cot-si-card\{min-height:0;\}[\s\S]*body\.cot-touch-layout \.cot-si-diag\{justify-content:center;/,
   'the game touch-layout state must keep the compact shot-card composition independently of pointer heuristics');
 assert.match(shotInfo,
   /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,
@@ -97,11 +122,9 @@ assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
   'the compact report must not render distance or result rows');
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
   'the compact report must not append module chips, zone copy, or a penetration caption');
-assert.match(shotInfo,
-  /@media \(orientation:landscape\) and \(max-height:430px\)[\s\S]*width:260px[\s\S]*\.cot-si-body\{display:flex[\s\S]*\.cot-si-diag\{grid-template-columns:66px 140px/,
+assert.match(responsiveSurfaces,
+  /data-cot-height-density='tight'[\s\S]*\.cot-si-body\{display:flex[\s\S]*\.cot-si-diag\{grid-template-columns:66px 140px/,
   'short landscape touch screens must retain the vertical report composition');
-assert.doesNotMatch(shotInfo, /\.cot-si-diag\{display:none/,
-  'penetration diagrams must not disappear on touch or narrow layouts');
 assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:164px/,
   'the canonical incoming feed must reserve stable space for battle readings');
 
@@ -113,11 +136,84 @@ assert.match(playMenu, /menu-select--map \.menu-select-list\{grid-template-colum
   'the battlefield list must present preview tiles in a compact desktop grid');
 assert.match(playMenu, /menu-select-list\{position:fixed;[^}]*overflow:auto;overscroll-behavior:contain/,
   'custom room lists must stay inside a viewport-aware scroll lane');
-assert.match(playMenu, /@media\(max-width:780px\)[\s\S]*menu-select--map \.menu-select-list\{grid-template-columns:1fr/,
+assert.match(responsiveSurfaces, /data-cot-width='compact'[\s\S]*menu-select--map \.menu-select-list,[\s\S]*data-cot-width='phone'[\s\S]*grid-template-columns:1fr/,
   'the battlefield picker must collapse to one column on phones');
 assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigger\.disabled = disabled/,
   'custom room listboxes must preserve native disabled semantics for guests and ready states');
 assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
   'the desktop GitHub star control needs comfortable internal spacing');
+
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] \.cot-network-status\{[\s\S]*width:calc\(100vw - \(var\(--cot-edge\) \* 2\)\)[\s\S]*min-width:0/,
+  'phone reconnect banners must fit the safe viewport instead of retaining their desktop minimum');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width\] \.cot-network-diagnostics\{[\s\S]*white-space:pre-wrap;overflow-wrap:anywhere/,
+  'network diagnostics must wrap and scroll rather than escape narrow screens');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
+  'state transitions must cap their core and recompose long titles on phones');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] \.cot-resume \.rz-title\{[\s\S]*letter-spacing:\.18em/,
+  'the pointer-lock resume veil must keep its title within phone width');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width\] \.cot-hints\{[\s\S]*flex-wrap:wrap;white-space:normal/,
+  'keyboard hints must wrap as groups instead of clipping on intermediate widths');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-perfhud \[data-grid\]\{grid-template-columns:1fr!important\}/,
+  'the opt-in performance dashboard must remain readable on narrow devices');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-diag\{[\s\S]*max-height:62dvh!important;overflow:auto!important/,
+  'the compatibility diagnostics panel must stay bounded and scrollable on phones');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-ctxlost>div>div:first-child\{[\s\S]*letter-spacing:\.18em!important/,
+  'the graphics recovery title must reflow without overflowing small screens');
+assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
+  'Gallery feedback toasts must be viewport-bounded');
+assert.match(docs, /\.docs-toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
+  'Docs feedback toasts must be viewport-bounded');
+
+for (const [source, pattern, label] of [
+  [networkStatus, /\.cot-network-status\{position:fixed/, 'network status'],
+  [transition, /\.cot-trans\{position:fixed/, 'state transition'],
+  [perfHud, /el\.id = 'cot-perfhud'/, 'performance dashboard'],
+  [deviceDiag, /el\.id = 'cot-diag'/, 'compatibility diagnostics'],
+  [renderer, /el\.id = 'cot-ctxlost'/, 'graphics recovery'],
+  [main, /t\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
+]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
+
+const semanticSurfaceFiles = [
+  '../game/killcam.js',
+  '../gallery/gallery.css',
+  '../presentation/mediaArchive.css',
+  '../presentation/publicNav.css',
+  '../presentation/publicPages.js',
+  '../docs/docs.css',
+  '../docs/battleReels.js',
+  '../../public/home.css',
+  '../../index.html',
+  './battleLoad.js',
+  './contextInfo.js',
+  './endScreen.js',
+  './garage.js',
+  './hud.js',
+  './playMenu.js',
+  './roomChat.js',
+  './networkStatus.js',
+  './perfHud.js',
+  './settings.js',
+  './shotInfo.js',
+  './studioPanel.js',
+  './touchControls.js',
+  './transition.js',
+  '../engine/deviceDiag.js',
+  '../engine/renderer.js',
+  '../main.js',
+];
+for (const relativePath of semanticSurfaceFiles) {
+  const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
+  assert.doesNotMatch(source,
+    /@media[^\n]*(?:max-width|min-width|orientation|max-height|min-height)|matchMedia\([^\n]*(?:max-width|min-width|orientation|max-height|min-height)/,
+    `${relativePath} must not reintroduce an independent device-layout breakpoint`);
+}
 
 console.log('mobile responsive layout contracts: PASS');

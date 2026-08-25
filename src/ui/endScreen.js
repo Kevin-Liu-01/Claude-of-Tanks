@@ -259,52 +259,6 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .cot-es-btn.ghost{color:#f4e9d8;border:1px solid rgba(240,193,105,.55);
   background:rgba(240,160,48,.08);}
 .cot-es .cot-es-btn.ghost:hover{background:rgba(240,160,48,.16);}
-@media (max-height:820px){
-  .cot-es{justify-content:flex-start;overflow-y:auto;padding:12px 0 26px;}
-  .cot-es .es-tal .v,.cot-es .es-tal.hot .v{font-size:30px;}
-  .cot-es .es-report{margin-top:9px;}
-  .cot-es .es-actions{margin-top:1.4vh;}
-}
-/* MOBILE-QA r1: landscape phones (375-430 pt tall). The centered fixed-height
-   column overflowed BOTH ends on an iPhone SE/13 — BATTLE AGAIN / RETURN TO
-   GARAGE rendered below the fold with overflow:hidden, so the player could
-   not leave the results screen at all. Top-anchor + scroll, compact the hero
-   and tallies so the common case fits without scrolling anyway. */
-@media (max-height:480px){
-  .cot-es{justify-content:flex-start;overflow-y:auto;padding:10px 0 82px;}
-  .cot-es .es-ban{font-size:clamp(24px,9vh,38px);}
-  .cot-es .es-tal .v,.cot-es .es-tal.hot .v{font-size:24px;}
-  .cot-es .es-report{height:300px;flex:0 0 300px;margin-top:8px;}
-  .cot-es .es-tal{min-height:0;text-align:center;padding:5px 4px;}
-  .cot-es .es-tal .v{text-align:center;}
-  .cot-es .es-tal .k{margin-top:3px;font-size:7.5px;letter-spacing:.08em;}
-  .cot-es .es-dh{min-height:32px;padding:6px 10px}.cot-es .es-best{min-height:32px;padding:5px 9px}
-  .cot-es .es-scoreboard{min-height:64px;padding:6px 10px}.cot-es .es-score-side .sn{font-size:28px}
-  .cot-es .es-rosters{gap:6px;padding:0 7px 6px}.cot-es .es-kill-block{padding:0 7px 6px}
-  .cot-es .es-actions{position:fixed;left:0;right:0;bottom:0;justify-content:center;
-    margin:0;padding:8px 10px;background:linear-gradient(180deg,rgba(3,5,8,.15),rgba(3,5,8,.98) 30%);
-    border-top:1px solid rgba(166,184,199,.24);}
-  .cot-es .cot-es-btn{min-height:46px;padding:10px 30px;}
-  /* narrow side panels: the tracked-out header wrapped mid-word
-     ("TEAM ALIV") — drop the letterspacing and keep it on one line */
-  .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
-}
-/* Portrait/mobile: preserve the information hierarchy by stacking the two
-   dossiers; the desktop equal-height pairing becomes a top-to-bottom read. */
-@media (max-width:820px) and (orientation:portrait){
-  .cot-es{justify-content:flex-start;overflow-y:auto;padding:12px 0 82px;}
-  .cot-es .es-ban{font-size:clamp(30px,10vw,44px);}
-  .cot-es .es-report{grid-template-columns:1fr;height:auto;flex:0 0 auto;}
-  .cot-es .es-debrief.personal{height:390px}.cot-es .es-debrief.teams{height:auto;min-height:470px}
-  .cot-es .es-rosters{grid-template-columns:1fr;gap:4px}.cot-es .es-roster-list{max-height:220px}
-  .cot-es .es-actions{position:fixed;left:0;right:0;bottom:0;justify-content:center;
-    margin:0;padding:8px 7px;background:linear-gradient(180deg,rgba(3,5,8,.15),rgba(3,5,8,.98) 30%);
-    border-top:1px solid rgba(166,184,199,.24);}
-  .cot-es .cot-es-btn{min-width:0;padding:12px 15px;font-size:11px;}
-  .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
-  .cot-es .es-rematch{grid-template-columns:1fr}.cot-es .es-room-actions{width:100%;border-left:0;border-top:1px solid rgba(240,160,48,.22)}
-  .cot-es .es-room-actions .cot-es-btn{flex:1;min-width:0}.cot-es .es-room-player{min-width:100%;}
-}
 `;
 
 const fmtTime = (s) => {

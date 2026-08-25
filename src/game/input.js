@@ -937,20 +937,22 @@ export function createInput(opts = {}) {
     },
 
     /** Coarse-pointer devices use the Blitz-style touch HUD and skip pointer
-     *  lock. gunnery r1 REGRESSION FIX (owner bug 1 root cause): the mobile
-     *  battle flow gated this on `innerWidth <= 900` alone, which reclassified
-     *  every narrow DESKTOP window — the embedded panes the owner plays in —
-     *  as a phone: pointer lock was never requested, the lock-denial latch
-     *  (cursor-aim fallback) never armed, and MOUSE AIM WENT COMPLETELY DEAD
-     *  (camera and turret both ignored the mouse; only WASD/Shift worked).
-     *  Width now only counts when the device has no fine pointer at all — a
-     *  mouse-equipped narrow window keeps the desktop control path. */
+     *  lock. The responsive layout contract deliberately separates available
+     *  space from interaction mode: a narrow mouse window keeps desktop aim,
+     *  while a laptop-width iPad keeps touch controls and overlay panels. */
     isTouchLayout() {
+      const responsiveInput = typeof document !== 'undefined'
+        ? document.body?.dataset?.cotInput
+        : '';
+      if (responsiveInput === 'coarse') return true;
+      if (responsiveInput === 'fine') return false;
+
+      // Early-boot/test fallback before responsiveLayout has annotated body.
+      // Pointer capability—not viewport width—is the control-mode authority.
       const mm = typeof matchMedia === 'function' ? matchMedia : null;
       const coarse = !!mm && mm('(pointer: coarse)').matches;
       const fine = !!mm && mm('(pointer: fine)').matches;
-      const narrow = typeof innerWidth === 'number' && innerWidth <= 900;
-      return coarse || (narrow && !fine);
+      return coarse && !fine;
     },
 
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./killcam.js', import.meta.url), 'utf8');
+const responsive = readFileSync(new URL('../ui/responsiveSurfaces.js', import.meta.url), 'utf8');
 
 assert.match(source, /import \{ uiIconSVG \} from '\.\.\/ui\/uiIcons\.js';/,
   'killcam presentation uses the shared SVG icon registry');
@@ -25,9 +26,11 @@ assert.match(source, /\.cot-kc-labelhost\{position:absolute;z-index:8;inset:0;ov
   'projected callouts remain clipped to the replay frame');
 assert.match(source, /pass 2c: keep projected callouts out of the fixed analysis\/killer/,
   'projected labels reserve space for fixed replay cards');
-assert.match(source, /@media \(max-width:760px\) and \(orientation:portrait\)/,
+assert.doesNotMatch(source, /@media \([^)]*(?:width|height|orientation)/,
+  'killcam presentation must not retain independent device breakpoint logic');
+assert.match(responsive, /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-kc-killer/,
   'portrait killcam has a dedicated safe-area layout');
-assert.match(source, /@media \(orientation:landscape\) and \(max-height:480px\)/,
+assert.match(responsive, /body\[data-cot-height='short'\] \.cot-kc-(?:annot|killer)/,
   'short landscape killcam has a dedicated compact layout');
 
 console.log('killcam presentation selftest passed');

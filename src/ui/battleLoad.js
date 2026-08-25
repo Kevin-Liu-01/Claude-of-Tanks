@@ -107,63 +107,6 @@ const CSS = `
   line-height:1.5;padding:0 8%;}
 .cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
   letter-spacing:.2em;text-transform:uppercase;font-size:9.5px;margin-right:8px;}
-@media (max-height:700px){
-  /* A short landscape viewport must reserve a real row for progress. The old
-     32% hero + desktop roster rows left less space than seven vehicles need,
-     so the footer painted across the final row. */
-  .cot-bl .hero{flex-basis:27%;min-height:108px;max-height:150px;}
-  .cot-bl .hero .cap{bottom:11px;}
-  .cot-bl .mapname{margin-top:4px;font-size:clamp(24px,4vw,38px);}
-  .cot-bl .kicker{font-size:8.5px;}
-  .cot-bl .teams{gap:clamp(12px,3vw,34px);padding:9px clamp(12px,5vw,42px) 0;}
-  .cot-bl .thead{font-size:9px;padding-bottom:4px;}
-  .cot-bl .rows{gap:2px;padding-top:4px;min-height:0;}
-  .cot-bl .row{height:clamp(23px,5vh,28px);gap:6px;padding:0 5px;}
-  .cot-bl .row .tier{flex-basis:22px;font-size:9px;}
-  .cot-bl .row .sil{flex-basis:42px;height:19px;}
-  .cot-bl .row .nm{font-size:10px;}
-  .cot-bl .foot{padding:6px clamp(12px,5vw,42px) max(8px,env(safe-area-inset-bottom));}
-  .cot-bl .fmeta{margin-bottom:4px;align-items:center;}
-  .cot-bl .fstage{font-size:8.5px;letter-spacing:.2em;}
-  .cot-bl .fpct{font-size:14px;}
-  .cot-bl .fbar{height:4px;}
-  .cot-bl .count{margin-top:5px;min-height:14px;font-size:9px;line-height:14px;}
-  .cot-bl .count b{font-size:15px;}
-  .cot-bl .tip{display:none;}
-}
-@media (max-width:900px){
-  .cot-bl .hero{flex-basis:34%;min-height:128px;}
-  .cot-bl .hero .cap{bottom:12px}.cot-bl .mapname{margin-top:4px;font-size:clamp(22px,6vw,34px)}
-  .cot-bl .kicker{font-size:8.5px}
-  .cot-bl .teams{gap:8px;padding:9px 10px 0}.cot-bl .vs{display:none}
-  .cot-bl .thead{font-size:9px;padding-bottom:4px}.cot-bl .rows{gap:2px;padding-top:4px}
-  .cot-bl .row{height:27px;gap:5px;padding:0 4px}.cot-bl .row .tier{flex-basis:20px;font-size:9px}
-  .cot-bl .row .sil{flex-basis:38px;height:20px}.cot-bl .row .nm{font-size:10px}
-  .cot-bl .foot{padding:9px 12px max(11px,env(safe-area-inset-bottom))}
-  .cot-bl .fmeta{margin-bottom:5px}.cot-bl .fstage{font-size:9px}.cot-bl .fpct{font-size:15px}
-  .cot-bl .count{margin-top:8px;font-size:10px}.cot-bl .count b{font-size:16px}.cot-bl .tip{display:none}
-}
-/* This rule intentionally follows both compact queries: on a short phone the
-   width rule otherwise restores a 34% hero and 27 px rows after the
-   height-aware values above. Empty countdown copy consumes no footer row. */
-@media (orientation:landscape) and (max-height:560px){
-  .cot-bl .hero{flex:0 0 clamp(100px,25vh,138px);min-height:100px;max-height:138px;}
-  .cot-bl .hero .cap{bottom:8px;}
-  .cot-bl .mapname{margin-top:3px;font-size:clamp(21px,4vw,34px);}
-  .cot-bl .kicker{font-size:7.5px;}
-  .cot-bl .teams{gap:8px;padding:7px max(10px,env(safe-area-inset-left)) 0;}
-  .cot-bl .team{justify-content:center;}
-  .cot-bl .row{height:clamp(21px,4.7vh,26px);gap:5px;padding:0 4px;}
-  .cot-bl .row .tier{flex-basis:20px;font-size:8.5px;}
-  .cot-bl .row .sil{flex-basis:36px;height:18px;}
-  .cot-bl .row .nm{font-size:9.5px;}
-  .cot-bl .foot{padding:5px max(10px,env(safe-area-inset-left)) max(7px,env(safe-area-inset-bottom));}
-  .cot-bl .fmeta{margin-bottom:3px;}
-  .cot-bl .fstage{font-size:8px;}
-  .cot-bl .fpct{font-size:13px;}
-  .cot-bl .count{margin-top:4px;min-height:12px;line-height:12px;}
-  .cot-bl .count:empty{display:none;}
-}
 `;
 
 const BATTLE_TIPS = [

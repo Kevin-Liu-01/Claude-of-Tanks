@@ -262,15 +262,6 @@ const SETTINGS_CSS = `
     box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 10px rgba(240,160,48,.5);}
   .cot-settings *{transition-duration:0s !important;}
 }
-@media (max-width:900px){
-  .cot-set-panel{max-height:94vh;}
-  .cot-set-hdr{padding:12px 14px 8px;}
-  .cot-set-tabs{padding:0 14px;}
-  .cot-set-tab{padding:9px 10px 8px;font-size:9.5px;letter-spacing:.14em;}
-  .cot-set-body{padding:0 14px 12px;}
-  .cot-set-conflict{margin:8px 14px 0;}
-  .cot-set-ftr{padding:10px 14px 12px;}
-}
 /* Standalone fallback placement. The garage mounts this settings-owned button
    into its top navigation rail; these coordinates only apply before that
    mount or in a surface that creates settings without the garage. */
@@ -301,12 +292,6 @@ const SETTINGS_CSS = `
 .cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
   text-transform:uppercase;}
 
-/* MOBILE-QA r1: landscape phones — the 280px body floor pushed the footer
-   (Close / Reset) past a 375pt viewport; panel fits and the body scrolls. */
-@media (max-height:480px){
-  .cot-set-panel{max-height:96vh;}
-  .cot-set-body{min-height:0;}
-}
 /* MOBILE-QA r1: touch-target floor for the option pills (28px measured). */
 body.cot-touch-layout .cot-set-body button{min-height:40px;}
 body.cot-touch-layout .cot-set-ftr .cot-set-btn{min-height:42px;}
