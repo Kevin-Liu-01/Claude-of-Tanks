@@ -18,6 +18,11 @@ const GLACIS_CLOSURES = Object.freeze({
   merkava4b: [2.10, 3.30],
 });
 
+const RUNNING_GEAR_REVISIONS = Object.freeze({
+  merkava2b: 'terminal-course-reseat-r3',
+  merkava2d: 'terminal-course-reseat-r3',
+});
+
 const REMOVED_SURFACES = [
   { id: 'merkava3c', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.20], max: [-1.72, 0.445, 1.70] },
   { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.28], max: [-1.72, 0.300, 1.70] },
@@ -109,7 +114,8 @@ for (const id of MERKAVA_IDS) {
     `${id}: running-gear receipt records six road-wheel stations`);
   const hull = visual.root.getObjectByName('rig_hull');
   const gearReceipt = hull.userData[`${id}RunningGearReceipt`];
-  assert.equal(gearReceipt?.revision, 'terminal-course-reseat-r2',
+  assert.equal(gearReceipt?.revision,
+    RUNNING_GEAR_REVISIONS[id] ?? 'terminal-course-reseat-r2',
     `${id}: terminal-course reseat is audited`);
   assert.ok(Math.abs(gearReceipt.idlerForwardM - 0.15) < 1e-9,
     `${id}: idler moves forward by 15 cm`);
@@ -117,6 +123,14 @@ for (const id of MERKAVA_IDS) {
     `${id}: idler receipt preserves the previous station`);
   assert.equal(gearReceipt.trackCourseUsesIdlerEndpoint, true,
     `${id}: live tread course uses the reseated idler endpoint`);
+  if (id === 'merkava2b' || id === 'merkava2d') {
+    assert.ok(gearReceipt.frontTerminalRoadWheelClearanceM > 0.15,
+      `${id}: raised forward terminal clears the first road wheel by over 15 cm`);
+    assert.ok(Math.abs(gearReceipt.sprocketZM - 2.52) < 1e-9,
+      `${id}: front terminal is seated at the shared forward station`);
+    assert.ok(Math.abs(gearReceipt.sprocketYM - 0.82) < 1e-9,
+      `${id}: front terminal is seated at the shared raised station`);
+  }
 
   const closureReceipt = hull.userData[`${id}GlacisClosureReceipt`];
   assert.equal(closureReceipt?.revision, 'upper-lower-glacis-web-r1',

@@ -88,6 +88,39 @@ assert.equal(mk2bHullAttachment.allSupportsOverlapHullAndPod, true,
 assert.ok(mk2bHullAttachment.supports.every((seat) => seat.buriedOverlapM > 0),
   'Mk 2B bow supports have positive structural overlap');
 
+function assertRaisedFrontTerminal(id, visual, hull) {
+  const gear = hull.userData[`${id}RunningGearReceipt`];
+  assert.equal(gear.revision, 'terminal-course-reseat-r3',
+    `${id}: front-terminal clearance revision is current`);
+  assert.ok(Math.abs(gear.previousSprocketZM - 2.05) < 1e-9,
+    `${id}: records the original front terminal station`);
+  assert.ok(Math.abs(gear.previousSprocketYM - 0.54) < 1e-9,
+    `${id}: records the original front terminal height`);
+  assert.ok(Math.abs(gear.sprocketForwardM - 0.47) < 1e-9,
+    `${id}: front terminal moves 47 cm forward`);
+  assert.ok(Math.abs(gear.sprocketRaiseM - 0.28) < 1e-9,
+    `${id}: front terminal moves 28 cm upward`);
+  assert.ok(gear.frontTerminalRoadWheelClearanceM > 0.15,
+    `${id}: front terminal no longer overlaps the first road wheel`);
+  assert.equal(gear.trackCourseUsesSprocketEndpoint, true,
+    `${id}: tracks use the raised, forward endpoint`);
+
+  const pads = visual.root.getObjectByName('gearTrackPads');
+  assert.ok(pads?.isInstancedMesh, `${id}: track pads remain one live instanced course`);
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  let maxPadZ = -Infinity;
+  for (let instance = 0; instance < pads.count; instance++) {
+    pads.getMatrixAt(instance, matrix);
+    position.setFromMatrixPosition(matrix);
+    maxPadZ = Math.max(maxPadZ, position.z);
+  }
+  assert.ok(maxPadZ > gear.sprocketZM + 0.28,
+    `${id}: track shoes wrap around the reseated front terminal`);
+}
+
+assertRaisedFrontTerminal('merkava2b', mk2b.visual, mk2b.hull);
+
 const mk2d = assertConformalTurret('merkava2d', 14, 30, true);
 const mk2dLegacy = mk2d.turret.userData.merkava2dLegacyEquipmentSeatReceipt;
 assert.equal(mk2dLegacy.seats.filter((seat) => seat.kind === 'roof-equipment').length, 1,
@@ -101,27 +134,6 @@ assert.equal(glacis.buriedEdgeOverlap, true, 'Mk 2D bow web closes into both gla
 assert.ok(glacis.upperRangeM[0] > glacis.lowerRangeM[0],
   'Mk 2D closure spans the upper/lower glacis cavity');
 
-const gear = mk2d.hull.userData.merkava2dRunningGearReceipt;
-assert.ok(Math.abs(gear.previousSprocketZM - 2.05) < 1e-9,
-  'Mk 2D records the prior front terminal station');
-assert.ok(Math.abs(gear.previousSprocketYM - 0.54) < 1e-9,
-  'Mk 2D records the prior front terminal height');
-assert.ok(Math.abs(gear.sprocketForwardM - 0.19) < 1e-9,
-  'Mk 2D front terminal moves 19 cm forward');
-assert.ok(Math.abs(gear.sprocketRaiseM - 0.12) < 1e-9,
-  'Mk 2D front terminal moves 12 cm upward');
-assert.equal(gear.trackCourseUsesSprocketEndpoint, true, 'Mk 2D tracks use the moved endpoint');
-const pads = mk2d.visual.root.getObjectByName('gearTrackPads');
-assert.ok(pads?.isInstancedMesh, 'Mk 2D track pads remain one live instanced course');
-const matrix = new THREE.Matrix4();
-const position = new THREE.Vector3();
-let maxPadZ = -Infinity;
-for (let instance = 0; instance < pads.count; instance++) {
-  pads.getMatrixAt(instance, matrix);
-  position.setFromMatrixPosition(matrix);
-  maxPadZ = Math.max(maxPadZ, position.z);
-}
-assert.ok(maxPadZ > gear.sprocketZM + 0.28,
-  'Mk 2D track shoes wrap around the raised, forward terminal wheel');
+assertRaisedFrontTerminal('merkava2d', mk2d.visual, mk2d.hull);
 
 console.log('merkava2Fit.selftest: Mk 2B/Mk 2D closures, conformal armor, and attachments passed');

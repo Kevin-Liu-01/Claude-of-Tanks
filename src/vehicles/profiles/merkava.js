@@ -1075,14 +1075,23 @@ function merkavaChassis(P, c) {
 
   if (['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b']
     .includes(P.spec.id)) {
+    const roadWheelY = c.wheelR + 0.07;
+    const frontRoadWheelZ = Math.max(...c.wheelZs);
     P.hullG.userData[`${P.spec.id}RunningGearReceipt`] = Object.freeze({
-      revision: 'terminal-course-reseat-r2',
+      revision: c.runningGearRevision ?? 'terminal-course-reseat-r2',
       previousSprocketZM: c.sprocket.z - (c.sprocketForwardM ?? 0),
       previousSprocketYM: c.sprocket.y - (c.sprocketRaiseM ?? 0),
       sprocketZM: c.sprocket.z,
       sprocketYM: c.sprocket.y,
+      sprocketRM: c.sprocket.r,
       sprocketForwardM: c.sprocketForwardM ?? 0,
       sprocketRaiseM: c.sprocketRaiseM ?? 0,
+      roadWheelYM: roadWheelY,
+      roadWheelRM: c.wheelR,
+      frontTerminalRoadWheelClearanceM: Math.hypot(
+        c.sprocket.z - frontRoadWheelZ,
+        c.sprocket.y - roadWheelY,
+      ) - c.sprocket.r - c.wheelR,
       trackCourseUsesSprocketEndpoint: true,
       roadWheelZs: Object.freeze([...c.wheelZs]),
       previousIdlerZM: c.idler.z - (c.idlerForwardM ?? 0),
@@ -10534,7 +10543,9 @@ export const MERKAVA_PROFILES = {
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.02, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.05, y: 0.54, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.52, y: 0.82, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
+    runningGearRevision: 'terminal-course-reseat-r3',
+    sprocketForwardM: 0.47, sprocketRaiseM: 0.28,
     idlerForwardM: 0.15,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.50, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
@@ -10628,9 +10639,10 @@ export const MERKAVA_PROFILES = {
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.00, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.24, y: 0.66, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.52, y: 0.82, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
+    runningGearRevision: 'terminal-course-reseat-r3',
     idlerForwardM: 0.15,
-    sprocketForwardM: 0.19, sprocketRaiseM: 0.12,
+    sprocketForwardM: 0.47, sprocketRaiseM: 0.28,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.46, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
     markerRods: { x: 1.76, y: 1.62, z: -3.50, h: [0.93, 0.89] },
