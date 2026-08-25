@@ -171,12 +171,21 @@ await openPage();
 
 let failed = false;
 const report = { captures: {}, voice: {}, buses: {}, errors: [] };
-try {
-  // Garage click = the user-gesture path that resumes the AudioContext.
+async function startRealBattleEntry() {
+  // Dismiss the entry gate through a real pointer gesture, then drive the
+  // same asynchronous battle-entry boundary as the garage Battle button.
   await page.mouse.click(640, 360);
   await sleep(300);
-  // Enter a battle (openBattle → audio.resume as well; belt and braces).
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => {
+    window.__AUDIO_PROBE_ENTRY = window.__DEBUG.beginBattleEntry('m1a2', 'desert');
+  });
+  await page.waitForFunction(
+    'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.loadingActive',
+    { timeout: 30000 },
+  );
+}
+try {
+  await startRealBattleEntry();
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },
@@ -197,9 +206,7 @@ try {
     browser = await puppeteer.launch({ headless: false, args: LAUNCH_ARGS });
     consoleErrors.length = 0;
     await openPage();
-    await page.mouse.click(640, 360);
-    await sleep(300);
-    await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+    await startRealBattleEntry();
     await page.waitForFunction(
       'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0.2',
       { timeout: 20000 },
@@ -207,10 +214,55 @@ try {
     clockOk = true;
   }
 
+  const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
+  async function tapStart() { await page.evaluate(() => window.__COT_AUDIO.startTap(40)); }
+  async function tapStopAndFetch() {
+    const n = await page.evaluate(() => window.__COT_AUDIO.stopTap());
+    const parts = [];
+    const CHUNK = 1 << 20;   // 1M Int16 samples per read
+    for (let off = 0; off < n; off += CHUNK) {
+      const b64 = await page.evaluate(
+        (o, c) => window.__COT_AUDIO.readTapB64(o, c), off, Math.min(CHUNK, n - off));
+      parts.push(Buffer.from(b64, 'base64'));
+    }
+    await page.evaluate(() => window.__COT_AUDIO.clearTap());
+    const all = Buffer.concat(parts);
+    return new Int16Array(all.buffer, all.byteOffset, all.length / 2);
+  }
+  function capReport(name, i16) {
+    const a = analyze(i16);
+    const secs = (i16.length / 2 / sampleRate).toFixed(1);
+    report.captures[name] = { seconds: +secs, peakDb: +a.peakDb.toFixed(2), rmsDb: +a.rmsDb.toFixed(2) };
+    writeWav(join(outDir, `${name}.wav`), i16, sampleRate);
+    console.log(`[audio-probe] ${name}.wav  ${secs}s  peak ${a.peakDb.toFixed(1)} dBFS  rms ${a.rmsDb.toFixed(1)} dBFS`);
+    if (a.peak >= 0.999) { failed = true; report.errors.push(`${name}: CLIPPING (peak ${a.peakDb.toFixed(2)} dBFS)`); }
+    else if (a.peakDb > -1) console.warn(`[audio-probe] ${name}: hot peak ${a.peakDb.toFixed(2)} dBFS (<-1 preferred)`);
+    return a;
+  }
+
+  // Capture the actual loading transition before the entry promise resolves.
+  // This proves the real master bus produces PCM while terrain, roster and GPU
+  // warm-up work is still underway—not merely that loadingOn(true) was called.
+  const loadingActiveDuring = await page.evaluate(() => window.__COT_AUDIO.loadingActive);
+  await tapStart();
+  await sleep(1200);
+  const loadingPcm = await tapStopAndFetch();
+  const loadingAudio = capReport('battle-loading', loadingPcm);
+  if (!loadingActiveDuring || loadingAudio.rms < 0.0005) {
+    failed = true;
+    report.errors.push(`battle loading bed inaudible (active=${loadingActiveDuring}, rms=${loadingAudio.rms.toFixed(6)})`);
+  }
+  await page.evaluate(() => window.__AUDIO_PROBE_ENTRY);
+  const loadingStopped = await page.evaluate(() => !window.__COT_AUDIO.loadingActive);
+  report.loading = { activeDuring: loadingActiveDuring, stoppedAfterEntry: loadingStopped };
+  if (!loadingStopped) {
+    failed = true;
+    report.errors.push('battle loading bed remained active after the battle entry completed');
+  }
+
   // Crew radio decode is async after resume — bounded wait, then proceed.
   await page.waitForFunction('window.__COT_AUDIO.voicesLoaded === true', { timeout: 15000 })
     .catch(() => console.warn('[audio-probe] voices not loaded within 15 s — continuing'));
-  const sampleRate = await page.evaluate(() => window.__COT_AUDIO.sampleRate);
   console.log(`[audio-probe] context up (sr=${sampleRate}), voices loaded=` +
     `${await page.evaluate(() => window.__COT_AUDIO.voicesLoaded)}`);
 
@@ -235,32 +287,8 @@ try {
   const ids = await page.evaluate(() => ({ player: window.__P.playerId, enemy: window.__P.enemyId }));
   console.log(`[audio-probe] player=${ids.player} enemy=${ids.enemy}`);
 
-  async function tapStart() { await page.evaluate(() => window.__COT_AUDIO.startTap(40)); }
-  async function tapStopAndFetch() {
-    const n = await page.evaluate(() => window.__COT_AUDIO.stopTap());
-    const parts = [];
-    const CHUNK = 1 << 20;   // 1M Int16 samples per read
-    for (let off = 0; off < n; off += CHUNK) {
-      const b64 = await page.evaluate(
-        (o, c) => window.__COT_AUDIO.readTapB64(o, c), off, Math.min(CHUNK, n - off));
-      parts.push(Buffer.from(b64, 'base64'));
-    }
-    await page.evaluate(() => window.__COT_AUDIO.clearTap());
-    const all = Buffer.concat(parts);
-    return new Int16Array(all.buffer, all.byteOffset, all.length / 2);
-  }
   async function emit(ev, payloadJs) {
     await page.evaluate(`window.__P.emit('${ev}', ${payloadJs})`);
-  }
-  function capReport(name, i16) {
-    const a = analyze(i16);
-    const secs = (i16.length / 2 / sampleRate).toFixed(1);
-    report.captures[name] = { seconds: +secs, peakDb: +a.peakDb.toFixed(2), rmsDb: +a.rmsDb.toFixed(2) };
-    writeWav(join(outDir, `${name}.wav`), i16, sampleRate);
-    console.log(`[audio-probe] ${name}.wav  ${secs}s  peak ${a.peakDb.toFixed(1)} dBFS  rms ${a.rmsDb.toFixed(1)} dBFS`);
-    if (a.peak >= 0.999) { failed = true; report.errors.push(`${name}: CLIPPING (peak ${a.peakDb.toFixed(2)} dBFS)`); }
-    else if (a.peakDb > -1) console.warn(`[audio-probe] ${name}: hot peak ${a.peakDb.toFixed(2)} dBFS (<-1 preferred)`);
-    return a;
   }
 
   // ---- capture 1: combat one-shot matrix ------------------------------------

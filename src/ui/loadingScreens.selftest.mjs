@@ -141,6 +141,18 @@ assert.match(mainSource,
   /async function primeDeploymentShadowMaps[\s\S]{0,6000}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');
 assert.match(mainSource,
+  /deploymentShadowCasterBatches\(\)[\s\S]{0,4200}shadowOnlyWarmRender\(\)[\s\S]{0,2200}for \(const light of lights\)/,
+  'deployment shadows must bind caster resources in bounded depth-only batches before full cascade renders');
+assert.match(mainSource,
+  /scene\.overrideMaterial = deploymentUploadMaterial;[\s\S]{0,160}warmRender\(\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
+  'deployment geometry must upload through one shared shader and always restore production materials');
+assert.match(mainSource,
+  /for \(const \{ object \} of casterState\.casters\) object\.castShadow = true;[\s\S]{0,1200}preservePrimedCascadesForNextFrame\(\)/,
+  'all shadow casters must be restored before the primed maps are handed to the live frame');
+assert.match(mainSource,
+  /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,180}casterState\.lods[\s\S]{0,100}autoUpdate = autoUpdate/,
+  'shadow-only full cascades must keep live-camera LODs pinned until every exact map is rendered');
+assert.match(mainSource,
   /const plannedMapId = specId && mapId[\s\S]*resolveBattleIntentMap\(specId, mapId\)[\s\S]*prefetchWorld\(plannedMapId(?:,[^;]*)?\)/,
   'explicit Battle intent must turn the default Random card into a prefetchable concrete world');
 assert.match(mainSource,
