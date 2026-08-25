@@ -40,9 +40,20 @@ const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/proc
 
 const rows = [];
 try {
-  await page.goto(urlFor(requested?.[0] || 'm1a2'), { waitUntil: 'domcontentloaded' });
+  // Bootstrap against a known registered oracle. A requested fleet may start
+  // with a first-party-only vehicle; opening that ID first emits an expected
+  // page error and then wastes the full Puppeteer timeout before filtering.
+  await page.goto(urlFor('m1a2'), { waitUntil: 'domcontentloaded' });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)');
-  const ids = requested || await page.evaluate('window.__REFERENCE_IDS');
+  const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
+  const eligible = new Set(referenceIds);
+  const ids = requested ? requested.filter((id) => eligible.has(id)) : referenceIds;
+  if (requested) {
+    const skipped = requested.filter((id) => !eligible.has(id));
+    if (skipped.length) {
+      console.log(`[geo] skipped ${skipped.length} first-party-only vehicles without local comparison oracles`);
+    }
+  }
   for (const id of ids) {
     try {
       await page.goto(urlFor(id), { waitUntil: 'domcontentloaded' });

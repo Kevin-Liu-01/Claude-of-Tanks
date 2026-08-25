@@ -158,8 +158,10 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
     `${id}: center-mass shot meets the visible wedge`);
   const side = traceTank(new Vector3(6, 0.95, 0), new Vector3(-6, 0.95, 0),
     pose, spec.armor);
-  assert.ok(side.some((hit) => hit.kind === 'plate' && /hull_side_upper/.test(hit.plate.name)),
-    `${id}: side shot meets the low hull instead of a donor box`);
+  const sideArmor = side.find((hit) => hit.kind === 'plate'
+    && /^hull_side_(?:upper|lower)_[RL]$/.test(hit.plate.name));
+  assert.ok(sideArmor?.collisionFace,
+    `${id}: side shot meets an exact low-hull collision face instead of a donor box`);
 }
 
 const proryv = TANK_SPECS.t90m;

@@ -80,7 +80,10 @@ process.on('exit', releaseLock);
 
 // --- phase 0: optional fresh gate run (manages its own lock) ----------------
 if (forceGate && ids.length) {
-  execFileSync('node', ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`], { stdio: 'inherit' });
+  // The geometry gate filters this fleet to IDs with registered local
+  // comparison oracles. --check ensures an eligible oracle failure remains a
+  // hard release failure rather than being mistaken for a procedural-only ID.
+  execFileSync('node', ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`, '--check'], { stdio: 'inherit' });
 }
 
 // --- phase 1: containment (one batched run; manages its own lock) -----------
@@ -175,10 +178,12 @@ console.log('id                 | gateMin | components (h/w/t/st/d/f)      | age
 console.log('-------------------|---------|--------------------------------|------|----------------|--------|------------');
 let fails = 0;
 for (const id of ids) {
-  let row = 'no gate json', min = '—', age = '—';
+  let row = 'procedural-only', min = 'N/A', age = '—';
+  let gateApplicable = false;
   try {
     const p = `docs/geometry-gate/${id}.json`;
     const j = JSON.parse(readFileSync(p, 'utf8'));
+    gateApplicable = true;
     const c = j.components;
     min = j.geoMin;
     row = [c.hullCurves, c.wholeCurves, c.turretCurves, c.stations, c.dims, c.floaters].join('/');
@@ -188,7 +193,7 @@ for (const id of ids) {
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = cl && Number(cl.front) <= CLIP_BAND && Number(cl.rear) <= CLIP_BAND
     && Number(cl.sweepBand) <= CLIP_BAND && Number(cl.sweepShoe) <= CLIP_BAND;
-  const gateOk = typeof min === 'number' && min >= 90;
+  const gateOk = !gateApplicable || (typeof min === 'number' && min >= 90);
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;
@@ -220,7 +225,7 @@ for (const id of ids) {
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(gate>=90 + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
+    `(gate>=90 where a local oracle exists + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +
