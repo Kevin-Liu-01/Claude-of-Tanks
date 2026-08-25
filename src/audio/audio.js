@@ -2540,7 +2540,6 @@ export function createAudio({ context: initialContext = null } = {}) {
     }
     if (ctx.state === 'suspended') ctx.resume();
     if (graphReady) return;
-    graphReady = true;
     buildGraph();
     buildBuffers();
     applyMaster();
@@ -2549,6 +2548,7 @@ export function createAudio({ context: initialContext = null } = {}) {
     installHoverTicks();
     if (phase === 'garage') garageToneStart();
     installDebugSurface();
+    graphReady = true;
   }
 
   /**

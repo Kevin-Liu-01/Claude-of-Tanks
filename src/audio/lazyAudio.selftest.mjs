@@ -39,6 +39,35 @@ await lazy.preload();
 assert.equal(lazy.ready, false,
   'preloading transfers/evaluates the full mixer without constructing it before a gesture');
 
+const handoffCalls = [];
+let graphReady = false;
+const handoffContext = { state: 'running' };
+const handoff = createLazyAudio({
+  createContext: () => handoffContext,
+  loadMixer: async () => ({
+    createAudio({ context }) {
+      assert.equal(context, handoffContext, 'the mixer adopts the gesture-created context');
+      return {
+        bindBus() {},
+        resume() { graphReady = true; handoffCalls.push('resume'); },
+        mute() {
+          assert.equal(graphReady, true, 'mute never touches an unbuilt audio graph');
+          handoffCalls.push('mute');
+        },
+        loadingOn() {},
+        ambientOn() {},
+        playGarageSting() {},
+      };
+    },
+  }),
+});
+handoff.resume();
+await handoff.preload();
+await Promise.resolve();
+assert.deepEqual(handoffCalls, ['resume', 'mute'],
+  'the adopted mixer constructs its graph before applying persisted state');
+assert.equal(handoff.ready, true, 'the mixer handoff settles without a partial instance');
+
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
 assert.match(mainSource, /import \{ createLazyAudio \} from '\.\/audio\/lazyAudio\.js';/,
   'the garage boot graph uses the boot-light audio facade');

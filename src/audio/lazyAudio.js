@@ -51,7 +51,13 @@ export function startFallbackLoadingTone(context) {
   return { context, gain, nodes: [rumble, machinery] };
 }
 
-export function createLazyAudio() {
+export function createLazyAudio({
+  loadMixer = () => import('./audio.js'),
+  createContext = () => {
+    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+    return AC ? new AC({ latencyHint: 'interactive' }) : null;
+  },
+} = {}) {
   let context = null;
   let real = null;
   let modulePromise = null;
@@ -64,11 +70,8 @@ export function createLazyAudio() {
   let garageStingPending = false;
 
   const unlockContext = () => {
-    if (!context) {
-      const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-      if (!AC) return null;
-      context = new AC({ latencyHint: 'interactive' });
-    }
+    if (!context) context = createContext();
+    if (!context) return null;
     if (context.state === 'suspended') context.resume();
     return context;
   };
@@ -76,8 +79,12 @@ export function createLazyAudio() {
   const settleReal = (created) => {
     real = created;
     if (bus) real.bindBus(bus);
-    real.mute(muted);
+    // createAudio may adopt an already-unlocked context. Construct its graph
+    // before invoking methods that write graph nodes (mute/applyMaster). The
+    // previous order rejected this promise and left a half-initialized mixer
+    // whose first engine update tried to connect to a null bus.
     if (context) real.resume();
+    real.mute(muted);
     if (fallback) {
       stopFallback(fallback);
       fallback = null;
@@ -93,7 +100,7 @@ export function createLazyAudio() {
 
   const preload = () => {
     if (!modulePromise) {
-      modulePromise = import('./audio.js').catch((error) => {
+      modulePromise = loadMixer().catch((error) => {
         modulePromise = null;
         console.warn('[audio] deferred mixer load failed:', error);
         return null;
