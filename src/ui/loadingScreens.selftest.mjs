@@ -92,12 +92,24 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+assert.match(mainSource,
+  /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,
+  'cold garage boot must leave invisible long-range shadow cascades dormant');
+assert.match(mainSource,
+  /function setGarageSpots\(on\)[\s\S]{0,180}if \(!on\) lighting\.setFarCascadeDormant\(false\);/,
+  'battle lighting must wake full-range shadows inside the covered entry');
+assert.match(mainSource,
+  /function enterGarage[\s\S]{0,3600}setFarCascadeDormant\(true\)/,
+  'returning to the enclosed garage must suspend long-range shadow redraws');
 const pedestalWarmBody = mainSource.slice(
   mainSource.indexOf('async function warmPedestalPrograms('),
   mainSource.indexOf('let garageActivityAt'),
 );
+const pedestalWarmCode = pedestalWarmBody.replace(/\/\/.*$/gm, '');
 assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,
   'cold garage switches must not enter ANGLE completion polling');
+assert.doesNotMatch(pedestalWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(/,
+  'cold garage switches must not force ANGLE program-completion queries');
 assert.match(pedestalWarmBody, /renderer\.compile\(vis\.root, camera, scene\)/,
   'cold garage switches still submit their exact shader programs before reveal');
 assert.match(mainSource,

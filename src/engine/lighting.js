@@ -855,6 +855,13 @@ export function createLighting(scene, camera, sunDir) {
   });
   let shFrame = 0;
   let lastScheduledMask = 0;
+  // The enclosed garage never exposes the 100-700 m cascade bands. Keeping
+  // those maps live there spent most of cold boot allocating and drawing
+  // invisible battlefield depth. They remain part of the shader/light rig,
+  // then allocate and warm at the existing opaque Battle/Studio boundary.
+  // Near/contact cascades stay fully live, so the visible showroom image is
+  // unchanged.
+  let farCascadeDormant = false;
   // r4 LP2 (teleport robustness): any event that can move casters or the
   // cascade fit wholesale — map/sun switch, frustum change, __SHOTS restage —
   // forces FULL cascade redraws for the next 2 frames, so the round-robin
@@ -868,6 +875,15 @@ export function createLighting(scene, camera, sunDir) {
     shadowScheduler.reset();
     for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
       csm.lights[i].shadow.needsUpdate = true;
+    }
+  }
+
+  function applyFarCascadeDormancy() {
+    if (!farCascadeDormant) return;
+    for (let i = FAR_CASCADE_START; i < csm.lights.length; i++) {
+      csm.lights[i].shadow.autoUpdate = false;
+      csm.lights[i].shadow.needsUpdate = false;
+      lastScheduledMask &= ~(1 << i);
     }
   }
 
@@ -897,6 +913,20 @@ export function createLighting(scene, camera, sunDir) {
     // correlate a completed frame's renderer counters with its cascade work.
     // Keep the richer getShadowTelemetry() path at HUD cadence only.
     get scheduledMask() { return lastScheduledMask; },
+
+    /**
+     * Suspend only the long-range shadow-map renders while an enclosed scene
+     * is visible. Re-enabling schedules every far cascade behind the caller's
+     * covered transition; map resolution and rendered battle quality remain
+     * exactly the active graphics preset.
+     */
+    setFarCascadeDormant(on) {
+      const next = !!on;
+      if (farCascadeDormant === next) return;
+      farCascadeDormant = next;
+      if (next) applyFarCascadeDormancy();
+      else forceRateCappedCascades();
+    },
 
     /**
      * Register a material for cascaded shadows, then (optionally) chain a
@@ -1005,6 +1035,7 @@ export function createLighting(scene, camera, sunDir) {
           if (lastScheduledMask & (1 << i)) csm.lights[i].shadow.needsUpdate = true;
         }
       }
+      applyFarCascadeDormancy();
     },
 
     /**

@@ -332,6 +332,10 @@ const bootCloudWarmP = sky.ensureCloudTexturesChunked
   ? sky.ensureCloudTexturesChunked(() => nextFrame()).catch(() => {})
   : Promise.resolve();
 const lighting = await bootStage('lighting', () => createLighting(scene, camera, sky.sunDir));
+// The sealed garage can only see the near/contact shadow bands. Leave the two
+// long-range battlefield maps unallocated until an opaque Battle/Studio entry
+// starts; this removes invisible 100-700 m shadow work from cold garage boot.
+if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
 const engineCtx = {
@@ -876,6 +880,7 @@ spotB.target = spotTarget;
 // toggle never causes a mid-battle compile storm.
 function setGarageSpots(on) {
   if (spotA.visible === on) return;
+  if (!on) lighting.setFarCascadeDormant(false);
   spotA.visible = on;
   spotB.visible = on;
   // garage-scene r1: the workshop dressing (and its one whisper fill light)
@@ -1119,26 +1124,15 @@ async function warmPedestalPrograms(vis) {
   if (getDeviceTier() === 'mobile') return;
   try {
     // ANGLE's KHR_parallel_shader_compile completion query is not reliably
-    // non-blocking: profiling a cold Abrams switch attributed 442 ms to
-    // getProgramParameter inside Three's compileAsync poll. Submit the same
-    // programs synchronously, let the driver link across two painted frames,
-    // then consume new uniform tables in bounded slices. No material, shader,
-    // or rendered detail changes; only the blocking completion-poll path is
-    // removed.
-    const before = (renderer.info.programs || []).length;
+    // non-blocking: profiling cold switches attributed 440-510 ms to
+    // getProgramParameter, whether reached by compileAsync or by an explicit
+    // program.getUniforms() read. Submit the exact programs, keep the outgoing
+    // hero visible for two painted frames while the driver links, and never
+    // force a completion query. The first visible render remains the fallback;
+    // no material, shader, or rendered detail changes.
     renderer.compile(vis.root, camera, scene);
-    const programs = (renderer.info.programs || []).slice(before);
-    if (!programs.length) return;
     await nextFrame();
     await nextFrame();
-    let sliceAt = performance.now();
-    for (const program of programs) {
-      try { program.getUniforms(); } catch (_) { /* first visible render fallback */ }
-      if (performance.now() - sliceAt >= 6) {
-        await nextFrame();
-        sliceAt = performance.now();
-      }
-    }
   } catch (_) { /* first visible render remains the compatibility fallback */ }
 }
 let garageActivityAt = performance.now();
@@ -3435,6 +3429,10 @@ async function presentNetworkBattle({
   // from a user gesture unlock immediately; rematches reuse the live context.
   audio.resume();
   audio.loadingOn(true);
+  // Network entry builds/compiles the world before its later phase flip.
+  // Wake all battlefield shadow bands now so that cost stays under this
+  // already-visible roster loader rather than the first multiplayer frame.
+  lighting.setFarCascadeDormant(false);
   const loadStartedAt = performance.now();
   const loadTrace = { mode: modeLabel, map: mapId, stages: {} };
   let loadMarkAt = loadStartedAt;
@@ -4092,6 +4090,7 @@ function enterGarage({ preserveRoom = !!(
   // noRelock anyway so no exit path can ever fire a gesture-less lock request.
   if (settings.isOpen()) settings.close({ noRelock: true });
   setWorldDormant(true); // GARAGE PERF: the battlefield stops costing anything
+  lighting.setFarCascadeDormant(true);
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
   clearCamoOverrides();
@@ -5231,6 +5230,7 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // second synchronous map constructor in the entry graph defeated genuine
   // world lazy loading and froze first-time authored captures.
   if (!world || world.mapId !== mapId) await switchMap(mapId);
+  lighting.setFarCascadeDormant(false);
   setWorldDormant(false);
   // camo_spotting r2: staged captures must show biome-correct AUTO paint —
   // startBattle resolves the camo biome but the contract views do not pass
@@ -6937,6 +6937,7 @@ function preloadStudioIntent() {
 
 async function loadStudioRuntime() {
   if (studioRuntimePromise) return studioRuntimePromise;
+  lighting.setFarCascadeDormant(false);
   studioRuntimePromise = Promise.all([
     preloadStudioModule(),
     ensureFxRuntime(),
