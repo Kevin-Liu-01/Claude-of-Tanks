@@ -18,6 +18,7 @@
 //   node tools/loading-budget-probe.mjs --stall-limit 500
 //   node tools/loading-budget-probe.mjs --mode battle --garage-dwell 14000
 //   node tools/loading-budget-probe.mjs --mode battle --maps random --battle-intent-dwell 1200
+//   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids merkava1b,merkava3d
 //   node tools/loading-budget-probe.mjs --serve dev --mode studio
 
 // Exit 0 means every measured path completed in strictly less than the load
@@ -56,6 +57,7 @@ const deviceTier = option('tier', 'desktop');
 const garageDwellMs = Math.max(0, Number(option('garage-dwell', '0')) || 0);
 const battleIntentDwellMs = Math.max(0, Number(option('battle-intent-dwell', '0')) || 0);
 const battleSpecOption = option('battle-spec', 'm1a2');
+const requestedTankIds = option('tank-ids', 'all');
 const modes = new Set([
   'all', 'boot', 'battle', 'studio', 'studio-switch', 'scene-load',
   'transitions', 'tank-switch',
@@ -784,9 +786,14 @@ async function measureTransitionsAndRematch() {
 async function measureTankSwitches() {
   const opened = await openPage(`?nosplash=1&tier=${deviceTier}&gfxreset=1`);
   try {
-    const ids = await opened.page.evaluate(() => [
+    const availableIds = await opened.page.evaluate(() => [
       ...document.querySelectorAll('.cot-card[data-spec-id]'),
     ].map((card) => card.dataset.specId));
+    const ids = requestedTankIds === 'all'
+      ? availableIds
+      : requestedTankIds.split(',').map((id) => id.trim()).filter(Boolean);
+    const missing = ids.filter((id) => !availableIds.includes(id));
+    if (missing.length) throw new Error(`Unknown tank id(s): ${missing.join(', ')}`);
     for (const id of ids) {
       await resetStalls(opened.page, `tank-switch:${id}`);
       const result = await opened.page.evaluate(async (specId) => {
@@ -795,7 +802,13 @@ async function measureTankSwitches() {
         for (;;) {
           const visual = window.__DEBUG.pedestalVisual;
           if (visual && visual.specId === specId && visual.root.visible !== false) {
-            return { ms: performance.now() - startedAt, selected: window.__DEBUG.selectedSpecId };
+            const timing = [...(window.__SWITCH_TIMINGS || [])]
+              .reverse().find((row) => row.id === specId) || null;
+            return {
+              ms: performance.now() - startedAt,
+              selected: window.__DEBUG.selectedSpecId,
+              timing,
+            };
           }
           if (performance.now() - startedAt >= 10000) {
             return { ms: Infinity, selected: window.__DEBUG.selectedSpecId };
@@ -807,6 +820,7 @@ async function measureTankSwitches() {
       record('tank-switch', id, result.ms, {
         invariantPass: result.selected === id,
         selected: result.selected,
+        timing: result.timing,
         stall,
         errors: opened.errors.splice(0),
       });
