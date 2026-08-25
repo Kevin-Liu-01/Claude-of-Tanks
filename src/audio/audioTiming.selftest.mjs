@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   AUDIO_DISTANCE_MODEL,
   AUDIO_MIX_PROFILE,
@@ -122,5 +123,17 @@ assert.equal(magazineReload.profile, 'magazine', 'full magazine loads use the au
 assert.equal(magazineReload.cues.filter((cue) => cue.type === 'index').length, 3,
   'full magazine load has three audible conveyor indexes');
 assert.ok(magazineReload.cues.at(-1).at < 1, 'final breech cue precedes the authoritative ready edge');
+
+const audioSource = await readFile(new URL('./audio.js', import.meta.url), 'utf8');
+const loadingStartBody = audioSource.slice(
+  audioSource.indexOf('function loadingStart()'),
+  audioSource.indexOf('function loadingStop()'),
+);
+assert.match(loadingStartBody, /if \(loadingRig \|\| !ctx\) return;/,
+  'loading sound is idempotent and inert before AudioContext unlock');
+assert.doesNotMatch(loadingStartBody, /setInterval|setTimeout/,
+  'loading sound must not add timers or frame work to the transition');
+assert.match(audioSource, /get loadingActive\(\) \{ return !!loadingRig; \}/,
+  'audio QA surface exposes the loading-bed lifecycle');
 
 console.log('audioTiming.selftest: scheduling, weapon reports, reload mechanisms, distance and perspective mixes passed');

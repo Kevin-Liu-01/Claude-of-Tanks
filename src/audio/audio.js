@@ -285,6 +285,7 @@ export function resolveReloadCuePlan(totalS, kind = 'shell', caliberMm = 100) {
  *   setMasterVolume: (v: number) => void,
  *   mute: (m: boolean) => void,
  *   playGarageSting: () => void,
+ *   loadingOn: (on: boolean) => void,
  *   ambientOn: (on: boolean) => void,
  *   hitConfirm: (kind: string, damage?: number) => void,
  * }} Audio interface per ARCHITECTURE.md §3.9.
@@ -412,6 +413,8 @@ export function createAudio() {
   let birdTimerId = null;
   /** Garage workshop room tone (null when off). */
   let garageRig = null;
+  /** Battle-transition mechanical bed (null when off). */
+  let loadingRig = null;
   /** Player turret-traverse / gun-elevation whir rig (null until battle). */
   let traverseRig = null;
   /** Alarm rigs (player only). */
@@ -2240,6 +2243,73 @@ export function createAudio() {
     garageRig = null;
   }
 
+  // ------------------------------------------------------- loading sound --
+
+  /**
+   * A restrained loader bed built entirely from the already-created shared
+   * buffers. It begins synchronously inside the Battle gesture, so world and
+   * roster work is never presented as a silent/frozen page. No fetch, decode,
+   * timer or per-frame update is added to the loading path.
+   */
+  function loadingStart() {
+    if (loadingRig || !ctx) return;
+    garageToneStop();
+    ambientStop();
+    const now = ctx.currentTime;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, now);
+    out.gain.exponentialRampToValueAtTime(0.16, now + 0.16);
+    out.connect(musicBus);
+
+    const rumble = ctx.createOscillator();
+    rumble.type = 'sine';
+    rumble.frequency.value = 58;
+    const rumbleGain = ctx.createGain();
+    rumbleGain.gain.value = 0.22;
+    rumble.connect(rumbleGain); rumbleGain.connect(out);
+
+    const machinery = ctx.createOscillator();
+    machinery.type = 'triangle';
+    machinery.frequency.value = 116;
+    const machineryGain = ctx.createGain();
+    machineryGain.gain.value = 0.055;
+    machinery.connect(machineryGain); machineryGain.connect(out);
+
+    const air = ctx.createBufferSource();
+    air.buffer = windBuf; air.loop = true; air.playbackRate.value = 0.72;
+    const airLp = flt('lowpass', 520, 0.55);
+    const airGain = ctx.createGain(); airGain.gain.value = 0.16;
+    air.connect(airLp); airLp.connect(airGain); airGain.connect(out);
+
+    // Slow ready-rack pulse: movement without a distracting melody.
+    const pulse = ctx.createOscillator();
+    pulse.type = 'sine'; pulse.frequency.value = 0.82;
+    const pulseGain = ctx.createGain(); pulseGain.gain.value = 0.035;
+    pulse.connect(pulseGain); pulseGain.connect(out.gain);
+
+    rumble.start(now); machinery.start(now); air.start(now); pulse.start(now);
+    loadingRig = {
+      kill() {
+        const t = ctx.currentTime;
+        out.gain.cancelScheduledValues(t);
+        out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), t);
+        out.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+        for (const node of [rumble, machinery, air, pulse]) {
+          try { node.stop(t + 0.34); } catch (_) { /* already stopped */ }
+        }
+        rumble.onended = () => { try { out.disconnect(); } catch (_) { /* detached */ } };
+      },
+    };
+    logSound('loading:start');
+  }
+
+  function loadingStop() {
+    if (!loadingRig) return;
+    loadingRig.kill();
+    loadingRig = null;
+    logSound('loading:stop');
+  }
+
   // --------------------------------------------------------- garage sting ---
 
   function garageSting() {
@@ -2606,6 +2676,7 @@ export function createAudio() {
         moduleState.clear();
         heartbeatArmedBelow = 0;
       } else if (next !== 'battle' && prev === 'battle') {
+        loadingStop();
         stopWorldLoops(`phase:${next}`);
         stopFireAlarm();
         stopTraverseRig();
@@ -2618,6 +2689,7 @@ export function createAudio() {
         // Some presentation flows insert a non-battle results phase before
         // garage. The room tone belongs to the destination, not only to a
         // direct battle -> garage edge.
+        loadingStop();
         garageToneStart();
       }
     });
@@ -2870,6 +2942,16 @@ export function createAudio() {
     garageSting();
   }
 
+  /** Toggle the audible Battle-loading bed. */
+  function loadingOn(on) {
+    if (!ctx) return;
+    if (on) loadingStart();
+    else {
+      loadingStop();
+      if (phase === 'garage') garageToneStart();
+    }
+  }
+
   /**
    * Toggle the ambient bed: wind + sparse seeded bird chirps.
    * @param {boolean} on
@@ -2897,6 +2979,7 @@ export function createAudio() {
       get sfxCount() { return sfxBufs.size; },
       get killcamSfxLog() { return killcamSfxLog; },
       get soundLog() { return soundLog; },
+      get loadingActive() { return !!loadingRig; },
       listenerState() {
         return {
           x: lx, y: ly, z: lz, fx: lfx, fz: lfz,
@@ -2994,7 +3077,7 @@ export function createAudio() {
   }
 
   return {
-    resume, bindBus, update, setMasterVolume, mute, playGarageSting, ambientOn,
+    resume, bindBus, update, setMasterVolume, mute, playGarageSting, loadingOn, ambientOn,
     /** Non-spatial player result cue; preserves pen/ricochet/nonpen identity. */
     hitConfirm(kind, damage = 0) { if (ctx) hitConfirmSound(kind, damage); },
   };

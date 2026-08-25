@@ -3157,6 +3157,14 @@ export function isMaterialTextureQualityUpgrade(current, requested) {
   return QUALITY_RANK[normalizeMaterialTextureQuality(requested)]
     > QUALITY_RANK[normalizeMaterialTextureQuality(current)];
 }
+
+// A garage Battle-intent warm can overlap the real transition by a few
+// milliseconds (especially touchstart -> click). Keep one painter per shared
+// texture identity so both callers join the same canvas work instead of
+// racing duplicate 512/1024 px bakes on the main thread. A later higher-tier
+// request re-enters after the first job settles and performs only the required
+// in-place promotion.
+const PREBAKE_PENDING = new Map();
 function upgradeEntry(entry, quality = 'high') {
   bakeSharedCanvases(entry, quality);
   finalizeEntryResize(entry);
@@ -3188,41 +3196,54 @@ function finalizeEntryResize(entry) {
  * @param {string} quality 'ai' | 'preview' | 'high' — must match what the build will ask
  * @param {?function(): (Promise<void>|void)} tick awaited between stages
  */
-export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, selection = null) {
+export function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null, selection = null) {
   const identity = sharedTextureIdentity(spec.id, selection);
   const { key } = identity;
-  const run = async (g) => {
-    let r = g.next();
-    while (!r.done) {
-      if (tick) await tick();
-      r = g.next();
-    }
-  };
-  let entry = TEX_CACHE.get(key);
-  if (entry) {
-    // mirror acquire's only upgrade case; anything else is already adequate
-    if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
-      await run(bakeSharedCanvasesSteps(entry, quality));
-      finalizeEntryResize(entry);
-    }
-    return;
+  const active = PREBAKE_PENDING.get(key);
+  if (active) {
+    return active.then(() => prebakeSharedTextures(
+      spec, aniso, quality, tick, selection,
+    ));
   }
-  const { patternId } = identity;
-  const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
-  entry = {
-    refs: 0,
-    cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null, patternId, paintable: new Set(),
-    quality,
-    camoCanvas: makeCanvas(4, 4),
-    normalCanvas: makeCanvas(4, 4),
-    roughCanvas: makeCanvas(4, 4),
-    trackCanvas: paintTrack(mulberry32(seed + 17)),
-  };
-  await run(bakeSharedCanvasesSteps(entry, quality));
-  entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
-  entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
-  entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
-  TEX_CACHE.set(key, entry);
+  const pending = (async () => {
+    const run = async (g) => {
+      let r = g.next();
+      while (!r.done) {
+        if (tick) await tick();
+        r = g.next();
+      }
+    };
+    let entry = TEX_CACHE.get(key);
+    if (entry) {
+      // mirror acquire's only upgrade case; anything else is already adequate
+      if (isMaterialTextureQualityUpgrade(entry.quality, quality)) {
+        await run(bakeSharedCanvasesSteps(entry, quality));
+        finalizeEntryResize(entry);
+      }
+      return;
+    }
+    const { patternId } = identity;
+    const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
+    entry = {
+      refs: 0,
+      cacheKey: key, fixedPattern: identity.fixed, spec, seed, feats: null, patternId, paintable: new Set(),
+      quality,
+      camoCanvas: makeCanvas(4, 4),
+      normalCanvas: makeCanvas(4, 4),
+      roughCanvas: makeCanvas(4, 4),
+      trackCanvas: paintTrack(mulberry32(seed + 17)),
+    };
+    await run(bakeSharedCanvasesSteps(entry, quality));
+    entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
+    entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
+    entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
+    TEX_CACHE.set(key, entry);
+  })();
+  const tracked = pending.finally(() => {
+    if (PREBAKE_PENDING.get(key) === tracked) PREBAKE_PENDING.delete(key);
+  });
+  PREBAKE_PENDING.set(key, tracked);
+  return tracked;
 }
 
 /**

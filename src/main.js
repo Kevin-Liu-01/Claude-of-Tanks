@@ -551,6 +551,41 @@ function queueWorldPrefetch(mapId, delay = 1800) {
   }, delay);
 }
 
+let battleIntentTextureKey = '';
+let battleIntentTextureGeneration = 0;
+let battleIntentTexturePromise = null;
+
+function preloadBattleRosterTextures(specId, plannedIds) {
+  const ids = [...new Set((plannedIds || []).filter(Boolean))];
+  const key = `${game.battleCount}:${specId}:${ids.join(',')}`;
+  if (battleIntentTexturePromise && battleIntentTextureKey === key) {
+    return battleIntentTexturePromise;
+  }
+  const generation = ++battleIntentTextureGeneration;
+  battleIntentTextureKey = key;
+  const pending = (async () => {
+    await ensureTankBuilders(ids);
+    for (const id of ids) {
+      if (generation !== battleIntentTextureGeneration) return;
+      // This path runs only after explicit Battle hover/focus/touch intent.
+      // Use the exact eventual tier, but yield every ~3 ms so it cannot turn
+      // garage browsing into a background hitch. If the click arrives first,
+      // materials.js coalesces the transition with this same in-flight bake.
+      const tick = frameBudgetTick(3);
+      await prebakeSharedTextures(
+        getSpec(id), engineCtx.anisotropy ?? 4,
+        id === specId ? 'preview' : 'ai', tick,
+      );
+    }
+  })().catch((error) => {
+    console.warn('[loading] Battle-intent texture warm failed:', error);
+  }).finally(() => {
+    if (battleIntentTexturePromise === pending) battleIntentTexturePromise = null;
+  });
+  battleIntentTexturePromise = pending;
+  return pending;
+}
+
 function preloadBattleIntent({ specId, mapId } = {}) {
   loadWorldModule().catch(() => null);
   preloadKillcamModule().catch(() => null);
@@ -561,6 +596,7 @@ function preloadBattleIntent({ specId, mapId } = {}) {
   if (specId) {
     const planned = planBattleParticipantIds(game, specId, true);
     ensureTankBuilders(planned).catch(() => null);
+    preloadBattleRosterTextures(specId, planned);
   }
   // Decode the shipped deterministic sprite atlases after explicit intent.
   // The fallback procedural generator and every rendered texture are
@@ -2598,6 +2634,11 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     mode: mapId === 'random' ? 'Random Battle · Any Battlefield' : 'Random Battle · Standard',
     allies: [], enemies: [],
   });
+  // This function is entered synchronously from the Battle gesture. Unlock
+  // audio before the first await and start a tiny synthesized loader bed so
+  // cold world/roster work never reads as a silent frozen page.
+  audio.resume();
+  audio.loadingOn(true);
   await nextFrame();
 
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
@@ -2633,12 +2674,6 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     preBattleHold: true,
     randomRoster,
   });
-  // Audio's first resume creates the context, synthesis buffers, decoded-SFX
-  // requests, and UI hooks. On a cold session that is hundreds of milliseconds
-  // of main-thread work. Doing it from openBattle() made the first visible
-  // countdown frame inherit the whole cost; the battle phase now exists and
-  // the opaque loader is still up, so initialize it here instead.
-  audio.resume();
   const playerVisualTiming = {
     specId: game.player?.specId || specId,
     quality: 'preview',
@@ -2772,6 +2807,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // Start the cheap ambient graph before reveal as well. openBattle keeps its
   // idempotent calls for debug/direct entry paths, but the normal player path
   // reaches it with no cold audio work left.
+  audio.loadingOn(false);
   audio.ambientOn(true);
   battleLoad.progress(1, 'Ready');
 
@@ -3143,6 +3179,7 @@ async function beginBattleEntry(specId, mapId = null, options = undefined) {
     await startBattleLoading(specId, mapId, options);
   } catch (error) {
     console.error('[battle] entry failed', error);
+    audio.loadingOn(false);
     // Failure exits obey the same covered-frame rule in the opposite
     // direction: restore and paint the Garage while the loader is opaque,
     // then let the loader fade. Never expose whichever old WebGL frame was
@@ -3200,6 +3237,10 @@ async function presentNetworkBattle({
   connectMatch,
   transitionShown = false,
 } = {}) {
+  // Direct presentation calls and every lobby handoff converge here. Calls
+  // from a user gesture unlock immediately; rematches reuse the live context.
+  audio.resume();
+  audio.loadingOn(true);
   const loadStartedAt = performance.now();
   const loadTrace = { mode: modeLabel, map: mapId, stages: {} };
   let loadMarkAt = loadStartedAt;
@@ -3387,9 +3428,9 @@ async function presentNetworkBattle({
   } catch (error) {
     loadTrace.blackCheck = { error: error?.message || String(error) };
   }
-  // Network entry used to perform the same cold audio initialization after
-  // the loading veil was gone. Keep every battle entry path phase-consistent.
-  audio.resume();
+  // Keep every battle entry path phase-consistent and crossfade the loader
+  // machinery into the battlefield wind while the roster veil still covers.
+  audio.loadingOn(false);
   audio.ambientOn(true);
   battleLoad.progress(1, 'Ready');
   // As in solo entry, perform the fresh-baseline resize while still covered.
@@ -3443,6 +3484,8 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       enemies: lobbyRosterRows(lobbyState,
         displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
     });
+    audio.resume();
+    audio.loadingOn(true);
     battleLoad.progress(0.01, 'Opening battle channel');
     const {
       beginPrivateHostMatch,
@@ -3483,6 +3526,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       };
     }
     console.error('[network] entry failed', error);
+    audio.loadingOn(false);
     closeNetworkMatch('entry_failed');
     await battleLoad.hide();
     enterGarage();
@@ -3521,6 +3565,8 @@ async function beginNetworkRematch(lobbyState) {
       enemies: lobbyRosterRows(lobbyState,
         displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
     });
+    audio.resume();
+    audio.loadingOn(true);
     battleLoad.progress(0.01, 'Preparing the next round');
     disposeNetworkPresentation();
     latestNetworkSnapshot = null;
@@ -3545,6 +3591,7 @@ async function beginNetworkRematch(lobbyState) {
     return true;
   } catch (error) {
     console.error('[network] rematch entry failed', error);
+    audio.loadingOn(false);
     closeNetworkMatch('rematch_entry_failed');
     await battleLoad.hide();
     enterGarage();
@@ -3581,6 +3628,8 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
       enemies: lobbyRosterRows({ players: ticket.roster },
         displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
     });
+    audio.resume();
+    audio.loadingOn(true);
     battleLoad.progress(0.01, 'Opening dedicated channel');
     const { beginDedicatedClientMatch } = await import('./net/dedicatedClient.js');
     await presentNetworkBattle({
@@ -3598,6 +3647,7 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
     });
   } catch (error) {
     console.error('[ranked] entry failed', error);
+    audio.loadingOn(false);
     closeNetworkMatch('entry_failed');
     await battleLoad.hide();
     enterGarage();
@@ -6104,13 +6154,6 @@ function* warmCombatOpeningPipelineSteps() {
     if (e.visual && e.visual.prewarmBurn) e.visual.prewarmBurn();
   }
   markWarmStage('rosterHooks');
-  // Destroyed-state material swaps mutate the live visual while compiling.
-  // Keep that small roster-specific pass under the opaque veil; all other
-  // rare effects remain deferred. This prevents a tank from disappearing or
-  // flashing as a wreck between countdown frames and removes the last two
-  // >50 ms countdown tasks measured by the entry probe.
-  yield* warmDestroyedRosterVariantsSteps();
-  markWarmStage('wreckVariants');
   const effectDetail = {};
   let effectDetailAt = performance.now();
   const markEffectDetail = (name) => {
@@ -6145,20 +6188,6 @@ function* warmCombatOpeningPipelineSteps() {
       fx.exhaust(wp, 1, true);
       yield;
       markEffectDetail('openingEffects');
-      // perf-r2e: one scar stamp per fielded visual — the impact-decal
-      // system bakes its shared scar canvases (heightToNormal/roughness
-      // getImageData work) per FAMILY on the first stamp, which used to be
-      // the player's FIRST CONNECTING SHELL. resetAll() clears the stamped
-      // decals; the baked canvases persist in the family cache.
-      for (const e of game.tanks) {
-        if (!e.visual || !e.visual.root || !e.state) continue;
-        _v1.copy(e.state.pos);
-        _v1.y += (e.spec && e.spec.dims ? e.spec.dims.heightM : 2.4) * 0.5;
-        _v2.set(0, 0, 1);
-        try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
-        yield; // r11: one family's scar-canvas bake per slice
-      }
-      markEffectDetail('armorScars');
       // perf-r5c (owner: first shot still blips): the volley used to be
       // cleared WITHOUT ever rendering a frame — the fx materials' pipelines
       // (blending/depth state against the live targets) still bound for the
@@ -6235,6 +6264,24 @@ function* warmCombatRarePipelineSteps() {
     rareTrace.stages[name] = Math.round(now - markedAt);
     markedAt = now;
   };
+
+  // A wreck or armor scar cannot appear during the frozen deployment
+  // countdown. Prepare their exact full-quality variants here instead of
+  // charging every fielded family to the opaque roster screen. The countdown
+  // already holds at one second until this generator finishes, so live combat
+  // keeps the same first-hit/first-kill guarantees without the extra entry
+  // latency.
+  yield* warmDestroyedRosterVariantsSteps();
+  mark('wreckVariants');
+  for (const e of game.tanks) {
+    if (!e.visual || !e.visual.root || !e.state) continue;
+    _v1.copy(e.state.pos);
+    _v1.y += (e.spec && e.spec.dims ? e.spec.dims.heightM : 2.4) * 0.5;
+    _v2.set(0, 0, 1);
+    try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
+    yield;
+  }
+  mark('armorScars');
 
   // Destruction and crush families are not emitted before rollout. Spawn one
   // silent instance of each, initialize their exact forward pipelines, then

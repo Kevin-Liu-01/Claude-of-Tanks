@@ -92,6 +92,21 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const soloLoaderBody = mainSource.slice(
+  mainSource.indexOf('async function startBattleLoading('),
+  mainSource.indexOf('// Headless probes drive the battle entry'),
+);
+const loaderShowAt = soloLoaderBody.indexOf('battleLoad.show({');
+const audioResumeAt = soloLoaderBody.indexOf('audio.resume();', loaderShowAt);
+const loadingSoundAt = soloLoaderBody.indexOf('audio.loadingOn(true);', audioResumeAt);
+const firstYieldAt = soloLoaderBody.indexOf('await nextFrame();', loaderShowAt);
+const loadingStopAt = soloLoaderBody.indexOf('audio.loadingOn(false);', loadingSoundAt);
+const ambienceAt = soloLoaderBody.indexOf('audio.ambientOn(true);', loadingStopAt);
+assert.ok(loaderShowAt >= 0 && audioResumeAt > loaderShowAt && loadingSoundAt > audioResumeAt &&
+  firstYieldAt > loadingSoundAt,
+  'solo battle loading audio must unlock and start inside the Battle gesture before the first yield');
+assert.ok(loadingStopAt > loadingSoundAt && ambienceAt > loadingStopAt,
+  'loader audio must crossfade into battlefield ambience before reveal');
 const cameraPrepareAt = mainSource.indexOf('prepareBattleRevealCamera();');
 const revealPrimeAt = mainSource.indexOf('await primeSoloBattleRevealFrame();');
 const loaderFadeAt = mainSource.indexOf('await battleLoad.hide();', revealPrimeAt);
