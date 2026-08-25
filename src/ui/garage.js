@@ -552,7 +552,8 @@ const GARAGE_CSS = `
 .cot-card.dev-only.sel{border-color:#79c8ff;
   box-shadow:0 8px 26px rgba(64,154,219,.23);}
 .cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
-  object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));transform:scale(1.04);}
+  object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));
+  transform:translateY(-3px) scale(1.14);}
 .cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -3px;text-align:left;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
@@ -1005,7 +1006,8 @@ body[data-cot-panels='overlay'] .cot-card .flag{margin-bottom:1px;font-size:6px;
 body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
 body[data-cot-panels='overlay'] .cot-card .designation{font-size:5.5px;padding:1px 0}
 body[data-cot-panels='overlay'] .cot-card .dev-tag{right:4px;top:22px;padding:1px 3px;font-size:5px}
-body[data-cot-panels='overlay'] .cot-card .ti{width:92px;height:48px;margin:-4px auto -2px;transform:none}
+body[data-cot-panels='overlay'] .cot-card .ti{width:92px;height:48px;margin:-4px auto -2px;
+  transform:translateY(-2px) scale(1.12)}
 body[data-cot-panels='overlay'] .cot-card .nm{font-size:8px;margin:0 -2px}
 body[data-cot-panels='overlay'] .cot-card .era{font-size:6px;margin-top:1px;letter-spacing:.12em}
 body[data-cot-panels='overlay'] .cot-garage .hint{display:none}

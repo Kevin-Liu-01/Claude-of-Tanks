@@ -7,6 +7,13 @@ import {
 
 const garageSource = await readFile(new URL('./garage.js', import.meta.url), 'utf8');
 
+assert.match(garageSource,
+  /\.cot-card \.ti\{[^}]*transform:translateY\(-3px\) scale\(1\.14\);[^}]*\}/,
+  'every garage vehicle card lifts and enlarges its shared tank portrait');
+assert.match(garageSource,
+  /body\[data-cot-panels='overlay'\] \.cot-card \.ti\{[^}]*transform:translateY\(-2px\) scale\(1\.12\)[^}]*\}/,
+  'compact garage cards preserve the lifted, enlarged portrait treatment');
+
 const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],
 ]);

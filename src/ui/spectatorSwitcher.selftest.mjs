@@ -24,5 +24,7 @@ assert.doesNotMatch(markup, /portrait-mark/, 'spectator strip omits decorative c
 const hudSource = readFileSync(new URL('./hud.js', import.meta.url), 'utf8');
 assert.doesNotMatch(hudSource, /\.cot-spec \.portrait::after/,
   'spectator portrait omits the decorative diagonal overlay');
+assert.match(hudSource, /\.cot-spec\{[^}]*bottom:16px;/,
+  'spectator switcher shares the minimap bottom safe-area padding');
 
 console.log('spectatorSwitcher.selftest: command-style spectator identity and controls passed');

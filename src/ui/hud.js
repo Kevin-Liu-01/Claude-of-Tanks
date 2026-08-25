@@ -521,7 +521,7 @@ body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-dmglayer{position:absolute;inset:0;}
 /* Spectator command strip: battle-HUD steel, amber acquisition marks, and the
    shared icon set keep this state legible without covering the chase view. */
-.cot-spec{position:absolute;left:50%;bottom:48px;transform:translate(-50%,14px);
+.cot-spec{position:absolute;left:50%;bottom:16px;transform:translate(-50%,14px);
   opacity:0;display:none;pointer-events:auto;align-items:stretch;overflow:hidden;
   grid-template-columns:88px minmax(210px,1fr) 164px 116px;column-gap:0;
   width:min(760px,calc(100vw - 32px));min-width:0;min-height:82px;
