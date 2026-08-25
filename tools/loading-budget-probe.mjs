@@ -19,6 +19,7 @@
 //   node tools/loading-budget-probe.mjs --mode battle --garage-dwell 14000
 //   node tools/loading-budget-probe.mjs --mode battle --maps random --battle-intent-dwell 1200
 //   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids merkava1b,merkava3d
+//   node tools/loading-budget-probe.mjs --mode tank-switch --tank-ids m1a2,t90m --tank-intent-dwell 150
 //   node tools/loading-budget-probe.mjs --serve dev --mode studio
 
 // Exit 0 means every measured path completed in strictly less than the load
@@ -58,6 +59,7 @@ const garageDwellMs = Math.max(0, Number(option('garage-dwell', '0')) || 0);
 const battleIntentDwellMs = Math.max(0, Number(option('battle-intent-dwell', '0')) || 0);
 const battleSpecOption = option('battle-spec', 'm1a2');
 const requestedTankIds = option('tank-ids', 'all');
+const tankIntentDwellMs = Math.max(0, Number(option('tank-intent-dwell', '0')) || 0);
 const modes = new Set([
   'all', 'boot', 'battle', 'studio', 'studio-switch', 'scene-load',
   'transitions', 'tank-switch',
@@ -797,6 +799,13 @@ async function measureTankSwitches() {
     if (missing.length) throw new Error(`Unknown tank id(s): ${missing.join(', ')}`);
     for (const id of ids) {
       await resetStalls(opened.page, `tank-switch:${id}`);
+      if (tankIntentDwellMs > 0) {
+        await opened.page.evaluate((specId) => {
+          const card = document.querySelector(`.cot-card[data-spec-id="${specId}"]`);
+          card?.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+        }, id);
+        await new Promise((resolve) => setTimeout(resolve, tankIntentDwellMs));
+      }
       const result = await opened.page.evaluate(async (specId) => {
         const startedAt = performance.now();
         window.__DEBUG.selectGarageTank(specId);
@@ -822,6 +831,7 @@ async function measureTankSwitches() {
         invariantPass: result.selected === id,
         selected: result.selected,
         timing: result.timing,
+        intentDwellMs: tankIntentDwellMs,
         stall,
         errors: opened.errors.splice(0),
       });
@@ -871,6 +881,7 @@ const report = {
   stallLimitMs,
   garageDwellMs,
   battleIntentDwellMs,
+  tankIntentDwellMs,
   pass: failures.length === 0 && !contended,
   certification: contended
     ? 'REFUSED — machine contended; scenario numbers are diagnostic only'

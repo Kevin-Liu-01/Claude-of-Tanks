@@ -695,7 +695,8 @@ let camoSweepP = Promise.resolve();
 let battleWarmPending = false;
 let battleWarmGeneration = 0;
 
-async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null) {
+async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null,
+  initiallyHidden = false) {
   const pending = game.tanks.filter((ent) =>
     !ent.visual && (!predicate || predicate(ent)));
   const total = pending.length;
@@ -726,7 +727,7 @@ async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null)
     ensureStagedVisuals(game, 1, predicate);
     visualTiming.buildMs = Math.round(performance.now() - visualMark);
     visualMark = performance.now();
-    await stageBattleVisualReveal(next.ent, yieldForBudget);
+    await stageBattleVisualReveal(next.ent, yieldForBudget, initiallyHidden);
     visualTiming.uploadMs = Math.round(performance.now() - visualMark);
     visualTiming.compileMs = next.ent.visual?.root?.userData.loadCompileMs || 0;
     visualTiming.totalMs = Math.round(performance.now() - visualTiming.startedAt);
@@ -770,7 +771,7 @@ async function stageRootTextureUploads(root, yieldForBudget) {
  * transition materially worse on ANGLE because its completion polling became
  * another large atomic task; synchronous compile only submits work, then the
  * remaining roster gives the driver time to link it. */
-async function stageBattleVisualReveal(ent, yieldForBudget) {
+async function stageBattleVisualReveal(ent, yieldForBudget, initiallyHidden = false) {
   const visual = ent?.visual;
   const root = visual?.root;
   if (!root || root.userData.loadStaged) return;
@@ -789,6 +790,12 @@ async function stageBattleVisualReveal(ent, yieldForBudget) {
   const compileAt = performance.now();
   try { renderer.compile(root, camera, scene); } catch (_) { /* first render fallback */ }
   root.userData.loadCompileMs = Math.round(performance.now() - compileAt);
+  // Opposing actors prepared during the visible deployment countdown are
+  // not legally spotted yet. Submit their exact programs while visible to
+  // compile(), then hide them before the next paint so neither geometry nor
+  // shadows leak their spawn. updateDustAndSync restores the complete root
+  // on the first legitimate spotting frame.
+  if (initiallyHidden) visual.setVisible?.(false);
   await yieldForBudget(true);
 }
 
@@ -1169,6 +1176,7 @@ async function warmPedestalPrograms(vis) {
 let garageActivityAt = performance.now();
 let pedestalTexturePrefetchGeneration = 0;
 const pedestalTexturePrefetchedIds = new Set();
+const pedestalIntentPromises = new Map();
 const PEDESTAL_PREFETCH_CANCELLED = Symbol('pedestal-prefetch-cancelled');
 const noteGarageActivity = () => {
   garageActivityAt = performance.now();
@@ -1282,6 +1290,39 @@ function queuePedestalTexturePrefetch() {
       }
     }
   }, 500);
+}
+function preloadPedestalIntent(specId) {
+  if (!specId || specId === selectedSpecId || pedestalCache.has(specId)) {
+    return Promise.resolve();
+  }
+  const active = pedestalIntentPromises.get(specId);
+  if (active) return active;
+  const pending = Promise.all([
+    ensureTankBuilder(specId),
+    prebakeSharedTextures(
+      getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', frameBudgetTick(3),
+    ),
+  ]).then(() => {
+    if (specId === selectedSpecId || pedestalCache.has(specId)) return;
+    pedestalTexturePrefetchedIds.delete(specId);
+    pedestalTexturePrefetchedIds.add(specId);
+    // Intent textures carry no live references. Bound this precise warm set
+    // separately from the six-visual LRU so a long pointer sweep can never
+    // grow retained canvas/GPU memory without limit.
+    while (pedestalTexturePrefetchedIds.size > 4) {
+      const oldest = pedestalTexturePrefetchedIds.values().next().value;
+      pedestalTexturePrefetchedIds.delete(oldest);
+      if (oldest !== selectedSpecId && !pedestalCache.has(oldest)) {
+        discardPrebakedSharedTextures(oldest);
+      }
+    }
+  }).catch(() => null).finally(() => {
+    if (pedestalIntentPromises.get(specId) === pending) {
+      pedestalIntentPromises.delete(specId);
+    }
+  });
+  pedestalIntentPromises.set(specId, pending);
+  return pending;
 }
 function setPedestalTank(specId, force = false) {
   if (!force && pedestalVisual && pedestalVisual.specId === specId) {
@@ -1933,6 +1974,7 @@ const garage = await bootStage('ui', () => createGarage({
   }),
   onPlayModeIntent: preloadPlayMode,
   onBattleIntent: preloadBattleIntent,
+  onTankIntent: preloadPedestalIntent,
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
   maps: garageMaps,
@@ -2881,12 +2923,24 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // the serial props generator. Random-pool maps keep their seeded on-demand
   // path rather than speculatively downloading the entire modern fleet.
   const plannedWorldVehicles = cfg.props?.tankWrecks?.ids || [];
+  // Particle atlases are independent of the battlefield graph. Decode,
+  // install and upload the exact shipped textures while terrain/vegetation/
+  // props are already consuming the opaque transition instead of waiting
+  // until the visible countdown. The later opening warm sees stable Texture
+  // objects and only submits programs; no rendered effect or quality changes.
+  const fxTextureP = ensureFxRuntime().then(async (live) => {
+    await live.preloadTextures?.();
+    live.warmTextures?.();
+    const receipt = await stageRootTextureUploads(live.group, loadYield);
+    blt.fxTextureUpload = receipt;
+    return receipt;
+  });
   await Promise.all([
     ensureWorld(resolved,
       (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
       { precompile: false }),
     ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
-    ensureFxRuntime(),
+    fxTextureP,
     ensureKillcamRuntime(),
     rosterTextureP,
   ]);
@@ -2994,11 +3048,6 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       });
       if (warmGeneration !== battleWarmGeneration) return;
       mark('allyVisuals');
-      await streamBattleVisuals(null, coveredYield, (fraction) => {
-        battleLoad.progress(0.93 + fraction * 0.04, 'Preparing opposing vehicles');
-      });
-      if (warmGeneration !== battleWarmGeneration) return;
-      mark('enemyVisuals');
       battleLoad.progress(0.965, 'Warming suspension terrain');
       await warmBattleTerrainTiles(coveredYield);
       if (warmGeneration !== battleWarmGeneration) return;
@@ -3039,10 +3088,12 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       battleLoadRenderingCovered = true;
       if (warmGeneration !== battleWarmGeneration) return;
       mark('openingFrame');
-      battleLoad.progress(0.975, 'Priming combat effects');
-      await fx.preloadTextures?.();
-      await warmCombatOpeningPipelineChunked(18, coveredYield);
-      mark('combatOpeningWarm');
+      // The exact shipped atlases were decoded, installed and uploaded in
+      // parallel with world construction above. Program submission and
+      // isolated effect binding move to the frozen visible countdown below:
+      // no weapon can fire there, and rollout cannot release early.
+      battleLoad.progress(0.975, 'Combat effects ready');
+      mark('combatTextures');
       if (warmGeneration !== battleWarmGeneration) return;
       trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
       trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
@@ -6395,6 +6446,22 @@ function scheduleDeferredCombatWarm(generation) {
         throw error;
       }
     };
+    // Enemies are filtered by spotting and cannot contribute a legal pixel at
+    // deployment. Build/upload/compile their exact visuals during the frozen
+    // countdown instead of extending the opaque roster screen. They remain
+    // root-hidden after program submission until updateDustAndSync observes
+    // a real spotting edge, so the optimization changes no rendered frame.
+    const enemyVisualsStartedAt = performance.now();
+    await streamBattleVisuals(
+      (ent) => ent.team === 'enemy', guardedYield, null, true,
+    );
+    trace.stages.enemyVisuals = Math.round(performance.now() - enemyVisualsStartedAt);
+    // The complete shipped FX atlases were installed under the opaque veil.
+    // Bind the opening effect programs now, while controls and simulation are
+    // still frozen; the one-second hold below guarantees first-shot fidelity.
+    const openingFxStartedAt = performance.now();
+    await warmCombatOpeningPipelineChunked(6, guardedYield);
+    trace.stages.combatOpeningWarm = Math.round(performance.now() - openingFxStartedAt);
     const navigationStartedAt = performance.now();
     while (prepareNextOpeningRoute(game)) await guardedYield();
     // The exact first 70 m of each route must be in the fast terrain cache

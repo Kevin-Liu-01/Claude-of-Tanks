@@ -1814,7 +1814,7 @@ function frontArmorMm(plates, keys) {
  * Create the garage/tank-select screen. Appends its root to document.body (hidden).
  * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function,
  *   onPlayRequest?:Function,onPlayModeIntent?:Function,onBattleIntent?:Function,
- *   onStudioIntent?:Function}} opts
+ *   onStudioIntent?:Function,onTankIntent?:Function}} opts
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
 export function createGarage(opts) {
@@ -3116,6 +3116,32 @@ export function createGarage(opts) {
   // --- END country filter chips --------------------------------------------
 
   // --- build carousel cards ---
+  // Pointer sweeps across a dense carousel must not transfer half the fleet.
+  // A short dwell is enough to distinguish a deliberate target; focus/touch/
+  // press are already explicit and signal immediately. The eventual click
+  // joins the same builder/texture promise in main.js.
+  let tankIntentTimer = 0;
+  let tankIntentId = '';
+  const clearTankIntent = (specId = '') => {
+    if (specId && tankIntentId !== specId) return;
+    if (tankIntentTimer) clearTimeout(tankIntentTimer);
+    tankIntentTimer = 0;
+    tankIntentId = '';
+  };
+  const signalTankIntent = (specId, immediate = false) => {
+    if (!opts.onTankIntent || !specId || specId === selectedId) return;
+    clearTankIntent();
+    if (immediate) {
+      try { opts.onTankIntent(specId); } catch (_) { /* optional warm path */ }
+      return;
+    }
+    tankIntentId = specId;
+    tankIntentTimer = setTimeout(() => {
+      tankIntentTimer = 0;
+      tankIntentId = '';
+      try { opts.onTankIntent(specId); } catch (_) { /* optional warm path */ }
+    }, 90);
+  };
   for (const s of specs) {
     const card = document.createElement('div');
     const developmentOnly = Boolean(s.roster?.developmentOnly);
@@ -3136,6 +3162,11 @@ export function createGarage(opts) {
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
       `<div class="era">${vehicleEraLabel(s.era, { short: true })}</div>`;
     card.querySelector('.nmt').textContent = shortName;
+    card.addEventListener('pointerenter', () => signalTankIntent(s.id), { passive: true });
+    card.addEventListener('pointerleave', () => clearTankIntent(s.id), { passive: true });
+    card.addEventListener('focusin', () => signalTankIntent(s.id, true));
+    card.addEventListener('touchstart', () => signalTankIntent(s.id, true), { passive: true });
+    card.addEventListener('pointerdown', () => signalTankIntent(s.id, true), { passive: true });
     card.addEventListener('click', () => {
       emit('ui:click', {});
       api.setSelected(s.id);

@@ -26,6 +26,15 @@ assert.match(battleIntent, /battleMode === 'solo'/,
 assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
   'network modes should warm their own selected path');
 
+assert.match(garage,
+  /pointerenter[\s\S]{0,120}signalTankIntent\(s\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(s\.id, true\)/,
+  'vehicle cards must expose deliberate hover and immediate press intent');
+assert.match(main,
+  /function preloadPedestalIntent\(specId\)[\s\S]{0,800}Promise\.all\(\[[\s\S]{0,220}ensureTankBuilder\(specId\)[\s\S]{0,300}prebakeSharedTextures/,
+  'tank intent must overlap the exact builder transfer and chunked texture bake');
+assert.match(main, /onTankIntent: preloadPedestalIntent/,
+  'garage vehicle intent must be wired to the runtime loader');
+
 assert.match(main, /function preloadNetworkLobbyIntent\(state\)/,
   'joined rooms need an exact lobby-intent warm boundary');
 assert.match(main, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,100}rosterIds\.push\(player\.specId\)[\s\S]{0,100}ensureTankBuilders\(rosterIds\)/,

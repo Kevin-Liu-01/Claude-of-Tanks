@@ -137,14 +137,27 @@ assert.match(preRosterBattleLoad,
   /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,180}stageRootTextureUploads\(world\.group, loadYield\)/,
   'battle entry must stage current world textures before the first full deployment frame');
 assert.match(preRosterBattleLoad,
-  /const plannedRoster = planBattleParticipantIds[\s\S]{0,900}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,900}Promise\.all\(\[[\s\S]{0,500}rosterTextureP/,
+  /const plannedRoster = planBattleParticipantIds[\s\S]{0,900}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,2200}Promise\.all\(\[[\s\S]{0,500}rosterTextureP/,
   'exact cold roster camouflage and texture preparation must overlap battlefield construction');
+assert.match(preRosterBattleLoad,
+  /const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,220}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1000}fxTextureP/,
+  'exact combat atlases must install and upload alongside the independent world build');
 const stageRevealBody = mainSource.slice(
   mainSource.indexOf('async function stageBattleVisualReveal('),
   mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),
 );
-assert.match(stageRevealBody, /renderer\.compile\(root, camera, scene\)[\s\S]{0,180}await yieldForBudget\(true\)/,
+assert.match(stageRevealBody, /renderer\.compile\(root, camera, scene\)[\s\S]{0,700}await yieldForBudget\(true\)/,
   'each streamed vehicle must submit its shaders before yielding to later roster construction');
+assert.match(stageRevealBody,
+  /renderer\.compile\(root, camera, scene\)[\s\S]{0,700}if \(initiallyHidden\) visual\.setVisible\?\.\(false\)[\s\S]{0,100}await yieldForBudget\(true\)/,
+  'countdown-streamed opponents must compile exactly, then hide before the next painted frame');
+const deferredWarmBody = mainSource.slice(
+  mainSource.indexOf('function scheduleDeferredCombatWarm('),
+  mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),
+);
+assert.match(deferredWarmBody,
+  /streamBattleVisuals\([\s\S]{0,180}ent\.team === 'enemy'[\s\S]{0,500}warmCombatOpeningPipelineChunked\(6, guardedYield\)[\s\S]{0,3200}warmCombatRarePipelineChunked\(6, guardedYield\)/,
+  'opponents and first-shot pipelines must use the frozen countdown before rare variants');
 assert.match(mainSource,
   /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,180}primeSoloBattleRevealFrame\(\)/,
   'solo entry must split cascade warming before the first full deployment frame');

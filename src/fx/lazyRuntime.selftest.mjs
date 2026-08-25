@@ -23,7 +23,7 @@ if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState
 }
 
 const requiredGates = [
-  ['solo battle', /ensureTankBuilders\([\s\S]{0,100}plannedRoster[\s\S]{0,220}ensureFxRuntime\(\)/],
+  ['solo battle', /async function startBattleLoading[\s\S]{0,4200}const fxTextureP = ensureFxRuntime\(\)/],
   ['network battle', /async function presentNetworkBattle[\s\S]{0,4200}preloadNetworkBattleModules\(\)[\s\S]{0,100}ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
   ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
@@ -39,11 +39,17 @@ if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
   throw new Error('particle preload must finish PNG decode before texture upload');
 }
 
-if (!/await warmCombatOpeningPipelineChunked\(18, coveredYield\)/.test(main)) {
-  throw new Error('solo entry must await only the opening-critical combat warm');
-}
 if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
   throw new Error('rare combat variants must start only after the first battle reveal');
+}
+if (!/function scheduleDeferredCombatWarm\(generation\)[\s\S]{0,2600}streamBattleVisuals\([\s\S]{0,180}ent\.team === 'enemy'[\s\S]{0,220}true,[\s\S]{0,500}warmCombatOpeningPipelineChunked\(6, guardedYield\)[\s\S]{0,1600}warmCombatRarePipelineChunked\(6, guardedYield\)/.test(main)) {
+  throw new Error('hidden enemy visuals and opening/rare FX must drain in order during the frozen countdown');
+}
+if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,160}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
+  throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
+}
+if (!/if \(initiallyHidden\) visual\.setVisible\?\.\(false\)/.test(main)) {
+  throw new Error('countdown-built enemy visuals must remain hidden until a legal spotting edge');
 }
 if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(main)
   || !/function\* warmCombatRarePipelineSteps\(\)[\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*compileHiddenVariantsSteps/.test(main)) {
