@@ -43,8 +43,8 @@ visual.root.traverse((node) => {
 assert.equal(trackBands.length, 2, 'exactly one linked track band is present per side');
 for (const band of trackBands) {
   const box = bounds(band);
-  assert.ok(box.max.y >= 1.12 && box.max.y <= 1.20 && box.min.y >= 0.01,
-    `${band.name} uses the lower-profile Leopard course`);
+  assert.ok(box.max.y >= 1.20 && box.max.y <= 1.23 && box.min.y >= 0.01,
+    `${band.name} follows the deliberately lifted Leopard terminal-wheel course`);
   assert.ok(box.max.x - box.min.x >= 0.535,
     `${band.name} uses the widened Leopard tread`);
   assert.ok(box.max.z - box.min.z >= 6.60 && box.max.z - box.min.z <= 6.76,
@@ -74,8 +74,8 @@ for (let i = 0; i < trackPads.count / 2; i++) {
   leftShoeCenters.push([instancePosition.y, instancePosition.z]);
 }
 for (const [label, end] of [
-  ['idler', { y: 0.74, z: 3.17 }],
-  ['sprocket', { y: 0.79, z: -2.70 }],
+  ['idler', { y: 0.79, z: 3.17 }],
+  ['sprocket', { y: 0.84, z: -2.70 }],
 ]) {
   const wrapRadii = [];
   for (const [y, z] of leftShoeCenters) {
@@ -118,8 +118,8 @@ assert.deepEqual(finish, {
   closedDeckUnderstructure: true,
   deckSupportSegments: 2,
   hullOverFenders: true,
-  hullSponsonBottomY: 1.20,
-  fenderShelfTopY: 1.2275,
+  hullSponsonBottomY: 1.29,
+  fenderShelfTopY: 1.3175,
   hullFenderOverlapY: 0.0275,
   upperGlacisSurfaces: 1,
   upperGlacisAngleFromVerticalDeg: 60,
@@ -135,9 +135,9 @@ assert.deepEqual(finish, {
   trackShoeRadialScale: 0.58,
   trackEndArcSteps: 12,
   frontIdlerZ: 3.17,
-  frontIdlerY: 0.74,
+  frontIdlerY: 0.79,
   rearSprocketZ: -2.70,
-  rearSprocketY: 0.79,
+  rearSprocketY: 0.84,
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
@@ -148,12 +148,12 @@ for (let i = 1; i < gear.wheelZs.length; i++) {
   assert.ok(Math.abs((gear.wheelZs[i - 1] - gear.wheelZs[i]) - 0.74) < 1e-8,
     `road-wheel station ${i} remains on the compact 0.74 m pitch`);
 }
-assert.deepEqual(gear.idler, { z: 3.17, y: 0.74, r: 0.29 },
+assert.deepEqual(gear.idler, { z: 3.17, y: 0.79, r: 0.29 },
   'the front idler retains a compact raised station and authored radius');
-assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.79, r: 0.30 },
+assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.84, r: 0.30 },
   'the rear sprocket retains a compact raised station and authored radius');
-assert.ok(gear.idler.y - gear.wheelY >= 0.36 && gear.sprocket.y - gear.wheelY >= 0.41,
-  'both terminal drums retain the Leopard trapezoid without over-tall wraps');
+assert.ok(gear.idler.y - gear.wheelY >= 0.41 && gear.sprocket.y - gear.wheelY >= 0.46,
+  'both terminal drums retain the lifted Leopard trapezoid without over-tall wraps');
 assert.ok(Math.abs(gear.wheelZs.reduce((sum, z) => sum + z, 0) / gear.wheelZs.length - 0.30) < 1e-8,
   'the complete road-wheel row advances 30 cm without changing its cadence');
 assert.equal(finish.returnRollerY, 1,
@@ -252,9 +252,11 @@ assert.deepEqual(turretRig.userData.leopard1A5TurretFinishReceipt, {
 assert.deepEqual(gunRig.userData.leopard1A5MantletReceipt, {
   seated: true,
   shapedButterflyCasting: true,
+  flatFacetedFace: true,
   width: 1.32,
-  height: 0.59,
-  depth: 0.78,
-}, 'the reshaped butterfly mantlet remains seated in the turret embrasure');
+  height: 0.55,
+  faceDepth: 0.31,
+  barrelRadius: 0.064,
+}, 'the flatter faceted mantlet and thicker L7 remain seated in the turret embrasure');
 
 console.log('leopard1A5Source.selftest: source envelope, Leopard course, closed fenders, rear fuel cans, seated rig, and A5 kit pass');

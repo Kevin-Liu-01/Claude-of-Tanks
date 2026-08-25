@@ -10722,9 +10722,12 @@ function buildLeo1A5ArticulatedProfile(P) {
       1,
     ),
   );
-  const fenderShelfY = 1.205;
-  const fenderShelfTopY = 1.2275;
-  const hullSponsonBottomY = 1.20;
+  // The lifted terminal wraps crest at 1.265 m including their physical
+  // shoes. Raise the continuous shelf and lower sponson seam together so the
+  // new course keeps real clearance instead of clipping into the fender.
+  const fenderShelfY = 1.295;
+  const fenderShelfTopY = 1.3175;
+  const hullSponsonBottomY = 1.29;
   const hullSponsonTopY = 1.44;
   // Keep the hull at its authored source datum. The former +140 mm body lift
   // opened an oversized strip of daylight above the unchanged Leopard track
@@ -10745,8 +10748,11 @@ function buildLeo1A5ArticulatedProfile(P) {
   // last wheels as one coherent course.
   const trackContactZF = roadWheelZs[0];
   const trackContactZR = roadWheelZs.at(-1);
-  const frontIdler = { z: 3.17, y: 0.74, r: 0.29 };
-  const rearSprocket = { z: -2.70, y: 0.79, r: 0.30 };
+  // Lift both terminal drums 50 mm so the end wraps rise cleanly into the
+  // return run instead of flattening at the hull ends. Their radii and
+  // longitudinal stations stay unchanged, preserving the compact wheelbase.
+  const frontIdler = { z: 3.17, y: 0.79, r: 0.29 };
+  const rearSprocket = { z: -2.70, y: 0.84, r: 0.30 };
 
   // ---------------------------------------------------------------- hull --
   // Normalized source anchors: x ±1.685, z ±3.541; track y 0..1.185;
@@ -10837,27 +10843,27 @@ function buildLeo1A5ArticulatedProfile(P) {
     // A shallow camouflaged shoulder below it removes the bright background
     // slit while preserving clearance around the moving top links.
     P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, fenderShelfY, -0.02);
-    P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.105, -0.08);
-    P.add('hullDetail', box(0.024, 0.18, 6.04), s * 1.68, 1.105, -0.10);
+    P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.195, -0.08);
+    P.add('hullDetail', box(0.012, 0.18, 6.04), s * 1.70, 1.195, -0.10);
     P.add('hullDetail', slab(
-      [s * 1.10, 1.17, 3.34], [s * 1.67, 1.17, 3.36], [s * 1.67, 1.17, 2.70], [s * 1.13, 1.17, 2.62],
-      [s * 1.10, 1.23, 3.42], [s * 1.67, 1.23, 3.42], [s * 1.67, 1.23, 2.70], [s * 1.13, 1.23, 2.62]));
-    P.add('hullRubber', box(0.025, 0.31, 0.36), s * 1.675, 1.045, 3.31, -0.06, 0, 0);
-    P.add('hullRubber', box(0.025, 0.34, 0.40), s * 1.675, 1.02, -3.34, 0.08, 0, 0);
+      [s * 1.10, 1.27, 3.34], [s * 1.67, 1.27, 3.36], [s * 1.67, 1.27, 2.70], [s * 1.13, 1.27, 2.62],
+      [s * 1.10, 1.33, 3.42], [s * 1.67, 1.33, 3.42], [s * 1.67, 1.33, 2.70], [s * 1.13, 1.33, 2.62]));
+    P.add('hullRubber', box(0.014, 0.31, 0.36), s * 1.715, 1.045, 3.31, -0.06, 0, 0);
+    P.add('hullRubber', box(0.014, 0.34, 0.40), s * 1.715, 1.02, -3.34, 0.08, 0, 0);
     for (let k = 0; k < 7; k++) {
       const z = 2.40 - k * 0.82;
-      P.add('hullRubber', box(0.024, 0.31, 0.76), s * 1.674, 0.995, z);
-      P.add('hullDetail', box(0.014, 0.34, 0.026), s * 1.694, 1.00, z - 0.395);
-      P.add('hullDetail', box(0.36, 0.035, 0.055), s * 1.47, 1.255, z);
+      P.add('hullRubber', box(0.014, 0.31, 0.76), s * 1.715, 0.995, z);
+      P.add('hullDetail', box(0.012, 0.34, 0.026), s * 1.707, 1.00, z - 0.395);
+      P.add('hullDetail', box(0.36, 0.035, 0.055), s * 1.47, 1.345, z);
     }
     // Leopard-pattern fender lockers: flush lids and small outboard latches
     // add the long, busy side cadence visible on service vehicles without
     // turning cosmetic stowage into armor.
     for (let k = 0; k < 4; k++) {
       const z = -2.58 + k * 0.83;
-      P.addEquipment('hull', box(0.42, 0.16, 0.72), s * 1.43, 1.305, z);
-      P.addEquipment('hull', box(0.44, 0.025, 0.74), s * 1.43, 1.397, z);
-      P.add('hullDark', box(0.022, 0.07, 0.11), s * 1.655, 1.305, z + 0.22);
+      P.addEquipment('hull', box(0.42, 0.16, 0.72), s * 1.43, 1.395, z);
+      P.addEquipment('hull', box(0.44, 0.025, 0.74), s * 1.43, 1.487, z);
+      P.add('hullDark', box(0.022, 0.07, 0.11), s * 1.655, 1.395, z + 0.22);
     }
   }
   P.mats.rubber.color.setHex(0x34372d);
@@ -10874,12 +10880,12 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
   P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, roundHatchY + 0.031, 0.70);
   for (const s of [-1, 1]) {
-    headlight(P, s * 1.31, 1.19, 3.27, -0.26);
-    P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.22, 3.30, -0.26, 0, 0);
+    headlight(P, s * 1.31, 1.30, 3.27, -0.26);
+    P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.33, 3.30, -0.26, 0, 0);
     P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
     liftEye(P, 'hullDetail', s * 1.17, centerDeckTopY(1.65) + 0.015, 1.65, s * 0.45);
-    P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, 1.37, 3.36, 0, 0, s * 0.08);
-    P.addEquipment('hull', sph(0.018, 8), s * 1.60, 1.54, 3.36);
+    P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, 1.48, 3.36, 0, 0, s * 0.08);
+    P.addEquipment('hull', sph(0.018, 8), s * 1.60, 1.65, 3.36);
   }
   towCable(P, [
     [-0.76, upperGlacisY(3.18) + 0.07, 3.18],
@@ -11154,16 +11160,19 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.17, 0.61, -1.05], Math.PI / 2, 0, 0.14);
 
   // Broad cast butterfly saddle and source-length L7A3. A tapered rear seat
-  // overlaps the turret embrasure, the bowed center shield rolls into two
-  // rounded shoulder ears, and sloped brow/chin plates make the casting read
-  // as one shaped mantlet rather than a cylinder with spheres stuck on it.
+  // overlaps the turret embrasure; the shallow faceted center shield and
+  // flattened shoulder ears continue the adjacent cheek rake instead of
+  // protruding as a separate round casting. Sloped brow/chin plates close the
+  // remaining transition into the turret face.
   P.gunG.position.set(0, 0.47, 1.15);
   P.addGunExtra(slab(
-    [-0.64, -0.22, -0.36], [0.64, -0.22, -0.36], [0.58, -0.24, 0.12], [-0.58, -0.24, 0.12],
-    [-0.64, 0.22, -0.36], [0.64, 0.22, -0.36], [0.58, 0.24, 0.12], [-0.58, 0.24, 0.12]));
-  P.addGunExtra(xform(sph(1, P.q ? 24 : 16), 0, 0, 0, 0, 0, 0, [0.66, 0.27, 0.34]), 0, 0, 0.07);
+    [-0.64, -0.21, -0.30], [0.64, -0.21, -0.30], [0.58, -0.22, 0.04], [-0.58, -0.22, 0.04],
+    [-0.64, 0.21, -0.30], [0.64, 0.21, -0.30], [0.58, 0.22, 0.04], [-0.58, 0.22, 0.04]));
+  P.addGunExtra(slab(
+    [-0.59, -0.20, -0.04], [0.59, -0.20, -0.04], [0.52, -0.17, 0.27], [-0.52, -0.17, 0.27],
+    [-0.59, 0.20, -0.04], [0.59, 0.20, -0.04], [0.49, 0.17, 0.27], [-0.49, 0.17, 0.27]));
   for (const s of [-1, 1]) {
-    P.addGunExtra(xform(sph(1, P.q ? 22 : 14), 0, 0, 0, 0, 0, 0, [0.24, 0.25, 0.30]), s * 0.55, -0.01, 0.02);
+    P.addGunExtra(xform(sph(1, P.q ? 22 : 14), 0, 0, 0, 0, 0, 0, [0.23, 0.21, 0.16]), s * 0.55, -0.01, 0.09);
   }
   P.addGunExtra(slab(
     [-0.57, 0.16, -0.06], [0.57, 0.16, -0.06], [0.48, 0.18, 0.38], [-0.48, 0.18, 0.38],
@@ -11171,18 +11180,20 @@ function buildLeo1A5ArticulatedProfile(P) {
   P.addGunExtra(slab(
     [-0.50, -0.29, -0.04], [0.50, -0.29, -0.04], [0.39, -0.24, 0.34], [-0.39, -0.24, 0.34],
     [-0.54, -0.17, -0.06], [0.54, -0.17, -0.06], [0.43, -0.15, 0.36], [-0.43, -0.15, 0.36]));
-  P.addGunExtraDark(xform(sph(1, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.54, 0.18, 0.23]), 0, 0, -0.12);
+  P.addGunExtraDark(xform(sph(1, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.54, 0.12, 0.10]), 0, 0, -0.13);
   P.addGunExtra(cylZ(0.18, 0.30, P.q ? 20 : 14, 0.20), 0, 0, 0.38);
   P.addGunExtraDark(cylZ(0.026, 0.10, 9), 0.37, 0.06, 0.37);
   P.addGunExtraDark(cylZ(0.022, 0.095, 9), -0.37, 0.08, 0.37);
-  buildGun(P, { len: 4.35, r: 0.058, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
-  muzzleBore(P, { len: 4.35, r: 0.058 });
+  buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
+  muzzleBore(P, { len: 4.35, r: 0.064 });
   P.gunG.userData.leopard1A5MantletReceipt = {
     seated: true,
     shapedButterflyCasting: true,
+    flatFacetedFace: true,
     width: 1.32,
-    height: 0.59,
-    depth: 0.78,
+    height: 0.55,
+    faceDepth: 0.31,
+    barrelRadius: 0.064,
   };
 
   P.mats.glass.color.setHex(0x3e493b);

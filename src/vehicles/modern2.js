@@ -425,7 +425,7 @@ const MODERN2_SPECS = {
     armor: mbtArmor({
       hl: 3.54, hw: 1.68, roofY: 1.30, trkTop: 0.92, floor: 0.42,
       turretPivot: [0, 1.30, -0.05], gunPivot: [0, 0.38, 0.5],
-      barrelLenM: 5.2, barrelRadM: 0.062,
+      barrelLenM: 5.2, barrelRadM: 0.064,
       glacis: { ke: 70, ce: 70, phys: 70 }, lower: { ke: 70, ce: 70 },
       side: { ke: 35, ce: 35 }, rear: 25, roof: 20,
       cheek: { ke: 120, ce: 120, phys: 120 }, tSide: { ke: 45, ce: 45 },
