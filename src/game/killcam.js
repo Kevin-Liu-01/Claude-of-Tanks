@@ -1993,6 +1993,8 @@ export function createKillCam(deps) {
    * whatever THIS call hid so showFx()/teardown can restore exactly it.
    */
   function hideFx() {
+    const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
+    if (fxs && fxs.setReplaySuppressed) fxs.setReplaySuppressed(true);
     if (!pb || !pb.fxGroup) return;
     if (!pb.fxHidden) pb.fxHidden = [];
     for (const child of pb.fxGroup.children) {
@@ -2004,6 +2006,8 @@ export function createKillCam(deps) {
 
   /** Restore the fx children hideFx() suppressed (impact beat / teardown). */
   function showFx() {
+    const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
+    if (fxs && fxs.setReplaySuppressed) fxs.setReplaySuppressed(false);
     if (!pb || !pb.fxHidden) return;
     for (const c of pb.fxHidden) c.visible = true;
     pb.fxHidden = null;
@@ -4099,6 +4103,8 @@ export function createKillCam(deps) {
     window.removeEventListener('keydown', onSkipKey, true);
     window.removeEventListener('mousedown', onSkipKey, true);
     if (pb) {
+      const fxs = (() => { try { return getFx(); } catch (_) { return null; } })();
+      if (fxs && fxs.setReplaySuppressed) fxs.setReplaySuppressed(false);
       if (pb.ghostBackup) {
         for (const [mesh, mat, ro, cs] of pb.ghostBackup) {
           mesh.material = mat;

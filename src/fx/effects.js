@@ -453,6 +453,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
   let rng = mulberry32(seed);
   let frozen = false;
+  // Killcam reconstruction temporarily presents a pre-impact tank in the
+  // same world as its already-recorded destruction. Keep the pooled scene
+  // objects alive (stable Three.js light/program counts), but do not let the
+  // old wreck emitters or their orange light leak over that intact replay.
+  // The impact/finale beat releases this gate before spawning its own FX.
+  let replaySuppressed = false;
 
   // --- dynamic lights (budget: exactly 2 PointLights) -----------------------
   // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
@@ -486,6 +492,10 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   }
 
   function applyLight(state) {
+    if (replaySuppressed) {
+      state.light.intensity = 0;
+      return;
+    }
     const age = lightAge(state);
     const k = Math.max(0, 1 - age / state.dur);
     let v = state.peak * Math.pow(k, state.pow || 2);
@@ -707,6 +717,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   let shockCursor = 0;
 
   function applyShockRing(r) {
+    if (replaySuppressed) {
+      r.mesh.visible = false;
+      r.mat.opacity = 0;
+      return;
+    }
     const t = (particles.getTime() - r.bornAt) / SHOCK_DUR;
     if (t >= 1 || t < 0) { r.mesh.visible = false; r.mat.opacity = 0; return; }
     const k = 1 - Math.pow(1 - t, 2.4);         // fast launch, decelerating
@@ -772,6 +787,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const _Z = new THREE.Vector3(0, 0, 1); // read-only
 
   function applyMuzzleRing(r) {
+    if (replaySuppressed) {
+      r.mesh.visible = false;
+      r.mat.opacity = 0;
+      return;
+    }
     const t = (particles.getTime() - r.bornAt) / MUZZLE_RING_DUR;
     if (t >= 1 || t < 0) { r.mesh.visible = false; r.mat.opacity = 0; return; }
     const k = 1 - Math.pow(1 - t, 2.2);
@@ -2669,6 +2689,30 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   const fx = {
     group,
 
+    /**
+     * Hide already-recorded battle destruction while killcam shows the
+     * reconstructed pre-impact state. Emitters continue aging, so releasing
+     * the gate never dumps a backlog; pooled lights stay in the scene with
+     * zero intensity to preserve shader-program stability.
+     */
+    setReplaySuppressed(suppressed) {
+      replaySuppressed = !!suppressed;
+      if (replaySuppressed) {
+        for (const st of lightStates) st.light.intensity = 0;
+        for (const r of shockRings) { r.mesh.visible = false; r.mat.opacity = 0; }
+        for (const r of muzzleRings) { r.mesh.visible = false; r.mat.opacity = 0; }
+      }
+    },
+
+    /** Read-only killcam/visual-regression telemetry. */
+    getReplaySuppressionDebug() {
+      return {
+        suppressed: replaySuppressed,
+        lightIntensities: [muzzleLight.intensity, explosionLight.intensity],
+        worldFixedColumns: columns.reduce((count, col) => count + (col.key == null ? 1 : 0), 0),
+      };
+    },
+
     /** Render-side ATGM visibility telemetry used by the browser lifecycle gate. */
     getGuidedMissileDebug() {
       return {
@@ -2793,7 +2837,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
       // r1 terracotta-deck fix: localized (8 m range, ~1/3 the r6 intensity)
       // — the pulsing ember emissive carries the deck glow; this light only
       // accents the immediate fire pool.
-      {
+      if (!replaySuppressed) {
         const exSt = lightStates[1];
         if (lightAge(exSt) >= exSt.dur && columns.length) {
           const col = columns[columns.length - 1];
@@ -2821,7 +2865,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
             let live = 0;
             for (const tm of timers) if (tm.t > 0) timers[live++] = tm;
             timers.length = live;
-            for (const tm of _due) tm.fn();
+            if (!replaySuppressed) for (const tm of _due) tm.fn();
             _due.length = 0;
           }
         }
@@ -2836,13 +2880,19 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
             if (col.ttl > 0) {
               col.ttl -= tickDt;
               if (col.ttl <= 0) { col.ttl = 0; col.smolder = SMOKE_SMOLDER_S; col.acc = 0; continue; }
-              col.acc += tickDt;
-              while (col.acc >= COLUMN_TICK_S) { col.acc -= COLUMN_TICK_S; emitColumnPuff(col, -col.acc); }
+              if (replaySuppressed) col.acc = 0;
+              else {
+                col.acc += tickDt;
+                while (col.acc >= COLUMN_TICK_S) { col.acc -= COLUMN_TICK_S; emitColumnPuff(col, -col.acc); }
+              }
             } else {
               col.smolder = (col.smolder === undefined ? SMOKE_SMOLDER_S : col.smolder) - tickDt;
               if (col.smolder <= 0) { compact = true; continue; }
-              col.acc += tickDt;
-              while (col.acc >= 0.45) { col.acc -= 0.45; emitSmolderPuff(col, -col.acc); }
+              if (replaySuppressed) col.acc = 0;
+              else {
+                col.acc += tickDt;
+                while (col.acc >= 0.45) { col.acc -= 0.45; emitSmolderPuff(col, -col.acc); }
+              }
             }
           }
           if (compact) {
@@ -4199,6 +4249,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
 
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll() {
+      replaySuppressed = false;
       particles.resetAll();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst

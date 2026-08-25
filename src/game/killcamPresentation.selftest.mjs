@@ -22,6 +22,10 @@ for (const crewIcon of ['crewCommander', 'crewGunner', 'crewDriver', 'crewLoader
 }
 
 assert.match(source, /--kc-panel:/, 'killcam owns the tactical panel token set');
+assert.match(source, /setReplaySuppressed\(true\)/,
+  'intact/x-ray killcam phases suppress the prior live destruction presentation');
+assert.match(source, /setReplaySuppressed\(false\)/,
+  'impact and teardown restore live destruction presentation');
 assert.match(source, /\.cot-kc-labelhost\{position:absolute;z-index:8;inset:0;overflow:hidden;/,
   'projected callouts remain clipped to the replay frame');
 assert.match(source, /pass 2c: keep projected callouts out of the fixed analysis\/killer/,

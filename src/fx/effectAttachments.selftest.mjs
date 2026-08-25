@@ -81,6 +81,12 @@ if (!effectsSource.includes('syncSubjectEmitterAnchor(col, subject, _subjectAnch
 if (!effectsSource.includes('retireSubjectColumn(e.id);')) {
   throw new Error('tank destruction does not retire the live burning emitter');
 }
+if (!effectsSource.includes('setReplaySuppressed(suppressed)')) {
+  throw new Error('effects lack the reversible killcam reconstruction gate');
+}
+if (!effectsSource.includes('if (replaySuppressed) col.acc = 0;')) {
+  throw new Error('suppressed wreck columns can accumulate a replay emission backlog');
+}
 if (!mainSource.includes('game.shells, camera, resolveFxSubject')) {
   throw new Error('battle fx update lacks the solo/network subject resolver');
 }
