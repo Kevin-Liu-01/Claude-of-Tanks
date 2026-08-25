@@ -51,9 +51,14 @@ export function classifyViewport({ width, height, coarsePointer = false, hover =
   const heightDensity = safeHeight <= 430 ? 'tight' : 'roomy';
   const orientation = safeWidth >= safeHeight ? 'landscape' : 'portrait';
   const input = coarsePointer || !hover ? 'coarse' : 'fine';
+  // Large iPads can expose a fine primary pointer while a trackpad is active.
+  // Keep panel composition driven by available stage space as well as input so
+  // attaching a keyboard cannot suddenly restore two permanent sidebars.
+  const pressuredLaptop = widthBand === 'laptop'
+    && (safeWidth < 1240 || heightBand === 'tall' || input === 'coarse');
   const overlayPanels = heightBand === 'short'
     || widthBand === 'phone' || widthBand === 'compact' || widthBand === 'tablet'
-    || (input === 'coarse' && widthBand === 'laptop');
+    || pressuredLaptop;
   const compactHeader = overlayPanels || heightBand === 'short';
   const scale = clamp(Math.min(safeWidth / 1440, safeHeight / 900), 0.78, 1.08);
 

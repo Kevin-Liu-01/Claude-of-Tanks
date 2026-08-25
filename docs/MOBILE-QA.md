@@ -65,10 +65,12 @@ height media queries. The shared contract publishes semantic body attributes:
 - panel mode: `overlay` or `persistent`.
 
 Large iPads commonly expose 1194-1366 CSS-pixel landscape viewports. They are
-therefore not identified by width. A laptop-width viewport with a coarse or
-non-hovering primary input uses overlay garage panels and compact public
-navigation; the same viewport with fine mouse input keeps persistent side
-panels. Phone widths at or below 380 CSS pixels receive an additional narrow
+therefore not identified by a device label. Laptop-width workspaces below
+1240px, tall laptop-width workspaces, and coarse/non-hovering laptop-width
+inputs use overlay garage panels and compact public
+navigation. A wider, standard-height laptop workspace with fine mouse input
+keeps persistent side panels. Phone widths at or below 380 CSS pixels receive
+an additional narrow
 density tier, while viewport height independently controls landscape battle
 controls, loading rosters, Studio, Gallery, killcam, chat, and after-action
 composition.
