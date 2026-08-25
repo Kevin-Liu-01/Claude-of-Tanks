@@ -43,6 +43,9 @@ visual.setGroundSampler(() => 1.4);
 for (let i = 0; i < 10; i++) visual.syncFromState(state, 0.08, 150);
 visual.recoilKick();
 visual.syncFromState(state, 0.12, 150);
+visual.hitFlinch(0.8, -0.2, 2.4, state.yaw);
+visual.setTrackState('trackL', true);
+visual.setDestroyed({ pop: true, ageS: 0.42 });
 
 assert.ok(Math.abs(root.rotation.x) > 0.05 && Math.abs(root.rotation.z) > 0.05,
   'battle pose rocks the hull away from its showroom rest pose');
@@ -55,6 +58,8 @@ assert.notDeepEqual(Array.from(trackBand.geometry.getAttribute('position').array
   'terrain conformance deforms the track band');
 assert.ok(detailGroups.every(({ object }) => object.parent === null),
   'distant battle pose detaches cosmetic detail');
+assert.equal(trackBand.visible, false, 'battle damage can throw the selected track');
+assert.equal(visual.isDestroyed(), true, 'battle destruction can leave a wreck presentation');
 
 visual.resetForGaragePresentation();
 
@@ -72,6 +77,33 @@ assert.deepEqual(Array.from(trackBand.geometry.getAttribute('position').array), 
   'garage reset restores the authored track band');
 assert.ok(detailGroups.every(({ object, parent }) => object.parent === parent),
   'garage reset restores inspection-quality cosmetic detail');
+assert.equal(trackBand.visible, true, 'garage reset restores a thrown track');
+assert.equal(visual.isDestroyed(), false, 'garage reset restores an intact tank');
 
 visual.dispose();
+
+// ERA is a separately instanced damage layer, so exercise it on a vehicle that
+// owns real clusters instead of relying on the Abrams no-op path above.
+const eraVisual = createTank('m60a3', null, {
+  proceduralOnly: true,
+  geometryReceipt: true,
+  batchStatic: false,
+});
+const eraMatrices = new Map();
+eraVisual.root.traverse((object) => {
+  if (object.isInstancedMesh) {
+    eraMatrices.set(object, Array.from(object.instanceMatrix.array));
+  }
+});
+eraVisual.stripEra('m60a3_turret_era_front_R');
+assert.ok([...eraMatrices].some(([object, rest]) =>
+  !rest.every((value, index) => value === object.instanceMatrix.array[index])),
+  'battle damage can remove an ERA cluster');
+eraVisual.resetForGaragePresentation();
+for (const [object, rest] of eraMatrices) {
+  assert.deepEqual(Array.from(object.instanceMatrix.array), rest,
+    'garage reset re-seats every instanced ERA brick');
+}
+eraVisual.dispose();
+
 console.log('garagePresentation.selftest: battle visual returns to canonical garage pose');

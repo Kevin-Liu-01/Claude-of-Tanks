@@ -79,6 +79,7 @@ import {
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
 import { createGarageDressing } from './game/garageDressing.js';
+import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
@@ -1125,10 +1126,6 @@ function adoptBattlePlayerAsPedestal(specId) {
   // when it is a different, dedicated garage visual.
   if (cached?.root?.parent && cached !== incoming) return false;
   const outgoing = pedestalVisual;
-  try {
-    if (incoming.resetForGaragePresentation) incoming.resetForGaragePresentation();
-    else incoming.resetDestroyed?.();
-  } catch (_) { /* presentation recovery */ }
   incoming.spec = getSpec(specId);
   incoming.root.rotation.y =
     (162 + (incoming.spec?.visual?.garageYawDeg || 0)) * DEG;
@@ -3616,6 +3613,11 @@ function enterGarage({ preserveRoom = !!(
   // HUD veil. Without this ordering, the next battle inherited letterbox/
   // label DOM plus display:none HUD roots from the interrupted replay.
   clearBattlePresentationForExit();
+  // The selected battle actor is reused as the showroom hero. End both sides
+  // of its presentation lifetime before network disposal or pedestal adoption:
+  // FX owns tank-parented impact decals plus world particles/lights/timers;
+  // the visual owns wreck, recoil, track, ERA, suspension and LOD state.
+  resetBattleTankForGarage({ fx, visual: game.player?.visual });
   markGarageStage('presentationReset');
   if (preserveRoom) disposeNetworkPresentation();
   else closeNetworkMatch('returned_to_garage');
