@@ -10,3 +10,21 @@ export function advancePreBattleCountdown(seconds, dtS, warmPending, holdAtS = 1
   const floor = warmPending ? Math.max(0, holdAtS) : 0;
   return Math.max(floor, seconds - dt);
 }
+
+/**
+ * Convert time already spent behind the battle loader into countdown credit.
+ * A short visible deployment cue remains so the camera handoff is readable,
+ * while a slow first world build no longer pays the complete countdown again.
+ */
+export function resolveVisiblePreBattleSeconds(
+  totalSeconds, loadingElapsedSeconds, minimumVisibleSeconds = 2,
+) {
+  const total = Number.isFinite(totalSeconds) ? Math.max(0, totalSeconds) : 0;
+  const elapsed = Number.isFinite(loadingElapsedSeconds)
+    ? Math.max(0, loadingElapsedSeconds)
+    : 0;
+  const minimum = Number.isFinite(minimumVisibleSeconds)
+    ? Math.min(total, Math.max(0, minimumVisibleSeconds))
+    : 0;
+  return Math.min(total, Math.max(minimum, total - elapsed));
+}

@@ -35,7 +35,7 @@ if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
 if (!/await warmCombatOpeningPipelineChunked\(18, coveredYield\)/.test(main)) {
   throw new Error('solo entry must await only the opening-critical combat warm');
 }
-if (!/openBattle\(\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
+if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
 if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(main)

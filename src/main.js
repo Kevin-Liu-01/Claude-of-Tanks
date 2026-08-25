@@ -87,7 +87,10 @@ import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
   startConsumableCooldown,
 } from './game/consumables.js';
-import { advancePreBattleCountdown } from './game/preBattleCountdown.js';
+import {
+  advancePreBattleCountdown,
+  resolveVisiblePreBattleSeconds,
+} from './game/preBattleCountdown.js';
 import {
   advanceTankPresentationPose,
   createTankPresentationPose,
@@ -415,7 +418,9 @@ function enforceWorldCacheBudget() {
   }
 }
 
-function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) {
+function beginWorldBuild(
+  mapId, onProgress = null, { background = false, waitForGarageLull = true } = {},
+) {
   const id = mapId || pendingMapId;
   const cached = worldCache.get(id);
   if (cached) return { promise: Promise.resolve(cached), listeners: null, f: 1, label: 'Ready' };
@@ -430,7 +435,7 @@ function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) 
       id, f: 0, label: 'Surveying terrain',
       listeners: new Set(), promise: null,
       stageTimings: {}, stageLabel: null, stageMark: performance.now(),
-      background, cancelled: false,
+      background, waitForGarageLull, cancelled: false,
     };
     const startedAt = performance.now();
     const startedInBackground = background;
@@ -475,7 +480,7 @@ function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) 
           // Background construction runs only during a genuine garage lull.
           // A BATTLE press promotes this same promise and immediately exits
           // the wait, so work is never duplicated or stuck behind idle pacing.
-          while (rec.background && (game.phase !== 'garage'
+          while (rec.background && rec.waitForGarageLull && (game.phase !== 'garage'
               || performance.now() - garageActivityAt < 1200)) {
             await new Promise((resolve) => setTimeout(resolve, 120));
           }
@@ -514,7 +519,7 @@ function beginWorldBuild(mapId, onProgress = null, { background = false } = {}) 
 }
 
 /** Build the exact selected battlefield into the normal cache while idle. */
-function prefetchWorld(mapId) {
+function prefetchWorld(mapId, { intent = false } = {}) {
   if (!mapId || mapId === 'random' || worldCache.has(mapId) || worldBuilds.has(mapId)) return null;
   if (Number.isFinite(residentLimits.worldScenes)
       && worldCache.size >= residentLimits.worldScenes) {
@@ -523,7 +528,13 @@ function prefetchWorld(mapId) {
   }
   worldPrefetchStats.requested++;
   worldPrefetchStats.active = mapId;
-  return beginWorldBuild(mapId, null, { background: true }).promise.catch(() => null);
+  return beginWorldBuild(mapId, null, {
+    background: true,
+    // An explicit Battle hover/focus/touch is already the user-intent gate.
+    // Start immediately in 4 ms background slices instead of waiting through
+    // the passive garage-lull debounce; the click promotes this same build.
+    waitForGarageLull: !intent,
+  }).promise.catch(() => null);
 }
 
 function cancelBackgroundWorldBuildsExcept(mapId = null) {
@@ -631,7 +642,7 @@ function preloadBattleIntent({ specId, mapId } = {}) {
   // map only after the loading veil appears.
   const plannedMapId = specId && mapId
     ? resolveBattleIntentMap(specId, mapId) : mapId;
-  if (plannedMapId) prefetchWorld(plannedMapId);
+  if (plannedMapId) prefetchWorld(plannedMapId, { intent: true });
 }
 
 /** World raycast that is safe before any battlefield exists. */
@@ -2780,6 +2791,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // until that queue has produced its receipt.
   battleLoad.progress(0.90, 'Preparing deployment');
   const entryCamoSweep = camoSweepP;
+  let entryRevealPrimed = false;
   const finishEntryWarm = async () => {
     const warmGeneration = ++battleWarmGeneration;
     battleWarmPending = true;
@@ -2825,8 +2837,15 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // frame anyway. Re-cover rendering after the receipt so later budget
       // yields do not redraw the whole battlefield behind the loader.
       battleLoad.progress(0.968, 'Priming deployment view');
+      // Resume the normal-quality renderer before this first real battle
+      // frame. The previous path primed once while adaptive accounting was
+      // suspended, resumed it later, then rendered the identical view again.
+      // One final-quality frame is sufficient and remains fully covered.
+      post.setAdaptiveSuspended(false);
+      mark('restoreRenderer');
       prepareBattleRevealCamera();
       await primeSoloBattleRevealFrame();
+      entryRevealPrimed = true;
       battleLoadRenderingCovered = true;
       if (warmGeneration !== battleWarmGeneration) return;
       mark('openingFrame');
@@ -2880,17 +2899,26 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // first visible battle frame.
   post.setAdaptiveSuspended(false);
   bltStage('restoreRenderer');
-  // The render loop is deliberately paused while the opaque roster screen
-  // owns the page. Prime one real battlefield frame before opacity can fall;
-  // otherwise the loader fade exposes the last framebuffer content, which is
-  // the Garage even though its DOM panel has already been hidden.
-  hud.preBattleCountdown(PRE_BATTLE_HOLD_S);
-  prepareBattleRevealCamera();
-  await primeSoloBattleRevealFrame();
+  // A failed/interrupted warm still gets the safe reveal fallback. The normal
+  // path reuses the already-presented final-quality deployment frame instead
+  // of rendering the same scene twice behind the loader.
+  if (!entryRevealPrimed) {
+    prepareBattleRevealCamera();
+    await primeSoloBattleRevealFrame();
+  }
   bltStage('primeReveal');
   await battleLoad.hide();
   bltStage('hide');
-  openBattle();
+  const loadingElapsedS = (performance.now() - shownAt) / 1000;
+  const visiblePreBattleS = resolveVisiblePreBattleSeconds(
+    PRE_BATTLE_HOLD_S, loadingElapsedS, MIN_VISIBLE_PRE_BATTLE_S,
+  );
+  blt.loadingElapsedMs = Math.round(loadingElapsedS * 1000);
+  blt.visiblePreBattleS = visiblePreBattleS;
+  blt.expectedClickToControlMs = Math.round(
+    loadingElapsedS * 1000 + visiblePreBattleS * 1000,
+  );
+  openBattle(visiblePreBattleS);
   scheduleDeferredCombatWarm(entryWarmGeneration);
   bltStage('open');
   blt.totalMs = Math.round(performance.now() - shownAt);
@@ -3868,13 +3896,14 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
 }
 
 /** Hand the screen to the battle in an immediately readable chase pose. */
-function openBattle() {
+function openBattle(preBattleSeconds = PRE_BATTLE_HOLD_S) {
   // battle_countdown r1: the loading screen is down and the world is live —
   // resolve the entry hold armed at roster spawn into the visible countdown.
   // Camera look stays free; hulls, turrets and triggers release at zero.
   if (game.preBattleS === Infinity) {
-    game.preBattleS = PRE_BATTLE_HOLD_S;
+    game.preBattleS = preBattleSeconds;
   }
+  hud.preBattleCountdown(game.preBattleS);
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
   // Probe/debug starts skip the visible countdown; they still get one rollout
@@ -3883,6 +3912,7 @@ function openBattle() {
 }
 // battle_countdown r1: WoT-style pre-battle freeze length (player path only).
 const PRE_BATTLE_HOLD_S = 5;
+const MIN_VISIBLE_PRE_BATTLE_S = 2;
 
 function clearBattlePresentationForExit() {
   kcPending = null;
@@ -4567,9 +4597,10 @@ function tick(nowMs) {
   scheduleRaf();
   lastTickWallMs = performance.now();
   if (lastMs < 0) lastMs = nowMs;
+  const frameWallDtS = Math.max(0, (nowMs - lastMs) / 1000);
   // Frame dt clamp (0.1 s): a stalled/backgrounded loop never integrates its
   // whole gap. The PAUSE block below extends this on the resume edge.
-  let dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
+  let dtR = Math.min(0.1, frameWallDtS);
   lastMs = nowMs;
   devTrace?.frame(dtR * 1000);
   if (graphicsContextLost) return;
@@ -4745,7 +4776,7 @@ function tick(nowMs) {
         // Keep the final-second hold as a fail-safe for an interrupted/future
         // entry path; controls must never release while construction is live.
         game.preBattleS = advancePreBattleCountdown(
-          game.preBattleS, dtR, battleWarmPending,
+          game.preBattleS, frameWallDtS, battleWarmPending,
         );
         hud.preBattleCountdown(game.preBattleS); // 0 on the crossing frame = release flash
         if (heldS > 0 && game.preBattleS === 0) bus.emit('battle:rollout', {});

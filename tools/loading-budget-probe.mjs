@@ -42,6 +42,10 @@ function option(name, fallback) {
 }
 
 const limitMs = Math.max(1, Number(option('limit', '5000')) || 5000);
+const rolloutLimitMs = Math.max(
+  limitMs,
+  Number(option('rollout-limit', String(limitMs + 2500))) || (limitMs + 2500),
+);
 // This gate targets the massive transition freezes reported by players. The
 // 500 ms ceiling catches the former 0.9-2.8 s lockups while leaving the
 // steady-state 16.7 ms frame budget to tools/perfprobe.mjs.
@@ -180,6 +184,7 @@ const port = typeof address === 'object' && address ? address.port : requestedPo
 const baseUrl = `http://localhost:${port}/`;
 console.log(`[loading-budget] ${serveMode} server up at ${baseUrl}`);
 console.log(`[loading-budget] strict budget <${limitMs} ms; maps=${maps.join(',')}`);
+console.log(`[loading-budget] battle click-to-control budget <${rolloutLimitMs} ms`);
 console.log(`[loading-budget] transition frame-gap budget <${stallLimitMs} ms`);
 
 const browser = await puppeteer.launch({
@@ -198,6 +203,7 @@ const pageTimeoutMs = Math.max(30000, limitMs * 4);
 
 function record(kind, name, ms, details = {}) {
   const pass = Number.isFinite(ms) && ms >= 0 && ms < limitMs
+    && (details.rolloutMs == null || details.rolloutMs < rolloutLimitMs)
     && (!details.stall || details.stall.maxGapMs < stallLimitMs)
     && !(details.errors?.length) && details.invariantPass !== false;
   const row = { kind, name, ms: Math.round(ms), pass, ...details };
@@ -207,7 +213,8 @@ function record(kind, name, ms, details = {}) {
     ? ` gap=${Math.round(details.stall.maxGapMs)}ms${worstStage ? `@${worstStage}` : ''}`
     : '';
   const suffix = `${stall}${details.errors?.length ? ` errors=${details.errors.length}` : ''}`;
-  console.log(`  ${pass ? 'PASS' : 'FAIL'} ${kind.padEnd(13)} ${name.padEnd(10)} ${String(row.ms).padStart(5)} ms${suffix}`);
+  const rollout = details.rolloutMs == null ? '' : ` rollout=${Math.round(details.rolloutMs)}ms`;
+  console.log(`  ${pass ? 'PASS' : 'FAIL'} ${kind.padEnd(13)} ${name.padEnd(10)} ${String(row.ms).padStart(5)} ms${rollout}${suffix}`);
   return row;
 }
 
@@ -407,8 +414,13 @@ async function measureBattle(mapId) {
       const pedestalBefore = debug.pedestalVisual;
       const startedAt = performance.now();
       await debug.beginBattleEntry(specId, map);
+      const loadingMs = performance.now() - startedAt;
+      while (debug.game.phase === 'battle' && debug.game.preBattleS > 0) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
       return {
-        ms: performance.now() - startedAt,
+        ms: loadingMs,
+        rolloutMs: performance.now() - startedAt,
         specId,
         phase: debug.game.phase,
         loadScreen: !!document.querySelector('.cot-bl.on'),
@@ -458,6 +470,7 @@ async function measureBattle(mapId) {
       loadScreen: result.loadScreen,
       stages: result.trace?.stages || null,
       tracedTotalMs: result.trace?.totalMs ?? null,
+      rolloutMs: result.rolloutMs,
       world: result.world || null,
       combatWarm: result.combatWarm || null,
       combatOpeningWarm: result.combatOpeningWarm || null,
@@ -839,6 +852,7 @@ const report = {
   deviceTier,
   mode,
   limitMs,
+  rolloutLimitMs,
   stallLimitMs,
   garageDwellMs,
   battleIntentDwellMs,

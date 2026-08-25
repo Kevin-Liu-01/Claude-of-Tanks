@@ -101,7 +101,7 @@ assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,
 assert.match(pedestalWarmBody, /renderer\.compile\(vis\.root, camera, scene\)/,
   'cold garage switches still submit their exact shader programs before reveal');
 assert.match(mainSource,
-  /const plannedMapId = specId && mapId[\s\S]*resolveBattleIntentMap\(specId, mapId\)[\s\S]*prefetchWorld\(plannedMapId\)/,
+  /const plannedMapId = specId && mapId[\s\S]*resolveBattleIntentMap\(specId, mapId\)[\s\S]*prefetchWorld\(plannedMapId(?:,[^;]*)?\)/,
   'explicit Battle intent must turn the default Random card into a prefetchable concrete world');
 assert.match(mainSource,
   /const plannedMap = requestedMapId === 'random'[\s\S]*battleIntentMapPlan\.resolved[\s\S]*const resolved = plannedMap \|\| resolveMapId\(requestedMapId\)/,
