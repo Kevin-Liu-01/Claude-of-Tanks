@@ -17,6 +17,7 @@
 //   node tools/loading-budget-probe.mjs --limit 5000
 //   node tools/loading-budget-probe.mjs --stall-limit 500
 //   node tools/loading-budget-probe.mjs --mode battle --garage-dwell 14000
+//   node tools/loading-budget-probe.mjs --mode battle --maps random --battle-intent-dwell 1200
 //   node tools/loading-budget-probe.mjs --serve dev --mode studio
 
 // Exit 0 means every measured path completed in strictly less than the load
@@ -49,6 +50,7 @@ const mode = option('mode', 'all');
 const serveMode = option('serve', 'production');
 const deviceTier = option('tier', 'desktop');
 const garageDwellMs = Math.max(0, Number(option('garage-dwell', '0')) || 0);
+const battleIntentDwellMs = Math.max(0, Number(option('battle-intent-dwell', '0')) || 0);
 const battleSpecOption = option('battle-spec', 'm1a2');
 const modes = new Set([
   'all', 'boot', 'battle', 'studio', 'studio-switch', 'scene-load',
@@ -69,7 +71,9 @@ const maps = requestedMaps === 'all'
   : requestedMaps.split(',').map((id) => id.trim()).filter(Boolean);
 if (!maps.length) throw new Error('At least one map is required');
 for (const id of maps) {
-  if (!MAP_IDS.includes(id)) throw new Error(`Unknown map '${id}'`);
+  if (!MAP_IDS.includes(id) && !(id === 'random' && mode === 'battle')) {
+    throw new Error(`Unknown map '${id}'`);
+  }
 }
 
 const runBoot = mode === 'all' || mode === 'boot';
@@ -375,6 +379,11 @@ async function measureBattle(mapId) {
     if (garageDwellMs > 0) {
       await opened.page.evaluate((map) => window.__DEBUG.garage.setSelectedMap(map), mapId);
       await new Promise((resolve) => setTimeout(resolve, garageDwellMs));
+    }
+    if (battleIntentDwellMs > 0) {
+      await opened.page.evaluate((map) => window.__DEBUG.garage.setSelectedMap(map), mapId);
+      await opened.page.hover('.cot-battle-control');
+      await new Promise((resolve) => setTimeout(resolve, battleIntentDwellMs));
     }
     await resetStalls(opened.page, `battle:${mapId}`);
     const result = await opened.page.evaluate(async ({ map, requestedSpec }) => {
@@ -831,6 +840,8 @@ const report = {
   mode,
   limitMs,
   stallLimitMs,
+  garageDwellMs,
+  battleIntentDwellMs,
   pass: failures.length === 0 && !contended,
   certification: contended
     ? 'REFUSED — machine contended; scenario numbers are diagnostic only'

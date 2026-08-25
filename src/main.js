@@ -554,6 +554,26 @@ function queueWorldPrefetch(mapId, delay = 1800) {
 let battleIntentTextureKey = '';
 let battleIntentTextureGeneration = 0;
 let battleIntentTexturePromise = null;
+let battleIntentMapPlan = null;
+
+function resolveBattleIntentMap(specId, mapId) {
+  if (mapId !== 'random') {
+    battleIntentMapPlan = null;
+    return mapId;
+  }
+  if (battleIntentMapPlan
+      && battleIntentMapPlan.specId === specId
+      && battleIntentMapPlan.battleCount === game.battleCount) {
+    return battleIntentMapPlan.resolved;
+  }
+  const resolved = resolveMapId('random');
+  battleIntentMapPlan = {
+    specId,
+    battleCount: game.battleCount,
+    resolved,
+  };
+  return resolved;
+}
 
 function preloadBattleRosterTextures(specId, plannedIds) {
   const ids = [...new Set((plannedIds || []).filter(Boolean))];
@@ -604,7 +624,13 @@ function preloadBattleIntent({ specId, mapId } = {}) {
   ensureFxRuntime()
     .then((live) => live.preloadTextures?.())
     .catch(() => null);
-  if (mapId && mapId !== 'random') prefetchWorld(mapId);
+  // Random is the default garage card. Resolve its concrete battlefield at
+  // explicit Battle intent and retain that exact choice for the click, so the
+  // world can genuinely build during hover/focus instead of discovering the
+  // map only after the loading veil appears.
+  const plannedMapId = specId && mapId
+    ? resolveBattleIntentMap(specId, mapId) : mapId;
+  if (plannedMapId) prefetchWorld(plannedMapId);
 }
 
 /** World raycast that is safe before any battlefield exists. */
@@ -1075,10 +1101,26 @@ function buildPedestalVisual(specId, parked = false) {
 async function warmPedestalPrograms(vis) {
   if (!vis || !vis.root) return;
   try {
-    if (typeof renderer.compileAsync === 'function') {
-      await renderer.compileAsync(vis.root, camera, scene);
-    } else {
-      renderer.compile(vis.root, camera, scene);
+    // ANGLE's KHR_parallel_shader_compile completion query is not reliably
+    // non-blocking: profiling a cold Abrams switch attributed 442 ms to
+    // getProgramParameter inside Three's compileAsync poll. Submit the same
+    // programs synchronously, let the driver link across two painted frames,
+    // then consume new uniform tables in bounded slices. No material, shader,
+    // or rendered detail changes; only the blocking completion-poll path is
+    // removed.
+    const before = (renderer.info.programs || []).length;
+    renderer.compile(vis.root, camera, scene);
+    const programs = (renderer.info.programs || []).slice(before);
+    if (!programs.length) return;
+    await nextFrame();
+    await nextFrame();
+    let sliceAt = performance.now();
+    for (const program of programs) {
+      try { program.getUniforms(); } catch (_) { /* first visible render fallback */ }
+      if (performance.now() - sliceAt >= 6) {
+        await nextFrame();
+        sliceAt = performance.now();
+      }
     }
   } catch (_) { /* first visible render remains the compatibility fallback */ }
 }
@@ -1720,6 +1762,7 @@ const garage = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
   onSelect: (specId) => {
+    battleIntentMapPlan = null;
     selectedSpecId = specId;
     rememberSpecId(specId);
     setPedestalTank(specId);
@@ -1767,6 +1810,7 @@ const garage = await bootStage('ui', () => createGarage({
   // inside setCamoBiome; startBattle re-calls setCamoBiome(world.mapId) after
   // the roll, so battle state is always correct regardless.
   onMapSelect: (mapId) => {
+    battleIntentMapPlan = null;
     pendingMapChoice = mapId;
     if (mapId !== 'random') pendingMapId = mapId;
     cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
@@ -2615,7 +2659,14 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   const shownAt = performance.now();
   if (typeof window !== 'undefined') window.__VISUAL_LOAD_TIMINGS = [];
   const loadYield = createOpaqueLoadingYielder(12, 80);
-  const resolved = resolveMapId(mapId || pendingMapId);
+  const requestedMapId = mapId || pendingMapId;
+  const plannedMap = requestedMapId === 'random'
+    && battleIntentMapPlan
+    && battleIntentMapPlan.specId === specId
+    && battleIntentMapPlan.battleCount === game.battleCount
+    ? battleIntentMapPlan.resolved : null;
+  const resolved = plannedMap || resolveMapId(requestedMapId);
+  battleIntentMapPlan = null;
   const cfg = getMapConfig(resolved);
   // perf-smooth r1: per-stage wall-clock telemetry for the player battle-entry
   // path (same pattern as __BOOT_TIMINGS) — probes and future perf rounds

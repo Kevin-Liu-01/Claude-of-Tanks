@@ -92,6 +92,20 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const pedestalWarmBody = mainSource.slice(
+  mainSource.indexOf('async function warmPedestalPrograms('),
+  mainSource.indexOf('let garageActivityAt'),
+);
+assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,
+  'cold garage switches must not enter ANGLE completion polling');
+assert.match(pedestalWarmBody, /renderer\.compile\(vis\.root, camera, scene\)/,
+  'cold garage switches still submit their exact shader programs before reveal');
+assert.match(mainSource,
+  /const plannedMapId = specId && mapId[\s\S]*resolveBattleIntentMap\(specId, mapId\)[\s\S]*prefetchWorld\(plannedMapId\)/,
+  'explicit Battle intent must turn the default Random card into a prefetchable concrete world');
+assert.match(mainSource,
+  /const plannedMap = requestedMapId === 'random'[\s\S]*battleIntentMapPlan\.resolved[\s\S]*const resolved = plannedMap \|\| resolveMapId\(requestedMapId\)/,
+  'the Battle click must consume the exact Random world chosen during intent');
 const soloLoaderBody = mainSource.slice(
   mainSource.indexOf('async function startBattleLoading('),
   mainSource.indexOf('// Headless probes drive the battle entry'),
