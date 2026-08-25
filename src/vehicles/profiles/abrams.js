@@ -3003,7 +3003,7 @@ function tejasEndWheelAndBayKit(P, g) {
   }
 }
 
-// Suspension volumetry dress (visual r4 item 3). Three defects, all tone/
+// Suspension volumetry dress (visual r4 item 3). Two defects, both tone/
 // overlay class — every certified plane and silhouette line is untouched:
 // 1. DEAD-STRAIGHT HEM: the skirt bottom edge read as one ruled line; the
 //    ref hem is broken by per-panel shadow. Dark hem bands of varied width/
@@ -3014,16 +3014,13 @@ function tejasEndWheelAndBayKit(P, g) {
 //    0.36 deep — near-black gap blocks at x ±1.32 (between the wall and the
 //    wheel faces, overlapping the wall for the floater contract) turn every
 //    gap into the ref's deep void so each wheel separates as a volume.
-// 3. LADDER-SLAT WRAPS: the band's thin grouser slats read as ladder rungs
-//    on the bow/stern ramps — chunky static pad blocks ride the certified
-//    ramp lines (y = 0.043 + 0.55*(|z| - 2.47), the ref's own 0.55 slope)
-//    and the wrap arcs, outer faces at the tooth-tip line (~15 mm over the
-//    band = inside today's spike silhouette), keyed into the band beneath.
-//    Static overlays — the fleet shadow-drum precedent.
+// The old frontRampPadBelt / wrapPads meshes are deliberately absent. They
+// duplicated the animated shoe course with a static gray layer, producing
+// visible intersections at both end-wheel wraps. The canonical smart track
+// now owns the complete ground run and both arcs.
 function tejasSuspensionDress(P, g) {
   const skx = g.skirt.x;                        // 1.812 — skirt face plane
   const bayGeos = [];
-  const padBeltGeos = [];
   for (const side of [-1, 1]) {
     // -- 1. hem shadow segmentation (panel z-centers from the 7-panel table)
     for (const [hz, hw, hh, hy] of [
@@ -3057,86 +3054,6 @@ function tejasSuspensionDress(P, g) {
     // the skirt-top INK line on both front quarters (ref: soft slot,
     // top-view slot L21 vs our 16); the mid tier is the ref's own read.
     P.add('hullShadow', box(0.075, 0.02, 6.9), side * 1.7765, 1.318, -0.05);
-    // -- 3. chunky wrap pads on the certified ramp lines + wrap arcs.
-    // Visual r5 carryover 4 (the STRAIGHT-FRONT read): view-front's whole
-    // visible wrap window is the RAMP at grazing incidence (measured: the
-    // ladder pitch = the instanced two-layer SHOES, whose outer envelope
-    // runs ~65 mm OUTSIDE the r4 pad line — whatsat'd: shoe AABBs reach
-    // z 3.465 on the arc, outer line z(y) = 2.5385 + (y-0.0163)/0.565 —
-    // so every r4 pad row is buried inside the shoe layer and the front
-    // read stays thin uniform ladder). The front ramp rows are a
-    // near-contiguous SPLIT pad belt riding 2 mm PROUD of the SHOE
-    // envelope (center = r4 base + 0.032 along the outward ramp normal
-    // (0, -0.876, +0.482); 2 mm = 0.26 px at the gate raster — sub-AA
-    // over the shoe silhouette that already owns the side ramp line).
-    // Belt rides the otherwise-unused hullCloth bucket and swaps to a
-    // shoe-brown grimed clone post-merge (leopard platePale pattern) so
-    // it reads as the ref's BROWN pad columns; the 29 mm inter-row
-    // grooves shade as the ref's dark pad seams, the 0.07 center gap +
-    // recessed DARK connector nubs (hullTrack) draw the ref's two-column
-    // guide-horn split. Rear ramp rows keep the certified r4 pattern.
-    for (const [pz, py] of [
-      [2.55, 0.112], [2.71, 0.192], [2.87, 0.280], [3.03, 0.368], [3.19, 0.456],
-    ]) {
-      for (const f of [-1, 1]) {
-        padBeltGeos.push(xform(box(0.245, 0.07, 0.150), side * (1.405 + f * 0.1525), py - 0.0280, pz + 0.0154, -0.503, 0, 0));
-      }
-    }
-    // §B4 audit taxonomy (family variety round): every wrap-arc/ramp pad in
-    // this section is GEAR DRESSING keyed onto the moving band — in the
-    // mirrored hullTrack bucket the audit read them as center-reaching hull
-    // solids (front 898 / rear 338 of the old 1139/683). They now merge
-    // into ONE PER-SIDE gear mesh (same geometry, same mats.spareTrack
-    // instance, same parent — render-identical), which the audit correctly
-    // classifies as lane-local running gear, exactly like the instanced
-    // shoes they overlay. The hullCloth belt already keeps true clearance
-    // from the band and stays bucket-authored.
-    const wrapPads = [];
-    for (const pz of [2.71, 3.03]) {
-      wrapPads.push(xform(box(0.075, 0.05, 0.08),
-        side * 1.405, 0.192 + (pz - 2.71) * 0.55 - 0.0263, pz + 0.0145, -0.503, 0, 0));
-    }
-    for (const [pz, py, prx] of [
-      [-2.55, 0.112, 0.503], [-2.71, 0.192, 0.503], [-2.87, 0.280, 0.503],
-      [-3.03, 0.368, 0.503], [-3.19, 0.456, 0.503],
-    ]) {
-      wrapPads.push(xform(box(0.56, 0.07, 0.145), side * 1.405, py, pz, prx, 0, 0));
-    }
-    // Visual r5 carryover 4 (front/idler wrap read): the 0.07-tall full-
-    // width arc pads still projected as thin ladder rungs from STRAIGHT
-    // FRONT — the ref's front read is TWO COLUMNS of chunky brown pads
-    // with a dark center split and small connector nubs. Split pad pairs
-    // continue around the idler's front arc on the r4 pads' own circle
-    // (radius 0.448 about the configured idler axis; rx = -(th+pi/2)
-    // — derived from the two certified r4 arc pads, which the th -0.837 /
-    // -0.595 rows reproduce split). Outer faces stay at the 0.483 tooth-
-    // tip line (inside the spike silhouette), x span 1.13..1.68 inside the
-    // 1.115..1.695 band; rows stop at th 0.37 (the fender line owns the
-    // front view above y ~1.1, and the crest stays plan-clean).
-    for (const [th, nub] of [
-      [-0.837, 0], [-0.595, 1], [-0.35, 0], [-0.11, 1], [0.13, 0], [0.37, 1],
-    ]) {
-      const pz = g.idlerZ + 0.448 * Math.cos(th), py = g.idlerY + 0.448 * Math.sin(th);
-      const prx = -(th + Math.PI / 2);
-      for (const f of [-1, 1]) {
-        wrapPads.push(xform(box(0.245, 0.07, 0.155), side * (1.405 + f * 0.1525), py, pz, prx, 0, 0));
-      }
-      if (nub) {
-        wrapPads.push(xform(box(0.075, 0.05, 0.075),
-          side * 1.405, g.idlerY + 0.436 * Math.sin(th), g.idlerZ + 0.436 * Math.cos(th), prx, 0, 0));
-      }
-    }
-    for (const [pz, py, prx] of [
-      [-3.560, 0.766, 0.70], [-3.649, 0.870, 1.01],     // sprocket arc
-    ]) {
-      wrapPads.push(xform(box(0.56, 0.07, 0.13), side * 1.405, py, pz, prx, 0, 0));
-    }
-    const wrapMesh = new THREE.Mesh(mergeAll(wrapPads), P.mats.spareTrack);
-    wrapMesh.name = side > 0 ? 'gear_wrapPadsR' : 'gear_wrapPadsL';
-    wrapMesh.userData.runningGear = true;
-    wrapMesh.castShadow = wrapMesh.receiveShadow = true;
-    P.hullG.add(wrapMesh);
-    P.disposables.push(wrapMesh.geometry);
   }
   const bayMesh = new THREE.Mesh(mergeAll(bayGeos), P.mats.dark);
   bayMesh.name = 'gear_wheelBayVoidDress';
@@ -3144,13 +3061,6 @@ function tejasSuspensionDress(P, g) {
   bayMesh.castShadow = bayMesh.receiveShadow = true;
   P.hullG.add(bayMesh);
   P.disposables.push(bayMesh.geometry);
-
-  const padBelt = new THREE.Mesh(mergeAll(padBeltGeos), P.mats.canvasCloth);
-  padBelt.name = 'gear_frontRampPadBelt';
-  padBelt.userData.runningGear = true;
-  padBelt.castShadow = padBelt.receiveShadow = true;
-  P.hullG.add(padBelt);
-  P.disposables.push(padBelt.geometry);
 }
 
 // Rear-plate kit (visual r2 item 3, leo2a6 tilted-slat law): the shared
@@ -3360,8 +3270,8 @@ function tejasToneKit(P) {
     tm.envMapIntensity = 0.12;
     grime(tm, 'abrams-bandgrime-v1');
   }
-  // Sprocket teeth/carrier rings (and the wrap pad blocks via hullTrack)
-  // stay dark matte, nudged into the warm family. Iteration 2: 0x413c32
+  // Sprocket teeth/carrier rings stay dark matte, nudged into the warm
+  // family. Iteration 2: 0x413c32
   // tube caps still flared warm tan under the 2.2x key; teeth darker than
   // pads is also ref-true. r5: top-grime chained (rear corner bake).
   P.mats.spareTrack.color.setHex(0x29261f);
@@ -3407,9 +3317,8 @@ function tejasToneKit(P) {
   // mid-tier element (rack recesses/voids/straps, hatch rings, wall-band
   // panel bars, rail seam, CWS lugs, pouch lids, under-rim strip); the
   // whole gunG dark set (mantlet band seams, coax, evac groove/cinch
-  // rings, MRS seam) is mid-tier by the same law. hullTrack (the wrap
-  // pads, a hullG sibling of the same material) keeps the grimed warm
-  // spareTrack; turretDark keeps the true-black x0.26 channel for the M2.
+  // rings, MRS seam) is mid-tier by the same law. turretDark keeps the
+  // true-black x0.26 channel for the M2.
   // Albedo iterated ON the render (rects-on-view law): the deep-shade
   // floor is albedo-independent only below 0.025 linear luma — 0x141610
   // still sat ON the ~28/255 floor in the rack recesses (p25 L11). The
@@ -3421,14 +3330,6 @@ function tejasToneKit(P) {
   midShade.onBeforeCompile = vehicleAmbientFloorHook;
   midShade.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   P.disposables.push(midShade);
-  // Front-ramp pad belt (hullCloth bucket): shoe-brown, top-grimed like the
-  // link pads it overlays — the ref's front wrap read is BROWN pad columns
-  // with dark seams, and the spareTrack dark would have inverted it.
-  const padBrown = grime(P.mats.spareTrack.clone(), 'abrams-padgrime-v1');
-  padBrown.color.setHex(0x38342b);
-  padBrown.envMapIntensity = 0.10;
-  padBrown.roughness = 0.96;
-  P.disposables.push(padBrown);
   const gearUpdate0 = P.gear.update;
   P.gear.update = (trackL, trackR) => {
     P.gear.update = gearUpdate0;
@@ -3446,9 +3347,6 @@ function tejasToneKit(P) {
     P.hullG.traverse((ob) => {
       if (!ob.isMesh && !ob.isInstancedMesh) return;
       if (ob.material === P.mats.shadow) ob.material = midShade;
-      // hullCloth = the front-ramp pad belt only on this family (turret
-      // duffels ride turretCloth under turretG — untouched).
-      else if (ob.material === P.mats.canvasCloth) ob.material = padBrown;
     });
     return gearUpdate0(trackL, trackR);
   };
@@ -3898,8 +3796,41 @@ function buildTejasFamily(P, p) {
         pts: [[1.564, 1.20, -3.945], [1.60, 1.10, -3.965], [1.57, 1.00, -3.985], [1.52, 0.955, -3.99]] });
       P.hullG.add(tipCable);
     }
-    // Belly-armor lip at the lower-plate toe (TUSK belly kit).
-    P.add('hull', box(1.8, 0.06, 0.35), 0, 0.30, 2.75, -0.16, 0, 0);
+    // Belly-armor lip at the lower-plate toe (TUSK belly kit).  Its upper
+    // face now meets the belly pan exactly at the pan's forward edge instead
+    // of floating 73 mm below it.  Keep the authored rake: flattening the lip
+    // would erase the lower-bow break, while lifting it blindly would drive
+    // the forward end into the glacis.  Solving the rotated upper face at the
+    // actual belly/core endpoint produces a clean line contact with no
+    // coplanar overlap and keeps the complete part in the canonical hull rig.
+    const bellyLipHeight = 0.06;
+    const bellyLipDepth = 0.35;
+    const bellyLipZ = 2.75;
+    const bellyLipPitch = -0.16;
+    const bellyFloorFrontZ = g.noseRake[0][0] + 0.25;
+    const lipTopLocalY = bellyLipHeight / 2;
+    const lipTopLocalZAtContact = (
+      bellyFloorFrontZ - bellyLipZ - lipTopLocalY * Math.sin(bellyLipPitch)
+    ) / Math.cos(bellyLipPitch);
+    const lipTopOffsetYAtContact = lipTopLocalY * Math.cos(bellyLipPitch)
+      - lipTopLocalZAtContact * Math.sin(bellyLipPitch);
+    const bellyLipY = g.belly - lipTopOffsetYAtContact;
+    P.add('hull', box(1.8, bellyLipHeight, bellyLipDepth),
+      0, bellyLipY, bellyLipZ, bellyLipPitch, 0, 0);
+    if (P.geometryReceipt) {
+      P.hullG.userData.abramsTuskBellyLipSeat = Object.freeze({
+        parent: 'rig_hull',
+        bucket: 'hull',
+        centerY: bellyLipY,
+        centerZ: bellyLipZ,
+        height: bellyLipHeight,
+        depth: bellyLipDepth,
+        pitch: bellyLipPitch,
+        bellyFloorY: g.belly,
+        bellyFloorFrontZ,
+        upperFaceYAtContact: bellyLipY + lipTopOffsetYAtContact,
+      });
+    }
     P.add('hullDetail', box(1.76, 0.024, 0.024), 0, 0.27, 2.9);
     // ---- Urban lights: guarded IR/white driving pods on both fender wings
     // (bracket posts weld them to the fender strips) + mirrors on masts —

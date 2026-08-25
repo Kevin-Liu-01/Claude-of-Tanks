@@ -224,8 +224,8 @@ function receiptFor(id) {
       // into that helper mesh (the ISU family is the canonical case).
       if (span[0] < 0.7 && span[1] < 0.4 && span[2] < 0.7) turret = null;
     }
-    const trackL = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandL', 'gear_wrapPadsL']));
-    const trackR = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandR', 'gear_wrapPadsR']));
+    const trackL = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandL']));
+    const trackR = localEnvelope(tank.root, hullRig, new Set(['gearTrackBandR']));
     if (!hull) throw new Error(`${id}: main hull receipt missing`);
     if (!trackL || !trackR) throw new Error(`${id}: running-gear receipt missing`);
     return {
