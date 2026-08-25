@@ -78,7 +78,8 @@ function rewriteRoutes(req, res, next) {
   else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
   else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
   else if (/^\/docs\/(simulation|vehicles|rendering|worlds|multiplayer|interface|studio)\/?$/.test(path)) {
-    req.url = '/docs-topic.html' + query;
+    const topic = path.split('/').filter(Boolean).at(-1);
+    req.url = `/docs-${topic}.html${query}`;
   }
   next();
 }
@@ -127,12 +128,23 @@ export default {
         home: resolve(process.cwd(), 'home.html'),
         docs: resolve(process.cwd(), 'docs.html'),
         docsTopic: resolve(process.cwd(), 'docs-topic.html'),
+        docsSimulation: resolve(process.cwd(), 'docs-simulation.html'),
+        docsVehicles: resolve(process.cwd(), 'docs-vehicles.html'),
+        docsRendering: resolve(process.cwd(), 'docs-rendering.html'),
+        docsWorlds: resolve(process.cwd(), 'docs-worlds.html'),
+        docsMultiplayer: resolve(process.cwd(), 'docs-multiplayer.html'),
+        docsInterface: resolve(process.cwd(), 'docs-interface.html'),
+        docsStudio: resolve(process.cwd(), 'docs-studio.html'),
         gallery: resolve(process.cwd(), 'gallery.html'),
       },
     },
   },
   optimizeDeps: {
-    entries: ['index.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html'],
+    entries: [
+      'index.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html',
+      'docs-simulation.html', 'docs-vehicles.html', 'docs-rendering.html',
+      'docs-worlds.html', 'docs-multiplayer.html', 'docs-interface.html', 'docs-studio.html',
+    ],
     include: [
       'three',
       'three/examples/jsm/utils/BufferGeometryUtils.js',

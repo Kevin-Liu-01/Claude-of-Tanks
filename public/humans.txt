@@ -1,0 +1,21 @@
+/* Claude of Tanks */
+
+Creator, design, engineering, procedural vehicles, battlefields, and production:
+Kevin B. Liu
+https://github.com/Kevin-Liu-01
+
+Canonical site:
+https://cot.kevinliu.studio/
+
+Source repository:
+https://github.com/Kevin-Liu-01/Claude-of-Tanks
+
+Core technology:
+JavaScript, Three.js, WebGL2, Vite, Node.js
+
+Copyright:
+Copyright © 2026 Kevin B. Liu
+
+Attribution and license scope:
+https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ATTRIBUTION.md
+https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/LICENSE-POLICY.md

@@ -1,0 +1,26 @@
+{
+  "name": "Claude of Tanks",
+  "short_name": "CoT",
+  "description": "Free browser-native armored combat with 112 production vehicles, 20 battlefields, multiplayer, Tank Gallery, and Scene Studio.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05080b",
+  "theme_color": "#05080b",
+  "icons": [
+    {
+      "src": "/brand/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# Claude of Tanks technical field manual
+
+> Detailed public documentation for the current Claude of Tanks simulation, 112 production-visible procedural vehicles, 20 battlefields, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
+
+## Manual
+
+- [Field manual index](https://cot.kevinliu.studio/docs): Current system overview, build facts, visual evidence, and links to every detailed guide.
+- [Simulation and combat](https://cot.kevinliu.studio/docs/simulation): Fixed 60 Hz loop, aim, projectiles, armor, damage, reloads, special weapons, and tests.
+- [Vehicles and running gear](https://cot.kevinliu.studio/docs/vehicles): Vehicle specifications, procedural rigs, anatomy, tracks, suspension, recoil, LOD, and release verification.
+- [Renderer and performance](https://cot.kevinliu.studio/docs/rendering): Three.js rendering, adaptive quality, pixel density, shadows, loading, warmup, recovery, and mobile GPU behavior.
+- [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Twenty authored maps, terrain, routes, structures, collision, environment, destruction, props, and wrecks.
+- [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, input intent, authority, snapshots, prediction, reconciliation, spotting, bots, and ranked services.
+- [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, aiming feedback, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch.
+- [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene data, maps, vehicles, cameras, effects, timeline, stills, GIFs, video, and review workflow.
+
+## Related
+
+- [Full public agent reference](https://cot.kevinliu.studio/llms-full.txt): Terminology, source hierarchy, current facts, limitations, policy, and citation guidance.
+- [Tank Gallery](https://cot.kevinliu.studio/gallery): Interactive vehicle inspection.
+- [Source repository](https://github.com/Kevin-Liu-01/Claude-of-Tanks): Architecture, implementation, tests, and policies.

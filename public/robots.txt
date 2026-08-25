@@ -1,4 +1,25 @@
+# Claude of Tanks is public and may be indexed. Search and user-directed
+# retrieval agents are listed explicitly for operational clarity; access is
+# still granted by the universal rule below.
 User-agent: *
 Allow: /
 
-Sitemap: https://claude-of-tanks.vercel.app/sitemap.xml
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+Sitemap: https://cot.kevinliu.studio/sitemap.xml

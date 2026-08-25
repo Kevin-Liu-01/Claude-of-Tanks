@@ -10,6 +10,13 @@ const pages = [
   ['gallery.html', '/gallery'],
   ['docs.html', '/docs'],
   ['docs-topic.html', '/docs'],
+  ['docs-simulation.html', '/docs'],
+  ['docs-vehicles.html', '/docs'],
+  ['docs-rendering.html', '/docs'],
+  ['docs-worlds.html', '/docs'],
+  ['docs-multiplayer.html', '/docs'],
+  ['docs-interface.html', '/docs'],
+  ['docs-studio.html', '/docs'],
 ];
 const expectedLinks = [
   ['/home', 'Home'],

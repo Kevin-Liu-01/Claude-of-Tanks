@@ -3,23 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Claude of Tanks — Browser-Native Armored Combat</title>
+  <title>Claude of Tanks — Free Browser Tank Game &amp; Armored Combat</title>
   <meta name="author" content="Kevin B. Liu">
-  <meta name="keywords" content="Three.js, browser tank game, armored combat game, Kevin Liu, WebGL game, multiplayer tank game">
   <meta name="copyright" content="Copyright © 2026 Kevin B. Liu">
-  <meta name="description" content="Claude of Tanks is a browser-native armored combat game with 111 production vehicles, 16 battlefields, physical gunnery, multiplayer, mobile controls, and in-browser production tools.">
+  <meta name="application-name" content="Claude of Tanks">
+  <meta name="description" content="Explore Claude of Tanks, a free browser tank game with 112 production vehicles, 20 battlefields, physical gunnery, 7v7 multiplayer, mobile controls, Tank Gallery, and Scene Studio.">
   <link rel="canonical" href="https://cot.kevinliu.studio/home">
+  <link rel="describedby" href="/llms.txt" type="text/plain">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="theme-color" content="#05080b">
+  <meta property="og:site_name" content="Claude of Tanks">
   <meta property="og:title" content="Claude of Tanks — Armored Combat, Browser Native">
-  <meta property="og:description" content="111 production vehicles, 16 battlefields, physical gunnery, multiplayer rooms, mobile play, and a renderer built directly on Three.js.">
+  <meta property="og:description" content="112 production vehicles, 20 battlefields, physical gunnery, 7v7 multiplayer, mobile play, and a renderer built directly on Three.js.">
   <meta property="og:type" content="website"><meta property="og:url" content="https://cot.kevinliu.studio/home">
+  <meta property="og:locale" content="en_US">
   <meta property="og:image" content="https://cot.kevinliu.studio/brand/og-image.png">
-  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="Claude of Tanks in-engine armored battle and crest wordmark">
+  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Claude of Tanks — Free Browser Tank Game"><meta name="twitter:description" content="112 production vehicles, 20 battlefields, physical gunnery, multiplayer, mobile play, Tank Gallery, and Scene Studio."><meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png"><meta name="twitter:image:alt" content="Claude of Tanks in-engine armored battle and crest wordmark">
   <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/media/featured/f10_studio_urban_crossfire.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/src/presentation/publicNav.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Claude of Tanks","url":"https://cot.kevinliu.studio","author":{"@type":"Person","name":"Kevin Liu","url":"https://kevinliu.studio"},"applicationCategory":"BrowserGame","gamePlatform":"Web browser","operatingSystem":"Any modern browser","isAccessibleForFree":true,"keywords":["Three.js","armored combat","browser game","multiplayer"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://cot.kevinliu.studio/home#page","url":"https://cot.kevinliu.studio/home","name":"Claude of Tanks — Free Browser Tank Game & Armored Combat","description":"Official visual overview of Claude of Tanks, its vehicles, battlefields, multiplayer, mobile controls, Tank Gallery, and Scene Studio.","isPartOf":{"@id":"https://cot.kevinliu.studio/#website"},"about":{"@id":"https://cot.kevinliu.studio/#game"},"inLanguage":"en-US"},{"@type":"VideoGame","@id":"https://cot.kevinliu.studio/#game","name":"Claude of Tanks","url":"https://cot.kevinliu.studio/","creator":{"@type":"Person","@id":"https://cot.kevinliu.studio/#creator","name":"Kevin B. Liu","url":"https://github.com/Kevin-Liu-01"},"image":"https://cot.kevinliu.studio/brand/og-image.png","description":"Free browser-native armored warfare with 112 production vehicles and 20 authored battlefields.","genre":["Vehicular combat","Simulation","Action"],"playMode":["SinglePlayer","MultiPlayer"],"gamePlatform":"Web Browser","applicationCategory":"GameApplication","operatingSystem":"Any modern operating system with a WebGL2-capable browser","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}</script>
 </head>
 <body class="home-v5">
   <nav class="public-nav" aria-label="Primary navigation"><div class="public-nav__inner">
@@ -49,7 +56,7 @@
           <img src="/brand/logo-mark-metal.svg" alt="Metal badge">
         </div>
         <h1><em>Armored</em> Combat<br><span>In the Browser</span></h1>
-        <p>Drive 111 tanks across 16 battlefields with physical armor, internal modules, tracked suspension, missiles, autoloaders, destruction, and 7v7 multiplayer.</p>
+        <p>Drive 112 tanks across 20 battlefields with physical armor, internal modules, tracked suspension, missiles, autoloaders, destruction, and 7v7 multiplayer.</p>
         <div class="hero-actions"><a class="btn primary" href="/"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/features/play.svg')" aria-hidden="true"></span>Play free</a><a class="btn" href="/gallery"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/tank-gallery.svg')" aria-hidden="true"></span>View all tanks</a></div>
       </div>
       <div class="v5-maker">
@@ -85,14 +92,14 @@
       </div>
     </section>
 
-    <section class="v5-facts" aria-label="Game facts"><div class="shell"><span><img class="v5-fact-icon" src="/brand/features/vehicle.svg" alt=""><b>111</b> production vehicles</span><span><img class="v5-fact-icon" src="/brand/features/battlefield.svg" alt=""><b>16</b> battlefields</span><span><img class="v5-fact-icon" src="/brand/features/gpu.svg" alt=""><b>GPU</b> WebGL renderer</span><span><img class="v5-fact-icon" src="/brand/features/multiplayer.svg" alt=""><b>7v7</b> multiplayer</span></div></section>
+    <section class="v5-facts" aria-label="Game facts"><div class="shell"><span><img class="v5-fact-icon" src="/brand/features/vehicle.svg" alt=""><b>112</b> production vehicles</span><span><img class="v5-fact-icon" src="/brand/features/battlefield.svg" alt=""><b>20</b> battlefields</span><span><img class="v5-fact-icon" src="/brand/features/gpu.svg" alt=""><b>GPU</b> WebGL renderer</span><span><img class="v5-fact-icon" src="/brand/features/multiplayer.svg" alt=""><b>7v7</b> multiplayer</span></div></section>
 
     <section class="v5-film" aria-labelledby="feature-reel-title">
       <video muted loop playsinline preload="none" data-poster="/media/promo-v13/claude-of-tanks-promo-clean.jpg" data-autoplay-video data-label="Claude of Tanks in-engine feature reel" aria-hidden="true"><source data-src="/media/promo-v13/claude-of-tanks-promo-clean.mp4" data-type="video/mp4" data-mobile-src="/media/web-video-r1/feature-reel-mobile.mp4" data-mobile-type="video/mp4"></video>
       <div class="v5-film-shade"></div><div class="shell v5-film-copy"><img class="v5-section-icon" src="/brand/features/live-combat.svg" alt=""><h2 id="feature-reel-title">Watch live tank combat</h2><p>The game renders vehicle movement, recoil, tracks, muzzle flashes, impacts, smoke, sparks, and destruction in real time.</p><a class="btn" href="/docs#battle-reels"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/features/live-combat.svg')" aria-hidden="true"></span>Watch 20 modern tank duels</a></div>
     </section>
 
-    <section class="v5-split v5-split--garage" aria-labelledby="garage-title"><img src="/media/feature-evidence-r2/garage-fleet.webp" alt="Garage interface displaying the playable vehicle fleet" loading="lazy"><div><img class="v5-section-icon" src="/brand/features/vehicle.svg" alt=""><h2 id="garage-title">Choose from 111 tanks</h2><p>The garage shows each tank's armor, firepower, mobility, ammunition, equipment, and camouflage.</p><a class="btn" href="/gallery"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/tank-gallery.svg')" aria-hidden="true"></span>View all tanks</a></div></section>
+    <section class="v5-split v5-split--garage" aria-labelledby="garage-title"><img src="/media/feature-evidence-r2/garage-fleet.webp" alt="Garage interface displaying the playable vehicle fleet" loading="lazy"><div><img class="v5-section-icon" src="/brand/features/vehicle.svg" alt=""><h2 id="garage-title">Choose from 112 tanks</h2><p>The garage shows each tank's armor, firepower, mobility, ammunition, equipment, and camouflage.</p><a class="btn" href="/gallery"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/tank-gallery.svg')" aria-hidden="true"></span>View all tanks</a></div></section>
 
     <section class="v5-multiplayer" aria-labelledby="multiplayer-title">
       <header class="shell"><div><img class="v5-section-icon" src="/brand/features/multiplayer.svg" alt=""><h2 id="multiplayer-title">Play 7v7 multiplayer</h2></div><div><p>Browser-hosted or dedicated servers resolve movement, aiming, armor, damage, spotting, and match state for every player.</p><a class="btn" href="/docs#multiplayer"><span class="v5-btn-icon" style="--v5-btn-icon:url('/brand/nav/docs.svg')" aria-hidden="true"></span>Read multiplayer details</a></div></header>
@@ -111,7 +118,7 @@
       </div>
     </section>
 
-    <section class="v5-maps" aria-labelledby="maps-title"><header class="shell"><img class="v5-section-icon" src="/brand/features/battlefield.svg" alt=""><h2 id="maps-title">Fight across 16 battlefields</h2></header><div class="v5-map-wall">
+    <section class="v5-maps" aria-labelledby="maps-title"><header class="shell"><img class="v5-section-icon" src="/brand/features/battlefield.svg" alt=""><h2 id="maps-title">Fight across 20 battlefields</h2></header><div class="v5-map-wall">
       <figure><img src="/media/presentation-r1/32_desert_ram_abramsx_t90m.webp" alt="Desert armored battle" loading="lazy"><figcaption>Desert</figcaption></figure>
       <figure><img src="/media/presentation-r1/05_winter_ice_breaker.webp" alt="Winter armored battle" loading="lazy"><figcaption>Winter</figcaption></figure>
       <figure><img src="/media/presentation-r1/12_urban_crossfire_x.webp" alt="Urban armored battle" loading="lazy"><figcaption>Urban</figcaption></figure>

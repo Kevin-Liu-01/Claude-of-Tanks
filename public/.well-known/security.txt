@@ -1,0 +1,4 @@
+Contact: https://github.com/Kevin-Liu-01/Claude-of-Tanks/security/advisories/new
+Expires: 2027-08-25T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://cot.kevinliu.studio/.well-known/security.txt

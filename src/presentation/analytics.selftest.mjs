@@ -6,6 +6,13 @@ const entrypoints = [
   'home.html',
   'docs.html',
   'docs-topic.html',
+  'docs-simulation.html',
+  'docs-vehicles.html',
+  'docs-rendering.html',
+  'docs-worlds.html',
+  'docs-multiplayer.html',
+  'docs-interface.html',
+  'docs-studio.html',
   'gallery.html',
 ];
 
@@ -29,3 +36,7 @@ for (const entrypoint of entrypoints) {
 }
 
 console.log(`analytics selftest passed (${entrypoints.length} HTML entrypoints)`);
+
+// The production test chain invokes this file directly, so keep the public
+// discovery/metadata contract coupled to every analytics entrypoint check.
+await import('./seoMetadata.selftest.mjs');

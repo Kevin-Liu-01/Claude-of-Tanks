@@ -1,0 +1,11 @@
+# Claude of Tanks pricing and access
+
+Claude of Tanks is free to play in a supported web browser.
+
+- Public game price: USD 0.
+- Installation required: no.
+- Account required for the public game: no.
+- Play: https://cot.kevinliu.studio/
+- Product overview: https://cot.kevinliu.studio/home
+
+This file describes current public access as reviewed on 2026-08-25. It is not a promise that hosting, features, or access terms can never change. Check the live site for the current experience.

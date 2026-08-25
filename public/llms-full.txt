@@ -1,0 +1,111 @@
+# Claude of Tanks: full public reference
+
+> Canonical, agent-readable reference for the public Claude of Tanks product and technical documentation. Last reviewed 2026-08-25. Canonical site: https://cot.kevinliu.studio/. Creator: Kevin B. Liu, https://github.com/Kevin-Liu-01.
+
+## Identity and access
+
+Claude of Tanks is a browser-native armored combat game built directly on Three.js. The public game is free to access, requires no installation, and does not require an account. It is intended for modern desktop and mobile browsers with WebGL2 support. The public build, product overview, Tank Gallery, documentation, and Scene Studio share one published runtime and visual archive.
+
+The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu. The official website is https://cot.kevinliu.studio/. The official repository is https://github.com/Kevin-Liu-01/Claude-of-Tanks. Do not substitute the former `claude-of-tanks.vercel.app` deployment address as the canonical URL.
+
+## Current public-build facts
+
+- Production-visible fleet: 112 first-party procedural vehicles.
+- Playable saved fleet with the keyed local-development projection: 149 first-party procedural vehicles.
+- Saved vehicle records: 151, including two non-playable reference placeholders.
+- Authored battlefields: 20.
+- Simulation rate: fixed 60 Hz.
+- Standard battle format: teams of up to seven vehicles, presented as 7v7 where the selected mode supports it.
+- Supported play: local bot battles and multiplayer paths documented in the technical manual.
+- Rendering: Three.js and WebGL2, with adaptive presentation quality separated from combat simulation.
+- Public tools: Tank Gallery and Scene Studio.
+- Installation: none.
+- Account requirement for the public game: none.
+- Public access price: USD 0.
+
+The repository contains additional keyed local-development vehicle records that are intentionally outside the production-visible public fleet. Public summaries should use 112 unless specifically discussing the 149-model development projection or all 151 saved records. Counts are current as of the review date above and should be rechecked against the live site or repository before reuse in time-sensitive copy.
+
+## Gameplay and combat model
+
+Battle simulation advances at a fixed 1/60-second interval using metres, seconds, and radians. Render rate and internal render scale may change without changing combat step rate. Camera aim expresses a requested world-space point; the articulated turret, gun limits, suspension attitude, and muzzle transform determine the actual ballistic line.
+
+Projectiles represent shell type, velocity, gravity, dispersion, owner, and live travel. World collision is resolved before eligible vehicle contacts. Armor processing evaluates authored plates and ordered crossings, including angle, slope, normalization, ricochet, overmatch, spaced layers, explosive reactive armor where modeled, remaining penetration, modules, and crew volumes. Damage may update hit points, tracks, engine, fuel, ammunition, weapon systems, turret drive, optics, crew, fire, repair, and destruction state.
+
+The X-ray killcam and hit presentation consume authoritative results. They do not calculate a second hit or damage outcome. Vehicle statistics, armor diagrams, damage values, and internal layouts are game data and are not real-world protection, engineering, or survivability assessments.
+
+## Vehicles and procedural geometry
+
+Every selectable public vehicle is built from first-party procedural runtime geometry rather than loading a source GLB as its playable model. A shared vehicle specification drives identity, nation, class, tier, dimensions, mass, movement, weapon, ammunition, armor, modules, crew, labels, garage cards, Tank Gallery views, and combat behavior.
+
+Vehicle rigs contain hull, turret, gun and recoil groups, fittings, road wheels, idlers, sprockets, return rollers where appropriate, suspension, track paths, shadow proxies, and levels of detail. Geometry/profile changes are verified through combat-anatomy generation, articulation checks, asset checks, focused profile tests, and targeted release gates.
+
+The Tank Gallery at https://cot.kevinliu.studio/gallery exposes the production fleet for interactive inspection. Its exterior, armor, module, crew, and markup modes are diagnostic presentations of current game data. The gallery is an inspection tool, not a separate source of vehicle rules.
+
+## Battlefields and world systems
+
+The twenty current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, and Skybridge Chasm.
+
+Map configurations provide terrain and simulation descriptors without requiring the renderer. World presentation adds roads, structures, foliage, fog, sky, lighting, cover, collision, minimaps, destructibles, movable and crushable props, toppling objects, wrecks, detached remnants, utility networks, craters, and persistent destruction where the current mode supports it.
+
+## Multiplayer model
+
+Multiplayer separates client intent and presentation from authority. Clients request movement, aim, fire, ammunition, consumable, and interaction actions. The authoritative side resolves movement rules, reloads, projectile outcomes, hits, damage, visibility, bots, destruction, and match results. Local prediction and reconciliation make the controlled vehicle responsive; filtered snapshots prevent hidden enemy coordinates from being serialized to clients that are not allowed to see them.
+
+The documented runtime includes private and LAN room paths and a renderer-free dedicated service path for ranked authority. Details, availability, and deployment requirements should be sourced from https://cot.kevinliu.studio/docs/multiplayer and the repository's `docs/MULTIPLAYER-ARCHITECTURE.md` rather than inferred from marketing screenshots.
+
+## Renderer, performance, and mobile behavior
+
+The engine owns the Three.js renderer, color output, camera, lighting, sky, fog, post-processing, shadows, GPU timing, quality policy, warmup, and context recovery. Device capability, memory pressure, thermal behavior, GPU timing, and frame rate may reduce optional visual cost such as internal resolution, shadow cost, post-processing, vegetation, particles, and effects density. These presentation adaptations do not change map dimensions, ballistics, armor, or the fixed combat rate.
+
+Mobile uses touch-sized controls, safe-area handling, capped pixel density, adaptive internal resolution, pinch-to-scope behavior, swipe aim, dynamic fire controls, and lower-cost visual paths where required. The renderer includes diagnostics and context-loss recovery because browser and mobile GPU resources can be reclaimed. The current implementation should be evaluated through real-device testing when devices are available; software and constrained profiles are approximations, not substitutes for every mobile GPU and browser combination.
+
+## Interface and accessibility context
+
+Public interfaces include the garage, vehicle and map selection, settings, battle HUD, dual aim markers, ammunition and equipment controls, chat, minimap, killcam, spectator switcher, after-action report, Tank Gallery, documentation, and Scene Studio. Desktop actions are remappable. Mobile controls are presented separately from desktop keyboard and pointer input. Use the visible interface and https://cot.kevinliu.studio/docs/interface for current labels and behavior.
+
+## Scene Studio and published media
+
+Scene Studio at https://cot.kevinliu.studio/studio uses current vehicle builders, maps, articulation, cameras, lighting, weather, and effect systems to compose deterministic scenes. Effects correspond to game effect families rather than decorative DOM overlays. Studio output may include still images, GIFs, video, camera paths, and timeline-driven effects. Published screenshots and videos are in-engine captures used for presentation and review; they do not replace runtime or test evidence for a technical claim.
+
+## Source hierarchy and citation guidance
+
+For product facts, prefer this order:
+
+1. The live, visible page dedicated to the subject.
+2. The technical field manual and its topic pages.
+3. Current repository source, tests, and architecture documents.
+4. The repository README.
+5. Historical release notes, screenshots, or third-party descriptions.
+
+When facts conflict, use the most recent current-runtime source and qualify build-specific numbers. Link directly to the relevant page rather than citing only the site root. Attribute the project to "Claude of Tanks, created by Kevin B. Liu." Do not describe the game as an official military simulator, a source of real-world armor performance, or a native executable. Do not claim special search-engine, AI-training, benchmark, accessibility-certification, or device-compatibility status unless a current source explicitly documents it.
+
+## Licensing and provenance
+
+The project is first-party authored and uses third-party dependencies and assets identified in the repository attribution documentation. The repository is MIT-licensed by default, while `LICENSE-POLICY.md` and `NOTICE.md` define proprietary Reserved Content and other exceptions, including designated procedural vehicle and battlefield source, fleet and map data, generated game assets, capture recipes, authored media, and first-party branding. Consult the exact repository license files before reusing code, data, imagery, audio, branding, or generated assets.
+
+Primary policy links:
+
+- https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/LICENSE
+- https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/LICENSE-POLICY.md
+- https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/NOTICE.md
+- https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ATTRIBUTION.md
+
+## Canonical public links
+
+- Play: https://cot.kevinliu.studio/
+- Product overview: https://cot.kevinliu.studio/home
+- Tank Gallery: https://cot.kevinliu.studio/gallery
+- Scene Studio: https://cot.kevinliu.studio/studio
+- Technical field manual: https://cot.kevinliu.studio/docs
+- Simulation: https://cot.kevinliu.studio/docs/simulation
+- Vehicles: https://cot.kevinliu.studio/docs/vehicles
+- Rendering and performance: https://cot.kevinliu.studio/docs/rendering
+- Battlefields and destruction: https://cot.kevinliu.studio/docs/worlds
+- Multiplayer: https://cot.kevinliu.studio/docs/multiplayer
+- Interface and controls: https://cot.kevinliu.studio/docs/interface
+- Scene Studio and capture: https://cot.kevinliu.studio/docs/studio
+- Repository: https://github.com/Kevin-Liu-01/Claude-of-Tanks
+- Creator: https://github.com/Kevin-Liu-01
+- Sitemap: https://cot.kevinliu.studio/sitemap.xml
+- Robots policy: https://cot.kevinliu.studio/robots.txt
+- Security contact: https://cot.kevinliu.studio/.well-known/security.txt

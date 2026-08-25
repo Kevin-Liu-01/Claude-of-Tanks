@@ -9,54 +9,78 @@
        viewport-fit=cover exposes env(safe-area-inset-*) on notched phones —
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Claude of Tanks — Free Browser Tank Game | 111 Tanks, 20 Battlefields</title>
+  <title>Claude of Tanks — Free Browser Tank Game | 112 Tanks, 20 Battlefields</title>
   <meta name="author" content="Kevin B. Liu" />
   <meta name="copyright" content="Copyright © 2026 Kevin B. Liu" />
-  <!-- SEO/AEO (seo r1): honest, current numbers everywhere — the old cards
-       still claimed "48 tanks, 4 battlefields". Canonical + absolute image
-       URLs (crawlers do not resolve relative og:image reliably), and a
-       VideoGame JSON-LD block so search/answer engines get typed facts
-       instead of scraping the splash. Brand set lives in public/brand/,
-       see docs/ATTRIBUTION.md. -->
-  <meta name="description" content="Claude of Tanks is a free browser-native armored warfare game with 111 production vehicles, 20 battlefields, bot and multiplayer battles, X-ray killcams, and a cinematic scene studio — pure Three.js, no install, no account." />
-  <link rel="canonical" href="https://claude-of-tanks.vercel.app/" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <!-- SEO/AEO: factual public-build metadata. Keep counts aligned with the
+       production roster and map registry; never add ratings or claims that
+       the visible product cannot substantiate. -->
+  <meta name="description" content="Claude of Tanks is a free browser-native armored warfare game with 112 production vehicles, 20 battlefields, bot and multiplayer battles, X-ray killcams, and a cinematic scene studio — pure Three.js, no install, no account." />
+  <meta name="application-name" content="Claude of Tanks" />
+  <link rel="canonical" href="https://cot.kevinliu.studio/" />
+  <link rel="describedby" href="/llms.txt" type="text/plain" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta name="theme-color" content="#05080b" />
   <meta property="og:site_name" content="Claude of Tanks" />
   <meta property="og:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta property="og:description" content="Free-roam armored warfare in the browser — 111 production vehicles, 20 battlefields, bot and multiplayer battles, killcam X-rays. Pure Three.js, no install." />
+  <meta property="og:description" content="Free-roam armored warfare in the browser — 112 production vehicles, 20 battlefields, bot and multiplayer battles, killcam X-rays. Pure Three.js, no install." />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://claude-of-tanks.vercel.app/" />
-  <meta property="og:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
+  <meta property="og:url" content="https://cot.kevinliu.studio/" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:image" content="https://cot.kevinliu.studio/brand/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:alt" content="Claude of Tanks — in-engine battle still with the crest wordmark" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta name="twitter:description" content="111 production vehicles, 20 battlefields, bot and multiplayer battles — armored warfare rendered live in your browser. No install, no account." />
-  <meta name="twitter:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
+  <meta name="twitter:description" content="112 production vehicles, 20 battlefields, bot and multiplayer battles — armored warfare rendered live in your browser. No install, no account." />
+  <meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png" />
+  <meta name="twitter:image:alt" content="Claude of Tanks — in-engine battle still with the crest wordmark" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "VideoGame",
-    "@id": "https://claude-of-tanks.vercel.app/#game",
-    "name": "Claude of Tanks",
-    "url": "https://claude-of-tanks.vercel.app/",
-    "creator": { "@type": "Person", "name": "Kevin Liu", "url": "https://github.com/Kevin-Liu-01" },
-    "copyrightHolder": { "@type": "Person", "name": "Kevin B. Liu" },
-    "image": "https://claude-of-tanks.vercel.app/brand/og-image.png",
-    "description": "Free-roam armored warfare rendered live in the browser: 111 production vehicles, 20 hand-tuned battlefields, bot and multiplayer battles, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
-    "genre": ["Vehicular combat", "Simulation", "Action"],
-    "playMode": ["SinglePlayer", "MultiPlayer"],
-    "gamePlatform": "Web Browser",
-    "applicationCategory": "Game",
-    "operatingSystem": "Any (WebGL2-capable browser)",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
-    "screenshot": [
-      "https://claude-of-tanks.vercel.app/media/featured/f7_studio_t90_column_fire.webp",
-      "https://claude-of-tanks.vercel.app/media/featured/f6_studio_strv_steinburg_duel.webp",
-      "https://claude-of-tanks.vercel.app/media/featured/f9_studio_fjord_firefight.webp",
-      "https://claude-of-tanks.vercel.app/media/featured/f10_studio_urban_crossfire.webp"
+    "@graph": [
+      {
+        "@type": "Person",
+        "@id": "https://cot.kevinliu.studio/#creator",
+        "name": "Kevin B. Liu",
+        "url": "https://github.com/Kevin-Liu-01"
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://cot.kevinliu.studio/#website",
+        "name": "Claude of Tanks",
+        "url": "https://cot.kevinliu.studio/",
+        "description": "Official website, playable browser game, Tank Gallery, Scene Studio, and technical documentation for Claude of Tanks.",
+        "inLanguage": "en-US",
+        "publisher": { "@id": "https://cot.kevinliu.studio/#creator" }
+      },
+      {
+        "@type": "VideoGame",
+        "@id": "https://cot.kevinliu.studio/#game",
+        "name": "Claude of Tanks",
+        "url": "https://cot.kevinliu.studio/",
+        "mainEntityOfPage": { "@id": "https://cot.kevinliu.studio/#website" },
+        "creator": { "@id": "https://cot.kevinliu.studio/#creator" },
+        "copyrightHolder": { "@id": "https://cot.kevinliu.studio/#creator" },
+        "image": "https://cot.kevinliu.studio/brand/og-image.png",
+        "description": "Free browser-native armored warfare with 112 production vehicles, 20 authored battlefields, bot and multiplayer battles, physical armor and ballistics, X-ray killcams, and an in-browser scene studio.",
+        "genre": ["Vehicular combat", "Simulation", "Action"],
+        "playMode": ["SinglePlayer", "MultiPlayer"],
+        "gamePlatform": "Web Browser",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any modern operating system with a WebGL2-capable browser",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "availability": "https://schema.org/InStock" },
+        "screenshot": [
+          "https://cot.kevinliu.studio/media/featured/f7_studio_t90_column_fire.webp",
+          "https://cot.kevinliu.studio/media/featured/f6_studio_strv_steinburg_duel.webp",
+          "https://cot.kevinliu.studio/media/featured/f9_studio_fjord_firefight.webp",
+          "https://cot.kevinliu.studio/media/featured/f10_studio_urban_crossfire.webp"
+        ]
+      }
     ]
   }
   </script>

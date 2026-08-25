@@ -9,7 +9,13 @@
   "rewrites": [
     { "source": "/home", "destination": "/home.html" },
     { "source": "/docs", "destination": "/docs.html" },
-    { "source": "/docs/:topic", "destination": "/docs-topic.html" },
+    { "source": "/docs/simulation", "destination": "/docs-simulation.html" },
+    { "source": "/docs/vehicles", "destination": "/docs-vehicles.html" },
+    { "source": "/docs/rendering", "destination": "/docs-rendering.html" },
+    { "source": "/docs/worlds", "destination": "/docs-worlds.html" },
+    { "source": "/docs/multiplayer", "destination": "/docs-multiplayer.html" },
+    { "source": "/docs/interface", "destination": "/docs-interface.html" },
+    { "source": "/docs/studio", "destination": "/docs-studio.html" },
     { "source": "/gallery", "destination": "/gallery.html" },
     { "source": "/studio", "destination": "/index.html" }
   ]

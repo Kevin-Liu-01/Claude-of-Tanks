@@ -51,7 +51,7 @@ const topics = {
   },
   worlds: {
     label: 'Battlefields and destruction', title: 'Battlefields are built for armored movement',
-    lede: 'Sixteen battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
+    lede: 'Twenty battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
     hero: '/media/hero-rails-r2/02_winter-ice-orbit.webm',
     sections: [
       ['Map contract', 'Each map provides terrain height, ground materials, obstacles, collision, concealment, spawn groups, capture areas, lighting, weather, sound context, and a deterministic establishing camera. Simulation consumers use these interfaces rather than scene traversal.', 'The registry is the source for selection, loading, Studio, screenshots, and documentation counts.'],

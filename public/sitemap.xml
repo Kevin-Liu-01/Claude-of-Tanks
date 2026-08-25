@@ -1,26 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://claude-of-tanks.vercel.app/</loc>
-    <lastmod>2026-08-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <loc>https://cot.kevinliu.studio/</loc>
+    <lastmod>2026-08-25</lastmod>
   </url>
   <url>
-    <loc>https://claude-of-tanks.vercel.app/home</loc>
-    <lastmod>2026-08-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://cot.kevinliu.studio/home</loc>
+    <lastmod>2026-08-25</lastmod>
   </url>
   <url>
-    <loc>https://claude-of-tanks.vercel.app/studio</loc>
-    <lastmod>2026-08-04</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <loc>https://cot.kevinliu.studio/gallery</loc>
+    <lastmod>2026-08-25</lastmod>
   </url>
   <url>
-    <loc>https://claude-of-tanks.vercel.app/docs</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://cot.kevinliu.studio/docs</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/simulation</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/vehicles</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/rendering</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/worlds</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/multiplayer</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/interface</loc>
+    <lastmod>2026-08-25</lastmod>
+  </url>
+  <url>
+    <loc>https://cot.kevinliu.studio/docs/studio</loc>
+    <lastmod>2026-08-25</lastmod>
   </url>
 </urlset>
