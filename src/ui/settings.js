@@ -743,8 +743,18 @@ export function createSettings(opts) {
       'Takes effect when the next battle starts.';
 
     const iface = groupCard(body, 'Interface');
+    onOffRow(
+      iface,
+      'Scoped armor flashlight · penetration gradient (default on)',
+      'armorAimOverlay',
+    );
     onOffRow(iface, 'FPS / ping readout (top-right · default on)', 'showPerfMeter',
       emitPerfMeter);
+    const armorNote = el('div', 'cot-set-note', iface);
+    armorNote.textContent =
+      'In sniper view, aimed enemy armor is shaded from red (blocked) through amber to green ' +
+      '(high penetration chance). The calculation follows the selected shell, range, angle, ' +
+      'ricochet rules, ERA, tracks, and spaced armor.';
 
     const pad = groupCard(body, 'Controller');
     sliderRow(pad, 'Controller aim sensitivity', 'padSensitivity', 0.2, 3);

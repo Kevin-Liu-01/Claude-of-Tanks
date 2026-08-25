@@ -6,8 +6,9 @@
 import { MODULE_IDS } from '../sim/moduleCatalog.js';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
 
-const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v1');
+const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
 const MISSILE_RELOAD_FLOOR_S = 8;
+const EPS = 1e-9;
 
 function copyBox(box, module) {
   return {
@@ -73,6 +74,439 @@ function boxBounds(boxes) {
     }
   }
   return { min, max };
+}
+
+function sub(a, b) {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function cross(a, b) {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+}
+
+function dot(a, b) {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function normalize(v) {
+  const length = Math.hypot(v[0], v[1], v[2]);
+  return length > EPS ? [v[0] / length, v[1] / length, v[2] / length] : [0, 1, 0];
+}
+
+function plateDescriptor(plate) {
+  const verts = plate.verts || [];
+  if (verts.length < 3) return null;
+  const normal = normalize(cross(sub(verts[1], verts[0]), sub(verts[verts.length - 1], verts[0])));
+  const center = [0, 0, 0];
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const point of verts) {
+    for (let axis = 0; axis < 3; axis++) {
+      center[axis] += point[axis] / verts.length;
+      min[axis] = Math.min(min[axis], point[axis]);
+      max[axis] = Math.max(max[axis], point[axis]);
+    }
+  }
+  return { plate, normal, center, min, max };
+}
+
+function boundsGap(point, min, max) {
+  let squared = 0;
+  for (let axis = 0; axis < 3; axis++) {
+    const gap = point[axis] < min[axis]
+      ? min[axis] - point[axis]
+      : point[axis] > max[axis] ? point[axis] - max[axis] : 0;
+    squared += gap * gap;
+  }
+  return Math.sqrt(squared);
+}
+
+function nearestPlate(faceCenter, faceNormal, descriptors) {
+  let best = null;
+  let bestScore = Infinity;
+  for (const descriptor of descriptors) {
+    const alignment = dot(faceNormal, descriptor.normal);
+    if (alignment < 0.12) continue;
+    const planeDistance = Math.abs(dot(descriptor.normal, sub(faceCenter, descriptor.center)));
+    const edgeDistance = boundsGap(faceCenter, descriptor.min, descriptor.max);
+    const score = planeDistance + edgeDistance * 0.75 + (1 - alignment) * 1.25;
+    if (score < bestScore) {
+      bestScore = score;
+      best = descriptor.plate;
+    }
+  }
+  if (best) return best;
+  // Very small bevel faces can be almost orthogonal to every broad authored
+  // zone. They still inherit the nearest physical plate rather than becoming
+  // an unarmored hole in the closed shell.
+  for (const descriptor of descriptors) {
+    const score = Math.hypot(...sub(faceCenter, descriptor.center));
+    if (score < bestScore) {
+      bestScore = score;
+      best = descriptor.plate;
+    }
+  }
+  return best;
+}
+
+function prepareCollisionCells(sourceCells, plates) {
+  if (!Array.isArray(sourceCells) || !sourceCells.length) return [];
+  const descriptors = (plates || [])
+    .filter((plate) => (plate.kind || 'main') === 'main')
+    .map(plateDescriptor)
+    .filter(Boolean);
+  if (!descriptors.length) return [];
+  const cells = [];
+  for (const source of sourceCells) {
+    if (!Array.isArray(source.vertices) || !Array.isArray(source.faces)) continue;
+    const vertices = source.vertices.map((point) => point.slice());
+    const center = [
+      (source.min[0] + source.max[0]) * 0.5,
+      (source.min[1] + source.max[1]) * 0.5,
+      (source.min[2] + source.max[2]) * 0.5,
+    ];
+    const faces = [];
+    for (const sourceIndices of source.faces) {
+      if (!Array.isArray(sourceIndices) || sourceIndices.length !== 3) continue;
+      const indices = sourceIndices.slice();
+      const a = vertices[indices[0]];
+      const b = vertices[indices[1]];
+      const c = vertices[indices[2]];
+      if (!a || !b || !c) continue;
+      let normal = normalize(cross(sub(b, a), sub(c, a)));
+      const faceCenter = [
+        (a[0] + b[0] + c[0]) / 3,
+        (a[1] + b[1] + c[1]) / 3,
+        (a[2] + b[2] + c[2]) / 3,
+      ];
+      if (dot(normal, sub(faceCenter, center)) < 0) {
+        [indices[1], indices[2]] = [indices[2], indices[1]];
+        normal = [-normal[0], -normal[1], -normal[2]];
+      }
+      const plate = nearestPlate(faceCenter, normal, descriptors);
+      if (!plate) continue;
+      faces.push({
+        indices,
+        normal,
+        constant: -dot(normal, a),
+        center: faceCenter,
+        plate,
+      });
+    }
+    if (faces.length < 4) continue;
+    cells.push({
+      min: source.min.slice(),
+      max: source.max.slice(),
+      vertices,
+      faces,
+      structureKind: source.structureKind || null,
+    });
+  }
+  const boundaryCounts = new Map();
+  for (const cell of cells) {
+    for (const z of [cell.min[2], cell.max[2]]) {
+      const key = Math.round(z * 10000);
+      boundaryCounts.set(key, (boundaryCounts.get(key) || 0) + 1);
+    }
+  }
+  for (const cell of cells) {
+    for (const face of cell.faces) {
+      const key = Math.round(face.center[2] * 10000);
+      face.internal = Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1;
+    }
+  }
+  return cells;
+}
+
+function centeredBounds(bounds) {
+  const center = [0, 0, 0];
+  const half = [0, 0, 0];
+  for (let axis = 0; axis < 3; axis++) {
+    center[axis] = (bounds.min[axis] + bounds.max[axis]) * 0.5;
+    half[axis] = Math.max(0.018, (bounds.max[axis] - bounds.min[axis]) * 0.5);
+  }
+  return { center, half };
+}
+
+function longestAxis(half) {
+  return half[1] > half[0] && half[1] >= half[2] ? 1 : half[2] > half[0] ? 2 : 0;
+}
+
+function capsuleForBounds(bounds, fill = 0.88) {
+  const { center, half } = centeredBounds(bounds);
+  const axis = longestAxis(half);
+  const crossAxes = [0, 1, 2].filter((value) => value !== axis);
+  const radius = Math.max(0.018, Math.min(half[crossAxes[0]], half[crossAxes[1]]) * fill);
+  const extent = Math.max(0, half[axis] - radius);
+  const a = center.slice();
+  const b = center.slice();
+  a[axis] -= extent;
+  b[axis] += extent;
+  return { kind: 'capsule', a, b, radius };
+}
+
+function ellipsoidForBounds(bounds, scale = [0.92, 0.90, 0.92]) {
+  const { center, half } = centeredBounds(bounds);
+  return {
+    kind: 'ellipsoid',
+    center,
+    radii: half.map((value, axis) => Math.max(0.018, value * scale[axis])),
+  };
+}
+
+function cylinderForBounds(bounds, axis = 1, fill = 0.92) {
+  const { center, half } = centeredBounds(bounds);
+  const radialAxes = [0, 1, 2].filter((value) => value !== axis);
+  return {
+    kind: 'ellipticCylinder',
+    center,
+    axis,
+    halfLength: half[axis] * fill,
+    radii: [half[radialAxes[0]] * fill, half[radialAxes[1]] * fill],
+  };
+}
+
+function moduleShapeForBounds(module, bounds) {
+  if (module === 'turretRing' || module === 'gunMount') return cylinderForBounds(bounds, 1, 0.94);
+  if (module === 'gun') return capsuleForBounds(bounds, 0.72);
+  if (module === 'fuelTank' || module === 'ammoRack' || module === 'missileRack'
+      || module === 'autoloader' || module === 'feedSystem' || module === 'transmission') {
+    return capsuleForBounds(bounds, 0.84);
+  }
+  return ellipsoidForBounds(bounds);
+}
+
+function addPreciseInternalShapes(armor) {
+  for (const volume of armor.modules || []) {
+    const parts = Array.isArray(volume.parts) && volume.parts.length ? volume.parts : [volume];
+    const cells = volume.turretLocal
+      ? armor.collisionShells?.turret
+      : armor.collisionShells?.hull;
+    const internal = volume.external !== true && volume.module !== 'trackL' && volume.module !== 'trackR'
+      && volume.module !== 'gun' && volume.module !== 'optics';
+    volume.shapes = [];
+    for (const part of parts) {
+      const segments = internal ? splitBoundsAcrossShell(part, cells) : [];
+      if (!segments.length) {
+        volume.shapes.push(moduleShapeForBounds(volume.module, part));
+        continue;
+      }
+      const candidates = [];
+      for (const segment of segments) {
+        const shape = moduleShapeForBounds(volume.module, segment.bounds);
+        const fit = fitShapeInsideShell(shape, [segment.cell]);
+        candidates.push({ shape, fit });
+      }
+      const fitted = candidates.filter((candidate) => candidate.fit >= 0.06);
+      const keep = fitted.length ? fitted : [candidates.reduce(
+        (best, candidate) => !best || candidate.fit > best.fit ? candidate : best, null,
+      )];
+      volume.shapes.push(...keep.map((candidate) => candidate.shape));
+    }
+  }
+  for (const volume of armor.crew || []) {
+    const { center, half } = centeredBounds(volume);
+    const body = {
+      kind: 'ellipsoid',
+      center: [center[0], center[1] - half[1] * 0.12, center[2]],
+      radii: [half[0] * 0.78, half[1] * 0.72, half[2] * 0.72],
+    };
+    const headRadius = Math.max(0.07, Math.min(0.19, half[0] * 0.58, half[2] * 0.58));
+    const head = {
+      kind: 'ellipsoid',
+      center: [center[0], center[1] + half[1] * 0.67, center[2]],
+      radii: [headRadius, Math.max(0.08, half[1] * 0.19), headRadius],
+    };
+    const cells = volume.turretLocal
+      ? armor.collisionShells?.turret
+      : armor.collisionShells?.hull;
+    volume.shapes = [];
+    for (const base of [body, head]) {
+      const bounds = {
+        min: base.center.map((value, axis) => value - base.radii[axis]),
+        max: base.center.map((value, axis) => value + base.radii[axis]),
+      };
+      const segments = splitBoundsAcrossShell(bounds, cells);
+      if (!segments.length) {
+        volume.shapes.push(base);
+        continue;
+      }
+      const candidates = [];
+      for (const segment of segments) {
+        const shape = ellipsoidForBounds(segment.bounds, [1, 1, 1]);
+        const fit = fitShapeInsideShell(shape, [segment.cell]);
+        candidates.push({ shape, fit });
+      }
+      const fitted = candidates.filter((candidate) => candidate.fit >= 0.06);
+      const keep = fitted.length ? fitted : [candidates.reduce(
+        (best, candidate) => !best || candidate.fit > best.fit ? candidate : best, null,
+      )];
+      volume.shapes.push(...keep.map((candidate) => candidate.shape));
+    }
+  }
+}
+
+function shapeCenter(shape) {
+  if (shape.kind !== 'capsule') return shape.center;
+  return [
+    (shape.a[0] + shape.b[0]) * 0.5,
+    (shape.a[1] + shape.b[1]) * 0.5,
+    (shape.a[2] + shape.b[2]) * 0.5,
+  ];
+}
+
+function moveShape(shape, delta) {
+  const points = shape.kind === 'capsule' ? [shape.a, shape.b] : [shape.center];
+  for (const point of points) {
+    for (let axis = 0; axis < 3; axis++) point[axis] += delta[axis];
+  }
+}
+
+function shapeSupportRadius(shape, normal) {
+  if (shape.kind === 'ellipsoid') {
+    return Math.hypot(
+      normal[0] * shape.radii[0],
+      normal[1] * shape.radii[1],
+      normal[2] * shape.radii[2],
+    );
+  }
+  if (shape.kind === 'capsule') {
+    const half = [
+      (shape.b[0] - shape.a[0]) * 0.5,
+      (shape.b[1] - shape.a[1]) * 0.5,
+      (shape.b[2] - shape.a[2]) * 0.5,
+    ];
+    return Math.abs(dot(normal, half)) + shape.radius;
+  }
+  const radialAxes = [0, 1, 2].filter((axis) => axis !== shape.axis);
+  return Math.abs(normal[shape.axis]) * shape.halfLength + Math.hypot(
+    normal[radialAxes[0]] * shape.radii[0],
+    normal[radialAxes[1]] * shape.radii[1],
+  );
+}
+
+function scaleShape(shape, scale) {
+  if (!(scale < 1)) return;
+  if (shape.kind === 'ellipsoid') {
+    for (let axis = 0; axis < 3; axis++) shape.radii[axis] *= scale;
+    return;
+  }
+  if (shape.kind === 'capsule') {
+    const center = shapeCenter(shape);
+    for (const point of [shape.a, shape.b]) {
+      for (let axis = 0; axis < 3; axis++) {
+        point[axis] = center[axis] + (point[axis] - center[axis]) * scale;
+      }
+    }
+    shape.radius *= scale;
+    return;
+  }
+  shape.halfLength *= scale;
+  shape.radii[0] *= scale;
+  shape.radii[1] *= scale;
+}
+
+function cellOutsideDistance(cell, center) {
+  let outside = -Infinity;
+  for (const face of cell.faces) {
+    outside = Math.max(outside, dot(face.normal, center) + face.constant);
+  }
+  return outside;
+}
+
+function splitBoundsAcrossShell(bounds, cells) {
+  const shell = (cells || []).filter((cell) => !cell.structureKind);
+  if (!shell.length) return [];
+  const segments = [];
+  for (const cell of shell) {
+    const minZ = Math.max(bounds.min[2], cell.min[2]);
+    const maxZ = Math.min(bounds.max[2], cell.max[2]);
+    if (maxZ - minZ <= 0.018) continue;
+    segments.push({
+      cell,
+      bounds: {
+        min: [bounds.min[0], bounds.min[1], minZ],
+        max: [bounds.max[0], bounds.max[1], maxZ],
+      },
+    });
+  }
+  if (segments.length) return segments;
+  const center = [
+    (bounds.min[0] + bounds.max[0]) * 0.5,
+    (bounds.min[1] + bounds.max[1]) * 0.5,
+    (bounds.min[2] + bounds.max[2]) * 0.5,
+  ];
+  let nearest = shell[0];
+  let distance = Infinity;
+  for (const cell of shell) {
+    const gap = center[2] < cell.min[2]
+      ? cell.min[2] - center[2]
+      : center[2] > cell.max[2] ? center[2] - cell.max[2] : 0;
+    if (gap < distance) {
+      distance = gap;
+      nearest = cell;
+    }
+  }
+  return [{ cell: nearest, bounds }];
+}
+
+function fitShapeInsideShell(shape, cells) {
+  if (!cells?.length) return 1;
+  let center = shapeCenter(shape);
+  let cell = cells[0];
+  let best = Infinity;
+  for (const candidate of cells) {
+    const outside = cellOutsideDistance(candidate, center);
+    if (outside < best) {
+      best = outside;
+      cell = candidate;
+    }
+  }
+  const margin = 0.006;
+  // Seat the whole smooth volume, not only its center, inside the chosen
+  // convex component. Repeating handles corners where one inward move
+  // slightly violates a neighboring plane; scaling is the last resort.
+  for (let iteration = 0; iteration < 10; iteration++) {
+    let moved = false;
+    center = shapeCenter(shape);
+    for (const face of cell.faces) {
+      const excess = dot(face.normal, center) + face.constant
+        + shapeSupportRadius(shape, face.normal) + margin;
+      if (excess <= 0) continue;
+      moveShape(shape, face.normal.map((value) => -value * excess));
+      moved = true;
+      center = shapeCenter(shape);
+    }
+    if (!moved) break;
+  }
+  // An oversized authoring box can oscillate between opposite facets. Seat
+  // its center unconditionally before deriving the final uniform shrink.
+  for (let iteration = 0; iteration < 10; iteration++) {
+    let moved = false;
+    center = shapeCenter(shape);
+    for (const face of cell.faces) {
+      const signed = dot(face.normal, center) + face.constant;
+      if (signed <= -margin) continue;
+      moveShape(shape, face.normal.map((value) => -value * (signed + margin)));
+      moved = true;
+      center = shapeCenter(shape);
+    }
+    if (!moved) break;
+  }
+  center = shapeCenter(shape);
+  let scale = 1;
+  for (const face of cell.faces) {
+    const available = -margin - (dot(face.normal, center) + face.constant);
+    const support = shapeSupportRadius(shape, face.normal);
+    if (support > EPS) scale = Math.min(scale, available / support);
+  }
+  const appliedScale = Math.max(0.001, Math.min(1, scale));
+  scaleShape(shape, appliedScale);
+  return appliedScale;
 }
 
 function fixedCompartment(calibration) {
@@ -354,6 +788,17 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
     appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
   }
   addDerivedModules(spec);
+  armor.collisionShells = {
+    hull: prepareCollisionCells([
+      ...(calibration?.hullCollision || []),
+      ...(calibration?.hullStructureCollision || []),
+    ], armor.hullPlates),
+    turret: prepareCollisionCells([
+      ...(calibration?.turretCollision || []),
+      ...(calibration?.turretStructureCollision || []),
+    ], armor.turretPlates),
+  };
+  addPreciseInternalShapes(armor);
   Object.defineProperty(spec, FINALIZED, { value: true, enumerable: false });
   return spec;
 }

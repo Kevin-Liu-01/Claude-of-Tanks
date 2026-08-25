@@ -83,6 +83,7 @@ import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
+import { createArmorAimOverlay } from './game/armorAimOverlay.js';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -788,7 +789,14 @@ async function stageBattleVisualReveal(ent, yieldForBudget, initiallyHidden = fa
   if (ent.state && visual.syncFromState) visual.syncFromState(ent.state);
   visual.setVisible?.(true);
   const compileAt = performance.now();
+  // Build the scoped armor flashlight from the same exact collision shell
+  // while this actor is already inside its bounded load slice. Enemy actors
+  // reach this path during the frozen visible countdown, so the optimization
+  // that removed them from the opaque transition remains intact.
+  armorAimOverlay.prime(ent);
+  const restoreArmorWarmVisibility = armorAimOverlay.warm();
   try { renderer.compile(root, camera, scene); } catch (_) { /* first render fallback */ }
+  finally { restoreArmorWarmVisibility(); }
   root.userData.loadCompileMs = Math.round(performance.now() - compileAt);
   // Opposing actors prepared during the visible deployment countdown are
   // not legally spotted yet. Submit their exact programs while visible to
@@ -2543,6 +2551,7 @@ const _mouse = { x: 0, y: 0 };
 const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
+const armorAimOverlay = createArmorAimOverlay();
 const settings = createSettings({
   input,
   bus,
@@ -3075,7 +3084,9 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // final-quality CSM/post scene; this only moves driver submission ahead
       // of its onFirstUse queue.
       const deploymentCompileStartedAt = performance.now();
+      const restoreArmorWarmVisibility = armorAimOverlay.warm();
       try { renderer.compile(scene, camera, scene); } catch (_) { /* first render fallback */ }
+      finally { restoreArmorWarmVisibility(); }
       trace.deploymentCompileMs = Math.round(performance.now() - deploymentCompileStartedAt);
       await nextFrame();
       await nextFrame();
@@ -4055,6 +4066,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // ghost backup captured at x-ray start (a wreck's burnt set), which would
   // clobber the pristine materials resetDestroyed() just put back.
   killcam.cancel();
+  armorAimOverlay.clear();
   sbtStage('resetPresentation');
   selectedSpecId = specId;
   rememberSpecId(specId);
@@ -4187,6 +4199,7 @@ const PRE_BATTLE_HOLD_S = 5;
 const MIN_VISIBLE_PRE_BATTLE_S = 2;
 
 function clearBattlePresentationForExit() {
+  armorAimOverlay.clear();
   kcPending = null;
   killcam.cancel();
   if (killcam.spectate?.active) killcam.spectate.stop(true);
@@ -4540,6 +4553,7 @@ function computeAimInfo() {
   let bestTargetId = null;
   for (const ent of game.tanks) {
     if (ent.isPlayer || ent.team === p.team || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+    if (!mobileAutoAimVisible(ent)) continue;
     _v1.copy(ent.state.pos);
     _v1.y += ent.spec.dims.heightM * 0.5;
     _v1.sub(_rayO);
@@ -4550,6 +4564,7 @@ function computeAimInfo() {
     const q = queryAimArmor(
       _rayO, _rayD, Math.min(800, bestDist + ent.spec.armor.boundingRadiusM),
       tankPoseFromState(ent.state, _aimPose), ent.spec.armor,
+      ent.combat.eraSpent,
     );
     if (q && q.distM < bestDist) {
       bestDist = q.distM;
@@ -5243,8 +5258,25 @@ function tick(nowMs) {
     refreshSpotFrame(hudFocus); // SPOTTING WIRING
     if (game.player) computeAimInfo();
     hud.update(frameInfo);
+    if (game.player) {
+      const armorTarget = frameInfo.aim.gunTargetId
+        ? game.tankById.get(frameInfo.aim.gunTargetId) || null
+        : null;
+      armorAimOverlay.update({
+        enabled: input.getSettings().armorAimOverlay,
+        scoped: rig.mode === 'SNIPER' && !!camera.userData.scoped,
+        target: armorTarget,
+        shellSpec: game.player.spec.gun.shells[game.player.combat.shellSlot],
+        muzzle: _rayO,
+        nowMs: performance.now(),
+      });
+    } else {
+      armorAimOverlay.hide();
+    }
     touchControls.update(hudFocus.state?.speed || 0);
     damagePanel.update(hudFocus.combat);
+  } else {
+    armorAimOverlay.hide();
   }
 
   // 8. audio

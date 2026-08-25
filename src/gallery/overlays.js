@@ -43,6 +43,33 @@ function plateGeometry(plate) {
   return geometry;
 }
 
+function collisionPlateGeometry(cells) {
+  const byPlate = new Map();
+  for (const cell of cells || []) {
+    for (const face of cell.faces || []) {
+      if (face.internal || !face.plate) continue;
+      let positions = byPlate.get(face.plate);
+      if (!positions) {
+        positions = [];
+        byPlate.set(face.plate, positions);
+      }
+      for (const index of face.indices || []) {
+        const point = cell.vertices?.[index];
+        if (point) positions.push(point[0], point[1], point[2]);
+      }
+    }
+  }
+  const geometries = [];
+  for (const [plate, positions] of byPlate) {
+    if (positions.length < 9 || positions.length % 9 !== 0) continue;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.computeVertexNormals();
+    geometries.push({ plate, geometry });
+  }
+  return geometries;
+}
+
 function inspectionMaterial(color, opacity) {
   return new THREE.MeshBasicMaterial({
     color,
@@ -70,8 +97,8 @@ function attachContainer(owner, name) {
   return container;
 }
 
-function addPlate(container, plate, index, turretLocal, resources, pickables) {
-  const geometry = plateGeometry(plate);
+function addPlate(container, plate, index, turretLocal, resources, pickables, sourceGeometry = null) {
+  const geometry = sourceGeometry || plateGeometry(plate);
   if (!geometry) return;
   const color = armorColor(plate);
   const material = inspectionMaterial(color, 0.38);
@@ -101,18 +128,59 @@ function addPlate(container, plate, index, turretLocal, resources, pickables) {
   resources.push(edgeGeometry, edgeMaterial);
 }
 
-function addVolume(container, volume, index, mode, resources, pickables, partIndex = 0, partCount = 1) {
+const _up = new THREE.Vector3(0, 1, 0);
+const _axis = new THREE.Vector3();
+const _center = new THREE.Vector3();
+
+function shapeGeometry(shape) {
+  if (shape.kind === 'ellipsoid') {
+    return {
+      geometry: new THREE.SphereGeometry(1, 20, 12),
+      position: _center.fromArray(shape.center),
+      scale: new THREE.Vector3().fromArray(shape.radii),
+      quaternion: new THREE.Quaternion(),
+    };
+  }
+  if (shape.kind === 'capsule') {
+    const a = new THREE.Vector3().fromArray(shape.a);
+    const b = new THREE.Vector3().fromArray(shape.b);
+    const length = a.distanceTo(b);
+    return {
+      geometry: new THREE.CapsuleGeometry(shape.radius, length, 6, 14),
+      position: a.add(b).multiplyScalar(0.5),
+      scale: new THREE.Vector3(1, 1, 1),
+      quaternion: new THREE.Quaternion().setFromUnitVectors(
+        _up, _axis.subVectors(b, a).normalize(),
+      ),
+    };
+  }
+  if (shape.kind === 'ellipticCylinder') {
+    const direction = _axis.set(0, 0, 0).setComponent(shape.axis, 1);
+    return {
+      geometry: new THREE.CylinderGeometry(1, 1, 2, 20, 1, false),
+      position: _center.fromArray(shape.center),
+      scale: new THREE.Vector3(shape.radii[0], shape.halfLength, shape.radii[1]),
+      quaternion: new THREE.Quaternion().setFromUnitVectors(_up, direction),
+    };
+  }
+  return null;
+}
+
+function addVolume(container, volume, shape, index, mode, resources, pickables, partIndex = 0, partCount = 1) {
   const min = new THREE.Vector3().fromArray(volume.min || [0, 0, 0]);
   const max = new THREE.Vector3().fromArray(volume.max || [0, 0, 0]);
   const size = max.clone().sub(min);
   if (size.x <= 0 || size.y <= 0 || size.z <= 0) return;
-  const center = min.add(max).multiplyScalar(0.5);
+  const built = shapeGeometry(shape);
+  if (!built) return;
   const key = String(mode === 'modules' ? volume.module : volume.crew || 'volume');
   const color = (mode === 'modules' ? MODULE_COLORS[key] : CREW_COLORS[key]) || 0x68c7ff;
-  const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+  const { geometry } = built;
   const material = inspectionMaterial(color, 0.24);
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.copy(center);
+  mesh.position.copy(built.position);
+  mesh.quaternion.copy(built.quaternion);
+  mesh.scale.copy(built.scale);
   mesh.name = `gallery_${mode}_${key}_${index}_${partIndex}`;
   mesh.renderOrder = 84;
   mesh.userData.inspection = {
@@ -130,7 +198,9 @@ function addVolume(container, volume, index, mode, resources, pickables, partInd
   const edgeGeometry = new THREE.EdgesGeometry(geometry);
   const edgeMaterial = lineMaterial(color, 0.95);
   const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-  edges.position.copy(center);
+  edges.position.copy(built.position);
+  edges.quaternion.copy(built.quaternion);
+  edges.scale.copy(built.scale);
   edges.renderOrder = 85;
   edges.raycast = () => {};
   container.add(edges);
@@ -152,23 +222,36 @@ export function createInspectionOverlay(spec, visual, mode) {
   containers.push(hullContainer, turretContainer);
 
   if (mode === 'armor') {
-    (spec.armor?.hullPlates || []).forEach((plate, index) =>
-      addPlate(hullContainer, plate, index, false, resources, pickables));
-    (spec.armor?.turretPlates || []).forEach((plate, index) =>
-      addPlate(turretContainer, plate, index, true, resources, pickables));
+    const hullPlates = spec.armor?.hullPlates || [];
+    const turretPlates = spec.armor?.turretPlates || [];
+    const exactHull = collisionPlateGeometry(spec.armor?.collisionShells?.hull);
+    const exactTurret = collisionPlateGeometry(spec.armor?.collisionShells?.turret);
+    exactHull.forEach(({ plate, geometry }, index) =>
+      addPlate(hullContainer, plate, index, false, resources, pickables, geometry));
+    exactTurret.forEach(({ plate, geometry }, index) =>
+      addPlate(turretContainer, plate, index, true, resources, pickables, geometry));
+    // Closed cells replace broad main plates. Non-main screens/ERA and the
+    // small authored hatch/cupola structures remain separate combat layers.
+    hullPlates.filter((plate) => (plate.kind || 'main') !== 'main'
+      || /_(?:cupola|hatch)_/i.test(plate.name || '')).forEach((plate, index) =>
+      addPlate(hullContainer, plate, exactHull.length + index, false, resources, pickables));
+    turretPlates.filter((plate) => (plate.kind || 'main') !== 'main'
+      || /_(?:cupola|hatch)_/i.test(plate.name || '')).forEach((plate, index) =>
+      addPlate(turretContainer, plate, exactTurret.length + index, true, resources, pickables));
   } else {
     const source = mode === 'modules' ? spec.armor?.modules : spec.armor?.crew;
     (source || []).forEach((volume, index) => {
-      const parts = Array.isArray(volume.parts) && volume.parts.length ? volume.parts : [volume];
-      parts.forEach((part, partIndex) => addVolume(
+      const shapes = Array.isArray(volume.shapes) && volume.shapes.length ? volume.shapes : [];
+      shapes.forEach((shape, partIndex) => addVolume(
         volume.turretLocal ? turretContainer : hullContainer,
-        { ...volume, min: part.min, max: part.max },
+        volume,
+        shape,
         index,
         mode,
         resources,
         pickables,
         partIndex,
-        parts.length,
+        shapes.length,
       ));
     });
   }

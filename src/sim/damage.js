@@ -814,8 +814,17 @@ export function resolveShellHit(shell, target, hits, rng) {
     // still screen_pierce with zero damage.
     const seamInterior = hits.some((h) =>
       h.kind === 'crew' ||
-      (h.kind === 'module' && h.external !== true && !h.barrel && h.module !== 'gun'));
-    if (seamInterior) {
+      (h.kind === 'module' && h.external !== true && !h.barrel
+        && h.module !== 'gun' && h.module !== 'trackL' && h.module !== 'trackR'));
+    // Geometry-derived closed shells make this compatibility catch both
+    // unnecessary and actively misleading: a ray that reaches an internal
+    // system has already crossed an exact collision face. Keep it only for
+    // old hand-built/synthetic armor models that do not expose closed cells.
+    const hasClosedCollisionShell = !!(
+      target.spec.armor?.collisionShells?.hull?.length
+      || target.spec.armor?.collisionShells?.turret?.length
+    );
+    if (seamInterior && !hasClosedCollisionShell) {
       const seamMm = seamArmorMm(target.spec.armor);
       // SHOT-INFO (killcam_shotinfo r5, ADDITIVE): the seam check charges the
       // tank's weakest MAIN plate — stamp that surrogate plate's armor story
@@ -838,7 +847,8 @@ export function resolveShellHit(shell, target, hits, rng) {
         event.damage = dmgRoll;
         combat.hp -= dmgRoll;
         for (const h of hits) {
-          if (h.kind === 'module' && h.external !== true && !h.barrel && h.module !== 'gun') {
+          if (h.kind === 'module' && h.external !== true && !h.barrel
+              && h.module !== 'gun' && h.module !== 'trackL' && h.module !== 'trackR') {
             const r = rollModuleDamage(ctx, h.module);
             event.fireStarted = event.fireStarted || r.fireStarted;
             event.ammoRacked = event.ammoRacked || r.ammoRacked;

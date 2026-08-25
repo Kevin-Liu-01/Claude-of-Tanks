@@ -293,6 +293,57 @@ function mkShell(shellSpec, distM = 100) {
   assert(hitsModulePart.some((h) => h.kind === 'module' && h.module === 'optics'),
     'segmented module component remains damageable');
 
+  // Fleet anatomy v2: smooth internal volumes no longer inherit the empty
+  // corners of their old broad AABB. The center remains damageable while a
+  // ray through the containing box's upper-right corner correctly misses.
+  const preciseModuleModel = {
+    ...armorModel,
+    modules: [{
+      module: 'optics', min: [-1, 0, -0.5], max: [1, 2, 0.5], turretLocal: false,
+      shapes: [{ kind: 'ellipsoid', center: [0, 1, 0], radii: [1, 1, 0.5] }],
+    }],
+  };
+  const preciseCenter = traceTank(V(0, 1, 1), V(0, 1, -1), pose0, preciseModuleModel);
+  assert(preciseCenter.some((h) => h.kind === 'module' && h.module === 'optics'),
+    'ellipsoid module center remains damageable');
+  const preciseCorner = traceTank(V(0.92, 1.92, 1), V(0.92, 1.92, -1), pose0, preciseModuleModel);
+  assert(!preciseCorner.some((h) => h.kind === 'module' && h.module === 'optics'),
+    'ellipsoid module removes false AABB corner hits');
+
+  // Closed collision cells replace the loose main-plate envelope. This wedge
+  // has an angled roof and produces an exact face normal/zone from a segment
+  // that never intersects the legacy front quad.
+  const wedgePlate = mkPlate({
+    name: 'wedge_shell',
+    verts: [[-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]],
+    physicalMm: 80, keMm: 80, ceMm: 80,
+  });
+  const wedgeModel = {
+    ...armorModel,
+    hullPlates: [wedgePlate],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+    collisionShells: {
+      hull: [{
+        min: [-1, 0, -1], max: [1, 2, 1], vertices: [],
+        faces: [
+          { normal: [1, 0, 0], constant: -1, plate: wedgePlate },
+          { normal: [-1, 0, 0], constant: -1, plate: wedgePlate },
+          { normal: [0, -1, 0], constant: 0, plate: wedgePlate },
+          { normal: [0, 0, 1], constant: -1, plate: wedgePlate },
+          { normal: [0, 0, -1], constant: -1, plate: wedgePlate },
+          { normal: [0, 1, 0.5], constant: -2, plate: wedgePlate },
+        ],
+      }],
+      turret: [],
+    },
+  };
+  const wedgeHit = traceTank(V(0, 3, 0), V(0, -1, 0), pose0, wedgeModel)
+    .find((h) => h.kind === 'plate');
+  assert(wedgeHit && wedgeHit.plate === wedgePlate, 'closed convex shell supplies the main armor hit');
+  near(wedgeHit.normal.y, 2 / Math.sqrt(5), 1e-4, 'closed shell preserves angled surface normal');
+
   // queryAimArmor returns the first main/spaced plate with range.
   const aim = queryAimArmor(V(0, 1, 10), V(0, 0, -1), 30, pose0, armorModel);
   assert(!!aim && aim.plate.name === 'front', 'queryAimArmor finds front plate');

@@ -18,8 +18,8 @@ the canonical `src/vehicles/` sources.
 
 ## User capabilities
 
-- search by vehicle name, stable ID, alias, nation, class, era, or tier;
-- filter by nation and class;
+- search by vehicle name, stable ID, alias, nation, role, era, or tier;
+- filter by nation and era;
 - orbit, zoom, and select hero/front/left/right/rear/top/elevated cameras;
 - enable or pause an automatic turntable;
 - change hull yaw, turret yaw, and gun elevation within authored limits;
@@ -100,17 +100,19 @@ larger archive.
 | Layer | Canonical source | Presentation |
 | --- | --- | --- |
 | Exterior | Procedural vehicle rig | Current materials and geometry |
-| Armor | `armor.hullPlates` and `armor.turretPlates` | Translucent plate polygons with protection bands |
-| Modules | `armor.modules` | Selectable hull- or turret-local boxes |
-| Crew | `armor.crew` | Selectable hull- or turret-local station boxes |
+| Armor | `armor.collisionShells` plus layered plates | Exact closed collision faces with canonical protection bands |
+| Modules | `armor.modules[].shapes` | Selectable ellipsoids, capsules, and elliptic cylinders |
+| Crew | `armor.crew[].shapes` | Selectable segmented smooth station volumes |
 
 Armor colors communicate broad kinetic-protection bands. ERA and spaced armor
 receive distinct colors because their behavior cannot be summarized by a
 single thickness gradient. Selecting a plate displays physical, kinetic, and
 chemical protection values separately.
 
-Overlays are diagnostic volumes. They are not meshes extracted from the visible
-surface, and they do not claim real-world engineering accuracy.
+The main armor overlay is generated from the same procedural hull/turret source
+geometry and uses the same convex cells as authoritative combat. ERA, tracks,
+spaced screens and gun-follow layers remain separately authored. Module and crew
+overlays are diagnostic gameplay volumes rather than real-world engineering claims.
 
 ### Surface markup
 

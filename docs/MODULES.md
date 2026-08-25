@@ -9,7 +9,7 @@ pass (2026-07-31); sources of record are listed per section.
 
 | Concern | Owner | Consumers |
 | --- | --- | --- |
-| Module boxes / crew boxes / plates | `spec.armor` (vehicle spec files, §Hitboxes) | `sim/armor.js` traceTank |
+| Closed armor cells / smooth module and crew volumes | `spec.armor` (authored zones finalized by `vehicles/combatAnatomy.js`) | `sim/armor.js` `traceTank`, Gallery diagnostics, scoped armor flashlight |
 | Hit resolution (saves, damage, fire, detonation) | `src/sim/damage.js` | `game/state.js` stepShells |
 | Module state machine (`ok`/`yellow`/`red`, repairs) | `src/sim/damage.js` (`refreshModuleState`, `tickModuleRepairs`, `repairAllModules`) | state.js game loop, main.js repair-kit consumable |
 | State broadcasts | `module:state` bus event `{ id, module, state, repaired? }` emitted by `game/state.js` only | audio.js, hud.js alerts, (killcam/damage panel read CombatState directly) |
@@ -23,16 +23,16 @@ its own prev-state tracker and ignores the flag.
 
 Ordered `traceTank` intersections: ricochet on raw angle → ERA tiles → spaced
 screens (HEAT gap decay) → main-armor pen check → 10-caliber post-pen sweep
-rolling module/crew boxes. Two rules matter for module correctness:
+rolling module/crew volumes. Two rules matter for module correctness:
 
-- **Straddling-box flush** (module_hitbox r1): boxes are reported once at
-  their entry `t` with their exit stamped as `tExit`. A box entered BEFORE
+- **Straddling-volume flush** (module_hitbox r1): volumes are reported once at
+  their entry `t` with their exit stamped as `tExit`. A volume entered BEFORE
   the penetrated plate whose span extends past it (Tiger sponson rack hugging
   the hull side, Merkava front engine wrapping past the glacis) is parked and
   rolled AT the pen, in trace order. Before this rule those modules could
   never be damaged from their natural attack bearing (8 Merkava engines,
   Tiger rack, Leclerc fuel — measured by the probe below).
-- **Post-pen limit**: module/crew boxes further than `10 × caliber` from the
+- **Post-pen limit**: module/crew volumes further than `10 × caliber` from the
   entry point do not roll (spall cone dissipates). Straddlers begin AT the
   pen point, so the limit cannot exclude them.
 
@@ -51,7 +51,7 @@ Module HP (`MODULE_HP`, ×2.5 on `era: 'modern'` specs):
 | radio | 90 | 225 |
 | optics | 80 | 200 |
 
-Save throws (`SAVE_CHANCE` — chance the module takes damage when its box is
+Save throws (`SAVE_CHANCE` — chance the module takes damage when its volume is
 crossed; per-hit module damage is `moduleDmg ≈ caliberMm` ±25%):
 
 | Module | Chance |
@@ -75,11 +75,21 @@ ammo rack ×1.5 reload, dead loader ×1.5 reload (multiplicative), red tracks
 immobilize (movement.js), red engine caps drive power, optics/radio degrade
 spotting (spotting.js).
 
-## Hitboxes — where boxes come from
+## Combat anatomy — where collision and internal volumes come from
 
-- **Hand-authored layouts**: the foundational roster and modern1/2/3
-  vehicles. Module boxes are hull-local AABBs (`mbox`), turret boxes
-  turret-local (`turretLocal: true`).
+- **Closed external shell**: `tools/gen-combat-anatomy.mjs` clips the actual
+  first-party procedural hull/turret armor triangles into longitudinal slabs,
+  constructs bounded convex cells, and records exact cupola/hatch cells. The
+  fleet finalizer maps every generated face back to the nearest canonical armor
+  zone, preserving physical/KE/CE thickness and layered ERA/spaced/track rules.
+- **Smooth internals**: authored `min`/`max` records remain stable calibration
+  envelopes, not ray-test AABBs. At finalization they become ellipsoids,
+  capsules, or elliptic cylinders. Long volumes are segmented across adjacent
+  shell cells and seated inside their convex component, eliminating false AABB
+  corner hits and internal volumes exposed through empty air.
+- **Hand-authored layouts**: foundational and modern vehicles still own the
+  semantic location and articulation frame (`turretLocal`) of each system;
+  the finalizer changes collision representation, not module identity.
 - **Parametric expansion template**: additional first-party vehicles
   (`communityArmor` is the retained helper name in specs.js and its userdrops
   mirror) derive every box from `spec.dims` —
@@ -87,22 +97,23 @@ spotting (spotting.js).
 - **Donor copies re-fitted to dims** (module_hitbox r1): recovered variants
   (userdrops5/6 `make()`) copy a donor spec and patch `dims`; the armor is
   now refit through `fitArmorToDims(armor, donorDims, dims)` (specs.js) —
-  per-axis affine scale of plates/boxes/pivots/barrel. Before the fit the
+  per-axis affine scale of plates/authoring bounds/pivots/barrel. Before the fit the
   m60a1 carried Leopard-1-sized armor 1.2 m shorter and 0.23 m narrower than
   its rendered hull: shots at the rendered turret resolved as air. The
   geometry gate pins visuals to `spec.dims`, so dims are the shared truth for
   both visual and armor envelope.
-- Published `heightM` includes cupola/MG/sight appendages that armor models
-  deliberately do not plate; the probe allows 0.5 m there. Residual >0.5 m
-  gaps (armor top vs published height, cupola-dominated, true shortfall
-  ≲0.2 m): chieftain_mk10 + chieftain5, leo1a5, t62mv1, centurion3/5,
-  m46/m47_patton, m60a1/m60a3.
+- Published `heightM` may include external sights, weapons and antennas. Those
+  are never allowed to stretch the base shell; structural cupolas and hatches
+  receive their own exact convex cells, while equipment remains external.
 
 ## Probes / gates
 
-- `node tools/module-hit-probe.mjs` — **the gate** (pure sim, all 80 currently
+- `node src/vehicles/combatAnatomy.selftest.mjs` — fleet-wide generated-data
+  gate: all 122 playable tanks, exact roof structures, supported smooth shapes,
+  internal-shape containment, and deterministic front/side/top seam rays.
+- `node tools/module-hit-probe.mjs` — legacy targeted pure-sim probe (all roster
   ~2 s). Structural containment, scripted mega-pen shots through every
-  internal module box from its own side / long axis / top (the right module
+  internal module volume from its own side / long axis / top (the right module
   must ROLL, not merely be traced), track reachability via moduleLink, and
   the armor-envelope vs dims drift audit. Exit 1 on any hard FAIL.
   - The historical r1 pass corrected ten failures. The current fleet result is
@@ -120,6 +131,14 @@ spotting (spotting.js).
 
 ## Presentation contracts
 
+- Scoped armor flashlight (`game/armorAimOverlay.js`): default-on, optional in
+  Gameplay → Interface, and visible only in the gunner scope on an already
+  spotted live target. It renders the same closed collision faces used by
+  combat and colors them continuously red → amber → green by the selected
+  shell's real layered penetration estimate (distance, angle, normalization,
+  ricochet, ERA, tracks and spaced armor included). Sampling is spread across
+  48-face frame batches to avoid periodic render stalls; battle exit disposes
+  every generated buffer.
 - Damage panel (`ui/damagePanel.js`): reads CombatState directly per frame;
   canvas schematic repaints only when the dirty signature (non-ok module
   states + quantized turret bearing) changes. Colors/order from

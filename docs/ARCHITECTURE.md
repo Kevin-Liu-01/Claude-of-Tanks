@@ -193,8 +193,10 @@ inverse-solved so that the shells-doc falloff table §4 reproduces the quoted va
 2 km — vehicles builder does this arithmetic; consumers only ever read pen100/pen1000.
 
 ### 2.3 `ArmorModel` (data-only, inside `TankSpec.armor`)
-Combat raycasts against this; tankFactory should derive its plate geometry from the
-same numbers so visuals ≈ hitboxes (exact match not required).
+Combat raycasts against this. The fleet finalizer derives a closed, low-complexity
+collision shell from the actual first-party procedural armor mesh; authored zones
+remain the source of thickness/material behavior, but no playable vehicle relies on
+disconnected broad quads or AABBs as its main silhouette.
 ```js
 ArmorModel = {
   boundingRadiusM: number,          // broadphase sphere around tank origin
@@ -204,8 +206,12 @@ ArmorModel = {
   hullPlates:   Plate[],            // hull-local frame
   turretPlates: Plate[],            // turret-local frame (rotates with turretYaw; mantlet
                                     //  plates may set gunFollow:true → also pitch with gun)
-  modules: ModuleBox[],             // hull-local (turretLocal:true ⇒ turret frame)
-  crew:    CrewBox[],
+  collisionShells: {                // generated from actual procedural geometry
+    hull: ConvexCell[],              // closed longitudinal union in hull-local frame
+    turret: ConvexCell[],            // closed union in turret-local frame
+  },
+  modules: ModuleVolume[],          // hull-local (turretLocal:true ⇒ turret frame)
+  crew:    CrewVolume[],
 }
 Plate = {
   name: string,                     // 'upper_glacis', 'turret_cheek_L', ...
@@ -218,15 +224,32 @@ Plate = {
   moduleLink: null | ModuleName,    // e.g. track plates link 'trackL'
   gunFollow: boolean,               // turret plates only (mantlet)
 }
-ModuleBox = { module: ModuleName, min:[x,y,z], max:[x,y,z], turretLocal: boolean }
-CrewBox   = { crew: CrewName,     min:[x,y,z], max:[x,y,z], turretLocal: boolean }
+ConvexCell = {
+  min:[x,y,z], max:[x,y,z],       // broadphase only
+  vertices:[[x,y,z], ...],
+  faces:[{ indices:[i0,i1,i2], normal:[x,y,z], constant:number,
+           plate:Plate, internal:boolean }],
+}
+SmoothShape =
+  | { kind:'ellipsoid', center:[x,y,z], radii:[x,y,z] }
+  | { kind:'capsule', a:[x,y,z], b:[x,y,z], radius:number }
+  | { kind:'ellipticCylinder', center:[x,y,z], axis:0|1|2,
+      halfLength:number, radii:[r0,r1] }
+ModuleVolume = { module: ModuleName, min:[x,y,z], max:[x,y,z],
+                 turretLocal:boolean, shapes:SmoothShape[] }
+CrewVolume   = { crew: CrewName, min:[x,y,z], max:[x,y,z],
+                 turretLocal:boolean, shapes:SmoothShape[] }
 ModuleName = 'engine'|'fuelTank'|'ammoRack'|'gun'|'turretRing'|'radio'|'optics'|'trackL'|'trackR'
 CrewName   = 'commander'|'gunner'|'driver'|'loader'   // 3-crew tanks (t34_85 pre-85? no —
              // t90m has no loader; omit absent crew members from the array entirely
 ```
-Fidelity bar: 6–14 hull plates + 4–8 turret plates per tank, transcribed from the
-roster armor tables (thickness + angle) at the roster dimensions. ERA on t90m only.
-Spaced: skirts (panther_g, m1a2, leo2a7, t90m rubber half), mantlet outer layers, tracks.
+The generated shell is sliced only along vehicle-local Z and convex-hulled from
+clipped source triangles, so adjacent components share closed boundaries while the
+bow, shoulders, cheeks, bustle, cupolas and hatches retain their changing section.
+Every face maps back to a canonical `Plate`; ERA, spaced screens, external tracks and
+gun-follow mantlets remain separately ordered layers. Internal authoring bounds are
+converted to ellipsoids, capsules or elliptic cylinders, split across shell cells when
+necessary, and seated fully inside the closed armor before combat begins.
 
 **trackShapes addendum (2026-08-06, fleet-wide).** Track hitboxes are no
 longer per-tank rectangle stacks: `attachTrackShapes` (specs.js) derives one

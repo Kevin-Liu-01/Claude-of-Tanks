@@ -1,6 +1,7 @@
 /**
  * armor.js — armor zone lookup: traces world-space shell segments through a
- * tank's ArmorModel (plates, module boxes, crew boxes, gun barrel) and returns
+ * tank's ArmorModel (closed collision shells, precise module/crew volumes,
+ * external plates and gun barrel) and returns
  * ordered intersections for damage resolution and HUD/AI armor queries.
  *
  * Pure-logic module (ARCHITECTURE.md §3.5.2): three math classes only, no
@@ -50,6 +51,7 @@ const _toL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _dirL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _dirN = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _forward = [_hullM, _turretM, _gunM, _barrelM];
+const _inverse = [_hullInv, _turretInv, _gunInv, _barrelInv];
 
 const _v0 = new Vector3();
 const _v1 = new Vector3();
@@ -136,12 +138,101 @@ function buildFrames(pose, armorModel) {
  * @param {Vector3} to world segment end
  */
 function localizeSegment(from, to) {
-  const invs = [_hullInv, _turretInv, _gunInv, _barrelInv];
   for (let f = 0; f < 4; f++) {
-    _fromL[f].copy(from).applyMatrix4(invs[f]);
-    _toL[f].copy(to).applyMatrix4(invs[f]);
+    _fromL[f].copy(from).applyMatrix4(_inverse[f]);
+    _toL[f].copy(to).applyMatrix4(_inverse[f]);
     _dirL[f].subVectors(_toL[f], _fromL[f]);
     _dirN[f].copy(_dirL[f]).normalize();
+  }
+}
+
+// Convex-cell clipping state. Cells are generated from the exact procedural
+// armor mesh and form a closed longitudinal shell; each face already points
+// at the canonical authored plate whose thickness/statistics it inherits.
+let _convexExitT = 1;
+let _convexFace = null;
+function intersectConvexCell(frame, cell) {
+  if (intersectAABB(frame, cell.min, cell.max) < 0) return -1;
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  let t0 = 0;
+  let t1 = 1;
+  let entryFace = null;
+  for (const face of cell.faces) {
+    const n = face.normal;
+    const distance = n[0] * f.x + n[1] * f.y + n[2] * f.z + face.constant;
+    const denominator = n[0] * d.x + n[1] * d.y + n[2] * d.z;
+    if (Math.abs(denominator) < 1e-12) {
+      if (distance > 1e-7) return -1;
+      continue;
+    }
+    const t = -distance / denominator;
+    if (denominator < 0) {
+      if (t > t0) {
+        t0 = t;
+        entryFace = face;
+      }
+    } else if (t < t1) {
+      t1 = t;
+    }
+    if (t0 > t1 + 1e-8) return -1;
+  }
+  if (t1 < 0 || t0 > 1) return -1;
+  _convexExitT = Math.min(1, t1);
+  _convexFace = entryFace;
+  return Math.max(0, t0);
+}
+
+const _cellIntervals = [];
+const _cellIntervalPool = [];
+function cellInterval(index) {
+  let record = _cellIntervalPool[index];
+  if (!record) {
+    record = { t: 0, tExit: 0, face: null };
+    _cellIntervalPool[index] = record;
+  }
+  return record;
+}
+
+function traceCollisionShell(cells, frame, out) {
+  if (!Array.isArray(cells) || !cells.length) return;
+  _cellIntervals.length = 0;
+  for (const cell of cells) {
+    const t = intersectConvexCell(frame, cell);
+    if (t < 0) continue;
+    const record = cellInterval(_cellIntervals.length);
+    record.t = t;
+    record.tExit = _convexExitT;
+    record.face = _convexFace;
+    _cellIntervals.push(record);
+  }
+  _cellIntervals.sort((a, b) => a.t - b.t || b.tExit - a.tExit);
+  for (let index = 0; index < _cellIntervals.length;) {
+    const first = _cellIntervals[index++];
+    let tExit = first.tExit;
+    while (index < _cellIntervals.length && _cellIntervals[index].t <= tExit + 1e-6) {
+      tExit = Math.max(tExit, _cellIntervals[index].tExit);
+      index++;
+    }
+    // A combat trace always begins outside a target. A zero-entry interval
+    // can occur only in a synthetic/internal probe and has no outward face to
+    // resolve against, so leave it to the next closed component.
+    const face = first.face;
+    if (!face || !face.plate) continue;
+    const n = face.normal;
+    const cosI = Math.min(1, Math.max(0,
+      -(_dirN[frame].x * n[0] + _dirN[frame].y * n[1] + _dirN[frame].z * n[2])));
+    out.push({
+      t: first.t,
+      tExit,
+      kind: 'plate',
+      plate: face.plate,
+      collisionFace: face,
+      point: _pt.copy(_fromL[frame]).addScaledVector(_dirL[frame], first.t)
+        .clone().applyMatrix4(_forward[frame]),
+      normal: _n.set(n[0], n[1], n[2]).clone().transformDirection(_forward[frame]),
+      impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+    });
   }
 }
 
@@ -225,6 +316,186 @@ function intersectAABB(frame, min, max) {
   }
   _aabbExitT = t1;
   return t0;
+}
+
+let _shapeExitT = 1;
+function intersectEllipsoid(frame, shape) {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  const c = shape.center;
+  const r = shape.radii;
+  const ox = (f.x - c[0]) / r[0];
+  const oy = (f.y - c[1]) / r[1];
+  const oz = (f.z - c[2]) / r[2];
+  const dx = d.x / r[0];
+  const dy = d.y / r[1];
+  const dz = d.z / r[2];
+  const a = dx * dx + dy * dy + dz * dz;
+  const b = 2 * (ox * dx + oy * dy + oz * dz);
+  const cc = ox * ox + oy * oy + oz * oz - 1;
+  if (a < 1e-14) {
+    if (cc > 0) return -1;
+    _shapeExitT = 1;
+    return 0;
+  }
+  const discriminant = b * b - 4 * a * cc;
+  if (discriminant < 0) return -1;
+  const root = Math.sqrt(discriminant);
+  let t0 = (-b - root) / (2 * a);
+  let t1 = (-b + root) / (2 * a);
+  if (t0 > t1) [t0, t1] = [t1, t0];
+  if (t1 < 0 || t0 > 1) return -1;
+  _shapeExitT = Math.min(1, t1);
+  return Math.max(0, t0);
+}
+
+function intersectEllipticCylinder(frame, shape) {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  const center = shape.center;
+  const axis = shape.axis;
+  const fx = f.x - center[0];
+  const fy = f.y - center[1];
+  const fz = f.z - center[2];
+  const r0f = axis === 0 ? fy : fx;
+  const r1f = axis === 2 ? fy : fz;
+  const r0d = axis === 0 ? d.y : d.x;
+  const r1d = axis === 2 ? d.y : d.z;
+  let t0 = 0;
+  let t1 = 1;
+  const o0 = r0f / shape.radii[0];
+  const o1 = r1f / shape.radii[1];
+  const q0 = r0d / shape.radii[0];
+  const q1 = r1d / shape.radii[1];
+  const qa = q0 * q0 + q1 * q1;
+  const qb = 2 * (o0 * q0 + o1 * q1);
+  const qc = o0 * o0 + o1 * o1 - 1;
+  if (qa < 1e-14) {
+    if (qc > 0) return -1;
+  } else {
+    const discriminant = qb * qb - 4 * qa * qc;
+    if (discriminant < 0) return -1;
+    const root = Math.sqrt(discriminant);
+    let a = (-qb - root) / (2 * qa);
+    let b = (-qb + root) / (2 * qa);
+    if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, b);
+  }
+  const half = shape.halfLength;
+  const da = axis === 0 ? d.x : axis === 1 ? d.y : d.z;
+  const fa = axis === 0 ? fx : axis === 1 ? fy : fz;
+  if (Math.abs(da) < 1e-12) {
+    if (Math.abs(fa) > half) return -1;
+  } else {
+    let a = (-half - fa) / da;
+    let b = (half - fa) / da;
+    if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, b);
+  }
+  if (t0 > t1 || t1 < 0 || t0 > 1) return -1;
+  _shapeExitT = Math.min(1, t1);
+  return Math.max(0, t0);
+}
+
+let _intervalT0 = 0;
+let _intervalT1 = 1;
+function sphereInterval(frame, center, radius) {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  const ox = f.x - center[0];
+  const oy = f.y - center[1];
+  const oz = f.z - center[2];
+  const a = d.lengthSq();
+  const b = 2 * (ox * d.x + oy * d.y + oz * d.z);
+  const c = ox * ox + oy * oy + oz * oz - radius * radius;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0 || a < 1e-14) return false;
+  const root = Math.sqrt(disc);
+  let t0 = (-b - root) / (2 * a);
+  let t1 = (-b + root) / (2 * a);
+  if (t0 > t1) [t0, t1] = [t1, t0];
+  if (t1 < 0 || t0 > 1) return false;
+  _intervalT0 = Math.max(0, t0);
+  _intervalT1 = Math.min(1, t1);
+  return true;
+}
+
+function cylinderInterval(frame, a, b, radius) {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  const bax = b[0] - a[0];
+  const bay = b[1] - a[1];
+  const baz = b[2] - a[2];
+  const lengthSq = bax * bax + bay * bay + baz * baz;
+  if (lengthSq < 1e-12) return false;
+  const oax = f.x - a[0];
+  const oay = f.y - a[1];
+  const oaz = f.z - a[2];
+  const dd = d.lengthSq();
+  const dba = d.x * bax + d.y * bay + d.z * baz;
+  const oba = oax * bax + oay * bay + oaz * baz;
+  const od = oax * d.x + oay * d.y + oaz * d.z;
+  const oo = oax * oax + oay * oay + oaz * oaz;
+  const qa = dd - dba * dba / lengthSq;
+  const qb = 2 * (od - oba * dba / lengthSq);
+  const qc = oo - oba * oba / lengthSq - radius * radius;
+  let t0 = 0;
+  let t1 = 1;
+  if (qa < 1e-14) {
+    if (qc > 0) return false;
+  } else {
+    const discriminant = qb * qb - 4 * qa * qc;
+    if (discriminant < 0) return false;
+    const root = Math.sqrt(discriminant);
+    let x0 = (-qb - root) / (2 * qa);
+    let x1 = (-qb + root) / (2 * qa);
+    if (x0 > x1) [x0, x1] = [x1, x0];
+    t0 = Math.max(t0, x0);
+    t1 = Math.min(t1, x1);
+  }
+  if (Math.abs(dba) < 1e-12) {
+    if (oba < 0 || oba > lengthSq) return false;
+  } else {
+    let x0 = -oba / dba;
+    let x1 = (lengthSq - oba) / dba;
+    if (x0 > x1) [x0, x1] = [x1, x0];
+    t0 = Math.max(t0, x0);
+    t1 = Math.min(t1, x1);
+  }
+  if (t0 > t1 || t1 < 0 || t0 > 1) return false;
+  _intervalT0 = Math.max(0, t0);
+  _intervalT1 = Math.min(1, t1);
+  return true;
+}
+
+function intersectCapsule(frame, shape) {
+  let t0 = Infinity;
+  let t1 = -Infinity;
+  if (cylinderInterval(frame, shape.a, shape.b, shape.radius)) {
+    t0 = Math.min(t0, _intervalT0);
+    t1 = Math.max(t1, _intervalT1);
+  }
+  if (sphereInterval(frame, shape.a, shape.radius)) {
+    t0 = Math.min(t0, _intervalT0);
+    t1 = Math.max(t1, _intervalT1);
+  }
+  if (sphereInterval(frame, shape.b, shape.radius)) {
+    t0 = Math.min(t0, _intervalT0);
+    t1 = Math.max(t1, _intervalT1);
+  }
+  if (!Number.isFinite(t0) || t1 < t0) return -1;
+  _shapeExitT = t1;
+  return t0;
+}
+
+function intersectVolumeShape(frame, shape) {
+  if (!shape) return -1;
+  if (shape.kind === 'ellipsoid') return intersectEllipsoid(frame, shape);
+  if (shape.kind === 'capsule') return intersectCapsule(frame, shape);
+  if (shape.kind === 'ellipticCylinder') return intersectEllipticCylinder(frame, shape);
+  return -1;
 }
 
 /**
@@ -351,9 +622,11 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
     return false;
   };
 
-  const testPlates = (plates, frame) => {
+  const collisionShells = armorModel.collisionShells || null;
+  const testPlates = (plates, frame, replaceMain) => {
     if (!plates) return;
     for (const plate of plates) {
+      if (replaceMain && (plate.kind || 'main') === 'main') continue;
       if (plate.kind === 'era' && eraSpent.has(plate.name)) continue;
       if (plate.kind === 'external' && trackCovered(plate.moduleLink)) continue;
       const fr = plate.gunFollow ? FR_GUN : frame;
@@ -371,8 +644,12 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
     }
   };
 
-  testPlates(armorModel.hullPlates, FR_HULL);
-  testPlates(armorModel.turretPlates, FR_TURRET);
+  const hullCells = collisionShells?.hull;
+  const turretCells = collisionShells?.turret;
+  testPlates(armorModel.hullPlates, FR_HULL, !!hullCells?.length);
+  testPlates(armorModel.turretPlates, FR_TURRET, !!turretCells?.length);
+  traceCollisionShell(hullCells, FR_HULL, out);
+  traceCollisionShell(turretCells, FR_TURRET, out);
 
   if (trackShapes) {
     // one module record per module name (min entry / max exit across the
@@ -421,20 +698,29 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
   }
 
   if (armorModel.modules) {
-    for (const box of armorModel.modules) {
-      if (trackCovered(box.module)) continue;
-      const fr = box.turretLocal ? FR_TURRET : FR_HULL;
+    for (const volume of armorModel.modules) {
+      if (trackCovered(volume.module)) continue;
+      const fr = volume.turretLocal ? FR_TURRET : FR_HULL;
       let t = Infinity;
-      let tExit = 1;
-      if (Array.isArray(box.parts) && box.parts.length) {
-        for (const shape of box.parts) {
-          const shapeT = intersectAABB(fr, shape.min, shape.max);
-          if (shapeT < 0 || shapeT >= t) continue;
-          t = shapeT;
-          tExit = _aabbExitT;
+      let tExit = -Infinity;
+      if (Array.isArray(volume.shapes) && volume.shapes.length) {
+        for (const shape of volume.shapes) {
+          const shapeT = intersectVolumeShape(fr, shape);
+          if (shapeT < 0) continue;
+          if (shapeT < t) t = shapeT;
+          if (_shapeExitT > tExit) tExit = _shapeExitT;
+        }
+      } else if (Array.isArray(volume.parts) && volume.parts.length) {
+        for (const part of volume.parts) {
+          const partT = intersectAABB(fr, part.min, part.max);
+          if (partT < 0) continue;
+          if (partT < t) t = partT;
+          if (_aabbExitT > tExit) tExit = _aabbExitT;
         }
       } else {
-        t = intersectAABB(fr, box.min, box.max);
+        // Compatibility for hand-built probes. Every playable vehicle is
+        // finalized with precise shapes and fleet tests reject this fallback.
+        t = intersectAABB(fr, volume.min, volume.max);
         tExit = _aabbExitT;
       }
       if (t < 0 || !Number.isFinite(t)) continue;
@@ -442,25 +728,37 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         t,
         tExit,
         kind: 'module',
-        module: box.module,
+        module: volume.module,
         // Damageable without hull penetration (armor doc §12: viewports are
         // external). Explicit box.external overrides the by-name default.
-        external: box.external !== undefined ? !!box.external : box.module === 'optics',
+        external: volume.external !== undefined ? !!volume.external : volume.module === 'optics',
         point: _pt.copy(_fromL[fr]).addScaledVector(_dirL[fr], t).clone().applyMatrix4(_forward[fr]),
       });
     }
   }
 
   if (armorModel.crew) {
-    for (const box of armorModel.crew) {
-      const fr = box.turretLocal ? FR_TURRET : FR_HULL;
-      const t = intersectAABB(fr, box.min, box.max);
-      if (t < 0) continue;
+    for (const volume of armorModel.crew) {
+      const fr = volume.turretLocal ? FR_TURRET : FR_HULL;
+      let t = Infinity;
+      let tExit = -Infinity;
+      if (Array.isArray(volume.shapes) && volume.shapes.length) {
+        for (const shape of volume.shapes) {
+          const shapeT = intersectVolumeShape(fr, shape);
+          if (shapeT < 0) continue;
+          if (shapeT < t) t = shapeT;
+          if (_shapeExitT > tExit) tExit = _shapeExitT;
+        }
+      } else {
+        t = intersectAABB(fr, volume.min, volume.max);
+        tExit = _aabbExitT;
+      }
+      if (t < 0 || !Number.isFinite(t)) continue;
       out.push({
         t,
-        tExit: _aabbExitT,
+        tExit,
         kind: 'crew',
-        crew: box.crew,
+        crew: volume.crew,
         point: _pt.copy(_fromL[fr]).addScaledVector(_dirL[fr], t).clone().applyMatrix4(_forward[fr]),
       });
     }
@@ -551,10 +849,22 @@ export function blastTargets(pose, armorModel) {
   if (armorModel.modules) {
     for (const box of armorModel.modules) {
       const m = box.turretLocal ? _turretM : _hullM;
-      const parts = Array.isArray(box.parts) && box.parts.length ? box.parts : null;
-      const shapeCount = parts ? parts.length : 1;
+      const shapes = Array.isArray(box.shapes) && box.shapes.length ? box.shapes : null;
+      const parts = !shapes && Array.isArray(box.parts) && box.parts.length ? box.parts : null;
+      const shapeCount = shapes ? shapes.length : parts ? parts.length : 1;
       for (let index = 0; index < shapeCount; index++) {
-        const shape = parts ? parts[index] : box;
+        const shape = shapes ? shapes[index] : parts ? parts[index] : box;
+        const center = shape.kind === 'capsule'
+          ? [
+            (shape.a[0] + shape.b[0]) * 0.5,
+            (shape.a[1] + shape.b[1]) * 0.5,
+            (shape.a[2] + shape.b[2]) * 0.5,
+          ]
+          : shape.center || [
+            (shape.min[0] + shape.max[0]) * 0.5,
+            (shape.min[1] + shape.max[1]) * 0.5,
+            (shape.min[2] + shape.max[2]) * 0.5,
+          ];
         out.push({
           kind: 'module',
           name: box.module,
@@ -562,11 +872,7 @@ export function blastTargets(pose, armorModel) {
             box.external !== undefined
               ? !!box.external
               : box.module === 'optics' || box.module === 'trackL' || box.module === 'trackR',
-          point: new Vector3(
-            (shape.min[0] + shape.max[0]) * 0.5,
-            (shape.min[1] + shape.max[1]) * 0.5,
-            (shape.min[2] + shape.max[2]) * 0.5
-          ).applyMatrix4(m),
+          point: new Vector3(center[0], center[1], center[2]).applyMatrix4(m),
         });
       }
     }
@@ -574,16 +880,26 @@ export function blastTargets(pose, armorModel) {
   if (armorModel.crew) {
     for (const box of armorModel.crew) {
       const m = box.turretLocal ? _turretM : _hullM;
-      out.push({
-        kind: 'crew',
-        name: box.crew,
-        external: false,
-        point: new Vector3(
-          (box.min[0] + box.max[0]) * 0.5,
-          (box.min[1] + box.max[1]) * 0.5,
-          (box.min[2] + box.max[2]) * 0.5
-        ).applyMatrix4(m),
-      });
+      const shapes = Array.isArray(box.shapes) && box.shapes.length ? box.shapes : [box];
+      for (const shape of shapes) {
+        const center = shape.kind === 'capsule'
+          ? [
+            (shape.a[0] + shape.b[0]) * 0.5,
+            (shape.a[1] + shape.b[1]) * 0.5,
+            (shape.a[2] + shape.b[2]) * 0.5,
+          ]
+          : shape.center || [
+            (shape.min[0] + shape.max[0]) * 0.5,
+            (shape.min[1] + shape.max[1]) * 0.5,
+            (shape.min[2] + shape.max[2]) * 0.5,
+          ];
+        out.push({
+          kind: 'crew',
+          name: box.crew,
+          external: false,
+          point: new Vector3(center[0], center[1], center[2]).applyMatrix4(m),
+        });
+      }
     }
   }
   return out;

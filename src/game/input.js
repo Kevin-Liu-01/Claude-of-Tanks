@@ -159,6 +159,10 @@ const DEFAULT_SETTINGS = {
   // connection/performance feedback, so new profiles start with it enabled;
   // the Interface switch remains available as an explicit opt-out.
   showPerfMeter: true,
+  // Scoped armor flashlight (official WoT/Blitz convention): new profiles
+  // start with the shot-dependent red/amber/green surface overlay enabled;
+  // players can opt out in Gameplay → Interface.
+  armorAimOverlay: true,
   // Sound mix (settings panel SOUND tab). The synth audio stack
   // (src/audio/audio.js) reads these at graph build and live-follows the
   // 'ui:volumes' bus event the panel emits on every slider change.
@@ -427,6 +431,7 @@ export function createInput(opts = {}) {
     if (AI_DIFFICULTIES.includes(storedSettings.aiDifficulty)) settings.aiDifficulty = storedSettings.aiDifficulty;
     if (RMB_MODES.includes(storedSettings.rmbMode)) settings.rmbMode = storedSettings.rmbMode;
     if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
+    if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
@@ -957,6 +962,7 @@ export function createInput(opts = {}) {
 
     /** @returns {{sensitivity:number,invertY:boolean,sniperSensScale:number,
      *  aimSmoothing:number,padSensitivity:number,aiDifficulty:string,
+     *  showPerfMeter:boolean,armorAimOverlay:boolean,
      *  rmbMode:('hold'|'toggle'|'freelook')}} live settings object */
     getSettings() { return settings; },
 
@@ -972,6 +978,7 @@ export function createInput(opts = {}) {
       };
       if (key === 'invertY') settings.invertY = !!value;
       else if (key === 'showPerfMeter') settings.showPerfMeter = !!value;
+      else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);

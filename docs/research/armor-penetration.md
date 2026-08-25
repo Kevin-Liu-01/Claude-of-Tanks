@@ -5,11 +5,37 @@ layer (composite armor, ERA, APFSDS). Everything below is written to be implemen
 directly: formulas, constants, and pseudocode. Angles are in degrees unless noted;
 `impactAngle` is measured **from the plate normal** (0° = perpendicular, dead-on hit).
 
-Primary sources: [wiki.wargaming.net Battle Mechanics](https://wiki.wargaming.net/en/Battle_Mechanics),
-[WoT Fandom: Gunnery & Armor Penetration](https://worldoftanks.fandom.com/wiki/Gunnery_%26_Armor_Penetration),
-[13disciple module-damage breakdown](https://www.13disciple.stream/module-damage-mechanics.html),
-Wargaming support articles, [Kontakt-5 (Wikipedia)](https://en.wikipedia.org/wiki/Kontakt-5),
-[Sloped armour (Wikipedia)](https://en.wikipedia.org/wiki/Sloped_armour).
+Primary sources: [Wargaming: Armor Penetration](https://wargaming.net/support/en/products/wot/article/10220/?redirect_lang=en),
+[Wargaming: WoT Blitz penetration mechanics](https://www.wargaming.net/support/en/products/wotb/article/15411/),
+[World of Tanks: How to Survive](https://worldoftanks.com/en/content/guide/newcomers-guide/how_to_survive/),
+[World of Tanks Blitz Update 8.1](https://na.wotblitz.com/en/news/updates/update-8-1/),
+[Wargaming: WoT Blitz armor highlighting](https://wargaming.net/support/en/products/wotb/article/15412/?lang=en&redirect_lang=en),
+and the official [World of Tanks 2.0 release notes](https://worldoftanks.com/en/content/docs/release_notes/release-notes-2-0/).
+Secondary engineering references are used only where official material does not
+publish an implementation constant: [13disciple module-damage breakdown](https://www.13disciple.stream/module-damage-mechanics.html),
+[Kontakt-5 (Wikipedia)](https://en.wikipedia.org/wiki/Kontakt-5), and
+[sloped armour](https://en.wikipedia.org/wiki/Sloped_armour).
+
+---
+
+## 0. Scoped penetration feedback contract
+
+Official WoT describes an Armor Flashlight in sniper view: the aimed surface is
+classified by the current shell, range and effective armor, with red for low
+penetration chance, yellow for moderate, and green for high. The documented PC
+implementation has a slight update delay and a 300 m range. Blitz instead uses
+red intensity for blocked armor and explicitly excludes external modules/screens
+from the colored base surface even though those layers can still stop the shot.
+
+Claude of Tanks uses the same information hierarchy with a continuous
+red → amber → green gradient. The source is not a painted texture or nominal
+thickness table: every sample calls the same layered `queryAimArmor` and
+`estimatePenRatio` path as the reticle, including normalization, ricochet,
+distance falloff, ERA state, tracks and spaced armor. It is default-on by user
+request, can be disabled in Gameplay → Interface, is restricted to scoped and
+spotted live targets, and updates in bounded batches. Like WoT's indicator, it
+is guidance rather than a promise: dispersion and penetration/damage rolls still
+resolve when the shot is fired.
 
 ---
 
@@ -195,7 +221,8 @@ Model each tank as a set of convex collision plates grouped into zones, each wit
 thickness: hull front upper/lower glacis, hull sides, hull rear, hull roof/belly (thin — 
 overmatch bait), turret front, mantlet (often 2 layers = spaced), turret sides/rear/roof,
 cupola (weakspot), MG port / driver's hatch weakspots. Internal volume contains module
-and crew hitboxes (boxes/capsules) placed roughly where the real components live:
+and crew hitboxes (ellipsoids, capsules, and elliptic cylinders) placed where the
+first-party procedural geometry and authored systems layout agree:
 engine+fuel rear, transmission front (German tanks: front fires), ammo rack in turret
 bustle and/or hull front sides, driver front-left, etc.
 

@@ -3,7 +3,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTank } from './tankFactory.js';
+import { Vector3 } from 'three';
 import { createCombatState, startReload } from '../sim/damage.js';
+import { traceTank } from '../sim/armor.js';
 import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.js';
 import { ALL_TANK_IDS, getSpec } from './specs.js';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
@@ -41,12 +43,119 @@ let missileRacks = 0;
 let cupolaMeshes = 0;
 let hatchMeshes = 0;
 let segmentedModules = 0;
+let collisionCells = 0;
+let preciseVolumes = 0;
+let seamAuditRays = 0;
+let seamAuditInteriorRays = 0;
+
+function auditClosedShell(id, spec) {
+  const armor = spec.armor;
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const [cells, offset] of [
+    [armor.collisionShells.hull, [0, 0, 0]],
+    [armor.collisionShells.turret, armor.turretPivot || [0, 0, 0]],
+  ]) {
+    for (const cell of cells) {
+      for (let axis = 0; axis < 3; axis++) {
+        min[axis] = Math.min(min[axis], cell.min[axis] + offset[axis]);
+        max[axis] = Math.max(max[axis], cell.max[axis] + offset[axis]);
+      }
+    }
+  }
+  const pose = {
+    pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
+  };
+  const samples = 7;
+  for (let axis = 0; axis < 3; axis++) {
+    const cross = [0, 1, 2].filter((value) => value !== axis);
+    for (let row = 0; row < samples; row++) {
+      for (let column = 0; column < samples; column++) {
+        const from = new Vector3();
+        const to = new Vector3();
+        from.setComponent(axis, max[axis] + 1);
+        to.setComponent(axis, min[axis] - 1);
+        const u = (row + 0.5) / samples;
+        const v = (column + 0.5) / samples;
+        const a = min[cross[0]] + (max[cross[0]] - min[cross[0]]) * u;
+        const b = min[cross[1]] + (max[cross[1]] - min[cross[1]]) * v;
+        from.setComponent(cross[0], a);
+        from.setComponent(cross[1], b);
+        to.setComponent(cross[0], a);
+        to.setComponent(cross[1], b);
+        const hits = traceTank(from, to, pose, armor);
+        seamAuditRays++;
+        const reachesInterior = hits.some((hit) => hit.kind === 'crew'
+          || (hit.kind === 'module' && hit.external !== true && !hit.barrel
+            && hit.module !== 'gun' && hit.module !== 'trackL' && hit.module !== 'trackR'));
+        if (!reachesInterior) continue;
+        seamAuditInteriorRays++;
+        assert(hits.some((hit) => hit.kind === 'plate' && hit.plate?.kind === 'main'),
+          `${id}: interior ray on axis ${axis} grid ${row},${column} at ${a.toFixed(3)},${b.toFixed(3)} crosses exact main armor (${hits.map((hit) => `${hit.kind}:${hit.module || hit.crew || hit.plate?.name || ''}`).join(', ')})`);
+      }
+    }
+  }
+}
+
+function shapeCenter(shape) {
+  return shape.kind === 'capsule'
+    ? shape.a.map((value, axis) => (value + shape.b[axis]) * 0.5)
+    : shape.center;
+}
+
+function shapeSupport(shape, normal) {
+  if (shape.kind === 'ellipsoid') {
+    return Math.hypot(...normal.map((value, axis) => value * shape.radii[axis]));
+  }
+  if (shape.kind === 'capsule') {
+    const half = shape.a.map((value, axis) => (shape.b[axis] - value) * 0.5);
+    return Math.abs(normal.reduce((sum, value, axis) => sum + value * half[axis], 0))
+      + shape.radius;
+  }
+  const radial = [0, 1, 2].filter((axis) => axis !== shape.axis);
+  return Math.abs(normal[shape.axis]) * shape.halfLength + Math.hypot(
+    normal[radial[0]] * shape.radii[0],
+    normal[radial[1]] * shape.radii[1],
+  );
+}
+
+function shapeInsideCell(shape, cell) {
+  const center = shapeCenter(shape);
+  return cell.faces.every((face) => (
+    face.normal.reduce((sum, value, axis) => sum + value * center[axis], face.constant)
+      + shapeSupport(shape, face.normal) <= 1e-5
+  ));
+}
+
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
   const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
   assert(Array.isArray(calibration.hullStructures), `${id}: hull structure receipts`);
   assert(Array.isArray(calibration.turretStructures), `${id}: turret structure receipts`);
+  assert.equal(calibration.hullStructureCollision?.length, calibration.hullStructures.length,
+    `${id}: every hull roof structure has an exact convex collision cell`);
+  assert.equal(calibration.turretStructureCollision?.length, calibration.turretStructures.length,
+    `${id}: every turret roof structure has an exact convex collision cell`);
   assert(Array.isArray(calibration.moduleShapes), `${id}: module shape receipts`);
+  assert(Array.isArray(calibration.hullCollision) && calibration.hullCollision.length >= 5,
+    `${id}: closed geometry-derived hull collision cells`);
+  assert(Array.isArray(calibration.turretCollision), `${id}: turret collision receipt`);
+  const shell = spec.armor.collisionShells;
+  assert(shell && Array.isArray(shell.hull) && shell.hull.length >= 5,
+    `${id}: finalized hull collision shell`);
+  assert(Array.isArray(shell.turret), `${id}: finalized turret collision shell`);
+  if (calibration.turret) assert(shell.turret.length >= 5, `${id}: finalized turret cells`);
+  for (const cell of [...shell.hull, ...shell.turret]) {
+    assert(Array.isArray(cell.vertices) && cell.vertices.length >= 4, `${id}: collision vertices`);
+    assert(Array.isArray(cell.faces) && cell.faces.length >= 4, `${id}: collision faces`);
+    for (const face of cell.faces) {
+      assert(face.plate && (face.plate.kind || 'main') === 'main', `${id}: collision face owns main armor`);
+      assert.equal(face.normal.length, 3, `${id}: collision face normal`);
+      assert(Number.isFinite(face.constant), `${id}: collision face plane`);
+    }
+    collisionCells++;
+  }
+  auditClosedShell(id, spec);
   const boxes = spec.armor.modules;
   const names = boxes.map((box) => box.module);
   assert.equal(new Set(names).size, names.length, `${id}: one damage volume per module`);
@@ -68,6 +177,19 @@ for (const id of ALL_TANK_IDS) {
     for (let axis = 0; axis < 3; axis++) {
       assert(Number.isFinite(box.min[axis]) && box.min[axis] < box.max[axis],
         `${id}/${box.module || box.crew}: positive axis ${axis} depth`);
+    }
+    assert(Array.isArray(box.shapes) && box.shapes.length > 0,
+      `${id}/${box.module || box.crew}: precise non-AABB shapes`);
+    for (const shape of box.shapes) {
+      assert(['ellipsoid', 'capsule', 'ellipticCylinder'].includes(shape.kind),
+        `${id}/${box.module || box.crew}: supported precise shape ${shape.kind}`);
+      preciseVolumes++;
+      if (box.external !== true && box.module !== 'trackL' && box.module !== 'trackR'
+          && box.module !== 'gun' && box.module !== 'optics') {
+        const cells = box.turretLocal ? shell.turret : shell.hull;
+        assert(cells.some((cell) => shapeInsideCell(shape, cell)),
+          `${id}/${box.module || box.crew}: precise internal shape stays inside closed armor`);
+      }
     }
     if (!Array.isArray(box.parts)) continue;
     assert(box.parts.length > 0, `${id}/${box.module || box.crew}: segmented volume has parts`);
@@ -189,4 +311,4 @@ startReload(ifvCombat, ifvSpec);
 assert(ifvCombat.reload.totalS > ifvSpec.gun.shells[missileSlot].reloadS * 1.8,
   'damaged feed and missile rack stack for guided rounds');
 
-console.log(`combatAnatomy.selftest: ${ALL_TANK_IDS.length} tanks, ${autoloaders} autoloaders, ${feedSystems} IFV feeds, ${missileRacks} missile racks, ${cupolaMeshes} cupola meshes, ${hatchMeshes} hatch meshes, ${segmentedModules} segmented modules`);
+console.log(`combatAnatomy.selftest: ${ALL_TANK_IDS.length} tanks, ${collisionCells} closed collision cells, ${preciseVolumes} non-AABB volumes, ${seamAuditInteriorRays}/${seamAuditRays} interior rays armored, ${autoloaders} autoloaders, ${feedSystems} IFV feeds, ${missileRacks} missile racks, ${cupolaMeshes} cupola meshes, ${hatchMeshes} hatch meshes, ${segmentedModules} segmented modules`);
