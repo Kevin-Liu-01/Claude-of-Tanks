@@ -550,6 +550,21 @@ const SHADOW_SUPPORT_DIRECTIONS = (() => {
   }
   return Object.freeze(directions);
 })();
+// authoredShadowHull evaluates every source vertex against every support
+// direction. Keep the Vector3 list as the readable authoring contract, but
+// flatten it once for the million-iteration hot loop below. Accessing three
+// object properties for every dot product was measurable cold garage/battle
+// build work on constrained CPUs; packed numeric lanes preserve the exact
+// IEEE-754 operation order and therefore the exact selected support points.
+const SHADOW_SUPPORT_X = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
+const SHADOW_SUPPORT_Y = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
+const SHADOW_SUPPORT_Z = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
+for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
+  const direction = SHADOW_SUPPORT_DIRECTIONS[i];
+  SHADOW_SUPPORT_X[i] = direction.x;
+  SHADOW_SUPPORT_Y[i] = direction.y;
+  SHADOW_SUPPORT_Z[i] = direction.z;
+}
 
 function authoredShadowHull(owner, sourceMeshes, insetM) {
   const sources = sourceMeshes.filter((mesh) => mesh?.isMesh &&
@@ -592,8 +607,9 @@ function authoredShadowHull(owner, sourceMeshes, insetM) {
       for (let directionIndex = 0;
         directionIndex < SHADOW_SUPPORT_DIRECTIONS.length;
         directionIndex++) {
-        const direction = SHADOW_SUPPORT_DIRECTIONS[directionIndex];
-        const dot = px * direction.x + py * direction.y + pz * direction.z;
+        const dot = px * SHADOW_SUPPORT_X[directionIndex]
+          + py * SHADOW_SUPPORT_Y[directionIndex]
+          + pz * SHADOW_SUPPORT_Z[directionIndex];
         if (dot <= bestDots[directionIndex]) continue;
         bestDots[directionIndex] = dot;
         const offset = directionIndex * 3;
@@ -7708,7 +7724,12 @@ export function createTank(specId, engineCtx, opts = {}) {
     isDestroyed: () => destroyed,
   });
 
+  const decorStartedAt = performance.now();
   dressTank();
+  // Expose this one-time procedural stage to the existing garage/battle
+  // diagnostics. Decoration seating performs real surface probes and is
+  // otherwise indistinguishable from core geometry in an outer build timer.
+  root.userData.decorBuildMs = performance.now() - decorStartedAt;
 
   // Family builders historically retinted shared/clone track materials after
   // construction. Reassert only explicit working-gear roles after every

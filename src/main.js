@@ -1283,6 +1283,7 @@ function setPedestalTank(specId, force = false) {
       phaseAt = performance.now();
       const incoming = buildPedestalVisual(specId, true);
       phases.buildMs = Math.round(performance.now() - phaseAt);
+      phases.decorMs = Math.round(incoming.root.userData.decorBuildMs || 0);
       incoming.__pedestalCompiling = true;
       // Boot's following `post` stage compiles the complete scene before the
       // first present, so only interactive cold switches need this dedicated

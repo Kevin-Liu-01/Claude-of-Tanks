@@ -35,6 +35,7 @@ const limitMs = Math.max(1, Number(opt('limit', '5000')) || 5000);
 const profileTarget = opt('profile', '');
 const sequenceOption = opt('sequence', '');
 const screenshotPath = opt('screenshot', '');
+const verifyDecorationProbe = args.includes('--decor-probe');
 
 const DEFAULT_SEQUENCE = [
   'm1a1', 'leclerc', 'tiger1',           // cold representatives
@@ -80,7 +81,7 @@ page.on('console', (m) => {
   if (m.type() === 'error' && !m.text().includes('favicon')) pageErrors.push(m.text());
 });
 
-await page.goto(`${url}?nosplash=1&tier=${deviceTier}&gfxreset=1`, {
+await page.goto(`${url}?nosplash=1&tier=${deviceTier}&gfxreset=1${verifyDecorationProbe ? '&decorprobe=1' : ''}`, {
   waitUntil: 'domcontentloaded', timeout: 120000,
 });
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
@@ -182,7 +183,7 @@ if (timings) {
   console.log('[switch-probe] in-page __SWITCH_TIMINGS cross-check:');
   for (const t of timings) {
     const phases = t.path === 'procedural'
-      ? ` bake=${t.prebakeMs ?? '-'} build=${t.buildMs ?? '-'} compile=${t.compileMs ?? '-'}`
+      ? ` bake=${t.prebakeMs ?? '-'} build=${t.buildMs ?? '-'} decor=${t.decorMs ?? '-'} compile=${t.compileMs ?? '-'}`
       : '';
     console.log(`    ${t.id.padEnd(10)} ${String(t.ms).padStart(5)} ms  (${t.path}${phases})`);
   }

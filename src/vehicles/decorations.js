@@ -1447,7 +1447,233 @@ function probeTargets(group) {
   return out;
 }
 
+// Decoration slots fire many axis-aligned surface rays at the same finished
+// hull/turret meshes. THREE.Mesh.raycast correctly evaluates them, but each
+// call walks every triangle again. A detailed procedural shell can contain
+// tens of thousands of triangles, turning deterministic cosmetic seating
+// into the largest cold garage-build stage.
+//
+// Build three short-lived projected grids (XZ for top rays, YZ for side rays,
+// XY for front/rear rays). Candidate hits still use THREE.Ray.intersectTriangle
+// with the source mesh's exact vertex order and material-side rule; only the
+// obviously unrelated triangles are skipped. The index dies as soon as the
+// decoration build returns, so it adds no resident battle/garage memory.
+const AXIS_GRID_MIN = 12;
+const AXIS_GRID_MAX = 32;
+const AXIS_GRID_MAX_CELLS_PER_TRIANGLE = 96;
+const AXIS_GRID_EPS = 1e-9;
+
+function projectedGrid(minU, maxU, minV, maxV, size) {
+  const spanU = Math.max(1e-6, maxU - minU);
+  const spanV = Math.max(1e-6, maxV - minV);
+  return {
+    minU, maxU, minV, maxV, size,
+    scaleU: size / spanU,
+    scaleV: size / spanV,
+    cells: new Array(size * size),
+    broad: [],
+  };
+}
+
+function projectedCell(grid, u, v) {
+  if (u < grid.minU - AXIS_GRID_EPS || u > grid.maxU + AXIS_GRID_EPS
+      || v < grid.minV - AXIS_GRID_EPS || v > grid.maxV + AXIS_GRID_EPS) return null;
+  const x = Math.min(grid.size - 1,
+    Math.max(0, Math.floor((u - grid.minU) * grid.scaleU)));
+  const y = Math.min(grid.size - 1,
+    Math.max(0, Math.floor((v - grid.minV) * grid.scaleV)));
+  return grid.cells[y * grid.size + x] || null;
+}
+
+function addProjectedTriangle(grid, minU, maxU, minV, maxV, encoded) {
+  const x0 = Math.min(grid.size - 1,
+    Math.max(0, Math.floor((minU - AXIS_GRID_EPS - grid.minU) * grid.scaleU)));
+  const x1 = Math.min(grid.size - 1,
+    Math.max(0, Math.floor((maxU + AXIS_GRID_EPS - grid.minU) * grid.scaleU)));
+  const y0 = Math.min(grid.size - 1,
+    Math.max(0, Math.floor((minV - AXIS_GRID_EPS - grid.minV) * grid.scaleV)));
+  const y1 = Math.min(grid.size - 1,
+    Math.max(0, Math.floor((maxV + AXIS_GRID_EPS - grid.minV) * grid.scaleV)));
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > AXIS_GRID_MAX_CELLS_PER_TRIANGLE) {
+    grid.broad.push(encoded);
+    return;
+  }
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const index = y * grid.size + x;
+      (grid.cells[index] || (grid.cells[index] = [])).push(encoded);
+    }
+  }
+}
+
+function buildAxisSurfaceIndex(group, targets) {
+  if (!targets.length || targets.length >= 2048) return null;
+  group.updateWorldMatrix(true, false);
+  const groupInverse = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const records = [];
+  const bounds = new THREE.Box3();
+  const corner = new THREE.Vector3();
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  let triangleTotal = 0;
+  for (const mesh of targets) {
+    if (Array.isArray(mesh.material)) return null;
+    const position = mesh.geometry?.getAttribute('position');
+    if (!position || position.count < 3) continue;
+    mesh.updateWorldMatrix(true, false);
+    const toGroup = new THREE.Matrix4().multiplyMatrices(groupInverse, mesh.matrixWorld);
+    const toLocal = new THREE.Matrix4().copy(toGroup).invert();
+    // Match Mesh.raycast's face-normal pipeline exactly. The legacy prober
+    // first transforms the geometry-local face normal into world space with
+    // the mesh normal matrix, then transforms that direction into group-local
+    // space. Collapsing those steps into getNormalMatrix(toGroup) is not
+    // equivalent when an ancestor has non-uniform scale.
+    const worldNormalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+    const box = mesh.geometry.boundingBox;
+    if (box && !box.isEmpty()) {
+      for (const x of [box.min.x, box.max.x]) {
+        for (const y of [box.min.y, box.max.y]) {
+          for (const z of [box.min.z, box.max.z]) {
+            bounds.expandByPoint(corner.set(x, y, z).applyMatrix4(toGroup));
+          }
+        }
+      }
+    }
+    const index = mesh.geometry.index?.array || null;
+    const triangleCount = Math.floor((index ? index.length : position.count) / 3);
+    records.push({ mesh, position, index, triangleCount, toGroup, toLocal, worldNormalMatrix });
+    triangleTotal += triangleCount;
+  }
+  if (!records.length || bounds.isEmpty()) return null;
+  const size = Math.max(AXIS_GRID_MIN, Math.min(AXIS_GRID_MAX,
+    Math.ceil(Math.sqrt(triangleTotal / 24))));
+  const xz = projectedGrid(bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z, size);
+  const yz = projectedGrid(bounds.min.y, bounds.max.y, bounds.min.z, bounds.max.z, size);
+  const xy = projectedGrid(bounds.min.x, bounds.max.x, bounds.min.y, bounds.max.y, size);
+  for (let targetIndex = 0; targetIndex < records.length; targetIndex++) {
+    const record = records[targetIndex];
+    if (record.triangleCount >= 0x100000) return null;
+    for (let triangle = 0; triangle < record.triangleCount; triangle++) {
+      const offset = triangle * 3;
+      const ia = record.index ? record.index[offset] : offset;
+      const ib = record.index ? record.index[offset + 1] : offset + 1;
+      const ic = record.index ? record.index[offset + 2] : offset + 2;
+      record.mesh.getVertexPosition(ia, a).applyMatrix4(record.toGroup);
+      record.mesh.getVertexPosition(ib, b).applyMatrix4(record.toGroup);
+      record.mesh.getVertexPosition(ic, c).applyMatrix4(record.toGroup);
+      const encoded = targetIndex * 0x100000 + triangle;
+      addProjectedTriangle(xz,
+        Math.min(a.x, b.x, c.x), Math.max(a.x, b.x, c.x),
+        Math.min(a.z, b.z, c.z), Math.max(a.z, b.z, c.z), encoded);
+      addProjectedTriangle(yz,
+        Math.min(a.y, b.y, c.y), Math.max(a.y, b.y, c.y),
+        Math.min(a.z, b.z, c.z), Math.max(a.z, b.z, c.z), encoded);
+      addProjectedTriangle(xy,
+        Math.min(a.x, b.x, c.x), Math.max(a.x, b.x, c.x),
+        Math.min(a.y, b.y, c.y), Math.max(a.y, b.y, c.y), encoded);
+    }
+  }
+
+  const rayGroup = new THREE.Ray();
+  const rayLocal = new THREE.Ray();
+  const hitLocal = new THREE.Vector3();
+  const hitGroup = new THREE.Vector3();
+  const bestPoint = new THREE.Vector3();
+  const va = new THREE.Vector3();
+  const vb = new THREE.Vector3();
+  const vc = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  let bestRecord = null;
+  let bestTriangle = -1;
+  let bestDistance = Infinity;
+  let activeRecord = null;
+
+  const testEncoded = (encoded) => {
+    const record = records[Math.floor(encoded / 0x100000)];
+    const triangle = encoded % 0x100000;
+    if (record !== activeRecord) {
+      activeRecord = record;
+      rayLocal.copy(rayGroup).applyMatrix4(record.toLocal);
+    }
+    const offset = triangle * 3;
+    const ia = record.index ? record.index[offset] : offset;
+    const ib = record.index ? record.index[offset + 1] : offset + 1;
+    const ic = record.index ? record.index[offset + 2] : offset + 2;
+    record.mesh.getVertexPosition(ia, va);
+    record.mesh.getVertexPosition(ib, vb);
+    record.mesh.getVertexPosition(ic, vc);
+    const side = record.mesh.material?.side ?? THREE.FrontSide;
+    const point = side === THREE.BackSide
+      ? rayLocal.intersectTriangle(vc, vb, va, true, hitLocal)
+      : rayLocal.intersectTriangle(va, vb, vc, side === THREE.FrontSide, hitLocal);
+    if (!point) return;
+    hitGroup.copy(point).applyMatrix4(record.toGroup);
+    const distance = hitGroup.distanceTo(rayGroup.origin);
+    if (distance < 0 || distance > 80 || distance >= bestDistance) return;
+    bestDistance = distance;
+    bestRecord = record;
+    bestTriangle = triangle;
+    bestPoint.copy(hitGroup);
+  };
+
+  return {
+    cast(origin, direction) {
+      let grid;
+      let u;
+      let v;
+      if (Math.abs(direction.y) > 0.999999) {
+        grid = xz; u = origin.x; v = origin.z;
+      } else if (Math.abs(direction.x) > 0.999999) {
+        grid = yz; u = origin.y; v = origin.z;
+      } else if (Math.abs(direction.z) > 0.999999) {
+        grid = xy; u = origin.x; v = origin.y;
+      } else return null;
+      rayGroup.set(origin, direction);
+      bestRecord = null;
+      bestTriangle = -1;
+      bestDistance = Infinity;
+      activeRecord = null;
+      const candidates = projectedCell(grid, u, v);
+      // Both lists are appended in source mesh/triangle order. Merge them in
+      // that same order so equal-distance coplanar faces choose the identical
+      // first triangle (and therefore identical authored face normal) as
+      // THREE.Mesh.raycast.
+      let broadIndex = 0;
+      let cellIndex = 0;
+      while (broadIndex < grid.broad.length || cellIndex < (candidates?.length || 0)) {
+        const broadEncoded = broadIndex < grid.broad.length
+          ? grid.broad[broadIndex] : Infinity;
+        const cellEncoded = cellIndex < (candidates?.length || 0)
+          ? candidates[cellIndex] : Infinity;
+        if (broadEncoded <= cellEncoded) {
+          testEncoded(broadEncoded);
+          broadIndex++;
+          if (broadEncoded === cellEncoded) cellIndex++;
+        } else {
+          testEncoded(cellEncoded);
+          cellIndex++;
+        }
+      }
+      if (!bestRecord) return null;
+      const offset = bestTriangle * 3;
+      const ia = bestRecord.index ? bestRecord.index[offset] : offset;
+      const ib = bestRecord.index ? bestRecord.index[offset + 1] : offset + 1;
+      const ic = bestRecord.index ? bestRecord.index[offset + 2] : offset + 2;
+      bestRecord.mesh.getVertexPosition(ia, va);
+      bestRecord.mesh.getVertexPosition(ib, vb);
+      bestRecord.mesh.getVertexPosition(ic, vc);
+      THREE.Triangle.getNormal(va, vb, vc, normal);
+      normal.applyMatrix3(bestRecord.worldNormalMatrix).normalize();
+      normal.transformDirection(groupInverse);
+      return { p: bestPoint.clone(), n: normal.clone(), dist: bestDistance };
+    },
+  };
+}
+
 function makeProber(group, targets) {
+  const axisIndex = buildAxisSurfaceIndex(group, targets);
   const ray = new THREE.Raycaster();
   ray.far = 80;
   const orig = new THREE.Vector3();
@@ -1456,7 +1682,7 @@ function makeProber(group, targets) {
   const inv = new THREE.Matrix4();
   const nrm = new THREE.Vector3();
   const nm3 = new THREE.Matrix3();
-  function cast(oLocal, dLocal) {
+  function legacyCast(oLocal, dLocal) {
     group.updateWorldMatrix(true, false);
     inv.copy(group.matrixWorld).invert();
     orig.copy(oLocal).applyMatrix4(group.matrixWorld);
@@ -1472,6 +1698,25 @@ function makeProber(group, targets) {
       nrm.transformDirection(inv);                            // -> group local
     } else nrm.set(0, 1, 0);
     return { p: hitLocal.clone(), n: nrm.clone(), dist: h.distance };
+  }
+  const verify = typeof location !== 'undefined'
+    && new URLSearchParams(location.search).has('decorprobe');
+  function cast(oLocal, dLocal) {
+    if (!axisIndex) return legacyCast(oLocal, dLocal);
+    const fast = axisIndex.cast(oLocal, dLocal);
+    if (verify) {
+      const legacy = legacyCast(oLocal, dLocal);
+      const pointError = fast && legacy ? fast.p.distanceTo(legacy.p)
+        : (fast === legacy ? 0 : Infinity);
+      const normalError = fast && legacy ? fast.n.distanceTo(legacy.n)
+        : (fast === legacy ? 0 : Infinity);
+      if (pointError > 1e-5 || normalError > 1e-5) {
+        console.error('[decorations] axis probe parity failure', {
+          pointError, normalError, origin: oLocal.toArray(), direction: dLocal.toArray(),
+        });
+      }
+    }
+    return fast;
   }
   return {
     top(x, z, fromY) { return cast(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0)); },
