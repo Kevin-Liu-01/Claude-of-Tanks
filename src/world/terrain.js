@@ -2473,7 +2473,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
   // docs/ATTRIBUTION.md) replace the procedural layer textures in place when
   // available; procedural stays the synchronous fallback behind the flag in
   // sourcedTextures.js and on any load failure.
-  applySourcedTerrain(mapId, layers, S);
+  const sourcedTexturesReady = applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, landformW);
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -2549,6 +2549,7 @@ function createSplatMaterial(engineCtx, layout, splatCfg, mapId = 'verdant', lan
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
   mat.customProgramCacheKey = () => 'world-terrain-splat-v21';
+  mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   return mat;
 }
 
@@ -2788,5 +2789,6 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
     }
   };
   group.userData.streamingStats = streamStats;
+  group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;
   return group;
 }

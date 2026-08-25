@@ -318,6 +318,7 @@ initTopMaskRig(engineCtx);
 // call. Boot never touches them.
 const worldCache = new Map();
 const worldBuilds = new Map();
+const minimapTextureRefreshQueued = new WeakSet();
 let worldModulePromise = null;
 const residentLimits = residentResourceLimits(getDeviceTier());
 let world = null;
@@ -1241,11 +1242,31 @@ function placeGarage() {
  * @param {{services?:boolean}} [opts]
  * @returns {object|Promise<object>} active World, immediately when cached
  */
+function buildWorldMinimap(next, textured = true) {
+  hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
+    textured ? minimapSnapCtx() : null);
+}
+
 function prepareWorldServices(next = world) {
   if (!next || world !== next) return;
   collider = createCollider(game, next);
-  hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
-    minimapSnapCtx());
+  const textureState = next.minimapTextureState;
+  if (!textureState || textureState.settled) {
+    buildWorldMinimap(next);
+  } else {
+    // The original one-shot capture raced the async CC0 material swap. A cold
+    // hostname could permanently bake the flat vector fallback while a warm
+    // cache captured the textured battlefield. Keep the fallback only while
+    // loading, then refresh exactly once after every requested texture has
+    // settled. No polling or per-frame work.
+    buildWorldMinimap(next, false);
+    if (!minimapTextureRefreshQueued.has(next)) {
+      minimapTextureRefreshQueued.add(next);
+      textureState.promise.then(() => {
+        if (world === next && worldServicesMapId === next.mapId) buildWorldMinimap(next);
+      });
+    }
+  }
   placeGarage();
   worldServicesMapId = next.mapId;
 }

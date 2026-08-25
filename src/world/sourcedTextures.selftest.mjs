@@ -37,7 +37,21 @@ globalThis.document = {
 };
 globalThis.window = globalThis.window || {};
 
-const { composeAlbedo } = await import('./sourcedTextures.js');
+class TestImage {
+  constructor() {
+    this.width = 2;
+    this.height = 2;
+    this.pixels = new Uint8ClampedArray([
+      100, 150, 200, 255, 80, 40, 20, 255,
+      255, 128, 64, 255, 20, 30, 40, 255,
+    ]);
+  }
+
+  set src(_value) { queueMicrotask(() => this.onload()); }
+}
+globalThis.Image = TestImage;
+
+const { applySourcedTerrain, composeAlbedo } = await import('./sourcedTextures.js');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });
 
 const color = image([
@@ -68,4 +82,17 @@ assert.equal(contextOptions.filter((options) => options?.willReadFrequently).len
 assert.equal(contextOptions.length, 2,
   'one output context plus one reusable readback context are allocated');
 
-console.log('sourcedTextures.selftest: byte contract and shared readback context passed');
+const texture = () => ({ disposeCount: 0, dispose() { this.disposeCount++; } });
+const layer = { albedo: texture(), normal: texture() };
+let terrainSettled = false;
+const terrainReady = applySourcedTerrain('verdant', { G: layer });
+terrainReady.then(() => { terrainSettled = true; });
+assert.equal(terrainSettled, false,
+  'terrain readiness remains pending until the sourced images finish loading');
+await terrainReady;
+assert.equal(terrainSettled, true,
+  'terrain readiness resolves after every requested texture swap');
+assert.equal(layer.albedo.disposeCount, 1, 'sourced albedo replaces the fallback once');
+assert.equal(layer.normal.disposeCount, 1, 'sourced normal replaces the fallback once');
+
+console.log('sourcedTextures.selftest: byte, readback, and async readiness contracts passed');

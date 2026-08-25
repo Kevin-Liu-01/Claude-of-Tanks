@@ -122,6 +122,16 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     })),
   };
 
+  // Sourced terrain/building textures arrive asynchronously. Expose one
+  // stable readiness seam so presentation snapshots cannot permanently bake
+  // the procedural fallback on a cold hostname while a warm cache captures
+  // the final materials.
+  const minimapTextureState = { settled: false, promise: null };
+  minimapTextureState.promise = Promise.all([
+    terrain.userData.sourcedTexturesReady || Promise.resolve(),
+    props.sourcedTexturesReady || Promise.resolve(),
+  ]).then(() => { minimapTextureState.settled = true; });
+
   const _aabbNrm = new THREE.Vector3();
   const _bestNrm = new THREE.Vector3();
 
@@ -203,6 +213,7 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     mapId: config.id,
     config,
     heightField,
+    minimapTextureState,
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,

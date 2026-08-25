@@ -2849,14 +2849,16 @@ export function initHud(bus) {
     bg.width = N; bg.height = N;
     const bctx = bg.getContext('2d');
     if (snapBg) {
-      // slight contrast/saturation shape + a whisper of dark veil so white
-      // grid/blips/rings always separate from sunlit terrain (the 2x snap
-      // downsamples here — see renderTopDownSnap supersampling)
+      // Keep the one-time satellite capture readable independently of the
+      // source-texture cache state. The old 15% black veil plus sub-unity
+      // brightness crushed cold-origin terrain into a nearly black map.
+      // A mild lift/desaturation preserves texture and map color while the
+      // retained veil still separates the white grid, blips, and range ring.
       bctx.imageSmoothingQuality = 'high';
-      bctx.filter = 'saturate(1.16) brightness(0.97) contrast(1.06)';
+      bctx.filter = 'saturate(1.05) brightness(1.15) contrast(1.03)';
       bctx.drawImage(snapBg, 0, 0, N, N);
       bctx.filter = 'none';
-      bctx.fillStyle = 'rgba(6,10,8,0.15)';
+      bctx.fillStyle = 'rgba(6,10,8,0.06)';
       bctx.fillRect(0, 0, N, N);
     }
     if (!snapBg) {

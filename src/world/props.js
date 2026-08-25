@@ -993,7 +993,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
-  applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
+  const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
 
   const mats = {
     plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal, roughness: 0.93, metalness: 0 }),
@@ -4594,6 +4594,7 @@ ${snowCap ? `
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
+    sourcedTexturesReady,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures } };
 }

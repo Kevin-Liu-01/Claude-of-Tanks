@@ -328,20 +328,25 @@ async function applySet(setKey, layer, opts) {
 
 /**
  * Terrain hookup — called by createSplatMaterial after the procedural layers
- * exist. Fire-and-forget: swaps each layer's textures in place when loaded.
+ * exist. Swaps each layer's textures in place when loaded and exposes one
+ * settlement promise so presentation snapshots cannot race the async swap.
  * @param {string} mapId map id ('verdant'|'desert'|'winter'|'urban')
  * @param {object} layers { G, D, R, M } of { albedo, normal } CanvasTextures
  * @param {object} S splat cfg (uses mudRough for the M roughness multiplier)
+ * @returns {Promise<void[]>} resolves after every requested layer settled
  */
 export function applySourcedTerrain(mapId, layers, S = {}) {
   const plan = TERRAIN_PLAN[mapId] || TERRAIN_PLAN.verdant;
+  const jobs = [];
   for (const key of ['G', 'D', 'R', 'M']) {
     if (!plan[key] || !layers[key]) continue;
     const entry = typeof plan[key] === 'string' ? { set: plan[key] } : plan[key];
     const roughMul = (key === 'M' ? (S.mudRough ?? 1) : 1) * (entry.roughMul ?? 1);
-    applySet(entry.set, layers[key], { roughInAlpha: true, roughMul, tint: entry.tint || null })
-      .catch((e) => console.warn(`[sourcedTextures] terrain ${mapId}/${key}:`, e.message));
+    jobs.push(applySet(entry.set, layers[key], {
+      roughInAlpha: true, roughMul, tint: entry.tint || null,
+    }).catch((e) => console.warn(`[sourcedTextures] terrain ${mapId}/${key}:`, e.message)));
   }
+  return Promise.all(jobs);
 }
 
 /**
@@ -405,11 +410,13 @@ export function applySourcedBuildings(sets, mapId) {
   // patchwork (cfg.props.tones.roof) that the single-tint sourced set cannot
   // reproduce — the uniform maroon roofscape was a top critic complaint
   if (mapId === 'urban') delete plan.roof;
+  const jobs = [];
   for (const [bucket, setKey] of Object.entries(plan)) {
     if (!sets[bucket]) continue;
     const tw = (BUILDING_TINTS[mapId] || {})[bucket] || null;
     const opts = tw && !Array.isArray(tw) ? tw : { tint: tw };
-    applySet(setKey, sets[bucket], { roughInAlpha: false, ...opts })
-      .catch((e) => console.warn(`[sourcedTextures] building ${bucket}:`, e.message));
+    jobs.push(applySet(setKey, sets[bucket], { roughInAlpha: false, ...opts })
+      .catch((e) => console.warn(`[sourcedTextures] building ${bucket}:`, e.message)));
   }
+  return Promise.all(jobs);
 }
