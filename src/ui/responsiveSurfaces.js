@@ -641,6 +641,126 @@ body[data-cot-height='short'] .cot-kc-rows{padding-top:4px;gap-block:2px}
 body[data-cot-width='compact'] .cot-info-popover,
 body[data-cot-width='phone'] .cot-info-popover{width:min(420px,calc(100vw - 16px));max-height:min(66dvh,520px)}
 
+/* TRANSIENT / RECOVERY SURFACES ----------------------------------------- */
+body[data-cot-width] .cot-network-status{
+  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));
+  top:max(20px,calc(env(safe-area-inset-top) + 12px));overflow-wrap:anywhere;
+}
+body[data-cot-width='compact'] .cot-network-status,
+body[data-cot-width='phone'] .cot-network-status{
+  top:max(66px,calc(env(safe-area-inset-top) + 58px));width:calc(100vw - (var(--cot-edge) * 2));
+  min-width:0;padding:8px 12px;font-size:9px;line-height:1.35;letter-spacing:.09em;
+}
+body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-status{
+  top:max(146px,calc(env(safe-area-inset-top) + 138px));
+}
+body[data-cot-width] .cot-network-diagnostics{
+  box-sizing:border-box;max-width:calc(100vw - 16px);max-height:calc(100dvh - 80px);
+  overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;
+}
+body[data-cot-width='compact'] .cot-network-diagnostics,
+body[data-cot-width='phone'] .cot-network-diagnostics{
+  left:max(8px,env(safe-area-inset-left));top:max(112px,calc(env(safe-area-inset-top) + 104px));
+  width:min(390px,calc(100vw - 16px));font-size:8.5px;line-height:1.4;
+}
+body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-diagnostics{
+  top:max(194px,calc(env(safe-area-inset-top) + 186px));max-height:calc(100dvh - 210px);
+}
+
+body[data-cot-width] .cot-trans{box-sizing:border-box;padding:var(--cot-edge)}
+body[data-cot-width] .cot-trans .core{width:min(680px,100%);max-width:100%}
+body[data-cot-width] .cot-trans .title,
+body[data-cot-width] .cot-trans .sub,
+body[data-cot-width] .cot-trans .kick{
+  box-sizing:border-box;max-width:100%;overflow-wrap:anywhere;line-height:1.12;
+}
+body[data-cot-width] .cot-trans .meter{width:min(400px,100%)}
+body[data-cot-width='compact'] .cot-trans .title,
+body[data-cot-width='phone'] .cot-trans .title{
+  font-size:clamp(20px,7vw,32px);letter-spacing:.1em;text-indent:.1em;
+}
+body[data-cot-width='compact'] .cot-trans .kick,
+body[data-cot-width='phone'] .cot-trans .kick{font-size:9px;letter-spacing:.26em;text-indent:.26em}
+body[data-cot-width='compact'] .cot-trans .sub,
+body[data-cot-width='phone'] .cot-trans .sub{font-size:9px;letter-spacing:.14em;text-indent:.14em}
+body[data-cot-height='short'] .cot-trans .mark{width:36px;height:36px}
+body[data-cot-height='short'] .cot-trans .kick{margin-top:8px}
+body[data-cot-height='short'] .cot-trans .title{margin-top:6px;font-size:clamp(19px,6vh,28px)}
+body[data-cot-height='short'] .cot-trans .sub{margin-top:5px}
+body[data-cot-height='short'] .cot-trans .meter{margin-top:17px}
+
+body[data-cot-width] .cot-resume{
+  box-sizing:border-box;padding:var(--cot-edge);text-align:center;
+}
+body[data-cot-width] .cot-resume .rz-title,
+body[data-cot-width] .cot-resume .rz-sub{
+  box-sizing:border-box;width:min(680px,100%);max-width:100%;overflow-wrap:anywhere;line-height:1.25;
+}
+body[data-cot-width='compact'] .cot-resume .rz-title,
+body[data-cot-width='phone'] .cot-resume .rz-title{
+  font-size:clamp(17px,5.8vw,22px);letter-spacing:.18em;text-indent:.18em;
+}
+body[data-cot-width='compact'] .cot-resume .rz-sub,
+body[data-cot-width='phone'] .cot-resume .rz-sub{font-size:9px;letter-spacing:.12em;text-indent:.12em}
+body[data-cot-height='short'] .cot-resume{gap:8px}
+
+body[data-cot-width] .cot-hints{
+  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));justify-content:center;
+  flex-wrap:wrap;white-space:normal;
+}
+body[data-cot-width] .cot-hints .hg{white-space:nowrap}
+body[data-cot-width='compact'] .cot-hints,
+body[data-cot-width='phone'] .cot-hints{
+  bottom:max(10px,env(safe-area-inset-bottom));gap:5px 9px;padding:6px 9px;
+  font-size:8px;letter-spacing:.08em;
+}
+body[data-cot-width='compact'] .cot-hints kbd,
+body[data-cot-width='phone'] .cot-hints kbd{font-size:8px;padding:1px 4px;line-height:12px}
+body[data-cot-height='short'] .cot-hints{display:none!important}
+body[data-cot-panels='overlay']>.cot-gear{
+  top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));
+  width:44px;height:44px;min-height:44px;
+}
+
+body[data-cot-width] .cot-lock-toast{
+  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));text-align:center;
+  white-space:normal;overflow-wrap:anywhere;
+}
+body[data-cot-width='compact'] .cot-lock-toast,
+body[data-cot-width='phone'] .cot-lock-toast{
+  top:max(68px,calc(env(safe-area-inset-top) + 60px))!important;width:calc(100vw - (var(--cot-edge) * 2));
+  padding:8px 10px!important;font-size:9px!important;line-height:1.35;letter-spacing:.09em!important;
+}
+
+/* Opt-in engineering panels still need to remain operable on the device
+   being diagnosed. Their module-local inline geometry requires !important. */
+body[data-cot-width='compact'] #cot-perfhud,
+body[data-cot-width='phone'] #cot-perfhud{
+  top:max(8px,env(safe-area-inset-top))!important;right:max(8px,env(safe-area-inset-right))!important;
+  left:max(8px,env(safe-area-inset-left))!important;width:auto!important;
+  max-height:58dvh!important;padding:8px!important;font-size:10px!important;
+  pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
+}
+body[data-cot-width='phone'] #cot-perfhud [data-grid]{grid-template-columns:1fr!important}
+body[data-cot-width='compact'] #cot-diag,
+body[data-cot-width='phone'] #cot-diag{
+  left:max(8px,env(safe-area-inset-left))!important;right:max(8px,env(safe-area-inset-right))!important;
+  bottom:max(8px,env(safe-area-inset-bottom))!important;width:auto!important;
+  max-height:62dvh!important;overflow:auto!important;font-size:10px!important;
+}
+
+body[data-cot-width] #cot-ctxlost{box-sizing:border-box;padding:var(--cot-edge)!important}
+body[data-cot-width] #cot-ctxlost>div{box-sizing:border-box;width:min(520px,100%)!important;max-width:100%!important}
+body[data-cot-width='compact'] #cot-ctxlost>div>div:first-child,
+body[data-cot-width='phone'] #cot-ctxlost>div>div:first-child{
+  font-size:clamp(16px,5.8vw,22px)!important;line-height:1.2!important;letter-spacing:.18em!important;
+  overflow-wrap:anywhere;
+}
+body[data-cot-width='compact'] #cot-ctxlost-btn,
+body[data-cot-width='phone'] #cot-ctxlost-btn{
+  box-sizing:border-box;max-width:100%;min-height:44px;padding:12px 22px!important;white-space:normal;
+}
+
 /* COARSE INPUT GEOMETRY -------------------------------------------------- */
 body[data-cot-input='coarse'] .cot-play button,
 body[data-cot-input='coarse'] .cot-play input,

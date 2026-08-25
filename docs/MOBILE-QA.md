@@ -80,6 +80,15 @@ still inspect Garage, battle HUD, loading, private rooms, Settings, Studio,
 Gallery, killcam, after-action reports, home, and docs in both portrait and
 landscape; the matrix is a contract, not a substitute for visual review.
 
+Transient UI is part of that release surface, not an exception. Every viewport
+pass must also exercise a state transition with a long title, reconnect and
+failed-network banners, expanded `?netdiag=1` diagnostics, pointer-lock resume,
+graphics-context recovery, and the opt-in `?debug=1` / `?diag=1` engineering
+panels. These must remain inside safe areas, wrap without horizontal clipping,
+and preserve a scroll exit on phone portrait, short landscape, tablet split
+view, and coarse-input laptop widths. Gallery and Docs feedback toasts use the
+same viewport-bounded contract.
+
 ### Native-output contract
 
 Mobile display density and 3D render density are deliberately independent:

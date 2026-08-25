@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 
 await import('./responsiveLayout.selftest.mjs');
 
-const [garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav, responsiveSurfaces, input] = await Promise.all([
+const [
+  garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav, responsiveSurfaces, input,
+  networkStatus, transition, perfHud, deviceDiag, renderer, main, gallery, docs,
+] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.js', import.meta.url), 'utf8'),
   readFile(new URL('./battleLoad.js', import.meta.url), 'utf8'),
@@ -13,6 +16,14 @@ const [garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav, responsive
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.js', import.meta.url), 'utf8'),
   readFile(new URL('../game/input.js', import.meta.url), 'utf8'),
+  readFile(new URL('./networkStatus.js', import.meta.url), 'utf8'),
+  readFile(new URL('./transition.js', import.meta.url), 'utf8'),
+  readFile(new URL('./perfHud.js', import.meta.url), 'utf8'),
+  readFile(new URL('../engine/deviceDiag.js', import.meta.url), 'utf8'),
+  readFile(new URL('../engine/renderer.js', import.meta.url), 'utf8'),
+  readFile(new URL('../main.js', import.meta.url), 'utf8'),
+  readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
+  readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
 ]);
 
 assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
@@ -132,6 +143,44 @@ assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigg
 assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
   'the desktop GitHub star control needs comfortable internal spacing');
 
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] \.cot-network-status\{[\s\S]*width:calc\(100vw - \(var\(--cot-edge\) \* 2\)\)[\s\S]*min-width:0/,
+  'phone reconnect banners must fit the safe viewport instead of retaining their desktop minimum');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width\] \.cot-network-diagnostics\{[\s\S]*white-space:pre-wrap;overflow-wrap:anywhere/,
+  'network diagnostics must wrap and scroll rather than escape narrow screens');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
+  'state transitions must cap their core and recompose long titles on phones');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] \.cot-resume \.rz-title\{[\s\S]*letter-spacing:\.18em/,
+  'the pointer-lock resume veil must keep its title within phone width');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width\] \.cot-hints\{[\s\S]*flex-wrap:wrap;white-space:normal/,
+  'keyboard hints must wrap as groups instead of clipping on intermediate widths');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-perfhud \[data-grid\]\{grid-template-columns:1fr!important\}/,
+  'the opt-in performance dashboard must remain readable on narrow devices');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-diag\{[\s\S]*max-height:62dvh!important;overflow:auto!important/,
+  'the compatibility diagnostics panel must stay bounded and scrollable on phones');
+assert.match(responsiveSurfaces,
+  /body\[data-cot-width='phone'\] #cot-ctxlost>div>div:first-child\{[\s\S]*letter-spacing:\.18em!important/,
+  'the graphics recovery title must reflow without overflowing small screens');
+assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
+  'Gallery feedback toasts must be viewport-bounded');
+assert.match(docs, /\.docs-toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
+  'Docs feedback toasts must be viewport-bounded');
+
+for (const [source, pattern, label] of [
+  [networkStatus, /\.cot-network-status\{position:fixed/, 'network status'],
+  [transition, /\.cot-trans\{position:fixed/, 'state transition'],
+  [perfHud, /el\.id = 'cot-perfhud'/, 'performance dashboard'],
+  [deviceDiag, /el\.id = 'cot-diag'/, 'compatibility diagnostics'],
+  [renderer, /el\.id = 'cot-ctxlost'/, 'graphics recovery'],
+  [main, /t\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
+]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
+
 const semanticSurfaceFiles = [
   '../game/killcam.js',
   '../gallery/gallery.css',
@@ -149,10 +198,16 @@ const semanticSurfaceFiles = [
   './hud.js',
   './playMenu.js',
   './roomChat.js',
+  './networkStatus.js',
+  './perfHud.js',
   './settings.js',
   './shotInfo.js',
   './studioPanel.js',
   './touchControls.js',
+  './transition.js',
+  '../engine/deviceDiag.js',
+  '../engine/renderer.js',
+  '../main.js',
 ];
 for (const relativePath of semanticSurfaceFiles) {
   const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
