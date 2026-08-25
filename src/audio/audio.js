@@ -290,9 +290,10 @@ export function resolveReloadCuePlan(totalS, kind = 'shell', caliberMm = 100) {
  *   hitConfirm: (kind: string, damage?: number) => void,
  * }} Audio interface per ARCHITECTURE.md §3.9.
  */
-export function createAudio() {
+export function createAudio({ context: initialContext = null } = {}) {
   /** @type {AudioContext|null} */
-  let ctx = null;
+  let ctx = initialContext;
+  let graphReady = false;
   let master = null;      // final volume gain
   let comp = null;        // safety compressor (24 voices never clip)
   let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r4 volley guard)
@@ -2532,17 +2533,17 @@ export function createAudio() {
    * Before this, every other method is a silent no-op.
    */
   function resume() {
-    if (ctx) {
-      if (ctx.state === 'suspended') ctx.resume();
-      return;
+    if (!ctx) {
+      const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+      if (!AC) return;   // headless / unsupported: stay silently inert
+      ctx = new AC({ latencyHint: 'interactive' });
     }
-    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!AC) return;   // headless / unsupported: stay silently inert
-    ctx = new AC({ latencyHint: 'interactive' });
+    if (ctx.state === 'suspended') ctx.resume();
+    if (graphReady) return;
+    graphReady = true;
     buildGraph();
     buildBuffers();
     applyMaster();
-    if (ctx.state === 'suspended') ctx.resume();
     radio.load(ctx, voiceBus);
     loadSfx();
     installHoverTicks();

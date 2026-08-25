@@ -80,7 +80,7 @@ import { createGarageDressing } from './game/garageDressing.js';
 import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
-import { createAudio } from './audio/audio.js';
+import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
@@ -607,6 +607,7 @@ function preloadBattleRosterTextures(specId, plannedIds) {
 }
 
 function preloadBattleIntent({ specId, mapId } = {}) {
+  audio.preload();
   loadWorldModule().catch(() => null);
   preloadKillcamModule().catch(() => null);
   // A pointer/focus/touch on BATTLE is stronger intent than ordinary garage
@@ -1839,7 +1840,7 @@ const transition = createTransition();
 
 // --- audio --------------------------------------------------------------------
 const audio = await bootStage('audio', () => {
-  const a = createAudio();
+  const a = createLazyAudio();
   a.bindBus(bus);
   return a;
 });
