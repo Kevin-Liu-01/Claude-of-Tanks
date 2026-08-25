@@ -1501,7 +1501,12 @@ function buildLeo2A6(P) {
     // + margin); centre keeps 1.30, side/front rows are skirt/deck-interior.
     sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.50,
-    underGlacisClosure: { halfW: 0.88, upperFill: true },
+    underGlacisClosure: {
+      halfW: 0.88,
+      upperFill: true,
+      upperShoulderFill: true,
+      upperShoulderFloorY: 1.30,
+    },
     // headlight pods: fresh grid reads the ref col 3.267 top at 1.495 =
     // pod top (1.44+0.055r); the old 1.51 center read one row high
     headlightY: 1.44, headlightZ: 3.20,
@@ -12617,7 +12622,12 @@ function buildLeo2A4M(P) {
     glacisLaneCut: { x: 0.90, z0: 3.13 },
     sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.56,                                 // mine-belly stance
-    underGlacisClosure: { halfW: 0.88, upperFill: true },
+    underGlacisClosure: {
+      halfW: 0.88,
+      upperFill: true,
+      upperShoulderFill: true,
+      upperShoulderFloorY: 1.30,
+    },
     headlightY: 1.44, headlightZ: 3.20,
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },

@@ -12,7 +12,7 @@ const expectedHalfWidths = new Map([
 ]);
 
 const upperGlacisFillIds = new Set(['leo2a4m', 'leo2a6', 'leo2a6m', 'leo2a6_ua']);
-const upperShoulderFillIds = new Set(['leo2a6m', 'leo2a6_ua']);
+const upperShoulderFillIds = new Set(['leo2a4m', 'leo2a6', 'leo2a6m', 'leo2a6_ua']);
 
 for (const [id, expectedHalfW] of expectedHalfWidths) {
   const tank = createTank(id, null, {

@@ -3719,7 +3719,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 1.8183,
       "roofDetailMaxY": 1.82,
-      "sourceHash": "1f0dd704903d861c"
+      "sourceHash": "579e0b68789d90b2"
     },
     "turret": {
       "min": [
@@ -3845,7 +3845,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       ],
       "bodyRoofY": 1.8216,
       "roofDetailMaxY": 1.825,
-      "sourceHash": "17c1fbcf321c9637"
+      "sourceHash": "d4007e12c2d607cc"
     },
     "turret": {
       "min": [
