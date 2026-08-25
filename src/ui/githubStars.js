@@ -1,7 +1,7 @@
 const REPOSITORY_API = 'https://api.github.com/repos/Kevin-Liu-01/claude-of-tanks';
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 15 * 60 * 1000;
-export const FALLBACK_GITHUB_STAR_COUNT = 77;
+export const FALLBACK_GITHUB_STAR_COUNT = 145;
 
 const starNodes = new Set();
 let activeRequest = null;
