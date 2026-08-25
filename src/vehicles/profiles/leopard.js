@@ -653,12 +653,19 @@ function leoHullV3(P, H) {
   const upperFillHalfW = UGC?.upperFillHalfW ?? UGC?.halfW ?? 0.88;
   const upperFillSideInsetM = UGC?.upperFillSideInsetM ?? 0.012;
   const upperFillOverlapM = UGC?.upperFillOverlapM ?? 0.015;
+  const upperShoulderFillEnabled = UGC?.upperShoulderFill === true;
+  const upperShoulderCoreOverlapM = UGC?.upperShoulderCoreOverlapM ?? 0.024;
+  const upperShoulderSideInsetM = UGC?.upperShoulderSideInsetM ?? 0.006;
+  const upperShoulderFloorY = UGC?.upperShoulderFloorY ?? H.sponsonY;
+  const upperShoulderMinDepthM = UGC?.upperShoulderMinDepthM ?? 0.015;
   const upperFillRearZ = g[0][0];
   const upperFillFrontZ = g[g.length - 1][0];
   const upperFillRearSupportY = UGC?.upperFillRearSupportY ?? (H.sponsonY - 0.02);
   const upperFillFrontSupportY = UGC?.upperFillFrontSupportY
     ?? (g[g.length - 1][1] - 0.17);
   let upperFillSegments = 0;
+  let upperShoulderFillSegments = 0;
+  let upperShoulderOuterHalfWMax = upperFillHalfW;
   const upperFillSupportYAt = (z) => THREE.MathUtils.lerp(
     upperFillRearSupportY,
     upperFillFrontSupportY,
@@ -677,6 +684,54 @@ function leoHullV3(P, H) {
       [-fillWA, ya - depthA + upperFillOverlapM, za], [fillWA, ya - depthA + upperFillOverlapM, za],
       [fillWB, yb - depthB + upperFillOverlapM, zb], [-fillWB, yb - depthB + upperFillOverlapM, zb]));
     upperFillSegments++;
+
+    if (!upperShoulderFillEnabled) return;
+    // The first closure pass deliberately stopped at the inter-track core,
+    // leaving two visible air wedges below the full-width glacis. Close
+    // those shoulders with longitudinal wedges whose inner edges overlap
+    // the deep core and whose outer edges follow the armor width. Their
+    // raised floor seals low oblique sightlines without lowering a full-
+    // width block into the idler/shoe envelope.
+    let shoulderZa = za;
+    let shoulderZb = zb;
+    let shoulderTopA = ya - depthA + upperFillOverlapM;
+    let shoulderTopB = yb - depthB + upperFillOverlapM;
+    let shoulderWA = wa;
+    let shoulderWB = wb;
+    const minTopY = upperShoulderFloorY + upperShoulderMinDepthM;
+    if (shoulderTopA <= minTopY && shoulderTopB <= minTopY) return;
+    // The forward idler arc rises into the glacis envelope. Terminate the
+    // structural shoulder exactly where it reaches the configured minimum
+    // depth; continuing the floor past that intercept would enter the live
+    // shoes.
+    if ((shoulderTopA - minTopY) * (shoulderTopB - minTopY) < 0) {
+      const t = (minTopY - shoulderTopA) / (shoulderTopB - shoulderTopA);
+      const cutZ = THREE.MathUtils.lerp(shoulderZa, shoulderZb, t);
+      const cutW = THREE.MathUtils.lerp(shoulderWA, shoulderWB, t);
+      if (shoulderTopA >= minTopY) {
+        shoulderZb = cutZ;
+        shoulderWB = cutW;
+        shoulderTopB = minTopY;
+      } else {
+        shoulderZa = cutZ;
+        shoulderWA = cutW;
+        shoulderTopA = minTopY;
+      }
+    }
+    const innerA = Math.max(0.08, fillWA - upperShoulderCoreOverlapM);
+    const innerB = Math.max(0.08, fillWB - upperShoulderCoreOverlapM);
+    const outerA = Math.max(innerA, shoulderWA - upperShoulderSideInsetM);
+    const outerB = Math.max(innerB, shoulderWB - upperShoulderSideInsetM);
+    if (Math.max(outerA - innerA, outerB - innerB) < 0.025) return;
+    for (const side of [-1, 1]) {
+      P.add('hull', slab(
+        [side * innerA, upperShoulderFloorY, shoulderZa], [side * outerA, upperShoulderFloorY, shoulderZa],
+        [side * outerB, upperShoulderFloorY, shoulderZb], [side * innerB, upperShoulderFloorY, shoulderZb],
+        [side * innerA, shoulderTopA, shoulderZa], [side * outerA, shoulderTopA, shoulderZa],
+        [side * outerB, shoulderTopB, shoulderZb], [side * innerB, shoulderTopB, shoulderZb]));
+      upperShoulderFillSegments++;
+    }
+    upperShoulderOuterHalfWMax = Math.max(upperShoulderOuterHalfWMax, outerA, outerB);
   };
   for (let i = 0; i < g.length - 1; i++) {
     const [zF, yF] = g[i], [zR, yR] = g[i + 1];
@@ -833,6 +888,13 @@ function leoHullV3(P, H) {
         upperFillHalfW,
         upperFillSideInsetM,
         upperFillOverlapM,
+        upperShoulderFillEnabled,
+        upperShoulderFillSegments,
+        upperShoulderCoreOverlapM,
+        upperShoulderSideInsetM,
+        upperShoulderFloorY,
+        upperShoulderMinDepthM,
+        upperShoulderOuterHalfWMax,
       };
     }
   }
@@ -11655,7 +11717,12 @@ function buildLeo2A6M(P, { fieldEra = true } = {}) {
     // M-package belly: the mine kit lifts the visible belly line (family
     // 0.50 -> 0.56); the bolted plate itself is authored below.
     beltY: 0.62, bellyY: 0.56,
-    underGlacisClosure: { halfW: 0.88, upperFill: true },
+    underGlacisClosure: {
+      halfW: 0.88,
+      upperFill: true,
+      upperShoulderFill: true,
+      upperShoulderFloorY: 1.30,
+    },
     headlightY: 1.44, headlightZ: 3.20,
     rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
     tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },
