@@ -117,6 +117,7 @@ import {
   planBattleCamoOverrides,
 } from './game/rosterState.ts';
 import { createBus, createGameState, mulberry32 } from './game/stateCore.ts';
+import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
@@ -144,43 +145,13 @@ const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search
     parseRoomInvite(globalThis.location?.href))
   : null;
 
-let soloBattleRuntime = null;
-let soloBattleRuntimePromise = null;
-
-function preloadSoloBattleRuntime() {
-  if (!soloBattleRuntimePromise) {
-    const request = import('./game/soloBattleRuntime.ts').then((module) => {
-      soloBattleRuntime = module;
-      return module;
-    });
-    soloBattleRuntimePromise = request;
-    request.catch(() => {
-      if (soloBattleRuntimePromise === request) soloBattleRuntimePromise = null;
-    });
-  }
-  return soloBattleRuntimePromise;
-}
-
-function requireSoloBattleRuntime() {
-  if (!soloBattleRuntime) throw new Error('Solo battle runtime is not ready.');
-  return soloBattleRuntime;
-}
-
-function setupBattle(...args) {
-  return requireSoloBattleRuntime().setupBattle(...args);
-}
-
-function simStep(...args) {
-  return requireSoloBattleRuntime().simStep(...args);
-}
-
-function createCollider(...args) {
-  return requireSoloBattleRuntime().createCollider(...args);
-}
-
-function prepareNextOpeningRoute(...args) {
-  return requireSoloBattleRuntime().prepareNextOpeningRoute(...args);
-}
+const {
+  preload: preloadSoloBattleRuntime,
+  setupBattle,
+  simStep,
+  createCollider,
+  prepareNextOpeningRoute,
+} = createSoloBattleRuntimeAccess();
 
 function loadLastSpecId() {
   try {

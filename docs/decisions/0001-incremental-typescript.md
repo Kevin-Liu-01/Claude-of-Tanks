@@ -35,6 +35,8 @@ preloading can depend on the roster without importing the solo simulation graph.
 that graph: the composition root acquires legacy `state.js` only after solo
 Battle or deterministic capture intent, while existing authority functions
 remain behaviorally unchanged.
+`src/game/soloBattleAccess.ts` owns the retryable dynamic-import lifecycle and
+stable delegation surface so `src/main.js` no longer carries loader state.
 `src/net/webrtcPeer.ts` is the first transport owner migrated in place. Its
 public signal/session contract is explicit, while lobby and match runtimes
 continue to consume the same transport seam.
@@ -60,6 +62,7 @@ explicit contracts without moving combat authority into the browser client.
     node src/engine/frameScheduler.selftest.mjs
     node src/game/rosterPlanning.selftest.mjs
     node src/game/soloBattleRuntime.selftest.mjs
+    node src/game/soloBattleAccess.selftest.mjs
     node src/net/localTankPrediction.selftest.mjs
     node src/net/net.selftest.mjs
     npm test

@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const access = await readFile(new URL('./soloBattleAccess.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(main, /from ['"]\.\/game\/state\.js['"]/, 
   'garage boot must not statically import solo battle authority');
-assert.match(main, /import\(['"]\.\/game\/soloBattleRuntime\.ts['"]\)/,
+assert.match(main, /from ['"]\.\/game\/soloBattleAccess\.ts['"]/,
+  'the composition root uses the typed lazy-access owner');
+assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
   'solo authority must be demand-loaded behind its typed boundary');
 assert.match(main,
   /function preloadBattleIntent[\s\S]{0,260}preloadSoloBattleRuntime\(\)/,
