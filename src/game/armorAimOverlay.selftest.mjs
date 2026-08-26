@@ -56,6 +56,15 @@ const target = {
     },
   },
 };
+const secondRoot = root.clone(true);
+const secondHull = secondRoot.getObjectByName('rig_hull');
+const secondTarget = {
+  ...target,
+  id: 'overlay-test-2',
+  state: { ...target.state, pos: new THREE.Vector3(4, 0, 0) },
+  combat: { destroyed: false, eraSpent: new Set() },
+  visual: { root: secondRoot },
+};
 const shellSpec = {
   name: 'test AP', type: 'AP', caliberMm: 100,
   pen100Mm: 150, pen1000Mm: 100,
@@ -63,8 +72,10 @@ const shellSpec = {
 
 const overlay = createArmorAimOverlay();
 const entry = overlay.prime(target);
+const secondEntry = overlay.prime(secondTarget);
 assert(entry && entry.frames.length === 1, 'closed hull shell creates one articulated overlay mesh');
-assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay hidden before scoped aim');
+assert(secondEntry && secondEntry.frames.length === 1, 'every scoped enemy receives its own overlay mesh');
+assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay hidden before entering scope');
 
 const restoreWarm = overlay.warm();
 assert(entry.frames.every((frame) => frame.mesh.visible), 'warm exposes overlay shaders under the loading veil');
@@ -74,19 +85,47 @@ assert(entry.frames.every((frame) => !frame.mesh.visible), 'warm visibility is r
 overlay.update({
   enabled: true,
   scoped: true,
-  target,
+  targets: [target, secondTarget],
+  target: null,
   shellSpec,
   muzzle: new THREE.Vector3(0, 1, 4),
   nowMs: 0,
 });
-assert(entry.frames.every((frame) => frame.mesh.visible), 'scoped target enables the armor flashlight');
+assert(entry.frames.every((frame) => frame.mesh.visible),
+  'scope enables armor highlighting without a direct reticle target');
+assert(secondEntry.frames.every((frame) => frame.mesh.visible),
+  'scope keeps every visible enemy armor overlay active');
 assert(entry.frames[0].color.version > 0, 'penetration samples update vertex colors');
+assert.equal(secondEntry.frames[0].color.version, 0,
+  'one update retains the original single-batch penetration-query budget');
 
-overlay.update({ enabled: false, scoped: true, target, shellSpec, nowMs: 200 });
+overlay.update({
+  enabled: true,
+  scoped: false,
+  targets: [target, secondTarget],
+  shellSpec,
+  nowMs: 100,
+});
+assert(entry.frames.every((frame) => !frame.mesh.visible), 'leaving scope hides armor highlighting');
+assert(secondEntry.frames.every((frame) => !frame.mesh.visible), 'scope exit hides every enemy overlay');
+
+overlay.update({
+  enabled: true,
+  scoped: true,
+  targets: [target, secondTarget],
+  shellSpec,
+  muzzle: new THREE.Vector3(0, 1, 4),
+  nowMs: 150,
+});
+
+overlay.update({ enabled: false, scoped: true, targets: [target, secondTarget], shellSpec, nowMs: 200 });
 assert(entry.frames.every((frame) => !frame.mesh.visible), 'setting disables the overlay immediately');
+assert(secondEntry.frames.every((frame) => !frame.mesh.visible), 'setting hides every scoped overlay');
 overlay.clear();
 assert.equal(hull.getObjectByName('armor_flashlight_hull'), undefined,
   'battle cleanup detaches generated overlay meshes');
+assert.equal(secondHull.getObjectByName('armor_flashlight_hull'), undefined,
+  'battle cleanup detaches every generated overlay mesh');
 overlay.dispose();
 
-console.log('armorAimOverlay.selftest: default scoped visibility, shader warmup, sampling and cleanup passed');
+console.log('armorAimOverlay.selftest: scope-owned multi-target visibility, bounded sampling and cleanup passed');

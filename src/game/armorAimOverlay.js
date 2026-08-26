@@ -2,7 +2,8 @@
 // same closed collision cells used by authoritative shell traces, and every
 // color sample calls queryAimArmor + estimatePenRatio. It therefore includes
 // impact angle, normalization, ricochet, ERA, spaced armor, tracks and shell
-// falloff instead of painting a static thickness texture.
+// falloff instead of painting a static thickness texture. Scope state owns
+// visibility; direct reticle contact only supplies the ordinary HUD marker.
 
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState } from '../sim/armor.js';
@@ -95,12 +96,8 @@ export function createArmorAimOverlay() {
     polygonOffsetUnits: -4,
   });
   material.name = 'cot:scoped-armor-flashlight';
-  let active = null;
-  let nextSampleMs = -Infinity;
-  let lastShellKey = '';
-  let sampling = false;
-  let sampleFrameIndex = 0;
-  let samplePointIndex = 0;
+  const visibleEntries = [];
+  let sampleCursor = 0;
 
   function prime(target) {
     if (!target?.id || !target.visual?.root || entries.has(target.id)) return entries.get(target?.id) || null;
@@ -123,7 +120,18 @@ export function createArmorAimOverlay() {
       owner.add(mesh);
       frames.push({ owner, mesh, ...built });
     }
-    const entry = { target, group, frames, visible: false };
+    const entry = {
+      target,
+      group,
+      frames,
+      visible: false,
+      inScope: false,
+      sampling: false,
+      sampleFrameIndex: 0,
+      samplePointIndex: 0,
+      nextSampleMs: -Infinity,
+      lastShellSpec: null,
+    };
     // The meshes live directly in their articulation owners; `group` is only
     // a lightweight visibility/state handle and never enters the scene.
     entries.set(target.id, entry);
@@ -151,9 +159,13 @@ export function createArmorAimOverlay() {
   }
 
   function hide() {
-    if (active) setVisible(active, false);
-    active = null;
-    sampling = false;
+    if (!visibleEntries.length) return;
+    for (const entry of entries.values()) {
+      setVisible(entry, false);
+      entry.inScope = false;
+      entry.sampling = false;
+    }
+    visibleEntries.length = 0;
   }
 
   function sampleBatch(entry, shellSpec, muzzle) {
@@ -162,11 +174,11 @@ export function createArmorAimOverlay() {
     const armor = target.spec.armor;
     const pose = tankPoseFromState(target.state, _pose);
     let remaining = SAMPLE_BATCH_SIZE;
-    while (sampleFrameIndex < entry.frames.length && remaining > 0) {
-      const frame = entry.frames[sampleFrameIndex];
+    while (entry.sampleFrameIndex < entry.frames.length && remaining > 0) {
+      const frame = entry.frames[entry.sampleFrameIndex];
       frame.owner.updateWorldMatrix(true, false);
-      while (samplePointIndex < frame.samples.length && remaining > 0) {
-        const samplePoint = frame.samples[samplePointIndex++];
+      while (entry.samplePointIndex < frame.samples.length && remaining > 0) {
+        const samplePoint = frame.samples[entry.samplePointIndex++];
         remaining--;
         _world.fromArray(samplePoint.center).applyMatrix4(frame.owner.matrixWorld);
         _dir.copy(_world).sub(muzzle);
@@ -184,47 +196,75 @@ export function createArmorAimOverlay() {
         paintSample(frame.color, samplePoint.offset, penetrationColor(ratio, _color));
       }
       frame.color.needsUpdate = true;
-      if (samplePointIndex >= frame.samples.length) {
-        sampleFrameIndex++;
-        samplePointIndex = 0;
+      if (entry.samplePointIndex >= frame.samples.length) {
+        entry.sampleFrameIndex++;
+        entry.samplePointIndex = 0;
       }
     }
-    return sampleFrameIndex >= entry.frames.length;
+    return entry.sampleFrameIndex >= entry.frames.length;
   }
 
-  function update({ enabled, scoped, target, shellSpec, muzzle, nowMs }) {
-    const allowed = !!enabled && !!scoped && !!target && !target.combat?.destroyed
-      && !!target.visual?.root?.visible;
-    if (!allowed) {
+  function addScopedTarget(candidate) {
+    if (!candidate || candidate.combat?.destroyed || !candidate.visual?.root?.visible) return;
+    const entry = prime(candidate);
+    if (!entry?.frames.length) return;
+    entry.inScope = true;
+    if (!entry.visible) {
+      entry.sampling = false;
+      entry.nextSampleMs = -Infinity;
+    }
+    setVisible(entry, true);
+    visibleEntries.push(entry);
+  }
+
+  function update({ enabled, scoped, targets, target, shellSpec, muzzle, nowMs }) {
+    if (!enabled || !scoped) {
       hide();
       return;
     }
-    const entry = prime(target);
-    if (!entry || !entry.frames.length) {
-      hide();
-      return;
+
+    visibleEntries.length = 0;
+    for (const entry of entries.values()) entry.inScope = false;
+    if (Array.isArray(targets)) {
+      for (const candidate of targets) addScopedTarget(candidate);
+    } else {
+      addScopedTarget(target);
     }
-    if (active !== entry) {
-      if (active) setVisible(active, false);
-      active = entry;
-      setVisible(active, true);
-      nextSampleMs = -Infinity;
-      sampling = false;
+    for (const entry of entries.values()) {
+      if (!entry.inScope) {
+        setVisible(entry, false);
+        entry.sampling = false;
+      }
     }
-    const shellKey = `${target.id}:${shellSpec?.name || shellSpec?.type || ''}`;
-    if (shellKey !== lastShellKey) {
-      lastShellKey = shellKey;
-      nextSampleMs = -Infinity;
-      sampling = false;
+    if (!visibleEntries.length) return;
+
+    const sampleNowMs = Number.isFinite(nowMs) ? nowMs : 0;
+    for (const entry of visibleEntries) {
+      if (entry.lastShellSpec !== shellSpec) {
+        entry.lastShellSpec = shellSpec;
+        entry.nextSampleMs = -Infinity;
+        entry.sampling = false;
+      }
+      if (!entry.sampling && sampleNowMs >= entry.nextSampleMs) {
+        entry.sampling = true;
+        entry.sampleFrameIndex = 0;
+        entry.samplePointIndex = 0;
+      }
     }
-    if (!sampling && nowMs >= nextSampleMs) {
-      sampling = true;
-      sampleFrameIndex = 0;
-      samplePointIndex = 0;
-    }
-    if (sampling && sampleBatch(entry, shellSpec, muzzle)) {
-      sampling = false;
-      nextSampleMs = nowMs + SAMPLE_INTERVAL_MS;
+
+    // The old single-target overlay spent one 48-query batch per frame. Keep
+    // that exact global budget while rotating through every scoped enemy, so
+    // broader visibility cannot turn a seven-vehicle sightline into a spike.
+    for (let offset = 0; offset < visibleEntries.length; offset++) {
+      const index = (sampleCursor + offset) % visibleEntries.length;
+      const entry = visibleEntries[index];
+      if (!entry.sampling) continue;
+      if (sampleBatch(entry, shellSpec, muzzle)) {
+        entry.sampling = false;
+        entry.nextSampleMs = sampleNowMs + SAMPLE_INTERVAL_MS;
+      }
+      sampleCursor = (index + 1) % visibleEntries.length;
+      break;
     }
   }
 
@@ -237,8 +277,8 @@ export function createArmorAimOverlay() {
       }
     }
     entries.clear();
-    lastShellKey = '';
-    sampling = false;
+    visibleEntries.length = 0;
+    sampleCursor = 0;
   }
 
   function dispose() {

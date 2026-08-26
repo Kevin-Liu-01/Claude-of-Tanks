@@ -2562,6 +2562,9 @@ const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
 const armorAimOverlay = createArmorAimOverlay();
+// Reused every HUD frame: scoped armor inspection follows every legally
+// visible opponent, not only the vehicle directly under the gun marker.
+const armorScopeTargets = [];
 const settings = createSettings({
   input,
   bus,
@@ -5286,13 +5289,20 @@ function tick(nowMs) {
     if (game.player) computeAimInfo();
     hud.update(frameInfo);
     if (game.player) {
-      const armorTarget = frameInfo.aim.gunTargetId
-        ? game.tankById.get(frameInfo.aim.gunTargetId) || null
-        : null;
+      const armorEnabled = input.getSettings().armorAimOverlay;
+      const armorScoped = rig.mode === 'SNIPER' && !!camera.userData.scoped;
+      armorScopeTargets.length = 0;
+      if (armorEnabled && armorScoped) {
+        for (const ent of game.tanks) {
+          if (ent === game.player || ent.team === game.player.team || ent.combat?.destroyed) continue;
+          if (!ent.visual?.root?.visible) continue;
+          armorScopeTargets.push(ent);
+        }
+      }
       armorAimOverlay.update({
-        enabled: input.getSettings().armorAimOverlay,
-        scoped: rig.mode === 'SNIPER' && !!camera.userData.scoped,
-        target: armorTarget,
+        enabled: armorEnabled,
+        scoped: armorScoped,
+        targets: armorScopeTargets,
         shellSpec: game.player.spec.gun.shells[game.player.combat.shellSlot],
         muzzle: _rayO,
         nowMs: performance.now(),
