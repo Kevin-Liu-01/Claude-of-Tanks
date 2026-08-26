@@ -10,7 +10,7 @@ public/models/community-candidates/user-drops-recovered/
 public/models/community-candidates/
 
 # Throwaway critic/diagnostic probes generated during review rounds
-tools/tmp-*.mjs
+tools/tmp-*
 public/models/**/*.glb.bak
 public/models/tanks/candidates-gen2/
 tools/__pycache__/

@@ -49,7 +49,7 @@ page.setDefaultTimeout(120000);
 const tanks = {};
 async function capture(id, seed, assetMode = false) {
   await page.goto(
-    `http://localhost:${server.config.server.port}/tools/tmp-hashgeo.html?id=${encodeURIComponent(id)}&seed=${seed}&asset=${assetMode ? 1 : 0}`,
+    `http://localhost:${server.config.server.port}/tools/fleet-freeze-probe.html?id=${encodeURIComponent(id)}&seed=${seed}&asset=${assetMode ? 1 : 0}`,
     { waitUntil: 'domcontentloaded' },
   );
   await page.waitForFunction('window.__HASH_READY === true', { polling: 50 });
