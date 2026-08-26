@@ -86,6 +86,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/net.selftest.mjs',
     'src/net/inputCadence.selftest.mjs',
     'src/net/browserInputRuntime.selftest.mjs',
+    'src/net/predictionCorrection.selftest.mjs',
     'src/net/iceConfig.selftest.mjs',
     'src/net/matchRuntime.deadPeer.selftest.mjs',
     'src/net/browserBattleBridge.selftest.mjs',

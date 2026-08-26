@@ -335,6 +335,12 @@ async function collectFullRenderer(page, label) {
       `${label} contact recovery diverged ${prediction?.maxContactPositionErrorM} m: ${predictionDiagnostic}`);
     assert.ok((prediction?.lastPositionErrorM ?? Infinity) < 1,
       `${label} retained ${prediction?.lastPositionErrorM} m of rubberband error`);
+    assert.ok((prediction?.maxCorrectionStepM ?? Infinity) < 0.25,
+      `${label} released a visible one-frame correction step ` +
+      `${prediction?.maxCorrectionStepM} m: ${predictionDiagnostic}`);
+    assert.ok((prediction?.maxVerticalCorrectionStepM ?? Infinity) < 0.15,
+      `${label} released a visible terrain-height correction step ` +
+      `${prediction?.maxVerticalCorrectionStepM} m: ${predictionDiagnostic}`);
     assert.equal(prediction?.droppedHistory, 0,
       `${label} dropped prediction history under the tested network profile`);
     await page.evaluate((expectedResult) => {

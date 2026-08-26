@@ -16,3 +16,4 @@ runtime documents remain authoritative for behavior.
 - [0004 — Deployment pinning preserves canonical module URLs](0004-canonical-module-urls.md)
 - [0005 — Public main keeps contracts, not iterative receipts](0005-public-repository-evidence.md)
 - [0006 — Network input cadence is independent from display refresh](0006-display-independent-network-input.md)
+- [0007 — Local correction is physical-role presentation state](0007-physical-role-prediction-correction.md)

@@ -231,4 +231,45 @@ assert.equal(predictor.getStats().pendingInputs, 1,
     'airborne replay preserves authoritative horizontal momentum');
 }
 
+// Collision/contact corrections should never dump terrain support-height error
+// into one rendered frame. The collision owner records the contact; authority
+// and replay stay exact while presentation adopts the heavier contact decay.
+{
+  const contactState = createTankState(SPEC, new Vector3(), 0);
+  const contactEntity = {
+    spec: SPEC,
+    state: contactState,
+    combat: null,
+    contactGeom: null,
+    rigidGear: false,
+  };
+  const collide = (predictionEntity, _pos, _radius, outPush) => {
+    predictionEntity._predictionDynamicContacts =
+      (predictionEntity._predictionDynamicContacts || 0) + 1;
+    outPush.set(0, 0, 0);
+    return false;
+  };
+  const contact = new LocalTankPredictor({
+    entity: contactEntity,
+    heightField: FIELD,
+    collide,
+  });
+  contact.reconcile(authority(0, null));
+  contact.recordInput(driving, 1 / 60, 1);
+  contact.reconcile(authority(3, 1, 0.18, 0, {
+    y: 0.12,
+    pitch: 0.04,
+    roll: -0.025,
+  }), 1 / 60);
+  const contactStats = contact.getStats();
+  assert.equal(contactStats.contactReconciliations, 1,
+    'collision-marked authority samples select the contact correction channel');
+  assert.ok(contactStats.maxVerticalCorrectionStepM < 0.02,
+    `contact support correction stays below 2 cm per frame ` +
+    `(${contactStats.maxVerticalCorrectionStepM})`);
+  assert.ok(contactStats.maxCorrectionStepM < 0.03,
+    `combined contact correction stays below 3 cm per frame ` +
+    `(${contactStats.maxCorrectionStepM})`);
+}
+
 console.log('localTankPrediction.selftest: replay, parked stability, correction, and reconnect passed');

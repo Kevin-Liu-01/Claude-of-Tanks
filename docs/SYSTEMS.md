@@ -353,11 +353,15 @@ terrain contact, map bounds, and nearby static collision. On snapshot:
 1. accept the latest authoritative local state;
 2. remove acknowledged inputs;
 3. replay remaining inputs through shared movement;
-4. ease normal visual error;
+4. ease normal visual error through separate horizontal, terrain-support, and
+   live-aim presentation channels;
 5. snap on death or an error beyond the safety threshold.
 
 Prediction never resolves local damage, spotting, destructibles, or match
-result.
+result. Terrain and dynamic contact keep support height and hull attitude on a
+heavier 300 ms correction envelope, while turret and gun aim converge faster.
+Rendered browser gates reject correction release above 0.25 m in one frame or
+vertical release above 0.15 m; authority and shared movement are unchanged.
 
 ## Lobby and room lifecycle
 

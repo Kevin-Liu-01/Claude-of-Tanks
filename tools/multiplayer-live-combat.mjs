@@ -874,9 +874,9 @@ function assertClientHealth(report, label) {
   assert.ok(report.network.transportBufferedBytes < 64 * 1024,
     `${label} stays below transport backpressure threshold`);
   assert.ok(report.motion.samples >= 30, `${label} samples live movement`);
-  assert.ok(report.motion.maxStepM < 2,
+  assert.ok(report.motion.maxStepM < 0.5,
     `${label} display stream has no teleport/rubber-band step (${report.motion.maxStepM.toFixed(3)} m)`);
-  assert.ok(report.motion.maxBackstepM < 0.75,
+  assert.ok(report.motion.maxBackstepM < 0.3,
     `${label} display stream has no backwards correction (${report.motion.maxBackstepM.toFixed(3)} m)`);
   assert.ok(Object.keys(report.events.firedBy).length === PLAYER_COUNT,
     `${label} receives fire events from every tank`);
@@ -929,6 +929,12 @@ function assertFullHealth(report, renderedRole, measuredDurationMs) {
   }
   assert.ok((prediction?.lastPositionErrorM ?? Infinity) < 1,
     `${renderedRole} settles below 1m correction (${prediction?.lastPositionErrorM})`);
+  assert.ok((prediction?.maxCorrectionStepM ?? Infinity) < 0.25,
+    `${renderedRole} keeps one-frame correction below 0.25m ` +
+    `(${prediction?.maxCorrectionStepM})`);
+  assert.ok((prediction?.maxVerticalCorrectionStepM ?? Infinity) < 0.15,
+    `${renderedRole} keeps terrain-height correction below 0.15m ` +
+    `(${prediction?.maxVerticalCorrectionStepM})`);
   assert.equal(report.presentation?.pending, 0,
     `${renderedRole} drains every presentation event`);
   assert.equal(report.shadows?.enabled, true, `${renderedRole} keeps shadows enabled`);

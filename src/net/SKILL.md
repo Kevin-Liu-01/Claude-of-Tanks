@@ -46,6 +46,10 @@ play without importing Three.js rendering or DOM state.
 - Initial RTC recovery replays pending SDP before creating a new ICE
   generation. Duplicate descriptions must be idempotent; never overlap offers
   merely because a fresh browser is slow.
+- Local prediction replays the exact shared movement path. Reconciliation error
+  is presentation-only: horizontal hull motion, terrain support/tilt, and live
+  turret aim use separate bounded decay channels. Contacts may extend smoothing
+  but must never change authority, collision, or ballistic state.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
 - Tests exercise the public host/client interface, not private internals.
 

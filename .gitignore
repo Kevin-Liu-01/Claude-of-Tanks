@@ -17,6 +17,7 @@ tools/__pycache__/
 __pycache__/
 .vercel/
 .qa-device/
+.qa-dev/
 .env.local
 public/models/tanks/**/*.glb
 

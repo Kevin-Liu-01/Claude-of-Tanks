@@ -3,19 +3,23 @@ import { SIM_DT, createTankState, updateTank } from '../sim/movement.js';
 import { isSequenceNewer } from './protocol.js';
 import { decodeAimIntent } from './aimIntent.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
+import {
+  PREDICTION_CORRECTION_KEYS,
+  decayPredictionCorrection,
+} from './predictionCorrection.ts';
 
 const DEFAULT_HARD_SNAP_M = 7;
-const DEFAULT_CORRECTION_TAU_S = 0.09;
+const DEFAULT_CORRECTION_TAU_S = 0.11;
+const DEFAULT_CONTACT_CORRECTION_TAU_S = 0.18;
+const DEFAULT_VERTICAL_CORRECTION_TAU_S = 0.16;
+const DEFAULT_CONTACT_VERTICAL_TAU_S = 0.24;
+const DEFAULT_AIM_CORRECTION_TAU_S = 0.075;
+const CONTACT_SMOOTH_HOLD_S = 0.3;
 const REST_SPEED_MPS = 0.08;
 const REST_HORIZONTAL_DEADZONE_M = 0.03;
 const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_HULL_ANGLE_DEADZONE_RAD = 0.0035;
 const MAX_INPUT_HISTORY = 240;
-const CORRECTION_KEYS = Object.freeze([
-  'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
-]);
-const HULL_CORRECTION_KEYS = Object.freeze(['x', 'y', 'z', 'yaw', 'pitch', 'roll']);
-const AIM_CORRECTION_KEYS = Object.freeze(['turretYaw', 'gunPitch']);
 
 function wrapAngle(value) {
   let angle = value;
@@ -129,6 +133,10 @@ export class LocalTankPredictor {
     collide = null,
     hardSnapDistanceM = DEFAULT_HARD_SNAP_M,
     correctionTauS = DEFAULT_CORRECTION_TAU_S,
+    contactCorrectionTauS = DEFAULT_CONTACT_CORRECTION_TAU_S,
+    verticalCorrectionTauS = DEFAULT_VERTICAL_CORRECTION_TAU_S,
+    contactVerticalCorrectionTauS = DEFAULT_CONTACT_VERTICAL_TAU_S,
+    aimCorrectionTauS = DEFAULT_AIM_CORRECTION_TAU_S,
   } = {}) {
     if (!entity || !entity.spec || !entity.state) throw new TypeError('prediction entity is required');
     if (!heightField || typeof heightField.getHeightAt !== 'function') {
@@ -139,6 +147,10 @@ export class LocalTankPredictor {
     this.collide = collide;
     this.hardSnapDistanceM = hardSnapDistanceM;
     this.correctionTauS = correctionTauS;
+    this.contactCorrectionTauS = contactCorrectionTauS;
+    this.verticalCorrectionTauS = verticalCorrectionTauS;
+    this.contactVerticalCorrectionTauS = contactVerticalCorrectionTauS;
+    this.aimCorrectionTauS = aimCorrectionTauS;
     const source = entity.state;
     const state = createTankState(entity.spec, source.pos, source.yaw);
     this.simEntity = {
@@ -163,6 +175,7 @@ export class LocalTankPredictor {
     this.terminalDestroyed = false;
     this.motionIntent = false;
     this.holdRestingHull = false;
+    this.contactSmoothingS = 0;
     this.lastStaticContactCount = 0;
     this.lastDynamicContactCount = 0;
     this.correction = {
@@ -180,6 +193,8 @@ export class LocalTankPredictor {
       contactReconciliations: 0,
       lastPositionErrorM: 0,
       restingHullHolds: 0,
+      maxCorrectionStepM: 0,
+      maxVerticalCorrectionStepM: 0,
     };
   }
 
@@ -219,7 +234,7 @@ export class LocalTankPredictor {
       this.initialized = true;
       this.holdRestingHull = false;
       applyAuthority(this.simEntity.state, snapshot);
-      for (const key of CORRECTION_KEYS) this.correction[key] = 0;
+      for (const key of PREDICTION_CORRECTION_KEYS) this.correction[key] = 0;
       copyPresentation(this.entity.state, this.simEntity.state, this.correction);
       return true;
     }
@@ -265,6 +280,7 @@ export class LocalTankPredictor {
     this.stats.reconciliations++;
     this.stats.lastPositionErrorM = positionError;
     if (contactSinceAuthority) {
+      this.contactSmoothingS = CONTACT_SMOOTH_HOLD_S;
       this.stats.contactReconciliations++;
       this.stats.maxContactPositionErrorM = Math.max(
         this.stats.maxContactPositionErrorM,
@@ -280,8 +296,9 @@ export class LocalTankPredictor {
     const terminalDestroyed = !!(destroyed || snapshot.destroyed);
     const distanceSnap = positionError > this.hardSnapDistanceM;
     if (distanceSnap || terminalDestroyed) {
-      for (const key of CORRECTION_KEYS) this.correction[key] = 0;
+      for (const key of PREDICTION_CORRECTION_KEYS) this.correction[key] = 0;
       this.holdRestingHull = false;
+      this.contactSmoothingS = 0;
       if (distanceSnap) this.stats.hardSnaps++;
       else if (!this.terminalDestroyed) this.stats.terminalSyncs++;
     } else {
@@ -308,11 +325,32 @@ export class LocalTankPredictor {
 
   present(elapsedS = 0) {
     const dt = Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
-    const decay = this.correctionTauS > 0 ? Math.exp(-dt / this.correctionTauS) : 0;
-    for (const key of AIM_CORRECTION_KEYS) this.correction[key] *= decay;
-    if (!this.holdRestingHull) {
-      for (const key of HULL_CORRECTION_KEYS) this.correction[key] *= decay;
-    }
+    const beforeX = this.correction.x;
+    const beforeY = this.correction.y;
+    const beforeZ = this.correction.z;
+    const contactSmoothing = this.contactSmoothingS > 0;
+    decayPredictionCorrection(this.correction, dt, {
+      horizontalTauS: contactSmoothing
+        ? this.contactCorrectionTauS : this.correctionTauS,
+      verticalTauS: contactSmoothing
+        ? this.contactVerticalCorrectionTauS : this.verticalCorrectionTauS,
+      aimTauS: this.aimCorrectionTauS,
+      holdRestingHull: this.holdRestingHull,
+    });
+    this.contactSmoothingS = Math.max(0, this.contactSmoothingS - dt);
+    const correctionStepM = Math.hypot(
+      beforeX - this.correction.x,
+      beforeY - this.correction.y,
+      beforeZ - this.correction.z,
+    );
+    this.stats.maxCorrectionStepM = Math.max(
+      this.stats.maxCorrectionStepM,
+      correctionStepM,
+    );
+    this.stats.maxVerticalCorrectionStepM = Math.max(
+      this.stats.maxVerticalCorrectionStepM,
+      Math.abs(beforeY - this.correction.y),
+    );
     copyPresentation(this.entity.state, this.simEntity.state, this.correction);
   }
 

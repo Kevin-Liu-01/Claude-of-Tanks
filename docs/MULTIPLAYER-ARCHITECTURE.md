@@ -105,8 +105,11 @@ Remote tanks use Hermite position interpolation, shortest-path angle blending,
 an adaptive 100–220 ms jitter buffer, and at most 250 ms of bounded
 extrapolation. The local tank predicts the exact shared 60 Hz movement code,
 terrain contact, map bounds, and nearby static collision, then replays
-unacknowledged inputs after each authority snapshot. Normal corrections ease
-over 90 ms; death or errors above 7 m snap immediately.
+unacknowledged inputs after each authority snapshot. Presentation correction is
+grouped by physical role: horizontal hull motion uses an 110 ms envelope,
+support height and hull attitude use 160 ms, and live turret/gun aim uses 75 ms.
+Recent terrain or dynamic contact extends hull envelopes to 180/240 ms for
+300 ms. Death or errors above 7 m still snap immediately.
 
 Both presentation paths suppress quantization chatter only when a tank is
 actually at rest. Remote snapshot samples retain a stable hull pose across
@@ -275,8 +278,10 @@ certification. It runs independent host-rendered and impaired-client-rendered
 7v7 matches, puts every human tank into a clear live battlefield engagement,
 and requires all fourteen tanks to move and fire through the real authority.
 It also requires real hit/damage events on both teams, full event delivery to
-every peer, zero prediction hard snaps or dropped history, bounded pose steps,
-30+ rendered fps with no freezes, healthy shadow cascades/WebGL, and clean
+every peer, zero prediction hard snaps or dropped history, sub-0.5 m pose steps,
+sub-0.3 m backwards steps, sub-0.25 m correction release, sub-0.15 m vertical
+correction release, 30+ rendered fps with no freezes, healthy shadow
+cascades/WebGL, and clean
 first-volley/live screenshots under `.qa-dev/multiplayer-live-7v7/`.
 
 Together the soaks prove room policy, identity separation, dual-channel WebRTC
