@@ -92,8 +92,8 @@ assert.ok(bootExceptionRecovery,
 
 const stalledBoot = createHarness(false);
 stalledBoot.window.__COT_BOOT_RECOVERY.progress('vehicle');
-const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 25000);
-const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 90000);
+const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 15000);
+const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 35000);
 assert.ok(stallNotice && stallWatchdog,
   'each real boot stage must arm a nonblocking notice and bounded recovery watchdog');
 stallNotice.fn();
@@ -104,7 +104,7 @@ assert.ok(stalledBoot.timers.some(({ ms }) => ms < 1000),
   'a genuinely stalled stage must eventually schedule one fresh-document recovery');
 
 const blockedStorageRetry = createHarness(false, {
-  href: 'https://game.test/?tank=leo1a5&_bootretry=already',
+  href: 'https://game.test/?tank=leo1a5&_bootretry=2-already',
   storageBlocked: true,
 });
 blockedStorageRetry.listeners.get('error')?.({
@@ -114,6 +114,22 @@ blockedStorageRetry.listeners.get('error')?.({
   error: { stack: 'Error: injected\n at https://game.test/assets/main-test.js:1:1' },
 });
 assert.equal(blockedStorageRetry.timers.some(({ ms }) => ms < 1000), false,
-  'the retry URL must prevent an auto-reload loop when sessionStorage is blocked');
+  'the counted retry URL must prevent an auto-reload loop when sessionStorage is blocked');
 
-console.log('chunkRecovery.selftest: failures recover once without reloading healthy slow stages');
+const storageBlockedSecondAttempt = createHarness(false, {
+  href: 'https://game.test/?tank=leo1a5&_bootretry=1-first',
+  storageBlocked: true,
+});
+storageBlockedSecondAttempt.listeners.get('error')?.({
+  target: storageBlockedSecondAttempt.window,
+  message: 'Injected second transient startup failure',
+  filename: 'https://game.test/assets/main-test.js',
+  error: { stack: 'Error: injected\n at https://game.test/assets/main-test.js:1:1' },
+});
+const secondRecovery = storageBlockedSecondAttempt.timers.find(({ ms }) => ms < 1000);
+assert.ok(secondRecovery, 'a second independent transient failure may recover automatically');
+secondRecovery.fn();
+assert.match(storageBlockedSecondAttempt.replacedUrl ?? '', /[?&]_bootretry=2-/,
+  'the URL receipt must advance even without sessionStorage');
+
+console.log('chunkRecovery.selftest: bounded failures recover without reloading healthy slow stages');

@@ -185,6 +185,55 @@ async function failedMainEvaluationRecovery() {
   return result;
 }
 
+async function failedSelectedBuilderRecovery() {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 1 });
+  let failedBuilderRequests = 0;
+  const failedDocumentAttempts = new Set();
+  let navigations = 0;
+  const errors = [];
+  page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) navigations++; });
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setRequestInterception(true);
+  page.on('request', (request) => {
+    // The pristine default M1A1 resolves through the demand-loaded Abrams
+    // profile implementation. Drop it twice to prove that cold lazy-family
+    // failures recover without a user refresh and still have a hard loop cap.
+    let documentAttempt = 0;
+    try {
+      const receipt = new URL(page.url()).searchParams.get('_bootretry') || '';
+      documentAttempt = Number.parseInt(receipt.split('-', 1)[0], 10) || 0;
+    } catch (_) { /* first navigation may not have committed its URL yet */ }
+    if (documentAttempt < 2
+        && !failedDocumentAttempts.has(documentAttempt)
+        && /\/assets\/abrams-(?!generated)[^/]+\.js(?:\?|$)/.test(request.url())) {
+      failedDocumentAttempts.add(documentAttempt);
+      failedBuilderRequests++;
+      request.abort('failed');
+    } else {
+      request.continue();
+    }
+  });
+  const url = new URL(baseUrl);
+  url.searchParams.set('nosplash', '1');
+  url.searchParams.set('nohero', '1');
+  url.searchParams.set('builderRecoveryProbe', '1');
+  const startedAt = Date.now();
+  await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
+  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  const result = {
+    name: 'failed-selected-builder-auto-recovery',
+    ...(await metrics(page, startedAt)),
+    failedBuilderRequests,
+    failedDocumentAttempts: [...failedDocumentAttempts].sort(),
+    navigations,
+    errors,
+  };
+  await context.close();
+  return result;
+}
+
 try {
   // Every context is pristine and explicitly cache-disabled. Multiple rows
   // exercise the real first-visit path repeatedly instead of warming one page
@@ -203,7 +252,10 @@ try {
   });
   const downloadRecovery = await failedMainChunkRecovery();
   const evaluationRecovery = await failedMainEvaluationRecovery();
-  const results = [...firstVisits, noHero, downloadRecovery, evaluationRecovery];
+  const builderRecovery = await failedSelectedBuilderRecovery();
+  const results = [
+    ...firstVisits, noHero, downloadRecovery, evaluationRecovery, builderRecovery,
+  ];
   const printable = compactOutput
     ? results.map(({ scripts: _scripts, ...row }) => row)
     : results;
@@ -221,6 +273,11 @@ try {
   }
   if (evaluationRecovery.injectedMainResponses !== 1 || evaluationRecovery.navigations < 2) {
     process.exitCode = 4;
+  }
+  if (builderRecovery.failedBuilderRequests !== 2
+      || builderRecovery.failedDocumentAttempts.join(',') !== '0,1'
+      || builderRecovery.navigations < 3) {
+    process.exitCode = 7;
   }
   if (firstVisits.some((row) => row.featuredImages.length !== 1
       || !row.featuredImages[0].path.endsWith('.boot.webp')

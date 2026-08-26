@@ -390,20 +390,21 @@
     // documents loaded before that contract shipped can still request an old
     // lazy hash after a deploy. Weak/mobile browsers can also abort a large
     // module fetch. Keep the rejected import rejected so its real cause is
-    // observable, recover the document once, then expose an honest retry.
+    // observable, recover the document at most twice, then expose an honest
+    // retry instead of entering a refresh loop.
     (() => {
       const KEY = 'cot.bootRecovery.v1';
-      const MAX_AUTO_RELOADS = 1;
+      const MAX_AUTO_RELOADS = 2;
       // A first visit may spend tens of seconds downloading/evaluating the
       // initial graph or compiling shaders on an old mobile GPU. A short
       // watchdog used to reload healthy work at 20/45 s, making the second
       // visit look "fixed" only because browser/driver caches were warm.
       // Notices stay early and non-blocking; automatic recovery is reserved
       // for a genuinely inactive, foreground, online document.
-      const WATCHDOG_NOTICE_MS = 45000;
-      const WATCHDOG_RECOVER_MS = 120000;
-      const STAGE_NOTICE_MS = 25000;
-      const STAGE_RECOVER_MS = 90000;
+      const WATCHDOG_NOTICE_MS = 30000;
+      const WATCHDOG_RECOVER_MS = 60000;
+      const STAGE_NOTICE_MS = 15000;
+      const STAGE_RECOVER_MS = 35000;
       const STABLE_READY_MS = 30000;
       let navigating = false;
       let recoveryScheduled = false;
@@ -412,7 +413,12 @@
       let deferredRecoveryReason = '';
 
       function retryCountFromUrl() {
-        try { return new URL(location.href).searchParams.has('_bootretry') ? 1 : 0; }
+        try {
+          const receipt = new URL(location.href).searchParams.get('_bootretry');
+          if (!receipt) return 0;
+          const count = Number.parseInt(receipt.split('-', 1)[0], 10);
+          return Number.isFinite(count) ? Math.max(1, Math.min(MAX_AUTO_RELOADS, count)) : 1;
+        }
         catch (_) { return 0; }
       }
 
@@ -435,9 +441,13 @@
         if (navigating) return;
         navigating = true;
         const prev = state();
-        remember({ count: prev.count + 1, at: Date.now(), reason });
+        const nextCount = Math.min(MAX_AUTO_RELOADS, prev.count + 1);
+        remember({ count: nextCount, at: Date.now(), reason });
         const url = new URL(location.href);
-        url.searchParams.set('_bootretry', Date.now().toString(36));
+        // The count in the URL is the fail-safe when private browsing blocks
+        // sessionStorage. It must survive a second transient failure without
+        // ever permitting an infinite navigation loop.
+        url.searchParams.set('_bootretry', `${nextCount}-${Date.now().toString(36)}`);
         location.replace(url.href);
       }
 

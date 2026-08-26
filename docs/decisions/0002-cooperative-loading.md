@@ -34,11 +34,12 @@ battle barrier acquires it in parallel with the selected world and roster.
 Network-only composition does not pay for the solo graph.
 
 Boot recovery distinguishes evidence of failure from slow progress. A failed
-module download/evaluation may trigger one immediate fresh-document recovery.
-Lack of progress first exposes a manual retry without interrupting work; only
-a much longer foreground/online stall may use the automatic recovery. The
-`_bootretry` URL receipt is authoritative when storage is unavailable, which
-prevents refresh loops in private or storage-restricted browsers.
+module download/evaluation may trigger at most two immediate fresh-document
+attempts. Lack of progress first exposes a manual retry without interrupting
+work; only a bounded foreground/online stall may use automatic recovery. The
+counted `_bootretry` URL receipt is authoritative when storage is unavailable,
+which permits a second transient recovery while preventing refresh loops in
+private or storage-restricted browsers.
 
 Studio follows the same contract: direct-entry effect atlases, shaders, and
 texture uploads use the opaque scheduler, while scene JSON loading yields
