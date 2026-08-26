@@ -255,6 +255,15 @@ export function removeLobbyPlayer(lobby, playerId) {
   return markChanged(lobby);
 }
 
+/** Preserve a room seat while its RTC transport is being recovered. */
+export function setLobbyPlayerConnected(lobby, playerId, connected) {
+  const player = requirePlayer(lobby, cleanId(playerId));
+  const next = !!connected;
+  if (player.connected === next) return lobby;
+  player.connected = next;
+  return markChanged(lobby);
+}
+
 /**
  * Apply one validated player command. Policy is centralized here so WebRTC,
  * WebSocket, and loopback sessions cannot disagree about lobby behavior.

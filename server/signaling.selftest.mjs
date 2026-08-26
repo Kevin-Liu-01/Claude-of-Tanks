@@ -307,6 +307,17 @@ await hostRejoined;
 assert.equal((await queuedSignal).payload.signal.kind, 'ice',
   'queued RTC rendezvous flushes after the durable membership resumes');
 assert.equal(resumeHost.state, 'open');
+const previousSessionId = resumeHost.sessionId;
+const rebuiltMembership = clientEvent(resumeGuest,
+  (message) => message.type === 'peer_joined' && message.payload?.peerId === 'resume-host' &&
+    message.payload?.sessionId !== previousSessionId);
+assert.equal(await resumeHost.restartRoomSession('test_rtc_rebuild'), true,
+  'terminal RTC recovery re-announces the same room membership');
+const rebuiltPeer = await rebuiltMembership;
+assert.notEqual(resumeHost.sessionId, previousSessionId,
+  'terminal RTC recovery rotates the runtime epoch');
+assert.equal(rebuiltPeer.payload.sessionId, resumeHost.sessionId,
+  'other peers receive the replacement epoch and can rebuild their RTC connection');
 resumeHost.close('resume_test_complete');
 resumeGuest.close('resume_test_complete');
 await resumeServer.close();

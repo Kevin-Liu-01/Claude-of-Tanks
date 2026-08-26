@@ -25,9 +25,14 @@ const access = createArmorAimOverlayAccess(async () => {
 assert.equal(access.isReady(), false);
 access.hide();
 access.clear();
-assert.throws(() => access.prime({ id: 'early' }), /not ready/);
+assert.equal(access.prime({ id: 'early' }), null,
+  'an optional overlay must not block a cold battle before its chunk exists');
+access.update({ scoped: true });
+access.warm()();
 await assert.rejects(access.preload(), /simulated overlay chunk failure/);
 assert.equal(access.current, null);
+assert.doesNotThrow(() => access.update({ scoped: true }),
+  'a failed optional chunk must not create a per-frame exception storm');
 
 const first = access.preload();
 assert.equal(first, access.preload(), 'parallel battle intents coalesce');

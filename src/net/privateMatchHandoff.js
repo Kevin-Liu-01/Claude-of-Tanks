@@ -12,6 +12,7 @@ import {
   markLobbyRoundPlaying,
   removeLobbyPlayer,
   serializeLobby,
+  setLobbyPlayerConnected,
 } from './lobby.js';
 
 function seededUnit(seed) {
@@ -101,6 +102,11 @@ function createPersistentRoomController(session) {
     },
     markPlaying() { markLobbyRoundPlaying(lobby); },
     finish(outcome) { finishLobbyRound(lobby, outcome); },
+    disconnect(playerId) {
+      if (lobby.players.has(String(playerId))) {
+        setLobbyPlayerConnected(lobby, String(playerId), false);
+      }
+    },
     remove(playerId, reason = 'left') {
       removeLobbyPlayer(lobby, playerId);
       const rtcPeer = session.peers?.get?.(String(playerId));
@@ -108,13 +114,17 @@ function createPersistentRoomController(session) {
       session.peers?.delete?.(String(playerId));
     },
     rejoin(playerId, player = {}) {
-      if (lobby.phase !== 'waiting') {
-        throw Object.assign(new Error('Return after the current round ends.'), {
-          code: 'room_not_waiting',
-        });
-      }
-      if (!lobby.players.has(String(playerId))) {
-        addLobbyPlayer(lobby, { id: String(playerId), name: player.name || 'Player' });
+      const id = String(playerId);
+      const existing = lobby.players.get(id);
+      if (!existing) {
+        if (lobby.phase !== 'waiting') {
+          throw Object.assign(new Error('This round no longer has a seat for that player.'), {
+            code: 'room_seat_unavailable',
+          });
+        }
+        addLobbyPlayer(lobby, { id, name: player.name || 'Player' });
+      } else {
+        setLobbyPlayerConnected(lobby, id, true);
       }
       return serializeLobby(lobby);
     },

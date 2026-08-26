@@ -65,6 +65,15 @@ hours). `VITE_ICE_CONFIG_URL` is only needed when credentials are served from
 a different endpoint. Long-lived provider secrets must never use the `VITE_`
 prefix or enter the browser bundle.
 
+Before certifying private rooms in production, check both service surfaces:
+
+    curl -fsS https://cot.kevinliu.studio/api/signal
+    curl -fsS https://cot.kevinliu.studio/api/ice
+
+The signaling response must report a ready command store. The ICE response
+must be HTTP 200 and include at least one `turn:` or `turns:` URL. A 503 or a
+STUN-only list cannot reliably connect friends behind restrictive NATs.
+
 ## Fast validation
 
 Run the complete Node self-test suite:

@@ -3139,6 +3139,10 @@ const pendingNetworkEvents = [];
 const pendingNetworkRoomChat = [];
 let networkRoomChat = null;
 let networkRoomChatPromise = null;
+let unsubscribeNetworkConnection = null;
+let networkDisconnectedAtMs = null;
+let networkReconnectAttempt = 0;
+const NETWORK_RECONNECT_GRACE_MS = 60_000;
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -3351,10 +3355,40 @@ function networkDiagnostics() {
   return { ...stats, prediction: networkBridge?.getPredictionStats?.() || null };
 }
 
+function attachNetworkConnectionStatus(client) {
+  if (unsubscribeNetworkConnection) unsubscribeNetworkConnection();
+  unsubscribeNetworkConnection = null;
+  networkDisconnectedAtMs = null;
+  networkReconnectAttempt = 0;
+  if (!client?.onConnection) return;
+  unsubscribeNetworkConnection = client.onConnection((connected) => {
+    if (connected) {
+      if (networkDisconnectedAtMs != null) networkStatus?.set({ state: 'reconnected' });
+      networkDisconnectedAtMs = null;
+      networkReconnectAttempt = 0;
+      return;
+    }
+    if (networkDisconnectedAtMs == null) networkDisconnectedAtMs = performance.now();
+    networkReconnectAttempt = Math.max(1, networkReconnectAttempt + 1);
+    networkStatus?.set({ state: 'reconnecting', attempt: networkReconnectAttempt });
+  });
+}
+
 function pumpNetworkMatch(dt, nowMs) {
   if (!networkMatch) return;
   if (networkMatch.client?.closed) {
-    if (game.phase === 'battle' && !game.result) networkBridge?.endDisconnected?.();
+    if (networkDisconnectedAtMs == null) networkDisconnectedAtMs = nowMs;
+    const disconnectedForMs = Math.max(0, nowMs - networkDisconnectedAtMs);
+    const attempt = Math.max(1, Math.floor(disconnectedForMs / 5_000) + 1);
+    if (attempt !== networkReconnectAttempt) {
+      networkReconnectAttempt = attempt;
+      networkStatus?.set({ state: 'reconnecting', attempt });
+    }
+    if (disconnectedForMs >= NETWORK_RECONNECT_GRACE_MS &&
+        game.phase === 'battle' && !game.result) {
+      networkStatus?.set({ state: 'failed' });
+      networkBridge?.endDisconnected?.();
+    }
     return;
   }
   if (networkMatch.role === 'host') {
@@ -3392,6 +3426,10 @@ function pumpNetworkMatch(dt, nowMs) {
 }
 
 function disposeNetworkPresentation() {
+  if (unsubscribeNetworkConnection) unsubscribeNetworkConnection();
+  unsubscribeNetworkConnection = null;
+  networkDisconnectedAtMs = null;
+  networkReconnectAttempt = 0;
   if (networkBridge) networkBridge.dispose();
   if (networkStatus) networkStatus.dispose();
   networkBridge = null;
@@ -3528,6 +3566,14 @@ async function presentNetworkBattle({
     preloadNetworkBattleModules(),
     ensureBattleHud(),
     ensureTouchControls(),
+    // Scope armor is presentation-only. Acquire it under the opaque network
+    // loader, but do not strand a whole room if this optional chunk is the
+    // one request a cold browser loses; its access owner remains fail-soft
+    // and the next intent/round retries the transfer.
+    armorAimOverlay.preload().catch((error) => {
+      console.warn('[loading] Optional armor overlay unavailable:', error);
+      return null;
+    }),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
@@ -3546,6 +3592,7 @@ async function presentNetworkBattle({
   });
   markLoadStage('world');
   networkMatch = await connectMatch();
+  attachNetworkConnectionStatus(networkMatch?.client);
   markLoadStage('connect');
   const cfg = getMapConfig(mapId);
   battleLoad.show({

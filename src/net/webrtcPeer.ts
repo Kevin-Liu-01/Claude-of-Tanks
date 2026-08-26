@@ -25,6 +25,7 @@ export interface WebRtcPeerSession {
 export interface WebRtcPeerOptions {
   role: 'host' | 'client';
   onSignal: (signal: RtcSignal) => void;
+  onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
   iceServers?: RTCIceServer[];
   relayOnly?: boolean;
   RTCPeerConnectionImpl?: typeof RTCPeerConnection | null;
@@ -79,6 +80,7 @@ function signalDescription(
 export function createWebRTCPeer({
   role,
   onSignal,
+  onConnectionStateChange = () => {},
   iceServers = [],
   relayOnly = false,
   RTCPeerConnectionImpl = null,
@@ -90,6 +92,9 @@ export function createWebRTCPeer({
 }: WebRtcPeerOptions): WebRtcPeerSession {
   if (role !== 'host' && role !== 'client') throw new TypeError('role must be host or client');
   if (typeof onSignal !== 'function') throw new TypeError('onSignal callback is required');
+  if (typeof onConnectionStateChange !== 'function') {
+    throw new TypeError('onConnectionStateChange must be a function');
+  }
   validateIceConfig(iceServers, relayOnly);
   if (!Array.isArray(recoveryDelaysMs) || recoveryDelaysMs.length === 0 ||
       recoveryDelaysMs.some((delay) => !Number.isFinite(delay) || delay < 0)) {
@@ -215,6 +220,7 @@ export function createWebRTCPeer({
 
   peerConnection.onconnectionstatechange = () => {
     const state = peerConnection.connectionState;
+    onConnectionStateChange(state);
     if (state === 'connected') {
       clearRecovery();
       recoveryAttempts = 0;

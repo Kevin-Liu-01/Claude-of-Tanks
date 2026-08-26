@@ -80,9 +80,12 @@ export class PrivateRoomHostSession {
       if (session) session.handleSignal(message.payload.signal).catch((error) => this.#fail(error));
     } else if (message.type === 'peer_left') {
       const session = this.peers.get(message.payload.peerId);
+      // Remove the canonical room seat before closing the RTC channels. Their
+      // close callback is intentionally treated as recoverable transport loss.
+      this.matchRuntime?.detachPeer?.(message.payload.peerId, 'peer_left');
+      this.runtime.detachPeer(message.payload.peerId, 'peer_left');
       if (session) session.close('peer_left');
       this.peers.delete(message.payload.peerId);
-      this.runtime.detachPeer(message.payload.peerId, 'peer_left');
     } else if (message.type === 'signaling_resumed') {
       // The durable room response is the source of truth after a socket gap.
       // Reconcile peers that may have joined while this host instance could
@@ -174,6 +177,9 @@ export class PrivateRoomClientSession {
     relayOnly = false,
     RTCPeerConnectionImpl = null,
     onError = null,
+    onConnectionState = null,
+    disconnectedRebuildDelayMs = 8_000,
+    failedRebuildDelayMs = 2_000,
   } = {}) {
     if (!signaling || !roomInfo || !roomInfo.peerId || !roomInfo.hostId) {
       throw new TypeError('signaling and joined room info are required');
@@ -184,6 +190,16 @@ export class PrivateRoomClientSession {
     this.iceServers = iceServers;
     this.relayOnly = relayOnly;
     this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
+    this.onConnectionState = typeof onConnectionState === 'function' ? onConnectionState : null;
+    if (!Number.isFinite(disconnectedRebuildDelayMs) || disconnectedRebuildDelayMs < 0 ||
+        !Number.isFinite(failedRebuildDelayMs) || failedRebuildDelayMs < 0) {
+      throw new TypeError('RTC rebuild delays must be non-negative milliseconds');
+    }
+    this.disconnectedRebuildDelayMs = disconnectedRebuildDelayMs;
+    this.failedRebuildDelayMs = failedRebuildDelayMs;
+    this.recoveryTimer = null;
+    this.replacePromise = null;
+    this.closed = false;
     this.runtime = null;
     this.hostSessionId = String(
       roomInfo.peers?.find((peer) => peer.peerId === roomInfo.hostId)?.sessionId || '',
@@ -235,7 +251,30 @@ export class PrivateRoomClientSession {
       relayOnly: this.relayOnly,
       RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
       onSignal: (signal) => this.signaling.sendSignal(this.roomInfo.hostId, signal),
+      onConnectionStateChange: (state) => this.#connectionStateChanged(state),
     });
+  }
+
+  #connectionStateChanged(state) {
+    if (this.closed) return;
+    this.onConnectionState?.(state);
+    if (state === 'connected') {
+      if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
+      this.recoveryTimer = null;
+      return;
+    }
+    if (!this.runtime || (state !== 'failed' && state !== 'disconnected') ||
+        this.recoveryTimer || this.replacePromise) return;
+    const peer = this.peer;
+    const delayMs = state === 'failed'
+      ? this.failedRebuildDelayMs : this.disconnectedRebuildDelayMs;
+    this.recoveryTimer = setTimeout(() => {
+      this.recoveryTimer = null;
+      if (this.closed || this.peer !== peer || peer.connectionState === 'connected') return;
+      this.#replacePeer({ renewSignaling: true }).catch((error) => {
+        if (this.onError) this.onError(error);
+      });
+    }, delayMs);
   }
 
   #bindInitialPeer(peer) {
@@ -260,7 +299,16 @@ export class PrivateRoomClientSession {
     });
   }
 
-  async #replacePeer() {
+  #replacePeer({ renewSignaling = false } = {}) {
+    if (this.replacePromise) return this.replacePromise;
+    const replacement = this.#replacePeerNow(renewSignaling).finally(() => {
+      if (this.replacePromise === replacement) this.replacePromise = null;
+    });
+    this.replacePromise = replacement;
+    return replacement;
+  }
+
+  async #replacePeerNow(renewSignaling) {
     const previous = this.runtime?.roomState?.players?.find(
       (player) => player.id === this.roomInfo.peerId,
     ) || null;
@@ -268,6 +316,7 @@ export class PrivateRoomClientSession {
     const nextPeer = this.#createPeer();
     this.peer = nextPeer;
     oldPeer.close('host_session_replaced');
+    if (renewSignaling) await this.signaling.restartRoomSession('rtc_session_rebuild');
     const transport = await nextPeer.transportReady;
     if (!this.runtime) return;
     this.runtime.reconnectTransport(transport, {
@@ -309,6 +358,9 @@ export class PrivateRoomClientSession {
   }
 
   close(reason = 'client_closed') {
+    this.closed = true;
+    if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
+    this.recoveryTimer = null;
     if (this.unsubscribeSignal) this.unsubscribeSignal();
     if (this.runtime && !this.runtime.closed) this.runtime.close(reason);
     this.peer.close(reason);

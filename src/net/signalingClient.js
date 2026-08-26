@@ -306,7 +306,8 @@ export class RoomSignalingClient {
   }
 
   #resumeRoom() {
-    if (this._manualClose || this._resumePromise || !this.roomCode || !this.player) return;
+    if (this._manualClose || !this.roomCode || !this.player) return Promise.resolve(false);
+    if (this._resumePromise) return this._resumePromise;
     const roomCode = this.roomCode;
     const player = this.player;
     this._resumePromise = (async () => {
@@ -333,7 +334,7 @@ export class RoomSignalingClient {
           type: 'signaling_resumed',
           payload: { ...result, roomCode: code, peerId: this.peerId, hostId: this.hostId },
         });
-        return;
+        return null;
       } catch (error) {
         this.#discardSocket('room_resume_retry');
         if (error?.code === 'room_not_found') {
@@ -346,17 +347,37 @@ export class RoomSignalingClient {
           this.hostId = null;
           this.player = null;
           this._signalQueue.length = 0;
-          return;
+          return false;
         }
         return error;
       }
     })().then((error) => {
       this._resumePromise = null;
       if (error && !this._manualClose) this.#scheduleReconnect(error.code || 'resume_failed');
+      return error == null;
     }, (error) => {
       this._resumePromise = null;
       if (!this._manualClose) this.#scheduleReconnect(error?.code || 'resume_failed');
+      return false;
     });
+    return this._resumePromise;
+  }
+
+  /** Rotate the page's RTC epoch and re-announce membership after terminal ICE loss. */
+  restartRoomSession(reason = 'rtc_recovery') {
+    if (this._manualClose || !this.roomCode || !this.player) {
+      return Promise.reject(codedError('room_resume_unavailable', 'join or create a room first'));
+    }
+    if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
+    this._reconnectTimer = null;
+    this._reconnectAttempt = 0;
+    this.sessionId = cleanSessionId(createSessionId());
+    this.#dispatch({
+      type: 'signaling_state',
+      payload: { state: 'reconnecting', reason, attempt: 1, delayMs: 0 },
+    });
+    this.#discardSocket(reason);
+    return this.#resumeRoom();
   }
 
   #startEventPolling() {

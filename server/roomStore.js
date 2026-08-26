@@ -7,7 +7,7 @@
  */
 import { createRoomCode } from '../src/net/protocol.js';
 
-const DEFAULT_ROOM_TTL_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
 function cleanPlayer(player) {
   const id = String(player && player.id || '').trim();

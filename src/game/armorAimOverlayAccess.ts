@@ -21,9 +21,11 @@ const loadDefaultOverlay = async (): Promise<ArmorAimOverlayModule> =>
   await import('./armorAimOverlay.js') as unknown as ArmorAimOverlayModule;
 
 /**
- * Retryable battle-only owner for the exact plate flashlight. Garage boot can
- * safely clear/hide an absent overlay; construction and sampling require the
- * covered battle/capture acquisition barrier to have completed.
+ * Retryable battle-only owner for the exact plate flashlight. The overlay is
+ * presentation-only, so every forwarding method is deliberately fail-soft:
+ * a delayed or failed optional chunk must never break battle entry or create
+ * a per-frame exception storm. Entry paths still preload it under their
+ * loading veil so the normal visual contract is unchanged.
  */
 export function createArmorAimOverlayAccess(
   load: () => Promise<ArmorAimOverlayModule> = loadDefaultOverlay,
@@ -45,17 +47,12 @@ export function createArmorAimOverlayAccess(
     return request;
   };
 
-  const requireRuntime = (): ArmorAimOverlayRuntime => {
-    if (!current) throw new Error('Armor aim overlay runtime is not ready.');
-    return current;
-  };
-
   return {
     preload,
     isReady: () => current !== null,
-    prime: (target) => requireRuntime().prime(target),
-    warm: () => requireRuntime().warm(),
-    update: (options) => requireRuntime().update(options),
+    prime: (target) => current?.prime(target) ?? null,
+    warm: () => current?.warm() ?? (() => {}),
+    update: (options) => { current?.update(options); },
     hide: () => { current?.hide(); },
     clear: () => { current?.clear(); },
     dispose: () => { current?.dispose(); },

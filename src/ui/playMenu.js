@@ -604,6 +604,7 @@ export function createPlayMenu({
 
   let mode = null;
   let session = null;
+  let roomIce = null;
   let state = null;
   let role = null;
   let unsubscribeState = null;
@@ -719,6 +720,7 @@ export function createPlayMenu({
     if (activeRoom) activeRoom.leave(reason);
     else if (session) session.close(reason);
     session = null;
+    roomIce = null;
     activeRoom = null;
     state = null;
     role = null;
@@ -953,9 +955,13 @@ export function createPlayMenu({
       playersEl.appendChild(row);
     }
     const fillNote = ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
+    const relayNote = mode === 'private' && roomIce && !roomIce.relayAvailable
+      ? ' TURN relay is unavailable; restrictive networks may not connect.'
+      : '';
     note.textContent = (mode === 'lan'
       ? 'LAN gameplay stays on direct Wi-Fi WebRTC paths; signaling only introduces the peers.'
-      : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') + fillNote;
+      : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') +
+      fillNote + relayNote;
   }
 
   async function connectRoom(kind) {
@@ -975,17 +981,24 @@ export function createPlayMenu({
     const player = { id: ownPlayerId, name };
     setConnecting(true);
     try {
-      const ice = await iceServers(mode);
       if (kind === 'create') {
         const teamSize = Number(createSizeSelect.value);
         remember(ROOM_SIZE_KEY, String(teamSize));
-        const roomInfo = await signaling.createRoom({ player, mode, maxPlayers: 14 });
+        const [roomInfo, ice] = await Promise.all([
+          signaling.createRoom({ player, mode, maxPlayers: 14 }),
+          iceServers(mode),
+        ]);
+        roomIce = ice;
         session = createHostSession({ signaling, roomInfo, name, selection, ice, teamSize });
         role = 'host';
         unsubscribeState = session.runtime.onState(renderLobby);
         renderLobby(serializeLobby(session.lobby));
       } else {
-        const roomInfo = await signaling.joinRoom({ roomCode: codeInput.value, player });
+        const [roomInfo, ice] = await Promise.all([
+          signaling.joinRoom({ roomCode: codeInput.value, player }),
+          iceServers(mode),
+        ]);
+        roomIce = ice;
         if (roomInfo.hostId === roomInfo.peerId) {
           // The stable browser player id owns this room. This is a host-page
           // reload, not a guest joining itself: rebuild browser authority and

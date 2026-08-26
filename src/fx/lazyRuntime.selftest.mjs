@@ -24,13 +24,19 @@ if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState
 
 const requiredGates = [
   ['solo battle', /async function startBattleLoading[\s\S]{0,5200}const fxTextureP = ensureFxRuntime\(\)/],
-  ['network battle', /async function presentNetworkBattle[\s\S]{0,4200}preloadNetworkBattleModules\(\)[\s\S]{0,100}ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
   ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
   ['deterministic shots', /window\.__SHOTS[\s\S]{0,1200}ensureFxRuntime\(\)/],
 ];
 for (const [name, pattern] of requiredGates) {
   if (!pattern.test(main)) throw new Error(`${name} can enter without the live effects runtime`);
+}
+const networkBattle = main.slice(
+  main.indexOf('async function presentNetworkBattle('),
+  main.indexOf('async function beginSoloBattle('),
+);
+if (!/preloadNetworkBattleModules\(\)[\s\S]{0,900}ensureFxRuntime\(\)/.test(networkBattle)) {
+  throw new Error('network battle can enter without the live effects runtime');
 }
 if (!/function preloadBattleIntent[\s\S]{0,700}planBattleParticipantIds\(game, specId, true\)[\s\S]{0,220}ensureTankBuilders\(planned\)[\s\S]{0,420}live\.preloadTextures/.test(main)) {
   throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');

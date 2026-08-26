@@ -169,7 +169,9 @@ export class AuthoritativeMatchRuntime {
     };
     peer.unsubscribeMessage = transport.onMessage((message) => this.#receive(peer, message));
     if (typeof transport.onClose === 'function') {
-      peer.unsubscribeClose = transport.onClose((reason) => this.detachPeer(id, reason));
+      peer.unsubscribeClose = transport.onClose((reason) => this.detachPeer(id, reason, {
+        retainRoomSeat: true,
+      }));
     }
     this.peers.set(id, peer);
     if (typeof this.simulation.onPeerJoin === 'function') {
@@ -185,7 +187,7 @@ export class AuthoritativeMatchRuntime {
     if (!this.roomController?.rejoin) {
       throw new ProtocolError('room_rejoin_unavailable', 'this room cannot accept a returning player');
     }
-    if (this.peers.has(id)) this.detachPeer(id, 'peer_replaced');
+    if (this.peers.has(id)) this.detachPeer(id, 'peer_replaced', { retainRoomSeat: true });
     this.roomController.rejoin(id, player || {});
     const detach = this.attachPeer({ peerId: id, transport, metadata });
     this.#broadcastRoomState();
@@ -200,7 +202,7 @@ export class AuthoritativeMatchRuntime {
     return true;
   }
 
-  detachPeer(peerId, reason = 'left') {
+  detachPeer(peerId, reason = 'left', { retainRoomSeat = false } = {}) {
     const id = String(peerId);
     const peer = this.peers.get(id);
     if (!peer) return false;
@@ -210,7 +212,10 @@ export class AuthoritativeMatchRuntime {
     if (typeof this.simulation.onPeerLeave === 'function') {
       this.simulation.onPeerLeave({ peerId: id, reason });
     }
-    if (!this.closed && this.roomController?.remove) {
+    if (!this.closed && retainRoomSeat && this.roomController?.disconnect) {
+      this.roomController.disconnect(id, reason);
+      this.#broadcastRoomState();
+    } else if (!this.closed && this.roomController?.remove) {
       this.roomController.remove(id, reason);
       this.#broadcastRoomState();
     }
@@ -235,12 +240,12 @@ export class AuthoritativeMatchRuntime {
       // A transport may enter closing state between the tick's readiness check
       // and the send. That is a peer departure, not an authority failure.
       if (!(error instanceof TransportClosedError)) throw error;
-      this.detachPeer(peer.id, 'transport_closed');
+      this.detachPeer(peer.id, 'transport_closed', { retainRoomSeat: true });
       return false;
     }
     if (!accepted && typeof peer.transport.close === 'function') {
       peer.transport.close('backpressure_limit');
-      this.detachPeer(peer.id, 'backpressure_limit');
+      this.detachPeer(peer.id, 'backpressure_limit', { retainRoomSeat: true });
     }
     return accepted;
   }

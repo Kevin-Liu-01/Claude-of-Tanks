@@ -43,6 +43,13 @@ assert.match(main, /prefetchWorld\(mapId\);/,
   'fixed host maps should use the quiet background world path');
 assert.match(main, /const \[networkModules\] = await Promise\.all\(\[\s*preloadNetworkBattleModules\(\)/,
   'network entry should join the intent-preloaded module promise');
+const networkBattle = main.slice(
+  main.indexOf('async function presentNetworkBattle('),
+  main.indexOf('async function beginSoloBattle('),
+);
+assert.match(networkBattle,
+  /Promise\.all\(\[[\s\S]{0,500}armorAimOverlay\.preload\(\)\.catch/,
+  'network entry must acquire the optional armor overlay under its loading veil');
 assert.match(main, /await preloadPrivateMatchHandoffModule\(\)/,
   'private handoff should join the mode-intent preload');
 assert.match(main, /await preloadDedicatedClientModule\(\)/,

@@ -248,6 +248,20 @@ short-lived TURN credentials from same-origin `/api/ice`; the deployment keeps
 the long-lived provider token server-side. `VITE_ICE_CONFIG_URL` only overrides
 that endpoint for a separate credential service. LAN remains direct.
 
+Room signaling membership is durable for 24 hours and refreshed by active
+polling. An unclean RTC close reserves the canonical lobby seat, marks the
+authority entity disconnected with neutral input, and permits the same player
+identity to attach a replacement peer during an active round. The client
+attempts ICE restart first, then rotates its signaling runtime epoch and
+rebuilds the peer connection. The rendered battle holds its last valid state
+for a bounded 60-second recovery window; it does not mount a second battle or
+immediately synthesize a loss.
+
+STUN-only fallback keeps room creation non-blocking, but cannot traverse every
+NAT. A production release must receive HTTP 200 from `/api/ice` and verify that
+its `iceServers` contains a `turn:` or `turns:` URL. HTTP 503 or a STUN-only
+response is a degraded deployment, even when `/api/signal` is healthy.
+
 LAN setup is automatic. Public deployments use their same-origin secure
 signaling endpoint for rendezvous, while pages served from localhost or an
 RFC1918 address use that host's bundled port-7777 signaling service. LAN does

@@ -56,11 +56,56 @@ class FakeHostPeerConnection extends FakeClientPeerConnection {
 }
 
 class FakeSignaling {
-  constructor() { this.listeners = new Set(); this.closed = false; this.signals = []; }
+  constructor() {
+    this.listeners = new Set(); this.closed = false; this.signals = [];
+    this.restartCalls = 0;
+  }
   onEvent(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   sendSignal(peerId, signal) { this.signals.push({ peerId, signal }); }
+  restartRoomSession() { this.restartCalls++; return Promise.resolve(true); }
   close() { this.closed = true; }
   emit(message) { for (const listener of [...this.listeners]) listener(message); }
+}
+
+// A terminal client ICE failure replaces the peer connection, rotates the
+// signaling epoch, and revives the existing MatchClientRuntime instead of
+// ending the battle or layering another presentation owner over it.
+{
+  const signaling = new FakeSignaling();
+  const states = [];
+  const session = new PrivateRoomClientSession({
+    signaling,
+    roomInfo: {
+      roomCode: 'RECOV2', peerId: 'guest', hostId: 'host', mode: 'private',
+      peers: [{ peerId: 'host', player: { name: 'Host' }, sessionId: 'host_epoch_1' }],
+    },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+    failedRebuildDelayMs: 0,
+    onConnectionState: (state) => states.push(state),
+  });
+  const firstControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const firstState = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: firstControl });
+  session.peer.peerConnection.ondatachannel({ channel: firstState });
+  await session.ready;
+  const runtime = session.runtime;
+  const firstPeer = session.peer;
+  firstPeer.peerConnection.connectionState = 'failed';
+  firstPeer.peerConnection.onconnectionstatechange();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.notEqual(session.peer, firstPeer, 'failed ICE creates a replacement RTC peer');
+  const nextControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const nextState = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: nextControl });
+  session.peer.peerConnection.ondatachannel({ channel: nextState });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(signaling.restartCalls, 1, 'replacement is announced through durable signaling');
+  assert.equal(session.runtime, runtime, 'the match client and presentation identity remain stable');
+  assert.equal(runtime.closed, false, 'the replacement channel revives the runtime');
+  assert.ok(nextControl.sent.length >= 1, 'the revived runtime sends a fresh HELLO');
+  assert.deepEqual(states, ['failed']);
+  session.close('test_done');
 }
 
 // A new browser-host runtime reconstructs peer offers from the durable room
@@ -321,7 +366,9 @@ observed.close('test_done');
   // authority sends the still-live waiting room without rebuilding it.
   joinedRound.close('page_reload');
   await Promise.resolve();
-  assert.equal(hostedRound.client.roomState.players.some((player) => player.id === 'guest-r'), false);
+  assert.equal(hostedRound.client.roomState.players.find(
+    (player) => player.id === 'guest-r')?.connected, false,
+  'an unclean page loss reserves the room seat while RTC is replaced');
   const reloadLink = createLoopbackTransportPair();
   hostedRound.host.rejoinPeer({
     peerId: 'guest-r',
@@ -333,8 +380,9 @@ observed.close('test_done');
   rejoinedRound.connect({ mode: 'private', resumed: true });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(rejoinedRound.roomState.phase, 'waiting');
-  assert.equal(rejoinedRound.roomState.players.some((player) => player.id === 'guest-r'), true,
-    'reload reattaches the stable player id to the persistent room');
+  assert.equal(rejoinedRound.roomState.players.find(
+    (player) => player.id === 'guest-r')?.connected, true,
+  'reload reattaches the stable player id to the persistent room');
   rejoinedRound.submitRoomCommand({ type: 'select_vehicle', specId: 't90m' });
   await Promise.resolve();
 
