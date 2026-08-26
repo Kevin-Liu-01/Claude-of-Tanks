@@ -52,7 +52,7 @@ import {
   MATCH_CONTROL_CHANNEL_LABEL,
   MATCH_STATE_CHANNEL_LABEL,
   createWebRTCPeer,
-} from './webrtcPeer.js';
+} from './webrtcPeer.ts';
 import { RoomSignalingClient } from './signalingClient.js';
 import { resolveSignalUrl } from './signalEndpoint.js';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.js';
@@ -545,11 +545,34 @@ class FakePeerConnection {
   client.peerConnection.connectionState = 'failed';
   client.peerConnection.onconnectionstatechange();
   await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(clientSignals.at(-1)?.description?.type, 'answer',
+    'client first replays its exact answer so a dropped reply cannot strand a fresh host');
+  assert.equal(clientSignals.some((signal) => signal.kind === 'restart'), false,
+    'first client recovery does not replace an in-flight handshake');
+  await new Promise((resolve) => setTimeout(resolve, 55));
   assert.ok(clientSignals.some((signal) => signal.kind === 'restart'),
-    'client requests a host-owned ICE restart without offer glare');
+    'client requests a host-owned ICE restart after bounded SDP replay');
   client.transportReady.catch(() => {});
   host.close('test_complete');
   client.close('test_complete');
+}
+
+{
+  const signals = [];
+  const slowHost = createWebRTCPeer({
+    role: 'host', onSignal: (signal) => signals.push(signal),
+    RTCPeerConnectionImpl: FakePeerConnection,
+    recoveryDelaysMs: [0, 50], initialRecoveryDelayMs: 0,
+  });
+  await slowHost.start();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(signals.length, 2, 'slow first join gets one durable SDP replay');
+  assert.equal(signals[0].description.sdp, signals[1].description.sdp,
+    'watchdog replays the exact offer instead of replacing it mid-negotiation');
+  assert.equal(slowHost.peerConnection.offerOptions.length, 1,
+    'pending first offer is not superseded by an ICE-restart offer');
+  slowHost.transportReady.catch(() => {});
+  slowHost.close('test_complete');
 }
 
 {

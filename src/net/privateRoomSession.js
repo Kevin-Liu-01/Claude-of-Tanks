@@ -1,6 +1,6 @@
 import { createLobby } from './lobby.js';
 import { LobbyHostRuntime } from './lobbyRuntime.js';
-import { createWebRTCPeer } from './webrtcPeer.js';
+import { createWebRTCPeer } from './webrtcPeer.ts';
 import { MatchClientRuntime } from './matchRuntime.js';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 

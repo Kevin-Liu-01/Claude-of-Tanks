@@ -1,11 +1,46 @@
 import { createWebRTCSplitTransport } from './channelTransport.js';
 
+export type RtcSignal =
+  | { kind: 'ice'; candidate: RTCIceCandidateInit }
+  | { kind: 'description'; description: RTCSessionDescriptionInit }
+  | { kind: 'restart' };
+
+export interface MatchTransport {
+  readonly readyState: string;
+  close(reason?: string): void;
+}
+
+export interface WebRtcPeerSession {
+  readonly role: 'host' | 'client';
+  readonly peerConnection: RTCPeerConnection;
+  readonly transportReady: Promise<MatchTransport>;
+  readonly connectionState: RTCPeerConnectionState;
+  readonly recoveryAttempts: number;
+  start(): Promise<void>;
+  handleSignal(signal: RtcSignal): Promise<void>;
+  close(reason?: string): void;
+  restartIce(): void;
+}
+
+export interface WebRtcPeerOptions {
+  role: 'host' | 'client';
+  onSignal: (signal: RtcSignal) => void;
+  iceServers?: RTCIceServer[];
+  relayOnly?: boolean;
+  RTCPeerConnectionImpl?: typeof RTCPeerConnection | null;
+  transportOptions?: Record<string, unknown>;
+  recoveryDelaysMs?: number[];
+  disconnectGraceMs?: number;
+  initialRecoveryDelayMs?: number;
+  connectTimeoutMs?: number;
+}
+
 export const MATCH_CONTROL_CHANNEL_LABEL = 'cot-match-v1';
 export const MATCH_STATE_CHANNEL_LABEL = 'cot-state-v1';
 // Kept as an import-compatible alias for existing tooling and tests.
 export const MATCH_CHANNEL_LABEL = MATCH_CONTROL_CHANNEL_LABEL;
 
-function rtcConstructor(injected) {
+function rtcConstructor(injected: typeof RTCPeerConnection | null | undefined) {
   const Ctor = injected || globalThis.RTCPeerConnection;
   if (typeof Ctor !== 'function') {
     throw new Error('RTCPeerConnection is unavailable in this browser');
@@ -13,7 +48,7 @@ function rtcConstructor(injected) {
   return Ctor;
 }
 
-function validateIceConfig(iceServers, relayOnly) {
+function validateIceConfig(iceServers: RTCIceServer[], relayOnly: boolean) {
   if (!Array.isArray(iceServers)) throw new TypeError('iceServers must be an array');
   if (relayOnly) {
     const hasTurn = iceServers.some((server) => {
@@ -24,8 +59,17 @@ function validateIceConfig(iceServers, relayOnly) {
   }
 }
 
-function signalCandidate(candidate) {
+function signalCandidate(candidate: RTCIceCandidate): RTCIceCandidateInit {
   return candidate && typeof candidate.toJSON === 'function' ? candidate.toJSON() : candidate;
+}
+
+function signalDescription(
+  description: RTCSessionDescription | RTCSessionDescriptionInit | null,
+): RTCSessionDescriptionInit {
+  if (!description) throw new Error('local RTC description is unavailable');
+  return typeof (description as RTCSessionDescription).toJSON === 'function'
+    ? (description as RTCSessionDescription).toJSON()
+    : { type: description.type, sdp: description.sdp };
 }
 
 /**
@@ -41,9 +85,9 @@ export function createWebRTCPeer({
   transportOptions = {},
   recoveryDelaysMs = [0, 3_000, 7_000, 15_000, 30_000],
   disconnectGraceMs = 4_000,
-  initialRecoveryDelayMs = 8_000,
-  connectTimeoutMs = 30_000,
-} = {}) {
+  initialRecoveryDelayMs = 15_000,
+  connectTimeoutMs = 60_000,
+}: WebRtcPeerOptions): WebRtcPeerSession {
   if (role !== 'host' && role !== 'client') throw new TypeError('role must be host or client');
   if (typeof onSignal !== 'function') throw new TypeError('onSignal callback is required');
   validateIceConfig(iceServers, relayOnly);
@@ -62,18 +106,18 @@ export function createWebRTCPeer({
     bundlePolicy: 'max-bundle',
     iceCandidatePoolSize: 4,
   });
-  const pendingCandidates = [];
-  const channels = new Map();
+  const pendingCandidates: RTCIceCandidateInit[] = [];
+  const channels = new Map<string, RTCDataChannel>();
   let remoteDescriptionSet = false;
   let closed = false;
-  let transport = null;
-  let settleTransport;
-  let rejectTransport;
-  let recoveryTimer = null;
+  let transport: MatchTransport | null = null;
+  let settleTransport!: (transport: MatchTransport) => void;
+  let rejectTransport!: (error: Error) => void;
+  let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   let recoveryAttempts = 0;
-  let negotiationChain = Promise.resolve();
-  let connectTimer = null;
-  const transportReady = new Promise((resolve, reject) => {
+  let negotiationChain: Promise<unknown> = Promise.resolve();
+  let connectTimer: ReturnType<typeof setTimeout> | null = null;
+  const transportReady = new Promise<MatchTransport>((resolve, reject) => {
     settleTransport = resolve;
     rejectTransport = reject;
   });
@@ -90,7 +134,7 @@ export function createWebRTCPeer({
     settleTransport(transport);
   }
 
-  function attachChannel(channel) {
+  function attachChannel(channel: RTCDataChannel) {
     if (closed) {
       if (channel && typeof channel.close === 'function') channel.close();
       return;
@@ -117,13 +161,20 @@ export function createWebRTCPeer({
     recoveryTimer = null;
   }
 
-  function queueNegotiation(task) {
+  function queueNegotiation(task: () => Promise<void>): Promise<void> {
     const pending = negotiationChain.then(task);
     negotiationChain = pending.catch(() => {});
     return pending;
   }
 
-  function scheduleRecovery(initialDelay = null) {
+  function sameDescription(
+    left: RTCSessionDescription | RTCSessionDescriptionInit | null,
+    right: RTCSessionDescriptionInit,
+  ) {
+    return !!left && left.type === right.type && left.sdp === right.sdp;
+  }
+
+  function scheduleRecovery(initialDelay: number | null = null) {
     if (closed || recoveryTimer || peerConnection.connectionState === 'connected') return;
     const delay = initialDelay == null
       ? recoveryDelaysMs[Math.min(recoveryAttempts, recoveryDelaysMs.length - 1)]
@@ -132,12 +183,25 @@ export function createWebRTCPeer({
       recoveryTimer = null;
       if (closed || peerConnection.connectionState === 'connected') return;
       recoveryAttempts++;
-      if (role === 'host') {
+      const local = peerConnection.localDescription;
+      const remote = peerConnection.remoteDescription;
+      // Slow first-time browsers can receive the offer or answer after the
+      // watchdog fires. Replay the exact pending description once instead of
+      // replacing it with a glare-prone ICE-restart offer. Signaling delivery
+      // is durable and duplicate descriptions are handled idempotently below.
+      if (recoveryAttempts === 1 && local?.type === 'offer' && !remote) {
+        onSignal({ kind: 'description', description: signalDescription(local) });
+      } else if (recoveryAttempts === 1 && local?.type === 'answer' && remote) {
+        onSignal({ kind: 'description', description: signalDescription(local) });
+      } else if (role === 'host') {
         queueNegotiation(async () => {
           if (typeof peerConnection.restartIce === 'function') peerConnection.restartIce();
           const offer = await peerConnection.createOffer({ iceRestart: true });
           await peerConnection.setLocalDescription(offer);
-          onSignal({ kind: 'description', description: peerConnection.localDescription });
+          onSignal({
+            kind: 'description',
+            description: signalDescription(peerConnection.localDescription),
+          });
         }).catch(() => {});
       } else {
         // The host remains the offerer, avoiding glare while still letting a
@@ -171,7 +235,7 @@ export function createWebRTCPeer({
     }
   }
 
-  function start() {
+  function start(): Promise<void> {
     return queueNegotiation(async () => {
       if (role !== 'host') return;
       const controlChannel = peerConnection.createDataChannel(MATCH_CONTROL_CHANNEL_LABEL, {
@@ -185,12 +249,15 @@ export function createWebRTCPeer({
       attachChannel(stateChannel);
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
-      onSignal({ kind: 'description', description: peerConnection.localDescription });
+      onSignal({
+        kind: 'description',
+        description: signalDescription(peerConnection.localDescription),
+      });
       scheduleRecovery(initialRecoveryDelayMs);
     });
   }
 
-  function handleSignal(signal) {
+  function handleSignal(signal: RtcSignal): Promise<void> {
     return queueNegotiation(async () => {
       if (closed) return;
       if (!signal || typeof signal !== 'object') throw new TypeError('invalid RTC signal');
@@ -216,19 +283,34 @@ export function createWebRTCPeer({
       if (role === 'client' && description.type !== 'offer') {
         throw new Error('client expected an offer');
       }
+      if (sameDescription(peerConnection.remoteDescription, description)) {
+        // A durable-mailbox replay is an acknowledgement opportunity, not a
+        // second negotiation. Clients resend the already-created answer so a
+        // dropped answer cannot strand a fresh host behind the loading UI.
+        if (role === 'client' && peerConnection.localDescription?.type === 'answer') {
+          onSignal({
+            kind: 'description',
+            description: signalDescription(peerConnection.localDescription),
+          });
+        }
+        return;
+      }
       await peerConnection.setRemoteDescription(description);
       remoteDescriptionSet = true;
       await drainCandidates();
       if (role === 'client') {
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        onSignal({ kind: 'description', description: peerConnection.localDescription });
+        onSignal({
+          kind: 'description',
+          description: signalDescription(peerConnection.localDescription),
+        });
         scheduleRecovery(initialRecoveryDelayMs);
       }
     });
   }
 
-  const session = {
+  const session: WebRtcPeerSession = {
     role,
     peerConnection,
     transportReady,

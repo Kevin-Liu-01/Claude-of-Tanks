@@ -329,6 +329,11 @@ LAN/private WebRTC uses:
 - cot-match-v1: ordered reliable control and events;
 - cot-state-v1: unordered, zero-retransmit snapshots and live input.
 
+`src/net/webrtcPeer.ts` owns typed SDP/ICE negotiation. A slow fresh join first
+replays its exact pending description, duplicate descriptions are idempotent,
+and only a later bounded attempt performs ICE restart. This keeps the initial
+handshake stable while retaining route-change recovery.
+
 Snapshots use a compact binary codec, per-peer baselines, deltas,
 acknowledgements, and periodic keyframes. A client missing a delta baseline
 waits for a keyframe instead of applying undefined state.

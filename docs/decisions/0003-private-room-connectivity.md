@@ -24,6 +24,13 @@ If the optional credential service is temporarily unavailable, room creation
 continues with the prior public STUN set and records a degraded reason. LAN
 rooms request neither STUN nor TURN.
 
+RTC negotiation treats signaling delivery as replayable. A slow initial
+handshake first retransmits the exact pending offer or answer; duplicate SDP
+is idempotent. Only a later bounded recovery requests an ICE restart, avoiding
+overlapping offers while a fresh browser is still loading. The visible
+connection deadline is sixty seconds, and connected peers continue using
+connection-state-driven ICE recovery.
+
 ## Consequences
 
 - First-time players behind restrictive networks have an automatic relay path.
@@ -31,6 +38,9 @@ rooms request neither STUN nor TURN.
   connectivity across arbitrary networks.
 - Expiring credentials bound abuse and outlive the six-hour room lease.
 - Local development remains usable without cloud credentials.
+- A production connectivity certificate requires `/api/ice` to return at
+  least one TURN URL; a STUN fallback is degraded operation, not proof that
+  arbitrary friends can connect.
 
 ## Verification
 

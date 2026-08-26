@@ -194,6 +194,13 @@ analog changes bypass that interval immediately. This prevents 120–240 Hz
 displays from multiplying RTC/browser work or inflating sequence backlog while
 preserving responsive controls and the existing local prediction path.
 
+Fresh WebRTC handshakes are replay-safe. The typed peer owner retransmits the
+same pending offer or answer before attempting a new ICE generation, ignores
+duplicate SDP, and reserves ICE restart for a later bounded attempt or an
+explicit disconnected/failed connection state. This prevents a slow first
+load from racing two offer generations while retaining automatic recovery
+from genuine route changes.
+
 Non-host refresh after a round is supported. Signaling preserves the stable
 browser player id, the joined client keeps the canonical invite URL, and the
 host keeps rendezvous listening after lobby-to-match handoff. When the page
