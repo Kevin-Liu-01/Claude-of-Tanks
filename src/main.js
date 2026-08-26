@@ -107,9 +107,6 @@ import {
   resetTankPresentationPose,
   sampleTankPresentationPose,
 } from './game/presentationPose.js';
-import { PLAYER_ACTION_BITS } from './net/protocol.js';
-import { encodeAimIntent } from './net/aimIntent.js';
-import { NetworkInputCadence } from './net/inputCadence.ts';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
@@ -1884,6 +1881,7 @@ function preloadNetworkBattleModules() {
     const request = Promise.all([
       import('./net/browserBattleBridge.js'),
       import('./ui/networkStatus.js'),
+      import('./net/browserInputRuntime.ts'),
     ]);
     networkBattleModulesPromise = request;
     request.catch(() => {
@@ -2788,7 +2786,7 @@ bus.on('ui:consumable', ({ slot }) => {
   if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
   if (!CONSUMABLE_RULES[slot]) return;
   if (networkMatch) {
-    networkActionBitsPending |= 1 << slot;
+    networkInputRuntime?.queueConsumable(slot);
     bus.emit('ui:click', {});
     return;
   }
@@ -2849,7 +2847,7 @@ bus.on('ui:magazineReload', () => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
   if (networkMatch) {
-    networkActionBitsPending |= PLAYER_ACTION_BITS.RELOAD_MAGAZINE;
+    networkInputRuntime?.queueAction('reloadMagazine');
   } else {
     startMagazineReload(p.combat, p.spec);
   }
@@ -2860,7 +2858,7 @@ bus.on('ui:specialAction', () => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
   if (networkMatch) {
-    networkActionBitsPending |= PLAYER_ACTION_BITS.SPECIAL_ACTION;
+    networkInputRuntime?.queueAction('specialAction');
   } else {
     const result = activateSpecialAction(p);
     bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
@@ -3286,9 +3284,8 @@ function prepareBattleRevealCamera() {
 let networkMatch = null;
 let networkBridge = null;
 let networkStatus = null;
+let networkInputRuntime = null;
 let latestNetworkSnapshot = null;
-let networkActionBitsPending = 0;
-const networkInputCadence = new NetworkInputCadence();
 let networkSpectator = false;
 let activeNetworkRoom = null;
 let unsubscribeNetworkRoom = null;
@@ -3494,30 +3491,7 @@ function clearActiveNetworkRoom() {
 bus.on('phase:change', syncRoomChatVisibility);
 
 function networkInputFrame() {
-  const player = game.player;
-  if (!player || !player.state || !player.input || player.combat?.destroyed) return null;
-  const aim = player.input.aimPoint;
-  _v3.set(
-    player.state.pos.x + Math.sin(player.state.yaw) * 1000,
-    player.state.pos.y,
-    player.state.pos.z + Math.cos(player.state.yaw) * 1000,
-  );
-  const aimIntent = encodeAimIntent(player.state.pos, aim || _v3);
-  return {
-    throttle: player.input.throttle || 0,
-    steer: player.input.steer || 0,
-    brake: !!player.input.brake,
-    fire: !!player.input.fire,
-    ...aimIntent,
-    shellSlot: player.input.shellSlot | 0,
-    actionBits: networkActionBitsPending & (
-      PLAYER_ACTION_BITS.REPAIR |
-      PLAYER_ACTION_BITS.FIRST_AID |
-      PLAYER_ACTION_BITS.EXTINGUISHER |
-      PLAYER_ACTION_BITS.RELOAD_MAGAZINE |
-      PLAYER_ACTION_BITS.SPECIAL_ACTION
-    ),
-  };
+  return networkInputRuntime?.frame(game.player) || null;
 }
 
 function acceptNetworkSnapshot(snapshot, dt) {
@@ -3544,7 +3518,7 @@ function pumpNetworkMatch(dt, nowMs) {
   if (networkMatch.role === 'host') {
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
     const submittedActionBits = playerInput?.actionBits || 0;
-    if (submittedActionBits) networkActionBitsPending &= ~submittedActionBits;
+    if (submittedActionBits) networkInputRuntime?.acknowledge(submittedActionBits);
     try {
       const snapshot = networkMatch.advance(dt * 1000, playerInput);
       if (playerInput && networkMatch.client?.lastSubmittedInputSeq != null) {
@@ -3552,16 +3526,15 @@ function pumpNetworkMatch(dt, nowMs) {
       }
       acceptNetworkSnapshot(snapshot, dt);
     } catch (error) {
-      networkActionBitsPending |= submittedActionBits;
+      networkInputRuntime?.restore(submittedActionBits);
       console.error('[network] host pump failed', error);
     }
   } else {
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
-    networkInputCadence.advance(dt);
-    if (playerInput && networkMatch.client.connected && networkInputCadence.shouldSend(playerInput)) {
+    networkInputRuntime?.advance(dt);
+    if (playerInput && networkMatch.client.connected && networkInputRuntime?.shouldSend(playerInput)) {
       if (networkMatch.submitInput(playerInput)) {
-        const predictionElapsedS = networkInputCadence.commit(playerInput);
-        networkActionBitsPending = 0;
+        const predictionElapsedS = networkInputRuntime.commit(playerInput);
         networkBridge?.recordInput(
           playerInput,
           predictionElapsedS,
@@ -3569,7 +3542,7 @@ function pumpNetworkMatch(dt, nowMs) {
         );
       }
     } else if (!playerInput) {
-      networkInputCadence.reset();
+      networkInputRuntime?.resetCadence();
     }
     acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
   }
@@ -3582,8 +3555,7 @@ function disposeNetworkPresentation() {
   networkBridge = null;
   networkStatus = null;
   latestNetworkSnapshot = null;
-  networkActionBitsPending = 0;
-  networkInputCadence.reset();
+  networkInputRuntime?.reset();
   pendingNetworkEvents.length = 0;
   networkSpectator = false;
 }
@@ -3715,7 +3687,13 @@ async function presentNetworkBattle({
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
-  const [{ createBrowserBattleBridge }, { createNetworkStatus }] = networkModules;
+  const [
+    { createBrowserBattleBridge },
+    { createNetworkStatus },
+    { createBrowserInputRuntime },
+  ] = networkModules;
+  networkInputRuntime ||= createBrowserInputRuntime();
+  networkInputRuntime.reset();
   markLoadStage('modules');
   networkStatus = createNetworkStatus();
   battleLoad.progress(0.08, 'Loading battlefield');

@@ -17,6 +17,8 @@ play without importing Three.js rendering or DOM state.
 - `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
 - `inputCadence.ts` bounds replaceable input uploads independently from display
   refresh while preserving immediate control edges.
+- `browserInputRuntime.ts` composes finite-point aim, action edges, and cadence
+  behind explicit multiplayer intent; solo boot must not import it.
 - `snapshot.js` owns quantization, visibility filtering, and interpolation.
 - `snapshotWireCodec.js` owns compact binary snapshot rows; protocol v2 uses
   explicit snapshot acknowledgements, per-peer deltas, and periodic keyframes.
@@ -46,6 +48,6 @@ play without importing Three.js rendering or DOM state.
 
 ## Verification
 
-Run `node src/net/net.selftest.mjs`,
+Run `node src/net/browserInputRuntime.selftest.mjs`, `node src/net/net.selftest.mjs`,
 `node src/net/privateMatchHandoff.selftest.mjs`, then `npm test` and
 `npm run build`. Network adapters additionally require browser-pair proof.

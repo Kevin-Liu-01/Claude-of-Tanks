@@ -19,6 +19,10 @@ made a healthy round trip appear as a large sequence backlog.
   cannot apply a large catch-up step.
 - Keep this policy in typed, DOM-free `src/net/inputCadence.ts`; transport,
   authority, and presentation remain separate owners.
+- Compose aim encoding, pending action edges, and cadence in the typed
+  `src/net/browserInputRuntime.ts`. Load that browser owner only after explicit
+  private/LAN/ranked intent; solo garage boot must not instantiate network
+  input state.
 
 ## Consequences
 
@@ -32,6 +36,8 @@ default cadence deliberately.
 
 - `src/net/inputCadence.selftest.mjs` proves a 240 Hz caller emits about 60
   held-state uploads per second and that urgent edges bypass the interval.
+- `src/net/browserInputRuntime.selftest.mjs` proves finite-point aim and exact
+  action-edge consume/restore behavior across client and host submission.
 - Every multiplayer browser certification uses an isolated pristine context
   per participant.
 - The rendered 7v7 gate covers host and impaired client play, fourteen moving
