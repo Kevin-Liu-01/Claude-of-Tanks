@@ -115,6 +115,9 @@ const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8'
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
+  /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,180}playMenuPromise[\s\S]{0,180}runtime\.hide\(false\)/,
+  'every battle entry must dismiss the play modal without closing a retained room');
+assert.match(mainSource,
   /function warmStudioPipelineChunked[\s\S]{0,700}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1500}warmTexturesChunked\(yieldForLoad\)/,
   'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
 assert.match(studioSource,

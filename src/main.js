@@ -1698,6 +1698,14 @@ async function openPlayMenu(request) {
   menu.show(request?.mode, request?.invite);
 }
 
+// Battle entry owns the play modal's visibility. Every player-facing entry
+// path emits this event, so first matches, retained-room rematches, ranked,
+// and solo all dismiss the operation picker before the next painted frame.
+bus.on('ui:battleStart', () => {
+  const menu = playMenuPromise;
+  if (menu) menu.then((runtime) => runtime.hide(false)).catch(() => null);
+});
+
 const garage = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
