@@ -46,6 +46,7 @@ import {
   createOpaqueLoadingYielder,
   nextFrame,
 } from './engine/frameScheduler.ts';
+import { createBootLifecycle } from './engine/bootLifecycle.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
@@ -202,46 +203,11 @@ const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' }
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
 installResponsiveSurfaceStyles();
-const BOOT_TIMINGS = {};
 let bootComplete = false;
-// LOADING PERF: attribute the WHOLE boot, not just the staged work. `_lastMark`
-// tracks the end of the previous stage so the un-staged code BETWEEN stages
-// (spawn, fx, rig, input wiring, ...) shows up as `gap>stage` rows in
-// __BOOT_TIMINGS instead of vanishing from the report. `imports` is the module
-// graph fetch+eval time before this module body ran (BOOT_T0 is measured from
-// timeOrigin, so it includes vite/network + three.js eval).
-let _lastMark = 0;
-function markGap(key, t0) {
-  const gap = Math.round(t0 - _lastMark);
-  if (gap > 1) BOOT_TIMINGS[`gap>${key}`] = gap;
-}
-/**
- * Run one named boot stage with progress reporting around it.
- * @param {string} key stage key (bootScreen.js STAGES)
- * @param {?function():*} [fn] the work (may be async)
- * @returns {Promise<*>} fn's result
- */
-async function bootStage(key, fn) {
-  markGap(key, performance.now());
-  boot.begin(key);
-  await nextFrame();
-  const t0 = performance.now();
-  const out = fn ? await fn() : undefined;
-  const t1 = performance.now();
-  BOOT_TIMINGS[key] = Math.round(t1 - t0);
-  boot.end(key);
-  // LOADING PERF: the second frame-yield existed so the bar's end-of-stage
-  // advance paints — but for sub-20 ms stages the begin() yield of the NEXT
-  // stage repaints within a frame anyway, and 9 stages x 2 yields at the
-  // 34 ms starved-rAF fallback billed ~300 ms of pure waiting onto boot.
-  // Only heavy stages pay the extra paint yield now.
-  if (t1 - t0 > 20) await nextFrame();
-  _lastMark = performance.now();
-  return out;
-}
-const BOOT_T0 = performance.now();
-BOOT_TIMINGS.imports = Math.round(BOOT_T0);
-_lastMark = BOOT_T0;
+const bootLifecycle = createBootLifecycle({ screen: boot, yieldFrame: nextFrame });
+const BOOT_TIMINGS = bootLifecycle.timings;
+const BOOT_T0 = bootLifecycle.startedAt;
+const bootStage = bootLifecycle.run;
 // ---------------------------------------------------------------------------
 // Engine bootstrap (§4 startup order)
 // ---------------------------------------------------------------------------
@@ -276,9 +242,7 @@ const camera = new THREE.PerspectiveCamera(
   60, _bootVw > 0 && _bootVh > 0 ? _bootVw / _bootVh : 16 / 9,
   0.5, 4000,
 );
-boot.end('renderer');
-BOOT_TIMINGS.renderer = Math.round(performance.now() - BOOT_T0);
-_lastMark = performance.now();
+bootLifecycle.completeManualStage('renderer', BOOT_T0);
 
 const sky = await bootStage('sky', () => {
   const s = createSky(scene, renderer);
