@@ -130,6 +130,8 @@ independently pile onto an interactive frame.
 `garagePedestalPreloader.ts` separately owns card-neighbor and pointer-intent
 warming. It loads only exact vehicle families, cancels stale work after fresh
 input, coalesces repeated intent, and bounds retained texture-only previews.
+`garageIdleWorkCoordinator.ts` serializes that paint with background world and
+workshop construction; it does not change authored work or visual quality.
 
 ### Battle entry
 

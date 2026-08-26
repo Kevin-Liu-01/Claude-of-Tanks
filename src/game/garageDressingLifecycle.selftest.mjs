@@ -98,6 +98,10 @@ assert.equal(waiting.getLastActivityAt(), now);
 
 assert.match(main, /createGarageDressingScheduler\(\{/,
   'main must compose the typed workshop scheduler');
+assert.match(main, /createGarageIdleWorkCoordinator\(\)/,
+  'garage background producers must share one typed exclusion owner');
+assert.equal((main.match(/acquireBackgroundWork:/g) || []).length, 3,
+  'world, neighbor paint and workshop dressing must use the same work lane');
 assert.match(main, /const scheduleGarageDressingBuild = garageDressingScheduler\.schedule/,
   'all garage entry points must share the scheduler owner');
 assert.doesNotMatch(main, /function scheduleGarageDressingBuild\(/,

@@ -7,6 +7,10 @@ interface GarageDressingSchedulerOptions {
   ensureTankBuilders(specIds: readonly string[] | undefined): Promise<unknown>;
   requestIdle(callback: () => void): unknown;
   scheduleDelay(callback: () => void, delayMs: number): unknown;
+  acquireBackgroundWork?: (
+    kind: 'dressing',
+    stillValid: () => boolean,
+  ) => Promise<{ release(): void } | null>;
   now?: () => number;
   warn?: (message: string, error: unknown) => void;
   quietMs?: number;
@@ -37,12 +41,13 @@ export function createGarageDressingScheduler({
   ensureTankBuilders,
   requestIdle,
   scheduleDelay,
+  acquireBackgroundWork = async () => ({ release() {} }),
   now = () => performance.now(),
   warn = (message, error) => console.warn(message, messageOf(error)),
   quietMs = 1600,
 }: GarageDressingSchedulerOptions): GarageDressingScheduler {
   const required = [getPhase, isTransitionActive, ensureTankBuilders,
-    requestIdle, scheduleDelay, now, warn];
+    requestIdle, scheduleDelay, acquireBackgroundWork, now, warn];
   if (!dressing || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage dressing scheduler requires every runtime port');
   }
@@ -69,6 +74,14 @@ export function createGarageDressingScheduler({
     }
     if (!quiet()) {
       defer(600);
+      return;
+    }
+
+    const stillValid = () => getPhase() === 'garage'
+      && !isTransitionActive() && quiet() && !dressing.isBuilt();
+    const lease = await acquireBackgroundWork('dressing', stillValid);
+    if (!lease) {
+      if (!dressing.isBuilt() && getPhase() === 'garage') defer(350);
       return;
     }
 
@@ -108,6 +121,8 @@ export function createGarageDressingScheduler({
       await dressing.pump();
     } catch (error: unknown) {
       warn('[garageDressing] quiet build failed —', error);
+    } finally {
+      lease.release();
     }
 
     if (!dressing.isBuilt() && getPhase() === 'garage') defer(350);

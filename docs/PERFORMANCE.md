@@ -49,6 +49,14 @@ fixed host-map intent. Combat FX and killcam code are battle/Studio chunks and
 are constructed once behind an opaque entry gate. Garage browsing must not
 compete with a background terrain, vegetation, or shader build.
 
+Optional garage construction shares one typed idle-work coordinator. Exact-map
+intent, adjacent-card texture paint, background world generation, and workshop
+dressing are mutually exclusive main-thread lanes with deterministic priority.
+Each producer retains its own cancellation and frame-budget policy, but it must
+release the shared lease before waiting for the next construction slice. This
+prevents several individually cooperative jobs from combining into a visible
+long task while preserving every authored scene and vehicle detail.
+
 Adjacent garage cards prefetch both their texture bakes and their owning
 profile-family chunks. Studio transfers its route chunk on nav hover/focus/
 touch but does not construct the authoring runtime until entry. These boundaries

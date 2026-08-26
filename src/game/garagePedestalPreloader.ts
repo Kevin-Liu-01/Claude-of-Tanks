@@ -19,6 +19,10 @@ interface GaragePedestalPreloaderOptions {
   createBudgetYield(budgetMs: number): BudgetYield;
   nextFrame(): Promise<unknown>;
   scheduleDelay(callback: () => void, delayMs: number): unknown;
+  acquireBackgroundWork?: (
+    kind: 'pedestal-neighbors',
+    stillValid: () => boolean,
+  ) => Promise<{ release(): void } | null>;
   anisotropy: number;
   warn?: (message: string, error: unknown) => void;
   retainedIntentLimit?: number;
@@ -49,6 +53,7 @@ export function createGaragePedestalPreloader({
   createBudgetYield,
   nextFrame,
   scheduleDelay,
+  acquireBackgroundWork = async () => ({ release() {} }),
   anisotropy,
   warn = (message, error) => console.warn(message, error),
   retainedIntentLimit = 4,
@@ -56,7 +61,7 @@ export function createGaragePedestalPreloader({
   const required = [getPhase, isBootComplete, getSelectedId, getNeighborIds,
     hasCachedVisual, ensureTankBuilder, ensureTankBuilders, getSpec,
     prebakeSharedTextures, discardSharedTextures, createBudgetYield, nextFrame,
-    scheduleDelay, warn];
+    scheduleDelay, acquireBackgroundWork, warn];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage pedestal preloader requires every runtime port');
   }
@@ -77,13 +82,17 @@ export function createGaragePedestalPreloader({
     scheduleDelay(() => {
       void (async () => {
         if (!active(token)) return;
+        const lease = await acquireBackgroundWork(
+          'pedestal-neighbors', () => active(token),
+        );
+        if (!lease) return;
         const keep = new Set(ids);
-        for (const id of [...retainedIds]) {
-          if (keep.has(id)) continue;
-          discardSharedTextures(id);
-          retainedIds.delete(id);
-        }
         try {
+          for (const id of [...retainedIds]) {
+            if (keep.has(id)) continue;
+            discardSharedTextures(id);
+            retainedIds.delete(id);
+          }
           // Transfer exact profile families before paying for paint work. This
           // prevents a country boundary from discovering a large builder chunk
           // only after the card click.
@@ -105,6 +114,8 @@ export function createGaragePedestalPreloader({
           }
         } catch (error: unknown) {
           if (error !== CANCELLED) warn('[garage] neighbor texture prefetch failed:', error);
+        } finally {
+          lease.release();
         }
       })();
     }, 500);

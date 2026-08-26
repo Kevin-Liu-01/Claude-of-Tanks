@@ -99,6 +99,8 @@ await page.waitForFunction(() => {
 await page.evaluate(() => window.__DEV_TRACE?.clear());
 await sleep(3500);
 const idleWarmStats = await page.evaluate(() => window.__DEV_TRACE?.stats() || null);
+const idleWorkStats = await page.evaluate(() => window.__GARAGE_IDLE_WORK
+  ? JSON.parse(JSON.stringify(window.__GARAGE_IDLE_WORK)) : null);
 await page.evaluate(() => window.__DEV_TRACE?.clear());
 
 let sequence = sequenceOption
@@ -200,6 +202,9 @@ if (traceStats) {
 }
 if (idleWarmStats) {
   console.log(`[switch-probe] idle prefetch frames p95=${idleWarmStats.gapP95}ms p99=${idleWarmStats.gapP99}ms max=${idleWarmStats.maxGapMs}ms longTasks=${idleWarmStats.longTasks} freezes=${idleWarmStats.freezes}`);
+}
+if (idleWorkStats) {
+  console.log(`[switch-probe] idle work completed=${idleWorkStats.completed} maxQueued=${idleWorkStats.maxQueued} active=${idleWorkStats.current || 'none'} byKind=${JSON.stringify(idleWorkStats.byKind)}`);
 }
 if (pageErrors.length) {
   console.error(`[switch-probe] PAGE ERRORS (${pageErrors.length}):`);

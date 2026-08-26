@@ -43,6 +43,10 @@ interface ReleaseReceipt {
   textures: number;
 }
 
+interface BackgroundWorkLease {
+  release(): void;
+}
+
 interface BuildRecord {
   id: string;
   fraction: number;
@@ -82,6 +86,10 @@ export interface WorldBuildCoordinatorDependencies {
   sleep?: (durationMs: number) => Promise<void>;
   foregroundYielder?: () => LoadingYield;
   backgroundYielder?: () => LoadingYield;
+  acquireBackgroundWork?: (
+    kind: 'world' | 'world-intent',
+    stillValid: () => boolean,
+  ) => Promise<BackgroundWorkLease | null>;
   resourceLimits?: ResourceLimits;
 }
 
@@ -215,6 +223,11 @@ export function createWorldBuildCoordinator(
       record = created;
       const startedAt = now();
       const startedInBackground = background;
+      let backgroundLease: BackgroundWorkLease | null = null;
+      const releaseBackgroundLease = (): void => {
+        backgroundLease?.release();
+        backgroundLease = null;
+      };
       const finishBuildStage = (sampleNow = now()): void => {
         if (!created.stageLabel) return;
         const key = STAGE_KEYS[created.stageLabel] ?? created.stageLabel;
@@ -231,6 +244,9 @@ export function createWorldBuildCoordinator(
         dependencies.engineContext,
         { mapId, seed: 1337 },
         async (label, fraction) => {
+          // The previous lease covered the generator work that led to this
+          // checkpoint. Release it before waiting or selecting the next lane.
+          releaseBackgroundLease();
           if (created.cancelled) {
             stats.cancelled += 1;
             throw new Error(`Cancelled stale battlefield prefetch: ${mapId}`);
@@ -253,7 +269,17 @@ export function createWorldBuildCoordinator(
                   && now() - activity.lastActivityAt >= 1200) break;
               await sleep(120);
             }
-            if (created.background) await yieldBackground(true);
+            if (created.background && dependencies.acquireBackgroundWork) {
+              const kind = created.waitForGarageLull ? 'world' : 'world-intent';
+              backgroundLease = await dependencies.acquireBackgroundWork(
+                kind, () => created.background && !created.cancelled,
+              );
+            }
+            if (created.cancelled) {
+              stats.cancelled += 1;
+              throw new Error(`Cancelled stale battlefield prefetch: ${mapId}`);
+            }
+            if (created.background && backgroundLease) await yieldBackground(true);
             else await yieldForeground();
           } else {
             await yieldForeground();
@@ -261,6 +287,7 @@ export function createWorldBuildCoordinator(
         },
         { fineSlices: true },
       )).then((next) => {
+        releaseBackgroundLease();
         finishBuildStage();
         next.group.visible = false;
         cache.set(mapId, next);
@@ -271,6 +298,7 @@ export function createWorldBuildCoordinator(
         }
         return next;
       }).finally(() => {
+        releaseBackgroundLease();
         if (builds.get(mapId) === created) builds.delete(mapId);
         if (stats.active === mapId) stats.active = null;
       });

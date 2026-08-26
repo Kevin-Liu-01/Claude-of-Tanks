@@ -90,6 +90,7 @@ import {
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
+import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
@@ -326,6 +327,10 @@ const hfProxy = {
   get maxY() { return world ? world.heightField.maxY : 0; },
 };
 
+const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
+if (typeof window !== 'undefined') {
+  window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
+}
 const worldBuildCoordinator = createWorldBuildCoordinator({
   engineContext: engineCtx,
   scene,
@@ -338,6 +343,8 @@ const worldBuildCoordinator = createWorldBuildCoordinator({
     lastActivityAt: garageDressingScheduler.getLastActivityAt(),
   }),
   releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
+  acquireBackgroundWork: (kind, stillValid) =>
+    garageIdleWorkCoordinator.acquire(kind, stillValid),
 });
 const worldCache = worldBuildCoordinator.cache;
 const residentLimits = worldBuildCoordinator.resourceLimits;
@@ -1036,6 +1043,8 @@ const garageDressingScheduler = createGarageDressingScheduler({
   ensureTankBuilders,
   requestIdle: (callback) => requestQuietIdle(callback),
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
+  acquireBackgroundWork: (kind, stillValid) =>
+    garageIdleWorkCoordinator.acquire(kind, stillValid),
 });
 const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
@@ -1060,6 +1069,8 @@ const pedestalPreloader = createGaragePedestalPreloader({
   createBudgetYield: frameBudgetTick,
   nextFrame,
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
+  acquireBackgroundWork: (kind, stillValid) =>
+    garageIdleWorkCoordinator.acquire(kind, stillValid),
   anisotropy: engineCtx.anisotropy ?? 4,
 });
 const queuePedestalTexturePrefetch = pedestalPreloader.queueNeighbors;
