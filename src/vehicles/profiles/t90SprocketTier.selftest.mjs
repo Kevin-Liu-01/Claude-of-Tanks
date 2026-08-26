@@ -6,7 +6,7 @@ const EPSILON = 1e-6;
 const CONFIGS = Object.freeze({
   t90: Object.freeze({
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
-    sprocket: { z: -2.52, y: 0.98, r: 0.23 },
+    sprocket: { z: -2.52, y: 0.93, r: 0.276 },
     idler: { z: 2.70, y: 0.68, r: 0.27 },
     rearContactZ: -2.16,
   }),
@@ -40,7 +40,14 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
     assert.deepEqual(receipt.idler, expected.idler,
       `${id}: front idler remains unchanged`);
     assert.deepEqual(receipt.sprocket, expected.sprocket,
-      `${id}: rear final-drive sprocket is seated aft and upward`);
+      `${id}: rear final-drive sprocket is seated at its authored station`);
+
+    if (id === 't90') {
+      near(receipt.sprocket.r / 0.23, 1.20,
+        't90: rear final-drive sprocket is exactly twenty percent larger');
+      assert.ok(receipt.sprocket.y < 0.98,
+        't90: enlarged rear final-drive axle is lower than its former station');
+    }
 
     const wrapTopY = expected.sprocket.y + expected.sprocket.r + receipt.trackTh / 2;
     assert.ok(receipt.loopPoints.some(([z, y]) =>

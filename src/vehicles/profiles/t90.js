@@ -4210,9 +4210,12 @@ function buildT90(P) {
     style: 'rubber', wheelR: 0.34, wheelW: 0.22, wheelY: 0.33, xc: 1.395, dishR: 0.74,
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
     // Seat the final drive under the rear transom instead of crowding the
-    // last road wheel. The shared course generator rebuilds the rear rise,
-    // wrap pads, belt and hit volume around this raised/aft station.
-    sprocket: { z: -2.52, y: 0.98, r: 0.23 }, idler: { z: 2.70, y: 0.68, r: 0.27 },
+    // last road wheel. Its 276 mm radius is exactly twenty percent larger
+    // than the former 230 mm wheel, while the axle drops 50 mm so the enlarged
+    // assembly reads as a loaded drive wheel rather than a high return
+    // roller. The shared course generator rebuilds the rear rise, wrap pads,
+    // belt, shoes, teeth and hit volume around this one canonical station.
+    sprocket: { z: -2.52, y: 0.93, r: 0.276 }, idler: { z: 2.70, y: 0.68, r: 0.27 },
     rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     contactZF: 2.26, contactZR: -2.16,
@@ -4240,21 +4243,35 @@ function buildT90(P) {
     P.add('hullDark', box(0.045, 0.04, 0.56), s * 1.858, 0.86, 2.30 - i * 0.655);
   }
   widthAnchor(P, 1.89, 0.95, 0.46);
-  // band covers the print's own front-2/3 rubber run ONLY (gate r1
-  // side_hull: the full-length band hung 0.16-0.19 low over z -1.7..-2.5
-  // where the print shows bare wheels + fender line)
-  // (LADDER-R1 hem experiment REVERTED: a 0.80 hem walled off the ratified
-  // bare-wheel side read — the '90s-plain identity keeps yBot 0.98; the
-  // print-true bow flaps below carry the front bot columns instead)
-  ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -1.30, z1: 2.97, yTop: 1.44, yBot: 1.22, panels: 5, lipX: 1.755 });
+  // Continuous skirt course from the rear guard into the forward guard.
+  // The former z=-1.30 start abandoned the entire final-drive half of the
+  // running gear; extending the same shallow production band to both guard
+  // overlaps closes that exposed break without moving it into the track lane.
+  const t90SkirtCourse = Object.freeze({
+    x: 1.7675, th: 0.036, z0: -3.10, z1: 3.40,
+    yTop: 1.44, yBot: 1.22, panels: 8, lipX: 1.755,
+  });
+  ruSkirtBand(P, t90SkirtCourse);
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps
-    // LADDER-R1 (front_whole bot receipts x ±1.12..±1.72): the real full-width
-    // segmented bow dust flap — covers the open track daylight the print's
-    // own bow skirting closes (ref front bot 0.36..0.73)
-    P.add('hullRubber', box(0.44, 0.28, 0.05), s * 1.48, 0.69, 3.345);
-    P.add('hullDark', box(0.42, 0.03, 0.054), s * 1.48, 0.82, 3.345);  // clamp strip
+    const side = s < 0 ? 'left' : 'right';
+    // Keep the established lower edges, but carry each rubber sheet upward
+    // into its fender. The rear sheet also reaches the first shelf segment
+    // across the deliberate 35 mm longitudinal seam; both are registered
+    // with the fleet's five-centimetre physical seating audit.
+    P.addMudguard(`t90-rear-mudguard-${side}`, 'hullRubber',
+      box(0.36, 0.83, 0.05), s * 1.52, 1.065, -3.06);
+    P.add('hullDark', box(0.34, 0.035, 0.054), s * 1.52, 1.455, -3.06); // rear fender clamp
+    P.addMudguard(`t90-front-mudguard-${side}`, 'hullRubber',
+      box(0.44, 0.55, 0.05), s * 1.48, 0.825, 3.345);
+    P.add('hullDark', box(0.42, 0.03, 0.054), s * 1.48, 1.085, 3.345);  // front fender clamp
   }
+  P.hullG.userData.t90AttachmentReceipt = Object.freeze({
+    skirt: Object.freeze({ z0: t90SkirtCourse.z0, z1: t90SkirtCourse.z1 }),
+    guardLabels: Object.freeze([
+      't90-rear-mudguard-left', 't90-rear-mudguard-right',
+      't90-front-mudguard-left', 't90-front-mudguard-right',
+    ]),
+  });
 
   // ---- CAST turret (the 1992 dome) on the print's measured rings ----
   // CRITIC FIX ROUND (shaded-parity-t90fam-trio defects 1/2/9): the first
@@ -4910,7 +4927,19 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
 
   // Prominent mounted NSVT/Kord; the exact fitting marker keeps the census
   // honest while the buried pintle makes its load path visible.
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: vladimir ? 'kord' : 'nsvt', tone: 'dark', elev: -0.055, ammo: true, shield: vladimir, scale: vladimir ? 1.18 : 1.52 });
+  const mg = FITTINGS.pintleMG({
+    mats: P.mats,
+    cls: vladimir ? 'kord' : 'nsvt',
+    tone: 'dark',
+    elev: -0.055,
+    ammo: true,
+    shield: vladimir,
+    scale: vladimir ? 1.18 : 1.52,
+    // The NSVT is unsleeved, so its generic barrel otherwise begins 100 mm
+    // ahead of the receiver. Fill that breech span on RU-417 and keep the
+    // marked barrel and receiver as one visibly continuous weapon.
+    barrelBridge: !vladimir,
+  });
   // FITTINGS.pintleMG is foot-origin geometry.  The base T-90 foot belongs
   // on the commander cradle rim, not buried inside the cast dome.
   mg.position.set(vladimir ? 0.58 : -0.58, vladimir ? 0.23 : 0.79, -0.44);
@@ -5602,16 +5631,31 @@ function buildT90MS(P) {
   for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
     P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
   }
-  // forward fender segments carry the print's falling bow-side band
-  // (1.37 @ 2.43 -> 1.23 @ 3.12 -> 0.99 @ 3.29) over the dropped glacis
+  // Forward fender/mudguard assemblies carry the print's falling bow-side
+  // band (1.40 @ 2.90 -> 1.26 @ 3.23 -> 1.10 @ 3.40) over the dropped
+  // glacis. The former three shelves reproduced those stations but left two
+  // open vertical gaps and stopped 70 mm short of the inboard shoulder.
+  // Register the complete mirrored chain as one physical mudguard: the broad
+  // bridge overlaps the centre glacis, each step overlaps its riser, and the
+  // terminal lip shares a seat with the rubber drop authored below.
+  const tagilFrontGuardLabels = [];
   for (const s of [-1, 1]) {
-    // The source bow has a narrow shoulder plate joining the center glacis
-    // to each fender tip. It closes the final 6 cm plan pocket while its
-    // 25 mm floor remains above the native idler/shoe crown.
-    P.add('hull', box(0.70, 0.045, 0.38), s * 1.36, 1.0975, 3.24);
-    P.add('hull', box(0.16, 0.05, 0.42), s * 1.70, 1.40, 2.90);
-    P.add('hull', box(0.16, 0.05, 0.30), s * 1.71, 1.26, 3.22);
-    P.add('hull', box(0.14, 0.05, 0.12), s * 1.71, 1.10, 3.40);  // tip face 3.46 (gate r1: 3.50 pushed hullLengthM)
+    const side = s < 0 ? 'left' : 'right';
+    const addGuardPart = (segment, geo, x, y, z) => {
+      const label = `t90ms-front-guard-${side}-${segment}`;
+      tagilFrontGuardLabels.push(label);
+      P.addMudguard(label, 'hull', geo, x, y, z);
+    };
+    addGuardPart('root', box(0.16, 0.05, 0.50), s * 1.70, 1.40, 2.90);
+    addGuardPart('upper-riser', box(0.16, 0.14, 0.055), s * 1.70, 1.33, 3.12);
+    addGuardPart('middle-step', box(0.16, 0.05, 0.32), s * 1.70, 1.26, 3.23);
+    addGuardPart('lower-riser', box(0.16, 0.15, 0.055), s * 1.70, 1.185, 3.36);
+    addGuardPart('terminal-lip', box(0.16, 0.05, 0.14), s * 1.70, 1.10, 3.40);
+    // This bridge is both the visible fender crown and the load path. Its
+    // inboard edge buries 140 mm into the centre glacis; its outboard edge
+    // reaches the step chain exactly, while the 1.075 m underside remains
+    // above the canonical 0.86 m return course.
+    addGuardPart('glacis-bridge', box(0.86, 0.055, 0.42), s * 1.35, 1.1025, 3.24);
   }
   ruDeck(P, { deckY: 1.545, hatchY: 1.34, hatchZ: 2.16, gz: -1.72, grilles: 5, gw: 1.5, periY: 1.26 });  // hatch/periscopes ON the glacis slab line
   ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, hookX: 0.82, hookY: 0.66, hookZ: 3.05, hlY: 1.13, hlX: 1.02 });
@@ -5711,11 +5755,27 @@ function buildT90MS(P) {
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.72, z1: 2.82, yTop: 1.28, yBot: 1.00, panels: 7, lipX: 1.755 });
   for (const s of [-1, 1]) {
     P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
-    // LADDER-R1 (t90 recipe): full-width segmented bow dust flap — covers
-    // the open track daylight the print's bow skirting closes
-    P.add('hullRubber', box(0.38, 0.30, 0.05), s * 1.53, 0.52, 3.345);
-    P.add('hullDark', box(0.35, 0.03, 0.054), s * 1.53, 0.655, 3.345);  // clamp strip
+    const side = s < 0 ? 'left' : 'right';
+    const flapLabel = `t90ms-front-guard-${side}-rubber-drop`;
+    tagilFrontGuardLabels.push(flapLabel);
+    // Preserve the 0.37 m lower edge, but carry the sheet up to the 1.10 m
+    // terminal lip. It now closes the bow daylight and is physically seated
+    // to the fender instead of hanging below it as a separate rubber card.
+    P.addMudguard(flapLabel, 'hullRubber',
+      box(0.40, 0.72, 0.05), s * 1.53, 0.73, 3.345);
+    P.add('hullDark', box(0.38, 0.035, 0.060), s * 1.53, 1.075, 3.345);
   }
+  P.hullG.userData.t90MSFrontMudguardReceipt = Object.freeze({
+    labels: Object.freeze(tagilFrontGuardLabels),
+    sides: 2,
+    partsPerSide: 7,
+    bridgeInnerX: 0.92,
+    bridgeOuterX: 1.78,
+    bridgeUndersideY: 1.075,
+    trackTopY: 0.86,
+    flapBottomY: 0.37,
+    flapTopY: 1.09,
+  });
 
   // ---- WELDED Tagil turret: prism + the BIG bustle + rear cage ----
   // LADDER-R1 (§5.60 plan-turret receipts): the print's whole turret
