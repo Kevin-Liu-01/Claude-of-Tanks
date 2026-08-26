@@ -3,6 +3,8 @@ import {
   KIT,
   configureTankFactory,
   createTank,
+  registerCanonicalBuilders,
+  registerProfiledBuilders,
   robustFloorY,
 } from './tankFactoryCore.js';
 
@@ -84,6 +86,17 @@ configureTankFactory({
   profiledBuilders: {},
   fittings: { spareTrackLinks: noOp, antennaWhip: noOp, pintleMG: noOp },
 });
+assert.throws(
+  () => registerCanonicalBuilders('invalid', { deferred: null }),
+  /Builder invalid:deferred must be a function/,
+);
+const deferredCanonical = () => {};
+registerCanonicalBuilders('deferred', { deferred: deferredCanonical });
+registerProfiledBuilders({ deferred: () => {} });
+assert.doesNotThrow(
+  () => registerCanonicalBuilders('deferred-retry', { deferred: deferredCanonical }),
+  'a late/retried canonical dependency must not replace a profile override',
+);
 assert.throws(
   () => configureTankFactory({ canonicalBuilderPacks: [], profiledBuilders: {}, fittings: {} }),
   /already configured/,

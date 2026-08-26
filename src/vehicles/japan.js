@@ -3,6 +3,7 @@
 // profiles/japan.js from first-party procedural donors and primitives.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import './profiles/miscSpecs.js';
 import { TYPE10_GUN_SEAT } from './profiles/type10GunSeat.js';
 
 const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b']);

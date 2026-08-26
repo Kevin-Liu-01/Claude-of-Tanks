@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FALLBACK_GITHUB_STAR_COUNT, formatGitHubStarCount } from '../ui/githubStars.js';
+import {
+  FALLBACK_GITHUB_STAR_COUNT,
+  formatGitHubStarCount,
+  mountGitHubStars,
+} from '../ui/githubStars.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pages = [
@@ -30,6 +34,39 @@ const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8'
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.js'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
+
+// A fresh game session must not depend on GitHub's unauthenticated API. The
+// live decorative count is refreshed only when the repository link receives
+// pointer or keyboard intent.
+const githubIntentHandlers = {};
+const githubControlProbe = {
+  dataset: {},
+  getAttribute: () => 'Claude of Tanks on GitHub',
+  setAttribute() {},
+  addEventListener(type, handler) { githubIntentHandlers[type] = handler; },
+};
+const githubStarProbe = {
+  textContent: '',
+  closest: () => githubControlProbe,
+};
+const originalFetch = globalThis.fetch;
+let githubFetches = 0;
+globalThis.fetch = async () => {
+  githubFetches++;
+  return { ok: true, json: async () => ({ stargazers_count: 321 }) };
+};
+await mountGitHubStars({
+  matches: () => false,
+  querySelectorAll: () => [githubStarProbe],
+});
+assert.equal(githubFetches, 0, 'mounting star counts must not issue a boot-critical third-party request');
+assert.equal(githubStarProbe.textContent, String(FALLBACK_GITHUB_STAR_COUNT));
+assert.equal(typeof githubIntentHandlers.pointerenter, 'function');
+assert.equal(typeof githubIntentHandlers.focus, 'function');
+await githubIntentHandlers.pointerenter();
+assert.equal(githubFetches, 1, 'GitHub intent performs exactly one live refresh');
+assert.equal(githubStarProbe.textContent, '321');
+globalThis.fetch = originalFetch;
 assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:8px\}/,
   'desktop navigation controls must retain visible spacing');
 assert.doesNotMatch(navCss, /\.public-nav__links\{[^}]*align-items:stretch/,
@@ -114,8 +151,9 @@ for (const destination of ['home', 'garage', 'studio', 'gallery', 'docs', 'recor
   assert.ok(garageSource.includes(`data-mobile-nav="${destination}"`),
     `garage mobile menu must expose ${destination}`);
 }
-assert.match(garageSource, /\.cot-brand-utilities,\.cot-nav \.cot-nav-desktop\{display:none;\}/,
-  'phone layouts must collapse left utilities and desktop workspace links');
+assert.match(garageSource,
+  /body\[data-cot-panels='overlay'\] \.cot-brand-utilities,\s*body\[data-cot-panels='overlay'\] \.cot-nav \.cot-nav-desktop\{display:none\}/,
+  'overlay panel layouts must collapse left utilities and desktop workspace links');
 assert.match(garageSource, new RegExp(`class="github-stars" data-github-stars>${FALLBACK_GITHUB_STAR_COUNT}<\\/span>`),
   'garage GitHub control exposes a numeric fallback before the live star count');
 

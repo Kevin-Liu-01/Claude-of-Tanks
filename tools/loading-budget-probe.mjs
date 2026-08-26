@@ -209,6 +209,7 @@ function record(kind, name, ms, details = {}) {
   const pass = Number.isFinite(ms) && ms >= 0 && ms < limitMs
     && (details.rolloutMs == null || details.rolloutMs < rolloutLimitMs)
     && (!details.stall || details.stall.maxGapMs < stallLimitMs)
+    && (!details.backgroundStall || details.backgroundStall.maxGapMs < stallLimitMs)
     && !(details.errors?.length) && details.invariantPass !== false;
   const row = { kind, name, ms: Math.round(ms), pass, ...details };
   rows.push(row);
@@ -217,8 +218,10 @@ function record(kind, name, ms, details = {}) {
     ? ` gap=${Math.round(details.stall.maxGapMs)}ms${worstStage ? `@${worstStage}` : ''}`
     : '';
   const suffix = `${stall}${details.errors?.length ? ` errors=${details.errors.length}` : ''}`;
+  const background = details.backgroundStall
+    ? ` idleGap=${Math.round(details.backgroundStall.maxGapMs)}ms` : '';
   const rollout = details.rolloutMs == null ? '' : ` rollout=${Math.round(details.rolloutMs)}ms`;
-  console.log(`  ${pass ? 'PASS' : 'FAIL'} ${kind.padEnd(13)} ${name.padEnd(10)} ${String(row.ms).padStart(5)} ms${rollout}${suffix}`);
+  console.log(`  ${pass ? 'PASS' : 'FAIL'} ${kind.padEnd(13)} ${name.padEnd(10)} ${String(row.ms).padStart(5)} ms${rollout}${suffix}${background}`);
   return row;
 }
 
@@ -387,9 +390,12 @@ async function measureBoot() {
 async function measureBattle(mapId) {
   const opened = await openPage(`?nosplash=1&tier=${deviceTier}&gfxreset=1`);
   try {
+    let garageDwellStall = null;
     if (garageDwellMs > 0) {
+      await resetStalls(opened.page, `battle-prefetch:${mapId}`);
       await opened.page.evaluate((map) => window.__DEBUG.garage.setSelectedMap(map), mapId);
       await new Promise((resolve) => setTimeout(resolve, garageDwellMs));
+      garageDwellStall = await captureStalls(opened.page);
     }
     if (battleIntentDwellMs > 0) {
       await opened.page.evaluate((map) => window.__DEBUG.garage.setSelectedMap(map), mapId);
@@ -491,6 +497,7 @@ async function measureBattle(mapId) {
       startBattle: result.startBattle,
       visualLoadTimings: result.visualLoadTimings,
       countdownWarm: result.countdownWarm || null,
+      backgroundStall: garageDwellStall,
       warmTimedOut,
       deferredWarmTimedOut,
       stall,

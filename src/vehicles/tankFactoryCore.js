@@ -44,6 +44,7 @@ const D2R = Math.PI / 180;
 const SIM_STEP = 1 / 60;
 let factoryConfigured = false;
 let KIT_FITTINGS = null;
+const PROFILED_BUILDER_IDS = new Set();
 
 // PERF (120 Hz): track-link placement and suspension conformance are close-
 // range detail. Keep the player/near combat at render rate, then update from
@@ -5046,9 +5047,36 @@ export function configureTankFactory({ canonicalBuilderPacks, profiledBuilders, 
     BUILDERS[id] = builder;
     CANONICAL_BUILDERS[id] = builder;
   }
-  for (const [id, builder] of profileEntries) BUILDERS[id] = builder;
+  for (const [id, builder] of profileEntries) {
+    BUILDERS[id] = builder;
+    PROFILED_BUILDER_IDS.add(id);
+  }
   KIT_FITTINGS = fittings;
   factoryConfigured = true;
+}
+
+/**
+ * Register one demand-loaded canonical builder pack. Profile builders are the
+ * explicit final override layer, so a late canonical dependency may populate
+ * CANONICAL_BUILDERS without replacing an already-registered profile. This
+ * makes independent family imports deterministic regardless of network order.
+ */
+export function registerCanonicalBuilders(packName, builders) {
+  if (!factoryConfigured) throw new Error('Tank factory is not configured yet');
+  if (!builders || typeof builders !== 'object') {
+    throw new TypeError(`Canonical builder pack ${packName} must be an object`);
+  }
+  for (const [id, builder] of Object.entries(builders)) {
+    if (typeof builder !== 'function') {
+      throw new TypeError(`Builder ${packName}:${id} must be a function`);
+    }
+    const existing = CANONICAL_BUILDERS[id];
+    if (existing && existing !== builder) {
+      throw new Error(`Duplicate canonical builder ${id} in ${packName}`);
+    }
+    CANONICAL_BUILDERS[id] = builder;
+    if (!PROFILED_BUILDER_IDS.has(id)) BUILDERS[id] = builder;
+  }
 }
 
 /**
@@ -5065,6 +5093,7 @@ export function registerProfiledBuilders(profiledBuilders) {
   for (const [id, builder] of Object.entries(profiledBuilders)) {
     if (typeof builder !== 'function') throw new TypeError(`Profiled builder ${id} must be a function`);
     BUILDERS[id] = builder;
+    PROFILED_BUILDER_IDS.add(id);
   }
 }
 

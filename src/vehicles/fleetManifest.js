@@ -2,6 +2,14 @@
 // It is deliberately plain data so asking which chunk owns a tank never
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
+  franceCore: Object.freeze(['amx40']),
+  // These visual profiles used to be imported by every garage boot even when
+  // no matching vehicle was visible. Keep their ownership in the same
+  // import-free manifest as the larger authored families.
+  misc: Object.freeze([
+    'recon_tank', 'type90', 'leclerc', 'leclerc_xlr', 'amx56', 't80u',
+    'type74', 'amx30', 'amx30b2',
+  ]),
   uk: Object.freeze([
     'chieftain5', 'chieftain_mk10', 'vickers_mk1', 'centurion3', 'centurion5',
     'comet', 'challenger_cruiser', 'charioteer', 'fv510', 'fv510_milan',

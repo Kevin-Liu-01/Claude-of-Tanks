@@ -33,7 +33,17 @@ async function metrics(page, startedAt) {
     main: performance.getEntriesByType('resource')
       .filter((row) => /\/assets\/main-[^/]+\.js/.test(row.name))
       .map((row) => ({ durationMs: Math.round(row.duration), transferBytes: row.transferSize })),
+    scripts: performance.getEntriesByType('resource')
+      .filter((row) => /\.js(?:\?|$)/.test(row.name))
+      .map((row) => ({
+        path: new URL(row.name).pathname,
+        startMs: Math.round(row.startTime),
+        durationMs: Math.round(row.duration),
+        transferBytes: row.transferSize,
+      }))
+      .sort((a, b) => b.transferBytes - a.transferBytes),
   }));
+  app.scriptTransferBytes = app.scripts.reduce((sum, row) => sum + row.transferBytes, 0);
   return { wallMs: Date.now() - startedAt, ...app };
 }
 
@@ -117,4 +127,3 @@ try {
 } finally {
   await browser.close();
 }
-

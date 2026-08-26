@@ -552,12 +552,13 @@ function cancelBackgroundWorldBuildsExcept(mapId = null) {
   }
 }
 
-// Prime the heavy battlefield module after the garage settles, but do not
-// construct an entire world merely because someone is inspecting vehicles.
-// Building terrain/vegetation/props in the visible garage was the source of
-// otherwise mysterious navigation and carousel stalls on constrained Macs.
-// The explicit Battle hover/focus intent below starts the real world promise;
-// a click promotes that same promise without duplicating any work.
+// Prime the selected battlefield only after boot and a genuine garage lull.
+// beginWorldBuild's background path runs in 4 ms slices and pauses itself as
+// soon as pointer/key/touch activity updates garageActivityAt at the next
+// checkpoint. The result is the exact normal world object in the normal cache:
+// Battle intent/click promotes or joins it without duplicate geometry, and a
+// player who spends a few seconds choosing a tank pays almost none of the
+// battlefield build under the loading veil.
 function queueWorldPrefetch(mapId, delay = 1800) {
   if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
   worldPrefetchTimer = 0;
@@ -565,7 +566,9 @@ function queueWorldPrefetch(mapId, delay = 1800) {
   worldPrefetchTimer = setTimeout(() => {
     worldPrefetchTimer = 0;
     if (game.phase === 'garage' && pendingMapChoice === mapId) {
-      loadWorldModule().catch(() => null);
+      loadWorldModule()
+        .then(() => prefetchWorld(mapId))
+        .catch(() => null);
       ensureTankBuilder(selectedSpecId).catch(() => null);
     }
   }, delay);

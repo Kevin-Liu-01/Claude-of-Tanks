@@ -25,68 +25,6 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, buildProfile } from './kit.js';
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
-import {
-  shell,
-  apfsdsPenetration as apfsdsPens,
-  communityArmor as buildCommunityArmor,
-} from '../specHelpers.js';
-
-// ---------------------------------------------------------------------------
-// Type 74 spec registration. userdrops.js delisted the id together with its
-// PERSONAL-USE GLB because the vehicle had "no procedural fallback"; this
-// module IS that clean-license fallback, so the spec ships (the quarantined
-// GLB stays lab-only via LOCAL_REFERENCE_OVERRIDES — never a MODEL_SOURCE).
-const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
-const communityArmor = (o) => buildCommunityArmor(o, {
-  exposeTurretless: false,
-  allowTurretless: false,
-});
-
-// Same authored combat row as the (never-registered) userdrops.js fallback.
-const TYPE74_SPEC = {
-  id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', role: 'mbt',
-  variantOf: 'type74',
-  hp: 1950,
-  enginePowerHp: 720, weightTons: 38, topSpeedKmh: 53, reverseSpeedKmh: 20,
-  hullTraverseDegS: 38,
-  terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.4 },
-  pivotStyle: 'neutral',
-  // Type 74 and its STB-1 prototype derivative use their real adjustable
-  // hydropneumatic suspension as an active aiming system.  Keeping the
-  // envelope on the shared donor spec lets both vehicles articulate their
-  // existing five wheel stations and deformable track course without an
-  // ID-specific simulation path.
-  hydropneumaticAim: {
-    noseDownDeg: 8, noseUpDeg: 8, rateDegS: 7,
-    compressionM: 0.32, droopM: 0.32,
-  },
-  turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 15, gunDepressionDeg: 10,
-  gun: {
-    caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.29, aimTimeS: 1.7,
-    bloom: BLOOM_MODERN,
-    shells: [
-      shell('Type 93 APFSDS', 'APFSDS', 105, 540, 500, 430, 1455, { pen2000Mm: 450 }),
-      shell('Type 91 HEAT-MP', 'HEAT', 105, 520, 520, 430, 1173),
-      shell('M393 HEP', 'HE', 105, 45, 45, 500, 730),
-    ],
-  },
-  dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.70 },
-  armor: communityArmor({
-    lenM: 6.7, widM: 3.18, hgtM: 2.25, turretPivot: [0, 1.42, 0.50],
-    gunPivot: [0, 0.18, 1.15], barrelLenM: 4.42, barrelRadM: 0.062,
-    frontMm: 110, sideMm: 45, rearMm: 25, roofMm: 20,
-    tFrontMm: 195, tSideMm: 80, tRearMm: 40, mantletMm: 195,
-  }),
-  visual: {
-    scheme: 'stripes', base: '#44503a', weather: '#4e5a44',
-    patches: ['#4d4133', '#37432f'],
-    marking: 'number', number: '74', trackWidthM: 0.55, camoScale: 0.6,
-  },
-};
-TANK_SPECS.type74 = TANK_SPECS.type74 || TYPE74_SPEC;
-if (!ALL_TANK_IDS.includes('type74')) ALL_TANK_IDS.push('type74');
-MODEL_SOURCE.type74 = MODEL_SOURCE.type74 || { source: 'procedural' };
 
 // ---------------------------------------------------------------------------
 // Family machinery

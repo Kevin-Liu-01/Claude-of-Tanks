@@ -2,20 +2,23 @@ const REPOSITORY_API = 'https://api.github.com/repos/Kevin-Liu-01/claude-of-tank
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 15 * 60 * 1000;
 export const FALLBACK_GITHUB_STAR_COUNT = 145;
+const COMPACT_NUMBER = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+const FULL_NUMBER = new Intl.NumberFormat('en');
 
 const starNodes = new Set();
+const intentBoundControls = new WeakSet();
 let activeRequest = null;
 
 export function formatGitHubStarCount(count) {
-  return new Intl.NumberFormat('en', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(count);
+  return COMPACT_NUMBER.format(count);
 }
 
 function renderGitHubStarCount(count) {
   const compactCount = formatGitHubStarCount(count);
-  const fullCount = new Intl.NumberFormat('en').format(count);
+  const fullCount = FULL_NUMBER.format(count);
 
   for (const node of starNodes) {
     node.textContent = compactCount;
@@ -64,20 +67,15 @@ async function fetchGitHubStars() {
 }
 
 /**
- * Register every repository star-count node under root and refresh them from
- * one session-cached GitHub request. Repeated mounts share the same request so
- * the inline boot screen and the garage never issue duplicate API calls.
- * @param {Document|Element} root
+ * Refresh the decorative repository count after explicit user intent.
+ * Keeping this request off the boot path avoids making a fresh game session
+ * depend on GitHub's unauthenticated API rate limit or network availability.
  * @returns {Promise<number|null>}
  */
-export function mountGitHubStars(root = document) {
-  if (root?.matches?.('[data-github-stars]')) starNodes.add(root);
-  for (const node of root?.querySelectorAll?.('[data-github-stars]') || []) starNodes.add(node);
-  if (!starNodes.size) return Promise.resolve(null);
-
+export function refreshGitHubStars() {
   const cached = readCachedStars();
-  renderGitHubStarCount(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
   if (cached && Date.now() - cached.savedAt < STAR_CACHE_TTL_MS) {
+    renderGitHubStarCount(cached.count);
     return Promise.resolve(cached.count);
   }
 
@@ -85,4 +83,36 @@ export function mountGitHubStars(root = document) {
     activeRequest = fetchGitHubStars().finally(() => { activeRequest = null; });
   }
   return activeRequest;
+}
+
+function bindIntentRefresh(nodes) {
+  for (const node of nodes) {
+    const control = node.closest?.('a[href*="github.com/Kevin-Liu-01/"]');
+    if (!control || intentBoundControls.has(control)) continue;
+    intentBoundControls.add(control);
+    const refresh = () => refreshGitHubStars();
+    control.addEventListener('pointerenter', refresh, { once: true, passive: true });
+    control.addEventListener('focus', refresh, { once: true });
+  }
+}
+
+/**
+ * Register every repository star-count node under root. The verified fallback
+ * is rendered synchronously; a live refresh waits for pointer or keyboard
+ * intent on the repository control so boot and battle entry never make a
+ * third-party request. Repeated mounts share both listeners and requests.
+ * @param {Document|Element} root
+ * @returns {Promise<number|null>}
+ */
+export function mountGitHubStars(root = document) {
+  const mountedNodes = [];
+  if (root?.matches?.('[data-github-stars]')) mountedNodes.push(root);
+  for (const node of root?.querySelectorAll?.('[data-github-stars]') || []) mountedNodes.push(node);
+  for (const node of mountedNodes) starNodes.add(node);
+  if (!starNodes.size) return Promise.resolve(null);
+
+  const cached = readCachedStars();
+  renderGitHubStarCount(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
+  bindIntentRefresh(mountedNodes);
+  return Promise.resolve(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
 }
