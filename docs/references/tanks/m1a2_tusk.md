@@ -255,7 +255,7 @@ edited bytes reproduce 1.8 | 14.9/1.8/42.2/23.5/100/100; the deterministic
 42.3->42.2 plan slice remains inside the certified chimera-capped class.
 Independent 14-view PASS, floor 9.0 / mean 9.13. Binding
 **b1786e4c -> bd371600** (58 meshes / 199244 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+the archived visual-review receipt.
 
 ## §5.74 DISTINCTIVENESS + P95 BINDING (2026-08-08)
 TUSK is now the unmistakable heavy urban member: enlarged fully wrapped CROWS,
@@ -266,11 +266,11 @@ cage. Mandatory-kit P95 = 3.2748 m; heightM 2.44 -> 3.27. Gate x2 exact: 0 |
 documented chimera/oracle-divergence class, NOT a geometry PASS. Independent
 14-view identity PASS, floor 9.1 / mean 9.26. Binding **bd371600 -> 7620b020**
 (58 meshes / 200924 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+the archived visual-review receipt.
 
 ## FULL ARMOR/GHILLIE BINDING (2026-08-10, §5.107)
 The full cover is seated around the unmistakable ARAT/slat urban package;
 the rear cage remains open and hull-owned rather than being falsely sealed by
 cloth. P95 height is 3.29 m. Corrected yaw ownership PASS; independent §B8
 floor 9.4 / mean 9.47. Binding **7620b020 -> cfc006f2** (66 meshes / 261898
-verts). Full verdict: `docs/critique/shaded-parity-abrams-ghillie-recert.md`.
+verts). Full verdict: the archived visual-review receipt.

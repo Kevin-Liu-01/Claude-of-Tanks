@@ -356,7 +356,7 @@ critic.
 
 ## VISUAL round r5 (2026-08-04, uk agent) — first-critic FAIL answered
 Entry: gate 91.4 PASS (df12562); critic FAIL min 5.0 mean 6.4
-(docs/critique/shaded-parity-chieftain5-r4.md). Exit: **gate 91.2 min
+(the archived visual-review receipt). Exit: **gate 91.2 min
 PASS ×2 identical decimals on final bytes** (hull 91.7 ↑, whole 91.2,
 turret 93.8, stations 92.9, dims 100, floaters 100), standard-check FULL
 (clip 0/0 exact, holes 0, mg1), all eight other UK ids re-gated
@@ -495,7 +495,7 @@ under its 91.4 entry, and the r4 analysis note already stages the work).
 
 ## CAST-SHADING round r6 (2026-08-04, uk agent) — the r5 orders answered
 Entry: gate 91.2 PASS (f533a08); critic FAIL min 7.0 mean 7.5
-(docs/critique/shaded-parity-chieftain5-r5.md, 8ce608e). Exit: **gate
+(the archived visual-review receipt, 8ce608e). Exit: **gate
 91.2 min PASS ×2 identical decimals on final bytes** (hull 91.7, whole
 91.2, **turret 93.8 → 94.1**, stations 92.9, dims 100, floaters 100),
 standard-check FULL (clip 0/0 exact, holes 0, contig 0, mg1),
@@ -658,7 +658,7 @@ column dumps cited above, tone rects per rect coordinates in-line.
 DUAL GATE PASSED: geometry min 91.2 gatePassed x2 (hull 91.7 / whole 91.2 /
 turret 94.1 / stations 92.9 / dims 100 / floaters 100) + graduation critic
 9.0 on ALL FOURTEEN views, floor 9.0 mean 9.04, right view 9.5 (verdict
-docs/critique/shaded-parity-chieftain5-r6.md — floor 5.0 -> 7.0 -> 9.0
+the archived visual-review receipt — floor 5.0 -> 7.0 -> 9.0
 across r4-r6: the fastest three-verdict climb in the program). SS-10
 executed: userdrops5 source('chieftain5') registration RETIRED
 (procedural is the model of record; chips under CUSTOM);

@@ -395,8 +395,7 @@ adjudication requested.
 
 ## GRADUATED 2026-08-05 — DUAL-GATE PASS (fleet graduate 24, the Centurion line's first)
 Geo 91.1 gatePassed x2 bit-identical + independent critic 9.0 ALL
-FOURTEEN VIEWS (r8 adjudication, docs/critique/shaded-parity-
-centurion3-r8.md — floor 9.0). FREEZE HASH bf0a45e8 (47 meshes, 74828
+FOURTEEN VIEWS (r8 adjudication, the archived visual-review receipt — floor 9.0). FREEZE HASH bf0a45e8 (47 meshes, 74828
 verts; orchestrator-verified at landing). Flip-era §10: registration
 retired + three-map mirrors landed at the fleet flip (c487188);
 USERDROP6_SOURCED_IDS exclusion verified; variants.js carries no

@@ -418,7 +418,7 @@ over the crest (m45 mounts front-left x -0.44, m46 forward station).
 Loadout dressing variety beyond the print is the visual round's lane.
 
 ## Vertex round r4 (2026-08-05, patton-family builder) — GRADUATION-BLOCKER RETUNE (shaded-parity FAIL floor 8.8 -> orders delivered)
-The retune ordered by docs/critique/shaded-parity-m26-graduation.md
+The retune ordered by the archived visual-review receipt
 (GRADUATION FAIL floor 8.8 at f348ecd5: slab-loft facet patchwork on
 every casting-dominant view + the deck-slat crown gap; geometry certified
 sound). Both family-proven orders delivered + the optional polish lane;
@@ -560,8 +560,7 @@ turret_side basket/rotor-lane, front_whole M2 crown strip, i1 1.93 =
 ## GRADUATED 2026-08-05 — DUAL-GATE PASS (fleet graduate 26)
 Geo 90.5 gatePassed x2 EXACT (93.1/90.5/94.2/90.6/100/100; 90.4/90.5 =
 banked flicker twin) + independent critic 9.0 ALL FOURTEEN views on the
-second sitting (r2 adjudication, docs/critique/shaded-parity-m26-
-graduation-r2.md — close-roof and hero-toptilt 8.8 -> 9.0, facet
+second sitting (r2 adjudication, the archived visual-review receipt — close-roof and hero-toptilt 8.8 -> 9.0, facet
 patchwork dead, deck arrays at ref density row-for-row). FREEZE HASH
 2f579de8 (46 meshes / 72532 verts, orchestrator-verified at landing).
 The print's journey: 70.6 baseline -> batch-42 warp (print body defect

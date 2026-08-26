@@ -341,7 +341,7 @@ verified). The full-14-view graduation adjudication critic (the program's
 ## GRADUATED 2026-08-05 — DUAL-GATE PASS (fleet graduate 25)
 Geo 91.3 gatePassed x2 (93.1/92.4/91.3/93.4/100/100, critic-verified) +
 independent critic 9.0+ ALL FOURTEEN views (floor 9.0, mean 9.11;
-docs/critique/shaded-parity-sepv2-graduation.md). FREEZE HASH b489ba14
+the archived visual-review receipt). FREEZE HASH b489ba14
 (46 meshes / 116696 verts). Flip-era §10: no runtime registration (dump
 clean), three-map mirrors present, no variants backfill, icons x5 from a
 clean HEAD worktree. §B5 stranded-2 = certified registration-pinned
@@ -366,7 +366,7 @@ CANDIDATE HASH for re-cert + re-freeze: m1a2_sepv2 5564306c -> b74366ac
 view-right, close-front, hero-frontleft.
 
 ### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE b74366ac CONFIRMED —
-floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
+floor 9.1 (the archived visual-review receipt). Left
 cheek reads ONE raked plane; gun run reads the real M256. No orders.
 
 ## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — graduate-change)
@@ -399,8 +399,7 @@ CHANGED VIEWS (diff-derived): view-front 0.009% + close-front 0.003%
 Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_sepv2/.
 
 ### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE b284b8ac CONFIRMED
-(floors 9.1-9.3; American MG grammar audited YES; docs/critique/
-shaded-parity-abrams-density-recert.md).
+(floors 9.1-9.3; American MG grammar audited YES; the archived visual-review receipt).
 
 ## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — graduate-
 ## change; family round home m1a1.md, m1a2.md carries the shared-recipe
@@ -433,8 +432,7 @@ CANDIDATE b284b8ac -> 83277374 (42 meshes / 116220 verts, tmp-hashgeo x2
 at the verdict tree) — re-freeze on re-cert ratification.
 
 ### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE 83277374 CONFIRMED
-(floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
-visibility-recert.md).
+(floor 9.1+; owner-question YES — the archived visual-review receipt).
 
 ## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
 ## round home m1a1.md, per-station table + laws there)
@@ -450,8 +448,7 @@ field EXACT (no new stranding). Candidate hash in m1a1.md — re-freeze on
 re-cert.
 
 ### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE dda7bcf4
-CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
-shaded-parity-abrams-crows-recert.md).
+CONFIRMED (floor 9.1-9.2; owner both-halves YES — the archived visual-review receipt).
 
 ## SEPV2 REMAKE ROUND (2026-08-07, abrams builder — §5.07 owner order,
 ## verbatim: "right now just focus on remaking the sepv2 and sepv3 based
@@ -775,7 +772,7 @@ The SEPv2 kit rides the shared pitched carriers; CIP faces retain their proud
 offsets and stay connected. Gate x2 byte-identical: 64.6 |
 69.5/64.6/78.9/77.4/100/100. Independent 14-view re-cert PASS, floor 9.1 /
 mean 9.18. RE-FREEZE **54b35994 -> c5bfbb70** (50 meshes / 165356 verts).
-Full verdict: `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+Full verdict: the archived visual-review receipt.
 
 ## §5.74 DISTINCTIVENESS + P95 RE-FREEZE (2026-08-08)
 SEPv2 is now the tall passive-armor member: an elevated massive CROWS under a
@@ -787,11 +784,11 @@ heightM 2.44 -> 3.43. Gate x2 exact: 37.3 |
 mandatory new silhouette/datum, NOT a geometry PASS. Independent 14-view
 re-cert PASS, floor 9.2 / mean 9.31. RE-FREEZE **c5bfbb70 -> a0a4e87c**
 (50 meshes / 168548 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+the archived visual-review receipt.
 
 ## FULL ARMOR/GHILLIE RE-FREEZE (2026-08-10, §5.107)
 Full cover now sits over the segmented side armor, SEP rear panels and tall
 armored CROWS without obscuring its apertures. P95 height is 3.44 m. Corrected
 yaw ownership PASS; independent §B8 floor 9.2 / mean 9.41. RE-FREEZE
 **a0a4e87c -> 7680a400** (58 meshes / 232258 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-ghillie-recert.md`.
+the archived visual-review receipt.

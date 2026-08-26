@@ -221,7 +221,7 @@ tumblehome. FALSE-0 remains law: no oracle registration or gate row was
 invented. Fresh proc-only 14-view identity sitting PASS, floor 9.1 / mean
 9.20; Trophy/ARAT/APU/ADL and roof-kit reads survive. Binding
 **2c9023d0 -> 329ec520** (47 meshes / 169064 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+the archived visual-review receipt.
 
 ## §5.74 DISTINCTIVENESS + P95 BINDING (2026-08-08)
 SEPv3 is the current wide-low mark: massive LP CROWS, retained
@@ -233,7 +233,7 @@ grammar stays visible beneath it. Mandatory-kit P95 = 3.1009 m; heightM
 row was invented; the datum replica repeated exactly with dims sanity 100.
 Independent proc-only 14-view identity PASS, floor 9.0 / mean 9.20. Binding
 **329ec520 -> d6e87b0c** (51 meshes / 204812 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+the archived visual-review receipt.
 
 ## FULL ARMOR/GHILLIE BINDING (2026-08-10, §5.107)
 SEPv3 receives the densest full turret/hull/CROWS foliage package while its
@@ -241,4 +241,4 @@ fine cassette, Trophy and wide-low identity remain legible. P95 height is now
 3.18 m. FALSE-0 still holds: no gate row was invented. Corrected yaw ownership
 PASS; independent §B8 floor 9.3 / mean 9.44. Binding **d6e87b0c -> 2cd6070**
 (55 meshes / 237010 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-ghillie-recert.md`.
+the archived visual-review receipt.

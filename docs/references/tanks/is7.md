@@ -43,7 +43,7 @@ partitioned procedural rig can approach but not fully match. Custom brake
 kept at Ø≈0.21 per the oracle (not the huge historical S-70 slotted brake).
 
 ## Shaded-parity r2 (2026-07-30)
-89.0 → 88.9 (H90 T81 G96 R93). Surface pass per docs/critique/shaded-parity-r1.md:
+89.0 → 88.9 (H90 T81 G96 R93). Surface pass per the archived visual-review receipt:
 sealed trunnion-axis saddle mantlet w/ bolt-bump rings (the r1 collar box slot
 at −6° is gone — verified in the articulation strip), cupola vision ring,
 loader lid, twin dark-metal KPVT AA mount, cheek SGMT MG ports, pike weld

@@ -207,7 +207,7 @@ remains seated, while the adjudicated engine-deck course stays continuously
 attached to the hull. The sitting independently confirms five Type 10 road
 wheels per side plus front idler/rear sprocket, one clean native linked-shoe
 belt and no rendered donor track or donor wheel/end-drum set. Verdict:
-`docs/critique/shaded-parity-type10-source-graduation.md`.
+the archived visual-review receipt.
 
 ## Native-only replacement and re-freeze (2026-08-12)
 
@@ -230,7 +230,7 @@ holes, the bore probe passes, and winding is 0 reversed / 0 mixed. The 42
 distinct frames in `/tmp/critic-type10-native-final-r10/type10` prove genuine
 yaw and complete seated turret ownership. The legacy source-component gate
 remains an honest incompatible zero rather than a fabricated pass. See
-`docs/critique/native-type10-first-party-recert.md`. **RE-FROZEN / KEEP
+the archived visual-review receipt. **RE-FROZEN / KEEP
 `7ac6d434`; source-baked `84f5d108` remains historical only.**
 
 ## §5.248 JAPAN-WAVE GROUND-UP REBUILD (2026-08-17, japan lane) — honest 0 -> **69.3 ×2 BIT-IDENTICAL** (hull 77.3 / stations 85.4 / whole 69.3 / dims 100 / floaters 100; row md5 31692002; hash 97267188, 62/59890)

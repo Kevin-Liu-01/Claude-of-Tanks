@@ -161,7 +161,7 @@ curves.
 
 ## §B8 ACCEPTANCE REWORK r2 (2026-08-06 — owner priority "build the
 ## type 10 and challenger 2 as a priority using the real glbs";
-## executes docs/critique/photo-acceptance-20260806.md order list)
+## executes the archived visual-review receipt order list)
 All four verdict orders landed in `buildChallenger2` (modern1.js):
 1. **WHEEL EXPOSURE:** skirt bays lifted to the 0.58 hub line (panels
    0.58..1.145) with a SCALLOPED lower edge (inter-wheel tabs at 0.55,
@@ -460,7 +460,7 @@ Oracle SHA-256:
 `d2e22673103353436517c1d17be38531b530b8936538f921d996a26fcfab5f3f`;
 pristine `.bak`:
 `1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
-Verdict: `docs/critique/shaded-parity-challenger2-graduation.md`.
+Verdict: the archived visual-review receipt.
 
 ## OWNER FUSED-BLOCK REPAIR + RE-CERTIFICATION (2026-08-10)
 
@@ -498,4 +498,4 @@ subordinate and creates no silhouette or track regression. Repaired oracle
 SHA-256: `f44e3b46ee07a457b04fff6cdf8950f880a45fd22d952226e2ef16a4bd3c49ba`;
 pristine `.bak`:
 `1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
-Verdict: `docs/critique/shaded-parity-challenger2-fused-block-recert.md`.
+Verdict: the archived visual-review receipt.

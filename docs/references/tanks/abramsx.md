@@ -688,7 +688,7 @@ oracle SHA-256 x2 from the standing pristine `.bak`:
 
 Independent R26 §B8 PASS: every one of 14 views >=9.0, floor 9.0 / mean
 9.04. Full verdict:
-`docs/critique/shaded-parity-abramsx-redesign-graduation.md`; evidence:
+the archived visual-review receipt; evidence:
 `shots/abramsx-redesign-r2/polish26/`. Non-blocking residuals are slightly
 flat side end-track arcs, a more uniform rear bustle shadow, and marginally
 smoother top-view mid-shoulders.
@@ -710,7 +710,7 @@ contiguity 0, mg1+5d, and exact track remains band 37/26, shoes 10/0 with no
 blind spot. Independent §B8 re-certification passes all fourteen fresh views,
 floor **9.0**, mean **9.09**. Freeze **d1dbfa2** reproduces x2 (75 meshes /
 162,372 vertices), replacing `fe7f9852`. Verdict:
-`docs/critique/shaded-parity-turret-attachment-recert.md`.
+the archived visual-review receipt.
 
 ## FIRST-PARTY WINDING CLOSURE (2026-08-12)
 

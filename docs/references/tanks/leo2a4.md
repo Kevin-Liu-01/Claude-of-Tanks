@@ -271,7 +271,7 @@ real; tone is the documented ambient-floor cap).
 
 ## 2026-08-06 §B8 PROPORTION REWORK (photo-acceptance orders; PROPORTIONS
 ## BEFORE DETAIL per §B8.1)
-Orders (docs/critique/photo-acceptance-20260806.md): 1 WHEEL EXPOSURE,
+Orders (the archived visual-review receipt): 1 WHEEL EXPOSURE,
 2 BOW cliff, 3 TURRET PRESENCE (+ rack/smoke profile detail).
 
 ### Order done-gates (official rigs; four-box = tmp-b8-measure)
@@ -411,7 +411,7 @@ clean-HEAD hash 41587e99.** Scores in canonical view order:
   ordered kit, not a return to the type90-dart silhouette.
 - Evidence: `shots/critic-leo-rcws/leo2a4/` (35 fresh sheets) plus the
   unchanged-family garage controls. Full verdict:
-  `docs/critique/shaded-parity-leopard-rcws-recert.md`.
+  the archived visual-review receipt.
 
 ## 2026-08-12 FORWARD WELDED-LOFT / STRICT COURSE FINAL
 
@@ -434,4 +434,4 @@ shaped, restore supported decoration, and prohibit every track intersection.
 - Fidelity: **92.14** composite, **90.18** minimum whole view, gun **91.53**,
   tracks **96.03**. Fresh final evidence is 15 paired + 15 yaw0 + 15 yaw90,
   **45/45 distinct hashes**. Full verdict:
-  `docs/critique/native-leo2a4-forward-loft-recert.md`.
+  the archived visual-review receipt.

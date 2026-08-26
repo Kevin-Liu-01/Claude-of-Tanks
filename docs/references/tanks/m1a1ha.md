@@ -177,7 +177,7 @@ at landing; its verdict ratifies the re-freeze or files orders.
 ### RE-CERT RATIFIED (2026-08-05): floor 9.0, mean 9.09 over nine changed
 views — owner defect classes dead (no shoe-through, no corner channel,
 TIP reads a bin). RE-FREEZE f5c556dc CONFIRMED (was 5c765fc4);
-docs/critique/shaded-parity-m1a1ha-rearfix-recert.md.
+the archived visual-review receipt.
 
 ## §B1.1 LEFT CHEEK + §B3.1 GUN RUN (2026-08-06, abrams builder — family
 ## batch; shared tejasRoofKit/buildTejasFamily lines, full mechanics +
@@ -195,7 +195,7 @@ hero-frontleft, view-left, view-right.
 CANDIDATE HASH for re-cert + re-freeze: m1a1ha 96d4dfc4 -> cd209f68 (42/151120).
 
 ### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE cd209f68 CONFIRMED —
-floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
+floor 9.1 (the archived visual-review receipt). Left
 cheek reads ONE raked plane; gun run reads the real M256. No orders.
 
 ## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — graduate-change)
@@ -219,8 +219,7 @@ rings the roof/top ones. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a1ha/
 (cable static in hullG at yaw — the §B5 m1a1-cable law honored).
 
 ### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE 4023964c CONFIRMED
-(floors 9.1-9.3; American MG grammar audited YES; docs/critique/
-shaded-parity-abrams-density-recert.md).
+(floors 9.1-9.3; American MG grammar audited YES; the archived visual-review receipt).
 
 ## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — graduate-
 ## change; full mechanics + §C decode + §B7 cap notes in m1a1.md)
@@ -238,8 +237,7 @@ AA-teeter on pre-existing wheel-bay enclosures). CANDIDATE 4023964c -> ff97bc44 
 back-to-back at the verdict tree) — re-freeze on re-cert.
 
 ### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE ff97bc44 CONFIRMED
-(floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
-visibility-recert.md).
+(floor 9.1+; owner-question YES — the archived visual-review receipt).
 
 ## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
 ## round home m1a1.md, per-station table + laws there)
@@ -252,15 +250,14 @@ candidates. Candidate hash in m1a1.md close table — re-freeze on the
 re-cert critic's verdict.
 
 ### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE f1aaf80
-CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
-shaded-parity-abrams-crows-recert.md).
+CONFIRMED (floor 9.1-9.2; owner both-halves YES — the archived visual-review receipt).
 
 ## FLANK-PANEL PITCH + RE-CERT (2026-08-08, owner order)
 Inherits the shared pitched/flushed flank carriers and connected fittings.
 Gate x2 byte-identical: 83.1 | 91.7/83.1/85.6/92.5/100/100. Independent
 14-view re-cert PASS, floor 9.1 / mean 9.19. RE-FREEZE
 **aa7af504 -> 99962364** (47 meshes / 157232 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+the archived visual-review receipt.
 
 ## FULL ARMOR/GHILLIE RE-FREEZE (2026-08-10, §5.107)
 Original cut-net, foliage and passive-armor finishing now cover the complete
@@ -268,4 +265,4 @@ configured hull, turret and shielded CWS while keeping the weapon line clear.
 Corrected yaw proves separated turret/hull ownership and continuous mounting.
 Independent §B8 floor 9.2 / mean 9.36. RE-FREEZE **99962364 -> d8a948cc**
 (55 meshes / 208210 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-ghillie-recert.md`.
+the archived visual-review receipt.

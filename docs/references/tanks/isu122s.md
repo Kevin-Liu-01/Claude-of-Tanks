@@ -116,7 +116,7 @@ userdrops6.js, drop from USERDROP6_SOURCED_IDS, icons, freeze hash).
 ## Shaded-parity r1 (2026-08-02, independent critic) — FAIL min 4/10
 
 Geometric 90.6 stands; visual gate FAILED on gate-blind classes (full
-verdict + defect list: docs/critique/shaded-parity-isu122s-r1.md).
+verdict + defect list: the archived visual-review receipt).
 Headliners: no ball mantlet volume (depth feature, mask-invisible), track
 material unlit black + exposed toothed top run, fuel drums absent, roof
 furniture ~20% density, sponson underside void, ORANGE mis-materialed
@@ -309,7 +309,7 @@ filtered from the failure gate).
 - Track band ratio 1.154 is inside but near the 1.16 edge of the law.
 
 ## Shaded-parity r2 (2026-08-02, fresh independent critic) — FAIL min 5 (was 4)
-Full verdict + r3 work order: docs/critique/shaded-parity-isu122s-r2.md.
+Full verdict + r3 work order: the archived visual-review receipt.
 FIXED: silhouette break, sponson void (webbed), beam float. NOT FIXED:
 ball mantlet (token collar only — the ball must DOMINATE the face) and
 fuel drums (critic overruled the near-flush vertex claim: the print
@@ -762,7 +762,7 @@ render-verified with numbers; the binding residual is shade-side drum
 subtlety, which is now a measured gate ceiling, not a build gap.
 
 ## Shaded-parity r5 (2026-08-02) — FAIL min 5.5; FILL FAIL; ON-ELEMENT law
-Verdict: docs/critique/shaded-parity-isu122s-r5.md. Floor stuck 4-5-5.5-5.5.
+Verdict: the archived visual-review receipt. Floor stuck 4-5-5.5-5.5.
 Hull silhouette verified certified-grade (1-2px all stations) — the gap is
 SKIN: mantlet three-parts-not-one-cast (flat plate IQR 0.0 vs ref 31-L
 roll-off), white pocket wheels, cream zipper, drums buried (ref parity in
@@ -930,7 +930,7 @@ coordinates pasted (the r5 fleet law).
   (ball + ring + sleeve) against the face.
 
 ## Shaded-parity r6 (2026-08-02) — FAIL 6.0; FILL PASS (first); floor moved
-Verdict: docs/critique/shaded-parity-isu122s-r6.md. Coverage/inventory
+Verdict: the archived visual-review receipt. Coverage/inventory
 converging; identity holds it: mantlet decomposes off-axis (ring-stack +
 pipe-mouth + patch), drum ends never circular, gear discs migrated the
 r5 gear-face. MEASUREMENT LAW: critic luma = ITU-601 — builder rects must
@@ -1131,14 +1131,14 @@ banded crescent transition and the heightM chimney.
    SHAFT to a cylinder with the same flat top. No dims re-roll.
 
 ## Shaded-parity r7 (2026-08-02) — FAIL 6.5; FIFTH straight floor rise
-Verdict: docs/critique/shaded-parity-isu122s-r7.md. Every r7 rect
+Verdict: the archived visual-review receipt. Every r7 rect
 reproduced ("honest builder"). Identity killers dead; r8 = TONE round:
 green bucket (Gex 12-13.5 → ≤8), pot gradient + ruling-1 cheek shrink +
 collar −31L, wheel dimple halve, drum split + NOTCH CHECK (ruling-2
 clause 1 was skipped), plank/disc shading, roof relief + chimney shaft.
 
 ## Shaded-parity r8 (2026-08-02) — FAIL 6.5 (floor HELD, first no-rise)
-Verdict: docs/critique/shaded-parity-isu122s-r8.md. Green bucket dead
+Verdict: the archived visual-review receipt. Green bucket dead
 in all panes (real win) but executed as GLOBAL DARKENING: −8..−17L
 overshoots + p05 below ref 14/14. CIRCULARITY regressed (pot rounded-
 square; drum crescents — occlusion cert DISPROVEN by the ref's own
@@ -1147,7 +1147,7 @@ inverted (Δ39 vs ref Δ≤3; real air 1.33% vs 6.03%). r9 = calibrated
 lift + gear logic + true-ellipse pot + real disc caps.
 
 ## Shaded-parity r9 (2026-08-02) — FAIL 7.0; CIRCULARITY first PASS; MG law
-Verdict: docs/critique/shaded-parity-isu122s-r9.md. Pot FIXED at
+Verdict: the archived visual-review receipt. Pot FIXED at
 ref-grade fit (rms 2.45 vs ref's own 3.09). Gear inversion dead. Lift
 confirmed. DECORATION FAILS: no roof MG anywhere (mandatory). Holders:
 rear-quarter composition, close pot material, front tone inversion.
@@ -1161,7 +1161,7 @@ cupola z-fight dead. Critic r10: FAIL 8.0 — largest rise in tank
 history; five r9 holders dead; graduation blocked by the MATERIAL TIER
 on big flats (iqr-0.00 surfaces; r8 item 7 never landed) + dead-rear
 cap circles + comb + deck density. Verdict:
-docs/critique/shaded-parity-isu122s-r10.md. r11 = material-tier round.
+the archived visual-review receipt. r11 = material-tier round.
 
 ## r11 BUILDER PACKET (2026-08-03) — THE MATERIAL-TIER ROUND
 

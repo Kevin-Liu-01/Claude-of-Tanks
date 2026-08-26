@@ -165,7 +165,7 @@ stations 40.7 / **dims 100** / **floaters 100**
 ## §B8 REWORK ROUND (2026-08-06, AFV lane — owner rejection + acceptance-critic orders)
 Owner (verbatim): "puma needs a more centered turret and the same track shape
 as bradley" + the §B8 rejection; numeric orders from
-docs/critique/photo-acceptance-20260806.md. Geometry hash **c8385d52 ->
+the archived visual-review receipt. Geometry hash **c8385d52 ->
 31dca571** (64 meshes / 68500 verts).
 
 **ROOT CAUSE FOUND (r1 bow):** the r1 "main glacis plane" frustum spanned

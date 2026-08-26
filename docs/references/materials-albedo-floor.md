@@ -3,7 +3,7 @@
 Lane: materials (src/vehicles/materials.js ONLY). Baseline: HEAD 1925e9dd,
 materials.js blob 9d0bde8e (verified clean — no pre-existing working-tree
 diff; the coordinator's collision warning did not materialize). Escalation
-inputs: docs/critique/shaded-parity-m47_patton-r6.md (B3: top census 2334 vs
+inputs: the archived visual-review receipt (B3: top census 2334 vs
 ref 1160), t84 packet r32 2b (pale>=95 1/0 vs targets 60/150, "family camo
 canvas + bakeDirt dust gradient cap pale reach"), leo2a5 r8 1c (gear sub45
 2358 vs retired <=1500 gate; law 5 "deep-shade floor is albedo-keyed").

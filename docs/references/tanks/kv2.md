@@ -134,7 +134,7 @@ throwaway probe that dumps gate-pipeline curves for BOTH models in world coords)
   (~0.17 errM). Both views still clear 90 over them.
 
 ## Shaded-parity r3 response — visual pass with the gate held (2026-07-31)
-Critique: docs/critique/shaded-parity-kv2-r3.md (FAIL, min view 5). Item #1
+Critique: the archived visual-review receipt (FAIL, min view 5). Item #1
 (global shade-side material collapse) fixed separately in materials.js
 (412399e). This pass covers items #2-7 in soviet-heavy.js only.
 Gate before 90.1 -> after **90.2 PASS** (hull 92.2 whole 90.2 turret 90.3
@@ -214,7 +214,7 @@ Hard-won margins for future kv2 rounds (all cost gate points when violated):
   dark contrast, not height, everywhere aft of the turret well.
 
 ## Shaded-parity r4 response — closing round for the r5 verdict (2026-07-31)
-Critique: docs/critique/shaded-parity-kv2-r4.md (FAIL, min view 7 — "the
+Critique: the archived visual-review receipt (FAIL, min view 7 — "the
 narrowest fail of the program"). All five tells closed in soviet-heavy.js
 only (per-instance material work included — materials.js/kit/factory
 untouched). Gate held through every edit: before 90.2 -> after **90.2 PASS**

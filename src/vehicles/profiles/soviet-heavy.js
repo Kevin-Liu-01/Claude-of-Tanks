@@ -8,7 +8,7 @@
 // docs/references/tanks/<id>.md. Original primitive reconstructions only —
 // no source mesh data.
 //
-// r2 (shaded-parity r1, docs/critique/shaded-parity-r1.md): surface pass on
+// r2 (shaded-parity r1, the archived visual-review receipt): surface pass on
 // all six tanks — sealed convex saddle mantlets (family critical: the square
 // socket collars opened voids at full depression), reading muzzle brakes on
 // is3/is6b, dark-metal AA MGs, rivet/stud rows, fittings, and material

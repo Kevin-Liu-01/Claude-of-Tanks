@@ -582,7 +582,7 @@ mg0+0d — §B3 carried by the r6 loader MG + this packet justification).
 
 ## VISUAL r6 — FIRST CRITIC LADDER ROUND (2026-08-04, verdict 5d361ab: FAIL floor 7.7 rear / mean 8.0)
 
-Work order: docs/critique/shaded-parity-leo2a5-r5.md (three drivers:
+Work order: the archived visual-review receipt (three drivers:
 gear grammar, rear-plate grammar, furniture tier). Gate after round:
 **min 90.8 PASS x2 bit-identical on final bytes** (hull 90.8 / whole
 91.2 / turret **91.5 (+0.9 over the r5 entry — the binder moved off
@@ -745,7 +745,7 @@ fender-nose/wedge-crest flags, evaluator top Δbot) stand.
 
 ## VISUAL r8 — SECOND CRITIC LADDER ROUND / FINISH TIER (2026-08-04, verdict ac48aa0: FAIL floor 8.4 hero-rr + close-front, mean ~8.55)
 
-Work order: docs/critique/shaded-parity-leo2a5-r6.md — ONE coherent
+Work order: the archived visual-review receipt — ONE coherent
 driver (de-CAD the clean-CAD kit against the weathered print). Gate
 after round: **min 90.8 PASS x2 bit-identical** (hull 90.8 / whole 91.1
 / turret 91.5 / stations 94.3 / dims 100 / floaters 100 — whole gave
@@ -918,7 +918,7 @@ slit closed + glacis calmer + front ladder down). The two honest
 misses (gear sub45, 2c p75 -0.8) are banked with mechanisms; next
 critic adjudicates graduation-track.
 
-## VISUAL r10 — TIER-EDGE FINAL ROUND (2026-08-04, work order docs/critique/shaded-parity-leo2a5-r8.md)
+## VISUAL r10 — TIER-EDGE FINAL ROUND (2026-08-04, work order the archived visual-review receipt)
 
 Round 4 of the critic ladder (the r8 verdict's projected graduation
 round). Gate after round: **min 90.8 PASS ×2 bit-identical** (hull 90.8 /
@@ -1147,7 +1147,7 @@ the exact bar (0 vox, the fleet authored-hug class, left byte-identical
 near-contact counts are the fleet hug signature.
 
 ### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE d34a0a58 CONFIRMED
-(docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).
+(the archived visual-review receipt; floors 9.0-9.1).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore on the r3 muzzle face block front (4.565, y+0.012); §C.1 31 reversed re-oriented (wedgeTurretV3 LEFT cheeks, cutSlab bow, rack steps); F-vs-D 148->4 (sub-6cm mixed slivers, critic-passed class); gate HELD x2: every component EXACT except turret 91.6->91.5 (-0.1, investigated: non-planar quad re-triangulation of REPAIRED left-cheek slabs; min 90.8 PASS unchanged); hash d34a0a58 -> e215a738 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

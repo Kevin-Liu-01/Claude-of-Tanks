@@ -487,4 +487,4 @@ clean-HEAD hash a9aba192.** Scores in canonical view order:
   dominant read. The RCWS is variant kit, not a casemate-height rewrite.
 - Evidence: `shots/critic-leo-rcws/leopard2_proto/` (35 fresh sheets)
   plus unchanged-family garage controls. Full verdict:
-  `docs/critique/shaded-parity-leopard-rcws-recert.md`.
+  the archived visual-review receipt.

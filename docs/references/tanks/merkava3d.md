@@ -609,7 +609,7 @@ guns invert the gun-metal AA law; close-roof frames z +1.2..-1.1 only;
 re-read gatePassed from JSON at razors (console rounds 89.9976 to "90").
 
 ## RETONE round r11 (2026-08-03, merkava family agent) — 90.7 PASS (+0.1)
-Executed the critic-r9 five orders (docs/critique/shaded-parity-merkava3d-r9.md).
+Executed the critic-r9 five orders (the archived visual-review receipt).
 Gates: merkava3d 90.7 PASS (hull 91.5 / whole 90.7 / turret 91.6 / stations
 92.3 / dims 100 / floaters 100 — whole +0.1, stations +0.2 over the r10
 lock; gatePassed re-read True from JSON). Freezes verified after EVERY
@@ -749,7 +749,7 @@ Shots: shots/critic-merkava3d/ (14 views, final = this round's last render).
 
 ## Push round 12 — CONTAINMENT + TONE (2026-08-03, hash 4515d944)
 
-r11 critic verdict (docs/critique/shaded-parity-merkava3d-r11.md): FAIL
+r11 critic verdict (the archived visual-review receipt): FAIL
 floor 8.6 close-front — the §B4 track-containment law — mean 8.85, "one
 containment fix plus a tone/relief round from the bar." All eight r12
 orders worked; gate PASS x2 at min 90.3 (was 90.7: hull 91.5->90.3,
@@ -921,7 +921,7 @@ judge the rear skyline on read, not the percentage.
 
 ## Push round 13 — THE ALBEDO ROUND (2026-08-03, hash 954a9650)
 
-r12 critic verdict (docs/critique/shaded-parity-merkava3d-r12.md): FAIL
+r12 critic verdict (the archived visual-review receipt): FAIL
 floor 8.9 close-roof only, mean 9.00, thirteen views >=9.0 — four
 albedo/hairline orders at zero silhouette price. Gate PASS x2 at min
 **90.4** (r12 record 90.3: hull 90.3->90.4, whole 90.6 EXACT, turret
@@ -1068,8 +1068,7 @@ shifted dAlong 0.05 by adding band content near the 12%-band mid
 ## GRADUATION (2026-08-03) — the program's 13th graduate
 DUAL GATE PASSED: geometry min 90.4 gatePassed x2 (hull 90.4 / whole 90.6 /
 turret 91.4 / stations 91.7 / dims 100 / floaters 100) + graduation critic
-9.0 on ALL FOURTEEN views, floor 9.0 mean 9.01 (verdict docs/critique/
-shaded-parity-merkava3d-r13.md — floor climbed 8.6 -> 8.9 -> 9.0 across
+9.0 on ALL FOURTEEN views, floor 9.0 mean 9.01 (verdict the archived visual-review receipt — floor climbed 8.6 -> 8.9 -> 9.0 across
 r11-r13; third consecutive clean claims sheet). SS-10 executed: userdrops5
 articulated('merkava3d') registration RETIRED (procedural is the model of
 record; chips under CUSTOM); USERDROP5_SOURCED_IDS excludes merkava3d;

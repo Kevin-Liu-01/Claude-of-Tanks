@@ -725,7 +725,7 @@ Fresh §B8 passes all fourteen views at floor **9.0**, mean **9.04**;
 yaw/load paths pass **9.1**. Sights, MG cradle, smoke banks, ERA, antennas,
 bustle modules and gun rotate as one seated assembly with no air gap or
 unsupported hardware. Verdict:
-`docs/critique/shaded-parity-t90sm-graduation.md`.
+the archived visual-review receipt.
 
 ## §5.105 OWNER-PRIORITY COMPLETE REDESIGN (2026-08-10)
 

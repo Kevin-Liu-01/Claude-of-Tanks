@@ -276,7 +276,7 @@ readers), tmp-leo-topdown.mjs (directive review captures).
 
 ## Shaded-parity r1 (2026-08-02, independent critic) — FAIL min 6.5
 Geometric 91.0 stands. Full verdict + work order:
-docs/critique/shaded-parity-leo2a6-r1.md. FILL passes; CIRCULARITY
+the archived visual-review receipt. FILL passes; CIRCULARITY
 borderline (hatch rings flat, fan circles occluded). Headliners: blank
 glacis (no lights/tow eyes/periscope bank + BLUE placeholder dots),
 black-box sprocket/idler ends, missing turret smoke launchers (stray
@@ -386,7 +386,7 @@ Round lessons (mechanics worth keeping):
   bottom 1.13), deeper-than--3.627 content must stay y 1.373..1.771.
 
 ## Shaded-parity r2 (2026-08-02) — FAIL min 7.0 (was 6.5); gate holds 91.0
-Work order: docs/critique/shaded-parity-leo2a6-r2.md. FIXED: end caps,
+Work order: the archived visual-review receipt. FIXED: end caps,
 rack, fan slab, gun. NOT FIXED: hatch rings (must READ raised from top —
 wide flat contrast ring is the silhouette-neutral path). FLEET LESSON
 banked: retones keep overshooting WARM (2nd tank) — match ref HUE family
@@ -496,7 +496,7 @@ furnished, rings/PERI circular from top, fan wells real; expect all
 views >= 7.5 if the reads hold at the critic's zoom.
 
 ## Shaded-parity r3 (2026-08-02) — FAIL min 8.0 (6.5->7.0->8.0; top-down law PASSES)
-Work order: docs/critique/shaded-parity-leo2a6-r3.md. Wheels in law;
+Work order: the archived visual-review receipt. Wheels in law;
 TRACK BAND is the miss (builder sampled camo-painted upper gear — true
 ref band 31.8-40.0 deg brown-grey). Fleet law refined: sample ON the
 exact element. Grey slabs still placeholder. r4 = 5 mechanical items.
@@ -593,7 +593,7 @@ size/order (above); the -3.81 tail col ~0.16 and PERI 4th-column
 p95 classes stand unchanged.
 
 ## Shaded-parity r4 (2026-08-02) — FAIL min 8.5 (6.5→7.0→8.0→8.5; 5 views at 9.0)
-Work order: docs/critique/shaded-parity-leo2a6-r4.md. Hue+lum confirmed
+Work order: the archived visual-review receipt. Hue+lum confirmed
 dead-on; SATURATION 1.8x ref caught (fleet law now 3-dimensional:
 hue+lum+sat on-element). r5 = narrow tone pass: band desat ~16% + tread
 shadows, 10-slat grille density, solid bustle backing.
@@ -988,7 +988,7 @@ classes stand.
 ## GRADUATED 2026-08-02 — DUAL-GATE PASS (4th fleet graduate)
 Geometric min 91.0 gatePassed (hull 91.2/whole 91.0/turret 91.2/
 stations 93.4/dims 91.0/floaters 100) + independent critic 9.0 ON ALL
-NINE VIEWS (r8; docs/critique/shaded-parity-leo2a6-r8.md). MODEL_SOURCE
+NINE VIEWS (r8; the archived visual-review receipt). MODEL_SOURCE
 retired in userdrops.js (procedural ships everywhere); buh GLB stays as
 measurement oracle (CC-BY 4.0, ATTRIBUTION.md). FREEZE HASH 37cc0789
 (44 meshes, 151604 verts) — any intentional change re-runs BOTH gates
@@ -1015,7 +1015,7 @@ re-certification critic PASS min 9.0 all views with zero regressions.
 NEW FREEZE HASH **2e18db54** (46 meshes, 153300 verts) supersedes
 37cc0789. kf51 co-resident hash d94171cc verified EXACT; leo2a5/
 leo2_revolution byte-identical. Verdict:
-docs/critique/leo2a6-recert-2026-08-03.md.
+the archived visual-review receipt.
 
 ## Track-containment round r4 (2026-08-03) — GRADUATE CHANGE, §B4: 418/148 -> 0/0
 
@@ -1117,7 +1117,7 @@ Fittings census mg0+0d unchanged (packet-justified hand-authored MG3,
 §I migration queued fleet-wide).
 
 ### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE cff6f478 CONFIRMED
-(docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).
+(the archived visual-review receipt; floors 9.0-9.1).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 existing dark-on-dark face ring kept; shadow furniture supplies the void read (z 5.5125); §C.1 39 reversed re-oriented (leoHullV3 sponson/glacis, wedgeTurretV3 LEFT complexes, nose trio); F-vs-D 253->0; gate HELD x2 EXACT 90.9 PASS; hash cff6f478 -> 09912270 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
@@ -1147,7 +1147,7 @@ the source is not distorted for a nominal row. The 42-frame final visual/yaw
 packet scores floor 9.4 / mean 9.58, proves a real quarter-turn and coherent
 turret/hull ownership, and finds no fused mass, stranded equipment, floating
 attachment or winding wound. Full receipt:
-`docs/critique/shaded-parity-leo2a6-owner-source-graduation.md`.
+the archived visual-review receipt.
 
 ## 2026-08-14 FIRST-PARTY TERMINAL-COURSE REWRAP
 

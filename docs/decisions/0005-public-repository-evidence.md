@@ -28,22 +28,24 @@ development histories. The owning tool writes current evidence below ignored
 `.qa-dev/` or `.qa-device/`; maintained subsystem docs and ADRs retain only
 the reproducible contract and durable conclusion.
 
-Referenced vehicle graduation and recertification receipts remain until their
-conclusions are consolidated into their owning vehicle packets. New iterative
-critique receipts must not be committed.
+The final 96 referenced graduation and recertification receipts were removed
+after their accepted findings were confirmed in the owning vehicle packets.
+Their exact historical text remains recoverable from commit `d9303080`; the
+public tree keeps the maintained packets, not duplicate review transcripts.
+New iterative critique receipts must not be committed.
 
 ## Consequences
 
 - Contributor-facing documentation has less historical execution noise.
 - Fleet provenance and reproducible geometry inputs remain intact.
-- A smaller follow-up can consolidate the remaining referenced vehicle
-  receipts without creating broken citations.
+- Vehicle packets retain current accepted geometry, source, and release facts;
+  historical review transcripts remain available through Git history.
 - Tests remain tracked release contracts; age alone is not grounds to remove a
   test that still runs in `tools/selftest-suites.mjs`.
 
 ## Verification
 
-    git grep -n 'docs/critique/' -- ':!docs/critique/**'
+    test -z "$(git ls-files docs/critique)"
     node tools/public-repo-hygiene.selftest.mjs
     node tools/selftest-suites.selftest.mjs
     npm run agent-docs -- doctor . --json

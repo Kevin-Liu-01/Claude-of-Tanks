@@ -731,7 +731,7 @@ visually adjudicated at yaw with no missing face, wound or detached island.
 Fresh §B8 passes all fourteen views at floor **9.0**, mean **9.01**;
 yaw/load paths pass **9.3**. The complete sight, Kord, K-5, cupola, mast,
 gun and their bases rotate coherently without empty-air seams. Verdict:
-`docs/critique/shaded-parity-t90a-vladimir-graduation.md`.
+the archived visual-review receipt.
 
 ## §5.106 HULL/TURRET DE-FUSION (2026-08-10)
 
@@ -757,7 +757,7 @@ Fresh independent §B8 scores
 legitimate hull-owned geometry and confirms coherent ownership/load paths for
 the entire cast turret, gun, collar, ERA, optics, RWS, hatches, smoke kit and
 antennas. Verdict:
-`docs/critique/shaded-parity-t90a-vladimir-defusion-recert.md`.
+the archived visual-review receipt.
 
 ## §5.248 RESTORED SHTORA / RAISED GUN SEAT (2026-08-15)
 
@@ -778,4 +778,4 @@ course remain fixed. Parent audit is 0/0/0, exact track bands and shoes are
 0/0, duplicate-course and muzzle-bore audits pass, and winding pixels are
 clean. Freeze **`bee9eb44`** reproduces at 46 meshes / 77,342 vertices;
 instance freeze is `79b109c2` and asset geometry is `7cf0107c`. Verdict:
-`docs/critique/shaded-parity-t90a-vladimir-eyes-recert.md`.
+the archived visual-review receipt.

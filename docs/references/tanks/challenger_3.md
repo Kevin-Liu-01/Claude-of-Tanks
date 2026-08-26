@@ -348,7 +348,7 @@ PASSes all 14 fresh pairs: floor **9.0**, mean **9.04**. The preceding ordered
 corrections—physical wheel spacing, restored wheel scale, compact roof/RWS,
 wider stern course, 0.71 dish radius and the closed attached rear trapezoid—are
 present in the frozen tree. Verdict:
-`docs/critique/shaded-parity-challenger3-graduation.md`.
+the archived visual-review receipt.
 
 ## Owner turret-attachment closeout (2026-08-09)
 
@@ -367,7 +367,7 @@ contiguity 0, mg1+5d, and exact track remains band 0/24, shoes 0/38 with no
 blind spot. Independent §B8 re-certification passes all fourteen fresh views,
 floor **9.0**, mean **9.06**. Freeze **b0c172a4** reproduces x2 (60 meshes /
 71,977 vertices), replacing `2678f6c`. Verdict:
-`docs/critique/shaded-parity-turret-attachment-recert.md`.
+the archived visual-review receipt.
 
 ## First-party forward-profile and strict-track re-cert (2026-08-12)
 
@@ -384,4 +384,4 @@ is now band 0/0, shoes 0/0 and strict sweep 0/0. Freeze `564057a4` reproduces
 twice at 62 meshes / 72,471 vertices. Fidelity is 93.02 with minimum whole
 view 92.17; 45 fresh paired/yaw frames are all distinct and the independent
 visual floor is 9.0. Full verdict:
-`docs/critique/shaded-parity-challenger3-strict-clearance-recert.md`.
+the archived visual-review receipt.

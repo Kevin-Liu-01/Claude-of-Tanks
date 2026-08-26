@@ -111,7 +111,7 @@ strakes).
 ## §B8 REWORK ROUND (2026-08-06, AFV lane — owner rejection + acceptance-critic orders)
 Owner (verbatim): "the type 89 ifv needs a sloperd front and the same
 track shape as bradley" + the §B8 rejection; numeric orders from
-docs/critique/photo-acceptance-20260806.md. Geometry hash **2ace701c ->
+the archived visual-review receipt. Geometry hash **2ace701c ->
 b19aca94** (62 meshes / 51448 verts). PHOTO CLASS — never gated (FALSE-0
 law holds; bars = probe + battery + view sets).
 

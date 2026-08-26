@@ -2,7 +2,7 @@
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
 // type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
 //
-// Wave-2 rebuild (docs/critique/shaded-parity-r1.md lessons applied in ONE
+// Wave-2 rebuild (the archived visual-review receipt lessons applied in ONE
 // pass): every tank is a bespoke build measured against the width-normalized
 // mask probes of its local reference GLB + the packet dims in
 // docs/references/tanks/<id>.md. Original primitive reconstructions only —

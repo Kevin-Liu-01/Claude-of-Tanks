@@ -163,7 +163,7 @@ hero angles.
 ## dims 99.1 / floaters 100) — hull +1.1 over the r31 record, audit 4/0,
 ## holes 0, mg1+6d
 
-Work order: docs/critique/shaded-parity-t84-r31.md (verdict on 2c262e52).
+Work order: the archived visual-review receipt (verdict on 2c262e52).
 Landing hash **531fe4f0** (47 meshes / 84292 verts); graduates verified
 byte-frozen at every batch (pt91m e6994e54, t72b3m c19ec9f0). Evidence:
 shots/critic-t84/ + shots/russia-r32/ + shots/visual-eval-t84/.

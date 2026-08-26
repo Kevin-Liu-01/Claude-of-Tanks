@@ -198,7 +198,7 @@ hero-frontleft, view-left, view-right.
 CANDIDATE HASH for re-cert + re-freeze: m1a2_tejas f3ab40f4 -> 25304310 (43/150760).
 
 ### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE 25304310 CONFIRMED —
-floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
+floor 9.1 (the archived visual-review receipt). Left
 cheek reads ONE raked plane; gun run reads the real M256. No orders.
 
 ## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — graduate-change)
@@ -221,8 +221,7 @@ AA-noise. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_tejas/ (links
 static in hullG, bag rides turretG).
 
 ### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE 93a9a890 CONFIRMED
-(floors 9.1-9.3; American MG grammar audited YES; docs/critique/
-shaded-parity-abrams-density-recert.md).
+(floors 9.1-9.3; American MG grammar audited YES; the archived visual-review receipt).
 
 ## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — graduate-
 ## change; full mechanics + §C decode + §B7 cap notes in m1a1.md)
@@ -243,8 +242,7 @@ CANDIDATE 93a9a890 -> 4891abb6 (45 meshes / 158720 verts, tmp-hashgeo x2
 at the verdict tree) — re-freeze on re-cert ratification.
 
 ### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE 4891abb6 CONFIRMED
-(floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
-visibility-recert.md).
+(floor 9.1+; owner-question YES — the archived visual-review receipt).
 
 ## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
 ## round home m1a1.md, per-station table + laws there)
@@ -258,8 +256,7 @@ chute, IR pointer pod. Rest azimuth +90 deg window-pinned (head depth
 m1a1.md — re-freeze on re-cert.
 
 ### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE 89c9f260
-CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
-shaded-parity-abrams-crows-recert.md).
+CONFIRMED (floor 9.1-9.2; owner both-halves YES — the archived visual-review receipt).
 
 ## FLANK-PANEL PITCH + RE-CERT (2026-08-08, owner order)
 The four-bin left band, right lips, CIP/radar faces, rails, pouch, and drum
@@ -267,7 +264,7 @@ mounts now follow the certified shell tumblehome with no air behind them.
 Gate x2 byte-identical: 75.6 | 92/75.6/83.3/92.3/100/100. Independent
 14-view re-cert PASS, floor 9.1 / mean 9.22. RE-FREEZE
 **f7510d88 -> 3afe65f0** (48 meshes / 157880 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+the archived visual-review receipt.
 
 ## §5.74 DISTINCTIVENESS + P95 RE-FREEZE (2026-08-08)
 The new/current M1A2 is the clean ERA-free member: a much broader forward
@@ -280,11 +277,11 @@ heightM 2.44 -> 3.24 under §5.73-1. Gate x2 exact: 57.8 |
 new silhouette/datum, NOT a geometry PASS. Independent 14-view re-cert PASS,
 floor 9.1 / mean 9.23. RE-FREEZE **3afe65f0 -> 01e698e8** (48 meshes /
 159596 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+the archived visual-review receipt.
 
 ## FULL ARMOR/GHILLIE RE-FREEZE (2026-08-10, §5.107)
 Full hull/turret/CROWS net and foliage now ride physical carriers while the
 massive clean CROWS glass and weapon remain exposed. P95 height is 3.30 m.
 Corrected yaw ownership PASS; independent §B8 floor 9.2 / mean 9.39.
 RE-FREEZE **01e698e8 -> 1adc0bde** (56 meshes / 214570 verts). Full verdict:
-`docs/critique/shaded-parity-abrams-ghillie-recert.md`.
+the archived visual-review receipt.

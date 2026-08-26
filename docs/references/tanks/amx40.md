@@ -352,7 +352,7 @@ playable geometry.
   duplicate turret mass, unsupported decoration or air seam. The native
   six-wheel linked-shoe system passes with distinct terminals, continuous
   contact/wrap courses and no donor gear. Verdict:
-  `docs/critique/shaded-parity-amx40-source-graduation.md`.
+  the archived visual-review receipt.
 - The former pre-warp ceiling, old source-height interpretation and r1
   freeze are retained above only as an audit trail; they are not current
   constraints or queue items.

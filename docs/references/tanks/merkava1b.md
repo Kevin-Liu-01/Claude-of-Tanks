@@ -808,7 +808,7 @@ render). Tools: tools/tmp-r11-verify.py (the one-shot order sweep, both
 tanks), tools/tmp-r11-warm.py (warm census/clusters).
 
 ## SHADED-PARITY round r13 (2026-08-04, merkava family agent, respawned) — 90.0 PASS x2
-Verdict worked: docs/critique/shaded-parity-merkava1b-r12.md (FAIL floor
+Verdict worked: the archived visual-review receipt (FAIL floor
 8.4, four drivers + mandatory containment). Two agents: the original r13
 landed order 0 + the material halves of 1a/1b/3a/3c as uncommitted WIP
 (adjudicated per the merkava-r9 protocol: gate 90.0 PASS, gatePassed true,
@@ -988,7 +988,7 @@ measure driver session-local (scratchpad measure-r13.py).
 DUAL GATE PASSED: geometry min 90.0 gatePassed x2 at the EXACT RAZOR
 (hull 91.2 / whole 90.0 / turret 91.0 / stations 91.4 / dims 100 /
 floaters 100) + graduation critic 9.0 on ALL FOURTEEN views, floor 9.0
-mean 9.01 (verdict docs/critique/shaded-parity-merkava1b-r13.md — floor
+mean 9.01 (verdict the archived visual-review receipt — floor
 8.4 -> 9.0 across r12-r13; all three arbitration certs honored and
 decisive; builder numbers honest to the decimal). The merkava family's
 FOURTH graduate. SS-10 executed: userdrops5 articulated registration

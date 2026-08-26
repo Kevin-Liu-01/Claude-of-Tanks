@@ -375,7 +375,7 @@ inside the hull from every exterior view. Sibling gate run: merkava1b
 required baselines, zero regression.
 
 ## Shaded-parity r1 (2026-08-02) — FAIL min 7.0 (geometric 90.5 stands)
-Work order: docs/critique/shaded-parity-merkava3bc-r1.md (shared with 3C).
+Work order: the archived visual-review receipt (shared with 3C).
 Headline: slab turret front (needs wedge cheeks + boxy mantlet depth
 volumes), container-wall rear (needs low baskets + chain curtain),
 missing cupola rings/pintle MGs (circularity law), olive/blue palette off
@@ -442,7 +442,7 @@ left 8.5 · rearleft 8.0 · rear 8.0 · rearright 8.0 · right 8.5 ·
 frontright 8.5 · top 8.5 — worst view rear ~8.0 (clutter granularity).
 
 ## Shaded-parity r2 (2026-08-02) — FAIL min 7.0 (converging; roof law now PASS)
-Work order: docs/critique/shaded-parity-merkava3bc-r2.md. Two flip-items:
+Work order: the archived visual-review receipt. Two flip-items:
 flatten turret second story to a continuous raked roofline (interior
 shading — envelope unchanged), rear-right cabinet stack → low open-frame
 baskets + full-width chain fringe + tarp masses. Wheels dark (value
@@ -1413,5 +1413,4 @@ candidate hash + changed-view list; re-freeze at landing).
   slice pitch), not per aesthetic rhythm.
 
 ### GUN-RUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE 8bb8d984 CONFIRMED —
-floor 9.1, mean 9.19 (10 changed views; docs/critique/shaded-parity-
-merkava3bc-gunrun-recert.md). No coordinate orders.
+floor 9.1, mean 9.19 (10 changed views; the archived visual-review receipt). No coordinate orders.

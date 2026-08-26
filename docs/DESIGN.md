@@ -162,7 +162,7 @@ ORCHESTRATOR landing (verify hashes/gates itself → pathspec/cacheinfo commit �
      │   → push → registry rows)                       [skill: land-round]
      ▼
 independent CRITIC (adversarial; own renders at bracketed hashes; diff-derived
-     │   changed views; verdict doc in docs/critique/)  [skill: spawn-critic]
+     │   changed views; verdict output in .qa-dev/)      [skill: spawn-critic]
      ▼
 RATIFICATION (orchestrator re-freezes on PASS; laws fold into BUILD-STANDARD)
      │

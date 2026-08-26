@@ -44,7 +44,7 @@ render is hollow there), a band a solid procedural deck occludes — side
 turret views cap around 72-75.
 
 ## Shaded-parity r2 (2026-07-30)
-88.6 → 88.2 (H93 T79 G88 R86). Surface pass per docs/critique/shaded-parity-r1.md:
+88.6 → 88.2 (H93 T79 G88 R86). Surface pass per the archived visual-review receipt:
 D-25T double-baffle brake now READS (dark slot core + face rings + spine,
 silhouette held to the oracle's Ø0.35 — a Ø0.38 attempt cost 4 gun points and
 was reverted); sealed saddle mantlet w/ bolt rings (r1 socket gap at

@@ -422,7 +422,7 @@ row2-corner ~0.05x2). NEXT: visual pipeline (critic round).
 
 ## r27 (2026-08-03): critic-order delivery — gate 90.7 -> 91.2 PASS x2, all six orders delivered or measured-residual
 
-Builder round against docs/critique/shaded-parity-pt91m-r25.md (FAIL floor
+Builder round against the archived visual-review receipt (FAIL floor
 8.2, every deduction tone/read class). Gate HELD through the round: 91.2
 PASS x2 (hull 92.2 / whole 91.2 / turret 95.1 / stations 92.3 / dims 100 /
 floaters 100 — whole +0.5 over r25's 90.7). standard-check: clip 24/0 ✓
@@ -522,7 +522,7 @@ only known sub-9 reads.
 ## of five orders delivered on their done-gates, crown-air delivered-partial
 ## + §6-style column cert
 
-Builder round against docs/critique/shaded-parity-pt91m-r27.md (FAIL floor
+Builder round against the archived visual-review receipt (FAIL floor
 8.6 top, five views at 9.0). Gate: **91.3 PASS x2** (hull 92.2 -> 93.0 /
 whole 91.2 -> 91.3 / turret 95.0 / stations 92.3 -> 92.8 / dims 100 /
 floaters 100 — every component at or above r27). standard-check clip
@@ -667,8 +667,7 @@ hero-rr (drums proud), close-roof (dark 34px gun run), front (crown air
 ## GRADUATION (2026-08-03) — the program's 14th graduate
 DUAL GATE PASSED: geometry min 91.3 gatePassed x2 (hull 93.0 / whole 91.3 /
 turret 95.0 / stations 92.8 / dims 100 / floaters 100) + graduation critic
-9.0 on ALL FOURTEEN views, floor 9.0 mean 9.01 (verdict docs/critique/
-shaded-parity-pt91m-r28.md — floor climbed 8.2 -> 8.6 -> 9.0 across
+9.0 on ALL FOURTEEN views, floor 9.0 mean 9.01 (verdict the archived visual-review receipt — floor climbed 8.2 -> 8.6 -> 9.0 across
 r25-r28; the crown-air column cert independently audited and binding).
 SS-10 executed: userdrops5 source('pt91m') registration RETIRED
 (procedural is the model of record; chips under CUSTOM);
