@@ -161,20 +161,35 @@ export class SignalingRoomStore {
     };
   }
 
-  relay(connection, { roomCode, toPeerId, signal } = {}) {
+  relay(connection, { roomCode, toPeerId, toSessionId, signal } = {}) {
     const membership = this.membership.get(connection);
     if (!membership || membership.roomCode !== roomCode) {
       throw Object.assign(new Error('not a room member'), { code: 'not_in_room' });
     }
     const room = this.rooms.get(roomCode);
+    const sender = room && room.peers.get(membership.peerId);
     const target = room && room.peers.get(String(toPeerId || ''));
+    if (!sender || sender.connection !== connection) {
+      throw Object.assign(new Error('not a room member'), { code: 'not_in_room' });
+    }
     if (!target) throw Object.assign(new Error('target peer not found'), { code: 'peer_not_found' });
+    if (toSessionId && target.sessionId !== toSessionId) {
+      throw Object.assign(new Error('target page session was replaced'), {
+        code: 'stale_target_session',
+      });
+    }
     room.touchedAt = this.now();
     return {
       connection: target.connection,
       message: {
         type: 'room_signal',
-        payload: { roomCode, fromPeerId: membership.peerId, signal },
+        payload: {
+          roomCode,
+          fromPeerId: membership.peerId,
+          fromSessionId: sender.sessionId,
+          toSessionId: target.sessionId,
+          signal,
+        },
       },
     };
   }

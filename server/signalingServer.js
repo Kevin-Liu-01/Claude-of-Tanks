@@ -160,6 +160,7 @@ export function createSignalingServer({
               const notification = await store.relay(connection, {
                 roomCode: payload.roomCode,
                 toPeerId: payload.toPeerId,
+                toSessionId: payload.toSessionId,
                 signal: validateSignal(payload.signal),
               });
               await sendNotifications([notification]);

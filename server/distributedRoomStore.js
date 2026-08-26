@@ -459,7 +459,7 @@ export class DistributedSignalingRoomStore {
     };
   }
 
-  async relay(connection, { roomCode, toPeerId, signal } = {}) {
+  async relay(connection, { roomCode, toPeerId, toSessionId, signal } = {}) {
     this.#warmSubscriber();
     const membership = this.membership.get(connection);
     if (!membership || membership.roomCode !== roomCode) {
@@ -468,19 +468,30 @@ export class DistributedSignalingRoomStore {
     const raw = await this.#runCommand('get', this.roomKey(roomCode));
     if (!raw) throw codedError('room_not_found', 'room not found');
     const room = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!room.peers.some((peer) => peer.peerId === membership.peerId)) {
+    const sender = room.peers.find((peer) => peer.peerId === membership.peerId);
+    if (!sender) {
       throw codedError('not_in_room', 'not a room member');
     }
     const target = String(toPeerId || '');
-    if (!room.peers.some((peer) => peer.peerId === target)) {
+    const targetMember = room.peers.find((peer) => peer.peerId === target);
+    if (!targetMember) {
       throw codedError('peer_not_found', 'target peer not found');
+    }
+    if (toSessionId && targetMember.sessionId !== toSessionId) {
+      throw codedError('stale_target_session', 'target page session was replaced');
     }
     await this.#runCommand('pexpire', this.roomKey(roomCode), this.roomTtlMs);
     return {
       peerId: target,
       message: {
         type: 'room_signal',
-        payload: { roomCode, fromPeerId: membership.peerId, signal },
+        payload: {
+          roomCode,
+          fromPeerId: membership.peerId,
+          fromSessionId: sender.sessionId,
+          toSessionId: targetMember.sessionId,
+          signal,
+        },
       },
     };
   }

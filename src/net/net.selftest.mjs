@@ -643,6 +643,8 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
     payload: {
       roomCode: 'ABC234',
       fromPeerId: 'p2',
+      fromSessionId: 'peer-session-2',
+      toSessionId: signaling.sessionId,
       signal: { kind: 'description', description: { type: 'offer', sdp: 'early-offer' } },
     },
   });
@@ -650,8 +652,37 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   signaling.onEvent((event) => earlyEvents.push(event));
   assert.equal(earlyEvents[0].payload.signal.description.sdp, 'early-offer',
     'RTC offers received between room_joined and session construction are replayed');
-  signaling.sendSignal('p2', { kind: 'ice', candidate: { candidate: 'x' } });
+  socket.receive({
+    type: 'room_signal',
+    payload: {
+      roomCode: 'ABC234',
+      fromPeerId: 'p2',
+      fromSessionId: 'peer-session-2',
+      toSessionId: 'obsolete-page-session',
+      signal: { kind: 'ice', candidate: { candidate: 'stale' } },
+    },
+  });
+  assert.equal(earlyEvents.length, 1,
+    'durable RTC messages addressed to an obsolete page session are discarded');
+  signaling.sendSignal('p2', { kind: 'ice', candidate: { candidate: 'x' } }, 'peer-session-2');
   assert.equal(JSON.parse(socket.sent.at(-1)).type, 'room_signal');
+  assert.equal(JSON.parse(socket.sent.at(-1)).payload.toSessionId, 'peer-session-2');
+  signaling._signalQueue.push({ type: 'room_signal', payload: { signal: { kind: 'restart' } } });
+  const restart = signaling.restartRoomSession('test_generation_rotation');
+  assert.equal(signaling._signalQueue.length, 0,
+    'rotating the page session discards negotiation queued by the dead RTC generation');
+  const replacementSocket = FakeWebSocket.instances.at(-1);
+  replacementSocket.open();
+  await Promise.resolve();
+  const replacementJoin = JSON.parse(replacementSocket.sent.at(-1));
+  replacementSocket.receive({
+    type: 'room_joined', requestId: replacementJoin.requestId,
+    payload: {
+      roomCode: 'ABC234', peerId: 'p1', hostId: 'p1',
+      peers: [],
+    },
+  });
+  assert.equal(await restart, true);
   signaling.close();
 }
 

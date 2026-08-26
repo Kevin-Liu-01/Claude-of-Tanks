@@ -266,6 +266,13 @@ rebuilds the peer connection. The rendered battle holds its last valid state
 for a bounded 60-second recovery window; it does not mount a second battle or
 immediately synthesize a loss.
 
+Stable player identity is not used as an RTC generation. Every SDP/ICE relay
+is scoped to both page-session IDs, and the signaling store rejects a sender
+whose intended receiver session has already been replaced. Page-session
+rotation discards negotiation queued by the dead peer connection; ordinary
+WebSocket resume preserves and flushes the current generation. This prevents
+durable mailbox replay from mixing pre- and post-reload peer connections.
+
 STUN-only fallback keeps room creation non-blocking, but cannot traverse every
 NAT. A production release must receive HTTP 200 from `/api/ice` and verify that
 its `iceServers` contains a `turn:` or `turns:` URL. HTTP 503 or a STUN-only

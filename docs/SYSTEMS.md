@@ -375,6 +375,12 @@ replays its exact pending description, duplicate descriptions are idempotent,
 and only a later bounded attempt performs ICE restart. This keeps the initial
 handshake stable while retaining route-change recovery.
 
+Rendezvous messages are additionally addressed to sender and receiver
+page-session IDs. The room store rejects stale receiver generations, and the
+browser discards stale mailbox deliveries before they reach `RTCPeerConnection`.
+Player IDs remain stable for seat recovery; page-session IDs identify only the
+current negotiation generation.
+
 Snapshots use a compact binary codec, per-peer baselines, deltas,
 acknowledgements, and periodic keyframes. A client missing a delta baseline
 waits for a keyframe instead of applying undefined state.

@@ -228,6 +228,11 @@ export class RoomSignalingClient {
   }
 
   #dispatch(message) {
+    // Durable mailboxes can outlive one RTCPeerConnection generation. Never
+    // feed an offer, answer, or ICE candidate addressed to an older page
+    // session into the replacement peer created after a reload/rebuild.
+    if (message?.type === 'room_signal' &&
+        message.payload?.toSessionId !== this.sessionId) return;
     if (this.listeners.size === 0) {
       if (this.eventQueue.length >= MAX_QUEUED_EVENTS) this.eventQueue.shift();
       this.eventQueue.push(message);
@@ -371,6 +376,10 @@ export class RoomSignalingClient {
     if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
     this._reconnectTimer = null;
     this._reconnectAttempt = 0;
+    // Signals queued before the RTC epoch rotates contain SDP/ICE from the
+    // dead peer connection. Re-labeling and flushing them under the new
+    // signaling session would poison the replacement negotiation.
+    this._signalQueue.length = 0;
     this.sessionId = cleanSessionId(createSessionId());
     this.#dispatch({
       type: 'signaling_state',
@@ -443,13 +452,18 @@ export class RoomSignalingClient {
     return { ...result, roomCode: code, peerId: this.peerId };
   }
 
-  sendSignal(toPeerId, signal) {
+  sendSignal(toPeerId, signal, toSessionId = '') {
     if (!this.roomCode || !this.peerId) throw new Error('join or create a room first');
     const target = String(toPeerId || '').trim();
     if (!target) throw new TypeError('target peer is required');
     const message = {
       type: 'room_signal',
-      payload: { roomCode: this.roomCode, toPeerId: target, signal },
+      payload: {
+        roomCode: this.roomCode,
+        toPeerId: target,
+        toSessionId: String(toSessionId || ''),
+        signal,
+      },
     };
     if (!this._roomAuthenticated || this.state !== 'open') {
       if (this._signalQueue.length >= MAX_QUEUED_SIGNALS) this._signalQueue.shift();

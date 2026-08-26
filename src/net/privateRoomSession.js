@@ -77,7 +77,9 @@ export class PrivateRoomHostSession {
       this.#joinPeer(message.payload).catch((error) => this.#fail(error));
     } else if (message.type === 'room_signal') {
       const session = this.peers.get(message.payload.fromPeerId);
-      if (session) session.handleSignal(message.payload.signal).catch((error) => this.#fail(error));
+      if (session && message.payload.fromSessionId === session.sessionId) {
+        session.handleSignal(message.payload.signal).catch((error) => this.#fail(error));
+      }
     } else if (message.type === 'peer_left') {
       const session = this.peers.get(message.payload.peerId);
       // Remove the canonical room seat before closing the RTC channels. Their
@@ -119,7 +121,7 @@ export class PrivateRoomHostSession {
       iceServers: this.iceServers,
       relayOnly: this.relayOnly,
       RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
-      onSignal: (signal) => this.signaling.sendSignal(peerId, signal),
+      onSignal: (signal) => this.signaling.sendSignal(peerId, signal, sessionId),
     });
     session.sessionId = sessionId;
     this.peers.set(peerId, session);
@@ -208,7 +210,8 @@ export class PrivateRoomClientSession {
     this.unsubscribeSignal = signaling.onEvent((message) => {
       if (message && message.type === 'room_signal' && message.payload &&
           message.payload.roomCode === roomInfo.roomCode &&
-          message.payload.fromPeerId === roomInfo.hostId) {
+          message.payload.fromPeerId === roomInfo.hostId &&
+          message.payload.fromSessionId === this.hostSessionId) {
         this.peer.handleSignal(message.payload.signal).catch((error) => {
           if (this.onError) this.onError(error);
         });
@@ -250,7 +253,11 @@ export class PrivateRoomClientSession {
       iceServers: this.iceServers,
       relayOnly: this.relayOnly,
       RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
-      onSignal: (signal) => this.signaling.sendSignal(this.roomInfo.hostId, signal),
+      onSignal: (signal) => this.signaling.sendSignal(
+        this.roomInfo.hostId,
+        signal,
+        this.hostSessionId,
+      ),
       onConnectionStateChange: (state) => this.#connectionStateChanged(state),
     });
   }

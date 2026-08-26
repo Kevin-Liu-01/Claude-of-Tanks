@@ -61,7 +61,7 @@ class FakeSignaling {
     this.restartCalls = 0;
   }
   onEvent(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-  sendSignal(peerId, signal) { this.signals.push({ peerId, signal }); }
+  sendSignal(peerId, signal, toSessionId) { this.signals.push({ peerId, signal, toSessionId }); }
   restartRoomSession() { this.restartCalls++; return Promise.resolve(true); }
   close() { this.closed = true; }
   emit(message) { for (const listener of [...this.listeners]) listener(message); }
@@ -127,6 +127,7 @@ class FakeSignaling {
   assert.equal(session.peers.has('guest'), true,
     'host reload immediately rebuilds an RTC offer for each retained room member');
   assert.equal(signaling.signals[0]?.peerId, 'guest');
+  assert.equal(signaling.signals[0]?.toSessionId, 'guest_epoch_1');
   assert.equal(signaling.signals[0]?.signal?.description?.type, 'offer');
   session.close('test_done');
 }

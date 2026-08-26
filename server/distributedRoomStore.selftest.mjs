@@ -125,6 +125,24 @@ assert.equal(recovered[0].message.payload.peerId, 'durable-guest');
 assert.deepEqual(await hostStore.poll(resumedHostConnection), [],
   'durable delivery mailbox is empty after acknowledgement by drain');
 
+const relayed = await guestStore.relay(guestConnection, {
+  roomCode: room.roomCode,
+  toPeerId: 'durable-host',
+  toSessionId: 'durable-host-session',
+  signal: { kind: 'restart' },
+});
+assert.equal(relayed.message.payload.fromSessionId, 'durable-guest-session');
+assert.equal(relayed.message.payload.toSessionId, 'durable-host-session');
+assert.equal(relayed.message.payload.signal.kind, 'restart',
+  'distributed RTC rendezvous is scoped to both live page sessions');
+await assert.rejects(guestStore.relay(guestConnection, {
+  roomCode: room.roomCode,
+  toPeerId: 'durable-host',
+  toSessionId: 'obsolete-host-session',
+  signal: { kind: 'restart' },
+}), (error) => error.code === 'stale_target_session',
+'distributed signaling rejects negotiation addressed to a replaced page session');
+
 await hostStore.close();
 await guestStore.close();
 console.log('distributedRoomStore.selftest: missed pub/sub delivery recovers exactly once');

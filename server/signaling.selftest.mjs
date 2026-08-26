@@ -207,12 +207,29 @@ send(guest, {
   payload: {
     roomCode: created.payload.roomCode,
     toPeerId: created.payload.peerId,
+    toSessionId: 'host-session-one',
     signal: { kind: 'ice', candidate: { candidate: 'candidate:1 1 udp 1 127.0.0.1 9 typ host' } },
   },
 });
 const relayed = await hostInbox.next((message) => message.type === 'room_signal');
 assert.equal(relayed.payload.fromPeerId, joined.payload.peerId);
+assert.equal(relayed.payload.fromSessionId, 'guest-session-one');
+assert.equal(relayed.payload.toSessionId, 'host-session-one');
 assert.equal(relayed.payload.signal.kind, 'ice');
+send(guest, {
+  type: 'room_signal',
+  requestId: 'stale-signal-1',
+  payload: {
+    roomCode: created.payload.roomCode,
+    toPeerId: created.payload.peerId,
+    toSessionId: 'obsolete-host-session',
+    signal: { kind: 'restart' },
+  },
+});
+const staleRelay = await guestInbox.next((message) => message.requestId === 'stale-signal-1');
+assert.equal(staleRelay.type, 'error');
+assert.equal(staleRelay.payload.code, 'stale_target_session',
+  'a sender cannot negotiate against a replacement page session by peer id alone');
 
 const health = await fetch(`http://127.0.0.1:${address.port}/api/signal`).then((response) => response.json());
 assert.deepEqual(health, { ok: true, rooms: 1 });
@@ -301,11 +318,14 @@ await reconnecting;
 assert.equal(resumeHost.sendSignal(resumeGuestInfo.peerId, {
   kind: 'ice',
   candidate: { candidate: 'candidate:2 1 udp 1 127.0.0.1 9 typ host' },
-}), false, 'RTC rendezvous is queued while signaling reconnects');
+}, resumeGuest.sessionId), false, 'RTC rendezvous is queued while signaling reconnects');
 assert.equal((await signalingResumed).payload.peerId, 'resume-host');
 await hostRejoined;
-assert.equal((await queuedSignal).payload.signal.kind, 'ice',
+const deliveredQueuedSignal = await queuedSignal;
+assert.equal(deliveredQueuedSignal.payload.signal.kind, 'ice',
   'queued RTC rendezvous flushes after the durable membership resumes');
+assert.equal(deliveredQueuedSignal.payload.fromSessionId, resumeHost.sessionId);
+assert.equal(deliveredQueuedSignal.payload.toSessionId, resumeGuest.sessionId);
 assert.equal(resumeHost.state, 'open');
 const previousSessionId = resumeHost.sessionId;
 const rebuiltMembership = clientEvent(resumeGuest,
