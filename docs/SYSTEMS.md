@@ -39,7 +39,9 @@ src/game/state.js. The dependency-free typed session shell and event bus live
 in src/game/stateCore.ts. Typed roster records, battle-visual policy, and
 deterministic participant/camouflage planning live in src/game/rosterState.ts,
 so garage and battle-intent loading can use them without owning the solo combat
-graph. LAN, private, and ranked modes use
+graph. src/game/soloBattleRuntime.ts is the typed lazy boundary that acquires
+the legacy solo authority only on Battle or capture intent. LAN, private, and
+ranked modes use
 src/sim/authoritativeMatch.js behind the protocol and browser presentation
 bridge. These compositions share movement, aiming, ballistics, armor, damage,
 spotting, bot, destructible, and result rules.
@@ -65,7 +67,8 @@ spotting, bot, destructible, and result rules.
 src/main.js is the legacy composition root. New ownership moves out through
 tested strict-TypeScript boundaries; src/game/stateCore.ts is the shared
 session boundary, src/game/rosterState.ts owns roster/visual planning, and
-src/game/state.js remains the legacy solo battle owner.
+src/game/soloBattleRuntime.ts demand-loads src/game/state.js, which remains the
+legacy solo battle owner.
 
 ### Boot
 
@@ -84,6 +87,7 @@ The boot contract is:
 - hidden or offline documents never auto-reload, and a retry URL prevents
   loops when session storage is unavailable;
 - public presentation routes must not preload the game graph.
+- garage boot must not statically import the solo battle authority graph.
 
 ### Garage
 
@@ -93,9 +97,11 @@ portraits and cards are generated from the same roster used by battle.
 
 ### Battle entry
 
-Solo starts the local composition. A network battle first establishes a room
-or ranked session, then loads the selected map and roster behind an opaque
-transition. The browser bridge mounts visuals only after authority has a valid
+Solo Battle intent begins downloading the solo authority chunk; the covered
+battle barrier acquires it in parallel with the selected map and roster. A
+network battle first establishes a room or ranked session, then loads the
+selected map and roster behind an opaque transition without importing solo
+authority. The browser bridge mounts visuals only after authority has a valid
 initial state.
 
 Every new battle resets result and presentation state. A previous verdict must

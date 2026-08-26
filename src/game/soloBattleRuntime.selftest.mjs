@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+assert.doesNotMatch(main, /from ['"]\.\/game\/state\.js['"]/, 
+  'garage boot must not statically import solo battle authority');
+assert.match(main, /import\(['"]\.\/game\/soloBattleRuntime\.ts['"]\)/,
+  'solo authority must be demand-loaded behind its typed boundary');
+assert.match(main,
+  /function preloadBattleIntent[\s\S]{0,260}preloadSoloBattleRuntime\(\)/,
+  'Battle intent must overlap the solo authority transfer with garage dwell');
+assert.match(main,
+  /async function startBattleLoading[\s\S]{0,5000}preloadSoloBattleRuntime\(\)/,
+  'battle entry must include solo authority in its covered parallel barrier');
+
+const runtime = await import('./soloBattleRuntime.ts');
+for (const name of ['createCollider', 'prepareNextOpeningRoute', 'setupBattle', 'simStep']) {
+  assert.equal(typeof runtime[name], 'function', `${name} remains exported by the lazy owner`);
+}
+console.log('soloBattleRuntime.selftest: garage exclusion and covered battle acquisition passed');

@@ -31,6 +31,10 @@ The next boundary, `src/game/rosterState.ts`, owns roster entities, lazy battle
 visual construction policy, and deterministic participant/camouflage planning.
 It deliberately excludes combat initialization so garage boot and battle-intent
 preloading can depend on the roster without importing the solo simulation graph.
+`src/game/soloBattleRuntime.ts` is the corresponding typed lazy boundary for
+that graph: the composition root acquires legacy `state.js` only after solo
+Battle or deterministic capture intent, while existing authority functions
+remain behaviorally unchanged.
 
 ## Consequences
 
@@ -48,5 +52,6 @@ preloading can depend on the roster without importing the solo simulation graph.
     npm run typecheck
     node src/engine/frameScheduler.selftest.mjs
     node src/game/rosterPlanning.selftest.mjs
+    node src/game/soloBattleRuntime.selftest.mjs
     npm test
     npm run build

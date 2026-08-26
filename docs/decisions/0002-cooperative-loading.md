@@ -24,6 +24,11 @@ fully leave layout. First-battle GPU initialization runs behind the loader.
 Prefetch may resolve intent and download/build exact assets, but it must not
 construct unrelated worlds or fleet families.
 
+The solo authority graph follows the same rule. Garage boot does not statically
+import it. Battle hover/intent may download its exact chunk, and the covered
+battle barrier acquires it in parallel with the selected world and roster.
+Network-only composition does not pay for the solo graph.
+
 Boot recovery distinguishes evidence of failure from slow progress. A failed
 module download/evaluation may trigger one immediate fresh-document recovery.
 Lack of progress first exposes a manual retry without interrupting work; only

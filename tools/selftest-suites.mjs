@@ -57,6 +57,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/selftest-suites.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
+    'src/game/soloBattleRuntime.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',

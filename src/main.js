@@ -113,9 +113,6 @@ import { createTouchControls } from './ui/touchControls.js';
 import { installResponsiveLayout } from './ui/responsiveLayout.js';
 import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
 import {
-  setupBattle, simStep, createCollider, prepareNextOpeningRoute,
-} from './game/state.js';
-import {
   spawnTanks, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides,
 } from './game/rosterState.ts';
@@ -146,6 +143,44 @@ const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search
   ? import('./net/roomInvite.js').then(({ parseRoomInvite }) =>
     parseRoomInvite(globalThis.location?.href))
   : null;
+
+let soloBattleRuntime = null;
+let soloBattleRuntimePromise = null;
+
+function preloadSoloBattleRuntime() {
+  if (!soloBattleRuntimePromise) {
+    const request = import('./game/soloBattleRuntime.ts').then((module) => {
+      soloBattleRuntime = module;
+      return module;
+    });
+    soloBattleRuntimePromise = request;
+    request.catch(() => {
+      if (soloBattleRuntimePromise === request) soloBattleRuntimePromise = null;
+    });
+  }
+  return soloBattleRuntimePromise;
+}
+
+function requireSoloBattleRuntime() {
+  if (!soloBattleRuntime) throw new Error('Solo battle runtime is not ready.');
+  return soloBattleRuntime;
+}
+
+function setupBattle(...args) {
+  return requireSoloBattleRuntime().setupBattle(...args);
+}
+
+function simStep(...args) {
+  return requireSoloBattleRuntime().simStep(...args);
+}
+
+function createCollider(...args) {
+  return requireSoloBattleRuntime().createCollider(...args);
+}
+
+function prepareNextOpeningRoute(...args) {
+  return requireSoloBattleRuntime().prepareNextOpeningRoute(...args);
+}
 
 function loadLastSpecId() {
   try {
@@ -608,6 +643,7 @@ function cancelBattleIntentTextureWarm() {
 function preloadBattleIntent({ specId, mapId } = {}) {
   audio.preload();
   loadWorldModule().catch(() => null);
+  preloadSoloBattleRuntime().catch(() => null);
   preloadKillcamModule().catch(() => null);
   // A pointer/focus/touch on BATTLE is stronger intent than ordinary garage
   // browsing. Transfer the deterministic next roster's exact family chunks
@@ -1617,7 +1653,9 @@ function queueBakedWorldMinimap(next = world) {
 
 function prepareWorldServices(next = world) {
   if (!next || world !== next) return;
-  collider = createCollider(game, next);
+  // Background map intent is garage-safe. The solo collider is created when
+  // the battle runtime arrives; private/ranked presentation does not use it.
+  collider = soloBattleRuntime ? createCollider(game, next) : null;
   if (worldServicesMapId === next.mapId) {
     placeGarage();
     queueBakedWorldMinimap(next);
@@ -2988,6 +3026,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
       { precompile: false, services: false }),
     ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
+    preloadSoloBattleRuntime(),
     fxTextureP,
     ensureKillcamRuntime(),
     rosterTextureP,
@@ -4231,9 +4270,11 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
   await Promise.all([
     ensureFullFleet(),
     ensureWorld(resolved, null, { precompile: false }),
+    preloadSoloBattleRuntime(),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
+  prepareBattleWorldServices(world);
   return startBattle(specId, resolved, opts);
 }
 
@@ -5512,6 +5553,7 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // Capture callers await the same chunked builder as gameplay. Keeping a
   // second synchronous map constructor in the entry graph defeated genuine
   // world lazy loading and froze first-time authored captures.
+  await preloadSoloBattleRuntime();
   if (!world || world.mapId !== mapId) await switchMap(mapId);
   lighting.setFarCascadeDormant(false);
   setWorldDormant(false);
