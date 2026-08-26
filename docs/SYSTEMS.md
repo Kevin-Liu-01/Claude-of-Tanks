@@ -301,6 +301,11 @@ The render-target watchdog always restores the previous target in a finally
 path before disposing temporary resources. A diagnostic failure must not
 strand subsequent frames on an off-screen target.
 
+Low-frequency renderer, world, network, and shadow telemetry is owned by
+`src/dev/debugTelemetry.ts`. The composition root supplies live subsystem
+references; the diagnostic owner remains read-only outside its explicit,
+state-restoring shadow A/B probe.
+
 ## Presentation bridge and effects
 
 src/net/browserBattleBridge.js applies sampled authority state to browser game
