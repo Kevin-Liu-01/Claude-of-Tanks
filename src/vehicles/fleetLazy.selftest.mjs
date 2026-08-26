@@ -29,9 +29,11 @@ assert.equal(owners.size - canonicalOnlyIds.size, Object.keys(PROCEDURAL_PROFILE
 const here = dirname(fileURLToPath(import.meta.url));
 const facadeUrl = pathToFileURL(join(here, 'fleetFactory.js')).href;
 const specsUrl = pathToFileURL(join(here, 'specs.js')).href;
+const markingRegistryUrl = pathToFileURL(join(here, 'vehicleMarkingSeatRegistry.js')).href;
 execFileSync(process.execPath, ['--input-type=module', '-e', `
   import assert from 'node:assert/strict';
   const fleet = await import(${JSON.stringify(facadeUrl)});
+  const markingRegistry = await import(${JSON.stringify(markingRegistryUrl)});
   assert.equal(fleet.isTankBuilderReady('leclerc'), false);
   assert.equal(fleet.isTankBuilderReady('amx40'), false);
   assert.equal(fleet.isTankBuilderReady('challenger2'), false);
@@ -40,9 +42,13 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(fleet.isTankBuilderReady('t90m'), false);
   assert.equal(fleet.isTankBuilderReady('leo2a4'), false);
   assert.equal(fleet.isTankBuilderReady('merkava4'), false);
+  assert.equal(markingRegistry.vehicleMarkingSeats('m1a2'), null);
   await fleet.ensureTankBuilder('m1a2');
   assert.equal(fleet.isTankBuilderReady('m1a2'), true);
   assert.equal(fleet.isTankBuilderReady('m1a2_sepv3'), true);
+  assert.ok(markingRegistry.vehicleMarkingSeats('m1a2'));
+  assert.ok(markingRegistry.vehicleMarkingSeats('m1a2_sepv3'));
+  assert.equal(markingRegistry.vehicleMarkingSeats('m60a3'), null);
   assert.equal(fleet.isTankBuilderReady('m60a3'), false);
   assert.equal(fleet.isTankBuilderReady('t90m'), false);
   assert.throws(() => fleet.createTank('t90m', null, { geometryReceipt: true }), /not loaded/);

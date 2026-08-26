@@ -1,8 +1,5 @@
 import { flagIconCode } from '../ui/flagCodes.js';
-import {
-  VEHICLE_MARKING_SEAT_SCHEMA_VERSION,
-  VEHICLE_MARKING_SEATS,
-} from './vehicleMarkingSeats.generated.js';
+export { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.js';
 
 const VEHICLE_MARKING_SCHEMA_VERSION = 1;
 
@@ -225,13 +222,6 @@ export function vehicleMarkingAnchor(specOrId) {
  * receipts directly instead of ray-testing every armor triangle again on
  * each garage switch or bot spawn.
  */
-export function vehicleMarkingSeats(specOrId) {
-  const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  const record = VEHICLE_MARKING_SEATS[id];
-  if (!record || record.schemaVersion !== VEHICLE_MARKING_SEAT_SCHEMA_VERSION) return null;
-  return record.seats;
-}
-
 function stableNumber(id) {
   let hash = 0x811c9dc5;
   for (const ch of String(id || 'tank')) {

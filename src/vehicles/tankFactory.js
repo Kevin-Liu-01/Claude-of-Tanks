@@ -9,6 +9,8 @@ import { MODERN1_BUILDERS } from './modern1.js';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { FITTINGS } from './profiles/kit.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.js';
+import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.js';
+import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.js';
 
 // These modules register specs at evaluation time. Keep donor waves ahead of
 // their derivatives so every clone observes a complete source record.
@@ -40,6 +42,7 @@ import {
 import { applyNativeFamilyOrder } from './fleetOrder.js';
 
 finalizeFirstPartyRoster();
+registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 for (const ids of [
   ALL_TANK_IDS,
   DEVELOPMENT_TANK_IDS,

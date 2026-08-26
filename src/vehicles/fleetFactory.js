@@ -11,6 +11,12 @@ import { MODERN2_BUILDERS } from './modern2.js';
 import { MODERN1_BUILDERS } from './modern1.js';
 import { FITTINGS, buildDonorVariant, buildProfile } from './profiles/kit.js';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.js';
+import {
+  ensureAllVehicleMarkingSeatGroups,
+  ensureVehicleMarkingSeats,
+  ensureVehicleMarkingSeatsForIds,
+  isVehicleMarkingSeatsReady,
+} from './vehicleMarkingSeatLoader.js';
 
 import './variants.js';
 import './userdrops.js';
@@ -126,7 +132,10 @@ function ensureGroup(group) {
 }
 
 export function ensureTankBuilder(specId) {
-  return ensureGroup(FLEET_GROUP_BY_ID[specId]);
+  return Promise.all([
+    ensureGroup(FLEET_GROUP_BY_ID[specId]),
+    ensureVehicleMarkingSeats(specId),
+  ]).then(() => undefined);
 }
 
 export function ensureTankBuilders(specIds) {
@@ -135,16 +144,22 @@ export function ensureTankBuilders(specIds) {
     const group = FLEET_GROUP_BY_ID[id];
     if (group) groups.add(group);
   }
-  return Promise.all([...groups].map(ensureGroup)).then(() => undefined);
+  return Promise.all([
+    ...[...groups].map(ensureGroup),
+    ensureVehicleMarkingSeatsForIds(specIds),
+  ]).then(() => undefined);
 }
 
 export function ensureFullFleet() {
-  return Promise.all(Object.keys(GROUP_LOADERS).map(ensureGroup)).then(() => undefined);
+  return Promise.all([
+    ...Object.keys(GROUP_LOADERS).map(ensureGroup),
+    ensureAllVehicleMarkingSeatGroups(),
+  ]).then(() => undefined);
 }
 
 export function isTankBuilderReady(specId) {
   const group = FLEET_GROUP_BY_ID[specId];
-  return !group || readyGroups.has(group);
+  return (!group || readyGroups.has(group)) && isVehicleMarkingSeatsReady(specId);
 }
 
 export function createTank(specId, engineCtx, opts) {
