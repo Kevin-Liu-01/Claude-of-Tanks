@@ -1,7 +1,7 @@
 const REPOSITORY_API = 'https://api.github.com/repos/Kevin-Liu-01/claude-of-tanks';
 const STAR_CACHE_KEY = 'cot:github-stars';
-const STAR_CACHE_TTL_MS = 15 * 60 * 1000;
-export const FALLBACK_GITHUB_STAR_COUNT = 145;
+const STAR_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+export const FALLBACK_GITHUB_STAR_COUNT = 154;
 const COMPACT_NUMBER = new Intl.NumberFormat('en', {
   notation: 'compact',
   maximumFractionDigits: 1,
@@ -11,6 +11,7 @@ const FULL_NUMBER = new Intl.NumberFormat('en');
 const starNodes = new Set();
 const intentBoundControls = new WeakSet();
 let activeRequest = null;
+let memoryCache = null;
 
 export function formatGitHubStarCount(count) {
   return COMPACT_NUMBER.format(count);
@@ -32,9 +33,11 @@ function renderGitHubStarCount(count) {
 }
 
 function readCachedStars() {
+  if (memoryCache) return memoryCache;
   try {
-    const cached = JSON.parse(sessionStorage.getItem(STAR_CACHE_KEY));
+    const cached = JSON.parse(localStorage.getItem(STAR_CACHE_KEY));
     if (!Number.isInteger(cached?.count) || !Number.isFinite(cached?.savedAt)) return null;
+    memoryCache = cached;
     return cached;
   } catch (_) {
     return null;
@@ -42,8 +45,9 @@ function readCachedStars() {
 }
 
 function writeCachedStars(count) {
+  memoryCache = { count, savedAt: Date.now() };
   try {
-    sessionStorage.setItem(STAR_CACHE_KEY, JSON.stringify({ count, savedAt: Date.now() }));
+    localStorage.setItem(STAR_CACHE_KEY, JSON.stringify(memoryCache));
   } catch (_) {
     // Storage can be blocked without affecting the GitHub controls.
   }
@@ -67,9 +71,8 @@ async function fetchGitHubStars() {
 }
 
 /**
- * Refresh the decorative repository count after explicit user intent.
- * Keeping this request off the boot path avoids making a fresh game session
- * depend on GitHub's unauthenticated API rate limit or network availability.
+ * Refresh the decorative repository count without blocking UI initialization.
+ * The cached or packaged value remains visible when GitHub is unavailable.
  * @returns {Promise<number|null>}
  */
 export function refreshGitHubStars() {
@@ -85,7 +88,7 @@ export function refreshGitHubStars() {
   return activeRequest;
 }
 
-function bindIntentRefresh(nodes) {
+function bindIntentRetry(nodes) {
   for (const node of nodes) {
     const control = node.closest?.('a[href*="github.com/Kevin-Liu-01/"]');
     if (!control || intentBoundControls.has(control)) continue;
@@ -97,10 +100,10 @@ function bindIntentRefresh(nodes) {
 }
 
 /**
- * Register every repository star-count node under root. The verified fallback
- * is rendered synchronously; a live refresh waits for pointer or keyboard
- * intent on the repository control so boot and battle entry never make a
- * third-party request. Repeated mounts share both listeners and requests.
+ * Register every repository star-count node under root. A cached or packaged
+ * value is rendered synchronously, then a live refresh starts in the
+ * background. Pointer and keyboard intent remain as retry signals when the
+ * initial request fails. Repeated mounts share listeners, cache, and requests.
  * @param {Document|Element} root
  * @returns {Promise<number|null>}
  */
@@ -113,6 +116,6 @@ export function mountGitHubStars(root = document) {
 
   const cached = readCachedStars();
   renderGitHubStarCount(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
-  bindIntentRefresh(mountedNodes);
-  return Promise.resolve(cached?.count ?? FALLBACK_GITHUB_STAR_COUNT);
+  bindIntentRetry(mountedNodes);
+  return refreshGitHubStars();
 }

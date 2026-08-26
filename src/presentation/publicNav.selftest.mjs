@@ -35,9 +35,8 @@ const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.js'), 'utf
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
 
-// A fresh game session must not depend on GitHub's unauthenticated API. The
-// live decorative count is refreshed only when the repository link receives
-// pointer or keyboard intent.
+// A fresh surface renders its packaged value immediately and refreshes the
+// live count in the background without waiting for pointer or keyboard intent.
 const githubIntentHandlers = {};
 const githubControlProbe = {
   dataset: {},
@@ -59,12 +58,12 @@ await mountGitHubStars({
   matches: () => false,
   querySelectorAll: () => [githubStarProbe],
 });
-assert.equal(githubFetches, 0, 'mounting star counts must not issue a boot-critical third-party request');
-assert.equal(githubStarProbe.textContent, String(FALLBACK_GITHUB_STAR_COUNT));
+assert.equal(githubFetches, 1, 'mounting star counts performs one automatic live refresh');
+assert.equal(githubStarProbe.textContent, '321');
 assert.equal(typeof githubIntentHandlers.pointerenter, 'function');
 assert.equal(typeof githubIntentHandlers.focus, 'function');
 await githubIntentHandlers.pointerenter();
-assert.equal(githubFetches, 1, 'GitHub intent performs exactly one live refresh');
+assert.equal(githubFetches, 1, 'GitHub intent reuses the fresh verified count');
 assert.equal(githubStarProbe.textContent, '321');
 globalThis.fetch = originalFetch;
 assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:8px\}/,
