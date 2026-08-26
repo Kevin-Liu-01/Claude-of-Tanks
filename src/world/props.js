@@ -922,7 +922,7 @@ export async function createPropsAsync(heightField, engineCtx, seed = 2002, cfg 
   const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
   let r = g.next();
   let i = 0;
-  const total = fineSlices ? 48 : 9;
+  const total = fineSlices ? 60 : 9;
   while (!r.done) {
     if (r.value?.tankBuilder) await ensureTankBuilder(r.value.tankBuilder);
     if (tick && (fineSlices || !r.value || !r.value.fine)) await tick(++i, total);
@@ -969,6 +969,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
 
   const T = P.tones || {};
   const plaster = makePlaster(noi, aniso, T.plaster || null);
+  yield { fine: true };
   // content_breadth r3: TWO extra render families — the street walls
   // recycled one plaster print ("same white-plaster box repeats dozens of
   // times", critique). Map configs may author tones.plaster2/plaster3
@@ -981,14 +982,23 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
       Math.max(0, Math.min(1, bl * dl))];
   };
   const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
+  yield { fine: true };
   const plaster3 = makePlaster(noi, aniso, T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84));
+  yield { fine: true };
   const roofT = makeRoofTiles(noi, aniso, T.roof || null);
+  yield { fine: true };
   const stone = makeStone(noi, aniso, T.stone || null);
+  yield { fine: true };
   const wood = makeWood(noi, aniso, T.wood || null);
+  yield { fine: true };
   const straw = makeStraw(noi, aniso, T.straw || null);
+  yield { fine: true };
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
+  yield { fine: true };
   const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
+  yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
+  yield { fine: true };
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -1044,6 +1054,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   // (macro tone breakup + streaky weathering) that de-grids every tiled
   // hard-surface texture — walls stop reading as a repeated stamp at zoom
   const grimeTex = makeGrimeTexture(noi, aniso);
+  yield { fine: true };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
   // material whitens its UP-FACING fragments toward drifted snow (clumpy,
   // noise-broken). This is what fixes the physically-contradictory "fully

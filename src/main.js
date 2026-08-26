@@ -501,7 +501,7 @@ function beginWorldBuild(
           // A BATTLE press promotes this same promise and immediately exits
           // the wait, so work is never duplicated or stuck behind idle pacing.
           while (rec.background && rec.waitForGarageLull && (game.phase !== 'garage'
-              || performance.now() - garageActivityAt < 1200)) {
+              || transition.active || performance.now() - garageActivityAt < 1200)) {
             await new Promise((resolve) => setTimeout(resolve, 120));
           }
           if (rec.background) await yieldBackground(true);
@@ -570,15 +570,22 @@ function cancelBackgroundWorldBuildsExcept(mapId = null) {
 // Battle intent/click promotes or joins it without duplicate geometry, and a
 // player who spends a few seconds choosing a tank pays almost none of the
 // battlefield build under the loading veil.
-function queueWorldPrefetch(mapId, delay = 1800) {
+function queueWorldPrefetch(mapId, delay = 1200) {
   if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
   worldPrefetchTimer = 0;
-  if (!bootComplete || !mapId || mapId === 'random') return;
+  if (!bootComplete || !mapId) return;
   worldPrefetchTimer = setTimeout(() => {
     worldPrefetchTimer = 0;
     if (game.phase === 'garage' && pendingMapChoice === mapId) {
+      // Random is the normal first-run selection. Ignoring it meant the most
+      // common Battle press could never benefit from the otherwise-bounded
+      // idle world streamer. Resolve the next battle once, retain that plan
+      // for the click, and build its exact world only during genuine garage
+      // idle slices. A map/tank change invalidates the plan as before.
+      const resolvedMapId = mapId === 'random'
+        ? resolveBattleIntentMap(selectedSpecId, mapId) : mapId;
       loadWorldModule()
-        .then(() => prefetchWorld(mapId))
+        .then(() => prefetchWorld(resolvedMapId))
         .catch(() => null);
       ensureTankBuilder(selectedSpecId).catch(() => null);
     }
@@ -1231,6 +1238,15 @@ function scheduleGarageDressingBuild() {
   requestQuietIdle(async () => {
     garageDressingBuildScheduled = false;
     if (garageDressing.isBuilt() || game.phase !== 'garage') return;
+    // Returning from a battle previously inherited the pre-battle activity
+    // timestamp. That made the optional repair-bay tank builder look idle and
+    // start during transition.run()'s "Ready" dwell, producing a 300-800 ms
+    // reveal freeze. A transition is never a garage-idle window: wait until
+    // the veil has completely left layout before paying for another exhibit.
+    if (transition.active) {
+      setTimeout(scheduleGarageDressingBuild, 350);
+      return;
+    }
     if (performance.now() - garageActivityAt < 1600) {
       setTimeout(scheduleGarageDressingBuild, 600);
       return;
@@ -3172,6 +3188,15 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       battleLoad.progress(0.969, 'Priming deployment shadows');
       trace.deploymentShadowWarm = await primeDeploymentShadowMaps(coveredYield);
       mark('shadowMaps');
+      // Garage boot primes the post stack against the showroom, but the first
+      // battlefield introduces terrain/vegetation depth, normal and color
+      // inputs plus a different light program family. Asking the complete
+      // composer to discover all of that in one reveal frame produced the
+      // remaining 0.5-1.1 s cold freeze. Exercise the identical enabled pass
+      // set one pass at a time while the loader is opaque; the final composed
+      // frame below is unchanged, only its first-use work is distributed.
+      trace.deploymentPostWarm = await post.warmFirstFrame(coveredYield);
+      mark('postPasses');
       battleLoad.progress(0.97, 'Priming deployment view');
       await primeSoloBattleRevealFrame();
       entryRevealPrimed = true;
@@ -4346,6 +4371,10 @@ function enterGarage({ preserveRoom = !!(
   perfHud.setCaptureHidden(false);
   fx.setFrozen(false);
   game.phase = 'garage';
+  // Establish a new activity epoch for this garage visit. Optional workshop
+  // exhibits must not inherit a stale timestamp from before the battle and
+  // contend with the transition reveal or the first interactive frames.
+  garageActivityAt = performance.now();
   scheduleGarageDressingBuild();
   // Direct Studio activation deliberately skips battle-only collision and
   // minimap capture. The garage needs only its placement; building the

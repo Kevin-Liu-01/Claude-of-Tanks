@@ -662,6 +662,7 @@ async function measureTransitionsAndRematch() {
       pedestal: window.__PED_TRACE?.slice(-20) || [],
       switches: window.__SWITCH_TIMINGS?.slice(-5) || [],
       entry: window.__GARAGE_ENTRY || null,
+      dressing: window.__DEBUG?.garageDressing?.group?.userData?.buildTimings || [],
     }));
     record('studio-exit', 'garage', result.ms, {
       invariantPass: result.phase === 'garage',
@@ -689,12 +690,21 @@ async function measureTransitionsAndRematch() {
       'window.__BATTLE_DEFERRED_WARM?.done === true', { timeout: pageTimeoutMs },
     );
     const entryStall = await captureStalls(battlePage.page);
-    const entryVisuals = await battlePage.page.evaluate(
-      () => window.__VISUAL_LOAD_TIMINGS?.slice() || []);
+    const entryDiagnostics = await battlePage.page.evaluate(() => ({
+      visuals: window.__VISUAL_LOAD_TIMINGS?.slice() || [],
+      load: window.__BATTLE_LOAD || null,
+      world: window.__WORLD_LOAD || null,
+      countdown: window.__BATTLE_COUNTDOWN_WARM || null,
+      deferred: window.__BATTLE_DEFERRED_WARM || null,
+    }));
     record('battle-entry', 'urban', Date.now() - entryStartedAt, {
       phase: await battlePage.page.evaluate(() => window.__DEBUG.game.phase),
       stall: entryStall,
-      visuals: entryVisuals,
+      visuals: entryDiagnostics.visuals,
+      stages: entryDiagnostics.load?.stages || null,
+      world: entryDiagnostics.world,
+      countdownWarm: entryDiagnostics.countdown,
+      deferredWarm: entryDiagnostics.deferred,
       invariantPass: await battlePage.page.evaluate(() => (
         window.__BATTLE_COUNTDOWN_WARM?.doneBeforeRollout === true
         && window.__BATTLE_DEFERRED_WARM?.doneBeforeRollout === true
@@ -716,6 +726,7 @@ async function measureTransitionsAndRematch() {
       pedestal: window.__PED_TRACE?.slice(-20) || [],
       switches: window.__SWITCH_TIMINGS?.slice(-5) || [],
       entry: window.__GARAGE_ENTRY || null,
+      dressing: window.__DEBUG?.garageDressing?.group?.userData?.buildTimings || [],
     }));
     record('battle-exit', 'garage', exited.ms, {
       invariantPass: exited.phase === 'garage',

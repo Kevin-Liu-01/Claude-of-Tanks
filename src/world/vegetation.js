@@ -1616,10 +1616,11 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   // silhouette supplies the entire read, so a crossed second plane is waste.
   const makeTuftFarGeometry = (w, h) => makeTuftGeometry(w, h, 1, 1.5);
 
-  const grassTex = [
-    makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone),
-    makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone),
-  ];
+  const grassTex = [];
+  grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone));
+  yield { stage: 'grassPrep', fine: true };
+  grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));
+  yield { stage: 'grassPrep', fine: true };
   function makeGrassMaterial(tex, farDist, cacheKey) {
     // Lambert is materially cheaper for a rough, non-metallic alpha card and
     // preserves the lighting/shadow response that is actually visible here.
@@ -1642,6 +1643,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
       matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v6'),
       matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v6'),
     });
+    yield { stage: 'grassPrep', fine: true };
   }
 
   const _m4 = new THREE.Matrix4();

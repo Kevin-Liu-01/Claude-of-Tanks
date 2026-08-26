@@ -2579,17 +2579,36 @@ const SKIRT_DROP = 6.5;
 // values at the same world coords). Bonus: 9.8k height evaluations per chunk
 // instead of 12.1k — boot gets slightly faster.
 const FINE_SEGS = 96; // must equal LOD_SEGS[0]; strides 1/2/4 stay integral
-function buildFineGrid(hf, cx0, cz0) {
+function* buildFineGridSteps(hf, cx0, cz0, progress = null) {
   const stepF = CHUNK_SIZE / FINE_SEGS;
   const pn = FINE_SEGS + 3; // +1 vertex row, +2 padding rows
   const hgrid = new Float64Array(pn * pn);
-  for (let gz = 0; gz < pn; gz++) for (let gx = 0; gx < pn; gx++) {
-    hgrid[gz * pn + gx] = hf.getHeightAt(cx0 + (gx - 1) * stepF, cz0 + (gz - 1) * stepF);
+  for (let gz = 0; gz < pn; gz++) {
+    for (let gx = 0; gx < pn; gx++) {
+      hgrid[gz * pn + gx] = hf.getHeightAt(
+        cx0 + (gx - 1) * stepF, cz0 + (gz - 1) * stepF,
+      );
+    }
+    // One near chunk performs almost ten thousand procedural height samples.
+    // On a throttled CPU that previously became a 0.4-1.1 s atomic task even
+    // though the outer terrain builder yielded between chunks. Expose exact
+    // row checkpoints to the async builder; the synchronous/capture path just
+    // drains the same generator and receives byte-identical arrays.
+    if (progress && (gz & 7) === 7) {
+      yield [progress.done + 0.3 * (gz + 1) / pn, progress.total, false];
+    }
   }
   return { hgrid, pn, stepF };
 }
 
-function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
+function buildFineGrid(hf, cx0, cz0) {
+  const g = buildFineGridSteps(hf, cx0, cz0);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+function* buildChunkGeometrySteps(hf, cx0, cz0, segs, fine, progress = null) {
   const n = segs + 1, step = CHUNK_SIZE / segs;
   const stride = FINE_SEGS / segs;
   const hgrid = fine?.hgrid || null;
@@ -2601,19 +2620,24 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
   const nrm = new Float32Array(vcount * 3);
   const inv2e = 1 / (2 * stepF);
   let vi = 0;
-  for (let gz = 0; gz < n; gz++) for (let gx = 0; gx < n; gx++) {
-    const wx = cx0 + gx * step, wz = cz0 + gz * step;
-    const fi = hgrid ? (gz * stride + 1) * pn + (gx * stride + 1) : 0;
-    const h = hgrid ? hgrid[fi] : hf.getHeightAt(wx, wz);
-    pos[vi * 3] = wx; pos[vi * 3 + 1] = h; pos[vi * 3 + 2] = wz;
-    const hl = hgrid ? hgrid[fi - 1] : hf.getHeightAt(wx - stepF, wz);
-    const hr = hgrid ? hgrid[fi + 1] : hf.getHeightAt(wx + stepF, wz);
-    const hd = hgrid ? hgrid[fi - pn] : hf.getHeightAt(wx, wz - stepF);
-    const hu = hgrid ? hgrid[fi + pn] : hf.getHeightAt(wx, wz + stepF);
-    const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
-    const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
-    nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
-    vi++;
+  for (let gz = 0; gz < n; gz++) {
+    for (let gx = 0; gx < n; gx++) {
+      const wx = cx0 + gx * step, wz = cz0 + gz * step;
+      const fi = hgrid ? (gz * stride + 1) * pn + (gx * stride + 1) : 0;
+      const h = hgrid ? hgrid[fi] : hf.getHeightAt(wx, wz);
+      pos[vi * 3] = wx; pos[vi * 3 + 1] = h; pos[vi * 3 + 2] = wz;
+      const hl = hgrid ? hgrid[fi - 1] : hf.getHeightAt(wx - stepF, wz);
+      const hr = hgrid ? hgrid[fi + 1] : hf.getHeightAt(wx + stepF, wz);
+      const hd = hgrid ? hgrid[fi - pn] : hf.getHeightAt(wx, wz - stepF);
+      const hu = hgrid ? hgrid[fi + pn] : hf.getHeightAt(wx, wz + stepF);
+      const nx = (hl - hr) * inv2e, nz = (hd - hu) * inv2e;
+      const il = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
+      nrm[vi * 3] = nx * il; nrm[vi * 3 + 1] = il; nrm[vi * 3 + 2] = nz * il;
+      vi++;
+    }
+    if (progress && (gz & 7) === 7) {
+      yield [progress.done + 0.8, progress.total, false];
+    }
   }
   // perimeter vertex indices in ring order (S, E, N, W edges)
   const ring = [];
@@ -2641,10 +2665,15 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
   }
   const idx = new Uint32Array(segs * segs * 6 + perim * 6);
   let ii = 0;
-  for (let gz = 0; gz < segs; gz++) for (let gx = 0; gx < segs; gx++) {
-    const a = gz * n + gx, b = a + 1, c = a + n, d = c + 1;
-    idx[ii++] = a; idx[ii++] = c; idx[ii++] = b;
-    idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
+  for (let gz = 0; gz < segs; gz++) {
+    for (let gx = 0; gx < segs; gx++) {
+      const a = gz * n + gx, b = a + 1, c = a + n, d = c + 1;
+      idx[ii++] = a; idx[ii++] = c; idx[ii++] = b;
+      idx[ii++] = b; idx[ii++] = c; idx[ii++] = d;
+    }
+    if (progress && (gz & 7) === 7) {
+      yield [progress.done + 0.8, progress.total, false];
+    }
   }
   for (let k = 0; k < perim; k++) {
     const t0 = ring[k], t1 = ring[(k + 1) % perim];
@@ -2658,6 +2687,13 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeBoundingSphere();
   return geo;
+}
+
+function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
+  const g = buildChunkGeometrySteps(hf, cx0, cz0, segs, fine);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -2727,11 +2763,18 @@ function* terrainBuildSteps(heightField, engineCtx, cfg, streamOpts = null) {
       // Near/mid levels still share one fine grid, preserving their exact
       // cross-LOD shading and avoiding duplicate samples.
       const needsFineGrid = !streamFarLods || initialLevels.some((level) => level < 2);
-      const fine = needsFineGrid ? buildFineGrid(heightField, cx0, cz0) : null;
+      const progress = {
+        done: 2 + cz * CHUNKS + cx,
+        total: CHUNKS * CHUNKS + 2,
+      };
+      const fine = needsFineGrid
+        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
       if (fine) initialFineGridCount++;
       const lods = [null, null, null];
       for (const level of initialLevels) {
-        lods[level] = buildChunkGeometry(heightField, cx0, cz0, LOD_SEGS[level], fine);
+        lods[level] = yield* buildChunkGeometrySteps(
+          heightField, cx0, cz0, LOD_SEGS[level], fine, progress,
+        );
         initialGeometryCount++;
       }
       const openingLevel = streamFarLods ? initialLevels[0] : 2;

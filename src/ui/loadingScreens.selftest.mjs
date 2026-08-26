@@ -185,8 +185,8 @@ assert.match(deferredWarmBody,
   /streamBattleVisuals\([\s\S]{0,180}ent\.team === 'enemy'[\s\S]{0,500}warmCombatOpeningPipelineChunked\(6, guardedYield\)[\s\S]{0,3200}warmCombatRarePipelineChunked\(6, guardedYield\)/,
   'opponents and first-shot pipelines must use the frozen countdown before rare variants');
 assert.match(mainSource,
-  /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,300}primeSoloBattleRevealFrame\(\)/,
-  'solo entry must split cascade warming before the first full deployment frame');
+  /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,900}post\.warmFirstFrame\(coveredYield\)[\s\S]{0,220}primeSoloBattleRevealFrame\(\)/,
+  'solo entry must split cascade and post warming before the first full deployment frame');
 assert.match(mainSource,
   /ensureWorld\(resolved,[\s\S]{0,180}\{ precompile: false, services: false \}\)/,
   'solo entry must activate a battlefield without synchronous world services');

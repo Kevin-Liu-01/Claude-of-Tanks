@@ -96,7 +96,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * Create the shared state-transition screen.
  * @returns {{show:(o?:object)=>void, progress:(f:number,label?:string)=>void,
  *   hide:()=>Promise<void>, run:(work:(p:(f:number,l?:string)=>void)=>any,
- *   o?:object)=>Promise<any>, readonly visible:boolean}}
+ *   o?:object)=>Promise<any>, readonly visible:boolean, readonly active:boolean}}
  */
 export function createTransition() {
   if (!document.getElementById('cot-trans-style')) {
@@ -133,6 +133,10 @@ export function createTransition() {
   let warmAfterWork = null;
   const api = {
     get visible() { return visible; },
+    // `visible` flips false when fade-out begins. `active` remains true until
+    // the veil has actually left layout, so background builders cannot resume
+    // underneath the last transition frames and turn the reveal into a stall.
+    get active() { return root.classList.contains('on'); },
 
     /**
      * Stage and fade the screen in.
