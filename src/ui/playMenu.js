@@ -17,19 +17,12 @@ import { iconUrl } from './icons.js';
 import { uiIconSVG } from './uiIcons.js';
 import { ensureStyle } from './dom.js';
 import { createRandomMapMosaic } from './randomPreviews.js';
+import { loadIceConfiguration } from '../net/iceConfig.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
 const ROOM_SIZE_KEY = 'cot.room.size.v1';
-const PUBLIC_STUN_SERVERS = Object.freeze([{
-  urls: [
-    'stun:stun.cloudflare.com:3478',
-    'stun:stun.cloudflare.com:53',
-    'stun:stun.l.google.com:19302',
-  ],
-}]);
-
 let rankedServiceModulePromise = null;
 function loadRankedServiceModule() {
   if (!rankedServiceModulePromise) {
@@ -403,14 +396,9 @@ function defaultRankedUrl() {
 }
 
 async function iceServers(mode) {
-  if (mode === 'lan') return { iceServers: [], relayOnly: false };
-  const endpoint = import.meta.env.VITE_ICE_CONFIG_URL;
-  if (!endpoint) return { iceServers: PUBLIC_STUN_SERVERS, relayOnly: false };
-  const response = await fetch(endpoint, { credentials: 'include', cache: 'no-store' });
-  if (!response.ok) throw new Error('ICE configuration is unavailable');
-  const body = await response.json();
-  if (!body || !Array.isArray(body.iceServers)) throw new Error('ICE configuration is invalid');
-  return { iceServers: body.iceServers, relayOnly: body.relayOnly === true };
+  const configured = import.meta.env.VITE_ICE_CONFIG_URL;
+  const endpoint = configured || (location.protocol === 'https:' ? '/api/ice' : '');
+  return loadIceConfiguration({ mode, endpoint });
 }
 
 export function createPlayMenu({

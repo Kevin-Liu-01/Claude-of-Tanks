@@ -49,6 +49,22 @@ The default service uses port 8790. Production requires secure WebSocket and
 HTTP endpoints, explicit origin configuration, persistent rating storage, and
 deployment-specific signaling/TURN configuration.
 
+Production private rooms automatically request short-lived credentials from
+`/api/ice`. Configure either a Cloudflare Realtime TURN key:
+
+    COT_CLOUDFLARE_TURN_KEY_ID
+    COT_CLOUDFLARE_TURN_API_TOKEN
+
+or a provider-neutral JSON array of ICE servers:
+
+    COT_TURN_ICE_SERVERS_JSON
+
+`COT_TURN_TTL_SECONDS` optionally controls the short-lived Cloudflare
+credential lifetime (clamped to one hour through one day; default eight
+hours). `VITE_ICE_CONFIG_URL` is only needed when credentials are served from
+a different endpoint. Long-lived provider secrets must never use the `VITE_`
+prefix or enter the browser bundle.
+
 ## Fast validation
 
 Run the complete Node self-test suite:

@@ -83,6 +83,14 @@ export class PrivateRoomHostSession {
       if (session) session.close('peer_left');
       this.peers.delete(message.payload.peerId);
       this.runtime.detachPeer(message.payload.peerId, 'peer_left');
+    } else if (message.type === 'signaling_resumed') {
+      // The durable room response is the source of truth after a socket gap.
+      // Reconcile peers that may have joined while this host instance could
+      // not receive pub/sub or mailbox wake-ups.
+      for (const peer of message.payload.peers || []) {
+        if (peer.peerId === this.roomInfo.peerId) continue;
+        this.#joinPeer(peer).catch((error) => this.#fail(error));
+      }
     }
   }
 
@@ -91,8 +99,13 @@ export class PrivateRoomHostSession {
     const existing = this.peers.get(peerId);
     if (existing && existing.sessionId === sessionId) {
       if (['new', 'connecting', 'connected'].includes(existing.connectionState)) return;
-      existing.restartIce();
-      return;
+      if (['disconnected', 'failed'].includes(existing.connectionState)) {
+        existing.restartIce();
+        return;
+      }
+      // A bounded initial-connect timeout leaves a closed peer in the map
+      // until the durable signaling member resumes. Rebuild it here instead
+      // of trying to restart a closed RTCPeerConnection.
     }
     if (existing) {
       existing.close('peer_replaced');
@@ -198,6 +211,18 @@ export class PrivateRoomClientSession {
       } else if (message && message.type === 'room_closed' && message.payload &&
                  message.payload.roomCode === roomInfo.roomCode) {
         this.close(message.payload.reason || 'room_closed');
+      } else if (message && message.type === 'signaling_resumed' && message.payload &&
+                 message.payload.roomCode === roomInfo.roomCode) {
+        const host = message.payload.peers?.find((peer) => peer.peerId === roomInfo.hostId);
+        const nextSessionId = String(host?.sessionId || '');
+        if (nextSessionId && nextSessionId !== this.hostSessionId) {
+          this.hostSessionId = nextSessionId;
+          this.#replacePeer().catch((error) => {
+            if (this.onError) this.onError(error);
+          });
+        } else if (this.peer.connectionState !== 'connected') {
+          this.peer.restartIce();
+        }
       }
     });
     this.ready = this.#bindInitialPeer(this.peer);

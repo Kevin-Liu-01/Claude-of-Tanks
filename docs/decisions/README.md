@@ -12,3 +12,4 @@ runtime documents remain authoritative for behavior.
 
 - [0001 — Incremental strict TypeScript migration](0001-incremental-typescript.md)
 - [0002 — Cooperative loading without visual degradation](0002-cooperative-loading.md)
+- [0003 — Private-room connectivity uses direct ICE with TURN fallback](0003-private-room-connectivity.md)

@@ -41,6 +41,8 @@ export function createWebRTCPeer({
   transportOptions = {},
   recoveryDelaysMs = [0, 3_000, 7_000, 15_000, 30_000],
   disconnectGraceMs = 4_000,
+  initialRecoveryDelayMs = 8_000,
+  connectTimeoutMs = 30_000,
 } = {}) {
   if (role !== 'host' && role !== 'client') throw new TypeError('role must be host or client');
   if (typeof onSignal !== 'function') throw new TypeError('onSignal callback is required');
@@ -49,11 +51,16 @@ export function createWebRTCPeer({
       recoveryDelaysMs.some((delay) => !Number.isFinite(delay) || delay < 0)) {
     throw new TypeError('RTC recovery delays must be a non-empty array of milliseconds');
   }
+  if (!Number.isFinite(initialRecoveryDelayMs) || initialRecoveryDelayMs < 0 ||
+      !Number.isFinite(connectTimeoutMs) || connectTimeoutMs <= 0) {
+    throw new TypeError('RTC recovery and connection timeouts must be valid milliseconds');
+  }
   const Ctor = rtcConstructor(RTCPeerConnectionImpl);
   const peerConnection = new Ctor({
     iceServers,
     iceTransportPolicy: relayOnly ? 'relay' : 'all',
     bundlePolicy: 'max-bundle',
+    iceCandidatePoolSize: 4,
   });
   const pendingCandidates = [];
   const channels = new Map();
@@ -65,6 +72,7 @@ export function createWebRTCPeer({
   let recoveryTimer = null;
   let recoveryAttempts = 0;
   let negotiationChain = Promise.resolve();
+  let connectTimer = null;
   const transportReady = new Promise((resolve, reject) => {
     settleTransport = resolve;
     rejectTransport = reject;
@@ -76,6 +84,9 @@ export function createWebRTCPeer({
     const state = channels.get(MATCH_STATE_CHANNEL_LABEL);
     if (!control || !state || control.readyState !== 'open' || state.readyState !== 'open') return;
     transport = createWebRTCSplitTransport(control, state, transportOptions);
+    if (connectTimer) clearTimeout(connectTimer);
+    connectTimer = null;
+    clearRecovery();
     settleTransport(transport);
   }
 
@@ -175,6 +186,7 @@ export function createWebRTCPeer({
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       onSignal({ kind: 'description', description: peerConnection.localDescription });
+      scheduleRecovery(initialRecoveryDelayMs);
     });
   }
 
@@ -211,6 +223,7 @@ export function createWebRTCPeer({
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         onSignal({ kind: 'description', description: peerConnection.localDescription });
+        scheduleRecovery(initialRecoveryDelayMs);
       }
     });
   }
@@ -225,6 +238,8 @@ export function createWebRTCPeer({
       if (closed) return;
       closed = true;
       clearRecovery();
+      if (connectTimer) clearTimeout(connectTimer);
+      connectTimer = null;
       pendingCandidates.length = 0;
       if (transport) transport.close(reason);
       else {
@@ -244,5 +259,14 @@ export function createWebRTCPeer({
     get connectionState() { return peerConnection.connectionState; },
     get recoveryAttempts() { return recoveryAttempts; },
   };
+  connectTimer = setTimeout(() => {
+    if (closed || transport) return;
+    const seconds = Math.max(1, Math.ceil(connectTimeoutMs / 1_000));
+    const error = Object.assign(new Error(`WebRTC could not connect within ${seconds} seconds.`), {
+      code: 'rtc_connect_timeout',
+    });
+    rejectTransport(error);
+    session.close('rtc_connect_timeout');
+  }, connectTimeoutMs);
   return session;
 }

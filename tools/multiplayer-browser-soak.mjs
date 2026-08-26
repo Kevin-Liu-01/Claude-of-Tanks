@@ -42,6 +42,7 @@ async function closePageState(page) {
     if (!state) return;
     if (state.matchTimer) clearInterval(state.matchTimer);
     if (state.inputTimer) clearInterval(state.inputTimer);
+    if (state.signalingResumeUnsubscribe) state.signalingResumeUnsubscribe();
     try { state.match?.close('soak_complete'); } catch (_) { /* best-effort QA cleanup */ }
     try { state.session?.close('soak_complete'); } catch (_) { /* best-effort QA cleanup */ }
   }).catch(() => {});
@@ -286,6 +287,31 @@ try {
   }
   assert.equal(phase, 'playing', 'authority countdown must transition to active play');
 
+  // Signaling is rendezvous, not the match transport. Drop both WebSockets
+  // after gameplay is live, require durable room resume, and keep the same
+  // RTC authority channels. This models a Vercel function recycle or mobile
+  // network handover without disguising it as a fresh room.
+  await Promise.all([hostPage, guestPage].map((page) => page.evaluate(() => {
+    const state = globalThis.__COT_SOAK;
+    state.signalingEvents = [];
+    state.signalingResumeUnsubscribe = state.signaling.onEvent((message) => {
+      if (message?.type === 'signaling_state' || message?.type === 'signaling_resumed') {
+        state.signalingEvents.push(message.type);
+      }
+    });
+    state.signaling.socket.close();
+  })));
+  await Promise.all([hostPage, guestPage].map((page) => page.waitForFunction(() => {
+    const state = globalThis.__COT_SOAK;
+    return state.signaling.state === 'open' && state.signalingEvents.includes('signaling_resumed');
+  }, { timeout: 15_000, polling: 50 })));
+  const resumed = await Promise.all([hostPage, guestPage].map((page) => page.evaluate(() => ({
+    roomCode: globalThis.__COT_SOAK.signaling.roomCode,
+    events: globalThis.__COT_SOAK.signalingEvents,
+  }))));
+  assert.ok(resumed.every((state) => state.roomCode === room.roomCode),
+    'both browsers resume the same durable room after signaling loss');
+
   const startPosition = await hostPage.evaluate((playerId) => {
     const entity = globalThis.__COT_SOAK.match.simulation.entityById.get(playerId);
     return { ...entity.state.pos };
@@ -490,6 +516,7 @@ try {
       delayedOutgoing: report.transport.delayedOutgoing,
       droppedState: report.transport.droppedState,
     },
+    signalingResumed: resumed.map((state) => state.events),
     rematchRound: rematch.round,
     cleanDeparture: true,
   }, null, 2));

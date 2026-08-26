@@ -29,6 +29,11 @@ function stringOption(name, fallback) {
 const seconds = numberOption('seconds', 6);
 const cpuRate = numberOption('cpu', 4);
 const minimumFps = numberOption('min-fps', 30);
+const cycles = numberOption('cycles', 1);
+const maxColdReadyMs = numberOption('max-cold-ready', 15_000);
+if (!Number.isInteger(cycles) || cycles > 10) {
+  throw new TypeError('cycles must be an integer from 1 through 10');
+}
 const adverse = {
   latency: nonNegativeOption('latency'),
   jitter: nonNegativeOption('jitter'),
@@ -306,6 +311,8 @@ async function collectFullRenderer(page, label) {
     };
   }, label);
   report.entry.coldReadyMs = coldReadyMsByPage.get(page) ?? null;
+  assert.ok(report.entry.coldReadyMs != null && report.entry.coldReadyMs < maxColdReadyMs,
+    `${label} cold profile took ${report.entry.coldReadyMs} ms to become ready`);
   assert.ok(report.frames >= seconds * minimumFps,
     `${label} captured too few active frames: ${report.frames}`);
   assert.equal(report.freezes, 0, `${label} must not freeze under ${cpuRate}x CPU throttling`);
@@ -523,30 +530,39 @@ try {
     ],
   });
 
-  const solo = only === 'all' || only === 'solo' ? await runSolo(origin) : null;
-  const host = only === 'all' || only === 'host'
-    ? await runNetwork(origin, signalUrl, 'host')
-    : null;
-  const client = only === 'all' || only === 'client'
-    ? await runNetwork(origin, signalUrl, 'client')
-    : null;
-  for (const report of [host, client].filter(Boolean)) {
-    if (solo) {
-      assert.ok(report.gapP95 <= solo.gapP95 * 1.35 + 2,
-        `${report.mode} p95 ${report.gapP95} ms regressed against solo ${solo.gapP95} ms`);
+  const runs = [];
+  for (let cycle = 1; cycle <= cycles; cycle++) {
+    const solo = only === 'all' || only === 'solo' ? await runSolo(origin) : null;
+    const host = only === 'all' || only === 'host'
+      ? await runNetwork(origin, signalUrl, 'host')
+      : null;
+    const client = only === 'all' || only === 'client'
+      ? await runNetwork(origin, signalUrl, 'client')
+      : null;
+    for (const report of [host, client].filter(Boolean)) {
+      if (solo) {
+        assert.ok(report.gapP95 <= solo.gapP95 * 1.35 + 2,
+          `${report.mode} p95 ${report.gapP95} ms regressed against solo ${solo.gapP95} ms`);
+      }
+      assert.equal(report.rosterSize, 4, `${report.mode} must render a real 2v2 roster`);
     }
-    assert.equal(report.rosterSize, 4, `${report.mode} must render a real 2v2 roster`);
+    runs.push({
+      cycle,
+      ...(solo ? { solo } : {}),
+      ...(host ? { [`${roomMode}Host`]: host } : {}),
+      ...(client ? { [`${roomMode}Client`]: client } : {}),
+    });
   }
   assert.deepEqual(consoleErrors, [], `browser errors:\n${consoleErrors.join('\n')}`);
   console.log(JSON.stringify({
     ok: true,
     profile: {
-      seconds, cpuRate, minimumFps, viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
+      seconds, cpuRate, minimumFps, cycles, maxColdReadyMs,
+      viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
       freshBrowserContexts: true,
     },
-    ...(solo ? { solo } : {}),
-    ...(host ? { [`${roomMode}Host`]: host } : {}),
-    ...(client ? { [`${roomMode}Client`]: client } : {}),
+    runs,
+    ...(cycles === 1 ? runs[0] : {}),
   }, null, 2));
 } finally {
   if (browser) await browser.close().catch(() => {});

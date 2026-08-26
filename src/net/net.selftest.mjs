@@ -519,6 +519,8 @@ class FakePeerConnection {
   assert.equal(hostSignals[0].description.type, 'offer');
   assert.deepEqual(host.peerConnection.channels.map((channel) => channel.label),
     [MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL]);
+  assert.equal(host.peerConnection.config.iceCandidatePoolSize, 4,
+    'RTC pre-gathers a bounded candidate pool for faster first-time joins');
   assert.equal(host.peerConnection.channels[1].ordered, false);
   assert.equal(host.peerConnection.channels[1].maxRetransmits, 0);
   for (const channel of host.peerConnection.channels) {
@@ -548,6 +550,17 @@ class FakePeerConnection {
   client.transportReady.catch(() => {});
   host.close('test_complete');
   client.close('test_complete');
+}
+
+{
+  const timedOut = createWebRTCPeer({
+    role: 'client', onSignal() {}, RTCPeerConnectionImpl: FakePeerConnection,
+    connectTimeoutMs: 10, initialRecoveryDelayMs: 5,
+  });
+  await assert.rejects(timedOut.transportReady,
+    (error) => error.code === 'rtc_connect_timeout',
+    'an ICE negotiation that never produces data channels must fail visibly instead of hanging forever');
+  assert.equal(timedOut.connectionState, 'closed');
 }
 
 // Signaling client is rendezvous-only and request/response correlated.

@@ -210,8 +210,10 @@ the browser-owned authority, so host migration is intentionally not claimed.
 The signaling server only relays room membership, SDP, and ICE. Gameplay never
 travels through it. Production room membership lives in Redis and signaling
 notifications use Redis pub/sub, so peers routed to different WebSocket
-function instances still share one room. A deployment may add short-lived TURN
-credentials through `VITE_ICE_CONFIG_URL`; LAN remains direct.
+function instances still share one room. Private rooms automatically request
+short-lived TURN credentials from same-origin `/api/ice`; the deployment keeps
+the long-lived provider token server-side. `VITE_ICE_CONFIG_URL` only overrides
+that endpoint for a separate credential service. LAN remains direct.
 
 LAN setup is automatic. Public deployments use their same-origin secure
 signaling endpoint for rendezvous, while pages served from localhost or an
