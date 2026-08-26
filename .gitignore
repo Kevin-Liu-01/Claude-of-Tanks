@@ -30,3 +30,7 @@ docs/perf-*.json
 !docs/perf-after.json
 docs/quietcert-*.log
 docs/qa-evidence-manifest.json
+# Iterative visual-critic output is local evidence. Maintained conclusions
+# belong in vehicle reference packets or ADRs; existing tracked receipts are
+# retained only while a live packet still cites them.
+docs/critique/*
