@@ -17,3 +17,4 @@ runtime documents remain authoritative for behavior.
 - [0005 — Public main keeps contracts, not iterative receipts](0005-public-repository-evidence.md)
 - [0006 — Network input cadence is independent from display refresh](0006-display-independent-network-input.md)
 - [0007 — Local correction is physical-role presentation state](0007-physical-role-prediction-correction.md)
+- [0008 — Battle UI is a demand-loaded runtime boundary](0008-battle-ui-demand-boundary.md)

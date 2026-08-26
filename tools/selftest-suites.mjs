@@ -173,6 +173,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propPlacement.selftest.mjs',
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
+    'src/ui/battleHudAccess.selftest.mjs',
     'src/ui/hudMagazine.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/chunkRecovery.selftest.mjs',

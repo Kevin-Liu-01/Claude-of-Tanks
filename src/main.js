@@ -73,11 +73,7 @@ import {
 } from './sim/damage.js';
 import { createShell } from './sim/ballistics.js';
 import { activateSpecialAction, specialActionLocksShell } from './sim/specialActions.js';
-import { initHud } from './ui/hud.js';
-import { createDamagePanel } from './ui/damagePanel.js';
-// damage panel r9: the panel's top-down plan layers are offscreen renders of
-// the ACTUAL built vehicle — the rig needs the shared engine context once.
-import { initTopMaskRig } from './ui/tankThumbs.js';
+import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
 import {
@@ -316,9 +312,6 @@ const engineCtx = {
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
 };
-// damage panel r9: real top-down plan masks render through the game renderer
-initTopMaskRig(engineCtx);
-
 // --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
 // Worlds are lazy-built per map config and cached; `world` always points at
 // the active one (null until one exists). Long-lived systems (camera rig, fx,
@@ -613,6 +606,7 @@ function cancelBattleIntentTextureWarm() {
 
 function preloadBattleIntent({ specId, mapId } = {}) {
   audio.preload();
+  ensureBattleHud().catch(() => null);
   loadWorldModule().catch(() => null);
   preloadSoloBattleRuntime().catch(() => null);
   preloadKillcamModule().catch(() => null);
@@ -639,7 +633,9 @@ function preloadBattleIntent({ specId, mapId } = {}) {
     ? resolveBattleIntentMap(specId, mapId) : mapId;
   if (plannedMapId) {
     prefetchWorld(plannedMapId, { intent: true });
-    hud.preloadMinimapAsset(minimapAssetUrl(plannedMapId)).catch(() => null);
+    ensureBattleHud()
+      .then(() => hud.preloadMinimapAsset(minimapAssetUrl(plannedMapId)))
+      .catch(() => null);
   }
 }
 
@@ -1571,6 +1567,7 @@ function placeGarage() {
  * @returns {object|Promise<object>} active World, immediately when cached
  */
 function buildWorldMinimap(next, textured = true) {
+  if (!hud) return;
   hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
     textured ? minimapSnapCtx() : null);
 }
@@ -1586,7 +1583,7 @@ function minimapAssetUrl(mapId) {
  * battlefield, compiles shaders, or reads GPU pixels merely to draw the HUD.
  */
 function queueBakedWorldMinimap(next = world) {
-  if (!next || world !== next || minimapAssetMapId === next.mapId) return null;
+  if (!hud || !next || world !== next || minimapAssetMapId === next.mapId) return null;
   if (minimapAssetPending?.world === next) return minimapAssetPending.promise;
   const generation = ++minimapAssetGeneration;
   const trace = { mapId: next.mapId, state: 'queued', startedAt: performance.now() };
@@ -1850,14 +1847,19 @@ function minimapSnapCtx() {
 // boot r8: the minimap build (a real orthographic top-down capture of the
 // battlefield) moved to activateWorld — the HUD is hidden in the garage, so
 // nothing on the boot path can see it.
+let hud = null;
 let damagePanel = null;
-const hud = await bootStage('hud', () => {
-  const h = initHud(bus);
-  const dp = createDamagePanel();
-  h.setDamagePanel(dp);
-  damagePanel = dp;
-  return h;
-});
+const battleHudAccess = createBattleHudAccess(bus, engineCtx);
+async function ensureBattleHud() {
+  const runtime = await battleHudAccess.preload();
+  hud = runtime.hud;
+  damagePanel = runtime.damagePanel;
+  if (world && worldServicesMapId === world.mapId) queueBakedWorldMinimap(world);
+  return runtime;
+}
+// Preserve the staged progress contract without transferring battle-only UI
+// into a garage first visit. Battle intent/entry joins ensureBattleHud().
+await bootStage('hud');
 
 const garageMaps = [
   { id: 'random', name: 'Random', thumb: '' },
@@ -1934,6 +1936,7 @@ function preloadNetworkRoomChatModule() {
 }
 
 function preloadPlayMode(mode) {
+  ensureBattleHud().catch(() => null);
   preloadFxModule().catch(() => null);
   preloadKillcamModule().catch(() => null);
   preloadNetworkBattleModules().catch(() => null);
@@ -2949,6 +2952,12 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   audio.loadingOn(true);
   await nextFrame();
 
+  // The combat HUD, damage schematic, and exact top-mask rig are battle-only.
+  // Start their retryable chunk at the first covered frame; world transfer
+  // has already begun on Battle intent, and no hidden garage boot pays for it.
+  battleLoad.progress(0.01, 'Loading combat interface');
+  await ensureBattleHud();
+
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   // The next roster is deterministic from battleCount, so resolve its exact
   // profile chunks alongside the independent world build. This is a plan,
@@ -3694,6 +3703,7 @@ async function presentNetworkBattle({
   await nextFrame();
   const [networkModules] = await Promise.all([
     preloadNetworkBattleModules(),
+    ensureBattleHud(),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
@@ -5524,7 +5534,7 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // Capture callers await the same chunked builder as gameplay. Keeping a
   // second synchronous map constructor in the entry graph defeated genuine
   // world lazy loading and froze first-time authored captures.
-  await preloadSoloBattleRuntime();
+  await Promise.all([preloadSoloBattleRuntime(), ensureBattleHud()]);
   if (!world || world.mapId !== mapId) await switchMap(mapId);
   lighting.setFarCascadeDormant(false);
   setWorldDormant(false);
@@ -6201,12 +6211,11 @@ window.__SHOTS = {
 // cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
 // real player entity when a battle actually stages.
 buildShellCards(getSpec(selectedSpecId));
-damagePanel.setTank(getSpec(selectedSpecId), pedestalVisual);
 garage.show(selectedSpecId);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();
 setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
-hud.setMode('hidden');
+hud?.setMode('hidden');
 
 // BOOT DEFERRAL seam: the battlefield build is deferred until BATTLE is
 // pressed, so `world` is legitimately null on the garage boot path — the
@@ -8184,6 +8193,7 @@ window.__DEBUG = {
   slayEnemies: debugSlayEnemies,
   startBattle: debugStartBattle,
   bakeMinimapForMap: async (mapId) => {
+    await ensureBattleHud();
     const next = await ensureWorld(mapId, null, { precompile: false, services: false });
     buildWorldMinimap(next, true);
     return hud.exportMinimapBackground('image/webp', 0.92);
@@ -8211,7 +8221,10 @@ window.__DEBUG = {
   set shotMode(v) { shotMode = !!v; },
   // controls_gunnery r3: stage the reticle hit-confirm marker on demand so
   // captures can verify its weight without landing a live 400 m shot.
-  forceHitMark: (bounced) => hud.forceHitMark(!!bounced),
+  forceHitMark: async (bounced) => {
+    await ensureBattleHud();
+    hud.forceHitMark(!!bounced);
+  },
   // damage panel r9: pose/state hooks for probes + deterministic captures
   get damagePanel() { return damagePanel; },
   // Development flight recorder, or production QA recorder with `?debug=1`.

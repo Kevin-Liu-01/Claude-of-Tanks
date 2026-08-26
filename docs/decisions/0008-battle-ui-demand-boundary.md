@@ -1,0 +1,40 @@
+# 0008 — Battle UI is a demand-loaded runtime boundary
+
+## Context
+
+The first garage frame does not display the combat HUD, damage schematic, or
+the vehicle top-mask renderer. Static imports nevertheless transferred and
+evaluated that complete graph on every first visit. It also made the integration
+entry own construction order and retry state for three independent UI modules.
+
+## Decision
+
+- `src/ui/battleHudAccess.ts` owns loading and construction of the HUD, damage
+  panel, and top-mask rig as one retryable runtime.
+- Garage boot keeps the battle UI absent. Battle hover/focus may preload it;
+  every solo, network, ranked, and deterministic-capture entry must acquire the
+  same runtime before using battlefield services.
+- Concurrent callers share one promise. A failed transfer clears that promise
+  so the next intent or entry can retry without reloading the page.
+- The boundary narrows the legacy JavaScript modules to an explicit TypeScript
+  construction contract. Rendering, HUD content, masks, and battle behavior do
+  not change.
+
+## Consequences
+
+The initial main chunk is smaller and garage-only users do not construct hidden
+battle UI. The first battle may pay this transfer when no prior intent occurred,
+but it happens under the existing opaque loader with loading audio and can run
+alongside other battle preparation. This is the preferred extraction pattern
+for further `main.js` decomposition: one behavior owner, a retryable promise,
+and an explicit acquisition barrier at every consumer.
+
+## Verification
+
+- `battleHudAccess.selftest.mjs` proves request coalescing, construction order,
+  reuse, and recovery after a failed import.
+- `npm run perf:cold -- --sessions 5` exercises independent cache-disabled
+  first visits plus failed-download and failed-evaluation recovery.
+- `npm run perf:loading -- --mode battle --maps verdant` crosses the real lazy
+  boundary and verifies a playable battle.
+- `npm run typecheck`, `npm test`, and `npm run build` remain release gates.

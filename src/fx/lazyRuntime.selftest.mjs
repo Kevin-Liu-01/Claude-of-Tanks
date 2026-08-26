@@ -23,7 +23,7 @@ if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState
 }
 
 const requiredGates = [
-  ['solo battle', /async function startBattleLoading[\s\S]{0,4200}const fxTextureP = ensureFxRuntime\(\)/],
+  ['solo battle', /async function startBattleLoading[\s\S]{0,5200}const fxTextureP = ensureFxRuntime\(\)/],
   ['network battle', /async function presentNetworkBattle[\s\S]{0,4200}preloadNetworkBattleModules\(\)[\s\S]{0,100}ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
   ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
