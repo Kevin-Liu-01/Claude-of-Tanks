@@ -2293,16 +2293,18 @@ function buildT80UNative2026(P) {
   // ROUND: the ref's flat contact patch is SHORT (-2.0..2.24) with long
   // climbing ramps to a HIGH short idler (bottom ~0.58 at z~3.06) and a
   // high sprocket (bottom ~0.62 by z -2.98); track outer face ~1.70.
-  // (r3b idler/wheel experiment REVERTED: 3.02/0.83 put the wrap top 1.16
-  // within one dilation voxel of the 1.18 glacis plane — 6 exact vox — and
-  // the ramp change cost more side columns than it bought)
+  // Keep the loaded run and road-wheel contact patch fixed at ground level,
+  // but lift the skirt-hidden return rollers by 70 mm.  This closes the
+  // hollow-looking band above the wheels without floating the tank or
+  // breaking the tread's concentric wrap around either terminal wheel.
   const wheelZs = [2.24, 1.392, 0.544, -0.304, -1.152, -2.0];
+  const returnRunY = 0.97;
   buildRunningGear(P, {
     style: 'dished', wheelR: 0.335, wheelW: 0.21, wheelY: 0.42, xc: 1.42, dishR: 0.80,
     wheelZs,
     sprocket: { z: -2.89, y: 0.90, r: 0.21 }, idler: { z: 2.98, y: 0.84, r: 0.21 },       // (r3d/e: forward sprocket + SMALLER end wheels — the 0.24 wraps read bottoms 0.44 vs the ref's 0.60-0.66, and the far edges now land on its -3.27 plan line)
-    rollers: [1.80, 0.90, 0, -0.90, -1.80].map((z) => ({ z, y: 0.90, r: 0.08 })),
-    trackW: 0.48, topY: 0.87, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
+    rollers: [1.80, 0.90, 0, -0.90, -1.80].map((z) => ({ z, y: returnRunY, r: 0.08 })),
+    trackW: 0.48, topY: 0.94, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
   });
   // Preserve the wheel-bay recess geometry exactly while declaring its true
   // running-gear ownership; these cylinders are not hull armor.
@@ -2523,9 +2525,10 @@ function buildT80UNative2026(P) {
   });
   P.decal('turret', 'number', '518', 0.28, [1.05, 0.28, -0.15], Math.PI / 2, 0, 0.1);
   P.decal('turret', 'number', '518', 0.28, [-1.05, 0.28, -0.15], -Math.PI / 2, 0, -0.1);
-  // 2A46M-1 at axis 1.66: sealed embrasure roll, sleeve pair, fat evacuator
-  // in the sleeve gap, no muzzle brake/MRS.
-  P.gunG.position.set(0, 0.10, 0.55);
+  // 2A46M-1 at the documented 1.66 m axis: sealed embrasure roll, sleeve
+  // pair, fat evacuator in the sleeve gap, no muzzle brake/MRS.  The former
+  // 0.10 m local seat put the complete rocking package 140 mm too low.
+  P.gunG.position.set(0, 0.24, 0.55);
   trunnionRoll(P, 0.17, 0.55, { ballR: 0.145, ballZ: 0.20 });
   // Compact 2A46 rocking mask. The former square embrasure left the tube
   // emerging from a narrow vertical block. This gun-owned package uses a

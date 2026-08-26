@@ -92,6 +92,30 @@ try {
   assert.equal(mantlet.materialBucketMerged, true,
     'mantlet detail remains merged into existing material buckets');
 
+  tank.root.updateMatrixWorld(true);
+  const gunAxisWorld = gunRig.getWorldPosition(new THREE.Vector3());
+  assert.ok(Math.abs(gunRig.position.y - 0.24) < 1e-6,
+    'complete T-80U gun package uses the raised local trunnion seat');
+  assert.ok(Math.abs(gunAxisWorld.y - 1.66) < 1e-6,
+    'T-80U gun axis reaches its documented 1.66 m world datum');
+
+  const runningGear = hullRig.userData.runningGearReceipts?.[0];
+  assert.ok(runningGear, 'T-80U exposes its native running-gear receipt');
+  assert.equal(runningGear.wheelY, 0.42,
+    'road-wheel centers stay fixed against the loaded tread run');
+  assert.equal(runningGear.botY, 0.055,
+    'loaded tread run stays planted on the established ground datum');
+  assert.equal(runningGear.topY, 0.94,
+    'return course is raised under the side skirts');
+  const centralReturnPoints = runningGear.loopPoints
+    .filter(([z, y]) => Math.abs(z) <= 1.8 && y > 0.5);
+  assert.ok(Math.min(...centralReturnPoints.map(([, y]) => y)) >= 1.074,
+    'raised return course stays continuously above 1.074 m across the wheel bay');
+  assert.deepEqual(runningGear.sprocket, { z: -2.89, y: 0.90, r: 0.21 },
+    'rear tread wrap remains concentric with the calibrated sprocket');
+  assert.deepEqual(runningGear.idler, { z: 2.98, y: 0.84, r: 0.21 },
+    'front tread wrap remains concentric with the calibrated idler');
+
   turret.geometry.computeBoundingBox();
   assert.ok(turret.geometry.boundingBox.max.x <= 1.67
     && turret.geometry.boundingBox.min.x >= -1.67,
