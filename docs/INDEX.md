@@ -1,8 +1,8 @@
 # Documentation index
 
-This is the navigation hub for Claude of Tanks documentation. It separates the
-current product and runtime contract from the historical evidence created while
-the fleet and engine were being built.
+This is the navigation hub for Claude of Tanks documentation. It prioritizes
+current product contracts, contributor guidance, reproducible source evidence,
+and durable architecture decisions.
 
 If two current documents disagree, SYSTEMS.md owns runtime architecture,
 MULTIPLAYER-ARCHITECTURE.md owns network behavior, and BUILD-STANDARD.md plus
@@ -18,6 +18,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | HOW-IT-WORKS.md | Technical readers | Technical description of the current game from boot to results |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
 | DEVELOPMENT.md | Engineers and release owners | Local setup, services, test matrix, tools, and release procedure |
+| decisions/ | Contributors | Architecture decisions and migration constraints |
 
 The public browser field manual is available at
 https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
@@ -68,9 +69,7 @@ assets:
 | references/tanks/ | Per-vehicle source packets, measurements, known limitations, and certification history |
 | geometry-gate/ | Tool-written work orders and score ledger |
 | critique/ | Independent visual review evidence |
-
-PROGRAM-STATE.md remains the detailed fleet-program ledger and takeover record.
-It is not the current runtime architecture.
+| FLEET-FREEZE-CURRENT.json | Deterministic geometry fingerprint ledger |
 
 ## World, simulation, and game research
 
@@ -87,31 +86,21 @@ systems:
 Research explains inputs and trade-offs. Shipped behavior is defined by code
 and the current subsystem documents above.
 
-## Historical and audit documents
+## Engineering history
 
-The following files are retained for provenance, incident learning, and
-reproducibility. They must not be treated as the current product guide:
+Only history that explains a current invariant or a major incident remains in
+the repository. Transient task handoffs, agent prompts, raw machine-specific
+benchmarks, and superseded program ledgers are intentionally excluded.
 
 | Document or directory | Historical role |
 | --- | --- |
 | ARCHITECTURE.md | Original locked nine-module implementation plan |
 | DESIGN.md | Tank-generation program architecture |
-| PROGRAM-STATE.md | Fleet program registry, directives, and takeover handbook |
-| PROGRAM-STATE-base21.md | Earlier modernization roster snapshot |
-| HANDOFF-FABLE.md | Corrective handoff that began the reference rebuild |
-| RECOVERED-FLEET.md | Recovered-fleet integration report |
-| EVALUATION.md | Point-in-time whole-game audit |
 | LESSONS.md | Incidents that informed vehicle build law |
-| QA-ARCHIVE.md | Archived performance and quality evidence index |
 | POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md | Running-gear incident record |
-| FLEET-OVERHAUL-WORKLOG-2026-08-13-18.md | Conversation-scale fleet, tooling, runtime, and verification worklog |
 | DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md | Commit-backed synthesis of the Claude/Codex conversation record, engineering-practice evolution, and fresh 2026-08-18 visual evidence |
-| handoff/ | Previous task and program handoffs |
-| perf-*.json, cert-*.json, feel-*.json | Point-in-time measurements |
-| marketing-shots-report.md | Generated public image report |
 
-Historical counts, file paths, and architecture claims may differ from the
-current runtime by design.
+Historical counts and architecture claims may differ from the current runtime.
 
 ## Source map
 
@@ -133,6 +122,7 @@ current runtime by design.
 
     npm install
     npx vite
+    npm run typecheck
     npm test
     npm run test:net:browser
     npm run tank:native:check
@@ -151,6 +141,6 @@ When behavior changes:
 3. Update docs.html if the public technical reference changed, and GALLERY.md
    when the Tank Gallery contract changed.
 4. Update the source-level module comment when ownership or invariants changed.
-5. Preserve historical ledgers; add a new dated record instead of rewriting old
-   evidence as though it described the present.
+5. Record a durable architecture choice in `decisions/`; keep raw run output in
+   `.qa-*` or external artifacts rather than adding a new handoff document.
 6. Verify every relative link and referenced path.

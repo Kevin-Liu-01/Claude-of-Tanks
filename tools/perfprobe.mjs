@@ -185,7 +185,7 @@ if (sceneMode !== 'battle' && sceneMode !== 'garage') {
 // draw calls / triangles are ATTRIBUTED to a subsystem instead of guessed.
 const wantBreakdown = args.includes('--breakdown');
 
-// Tracked performance budget (docs/EVALUATION.md perf gate). Every line is
+// Tracked performance budget (docs/PERFORMANCE.md). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
 // probe output itself instead of by manual comparison against old JSONs.
 // - drawCalls is budgeted on the WORST frame, not the median: firing-burst
@@ -195,7 +195,7 @@ const wantBreakdown = args.includes('--breakdown');
 //   G-buffer prepass no longer exists) — the creep guard for content/prop
 //   integration. Hard gate 7 M = the 2026-07-28 content level (6.36 M) +10%;
 //   RATCHET TARGET 6 M once cascade shadow-proxy LODs land (see
-//   docs/handoff/performance_budget-r2.md §4).
+//   docs/PERFORMANCE.md).
 const BUDGET = {
   fpsMedianMin: fpsTarget,
   fpsP5Min: fpsTarget * 0.75,
@@ -231,7 +231,7 @@ const BUDGET = {
 // Ratchet targets (NOT gates yet): printed as warning deltas on every run so
 // content creep toward the frozen gates is visible per-commit, not at cert
 // time. Flipping a ratchet into BUDGET requires the owning module's fix to
-// have landed (see docs/handoff/) + a perf-owner sign-off note.
+// have landed (see docs/PERFORMANCE.md) + a perf-owner sign-off note.
 const RATCHET = {
   trianglesMedianMax: 6_000_000, // after cascade shadow-proxy LODs (handoff §4)
 };

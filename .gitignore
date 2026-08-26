@@ -19,3 +19,14 @@ __pycache__/
 .qa-device/
 .env.local
 public/models/tanks/**/*.glb
+
+# Local agent/task state and generated performance evidence
+.claude/
+docs/agents/
+docs/handoff/
+docs/cert-*.json
+docs/feel-*.json
+docs/perf-*.json
+!docs/perf-after.json
+docs/quietcert-*.log
+docs/qa-evidence-manifest.json

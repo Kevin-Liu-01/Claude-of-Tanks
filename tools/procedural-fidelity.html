@@ -792,7 +792,7 @@ const center = sharedBox.getCenter(new THREE.Vector3());
 const corners = [];
 forEachBoxCorner(sharedBox, (p) => corners.push(p));
 
-// HANDOFF-FABLE §6: nine fixed proof cameras. Quarter views catch compound
+// BUILD-STANDARD: nine fixed proof cameras. Quarter views catch compound
 // slopes and bustle shapes that pure orthographic axes hide; both sides are
 // scored because real vehicles are asymmetric (exhausts, sights, stowage).
 // Metrology-only axes: PURE orthographic views. The display ANGLES below
@@ -1262,7 +1262,7 @@ window.__FIDELITY_REPORT={
     proceduralTurretMax:procTurretNode ? visibleBox(procTurretNode).max.toArray().map(rounded) : null,
   },
 };
-// ---- HANDOFF-FABLE §6 board mode (&board=1, driver --board): shaded beauty
+// ---- BUILD-STANDARD board mode (&board=1, driver --board): shaded beauty
 // pair, articulation strip, procedural turntable. Rendered strictly AFTER
 // scoring so pose/visibility mutations can never contaminate the masks.
 if (params.get('board')) {

@@ -1,4 +1,4 @@
-# Shaded-parity critique — round 3, kv2 only (human gate, HANDOFF-FABLE §7)
+# Shaded-parity critique — round 3, KV-2 only (human BUILD-STANDARD review)
 
 **Reviewer:** independent shaded-parity critic, 2026-07-31.
 **Subject:** kv2 — the first tank to pass the full geometry gate

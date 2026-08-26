@@ -1,7 +1,7 @@
 // src/world/maps/urbanKit.js — town landmark builders for the urban map:
 // a church (tall square tower + spire over a steep-roofed nave) and a small
 // brick factory (long hall + round chimney stack). Registered into props.js
-// BUILDER_BY_NAME (see docs/handoff/content_breadth-r2.md) so map plans can
+// BUILDER_BY_NAME (see docs/SYSTEMS.md) so map plans can
 // place 'church' / 'factory' entries; both give the shelled-town skyline the
 // vertical landmarks it was missing.
 //

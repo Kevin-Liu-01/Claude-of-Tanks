@@ -583,7 +583,7 @@ export function createShotInfo(bus) {
 
   // --- spotting assist (r3) --------------------------------------------------
   // Driven purely by the sim's tank:spotted events. When the payload carries
-  // spotterId (additive spotting.js enrichment, see docs/handoff), a rising
+  // spotterId (additive spotting.js enrichment, see docs/SYSTEMS.md), a rising
   // edge with spotterId === player marks the target "lit by you"; ally
   // (non-player) damage on that target within ASSIST_WINDOW_S then counts as
   // spotting-assist damage — WoT's 'damage upon your spotting'. The window is
@@ -603,7 +603,7 @@ export function createShotInfo(bus) {
   // (symmetric-teams charter: no friendly targeting), so a parity union-find
   // anchored at the player resolves ally/enemy for the whole battle graph.
   // A `battle:ended` payload roster (additive state.js enrichment, see
-  // docs/handoff) overrides with authoritative teams when present.
+  // docs/SYSTEMS.md) overrides with authoritative teams when present.
   const combatants = new Map(); // id -> {name,specId,dmg,kills,dead}
   let endRoster = null;         // battle:ended payload roster (if provided)
   const tg = new Map();         // parity union-find: id -> {p:parent, r:0|1}
@@ -928,7 +928,7 @@ export function createShotInfo(bus) {
       // plate test (damage.js: pen *= 1 - era.keReduction) — and a bare
       // '461 / 898 mm' on an ERA'd T-80U glacis read as a broken ±25% RNG.
       // When the payload carries the pre-degradation roll (penRollFreshMm,
-      // additive damage.js stamp per docs/handoff/killcam_shotinfo-r6.md)
+      // additive damage.js stamp per docs/GUNNERY-CAMERA-SPEC.md)
       // the row prints the cut explicitly: '894 → 461 / 896 mm'. Payloads
       // without the field still get the qualifier whenever the event itself
       // proves a cut (eraPlate set, or a residual impossible from a ±25%
@@ -1187,7 +1187,7 @@ export function createShotInfo(bus) {
     // itself — hud.update only forwards setPlayer once a frame has rendered,
     // which silently dropped a hit resolved before the first post-start
     // frame. main.js now also sets it synchronously at battle start (see
-    // docs/handoff/killcam_shotinfo-r3.md); this latch covers sim-tick-driven
+    // docs/GUNNERY-CAMERA-SPEC.md); this latch covers sim-tick-driven
     // replays that never render at all.
     if (p.shooterId != null) playerId = p.shooterId;
     stats.fired += 1;
@@ -1365,7 +1365,7 @@ export function createShotInfo(bus) {
     }
     // report header data (r3): battle duration is the payload's end-of-battle
     // sim clock (setupBattle zeroes it), map id is an additive state.js
-    // enrichment (docs/handoff) — the header simply omits what is absent
+    // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
     endInfo = p ? { timeS: p.timeS, map: p.map || null, reason: p.reason || null } : null;
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();

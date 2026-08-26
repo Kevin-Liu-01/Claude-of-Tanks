@@ -10,7 +10,7 @@
 //     mechanism cannot reach: Frosthollow's frozen-lake basin gets shoreline
 //     reed stands, refrozen pressure-ridge slab chains, a frozen-in rowboat
 //     and a short timber jetty. Hooked from props.js right before the bucket
-//     merge (see docs/handoff/content_breadth-r2.md — one import + one call).
+//     merge (see docs/SYSTEMS.md — one import + one call).
 //
 // All geometry is procedural THREE.BufferGeometry pushed into the existing
 // material buckets (wood/straw/stone), so it merges into the per-material

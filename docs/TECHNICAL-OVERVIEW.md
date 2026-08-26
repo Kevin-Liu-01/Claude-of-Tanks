@@ -133,6 +133,11 @@ adapter change.
 `src/main.js` is the composition root. It should remain surgical: subsystem
 policy belongs in the owner module, not in the boot file.
 
+The runtime is undergoing an incremental strict-TypeScript migration. Stable
+boundaries are extracted into `.ts` owner modules with focused tests, while
+legacy `.js` integration remains operational. This avoids a risky big-bang
+rewrite and lets each migrated boundary ship with behavioral parity evidence.
+
 ## 5. Runtime lifecycle
 
 ```mermaid
@@ -409,6 +414,7 @@ Verification is selected by the surface that can fail.
 Minimum aggregate verification:
 
 ```bash
+npm run typecheck
 npm test
 npm run test:net:browser
 npm run tank:native:check
@@ -419,6 +425,7 @@ npm run build:private
 
 Run the narrowest relevant self-test before aggregate verification. Browser
 and visual changes also require rendered interaction evidence.
+The authoritative ordered suite inventory is `tools/selftest-suites.mjs`.
 
 ## 12. Change checklist
 

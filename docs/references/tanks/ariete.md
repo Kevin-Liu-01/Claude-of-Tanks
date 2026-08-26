@@ -843,4 +843,4 @@ presented as a machine PASS; JSON SHA-256 is
 Fresh independent final evidence contains 42 uniquely hashed frames: fourteen
 paired reference/procedural views and genuine yaw-0/yaw-90 sets. Only the
 immutable `acea2100` re-certification is valid; its final vector and
-disposition are recorded in `docs/PROGRAM-STATE.md` at landing.
+disposition are recorded in this source packet and the geometry ledger.

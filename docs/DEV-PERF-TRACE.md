@@ -56,11 +56,11 @@ their JSON automatically. Perf HUD numbers, browser console output, terminal
 buffers, and screenshots displayed only in a Codex task are likewise not Git
 artifacts unless the round archives them explicitly.
 
-Every release-grade run follows [QA-ARCHIVE.md](QA-ARCHIVE.md): store the raw
-trace/scorecard, required screenshots, and console failures; generate
-`docs/qa-evidence-manifest.json`; then give the bytes a tracked or external
-durable location. Do not describe a memory-only or `.qa-*`-only trace as
-“archived.”
+Release-grade runs keep raw traces, scorecards, screenshots, and console
+failures in the untracked `.qa-*` workspace or an external artifact store.
+Promote only durable conclusions and reproducible commands into
+[PERFORMANCE.md](PERFORMANCE.md). Do not commit machine-specific raw runs or
+describe memory-only evidence as archived.
 
 ## Repeatable desktop and lower-end probes
 

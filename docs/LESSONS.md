@@ -1,8 +1,8 @@
 # LESSONS — the stories behind the laws
 
 (2026-08-06. Onboarding prose: why the rulebook says what it says. Every incident below
-is codified somewhere in docs/BUILD-STANDARD.md, docs/GEOMETRY-GATE.md or
-docs/PROGRAM-STATE.md §9 — the law text is authoritative; this file is the memory.
+is codified in docs/BUILD-STANDARD.md or docs/GEOMETRY-GATE.md — those current
+contracts are authoritative; this file is the memory.
 New lessons land in BUILD-STANDARD the turn they arrive; add the story here when it
 teaches something a section number can't.)
 

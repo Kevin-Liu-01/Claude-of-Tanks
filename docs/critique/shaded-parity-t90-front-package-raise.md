@@ -36,7 +36,7 @@ shared by the gun, Shtora and frontal protection.
 - Unit tests and the production build pass. The aggregate release wrapper's
   geometry-mask stage remains intentionally inapplicable to this owner-directed
   bustled T-90: that retained quarantined mask describes the retired unbustled
-  silhouette and is recorded as non-authoritative in `PROGRAM-STATE.md`.
+  silhouette and is non-authoritative under the current source packet.
 
 ## Disposition
 

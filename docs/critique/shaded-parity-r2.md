@@ -1,4 +1,4 @@
-# Shaded-parity critique — round 2 (human gate, HANDOFF-FABLE §7)
+# Shaded-parity critique — round 2 (human BUILD-STANDARD review)
 
 **Reviewer:** harsh visual critic pass, 2026-07-30 (round 2; round 1 = shaded-parity-r1.md).
 **Evidence:** freshly regenerated boards for all 45 ids,

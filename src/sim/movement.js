@@ -281,7 +281,7 @@ const SWAY_TAU_S = -SIM_DT / Math.log(1 - 0.12);
 // hull rotation on top of visualPitch/visualRoll, so the support solve must
 // clear the terrain at THAT pose. Constants must stay in lockstep with
 // tankFactory.js (SUSP_W/SUSP_Z, accel squat, 4-corner fit, clamps) — see
-// docs/handoff/gameplay_feel-r1.md for the pairing note.
+// docs/research/movement-physics.md for the movement model.
 const SUSP_W = 7.2;
 const SUSP_Z = 0.65;
 const SUSP_ACCEL_CLAMP = 9;      // m/s²
@@ -300,7 +300,7 @@ const SUSP_K_GAIN = 0.76;
 // rough ground (r3 drive gate: minClear −11.7 cm before this fold). Constants
 // MUST stay in lockstep with tankFactory.js SUSP_VIS_P/SUSP_VIS_R/SWAY_VIS;
 // tankFactory's half-lift compensation hack is removed by the REQUIRED
-// pairing patch in docs/handoff/gameplay_feel-r1.md §1 — the solve is the
+// movement contract in docs/research/movement-physics.md — the solve is the
 // single authority. (The r2 handoff carried the same hunk but it was never
 // applied; the stacked half-lift floated the whole contact patch 12-17 cm
 // during full-speed turns — r1 critique, terrain-contact hard gate.)
@@ -313,7 +313,7 @@ const SWAY_VIS = 2.4;
 // far past the 1.5 cm SUPPORT_MARGIN. The oscillator is therefore integrated
 // HERE (state._flinch, once per sim tick) and folded into the support solve;
 // tankFactory reads state._flinch for rendering and routes its hit/recoil
-// impulses into it (see the pairing note in docs/handoff/gameplay_feel-r2.md).
+// impulses into it (see docs/research/movement-physics.md).
 // RENDER SIGN: rotation.x = -(visualPitch + suspP) + flinchP, so flinch pitch
 // SUBTRACTS from the movement-space pitch; flinch roll adds like the others.
 const FLINCH_W = 13;

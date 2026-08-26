@@ -1,4 +1,4 @@
-# Shaded-parity critique — round 4, kv2 only (human gate, HANDOFF-FABLE §7)
+# Shaded-parity critique — round 4, KV-2 only (human BUILD-STANDARD review)
 
 **Reviewer:** independent shaded-parity critic, 2026-07-31 (round 4).
 **Subject:** kv2 after the two r3-response commits: 412399e (fleet shade-collapse

@@ -2768,7 +2768,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
   // into the main pass AND every cascade for +0.9 M (far-LOD lobes) or ~±0
   // (low-poly blobs, with a visible dappled->solid shadow change). The real
   // shadow-triangle mass is props/buildings (-0.66 M measured with props
-  // castShadow off) — see docs/handoff/performance_budget-r5.md §3.
+  // castShadow off) — see docs/PERFORMANCE.md.
   for (const sp of speciesList) {
     nearMeshes[sp] = treeGeo[sp].map((g) => {
       const trunk = makeTreeMesh(g.trunk, barkMat, sp, false);

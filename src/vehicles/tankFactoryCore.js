@@ -5,7 +5,7 @@
 // callers (and the deterministic screenshot composers, which rely on
 // N calls == N/60 s of recoil) are unchanged; the live render loop should
 // pass its real frame dt so recoil/pop/ember timelines are refresh-rate
-// independent (see docs/handoff/effects_combat-r1.md).
+// independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -6870,7 +6870,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // r1 smoothing: keep turn lean readable without amplifying it into camera
   // shake. MUST stay in lockstep with movement.js
   // SWAY_VIS (support solve clears terrain at the amplified pose) — pairing
-  // patch in docs/handoff/effects_combat-r1.md.
+  // ownership contract in docs/SYSTEMS.md.
   const SUSP_VIS_P = 2.2, SUSP_VIS_R = 1.9, SWAY_VIS = 2.4;
   let wreckAge = -1;                 // >= 0 while destroyed (ember pulse timer)
   let mobileDetailObjects = [];

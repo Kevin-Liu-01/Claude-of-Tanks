@@ -1,8 +1,0 @@
-{
-  "label": "before",
-  "at": "2026-07-29T19:58:05.099Z",
-  "error": "Waiting failed: 90000ms exceeded",
-  "pageErrors": [
-    "TypeError: Cannot read properties of null (reading 'spec')"
-  ]
-}

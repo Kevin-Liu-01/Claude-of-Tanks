@@ -5,8 +5,8 @@ Exact variant: FV4030/4 Challenger 1 Mk.3, Royal Ordnance L11A5 120 mm rifled gu
 ## CURRENT FREEZE — 2026-08-11 NATIVE-PROCEDURAL GRADUATION
 
 Current playable freeze is **`cacb1337`**. The complete source-relative and
-gate-cap receipt is recorded under `docs/PROGRAM-STATE.md` §5.112. All older
-procedural freezes and the historical 90.2 mask-shaped build are retired.
+gate-cap receipt is preserved in this packet's certification history below.
+All older procedural freezes and the historical 90.2 mask-shaped build are retired.
 
 ## Corroborated real dimensions
 - Overall length gun-forward 11.55–11.56 m; hull ≈ 8.3 m; width 3.51–3.52 m over skirts;

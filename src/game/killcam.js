@@ -1073,7 +1073,7 @@ export function createKillCam(deps) {
       && window.__DEBUG.game.tankById ? window.__DEBUG.game.tankById.get(id) : null));
   // World access for the flight LOS solve (r6 major): terrain/prop raycast +
   // the vegetation concealment discs the spotting sim itself uses. Prefer an
-  // injected getter (docs/handoff/killcam_shotinfo-r6.md wires main.js to
+  // injected getter (docs/GUNNERY-CAMERA-SPEC.md wires main.js to
   // pass `getWorld: () => world`); fall back to the debug handle so the fix
   // is live before the integration dep lands. Resolved lazily per replay —
   // the world object is REPLACED on every map switch.
@@ -1765,7 +1765,7 @@ export function createKillCam(deps) {
     // ERA tiles and spaced screens already cut it in-event before the main
     // plate test — and a bare 461/898 on an ERA'd glacis read as a broken
     // ±25% RNG. With the additive payload field penRollFreshMm (damage.js
-    // stamps the pre-degradation roll, see docs/handoff) the row prints the
+    // stamps the pre-degradation roll, see docs/GUNNERY-CAMERA-SPEC.md) the row prints the
     // cut explicitly: 'fresh → residual / nominal · ERA'. Payloads without
     // the field still get the qualifier whenever the event itself proves a
     // cut happened (eraPlate set, or a residual mathematically impossible

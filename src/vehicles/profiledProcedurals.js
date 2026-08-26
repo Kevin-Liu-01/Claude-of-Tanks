@@ -1,6 +1,6 @@
 // Assembly point for the dedicated procedural silhouettes of sourced and
 // recovered variants. The actual profile DATA lives in per-family modules
-// under ./profiles/ (one owner per family — see docs/HANDOFF-FABLE.md §8),
+// under ./profiles/ (one owner per family — see docs/BUILD-STANDARD.md),
 // and the shared geometry machinery lives in ./profiles/kit.js. This module
 // only merges the family maps and exposes the same PROCEDURAL_PROFILES /
 // PROFILED_BUILDERS interface tankFactory.js has always consumed.

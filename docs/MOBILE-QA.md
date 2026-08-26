@@ -6,10 +6,9 @@ rounds until the budgets hold. First target: IN-BATTLE SUSTAINED
 iteration follows it verbatim — and the ledger of what each round found,
 changed, and measured.
 
-Archive terminology and the cross-campaign screenshot/log index live in
-[QA-ARCHIVE.md](QA-ARCHIVE.md). A ledgered result is not automatically a
-durable raw-artifact archive; the archive retention contract defines the
-difference.
+Raw screenshots, traces, and device logs belong in the untracked `.qa-*`
+workspace or an external artifact store. This document retains only the
+repeatable procedure, budgets, and durable conclusions.
 
 ## Why the iOS simulator is NOT the perf rig
 

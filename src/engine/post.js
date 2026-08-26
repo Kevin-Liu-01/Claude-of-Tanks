@@ -1884,7 +1884,7 @@ export function createPost(renderer, scene, camera) {
   const _nativeSize = new THREE.Vector2();
   // --- Dynamic resolution governor (performance_budget r5, REBUILT
   // engine-aa r1) ------------------------------------------------------------
-  // EVALUATION.md F10 / critic r5 minor: the preset ladder is static, so
+  // PERFORMANCE.md adaptive-quality contract: the preset ladder is static, so
   // hardware weaker than the reference machine rides p5 dips with no
   // recovery. Standard AAA answer: scale the internal render resolution to
   // hold frame time. The governor tracks a ~1 s EMA of the render delta and

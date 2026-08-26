@@ -1,4 +1,4 @@
-# Shaded-parity critique — round 1 (human gate, HANDOFF-FABLE §7)
+# Shaded-parity critique — round 1 (human BUILD-STANDARD review)
 
 **Reviewer:** harsh visual critic pass, 2026-07-30.
 **Evidence:** freshly regenerated boards, `node tools/procedural-fidelity.mjs --ids=... --board`

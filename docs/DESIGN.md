@@ -175,7 +175,8 @@ State lives in three places, by design re-entrant after any transcript loss:
 - **packets** docs/references/tanks/<id>.md — the tank's single source of truth (rounds,
   caps, freezes, banked orders);
 - **ledger** docs/geometry-gate/ledger.json — tool-written scores of record;
-- **registry** docs/PROGRAM-STATE.md — fleet state, graduate hashes, lanes, queues.
+- **registry** docs/VEHICLE-ROSTER.md plus docs/FLEET-FREEZE-CURRENT.json —
+  generated fleet state and deterministic geometry fingerprints.
 
 Concurrency rules that make 6-8 parallel agents safe: single-owner profile files;
 graduates hash-frozen (any sibling edit must prove byte-identity); FIFO for browser

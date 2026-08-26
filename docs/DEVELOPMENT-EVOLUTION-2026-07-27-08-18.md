@@ -165,7 +165,7 @@ but public builds strip them and gameplay never loads them. Source packets,
 fixed multi-angle cameras, per-family builders, exact variants, and asset
 fingerprints made that boundary executable instead of aspirational.
 
-The handoff in `HANDOFF-FABLE.md` is deliberately candid: an earlier “91/91”
+The corrective reference audit was deliberately candid: an earlier “91/91”
 structural result did not prove visual fidelity. That admission changed the
 definition of done from “the check is green” to “the check, fresh evidence, and
 the visible candidate agree.”
@@ -298,7 +298,7 @@ calls, console errors, and retained-heap trend.
 
 | Conversation pressure | Product result | Durable practice or invariant | Evidence |
 | --- | --- | --- | --- |
-| “Make it look like the real tank” | Family-specific procedural geometry and identity details | Source packet + exact variant + fixed views + independent critic | `HANDOFF-FABLE.md`, `BUILD-STANDARD.md` |
+| “Make it look like the real tank” | Family-specific procedural geometry and identity details | Source packet + exact variant + fixed views + independent critic | `BUILD-STANDARD.md`, `GEOMETRY-GATE.md` |
 | “Do not damage the rest of the tank” | Reverted wheel/track regression | Component ownership, per-family edits, candidate freeze, stop-the-line | running-gear postmortem, `4b3b8f2f`, `c5d4ef0d` |
 | “Show exactly what to change” | Gallery surface markup | Triangle-level portable review packets | `076a1863`, `a592b73d`, `6cfe4abc` |
 | “Add eight maps; upgrade the old ones too” | Sixteen maps with shared world families | New abstractions require deliberate legacy migration | `ddae0965`, `61cd1d36` |
@@ -368,16 +368,11 @@ The checked-in WebP files are encoded at quality 88 from the new PNG captures:
 
 ## Related evidence
 
-- [`FLEET-OVERHAUL-WORKLOG-2026-08-13-18.md`](FLEET-OVERHAUL-WORKLOG-2026-08-13-18.md) is the detailed fleet,
-  tooling, lane, and verification record.
 - [`IMPROVEMENT-PROGRAM-2026-08-17.md`](IMPROVEMENT-PROGRAM-2026-08-17.md) is the detailed sixteen-map,
   destruction, multiplayer, UI, and rendering record.
 - [`POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md`](POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md) is the incident record
   that established the strongest current visual-change safeguards.
-- [`HANDOFF-FABLE.md`](HANDOFF-FABLE.md),
-  [`RECOVERED-FLEET.md`](RECOVERED-FLEET.md), and
-  [`LESSONS.md`](LESSONS.md) preserve earlier
-  corrections and recovery context.
+- [`LESSONS.md`](LESSONS.md) preserves earlier corrections and recovery context.
 - [`SCREENSHOT_CONTRACT.md`](SCREENSHOT_CONTRACT.md),
   [`BUILD-STANDARD.md`](BUILD-STANDARD.md),
   [`GEOMETRY-GATE.md`](GEOMETRY-GATE.md),

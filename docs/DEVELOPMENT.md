@@ -55,12 +55,19 @@ Run the complete Node self-test suite:
 
     npm test
 
+Run strict TypeScript validation for migrated modules:
+
+    npm run typecheck
+
 This covers performance instrumentation, renderer recovery helpers, audio,
 protocol validation, browser bridge behavior, reliable presentation events,
 room invites and reconnect, local prediction, adverse delivery, ranked
 clients/services, signaling, world collision, match pacing, movement, combat,
 spotting, bots, game state, equipment, consumables, mobile aim, vehicle
 contracts, world destruction, interface contracts, and track geometry.
+The ordered inventory lives in `tools/selftest-suites.mjs`; package scripts
+invoke the small `tools/run-selftests.mjs` runner instead of embedding hundreds
+of shell commands.
 
 Build the public artifact:
 

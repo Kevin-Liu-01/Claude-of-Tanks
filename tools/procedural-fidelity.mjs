@@ -105,7 +105,7 @@ try {
     }
   }
   if (BOARD) {
-    // HANDOFF-FABLE §6 evidence boards: shaded pair + articulation strip +
+    // BUILD-STANDARD evidence boards: shaded pair + articulation strip +
     // 24-frame turntable, captured at native canvas resolution (wide viewport
     // so the page never downscales the strips).
     const boardDir = path.join(ROOT,'shots','procedural-fidelity','boards');

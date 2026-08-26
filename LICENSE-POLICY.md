@@ -29,7 +29,6 @@ docs/references/**
 docs/research/**
 docs/images/**
 docs/BUILD-STANDARD.md
-docs/PROGRAM-STATE.md
 docs/TANK-ASSET-PIPELINE.md
 docs/VEHICLE-ROSTER.md
 docs/SCREENSHOT_CONTRACT.md

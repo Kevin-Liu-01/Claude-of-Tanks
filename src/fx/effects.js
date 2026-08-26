@@ -3781,7 +3781,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      * Crushable-prop impact (telephone pole / fence hit by a tank): dust
      * burst at the base, wood splinters whipped along the travel direction,
      * and a few bark chips. Called by the collision integration (see
-     * docs/handoff/effects_combat-r1.md — main.js detects the overlap and
+     * docs/SYSTEMS.md — main.js detects the overlap and
      * drives the prop's hinge-topple; this is the particle beat).
      * @param {THREE.Vector3} pos prop base (world)
      * @param {THREE.Vector3} dir tank travel direction (unit-ish, XZ)
