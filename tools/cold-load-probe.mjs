@@ -52,6 +52,14 @@ async function metrics(page, startedAt) {
       })),
   }));
   app.scriptTransferBytes = app.scripts.reduce((sum, row) => sum + row.transferBytes, 0);
+  const transferredByPath = new Map();
+  for (const script of app.scripts) {
+    if (script.transferBytes <= 0) continue;
+    transferredByPath.set(script.path, (transferredByPath.get(script.path) || 0) + 1);
+  }
+  app.duplicateScriptTransfers = [...transferredByPath]
+    .filter(([, count]) => count > 1)
+    .map(([path, count]) => ({ path, count }));
   app.featuredImageTransferBytes = app.featuredImages
     .reduce((sum, row) => sum + row.transferBytes, 0);
   return { wallMs: Date.now() - startedAt, ...app };
@@ -88,6 +96,10 @@ async function constrainedColdLoad({ name, noHero }) {
   await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
   const result = { name, ...(await metrics(page, startedAt)), errors };
+  if (result.duplicateScriptTransfers.length) {
+    throw new Error(`${name} transferred boot scripts more than once: ` +
+      JSON.stringify(result.duplicateScriptTransfers));
+  }
   await context.close();
   return result;
 }

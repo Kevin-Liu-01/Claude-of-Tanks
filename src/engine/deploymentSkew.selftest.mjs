@@ -1,44 +1,20 @@
 import assert from 'node:assert/strict';
+import config from '../../vite.config.js';
+import { deploymentPinCookie } from '../../middleware.js';
 
-const previousDeploymentId = process.env.VERCEL_DEPLOYMENT_ID;
-process.env.VERCEL_DEPLOYMENT_ID = 'dpl_reentry_regression';
-const {
-  default: config,
-  deploymentPinnedAssetUrl,
-} = await import(`../../vite.config.js?deployment-skew=${Date.now()}`);
-
+assert.equal(config.experimental, undefined,
+  'build URLs must stay canonical instead of query-splitting preload and import identities');
 assert.equal(
-  deploymentPinnedAssetUrl(
-    'assets/killcam-old.js',
-    { type: 'asset', hostType: 'js' },
-    'dpl_old_build',
-  ),
-  '/assets/killcam-old.js?dpl=dpl_old_build',
-  'a lazy chunk must request the deployment that emitted its importing document',
+  deploymentPinCookie('', 'dpl_reentry_regression'),
+  '__vdpl=dpl_reentry_regression; Path=/; HttpOnly; Secure; SameSite=Strict',
+  'the playable document must pin its session before module requests begin',
 );
 assert.equal(
-  deploymentPinnedAssetUrl('brand/logo.svg', { type: 'public' }, 'dpl_old_build'),
-  undefined,
-  'stable public-file URLs must remain same-origin root URLs',
+  deploymentPinCookie('__vdpl=dpl_existing; other=value', 'dpl_new'),
+  null,
+  'an active long-lived session must retain the deployment that received it',
 );
-assert.equal(
-  deploymentPinnedAssetUrl('assets/main.js', { type: 'asset' }, ''),
-  undefined,
-  'local and non-Vercel builds must retain Vite default URL handling',
-);
+assert.equal(deploymentPinCookie('', ''), null,
+  'local and non-Vercel builds must not emit a deployment cookie');
 
-const renderBuiltUrl = config.experimental?.renderBuiltUrl;
-assert.equal(typeof renderBuiltUrl, 'function',
-  'Vercel builds must install deployment-aware URL rendering');
-for (const hostType of ['html', 'js', 'css']) {
-  assert.equal(
-    renderBuiltUrl('assets/versioned.js', { type: 'asset', hostType }),
-    '/assets/versioned.js?dpl=dpl_reentry_regression',
-    `${hostType} asset references must carry one deployment id`,
-  );
-}
-
-if (previousDeploymentId == null) delete process.env.VERCEL_DEPLOYMENT_ID;
-else process.env.VERCEL_DEPLOYMENT_ID = previousDeploymentId;
-
-console.log('deploymentSkew.selftest: generated assets stay pinned to one Vercel deployment');
+console.log('deploymentSkew.selftest: cookie pinning preserves canonical module URLs');

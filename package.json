@@ -93,12 +93,14 @@
   "dependencies": {
     "@upstash/redis": "^1.38.2",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/functions": "^3.9.5",
     "flag-icons": "^7.5.0",
     "ioredis": "^6.0.0",
     "three": "^0.185.1",
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@types/node": "^24.10.12",
     "puppeteer": "^25.4.0",
     "typescript": "7.0.2",
     "vite": "^8.1.5"
