@@ -85,6 +85,7 @@ import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts
 import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
+import { createBattleVisualStreamer } from './game/battleVisualStreamer.ts';
 import {
   clearBattleAfterExit,
   resetBattleTankForGarage,
@@ -515,137 +516,6 @@ let battleStaged = false;
 let camoSweepP = Promise.resolve();
 let battleWarmPending = false;
 let battleWarmGeneration = 0;
-
-async function streamBattleVisuals(predicate, yieldForBudget, onProgress = null,
-  initiallyHidden = false) {
-  const pending = game.tanks.filter((ent) =>
-    !ent.visual && (!predicate || predicate(ent)));
-  const total = pending.length;
-  // Resolve every profile chunk needed by this cohort concurrently before
-  // procedural construction begins. The old per-vehicle await serialized a
-  // network/parse boundary ahead of each country's first tank even though
-  // the roster is already known and all chunks are independent.
-  await ensureTankBuilders(pending.map((ent) => ent.specId));
-  let built = 0;
-  for (;;) {
-    const next = nextStagedBake(game, predicate);
-    if (!next) return built;
-    const visualTiming = {
-      specId: next.ent.specId,
-      quality: next.quality,
-      startedAt: Math.round(performance.now()),
-    };
-    const visualTimings = typeof window !== 'undefined'
-      ? (window.__VISUAL_LOAD_TIMINGS ||= []) : null;
-    visualTimings?.push(visualTiming);
-    let visualMark = performance.now();
-    try {
-      await prebakeSharedTextures(getSpec(next.ent.specId),
-        engineCtx.anisotropy ?? 4, next.quality, () => yieldForBudget());
-    } catch (_) { /* visual construction remains the fallback */ }
-    visualTiming.prebakeMs = Math.round(performance.now() - visualMark);
-    visualMark = performance.now();
-    ensureStagedVisuals(game, 1, predicate);
-    visualTiming.buildMs = Math.round(performance.now() - visualMark);
-    visualMark = performance.now();
-    await stageBattleVisualReveal(next.ent, yieldForBudget, initiallyHidden);
-    visualTiming.uploadMs = Math.round(performance.now() - visualMark);
-    visualTiming.compileMs = next.ent.visual?.root?.userData.loadCompileMs || 0;
-    visualTiming.totalMs = Math.round(performance.now() - visualTiming.startedAt);
-    built++;
-    if (onProgress) onProgress(built / Math.max(1, total));
-    await yieldForBudget();
-  }
-}
-
-/** Upload every texture currently referenced by one scene subtree without
- * drawing or compiling it. Texture initialization is independent of the
- * garage/battle light set, so world maps can be staged as soon as their graph
- * exists while the correct battle shaders remain deferred until startBattle
- * has disabled the garage lights. */
-async function stageRootTextureUploads(root, yieldForBudget) {
-  if (!root) return { textures: 0, totalMs: 0 };
-  const startedAt = performance.now();
-  const textures = new Set();
-  root.traverse((object) => {
-    const materials = Array.isArray(object.material)
-      ? object.material : (object.material ? [object.material] : []);
-    for (const material of materials) {
-      for (const key of Object.keys(material)) {
-        const value = material[key];
-        if (value?.isTexture) textures.add(value);
-      }
-    }
-  });
-  for (const texture of textures) {
-    try { renderer.initTexture(texture); } catch (_) { /* first render fallback */ }
-    if (yieldForBudget) await yieldForBudget();
-  }
-  return {
-    textures: textures.size,
-    totalMs: Math.round(performance.now() - startedAt),
-  };
-}
-
-/** Compile against the same linear HDR target used by the gameplay scene
- * pass. Compiling with no target asks Three for default-framebuffer sRGB
- * variants; EffectComposer never uses those for world/tank draws, so the old
- * path built a redundant shader fleet and still linked the real variants on
- * first render. */
-/** Separate visual construction, texture upload, shader submission, and
- * reveal into bounded tasks. compileAsync was tested here and made the
- * transition materially worse on ANGLE because its completion polling became
- * another large atomic task; synchronous compile only submits work, then the
- * remaining roster gives the driver time to link it. */
-async function stageBattleVisualReveal(ent, yieldForBudget, initiallyHidden = false) {
-  const visual = ent?.visual;
-  const root = visual?.root;
-  if (!root || root.userData.loadStaged) return;
-  const parent = root.parent;
-  if (parent) parent.remove(root);
-  await yieldForBudget(true);
-  // A visual can reference dozens of tiny maps. The shared helper forces a
-  // paint only when their accumulated upload work crosses the countdown's
-  // frame budget; one unconditional frame per texture stretched an
-  // eight-vehicle cold deployment beyond the five-second rollout hold.
-  await stageRootTextureUploads(root, yieldForBudget);
-  root.userData.loadStaged = true;
-  (parent || scene).add(root);
-  if (ent.state && visual.syncFromState) visual.syncFromState(ent.state);
-  visual.setVisible?.(true);
-  const compileAt = performance.now();
-  // The burn mask is mathematically inactive until destruction, but it is a
-  // shader-key change. Install it before this visual's first compile so live
-  // and wreck-capable rendering use one program family; installing it later
-  // invalidated every roster material and created 100+ countdown programs.
-  visual.prewarmBurn?.();
-  // Build the scoped armor flashlight from the same exact collision shell
-  // while this actor is already inside its bounded load slice. Enemy actors
-  // reach this path during the frozen visible countdown, so the optimization
-  // that removed them from the opaque transition remains intact.
-  armorAimOverlay.prime(ent);
-  const restoreArmorWarmVisibility = armorAimOverlay.warm();
-  try { forwardProgramWarm.compile(root); } catch (_) { /* first render fallback */ }
-  finally { restoreArmorWarmVisibility(); }
-  root.userData.loadCompileMs = Math.round(performance.now() - compileAt);
-  // Opposing actors prepared during the visible deployment countdown are
-  // not legally spotted yet. Submit their exact programs while visible to
-  // compile(), then hide them before the next paint so neither geometry nor
-  // shadows leak their spawn. updateDustAndSync restores the complete root
-  // on the first legitimate spotting frame.
-  if (initiallyHidden) {
-    visual.setVisible?.(false);
-    // Object3D.updateMatrixWorld walks invisible descendants. Keeping an
-    // unspotted opponent merely `visible=false` therefore paid the complete
-    // procedural hierarchy cost every frame even though the renderer and
-    // gameplay were forbidden from exposing a pixel. Detach after the exact
-    // compile; updateDustAndSync reattaches and synchronizes the root before
-    // its first legally spotted render.
-    root.removeFromParent();
-    root.userData.battleVisibilityDetached = true;
-  }
-  await yieldForBudget(true);
-}
 
 // --- fx ----------------------------------------------------------------------
 // The complete particles/effects graph is battle-only. Parsing and building it
@@ -2307,6 +2177,22 @@ const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
 const armorAimOverlay = createArmorAimOverlayAccess();
+const battleVisuals = createBattleVisualStreamer({
+  game,
+  scene,
+  renderer,
+  anisotropy: engineCtx.anisotropy ?? 4,
+  ensureTankBuilders,
+  nextStagedBake,
+  ensureStagedVisuals,
+  getSpec,
+  prebakeSharedTextures,
+  armorAimOverlay,
+  forwardProgramWarm,
+  recordTiming(timing) {
+    if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
+  },
+});
 // Reused every HUD frame: scoped armor inspection follows every legally
 // visible opponent, not only the vehicle directly under the gun marker.
 const armorScopeTargets = [];
@@ -2715,7 +2601,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   const fxTextureP = ensureFxRuntime().then(async (live) => {
     await live.preloadTextures?.();
     live.warmTextures?.();
-    const receipt = await stageRootTextureUploads(live.group, loadYield);
+    const receipt = await battleVisuals.stageRootTextureUploads(live.group, loadYield);
     live.group.userData.battleTexturesStaged = true;
     blt.fxTextureUpload = receipt;
     return receipt;
@@ -2736,7 +2622,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   ]);
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   battleLoad.progress(0.55, 'Uploading battlefield textures');
-  blt.worldTextureUpload = await stageRootTextureUploads(world.group, loadYield);
+  blt.worldTextureUpload = await battleVisuals.stageRootTextureUploads(world.group, loadYield);
   bltStage('world');
   // Do not compile the world yet. Battle mode deliberately removes the two
   // garage spotlights below in startBattle(); compiling here would submit a
@@ -2790,7 +2676,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // are valid, but it does not have to upload every map in the same frame.
   // Detach and stage that root just like the streamed allies; otherwise the
   // first hidden battle render pays the whole upload as one 500-700 ms freeze.
-  await stageBattleVisualReveal(game.player, loadYield);
+  await battleVisuals.stageBattleVisualReveal(game.player, loadYield);
   playerVisualTiming.uploadMs = Math.round(performance.now() - playerUploadStartedAt);
   playerVisualTiming.totalMs = Math.round(performance.now() - playerVisualStartedAt);
   bltStage('roster');
@@ -2804,7 +2690,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // formation visuals stream first during the frozen countdown, then enemies.
   const openingVisual = (ent) => ent.isPlayer;
   if (game.tanks.some((ent) => !ent.visual && openingVisual(ent))) await nextFrame();
-  await streamBattleVisuals(openingVisual, loadYield, (fraction) => {
+  await battleVisuals.stream(openingVisual, loadYield, (fraction) => {
     battleLoad.progress(0.58 + fraction * 0.30, 'Painting vehicles');
   });
   bltStage('bake');
@@ -2839,7 +2725,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // 8 ms duty cycle, which added several seconds of pure rAF waiting once
       // this work moved out of the visible countdown.
       const coveredYield = createOpaqueLoadingYielder(18, 80);
-      await streamBattleVisuals((ent) => ent.team === 'player', coveredYield, (fraction) => {
+      await battleVisuals.stream((ent) => ent.team === 'player', coveredYield, (fraction) => {
         battleLoad.progress(0.91 + fraction * 0.02, 'Preparing allied vehicles');
       });
       if (warmGeneration !== battleWarmGeneration) return;
@@ -2851,7 +2737,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // absorbs that completion before the loader can reveal a pixel.
       battleLoad.progress(0.94, 'Preparing opposing vehicles');
       const enemyProgramBaseline = snapshotRendererPrograms(renderer);
-      await streamBattleVisuals(
+      await battleVisuals.stream(
         (ent) => ent.team === 'enemy', coveredYield, (fraction) => {
           battleLoad.progress(0.94 + fraction * 0.02, 'Preparing opposing vehicles');
         }, true,
@@ -5322,7 +5208,7 @@ function scheduleDeferredCombatWarm(generation) {
     // a real spotting edge, so the optimization changes no rendered frame.
     const enemyVisualsStartedAt = performance.now();
     const enemyProgramBaseline = snapshotRendererPrograms(renderer);
-    await streamBattleVisuals(
+    await battleVisuals.stream(
       (ent) => ent.team === 'enemy', guardedYield, null, true,
     );
     trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(

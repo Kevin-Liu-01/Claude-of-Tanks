@@ -58,6 +58,8 @@ strict TypeScript owners:
 - `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
   synchronous capture drains, round resets, and countdown cancellation;
 - `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
+- `src/game/battleVisualStreamer.ts` owns bounded vehicle texture upload,
+  production-target shader submission, and spotting-safe scene attachment;
 - `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
 - `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;

@@ -118,6 +118,9 @@ const battleWarmSource = await readFile(
 const deploymentShadowWarmSource = await readFile(
   new URL('../engine/deploymentShadowWarm.ts', import.meta.url), 'utf8',
 );
+const battleVisualStreamerSource = await readFile(
+  new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
+);
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
@@ -192,18 +195,15 @@ assert.ok(worldReadyAt >= 0 && rosterAssemblyAt > worldReadyAt,
 assert.doesNotMatch(preRosterBattleLoad, /renderer\.compile\(world\.group, camera, scene\)/,
   'the world must not compile against the garage spotlight program family before battle mode');
 assert.match(preRosterBattleLoad,
-  /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,180}stageRootTextureUploads\(world\.group, loadYield\)/,
+  /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(world\.group, loadYield\)/,
   'battle entry must stage current world textures before the first full deployment frame');
 assert.match(preRosterBattleLoad,
   /const plannedRoster = planBattleParticipantIds[\s\S]{0,1500}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,2400}battleEntryAcquisition\.acquireSolo\(\[[\s\S]{0,700}rosterTextureP/,
   'exact cold roster camouflage and texture preparation must overlap battlefield construction');
 assert.match(preRosterBattleLoad,
-  /const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,220}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1000}fxTextureP/,
+  /const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,260}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1000}fxTextureP/,
   'exact combat atlases must install and upload alongside the independent world build');
-const stageRevealBody = mainSource.slice(
-  mainSource.indexOf('async function stageBattleVisualReveal('),
-  mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),
-);
+const stageRevealBody = battleVisualStreamerSource;
 assert.match(stageRevealBody, /forwardProgramWarm\.compile\(root\)[\s\S]{0,1400}await yieldForBudget\(true\)/,
   'each streamed vehicle must submit its production-target shaders before yielding');
 assert.match(stageRevealBody,
@@ -219,7 +219,7 @@ const deferredWarmBody = mainSource.slice(
   mainSource.indexOf('function scheduleDeferredCombatWarm('),
   mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),
 );
-const deferredEnemyAt = deferredWarmBody.indexOf('streamBattleVisuals(');
+const deferredEnemyAt = deferredWarmBody.indexOf('battleVisuals.stream(');
 const deferredOpeningAt = deferredWarmBody.indexOf(
   'combatWarm.warmOpeningChunked(6, guardedYield)',
 );

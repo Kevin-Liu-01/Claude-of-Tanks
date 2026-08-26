@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 
 const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const battleVisualStreamer = await readFile(
+  new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
+);
 const post = await readFile(new URL('../engine/post.js', import.meta.url), 'utf8');
 const state = await readFile(new URL('../game/state.js', import.meta.url), 'utf8');
 const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
@@ -83,16 +86,16 @@ const deferredWarm = main.slice(
   main.indexOf('function scheduleDeferredCombatWarm(generation)'),
   main.indexOf('function* warmCombatOpeningPipelineSteps()'),
 );
-const enemyAt = deferredWarm.indexOf('streamBattleVisuals(');
+const enemyAt = deferredWarm.indexOf('battleVisuals.stream(');
 const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');
 const rareAt = deferredWarm.indexOf('combatWarm.warmRareChunked(6, guardedYield)');
 if (!(enemyAt >= 0 && openingAt > enemyAt && rareAt > openingAt)) {
   throw new Error('hidden enemy receipts and fallback opening/rare work must retain countdown order');
 }
-if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,160}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
+if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
   throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
 }
-if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S]{0,900}root\.removeFromParent\(\)[\s\S]{0,180}battleVisibilityDetached = true/.test(main)
+if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S]{0,900}root\.removeFromParent\(\)[\s\S]{0,180}battleVisibilityDetached = true/.test(battleVisualStreamer)
   || !/actorVisible = ent\._spotFade > 0\.02;[\s\S]{0,160}setBattleVisualResident\(visual, actorVisible\)[\s\S]{0,100}visual\.setVisible\(actorVisible\)/.test(main)) {
   throw new Error('countdown-built enemy visuals must stay detached until a legal spotting edge');
 }
