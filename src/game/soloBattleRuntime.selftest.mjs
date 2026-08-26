@@ -7,6 +7,10 @@ assert.doesNotMatch(main, /from ['"]\.\/game\/state\.js['"]/,
   'garage boot must not statically import solo battle authority');
 assert.match(main, /from ['"]\.\/game\/soloBattleAccess\.ts['"]/,
   'the composition root uses the typed lazy-access owner');
+assert.doesNotMatch(main, /\bsoloBattleRuntime\b\s*\?/,
+  'world preparation must query the lazy owner instead of a removed runtime variable');
+assert.match(main, /isReady:\s*isSoloBattleRuntimeReady/,
+  'non-battle world activation uses the typed readiness contract');
 assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
   'solo authority must be demand-loaded behind its typed boundary');
 assert.match(main,

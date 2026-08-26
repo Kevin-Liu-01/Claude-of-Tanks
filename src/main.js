@@ -79,9 +79,7 @@ import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.js';
-// garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
-// built lazily from post-ready idle slices, never on the boot-critical path.
-import { createGarageDressing } from './game/garageDressing.js';
+import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
@@ -143,6 +141,7 @@ const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search
 
 const {
   preload: preloadSoloBattleRuntime,
+  isReady: isSoloBattleRuntimeReady,
   setupBattle,
   simStep,
   createCollider,
@@ -872,17 +871,11 @@ GARAGE_POS.y = hfProxy.getHeightAt(GARAGE_POS.x, GARAGE_POS.z);
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
   const gs = createGarageStage(engineCtx, GARAGE_POS);
   scene.add(gs.group);
-  const gd = createGarageDressing(engineCtx, GARAGE_POS);
+  const gd = createGarageDressingAccess(engineCtx, GARAGE_POS);
   scene.add(gd.group);
-  // Only the workshop shell and ordinary clutter are part of first paint.
-  // The remaining chunks each construct another complete procedural tank;
-  // after the track/suspension fidelity passes those cold builds grew into
-  // multi-second main-thread tasks and made an enclosed corner display more
-  // expensive than the actual selected vehicle. Keep those optional repair
-  // exhibits lazy (deterministic captures call ensureBuilt explicitly).
-  if (!STUDIO_BOOT_INTENT) {
-    gd.pump();
-  }
+  // The access owner contributes only the final fill light at boot, preserving
+  // the compiled light signature. Its authored workshop module and geometry
+  // stream after readiness in the same quiet slices used by later repair bays.
   return { stage: gs, dressing: gd };
 });
 // FEEL r12: corner perf overlay — fps / p95 frame time / worst stall /
@@ -1205,6 +1198,28 @@ function scheduleGarageDressingBuild() {
       return;
     }
     try {
+      await garageDressing.preload();
+      // Importing and constructing the optional set-piece owner can overlap
+      // fresh input. Do not follow it with synchronous geometry work unless
+      // this is still a genuine garage lull.
+      if (game.phase !== 'garage' || transition.active) return;
+      if (performance.now() - garageActivityAt < 1600) {
+        setTimeout(scheduleGarageDressingBuild, 600);
+        return;
+      }
+
+      // The first chunk is ordinary workshop architecture and clutter. Build
+      // it before fetching the four procedural exhibit families, matching the
+      // old visual order without putting either module on first paint.
+      const hasBuiltCore = (garageDressing.group.userData.buildTimings?.length || 0) > 0;
+      if (!hasBuiltCore) {
+        await garageDressing.pump();
+        if (!garageDressing.isBuilt() && game.phase === 'garage') {
+          setTimeout(scheduleGarageDressingBuild, 350);
+        }
+        return;
+      }
+
       if (!garageDressingSourcesPromise) {
         const request = ensureTankBuilders(
           garageDressing.group.userData.modernComponentSources,
@@ -1222,7 +1237,7 @@ function scheduleGarageDressingBuild() {
         setTimeout(scheduleGarageDressingBuild, 600);
         return;
       }
-      garageDressing.pump();
+      await garageDressing.pump();
     } catch (error) {
       console.warn('[garageDressing] quiet build failed —', error.message);
     }
@@ -1624,7 +1639,7 @@ function prepareWorldServices(next = world) {
   if (!next || world !== next) return;
   // Background map intent is garage-safe. The solo collider is created when
   // the battle runtime arrives; private/ranked presentation does not use it.
-  collider = soloBattleRuntime ? createCollider(game, next) : null;
+  collider = isSoloBattleRuntimeReady() ? createCollider(game, next) : null;
   if (worldServicesMapId === next.mapId) {
     placeGarage();
     queueBakedWorldMinimap(next);
@@ -6034,7 +6049,7 @@ const SHOT_VIEWS = {
     await setPedestalTank('m1a2');
     garage.show('m1a2');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
-    garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
+    await garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
     showroom.reset();
   },
   battlefield_desert() { mapEstablishingShot(); },
@@ -8289,7 +8304,7 @@ window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 // quiet set-piece stream if the user later leaves Studio for the garage.
 if (STUDIO_BOOT_INTENT) {
   requestQuietIdle(async () => {
-    garageDressing.pump();
+    await garageDressing.pump();
     if (!pedestalVisual) await setPedestalTank(selectedSpecId, true);
   });
 }

@@ -51,11 +51,12 @@ const MODERN_COMPONENT_SOURCES = Object.freeze([
  * Build the (initially empty) workshop dressing rig.
  * @param {{anisotropy:number,setupShadowMaterial:Function}} engineCtx
  * @param {THREE.Vector3} pos garage stage center (ground level)
+ * @param {{group?:THREE.Group,bayFill?:THREE.PointLight}} [existing]
  * @returns {{group:THREE.Group, pump:()=>boolean, ensureBuilt:()=>void,
  *            isBuilt:()=>boolean, dispose:()=>void}}
  */
-export function createGarageDressing(engineCtx, pos) {
-  const group = new THREE.Group();
+export function createGarageDressing(engineCtx, pos, existing = {}) {
+  const group = existing.group || new THREE.Group();
   group.name = 'garage_dressing';
   group.position.copy(pos);
   group.userData.modernComponentSources = MODERN_COMPONENT_SOURCES;
@@ -63,10 +64,12 @@ export function createGarageDressing(engineCtx, pos) {
   // Establish the dressing's final light set before the boot warm renders the
   // hero. Adding this light from a later build chunk changes Three's lighting
   // program keys and recompiles the already-visible tank mid-garage.
-  const bayFill = new THREE.PointLight(0xb9c6d6, 10, 30, 1.8);
-  bayFill.position.set(12.5, 6.2, 11.5);
-  bayFill.castShadow = false;
-  group.add(bayFill);
+  const bayFill = existing.bayFill || new THREE.PointLight(0xb9c6d6, 10, 30, 1.8);
+  if (!existing.bayFill) {
+    bayFill.position.set(12.5, 6.2, 11.5);
+    bayFill.castShadow = false;
+    group.add(bayFill);
+  }
 
   const rng = mulberry32(48151);
   const aniso = (engineCtx && engineCtx.anisotropy) || 4;

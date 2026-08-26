@@ -18,3 +18,4 @@ runtime documents remain authoritative for behavior.
 - [0006 — Network input cadence is independent from display refresh](0006-display-independent-network-input.md)
 - [0007 — Local correction is physical-role presentation state](0007-physical-role-prediction-correction.md)
 - [0008 — Battle UI is a demand-loaded runtime boundary](0008-battle-ui-demand-boundary.md)
+- [0009 — Optional garage set pieces load behind a light-stable boundary](0009-optional-garage-set-piece-boundary.md)
