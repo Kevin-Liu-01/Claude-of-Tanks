@@ -34,6 +34,7 @@ import {
   ruSkirtBand,
   widthAnchor,
   domeRailRu,
+  liftT64HullAboveTallTrack,
 } from './russia.js';
 import { ABRAMS_PROFILES } from './abrams.js';
 
@@ -376,10 +377,10 @@ function addModernizedT80TurretSuite(P, variant) {
 // ---------------------------------------------------------------------------
 function buildUAT64BV(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
-  // Lift the complete running-gear course by 20% of its authored 0.80 m
-  // envelope so wheels, terminal gears, rollers, links and treads remain one
-  // mechanically coherent assembly inside the existing hull bay.
-  const runningGearLiftM = 0.16;
+  // Grow the course upward by 20% while keeping the lower run and road-wheel
+  // axles grounded. The body receives the matching ride-height increase at
+  // the end of assembly, producing the requested tall \____/ silhouette.
+  const trackHeightIncreaseM = 0.16;
   const turretForwardShiftM = 0.20;
 
   // Hull loft to the print lines (deck plateau 1.315 T-64 datum; glacis
@@ -545,18 +546,18 @@ function buildUAT64BV(P) {
     style: 'holes',
     wheelR: 0.267,
     wheelW: 0.30,
-    wheelY: 0.315 + runningGearLiftM,
+    wheelY: 0.315,
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.92, 1.17, 0.29, -0.45, -1.25, -2.06],
-    idler: { z: 2.75, y: 0.675 + runningGearLiftM, r: 0.262 },
-    sprocket: { z: -2.63, y: 0.76 + runningGearLiftM, r: 0.30 },
+    idler: { z: 2.75, y: 0.675 + trackHeightIncreaseM, r: 0.262 },
+    sprocket: { z: -2.63, y: 0.76 + trackHeightIncreaseM, r: 0.30 },
     rollers: [-1.95, -0.65, 0.62, 1.85]
-      .map((z) => ({ z, y: 0.90 + runningGearLiftM, r: 0.078 })),
+      .map((z) => ({ z, y: 0.90 + trackHeightIncreaseM, r: 0.078 })),
     trackW: 0.57,
     pinCapOuter: 0.27,
-    topY: 0.93 + runningGearLiftM,
-    botY: 0.14 + runningGearLiftM,
+    topY: 0.93 + trackHeightIncreaseM,
+    botY: 0.14,
     contactZF: 2.20,
     contactZR: -2.10,
     paintedEnds: false,
@@ -737,6 +738,12 @@ function buildUAT64BV(P) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [decalX, 0.38, -0.52], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [-decalX, 0.38, -0.52], -Math.PI / 2);
   addVehicleGhillieSuit(P);
+  liftT64HullAboveTallTrack(P, {
+    trackHeightIncreaseM,
+    trackBottomY: 0.14,
+    trackTopY: 1.09,
+    authoredEnvelopeHeightM: 0.79,
+  });
   P.topY = 1.30;
 }
 

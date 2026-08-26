@@ -376,17 +376,17 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
     "hull": {
       "min": [
         -1.71,
-        0.38,
+        0.54,
         -3
       ],
       "max": [
         1.71,
-        1.348,
+        1.508,
         2.93
       ],
-      "bodyRoofY": 1.348,
-      "roofDetailMaxY": 1.356,
-      "sourceHash": "cfeef5dea4b143ae"
+      "bodyRoofY": 1.508,
+      "roofDetailMaxY": 1.516,
+      "sourceHash": "432ed74f6237fffa"
     },
     "turret": {
       "min": [
@@ -410,28 +410,28 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "left": {
         "min": [
           -1.569,
-          0.245,
-          -2.9597
+          0.085,
+          -2.9564
         ],
         "max": [
           -0.991,
           1.3529,
-          2.9018
+          2.8983
         ],
-        "sourceHash": "21d4196e908c6709"
+        "sourceHash": "c153e61194e095e9"
       },
       "right": {
         "min": [
           0.991,
-          0.245,
-          -2.9597
+          0.085,
+          -2.9564
         ],
         "max": [
           1.569,
           1.3529,
-          2.9018
+          2.8983
         ],
-        "sourceHash": "96ccfbfc9eeb06a1"
+        "sourceHash": "2be7991b08f7a5cd"
       }
     }
   },
@@ -7334,17 +7334,17 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
     "hull": {
       "min": [
         -1.71,
-        0.38,
+        0.54,
         -3.2762
       ],
       "max": [
         1.71,
-        1.348,
+        1.508,
         3.27
       ],
-      "bodyRoofY": 1.348,
-      "roofDetailMaxY": 1.85,
-      "sourceHash": "4a6d72b917c24801"
+      "bodyRoofY": 1.508,
+      "roofDetailMaxY": 2.01,
+      "sourceHash": "8c3925bc7e63ada8"
     },
     "turret": {
       "min": [
@@ -7368,28 +7368,28 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "left": {
         "min": [
           -1.565,
-          0.255,
-          -3.0199
+          0.095,
+          -3.0173
         ],
         "max": [
           -0.995,
           1.3099,
-          3.1019
+          3.1006
         ],
-        "sourceHash": "e80a6839b325c038"
+        "sourceHash": "99550452fbe51ad6"
       },
       "right": {
         "min": [
           0.995,
-          0.255,
-          -3.0199
+          0.095,
+          -3.0173
         ],
         "max": [
           1.565,
           1.3099,
-          3.1019
+          3.1006
         ],
-        "sourceHash": "f8dfdcc2726eb753"
+        "sourceHash": "0ecbf9f0676307f9"
       }
     }
   },
