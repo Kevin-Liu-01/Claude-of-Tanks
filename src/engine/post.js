@@ -1301,6 +1301,7 @@ function capLuminance(c, maxLum) {
  * @typedef {object} Post
  * @property {EffectComposer} composer
  * @property {(dt: number) => void} render - THE only render call per frame
+ * @property {(yieldBeforePass?: (label: string) => Promise<void>) => Promise<Array<{label: string, ms: number}>>} warmFirstFrame
  * @property {(w: number, h: number) => void} setSize
  * @property {UnrealBloomPass} bloom
  * @property {GTAOPass} gtao
@@ -2239,6 +2240,48 @@ export function createPost(renderer, scene, camera) {
 
   return {
     composer,
+
+    /**
+     * Compile and allocate the active post chain one pass per browser frame.
+     * A first EffectComposer.render() links every fullscreen program in one
+     * JavaScript task, which can freeze a cold ANGLE session for hundreds of
+     * milliseconds even though the boot veil is visible. Running the same
+     * passes individually preserves every shader and render target while
+     * giving the browser a paint opportunity between independent programs.
+     * The following normal render produces the exact complete frame.
+     */
+    async warmFirstFrame(yieldBeforePass = null) {
+      const passes = composer.passes;
+      const enabled = passes.map((pass) => pass.enabled);
+      const renderToScreen = composer.renderToScreen;
+      const timings = [];
+      try {
+        composer.renderToScreen = false;
+        for (const pass of passes) pass.enabled = false;
+        for (let index = 0; index < passes.length; index++) {
+          if (!enabled[index]) continue;
+          const pass = passes[index];
+          if (yieldBeforePass) {
+            const label = pass.constructor?.name || `post-pass-${index + 1}`;
+            await yieldBeforePass(label);
+          }
+          const startedAt = performance.now();
+          pass.enabled = true;
+          composer.render(1 / 60);
+          pass.enabled = false;
+          timings.push({
+            label: pass.constructor?.name || `post-pass-${index + 1}`,
+            ms: Math.round(performance.now() - startedAt),
+          });
+        }
+      } finally {
+        composer.renderToScreen = renderToScreen;
+        for (let index = 0; index < passes.length; index++) {
+          passes[index].enabled = enabled[index];
+        }
+      }
+      return timings;
+    },
 
     /**
      * Render the frame through the full chain. Never call `renderer.render`

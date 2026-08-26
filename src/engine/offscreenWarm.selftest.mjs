@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createOffscreenSceneWarmer } from './offscreenWarm.js';
+import * as THREE from 'three';
+import { createOffscreenSceneWarmer, warmSceneOffscreenBatched } from './offscreenWarm.js';
 
 function fakeRenderer({ throwOnRender = false } = {}) {
   const prior = { name: 'prior-target' };
@@ -40,6 +41,12 @@ function fakeRenderer({ throwOnRender = false } = {}) {
   assert.deepEqual(renderer.calls.at(-1), {
     kind: 'target', target: renderer.prior, face: 3, mip: 2,
   });
+  const firstTarget = renderer.calls.find((call) => call.kind === 'render').target;
+  warm.dispose();
+  warm();
+  const renderCalls = renderer.calls.filter((call) => call.kind === 'render');
+  assert.notEqual(renderCalls.at(-1).target, firstTarget,
+    'disposing a temporary warmer releases and recreates its private target');
 }
 
 {
@@ -49,6 +56,27 @@ function fakeRenderer({ throwOnRender = false } = {}) {
   assert.deepEqual(renderer.calls.at(-1), {
     kind: 'target', target: renderer.prior, face: 3, mip: 2,
   }, 'the caller render target must be restored after a failed warm-up');
+}
+
+{
+  const renderer = fakeRenderer();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const meshes = Array.from({ length: 3 }, () =>
+    new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+  scene.add(...meshes);
+  const masks = meshes.map((mesh) => mesh.layers.mask);
+  let yields = 0;
+  const timings = await warmSceneOffscreenBatched(renderer, scene, camera, {
+    scale: 0.25,
+    maxObjects: 1,
+    maxWeight: Infinity,
+    yieldBeforeBatch: async () => { yields++; },
+  });
+  assert.equal(timings.length, 3, 'one-object limit creates bounded warm batches');
+  assert.equal(yields, 3, 'each upload batch yields before submitting work');
+  assert.deepEqual(meshes.map((mesh) => mesh.layers.mask), masks,
+    'batched warm restores every production layer mask');
 }
 
 console.log('offscreenWarm self-test passed');

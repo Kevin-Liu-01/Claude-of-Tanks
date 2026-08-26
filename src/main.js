@@ -24,7 +24,10 @@
  */
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
-import { createOffscreenSceneWarmer } from './engine/offscreenWarm.js';
+import {
+  createOffscreenSceneWarmer,
+  warmSceneOffscreenBatched,
+} from './engine/offscreenWarm.js';
 import {
   disposeObject3DResources, residentResourceLimits,
 } from './engine/resourceLifetime.js';
@@ -6247,8 +6250,28 @@ await bootStage('post', async () => {
   const t0 = performance.now();
   try { renderer.compile(scene, camera, scene); } catch (_) { /* first render is fallback */ }
   BOOT_TIMINGS.postCompile = Math.round(performance.now() - t0);
-  await nextFrame();
   lighting.update(true); // boot: render every cascade before first present
+  const yieldGpuWarm = createFrameBudgetYielder(16);
+  await yieldGpuWarm(true);
+  const shadowPasses = await lighting.primeShadowMaps(
+    renderer, scene, camera, yieldGpuWarm,
+  );
+  BOOT_TIMINGS.shadowPassMax = Math.max(0, ...shadowPasses);
+  BOOT_TIMINGS.shadowPasses = shadowPasses;
+  const sceneUploadStartedAt = performance.now();
+  const sceneUploadBatches = await warmSceneOffscreenBatched(renderer, scene, camera, {
+    maxObjects: 64,
+    maxWeight: 240_000,
+    yieldBeforeBatch: yieldGpuWarm,
+  });
+  BOOT_TIMINGS.sceneUpload = Math.round(performance.now() - sceneUploadStartedAt);
+  BOOT_TIMINGS.sceneUploadMax = Math.max(0, ...sceneUploadBatches);
+  BOOT_TIMINGS.sceneUploadBatches = sceneUploadBatches;
+  const warmStartedAt = performance.now();
+  const postPasses = await post.warmFirstFrame(yieldGpuWarm);
+  BOOT_TIMINGS.postWarm = Math.round(performance.now() - warmStartedAt);
+  BOOT_TIMINGS.postPassMax = Math.max(0, ...postPasses.map((pass) => pass.ms));
+  BOOT_TIMINGS.postPasses = postPasses;
   post.render(SIM_DT);
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed

@@ -716,6 +716,7 @@ ${endHead}`);
  * @property {CSM} csm - four quality-scaled cascaded shadow maps
  * @property {(mat: THREE.Material, extraHook?: ?Function) => THREE.Material} setupShadowMaterial
  * @property {(mat: ?THREE.Material) => boolean} releaseShadowMaterial
+ * @property {(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, yieldBeforeCascade?: ?Function) => Promise<number[]>} primeShadowMaps
  * @property {() => void} update - per-frame `csm.update()`; call AFTER the camera is final
  * @property {() => void} updateFrustums - call on resize / camera fov or aspect change
  * @property {(i: number) => void} setSunIntensity
@@ -936,6 +937,58 @@ export function createLighting(scene, camera, sunDir) {
       farCascadeDormant = next;
       if (next) applyFarCascadeDormancy();
       else forceRateCappedCascades();
+    },
+
+    /**
+     * Render the exact current CSM maps one cascade per browser frame. Cold
+     * WebGL sessions otherwise allocate every native depth target and link
+     * every caster program inside the first full scene render. The maps are
+     * identical; only their covered submission schedule changes.
+     */
+    async primeShadowMaps(renderer2, scene2, camera2, yieldBeforeCascade = null) {
+      if (!renderer2?.shadowMap || !scene2 || !camera2) return [];
+      const prior = csm.lights.map((light) => ({
+        shadow: light.shadow,
+        autoUpdate: light.shadow.autoUpdate,
+        needsUpdate: light.shadow.needsUpdate,
+      }));
+      const timings = [];
+      let complete = false;
+      try {
+        scene2.updateMatrixWorld(true);
+        camera2.updateMatrixWorld(true);
+        for (const light of csm.lights) {
+          light.shadow.autoUpdate = false;
+          light.shadow.needsUpdate = false;
+        }
+        for (let index = 0; index < csm.lights.length; index++) {
+          const light = csm.lights[index];
+          if (yieldBeforeCascade) await yieldBeforeCascade(index);
+          const startedAt = performance.now();
+          light.shadow.needsUpdate = true;
+          renderer2.shadowMap.render([light], scene2, camera2);
+          light.shadow.needsUpdate = false;
+          timings.push(Math.round(performance.now() - startedAt));
+        }
+        complete = true;
+      } finally {
+        if (complete) {
+          preservePrimedFrame = true;
+          forceFrames = 0;
+          shadowScheduler.reset();
+          lastScheduledMask = 0;
+          for (const light of csm.lights) {
+            light.shadow.autoUpdate = false;
+            light.shadow.needsUpdate = false;
+          }
+        } else {
+          for (const state of prior) {
+            state.shadow.autoUpdate = state.autoUpdate;
+            state.shadow.needsUpdate = state.needsUpdate;
+          }
+        }
+      }
+      return timings;
     },
 
     /**
