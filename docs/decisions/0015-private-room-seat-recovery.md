@@ -36,6 +36,9 @@ cross-network reliability guarantee.
 - Short network changes no longer evict a player or create result/UI spasms.
 - Reconnect uses the same entity and presentation ownership instead of
   mounting a parallel match.
+- The persistent-room browser gate destroys a live guest document, rejoins
+  with the same stable player ID, and requires fresh snapshots and controls
+  before the round may continue.
 - Explicit departure remains deterministic and releases the room slot.
 - Production release checks must prove `/api/ice` returns at least one TURN
   URL; a signaling health check alone is insufficient.

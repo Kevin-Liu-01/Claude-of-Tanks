@@ -73,7 +73,7 @@ try {
   const guestContext = await browser.createBrowserContext();
   contexts.push(hostContext, guestContext);
   const hostPage = await hostContext.newPage();
-  const guestPage = await guestContext.newPage();
+  let guestPage = await guestContext.newPage();
   observePage(hostPage, 'host');
   observePage(guestPage, 'guest');
   await Promise.all([
@@ -410,6 +410,197 @@ try {
   assert.equal(authority.invalidMessages, 0);
   assert.equal(report.errors.length, 0);
 
+  // Destroy the remote document during active play without sending
+  // room_leave, then reconstruct it with the same stable player id. The
+  // browser context began pristine, while this second document models an
+  // ordinary reload that must reclaim the existing authority entity and
+  // room seat through a new RTC/signaling generation.
+  const previousGuestSessionId = await guestPage.evaluate(
+    () => globalThis.__COT_SOAK.signaling.sessionId,
+  );
+  await guestPage.close();
+  await hostPage.waitForFunction(() => {
+    const state = globalThis.__COT_SOAK;
+    const guest = state.match.client.roomState?.players?.find(
+      (player) => player.id === 'browser-guest',
+    );
+    return state.match.host.peers.size === 1 && guest?.connected === false;
+  }, { timeout: 10_000, polling: 25 });
+
+  guestPage = await guestContext.newPage();
+  observePage(guestPage, 'guest-reload');
+  await guestPage.goto(
+    `${origin}/tools/multiplayer-browser-soak.html?netSim=1&netLatency=${latencyMs}` +
+      `&netJitter=${jitterMs}&netLoss=${lossPercent}&netInputLoss=${inputLossPercent}`,
+    { waitUntil: 'domcontentloaded' },
+  );
+  const activeReloadStartedAt = performance.now();
+  const activeReload = await guestPage.evaluate(async ({ url, roomCode }) => {
+    const [
+      { RoomSignalingClient },
+      { PrivateRoomClientSession },
+      { beginPrivateClientMatch },
+    ] = await Promise.all([
+      import('/src/net/signalingClient.js'),
+      import('/src/net/privateRoomSession.js'),
+      import('/src/net/privateMatchHandoff.js'),
+    ]);
+    const signalingClient = new RoomSignalingClient({ url });
+    const roomInfo = await signalingClient.joinRoom({
+      roomCode,
+      player: { id: 'browser-guest', name: 'Commander' },
+    });
+    const state = globalThis.__COT_SOAK = {
+      signaling: signalingClient,
+      roomInfo,
+      lastLobby: null,
+      errors: [],
+      sampleDurations: [],
+    };
+    state.session = new PrivateRoomClientSession({
+      signaling: signalingClient,
+      roomInfo,
+      onError: (error) => state.errors.push(error.message),
+    });
+    state.runtime = await state.session.ready;
+    state.unsubscribe = state.runtime.onState((lobby) => { state.lastLobby = lobby; });
+    state.match = await beginPrivateClientMatch({
+      session: state.session,
+      playerId: roomInfo.peerId,
+    });
+    state.match.ready();
+    return {
+      playerId: state.match.playerId,
+      sessionId: signalingClient.sessionId,
+    };
+  }, { url: signalUrl, roomCode: room.roomCode });
+
+  const activeReloadDeadline = performance.now() + 15_000;
+  let activeReloadReady = false;
+  while (performance.now() < activeReloadDeadline) {
+    const [hostReady, guestReady] = await Promise.all([
+      hostPage.evaluate(() => {
+        const state = globalThis.__COT_SOAK;
+        state.match.advance(1000 / 60);
+        const guest = state.match.client.roomState?.players?.find(
+          (player) => player.id === 'browser-guest',
+        );
+        return state.match.host.peers.size === 2 && state.session.peers.size === 1 &&
+          guest?.connected === true;
+      }),
+      guestPage.evaluate(() => {
+        const state = globalThis.__COT_SOAK;
+        state.match?.update(performance.now());
+        return state.match?.client?.connected && state.match.client.buffer.snapshots.length > 0 &&
+          state.match.client.roomState?.phase === 'playing';
+      }),
+    ]);
+    if (hostReady && guestReady) {
+      activeReloadReady = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 16));
+  }
+  if (!activeReloadReady) {
+    const diagnostics = await Promise.all([
+      hostPage.evaluate(() => {
+        const state = globalThis.__COT_SOAK;
+        return {
+          matchPeers: [...state.match.host.peers.values()].map((peer) => ({
+            id: peer.id,
+            welcomed: peer.welcomed,
+            ready: peer.ready,
+          })),
+          rtcPeers: [...state.session.peers.entries()].map(([id, peer]) => ({
+            id,
+            sessionId: peer.sessionId,
+            connectionState: peer.connectionState,
+          })),
+          room: state.match.client.roomState,
+          hostErrors: state.errors,
+        };
+      }),
+      guestPage.evaluate(() => {
+        const state = globalThis.__COT_SOAK;
+        return {
+          connected: state.match?.client?.connected,
+          closed: state.match?.client?.closed,
+          room: state.match?.client?.roomState,
+          snapshots: state.match?.client?.buffer?.snapshots?.length,
+          stats: state.match?.client?.getStats?.(),
+          clientErrors: state.match?.client?.errors,
+          sessionErrors: state.errors,
+          signalingState: state.signaling?.state,
+          peerState: state.session?.peer?.connectionState,
+        };
+      }),
+    ]);
+    throw new Error(`active reload timed out: ${JSON.stringify(diagnostics)}`);
+  }
+  const activeReloadRecoveryMs = performance.now() - activeReloadStartedAt;
+  assert.equal(activeReload.playerId, guestMatch.playerId,
+    'active reload reclaims the same authority player id');
+  assert.notEqual(activeReload.sessionId, previousGuestSessionId,
+    'active reload negotiates through a fresh page-session generation');
+
+  const reloadStartPosition = await hostPage.evaluate((playerId) => {
+    const entity = globalThis.__COT_SOAK.match.simulation.entityById.get(playerId);
+    return { ...entity.state.pos };
+  }, activeReload.playerId);
+  const reloadDriveDeadline = performance.now() + 1_500;
+  while (performance.now() < reloadDriveDeadline) {
+    await Promise.all([
+      hostPage.evaluate(() => globalThis.__COT_SOAK.match.advance(1000 / 60)),
+      guestPage.evaluate(() => {
+        const state = globalThis.__COT_SOAK;
+        state.match.submitInput({
+          throttle: 1,
+          steer: -0.08,
+          brake: false,
+          fire: false,
+          aimYaw: Math.PI,
+          aimPitch: 0,
+          shellSlot: 0,
+          actionBits: 0,
+        });
+        state.sample = state.match.update(performance.now());
+      }),
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 16));
+  }
+  const activeReloadReport = await Promise.all([
+    hostPage.evaluate((playerId) => {
+      const state = globalThis.__COT_SOAK;
+      const entity = state.match.simulation.entityById.get(playerId);
+      return {
+        position: { ...entity.state.pos },
+        peers: state.match.host.peers.size,
+        rtcPeers: state.session.peers.size,
+        invalidMessages: state.match.host.stats.invalidMessages,
+      };
+    }, activeReload.playerId),
+    guestPage.evaluate(() => ({
+      connected: globalThis.__COT_SOAK.match.client.connected,
+      snapshots: globalThis.__COT_SOAK.match.client.getStats().snapshotPacketsReceived,
+      errors: [
+        ...globalThis.__COT_SOAK.errors,
+        ...globalThis.__COT_SOAK.match.client.errors,
+      ],
+    })),
+  ]);
+  const reloadDisplacement = Math.hypot(
+    activeReloadReport[0].position.x - reloadStartPosition.x,
+    activeReloadReport[0].position.z - reloadStartPosition.z,
+  );
+  assert.ok(reloadDisplacement > 0.2,
+    `rejoined authority ignored fresh controls (moved ${reloadDisplacement.toFixed(2)}m)`);
+  assert.equal(activeReloadReport[0].peers, 2);
+  assert.equal(activeReloadReport[0].rtcPeers, 1);
+  assert.equal(activeReloadReport[0].invalidMessages, 0);
+  assert.equal(activeReloadReport[1].connected, true);
+  assert.ok(activeReloadReport[1].snapshots > 0);
+  assert.deepEqual(activeReloadReport[1].errors, []);
+
   // End round one, ready both commanders again, and prove round two reuses
   // the already-open channels instead of touching signaling/WebRTC setup.
   await hostPage.evaluate(() => {
@@ -532,6 +723,12 @@ try {
       droppedState: report.transport.droppedState,
     },
     signalingResumed: resumed.map((state) => state.events),
+    activeReload: {
+      recoveryMs: Number(activeReloadRecoveryMs.toFixed(1)),
+      sessionRotated: activeReload.sessionId !== previousGuestSessionId,
+      displacementM: Number(reloadDisplacement.toFixed(2)),
+      snapshots: activeReloadReport[1].snapshots,
+    },
     rematchRound: rematch.round,
     cleanDeparture: true,
   }, null, 2));

@@ -225,8 +225,10 @@ Browser multiplayer certification creates a distinct pristine browser context
 for every participant. Cache, storage, workers, credentials, and player
 identity are never shared between the host and guests. The persistent-room
 gate additionally drops signaling during live play, resumes the same durable
-room, completes a round, readies both players, starts round two over the same
-RTC channels, and verifies clean departure.
+room, destroys and reconstructs the remote guest document during active play,
+reclaims the same authority entity through a fresh RTC page session, completes
+the round, readies both players, starts round two over the replacement channel,
+and verifies clean departure.
 
 The full rendered capacity gate is `npm run test:net:seven:full`. It runs two
 independent natural 7v7 battles—one with the browser host rendered and one with
