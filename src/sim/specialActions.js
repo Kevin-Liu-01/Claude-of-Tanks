@@ -8,13 +8,16 @@
 import {
   startMagazineReload,
 } from './damage.js';
-
-export const SPECIAL_ACTION_KINDS = Object.freeze({
-  NONE: 'none',
-  GUIDED_MISSILE: 'guided_missile',
-  HYDROPNEUMATIC_AIM: 'hydropneumatic_aim',
-  MAGAZINE_RELOAD: 'magazine_reload',
-});
+import {
+  SPECIAL_ACTION_KINDS,
+} from './specialActionPolicy.ts';
+export {
+  SPECIAL_ACTION_KINDS,
+  createSpecialActionState,
+  specialActionDescriptor,
+  specialActionKind,
+  specialActionLocksShell,
+} from './specialActionPolicy.ts';
 
 const RESULT_NONE = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.NONE, reason: 'UNAVAILABLE' });
 const RESULT_BUSY = Object.freeze({ ok: false, kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, reason: 'BUSY' });
@@ -24,77 +27,6 @@ const RESULT_MISSILE_OFF = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.
 const RESULT_RELOAD = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD, active: true });
 const RESULT_SUSPENSION_ON = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, active: true });
 const RESULT_SUSPENSION_OFF = Object.freeze({ ok: true, kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM, active: false });
-const DESCRIPTOR_NONE = Object.freeze({ kind: SPECIAL_ACTION_KINDS.NONE, label: '', shortLabel: '' });
-const DESCRIPTOR_MISSILE = Object.freeze({
-  kind: SPECIAL_ACTION_KINDS.GUIDED_MISSILE, label: 'ATGM Guidance', shortLabel: 'ATGM',
-});
-const DESCRIPTOR_SUSPENSION = Object.freeze({
-  kind: SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
-  label: 'Suspension Aim',
-  shortLabel: 'Suspension',
-});
-const DESCRIPTOR_RELOAD = Object.freeze({
-  kind: SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD,
-  label: 'Reload Magazine',
-  shortLabel: 'Reload',
-});
-
-/** Return the guided shell slot, or -1 when this vehicle has no ATGM. */
-function guidedMissileSlot(spec) {
-  const shells = spec?.gun?.shells;
-  if (!Array.isArray(shells)) return -1;
-  for (let i = 0; i < shells.length; i++) {
-    if (shells[i]?.guided === true) return i;
-  }
-  return -1;
-}
-
-/** Resolve the single primary action presented by the context button. */
-export function specialActionKind(spec) {
-  if (!spec) return SPECIAL_ACTION_KINDS.NONE;
-  if (spec.hydropneumaticAim) return SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM;
-  // Launchers whose normal primary ammunition is guided do not need the IFV
-  // E-to-arm selector swap. They fire through the ordinary primary-fire path.
-  if (spec.gun?.primaryGuided === true) return SPECIAL_ACTION_KINDS.NONE;
-  if (guidedMissileSlot(spec) >= 0) return SPECIAL_ACTION_KINDS.GUIDED_MISSILE;
-  if (spec.gun?.autoloader) return SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD;
-  return SPECIAL_ACTION_KINDS.NONE;
-}
-
-/** Immutable presentation copy for a spec; safe to cache for an entire battle. */
-export function specialActionDescriptor(spec) {
-  const kind = specialActionKind(spec);
-  if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) return DESCRIPTOR_MISSILE;
-  if (kind === SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM) return DESCRIPTOR_SUSPENSION;
-  if (kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD) return DESCRIPTOR_RELOAD;
-  return DESCRIPTOR_NONE;
-}
-
-/** Create the small per-entity state record used by special actions. */
-export function createSpecialActionState(spec) {
-  return {
-    kind: specialActionKind(spec),
-    missileSlot: guidedMissileSlot(spec),
-    active: false,
-    // For ATGMs, pendingFire means the guidance channel is armed and waiting
-    // for the player's normal fire click. E never pulls the trigger itself.
-    pendingFire: false,
-    inFlightShellId: null,
-    returnShellSlot: 0,
-    // The normal weapon's load cycle is suspended while the launcher owns
-    // the selector. Restoring these exact values prevents E from either
-    // granting an instant cannon round or forcing a second cannon reload.
-    returnReloadT: 0,
-    returnReloadTotalS: 0,
-    returnReloadKind: 'ready',
-  };
-}
-
-/** True while an engaged ATGM channel owns the shell selector. */
-export function specialActionLocksShell(entity) {
-  const action = entity?.specialAction;
-  return !!(action?.kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE && action.active);
-}
 
 function restoreMissileSelection(entity) {
   const action = entity?.specialAction;

@@ -51,6 +51,7 @@ strict TypeScript owners:
 
 - `src/engine/bootLifecycle.ts` owns stage attribution and paint yields;
 - `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
+- `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
 - `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
 - `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;

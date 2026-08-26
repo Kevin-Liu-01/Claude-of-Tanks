@@ -335,6 +335,23 @@ creation, and full world construction without explicit intent remain deferred.
 Wall-clock certification still requires an uncontended `npm run perf:loading`
 run; bundle sizes and the loading-intent self-test are host-independent gates.
 
+### 2026-08-26 battle-client boot boundary
+
+The ordinary garage graph no longer includes armor tracing, damage resolution,
+ballistics, aiming, special-action mutation, or rendered drive-test controls.
+`battleClientAccess.ts` starts their retryable transfer on Battle intent and
+every battle entry barrier awaits it before simulation can begin. Garage UI
+uses the small pure `specialActionPolicy.ts` metadata module instead.
+
+In three cache-disabled constrained first-visit runs, initial JavaScript
+transfer fell from about 730 KB to about 707 KB. End-to-end cold readiness was
+host-noise limited and remained around 9.2–9.8 seconds, so this is treated as a
+transfer/ownership improvement rather than a claimed wall-time breakthrough.
+The production mobile battle probe crossed the new boundary successfully at
+6.735 seconds click-to-battle and 8.743 seconds click-to-control; certification
+was correctly refused because the host was contended, so those figures are
+diagnostic rather than release certification.
+
 ### 2026-08-26 production-path warm correction
 
 The first-battle trace showed that shader submission alone was insufficient:

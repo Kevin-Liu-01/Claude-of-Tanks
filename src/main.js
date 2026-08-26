@@ -73,14 +73,6 @@ import {
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
-import { computeDispersionRadM, shotRecoilScale, SIM_DT } from './sim/movement.js';
-import { tankPoseFromState, traceTank } from './sim/armor.js';
-import {
-  selectShell, resolveShellHit, createCombatState, repairAllModules,
-  startMagazineReload,
-} from './sim/damage.js';
-import { createShell } from './sim/ballistics.js';
-import { activateSpecialAction, specialActionLocksShell } from './sim/specialActions.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
@@ -95,11 +87,10 @@ import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createDebugTelemetryOwner } from './dev/debugTelemetry.ts';
-import { createDriveTestController } from './dev/driveTestController.ts';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
-import { createAimController } from './game/aimController.ts';
+import { createBattleClientAccess } from './game/battleClientAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
@@ -135,7 +126,6 @@ import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBootScreen } from './ui/bootScreen.js';
 import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
 import { createTransition } from './ui/transition.js';
-import { isPostwarVehicleEra } from './vehicles/taxonomy.js';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
 // staged work so the inline boot screen can report Studio-specific progress
@@ -146,6 +136,7 @@ const STUDIO_BOOT_INTENT = /^\/studio\/?$/.test(globalThis.location?.pathname ||
 const STUDIO_BOOT_MAP = INITIAL_PARAMS.get('map') || 'verdant';
 
 const DEG = Math.PI / 180;
+const SIM_DT = 1 / 60;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
 const MAX_SIM_STEPS = 4;
 const DEFAULT_SPEC_ID = 'm1a1';
@@ -457,6 +448,7 @@ function preloadBattleIntent({ specId, mapId } = {}) {
   ensureTouchControls().catch(() => null);
   loadWorldModule().catch(() => null);
   preloadSoloBattleRuntime().catch(() => null);
+  preloadBattleClientRuntime().catch(() => null);
   preloadKillcamModule().catch(() => null);
   // A pointer/focus/touch on BATTLE is stronger intent than ordinary garage
   // browsing. Transfer the deterministic next roster's exact family chunks
@@ -1809,14 +1801,31 @@ const audio = await bootStage('audio', () => {
 // One typed owner resolves both the camera anchor and the articulated physical
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
-const aimController = createAimController({
+const battleClientAccess = createBattleClientAccess(() => ({
   getGame: () => game,
   getRig: () => rig,
   worldRaycast,
   targetVisible: mobileAutoAimVisible,
   getShellCards: () => shellCards,
-  computeDispersion: computeDispersionRadM,
-});
+  computeDispersion: battleClientAccess.computeDispersionRadM,
+}));
+const {
+  aimController,
+  computeDispersionRadM,
+  shotRecoilScale,
+  tankPoseFromState,
+  traceTank,
+  selectShell,
+  resolveShellHit,
+  createCombatState,
+  repairAllModules,
+  startMagazineReload,
+  createShell,
+  activateSpecialAction,
+  specialActionLocksShell,
+  isPostwarVehicleEra,
+} = battleClientAccess;
+const preloadBattleClientRuntime = battleClientAccess.preload;
 
 const rig = createCameraRig(camera, {
   heightField: hfProxy,
@@ -2677,6 +2686,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       { precompile: false, services: false }),
     ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
     preloadSoloBattleRuntime(),
+    preloadBattleClientRuntime(),
     fxTextureP,
     ensureKillcamRuntime(),
     rosterTextureP,
@@ -3243,6 +3253,7 @@ async function presentNetworkBattle({
   await nextFrame();
   const [networkModules] = await Promise.all([
     preloadNetworkBattleModules(),
+    preloadBattleClientRuntime(),
     ensureBattleHud(),
     ensureTouchControls(),
     // Scope armor is presentation-only. Acquire it under the opaque network
@@ -3796,6 +3807,7 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
     ensureFullFleet(),
     ensureWorld(resolved, null, { precompile: false }),
     preloadSoloBattleRuntime(),
+    preloadBattleClientRuntime(),
     ensureBattleHud(),
     ensureTouchControls(),
     armorAimOverlay.preload(),
@@ -4897,7 +4909,8 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // second synchronous map constructor in the entry graph defeated genuine
   // world lazy loading and froze first-time authored captures.
   await Promise.all([
-    preloadSoloBattleRuntime(), ensureBattleHud(), ensureTouchControls(),
+    preloadSoloBattleRuntime(), preloadBattleClientRuntime(),
+    ensureBattleHud(), ensureTouchControls(),
   ]);
   if (!world || world.mapId !== mapId) await switchMap(mapId);
   lighting.setFarCascadeDormant(false);
@@ -7013,21 +7026,35 @@ scheduleRaf();
 // Debug / drive-test hooks (not part of the screenshot contract).
 // ---------------------------------------------------------------------------
 
-const driveTestController = createDriveTestController({
-  getGame: () => game,
-  getWorld: () => world,
-  getRig: () => rig,
-  getCollider: () => collider,
-  bus,
-  input,
-  aimController,
-  debugFlags,
-  playerShellLog,
-  heightField: hfProxy,
-  simStep,
-  resetPresentationPoses: resetSoloPresentationPoses,
-  resetSimAccumulator: () => { simAcc = 0; },
-});
+const driveTestRequested = import.meta.env.DEV
+  || debugModeRequested()
+  || navigator.webdriver;
+const driveTestController = driveTestRequested
+  ? (await import('./dev/driveTestController.ts')).createDriveTestController({
+    getGame: () => game,
+    getWorld: () => world,
+    getRig: () => rig,
+    getCollider: () => collider,
+    bus,
+    input,
+    aimController,
+    debugFlags,
+    playerShellLog,
+    heightField: hfProxy,
+    simStep,
+    resetPresentationPoses: resetSoloPresentationPoses,
+    resetSimAccumulator: () => { simAcc = 0; },
+  })
+  : {
+    aimTargetId: null,
+    aimAtNearest: () => null,
+    gunAimError: () => Infinity,
+    aimState: () => null,
+    fastForward: () => 0,
+    spawnKillShell: () => false,
+    slayEnemies: () => {},
+    resetAim: () => {},
+  };
 
 const debugTelemetry = createDebugTelemetryOwner({
   renderer,

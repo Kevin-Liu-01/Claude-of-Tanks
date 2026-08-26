@@ -107,6 +107,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/analytics.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
     'src/game/garageTankLifecycle.selftest.mjs',
+    'src/game/battleClientAccess.selftest.mjs',
     'src/game/garageIdleWorkCoordinator.selftest.mjs',
     'src/vehicles/garagePresentation.selftest.mjs',
     'src/world/terrainFastGrid.selftest.mjs',

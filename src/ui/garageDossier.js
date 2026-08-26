@@ -2,7 +2,7 @@
 // module, crew, and special-action policy out of garage.js's DOM renderer.
 
 import { CREW_LABEL, MODULE_LABEL } from './moduleRegistry.js';
-import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActions.js';
+import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActionPolicy.ts';
 import { tankTier } from '../vehicles/tier.js';
 
 const MODULE_ICON = Object.freeze({ trackL: 'track', trackR: 'track' });

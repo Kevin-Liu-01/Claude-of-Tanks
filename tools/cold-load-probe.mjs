@@ -79,6 +79,14 @@ async function constrainedColdLoad({ name, noHero }) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.evaluateOnNewDocument(() => {
+    // This probe models an ordinary new player, not an engineering browser.
+    // Production keeps rendered QA controls behind webdriver/debug intent;
+    // hiding automation here ensures bundle and boot timings cannot silently
+    // include that demand-loaded test runtime. `nosplash` still bypasses the
+    // user-gesture gate deterministically.
+    Object.defineProperty(Navigator.prototype, 'webdriver', {
+      configurable: true, get: () => false,
+    });
     Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { configurable: true, get: () => 4 });
     Object.defineProperty(Navigator.prototype, 'deviceMemory', { configurable: true, get: () => 4 });
   });
