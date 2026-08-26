@@ -386,12 +386,12 @@
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-load { margin-top: 32px; }
   </style>
   <script>
-    // CHUNK RECOVERY r2: production assets are deployment-pinned by Vite, but
-    // documents loaded before that contract shipped can still request an old
-    // lazy hash after a deploy. Weak/mobile browsers can also abort a large
-    // module fetch. Keep the rejected import rejected so its real cause is
-    // observable, recover the document at most twice, then expose an honest
-    // retry instead of entering a refresh loop.
+    // CHUNK RECOVERY r3: production sessions are deployment-pinned by routing
+    // middleware, but a missing/obsolete pin can leave an old document asking
+    // the current deployment for a removed lazy hash. Weak/mobile browsers can
+    // also abort a large module fetch. Keep the rejected import rejected so its
+    // real cause is observable, recover the document at most twice, then expose
+    // an honest retry instead of entering a refresh loop.
     (() => {
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 2;
@@ -448,6 +448,10 @@
         // sessionStorage. It must survive a second transient failure without
         // ever permitting an infinite navigation loop.
         url.searchParams.set('_bootretry', `${nextCount}-${Date.now().toString(36)}`);
+        // The one-shot middleware handshake expires a stale HttpOnly __vdpl
+        // cookie, redirects without this parameter, and lets Vercel select the
+        // newest document. A normal reload cannot repair that cookie itself.
+        url.searchParams.set('_dplreset', '1');
         location.replace(url.href);
       }
 

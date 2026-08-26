@@ -21,8 +21,12 @@ document responses. Vercel applies that deployment pin to later asset and
 document requests without changing JavaScript module identity. Middleware is
 limited to the game and Studio document routes; static assets bypass it.
 
-The one-shot boot/chunk recovery remains the fallback when platform skew
-protection is unavailable or an old deployment has expired.
+Boot/chunk recovery appends a one-shot `_dplreset=1` signal. Middleware expires
+the HttpOnly deployment pin and redirects back to the same playable URL while
+preserving the bounded `_bootretry` receipt. Vercel then resolves the newest
+document, which establishes a fresh pin before parsing its module graph. This
+keeps Retry effective when a tab has no pin, a stale pin, or references a
+deployment outside the platform skew window.
 
 The root deployment adapter remains `// @ts-check` JavaScript because Vercel's
 current Node builder crashes while compiling it against this repository's
@@ -33,6 +37,7 @@ platform boundary does not set the language policy for domain modules.
 
 - Modulepreload and native import requests share the browser module cache.
 - Long-running battles can lazy-load against their originating deployment.
+- A missing game chunk can escape its stale pin without clearing all site data.
 - Public presentation routes avoid middleware cost.
 - Production cold-load checks reject duplicate positive-byte script transfers.
 

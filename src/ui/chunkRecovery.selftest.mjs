@@ -78,6 +78,8 @@ assert.equal(postBoot.window.__CHUNK_RECOVERY_PENDING, true,
 recoveryTimer.fn();
 assert.match(postBoot.replacedUrl ?? '', /[?&]_bootretry=/,
   'runtime chunk recovery must replace the stale document with a cache-busted URL');
+assert.match(postBoot.replacedUrl ?? '', /[?&]_dplreset=1(?:&|$)/,
+  'runtime chunk recovery must ask middleware to expire a stale deployment pin');
 
 const firstBoot = createHarness(false);
 firstBoot.listeners.get('error')?.({
@@ -131,5 +133,7 @@ assert.ok(secondRecovery, 'a second independent transient failure may recover au
 secondRecovery.fn();
 assert.match(storageBlockedSecondAttempt.replacedUrl ?? '', /[?&]_bootretry=2-/,
   'the URL receipt must advance even without sessionStorage');
+assert.match(storageBlockedSecondAttempt.replacedUrl ?? '', /[?&]_dplreset=1(?:&|$)/,
+  'the deployment reset signal must survive storage-restricted recovery');
 
 console.log('chunkRecovery.selftest: bounded failures recover without reloading healthy slow stages');
