@@ -32,3 +32,4 @@ runtime documents remain authoritative for behavior.
 - [0020 — Browser room integration has one typed coordinator](0020-typed-network-room-coordinator.md)
 - [0021 — Rendered drive tests have one typed controller](0021-typed-drive-test-controller.md)
 - [0022 — RTC rendezvous is scoped to page sessions](0022-session-scoped-rtc-rendezvous.md)
+- [0023 — Shader warming matches the production render path](0023-production-path-shader-warming.md)

@@ -161,10 +161,15 @@ const openingWarmBody = mainSource.slice(
 const openingWarmCode = openingWarmBody.replace(/\/\/.*$/gm, '');
 assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(/,
   'opening combat warm must not force ANGLE program-completion queries');
-assert.match(openingWarmBody, /renderer\.compile\(fx\.group, camera, scene\)/,
-  'opening combat warm must still submit the exact FX programs');
-assert.match(openingWarmBody, /warmRenderIsolated\(fx\.group\)/,
-  'opening combat warm must still bind FX through a real offscreen render');
+assert.match(openingWarmBody, /createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
+  'fallback opening warm must still bind FX through real isolated renders');
+const coveredSubmissionBody = mainSource.slice(
+  mainSource.indexOf('const combatFxSubmission = stageCombatFxProgramSubmission()'),
+  mainSource.indexOf('trace.deploymentCompileMs'),
+);
+assert.match(coveredSubmissionBody,
+  /compileForGameplayTarget\(scene\)[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
+  'player battle entry must submit and bind exact FX against the gameplay target');
 const worldReadyAt = mainSource.indexOf("battleLoad.progress(0.555, 'Battlefield ready')");
 const rosterAssemblyAt = mainSource.indexOf("battleLoad.progress(0.56, 'Assembling rosters')", worldReadyAt);
 const preRosterBattleLoad = mainSource.slice(
@@ -187,10 +192,10 @@ const stageRevealBody = mainSource.slice(
   mainSource.indexOf('async function stageBattleVisualReveal('),
   mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),
 );
-assert.match(stageRevealBody, /renderer\.compile\(root, camera, scene\)[\s\S]{0,1400}await yieldForBudget\(true\)/,
-  'each streamed vehicle must submit its shaders before yielding to later roster construction');
+assert.match(stageRevealBody, /compileForGameplayTarget\(root\)[\s\S]{0,1400}await yieldForBudget\(true\)/,
+  'each streamed vehicle must submit its production-target shaders before yielding');
 assert.match(stageRevealBody,
-  /renderer\.compile\(root, camera, scene\)[\s\S]*if \(initiallyHidden\)[\s\S]*visual\.setVisible\?\.\(false\)[\s\S]*root\.removeFromParent\(\)[\s\S]*battleVisibilityDetached = true[\s\S]*await yieldForBudget\(true\)/,
+  /compileForGameplayTarget\(root\)[\s\S]*if \(initiallyHidden\)[\s\S]*visual\.setVisible\?\.\(false\)[\s\S]*root\.removeFromParent\(\)[\s\S]*battleVisibilityDetached = true[\s\S]*await yieldForBudget\(true\)/,
   'countdown-streamed opponents must compile exactly, then detach before the next painted frame');
 assert.match(mainSource,
   /function setBattleVisualResident\(visual, resident\)[\s\S]{0,500}battleVisibilityDetached && !root\.parent\)[\s\S]{0,80}scene\.add\(root\)[\s\S]{0,500}if \(root\.parent === scene\)[\s\S]{0,100}root\.removeFromParent\(\)/,
@@ -202,11 +207,32 @@ const deferredWarmBody = mainSource.slice(
   mainSource.indexOf('function scheduleDeferredCombatWarm('),
   mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),
 );
-assert.match(deferredWarmBody,
-  /streamBattleVisuals\([\s\S]{0,180}ent\.team === 'enemy'[\s\S]{0,500}warmCombatOpeningPipelineChunked\(6, guardedYield\)[\s\S]{0,3200}warmCombatRarePipelineChunked\(6, guardedYield\)/,
-  'opponents and first-shot pipelines must use the frozen countdown before rare variants');
-assert.match(mainSource,
-  /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,900}post\.warmFirstFrame\(coveredYield\)[\s\S]{0,220}primeSoloBattleRevealFrame\(\)/,
+const deferredEnemyAt = deferredWarmBody.indexOf('streamBattleVisuals(');
+const deferredOpeningAt = deferredWarmBody.indexOf(
+  'warmCombatOpeningPipelineChunked(6, guardedYield)',
+);
+const deferredRareAt = deferredWarmBody.indexOf(
+  'warmCombatRarePipelineChunked(6, guardedYield)',
+);
+assert.ok(deferredEnemyAt >= 0
+  && deferredOpeningAt > deferredEnemyAt
+  && deferredRareAt > deferredOpeningAt,
+'opponent receipts and fallback opening/rare work must retain countdown order');
+const coveredFxBody = mainSource.slice(
+  mainSource.indexOf('const combatFxSubmission = stageCombatFxProgramSubmission()'),
+  mainSource.indexOf('await primeSoloBattleRevealFrame()'),
+);
+assert.match(coveredFxBody,
+  /combatFxSubmission\.staged[\s\S]*combatOpeningWarmed = true;[\s\S]*combatDestructionEffectsWarmed = true;/,
+  'a successful covered FX bind must prevent duplicate countdown staging');
+const revealWarmBody = mainSource.slice(
+  mainSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')"),
+  mainSource.indexOf('entryRevealPrimed = true'),
+);
+const shadowWarmAt = revealWarmBody.indexOf('primeDeploymentShadowMaps(coveredYield)');
+const postWarmAt = revealWarmBody.indexOf('post.warmFirstFrame(coveredYield)');
+const revealFrameAt = revealWarmBody.indexOf('primeSoloBattleRevealFrame()');
+assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
   'solo entry must split cascade and post warming before the first full deployment frame');
 assert.match(mainSource,
   /ensureWorld\(resolved,[\s\S]{0,180}\{ precompile: false, services: false \}\)/,

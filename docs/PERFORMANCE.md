@@ -327,6 +327,26 @@ creation, and full world construction without explicit intent remain deferred.
 Wall-clock certification still requires an uncontended `npm run perf:loading`
 run; bundle sizes and the loading-intent self-test are host-independent gates.
 
+### 2026-08-26 production-path warm correction
+
+The first-battle trace showed that shader submission alone was insufficient:
+the default framebuffer produced the wrong color-path variants, hiding light
+roots produced the wrong lighting variants, and the opening/destruction pools
+were then staged again during countdown. Target-aware typed warm owners now
+compile against the linear HDR composer target, retain the production light
+set, consume new uniform tables cooperatively, and restore every temporary
+renderer and scene flag. WebGL context restoration invalidates their receipts.
+
+A diagnostic mobile production run on Steppe completed click-to-visible in
+3.53 seconds and click-to-control in 5.53 seconds. Its complete entry warm was
+0.86 seconds; the exact covered FX bind was 0.17 seconds, and the remaining
+countdown queue was 0.31 seconds with 1.69 seconds still available before
+rollout. The probe refused formal certification because other headless/GPU
+work was active, so these numbers describe the corrected path rather than a
+release claim. The maintained invariant is stronger than the number: no effect
+family may be regenerated merely to warm a program already bound by the same
+production transition.
+
 ## Reporting a performance result
 
 Record:

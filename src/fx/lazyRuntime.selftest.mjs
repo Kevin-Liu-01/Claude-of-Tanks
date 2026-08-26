@@ -48,8 +48,22 @@ if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
 if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
-if (!/function scheduleDeferredCombatWarm\(generation\)[\s\S]{0,2600}streamBattleVisuals\([\s\S]{0,180}ent\.team === 'enemy'[\s\S]{0,220}true,[\s\S]{0,500}warmCombatOpeningPipelineChunked\(6, guardedYield\)[\s\S]{0,1600}warmCombatRarePipelineChunked\(6, guardedYield\)/.test(main)) {
-  throw new Error('hidden enemy visuals and opening/rare FX must drain in order during the frozen countdown');
+const coveredWarm = main.slice(
+  main.indexOf('const combatFxSubmission = stageCombatFxProgramSubmission()'),
+  main.indexOf('await primeSoloBattleRevealFrame()'),
+);
+if (!/combatFxSubmission\.staged[\s\S]*combatOpeningWarmed = true;[\s\S]*combatDestructionEffectsWarmed = true;/.test(coveredWarm)) {
+  throw new Error('the exact covered FX bind must retire duplicate opening/destruction countdown work');
+}
+const deferredWarm = main.slice(
+  main.indexOf('function scheduleDeferredCombatWarm(generation)'),
+  main.indexOf('function* warmCombatOpeningPipelineSteps()'),
+);
+const enemyAt = deferredWarm.indexOf('streamBattleVisuals(');
+const openingAt = deferredWarm.indexOf('warmCombatOpeningPipelineChunked(6, guardedYield)');
+const rareAt = deferredWarm.indexOf('warmCombatRarePipelineChunked(6, guardedYield)');
+if (!(enemyAt >= 0 && openingAt > enemyAt && rareAt > openingAt)) {
+  throw new Error('hidden enemy receipts and fallback opening/rare work must retain countdown order');
 }
 if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,160}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
   throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
@@ -59,7 +73,8 @@ if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S
   throw new Error('countdown-built enemy visuals must stay detached until a legal spotting edge');
 }
 if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(main)
-  || !/function\* warmCombatRarePipelineSteps\(\)[\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*compileHiddenVariantsSteps/.test(main)) {
+  || !/function\* warmCombatDestructionEffectSteps\(\)[\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush/.test(main)
+  || !/function\* warmCombatRarePipelineSteps\(\)[\s\S]*yield\* warmCombatDestructionEffectSteps\(\)[\s\S]*compileHiddenVariantsSteps/.test(main)) {
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
 }
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*battleWarmPending = false/.test(main)) {
@@ -72,11 +87,20 @@ if (!/setupBattle\(game, specId, world,[\s\S]{0,900}resetCombatRoundWarmState\(\
 if (!/deferredCombatWarmPromise === pending/.test(main)) {
   throw new Error('a cancelled round must not clear a newer deferred warm queue');
 }
-if (!/warmCombatRarePipelineSteps\(\)[\s\S]*initializeForwardProgramsSteps\(fx\.group\)/.test(main)) {
+const hiddenVariants = main.slice(
+  main.indexOf('function* compileHiddenVariantsSteps('),
+  main.indexOf('// ---------------------------------------------------------------------------', main.indexOf('function* compileHiddenVariantsSteps(')),
+);
+if (!hiddenVariants.includes('yield* compileAll(e.visual.root)')
+  || /initializeForwardProgramsSteps\(scene\)|renderer\.compile\(scene/.test(hiddenVariants)) {
   throw new Error('rare effects must never recompile the entire visible battlefield');
 }
+const routeAt = deferredWarm.indexOf('prepareNextOpeningRoute(game)');
+const terrainAt = deferredWarm.indexOf(
+  'warmBattleTerrainTiles(guardedYield, { primePresentation: false })',
+);
 if (!/deferOpeningRoutes: !!opts\.deferVisuals/.test(main)
-  || !/while \(prepareNextOpeningRoute\(game\)\)[\s\S]{0,500}warmBattleTerrainTiles\(guardedYield, \{ primePresentation: false \}\)/.test(main)
+  || !(routeAt >= 0 && terrainAt > routeAt)
   || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
   throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');
 }

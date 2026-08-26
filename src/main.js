@@ -47,6 +47,15 @@ import {
   nextFrame,
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
+import {
+  compileForRenderTarget,
+  snapshotRendererPrograms,
+  warmNewRendererProgramUniforms,
+} from './engine/programWarm.ts';
+import {
+  createDeploymentForwardWarmBatches,
+  createIsolatedForwardWarmBatches,
+} from './engine/deploymentWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
@@ -577,6 +586,21 @@ async function stageRootTextureUploads(root, yieldForBudget) {
   };
 }
 
+/** Compile against the same linear HDR target used by the gameplay scene
+ * pass. Compiling with no target asks Three for default-framebuffer sRGB
+ * variants; EffectComposer never uses those for world/tank draws, so the old
+ * path built a redundant shader fleet and still linked the real variants on
+ * first render. */
+function compileForGameplayTarget(root) {
+  compileForRenderTarget({
+    renderer,
+    root,
+    camera,
+    targetScene: scene,
+    target: post?.composer?.renderTarget1 || null,
+  });
+}
+
 /** Separate visual construction, texture upload, shader submission, and
  * reveal into bounded tasks. compileAsync was tested here and made the
  * transition materially worse on ANGLE because its completion polling became
@@ -599,13 +623,18 @@ async function stageBattleVisualReveal(ent, yieldForBudget, initiallyHidden = fa
   if (ent.state && visual.syncFromState) visual.syncFromState(ent.state);
   visual.setVisible?.(true);
   const compileAt = performance.now();
+  // The burn mask is mathematically inactive until destruction, but it is a
+  // shader-key change. Install it before this visual's first compile so live
+  // and wreck-capable rendering use one program family; installing it later
+  // invalidated every roster material and created 100+ countdown programs.
+  visual.prewarmBurn?.();
   // Build the scoped armor flashlight from the same exact collision shell
   // while this actor is already inside its bounded load slice. Enemy actors
   // reach this path during the frozen visible countdown, so the optimization
   // that removed them from the opaque transition remains intact.
   armorAimOverlay.prime(ent);
   const restoreArmorWarmVisibility = armorAimOverlay.warm();
-  try { renderer.compile(root, camera, scene); } catch (_) { /* first render fallback */ }
+  try { compileForGameplayTarget(root); } catch (_) { /* first render fallback */ }
   finally { restoreArmorWarmVisibility(); }
   root.userData.loadCompileMs = Math.round(performance.now() - compileAt);
   // Opposing actors prepared during the visible deployment countdown are
@@ -2093,6 +2122,15 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
+// Renderer-lifetime warm state is declared before context recovery is armed:
+// a mobile device can lose and restore WebGL while the async boot pipeline is
+// still running, before the later warm-owner functions are reached.
+let combatOpeningWarmed = false;
+let combatPipelineWarmed = false;
+let _openingWarmGen = null;
+let _rareWarmGen = null;
+let networkOpeningEffectsWarmed = false;
+let combatDestructionEffectsWarmed = false;
 // WebGL context restoration is recoverable in place. Three rebuilds its GL
 // state first; we then step mobile down to the safe preset, trim optional
 // residents, resize the post targets and redraw the shadow set. The sim stays
@@ -2104,6 +2142,13 @@ renderer.userData.contextRecovery = {
     post.setAdaptiveSuspended(true);
   },
   async onRestored() {
+    // A restored WebGL context has no linked programs or uploaded buffers,
+    // even though the JavaScript-side warm receipts survive. Invalidate every
+    // renderer-lifetime combat latch so the next covered transition rebuilds
+    // the exact production variants instead of trusting stale GPU state.
+    combatDestructionEffectsWarmed = false;
+    networkOpeningEffectsWarmed = false;
+    resetCombatRoundWarmState();
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
       trimPedestalCache(1);
@@ -2603,6 +2648,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     await live.preloadTextures?.();
     live.warmTextures?.();
     const receipt = await stageRootTextureUploads(live.group, loadYield);
+    live.group.userData.battleTexturesStaged = true;
     blt.fxTextureUpload = receipt;
     return receipt;
   });
@@ -2726,6 +2772,25 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       });
       if (warmGeneration !== battleWarmGeneration) return;
       mark('allyVisuals');
+      // Build opponents under the still-opaque transition, but keep every
+      // root detached after its scoped compile. Deferring this cohort until
+      // the visible countdown let ANGLE carry its link queue into a later rAF
+      // (240-525 ms visible freezes). The covered deployment frame below now
+      // absorbs that completion before the loader can reveal a pixel.
+      battleLoad.progress(0.94, 'Preparing opposing vehicles');
+      const enemyProgramBaseline = snapshotRendererPrograms(renderer);
+      await streamBattleVisuals(
+        (ent) => ent.team === 'enemy', coveredYield, (fraction) => {
+          battleLoad.progress(0.94 + fraction * 0.02, 'Preparing opposing vehicles');
+        }, true,
+      );
+      trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
+        renderer,
+        enemyProgramBaseline,
+        coveredYield,
+      );
+      if (warmGeneration !== battleWarmGeneration) return;
+      mark('enemyVisuals');
       battleLoad.progress(0.965, 'Warming suspension terrain');
       await warmBattleTerrainTiles(coveredYield);
       if (warmGeneration !== battleWarmGeneration) return;
@@ -2753,15 +2818,78 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // final-quality CSM/post scene; this only moves driver submission ahead
       // of its onFirstUse queue.
       const deploymentCompileStartedAt = performance.now();
+      const deploymentProgramBaseline = snapshotRendererPrograms(renderer);
       const restoreArmorWarmVisibility = armorAimOverlay.warm();
-      try { renderer.compile(scene, camera, scene); } catch (_) { /* first render fallback */ }
-      finally { restoreArmorWarmVisibility(); }
+      const combatFxSubmission = stageCombatFxProgramSubmission();
+      const fxForwardWarmBatches = [];
+      try {
+        compileForGameplayTarget(scene);
+        // compile() submits programs but does not guarantee their first
+        // material/state bind. Keep the staged pools hidden between private
+        // one-renderable binds so a driver linker flush cannot escape into
+        // the visible deployment countdown.
+        fx.group.visible = false;
+        for (const batch of createIsolatedForwardWarmBatches({
+          scene, root: fx.group, warmRender, cohortSize: 1,
+        })) {
+          fxForwardWarmBatches.push(batch);
+          await coveredYield(true);
+        }
+      } catch (_) { /* first render fallback */ }
+      finally {
+        combatFxSubmission.restore();
+        restoreArmorWarmVisibility();
+      }
+      // This exact covered submission includes the opening volley, tracer,
+      // destruction, prop-break and crush pools after their shipped textures
+      // were uploaded above. Do not replay the legacy opening/destruction
+      // generators during the visible countdown; they remain fallbacks for
+      // deterministic captures and direct debug entry that bypass this path.
+      if (combatFxSubmission.staged) {
+        combatOpeningWarmed = true;
+        combatDestructionEffectsWarmed = true;
+        if (typeof window !== 'undefined') {
+          window.__COMBAT_OPENING_WARM = {
+            covered: true,
+            batches: fxForwardWarmBatches.length,
+            totalMs: Math.round(performance.now() - deploymentCompileStartedAt),
+          };
+        }
+      }
       trace.deploymentCompileMs = Math.round(performance.now() - deploymentCompileStartedAt);
+      trace.deploymentFxForwardWarm = {
+        batches: fxForwardWarmBatches.length,
+        maxMs: Math.max(0, ...fxForwardWarmBatches.map((batch) => batch.ms)),
+        totalMs: fxForwardWarmBatches.reduce((sum, batch) => sum + batch.ms, 0),
+      };
       await nextFrame();
       await nextFrame();
+      trace.deploymentProgramUniformWarm = await warmNewRendererProgramUniforms(
+        renderer,
+        deploymentProgramBaseline,
+        coveredYield,
+      );
       battleLoad.progress(0.969, 'Priming deployment shadows');
       trace.deploymentShadowWarm = await primeDeploymentShadowMaps(coveredYield);
       mark('shadowMaps');
+      const forwardBatches = [];
+      for (const batch of createDeploymentForwardWarmBatches({
+        scene,
+        csmLights: lighting?.csm?.lights,
+        worldGroup: world?.group,
+        playerRoot: game.player?.visual?.root,
+        warmRender,
+      })) {
+        forwardBatches.push(batch);
+        await coveredYield(true);
+      }
+      const forwardBatchMs = forwardBatches.map((batch) => batch.ms);
+      trace.deploymentForwardWarm = {
+        batches: forwardBatches,
+        maxMs: forwardBatchMs.length ? Math.max(...forwardBatchMs) : 0,
+        totalMs: forwardBatchMs.reduce((sum, ms) => sum + ms, 0),
+      };
+      mark('forwardPrograms');
       // Garage boot primes the post stack against the showroom, but the first
       // battlefield introduces terrain/vegetation depth, normal and color
       // inputs plus a different light program family. Asking the complete
@@ -5497,12 +5625,6 @@ await bootStage('post', async () => {
 // - light-set warm (r4): garage spots hidden changes the program hash (see
 //   setGarageSpots), so entering battle swaps programs instead of compiling
 //   ~70 of them inside the opening frames.
-let combatOpeningWarmed = false;
-let combatPipelineWarmed = false;
-let _openingWarmGen = null;
-let _rareWarmGen = null;
-let networkOpeningEffectsWarmed = false;
-
 function resetCombatRoundWarmState() {
   if (_openingWarmGen) {
     try { _openingWarmGen.return(); } catch (_) { /* stale round cleanup */ }
@@ -5801,6 +5923,73 @@ function warmCombatRarePipelineChunked(budgetMs = 6, providedYielder = null) {
     'rare', warmCombatRarePipelineSteps, budgetMs, providedYielder,
   );
 }
+
+/**
+ * Put every combat effect class into its ordinary live pool just for the
+ * covered deployment compile. This submits rare destruction shaders while
+ * the opaque loader still suppresses scene rendering, so ANGLE can link them
+ * in parallel with the existing shadow/forward warm instead of discovering
+ * one 500+ ms program during the visible countdown. The returned cleanup is
+ * synchronous and restores the exact camera/root/pool state.
+ */
+function stageCombatFxProgramSubmission() {
+  // Use the covered deployment camera's field rather than a far map corner.
+  // The private first-bind renderer still performs frustum culling; staging
+  // off-camera submitted programs but left their material/state bind cold.
+  const playerPos = game.player?.state?.pos;
+  const wp = playerPos
+    ? new THREE.Vector3(playerPos.x, playerPos.y + 1.4, playerPos.z + 4)
+    : new THREE.Vector3(0, 2, 4);
+  const wn = new THREE.Vector3(0, 1, 0);
+  const wd = new THREE.Vector3(0, 0, 1);
+  const priorMask = camera.layers.mask;
+  const rootWasVisible = fx.group.visible;
+  let staged = false;
+  try {
+    const gun = game.player?.spec?.gun;
+    const shellSlot = game.player?.combat?.shellSlot ?? 0;
+    const shellSpec = gun?.shells?.[shellSlot] || gun?.shells?.[0] || null;
+    // Include the exact APFSDS sabot pool and a live tracer ribbon. Passing
+    // an empty shell list here left their large dynamic attributes unallocated
+    // until the player's first shot even though every other muzzle family had
+    // been staged successfully.
+    fx.warmOpeningEffects(wp, wd, wn, shellSpec?.caliberMm || 120);
+    for (const kind of [
+      'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
+    ]) fx.impact(kind, wp, wn, 120);
+    fx.dust(wp, wd, 1);
+    fx.exhaust(wp, 1, true);
+    fx.destruction(wp, null, 'shot');
+    fx.destruction(wp, null, 'ammorack');
+    for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+      fx.propBreak(kind, wp, wd, 1.5);
+    }
+    fx.propCrush(wp, wd, 7);
+    const warmShells = [];
+    if (shellSpec) {
+      const warmShell = createShell(shellSpec, '__deployment_warm__', true, wp, wd, -1);
+      warmShell.prevPos.copy(wp).addScaledVector(wd, -4);
+      warmShell.pos.copy(wp).addScaledVector(wd, 4);
+      warmShells.push(warmShell);
+    }
+    try { fx.update(0.016, warmShells, camera); } catch (_) { /* warm only */ }
+    post.prepareSoftParticles();
+    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+    fx.group.visible = true;
+    staged = true;
+  } catch (error) {
+    console.warn('[warm] combat FX program staging failed (continuing):', error);
+  }
+  return {
+    staged,
+    restore() {
+      fx.group.visible = rootWasVisible;
+      camera.layers.mask = priorMask;
+      fx.resetAll();
+    },
+  };
+}
+
 let deferredCombatWarmPromise = null;
 function cancelDeferredCombatWarm() {
   if (_rareWarmGen) {
@@ -5838,8 +6027,14 @@ function scheduleDeferredCombatWarm(generation) {
     // root-hidden after program submission until updateDustAndSync observes
     // a real spotting edge, so the optimization changes no rendered frame.
     const enemyVisualsStartedAt = performance.now();
+    const enemyProgramBaseline = snapshotRendererPrograms(renderer);
     await streamBattleVisuals(
       (ent) => ent.team === 'enemy', guardedYield, null, true,
+    );
+    trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
+      renderer,
+      enemyProgramBaseline,
+      guardedYield,
     );
     trace.stages.enemyVisuals = Math.round(performance.now() - enemyVisualsStartedAt);
     // The complete shipped FX atlases were installed under the opaque veil.
@@ -5849,7 +6044,15 @@ function scheduleDeferredCombatWarm(generation) {
     await warmCombatOpeningPipelineChunked(6, guardedYield);
     trace.stages.combatOpeningWarm = Math.round(performance.now() - openingFxStartedAt);
     const navigationStartedAt = performance.now();
-    while (prepareNextOpeningRoute(game)) await guardedYield();
+    trace.navigationJobs = [];
+    for (;;) {
+      const jobStartedAt = performance.now();
+      const consumed = prepareNextOpeningRoute(game);
+      const jobMs = Math.round(performance.now() - jobStartedAt);
+      if (!consumed) break;
+      trace.navigationJobs.push(jobMs);
+      await guardedYield();
+    }
     // The exact first 70 m of each route must be in the fast terrain cache
     // before bots can move. Position tiles and the vegetation presentation
     // cache were already prepared under the opaque loader.
@@ -5952,6 +6155,14 @@ function* warmCombatOpeningPipelineSteps() {
     const wp = new THREE.Vector3(-460, 0, -460);
     const wn = new THREE.Vector3(0, 1, 0);
     const wd = new THREE.Vector3(0, 0, 1);
+    const fxRootWasVisible = fx.group.visible;
+    // The staged effects are real live-pool objects. Keep their root hidden
+    // between cooperative yields: otherwise the ordinary full-resolution
+    // render loop can discover and bind a half-warmed particle program before
+    // the private offscreen batches below, turning a harmless countdown yield
+    // into one 200+ ms foreground frame. Private compile/render windows make
+    // the root visible synchronously and restore it before yielding again.
+    fx.group.visible = false;
     try {
       fx.muzzleFlash(wp, wd, 120);
       // Profiling showed the volley ran as one generator slice
@@ -5983,49 +6194,119 @@ function* warmCombatOpeningPipelineSteps() {
       const warmLayerMask = camera.layers.mask;
       camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
       try {
-        const forwardAt = performance.now();
         const before = (renderer.info.programs || []).length;
-        renderer.compile(fx.group, camera, scene);
+        const forwardAt = performance.now();
+        // Never bulk-submit this effect family and yield before first bind.
+        // ANGLE may accept all programs from compile(), then serialize their
+        // completion into the next ordinary scene frame (7.1 s observed on a
+        // cold Metal cache). The private render is the real first bind, so a
+        // one-object cohort charges at most one material class to each warm
+        // step and leaves no deferred linker queue for the presented frame.
+        const warmRenderBatches = [];
+        for (const batch of createIsolatedForwardWarmBatches({
+          scene, root: fx.group, warmRender, cohortSize: 1,
+        })) {
+          warmRenderBatches.push(batch);
+          yield;
+        }
         const programs = renderer.info.programs || [];
         effectDetail.forwardPrograms = {
           added: Math.max(0, programs.length - before),
           wallMs: Math.round(performance.now() - forwardAt),
         };
-        // Do not force WebGLProgram.getUniforms() here. On ANGLE/Metal that
-        // read is a shader-completion query and cold battle profiles charge
-        // its entire 400-900 ms wait to one "Priming combat effects" frame.
-        // Submit the exact same programs, give the parallel linker two
-        // painted loader frames, then bind them through the real isolated
-        // render below. Visual output and first-use coverage stay identical.
-        yield;
-        yield;
-        const warmRenderAt = performance.now();
-        warmRenderIsolated(fx.group);
-        effectDetail.warmRender = Math.round(performance.now() - warmRenderAt);
+        effectDetail.warmRenderBatches = warmRenderBatches;
+        effectDetail.warmRender = warmRenderBatches.reduce(
+          (sum, batch) => sum + batch.ms, 0,
+        );
       } finally {
         camera.layers.mask = warmLayerMask;
       }
     } catch (err) {
       console.warn('[warm] fx volley failed (continuing):', err);
+    } finally {
+      fx.group.visible = fxRootWasVisible;
     }
     fx.resetAll();
   }
   warmTrace.effectDetail = effectDetail;
   markWarmStage('effects');
-  fx.group.traverse((o) => {
-    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
-    for (const m of mats) {
-      for (const k of Object.keys(m)) {
-        const v = m[k];
-        if (v && v.isTexture) { try { renderer.initTexture(v); } catch (_) { /* fine */ } }
+  if (!fx.group.userData.battleTexturesStaged) {
+    fx.group.traverse((o) => {
+      const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+      for (const m of mats) {
+        for (const k of Object.keys(m)) {
+          const v = m[k];
+          if (v && v.isTexture) { try { renderer.initTexture(v); } catch (_) { /* fine */ } }
+        }
       }
-    }
-  });
+    });
+  }
   yield;
   markWarmStage('textures');
   combatOpeningWarmed = true;
   warmTrace.totalMs = Math.round(performance.now() - warmStartedAt);
   if (typeof window !== 'undefined') window.__COMBAT_OPENING_WARM = warmTrace;
+}
+
+/**
+ * Bind the rare destruction and crush pools once through the real lit forward
+ * path. This owner is renderer-lifetime state: resetAll removes every staged
+ * particle, while the programs and GPU buffers remain valid across rounds.
+ */
+function* warmCombatDestructionEffectSteps() {
+  if (combatDestructionEffectsWarmed) return { cached: true, totalMs: 0, batches: 0 };
+  const startedAt = performance.now();
+  const playerPos = game.player?.state?.pos;
+  const wp = playerPos
+    ? new THREE.Vector3(playerPos.x, playerPos.y + 1.4, playerPos.z + 4)
+    : new THREE.Vector3(0, 2, 4);
+  _v3.set(1, 0, 0);
+  const fxRootWasVisible = fx.group.visible;
+  let batches = 0;
+  let maxBatchMs = 0;
+  let error = null;
+  fx.group.visible = false;
+  try {
+    fx.destruction(wp, null, 'shot');
+    yield;
+    fx.destruction(wp, null, 'ammorack');
+    yield;
+    for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+      fx.propBreak(kind, wp, _v3, 1.5);
+      yield;
+    }
+    fx.propCrush(wp, _v3, 7);
+    yield;
+    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+    post.prepareSoftParticles();
+    const mask = camera.layers.mask;
+    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+    try {
+      for (const batch of createIsolatedForwardWarmBatches({
+        scene, root: fx.group, warmRender, cohortSize: 1,
+      })) {
+        batches += 1;
+        maxBatchMs = Math.max(maxBatchMs, batch.ms);
+        yield batch;
+      }
+    } finally {
+      camera.layers.mask = mask;
+    }
+  } catch (cause) {
+    error = cause;
+    console.warn('[warm] combat destruction variants failed (continuing):', cause);
+  } finally {
+    fx.group.visible = fxRootWasVisible;
+    fx.resetAll();
+  }
+  if (!error) combatDestructionEffectsWarmed = true;
+  return {
+    cached: false,
+    batches,
+    maxBatchMs,
+    totalMs: Math.round(performance.now() - startedAt),
+    error: error ? String(error) : null,
+  };
 }
 
 /**
@@ -6066,42 +6347,10 @@ function* warmCombatRarePipelineSteps() {
   }
   mark('armorScars');
 
-  // Destruction and crush families are not emitted before rollout. Spawn one
-  // silent instance of each, initialize their exact forward pipelines, then
-  // reset every pool before the countdown can release controls.
-  {
-    const wp = new THREE.Vector3(-460, 0, -460);
-    _v3.set(1, 0, 0);
-    try {
-      fx.destruction(wp, null, 'shot');
-      yield;
-      fx.destruction(wp, null, 'ammorack');
-      yield;
-      for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
-        fx.propBreak(kind, wp, _v3, 1.5);
-        yield;
-      }
-      fx.propCrush(wp, _v3, 7);
-      yield;
-      try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
-      post.prepareSoftParticles();
-      const mask = camera.layers.mask;
-      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
-      try {
-        // Only the newly spawned destruction/prop pools are cold here. The
-        // previous implementation walked the entire visible scene, repeating
-        // every world and tank program during the live countdown.
-        yield* initializeForwardProgramsSteps(fx.group);
-        warmRenderIsolated(fx.group);
-      } finally {
-        camera.layers.mask = mask;
-      }
-    } catch (error) {
-      console.warn('[warm] deferred combat variants failed (continuing):', error);
-    } finally {
-      fx.resetAll();
-    }
-  }
+  // Destruction and crush families are renderer-lifetime resources. The
+  // opaque transition normally owns this exact generator before countdown;
+  // the yield* remains a safe fallback for debug/direct-entry paths.
+  yield* warmCombatDestructionEffectSteps();
   mark('destructionEffects');
 
   warmWreckTextures(renderer);
@@ -6314,7 +6563,7 @@ function deploymentShadowCasterBatches() {
   let batch = [];
   let weight = 0;
   for (const caster of casters) {
-    if (batch.length && (batch.length >= 24 || weight + caster.weight > 90000)) {
+    if (batch.length && (batch.length >= 12 || weight + caster.weight > 45000)) {
       batches.push(batch);
       batch = [];
       weight = 0;
@@ -6428,18 +6677,6 @@ async function primeDeploymentShadowMaps(yieldForBudget) {
   };
 }
 
-function warmRenderIsolated(root) {
-  const hidden = [];
-  for (const child of scene.children) {
-    if (child === root || child.visible === false) continue;
-    hidden.push(child);
-    child.visible = false;
-  }
-  try { warmRender(); } finally {
-    for (const child of hidden) child.visible = true;
-  }
-}
-
 // WebGLRenderer.compile() intentionally stops before uniform
 // discovery. The next real render then calls WebGLProgram.getUniforms() for
 // every newly linked program in one queue flush; 0.2 ms profiles attributed
@@ -6458,7 +6695,7 @@ function* initializeForwardProgramsSteps(root = scene, stats = null) {
   for (const object of objects) {
     const before = (renderer.info.programs || []).length;
     const compileAt = performance.now();
-    try { renderer.compile(object, camera, scene); } catch (_) { /* warm only */ }
+    try { compileForGameplayTarget(object); } catch (_) { /* warm only */ }
     if (stats) {
       const compileMs = performance.now() - compileAt;
       stats.totalCompileMs = (stats.totalCompileMs || 0) + compileMs;

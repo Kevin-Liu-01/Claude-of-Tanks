@@ -4626,7 +4626,7 @@ function leo2A4FullGhillie(P) {
     mat.metalness = 0;
     mat.envMapIntensity = 0.08;
     mat.onBeforeCompile = vehicleAmbientFloorHook;
-    mat.customProgramCacheKey = () => `leo2a4-ghillie-${key}`;
+    mat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     return mat;
   };
   const makeNet = () => {

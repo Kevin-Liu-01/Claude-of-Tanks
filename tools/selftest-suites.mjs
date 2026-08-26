@@ -96,6 +96,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treeGrounding.selftest.mjs',
     'tools/coplanar-surface-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
+    'src/engine/programWarm.selftest.mjs',
+    'src/engine/deploymentWarm.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
     'src/game/soloBattleAccess.selftest.mjs',

@@ -246,7 +246,7 @@ function makeCloth(P, cfg, hex, key) {
   mat.metalness = 0;
   mat.envMapIntensity = 0.08;
   mat.onBeforeCompile = vehicleAmbientFloorHook;
-  mat.customProgramCacheKey = () => `vehicle-ghillie-${cfg.id}-${key}`;
+  mat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   return mat;
 }
 

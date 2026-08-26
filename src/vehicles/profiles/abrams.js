@@ -2733,7 +2733,7 @@ function abramsGhillie(P, variant, t) {
     m.roughness = 1;
     m.metalness = 0;
     m.onBeforeCompile = vehicleAmbientFloorHook;
-    m.customProgramCacheKey = () => `abrams-ghillie-${variant}-${hex.toString(16)}`;
+    m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     return m;
   };
   const addMesh = (parent, geos, hex, name) => {
@@ -2781,7 +2781,7 @@ function abramsGhillie(P, variant, t) {
     mat.roughness = 1;
     mat.metalness = 0;
     mat.onBeforeCompile = vehicleAmbientFloorHook;
-    mat.customProgramCacheKey = () => `abrams-cut-net-${variant}`;
+    mat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     const geo = mergeAll(geos);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.name = name;
