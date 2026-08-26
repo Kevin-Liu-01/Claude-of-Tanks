@@ -84,12 +84,9 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(fleet.isTankBuilderReady('type10'), true);
   const type10 = fleet.createTank('type10', null, { proceduralOnly: true, geometryReceipt: true });
   type10.dispose();
-  await fleet.ensureTankBuilders(['type99a', 't14', 'mbt70']);
-  assert.equal(fleet.isTankBuilderReady('type99a'), true);
+  await fleet.ensureTankBuilders(['t14', 'mbt70']);
   assert.equal(fleet.isTankBuilderReady('t14'), true);
   assert.equal(fleet.isTankBuilderReady('mbt70'), true);
-  const type99a = fleet.createTank('type99a', null, { proceduralOnly: true, geometryReceipt: true });
-  type99a.dispose();
   const t14 = fleet.createTank('t14', null, { proceduralOnly: true, geometryReceipt: true });
   assert.ok(t14.root.getObjectByName('rig_turret')?.userData?.t14RoofFidelityReceipt,
     'lazy T-14 route constructs the authored Armata builder, not the box placeholder');
@@ -100,6 +97,10 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(mbt70.root.getObjectByName('rig_gun')?.userData?.mbt70MantletReceipt?.profile,
     'parabolic-arrow', 'lazy MBT-70 route retains the authored XM150 mantlet');
   mbt70.dispose();
+  await fleet.ensureTankBuilder('type99a');
+  assert.equal(fleet.isTankBuilderReady('type99a'), true);
+  const type99a = fleet.createTank('type99a', null, { proceduralOnly: true, geometryReceipt: true });
+  type99a.dispose();
   await fleet.ensureTankBuilders(['m60a3', 't90m']);
   assert.equal(fleet.isTankBuilderReady('m60a3'), true);
   assert.equal(fleet.isTankBuilderReady('t90m'), true);

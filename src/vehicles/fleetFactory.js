@@ -99,8 +99,11 @@ function registerProfiles(profiles) {
 }
 
 const GROUP_LOADERS = Object.freeze({
-  modern2Core: () => import('./modern2.js')
-    .then((mod) => registerCanonicalBuilders('modern2', mod.MODERN2_BUILDERS)),
+  modern2: () => Promise.all([import('./modern2.js'), import('./profiles/china.js')])
+    .then(([canonical, profiles]) => {
+      registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
+      registerProfiles(profiles.CHINA_PROFILES);
+    }),
   franceCore: () => import('./france.js')
     .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),
   modern3Core: () => import('./modern3.js')
@@ -130,13 +133,6 @@ const GROUP_LOADERS = Object.freeze({
   }),
   merkava: () => import('./profiles/merkava.js').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
   afv: () => import('./profiles/afvFamily.js').then((mod) => registerProfiles(mod.AFV_FAMILY_PROFILES)),
-  // Type 99A is the one retained profile that wraps its earlier canonical
-  // donor. Keep that old builder pack on the China demand path.
-  china: () => Promise.all([import('./modern2.js'), import('./profiles/china.js')])
-    .then(([canonical, profiles]) => {
-      registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
-      registerProfiles(profiles.CHINA_PROFILES);
-    }),
   korea: () => import('./profiles/korea.js').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.js').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   germany: () => import('./profiles/germany.js').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
