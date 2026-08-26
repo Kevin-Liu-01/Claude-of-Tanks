@@ -21,3 +21,4 @@ runtime documents remain authoritative for behavior.
 - [0009 — Optional garage set pieces load behind a light-stable boundary](0009-optional-garage-set-piece-boundary.md)
 - [0010 — Settings are a retryable intent-loaded runtime](0010-settings-demand-boundary.md)
 - [0011 — Plate-level aim inspection is battle-owned](0011-armor-inspection-demand-boundary.md)
+- [0012 — Camera and physical-bore aim share one typed owner](0012-shared-aim-controller.md)

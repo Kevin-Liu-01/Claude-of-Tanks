@@ -47,6 +47,9 @@ assert.match(main, /await preloadPrivateMatchHandoffModule\(\)/,
   'private handoff should join the mode-intent preload');
 assert.match(main, /await preloadDedicatedClientModule\(\)/,
   'ranked entry should join the mode-intent preload');
+assert.match(main,
+  /async function debugStartBattle[\s\S]{0,760}preloadSoloBattleRuntime\(\)[\s\S]{0,100}ensureBattleHud\(\)[\s\S]{0,100}ensureTouchControls\(\)[\s\S]{0,100}armorAimOverlay\.preload\(\)/,
+  'cold QA entry must acquire every battle-only presentation owner before setup');
 
 assert.match(garage, /\[data-nav="studio"\], \[data-mobile-nav="studio"\]/,
   'desktop and mobile Studio controls should expose an intent boundary');

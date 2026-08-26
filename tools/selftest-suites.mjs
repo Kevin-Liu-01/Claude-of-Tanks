@@ -120,6 +120,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/consumables.selftest.mjs',
     'src/game/input.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
+    'src/game/aimController.selftest.mjs',
     'src/game/mobileAutoAim.selftest.mjs',
     'src/game/matchmaking.selftest.mjs',
     'src/game/replayPose.selftest.mjs',

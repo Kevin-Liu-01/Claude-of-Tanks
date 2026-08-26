@@ -66,9 +66,9 @@ import {
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, shotRecoilScale, SIM_DT } from './sim/movement.js';
-import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
+import { tankPoseFromState, traceTank } from './sim/armor.js';
 import {
-  estimatePenRatio, selectShell, resolveShellHit, createCombatState, repairAllModules,
+  selectShell, resolveShellHit, createCombatState, repairAllModules,
   startMagazineReload,
 } from './sim/damage.js';
 import { createShell } from './sim/ballistics.js';
@@ -86,6 +86,7 @@ import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
+import { createAimController } from './game/aimController.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -182,9 +183,6 @@ const _fwd = new THREE.Vector3();
 const _audioPos = new THREE.Vector3();
 // chase-camera occlusion focus (player hull center, lifted to turret height)
 const _occlFocus = new THREE.Vector3();
-// PERF r3: reusable pose for the per-frame aim armor query (computeAimInfo
-// runs tankPoseFromState once per bounding-gated enemy per HUD frame)
-const _aimPose = { pos: new THREE.Vector3() };
 
 // ---------------------------------------------------------------------------
 // BOOT STAGES (src/ui/bootScreen.js)
@@ -2119,84 +2117,22 @@ const audio = await bootStage('audio', () => {
 });
 
 // --- camera rig -----------------------------------------------------------------
-// Camera-aim raycast: world geometry PLUS live enemy hulls. This owns the
-// fixed center marker and requested world point; the separate gun marker owns
-// the real articulated bore, matching World of Tanks' documented reticles.
-const _armEnd = new THREE.Vector3();
-const _armTo = new THREE.Vector3();
-// controls_gunnery r6: STICKY SERVER RETICLE. The aim ray was exact-hit-or-
-// nothing against enemy hulls, so with a mover near the crosshair the anchor
-// (range readout, pen indicator and lead reference) flickered to background
-// terrain the instant the ray slipped off
-// the silhouette (critic: reticle printed 694 m with a T-72B3 at ~341 m under
-// it). WoT's server reticle is deliberately sticky on vehicles:
-//  - the intersection gate is INFLATED (bounding sphere ×1.15) — a ray that
-//    grazes the silhouette without an exact armor-trace hit still anchors at
-//    the tank's range (soft anchor at the closest-approach point);
-//  - a held tank anchor persists ~0.3 s after the ray slips fully off, so
-//    tracking jitter across a mover never drops the range/pen readout.
-const AIM_STICKY_INFLATE = 1.15;
-const AIM_STICKY_HOLD_MS = 300;
-let aimStickyUntilMs = -Infinity;
-let aimStickyDistM = 0;
-const _aimSoft = { point: new THREE.Vector3(), normal: null, dist: 0, kind: 'tank-soft' };
-function aimRaycastWithTanks(origin, dir, maxDist) {
-  const wHit = worldRaycast(origin, dir, maxDist);
-  let bestD = wHit ? wHit.dist : maxDist;
-  let best = wHit;
-  let exactTank = false;
-  let softDist = Infinity; // nearest inflated-silhouette crossing (soft anchor)
-  for (const ent of game.tanks) {
-    if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
-    const r = ent.spec.armor.boundingRadiusM;
-    const rInf = r * AIM_STICKY_INFLATE;
-    _armTo.copy(ent.state.pos);
-    _armTo.y += ent.spec.dims.heightM * 0.5;
-    _armTo.sub(origin);
-    const proj = _armTo.dot(dir);
-    if (proj < 0 || proj - rInf > bestD) continue;
-    const lat2 = _armTo.lengthSq() - proj * proj;
-    if (lat2 > rInf * rInf) continue;
-    if (proj < bestD && proj < softDist) softDist = proj;
-    if (lat2 > r * r) continue; // the inflated shell only feeds the soft anchor
-    _armEnd.copy(origin).addScaledVector(dir, Math.min(bestD, proj + r));
-    const hits = traceTank(origin, _armEnd, tankPoseFromState(ent.state), ent.spec.armor, ent.combat.eraSpent);
-    if (!hits.length) continue;
-    const d = origin.distanceTo(hits[0].point);
-    if (d < bestD) {
-      bestD = d;
-      best = { point: hits[0].point, normal: hits[0].normal, dist: d, kind: 'tank' };
-      exactTank = true;
-    }
-  }
-  const nowMs = performance.now();
-  if (exactTank) {
-    aimStickyUntilMs = nowMs + AIM_STICKY_HOLD_MS;
-    aimStickyDistM = bestD;
-    return best;
-  }
-  if (softDist < Infinity) {
-    // ray crosses a live enemy's inflated silhouette in front of the terrain
-    // hit — anchor at the tank instead of the background (and refresh hold)
-    aimStickyUntilMs = nowMs + AIM_STICKY_HOLD_MS;
-    aimStickyDistM = softDist;
-    _aimSoft.point.copy(origin).addScaledVector(dir, softDist);
-    _aimSoft.dist = softDist;
-    return _aimSoft;
-  }
-  if (nowMs < aimStickyUntilMs && aimStickyDistM < bestD) {
-    // hysteresis: ride out a brief slip off the hull at the held range
-    _aimSoft.point.copy(origin).addScaledVector(dir, aimStickyDistM);
-    _aimSoft.dist = aimStickyDistM;
-    return _aimSoft;
-  }
-  return best;
-}
+// One typed owner resolves both the camera anchor and the articulated physical
+// bore. Solo, private-room and diagnostic presentation therefore share the
+// same reticle, obstruction and penetration contract.
+const aimController = createAimController({
+  getGame: () => game,
+  getRig: () => rig,
+  worldRaycast,
+  targetVisible: mobileAutoAimVisible,
+  getShellCards: () => shellCards,
+  computeDispersion: computeDispersionRadM,
+});
 
 const rig = createCameraRig(camera, {
   heightField: hfProxy,
   raycast: worldRaycast,
-  aimRaycast: aimRaycastWithTanks,
+  aimRaycast: aimController.raycast,
   getPlayer: () => game.player,
 });
 
@@ -4279,6 +4215,9 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
     ensureFullFleet(),
     ensureWorld(resolved, null, { precompile: false }),
     preloadSoloBattleRuntime(),
+    ensureBattleHud(),
+    ensureTouchControls(),
+    armorAimOverlay.preload(),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
@@ -4532,181 +4471,6 @@ function refreshSpotFrame(focus = game.player) {
   }
   frameInfo.spotting = spotFrame;
 }
-
-// controls_gunnery r4: MUZZLE-PATH CLEARANCE, shared by the live reticle
-// (computeAimInfo) and the headless aim gate (debugAimState). The r2 test
-// stopped a full 6 m short of the aim point, so a knife-edge crest sitting at
-// a hull-down target's bounding sphere read as CLEAR while every shell died
-// in it (r4 E2E: 3 settled shots at 290-347 m, green pen marker, converged
-// circle, misses 118-394 m into terrain). Two rays now decide:
-//  1. CENTER ray to within 1.5 m of the aim point — the aim point itself sits
-//     >= 0.5·height above the target's ground contact, so target-adjacent
-//     terrain can only intersect when a real crest interposes;
-//  2. GRAZE ray along the lower dispersion cone (the cone diverges from the
-//     muzzle, so its lower boundary at fraction k of the reticle radius is
-//     the straight line muzzle -> aim point dropped by k*r; the reticle
-//     circle is the ~2-sigma envelope). k = 0.65 (~1.3 sigma): flags lays
-//     where ~10%+ of the shot distribution eats a mid-path crest. Probing
-//     the FULL radius (first r4 attempt) vetoed nearly every rolling-terrain
-//     lay on the verdant map at 150-250 m (probe: settled errMrad 0.6-1.1,
-//     center ray clear, stable phantom "blocked at 149 m") — a 2-sigma tail
-//     graze is a ~2% whiff, which WoT would not warn about either. The last
-//     15% is exempt so the target's own ground plane / glacis apron never
-//     strobes the warning on honest lays.
-const _mpbA = new THREE.Vector3();
-const _mpbB = new THREE.Vector3();
-function muzzlePathBlockDist(muzzle, aimPoint, dispersionRadM) {
-  _mpbB.copy(aimPoint).sub(muzzle);
-  const pathLen = _mpbB.length();
-  if (pathLen <= 12) return null;
-  _mpbB.multiplyScalar(1 / pathLen);
-  const blk = worldRaycast(muzzle, _mpbB, pathLen - 1.5);
-  if (blk) return blk.dist;
-  if (dispersionRadM > 0.1) {
-    _mpbA.copy(aimPoint);
-    // 0.65 of the reticle radius ~= the 1.3-sigma line: flags lays where
-    // ~10%+ of the cone dies mid-path (measured residual class: settled
-    // 250 m shots dying 40 m short at ~84% of the path), while the full-r
-    // probe (2-sigma tail, ~2%) vetoed nearly every rolling-terrain lay.
-    _mpbA.y -= dispersionRadM * 0.65;
-    _mpbB.copy(_mpbA).sub(muzzle);
-    const len2 = _mpbB.length();
-    if (len2 > 12) {
-      _mpbB.multiplyScalar(1 / len2);
-      const graze = worldRaycast(muzzle, _mpbB, len2 * 0.85);
-      if (graze) return graze.dist;
-    }
-  }
-  return null;
-}
-
-/**
- * Resolve the exact articulated bore used by tryFire and its endpoint at the
- * requested range. This is the sole live source for the gun marker,
- * penetration ray and blocked-path warning; no post-barrel aim snap exists.
- */
-function playerGunCenterRay(p, aimPoint, outOrigin, outDir, outTarget) {
-  p.visual.gunMuzzleWorld(outOrigin);
-  p.visual.gunDirWorld(outDir);
-  const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
-  outTarget.copy(outOrigin).addScaledVector(outDir, rangeM);
-  return rangeM;
-}
-
-function computeAimInfo() {
-  const p = game.player;
-  const aim = frameInfo.aim;
-  // A hydraulic fixed gun has no independent turret marker to communicate.
-  // Collapse the camera/gun sight pair into one physical-bore reticle while
-  // retaining dual markers for every conventional turret and casemate.
-  aim.singleReticle = !!(p.spec.hydropneumaticAim && p.spec.armor?.turretless);
-  aim.point.copy(rig.aimPoint);
-  aim.distM = rig.aimDist;
-  aim.dispersionRadM = computeDispersionRadM(p.spec, p.state, rig.aimDist);
-  aim.atGunLimit = p.state.atGunLimit;
-  aim.gunLimitSpec = !!p.state.gunLimitSpec;
-  aim.reload.t = p.combat.reload.t;
-  aim.reload.totalS = p.combat.reload.totalS;
-  aim.reload.kind = p.combat.reload.kind;
-  aim.magazine.rounds = p.combat.magazine?.rounds || 0;
-  aim.magazine.capacity = p.combat.magazine?.capacity || 0;
-  aim.shellSlot = p.combat.shellSlot;
-  aim.shells = shellCards;
-  aim.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
-
-  // WoT dual-reticle contract (official controls guide): the camera marker
-  // communicates where the player LOOKS; the aiming circle + gun marker
-  // communicate where the gun can ACTUALLY fire. The shell leaves on this
-  // exact physical bore, including while it is slewing or pinned at a limit.
-  aim.gunDistM = playerGunCenterRay(p, aim.point, _rayO, _rayD, _v2);
-  aim.gunTargetId = null;
-  aim.gunMarker.copy(_v2);
-
-  // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the camera and muzzle have
-  // different origins — near crests/walls/poles the camera can see a point a
-  // shell cannot reach. Raycast the authoritative shot-center path every HUD
-  // frame; the reticle turns red + prints the blocking distance when an
-  // obstruction sits short of its requested range.
-  // r4: raycast margin 6 m -> 1.5 m + dispersion-cone graze test — see
-  // muzzlePathBlockDist. The old margin made hull-down crests invisible.
-  aim.blockedDistM = muzzlePathBlockDist(_rayO, _v2, aim.dispersionRadM);
-  // gameplay_feel r7 (round critique MAJOR): the "PATH BLOCKED N m" TEXT
-  // fired constantly during ordinary cross-country driving — every time
-  // server-aim rested on a nearby rise (parked verdant 32 m, desert 10-11 m
-  // palm grove/freeze captures). WoT never shouts text for a gun resting on
-  // close terrain; this is the same every-crest noise class the GUN LIMIT
-  // label got dwell-gated for in movement.js (gunLimitSpec). The LABEL now
-  // requires (same recipe): ~0.5 s of CONTINUOUS block AND (stationary/
-  // creeping OR a far ask ≥ 120 m — pinning there is a deliberate lay, not
-  // terrain noise). The red reticle TINT stays tick-instant via
-  // aim.blockedDistM; only the text is gated (hud.js prints blockedLabel).
-  if (aim.blockedDistM != null) {
-    if (blockedSinceMs < 0) blockedSinceMs = performance.now();
-    const dwellOk = performance.now() - blockedSinceMs >= 500;
-    const speedKmh = Math.abs(p.state.speed) * 3.6;
-    aim.blockedLabel = dwellOk && (speedKmh <= 10 || rig.aimDist >= 120);
-  } else {
-    blockedSinceMs = -1;
-    aim.blockedLabel = false;
-  }
-
-  // Penetration indicator: first enemy plate under the ACTUAL GUN ray. The
-  // old camera-ray query could paint the screen-center marker green while a
-  // depression/elevation/traverse clamp held the barrel somewhere else —
-  // exactly the false-ready state WoT's separate gun marker prevents.
-  // Keep the short anti-strobe hold, but bind the held color to its gun-ray
-  // target id so the HUD never assigns it to the camera marker.
-  aim.penRatio = null;
-  const shellSpec = p.spec.gun.shells[p.combat.shellSlot];
-  const gunWorldHit = worldRaycast(_rayO, _rayD, 800);
-  let bestDist = gunWorldHit ? gunWorldHit.dist : 800;
-  let bestInfo = null;
-  let bestTargetId = null;
-  for (const ent of game.tanks) {
-    if (ent.isPlayer || ent.team === p.team || !ent.state || !ent.combat || ent.combat.destroyed) continue;
-    if (!mobileAutoAimVisible(ent)) continue;
-    _v1.copy(ent.state.pos);
-    _v1.y += ent.spec.dims.heightM * 0.5;
-    _v1.sub(_rayO);
-    const proj = _v1.dot(_rayD);
-    if (proj < 0 || proj > bestDist + ent.spec.armor.boundingRadiusM) continue;
-    const r = ent.spec.armor.boundingRadiusM * AIM_STICKY_INFLATE;
-    if (_v1.lengthSq() - proj * proj > r * r) continue;
-    const q = queryAimArmor(
-      _rayO, _rayD, Math.min(800, bestDist + ent.spec.armor.boundingRadiusM),
-      tankPoseFromState(ent.state, _aimPose), ent.spec.armor,
-      ent.combat.eraSpent,
-    );
-    if (q && q.distM < bestDist) {
-      bestDist = q.distM;
-      bestInfo = q;
-      bestTargetId = ent.id;
-    }
-  }
-  if (bestInfo) {
-    aim.gunMarker.copy(bestInfo.point);
-    aim.gunDistM = bestDist;
-    aim.gunTargetId = bestTargetId;
-    aim.penRatio = estimatePenRatio(shellSpec, bestDist, bestInfo);
-    lastPenRatio = aim.penRatio;
-    lastGunTargetId = bestTargetId;
-    lastPenUntilMs = performance.now() + AIM_STICKY_HOLD_MS;
-  } else {
-    if (gunWorldHit) {
-      aim.gunMarker.copy(gunWorldHit.point);
-      aim.gunDistM = gunWorldHit.dist;
-    }
-    if (performance.now() < lastPenUntilMs) {
-      aim.penRatio = lastPenRatio; // sticky-reticle hysteresis (see above)
-      aim.gunTargetId = lastGunTargetId;
-    }
-  }
-}
-let lastPenRatio = null;
-let lastGunTargetId = null;
-let lastPenUntilMs = -Infinity;
-// gameplay_feel r7: continuous-block dwell start for the PATH BLOCKED label
-let blockedSinceMs = -1;
 
 // ---------------------------------------------------------------------------
 // Render loop
@@ -5384,7 +5148,7 @@ function tick(nowMs) {
     frameInfo.rosterTanks = networkBridge ? networkBridge.roster : game.tanks;
     frameInfo.shells = game.shells;
     refreshSpotFrame(hudFocus); // SPOTTING WIRING
-    if (game.player) computeAimInfo();
+    if (game.player) aimController.update(frameInfo.aim);
     hud.update(frameInfo);
     if (game.player) {
       const armorEnabled = input.getSettings().armorAimOverlay;
@@ -7749,13 +7513,11 @@ function debugAimState() {
     gunLimitSpec: !!p.state.gunLimitSpec,
     gunPitchDeg: Math.round(p.state.gunPitch * 573) / 10,
     turretYawDeg: Math.round(p.state.turretYaw * 573) / 10,
-    // controls_gunnery r3: HUD frames don't run inside debugFastForward, so
-    // frameInfo.aim.blockedDistM is STALE for headless gates — recast fresh.
-    // r4: same 1.5 m margin + dispersion graze test as the live reticle, so
-    // the gate can never settle-fire a lay the reticle would call blocked.
+    // HUD frames do not run inside debugFastForward, so recast through the
+    // same controller path rather than reading stale presentation state.
     blockedDistM: (() => {
-      playerGunCenterRay(p, p.input.aimPoint, _rayO, _rayD, _v2);
-      return muzzlePathBlockDist(
+      aimController.gunCenterRay(p, p.input.aimPoint, _rayO, _rayD, _v2);
+      return aimController.muzzlePathBlockDist(
         _rayO, _v2,
         computeDispersionRadM(p.spec, p.state, rig.aimDist));
     })(),
@@ -7793,13 +7555,13 @@ function debugAimAtNearest() {
     _v3.multiplyScalar(1 / d);
     const block = world.raycast(_v1, _v3, d);
     if (block && block.dist < d - 2) continue;
-    // r4: the settle gate rejects on the MUZZLE path (muzzlePathBlockDist);
+    // The settle gate rejects on the same controller-owned muzzle path;
     // pre-filter candidates with the same test so the drive test never
     // commits its slew to a target the fire gate will veto anyway (probe
     // showed repeated doomed attempts on pivot-clear/muzzle-blocked lanes).
-    // _rayO is free here (only computeAimInfo's pen probe uses it).
+    // _rayO is shared scratch and is free during this diagnostic scan.
     p.visual.gunMuzzleWorld(_rayO);
-    if (muzzlePathBlockDist(_rayO, _v2, 0) != null) continue;
+    if (aimController.muzzlePathBlockDist(_rayO, _v2, 0) != null) continue;
     bestD = d;
     best = ent;
   }
