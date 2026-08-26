@@ -27,6 +27,7 @@ const vite = await createViteServer({
 });
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
 let browser = null;
+const contexts = [];
 
 function observePage(page, label) {
   page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.stack || error.message}`));
@@ -64,8 +65,15 @@ try {
       '--disable-backgrounding-occluded-windows',
     ],
   });
-  const hostPage = await browser.newPage();
-  const guestPage = await browser.newPage();
+  // Separate browser contexts model two people opening the game on machines
+  // that have never shared cache, storage, service workers, or credentials.
+  // A pair of pages in Chromium's default context can accidentally hide a
+  // first-visit failure behind the first page's warmed application state.
+  const hostContext = await browser.createBrowserContext();
+  const guestContext = await browser.createBrowserContext();
+  contexts.push(hostContext, guestContext);
+  const hostPage = await hostContext.newPage();
+  const guestPage = await guestContext.newPage();
   observePage(hostPage, 'host');
   observePage(guestPage, 'guest');
   await Promise.all([
@@ -501,7 +509,14 @@ try {
 
   console.log(JSON.stringify({
     ok: true,
-    profile: { durationMs, latencyMs, jitterMs, lossPercent, inputLossPercent },
+    profile: {
+      durationMs,
+      latencyMs,
+      jitterMs,
+      lossPercent,
+      inputLossPercent,
+      freshBrowserContexts: true,
+    },
     roomCode: room.roomCode,
     players: [hostMatch.playerId, guestMatch.playerId],
     displacementM: Number(displacement.toFixed(2)),
@@ -526,6 +541,7 @@ try {
     await Promise.all(pages.map(closePageState));
     await browser.close().catch(() => {});
   }
+  await Promise.all(contexts.map((context) => context.close().catch(() => {})));
   await signaling.close().catch(() => {});
   await vite.close().catch(() => {});
 }

@@ -42,6 +42,7 @@ const timeoutMs = numericArg('timeout', 180_000);
 const artifactDir = resolve('.qa-dev/multiplayer-live-7v7');
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
+const contextByPage = new WeakMap();
 
 const vite = await createViteServer({
   root,
@@ -65,7 +66,12 @@ async function openPlayers(origin, renderedRole) {
   for (let index = 0; index < PLAYER_COUNT; index++) {
     const role = index === 0 ? 'host' : 'client';
     const full = role === renderedRole && (renderedRole === 'host' || index === 1);
-    const page = await browser.newPage();
+    // Use a pristine browser profile for each commander. Sharing Chromium's
+    // default context shares HTTP cache, storage, workers, and credentials,
+    // which does not represent fourteen first-time players joining a room.
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    contextByPage.set(page, context);
     const label = `${renderedRole}-run-player-${index + 1}${full ? '-rendered' : ''}`;
     observePage(page, label);
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
@@ -935,6 +941,9 @@ async function closePages(pages) {
       try { state.signaling?.close('live_7v7_complete'); } catch (_) { /* best effort */ }
     }).catch(() => {});
     await page.close().catch(() => {});
+    const context = contextByPage.get(page);
+    contextByPage.delete(page);
+    if (context) await context.close().catch(() => {});
   }));
 }
 
@@ -1051,6 +1060,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         jitterMs,
         lossPercent,
         inputLossPercent,
+        freshBrowserContexts: true,
       },
       formation,
       entry,

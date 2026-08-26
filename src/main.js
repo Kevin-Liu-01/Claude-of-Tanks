@@ -109,6 +109,7 @@ import {
 } from './game/presentationPose.js';
 import { PLAYER_ACTION_BITS } from './net/protocol.js';
 import { encodeAimIntent } from './net/aimIntent.js';
+import { NetworkInputCadence } from './net/inputCadence.ts';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
@@ -3285,6 +3286,7 @@ let networkBridge = null;
 let networkStatus = null;
 let latestNetworkSnapshot = null;
 let networkActionBitsPending = 0;
+const networkInputCadence = new NetworkInputCadence();
 let networkSpectator = false;
 let activeNetworkRoom = null;
 let unsubscribeNetworkRoom = null;
@@ -3553,13 +3555,19 @@ function pumpNetworkMatch(dt, nowMs) {
     }
   } else {
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
-    if (playerInput && networkMatch.client.connected && networkMatch.submitInput(playerInput)) {
-      networkActionBitsPending = 0;
-      networkBridge?.recordInput(
-        playerInput,
-        dt,
-        networkMatch.client.lastSubmittedInputSeq,
-      );
+    networkInputCadence.advance(dt);
+    if (playerInput && networkMatch.client.connected && networkInputCadence.shouldSend(playerInput)) {
+      if (networkMatch.submitInput(playerInput)) {
+        const predictionElapsedS = networkInputCadence.commit(playerInput);
+        networkActionBitsPending = 0;
+        networkBridge?.recordInput(
+          playerInput,
+          predictionElapsedS,
+          networkMatch.client.lastSubmittedInputSeq,
+        );
+      }
+    } else if (!playerInput) {
+      networkInputCadence.reset();
     }
     acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
   }
@@ -3573,6 +3581,7 @@ function disposeNetworkPresentation() {
   networkStatus = null;
   latestNetworkSnapshot = null;
   networkActionBitsPending = 0;
+  networkInputCadence.reset();
   pendingNetworkEvents.length = 0;
   networkSpectator = false;
 }

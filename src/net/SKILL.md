@@ -15,6 +15,8 @@ play without importing Three.js rendering or DOM state.
 - `protocol.js` owns wire vocabulary and untrusted input validation.
 - `lobby.js` owns teams, team size, readiness, permissions, and start policy.
 - `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
+- `inputCadence.ts` bounds replaceable input uploads independently from display
+  refresh while preserving immediate control edges.
 - `snapshot.js` owns quantization, visibility filtering, and interpolation.
 - `snapshotWireCodec.js` owns compact binary snapshot rows; protocol v2 uses
   explicit snapshot acknowledgements, per-peer deltas, and periodic keyframes.

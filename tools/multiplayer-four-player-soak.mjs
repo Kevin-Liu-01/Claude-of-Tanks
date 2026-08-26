@@ -43,6 +43,7 @@ const vite = await createViteServer({
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
 let browser = null;
 let pages = [];
+let contexts = [];
 
 function observePage(page, label) {
   page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.stack || error.message}`));
@@ -112,7 +113,12 @@ try {
     ],
   });
   pages = await Promise.all(Array.from({ length: playerCount }, async (_, index) => {
-    const page = await browser.newPage();
+    // Every participant receives an isolated browser profile. This prevents
+    // one player's warmed cache or persisted identity from making later joins
+    // look healthier than a real first visit from another machine.
+    const context = await browser.createBrowserContext();
+    contexts[index] = context;
+    const page = await context.newPage();
     observePage(page, `player-${index + 1}`);
     const query = index === 0 ? '' : `?netSim=1&netLatency=${latencyMs}` +
       `&netJitter=${jitterMs}&netLoss=${lossPercent}&netInputLoss=${inputLossPercent}`;
@@ -527,6 +533,7 @@ try {
       jitterMs,
       lossPercent,
       inputLossPercent,
+      freshBrowserContexts: true,
     },
     authority: {
       tick: authority.tick,
@@ -551,6 +558,7 @@ try {
 } finally {
   await Promise.all(pages.map(closePageState));
   if (browser) await browser.close().catch(() => {});
+  await Promise.all(contexts.map((context) => context?.close().catch(() => {})));
   await signaling.close().catch(() => {});
   await vite.close().catch(() => {});
 }

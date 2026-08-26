@@ -187,6 +187,13 @@ cannot submit vehicle controls. Ranked authority never migrates to a player.
 Private/LAN rooms close cleanly if their browser host leaves; host
 migration is intentionally not claimed.
 
+Client presentation and input upload use separate clocks. Rendering remains
+display-rate, while replaceable held controls are uploaded at the authority's
+60 Hz cadence. Fire, consumables, shell selection, braking, and meaningful
+analog changes bypass that interval immediately. This prevents 120–240 Hz
+displays from multiplying RTC/browser work or inflating sequence backlog while
+preserving responsive controls and the existing local prediction path.
+
 Non-host refresh after a round is supported. Signaling preserves the stable
 browser player id, the joined client keeps the canonical invite URL, and the
 host keeps rendezvous listening after lobby-to-match handoff. When the page
@@ -194,6 +201,13 @@ returns during the room's waiting phase, a new WebRTC channel is attached to
 the existing room controller and current `ROOM_STATE` is replayed. Explicit
 Leave removes the URL. Refreshing the browser host is different: it destroys
 the browser-owned authority, so host migration is intentionally not claimed.
+
+Browser multiplayer certification creates a distinct pristine browser context
+for every participant. Cache, storage, workers, credentials, and player
+identity are never shared between the host and guests. The persistent-room
+gate additionally drops signaling during live play, resumes the same durable
+room, completes a round, readies both players, starts round two over the same
+RTC channels, and verifies clean departure.
 
 ## Deployment and trust
 
