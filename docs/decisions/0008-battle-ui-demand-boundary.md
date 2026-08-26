@@ -19,6 +19,9 @@ state for independent UI modules.
   same runtime before using battlefield services.
 - Concurrent callers share one promise. A failed transfer clears that promise
   so the next intent or entry can retry without reloading the page.
+- Garage and Studio teardown paths treat the battle HUD and damage panel as
+  optional. A pristine direct-to-Studio visit must be able to enter and return
+  to the garage before either battle-only module has ever been transferred.
 - The boundary narrows the legacy JavaScript modules to an explicit TypeScript
   construction contract. Rendering, HUD content, masks, and battle behavior do
   not change.
@@ -36,6 +39,8 @@ and an explicit acquisition barrier at every consumer.
 
 - `battleHudAccess.selftest.mjs` proves request coalescing, construction order,
   reuse, and recovery after a failed import.
+- `loadingScreens.selftest.mjs` proves pristine Studio entry and exit do not
+  dereference an absent battle HUD or damage panel.
 - `npm run perf:cold -- --sessions 5` exercises independent cache-disabled
   first visits plus failed-download and failed-evaluation recovery.
 - `npm run perf:loading -- --mode battle --maps verdant` crosses the real lazy

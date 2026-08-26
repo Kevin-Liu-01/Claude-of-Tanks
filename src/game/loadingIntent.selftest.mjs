@@ -6,10 +6,13 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
 const garage = fs.readFileSync(path.join(here, '..', 'ui', 'garage.js'), 'utf8');
+const pedestalPreloader = fs.readFileSync(
+  path.join(here, 'garagePedestalPreloader.ts'), 'utf8',
+);
 
-const neighborWarm = main.slice(
-  main.indexOf('function queuePedestalTexturePrefetch()'),
-  main.indexOf('function setPedestalTank('),
+const neighborWarm = pedestalPreloader.slice(
+  pedestalPreloader.indexOf('const queueNeighbors = () =>'),
+  pedestalPreloader.indexOf('const preloadIntent ='),
 );
 assert.ok(
   neighborWarm.indexOf('await ensureTankBuilders(ids);') <
@@ -29,9 +32,11 @@ assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
 assert.match(garage,
   /pointerenter[\s\S]{0,120}signalTankIntent\(s\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(s\.id, true\)/,
   'vehicle cards must expose deliberate hover and immediate press intent');
-assert.match(main,
-  /function preloadPedestalIntent\(specId\)[\s\S]{0,800}Promise\.all\(\[[\s\S]{0,220}ensureTankBuilder\(specId\)[\s\S]{0,300}prebakeSharedTextures/,
+assert.match(pedestalPreloader,
+  /const preloadIntent = \(specId: string\)[\s\S]{0,800}Promise\.all\(\[[\s\S]{0,220}ensureTankBuilder\(specId\)[\s\S]{0,300}prebakeSharedTextures/,
   'tank intent must overlap the exact builder transfer and chunked texture bake');
+assert.match(main, /createGaragePedestalPreloader\(\{/,
+  'main must compose one typed neighbor and pointer-intent owner');
 assert.match(main, /onTankIntent: preloadPedestalIntent/,
   'garage vehicle intent must be wired to the runtime loader');
 

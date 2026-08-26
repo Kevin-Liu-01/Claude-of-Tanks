@@ -80,6 +80,7 @@ import {
 } from './ui/garageStage.js';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
+import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
 import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
@@ -983,13 +984,9 @@ async function warmPedestalPrograms(vis) {
     await nextFrame();
   } catch (_) { /* first visible render remains the compatibility fallback */ }
 }
-let pedestalTexturePrefetchGeneration = 0;
-const pedestalTexturePrefetchedIds = new Set();
-const pedestalIntentPromises = new Map();
-const PEDESTAL_PREFETCH_CANCELLED = Symbol('pedestal-prefetch-cancelled');
 const noteGarageActivity = () => {
   garageDressingScheduler.noteActivity();
-  pedestalTexturePrefetchGeneration++;
+  pedestalPreloader.invalidate();
   if (bootComplete && game.phase === 'garage') queueWorldPrefetch(pendingMapChoice);
 };
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
@@ -1019,87 +1016,24 @@ function frameBudgetTick(budgetMs = 6) {
     return nextFrame().then(() => { sliceAt = performance.now(); });
   };
 }
-function queuePedestalTexturePrefetch() {
-  if (!bootComplete || game.phase !== 'garage' || !garage?.getNeighborIds) return;
-  const generation = ++pedestalTexturePrefetchGeneration;
-  const ids = garage.getNeighborIds(2)
-    .filter((id) => id !== selectedSpecId && !pedestalCache.has(id));
-  setTimeout(async () => {
-    if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') return;
-    const keep = new Set(ids);
-    for (const id of [...pedestalTexturePrefetchedIds]) {
-      if (keep.has(id)) continue;
-      discardPrebakedSharedTextures(id);
-      pedestalTexturePrefetchedIds.delete(id);
-    }
-    try {
-      // The neighboring textures are only half of a cold switch. Profile
-      // families are separate production chunks (some exceed 200 kB), so a
-      // country/family boundary otherwise discovers and parses its builder on
-      // the actual card click. Transfer both adjacent families in this same
-      // quiet, cancellable window before spending CPU on their paint.
-      await ensureTankBuilders(ids);
-      if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
-        throw PEDESTAL_PREFETCH_CANCELLED;
-      }
-      for (const id of ids) {
-        if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
-          throw PEDESTAL_PREFETCH_CANCELLED;
-        }
-        const budgetTick = frameBudgetTick(3);
-        await prebakeSharedTextures(getSpec(id), engineCtx.anisotropy ?? 4, 'ai', async () => {
-          if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
-            throw PEDESTAL_PREFETCH_CANCELLED;
-          }
-          await budgetTick();
-        });
-        if (generation !== pedestalTexturePrefetchGeneration || game.phase !== 'garage') {
-          discardPrebakedSharedTextures(id);
-          throw PEDESTAL_PREFETCH_CANCELLED;
-        }
-        pedestalTexturePrefetchedIds.add(id);
-        await nextFrame();
-      }
-    } catch (error) {
-      if (error !== PEDESTAL_PREFETCH_CANCELLED) {
-        console.warn('[garage] neighbor texture prefetch failed:', error);
-      }
-    }
-  }, 500);
-}
-function preloadPedestalIntent(specId) {
-  if (!specId || specId === selectedSpecId || pedestalCache.has(specId)) {
-    return Promise.resolve();
-  }
-  const active = pedestalIntentPromises.get(specId);
-  if (active) return active;
-  const pending = Promise.all([
-    ensureTankBuilder(specId),
-    prebakeSharedTextures(
-      getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', frameBudgetTick(3),
-    ),
-  ]).then(() => {
-    if (specId === selectedSpecId || pedestalCache.has(specId)) return;
-    pedestalTexturePrefetchedIds.delete(specId);
-    pedestalTexturePrefetchedIds.add(specId);
-    // Intent textures carry no live references. Bound this precise warm set
-    // separately from the six-visual LRU so a long pointer sweep can never
-    // grow retained canvas/GPU memory without limit.
-    while (pedestalTexturePrefetchedIds.size > 4) {
-      const oldest = pedestalTexturePrefetchedIds.values().next().value;
-      pedestalTexturePrefetchedIds.delete(oldest);
-      if (oldest !== selectedSpecId && !pedestalCache.has(oldest)) {
-        discardPrebakedSharedTextures(oldest);
-      }
-    }
-  }).catch(() => null).finally(() => {
-    if (pedestalIntentPromises.get(specId) === pending) {
-      pedestalIntentPromises.delete(specId);
-    }
-  });
-  pedestalIntentPromises.set(specId, pending);
-  return pending;
-}
+const pedestalPreloader = createGaragePedestalPreloader({
+  getPhase: () => game.phase,
+  isBootComplete: () => bootComplete,
+  getSelectedId: () => selectedSpecId,
+  getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
+  hasCachedVisual: (specId) => pedestalCache.has(specId),
+  ensureTankBuilder,
+  ensureTankBuilders,
+  getSpec,
+  prebakeSharedTextures,
+  discardSharedTextures: discardPrebakedSharedTextures,
+  createBudgetYield: frameBudgetTick,
+  nextFrame,
+  scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
+  anisotropy: engineCtx.anisotropy ?? 4,
+});
+const queuePedestalTexturePrefetch = pedestalPreloader.queueNeighbors;
+const preloadPedestalIntent = pedestalPreloader.preloadIntent;
 function setPedestalTank(specId, force = false) {
   if (!force && pedestalVisual && pedestalVisual.specId === specId) {
     // switch-desync r1: a same-spec call is a no-op ONLY while the hero is
@@ -1115,7 +1049,7 @@ function setPedestalTank(specId, force = false) {
     pedTrace('same-spec-rerun', { id: specId, pv: pedVisState(pedestalVisual) });
   }
   pedestalPollToken++;
-  pedestalTexturePrefetchGeneration++;
+  pedestalPreloader.invalidate();
   pedestalPendingSince = performance.now();
   pedTrace('call', { id: specId, tok: pedestalPollToken, pv: pedVisState(pedestalVisual) });
   const t0 = performance.now();
@@ -1974,10 +1908,11 @@ game.killcam = killcam;
  * @param {boolean} on veiled (replay running)
  */
 function veilHud(on) {
-  hud.root.style.display = on ? 'none' : '';
-  const sr = hud.shotInfo && hud.shotInfo.statsRoot;
+  // Studio and garage are valid before the battle-only HUD graph exists.
+  if (hud?.root) hud.root.style.display = on ? 'none' : '';
+  const sr = hud?.shotInfo?.statsRoot;
   if (sr) sr.style.visibility = on ? 'hidden' : '';
-  damagePanel.root.style.visibility = on ? 'hidden' : '';
+  if (damagePanel?.root) damagePanel.root.style.visibility = on ? 'hidden' : '';
 }
 
 // Player combat feedback: non-spatial hit-confirm blip for own shells that
@@ -3750,7 +3685,8 @@ function clearBattlePresentationForExit() {
   // cancel() emits killcam:done, which may flush a buffered report. Hide the
   // whole battle presentation after that event so no replay text, report,
   // spectate bar, or damage-panel veil can survive the leave click.
-  hud.setMode('hidden');
+  // Direct Studio sessions have not acquired the battle-only HUD yet.
+  hud?.setMode?.('hidden');
   endOverlay.style.display = 'none';
 }
 
@@ -3828,7 +3764,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   bus.emit('phase:change', { phase: 'garage' });
   endOverlay.style.display = 'none';
   if (document.exitPointerLock) document.exitPointerLock();
-  hud.setMode('hidden');
+  hud?.setMode?.('hidden');
   markGarageStage('eventAndHud');
   garage.show(selectedSpecId);
   markGarageStage('garageUi');

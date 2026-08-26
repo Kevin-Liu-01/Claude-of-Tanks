@@ -120,6 +120,17 @@ assert.match(mainSource,
 assert.match(studioSource,
   /async function load\([\s\S]{0,900}createFrameBudgetYielder\(10\)[\s\S]{0,900}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
   'Studio scene JSON loads must yield between full-quality procedural actors');
+assert.match(studioSource, /hud\?\.setMode\?\.\('hidden'\)/,
+  'a pristine direct Studio visit must not require the battle-only HUD runtime');
+assert.match(mainSource,
+  /function clearBattlePresentationForExit\([\s\S]{0,900}hud\?\.setMode\?\.\('hidden'\)/,
+  'direct Studio exit cleanup must not require the battle-only HUD runtime');
+assert.match(mainSource,
+  /function veilHud\(on\)[\s\S]{0,400}hud\?\.root[\s\S]{0,300}damagePanel\?\.root/,
+  'shared presentation cleanup must tolerate an unloaded battle HUD and damage panel');
+assert.match(mainSource,
+  /function enterGarage\([\s\S]{0,4500}hud\?\.setMode\?\.\('hidden'\)/,
+  'returning from pristine Studio must reach the garage without a battle HUD');
 assert.match(studioSource,
   /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
   'Studio batch loads must not rebuild timeline bindings for every intermediate actor');
@@ -134,7 +145,7 @@ assert.match(mainSource,
   'returning to the enclosed garage must suspend long-range shadow redraws');
 const pedestalWarmBody = mainSource.slice(
   mainSource.indexOf('async function warmPedestalPrograms('),
-  mainSource.indexOf('let pedestalTexturePrefetchGeneration'),
+  mainSource.indexOf('const noteGarageActivity'),
 );
 const pedestalWarmCode = pedestalWarmBody.replace(/\/\/.*$/gm, '');
 assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,

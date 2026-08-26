@@ -2230,7 +2230,9 @@ export function createStudio(ctx) {
       post.resetAdaptiveResolution?.();
       garage.hide();
       showroom.stop();
-      hud.setMode('hidden');
+      // The battle HUD is intentionally demand-loaded. A pristine direct
+      // Studio visit (or F8 before the first battle) has no HUD runtime yet.
+      hud?.setMode?.('hidden');
       setGarageSpots(false);
       setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
       ensureFxBus();

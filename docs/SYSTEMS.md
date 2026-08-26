@@ -125,6 +125,10 @@ genuine input and transition lull. The background battlefield builder observes
 the same garage-activity epoch, so optional world and workshop work cannot
 independently pile onto an interactive frame.
 
+`garagePedestalPreloader.ts` separately owns card-neighbor and pointer-intent
+warming. It loads only exact vehicle families, cancels stale work after fresh
+input, coalesces repeated intent, and bounds retained texture-only previews.
+
 ### Battle entry
 
 Solo Battle intent begins downloading the solo authority chunk; the covered

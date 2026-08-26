@@ -24,6 +24,10 @@ fully leave layout. First-battle GPU initialization runs behind the loader.
 Prefetch may resolve intent and download/build exact assets, but it must not
 construct unrelated worlds or fleet families.
 
+`garagePedestalPreloader.ts` owns garage-card neighbor and pointer-intent
+warming. Its generation token cancels stale paint after new input, concurrent
+intent shares one request, and unreferenced warm textures have a hard bound.
+
 The solo authority graph follows the same rule. Garage boot does not statically
 import it. Battle hover/intent may download its exact chunk, and the covered
 battle barrier acquires it in parallel with the selected world and roster.
@@ -56,6 +60,7 @@ simplified.
 
     npm run typecheck
     node src/engine/frameScheduler.selftest.mjs
+    node src/game/garagePedestalPreloader.selftest.mjs
     node src/ui/chunkRecovery.selftest.mjs
     node src/ui/loadingScreens.selftest.mjs
     npm run perf:cold -- --sessions 4 --cpu 8 --down-kbps 800 --latency 250

@@ -1,0 +1,150 @@
+type BudgetYield = () => Promise<void> | undefined;
+
+interface GaragePedestalPreloaderOptions {
+  getPhase(): string;
+  isBootComplete(): boolean;
+  getSelectedId(): string;
+  getNeighborIds(): readonly string[];
+  hasCachedVisual(specId: string): boolean;
+  ensureTankBuilder(specId: string): Promise<unknown>;
+  ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
+  getSpec(specId: string): unknown;
+  prebakeSharedTextures(
+    spec: unknown,
+    anisotropy: number,
+    quality: string,
+    yieldForBudget?: BudgetYield,
+  ): Promise<unknown>;
+  discardSharedTextures(specId: string): void;
+  createBudgetYield(budgetMs: number): BudgetYield;
+  nextFrame(): Promise<unknown>;
+  scheduleDelay(callback: () => void, delayMs: number): unknown;
+  anisotropy: number;
+  warn?: (message: string, error: unknown) => void;
+  retainedIntentLimit?: number;
+}
+
+export interface GaragePedestalPreloader {
+  invalidate(): void;
+  queueNeighbors(): void;
+  preloadIntent(specId: string): Promise<unknown>;
+  readonly retainedIds: readonly string[];
+  readonly pendingIntents: number;
+}
+
+const CANCELLED = Symbol('garage-pedestal-preload-cancelled');
+
+/** Own cancellable neighbor and pointer-intent warming for garage heroes. */
+export function createGaragePedestalPreloader({
+  getPhase,
+  isBootComplete,
+  getSelectedId,
+  getNeighborIds,
+  hasCachedVisual,
+  ensureTankBuilder,
+  ensureTankBuilders,
+  getSpec,
+  prebakeSharedTextures,
+  discardSharedTextures,
+  createBudgetYield,
+  nextFrame,
+  scheduleDelay,
+  anisotropy,
+  warn = (message, error) => console.warn(message, error),
+  retainedIntentLimit = 4,
+}: GaragePedestalPreloaderOptions): GaragePedestalPreloader {
+  const required = [getPhase, isBootComplete, getSelectedId, getNeighborIds,
+    hasCachedVisual, ensureTankBuilder, ensureTankBuilders, getSpec,
+    prebakeSharedTextures, discardSharedTextures, createBudgetYield, nextFrame,
+    scheduleDelay, warn];
+  if (required.some((entry) => typeof entry !== 'function')) {
+    throw new TypeError('garage pedestal preloader requires every runtime port');
+  }
+
+  let generation = 0;
+  const retainedIds = new Set<string>();
+  const intentPromises = new Map<string, Promise<unknown>>();
+  const active = (token: number) => token === generation && getPhase() === 'garage';
+  const invalidate = () => { generation += 1; };
+
+  const queueNeighbors = () => {
+    if (!isBootComplete() || getPhase() !== 'garage') return;
+    const selectedId = getSelectedId();
+    const ids = [...getNeighborIds()]
+      .filter((id) => id !== selectedId && !hasCachedVisual(id));
+    const token = ++generation;
+
+    scheduleDelay(() => {
+      void (async () => {
+        if (!active(token)) return;
+        const keep = new Set(ids);
+        for (const id of [...retainedIds]) {
+          if (keep.has(id)) continue;
+          discardSharedTextures(id);
+          retainedIds.delete(id);
+        }
+        try {
+          // Transfer exact profile families before paying for paint work. This
+          // prevents a country boundary from discovering a large builder chunk
+          // only after the card click.
+          await ensureTankBuilders(ids);
+          if (!active(token)) throw CANCELLED;
+          for (const id of ids) {
+            if (!active(token)) throw CANCELLED;
+            const budgetYield = createBudgetYield(3);
+            await prebakeSharedTextures(getSpec(id), anisotropy, 'ai', async () => {
+              if (!active(token)) throw CANCELLED;
+              await budgetYield();
+            });
+            if (!active(token)) {
+              discardSharedTextures(id);
+              throw CANCELLED;
+            }
+            retainedIds.add(id);
+            await nextFrame();
+          }
+        } catch (error: unknown) {
+          if (error !== CANCELLED) warn('[garage] neighbor texture prefetch failed:', error);
+        }
+      })();
+    }, 500);
+  };
+
+  const preloadIntent = (specId: string): Promise<unknown> => {
+    if (!specId || specId === getSelectedId() || hasCachedVisual(specId)) {
+      return Promise.resolve();
+    }
+    const activeIntent = intentPromises.get(specId);
+    if (activeIntent) return activeIntent;
+    const pending = Promise.all([
+      ensureTankBuilder(specId),
+      prebakeSharedTextures(
+        getSpec(specId), anisotropy, 'ai', createBudgetYield(3),
+      ),
+    ]).then(() => {
+      if (specId === getSelectedId() || hasCachedVisual(specId)) return;
+      retainedIds.delete(specId);
+      retainedIds.add(specId);
+      while (retainedIds.size > retainedIntentLimit) {
+        const oldest = retainedIds.values().next().value;
+        if (oldest === undefined) break;
+        retainedIds.delete(oldest);
+        if (oldest !== getSelectedId() && !hasCachedVisual(oldest)) {
+          discardSharedTextures(oldest);
+        }
+      }
+    }).catch(() => null).finally(() => {
+      if (intentPromises.get(specId) === pending) intentPromises.delete(specId);
+    });
+    intentPromises.set(specId, pending);
+    return pending;
+  };
+
+  return {
+    invalidate,
+    queueNeighbors,
+    preloadIntent,
+    get retainedIds() { return [...retainedIds]; },
+    get pendingIntents() { return intentPromises.size; },
+  };
+}
