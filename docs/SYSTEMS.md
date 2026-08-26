@@ -66,6 +66,8 @@ strict TypeScript owners:
 - `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
 - `src/dev/debugTelemetry.ts` owns read-only diagnostics;
 - `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.
+- `src/dev/combatTelemetry.ts` owns debug-only attributable shell and bot
+  pressure receipts; ordinary production installs no telemetry listeners.
 
 `src/main.js` still declares dependency order and connects these ports, but it
 does not reimplement their state machines.

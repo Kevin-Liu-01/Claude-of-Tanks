@@ -95,6 +95,7 @@ import {
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
+import { createCombatTelemetry } from './dev/combatTelemetry.ts';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
@@ -497,6 +498,13 @@ const devTrace = traceRequested
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
 const game = createGameState();
+const { playerShellLog, botPressure } = createCombatTelemetry({
+  enabled: diagnosticsRequested,
+  bus,
+  getGame: () => game,
+  getPinnedTargetId: () => driveTestController.aimTargetId,
+  getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
+});
 const battleVisualPool = createBattleVisualPool({
   capacity: getDeviceTier() === 'mobile' ? 0 : 4,
 });
@@ -1906,42 +1914,6 @@ bus.on('shell:hit', (ev) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// controls_gunnery r6: PLAYER SHELL TERMINAL TELEMETRY. Every player shell's
-// terminal event is recorded with the intended target and the miss distance
-// to that target's hull center at the terminal instant, so whiffs are
-// attributable (lead error / drop / blocked path / collider gap) instead of
-// vanishing. Ring buffer on __DEBUG.playerShellLog; consumed by the
-// tools/gunnery_gate.mjs hull-hit-rate gate and free to read in live debug.
-// ---------------------------------------------------------------------------
-const playerShellLog = [];
-const _tele = new THREE.Vector3();
-function teleTargetFor(muzzle, dir) {
-  // intended target: the live enemy whose hull center passes nearest the
-  // fire ray (drive tests also pin their target — prefer it when live)
-  const debugAimTargetId = driveTestController.aimTargetId;
-  const pinned = debugAimTargetId ? game.tankById.get(debugAimTargetId) : null;
-  if (pinned && pinned.state && pinned.combat && !pinned.combat.destroyed) return pinned;
-  let best = null;
-  let bestLat = 40; // ignore shells not aimed near any tank
-  for (const ent of game.tanks) {
-    if (ent.isPlayer || ent.team !== 'enemy' || !ent.state || !ent.combat || ent.combat.destroyed) continue;
-    _tele.copy(ent.state.pos);
-    _tele.y += ent.spec.dims.heightM * 0.5;
-    _tele.x -= muzzle[0]; _tele.y -= muzzle[1]; _tele.z -= muzzle[2];
-    const proj = _tele.x * dir[0] + _tele.y * dir[1] + _tele.z * dir[2];
-    if (proj < 0) continue;
-    const lat = Math.sqrt(Math.max(0, _tele.lengthSq() - proj * proj));
-    if (lat < bestLat) { bestLat = lat; best = ent; }
-  }
-  return best;
-}
-function teleMissM(rec, pos) {
-  const tgt = rec.targetId ? game.tankById.get(rec.targetId) : null;
-  if (!tgt || !tgt.state || !pos) return null;
-  const cy = tgt.state.pos.y + tgt.spec.dims.heightM * 0.5;
-  return Math.round(Math.hypot(pos[0] - tgt.state.pos.x, pos[1] - cy, pos[2] - tgt.state.pos.z) * 100) / 100;
-}
 bus.on('shell:fired', (ev) => {
   if (!ev.isPlayer) return;
   // Network authority owns firing, so the bridge supplies the barrel stroke
@@ -1959,42 +1931,6 @@ bus.on('shell:fired', (ev) => {
       rig.recoilKick((0.006 + caliberK * 0.011) * recoilScale, recoilScale);
     }
   }
-  const tgt = teleTargetFor(ev.muzzlePos, ev.dir);
-  playerShellLog.push({
-    shellId: ev.shellId, t: Math.round(game.timeS * 100) / 100,
-    targetId: tgt ? tgt.id : null,
-    targetDistM: tgt ? Math.round(tgt.state.pos.distanceTo(game.player.state.pos)) : null,
-    targetSpeed: tgt ? Math.round((tgt.state.speed || 0) * 10) / 10 : null,
-    blockedDistM: frameInfo.aim.blockedDistM ? Math.round(frameInfo.aim.blockedDistM) : null,
-    terminal: null, hitKind: null, damage: 0, missM: null,
-  });
-  if (playerShellLog.length > 64) playerShellLog.shift();
-});
-// controls_gunnery r3 CRITICAL: shell ids RESET per battle — a forward find()
-// resolved to the OLDEST record, so battle 5's hits overwrote battle 1's rows
-// (the "hits on tanks 423 m from the intended target" phenomenon was entirely
-// this telemetry corruption). Resolve the NEWEST record for an id.
-function shellRecFor(shellId) {
-  for (let i = playerShellLog.length - 1; i >= 0; i--) {
-    if (playerShellLog[i].shellId === shellId) return playerShellLog[i];
-  }
-  return null;
-}
-bus.on('shell:hit', (ev) => {
-  if (!game.player || ev.attackerId !== game.player.id) return;
-  const rec = shellRecFor(ev.shellId);
-  if (!rec) return;
-  rec.terminal = 'tank';
-  rec.hitTankId = ev.targetId;
-  rec.hitKind = ev.kind;
-  rec.damage = Math.round(ev.damage || 0);
-  rec.missM = teleMissM(rec, ev.pos);
-});
-bus.on('shell:expired', (ev) => {
-  const rec = shellRecFor(ev.shellId);
-  if (!rec || rec.terminal) return;
-  rec.terminal = ev.hitTerrain ? 'terrain' : 'air';
-  rec.missM = teleMissM(rec, ev.pos);
 });
 // gameplay_feel r6 (crushable vegetation): state.js emits prop:crushed when a
 // moving hull overruns a tagged trunk — splinter burst at the break point
@@ -2010,39 +1946,13 @@ bus.on('prop:crushed', (ev) => {
 // chained drum blast) reports through the destructibles.js sink — forwarded
 // onto the bus as the AUDIO seam ('prop:destroyed' {kind, pos, cause}).
 setDestroyedEventSink((ev) => bus.emit('prop:destroyed', ev));
-// Bot-vs-player pressure telemetry (same round, minor #4): per-battle
-// counters for enemy shells whose fire ray passes near the player (aimed at
-// us) vs those that connect, so return-fire consistency is measurable per
-// roster instead of anecdotal. Reset on battle start; __DEBUG.botPressure.
-const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
 bus.on('phase:change', (ev) => {
   if (ev.phase === 'battle') {
-    botPressure.enemyShells = 0; botPressure.aimedAtPlayer = 0;
-    botPressure.hitsOnPlayer = 0; botPressure.dmgOnPlayer = 0;
     // Showroom convenience copies must not compete with the complete combat
     // roster. Keep only the selected hero on mobile and the three most-recent
     // desktop heroes; the player visual shares paint with the fielded actor
     // and still gives the garage an immediate return.
     trimPedestalCache(getDeviceTier() === 'mobile' ? 1 : 3);
-  }
-});
-bus.on('shell:fired', (ev) => {
-  if (ev.isPlayer || !game.player || !game.player.state) return;
-  botPressure.enemyShells += 1;
-  const p = game.player.state.pos;
-  const cy = p.y + game.player.spec.dims.heightM * 0.5;
-  const rx = p.x - ev.muzzlePos[0];
-  const ry = cy - ev.muzzlePos[1];
-  const rz = p.z - ev.muzzlePos[2];
-  const proj = rx * ev.dir[0] + ry * ev.dir[1] + rz * ev.dir[2];
-  if (proj <= 0) return;
-  const lat2 = rx * rx + ry * ry + rz * rz - proj * proj;
-  if (lat2 < 36) botPressure.aimedAtPlayer += 1; // within 6 m of hull center
-});
-bus.on('shell:hit', (ev) => {
-  if (game.player && ev.targetId === game.player.id) {
-    botPressure.hitsOnPlayer += 1;
-    botPressure.dmgOnPlayer += ev.damage || 0;
   }
 });
 
