@@ -55,6 +55,8 @@ export interface CombatTelemetryOptions {
   getGame(): CombatGame;
   getPinnedTargetId(): string | null;
   getAimBlockedDistance(): number | null | undefined;
+  playerShellLog?: PlayerShellTelemetryRecord[];
+  botPressure?: BotPressureTelemetry;
 }
 
 /**
@@ -68,14 +70,14 @@ export function createCombatTelemetry({
   getGame,
   getPinnedTargetId,
   getAimBlockedDistance,
-}: CombatTelemetryOptions): CombatTelemetry {
-  const playerShellLog: PlayerShellTelemetryRecord[] = [];
-  const botPressure: BotPressureTelemetry = {
+  playerShellLog = [],
+  botPressure = {
     enemyShells: 0,
     aimedAtPlayer: 0,
     hitsOnPlayer: 0,
     dmgOnPlayer: 0,
-  };
+  },
+}: CombatTelemetryOptions): CombatTelemetry {
   if (!enabled) return { playerShellLog, botPressure };
 
   const relative = new Vector3();

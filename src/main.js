@@ -85,7 +85,7 @@ import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts
 import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
-import { createBattleVisualStreamer } from './game/battleVisualStreamer.ts';
+import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
   clearBattleAfterExit,
   resetBattleTankForGarage,
@@ -95,7 +95,6 @@ import {
 // development, or automation sessions.
 import { debugModeRequested } from './dev/debugIntent.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
-import { createCombatTelemetry } from './dev/combatTelemetry.ts';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
@@ -121,7 +120,8 @@ import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
-import { createBattleLoadScreen, tierNumeral } from './ui/battleLoad.js';
+import { tierNumeral } from './vehicles/tier.js';
+import { createBattleLoadAccess } from './ui/battleLoadAccess.ts';
 import { createTransition } from './ui/transition.js';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
@@ -440,6 +440,8 @@ function cancelBattleIntentTextureWarm() {
 }
 
 function preloadBattleIntent({ specId, mapId } = {}) {
+  battleLoadAccess.preload().catch(() => null);
+  battleVisualStreamerAccess.preload().catch(() => null);
   audio.preload();
   settings.preload().catch(() => null);
   armorAimOverlay.preload().catch(() => null);
@@ -498,13 +500,8 @@ const devTrace = traceRequested
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
 const game = createGameState();
-const { playerShellLog, botPressure } = createCombatTelemetry({
-  enabled: diagnosticsRequested,
-  bus,
-  getGame: () => game,
-  getPinnedTargetId: () => driveTestController.aimTargetId,
-  getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
-});
+const playerShellLog = [];
+const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
 const battleVisualPool = createBattleVisualPool({
   capacity: getDeviceTier() === 'mobile' ? 0 : 4,
 });
@@ -1521,6 +1518,7 @@ const {
 } = createBattleModuleAccess();
 
 function preloadPlayMode(mode) {
+  battleLoadAccess.preload().catch(() => null);
   ensureBattleHud().catch(() => null);
   preloadFxModule().catch(() => null);
   preloadKillcamModule().catch(() => null);
@@ -1678,7 +1676,12 @@ const garage = await bootStage('ui', () => createGarage({
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.js): map art + both rosters +
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
 // before the first BATTLE press.
-const battleLoad = createBattleLoadScreen();
+const battleLoadAccess = createBattleLoadAccess();
+let battleLoad = null;
+async function ensureBattleLoad() {
+  battleLoad = await battleLoadAccess.preload();
+  return battleLoad;
+}
 
 // STATE TRANSITIONS (src/ui/transition.js): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
@@ -2087,7 +2090,7 @@ const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
 const armorAimOverlay = createArmorAimOverlayAccess();
-const battleVisuals = createBattleVisualStreamer({
+const battleVisualStreamerAccess = createBattleVisualStreamerAccess({
   game,
   scene,
   renderer,
@@ -2103,6 +2106,11 @@ const battleVisuals = createBattleVisualStreamer({
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
 });
+let battleVisuals = null;
+async function ensureBattleVisualStreamer() {
+  battleVisuals = await battleVisualStreamerAccess.preload();
+  return battleVisuals;
+}
 // Reused every HUD frame: scoped armor inspection follows every legally
 // visible opponent, not only the vehicle directly under the gun marker.
 const armorScopeTargets = [];
@@ -2423,6 +2431,7 @@ bus.on('shell:fired', (p) => {
  * @returns {Promise<void>} resolves when the battle is live
  */
 async function startBattleLoading(specId, mapId = null, { randomRoster = true } = {}) {
+  await Promise.all([ensureBattleLoad(), ensureBattleVisualStreamer()]);
   // Debug/API entry can bypass the garage's ui:battleStart event.
   post.setAdaptiveSuspended(true);
   const shownAt = performance.now();
@@ -2887,7 +2896,7 @@ async function primeSoloBattleRevealFrame() {
       primed: true,
       phase: game.phase,
       garageHidden: !garage.isOpen,
-      loaderVisible: battleLoad.visible,
+      loaderVisible: battleLoad?.visible === true,
       frameSerial: presentedBattleFrameSerial,
       waitMs: Math.round(performance.now() - startedAt),
     };
@@ -2936,6 +2945,8 @@ function resolveFxSubject(id) {
  */
 function preloadNetworkLobbyIntent(state) {
   if (!state || game.phase !== 'garage' || state.phase !== 'waiting') return;
+  battleLoadAccess.preload().catch(() => null);
+  battleVisualStreamerAccess.preload().catch(() => null);
   preloadNetworkBattleModules().catch(() => null);
   preloadNetworkRoomChatModule().catch(() => null);
   const rosterIds = [];
@@ -2994,8 +3005,9 @@ function closeNetworkMatch(reason = 'network_match_closed') {
 async function beginBattleEntry(specId, mapId = null, options = undefined) {
   if (battleEntryPending) return;
   battleEntryPending = true;
-  battleLoadRenderingCovered = true;
   try {
+    await ensureBattleLoad();
+    battleLoadRenderingCovered = true;
     await startBattleLoading(specId, mapId, options);
   } catch (error) {
     console.error('[battle] entry failed', error);
@@ -3007,7 +3019,7 @@ async function beginBattleEntry(specId, mapId = null, options = undefined) {
     enterGarage();
     battleLoadRenderingCovered = false;
     await nextFrame();
-    await battleLoad.hide();
+    await battleLoad?.hide?.();
   } finally {
     battleLoadRenderingCovered = false;
     battleEntryPending = false;
@@ -3046,6 +3058,7 @@ async function presentNetworkBattle({
   connectAfterWorld = false,
   transitionShown = false,
 } = {}) {
+  await Promise.all([ensureBattleLoad(), ensureBattleVisualStreamer()]);
   // Direct presentation calls and every lobby handoff converge here. Calls
   // from a user gesture unlock immediately; rematches reuse the live context.
   audio.resume();
@@ -3325,6 +3338,7 @@ async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = 
   const viewerId = String(session?.roomInfo?.peerId || '');
   const own = lobbyState?.players?.find((player) => player.id === viewerId);
   try {
+    await ensureBattleLoad();
     if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
     resetNetworkBattleState();
     // Cover the page before the first cold import can yield. The play menu
@@ -3397,7 +3411,7 @@ async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = 
     console.error('[network] entry failed', error);
     audio.loadingOn(false);
     closeNetworkMatch('entry_failed');
-    await battleLoad.hide();
+    await battleLoad?.hide?.();
     enterGarage();
   } finally {
     battleEntryPending = false;
@@ -3413,6 +3427,7 @@ async function beginNetworkRematch(lobbyState) {
   const viewerId = networkMatch.playerId;
   const own = lobbyState.players.find((player) => player.id === viewerId);
   try {
+    await ensureBattleLoad();
     if (!own) throw new Error('Your player is no longer in this room.');
     const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
     const modeLabel = lobbyState.mode === 'lan'
@@ -3457,7 +3472,7 @@ async function beginNetworkRematch(lobbyState) {
     console.error('[network] rematch entry failed', error);
     audio.loadingOn(false);
     closeNetworkMatch('rematch_entry_failed');
-    await battleLoad.hide();
+    await battleLoad?.hide?.();
     enterGarage();
     return false;
   } finally {
@@ -3474,6 +3489,7 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
   const viewerId = String(ticket?.playerId || '');
   const own = ticket?.roster?.find((player) => player.id === viewerId);
   try {
+    await ensureBattleLoad();
     if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
     resetNetworkBattleState();
     const modeLabel = `Ranked · ${own.rating || 1000} rating`;
@@ -3513,7 +3529,7 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
     console.error('[ranked] entry failed', error);
     audio.loadingOn(false);
     closeNetworkMatch('entry_failed');
-    await battleLoad.hide();
+    await battleLoad?.hide?.();
     enterGarage();
   } finally {
     battleEntryPending = false;
@@ -4285,7 +4301,7 @@ function tick(nowMs) {
   // hide() is requested. Drain input during that complete interval without
   // applying it to the rig; otherwise the battle-button/pointer-lock gesture
   // can reveal a steep orbit and openBattle() used to snap it back afterward.
-  const battleEntryCameraLocked = inBattle && battleLoad.covering;
+  const battleEntryCameraLocked = inBattle && battleLoad?.covering === true;
   // KILL-CAM: while the replay runs, the sim/rig/visual-sync are all frozen —
   // resuming just continues the fixed-step loop (no drifted timers).
   const kcActive = killcam.isActive();
@@ -5795,6 +5811,19 @@ const driveTestController = driveTestRequested
     slayEnemies: () => {},
     resetAim: () => {},
   };
+
+if (diagnosticsRequested) {
+  const { createCombatTelemetry } = await import('./dev/combatTelemetry.ts');
+  createCombatTelemetry({
+    enabled: true,
+    bus,
+    getGame: () => game,
+    getPinnedTargetId: () => driveTestController.aimTargetId,
+    getAimBlockedDistance: () => frameInfo.aim.blockedDistM,
+    playerShellLog,
+    botPressure,
+  });
+}
 
 if (diagnosticsRequested) {
   await perfHud.preload().catch((error) => {

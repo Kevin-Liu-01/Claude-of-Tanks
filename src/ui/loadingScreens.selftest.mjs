@@ -308,7 +308,7 @@ assert.match(mainSource,
   /post\.render\(dtR\);\s*if \(game\.phase === 'battle'\) presentedBattleFrameSerial\+\+;/,
   'the reveal barrier must advance only after a real battle frame is rendered');
 assert.match(mainSource,
-  /const battleEntryCameraLocked = inBattle && battleLoad\.covering;/,
+  /const battleEntryCameraLocked = inBattle && battleLoad\?\.covering === true;/,
   'camera input must stay locked through the complete loader fade');
 assert.match(mainSource,
   /camInput\.mouseDX = \(paused \|\| battleEntryCameraLocked\) \? 0 : _mouse\.x;/,
@@ -320,6 +320,6 @@ const openBattleBody = mainSource.slice(
 assert.doesNotMatch(openBattleBody, /snapArcade/,
   'openBattle must never visibly re-snap the camera after the loader fade');
 assert.match(mainSource,
-  /enterGarage\(\);\s*battleLoadRenderingCovered = false;\s*await nextFrame\(\);\s*await battleLoad\.hide\(\);/,
+  /enterGarage\(\);\s*battleLoadRenderingCovered = false;\s*await nextFrame\(\);\s*await battleLoad\?\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
 console.log('loading screen featured-capture selftest: PASS');
