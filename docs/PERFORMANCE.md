@@ -364,6 +364,19 @@ idle freezes. The cold Merkava switch itself remained under its 2.5-second
 budget at 1.53 seconds. These measurements diagnose scheduling behavior rather
 than certify absolute device latency.
 
+### 2026-08-26 exact opening terrain residency
+
+The opening world used to allocate all three terrain LOD buffers inside 430 m
+even though only one could render. Initial residency now contains the exact
+visible level plus a coarse fallback; deterministic missing levels use the
+existing one-job look-ahead during the frozen countdown. The standalone stream
+benchmark improved from 820.8 ms and 134 initial geometries to 579.0 ms and 99
+initial geometries. In the production mobile Steppe diagnostic, initial
+geometries fell 108→86, all 13 look-ahead jobs completed before rollout, and
+click-to-battle/control improved from 6.735/8.743 s to 5.274/7.285 s. Both
+battle runs were host-contended, so treat the delta as diagnostic; the exact
+residency counts and identical LOD policy are the stable acceptance evidence.
+
 ### 2026-08-26 production-path warm correction
 
 The first-battle trace showed that shader submission alone was insufficient:

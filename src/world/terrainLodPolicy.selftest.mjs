@@ -6,10 +6,10 @@ import {
   warmTerrainLodBuilds,
 } from './terrainLodPolicy.js';
 
-assert.deepEqual(initialTerrainLods(50), [0, 1, 2],
-  'opening near chunk derives every LOD from its already-required fine grid');
-assert.deepEqual(initialTerrainLods(300), [0, 1, 2],
-  'opening mid chunk finishes its shared-grid LOD family before rollout');
+assert.deepEqual(initialTerrainLods(50), [0, 2],
+  'opening near chunk creates the visible level plus coarse fallback');
+assert.deepEqual(initialTerrainLods(300), [1, 2],
+  'opening mid chunk starts at the correct visible level plus coarse fallback');
 assert.deepEqual(initialTerrainLods(600), [2], 'opening far chunk creates only visible detail');
 
 assert.equal(terrainLodForDistance(170, 1), 0, 'near detail enters inside hysteresis');
