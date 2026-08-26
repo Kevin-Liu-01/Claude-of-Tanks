@@ -3747,7 +3747,11 @@ async function presentNetworkBattle({
     enemies: lobbyRosterRows({ players: matchPlayers },
       displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
   });
-  networkBridge = createBrowserBattleBridge({
+  // Keep the bridge private until every roster builder is ready. The render
+  // loop starts pumping the connected match immediately; publishing a
+  // half-prepared bridge let an early authoritative snapshot synchronously
+  // create an unwarmed bot and throw on every frame of a cold session.
+  const preparedBridge = createBrowserBattleBridge({
     engineCtx,
     game,
     bus,
@@ -3755,25 +3759,37 @@ async function presentNetworkBattle({
     spectator,
     worldCollision: world,
   });
-  await networkBridge.prepareRoster(matchPlayers, (fraction, specId) => {
-    battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
-  });
+  try {
+    await preparedBridge.prepareRoster(matchPlayers, (fraction, specId) => {
+      battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
+    });
+  } catch (error) {
+    preparedBridge.dispose();
+    throw error;
+  }
   markLoadStage('roster');
   // Install terrain sampling before the bridge performs its one hidden
   // authority-pose sync. Remote tracks and suspension must be conformed at
   // the spawn pose before any visual is eligible to become visible.
-  for (const entity of networkBridge.entities.values()) {
+  for (const entity of preparedBridge.entities.values()) {
     if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
   }
   battleLoad.progress(0.84, 'Synchronizing authority');
-  const initial = await waitForNetworkSnapshot(
-    (snapshot) => spectator
-      ? snapshot.entities.length > 0
-      : snapshot.entities.some((entity) => entity.id === viewerId),
-    12000,
-    'Timed out waiting for the first authoritative snapshot.',
-  );
+  let initial;
+  try {
+    initial = await waitForNetworkSnapshot(
+      (snapshot) => spectator
+        ? snapshot.entities.length > 0
+        : snapshot.entities.some((entity) => entity.id === viewerId),
+      12000,
+      'Timed out waiting for the first authoritative snapshot.',
+    );
+  } catch (error) {
+    preparedBridge.dispose();
+    throw error;
+  }
   markLoadStage('initialSnapshot');
+  networkBridge = preparedBridge;
   networkBridge.apply(initial, 1 / 60);
   battleLoad.progress(0.845, 'Warming suspension terrain');
   await warmBattleTerrainTiles(createFrameBudgetYielder(16));
