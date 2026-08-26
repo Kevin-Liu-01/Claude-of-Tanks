@@ -1233,13 +1233,13 @@ function buildT44(P) {
 // (same world seats) so the component masks compare like for like.
 function buildT64BV1(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
-  // Grow the authored 0.80 m course upward by 20%. The loaded lower run and
+  // Grow the authored 0.80 m course upward by 10%. The loaded lower run and
   // road-wheel axles stay on their ground datums; only the terminal wheels,
-  // return rollers and upper run rise. The hull is lifted by the same amount
-  // after assembly so the result is a taller \____/ course, not suspension
-  // translated upward into the old hull bay.
-  const trackHeightIncreaseM = 0.16;
-  const hullRideHeightIncreaseM = 0.36;
+  // return rollers and upper run rise. The body retains a 280 mm lift above
+  // the legacy seating so the result is a proportionate \____/ course rather
+  // than suspension translated upward into the old hull bay.
+  const trackHeightIncreaseM = 0.08;
+  const hullRideHeightIncreaseM = 0.28;
   const turretForwardShiftM = 0.20;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement
@@ -1630,7 +1630,7 @@ function buildT64BV1(P) {
     trackHeightIncreaseM,
     hullRideHeightIncreaseM,
     trackBottomY: 0.13,
-    trackTopY: 1.09,
+    trackTopY: 1.01,
     authoredEnvelopeHeightM: 0.80,
   });
   P.topY = 1.30;

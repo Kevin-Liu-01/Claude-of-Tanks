@@ -6,25 +6,25 @@ const EPSILON = 1e-6;
 const CASES = {
   t64bv1: {
     wheelY: 0.315,
-    topY: 1.09,
+    topY: 1.01,
     botY: 0.13,
-    idlerY: 0.825,
-    sprocketY: 0.948,
-    rollerY: 1.06,
+    idlerY: 0.745,
+    sprocketY: 0.868,
+    rollerY: 0.98,
     authoredEnvelopeHeightM: 0.80,
-    installedEnvelopeHeightM: 0.96,
+    installedEnvelopeHeightM: 0.88,
     turretZ: 0.14,
     armorCenterZ: [-0.20, -0.16],
   },
   ua_t64bv: {
     wheelY: 0.315,
-    topY: 1.09,
+    topY: 1.01,
     botY: 0.14,
-    idlerY: 0.835,
-    sprocketY: 0.92,
-    rollerY: 1.06,
+    idlerY: 0.755,
+    sprocketY: 0.84,
+    rollerY: 0.98,
     authoredEnvelopeHeightM: 0.79,
-    installedEnvelopeHeightM: 0.95,
+    installedEnvelopeHeightM: 0.87,
     turretZ: -0.06,
     armorCenterZ: [-0.34, -0.30],
   },
@@ -67,16 +67,16 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.ok(receipt && tallTrack && roadWheels?.isInstancedMesh && returnRollers?.isInstancedMesh,
       `${id}: exposes the canonical running-gear receipt and visible wheel layers`);
     near(receipt.wheelY, expected.wheelY, `${id}: road-wheel axle stays on its ground datum`);
-    near(receipt.topY, expected.topY, `${id}: upper track run gains 160 mm`);
+    near(receipt.topY, expected.topY, `${id}: upper track run gains 80 mm`);
     near(receipt.botY, expected.botY, `${id}: loaded lower run stays on its ground datum`);
     near(receipt.idler.y, expected.idlerY, `${id}: idler follows the lifted course`);
     near(receipt.sprocket.y, expected.sprocketY, `${id}: sprocket follows the lifted course`);
     near(tallTrack.authoredEnvelopeHeightM, expected.authoredEnvelopeHeightM,
       `${id}: receipt preserves the authored course height`);
     near(tallTrack.installedEnvelopeHeightM, expected.installedEnvelopeHeightM,
-      `${id}: installed track envelope is 160 mm taller`);
-    near(tallTrack.hullRideHeightIncreaseM, 0.36,
-      `${id}: hull receives the additional 360 mm ride-height increase`);
+      `${id}: installed track envelope is 80 mm taller`);
+    near(tallTrack.hullRideHeightIncreaseM, 0.28,
+      `${id}: hull retains the moderated 280 mm ride-height increase`);
     assert.ok(tallTrack.liftedDirectHullChildren >= 2,
       `${id}: direct hull fittings follow the raised hull body`);
     assert.deepEqual(uniqueInstanceYs(roadWheels), [expected.wheelY],
@@ -103,7 +103,7 @@ for (const [id, expected] of Object.entries(CASES)) {
 
     assert.ok(turretRig && gunRig?.parent === turretRig,
       `${id}: gun and turret remain one articulated assembly`);
-    near(turretRig.position.y, 1.66,
+    near(turretRig.position.y, 1.58,
       `${id}: turret and gun assembly rises with the hull`);
     near(turretRig.position.z, expected.turretZ,
       `${id}: complete turret rig moves 200 mm forward`);

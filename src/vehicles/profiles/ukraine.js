@@ -408,11 +408,11 @@ function addModernizedT80TurretSuite(P, variant) {
 // ---------------------------------------------------------------------------
 function buildUAT64BV(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
-  // Grow the course upward by 20% while keeping the lower run and road-wheel
-  // axles grounded. The body receives the matching ride-height increase at
-  // the end of assembly, producing the requested tall \____/ silhouette.
-  const trackHeightIncreaseM = 0.16;
-  const hullRideHeightIncreaseM = 0.36;
+  // Grow the course upward by 10% while keeping the lower run and road-wheel
+  // axles grounded. The body retains a 280 mm lift above its legacy seating,
+  // producing a proportionate \____/ silhouette without the oversized gap.
+  const trackHeightIncreaseM = 0.08;
+  const hullRideHeightIncreaseM = 0.28;
   const turretForwardShiftM = 0.20;
 
   // Hull loft to the print lines (deck plateau 1.315 T-64 datum; glacis
@@ -797,7 +797,7 @@ function buildUAT64BV(P) {
     trackHeightIncreaseM,
     hullRideHeightIncreaseM,
     trackBottomY: 0.14,
-    trackTopY: 1.09,
+    trackTopY: 1.01,
     authoredEnvelopeHeightM: 0.79,
   });
   P.topY = 1.30;
