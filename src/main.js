@@ -2895,7 +2895,9 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       const deploymentCompileStartedAt = performance.now();
       const deploymentProgramBaseline = snapshotRendererPrograms(renderer);
       const restoreArmorWarmVisibility = armorAimOverlay.warm();
-      const combatFxSubmission = stageCombatFxProgramSubmission();
+      const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
+        game, fx, post, camera, createShell,
+      });
       const fxForwardWarmBatches = [];
       try {
         compileForGameplayTarget(scene);
@@ -5279,99 +5281,17 @@ function resetCombatRoundWarmState() {
   combatPipelineWarmed = false;
 }
 
-// Studio does not field the staged battle roster.  Reusing the complete
-// combat warm here used to build, burn, compile, and shadow-warm every hidden
-// battle tank before an empty authoring canvas could appear (7.0 s in the
-// direct-route baseline).  Prime only the shared FX resources the Studio can
-// use before its first actor exists; addActor() owns per-vehicle burn setup.
-let studioPipelineWarmP = null;
-let studioPipelineWarmed = false;
 function warmStudioPipelineChunked(onProgress = null) {
-  if (combatPipelineWarmed || studioPipelineWarmed) {
-    if (onProgress) onProgress(1, 'Studio effects ready');
-    return Promise.resolve();
-  }
-  if (studioPipelineWarmP) {
-    return studioPipelineWarmP.then(() => {
-      if (onProgress) onProgress(1, 'Studio effects ready');
-    });
-  }
-  studioPipelineWarmP = (async () => {
-    const yieldForLoad = createOpaqueLoadingYielder(10, 64);
-    const trace = { stages: {} };
-    const startedAt = performance.now();
-    let markedAt = startedAt;
-    const mark = (name) => {
-      const now = performance.now();
-      trace.stages[name] = Math.round(now - markedAt);
-      markedAt = now;
-    };
-    const progress = (f, label) => {
-      if (onProgress) onProgress(f, label);
-    };
-    progress(0.08, 'Baking Studio effects');
-    try {
-      // Preserve the exact deterministic atlases while letting the opaque
-      // transition paint between bounded decode/bake checkpoints. One frame
-      // per flipbook tile was needlessly slow; the shared scheduler only
-      // yields after the current CPU slice actually exhausts its budget.
-      if (fx.warmTexturesChunked) {
-        await fx.warmTexturesChunked(yieldForLoad);
-      } else {
-        await fx.preloadTextures?.();
-        fx.warmTextures?.();
-      }
-      mark('textures');
-      progress(0.58, 'Priming Studio effects');
-      await yieldForLoad(true);
-      const wp = new THREE.Vector3(-460, 0, -460);
-      const wn = new THREE.Vector3(0, 1, 0);
-      const wd = new THREE.Vector3(0, 0, 1);
-      fx.warmOpeningEffects(wp, wd, wn, 120);
-      await yieldForLoad();
-      fx.destruction(wp, null, 'shot');
-      await yieldForLoad();
-      fx.destruction(wp, null, 'ammorack');
-      await yieldForLoad();
-      fx.update(SIM_DT, [], camera);
-      post.prepareSoftParticles();
-      await yieldForLoad();
-      const mask = camera.layers.mask;
-      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
-      try {
-        const programSteps = initializeForwardProgramsSteps(fx.group);
-        for (let result = programSteps.next(); !result.done; result = programSteps.next()) {
-          await yieldForLoad();
-        }
-        fx.group.traverse((object) => {
-          const materials = Array.isArray(object.material)
-            ? object.material : (object.material ? [object.material] : []);
-          for (const material of materials) {
-            for (const key of Object.keys(material)) {
-              const value = material[key];
-              if (value?.isTexture) {
-                try { renderer.initTexture(value); } catch (_) { /* first render fallback */ }
-              }
-            }
-          }
-        });
-        await yieldForLoad(true);
-      } finally {
-        camera.layers.mask = mask;
-      }
-      mark('effects');
-    } catch (error) {
-      console.warn('[warm] Studio pipeline failed (continuing):', error);
-      trace.error = String(error);
-    } finally {
-      fx.resetAll();
-    }
-    progress(1, 'Studio effects ready');
-    trace.totalMs = Math.round(performance.now() - startedAt);
-    studioPipelineWarmed = true;
-    if (typeof window !== 'undefined') window.__STUDIO_WARM = trace;
-  })();
-  return studioPipelineWarmP;
+  return battleWarm.warmStudioEffects({
+    fx,
+    post,
+    renderer,
+    camera,
+    initializeForwardPrograms: initializeForwardProgramsSteps,
+    isCombatPipelineWarmed: () => combatPipelineWarmed,
+    onProgress,
+    onTrace: (trace) => { window.__STUDIO_WARM = trace; },
+  });
 }
 // perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
 // idle callback (~1-3 s: volley + every wreck dance + all compiles) the
@@ -5430,72 +5350,6 @@ function warmCombatRarePipelineChunked(budgetMs = 6, providedYielder = null) {
   return warmGeneratorChunked(
     'rare', warmCombatRarePipelineSteps, budgetMs, providedYielder,
   );
-}
-
-/**
- * Put every combat effect class into its ordinary live pool just for the
- * covered deployment compile. This submits rare destruction shaders while
- * the opaque loader still suppresses scene rendering, so ANGLE can link them
- * in parallel with the existing shadow/forward warm instead of discovering
- * one 500+ ms program during the visible countdown. The returned cleanup is
- * synchronous and restores the exact camera/root/pool state.
- */
-function stageCombatFxProgramSubmission() {
-  // Use the covered deployment camera's field rather than a far map corner.
-  // The private first-bind renderer still performs frustum culling; staging
-  // off-camera submitted programs but left their material/state bind cold.
-  const playerPos = game.player?.state?.pos;
-  const wp = playerPos
-    ? new THREE.Vector3(playerPos.x, playerPos.y + 1.4, playerPos.z + 4)
-    : new THREE.Vector3(0, 2, 4);
-  const wn = new THREE.Vector3(0, 1, 0);
-  const wd = new THREE.Vector3(0, 0, 1);
-  const priorMask = camera.layers.mask;
-  const rootWasVisible = fx.group.visible;
-  let staged = false;
-  try {
-    const gun = game.player?.spec?.gun;
-    const shellSlot = game.player?.combat?.shellSlot ?? 0;
-    const shellSpec = gun?.shells?.[shellSlot] || gun?.shells?.[0] || null;
-    // Include the exact APFSDS sabot pool and a live tracer ribbon. Passing
-    // an empty shell list here left their large dynamic attributes unallocated
-    // until the player's first shot even though every other muzzle family had
-    // been staged successfully.
-    fx.warmOpeningEffects(wp, wd, wn, shellSpec?.caliberMm || 120);
-    for (const kind of [
-      'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
-    ]) fx.impact(kind, wp, wn, 120);
-    fx.dust(wp, wd, 1);
-    fx.exhaust(wp, 1, true);
-    fx.destruction(wp, null, 'shot');
-    fx.destruction(wp, null, 'ammorack');
-    for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
-      fx.propBreak(kind, wp, wd, 1.5);
-    }
-    fx.propCrush(wp, wd, 7);
-    const warmShells = [];
-    if (shellSpec) {
-      const warmShell = createShell(shellSpec, '__deployment_warm__', true, wp, wd, -1);
-      warmShell.prevPos.copy(wp).addScaledVector(wd, -4);
-      warmShell.pos.copy(wp).addScaledVector(wd, 4);
-      warmShells.push(warmShell);
-    }
-    try { fx.update(0.016, warmShells, camera); } catch (_) { /* warm only */ }
-    post.prepareSoftParticles();
-    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
-    fx.group.visible = true;
-    staged = true;
-  } catch (error) {
-    console.warn('[warm] combat FX program staging failed (continuing):', error);
-  }
-  return {
-    staged,
-    restore() {
-      fx.group.visible = rootWasVisible;
-      camera.layers.mask = priorMask;
-      fx.resetAll();
-    },
-  };
 }
 
 let deferredCombatWarmPromise = null;

@@ -112,13 +112,19 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const battleWarmSource = await readFile(
+  new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8',
+);
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
   /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,180}playMenuPromise[\s\S]{0,180}runtime\.hide\(false\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
 assert.match(mainSource,
-  /function warmStudioPipelineChunked[\s\S]{0,700}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1500}warmTexturesChunked\(yieldForLoad\)/,
+  /function warmStudioPipelineChunked[\s\S]{0,600}battleWarm\.warmStudioEffects\(/,
+  'Studio entry must delegate FX preparation to the lazy typed warm owner');
+assert.match(battleWarmSource,
+  /function warmStudioEffects[\s\S]{0,1400}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1400}warmTexturesChunked\(yieldForLoad\)/,
   'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
 assert.match(studioSource,
   /async function load\([\s\S]{0,900}createFrameBudgetYielder\(10\)[\s\S]{0,900}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
@@ -167,7 +173,7 @@ assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(
 assert.match(openingWarmBody, /createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
   'fallback opening warm must still bind FX through real isolated renders');
 const coveredSubmissionBody = mainSource.slice(
-  mainSource.indexOf('const combatFxSubmission = stageCombatFxProgramSubmission()'),
+  mainSource.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
   mainSource.indexOf('trace.deploymentCompileMs'),
 );
 assert.match(coveredSubmissionBody,
@@ -186,7 +192,7 @@ assert.match(preRosterBattleLoad,
   /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,180}stageRootTextureUploads\(world\.group, loadYield\)/,
   'battle entry must stage current world textures before the first full deployment frame');
 assert.match(preRosterBattleLoad,
-  /const plannedRoster = planBattleParticipantIds[\s\S]{0,900}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,2200}Promise\.all\(\[[\s\S]{0,500}rosterTextureP/,
+  /const plannedRoster = planBattleParticipantIds[\s\S]{0,1500}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,2400}battleEntryAcquisition\.acquireSolo\(\[[\s\S]{0,700}rosterTextureP/,
   'exact cold roster camouflage and texture preparation must overlap battlefield construction');
 assert.match(preRosterBattleLoad,
   /const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,220}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1000}fxTextureP/,
@@ -222,7 +228,7 @@ assert.ok(deferredEnemyAt >= 0
   && deferredRareAt > deferredOpeningAt,
 'opponent receipts and fallback opening/rare work must retain countdown order');
 const coveredFxBody = mainSource.slice(
-  mainSource.indexOf('const combatFxSubmission = stageCombatFxProgramSubmission()'),
+  mainSource.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
   mainSource.indexOf('await primeSoloBattleRevealFrame()'),
 );
 assert.match(coveredFxBody,

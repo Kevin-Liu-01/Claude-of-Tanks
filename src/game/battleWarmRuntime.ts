@@ -7,6 +7,7 @@ import {
 } from 'three';
 import {
   createFrameBudgetYielder,
+  createOpaqueLoadingYielder,
   nextFrame,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
@@ -35,6 +36,14 @@ interface BattleWarmEntity {
   state?: BattleWarmState;
   visual?: BattleWarmVisual;
   _openingRoute?: unknown[];
+  spec?: {
+    gun?: {
+      shells?: ShellSpecLike[];
+    };
+  };
+  combat?: {
+    shellSlot?: number;
+  };
 }
 
 interface BattleWarmGame {
@@ -184,6 +193,21 @@ interface BattleFxPort {
   resetAll(): void;
 }
 
+interface StudioFxPort extends BattleFxPort {
+  warmTexturesChunked?(yieldForBudget: WorkYielder): Promise<void>;
+  preloadTextures?(): Promise<void>;
+  impact(kind: string, position: Vector3, normal: Vector3, caliberMm: number): void;
+  dust(position: Vector3, direction: Vector3, scale: number): void;
+  exhaust(position: Vector3, scale: number, moving: boolean): void;
+  propBreak(
+    kind: string,
+    position: Vector3,
+    direction: Vector3,
+    heightM: number,
+  ): void;
+  propCrush(position: Vector3, direction: Vector3, heightM: number): void;
+}
+
 interface BattlePostPort {
   prepareSoftParticles(): void;
 }
@@ -199,6 +223,218 @@ export interface OpeningEffectsWarmOptions {
 }
 
 let openingEffectsWarmed = false;
+let studioEffectsWarmed = false;
+let studioEffectsWarmPromise: Promise<void> | null = null;
+let warmGeneration = 0;
+
+export interface StudioWarmTrace {
+  stages: Record<string, number>;
+  totalMs: number;
+  error?: string;
+}
+
+export interface StudioEffectsWarmOptions {
+  fx: StudioFxPort;
+  post: BattlePostPort;
+  renderer: Pick<WebGLRenderer, 'initTexture'>;
+  camera: Camera;
+  initializeForwardPrograms(root: Object3D): Iterable<unknown>;
+  isCombatPipelineWarmed(): boolean;
+  onProgress?(fraction: number, label: string): void;
+  onTrace?(trace: StudioWarmTrace): void;
+  now?: () => number;
+}
+
+/** Prime shared Studio effects without importing the battle warm into garage boot. */
+export function warmStudioEffects({
+  fx,
+  post,
+  renderer,
+  camera,
+  initializeForwardPrograms,
+  isCombatPipelineWarmed,
+  onProgress,
+  onTrace,
+  now = () => performance.now(),
+}: StudioEffectsWarmOptions): Promise<void> {
+  if (isCombatPipelineWarmed() || studioEffectsWarmed) {
+    onProgress?.(1, 'Studio effects ready');
+    return Promise.resolve();
+  }
+  if (studioEffectsWarmPromise) {
+    return studioEffectsWarmPromise.then(() => {
+      onProgress?.(1, 'Studio effects ready');
+    });
+  }
+
+  const generation = warmGeneration;
+  const request = (async () => {
+    const yieldForLoad = createOpaqueLoadingYielder(10, 64);
+    const trace: StudioWarmTrace = { stages: {}, totalMs: 0 };
+    const startedAt = now();
+    let markedAt = startedAt;
+    const mark = (name: string): void => {
+      const marked = now();
+      trace.stages[name] = Math.round(marked - markedAt);
+      markedAt = marked;
+    };
+    onProgress?.(0.08, 'Baking Studio effects');
+    try {
+      if (fx.warmTexturesChunked) {
+        await fx.warmTexturesChunked(yieldForLoad);
+      } else {
+        await fx.preloadTextures?.();
+        fx.warmTextures?.();
+      }
+      mark('textures');
+      onProgress?.(0.58, 'Priming Studio effects');
+      await yieldForLoad(true);
+      const position = new Vector3(-460, 0, -460);
+      const normal = new Vector3(0, 1, 0);
+      const direction = new Vector3(0, 0, 1);
+      fx.warmOpeningEffects(position, direction, normal, 120);
+      await yieldForLoad();
+      fx.destruction(position, null, 'shot');
+      await yieldForLoad();
+      fx.destruction(position, null, 'ammorack');
+      await yieldForLoad();
+      fx.update(1 / 60, [], camera);
+      post.prepareSoftParticles();
+      await yieldForLoad();
+      const layerMask = camera.layers.mask;
+      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+      try {
+        for (const _step of initializeForwardPrograms(fx.group)) {
+          await yieldForLoad();
+        }
+        fx.group.traverse((object) => {
+          const renderObject = object as Object3D & {
+            material?: object | object[];
+          };
+          const materials = Array.isArray(renderObject.material)
+            ? renderObject.material : (renderObject.material ? [renderObject.material] : []);
+          for (const material of materials) {
+            for (const value of Object.values(material)) {
+              if (typeof value !== 'object' || value === null || !('isTexture' in value)) continue;
+              try {
+                renderer.initTexture(value as Parameters<WebGLRenderer['initTexture']>[0]);
+              } catch (_) { /* first render fallback */ }
+            }
+          }
+        });
+        await yieldForLoad(true);
+      } finally {
+        camera.layers.mask = layerMask;
+      }
+      mark('effects');
+    } catch (error) {
+      console.warn('[warm] Studio pipeline failed (continuing):', error);
+      trace.error = String(error);
+    } finally {
+      fx.resetAll();
+    }
+    onProgress?.(1, 'Studio effects ready');
+    trace.totalMs = Math.round(now() - startedAt);
+    if (generation === warmGeneration) studioEffectsWarmed = true;
+    onTrace?.(trace);
+  })();
+  studioEffectsWarmPromise = request;
+  request.catch(() => {
+    if (studioEffectsWarmPromise === request) studioEffectsWarmPromise = null;
+  });
+  return request;
+}
+
+interface ShellSpecLike {
+  caliberMm?: number;
+}
+
+interface WarmShell {
+  pos: Vector3;
+  prevPos: Vector3;
+}
+
+type WarmShellFactory = (
+  shellSpec: ShellSpecLike,
+  shooterId: string,
+  isPlayer: boolean,
+  muzzlePosition: Vector3,
+  direction: Vector3,
+  id: number,
+) => WarmShell;
+
+export interface CombatFxSubmissionOptions {
+  game: BattleWarmGame;
+  fx: StudioFxPort;
+  post: BattlePostPort;
+  camera: Camera;
+  createShell: WarmShellFactory;
+}
+
+export interface CombatFxSubmission {
+  staged: boolean;
+  restore(): void;
+}
+
+/** Stage every first-combat FX pool behind the covered deployment compile. */
+export function stageCombatFxProgramSubmission({
+  game,
+  fx,
+  post,
+  camera,
+  createShell,
+}: CombatFxSubmissionOptions): CombatFxSubmission {
+  const playerPosition = game.player?.state?.pos;
+  const position = playerPosition
+    ? new Vector3(playerPosition.x, playerPosition.y + 1.4, playerPosition.z + 4)
+    : new Vector3(0, 2, 4);
+  const normal = new Vector3(0, 1, 0);
+  const direction = new Vector3(0, 0, 1);
+  const priorMask = camera.layers.mask;
+  const rootWasVisible = fx.group.visible;
+  let staged = false;
+  try {
+    const gun = game.player?.spec?.gun;
+    const shellSlot = game.player?.combat?.shellSlot ?? 0;
+    const shellSpec = gun?.shells?.[shellSlot] ?? gun?.shells?.[0] ?? null;
+    fx.warmOpeningEffects(position, direction, normal, shellSpec?.caliberMm ?? 120);
+    for (const kind of [
+      'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
+    ]) fx.impact(kind, position, normal, 120);
+    fx.dust(position, direction, 1);
+    fx.exhaust(position, 1, true);
+    fx.destruction(position, null, 'shot');
+    fx.destruction(position, null, 'ammorack');
+    for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+      fx.propBreak(kind, position, direction, 1.5);
+    }
+    fx.propCrush(position, direction, 7);
+    const warmShells: WarmShell[] = [];
+    if (shellSpec) {
+      const shell = createShell(
+        shellSpec, '__deployment_warm__', true, position, direction, -1,
+      );
+      shell.prevPos.copy(position).addScaledVector(direction, -4);
+      shell.pos.copy(position).addScaledVector(direction, 4);
+      warmShells.push(shell);
+    }
+    try { fx.update(0.016, warmShells, camera); } catch (_) { /* warm only */ }
+    post.prepareSoftParticles();
+    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+    fx.group.visible = true;
+    staged = true;
+  } catch (error) {
+    console.warn('[warm] combat FX program staging failed (continuing):', error);
+  }
+  return {
+    staged,
+    restore() {
+      fx.group.visible = rootWasVisible;
+      camera.layers.mask = priorMask;
+      fx.resetAll();
+    },
+  };
+}
 
 /** Prime common network muzzle, impact, destruction and soft-particle paths once. */
 export async function warmNetworkOpeningEffects({
@@ -245,4 +481,7 @@ export async function warmNetworkOpeningEffects({
 /** WebGL context restoration invalidates every renderer-lifetime receipt. */
 export function invalidateBattleWarmRuntime(): void {
   openingEffectsWarmed = false;
+  studioEffectsWarmed = false;
+  studioEffectsWarmPromise = null;
+  warmGeneration += 1;
 }

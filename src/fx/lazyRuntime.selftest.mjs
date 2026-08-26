@@ -4,6 +4,7 @@ const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
 const post = await readFile(new URL('../engine/post.js', import.meta.url), 'utf8');
 const state = await readFile(new URL('../game/state.js', import.meta.url), 'utf8');
 const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
+const battleWarm = await readFile(new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8');
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -66,11 +67,14 @@ if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
 const coveredWarm = main.slice(
-  main.indexOf('const combatFxSubmission = stageCombatFxProgramSubmission()'),
+  main.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
   main.indexOf('await primeSoloBattleRevealFrame()'),
 );
 if (!/combatFxSubmission\.staged[\s\S]*combatOpeningWarmed = true;[\s\S]*combatDestructionEffectsWarmed = true;/.test(coveredWarm)) {
   throw new Error('the exact covered FX bind must retire duplicate opening/destruction countdown work');
+}
+if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
+  throw new Error('the typed battle warm owner must retain every covered FX family and tracer');
 }
 const deferredWarm = main.slice(
   main.indexOf('function scheduleDeferredCombatWarm(generation)'),

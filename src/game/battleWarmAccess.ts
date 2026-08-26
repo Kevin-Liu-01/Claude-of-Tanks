@@ -13,6 +13,12 @@ export interface BattleWarmAccess {
   warmNetworkOpeningEffects(
     options: Parameters<RuntimeModule['warmNetworkOpeningEffects']>[0],
   ): ReturnType<RuntimeModule['warmNetworkOpeningEffects']>;
+  warmStudioEffects(
+    options: Parameters<RuntimeModule['warmStudioEffects']>[0],
+  ): ReturnType<RuntimeModule['warmStudioEffects']>;
+  stageCombatFxProgramSubmission(
+    options: Parameters<RuntimeModule['stageCombatFxProgramSubmission']>[0],
+  ): Promise<ReturnType<RuntimeModule['stageCombatFxProgramSubmission']>>;
   invalidate(): void;
 }
 
@@ -47,6 +53,10 @@ export function createBattleWarmAccess(
       (await preload()).warmNetworkWrecks(options),
     warmNetworkOpeningEffects: async (options) =>
       (await preload()).warmNetworkOpeningEffects(options),
+    warmStudioEffects: async (options) =>
+      (await preload()).warmStudioEffects(options),
+    stageCombatFxProgramSubmission: async (options) =>
+      (await preload()).stageCombatFxProgramSubmission(options),
     invalidate: () => { runtime?.invalidateBattleWarmRuntime(); },
   };
 }
