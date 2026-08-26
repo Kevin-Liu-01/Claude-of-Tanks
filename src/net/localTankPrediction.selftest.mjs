@@ -97,6 +97,33 @@ predictor.recordInput(driving, 1 / 60, 0);
 assert.equal(predictor.getStats().pendingInputs, 1,
   'fresh reconnect sequence discards history from the dead transport');
 
+// Browser snapshots expose a clock-corrected own-entity sample alongside the
+// raw acknowledged authority row. Inputs are replaceable held states rather
+// than commands with server-owned durations, so that sampled path must not
+// replay the unacknowledged render-frame dt a second time.
+{
+  const sampledState = createTankState(SPEC, new Vector3(), 0);
+  const sampledEntity = {
+    spec: SPEC,
+    state: sampledState,
+    combat: null,
+    contactGeom: null,
+    rigidGear: false,
+  };
+  const sampled = new LocalTankPredictor({ entity: sampledEntity, heightField: FIELD });
+  sampled.reconcile(authority(0, null));
+  for (let seq = 0; seq < 4; seq++) sampled.recordInput(driving, 1 / 60, seq);
+  const sampledTarget = authority(3, 1, 0, 1.25);
+  sampledTarget.sampledEntity = { ...sampledTarget.entity, z: 2.5 };
+  sampled.reconcile(sampledTarget, 1 / 60);
+  assert.equal(sampled.simEntity.state.pos.z, 2.5,
+    'clock-corrected authority is not advanced again by pending input durations');
+  assert.equal(sampled.getStats().pendingInputs, 2,
+    'sampled reconciliation still retains inputs newer than authority acknowledgement');
+  assert.equal(sampled.getStats().replayedInputs, 0,
+    'browser sampled authority performs no command-style replay');
+}
+
 // A parked authority tank can quantize between adjacent support-height and
 // hull-angle samples at the 20 Hz snapshot cadence. Presentation must not
 // turn that sub-contact-patch noise into a visible 60 Hz vibration. Turret

@@ -162,6 +162,8 @@ export class LocalTankPredictor {
     this.lastAuthorityTick = -1;
     this.motionIntent = false;
     this.holdRestingHull = false;
+    this.lastStaticContactCount = 0;
+    this.lastDynamicContactCount = 0;
     this.correction = {
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     };
@@ -171,6 +173,9 @@ export class LocalTankPredictor {
       replayedInputs: 0,
       droppedHistory: 0,
       maxPositionErrorM: 0,
+      maxFreePositionErrorM: 0,
+      maxContactPositionErrorM: 0,
+      contactReconciliations: 0,
       lastPositionErrorM: 0,
       restingHullHolds: 0,
     };
@@ -200,7 +205,7 @@ export class LocalTankPredictor {
     return true;
   }
 
-  reconcile({ tick, ackInputSeq = null, entity: snapshot } = {}, elapsedS = 0,
+  reconcile({ tick, ackInputSeq = null, entity: snapshot, sampledEntity = null } = {}, elapsedS = 0,
     destroyed = false) {
     if (!snapshot || !Number.isSafeInteger(tick) || tick <= this.lastAuthorityTick) return false;
     this.lastAuthorityTick = tick;
@@ -229,10 +234,19 @@ export class LocalTankPredictor {
       }
       this.history.length = writeIndex;
     }
-    applyAuthority(this.simEntity.state, snapshot);
-    for (const frame of this.history) {
-      advance(this.simEntity, frame.input, frame.elapsedS, this.heightField, this.collide);
-      this.stats.replayedInputs++;
+    const authorityTarget = sampledEntity || snapshot;
+    applyAuthority(this.simEntity.state, authorityTarget);
+    // Browser inputs are replaceable held states. Authority acknowledges the
+    // newest state it received, not a list of commands with owned durations,
+    // so replaying each unacknowledged render-frame dt double-counts network
+    // transit time. SnapshotBuffer already supplies a clock-corrected,
+    // bounded-extrapolated own-entity sample for that path. Deterministic
+    // callers without such a sample retain exact input replay.
+    if (!sampledEntity) {
+      for (const frame of this.history) {
+        advance(this.simEntity, frame.input, frame.elapsedS, this.heightField, this.collide);
+        this.stats.replayedInputs++;
+      }
     }
     const predicted = this.simEntity.state;
     const positionError = Math.hypot(
@@ -240,8 +254,26 @@ export class LocalTankPredictor {
       old.y - predicted.pos.y,
       old.z - predicted.pos.z,
     );
+    const staticContactCount = this.simEntity._predictionStaticContacts || 0;
+    const dynamicContactCount = this.simEntity._predictionDynamicContacts || 0;
+    const contactSinceAuthority = staticContactCount > this.lastStaticContactCount ||
+      dynamicContactCount > this.lastDynamicContactCount;
+    this.lastStaticContactCount = staticContactCount;
+    this.lastDynamicContactCount = dynamicContactCount;
     this.stats.reconciliations++;
     this.stats.lastPositionErrorM = positionError;
+    if (contactSinceAuthority) {
+      this.stats.contactReconciliations++;
+      this.stats.maxContactPositionErrorM = Math.max(
+        this.stats.maxContactPositionErrorM,
+        positionError,
+      );
+    } else {
+      this.stats.maxFreePositionErrorM = Math.max(
+        this.stats.maxFreePositionErrorM,
+        positionError,
+      );
+    }
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
     if (positionError > this.hardSnapDistanceM || destroyed || snapshot.destroyed) {
       for (const key of CORRECTION_KEYS) this.correction[key] = 0;

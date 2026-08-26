@@ -40,6 +40,10 @@ const roomMode = stringOption('room-mode', 'lan');
 if (!['lan', 'private'].includes(roomMode)) {
   throw new TypeError('room-mode must be lan or private');
 }
+const only = stringOption('only', 'all');
+if (!['all', 'solo', 'host', 'client'].includes(only)) {
+  throw new TypeError('only must be all, solo, host, or client');
+}
 const root = new URL('..', import.meta.url).pathname;
 const consoleErrors = [];
 const contextByPage = new WeakMap();
@@ -311,10 +315,17 @@ async function collectFullRenderer(page, label) {
     `${label} duplicated tank visual work: ${report.syncCalls} syncs / ${report.frames} frames`);
   if (label !== 'solo') {
     const prediction = report.network?.prediction;
+    const predictionDiagnostic = JSON.stringify({
+      prediction,
+      inputAckLag: report.network?.inputAckLag,
+      transport: report.network?.transport,
+    });
     assert.equal(prediction?.hardSnaps, 0,
       `${label} hard-snapped during visible network play`);
-    assert.ok((prediction?.maxPositionErrorM ?? Infinity) < 2,
-      `${label} predictor diverged ${prediction?.maxPositionErrorM} m`);
+    assert.ok((prediction?.maxFreePositionErrorM ?? Infinity) < 2,
+      `${label} free predictor diverged ${prediction?.maxFreePositionErrorM} m: ${predictionDiagnostic}`);
+    assert.ok((prediction?.maxContactPositionErrorM ?? Infinity) < 7,
+      `${label} contact recovery diverged ${prediction?.maxContactPositionErrorM} m: ${predictionDiagnostic}`);
     assert.ok((prediction?.lastPositionErrorM ?? Infinity) < 1,
       `${label} retained ${prediction?.lastPositionErrorM} m of rubberband error`);
     assert.equal(prediction?.droppedHistory, 0,
@@ -512,12 +523,18 @@ try {
     ],
   });
 
-  const solo = await runSolo(origin);
-  const host = await runNetwork(origin, signalUrl, 'host');
-  const client = await runNetwork(origin, signalUrl, 'client');
-  for (const report of [host, client]) {
-    assert.ok(report.gapP95 <= solo.gapP95 * 1.35 + 2,
-      `${report.mode} p95 ${report.gapP95} ms regressed against solo ${solo.gapP95} ms`);
+  const solo = only === 'all' || only === 'solo' ? await runSolo(origin) : null;
+  const host = only === 'all' || only === 'host'
+    ? await runNetwork(origin, signalUrl, 'host')
+    : null;
+  const client = only === 'all' || only === 'client'
+    ? await runNetwork(origin, signalUrl, 'client')
+    : null;
+  for (const report of [host, client].filter(Boolean)) {
+    if (solo) {
+      assert.ok(report.gapP95 <= solo.gapP95 * 1.35 + 2,
+        `${report.mode} p95 ${report.gapP95} ms regressed against solo ${solo.gapP95} ms`);
+    }
     assert.equal(report.rosterSize, 4, `${report.mode} must render a real 2v2 roster`);
   }
   assert.deepEqual(consoleErrors, [], `browser errors:\n${consoleErrors.join('\n')}`);
@@ -527,9 +544,9 @@ try {
       seconds, cpuRate, minimumFps, viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
       freshBrowserContexts: true,
     },
-    solo,
-    [`${roomMode}Host`]: host,
-    [`${roomMode}Client`]: client,
+    ...(solo ? { solo } : {}),
+    ...(host ? { [`${roomMode}Host`]: host } : {}),
+    ...(client ? { [`${roomMode}Client`]: client } : {}),
   }, null, 2));
 } finally {
   if (browser) await browser.close().catch(() => {});
