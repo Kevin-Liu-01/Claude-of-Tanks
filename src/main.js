@@ -56,6 +56,7 @@ import {
   createDeploymentForwardWarmBatches,
   createIsolatedForwardWarmBatches,
 } from './engine/deploymentWarm.ts';
+import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
@@ -2945,7 +2946,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
         coveredYield,
       );
       battleLoad.progress(0.969, 'Priming deployment shadows');
-      trace.deploymentShadowWarm = await primeDeploymentShadowMaps(coveredYield);
+      trace.deploymentShadowWarm = await deploymentShadowWarm.prime(coveredYield);
       mark('shadowMaps');
       const forwardBatches = [];
       for (const batch of createDeploymentForwardWarmBatches({
@@ -5666,7 +5667,7 @@ function* warmCombatRarePipelineSteps() {
   yield;
   mark('textures');
 
-  yield* warmShadowProgramSteps();
+  yield* deploymentShadowWarm.warmDepthProgramSteps();
   mark('shadows');
   rareTrace.hiddenDetail = {};
   yield* compileHiddenVariantsSteps(rareTrace.hiddenDetail);
@@ -5688,114 +5689,6 @@ function* warmCombatRarePipelineSteps() {
  * opaque loader owns the frame. Live and node-hidden variants are compiled by
  * the bounded rare pass below after the first deployment frame is visible.
  */
-// Sustained-battle profiling contract:
-// renderer.compile builds FORWARD programs only — shadow-DEPTH variants link
-// lazily on each caster class's first shadow-pass render, which lands
-// mid-fight the moment the player drives a baked wreck / prop cluster into
-// a CSM cascade (TankWreckShadowProxy + 10 anonymous classes, 100-300 ms
-// blocking links, worst 207 ms task on the REAL loading-path entry). One
-// warm frame with the far cascade's shadow camera stretched over the whole
-// map renders every caster into the depth pass behind the loading screen.
-// Reuses the EXISTING sun cascade: adding a throwaway shadow light would
-// change the light count and recompile every lit program (kill-cam warm
-// rig lesson — see killcam.js LIGHT-COUNT note).
-function* warmShadowProgramSteps() {
-  const csm = lighting && lighting.csm;
-  const light = csm && csm.lights && csm.lights[csm.lights.length - 1];
-  if (!light || !light.shadow) return;
-  // Each isolated root/cohort below exists only to submit a distinct caster
-  // class through ONE stretched depth cascade. The near cascades normally
-  // auto-refresh every render, so leaving them armed made every warm slice
-  // redraw the same near-field depth maps again (four cascades × every root)
-  // even though no new near-cascade program could result. Keep the lights and
-  // shadow count intact for the forward program key, but park sibling shadow
-  // updates until the warm is complete. Live rendering restores and refreshes
-  // every cascade immediately afterward.
-  const siblingShadowState = [];
-  for (const sibling of csm.lights) {
-    if (sibling === light || !sibling.shadow) continue;
-    siblingShadowState.push({
-      shadow: sibling.shadow,
-      autoUpdate: sibling.shadow.autoUpdate,
-    });
-    sibling.shadow.autoUpdate = false;
-    sibling.shadow.needsUpdate = false;
-  }
-  const cam = light.shadow.camera;
-  const save = {
-    left: cam.left, right: cam.right, top: cam.top, bottom: cam.bottom,
-    near: cam.near, far: cam.far, auto: light.shadow.autoUpdate,
-  };
-  cam.left = -520; cam.right = 520; cam.top = 520; cam.bottom = -520;
-  cam.near = 0.5; cam.far = 1600;
-  cam.updateProjectionMatrix();
-  light.shadow.autoUpdate = false;
-  const lightRoots = new Set();
-  for (const candidate of scene.children) {
-    let ownsLight = false;
-    candidate.traverse((object) => { if (object.isLight) ownsLight = true; });
-    if (ownsLight) lightRoots.add(candidate);
-  }
-  const contentRoots = scene.children.filter((candidate) =>
-    candidate.visible !== false && !candidate.isCamera && !lightRoots.has(candidate));
-  const renderRoot = (root, visibleChildren = null) => {
-    const hiddenRoots = [];
-    const hiddenChildren = [];
-    for (const candidate of contentRoots) {
-      if (candidate === root || candidate.visible === false) continue;
-      candidate.visible = false;
-      hiddenRoots.push(candidate);
-    }
-    if (visibleChildren) {
-      for (const child of root.children) {
-        if (visibleChildren.has(child) || child.visible === false) continue;
-        child.visible = false;
-        hiddenChildren.push(child);
-      }
-    }
-    try {
-      light.shadow.needsUpdate = true;
-      warmRender();
-    } catch (_) { /* warm only */ }
-    finally {
-      for (const child of hiddenChildren) child.visible = true;
-      for (const candidate of hiddenRoots) candidate.visible = true;
-    }
-  };
-  try {
-    for (const root of contentRoots) {
-      // World roots contain terrain, vegetation, structures, props and
-      // dressing. Submit those in four independent passes so no single GPU
-      // call owns every caster/program variant at once. Other top-level roots
-      // (tank actors, FX, garage dressing) are already naturally bounded.
-      if (root === world?.group && root.children.length > 1) {
-        const visible = root.children.filter((child) => child.visible !== false);
-        const cohortSize = Math.max(1, Math.ceil(visible.length / 4));
-        for (let index = 0; index < visible.length; index += cohortSize) {
-          renderRoot(root, new Set(visible.slice(index, index + cohortSize)));
-          yield;
-        }
-      } else {
-        renderRoot(root);
-        yield;
-      }
-    }
-  } finally {
-    cam.left = save.left; cam.right = save.right;
-    cam.top = save.top; cam.bottom = save.bottom;
-    cam.near = save.near; cam.far = save.far;
-    cam.updateProjectionMatrix();
-    light.shadow.autoUpdate = save.auto;
-    light.shadow.needsUpdate = true; // real cascade re-renders next frame
-    for (const state of siblingShadowState) {
-      state.shadow.autoUpdate = state.autoUpdate;
-      // A warm may have overlapped a forced refresh edge. Always request one
-      // real map after restoring so the optimization cannot expose stale CSM.
-      state.shadow.needsUpdate = true;
-    }
-  }
-}
-
 // perf-r5c/r6: warm renders only need to TOUCH programs/textures — full-frame
 // rasterization at retina scale made each one a 400-730 ms slice, and even a
 // quarter-size target could exceed 800 ms when an ANGLE GPU process was busy.
@@ -5806,174 +5699,16 @@ function* warmShadowProgramSteps() {
 // during the live countdown when a first-use compile blocked the next rAF,
 // producing a one-off black screen with the world in the lower-left corner.
 const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
-// A camera whose frustum contains no battlefield geometry lets WebGLRenderer
-// execute the real CSM depth pass without also paying the forward scene pass.
-// This is used only behind the opaque deployment transition; the CSM light
-// cameras and their exact maps still come from the live battle camera.
-const shadowOnlyWarmCamera = new THREE.PerspectiveCamera(1, 1, 0.5, 2);
-shadowOnlyWarmCamera.position.set(100000, 100000, 100000);
-shadowOnlyWarmCamera.lookAt(100000, 100000, 100001);
-shadowOnlyWarmCamera.updateMatrixWorld(true);
-const shadowOnlyWarmRender = createOffscreenSceneWarmer(
-  renderer, scene, shadowOnlyWarmCamera, 0.0625,
-);
-// One unlit override uploads the exact visible vertex/index/instance buffers
-// without serializing the fleet's many production material programs. The
-// subsequent real render keeps every original material and visual feature.
-const deploymentUploadMaterial = new THREE.MeshBasicMaterial({
-  color: 0x000000,
-  colorWrite: false,
-  depthWrite: false,
-  depthTest: false,
-  fog: false,
-  toneMapped: false,
+const deploymentShadowWarm = createDeploymentShadowWarmOwner({
+  renderer,
+  scene,
+  camera,
+  lighting,
+  warmRender,
+  getWorldGroup: () => world?.group ?? null,
+  noteFovPrimed: (fov) => { lastFov = fov; },
+  simDt: SIM_DT,
 });
-deploymentUploadMaterial.name = 'DeploymentBufferUpload';
-
-function deploymentShadowCasterBatches() {
-  const casters = [];
-  const lods = [];
-  scene.traverseVisible((object) => {
-    if (object.isLOD) {
-      // Pin the same LOD the live deployment camera would select. Rendering
-      // with the off-map camera below must not flip the visible child set.
-      try { object.update(camera); } catch (_) { /* best-effort warm */ }
-      lods.push({ object, autoUpdate: object.autoUpdate });
-      object.autoUpdate = false;
-    }
-    if (!(object.isMesh || object.isLine || object.isPoints) || !object.castShadow) return;
-    if (!object.layers.test(camera.layers)) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    if (!materials.some((material) => material?.visible !== false)) return;
-    const geometry = object.geometry;
-    const vertices = geometry?.index?.count
-      || geometry?.attributes?.position?.count || 1;
-    const instances = object.isInstancedMesh ? Math.max(1, object.count || 0) : 1;
-    // First use is dominated by geometry/instance-buffer upload and depth
-    // program binding, not rasterized instance count. This estimate keeps
-    // both data volume and draw count bounded without splitting an
-    // InstancedMesh (which would change the actual caster representation).
-    const weight = vertices + instances * 16 + 2000;
-    casters.push({ object, weight });
-  });
-
-  const batches = [];
-  let batch = [];
-  let weight = 0;
-  for (const caster of casters) {
-    if (batch.length && (batch.length >= 12 || weight + caster.weight > 45000)) {
-      batches.push(batch);
-      batch = [];
-      weight = 0;
-    }
-    batch.push(caster.object);
-    weight += caster.weight;
-  }
-  if (batch.length) batches.push(batch);
-  return { casters, batches, lods };
-}
-
-/**
- * Render the exact deployment CSM maps one cascade per covered frame. The
- * first full battlefield frame then reuses those maps, so CSM depth, the main
- * scene and the post chain never collapse into one long transition task.
- * Shadow count, resolution, camera fit, and live refresh cadence are unchanged.
- */
-async function primeDeploymentShadowMaps(yieldForBudget) {
-  const lights = lighting?.csm?.lights || [];
-  if (!lights.length) return { cascades: 0, totalMs: 0, maxMs: 0 };
-  const prior = lights.map((light) => ({
-    shadow: light.shadow,
-    autoUpdate: light.shadow.autoUpdate,
-    needsUpdate: light.shadow.needsUpdate,
-  }));
-  const startedAt = performance.now();
-  const cascadeMs = [];
-  const casterBatchMs = [];
-  let geometryUploadMs = 0;
-  let primed = false;
-  let casterState = null;
-  try {
-    camera.updateMatrixWorld(true);
-    lighting.updateFov();
-    lastFov = camera.fov;
-    lighting.update(true, SIM_DT);
-    for (const light of lights) {
-      light.shadow.autoUpdate = false;
-      light.shadow.needsUpdate = false;
-    }
-
-    // Upload all opening-view geometry through one cheap shader before any
-    // production material is drawn. This keeps buffer initialization out of
-    // the first full CSM + forward frame while preserving the exact meshes,
-    // materials and post-processing used for the handoff frame.
-    const priorOverrideMaterial = scene.overrideMaterial;
-    const geometryUploadAt = performance.now();
-    try {
-      scene.overrideMaterial = deploymentUploadMaterial;
-      warmRender();
-    } finally {
-      scene.overrideMaterial = priorOverrideMaterial;
-    }
-    geometryUploadMs = Math.round(performance.now() - geometryUploadAt);
-    if (yieldForBudget) await yieldForBudget(true);
-
-    // The first complete cascade used to discover every depth program and
-    // upload every caster buffer in one 0.7-1.0 s task. Submit the identical
-    // casters to the exact first cascade in bounded shadow-only batches, then
-    // redraw the full map once after all resources are resident. The partial
-    // maps are never presented and no visual/shadow quality setting changes.
-    casterState = deploymentShadowCasterBatches();
-    const firstLight = lights[0];
-    for (const { object } of casterState.casters) object.castShadow = false;
-    shadowOnlyWarmCamera.layers.mask = camera.layers.mask;
-    for (const batch of casterState.batches) {
-      for (const object of batch) object.castShadow = true;
-      firstLight.shadow.needsUpdate = true;
-      const batchAt = performance.now();
-      shadowOnlyWarmRender();
-      casterBatchMs.push(Math.round(performance.now() - batchAt));
-      firstLight.shadow.needsUpdate = false;
-      for (const object of batch) object.castShadow = false;
-      if (yieldForBudget) await yieldForBudget(true);
-    }
-    for (const { object } of casterState.casters) object.castShadow = true;
-
-    for (const light of lights) {
-      light.shadow.needsUpdate = true;
-      const cascadeAt = performance.now();
-      shadowOnlyWarmRender();
-      cascadeMs.push(Math.round(performance.now() - cascadeAt));
-      light.shadow.needsUpdate = false;
-      if (yieldForBudget) await yieldForBudget(true);
-    }
-    lighting.preservePrimedCascadesForNextFrame();
-    for (const { object, autoUpdate } of casterState.lods) object.autoUpdate = autoUpdate;
-    primed = true;
-  } finally {
-    if (casterState) {
-      for (const { object } of casterState.casters) object.castShadow = true;
-      for (const { object, autoUpdate } of casterState.lods) object.autoUpdate = autoUpdate;
-    }
-    if (!primed) {
-      for (const state of prior) {
-        state.shadow.autoUpdate = state.autoUpdate;
-        state.shadow.needsUpdate = state.needsUpdate;
-      }
-    }
-  }
-  return {
-    cascades: cascadeMs.length,
-    cascadeMs,
-    maxMs: cascadeMs.length ? Math.max(...cascadeMs) : 0,
-    casterCount: casterState?.casters.length || 0,
-    casterBatches: casterBatchMs.length,
-    casterBatchMs,
-    casterBatchMaxMs: casterBatchMs.length ? Math.max(...casterBatchMs) : 0,
-    geometryUploadMs,
-    totalMs: Math.round(performance.now() - startedAt),
-  };
-}
 
 // WebGLRenderer.compile() intentionally stops before uniform
 // discovery. The next real render then calls WebGLProgram.getUniforms() for

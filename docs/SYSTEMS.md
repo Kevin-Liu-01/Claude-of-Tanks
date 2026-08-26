@@ -52,6 +52,8 @@ strict TypeScript owners:
 - `src/engine/bootLifecycle.ts` owns stage attribution and paint yields;
 - `src/engine/programWarm.ts` owns gameplay-target shader submission, uniform
   discovery, bounded linker breathing, and context-loss invalidation;
+- `src/engine/deploymentShadowWarm.ts` owns bounded deployment caster uploads,
+  depth-program submission, exact cascade priming, and state restoration;
 - `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
 - `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
   synchronous capture drains, round resets, and countdown cancellation;

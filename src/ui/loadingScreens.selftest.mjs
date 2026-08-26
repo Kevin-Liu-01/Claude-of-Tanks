@@ -115,6 +115,9 @@ const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8'
 const battleWarmSource = await readFile(
   new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8',
 );
+const deploymentShadowWarmSource = await readFile(
+  new URL('../engine/deploymentShadowWarm.ts', import.meta.url), 'utf8',
+);
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
@@ -238,7 +241,7 @@ const revealWarmBody = mainSource.slice(
   mainSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')"),
   mainSource.indexOf('entryRevealPrimed = true'),
 );
-const shadowWarmAt = revealWarmBody.indexOf('primeDeploymentShadowMaps(coveredYield)');
+const shadowWarmAt = revealWarmBody.indexOf('deploymentShadowWarm.prime(coveredYield)');
 const postWarmAt = revealWarmBody.indexOf('post.warmFirstFrame(coveredYield)');
 const revealFrameAt = revealWarmBody.indexOf('primeSoloBattleRevealFrame()');
 assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
@@ -258,19 +261,19 @@ assert.match(mainSource,
 assert.match(hudSource,
   /function installMinimapAsset[\s\S]{0,900}drawImage\(image, 0, 0, out\.width, out\.height\)/,
   'the pre-baked supersampled minimap must install without a runtime WebGL readback');
-assert.match(mainSource,
-  /async function primeDeploymentShadowMaps[\s\S]{0,6000}preservePrimedCascadesForNextFrame\(\)/,
+assert.match(deploymentShadowWarmSource,
+  /const prime = async[\s\S]{0,6500}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');
-assert.match(mainSource,
-  /deploymentShadowCasterBatches\(\)[\s\S]{0,4200}shadowOnlyWarmRender\(\)[\s\S]{0,2200}for \(const light of lights\)/,
+assert.match(deploymentShadowWarmSource,
+  /createCasterBatches\(scene, camera\)[\s\S]{0,4200}shadowOnlyWarm\(\)[\s\S]{0,2200}for \(const light of lights\)/,
   'deployment shadows must bind caster resources in bounded depth-only batches before full cascade renders');
-assert.match(mainSource,
-  /scene\.overrideMaterial = deploymentUploadMaterial;[\s\S]{0,160}warmRender\(\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
+assert.match(deploymentShadowWarmSource,
+  /scene\.overrideMaterial = uploadMaterial;[\s\S]{0,160}warmRender\(\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
   'deployment geometry must upload through one shared shader and always restore production materials');
-assert.match(mainSource,
+assert.match(deploymentShadowWarmSource,
   /for \(const \{ object \} of casterState\.casters\) object\.castShadow = true;[\s\S]{0,1200}preservePrimedCascadesForNextFrame\(\)/,
   'all shadow casters must be restored before the primed maps are handed to the live frame');
-assert.match(mainSource,
+assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,180}casterState\.lods[\s\S]{0,100}autoUpdate = autoUpdate/,
   'shadow-only full cascades must keep live-camera LODs pinned until every exact map is rendered');
 assert.match(mainSource,
