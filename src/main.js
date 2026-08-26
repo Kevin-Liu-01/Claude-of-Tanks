@@ -44,6 +44,11 @@ import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
 import { createCameraRig, createShowroomOrbit } from './engine/cameraRig.js';
+import {
+  createFrameBudgetYielder,
+  createOpaqueLoadingYielder,
+  nextFrame,
+} from './engine/frameScheduler.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
@@ -209,63 +214,6 @@ let _lastMark = 0;
 function markGap(key, t0) {
   const gap = Math.round(t0 - _lastMark);
   if (gap > 1) BOOT_TIMINGS[`gap>${key}`] = gap;
-}
-/**
- * Yield to the browser so the loading screen can paint. Falls back to a timer:
- * some embedded/headless panes report `hidden` and never deliver rAF, and a
- * starved rAF must not be able to stall the boot sequence forever.
- * @returns {Promise<void>}
- */
-function nextFrame() {
-  return new Promise((resolve) => {
-    let done = false;
-    const fin = () => { if (!done) { done = true; resolve(); } };
-    requestAnimationFrame(fin);
-    setTimeout(fin, 34);
-  });
-}
-
-function createFrameBudgetYielder(budgetMs = 12) {
-  let sliceStart = performance.now();
-  return async (force = false) => {
-    if (!force && performance.now() - sliceStart < budgetMs) return;
-    // scheduler.yield() ends the current task but may run its continuation
-    // ahead of rendering. Two 300-500 ms vehicle/map atoms therefore became
-    // one 900+ ms visible frame gap even though the Long Tasks API reported
-    // them separately. Loading work promises a painted progress/countdown
-    // frame at every exceeded budget, so use the actual frame boundary.
-    await nextFrame();
-    sliceStart = performance.now();
-  };
-}
-
-/**
- * Yield long work behind an opaque loading veil without paying a full rAF for
- * every generator checkpoint. A task yield keeps input/watchdogs responsive;
- * a real frame is still guaranteed at a bounded cadence so progress never
- * freezes. This is deliberately separate from garage/live idle work, whose
- * visible scene retains the strict per-frame yielder above.
- */
-function createOpaqueLoadingYielder(budgetMs = 12, paintEveryMs = 80) {
-  let sliceStart = performance.now();
-  let lastPaint = sliceStart;
-  const taskYield = () => {
-    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
-      return globalThis.scheduler.yield();
-    }
-    return new Promise((resolve) => setTimeout(resolve, 0));
-  };
-  return async (force = false) => {
-    const now = performance.now();
-    if (!force && now - sliceStart < budgetMs) return;
-    if (now - lastPaint >= paintEveryMs) {
-      await nextFrame();
-      lastPaint = performance.now();
-    } else {
-      await taskYield();
-    }
-    sliceStart = performance.now();
-  };
 }
 /**
  * Run one named boot stage with progress reporting around it.
