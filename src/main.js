@@ -151,6 +151,14 @@ function rememberSpecId(id) {
   try { localStorage.setItem(LAST_SPEC_KEY, id); } catch (_) { /* storage unavailable */ }
 }
 
+// Resolve the remembered hero and begin its exact family transfers before
+// renderer/garage construction. This overlaps network work with the staged
+// boot without constructing a tank or touching WebGL ahead of startup order.
+let selectedSpecId = loadLastSpecId();
+const bootSelectedBuilderP = STUDIO_BOOT_INTENT
+  ? Promise.resolve()
+  : ensureTankBuilder(selectedSpecId);
+
 // scratch
 const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -975,16 +983,6 @@ function setGarageSunTrim(on) {
 }
 
 let pedestalVisual = null;
-// First visit opens on the M1A1 Abrams; later visits resume the last playable
-// tank the user selected. Invalid/stale ids safely fall back to the M1A1.
-let selectedSpecId = loadLastSpecId();
-// Start the exact hero profile transfer as soon as persistence resolves. The
-// module is independent of the garage UI assembled below; waiting until
-// setPedestalTank() serialized this network/parse boundary behind the preview
-// texture bake on a genuinely cold connection.
-const bootSelectedBuilderP = STUDIO_BOOT_INTENT
-  ? Promise.resolve()
-  : ensureTankBuilder(selectedSpecId);
 let pedestalPollToken = 0; // cancels superseded asynchronous hero builds
 // switch-desync r1: convergence bookkeeping. A switch is "pending" from the
 // moment its call bumps pedestalPollToken until any reveal path records it

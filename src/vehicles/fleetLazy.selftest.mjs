@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PROCEDURAL_PROFILES } from './profiledProcedurals.js';
@@ -27,10 +28,17 @@ assert.equal(owners.size - canonicalOnlyIds.size, Object.keys(PROCEDURAL_PROFILE
   'every profile has one demand-loaded owner');
 
 const here = dirname(fileURLToPath(import.meta.url));
+execFileSync(process.execPath, [join(here, '../../tools/gen-legacy-fleet-specs.mjs'), '--check'], {
+  stdio: 'inherit',
+  timeout: 30_000,
+});
 const facadeUrl = pathToFileURL(join(here, 'fleetFactory.js')).href;
 const specsUrl = pathToFileURL(join(here, 'specs.js')).href;
 const markingRegistryUrl = pathToFileURL(join(here, 'vehicleMarkingSeatRegistry.js')).href;
 const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationRegistry.js')).href;
+const facadeSource = await readFile(join(here, 'fleetFactory.js'), 'utf8');
+assert.doesNotMatch(facadeSource, /from ['"]\.\/modern[12]\.js['"]/,
+  'browser fleet facade must not statically import combined legacy builders');
 execFileSync(process.execPath, ['--input-type=module', '-e', `
   import assert from 'node:assert/strict';
   const fleet = await import(${JSON.stringify(facadeUrl)});
@@ -76,6 +84,10 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(fleet.isTankBuilderReady('type10'), true);
   const type10 = fleet.createTank('type10', null, { proceduralOnly: true, geometryReceipt: true });
   type10.dispose();
+  await fleet.ensureTankBuilder('type99a');
+  assert.equal(fleet.isTankBuilderReady('type99a'), true);
+  const type99a = fleet.createTank('type99a', null, { proceduralOnly: true, geometryReceipt: true });
+  type99a.dispose();
   await fleet.ensureTankBuilders(['m60a3', 't90m']);
   assert.equal(fleet.isTankBuilderReady('m60a3'), true);
   assert.equal(fleet.isTankBuilderReady('t90m'), true);

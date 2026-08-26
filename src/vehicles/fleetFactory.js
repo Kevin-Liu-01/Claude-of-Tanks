@@ -7,9 +7,6 @@ import {
   registerCanonicalBuilders,
   registerProfiledBuilders,
 } from './tankFactoryCore.js';
-import { MODERN2_BUILDERS } from './modern2.js';
-import { MODERN1_BUILDERS } from './modern1.js';
-import { FITTINGS, buildDonorVariant, buildProfile } from './profiles/kit.js';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.js';
 import {
   ensureAllVehicleMarkingSeatGroups,
@@ -26,6 +23,8 @@ import {
 import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 import './variants.js';
+import './modern1Specs.generated.js';
+import './modern2Specs.generated.js';
 import './userdrops.js';
 import './userdrops2.js';
 import './userdrops3.js';
@@ -57,6 +56,8 @@ import {
 import { applyNativeFamilyOrder } from './fleetOrder.js';
 
 function toBuilders(profiles) {
+  if (!profileKit) throw new Error('Profile kit is not loaded');
+  const { buildDonorVariant, buildProfile } = profileKit;
   return Object.fromEntries(Object.entries(profiles).map(([id, profile]) => [id, (P) => (
     profile.build ? profile.build(P, profile)
       : profile.base ? buildDonorVariant(P, profile)
@@ -74,13 +75,24 @@ for (const ids of [
   RUNTIME_TANK_IDS,
 ]) applyNativeFamilyOrder(ids);
 
-configureTankFactory({
-  canonicalBuilderPacks: [
-    ['modern1', MODERN1_BUILDERS],
-    ['modern2', MODERN2_BUILDERS],
-  ],
-  fittings: FITTINGS,
-});
+let profileKit = null;
+let factoryReady = false;
+let factoryReadyPromise = null;
+
+function ensureFactoryReady() {
+  if (factoryReady) return Promise.resolve();
+  if (!factoryReadyPromise) {
+    factoryReadyPromise = import('./profiles/kit.js').then((kit) => {
+      configureTankFactory({ canonicalBuilderPacks: [], fittings: kit.FITTINGS });
+      profileKit = kit;
+      factoryReady = true;
+    }).catch((error) => {
+      factoryReadyPromise = null;
+      throw error;
+    });
+  }
+  return factoryReadyPromise;
+}
 
 function registerProfiles(profiles) {
   registerProfiledBuilders(toBuilders(profiles));
@@ -116,7 +128,13 @@ const GROUP_LOADERS = Object.freeze({
   }),
   merkava: () => import('./profiles/merkava.js').then((mod) => registerProfiles(mod.MERKAVA_PROFILES)),
   afv: () => import('./profiles/afvFamily.js').then((mod) => registerProfiles(mod.AFV_FAMILY_PROFILES)),
-  china: () => import('./profiles/china.js').then((mod) => registerProfiles(mod.CHINA_PROFILES)),
+  // Type 99A is the one retained profile that wraps its earlier canonical
+  // donor. Keep that old builder pack on the China demand path.
+  china: () => Promise.all([import('./modern2.js'), import('./profiles/china.js')])
+    .then(([canonical, profiles]) => {
+      registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
+      registerProfiles(profiles.CHINA_PROFILES);
+    }),
   korea: () => import('./profiles/korea.js').then((mod) => registerProfiles(mod.KOREA_PROFILES)),
   japan: () => import('./profiles/japan.js').then((mod) => registerProfiles(mod.JAPAN_PROFILES)),
   germany: () => import('./profiles/germany.js').then((mod) => registerProfiles(mod.GERMANY_PROFILES)),
@@ -125,10 +143,10 @@ const groupPromises = new Map();
 const readyGroups = new Set();
 
 function ensureGroup(group) {
-  if (!group || readyGroups.has(group)) return Promise.resolve();
+  if (!group || readyGroups.has(group)) return ensureFactoryReady();
   let pending = groupPromises.get(group);
   if (!pending) {
-    pending = GROUP_LOADERS[group]().then(() => {
+    pending = ensureFactoryReady().then(() => GROUP_LOADERS[group]()).then(() => {
       readyGroups.add(group);
     }).catch((error) => {
       groupPromises.delete(group);
@@ -176,7 +194,8 @@ export function ensureFullFleet() {
 
 export function isTankBuilderReady(specId) {
   const group = FLEET_GROUP_BY_ID[specId];
-  return (!group || readyGroups.has(group))
+  return factoryReady
+    && (!group || readyGroups.has(group))
     && isVehicleMarkingSeatsReady(specId)
     && isCombatAnatomyCalibrationReady(specId);
 }
