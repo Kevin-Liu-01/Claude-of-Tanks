@@ -219,6 +219,13 @@ signaling epoch, rejects stale SDP/ICE, and resolves the original lobby entry
 through the first replacement transport that opens. Later reconnects retain
 the existing match client and its presentation identity.
 
+The two WebRTC data lanes are also recovery signals in their own right. Some
+browsers leave the aggregate `RTCPeerConnection.connectionState` at
+`connected` after one data channel has closed; a channel cannot reopen in that
+generation. Once the protocol has completed `WELCOME`, either lane closing
+therefore rotates the signaling epoch and replaces the peer connection while
+retaining the existing match client, room seat, and presentation owner.
+
 Non-host refresh after a round is supported. Signaling preserves the stable
 browser player id, the joined client keeps the canonical invite URL, and the
 host keeps rendezvous listening after lobby-to-match handoff. When the page

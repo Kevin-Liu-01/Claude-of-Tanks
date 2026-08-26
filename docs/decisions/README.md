@@ -43,3 +43,4 @@ runtime documents remain authoritative for behavior.
 - [0031 — Engineering diagnostics are absent from player boot](0031-engineering-diagnostics-runtime-boundary.md)
 - [0032 — Deterministic capture recipes are demand loaded](0032-demand-loaded-capture-recipes.md)
 - [0033 — First-visit recovery follows forward progress](0033-progress-aware-boot-watchdog.md)
+- [0034 — Closed RTC data lanes replace the peer generation](0034-rtc-data-lane-recovery.md)

@@ -209,6 +209,9 @@ export class PrivateRoomClientSession {
     this.initialRebuildDelaysMs = [...initialRebuildDelaysMs];
     this.recoveryTimer = null;
     this.replacePromise = null;
+    this.runtimeConnectionUnsubscribe = null;
+    this.runtimeConnectedOnce = false;
+    this.suppressRuntimeDisconnect = false;
     this.closed = false;
     this.runtime = null;
     this.hostSessionId = String(
@@ -281,14 +284,22 @@ export class PrivateRoomClientSession {
       this.recoveryTimer = null;
       return;
     }
-    if (!this.runtime || (state !== 'failed' && state !== 'disconnected') ||
-        this.recoveryTimer || this.replacePromise) return;
-    const peer = this.peer;
+    if (!this.runtime || (state !== 'failed' && state !== 'disconnected')) return;
     const delayMs = state === 'failed'
       ? this.failedRebuildDelayMs : this.disconnectedRebuildDelayMs;
+    this.#schedulePeerReplacement(this.peer, delayMs);
+  }
+
+  #schedulePeerReplacement(peer, delayMs) {
+    if (this.closed || this.recoveryTimer || this.replacePromise) return;
     this.recoveryTimer = setTimeout(() => {
       this.recoveryTimer = null;
-      if (this.closed || this.peer !== peer || peer.connectionState === 'connected') return;
+      if (this.closed || this.peer !== peer || this.replacePromise) return;
+      // A disconnected ICE agent may recover during its grace period. A
+      // closed match transport cannot reopen even when the browser leaves the
+      // aggregate PeerConnection state at "connected"; that case reaches this
+      // owner through the runtime connection listener below.
+      if (!this.runtime?.closed && peer.connectionState === 'connected') return;
       this.#replacePeer({ renewSignaling: true }).catch((error) => {
         if (this.onError) this.onError(error);
       });
@@ -317,6 +328,24 @@ export class PrivateRoomClientSession {
     const client = new MatchClientRuntime({
       transport,
       playerId: this.roomInfo.peerId,
+    });
+    this.runtimeConnectionUnsubscribe?.();
+    this.runtimeConnectedOnce = false;
+    this.runtimeConnectionUnsubscribe = client.onConnection((connected) => {
+      if (this.closed || this.suppressRuntimeDisconnect) return;
+      if (connected) {
+        this.runtimeConnectedOnce = true;
+        if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
+        this.recoveryTimer = null;
+        return;
+      }
+      // Data channels are independently observable and can close before the
+      // aggregate PeerConnection state changes (or while it stays connected).
+      // Once this runtime completed a handshake, a close is terminal for that
+      // transport generation and must rotate the signaling/RTC epoch.
+      if (this.runtimeConnectedOnce) {
+        this.#schedulePeerReplacement(this.peer, this.failedRebuildDelayMs);
+      }
     });
     client.connect({ mode: this.roomInfo.mode || 'private', phase: 'lobby' });
     this.runtime = client;
@@ -364,7 +393,9 @@ export class PrivateRoomClientSession {
     const oldPeer = this.peer;
     const nextPeer = this.#createPeer();
     this.peer = nextPeer;
-    oldPeer.close('host_session_replaced');
+    this.suppressRuntimeDisconnect = true;
+    try { oldPeer.close('host_session_replaced'); }
+    finally { this.suppressRuntimeDisconnect = false; }
     if (renewSignaling) await this.signaling.restartRoomSession('rtc_session_rebuild');
     const transport = await nextPeer.transportReady;
     if (this.peer !== nextPeer || this.closed) {
@@ -416,6 +447,8 @@ export class PrivateRoomClientSession {
     this.closed = true;
     if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
     this.recoveryTimer = null;
+    this.runtimeConnectionUnsubscribe?.();
+    this.runtimeConnectionUnsubscribe = null;
     if (this.unsubscribeSignal) this.unsubscribeSignal();
     if (this.runtime && !this.runtime.closed) this.runtime.close(reason);
     this.peer.close(reason);

@@ -148,6 +148,40 @@ class FakeSignaling {
   session.close('test_done');
 }
 
+// Chromium can report the aggregate PeerConnection as connected after one of
+// the split data channels has closed. A previously welcomed match transport is
+// terminal in that state and must rebuild instead of leaving a dead runtime.
+{
+  const signaling = new FakeSignaling();
+  const session = new PrivateRoomClientSession({
+    signaling,
+    roomInfo: {
+      roomCode: 'LANE22', peerId: 'guest', hostId: 'host', mode: 'private',
+      peers: [{ peerId: 'host', player: { name: 'Host' }, sessionId: 'host_epoch_1' }],
+    },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+    failedRebuildDelayMs: 0,
+  });
+  const firstControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const firstState = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: firstControl });
+  session.peer.peerConnection.ondatachannel({ channel: firstState });
+  await session.ready;
+  const runtime = session.runtime;
+  runtime.connected = true;
+  for (const listener of [...runtime.connectionListeners]) listener(true);
+  const firstPeer = session.peer;
+  firstState.close();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(firstPeer.peerConnection.connectionState, 'closed',
+    'closed data lane retires the stale RTC generation');
+  assert.notEqual(session.peer, firstPeer,
+    'data-lane closure rebuilds even when aggregate RTC state was connected');
+  assert.equal(signaling.restartCalls, 1,
+    'data-lane recovery rotates the durable signaling epoch');
+  session.close('test_done');
+}
+
 // A new browser-host runtime reconstructs peer offers from the durable room
 // membership returned by signaling. This is the host-side half of reload
 // recovery; guests replace their RTC connection when the host epoch changes.
