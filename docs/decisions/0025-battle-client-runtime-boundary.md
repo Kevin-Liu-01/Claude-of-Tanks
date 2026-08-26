@@ -20,8 +20,10 @@ network, debug, and screenshot battle barriers. A rejected chunk request is not
 cached, so the next intent can recover without a page refresh.
 
 Garage dossier metadata lives in `src/sim/specialActionPolicy.ts`; battle-only
-special-action mutation continues in `specialActions.js`. Rendered drive-test
-controls are acquired only for development, debug, or automation sessions.
+special-action mutation continues in `specialActions.js`. Consumable cooldowns,
+countdown policy, tank pose interpolation, and mobile auto-aim also cross this
+boundary. Rendered drive-test controls are acquired only for development,
+debug, or automation sessions.
 
 ## Consequences
 
@@ -30,7 +32,8 @@ controls are acquired only for development, debug, or automation sessions.
 - Battle entry explicitly awaits the complete client combat contract before
   simulation starts; combat methods otherwise fail closed.
 - The initial first-visit JavaScript transfer is about 23 KB smaller in the
-  constrained cold probe.
+  constrained cold probe; the follow-up pose/countdown/consumable extraction
+  removes another roughly 1 KB gzip from the main chunk.
 - This is another strict-TypeScript ownership seam out of `src/main.js`; it is
   not a rename-only migration.
 

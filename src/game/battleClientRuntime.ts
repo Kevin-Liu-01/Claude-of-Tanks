@@ -20,3 +20,23 @@ export {
   specialActionLocksShell,
 } from '../sim/specialActions.js';
 export { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
+export {
+  cooldownRemaining,
+  resetConsumableCooldowns,
+  startConsumableCooldown,
+} from './consumables.js';
+export { CONSUMABLE_RULES } from './consumables.js';
+export {
+  advancePreBattleCountdown,
+  resolveVisiblePreBattleSeconds,
+} from './preBattleCountdown.js';
+export {
+  advanceTankPresentationPose,
+  createTankPresentationPose,
+  resetTankPresentationPose,
+  sampleTankPresentationPose,
+} from './presentationPose.js';
+export {
+  mobileAutoAimCenter,
+  pickMobileAutoAimTarget,
+} from './mobileAutoAim.js';

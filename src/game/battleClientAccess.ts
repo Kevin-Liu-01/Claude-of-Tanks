@@ -23,6 +23,18 @@ export interface BattleClientAccess {
   readonly activateSpecialAction: RuntimeModule['activateSpecialAction'];
   readonly specialActionLocksShell: RuntimeModule['specialActionLocksShell'];
   readonly isPostwarVehicleEra: RuntimeModule['isPostwarVehicleEra'];
+  readonly hasConsumableRule: (slot: number) => boolean;
+  readonly cooldownRemaining: RuntimeModule['cooldownRemaining'];
+  readonly resetConsumableCooldowns: RuntimeModule['resetConsumableCooldowns'];
+  readonly startConsumableCooldown: RuntimeModule['startConsumableCooldown'];
+  readonly advancePreBattleCountdown: RuntimeModule['advancePreBattleCountdown'];
+  readonly resolveVisiblePreBattleSeconds: RuntimeModule['resolveVisiblePreBattleSeconds'];
+  readonly advanceTankPresentationPose: RuntimeModule['advanceTankPresentationPose'];
+  readonly createTankPresentationPose: RuntimeModule['createTankPresentationPose'];
+  readonly resetTankPresentationPose: RuntimeModule['resetTankPresentationPose'];
+  readonly sampleTankPresentationPose: RuntimeModule['sampleTankPresentationPose'];
+  readonly mobileAutoAimCenter: RuntimeModule['mobileAutoAimCenter'];
+  readonly pickMobileAutoAimTarget: RuntimeModule['pickMobileAutoAimTarget'];
 }
 
 /**
@@ -96,5 +108,17 @@ export function createBattleClientAccess(
     activateSpecialAction: (...args) => requireRuntime().activateSpecialAction(...args),
     specialActionLocksShell: (...args) => requireRuntime().specialActionLocksShell(...args),
     isPostwarVehicleEra: (...args) => requireRuntime().isPostwarVehicleEra(...args),
+    hasConsumableRule: (slot) => !!requireRuntime().CONSUMABLE_RULES[slot],
+    cooldownRemaining: (...args) => requireRuntime().cooldownRemaining(...args),
+    resetConsumableCooldowns: (...args) => requireRuntime().resetConsumableCooldowns(...args),
+    startConsumableCooldown: (...args) => requireRuntime().startConsumableCooldown(...args),
+    advancePreBattleCountdown: (...args) => requireRuntime().advancePreBattleCountdown(...args),
+    resolveVisiblePreBattleSeconds: (...args) => requireRuntime().resolveVisiblePreBattleSeconds(...args),
+    advanceTankPresentationPose: (...args) => requireRuntime().advanceTankPresentationPose(...args),
+    createTankPresentationPose: (...args) => requireRuntime().createTankPresentationPose(...args),
+    resetTankPresentationPose: (...args) => requireRuntime().resetTankPresentationPose(...args),
+    sampleTankPresentationPose: (...args) => requireRuntime().sampleTankPresentationPose(...args),
+    mobileAutoAimCenter: (...args) => requireRuntime().mobileAutoAimCenter(...args),
+    pickMobileAutoAimTarget: (...args) => requireRuntime().pickMobileAutoAimTarget(...args),
   };
 }

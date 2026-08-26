@@ -96,21 +96,6 @@ import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
-import {
-  CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
-  startConsumableCooldown,
-} from './game/consumables.js';
-import {
-  advancePreBattleCountdown,
-  resolveVisiblePreBattleSeconds,
-} from './game/preBattleCountdown.js';
-import {
-  advanceTankPresentationPose,
-  createTankPresentationPose,
-  resetTankPresentationPose,
-  sampleTankPresentationPose,
-} from './game/presentationPose.js';
-import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.js';
@@ -1824,6 +1809,18 @@ const {
   activateSpecialAction,
   specialActionLocksShell,
   isPostwarVehicleEra,
+  hasConsumableRule,
+  cooldownRemaining,
+  resetConsumableCooldowns,
+  startConsumableCooldown,
+  advancePreBattleCountdown,
+  resolveVisiblePreBattleSeconds,
+  advanceTankPresentationPose,
+  createTankPresentationPose,
+  resetTankPresentationPose,
+  sampleTankPresentationPose,
+  mobileAutoAimCenter,
+  pickMobileAutoAimTarget,
 } = battleClientAccess;
 const preloadBattleClientRuntime = battleClientAccess.preload;
 
@@ -2472,7 +2469,7 @@ for (let slot = 0; slot < 3; slot++) {
 bus.on('ui:consumable', ({ slot }) => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
-  if (!CONSUMABLE_RULES[slot]) return;
+  if (!hasConsumableRule(slot)) return;
   if (networkMatch) {
     networkFramePump.queueConsumable(slot);
     bus.emit('ui:click', {});
