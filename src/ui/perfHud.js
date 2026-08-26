@@ -2,16 +2,12 @@
 // (`?debug=1` or F8 in development). Player-facing FPS/ping lives in hud.js;
 // production never mounts engineering frame-percentile chrome in battle.
 
+import { debugModeRequested } from '../dev/debugIntent.ts';
+
 const LS_KEY = 'cot.perfhud.v1';
 const PROD_BUILD = !!import.meta.env?.PROD;
 
-/** Pure URL gate used by the HUD and its self-test. */
-export function debugModeRequested(search = (typeof location !== 'undefined' ? location.search : '')) {
-  const qs = new URLSearchParams(search || '');
-  if (!qs.has('debug')) return false;
-  const value = String(qs.get('debug') ?? '').toLowerCase();
-  return value !== '0' && value !== 'false' && value !== 'off';
-}
+export { debugModeRequested } from '../dev/debugIntent.ts';
 
 /** Small, shareable report for issue comments; the full trace stays exportable. */
 export function buildQaSummary({ traceStats, hudSnapshot, telemetry, capturedAt = new Date().toISOString() } = {}) {

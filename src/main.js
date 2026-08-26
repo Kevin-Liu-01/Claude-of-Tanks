@@ -84,9 +84,11 @@ import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts
 import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
-// FEEL r12: corner fps / frame-time / stall overlay (owner order)
-import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
-import { createDebugTelemetryOwner } from './dev/debugTelemetry.ts';
+// Engineering diagnostics stay out of ordinary production boot. A tiny typed
+// facade transfers the exact HUD/telemetry runtime only for explicit QA,
+// development, or automation sessions.
+import { debugModeRequested } from './dev/debugIntent.ts';
+import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
@@ -472,6 +474,7 @@ function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
 // recorder used in development. The recorder remains a lazy chunk and has
 // zero listeners/frame work for ordinary players; the explicit QA URL gives
 // remote/mobile testers an optimized-build trace they can export themselves.
+const diagnosticsRequested = import.meta.env.DEV || debugModeRequested() || navigator.webdriver;
 const traceRequested = import.meta.env.DEV || debugModeRequested();
 const devTrace = traceRequested
   ? (await import('./dev/perfTrace.js')).createDevTrace({
@@ -723,10 +726,32 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
   // stream after readiness in the same quiet slices used by later repair bays.
   return { stage: gs, dressing: gd };
 });
-// FEEL r12: corner perf overlay — fps / p95 frame time / worst stall /
-// draw calls / programs / heap / sim%. F8 toggles; probes read
-// window.__PERF_HUD.stats().
-const perfHud = createPerfHud({ renderer, game, trace: devTrace });
+// FEEL r12: stable zero-work diagnostics facade. Explicit QA and automation
+// acquire the exact existing HUD + telemetry owner near the ready boundary,
+// after every dependency exists. Ordinary players never transfer either
+// module and every frame call below remains a single null-checked no-op.
+const perfHud = createPerfDiagnosticsAccess(async () => {
+  const [{ createPerfHud }, { createDebugTelemetryOwner }] = await Promise.all([
+    import('./ui/perfHud.js'),
+    import('./dev/debugTelemetry.ts'),
+  ]);
+  const telemetry = createDebugTelemetryOwner({
+    renderer,
+    scene,
+    camera,
+    lighting,
+    post,
+    game,
+    getWorld: () => world,
+    getNetworkTelemetry: () => networkFramePump.diagnostics(),
+    resolvePresetName,
+    getDeviceTier,
+  });
+  const hudRuntime = createPerfHud({ renderer, game, trace: devTrace });
+  hudRuntime.setTelemetryProvider(telemetry.collect);
+  devTrace?.configure({ getTelemetry: telemetry.collect });
+  return { hud: hudRuntime, telemetry };
+});
 if (typeof window !== 'undefined') window.__PERF_HUD = perfHud;
 // hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
 // the stage floods and clipped the turntable floor right of the tank to 255.
@@ -2512,7 +2537,7 @@ input.onAction('shotLog', () => {
   if (game.phase === 'battle') bus.emit('ui:shotLog', {});
 });
 // FEEL r12: perf overlay toggle works in every phase (garage included)
-input.onAction('perfHud', () => perfHud.toggle());
+input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); });
 
 bus.on('ui:shellSelect', ({ slot }) => {
   if (game.player && game.player.combat && !game.player.combat.destroyed) {
@@ -7053,23 +7078,13 @@ const driveTestController = driveTestRequested
     resetAim: () => {},
   };
 
-const debugTelemetry = createDebugTelemetryOwner({
-  renderer,
-  scene,
-  camera,
-  lighting,
-  post,
-  game,
-  getWorld: () => world,
-  getNetworkTelemetry: () => networkFramePump.diagnostics(),
-  resolvePresetName,
-  getDeviceTier,
-});
-const collectDebugTelemetry = debugTelemetry.collect;
-const sampleShadowContribution = debugTelemetry.sampleShadowContribution;
-
-perfHud.setTelemetryProvider(collectDebugTelemetry);
-devTrace?.configure({ getTelemetry: collectDebugTelemetry });
+if (diagnosticsRequested) {
+  await perfHud.preload().catch((error) => {
+    console.warn('[diagnostics] optional engineering runtime failed to load', error);
+  });
+}
+const collectDebugTelemetry = () => perfHud.collectTelemetry();
+const sampleShadowContribution = () => perfHud.sampleShadowContribution();
 
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, rig, bus,

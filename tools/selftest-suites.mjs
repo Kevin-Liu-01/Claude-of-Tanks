@@ -123,6 +123,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/settingsControls.selftest.mjs',
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
+    'src/dev/perfDiagnosticsAccess.selftest.mjs',
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',

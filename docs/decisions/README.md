@@ -40,3 +40,4 @@ runtime documents remain authoritative for behavior.
 - [0028 — Cold RTC recovery preserves room readiness](0028-cold-rtc-generation-recovery.md)
 - [0029 — Decorative garage rendering follows playable readiness](0029-decorative-garage-runtime-boundary.md)
 - [0030 — Custom camouflage authoring is an intent-loaded deep module](0030-custom-camouflage-studio-boundary.md)
+- [0031 — Engineering diagnostics are absent from player boot](0031-engineering-diagnostics-runtime-boundary.md)
