@@ -68,6 +68,8 @@ await Promise.resolve();
 await Promise.resolve();
 assert.equal(coordinator.activePlayer.id, 'p1');
 assert.ok(calls.some(([name, id]) => name === 'chat' && id === 'old'));
+assert.equal(calls.filter(([name]) => name === 'attach-menu').length, 0,
+  'an active battle keeps the hidden lobby DOM cold');
 
 coordinator.syncVehicle('m1a2sepv3');
 assert.ok(calls.some(([name, command]) =>
@@ -80,12 +82,17 @@ assert.ok(calls.some(([name, command]) =>
 chatListener({ id: 'new' });
 assert.ok(calls.some(([name, id]) => name === 'chat' && id === 'new'));
 assert.equal(await coordinator.showActiveRoom(), true);
+assert.equal(calls.filter(([name]) => name === 'attach-menu').length, 1,
+  'explicit room presentation catches the menu up to the latest state');
 assert.equal(coordinator.setReady(true), true);
 assert.equal(coordinator.startRound(), true);
 assert.ok(calls.some(([name, command]) =>
   name === 'command' && command.type === 'start' && command.matchSeed === 99));
 
 stateListener(room(2, 'starting'));
+await Promise.resolve();
+assert.equal(calls.filter(([name]) => name === 'update-menu').length, 0,
+  'battle room revisions do not rebuild an invisible lobby');
 assert.equal(scheduled.length, 1, 'one new round schedules one rematch');
 scheduled.shift()();
 assert.ok(calls.some(([name, round]) => name === 'rematch' && round === 2));

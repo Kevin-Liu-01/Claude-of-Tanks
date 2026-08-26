@@ -41,6 +41,23 @@ assert.equal(copied.data.id, 7, 'bus payload is copied at emission time');
 assert.equal(copied.data.nested.hp, 900);
 assert.equal(copied.data.loop, '[Circular]');
 
+trace.event('network:roomState', {
+  playerId: 'p1', role: 'client',
+  state: {
+    roomCode: 'ABC123', phase: 'waiting', revision: 8, round: 2,
+    players: [
+      { id: 'p1', ready: true, connected: true, equipment: ['rammer', 'optics'] },
+      { id: 'p2', ready: false, connected: false, equipment: ['vstab'] },
+    ],
+  },
+});
+const roomTrace = trace.tail(1, 'bus')[0].data;
+assert.equal(roomTrace.state.playerCount, 2);
+assert.equal(roomTrace.state.readyCount, 1);
+assert.equal(roomTrace.state.connectedCount, 1);
+assert.equal(roomTrace.state.players, undefined,
+  'QA traces summarize room revisions without cloning complete lobby records');
+
 actionHandlers.get('reload')('KeyR');
 assert.equal(trace.tail(1, 'action')[0].name, 'reload');
 

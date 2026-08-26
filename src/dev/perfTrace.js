@@ -71,6 +71,32 @@ function cloneSafe(value, depth = 0, seen = new WeakSet()) {
   return out;
 }
 
+// Room snapshots contain full equipment/camouflage/player records. The live
+// 7v7 probe only needs lifecycle evidence, and deep-cloning fourteen complete
+// records inside the event hook can itself become the stall being measured.
+function traceEventPayload(name, data) {
+  if (name !== 'network:roomState' || !data?.state) return data;
+  const state = data.state;
+  const players = Array.isArray(state.players) ? state.players : [];
+  return {
+    playerId: data.playerId || '',
+    role: data.role || '',
+    state: {
+      roomCode: state.roomCode || '',
+      mode: state.mode || '',
+      phase: state.phase || '',
+      revision: Number(state.revision) || 0,
+      round: Number(state.round) || 0,
+      lastResult: state.lastResult || null,
+      playerCount: players.length,
+      readyCount: players.reduce((count, player) => count + (player?.ready ? 1 : 0), 0),
+      connectedCount: players.reduce(
+        (count, player) => count + (player?.connected !== false ? 1 : 0), 0,
+      ),
+    },
+  };
+}
+
 function inert() {
   const noop = () => {};
   return {
@@ -293,7 +319,7 @@ export function createDevTraceCore(options = {}) {
 
   const api = {
     enabled: true, get active() { return active; },
-    event: (name, data) => push('bus', name, data),
+    event: (name, data) => push('bus', name, traceEventPayload(name, data)),
     action: (name, data) => push('action', name, data), frame,
     mark: (name, data = {}) => push('mark', name, data),
     configure(next = {}) {

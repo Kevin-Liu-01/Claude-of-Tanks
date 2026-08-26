@@ -62,6 +62,9 @@ export function createBrowserBattleBridge({
   const destructionCause = new Map();
   const nearbyPredictionObstacles = [];
   let appliedDestructibleRevision = -1;
+  let visualDestroyCount = 0;
+  let visualDestroyTotalMs = 0;
+  let visualDestroyMaxMs = 0;
 
   function collidePrediction(entity, pos, _radius, outPush) {
     outPush.set(0, 0, 0);
@@ -321,7 +324,12 @@ export function createBrowserBattleBridge({
     entity._networkDestroyed = true;
     entity._networkDestroyPop = pop;
     if (entity.visual.setDestroyed) {
+      const startedAt = performance.now();
       entity.visual.setDestroyed({ pop });
+      const elapsedMs = performance.now() - startedAt;
+      visualDestroyCount += 1;
+      visualDestroyTotalMs += elapsedMs;
+      visualDestroyMaxMs = Math.max(visualDestroyMaxMs, elapsedMs);
     }
   }
 
@@ -712,7 +720,12 @@ export function createBrowserBattleBridge({
     endDisconnected,
     recordInput,
     getPredictionStats,
-    getPresentationEventStats: () => presentationEvents.getStats(),
+    getPresentationEventStats: () => ({
+      ...presentationEvents.getStats(),
+      visualDestroyCount,
+      visualDestroyTotalMs: Math.round(visualDestroyTotalMs * 10) / 10,
+      visualDestroyMaxMs: Math.round(visualDestroyMaxMs * 10) / 10,
+    }),
     setPerspective,
     unmount,
     dispose,

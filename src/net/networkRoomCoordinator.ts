@@ -207,6 +207,23 @@ export function createNetworkRoomCoordinator({
     return request;
   };
 
+  const syncMenuPresentation = (
+    menu: PlayMenuRuntime,
+    state: NetworkRoomState,
+  ): void => {
+    const adapter = {
+      state,
+      playerId: getMatch()?.playerId || '',
+      role: getMatch()?.role || 'client',
+      command: (command: Record<string, unknown>) => getMatch()?.roomCommand?.(command),
+      leave: (reason?: string) => onClose(reason || 'left_room'),
+    };
+    if (!menuAttached) {
+      menu.attachActiveRoom(adapter);
+      menuAttached = true;
+    } else menu.updateActiveRoom(state);
+  };
+
   const present = (state: NetworkRoomState) => {
     preloadLobbyIntent(state);
     const match = getMatch();
@@ -217,21 +234,17 @@ export function createNetworkRoomCoordinator({
       role: match?.role || 'client',
     });
     syncChatVisibility();
+    // Room authority commonly publishes the waiting/rematch state just before
+    // the final combat snapshot. Rebuilding the hidden 14-player lobby at that
+    // edge caused a 62 ms live frame and then a presentation backlog. Preserve
+    // the state and lightweight garage reminder, but defer the invisible DOM
+    // rebuild until results/garage can display it or the player opens the room.
+    if (getPhase() === 'battle' && !hasResult()) return;
     const menuPromise = getPlayMenu();
     if (!menuPromise) return;
     menuPromise.then((menu) => {
       if (!activeRoom) return;
-      const adapter = {
-        state: activeRoom,
-        playerId: getMatch()?.playerId || '',
-        role: getMatch()?.role || 'client',
-        command: (command: Record<string, unknown>) => getMatch()?.roomCommand?.(command),
-        leave: (reason?: string) => onClose(reason || 'left_room'),
-      };
-      if (!menuAttached) {
-        menu.attachActiveRoom(adapter);
-        menuAttached = true;
-      } else menu.updateActiveRoom(activeRoom);
+      syncMenuPresentation(menu, activeRoom);
     }).catch(() => { /* optional room presentation retries on the next state */ });
   };
 
@@ -317,7 +330,9 @@ export function createNetworkRoomCoordinator({
       const match = getMatch();
       const menuPromise = getPlayMenu();
       if (!activeRoom || !match || match.client?.closed || !menuPromise) return false;
-      return !!(await menuPromise).showActiveRoom();
+      const menu = await menuPromise;
+      syncMenuPresentation(menu, activeRoom);
+      return !!menu.showActiveRoom();
     },
 
     setReady(ready) {

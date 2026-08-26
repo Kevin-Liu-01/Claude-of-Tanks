@@ -171,7 +171,10 @@ increments its next round at start, and clears every ready flag. The next match
 replaces the simulation runtime while preserving transport and room identity.
 The typed browser room coordinator subscribes once, releases state and chat
 subscriptions together, and admits only one presentation handoff for each new
-round number. It never mutates the authoritative lobby locally.
+round number. It never mutates the authoritative lobby locally. A waiting-state
+revision that arrives on the final combat edge updates room truth and the garage
+reminder immediately, but defers rebuilding the hidden lobby DOM until results,
+garage, or an explicit room-open action can actually display it.
 
 Battle chat uses dedicated `ROOM_CHAT_COMMAND` and `ROOM_CHAT` control
 messages instead of bloating snapshots or room-state broadcasts. Authority
