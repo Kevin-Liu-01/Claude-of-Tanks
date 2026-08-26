@@ -17,7 +17,8 @@ and persisted player choices.
 and deterministic participant/camouflage planning; `soloBattleAccess.ts` owns
 retryable lazy acquisition while `soloBattleRuntime.ts` is the typed import
 boundary for legacy solo authority in `state.js`, which owns battle setup and
-the fixed battle step; `ai.js` owns bot decisions and is
+the fixed battle step; `battleWarmRuntime.ts` owns battle-only terrain, wreck,
+and common-FX residency behind a retryable typed access facade; `ai.js` owns bot decisions and is
 injected into the headless multiplayer authority;
 `input.js` normalizes devices; `profile.js` persists real local match history;
 `killcam.js` and `studio.js` own separate presentation timelines.

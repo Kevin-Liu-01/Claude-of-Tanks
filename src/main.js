@@ -93,6 +93,7 @@ import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleClientAccess } from './game/battleClientAccess.ts';
+import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
@@ -143,6 +144,7 @@ const {
   createCollider,
   prepareNextOpeningRoute,
 } = createSoloBattleRuntimeAccess();
+const battleWarm = createBattleWarmAccess();
 
 function loadLastSpecId() {
   try {
@@ -2179,7 +2181,6 @@ let combatOpeningWarmed = false;
 let combatPipelineWarmed = false;
 let _openingWarmGen = null;
 let _rareWarmGen = null;
-let networkOpeningEffectsWarmed = false;
 let combatDestructionEffectsWarmed = false;
 // WebGL context restoration is recoverable in place. Three rebuilds its GL
 // state first; we then step mobile down to the safe preset, trim optional
@@ -2197,7 +2198,7 @@ renderer.userData.contextRecovery = {
     // renderer-lifetime combat latch so the next covered transition rebuilds
     // the exact production variants instead of trusting stale GPU state.
     combatDestructionEffectsWarmed = false;
-    networkOpeningEffectsWarmed = false;
+    battleWarm.invalidate();
     resetCombatRoundWarmState();
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
@@ -2709,6 +2710,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
     preloadSoloBattleRuntime(),
     preloadBattleClientRuntime(),
+    battleWarm.preload(),
     fxTextureP,
     ensureKillcamRuntime(),
     rosterTextureP,
@@ -2843,7 +2845,9 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       if (warmGeneration !== battleWarmGeneration) return;
       mark('enemyVisuals');
       battleLoad.progress(0.965, 'Warming suspension terrain');
-      await warmBattleTerrainTiles(coveredYield);
+      await battleWarm.warmBattleTerrainTiles({
+        game, world, yieldForBudget: coveredYield,
+      });
       if (warmGeneration !== battleWarmGeneration) return;
       mark('terrainGrid');
       // Render exactly the deployment camera once while the roster screen is
@@ -3288,6 +3292,7 @@ async function presentNetworkBattle({
     }),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
+    battleWarm.preload(),
   ]);
   const [
     { createBrowserBattleBridge },
@@ -3360,16 +3365,24 @@ async function presentNetworkBattle({
   networkBridge = preparedBridge;
   networkBridge.apply(initial, 1 / 60);
   battleLoad.progress(0.845, 'Warming suspension terrain');
-  await warmBattleTerrainTiles(createFrameBudgetYielder(16));
+  await battleWarm.warmBattleTerrainTiles({
+    game, world, yieldForBudget: createFrameBudgetYielder(16),
+  });
   markLoadStage('terrainGrid');
   // Network rosters can contain vehicles the garage-idle solo warmer never
   // touched. Bake every fielded wreck family while the opaque load screen
   // owns the frame, otherwise first blood can synchronously build burn
   // canvases/materials and freeze a constrained client for hundreds of ms.
   battleLoad.progress(0.85, 'Priming wreck variants');
-  await warmNetworkWrecks(networkBridge.entities.values());
+  await battleWarm.warmNetworkWrecks({
+    entities: networkBridge.entities.values(),
+    prebakeBurntSteps,
+    anisotropy: engineCtx.anisotropy ?? 4,
+  });
   battleLoad.progress(0.87, 'Priming combat effects');
-  await warmNetworkOpeningEffects();
+  await battleWarm.warmNetworkOpeningEffects({
+    fx, post, renderer, scene, camera, shells: game.shells, warmRender,
+  });
   markLoadStage('combatWarm');
   hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
   battleLoad.progress(0.88, 'Compiling combat shaders');
@@ -5221,139 +5234,6 @@ function resetCombatRoundWarmState() {
   combatPipelineWarmed = false;
 }
 
-async function warmBattleTerrainTiles(yieldForBudget, { primePresentation = true } = {}) {
-  const warmer = world?.heightField?.warmFastTilesAround;
-  if (typeof warmer !== 'function') return;
-  const points = [];
-  for (const ent of game.tanks) {
-    const pos = ent?.state?.pos;
-    if (!pos) continue;
-    // The player can turn either way immediately after rollout, so cover the
-    // surrounding 64 m. Bots need their current tile ready before the first
-    // authority tick; later unexpected crossings are bounded by 32 m tiles.
-    points.push({ x: pos.x, z: pos.z, radiusM: ent.isPlayer ? 64 : 0 });
-    if (ent.isPlayer || !Array.isArray(ent._openingRoute)) continue;
-    // Prime roughly the first 70 m of each deterministic opening plan. Route
-    // points are densely A*-expanded, so sample at a fixed spatial cadence
-    // rather than baking the same tile dozens of times. Later unscripted
-    // turns still use the bounded 16 m first-touch fallback in terrain.js.
-    let lastX = pos.x;
-    let lastZ = pos.z;
-    let routeM = 0;
-    let sinceWarmM = 0;
-    for (const waypoint of ent._openingRoute) {
-      if (!waypoint) continue;
-      const wx = Number(waypoint[0]);
-      const wz = Number(waypoint[1]);
-      if (!Number.isFinite(wx) || !Number.isFinite(wz)) continue;
-      const stepM = Math.hypot(wx - lastX, wz - lastZ);
-      routeM += stepM;
-      sinceWarmM += stepM;
-      lastX = wx;
-      lastZ = wz;
-      if (sinceWarmM >= 24 || routeM >= 70) {
-        points.push({ x: wx, z: wz, radiusM: 10 });
-        sinceWarmM = 0;
-      }
-      if (routeM >= 70) break;
-    }
-  }
-  for (const _tile of warmer.call(world.heightField, points)) {
-    if (yieldForBudget) await yieldForBudget();
-  }
-
-  // Prime the first real presentation update while the opaque screen still
-  // owns the frame. This populates the camera-centred grass-cell cache and
-  // uploads its initial inactive instance set; previously both happened on
-  // the first rollout frame and showed up as a terrain/vegetation hitch even
-  // though the world itself had finished loading.
-  const focus = game.player || game.tanks.find((ent) => ent?.state);
-  if (primePresentation && focus?.state && typeof world?.update === 'function') {
-    const yaw = focus.state.yaw || 0;
-    const warmCamera = new THREE.Vector3(
-      focus.state.pos.x - Math.sin(yaw) * 12,
-      focus.state.pos.y + 5,
-      focus.state.pos.z - Math.cos(yaw) * 12,
-    );
-    const warmForward = new THREE.Vector3(
-      Math.sin(yaw), -0.16, Math.cos(yaw),
-    ).normalize();
-    world.update(0, warmCamera, warmForward, focus.state.pos);
-    if (yieldForBudget) await yieldForBudget(true);
-  }
-}
-
-async function warmNetworkWrecks(entities) {
-  const yieldForFrameBudget = createFrameBudgetYielder(8);
-  const warmedSpecs = new Set();
-  for (const entity of entities || []) {
-    const visual = entity?.visual;
-    if (!visual) continue;
-    if (visual.prewarmBurn) {
-      try { visual.prewarmBurn(); } catch (_) { /* warm only */ }
-    }
-    const wreckKey = entity.specId ? `${entity.specId}:${entity.camo || 'factory'}` : '';
-    if (wreckKey && !warmedSpecs.has(wreckKey)) {
-      warmedSpecs.add(wreckKey);
-      try {
-        for (const _ of prebakeBurntSteps(
-          entity.specId,
-          engineCtx.anisotropy ?? 4,
-          entity.camo || 'factory',
-        )) {
-          await yieldForFrameBudget();
-        }
-      } catch (_) { /* warm only */ }
-    }
-    if (visual.setDestroyed && visual.resetDestroyed) {
-      try {
-        visual.setDestroyed({ pop: false });
-        visual.resetDestroyed();
-        visual.setDestroyed({ pop: true });
-        visual.resetDestroyed();
-      } catch (_) { /* warm only */ }
-    }
-    await yieldForFrameBudget(true);
-  }
-}
-
-/**
- * Warm the effects an immediate deploy can hit in its opening seconds without
- * charging the whole exhaustive garage-idle pipeline to the transition.
- */
-async function warmNetworkOpeningEffects() {
-  if (networkOpeningEffectsWarmed) return;
-  const wp = new THREE.Vector3(-460, 0, -460);
-  const wn = new THREE.Vector3(0, 1, 0);
-  const wd = new THREE.Vector3(0, 0, 1);
-  try {
-    if (fx.warmTextures) fx.warmTextures();
-    fx.warmOpeningEffects(wp, wd, wn, 120);
-    await nextFrame();
-    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
-    fx.destruction(wp, null, 'shot');
-    await nextFrame();
-    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
-    fx.destruction(wp, null, 'ammorack');
-    await nextFrame();
-    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
-    post.prepareSoftParticles();
-    const mask = camera.layers.mask;
-    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
-    try {
-      renderer.compile(fx.group, camera, scene);
-      warmRender();
-    } finally {
-      camera.layers.mask = mask;
-    }
-    networkOpeningEffectsWarmed = true;
-  } catch (error) {
-    console.warn('[warm] opening effects failed (continuing):', error);
-  } finally {
-    fx.resetAll();
-  }
-}
-
 // Studio does not field the staged battle roster.  Reusing the complete
 // combat warm here used to build, burn, compile, and shadow-warm every hidden
 // battle tank before an empty authoring canvas could appear (7.0 s in the
@@ -5639,7 +5519,12 @@ function scheduleDeferredCombatWarm(generation) {
     // The exact first 70 m of each route must be in the fast terrain cache
     // before bots can move. Position tiles and the vegetation presentation
     // cache were already prepared under the opaque loader.
-    await warmBattleTerrainTiles(guardedYield, { primePresentation: false });
+    await battleWarm.warmBattleTerrainTiles({
+      game,
+      world,
+      yieldForBudget: guardedYield,
+      primePresentation: false,
+    });
     trace.stages.navigation = Math.round(performance.now() - navigationStartedAt);
     // Far terrain retains only its visible coarse mesh during map creation.
     // Previously its exact one-band lookahead baked every fourth playable

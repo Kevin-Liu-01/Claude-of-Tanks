@@ -44,3 +44,4 @@ runtime documents remain authoritative for behavior.
 - [0032 — Deterministic capture recipes are demand loaded](0032-demand-loaded-capture-recipes.md)
 - [0033 — First-visit recovery follows forward progress](0033-progress-aware-boot-watchdog.md)
 - [0034 — Closed RTC data lanes replace the peer generation](0034-rtc-data-lane-recovery.md)
+- [0035 — Battle warming is an intent-loaded typed runtime](0035-battle-warming-runtime-boundary.md)
