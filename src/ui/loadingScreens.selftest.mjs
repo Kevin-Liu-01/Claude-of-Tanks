@@ -146,11 +146,17 @@ const stageRevealBody = mainSource.slice(
   mainSource.indexOf('async function stageBattleVisualReveal('),
   mainSource.indexOf('// --- fx', mainSource.indexOf('async function stageBattleVisualReveal(')),
 );
-assert.match(stageRevealBody, /renderer\.compile\(root, camera, scene\)[\s\S]{0,700}await yieldForBudget\(true\)/,
+assert.match(stageRevealBody, /renderer\.compile\(root, camera, scene\)[\s\S]{0,1400}await yieldForBudget\(true\)/,
   'each streamed vehicle must submit its shaders before yielding to later roster construction');
 assert.match(stageRevealBody,
-  /renderer\.compile\(root, camera, scene\)[\s\S]{0,700}if \(initiallyHidden\) visual\.setVisible\?\.\(false\)[\s\S]{0,100}await yieldForBudget\(true\)/,
-  'countdown-streamed opponents must compile exactly, then hide before the next painted frame');
+  /renderer\.compile\(root, camera, scene\)[\s\S]*if \(initiallyHidden\)[\s\S]*visual\.setVisible\?\.\(false\)[\s\S]*root\.removeFromParent\(\)[\s\S]*battleVisibilityDetached = true[\s\S]*await yieldForBudget\(true\)/,
+  'countdown-streamed opponents must compile exactly, then detach before the next painted frame');
+assert.match(mainSource,
+  /function setBattleVisualResident\(visual, resident\)[\s\S]{0,500}battleVisibilityDetached && !root\.parent\)[\s\S]{0,80}scene\.add\(root\)[\s\S]{0,500}if \(root\.parent === scene\)[\s\S]{0,100}root\.removeFromParent\(\)/,
+  'fully hidden opponents must leave the scene hierarchy and only the visibility owner may restore them');
+assert.match(mainSource,
+  /actorVisible = ent\._spotFade > 0\.02;[\s\S]*setBattleVisualResident\(visual, actorVisible\)[\s\S]*visual\.setVisible\(actorVisible\)[\s\S]*if \(!actorVisible\) continue/,
+  'spotting must restore scene residency before the first visible pose sync');
 const deferredWarmBody = mainSource.slice(
   mainSource.indexOf('function scheduleDeferredCombatWarm('),
   mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),

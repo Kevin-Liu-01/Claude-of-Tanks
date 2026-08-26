@@ -803,7 +803,17 @@ async function stageBattleVisualReveal(ent, yieldForBudget, initiallyHidden = fa
   // compile(), then hide them before the next paint so neither geometry nor
   // shadows leak their spawn. updateDustAndSync restores the complete root
   // on the first legitimate spotting frame.
-  if (initiallyHidden) visual.setVisible?.(false);
+  if (initiallyHidden) {
+    visual.setVisible?.(false);
+    // Object3D.updateMatrixWorld walks invisible descendants. Keeping an
+    // unspotted opponent merely `visible=false` therefore paid the complete
+    // procedural hierarchy cost every frame even though the renderer and
+    // gameplay were forbidden from exposing a pixel. Detach after the exact
+    // compile; updateDustAndSync reattaches and synchronizes the root before
+    // its first legally spotted render.
+    root.removeFromParent();
+    root.userData.battleVisibilityDetached = true;
+  }
   await yieldForBudget(true);
 }
 
@@ -4681,6 +4691,22 @@ function presentationStateFor(ent, alpha) {
 }
 
 const _detailScreenPos = new THREE.Vector3();
+function setBattleVisualResident(visual, resident) {
+  const root = visual?.root;
+  if (!root) return;
+  if (resident) {
+    if (root.userData.battleVisibilityDetached && !root.parent) scene.add(root);
+    root.userData.battleVisibilityDetached = false;
+    return;
+  }
+  // Only roots deliberately detached by this visibility owner may be
+  // reattached above. This prevents a late spotting edge from resurrecting a
+  // visual that another lifecycle owner disposed or parked.
+  if (root.parent === scene) {
+    root.removeFromParent();
+    root.userData.battleVisibilityDetached = true;
+  }
+}
 function updateDustAndSync(dtFrame, presentationAlpha = 1) {
   const cameraPosition = camera.position;
   // Renderer frustum-culls individual meshes later, but running-gear
@@ -4714,6 +4740,7 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
       ent._spotFade += (target - ent._spotFade) *
         (dtFrame === undefined ? 1 : Math.min(1, dtFrame / 0.35));
       actorVisible = ent._spotFade > 0.02;
+      setBattleVisualResident(visual, actorVisible);
       visual.setVisible(actorVisible);
     } else if (game.phase === 'battle' && !ent.isPlayer) {
       // Allies (and enemies in the no-spotting fallback) are force-shown; the

@@ -48,8 +48,9 @@ if (!/function scheduleDeferredCombatWarm\(generation\)[\s\S]{0,2600}streamBattl
 if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,160}stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
   throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
 }
-if (!/if \(initiallyHidden\) visual\.setVisible\?\.\(false\)/.test(main)) {
-  throw new Error('countdown-built enemy visuals must remain hidden until a legal spotting edge');
+if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S]{0,900}root\.removeFromParent\(\)[\s\S]{0,180}battleVisibilityDetached = true/.test(main)
+  || !/actorVisible = ent\._spotFade > 0\.02;[\s\S]{0,160}setBattleVisualResident\(visual, actorVisible\)[\s\S]{0,100}visual\.setVisible\(actorVisible\)/.test(main)) {
+  throw new Error('countdown-built enemy visuals must stay detached until a legal spotting edge');
 }
 if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(main)
   || !/function\* warmCombatRarePipelineSteps\(\)[\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*compileHiddenVariantsSteps/.test(main)) {
