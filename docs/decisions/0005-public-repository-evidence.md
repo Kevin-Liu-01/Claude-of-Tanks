@@ -39,5 +39,6 @@ vehicle packets. New unreferenced critique receipts must not be committed.
 ## Verification
 
     git grep -n 'docs/critique/' -- ':!docs/critique/**'
+    node tools/public-repo-hygiene.selftest.mjs
     node tools/selftest-suites.selftest.mjs
     npm run agent-docs -- doctor . --json

@@ -54,6 +54,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',
   ]),
   core: Object.freeze([
+    'tools/public-repo-hygiene.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
     'src/game/stateCore.selftest.mjs',
