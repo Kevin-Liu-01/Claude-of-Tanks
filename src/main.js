@@ -90,6 +90,7 @@ import { createAimController } from './game/aimController.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
+import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -1714,7 +1715,7 @@ const garageMaps = [
 ];
 let pendingSoloStart = null;
 let playMenuPromise = null;
-let pendingLobbyRoom = null;
+let networkRoomCoordinator = null;
 const {
   loadPlayMenuModule,
   preloadNetworkBattleModules,
@@ -1739,10 +1740,7 @@ function preloadPlayMode(mode) {
     .catch(() => { /* battle click remains the retry/fallback path */ });
 }
 async function openPlayMenu(request) {
-  if (activeNetworkRoom && networkMatch && !networkMatch.client?.closed) {
-    const menu = await playMenuPromise;
-    if (menu?.showActiveRoom()) return;
-  }
+  if (networkRoomCoordinator && await networkRoomCoordinator.showActiveRoom()) return;
   if (playMenuPromise) {
     const menu = await playMenuPromise;
     if (menu?.showCurrentRoom()) return;
@@ -1789,7 +1787,7 @@ async function openPlayMenu(request) {
       },
       onNetworkStart: beginNetworkBattle,
       onRankedStart: beginRankedBattle,
-      onLobbyChange: handleLobbyRoomChange,
+      onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
     }));
     playMenuPromise = pending;
     pending.catch(() => {
@@ -1809,8 +1807,8 @@ const garage = await bootStage('ui', () => createGarage({
     rememberSpecId(specId);
     setPedestalTank(specId);
     applyCamoPatternsChunked({ priorityIds: [specId], onlySpecIds: [specId] });
-    syncActiveRoomVehicle(specId);
-    syncPendingLobbySelection();
+    networkRoomCoordinator?.syncVehicle(specId);
+    networkRoomCoordinator?.syncPendingLobbySelection();
   },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
   onPlayRequest: (request) => openPlayMenu(request).catch((error) => {
@@ -1836,8 +1834,8 @@ const garage = await bootStage('ui', () => createGarage({
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
       });
-      syncActiveRoomCamo(specId);
-      syncPendingLobbySelection();
+      networkRoomCoordinator?.syncCamo(specId);
+      networkRoomCoordinator?.syncPendingLobbySelection();
     },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
@@ -1845,8 +1843,8 @@ const garage = await bootStage('ui', () => createGarage({
         priorityIds: [specId], onlySpecIds: [specId],
       });
       // Deliberately sends Factory: custom paint is local single-player only.
-      syncActiveRoomCamo(specId);
-      syncPendingLobbySelection();
+      networkRoomCoordinator?.syncCamo(specId);
+      networkRoomCoordinator?.syncPendingLobbySelection();
     },
   },
   // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
@@ -1866,7 +1864,7 @@ const garage = await bootStage('ui', () => createGarage({
     applyCamoPatternsChunked({
       priorityIds: [selectedSpecId], onlySpecIds: [selectedSpecId],
     });
-    syncPendingLobbySelection();
+    networkRoomCoordinator?.syncPendingLobbySelection();
   },
 }));
 
@@ -3038,15 +3036,6 @@ let networkMatch = null;
 let networkBridge = null;
 let networkStatus = null;
 let networkSpectator = false;
-let activeNetworkRoom = null;
-let unsubscribeNetworkRoom = null;
-let unsubscribeNetworkRoomChat = null;
-let networkRoomMenuAttached = false;
-let networkPresentedRound = 0;
-let networkRematchPending = false;
-const pendingNetworkRoomChat = [];
-let networkRoomChat = null;
-let networkRoomChatPromise = null;
 const networkRecovery = createNetworkRecoveryOwner();
 const networkFramePump = createNetworkFramePump({
   getMatch: () => networkMatch,
@@ -3064,63 +3053,6 @@ const networkFramePump = createNetworkFramePump({
 // solo falls back to the fixed-step roster.
 function resolveFxSubject(id) {
   return networkBridge?.entities.get(id) || game.tankById.get(id) || null;
-}
-
-function roomChatVisible() {
-  return !!(networkMatch && activeNetworkRoom && game.phase === 'battle');
-}
-
-function syncRoomChatVisibility() {
-  if (!networkRoomChat) return;
-  networkRoomChat.setPlayer(networkMatch?.playerId || '');
-  networkRoomChat.setActive(roomChatVisible());
-}
-
-function handleNetworkRoomChat(message) {
-  if (networkRoomChat) networkRoomChat.append(message);
-  else {
-    pendingNetworkRoomChat.push(message);
-    if (pendingNetworkRoomChat.length > 48) pendingNetworkRoomChat.shift();
-  }
-}
-
-async function ensureNetworkRoomChat() {
-  if (!networkRoomChatPromise) {
-    networkRoomChatPromise = preloadNetworkRoomChatModule().then(({ createRoomChat }) => {
-      networkRoomChat = createRoomChat({
-        input,
-        onSend: (text) => networkMatch?.sendRoomChat?.(text) || false,
-        isAvailable: () => roomChatVisible() && !settings.isOpen(),
-        shouldRelock: () => roomChatVisible() && !settings.isOpen() && !game.result &&
-          !killcam.isActive() && !networkSpectator,
-      });
-      networkRoomChat.setPlayer(networkMatch?.playerId || '');
-      for (const message of networkMatch?.getRoomChatHistory?.() || []) {
-        networkRoomChat.append(message);
-      }
-      for (const message of pendingNetworkRoomChat.splice(0)) networkRoomChat.append(message);
-      syncRoomChatVisibility();
-      return networkRoomChat;
-    });
-  }
-  return networkRoomChatPromise;
-}
-
-function activeRoomPlayer(state = activeNetworkRoom) {
-  return state?.players?.find((player) => player.id === networkMatch?.playerId) || null;
-}
-
-function garageRoomStatus(state, playerId) {
-  const me = state?.players?.find((player) => player.id === playerId);
-  if (!me) return null;
-  const active = state.players.filter((player) => player.team !== 'spectator');
-  return {
-    roomCode: state.roomCode,
-    mode: state.mode,
-    ready: me.ready,
-    readyCount: active.filter((player) => player.ready).length,
-    total: active.length,
-  };
 }
 
 /**
@@ -3148,108 +3080,26 @@ function preloadNetworkLobbyIntent(state) {
   prefetchWorld(mapId);
 }
 
-function handleLobbyRoomChange(context) {
-  pendingLobbyRoom = context?.state ? context : null;
-  if (pendingLobbyRoom) preloadNetworkLobbyIntent(pendingLobbyRoom.state);
-  if (activeNetworkRoom) return;
-  garage.setRoomStatus(pendingLobbyRoom
-    ? garageRoomStatus(pendingLobbyRoom.state, pendingLobbyRoom.playerId)
-    : null);
-}
+networkRoomCoordinator = createNetworkRoomCoordinator({
+  getMatch: () => networkMatch,
+  getPlayMenu: () => playMenuPromise,
+  loadRoomChat: preloadNetworkRoomChatModule,
+  getPhase: () => game.phase,
+  isSettingsOpen: () => settings.isOpen(),
+  hasResult: () => !!game.result,
+  isKillcamActive: () => killcam.isActive(),
+  isSpectator: () => networkSpectator,
+  input,
+  setGarageStatus: (status) => garage.setRoomStatus(status),
+  emitRoomState: (payload) => bus.emit('network:roomState', payload),
+  preloadLobbyIntent: preloadNetworkLobbyIntent,
+  equipmentFor: (specId) => loadSelectedEquipment(specId, getSpec(specId)),
+  camoFor: getMultiplayerCamoSelection,
+  onRematch: beginNetworkRematch,
+  onClose: (reason) => closeNetworkMatch(reason),
+});
 
-function syncPendingLobbySelection() {
-  if (!pendingLobbyRoom || !playMenuPromise) return;
-  playMenuPromise.then((menu) => menu.syncGarageSelection());
-}
-
-function syncActiveRoomVehicle(specId) {
-  const me = activeRoomPlayer();
-  if (!me || me.ready || activeNetworkRoom?.phase !== 'waiting') return;
-  if (me.specId !== specId) networkMatch?.roomCommand?.({ type: 'select_vehicle', specId });
-  networkMatch?.roomCommand?.({
-    type: 'select_equipment',
-    equipment: loadSelectedEquipment(specId, getSpec(specId)),
-  });
-  syncActiveRoomCamo(specId);
-}
-
-function syncActiveRoomCamo(specId) {
-  const me = activeRoomPlayer();
-  if (!me || me.ready || activeNetworkRoom?.phase !== 'waiting') return;
-  const camo = getMultiplayerCamoSelection(specId);
-  if (me.camo !== camo) networkMatch?.roomCommand?.({ type: 'select_camo', camo });
-}
-
-function updateActiveRoomPresentation(state) {
-  preloadNetworkLobbyIntent(state);
-  garage.setRoomStatus(garageRoomStatus(state, networkMatch?.playerId));
-  bus.emit('network:roomState', {
-    state,
-    playerId: networkMatch?.playerId || '',
-    role: networkMatch?.role || 'client',
-  });
-  syncRoomChatVisibility();
-  if (playMenuPromise) {
-    playMenuPromise.then((menu) => {
-      if (!activeNetworkRoom) return;
-      const adapter = {
-        state: activeNetworkRoom,
-        playerId: networkMatch?.playerId || '',
-        role: networkMatch?.role || 'client',
-        command: (command) => networkMatch?.roomCommand?.(command),
-        leave: (reason) => closeNetworkMatch(reason || 'left_room'),
-      };
-      if (!networkRoomMenuAttached) {
-        menu.attachActiveRoom(adapter);
-        networkRoomMenuAttached = true;
-      } else menu.updateActiveRoom(activeNetworkRoom);
-    });
-  }
-}
-
-function handleNetworkRoomState(state) {
-  if (!state || !Array.isArray(state.players)) return;
-  activeNetworkRoom = state;
-  updateActiveRoomPresentation(state);
-  const round = Number(state.round) || 0;
-  if (state.phase === 'starting' && round > networkPresentedRound && !networkRematchPending) {
-    networkRematchPending = true;
-    queueMicrotask(() => beginNetworkRematch(state));
-  }
-}
-
-function attachNetworkRoom(initialState) {
-  if (!networkMatch?.onRoomState) return;
-  if (unsubscribeNetworkRoom) unsubscribeNetworkRoom();
-  activeNetworkRoom = initialState;
-  networkPresentedRound = Number(initialState?.round) || 1;
-  updateActiveRoomPresentation(initialState);
-  unsubscribeNetworkRoom = networkMatch.onRoomState(handleNetworkRoomState);
-  if (unsubscribeNetworkRoomChat) unsubscribeNetworkRoomChat();
-  unsubscribeNetworkRoomChat = networkMatch.onRoomChat?.(handleNetworkRoomChat) || null;
-  void ensureNetworkRoomChat();
-}
-
-function clearActiveNetworkRoom() {
-  if (unsubscribeNetworkRoom) unsubscribeNetworkRoom();
-  if (unsubscribeNetworkRoomChat) unsubscribeNetworkRoomChat();
-  unsubscribeNetworkRoom = null;
-  unsubscribeNetworkRoomChat = null;
-  activeNetworkRoom = null;
-  networkPresentedRound = 0;
-  networkRematchPending = false;
-  pendingNetworkRoomChat.length = 0;
-  if (networkRoomChat) {
-    networkRoomChat.setActive(false);
-    networkRoomChat.clear();
-  }
-  garage.setRoomStatus(null);
-  if (playMenuPromise) playMenuPromise.then((menu) => menu.detachActiveRoom());
-  networkRoomMenuAttached = false;
-  bus.emit('network:roomState', null);
-}
-
-bus.on('phase:change', syncRoomChatVisibility);
+bus.on('phase:change', () => networkRoomCoordinator.syncChatVisibility());
 
 function disposeNetworkPresentation() {
   networkRecovery.dispose();
@@ -3265,7 +3115,7 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   if (networkMatch) networkMatch.close(reason);
   disposeNetworkPresentation();
   networkMatch = null;
-  clearActiveNetworkRoom();
+  networkRoomCoordinator.clear();
 }
 
 async function beginBattleEntry(specId, mapId = null, options = undefined) {
@@ -3627,7 +3477,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
         ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
         : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
     });
-    attachNetworkRoom(lobbyState);
+    networkRoomCoordinator.attach(lobbyState);
     entered = true;
   } catch (error) {
     if (typeof window !== 'undefined') {
@@ -3660,13 +3510,8 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
 /** Load another authority round over the room's existing WebRTC channels. */
 async function beginNetworkRematch(lobbyState) {
   const round = Number(lobbyState?.round) || 0;
-  if (!networkMatch || networkMatch.client?.closed || battleEntryPending ||
-      lobbyState?.phase !== 'starting' || round <= networkPresentedRound) {
-    networkRematchPending = false;
-    return false;
-  }
+  if (!networkRoomCoordinator.claimRematch(lobbyState, battleEntryPending)) return false;
   battleEntryPending = true;
-  networkPresentedRound = round;
   const viewerId = networkMatch.playerId;
   const own = lobbyState.players.find((player) => player.id === viewerId);
   try {
@@ -3719,7 +3564,7 @@ async function beginNetworkRematch(lobbyState) {
     return false;
   } finally {
     battleEntryPending = false;
-    networkRematchPending = false;
+    networkRoomCoordinator.finishRematch();
   }
 }
 
@@ -3973,9 +3818,7 @@ function clearBattlePresentationForExit() {
   endOverlay.style.display = 'none';
 }
 
-function enterGarage({ preserveRoom = !!(
-  activeNetworkRoom && networkMatch && !networkMatch.client?.closed && game.result
-) } = {}) {
+function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfterResult() } = {}) {
   const garageTrace = { stages: {} };
   const garageStartedAt = performance.now();
   let garageMarkedAt = garageStartedAt;
@@ -4118,19 +3961,10 @@ bus.on('ui:roomOpen', async () => {
 });
 
 bus.on('ui:roomReady', ({ ready } = {}) => {
-  if (activeNetworkRoom?.phase !== 'waiting') return;
-  networkMatch?.roomCommand?.({ type: 'set_ready', ready: !!ready });
+  networkRoomCoordinator.setReady(!!ready);
 });
 
-function startActiveRoomRound() {
-  if (networkMatch?.role !== 'host' || activeNetworkRoom?.phase !== 'waiting') return false;
-  const words = new Uint32Array(1);
-  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(words);
-  else words[0] = (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
-  return networkMatch.roomCommand({ type: 'start', matchSeed: words[0] });
-}
-
-bus.on('ui:roomStart', startActiveRoomRound);
+bus.on('ui:roomStart', () => networkRoomCoordinator.startRound());
 
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)
