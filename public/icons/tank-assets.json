@@ -130382,12 +130382,12 @@
             "min": [
               -1.7,
               0.005,
-              -2.885
+              -2.9084
             ],
             "max": [
               -1.09,
-              1.2955,
-              3.0587
+              1.2888,
+              3.0581
             ],
             "turretLocal": false
           },
@@ -130397,12 +130397,12 @@
             "min": [
               1.09,
               0.005,
-              -2.885
+              -2.9084
             ],
             "max": [
               1.7,
-              1.2955,
-              3.0587
+              1.2888,
+              3.0581
             ],
             "turretLocal": false
           }
@@ -130455,8 +130455,8 @@
           }
         ]
       },
-      "geometryHash": "67762e10",
-      "metadataHash": "814f1085",
+      "geometryHash": "7c64eb7a",
+      "metadataHash": "196d2e07",
       "presentationAnchor": {
         "xM": 0.0027,
         "zM": -0.0384
@@ -130549,24 +130549,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68753,
-          "sha256": "8c8dae437adefc7a4d36739f142bc7e800545b0a57e12e2a0a51c4735296092f"
+          "bytes": 68991,
+          "sha256": "41a8f48cedd381ca7ea87e527b45c5c10288f03abf637a18cfbbcfe7776ac153"
         },
         "armorSide": {
           "file": "t90_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70139,
-          "sha256": "abb3e94c2a7db65fb482650485d52bd90a59733b21e3cd97da7d9d4ffc4c9e0f"
+          "bytes": 70510,
+          "sha256": "d5c34a23f86a890817abe9fea7653aa40fdf97ea55fc1685912b815660a38db5"
         },
         "modulesSide": {
           "file": "t90_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74596,
-          "sha256": "cd187350432eac7226034b1897b4d22d7f8a790e11faa9778d46ba2feb9c9efe"
+          "bytes": 75297,
+          "sha256": "33949970b7ab62776a11bd27ec3a3c7dbd8db3d80c652a03d2bd6007b803b6cd"
         },
         "markings": {
           "file": "t90_markings.png",

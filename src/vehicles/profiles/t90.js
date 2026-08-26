@@ -4210,14 +4210,17 @@ function buildT90(P) {
     style: 'rubber', wheelR: 0.34, wheelW: 0.22, wheelY: 0.33, xc: 1.395, dishR: 0.74,
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
     // Seat the final drive under the rear transom instead of crowding the
-    // last road wheel. Its 276 mm radius is exactly twenty percent larger
-    // than the former 230 mm wheel, while the axle drops 50 mm so the enlarged
+    // last road wheel. Its 299 mm radius is exactly thirty percent larger
+    // than the former 230 mm wheel, while the axle drops 80 mm so the enlarged
     // assembly reads as a loaded drive wheel rather than a high return
-    // roller. The shared course generator rebuilds the rear rise, wrap pads,
-    // belt, shoes, teeth and hit volume around this one canonical station.
-    sprocket: { z: -2.52, y: 0.93, r: 0.276 }, idler: { z: 2.70, y: 0.68, r: 0.27 },
+    // roller. The higher-resolution rear arc continues past the crown to its
+    // first return-roller tangent, eliminating the old pointed course seam.
+    // Lift the front idler 30 mm so its axle and the rising bow run share a
+    // cleaner tangent while retaining the authored diameter and fore/aft seat.
+    sprocket: { z: -2.52, y: 0.90, r: 0.299 }, idler: { z: 2.70, y: 0.71, r: 0.27 },
     rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
+    rearArcSteps: 18, smoothRearTopTangent: true, tautRearSpan: true,
     contactZF: 2.26, contactZR: -2.16,
     tireHex: 0x292a25, wheelHex: 0x394431,
   };

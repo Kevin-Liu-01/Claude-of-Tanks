@@ -809,6 +809,7 @@ const TRACK_SHOE_BAND_GAP_M = 0.012;
 function trackLoopPoints({
   idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
   frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
+  tautRearSpan = false, smoothRearTopTangent = false,
 }) {
   const pts = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
@@ -843,12 +844,31 @@ function trackLoopPoints({
   const zs = sprocket.z, zi = idler.z;
   const ys = sprocket.y + sprocket.r + CLEAR, yi = idler.y + idler.r + CLEAR;
   const dir = Math.sign(zi - zs) || 1;
-  const sup = [[zs, ys]];
-  if (supports && supports.length) {
-    const inner = supports
+  const inner = supports && supports.length
+    ? supports
       .filter((s) => (s.z - zs) * dir > 0.12 && (zi - s.z) * dir > 0.12)
       .sort((a, b) => (a.z - b.z) * dir)
-      .map((s) => [s.z, s.y]);
+      .map((s) => [s.z, s.y])
+    : [];
+  // Raised rear drives need to leave the crown on a real tangent. Closing
+  // the wrap at 12 o'clock and immediately descending toward the first
+  // return roller creates a visible pointed vertex where the two courses
+  // meet. This is opt-in so established fleet loops remain byte-identical.
+  let rearTopDeg = 0;
+  let rearTop = [zs, ys];
+  if (smoothRearTopTangent && inner.length) {
+    const candidate = tangentDeg(sprocket, inner[0][0], inner[0][1], 1);
+    if (candidate != null && candidate > 0 && candidate < 90) {
+      rearTopDeg = candidate;
+      const a = rearTopDeg * D2R;
+      rearTop = [
+        sprocket.z + Math.sin(a) * (sprocket.r + CLEAR),
+        sprocket.y + Math.cos(a) * (sprocket.r + CLEAR),
+      ];
+    }
+  }
+  const sup = [rearTop];
+  if (supports && supports.length) {
     sup.push(...inner);
   } else {
     // no explicit supports: hold the line up at topY mid-run
@@ -858,7 +878,8 @@ function trackLoopPoints({
   for (let k = 0; k < sup.length - 1; k++) {
     const [z0, y0] = sup[k], [z1, y1] = sup[k + 1];
     const span = Math.abs(z1 - z0);
-    const dip = tautFrontSpan && k === sup.length - 2
+    const dip = (tautRearSpan && k === 0)
+      || (tautFrontSpan && k === sup.length - 2)
       ? 0
       : Math.min(sag, sag * span * 1.6);
     const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
@@ -912,7 +933,7 @@ function trackLoopPoints({
   } else {
     for (let k = 1; k <= 5; k++) pts.push([zi + (zs - zi) * (k / 6), botY]);
   }
-  arc(sprocket, aR, 360, rearArcSteps);         // around the sprocket (rear)
+  arc(sprocket, aR, 360 + rearTopDeg, rearArcSteps); // around the sprocket (rear)
   // drop duplicate closing point
   pts.pop();
   // ground clamp, kept as the last-resort safety net (pathological cfgs
@@ -1598,6 +1619,8 @@ function buildTrackCourse({
       frontArcSteps: cfg.frontArcSteps ?? 7,
       rearArcSteps: cfg.rearArcSteps ?? 7,
       tautFrontSpan: cfg.tautFrontSpan ?? false,
+      tautRearSpan: cfg.tautRearSpan ?? false,
+      smoothRearTopTangent: cfg.smoothRearTopTangent ?? false,
     });
 
   // Band normals and shoe orientation use a clockwise (z,y) course.
