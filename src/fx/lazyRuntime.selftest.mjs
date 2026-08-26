@@ -26,10 +26,16 @@ const requiredGates = [
   ['solo battle', /async function startBattleLoading[\s\S]{0,5200}const fxTextureP = ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
   ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
-  ['deterministic shots', /window\.__SHOTS[\s\S]{0,1200}ensureFxRuntime\(\)/],
 ];
 for (const [name, pattern] of requiredGates) {
   if (!pattern.test(main)) throw new Error(`${name} can enter without the live effects runtime`);
+}
+const shotsStart = main.indexOf('window.__SHOTS = {');
+const shotsEnd = main.indexOf('// ---------------------------------------------------------------------------', shotsStart);
+const deterministicShots = main.slice(shotsStart, shotsEnd);
+if (shotsStart < 0 || shotsEnd < 0 ||
+    !/async set\(name\)[\s\S]*ensureFxRuntime\(\)/.test(deterministicShots)) {
+  throw new Error('deterministic shots can enter without the live effects runtime');
 }
 const networkBattle = main.slice(
   main.indexOf('async function presentNetworkBattle('),
@@ -108,10 +114,11 @@ if (!hiddenVariants.includes('yield* compileAll(e.visual.root)')
 }
 const routeAt = deferredWarm.indexOf('prepareNextOpeningRoute(game)');
 const terrainAt = deferredWarm.indexOf(
-  'warmBattleTerrainTiles(guardedYield, { primePresentation: false })',
+  'battleWarm.warmBattleTerrainTiles({',
 );
 if (!/deferOpeningRoutes: !!opts\.deferVisuals/.test(main)
   || !(routeAt >= 0 && terrainAt > routeAt)
+  || !/battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,180}primePresentation: false/.test(deferredWarm)
   || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
   throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');
 }

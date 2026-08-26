@@ -123,7 +123,8 @@ export function createDevTraceCore(options = {}) {
   let seq = 0, eventNext = 0, lastEventName = '';
   let gpuCaptured = false, cachedGpu = null;
   let frameNext = 0, frameSize = 0, frameDropped = 0, lastFrameAt = 0;
-  let maxGap = 0, spikes = 0, freezes = 0, longTasks = 0, longTaskMs = 0;
+  let maxGap = 0, spikes = 0, freezes = 0, liveSpikes = 0, liveFreezes = 0;
+  let longTasks = 0, longTaskMs = 0;
   let lastPhase = 'unknown', lastSim = NaN, lastSimAt = 0, simFrozenAt = 0;
   let lastRender = -1, lastRenderAt = 0, renderFrozenAt = 0;
 
@@ -172,6 +173,8 @@ export function createDevTraceCore(options = {}) {
     const sim = Number.isFinite(game?.timeS) ? game.timeS : 0;
     const pre = Number.isFinite(game?.preBattleS) ? game.preBattleS : -1;
     const bits = flagBits(game, ctx);
+    const live = phase === 'battle' && pre <= 0 && !(bits &
+      (FLAGS.hidden | FLAGS.unfocused | FLAGS.paused | FLAGS.result | FLAGS.killcam));
     const rf = info?.render?.frame || 0;
     const inp = game?.player?.input;
     const i = frameNext;
@@ -190,13 +193,21 @@ export function createDevTraceCore(options = {}) {
 
     const hidden = !!(bits & (FLAGS.hidden | FLAGS.unfocused));
     if (gap >= 250) {
-      freezes++; anomaly(hidden ? 'frame:hidden-gap' : 'screen:freeze', { gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame: rf }, at);
+      freezes++;
+      if (live) liveFreezes++;
+      anomaly(hidden ? 'frame:hidden-gap' : 'screen:freeze', {
+        gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame: rf,
+        live, result: !!(bits & FLAGS.result), killcam: !!(bits & FLAGS.killcam),
+      }, at);
     } else if (gap >= 50) {
-      spikes++; anomaly(hidden ? 'frame:hidden-spike' : 'frame:spike', { gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame: rf }, at);
+      spikes++;
+      if (live) liveSpikes++;
+      anomaly(hidden ? 'frame:hidden-spike' : 'frame:spike', {
+        gapMs: +gap.toFixed(2), dtMs, phase, simS: sim, renderFrame: rf,
+        live, result: !!(bits & FLAGS.result), killcam: !!(bits & FLAGS.killcam),
+      }, at);
     }
 
-    const live = phase === 'battle' && pre <= 0 && !(bits &
-      (FLAGS.hidden | FLAGS.unfocused | FLAGS.paused | FLAGS.result | FLAGS.killcam));
     if (phase !== lastPhase || !live) {
       lastPhase = phase; lastSim = sim; lastSimAt = at; simFrozenAt = 0;
       lastRender = rf; lastRenderAt = at; renderFrozenAt = 0; return;
@@ -236,7 +247,7 @@ export function createDevTraceCore(options = {}) {
       framesDropped: frameDropped, events: events.size, eventsDropped: events.dropped,
       eventCounts: { ...counts }, gapP50: +pct(gaps, .5).toFixed(3),
       gapP95: +pct(gaps, .95).toFixed(3), gapP99: +pct(gaps, .99).toFixed(3),
-      maxGapMs: +maxGap.toFixed(3), spikes, freezes, longTasks,
+      maxGapMs: +maxGap.toFixed(3), spikes, freezes, liveSpikes, liveFreezes, longTasks,
       longTaskMs: +longTaskMs.toFixed(3), consoleAll,
     };
   }
@@ -274,7 +285,8 @@ export function createDevTraceCore(options = {}) {
     events.clear(); frameNext = frameSize = frameDropped = 0;
     for (const v of Object.values(f)) v.fill(0);
     for (const key of Object.keys(counts)) delete counts[key];
-    seq = eventNext = 0; lastEventName = ''; lastFrameAt = maxGap = spikes = freezes = 0;
+    seq = eventNext = 0; lastEventName = '';
+    lastFrameAt = maxGap = spikes = freezes = liveSpikes = liveFreezes = 0;
     longTasks = longTaskMs = 0; lastPhase = 'unknown'; lastSim = NaN;
     lastSimAt = simFrozenAt = 0; lastRender = -1; lastRenderAt = renderFrozenAt = 0;
   }

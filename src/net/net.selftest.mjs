@@ -4,6 +4,7 @@ import {
   MESSAGE_TYPES,
   MAX_ROOM_CHAT_LENGTH,
   PLAYER_ACTION_BITS,
+  PROTOCOL_VERSION,
   ProtocolError,
   createEnvelope,
   createRoomCode,
@@ -773,12 +774,17 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   assert.equal(hostChannels[0].transport.readyState, 'open');
   assert.equal(hostChannels[0].pendingMessages.length, 2,
     'a fast client handshake is preserved while the host finishes loading');
+  earlyMatchClient.readyForMatch();
+  await Promise.resolve();
+  assert.equal(hostChannels[0].pendingMessages.length, 3,
+    'the temporary handoff inbox preserves READY after lobby listener release');
   const handoffAuthority = new AuthoritativeMatchRuntime({ simulation: createTestSimulation() });
   handoffAuthority.attachPeer({
     peerId: 'guest',
     transport: hostChannels[0].transport,
     metadata: { team: 'bravo' },
   });
+  hostChannels[0].finishHandoff();
   for (const message of hostChannels[0].pendingMessages) {
     handoffAuthority.acceptPeerMessage('guest', message);
   }
@@ -1481,6 +1487,89 @@ function createTestSimulation() {
   assert.equal(host.matchStarted, true, 'the retransmitted READY releases the barrier');
   client.close('test_done');
   host.close('test_done');
+}
+
+// A delayed final lobby packet cannot poison the match authority's fresh
+// sequence space and suppress its WELCOME handshake.
+{
+  const link = createLoopbackTransportPair({ direct: true });
+  const client = new MatchClientRuntime({
+    transport: link.client,
+    playerId: 'phase-reset',
+    interpolationDelayMs: 0,
+    clock: () => 0,
+  });
+  client.connect({ phase: 'lobby' });
+  client.beginMatchHandshake({ phase: 'match' });
+  link.host.send(createEnvelope(MESSAGE_TYPES.LOBBY_STATE, {
+    revision: 9,
+    phase: 'starting',
+    round: 1,
+    players: [],
+  }, { seq: 9, tick: 9 }));
+  link.host.send(createEnvelope(MESSAGE_TYPES.WELCOME, {
+    protocolVersion: PROTOCOL_VERSION,
+    peerId: 'phase-reset',
+    tickHz: 60,
+    snapshotHz: 20,
+    serverTick: 0,
+    serverTimeMs: 0,
+  }, { seq: 0, tick: 0 }));
+  assert.equal(client.connected, true,
+    'match WELCOME resets a delayed lobby sender sequence watermark');
+  assert.equal(client.lastRecvSeq, 0,
+    'match authority owns the reliable sequence watermark after WELCOME');
+  client.close('test_done');
+}
+
+// Rebinding the same persistent transport restores explicit runtime ownership
+// at a lobby -> match boundary.
+{
+  const link = createLoopbackTransportPair({ direct: true });
+  const client = new MatchClientRuntime({
+    transport: link.client,
+    playerId: 'listener-rebind',
+    interpolationDelayMs: 0,
+    clock: () => 0,
+  });
+  client.unsubscribeMessage();
+  assert.equal(client.replaceTransport(link.client), true);
+  client.beginMatchHandshake({ phase: 'match' });
+  link.host.send(createEnvelope(MESSAGE_TYPES.WELCOME, {
+    protocolVersion: PROTOCOL_VERSION,
+    peerId: 'listener-rebind',
+    tickHz: 60,
+    snapshotHz: 20,
+    serverTick: 0,
+    serverTimeMs: 0,
+  }, { seq: 0, tick: 0 }));
+  assert.equal(client.connected, true,
+    'same-transport rebind restores match message ownership');
+  client.close('test_done');
+}
+
+// Browser-host long stalls retain match time but drain it incrementally. A
+// single returning frame must never run the whole backlog or discard it.
+{
+  const simulation = createTestSimulation();
+  const hostRuntime = new AuthoritativeMatchRuntime({
+    simulation,
+    maxCatchUpTicks: 6,
+    maxBacklogTicks: 300,
+    longStallCatchUpTicks: 2,
+  });
+  assert.equal(hostRuntime.advance(1000), 2,
+    'one-second stall performs only one normal plus one recovery tick');
+  assert.equal(hostRuntime.stats.droppedCatchUpMs, 0,
+    'bounded browser stall preserves authoritative match time');
+  assert.ok(hostRuntime.accumulatorMs > 900,
+    'unprocessed fixed time remains in the bounded backlog');
+  assert.equal(hostRuntime.stats.longStallCatchUpFrames, 1);
+  for (let frame = 0; frame < 90; frame++) hostRuntime.advance(1000 / 60);
+  assert.ok(hostRuntime.accumulatorMs < hostRuntime.tickMs,
+    'one-extra-tick recovery eventually drains the retained backlog');
+  assert.equal(hostRuntime.stats.droppedCatchUpMs, 0);
+  hostRuntime.close();
 }
 
 // Solo play is the same host/client path, not a direct simulation shortcut.

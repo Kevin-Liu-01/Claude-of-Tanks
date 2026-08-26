@@ -135,5 +135,13 @@ assert.doesNotMatch(loadingStartBody, /setInterval|setTimeout/,
   'loading sound must not add timers or frame work to the transition');
 assert.match(audioSource, /get loadingActive\(\) \{ return !!loadingRig; \}/,
   'audio QA surface exposes the loading-bed lifecycle');
+assert.match(audioSource, /synthExplosion\(lx, ly, lz, 1\.8, false, true, 0\);/,
+  'battle warm primes the heavy destruction fallback at zero gain');
+assert.match(audioSource, /synthGunshot\(lx, ly, lz, 152, true, null, -1, 0\);/,
+  'battle warm primes the exact synthesized player-gun graph at zero gain');
+assert.match(audioSource, /bakedGunshot\(lx, ly, lz, 152, true, null, -1, 0\);/,
+  'battle warm primes decoded player-gun layers when samples are already resident');
+assert.match(audioSource, /bakedTankExplosion\(lx, ly, lz, 'ammorack', 0\);/,
+  'decoded tank-destruction samples are primed silently before live combat');
 
 console.log('audioTiming.selftest: scheduling, weapon reports, reload mechanisms, distance and perspective mixes passed');

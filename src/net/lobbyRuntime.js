@@ -170,10 +170,23 @@ export class LobbyHostRuntime {
     for (const peer of this.peers.values()) {
       if (peer.unsubscribeMessage) peer.unsubscribeMessage();
       if (peer.unsubscribeClose) peer.unsubscribeClose();
+      const pendingMessages = peer.pendingHandoffMessages.splice(0);
+      // Keep an inbox attached until AuthoritativeMatchRuntime owns the same
+      // channel. RTCDataChannel does not retain `message` events while it has
+      // no listener, so the old detach-then-attach sequence could lose READY
+      // in the otherwise synchronous lobby -> match handoff window.
+      const stopHandoffCapture = peer.transport.onMessage((message) => {
+        if (pendingMessages.length >= MAX_PENDING_HANDOFF_MESSAGES) {
+          peer.transport.close('handoff_buffer_limit');
+          return;
+        }
+        pendingMessages.push(message);
+      });
       released.push({
         peerId: peer.id,
         transport: peer.transport,
-        pendingMessages: peer.pendingHandoffMessages.splice(0),
+        pendingMessages,
+        finishHandoff: stopHandoffCapture,
       });
     }
     this.peers.clear();

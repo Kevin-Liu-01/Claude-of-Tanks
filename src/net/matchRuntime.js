@@ -76,6 +76,8 @@ export class AuthoritativeMatchRuntime {
     tickHz = MATCH_TICK_HZ,
     snapshotHz = SNAPSHOT_HZ,
     maxCatchUpTicks = 4,
+    maxBacklogTicks = maxCatchUpTicks,
+    longStallCatchUpTicks = maxCatchUpTicks,
     maxInputLeadTicks = 120,
     roomController = null,
     chatClock = defaultClock,
@@ -86,6 +88,14 @@ export class AuthoritativeMatchRuntime {
     validateRate(tickHz, snapshotHz);
     if (!Number.isInteger(maxCatchUpTicks) || maxCatchUpTicks < 1 || maxCatchUpTicks > 12) {
       throw new TypeError('maxCatchUpTicks must be between 1 and 12');
+    }
+    if (!Number.isInteger(maxBacklogTicks) || maxBacklogTicks < maxCatchUpTicks ||
+        maxBacklogTicks > tickHz * 10) {
+      throw new TypeError('maxBacklogTicks must cover catch-up and at most ten seconds');
+    }
+    if (!Number.isInteger(longStallCatchUpTicks) || longStallCatchUpTicks < 1 ||
+        longStallCatchUpTicks > maxCatchUpTicks) {
+      throw new TypeError('longStallCatchUpTicks must be within the catch-up window');
     }
     if (!Number.isInteger(keyframeIntervalTicks) || keyframeIntervalTicks < tickHz / snapshotHz) {
       throw new TypeError('keyframeIntervalTicks must cover at least one snapshot interval');
@@ -107,6 +117,8 @@ export class AuthoritativeMatchRuntime {
     this.tickMs = 1000 / tickHz;
     this.snapshotEveryTicks = tickHz / snapshotHz;
     this.maxCatchUpTicks = maxCatchUpTicks;
+    this.maxBacklogTicks = maxBacklogTicks;
+    this.longStallCatchUpTicks = longStallCatchUpTicks;
     this.maxInputLeadTicks = maxInputLeadTicks;
     this.keyframeIntervalTicks = keyframeIntervalTicks;
     this.snapshotHistoryCapacity = snapshotHistoryCapacity;
@@ -123,6 +135,8 @@ export class AuthoritativeMatchRuntime {
       steps: 0,
       snapshots: 0,
       droppedCatchUpMs: 0,
+      backlogHighWaterMs: 0,
+      longStallCatchUpFrames: 0,
       invalidMessages: 0,
       staleInputs: 0,
       futureInputs: 0,
@@ -490,15 +504,17 @@ export class AuthoritativeMatchRuntime {
   }
 
   /**
-   * Advance authority by wall-clock delta. Long stalls are discarded beyond
-   * the configured catch-up window so returning tabs cannot fast-forward.
+   * Advance authority by wall-clock delta. Normal frame gaps catch up inside
+   * the short window. A separately bounded long-stall backlog may be retained
+   * and drained gradually so one blocked render neither deletes match time nor
+   * fast-forwards the complete simulation in one rubber-banding burst.
    */
   advance(elapsedMs) {
     if (this.closed) return 0;
     if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
       throw new TypeError('elapsedMs must be non-negative');
     }
-    const maxAccumulated = this.tickMs * this.maxCatchUpTicks;
+    const maxAccumulated = this.tickMs * this.maxBacklogTicks;
     const nextAccumulated = this.accumulatorMs + elapsedMs;
     if (nextAccumulated > maxAccumulated) {
       this.stats.droppedCatchUpMs += nextAccumulated - maxAccumulated;
@@ -506,9 +522,16 @@ export class AuthoritativeMatchRuntime {
     } else {
       this.accumulatorMs = nextAccumulated;
     }
+    this.stats.backlogHighWaterMs = Math.max(
+      this.stats.backlogHighWaterMs,
+      this.accumulatorMs,
+    );
 
     let steps = 0;
-    while (this.accumulatorMs + 1e-9 >= this.tickMs && steps < this.maxCatchUpTicks) {
+    const longStall = this.accumulatorMs > this.tickMs * this.maxCatchUpTicks;
+    const stepLimit = longStall ? this.longStallCatchUpTicks : this.maxCatchUpTicks;
+    if (longStall) this.stats.longStallCatchUpFrames++;
+    while (this.accumulatorMs + 1e-9 >= this.tickMs && steps < stepLimit) {
       this.tick++;
       this.timeMs = this.tick * this.tickMs;
       if (this.roundPending) {
@@ -838,7 +861,16 @@ export class MatchClientRuntime {
         if (this.buffer.push(snapshot, this.clock())) this.lastSnapshotTick = snapshot.tick;
         return;
       }
-      if (this.lastRecvSeq != null && !isSequenceNewer(message.seq, this.lastRecvSeq)) return;
+      // Lobby and match authority are separate senders on the same reliable
+      // RTC channel. A final in-flight LOBBY_STATE can arrive after
+      // beginMatchHandshake() clears the watermark, then make the match
+      // authority's sequence-zero WELCOME look stale. WELCOME is the explicit
+      // phase boundary: while a handshake is pending, accept it and establish
+      // the new authority watermark regardless of the lobby sender's tail.
+      const matchWelcome = message.type === MESSAGE_TYPES.WELCOME &&
+        this.handshakeSent && !this.connected;
+      if (!matchWelcome && this.lastRecvSeq != null &&
+          !isSequenceNewer(message.seq, this.lastRecvSeq)) return;
       this.lastRecvSeq = message.seq;
       this.clientTick = Math.max(this.clientTick, message.tick);
       switch (message.type) {

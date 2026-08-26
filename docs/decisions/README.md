@@ -45,3 +45,6 @@ runtime documents remain authoritative for behavior.
 - [0033 — First-visit recovery follows forward progress](0033-progress-aware-boot-watchdog.md)
 - [0034 — Closed RTC data lanes replace the peer generation](0034-rtc-data-lane-recovery.md)
 - [0035 — Battle warming is an intent-loaded typed runtime](0035-battle-warming-runtime-boundary.md)
+- [0036 — Browser authority retains and gradually drains long stalls](0036-browser-authority-backlog.md)
+- [0037 — Network presentation shapes synchronized volleys](0037-network-volley-presentation-budget.md)
+- [0038 — RTC lobby-to-match ownership is explicit](0038-atomic-rtc-match-handoff.md)

@@ -2711,6 +2711,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     preloadSoloBattleRuntime(),
     preloadBattleClientRuntime(),
     battleWarm.preload(),
+    audio.warmBattleEvents(),
     fxTextureP,
     ensureKillcamRuntime(),
     rosterTextureP,
@@ -3293,6 +3294,7 @@ async function presentNetworkBattle({
     ensureFxRuntime(),
     ensureKillcamRuntime(),
     battleWarm.preload(),
+    audio.warmBattleEvents(),
   ]);
   const [
     { createBrowserBattleBridge },
@@ -3354,7 +3356,7 @@ async function presentNetworkBattle({
       (snapshot) => spectator
         ? snapshot.entities.length > 0
         : snapshot.entities.some((entity) => entity.id === viewerId),
-      12000,
+      60000,
       'Timed out waiting for the first authoritative snapshot.',
     );
   } catch (error) {
@@ -3404,7 +3406,7 @@ async function presentNetworkBattle({
   try {
     await networkFramePump.waitForSnapshot(
       (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
-      20000,
+      60000,
       'Another player did not finish loading in time.',
     );
   } finally {
@@ -3558,6 +3560,9 @@ async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = 
             id: peer.id,
             welcomed: peer.welcomed,
             ready: peer.ready,
+            pendingRoundReady: peer.pendingRoundReady,
+            lastRecvSeq: peer.lastRecvSeq,
+            transportKind: peer.transport?.kind || null,
           }))
           : [],
       };
@@ -4652,7 +4657,6 @@ function tick(nowMs) {
     // play at full sim rate, THEN the cinematic re-tells the shot.
     if (!game.result && game.player && game.player.combat.destroyed && !deathCamShown) {
       deathCamShown = true;
-      if (document.exitPointerLock) document.exitPointerLock();
       if (rig.startDeathCam) rig.startDeathCam(); // beat framing: wreck orbit
       const afterDeath = () => {
         veilHud(false);
@@ -4662,6 +4666,11 @@ function tick(nowMs) {
       kcPending = {
         deadline: performance.now() + DEATH_BEAT_MS,
         fire: () => {
+          // Chromium can synchronously spend a full frame releasing pointer
+          // lock. Keep the live destruction frame paintable, then pay that
+          // browser transition under the covered replay that hands the player
+          // an unlocked spectator cursor.
+          if (document.exitPointerLock) document.exitPointerLock();
           if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
           else afterDeath();
         },

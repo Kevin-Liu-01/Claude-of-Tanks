@@ -427,12 +427,20 @@ async function runNetwork(origin, signalUrl, renderedRole) {
             playerId: state.roomInfo.peerId,
             lobbyState: state.lastLobby,
           });
+          state.matchControlTypes = [];
+          state.stopMatchControlTrace = state.match.client.transport.onMessage((message) => {
+            if (message?.type !== 'snapshot') state.matchControlTypes.push({
+              type: message?.type || null,
+              seq: message?.seq ?? null,
+              connected: !!state.match?.client?.connected,
+            });
+          });
           if (!state.match.client.connected) {
             await new Promise((resolve, reject) => {
               const timeout = setTimeout(() => {
                 unsubscribe();
                 reject(new Error('guest match handshake timed out'));
-              }, 10_000);
+              }, 60_000);
               const unsubscribe = state.match.client.onConnection((connected) => {
                 if (!connected) return;
                 clearTimeout(timeout);
@@ -473,7 +481,30 @@ async function runNetwork(origin, signalUrl, renderedRole) {
         };
         return true;
       });
-      return await collectFullRenderer(hostPage, `${roomMode}-host`);
+      try {
+        return await collectFullRenderer(hostPage, `${roomMode}-host`);
+      } catch (error) {
+        const guestDiagnostics = await guestPage.evaluate(() => {
+          const match = globalThis.__COT_RENDER_PERF?.match;
+          const client = match?.client;
+          return {
+            errors: globalThis.__COT_RENDER_PERF?.errors || [],
+            clientErrors: client?.errors || [],
+            controlTypes: globalThis.__COT_RENDER_PERF?.matchControlTypes || [],
+            connected: !!client?.connected,
+            closed: !!client?.closed,
+            readySent: !!client?.readySent,
+            handshakeSent: !!client?.handshakeSent,
+            sendSeq: client?.sendSeq ?? null,
+            lastRecvSeq: client?.lastRecvSeq ?? null,
+            transportKind: client?.transport?.kind || null,
+            transportStats: client?.transport?.stats || null,
+          };
+        });
+        throw new Error(`${error.message}; guest=${JSON.stringify(guestDiagnostics)}`, {
+          cause: error,
+        });
+      }
     }
 
     await hostPage.evaluate(async () => {

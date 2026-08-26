@@ -294,6 +294,8 @@ export function createAudio({ context: initialContext = null } = {}) {
   /** @type {AudioContext|null} */
   let ctx = initialContext;
   let graphReady = false;
+  let battleEventsWarmed = false;
+  let bakedBattleEventsWarmed = false;
   let master = null;      // final volume gain
   let comp = null;        // safety compressor (24 voices never clip)
   let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r4 volley guard)
@@ -818,7 +820,8 @@ export function createAudio({ context: initialContext = null } = {}) {
    * distance lowpass). Player's own gun: hotter overall, more sub, plus the
    * mechanical action foley (breech clank at end of recoil, brass tinkle).
    */
-  function bakedGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
+  function bakedGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1,
+    gainOverride = null) {
     const s = spat(x, y, z);
     if (s.gain < 0.00075) return;
     const report = resolveWeaponReportProfile(profileId);
@@ -827,8 +830,8 @@ export function createAudio({ context: initialContext = null } = {}) {
       : AUDIO_PERSPECTIVE_MIX.arcade;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'large' : caliberMm > 76 ? 'medium' : 'small';
-    const shotGain = s.gain * cannonDistanceCarry(s.dist) *
-      (isPlayer ? 1.15 : 1) * report.gain * perspective.cannonGain;
+    const shotGain = gainOverride ?? (s.gain * cannonDistanceCarry(s.dist) *
+      (isPlayer ? 1.15 : 1) * report.gain * perspective.cannonGain);
     // Layer model: crack dies toward 180 m, sub keeps a floor (distant guns
     // still thump), tail always rides — thunder is what distance leaves.
     const crackK = Math.max(0, Math.min(1, 1 - (s.dist - 45) / 135));
@@ -940,14 +943,14 @@ export function createAudio({ context: initialContext = null } = {}) {
    * @param {'ammorack'|'shot'|'fire'} cause ammo-rack detonation (turret pop
    *   accent) | regular HP kill | burn-out cook-off
    */
-  function bakedTankExplosion(x, y, z, cause) {
+  function bakedTankExplosion(x, y, z, cause, gainOverride = null) {
     const s = spat(x, y, z);
     const g = Math.pow(Math.min(1, 26 / s.dist), 1.6);
     if (g < 0.002) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const lp = distLowpass(s.dist);
     if (cause === 'fire') {
-      const v = spawnVoice(when, 4.4, g * 0.95, s.pan, sfxBus);
+      const v = spawnVoice(when, 4.4, gainOverride ?? g * 0.95, s.pan, sfxBus);
       lp.connect(v.in);
       sampleLayer(v, 'expl_burnout', when, 1.0, jitterRate(), lp);
       sampleLayer(v, 'expl_tank_debris', when + 0.12 + rng() * 0.08, 0.45, jitterRate(), lp);
@@ -955,7 +958,13 @@ export function createAudio({ context: initialContext = null } = {}) {
     }
     const rack = cause === 'ammorack';
     const rate = (rack ? 0.98 : 1.06) * (0.97 + rng() * 0.06);
-    const v = spawnVoice(when, 3.4 / rate + 1.4, g * (rack ? 1.0 : 0.85), s.pan, sfxBus);
+    const v = spawnVoice(
+      when,
+      3.4 / rate + 1.4,
+      gainOverride ?? g * (rack ? 1.0 : 0.85),
+      s.pan,
+      sfxBus,
+    );
     lp.connect(v.in);
     sampleLayer(v, rng() < 0.5 ? 'expl_tank_core_a' : 'expl_tank_core_b', when, 1.0, rate, lp);
     sampleLayer(v, 'expl_tank_debris', when + 0.06 + rng() * 0.09, rack ? 0.9 : 0.7, jitterRate(), lp);
@@ -1094,7 +1103,8 @@ export function createAudio({ context: initialContext = null } = {}) {
    * The PLAYER's own gun gets a mechanical action tail: breech clank at the
    * end of recoil and a brass-casing tinkle.
    */
-  function synthGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1) {
+  function synthGunshot(x, y, z, caliberMm, isPlayer, profileId, muzzleIndex = -1,
+    gainOverride = null) {
     const s = spat(x, y, z);
     if (s.gain < 0.00075) return;
     const report = resolveWeaponReportProfile(profileId);
@@ -1105,8 +1115,8 @@ export function createAudio({ context: initialContext = null } = {}) {
     const cls = caliberMm > 130 ? 'huge' : caliberMm > 105 ? 'heavy' : caliberMm > 76 ? 'medium' : 'light';
     const dur = { light: 0.55, medium: 1.0, heavy: 1.7, huge: 2.6 }[cls];
     const v = spawnVoice(when, dur + (isPlayer ? 1.0 : 0),
-      s.gain * cannonDistanceCarry(s.dist) *
-        (isPlayer ? 1.08 : 1) * report.gain * perspective.cannonGain,
+      gainOverride ?? (s.gain * cannonDistanceCarry(s.dist) *
+        (isPlayer ? 1.08 : 1) * report.gain * perspective.cannonGain),
       s.pan * (isPlayer ? perspective.enginePanScale : 1), sfxBus);
     const lp = distLowpass(s.dist + (isPlayer ? perspective.cannonDistanceBiasM : 0));
     const src = ctx.createBufferSource();
@@ -1184,15 +1194,21 @@ export function createAudio({ context: initialContext = null } = {}) {
   /** Tank-on-tank collision. This is a distinct replicated event from a hull
    * touching scenery, and needs plate crush plus an interior hit for either
    * locally occupied participant. */
-  function onTankRam(e) {
+  function onTankRam(e, warmOnly = false) {
     if (!e || !e.pos) return;
     const s = spat(e.pos[0], e.pos[1], e.pos[2]);
     const closing = Math.max(0, Number(e.closingMps) || 0);
     const damage = Math.max(Number(e.dmgA) || 0, Number(e.dmgB) || 0);
     const k = Math.max(0.25, Math.min(1, closing / 11 + damage / 900));
-    if (s.gain * k < 0.0012) return;
+    if (!warmOnly && s.gain * k < 0.0012) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
-    const v = spawnVoice(when, 1.15, s.gain * (0.58 + 0.42 * k), s.pan, sfxBus);
+    const v = spawnVoice(
+      when,
+      1.15,
+      warmOnly ? 0 : s.gain * (0.58 + 0.42 * k),
+      s.pan,
+      sfxBus,
+    );
     const lp = distLowpass(s.dist);
     lp.connect(v.in);
     // Initial hull/body collision.
@@ -1208,7 +1224,7 @@ export function createAudio({ context: initialContext = null } = {}) {
       flt('bandpass', 1180, 1.2),
       env(when + 0.045, 0.008, 0.42, 0.64), lp);
 
-    const occupied = !!(e.aIsPlayer || e.bIsPlayer ||
+    const occupied = !warmOnly && !!(e.aIsPlayer || e.bIsPlayer ||
       (listenerOwnerId != null && (e.aId === listenerOwnerId || e.bId === listenerOwnerId)));
     if (occupied) {
       if (sfxReady) {
@@ -1221,9 +1237,40 @@ export function createAudio({ context: initialContext = null } = {}) {
           env(when + 0.008, 0.002, 0.55, 0.31));
       }
     }
-    logSound('tank:ram', {
-      aId: e.aId, bId: e.bId, occupied, dist: s.dist, gain: s.gain, closingMps: closing,
-    });
+    if (!warmOnly) {
+      logSound('tank:ram', {
+        aId: e.aId, bId: e.bId, occupied, dist: s.dist, gain: s.gain, closingMps: closing,
+      });
+    }
+  }
+
+  /**
+   * Submit the collision graph once while the battle loader is opaque. Chrome
+   * can initialize its first compound WebAudio graph on the calling task;
+   * paying that one-time cost on the first live ram created a 50-70 ms frame.
+   * The scheduled warm voice has zero gain and uses the exact production nodes.
+   */
+  function warmBattleEvents() {
+    if (!ctx || !graphReady || battleEventsWarmed) return;
+    battleEventsWarmed = true;
+    onTankRam({
+      aId: '__warm_a__', bId: '__warm_b__',
+      closingMps: 9, dmgA: 50, dmgB: 75,
+      pos: [lx, ly, lz],
+    }, true);
+    // The live-synthesis path is deliberately heavier than the decoded-sample
+    // path. Prime it even when samples are expected to finish downloading so
+    // a slow/failed first visit cannot move this setup into the live volley.
+    synthGunshot(lx, ly, lz, 152, true, null, -1, 0);
+    synthExplosion(lx, ly, lz, 1.8, false, true, 0);
+    warmBakedBattleEvents();
+  }
+
+  function warmBakedBattleEvents() {
+    if (!sfxReady || bakedBattleEventsWarmed) return;
+    bakedBattleEventsWarmed = true;
+    bakedGunshot(lx, ly, lz, 152, true, null, -1, 0);
+    bakedTankExplosion(lx, ly, lz, 'ammorack', 0);
   }
 
   /** gameplay_feel r6: sapling/trunk crush under a hull — sharp wood crack,
@@ -1373,13 +1420,13 @@ export function createAudio({ context: initialContext = null } = {}) {
    * Explosion. scale ~1 = 122 mm HE; bigger = longer, deeper. dirt=true
    * muffles it (ground burst).
    */
-  function synthExplosion(x, y, z, scale, dirt, debris) {
+  function synthExplosion(x, y, z, scale, dirt, debris, gainOverride = null) {
     const s = spat(x, y, z);
     if (s.gain < 0.0015) return;
     const when = ctx.currentTime + 0.005 + travelDelay(s.dist);
     const k = Math.max(0.4, Math.min(2.2, scale));
     const dur = 1.4 * k + (debris ? 1.6 : 0);
-    const v = spawnVoice(when, dur, s.gain, s.pan, sfxBus);
+    const v = spawnVoice(when, dur, gainOverride ?? s.gain, s.pan, sfxBus);
     const lp = distLowpass(dirt ? s.dist + 120 : s.dist);
     lp.connect(v.in);
 
@@ -3091,6 +3138,7 @@ export function createAudio({ context: initialContext = null } = {}) {
 
   return {
     resume, bindBus, update, setMasterVolume, mute, playGarageSting, loadingOn, ambientOn,
+    warmBattleEvents,
     /** Non-spatial player result cue; preserves pen/ricochet/nonpen identity. */
     hitConfirm(kind, damage = 0) { if (ctx) hitConfirmSound(kind, damage); },
   };

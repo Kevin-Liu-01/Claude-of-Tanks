@@ -165,14 +165,16 @@ export function beginPrivateHostMatch({
     ...(battleLimitS === undefined ? {} : { battleLimitS }),
   });
   const roomController = createPersistentRoomController(session);
-  // The browser render loop already clamps one delayed frame to 100 ms.
-  // Retain that same six-tick window in authority so a rare shader/OS frame
-  // cannot discard 33-50 ms of match time and force every client to converge
-  // on a timeline jump. Dedicated runtimes keep their own explicit policy.
+  // Normal renderer delays still catch up inside the complete 100 ms window.
+  // A browser/OS freeze can be longer: retain at most five seconds, then drain
+  // it at one extra fixed tick per presented frame. That preserves match time
+  // without a six-step fast-forward burst that snaps every remote tank.
   const host = new AuthoritativeMatchRuntime({
     simulation,
     roomController,
     maxCatchUpTicks: 6,
+    maxBacklogTicks: 300,
+    longStallCatchUpTicks: 2,
   });
   session.bindMatchRuntime?.(host);
   // The browser host's local player does not need an emulated network hop.
@@ -195,6 +197,9 @@ export function beginPrivateHostMatch({
     const player = playerById.get(channel.peerId);
     host.attachPeer({ peerId: channel.peerId, transport: channel.transport,
       metadata: { mode: lobby.mode || 'private', spectator: player?.team === 'spectator' } });
+    // Authority is listening now; close the temporary inbox before replaying
+    // it so every packet has exactly one owner and none can fall in a gap.
+    channel.finishHandoff?.();
     for (const message of channel.pendingMessages || []) {
       host.acceptPeerMessage(channel.peerId, message);
     }

@@ -177,6 +177,9 @@ export function createLazyAudio({
       else { garageStingPending = true; ensureReal(); }
     },
     loadingOn,
+    warmBattleEvents() {
+      return ensureReal().then((mixer) => mixer?.warmBattleEvents?.());
+    },
     ambientOn(on) {
       ambientRequested = !!on;
       real?.ambientOn(ambientRequested);

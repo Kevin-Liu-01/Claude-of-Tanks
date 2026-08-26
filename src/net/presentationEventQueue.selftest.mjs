@@ -27,4 +27,15 @@ assert.equal(queue.size, 0);
 assert.equal(queue.hasType('match_ended'), false);
 assert.deepEqual(queue.getStats(), { pending: 0, emitted: 5, peakPending: 5 });
 
+const volley = [];
+const volleyQueue = new PresentationEventQueue({
+  emit: (event) => volley.push(event.id),
+});
+volleyQueue.enqueue(Array.from({ length: 14 }, (_, id) => ({ type: 'shell_fired', id })));
+assert.equal(volleyQueue.flush(), 1, 'default queue admits only one full shot graph per frame');
+assert.equal(volleyQueue.size, 13, 'the rest of a synchronized volley remains ordered');
+while (volleyQueue.size) volleyQueue.flush();
+assert.deepEqual(volley, Array.from({ length: 14 }, (_, id) => id),
+  'volley shaping preserves every report and its authoritative order');
+
 console.log('presentationEventQueue self-test passed');

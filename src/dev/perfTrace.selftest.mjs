@@ -69,12 +69,22 @@ anomalies = trace.tail(20, 'anomaly');
 assert.ok(anomalies.some((row) => row.name === 'sim:resume'));
 assert.ok(anomalies.some((row) => row.name === 'render:resume'));
 
+const liveSpikesBeforeResult = trace.stats().liveSpikes;
+game.result = 'victory';
+clock += 60;
+renderer.info.render.frame++;
+trace.frame(60);
+assert.equal(trace.stats().liveSpikes, liveSpikesBeforeResult,
+  'result-transition gaps are reported but not mislabeled as live gameplay spikes');
+game.result = null;
+
 for (let i = 0; i < 12; i++) trace.event(`bounded:${i}`, { i });
 const stats = trace.stats();
-assert.equal(stats.frames, 5);
+assert.equal(stats.frames, 6);
 assert.equal(stats.events, 5);
 assert.ok(stats.eventsDropped > 0, 'bounded event ring reports overwritten rows');
 assert.ok(stats.freezes >= 2);
+assert.ok(stats.liveFreezes >= 1, 'live gameplay freeze counter remains strict');
 assert.ok(stats.maxGapMs >= 448);
 
 const snapshot = trace.snapshot();

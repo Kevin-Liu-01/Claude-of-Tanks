@@ -1,11 +1,20 @@
-const DEFAULT_MAX_EVENTS_PER_FLUSH = 8;
-const HEAVY_EVENT_TYPES = new Set(['tank_destroyed', 'world_prop_destroyed']);
+// A 7v7 synchronized volley can carry fourteen shell reports in one network
+// batch. Submitting eight full muzzle/audio graphs in one render beat caused
+// 50-130 ms main-thread stalls on otherwise healthy clients. Three preserves
+// the authored effects while draining a full volley over only a few 120 Hz
+// frames instead of turning network simultaneity into one CPU burst.
+const DEFAULT_MAX_EVENTS_PER_FLUSH = 3;
+const HEAVY_EVENT_TYPES = new Set([
+  'shell_fired',
+  'tank_destroyed',
+  'world_prop_destroyed',
+]);
 
 /**
  * Preserve authoritative event order while admitting at most one expensive
- * destruction beat per rendered frame. State convergence remains snapshot-
- * driven; this queue only stages presentation work that can allocate large
- * particle/debris bursts.
+ * full shot/destruction beat per rendered frame. State convergence remains
+ * snapshot-driven; this queue only stages presentation work that can allocate
+ * large audio, light, particle, or debris graphs.
  */
 export class PresentationEventQueue {
   constructor({

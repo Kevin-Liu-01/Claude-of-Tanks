@@ -437,7 +437,12 @@ export class PrivateRoomClientSession {
     await this.ready;
     if (!this.runtime.connected) {
       const wrapped = maybeCreateAdverseNetworkTransport(this.runtime.transport);
-      if (wrapped !== this.runtime.transport) this.runtime.replaceTransport(wrapped);
+      // Re-establish message ownership at the protocol phase boundary even
+      // when QA does not wrap the transport. The lobby UI may have released
+      // its final subscription while this long-lived MatchClientRuntime keeps
+      // the same RTC object; a fresh binding guarantees WELCOME has a runtime
+      // listener before HELLO leaves the browser.
+      this.runtime.replaceTransport(wrapped);
     }
     this.runtime.beginMatchHandshake({ mode: this.roomInfo.mode || 'private' });
     return this.runtime;
