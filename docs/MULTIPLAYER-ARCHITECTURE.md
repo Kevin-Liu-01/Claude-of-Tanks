@@ -209,6 +209,15 @@ gate additionally drops signaling during live play, resumes the same durable
 room, completes a round, readies both players, starts round two over the same
 RTC channels, and verifies clean departure.
 
+The full rendered capacity gate is `npm run test:net:seven:full`. It runs two
+independent natural 7v7 battles—one with the browser host rendered and one with
+an impaired remote client rendered. All 28 participants across those runs use
+pristine browser profiles, retarget living opponents from authority state, and
+continue through a real elimination result. The gate requires every session to
+receive the result, retain the room in its waiting phase, and clear readiness;
+it also enforces transport, prediction, frame-pacing, shadow, and presentation
+budgets throughout the match.
+
 ## Deployment and trust
 
 - Production signaling and match services require TLS and explicit origin

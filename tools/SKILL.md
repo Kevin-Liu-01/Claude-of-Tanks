@@ -34,6 +34,9 @@ human 7v7 capacity (`npm run test:net:seven`) browser paths. Visual combat
 certification is the separate `npm run test:net:seven:live` gate: two real 7v7
 matches render the host and an impaired remote client while all fourteen tanks
 move, fire, deal damage, and report transport/prediction/frame/shadow health.
+`npm run test:net:seven:full` continues both pristine-context battles through a
+natural authority result and proves that every participant retains the same
+waiting room with readiness reset.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.

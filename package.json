@@ -82,6 +82,7 @@
     "test:net:four": "node tools/multiplayer-four-player-soak.mjs",
     "test:net:seven": "node tools/multiplayer-four-player-soak.mjs --players=14 --team-size=7",
     "test:net:seven:live": "node tools/multiplayer-live-combat.mjs",
+    "test:net:seven:full": "node tools/multiplayer-live-combat.mjs --complete-match --match-timeout=90000",
     "test:net:entry": "node tools/multiplayer-guest-entry.mjs",
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

@@ -92,6 +92,29 @@ assert.ok(Math.abs(entity.state.pos.x - 20) < 1e-6,
   'large authority corrections hard-snap instead of dragging across the map');
 assert.equal(predictor.getStats().hardSnaps, 1);
 
+// A destroyed local vehicle is intentionally locked to its terminal authority
+// pose. Repeated wreck snapshots are lifecycle synchronization, not repeated
+// network teleports, and must not poison the visible rubber-band metric.
+{
+  const wreckState = createTankState(SPEC, new Vector3(), 0);
+  const wreckEntity = {
+    spec: SPEC,
+    state: wreckState,
+    combat: null,
+    contactGeom: null,
+    rigidGear: false,
+  };
+  const wreck = new LocalTankPredictor({ entity: wreckEntity, heightField: FIELD });
+  wreck.reconcile(authority(0, null));
+  wreck.reconcile(authority(3, null, 0, 0, { destroyed: true }), 1 / 60, true);
+  wreck.reconcile(authority(6, null, 0, 0, { destroyed: true }), 1 / 60, true);
+  assert.deepEqual(
+    { hardSnaps: wreck.getStats().hardSnaps, terminalSyncs: wreck.getStats().terminalSyncs },
+    { hardSnaps: 0, terminalSyncs: 1 },
+    'repeated terminal wreck snapshots record one lifecycle sync and no rubber-band snaps',
+  );
+}
+
 predictor.recordInput(driving, 1 / 60, 4);
 predictor.recordInput(driving, 1 / 60, 0);
 assert.equal(predictor.getStats().pendingInputs, 1,

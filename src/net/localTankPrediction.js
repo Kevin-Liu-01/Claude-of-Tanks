@@ -160,6 +160,7 @@ export class LocalTankPredictor {
     this.initialized = false;
     this.lastRecordedSeq = null;
     this.lastAuthorityTick = -1;
+    this.terminalDestroyed = false;
     this.motionIntent = false;
     this.holdRestingHull = false;
     this.lastStaticContactCount = 0;
@@ -170,6 +171,7 @@ export class LocalTankPredictor {
     this.stats = {
       reconciliations: 0,
       hardSnaps: 0,
+      terminalSyncs: 0,
       replayedInputs: 0,
       droppedHistory: 0,
       maxPositionErrorM: 0,
@@ -275,10 +277,13 @@ export class LocalTankPredictor {
       );
     }
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
-    if (positionError > this.hardSnapDistanceM || destroyed || snapshot.destroyed) {
+    const terminalDestroyed = !!(destroyed || snapshot.destroyed);
+    const distanceSnap = positionError > this.hardSnapDistanceM;
+    if (distanceSnap || terminalDestroyed) {
       for (const key of CORRECTION_KEYS) this.correction[key] = 0;
       this.holdRestingHull = false;
-      this.stats.hardSnaps++;
+      if (distanceSnap) this.stats.hardSnaps++;
+      else if (!this.terminalDestroyed) this.stats.terminalSyncs++;
     } else {
       this.correction.x = old.x - predicted.pos.x;
       this.correction.y = old.y - predicted.pos.y;
@@ -296,6 +301,7 @@ export class LocalTankPredictor {
       );
       if (this.holdRestingHull) this.stats.restingHullHolds++;
     }
+    this.terminalDestroyed = terminalDestroyed;
     this.present(elapsedS);
     return true;
   }

@@ -39,6 +39,8 @@ const jitterMs = numericArg('jitter', 15);
 const lossPercent = numericArg('loss', 3);
 const inputLossPercent = numericArg('input-loss', 2);
 const timeoutMs = numericArg('timeout', 180_000);
+const matchTimeoutMs = numericArg('match-timeout', 90_000);
+const completeMatch = process.argv.includes('--complete-match');
 const artifactDir = resolve('.qa-dev/multiplayer-live-7v7');
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
@@ -656,7 +658,15 @@ async function startLightCombat(page, isHost, formation) {
         (state.measurementStartedAt || state.combatStartedAt);
       const sample = state.sample;
       const own = sample?.entities?.find((entity) => entity.id === playerId);
-      const target = sample?.entities?.find((entity) => entity.id === pair.targetId);
+      const enemies = sample?.entities?.filter((entity) =>
+        state.formation.pairById[entity.id]?.team !== pair.team && !entity.destroyed) || [];
+      let target = enemies.find((entity) => entity.id === pair.targetId) || null;
+      if (!target && own) {
+        target = enemies.reduce((nearest, candidate) => {
+          const distance = Math.hypot(candidate.x - own.x, candidate.z - own.z);
+          return !nearest || distance < nearest.distance ? { entity: candidate, distance } : nearest;
+        }, null)?.entity || null;
+      }
       if (own && state.measureMotion) {
         const motion = state.motion;
         if (motion.last) {
@@ -670,7 +680,7 @@ async function startLightCombat(page, isHost, formation) {
         motion.last = { x: own.x, y: own.y, z: own.z };
         motion.samples++;
       }
-      if (!state.combatEnabled || !own || !target) return null;
+      if (!state.combatEnabled || !own || own.destroyed || !target) return null;
       const dx = target.x - own.x;
       const dy = target.y + 1.5 - own.y;
       const dz = target.z - own.z;
@@ -718,7 +728,15 @@ async function startFullCombat(page, formation) {
     const loop = () => {
       const elapsed = performance.now() - state.combatStartedAt;
       const player = window.__DEBUG.game.player;
-      const target = window.__DEBUG.game.tankById.get(pair.targetId);
+      const preferred = window.__DEBUG.game.tankById.get(pair.targetId);
+      let target = preferred && !preferred.combat?.destroyed ? preferred : null;
+      if (!target && player?.state) {
+        target = window.__DEBUG.game.tanks
+          .filter((entity) => formationState.pairById[entity.id]?.team !== pair.team &&
+            !entity.combat?.destroyed)
+          .sort((a, b) => a.state.pos.distanceToSquared(player.state.pos) -
+            b.state.pos.distanceToSquared(player.state.pos))[0];
+      }
       if (player?.state && target?.state) {
         player.input.aimPoint.copy(target.state.pos);
         player.input.aimPoint.y += target.spec.dims.heightM * 0.52;
@@ -867,9 +885,14 @@ function assertClientHealth(report, label) {
   assert.ok(report.events.damage > 0, `${label} receives positive live damage`);
 }
 
-function assertFullHealth(report, renderedRole) {
+function assertFullHealth(report, renderedRole, measuredDurationMs) {
   assert.equal(report.phase, 'battle', `${renderedRole} renderer stays in battle`);
-  assert.equal(report.result, null, `${renderedRole} capture is live, not a result screen`);
+  if (completeMatch) {
+    assert.ok(['victory', 'defeat', 'draw'].includes(report.result),
+      `${renderedRole} renderer reaches a canonical result (${report.result})`);
+  } else {
+    assert.equal(report.result, null, `${renderedRole} capture is live, not a result screen`);
+  }
   assert.equal(report.errorOverlay, false, `${renderedRole} has no browser error overlay`);
   assert.equal(report.glError, 0, `${renderedRole} has no WebGL error`);
   assert.equal(report.rosterSize, PLAYER_COUNT, `${renderedRole} owns all 14 rendered tank entities`);
@@ -883,7 +906,7 @@ function assertFullHealth(report, renderedRole) {
     `${renderedRole} telemetry contains the real collision/dressing world`);
   assert.ok(report.canvas.width >= 1280 && report.canvas.height >= 720,
     `${renderedRole} renders a desktop-resolution frame`);
-  assert.ok(report.trace.frames >= (durationMs + settleMs) / 1000 * 30,
+  assert.ok(report.trace.frames >= (measuredDurationMs + settleMs) / 1000 * 30,
     `${renderedRole} sustains at least 30 rendered fps`);
   assert.equal(report.trace.spikes, 0, `${renderedRole} has no 50ms+ live frame spike`);
   assert.equal(report.trace.freezes, 0, `${renderedRole} has no visible frame freeze`);
@@ -917,6 +940,56 @@ function assertFullHealth(report, renderedRole) {
   assert.ok(report.shadowSample.darkenedPixelRatio >= 0.003,
     `${renderedRole} shadows visibly darken the scene`);
   assertClientHealth(report, `${renderedRole} rendered client`);
+}
+
+async function waitForNaturalMatchEnd(pages, renderedRole) {
+  const startedAt = Date.now();
+  const deadline = startedAt + matchTimeoutMs;
+  let status = null;
+  while (Date.now() < deadline) {
+    const [authority, rooms] = await Promise.all([
+      pages[0].evaluate((role) => {
+        const state = globalThis.__COT_LIVE_7V7;
+        const runtime = role === 'host' ? state.session.matchRuntime : state.match.host;
+        return {
+          result: runtime?.simulation?.result || null,
+          reason: runtime?.simulation?.resultReason || null,
+          tick: runtime?.tick || 0,
+        };
+      }, renderedRole),
+      Promise.all(pages.map((page) => page.evaluate(() => {
+        const state = globalThis.__COT_LIVE_7V7;
+        const room = state.session?.lobby || state.match?.client?.roomState ||
+          state.session?.runtime?.roomState || null;
+        return room ? {
+          phase: room.phase,
+          round: Number(room.round) || 0,
+          ready: room.players instanceof Map
+            ? [...room.players.values()].map((player) => !!player.ready)
+            : (room.players || []).map((player) => !!player.ready),
+        } : null;
+      }))),
+    ]);
+    status = { authority, rooms };
+    if (authority.result && rooms.every((room) => room?.phase === 'waiting')) break;
+    await wait(25);
+  }
+  assert.ok(status?.authority?.result,
+    `authority did not complete a natural match: ${JSON.stringify(status)}`);
+  assert.ok(status.rooms.every((room) => room?.phase === 'waiting' && room.round === 1),
+    `all pristine sessions retain round-one room membership: ${JSON.stringify(status.rooms)}`);
+  assert.ok(status.rooms.every((room) => room.ready.every((ready) => !ready)),
+    'natural match completion resets every ready vote');
+  const fullPage = renderedRole === 'host' ? pages[0] : pages[1];
+  await fullPage.waitForFunction(
+    () => ['victory', 'defeat', 'draw'].includes(window.__DEBUG?.game?.result),
+    { timeout: Math.min(matchTimeoutMs, 30_000), polling: 16 },
+  );
+  return {
+    ...status.authority,
+    elapsedMs: Date.now() - startedAt,
+    retainedSessions: status.rooms.length,
+  };
 }
 
 async function closePages(pages) {
@@ -978,7 +1051,12 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
     // render hitch on the first measured frame.
     await wait(1000);
     await beginMeasuredCombat(pages, renderedRole);
-    await wait(durationMs);
+    const measuredStartedAt = Date.now();
+    const completion = completeMatch
+      ? await waitForNaturalMatchEnd(pages, renderedRole)
+      : null;
+    if (!completeMatch) await wait(durationMs);
+    const measuredDurationMs = Date.now() - measuredStartedAt;
     await stopCombat(pages, renderedRole);
     await wait(settleMs);
 
@@ -1041,7 +1119,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
       }, null, 2)}\n`);
     assert.ok(damageByTeam.alpha > 0 && damageByTeam.bravo > 0,
       `both teams take live damage (${JSON.stringify(damageByTeam)})`);
-    assertFullHealth(fullReport, renderedRole);
+    assertFullHealth(fullReport, renderedRole, measuredDurationMs);
     clientReports.forEach((report, index) => {
       if (index !== fullIndex) assertClientHealth(report, `${renderedRole} run player ${index + 1}`);
     });
@@ -1061,7 +1139,11 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         lossPercent,
         inputLossPercent,
         freshBrowserContexts: true,
+        completeMatch,
+        measuredDurationMs,
+        matchTimeoutMs,
       },
+      completion,
       formation,
       entry,
       authority: {
