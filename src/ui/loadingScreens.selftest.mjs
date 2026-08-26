@@ -112,7 +112,17 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
+assert.match(mainSource,
+  /function warmStudioPipelineChunked[\s\S]{0,700}createOpaqueLoadingYielder\(10, 64\)[\s\S]{0,1500}warmTexturesChunked\(yieldForLoad\)/,
+  'direct Studio entry must prepare full-quality FX through the opaque frame-budget scheduler');
+assert.match(studioSource,
+  /async function load\([\s\S]{0,900}createFrameBudgetYielder\(10\)[\s\S]{0,900}addActor\(cfg\);[\s\S]{0,100}await yieldForFrameBudget\(\)/,
+  'Studio scene JSON loads must yield between full-quality procedural actors');
+assert.match(studioSource,
+  /actors\.push\(a\);[\s\S]{0,260}if \(!loading\) bindStoryboardTracks\(\)/,
+  'Studio batch loads must not rebuild timeline bindings for every intermediate actor');
 assert.match(mainSource,
   /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,
   'cold garage boot must request long-range shadow dormancy after native-map priming');

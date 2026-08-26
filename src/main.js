@@ -6437,6 +6437,7 @@ function warmStudioPipelineChunked(onProgress = null) {
     });
   }
   studioPipelineWarmP = (async () => {
+    const yieldForLoad = createOpaqueLoadingYielder(10, 64);
     const trace = { stages: {} };
     const startedAt = performance.now();
     let markedAt = startedAt;
@@ -6450,32 +6451,38 @@ function warmStudioPipelineChunked(onProgress = null) {
     };
     progress(0.08, 'Baking Studio effects');
     try {
-      // Studio entry is completely covered by the branded boot/transition
-      // veil.  Yielding once for every procedural flipbook tile stretched
-      // ~200 ms of deterministic canvas work into 800-900 ms of wall time,
-      // without presenting a useful intermediate frame.  Finish the exact
-      // same generator contiguously here; the garage idle warmer remains
-      // frame-budgeted because it runs in an already interactive view.
-      await fx.preloadTextures?.();
-      if (fx.warmTextures) {
-        fx.warmTextures();
-      } else if (fx.warmTexturesChunked) {
-        await fx.warmTexturesChunked(() => Promise.resolve());
+      // Preserve the exact deterministic atlases while letting the opaque
+      // transition paint between bounded decode/bake checkpoints. One frame
+      // per flipbook tile was needlessly slow; the shared scheduler only
+      // yields after the current CPU slice actually exhausts its budget.
+      if (fx.warmTexturesChunked) {
+        await fx.warmTexturesChunked(yieldForLoad);
+      } else {
+        await fx.preloadTextures?.();
+        fx.warmTextures?.();
       }
       mark('textures');
       progress(0.58, 'Priming Studio effects');
+      await yieldForLoad(true);
       const wp = new THREE.Vector3(-460, 0, -460);
       const wn = new THREE.Vector3(0, 1, 0);
       const wd = new THREE.Vector3(0, 0, 1);
       fx.warmOpeningEffects(wp, wd, wn, 120);
+      await yieldForLoad();
       fx.destruction(wp, null, 'shot');
+      await yieldForLoad();
       fx.destruction(wp, null, 'ammorack');
+      await yieldForLoad();
       fx.update(SIM_DT, [], camera);
       post.prepareSoftParticles();
+      await yieldForLoad();
       const mask = camera.layers.mask;
       camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
       try {
-        renderer.compile(fx.group, camera, scene);
+        const programSteps = initializeForwardProgramsSteps(fx.group);
+        for (let result = programSteps.next(); !result.done; result = programSteps.next()) {
+          await yieldForLoad();
+        }
         fx.group.traverse((object) => {
           const materials = Array.isArray(object.material)
             ? object.material : (object.material ? [object.material] : []);
@@ -6488,6 +6495,7 @@ function warmStudioPipelineChunked(onProgress = null) {
             }
           }
         });
+        await yieldForLoad(true);
       } finally {
         camera.layers.mask = mask;
       }

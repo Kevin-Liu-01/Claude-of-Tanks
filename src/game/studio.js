@@ -53,6 +53,7 @@ import {
   sampleCameraRail,
   sampleActorTrack,
 } from './studioTimeline.js';
+import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 
 const DEG = Math.PI / 180;
 const FX_STEP_S = 1 / 60;      // fixed timeline step (load() and live advance)
@@ -586,7 +587,10 @@ export function createStudio(ctx) {
       timelineTrack: null,
     };
     actors.push(a);
-    bindStoryboardTracks();
+    // Scene JSON load stages a complete batch. Rebuilding the rail bindings
+    // and DOM actor list after every intermediate actor created redundant
+    // layout and traversal work; load() performs each once after the batch.
+    if (!loading) bindStoryboardTracks();
     actorRoots.push(visual.root);
     actorByRoot.set(visual.root, a);
     if (a.camo && a.camo !== 'inherit') {
@@ -603,8 +607,10 @@ export function createStudio(ctx) {
       visual.recoilKick(a.authoredRecoilAgeS);
       visual.syncFromState(a.state, 0);
     }
-    panel.refreshActors();
-    invalidate();
+    if (!loading) {
+      panel.refreshActors();
+      invalidate();
+    }
     return a;
   }
 
@@ -2078,6 +2084,7 @@ export function createStudio(ctx) {
     if (loading) throw new Error('studio.load already in flight');
     loading = true;
     try {
+      const yieldForFrameBudget = createFrameBudgetYielder(10);
       const mapId = resolveMapId(json.map || 'verdant', () => 0.01);
       if (!active) await enter({ map: mapId });
       const w0 = getWorld();
@@ -2086,7 +2093,11 @@ export function createStudio(ctx) {
       timeScale = 0; // build frozen — nothing ages while we stage
       clearActors();
       resetFx(sceneMeta.seed);
-      for (const cfg of json.actors || []) addActor(cfg);
+      await yieldForFrameBudget();
+      for (const cfg of json.actors || []) {
+        addActor(cfg);
+        await yieldForFrameBudget();
+      }
       storyboard = normalizeStoryboard(json.storyboard || {
         durationMs: Math.min(STUDIO_MAX_DURATION_MS, Math.max(
           12000,
@@ -2097,6 +2108,7 @@ export function createStudio(ctx) {
       bindStoryboardTracks();
       selectedShotId = storyboard.shots[0]?.id || null;
       rail.rebuild();
+      await yieldForFrameBudget();
       if (json.camera) applyCamera(json.camera);
       // Canonical timeline: log every authored event, then deterministically
       // rebuild the visible frame at the requested playhead. Future events
@@ -2109,6 +2121,7 @@ export function createStudio(ctx) {
         effectLog.push(makeEffectRecord(e, e.tMs));
       }
       rebuildEffects(fxMs);
+      await yieldForFrameBudget();
       timeScale = fxMs >= storyboard.durationMs
         ? 0
         : Math.max(0, Math.min(4, json.timeScale != null ? json.timeScale : 0));

@@ -24,6 +24,12 @@ fully leave layout. First-battle GPU initialization runs behind the loader.
 Prefetch may resolve intent and download/build exact assets, but it must not
 construct unrelated worlds or fleet families.
 
+Studio follows the same contract: direct-entry effect atlases, shaders, and
+texture uploads use the opaque scheduler, while scene JSON loading yields
+between complete procedural actors and refreshes timeline/UI bindings once per
+batch. Actor geometry, materials, effect seeds, and final scene state are not
+simplified.
+
 ## Consequences
 
 - Full-quality geometry, materials, effects, and lighting remain enabled.
