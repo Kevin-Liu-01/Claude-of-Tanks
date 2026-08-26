@@ -51,11 +51,11 @@ const networkBattle = main.slice(
   main.indexOf('async function beginSoloBattle('),
 );
 assert.match(networkBattle,
-  /const networkModulesP = Promise\.all\(\[\s*preloadNetworkBattleModules\(\)/,
-  'network entry should retain the intent-preloaded module join');
+  /battleEntryAcquisition\.acquireNetwork\(\{[\s\S]{0,400}loadModules:[\s\S]{0,200}preloadNetworkBattleModules\(\)/,
+  'network entry should delegate the intent-preloaded module join');
 assert.match(networkBattle,
-  /const \[networkModules\] = await Promise\.all\(\[networkModulesP, worldP, matchP\]\)/,
-  'network entry should overlap modules, battlefield construction, and safe connection setup');
+  /loadWorld:[\s\S]{0,180}ensureWorld\(mapId[\s\S]{0,300}connect: connectMatch/,
+  'network entry should delegate modules, battlefield construction, and connection setup');
 assert.match(main, /connectAfterWorld: role === 'host'/,
   'browser authority must wait for world collision while cold clients connect concurrently');
 assert.match(networkBattle,

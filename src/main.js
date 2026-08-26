@@ -113,6 +113,7 @@ import {
 } from './game/rosterState.ts';
 import { createBus, createGameState, mulberry32 } from './game/stateCore.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
+import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
@@ -149,6 +150,7 @@ const {
   prepareNextOpeningRoute,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
+const battleEntryAcquisition = createBattleEntryAcquisition();
 
 function loadLastSpecId() {
   try {
@@ -2719,19 +2721,19 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     blt.fxTextureUpload = receipt;
     return receipt;
   });
-  await Promise.all([
-    battleInterfaceP,
-    ensureWorld(resolved,
+  await battleEntryAcquisition.acquireSolo([
+    () => battleInterfaceP,
+    () => ensureWorld(resolved,
       (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
       { precompile: false, services: false }),
-    ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
-    preloadSoloBattleRuntime(),
-    preloadBattleClientRuntime(),
-    battleWarm.preload(),
-    audio.warmBattleEvents(),
-    fxTextureP,
-    ensureKillcamRuntime(),
-    rosterTextureP,
+    () => ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
+    () => preloadSoloBattleRuntime(),
+    () => preloadBattleClientRuntime(),
+    () => battleWarm.preload(),
+    () => audio.warmBattleEvents(),
+    () => fxTextureP,
+    () => ensureKillcamRuntime(),
+    () => rosterTextureP,
   ]);
   blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   battleLoad.progress(0.55, 'Uploading battlefield textures');
@@ -3296,54 +3298,40 @@ async function presentNetworkBattle({
   }
   battleLoad.progress(0.02, 'Securing match channel');
   await nextFrame();
-  const modulesStartedAt = performance.now();
-  const networkModulesP = Promise.all([
-    preloadNetworkBattleModules(),
-    preloadBattleClientRuntime(),
-    ensureBattleHud(),
-    ensureTouchControls(),
-    // Scope armor is presentation-only. Acquire it under the opaque network
-    // loader, but do not strand a whole room if this optional chunk is the
-    // one request a cold browser loses; its access owner remains fail-soft
-    // and the next intent/round retries the transfer.
-    armorAimOverlay.preload().catch((error) => {
-      console.warn('[loading] Optional armor overlay unavailable:', error);
-      return null;
-    }),
-    ensureFxRuntime(),
-    ensureKillcamRuntime(),
-    battleWarm.preload(),
-    audio.warmBattleEvents(),
-  ]).then(([modules]) => {
-    loadTrace.modulesMs = Math.round(performance.now() - modulesStartedAt);
-    return modules;
-  });
   // Battlefield construction is independent from transport/HUD/killcam
   // transfer. The previous serial await made cold invitees pay both costs in
   // full, which was especially visible for friends opening the game for the
-  // first time. Run both under the same opaque loader and retain individual
-  // timings for production diagnosis.
+  // first time. The typed acquisition owner runs both under this opaque
+  // loader, preserves the host's world-collision dependency, and retains
+  // individual timings for production diagnosis.
   battleLoad.progress(0.08, 'Loading battlefield');
-  const worldStartedAt = performance.now();
-  const worldP = ensureWorld(mapId, (fraction, label) => {
-    battleLoad.progress(0.08 + fraction * 0.48, label);
-  }).then((loaded) => {
-    loadTrace.worldMs = Math.round(performance.now() - worldStartedAt);
-    return loaded;
+  const { modules: networkModules } = await battleEntryAcquisition.acquireNetwork({
+    loadModules: () => Promise.all([
+      preloadNetworkBattleModules(),
+      preloadBattleClientRuntime(),
+      ensureBattleHud(),
+      ensureTouchControls(),
+      // Scope armor is presentation-only. Acquire it under the opaque network
+      // loader, but do not strand a whole room if this optional chunk is the
+      // one request a cold browser loses; its access owner remains fail-soft
+      // and the next intent/round retries the transfer.
+      armorAimOverlay.preload().catch((error) => {
+        console.warn('[loading] Optional armor overlay unavailable:', error);
+        return null;
+      }),
+      ensureFxRuntime(),
+      ensureKillcamRuntime(),
+      battleWarm.preload(),
+      audio.warmBattleEvents(),
+    ]).then(([modules]) => modules),
+    loadWorld: () => ensureWorld(mapId, (fraction, label) => {
+      battleLoad.progress(0.08 + fraction * 0.48, label);
+    }),
+    connect: connectMatch,
+    connectAfterWorld,
+    publishMatch: (match) => { networkMatch = match; },
+    timings: loadTrace,
   });
-  const connectStartedAt = performance.now();
-  const matchP = (connectAfterWorld
-    ? worldP.then(() => connectMatch())
-    : Promise.resolve().then(() => connectMatch()))
-    .then((match) => {
-      // Publish immediately so any later module/world failure follows the
-      // normal closeNetworkMatch cleanup path instead of leaking a live RTC
-      // transport that completed during the rejected parallel barrier.
-      networkMatch = match;
-      loadTrace.connectMs = Math.round(performance.now() - connectStartedAt);
-      return match;
-    });
-  const [networkModules] = await Promise.all([networkModulesP, worldP, matchP]);
   const [
     { createBrowserBattleBridge },
     { createNetworkStatus },

@@ -48,3 +48,4 @@ runtime documents remain authoritative for behavior.
 - [0036 — Browser authority retains and gradually drains long stalls](0036-browser-authority-backlog.md)
 - [0037 — Network presentation shapes synchronized volleys](0037-network-volley-presentation-budget.md)
 - [0038 — RTC lobby-to-match ownership is explicit](0038-atomic-rtc-match-handoff.md)
+- [0039 — Battle-entry acquisition has one typed owner](0039-typed-battle-entry-acquisition.md)

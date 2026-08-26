@@ -51,6 +51,9 @@ The browser integration sequence now continues through
 retryable battle imports, reconnect presentation, per-frame match order, and
 persistent-room state from the legacy composition root without changing the
 renderer or authority contracts.
+`src/game/battleEntryAcquisition.ts` continues that sequence by owning the
+covered solo/network dependency graph, task timings, browser-host world
+dependency, and synchronous cached-rematch handling.
 
 ## Consequences
 
