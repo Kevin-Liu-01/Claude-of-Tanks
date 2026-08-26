@@ -16,6 +16,12 @@ function option(name, fallback) {
 
 const baseUrl = new URL(option('url', 'http://127.0.0.1:5180/'));
 const timeoutMs = Math.max(30000, Number(option('timeout', '120')) * 1000);
+const sessionCount = Math.max(1, Math.min(12, Number(option('sessions', '1')) || 1));
+const cpuRate = Math.max(1, Number(option('cpu', '4')) || 4);
+const latencyMs = Math.max(0, Number(option('latency', '150')) || 0);
+const downloadKbps = Math.max(64, Number(option('down-kbps', '1600')) || 1600);
+const uploadKbps = Math.max(32, Number(option('up-kbps', '750')) || 750);
+const compactOutput = option('summary', '0') === '1';
 const browser = await puppeteer.launch({
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -81,13 +87,12 @@ async function constrainedColdLoad({ name, noHero }) {
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
   await cdp.send('Network.emulateNetworkConditions', {
     offline: false,
-    latency: 150,
-    // 1.6 Mbit/s down, 750 Kbit/s up — a deliberately mediocre mobile link.
-    downloadThroughput: 200 * 1024,
-    uploadThroughput: 93750,
+    latency: latencyMs,
+    downloadThroughput: downloadKbps * 1024 / 8,
+    uploadThroughput: uploadKbps * 1024 / 8,
     connectionType: 'cellular3g',
   });
-  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
   const url = new URL(baseUrl);
   url.searchParams.set('nosplash', '1');
   if (noHero) url.searchParams.set('nohero', '1');
@@ -181,24 +186,46 @@ async function failedMainEvaluationRecovery() {
 }
 
 try {
-  const results = [
-    // The first row is the real empty-cache experience. Keep the no-hero row
-    // as a diagnostic control so media contention cannot hide inside a faster
-    // synthetic boot number again.
-    await constrainedColdLoad({ name: 'constrained-mobile-first-visit', noHero: false }),
-    await constrainedColdLoad({ name: 'constrained-mobile-nohero-control', noHero: true }),
-    await failedMainChunkRecovery(),
-    await failedMainEvaluationRecovery(),
-  ];
-  console.log(JSON.stringify({ ok: results.every((row) => row.ready), results }, null, 2));
+  // Every context is pristine and explicitly cache-disabled. Multiple rows
+  // exercise the real first-visit path repeatedly instead of warming one page
+  // and mistaking browser cache reuse for reliability.
+  const firstVisits = [];
+  for (let i = 0; i < sessionCount; i++) {
+    firstVisits.push(await constrainedColdLoad({
+      name: i === 0
+        ? 'constrained-mobile-first-visit'
+        : `constrained-mobile-first-visit-${i + 1}`,
+      noHero: false,
+    }));
+  }
+  const noHero = await constrainedColdLoad({
+    name: 'constrained-mobile-nohero-control', noHero: true,
+  });
+  const downloadRecovery = await failedMainChunkRecovery();
+  const evaluationRecovery = await failedMainEvaluationRecovery();
+  const results = [...firstVisits, noHero, downloadRecovery, evaluationRecovery];
+  const printable = compactOutput
+    ? results.map(({ scripts: _scripts, ...row }) => row)
+    : results;
+  console.log(JSON.stringify({
+    ok: results.every((row) => row.ready),
+    conditions: {
+      sessions: sessionCount, cpuRate, latencyMs, downloadKbps, uploadKbps,
+    },
+    results: printable,
+  }, null, 2));
   if (!results.every((row) => row.ready)) process.exitCode = 1;
-  if (results[0].sourceChunks !== 0) process.exitCode = 2;
-  if (results[2].failedMainRequests !== 1 || results[2].navigations < 2) process.exitCode = 3;
-  if (results[3].injectedMainResponses !== 1 || results[3].navigations < 2) process.exitCode = 4;
-  if (results[0].featuredImages.length !== 1 ||
-      !results[0].featuredImages[0].path.endsWith('.boot.webp') ||
-      results[0].featuredImageTransferBytes > 100_000) process.exitCode = 5;
-  if (results[1].featuredImageTransferBytes !== 0) process.exitCode = 6;
+  if (firstVisits.some((row) => row.sourceChunks !== 0)) process.exitCode = 2;
+  if (downloadRecovery.failedMainRequests !== 1 || downloadRecovery.navigations < 2) {
+    process.exitCode = 3;
+  }
+  if (evaluationRecovery.injectedMainResponses !== 1 || evaluationRecovery.navigations < 2) {
+    process.exitCode = 4;
+  }
+  if (firstVisits.some((row) => row.featuredImages.length !== 1
+      || !row.featuredImages[0].path.endsWith('.boot.webp')
+      || row.featuredImageTransferBytes > 100_000)) process.exitCode = 5;
+  if (noHero.featuredImageTransferBytes !== 0) process.exitCode = 6;
 } finally {
   await browser.close();
 }

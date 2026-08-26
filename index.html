@@ -394,19 +394,37 @@
     (() => {
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 1;
-      const WATCHDOG_MS = 45000;
-      const STAGE_STALL_MS = 20000;
+      // A first visit may spend tens of seconds downloading/evaluating the
+      // initial graph or compiling shaders on an old mobile GPU. A short
+      // watchdog used to reload healthy work at 20/45 s, making the second
+      // visit look "fixed" only because browser/driver caches were warm.
+      // Notices stay early and non-blocking; automatic recovery is reserved
+      // for a genuinely inactive, foreground, online document.
+      const WATCHDOG_NOTICE_MS = 45000;
+      const WATCHDOG_RECOVER_MS = 120000;
+      const STAGE_NOTICE_MS = 25000;
+      const STAGE_RECOVER_MS = 90000;
       const STABLE_READY_MS = 30000;
       let navigating = false;
       let recoveryScheduled = false;
       let stageTimer = 0;
+      let stageRecoveryTimer = 0;
+      let deferredRecoveryReason = '';
+
+      function retryCountFromUrl() {
+        try { return new URL(location.href).searchParams.has('_bootretry') ? 1 : 0; }
+        catch (_) { return 0; }
+      }
 
       function state() {
         try {
           const value = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-          if (value && Date.now() - value.at < 120000) return value;
+          if (value && Date.now() - value.at < 15 * 60 * 1000) {
+            value.count = Math.max(Number(value.count) || 0, retryCountFromUrl());
+            return value;
+          }
         } catch (_) { /* storage may be blocked */ }
-        return { count: 0, at: 0, reason: '' };
+        return { count: retryCountFromUrl(), at: 0, reason: '' };
       }
 
       function remember(value) {
@@ -446,8 +464,19 @@
         }
       }
 
+      function canAutoRecover() {
+        if (document.hidden) return false;
+        return !globalThis.navigator || globalThis.navigator.onLine !== false;
+      }
+
       function recover(reason) {
         if (navigating || recoveryScheduled) return;
+        if (!canAutoRecover()) {
+          deferredRecoveryReason = reason;
+          showRetry(reason);
+          return;
+        }
+        deferredRecoveryReason = '';
         if (state().count < MAX_AUTO_RELOADS) {
           recoveryScheduled = true;
           window.__CHUNK_RECOVERY_PENDING = true;
@@ -462,9 +491,13 @@
         if (window.__GAME_READY || navigating) return;
         window.__COT_BOOT_HEARTBEAT_AT = Date.now();
         if (stageTimer) clearTimeout(stageTimer);
+        if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
         stageTimer = setTimeout(() => {
+          if (!window.__GAME_READY) showRetry(`stall:${stage}`);
+        }, STAGE_NOTICE_MS);
+        stageRecoveryTimer = setTimeout(() => {
           if (!window.__GAME_READY) recover(`stall:${stage}`);
-        }, STAGE_STALL_MS);
+        }, STAGE_RECOVER_MS);
       }
 
       function isSameOriginGameCode(value) {
@@ -500,11 +533,24 @@
           recover(bootRuntime ? 'boot-promise' : 'module-promise');
         }
       });
+      const resumeDeferredRecovery = () => {
+        if (window.__GAME_READY || navigating) return;
+        if (deferredRecoveryReason && canAutoRecover()) {
+          const reason = deferredRecoveryReason;
+          deferredRecoveryReason = '';
+          recover(reason);
+        } else if (canAutoRecover()) {
+          progress(document.hidden ? 'background' : 'resumed');
+        }
+      };
+      addEventListener('visibilitychange', resumeDeferredRecovery);
+      addEventListener('online', resumeDeferredRecovery);
 
       const health = setInterval(() => {
         if (!window.__GAME_READY) return;
         clearInterval(health);
         if (stageTimer) clearTimeout(stageTimer);
+        if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
         // Keep the short-lived receipt. Clearing it immediately at ready made
         // a persistently missing post-boot chunk eligible for another reload
         // before the user could request it again.
@@ -522,9 +568,13 @@
       }, 500);
       setTimeout(() => {
         if (window.__GAME_READY) return;
+        showRetry('timeout');
+      }, WATCHDOG_NOTICE_MS);
+      setTimeout(() => {
+        if (window.__GAME_READY) return;
         if (state().count < MAX_AUTO_RELOADS) recover('timeout');
         else showRetry('timeout');
-      }, WATCHDOG_MS);
+      }, WATCHDOG_RECOVER_MS);
 
       window.__COT_BOOT_RECOVERY = { recover, showRetry, progress, state };
     })();

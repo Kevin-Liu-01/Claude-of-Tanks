@@ -79,6 +79,10 @@ The boot contract is:
 - a visible transition or garage frame must cover asynchronous work;
 - failure of an optional feature must not leave the output black;
 - the game-ready signal is emitted only after the minimum interactive state;
+- proven module failures recover once, while slow foreground work receives a
+  nonblocking retry before any automatic navigation is considered;
+- hidden or offline documents never auto-reload, and a retry URL prevents
+  loops when session storage is unavailable;
 - public presentation routes must not preload the game graph.
 
 ### Garage

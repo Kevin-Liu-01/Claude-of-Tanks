@@ -179,6 +179,14 @@ Cold-load probe:
 
     npm run perf:cold
 
+Repeat the cache-disabled first visit across four weak-device sessions while
+retaining the failed-download and failed-evaluation recovery gates:
+
+    npm run perf:cold -- --sessions 4 --cpu 8 --down-kbps 800 --up-kbps 300 --latency 250 --summary 1
+
+Each session uses a new browser context with the HTTP cache disabled. Do not
+substitute repeated navigations in one context; those measure a warm cache.
+
 Garage/battle transition responsiveness:
 
     npm run perf:transitions

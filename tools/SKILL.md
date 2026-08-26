@@ -37,6 +37,9 @@ move, fire, deal damage, and report transport/prediction/frame/shadow health.
 `npm run test:net:seven:full` continues both pristine-context battles through a
 natural authority result and proves that every participant retains the same
 waiting room with readiness reset.
+Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
+cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
+`--latency` so a warm navigation cannot masquerade as first-visit reliability.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.

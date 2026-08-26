@@ -6,29 +6,46 @@ const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8'
 const match = html.match(/<script>\s*(\/\/ CHUNK RECOVERY[\s\S]*?)<\/script>/);
 assert.ok(match, 'chunk recovery remains inline ahead of the module entry');
 
-function createHarness(ready) {
+function createHarness(ready, {
+  href = 'https://game.test/?tank=leo1a5',
+  storageBlocked = false,
+  hidden = false,
+  online = true,
+} = {}) {
   const listeners = new Map();
   const timers = [];
   const storage = new Map();
   let replacedUrl = null;
   const window = { __GAME_READY: ready };
   const location = {
-    href: 'https://game.test/?tank=leo1a5',
+    href,
     replace(url) { replacedUrl = url; },
+  };
+  const document = {
+    hidden,
+    body: { appendChild() {} },
+    createElement: () => ({ classList: { add() {} }, style: {} }),
+    getElementById: () => null,
   };
   const context = {
     window,
-    document: {
-      body: { appendChild() {} },
-      createElement: () => ({ classList: { add() {} }, style: {} }),
-      getElementById: () => null,
-    },
+    document,
+    navigator: { onLine: online },
     location,
     history: { replaceState() {} },
     sessionStorage: {
-      getItem: (key) => storage.get(key) ?? null,
-      setItem: (key, value) => storage.set(key, value),
-      removeItem: (key) => storage.delete(key),
+      getItem: (key) => {
+        if (storageBlocked) throw new Error('storage blocked');
+        return storage.get(key) ?? null;
+      },
+      setItem: (key, value) => {
+        if (storageBlocked) throw new Error('storage blocked');
+        storage.set(key, value);
+      },
+      removeItem: (key) => {
+        if (storageBlocked) throw new Error('storage blocked');
+        storage.delete(key);
+      },
     },
     addEventListener: (type, listener) => listeners.set(type, listener),
     setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
@@ -39,7 +56,10 @@ function createHarness(ready) {
     Date,
   };
   runInNewContext(match[1], context);
-  return { listeners, timers, storage, window, get replacedUrl() { return replacedUrl; } };
+  return {
+    document, listeners, timers, storage, window,
+    get replacedUrl() { return replacedUrl; },
+  };
 }
 
 const postBoot = createHarness(true);
@@ -72,10 +92,28 @@ assert.ok(bootExceptionRecovery,
 
 const stalledBoot = createHarness(false);
 stalledBoot.window.__COT_BOOT_RECOVERY.progress('vehicle');
-const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 20000);
-assert.ok(stallWatchdog, 'each real boot stage must arm a bounded progress watchdog');
+const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 25000);
+const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 90000);
+assert.ok(stallNotice && stallWatchdog,
+  'each real boot stage must arm a nonblocking notice and bounded recovery watchdog');
+stallNotice.fn();
+assert.equal(stalledBoot.replacedUrl, null,
+  'a merely slow first-visit stage must keep running after the early notice');
 stallWatchdog.fn();
 assert.ok(stalledBoot.timers.some(({ ms }) => ms < 1000),
-  'a stage that never completes must schedule one automatic fresh-document recovery');
+  'a genuinely stalled stage must eventually schedule one fresh-document recovery');
 
-console.log('chunkRecovery.selftest: download, evaluation, and stalled-stage failures recover once');
+const blockedStorageRetry = createHarness(false, {
+  href: 'https://game.test/?tank=leo1a5&_bootretry=already',
+  storageBlocked: true,
+});
+blockedStorageRetry.listeners.get('error')?.({
+  target: blockedStorageRetry.window,
+  message: 'Injected renderer startup failure',
+  filename: 'https://game.test/assets/main-test.js',
+  error: { stack: 'Error: injected\n at https://game.test/assets/main-test.js:1:1' },
+});
+assert.equal(blockedStorageRetry.timers.some(({ ms }) => ms < 1000), false,
+  'the retry URL must prevent an auto-reload loop when sessionStorage is blocked');
+
+console.log('chunkRecovery.selftest: failures recover once without reloading healthy slow stages');
