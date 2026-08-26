@@ -16,6 +16,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS = Object.freeze({
   "leopard": () => import('./vehicleMarkingSeatGroups/leopard.generated.js'),
   "merkava": () => import('./vehicleMarkingSeatGroups/merkava.generated.js'),
   "misc": () => import('./vehicleMarkingSeatGroups/misc.generated.js'),
+  "modern2Core": () => import('./vehicleMarkingSeatGroups/modern2Core.generated.js'),
   "modern3Core": () => import('./vehicleMarkingSeatGroups/modern3Core.generated.js'),
   "patton": () => import('./vehicleMarkingSeatGroups/patton.generated.js'),
   "poland": () => import('./vehicleMarkingSeatGroups/poland.generated.js'),

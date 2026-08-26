@@ -16,6 +16,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS = Object.freeze({
   "leopard": () => import('./combatAnatomyGroups/leopard.generated.js'),
   "merkava": () => import('./combatAnatomyGroups/merkava.generated.js'),
   "misc": () => import('./combatAnatomyGroups/misc.generated.js'),
+  "modern2Core": () => import('./combatAnatomyGroups/modern2Core.generated.js'),
   "modern3Core": () => import('./combatAnatomyGroups/modern3Core.generated.js'),
   "patton": () => import('./combatAnatomyGroups/patton.generated.js'),
   "poland": () => import('./combatAnatomyGroups/poland.generated.js'),

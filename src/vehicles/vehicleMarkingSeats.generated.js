@@ -15,6 +15,7 @@ import { VEHICLE_MARKING_SEATS as SEATS_KOREA } from './vehicleMarkingSeatGroups
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD } from './vehicleMarkingSeatGroups/leopard.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_MERKAVA } from './vehicleMarkingSeatGroups/merkava.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_MISC } from './vehicleMarkingSeatGroups/misc.generated.js';
+import { VEHICLE_MARKING_SEATS as SEATS_MODERN2CORE } from './vehicleMarkingSeatGroups/modern2Core.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_MODERN3CORE } from './vehicleMarkingSeatGroups/modern3Core.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_PATTON } from './vehicleMarkingSeatGroups/patton.generated.js';
 import { VEHICLE_MARKING_SEATS as SEATS_POLAND } from './vehicleMarkingSeatGroups/poland.generated.js';
@@ -45,6 +46,7 @@ export const VEHICLE_MARKING_SEATS = Object.freeze(Object.assign({},
   SEATS_LEOPARD,
   SEATS_MERKAVA,
   SEATS_MISC,
+  SEATS_MODERN2CORE,
   SEATS_MODERN3CORE,
   SEATS_PATTON,
   SEATS_POLAND,

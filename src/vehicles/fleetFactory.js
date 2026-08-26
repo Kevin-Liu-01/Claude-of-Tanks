@@ -99,6 +99,8 @@ function registerProfiles(profiles) {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  modern2Core: () => import('./modern2.js')
+    .then((mod) => registerCanonicalBuilders('modern2', mod.MODERN2_BUILDERS)),
   franceCore: () => import('./france.js')
     .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),
   modern3Core: () => import('./modern3.js')
