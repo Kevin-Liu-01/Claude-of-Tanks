@@ -2,15 +2,18 @@
 
 ## Context
 
-The first garage frame does not display the combat HUD, damage schematic, or
-the vehicle top-mask renderer. Static imports nevertheless transferred and
-evaluated that complete graph on every first visit. It also made the integration
-entry own construction order and retry state for three independent UI modules.
+The first garage frame does not display the combat HUD, damage schematic,
+vehicle top-mask renderer, or mobile driving controls. Static imports
+nevertheless transferred and evaluated that complete graph on every first
+visit. They also made the integration entry own construction order and retry
+state for independent UI modules.
 
 ## Decision
 
 - `src/ui/battleHudAccess.ts` owns loading and construction of the HUD, damage
   panel, and top-mask rig as one retryable runtime.
+- `src/ui/touchControlsAccess.ts` applies the same contract to the mobile battle
+  controls; desktop and mobile garage boot do not construct that hidden DOM.
 - Garage boot keeps the battle UI absent. Battle hover/focus may preload it;
   every solo, network, ranked, and deterministic-capture entry must acquire the
   same runtime before using battlefield services.

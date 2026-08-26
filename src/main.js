@@ -105,7 +105,7 @@ import {
 } from './game/presentationPose.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
-import { createTouchControls } from './ui/touchControls.js';
+import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.js';
 import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
 import {
@@ -607,6 +607,7 @@ function cancelBattleIntentTextureWarm() {
 function preloadBattleIntent({ specId, mapId } = {}) {
   audio.preload();
   ensureBattleHud().catch(() => null);
+  ensureTouchControls().catch(() => null);
   loadWorldModule().catch(() => null);
   preloadSoloBattleRuntime().catch(() => null);
   preloadKillcamModule().catch(() => null);
@@ -2621,7 +2622,8 @@ const settings = createSettings({
 });
 garage.attachSettingsControl(settings.gear);
 let mobileSoundMuted = false;
-const touchControls = createTouchControls({
+let touchControls = null;
+const touchControlsAccess = createTouchControlsAccess({
   input, bus,
   isBattleActive: () => game.phase === 'battle',
   onOpenSettings: () => settings.open(),
@@ -2634,6 +2636,11 @@ const touchControls = createTouchControls({
   // ENTERS the scope (sniperToggle lane) and further spread steps zoomIn.
   isSniper: () => rig.mode === 'SNIPER',
 });
+async function ensureTouchControls() {
+  if (!input.isTouchLayout()) return null;
+  touchControls = await touchControlsAccess.preload();
+  return touchControls;
+}
 devTrace?.configure({
   input,
   getContext: () => ({
@@ -2755,7 +2762,7 @@ renderer.domElement.addEventListener('mousedown', () => {
 // The old eight-second controls strip is deliberately retired; it covered
 // the battlefield on every round even after players knew the bindings.
 bus.on('ui:battleStart', () => {
-  touchControls.refresh();
+  ensureTouchControls().then((controls) => controls?.refresh()).catch(() => null);
   if (!input.isTouchLayout()) {
     input.requestLock();
   }
@@ -2956,7 +2963,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // Start their retryable chunk at the first covered frame; world transfer
   // has already begun on Battle intent, and no hidden garage boot pays for it.
   battleLoad.progress(0.01, 'Loading combat interface');
-  await ensureBattleHud();
+  await Promise.all([ensureBattleHud(), ensureTouchControls()]);
 
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   // The next roster is deterministic from battleCount, so resolve its exact
@@ -3704,6 +3711,7 @@ async function presentNetworkBattle({
   const [networkModules] = await Promise.all([
     preloadNetworkBattleModules(),
     ensureBattleHud(),
+    ensureTouchControls(),
     ensureFxRuntime(),
     ensureKillcamRuntime(),
   ]);
@@ -5381,7 +5389,7 @@ function tick(nowMs) {
     } else {
       armorAimOverlay.hide();
     }
-    touchControls.update(hudFocus.state?.speed || 0);
+    touchControls?.update(hudFocus.state?.speed || 0);
     damagePanel.update(hudFocus.combat);
   } else {
     armorAimOverlay.hide();
@@ -5534,7 +5542,9 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // Capture callers await the same chunked builder as gameplay. Keeping a
   // second synchronous map constructor in the entry graph defeated genuine
   // world lazy loading and froze first-time authored captures.
-  await Promise.all([preloadSoloBattleRuntime(), ensureBattleHud()]);
+  await Promise.all([
+    preloadSoloBattleRuntime(), ensureBattleHud(), ensureTouchControls(),
+  ]);
   if (!world || world.mapId !== mapId) await switchMap(mapId);
   lighting.setFarCascadeDormant(false);
   setWorldDormant(false);
