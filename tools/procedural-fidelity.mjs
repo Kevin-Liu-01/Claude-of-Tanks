@@ -9,6 +9,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
 const ROOT = process.cwd();
+const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
 const args = process.argv.slice(2);
 const option = (name, fallback = null) => {
   const eq = args.find((arg) => arg.startsWith(`--${name}=`));
@@ -140,7 +141,8 @@ const summary = {
   best:scoredRows.toSorted((a,b)=>a.score-b.score).at(-1)?.id || null,
 };
 const report={ generatedAt:new Date().toISOString(),summary,rows };
-fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.json'),`${JSON.stringify(report,null,2)}\n`);
+fs.mkdirSync(REPORT_DIR,{recursive:true});
+fs.writeFileSync(path.join(REPORT_DIR,'procedural-fidelity.json'),`${JSON.stringify(report,null,2)}\n`);
 const cell = (value) => Number.isFinite(value) ? value.toFixed(1) : 'N/A';
 const md=[
   '# Procedural tank fidelity report','',
@@ -162,7 +164,7 @@ const md=[
   'Component cells are N/A when a source GLB is fused and therefore cannot expose an independent hull/turret mask. '+
     'Its whole silhouette and lower running-gear profile remain scored.','',
 ].join('\n');
-fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.md'),md);
+fs.writeFileSync(path.join(REPORT_DIR,'procedural-fidelity.md'),md);
 
 console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} available references pass `+
   `${PASS}+ overall / ${VIEW_FLOOR}+ each view; ${summary.unavailable} unavailable; `+

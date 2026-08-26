@@ -23,7 +23,6 @@ licensed only under
 ```text
 src/vehicles/**
 src/world/**
-docs/critique/**
 docs/geometry-gate/**
 docs/references/**
 docs/research/**

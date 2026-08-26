@@ -152,5 +152,3 @@ for (const [id, stationsPerSide] of ABRAMS_RETURN_ROLLER_CASES) {
 }
 
 console.log('abramsRoadWheelSpacing.selftest: M1-family wheels clear and elevated return rollers support the tracks');
-
-await import('./abramsTurretLift.selftest.mjs');

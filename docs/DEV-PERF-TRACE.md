@@ -109,7 +109,7 @@ only after the natural trace and CPU profile are captured, so it is never
 counted as game performance.
 
 The probe is diagnostic evidence. The ratified Mobile QA Lap in
-`docs/MOBILE-QA.md` remains the release-budget gate.
+`docs/PERFORMANCE.md` defines the release-budget and device-lap contract.
 
 For the optimized-build contract and the full device-less lifecycle lap, run:
 

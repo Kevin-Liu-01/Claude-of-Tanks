@@ -47,8 +47,6 @@ component. Six published contact sheets preserve the human visual-review pass.
 | MARKETING-BATTLE-CAMPAIGN.md | 60-frame 4K campaign composition, capture, contact-sheet review, and grading contract |
 | ../public/media/showcase-r1/manifest.json | Current public visual archive, provenance, process sheets, maps, actors, effects, and feature tags |
 | DEV-PERF-TRACE.md | Development performance flight recorder |
-| MOBILE-QA.md | Sustained mobile test procedure and evidence ledger |
-| IMPROVEMENT-PROGRAM-2026-08-17.md | Dated implementation and verification record for the 16-map, multiplayer, UI, destruction, and rendering improvement program |
 | ATTRIBUTION.md | Kevin B. Liu project authorship, asset provenance, third-party licenses, and quarantine record |
 | ../NOTICE.md | Repository-wide authorship rule for every original file, model, and generated asset |
 | ../LICENSE | Default MIT terms for first-party work not identified as an exception |
@@ -98,7 +96,7 @@ benchmarks, and superseded program ledgers are intentionally excluded.
 | DESIGN.md | Tank-generation program architecture |
 | LESSONS.md | Incidents that informed vehicle build law |
 | POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md | Running-gear incident record |
-| DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md | Commit-backed synthesis of the Claude/Codex conversation record, engineering-practice evolution, and fresh 2026-08-18 visual evidence |
+| decisions/ | Durable implementation choices and migration constraints |
 
 Historical counts and architecture claims may differ from the current runtime.
 
@@ -144,3 +142,7 @@ When behavior changes:
 5. Record a durable architecture choice in `decisions/`; keep raw run output in
    `.qa-*` or external artifacts rather than adding a new handoff document.
 6. Verify every relative link and referenced path.
+
+Machine-generated audits, performance trends, traces, screenshots, and critic
+rounds belong under ignored `.qa-dev/` or `.qa-device/`. The maintained docs
+describe how to reproduce them; Git history preserves old execution receipts.

@@ -22,17 +22,22 @@ current generated contracts, and tests. Iterative critic output belongs in the
 ignored `.qa-dev/` workspace and in Git history once its accepted findings have
 been folded into a maintained packet or decision.
 
-This cleanup removes only critique receipts whose filenames have no live
-reference outside `docs/critique/`. Referenced graduation and recertification
-receipts remain until their conclusions are consolidated into their owning
-vehicle packets. New unreferenced critique receipts must not be committed.
+Public documentation also excludes generated audit JSON/Markdown, performance
+trend ledgers, dated implementation-program narratives, and conversational
+development histories. The owning tool writes current evidence below ignored
+`.qa-dev/` or `.qa-device/`; maintained subsystem docs and ADRs retain only
+the reproducible contract and durable conclusion.
+
+Referenced vehicle graduation and recertification receipts remain until their
+conclusions are consolidated into their owning vehicle packets. New iterative
+critique receipts must not be committed.
 
 ## Consequences
 
 - Contributor-facing documentation has less historical execution noise.
 - Fleet provenance and reproducible geometry inputs remain intact.
-- A smaller follow-up can consolidate the remaining referenced receipts
-  without creating broken citations.
+- A smaller follow-up can consolidate the remaining referenced vehicle
+  receipts without creating broken citations.
 - Tests remain tracked release contracts; age alone is not grounds to remove a
   test that still runs in `tools/selftest-suites.mjs`.
 

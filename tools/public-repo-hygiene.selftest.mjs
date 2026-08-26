@@ -4,11 +4,13 @@ import { execFileSync } from 'node:child_process';
 
 const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
   .split('\0')
-  .filter(Boolean);
+  .filter((file) => file && fs.existsSync(file));
 
 const forbidden = tracked.filter((file) => (
   /(?:^|\/)(?:tasks?|dev[-_]?handoff|worklog|status)(?:[-_.\/]|$)/i.test(file) ||
   /\.(?:bak|orig|rej|tmp)$/i.test(file) ||
+  /^docs\/(?:model-quality-report|procedural-fidelity-report|perf-after|perf-trend)(?:\.|$)/i.test(file) ||
+  /^docs\/(?:DEVELOPMENT-EVOLUTION|IMPROVEMENT-PROGRAM|MOBILE-QA|native-fleet-restoration)(?:[-_.]|$)/i.test(file) ||
   /(?:^|\/)(?:node_modules|dist|\.qa-dev|\.qa-device)(?:\/|$)/.test(file)
 ));
 assert.deepEqual(forbidden, [],
@@ -36,5 +38,5 @@ assert.deepEqual(orphanedCritiques, [],
 
 console.log(
   `public-repo-hygiene.selftest: ${tracked.length} tracked paths; ` +
-  `${critiqueFiles.length} cited visual receipts; no transient artifacts`,
+  `${critiqueFiles.length} cited visual receipts; no generated reports or transient artifacts`,
 );

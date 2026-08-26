@@ -293,7 +293,7 @@ const SETTINGS_CSS = `
 .cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
   text-transform:uppercase;}
 
-/* MOBILE-QA r1: touch-target floor for the option pills (28px measured). */
+/* Compact option pills retain the measured 28 px touch-target floor. */
 body.cot-touch-layout .cot-set-body button{min-height:40px;}
 body.cot-touch-layout .cot-set-ftr .cot-set-btn{min-height:42px;}
 `;
@@ -477,7 +477,7 @@ export function createSettings(opts) {
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
   let activeTab = 'controls';
-  // MOBILE-QA r1: a touch device has no keyboard to rebind — the Controls
+  // A touch-only device has no keyboard to rebind, so the Controls
   // tab rendered 70+ sub-30px keycap chips (useless, and every one a failed
   // touch target). Hide the tab and land on Gameplay instead.
   if (input.isTouchLayout && input.isTouchLayout()) {

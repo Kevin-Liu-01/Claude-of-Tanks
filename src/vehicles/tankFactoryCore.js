@@ -6677,7 +6677,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   // includes approach/departure ramps), while the scan owns the bottom (a
   // rebuilt hull keel can undercut the gear floor).
   if (P.gear) P.gear.update(0, 0);
-  // MOBILE-QA r14: static showroom previews never enter game state, so their
+  // Static showroom previews never enter game state, so their
   // movement contact metadata normally has no consumer. The full-tree vertex
   // scan was measurable cold-switch work, so defer it until a caller elects
   // to reuse this exact visual for simulation (prepareForSimulation below).

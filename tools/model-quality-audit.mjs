@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { createServer } from 'vite';
 
 const ROOT = process.cwd();
+const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
 const PASS = 8.5;
 const CHECK = process.argv.includes('--check');
 const clamp = (v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
@@ -314,7 +315,8 @@ try {
     rows,
   };
 
-  fs.writeFileSync(path.join(ROOT, 'docs/model-quality-report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  fs.mkdirSync(REPORT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(REPORT_DIR, 'model-quality.json'), `${JSON.stringify(report, null, 2)}\n`);
   const md = [
     '# Tank model quality audit', '',
     `Pass bar: **${PASS}/10**. Selected: **${report.summary.selectedPassed}/${report.summary.vehicles} pass**. ` +
@@ -330,7 +332,7 @@ try {
     '- Peer Δ compares the selected score with the median of the same era.',
     '',
   ].join('\n');
-  fs.writeFileSync(path.join(ROOT, 'docs/model-quality-report.md'), md);
+  fs.writeFileSync(path.join(REPORT_DIR, 'model-quality.md'), md);
 } finally {
   await server.close();
 }

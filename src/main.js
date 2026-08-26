@@ -6390,7 +6390,7 @@ function* warmCombatOpeningPipelineSteps() {
     const wd = new THREE.Vector3(0, 0, 1);
     try {
       fx.muzzleFlash(wp, wd, 120);
-      // MOBILE-QA r11 (idle profiler): the volley ran as ONE generator slice
+      // Profiling showed the volley ran as one generator slice
       // (~1.1 s of garage-idle jank — every family's lazy sprite/atlas bake
       // in a single task). Yields between effect families; call order and
       // the trailing resetAll are unchanged (bake caches persist).
@@ -6577,7 +6577,7 @@ function* warmCombatRarePipelineSteps() {
  * opaque loader owns the frame. Live and node-hidden variants are compiled by
  * the bounded rare pass below after the first deployment frame is visible.
  */
-// MOBILE-QA r1 (tools/tmp-fightprof evidence, docs/MOBILE-QA.md ledger):
+// Sustained-battle profiling contract:
 // renderer.compile builds FORWARD programs only — shadow-DEPTH variants link
 // lazily on each caster class's first shadow-pass render, which lands
 // mid-fight the moment the player drives a baked wreck / prop cluster into
@@ -6876,7 +6876,7 @@ function warmRenderIsolated(root) {
   }
 }
 
-// MOBILE-QA r20: WebGLRenderer.compile() intentionally stops before uniform
+// WebGLRenderer.compile() intentionally stops before uniform
 // discovery. The next real render then calls WebGLProgram.getUniforms() for
 // every newly linked program in one queue flush; 0.2 ms profiles attributed
 // 1301-1466 ms of the garage warm to that exact WebGLUniforms/onFirstUse
@@ -6977,11 +6977,11 @@ function* warmDestroyedRosterVariantsSteps() {
 }
 
 function* compileHiddenVariantsSteps(detail = null) {
-  // MOBILE-QA r5: renderer.compile does NOT traverse visible:false subtrees
+  // renderer.compile does not traverse visible:false subtrees
   // (three's projectObject early-out — the old comment claiming otherwise
   // was wrong), so non-active LOD levels and node-hidden addons never
   // compiled here and linked mid-battle on their first distance flip (the
-  // last per-fight >100 ms task; owner-binding evidence in MOBILE-QA.md
+  // This stage previously owned the last per-fight task above 100 ms.
   // r4/r5: hidden LOD meshes + kit decor). Force-visible window
   // around each compile, then restore.
   const compileAll = function* (root) {

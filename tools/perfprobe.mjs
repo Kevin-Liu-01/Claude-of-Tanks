@@ -10,7 +10,7 @@
 // combat (drive via synthetic keys + forceFire debug flag) for N seconds while
 // sampling rAF deltas, renderer.info, and JS heap. Prints a JSON report to stdout
 // (and --out file if given), and
-// appends a one-line summary to docs/perf-trend.jsonl so per-commit creep
+// appends a one-line summary to .qa-dev/reports/perf-trend.jsonl so local creep
 // (load-to-ready, texture MB, triangles) is visible as a series.
 //
 // THE CERTIFICATION WINDOW IS 60 s (default). Real battles run 5-7 minutes and
@@ -1050,12 +1050,13 @@ try {
   for (const [k, r] of Object.entries(report.ratchet)) {
     if (!r.met) console.error(`[perf] RATCHET WARN: ${k}=${r.actual} still above the ${r.target} ratchet target (gate frozen — do not raise)`);
   }
-  // Per-commit trend line (docs/perf-trend.jsonl): the load-to-ready and
+  // Local trend line: the load-to-ready and
   // texture-footprint regressions crept in ~15% per round without tripping any
   // gate — a series makes the creep visible at review time, not at cert time.
   if (!noTrend) {
     try {
-      appendFileSync(resolve('docs/perf-trend.jsonl'), `${JSON.stringify({
+      mkdirSync(resolve('.qa-dev/reports'), { recursive: true });
+      appendFileSync(resolve('.qa-dev/reports/perf-trend.jsonl'), `${JSON.stringify({
         date: report.date,
         dsf,
         seconds,

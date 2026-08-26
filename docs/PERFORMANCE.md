@@ -237,8 +237,41 @@ Use the network render probe:
 
     npm run test:net:render
 
-See DEV-PERF-TRACE.md for trace fields and MOBILE-QA.md for sustained mobile
-test procedure and evidence history.
+See DEV-PERF-TRACE.md for trace fields.
+
+## Mobile and full-session verification
+
+Mobile release checks use optimized production output, not the development
+server and not absolute FPS from a software-rendered iOS simulator. Run:
+
+    npm run qa:trace
+    npm run qa:device
+    npm run qa:device:stress
+    npm run qa:device:software
+
+The native profile exercises the host GPU, constrained applies deterministic
+CPU and memory pressure, and software is a portability/shader floor. Reports,
+traces, and screenshots are written below ignored `.qa-device/`; they are
+release artifacts, not maintained documentation.
+
+Each device lap covers garage idle, repeated vehicle selection, cold battle
+entry, look/drive/fire/fight, rematch, a second map, orientation changes,
+lifecycle freeze/resume, and WebGL context loss/recovery. It records long
+tasks, rAF percentiles, renderer resource counts, retained heap, and cache
+limits. A result is valid only when the machine-contention stamp accepts it;
+software-renderer FPS must never be presented as physical-device performance.
+
+Responsive composition is owned by `src/ui/responsiveLayout.js`. Components
+consume its width, height, input, and panel-mode semantics rather than growing
+their own device-label breakpoints. Native display density and internal scene
+resolution remain independent: phones retain native DOM/canvas presentation,
+while the 3D renderer may scale within the output-pixel and quality budgets.
+
+For multiplayer, release evidence must include two fresh browser profiles with
+empty storage and caches completing create, invite-link join, ready, an entire
+match, result, rematch, reload/reconnect, and explicit leave. Reusing a browser
+that has already cached fleet, map, ICE, or session data is a warm-path test,
+not first-visit certification.
 
 ### 2026-08-24 loading and rollout receipt
 

@@ -36,7 +36,7 @@ const CSS = `
 .cot-touch .arrow{position:absolute;color:rgba(231,240,247,.72);font-size:16px;line-height:1;
   text-shadow:0 1px 3px #000}.cot-touch .arrow.u{left:61px;top:8px}.cot-touch .arrow.d{left:61px;bottom:8px}
 .cot-touch .arrow.l{left:10px;top:58px}.cot-touch .arrow.r{right:10px;top:58px}
-/* MOBILE-QA r2: all four arrows are the SAME ▲ glyph rotated — see markup */
+/* All four arrows are the same glyph rotated, avoiding platform variants. */
 .cot-touch .arrow.d{transform:rotate(180deg)}
 .cot-touch .arrow.l{transform:rotate(-90deg)}
 .cot-touch .arrow.r{transform:rotate(90deg)}
@@ -161,7 +161,7 @@ body.cot-touch-layout .cot-dp{left:max(232px,calc(env(safe-area-inset-left) + 22
 body.cot-touch-layout .cot-alert{bottom:28%;font-size:12px;}
 body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
 
-/* MOBILE-QA r1: shell chip label/count collision — at the 48px touch chip the
+/* Shell chip label/count collision: at the 48px touch chip the
    selected slot's long class label (APFSDS, 35px) ran under the ammo count
    (11px overlap, both bottom-anchored). The keycap badge is hidden on touch,
    so its top-right corner is free: the count moves there. */
@@ -300,7 +300,7 @@ export function createTouchControls({
     `<button class="quick settings" type="button" aria-label="Open settings">${SETTINGS}<span class="ql">Settings</span></button></div>` +
     `<div class="speed" aria-label="Vehicle speed"><b>0</b><span>KM/H</span></div>` +
     `<div class="aimpad" aria-label="Swipe to aim"></div><div class="aimhint">Swipe to aim</div>` +
-    // MOBILE-QA r2 (owner): one triangle glyph (U+25B2, text presentation on
+    // One triangle glyph (U+25B2, text presentation on
     // every platform) rotated per direction — U+25C0/U+25B6 carry DEFAULT
     // EMOJI PRESENTATION on iOS, so the left/right arrows rendered as blue
     // emoji buttons next to the clean text up/down triangles.

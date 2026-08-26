@@ -888,7 +888,7 @@ function* makeFlipbookTextureSteps(rng, style) {
         d[i + 3] = Math.round(a * 255);
       }
     }
-    // MOBILE-QA r28: a whole six-atlas bake was a repeatable 204/213 ms
+    // A whole six-atlas bake measured above 200 ms on constrained hardware,
     // Long Animation Frame just after splash teardown. A tile is the
     // smallest deterministic boundary: all RNG consumption and pixel order
     // stay byte-for-byte identical, while the garage idle path can paint

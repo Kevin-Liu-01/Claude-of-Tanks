@@ -19,9 +19,9 @@
 // (60 s windows, pinned worst-case roster, FIFO lock — all inside perfprobe).
 //
 // Outcomes:
-//  - both runs PASS with valid (uncontended) stamps -> docs/perf-after.json is
+//  - both runs PASS with valid (uncontended) stamps -> the local certification
 //    replaced with the merged-tree certification (sources kept as
-//    docs/cert-r6-dsf1.json / -dsf2.json) and the runner exits 0.
+//    sources beside it) and the runner exits 0.
 //  - a run carries a VALID stamp but FAILs the budget -> that is a certified
 //    merged-tree verdict, not noise: cert JSONs are kept, docs/cert-r6-FAILED
 //    marker is written, runner exits 1 (perf owner must look — retrying a
@@ -32,10 +32,10 @@
 // Usage: node tools/quietcert.mjs [--max-hours 24] [--interval-min 10]
 //        [--note r6-quiet-cert]
 // Recommended launch (survives the launching session):
-//   cd <repo> && nohup node tools/quietcert.mjs >> docs/quietcert-r6.log 2>&1 &
+//   cd <repo> && nohup node tools/quietcert.mjs >> .qa-dev/quietcert.log 2>&1 &
 
 import { execSync, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 
 const args = process.argv.slice(2);
@@ -46,6 +46,7 @@ function opt(name, fb) {
 const MAX_HOURS = parseFloat(opt('max-hours', '24'));
 const INTERVAL_MIN = parseFloat(opt('interval-min', '10'));
 const NOTE = opt('note', 'r6-quiet-cert');
+const REPORT_DIR = '.qa-dev/reports';
 const CORES = os.cpus().length;
 // pre-check threshold: a margin under the probe's own 0.5*cores limit so a
 // started attempt is unlikely to trip the start-stamp immediately
@@ -91,7 +92,8 @@ function interactiveGpuCpu() {
 }
 
 function runProbe(dsf) {
-  const out = `docs/cert-r6-dsf${dsf}.json`;
+  mkdirSync(REPORT_DIR, { recursive: true });
+  const out = `${REPORT_DIR}/cert-r6-dsf${dsf}.json`;
   log(`starting perfprobe --dsf ${dsf} (60 s cert window)`);
   const r = spawnSync('node', ['tools/perfprobe.mjs', '--dsf', String(dsf), '--note', NOTE, '--out', out],
     { stdio: ['ignore', 'ignore', 'inherit'], timeout: 30 * 60 * 1000 });
@@ -139,7 +141,7 @@ for (;;) {
   if (r1.state === 'pass' && r2.state === 'pass') {
     const treeNow = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
     const stillDirty = execSync('git status --porcelain -- src/ index.html', { encoding: 'utf8' }).trim() !== '';
-    writeFileSync('docs/perf-after.json', JSON.stringify({
+    writeFileSync(`${REPORT_DIR}/perf-after.json`, JSON.stringify({
       note: `PERFORMANCE_BUDGET r6 CERTIFICATION — merged working tree at ${treeNow}`
         + `${stillDirty ? ' (+ uncommitted src changes present at run time — valid for the round close ONLY if they are this round’s handoff set; otherwise re-run on the committed tree)' : ''}. `
         + 'Both blocks are complete, unedited 60 s perfprobe reports (sources kept beside this file), '
@@ -152,12 +154,12 @@ for (;;) {
       dsf1: r1.rep,
       dsf2: r2.rep,
     }, null, 2));
-    log('BOTH PASS with valid stamps — docs/perf-after.json replaced with merged-tree certification');
+    log(`BOTH PASS with valid stamps — ${REPORT_DIR}/perf-after.json written`);
     process.exit(0);
   }
   // valid stamps, at least one budget FAIL: certified verdict — surface, stop.
-  writeFileSync('docs/cert-r6-FAILED', `quietcert ${new Date().toISOString()}: valid-stamp certification FAIL `
-    + `(dsf1=${r1.state}, dsf2=${r2.state}) — see docs/cert-r6-dsf1.json / -dsf2.json. `
+  writeFileSync(`${REPORT_DIR}/cert-r6-FAILED`, `quietcert ${new Date().toISOString()}: valid-stamp certification FAIL `
+    + `(dsf1=${r1.state}, dsf2=${r2.state}) — see the adjacent dsf1/dsf2 reports. `
     + 'This is a real merged-tree verdict, not contention noise; do not rerun until the regression is fixed.\n');
   log('valid-stamp FAIL — recorded docs/cert-r6-FAILED and stopping (honest gate: no retry-until-green)');
   process.exit(1);

@@ -311,7 +311,7 @@ shadows, post effects, vegetation, texture sizes, particle budgets, and
 background work adapt independently. Smaller layouts reduce nonessential
 labels and penetration diagrams while preserving core controls and state.
 
-See docs/MOBILE-QA.md and docs/PERFORMANCE.md.
+See docs/PERFORMANCE.md.
 
 ## Built-in production tools
 
@@ -370,4 +370,5 @@ The repository includes executable checks for the claims above:
 
 The detailed verification map is in docs/DEVELOPMENT.md. The dated
 conversation-to-practice synthesis, with fresh renderer captures and commit
-evidence, is in docs/DEVELOPMENT-EVOLUTION-2026-07-27-08-18.md.
+evidence, is summarized in docs/TECHNICAL-OVERVIEW.md and the architecture
+decision records.

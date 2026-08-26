@@ -1,4 +1,4 @@
-// The Mobile QA Lap (docs/MOBILE-QA.md): a deterministic real-time session
+// The mobile performance lap (docs/PERFORMANCE.md): a deterministic session
 // on emulated-iPhone headless Chrome, instrumented for main-thread health.
 // Stations: garage_idle, tank_switch, battle_load, look, drive, fire,
 // fight (+spot reveals), rematch, cross-map resource release, repeated-battle
