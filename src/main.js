@@ -5160,7 +5160,16 @@ await bootStage('post', async () => {
   try { renderer.compile(scene, camera, scene); } catch (_) { /* first render is fallback */ }
   BOOT_TIMINGS.postCompile = Math.round(performance.now() - t0);
   lighting.update(true); // boot: render every cascade before first present
-  const yieldGpuWarm = createFrameBudgetYielder(16);
+  const yieldGpuFrame = createFrameBudgetYielder(16);
+  let gpuWarmPulse = 0;
+  const yieldGpuWarm = async (force = false) => {
+    // This is progress, not a timer: every shadow/upload/post batch renews the
+    // inline first-visit watchdog. A genuinely wedged GPU promise stays silent
+    // and is recovered, while an old device that keeps advancing is never
+    // mistaken for a dead boot.
+    boot.sub(Math.min(0.94, 0.04 + gpuWarmPulse++ * 0.035));
+    return yieldGpuFrame(force);
+  };
   await yieldGpuWarm(true);
   const shadowPasses = await lighting.primeShadowMaps(
     renderer, scene, camera, yieldGpuWarm,

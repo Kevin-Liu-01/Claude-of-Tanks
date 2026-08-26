@@ -42,3 +42,4 @@ runtime documents remain authoritative for behavior.
 - [0030 — Custom camouflage authoring is an intent-loaded deep module](0030-custom-camouflage-studio-boundary.md)
 - [0031 — Engineering diagnostics are absent from player boot](0031-engineering-diagnostics-runtime-boundary.md)
 - [0032 — Deterministic capture recipes are demand loaded](0032-demand-loaded-capture-recipes.md)
+- [0033 — First-visit recovery follows forward progress](0033-progress-aware-boot-watchdog.md)

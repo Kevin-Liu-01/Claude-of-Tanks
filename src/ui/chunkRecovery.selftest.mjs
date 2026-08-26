@@ -94,8 +94,8 @@ assert.ok(bootExceptionRecovery,
 
 const stalledBoot = createHarness(false);
 stalledBoot.window.__COT_BOOT_RECOVERY.progress('vehicle');
-const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 15000);
-const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 35000);
+const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 8000);
+const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 20000);
 assert.ok(stallNotice && stallWatchdog,
   'each real boot stage must arm a nonblocking notice and bounded recovery watchdog');
 stallNotice.fn();

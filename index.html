@@ -403,8 +403,12 @@
       // for a genuinely inactive, foreground, online document.
       const WATCHDOG_NOTICE_MS = 30000;
       const WATCHDOG_RECOVER_MS = 60000;
-      const STAGE_NOTICE_MS = 15000;
-      const STAGE_RECOVER_MS = 35000;
+      // Every chunked GPU warm now pulses this watchdog between real batches,
+      // so a stage that is merely slow keeps its document while a promise,
+      // driver submission, or missing resource that makes no forward progress
+      // recovers substantially sooner.
+      const STAGE_NOTICE_MS = 8000;
+      const STAGE_RECOVER_MS = 20000;
       const STABLE_READY_MS = 30000;
       let navigating = false;
       let recoveryScheduled = false;
