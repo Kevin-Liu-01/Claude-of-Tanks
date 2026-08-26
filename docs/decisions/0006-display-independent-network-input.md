@@ -42,4 +42,5 @@ default cadence deliberately.
   per participant.
 - The rendered 7v7 gate covers host and impaired client play, fourteen moving
   and firing peers, transport loss/jitter, input acknowledgement, prediction,
-  frame pacing, and visible rubber-band limits.
+  frame pacing, visible rubber-band limits, and room retention after either
+  elimination or the simulation's explicit certification time limit.

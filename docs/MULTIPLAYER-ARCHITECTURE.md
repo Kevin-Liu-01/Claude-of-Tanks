@@ -234,10 +234,14 @@ The full rendered capacity gate is `npm run test:net:seven:full`. It runs two
 independent natural 7v7 battles—one with the browser host rendered and one with
 an impaired remote client rendered. All 28 participants across those runs use
 pristine browser profiles, retarget living opponents from authority state, and
-continue through a real elimination result. The gate requires every session to
-receive the result, retain the room in its waiting phase, and clear readiness;
-it also enforces transport, prediction, frame-pacing, shadow, and presentation
-budgets throughout the match.
+continue through a real authoritative result. Synthetic commanders pursue and
+change ammunition after a 25-second stalemate. The certification authority uses
+the simulation's existing 60-second battle-limit option so physically blocking
+wrecks resolve through the real `time_limit` path instead of making CI wait for
+the production 900-second safety cap. Production room limits are unchanged. The
+gate requires every session to receive the result, retain the room in its
+waiting phase, and clear readiness; it also enforces transport, prediction,
+frame-pacing, shadow, and presentation budgets throughout the match.
 
 ## Deployment and trust
 

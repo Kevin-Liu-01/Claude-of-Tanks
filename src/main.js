@@ -3296,7 +3296,7 @@ async function beginSoloBattle({ specId, mapId, randomRoster = true } = {}) {
 }
 
 /** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
-async function beginNetworkBattle({ role, session, lobbyState } = {}) {
+async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = {}) {
   if (battleEntryPending || networkMatch) return false;
   battleEntryPending = true;
   let entered = false;
@@ -3347,7 +3347,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       modeLabel,
       transitionShown: true,
       connectMatch: () => role === 'host'
-        ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
+        ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world, battleLimitS })
         : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
     });
     networkRoomCoordinator.attach(lobbyState);

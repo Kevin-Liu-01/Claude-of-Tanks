@@ -240,11 +240,18 @@ const clientSession = {
   roomInfo: { peerId: 'peer-1', mode: 'lan' },
   takeMatchTransport: async () => remote.client,
 };
+let receivedBattleLimitS = null;
 const hosted = beginPrivateHostMatch({
   session: hostSession,
   lobbyState,
-  simulationFactory: (options) => createAuthoritativeMatch({ ...options, countdownS: 0 }),
+  battleLimitS: 120,
+  simulationFactory: (options) => {
+    receivedBattleLimitS = options.battleLimitS;
+    return createAuthoritativeMatch({ ...options, countdownS: 0 });
+  },
 });
+assert.equal(receivedBattleLimitS, 120,
+  'browser authority forwards an explicit certification battle limit to the simulation');
 assert.equal(hosted.client.connected, true,
   'host-local protocol handshake completes synchronously without a render-frame wait');
 assert.equal(hosted.host.maxCatchUpTicks, 6,

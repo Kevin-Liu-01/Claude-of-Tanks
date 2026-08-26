@@ -34,13 +34,20 @@ const SPEC_ID = 'm60a2';
 const CAMO_IDS = ['factory', 'summer', 'winter', 'digital', 'merdc', 'splinter', 'dazzle'];
 const durationMs = numericArg('duration', 15_000);
 const settleMs = numericArg('settle', 2_500);
+const stalematePursuitDelayMs = numericArg('pursuit-delay', 25_000);
 const latencyMs = numericArg('latency', 45);
 const jitterMs = numericArg('jitter', 15);
 const lossPercent = numericArg('loss', 3);
 const inputLossPercent = numericArg('input-loss', 2);
 const timeoutMs = numericArg('timeout', 180_000);
 const matchTimeoutMs = numericArg('match-timeout', 90_000);
+const certificationBattleLimitS = numericArg('battle-limit', 60);
 const completeMatch = process.argv.includes('--complete-match');
+const onlyRoleArg = process.argv.find((entry) => entry.startsWith('--only='));
+const onlyRole = onlyRoleArg?.slice('--only='.length) || null;
+if (onlyRole && onlyRole !== 'host' && onlyRole !== 'client') {
+  throw new TypeError('only must be host or client');
+}
 const artifactDir = resolve('.qa-dev/multiplayer-live-7v7');
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
@@ -467,7 +474,7 @@ async function waitGuestLight(page, label) {
 }
 
 async function beginFullEntry(page, renderedRole) {
-  await page.evaluate((role) => {
+  await page.evaluate(({ role, complete, battleLimitS }) => {
     const state = globalThis.__COT_LIVE_7V7;
     state.entryFrames = [];
     const sample = () => {
@@ -485,17 +492,18 @@ async function beginFullEntry(page, renderedRole) {
       role,
       session: state.session,
       lobbyState,
+      battleLimitS: complete ? battleLimitS : undefined,
     }).then((result) => { state.entryResult = result; })
       .catch((error) => { state.errors.push(error.message); state.entryResult = false; });
     state.entryTransition = {
       loaderVisible: !!document.querySelector('.cot-bl.on'),
       phase: window.__DEBUG.game.phase,
     };
-  }, renderedRole);
+  }, { role: renderedRole, complete: completeMatch, battleLimitS: certificationBattleLimitS });
 }
 
 async function beginHostLight(page, lobby) {
-  await page.evaluate(async (lobbyState) => {
+  await page.evaluate(async ({ lobbyState, complete, battleLimitS }) => {
     const state = globalThis.__COT_LIVE_7V7;
     const [{ beginPrivateHostMatch }, { createDedicatedWorldCollision }] = await Promise.all([
       import('/src/net/privateMatchHandoff.js'),
@@ -509,6 +517,7 @@ async function beginHostLight(page, lobby) {
       session: state.session,
       lobbyState: state.startingLobby,
       worldCollision: state.worldCollision,
+      battleLimitS: complete ? battleLimitS : undefined,
     });
     state.unsubscribeEvents = state.match.client.onEvent((event) => {
       const counts = state.eventCounts;
@@ -520,7 +529,7 @@ async function beginHostLight(page, lobby) {
         counts.damage += Math.max(0, Number(event.damage) || 0);
       } else if (event.type === 'tank_destroyed') counts.destroyed++;
     });
-  }, lobby);
+  }, { lobbyState: lobby, complete: completeMatch, battleLimitS: certificationBattleLimitS });
 }
 
 async function startHostLightPump(page) {
@@ -644,7 +653,7 @@ async function baselineAuthority(hostPage, renderedRole) {
 }
 
 async function startLightCombat(page, isHost, formation) {
-  await page.evaluate(({ host, formation: formationState }) => {
+  await page.evaluate(({ host, formation: formationState, pursuitDelayMs }) => {
     const state = globalThis.__COT_LIVE_7V7;
     state.formation = formationState;
     state.combatEnabled = true;
@@ -685,15 +694,22 @@ async function startLightCombat(page, isHost, formation) {
       const dy = target.y + 1.5 - own.y;
       const dz = target.z - own.z;
       const horizontal = Math.hypot(dx, dz);
+      const pursuit = driveElapsed >= pursuitDelayMs;
+      const desiredYaw = Math.atan2(dx, dz);
+      const yawError = Math.atan2(
+        Math.sin(desiredYaw - own.yaw),
+        Math.cos(desiredYaw - own.yaw),
+      );
+      const openingDrive = driveElapsed < 2500;
       return {
-        throttle: driveElapsed < 2500 ? 0.35 : 0,
-        steer: 0,
-        brake: false,
+        throttle: openingDrive ? 0.35 : (pursuit ? (Math.abs(yawError) > 1.2 ? 0.3 : 0.55) : 0),
+        steer: pursuit ? Math.max(-1, Math.min(1, yawError * 2.2)) : 0,
+        brake: !openingDrive && !pursuit,
         fire: elapsed >= 1200,
         aimYaw: Math.atan2(dx, dz),
         aimPitch: Math.atan2(dy, Math.max(1e-6, horizontal)),
         aimDistance: Math.hypot(horizontal, dy),
-        shellSlot: 0,
+        shellSlot: pursuit ? 2 : 0,
         actionBits: 0,
       };
     };
@@ -708,11 +724,11 @@ async function startLightCombat(page, isHost, formation) {
         if (sample) state.sample = sample;
       }, 16);
     }
-  }, { host: isHost, formation });
+  }, { host: isHost, formation, pursuitDelayMs: stalematePursuitDelayMs });
 }
 
 async function startFullCombat(page, formation) {
-  await page.evaluate((formationState) => {
+  await page.evaluate(({ formation: formationState, pursuitDelayMs }) => {
     const state = globalThis.__COT_LIVE_7V7;
     state.formation = formationState;
     state.combatEnabled = true;
@@ -725,6 +741,16 @@ async function startFullCombat(page, formation) {
     state.stopDrivingTimer = setTimeout(() => {
       window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', key: 'w', bubbles: true }));
     }, 2500);
+    state.pursuitKeys = new Set();
+    const setPursuitKey = (code, key, down) => {
+      const held = state.pursuitKeys.has(code);
+      if (held === down) return;
+      if (down) state.pursuitKeys.add(code);
+      else state.pursuitKeys.delete(code);
+      window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', {
+        code, key, bubbles: true,
+      }));
+    };
     const loop = () => {
       const elapsed = performance.now() - state.combatStartedAt;
       const player = window.__DEBUG.game.player;
@@ -740,6 +766,26 @@ async function startFullCombat(page, formation) {
       if (player?.state && target?.state) {
         player.input.aimPoint.copy(target.state.pos);
         player.input.aimPoint.y += target.spec.dims.heightM * 0.52;
+        const dx = target.state.pos.x - player.state.pos.x;
+        const dz = target.state.pos.z - player.state.pos.z;
+        const desiredYaw = Math.atan2(dx, dz);
+        const yawError = Math.atan2(
+          Math.sin(desiredYaw - player.state.yaw),
+          Math.cos(desiredYaw - player.state.yaw),
+        );
+        const pursuit = elapsed >= pursuitDelayMs;
+        if (pursuit && !state.pursuitShellSelected) {
+          state.pursuitShellSelected = true;
+          window.dispatchEvent(new KeyboardEvent('keydown', {
+            code: 'Digit3', key: '3', bubbles: true,
+          }));
+          window.dispatchEvent(new KeyboardEvent('keyup', {
+            code: 'Digit3', key: '3', bubbles: true,
+          }));
+        }
+        setPursuitKey('KeyW', 'w', pursuit);
+        setPursuitKey('KeyA', 'a', pursuit && yawError > 0.06);
+        setPursuitKey('KeyD', 'd', pursuit && yawError < -0.06);
         const motion = state.motion;
         const own = player.state.pos;
         if (motion.last) {
@@ -752,12 +798,16 @@ async function startFullCombat(page, formation) {
         }
         motion.last = { x: own.x, y: own.y, z: own.z };
         motion.samples++;
+      } else {
+        setPursuitKey('KeyW', 'w', false);
+        setPursuitKey('KeyA', 'a', false);
+        setPursuitKey('KeyD', 'd', false);
       }
       window.__DEBUG.flags.forceFire = state.combatEnabled && elapsed >= 1200;
       if (state.combatEnabled) state.aimRaf = requestAnimationFrame(loop);
     };
     state.aimRaf = requestAnimationFrame(loop);
-  }, formation);
+  }, { formation, pursuitDelayMs: stalematePursuitDelayMs });
 }
 
 async function beginMeasuredCombat(pages, renderedRole) {
@@ -796,7 +846,10 @@ async function stopCombat(pages, renderedRole) {
     };
     if (full && window.__DEBUG) {
       window.__DEBUG.flags.forceFire = false;
-      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', key: 'w', bubbles: true }));
+      for (const [code, key] of [['KeyW', 'w'], ['KeyA', 'a'], ['KeyD', 'd']]) {
+        window.dispatchEvent(new KeyboardEvent('keyup', { code, key, bubbles: true }));
+      }
+      state.pursuitKeys?.clear();
       if (state.aimRaf) cancelAnimationFrame(state.aimRaf);
     }
   }, (renderedRole === 'host' && index === 0) || (renderedRole === 'client' && index === 1))));
@@ -957,10 +1010,22 @@ async function waitForNaturalMatchEnd(pages, renderedRole) {
       pages[0].evaluate((role) => {
         const state = globalThis.__COT_LIVE_7V7;
         const runtime = role === 'host' ? state.session.matchRuntime : state.match.host;
+        const simulation = runtime?.simulation;
         return {
-          result: runtime?.simulation?.result || null,
-          reason: runtime?.simulation?.resultReason || null,
+          result: simulation?.result || null,
+          reason: simulation?.resultReason || null,
           tick: runtime?.tick || 0,
+          events: state.eventCounts,
+          living: simulation ? [...simulation.entityById.values()]
+            .filter((entity) => !entity.combat.destroyed)
+            .map((entity) => ({
+              id: entity.id,
+              team: entity.team,
+              hp: Math.round(entity.combat.hp),
+              x: Number(entity.state.pos.x.toFixed(1)),
+              z: Number(entity.state.pos.z.toFixed(1)),
+              reloadS: Number(entity.combat.reload.t.toFixed(2)),
+            })) : [],
         };
       }, renderedRole),
       Promise.all(pages.map((page) => page.evaluate(() => {
@@ -1140,6 +1205,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         specId: SPEC_ID,
         durationMs,
         settleMs,
+        stalematePursuitDelayMs,
         latencyMs,
         jitterMs,
         lossPercent,
@@ -1148,6 +1214,7 @@ async function runRenderedRole(origin, signalUrl, renderedRole) {
         completeMatch,
         measuredDurationMs,
         matchTimeoutMs,
+        certificationBattleLimitS,
       },
       completion,
       formation,
@@ -1220,13 +1287,13 @@ try {
       '--enable-webgl',
     ],
   });
-  const host = await runRenderedRole(origin, signalUrl, 'host');
-  const client = await runRenderedRole(origin, signalUrl, 'client');
+  const host = onlyRole === 'client' ? null : await runRenderedRole(origin, signalUrl, 'host');
+  const client = onlyRole === 'host' ? null : await runRenderedRole(origin, signalUrl, 'client');
   const summary = {
     ok: true,
     capturedAt: new Date().toISOString(),
-    host: host.screenshots,
-    client: client.screenshots,
+    host: host?.screenshots || null,
+    client: client?.screenshots || null,
   };
   await writeFile(resolve(artifactDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
   console.log(JSON.stringify(summary, null, 2));

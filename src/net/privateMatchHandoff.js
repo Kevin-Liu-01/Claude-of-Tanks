@@ -144,6 +144,7 @@ export function beginPrivateHostMatch({
   lobbyState,
   simulationFactory = createAuthoritativeMatch,
   worldCollision = null,
+  battleLimitS = undefined,
 } = {}) {
   const lobby = validateStartingLobby(lobbyState);
   if (!session || typeof session.takeMatchChannels !== 'function' ||
@@ -153,11 +154,15 @@ export function beginPrivateHostMatch({
   const hostId = String(session.roomInfo.peerId);
   const mapId = resolvePrivateMatchMap(lobby);
   const players = buildPrivateMatchPlayers(lobby);
+  if (battleLimitS !== undefined && (!Number.isFinite(battleLimitS) || battleLimitS <= 0)) {
+    throw new TypeError('battleLimitS must be a positive finite number');
+  }
   let simulation = simulationFactory({
     players,
     mapId,
     seed: lobby.matchSeed,
     worldCollision,
+    ...(battleLimitS === undefined ? {} : { battleLimitS }),
   });
   const roomController = createPersistentRoomController(session);
   // The browser render loop already clamps one delayed frame to 100 ms.
