@@ -49,6 +49,7 @@ const only = stringOption('only', 'all');
 if (!['all', 'solo', 'host', 'client'].includes(only)) {
   throw new TypeError('only must be all, solo, host, or client');
 }
+const enforceBudgets = stringOption('enforce', '1') !== '0';
 const root = new URL('..', import.meta.url).pathname;
 const consoleErrors = [];
 const contextByPage = new WeakMap();
@@ -311,6 +312,7 @@ async function collectFullRenderer(page, label) {
     };
   }, label);
   report.entry.coldReadyMs = coldReadyMsByPage.get(page) ?? null;
+  if (!enforceBudgets) return report;
   assert.ok(report.entry.coldReadyMs != null && report.entry.coldReadyMs < maxColdReadyMs,
     `${label} cold profile took ${report.entry.coldReadyMs} ms to become ready`);
   assert.ok(report.frames >= seconds * minimumFps,
@@ -563,7 +565,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     profile: {
-      seconds, cpuRate, minimumFps, cycles, maxColdReadyMs,
+      seconds, cpuRate, minimumFps, cycles, maxColdReadyMs, enforceBudgets,
       viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
       freshBrowserContexts: true,
     },
