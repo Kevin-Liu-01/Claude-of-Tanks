@@ -182,6 +182,8 @@ export class PrivateRoomClientSession {
     onConnectionState = null,
     disconnectedRebuildDelayMs = 8_000,
     failedRebuildDelayMs = 2_000,
+    connectTimeoutMs = 60_000,
+    initialRebuildDelaysMs = [250, 1_000],
   } = {}) {
     if (!signaling || !roomInfo || !roomInfo.peerId || !roomInfo.hostId) {
       throw new TypeError('signaling and joined room info are required');
@@ -194,11 +196,17 @@ export class PrivateRoomClientSession {
     this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
     this.onConnectionState = typeof onConnectionState === 'function' ? onConnectionState : null;
     if (!Number.isFinite(disconnectedRebuildDelayMs) || disconnectedRebuildDelayMs < 0 ||
-        !Number.isFinite(failedRebuildDelayMs) || failedRebuildDelayMs < 0) {
+        !Number.isFinite(failedRebuildDelayMs) || failedRebuildDelayMs < 0 ||
+        !Number.isFinite(connectTimeoutMs) || connectTimeoutMs <= 0) {
       throw new TypeError('RTC rebuild delays must be non-negative milliseconds');
     }
+    if (!Array.isArray(initialRebuildDelaysMs) || initialRebuildDelaysMs.some(
+      (delay) => !Number.isFinite(delay) || delay < 0,
+    )) throw new TypeError('initial RTC rebuild delays must be non-negative milliseconds');
     this.disconnectedRebuildDelayMs = disconnectedRebuildDelayMs;
     this.failedRebuildDelayMs = failedRebuildDelayMs;
+    this.connectTimeoutMs = connectTimeoutMs;
+    this.initialRebuildDelaysMs = [...initialRebuildDelaysMs];
     this.recoveryTimer = null;
     this.replacePromise = null;
     this.closed = false;
@@ -244,7 +252,9 @@ export class PrivateRoomClientSession {
         }
       }
     });
-    this.ready = this.#bindInitialPeer(this.peer);
+    this.ready = this.#bindInitialPeer(this.peer).catch(
+      (error) => this.#recoverInitialPeer(error),
+    );
   }
 
   #createPeer() {
@@ -253,6 +263,7 @@ export class PrivateRoomClientSession {
       iceServers: this.iceServers,
       relayOnly: this.relayOnly,
       RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
+      connectTimeoutMs: this.connectTimeoutMs,
       onSignal: (signal) => this.signaling.sendSignal(
         this.roomInfo.hostId,
         signal,
@@ -286,24 +297,55 @@ export class PrivateRoomClientSession {
 
   #bindInitialPeer(peer) {
     return peer.transportReady.then((transport) => {
-      // Once RTC is established, pub/sub remains the fast path and the
-      // durable mailbox only needs a low-frequency closure/rejoin safety net.
-      if (typeof this.signaling.setEventPollInterval === 'function') {
-        this.signaling.setEventPollInterval(2_000);
+      if (this.closed || this.peer !== peer) {
+        transport.close('rtc_generation_replaced');
+        throw Object.assign(new Error('RTC generation was replaced'), {
+          code: 'rtc_generation_replaced',
+        });
       }
-      const client = new MatchClientRuntime({
-        transport,
-        playerId: this.roomInfo.peerId,
-      });
-      client.connect({ mode: this.roomInfo.mode || 'private', phase: 'lobby' });
-      this.runtime = client;
-      return {
-        onState: (listener) => client.onRoomState(listener),
-        submit: (command) => client.submitRoomCommand(command),
-        get errors() { return client.errors; },
-        get closed() { return client.closed; },
-      };
+      return this.#attachInitialTransport(transport);
     });
+  }
+
+  #attachInitialTransport(transport) {
+    if (this.runtime) return this.#roomAdapter();
+    // Once RTC is established, pub/sub remains the fast path and the
+    // durable mailbox only needs a low-frequency closure/rejoin safety net.
+    if (typeof this.signaling.setEventPollInterval === 'function') {
+      this.signaling.setEventPollInterval(2_000);
+    }
+    const client = new MatchClientRuntime({
+      transport,
+      playerId: this.roomInfo.peerId,
+    });
+    client.connect({ mode: this.roomInfo.mode || 'private', phase: 'lobby' });
+    this.runtime = client;
+    return this.#roomAdapter();
+  }
+
+  #roomAdapter() {
+    const client = this.runtime;
+    return {
+      onState: (listener) => client.onRoomState(listener),
+      submit: (command) => client.submitRoomCommand(command),
+      get errors() { return client.errors; },
+      get closed() { return client.closed; },
+    };
+  }
+
+  async #recoverInitialPeer(initialError) {
+    let error = initialError;
+    for (const delayMs of this.initialRebuildDelaysMs) {
+      if (this.closed) throw error;
+      if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (this.closed) throw error;
+      try {
+        return await this.#replacePeer({ renewSignaling: true });
+      } catch (nextError) {
+        error = nextError;
+      }
+    }
+    throw error;
   }
 
   #replacePeer({ renewSignaling = false } = {}) {
@@ -325,7 +367,13 @@ export class PrivateRoomClientSession {
     oldPeer.close('host_session_replaced');
     if (renewSignaling) await this.signaling.restartRoomSession('rtc_session_rebuild');
     const transport = await nextPeer.transportReady;
-    if (!this.runtime) return;
+    if (this.peer !== nextPeer || this.closed) {
+      transport.close('rtc_generation_replaced');
+      throw Object.assign(new Error('RTC generation was replaced'), {
+        code: 'rtc_generation_replaced',
+      });
+    }
+    if (!this.runtime) return this.#attachInitialTransport(transport);
     this.runtime.reconnectTransport(transport, {
       mode: this.roomInfo.mode || 'private',
       phase: 'lobby',

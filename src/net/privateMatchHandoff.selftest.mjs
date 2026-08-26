@@ -40,6 +40,14 @@ class FakeClientPeerConnection {
   close() { this.connectionState = 'closed'; }
 }
 
+class RecoveringClientPeerConnection extends FakeClientPeerConnection {
+  static instances = [];
+  constructor() {
+    super();
+    RecoveringClientPeerConnection.instances.push(this);
+  }
+}
+
 class FakeHostPeerConnection extends FakeClientPeerConnection {
   constructor() {
     super();
@@ -65,6 +73,38 @@ class FakeSignaling {
   restartRoomSession() { this.restartCalls++; return Promise.resolve(true); }
   close() { this.closed = true; }
   emit(message) { for (const listener of [...this.listeners]) listener(message); }
+}
+
+// A first-visit browser can lose its opening RTC generation while signaling,
+// modules, or TURN credentials are still warming. The replacement generation
+// must resolve the original public ready promise instead of connecting behind
+// an already-rejected lobby entry.
+{
+  RecoveringClientPeerConnection.instances.length = 0;
+  const signaling = new FakeSignaling();
+  const session = new PrivateRoomClientSession({
+    signaling,
+    roomInfo: {
+      roomCode: 'COLD22', peerId: 'guest', hostId: 'host', mode: 'private',
+      peers: [{ peerId: 'host', player: { name: 'Host' }, sessionId: 'host_epoch_1' }],
+    },
+    RTCPeerConnectionImpl: RecoveringClientPeerConnection,
+    connectTimeoutMs: 5,
+    initialRebuildDelaysMs: [0],
+  });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(RecoveringClientPeerConnection.instances.length, 2,
+    'a timed-out cold generation creates one fresh RTC peer');
+  const nextControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const nextState = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: nextControl });
+  session.peer.peerConnection.ondatachannel({ channel: nextState });
+  const runtime = await session.ready;
+  assert.equal(signaling.restartCalls, 1,
+    'cold recovery rotates the signaling epoch before renegotiating');
+  assert.equal(runtime.closed, false,
+    'the original room-ready promise resolves through the replacement generation');
+  session.close('test_done');
 }
 
 // A terminal client ICE failure replaces the peer connection, rotates the

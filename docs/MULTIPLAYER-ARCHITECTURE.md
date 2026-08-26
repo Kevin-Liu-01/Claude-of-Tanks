@@ -213,6 +213,12 @@ explicit disconnected/failed connection state. This prevents a slow first
 load from racing two offer generations while retaining automatic recovery
 from genuine route changes.
 
+The room-ready promise also survives a bounded replacement of the opening RTC
+generation. A guest that times out before its match client exists rotates its
+signaling epoch, rejects stale SDP/ICE, and resolves the original lobby entry
+through the first replacement transport that opens. Later reconnects retain
+the existing match client and its presentation identity.
+
 Non-host refresh after a round is supported. Signaling preserves the stable
 browser player id, the joined client keeps the canonical invite URL, and the
 host keeps rendezvous listening after lobby-to-match handoff. When the page

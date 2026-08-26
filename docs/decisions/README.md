@@ -37,3 +37,4 @@ runtime documents remain authoritative for behavior.
 - [0025 — Demand-load the battle client runtime](0025-battle-client-runtime-boundary.md)
 - [0026 — Speculative garage work waits for a quiet window](0026-garage-quiet-window.md)
 - [0027 — Opening terrain creates only visible residency](0027-exact-opening-terrain-residency.md)
+- [0028 — Cold RTC recovery preserves room readiness](0028-cold-rtc-generation-recovery.md)
