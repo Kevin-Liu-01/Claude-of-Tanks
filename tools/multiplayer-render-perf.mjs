@@ -42,6 +42,8 @@ if (!['lan', 'private'].includes(roomMode)) {
 }
 const root = new URL('..', import.meta.url).pathname;
 const consoleErrors = [];
+const contextByPage = new WeakMap();
+const coldReadyMsByPage = new WeakMap();
 let browser = null;
 
 const vite = await createViteServer({
@@ -59,7 +61,12 @@ function observe(page, label) {
 }
 
 async function openPage(origin, { full = false, label, adverseNetwork = false }) {
-  const page = await browser.newPage();
+  // Model two people opening an invite on machines that have never visited
+  // the game. A shared default context silently shares HTTP cache, storage,
+  // workers, and other state between the host and guest pages.
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  contextByPage.set(page, context);
   observe(page, label);
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
   if (full) {
@@ -91,26 +98,34 @@ async function openPage(origin, { full = false, label, adverseNetwork = false })
   }
   const pathname = full ? '/' : '/tools/multiplayer-browser-soak.html';
   const path = `${pathname}?${params}`;
+  const navigationStartedAt = Date.now();
   await page.goto(`${origin}${path}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   if (full) {
     await page.waitForFunction(
       () => window.__GAME_READY === true && window.__DEV_TRACE?.enabled === true,
       { timeout: 240_000 },
     );
+    coldReadyMsByPage.set(page, Date.now() - navigationStartedAt);
   }
   return page;
 }
 
 async function closeState(page) {
-  if (!page || page.isClosed()) return;
-  await page.evaluate(() => {
-    const state = globalThis.__COT_RENDER_PERF;
-    if (!state) return;
-    if (state.pumpTimer) clearInterval(state.pumpTimer);
-    try { state.match?.close('render_perf_complete'); } catch (_) { /* best effort */ }
-    try { state.session?.close('render_perf_complete'); } catch (_) { /* best effort */ }
-  }).catch(() => {});
-  await page.close().catch(() => {});
+  if (!page) return;
+  if (!page.isClosed()) {
+    await page.evaluate(() => {
+      const state = globalThis.__COT_RENDER_PERF;
+      if (!state) return;
+      if (state.pumpTimer) clearInterval(state.pumpTimer);
+      if (state.readyTimer) clearInterval(state.readyTimer);
+      try { state.match?.close('render_perf_complete'); } catch (_) { /* best effort */ }
+      try { state.session?.close('render_perf_complete'); } catch (_) { /* best effort */ }
+    }).catch(() => {});
+    await page.close().catch(() => {});
+  }
+  const context = contextByPage.get(page);
+  contextByPage.delete(page);
+  if (context) await context.close().catch(() => {});
 }
 
 async function createStartingRoom(hostPage, guestPage, signalUrl) {
@@ -286,6 +301,7 @@ async function collectFullRenderer(page, label) {
       },
     };
   }, label);
+  report.entry.coldReadyMs = coldReadyMsByPage.get(page) ?? null;
   assert.ok(report.frames >= seconds * minimumFps,
     `${label} captured too few active frames: ${report.frames}`);
   assert.equal(report.freezes, 0, `${label} must not freeze under ${cpuRate}x CPU throttling`);
@@ -400,6 +416,9 @@ async function runNetwork(origin, signalUrl, renderedRole) {
             });
           }
           state.match.ready();
+          state.readyTimer = setInterval(() => {
+            if (!state.match?.client?.closed && !state.match?.host?.matchStarted) state.match.ready();
+          }, 1000);
           state.pumpTimer = setInterval(() => state.match.update(performance.now()), 16);
         })().catch((error) => { state.errors.push(error.message); });
         return true;
@@ -439,6 +458,9 @@ async function runNetwork(origin, signalUrl, renderedRole) {
         lobbyState: state.startingLobby,
       });
       state.match.ready();
+      state.readyTimer = setInterval(() => {
+        if (!state.match?.client?.closed && !state.match?.host?.matchStarted) state.match.ready();
+      }, 1000);
       state.pumpTimer = setInterval(() => state.match.advance(1000 / 60), 1000 / 60);
     });
     await guestPage.evaluate(() => {
@@ -503,6 +525,7 @@ try {
     ok: true,
     profile: {
       seconds, cpuRate, minimumFps, viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
+      freshBrowserContexts: true,
     },
     solo,
     [`${roomMode}Host`]: host,
