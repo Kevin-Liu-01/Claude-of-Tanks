@@ -3,6 +3,7 @@
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
   franceCore: Object.freeze(['amx40']),
+  modern3Core: Object.freeze(['k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89']),
   // These visual profiles used to be imported by every garage boot even when
   // no matching vehicle was visible. Keep their ownership in the same
   // import-free manifest as the larger authored families.
@@ -14,7 +15,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'chieftain5', 'chieftain_mk10', 'vickers_mk1', 'centurion3', 'centurion5',
     'comet', 'challenger_cruiser', 'charioteer', 'fv510', 'fv510_milan',
   ]),
-  challenger: Object.freeze(['challenger1']),
+  challenger: Object.freeze(['challenger1', 'challenger2', 'challenger_3']),
   leopard: Object.freeze([
     'leo2a4', 'leo2a6', 'leo2a5', 'leo2a7v', 'leopard2_proto',
     'leo2_revolution', 'kf51', 'kf51b', 'leo1a5', 'leo2a4m', 'leo2a6m',

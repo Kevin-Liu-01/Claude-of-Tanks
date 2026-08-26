@@ -7,10 +7,8 @@ import {
   registerCanonicalBuilders,
   registerProfiledBuilders,
 } from './tankFactoryCore.js';
-import { MODERN3_BUILDERS } from './modern3.js';
 import { MODERN2_BUILDERS } from './modern2.js';
 import { MODERN1_BUILDERS } from './modern1.js';
-import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { FITTINGS, buildDonorVariant, buildProfile } from './profiles/kit.js';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.js';
 
@@ -19,6 +17,8 @@ import './userdrops.js';
 import './userdrops2.js';
 import './userdrops3.js';
 import './userdrops4.js';
+import './challengerSpecs.js';
+import './modern3Specs.js';
 import './userdrops5.js';
 import './userdrops6.js';
 import './franceSpecs.js';
@@ -63,9 +63,7 @@ for (const ids of [
 configureTankFactory({
   canonicalBuilderPacks: [
     ['modern1', MODERN1_BUILDERS],
-    ['challenger', CHALLENGER_BUILDERS],
     ['modern2', MODERN2_BUILDERS],
-    ['modern3', MODERN3_BUILDERS],
   ],
   fittings: FITTINGS,
 });
@@ -77,9 +75,14 @@ function registerProfiles(profiles) {
 const GROUP_LOADERS = Object.freeze({
   franceCore: () => import('./france.js')
     .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),
+  modern3Core: () => import('./modern3.js')
+    .then((mod) => registerCanonicalBuilders('modern3', mod.MODERN3_BUILDERS)),
   misc: () => import('./profiles/misc.js').then((mod) => registerProfiles(mod.MISC_PROFILES)),
   uk: () => import('./profiles/uk.js').then((mod) => registerProfiles(mod.UK_PROFILES)),
-  challenger: () => import('./profiles/challenger.js').then((mod) => registerProfiles(mod.CHALLENGER_PROFILES)),
+  challenger: () => import('./profiles/challenger.js').then((mod) => {
+    registerCanonicalBuilders('challenger', mod.CHALLENGER_BUILDERS);
+    registerProfiles(mod.CHALLENGER_PROFILES);
+  }),
   leopard: () => import('./profiles/leopard.js').then((mod) => registerProfiles(mod.LEOPARD_PROFILES)),
   italy: () => import('./profiles/italy.js').then((mod) => registerProfiles(mod.ITALY_PROFILES)),
   sweden: () => import('./profiles/sweden.js').then((mod) => registerProfiles(mod.SWEDEN_PROFILES)),
