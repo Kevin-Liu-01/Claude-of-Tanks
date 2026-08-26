@@ -39,3 +39,4 @@ runtime documents remain authoritative for behavior.
 - [0027 — Opening terrain creates only visible residency](0027-exact-opening-terrain-residency.md)
 - [0028 — Cold RTC recovery preserves room readiness](0028-cold-rtc-generation-recovery.md)
 - [0029 — Decorative garage rendering follows playable readiness](0029-decorative-garage-runtime-boundary.md)
+- [0030 — Custom camouflage authoring is an intent-loaded deep module](0030-custom-camouflage-studio-boundary.md)

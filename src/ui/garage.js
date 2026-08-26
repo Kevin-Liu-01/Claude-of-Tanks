@@ -12,14 +12,11 @@ import { flagIconCode } from './flagCodes.js';
 import { iconUrl } from './icons.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
+import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
-  CUSTOM_CAMO_ID, customCamoPatternId, normalizeCustomCamo,
+  CUSTOM_CAMO_ID, customCamoPatternId,
 } from '../vehicles/camoPolicy.js';
 import { createInfoButton } from './contextInfo.js';
-import { createModal } from './modal.js';
-import {
-  CUSTOM_CAMO_ASSETS, paintCustomCamoStrokes,
-} from '../vehicles/customCamoCanvas.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -1735,64 +1732,7 @@ export function createGarage(opts) {
   camosEl?.addEventListener('focusin', promoteCamoSwatches, { once: true });
   camosEl?.addEventListener('touchstart', promoteCamoSwatches, { once: true, passive: true });
   const camoCardById = new Map();
-  let customCamoEl = null;
-  let customCamoModal = null;
-  let customPreview = null;
-  let customDraw = null;
-  let customTone = 0;
-  let customBrush = 'round';
-  let customAsset = 'star';
-  let drawingStroke = -1;
-  let customDraft = normalizeCustomCamo();
-  const drawCustomTile = () => {
-    if (!customDraw) return;
-    const ctx = customDraw.getContext('2d');
-    const width = customDraw.width;
-    const height = customDraw.height;
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = customDraft.base;
-    ctx.fillRect(0, 0, width, height);
-    paintCustomCamoStrokes(ctx, customDraft.strokes, {
-      width, height, colorA: customDraft.colorA, colorB: customDraft.colorB, eraseColor: customDraft.base,
-    });
-  };
-  const repaintCustomPreview = () => {
-    drawCustomTile();
-    if (!customPreview || !selectedId) return;
-    const spec = specById.get(selectedId);
-    if (spec) paintCamoSwatch(customPreview, spec, customCamoPatternId(customDraft));
-  };
-  const syncCustomControls = () => {
-    if (!customCamoEl) return;
-    customCamoEl.querySelectorAll('[data-custom-tone]').forEach((button) => {
-      const on = Number(button.dataset.customTone) === customTone;
-      button.classList.toggle('on', on);
-      button.setAttribute('aria-pressed', String(on));
-    });
-    customCamoEl.querySelectorAll('[data-custom-brush-type]').forEach((button) => {
-      const on = button.dataset.customBrushType === customBrush;
-      button.classList.toggle('on', on);
-      button.setAttribute('aria-pressed', String(on));
-    });
-    customCamoEl.querySelectorAll('[data-custom-asset]').forEach((button) => {
-      const on = button.dataset.customAsset === customAsset && customBrush === 'stamp';
-      button.classList.toggle('on', on);
-      button.setAttribute('aria-pressed', String(on));
-    });
-    for (const key of ['base', 'colorA', 'colorB']) {
-      const input = customCamoEl.querySelector(`[data-custom-color="${key}"]`);
-      if (input) input.value = customDraft[key];
-    }
-    for (const [key, value] of [['repeat-x', customDraft.repeatX], ['repeat-y', customDraft.repeatY], ['rotation', customDraft.rotation]]) {
-      const input = customCamoEl.querySelector(`[data-custom-${key}]`);
-      const output = customCamoEl.querySelector(`[data-custom-${key}-value]`);
-      if (input) input.value = String(value);
-      if (output) output.value = key === 'rotation' ? `${value}°` : `${value}×`;
-    }
-    const mirror = customCamoEl.querySelector('[data-custom-mirror]');
-    if (mirror) mirror.checked = customDraft.mirror;
-    repaintCustomPreview();
-  };
+  let customCamoStudioAccess = null;
   if (camoOpts && camoOpts.patterns && camoOpts.patterns.length) {
     const title = document.createElement('div');
     title.className = 'ctitle';
@@ -1869,311 +1809,37 @@ export function createGarage(opts) {
       camoCardById.set(pid, card);
     }
     if (typeof camoOpts.getCustom === 'function' && typeof camoOpts.setCustom === 'function') {
-      customCamoModal = createModal({
-        title: 'Custom camouflage studio',
-        eyebrow: 'Local paint laboratory',
-        subtitle: 'Author one seamless tile, preview it on the selected vehicle, then save it to this device.',
-        size: 'wide',
-        onOpen: () => customOpenButton?.setAttribute('aria-expanded', 'true'),
-        onClose: () => customOpenButton?.setAttribute('aria-expanded', 'false'),
+      customCamoStudioAccess = createCustomCamoStudioAccess(async () => {
+        const { createCustomCamoStudio } = await import('./customCamoStudio.ts');
+        return createCustomCamoStudio({
+          button: customOpenButton,
+          camo: camoOpts,
+          selectedId: () => selectedId,
+          selectedSpec: () => (selectedId ? specById.get(selectedId) : null),
+          paintPreview: paintCamoSwatch,
+          emitClick: () => emit('ui:click', {}),
+          refreshSelection: refreshCamoSel,
+          requeueThumb: requeueTankThumbs,
+        });
       });
-      customCamoEl = document.createElement('div');
-      customCamoEl.className = 'cot-camo-lab';
-      const canvasColumn = document.createElement('section');
-      canvasColumn.className = 'cot-camo-lab__canvas';
-      const canvasHeading = document.createElement('div');
-      canvasHeading.className = 'cot-camo-lab__heading';
-      canvasHeading.innerHTML = `<span>Pattern tile</span><small>512 × 256 authoring surface</small>`;
-      const drawWrap = document.createElement('div');
-      drawWrap.className = 'cot-custom-draw-wrap';
-      customDraw = document.createElement('canvas');
-      customDraw.className = 'cot-custom-draw';
-      customDraw.width = 512;
-      customDraw.height = 256;
-      customDraw.tabIndex = 0;
-      customDraw.setAttribute('aria-label', 'Paint a repeating camouflage tile');
-      customDraw.setAttribute('role', 'application');
-      const drawLabel = document.createElement('span');
-      drawLabel.className = 'cot-custom-draw-label';
-      drawLabel.textContent = 'Drag to paint · tap to stamp';
-      drawWrap.append(customDraw, drawLabel);
-      const tools = document.createElement('div');
-      tools.className = 'cot-custom-tools';
-      const brushDefs = [
-        ['round', 'brush', 'Round'], ['flat', 'stamp', 'Flat'], ['spray', 'spray', 'Spray'],
-        ['pixel', 'pixels', 'Pixel'], ['eraser', 'eraser', 'Eraser'],
-      ];
-      for (const [id, icon, label] of brushDefs) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'cot-custom-tool';
-        button.dataset.customBrushType = id;
-        button.innerHTML = `${uiIconSVG(icon, 17)}<span>${label}</span>`;
-        button.addEventListener('click', () => {
-          customBrush = id;
-          syncCustomControls();
-        });
-        tools.appendChild(button);
-      }
-      for (const [tone, label] of [[0, 'Tone 1'], [1, 'Tone 2']]) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'cot-custom-tool';
-        button.dataset.customTone = String(tone);
-        button.innerHTML = `${uiIconSVG('camouflage', 17)}<span>${label}</span>`;
-        button.addEventListener('click', () => {
-          customTone = tone;
-          if (customBrush === 'eraser') customBrush = 'round';
-          syncCustomControls();
-        });
-        tools.appendChild(button);
-      }
-      const undoDraft = () => {
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: customDraft.strokes.slice(0, -1) });
-        syncCustomControls();
+      const preloadStudio = () => {
+        customCamoStudioAccess.preload().catch(() => { /* the click path retries */ });
       };
-      const undo = document.createElement('button');
-      undo.type = 'button';
-      undo.className = 'cot-custom-tool';
-      undo.innerHTML = `${uiIconSVG('undo', 17)}<span>Undo</span>`;
-      undo.addEventListener('click', undoDraft);
-      const clear = document.createElement('button');
-      clear.type = 'button';
-      clear.className = 'cot-custom-tool';
-      clear.innerHTML = `${uiIconSVG('trash', 17)}<span>Clear</span>`;
-      clear.addEventListener('click', () => {
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: [] });
-        syncCustomControls();
-      });
-      tools.append(undo, clear);
-      const assetPanel = document.createElement('div');
-      assetPanel.className = 'cot-camo-lab__panel';
-      const assetHeading = document.createElement('div');
-      assetHeading.className = 'cot-camo-lab__heading';
-      assetHeading.innerHTML = '<span>Stencil assets</span><small>Select, then place on the tile</small>';
-      const assets = document.createElement('div');
-      assets.className = 'cot-custom-assets';
-      const assetIcons = { star: 'star', chevron: 'chevronRight', leaf: 'camouflage', hex: 'pixels', cross: 'repair' };
-      for (const asset of CUSTOM_CAMO_ASSETS) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'cot-custom-tool';
-        button.dataset.customAsset = asset;
-        button.innerHTML = `${uiIconSVG(assetIcons[asset], 18)}<span>${asset}</span>`;
-        button.addEventListener('click', () => {
-          customAsset = asset;
-          customBrush = 'stamp';
-          syncCustomControls();
-        });
-        assets.appendChild(button);
-      }
-      assetPanel.append(assetHeading, assets);
-      canvasColumn.append(canvasHeading, tools, drawWrap, assetPanel);
-
-      const controlsColumn = document.createElement('aside');
-      controlsColumn.className = 'cot-camo-lab__controls';
-      const previewPanel = document.createElement('div');
-      previewPanel.className = 'cot-camo-lab__panel';
-      const previewHeading = document.createElement('div');
-      previewHeading.className = 'cot-camo-lab__heading';
-      previewHeading.innerHTML = '<span>Vehicle preview</span><small>Live material bake</small>';
-      const preview = document.createElement('div');
-      preview.className = 'cot-custom-preview';
-      customPreview = document.createElement('canvas');
-      const localOnly = document.createElement('span');
-      localOnly.className = 'cot-custom-local';
-      localOnly.textContent = 'Solo · this device only';
-      preview.append(customPreview, localOnly);
-      previewPanel.append(previewHeading, preview);
-
-      const colorPanel = document.createElement('div');
-      colorPanel.className = 'cot-camo-lab__panel';
-      const colorHeading = document.createElement('div');
-      colorHeading.className = 'cot-camo-lab__heading';
-      colorHeading.innerHTML = '<span>Palette</span><small>Base + two field tones</small>';
-      const colors = document.createElement('div');
-      colors.className = 'cot-custom-colors';
-      for (const [key, label] of [['base', 'Base'], ['colorA', 'Tone 1'], ['colorB', 'Tone 2']]) {
-        const wrap = document.createElement('label');
-        wrap.className = 'cot-custom-color';
-        const input = document.createElement('input');
-        input.type = 'color';
-        input.dataset.customColor = key;
-        input.setAttribute('aria-label', `${label} color`);
-        const text = document.createElement('span');
-        text.textContent = label;
-        input.addEventListener('input', () => {
-          customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', [key]: input.value });
-          syncCustomControls();
-        });
-        wrap.append(input, text);
-        colors.appendChild(wrap);
-      }
-      colorPanel.append(colorHeading, colors);
-
-      const repeatPanel = document.createElement('div');
-      repeatPanel.className = 'cot-camo-lab__panel cot-custom-repeat-grid';
-      const brush = document.createElement('label');
-      brush.className = 'cot-custom-repeat';
-      brush.innerHTML = '<span>Brush size</span><input type="range" min="2" max="40" step="1" value="8" data-custom-brush><output data-custom-brush-value>8</output>';
-      const brushInput = brush.querySelector('input');
-      const brushOutput = brush.querySelector('output');
-      brushInput.addEventListener('input', () => { brushOutput.value = brushInput.value; });
-      repeatPanel.appendChild(brush);
-      for (const [key, label] of [['repeat-x', 'Repeat X'], ['repeat-y', 'Repeat Y']]) {
-        const control = document.createElement('label');
-        control.className = 'cot-custom-repeat';
-        control.innerHTML = `<span>${label}</span><input type="range" min="1" max="8" step="1" data-custom-${key}><output data-custom-${key}-value></output>`;
-        const input = control.querySelector('input');
-        input.addEventListener('input', () => {
-          const field = key === 'repeat-x' ? 'repeatX' : 'repeatY';
-          customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', [field]: Number(input.value) });
-          syncCustomControls();
-        });
-        repeatPanel.appendChild(control);
-      }
-      const rotation = document.createElement('label');
-      rotation.className = 'cot-custom-repeat';
-      rotation.innerHTML = '<span>Tile rotation</span><input type="range" min="-180" max="180" step="15" data-custom-rotation><output data-custom-rotation-value></output>';
-      rotation.querySelector('input').addEventListener('input', (event) => {
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', rotation: Number(event.target.value) });
-        syncCustomControls();
-      });
-      const mirror = document.createElement('label');
-      mirror.className = 'cot-custom-check';
-      mirror.innerHTML = '<input type="checkbox" data-custom-mirror><span>Mirror alternate tiles to hide seams</span>';
-      mirror.querySelector('input').addEventListener('change', (event) => {
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', mirror: event.target.checked });
-        syncCustomControls();
-      });
-      repeatPanel.append(rotation, mirror);
-
-      const transferPanel = document.createElement('div');
-      transferPanel.className = 'cot-camo-lab__panel';
-      const transferHeading = document.createElement('div');
-      transferHeading.className = 'cot-camo-lab__heading';
-      transferHeading.innerHTML = '<span>Copy & paste</span><small>Share pattern recipes between local vehicles</small>';
-      const transfer = document.createElement('div');
-      transfer.className = 'cot-custom-transfer';
-      const status = document.createElement('div');
-      status.className = 'cot-custom-status';
-      status.setAttribute('role', 'status');
-      const setStatus = (message, kind = '') => {
-        status.textContent = message;
-        status.className = `cot-custom-status${kind ? ` ${kind}` : ''}`;
-      };
-      const copyPattern = document.createElement('button');
-      copyPattern.type = 'button';
-      copyPattern.className = 'cot-custom-tool';
-      copyPattern.innerHTML = `${uiIconSVG('copy', 17)}<span>Copy pattern</span>`;
-      copyPattern.addEventListener('click', async () => {
-        const recipe = JSON.stringify({ schemaVersion: 1, tool: 'claude-of-tanks-camo', pattern: customDraft }, null, 2);
+      customOpenButton.addEventListener('pointerenter', preloadStudio, { once: true });
+      customOpenButton.addEventListener('focus', preloadStudio, { once: true });
+      customOpenButton.addEventListener('click', async () => {
+        customOpenButton.setAttribute('aria-busy', 'true');
+        customOpenButton.removeAttribute('data-load-error');
         try {
-          if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(recipe);
-          else {
-            const textarea = document.createElement('textarea');
-            textarea.value = recipe; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); textarea.remove();
-          }
-          setStatus('Pattern recipe copied to the clipboard.', 'ok');
-        } catch (_) { setStatus('Clipboard access was blocked by the browser.', 'error'); }
-      });
-      const pastePattern = document.createElement('button');
-      pastePattern.type = 'button';
-      pastePattern.className = 'cot-custom-tool';
-      pastePattern.innerHTML = `${uiIconSVG('paste', 17)}<span>Paste pattern</span>`;
-      pastePattern.addEventListener('click', async () => {
-        try {
-          const raw = await navigator.clipboard?.readText?.();
-          if (!raw) throw new Error('Clipboard is empty');
-          const parsed = JSON.parse(raw);
-          const candidate = parsed?.pattern || parsed;
-          if (!candidate || typeof candidate !== 'object' || candidate.style !== 'drawn' || !Array.isArray(candidate.strokes)) {
-            throw new Error('Unsupported pattern');
-          }
-          const next = normalizeCustomCamo(candidate);
-          customDraft = next;
-          syncCustomControls();
-          setStatus('Pattern recipe loaded. Apply when the preview looks right.', 'ok');
-        } catch (_) { setStatus('Paste a copied Claude of Tanks camo recipe.', 'error'); }
-      });
-      transfer.append(copyPattern, pastePattern);
-      transferPanel.append(transferHeading, transfer, status);
-      const help = document.createElement('div');
-      help.className = 'cot-custom-help';
-      help.innerHTML = '<strong>Local-only paint:</strong> custom recipes stay on this device. Multiplayer automatically substitutes Factory camouflage, so authored patterns never add network or match-time texture work.';
-      controlsColumn.append(previewPanel, colorPanel, repeatPanel, transferPanel, help);
-      customCamoEl.append(canvasColumn, controlsColumn);
-      customCamoModal.body.appendChild(customCamoEl);
-
-      const cancel = document.createElement('button');
-      cancel.type = 'button';
-      cancel.className = 'cot-modal__button';
-      cancel.textContent = 'Close';
-      cancel.addEventListener('click', () => customCamoModal.close());
-      const apply = document.createElement('button');
-      apply.type = 'button';
-      apply.className = 'cot-modal__button cot-modal__button--primary';
-      apply.innerHTML = `${uiIconSVG('check', 17)}<span>Apply to solo vehicle</span>`;
-      apply.addEventListener('click', () => {
-        if (!selectedId) return;
-        emit('ui:click', {});
-        camoOpts.setCustom(selectedId, customDraft);
-        refreshCamoSel();
-        requeueTankThumbs(selectedId);
-        setStatus('Saved locally and applied to the selected vehicle.', 'ok');
-      });
-      customCamoModal.footer.append(cancel, apply);
-      const pointFromEvent = (event) => {
-        const rect = customDraw.getBoundingClientRect();
-        return [
-          Math.max(0, Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100))),
-          Math.max(0, Math.min(100, Math.round(((event.clientY - rect.top) / rect.height) * 100))),
-        ];
-      };
-      customDraw.addEventListener('pointerdown', (event) => {
-        event.preventDefault();
-        customDraw.setPointerCapture(event.pointerId);
-        const strokes = customDraft.strokes.map((stroke) => ({ ...stroke, points: stroke.points.map((point) => [...point]) }));
-        strokes.push({
-          color: customTone, size: Number(brushInput.value), brush: customBrush,
-          asset: customAsset, rotation: 0, points: [pointFromEvent(event)],
-        });
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes });
-        drawingStroke = customBrush === 'stamp' ? -1 : customDraft.strokes.length - 1;
-        drawCustomTile();
-        if (customBrush === 'stamp') repaintCustomPreview();
-      });
-      customDraw.addEventListener('pointermove', (event) => {
-        if (drawingStroke < 0 || !customDraw.hasPointerCapture(event.pointerId)) return;
-        const point = pointFromEvent(event);
-        const strokes = customDraft.strokes.map((stroke) => ({ ...stroke, points: stroke.points.map((entry) => [...entry]) }));
-        const activeStroke = strokes[drawingStroke];
-        const last = activeStroke.points.at(-1);
-        if (Math.hypot(point[0] - last[0], point[1] - last[1]) < 1.5) return;
-        activeStroke.points.push(point);
-        customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes });
-        drawCustomTile();
-      });
-      const finishDrawing = () => {
-        if (drawingStroke < 0) return;
-        drawingStroke = -1;
-        repaintCustomPreview();
-      };
-      customDraw.addEventListener('pointerup', finishDrawing);
-      customDraw.addEventListener('pointercancel', finishDrawing);
-      customCamoEl.addEventListener('keydown', (event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
-          event.preventDefault();
-          undoDraft();
+          await customCamoStudioAccess.open();
+          customOpenButton.removeAttribute('title');
+        } catch (error) {
+          customOpenButton.dataset.loadError = 'true';
+          customOpenButton.title = 'Custom studio could not load. Click to retry.';
+          console.warn('[garage] custom camouflage studio failed to load', error);
+        } finally {
+          customOpenButton.removeAttribute('aria-busy');
         }
-      });
-      customOpenButton.addEventListener('click', () => {
-        if (selectedId) {
-          customDraft = normalizeCustomCamo(camoOpts.getCustom(selectedId));
-          if (customDraft.style !== 'drawn') customDraft = normalizeCustomCamo({ ...customDraft, style: 'drawn', strokes: [] });
-          syncCustomControls();
-        }
-        customCamoModal.open({ trigger: customOpenButton });
       });
     }
   }
@@ -2349,10 +2015,7 @@ export function createGarage(opts) {
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const cur = camoOpts.get(selectedId);
-    if (customCamoEl) {
-      customDraft = normalizeCustomCamo(camoOpts.getCustom(selectedId));
-      syncCustomControls();
-    }
+    customCamoStudioAccess?.peek()?.syncSelected();
     for (const [pid, card] of camoCardById) {
       card.classList.toggle('sel', pid === cur);
       // camo r8: the grid scrolls now — keep the active pattern in view when
@@ -3144,7 +2807,7 @@ export function createGarage(opts) {
 
     /** Close the garage screen. */
     hide() {
-      customCamoModal?.close({ restoreFocus: false, immediate: true });
+      customCamoStudioAccess?.peek()?.close({ restoreFocus: false, immediate: true });
       closeServiceRecord({ restoreFocus: false });
       closeMobileNavigation();
       closeBattleMenu();

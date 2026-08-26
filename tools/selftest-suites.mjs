@@ -73,6 +73,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/productStats.selftest.mjs',
     'src/ui/garageDossier.selftest.mjs',
     'src/ui/camoSwatchAccess.selftest.mjs',
+    'src/ui/customCamoStudioAccess.selftest.mjs',
     'src/ui/imagePreload.selftest.mjs',
     'src/ui/responsiveLayout.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
