@@ -1773,7 +1773,8 @@ export function createGarage(opts) {
       customOpenButton = document.createElement('button');
       customOpenButton.type = 'button';
       customOpenButton.className = 'cot-custom-open';
-      customOpenButton.innerHTML = `${uiIconSVG('brush', 12)}<span>Create your own</span>`;
+      customOpenButton.innerHTML = `${uiIconSVG('brush', 12)}<span>Create</span>`;
+      customOpenButton.setAttribute('aria-label', 'Create custom camouflage');
       customOpenButton.setAttribute('aria-haspopup', 'dialog');
       customOpenButton.setAttribute('aria-expanded', 'false');
       titleActions.appendChild(customOpenButton);
