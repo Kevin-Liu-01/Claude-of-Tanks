@@ -114,6 +114,7 @@ import {
 import { createBus, createGameState, mulberry32 } from './game/stateCore.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
+import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
@@ -2188,10 +2189,10 @@ const forwardProgramWarm = createForwardProgramWarmOwner({
 // Renderer-lifetime warm state is declared before context recovery is armed:
 // a mobile device can lose and restore WebGL while the async boot pipeline is
 // still running, before the later warm-owner functions are reached.
-let combatOpeningWarmed = false;
-let combatPipelineWarmed = false;
-let _openingWarmGen = null;
-let _rareWarmGen = null;
+const combatWarm = createCombatWarmCoordinator({
+  createOpening: warmCombatOpeningPipelineSteps,
+  createRare: warmCombatRarePipelineSteps,
+});
 let combatDestructionEffectsWarmed = false;
 // WebGL context restoration is recoverable in place. Three rebuilds its GL
 // state first; we then step mobile down to the safe preset, trim optional
@@ -2211,7 +2212,7 @@ renderer.userData.contextRecovery = {
     combatDestructionEffectsWarmed = false;
     battleWarm.invalidate();
     forwardProgramWarm.invalidate();
-    resetCombatRoundWarmState();
+    combatWarm.reset();
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
       trimPedestalCache(1);
@@ -2920,7 +2921,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       // generators during the visible countdown; they remain fallbacks for
       // deterministic captures and direct debug entry that bypass this path.
       if (combatFxSubmission.staged) {
-        combatOpeningWarmed = true;
+        combatWarm.markOpeningReady();
         combatDestructionEffectsWarmed = true;
         if (typeof window !== 'undefined') {
           window.__COMBAT_OPENING_WARM = {
@@ -3804,7 +3805,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // roster, camouflage set and freshly constructed visual graph. Treating a
   // prior round as globally warm skipped the new wreck textures and hidden
   // LOD/shadow variants, moving their first touch into live combat.
-  resetCombatRoundWarmState();
+  combatWarm.reset();
   sbtStage('setupRoster');
   primeDeploymentTerrainTiles();
   sbtStage('terrainTiles');
@@ -3862,7 +3863,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // Debug/capture entries do not use the branded loader or its deployment
   // queue. Drain the same round receipt synchronously after the actual roster
   // exists; the player path owns it explicitly in startBattleLoading().
-  if (!opts.deferVisuals) warmCombatPipeline();
+  if (!opts.deferVisuals) combatWarm.drain();
   // The battle-open flyby is armed only once the player can actually SEE it:
   // the loading-screen path calls openBattle() when the screen clears.
   if (!opts.deferVisuals) openBattle();
@@ -5002,7 +5003,7 @@ async function ensureShotWorld(mapId, playerSpecId = 'm1a2') {
   // Always restage deterministically: a prior random-roster battle must not
   // leak into the screenshot contract (recipes reference tiger1/t90m/etc).
   setupBattle(game, playerSpecId, world);
-  resetCombatRoundWarmState();
+  combatWarm.reset();
   battleStaged = true;
   buildShellCards(game.player.spec);
   damagePanel.setTank(game.player.spec, game.player.visual);
@@ -5157,7 +5158,7 @@ window.__SHOTS = {
     })[name];
     // Capture recipes bypass the battle transition. Warm only after the exact
     // deterministic roster/map has replaced any prior live round.
-    warmCombatPipeline();
+    combatWarm.drain();
     // camo_spotting r2: garage shot keeps the neutral pedestal key; every
     // battlefield shot gets the authored map sun.
     setGarageSunTrim(name === 'garage');
@@ -5252,8 +5253,8 @@ await bootStage('post', async () => {
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
 // before FIRST COMBAT, not before readiness — they used to run synchronously
 // ahead of __GAME_READY and billed ~120 ms straight onto load-to-ready.
-// Deferred to post-ready idle; warmCombatPipeline() is idempotent and
-// startBattle() runs it synchronously as a first-combat fallback if no idle
+// Deferred to post-ready idle; combatWarm.drain() is idempotent and
+// battle entry runs it synchronously as a first-combat fallback if no idle
 // slice arrived first (immediate battle entry, backgrounded tab).
 //
 // - wreck warm: the first kill of a battle otherwise pays the burnt-material
@@ -5265,19 +5266,6 @@ await bootStage('post', async () => {
 // - light-set warm (r4): garage spots hidden changes the program hash (see
 //   setGarageSpots), so entering battle swaps programs instead of compiling
 //   ~70 of them inside the opening frames.
-function resetCombatRoundWarmState() {
-  if (_openingWarmGen) {
-    try { _openingWarmGen.return(); } catch (_) { /* stale round cleanup */ }
-  }
-  if (_rareWarmGen) {
-    try { _rareWarmGen.return(); } catch (_) { /* stale round cleanup */ }
-  }
-  _openingWarmGen = null;
-  _rareWarmGen = null;
-  combatOpeningWarmed = false;
-  combatPipelineWarmed = false;
-}
-
 function warmStudioPipelineChunked(onProgress = null) {
   return battleWarm.warmStudioEffects({
     fx,
@@ -5285,7 +5273,7 @@ function warmStudioPipelineChunked(onProgress = null) {
     renderer,
     camera,
     initializeForwardPrograms: forwardProgramWarm.initializeSteps,
-    isCombatPipelineWarmed: () => combatPipelineWarmed,
+    isCombatPipelineWarmed: combatWarm.isRareReady,
     onProgress,
     onTrace: (trace) => { window.__STUDIO_WARM = trace; },
   });
@@ -5295,66 +5283,12 @@ function warmStudioPipelineChunked(onProgress = null) {
 // moment the staged pump finished — exactly when the player starts touching
 // the garage. Generator core with per-step yields; the sync wrapper (battle
 // load / __SHOTS — the screen owns those frames) drains it whole, the
-// chunked wrapper gives the garage a painted frame between steps. A battle
-// entered mid-chunk simply drains the REMAINDER synchronously.
-function drainGenerator(g) {
-  let r = g.next();
-  while (!r.done) r = g.next();
-}
-function warmCombatPipeline() {
-  // Deterministic captures/debug entry need the exhaustive cache state before
-  // their next synchronous frame. Player entry uses the two chunked wrappers
-  // below so only opening-critical work owns the opaque transition.
-  if (!combatOpeningWarmed) {
-    const g = _openingWarmGen || warmCombatOpeningPipelineSteps();
-    _openingWarmGen = null;
-    drainGenerator(g);
-  }
-  if (!combatPipelineWarmed) {
-    const g = _rareWarmGen || warmCombatRarePipelineSteps();
-    _rareWarmGen = null;
-    drainGenerator(g);
-  }
-}
-async function warmGeneratorChunked(kind, factory, budgetMs, providedYielder) {
-  let g = kind === 'opening' ? _openingWarmGen : _rareWarmGen;
-  if (!g) {
-    g = factory();
-    if (kind === 'opening') _openingWarmGen = g;
-    else _rareWarmGen = g;
-  }
-  const yieldForFrameBudget = providedYielder || createFrameBudgetYielder(budgetMs);
-  for (;;) {
-    const live = kind === 'opening' ? _openingWarmGen : _rareWarmGen;
-    if (live !== g) return; // a synchronous capture/debug drain took over
-    const r = g.next();
-    if (r.done) {
-      if (kind === 'opening' && _openingWarmGen === g) _openingWarmGen = null;
-      if (kind === 'rare' && _rareWarmGen === g) _rareWarmGen = null;
-      return;
-    }
-    await yieldForFrameBudget();
-  }
-}
-function warmCombatOpeningPipelineChunked(budgetMs = 8, providedYielder = null) {
-  if (combatOpeningWarmed && !_openingWarmGen) return Promise.resolve();
-  return warmGeneratorChunked(
-    'opening', warmCombatOpeningPipelineSteps, budgetMs, providedYielder,
-  );
-}
-function warmCombatRarePipelineChunked(budgetMs = 6, providedYielder = null) {
-  if (combatPipelineWarmed && !_rareWarmGen) return Promise.resolve();
-  return warmGeneratorChunked(
-    'rare', warmCombatRarePipelineSteps, budgetMs, providedYielder,
-  );
-}
+// chunked owner gives the garage a painted frame between steps. A battle
+// entered mid-chunk drains the remaining generator synchronously.
 
 let deferredCombatWarmPromise = null;
 function cancelDeferredCombatWarm() {
-  if (_rareWarmGen) {
-    try { _rareWarmGen.return(); } catch (_) { /* cancellation cleanup only */ }
-    _rareWarmGen = null;
-  }
+  combatWarm.cancelRare();
   deferredCombatWarmPromise = null;
 }
 function scheduleDeferredCombatWarm(generation) {
@@ -5400,7 +5334,7 @@ function scheduleDeferredCombatWarm(generation) {
     // Bind the opening effect programs now, while controls and simulation are
     // still frozen; the one-second hold below guarantees first-shot fidelity.
     const openingFxStartedAt = performance.now();
-    await warmCombatOpeningPipelineChunked(6, guardedYield);
+    await combatWarm.warmOpeningChunked(6, guardedYield);
     trace.stages.combatOpeningWarm = Math.round(performance.now() - openingFxStartedAt);
     const navigationStartedAt = performance.now();
     trace.navigationJobs = [];
@@ -5437,7 +5371,7 @@ function scheduleDeferredCombatWarm(generation) {
       performance.now() - terrainLookaheadStartedAt,
     );
     trace.terrainLookaheadJobs = terrainLookaheadJobs;
-    await warmCombatRarePipelineChunked(6, guardedYield);
+    await combatWarm.warmRareChunked(6, guardedYield);
     if (typeof window !== 'undefined') {
       Object.assign(trace.stages, window.__COMBAT_RARE_WARM?.stages || {});
     }
@@ -5472,7 +5406,7 @@ function scheduleDeferredCombatWarm(generation) {
   return pending;
 }
 function* warmCombatOpeningPipelineSteps() {
-  if (combatOpeningWarmed) return;
+  if (combatWarm.isOpeningReady()) return;
   const warmTrace = { stages: {} };
   const warmStartedAt = performance.now();
   let warmMarkedAt = warmStartedAt;
@@ -5607,7 +5541,7 @@ function* warmCombatOpeningPipelineSteps() {
   }
   yield;
   markWarmStage('textures');
-  combatOpeningWarmed = true;
+  combatWarm.markOpeningReady();
   warmTrace.totalMs = Math.round(performance.now() - warmStartedAt);
   if (typeof window !== 'undefined') window.__COMBAT_OPENING_WARM = warmTrace;
 }
@@ -5682,8 +5616,8 @@ function* warmCombatDestructionEffectSteps() {
  * work leaves the opaque loader without leaking into live controls.
  */
 function* warmCombatRarePipelineSteps() {
-  if (combatPipelineWarmed) return;
-  if (!combatOpeningWarmed) yield* warmCombatOpeningPipelineSteps();
+  if (combatWarm.isRareReady()) return;
+  if (!combatWarm.isOpeningReady()) yield* warmCombatOpeningPipelineSteps();
   const rareTrace = { stages: {} };
   const startedAt = performance.now();
   let markedAt = startedAt;
@@ -5737,7 +5671,7 @@ function* warmCombatRarePipelineSteps() {
   rareTrace.hiddenDetail = {};
   yield* compileHiddenVariantsSteps(rareTrace.hiddenDetail);
   mark('hiddenVariants');
-  combatPipelineWarmed = true;
+  combatWarm.markRareReady();
   rareTrace.totalMs = Math.round(performance.now() - startedAt);
   if (typeof window !== 'undefined') {
     window.__COMBAT_RARE_WARM = rareTrace;

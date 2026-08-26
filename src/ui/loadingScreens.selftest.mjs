@@ -218,10 +218,10 @@ const deferredWarmBody = mainSource.slice(
 );
 const deferredEnemyAt = deferredWarmBody.indexOf('streamBattleVisuals(');
 const deferredOpeningAt = deferredWarmBody.indexOf(
-  'warmCombatOpeningPipelineChunked(6, guardedYield)',
+  'combatWarm.warmOpeningChunked(6, guardedYield)',
 );
 const deferredRareAt = deferredWarmBody.indexOf(
-  'warmCombatRarePipelineChunked(6, guardedYield)',
+  'combatWarm.warmRareChunked(6, guardedYield)',
 );
 assert.ok(deferredEnemyAt >= 0
   && deferredOpeningAt > deferredEnemyAt
@@ -232,7 +232,7 @@ const coveredFxBody = mainSource.slice(
   mainSource.indexOf('await primeSoloBattleRevealFrame()'),
 );
 assert.match(coveredFxBody,
-  /combatFxSubmission\.staged[\s\S]*combatOpeningWarmed = true;[\s\S]*combatDestructionEffectsWarmed = true;/,
+  /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*combatDestructionEffectsWarmed = true;/,
   'a successful covered FX bind must prevent duplicate countdown staging');
 const revealWarmBody = mainSource.slice(
   mainSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')"),

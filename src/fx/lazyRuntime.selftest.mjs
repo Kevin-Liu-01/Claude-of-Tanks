@@ -5,6 +5,9 @@ const post = await readFile(new URL('../engine/post.js', import.meta.url), 'utf8
 const state = await readFile(new URL('../game/state.js', import.meta.url), 'utf8');
 const particles = await readFile(new URL('./particles.js', import.meta.url), 'utf8');
 const battleWarm = await readFile(new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8');
+const combatWarmCoordinator = await readFile(
+  new URL('../game/combatWarmCoordinator.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -70,7 +73,7 @@ const coveredWarm = main.slice(
   main.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
   main.indexOf('await primeSoloBattleRevealFrame()'),
 );
-if (!/combatFxSubmission\.staged[\s\S]*combatOpeningWarmed = true;[\s\S]*combatDestructionEffectsWarmed = true;/.test(coveredWarm)) {
+if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*combatDestructionEffectsWarmed = true;/.test(coveredWarm)) {
   throw new Error('the exact covered FX bind must retire duplicate opening/destruction countdown work');
 }
 if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
@@ -81,8 +84,8 @@ const deferredWarm = main.slice(
   main.indexOf('function* warmCombatOpeningPipelineSteps()'),
 );
 const enemyAt = deferredWarm.indexOf('streamBattleVisuals(');
-const openingAt = deferredWarm.indexOf('warmCombatOpeningPipelineChunked(6, guardedYield)');
-const rareAt = deferredWarm.indexOf('warmCombatRarePipelineChunked(6, guardedYield)');
+const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');
+const rareAt = deferredWarm.indexOf('combatWarm.warmRareChunked(6, guardedYield)');
 if (!(enemyAt >= 0 && openingAt > enemyAt && rareAt > openingAt)) {
   throw new Error('hidden enemy receipts and fallback opening/rare work must retain countdown order');
 }
@@ -101,8 +104,8 @@ if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*battleWarmPending = false/.test(main)) {
   throw new Error('deferred warm must retain the one-second rollout hold and record completion');
 }
-if (!/setupBattle\(game, specId, world,[\s\S]{0,900}resetCombatRoundWarmState\(\)/.test(main)
-  || !/function resetCombatRoundWarmState\(\)[\s\S]{0,520}combatOpeningWarmed = false;[\s\S]{0,80}combatPipelineWarmed = false;/.test(main)) {
+if (!/setupBattle\(game, specId, world,[\s\S]{0,900}combatWarm\.reset\(\)/.test(main)
+  || !/const reset = \(\): void => \{[\s\S]{0,320}openingReady = false;[\s\S]{0,80}rareReady = false;/.test(combatWarmCoordinator)) {
   throw new Error('each new map/roster must receive a fresh opening and rare warm receipt');
 }
 if (!/deferredCombatWarmPromise === pending/.test(main)) {

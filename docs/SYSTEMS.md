@@ -50,7 +50,11 @@ The composition root delegates its order-sensitive browser lifecycles to
 strict TypeScript owners:
 
 - `src/engine/bootLifecycle.ts` owns stage attribution and paint yields;
+- `src/engine/programWarm.ts` owns gameplay-target shader submission, uniform
+  discovery, bounded linker breathing, and context-loss invalidation;
 - `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
+- `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
+  synchronous capture drains, round resets, and countdown cancellation;
 - `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
 - `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
 - `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
