@@ -6,7 +6,7 @@ import {
   buildPrivateMatchPlayers,
 } from './privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
-import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.js';
+import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
 import { MatchClientRuntime } from './matchRuntime.js';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.ts';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.js';
@@ -113,6 +113,7 @@ class FakeSignaling {
 {
   const signaling = new FakeSignaling();
   const states = [];
+  let iceRefreshes = 0;
   const session = new PrivateRoomClientSession({
     signaling,
     roomInfo: {
@@ -121,6 +122,17 @@ class FakeSignaling {
     },
     RTCPeerConnectionImpl: FakeClientPeerConnection,
     failedRebuildDelayMs: 0,
+    refreshIceConfiguration: async () => {
+      iceRefreshes += 1;
+      return {
+        iceServers: [{
+          urls: 'turn:relay.example.test', username: 'fresh', credential: 'short-lived',
+        }],
+        relayOnly: false,
+        relayAvailable: true,
+        expiresInSeconds: 3_600,
+      };
+    },
     onConnectionState: (state) => states.push(state),
   });
   const firstControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
@@ -141,6 +153,8 @@ class FakeSignaling {
   await Promise.resolve();
   await Promise.resolve();
   assert.equal(signaling.restartCalls, 1, 'replacement is announced through durable signaling');
+  assert.equal(iceRefreshes, 1,
+    'a replacement generation refreshes a missing or expired TURN lease');
   assert.equal(session.runtime, runtime, 'the match client and presentation identity remain stable');
   assert.equal(runtime.closed, false, 'the replacement channel revives the runtime');
   assert.ok(nextControl.sent.length >= 1, 'the revived runtime sends a fresh HELLO');

@@ -35,7 +35,8 @@ play without importing Three.js rendering or DOM state.
   edge; transport replacement remains below it.
 - `rankedServiceClient.js` owns service-scoped ladder identity and queue polling;
   `dedicatedClient.js` owns authenticated WebSocket handoff and reconnect.
-- `privateRoomSession.js` owns lobby WebRTC composition;
+- `privateRoomSession.ts` owns typed lobby WebRTC composition and
+  `rtcIceLease.ts` owns expiring TURN generations;
   `privateMatchHandoff.js` deterministically fills open team slots with bots
   and releases those same channels to match authority.
 - `browserBattleBridge.js` is presentation-only and must stay lazy from main.

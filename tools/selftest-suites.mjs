@@ -55,6 +55,7 @@ export const SELFTEST_SUITES = Object.freeze({
   ]),
   core: Object.freeze([
     'tools/public-repo-hygiene.selftest.mjs',
+    'tools/production-multiplayer-check.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
     'src/dev/driveTestController.selftest.mjs',
@@ -141,6 +142,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/browserInputRuntime.selftest.mjs',
     'src/net/predictionCorrection.selftest.mjs',
     'src/net/iceConfig.selftest.mjs',
+    'src/net/rtcIceLease.selftest.mjs',
     'src/net/connectionRecovery.selftest.mjs',
     'src/net/networkFramePump.selftest.mjs',
     'src/net/networkRoomCoordinator.selftest.mjs',

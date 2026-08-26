@@ -49,3 +49,4 @@ runtime documents remain authoritative for behavior.
 - [0037 — Network presentation shapes synchronized volleys](0037-network-volley-presentation-budget.md)
 - [0038 — RTC lobby-to-match ownership is explicit](0038-atomic-rtc-match-handoff.md)
 - [0039 — Battle-entry acquisition has one typed owner](0039-typed-battle-entry-acquisition.md)
+- [0040 — RTC sessions own expiring TURN credential generations](0040-expiring-turn-credential-ownership.md)

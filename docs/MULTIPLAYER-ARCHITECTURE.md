@@ -36,7 +36,7 @@ damage, spotting, and AI modules.
   presentation edge while the session rebuilds transport underneath it.
 - `src/net/localSession.js` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
-- `src/net/privateRoomSession.js` and `privateMatchHandoff.js` own WebRTC lobby
+- `src/net/privateRoomSession.ts` and `privateMatchHandoff.js` own WebRTC lobby
   composition, seeded bot fill, and channel handoff.
 - `server/dedicatedMatchServer.js` and `dedicatedMatchRegistry.js` own ranked
   WebSocket authority and reconnectable match lifetimes.
@@ -285,6 +285,12 @@ short-lived TURN credentials from same-origin `/api/ice`; the deployment keeps
 the long-lived provider token server-side. `VITE_ICE_CONFIG_URL` only overrides
 that endpoint for a separate credential service. LAN remains direct.
 
+The typed room-session owner treats those credentials as an expiring lease.
+Late host joins and replacement peer generations refresh near expiry, concurrent
+refreshes share one request, and a temporary STUN-only response cannot evict a
+still-valid TURN generation. This matters because room membership outlives the
+default TURN credential lifetime.
+
 Room signaling membership is durable for 24 hours and refreshed by active
 polling. An unclean RTC close reserves the canonical lobby seat, marks the
 authority entity disconnected with neutral input, and permits the same player
@@ -305,6 +311,7 @@ STUN-only fallback keeps room creation non-blocking, but cannot traverse every
 NAT. A production release must receive HTTP 200 from `/api/ice` and verify that
 its `iceServers` contains a `turn:` or `turns:` URL. HTTP 503 or a STUN-only
 response is a degraded deployment, even when `/api/signal` is healthy.
+`npm run net:prod:check` enforces both requirements without printing credentials.
 
 LAN setup is automatic. Public deployments use their same-origin secure
 signaling endpoint for rendezvous, while pages served from localhost or an

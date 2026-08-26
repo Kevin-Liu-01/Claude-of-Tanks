@@ -134,7 +134,7 @@ try {
   const room = await hostPage.evaluate(async ({ url, requestedTeamSize }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
       import('/src/net/signalingClient.js'),
-      import('/src/net/privateRoomSession.js'),
+      import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.createRoom({
@@ -176,7 +176,7 @@ try {
         };
         const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
           import('/src/net/signalingClient.js'),
-          import('/src/net/privateRoomSession.js'),
+          import('/src/net/privateRoomSession.ts'),
         ]);
         state.stage = 'joining_signaling_room';
         const signalingClient = new RoomSignalingClient({ url });

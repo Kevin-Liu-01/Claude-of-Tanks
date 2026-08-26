@@ -75,7 +75,7 @@ async function createStartingRoom(authorityPage, playerPage, signalUrl, config) 
   const room = await authorityPage.evaluate(async ({ url, config: pass }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
       import('/src/net/signalingClient.js'),
-      import('/src/net/privateRoomSession.js'),
+      import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.createRoom({
@@ -107,7 +107,7 @@ async function createStartingRoom(authorityPage, playerPage, signalUrl, config) 
   await playerPage.evaluate(async ({ url, roomCode, config: pass }) => {
     const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
       import('/src/net/signalingClient.js'),
-      import('/src/net/privateRoomSession.js'),
+      import('/src/net/privateRoomSession.ts'),
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.joinRoom({

@@ -84,6 +84,7 @@
     "test:net:seven:live": "node tools/multiplayer-live-combat.mjs",
     "test:net:seven:full": "node tools/multiplayer-live-combat.mjs --complete-match --match-timeout=90000",
     "test:net:entry": "node tools/multiplayer-guest-entry.mjs",
+    "net:prod:check": "node tools/production-multiplayer-check.mjs",
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

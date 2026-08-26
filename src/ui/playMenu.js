@@ -5,7 +5,7 @@
  * signaling/lobby commands. Canonical lobby and match state remain in src/net;
  * the menu renders that state and hands established sessions to main.js.
  */
-import { PrivateRoomClientSession, PrivateRoomHostSession } from '../net/privateRoomSession.js';
+import { PrivateRoomClientSession, PrivateRoomHostSession } from '../net/privateRoomSession.ts';
 import { RoomSignalingClient } from '../net/signalingClient.js';
 import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { serializeLobby } from '../net/lobby.js';
@@ -706,6 +706,8 @@ export function createPlayMenu({
       teamSize,
       iceServers: ice.iceServers,
       relayOnly: ice.relayOnly,
+      iceExpiresInSeconds: ice.expiresInSeconds,
+      refreshIceConfiguration: () => iceServers(mode),
       isVehicleAllowed,
       isCamoAllowed,
       isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
@@ -1016,6 +1018,8 @@ export function createPlayMenu({
             roomInfo,
             iceServers: ice.iceServers,
             relayOnly: ice.relayOnly,
+            iceExpiresInSeconds: ice.expiresInSeconds,
+            refreshIceConfiguration: () => iceServers(mode),
             onError: (error) => setStatus(error.message, true),
           });
           role = 'client';

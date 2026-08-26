@@ -70,6 +70,10 @@ Before certifying private rooms in production, check both service surfaces:
     curl -fsS https://cot.kevinliu.studio/api/signal
     curl -fsS https://cot.kevinliu.studio/api/ice
 
+Or run the release gate, which validates both responses and requires TURN:
+
+    npm run net:prod:check
+
 The signaling response must report a ready command store. The ICE response
 must be HTTP 200 and include at least one `turn:` or `turns:` URL. A 503 or a
 STUN-only list cannot reliably connect friends behind restrictive NATs.
