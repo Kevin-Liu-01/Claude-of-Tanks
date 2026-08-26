@@ -395,8 +395,11 @@
       const KEY = 'cot.bootRecovery.v1';
       const MAX_AUTO_RELOADS = 1;
       const WATCHDOG_MS = 45000;
+      const STAGE_STALL_MS = 20000;
+      const STABLE_READY_MS = 30000;
       let navigating = false;
       let recoveryScheduled = false;
+      let stageTimer = 0;
 
       function state() {
         try {
@@ -424,7 +427,7 @@
         if (navigating) return;
         const stage = document.getElementById('cot-boot-stage');
         let retry = document.getElementById('cot-boot-retry');
-        if (stage) stage.textContent = reason === 'timeout'
+        if (stage) stage.textContent = reason === 'timeout' || reason.startsWith('stall:')
           ? 'Loading is taking longer than expected'
           : 'A game file did not load';
         // bootScreen removes its DOM after entry. A post-boot network failure
@@ -455,6 +458,24 @@
         }
       }
 
+      function progress(stage = 'unknown') {
+        if (window.__GAME_READY || navigating) return;
+        window.__COT_BOOT_HEARTBEAT_AT = Date.now();
+        if (stageTimer) clearTimeout(stageTimer);
+        stageTimer = setTimeout(() => {
+          if (!window.__GAME_READY) recover(`stall:${stage}`);
+        }, STAGE_STALL_MS);
+      }
+
+      function isSameOriginGameCode(value) {
+        const text = String(value || '');
+        if (!text || /(?:^|\/)analytics(?:-[^/]*)?\.js(?:[?#:]|$)/i.test(text)) return false;
+        let origin = '';
+        try { origin = new URL(location.href).origin; } catch (_) { return false; }
+        const escaped = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`${escaped}/(?:assets|src)/[^\\s)]+\\.(?:m?js|ts)(?:[?#:]|$)`, 'i').test(text);
+      }
+
       addEventListener('vite:preloadError', () => {
         // Preventing this event tells Vite that the failed import was handled,
         // so it resolves the import as `undefined`. That manufactured the
@@ -465,20 +486,25 @@
         const node = event.target;
         const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
         const message = String(event.message || '');
-        if (moduleScript || /module script|dynamically imported module|module preload/i.test(message)) {
-          recover('module');
+        const bootRuntime = !window.__GAME_READY
+          && isSameOriginGameCode(`${event.filename || ''} ${event.error?.stack || ''}`);
+        if (moduleScript || bootRuntime || /module script|dynamically imported module|module preload/i.test(message)) {
+          recover(bootRuntime ? 'boot-runtime' : 'module');
         }
       }, true);
       addEventListener('unhandledrejection', (event) => {
         const message = String(event.reason && (event.reason.message || event.reason) || '');
-        if (/module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
-          recover('module-promise');
+        const bootRuntime = !window.__GAME_READY
+          && isSameOriginGameCode(`${message} ${event.reason?.stack || ''}`);
+        if (bootRuntime || /module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
+          recover(bootRuntime ? 'boot-promise' : 'module-promise');
         }
       });
 
       const health = setInterval(() => {
         if (!window.__GAME_READY) return;
         clearInterval(health);
+        if (stageTimer) clearTimeout(stageTimer);
         // Keep the short-lived receipt. Clearing it immediately at ready made
         // a persistently missing post-boot chunk eligible for another reload
         // before the user could request it again.
@@ -489,6 +515,10 @@
             history.replaceState(null, '', url.href);
           }
         } catch (_) { /* cosmetic */ }
+        setTimeout(() => {
+          if (!window.__GAME_READY || window.__CHUNK_RECOVERY_PENDING) return;
+          try { sessionStorage.removeItem(KEY); } catch (_) { /* storage may be blocked */ }
+        }, STABLE_READY_MS);
       }, 500);
       setTimeout(() => {
         if (window.__GAME_READY) return;
@@ -496,7 +526,7 @@
         else showRetry('timeout');
       }, WATCHDOG_MS);
 
-      window.__COT_BOOT_RECOVERY = { recover, showRetry, state };
+      window.__COT_BOOT_RECOVERY = { recover, showRetry, progress, state };
     })();
   </script>
 </head>

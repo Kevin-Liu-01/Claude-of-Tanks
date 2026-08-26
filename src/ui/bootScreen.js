@@ -191,6 +191,11 @@ export function createBootScreen({ mode = 'garage' } = {}) {
   const elGate = $('cot-boot-gate');
   mountGitHubStars(document);
 
+  const heartbeat = (stage) => {
+    try { window.__COT_BOOT_RECOVERY?.progress?.(stage); } catch (_) { /* recovery is optional */ }
+  };
+  heartbeat('boot-screen');
+
   const total = stages.reduce((a, s) => a + s[2], 0);
   // cumulative [start, end] fraction per stage key
   const span = new Map();
@@ -262,6 +267,7 @@ export function createBootScreen({ mode = 'garage' } = {}) {
   const api = {
     /** Enter a stage: bar jumps to its start, label + tick update. */
     begin(key) {
+      heartbeat(key);
       curKey = key;
       const sp = span.get(key);
       if (sp && sp[0] > target) target = sp[0];
@@ -270,6 +276,7 @@ export function createBootScreen({ mode = 'garage' } = {}) {
     },
     /** Leave a stage: bar advances to its end and its tick lights up. */
     end(key) {
+      heartbeat(`${key || curKey}:complete`);
       const sp = span.get(key || curKey);
       if (sp && sp[1] > target) target = sp[1];
       const i = stages.findIndex((x) => x[0] === (key || curKey));
@@ -278,6 +285,7 @@ export function createBootScreen({ mode = 'garage' } = {}) {
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
     sub(f) {
+      heartbeat(curKey || 'sub-progress');
       const sp = span.get(curKey);
       if (!sp) return;
       const v = sp[0] + (sp[1] - sp[0]) * Math.max(0, Math.min(1, f));
@@ -285,7 +293,10 @@ export function createBootScreen({ mode = 'garage' } = {}) {
       schedule();
     },
     /** Override the visible stage label without touching the bar. */
-    note(text) { if (elStage) elStage.textContent = text; },
+    note(text) {
+      heartbeat(curKey || 'note');
+      if (elStage) elStage.textContent = text;
+    },
 
     /**
      * Loading complete. Snaps the bar to 100%, arms the entry gate and

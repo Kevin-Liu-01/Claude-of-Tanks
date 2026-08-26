@@ -118,12 +118,57 @@ async function failedMainChunkRecovery() {
   return result;
 }
 
+async function failedMainEvaluationRecovery() {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 1 });
+  let injectedMainResponses = 0;
+  let navigations = 0;
+  const errors = [];
+  page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) navigations++; });
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setRequestInterception(true);
+  page.on('request', (request) => {
+    if (injectedMainResponses === 0 && /\/assets\/main-[^/]+\.js(?:\?|$)/.test(request.url())) {
+      injectedMainResponses++;
+      request.respond({
+        status: 200,
+        contentType: 'application/javascript',
+        body: `throw new Error('injected first-visit boot evaluation failure');\n//# sourceURL=${request.url()}`,
+      });
+    } else {
+      request.continue();
+    }
+  });
+  const url = new URL(baseUrl);
+  url.searchParams.set('nosplash', '1');
+  url.searchParams.set('nohero', '1');
+  url.searchParams.set('evaluationRecoveryProbe', '1');
+  const startedAt = Date.now();
+  await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
+  await page.waitForFunction('window.__GAME_READY === true', { timeout: timeoutMs });
+  const result = {
+    name: 'failed-main-evaluation-auto-recovery',
+    ...(await metrics(page, startedAt)),
+    injectedMainResponses,
+    navigations,
+    errors,
+  };
+  await context.close();
+  return result;
+}
+
 try {
-  const results = [await constrainedColdLoad(), await failedMainChunkRecovery()];
+  const results = [
+    await constrainedColdLoad(),
+    await failedMainChunkRecovery(),
+    await failedMainEvaluationRecovery(),
+  ];
   console.log(JSON.stringify({ ok: results.every((row) => row.ready), results }, null, 2));
   if (!results.every((row) => row.ready)) process.exitCode = 1;
   if (results[0].sourceChunks !== 0) process.exitCode = 2;
   if (results[1].failedMainRequests !== 1 || results[1].navigations < 2) process.exitCode = 3;
+  if (results[2].injectedMainResponses !== 1 || results[2].navigations < 2) process.exitCode = 4;
 } finally {
   await browser.close();
 }
