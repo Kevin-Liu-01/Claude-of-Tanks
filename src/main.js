@@ -88,6 +88,7 @@ import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createAimController } from './game/aimController.ts';
 import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
+import { createNetworkFramePump } from './net/networkFramePump.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -2584,7 +2585,7 @@ bus.on('ui:consumable', ({ slot }) => {
   if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
   if (!CONSUMABLE_RULES[slot]) return;
   if (networkMatch) {
-    networkInputRuntime?.queueConsumable(slot);
+    networkFramePump.queueConsumable(slot);
     bus.emit('ui:click', {});
     return;
   }
@@ -2645,7 +2646,7 @@ bus.on('ui:magazineReload', () => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
   if (networkMatch) {
-    networkInputRuntime?.queueAction('reloadMagazine');
+    networkFramePump.queueAction('reloadMagazine');
   } else {
     startMagazineReload(p.combat, p.spec);
   }
@@ -2656,7 +2657,7 @@ bus.on('ui:specialAction', () => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
   if (networkMatch) {
-    networkInputRuntime?.queueAction('specialAction');
+    networkFramePump.queueAction('specialAction');
   } else {
     const result = activateSpecialAction(p);
     bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
@@ -3091,8 +3092,6 @@ function prepareBattleRevealCamera() {
 let networkMatch = null;
 let networkBridge = null;
 let networkStatus = null;
-let networkInputRuntime = null;
-let latestNetworkSnapshot = null;
 let networkSpectator = false;
 let activeNetworkRoom = null;
 let unsubscribeNetworkRoom = null;
@@ -3100,11 +3099,20 @@ let unsubscribeNetworkRoomChat = null;
 let networkRoomMenuAttached = false;
 let networkPresentedRound = 0;
 let networkRematchPending = false;
-const pendingNetworkEvents = [];
 const pendingNetworkRoomChat = [];
 let networkRoomChat = null;
 let networkRoomChatPromise = null;
 const networkRecovery = createNetworkRecoveryOwner();
+const networkFramePump = createNetworkFramePump({
+  getMatch: () => networkMatch,
+  getBridge: () => networkBridge,
+  getStatus: () => networkStatus,
+  getPlayer: () => game.player,
+  isBattleActive: () => game.phase === 'battle',
+  shouldPresentDisconnect: () => game.phase === 'battle' && !game.result,
+  recovery: networkRecovery,
+  nextFrame,
+});
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -3298,76 +3306,13 @@ function clearActiveNetworkRoom() {
 
 bus.on('phase:change', syncRoomChatVisibility);
 
-function networkInputFrame() {
-  return networkInputRuntime?.frame(game.player) || null;
-}
-
-function acceptNetworkSnapshot(snapshot, dt) {
-  if (!snapshot) return;
-  latestNetworkSnapshot = snapshot;
-  if (networkBridge) {
-    networkMatch?.client?.drainEventsThrough?.(snapshot.tick, pendingNetworkEvents);
-    networkBridge.apply(snapshot, dt, pendingNetworkEvents);
-  }
-}
-
-function networkDiagnostics() {
-  const stats = networkMatch?.client?.getStats?.() || null;
-  if (!stats) return null;
-  return { ...stats, prediction: networkBridge?.getPredictionStats?.() || null };
-}
-
-function pumpNetworkMatch(dt, nowMs) {
-  if (!networkMatch) return;
-  if (networkMatch.client?.closed) {
-    if (networkRecovery.update(nowMs, true, game.phase === 'battle' && !game.result)) {
-      networkBridge?.endDisconnected?.();
-    }
-    return;
-  }
-  if (networkMatch.role === 'host') {
-    const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
-    const submittedActionBits = playerInput?.actionBits || 0;
-    if (submittedActionBits) networkInputRuntime?.acknowledge(submittedActionBits);
-    try {
-      const snapshot = networkMatch.advance(dt * 1000, playerInput);
-      if (playerInput && networkMatch.client?.lastSubmittedInputSeq != null) {
-        networkBridge?.recordInput(playerInput, dt, networkMatch.client.lastSubmittedInputSeq);
-      }
-      acceptNetworkSnapshot(snapshot, dt);
-    } catch (error) {
-      networkInputRuntime?.restore(submittedActionBits);
-      console.error('[network] host pump failed', error);
-    }
-  } else {
-    const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
-    networkInputRuntime?.advance(dt);
-    if (playerInput && networkMatch.client.connected && networkInputRuntime?.shouldSend(playerInput)) {
-      if (networkMatch.submitInput(playerInput)) {
-        const predictionElapsedS = networkInputRuntime.commit(playerInput);
-        networkBridge?.recordInput(
-          playerInput,
-          predictionElapsedS,
-          networkMatch.client.lastSubmittedInputSeq,
-        );
-      }
-    } else if (!playerInput) {
-      networkInputRuntime?.resetCadence();
-    }
-    acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
-  }
-  if (networkStatus?.diagnosticsVisible) networkStatus.update(networkDiagnostics());
-}
-
 function disposeNetworkPresentation() {
   networkRecovery.dispose();
+  networkFramePump.dispose();
   if (networkBridge) networkBridge.dispose();
   if (networkStatus) networkStatus.dispose();
   networkBridge = null;
   networkStatus = null;
-  latestNetworkSnapshot = null;
-  networkInputRuntime?.reset();
-  pendingNetworkEvents.length = 0;
   networkSpectator = false;
 }
 
@@ -3410,18 +3355,6 @@ function lobbyRosterRows(lobbyState, team, viewerId) {
       tier: tierNumeral(player.specId),
       isPlayer: player.id === viewerId,
     }));
-}
-
-async function waitForNetworkSnapshot(predicate, timeoutMs, label) {
-  const deadline = performance.now() + timeoutMs;
-  while (!latestNetworkSnapshot || !predicate(latestNetworkSnapshot)) {
-    if (!networkMatch || networkMatch.client?.closed) {
-      throw new Error('The match connection closed while loading.');
-    }
-    if (performance.now() >= deadline) throw new Error(label);
-    await nextFrame();
-  }
-  return latestNetworkSnapshot;
 }
 
 function resetNetworkBattleState() {
@@ -3513,8 +3446,7 @@ async function presentNetworkBattle({
     { createNetworkStatus },
     { createBrowserInputRuntime },
   ] = networkModules;
-  networkInputRuntime ||= createBrowserInputRuntime();
-  networkInputRuntime.reset();
+  networkFramePump.ensureInputRuntime(createBrowserInputRuntime);
   markLoadStage('modules');
   networkStatus = createNetworkStatus();
   battleLoad.progress(0.08, 'Loading battlefield');
@@ -3565,7 +3497,7 @@ async function presentNetworkBattle({
   battleLoad.progress(0.84, 'Synchronizing authority');
   let initial;
   try {
-    initial = await waitForNetworkSnapshot(
+    initial = await networkFramePump.waitForSnapshot(
       (snapshot) => spectator
         ? snapshot.entities.length > 0
         : snapshot.entities.some((entity) => entity.id === viewerId),
@@ -3609,7 +3541,7 @@ async function presentNetworkBattle({
   }, 1000);
   battleLoad.progress(0.96, 'Waiting for every commander');
   try {
-    await waitForNetworkSnapshot(
+    await networkFramePump.waitForSnapshot(
       (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
       20000,
       'Another player did not finish loading in time.',
@@ -3813,7 +3745,7 @@ async function beginNetworkRematch(lobbyState) {
     audio.loadingOn(true);
     battleLoad.progress(0.01, 'Preparing the next round');
     disposeNetworkPresentation();
-    latestNetworkSnapshot = null;
+    networkFramePump.clearRound();
     const { buildPrivateMatchPlayers, resolvePrivateMatchMap } =
       await preloadPrivateMatchHandoffModule();
     const mapId = resolvePrivateMatchMap(lobbyState);
@@ -4775,7 +4707,7 @@ function tick(nowMs) {
 
   // Network authority keeps pumping while the loading screen owns the page,
   // then consumes the same polled controls once the shared countdown opens.
-  pumpNetworkMatch(dtR, nowMs);
+  networkFramePump.pump(dtR, nowMs);
 
   // 2. fixed-step simulation (held while the settings panel is open)
   if (inBattle && !paused && !kcActive) {
@@ -7586,7 +7518,7 @@ const debugTelemetry = createDebugTelemetryOwner({
   post,
   game,
   getWorld: () => world,
-  getNetworkTelemetry: networkDiagnostics,
+  getNetworkTelemetry: () => networkFramePump.diagnostics(),
   resolvePresetName,
   getDeviceTier,
 });
@@ -7683,7 +7615,7 @@ window.__DEBUG = {
   // Development flight recorder, or production QA recorder with `?debug=1`.
   // Ordinary production sessions keep this null and never load its chunk.
   devTrace,
-  get network() { return networkDiagnostics(); },
+  get network() { return networkFramePump.diagnostics(); },
   get networkPresentation() { return networkBridge?.getPresentationEventStats?.() || null; },
   telemetry: collectDebugTelemetry,
   sampleShadowContribution,
@@ -7691,6 +7623,7 @@ window.__DEBUG = {
   // presentation events through the real bridge/queue without exposing the
   // authority runtime or mutating production networking APIs.
   injectNetworkEvents(events) {
+    const latestNetworkSnapshot = networkFramePump.latestSnapshot;
     if (!import.meta.env.DEV || !networkBridge || !latestNetworkSnapshot) return false;
     const batch = Array.isArray(events) ? events : [];
     const matchEnded = batch.find((event) => event?.type === 'match_ended');
