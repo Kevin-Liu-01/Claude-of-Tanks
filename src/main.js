@@ -83,7 +83,11 @@ import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { createGaragePedestalPreloader } from './game/garagePedestalPreloader.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
-import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
+import { createBattleVisualPool } from './game/battleVisualPool.js';
+import {
+  clearBattleAfterExit,
+  resetBattleTankForGarage,
+} from './game/garageTankLifecycle.js';
 // Engineering diagnostics stay out of ordinary production boot. A tiny typed
 // facade transfers the exact HUD/telemetry runtime only for explicit QA,
 // development, or automation sessions.
@@ -488,6 +492,10 @@ const devTrace = traceRequested
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
 const game = createGameState();
+const battleVisualPool = createBattleVisualPool({
+  capacity: getDeviceTier() === 'mobile' ? 0 : 4,
+});
+game._battleVisualPool = battleVisualPool;
 devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
 // The staged default battle (screenshot contract + first BATTLE press) needs a
@@ -3951,7 +3959,17 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
   clearCamoOverrides();
-  adoptBattlePlayerAsPedestal(selectedSpecId);
+  const adoptedBattleVisual = adoptBattlePlayerAsPedestal(selectedSpecId)
+    ? pedestalVisual
+    : null;
+  clearBattleAfterExit({
+    game,
+    preservedVisual: adoptedBattleVisual,
+    visualPool: battleVisualPool,
+  });
+  frameInfo.player = null;
+  frameInfo.tanks = game.tanks;
+  frameInfo.shells = game.shells;
   markGarageStage('worldAndHero');
   // perf-r2f: chunked — the hero repaints in the first slice (inside the
   // transition veil); parked roster entries follow one frame apart instead
@@ -4253,10 +4271,6 @@ function updateDustAndSync(dtFrame, presentationAlpha = 1) {
       || (_detailScreenPos.z >= -1.2 && _detailScreenPos.z <= 1.2
         && Math.abs(_detailScreenPos.x) <= 1.35
         && Math.abs(_detailScreenPos.y) <= 1.45);
-    // A returned player's already-resident battle visual can become the
-    // garage hero. Its simulation entity intentionally retains the last
-    // battlefield pose for the next deployment, so do not let the generic
-    // visual sync pull the displayed pedestal tank back out of the garage.
     if (game.phase !== 'garage' || visual !== pedestalVisual) {
       visual.syncFromState(state, dtFrame, viewDistM, presented, detailVisible);
     }
@@ -6530,6 +6544,7 @@ window.__DEBUG = {
   get pedestalCacheIds() { return [...pedestalCache.keys()]; },
   get worldCacheIds() { return [...worldCache.keys()]; },
   get residentLimits() { return { ...residentLimits }; },
+  get battleVisualPool() { return battleVisualPool.stats(); },
   get lastWorldRelease() {
     return worldBuildCoordinator.lastRelease
       ? { ...worldBuildCoordinator.lastRelease } : null;

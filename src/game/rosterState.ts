@@ -13,10 +13,13 @@ import { getDeviceTier } from '../engine/quality.js';
 import { mulberry32 } from './stateCore.ts';
 
 interface BattleVisual {
+  specId: string;
   root: Object3D;
   setGroundSampler?(sampler: unknown): void;
   syncFromState?(state: unknown): void;
   setVisible(visible: boolean): void;
+  prepareForSimulation?(): void;
+  resetForGaragePresentation?(): void;
   resetDestroyed?(): void;
   dispose(): void;
 }
@@ -58,6 +61,9 @@ export interface RosterGameState {
   battleCount: number;
   _engineCtx?: EngineContext;
   _groundSampler?: unknown;
+  _battleVisualPool?: {
+    take(specId: string): BattleVisual | null;
+  };
 }
 
 type RosterPredicate = (entity: RosterEntity) => boolean;
@@ -223,6 +229,25 @@ export function ensureTankVisual(game: RosterGameState, ent: RosterEntity) {
   const deviceTier = getDeviceTier();
   const mobileBot = !playerActor && deviceTier === 'mobile';
   const battleBot = !playerActor;
+  // A pooled graph has no entity, combat or damage owner. Bind it to this
+  // roster slot now; setupBattle will create fresh state before revealing or
+  // simulating it. Player actors continue to use the dedicated garage-lending
+  // path and its higher texture/detail contract.
+  if (battleBot) {
+    const pooled = game._battleVisualPool?.take(ent.specId) || null;
+    if (pooled) {
+      ent.visual = pooled;
+      engineCtx.scene.add(pooled.root);
+      if (game._groundSampler && pooled.setGroundSampler) {
+        pooled.setGroundSampler(game._groundSampler);
+      }
+      if (ent.state && pooled.syncFromState) {
+        pooled.syncFromState(ent.state);
+        pooled.setVisible(true);
+      }
+      return pooled;
+    }
+  }
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed,
     quality: textureQuality,
