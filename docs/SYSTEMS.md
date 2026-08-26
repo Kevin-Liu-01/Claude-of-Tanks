@@ -46,6 +46,20 @@ src/sim/authoritativeMatch.js behind the protocol and browser presentation
 bridge. These compositions share movement, aiming, ballistics, armor, damage,
 spotting, bot, destructible, and result rules.
 
+The composition root delegates its order-sensitive browser lifecycles to
+strict TypeScript owners:
+
+- `src/engine/bootLifecycle.ts` owns stage attribution and paint yields;
+- `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
+- `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
+- `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
+- `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
+- `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
+- `src/dev/debugTelemetry.ts` owns read-only diagnostics.
+
+`src/main.js` still declares dependency order and connects these ports, but it
+does not reimplement their state machines.
+
 ## Directory ownership
 
 | Directory | Responsibility | Must not own |
@@ -70,6 +84,11 @@ session boundary, src/game/rosterState.ts owns roster/visual planning, and
 src/game/soloBattleRuntime.ts demand-loads src/game/state.js, which remains the
 legacy solo battle owner.
 
+Migration is boundary-first, not extension-first. A JavaScript subsystem moves
+only when its coherent owner and focused behavioral test are clear. A rename
+to `.ts`, broad `any`, or `@ts-nocheck` does not count as migration. Refactor
+commits preserve rendering and gameplay; behavior changes land separately.
+
 ### Boot
 
 The boot path establishes the renderer, essential garage scene, selected
@@ -88,6 +107,10 @@ The boot contract is:
   loops when session storage is unavailable;
 - public presentation routes must not preload the game graph.
 - garage boot must not statically import the solo battle authority graph.
+
+`bootLifecycle.ts` is the only stage-state owner. `battleModuleAccess.ts`
+coalesces concurrent hover/click imports and clears only a failed request, so a
+transient chunk failure can retry without restarting healthy boot work.
 
 ### Garage
 
@@ -374,6 +397,13 @@ src/net/lobby.js is the canonical owner of team capacity, spectators,
 readiness, selections, map, format, host permissions, lock policy, and start
 policy. UI submits commands and renders room state; it does not mutate the
 canonical roster locally.
+
+`src/net/networkRoomCoordinator.ts` owns the browser lifetime around that
+canonical state: lobby intent, room subscriptions, garage reminder state,
+ready/start commands, selection locks, bounded chat buffering, menu attachment,
+and one rematch claim per new round. It receives UI and match ports and imports
+neither DOM nor Three.js. `src/net/networkFramePump.ts` separately owns the
+per-frame match path; room lifecycle never advances simulation itself.
 
 The lifecycle is:
 

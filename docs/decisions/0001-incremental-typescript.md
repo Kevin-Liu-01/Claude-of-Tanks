@@ -44,6 +44,13 @@ continue to consume the same transport seam.
 typed local-control boundary: wire input, authority snapshots, shared movement
 replay, collision callbacks, presentation correction, and telemetry now have
 explicit contracts without moving combat authority into the browser client.
+The browser integration sequence now continues through
+`src/engine/bootLifecycle.ts`, `src/game/battleModuleAccess.ts`,
+`src/net/connectionRecovery.ts`, `src/net/networkFramePump.ts`, and
+`src/net/networkRoomCoordinator.ts`. Together they remove stage bookkeeping,
+retryable battle imports, reconnect presentation, per-frame match order, and
+persistent-room state from the legacy composition root without changing the
+renderer or authority contracts.
 
 ## Consequences
 
@@ -64,6 +71,8 @@ explicit contracts without moving combat authority into the browser client.
     node src/game/soloBattleRuntime.selftest.mjs
     node src/game/soloBattleAccess.selftest.mjs
     node src/net/localTankPrediction.selftest.mjs
+    node src/net/networkFramePump.selftest.mjs
+    node src/net/networkRoomCoordinator.selftest.mjs
     node src/net/net.selftest.mjs
     npm test
     npm run build

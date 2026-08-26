@@ -12,11 +12,12 @@ fidelity, smooth low-end performance, and reproducible visual/test evidence.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`src/main.js` composes engine/world/vehicles/UI. `src/game/state.js` owns legacy
-battle integration; `src/sim/` owns gameplay math; `src/net/` is the new
-transport-independent multiplayer authority; `tools/` contains performance,
-fleet, screenshot, and release gates. Start with `docs/ARCHITECTURE.md` and the
-nearest directory `SKILL.md`.
+`src/main.js` is the shrinking legacy composition root; new lifecycle owners
+are strict TypeScript modules documented in `docs/SYSTEMS.md` and the ADRs.
+`src/game/state.js` owns legacy solo integration, `src/sim/` owns gameplay
+truth, `src/net/` owns transport-independent multiplayer, and `tools/` contains
+performance, fleet, screenshot, and release gates. Start with `docs/SYSTEMS.md`
+and the nearest directory `SKILL.md`.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

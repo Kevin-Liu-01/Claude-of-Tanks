@@ -28,6 +28,12 @@ damage, spotting, and AI modules.
   viewer-specific snapshots, catch-up limits, and connection state.
 - `src/net/browserBattleBridge.js` turns authority snapshots and events into
   first-party Three.js visuals without resolving gameplay locally.
+- `src/net/networkFramePump.ts` owns browser host/client frame order, input
+  cadence, reliable-event draining, snapshot waits, and diagnostics.
+- `src/net/networkRoomCoordinator.ts` owns lobby-to-room presentation,
+  selection locks, chat buffering, ready/start commands, and rematch claims.
+- `src/net/connectionRecovery.ts` owns the single reconnect/failure
+  presentation edge while the session rebuilds transport underneath it.
 - `src/net/localSession.js` provides loopback authority for protocol tests and
   tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.js` and `privateMatchHandoff.js` own WebRTC lobby
@@ -163,6 +169,9 @@ on the reliable channel. When authority publishes a result, the room returns
 from `playing` to `waiting`, keeps connected peers and the WebRTC channels,
 increments its next round at start, and clears every ready flag. The next match
 replaces the simulation runtime while preserving transport and room identity.
+The typed browser room coordinator subscribes once, releases state and chat
+subscriptions together, and admits only one presentation handoff for each new
+round number. It never mutates the authoritative lobby locally.
 
 Battle chat uses dedicated `ROOM_CHAT_COMMAND` and `ROOM_CHAT` control
 messages instead of bloating snapshots or room-state broadcasts. Authority

@@ -27,6 +27,12 @@ play without importing Three.js rendering or DOM state.
 - `localSession.js` proves solo play traverses the real host/client path.
 - `localTankPrediction.ts` owns typed local input replay and presentation-only
   correction; it never owns combat or match results.
+- `networkFramePump.ts` owns browser host/client frame order, snapshot/event
+  application, input cadence, snapshot barriers, and network diagnostics.
+- `networkRoomCoordinator.ts` owns browser room subscriptions, garage/menu/chat
+  presentation, selection commands, readiness, and rematch admission.
+- `connectionRecovery.ts` owns reconnect status and the single bounded failure
+  edge; transport replacement remains below it.
 - `rankedServiceClient.js` owns service-scoped ladder identity and queue polling;
   `dedicatedClient.js` owns authenticated WebSocket handoff and reconnect.
 - `privateRoomSession.js` owns lobby WebRTC composition;
