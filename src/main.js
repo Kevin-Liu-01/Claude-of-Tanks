@@ -354,7 +354,7 @@ const cancelBackgroundWorldBuildsExcept = worldBuildCoordinator.cancelBackground
 // Battle intent/click promotes or joins it without duplicate geometry, and a
 // player who spends a few seconds choosing a tank pays almost none of the
 // battlefield build under the loading veil.
-function queueWorldPrefetch(mapId, delay = 1200) {
+function queueWorldPrefetch(mapId, delay = 4000) {
   if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
   worldPrefetchTimer = 0;
   if (!bootComplete || !mapId) return;

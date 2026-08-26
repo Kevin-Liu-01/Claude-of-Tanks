@@ -22,7 +22,7 @@ also exercises deferred LOD creation. A final post-rebase sample measured
 17.86-18.73%. Each traversal admitted 234 deferred jobs, with a 5.4 ms worst
 individual job across the recorded runs.
 
-An exact selected map now prefetches only after eight quiet seconds and promotes
+An exact selected map now prefetches only after four quiet seconds and promotes
 the same in-progress build if battle starts. In a diagnostic mobile Verdant run,
 the world stage fell from 1,874 ms to 407 ms (-78.3%) and click-to-control fell
 from 7,585 ms to 5,668 ms (-25.3%). This transition comparison is useful but is

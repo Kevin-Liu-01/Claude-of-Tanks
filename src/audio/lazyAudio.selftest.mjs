@@ -31,7 +31,8 @@ const fakeContext = {
 };
 const tone = startFallbackLoadingTone(fakeContext);
 assert.ok(tone, 'a gesture-unlocked context creates the immediate loading bed');
-assert.equal(tone.nodes.length, 2, 'the fallback stays to two inexpensive oscillators');
+assert.equal(tone.nodes.length, 3,
+  'the fallback stays to three inexpensive oscillators including the entry cue');
 assert.ok(tone.nodes.every((node) => node.started), 'both fallback voices start immediately');
 
 const lazy = createLazyAudio();

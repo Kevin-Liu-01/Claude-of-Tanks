@@ -26,6 +26,7 @@ interface GaragePedestalPreloaderOptions {
   anisotropy: number;
   warn?: (message: string, error: unknown) => void;
   retainedIntentLimit?: number;
+  neighborDelayMs?: number;
 }
 
 export interface GaragePedestalPreloader {
@@ -57,6 +58,7 @@ export function createGaragePedestalPreloader({
   anisotropy,
   warn = (message, error) => console.warn(message, error),
   retainedIntentLimit = 4,
+  neighborDelayMs = 1800,
 }: GaragePedestalPreloaderOptions): GaragePedestalPreloader {
   const required = [getPhase, isBootComplete, getSelectedId, getNeighborIds,
     hasCachedVisual, ensureTankBuilder, ensureTankBuilders, getSpec,
@@ -79,6 +81,9 @@ export function createGaragePedestalPreloader({
       .filter((id) => id !== selectedId && !hasCachedVisual(id));
     const token = ++generation;
 
+    // Pointer/focus intent already warms the exact card. Speculative neighbors
+    // wait for a genuine quiet window so family evaluation and canvas paint
+    // cannot land immediately after a cold hero reveal.
     scheduleDelay(() => {
       void (async () => {
         if (!active(token)) return;
@@ -118,7 +123,7 @@ export function createGaragePedestalPreloader({
           lease.release();
         }
       })();
-    }, 500);
+    }, neighborDelayMs);
   };
 
   const preloadIntent = (specId: string): Promise<unknown> => {

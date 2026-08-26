@@ -47,8 +47,23 @@ export function startFallbackLoadingTone(context) {
   machineryGain.gain.value = 0.14;
   rumble.connect(rumbleGain); rumbleGain.connect(gain);
   machinery.connect(machineryGain); machineryGain.connect(gain);
-  rumble.start(now); machinery.start(now);
-  return { context, gain, nodes: [rumble, machinery] };
+
+  // An unmistakable one-shot mechanical engage cue confirms the Battle click
+  // even when the full mixer chunk has not arrived yet. Oscillator-only means
+  // it starts in the gesture-created context with no fetch/decode dependency.
+  const engage = context.createOscillator();
+  engage.type = 'sawtooth';
+  engage.frequency.setValueAtTime?.(148, now);
+  engage.frequency.exponentialRampToValueAtTime?.(62, now + 0.24);
+  const engageGain = context.createGain();
+  engageGain.gain.setValueAtTime(0.0001, now);
+  engageGain.gain.exponentialRampToValueAtTime(0.19, now + 0.008);
+  engageGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+  engage.connect(engageGain); engageGain.connect(gain);
+
+  rumble.start(now); machinery.start(now); engage.start(now);
+  engage.stop(now + 0.36);
+  return { context, gain, nodes: [rumble, machinery, engage] };
 }
 
 export function createLazyAudio({

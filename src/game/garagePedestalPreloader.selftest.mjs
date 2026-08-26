@@ -43,7 +43,7 @@ assert.equal(scheduled.length, 0, 'pre-ready sessions must not warm neighbors');
 bootComplete = true;
 preloader.queueNeighbors();
 assert.equal(scheduled.length, 1);
-assert.equal(scheduled[0].delayMs, 500);
+assert.equal(scheduled[0].delayMs, 1800);
 scheduled.shift().callback();
 await flush();
 assert.deepEqual(familyLoads, [['b', 'c']], 'selected and cached heroes must be filtered');

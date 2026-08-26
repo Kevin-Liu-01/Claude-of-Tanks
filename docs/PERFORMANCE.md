@@ -352,6 +352,18 @@ The production mobile battle probe crossed the new boundary successfully at
 was correctly refused because the host was contended, so those figures are
 diagnostic rather than release certification.
 
+### 2026-08-26 garage quiet-window correction
+
+The 4× CPU mobile switch profile showed that a cold modern vehicle converged
+in 1.32 seconds, but the speculative world/neighbor queue immediately produced
+idle-frame gaps up to 1.03 seconds. Exact hover/focus intent remains immediate;
+passive neighbor work now waits 1.8 seconds and passive world construction
+waits four seconds after the latest garage activity. On the same contended
+host, the repeat profile reported a 73.5 ms maximum idle-prefetch gap and zero
+idle freezes. The cold Merkava switch itself remained under its 2.5-second
+budget at 1.53 seconds. These measurements diagnose scheduling behavior rather
+than certify absolute device latency.
+
 ### 2026-08-26 production-path warm correction
 
 The first-battle trace showed that shader submission alone was insufficient:

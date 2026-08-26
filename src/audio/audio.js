@@ -2289,6 +2289,18 @@ export function createAudio({ context: initialContext = null } = {}) {
     pulse.connect(pulseGain); pulseGain.connect(out.gain);
 
     rumble.start(now); machinery.start(now); air.start(now); pulse.start(now);
+
+    // Immediate deployment latch: a short pitch-falling metal/mechanical hit
+    // makes Battle entry audible before the continuous bed settles. It is a
+    // one-shot on the existing graph and adds no timer, sample decode, fetch,
+    // or per-frame work to the loading path.
+    const engage = spawnVoice(now + 0.01, 0.48, 0.32, 0, musicBus);
+    const engageTone = osrc(engage, 'sawtooth', 152, now + 0.01, 0.34);
+    engageTone.frequency.exponentialRampToValueAtTime(58, now + 0.28);
+    wire(engage, engageTone, flt('lowpass', 720, 0.8),
+      env(now + 0.01, 0.002, 0.5, 0.26));
+    wire(engage, nsrc(engage, now + 0.01, 0.045),
+      flt('bandpass', 1180, 0.72), env(now + 0.01, 0.001, 0.22, 0.035));
     loadingRig = {
       kill() {
         const t = ctx.currentTime;
