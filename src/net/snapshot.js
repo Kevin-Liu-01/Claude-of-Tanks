@@ -8,6 +8,9 @@ const REST_HORIZONTAL_DEADZONE_M = 0.025;
 const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_YAW_DEADZONE_RAD = 0.00035;
 const REST_TILT_DEADZONE_RAD = 0.0035;
+const DELAY_ATTACK_FRACTION = 0.5;
+const DELAY_RELEASE_FRACTION = 0.1;
+const MAX_SAMPLE_DELTA_MS = 250;
 const REST_POSE = Symbol('networkRestPose');
 const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
@@ -458,6 +461,8 @@ export class SnapshotBuffer {
     this.arrivalJitterMs = 0;
     this.lastArrivalMs = null;
     this.lastServerTimeMs = null;
+    this.lastSampleServerTimeMs = null;
+    this.lastRenderTimeMs = null;
     this.acceptedSnapshots = 0;
     this.rejectedSnapshots = 0;
     this.sampleCount = 0;
@@ -515,11 +520,6 @@ export class SnapshotBuffer {
         this.maxInterpolationDelayMs,
         this.baseInterpolationDelayMs + this.arrivalJitterMs * 2,
       );
-      const delayAlpha = this.targetInterpolationDelayMs > this.interpolationDelayMs
-        ? 0.5
-        : 0.03;
-      this.interpolationDelayMs +=
-        (this.targetInterpolationDelayMs - this.interpolationDelayMs) * delayAlpha;
     }
     this.lastArrivalMs = receivedAtMs;
     this.lastServerTimeMs = serverTimeMs;
@@ -533,6 +533,8 @@ export class SnapshotBuffer {
     this.arrivalJitterMs = 0;
     this.lastArrivalMs = null;
     this.lastServerTimeMs = null;
+    this.lastSampleServerTimeMs = null;
+    this.lastRenderTimeMs = null;
     this.sampleEntities.clear();
     this.olderById.clear();
   }
@@ -562,7 +564,36 @@ export class SnapshotBuffer {
   sample(localServerTimeMs) {
     if (!this.snapshots.length) return null;
     this.sampleCount++;
-    const renderTime = localServerTimeMs - this.interpolationDelayMs;
+    if (this.adaptiveDelay) {
+      if (this.lastSampleServerTimeMs != null) {
+        const elapsedMs = Math.max(0, Math.min(
+          MAX_SAMPLE_DELTA_MS,
+          localServerTimeMs - this.lastSampleServerTimeMs,
+        ));
+        const delayErrorMs = this.targetInterpolationDelayMs - this.interpolationDelayMs;
+        if (delayErrorMs > 0) {
+          // Grow the safety buffer by slowing presentation, never by seeking
+          // backward through already-rendered authority poses.
+          this.interpolationDelayMs += Math.min(
+            delayErrorMs,
+            elapsedMs * DELAY_ATTACK_FRACTION,
+          );
+        } else if (delayErrorMs < 0) {
+          // Recover latency more gently than it is acquired. The render clock
+          // runs at at most 1.1x until it reaches the new target.
+          this.interpolationDelayMs += Math.max(
+            delayErrorMs,
+            -elapsedMs * DELAY_RELEASE_FRACTION,
+          );
+        }
+      }
+      this.lastSampleServerTimeMs = localServerTimeMs;
+    }
+    let renderTime = localServerTimeMs - this.interpolationDelayMs;
+    if (this.lastRenderTimeMs != null && renderTime < this.lastRenderTimeMs) {
+      renderTime = this.lastRenderTimeMs;
+    }
+    this.lastRenderTimeMs = renderTime;
     let older = null;
     let newer = null;
     for (const snapshot of this.snapshots) {

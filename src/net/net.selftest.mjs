@@ -1004,6 +1004,7 @@ for (const [tickValue, serverTimeMs, receivedAtMs] of [
     entities: [entity('adaptive', 't90m', 'bravo', tickValue)],
     viewerId: 'adaptive',
   }), receivedAtMs);
+  adaptive.sample(receivedAtMs - 100);
 }
 const burstDelay = adaptive.getStats().interpolationDelayMs;
 assert.ok(burstDelay > 80 && burstDelay <= 180,
@@ -1017,12 +1018,53 @@ for (let index = 5; index < 125; index++) {
     entities: [entity('adaptive', 't90m', 'bravo', index)],
     viewerId: 'adaptive',
   }), stableReceiveAtMs);
+  adaptive.sample(stableReceiveAtMs - 100);
 }
 const stableStats = adaptive.getStats();
 assert.ok(stableStats.interpolationDelayMs < burstDelay,
   'adaptive delay releases gradually after sustained stable delivery');
 assert.ok(stableStats.arrivalJitterMs < 1,
   `stable delivery converges measured jitter: ${stableStats.arrivalJitterMs}`);
+
+// Raising an adaptive delay used to subtract tens of milliseconds from the
+// current render timestamp on packet arrival, visibly driving remote tanks
+// backward. The presentation clock may slow to build a safety margin, but it
+// must never reverse or overshoot the configured delay ceiling.
+{
+  const monotonic = new SnapshotBuffer({
+    interpolationDelayMs: 80,
+    maxInterpolationDelayMs: 180,
+    maxExtrapolationMs: 250,
+  });
+  const deliveries = [
+    [100, 0], [150, 50], [260, 100], [270, 150], [320, 200], [370, 250],
+  ];
+  let deliveryIndex = 0;
+  let priorX = -Infinity;
+  let maximumDelayMs = 0;
+  for (let localMs = 100; localMs <= 520; localMs += 10) {
+    while (deliveryIndex < deliveries.length && deliveries[deliveryIndex][0] <= localMs) {
+      const [receivedAtMs, serverTimeMs] = deliveries[deliveryIndex++];
+      monotonic.push(captureWorldSnapshot({
+        tick: serverTimeMs / 50 * 3,
+        serverTimeMs,
+        entities: [entity('steady-remote', 't90m', 'bravo', serverTimeMs / 100, {
+          yaw: Math.PI / 2,
+          speed: 10,
+        })],
+        viewerId: 'observer',
+      }), receivedAtMs);
+    }
+    const frame = monotonic.sample(localMs - 100);
+    const x = frame.entities[0].x;
+    assert.ok(x + 1e-6 >= priorX,
+      `adaptive jitter buffering never rewinds a moving remote at ${localMs} ms`);
+    priorX = x;
+    maximumDelayMs = Math.max(maximumDelayMs, monotonic.getStats().interpolationDelayMs);
+  }
+  assert.ok(maximumDelayMs > 80 && maximumDelayMs <= 180,
+    `adaptive safety margin grows without exceeding its cap (${maximumDelayMs})`);
+}
 
 // Host/client modules share the same transport and enforce visibility.
 function createTestSimulation() {
