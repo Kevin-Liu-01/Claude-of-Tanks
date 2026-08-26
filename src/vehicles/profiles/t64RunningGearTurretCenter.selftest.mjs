@@ -75,8 +75,8 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: receipt preserves the authored course height`);
     near(tallTrack.installedEnvelopeHeightM, expected.installedEnvelopeHeightM,
       `${id}: installed track envelope is 160 mm taller`);
-    near(tallTrack.hullRideHeightIncreaseM, 0.16,
-      `${id}: hull receives the matching ride-height increase`);
+    near(tallTrack.hullRideHeightIncreaseM, 0.36,
+      `${id}: hull receives the additional 360 mm ride-height increase`);
     assert.ok(tallTrack.liftedDirectHullChildren >= 2,
       `${id}: direct hull fittings follow the raised hull body`);
     assert.deepEqual(uniqueInstanceYs(roadWheels), [expected.wheelY],
@@ -103,7 +103,7 @@ for (const [id, expected] of Object.entries(CASES)) {
 
     assert.ok(turretRig && gunRig?.parent === turretRig,
       `${id}: gun and turret remain one articulated assembly`);
-    near(turretRig.position.y, 1.46,
+    near(turretRig.position.y, 1.66,
       `${id}: turret and gun assembly rises with the hull`);
     near(turretRig.position.z, expected.turretZ,
       `${id}: complete turret rig moves 200 mm forward`);
@@ -114,6 +114,20 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.ok(armorCenterZ >= expected.armorCenterZ[0]
       && armorCenterZ <= expected.armorCenterZ[1],
     `${id}: turret casting centers on the hull deck (${armorCenterZ.toFixed(3)} m)`);
+
+    if (id === 'ua_t64bv') {
+      const era = turretRig.userData.uaT64DonbasERAReceipt;
+      assert.ok(era?.carrierDerivedTransforms,
+        `${id}: Donbas ERA transforms derive from the cast-turret surface`);
+      assert.equal(era.totalCassettes, 22,
+        `${id}: complete Donbas turret K-1 field remains present`);
+      assert.equal(era.maxSupportGapM, 0,
+        `${id}: no Donbas ERA cassette floats above its carrier`);
+      assert.ok(era.seats.every((seat) => seat.contactEmbedM >= 0.04),
+        `${id}: every Donbas ERA cassette has a structural attachment embed`);
+      assert.ok(turretRig.getObjectByName('turretExternalArmor')?.isMesh,
+        `${id}: Donbas ERA is external armor rather than buried track geometry`);
+    }
   } finally {
     tank.dispose();
   }

@@ -61,6 +61,7 @@ function kTile(P, owner, x, y, z, w, h, d, rotation = null, lid = true) {
 // `axis` is the cassette-local carrier normal; `contactSide` points inward.
 function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   axis = 'y', contactSide = -1, embed = 0.04, lid = true, painted = false,
+  external = false,
 } = {}) {
   const { box } = KIT;
   const bucket = painted ? owner : (owner === 'hull' ? 'hullTrack' : 'turretTrack');
@@ -70,8 +71,9 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   const shift = { x: 0, y: 0, z: 0 };
   dims[axis] += embed;
   shift[axis] = contactSide * embed * 0.5;
-  P.add(bucket, KIT.xform(box(dims.x, dims.y, dims.z), shift.x, shift.y, shift.z),
-    x, y, z, r[0], r[1], r[2]);
+  const body = KIT.xform(box(dims.x, dims.y, dims.z), shift.x, shift.y, shift.z);
+  if (external) P.addExternalArmor(owner, body, x, y, z, r[0], r[1], r[2]);
+  else P.add(bucket, body, x, y, z, r[0], r[1], r[2]);
   if (!lid) return;
 
   const outward = -contactSide;
@@ -88,7 +90,7 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
 // local +Z follows the requested course direction, and the body penetrates
 // the carrier by `embed` so there can be no daylight under the module.
 function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
-  embed = 0.012, painted = true, lid = true,
+  embed = 0.012, painted = true, lid = true, external = false,
 } = {}) {
   const n = new THREE.Vector3(...normal).normalize();
   const course = new THREE.Vector3(...courseAxis);
@@ -102,8 +104,37 @@ function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
   seatedCassette(P, owner, center.x, center.y, center.z, w, h, d,
     [rotation.x, rotation.y, rotation.z], {
       axis: 'y', contactSide: -1, embed, painted, lid,
+      external,
     });
   return { support, normal: n, center, rotation, embed };
+}
+
+// Carrier frame for a cassette on a measured revolved cast-dome profile.
+// The support point is projected to the actual elliptical ring at `y`, and
+// its normal/course tangents come from that same profile segment. This keeps
+// a bank outside the casting while allowing a deliberate attachment embed.
+function sampleDomeFace(rings, sz, y, xHint, zHint, cx = 0, cz = 0) {
+  let segment = 1;
+  while (segment < rings.length - 1 && y > rings[segment][1]) segment += 1;
+  const [r0, y0] = rings[segment - 1];
+  const [r1, y1] = rings[segment];
+  const t = THREE.MathUtils.clamp((y - y0) / Math.max(1e-6, y1 - y0), 0, 1);
+  const radius = THREE.MathUtils.lerp(r0, r1, t);
+  const drdy = (r1 - r0) / Math.max(1e-6, y1 - y0);
+  const hintX = xHint - cx;
+  const hintZ = (zHint - cz) / sz;
+  const hintRadius = Math.max(1e-6, Math.hypot(hintX, hintZ));
+  const ux = hintX / hintRadius;
+  const uz = hintZ / hintRadius;
+  const point = new THREE.Vector3(
+    cx + radius * ux,
+    y,
+    cz + radius * sz * uz,
+  );
+  const vertical = new THREE.Vector3(drdy * ux, 1, drdy * sz * uz).normalize();
+  const around = new THREE.Vector3(-radius * uz, 0, radius * sz * ux).normalize();
+  const normal = new THREE.Vector3().crossVectors(vertical, around).normalize();
+  return { point, normal, vertical };
 }
 
 // Bilinear face probe for the welded wing and shoulder quads. Besides the
@@ -381,6 +412,7 @@ function buildUAT64BV(P) {
   // axles grounded. The body receives the matching ride-height increase at
   // the end of assembly, producing the requested tall \____/ silhouette.
   const trackHeightIncreaseM = 0.16;
+  const hullRideHeightIncreaseM = 0.36;
   const turretForwardShiftM = 0.20;
 
   // Hull loft to the print lines (deck plateau 1.315 T-64 datum; glacis
@@ -595,7 +627,33 @@ function buildUAT64BV(P) {
 
   // Donbas K-1 horseshoe from the print's 55-cassette census: two swept
   // rows per cheek meeting in a V under the gun, one roof-arc row, and
-  // three flank returns each side — denser than the base t64bv1 chevron.
+  // three flank returns each side. Every visible cassette is projected to
+  // the measured dome and authored as external armor; the previous generic
+  // track-steel boxes sat as much as 230 mm inside the cast turret.
+  const donbasEraReceipt = {
+    family: 'ua-t64bv-donbas-k1-surface-r1',
+    carrierDerivedTransforms: true,
+    contactEmbedM: 0.04,
+    maxSupportGapM: 0,
+    totalCassettes: 0,
+    seats: [],
+  };
+  const addDonbasDomeCassette = (x, y, z, width, thickness, courseLength) => {
+    const face = sampleDomeFace(rings, 1.08, y, x, z);
+    const cassette = faceSeatedCassette(P, 'turret', face.point.toArray(),
+      face.normal.toArray(), face.vertical.toArray(), width, thickness, courseLength, {
+        embed: donbasEraReceipt.contactEmbedM,
+        painted: true,
+        external: true,
+      });
+    donbasEraReceipt.totalCassettes += 1;
+    donbasEraReceipt.seats.push(Object.freeze({
+      supportLocal: Object.freeze(cassette.support.toArray()),
+      centerLocal: Object.freeze(cassette.center.toArray()),
+      normalLocal: Object.freeze(cassette.normal.toArray()),
+      contactEmbedM: cassette.embed,
+    }));
+  };
   for (const s of [-1, 1]) {
     const sweep = [
       [0.38, 1.065, 0.44, 0.44],
@@ -604,34 +662,31 @@ function buildUAT64BV(P) {
     ];
     for (let i = 0; i < sweep.length; i++) {
       const [x, z, w, h] = sweep[i];
-      const fx = 0.088 * Math.sin(0.60); const fz = 0.088 * Math.cos(0.60);
-      P.add('turretTrack', box(w, h, 0.20), s * x, 0.30, z, -0.13, s * 0.60, s * (0.05 - i * 0.010));
-      P.add('turretDark', box(w * 0.76, 0.026, 0.030), s * (x + fx), 0.30 + h * 0.48, z + fz, -0.13, s * 0.60, 0);
-      P.add('turretDark', box(0.026, h * 0.78, 0.030), s * (x + fx), 0.30, z + fz, -0.13, s * 0.60, 0);
+      addDonbasDomeCassette(s * x, 0.30, z, w, 0.20, h);
     }
     // §5.272 fix (3): chevron wrap extended toward the mantlet — one more
     // lower-row cassette flanking the boot + one upper-row block riding the
     // dome slope (+2 per cheek).
-    P.add('turretTrack', box(0.30, 0.42, 0.20), s * 0.255, 0.295, 1.175, -0.13, s * 0.60, s * 0.06);
-    P.add('turretDark', box(0.026, 0.33, 0.030), s * 0.305, 0.295, 1.225, -0.13, s * 0.60, 0);
-    P.add('turretTrack', box(0.26, 0.075, 0.24), s * 0.14, 0.615, 0.74, -0.25, s * 0.18, -s * 0.10);
+    addDonbasDomeCassette(s * 0.255, 0.295, 1.175, 0.30, 0.20, 0.42);
+    addDonbasDomeCassette(s * 0.14, 0.615, 0.74, 0.26, 0.075, 0.24);
     // second (upper) cheek row following the dome slope — the print's
     // denser Donbas fit reaches the roof arc.
     for (let i = 0; i < 3; i++) {
-      P.add('turretTrack', box(0.30, 0.075, 0.26), s * (0.40 + i * 0.31), 0.565 - i * 0.065, 0.585 - i * 0.145,
-        -0.25, s * (0.24 + i * 0.09), -s * 0.13);
+      addDonbasDomeCassette(s * (0.40 + i * 0.31), 0.565 - i * 0.065,
+        0.585 - i * 0.145, 0.30, 0.075, 0.26);
     }
     const fxr = s < 0 ? 1.243 : 1.285;
-    const fxl = s < 0 ? 1.318 : 1.363;
     for (let i = 0; i < 3; i++) {
-      P.add('turretTrack', box(0.15, 0.33 - i * 0.02, 0.31), s * fxr, 0.30, 0.06 - i * 0.33, -0.06, s * 0.09, 0);
-      P.add('turretDark', box(0.026, 0.23, 0.24), s * fxl, 0.31, 0.06 - i * 0.33, -0.06, s * 0.09, 0);
+      addDonbasDomeCassette(s * fxr, 0.30, 0.06 - i * 0.33,
+        0.15, 0.31, 0.33 - i * 0.02);
     }
     // (owner-absorb outer-return corner module measured -1.2 on the binding
     // turret row and was withdrawn — receipt in the fix report; the ordered
     // toward-the-mantlet extension above carries the chevron-completion
     // intent at zero gate cost.)
   }
+  donbasEraReceipt.seats = Object.freeze(donbasEraReceipt.seats);
+  P.turretG.userData.uaT64DonbasERAReceipt = Object.freeze(donbasEraReceipt);
   P.add('turretDark', box(0.40, 0.14, 0.06), 0, 0.03, 1.10);
   P.add('turretDark', box(0.34, 0.22, 0.10), 0, 0.16, 0.96, -0.16, 0, 0);
 
@@ -740,6 +795,7 @@ function buildUAT64BV(P) {
   addVehicleGhillieSuit(P);
   liftT64HullAboveTallTrack(P, {
     trackHeightIncreaseM,
+    hullRideHeightIncreaseM,
     trackBottomY: 0.14,
     trackTopY: 1.09,
     authoredEnvelopeHeightM: 0.79,

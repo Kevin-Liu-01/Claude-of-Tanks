@@ -1239,6 +1239,7 @@ function buildT64BV1(P) {
   // after assembly so the result is a taller \____/ course, not suspension
   // translated upward into the old hull bay.
   const trackHeightIncreaseM = 0.16;
+  const hullRideHeightIncreaseM = 0.36;
   const turretForwardShiftM = 0.20;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement
@@ -1627,6 +1628,7 @@ function buildT64BV1(P) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [-decalX, 0.38, -0.50], -Math.PI / 2);
   liftT64HullAboveTallTrack(P, {
     trackHeightIncreaseM,
+    hullRideHeightIncreaseM,
     trackBottomY: 0.13,
     trackTopY: 1.09,
     authoredEnvelopeHeightM: 0.80,
@@ -1652,6 +1654,7 @@ export function widthAnchor(P, halfW, y, z) {
 // lower course planted and raises the complete vehicle body above it.
 export function liftT64HullAboveTallTrack(P, {
   trackHeightIncreaseM,
+  hullRideHeightIncreaseM = trackHeightIncreaseM,
   trackBottomY,
   trackTopY,
   authoredEnvelopeHeightM,
@@ -1662,18 +1665,18 @@ export function liftT64HullAboveTallTrack(P, {
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
     'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR',
     'hullTrackGuardL', 'hullTrackGuardR',
-  ], 0, trackHeightIncreaseM, 0);
+  ], 0, hullRideHeightIncreaseM, 0);
 
   let liftedDirectHullChildren = 0;
   for (const child of P.hullG.children) {
     let containsRunningGear = child.userData.runningGear === true;
     child.traverse((node) => { containsRunningGear ||= node.userData.runningGear === true; });
     if (containsRunningGear) continue;
-    child.position.y += trackHeightIncreaseM;
+    child.position.y += hullRideHeightIncreaseM;
     liftedDirectHullChildren += 1;
   }
 
-  P.turretG.position.y += trackHeightIncreaseM;
+  P.turretG.position.y += hullRideHeightIncreaseM;
   P.hullG.userData.t64TallTrackReceipt = Object.freeze({
     authoredEnvelopeHeightM,
     trackHeightIncreaseM,
@@ -1681,7 +1684,7 @@ export function liftT64HullAboveTallTrack(P, {
     trackBottomY,
     trackTopY,
     roadWheelCenterY: 0.315,
-    hullRideHeightIncreaseM: trackHeightIncreaseM,
+    hullRideHeightIncreaseM,
     liftedDirectHullChildren,
   });
 }
