@@ -111,17 +111,21 @@ function startBootHero() {
   let front = 0;
   let timer = 0;
   let stopped = false;
+  const urlFor = (shot) => shot.bootImg || shot.img;
   const show = (i) => {
     const shot = HERO_SHOTS[i];
     front ^= 1;
-    layers[front].style.backgroundImage = `url("${shot.img}")`;
+    layers[front].style.backgroundImage = `url("${urlFor(shot)}")`;
     layers[front].style.backgroundPosition = shot.focal || 'center';
     layers[front].classList.add('on');
     layers[front ^ 1].classList.remove('on');
     idx = i;
   };
   const preload = (i, cb) => {
-    preloadImage(HERO_SHOTS[i].img, { priority: 'high' }).then((url) => {
+    // This is presentation, not a boot dependency. Low fetch priority keeps
+    // the selected tank's exact builder and paint assets ahead of the splash
+    // image on a first visit while still decoding the small hero during boot.
+    preloadImage(urlFor(HERO_SHOTS[i]), { priority: 'low' }).then((url) => {
       if (url && !stopped) cb();
     });
   };

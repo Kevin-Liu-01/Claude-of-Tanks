@@ -14,6 +14,7 @@
 export const FEATURED_SHOTS = [
   {
     img: '/media/featured/f7_studio_t90_column_fire.webp',
+    bootImg: '/media/featured/f7_studio_t90_column_fire.boot.webp',
     cap: 'Scene Studio — T-90 column fire',
     maps: ['verdant', 'frontier'], focal: '50% 48%', handmade: true,
   },

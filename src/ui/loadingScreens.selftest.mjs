@@ -35,6 +35,15 @@ assert.equal(
   '/media/featured/f7_studio_t90_column_fire.webp',
   'the handmade landing hero must be the first boot-screen option',
 );
+assert.equal(
+  BOOT_HERO_SHOTS[0].bootImg,
+  '/media/featured/f7_studio_t90_column_fire.boot.webp',
+  'the first visit must use the screen-sized derivative while retaining the gallery original',
+);
+const bootHeroAsset = await stat(new URL(`../../public${BOOT_HERO_SHOTS[0].bootImg}`, import.meta.url));
+const fullHeroAsset = await stat(new URL(`../../public${BOOT_HERO_SHOTS[0].img}`, import.meta.url));
+assert.ok(bootHeroAsset.size < fullHeroAsset.size * 0.4,
+  'the boot hero must be materially smaller than its gallery source');
 assert.deepEqual(
   BOOT_HERO_SHOTS.slice(0, 3).map((shot) => shot.img),
   [
