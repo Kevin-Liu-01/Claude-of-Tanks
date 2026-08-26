@@ -87,6 +87,7 @@ import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createAimController } from './game/aimController.ts';
+import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
@@ -1713,70 +1714,14 @@ const garageMaps = [
 ];
 let pendingSoloStart = null;
 let playMenuPromise = null;
-let playMenuModulePromise = null;
-let networkBattleModulesPromise = null;
-let privateMatchHandoffModulePromise = null;
-let dedicatedClientModulePromise = null;
-let networkRoomChatModulePromise = null;
 let pendingLobbyRoom = null;
-function loadPlayMenuModule() {
-  if (!playMenuModulePromise) {
-    const request = import('./ui/playMenu.js');
-    playMenuModulePromise = request;
-    request.catch(() => {
-      if (playMenuModulePromise === request) playMenuModulePromise = null;
-    });
-  }
-  return playMenuModulePromise;
-}
-
-function preloadNetworkBattleModules() {
-  if (!networkBattleModulesPromise) {
-    const request = Promise.all([
-      import('./net/browserBattleBridge.js'),
-      import('./ui/networkStatus.js'),
-      import('./net/browserInputRuntime.ts'),
-    ]);
-    networkBattleModulesPromise = request;
-    request.catch(() => {
-      if (networkBattleModulesPromise === request) networkBattleModulesPromise = null;
-    });
-  }
-  return networkBattleModulesPromise;
-}
-
-function preloadPrivateMatchHandoffModule() {
-  if (!privateMatchHandoffModulePromise) {
-    const request = import('./net/privateMatchHandoff.js');
-    privateMatchHandoffModulePromise = request;
-    request.catch(() => {
-      if (privateMatchHandoffModulePromise === request) privateMatchHandoffModulePromise = null;
-    });
-  }
-  return privateMatchHandoffModulePromise;
-}
-
-function preloadDedicatedClientModule() {
-  if (!dedicatedClientModulePromise) {
-    const request = import('./net/dedicatedClient.js');
-    dedicatedClientModulePromise = request;
-    request.catch(() => {
-      if (dedicatedClientModulePromise === request) dedicatedClientModulePromise = null;
-    });
-  }
-  return dedicatedClientModulePromise;
-}
-
-function preloadNetworkRoomChatModule() {
-  if (!networkRoomChatModulePromise) {
-    const request = import('./ui/roomChat.js');
-    networkRoomChatModulePromise = request;
-    request.catch(() => {
-      if (networkRoomChatModulePromise === request) networkRoomChatModulePromise = null;
-    });
-  }
-  return networkRoomChatModulePromise;
-}
+const {
+  loadPlayMenuModule,
+  preloadNetworkBattleModules,
+  preloadPrivateMatchHandoffModule,
+  preloadDedicatedClientModule,
+  preloadNetworkRoomChatModule,
+} = createBattleModuleAccess();
 
 function preloadPlayMode(mode) {
   ensureBattleHud().catch(() => null);

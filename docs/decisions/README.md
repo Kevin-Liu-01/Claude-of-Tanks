@@ -28,3 +28,4 @@ runtime documents remain authoritative for behavior.
 - [0016 — Network recovery presentation has one typed owner](0016-network-recovery-presentation-owner.md)
 - [0017 — Boot staging has one typed lifecycle owner](0017-typed-boot-lifecycle.md)
 - [0018 — Browser network frames have one typed pump](0018-typed-network-frame-pump.md)
+- [0019 — Battle-only imports have one typed access owner](0019-typed-battle-module-access.md)
