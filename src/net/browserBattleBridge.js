@@ -5,7 +5,7 @@ import { getSpec } from '../vehicles/specs.js';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { pushHullFromObstacle } from '../world/collision.js';
-import { LocalTankPredictor } from './localTankPrediction.js';
+import { LocalTankPredictor } from './localTankPrediction.ts';
 import { PresentationEventQueue } from './presentationEventQueue.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
 import { createSpecialActionState } from '../sim/specialActions.js';

@@ -6,6 +6,7 @@ import { SNAPSHOT_FLAGS } from './snapshot.js';
 import {
   PREDICTION_CORRECTION_KEYS,
   decayPredictionCorrection,
+  type PredictionCorrection,
 } from './predictionCorrection.ts';
 
 const DEFAULT_HARD_SNAP_M = 7;
@@ -21,25 +22,168 @@ const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_HULL_ANGLE_DEADZONE_RAD = 0.0035;
 const MAX_INPUT_HISTORY = 240;
 
-function wrapAngle(value) {
+export interface PredictionInput {
+  throttle?: number;
+  steer?: number;
+  brake?: boolean;
+  fire?: boolean;
+  shellSlot?: number;
+  aimYaw?: number;
+  aimPitch?: number;
+  aimDistance?: number;
+  actionBits?: number;
+}
+
+export interface PredictionSnapshot {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+  vx?: number;
+  vy?: number;
+  vz?: number;
+  flags?: number;
+  destroyed?: boolean;
+}
+
+export interface PredictionTankState {
+  pos: Vector3;
+  aimPoint: Vector3;
+  yaw: number;
+  speed: number;
+  visualPitch: number;
+  visualRoll: number;
+  turretYaw: number;
+  gunPitch: number;
+  verticalSpeed: number;
+  grounded: boolean;
+  landingImpactMps: number;
+  slopeBlocked: boolean;
+  yawRate: number;
+  turretYawRate: number;
+  bloomF: number;
+  atGunLimit: boolean;
+  gunLimitSpec: boolean;
+  trackScroll: { l: number; r: number };
+  _prevSpeed: number;
+  _spring: { pitch: number; roll: number };
+  _ride: {
+    y: number;
+    v: number;
+    grounded: boolean;
+    airTime: number;
+    supportY: number;
+  };
+}
+
+export interface PredictionEntity {
+  spec: Record<string, unknown>;
+  state: PredictionTankState;
+  combat?: unknown;
+  contactGeom?: unknown;
+  rigidGear?: boolean;
+}
+
+export interface PredictionSimEntity extends PredictionEntity {
+  input: Required<Pick<PredictionInput,
+    'throttle' | 'steer' | 'brake' | 'fire' | 'shellSlot'>> & {
+    aimPoint: Vector3;
+  };
+  _predictionStaticContacts?: number;
+  _predictionDynamicContacts?: number;
+}
+
+export interface PredictionHeightField {
+  getHeightAt(x: number, z: number): number;
+}
+
+export type PredictionCollision = (
+  entity: PredictionSimEntity,
+  position: Vector3,
+  radius: number,
+  outPush: Vector3,
+) => unknown;
+
+export interface LocalTankPredictorOptions {
+  entity?: PredictionEntity;
+  heightField?: PredictionHeightField;
+  collide?: PredictionCollision | null;
+  hardSnapDistanceM?: number;
+  correctionTauS?: number;
+  contactCorrectionTauS?: number;
+  verticalCorrectionTauS?: number;
+  contactVerticalCorrectionTauS?: number;
+  aimCorrectionTauS?: number;
+}
+
+interface AuthoritySample {
+  tick?: number;
+  ackInputSeq?: number | null;
+  entity?: PredictionSnapshot;
+  sampledEntity?: PredictionSnapshot | null;
+}
+
+interface InputHistoryFrame {
+  input: PredictionInput;
+  elapsedS: number;
+  inputSeq: number;
+}
+
+export interface LocalPredictionStats {
+  reconciliations: number;
+  hardSnaps: number;
+  terminalSyncs: number;
+  replayedInputs: number;
+  droppedHistory: number;
+  maxPositionErrorM: number;
+  maxFreePositionErrorM: number;
+  maxContactPositionErrorM: number;
+  contactReconciliations: number;
+  lastPositionErrorM: number;
+  restingHullHolds: number;
+  maxCorrectionStepM: number;
+  maxVerticalCorrectionStepM: number;
+}
+
+interface DisplayedPose {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  roll: number;
+  turretYaw: number;
+  gunPitch: number;
+}
+
+function wrapAngle(value: number) {
   let angle = value;
   while (angle > Math.PI) angle -= Math.PI * 2;
   while (angle < -Math.PI) angle += Math.PI * 2;
   return angle;
 }
 
-function signedSpeed(snapshot) {
+function signedSpeed(snapshot: PredictionSnapshot) {
   const speed = Math.hypot(snapshot.vx || 0, snapshot.vz || 0);
   const along = (snapshot.vx || 0) * Math.sin(snapshot.yaw || 0) +
     (snapshot.vz || 0) * Math.cos(snapshot.yaw || 0);
   return along < 0 ? -speed : speed;
 }
 
-function hasDriveIntent(input) {
+function hasDriveIntent(input: PredictionInput | null | undefined) {
   return Math.abs(input?.throttle || 0) > 0.01 || Math.abs(input?.steer || 0) > 0.01;
 }
 
-function canHoldRestingHull(old, predicted, snapshot, motionIntent) {
+function canHoldRestingHull(
+  old: DisplayedPose,
+  predicted: PredictionTankState,
+  snapshot: PredictionSnapshot,
+  motionIntent: boolean,
+) {
   if (motionIntent || Math.abs(predicted.speed || 0) > REST_SPEED_MPS ||
       Math.hypot(snapshot.vx || 0, snapshot.vz || 0) > REST_SPEED_MPS) return false;
   return Math.hypot(old.x - predicted.pos.x, old.z - predicted.pos.z) <=
@@ -52,7 +196,7 @@ function canHoldRestingHull(old, predicted, snapshot, motionIntent) {
       REST_HULL_ANGLE_DEADZONE_RAD;
 }
 
-function applyAuthority(state, snapshot) {
+function applyAuthority(state: PredictionTankState, snapshot: PredictionSnapshot) {
   state.pos.set(snapshot.x, snapshot.y, snapshot.z);
   state.yaw = snapshot.yaw;
   state.speed = signedSpeed(snapshot);
@@ -61,7 +205,7 @@ function applyAuthority(state, snapshot) {
   state.turretYaw = snapshot.turretYaw;
   state.gunPitch = snapshot.gunPitch;
   state.verticalSpeed = snapshot.vy || 0;
-  state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
+  state.grounded = !((snapshot.flags || 0) & SNAPSHOT_FLAGS.AIRBORNE);
   state._prevSpeed = state.speed;
   state._spring.pitch = snapshot.pitch;
   state._spring.roll = snapshot.roll;
@@ -74,27 +218,39 @@ function applyAuthority(state, snapshot) {
   state._ride.supportY = NaN;
 }
 
-function applyInput(entity, input) {
+function applyInput(entity: PredictionSimEntity, input: PredictionInput) {
   entity.input.throttle = input.throttle || 0;
   entity.input.steer = input.steer || 0;
   entity.input.brake = !!input.brake;
   entity.input.fire = !!input.fire;
-  entity.input.shellSlot = input.shellSlot | 0;
+  entity.input.shellSlot = (input.shellSlot || 0) | 0;
   decodeAimIntent(input, entity.state.pos, entity.input.aimPoint);
 }
 
-function advance(entity, input, elapsedS, heightField, collide) {
+function advance(
+  entity: PredictionSimEntity,
+  input: PredictionInput,
+  elapsedS: number,
+  heightField: PredictionHeightField,
+  collide: PredictionCollision | null,
+) {
   applyInput(entity, input);
   let remaining = Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
   while (remaining > 1e-8) {
     const dt = Math.min(SIM_DT, remaining);
     updateTank(entity, heightField, dt,
-      collide ? (pos, radius, out) => collide(entity, pos, radius, out) : null);
+      collide
+        ? (pos: Vector3, radius: number, out: Vector3) => collide(entity, pos, radius, out)
+        : null);
     remaining -= dt;
   }
 }
 
-function copyPresentation(target, source, correction) {
+function copyPresentation(
+  target: PredictionTankState,
+  source: PredictionTankState,
+  correction: PredictionCorrection,
+) {
   target.pos.set(
     source.pos.x + correction.x,
     source.pos.y + correction.y,
@@ -127,6 +283,29 @@ function copyPresentation(target, source, correction) {
  * input history is replayed through the exact shared movement integrator.
  */
 export class LocalTankPredictor {
+  readonly entity: PredictionEntity;
+  readonly heightField: PredictionHeightField;
+  readonly collide: PredictionCollision | null;
+  readonly hardSnapDistanceM: number;
+  readonly correctionTauS: number;
+  readonly contactCorrectionTauS: number;
+  readonly verticalCorrectionTauS: number;
+  readonly contactVerticalCorrectionTauS: number;
+  readonly aimCorrectionTauS: number;
+  readonly simEntity: PredictionSimEntity;
+  readonly history: InputHistoryFrame[] = [];
+  readonly correction: PredictionCorrection;
+  readonly stats: LocalPredictionStats;
+  initialized = false;
+  lastRecordedSeq: number | null = null;
+  lastAuthorityTick = -1;
+  terminalDestroyed = false;
+  motionIntent = false;
+  holdRestingHull = false;
+  contactSmoothingS = 0;
+  lastStaticContactCount = 0;
+  lastDynamicContactCount = 0;
+
   constructor({
     entity,
     heightField,
@@ -137,7 +316,7 @@ export class LocalTankPredictor {
     verticalCorrectionTauS = DEFAULT_VERTICAL_CORRECTION_TAU_S,
     contactVerticalCorrectionTauS = DEFAULT_CONTACT_VERTICAL_TAU_S,
     aimCorrectionTauS = DEFAULT_AIM_CORRECTION_TAU_S,
-  } = {}) {
+  }: LocalTankPredictorOptions = {}) {
     if (!entity || !entity.spec || !entity.state) throw new TypeError('prediction entity is required');
     if (!heightField || typeof heightField.getHeightAt !== 'function') {
       throw new TypeError('prediction height field is required');
@@ -152,7 +331,11 @@ export class LocalTankPredictor {
     this.contactVerticalCorrectionTauS = contactVerticalCorrectionTauS;
     this.aimCorrectionTauS = aimCorrectionTauS;
     const source = entity.state;
-    const state = createTankState(entity.spec, source.pos, source.yaw);
+    const state = createTankState(
+      entity.spec,
+      source.pos,
+      source.yaw,
+    ) as PredictionTankState;
     this.simEntity = {
       spec: entity.spec,
       state,
@@ -168,16 +351,6 @@ export class LocalTankPredictor {
         aimPoint: state.aimPoint.clone(),
       },
     };
-    this.history = [];
-    this.initialized = false;
-    this.lastRecordedSeq = null;
-    this.lastAuthorityTick = -1;
-    this.terminalDestroyed = false;
-    this.motionIntent = false;
-    this.holdRestingHull = false;
-    this.contactSmoothingS = 0;
-    this.lastStaticContactCount = 0;
-    this.lastDynamicContactCount = 0;
     this.correction = {
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     };
@@ -198,7 +371,7 @@ export class LocalTankPredictor {
     };
   }
 
-  recordInput(input, elapsedS, inputSeq) {
+  recordInput(input: PredictionInput | null, elapsedS: number, inputSeq: number) {
     if (!input || !Number.isSafeInteger(inputSeq) || inputSeq < 0) return false;
     if (this.lastRecordedSeq != null) {
       if (inputSeq === this.lastRecordedSeq) return false;
@@ -222,9 +395,13 @@ export class LocalTankPredictor {
     return true;
   }
 
-  reconcile({ tick, ackInputSeq = null, entity: snapshot, sampledEntity = null } = {}, elapsedS = 0,
-    destroyed = false) {
-    if (!snapshot || !Number.isSafeInteger(tick) || tick <= this.lastAuthorityTick) return false;
+  reconcile(
+    { tick, ackInputSeq = null, entity: snapshot, sampledEntity = null }: AuthoritySample = {},
+    elapsedS = 0,
+    destroyed = false,
+  ) {
+    if (!snapshot || typeof tick !== 'number' || !Number.isSafeInteger(tick) ||
+        tick <= this.lastAuthorityTick) return false;
     this.lastAuthorityTick = tick;
     // Roster visuals are created at a harmless staging origin while the load
     // screen is up. The first authority pose is initialization, not a network
@@ -244,7 +421,7 @@ export class LocalTankPredictor {
       yaw: shown.yaw, pitch: shown.visualPitch, roll: shown.visualRoll,
       turretYaw: shown.turretYaw, gunPitch: shown.gunPitch,
     };
-    if (Number.isSafeInteger(ackInputSeq) && ackInputSeq >= 0) {
+    if (typeof ackInputSeq === 'number' && Number.isSafeInteger(ackInputSeq) && ackInputSeq >= 0) {
       let writeIndex = 0;
       for (const frame of this.history) {
         if (isSequenceNewer(frame.inputSeq, ackInputSeq)) this.history[writeIndex++] = frame;

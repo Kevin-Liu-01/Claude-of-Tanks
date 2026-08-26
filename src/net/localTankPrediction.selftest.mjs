@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState } from '../sim/movement.js';
-import { LocalTankPredictor } from './localTankPrediction.js';
+import { LocalTankPredictor } from './localTankPrediction.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
 
 const SPEC = {

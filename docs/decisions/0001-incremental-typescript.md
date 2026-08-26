@@ -38,6 +38,10 @@ remain behaviorally unchanged.
 `src/net/webrtcPeer.ts` is the first transport owner migrated in place. Its
 public signal/session contract is explicit, while lobby and match runtimes
 continue to consume the same transport seam.
+`src/net/predictionCorrection.ts` and `src/net/localTankPrediction.ts` own the
+typed local-control boundary: wire input, authority snapshots, shared movement
+replay, collision callbacks, presentation correction, and telemetry now have
+explicit contracts without moving combat authority into the browser client.
 
 ## Consequences
 
@@ -56,6 +60,7 @@ continue to consume the same transport seam.
     node src/engine/frameScheduler.selftest.mjs
     node src/game/rosterPlanning.selftest.mjs
     node src/game/soloBattleRuntime.selftest.mjs
+    node src/net/localTankPrediction.selftest.mjs
     node src/net/net.selftest.mjs
     npm test
     npm run build
