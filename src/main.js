@@ -48,7 +48,7 @@ import {
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import {
-  compileForRenderTarget,
+  createForwardProgramWarmOwner,
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
 } from './engine/programWarm.ts';
@@ -590,16 +590,6 @@ async function stageRootTextureUploads(root, yieldForBudget) {
  * variants; EffectComposer never uses those for world/tank draws, so the old
  * path built a redundant shader fleet and still linked the real variants on
  * first render. */
-function compileForGameplayTarget(root) {
-  compileForRenderTarget({
-    renderer,
-    root,
-    camera,
-    targetScene: scene,
-    target: post?.composer?.renderTarget1 || null,
-  });
-}
-
 /** Separate visual construction, texture upload, shader submission, and
  * reveal into bounded tasks. compileAsync was tested here and made the
  * transition materially worse on ANGLE because its completion polling became
@@ -633,7 +623,7 @@ async function stageBattleVisualReveal(ent, yieldForBudget, initiallyHidden = fa
   // that removed them from the opaque transition remains intact.
   armorAimOverlay.prime(ent);
   const restoreArmorWarmVisibility = armorAimOverlay.warm();
-  try { compileForGameplayTarget(root); } catch (_) { /* first render fallback */ }
+  try { forwardProgramWarm.compile(root); } catch (_) { /* first render fallback */ }
   finally { restoreArmorWarmVisibility(); }
   root.userData.loadCompileMs = Math.round(performance.now() - compileAt);
   // Opposing actors prepared during the visible deployment countdown are
@@ -1551,7 +1541,7 @@ async function ensureWorld(mapId, onProgress = null, opts = null) {
         warmRender();
       } catch (_) { /* warm only */ }
       for (const o of hidden) o.visible = true;
-      for (const _ of linkerBreathingSlices(24)) await nextFrame();
+      for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
       await nextFrame();
     }
   }
@@ -2189,6 +2179,12 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
+const forwardProgramWarm = createForwardProgramWarmOwner({
+  renderer,
+  scene,
+  camera,
+  getTarget: () => post?.composer?.renderTarget1 || null,
+});
 // Renderer-lifetime warm state is declared before context recovery is armed:
 // a mobile device can lose and restore WebGL while the async boot pipeline is
 // still running, before the later warm-owner functions are reached.
@@ -2214,6 +2210,7 @@ renderer.userData.contextRecovery = {
     // the exact production variants instead of trusting stale GPU state.
     combatDestructionEffectsWarmed = false;
     battleWarm.invalidate();
+    forwardProgramWarm.invalidate();
     resetCombatRoundWarmState();
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
@@ -2900,7 +2897,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       });
       const fxForwardWarmBatches = [];
       try {
-        compileForGameplayTarget(scene);
+        forwardProgramWarm.compile(scene);
         // compile() submits programs but does not guarantee their first
         // material/state bind. Keep the staged pools hidden between private
         // one-renderable binds so a driver linker flush cannot escape into
@@ -5287,7 +5284,7 @@ function warmStudioPipelineChunked(onProgress = null) {
     post,
     renderer,
     camera,
-    initializeForwardPrograms: initializeForwardProgramsSteps,
+    initializeForwardPrograms: forwardProgramWarm.initializeSteps,
     isCombatPipelineWarmed: () => combatPipelineWarmed,
     onProgress,
     onTrace: (trace) => { window.__STUDIO_WARM = trace; },
@@ -6053,63 +6050,6 @@ async function primeDeploymentShadowMaps(yieldForBudget) {
 // Fall back to the same Three program objects, but consume each newly-created
 // forward variant separately and yield before creating the next. The final
 // warmRender still owns real texture/state/depth initialization.
-function* initializeForwardProgramsSteps(root = scene, stats = null) {
-  let sliceAt = performance.now();
-  const objects = [];
-  root.traverseVisible((object) => {
-    if (object.isMesh || object.isPoints || object.isLine || object.isSprite) objects.push(object);
-  });
-  for (const object of objects) {
-    const before = (renderer.info.programs || []).length;
-    const compileAt = performance.now();
-    try { compileForGameplayTarget(object); } catch (_) { /* warm only */ }
-    if (stats) {
-      const compileMs = performance.now() - compileAt;
-      stats.totalCompileMs = (stats.totalCompileMs || 0) + compileMs;
-      if (compileMs > (stats.maxCompileMs || 0)) {
-        stats.maxCompileMs = compileMs;
-        stats.maxCompileObject = object.name || object.type || '(unnamed)';
-      }
-    }
-    const programs = renderer.info.programs || [];
-    for (let i = before; i < programs.length; i++) {
-      try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
-      yield;
-      sliceAt = performance.now();
-    }
-    if (performance.now() - sliceAt >= 8) {
-      yield;
-      sliceAt = performance.now();
-    }
-  }
-}
-
-let _linkExtMain;
-function* linkerBreathingSlices(maxSlices) {
-  try {
-    const gl = renderer.getContext();
-    if (_linkExtMain === undefined) {
-      _linkExtMain = gl.getExtension('KHR_parallel_shader_compile') || null;
-    }
-    if (!_linkExtMain) return;
-    let cursor = 0;
-    for (let i = 0; i < maxSlices; i++) {
-      const progs = renderer.info.programs || [];
-      let pending = false;
-      for (; cursor < progs.length; cursor++) {
-        const pr = progs[cursor];
-        if (pr && pr.program
-          && gl.getProgramParameter(pr.program, _linkExtMain.COMPLETION_STATUS_KHR) === false) {
-          pending = true;
-          break;
-        }
-      }
-      if (!pending) return;
-      yield;
-    }
-  } catch (_) { /* best-effort — the render below still resolves links */ }
-}
-
 function* warmDestroyedRosterVariantsSteps() {
   const gameplayTarget = post?.composer?.renderTarget1 || null;
   for (const entity of game.tanks.slice()) {
@@ -6204,7 +6144,7 @@ function* compileHiddenVariantsSteps(detail = null) {
     // render binds the new programs. The local KHR poll uses an early-exit
     // cursor and is bounded
     // so a linker that never reports done cannot stall the warm.
-    yield* linkerBreathingSlices(40);
+    yield* forwardProgramWarm.linkerBreathingSlices(40);
   }
   // perf-r2d: renderer.compile() never builds SHADOW-PASS depth programs —
   // they link the first time a mesh's material class actually renders into a

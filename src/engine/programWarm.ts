@@ -2,6 +2,7 @@ type WarmYield = () => Promise<void>;
 
 interface LinkedProgram {
   getUniforms?: () => unknown;
+  program?: WebGLProgram | null;
 }
 
 interface RendererProgramInfo {
@@ -10,6 +11,48 @@ interface RendererProgramInfo {
 
 interface RendererWithPrograms {
   info?: RendererProgramInfo | null;
+}
+
+interface ForwardWarmObject {
+  isMesh?: boolean;
+  isPoints?: boolean;
+  isLine?: boolean;
+  isSprite?: boolean;
+  name?: string;
+  type?: string;
+  traverseVisible(callback: (object: ForwardWarmObject) => void): void;
+}
+
+interface ParallelShaderCompileExtension {
+  COMPLETION_STATUS_KHR: number;
+}
+
+interface ForwardWarmRenderer extends RendererWithPrograms, RendererWithTargets {
+  getContext(): WebGLRenderingContext | WebGL2RenderingContext;
+}
+
+export interface ForwardProgramWarmStats {
+  totalCompileMs?: number;
+  maxCompileMs?: number;
+  maxCompileObject?: string;
+}
+
+export interface ForwardProgramWarmOwner {
+  compile(root: unknown): void;
+  initializeSteps(
+    root?: ForwardWarmObject,
+    stats?: ForwardProgramWarmStats | null,
+  ): Generator<void, void, unknown>;
+  linkerBreathingSlices(maxSlices: number): Generator<void, void, unknown>;
+  invalidate(): void;
+}
+
+export interface ForwardProgramWarmOptions {
+  renderer: ForwardWarmRenderer;
+  scene: ForwardWarmObject;
+  camera: unknown;
+  getTarget(): unknown;
+  now?: () => number;
 }
 
 interface RendererWithTargets {
@@ -107,4 +150,107 @@ export async function warmNewRendererProgramUniforms(
   receipt.totalMs = Math.round(now() - startedAt);
   receipt.maxMs = Math.round(receipt.maxMs);
   return receipt;
+}
+
+/**
+ * Own gameplay-target program submission and bounded ANGLE linker draining.
+ *
+ * This keeps renderer-specific warm state out of the application orchestrator.
+ * It deliberately submits the same objects to the same HDR target as gameplay;
+ * no shader, material, quality, or visibility policy is changed here.
+ */
+export function createForwardProgramWarmOwner({
+  renderer,
+  scene,
+  camera,
+  getTarget,
+  now = () => performance.now(),
+}: ForwardProgramWarmOptions): ForwardProgramWarmOwner {
+  let parallelCompile: ParallelShaderCompileExtension | null | undefined;
+
+  const compile = (root: unknown): void => {
+    compileForRenderTarget({
+      renderer,
+      root,
+      camera,
+      targetScene: scene,
+      target: getTarget(),
+    });
+  };
+
+  const initializeSteps = function* (
+    root: ForwardWarmObject = scene,
+    stats: ForwardProgramWarmStats | null = null,
+  ): Generator<void, void, unknown> {
+    let sliceAt = now();
+    const objects: ForwardWarmObject[] = [];
+    root.traverseVisible((object) => {
+      if (object.isMesh || object.isPoints || object.isLine || object.isSprite) {
+        objects.push(object);
+      }
+    });
+    for (const object of objects) {
+      const before = renderer.info?.programs?.length ?? 0;
+      const compileAt = now();
+      try { compile(object); } catch { /* the real render remains the fallback */ }
+      if (stats) {
+        const compileMs = now() - compileAt;
+        stats.totalCompileMs = (stats.totalCompileMs ?? 0) + compileMs;
+        if (compileMs > (stats.maxCompileMs ?? 0)) {
+          stats.maxCompileMs = compileMs;
+          stats.maxCompileObject = object.name || object.type || '(unnamed)';
+        }
+      }
+      const programs = renderer.info?.programs ?? [];
+      for (let index = before; index < programs.length; index += 1) {
+        try { programs[index]?.getUniforms?.(); } catch { /* warm only */ }
+        yield;
+        sliceAt = now();
+      }
+      if (now() - sliceAt >= 8) {
+        yield;
+        sliceAt = now();
+      }
+    }
+  };
+
+  const linkerBreathingSlices = function* (
+    maxSlices: number,
+  ): Generator<void, void, unknown> {
+    try {
+      const gl = renderer.getContext();
+      if (parallelCompile === undefined) {
+        parallelCompile = gl.getExtension(
+          'KHR_parallel_shader_compile',
+        ) as ParallelShaderCompileExtension | null;
+      }
+      if (!parallelCompile) return;
+      let cursor = 0;
+      for (let slice = 0; slice < maxSlices; slice += 1) {
+        const programs = renderer.info?.programs ?? [];
+        let pending = false;
+        for (; cursor < programs.length; cursor += 1) {
+          const program = programs[cursor]?.program;
+          if (program && gl.getProgramParameter(
+            program,
+            parallelCompile.COMPLETION_STATUS_KHR,
+          ) === false) {
+            pending = true;
+            break;
+          }
+        }
+        if (!pending) return;
+        yield;
+      }
+    } catch {
+      // Best effort: the following real render still resolves outstanding links.
+    }
+  };
+
+  return {
+    compile,
+    initializeSteps,
+    linkerBreathingSlices,
+    invalidate() { parallelCompile = undefined; },
+  };
 }

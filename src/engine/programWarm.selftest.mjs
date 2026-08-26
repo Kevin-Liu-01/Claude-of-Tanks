@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   compileForRenderTarget,
+  createForwardProgramWarmOwner,
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
 } from './programWarm.ts';
@@ -60,4 +61,51 @@ assert.deepEqual(targetCalls, [
   ['target', 'default', 3, 2],
 ], 'compile uses the production target and restores the complete prior state');
 
-console.log('programWarm.selftest: target compile and scoped uniform-table draining passed');
+const initialized = [];
+let warmClock = 0;
+const warmPrograms = [];
+const pendingProgram = {
+  program: {},
+  getUniforms() { initialized.push('uniforms'); },
+};
+const forwardRenderer = {
+  ...targetRenderer,
+  info: { programs: warmPrograms },
+  getContext() {
+    return {
+      getExtension(name) {
+        assert.equal(name, 'KHR_parallel_shader_compile');
+        return { COMPLETION_STATUS_KHR: 0x91B1 };
+      },
+      getProgramParameter(program, token) {
+        assert.equal(program, pendingProgram.program);
+        assert.equal(token, 0x91B1);
+        return false;
+      },
+    };
+  },
+  compile(root, camera, targetScene) {
+    targetRenderer.compile.call(this, root, camera, targetScene);
+    if (!warmPrograms.length) warmPrograms.push(pendingProgram);
+  },
+};
+const warmObject = {
+  isMesh: true,
+  name: 'test-mesh',
+  traverseVisible(callback) { callback(this); },
+};
+const forwardOwner = createForwardProgramWarmOwner({
+  renderer: forwardRenderer,
+  scene: warmObject,
+  camera: 'deployment-camera',
+  getTarget: () => 'composer-hdr',
+  now: () => { warmClock += 5; return warmClock; },
+});
+assert.equal([...forwardOwner.initializeSteps()].length, 1,
+  'newly submitted programs yield after uniform discovery');
+assert.deepEqual(initialized, ['uniforms']);
+assert.equal([...forwardOwner.linkerBreathingSlices(3)].length, 3,
+  'pending ANGLE links receive a bounded number of scheduler slices');
+forwardOwner.invalidate();
+
+console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');
