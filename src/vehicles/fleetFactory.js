@@ -17,6 +17,13 @@ import {
   ensureVehicleMarkingSeatsForIds,
   isVehicleMarkingSeatsReady,
 } from './vehicleMarkingSeatLoader.js';
+import {
+  ensureAllCombatAnatomyGroups,
+  ensureCombatAnatomyCalibration,
+  ensureCombatAnatomyCalibrations,
+  isCombatAnatomyCalibrationReady,
+} from './combatAnatomyCalibrationLoader.js';
+import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 import './variants.js';
 import './userdrops.js';
@@ -43,6 +50,7 @@ import {
   PRODUCTION_TANK_IDS,
   RUNTIME_TANK_IDS,
   SAVED_TANK_IDS,
+  TANK_SPECS,
   VISIBLE_TANK_IDS,
   finalizeFirstPartyRoster,
 } from './specs.js';
@@ -135,7 +143,10 @@ export function ensureTankBuilder(specId) {
   return Promise.all([
     ensureGroup(FLEET_GROUP_BY_ID[specId]),
     ensureVehicleMarkingSeats(specId),
-  ]).then(() => undefined);
+    ensureCombatAnatomyCalibration(specId),
+  ]).then(() => {
+    finalizeCombatAnatomy(TANK_SPECS[specId]);
+  });
 }
 
 export function ensureTankBuilders(specIds) {
@@ -147,19 +158,27 @@ export function ensureTankBuilders(specIds) {
   return Promise.all([
     ...[...groups].map(ensureGroup),
     ensureVehicleMarkingSeatsForIds(specIds),
-  ]).then(() => undefined);
+    ensureCombatAnatomyCalibrations(specIds),
+  ]).then(() => {
+    for (const id of specIds || []) finalizeCombatAnatomy(TANK_SPECS[id]);
+  });
 }
 
 export function ensureFullFleet() {
   return Promise.all([
     ...Object.keys(GROUP_LOADERS).map(ensureGroup),
     ensureAllVehicleMarkingSeatGroups(),
-  ]).then(() => undefined);
+    ensureAllCombatAnatomyGroups(),
+  ]).then(() => {
+    for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
+  });
 }
 
 export function isTankBuilderReady(specId) {
   const group = FLEET_GROUP_BY_ID[specId];
-  return (!group || readyGroups.has(group)) && isVehicleMarkingSeatsReady(specId);
+  return (!group || readyGroups.has(group))
+    && isVehicleMarkingSeatsReady(specId)
+    && isCombatAnatomyCalibrationReady(specId);
 }
 
 export function createTank(specId, engineCtx, opts) {

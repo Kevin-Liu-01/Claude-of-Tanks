@@ -4,7 +4,7 @@
 // Pure array math: no DOM, WebGL or Three dependency.
 
 import { MODULE_IDS } from '../sim/moduleCatalog.js';
-import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
+import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.js';
 
 const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
 const MISSILE_RELOAD_FLOOR_S = 8;
@@ -734,7 +734,7 @@ function addDerivedModules(spec) {
   modules.sort((a, b) => (order.get(a.module) ?? 999) - (order.get(b.module) ?? 999));
 }
 
-export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRATIONS[spec?.id]) {
+export function finalizeCombatAnatomy(spec, calibration = combatAnatomyCalibration(spec?.id)) {
   if (!spec?.armor || spec[FINALIZED]) return spec;
   const armor = spec.armor;
   const hullBoxes = [...(armor.modules || []), ...(armor.crew || [])].filter((box) => !box.turretLocal);
@@ -803,6 +803,4 @@ export function finalizeCombatAnatomy(spec, calibration = COMBAT_ANATOMY_CALIBRA
   return spec;
 }
 
-export function combatAnatomyCalibration(id) {
-  return COMBAT_ANATOMY_CALIBRATIONS[id] || null;
-}
+export { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.js';

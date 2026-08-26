@@ -11,6 +11,9 @@ import { FITTINGS } from './profiles/kit.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.js';
 import { VEHICLE_MARKING_SEATS } from './vehicleMarkingSeats.generated.js';
 import { registerVehicleMarkingSeatRecords } from './vehicleMarkingSeatRegistry.js';
+import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
+import { registerCombatAnatomyCalibrations } from './combatAnatomyCalibrationRegistry.js';
+import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 // These modules register specs at evaluation time. Keep donor waves ahead of
 // their derivatives so every clone observes a complete source record.
@@ -36,12 +39,15 @@ import {
   PRODUCTION_TANK_IDS,
   RUNTIME_TANK_IDS,
   SAVED_TANK_IDS,
+  TANK_SPECS,
   VISIBLE_TANK_IDS,
   finalizeFirstPartyRoster,
 } from './specs.js';
 import { applyNativeFamilyOrder } from './fleetOrder.js';
 
+registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 finalizeFirstPartyRoster();
+for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);
 for (const ids of [
   ALL_TANK_IDS,

@@ -13,7 +13,6 @@ import {
   isProductionHiddenTankId,
   isRetiredHistoricalTank,
 } from './rosterPolicy.js';
-import { finalizeCombatAnatomy } from './combatAnatomy.js';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.js';
 import { applyVehicleTaxonomy } from './taxonomy.js';
 import {
@@ -1687,7 +1686,6 @@ export function finalizeFirstPartyRoster() {
     const spec = TANK_SPECS[id];
     if (!spec) continue;
     applyVehicleTaxonomy(spec);
-    finalizeCombatAnatomy(spec);
     delete spec.community;
     delete spec.publicVisualFallback;
     if (FIRST_PARTY_DISPLAY_NAMES[id]) spec.name = FIRST_PARTY_DISPLAY_NAMES[id];
