@@ -259,8 +259,8 @@ assert.match(mainSource,
   /function queueBakedWorldMinimap[\s\S]{0,1400}hud\.buildMinimapFromAsset[\s\S]{0,900}buildWorldMinimap\(next, false\)/,
   'the exact map must be a lazy static asset with procedural cartography only as its error fallback');
 assert.match(hudSource,
-  /function installMinimapAsset[\s\S]{0,900}drawImage\(image, 0, 0, out\.width, out\.height\)/,
-  'the pre-baked supersampled minimap must install without a runtime WebGL readback');
+  /function installMinimapAsset[\s\S]{0,900}mmBg = image;[\s\S]{0,120}drawMinimapBackground\(\)/,
+  'the pre-baked minimap must retain its decoded image instead of duplicating a purge-prone iPad canvas');
 assert.match(deploymentShadowWarmSource,
   /const prime = async[\s\S]{0,6500}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');

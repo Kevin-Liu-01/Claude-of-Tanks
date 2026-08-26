@@ -1210,8 +1210,10 @@ function buildWorldMinimap(next, textured = true) {
     textured ? minimapSnapCtx() : null);
 }
 
+const MINIMAP_ASSET_VERSION = 'spawn-oriented-v2';
 function minimapAssetUrl(mapId) {
-  return `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp`;
+  return `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp` +
+    `?v=${MINIMAP_ASSET_VERSION}`;
 }
 
 /**

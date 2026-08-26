@@ -10,6 +10,13 @@ import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.js';
 import { uiPixelRatio } from '../engine/resolutionPolicy.js';
 import { getDeviceTier } from '../engine/quality.js';
+import {
+  MINIMAP_NORTH_UP,
+  MINIMAP_SPAWN_FLIPPED,
+  minimapRotationForSpawnYaw,
+  orientMinimapPoint,
+  orientMinimapYaw,
+} from './minimapOrientation.js';
 
 // --- palette (locked colors per ARCHITECTURE §3.7.1) ---
 const PEN_GREEN = '#7ee87e';
@@ -1356,7 +1363,12 @@ export function initHud(bus) {
   mmCanvas.width = Math.round(MM * mmDpr); mmCanvas.height = Math.round(MM * mmDpr);
   const mmCtx = mmCanvas.getContext('2d');
   mmCtx.setTransform(mmDpr, 0, 0, mmDpr, 0, 0);
-  let mmBg = null; // offscreen background canvas
+  // Canvas for the procedural/bake path, HTMLImageElement for production.
+  // Keeping the decoded baked image as the draw source avoids iPad Safari's
+  // memory-pressure canvas purge, which left live blips over a blank panel.
+  let mmBg = null;
+  let minimapRotation = MINIMAP_NORTH_UP;
+  let minimapOrientationLocked = false;
 
   // --- internal state ---
   let mode = 'hidden';
@@ -2745,11 +2757,14 @@ export function initHud(bus) {
   // every 20 Hz repaint; every call site destructures immediately (verified),
   // so a shared 2-element array is safe and allocation-free.
   const _wm = [0, 0];
-  function worldToMap(x, z) {
+  function worldToMap(x, z, oriented = true) {
     // +X right, +Z up (north)
     const half = mapWorldSize / 2;
     _wm[0] = ((x + half) / mapWorldSize) * MM;
     _wm[1] = ((half - z) / mapWorldSize) * MM;
+    if (oriented) {
+      orientMinimapPoint(_wm[0], _wm[1], MM, minimapRotation, _wm);
+    }
     return _wm;
   }
 
@@ -2927,7 +2942,7 @@ export function initHud(bus) {
       octx.strokeStyle = pal.waterStroke;
       octx.lineWidth = 0.8;
       for (const p of f.waterOrSoft) {
-        const [px, py] = worldToMap(p.x, p.z);
+        const [px, py] = worldToMap(p.x, p.z, false);
         octx.beginPath();
         octx.arc(px, py, (p.r / mapWorldSize) * MM, 0, Math.PI * 2);
         octx.fill();
@@ -2970,7 +2985,7 @@ export function initHud(bus) {
       const vx = new Float32Array(NV);
       const vy = new Float32Array(NV);
       for (const p of f.treeClusters) {
-        const [px, py] = worldToMap(p.x, p.z);
+        const [px, py] = worldToMap(p.x, p.z, false);
         // deterministic per-stand variation seeded from the scatter position
         const seed = Math.abs(Math.sin(p.x * 12.9898 + p.z * 78.233) * 43758.5453);
         const s01 = seed - Math.floor(seed);
@@ -3027,7 +3042,7 @@ export function initHud(bus) {
         for (const line of f.roads) {
           octx.beginPath();
           for (let i = 0; i < line.length; i++) {
-            const [px, py] = worldToMap(line[i][0], line[i][1]);
+            const [px, py] = worldToMap(line[i][0], line[i][1], false);
             if (i === 0) octx.moveTo(px, py); else octx.lineTo(px, py);
           }
           octx.stroke();
@@ -3052,7 +3067,7 @@ export function initHud(bus) {
       octx.strokeStyle = 'rgba(198,208,218,0.4)';
       octx.lineWidth = 0.7;
       for (const b of f.buildings) {
-        const [px, py] = worldToMap(b.x, b.z);
+        const [px, py] = worldToMap(b.x, b.z, false);
         octx.save();
         octx.translate(px, py);
         octx.rotate(-(b.rot || 0));
@@ -3066,7 +3081,6 @@ export function initHud(bus) {
         octx.restore();
       }
     }
-    drawMinimapChrome(octx);
     mmBg = out;
   }
 
@@ -3096,16 +3110,12 @@ export function initHud(bus) {
     if (generation !== mmBuildGeneration) return false;
     heightFieldRef = heightField;
     mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
-    const out = document.createElement('canvas');
-    out.width = MM * mmDpr;
-    out.height = MM * mmDpr;
-    const octx = out.getContext('2d');
-    octx.imageSmoothingEnabled = true;
-    octx.imageSmoothingQuality = 'high';
-    octx.drawImage(image, 0, 0, out.width, out.height);
     if (generation !== mmBuildGeneration) return false;
-    mmBg = out;
-    mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+    // Draw the decoded asset directly. A second offscreen canvas duplicates
+    // the pixels and can be silently purged by iPadOS Safari under WebGL
+    // pressure; the retained Image remains re-decodable by the browser.
+    mmBg = image;
+    drawMinimapBackground();
     mmDirty = true;
     return true;
   }
@@ -3113,6 +3123,7 @@ export function initHud(bus) {
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
   function drawMinimapChrome(octx) {
+    const flipped = minimapRotation === MINIMAP_SPAWN_FLIPPED;
     // grid 10x10
     octx.strokeStyle = 'rgba(230,240,250,0.11)';
     octx.lineWidth = 0.7;
@@ -3137,10 +3148,11 @@ export function initHud(bus) {
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
       // column numbers across the top edge (WoT prints "0" for the 10th)
-      octx.fillText(String((i + 1) % 10), c, 6);
+      const sourceIndex = flipped ? 9 - i : i;
+      octx.fillText(String((sourceIndex + 1) % 10), c, 6);
       // row letters down the left edge (skip the corner-sharing squeeze:
       // A's cell also hosts the "1", so it sits a touch lower)
-      octx.fillText(GRID_LETTERS[i], 6, i === 0 ? Math.max(c, 13) : c + 0.5);
+      octx.fillText(GRID_LETTERS[sourceIndex], 6, i === 0 ? Math.max(c, 13) : c + 0.5);
     }
     octx.restore();
     octx.textAlign = 'left';
@@ -3151,9 +3163,31 @@ export function initHud(bus) {
     octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
   }
 
+  function drawMinimapBackground() {
+    if (mmBg) {
+      mmCtx.save();
+      if (minimapRotation === MINIMAP_SPAWN_FLIPPED) {
+        mmCtx.translate(MM, MM);
+        mmCtx.rotate(Math.PI);
+      }
+      mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+      mmCtx.restore();
+    } else {
+      mmCtx.fillStyle = '#141b16';
+      mmCtx.fillRect(0, 0, MM, MM);
+    }
+    // Labels stay upright and retain the true grid identities after a flip.
+    drawMinimapChrome(mmCtx);
+  }
+
   // Team spawn flags (mode objective markers for annihilation): captured from
   // the rosters' first battle frame, when every tank still sits on its spawn.
   function captureSpawnFlags(frame) {
+    if (!minimapOrientationLocked && frame.player?.state) {
+      minimapRotation = minimapRotationForSpawnYaw(frame.player.state.yaw);
+      minimapOrientationLocked = true;
+      mmDirty = true;
+    }
     const tanks = frame.tanks || [];
     let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
     for (const t of tanks) {
@@ -3283,12 +3317,7 @@ export function initHud(bus) {
   }
 
   function drawMinimap(frame) {
-    if (mmBg) {
-      mmCtx.drawImage(mmBg, 0, 0, MM, MM);
-    } else {
-      mmCtx.fillStyle = '#141b16';
-      mmCtx.fillRect(0, 0, MM, MM);
-    }
+    drawMinimapBackground();
     const tanks = frame.tanks || [];
     const player = frame.player;
     // player map position first — base rings fade while the arrow sits on them
@@ -3366,13 +3395,15 @@ export function initHud(bus) {
       const [jx, jy] = blipJitter(t.id);
       if (ally) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        pushLiveBlip(px + jx, py + jy, t.state.yaw, PEN_GREEN, 5, 0.95, false);
+        pushLiveBlip(px + jx, py + jy,
+          orientMinimapYaw(t.state.yaw, minimapRotation), PEN_GREEN, 5, 0.95, false);
         continue;
       }
       const sp = spotById.get(t.id);
       if (sp && sp.vis) {
         const [px, py] = worldToMap(t.state.pos.x, t.state.pos.z);
-        pushLiveBlip(px + jx, py + jy, t.state.yaw, PEN_RED, 5, 0.95, false);
+        pushLiveBlip(px + jx, py + jy,
+          orientMinimapYaw(t.state.yaw, minimapRotation), PEN_RED, 5, 0.95, false);
       } else if (sp && sp.ever) {
         // last-known-position ghost marker (neutral diamond — deliberately a
         // DIFFERENT shape from the live arrows: "stale intel" at a glance)
@@ -3405,7 +3436,7 @@ export function initHud(bus) {
         // translucent fill + faint edge rays so the wedge reads even over
         // bright terrain
         _fwd.set(0, 0, -1).transformDirection(frame.camera.matrixWorld);
-        const camAng = Math.atan2(-_fwd.z, _fwd.x); // canvas angle (y down, +Z up on map)
+        const camAng = Math.atan2(-_fwd.z, _fwd.x) + minimapRotation;
         const wr = 36;
         mmCtx.fillStyle = 'rgba(235,245,255,0.15)';
         mmCtx.beginPath();
@@ -3423,7 +3454,7 @@ export function initHud(bus) {
         mmCtx.stroke();
       }
       // turret direction line (under the self arrow)
-      const tAng = st.yaw + st.turretYaw;
+      const tAng = orientMinimapYaw(st.yaw + st.turretYaw, minimapRotation);
       mmCtx.strokeStyle = 'rgba(235,245,255,0.75)';
       mmCtx.lineWidth = 1.2;
       mmCtx.beginPath();
@@ -3432,7 +3463,8 @@ export function initHud(bus) {
       mmCtx.stroke();
       // self marker: the classic WHITE hull-direction arrow (WoT self read),
       // larger than any teammate blip — FIXED anchor for the relaxation pass
-      pushLiveBlip(px, py, st.yaw, '#f2f8ff', 6.6, 1, true);
+      pushLiveBlip(px, py, orientMinimapYaw(st.yaw, minimapRotation),
+        '#f2f8ff', 6.6, 1, true);
     }
     // r7: relax overlapping blips to a minimum separation (radial nudge,
     // the player arrow never moves), clamp inside the map frame, and draw
@@ -3957,6 +3989,8 @@ export function initHud(bus) {
         spotById.clear();
         nickById.clear();
         spawnFlags = null; // re-capture from the new battle's spawn frame
+        minimapRotation = MINIMAP_NORTH_UP;
+        minimapOrientationLocked = false;
         // SPOTTING SECTION: disarm the sixth-sense lamp (sim clock restarts)
         sixthPendingS = -1;
         sixthUntilS = -1;
@@ -4065,7 +4099,7 @@ export function initHud(bus) {
     buildMinimap(heightField, features, palette, snap) {
       mmBuildGeneration++;
       buildMinimapBg(heightField, features, palette, snap);
-      mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+      drawMinimapBackground();
       mmDirty = true;
     },
 
@@ -4077,7 +4111,13 @@ export function initHud(bus) {
     },
 
     exportMinimapBackground(type = 'image/webp', quality = 0.92) {
-      return mmBg ? mmBg.toDataURL(type, quality) : null;
+      if (!mmBg) return null;
+      if (typeof mmBg.toDataURL === 'function') return mmBg.toDataURL(type, quality);
+      const out = document.createElement('canvas');
+      out.width = mmBg.naturalWidth || Math.round(MM * mmDpr);
+      out.height = mmBg.naturalHeight || Math.round(MM * mmDpr);
+      out.getContext('2d').drawImage(mmBg, 0, 0, out.width, out.height);
+      return out.toDataURL(type, quality);
     },
 
     /**
@@ -4137,6 +4177,17 @@ export function initHud(bus) {
       stageSpectateBar: (payload) => hud.stageSpectateBar(payload),
       getMinimapBackgroundDataUrl: (type, quality) =>
         hud.exportMinimapBackground(type, quality),
+      getMinimapState: () => ({
+        rotationRad: minimapRotation,
+        flipped: minimapRotation === MINIMAP_SPAWN_FLIPPED,
+        orientationLocked: minimapOrientationLocked,
+        backgroundKind: !mmBg ? 'none' : (mmBg.tagName === 'IMG' ? 'image' : 'canvas'),
+        backgroundReady: !!mmBg && (mmBg.tagName === 'IMG'
+          ? mmBg.complete && mmBg.naturalWidth > 0
+          : mmBg.width > 0 && mmBg.height > 0),
+        backingWidth: mmCanvas.width,
+        backingHeight: mmCanvas.height,
+      }),
       // MOBILE-UX r1 probe seam (introspection only): everything the reticle
       // clamp math consumed and produced on the LAST drawn frame, so a
       // numeric gate can assert drawnR == clamp(projection, floor, ceiling)
