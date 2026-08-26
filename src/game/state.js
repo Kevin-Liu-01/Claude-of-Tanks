@@ -39,9 +39,8 @@ import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
 } from './equipment.js';
 import { getDeviceTier } from '../engine/quality.js';
-
-export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
-  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+import { mulberry32 } from './stateCore.ts';
+export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 
 const COMBAT_SEED = 6000;
 // module repair duration lives with the state machine: sim/damage.js REPAIR_S
@@ -91,67 +90,6 @@ const _firedEv = {
   muzzlePos: [0, 0, 0], dir: [0, 0, 0],
 };
 
-/**
- * Reference event bus (ARCHITECTURE.md §1.5).
- * @returns {{on:Function, off:Function, emit:Function}}
- */
-export function createBus(onEmit = null) {
-  const m = new Map();
-  return {
-    on(ev, fn) {
-      let a = m.get(ev);
-      if (!a) { a = []; m.set(ev, a); }
-      a.push(fn);
-      return () => this.off(ev, fn);
-    },
-    off(ev, fn) {
-      const a = m.get(ev);
-      if (a) { const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); }
-    },
-    emit(ev, payload) {
-      // DEV flight-recorder seam: snapshot at emission because several hot
-      // payloads are deliberately reused after listeners return. Diagnostics
-      // are isolated so a recorder failure can never affect gameplay.
-      if (onEmit) {
-        try { onEmit(ev, payload); } catch (_) { /* diagnostic only */ }
-      }
-      const a = m.get(ev);
-      if (a) for (const fn of a.slice()) fn(payload);
-    },
-  };
-}
-
-/**
- * Create the mutable game-state container.
- * @returns {object} game state
- */
-export function createGameState() {
-  return {
-    phase: 'garage',            // 'garage' | 'battle' | 'ended' | 'shot'
-    // battle_countdown r1: pre-battle hold (seconds). While > 0 the fixed-step
-    // sim never runs — every tank (player included) is frozen and cannot fire
-    // or move. Armed to Infinity by the player battle-entry path the moment
-    // the roster spawns (so nothing can fire under the loading screen), reset
-    // to the visible 5 s countdown when the loading screen drops (openBattle),
-    // and 0 on every debug/probe entry path (unchanged behavior there).
-    preBattleS: 0,
-    mapId: 'verdant',           // MAP-CONFIG WIRING: active battlefield id (main.js startBattle)
-    tanks: [],                  // TankEntity[] — THIS battle's participants (player included)
-    allTanks: [],               // COMMUNITY TANKS: full entity pool (core + community)
-    battleCount: 0,             // COMMUNITY TANKS: seeds the per-battle roster shuffle
-    tankById: new Map(),
-    player: null,
-    shells: [],
-    nextShellId: 1,
-    timeS: 0,
-    fireTickAcc: 0,
-    combatRng: mulberry32(COMBAT_SEED),
-    result: null,               // null | 'victory' | 'defeat'
-    resultReason: null,         // null | 'elimination' | 'time_limit' | 'network_disconnect'
-    spotting: null,             // SPOTTING WIRING: SpottingSystem (per battle)
-    openingRouteJobs: [],       // solo deployment A* jobs, drained before rollout
-  };
-}
 
 /**
  * Build the eight TankEntity records (one per roster spec) with visuals.

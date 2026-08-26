@@ -115,10 +115,11 @@ import { createTouchControls } from './ui/touchControls.js';
 import { installResponsiveLayout } from './ui/responsiveLayout.js';
 import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
 import {
-  createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
-  mulberry32, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
+  spawnTanks, setupBattle, simStep, createCollider,
+  ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides, prepareNextOpeningRoute,
 } from './game/state.js';
+import { createBus, createGameState, mulberry32 } from './game/stateCore.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';

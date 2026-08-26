@@ -18,6 +18,8 @@ worktree and never stage generated tank work wholesale.
 - `docs/MULTIPLAYER-ARCHITECTURE.md` — authoritative multiplayer migration.
 - `src/main.js` — boot, scene composition, UI flow, render loop, and legacy
   fixed-step integration; keep changes surgical.
+- `src/game/stateCore.ts` — dependency-free typed session shell, event bus,
+  and deterministic integration RNG.
 - `src/game/state.js` — battle roster and authoritative simulation integration.
 - `src/sim/` — movement, armor, damage, spotting, and ballistics logic.
 - `src/net/` — transport-independent protocol, lobby, authority, and snapshots.

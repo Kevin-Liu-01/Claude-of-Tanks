@@ -12,6 +12,7 @@ and persisted player choices.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`stateCore.ts` owns the dependency-free typed session shell and event bus;
 `state.js` composes legacy solo entities and the fixed battle step; `ai.js` owns
 bot decisions and is injected into the headless multiplayer authority;
 `input.js` normalizes devices; `profile.js` persists real local match history;
@@ -26,7 +27,9 @@ out of authority rather than importing more UI into `state.js`.
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Trace callers in `src/main.js`, run the nearest selftest, and preserve existing
-event payloads. Bot changes require both focused AI tests and battle probes.
+event payloads. Keep garage/Studio-safe state in `stateCore.ts`; do not add
+simulation or rendering imports there. Bot changes require both focused AI
+tests and battle probes.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

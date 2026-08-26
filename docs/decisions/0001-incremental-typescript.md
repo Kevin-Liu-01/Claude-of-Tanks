@@ -24,7 +24,9 @@ Migrate by stable subsystem boundary:
 New standalone infrastructure modules should be TypeScript. Large visual,
 simulation, and vehicle files migrate only when their ownership boundary and
 tests are already clear. The first migrated module is
-`src/engine/frameScheduler.ts`.
+`src/engine/frameScheduler.ts`. The next boundary, `src/game/stateCore.ts`,
+owns the dependency-free session container, deterministic RNG, and synchronous
+event bus used by garage, Studio, and the legacy solo battle runtime.
 
 ## Consequences
 
