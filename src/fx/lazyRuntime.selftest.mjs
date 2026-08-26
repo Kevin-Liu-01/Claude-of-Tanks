@@ -38,7 +38,7 @@ const networkBattle = main.slice(
 if (!/preloadNetworkBattleModules\(\)[\s\S]{0,900}ensureFxRuntime\(\)/.test(networkBattle)) {
   throw new Error('network battle can enter without the live effects runtime');
 }
-if (!/function preloadBattleIntent[\s\S]{0,700}planBattleParticipantIds\(game, specId, true\)[\s\S]{0,220}ensureTankBuilders\(planned\)[\s\S]{0,420}live\.preloadTextures/.test(main)) {
+if (!/function preloadBattleIntent[\s\S]{0,850}planBattleParticipantIds\(game, specId, true\)[\s\S]{0,220}ensureTankBuilders\(planned\)[\s\S]{0,420}live\.preloadTextures/.test(main)) {
   throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');
 }
 if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
