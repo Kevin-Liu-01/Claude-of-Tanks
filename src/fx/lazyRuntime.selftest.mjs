@@ -38,7 +38,18 @@ const networkBattle = main.slice(
 if (!/preloadNetworkBattleModules\(\)[\s\S]{0,900}ensureFxRuntime\(\)/.test(networkBattle)) {
   throw new Error('network battle can enter without the live effects runtime');
 }
-if (!/function preloadBattleIntent[\s\S]{0,850}planBattleParticipantIds\(game, specId, true\)[\s\S]{0,220}ensureTankBuilders\(planned\)[\s\S]{0,420}live\.preloadTextures/.test(main)) {
+const battleIntent = main.slice(
+  main.indexOf('function preloadBattleIntent('),
+  main.indexOf('/** World raycast', main.indexOf('function preloadBattleIntent(')),
+);
+const plannedRosterAt = battleIntent.indexOf('planBattleParticipantIds(game, specId, true)');
+const rosterBuildersAt = battleIntent.indexOf('ensureTankBuilders(planned)');
+const fxRuntimeAt = battleIntent.indexOf('ensureFxRuntime()');
+const fxTexturesAt = battleIntent.indexOf('live.preloadTextures');
+if (!(plannedRosterAt >= 0
+  && rosterBuildersAt > plannedRosterAt
+  && fxRuntimeAt > rosterBuildersAt
+  && fxTexturesAt > fxRuntimeAt)) {
   throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');
 }
 if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
