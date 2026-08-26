@@ -10,6 +10,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
     'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',
+    'src/vehicles/profiles/t90BurlakRearScale.selftest.mjs',
     'src/vehicles/profiles/t90AVladimirProportions.selftest.mjs',
     'src/vehicles/profiles/t90MProryvTrackRwsBustle.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',

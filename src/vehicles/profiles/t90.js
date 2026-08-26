@@ -7487,44 +7487,79 @@ function addT90BurlakShoulderFoundationNative2026(P, {
   P.add('turretDark', box(0.80, 0.29, 0.028), 0, 0.17 + frontLift, 1.605 + frontForward, -0.08, 0, 0);
 }
 
-function addT90BurlakBustleNative2026(P) {
+function addT90BurlakBustleNative2026(P, { scale = 1 } = {}) {
   const { box } = KIT;
+  const rootZ = -1.08;
+  const fit = (value) => value * scale;
+  const fitZ = (z) => rootZ + (z - rootZ) * scale;
   // One shallow tapered bustle begins inside the existing cast rear bins.
   // It is a closed authored loft with a real floor and roof; lids and rails
   // merely articulate that load-bearing body and never substitute for it.
-  P.add('turret', weldedStationLoft([
+  // The production T-90 retains the source envelope (scale=1). The Burlak
+  // prototype passes 0.90, shrinking its complete rear magazine about the
+  // fixed neck plane so the attachment stays buried in the cast shell.
+  const stations = [
     [-1.08, 0.00, 0.64, -1.10, 1.10, -0.98, 0.98, -1.04, 1.04],
     [-1.50, 0.05, 0.67, -1.02, 1.02, -0.90, 0.90, -0.96, 0.96],
     [-2.08, 0.07, 0.65, -0.84, 0.84, -0.72, 0.72, -0.79, 0.79],
     [-2.68, 0.08, 0.60, -0.72, 0.72, -0.60, 0.60, -0.67, 0.67],
     [-3.30, 0.00, 0.58, -0.58, 0.58, -0.47, 0.47, -0.54, 0.54],
-  ]));
+  ].map(([z, y0, y1, ...widths]) => [
+    fitZ(z), fit(y0), fit(y1), ...widths.map(fit),
+  ]);
+  P.add('turret', weldedStationLoft(stations));
   for (const [z, w, d, y] of [
     [-1.34, 1.54, 0.32, 0.68], [-1.80, 1.44, 0.35, 0.69],
     [-2.29, 1.26, 0.36, 0.67], [-2.83, 1.04, 0.36, 0.62],
   ]) {
-    P.add('turretDark', box(w, 0.018, d), 0, y, z);
-    P.add('turretDetail', box(w * 0.80, 0.012, 0.040), 0, y + 0.015, z + d * 0.39);
+    P.add('turretDark', box(fit(w), fit(0.018), fit(d)), 0, fit(y), fitZ(z));
+    P.add('turretDetail', box(fit(w * 0.80), fit(0.012), fit(0.040)),
+      0, fit(y + 0.015), fitZ(z + d * 0.39));
   }
   for (const s of [-1, 1]) {
     for (const [x, z, d] of [[1.00, -2.12, 0.33], [0.92, -2.53, 0.31], [0.82, -2.91, 0.29]]) {
-      P.add('turret', box(0.19, 0.28, d), s * x, 0.37, z, 0, -s * 0.32, 0);
-      P.add('turretDark', box(0.015, 0.22, d * 0.80), s * (x + 0.105), 0.37, z, 0, -s * 0.32, 0);
+      P.add('turret', box(fit(0.19), fit(0.28), fit(d)), s * fit(x), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
+      P.add('turretDark', box(fit(0.015), fit(0.22), fit(d * 0.80)),
+        s * fit(x + 0.105), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
     }
-    for (const y of [0.32, 0.43, 0.54]) P.add('turretDetail', box(0.030, 0.022, 0.68), s * 0.50, y, -3.00);
-    for (const z of [-3.32, -3.08, -2.84, -2.68]) P.add('turretDetail', box(0.030, 0.24, 0.030), s * 0.50, 0.43, z);
+    if (scale < 0.999) {
+      // A hidden lap plate joins the two armour-pod runs where the old clear
+      // seam became a 6 cm continuity pinhole after scaling. The visible pods
+      // remain exactly 90% of their source dimensions; the production T-90
+      // keeps its original helper output at scale=1.
+      P.add('turret', box(fit(0.16), fit(0.24), fit(0.20)),
+        s * fit(1.07), fit(0.37), fitZ(-2.44), 0, -s * 0.32, 0);
+    }
+    for (const y of [0.32, 0.43, 0.54]) P.add('turretDetail',
+      box(fit(0.030), fit(0.022), fit(0.68)), s * fit(0.50), fit(y), fitZ(-3.00));
+    for (const z of [-3.32, -3.08, -2.84, -2.68]) P.add('turretDetail',
+      box(fit(0.030), fit(0.24), fit(0.030)), s * fit(0.50), fit(0.43), fitZ(z));
   }
   for (const [x, w, n] of [[-0.42, 0.42, 4], [0.10, 0.34, 3], [0.43, 0.24, 2]]) {
-    P.add('turretDark', box(w, 0.20, 0.022), x, 0.43, -3.315);
-    for (let i = 0; i < n; i++) P.add('turretDetail', box(0.020, 0.14, 0.016), x - w * 0.34 + i * (w * 0.68 / Math.max(1, n - 1)), 0.43, -3.332);
+    P.add('turretDark', box(fit(w), fit(0.20), fit(0.022)), fit(x), fit(0.43), fitZ(-3.315));
+    for (let i = 0; i < n; i++) P.add('turretDetail',
+      box(fit(0.020), fit(0.14), fit(0.016)),
+      fit(x - w * 0.34 + i * (w * 0.68 / Math.max(1, n - 1))), fit(0.43), fitZ(-3.332));
   }
+  P.turretG.userData.t90BurlakBustleReceipt = Object.freeze({
+    scale,
+    rootZ,
+    rearZ: fitZ(-3.30),
+    frontHalfWidth: fit(1.10),
+    frontHeight: fit(0.64),
+    maxRoofY: fit(0.69),
+  });
 }
 
 function finishT90BurlakNative2026(P) {
   const { box, cylY, cylZ, torus } = KIT;
+  const bustleScale = 0.90;
+  const bustleRootZ = -1.08;
+  const fitBustle = (value) => value * bustleScale;
+  const fitBustleZ = (z) => bustleRootZ + (z - bustleRootZ) * bustleScale;
 
   addT90BurlakShoulderFoundationNative2026(P);
-  addT90BurlakBustleNative2026(P);
+  addT90BurlakBustleNative2026(P, { scale: bustleScale });
 
   // Prototype roof hierarchy: a broad slew seat, compact panoramic head,
   // two hatch rings and a clearly founded NSVT.  These forms supply the tall
@@ -7560,9 +7595,12 @@ function finishT90BurlakNative2026(P) {
   P.add('turretGlass', box(0.19, 0.060, 0.008), 0.36, 0.58, 0.471, 0, -0.12, 0);
   // Autoloader feed-lid and two longitudinal rub rails.  They overlap the
   // closed bustle roof and add mechanical scale without altering its plan.
-  P.add('turretDark', box(0.72, 0.014, 0.66), 0.02, 0.695, -2.18);
-  P.add('turretDetail', box(0.030, 0.022, 1.42), -0.31, 0.710, -2.19);
-  P.add('turretDetail', box(0.030, 0.022, 1.42), 0.35, 0.710, -2.19);
+  P.add('turretDark', box(fitBustle(0.72), fitBustle(0.014), fitBustle(0.66)),
+    fitBustle(0.02), fitBustle(0.695), fitBustleZ(-2.18));
+  P.add('turretDetail', box(fitBustle(0.030), fitBustle(0.022), fitBustle(1.42)),
+    fitBustle(-0.31), fitBustle(0.710), fitBustleZ(-2.19));
+  P.add('turretDetail', box(fitBustle(0.030), fitBustle(0.022), fitBustle(1.42)),
+    fitBustle(0.35), fitBustle(0.710), fitBustleZ(-2.19));
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.07, ammo: true, shield: true, scale: 0.67 });
     mg.position.set(-0.46, 0.75, -0.42);
