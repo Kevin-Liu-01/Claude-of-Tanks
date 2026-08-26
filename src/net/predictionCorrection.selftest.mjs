@@ -39,4 +39,23 @@ decayPredictionCorrection(immediate, 1 / 60, {
 assert.ok(PREDICTION_CORRECTION_KEYS.every((key) => immediate[key] === 0),
   'zero-time policy remains an exact immediate convergence mode');
 
+const bounded = {
+  x: 1.2, y: 0.8, z: -0.9,
+  yaw: 0.4, pitch: 0.3, roll: -0.2, turretYaw: 0.1, gunPitch: -0.1,
+};
+const before = { ...bounded };
+decayPredictionCorrection(bounded, 0.1, {
+  horizontalTauS: 0.11,
+  verticalTauS: 0.16,
+  aimTauS: 0.075,
+  maxHorizontalStepM: 0.2,
+  maxVerticalStepM: 0.1,
+});
+assert.ok(Math.hypot(before.x - bounded.x, before.z - bounded.z) <= 0.2 + 1e-12,
+  'slow frames cannot release more than 20 cm of horizontal correction');
+assert.ok(Math.abs(before.y - bounded.y) <= 0.1 + 1e-12,
+  'slow frames cannot release more than 10 cm of support-height correction');
+assert.ok(Math.abs(bounded.turretYaw) < Math.abs(before.turretYaw),
+  'translation bounds do not delay the independent live-aim channel');
+
 console.log('predictionCorrection.selftest: grouped heavy-hull correction decay passed');

@@ -19,6 +19,9 @@ would make the gun feel detached from the player's aim.
 - Use 110 ms horizontal, 160 ms support, and 75 ms aim envelopes normally.
 - After terrain or dynamic contact, use 180 ms horizontal and 240 ms support
   envelopes for 300 ms. Aim remains live on its 75 ms envelope.
+- Bound one displayed frame to 20 cm of horizontal correction and 10 cm of
+  support-height correction. A slow render frame may extend convergence, but
+  cannot turn accumulated network error into one visible hull jump.
 - Keep the parked hull hold for sub-contact-patch quantization noise; never
   apply that hold to turret or gun articulation.
 - Measure the largest correction release and vertical release in browser tests.
@@ -26,9 +29,10 @@ would make the gun feel detached from the player's aim.
 ## Consequences
 
 The rendered tank reads as a supported heavy body without weakening server
-authority or delaying aim. Small contact disagreement remains visible for a few
-additional frames instead of becoming one sharp jump. Terminal destruction and
-errors above seven metres retain the existing immediate synchronization path.
+authority or delaying aim. Network or contact disagreement remains visible for
+the minimum additional frames needed to respect the release bound instead of
+becoming one sharp jump. Terminal destruction and errors above seven metres
+retain the existing immediate synchronization path.
 
 ## Verification
 

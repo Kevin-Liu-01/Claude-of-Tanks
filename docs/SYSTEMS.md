@@ -407,8 +407,9 @@ terrain contact, map bounds, and nearby static collision. On snapshot:
 Prediction never resolves local damage, spotting, destructibles, or match
 result. Terrain and dynamic contact keep support height and hull attitude on a
 heavier 300 ms correction envelope, while turret and gun aim converge faster.
-Rendered browser gates reject correction release above 0.25 m in one frame or
-vertical release above 0.15 m; authority and shared movement are unchanged.
+Presentation additionally caps a rendered frame to 0.20 m of horizontal and
+0.10 m of support-height correction. Browser gates retain wider 0.25 m and
+0.15 m safety ceilings; authority and shared movement are unchanged.
 
 ## Lobby and room lifecycle
 

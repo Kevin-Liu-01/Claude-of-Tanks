@@ -15,6 +15,8 @@ const DEFAULT_CONTACT_CORRECTION_TAU_S = 0.18;
 const DEFAULT_VERTICAL_CORRECTION_TAU_S = 0.16;
 const DEFAULT_CONTACT_VERTICAL_TAU_S = 0.24;
 const DEFAULT_AIM_CORRECTION_TAU_S = 0.075;
+const DEFAULT_MAX_HORIZONTAL_CORRECTION_STEP_M = 0.2;
+const DEFAULT_MAX_VERTICAL_CORRECTION_STEP_M = 0.1;
 const CONTACT_SMOOTH_HOLD_S = 0.3;
 const REST_SPEED_MPS = 0.08;
 const REST_HORIZONTAL_DEADZONE_M = 0.03;
@@ -118,6 +120,8 @@ export interface LocalTankPredictorOptions {
   verticalCorrectionTauS?: number;
   contactVerticalCorrectionTauS?: number;
   aimCorrectionTauS?: number;
+  maxHorizontalCorrectionStepM?: number;
+  maxVerticalCorrectionStepM?: number;
 }
 
 interface AuthoritySample {
@@ -292,6 +296,8 @@ export class LocalTankPredictor {
   readonly verticalCorrectionTauS: number;
   readonly contactVerticalCorrectionTauS: number;
   readonly aimCorrectionTauS: number;
+  readonly maxHorizontalCorrectionStepM: number;
+  readonly maxVerticalCorrectionStepM: number;
   readonly simEntity: PredictionSimEntity;
   readonly history: InputHistoryFrame[] = [];
   readonly correction: PredictionCorrection;
@@ -316,6 +322,8 @@ export class LocalTankPredictor {
     verticalCorrectionTauS = DEFAULT_VERTICAL_CORRECTION_TAU_S,
     contactVerticalCorrectionTauS = DEFAULT_CONTACT_VERTICAL_TAU_S,
     aimCorrectionTauS = DEFAULT_AIM_CORRECTION_TAU_S,
+    maxHorizontalCorrectionStepM = DEFAULT_MAX_HORIZONTAL_CORRECTION_STEP_M,
+    maxVerticalCorrectionStepM = DEFAULT_MAX_VERTICAL_CORRECTION_STEP_M,
   }: LocalTankPredictorOptions = {}) {
     if (!entity || !entity.spec || !entity.state) throw new TypeError('prediction entity is required');
     if (!heightField || typeof heightField.getHeightAt !== 'function') {
@@ -330,6 +338,8 @@ export class LocalTankPredictor {
     this.verticalCorrectionTauS = verticalCorrectionTauS;
     this.contactVerticalCorrectionTauS = contactVerticalCorrectionTauS;
     this.aimCorrectionTauS = aimCorrectionTauS;
+    this.maxHorizontalCorrectionStepM = maxHorizontalCorrectionStepM;
+    this.maxVerticalCorrectionStepM = maxVerticalCorrectionStepM;
     const source = entity.state;
     const state = createTankState(
       entity.spec,
@@ -513,6 +523,8 @@ export class LocalTankPredictor {
         ? this.contactVerticalCorrectionTauS : this.verticalCorrectionTauS,
       aimTauS: this.aimCorrectionTauS,
       holdRestingHull: this.holdRestingHull,
+      maxHorizontalStepM: this.maxHorizontalCorrectionStepM,
+      maxVerticalStepM: this.maxVerticalCorrectionStepM,
     });
     this.contactSmoothingS = Math.max(0, this.contactSmoothingS - dt);
     const correctionStepM = Math.hypot(
