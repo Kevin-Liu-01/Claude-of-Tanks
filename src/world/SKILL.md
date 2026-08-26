@@ -12,7 +12,9 @@ and map presentation.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`map.js` composes maps, `terrain.js` provides the height field,
+`worldBuildCoordinator.ts` owns map transfer, construction joins, background
+pacing, cancellation, residency, and eviction. `map.js` composes maps,
+`terrain.js` provides the height field,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
 props, destructibles, toppling, and wrecks own their visual/runtime layers.
 `headlessCollisionWorld.js` inflates the captured authored records for a

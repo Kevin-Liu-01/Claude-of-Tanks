@@ -484,8 +484,10 @@ other freely (single builder).
 ### 3.2 world — `src/world/`
 Exports locked in §2.7. Additional requirements:
 - Browser integration imports `map.js` dynamically on first battlefield use.
-  A cold debug/capture switch is asynchronous; production battle and Studio
-  entry already await the same cached `ensureWorld` promise.
+  `worldBuildCoordinator.ts` owns in-flight joins, background promotion,
+  cancellation, residency, and eviction. A cold debug/capture switch is
+  asynchronous; production battle and Studio entry await the same cached
+  `ensureWorld` promise.
 - `terrain.js` also exports `buildTerrainMeshes(heightField, engineCtx) => THREE.Group`
   (chunked LOD meshes + splat material per graphics doc §6–7; uses
   `engineCtx.setupShadowMaterial(mat, splatHook)`); `map.js` calls it.

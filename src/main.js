@@ -29,9 +29,6 @@ import {
   warmSceneOffscreenBatched,
 } from './engine/offscreenWarm.js';
 import {
-  disposeObject3DResources, residentResourceLimits,
-} from './engine/resourceLifetime.js';
-import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
 } from './engine/deviceDiag.js';
@@ -52,6 +49,7 @@ import {
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
+import { createWorldBuildCoordinator } from './world/worldBuildCoordinator.ts';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
@@ -322,24 +320,15 @@ const engineCtx = {
 // props + minimap capture are now deferred to ensureWorld(), which the battle
 // entry (behind the pre-battle loading screen) and the __SHOTS staging path
 // call. Boot never touches them.
-const worldCache = new Map();
-const worldBuilds = new Map();
 let minimapAssetMapId = null;
 let minimapAssetGeneration = 0;
 let minimapAssetPending = null;
-let worldModulePromise = null;
-const residentLimits = residentResourceLimits(getDeviceTier());
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let pendingMapChoice = 'verdant'; // includes the non-prefetchable Random card
 let worldDormant = false;        // garage: world hidden + per-frame update off
 let worldServicesMapId = null;   // collider/minimap/garage placement prepared
 let worldPrefetchTimer = 0;
-const worldPrefetchStats = {
-  requested: 0, completed: 0, joined: 0, promoted: 0,
-  cancelled: 0, skippedCapacity: 0, lastMap: null, lastMs: 0, active: null,
-};
-if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
 // The sky/fog preset the atmosphere is currently keyed to. Seeded with the
 // boot map so the FIRST activation of 'verdant' behaves exactly like the old
 // boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
@@ -356,157 +345,28 @@ const hfProxy = {
   get maxY() { return world ? world.heightField.maxY : 0; },
 };
 
-let lastWorldRelease = null;
-function loadWorldModule() {
-  if (!worldModulePromise) worldModulePromise = import('./world/map.js');
-  return worldModulePromise;
-}
-
-function enforceWorldCacheBudget() {
-  if (!Number.isFinite(residentLimits.worldScenes)) return;
-  for (const [id, cached] of worldCache) {
-    if (worldCache.size <= residentLimits.worldScenes) break;
-    if (cached === world || worldBuilds.has(id)) continue;
-    worldCache.delete(id);
-    const preserveRoots = scene.children.filter((child) => child !== cached.group);
-    const released = disposeObject3DResources(cached.group, {
-      preserveRoots,
-      onDispose: (type, resource) => {
-        if (type === 'material') lighting.releaseShadowMaterial(resource);
-      },
-    });
-    // Render lists retain object references independently of the scene graph.
-    // Clear them after a whole battlefield leaves so its JS graph and buffers
-    // can be reclaimed before the next mobile frame.
-    renderer.renderLists?.dispose?.();
-    lastWorldRelease = { id, ...released };
-  }
-}
-
-function beginWorldBuild(
-  mapId, onProgress = null, { background = false, waitForGarageLull = true } = {},
-) {
-  const id = mapId || pendingMapId;
-  const cached = worldCache.get(id);
-  if (cached) return { promise: Promise.resolve(cached), listeners: null, f: 1, label: 'Ready' };
-  let rec = worldBuilds.get(id);
-  if (rec && !background && rec.background) {
-    rec.background = false;
-    worldPrefetchStats.joined++;
-    worldPrefetchStats.promoted++;
-  }
-  if (!rec) {
-    rec = {
-      id, f: 0, label: 'Surveying terrain',
-      listeners: new Set(), promise: null,
-      stageTimings: {}, stageLabel: null, stageMark: performance.now(),
-      background, waitForGarageLull, cancelled: false,
-    };
-    const startedAt = performance.now();
-    const startedInBackground = background;
-    const finishBuildStage = (now = performance.now()) => {
-      if (!rec.stageLabel) return;
-      const key = ({
-        'Surveying terrain': 'heightField',
-        'Building terrain meshes': 'terrain',
-        'Planting vegetation': 'vegetation',
-        'Placing structures': 'props',
-        'Sealing the battlefield': 'assemble',
-      })[rec.stageLabel] || rec.stageLabel;
-      rec.stageTimings[key] = (rec.stageTimings[key] || 0) + Math.round(now - rec.stageMark);
-      rec.stageMark = now;
-    };
-    // The branded load veil owns foreground builds. A 12 ms slice forced
-    // hundreds of scheduler round-trips on dense maps even though the meter
-    // cannot present meaningfully faster than a frame. Coalesce to 32 ms;
-    // generation order and geometry stay identical while the user-visible
-    // load sheds the scheduling tax.
-    const yieldForeground = createOpaqueLoadingYielder(24, 80);
-    const yieldBackground = createFrameBudgetYielder(4);
-    rec.promise = loadWorldModule().then(({ createMapAsync }) => createMapAsync(
-      engineCtx, { mapId: id, seed: 1337 },
-      async (label, f) => {
-        if (rec.cancelled) {
-          worldPrefetchStats.cancelled++;
-          throw new Error(`Cancelled stale battlefield prefetch: ${id}`);
-        }
-        if (label !== rec.stageLabel) {
-          const now = performance.now();
-          finishBuildStage(now);
-          rec.stageLabel = label;
-          rec.stageMark = now;
-        }
-        rec.label = label;
-        rec.f = f;
-        for (const fn of rec.listeners) {
-          try { fn(f, label); } catch (_) { /* advisory */ }
-        }
-        if (rec.background) {
-          // Background construction runs only during a genuine garage lull.
-          // A BATTLE press promotes this same promise and immediately exits
-          // the wait, so work is never duplicated or stuck behind idle pacing.
-          while (rec.background && rec.waitForGarageLull && (game.phase !== 'garage'
-              || transition.active || performance.now() - garageActivityAt < 1200)) {
-            await new Promise((resolve) => setTimeout(resolve, 120));
-          }
-          if (rec.background) await yieldBackground(true);
-          else await yieldForeground();
-        } else {
-          await yieldForeground();
-        }
-      // Drain the same deterministic generators at their finest checkpoints.
-      // The frame-budget yielder above still coalesces cheap work on fast
-      // machines, while slow CPUs no longer turn a coarse row/family batch
-      // into a multi-hundred-millisecond loading-screen stall.
-      }, { fineSlices: true }))
-      .then((next) => {
-        finishBuildStage();
-        next.group.visible = false;
-        worldCache.set(id, next);
-        if (startedInBackground) {
-          worldPrefetchStats.completed++;
-          worldPrefetchStats.lastMap = id;
-          worldPrefetchStats.lastMs = Math.round(performance.now() - startedAt);
-        }
-        return next;
-      })
-      .finally(() => {
-        if (worldBuilds.get(id) === rec) worldBuilds.delete(id);
-        if (worldPrefetchStats.active === id) worldPrefetchStats.active = null;
-      });
-    worldBuilds.set(id, rec);
-  }
-  if (onProgress && rec.listeners) {
-    rec.listeners.add(onProgress);
-    try { onProgress(rec.f, rec.label); } catch (_) { /* advisory */ }
-  }
-  return rec;
-}
-
-/** Build the exact selected battlefield into the normal cache while idle. */
-function prefetchWorld(mapId, { intent = false } = {}) {
-  if (!mapId || mapId === 'random' || worldCache.has(mapId) || worldBuilds.has(mapId)) return null;
-  if (Number.isFinite(residentLimits.worldScenes)
-      && worldCache.size >= residentLimits.worldScenes) {
-    worldPrefetchStats.skippedCapacity++;
-    return null;
-  }
-  worldPrefetchStats.requested++;
-  worldPrefetchStats.active = mapId;
-  return beginWorldBuild(mapId, null, {
-    background: true,
-    // An explicit Battle hover/focus/touch is already the user-intent gate.
-    // Start immediately in 4 ms background slices instead of waiting through
-    // the passive garage-lull debounce; the click promotes this same build.
-    waitForGarageLull: !intent,
-  }).promise.catch(() => null);
-}
-
-function cancelBackgroundWorldBuildsExcept(mapId = null) {
-  for (const rec of worldBuilds.values()) {
-    if (rec.background && rec.id !== mapId) rec.cancelled = true;
-  }
-}
+const worldBuildCoordinator = createWorldBuildCoordinator({
+  engineContext: engineCtx,
+  scene,
+  renderer,
+  deviceTier: getDeviceTier(),
+  getCurrentWorld: () => world,
+  getGarageActivity: () => ({
+    phase: game.phase,
+    transitionActive: transition.active,
+    lastActivityAt: garageActivityAt,
+  }),
+  releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
+});
+const worldCache = worldBuildCoordinator.cache;
+const residentLimits = worldBuildCoordinator.resourceLimits;
+const worldPrefetchStats = worldBuildCoordinator.stats;
+if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
+const loadWorldModule = worldBuildCoordinator.loadModule;
+const enforceWorldCacheBudget = worldBuildCoordinator.enforceCacheBudget;
+const beginWorldBuild = worldBuildCoordinator.beginBuild;
+const prefetchWorld = worldBuildCoordinator.prefetch;
+const cancelBackgroundWorldBuildsExcept = worldBuildCoordinator.cancelBackgroundExcept;
 
 // Prime the selected battlefield only after boot and a genuine garage lull.
 // beginWorldBuild's background path runs in 4 ms slices and pauses itself as
@@ -7959,7 +7819,10 @@ window.__DEBUG = {
   get pedestalCacheIds() { return [...pedestalCache.keys()]; },
   get worldCacheIds() { return [...worldCache.keys()]; },
   get residentLimits() { return { ...residentLimits }; },
-  get lastWorldRelease() { return lastWorldRelease ? { ...lastWorldRelease } : null; },
+  get lastWorldRelease() {
+    return worldBuildCoordinator.lastRelease
+      ? { ...worldBuildCoordinator.lastRelease } : null;
+  },
   get graphicsContextLost() { return graphicsContextLost; },
   selectGarageTank: (id) => garage.setSelected(id),
   // Geometry probes must also inspect registered procedural variants that do
