@@ -102,6 +102,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.12",
+    "@types/three": "^0.185.4",
     "puppeteer": "^25.4.0",
     "typescript": "7.0.2",
     "vite": "^8.1.5"

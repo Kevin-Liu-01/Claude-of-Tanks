@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { createGameState } from './stateCore.ts';
 import {
-  createGameState, planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
-} from './state.js';
+  planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
+} from './rosterState.ts';
 
 const game = createGameState();
 spawnTanks(game, {});

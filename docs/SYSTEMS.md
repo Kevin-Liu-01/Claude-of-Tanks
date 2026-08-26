@@ -36,8 +36,10 @@ ARCHITECTURE.md wherever the two disagree.
 
 Solo composes the simulation and presentation directly in src/main.js and
 src/game/state.js. The dependency-free typed session shell and event bus live
-in src/game/stateCore.ts so garage and Studio code can share integration state
-without owning the solo combat graph. LAN, private, and ranked modes use
+in src/game/stateCore.ts. Typed roster records, battle-visual policy, and
+deterministic participant/camouflage planning live in src/game/rosterState.ts,
+so garage and battle-intent loading can use them without owning the solo combat
+graph. LAN, private, and ranked modes use
 src/sim/authoritativeMatch.js behind the protocol and browser presentation
 bridge. These compositions share movement, aiming, ballistics, armor, damage,
 spotting, bot, destructible, and result rules.
@@ -62,7 +64,8 @@ spotting, bot, destructible, and result rules.
 
 src/main.js is the legacy composition root. New ownership moves out through
 tested strict-TypeScript boundaries; src/game/stateCore.ts is the shared
-session boundary and src/game/state.js remains the legacy solo battle owner.
+session boundary, src/game/rosterState.ts owns roster/visual planning, and
+src/game/state.js remains the legacy solo battle owner.
 
 ### Boot
 

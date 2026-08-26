@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Vector3 } from 'three';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './mobileAutoAim.js';
-import { battleGeometryQuality } from './state.js';
+import { battleGeometryQuality } from './rosterState.ts';
 
 if (battleGeometryQuality(true, 'desktop') !== 'high') {
   throw new Error('desktop player must retain high-detail battle geometry');

@@ -27,6 +27,10 @@ tests are already clear. The first migrated module is
 `src/engine/frameScheduler.ts`. The next boundary, `src/game/stateCore.ts`,
 owns the dependency-free session container, deterministic RNG, and synchronous
 event bus used by garage, Studio, and the legacy solo battle runtime.
+The next boundary, `src/game/rosterState.ts`, owns roster entities, lazy battle
+visual construction policy, and deterministic participant/camouflage planning.
+It deliberately excludes combat initialization so garage boot and battle-intent
+preloading can depend on the roster without importing the solo simulation graph.
 
 ## Consequences
 
@@ -34,11 +38,15 @@ event bus used by garage, Studio, and the legacy solo battle runtime.
 - `src/main.js` shrinks through tested extractions rather than a rename-only
   conversion.
 - Mixed `.js` and `.ts` imports are expected during the migration.
+- Source imports may use explicit `.ts` extensions; `allowImportingTsExtensions`
+  is enabled because Vite and the Node self-tests both consume source modules
+  directly and the project does not emit JavaScript through TypeScript.
 - A migration commit must not also redesign visuals or gameplay.
 
 ## Verification
 
     npm run typecheck
     node src/engine/frameScheduler.selftest.mjs
+    node src/game/rosterPlanning.selftest.mjs
     npm test
     npm run build
