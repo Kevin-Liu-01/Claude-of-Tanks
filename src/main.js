@@ -85,6 +85,7 @@ import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createDebugTelemetryOwner } from './dev/debugTelemetry.ts';
+import { createDriveTestController } from './dev/driveTestController.ts';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
@@ -1960,7 +1961,8 @@ const playerShellLog = [];
 const _tele = new THREE.Vector3();
 function teleTargetFor(muzzle, dir) {
   // intended target: the live enemy whose hull center passes nearest the
-  // fire ray (drive tests also pin debugAimTargetId — prefer it when live)
+  // fire ray (drive tests also pin their target — prefer it when live)
+  const debugAimTargetId = driveTestController.aimTargetId;
   const pinned = debugAimTargetId ? game.tankById.get(debugAimTargetId) : null;
   if (pinned && pinned.state && pinned.combat && !pinned.combat.destroyed) return pinned;
   let best = null;
@@ -3226,7 +3228,7 @@ async function presentNetworkBattle({
     selectedSpecId = own.specId;
     rememberSpecId(own.specId);
   }
-  debugAimTargetId = null;
+  driveTestController.resetAim();
   setWorldDormant(false);
   if (world.resetDestructibles) world.resetDestructibles();
   game.mapId = mapId;
@@ -3543,7 +3545,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   sbtStage('resetPresentation');
   selectedSpecId = specId;
   rememberSpecId(specId);
-  debugAimTargetId = null; // sticky drive-test aim never carries across battles
+  driveTestController.resetAim(); // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
   switchMap(resolveMapId(mapId || pendingMapId));
   setWorldDormant(false); // the battle world wakes up (see setWorldDormant)
@@ -6755,411 +6757,21 @@ scheduleRaf();
 // Debug / drive-test hooks (not part of the screenshot contract).
 // ---------------------------------------------------------------------------
 
-// Sticky drive-test aim: debugAimAtNearest remembers its target and
-// debugFastForward re-leads input.aimPoint every step — exactly like a live
-// player keeping the reticle on a rolling target. Without this the aim point
-// froze in world space during fastForward, so headless volleys "missed"
-// targets that had simply drifted a hull-length while the gun settled.
-let debugAimTargetId = null;
-
-/** Recompute the travel-time-led aim point onto `best`'s hull center. */
-// controls_gunnery r6: the old version always led the hull CENTER
-// (heightM·0.5). On undulating ground a micro-crest 20-30 m short of a
-// hull-down target sat centimeters above that line — the LOS ray grazed
-// over it but a shell 0.5-1 m into the dispersion cone died in the dirt
-// just short of the hull ("fully-settled shot, terrain terminal, miss
-// ~20 m"). A real player aims at what is VISIBLE: probe hull center first,
-// then upper hull, then turret, and lead the first aim height whose
-// muzzle→impact path is clear. All heights blocked = keep center (the
-// live reticle shows the red blocked warning for that shot).
-// controls_gunnery r2: AIM-HEIGHT LATCH + GRAZE MARGIN. The r6 multi-height
-// probe re-picked its aim height (0.5/0.72/0.88) EVERY sim step — near a
-// micro-crest the raycast verdict flips frame to frame, so the turret chased
-// an aim point oscillating ~0.9 m vertically and never settled (measured:
-// 47 mrad error after 10 s, shot 178 m into terrain). The chosen height now
-// LATCHES for 1 s of game time per target. A height also only qualifies when
-// a parallel ray 0.5 m BELOW it is clear too — a path that grazes terrain
-// within half a meter gets biased up to the next height instead of trusting
-// a knife-edge LOS that half the dispersion cone will still clip.
-let leadLatchHFrac = 0;
-let leadLatchUntilS = -1;
-let leadLatchTargetId = null;
-
-function debugLeadPoint(p, best, out) {
-  p.visual.gunPivotWorld(_v1);
-  const shell = p.spec.gun.shells[Math.max(0, Math.min(2, p.combat.shellSlot))];
-  const tvx = Math.sin(best.state.yaw) * best.state.speed;
-  const tvz = Math.cos(best.state.yaw) * best.state.speed;
-  const solveAt = (hFrac) => {
-    _v2.copy(best.state.pos);
-    _v2.y += best.spec.dims.heightM * hFrac;
-    let ax = _v2.x;
-    let az = _v2.z;
-    for (let i = 0; i < 2; i++) {
-      const dx = ax - _v1.x;
-      const dy = _v2.y - _v1.y;
-      const dz = az - _v1.z;
-      const t = Math.sqrt(dx * dx + dy * dy + dz * dz) / shell.velocityMps;
-      ax = _v2.x + tvx * t;
-      az = _v2.z + tvz * t;
-    }
-    out.set(ax, _v2.y, az);
-  };
-  p.visual.gunMuzzleWorld(_v3); // blocked-reticle test origin (muzzle path)
-  // controls_gunnery r4: 6 m -> 1.5 m. min(6, boundingRadius) left the whole
-  // bounding sphere untested, so a knife-edge crest AT a hull-down target
-  // passed clearAt and the picker confidently laid center-mass into dirt
-  // (misses 118-394 m with a green reticle). 1.5 m still stops short of the
-  // aim point itself (>= 0.5·height above the target's ground contact), so
-  // honest flat-ground lays never self-block.
-  const margin = 1.5;
-  // NOTE (round-2 integration): the handoff's binary GRAZE MARGIN (parallel
-  // ray 0.5 m below must clear too) was applied, measured against the frozen
-  // gunnery gate, and REPLACED — it biased marginal cross-valley lays up to
-  // hFrac 0.88 (turret roof, ~0.3 m headroom vs ~1 m dispersion at 350 m)
-  // and shots flew clean over the target. The picker now SCORES each aim
-  // height by min(terrain clearance along the path, headroom to the roof
-  // line) — both eat the same dispersion tails in meters — and lays on the
-  // height with the largest margin, which lands on the crest/overshoot
-  // compromise instead of either cliff edge. The 1 s LATCH still prevents
-  // the r6 oscillation wedge (aim height flapping every sim step).
-  const clearAt = (hFrac) => {
-    solveAt(hFrac);
-    _rayD.copy(out).sub(_v3);
-    const d = _rayD.length();
-    if (d < 12) return true;
-    _rayD.multiplyScalar(1 / d);
-    return !world.raycast(_v3, _rayD, d - margin);
-  };
-  // Terrain clearance of the muzzle→lead-point segment in TERMINAL-dispersion
-  // units: the shot cone diverges linearly from the muzzle, so a crest at
-  // fraction t of the path only sees t× the terminal deviation — divide each
-  // sample's clearance by t to compare it against the roof-line headroom on
-  // equal footing. Sampled between ~16% and ~90% (ends sit on hull/target).
-  const pathClearance = () => {
-    let clr = Infinity;
-    for (let i = 2; i <= 11; i++) {
-      const t = i / 12.2;
-      const px = _v3.x + (out.x - _v3.x) * t;
-      const py = _v3.y + (out.y - _v3.y) * t;
-      const pz = _v3.z + (out.z - _v3.z) * t;
-      const c = (py - world.heightField.getHeightAt(px, pz)) / t;
-      if (c < clr) clr = c;
-    }
-    return clr;
-  };
-  // r4 BOUNCE FEEDBACK (0-damage streak fix): if this target's LAST player
-  // shell was a 0-damage tank impact (ricochet / nonpen), stop re-bouncing
-  // the same plate — skip the center-mass optimum and probe the lower-hull /
-  // upper bands instead (WoT weak-spot discipline; the r5 sample landed
-  // damage on only 2 of 5 aim-assisted shots because the assist kept
-  // re-serving the same bounce).
-  let bouncedLast = false;
-  for (let i = playerShellLog.length - 1; i >= 0; i--) {
-    const r = playerShellLog[i];
-    if (r.targetId !== best.id || !r.terminal) continue;
-    bouncedLast = r.terminal === 'tank' && (r.damage || 0) <= 0;
-    break;
-  }
-  const latched = leadLatchTargetId === best.id && game.timeS < leadLatchUntilS;
-  if (latched && clearAt(leadLatchHFrac)) return out; // hold the settled height
-  // CONTINUOUS optimum: raising the aim by dy raises the scaled clearance by
-  // exactly dy and lowers the roof headroom by dy, so the height equalizing
-  // the two margins maximizes the min margin in one closed-form step —
-  // aim = center + (headroom - scaledClr)/2, clamped to the [0.5, 0.9]·h
-  // band (never below hull center, never a knife-edge under the roof line).
-  const hM = best.spec.dims.heightM;
-  if (bouncedLast) {
-    // alternate plates after a bounce: lower hull first, then high turret
-    for (const hFrac of [0.34, 0.62, 0.5]) {
-      if (!clearAt(hFrac)) continue;
-      leadLatchHFrac = hFrac;
-      leadLatchTargetId = best.id;
-      leadLatchUntilS = game.timeS + 1;
-      return out;
-    }
-    solveAt(0.5);
-    leadLatchTargetId = null;
-    return out;
-  }
-  if (clearAt(0.5)) {
-    const sc = pathClearance();
-    const headroom = hM * 0.5; // roof line is 0.5·h above the center aim
-    const delta = Math.max(0, Math.min(0.25 * hM, (headroom - sc) / 2));
-    out.y += delta;
-    // final path check at the adjusted height (rocks/props via colliders)
-    _rayD.copy(out).sub(_v3);
-    const d = _rayD.length();
-    _rayD.multiplyScalar(1 / Math.max(d, 1e-6));
-    if (d < 12 || !world.raycast(_v3, _rayD, d - margin)) {
-      leadLatchHFrac = 0.5 + delta / hM;
-      leadLatchTargetId = best.id;
-      leadLatchUntilS = game.timeS + 1;
-      return out;
-    }
-    out.y -= delta; // adjusted point blocked — fall through to the ladder
-  }
-  for (const hFrac of [0.5, 0.72, 0.88]) {
-    if (!clearAt(hFrac)) continue;
-    leadLatchHFrac = hFrac;
-    leadLatchTargetId = best.id;
-    leadLatchUntilS = game.timeS + 1;
-    return out;
-  }
-  solveAt(0.5); // everything masked — center lead; reticle reads BLOCKED
-  leadLatchTargetId = null;
-  return out;
-}
-
-/**
- * Aim readiness snapshot for drive tests: fire when errMrad is small AND
- * reticleRadM (the live bloom-scaled dispersion radius at the aim distance)
- * has settled — that is WoT "fully aimed", not just "gun on target".
- * @returns {?object}
- */
-function debugAimState() {
-  const p = game.player;
-  if (!p || !p.state || p.combat.destroyed) return null;
-  return {
-    errMrad: debugGunAimError() * 1000,
-    bloomF: p.state.bloomF,
-    reticleRadM: computeDispersionRadM(p.spec, p.state, rig.aimDist),
-    aimDistM: rig.aimDist,
-    reloadT: p.combat.reload.t,
-    // controls_gunnery r2: settle-failure attribution — a large errMrad with
-    // atGunLimit true is a pitch/yaw CLAMP (gun physically cannot reach the
-    // aim point: gun-terrain muzzle clearance, casemate arc, or depression
-    // floor), not a slew still in progress. Exposed so gates/probes can
-    // separate "not settled yet" from "will never settle".
-    atGunLimit: !!p.state.atGunLimit,
-    gunLimitSpec: !!p.state.gunLimitSpec,
-    gunPitchDeg: Math.round(p.state.gunPitch * 573) / 10,
-    turretYawDeg: Math.round(p.state.turretYaw * 573) / 10,
-    // HUD frames do not run inside debugFastForward, so recast through the
-    // same controller path rather than reading stale presentation state.
-    blockedDistM: (() => {
-      aimController.gunCenterRay(p, p.input.aimPoint, _rayO, _rayD, _v2);
-      return aimController.muzzlePathBlockDist(
-        _rayO, _v2,
-        computeDispersionRadM(p.spec, p.state, rig.aimDist));
-    })(),
-    leadHFrac: leadLatchTargetId ? leadLatchHFrac : null,
-  };
-}
-
-/**
- * Deterministically point the player's aim at the nearest live enemy: snaps
- * the rig into sniper mode with the view ray through the enemy's hull center
- * so the server-aim raycast lands on the tank. The turret then slews to the
- * aim point over the next sim steps (fastForward keeps the lead fresh).
- * @returns {?{id:string, distM:number}} target picked, or null
- */
-function debugAimAtNearest() {
-  const p = game.player;
-  if (!p || !p.state || p.combat.destroyed) return null;
-  p.visual.gunPivotWorld(_v1);
-  let best = null;
-  let bestD = Infinity;
-  for (const ent of game.tanks) {
-    // SYMMETRIC TEAMS: only ENEMY-team tanks are valid drive-test targets
-    // (allies now spawn 22-44 m from the player and would win "nearest").
-    if (ent.team !== 'enemy' || !ent.state || !ent.combat || ent.combat.destroyed) continue;
-    _v2.copy(ent.state.pos);
-    _v2.y += ent.spec.dims.heightM * 0.5;
-    _v3.copy(_v2).sub(_v1);
-    const d = _v3.length();
-    if (d >= bestD || d < 1e-3) continue;
-    // Only offer LOS-clear targets: the drive test needs a shot that can land.
-    // controls_gunnery r4: tolerance boundingRadius+1 (up to 7 m of accepted
-    // obstruction) -> 2 m — candidates whose hull-center ray dies in a crest
-    // at their own bounding sphere are exactly the shots that whiff with a
-    // green reticle; reject them here instead of teaching the gate to fire.
-    _v3.multiplyScalar(1 / d);
-    const block = world.raycast(_v1, _v3, d);
-    if (block && block.dist < d - 2) continue;
-    // The settle gate rejects on the same controller-owned muzzle path;
-    // pre-filter candidates with the same test so the drive test never
-    // commits its slew to a target the fire gate will veto anyway (probe
-    // showed repeated doomed attempts on pivot-clear/muzzle-blocked lanes).
-    // _rayO is shared scratch and is free during this diagnostic scan.
-    p.visual.gunMuzzleWorld(_rayO);
-    if (aimController.muzzlePathBlockDist(_rayO, _v2, 0) != null) continue;
-    bestD = d;
-    best = ent;
-  }
-  if (!best) return null; // nothing visible yet — caller can fast-forward and retry
-  _v2.copy(best.state.pos);
-  _v2.y += best.spec.dims.heightM * 0.5;
-  // Travel-time lead for moving targets (same 2-iteration scheme as the AI).
-  const shell = p.spec.gun.shells[Math.max(0, Math.min(2, p.combat.shellSlot))];
-  const tvx = Math.sin(best.state.yaw) * best.state.speed;
-  const tvz = Math.cos(best.state.yaw) * best.state.speed;
-  let ax = _v2.x;
-  let az = _v2.z;
-  for (let i = 0; i < 2; i++) {
-    const dx = ax - _v1.x;
-    const dy = _v2.y - _v1.y;
-    const dz = az - _v1.z;
-    const t = Math.sqrt(dx * dx + dy * dy + dz * dz) / shell.velocityMps;
-    ax = _v2.x + tvx * t;
-    az = _v2.z + tvz * t;
-  }
-  _v3.set(ax, _v2.y, az).sub(_v1);
-  const yaw = Math.atan2(_v3.x, _v3.z);
-  const pitch = Math.atan2(_v3.y, Math.hypot(_v3.x, _v3.z));
-  rig.snapSniper(4, yaw, pitch);
-  debugAimTargetId = best.id; // fastForward re-leads onto this tank per step
-  return { id: best.id, distM: bestD };
-}
-
-/**
- * Angle (radians) between the player's barrel and the vector muzzle→aimPoint.
- * The drive test polls this to know when the turret finished slewing.
- * @returns {number} radians, or Infinity when unavailable
- */
-function debugGunAimError() {
-  const p = game.player;
-  if (!p || !p.state || p.combat.destroyed) return Infinity;
-  // controls_gunnery r3: bore AXIS, not the (possibly off-axis) anchor line.
-  p.visual.gunMuzzleWorld(_v1);
-  p.visual.gunDirWorld(_v3);
-  _v2.copy(p.input.aimPoint).sub(_v1).normalize();
-  return Math.acos(Math.min(1, Math.max(-1, _v3.dot(_v2))));
-}
-
-/**
- * Run the fixed-step simulation synchronously for `seconds` of game time
- * (visuals synced each step so gun/turret chase behaves exactly like the
- * live loop). Deterministic drive-test accelerator.
- * @param {number} seconds
- * @returns {number} game.timeS after the run
- */
-function debugFastForward(seconds) {
-  const steps = Math.max(0, Math.round(seconds / SIM_DT));
-  for (let i = 0; i < steps; i++) {
-    if (game.phase !== 'battle') break;
-    // The render loop normally maps debugFlags.forceFire onto the player's
-    // input each frame; do the same here so headless volleys can fire.
-    if (game.player && !game.player.combat.destroyed) {
-      game.player.input.fire = debugFlags.forceFire ||
-        (game.player.input.fire && input.isDown('fire'));
-      // Sticky aim (see debugAimTargetId): track the aimed tank like a live
-      // player's reticle, so settling the gun never goes stale on a mover.
-      const tgt = debugAimTargetId ? game.tankById.get(debugAimTargetId) : null;
-      if (tgt && tgt.state && tgt.combat && !tgt.combat.destroyed) {
-        debugLeadPoint(game.player, tgt, game.player.input.aimPoint);
-      }
-    }
-    simStep(game, bus, world, rig, collider);
-    for (const ent of game.tanks) {
-      if (ent.state) ent.visual.syncFromState(ent.state);
-    }
-  }
-  resetSoloPresentationPoses();
-  simAcc = 0;
-  return game.timeS;
-}
-
-/**
- * KILL-CAM test aid: spawn a lethal enemy shell aimed at the player from a
- * clear-LOS vantage and drop the player's HP so the next hit kills. Fired
- * through the normal shell pipeline (bus 'shell:fired' + sim stepping), so the
- * kill-cam captures a real resolved chain. Call, then fastForward ~1 s.
- * @returns {boolean} true if a shell was spawned
- */
-function debugSpawnKillShell(aimYFrac = 0.45) {
-  // killcam r2: optional aim height (fraction of hull height) — probes force
-  // deterministic module stories (e.g. ~0.3 crosses hull ammo carousels for
-  // rack-detonation replays). Default keeps every legacy caller identical.
-  const p = game.player;
-  if (!p || !p.state || p.combat.destroyed) return false;
-  const shooter = game.tankById.get('t90m') && game.tankById.get('t90m').team === 'enemy'
-    && game.tankById.get('t90m').combat && !game.tankById.get('t90m').combat.destroyed
-    ? game.tankById.get('t90m')
-    : game.tanks.find((t) => t.team === 'enemy' && t.combat && !t.combat.destroyed);
-  if (!shooter) return false;
-  p.combat.hp = Math.min(p.combat.hp, 1);
-  _v2.copy(p.state.pos);
-  _v2.y += p.spec.dims.heightM * aimYFrac;
-  if (!shooter.visual || !shooter.visual.gunMuzzleWorld) return false;
-  const original = {
-    pos: shooter.state.pos.clone(), yaw: shooter.state.yaw,
-    turretYaw: shooter.state.turretYaw, gunPitch: shooter.state.gunPitch,
-  };
-  shooter.visual.gunMuzzleWorld(_rayO);
-  const groundOffset = shooter.state.pos.y - hfProxy.getHeightAt(
-    shooter.state.pos.x, shooter.state.pos.z);
-  // probe bearings (flat side shots first — guaranteed pen) for clear LOS
-  const RELS = [90, -90, 70, -70, 110, -110, 45, 135];
-  for (let i = 0; i < RELS.length; i++) {
-    const az = p.state.yaw + RELS[i] * DEG;
-    const sx = _v2.x + Math.sin(az) * 130;
-    const sz = _v2.z + Math.cos(az) * 130;
-    shooter.state.pos.set(sx, hfProxy.getHeightAt(sx, sz) + groundOffset, sz);
-    // Lay the actual rendered gun onto the target before sampling its muzzle.
-    // This keeps the probe honest: its kill cam starts at a real tank barrel,
-    // not at the old free-floating synthetic point 7 m above the battlefield.
-    for (let solve = 0; solve < 2; solve++) {
-      shooter.visual.syncFromState(shooter.state, 0);
-      shooter.visual.gunMuzzleWorld(_v1);
-      _v3.copy(_v2).sub(_v1).normalize();
-      shooter.state.yaw = Math.atan2(_v3.x, _v3.z);
-      shooter.state.turretYaw = 0;
-      shooter.state.gunPitch = Math.atan2(_v3.y, Math.hypot(_v3.x, _v3.z))
-        - (shooter.state.visualPitch || 0);
-    }
-    shooter.visual.syncFromState(shooter.state, 0);
-    shooter.visual.gunMuzzleWorld(_v1);
-    _v3.copy(_v2).sub(_v1);
-    const d = _v3.length();
-    _v3.multiplyScalar(1 / d);
-    const block = world.raycast(_v1, _v3, d - p.spec.armor.boundingRadiusM - 1);
-    if (block) continue;
-    const shellSpec = shooter.spec.gun.shells[0];
-    const shell = createShell(shellSpec, shooter.id, false, _v1, _v3, game.nextShellId++);
-    game.shells.push(shell);
-    bus.emit('shell:fired', {
-      shellId: shell.id, shooterId: shooter.id, isPlayer: false,
-      shellType: shellSpec.type, shellName: shellSpec.name,
-      caliberMm: shellSpec.caliberMm, velocityMps: shellSpec.velocityMps,
-      timeS: game.timeS,
-      muzzlePos: [_v1.x, _v1.y, _v1.z], dir: [_v3.x, _v3.y, _v3.z],
-    });
-    return true;
-  }
-  shooter.state.pos.copy(original.pos);
-  shooter.state.yaw = original.yaw;
-  shooter.state.turretYaw = original.turretYaw;
-  shooter.state.gunPitch = original.gunPitch;
-  shooter.visual.syncFromState(shooter.state, 0);
-  return false;
-}
-
-/** Destroy every remaining enemy through the normal announce path (test aid). */
-function debugSlayEnemies() {
-  // killcam_shotinfo r1: skip ALLIES — the old guard killed the whole roster
-  // and credited all 7 kills to the player (fabricated ACE report, dead
-  // allies in a VICTORY).
-  for (const ent of game.tanks) {
-    if (ent.isPlayer || ent.team !== 'enemy' || !ent.combat || ent.combat.destroyed) continue;
-    ent.combat.hp = 0;
-    ent.combat.destroyed = true;
-    ent.combat.fire.burning = false;
-    if (!ent._destroyedAnnounced) {
-      ent._destroyedAnnounced = true;
-      // battle-ai r7 can defer bot visuals behind the roster build queue; a
-      // bot with visual=null still counts as a combat kill.
-      if (ent.visual && ent.visual.setDestroyed) ent.visual.setDestroyed();
-      bus.emit('tank:destroyed', {
-        id: ent.id,
-        specId: ent.specId,
-        pos: [ent.state.pos.x, ent.state.pos.y, ent.state.pos.z],
-        killerId: game.player ? game.player.id : null,
-        cause: 'shot',
-      });
-    }
-  }
-}
+const driveTestController = createDriveTestController({
+  getGame: () => game,
+  getWorld: () => world,
+  getRig: () => rig,
+  getCollider: () => collider,
+  bus,
+  input,
+  aimController,
+  debugFlags,
+  playerShellLog,
+  heightField: hfProxy,
+  simStep,
+  resetPresentationPoses: resetSoloPresentationPoses,
+  resetSimAccumulator: () => { simAcc = 0; },
+});
 
 const debugTelemetry = createDebugTelemetryOwner({
   renderer,
@@ -7217,16 +6829,16 @@ window.__DEBUG = {
   switchMap,
   flags: debugFlags,
   frameInfo,
-  aimAtNearest: debugAimAtNearest,
-  gunAimError: debugGunAimError,
+  aimAtNearest: driveTestController.aimAtNearest,
+  gunAimError: driveTestController.gunAimError,
   // controls_gunnery r6: attributable terminal event per player shell
   // (tank/terrain/air + miss distance to the intended target's hull center)
   playerShellLog,
   // controls_gunnery r6: per-battle bot-vs-player pressure counters
   botPressure,
-  aimState: debugAimState, // {errMrad,bloomF,reticleRadM,aimDistM,reloadT}
-  fastForward: debugFastForward,
-  slayEnemies: debugSlayEnemies,
+  aimState: driveTestController.aimState, // {errMrad,bloomF,reticleRadM,aimDistM,reloadT}
+  fastForward: driveTestController.fastForward,
+  slayEnemies: driveTestController.slayEnemies,
   startBattle: debugStartBattle,
   bakeMinimapForMap: async (mapId) => {
     await ensureBattleHud();
@@ -7251,7 +6863,7 @@ window.__DEBUG = {
   get killcam() { return killcam; },   // KILL-CAM introspection (phase, cancel)
   showroom,                            // garage orbit introspection (debugState)
   garageDressing,                      // garage-scene r1: workshop dressing rig
-  spawnKillShell: debugSpawnKillShell, // KILL-CAM: die on purpose
+  spawnKillShell: driveTestController.spawnKillShell, // KILL-CAM: die on purpose
   // effects_combat r2: shot-mode latch exposed for headless drive tests
   get shotMode() { return shotMode; },
   set shotMode(v) { shotMode = !!v; },

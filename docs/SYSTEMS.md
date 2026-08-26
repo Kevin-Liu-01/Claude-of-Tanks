@@ -55,7 +55,8 @@ strict TypeScript owners:
 - `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
 - `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
-- `src/dev/debugTelemetry.ts` owns read-only diagnostics.
+- `src/dev/debugTelemetry.ts` owns read-only diagnostics;
+- `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.
 
 `src/main.js` still declares dependency order and connects these ports, but it
 does not reimplement their state machines.

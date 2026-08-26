@@ -30,3 +30,4 @@ runtime documents remain authoritative for behavior.
 - [0018 — Browser network frames have one typed pump](0018-typed-network-frame-pump.md)
 - [0019 — Battle-only imports have one typed access owner](0019-typed-battle-module-access.md)
 - [0020 — Browser room integration has one typed coordinator](0020-typed-network-room-coordinator.md)
+- [0021 — Rendered drive tests have one typed controller](0021-typed-drive-test-controller.md)

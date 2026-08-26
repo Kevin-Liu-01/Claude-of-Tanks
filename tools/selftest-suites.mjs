@@ -57,6 +57,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
+    'src/dev/driveTestController.selftest.mjs',
     'src/engine/csmShaderRelease.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
