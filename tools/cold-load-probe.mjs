@@ -39,6 +39,9 @@ async function metrics(page, startedAt) {
     diagnosticChunks: performance.getEntriesByType('resource')
       .filter((row) => /\/(?:perfHud|debugTelemetry)-[^/]+\.js(?:\?|$)/.test(row.name))
       .map((row) => new URL(row.name).pathname),
+    captureChunks: performance.getEntriesByType('resource')
+      .filter((row) => /\/shotViews-[^/]+\.js(?:\?|$)/.test(row.name))
+      .map((row) => new URL(row.name).pathname),
     main: performance.getEntriesByType('resource')
       .filter((row) => /\/assets\/main-[^/]+\.js/.test(row.name))
       .map((row) => ({ durationMs: Math.round(row.duration), transferBytes: row.transferSize })),
@@ -280,6 +283,7 @@ try {
   if (!results.every((row) => row.ready)) process.exitCode = 1;
   if (firstVisits.some((row) => row.sourceChunks !== 0)) process.exitCode = 2;
   if (firstVisits.some((row) => row.diagnosticChunks.length !== 0)) process.exitCode = 8;
+  if (firstVisits.some((row) => row.captureChunks.length !== 0)) process.exitCode = 9;
   if (downloadRecovery.failedMainRequests !== 1 || downloadRecovery.navigations < 2) {
     process.exitCode = 3;
   }
