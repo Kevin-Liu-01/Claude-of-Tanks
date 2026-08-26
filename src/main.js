@@ -102,7 +102,7 @@ import {
   sampleTankPresentationPose,
 } from './game/presentationPose.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
-import { createSettings } from './ui/settings.js';
+import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.js';
 import { installResponsiveSurfaceStyles } from './ui/responsiveSurfaces.js';
@@ -605,6 +605,7 @@ function cancelBattleIntentTextureWarm() {
 
 function preloadBattleIntent({ specId, mapId } = {}) {
   audio.preload();
+  settings.preload().catch(() => null);
   ensureBattleHud().catch(() => null);
   ensureTouchControls().catch(() => null);
   loadWorldModule().catch(() => null);
@@ -2619,7 +2620,7 @@ const armorAimOverlay = createArmorAimOverlay();
 // Reused every HUD frame: scoped armor inspection follows every legally
 // visible opponent, not only the vehicle directly under the gun marker.
 const armorScopeTargets = [];
-const settings = createSettings({
+const settings = createSettingsAccess({
   input,
   bus,
   // A dead player is spectating even though the team battle continues. This
@@ -2978,7 +2979,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // Start their retryable chunk at the first covered frame; world transfer
   // has already begun on Battle intent, and no hidden garage boot pays for it.
   battleLoad.progress(0.01, 'Loading combat interface');
-  await Promise.all([ensureBattleHud(), ensureTouchControls()]);
+  await Promise.all([ensureBattleHud(), ensureTouchControls(), settings.preload()]);
 
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   // The next roster is deterministic from battleCount, so resolve its exact

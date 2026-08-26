@@ -339,6 +339,8 @@ export function battleControlHintGroups(rmbMode = 'hold') {
  *   onLeaveBattle?: () => void,
  *   gearVisible?: () => boolean,      // gear button should currently show
  *   isGamePaused?: () => boolean,     // opening the panel freezes a live battle
+ *   gear?: HTMLButtonElement,          // demand-boundary-owned trigger
+ *   registerMenuAction?: boolean,      // access owner may register the lazy action
  * }} opts
  * @returns {{open:Function,close:(opts?:{noRelock?:boolean})=>void,
  *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
@@ -413,12 +415,12 @@ export function createSettings(opts) {
     }
   }
 
-  const gear = el('button', 'cot-gear');
+  const gear = opts.gear || el('button', 'cot-gear');
   gear.type = 'button';
   gear.setAttribute('aria-label', 'Settings');
   gear.innerHTML = GEAR_SVG;
   gear.title = 'Settings';
-  document.body.appendChild(gear);
+  if (!gear.parentNode) document.body.appendChild(gear);
 
   const hints = el('div', 'cot-hints');
   document.body.appendChild(hints);
@@ -1171,9 +1173,11 @@ export function createSettings(opts) {
   // layer is live. NOT while a kill-cam replay owns the screen: there Esc is
   // just another ANY-KEY skip (the replay handles it in capture phase), and
   // the done-grace absorbs the skip keypress itself — see KC_DONE_GRACE_MS.
-  input.onAction('settingsMenu', () => {
-    if (!open && !replayOwnsScreen() && !isAnyModalOpen()) openPanel();
-  });
+  if (opts.registerMenuAction !== false) {
+    input.onAction('settingsMenu', () => {
+      if (!open && !replayOwnsScreen() && !isAnyModalOpen()) openPanel();
+    });
+  }
 
   // WoT behavior: pressing Esc under pointer lock is swallowed by the browser
   // as the unlock gesture — detect the unexpected unlock mid-battle and treat
