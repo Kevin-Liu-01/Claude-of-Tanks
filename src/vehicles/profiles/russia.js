@@ -1233,11 +1233,12 @@ function buildT44(P) {
 // (same world seats) so the component masks compare like for like.
 function buildT64BV1(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
-  // Lift the complete running-gear course by 20% of its authored 0.80 m
-  // envelope. Keeping every axle, return roller and tread datum on the same
-  // offset preserves the suspension/track relationship while seating the
-  // wheel train in the existing hull bay.
-  const runningGearLiftM = 0.16;
+  // Grow the authored 0.80 m course upward by 20%. The loaded lower run and
+  // road-wheel axles stay on their ground datums; only the terminal wheels,
+  // return rollers and upper run rise. The hull is lifted by the same amount
+  // after assembly so the result is a taller \____/ course, not suspension
+  // translated upward into the old hull bay.
+  const trackHeightIncreaseM = 0.16;
   const turretForwardShiftM = 0.20;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement
@@ -1402,22 +1403,22 @@ function buildT64BV1(P) {
     style: 'holes',
     wheelR: 0.267,
     wheelW: 0.30,
-    wheelY: 0.315 + runningGearLiftM,
+    wheelY: 0.315,
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.875, 1.125, 0.40, -0.325, -1.075, -1.775],
-    idler: { z: 2.55, y: 0.665 + runningGearLiftM, r: 0.262 },
-    sprocket: { z: -2.555, y: 0.788 + runningGearLiftM, r: 0.315 },
+    idler: { z: 2.55, y: 0.665 + trackHeightIncreaseM, r: 0.262 },
+    sprocket: { z: -2.555, y: 0.788 + trackHeightIncreaseM, r: 0.315 },
     rollers: [-1.85, -0.60, 0.70, 1.95]
-      .map((z) => ({ z, y: 0.90 + runningGearLiftM, r: 0.078 })),
+      .map((z) => ({ z, y: 0.90 + trackHeightIncreaseM, r: 0.078 })),
     trackW: 0.578,
     pinCapOuter: 0.27,
     endRingSpan: 0.51,
     shoeRadialScale: 0.46,
     // The thin T-64 shoe uses the canonical single-pin family geometry; its
     // web, pins and guide horn remain within the one closed tread course.
-    topY: 0.93 + runningGearLiftM,
-    botY: 0.13 + runningGearLiftM,
+    topY: 0.93 + trackHeightIncreaseM,
+    botY: 0.13,
     contactZF: 2.14,
     contactZR: -2.04,
     paintedEnds: false,
@@ -1624,6 +1625,12 @@ function buildT64BV1(P) {
   const decalX = ringSkin(rings, 0.40) + 0.025;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [decalX, 0.38, -0.50], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.23, [-decalX, 0.38, -0.50], -Math.PI / 2);
+  liftT64HullAboveTallTrack(P, {
+    trackHeightIncreaseM,
+    trackBottomY: 0.13,
+    trackTopY: 1.09,
+    authoredEnvelopeHeightM: 0.80,
+  });
   P.topY = 1.30;
 }
 
@@ -1637,6 +1644,46 @@ function buildT64BV1(P) {
 // (is7 precedent) so safeScale stays 1.0 and authored heights hold.
 export function widthAnchor(P, halfW, y, z) {
   for (const s of [-1, 1]) P.add('hull', KIT.box(0.012, 0.02, 0.02), s * (halfW - 0.006), y, z);
+}
+
+// T-64 ride-height correction shared by the Russian and Ukrainian profiles.
+// Hull buckets are still unmerged here, while fittings and running gear are
+// direct rig children. Moving only non-running-gear ownership keeps the
+// lower course planted and raises the complete vehicle body above it.
+export function liftT64HullAboveTallTrack(P, {
+  trackHeightIncreaseM,
+  trackBottomY,
+  trackTopY,
+  authoredEnvelopeHeightM,
+}) {
+  P.offsetBuckets([
+    'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+    'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
+    'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
+    'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR',
+    'hullTrackGuardL', 'hullTrackGuardR',
+  ], 0, trackHeightIncreaseM, 0);
+
+  let liftedDirectHullChildren = 0;
+  for (const child of P.hullG.children) {
+    let containsRunningGear = child.userData.runningGear === true;
+    child.traverse((node) => { containsRunningGear ||= node.userData.runningGear === true; });
+    if (containsRunningGear) continue;
+    child.position.y += trackHeightIncreaseM;
+    liftedDirectHullChildren += 1;
+  }
+
+  P.turretG.position.y += trackHeightIncreaseM;
+  P.hullG.userData.t64TallTrackReceipt = Object.freeze({
+    authoredEnvelopeHeightM,
+    trackHeightIncreaseM,
+    installedEnvelopeHeightM: trackTopY - trackBottomY,
+    trackBottomY,
+    trackTopY,
+    roadWheelCenterY: 0.315,
+    hullRideHeightIncreaseM: trackHeightIncreaseM,
+    liftedDirectHullChildren,
+  });
 }
 
 // ---- T-80 line: T-80 (1976) / T-80B / T-80BV ------------------------------
