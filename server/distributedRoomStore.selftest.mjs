@@ -92,26 +92,37 @@ guestStore.setDeliveryHandler(() => true);
 
 const room = await hostStore.create(hostConnection, {
   player: { id: 'durable-host', name: 'Durable Host' },
+  sessionId: 'durable-host-session',
   maxPlayers: 4,
 });
+hostStore.detach(hostConnection);
+const resumedHostConnection = {};
+const resumedHost = await hostStore.join(resumedHostConnection, {
+  roomCode: room.roomCode,
+  player: { id: 'durable-host', name: 'Durable Host' },
+  sessionId: 'durable-host-session',
+});
+assert.equal(resumedHost.result.hostId, 'durable-host',
+  'Redis room membership survives replacement of the host signaling socket');
 const joined = await guestStore.join(guestConnection, {
   roomCode: room.roomCode,
   player: { id: 'durable-guest', name: 'Durable Guest' },
+  sessionId: 'durable-guest-session',
 });
 assert.equal(joined.notify.length, 1);
 await guestStore.deliver(joined.notify[0]);
 
 const [firstPoll, racingPoll] = await Promise.all([
-  hostStore.poll(hostConnection),
-  hostStore.poll(hostConnection),
+  hostStore.poll(resumedHostConnection),
+  hostStore.poll(resumedHostConnection),
 ]);
 const recovered = [...firstPoll, ...racingPoll];
 assert.equal(recovered.length, 1,
   'concurrent pub/sub fallback drains deliver each notification exactly once');
-assert.equal(recovered[0].connection, hostConnection);
+assert.equal(recovered[0].connection, resumedHostConnection);
 assert.equal(recovered[0].message.type, 'peer_joined');
 assert.equal(recovered[0].message.payload.peerId, 'durable-guest');
-assert.deepEqual(await hostStore.poll(hostConnection), [],
+assert.deepEqual(await hostStore.poll(resumedHostConnection), [],
   'durable delivery mailbox is empty after acknowledgement by drain');
 
 await hostStore.close();

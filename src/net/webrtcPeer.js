@@ -39,10 +39,16 @@ export function createWebRTCPeer({
   relayOnly = false,
   RTCPeerConnectionImpl = null,
   transportOptions = {},
+  recoveryDelaysMs = [0, 3_000, 7_000, 15_000, 30_000],
+  disconnectGraceMs = 4_000,
 } = {}) {
   if (role !== 'host' && role !== 'client') throw new TypeError('role must be host or client');
   if (typeof onSignal !== 'function') throw new TypeError('onSignal callback is required');
   validateIceConfig(iceServers, relayOnly);
+  if (!Array.isArray(recoveryDelaysMs) || recoveryDelaysMs.length === 0 ||
+      recoveryDelaysMs.some((delay) => !Number.isFinite(delay) || delay < 0)) {
+    throw new TypeError('RTC recovery delays must be a non-empty array of milliseconds');
+  }
   const Ctor = rtcConstructor(RTCPeerConnectionImpl);
   const peerConnection = new Ctor({
     iceServers,
@@ -56,6 +62,9 @@ export function createWebRTCPeer({
   let transport = null;
   let settleTransport;
   let rejectTransport;
+  let recoveryTimer = null;
+  let recoveryAttempts = 0;
+  let negotiationChain = Promise.resolve();
   const transportReady = new Promise((resolve, reject) => {
     settleTransport = resolve;
     rejectTransport = reject;
@@ -92,9 +101,54 @@ export function createWebRTCPeer({
     if (!event.candidate || closed) return;
     onSignal({ kind: 'ice', candidate: signalCandidate(event.candidate) });
   };
+  function clearRecovery() {
+    if (recoveryTimer) clearTimeout(recoveryTimer);
+    recoveryTimer = null;
+  }
+
+  function queueNegotiation(task) {
+    const pending = negotiationChain.then(task);
+    negotiationChain = pending.catch(() => {});
+    return pending;
+  }
+
+  function scheduleRecovery(initialDelay = null) {
+    if (closed || recoveryTimer || peerConnection.connectionState === 'connected') return;
+    const delay = initialDelay == null
+      ? recoveryDelaysMs[Math.min(recoveryAttempts, recoveryDelaysMs.length - 1)]
+      : initialDelay;
+    recoveryTimer = setTimeout(() => {
+      recoveryTimer = null;
+      if (closed || peerConnection.connectionState === 'connected') return;
+      recoveryAttempts++;
+      if (role === 'host') {
+        queueNegotiation(async () => {
+          if (typeof peerConnection.restartIce === 'function') peerConnection.restartIce();
+          const offer = await peerConnection.createOffer({ iceRestart: true });
+          await peerConnection.setLocalDescription(offer);
+          onSignal({ kind: 'description', description: peerConnection.localDescription });
+        }).catch(() => {});
+      } else {
+        // The host remains the offerer, avoiding glare while still letting a
+        // client whose ICE agent noticed the failure first request recovery.
+        onSignal({ kind: 'restart' });
+      }
+      scheduleRecovery();
+    }, delay);
+    if (typeof recoveryTimer.unref === 'function') recoveryTimer.unref();
+  }
+
   peerConnection.onconnectionstatechange = () => {
     const state = peerConnection.connectionState;
-    if (state === 'failed' || state === 'closed') session.close(`rtc_${state}`);
+    if (state === 'connected') {
+      clearRecovery();
+      recoveryAttempts = 0;
+    } else if (state === 'disconnected') {
+      scheduleRecovery(disconnectGraceMs);
+    } else if (state === 'failed') {
+      clearRecovery();
+      scheduleRecovery(0);
+    } else if (state === 'closed') session.close('rtc_closed');
   };
   if (role === 'client') {
     peerConnection.ondatachannel = (event) => attachChannel(event.channel);
@@ -106,49 +160,59 @@ export function createWebRTCPeer({
     }
   }
 
-  async function start() {
-    if (role !== 'host') return;
-    const controlChannel = peerConnection.createDataChannel(MATCH_CONTROL_CHANNEL_LABEL, {
-      ordered: true,
+  function start() {
+    return queueNegotiation(async () => {
+      if (role !== 'host') return;
+      const controlChannel = peerConnection.createDataChannel(MATCH_CONTROL_CHANNEL_LABEL, {
+        ordered: true,
+      });
+      const stateChannel = peerConnection.createDataChannel(MATCH_STATE_CHANNEL_LABEL, {
+        ordered: false,
+        maxRetransmits: 0,
+      });
+      attachChannel(controlChannel);
+      attachChannel(stateChannel);
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      onSignal({ kind: 'description', description: peerConnection.localDescription });
     });
-    const stateChannel = peerConnection.createDataChannel(MATCH_STATE_CHANNEL_LABEL, {
-      ordered: false,
-      maxRetransmits: 0,
-    });
-    attachChannel(controlChannel);
-    attachChannel(stateChannel);
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    onSignal({ kind: 'description', description: peerConnection.localDescription });
   }
 
-  async function handleSignal(signal) {
-    if (closed) return;
-    if (!signal || typeof signal !== 'object') throw new TypeError('invalid RTC signal');
-    if (signal.kind === 'ice') {
-      if (!signal.candidate) return;
-      if (remoteDescriptionSet) await peerConnection.addIceCandidate(signal.candidate);
-      else pendingCandidates.push(signal.candidate);
-      return;
-    }
-    if (signal.kind !== 'description' || !signal.description) {
-      throw new TypeError('unknown RTC signal');
-    }
-    const description = signal.description;
-    if (role === 'host' && description.type !== 'answer') {
-      throw new Error('host expected an answer');
-    }
-    if (role === 'client' && description.type !== 'offer') {
-      throw new Error('client expected an offer');
-    }
-    await peerConnection.setRemoteDescription(description);
-    remoteDescriptionSet = true;
-    await drainCandidates();
-    if (role === 'client') {
-      const answer = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answer);
-      onSignal({ kind: 'description', description: peerConnection.localDescription });
-    }
+  function handleSignal(signal) {
+    return queueNegotiation(async () => {
+      if (closed) return;
+      if (!signal || typeof signal !== 'object') throw new TypeError('invalid RTC signal');
+      if (signal.kind === 'restart') {
+        if (role !== 'host') throw new Error('only the host accepts RTC restart requests');
+        clearRecovery();
+        scheduleRecovery(0);
+        return;
+      }
+      if (signal.kind === 'ice') {
+        if (!signal.candidate) return;
+        if (remoteDescriptionSet) await peerConnection.addIceCandidate(signal.candidate);
+        else pendingCandidates.push(signal.candidate);
+        return;
+      }
+      if (signal.kind !== 'description' || !signal.description) {
+        throw new TypeError('unknown RTC signal');
+      }
+      const description = signal.description;
+      if (role === 'host' && description.type !== 'answer') {
+        throw new Error('host expected an answer');
+      }
+      if (role === 'client' && description.type !== 'offer') {
+        throw new Error('client expected an offer');
+      }
+      await peerConnection.setRemoteDescription(description);
+      remoteDescriptionSet = true;
+      await drainCandidates();
+      if (role === 'client') {
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        onSignal({ kind: 'description', description: peerConnection.localDescription });
+      }
+    });
   }
 
   const session = {
@@ -160,6 +224,7 @@ export function createWebRTCPeer({
     close(reason = 'rtc_closed') {
       if (closed) return;
       closed = true;
+      clearRecovery();
       pendingCandidates.length = 0;
       if (transport) transport.close(reason);
       else {
@@ -172,7 +237,12 @@ export function createWebRTCPeer({
       peerConnection.onconnectionstatechange = null;
       peerConnection.close();
     },
+    restartIce() {
+      clearRecovery();
+      scheduleRecovery(0);
+    },
     get connectionState() { return peerConnection.connectionState; },
+    get recoveryAttempts() { return recoveryAttempts; },
   };
   return session;
 }

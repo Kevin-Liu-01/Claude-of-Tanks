@@ -6,7 +6,7 @@ import {
   buildPrivateMatchPlayers,
 } from './privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
-import { PrivateRoomClientSession } from './privateRoomSession.js';
+import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.js';
 import { MatchClientRuntime } from './matchRuntime.js';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.js';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.js';
@@ -19,6 +19,7 @@ class FakeRtcChannel {
     this.ordered = label === MATCH_CONTROL_CHANNEL_LABEL;
     this.maxRetransmits = this.ordered ? null : 0;
     this.bufferedAmount = 0;
+    this.sent = [];
     this.listeners = new Map();
   }
   addEventListener(type, listener) {
@@ -26,7 +27,7 @@ class FakeRtcChannel {
     this.listeners.get(type).add(listener);
   }
   removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
-  send() {}
+  send(value) { this.sent.push(value); }
   close() {
     if (this.readyState === 'closed') return;
     this.readyState = 'closed';
@@ -39,12 +40,50 @@ class FakeClientPeerConnection {
   close() { this.connectionState = 'closed'; }
 }
 
+class FakeHostPeerConnection extends FakeClientPeerConnection {
+  constructor() {
+    super();
+    this.localDescription = null;
+    this.channels = [];
+  }
+  createDataChannel(label) {
+    const channel = new FakeRtcChannel(label);
+    this.channels.push(channel);
+    return channel;
+  }
+  async createOffer() { return { type: 'offer', sdp: 'host-reload-offer' }; }
+  async setLocalDescription(description) { this.localDescription = description; }
+}
+
 class FakeSignaling {
-  constructor() { this.listeners = new Set(); this.closed = false; }
+  constructor() { this.listeners = new Set(); this.closed = false; this.signals = []; }
   onEvent(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-  sendSignal() {}
+  sendSignal(peerId, signal) { this.signals.push({ peerId, signal }); }
   close() { this.closed = true; }
   emit(message) { for (const listener of [...this.listeners]) listener(message); }
+}
+
+// A new browser-host runtime reconstructs peer offers from the durable room
+// membership returned by signaling. This is the host-side half of reload
+// recovery; guests replace their RTC connection when the host epoch changes.
+{
+  const signaling = new FakeSignaling();
+  const session = new PrivateRoomHostSession({
+    signaling,
+    roomInfo: {
+      roomCode: 'HOST22', peerId: 'host', hostId: 'host', mode: 'private',
+      peers: [{ peerId: 'guest', player: { name: 'Guest' }, sessionId: 'guest_epoch_1' }],
+    },
+    hostName: 'Host',
+    hostSpecId: 'm1a2',
+    RTCPeerConnectionImpl: FakeHostPeerConnection,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(session.peers.has('guest'), true,
+    'host reload immediately rebuilds an RTC offer for each retained room member');
+  assert.equal(signaling.signals[0]?.peerId, 'guest');
+  assert.equal(signaling.signals[0]?.signal?.description?.type, 'offer');
+  session.close('test_done');
 }
 
 // Match handoff retains rendezvous listening so a refreshed browser can build
@@ -68,6 +107,51 @@ class FakeSignaling {
   assert.equal(released.readyState, 'closed', 'an explicitly closed room retires gameplay');
   assert.equal(session.peer.peerConnection.connectionState, 'closed');
   released.close('test_done');
+}
+
+// A host document reload advertises a different runtime epoch. The guest
+// keeps its MatchClientRuntime (and prior lobby selection), but replaces the
+// dead peer connection and performs a fresh HELLO on the new channels.
+{
+  const signaling = new FakeSignaling();
+  const session = new PrivateRoomClientSession({
+    signaling,
+    roomInfo: {
+      roomCode: 'EPOCH2', peerId: 'guest', hostId: 'host', mode: 'private',
+      peers: [{ peerId: 'host', player: { name: 'Host' }, sessionId: 'host_epoch_1' }],
+    },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+  });
+  const firstControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const firstState = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: firstControl });
+  session.peer.peerConnection.ondatachannel({ channel: firstState });
+  await session.ready;
+  const firstPeer = session.peer;
+  const runtime = session.runtime;
+  runtime.roomState = {
+    players: [{
+      id: 'guest', specId: 't90m', equipment: ['rammer'], camo: 'digital', team: 'bravo',
+    }],
+  };
+  signaling.emit({
+    type: 'peer_joined',
+    payload: {
+      roomCode: 'EPOCH2', peerId: 'host', player: { name: 'Host' }, sessionId: 'host_epoch_2',
+    },
+  });
+  assert.notEqual(session.peer, firstPeer, 'host epoch replacement creates a new RTC peer');
+  const nextControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const nextState = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: nextControl });
+  session.peer.peerConnection.ondatachannel({ channel: nextState });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(session.runtime, runtime, 'presentation state survives peer replacement');
+  assert.equal(runtime.closed, false, 'replacement transport revives the client runtime');
+  assert.ok(nextControl.sent.length >= 5,
+    'replacement channel sends HELLO and retained vehicle, equipment, camo, and team commands');
+  session.close('test_done');
 }
 
 const remote = createLoopbackTransportPair();

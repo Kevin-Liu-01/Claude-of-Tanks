@@ -30,8 +30,9 @@ const store = redisUrl
   ? new DistributedSignalingRoomStore({ redisUrl, restUrl, restToken })
   : undefined;
 
-// WebSocket connections remain pinned to one Fluid-compute instance, while
-// Redis owns room membership and pub/sub carries signaling across instances.
+// WebSocket connections remain pinned to one Fluid-compute instance. Redis
+// owns room membership and durable signaling mailboxes; pub/sub is an
+// optional low-latency wake-up while client polling is the recovery path.
 const signaling = createSignalingServer({
   allowedOrigins: [...new Set([...OFFICIAL_ORIGINS, ...configuredOrigins])],
   webSocketPaths: ['/api/signal'],

@@ -93,6 +93,15 @@ function cleanPlayer(player) {
   return { id, name };
 }
 
+function cleanSessionId(value, playerId) {
+  const id = String(value || '').trim();
+  if (!id && /^[a-zA-Z0-9_-]{1,48}$/.test(playerId)) return `legacy_${playerId}`;
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) {
+    throw codedError('invalid_session', 'invalid signaling session');
+  }
+  return id;
+}
+
 function randomUnit() {
   const word = new Uint32Array(1);
   globalThis.crypto.getRandomValues(word);
@@ -270,29 +279,15 @@ export class DistributedSignalingRoomStore {
     return this._startPromise;
   }
 
-  async #ready() {
-    const deadline = Date.now() + REDIS_READY_TIMEOUT_MS;
-    let cause = null;
-    let attempt = 0;
-    while (Date.now() < deadline) {
-      try {
-        await this.start(Math.max(500, deadline - Date.now()));
-        return;
-      } catch (error) {
-        cause = error;
-        attempt++;
-        const remaining = deadline - Date.now();
-        if (remaining <= 0) break;
-        await new Promise((resolve) => setTimeout(resolve,
-          Math.min(remaining, 100 * (2 ** Math.min(attempt - 1, 4)))));
-      }
-    }
-    throw Object.assign(new Error('signaling room store is unavailable'), {
-      code: 'signaling_store_unavailable', cause,
-    });
+  #warmSubscriber() {
+    // Pub/sub only shortens mailbox latency. Room state and every delivery are
+    // durable REST commands, so a blocked TCP subscription must never block a
+    // first-time create/join/offer. Polling drains the same mailbox until the
+    // subscriber reconnects on a later warm request.
+    this.start().catch(() => {});
   }
 
-  /** A real readiness probe: REST commands and the sole pub/sub socket. */
+  /** REST is required; pub/sub may degrade to the durable polling mailbox. */
   async health(timeoutMs = REDIS_READY_TIMEOUT_MS) {
     const [subscription, command] = await Promise.allSettled([
       this.start(timeoutMs),
@@ -305,11 +300,14 @@ export class DistributedSignalingRoomStore {
       ? subscription.reason
       : command.status === 'rejected' ? command.reason : null;
     return {
-      ok: commandReady && subscriberReady,
+      ok: commandReady,
       command: commandReady ? 'ready' : 'unavailable',
-      subscriber: subscriberReady ? 'ready' : 'unavailable',
-      ...(!commandReady || !subscriberReady ? {
+      subscriber: subscriberReady ? 'ready' : 'polling_fallback',
+      ...(!commandReady ? {
         code: typeof error?.code === 'string' ? error.code : 'redis_unavailable',
+      } : !subscriberReady ? {
+        degraded: true,
+        code: typeof error?.code === 'string' ? error.code : 'redis_subscriber_unavailable',
       } : {}),
     };
   }
@@ -373,13 +371,14 @@ export class DistributedSignalingRoomStore {
     this.connections.set(peerId, connection);
   }
 
-  async create(connection, { player, maxPlayers = 14, mode = 'private' } = {}) {
-    await this.#ready();
+  async create(connection, { player, sessionId, maxPlayers = 14, mode = 'private' } = {}) {
+    this.#warmSubscriber();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
     if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 14) {
       throw codedError('invalid_capacity', 'invalid room capacity');
     }
     const memberPlayer = cleanPlayer(player);
+    const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     for (let attempt = 0; attempt < 16; attempt++) {
       const roomCode = this.roomCodeFactory();
       const peerId = memberPlayer.id;
@@ -391,7 +390,7 @@ export class DistributedSignalingRoomStore {
         hostId: peerId,
         createdAt: now,
         touchedAt: now,
-        peers: [{ peerId, player: memberPlayer }],
+        peers: [{ peerId, player: memberPlayer, sessionId: memberSessionId }],
       };
       const created = await this.#runCommand('set',
         this.roomKey(roomCode), JSON.stringify(room), { px: this.roomTtlMs, nx: true },
@@ -401,6 +400,7 @@ export class DistributedSignalingRoomStore {
       return {
         roomCode,
         peerId,
+        sessionId: memberSessionId,
         hostId: peerId,
         hostName: memberPlayer.name,
         mode: room.mode,
@@ -411,13 +411,14 @@ export class DistributedSignalingRoomStore {
     throw codedError('room_code_exhausted', 'room code space is busy');
   }
 
-  async join(connection, { roomCode, player } = {}) {
-    await this.#ready();
+  async join(connection, { roomCode, player, sessionId } = {}) {
+    this.#warmSubscriber();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
     const code = String(roomCode || '');
     const memberPlayer = cleanPlayer(player);
+    const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
-    const member = { peerId, player: memberPlayer };
+    const member = { peerId, player: memberPlayer, sessionId: memberSessionId };
     const result = parseResult(await this.#runCommand('eval',
       JOIN_ROOM_SCRIPT,
       [this.roomKey(code)],
@@ -434,6 +435,7 @@ export class DistributedSignalingRoomStore {
       result: {
         roomCode: code,
         peerId,
+        sessionId: memberSessionId,
         hostId: room.hostId,
         hostName,
         mode: room.mode,
@@ -441,6 +443,7 @@ export class DistributedSignalingRoomStore {
         peers: existing.map((peer) => ({
           peerId: peer.peerId,
           player: { ...peer.player },
+          sessionId: peer.sessionId || '',
           isHost: peer.peerId === room.hostId,
         })),
       },
@@ -450,13 +453,14 @@ export class DistributedSignalingRoomStore {
           roomCode: code,
           peerId,
           player: { ...member.player },
+          sessionId: memberSessionId,
         } },
       })),
     };
   }
 
   async relay(connection, { roomCode, toPeerId, signal } = {}) {
-    await this.#ready();
+    this.#warmSubscriber();
     const membership = this.membership.get(connection);
     if (!membership || membership.roomCode !== roomCode) {
       throw codedError('not_in_room', 'not a room member');
@@ -489,7 +493,7 @@ export class DistributedSignalingRoomStore {
     if (!id || !message || typeof message.type !== 'string') {
       throw codedError('invalid_delivery', 'invalid signaling delivery');
     }
-    await this.#ready();
+    this.#warmSubscriber();
     await this.#runCommand('eval', ENQUEUE_DELIVERY_SCRIPT,
       [this.mailboxKey(id), this.channel],
       [JSON.stringify(message), MAX_MAILBOX_MESSAGES, this.deliveryTtlMs, JSON.stringify({ peerId: id })],
@@ -501,8 +505,20 @@ export class DistributedSignalingRoomStore {
   async poll(connection) {
     const membership = this.membership.get(connection);
     if (!membership || this.connections.get(membership.peerId) !== connection) return [];
+    await this.#runCommand('pexpire', this.roomKey(membership.roomCode), this.roomTtlMs);
     const messages = await this.#drainMailbox(membership.peerId);
     return messages.map((message) => ({ connection, message }));
+  }
+
+  /** Preserve Redis membership across an unclean WebSocket transport loss. */
+  detach(connection) {
+    const membership = this.membership.get(connection);
+    if (!membership) return [];
+    this.membership.delete(connection);
+    if (this.connections.get(membership.peerId) === connection) {
+      this.connections.delete(membership.peerId);
+    }
+    return [];
   }
 
   async leave(connection, reason = 'peer_left') {
@@ -514,7 +530,7 @@ export class DistributedSignalingRoomStore {
     }
     this.membership.delete(connection);
     this.connections.delete(membership.peerId);
-    await this.#ready();
+    this.#warmSubscriber();
     await this.#runCommand('del', this.mailboxKey(membership.peerId));
     const result = parseResult(await this.#runCommand('eval',
       LEAVE_ROOM_SCRIPT,

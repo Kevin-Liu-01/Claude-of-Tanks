@@ -61,6 +61,10 @@ export class PrivateRoomHostSession {
       onStart,
     });
     this.unsubscribeSignal = signaling.onEvent((message) => this.#event(message));
+    for (const peer of roomInfo.peers || []) {
+      if (peer.peerId === roomInfo.peerId) continue;
+      this.#joinPeer(peer).catch((error) => this.#fail(error));
+    }
   }
 
   #fail(error) {
@@ -82,9 +86,16 @@ export class PrivateRoomHostSession {
     }
   }
 
-  async #joinPeer({ peerId, player }) {
-    if (this.peers.has(peerId)) {
-      this.peers.get(peerId).close('peer_replaced');
+  async #joinPeer({ peerId, player, sessionId: rawSessionId }) {
+    const sessionId = String(rawSessionId || '');
+    const existing = this.peers.get(peerId);
+    if (existing && existing.sessionId === sessionId) {
+      if (['new', 'connecting', 'connected'].includes(existing.connectionState)) return;
+      existing.restartIce();
+      return;
+    }
+    if (existing) {
+      existing.close('peer_replaced');
       this.peers.delete(peerId);
     }
     const session = createWebRTCPeer({
@@ -94,6 +105,7 @@ export class PrivateRoomHostSession {
       RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
       onSignal: (signal) => this.signaling.sendSignal(peerId, signal),
     });
+    session.sessionId = sessionId;
     this.peers.set(peerId, session);
     await session.start();
     const transport = await session.transportReady;
@@ -156,14 +168,14 @@ export class PrivateRoomClientSession {
     this.signaling = signaling;
     this.roomInfo = roomInfo;
     this.onError = onError;
+    this.iceServers = iceServers;
+    this.relayOnly = relayOnly;
+    this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
     this.runtime = null;
-    this.peer = createWebRTCPeer({
-      role: 'client',
-      iceServers,
-      relayOnly,
-      RTCPeerConnectionImpl,
-      onSignal: (signal) => signaling.sendSignal(roomInfo.hostId, signal),
-    });
+    this.hostSessionId = String(
+      roomInfo.peers?.find((peer) => peer.peerId === roomInfo.hostId)?.sessionId || '',
+    );
+    this.peer = this.#createPeer();
     this.unsubscribeSignal = signaling.onEvent((message) => {
       if (message && message.type === 'room_signal' && message.payload &&
           message.payload.roomCode === roomInfo.roomCode &&
@@ -171,19 +183,48 @@ export class PrivateRoomClientSession {
         this.peer.handleSignal(message.payload.signal).catch((error) => {
           if (this.onError) this.onError(error);
         });
+      } else if (message && message.type === 'peer_joined' && message.payload &&
+                 message.payload.roomCode === roomInfo.roomCode &&
+                 message.payload.peerId === roomInfo.hostId) {
+        const nextSessionId = String(message.payload.sessionId || '');
+        if (nextSessionId && nextSessionId !== this.hostSessionId) {
+          this.hostSessionId = nextSessionId;
+          this.#replacePeer().catch((error) => {
+            if (this.onError) this.onError(error);
+          });
+        } else if (['failed', 'disconnected'].includes(this.peer.connectionState)) {
+          this.peer.restartIce();
+        }
       } else if (message && message.type === 'room_closed' && message.payload &&
                  message.payload.roomCode === roomInfo.roomCode) {
         this.close(message.payload.reason || 'room_closed');
       }
     });
-    this.ready = this.peer.transportReady.then((transport) => {
+    this.ready = this.#bindInitialPeer(this.peer);
+  }
+
+  #createPeer() {
+    return createWebRTCPeer({
+      role: 'client',
+      iceServers: this.iceServers,
+      relayOnly: this.relayOnly,
+      RTCPeerConnectionImpl: this.RTCPeerConnectionImpl,
+      onSignal: (signal) => this.signaling.sendSignal(this.roomInfo.hostId, signal),
+    });
+  }
+
+  #bindInitialPeer(peer) {
+    return peer.transportReady.then((transport) => {
       // Once RTC is established, pub/sub remains the fast path and the
       // durable mailbox only needs a low-frequency closure/rejoin safety net.
-      if (typeof signaling.setEventPollInterval === 'function') {
-        signaling.setEventPollInterval(2_000);
+      if (typeof this.signaling.setEventPollInterval === 'function') {
+        this.signaling.setEventPollInterval(2_000);
       }
-      const client = new MatchClientRuntime({ transport, playerId: roomInfo.peerId });
-      client.connect({ mode: roomInfo.mode || 'private', phase: 'lobby' });
+      const client = new MatchClientRuntime({
+        transport,
+        playerId: this.roomInfo.peerId,
+      });
+      client.connect({ mode: this.roomInfo.mode || 'private', phase: 'lobby' });
       this.runtime = client;
       return {
         onState: (listener) => client.onRoomState(listener),
@@ -192,6 +233,34 @@ export class PrivateRoomClientSession {
         get closed() { return client.closed; },
       };
     });
+  }
+
+  async #replacePeer() {
+    const previous = this.runtime?.roomState?.players?.find(
+      (player) => player.id === this.roomInfo.peerId,
+    ) || null;
+    const oldPeer = this.peer;
+    const nextPeer = this.#createPeer();
+    this.peer = nextPeer;
+    oldPeer.close('host_session_replaced');
+    const transport = await nextPeer.transportReady;
+    if (!this.runtime) return;
+    this.runtime.reconnectTransport(transport, {
+      mode: this.roomInfo.mode || 'private',
+      phase: 'lobby',
+    });
+    if (previous?.specId) {
+      this.runtime.submitRoomCommand({ type: 'select_vehicle', specId: previous.specId });
+    }
+    if (Array.isArray(previous?.equipment)) {
+      this.runtime.submitRoomCommand({ type: 'select_equipment', equipment: previous.equipment });
+    }
+    if (previous?.camo) {
+      this.runtime.submitRoomCommand({ type: 'select_camo', camo: previous.camo });
+    }
+    if (previous?.team) {
+      this.runtime.submitRoomCommand({ type: 'set_team', team: previous.team });
+    }
   }
 
   async submit(command) {

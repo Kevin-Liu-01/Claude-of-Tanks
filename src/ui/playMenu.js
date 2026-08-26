@@ -210,7 +210,7 @@ function remember(key, value) {
   try { localStorage.setItem(key, value); } catch (_) { /* session-only */ }
 }
 
-function rememberClientRoomUrl(roomCode, mode, hostName = null) {
+function rememberRoomUrl(roomCode, mode, hostName = null) {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
     const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href });
@@ -218,7 +218,7 @@ function rememberClientRoomUrl(roomCode, mode, hostName = null) {
   } catch (_) { /* URL persistence is a convenience, never a room dependency */ }
 }
 
-function clearClientRoomUrl() {
+function clearRoomUrl() {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
     const url = new URL(location.href);
@@ -705,6 +705,26 @@ export function createPlayMenu({
     joinBtn.disabled = next || unavailable || codeInput.value.length !== 6;
   }
 
+  function createHostSession({ signaling, roomInfo, name, selection, ice, teamSize }) {
+    return new PrivateRoomHostSession({
+      signaling,
+      roomInfo,
+      hostName: name,
+      hostSpecId: selection.specId,
+      hostEquipment: selection.equipment,
+      hostCamo: selection.camo,
+      mapId: selection.mapId,
+      teamSize,
+      iceServers: ice.iceServers,
+      relayOnly: ice.relayOnly,
+      isVehicleAllowed,
+      isCamoAllowed,
+      isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
+      onStart: (lobbyState) => beginNetworkHandoff(lobbyState, 'host'),
+      onError: (error) => setStatus(error.message, true),
+    });
+  }
+
   function closeCurrentSession(reason = 'menu_closed') {
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
@@ -715,7 +735,7 @@ export function createPlayMenu({
     state = null;
     role = null;
     notifyLobbyChange(null);
-    clearClientRoomUrl();
+    clearRoomUrl();
     resetInvitation();
     setClosePurpose(false);
     room.classList.remove('connected');
@@ -833,12 +853,14 @@ export function createPlayMenu({
   function renderLobby(next) {
     state = next;
     const roomHostName = hostNameFromRoom(next);
-    // A joined browser carries its room in the canonical URL. Reloading after
-    // a finished round therefore re-enters the still-live host room instead
-    // of silently forgetting the session. Hosts keep the clean URL because a
-    // browser-hosted authority cannot survive its own document being killed.
+    // Every browser carries the live room in its canonical URL. A guest can
+    // reattach to the current authority, while a reloaded browser host
+    // reconstructs the waiting room and lets guests resubmit their retained
+    // selections over replacement WebRTC channels.
+    if (next.roomCode) {
+      rememberRoomUrl(next.roomCode, next.mode || mode, roomHostName);
+    }
     if (role === 'client' && next.roomCode) {
-      rememberClientRoomUrl(next.roomCode, next.mode || mode, roomHostName);
       presentInvitation(roomHostName, next.roomCode, true);
     }
     // A client learns that the host started through this state callback. Cover
@@ -970,44 +992,38 @@ export function createPlayMenu({
         const teamSize = Number(createSizeSelect.value);
         remember(ROOM_SIZE_KEY, String(teamSize));
         const roomInfo = await signaling.createRoom({ player, mode, maxPlayers: 14 });
-        session = new PrivateRoomHostSession({
-          signaling,
-          roomInfo,
-          hostName: name,
-          hostSpecId: selection.specId,
-          hostEquipment: selection.equipment,
-          hostCamo: selection.camo,
-          mapId: selection.mapId,
-          teamSize,
-          iceServers: ice.iceServers,
-          relayOnly: ice.relayOnly,
-          isVehicleAllowed,
-          isCamoAllowed,
-          isMapAllowed: (mapId) => maps.some((map) => map.id === mapId),
-          onStart: (lobbyState) => {
-            beginNetworkHandoff(lobbyState, 'host');
-          },
-          onError: (error) => setStatus(error.message, true),
-        });
+        session = createHostSession({ signaling, roomInfo, name, selection, ice, teamSize });
         role = 'host';
         unsubscribeState = session.runtime.onState(renderLobby);
         renderLobby(serializeLobby(session.lobby));
       } else {
         const roomInfo = await signaling.joinRoom({ roomCode: codeInput.value, player });
-        presentInvitation(hostNameFromRoom(roomInfo), roomInfo.roomCode, false);
-        session = new PrivateRoomClientSession({
-          signaling,
-          roomInfo,
-          iceServers: ice.iceServers,
-          relayOnly: ice.relayOnly,
-          onError: (error) => setStatus(error.message, true),
-        });
-        role = 'client';
-        const runtime = await session.ready;
-        unsubscribeState = runtime.onState(renderLobby);
-        await session.submit({ type: 'select_vehicle', specId: selection.specId });
-        await session.submit({ type: 'select_equipment', equipment: selection.equipment });
-        await session.submit({ type: 'select_camo', camo: selection.camo });
+        if (roomInfo.hostId === roomInfo.peerId) {
+          // The stable browser player id owns this room. This is a host-page
+          // reload, not a guest joining itself: rebuild browser authority and
+          // offer fresh peer connections to all retained signaling members.
+          const teamSize = Number(createSizeSelect.value);
+          session = createHostSession({ signaling, roomInfo, name, selection, ice, teamSize });
+          role = 'host';
+          resetInvitation();
+          unsubscribeState = session.runtime.onState(renderLobby);
+          renderLobby(serializeLobby(session.lobby));
+        } else {
+          presentInvitation(hostNameFromRoom(roomInfo), roomInfo.roomCode, false);
+          session = new PrivateRoomClientSession({
+            signaling,
+            roomInfo,
+            iceServers: ice.iceServers,
+            relayOnly: ice.relayOnly,
+            onError: (error) => setStatus(error.message, true),
+          });
+          role = 'client';
+          const runtime = await session.ready;
+          unsubscribeState = runtime.onState(renderLobby);
+          await session.submit({ type: 'select_vehicle', specId: selection.specId });
+          await session.submit({ type: 'select_equipment', equipment: selection.equipment });
+          await session.submit({ type: 'select_camo', camo: selection.camo });
+        }
       }
     } catch (error) {
       closeCurrentSession('connection_failed');

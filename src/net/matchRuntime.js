@@ -737,6 +737,34 @@ export class MatchClientRuntime {
     return true;
   }
 
+  /** Rebind a replacement peer connection after signaling/ICE recovery. */
+  reconnectTransport(transport, metadata = null) {
+    if (!transport || typeof transport.send !== 'function' ||
+        typeof transport.onMessage !== 'function') {
+      throw new TypeError('transport must implement send() and onMessage()');
+    }
+    if (this.unsubscribeMessage) this.unsubscribeMessage();
+    if (this.unsubscribeClose) this.unsubscribeClose();
+    this.transport = transport;
+    this.connected = false;
+    this.closed = false;
+    this.handshakeSent = false;
+    this.readySent = false;
+    this.sendSeq = 0;
+    this.inputSendSeq = 0;
+    this.lastRecvSeq = null;
+    this.errors.length = 0;
+    this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
+    this.unsubscribeClose = typeof transport.onClose === 'function'
+      ? transport.onClose(() => {
+        this.connected = false;
+        this.closed = true;
+        for (const listener of [...this.connectionListeners]) listener(false);
+      })
+      : null;
+    return this.connect({ ...metadata, resumed: true });
+  }
+
   #send(type, payload) {
     if (this.closed) return false;
     const inputLane = type === MESSAGE_TYPES.INPUT;

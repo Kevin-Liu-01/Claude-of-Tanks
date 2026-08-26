@@ -477,6 +477,8 @@ class FakePeerConnection {
     this.localDescription = null;
     this.remoteDescription = null;
     this.candidates = [];
+    this.offerOptions = [];
+    this.restartCount = 0;
   }
   createDataChannel(label, options = {}) {
     if (!this.channels) this.channels = [];
@@ -485,11 +487,15 @@ class FakePeerConnection {
     this.channels.push(channel);
     return channel;
   }
-  async createOffer() { return { type: 'offer', sdp: 'offer-sdp' }; }
+  async createOffer(options = {}) {
+    this.offerOptions.push(options);
+    return { type: 'offer', sdp: options.iceRestart ? 'restart-offer-sdp' : 'offer-sdp' };
+  }
   async createAnswer() { return { type: 'answer', sdp: 'answer-sdp' }; }
   async setLocalDescription(value) { this.localDescription = value; }
   async setRemoteDescription(value) { this.remoteDescription = value; }
   async addIceCandidate(value) { this.candidates.push(value); }
+  restartIce() { this.restartCount++; }
   close() { this.connectionState = 'closed'; }
 }
 {
@@ -502,10 +508,12 @@ class FakePeerConnection {
   const host = createWebRTCPeer({
     role: 'host', onSignal: (signal) => hostSignals.push(signal),
     RTCPeerConnectionImpl: FakePeerConnection,
+    recoveryDelaysMs: [0, 50], disconnectGraceMs: 0,
   });
   const client = createWebRTCPeer({
     role: 'client', onSignal: (signal) => clientSignals.push(signal),
     RTCPeerConnectionImpl: FakePeerConnection,
+    recoveryDelaysMs: [0, 50], disconnectGraceMs: 0,
   });
   await host.start();
   assert.equal(hostSignals[0].description.type, 'offer');
@@ -526,6 +534,20 @@ class FakePeerConnection {
   assert.equal(client.peerConnection.candidates.length, 1, 'early ICE drains after remote description');
   await host.handleSignal(clientSignals[0]);
   assert.equal(host.peerConnection.remoteDescription.type, 'answer');
+  host.peerConnection.connectionState = 'failed';
+  host.peerConnection.onconnectionstatechange();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.ok(host.peerConnection.restartCount >= 1,
+    'host restarts ICE instead of destroying a room on a transient failure');
+  assert.equal(host.peerConnection.offerOptions.at(-1).iceRestart, true);
+  client.peerConnection.connectionState = 'failed';
+  client.peerConnection.onconnectionstatechange();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.ok(clientSignals.some((signal) => signal.kind === 'restart'),
+    'client requests a host-owned ICE restart without offer glare');
+  client.transportReady.catch(() => {});
+  host.close('test_complete');
+  client.close('test_complete');
 }
 
 // Signaling client is rendezvous-only and request/response correlated.

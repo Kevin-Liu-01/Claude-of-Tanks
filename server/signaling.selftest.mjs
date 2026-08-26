@@ -32,6 +32,20 @@ class FlakySubscriber extends EventEmitter {
   disconnect() { this.status = 'end'; this.emit('end'); }
 }
 
+class OfflineSubscriber extends EventEmitter {
+  constructor() { super(); this.status = 'wait'; }
+  connect() {
+    this.status = 'end';
+    queueMicrotask(() => this.emit('end'));
+    return Promise.reject(Object.assign(new Error('subscriber offline'), {
+      code: 'subscriber_offline',
+    }));
+  }
+  subscribe() { return Promise.reject(new Error('subscriber offline')); }
+  unsubscribe() { return Promise.resolve(0); }
+  disconnect() { this.status = 'end'; }
+}
+
 class FakeRestRedis {
   ping() { return Promise.resolve('PONG'); }
   set() { return Promise.resolve('OK'); }
@@ -48,16 +62,35 @@ assert.equal(retryStore.subscriber.status, 'wait',
   'registering delivery must not open Redis during an unrelated HTTP cold start');
 const recoveredRoom = await retryStore.create({}, {
   player: { id: 'cold-host', name: 'Cold Host' },
+  sessionId: 'cold-host-session',
   maxPlayers: 4,
 });
 assert.equal(recoveredRoom.roomCode.length, 6,
-  'the room request that sees a cold Redis failure must retry and recover');
-assert.equal(retryStore.subscriber.status, 'ready',
-  'a failed cold Redis startup must be retryable on the same function instance');
+  'room creation must succeed through REST while the optional subscriber is cold');
+assert.equal(retryStore.subscriber.status, 'end',
+  'room creation does not wait for a failed pub/sub connection');
 assert.deepEqual(await retryStore.health(), {
   ok: true, command: 'ready', subscriber: 'ready',
-});
+}, 'the same warm store retries and restores its pub/sub accelerator');
 await retryStore.close();
+
+const pollingFallbackStore = new DistributedSignalingRoomStore({
+  redisUrl: 'rediss://test.invalid',
+  commandClient: new FakeRestRedis(),
+  SubscriberImpl: OfflineSubscriber,
+});
+const fallbackRoom = await pollingFallbackStore.create({}, {
+  player: { id: 'fallback-host', name: 'Fallback Host' },
+  maxPlayers: 4,
+});
+assert.equal(fallbackRoom.sessionId, 'legacy_fallback-host',
+  'cached pre-session clients retain compatibility across the server deploy');
+const fallbackHealth = await pollingFallbackStore.health(25);
+assert.equal(fallbackHealth.ok, true,
+  'durable REST commands keep signaling healthy while pub/sub is offline');
+assert.equal(fallbackHealth.subscriber, 'polling_fallback');
+assert.equal(fallbackHealth.degraded, true);
+await pollingFallbackStore.close();
 
 const healthStore = {
   setDeliveryHandler() {},
@@ -133,7 +166,11 @@ const guestInbox = inbox(guest);
 send(host, {
   type: 'room_create',
   requestId: 'create-1',
-  payload: { player: { id: 'host-player', name: 'Host' }, maxPlayers: 4 },
+  payload: {
+    player: { id: 'host-player', name: 'Host' },
+    sessionId: 'host-session-one',
+    maxPlayers: 4,
+  },
 });
 const created = await hostInbox.next((message) => message.requestId === 'create-1');
 assert.equal(created.type, 'room_created');
@@ -142,6 +179,7 @@ assert.equal(created.payload.hostId, created.payload.peerId);
 assert.equal(created.payload.hostName, 'Host');
 assert.equal(created.payload.peerId, 'host-player',
   'signaling preserves stable browser identity for room recovery');
+assert.equal(created.payload.sessionId, 'host-session-one');
 
 send(guest, {
   type: 'room_join',
@@ -149,6 +187,7 @@ send(guest, {
   payload: {
     roomCode: created.payload.roomCode,
     player: { id: 'guest-player', name: 'Guest' },
+    sessionId: 'guest-session-one',
   },
 });
 const joined = await guestInbox.next((message) => message.requestId === 'join-1');
@@ -160,6 +199,8 @@ assert.equal(joined.payload.hostName, 'Host',
   'join responses identify the room host for invitation presentation');
 assert.equal(joined.payload.peers.length, 1);
 assert.equal(peerJoined.payload.peerId, joined.payload.peerId);
+assert.equal(peerJoined.payload.sessionId, 'guest-session-one');
+assert.equal(joined.payload.peers[0].sessionId, 'host-session-one');
 
 send(guest, {
   type: 'room_signal',
@@ -176,12 +217,99 @@ assert.equal(relayed.payload.signal.kind, 'ice');
 const health = await fetch(`http://127.0.0.1:${address.port}/api/signal`).then((response) => response.json());
 assert.deepEqual(health, { ok: true, rooms: 1 });
 
+const hostDisconnected = new Promise((resolve) => host.once('close', resolve));
 host.close();
+await hostDisconnected;
+const resumedHost = await connect(url, productionOrigin);
+const resumedHostInbox = inbox(resumedHost);
+send(resumedHost, {
+  type: 'room_join',
+  requestId: 'resume-host-1',
+  payload: {
+    roomCode: created.payload.roomCode,
+    player: { id: 'host-player', name: 'Host' },
+    sessionId: 'host-session-one',
+  },
+});
+const resumed = await resumedHostInbox.next((message) => message.requestId === 'resume-host-1');
+const hostResumed = await guestInbox.next((message) => message.type === 'peer_joined');
+assert.equal(resumed.type, 'room_joined');
+assert.equal(resumed.payload.hostId, 'host-player');
+assert.equal(hostResumed.payload.peerId, 'host-player',
+  'an unclean signaling close keeps the room resumable by stable identity');
+assert.equal(hostResumed.payload.sessionId, 'host-session-one',
+  'transport reconnect preserves the runtime epoch used to retain healthy RTC');
+send(resumedHost, {
+  type: 'room_leave',
+  payload: { roomCode: created.payload.roomCode },
+});
 const closed = await guestInbox.next((message) => message.type === 'room_closed');
 assert.equal(closed.payload.reason, 'host_left');
+resumedHost.close();
 guest.close();
 await new Promise((resolve) => guest.once('close', resolve));
 await signaling.close();
+
+function clientEvent(client, match, timeoutMs = 2_000) {
+  return new Promise((resolve, reject) => {
+    let off = () => {};
+    const timer = setTimeout(() => {
+      off();
+      reject(new Error('signaling client event timeout'));
+    }, timeoutMs);
+    off = client.onEvent((message) => {
+      if (!match(message)) return;
+      clearTimeout(timer);
+      off();
+      resolve(message);
+    });
+  });
+}
+
+const resumeServer = createSignalingServer({ host: '127.0.0.1', port: 0 });
+const resumeAddress = await resumeServer.listen();
+const resumeUrl = `ws://127.0.0.1:${resumeAddress.port}/signal`;
+const resumeHost = new RoomSignalingClient({
+  url: resumeUrl,
+  WebSocketImpl: WebSocket,
+  eventPollIntervalMs: 20,
+  reconnectDelaysMs: [10, 20, 40],
+});
+const resumeGuest = new RoomSignalingClient({
+  url: resumeUrl,
+  WebSocketImpl: WebSocket,
+  eventPollIntervalMs: 20,
+  reconnectDelaysMs: [10, 20, 40],
+});
+const resumeRoom = await resumeHost.createRoom({
+  player: { id: 'resume-host', name: 'Resume Host' },
+  maxPlayers: 4,
+});
+const resumeGuestInfo = await resumeGuest.joinRoom({
+  roomCode: resumeRoom.roomCode,
+  player: { id: 'resume-guest', name: 'Resume Guest' },
+});
+const reconnecting = clientEvent(resumeHost,
+  (message) => message.type === 'signaling_state' && message.payload?.state === 'reconnecting');
+const signalingResumed = clientEvent(resumeHost, (message) => message.type === 'signaling_resumed');
+const hostRejoined = clientEvent(resumeGuest,
+  (message) => message.type === 'peer_joined' && message.payload?.peerId === 'resume-host');
+const queuedSignal = clientEvent(resumeGuest,
+  (message) => message.type === 'room_signal' && message.payload?.fromPeerId === 'resume-host');
+resumeHost.socket.terminate();
+await reconnecting;
+assert.equal(resumeHost.sendSignal(resumeGuestInfo.peerId, {
+  kind: 'ice',
+  candidate: { candidate: 'candidate:2 1 udp 1 127.0.0.1 9 typ host' },
+}), false, 'RTC rendezvous is queued while signaling reconnects');
+assert.equal((await signalingResumed).payload.peerId, 'resume-host');
+await hostRejoined;
+assert.equal((await queuedSignal).payload.signal.kind, 'ice',
+  'queued RTC rendezvous flushes after the durable membership resumes');
+assert.equal(resumeHost.state, 'open');
+resumeHost.close('resume_test_complete');
+resumeGuest.close('resume_test_complete');
+await resumeServer.close();
 
 // Pub/sub delivery is intentionally modeled as fully unavailable here. A
 // room_poll must recover the durable notification so an RTC offer is never
@@ -248,4 +376,4 @@ pollHost.close('poll_test_complete');
 pollGuest.close('poll_test_complete');
 await pollServer.close();
 
-console.log('signaling.selftest: room codes, join, relay, health, and host-loss closure passed');
+console.log('signaling.selftest: room codes, join, relay, health, transport resume, and explicit host closure passed');

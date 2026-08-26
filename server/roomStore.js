@@ -18,6 +18,18 @@ function cleanPlayer(player) {
   return { id, name };
 }
 
+function cleanSessionId(value, playerId) {
+  const id = String(value || '').trim();
+  // Cached pre-session clients can overlap a server deploy. Give those older
+  // chunks a stable compatibility epoch instead of rejecting the room join;
+  // current clients always send a cryptographically random runtime id.
+  if (!id && /^[a-zA-Z0-9_-]{1,48}$/.test(playerId)) return `legacy_${playerId}`;
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) {
+    throw Object.assign(new Error('invalid signaling session'), { code: 'invalid_session' });
+  }
+  return id;
+}
+
 function randomUnit() {
   const word = new Uint32Array(1);
   globalThis.crypto.getRandomValues(word);
@@ -59,7 +71,7 @@ export class SignalingRoomStore {
     throw Object.assign(new Error('peer id collision'), { code: 'peer_id_exhausted' });
   }
 
-  create(connection, { player, maxPlayers = 14, mode = 'private' } = {}) {
+  create(connection, { player, sessionId, maxPlayers = 14, mode = 'private' } = {}) {
     if (this.membership.has(connection)) {
       throw Object.assign(new Error('connection already joined'), { code: 'already_joined' });
     }
@@ -77,14 +89,18 @@ export class SignalingRoomStore {
       peers: new Map(),
     };
     const memberPlayer = cleanPlayer(player);
+    const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
     room.hostId = peerId;
-    room.peers.set(peerId, { peerId, connection, player: memberPlayer });
+    room.peers.set(peerId, {
+      peerId, connection, player: memberPlayer, sessionId: memberSessionId,
+    });
     this.rooms.set(roomCode, room);
     this.membership.set(connection, { roomCode, peerId });
     return {
       roomCode,
       peerId,
+      sessionId: memberSessionId,
       hostId: peerId,
       hostName: memberPlayer.name,
       mode: room.mode,
@@ -93,23 +109,27 @@ export class SignalingRoomStore {
     };
   }
 
-  join(connection, { roomCode, player } = {}) {
+  join(connection, { roomCode, player, sessionId } = {}) {
     if (this.membership.has(connection)) {
       throw Object.assign(new Error('connection already joined'), { code: 'already_joined' });
     }
     const room = this.rooms.get(String(roomCode || ''));
     if (!room) throw Object.assign(new Error('room not found'), { code: 'room_not_found' });
     const memberPlayer = cleanPlayer(player);
+    const memberSessionId = cleanSessionId(sessionId, memberPlayer.id);
     const peerId = memberPlayer.id;
     const previous = room.peers.get(peerId);
     if (!previous && room.peers.size >= room.maxPlayers) {
       throw Object.assign(new Error('room is full'), { code: 'room_full' });
     }
-    if (previous) this.membership.delete(previous.connection);
-    const member = { peerId, connection, player: memberPlayer };
+    if (previous?.connection) this.membership.delete(previous.connection);
+    const member = {
+      peerId, connection, player: memberPlayer, sessionId: memberSessionId,
+    };
     const peers = [...room.peers.values()].filter((peer) => peer.peerId !== peerId).map((peer) => ({
       peerId: peer.peerId,
       player: { ...peer.player },
+      sessionId: peer.sessionId || '',
       isHost: peer.peerId === room.hostId,
     }));
     room.peers.set(peerId, member);
@@ -120,6 +140,7 @@ export class SignalingRoomStore {
       result: {
         roomCode: room.roomCode,
         peerId,
+        sessionId: memberSessionId,
         hostId: room.hostId,
         hostName,
         mode: room.mode,
@@ -134,6 +155,7 @@ export class SignalingRoomStore {
             roomCode: room.roomCode,
             peerId,
             player: { ...member.player },
+            sessionId: memberSessionId,
           } },
         })),
     };
@@ -186,6 +208,30 @@ export class SignalingRoomStore {
         reason,
       } },
     }));
+  }
+
+  /** Preserve room membership across an unclean signaling transport loss. */
+  detach(connection) {
+    const membership = this.membership.get(connection);
+    if (!membership) return [];
+    this.membership.delete(connection);
+    const room = this.rooms.get(membership.roomCode);
+    const member = room?.peers.get(membership.peerId);
+    if (!room || member?.connection !== connection) return [];
+    member.connection = null;
+    member.disconnectedAt = this.now();
+    room.touchedAt = this.now();
+    return [];
+  }
+
+  /** Keep an actively polling room alive without changing membership. */
+  poll(connection) {
+    const membership = this.membership.get(connection);
+    const room = membership && this.rooms.get(membership.roomCode);
+    if (room && room.peers.get(membership.peerId)?.connection === connection) {
+      room.touchedAt = this.now();
+    }
+    return [];
   }
 
   sweepExpired() {

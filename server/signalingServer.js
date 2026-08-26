@@ -8,7 +8,7 @@ const RATE_WINDOW_MS = 10_000;
 const RATE_MAX_MESSAGES = 120;
 
 function safeSend(connection, message) {
-  if (connection.readyState !== WebSocket.OPEN) return false;
+  if (!connection || connection.readyState !== WebSocket.OPEN) return false;
   connection.send(JSON.stringify(message));
   return true;
 }
@@ -26,6 +26,7 @@ function errorMessage(error, requestId = null) {
 
 function validateSignal(signal) {
   if (!signal || typeof signal !== 'object') throw new Error('invalid RTC signal');
+  if (signal.kind === 'restart') return { kind: 'restart' };
   if (signal.kind === 'description') {
     const description = signal.description;
     if (!description || !['offer', 'answer'].includes(description.type) ||
@@ -186,7 +187,14 @@ export function createSignalingServer({
     });
     connection.on('close', () => {
       messageChain.then(async () => {
-        await sendNotifications(await store.leave(connection, 'connection_closed'));
+        // A WebSocket is only the rendezvous transport. Mobile radio changes,
+        // sleeping tabs, serverless recycling, and temporary Redis outages
+        // must not destroy a healthy peer-to-peer room. Explicit room_leave
+        // still performs the durable departure; an unclean socket close only
+        // detaches this process-local connection so the stable player id can
+        // resume the same membership on a replacement socket.
+        if (typeof store.detach === 'function') await store.detach(connection, 'connection_closed');
+        else await sendNotifications(await store.leave(connection, 'connection_closed'));
       }).catch((error) => console.error('[signal] Failed to close room membership', error));
     });
   });
@@ -203,7 +211,11 @@ export function createSignalingServer({
     store,
     async listen() {
       if (server.listening) return server.address();
-      if (typeof store.start === 'function') await store.start();
+      // A distributed store can serve durable REST-backed signaling while its
+      // optional pub/sub accelerator reconnects in the background.
+      if (typeof store.start === 'function') store.start().catch((error) => {
+        console.warn('[signal] Redis subscriber unavailable; using mailbox polling', error?.code || error);
+      });
       await new Promise((resolve, reject) => {
         const onError = (error) => { server.off('listening', onListen); reject(error); };
         const onListen = () => { server.off('error', onError); resolve(); };

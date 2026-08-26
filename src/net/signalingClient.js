@@ -2,17 +2,49 @@ import { normalizeRoomCode } from './protocol.js';
 
 const MAX_SIGNAL_BYTES = 128 * 1024;
 const MAX_QUEUED_EVENTS = 64;
+const MAX_QUEUED_SIGNALS = 256;
 const STORE_RETRY_DELAYS_MS = [250, 750];
+const ROOM_REQUEST_RETRY_DELAYS_MS = [250, 750, 1_500, 3_000];
+const DEFAULT_RECONNECT_DELAYS_MS = [250, 500, 1_000, 2_000, 4_000, 8_000, 15_000, 30_000];
 const RETRYABLE_STORE_ERRORS = new Set([
   'signaling_store_unavailable',
   'redis_ready_timeout',
   'redis_connection_ended',
 ]);
+const RETRYABLE_CONNECTION_ERRORS = new Set([
+  'signaling_closed',
+  'signaling_connection_closed',
+  'signaling_connection_failed',
+  'signaling_connect_timeout',
+  'signaling_request_timeout',
+]);
+
+function codedError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
 
 function websocketConstructor(injected) {
   const Ctor = injected || globalThis.WebSocket;
   if (typeof Ctor !== 'function') throw new Error('WebSocket is unavailable');
   return Ctor;
+}
+
+function createSessionId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID().replace(/-/g, '');
+  }
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const words = new Uint32Array(4);
+    globalThis.crypto.getRandomValues(words);
+    return [...words].map((word) => word.toString(16).padStart(8, '0')).join('');
+  }
+  throw new Error('secure randomness is unavailable for signaling session identity');
+}
+
+function cleanSessionId(value) {
+  const id = String(value || '').trim();
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) throw new TypeError('invalid signaling session id');
+  return id;
 }
 
 function addListener(target, type, listener) {
@@ -41,6 +73,8 @@ export class RoomSignalingClient {
     connectTimeoutMs = 5000,
     requestTimeoutMs = 30000,
     eventPollIntervalMs = 500,
+    reconnectDelaysMs = DEFAULT_RECONNECT_DELAYS_MS,
+    sessionId = null,
   } = {}) {
     if (!url) throw new TypeError('signaling URL is required');
     if (!/^wss?:\/\//i.test(url)) throw new TypeError('signaling URL must use ws or wss');
@@ -55,6 +89,12 @@ export class RoomSignalingClient {
       throw new TypeError('signaling event poll interval must be at least 10 ms');
     }
     this.eventPollIntervalMs = eventPollIntervalMs;
+    if (!Array.isArray(reconnectDelaysMs) || reconnectDelaysMs.length === 0 ||
+        reconnectDelaysMs.some((delay) => !Number.isFinite(delay) || delay < 0)) {
+      throw new TypeError('signaling reconnect delays must be a non-empty array of milliseconds');
+    }
+    this.reconnectDelaysMs = [...reconnectDelaysMs];
+    this.sessionId = cleanSessionId(sessionId || createSessionId());
     this.socket = null;
     this.requestSeq = 0;
     this.pending = new Map();
@@ -63,8 +103,16 @@ export class RoomSignalingClient {
     this.state = 'idle';
     this.roomCode = null;
     this.peerId = null;
+    this.hostId = null;
+    this.player = null;
     this._connectPromise = null;
     this._pollTimer = null;
+    this._roomAuthenticated = false;
+    this._manualClose = false;
+    this._reconnectAttempt = 0;
+    this._reconnectTimer = null;
+    this._resumePromise = null;
+    this._signalQueue = [];
   }
 
   connect() {
@@ -119,7 +167,10 @@ export class RoomSignalingClient {
           fail(error, false);
           return;
         }
-        if (this.socket === socket) this.#closed('signaling_closed');
+        if (this.socket === socket) {
+          this.socket = null;
+          this.#closed('signaling_closed', true);
+        }
       });
       timer = setTimeout(() => {
         const seconds = Math.max(1, Math.ceil(this.connectTimeoutMs / 1000));
@@ -143,7 +194,7 @@ export class RoomSignalingClient {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
-        reject(new Error(`signaling request timed out: ${type}`));
+        reject(codedError('signaling_request_timeout', `signaling request timed out: ${type}`));
       }, this.requestTimeoutMs);
       this.pending.set(requestId, { resolve, reject, timer });
       this.#send({ type, requestId, payload });
@@ -160,6 +211,29 @@ export class RoomSignalingClient {
         await new Promise((resolve) => setTimeout(resolve, STORE_RETRY_DELAYS_MS[attempt]));
       }
     }
+  }
+
+  async #requestRoom(type, payload) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await this.connect();
+        return await this.#requestWithStoreRetry(type, payload);
+      } catch (error) {
+        if (!RETRYABLE_CONNECTION_ERRORS.has(error?.code) ||
+            attempt >= ROOM_REQUEST_RETRY_DELAYS_MS.length || this._manualClose) throw error;
+        this.#discardSocket('room_request_retry');
+        await new Promise((resolve) => setTimeout(resolve, ROOM_REQUEST_RETRY_DELAYS_MS[attempt]));
+      }
+    }
+  }
+
+  #dispatch(message) {
+    if (this.listeners.size === 0) {
+      if (this.eventQueue.length >= MAX_QUEUED_EVENTS) this.eventQueue.shift();
+      this.eventQueue.push(message);
+      return;
+    }
+    for (const listener of [...this.listeners]) listener(message);
   }
 
   #receive(raw) {
@@ -182,29 +256,111 @@ export class RoomSignalingClient {
       } else pending.resolve(message.payload);
       return;
     }
-    if (this.listeners.size === 0) {
-      if (this.eventQueue.length >= MAX_QUEUED_EVENTS) this.eventQueue.shift();
-      this.eventQueue.push(message);
-      return;
-    }
-    for (const listener of [...this.listeners]) listener(message);
+    this.#dispatch(message);
   }
 
-  #closed(reason) {
-    if (this.state === 'closed') return;
+  #closed(reason, unexpected = false) {
     this.state = 'closed';
     this._connectPromise = null;
+    this._roomAuthenticated = false;
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
-      pending.reject(new Error(reason));
+      pending.reject(codedError(reason, reason));
     }
     this.pending.clear();
     if (this._pollTimer) clearInterval(this._pollTimer);
     this._pollTimer = null;
+    if (unexpected && !this._manualClose && this.roomCode && this.player) {
+      this.#scheduleReconnect(reason);
+    }
+  }
+
+  #discardSocket(reason) {
+    const socket = this.socket;
+    this.socket = null;
+    this.state = 'closed';
+    this._connectPromise = null;
+    this._roomAuthenticated = false;
+    if (socket && socket.readyState < 2) {
+      try { socket.close(1000, String(reason).slice(0, 120)); } catch (_) { /* already failed */ }
+    }
+  }
+
+  #scheduleReconnect(reason = 'signaling_closed') {
+    if (this._manualClose || this._reconnectTimer || this._resumePromise ||
+        !this.roomCode || !this.player) return;
+    const delay = this.reconnectDelaysMs[
+      Math.min(this._reconnectAttempt, this.reconnectDelaysMs.length - 1)
+    ];
+    this._reconnectAttempt++;
+    this.state = 'reconnecting';
+    this.#dispatch({
+      type: 'signaling_state',
+      payload: { state: 'reconnecting', reason, attempt: this._reconnectAttempt, delayMs: delay },
+    });
+    this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
+      this.#resumeRoom();
+    }, delay);
+    if (typeof this._reconnectTimer.unref === 'function') this._reconnectTimer.unref();
+  }
+
+  #resumeRoom() {
+    if (this._manualClose || this._resumePromise || !this.roomCode || !this.player) return;
+    const roomCode = this.roomCode;
+    const player = this.player;
+    this._resumePromise = (async () => {
+      try {
+        await this.connect();
+        const result = await this.#requestWithStoreRetry('room_join', {
+          roomCode,
+          player,
+          sessionId: this.sessionId,
+        });
+        const code = normalizeRoomCode(result?.roomCode || roomCode);
+        if (code.length !== 6 || !result?.peerId || !result?.hostId) {
+          throw codedError('invalid_room_resume', 'invalid room resume response');
+        }
+        this.roomCode = code;
+        this.peerId = String(result.peerId);
+        this.hostId = String(result.hostId);
+        this._roomAuthenticated = true;
+        this._reconnectAttempt = 0;
+        this.#startEventPolling();
+        const queued = this._signalQueue.splice(0);
+        for (const message of queued) this.#send(message);
+        this.#dispatch({
+          type: 'signaling_resumed',
+          payload: { ...result, roomCode: code, peerId: this.peerId, hostId: this.hostId },
+        });
+        return;
+      } catch (error) {
+        this.#discardSocket('room_resume_retry');
+        if (error?.code === 'room_not_found') {
+          this.#dispatch({
+            type: 'room_closed',
+            payload: { roomCode, reason: 'expired' },
+          });
+          this.roomCode = null;
+          this.peerId = null;
+          this.hostId = null;
+          this.player = null;
+          this._signalQueue.length = 0;
+          return;
+        }
+        return error;
+      }
+    })().then((error) => {
+      this._resumePromise = null;
+      if (error && !this._manualClose) this.#scheduleReconnect(error.code || 'resume_failed');
+    }, (error) => {
+      this._resumePromise = null;
+      if (!this._manualClose) this.#scheduleReconnect(error?.code || 'resume_failed');
+    });
   }
 
   #startEventPolling() {
-    if (this._pollTimer || !this.roomCode || !this.peerId) return;
+    if (this._pollTimer || !this._roomAuthenticated || !this.roomCode || !this.peerId) return;
     this._pollTimer = setInterval(() => {
       if (this.state !== 'open' || !this.roomCode || !this.peerId) return;
       try { this.#send({ type: 'room_poll', payload: { roomCode: this.roomCode } }); }
@@ -225,9 +381,11 @@ export class RoomSignalingClient {
   }
 
   async createRoom({ player, maxPlayers = 14, mode = 'private' } = {}) {
-    await this.connect();
-    const result = await this.#requestWithStoreRetry('room_create', {
-      player: cleanPlayer(player),
+    this._manualClose = false;
+    const clean = cleanPlayer(player);
+    const result = await this.#requestRoom('room_create', {
+      player: clean,
+      sessionId: this.sessionId,
       maxPlayers,
       mode,
     });
@@ -235,21 +393,31 @@ export class RoomSignalingClient {
     if (code.length !== 6 || !result.peerId) throw new Error('invalid room_create response');
     this.roomCode = code;
     this.peerId = String(result.peerId);
+    this.hostId = String(result.hostId || result.peerId);
+    this.player = clean;
+    this._roomAuthenticated = true;
+    this._manualClose = false;
     this.#startEventPolling();
     return { ...result, roomCode: code, peerId: this.peerId };
   }
 
   async joinRoom({ roomCode, player } = {}) {
-    await this.connect();
+    this._manualClose = false;
     const code = normalizeRoomCode(roomCode);
     if (code.length !== 6) throw new TypeError('room code must be 6 characters');
-    const result = await this.#requestWithStoreRetry('room_join', {
+    const clean = cleanPlayer(player);
+    const result = await this.#requestRoom('room_join', {
       roomCode: code,
-      player: cleanPlayer(player),
+      player: clean,
+      sessionId: this.sessionId,
     });
     if (!result || !result.peerId || !result.hostId) throw new Error('invalid room_join response');
     this.roomCode = code;
     this.peerId = String(result.peerId);
+    this.hostId = String(result.hostId);
+    this.player = clean;
+    this._roomAuthenticated = true;
+    this._manualClose = false;
     this.#startEventPolling();
     return { ...result, roomCode: code, peerId: this.peerId };
   }
@@ -258,10 +426,18 @@ export class RoomSignalingClient {
     if (!this.roomCode || !this.peerId) throw new Error('join or create a room first');
     const target = String(toPeerId || '').trim();
     if (!target) throw new TypeError('target peer is required');
-    this.#send({
+    const message = {
       type: 'room_signal',
       payload: { roomCode: this.roomCode, toPeerId: target, signal },
-    });
+    };
+    if (!this._roomAuthenticated || this.state !== 'open') {
+      if (this._signalQueue.length >= MAX_QUEUED_SIGNALS) this._signalQueue.shift();
+      this._signalQueue.push(message);
+      this.#scheduleReconnect('signal_queued');
+      return false;
+    }
+    this.#send(message);
+    return true;
   }
 
   onEvent(listener) {
@@ -273,7 +449,10 @@ export class RoomSignalingClient {
   }
 
   close(reason = 'client_closed') {
-    if (this.state === 'closed') return;
+    this._manualClose = true;
+    if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
+    this._reconnectTimer = null;
+    this._signalQueue.length = 0;
     if (this.socket && this.socket.readyState < 2) {
       try {
         if (this.roomCode && this.peerId && this.state === 'open') {
@@ -284,6 +463,10 @@ export class RoomSignalingClient {
       }
     }
     this.eventQueue.length = 0;
-    this.#closed(reason);
+    this.roomCode = null;
+    this.peerId = null;
+    this.hostId = null;
+    this.player = null;
+    this.#closed(reason, false);
   }
 }
