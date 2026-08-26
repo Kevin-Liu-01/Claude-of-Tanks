@@ -85,7 +85,7 @@ import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
 import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
-import { createArmorAimOverlay } from './game/armorAimOverlay.js';
+import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -606,6 +606,7 @@ function cancelBattleIntentTextureWarm() {
 function preloadBattleIntent({ specId, mapId } = {}) {
   audio.preload();
   settings.preload().catch(() => null);
+  armorAimOverlay.preload().catch(() => null);
   ensureBattleHud().catch(() => null);
   ensureTouchControls().catch(() => null);
   loadWorldModule().catch(() => null);
@@ -2616,7 +2617,7 @@ const _mouse = { x: 0, y: 0 };
 const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
-const armorAimOverlay = createArmorAimOverlay();
+const armorAimOverlay = createArmorAimOverlayAccess();
 // Reused every HUD frame: scoped armor inspection follows every legally
 // visible opponent, not only the vehicle directly under the gun marker.
 const armorScopeTargets = [];
@@ -2979,7 +2980,9 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // Start their retryable chunk at the first covered frame; world transfer
   // has already begun on Battle intent, and no hidden garage boot pays for it.
   battleLoad.progress(0.01, 'Loading combat interface');
-  await Promise.all([ensureBattleHud(), ensureTouchControls(), settings.preload()]);
+  await Promise.all([
+    ensureBattleHud(), ensureTouchControls(), settings.preload(), armorAimOverlay.preload(),
+  ]);
 
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   // The next roster is deterministic from battleCount, so resolve its exact
@@ -6190,6 +6193,7 @@ window.__SHOTS = {
       ensureFullFleet(),
       ensureFxRuntime(),
       ensureKillcamRuntime(),
+      armorAimOverlay.preload(),
     ]);
     showroom.stop(); // reset drag/inertia before any deterministic shot recipe
     shotMode = true;
