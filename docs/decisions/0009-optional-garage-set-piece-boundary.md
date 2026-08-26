@@ -12,7 +12,8 @@ program keys and could introduce a visible shader hitch.
 ## Decision
 
 `garageDressingAccess.ts` owns the workshop as a retryable, demand-loaded
-runtime boundary.
+runtime boundary. `garageDressingScheduler.ts` owns its quiet-window state,
+chunk order, source-family acquisition, and retry cadence.
 
 - The access owner creates the final garage-dressing group and fill light at
   boot so the initial shader signature is stable.
@@ -23,6 +24,8 @@ runtime boundary.
 - Captures and other deterministic consumers await `ensureBuilt()` and
   therefore still receive the complete authored workshop.
 - A failed module request clears the in-flight promise and may be retried.
+- Pointer, wheel, keyboard, touch, phase, and transition changes all feed one
+  activity epoch shared with the background battlefield builder.
 
 ## Consequences
 
@@ -36,6 +39,7 @@ permanently poison the workshop owner.
 - `src/game/garageDressingAccess.selftest.mjs` verifies light stability,
   request coalescing, failure recovery, and runtime reuse.
 - `src/game/garageDressingLifecycle.selftest.mjs` verifies idle scheduling,
-  source-family ordering, and return-to-garage continuation.
+  coalescing, transition/input deferral, source-family ordering, shared world
+  activity, and return-to-garage continuation.
 - The production build must place `garageDressing.js` outside the initial main
   chunk, and deterministic garage capture must complete the full set piece.

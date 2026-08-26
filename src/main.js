@@ -79,6 +79,7 @@ import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.js';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
+import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { resetBattleTankForGarage } from './game/garageTankLifecycle.js';
 // FEEL r12: corner fps / frame-time / stall overlay (owner order)
 import { createPerfHud, debugModeRequested } from './ui/perfHud.js';
@@ -323,7 +324,7 @@ const worldBuildCoordinator = createWorldBuildCoordinator({
   getGarageActivity: () => ({
     phase: game.phase,
     transitionActive: transition.active,
-    lastActivityAt: garageActivityAt,
+    lastActivityAt: garageDressingScheduler.getLastActivityAt(),
   }),
   releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
 });
@@ -339,7 +340,7 @@ const cancelBackgroundWorldBuildsExcept = worldBuildCoordinator.cancelBackground
 
 // Prime the selected battlefield only after boot and a genuine garage lull.
 // beginWorldBuild's background path runs in 4 ms slices and pauses itself as
-// soon as pointer/key/touch activity updates garageActivityAt at the next
+// soon as pointer/key/touch activity advances the shared garage epoch at the next
 // checkpoint. The result is the exact normal world object in the normal cache:
 // Battle intent/click promotes or joins it without duplicate geometry, and a
 // player who spends a few seconds choosing a tank pays almost none of the
@@ -982,13 +983,12 @@ async function warmPedestalPrograms(vis) {
     await nextFrame();
   } catch (_) { /* first visible render remains the compatibility fallback */ }
 }
-let garageActivityAt = performance.now();
 let pedestalTexturePrefetchGeneration = 0;
 const pedestalTexturePrefetchedIds = new Set();
 const pedestalIntentPromises = new Map();
 const PEDESTAL_PREFETCH_CANCELLED = Symbol('pedestal-prefetch-cancelled');
 const noteGarageActivity = () => {
-  garageActivityAt = performance.now();
+  garageDressingScheduler.noteActivity();
   pedestalTexturePrefetchGeneration++;
   if (bootComplete && game.phase === 'garage') queueWorldPrefetch(pendingMapChoice);
 };
@@ -1000,81 +1000,17 @@ const requestQuietIdle = (fn) => {
   return setTimeout(fn, 800);
 };
 
-// The workshop's repair bays and component displays are intentionally kept
-// off first paint, but they are still part of the normal garage—not a capture-
-// only extra. Stream one complete set-piece chunk at a time after a genuine
-// interaction lull. Fleet families must resolve first: demand-loaded T-90
-// builders otherwise make pump() fail and permanently skip those exhibits.
-let garageDressingBuildScheduled = false;
-let garageDressingSourcesPromise = null;
-function scheduleGarageDressingBuild() {
-  if (garageDressing.isBuilt() || garageDressingBuildScheduled) return;
-  garageDressingBuildScheduled = true;
-  requestQuietIdle(async () => {
-    garageDressingBuildScheduled = false;
-    if (garageDressing.isBuilt() || game.phase !== 'garage') return;
-    // Returning from a battle previously inherited the pre-battle activity
-    // timestamp. That made the optional repair-bay tank builder look idle and
-    // start during transition.run()'s "Ready" dwell, producing a 300-800 ms
-    // reveal freeze. A transition is never a garage-idle window: wait until
-    // the veil has completely left layout before paying for another exhibit.
-    if (transition.active) {
-      setTimeout(scheduleGarageDressingBuild, 350);
-      return;
-    }
-    if (performance.now() - garageActivityAt < 1600) {
-      setTimeout(scheduleGarageDressingBuild, 600);
-      return;
-    }
-    try {
-      await garageDressing.preload();
-      // Importing and constructing the optional set-piece owner can overlap
-      // fresh input. Do not follow it with synchronous geometry work unless
-      // this is still a genuine garage lull.
-      if (game.phase !== 'garage' || transition.active) return;
-      if (performance.now() - garageActivityAt < 1600) {
-        setTimeout(scheduleGarageDressingBuild, 600);
-        return;
-      }
-
-      // The first chunk is ordinary workshop architecture and clutter. Build
-      // it before fetching the four procedural exhibit families, matching the
-      // old visual order without putting either module on first paint.
-      const hasBuiltCore = (garageDressing.group.userData.buildTimings?.length || 0) > 0;
-      if (!hasBuiltCore) {
-        await garageDressing.pump();
-        if (!garageDressing.isBuilt() && game.phase === 'garage') {
-          setTimeout(scheduleGarageDressingBuild, 350);
-        }
-        return;
-      }
-
-      if (!garageDressingSourcesPromise) {
-        const request = ensureTankBuilders(
-          garageDressing.group.userData.modernComponentSources,
-        );
-        garageDressingSourcesPromise = request;
-        request.catch(() => {
-          if (garageDressingSourcesPromise === request) garageDressingSourcesPromise = null;
-        });
-      }
-      await garageDressingSourcesPromise;
-      // Module parsing can overlap new input; re-check the lull before paying
-      // the synchronous procedural build for this one set piece.
-      if (game.phase !== 'garage') return;
-      if (performance.now() - garageActivityAt < 1600) {
-        setTimeout(scheduleGarageDressingBuild, 600);
-        return;
-      }
-      await garageDressing.pump();
-    } catch (error) {
-      console.warn('[garageDressing] quiet build failed —', error.message);
-    }
-    if (!garageDressing.isBuilt() && game.phase === 'garage') {
-      setTimeout(scheduleGarageDressingBuild, 350);
-    }
-  });
-}
+// The repair bays and component displays remain normal garage content, but
+// their complete visual stream is owned by a typed quiet-window scheduler.
+const garageDressingScheduler = createGarageDressingScheduler({
+  dressing: garageDressing,
+  getPhase: () => game.phase,
+  isTransitionActive: () => transition.active,
+  ensureTankBuilders,
+  requestIdle: (callback) => requestQuietIdle(callback),
+  scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
+});
+const scheduleGarageDressingBuild = garageDressingScheduler.schedule;
 
 function frameBudgetTick(budgetMs = 6) {
   let sliceAt = performance.now();
@@ -3859,7 +3795,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   // Establish a new activity epoch for this garage visit. Optional workshop
   // exhibits must not inherit a stale timestamp from before the battle and
   // contend with the transition reveal or the first interactive frames.
-  garageActivityAt = performance.now();
+  garageDressingScheduler.noteActivity();
   scheduleGarageDressingBuild();
   // Direct Studio activation deliberately skips battle-only collision and
   // minimap capture. The garage needs only its placement; building the

@@ -118,6 +118,13 @@ The garage owns vehicle selection, equipment selection, map/mode entry,
 settings access, room reminder state, and entry into Scene Studio. Vehicle
 portraits and cards are generated from the same roster used by battle.
 
+The optional workshop is split into two typed owners. `garageDressingAccess.ts`
+keeps the final light signature stable while demand-loading authored geometry;
+`garageDressingScheduler.ts` advances complete visual chunks only during a
+genuine input and transition lull. The background battlefield builder observes
+the same garage-activity epoch, so optional world and workshop work cannot
+independently pile onto an interactive frame.
+
 ### Battle entry
 
 Solo Battle intent begins downloading the solo authority chunk; the covered

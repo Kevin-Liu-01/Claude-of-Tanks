@@ -134,7 +134,7 @@ assert.match(mainSource,
   'returning to the enclosed garage must suspend long-range shadow redraws');
 const pedestalWarmBody = mainSource.slice(
   mainSource.indexOf('async function warmPedestalPrograms('),
-  mainSource.indexOf('let garageActivityAt'),
+  mainSource.indexOf('let pedestalTexturePrefetchGeneration'),
 );
 const pedestalWarmCode = pedestalWarmBody.replace(/\/\/.*$/gm, '');
 assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,
