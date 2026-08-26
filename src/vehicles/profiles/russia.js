@@ -1235,11 +1235,11 @@ function buildT64BV1(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // Grow the authored 0.80 m course upward by 10%. The loaded lower run and
   // road-wheel axles stay on their ground datums; only the terminal wheels,
-  // return rollers and upper run rise. The body retains a 280 mm lift above
+  // return rollers and upper run rise. The body retains a 240 mm lift above
   // the legacy seating so the result is a proportionate \____/ course rather
   // than suspension translated upward into the old hull bay.
   const trackHeightIncreaseM = 0.08;
-  const hullRideHeightIncreaseM = 0.28;
+  const hullRideHeightIncreaseM = 0.24;
   const turretForwardShiftM = 0.20;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement

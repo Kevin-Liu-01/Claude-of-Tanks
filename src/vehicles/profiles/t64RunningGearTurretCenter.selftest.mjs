@@ -75,8 +75,8 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: receipt preserves the authored course height`);
     near(tallTrack.installedEnvelopeHeightM, expected.installedEnvelopeHeightM,
       `${id}: installed track envelope is 80 mm taller`);
-    near(tallTrack.hullRideHeightIncreaseM, 0.28,
-      `${id}: hull retains the moderated 280 mm ride-height increase`);
+    near(tallTrack.hullRideHeightIncreaseM, 0.24,
+      `${id}: hull retains the moderated 240 mm ride-height increase`);
     assert.ok(tallTrack.liftedDirectHullChildren >= 2,
       `${id}: direct hull fittings follow the raised hull body`);
     assert.deepEqual(uniqueInstanceYs(roadWheels), [expected.wheelY],
@@ -103,7 +103,7 @@ for (const [id, expected] of Object.entries(CASES)) {
 
     assert.ok(turretRig && gunRig?.parent === turretRig,
       `${id}: gun and turret remain one articulated assembly`);
-    near(turretRig.position.y, 1.58,
+    near(turretRig.position.y, 1.54,
       `${id}: turret and gun assembly rises with the hull`);
     near(turretRig.position.z, expected.turretZ,
       `${id}: complete turret rig moves 200 mm forward`);

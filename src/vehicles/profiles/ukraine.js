@@ -409,10 +409,10 @@ function addModernizedT80TurretSuite(P, variant) {
 function buildUAT64BV(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
   // Grow the course upward by 10% while keeping the lower run and road-wheel
-  // axles grounded. The body retains a 280 mm lift above its legacy seating,
+  // axles grounded. The body retains a 240 mm lift above its legacy seating,
   // producing a proportionate \____/ silhouette without the oversized gap.
   const trackHeightIncreaseM = 0.08;
-  const hullRideHeightIncreaseM = 0.28;
+  const hullRideHeightIncreaseM = 0.24;
   const turretForwardShiftM = 0.20;
 
   // Hull loft to the print lines (deck plateau 1.315 T-64 datum; glacis
