@@ -9,14 +9,10 @@ Wikipedia M1 Abrams (https://en.wikipedia.org/wiki/M1_Abrams).
 Real ARAT adds only ~0.1–0.15 m per side over the 3.66 m hull — the old
 profile `width: 3.90` was a score-chasing artifact and is gone.
 
-## Local GLB oracle — IMPORTANT scale quirk
-Reference = `/models/tanks/m1a2_tejas.glb` PLUS modelLoader's runtime TUSK kit
-(addRuntimeTuskKit): ARAT instanced panels, skirt rails, rear slat cage, TIP
-box, loader shield. The kit is positioned in REAL meters (spec.dims) while the
-tejas asset itself is height-clamped small by modelLoader, so the assembled
-oracle is a ~0.94-rescale of a tank body that was already ~27% under real
-scale relative to its kit. After the page's width normalization the oracle is
-(scoring frame, ground 0):
+## Retired comparison source — historical scale notes
+The former Tejas comparison adaptation and its runtime TUSK composition were
+deleted and are no longer registered. Historical scoring notes for the old
+assembled comparison are retained below:
 - hull body: deck ≈ 1.12…1.34 (bow → stern), z −3.68…2.87, turret ring at
   (0, 1.14, 0.25) — i.e. the whole tejas body × ≈ 0.727 of the m1a2_tejas
   targets.

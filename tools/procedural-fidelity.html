@@ -266,11 +266,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t90sm: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
   type90: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  // RE-ORACLE (SEP-on-tejas ratification 2026-08-07): sepv2 now measures
-  // against the tejas GLB — the platform instrument the build actually rides
-  // (§5.19a). Recovered-print registration retired for THIS id only; the
-  // m1a2 row below still uses it (separate adjudication).
-  m1a2_sepv2: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true } },
   ariete: {
     source:'glb',
     glb:{
@@ -435,35 +430,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{ path:'/models/tanks/leo2a6_buh.glb',
       turretNode:'^turret$', gunNode:'^gun$', autoPivot:true,
       yawOffset:Math.PI },
-  },
-  m1a2: {
-    source:'glb',
-    glb:{ path:'/models/tanks/m1a2_tejas.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
-  },
-  m1a1: {
-    source:'glb',
-    glb:{ path:'/models/tanks/m1a2_tejas.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
-  },
-  m1a1ha: {
-    source:'glb',
-    glb:{ path:'/models/tanks/m1a2_tejas.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
-  },
-  // m1a2_tusk (§5.31b ERA-GROUP FLIP 2026-08-08): MODEL_SOURCE retired; the
-  // flip's own declaration keeps the tejas GLB as this id's measurement
-  // oracle "via the three override maps" (chimera oracle class) — mirrored
-  // here in the panel-pitch round: the flip landing had left the maps bare
-  // and the gate errored "no local GLB reference".
-  m1a2_tusk: {
-    source:'glb',
-    glb:{ path:'/models/tanks/m1a2_tejas.glb',
-      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
-      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
   },
   isu122s: {
     source:'glb',
@@ -648,10 +614,20 @@ const LOCAL_REFERENCE_OVERRIDES = {
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
 window.__FIDELITY_SOURCE_PATH = source?.glb?.path || null;
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
-window.__REFERENCE_IDS = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
+const referenceIds = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
   .filter((tankId) => TANK_SPECS[tankId])
   .filter((tankId) => (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.glb?.gateEligible !== false);
+window.__REFERENCE_SOURCES = Object.fromEntries(referenceIds.map((tankId) => [
+  tankId,
+  (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.glb?.path || null,
+]));
+window.__REFERENCE_IDS = referenceIds;
 
+if (params.has('registry')) {
+  // Geometry tooling needs the eligible-ID census before it opens a source.
+  // Keep that discovery path independent of optional local GLB availability.
+  window.__FIDELITY_READY = true;
+} else {
 document.querySelector('#title').textContent = `${spec.name} — reference vs authored procedural`;
 document.querySelector('#summary').textContent = source?.glb?.path || 'No sourced reference';
 
@@ -1950,4 +1926,5 @@ window.__FIDELITY_DEBUG = {
 };
 window.__FIDELITY_READY=true;
 renderer.setRenderTarget(null);
+}
 </script>

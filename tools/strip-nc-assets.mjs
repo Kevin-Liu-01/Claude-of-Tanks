@@ -33,7 +33,7 @@ const STRIP_DIRS = [
   // procedural geometry and does not consume their baked model outputs.
   path.join(DIST, 'models', 'tanks', 'candidates-gen2'),
 ];
-const NC_PATH_RE = /(quarantine\/|community-candidates\/|candidates-gen2\/|community\/recovered\/|m1a2_tejas\.glb|abramsx-mortavex\.glb)/;
+const NC_PATH_RE = /(quarantine\/|community-candidates\/|candidates-gen2\/|community\/recovered\/|abramsx-mortavex\.glb)/;
 
 async function main() {
   if (!existsSync(DIST)) {

@@ -16,11 +16,11 @@ No SEP CROWS-II mast farm, no TUSK ARAT, no AbramsX cues.
   ring; CITV left-forward (M1A2); loader's M240 left, commander's weapon right.
   Prime Portal walkaround index: https://www.primeportal.net/tanks/ (M1 Abrams).
 
-## Local GLB oracle (what the lab actually scores against)
-`/models/tanks/m1a2_tejas.glb` (Tejas V., CC BY-NC-ND, local-only quarantine).
-modelLoader height-clamps this asset (tall whip antennas), the fidelity page
-then re-normalizes both silhouettes to width 3.66. Measured in the scoring
-frame (meters, ground = 0, +z = bow):
+## Retired comparison source
+The Tejas V. CC BY-NC-ND comparison adaptation was deleted and is no longer
+registered in fidelity, evaluator, extraction, normalization, or repair tools.
+The following measurements are retained only as historical notes from the old
+scoring frame (meters, ground = 0, +z = bow):
 - hull: x ±1.83, deck 1.40 (bow tip, z 3.95) → 1.57 (midship) → 1.81–1.84
   (raised engine deck, z −2.2…−3.4), tail 1.76; z −3.95…3.95.
 - nose: bottom rake from (z 3.8, y 0.86) to (z 2.7, y 0.02); tail rake

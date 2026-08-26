@@ -9,6 +9,10 @@ import { traceTank } from '../sim/armor.js';
 import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.js';
 import { ALL_TANK_IDS, getSpec } from './specs.js';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.js';
+import {
+  INTERNAL_LAYOUT_BY_TANK,
+  INTERNAL_LAYOUT_SOURCES,
+} from './internalLayoutRegistry.js';
 
 const VEHICLE_SOURCE_ROOT = dirname(fileURLToPath(import.meta.url));
 const DIRECT_ARMOR_ADD = /P\.add\(\s*['"](?:hull|turret)['"]/;
@@ -35,6 +39,11 @@ assert.deepEqual(
   Object.keys(COMBAT_ANATOMY_CALIBRATIONS).sort(),
   [...ALL_TANK_IDS].sort(),
   'geometry-receipt calibration covers exactly the playable fleet',
+);
+assert.deepEqual(
+  Object.keys(INTERNAL_LAYOUT_BY_TANK).sort(),
+  [...ALL_TANK_IDS].sort(),
+  'published/internal-layout registry covers exactly the playable fleet',
 );
 
 let autoloaders = 0;
@@ -130,6 +139,16 @@ function shapeInsideCell(shape, cell) {
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
   const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
+  const layout = INTERNAL_LAYOUT_BY_TANK[id];
+  assert(layout, `${id}: researched internal layout`);
+  assert(['documented', 'platform-inferred', 'published-demonstrator', 'owner-directed'].includes(layout.confidence),
+    `${id}: explicit evidence confidence`);
+  if (layout.confidence !== 'owner-directed') assert(layout.sources.length > 0, `${id}: source trail`);
+  for (const sourceId of layout.sources) {
+    const source = INTERNAL_LAYOUT_SOURCES[sourceId];
+    assert(source, `${id}: known anatomy source ${sourceId}`);
+    assert(/^https:\/\//.test(source.url), `${id}: stable source URL ${sourceId}`);
+  }
   assert(Array.isArray(calibration.hullStructures), `${id}: hull structure receipts`);
   assert(Array.isArray(calibration.turretStructures), `${id}: turret structure receipts`);
   assert.equal(calibration.hullStructureCollision?.length, calibration.hullStructures.length,
@@ -210,14 +229,36 @@ for (const id of ALL_TANK_IDS) {
 
   const crew = spec.armor.crew.map((box) => box.crew);
   assert.equal(new Set(crew).size, crew.length, `${id}: one volume per crew member`);
-  const loaderless = !crew.includes('loader');
+  assert.deepEqual(crew, layout.crew.map((station) => station.role), `${id}: researched crew roster`);
+  for (const station of layout.crew) {
+    const box = spec.armor.crew.find((entry) => entry.crew === station.role);
+    assert.equal(box.turretLocal, station.frame === 'turret', `${id}/${station.role}: researched owner frame`);
+    assert.equal(box.station, station.station, `${id}/${station.role}: researched station`);
+    assert.equal(box.visualForm, 'seatedCrew', `${id}/${station.role}: human visual form`);
+  }
   const missile = spec.gun.shells.some((shell) => (
     Number(shell.reloadS || spec.gun.reloadS) >= 8
     && (shell.guided || (spec.role === 'ifv' && shell.type === 'HEAT'))
   ));
-  assert.equal(names.includes('autoloader'), loaderless && spec.role !== 'ifv', `${id}: autoloader applicability`);
-  assert.equal(names.includes('feedSystem'), spec.role === 'ifv', `${id}: weapon-feed applicability`);
-  assert.equal(names.includes('missileRack'), missile, `${id}: missile-rack applicability`);
+  assert.equal(names.includes('autoloader'), !!layout.systems.autoloader, `${id}: researched autoloader applicability`);
+  assert.equal(names.includes('feedSystem'), !!layout.systems.feedSystem, `${id}: researched weapon-feed applicability`);
+  assert.equal(names.includes('missileRack'), !!layout.systems.missileRack || missile,
+    `${id}: researched missile-rack applicability`);
+  for (const [module, system] of Object.entries(layout.systems)) {
+    if (!system) continue;
+    const box = boxes.find((entry) => entry.module === module);
+    assert(box, `${id}: researched ${module} volume`);
+    assert.equal(box.visualForm, system.form, `${id}/${module}: source-aware 3D form`);
+    assert.equal(box.layoutPlacement, system.placement, `${id}/${module}: researched placement tag`);
+    if (system.placement === 'turret') assert.equal(box.turretLocal, true, `${id}/${module}: turret ownership`);
+    if ((module === 'engine' || module === 'transmission')
+        && (system.placement === 'front' || system.placement === 'rear')) {
+      const centerZ = (box.min[2] + box.max[2]) * 0.5;
+      const hullCenterZ = (calibration.hull.min[2] + calibration.hull.max[2]) * 0.5;
+      assert(system.placement === 'front' ? centerZ > hullCenterZ : centerZ < hullCenterZ,
+        `${id}/${module}: ${system.placement} compartment`);
+    }
+  }
   if (names.includes('autoloader')) autoloaders++;
   if (names.includes('feedSystem')) feedSystems++;
   if (names.includes('missileRack')) missileRacks++;

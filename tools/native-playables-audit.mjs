@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -14,6 +15,23 @@ function walk(dir) {
 
 const failures = [];
 const files = walk(vehicleRoot);
+const externalGeometryExt = /\.(?:glb|gltf|fbx|obj|stl|dae|blend|3ds|ply)$/i;
+
+// Local ignored comparison oracles are permitted authoring inputs, but an
+// external model file must never become a tracked/shippable asset again.
+// Runtime world props use their attributed baked JSON representation.
+try {
+  const trackedExternalGeometry = execFileSync(
+    'git',
+    ['ls-files', '-z'],
+    { cwd: root, encoding: 'utf8' },
+  ).split('\0').filter(Boolean).filter((file) => externalGeometryExt.test(file));
+  for (const file of trackedExternalGeometry) {
+    failures.push(`${file}: tracked external model geometry is forbidden`);
+  }
+} catch (error) {
+  failures.push(`unable to audit tracked external model geometry (${error.message})`);
+}
 
 for (const file of files) {
   const rel = path.relative(root, file);
@@ -53,8 +71,8 @@ for (const file of files) {
   // catches the exact class that previously let a procedural fallback look
   // native in MODEL_SOURCE while still being wired through a source-rebuild
   // entry point.
-  if (/\bbuild\s*:\s*[A-Za-z0-9_$]*(?:Owner)?Source[A-Za-z0-9_$]*/i.test(source)
-      || /:\s*[A-Za-z0-9_$]*(?:Owner)?Source[A-Za-z0-9_$]*\s*[,}]/i.test(source)) {
+  if (/\bbuild\s*:\s*(?:build|create)[A-Za-z0-9_$]*(?:Owner)?Source[A-Za-z0-9_$]*/i.test(source)
+      || /:\s*(?:build|create)[A-Za-z0-9_$]*(?:Owner)?Source[A-Za-z0-9_$]*\s*[,}]/i.test(source)) {
     failures.push(`${rel}: playable builder map resolves through a Source-labelled implementation`);
   }
 }
@@ -69,6 +87,11 @@ const { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS, RETIRED_EXTERNAL_PLACEHOLDER_IDS
 const nonNative = ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id] && MODEL_SOURCE[id].source !== 'procedural');
 for (const id of nonNative) {
   failures.push(`${id}: battle playable resolves to ${MODEL_SOURCE[id]?.source ?? 'unknown'} geometry`);
+}
+for (const id of ALL_TANK_IDS) {
+  if (MODEL_SOURCE[id]?.glb?.path) {
+    failures.push(`${id}: battle playable retains an active external geometry path (${MODEL_SOURCE[id].glb.path})`);
+  }
 }
 
 for (const id of ALL_TANK_IDS) {

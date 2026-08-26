@@ -688,9 +688,8 @@ tools/tmp-sep-{selfshots,familystrip,fourbox,regprobe,invprobe,endcols}.*
 
 ## RE-ORACLE (2026-08-07, SEP-on-tejas ratification §5.34)
 Ratified critic PASS 9.3 (hash bracket e60878a9 / tejas f7510d88).
-This id now measures against `/models/tanks/m1a2_tejas.glb` (the
-platform the §5.19a rebuild rides); the recovered-print registration
-above is HISTORY for this id (m1a2 still uses that print). Honest
+This id formerly measured against the now-deleted Tejas comparison adaptation;
+that registration is historical and no longer used. Honest
 baseline x2: min 0 — FALSE-0: the works-field parity echo (sep2 block,
 abrams.js) serves the retired print's REF-HULL mask and reads as hull
 mass the bare tejas print lacks. NEXT TOUCH (moves hash, per critic

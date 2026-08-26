@@ -21,10 +21,19 @@ export const CREW_LABEL = {
   gunner: 'Gunner',
   driver: 'Driver',
   loader: 'Loader',
+  radioOperator: 'Radio Operator',
+  assistantDriver: 'Assistant Driver',
+  assistantLoader: 'Assistant Loader',
+  weaponOperatorLeft: 'Left Weapon Operator',
+  weaponOperatorRight: 'Right Weapon Operator',
 };
 
 /** Crew presentation order (damage panel chips, killcam rows). */
-export const CREW_ORDER = ['commander', 'gunner', 'driver', 'loader'];
+export const CREW_ORDER = [
+  'commander', 'gunner', 'driver', 'loader',
+  'radioOperator', 'assistantDriver', 'assistantLoader',
+  'weaponOperatorLeft', 'weaponOperatorRight',
+];
 
 /**
  * Module state → color. The WoT ramp: damaged ORANGE, knocked-out RED;

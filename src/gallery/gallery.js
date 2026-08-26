@@ -558,7 +558,7 @@ function renderInspection(hit) {
   if (data.mode === 'armor') {
     $('#inspectionDetails').textContent = `${technicalLabel(data.kind)} layer · ${data.physicalMm} mm physical · ${data.keMm} mm KE · ${data.ceMm} mm CE`;
   } else {
-    $('#inspectionDetails').textContent = `${data.mode === 'crew' ? 'Crew station' : 'Internal module'} · ${data.dimensionsM.join(' × ')} m diagnostic volume`;
+    $('#inspectionDetails').textContent = `${data.mode === 'crew' ? 'Crew station' : 'Internal module'} · ${data.dimensionsM.join(' × ')} m kill-cam anatomy model`;
   }
   readout.hidden = false;
 }

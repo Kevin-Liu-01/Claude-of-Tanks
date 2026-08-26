@@ -5,6 +5,7 @@
 
 import { MODULE_IDS } from '../sim/moduleCatalog.js';
 import { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.js';
+import { internalLayoutFor } from './internalLayoutRegistry.js';
 
 const FINALIZED = Symbol.for('claude-of-tanks.combat-anatomy.v2');
 const MISSILE_RELOAD_FLOOR_S = 8;
@@ -689,7 +690,147 @@ function alignTurretRing(armor, calibration) {
   ring.max[1] = baseY + thickness * 0.5;
 }
 
-function addDerivedModules(spec) {
+function moveBoxToPlacement(box, placement, bounds, turretLocal = box.turretLocal) {
+  if (!box || !bounds || !['front', 'rear', 'turret'].includes(placement)) return;
+  const oldCenter = box.min.map((value, axis) => (value + box.max[axis]) * 0.5);
+  const originalSize = box.min.map((value, axis) => box.max[axis] - value);
+  const span = bounds.min.map((value, axis) => bounds.max[axis] - value);
+  const changesFrame = box.turretLocal !== turretLocal;
+  const size = originalSize.map((value, axis) => changesFrame
+    ? Math.min(value, span[axis] * 0.82)
+    : value);
+  const nextCenter = oldCenter.slice();
+  // Front powerpacks sit behind the tapered nose/glacis, not at the outer
+  // receipt quarter-point. A 0.32 inset keeps their full service envelope in
+  // the front compartment across narrow BMP/Puma/Marder hull shoulders.
+  if (placement === 'front') nextCenter[2] = bounds.max[2] - span[2] * 0.32;
+  if (placement === 'rear' || placement === 'turret') nextCenter[2] = bounds.min[2] + span[2] * 0.22;
+  for (let axis = 0; axis < 3; axis++) {
+    nextCenter[axis] = Math.max(bounds.min[axis] + size[axis] * 0.5,
+      Math.min(bounds.max[axis] - size[axis] * 0.5, nextCenter[axis]));
+  }
+  const delta = nextCenter.map((value, axis) => value - oldCenter[axis]);
+  const resized = size.some((value, axis) => Math.abs(value - originalSize[axis]) > EPS);
+  if (!changesFrame && !resized && Array.isArray(box.parts)) {
+    for (const part of box.parts) {
+      for (let axis = 0; axis < 3; axis++) {
+        part.min[axis] += delta[axis];
+        part.max[axis] += delta[axis];
+      }
+    }
+  } else {
+    delete box.parts;
+  }
+  for (let axis = 0; axis < 3; axis++) {
+    box.min[axis] = nextCenter[axis] - size[axis] * 0.5;
+    box.max[axis] = nextCenter[axis] + size[axis] * 0.5;
+  }
+  box.turretLocal = turretLocal;
+}
+
+function boxForStation(template, frameBounds, station) {
+  const size = template.min.map((value, axis) => Math.min(
+    template.max[axis] - value,
+    (frameBounds.max[axis] - frameBounds.min[axis]) * (axis === 1 ? 0.72 : 0.34),
+  ));
+  const xFraction = station.endsWith('Left') ? -0.28 : station.endsWith('Right') ? 0.28 : 0;
+  const zFraction = station.startsWith('front') ? 0.29 : station.startsWith('rear') ? -0.24 : 0;
+  const center = [
+    (frameBounds.min[0] + frameBounds.max[0]) * 0.5
+      + (frameBounds.max[0] - frameBounds.min[0]) * xFraction,
+    Math.max((frameBounds.min[1] + frameBounds.max[1]) * 0.5,
+      frameBounds.min[1] + size[1] * 0.5),
+    (frameBounds.min[2] + frameBounds.max[2]) * 0.5
+      + (frameBounds.max[2] - frameBounds.min[2]) * zFraction,
+  ];
+  return {
+    min: center.map((value, axis) => Math.max(frameBounds.min[axis] + 0.03, value - size[axis] * 0.5)),
+    max: center.map((value, axis) => Math.min(frameBounds.max[axis] - 0.03, value + size[axis] * 0.5)),
+  };
+}
+
+function applyPublishedCrewLayout(spec, layout, calibration) {
+  const armor = spec.armor;
+  const existing = new Map((armor.crew || []).map((box) => [box.crew, box]));
+  const hullBounds = calibration?.hull || plateBounds(armor.hullPlates, true);
+  const turretBounds = calibration?.turret || plateBounds(armor.turretPlates, true);
+  const next = [];
+  for (const station of layout.crew) {
+    const turretLocal = station.frame === 'turret';
+    let box = existing.get(station.role);
+    const frameChanged = box && !!box.turretLocal !== turretLocal;
+    if (!box || frameChanged) {
+      const candidates = armor.crew || [];
+      const template = candidates.find((entry) => !!entry.turretLocal === turretLocal)
+        || candidates.find((entry) => entry.crew === 'driver')
+        || candidates[0];
+      const bounds = turretLocal ? turretBounds : hullBounds;
+      if (!template || !bounds) continue;
+      const placed = boxForStation(template, bounds, station.station);
+      box = { crew: station.role, min: placed.min, max: placed.max, turretLocal };
+    }
+    box.station = station.station;
+    box.visualForm = 'seatedCrew';
+    box.layoutConfidence = layout.confidence;
+    box.layoutSources = layout.sources.slice();
+    next.push(box);
+  }
+  armor.crew = next;
+}
+
+function moduleSystem(layout, module) {
+  return layout?.systems?.[module] || null;
+}
+
+function legacyInternalLayout(spec) {
+  const hasLoader = (spec.armor?.crew || []).some((box) => box.crew === 'loader');
+  return {
+    confidence: 'legacy-nonplayable',
+    sources: [],
+    crew: (spec.armor?.crew || []).map((box) => ({
+      role: box.crew,
+      frame: box.turretLocal ? 'turret' : 'hull',
+      station: box.crew === 'driver' ? 'frontLeft' : 'midCenter',
+    })),
+    systems: {
+      engine: { placement: 'rear', form: 'dieselPowerpack' },
+      transmission: { placement: 'rear', form: 'integratedFinalDrive' },
+      ammoRack: { placement: 'hull', form: 'hullBins' },
+      autoloader: !hasLoader && spec.role !== 'ifv'
+        ? { placement: 'hull', form: 'genericAutoloader' } : null,
+      feedSystem: spec.role === 'ifv'
+        ? { placement: 'turret', form: 'dualBeltFeed' } : null,
+      missileRack: hasMissile(spec)
+        ? { placement: 'hull', form: 'gunLaunchedRounds' } : null,
+    },
+  };
+}
+
+function applyModuleLayoutMetadata(spec, layout, calibration) {
+  const armor = spec.armor;
+  const hullBounds = calibration?.hull || plateBounds(armor.hullPlates, true);
+  const turretBounds = calibration?.turret || plateBounds(armor.turretPlates, true);
+  for (const box of armor.modules || []) {
+    const system = moduleSystem(layout, box.module);
+    if (!system) continue;
+    box.visualForm = system.form;
+    box.layoutPlacement = system.placement;
+    box.layoutConfidence = layout.confidence;
+    box.layoutSources = layout.sources.slice();
+    if ((box.module === 'engine' || box.module === 'transmission')
+        && (system.placement === 'front' || system.placement === 'rear')) {
+      const centerZ = (box.min[2] + box.max[2]) * 0.5;
+      const hullCenterZ = (hullBounds.min[2] + hullBounds.max[2]) * 0.5;
+      const wrongEnd = system.placement === 'front' ? centerZ < hullCenterZ : centerZ > hullCenterZ;
+      if (wrongEnd) moveBoxToPlacement(box, system.placement, hullBounds, false);
+    }
+    if (box.module === 'ammoRack' && system.placement === 'turret' && !box.turretLocal && turretBounds) {
+      moveBoxToPlacement(box, 'turret', turretBounds, true);
+    }
+  }
+}
+
+function addDerivedModules(spec, layout, calibration) {
   const armor = spec.armor;
   const modules = armor.modules || (armor.modules = []);
   const byName = new Map(modules.map((box) => [box.module, box]));
@@ -707,25 +848,64 @@ function addDerivedModules(spec) {
     byName.set('transmission', transmission);
   }
 
-  const crew = armor.crew || [];
-  const hasLoader = crew.some((box) => box.crew === 'loader');
-  if (!hasLoader && spec.role !== 'ifv' && !byName.has('autoloader') && ammo) {
+  const autoloaderSystem = moduleSystem(layout, 'autoloader');
+  const feedSystem = moduleSystem(layout, 'feedSystem');
+  const missileSystem = moduleSystem(layout, 'missileRack')
+    || (hasMissile(spec) ? { placement: 'hull', form: 'gunLaunchedRounds' } : null);
+  if (!autoloaderSystem && byName.has('autoloader')) {
+    const remove = byName.get('autoloader');
+    modules.splice(modules.indexOf(remove), 1);
+    byName.delete('autoloader');
+  }
+  if (autoloaderSystem && !byName.has('autoloader') && ammo) {
     const autoloader = shrinkBox(ammo, 'autoloader', [0.72, 0.48, 0.72], [0, 0.02, 0]);
     modules.push(autoloader);
     byName.set('autoloader', autoloader);
   }
-  if (spec.role === 'ifv' && !byName.has('feedSystem') && (gun || ammo)) {
+  if (!feedSystem && byName.has('feedSystem')) {
+    const remove = byName.get('feedSystem');
+    modules.splice(modules.indexOf(remove), 1);
+    byName.delete('feedSystem');
+  }
+  if (feedSystem && !byName.has('feedSystem') && (gun || ammo)) {
     const source = gun || ammo;
     const feed = shrinkBox(source, 'feedSystem', [0.74, 0.55, 0.58], [0, -0.02, -0.04]);
     modules.push(feed);
     byName.set('feedSystem', feed);
   }
-  if (hasMissile(spec) && !byName.has('missileRack') && ammo) {
+  if (!missileSystem && byName.has('missileRack')) {
+    const remove = byName.get('missileRack');
+    modules.splice(modules.indexOf(remove), 1);
+    byName.delete('missileRack');
+  }
+  if (missileSystem && !byName.has('missileRack') && ammo) {
     const side = (ammo.min[0] + ammo.max[0]) / 2 <= 0 ? 1 : -1;
     const width = ammo.max[0] - ammo.min[0];
     const missileRack = shrinkBox(ammo, 'missileRack', [0.42, 0.62, 0.78], [side * width * 0.24, 0.03, 0]);
     modules.push(missileRack);
     byName.set('missileRack', missileRack);
+  }
+
+  for (const box of modules) {
+    const system = moduleSystem(layout, box.module)
+      || (box.module === 'missileRack' ? missileSystem : null);
+    if (!system) continue;
+    box.visualForm = system.form;
+    box.layoutPlacement = system.placement;
+    box.layoutConfidence = layout.confidence;
+    box.layoutSources = layout.sources.slice();
+    if ((box.module === 'engine' || box.module === 'transmission')
+        && (system.placement === 'front' || system.placement === 'rear')) {
+      const hullBounds = calibration?.hull || plateBounds(armor.hullPlates, true);
+      const centerZ = (box.min[2] + box.max[2]) * 0.5;
+      const hullCenterZ = (hullBounds.min[2] + hullBounds.max[2]) * 0.5;
+      const wrongEnd = system.placement === 'front' ? centerZ < hullCenterZ : centerZ > hullCenterZ;
+      if (wrongEnd) moveBoxToPlacement(box, system.placement, hullBounds, false);
+    }
+    if ((box.module === 'autoloader' || box.module === 'feedSystem' || box.module === 'missileRack')
+        && system.placement === 'turret' && !box.turretLocal && calibration?.turret) {
+      moveBoxToPlacement(box, 'turret', calibration.turret, true);
+    }
   }
 
   // Stable presentation and RNG trace order: core systems first, then the
@@ -787,7 +967,13 @@ export function finalizeCombatAnatomy(spec, calibration = combatAnatomyCalibrati
     appendStructurePlates(armor.hullPlates, calibration.hullStructures, 'hull');
     appendStructurePlates(armor.turretPlates, calibration.turretStructures, 'turret');
   }
-  addDerivedModules(spec);
+  // Non-playable comparison/authoring specs are intentionally outside the
+  // 122-vehicle evidence registry. Keep their authored anatomy usable without
+  // diluting the playable-fleet exact-coverage gate.
+  const layout = internalLayoutFor(spec.id) || legacyInternalLayout(spec);
+  applyPublishedCrewLayout(spec, layout, calibration);
+  applyModuleLayoutMetadata(spec, layout, calibration);
+  addDerivedModules(spec, layout, calibration);
   armor.collisionShells = {
     hull: prepareCollisionCells([
       ...(calibration?.hullCollision || []),

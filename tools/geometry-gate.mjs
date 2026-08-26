@@ -37,22 +37,42 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 page.setDefaultTimeout(150000);
 const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
+const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a2&registry=1`;
 
 const rows = [];
 try {
-  // Bootstrap against a known registered oracle. A requested fleet may start
-  // with a first-party-only vehicle; opening that ID first emits an expected
-  // page error and then wastes the full Puppeteer timeout before filtering.
-  await page.goto(urlFor('m1a2'), { waitUntil: 'domcontentloaded' });
+  // Discover eligible IDs without loading an optional local comparison file.
+  // Worktrees intentionally omit quarantined GLBs, so registry discovery must
+  // not depend on any one source asset being present.
+  await page.goto(registryUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)');
   const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
-  const eligible = new Set(referenceIds);
-  const ids = requested ? requested.filter((id) => eligible.has(id)) : referenceIds;
+  const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
+  const publicRoot = path.resolve(ROOT, 'public');
+  const localAssetPath = (assetPath) => {
+    if (typeof assetPath !== 'string' || !assetPath.startsWith('/')) return null;
+    const resolved = path.resolve(publicRoot, assetPath.slice(1));
+    return resolved.startsWith(`${publicRoot}${path.sep}`) ? resolved : null;
+  };
+  const registered = new Set(referenceIds);
+  const available = new Set(referenceIds.filter((id) => {
+    const localPath = localAssetPath(referenceSources[id]);
+    return localPath && fs.existsSync(localPath);
+  }));
+  const ids = requested
+    ? requested.filter((id) => available.has(id))
+    : referenceIds.filter((id) => available.has(id));
   if (requested) {
-    const skipped = requested.filter((id) => !eligible.has(id));
-    if (skipped.length) {
-      console.log(`[geo] skipped ${skipped.length} first-party-only vehicles without local comparison oracles`);
+    const firstPartyOnly = requested.filter((id) => !registered.has(id));
+    const unavailable = requested.filter((id) => registered.has(id) && !available.has(id));
+    if (firstPartyOnly.length) {
+      console.log(`[geo] skipped ${firstPartyOnly.length} first-party-only vehicles without comparison registrations`);
     }
+    if (unavailable.length) {
+      console.log(`[geo] skipped ${unavailable.length} optional comparison oracles unavailable in this worktree`);
+    }
+  } else if (available.size < registered.size) {
+    console.log(`[geo] skipped ${registered.size - available.size} optional comparison oracles unavailable in this worktree`);
   }
   for (const id of ids) {
     try {
@@ -87,13 +107,19 @@ if (requested && fs.existsSync(ledgerPath)) {
 for (const r of rows) byId.set(r.id, { id: r.id, geoMin: r.geoMin, gatePassed: r.gatePassed, components: r.components });
 const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
-fs.writeFileSync(ledgerPath, `${JSON.stringify({
-  generatedAt: new Date().toISOString(),
-  gate: 'every component >= 90; min is the headline',
-  passed, total: all.length, rows: all,
-}, null, 1)}\n`);
+// A requested set can legitimately contain only first-party/procedural tanks.
+// Do not churn the ledger timestamp when no comparison row was evaluated.
+if (rows.length) {
+  fs.writeFileSync(ledgerPath, `${JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    gate: 'every component >= 90; min is the headline',
+    passed, total: all.length, rows: all,
+  }, null, 1)}\n`);
+}
 const runSorted = rows.slice().sort((a, b) => a.geoMin - b.geoMin);
 const runPassed = rows.filter((r) => r.gatePassed).length;
-console.log(`\ngeometry-gate: ${runPassed}/${rows.length} pass this run (fleet ${passed}/${all.length}); ` +
-  `worst ${runSorted[0]?.id} (${runSorted[0]?.geoMin})`);
+const runSummary = runSorted.length
+  ? `worst ${runSorted[0].id} (${runSorted[0].geoMin})`
+  : 'no eligible local comparison oracles';
+console.log(`\ngeometry-gate: ${runPassed}/${rows.length} pass this run (fleet ${passed}/${all.length}); ${runSummary}`);
 if (CHECK && runPassed < rows.length) process.exitCode = 1;

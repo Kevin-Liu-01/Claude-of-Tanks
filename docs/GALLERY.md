@@ -101,8 +101,8 @@ larger archive.
 | --- | --- | --- |
 | Exterior | Procedural vehicle rig | Current materials and geometry |
 | Armor | `armor.collisionShells` plus layered plates | Exact closed collision faces with canonical protection bands |
-| Modules | `armor.modules[].shapes` | Selectable ellipsoids, capsules, and elliptic cylinders |
-| Crew | `armor.crew[].shapes` | Selectable segmented smooth station volumes |
+| Modules | `armor.modules` + shared kill-cam anatomy builder | Recognizable ammo, engine, fuel, gun, optics, radio and ring models with dashed diagnostic lines |
+| Crew | `armor.crew` + shared kill-cam anatomy builder | One seated human silhouette per crew station with dashed diagnostic lines |
 
 Armor colors communicate broad kinetic-protection bands. ERA and spaced armor
 receive distinct colors because their behavior cannot be summarized by a
@@ -111,8 +111,13 @@ chemical protection values separately.
 
 The main armor overlay is generated from the same procedural hull/turret source
 geometry and uses the same convex cells as authoritative combat. ERA, tracks,
-spaced screens and gun-follow layers remain separately authored. Module and crew
-overlays are diagnostic gameplay volumes rather than real-world engineering claims.
+spaced screens and gun-follow layers remain separately authored. Modules and
+crew reuse the exact recognizable model builder used by the kill cam, changing
+only the material to the Gallery's dashed diagnostic treatment. Combat-shape
+segmentation never multiplies a logical module or crew station. Fleet topology,
+placement bands, evidence confidence, and source-aware visual forms come from
+`src/vehicles/internalLayoutRegistry.js`; the research policy and primary
+references are recorded in `docs/research/internal-anatomy-evidence.md`.
 
 ### Surface markup
 

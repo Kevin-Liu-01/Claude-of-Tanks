@@ -119,12 +119,6 @@ export const PLANS = {
     z: [[-4.092, -4.1875], [3.317, 3.4125], [4.13, 4.8525]],
     yTopMax: 3.95,
   },
-  // ---- batch-15: tejas print W1 (m1a1/m1a1ha/m1a2_tejas shared oracle).
-  // Length/width TRUE (±0.6%); the +34.8% height is ENTIRELY the oversized
-  // CROWS/M240/whip cluster above the true 2.36 roof. W1 ceiling-compress
-  // per the m1a1.md work order: everything above 2.46 -> 2.46 + 0.12*(y-2.46)
-  // (whips 4.09 -> 2.656, CROWS 3.30 -> 2.561). Hull/deck/roof untouched
-  // (nothing but furniture lives above 2.46). z identity (length true).
   // ---- batch-18: merkava 3D/1B (audit 2026-08-02; batch-14 class).
   merkava3d: { // -8.5% overall (MG251 +4.134), +5.3% p95 (49-col band)
     y: [[0, 0], [2.50, 2.50], [2.852, 2.66]],
@@ -135,14 +129,6 @@ export const PLANS = {
     y: [[0, 0], [2.50, 2.50], [2.872, 2.65]],
     z: [[-4.063, -4.1675], [3.178, 3.2825], [4.053, 4.4625]],
     yTopMax: 3.50,
-  },
-  m1a1: { // file m1a2_tejas.glb — W1b (batch-16): tail slope 0.12 -> 0.03
-    // so the 8-col knee band 2.545-2.572 lands inside the 2.464 dims grace
-    // (agent-measured residual law, m1a1.md post-warp round).
-    file: 'm1a2_tejas',
-    y: [[0, 0], [2.46, 2.46], [4.09, 2.5089]],
-    z: [[-4.8, -4.8], [4.9, 4.9]],
-    yTopMax: 2.56,
   },
   // ---- batch-19: m1a2 sepv3 print (m1a2_sepv3_dannzjs.glb; specs.js
   // TurretPivot rig). Width TRUE (-0.5%). Hull -5.9% short: stretch body

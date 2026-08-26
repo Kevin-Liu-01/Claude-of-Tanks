@@ -156,25 +156,8 @@ const REG = {
     pubDims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 },
   },
   // ---- abrams family (append-only grant, 2026-08-02) -----------------------
-  // Lab registrations: userdrops4.js points m1a1/m1a2_tusk (and m1a2_tejas)
-  // at the local tejas GLB; userdrops5.js does the same for m1a1ha and
-  // registers m1a2_sepv2; userdrops6.js registers m1a1_aim (autoPivot:false —
-  // empty Turret pivot at origin, see its packet); specs.js registers m1a2
-  // (authored TurretPivot/GunPivot, no autoPivot). m1a2_tusk's runtime ARAT
-  // kit (modelLoader addRuntimeTuskKit) is NOT modeled here — chimera cert
-  // in docs/references/tanks/m1a2_tusk.md. pubDims from variants.js (m1a1),
-  // specs.js m1a2 (7.93 family) — ha/aim inherit m1a1, sepv2/tejas/tusk/
-  // abramsx inherit or restate m1a2.
-  m1a1: {
-    path: 'public/models/tanks/m1a2_tejas.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
-    pubDims: { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
-  },
-  m1a1ha: {
-    path: 'public/models/tanks/m1a2_tejas.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
-    pubDims: { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
-  },
+  // Only retained local comparison sources are registered here. The retired
+  // Tejas print and its M1A1/M1A2 derivative registrations were removed.
   m1a1_aim: {
     path: 'public/models/tanks/community/recovered/m1a1_aim.glb',
     turretNode: '^Turret$', autoPivot: false,
@@ -183,30 +166,12 @@ const REG = {
     assumeFlip: false,
     pubDims: { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
   },
-  m1a2: {
-    path: 'public/models/tanks/m1a2_tejas.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
-    pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
-  },
-  m1a2_tusk: {
-    path: 'public/models/tanks/m1a2_tejas.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
-    pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
-  },
   // ORACLE SWITCH (owner, 2026-08-03): the dannzjs "SEPv3" print turned out to
   // be a mislabeled LEOPARD 2A5. m1a2 now measures against the recovered SEPv2
   // drop (batch-21 warped) — same instrument as the m1a2_sepv2 row below.
   m1a2_legacy: {
     path: 'public/models/tanks/community/recovered/m1a2_sepv2.glb',
     turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
-    pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
-  },
-  // RE-ORACLE (SEP-on-tejas ratification 2026-08-07): the sepv2 build now
-  // rides the tejas platform (§5.19a), so it measures against the tejas GLB.
-  // The recovered SEPv2 print stays registered for m1a2 above only.
-  m1a2_sepv2: {
-    path: 'public/models/tanks/m1a2_tejas.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
   },
   abramsx: {

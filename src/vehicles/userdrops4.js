@@ -85,14 +85,5 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // m1a2_tusk: §5.31b ERA-GROUP FLIP 2026-08-08 — the dev-only tejas alias
   // is retired so dev renders the same abrams.js tusk profile deploys now
   // show (variants.js carries the flip + the dannzjs candidateGlb). The
-  // tejas GLB stays this id's measurement oracle via the three override
-  // maps (chimera oracle class — §5.34 sepv2 precedent), NOT MODEL_SOURCE.
-  // FLIP-RETIRED: MODEL_SOURCE.m1a2_tusk = {
-  // FLIP-RETIRED:   source: 'glb',
-  // FLIP-RETIRED:   glb: {
-  // FLIP-RETIRED:     path: '/models/tanks/m1a2_tejas.glb',
-  // FLIP-RETIRED:     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-  // FLIP-RETIRED:     yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
-  // FLIP-RETIRED:   },
-  // FLIP-RETIRED: };
+  // The retired local comparison print is no longer registered or retained.
 }

@@ -1,4 +1,5 @@
-// Build-time baker: converts GLBs in public/models/props/ into a compact
+// Authoring-only baker: converts local, untracked GLBs in public/models/props/
+// into a compact
 // synchronous-importable JSON module (src/world/props-models.json).
 // GLTF parsing/texture decoding happens in headless Chromium via three's
 // GLTFLoader (tools/bake-page.html); geometry is world-transformed, painted
@@ -13,8 +14,11 @@ import { resolve, basename } from 'node:path';
 
 const dir = resolve('public/models/props');
 const args = process.argv.slice(2);
-const files = (args.length ? args : readdirSync(dir).filter((f) => f.endsWith('.glb')))
+const files = (args.length ? args : (existsSync(dir) ? readdirSync(dir) : []).filter((f) => f.endsWith('.glb')))
   .map((f) => ({ name: basename(f, '.glb'), url: '/models/props/' + basename(f) }));
+if (!files.length) {
+  throw new Error('No local prop GLBs found. Source binaries are intentionally untracked; restore an attributed authoring input before rebaking.');
+}
 
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port: 5900, strictPort: false } });
 await server.listen();

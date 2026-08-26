@@ -9,12 +9,10 @@ identical to M1A1: no CITV, no CROWS, M256 L/44.
   Sources: GlobalSecurity (https://www.globalsecurity.org/military/systems/ground/m1-specs.htm),
   Wikipedia M1 Abrams (https://en.wikipedia.org/wiki/M1_Abrams).
 
-## Local GLB oracle
-MODEL_SOURCE.m1a1ha points at `/models/tanks/m1a2_tejas.glb` (userdrops5) —
-same oracle as m1a2_tejas / m1a1. A recovered `m1a1ha.glb` exists under
-community/recovered/ but is not wired as the model source, so the lab scores
-this id against the Tejas M1A2. Scoring-frame targets: see
-docs/references/tanks/m1a2_tejas.md (identical).
+## Retired comparison source
+The former shared Tejas comparison adaptation was deleted and is no longer a
+MODEL_SOURCE or tooling oracle. A recovered `m1a1ha.glb` remains quarantined
+and is not wired as a playable source.
 
 ## Notes / mismatches
 - Same oracle-vs-history conflict as m1a1 (CROWS mass present on the oracle).
@@ -99,7 +97,7 @@ Critic pairs: shots/critic-m1a1ha/. Re-freeze at landing.
 
 ## §B1 TURRET FRONT SLOPE (graduate-change round, 2026-08-04)
 Shares buildTejasFamily/TEJAS_TURRET — full round notes + angle table in
-m1a1.md. Print (m1a2_tejas.glb, the registered ref) cheek rake 34.8° from
+m1a1.md. The retired historical print's cheek rake was 34.8° from
 vertical; authored before 2.5° (faceRake 0.02, the slab read); after
 faceRake 0.32 = 34.8° cheek edge exact. Gate x2: 89.4 held both runs
 (turret 89.6->89.8, stations 93.5->93.9, dims/floaters 100). §B5 audit
