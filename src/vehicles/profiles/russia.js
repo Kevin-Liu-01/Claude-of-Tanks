@@ -684,7 +684,21 @@ export function buildT62Obr1975Chassis(P, o = {}) {
 
 function buildT62MV1(P) {
   const { box, cylX, cylY, cylZ } = KIT;
-  buildT62Obr1975Chassis(P);
+  const vehicleScale = 0.90;
+  buildT62Obr1975Chassis(P, {
+    gear: {
+      // The 1975 course uses shorter links and finer terminal sampling than
+      // the family donor. Five real road-wheel crown stations already
+      // support the dead-track return in tankFactoryCore; reducing the sag
+      // between them keeps that run visibly carried by the wheels while the
+      // denser idler/sprocket arcs make each shoe turn around the rims rather
+      // than forming coarse polygonal knees.
+      linkPitchM: 0.135,
+      deadSag: 0.050,
+      frontArcSteps: 12,
+      rearArcSteps: 12,
+    },
+  });
 
   // ---- turret on the normalized casting: TRUE seat (bias split deleted),
   // crown 2.40, cupola 2.42, DShK stow spike 2.43-2.44 (3 cols, p95-legal).
@@ -847,6 +861,47 @@ function buildT62MV1(P) {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [dx, 0.29, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-dx, 0.29, -0.30], -Math.PI / 2);
   P.topY = 1.10;
+
+  // Reduce the complete articulated vehicle at its two ownership roots so
+  // armor, fittings, suspension, gun and every track shoe stay registered.
+  // The Type 59 shares the authored chassis above but is intentionally not
+  // affected by this T-62-only final scale.
+  P.hullG.scale.setScalar(vehicleScale);
+  P.turretG.scale.setScalar(vehicleScale);
+  P.turretG.position.multiplyScalar(vehicleScale);
+
+  // Running-gear receipts intentionally remain in the authored hull-local
+  // frame: the band vertices, shoe instance matrices and suspension meshes
+  // are all local too, and the common track audit compares those exact
+  // values. The rig's uniform root scale turns them into the reduced world
+  // dimensions; movement/contact metadata below is world-space and therefore
+  // must be reduced explicitly.
+  if (P.gear?.contactGeom) {
+    for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
+      P.gear.contactGeom[key] *= vehicleScale;
+    }
+    if (P.gear.contactGeom.endRise) {
+      for (const key of ['dzM', 'frontM', 'rearM']) {
+        P.gear.contactGeom.endRise[key] *= vehicleScale;
+      }
+    }
+  }
+  for (const lane of P.gear?.trackHitbox || []) {
+    lane.x0 *= vehicleScale;
+    lane.x1 *= vehicleScale;
+    lane.poly = lane.poly.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
+  }
+  const [trackReceipt] = P.hullG.userData.runningGearReceipts || [];
+  P.hullG.userData.t62Obr1975ScaleTrackReceipt = Object.freeze({
+    revision: 't62-obr1975-compact-track-wrap-r1',
+    vehicleScale,
+    roadWheelStations: 5,
+    linkedTrackCourse: true,
+    targetShoePitchM: 0.135 * vehicleScale,
+    fittedShoePitchM: trackReceipt?.shoePitchM * vehicleScale,
+    endArcSteps: 12,
+    returnSagM: 0.050 * vehicleScale,
+  });
 }
 
 // ---- T-54B (docs/references/vertex/t54.json — PRISTINE bergman print) ------
