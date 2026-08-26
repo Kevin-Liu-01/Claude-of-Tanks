@@ -243,6 +243,15 @@ reclaims the same authority entity through a fresh RTC page session, completes
 the round, readies both players, starts round two over the replacement channel,
 and verifies clean departure.
 
+Battle presentation acquires the network modules, exact world, and transport
+in parallel. Remote clients and dedicated sessions may complete signaling
+while the world is still constructing. A private browser host is the deliberate
+exception: its authority owns the rendered world's exact collision adapter, so
+connection setup waits for that owner. The parallel barrier publishes a
+successfully opened match immediately, ensuring a later world/module failure
+closes the transport through the normal cleanup path. Cached rematches use the
+same barrier and may return an existing match owner synchronously.
+
 The full rendered capacity gate is `npm run test:net:seven:full`. It runs two
 independent natural 7v7 battles—one with the browser host rendered and one with
 an impaired remote client rendered. All 28 participants across those runs use

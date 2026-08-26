@@ -347,7 +347,7 @@ const cancelBackgroundWorldBuildsExcept = worldBuildCoordinator.cancelBackground
 // Battle intent/click promotes or joins it without duplicate geometry, and a
 // player who spends a few seconds choosing a tank pays almost none of the
 // battlefield build under the loading veil.
-function queueWorldPrefetch(mapId, delay = 4000) {
+function queueWorldPrefetch(mapId, delay = 2500) {
   if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
   worldPrefetchTimer = 0;
   if (!bootComplete || !mapId) return;
@@ -844,10 +844,11 @@ function pedestalSwitchPending() {
 // visibility in the same frame: near-zero switch.
 //
 // VRAM: parked visuals hold their per-spec texture-cache refs, so the cache
-// is capped at PEDESTAL_CACHE_MAX = 6 entries (perfprobe budget: a hero set
-// is ~35 MB; 6 parked sets stay well inside the 512 MB scene gate, and battle
-// rosters share the same refcounted entries). Eviction detaches and disposes
-// the visual, releasing its refcounted shared textures.
+// is capped at the central desktop/mobile residency budget (perfprobe budget:
+// a hero set is ~35 MB). Desktop retains ten recent choices so normal fleet
+// browsing remains genuinely warm; battle entry trims those convenience
+// copies before the combat roster becomes resident. Eviction detaches and
+// disposes the visual, releasing its refcounted shared textures.
 //
 // Switch latency is instrumented end-to-end: window.__SWITCH_TIMINGS rows are
 // { id, ms, path } where ms is click → hero visibly on stage.
@@ -1787,7 +1788,10 @@ const garage = await bootStage('ui', () => createGarage({
     pendingMapChoice = mapId;
     if (mapId !== 'random') pendingMapId = mapId;
     cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
-    queueWorldPrefetch(mapId);
+    // A deliberate map pick is stronger intent than passive garage dwell.
+    // The coordinator still enforces its 1.2 s no-input guard and 4 ms
+    // background slices, but does not add the full generic idle delay again.
+    queueWorldPrefetch(mapId, 600);
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the
@@ -2151,10 +2155,11 @@ bus.on('phase:change', (ev) => {
   if (ev.phase === 'battle') {
     botPressure.enemyShells = 0; botPressure.aimedAtPlayer = 0;
     botPressure.hitsOnPlayer = 0; botPressure.dmgOnPlayer = 0;
-    // A phone cannot afford showroom convenience copies alongside a complete
-    // battle. Keep only the selected hero; it shares paint with the player
-    // and gives the garage an immediate return without retaining old picks.
-    if (getDeviceTier() === 'mobile') trimPedestalCache(1);
+    // Showroom convenience copies must not compete with the complete combat
+    // roster. Keep only the selected hero on mobile and the three most-recent
+    // desktop heroes; the player visual shares paint with the fielded actor
+    // and still gives the garage an immediate return.
+    trimPedestalCache(getDeviceTier() === 'mobile' ? 1 : 3);
   }
 });
 bus.on('shell:fired', (ev) => {
@@ -2660,10 +2665,13 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   await nextFrame();
 
   // The combat HUD, damage schematic, and exact top-mask rig are battle-only.
-  // Start their retryable chunk at the first covered frame; world transfer
-  // has already begun on Battle intent, and no hidden garage boot pays for it.
+  // Start their retryable chunks at the first covered frame, then join them
+  // with the independent world/roster barrier below. Awaiting this interface
+  // group before terrain construction added its complete cold transfer and
+  // parse time directly to every first battle even though neither side
+  // consumes the other.
   battleLoad.progress(0.01, 'Loading combat interface');
-  await Promise.all([
+  const battleInterfaceP = Promise.all([
     ensureBattleHud(), ensureTouchControls(), settings.preload(), armorAimOverlay.preload(),
   ]);
 
@@ -2712,6 +2720,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     return receipt;
   });
   await Promise.all([
+    battleInterfaceP,
     ensureWorld(resolved,
       (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
       { precompile: false, services: false }),
@@ -3235,6 +3244,7 @@ async function presentNetworkBattle({
   matchPlayers,
   modeLabel,
   connectMatch,
+  connectAfterWorld = false,
   transitionShown = false,
 } = {}) {
   // Direct presentation calls and every lobby handoff converge here. Calls
@@ -3286,7 +3296,8 @@ async function presentNetworkBattle({
   }
   battleLoad.progress(0.02, 'Securing match channel');
   await nextFrame();
-  const [networkModules] = await Promise.all([
+  const modulesStartedAt = performance.now();
+  const networkModulesP = Promise.all([
     preloadNetworkBattleModules(),
     preloadBattleClientRuntime(),
     ensureBattleHud(),
@@ -3303,23 +3314,45 @@ async function presentNetworkBattle({
     ensureKillcamRuntime(),
     battleWarm.preload(),
     audio.warmBattleEvents(),
-  ]);
+  ]).then(([modules]) => {
+    loadTrace.modulesMs = Math.round(performance.now() - modulesStartedAt);
+    return modules;
+  });
+  // Battlefield construction is independent from transport/HUD/killcam
+  // transfer. The previous serial await made cold invitees pay both costs in
+  // full, which was especially visible for friends opening the game for the
+  // first time. Run both under the same opaque loader and retain individual
+  // timings for production diagnosis.
+  battleLoad.progress(0.08, 'Loading battlefield');
+  const worldStartedAt = performance.now();
+  const worldP = ensureWorld(mapId, (fraction, label) => {
+    battleLoad.progress(0.08 + fraction * 0.48, label);
+  }).then((loaded) => {
+    loadTrace.worldMs = Math.round(performance.now() - worldStartedAt);
+    return loaded;
+  });
+  const connectStartedAt = performance.now();
+  const matchP = (connectAfterWorld
+    ? worldP.then(() => connectMatch())
+    : Promise.resolve().then(() => connectMatch()))
+    .then((match) => {
+      // Publish immediately so any later module/world failure follows the
+      // normal closeNetworkMatch cleanup path instead of leaking a live RTC
+      // transport that completed during the rejected parallel barrier.
+      networkMatch = match;
+      loadTrace.connectMs = Math.round(performance.now() - connectStartedAt);
+      return match;
+    });
+  const [networkModules] = await Promise.all([networkModulesP, worldP, matchP]);
   const [
     { createBrowserBattleBridge },
     { createNetworkStatus },
     { createBrowserInputRuntime },
   ] = networkModules;
   networkFramePump.ensureInputRuntime(createBrowserInputRuntime);
-  markLoadStage('modules');
+  markLoadStage('modulesWorldAndConnect');
   networkStatus = createNetworkStatus();
-  battleLoad.progress(0.08, 'Loading battlefield');
-  await ensureWorld(mapId, (fraction, label) => {
-    battleLoad.progress(0.08 + fraction * 0.48, label);
-  });
-  markLoadStage('world');
-  networkMatch = await connectMatch();
   networkRecovery.attach(networkMatch?.client || null, networkStatus);
-  markLoadStage('connect');
   const cfg = getMapConfig(mapId);
   battleLoad.show({
     mapName: cfg.name || mapId,
@@ -3549,6 +3582,7 @@ async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = 
       matchPlayers,
       modeLabel,
       transitionShown: true,
+      connectAfterWorld: role === 'host',
       connectMatch: () => role === 'host'
         ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world, battleLimitS })
         : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),

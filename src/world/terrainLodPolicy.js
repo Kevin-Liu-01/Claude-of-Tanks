@@ -10,15 +10,15 @@ export function terrainLodForDistance(distanceM, currentLevel = 2) {
 }
 
 /**
- * Geometry required before the opening frame. Build the exact visible level
- * first and retain a coarse fallback for outward camera travel. The former
- * `[0, 1, 2]` policy constructed two invisible buffers for every near/mid
+ * Geometry required before the opening frame. Build only the exact visible
+ * level; deployment warm restores a coarse outward-travel fallback. The
+ * former `[0, 1, 2]` policy constructed two invisible buffers for every near/mid
  * chunk and briefly put mid-distance chunks on level 0 before the first live
  * update corrected them. Missing levels use the bounded look-ahead seam below.
  */
 export function initialTerrainLods(distanceM) {
-  if (distanceM < TERRAIN_LOD_DIST[0]) return [0, 2];
-  if (distanceM < TERRAIN_LOD_DIST[1]) return [1, 2];
+  if (distanceM < TERRAIN_LOD_DIST[0]) return [0];
+  if (distanceM < TERRAIN_LOD_DIST[1]) return [1];
   return [2];
 }
 
@@ -56,6 +56,12 @@ export function chooseTerrainLodBuild(chunks, camX, camZ, out = null) {
     let prefetch = -1;
     if (want === 2 && distanceM < TERRAIN_LOD_DIST[1] + 125) prefetch = 1;
     else if (want === 1 && distanceM < TERRAIN_LOD_DIST[0] + 125) prefetch = 0;
+    // Opening construction now creates exactly the visible level. Restore the
+    // same coarse outward-travel fallback during the frozen deployment warm,
+    // after the battlefield is already visible but before controls release.
+    // Until it exists the currently visible level remains in place, so no
+    // lower-quality frame or geometry pop can occur.
+    else if (want < 2 && !present[2]) prefetch = 2;
     if (prefetch >= 0 && !present[prefetch]) {
       if (bestIndex < 0 || distanceM < bestDistance) {
         bestIndex = index;

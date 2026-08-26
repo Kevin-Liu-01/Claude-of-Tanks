@@ -6,10 +6,10 @@ import {
   warmTerrainLodBuilds,
 } from './terrainLodPolicy.js';
 
-assert.deepEqual(initialTerrainLods(50), [0, 2],
-  'opening near chunk creates the visible level plus coarse fallback');
-assert.deepEqual(initialTerrainLods(300), [1, 2],
-  'opening mid chunk starts at the correct visible level plus coarse fallback');
+assert.deepEqual(initialTerrainLods(50), [0],
+  'opening near chunk creates only its exact visible level');
+assert.deepEqual(initialTerrainLods(300), [1],
+  'opening mid chunk starts only at its exact visible level');
 assert.deepEqual(initialTerrainLods(600), [2], 'opening far chunk creates only visible detail');
 
 assert.equal(terrainLodForDistance(170, 1), 0, 'near detail enters inside hysteresis');
@@ -25,13 +25,18 @@ assert.deepEqual(chooseTerrainLodBuild(chunks, 20, 0), {
 }, 'missing visible geometry is the first streaming job');
 
 chunks[0].present[0] = true;
+chunks[0].present[2] = false;
 chunks[0].level = 0;
 assert.deepEqual(chooseTerrainLodBuild(chunks, 20, 0), {
+  index: 0, level: 2, distanceM: 20, urgent: false,
+}, 'deployment warm restores the coarse outward-travel fallback after visible detail');
+chunks[0].present[2] = true;
+assert.deepEqual(chooseTerrainLodBuild(chunks, 20, 0), {
   index: 1, level: 1, distanceM: 480, urgent: false,
-}, 'the nearest upcoming transition band is prepared after visible detail exists');
+}, 'the nearest upcoming transition band follows after the fallback exists');
 
 const warmChunks = [
-  { cx: 0, cz: 0, level: 2, present: [false, false, true] },
+  { cx: 0, cz: 0, level: 2, present: [false, false, false] },
   { cx: 440, cz: 0, level: 2, present: [false, false, true] },
   { cx: 500, cz: 0, level: 2, present: [false, false, true] },
 ];
@@ -43,9 +48,9 @@ const build = (job) => {
 };
 assert.equal(warmTerrainLodBuilds(warmChunks, 20, 0, 2, build), 2,
   'countdown warm obeys its exact per-call job bound');
-assert.deepEqual(completed, [[0, 0], [1, 1]],
-  'countdown warm drains visible detail before nearest lookahead');
-assert.equal(warmTerrainLodBuilds(warmChunks, 20, 0, 8, build), 1,
+assert.deepEqual(completed, [[0, 0], [0, 2]],
+  'countdown warm drains visible detail before its outward-travel fallback');
+assert.equal(warmTerrainLodBuilds(warmChunks, 20, 0, 8, build), 2,
   'a later countdown slice drains the remaining lookahead and stops');
 assert.equal(warmTerrainLodBuilds(warmChunks, 20, 0, 1, build), 0,
   'no geometry is rebuilt after the position is fully warm');

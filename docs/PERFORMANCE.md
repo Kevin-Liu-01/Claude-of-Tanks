@@ -367,15 +367,19 @@ than certify absolute device latency.
 ### 2026-08-26 exact opening terrain residency
 
 The opening world used to allocate all three terrain LOD buffers inside 430 m
-even though only one could render. Initial residency now contains the exact
-visible level plus a coarse fallback; deterministic missing levels use the
-existing one-job look-ahead during the frozen countdown. The standalone stream
-benchmark improved from 820.8 ms and 134 initial geometries to 579.0 ms and 99
-initial geometries. In the production mobile Steppe diagnostic, initial
-geometries fell 108→86, all 13 look-ahead jobs completed before rollout, and
-click-to-battle/control improved from 6.735/8.743 s to 5.274/7.285 s. Both
-battle runs were host-contended, so treat the delta as diagnostic; the exact
-residency counts and identical LOD policy are the stable acceptance evidence.
+even though only one could render. Initial residency now contains only the
+exact visible level: near tiles start at LOD 0, mid tiles at LOD 1, and far
+tiles at LOD 2. The existing one-job look-ahead restores every missing coarse
+fallback during the frozen deployment countdown while the higher-detail
+visible geometry remains in place, so rollout retains the complete visual LOD
+policy without an opening allocation spike.
+
+The standalone stream benchmark records 64 initial geometries, 192 complete
+geometries, and no stream job longer than 6.4 ms. Current exact-visible
+residency takes 462.3 ms versus 693.3 ms for eager all-LOD construction, a
+33.3% reduction. Host contention can invalidate end-to-end wall-clock figures;
+the deterministic residency counts, bounded jobs, and before-rollout
+completion remain the acceptance evidence.
 
 ### 2026-08-26 production-path warm correction
 
@@ -396,6 +400,31 @@ work was active, so these numbers describe the corrected path rather than a
 release claim. The maintained invariant is stronger than the number: no effect
 family may be regenerated merely to warm a program already bound by the same
 production transition.
+
+### 2026-08-26 transition acquisition and garage retention
+
+Cold solo entry now starts the battle interface transfer beside world, roster,
+audio, and combat-runtime acquisition instead of after them. Network entry
+similarly overlaps client signaling with module and world acquisition. Browser
+hosts still wait for the Three.js world because their local authority consumes
+its exact collision owner; clients and dedicated sessions do not inherit that
+dependency. Rematches accept synchronous reuse of an existing match owner as
+well as a fresh asynchronous connection.
+
+The desktop garage retains ten recently displayed pedestal visuals so browsing
+the principal modern fleet does not repeatedly reconstruct the vehicles just
+visited; verified revisits complete without a builder wait. Battle entry trims
+that cache to three visuals (one on mobile) before roster construction, keeping
+the responsiveness gain out of the live-scene memory budget. Passive map warm
+waits 2.5 seconds after garage activity and explicit map selection waits 600 ms,
+so neither competes with active vehicle browsing.
+
+Loading audio begins before these barriers and remains independent of the full
+audio graph. A production-path PCM probe captured the battle loader at 48 kHz
+with a -25.9 dBFS peak and -33.6 dBFS RMS. A fresh-context 7v7 remote-client
+gate then opened fourteen isolated Chromium profiles, synchronized the lobby,
+entered the match, and completed live firing with zero prediction hard snaps;
+its rendered p95 frame gap was 12.1 ms and maximum gap was 16.9 ms.
 
 ## Reporting a performance result
 

@@ -46,12 +46,18 @@ assert.match(main, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,100
   'joined rooms should transfer the actual roster families');
 assert.match(main, /prefetchWorld\(mapId\);/,
   'fixed host maps should use the quiet background world path');
-assert.match(main, /const \[networkModules\] = await Promise\.all\(\[\s*preloadNetworkBattleModules\(\)/,
-  'network entry should join the intent-preloaded module promise');
 const networkBattle = main.slice(
   main.indexOf('async function presentNetworkBattle('),
   main.indexOf('async function beginSoloBattle('),
 );
+assert.match(networkBattle,
+  /const networkModulesP = Promise\.all\(\[\s*preloadNetworkBattleModules\(\)/,
+  'network entry should retain the intent-preloaded module join');
+assert.match(networkBattle,
+  /const \[networkModules\] = await Promise\.all\(\[networkModulesP, worldP, matchP\]\)/,
+  'network entry should overlap modules, battlefield construction, and safe connection setup');
+assert.match(main, /connectAfterWorld: role === 'host'/,
+  'browser authority must wait for world collision while cold clients connect concurrently');
 assert.match(networkBattle,
   /Promise\.all\(\[[\s\S]{0,500}armorAimOverlay\.preload\(\)\.catch/,
   'network entry must acquire the optional armor overlay under its loading veil');

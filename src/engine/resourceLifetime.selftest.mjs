@@ -9,7 +9,7 @@ assert.deepEqual(residentResourceLimits('mobile'), {
   pedestalVisuals: 2,
   worldScenes: 1,
 });
-assert.equal(residentResourceLimits('desktop').pedestalVisuals, 6);
+assert.equal(residentResourceLimits('desktop').pedestalVisuals, 10);
 assert.equal(residentResourceLimits('desktop').worldScenes, Infinity);
 
 const sharedTexture = new THREE.Texture();

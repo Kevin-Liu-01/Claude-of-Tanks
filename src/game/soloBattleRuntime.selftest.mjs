@@ -16,8 +16,11 @@ assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
 assert.match(main,
   /function preloadBattleIntent[\s\S]{0,260}preloadSoloBattleRuntime\(\)/,
   'Battle intent must overlap the solo authority transfer with garage dwell');
-assert.match(main,
-  /async function startBattleLoading[\s\S]{0,5000}preloadSoloBattleRuntime\(\)/,
+const battleEntry = main.slice(
+  main.indexOf('async function startBattleLoading('),
+  main.indexOf('async function beginBattleEntry('),
+);
+assert.match(battleEntry, /preloadSoloBattleRuntime\(\)/,
   'battle entry must include solo authority in its covered parallel barrier');
 
 const runtime = await import('./soloBattleRuntime.ts');
