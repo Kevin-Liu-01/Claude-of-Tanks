@@ -25,3 +25,4 @@ runtime documents remain authoritative for behavior.
 - [0013 — Battlefield construction has one typed coordinator](0013-world-build-coordinator.md)
 - [0014 — Engineering telemetry has a typed read-only owner](0014-diagnostic-telemetry-owner.md)
 - [0015 — RTC loss preserves the private-room seat](0015-private-room-seat-recovery.md)
+- [0016 — Network recovery presentation has one typed owner](0016-network-recovery-presentation-owner.md)

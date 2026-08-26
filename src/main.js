@@ -86,6 +86,7 @@ import { createLazyAudio } from './audio/lazyAudio.js';
 import { createInput } from './game/input.js';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createAimController } from './game/aimController.ts';
+import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
@@ -3139,10 +3140,7 @@ const pendingNetworkEvents = [];
 const pendingNetworkRoomChat = [];
 let networkRoomChat = null;
 let networkRoomChatPromise = null;
-let unsubscribeNetworkConnection = null;
-let networkDisconnectedAtMs = null;
-let networkReconnectAttempt = 0;
-const NETWORK_RECONNECT_GRACE_MS = 60_000;
+const networkRecovery = createNetworkRecoveryOwner();
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -3355,38 +3353,10 @@ function networkDiagnostics() {
   return { ...stats, prediction: networkBridge?.getPredictionStats?.() || null };
 }
 
-function attachNetworkConnectionStatus(client) {
-  if (unsubscribeNetworkConnection) unsubscribeNetworkConnection();
-  unsubscribeNetworkConnection = null;
-  networkDisconnectedAtMs = null;
-  networkReconnectAttempt = 0;
-  if (!client?.onConnection) return;
-  unsubscribeNetworkConnection = client.onConnection((connected) => {
-    if (connected) {
-      if (networkDisconnectedAtMs != null) networkStatus?.set({ state: 'reconnected' });
-      networkDisconnectedAtMs = null;
-      networkReconnectAttempt = 0;
-      return;
-    }
-    if (networkDisconnectedAtMs == null) networkDisconnectedAtMs = performance.now();
-    networkReconnectAttempt = Math.max(1, networkReconnectAttempt + 1);
-    networkStatus?.set({ state: 'reconnecting', attempt: networkReconnectAttempt });
-  });
-}
-
 function pumpNetworkMatch(dt, nowMs) {
   if (!networkMatch) return;
   if (networkMatch.client?.closed) {
-    if (networkDisconnectedAtMs == null) networkDisconnectedAtMs = nowMs;
-    const disconnectedForMs = Math.max(0, nowMs - networkDisconnectedAtMs);
-    const attempt = Math.max(1, Math.floor(disconnectedForMs / 5_000) + 1);
-    if (attempt !== networkReconnectAttempt) {
-      networkReconnectAttempt = attempt;
-      networkStatus?.set({ state: 'reconnecting', attempt });
-    }
-    if (disconnectedForMs >= NETWORK_RECONNECT_GRACE_MS &&
-        game.phase === 'battle' && !game.result) {
-      networkStatus?.set({ state: 'failed' });
+    if (networkRecovery.update(nowMs, true, game.phase === 'battle' && !game.result)) {
       networkBridge?.endDisconnected?.();
     }
     return;
@@ -3426,10 +3396,7 @@ function pumpNetworkMatch(dt, nowMs) {
 }
 
 function disposeNetworkPresentation() {
-  if (unsubscribeNetworkConnection) unsubscribeNetworkConnection();
-  unsubscribeNetworkConnection = null;
-  networkDisconnectedAtMs = null;
-  networkReconnectAttempt = 0;
+  networkRecovery.dispose();
   if (networkBridge) networkBridge.dispose();
   if (networkStatus) networkStatus.dispose();
   networkBridge = null;
@@ -3592,7 +3559,7 @@ async function presentNetworkBattle({
   });
   markLoadStage('world');
   networkMatch = await connectMatch();
-  attachNetworkConnectionStatus(networkMatch?.client);
+  networkRecovery.attach(networkMatch?.client || null, networkStatus);
   markLoadStage('connect');
   const cfg = getMapConfig(mapId);
   battleLoad.show({
