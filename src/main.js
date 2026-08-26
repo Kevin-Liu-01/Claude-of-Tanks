@@ -368,7 +368,9 @@ initTopMaskRig(engineCtx);
 // call. Boot never touches them.
 const worldCache = new Map();
 const worldBuilds = new Map();
-const minimapTextureRefreshQueued = new WeakSet();
+let minimapAssetMapId = null;
+let minimapAssetGeneration = 0;
+let minimapAssetPending = null;
 let worldModulePromise = null;
 const residentLimits = residentResourceLimits(getDeviceTier());
 let world = null;
@@ -658,7 +660,10 @@ function preloadBattleIntent({ specId, mapId } = {}) {
   // map only after the loading veil appears.
   const plannedMapId = specId && mapId
     ? resolveBattleIntentMap(specId, mapId) : mapId;
-  if (plannedMapId) prefetchWorld(plannedMapId, { intent: true });
+  if (plannedMapId) {
+    prefetchWorld(plannedMapId, { intent: true });
+    hud.preloadMinimapAsset(minimapAssetUrl(plannedMapId)).catch(() => null);
+  }
 }
 
 /** World raycast that is safe before any battlefield exists. */
@@ -1594,28 +1599,79 @@ function buildWorldMinimap(next, textured = true) {
     textured ? minimapSnapCtx() : null);
 }
 
+function minimapAssetUrl(mapId) {
+  return `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp`;
+}
+
+/**
+ * Upgrade the immediately available procedural tactical map with the exact
+ * supersampled background baked by tools/bake-minimap-assets.mjs. Loading one
+ * ~30-85 KB WebP is asynchronous and cacheable; production never traverses the
+ * battlefield, compiles shaders, or reads GPU pixels merely to draw the HUD.
+ */
+function queueBakedWorldMinimap(next = world) {
+  if (!next || world !== next || minimapAssetMapId === next.mapId) return null;
+  if (minimapAssetPending?.world === next) return minimapAssetPending.promise;
+  const generation = ++minimapAssetGeneration;
+  const trace = { mapId: next.mapId, state: 'queued', startedAt: performance.now() };
+  if (typeof window !== 'undefined') window.__MINIMAP_LOAD = trace;
+  const promise = (async () => {
+    if (generation !== minimapAssetGeneration || world !== next
+        || worldServicesMapId !== next.mapId) return false;
+    trace.state = 'loading';
+    const installed = await hud.buildMinimapFromAsset(
+      next.heightField, minimapAssetUrl(next.mapId),
+    );
+    if (!installed || generation !== minimapAssetGeneration || world !== next
+        || worldServicesMapId !== next.mapId) {
+      trace.state = 'stale';
+      return false;
+    }
+    minimapAssetMapId = next.mapId;
+    trace.state = 'ready';
+    trace.totalMs = Math.round(performance.now() - trace.startedAt);
+    return true;
+  })().catch((error) => {
+    trace.state = 'fallback';
+    trace.error = String(error);
+    if (generation === minimapAssetGeneration && world === next
+        && worldServicesMapId === next.mapId) {
+      buildWorldMinimap(next, false);
+    }
+    return false;
+  }).finally(() => {
+    if (minimapAssetPending?.generation === generation) minimapAssetPending = null;
+  });
+  minimapAssetPending = { world: next, generation, promise };
+  return promise;
+}
+
 function prepareWorldServices(next = world) {
   if (!next || world !== next) return;
   collider = createCollider(game, next);
-  const textureState = next.minimapTextureState;
-  if (!textureState || textureState.settled) {
-    buildWorldMinimap(next);
-  } else {
-    // The original one-shot capture raced the async CC0 material swap. A cold
-    // hostname could permanently bake the flat vector fallback while a warm
-    // cache captured the textured battlefield. Keep the fallback only while
-    // loading, then refresh exactly once after every requested texture has
-    // settled. No polling or per-frame work.
-    buildWorldMinimap(next, false);
-    if (!minimapTextureRefreshQueued.has(next)) {
-      minimapTextureRefreshQueued.add(next);
-      textureState.promise.then(() => {
-        if (world === next && worldServicesMapId === next.mapId) buildWorldMinimap(next);
-      });
-    }
+  if (worldServicesMapId === next.mapId) {
+    placeGarage();
+    queueBakedWorldMinimap(next);
+    return;
   }
   placeGarage();
   worldServicesMapId = next.mapId;
+  queueBakedWorldMinimap(next);
+}
+
+function prepareBattleWorldServices(next = world) {
+  if (!next || world !== next) return;
+  collider = createCollider(game, next);
+  placeGarage();
+  if (worldServicesMapId !== next.mapId) {
+    // The exact background is preloaded on Battle intent while the world is
+    // still building. Do not synchronously resample the complete heightfield
+    // into a duplicate fallback here; that old safety path made the roster
+    // frame pay ~0.2-0.5 s of pure CPU work. A failed static asset installs the
+    // same full-resolution procedural cartography in queueBakedWorldMinimap.
+    worldServicesMapId = next.mapId;
+  }
+  queueBakedWorldMinimap(next);
 }
 
 function activateWorld(next, { services = true } = {}) {
@@ -1645,7 +1701,7 @@ function activateWorld(next, { services = true } = {}) {
   if (services) prepareWorldServices(next);
   else {
     collider = null;
-    worldServicesMapId = null;
+    if (worldServicesMapId !== next.mapId) worldServicesMapId = null;
   }
   enforceWorldCacheBudget();
   return world;
@@ -2960,7 +3016,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   await Promise.all([
     ensureWorld(resolved,
       (f, label) => battleLoad.progress(0.02 + f * 0.53, label),
-      { precompile: false }),
+      { precompile: false, services: false }),
     ensureTankBuilders([...plannedRoster, ...plannedWorldVehicles]),
     fxTextureP,
     ensureKillcamRuntime(),
@@ -2988,6 +3044,12 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
     preBattleHold: true,
     randomRoster,
   });
+  // Collision is available now. The exact preloaded tactical map installs
+  // fire-and-forget; its tiny image decode overlaps the remaining roster work
+  // and can never extend click-to-visible or click-to-control latency.
+  battleLoad.progress(0.565, 'Drawing tactical map');
+  prepareBattleWorldServices(world);
+  battleLoad.progress(0.57, 'Preparing player vehicle');
   const playerVisualTiming = {
     specId: game.player?.specId || specId,
     quality: 'preview',
@@ -8093,6 +8155,11 @@ window.__DEBUG = {
   fastForward: debugFastForward,
   slayEnemies: debugSlayEnemies,
   startBattle: debugStartBattle,
+  bakeMinimapForMap: async (mapId) => {
+    const next = await ensureWorld(mapId, null, { precompile: false, services: false });
+    buildWorldMinimap(next, true);
+    return hud.exportMinimapBackground('image/webp', 0.92);
+  },
   // perf-smooth r1: the legacy player battle-entry path (loading screen ->
   // chunked world build -> roster bake -> countdown), so probes can
   // measure the real pre-battle timeline instead of only the synchronous

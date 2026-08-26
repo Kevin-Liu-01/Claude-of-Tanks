@@ -11,6 +11,16 @@ import {
 } from './featuredShots.js';
 import { BOOT_HERO_SHOTS } from './bootScreen.js';
 import { MAP_THUMBS } from './mapThumbs.js';
+import { MAP_IDS } from '../world/maps/index.js';
+
+const minimapAssets = await Promise.all(MAP_IDS.map(async (mapId) => ({
+  mapId,
+  asset: await stat(new URL(`../../public/minimaps/${mapId}.webp`, import.meta.url)),
+})));
+for (const { mapId, asset } of minimapAssets) {
+  assert.ok(asset.size > 10_000,
+    `${mapId} must ship a non-placeholder supersampled tactical-map asset`);
+}
 
 assert.equal(FEATURED_SHOTS.length, 20, 'the handmade and owner-approved galleries stay available');
 assert.equal(TRANSITION_SHOTS.length, 10, 'only lightweight handmade and owner-approved captures rotate');
@@ -93,6 +103,7 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
   /if \(!STUDIO_BOOT_INTENT\) lighting\.setFarCascadeDormant\(true\);/,
   'cold garage boot must request long-range shadow dormancy after native-map priming');
@@ -165,8 +176,23 @@ assert.match(deferredWarmBody,
   /streamBattleVisuals\([\s\S]{0,180}ent\.team === 'enemy'[\s\S]{0,500}warmCombatOpeningPipelineChunked\(6, guardedYield\)[\s\S]{0,3200}warmCombatRarePipelineChunked\(6, guardedYield\)/,
   'opponents and first-shot pipelines must use the frozen countdown before rare variants');
 assert.match(mainSource,
-  /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,180}primeSoloBattleRevealFrame\(\)/,
+  /battleLoad\.progress\(0\.969, 'Priming deployment shadows'\);[\s\S]{0,180}primeDeploymentShadowMaps\(coveredYield\)[\s\S]{0,300}primeSoloBattleRevealFrame\(\)/,
   'solo entry must split cascade warming before the first full deployment frame');
+assert.match(mainSource,
+  /ensureWorld\(resolved,[\s\S]{0,180}\{ precompile: false, services: false \}\)/,
+  'solo entry must activate a battlefield without synchronous world services');
+assert.match(mainSource,
+  /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(world\)/,
+  'solo entry must defer battle-only services until the real battle light set is active');
+assert.match(mainSource,
+  /function prepareBattleWorldServices[\s\S]{0,700}worldServicesMapId = next\.mapId[\s\S]{0,100}queueBakedWorldMinimap\(next\)/,
+  'battle entry must queue the preloaded exact map without resampling the heightfield');
+assert.match(mainSource,
+  /function queueBakedWorldMinimap[\s\S]{0,1400}hud\.buildMinimapFromAsset[\s\S]{0,900}buildWorldMinimap\(next, false\)/,
+  'the exact map must be a lazy static asset with procedural cartography only as its error fallback');
+assert.match(hudSource,
+  /function installMinimapAsset[\s\S]{0,900}drawImage\(image, 0, 0, out\.width, out\.height\)/,
+  'the pre-baked supersampled minimap must install without a runtime WebGL readback');
 assert.match(mainSource,
   /async function primeDeploymentShadowMaps[\s\S]{0,6000}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');

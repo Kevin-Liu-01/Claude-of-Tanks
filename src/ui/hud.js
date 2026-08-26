@@ -1362,6 +1362,8 @@ export function initHud(bus) {
   let mode = 'hidden';
   let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 20 Hz, time-based)
   let mmDirty = true; // force an immediate minimap paint on the next update()
+  let mmBuildGeneration = 0;
+  const minimapAssetCache = new Map();
   let w = 1, h = 1, dpr = 1;
   let scopeGrad = null;
   let scopeFadeMs = -1; // scope-shadow fade-in start (perf.now ms; -1 = settled)
@@ -3068,6 +3070,46 @@ export function initHud(bus) {
     mmBg = out;
   }
 
+  function preloadMinimapAsset(src) {
+    if (!src) return Promise.reject(new Error('Missing minimap asset URL'));
+    let pending = minimapAssetCache.get(src);
+    if (pending) return pending;
+    pending = new Promise((resolve, reject) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error(`Failed to load minimap asset: ${src}`));
+      image.src = src;
+      if (typeof image.decode === 'function') {
+        image.decode().then(() => resolve(image), () => { /* onload/onerror owns fallback */ });
+      }
+    }).catch((error) => {
+      if (minimapAssetCache.get(src) === pending) minimapAssetCache.delete(src);
+      throw error;
+    });
+    minimapAssetCache.set(src, pending);
+    return pending;
+  }
+
+  async function installMinimapAsset(heightField, src, generation) {
+    const image = await preloadMinimapAsset(src);
+    if (generation !== mmBuildGeneration) return false;
+    heightFieldRef = heightField;
+    mapWorldSize = heightField && heightField.size ? heightField.size : 1024;
+    const out = document.createElement('canvas');
+    out.width = MM * mmDpr;
+    out.height = MM * mmDpr;
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(image, 0, 0, out.width, out.height);
+    if (generation !== mmBuildGeneration) return false;
+    mmBg = out;
+    mmCtx.drawImage(mmBg, 0, 0, MM, MM);
+    mmDirty = true;
+    return true;
+  }
+
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
   function drawMinimapChrome(octx) {
@@ -4021,9 +4063,21 @@ export function initHud(bus) {
      *   (tank roots in `exclude` are hidden during the capture).
      */
     buildMinimap(heightField, features, palette, snap) {
+      mmBuildGeneration++;
       buildMinimapBg(heightField, features, palette, snap);
       mmCtx.drawImage(mmBg, 0, 0, MM, MM);
       mmDirty = true;
+    },
+
+    preloadMinimapAsset,
+
+    buildMinimapFromAsset(heightField, src) {
+      const generation = ++mmBuildGeneration;
+      return installMinimapAsset(heightField, src, generation);
+    },
+
+    exportMinimapBackground(type = 'image/webp', quality = 0.92) {
+      return mmBg ? mmBg.toDataURL(type, quality) : null;
     },
 
     /**
@@ -4081,6 +4135,8 @@ export function initHud(bus) {
       getHitArcs: () => hud.getHitArcs(),
       getSpectateBar: () => hud.getSpectateBar(),
       stageSpectateBar: (payload) => hud.stageSpectateBar(payload),
+      getMinimapBackgroundDataUrl: (type, quality) =>
+        hud.exportMinimapBackground(type, quality),
       // MOBILE-UX r1 probe seam (introspection only): everything the reticle
       // clamp math consumed and produced on the LAST drawn frame, so a
       // numeric gate can assert drawnR == clamp(projection, floor, ceiling)

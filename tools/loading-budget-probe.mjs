@@ -430,6 +430,7 @@ async function measureBattle(mapId) {
         loadScreen: !!document.querySelector('.cot-bl.on'),
         trace: window.__BATTLE_LOAD,
         world: window.__WORLD_LOAD,
+        minimap: window.__MINIMAP_LOAD,
         combatWarm: window.__COMBAT_WARM,
         prefetch: window.__WORLD_PREFETCH,
         reusedPedestal: debug.game.player?.visual === pedestalBefore,
@@ -477,6 +478,7 @@ async function measureBattle(mapId) {
       tracedTotalMs: result.trace?.totalMs ?? null,
       rolloutMs: result.rolloutMs,
       world: result.world || null,
+      minimap: result.minimap || null,
       combatWarm: result.combatWarm || null,
       combatOpeningWarm: result.combatOpeningWarm || null,
       combatRareWarm: result.combatRareWarm || null,
@@ -493,7 +495,8 @@ async function measureBattle(mapId) {
       deferredWarmTimedOut,
       stall,
       invariantPass: result.countdownWarm?.doneBeforeRollout === true
-        && result.deferredWarm?.doneBeforeRollout === true,
+        && result.deferredWarm?.doneBeforeRollout === true
+        && result.minimap?.state === 'ready',
       errors: opened.errors,
     });
   } finally {
