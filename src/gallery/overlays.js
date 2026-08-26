@@ -1,13 +1,19 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const MODULE_COLORS = Object.freeze({
   engine: 0xf0a23a,
   fuelTank: 0xe76f51,
   ammoRack: 0xff4d5f,
+  missileRack: 0xff6b45,
+  autoloader: 0xff738e,
+  feedSystem: 0xffa75c,
   turretRing: 0xb38cff,
+  gunMount: 0xc2a5ff,
   radio: 0x78a9ff,
   optics: 0x5ee1d2,
   gun: 0xe9cf63,
+  transmission: 0xd58a35,
   trackL: 0x98a6ad,
   trackR: 0x98a6ad,
 });
@@ -132,6 +138,146 @@ const _up = new THREE.Vector3(0, 1, 0);
 const _axis = new THREE.Vector3();
 const _center = new THREE.Vector3();
 
+function shapeBounds(shape) {
+  if (shape.kind === 'ellipsoid') {
+    const center = new THREE.Vector3().fromArray(shape.center);
+    const half = new THREE.Vector3().fromArray(shape.radii);
+    return { center, size: half.multiplyScalar(2) };
+  }
+  if (shape.kind === 'capsule') {
+    const a = new THREE.Vector3().fromArray(shape.a);
+    const b = new THREE.Vector3().fromArray(shape.b);
+    const radius = Math.max(0.001, Number(shape.radius) || 0.001);
+    const min = a.clone().min(b).addScalar(-radius);
+    const max = a.clone().max(b).addScalar(radius);
+    return { center: min.clone().add(max).multiplyScalar(0.5), size: max.sub(min) };
+  }
+  if (shape.kind === 'ellipticCylinder') {
+    const half = new THREE.Vector3();
+    const radialAxes = [0, 1, 2].filter((axis) => axis !== shape.axis);
+    half.setComponent(shape.axis, shape.halfLength);
+    half.setComponent(radialAxes[0], shape.radii[0]);
+    half.setComponent(radialAxes[1], shape.radii[1]);
+    return {
+      center: new THREE.Vector3().fromArray(shape.center),
+      size: half.multiplyScalar(2),
+    };
+  }
+  return null;
+}
+
+function transformPart(geometry, position = [0, 0, 0], rotation = [0, 0, 0]) {
+  const matrix = new THREE.Matrix4().compose(
+    new THREE.Vector3().fromArray(position),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation)),
+    new THREE.Vector3(1, 1, 1),
+  );
+  geometry.applyMatrix4(matrix);
+  return geometry;
+}
+
+function boxPart(size, position = [0, 0, 0]) {
+  return transformPart(new THREE.BoxGeometry(...size), position);
+}
+
+function cylinderPart(radius, length, axis = 'y', position = [0, 0, 0], radialSegments = 12) {
+  const rotation = axis === 'x' ? [0, 0, Math.PI / 2] : axis === 'z' ? [Math.PI / 2, 0, 0] : [0, 0, 0];
+  return transformPart(
+    new THREE.CylinderGeometry(radius, radius, length, radialSegments, 1, false),
+    position,
+    rotation,
+  );
+}
+
+function conePart(radius, length, axis = 'y', position = [0, 0, 0]) {
+  const rotation = axis === 'x' ? [0, 0, -Math.PI / 2] : axis === 'z' ? [Math.PI / 2, 0, 0] : [0, 0, 0];
+  return transformPart(new THREE.ConeGeometry(radius, length, 12), position, rotation);
+}
+
+function torusPart(radius, tube, axis = 'z', position = [0, 0, 0]) {
+  const rotation = axis === 'x' ? [0, Math.PI / 2, 0] : axis === 'y' ? [Math.PI / 2, 0, 0] : [0, 0, 0];
+  return transformPart(new THREE.TorusGeometry(radius, tube, 8, 20), position, rotation);
+}
+
+function mergeModuleParts(parts, module) {
+  const geometry = mergeGeometries(parts, false);
+  parts.forEach((part) => part.dispose());
+  if (!geometry) return null;
+  geometry.type = 'GalleryModuleGeometry';
+  geometry.name = `gallery_module_form_${module}`;
+  geometry.userData.moduleForm = module;
+  return geometry;
+}
+
+// Semantic diagnostic forms are normalized into the authoritative shape's
+// axis-aligned bounds. They make the overlay readable without changing the
+// smooth ellipsoid/capsule/cylinder data used by combat intersection tests.
+function moduleFormGeometry(module) {
+  const parts = [];
+  if (module === 'engine') {
+    parts.push(boxPart([0.76, 0.48, 0.70], [0, -0.10, 0]));
+    parts.push(boxPart([0.27, 0.22, 0.58], [-0.20, 0.25, 0]));
+    parts.push(boxPart([0.27, 0.22, 0.58], [0.20, 0.25, 0]));
+    parts.push(cylinderPart(0.21, 0.10, 'z', [0, -0.06, -0.40], 16));
+  } else if (module === 'fuelTank') {
+    parts.push(boxPart([0.72, 0.64, 0.78]));
+    parts.push(boxPart([0.80, 0.08, 0.11], [0, 0.25, -0.22]));
+    parts.push(boxPart([0.80, 0.08, 0.11], [0, 0.25, 0.22]));
+    parts.push(cylinderPart(0.07, 0.12, 'y', [0.22, 0.38, 0.18], 10));
+  } else if (module === 'ammoRack') {
+    parts.push(boxPart([0.82, 0.11, 0.82], [0, -0.42, 0]));
+    for (const x of [-0.27, 0, 0.27]) {
+      parts.push(cylinderPart(0.065, 0.58, 'z', [x, -0.08, -0.04], 10));
+      parts.push(conePart(0.075, 0.16, 'z', [x, -0.08, 0.33]));
+    }
+  } else if (module === 'missileRack') {
+    parts.push(boxPart([0.78, 0.12, 0.74], [0, -0.41, -0.03]));
+    for (const x of [-0.21, 0.21]) for (const y of [-0.20, 0.20]) {
+      parts.push(cylinderPart(0.095, 0.66, 'z', [x, y, -0.06], 12));
+      parts.push(conePart(0.10, 0.16, 'z', [x, y, 0.35]));
+    }
+  } else if (module === 'autoloader') {
+    parts.push(torusPart(0.31, 0.075, 'y', [0, -0.06, 0]));
+    parts.push(cylinderPart(0.16, 0.24, 'y', [0, -0.06, 0], 16));
+    for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      parts.push(cylinderPart(0.045, 0.34, 'z', [Math.cos(angle) * 0.30, 0.14, Math.sin(angle) * 0.20], 8));
+    }
+  } else if (module === 'feedSystem') {
+    parts.push(boxPart([0.76, 0.58, 0.34], [0, -0.08, -0.21]));
+    for (const x of [-0.27, -0.09, 0.09, 0.27]) {
+      parts.push(cylinderPart(0.055, 0.50, 'z', [x, 0.15, 0.15], 8));
+    }
+  } else if (module === 'transmission') {
+    parts.push(boxPart([0.72, 0.50, 0.62], [0, -0.08, 0]));
+    parts.push(cylinderPart(0.18, 0.80, 'x', [0, 0.23, -0.12], 16));
+    parts.push(cylinderPart(0.13, 0.80, 'x', [0, 0.20, 0.23], 14));
+  } else if (module === 'radio') {
+    parts.push(boxPart([0.76, 0.66, 0.64]));
+    for (const y of [-0.22, 0, 0.22]) parts.push(boxPart([0.62, 0.055, 0.08], [0, y, 0.36]));
+    parts.push(cylinderPart(0.06, 0.08, 'z', [0.26, 0.26, 0.38], 10));
+  } else if (module === 'optics') {
+    parts.push(boxPart([0.60, 0.54, 0.54], [0, -0.06, -0.10]));
+    parts.push(cylinderPart(0.19, 0.30, 'z', [0, 0.05, 0.28], 16));
+    parts.push(boxPart([0.44, 0.13, 0.08], [0, 0.30, 0.18]));
+  } else if (module === 'gun') {
+    parts.push(boxPart([0.62, 0.58, 0.50], [0, 0, -0.23]));
+    parts.push(cylinderPart(0.13, 0.70, 'z', [0, 0, 0.15], 16));
+    parts.push(cylinderPart(0.19, 0.16, 'z', [0, 0, 0.39], 16));
+  } else if (module === 'gunMount' || module === 'turretRing') {
+    parts.push(torusPart(0.34, 0.09, 'y'));
+    parts.push(cylinderPart(0.22, 0.20, 'y', [0, 0, 0], 18));
+  } else if (module === 'trackL' || module === 'trackR') {
+    parts.push(boxPart([0.62, 0.64, 0.88]));
+    for (const z of [-0.38, -0.23, -0.08, 0.08, 0.23, 0.38]) {
+      parts.push(boxPart([0.76, 0.08, 0.07], [0, 0.34, z]));
+    }
+  } else {
+    parts.push(boxPart([0.76, 0.66, 0.76]));
+    parts.push(boxPart([0.52, 0.10, 0.82], [0, 0.30, 0]));
+  }
+  return mergeModuleParts(parts, module);
+}
+
 function shapeGeometry(shape) {
   if (shape.kind === 'ellipsoid') {
     return {
@@ -166,14 +312,27 @@ function shapeGeometry(shape) {
   return null;
 }
 
+function moduleGeometry(module, shape) {
+  const bounds = shapeBounds(shape);
+  if (!bounds) return null;
+  const geometry = moduleFormGeometry(module);
+  if (!geometry) return null;
+  return {
+    geometry,
+    position: bounds.center,
+    scale: bounds.size,
+    quaternion: new THREE.Quaternion(),
+  };
+}
+
 function addVolume(container, volume, shape, index, mode, resources, pickables, partIndex = 0, partCount = 1) {
   const min = new THREE.Vector3().fromArray(volume.min || [0, 0, 0]);
   const max = new THREE.Vector3().fromArray(volume.max || [0, 0, 0]);
   const size = max.clone().sub(min);
   if (size.x <= 0 || size.y <= 0 || size.z <= 0) return;
-  const built = shapeGeometry(shape);
-  if (!built) return;
   const key = String(mode === 'modules' ? volume.module : volume.crew || 'volume');
+  const built = mode === 'modules' ? moduleGeometry(key, shape) : shapeGeometry(shape);
+  if (!built) return;
   const color = (mode === 'modules' ? MODULE_COLORS[key] : CREW_COLORS[key]) || 0x68c7ff;
   const { geometry } = built;
   const material = inspectionMaterial(color, 0.24);
@@ -190,6 +349,7 @@ function addVolume(container, volume, shape, index, mode, resources, pickables, 
     title: key.replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' '),
     owner: volume.turretLocal ? 'Turret-local volume' : 'Hull-local volume',
     dimensionsM: size.toArray().map((value) => Number(value.toFixed(2))),
+    visualForm: mode === 'modules' ? key : shape.kind,
   };
   container.add(mesh);
   pickables.push(mesh);
