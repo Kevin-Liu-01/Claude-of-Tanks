@@ -892,7 +892,7 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     // garage/gallery presentation anchor. The returned half-extents are also
     // the ballistic-card projection receipt.
     const projection = assetProjection(box, visual.presentationAnchor);
-    const { center, size, extentZ } = projection;
+    const { center, size, extentX, extentZ } = projection;
     const metadata = tankAssetMetadata(getSpec(id));
     const geometryHash = geometryFingerprint(root);
     const presentationAnchor = {
