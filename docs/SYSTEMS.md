@@ -80,6 +80,9 @@ strict TypeScript owners:
 - `src/game/playerFrameInput.ts` owns allocation-free per-frame keyboard,
   mouse, gamepad, touch, cursor-fallback, zoom, and RMB-mode sampling and
   publishes the stable movement/fire and camera input records;
+- `src/game/battleResultPresentationRuntime.ts` owns player-death holds,
+  result replay selection, kill-cam completion, verdict presentation, and
+  round/exit cancellation independently from the fixed-step render loop;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/garageShowroomRuntime.ts` owns the Garage camera phase latch,
@@ -160,6 +163,10 @@ prop contacts behind one allocation-bounded interface.
 `src/game/soloBattleDeploymentRuntime.ts` is the covered entry owner. The
 composition root supplies concrete capabilities and receives only a generation
 and reveal receipt; it must not duplicate warm ordering or shader/shadow policy.
+
+`src/game/battleResultPresentationRuntime.ts` is the post-simulation result
+owner. The frame loop invokes it once after authority advances and does not own
+death-beat deadlines, replay-pending state, or result-presentation latches.
 
 ### Boot
 

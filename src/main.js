@@ -87,6 +87,7 @@ import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
+import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
@@ -1511,6 +1512,16 @@ function showEndOverlay(result) {
 // the settings panel (src/ui/settings.js). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags = { forceFire: false }; // headless-test hook (window.__DEBUG.flags)
+const battleResultPresentation = createBattleResultPresentationRuntime({
+  game,
+  killcam,
+  rig,
+  veilHud,
+  showEndOverlay,
+  emitPresented: (result) => bus.emit('battle:presented', { result }),
+  exitPointerLock: () => { document.exitPointerLock?.(); },
+  recordFlow: (receipt) => { debugFlags.lastEndFlow = receipt; },
+});
 
 const input = createInput({ lockElement: renderer.domElement });
 const armorAimOverlay = createArmorAimOverlayAccess();
@@ -2432,9 +2443,7 @@ async function presentNetworkBattle({
   }
   garage.hide();
   endOverlay.style.display = 'none';
-  endShown = false;
-  deathCamShown = false;
-  kcPending = null;
+  battleResultPresentation.reset();
   hud.setMode('battle');
   game.phase = 'battle';
   setGarageSpots(false);
@@ -2607,9 +2616,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   garage.hide();
   endOverlay.style.display = 'none';
-  endShown = false; // KILL-CAM: fresh battle — re-arm the end-of-battle gate
-  deathCamShown = false; // killcam_shotinfo r1: re-arm the at-death replay
-  kcPending = null; // killcam r2: a scheduled death replay dies with the battle
+  battleResultPresentation.reset();
   hud.setMode('battle');
   game.phase = 'battle';
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
@@ -2673,7 +2680,7 @@ const MIN_VISIBLE_PRE_BATTLE_S = 2;
 
 function clearBattlePresentationForExit() {
   armorAimOverlay.clear();
-  kcPending = null;
+  battleResultPresentation.clearPending();
   killcam.cancel();
   if (killcam.spectate?.active) killcam.spectate.stop(true);
   veilHud(false);
@@ -2918,19 +2925,6 @@ let lastMs = -1;
 // asserts it never exceeds SIM_DT (no pause-duration catch-up hop).
 const pauseInfo = { paused: false, resumes: 0, lastDtR: 0, lastResumeDtR: -1 };
 let lastFov = camera.fov;
-let endShown = false;
-let deathCamShown = false; // killcam_shotinfo r1: death replay played at death
-// killcam r2 DEATH BEAT (owner: "your own death cam should show your tank
-// exploding the same way before the killcam"): the replay no longer starts on
-// the death frame — the live death cam holds ~2.6 s first, so the REAL
-// destruction (state.js setDestroyed turret pop + fx fireball + the new
-// tank_explosion/turret-pop-accent samples, all fired on 'tank:destroyed' at
-// this exact moment) plays out on screen at full sim rate before the cinematic
-// takes over. Wall-clock deadline pumped in tick(); the battle-result branch
-// REWIRES fire() when the result lands mid-beat so the replay continues into
-// finishBattle instead of the spectate path. Cleared by resetBattle.
-let kcPending = null; // { deadline: ms, fire: () => void }
-const DEATH_BEAT_MS = 2600;
 let shotMode = false;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each
@@ -3123,91 +3117,9 @@ function tick(nowMs) {
         simAcc -= SIM_DT;
       }
     }
-    if (game.result && !endShown) {
-      endShown = true;
-      if (document.exitPointerLock) document.exitPointerLock();
-      // KILL-CAM: replay the battle-deciding shell first (player death cam /
-      // victory final blow); the overlay + death cam resume when it finishes
-      // or is skipped. Without a captured shell, fall through immediately.
-      const finishBattle = () => {
-        veilHud(false);
-        showEndOverlay(game.result);
-        bus.emit('battle:presented', { result: game.result });
-        rig.release();
-        // Death-cam: slow orbit of the player's wreck behind the overlay.
-        if (game.result === 'defeat' && rig.startDeathCam) rig.startDeathCam();
-      };
-      // killcam_shotinfo r1: never replay an already-shown death — when the
-      // player died earlier (battle continued), a later team 'defeat' would
-      // re-run the stale death replay without this guard.
-      if (kcPending) {
-        // killcam r2: the mid-battle death beat is already holding (player
-        // died a beat before the team result resolved) — keep its deadline,
-        // but the replay must now hand over to the END flow, not the
-        // spectate path. The !deathCamShown guard is deliberately dropped:
-        // arming the beat set deathCamShown, yet THIS death was never
-        // presented — the beat owns it (defeat: death replay; victory: a
-        // fresh final blow or a straight fall-through to the overlay).
-        kcPending.fire = () => {
-          const played = killcam.playForResult(game.result, game.timeS, finishBattle);
-          debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
-            resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs };
-          if (played) veilHud(true);
-          else finishBattle();
-        };
-      } else {
-        // Battle-deciding death: the replay must begin THIS frame (shotInfo's
-        // report gate latches on killcam:begin one frame after battle:ended)
-        // — the live destruction beat plays INSIDE the killcam as its 'wreck'
-        // opening phase, flagged fresh here (killcam r2).
-        const freshKill = !deathCamShown && !!(game.player &&
-          game.player.combat && game.player.combat.destroyed);
-        const played = !deathCamShown &&
-          killcam.playForResult(game.result, game.timeS, finishBattle, { freshKill });
-        debugFlags.lastEndFlow = { played, result: game.result, timeS: game.timeS,
-          resultWallMs: performance.now(), kcBeginWallMs: killcam.lastBeginWallMs }; // KILL-CAM debug
-        if (played) {
-          veilHud(true); // cinematic letterbox owns the screen
-        } else {
-          finishBattle();
-        }
-      }
-    } else if (!game.result) {
-      endShown = false;
-    }
-    // killcam_shotinfo r1: the player died but the battle continues (allies
-    // still fighting) — play the death replay, then spectate the wreck with
-    // the death cam until the team result resolves. killcam r2: the replay
-    // starts after the DEATH BEAT (see kcPending) — the live death cam holds
-    // on the wreck while the real turret pop / fireball / explosion sample
-    // play at full sim rate, THEN the cinematic re-tells the shot.
-    if (!game.result && game.player && game.player.combat.destroyed && !deathCamShown) {
-      deathCamShown = true;
-      if (rig.startDeathCam) rig.startDeathCam(); // beat framing: wreck orbit
-      const afterDeath = () => {
-        veilHud(false);
-        rig.release();
-        if (rig.startDeathCam) rig.startDeathCam();
-      };
-      kcPending = {
-        deadline: performance.now() + DEATH_BEAT_MS,
-        fire: () => {
-          // Chromium can synchronously spend a full frame releasing pointer
-          // lock. Keep the live destruction frame paintable, then pay that
-          // browser transition under the covered replay that hands the player
-          // an unlocked spectator cursor.
-          if (document.exitPointerLock) document.exitPointerLock();
-          if (killcam.playForResult('defeat', game.timeS, afterDeath)) veilHud(true);
-          else afterDeath();
-        },
-      };
-    }
-    // killcam r2: pump the armed death beat (wall clock — presentation only)
-    if (kcPending && performance.now() >= kcPending.deadline) {
-      const fire = kcPending.fire;
-      kcPending = null;
-      fire();
-    }
+    // Cinematic death beats, result replay handoff and final overlay
+    // presentation have one typed owner outside the render loop.
+    battleResultPresentation.update();
   }
 
   // 3. presentation pose + camera rig. Resolve the hull/turret hierarchy

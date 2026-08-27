@@ -29,6 +29,8 @@ local-versus-network command policy without importing the combat runtime;
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 `battlePresentationRuntime.ts` owns solo/network pose selection, spotting
 residency, running-gear detail cadence, vehicle FX, and light prop contact;
+`battleResultPresentationRuntime.ts` owns live player-death holds, result
+replay handoff, final verdict presentation, and round/exit reset state;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
@@ -79,6 +81,8 @@ already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
 Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
 not put shader, effect, shadow, or reveal ordering back into `main.js`.
+Route result, death-beat, and replay-handoff changes through
+`battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
 Workshop changes must preserve the typed optimization receipt and pass the
 phase resource gate; do not re-enable shadows on every tiny static fitting.
 
