@@ -84,6 +84,7 @@ import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
+import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -304,7 +305,6 @@ let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let pendingMapChoice = 'verdant'; // includes the non-prefetchable Random card
 let worldDormant = false;        // garage: world hidden + per-frame update off
 let worldServicesMapId = null;   // collider/minimap/garage placement prepared
-let worldPrefetchTimer = 0;
 // The sky/fog preset the atmosphere is currently keyed to. Seeded with the
 // boot map so the FIRST activation of 'verdant' behaves exactly like the old
 // boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
@@ -349,139 +349,6 @@ const enforceWorldCacheBudget = worldBuildCoordinator.enforceCacheBudget;
 const beginWorldBuild = worldBuildCoordinator.beginBuild;
 const prefetchWorld = worldBuildCoordinator.prefetch;
 const cancelBackgroundWorldBuildsExcept = worldBuildCoordinator.cancelBackgroundExcept;
-
-// Prime the selected battlefield only after boot and a genuine garage lull.
-// beginWorldBuild's background path runs in 4 ms slices and pauses itself as
-// soon as pointer/key/touch activity advances the shared garage epoch at the next
-// checkpoint. The result is the exact normal world object in the normal cache:
-// Battle intent/click promotes or joins it without duplicate geometry, and a
-// player who spends a few seconds choosing a tank pays almost none of the
-// battlefield build under the loading veil.
-function queueWorldPrefetch(mapId, delay = 2500) {
-  if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
-  worldPrefetchTimer = 0;
-  if (!bootComplete || !mapId) return;
-  worldPrefetchTimer = setTimeout(() => {
-    worldPrefetchTimer = 0;
-    if (game.phase === 'garage' && pendingMapChoice === mapId) {
-      // Random is the normal first-run selection. Ignoring it meant the most
-      // common Battle press could never benefit from the otherwise-bounded
-      // idle world streamer. Resolve the next battle once, retain that plan
-      // for the click, and build its exact world only during genuine garage
-      // idle slices. A map/tank change invalidates the plan as before.
-      const resolvedMapId = mapId === 'random'
-        ? resolveBattleIntentMap(selectedSpecId, mapId) : mapId;
-      loadWorldModule()
-        .then(() => prefetchWorld(resolvedMapId))
-        .catch(() => null);
-      ensureTankBuilder(selectedSpecId).catch(() => null);
-    }
-  }, delay);
-}
-
-let battleIntentTextureKey = '';
-let battleIntentTextureGeneration = 0;
-let battleIntentTexturePromise = null;
-let battleIntentMapPlan = null;
-
-function resolveBattleIntentMap(specId, mapId) {
-  if (mapId !== 'random') {
-    battleIntentMapPlan = null;
-    return mapId;
-  }
-  if (battleIntentMapPlan
-      && battleIntentMapPlan.specId === specId
-      && battleIntentMapPlan.battleCount === game.battleCount) {
-    return battleIntentMapPlan.resolved;
-  }
-  const resolved = resolveMapId('random');
-  battleIntentMapPlan = {
-    specId,
-    battleCount: game.battleCount,
-    resolved,
-  };
-  return resolved;
-}
-
-function preloadBattleRosterTextures(specId, plannedIds, foregroundYield = null) {
-  const ids = [...new Set((plannedIds || []).filter(Boolean))];
-  const key = `${game.battleCount}:${specId}:${ids.join(',')}`;
-  if (battleIntentTexturePromise && battleIntentTextureKey === key) {
-    return battleIntentTexturePromise;
-  }
-  const generation = ++battleIntentTextureGeneration;
-  battleIntentTextureKey = key;
-  const pending = (async () => {
-    await ensureTankBuilders(ids);
-    for (const id of ids) {
-      if (generation !== battleIntentTextureGeneration) return;
-      // Hover/focus intent uses a conservative garage budget. Once the opaque
-      // battle loader owns the page, the click promotes a cold preparation to
-      // its faster covered-frame yielder. materials.js coalesces either path
-      // into the same per-spec texture promise, so an in-flight intent warm is
-      // never duplicated and every eventual raster remains byte-identical.
-      const tick = foregroundYield || frameBudgetTick(3);
-      await prebakeSharedTextures(
-        getSpec(id), engineCtx.anisotropy ?? 4,
-        id === specId ? 'preview' : 'ai', tick,
-      );
-    }
-  })().catch((error) => {
-    console.warn('[loading] Battle-intent texture warm failed:', error);
-  }).finally(() => {
-    if (battleIntentTexturePromise === pending) battleIntentTexturePromise = null;
-  });
-  battleIntentTexturePromise = pending;
-  return pending;
-}
-
-function cancelBattleIntentTextureWarm() {
-  const pending = battleIntentTexturePromise;
-  ++battleIntentTextureGeneration;
-  battleIntentTexturePromise = null;
-  battleIntentTextureKey = '';
-  return pending || Promise.resolve();
-}
-
-function preloadBattleIntent({ specId, mapId } = {}) {
-  battleVisualStreamerAccess.preload().catch(() => null);
-  audio.preload();
-  settings.preload().catch(() => null);
-  armorAimOverlay.preload().catch(() => null);
-  ensureBattleHud().catch(() => null);
-  ensureTouchControls().catch(() => null);
-  loadWorldModule().catch(() => null);
-  preloadSoloBattleRuntime().catch(() => null);
-  preloadBattleClientRuntime().catch(() => null);
-  preloadKillcamModule().catch(() => null);
-  // A pointer/focus/touch on BATTLE is stronger intent than ordinary garage
-  // browsing. Transfer the deterministic next roster's exact family chunks
-  // now, not only the selected hero, so the click can overlap parsing with
-  // the player's natural hover. No visual or battlefield is constructed.
-  if (specId) {
-    const planned = planBattleParticipantIds(game, specId, true);
-    ensureTankBuilders(planned).catch(() => null);
-    preloadBattleRosterTextures(specId, planned);
-  }
-  // Decode the shipped deterministic sprite atlases after explicit intent.
-  // The fallback procedural generator and every rendered texture are
-  // unchanged; this only moves module transfer/PNG decode ahead of the veil.
-  ensureFxRuntime()
-    .then((live) => live.preloadTextures?.())
-    .catch(() => null);
-  // Random is the default garage card. Resolve its concrete battlefield at
-  // explicit Battle intent and retain that exact choice for the click, so the
-  // world can genuinely build during hover/focus instead of discovering the
-  // map only after the loading veil appears.
-  const plannedMapId = specId && mapId
-    ? resolveBattleIntentMap(specId, mapId) : mapId;
-  if (plannedMapId) {
-    prefetchWorld(plannedMapId, { intent: true });
-    ensureBattleHud()
-      .then(() => hud.preloadMinimapAsset(minimapAssetUrl(plannedMapId)))
-      .catch(() => null);
-  }
-}
 
 /** World raycast that is safe before any battlefield exists. */
 function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
@@ -716,6 +583,47 @@ function frameBudgetTick(budgetMs = 6) {
   };
 }
 
+// Battle hover/focus, quiet garage world streaming, and the covered roster
+// handoff share one lifecycle owner. Keeping the policy here used to expose
+// several independent timers/generations in the composition root and made a
+// Random-map hover race the eventual click. The typed runtime preserves the
+// exact loaders and visuals while owning their ordering and cancellation.
+const battleIntent = createBattleIntentRuntime({
+  isBootComplete: () => bootComplete,
+  getPhase: () => game.phase,
+  getPendingMapChoice: () => pendingMapChoice,
+  getSelectedSpecId: () => selectedSpecId,
+  getBattleCount: () => game.battleCount,
+  resolveMapId,
+  loadWorldModule,
+  prefetchWorld,
+  ensureTankBuilder,
+  ensureTankBuilders,
+  planRoster: (specId) => planBattleParticipantIds(game, specId, true),
+  getSpec,
+  prebakeSharedTextures,
+  createBudgetYield: frameBudgetTick,
+  anisotropy: engineCtx.anisotropy ?? 4,
+  setCamoBiome,
+  clearCamoOverrides,
+  setCamoOverride,
+  applyCamoPatterns: applyCamoPatternsChunked,
+  preloadBattleVisuals: () => battleVisualStreamerAccess.preload(),
+  preloadAudio: () => audio.preload(),
+  preloadSettings: () => settings.preload(),
+  preloadArmorOverlay: () => armorAimOverlay.preload(),
+  preloadBattleHud: () => ensureBattleHud(),
+  preloadTouchControls: () => ensureTouchControls(),
+  preloadSoloBattle: () => preloadSoloBattleRuntime(),
+  preloadBattleClient: () => preloadBattleClientRuntime(),
+  preloadKillcam: () => preloadKillcamModule(),
+  ensureFxRuntime,
+  preloadMinimap: (mapId) => ensureBattleHud()
+    .then(() => hud.preloadMinimapAsset(minimapAssetUrl(mapId))),
+  scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
+  cancelDelay: (handle) => clearTimeout(handle),
+});
+
 // Garage vehicle selection now crosses one typed lifecycle boundary. The
 // runtime owns construction, shader submission, LRU residency, convergence,
 // and visual handoff; main owns only the player's requested spec.
@@ -753,7 +661,9 @@ const pedestal = createGaragePedestalRuntime({
 const noteGarageActivity = () => {
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
-  if (bootComplete && game.phase === 'garage') queueWorldPrefetch(pendingMapChoice);
+  if (bootComplete && game.phase === 'garage') {
+    battleIntent.scheduleIdleWorld(pendingMapChoice);
+  }
 };
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
   window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
@@ -1225,7 +1135,7 @@ const garage = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
   onSelect: (specId) => {
-    battleIntentMapPlan = null;
+    battleIntent.invalidateMapPlan();
     selectedSpecId = specId;
     rememberSpecId(specId);
     pedestal.set(specId);
@@ -1238,7 +1148,7 @@ const garage = await bootStage('ui', () => createGarage({
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: preloadPlayMode,
-  onBattleIntent: preloadBattleIntent,
+  onBattleIntent: battleIntent.preload,
   onTankIntent: pedestal.preloadIntent,
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
@@ -1275,14 +1185,14 @@ const garage = await bootStage('ui', () => createGarage({
   // inside setCamoBiome; startBattle re-calls setCamoBiome(world.mapId) after
   // the roll, so battle state is always correct regardless.
   onMapSelect: (mapId) => {
-    battleIntentMapPlan = null;
+    battleIntent.invalidateMapPlan();
     pendingMapChoice = mapId;
     if (mapId !== 'random') pendingMapId = mapId;
     cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
     // A deliberate map pick is stronger intent than passive garage dwell.
     // The coordinator still enforces its 1.2 s no-input guard and 4 ms
     // background slices, but does not add the full generic idle delay again.
-    queueWorldPrefetch(mapId, 600);
+    battleIntent.scheduleIdleWorld(mapId, 600);
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the
@@ -2056,13 +1966,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   if (typeof window !== 'undefined') window.__VISUAL_LOAD_TIMINGS = [];
   const loadYield = createOpaqueLoadingYielder(12, 80);
   const requestedMapId = mapId || pendingMapId;
-  const plannedMap = requestedMapId === 'random'
-    && battleIntentMapPlan
-    && battleIntentMapPlan.specId === specId
-    && battleIntentMapPlan.battleCount === game.battleCount
-    ? battleIntentMapPlan.resolved : null;
-  const resolved = plannedMap || resolveMapId(requestedMapId);
-  battleIntentMapPlan = null;
+  const resolved = battleIntent.consumeMap(specId, requestedMapId);
   const cfg = getMapConfig(resolved);
   // perf-smooth r1: per-stage wall-clock telemetry for the player battle-entry
   // path (same pattern as __BOOT_TIMINGS) — probes and future perf rounds
@@ -2114,17 +2018,13 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // first so a repaint can never race an in-flight resize of the same canvas,
   // then paint existing cache entries and create missing exact-tier textures
   // under the loader. This whole chain overlaps terrain/vegetation/props.
-  const staleIntentTextureP = cancelBattleIntentTextureWarm();
-  const rosterTextureP = (async () => {
-    await staleIntentTextureP;
-    setCamoBiome(resolved);
-    clearCamoOverrides();
-    for (const id of plannedAutoCamoIds) setCamoOverride(id, 'auto');
-    await applyCamoPatternsChunked({
-      priorityIds: [specId], onlySpecIds: plannedRoster,
-    });
-    await preloadBattleRosterTextures(specId, plannedRoster, loadYield);
-  })();
+  const rosterTextureP = battleIntent.prepareRoster({
+    specId,
+    mapId: resolved,
+    rosterIds: plannedRoster,
+    autoCamoIds: plannedAutoCamoIds,
+    yieldForBudget: loadYield,
+  });
   // Legacy battlefields author an exact wreck cast. Those synchronous wreck
   // bakes are part of world construction, so start their profile transfers in
   // the same barrier instead of discovering and awaiting each family late in
@@ -4656,7 +4556,7 @@ if (STUDIO_BOOT_INTENT) {
 }
 
 bootComplete = true;
-queueWorldPrefetch(pendingMapChoice);
+battleIntent.scheduleIdleWorld(pendingMapChoice);
 scheduleRaf();
 
 // ---------------------------------------------------------------------------

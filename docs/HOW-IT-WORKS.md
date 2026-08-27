@@ -37,6 +37,15 @@ authoring are the only explicit full-fleet gates. Garage and battle transitions
 remain painted while this asynchronous work proceeds, so low-end hardware sees
 progress instead of a blocked black canvas.
 
+Battle hover/focus is a typed intent boundary rather than a collection of UI
+callbacks. It transfers battle-only modules, plans only the next deterministic
+roster, coalesces that roster's texture bakes, and reserves one concrete map
+when the garage shows Random. The click consumes that same map instead of
+rolling again. Covered loading safely drains a partial hover bake before
+repainting map camouflage, then resumes the exact work with a faster frame
+budget behind the opaque loading screen. Tank/map changes and new rounds
+cancel stale intent.
+
 The quality system combines capability checks with a boot-time render probe.
 Resolution, shadows, post effects, texture sizes, vegetation density, and
 background work scale independently. A WebGL target watchdog can disable a

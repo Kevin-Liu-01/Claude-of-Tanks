@@ -204,7 +204,7 @@ assert.match(preRosterBattleLoad,
   /battleLoad\.progress\(0\.55, 'Uploading battlefield textures'\)[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(world\.group, loadYield\)/,
   'battle entry must stage current world textures before the first full deployment frame');
 assert.match(preRosterBattleLoad,
-  /const plannedRoster = planBattleParticipantIds[\s\S]{0,1500}const rosterTextureP = \(async \(\) => \{[\s\S]{0,800}applyCamoPatternsChunked[\s\S]{0,500}preloadBattleRosterTextures[\s\S]{0,2400}battleEntryAcquisition\.acquireSolo\(\[[\s\S]{0,700}rosterTextureP/,
+  /const plannedRoster = planBattleParticipantIds[\s\S]{0,1200}const rosterTextureP = battleIntent\.prepareRoster\(\{[\s\S]{0,300}rosterIds: plannedRoster[\s\S]{0,3000}battleEntryAcquisition\.acquireSolo\(\[[\s\S]{0,700}rosterTextureP/,
   'exact cold roster camouflage and texture preparation must overlap battlefield construction');
 assert.match(preRosterBattleLoad,
   /const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,260}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1000}fxTextureP/,
@@ -283,10 +283,10 @@ assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,180}casterState\.lods[\s\S]{0,100}autoUpdate = autoUpdate/,
   'shadow-only full cascades must keep live-camera LODs pinned until every exact map is rendered');
 assert.match(mainSource,
-  /const plannedMapId = specId && mapId[\s\S]*resolveBattleIntentMap\(specId, mapId\)[\s\S]*prefetchWorld\(plannedMapId(?:,[^;]*)?\)/,
-  'explicit Battle intent must turn the default Random card into a prefetchable concrete world');
+  /onBattleIntent: battleIntent\.preload/,
+  'explicit Battle intent must be delegated to the typed prefetch owner');
 assert.match(mainSource,
-  /const plannedMap = requestedMapId === 'random'[\s\S]*battleIntentMapPlan\.resolved[\s\S]*const resolved = plannedMap \|\| resolveMapId\(requestedMapId\)/,
+  /const resolved = battleIntent\.consumeMap\(specId, requestedMapId\)/,
   'the Battle click must consume the exact Random world chosen during intent');
 const soloLoaderBody = mainSource.slice(
   mainSource.indexOf('async function startBattleLoading('),

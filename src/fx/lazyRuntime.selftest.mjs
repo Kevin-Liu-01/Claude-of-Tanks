@@ -16,6 +16,9 @@ const studioAccess = await readFile(new URL('../game/studioAccess.ts', import.me
 const deferredWarm = await readFile(
   new URL('../game/deferredCombatWarmRuntime.ts', import.meta.url), 'utf8',
 );
+const battleIntentRuntime = await readFile(
+  new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -55,19 +58,18 @@ const networkBattle = main.slice(
 if (!/preloadNetworkBattleModules\(\)[\s\S]{0,900}ensureFxRuntime\(\)/.test(networkBattle)) {
   throw new Error('network battle can enter without the live effects runtime');
 }
-const battleIntent = main.slice(
-  main.indexOf('function preloadBattleIntent('),
-  main.indexOf('/** World raycast', main.indexOf('function preloadBattleIntent(')),
-);
-const plannedRosterAt = battleIntent.indexOf('planBattleParticipantIds(game, specId, true)');
-const rosterBuildersAt = battleIntent.indexOf('ensureTankBuilders(planned)');
-const fxRuntimeAt = battleIntent.indexOf('ensureFxRuntime()');
-const fxTexturesAt = battleIntent.indexOf('live.preloadTextures');
+const plannedRosterAt = battleIntentRuntime.indexOf('const planned = planRoster(specId)');
+const rosterBuildersAt = battleIntentRuntime.indexOf('ensureTankBuilders(planned)');
+const fxRuntimeAt = battleIntentRuntime.indexOf('const live = await ensureFxRuntime()');
+const fxTexturesAt = battleIntentRuntime.indexOf('live.preloadTextures');
 if (!(plannedRosterAt >= 0
   && rosterBuildersAt > plannedRosterAt
   && fxRuntimeAt > rosterBuildersAt
   && fxTexturesAt > fxRuntimeAt)) {
   throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');
+}
+if (!/onBattleIntent: battleIntent\.preload/.test(main)) {
+  throw new Error('the garage Battle intent must remain wired to the typed lifecycle owner');
 }
 if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
   throw new Error('particle preload must finish PNG decode before texture upload');

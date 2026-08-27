@@ -64,6 +64,9 @@ strict TypeScript owners:
   render-loop proxy, and transfer of temporary F8 ownership to the full mode;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
+- `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete
+  Random-map reservation, quiet-world scheduling, exact-roster texture
+  coalescing, and the camouflage-safe handoff into covered entry;
 - `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
   effect, wreck, hidden-variant, and fallback shader-warm implementation; its
   retryable access facade is acquired before any synchronous fallback drain.
@@ -170,10 +173,19 @@ input, coalesces repeated intent, and bounds retained texture-only previews.
 `garageIdleWorkCoordinator.ts` serializes that paint with background world and
 workshop construction; it does not change authored work or visual quality.
 
+`battleIntentRuntime.ts` owns the next operation rather than any rendered
+object. A Battle hover or focus transfers battle-only modules, plans the exact
+roster, coalesces its texture work, resolves Random to one concrete map, and
+starts that map's bounded prefetch. The click consumes that same reservation.
+Covered entry first drains or cancels the hover bake, applies the chosen map's
+camouflage, and resumes exact-roster baking with the loading-screen yielder.
+Changing tank/map or starting a new round invalidates the reservation.
+
 ### Battle entry
 
-Solo Battle intent begins downloading the solo authority chunk; the covered
-battle barrier acquires it in parallel with the selected map and roster. A
+Solo Battle intent begins downloading the solo authority chunk and the exact
+next roster/map through `battleIntentRuntime.ts`; the covered battle barrier
+joins that work in parallel with independent world construction. A
 network battle first establishes a room or ranked session, then loads the
 selected map and roster behind an opaque transition without importing solo
 authority. The browser bridge mounts visuals only after authority has a valid

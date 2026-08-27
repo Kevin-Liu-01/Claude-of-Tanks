@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
 const access = await readFile(new URL('./soloBattleAccess.ts', import.meta.url), 'utf8');
+const intent = await readFile(new URL('./battleIntentRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(main, /from ['"]\.\/game\/state\.js['"]/, 
   'garage boot must not statically import solo battle authority');
 assert.match(main, /from ['"]\.\/game\/soloBattleAccess\.ts['"]/,
@@ -13,11 +14,9 @@ assert.match(main, /isReady:\s*isSoloBattleRuntimeReady/,
   'non-battle world activation uses the typed readiness contract');
 assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
   'solo authority must be demand-loaded behind its typed boundary');
-const battleIntent = main.slice(
-  main.indexOf('function preloadBattleIntent('),
-  main.indexOf('function worldRaycast(', main.indexOf('function preloadBattleIntent(')),
-);
-assert.match(battleIntent, /preloadSoloBattleRuntime\(\)/,
+assert.match(main, /preloadSoloBattle: \(\) => preloadSoloBattleRuntime\(\)/,
+  'main must give Battle intent the solo authority loader');
+assert.match(intent, /const preload = \([\s\S]{0,700}ignoreFailure\(preloadSoloBattle\)/,
   'Battle intent must overlap the solo authority transfer with garage dwell');
 const battleEntry = main.slice(
   main.indexOf('async function startBattleLoading('),

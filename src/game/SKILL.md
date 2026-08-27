@@ -27,6 +27,9 @@ owns bot decisions and is injected into the headless multiplayer authority;
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
+`battleIntentRuntime.ts` owns the Battle hover/focus lifecycle: concrete Random
+map reservation, quiet-world scheduling, exact-roster texture coalescing, stale
+hover cancellation, and the camouflage-safe handoff into covered loading.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -44,6 +47,8 @@ Trace callers in `src/main.js`, run the nearest selftest, and preserve existing
 event payloads. Keep garage/Studio-safe state in `stateCore.ts`; do not add
 simulation or rendering imports there. Keep deterministic roster planning
 independent from combat setup so battle intent can preload exact families.
+Route Battle preload changes through `battleIntentRuntime.ts`; do not restore
+independent map plans, texture generations, or garage timers in `main.js`.
 Bot changes require both focused AI tests and battle probes.
 
 ## Gotchas

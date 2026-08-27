@@ -70,11 +70,16 @@ assert.deepEqual(handoffCalls, ['resume', 'mute'],
 assert.equal(handoff.ready, true, 'the mixer handoff settles without a partial instance');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const intentSource = await readFile(
+  new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
+);
 assert.match(mainSource, /import \{ createLazyAudio \} from '\.\/audio\/lazyAudio\.js';/,
   'the garage boot graph uses the boot-light audio facade');
 assert.doesNotMatch(mainSource, /from '\.\/audio\/audio\.js';/,
   'the full mixer is not a static boot dependency');
-assert.match(mainSource, /function preloadBattleIntent[\s\S]*audio\.preload\(\);/,
+assert.match(mainSource, /preloadAudio: \(\) => audio\.preload\(\)/,
+  'the composition root gives Battle intent the lazy mixer port');
+assert.match(intentSource, /const preload = \([\s\S]{0,500}ignoreFailure\(preloadAudio\)/,
   'Battle intent transfers the full mixer before the click when possible');
 
 console.log('lazyAudio.selftest: deferred mixer and immediate loading tone passed');
