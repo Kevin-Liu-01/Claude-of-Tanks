@@ -30,12 +30,22 @@ remain compatibility fallbacks for deterministic captures and direct debug
 entry that bypass the player transition. A WebGL context restoration
 invalidates the renderer-lifetime receipts.
 
+The same rule applies to boot and phase transitions. A typed Garage GPU owner
+submits the initial scene, shadows, bounded uploads, and post passes in one
+recoverable sequence. Garage vehicle switches, battlefield activation,
+network entry, wrecks, and opening effects receive the target-aware compile
+port rather than the renderer itself. None of these paths awaits
+`compileAsync`; real bounded draws remain the compatibility fallback for
+drivers with unreliable parallel-compile completion reporting.
+
 ## Consequences
 
 - Loading prepares the shader variants that gameplay actually consumes.
 - FX appearance, pool contents, shadows, postprocessing, and gameplay timing
   are unchanged.
 - Duplicate effect generation and binding no longer extend deployment.
+- The default framebuffer no longer leaves an unused sRGB program family
+  resident beside the linear-HDR gameplay family.
 - A failed private warm restores visibility, camera layers, render target,
   cube face, mip level, and shadow latches before normal rendering resumes.
 - The typed owners reduce composition-root knowledge while the broader
@@ -44,6 +54,7 @@ invalidates the renderer-lifetime receipts.
 ## Verification
 
     node src/engine/programWarm.selftest.mjs
+    node src/engine/garageGpuWarmRuntime.selftest.mjs
     node src/engine/deploymentWarm.selftest.mjs
     npm run typecheck
     npm test

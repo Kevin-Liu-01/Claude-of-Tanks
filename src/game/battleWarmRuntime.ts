@@ -148,6 +148,7 @@ export interface WreckWarmOptions {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;
+  compilePrograms(root: Object3D): void;
   warmRender(): void;
 }
 
@@ -235,12 +236,14 @@ function warmWreckFallbackProbe({
   renderer,
   scene,
   camera,
+  compilePrograms,
   warmRender,
 }: {
   candidates: Array<{ source: WreckWarmMesh; material: Material }>;
   renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;
+  compilePrograms(root: Object3D): void;
   warmRender(): void;
 }): void {
   const probes = candidates.map(({ source, material }, index) => {
@@ -285,7 +288,7 @@ function warmWreckFallbackProbe({
       state.shadow.needsUpdate = false;
     }
     if (selectedShadow) selectedShadow.needsUpdate = true;
-    for (const probe of probes) renderer.compile(probe, camera, scene);
+    for (const probe of probes) compilePrograms(probe);
     warmRender();
   } catch (_) { /* first live draw remains the compatibility fallback */ }
   finally {
@@ -306,6 +309,7 @@ export async function warmNetworkWrecks({
   renderer,
   scene,
   camera,
+  compilePrograms,
   warmRender,
 }: WreckWarmOptions): Promise<void> {
   const yieldForFrameBudget = createFrameBudgetYielder(8);
@@ -335,7 +339,7 @@ export async function warmNetworkWrecks({
           ...potentialFallbackWarmMeshes(visual.root),
         ];
         const before = renderer.info.programs?.length || 0;
-        renderer.compile(visual.root, camera, scene);
+        compilePrograms(visual.root);
         const programs = renderer.info.programs || [];
         for (let index = before; index < programs.length; index++) {
           try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
@@ -367,6 +371,7 @@ export async function warmNetworkWrecks({
       renderer,
       scene,
       camera,
+      compilePrograms,
       warmRender,
     });
   }
@@ -412,10 +417,9 @@ interface BattlePostPort {
 export interface OpeningEffectsWarmOptions {
   fx: BattleFxPort;
   post: BattlePostPort;
-  renderer: WebGLRenderer;
-  scene: Scene;
   camera: Camera;
   shells: unknown[];
+  compilePrograms(root: Object3D): void;
   warmRender(): void;
 }
 
@@ -637,10 +641,9 @@ export function stageCombatFxProgramSubmission({
 export async function warmNetworkOpeningEffects({
   fx,
   post,
-  renderer,
-  scene,
   camera,
   shells,
+  compilePrograms,
   warmRender,
 }: OpeningEffectsWarmOptions): Promise<void> {
   if (openingEffectsWarmed) return;
@@ -667,7 +670,7 @@ export async function warmNetworkOpeningEffects({
     const layerMask = camera.layers.mask;
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
     try {
-      renderer.compile(fx.group, camera, scene);
+      compilePrograms(fx.group);
       warmRender();
     } finally {
       camera.layers.mask = layerMask;
@@ -728,8 +731,7 @@ export interface CombatWarmRuntimeContext {
 function* warmDestroyedRosterVariantsSteps(
   context: CombatWarmRuntimeContext,
 ): WarmGenerator {
-  const { game, post, renderer, camera, scene } = context;
-  const gameplayTarget = post?.composer?.renderTarget1 || null;
+  const { game, renderer, forwardProgramWarm } = context;
   for (const entity of game.tanks.slice()) {
     const visual = entity?.visual;
     if (!visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
@@ -737,20 +739,17 @@ function* warmDestroyedRosterVariantsSteps(
       yield* context.prebakeBurntSteps(entity.specId, context.anisotropy);
     } catch (_) { /* warm only */ }
     const rootWasVisible = visual.root.visible;
-    const targetBefore = renderer.getRenderTarget();
     try {
       visual.setDestroyed({ pop: true, ageS: 0 });
       visual.root.visible = true;
-      if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
       const before = (renderer.info.programs || []).length;
-      renderer.compile(visual.root, camera, scene);
+      forwardProgramWarm.compile(visual.root);
       const programs = renderer.info.programs || [];
       for (let index = before; index < programs.length; index += 1) {
         try { programs[index].getUniforms(); } catch (_) { /* warm only */ }
       }
     } catch (_) { /* warm only */ }
     finally {
-      renderer.setRenderTarget(targetBefore);
       try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
       visual.root.visible = rootWasVisible;
     }
@@ -770,7 +769,7 @@ function* compileHiddenVariantsSteps(
   detail: Record<string, any> | null = null,
 ): WarmGenerator {
   const {
-    game, post, renderer, camera, scene, forwardProgramWarm, lighting,
+    game, renderer, camera, forwardProgramWarm, lighting,
   } = context;
   const compileAll = function* (root: any): WarmGenerator {
     const objects: any[] = [];
@@ -779,23 +778,19 @@ function* compileHiddenVariantsSteps(
         objects.push(object);
       }
     });
-    const gameplayTarget = post?.composer?.renderTarget1 || null;
     let sliceAt = performance.now();
     for (const object of objects) {
       const wasVisible = object.visible;
-      const priorTarget = renderer.getRenderTarget();
       try {
         object.visible = true;
-        if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
         const before = (renderer.info.programs || []).length;
-        renderer.compile(object, camera, scene);
+        forwardProgramWarm.compile(object);
         const programs = renderer.info.programs || [];
         for (let index = before; index < programs.length; index += 1) {
           try { programs[index].getUniforms(); } catch (_) { /* warm only */ }
         }
       } catch (_) { /* warm only */ }
       finally {
-        renderer.setRenderTarget(priorTarget);
         object.visible = wasVisible;
       }
       if (performance.now() - sliceAt >= 6) {

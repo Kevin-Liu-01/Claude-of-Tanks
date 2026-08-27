@@ -52,7 +52,9 @@ const RESOURCE_BUDGETS = Object.freeze({
     taskCoreEquivalent: 0.06,
     heapMB: 68,
     objects: 900,
-    programs: 92,
+    // Boot submits directly against the composer's linear-HDR target. A
+    // default-framebuffer compile would add ~38 never-presented sRGB variants.
+    programs: 60,
     geometries: 300,
     // Two parked-vehicle BatchedMeshes replace twelve color submissions. Their
     // four tiny matrix/indirection DataTextures are renderer internals, not
@@ -69,7 +71,7 @@ const RESOURCE_BUDGETS = Object.freeze({
     taskCoreEquivalent: 0.45,
     heapMB: 280,
     objects: 1150,
-    programs: 225,
+    programs: 205,
     // Phase-exclusive GPU suspension removes inactive workshop allocations;
     // keep these limits close enough to catch their accidental retention.
     geometries: 575,
@@ -89,7 +91,7 @@ const RESOURCE_BUDGETS = Object.freeze({
     taskCoreEquivalent: 0.06,
     heapMB: 205,
     objects: 1000,
-    programs: 260,
+    programs: 240,
     geometries: 510,
     textures: 166,
     sceneGeometries: 475,

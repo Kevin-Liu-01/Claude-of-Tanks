@@ -167,6 +167,7 @@ await warmNetworkWrecks({
     compile() { compiledRoots += 1; },
     initTexture() { wreckTexturesInitialized += 1; },
   },
+  compilePrograms() { compiledRoots += 1; },
   scene,
   camera: new PerspectiveCamera(),
   warmRender() {

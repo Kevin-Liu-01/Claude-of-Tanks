@@ -89,6 +89,16 @@ compile-isolation result of 295. Host task-duration readings varied under local
 contention, so the release gate retains the independent frame-health trace and
 resource ceilings instead of treating FPS as the only acceptance signal.
 
+The next cold-path correction removed framebuffer-variant duplication from
+every warm lifecycle. Initial Garage, active battle, and returned Garage now
+retain 54/193/227 programs instead of 92/222/256. A constrained pristine
+four-profile gate (4× CPU, 1.6 Mbps, 150 ms RTT) reached ready in
+6.210–6.267 seconds wall / 1.712–1.770 seconds app boot, while all injected
+boot failures continued to recover.
+Garage, world, wreck, effects, and network-entry compilation all pass through
+the target-aware forward owner; no lifecycle waits on `compileAsync` advisory
+completion status.
+
 The same round removed an incorrect full-roster wreck-cohort draw from covered
 entry. Exact patchable materials and shared maps warm directly; a real isolated
 fallback draw occurs only when the roster contains non-patchable source

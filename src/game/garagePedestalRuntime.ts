@@ -1,9 +1,7 @@
 import type {
-  Camera,
   Object3D,
   Scene,
   Vector3,
-  WebGLRenderer,
 } from 'three';
 import { createGaragePedestalPreloader } from './garagePedestalPreloader.ts';
 
@@ -47,8 +45,6 @@ interface InitialPedestalOptions {
 
 interface GaragePedestalRuntimeOptions {
   scene: Scene;
-  renderer: WebGLRenderer;
-  camera: Camera;
   garagePosition: Vector3;
   podiumTopY: number;
   trackAxisYawRad: number;
@@ -69,6 +65,7 @@ interface GaragePedestalRuntimeOptions {
   ): Promise<unknown>;
   discardSharedTextures(specId: string): void;
   createBudgetYield(budgetMs: number): BudgetYield;
+  compilePrograms(root: Object3D): void;
   nextFrame(): Promise<unknown>;
   getDeviceTier(): string;
   getPhase(): string;
@@ -122,8 +119,6 @@ const DEG = Math.PI / 180;
  */
 export function createGaragePedestalRuntime({
   scene,
-  renderer,
-  camera,
   garagePosition,
   podiumTopY,
   trackAxisYawRad,
@@ -136,6 +131,7 @@ export function createGaragePedestalRuntime({
   prebakeSharedTextures,
   discardSharedTextures,
   createBudgetYield,
+  compilePrograms,
   nextFrame,
   getDeviceTier,
   getPhase,
@@ -160,13 +156,14 @@ export function createGaragePedestalRuntime({
 }: GaragePedestalRuntimeOptions): GaragePedestalRuntime {
   const required = [createVisual, getSpec, ensureTankBuilder, ensureTankBuilders,
     prebakeSharedTextures, discardSharedTextures, createBudgetYield, nextFrame,
+    compilePrograms,
     getDeviceTier, getPhase, isBootComplete, getSelectedId, getNeighborIds,
     getBattlePlayer, getBattleEntity, scheduleDelay, scheduleWatchdog,
     cancelWatchdog, now, warn, invalidatePresentation];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage pedestal runtime requires every lifecycle port');
   }
-  if (!scene || !renderer || !camera || !garagePosition || residentLimit < 1) {
+  if (!scene || !garagePosition || residentLimit < 1) {
     throw new TypeError('garage pedestal runtime requires its scene and residency policy');
   }
 
@@ -327,7 +324,7 @@ export function createGaragePedestalRuntime({
     try {
       // Submit without compileAsync completion polling: ANGLE can block on
       // KHR_parallel_shader_compile status reads for hundreds of milliseconds.
-      renderer.compile(visual.root, camera, scene);
+      compilePrograms(visual.root);
       await nextFrame();
       await nextFrame();
     } catch (_) {

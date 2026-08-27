@@ -140,6 +140,14 @@ Garage frame restores the exact buffers and textures before reveal; isolated
 `compileAsync` is forbidden because it compiles variants the displayed Garage
 does not use.
 
+Every forward warm also targets the same linear-HDR working space as
+`SceneAAPass`. Compiling a Garage hero, battlefield, wreck, or effects root
+against the default sRGB framebuffer creates a distinct Three.js program key
+that the composer never presents. `garageGpuWarmRuntime.ts` owns the bounded
+first-frame sequence, and the shared forward-program owner is the only compile
+port exposed to later phase lifecycles. This keeps cold ANGLE state submission
+without retaining a duplicate framebuffer-specific shader family.
+
 Ordinary live presentation reads the height field's warmed one-metre bilinear
 cache for camera clearance, HUD, effects, running gear, and other non-authoring
 queries. Deterministic Studio/marketing captures retain the analytic terrain
@@ -565,15 +573,15 @@ program births after its combat baseline and rejects the associated frame gap.
 After these measurements, the enforced heap, shader, geometry, texture,
 scene-cardinality, complete-frame call, and triangle ceilings were tightened
 around the healthy production envelope. The current battle gate fails above
-280 MB forced-GC heap, 1,150 active scene objects, 225 programs, 575 geometries,
+280 MB forced-GC heap, 1,150 active scene objects, 205 programs, 575 geometries,
 300 renderer textures, 650 visible geometries, 220 visible materials, 120
 visible textures, 27 million visible texture pixels, 660 complete-frame calls,
 or 3.75 million triangle submissions.
-Returned Garage has independent 205 MB, 1,000-object, 260-program,
+Returned Garage has independent 205 MB, 1,000-object, 240-program,
 510-geometry, 166-renderer-texture, 475-visible-geometry, 200-visible-material,
 82-visible-texture, 15-million-visible-pixel, and 525-call limits so a high-FPS static screen
 cannot hide leaked battle residency. Initial Garage independently fails above
-68 MB, 900 objects, 92 programs, 300 geometries, 89 renderer textures, 450
+68 MB, 900 objects, 60 programs, 300 geometries, 89 renderer textures, 450
 visible geometries, 180 visible materials, 72 visible textures, 12 million
 visible texture pixels, or 525 calls.
 
@@ -610,9 +618,9 @@ receipt was:
 
 | Phase | Core equivalent | Forced-GC heap | Scene objects | Programs | Renderer geometries | Renderer textures | Calls |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Initial Garage | 0.004 | 63.3 MB | 844 | 92 | 276 | 88 | 290 |
-| Active 14-tank battle | 0.439 | 264.5 MB | 1,116 | 222 | 556 | 292 | 648 |
-| Returned Garage | 0.004 | 183.5 MB | 880 | 256 | 498 | 162 | 291 |
+| Initial Garage | 0.004 | 63.3 MB | 844 | 54 | 276 | 88 | 290 |
+| Active 14-tank battle | 0.439 | 264.5 MB | 1,116 | 193 | 556 | 292 | 648 |
+| Returned Garage | 0.004 | 183.5 MB | 880 | 227 | 498 | 162 | 291 |
 
 The same frames contained 442/648/467 visible geometries, 174/214/193 visible
 materials, and 70/117/80 visible textures for initial Garage, battle, and
@@ -635,16 +643,16 @@ snaps, and no browser errors. These receipts measure CPU, heap,
 shader/texture/geometry residency, and complete-frame work in addition to
 display rate.
 
-The first-ever GPU-process path is not yet certified. In the four-profile
-mobile cold probe at 1.6 Mbps, 150 ms latency, and 4× CPU slowdown, profiles
-two through four reached the complete Garage in 7.0–7.8 seconds; the pristine
-GPU process took 18.5 seconds because initial shadow linking and scene uploads
-held the covered post stage for 11.8 seconds. Every profile still reached a
-working Garage without refresh, and injected main-module, evaluation, and
-selected-builder failures recovered automatically. This remains a release
-failure: the next loading round must reduce first-process Garage shader
-diversity or present an interactive lightweight owner while those exact
-programs finish, rather than weakening the eight-second budget.
+The first-ever GPU-process path now passes the same cold gate. At 1.6 Mbps,
+150 ms latency, and 4× CPU slowdown, four cache-disabled profiles reached the
+complete Garage in 6.210–6.267 seconds wall time / 1.712–1.770 seconds app boot
+time; the pristine first GPU profile was 6.251 / 1.754 seconds. The previous
+18.5-second outlier compiled the complete scene against the default sRGB
+framebuffer and then linked it again for the composer's linear-HDR target;
+target-correct submission reduced initial Garage residency from 92 programs
+to 54. Injected main-module download, module-evaluation, and selected-builder
+failures still recovered automatically without a manual refresh. The eight-
+second wall and 2.5-second app budgets were not weakened.
 
 Passive Garage dwell must report zero resident worlds; desktop
 pedestal/world/rematch caches must stay within 4/2/2 respectively.

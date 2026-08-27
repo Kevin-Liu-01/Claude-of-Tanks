@@ -24,10 +24,7 @@
  */
 import * as THREE from 'three';
 import { createRenderer } from './engine/renderer.js';
-import {
-  createOffscreenSceneWarmer,
-  warmSceneOffscreenBatched,
-} from './engine/offscreenWarm.js';
+import { createOffscreenSceneWarmer } from './engine/offscreenWarm.js';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
@@ -53,6 +50,7 @@ import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createPhaseSceneResidency } from './engine/phaseSceneResidency.ts';
 import { createRetainedPhaseGpuResidency } from './engine/phaseGpuResidency.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
+import { warmGarageGpuPipeline } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
@@ -644,8 +642,6 @@ const battleIntent = createBattleIntentRuntime({
 // and visual handoff; main owns only the player's requested spec.
 const pedestal = createGaragePedestalRuntime({
   scene,
-  renderer,
-  camera,
   garagePosition: GARAGE_POS,
   podiumTopY: GARAGE_PODIUM_TOP_Y_M,
   trackAxisYawRad: GARAGE_TRACK_AXIS_YAW_RAD,
@@ -658,6 +654,10 @@ const pedestal = createGaragePedestalRuntime({
   prebakeSharedTextures,
   discardSharedTextures: discardPrebakedSharedTextures,
   createBudgetYield: frameBudgetTick,
+  // forwardProgramWarm is initialized before the first pedestal warm is
+  // invoked; the closure keeps this early lifecycle declaration independent
+  // of the later renderer-target owner.
+  compilePrograms: (root) => forwardProgramWarm.compile(root),
   nextFrame,
   getDeviceTier,
   getPhase: () => game.phase,
@@ -907,17 +907,13 @@ async function ensureWorld(mapId, onProgress = null, opts = null) {
   next.group.visible = true;
   // perf-r5c (retina probe): activateWorld's minimap capture was the FIRST
   // render touching the fresh world's programs — 55 links resolved in that
-  // one slice (630 ms). Submit the compiles now, let the parallel linker
-  // breathe, and bake the cloud decks one-per-frame; the capture then binds
-  // ready programs and baked clouds.
+  // one slice (630 ms). Submit the exact linear-HDR variants now, then let the
+  // parallel linker breathe. renderer.compileAsync() both targets the wrong
+  // default framebuffer here and can wait indefinitely on faulty ANGLE
+  // completion-status reporting, so it is deliberately not an entry gate.
   if (opts?.precompile !== false || opts?.compilePrograms === true) {
-    try {
-      if (typeof renderer.compileAsync === 'function') {
-        await renderer.compileAsync(next.group, camera, scene);
-      } else {
-        renderer.compile(next.group, camera, scene);
-      }
-    } catch (_) { /* warm only */ }
+    try { forwardProgramWarm.compile(next.group); } catch (_) { /* warm only */ }
+    for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
   }
   wtStage('compile');
   if (opts?.precompile !== false) await nextFrame();
@@ -2109,15 +2105,22 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         renderer,
         scene,
         camera,
+        compilePrograms: (root) => forwardProgramWarm.compile(root),
         warmRender,
       }),
       openingEffects: (fx) => battleWarm.warmNetworkOpeningEffects({
-        fx, post, renderer, scene, camera, shells: game.shells, warmRender,
+        fx,
+        post,
+        camera,
+        shells: game.shells,
+        compilePrograms: (root) => forwardProgramWarm.compile(root),
+        warmRender,
       }),
       shotCards: (specIds) => hud.warmShotCards(specIds),
-      compile: () => (typeof renderer.compileAsync === 'function'
-        ? renderer.compileAsync(scene, camera)
-        : renderer.compile(scene, camera)),
+      compile: async () => {
+        forwardProgramWarm.compile(scene);
+        for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
+      },
     },
     presentation: {
       resetRoundState: resetNetworkBattleState,
@@ -3038,48 +3041,17 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
-  // COLD-BOOT RECOVERY: never await compileAsync here. Three polls
-  // COMPLETION_STATUS_KHR until every program reports ready; affected
-  // mobile/ANGLE drivers can leave that advisory bit false forever on the
-  // first visit, parking this exact stage at 85%, while a reload succeeds
-  // from the driver shader cache. Submit the same programs synchronously,
-  // give the driver one frame to work, then let the real hidden render below
-  // perform Three's finite first-use link/uniform discovery.
-  const t0 = performance.now();
-  try { renderer.compile(scene, camera, scene); } catch (_) { /* first render is fallback */ }
-  BOOT_TIMINGS.postCompile = Math.round(performance.now() - t0);
-  lighting.update(true); // boot: render every cascade before first present
-  const yieldGpuFrame = createFrameBudgetYielder(16);
-  let gpuWarmPulse = 0;
-  const yieldGpuWarm = async (force = false) => {
-    // This is progress, not a timer: every shadow/upload/post batch renews the
-    // inline first-visit watchdog. A genuinely wedged GPU promise stays silent
-    // and is recovered, while an old device that keeps advancing is never
-    // mistaken for a dead boot.
-    boot.sub(Math.min(0.94, 0.04 + gpuWarmPulse++ * 0.035));
-    return yieldGpuFrame(force);
-  };
-  await yieldGpuWarm(true);
-  const shadowPasses = await lighting.primeShadowMaps(
-    renderer, scene, camera, yieldGpuWarm,
-  );
-  BOOT_TIMINGS.shadowPassMax = Math.max(0, ...shadowPasses);
-  BOOT_TIMINGS.shadowPasses = shadowPasses;
-  const sceneUploadStartedAt = performance.now();
-  const sceneUploadBatches = await warmSceneOffscreenBatched(renderer, scene, camera, {
-    maxObjects: 64,
-    maxWeight: 240_000,
-    yieldBeforeBatch: yieldGpuWarm,
+  await warmGarageGpuPipeline({
+    renderer,
+    scene,
+    camera,
+    lighting,
+    forwardPrograms: forwardProgramWarm,
+    post,
+    timings: BOOT_TIMINGS,
+    reportProgress: (fraction) => boot.sub(fraction),
+    simDt: SIM_DT,
   });
-  BOOT_TIMINGS.sceneUpload = Math.round(performance.now() - sceneUploadStartedAt);
-  BOOT_TIMINGS.sceneUploadMax = Math.max(0, ...sceneUploadBatches);
-  BOOT_TIMINGS.sceneUploadBatches = sceneUploadBatches;
-  const warmStartedAt = performance.now();
-  const postPasses = await post.warmFirstFrame(yieldGpuWarm);
-  BOOT_TIMINGS.postWarm = Math.round(performance.now() - warmStartedAt);
-  BOOT_TIMINGS.postPassMax = Math.max(0, ...postPasses.map((pass) => pass.ms));
-  BOOT_TIMINGS.postPasses = postPasses;
-  post.render(SIM_DT);
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
 // before FIRST COMBAT, not before readiness — they used to run synchronously

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const entrypoints = [
-  'index.html',
   'home.html',
   'docs.html',
   'docs-topic.html',
@@ -15,6 +14,13 @@ const entrypoints = [
   'docs-studio.html',
   'gallery.html',
 ];
+
+const gameEntry = await readFile('index.html', 'utf8');
+assert.doesNotMatch(
+  gameEntry,
+  /src=["']\/src\/analytics\.js["']/,
+  'the latency-sensitive game entry must not schedule third-party analytics',
+);
 
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
 assert.equal(

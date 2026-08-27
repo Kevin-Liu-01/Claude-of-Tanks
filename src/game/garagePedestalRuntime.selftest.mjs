@@ -10,7 +10,6 @@ function deferred() {
 
 function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) {
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera();
   const debugTarget = {};
   const visuals = [];
   const disposed = [];
@@ -50,15 +49,10 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
 
   const runtime = createGaragePedestalRuntime({
     scene,
-    renderer: {
-      compile(root, activeCamera, activeScene) {
-        assert.ok(root);
-        assert.equal(activeCamera, camera);
-        assert.equal(activeScene, scene);
-        compileCalls += 1;
-      },
+    compilePrograms(root) {
+      assert.ok(root);
+      compileCalls += 1;
     },
-    camera,
     garagePosition: new THREE.Vector3(10, 5, -12),
     podiumTopY: 0.36,
     trackAxisYawRad: Math.PI / 3,

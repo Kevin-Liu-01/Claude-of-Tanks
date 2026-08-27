@@ -193,8 +193,8 @@ assert.doesNotMatch(pedestalWarmBody, /renderer\.compileAsync/,
   'cold garage switches must not enter ANGLE completion polling');
 assert.doesNotMatch(pedestalWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(/,
   'cold garage switches must not force ANGLE program-completion queries');
-assert.match(pedestalWarmBody, /renderer\.compile\(visual\.root, camera, scene\)/,
-  'cold garage switches still submit their exact shader programs before reveal');
+assert.match(pedestalWarmBody, /compilePrograms\(visual\.root\)/,
+  'cold garage switches submit exact production-target programs before reveal');
 const openingWarmBody = battleWarmSource.slice(
   battleWarmSource.indexOf('export function* createCombatOpeningWarmSteps('),
   battleWarmSource.indexOf('function* warmCombatDestructionEffectSteps('),
