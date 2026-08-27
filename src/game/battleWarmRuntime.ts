@@ -485,3 +485,408 @@ export function invalidateBattleWarmRuntime(): void {
   studioEffectsWarmPromise = null;
   warmGeneration += 1;
 }
+
+type WarmGenerator = Generator<unknown, unknown, unknown>;
+
+/**
+ * Legacy integration ports used by the fallback solo/capture warm path. The
+ * owner is loaded only after Battle or deterministic-capture intent, while
+ * retaining the exact existing generators and their synchronous drain
+ * contract. These broad ports are deliberately contained at the main.js
+ * migration seam; the warm implementation itself is now typed and isolated.
+ */
+export interface CombatWarmRuntimeContext {
+  game: any;
+  fx: any;
+  post: any;
+  renderer: any;
+  camera: any;
+  scene: any;
+  world(): any;
+  warmRender(): unknown;
+  deploymentShadowWarm: any;
+  forwardProgramWarm: any;
+  lighting: any;
+  scratch1: Vector3;
+  scratch2: Vector3;
+  scratch3: Vector3;
+  anisotropy: number;
+  ensureStagedVisuals(game: any, count: number): boolean;
+  prebakeBurntSteps(specId: string, anisotropy: number): Iterable<unknown>;
+  warmWreckTextures(renderer: any): void;
+  createIsolatedForwardWarmBatches(options: any): Iterable<any>;
+  isOpeningReady(): boolean;
+  isRareReady(): boolean;
+  markOpeningReady(): void;
+  markRareReady(): void;
+  isDestructionWarmed(): boolean;
+  setDestructionWarmed(warmed: boolean): void;
+}
+
+function* warmDestroyedRosterVariantsSteps(
+  context: CombatWarmRuntimeContext,
+): WarmGenerator {
+  const { game, post, renderer, camera, scene } = context;
+  const gameplayTarget = post?.composer?.renderTarget1 || null;
+  for (const entity of game.tanks.slice()) {
+    const visual = entity?.visual;
+    if (!visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
+    try {
+      yield* context.prebakeBurntSteps(entity.specId, context.anisotropy);
+    } catch (_) { /* warm only */ }
+    const rootWasVisible = visual.root.visible;
+    const targetBefore = renderer.getRenderTarget();
+    try {
+      visual.setDestroyed({ pop: true, ageS: 0 });
+      visual.root.visible = true;
+      if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
+      const before = (renderer.info.programs || []).length;
+      renderer.compile(visual.root, camera, scene);
+      const programs = renderer.info.programs || [];
+      for (let index = before; index < programs.length; index += 1) {
+        try { programs[index].getUniforms(); } catch (_) { /* warm only */ }
+      }
+    } catch (_) { /* warm only */ }
+    finally {
+      renderer.setRenderTarget(targetBefore);
+      try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
+      visual.root.visible = rootWasVisible;
+    }
+    if (visual.setTrackState) {
+      try {
+        visual.setTrackState('trackL', true);
+        visual.setTrackState('trackL', false);
+      } catch (_) { /* warm only */ }
+    }
+    yield;
+  }
+  return undefined;
+}
+
+function* compileHiddenVariantsSteps(
+  context: CombatWarmRuntimeContext,
+  detail: Record<string, any> | null = null,
+): WarmGenerator {
+  const {
+    game, post, renderer, camera, scene, forwardProgramWarm, lighting,
+  } = context;
+  const compileAll = function* (root: any): WarmGenerator {
+    const objects: any[] = [];
+    root.traverse((object: any) => {
+      if (object.isMesh || object.isPoints || object.isLine || object.isSprite) {
+        objects.push(object);
+      }
+    });
+    const gameplayTarget = post?.composer?.renderTarget1 || null;
+    let sliceAt = performance.now();
+    for (const object of objects) {
+      const wasVisible = object.visible;
+      const priorTarget = renderer.getRenderTarget();
+      try {
+        object.visible = true;
+        if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
+        const before = (renderer.info.programs || []).length;
+        renderer.compile(object, camera, scene);
+        const programs = renderer.info.programs || [];
+        for (let index = before; index < programs.length; index += 1) {
+          try { programs[index].getUniforms(); } catch (_) { /* warm only */ }
+        }
+      } catch (_) { /* warm only */ }
+      finally {
+        renderer.setRenderTarget(priorTarget);
+        object.visible = wasVisible;
+      }
+      if (performance.now() - sliceAt >= 6) {
+        yield;
+        sliceAt = performance.now();
+      }
+    }
+    return undefined;
+  };
+
+  for (const entity of game.tanks) {
+    if (!entity.visual?.root) continue;
+    try { yield* compileAll(entity.visual.root); } catch (_) { /* warm only */ }
+    yield;
+  }
+  const world = context.world();
+  if (world?.group) {
+    try { yield* compileAll(world.group); } catch (_) { /* warm only */ }
+    yield;
+    yield* forwardProgramWarm.linkerBreathingSlices(40);
+  }
+
+  const flips: any[] = [];
+  const collectFlips = (): void => {
+    flips.length = 0;
+    for (const entity of game.tanks) {
+      if (!entity.visual?.root) continue;
+      entity.visual.root.traverse((object: any) => {
+        if (object.visible === false) {
+          flips.push(object);
+          object.visible = true;
+        }
+      });
+    }
+  };
+  const unflip = (): void => {
+    for (const object of flips) object.visible = false;
+  };
+
+  try {
+    collectFlips();
+    lighting?.updateFrustums?.();
+    const renderAt = performance.now();
+    context.warmRender();
+    if (detail) detail.baseRenderMs = Math.round(performance.now() - renderAt);
+    unflip();
+  } catch (_) { unflip(); }
+  yield;
+
+  for (const fov of [20, 8]) {
+    try {
+      collectFlips();
+      const priorFov = camera.fov;
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+      lighting?.updateFrustums?.();
+      const renderAt = performance.now();
+      context.warmRender();
+      if (detail) detail[`scope${fov}RenderMs`] = Math.round(performance.now() - renderAt);
+      camera.fov = priorFov;
+      camera.updateProjectionMatrix();
+      unflip();
+    } catch (_) { unflip(); }
+    yield;
+  }
+  lighting?.updateFrustums?.();
+  return undefined;
+}
+
+export function* createCombatOpeningWarmSteps(
+  context: CombatWarmRuntimeContext,
+): WarmGenerator {
+  if (context.isOpeningReady()) return;
+  const { game, fx, post, renderer, camera, scene } = context;
+  const warmTrace: Record<string, any> = { stages: {} };
+  const warmStartedAt = performance.now();
+  let warmMarkedAt = warmStartedAt;
+  const markWarmStage = (name: string): void => {
+    const now = performance.now();
+    warmTrace.stages[name] = Math.round(now - warmMarkedAt);
+    warmMarkedAt = now;
+  };
+
+  fx.warmTextures?.();
+  while (!context.ensureStagedVisuals(game, 1)) yield;
+  yield;
+  markWarmStage('visuals');
+  for (const entity of game.tanks) entity.visual?.prewarmBurn?.();
+  markWarmStage('rosterHooks');
+
+  const effectDetail: Record<string, any> = {};
+  let effectDetailAt = performance.now();
+  const markEffectDetail = (name: string): void => {
+    const now = performance.now();
+    effectDetail[name] = Math.round(now - effectDetailAt);
+    effectDetailAt = now;
+  };
+  markEffectDetail('start');
+  {
+    const position = new Vector3(-460, 0, -460);
+    const normal = new Vector3(0, 1, 0);
+    const direction = new Vector3(0, 0, 1);
+    const rootWasVisible = fx.group.visible;
+    fx.group.visible = false;
+    try {
+      fx.muzzleFlash(position, direction, 120);
+      yield;
+      for (const kind of [
+        'pen', 'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era',
+        'spaced_absorb', 'terrain',
+      ]) {
+        fx.impact(kind, position, normal, 120);
+        yield;
+      }
+      fx.dust(position, direction, 1);
+      fx.exhaust(position, 1, true);
+      yield;
+      markEffectDetail('openingEffects');
+      try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+      const softParticlesAt = performance.now();
+      post.prepareSoftParticles();
+      effectDetail.softParticles = Math.round(performance.now() - softParticlesAt);
+      const warmLayerMask = camera.layers.mask;
+      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+      try {
+        const before = (renderer.info.programs || []).length;
+        const forwardAt = performance.now();
+        const batches: any[] = [];
+        for (const batch of context.createIsolatedForwardWarmBatches({
+          scene, root: fx.group, warmRender: context.warmRender, cohortSize: 1,
+        })) {
+          batches.push(batch);
+          yield;
+        }
+        const programs = renderer.info.programs || [];
+        effectDetail.forwardPrograms = {
+          added: Math.max(0, programs.length - before),
+          wallMs: Math.round(performance.now() - forwardAt),
+        };
+        effectDetail.warmRenderBatches = batches;
+        effectDetail.warmRender = batches.reduce((sum, batch) => sum + batch.ms, 0);
+      } finally {
+        camera.layers.mask = warmLayerMask;
+      }
+    } catch (error) {
+      console.warn('[warm] fx volley failed (continuing):', error);
+    } finally {
+      fx.group.visible = rootWasVisible;
+    }
+    fx.resetAll();
+  }
+  warmTrace.effectDetail = effectDetail;
+  markWarmStage('effects');
+  if (!fx.group.userData.battleTexturesStaged) {
+    fx.group.traverse((object: any) => {
+      const materials = Array.isArray(object.material)
+        ? object.material : (object.material ? [object.material] : []);
+      for (const material of materials) {
+        for (const key of Object.keys(material)) {
+          const value = material[key];
+          if (value?.isTexture) {
+            try { renderer.initTexture(value); } catch (_) { /* warm only */ }
+          }
+        }
+      }
+    });
+  }
+  yield;
+  markWarmStage('textures');
+  context.markOpeningReady();
+  warmTrace.totalMs = Math.round(performance.now() - warmStartedAt);
+  if (typeof window !== 'undefined') (window as any).__COMBAT_OPENING_WARM = warmTrace;
+}
+
+function* warmCombatDestructionEffectSteps(
+  context: CombatWarmRuntimeContext,
+): WarmGenerator {
+  if (context.isDestructionWarmed()) return { cached: true, totalMs: 0, batches: 0 };
+  const { game, fx, post, camera, scene } = context;
+  const startedAt = performance.now();
+  const playerPosition = game.player?.state?.pos;
+  const position = playerPosition
+    ? new Vector3(playerPosition.x, playerPosition.y + 1.4, playerPosition.z + 4)
+    : new Vector3(0, 2, 4);
+  context.scratch3.set(1, 0, 0);
+  const rootWasVisible = fx.group.visible;
+  let batches = 0;
+  let maxBatchMs = 0;
+  let error: unknown = null;
+  fx.group.visible = false;
+  try {
+    fx.destruction(position, null, 'shot');
+    yield;
+    fx.destruction(position, null, 'ammorack');
+    yield;
+    for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+      fx.propBreak(kind, position, context.scratch3, 1.5);
+      yield;
+    }
+    fx.propCrush(position, context.scratch3, 7);
+    yield;
+    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+    post.prepareSoftParticles();
+    const mask = camera.layers.mask;
+    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+    try {
+      for (const batch of context.createIsolatedForwardWarmBatches({
+        scene, root: fx.group, warmRender: context.warmRender, cohortSize: 1,
+      })) {
+        batches += 1;
+        maxBatchMs = Math.max(maxBatchMs, batch.ms);
+        yield batch;
+      }
+    } finally {
+      camera.layers.mask = mask;
+    }
+  } catch (cause) {
+    error = cause;
+    console.warn('[warm] combat destruction variants failed (continuing):', cause);
+  } finally {
+    fx.group.visible = rootWasVisible;
+    fx.resetAll();
+  }
+  if (!error) context.setDestructionWarmed(true);
+  return {
+    cached: false,
+    batches,
+    maxBatchMs,
+    totalMs: Math.round(performance.now() - startedAt),
+    error: error ? String(error) : null,
+  };
+}
+
+export function* createCombatRareWarmSteps(
+  context: CombatWarmRuntimeContext,
+): WarmGenerator {
+  if (context.isRareReady()) return;
+  if (!context.isOpeningReady()) yield* createCombatOpeningWarmSteps(context);
+  const { game, fx, renderer } = context;
+  const rareTrace: Record<string, any> = { stages: {} };
+  const startedAt = performance.now();
+  let markedAt = startedAt;
+  const mark = (name: string): void => {
+    const now = performance.now();
+    rareTrace.stages[name] = Math.round(now - markedAt);
+    markedAt = now;
+  };
+
+  yield* warmDestroyedRosterVariantsSteps(context);
+  mark('wreckVariants');
+  for (const entity of game.tanks) {
+    if (!entity.visual?.root || !entity.state) continue;
+    context.scratch1.copy(entity.state.pos);
+    context.scratch1.y += (entity.spec?.dims?.heightM || 2.4) * 0.5;
+    context.scratch2.set(0, 0, 1);
+    try { fx.armorScar(entity.visual, context.scratch1, context.scratch2, 100); }
+    catch (_) { /* warm only */ }
+    yield;
+  }
+  mark('armorScars');
+  yield* warmCombatDestructionEffectSteps(context);
+  mark('destructionEffects');
+
+  context.warmWreckTextures(renderer);
+  fx.group.traverse((object: any) => {
+    const materials = Array.isArray(object.material)
+      ? object.material : (object.material ? [object.material] : []);
+    for (const material of materials) {
+      for (const key of Object.keys(material)) {
+        const value = material[key];
+        if (value?.isTexture) {
+          try { renderer.initTexture(value); } catch (_) { /* warm only */ }
+        }
+      }
+    }
+  });
+  yield;
+  mark('textures');
+
+  yield* context.deploymentShadowWarm.warmDepthProgramSteps();
+  mark('shadows');
+  rareTrace.hiddenDetail = {};
+  yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail);
+  mark('hiddenVariants');
+  context.markRareReady();
+  rareTrace.totalMs = Math.round(performance.now() - startedAt);
+  if (typeof window !== 'undefined') {
+    const runtimeWindow = window as any;
+    runtimeWindow.__COMBAT_RARE_WARM = rareTrace;
+    runtimeWindow.__COMBAT_WARM = {
+      opening: runtimeWindow.__COMBAT_OPENING_WARM || null,
+      rare: rareTrace,
+      totalMs: (runtimeWindow.__COMBAT_OPENING_WARM?.totalMs || 0) + rareTrace.totalMs,
+    };
+  }
+}

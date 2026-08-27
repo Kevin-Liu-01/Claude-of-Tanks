@@ -169,9 +169,9 @@ assert.doesNotMatch(pedestalWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\
   'cold garage switches must not force ANGLE program-completion queries');
 assert.match(pedestalWarmBody, /renderer\.compile\(vis\.root, camera, scene\)/,
   'cold garage switches still submit their exact shader programs before reveal');
-const openingWarmBody = mainSource.slice(
-  mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),
-  mainSource.indexOf('function* warmCombatRarePipelineSteps('),
+const openingWarmBody = battleWarmSource.slice(
+  battleWarmSource.indexOf('export function* createCombatOpeningWarmSteps('),
+  battleWarmSource.indexOf('function* warmCombatDestructionEffectSteps('),
 );
 const openingWarmCode = openingWarmBody.replace(/\/\/.*$/gm, '');
 assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(/,
@@ -217,7 +217,7 @@ assert.match(mainSource,
   'spotting must restore scene residency before the first visible pose sync');
 const deferredWarmBody = mainSource.slice(
   mainSource.indexOf('function scheduleDeferredCombatWarm('),
-  mainSource.indexOf('function* warmCombatOpeningPipelineSteps('),
+  mainSource.indexOf('const warmRender = createOffscreenSceneWarmer'),
 );
 const deferredEnemyAt = deferredWarmBody.indexOf('battleVisuals.stream(');
 const deferredOpeningAt = deferredWarmBody.indexOf(

@@ -1,0 +1,383 @@
+import { MathUtils, type Scene, type Vector3 } from 'three';
+import { mulberry32 } from '../game/stateCore.ts';
+import type { ShotViewName } from './shotContract.ts';
+
+const VIEW_TIME: Readonly<Partial<Record<ShotViewName, number>>> = {
+  battlefield: 2.0,
+  player_view: 1.0,
+  sniper_view: 1.2,
+  tank_closeup_modern: 0.8,
+  tank_closeup_ww2: 0.9,
+  tank_closeup_t90m: 0.8,
+  tank_closeup_leo2a7: 0.8,
+  combat_firing: 0.5,
+  explosion: 1.5,
+  garage: 0.7,
+  battlefield_desert: 2.0,
+  battlefield_winter: 2.0,
+  battlefield_urban: 2.0,
+  battlefield_coastal: 2.0,
+  battlefield_autumn: 2.0,
+  battlefield_steppe: 2.0,
+  battlefield_railyard: 2.0,
+  battlefield_frontier: 2.0,
+  battlefield_fjord: 2.0,
+  battlefield_delta: 2.0,
+  battlefield_badlands: 2.0,
+  battlefield_monsoon: 2.0,
+  battlefield_alpine: 2.0,
+  battlefield_caldera: 2.0,
+  battlefield_foundry: 2.0,
+  battlefield_ruinspires: 2.0,
+  battlefield_blackglass: 2.0,
+  battlefield_titan_gorge: 2.0,
+  battlefield_skybridge: 2.0,
+  killcam_xray: 1.0,
+};
+
+const VIEW_MAP: Partial<Record<ShotViewName, string>> = {
+  battlefield_desert: 'desert',
+  battlefield_winter: 'winter',
+  battlefield_urban: 'urban',
+  battlefield_coastal: 'coastal',
+  battlefield_autumn: 'autumn',
+  battlefield_steppe: 'steppe',
+  battlefield_railyard: 'railyard',
+  battlefield_frontier: 'frontier',
+  battlefield_fjord: 'fjord',
+  battlefield_delta: 'delta',
+  battlefield_badlands: 'badlands',
+  battlefield_monsoon: 'monsoon',
+  battlefield_alpine: 'alpine',
+  battlefield_caldera: 'caldera',
+  battlefield_foundry: 'foundry',
+  battlefield_ruinspires: 'ruinspires',
+  battlefield_blackglass: 'blackglass',
+  battlefield_titan_gorge: 'titan_gorge',
+  battlefield_skybridge: 'skybridge',
+};
+
+interface ShotState {
+  pos: Vector3;
+  yaw: number;
+}
+
+interface ShotEntity {
+  input: { throttle: number; steer: number; brake: boolean; fire: boolean };
+  state: ShotState;
+  spec: {
+    dims: { heightM: number };
+    hydropneumaticAim?: boolean;
+    armor?: { turretless?: boolean };
+  };
+  equip?: unknown;
+  visual: {
+    syncFromState(state: ShotState): void;
+    gunMuzzleWorld(target: Vector3): void;
+    setGroundSampler?(sampler: unknown): void;
+  };
+}
+
+interface ShotGame {
+  phase: string;
+  tanks: ShotEntity[];
+  allTanks: ShotEntity[];
+  player: ShotEntity;
+  shells: unknown[];
+}
+
+interface ForcedAim {
+  distM: number;
+  dispersionRadM: number;
+  penRatio: number | null;
+  gunDistM?: number;
+  gunTargetId?: string | null;
+  reload: { t: number; totalS: number; kind?: string };
+  magazine?: { rounds: number; capacity: number };
+  shellSlot: number;
+  zoom?: number;
+  [key: string]: unknown;
+}
+
+interface ShotRuntimeContext {
+  preloadSoloBattleRuntime(): Promise<unknown>;
+  preloadBattleClientRuntime(): Promise<unknown>;
+  ensureBattleHud(): Promise<unknown>;
+  ensureTouchControls(): Promise<unknown>;
+  ensureFullFleet(): Promise<unknown>;
+  ensureFxRuntime(): Promise<unknown>;
+  ensureKillcamRuntime(): Promise<unknown>;
+  preloadBattleWarm(): Promise<unknown>;
+  preloadArmorAimOverlay(): Promise<unknown>;
+  switchMap(mapId: string): Promise<unknown>;
+  setWorldDormant(dormant: boolean): void;
+  setCamoBiome(mapId: string): void;
+  applyCamoPatterns(): void;
+  setupBattle(game: ShotGame, playerSpecId: string, world: unknown): void;
+  resetCombatWarm(): void;
+  drainCombatWarm(): void;
+  setBattleStaged(staged: boolean): void;
+  buildShellCards(spec: ShotEntity['spec']): void;
+  setDamagePanelTank(spec: ShotEntity['spec'], visual: ShotEntity['visual']): void;
+  setDamagePanelEquipment(equipment: unknown): void;
+  groundSampler: unknown;
+  input: { setEnabled(enabled: boolean): void };
+  settings: { isOpen(): boolean; close(): void };
+  showroom: { stop(): void };
+  setShotMode(enabled: boolean): void;
+  setCaptureHidden(hidden: boolean): void;
+  resetPostPerfTrims(): void;
+  setShotHudFrame(enabled: boolean): void;
+  setGarageSpots(enabled: boolean): void;
+  setGarageSunTrim(enabled: boolean): void;
+  hideGarage(): void;
+  hideEndOverlay(): void;
+  setLastFov(fov: number): void;
+  refreshSpotFrame(): void;
+  getWorld(): any;
+  getHud(): any;
+  getFx(): any;
+  getKillcam(): any;
+  getShellCards(): unknown[];
+  game: ShotGame;
+  frameInfo: any;
+  rig: any;
+  camera: any;
+  lighting: any;
+  scene: Scene;
+  scratch1: Vector3;
+  scratch2: Vector3;
+  scratch3: Vector3;
+  computeDispersionRadM: (...args: any[]) => number;
+  bus: unknown;
+  setPedestalTank: (...args: any[]) => unknown;
+  garage: unknown;
+  garageDressing: unknown;
+  tankPoseFromState: (...args: any[]) => unknown;
+  traceTank: (...args: any[]) => unknown;
+  createShell: (...args: any[]) => unknown;
+  resolveShellHit: (...args: any[]) => unknown;
+  createCombatState: (...args: any[]) => unknown;
+}
+
+async function ensureShotWorld(
+  context: ShotRuntimeContext,
+  mapId: string,
+  playerSpecId: string,
+): Promise<void> {
+  await Promise.all([
+    context.preloadSoloBattleRuntime(),
+    context.preloadBattleClientRuntime(),
+    context.ensureBattleHud(),
+    context.ensureTouchControls(),
+  ]);
+  let world = context.getWorld();
+  if (!world || world.mapId !== mapId) await context.switchMap(mapId);
+  world = context.getWorld();
+  context.lighting.setFarCascadeDormant(false);
+  context.setWorldDormant(false);
+  context.setCamoBiome(mapId);
+  context.applyCamoPatterns();
+  context.setupBattle(context.game, playerSpecId, world);
+  context.resetCombatWarm();
+  context.setBattleStaged(true);
+  context.buildShellCards(context.game.player.spec);
+  context.setDamagePanelTank(context.game.player.spec, context.game.player.visual);
+  context.setDamagePanelEquipment(context.game.player.equip);
+  for (const entity of context.game.allTanks) {
+    entity.visual?.setGroundSampler?.(context.groundSampler);
+  }
+}
+
+function createRecipeHelpers(context: ShotRuntimeContext) {
+  const { game, rig, scratch1, scratch2 } = context;
+
+  const mapEstablishingShot = (): void => {
+    const world = context.getWorld();
+    context.getHud().setMode('hidden');
+    const shot = world.config.shot;
+    scratch1.set(
+      shot.pos[0],
+      world.heightField.getHeightAt(shot.pos[0], shot.pos[2]) + shot.pos[1],
+      shot.pos[2],
+    );
+    scratch2.set(
+      shot.look[0],
+      world.heightField.getHeightAt(shot.look[0], shot.look[2]) + shot.look[1],
+      shot.look[2],
+    );
+    rig.setExternalPose(scratch1, scratch2, 55);
+  };
+
+  const closeupStage = (entity: ShotEntity): void => {
+    entity.state.yaw = MathUtils.degToRad(98);
+    entity.visual.syncFromState(entity.state);
+  };
+
+  const orbitPose = (
+    entity: ShotEntity,
+    distM: number,
+    azimuthDeg: number,
+    elevationDeg: number,
+    fovDeg: number,
+  ): void => {
+    const azimuth = entity.state.yaw + azimuthDeg * MathUtils.DEG2RAD;
+    const elevation = elevationDeg * MathUtils.DEG2RAD;
+    scratch2.copy(entity.state.pos);
+    scratch2.y += entity.spec.dims.heightM * 0.55;
+    scratch1.set(
+      scratch2.x + Math.sin(azimuth) * Math.cos(elevation) * distM,
+      scratch2.y + Math.sin(elevation) * distM,
+      scratch2.z + Math.cos(azimuth) * Math.cos(elevation) * distM,
+    );
+    rig.setExternalPose(scratch1, scratch2, fovDeg);
+  };
+
+  const forcedHudFrame = (mode: string, forcedAim: ForcedAim): void => {
+    context.setShotHudFrame(true);
+    const hud = context.getHud();
+    hud.setMode(mode);
+    const frame = context.frameInfo;
+    frame.timeS = VIEW_TIME.player_view ?? 1;
+    frame.mode = mode;
+    frame.player = game.player;
+    frame.shells = game.shells;
+    const aim = frame.aim;
+    aim.point.copy(rig.aimPoint);
+    aim.distM = forcedAim.distM;
+    aim.dispersionRadM = forcedAim.dispersionRadM;
+    aim.penRatio = forcedAim.penRatio;
+    aim.gunDistM = forcedAim.gunDistM ?? forcedAim.distM;
+    aim.gunTargetId = forcedAim.gunTargetId ?? null;
+    aim.singleReticle = !!(game.player.spec.hydropneumaticAim
+      && game.player.spec.armor?.turretless);
+    aim.blockedDistM = null;
+    aim.blockedLabel = false;
+    aim.atGunLimit = false;
+    aim.gunLimitSpec = false;
+    aim.reload.t = forcedAim.reload.t;
+    aim.reload.totalS = forcedAim.reload.totalS;
+    aim.reload.kind = forcedAim.reload.kind || 'shell';
+    aim.magazine.rounds = forcedAim.magazine?.rounds || 0;
+    aim.magazine.capacity = forcedAim.magazine?.capacity || 0;
+    aim.shellSlot = forcedAim.shellSlot;
+    aim.shells = context.getShellCards();
+    aim.zoom = forcedAim.zoom || 1;
+    game.player.visual.gunMuzzleWorld(scratch1);
+    aim.gunMarker.copy(rig.aimPoint);
+    context.refreshSpotFrame();
+    hud.update(frame);
+    hud.forceAimDisplay({
+      ...forcedAim,
+      point: aim.point,
+      gunMarker: aim.gunMarker,
+      gunDistM: aim.gunDistM,
+      gunTargetId: aim.gunTargetId,
+      singleReticle: aim.singleReticle,
+    });
+  };
+
+  return { mapEstablishingShot, closeupStage, orbitPose, forcedHudFrame };
+}
+
+/**
+ * Acquire and stage one deterministic engineering capture. This entire owner
+ * stays out of the normal garage/battle graph until a capture tool explicitly
+ * calls window.__SHOTS.set().
+ */
+export async function setShotView(
+  name: ShotViewName,
+  context: ShotRuntimeContext,
+): Promise<void> {
+  const shotViewsPromise = import('./shotViews.js');
+  await Promise.all([
+    shotViewsPromise,
+    context.ensureFullFleet(),
+    context.ensureFxRuntime(),
+    context.ensureKillcamRuntime(),
+    context.preloadBattleWarm(),
+    context.preloadArmorAimOverlay(),
+  ]);
+
+  context.showroom.stop();
+  context.setShotMode(true);
+  context.setCaptureHidden(true);
+  context.resetPostPerfTrims();
+  context.setShotHudFrame(false);
+  context.game.phase = 'shot';
+  context.setGarageSpots(true);
+  for (const entity of context.game.tanks) {
+    entity.input.throttle = 0;
+    entity.input.steer = 0;
+    entity.input.brake = false;
+    entity.input.fire = false;
+  }
+  context.input.setEnabled(true);
+  if (context.settings.isOpen()) context.settings.close();
+  context.getKillcam().cancel();
+
+  await ensureShotWorld(
+    context,
+    VIEW_MAP[name] || 'verdant',
+    name === 'killcam_xray' ? 'm1a2_sepv3' : 'm1a2',
+  );
+  const helpers = createRecipeHelpers(context);
+  const world = context.getWorld();
+  const fx = context.getFx();
+  const killcam = context.getKillcam();
+  const { createShotViews } = await shotViewsPromise;
+  const recipe = createShotViews({
+    hud: context.getHud(),
+    world,
+    _v1: context.scratch1,
+    _v2: context.scratch2,
+    _v3: context.scratch3,
+    rig: context.rig,
+    DEG: MathUtils.DEG2RAD,
+    forcedHudFrame: helpers.forcedHudFrame,
+    computeDispersionRadM: context.computeDispersionRadM,
+    game: context.game,
+    shellCards: context.getShellCards(),
+    scene: context.scene,
+    closeupStage: helpers.closeupStage,
+    orbitPose: helpers.orbitPose,
+    bus: context.bus,
+    fx,
+    setPedestalTank: context.setPedestalTank,
+    garage: context.garage,
+    garageDressing: context.garageDressing,
+    showroom: context.showroom,
+    mapEstablishingShot: helpers.mapEstablishingShot,
+    tankPoseFromState: context.tankPoseFromState,
+    traceTank: context.traceTank,
+    createShell: context.createShell,
+    resolveShellHit: context.resolveShellHit,
+    createCombatState: context.createCombatState,
+    mulberry32,
+    VIEW_TIME,
+    killcam,
+  })[name] as (() => void | Promise<void>) | undefined;
+  if (!recipe) throw new Error(`Screenshot recipe is missing: ${name}`);
+
+  context.drainCombatWarm();
+  context.setGarageSunTrim(name === 'garage');
+  context.hideGarage();
+  context.hideEndOverlay();
+  fx.resetAll();
+  fx.resetSeed(5000);
+  fx.setFrozen(true, VIEW_TIME[name]);
+  world?.setWindTime(VIEW_TIME[name]);
+  await recipe();
+  const currentWorld = context.getWorld();
+  currentWorld?.setSniperFade(
+    context.rig.mode === 'SNIPER' ? 1 : 0,
+    true,
+    context.camera.fov,
+    context.rig.aimDist,
+  );
+  context.camera.updateProjectionMatrix();
+  context.camera.updateMatrixWorld(true);
+  context.lighting.updateFrustums();
+  context.lighting.update(true);
+  context.setLastFov(context.camera.fov);
+}

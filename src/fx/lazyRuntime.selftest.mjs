@@ -11,6 +11,7 @@ const battleWarm = await readFile(new URL('../game/battleWarmRuntime.ts', import
 const combatWarmCoordinator = await readFile(
   new URL('../game/combatWarmCoordinator.ts', import.meta.url), 'utf8',
 );
+const shotRuntime = await readFile(new URL('../dev/shotRuntime.ts', import.meta.url), 'utf8');
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -37,11 +38,8 @@ const requiredGates = [
 for (const [name, pattern] of requiredGates) {
   if (!pattern.test(main)) throw new Error(`${name} can enter without the live effects runtime`);
 }
-const shotsStart = main.indexOf('window.__SHOTS = {');
-const shotsEnd = main.indexOf('// ---------------------------------------------------------------------------', shotsStart);
-const deterministicShots = main.slice(shotsStart, shotsEnd);
-if (shotsStart < 0 || shotsEnd < 0 ||
-    !/async set\(name\)[\s\S]*ensureFxRuntime\(\)/.test(deterministicShots)) {
+if (!/window\.__SHOTS\s*=\s*\{[\s\S]{0,320}import\(['"]\.\/dev\/shotRuntime\.ts['"]\)/.test(main)
+    || !/export async function setShotView[\s\S]*context\.ensureFxRuntime\(\)/.test(shotRuntime)) {
   throw new Error('deterministic shots can enter without the live effects runtime');
 }
 const networkBattle = main.slice(
@@ -84,7 +82,7 @@ if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffe
 }
 const deferredWarm = main.slice(
   main.indexOf('function scheduleDeferredCombatWarm(generation)'),
-  main.indexOf('function* warmCombatOpeningPipelineSteps()'),
+  main.indexOf('const warmRender = createOffscreenSceneWarmer'),
 );
 const enemyAt = deferredWarm.indexOf('battleVisuals.stream(');
 const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');
@@ -99,9 +97,9 @@ if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S
   || !/actorVisible = ent\._spotFade > 0\.02;[\s\S]{0,160}setBattleVisualResident\(visual, actorVisible\)[\s\S]{0,100}visual\.setVisible\(actorVisible\)/.test(main)) {
   throw new Error('countdown-built enemy visuals must stay detached until a legal spotting edge');
 }
-if (!/function\* warmDestroyedRosterVariantsSteps\(\)[\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(main)
-  || !/function\* warmCombatDestructionEffectSteps\(\)[\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush/.test(main)
-  || !/function\* warmCombatRarePipelineSteps\(\)[\s\S]*yield\* warmCombatDestructionEffectSteps\(\)[\s\S]*compileHiddenVariantsSteps/.test(main)) {
+if (!/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(battleWarm)
+  || !/function\* warmCombatDestructionEffectSteps\([\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush/.test(battleWarm)
+  || !/function\* createCombatRareWarmSteps\([\s\S]*yield\* warmCombatDestructionEffectSteps\(context\)[\s\S]*compileHiddenVariantsSteps/.test(battleWarm)) {
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
 }
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*battleWarmPending = false/.test(main)) {
@@ -114,11 +112,11 @@ if (!/setupBattle\(game, specId, world,[\s\S]{0,900}combatWarm\.reset\(\)/.test(
 if (!/deferredCombatWarmPromise === pending/.test(main)) {
   throw new Error('a cancelled round must not clear a newer deferred warm queue');
 }
-const hiddenVariants = main.slice(
-  main.indexOf('function* compileHiddenVariantsSteps('),
-  main.indexOf('// ---------------------------------------------------------------------------', main.indexOf('function* compileHiddenVariantsSteps(')),
+const hiddenVariants = battleWarm.slice(
+  battleWarm.indexOf('function* compileHiddenVariantsSteps('),
+  battleWarm.indexOf('export function* createCombatOpeningWarmSteps'),
 );
-if (!hiddenVariants.includes('yield* compileAll(e.visual.root)')
+if (!hiddenVariants.includes('yield* compileAll(entity.visual.root)')
   || /initializeForwardProgramsSteps\(scene\)|renderer\.compile\(scene/.test(hiddenVariants)) {
   throw new Error('rare effects must never recompile the entire visible battlefield');
 }

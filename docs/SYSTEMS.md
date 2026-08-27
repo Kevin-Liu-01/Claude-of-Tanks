@@ -57,6 +57,9 @@ strict TypeScript owners:
 - `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
 - `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
   synchronous capture drains, round resets, and countdown cancellation;
+- `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
+  effect, wreck, hidden-variant, and fallback shader-warm implementation; its
+  retryable access facade is acquired before any synchronous fallback drain;
 - `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
 - `src/ui/battleLoad.js` is intentionally boot-critical: its small roster veil
   is ready before Battle can be pressed and covers the first asynchronous
@@ -73,6 +76,9 @@ strict TypeScript owners:
 - `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.
 - `src/dev/combatTelemetry.ts` owns debug-only attributable shell and bot
   pressure receipts; ordinary production installs no telemetry listeners.
+- `src/dev/shotContract.ts` exposes only the stable capture view names at boot;
+  `src/dev/shotRuntime.ts` demand-loads all deterministic staging only after
+  an engineering tool explicitly calls `window.__SHOTS.set()`.
 
 `src/main.js` still declares dependency order and connects these ports, but it
 does not reimplement their state machines.
@@ -125,6 +131,8 @@ The boot contract is:
   prevents loops when session storage is unavailable;
 - public presentation routes must not preload the game graph.
 - garage boot must not statically import the solo battle authority graph.
+- deterministic capture recipes and fallback combat warm generators must not
+  reside in the mandatory garage entry chunk.
 
 `bootLifecycle.ts` is the only stage-state owner. `battleModuleAccess.ts`
 coalesces concurrent hover/click imports and clears only a failed request, so a

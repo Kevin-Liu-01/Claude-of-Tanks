@@ -4,6 +4,7 @@ type RuntimeLoader = () => Promise<RuntimeModule>;
 export interface BattleWarmAccess {
   preload(): Promise<RuntimeModule>;
   isReady(): boolean;
+  requireRuntime(): RuntimeModule;
   warmBattleTerrainTiles(
     options: Parameters<RuntimeModule['warmBattleTerrainTiles']>[0],
   ): ReturnType<RuntimeModule['warmBattleTerrainTiles']>;
@@ -47,6 +48,10 @@ export function createBattleWarmAccess(
   return {
     preload,
     isReady: () => runtime !== null,
+    requireRuntime() {
+      if (!runtime) throw new Error('battle warm runtime was not preloaded');
+      return runtime;
+    },
     warmBattleTerrainTiles: async (options) =>
       (await preload()).warmBattleTerrainTiles(options),
     warmNetworkWrecks: async (options) =>
