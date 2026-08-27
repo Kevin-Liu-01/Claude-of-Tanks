@@ -1751,7 +1751,10 @@ function buildRunningGear(P, cfg) {
       suspensionPatternId: suspensionPattern.id,
       suspensionPatternLabel: suspensionPattern.label,
       suspensionLinkCount: wheelZs.length * 2,
+      suspensionJointCount: wheelZs.length * 4,
       suspensionDynamic: true,
+      suspensionArmProfile: 'tapered-forged-arm-v1',
+      suspensionPlacement: 'inboard-behind-road-wheel',
       shoeRadialScale,
       shoeWidthScale,
       shoeOutboardOffset,
@@ -1930,17 +1933,38 @@ function buildRunningGear(P, cfg) {
   // dark inserts (stamped lightening holes on the Christie 'holes' style)
   if (dark) mkInst(dark, mats.rubber, entries, 'wheelInset', 'gearRoadWheelInsets');
 
-  // One suspension-bound linkage layer serves every road-wheel station in
-  // the playable fleet. The old `arms` switch emitted static hull greebles on
-  // only some profiles; those bars stayed behind when terrain conformance
-  // moved a wheel. These instances share one tiny box geometry, never cast a
-  // shadow, disappear through the existing detail LOD, and update on the
-  // already cadence-limited running-gear pass. That keeps the mechanical
-  // connection visible without per-wheel meshes, allocations, or profile
-  // draw-call explosions.
+  // One suspension-bound linkage assembly serves every road-wheel station in
+  // the playable fleet. The old shared primitive was a dark rectangular bar:
+  // its hull pivot landed inside the wheel silhouette, so it was invisible on
+  // most tanks, and its broad X span could sit within the painted wheel stack.
+  // These tapered forged arms use real stepped pivot/axle bosses, move with the
+  // canonical terrain-conforming wheel, and are parked wholly inboard of the
+  // wheel's measured back face. Two instanced draws cover the complete unit;
+  // there are still no per-wheel meshes or frame-loop allocations.
   const suspensionEntries = [];
   const suspensionLift = wheelR * suspensionPattern.anchorLiftRatio;
   const suspensionTrail = wheelR * suspensionPattern.trailRatio;
+  const armWidth = Math.max(0.05, wheelW * suspensionPattern.armWidthRatio);
+  const armHeight = Math.max(0.045, wheelR * suspensionPattern.armHeightRatio);
+  const jointRadius = Math.max(0.042, wheelR * suspensionPattern.jointRadiusRatio);
+  const jointWidth = Math.max(0.05, wheelW * suspensionPattern.jointWidthRatio);
+  let visibleWheelHalfDepth = wheelW * 0.5;
+  for (const geometry of [tire, disc, dark]) {
+    if (!geometry) continue;
+    geometry.computeBoundingBox();
+    visibleWheelHalfDepth = Math.max(
+      visibleWheelHalfDepth,
+      Math.abs(geometry.boundingBox.min.x),
+      Math.abs(geometry.boundingBox.max.x),
+    );
+  }
+  const suspensionAssemblyHalfDepth = Math.max(armWidth, jointWidth) * 0.5;
+  const suspensionWheelClearance = Math.max(0.012, wheelW * 0.055);
+  const suspensionAbsX = (side) => Math.max(
+    0.04,
+    xcForSide(side) - visibleWheelHalfDepth
+      - suspensionWheelClearance - suspensionAssemblyHalfDepth,
+  );
   for (let i = 0; i < wheelZs.length; i++) {
     const z = wheelZs[i];
     let anchorZ = z + suspensionTrail;
@@ -1957,14 +1981,22 @@ function buildRunningGear(P, cfg) {
       }
       suspensionEntries.push({
         side, wheel, anchorY: wheelY + suspensionLift, anchorZ,
-        x: side * (xcForSide(side) - Math.max(wheelW * 0.62, trackW * 0.08)),
+        x: side * suspensionAbsX(side),
       });
     }
   }
-  const suspensionGeo = new THREE.BoxGeometry(
-    Math.max(0.045, wheelW * suspensionPattern.armWidthRatio),
-    Math.max(0.045, wheelR * suspensionPattern.armHeightRatio),
-    1,
+  // Local +Z points from the hull pivot to the wheel axle. A slightly wider
+  // pivot end and an octagonal/dodecagonal cross-section read as a forged arm
+  // instead of a prism, while remaining cheap enough for the full fleet.
+  const suspensionGeo = xform(
+    cylZ(
+      0.5 * suspensionPattern.wheelEndTaper,
+      1,
+      suspensionPattern.armSegments,
+      0.5,
+    ),
+    0, 0, 0, 0, 0, 0,
+    [armWidth, armHeight, 1],
   );
   const suspensionIM = new THREE.InstancedMesh(
     suspensionGeo,
@@ -1978,27 +2010,81 @@ function buildRunningGear(P, cfg) {
   suspensionIM.userData.suspensionPattern = suspensionPattern.id;
   suspensionIM.userData.suspensionPatternLabel = suspensionPattern.label;
   suspensionIM.userData.suspensionStationCount = wheelZs.length;
-  suspensionIM.userData.suspensionLinkTriangles = 12;
+  suspensionIM.userData.suspensionGeometryProfile = 'tapered-forged-arm-v1';
+  suspensionIM.userData.suspensionPlacement = 'inboard-behind-road-wheel';
+  suspensionIM.userData.suspensionLinkTriangles = suspensionGeo.index
+    ? suspensionGeo.index.count / 3
+    : suspensionGeo.getAttribute('position').count / 3;
+  suspensionIM.userData.visibleWheelHalfDepth = visibleWheelHalfDepth;
+  suspensionIM.userData.wheelClearanceM = suspensionWheelClearance;
+  suspensionIM.userData.wheelInnerAbsX = {
+    left: xcLeft - visibleWheelHalfDepth,
+    right: xcRight - visibleWheelHalfDepth,
+  };
+  suspensionIM.userData.assemblyOutboardAbsX = {
+    left: suspensionAbsX(-1) + suspensionAssemblyHalfDepth,
+    right: suspensionAbsX(1) + suspensionAssemblyHalfDepth,
+  };
   suspensionIM.castShadow = false;
   suspensionIM.receiveShadow = true;
   suspensionIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   lodWrap(hullG, suspensionIM);
   P.disposables.push(suspensionGeo);
 
+  // A stepped two-diameter forging at each endpoint makes the load path clear
+  // in a side or oblique view: the forward/high boss is fixed to the hull,
+  // and the lower boss follows the road-wheel axle. Both are one instanced
+  // layer so the added shape costs a single draw per running-gear unit.
+  const suspensionJointGeo = mergeAll([
+    cylX(jointRadius, jointWidth * 0.72, Math.max(8, suspensionPattern.armSegments)),
+    cylX(jointRadius * 0.67, jointWidth, Math.max(8, suspensionPattern.armSegments)),
+    cylX(jointRadius * 0.30, jointWidth * 1.12, 8),
+  ]);
+  const suspensionJointIM = new THREE.InstancedMesh(
+    suspensionJointGeo,
+    mats.dark || mats.spareTrack || mats.wheelsRecessed,
+    suspensionEntries.length * 2,
+  );
+  suspensionJointIM.name = 'gearSuspensionJointBosses';
+  suspensionJointIM.userData.runningGear = true;
+  suspensionJointIM.userData.runningGearUnitId = runningGearUnitId;
+  suspensionJointIM.userData.appearanceRole = 'suspensionJoint';
+  suspensionJointIM.userData.suspensionPattern = suspensionPattern.id;
+  suspensionJointIM.userData.suspensionPatternLabel = suspensionPattern.label;
+  suspensionJointIM.userData.suspensionGeometryProfile = 'stepped-forged-boss-v1';
+  suspensionJointIM.userData.suspensionPlacement = 'inboard-behind-road-wheel';
+  suspensionJointIM.userData.suspensionStationCount = wheelZs.length;
+  suspensionJointIM.castShadow = false;
+  suspensionJointIM.receiveShadow = true;
+  suspensionJointIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  lodWrap(hullG, suspensionJointIM);
+  P.disposables.push(suspensionJointGeo);
+
   function updateSuspensionLinks() {
     for (let i = 0; i < suspensionEntries.length; i++) {
       const link = suspensionEntries[i];
       const axleY = wheelY + (link.wheel?.off || 0);
+      const axleZ = link.wheel.z;
       const dy = axleY - link.anchorY;
-      const dz = link.wheel.z - link.anchorZ;
+      const dz = axleZ - link.anchorZ;
       const length = Math.max(Math.hypot(dy, dz), wheelR * 0.25);
-      _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + link.wheel.z) * 0.5);
+      _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + axleZ) * 0.5);
       _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
       _s.set(1, 1, length);
       _m.compose(_v, _q, _s);
       suspensionIM.setMatrixAt(i, _m);
+
+      _q.identity();
+      _s.set(1, 1, 1);
+      _v.set(link.x, link.anchorY, link.anchorZ);
+      _m.compose(_v, _q, _s);
+      suspensionJointIM.setMatrixAt(i * 2, _m);
+      _v.set(link.x, axleY, axleZ);
+      _m.compose(_v, _q, _s);
+      suspensionJointIM.setMatrixAt(i * 2 + 1, _m);
     }
     suspensionIM.instanceMatrix.needsUpdate = true;
+    suspensionJointIM.instanceMatrix.needsUpdate = true;
   }
   updateSuspensionLinks();
   // Profile-specific dish/rim decoration must participate in the exact same

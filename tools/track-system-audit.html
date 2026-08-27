@@ -169,6 +169,8 @@ function inspectUnit(unitId, receipt, objects) {
     && object.name === 'gearRoadWheelTires');
   const suspensionLinks = objects.filter((object) => object.userData.runningGearUnitId === unitId
     && object.name === 'gearSuspensionLinks');
+  const suspensionJoints = objects.filter((object) => object.userData.runningGearUnitId === unitId
+    && object.name === 'gearSuspensionJointBosses');
   const wheelLayers = tires.length ? tires : objects.filter((object) =>
     object.userData.runningGearUnitId === unitId && object.name === 'gearRoadWheelDiscs');
   const drives = objects.filter((object) => object.userData.runningGearUnitId === unitId
@@ -184,11 +186,15 @@ function inspectUnit(unitId, receipt, objects) {
   if (suspensionLinks.length !== 1) {
     failures.push(`expected 1 suspension linkage layer, got ${suspensionLinks.length}`);
   }
+  if (suspensionJoints.length !== 1) {
+    failures.push(`expected 1 suspension joint layer, got ${suspensionJoints.length}`);
+  }
   if (!receipt) failures.push('missing closed-course receipt');
   if (!receipt || !pads.length) return { unitId, failures };
 
   const padMesh = pads[0];
   const suspensionMesh = suspensionLinks[0];
+  const suspensionJointMesh = suspensionJoints[0];
   const count = receipt.shoeCountPerSide;
   if (padMesh.count !== count * 2) {
     failures.push(`shoe instance count ${padMesh.count} != ${count}×2`);
@@ -235,8 +241,26 @@ function inspectUnit(unitId, receipt, objects) {
     if (suspensionMesh.userData.suspensionPattern !== receipt.suspensionPatternId) {
       failures.push('suspension pattern drift between geometry and running-gear receipt');
     }
-    if (triangleCount(suspensionMesh.geometry) > 12) {
-      failures.push(`suspension link geometry exceeds 12-triangle budget (${triangleCount(suspensionMesh.geometry)})`);
+    const armTriangles = triangleCount(suspensionMesh.geometry);
+    if (armTriangles < 32 || armTriangles > 48) {
+      failures.push(`suspension link geometry is outside shaped 32–48 triangle budget (${armTriangles})`);
+    }
+    if (suspensionMesh.geometry?.type === 'BoxGeometry'
+      || suspensionMesh.userData.suspensionGeometryProfile !== 'tapered-forged-arm-v1') {
+      failures.push('suspension linkage is not a tapered forged arm');
+    }
+    if (suspensionMesh.userData.suspensionPlacement !== 'inboard-behind-road-wheel') {
+      failures.push('suspension linkage is not seated behind the wheel backs');
+    }
+    const inner = suspensionMesh.userData.wheelInnerAbsX;
+    const outboard = suspensionMesh.userData.assemblyOutboardAbsX;
+    const clearance = suspensionMesh.userData.wheelClearanceM;
+    for (const side of ['left', 'right']) {
+      if (!Number.isFinite(inner?.[side]) || !Number.isFinite(outboard?.[side])
+        || !Number.isFinite(clearance)
+        || outboard[side] > inner[side] - clearance + 1e-6) {
+        failures.push(`${side} suspension linkage crosses the road-wheel back face`);
+      }
     }
     if (suspensionMesh.castShadow) failures.push('suspension linkage layer must not cast dynamic shadows');
 
@@ -267,6 +291,25 @@ function inspectUnit(unitId, receipt, objects) {
     if (!Number.isFinite(maxAxleGap) || maxAxleGap > 0.025) {
       failures.push(`suspension-to-wheel axle gap ${round(maxAxleGap)} m`);
     }
+  }
+  if (suspensionJointMesh) {
+    if (!suspensionJointMesh.isInstancedMesh) failures.push('suspension joint layer is not instanced');
+    if (suspensionJointMesh.count !== receipt.suspensionJointCount) {
+      failures.push(`suspension joint count ${suspensionJointMesh.count} != ${receipt.suspensionJointCount}`);
+    }
+    if (suspensionJointMesh.userData.suspensionPattern !== receipt.suspensionPatternId) {
+      failures.push('suspension joint pattern drift between geometry and running-gear receipt');
+    }
+    if (suspensionJointMesh.userData.suspensionGeometryProfile !== 'stepped-forged-boss-v1') {
+      failures.push('suspension endpoints are not stepped forged bosses');
+    }
+    if (suspensionJointMesh.userData.suspensionPlacement !== 'inboard-behind-road-wheel') {
+      failures.push('suspension joint layer is not seated behind the wheel backs');
+    }
+    if (triangleCount(suspensionJointMesh.geometry) > 128) {
+      failures.push(`suspension joint geometry exceeds 128-triangle budget (${triangleCount(suspensionJointMesh.geometry)})`);
+    }
+    if (suspensionJointMesh.castShadow) failures.push('suspension joint layer must not cast dynamic shadows');
   }
   for (const band of bands) {
     if (Math.abs(band.userData.trackTextureRepeatM - receipt.textureRepeatM) > 1e-7) {
@@ -424,6 +467,8 @@ function inspectUnit(unitId, receipt, objects) {
     suspensionPatternLabel: receipt.suspensionPatternLabel,
     suspensionLinks: suspensionMesh?.count || 0,
     suspensionTrianglesPerLink: suspensionMesh ? triangleCount(suspensionMesh.geometry) : 0,
+    suspensionJoints: suspensionJointMesh?.count || 0,
+    suspensionJointTriangles: suspensionJointMesh ? triangleCount(suspensionJointMesh.geometry) : 0,
     laneCentersM: { left: round(receipt.xcLeft), right: round(receipt.xcRight) },
     sprocket: { ...receipt.sprocket, z: round(receipt.sprocket.z), y: round(receipt.sprocket.y), r: round(receipt.sprocket.r) },
     idler: { ...receipt.idler, z: round(receipt.idler.z), y: round(receipt.idler.y), r: round(receipt.idler.r) },

@@ -1252,22 +1252,12 @@ function buildType59(P) {
   P.hullG.scale.setScalar(vehicleScale);
   P.turretG.scale.setScalar(vehicleScale);
   P.turretG.position.multiplyScalar(vehicleScale);
-  // Geometry-receipt builds publish authored local course coordinates. Keep
-  // that receipt in the same reduced frame as the rendered hull so exact
-  // track containment audits test the real scaled course, not the donor's
-  // pre-scale station table.
-  for (const receipt of P.hullG.userData.runningGearReceipts || []) {
-    receipt.wheelZs = receipt.wheelZs.map((z) => z * vehicleScale);
-    for (const key of ['wheelR', 'wheelY', 'xcLeft', 'xcRight', 'trackW',
-      'trackTh', 'botY', 'topY', 'loopLengthM', 'shoePitchM',
-      'shoeOutboardOffset', 'textureRepeatM']) {
-      receipt[key] *= vehicleScale;
-    }
-    for (const end of [receipt.sprocket, receipt.idler]) {
-      for (const key of ['z', 'y', 'r']) end[key] *= vehicleScale;
-    }
-    receipt.loopPoints = receipt.loopPoints.map(([z, y]) => [z * vehicleScale, y * vehicleScale]);
-  }
+  // Running-gear receipts describe the local geometry and instance matrices
+  // below `hullG`; the hull owner's scale transforms both together. Keeping
+  // that receipt local preserves one coordinate frame for the belt, shoes,
+  // drive teeth, wheel stations and suspension arms. Physics-only contact
+  // metadata below is still converted to the reduced vehicle frame because
+  // it is consumed outside the scaled render hierarchy.
   if (P.gear?.contactGeom) {
     for (const key of ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM']) {
       P.gear.contactGeom[key] *= vehicleScale;

@@ -35,6 +35,8 @@ import {
   widthAnchor,
   domeRailRu,
   liftT64HullAboveTallTrack,
+  lowerT64BellyProfile,
+  T64_LOWER_HULL_DROP_M,
 } from './russia.js';
 import { ABRAMS_PROFILES } from './abrams.js';
 
@@ -429,10 +431,10 @@ function buildUAT64BV(P) {
       [-1.80, 1.315], [0.53, 1.315], [1.15, 1.30], [1.66, 1.10],
       [2.58, 0.865], [3.27, 0.70],
     ],
-    belly: [
+    belly: lowerT64BellyProfile([
       [-3.27, 0.46], [-2.85, 0.405], [-2.30, 0.38], [2.20, 0.38],
       [2.60, 0.52], [3.27, 0.66],
-    ],
+    ]),
     wUp: [
       [-3.27, 1.40], [-3.00, 1.454], [2.30, 1.454], [2.60, 1.20],
       [3.00, 0.90], [3.27, 0.42],
@@ -801,6 +803,7 @@ function buildUAT64BV(P) {
   liftT64HullAboveTallTrack(P, {
     trackHeightIncreaseM,
     hullRideHeightIncreaseM,
+    lowerHullDropM: T64_LOWER_HULL_DROP_M,
     trackBottomY: 0.14,
     trackTopY: 1.01,
     authoredEnvelopeHeightM: 0.79,

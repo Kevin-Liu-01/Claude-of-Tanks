@@ -111,6 +111,15 @@ export function loftHull(P, o) {
   }
 }
 
+// T-64BV lower-hull correction shared by the BV1 and Donbas builds. Keep the
+// traced upper armor/deck stations byte-identical and lower only the belly
+// profile; the forward belly segment is the lower-glacis underside, so it
+// grows down to the same datum without moving the upper glacis or bow crest.
+export const T64_LOWER_HULL_DROP_M = 0.08;
+export function lowerT64BellyProfile(points, dropM = T64_LOWER_HULL_DROP_M) {
+  return points.map(([z, y]) => [z, y - dropM]);
+}
+
 // Measured cast dome: lathe rings [[r, y]] (y=0 at the ring base, in the
 // turret frame), plan-stretched by sz = depth/width, centered (cx, cz).
 export function meshDome(P, rings, sz, cx = 0, cz = 0) {
@@ -1268,10 +1277,10 @@ function buildT64BV1(P) {
       [-1.78, 1.315], [1.45, 1.315], [2.05, 1.09], [2.38, 0.94],
       [2.655, 0.715],
     ],
-    belly: [
+    belly: lowerT64BellyProfile([
       [-3.00, 0.44], [-2.55, 0.425], [-1.90, 0.42], [1.55, 0.40],
       [2.05, 0.38], [2.30, 0.40], [2.46, 0.50], [2.655, 0.665],
-    ],
+    ]),
     wUp: [
       [-3.00, 1.30], [-2.86, 1.454], [2.28, 1.454], [2.44, 1.24],
       [2.52, 1.02], [2.60, 0.66], [2.655, 0.34],
@@ -1629,6 +1638,7 @@ function buildT64BV1(P) {
   liftT64HullAboveTallTrack(P, {
     trackHeightIncreaseM,
     hullRideHeightIncreaseM,
+    lowerHullDropM: T64_LOWER_HULL_DROP_M,
     trackBottomY: 0.13,
     trackTopY: 1.01,
     authoredEnvelopeHeightM: 0.80,
@@ -1655,6 +1665,7 @@ export function widthAnchor(P, halfW, y, z) {
 export function liftT64HullAboveTallTrack(P, {
   trackHeightIncreaseM,
   hullRideHeightIncreaseM = trackHeightIncreaseM,
+  lowerHullDropM = 0,
   trackBottomY,
   trackTopY,
   authoredEnvelopeHeightM,
@@ -1685,6 +1696,10 @@ export function liftT64HullAboveTallTrack(P, {
     trackTopY,
     roadWheelCenterY: 0.315,
     hullRideHeightIncreaseM,
+    lowerHullDropM,
+    upperHullShiftM: 0,
+    runningGearShiftM: 0,
+    lowerGlacisExtendedToBelly: lowerHullDropM > 0,
     liftedDirectHullChildren,
   });
 }

@@ -13,6 +13,8 @@ const CASES = {
     rollerY: 0.98,
     authoredEnvelopeHeightM: 0.80,
     installedEnvelopeHeightM: 0.88,
+    hullMinY: 0.54,
+    hullMaxY: 1.596,
     turretZ: 0.14,
     armorCenterZ: [-0.20, -0.16],
   },
@@ -25,6 +27,8 @@ const CASES = {
     rollerY: 0.98,
     authoredEnvelopeHeightM: 0.79,
     installedEnvelopeHeightM: 0.87,
+    hullMinY: 0.54,
+    hullMaxY: 2.09,
     turretZ: -0.06,
     armorCenterZ: [-0.34, -0.30],
   },
@@ -63,9 +67,15 @@ for (const [id, expected] of Object.entries(CASES)) {
     const tallTrack = hullRig?.userData.t64TallTrackReceipt;
     const roadWheels = hullRig?.getObjectByName('gearRoadWheelTires');
     const returnRollers = hullRig?.getObjectByName('gearReturnRollerTires');
+    const suspensionLinks = hullRig?.getObjectByName('gearSuspensionLinks');
+    const suspensionJoints = hullRig?.getObjectByName('gearSuspensionJointBosses');
+    const structuralHull = hullRig?.getObjectByName('hull');
 
     assert.ok(receipt && tallTrack && roadWheels?.isInstancedMesh && returnRollers?.isInstancedMesh,
       `${id}: exposes the canonical running-gear receipt and visible wheel layers`);
+    assert.ok(suspensionLinks?.isInstancedMesh && suspensionJoints?.isInstancedMesh
+      && structuralHull?.isMesh,
+    `${id}: exposes the wheel-bound torsion arms, joint bosses and structural hull`);
     near(receipt.wheelY, expected.wheelY, `${id}: road-wheel axle stays on its ground datum`);
     near(receipt.topY, expected.topY, `${id}: upper track run gains 80 mm`);
     near(receipt.botY, expected.botY, `${id}: loaded lower run stays on its ground datum`);
@@ -77,6 +87,14 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: installed track envelope is 80 mm taller`);
     near(tallTrack.hullRideHeightIncreaseM, 0.24,
       `${id}: hull retains the moderated 240 mm ride-height increase`);
+    near(tallTrack.lowerHullDropM, 0.08,
+      `${id}: belly and lower-glacis underside drop by 80 mm`);
+    near(tallTrack.upperHullShiftM, 0,
+      `${id}: upper hull remains on its certified datum`);
+    near(tallTrack.runningGearShiftM, 0,
+      `${id}: wheel centers and track course remain fixed`);
+    assert.equal(tallTrack.lowerGlacisExtendedToBelly, true,
+      `${id}: lower glacis reaches the lowered belly datum`);
     assert.ok(tallTrack.liftedDirectHullChildren >= 2,
       `${id}: direct hull fittings follow the raised hull body`);
     assert.deepEqual(uniqueInstanceYs(roadWheels), [expected.wheelY],
@@ -87,6 +105,34 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.equal(returnRollers.count, 8, `${id}: retains four return rollers per side`);
     assert.equal(receipt.suspensionLinkCount, 12,
       `${id}: every road wheel remains suspension-driven`);
+    assert.equal(receipt.suspensionPatternId, 't64-torsion-arm',
+      `${id}: uses the exposed T-64 torsion-arm geometry`);
+    assert.equal(suspensionLinks.count, 12,
+      `${id}: one dynamic torsion arm attaches to every road wheel`);
+    assert.equal(suspensionJoints.count, 24,
+      `${id}: every arm receives a hull pivot and road-wheel axle boss`);
+    assert.equal(suspensionLinks.userData.suspensionPattern, 't64-torsion-arm',
+      `${id}: visible links retain their T-64 running-gear ownership`);
+    assert.equal(suspensionLinks.userData.suspensionGeometryProfile,
+      'tapered-forged-arm-v1', `${id}: arms use the shaped forged profile`);
+    assert.equal(suspensionLinks.userData.suspensionPlacement,
+      'inboard-behind-road-wheel', `${id}: arms remain behind the wheel backs`);
+
+    tank.root.updateMatrixWorld(true);
+    const hullBounds = new THREE.Box3().setFromObject(structuralHull);
+    near(hullBounds.min.y, expected.hullMinY,
+      `${id}: only the belly/lower glacis reaches the lower datum`);
+    near(hullBounds.max.y, expected.hullMaxY,
+      `${id}: upper hull height remains unchanged`);
+    const linkBounds = new THREE.Box3().setFromObject(suspensionLinks);
+    assert.ok(linkBounds.max.y >= expected.hullMinY,
+      `${id}: torsion-arm hull anchors overlap the lowered sidewall vertically`);
+    for (const side of ['left', 'right']) {
+      assert.ok(suspensionLinks.userData.assemblyOutboardAbsX[side]
+        <= suspensionLinks.userData.wheelInnerAbsX[side]
+          - suspensionLinks.userData.wheelClearanceM + EPSILON,
+      `${id}: ${side} torsion-arm assembly stays wholly behind the road-wheel back`);
+    }
 
     const bottomPoints = receipt.loopPoints.filter(([, y]) =>
       Math.abs(y - expected.botY) <= EPSILON);
@@ -107,7 +153,6 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: turret and gun assembly rises with the hull`);
     near(turretRig.position.z, expected.turretZ,
       `${id}: complete turret rig moves 200 mm forward`);
-    tank.root.updateMatrixWorld(true);
     const armor = turretRig.getObjectByName('turret');
     assert.ok(armor?.isMesh, `${id}: structural turret armor remains present`);
     const armorCenterZ = new THREE.Box3().setFromObject(armor).getCenter(new THREE.Vector3()).z;
@@ -133,4 +178,4 @@ for (const [id, expected] of Object.entries(CASES)) {
   }
 }
 
-console.log('t64RunningGearTurretCenter.selftest: T-64BV1 and Donbas use taller grounded courses with raised hulls and centered turrets');
+console.log('t64RunningGearTurretCenter.selftest: T-64BV1 and Donbas keep their upper rigs fixed while the lower hulls and wheel-bound torsion arms gain depth');

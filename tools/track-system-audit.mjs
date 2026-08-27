@@ -209,11 +209,14 @@ try {
             && object.userData.runningGearUnitId === unitId);
           const suspension = objects.find((object) => object.name === 'gearSuspensionLinks'
             && object.userData.runningGearUnitId === unitId);
+          const suspensionJoints = objects.find((object) => object.name === 'gearSuspensionJointBosses'
+            && object.userData.runningGearUnitId === unitId);
           const unitFailures = [];
           if (!pads) unitFailures.push('missing live shoe course');
           if (bands.length !== 2) unitFailures.push(`live belt count ${bands.length}`);
           if (!tires.length) unitFailures.push('missing live wheel train');
           if (!suspension) unitFailures.push('missing live suspension linkage layer');
+          if (!suspensionJoints) unitFailures.push('missing live suspension joint layer');
           let suspensionMaxAxleGap = null;
           if (suspension) {
             const expectedLinks = suspension.userData.suspensionStationCount * 2;
@@ -222,6 +225,12 @@ try {
             }
             if (!suspension.userData.suspensionPattern) {
               unitFailures.push('live suspension pattern receipt missing');
+            }
+            if (suspension.userData.suspensionGeometryProfile !== 'tapered-forged-arm-v1') {
+              unitFailures.push('live suspension linkage is not a tapered forged arm');
+            }
+            if (suspension.userData.suspensionPlacement !== 'inboard-behind-road-wheel') {
+              unitFailures.push('live suspension linkage is not behind the wheel backs');
             }
             if (suspension.castShadow) {
               unitFailures.push('live suspension linkage layer casts dynamic shadows');
@@ -249,6 +258,21 @@ try {
             suspensionMaxAxleGap = maxGap;
             if (!Number.isFinite(maxGap) || maxGap > 0.035) {
               unitFailures.push(`live suspension-to-wheel axle gap ${maxGap.toFixed(3)} m`);
+            }
+          }
+          if (suspensionJoints) {
+            const expectedJoints = suspensionJoints.userData.suspensionStationCount * 4;
+            if (suspensionJoints.count !== expectedJoints) {
+              unitFailures.push(`live suspension joint count ${suspensionJoints.count} != ${expectedJoints}`);
+            }
+            if (suspensionJoints.userData.suspensionGeometryProfile !== 'stepped-forged-boss-v1') {
+              unitFailures.push('live suspension endpoints are not stepped forged bosses');
+            }
+            if (suspensionJoints.userData.suspensionPlacement !== 'inboard-behind-road-wheel') {
+              unitFailures.push('live suspension joints are not behind the wheel backs');
+            }
+            if (suspensionJoints.castShadow) {
+              unitFailures.push('live suspension joint layer casts dynamic shadows');
             }
           }
           if (pads) {

@@ -69,13 +69,15 @@ try {
   assert.equal(hull.userData.nativeRoadWheelStations, 5,
     'Type 59 retains its five-station suspension');
   assert.deepEqual(gear?.wheelZs,
-    [2.235, 1.08, 0.10, -0.92, -1.933].map((z) => z * scale),
-  'road-wheel station receipt follows the reduced linked course');
-  assert.ok(near(gear?.xcLeft, 1.45 * scale) && near(gear?.xcRight, 1.45 * scale),
-    'both track lanes use the widened, bow-clear gauge');
-  assert.ok(near(gear?.sprocket.z, -2.795 * scale)
-    && near(gear?.idler.z, 3.01 * scale),
-  'track receipt includes both seated terminal wraps');
+    [2.235, 1.08, 0.10, -0.92, -1.933],
+  'road-wheel receipt stays in the shared hull-local gear frame');
+  assert.ok(near(gear?.xcLeft, 1.45) && near(gear?.xcRight, 1.45),
+    'both local track lanes use the widened, bow-clear gauge');
+  assert.ok(near(gear?.sprocket.z, -2.795)
+    && near(gear?.idler.z, 3.01),
+  'local track receipt includes both seated terminal wraps');
+  assert.ok(near(gear?.textureRepeatM, gear?.shoePitchM * 4),
+    'belt texture cadence and shoe pitch stay in one local coordinate frame');
   for (const name of ['gearTrackBandL', 'gearTrackBandR']) {
     const band = tank.root.getObjectByName(name);
     assert.ok(band, `${name} exists as one continuous native course`);
