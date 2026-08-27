@@ -806,10 +806,13 @@ function lightMeta(id, family, hw, hl, h, pal, build, debrisMaterial = 'wood') {
   const surfaceMaterial = debrisMaterial === 'canvas'
     ? 'structureCanvas'
     : debrisMaterial === 'metal' ? 'structureMetal' : 'structureWood';
+  const instanceTintStrength = debrisMaterial === 'metal'
+    ? 0.035 : debrisMaterial === 'canvas' ? 0.045 : 0.07;
   const meta = {
     id, family, cls: 'break', mat: surfaceMaterial, surfaceMaterial,
     contact: 'ob', collider: true,
     hw, hl, r: Math.hypot(hw, hl), h, keep: 0.84, crushMin: 4.5, build,
+    instanceTintStrength,
   };
   meta.broken = (rng) => debris(meta, pal, rng, debrisMaterial);
   return meta;

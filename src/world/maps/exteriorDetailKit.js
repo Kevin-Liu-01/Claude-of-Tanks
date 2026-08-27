@@ -105,6 +105,68 @@ function addCornerPiers(author, w, d, wallH, material) {
   }
 }
 
+function addFacadeBayRhythm(author, w, d, wallH, profile, variant) {
+  if (!['urban', 'civic', 'industrial', 'desert'].includes(profile)) return;
+  const material = profile === 'industrial' ? 'dark' : 'stone';
+  const pierW = profile === 'desert' ? 0.24 : 0.14;
+  const pierD = profile === 'desert' ? 0.16 : 0.12;
+  const pierH = Math.max(1.7, wallH - 0.45);
+  const bayCount = Math.max(2, Math.min(4, Math.round(w / 3.4)));
+  for (let bay = 1; bay < bayCount; bay++) {
+    const x = -w / 2 + (w * bay) / bayCount;
+    for (const side of [-1, 1]) {
+      author.add(`facade-bay-${bay}-${side}`, material,
+        box(pierW, pierH, pierD)
+          .translate(x, pierH / 2 + 0.10, side * (d / 2 + 0.035)));
+    }
+  }
+
+  if (profile === 'industrial') {
+    const sideBayCount = Math.max(2, Math.min(4, Math.round(d / 4.1)));
+    for (let bay = 1; bay < sideBayCount; bay++) {
+      const z = -d / 2 + (d * bay) / sideBayCount;
+      for (const side of [-1, 1]) {
+        author.add(`side-bay-${bay}-${side}`, 'dark',
+          box(0.12, pierH, pierW)
+            .translate(side * (w / 2 + 0.035), pierH / 2 + 0.10, z));
+      }
+    }
+  }
+
+  // A pair of framed utility apertures gives broad blank elevations real
+  // depth. They sit against the wall envelope and reuse existing buckets;
+  // no additional material or scene node survives the merge.
+  const apertureY = Math.min(wallH - 0.82, profile === 'desert' ? 2.05 : 2.55);
+  const apertureW = Math.min(profile === 'industrial' ? 1.15 : 0.82, w * 0.13);
+  const apertureH = profile === 'industrial' ? 0.72 : 1.02;
+  const lane = variant % 2 === 0 ? 1 : -1;
+  for (const side of [-1, 1]) {
+    const x = side * w * (0.22 + lane * side * 0.025);
+    const z = -d / 2 - 0.055;
+    author.add(`aperture-pane-${side}`, 'dark',
+      box(apertureW, apertureH, 0.08).translate(x, apertureY, z));
+    author.add(`aperture-left-${side}`, material,
+      box(0.11, apertureH + 0.24, 0.13)
+        .translate(x - apertureW / 2 - 0.065, apertureY, z - 0.01));
+    author.add(`aperture-right-${side}`, material,
+      box(0.11, apertureH + 0.24, 0.13)
+        .translate(x + apertureW / 2 + 0.065, apertureY, z - 0.01));
+    author.add(`aperture-head-${side}`, material,
+      box(apertureW + 0.32, 0.12, 0.14)
+        .translate(x, apertureY + apertureH / 2 + 0.08, z - 0.01));
+    author.add(`aperture-sill-${side}`, material,
+      box(apertureW + 0.34, 0.12, 0.20)
+        .translate(x, apertureY - apertureH / 2 - 0.08, z - 0.035));
+    if (profile === 'industrial') {
+      for (const offset of [-0.18, 0, 0.18]) {
+        author.add(`aperture-louver-${side}-${offset}`, 'stone',
+          box(apertureW - 0.12, 0.055, 0.08)
+            .translate(x, apertureY + offset, z - 0.085), `aperture-pane-${side}`);
+      }
+    }
+  }
+}
+
 function addRainwater(author, w, d, wallH) {
   const frontZ = d / 2 + 0.055;
   const pipeY = wallH * 0.48;
@@ -285,6 +347,7 @@ export function addConnectedExterior(parts, {
   const author = detailAuthor(parts, { w, d, wallH, id, profile });
   const masonry = profile !== 'timber' && profile !== 'canvas';
   addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood');
+  addFacadeBayRhythm(author, w, d, wallH, profile, variant);
   if (profile !== 'canvas' && profile !== 'open') {
     addEntryAssembly(author, w, d, wallH, profile, variant);
     addProfileSignature(author, w, d, wallH, profile, variant);

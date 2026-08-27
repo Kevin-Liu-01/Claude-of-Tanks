@@ -25,7 +25,7 @@ for (const [profile, minimum] of [
     `${profile}: fixture ids are unique within one building`);
   assert.ok(receipt.records.some(({ part }) => part === 'entry-door'),
     `${profile}: the shared facade pass includes a framed entrance`);
-  assert.ok(receipt.added <= 48,
+  assert.ok(receipt.added <= 72,
     `${profile}: exterior variety remains bounded before material merging`);
   const partIds = new Set(receipt.records.map(({ part }) => part));
   if (profile === 'rural' || profile === 'timber') {
@@ -33,12 +33,18 @@ for (const [profile, minimum] of [
   } else if (profile === 'urban' || profile === 'civic') {
     assert.ok(partIds.has('balcony-deck') && partIds.has('balcony-rail'),
       `${profile}: connected balcony signature`);
+    assert.ok(partIds.has('facade-bay-1--1') && partIds.has('aperture-head--1'),
+      `${profile}: long elevations carry connected bay rhythm and framed apertures`);
   } else if (profile === 'industrial') {
     assert.ok(partIds.has('ladder-rail--1') && partIds.has('ladder-rung-0'),
       `${profile}: connected service ladder signature`);
+    assert.ok(partIds.has('side-bay-1--1') && partIds.has('aperture-louver--1-0'),
+      `${profile}: industrial elevations carry pilasters and real louvers`);
   } else if (profile === 'desert') {
     assert.ok(partIds.has('buttress--1') && partIds.has('buttress-1'),
       `${profile}: grounded adobe buttress signature`);
+    assert.ok(partIds.has('facade-bay-1--1') && partIds.has('aperture-sill-1'),
+      `${profile}: desert elevations carry connected bays and recessed openings`);
   }
 }
 

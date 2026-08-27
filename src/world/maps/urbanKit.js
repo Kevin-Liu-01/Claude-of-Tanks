@@ -32,6 +32,25 @@ function pushParts(buckets, parts) {
   }
 }
 
+function addSideWindow(parts, paneBucket, x, y, z, width, height) {
+  const outward = Math.sign(x) || 1;
+  const faceX = x + outward * 0.01;
+  paneBucket.push(box(0.08, height, width).translate(faceX, y, z));
+  const frameX = x + outward * 0.04;
+  for (const side of [-1, 1]) {
+    parts.stone.push(box(0.14, height + 0.24, 0.13)
+      .translate(frameX, y, z + side * (width / 2 + 0.065)));
+  }
+  parts.stone.push(box(0.15, 0.14, width + 0.32)
+    .translate(frameX, y + height / 2 + 0.08, z));
+  parts.stone.push(box(0.17, 0.12, width + 0.36)
+    .translate(frameX, y - height / 2 - 0.08, z));
+  // Two real mullions stop a large industrial or nave opening reading as a
+  // flat black sticker at close range.
+  parts.wood.push(box(0.10, height - 0.10, 0.065).translate(frameX + outward * 0.025, y, z));
+  parts.wood.push(box(0.10, 0.07, width - 0.10).translate(frameX + outward * 0.025, y, z));
+}
+
 /**
  * Stone church: nave with a steep tiled roof + front tower with belfry
  * openings and a tall pyramidal spire. ~21 m to the spire tip — reads on the
@@ -65,8 +84,7 @@ export function makeChurch(rng, buckets) {
   for (let k = 0; k < 4; k++) {
     const zz = -d / 2 + 2.6 + k * 3.4;
     for (const side of [-1, 1]) {
-      pane.push(box(0.08, 2.2, 0.8).translate(side * (w / 2 + 0.05), 2.9, zz - 1.2));
-      parts.wood.push(box(0.12, 0.12, 0.95).translate(side * (w / 2 + 0.06), 1.75, zz - 1.2));
+      addSideWindow(parts, pane, side * (w / 2 + 0.05), 2.9, zz - 1.2, 0.8, 2.2);
     }
   }
   // front tower + belfry + spire
@@ -126,8 +144,7 @@ export function makeFactory(rng, buckets) {
     const zz = -d / 2 + (k + 0.5) * (d / 5);
     for (const side of [-1, 1]) {
       if (rng() < 0.12) continue;
-      pane.push(box(0.08, 2.6, 1.35).translate(side * (w / 2 + 0.05), 3.4, zz));
-      parts.wood.push(box(0.12, 0.10, 1.5).translate(side * (w / 2 + 0.06), 2.0, zz));
+      addSideWindow(parts, pane, side * (w / 2 + 0.05), 3.4, zz, 1.35, 2.6);
     }
   }
   // loading door + name board

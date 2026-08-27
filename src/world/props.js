@@ -41,6 +41,7 @@ import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
 import { preloadPropModels, requirePropModels } from './propsModelStore.ts';
+import { writeStructureInstanceTint } from './structureInstanceAppearance.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -1229,6 +1230,7 @@ ${snowCap ? `
   const dPools = new Map(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
+  const _structureTint = new THREE.Color();
   // DESTRUCTIBLES r1: kinds whose INTACT geometry is a licensed baked model
   // (props-models.json) — they cannot live in inhabitKit (no bakedGeometry
   // there). Same meta shape; the shared broken state is the burst-bag heap.
@@ -4131,6 +4133,13 @@ ${snowCap ? `
       const tint = new THREE.Color(0.52, 0.50, 0.47);
       for (let i = 0; i < pool.mats4.length; i++) imI.setColorAt(i, tint);
     }
+    if (meta.instanceTintStrength) {
+      for (let i = 0; i < pool.mats4.length; i++) {
+        writeStructureInstanceTint(_structureTint, kind, i, seed, meta.instanceTintStrength);
+        imI.setColorAt(i, _structureTint);
+      }
+      imI.instanceColor.needsUpdate = true;
+    }
     const castsDynamicShadow = destructibleCastsShadow(meta);
     imI.castShadow = castsDynamicShadow;
     imI.receiveShadow = true;
@@ -4339,6 +4348,13 @@ ${snowCap ? `
         const bi = pool.nBroken++;
         if (bi < pool.mats4.length) {
           pool.imB.setMatrixAt(bi, pool.mats4[rec.slot]);
+          if (pool.meta.instanceTintStrength) {
+            writeStructureInstanceTint(
+              _structureTint, rec.kind, rec.slot, seed, pool.meta.instanceTintStrength,
+            );
+            pool.imB.setColorAt(bi, _structureTint);
+            pool.imB.instanceColor.needsUpdate = true;
+          }
           pool.imB.count = pool.nBroken;
           pool.imB.visible = true;
           pool.imB.instanceMatrix.needsUpdate = true;

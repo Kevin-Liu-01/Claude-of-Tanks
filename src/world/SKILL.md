@@ -20,6 +20,9 @@ readiness, covered GPU warm, dormancy, and activation telemetry. `map.js` compos
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
 props, destructibles, toppling, and wrecks own their visual/runtime layers.
+`structureConnectivity.ts` rejects unsupported authored parts before batching;
+`structureInstanceAppearance.ts` supplies stable intact/wreck instance tint
+without creating per-building materials.
 `propsModelStore.ts` owns the bounds-checked packed runtime representation of
 the attributed `props-models.json` authoring source; regenerate it with
 `npm run world:props:pack` after intentional source changes.
@@ -32,6 +35,9 @@ Keep height/collision queries deterministic and headless-capable. Bound per-fram
 LOD/vegetation work, reuse world caches, and reset destruction on rematch.
 Certify structure connectivity before material-bucket or instanced-geometry
 merges; merged geometry is too late to identify a floating authored fixture.
+Keep facade depth inside existing material buckets and repeated-building
+variation inside instance attributes. Never clone a material per placement or
+add a steady-frame structure update solely for cosmetic variety.
 Keep large baked numeric streams out of executable chunks. Start their bounded
 transfer with explicit Battle intent, overlap it with independent construction,
 and verify the packed representation against its authoring source.

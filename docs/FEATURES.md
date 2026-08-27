@@ -184,11 +184,14 @@ rather than remaining a lower-detail compatibility tier.
 
 Landmarks and ordinary buildings share connected exterior-detail rules:
 foundations, courses, corner piers, gutters, drainpipes, awnings, service
-conduits, AC/louver clusters, window frames, ledges, doors, chimneys, dormers,
-and roof equipment must touch a wall, the ground, or a declared supported
+conduits, AC/louver clusters, facade bay piers, recessed windows, crossed
+mullions, ledges, doors, chimneys, dormers, and roof equipment must touch a
+wall, the ground, or a declared supported
 fixture. Large structures merge those details into their existing material
 batches. Repeated destructible buildings retain one instanced intact pool and
 one instanced wreck pool, including collapsed panels and surviving frames.
+Stable per-instance tinting breaks up repeated prefab rows and follows the same
+building into its packed wreck slot without another material or draw call.
 Packed AO/roughness maps and normal maps deepen surfaces without multiplying
 geometry, while restrained clearcoat and emissive panes reuse the renderer's
 environment and post-processing stack.

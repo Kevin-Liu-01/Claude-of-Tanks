@@ -145,10 +145,15 @@ obstacle is not passable on one authority and solid on another.
 
 Buildings use two bounded authoring paths. Large landmarks add windows,
 reveals, ledges, gutters, downpipes, attached service equipment, roof fittings,
-and biome-specific trim to the existing material buckets before those buckets
-are merged. Lightweight destructible structures use intact and broken
+facade bay piers, framed utility apertures, louvers, and biome-specific trim to
+the existing material buckets before those buckets are merged. Large side-wall
+windows use recessed surrounds and crossed mullions instead of flat dark slabs.
+Lightweight destructible structures use intact and broken
 `InstancedMesh` pools, so adding façade depth or a persistent collapsed frame
-does not add one draw call per building. An authoring-time support graph rejects
+does not add one draw call per building. A bounded deterministic
+`instanceColor` multiplier gives repeated wood, canvas, and metal structures
+individual weathering tones; the packed debris slot inherits the same tint
+when that exact building is destroyed. An authoring-time support graph rejects
 floating fixtures and disconnected landmark parts. The same support receipt is
 created before each lightweight building is merged, proving every intact roof,
 porch, ladder, rack, frame, utility fitting, and grounded accessory reaches a
@@ -162,7 +167,10 @@ both paths keep the same material bindings. Glass uses the existing environment
 map and restrained clearcoat, while a deterministic minority of window panes
 emit warm light into the renderer's existing bloom path. Tone mapping, bloom,
 environment reflections, warm sun, cool sky fill, and cascaded shadows remain
-central renderer responsibilities rather than per-building effects.
+central renderer responsibilities rather than per-building effects. The world
+uses PMREM environment response instead of a full-screen SSR pass: at combat
+distance it preserves the intended glass read without adding another
+resolution-dependent reflection traversal to every frame.
 
 The rendering system uses Three.js: a WebGL renderer, procedural sky and PMREM,
 cascaded shadows, atmospheric fog, post-processing, particles, decals, and

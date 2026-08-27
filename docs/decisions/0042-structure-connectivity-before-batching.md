@@ -29,7 +29,10 @@ concrete authoring defects: granary treads gained grounded risers, courtyard
 wells gained a real bucket rope, and rail gantries gained both tower cap beams
 and cabin hangers. Exterior profiles now carry bounded, connected signatures:
 framed entrances plus shutters, balconies, service ladders, roof equipment, or
-adobe buttresses as appropriate to the building family.
+adobe buttresses as appropriate to the building family. Broad urban,
+industrial, civic, and desert elevations also carry connected bay piers and
+framed apertures; industrial openings use louver geometry, while large
+side-wall windows retain recessed surrounds and crossed mullions.
 
 The merged lightweight geometry retains a compact connectivity receipt for
 tests and audits. Broken-state wreckage is exempt because detached collapsed
@@ -44,6 +47,9 @@ panels and debris are intentional after destruction.
   per-frame scene nodes, traversal, material, or draw-call cost.
 - Material merging, intact/broken instancing, collision capture, and rematch
   reset behavior remain unchanged.
+- Repeated destructible families vary through a deterministic instance-color
+  multiplier. The broken packed slot receives the same multiplier as its intact
+  authored slot, with no cloned material or frame-loop work.
 - Small ground clutter may opt out of cascaded-shadow submissions, but complete
   structures, walls, fences, cover, and toppling actors retain their shadows.
   The policy changes renderer work only; it never removes visible geometry.
@@ -52,6 +58,7 @@ panels and debris are intentional after destruction.
 
     node src/world/structureKit.selftest.mjs
     node src/world/structureConnectivity.selftest.mjs
+    node src/world/structureInstanceAppearance.selftest.mjs
     node src/world/exteriorDetailKit.selftest.mjs
     node src/world/destructibleRenderPolicy.selftest.mjs
     npm run qa:maps -- --gate

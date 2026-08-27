@@ -77,6 +77,8 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.equal(meta.collider, true, `${id}: shell/LOS cover while intact`);
   assert.ok(['structureWood', 'structureCanvas', 'structureMetal'].includes(meta.surfaceMaterial),
     `${id}: destructible building selects a textured surface family`);
+  assert.ok(meta.instanceTintStrength >= 0.03 && meta.instanceTintStrength <= 0.08,
+    `${id}: restrained zero-draw-call instance variation`);
   assert.ok(meta.hw > 1 && meta.hl > 1 && meta.h > 3, `${id}: building-scale footprint`);
   const intact = meta.build(seeded());
   const broken = meta.broken(seeded(0x71f00d));

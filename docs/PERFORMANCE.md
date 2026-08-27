@@ -177,6 +177,15 @@ broken), and settled instances require no per-frame transform work. Normal and
 packed AO/roughness textures supply surface relief without turning brickwork or
 panels into high-density geometry.
 
+Repeated structures vary through one `InstancedMesh.instanceColor` attribute,
+not cloned materials. The tint is seeded from map, family, and authored slot;
+destruction rewrites only the newly packed wreck color alongside its existing
+one-time matrix write. Connected facade bays, recessed window surrounds,
+mullions, and louvers are flattened before upload, so the detail pass adds no
+scene nodes, shader programs, materials, texture fetches, or live update work.
+Glass reflects the shared PMREM environment rather than paying for a separate
+screen-space-reflection pass.
+
 Destructible shadow submission is size- and role-aware. Complete buildings,
 cover, walls, fences, large silhouettes, and moving topple actors remain CSM
 casters. Sub-meter grounded clutter receives the same lighting, GTAO, and world
