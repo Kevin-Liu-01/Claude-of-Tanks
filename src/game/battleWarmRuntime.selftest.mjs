@@ -14,6 +14,7 @@ import {
 import {
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
+  warmNetworkOpeningEffects,
   warmNetworkWrecks,
   warmStudioEffects,
 } from './battleWarmRuntime.ts';
@@ -38,6 +39,8 @@ function createFxProbe() {
     dust: () => calls.push('dust'),
     exhaust: () => calls.push('exhaust'),
     destruction: (_position, _source, kind) => calls.push(`destruction:${kind}`),
+    armorScar: () => calls.push('armor-scar'),
+    clearVehicleDecals: () => calls.push('clear-scars'),
     propBreak: (kind) => calls.push(`prop:${kind}`),
     propCrush: () => calls.push('crush'),
     update: (_dt, shells) => calls.push(`update:${shells.length}`),
@@ -123,6 +126,27 @@ submission.restore();
 assert.equal(combatFx.group.visible, false, 'FX root visibility is restored exactly');
 assert.equal(combatCamera.layers.mask, combatMask, 'combat staging restores camera layers');
 assert.equal(combatFx.calls.at(-1), 'reset');
+
+invalidateBattleWarmRuntime();
+const networkFx = createFxProbe();
+const decalRoot = new Group();
+decalRoot.visible = false;
+let networkCompiles = 0;
+await warmNetworkOpeningEffects({
+  fx: networkFx,
+  post: { prepareSoftParticles: () => networkFx.calls.push('soft') },
+  camera: new PerspectiveCamera(),
+  shells: [],
+  decalVisual: { root: decalRoot },
+  compilePrograms: () => { networkCompiles += 1; },
+  warmRender: () => networkFx.calls.push('render'),
+});
+assert.ok(networkFx.calls.includes('armor-scar'),
+  'network loading primes the pooled vehicle-owned impact decal');
+assert.ok(networkFx.calls.includes('clear-scars'),
+  'the warm scar is removed before battle reveal');
+assert.equal(decalRoot.visible, false, 'decal warm restores vehicle visibility');
+assert.equal(networkCompiles, 2, 'FX and vehicle-owned decal programs compile under cover');
 
 const scene = new Scene();
 const bridgeRoot = new Group();

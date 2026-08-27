@@ -392,6 +392,13 @@ interface BattleFxPort {
   exhaust(position: Vector3, scale: number, moving: boolean): void;
   update(dt: number, shells: unknown[], camera: Camera): void;
   destruction(position: Vector3, source: null, kind: 'shot' | 'ammorack'): void;
+  armorScar?(
+    visual: { root: Object3D },
+    position: Vector3,
+    normal: Vector3,
+    caliberMm: number,
+  ): void;
+  clearVehicleDecals?(visual: { root: Object3D }): void;
   resetAll(): void;
 }
 
@@ -419,6 +426,7 @@ export interface OpeningEffectsWarmOptions {
   post: BattlePostPort;
   camera: Camera;
   shells: unknown[];
+  decalVisual?: { root: Object3D } | null;
   compilePrograms(root: Object3D): void;
   warmRender(): void;
 }
@@ -643,6 +651,7 @@ export async function warmNetworkOpeningEffects({
   post,
   camera,
   shells,
+  decalVisual = null,
   compilePrograms,
   warmRender,
 }: OpeningEffectsWarmOptions): Promise<void> {
@@ -666,6 +675,25 @@ export async function warmNetworkOpeningEffects({
     fx.destruction(position, null, 'ammorack');
     await nextFrame();
     try { fx.update(0.016, shells, camera); } catch (_) { /* warm only */ }
+    // Impact particles live under the FX root, but persistent armor scars are
+    // created lazily under the struck vehicle. Prime one shared pooled decal
+    // mesh while the network loader is opaque so first contact cannot allocate
+    // geometry, upload its buffers, and link its material inside a live frame.
+    if (decalVisual?.root && fx.armorScar) {
+      const rootWasVisible = decalVisual.root.visible;
+      try {
+        decalVisual.root.visible = true;
+        decalVisual.root.getWorldPosition(position);
+        position.y += 0.5;
+        normal.set(0, 1, 0);
+        fx.armorScar(decalVisual, position, normal, 120);
+        compilePrograms(decalVisual.root);
+      } finally {
+        fx.clearVehicleDecals?.(decalVisual);
+        decalVisual.root.visible = rootWasVisible;
+      }
+      await nextFrame();
+    }
     post.prepareSoftParticles();
     const layerMask = camera.layers.mask;
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);

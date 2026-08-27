@@ -109,6 +109,14 @@ host match consequently entered in 7.459 seconds, completed naturally with all
 14 shooters active, and recorded zero live frame gaps above 40 ms or hard
 prediction snaps.
 
+The follow-up live volley probe found one more vehicle-owned resource outside
+that FX-root warm: the first persistent armor scar. Network entry now allocates,
+uploads, compiles, clears, and returns one scar mesh to its existing pool behind
+the deployment cover. Reliable impact and destruction reports are also admitted
+as separate presentation beats, so a synchronized volley cannot submit scar,
+impact, audio, wreck, and destruction graphs in one frame. Authoritative event
+order and every effect remain intact; only their render admission is bounded.
+
 ## Reproduction
 
 ```sh

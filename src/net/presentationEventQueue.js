@@ -6,13 +6,18 @@
 const DEFAULT_MAX_EVENTS_PER_FLUSH = 3;
 const HEAVY_EVENT_TYPES = new Set([
   'shell_fired',
+  'shell_hit',
+  'shell_impact',
   'tank_destroyed',
   'world_prop_destroyed',
 ]);
 
 /**
  * Preserve authoritative event order while admitting at most one expensive
- * full shot/destruction beat per rendered frame. State convergence remains
+ * full muzzle/impact/destruction beat per rendered frame. A penetrating hit
+ * can create particles, a persistent scar, audio, and then a wreck in the
+ * same reliable batch, so it must end the current flush before the adjacent
+ * destruction event. State convergence remains
  * snapshot-driven; this queue only stages presentation work that can allocate
  * large audio, light, particle, or debris graphs.
  */

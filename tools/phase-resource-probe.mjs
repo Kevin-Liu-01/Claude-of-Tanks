@@ -54,7 +54,11 @@ const RESOURCE_BUDGETS = Object.freeze({
     objects: 900,
     // Boot submits directly against the composer's linear-HDR target. A
     // default-framebuffer compile would add ~38 never-presented sRGB variants.
-    programs: 60,
+    // Fleet-layered ERA keeps its vehicle-space camouflage and two Abrams
+    // workshop finish programs resident after the quiet repair-bay stream.
+    // The measured settled ceiling is 63; retain one-program host/driver
+    // variance without allowing another material family to slip in unnoticed.
+    programs: 64,
     geometries: 300,
     // Two parked-vehicle BatchedMeshes replace twelve color submissions. Their
     // four tiny matrix/indirection DataTextures are renderer internals, not

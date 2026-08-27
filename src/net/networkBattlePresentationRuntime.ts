@@ -157,7 +157,7 @@ export interface NetworkBattlePresentationOptions {
     getFx(): unknown;
     terrain(bridge: NetworkBridgePort): MaybePromise<unknown>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<unknown>;
-    openingEffects(fx: unknown): MaybePromise<unknown>;
+    openingEffects(fx: unknown, bridge: NetworkBridgePort): MaybePromise<unknown>;
     shotCards(specIds: string[]): void;
     compile(): MaybePromise<unknown>;
   };
@@ -372,7 +372,7 @@ export function createNetworkBattlePresentationRuntime({
       await warm.wrecks(preparedBridge);
       throwIfNetworkBattleEntryAborted(signal);
       load.battleLoad.progress(0.87, 'Priming combat effects');
-      await warm.openingEffects(fx);
+      await warm.openingEffects(fx, preparedBridge);
       throwIfNetworkBattleEntryAborted(signal);
       mark('combatWarm');
       warm.shotCards([...preparedBridge.entities.values()].map((entity) => entity.specId));

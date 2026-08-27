@@ -15,10 +15,11 @@ queue.enqueue([
 ]);
 
 assert.equal(queue.hasType('match_ended'), true);
-assert.equal(queue.flush(), 2, 'a flush stops after its first destruction beat');
-assert.deepEqual(emitted, ['shell_hit', 'tank_destroyed']);
-assert.equal(queue.flush(), 1, 'the next destruction waits for the next frame');
+assert.equal(queue.flush(), 1, 'a hit ends its frame before the adjacent wreck beat');
+assert.deepEqual(emitted, ['shell_hit']);
+assert.equal(queue.flush(), 1, 'the destruction waits for the next frame');
 assert.equal(queue.flush(), 1, 'destruction bursts remain frame-bounded');
+assert.equal(queue.flush(), 1, 'each later destruction keeps its own frame');
 assert.equal(queue.flush(), 1, 'the result preserves event order after destruction');
 assert.deepEqual(emitted, [
   'shell_hit', 'tank_destroyed', 'tank_destroyed', 'tank_destroyed', 'match_ended',
