@@ -2886,7 +2886,6 @@ function tick(nowMs) {
     } else {
       armorAimOverlay.hide();
     }
-    touchControls?.update(hudFocus.state?.speed || 0);
     damagePanel.update(hudFocus.combat);
   } else {
     armorAimOverlay.hide();

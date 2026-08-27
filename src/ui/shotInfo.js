@@ -378,19 +378,16 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
 /* The game owns an explicit touch-layout state; do not make battle UI depend
    on browser pointer heuristics alone (desktop emulation and hybrid tablets
    can report a fine pointer while touch controls are active). */
-body.cot-touch-layout .cot-si-card{min-height:0;}
-body.cot-touch-layout .cot-si-hd{min-height:44px;padding:6px 9px;}
-body.cot-touch-layout .cot-si-kicker{font-size:6.5px;}
-body.cot-touch-layout .cot-si-badge{font-size:11px;}
-body.cot-touch-layout .cot-si-dmg{font-size:18px;}
-body.cot-touch-layout .cot-si-sub{height:25px;padding:4px 9px;font-size:9px;}
-body.cot-touch-layout .cot-si-rows{gap:2px 9px;}
-body.cot-touch-layout .cot-si-kv{font-size:8.5px;gap:4px;}
-body.cot-touch-layout .cot-si-pencap{font-size:6.5px;}
-body.cot-touch-layout .cot-si-diag{justify-content:center;}
-body.cot-touch-layout .cot-si-mods{padding:5px 9px 0;}
-body.cot-touch-layout .cot-si-toasthost{top:max(62px,calc(env(safe-area-inset-top) + 52px));
-  bottom:auto;left:max(8px,env(safe-area-inset-left));width:min(236px,42vw);min-height:143px;}
+/* Touch battles already show a reticle hit-confirm and resolved damage number.
+   The desktop analysis dossier duplicates that feedback while obscuring a
+   third of a phone battlefield, so it is intentionally desktop-only. */
+body.cot-touch-layout .cot-si-cardhost,
+body.cot-touch-layout .cot-si-log{display:none!important;}
+/* Incoming fire remains actionable, but as one compact reading below the
+   minimap—not a stack over the ammo tray or the steering/aim controls. */
+body.cot-touch-layout .cot-si-toasthost{top:calc(max(8px,env(safe-area-inset-top)) + 108px);
+  bottom:auto;left:max(8px,env(safe-area-inset-left));right:auto;width:min(200px,48vw);min-height:41px;}
+body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none;}
 body.cot-touch-layout .cot-si-toast{height:41px;padding:4px 7px;}
 body.cot-touch-layout .cot-si-toast .l1{height:17px;font-size:9.5px;}
 body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
@@ -583,6 +580,9 @@ export function createShotInfo(bus) {
   const receivedLog = [];  // per-battle incoming entries (full battle)
   const stats = newStats();
   let endInfo = null;      // battle:ended {timeS, map} for the report header
+
+  const isTouchBattleLayout = () =>
+    document.body.classList.contains('cot-touch-layout');
 
   // --- spotting assist (r3) --------------------------------------------------
   // Driven purely by the sim's tank:spotted events. When the payload carries
@@ -980,6 +980,9 @@ export function createShotInfo(bus) {
   }
 
   function showCard(ev, cls) {
+    // Mobile already has the resolved damage number and reticle confirmation.
+    // Do not build diagrams or start image bakes for a surface CSS will hide.
+    if (isTouchBattleLayout()) return;
     if (logOpen) return; // the log view replaces floating cards
     while (cardHost.firstChild) cardHost.firstChild.remove();
     const card = buildCard(ev, cls);
@@ -1031,6 +1034,11 @@ export function createShotInfo(bus) {
   }
 
   function toggleLog() {
+    if (isTouchBattleLayout()) {
+      logOpen = false;
+      logPanel.classList.remove('open');
+      return;
+    }
     logOpen = !logOpen;
     logPanel.classList.toggle('open', logOpen);
     if (logOpen) {

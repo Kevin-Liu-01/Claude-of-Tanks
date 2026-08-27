@@ -1030,7 +1030,9 @@ body[data-cot-width='phone'] .cot-battle{font-size:13px;padding-left:5px;gap:5px
 body[data-cot-width='phone'] .cot-battle .battle-active-icon{width:18px;height:18px}
 body[data-cot-width='phone'] .cot-battle-mode{font-size:7px;padding-right:7px}
 body[data-cot-width='phone'] .cot-battle-mode::after{right:5px}
-body[data-cot-width-density='narrow'] .cot-battle-control{top:max(64px,calc(env(safe-area-inset-top) + 58px))}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-battle-control{
+  top:max(64px,calc(env(safe-area-inset-top) + 58px));
+}
 body[data-cot-width='phone'] .cot-garage-tools{width:calc(100vw - (var(--cot-overlay-edge) * 2))}
 body[data-cot-width='phone'] .cot-garage-tool{padding:0 7px;gap:5px;font-size:6.5px;letter-spacing:.08em}
 body[data-cot-width='phone'] .cot-garage-tool svg{width:15px;height:15px}

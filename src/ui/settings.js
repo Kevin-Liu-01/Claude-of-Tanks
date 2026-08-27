@@ -293,9 +293,9 @@ const SETTINGS_CSS = `
 .cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
   text-transform:uppercase;}
 
-/* Compact option pills retain the measured 28 px touch-target floor. */
-body.cot-touch-layout .cot-set-body button{min-height:40px;}
-body.cot-touch-layout .cot-set-ftr .cot-set-btn{min-height:42px;}
+/* Touch settings use a true finger-sized target floor in every orientation. */
+body.cot-touch-layout .cot-settings button{min-height:44px;}
+body.cot-touch-layout .cot-set-close{width:44px;height:44px;}
 `;
 
 const GEAR_SVG = uiIconSVG('settings', 22, '#9fb0bf');
@@ -602,11 +602,13 @@ export function createSettings(opts) {
     const wrap = el('div', 'cot-set-slider', row);
     const range = el('input', '', wrap);
     range.type = 'range';
+    range.setAttribute('aria-label', label);
     range.min = String(min);
     range.max = String(max);
     range.step = o.step || '0.05';
     const num = el('input', '', wrap);
     num.type = 'number';
+    num.setAttribute('aria-label', `${label} value`);
     num.min = String(toD(min));
     num.max = String(toD(max));
     num.step = o.dispStep || '0.05';
@@ -659,11 +661,14 @@ export function createSettings(opts) {
       const on = !!input.getSettings()[key];
       btns[0].classList.toggle('sel', !on);
       btns[1].classList.toggle('sel', on);
+      btns[0].setAttribute('aria-pressed', String(!on));
+      btns[1].setAttribute('aria-pressed', String(on));
     };
     for (const [val, txt] of [[false, 'Off'], [true, 'On']]) {
       const b = el('button', '', seg);
       b.type = 'button';
       b.textContent = txt;
+      b.setAttribute('aria-label', `${label}: ${txt}`);
       b.addEventListener('click', () => {
         if (!!input.getSettings()[key] === val) return; // no-op re-click
         input.setSetting(key, val);
@@ -679,15 +684,16 @@ export function createSettings(opts) {
 
   function renderGameplay() {
     body.textContent = '';
+    const touchLayout = !!(input.isTouchLayout && input.isTouchLayout());
     // settings_ui r2: each cluster sits on its own plate card
-    const mouse = groupCard(body, 'Mouse');
-    sliderRow(mouse, 'Mouse sensitivity', 'sensitivity', 0.2, 3);
-    sliderRow(mouse, 'Sniper sensitivity scale', 'sniperSensScale', 0.2, 3);
-    sliderRow(mouse, 'Aim smoothing (0% = raw input)', 'aimSmoothing', 0, 1, {
+    const aim = groupCard(body, touchLayout ? 'Touch aim' : 'Mouse');
+    sliderRow(aim, touchLayout ? 'Swipe sensitivity' : 'Mouse sensitivity', 'sensitivity', 0.2, 3);
+    sliderRow(aim, 'Sniper sensitivity scale', 'sniperSensScale', 0.2, 3);
+    sliderRow(aim, 'Aim smoothing (0% = raw input)', 'aimSmoothing', 0, 1, {
       step: '0.01', dispStep: '1', unit: '%', digits: 0,
       toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
     });
-    onOffRow(mouse, 'Invert vertical aim (Y axis)', 'invertY');
+    onOffRow(aim, 'Invert vertical aim (Y axis)', 'invertY');
 
     // gunnery r1 (owner): what right-click does — hold-to-aim (default),
     // toggle-aim, or the classic gun-lock free look. Persisted as
@@ -697,29 +703,31 @@ export function createSettings(opts) {
       ['toggle', 'toggle-aim'],
       ['freelook', 'free look'],
     ];
-    const rmbRow = el('div', 'cot-set-row', mouse);
-    el('span', 'lb', rmbRow).textContent = 'Right click (RMB)';
-    const rmbSeg = el('div', 'cot-set-seg', rmbRow);
-    const rmbBtns = [];
-    for (const [value, label] of RMB_MODE_DEFS) {
-      const b = el('button', '', rmbSeg);
-      b.type = 'button';
-      b.textContent = label;
-      b.dataset.mode = value;
-      b.addEventListener('click', () => {
-        input.setSetting('rmbMode', value);
-        for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === value);
-        emit('ui:click', {});
-      });
-      rmbBtns.push(b);
+    if (!touchLayout) {
+      const rmbRow = el('div', 'cot-set-row', aim);
+      el('span', 'lb', rmbRow).textContent = 'Right click (RMB)';
+      const rmbSeg = el('div', 'cot-set-seg', rmbRow);
+      const rmbBtns = [];
+      for (const [value, label] of RMB_MODE_DEFS) {
+        const b = el('button', '', rmbSeg);
+        b.type = 'button';
+        b.textContent = label;
+        b.dataset.mode = value;
+        b.addEventListener('click', () => {
+          input.setSetting('rmbMode', value);
+          for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === value);
+          emit('ui:click', {});
+        });
+        rmbBtns.push(b);
+      }
+      for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
+      const rmbNote = el('div', 'cot-set-note', aim);
+      rmbNote.textContent =
+        'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
+        '(aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. ' +
+        'Free look: hold RMB to look around while the gun stays put (classic). Caps Lock is always ' +
+        'the dedicated free-look hold; Left Alt remains its secondary default. Shift toggles sniper mode.';
     }
-    for (const x of rmbBtns) x.classList.toggle('sel', x.dataset.mode === input.getSettings().rmbMode);
-    const rmbNote = el('div', 'cot-set-note', mouse);
-    rmbNote.textContent =
-      'Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view ' +
-      '(aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. ' +
-      'Free look: hold RMB to look around while the gun stays put (classic). Caps Lock is always ' +
-      'the dedicated free-look hold; Left Alt remains its secondary default. Shift toggles sniper mode.';
 
     const battle = groupCard(body, 'Battle');
     const diffRow = el('div', 'cot-set-row', battle);
@@ -766,9 +774,10 @@ export function createSettings(opts) {
       : 'No controller detected. Plug in any standard gamepad and press a button.';
 
     const note = el('div', 'cot-set-note', body);
-    note.textContent =
-      'Sniper sensitivity stacks with the per-zoom reduction, so high zoom always aims finer. ' +
-      'Type exact values in the number fields for precise tuning.';
+    note.textContent = touchLayout
+      ? 'Swipe sensitivity and smoothing apply directly to the battlefield aim pad. Sniper sensitivity stacks with each zoom step.'
+      : 'Sniper sensitivity stacks with the per-zoom reduction, so high zoom always aims finer. ' +
+        'Type exact values in the number fields for precise tuning.';
   }
 
   // --- SOUND tab ---------------------------------------------------------------

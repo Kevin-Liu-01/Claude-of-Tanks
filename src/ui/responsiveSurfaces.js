@@ -156,28 +156,14 @@ body[data-cot-panels='overlay'] .cot-si-toast{height:41px;padding:4px 7px}
 body[data-cot-panels='overlay'] .cot-si-toast .l1{height:17px;font-size:9.5px}
 body[data-cot-panels='overlay'] .cot-si-toast .l1 b{font-size:11px}
 body[data-cot-panels='overlay'] .cot-si-toast .l2{height:14px;font-size:7.5px}
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone']) .cot-si-cardhost,
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone']) .cot-si-log{
-  left:max(110px,calc(env(safe-area-inset-left) + 110px));right:auto;top:max(72px,calc(env(safe-area-inset-top) + 60px));
-  bottom:auto;width:260px;
+body.cot-touch-layout .cot-si-cardhost,
+body.cot-touch-layout .cot-si-log{display:none!important}
+body.cot-touch-layout .cot-si-toasthost{
+  left:max(8px,env(safe-area-inset-left));right:auto;
+  top:calc(max(8px,env(safe-area-inset-top)) + 108px);
+  width:min(200px,48vw);min-height:41px;
 }
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-si-toasthost{
-  left:auto;right:max(8px,env(safe-area-inset-right));top:max(60px,calc(env(safe-area-inset-top) + 54px));
-  width:210px;min-height:96px;
-}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-si-toast:nth-last-of-type(n+3){display:none}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-si-hd{min-height:38px;padding-block:4px}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-si-sub{height:22px;padding-block:3px}
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone']) .cot-si-body{display:flex;gap:4px;padding:4px 7px 0}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-si-rows{gap:2px 8px}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-si-kv{font-size:8px}
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone']) .cot-si-diag{grid-template-columns:66px 140px;margin:0;padding:4px;gap:5px}
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone']) .cot-si-diag .box:first-child{width:66px!important;height:66px!important}
-body.cot-touch-layout[data-cot-height-density='tight']:not([data-cot-width='phone']) .cot-si-diag .box:nth-child(2){width:140px!important;height:70px!important}
-body.cot-touch-layout[data-cot-height-density='tight'][data-cot-width='compact'] .cot-si-cardhost,
-body.cot-touch-layout[data-cot-height-density='tight'][data-cot-width='compact'] .cot-si-log{
-  left:max(8px,env(safe-area-inset-left));top:max(110px,calc(env(safe-area-inset-top) + 102px));
-}
+body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none}
 
 /* SETTINGS --------------------------------------------------------------- */
 body[data-cot-width='tablet'] .cot-set-panel{width:min(744px,calc(100vw - 32px));max-height:calc(100dvh - 32px)}
@@ -209,6 +195,7 @@ body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;justify-content:flex-end;flex-wrap:wrap}
 body[data-cot-height='short'] .cot-set-panel{height:100dvh;max-height:none}
+body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
@@ -487,8 +474,6 @@ body[data-cot-width='compact'] .cot-touch .autoaim,
 body[data-cot-width='phone'] .cot-touch .autoaim{right:172px;width:54px;height:54px}
 body[data-cot-width='compact'] .cot-touch .fire.alt,
 body[data-cot-width='phone'] .cot-touch .fire.alt{left:137px;bottom:136px;width:56px;height:56px}
-body[data-cot-width='compact'] .cot-touch .speed,
-body[data-cot-width='phone'] .cot-touch .speed{left:calc(var(--edge) + 128px);min-width:70px}
 body.cot-touch-layout[data-cot-width='compact'] .cot-cons,
 body.cot-touch-layout[data-cot-width='phone'] .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px)}
 body.cot-touch-layout[data-cot-width='compact'] .cot-special,
@@ -500,9 +485,18 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-minimap{width:92px!important;
 body.cot-touch-layout[data-cot-width='compact'] .cot-dp,
 body.cot-touch-layout[data-cot-width='phone'] .cot-dp{display:none}
 
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .aimhint::after{content:' · LANDSCAPE RECOMMENDED'}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:' · LANDSCAPE RECOMMENDED'}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
-body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-net{top:calc(max(8px,env(safe-area-inset-top)) + 96px)}
+body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-minimap{
+  top:calc(max(8px,env(safe-area-inset-top)) + 100px);
+}
+body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-si-toasthost{
+  top:calc(max(8px,env(safe-area-inset-top)) + 208px);
+}
+body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-net{
+  top:calc(max(8px,env(safe-area-inset-top)) + 100px);
+  left:calc(max(8px,env(safe-area-inset-left)) + 100px);
+}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 130px)}
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-touch .autoaim,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-touch .autoaim{bottom:105px}
@@ -517,8 +511,8 @@ body[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touc
 body[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:152px}
 body.cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-special{right:96px}
 body[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .fire.alt{left:108px}
-body[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .speed{
-  left:var(--edge);bottom:calc(max(22px,env(safe-area-inset-bottom)) + 150px);
+body.cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-drive{
+  left:max(12px,env(safe-area-inset-left));bottom:calc(max(22px,env(safe-area-inset-bottom)) + 128px);transform:scale(.7);
 }
 
 body.cot-touch-layout[data-cot-height='short'] .cot-cons{flex-direction:row;bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px)}
@@ -549,12 +543,14 @@ body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .fire
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .fire .lb,
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .scope .lb,
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .autoaim .lb{bottom:-15px;font-size:7px}
-body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .speed{
-  left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(26px,env(safe-area-inset-bottom));min-width:72px;height:39px;
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-drive{
+  left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(18px,env(safe-area-inset-bottom));transform:scale(.72);
 }
-body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .speed b{font-size:21px}
-body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .aimhint{right:20%;bottom:27%}
+body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch-aim .aimhint{right:20%;bottom:27%}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:106px!important;height:106px!important}
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
+  left:calc(max(8px,env(safe-area-inset-left)) + 114px);
+}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shells{
   right:max(10px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:4px;
 }
@@ -582,11 +578,15 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-tou
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .fire{width:76px;height:76px}
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .scope{right:max(100px,calc(env(safe-area-inset-right) + 100px));width:50px;height:50px}
 body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .autoaim{right:max(158px,calc(env(safe-area-inset-right) + 158px));width:50px;height:50px}
-body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .speed{left:max(126px,calc(env(safe-area-inset-left) + 126px))}
+body.cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-drive{
+  left:max(126px,calc(env(safe-area-inset-left) + 126px));transform:scale(.68);
+}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-minimap{width:92px!important;height:92px!important}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-cons{flex-direction:row;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-shells{bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px)}
-body.cot-touch-layout[data-cot-height-density='tight'] .cot-special{right:160px;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)}
+/* touchControls is battle-lazy and injects its base placement after this
+   stylesheet. These tight-height positions are deliberate cascade endpoints. */
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-cons{flex-direction:row;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-shells{bottom:calc(max(26px,env(safe-area-inset-bottom)) + 150px)!important}
+body.cot-touch-layout[data-cot-height-density='tight'] .cot-special{right:160px;bottom:calc(max(26px,env(safe-area-inset-bottom)) + 94px)!important}
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp{display:none}
 
 /* ROOM CHAT -------------------------------------------------------------- */

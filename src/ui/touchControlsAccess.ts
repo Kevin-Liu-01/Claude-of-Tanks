@@ -4,7 +4,6 @@ export interface TouchControlsRuntime {
   readonly root: HTMLElement;
   readonly isLayout: boolean;
   refresh(): void;
-  update(speedMps?: number): void;
 }
 
 export interface TouchControlsOptions {

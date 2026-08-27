@@ -5,7 +5,7 @@ let attempts = 0;
 let constructions = 0;
 const runtime = {
   root: {}, isLayout: true,
-  refresh() {}, update() {},
+  refresh() {},
 };
 const options = {
   input: {}, bus: {},

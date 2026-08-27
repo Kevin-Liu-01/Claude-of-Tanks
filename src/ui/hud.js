@@ -343,7 +343,7 @@ const HUD_CSS = `
   -webkit-user-select:none;user-select:none;color:#e6edf3;overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.cot-top{position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
+.cot-top{position:absolute;z-index:30;top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
   min-height:62px;display:grid;grid-template-columns:minmax(78px,1fr) 86px minmax(78px,1fr);
   align-items:stretch;padding:0 25px 8px;isolation:isolate;overflow:hidden;
   background:linear-gradient(180deg,rgba(18,24,30,.98),rgba(7,10,14,.93));
@@ -391,13 +391,13 @@ const HUD_CSS = `
 /* net/perf readout (WoT battle constant): fps + ping tokens — r8: TOP-RIGHT
    corner at 10px/0.6 alpha (WoT's placement); parked top-left at full HUD
    weight it read as a dev overlay burned into the frame */
-.cot-net{position:absolute;top:5px;right:10px;font-size:10px;font-weight:700;
+.cot-net{position:absolute;z-index:20;top:5px;right:10px;font-size:10px;font-weight:700;
   font-family:${FONT_COND};letter-spacing:.1em;
   color:#c8d4de;opacity:.6;font-variant-numeric:tabular-nums;line-height:1;
   text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
-.cot-drive{position:absolute;left:169px;bottom:12px;
+.cot-drive{position:absolute;z-index:20;left:169px;bottom:12px;
   width:108px;height:108px;border-radius:50%;pointer-events:none;overflow:hidden;
   contain:layout paint style;
   font-family:${FONT_COND};font-variant-numeric:tabular-nums;color:#edf3f7;
@@ -437,7 +437,6 @@ const HUD_CSS = `
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-body.cot-touch-layout .cot-drive{display:none!important;}
 .cot-ear{position:absolute;top:52px;width:194px;display:flex;flex-direction:column;gap:1px;}
 .cot-ear.l{left:0;}
 .cot-ear.r{right:0;}
@@ -657,7 +656,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.5);
   opacity:0;transition:opacity .18s ease;}
 .cot-bounce.show{opacity:1;}
-.cot-special{position:absolute;left:50%;bottom:88px;transform:translateX(-50%);
+.cot-special{position:absolute;z-index:24;left:50%;bottom:88px;transform:translateX(-50%);
   min-width:154px;height:38px;padding:5px 12px 5px 8px;display:none;
   grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
   cursor:pointer;color:#dce7ef;background:linear-gradient(180deg,rgba(20,27,33,.94),rgba(7,11,15,.96));
@@ -676,12 +675,13 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   padding:1px 4px;line-height:13px;}
 .cot-special.active .sk{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 @keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
-.cot-shells{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
+.cot-shells{position:absolute;z-index:24;bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:flex-end;}
 .cot-shell{width:64px;height:64px;background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
-  cursor:pointer;position:relative;transition:border-color .12s,background .12s;}
-.cot-shell:hover{border-color:rgba(210,225,240,.5);}
+  appearance:none;color:inherit;font:inherit;padding:0;cursor:pointer;position:relative;
+  transition:border-color .12s,background .12s,transform .12s ease-out;}
+.cot-shell:active{transform:scale(.97);}
 .cot-shell.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(34,26,12,.9),rgba(18,13,7,.92));
   box-shadow:0 0 14px rgba(240,160,48,.25);}
@@ -710,7 +710,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   box-shadow:0 4px 14px rgba(0,0,0,.5);text-align:center;}
 .cot-shell .tip b{color:#e6edf3;font-weight:600;}
 .cot-shell .tip .tnm{font-size:11px;font-weight:600;color:#eef4f9;margin-bottom:2px;}
-.cot-shell:hover .tip{display:block;}
+@media (hover:hover) and (pointer:fine){
+  .cot-shell:hover{border-color:rgba(210,225,240,.5);}
+  .cot-shell:hover .tip{display:block;}
+}
 /* Equipment uses the same target size as ammo so every bottom-tray action is
    equally easy to acquire. The divider and smaller pictograms preserve the
    ammo/equipment grouping without shrinking the buttons themselves. */
@@ -723,9 +726,11 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con{width:64px;height:64px;position:relative;cursor:pointer;
   background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
   border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
-  display:flex;align-items:center;justify-content:center;transition:border-color .12s;}
+  appearance:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;
+  transition:border-color .12s,transform .12s ease-out;}
 .cot-con svg{width:26px;height:26px;display:block;}
-.cot-con:hover{border-color:rgba(210,225,240,.5);}
+.cot-con:active{transform:scale(.97);}
+@media (hover:hover) and (pointer:fine){.cot-con:hover{border-color:rgba(210,225,240,.5);}}
 .cot-con .key{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#8a97a3;
   font-family:${FONT_COND};letter-spacing:-.01em;
   border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;z-index:2;}
@@ -738,7 +743,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con.used{opacity:.35;filter:grayscale(1);}
 .cot-con.deny{animation:cotConDeny .3s;}
 @keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
-.cot-hpbars{position:absolute;inset:0;}
+.cot-hpbars{position:absolute;z-index:1;inset:0;}
 .cot-hpb{position:absolute;width:128px;height:31px;text-align:center;will-change:transform;
   contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:11px;font-weight:750;letter-spacing:.045em;color:#ff746a;
@@ -760,7 +765,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 /* Over-target marker: a stable-height instrument follows the exact projected
    turret roof. Width changes only when its target copy changes, preserving
    complete names without causing steady-state frame reflow. */
-.cot-tgt{position:absolute;width:176px;height:64px;text-align:center;display:none;
+.cot-tgt{position:absolute;z-index:4;width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-tgt .bk{height:64px;padding:4px 8px 3px;background:none;}
 /* Tight glyph shadows preserve contrast without painting a dark rectangle
@@ -801,7 +806,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   border-left:5px solid transparent;border-right:5px solid transparent;
   border-top:6px solid rgba(255,120,110,.95);
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));}
-.cot-minimap{position:absolute;right:16px;bottom:16px;width:220px;height:220px;
+.cot-minimap{position:absolute;z-index:20;right:16px;bottom:16px;width:220px;height:220px;
   border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
   background:#0d1310;}
 .cot-minimap canvas{display:block;width:100%;height:100%;}
@@ -942,6 +947,7 @@ export function initHud(bus) {
   // 30 Hz, the thin SVG arc at 20 Hz, and text at 10 Hz. CSS bridges those
   // samples, so motion stays responsive without putting DOM work on every RAF.
   const driveEl = el('div', 'cot-drive', root);
+  driveEl.setAttribute('role', 'status');
   driveEl.setAttribute('aria-label', 'Vehicle speedometer');
   const driveTicks = Array.from({ length: 21 }, (_, index) =>
     `<i style="--tick:${index}"></i>`).join('');
@@ -1295,22 +1301,66 @@ export function initHud(bus) {
   }
 
   const shellBox = el('div', 'cot-shells', root);
+  shellBox.setAttribute('role', 'group');
+  shellBox.setAttribute('aria-label', 'Ammunition selector');
   const slotEls = [];
+  let touchAmmoOpen = false;
+  function setTouchAmmoOpen(open) {
+    const touch = document.body.classList.contains('cot-touch-layout');
+    touchAmmoOpen = !!open && touch;
+    shellBox.classList.toggle('touch-open', touchAmmoOpen);
+    let rank = 0;
+    for (let i = 0; i < slotEls.length; i++) {
+      const slot = slotEls[i];
+      const selected = slot.classList.contains('sel');
+      const available = !touch || selected || touchAmmoOpen;
+      slot.style.setProperty('--touch-ammo-x', selected ? '0px' : `${-(++rank * 56)}px`);
+      slot.tabIndex = available ? 0 : -1;
+      if (available) slot.removeAttribute('aria-hidden');
+      else slot.setAttribute('aria-hidden', 'true');
+      if (touch && selected) slot.setAttribute('aria-expanded', touchAmmoOpen ? 'true' : 'false');
+      else slot.removeAttribute('aria-expanded');
+    }
+  }
+  function activateShellSlot(index, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const touch = document.body.classList.contains('cot-touch-layout');
+    if (touch && !touchAmmoOpen) {
+      setTouchAmmoOpen(true);
+      return;
+    }
+    if (touch) setTouchAmmoOpen(false);
+    selectSlot(index);
+    bus.emit('ui:shellSelect', { slot: index });
+    bus.emit('ui:click', {});
+  }
   for (let i = 0; i < 3; i++) {
-    const s = el('div', 'cot-shell', shellBox);
+    const s = el('button', 'cot-shell', shellBox);
+    s.type = 'button';
     s.innerHTML = `<div class="key">${i + 1}</div><canvas></canvas><div class="cnt"></div><div class="ty"></div>` +
       `<div class="clr"></div>` +
       `<div class="tip"><div class="tnm"></div>PEN <b class="p"></b> &nbsp;&middot;&nbsp; DMG <b class="d"></b></div>` +
       `<div class="cool"></div>`;
     s._icon = s.querySelector('canvas');
     s._iconType = null;
-    s.addEventListener('click', () => {
-      selectSlot(i);
-      bus.emit('ui:shellSelect', { slot: i });
-      bus.emit('ui:click', {});
+    s.addEventListener('pointerdown', (event) => {
+      if (document.body.classList.contains('cot-touch-layout')) activateShellSlot(i, event);
+    });
+    s.addEventListener('click', (event) => {
+      if (document.body.classList.contains('cot-touch-layout') && event.detail !== 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      activateShellSlot(i, event);
     });
     slotEls.push(s);
   }
+  setTouchAmmoOpen(false);
+  window.addEventListener('pointerdown', (event) => {
+    if (touchAmmoOpen && !shellBox.contains(event.target)) setTouchAmmoOpen(false);
+  }, { capture: true });
   el('div', 'cot-consep', shellBox);
   // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
@@ -1320,12 +1370,27 @@ export function initHud(bus) {
   const conCooldownS = CONSUMABLE_RULES.map((r) => r.cooldownS);
   for (let i = 0; i < CONSUMABLES.length; i++) {
     const c = CONSUMABLES[i];
-    const s = el('div', 'cot-con', conBox);
+    const s = el('button', 'cot-con', conBox);
+    s.type = 'button';
     s.title = c.label;
+    s.setAttribute('aria-label', `${c.label}, ready`);
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
-    s.addEventListener('click', () => {
+    const activateConsumable = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       bus.emit('ui:consumable', { slot: i });
+    };
+    s.addEventListener('pointerdown', (event) => {
+      if (document.body.classList.contains('cot-touch-layout')) activateConsumable(event);
+    });
+    s.addEventListener('click', (event) => {
+      if (document.body.classList.contains('cot-touch-layout') && event.detail !== 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      activateConsumable(event);
     });
     conEls.push(s);
   }
@@ -1342,10 +1407,12 @@ export function initHud(bus) {
         cool.style.setProperty('--cool', `${pct.toFixed(1)}%`);
         count.textContent = String(Math.ceil(remaining));
         s.classList.add('cooling');
+        s.setAttribute('aria-label', `${CONSUMABLES[i].label}, ready in ${Math.ceil(remaining)} seconds`);
       } else {
         cool.style.display = 'none';
         count.textContent = CONSUMABLE_READY_MARK;
         s.classList.remove('cooling');
+        s.setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
       }
     }
   }
@@ -1434,6 +1501,7 @@ export function initHud(bus) {
   function selectSlot(i) {
     localSlot = i;
     for (let k = 0; k < 3; k++) slotEls[k].classList.toggle('sel', k === i);
+    setTouchAmmoOpen(false);
   }
 
   // ---------- projection ----------
@@ -2531,8 +2599,12 @@ export function initHud(bus) {
       s.querySelector('.d').textContent = sp.dmg != null ? String(sp.dmg) : '—';
       const n = shellCount(sp);
       s.querySelector('.cnt').textContent = `${n}`;
-      s.classList.toggle('sel', i === slot);
+      const selected = i === slot;
+      s.classList.toggle('sel', selected);
+      s.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      s.setAttribute('aria-label', `${selected ? 'Selected ammunition' : 'Select ammunition'}: ${sp.name || sp.type || `slot ${i + 1}`}, ${n} rounds`);
     }
+    setTouchAmmoOpen(touchAmmoOpen);
     localSlot = slot;
   }
 
@@ -2548,13 +2620,11 @@ export function initHud(bus) {
     }
   }
 
-  // ---------- enemy nameplates ----------
+  // ---------- world-space tank nameplates ----------
   function updateHpBars(frame) {
     const camera = frame.camera;
     const seen = updateHpBars._seen || (updateHpBars._seen = new Set());
-    const layout = updateHpBars._layout || (updateHpBars._layout = []);
     seen.clear();
-    layout.length = 0;
     const tanks = frame.tanks || [];
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
@@ -2597,18 +2667,14 @@ export function initHud(bus) {
         bar.layoutW = Math.max(128, Math.min(280, measured));
         bar.root.style.width = `${bar.layoutW}px`;
       }
-      // keep the plate clear of the dispersion circle: if it would overlap
-      // the reticle region, lift it above the circle's top arc.
-      const plateX = Math.max(8, Math.min(w - bar.layoutW - 8, _sx - bar.layoutW * 0.5));
-      let plateY = Math.max(8, Math.min(h - 44, _sy - 42));
-      const rNow = clampRetR(smoothRadPx); // same clamp the circle draws with
-      if (Math.abs(_sx - aimView.cx) < rNow + 58 &&
-          plateY + 34 > aimView.cy - rNow - 4 && plateY < aimView.cy + rNow) {
-        plateY = Math.max(8, aimView.cy - rNow - 40);
-      }
-      bar.layoutX = plateX;
-      bar.layoutY = plateY;
-      layout.push(bar);
+      // Preserve the literal world projection. Nearby tanks are allowed to
+      // produce overlapping plates; screen-space packing made formations look
+      // farther apart than they are. The HUD root clips plates naturally at
+      // the viewport edge instead of pinning an off-edge tank to the frame.
+      const plateX = _sx - bar.layoutW * 0.5;
+      const plateY = _sy - 42;
+      bar.root.style.transform =
+        `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0)`;
       bar.root.style.display = 'block';
       // fade with distance (fully readable close, slightly ghosted near spot range)
       const op = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
@@ -2618,23 +2684,6 @@ export function initHud(bus) {
         bar.fill.style.width = `${(frac * 100).toFixed(1)}%`;
         bar.lastFrac = frac;
       }
-    }
-    // Keep clustered contacts readable without adding DOM measurement to the
-    // render loop. Bottom-most labels keep their exact projected anchor;
-    // colliding labels above them move upward in fixed 36 px lanes. The pool
-    // array and per-label coordinates are reused every frame.
-    layout.sort((a, b) => b.layoutY - a.layoutY || a.layoutX - b.layoutX);
-    for (let i = 0; i < layout.length; i++) {
-      const cur = layout[i];
-      for (let j = 0; j < i; j++) {
-        const placed = layout[j];
-        if (cur.layoutX + cur.layoutW + 4 <= placed.layoutX ||
-            cur.layoutX >= placed.layoutX + placed.layoutW + 4) continue;
-        if (cur.layoutY + 34 <= placed.layoutY || cur.layoutY >= placed.layoutY + 34) continue;
-        cur.layoutY = Math.max(8, placed.layoutY - 36);
-      }
-      cur.root.style.transform =
-        `translate3d(${cur.layoutX.toFixed(1)}px,${cur.layoutY.toFixed(1)}px,0)`;
     }
     for (const [id, bar] of hpPool) {
       if (!seen.has(id)) bar.root.style.display = 'none';
@@ -3724,6 +3773,7 @@ export function initHud(bus) {
       conEls[i].querySelector('.cnt').textContent = CONSUMABLE_READY_MARK;
       conEls[i].querySelector('.cool').style.display = 'none';
       conEls[i].classList.remove('used', 'deny', 'cooling');
+      conEls[i].setAttribute('aria-label', `${CONSUMABLES[i].label}, ready`);
     }
   });
   bus.on('ui:autoAimState', ({ on, targetName, reason }) => {
@@ -3969,6 +4019,7 @@ export function initHud(bus) {
       netFrames = 0;
       netLastMs = 0;
       if (m === 'hidden') {
+        setTouchAmmoOpen(false);
         ctx.clearRect(0, 0, w, h);
         aimTargetId = null;
         if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }

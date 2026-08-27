@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 await import('./responsiveLayout.selftest.mjs');
 
 const [
-  garage, touch, battleLoad, hud, shotInfo, playMenu, publicNav, responsiveSurfaces, input,
+  garage, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
   networkStatus, transition, perfHud, deviceDiag, renderer, main, gallery, docs,
 ] = await Promise.all([
   readFile(new URL('./garage.js', import.meta.url), 'utf8'),
@@ -13,6 +13,7 @@ const [
   readFile(new URL('./hud.js', import.meta.url), 'utf8'),
   readFile(new URL('./shotInfo.js', import.meta.url), 'utf8'),
   readFile(new URL('./playMenu.js', import.meta.url), 'utf8'),
+  readFile(new URL('./settings.js', import.meta.url), 'utf8'),
   readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.js', import.meta.url), 'utf8'),
   readFile(new URL('../game/input.js', import.meta.url), 'utf8'),
@@ -39,14 +40,26 @@ assert.match(garage,
   /body\[data-cot-panels='overlay'\] \.cot-leftcol,[\s\S]*\.cot-garage \.stats\{display:none\}/,
   'tablet and phone side panels must stay out of the tank stage until requested');
 assert.match(garage,
-  /body\[data-cot-width-density='narrow'\] \.cot-battle-control\{top:max\(64px/,
-  'narrow phones must place Battle below the brand and global controls instead of overlapping them');
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-battle-control\{[\s\S]*top:max\(64px/,
+  'portrait phones must place Battle below the brand and global controls instead of overlapping them');
 
 assert.doesNotMatch(touch, /@media \([^)]*(?:width|height|orientation)/,
   'touch controls must consume the canonical semantic viewport contract');
 assert.match(touch,
-  /body\.cot-touch-layout \.cot-shells[\s\S]*bottom:calc\(max\(22px,[^;]+\) \+ 302px\)[\s\S]*body\.cot-touch-layout \.cot-cons[\s\S]*\+ 124px/,
-  'ammo and consumables must occupy separate vertical lanes');
+  /\.cot-touch\{[^}]*z-index:60[\s\S]*\.cot-touch-aim\{[^}]*z-index:39[\s\S]*aimLayer\.className = 'cot-touch-aim'/,
+  'visible touch controls must paint above the HUD while aim capture stays behind HUD actions');
+assert.match(touch,
+  /body\.cot-touch-layout \.cot-shells\{[^}]*width:48px;height:52px;display:block[\s\S]*\.cot-shells\.touch-open \.cot-shell[\s\S]*--touch-ammo-x/,
+  'mobile ammunition must collapse to one trigger and expand sideways for selection');
+assert.match(hud,
+  /const s = el\('button', 'cot-con', conBox\)[\s\S]*bus\.emit\('ui:consumable'[\s\S]*addEventListener\('pointerdown'/,
+  'touch consumables must use semantic buttons and act on the primary pointer edge');
+assert.match(touch,
+  /body\.cot-touch-layout \.cot-top\{top:0;[^}]*z-index:30/,
+  'mobile scoreboard must attach to the viewport top and stay above world labels');
+assert.match(touch,
+  /body\.cot-touch-layout \.cot-net\{top:max\(8px[\s\S]*left:calc\(max\(8px[\s\S]*body\.cot-touch-layout \.cot-drive\{display:block!important/,
+  'mobile must reuse the analog drive gauge and place FPS/ping beside the minimap');
 assert.match(responsiveSurfaces,
   /body\.cot-touch-layout\[data-cot-width='phone'\] \.cot-dp\{display:none\}/,
   'phone touch layouts must shed the secondary damage panel before it overlaps driving controls');
@@ -86,8 +99,12 @@ assert.match(hud, /\.cot-tgt \.bk\{[^}]*background:none/,
   'aimed-at labels must not paint a broad dark rectangle over the battlefield');
 assert.doesNotMatch(hud, /\.cot-(?:hpb \.nm span|tgt \.nick|tgt \.veh)\{[^}]*text-overflow:ellipsis/,
   'world-space player and vehicle labels must never replace names with ellipses');
-assert.match(hud, /layout\.sort\(\(a, b\) => b\.layoutY - a\.layoutY[\s\S]*placed\.layoutY - 36/,
-  'clustered world labels must resolve into stable lanes instead of overlapping');
+assert.match(hud, /const plateX = _sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = _sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
+  'world tank labels must remain centered on their literal projected tank anchors');
+assert.doesNotMatch(hud, /updateHpBars\._layout|layout\.sort|placed\.layoutY - 36/,
+  'world tank labels must be allowed to overlap instead of entering screen-space lanes');
+assert.doesNotMatch(hud, /keep the plate clear of the dispersion circle|aimView\.cy - rNow - 40/,
+  'reticle avoidance must not detach world tank labels from their projected anchors');
 
 assert.match(shotInfo,
   /\.cot-si-cardhost\{position:absolute;right:16px;top:var\(--cot-si-card-top,var\(--cot-si-roster-bottom,272px\)\);width:320px[\s\S]*\.cot-si-body\{display:flex;flex-direction:column/,
@@ -113,8 +130,11 @@ assert.match(shotInfo,
   /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid rgba\(146,164,180,\.24\);\}/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
-  /body\.cot-touch-layout \.cot-si-card\{min-height:0;\}[\s\S]*body\.cot-touch-layout \.cot-si-diag\{justify-content:center;/,
-  'the game touch-layout state must keep the compact shot-card composition independently of pointer heuristics');
+  /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
+  'touch battles must remove desktop ballistic analysis surfaces from the battlefield');
+assert.match(shotInfo,
+  /if \(isTouchBattleLayout\(\)\) return;[\s\S]*const card = buildCard/,
+  'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
   /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,
   'the report must keep only angle, armor, damage, and penetration analysis rows');
@@ -123,10 +143,32 @@ assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
   'the compact report must not append module chips, zone copy, or a penetration caption');
 assert.match(responsiveSurfaces,
-  /data-cot-height-density='tight'[\s\S]*\.cot-si-body\{display:flex[\s\S]*\.cot-si-diag\{grid-template-columns:66px 140px/,
-  'short landscape touch screens must retain the vertical report composition');
+  /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*\.cot-si-log\{display:none!important\}[\s\S]*\.cot-si-toasthost\{[\s\S]*\+ 108px\)[\s\S]*width:min\(200px,48vw\);min-height:41px/,
+  'all touch orientations must suppress the full report and keep one compact incoming reading below the minimap');
+assert.match(responsiveSurfaces,
+  /data-cot-panels='overlay'\]\[data-cot-orientation='portrait'\] \.cot-minimap\{[\s\S]*\+ 100px\)[\s\S]*data-cot-orientation='portrait'\] \.cot-si-toasthost\{[\s\S]*\+ 208px\)/,
+  'portrait touch battles must place the minimap below top chrome and incoming fire below the minimap');
 assert.match(shotInfo, /cot-si-toasthost[^}]*min-height:164px/,
   'the canonical incoming feed must reserve stable space for battle readings');
+
+assert.match(responsiveSurfaces,
+  /body\[data-cot-height='short'\] \.cot-set-body\{min-height:0;flex:1 1 auto\}/,
+  'short landscape settings must shrink their scroll body so the action footer stays on-screen');
+assert.match(settings,
+  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? 'Touch aim' : 'Mouse'[\s\S]*if \(!touchLayout\) \{[\s\S]*'Right click \(RMB\)'/,
+  'touch settings must show touch aiming language and omit mouse-only RMB controls');
+assert.match(settings,
+  /body\.cot-touch-layout \.cot-settings button\{min-height:44px;\}[\s\S]*\.cot-set-close\{width:44px;height:44px;\}/,
+  'touch settings controls must retain a 44 px finger-target floor');
+assert.match(settings,
+  /range\.setAttribute\('aria-label', label\)[\s\S]*num\.setAttribute\('aria-label', `\$\{label\} value`\)/,
+  'settings sliders and exact-value fields must expose their visible labels to assistive technology');
+assert.match(touch,
+  /root\.setAttribute\('role', 'group'\)[\s\S]*aimLayer\.setAttribute\('role', 'group'\)[\s\S]*role="group" aria-label="Swipe to aim"[\s\S]*role="toolbar" aria-label="Battle options"[\s\S]*role="group" aria-label="Movement joystick"/,
+  'touch HUD labels must sit on semantic roles that expose them without prohibited ARIA');
+assert.match(hud,
+  /driveEl\.setAttribute\('role', 'status'\)[\s\S]*driveEl\.setAttribute\('aria-label', 'Vehicle speedometer'\)/,
+  'the shared analog speedometer must expose its live status semantics on every input mode');
 
 assert.doesNotMatch(playMenu, /<select data-control="(?:map|team|size)"/,
   'live room controls must use the game listbox component instead of browser-native selects');
