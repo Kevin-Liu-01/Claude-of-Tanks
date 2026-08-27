@@ -887,6 +887,10 @@ It receives combat rules and the network lane as ports, imports no renderer or
 combat implementation, and is the single action-policy interface used by HUD,
 fixed-step input, capture, and network entry.
 
+`src/game/playerFrameInput.ts` owns the variable-rate device poll. It mutates
+the canonical `TankInput`, publishes one stable camera-input record, retains
+keyboard/touch/gamepad/cursor/RMB policy, and performs no per-frame allocation.
+
 ### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
 ```js
 export function createAudio() => Audio

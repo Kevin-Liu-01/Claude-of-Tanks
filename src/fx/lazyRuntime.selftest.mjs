@@ -28,6 +28,9 @@ const killcamAccess = await readFile(
 const playerBattleActions = await readFile(
   new URL('../game/playerBattleActions.ts', import.meta.url), 'utf8',
 );
+const playerFrameInput = await readFile(
+  new URL('../game/playerFrameInput.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -86,6 +89,15 @@ if (!/createPlayerBattleActions\(\{/.test(main)
 if (/from\s+['"]three['"]/.test(playerBattleActions)
     || /battleClientRuntime|\.\.\/sim\//.test(playerBattleActions)) {
   throw new Error('player action policy must remain renderer-free and receive combat rules as ports');
+}
+if (!/createPlayerFrameInput\(\{/.test(main)
+    || /input\.consumeMouseDelta\(/.test(main)
+    || /input\.getVirtualMove\(/.test(main)) {
+  throw new Error('the render loop must delegate device polling to the typed frame owner');
+}
+if (/from\s+['"]three['"]/.test(playerFrameInput)
+    || /document\.|window\.|setTimeout\(/.test(playerFrameInput)) {
+  throw new Error('frame input must remain allocation-free and independent from browser presentation');
 }
 const networkBattle = main.slice(
   main.indexOf('async function presentNetworkBattle('),

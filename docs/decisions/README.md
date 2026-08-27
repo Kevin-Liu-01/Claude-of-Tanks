@@ -57,3 +57,4 @@ runtime documents remain authoritative for behavior.
 - [0045 — Combat effects have one retryable runtime owner](0045-typed-fx-runtime-lifecycle.md)
 - [0046 — Killcam has one retryable runtime owner](0046-typed-killcam-runtime-lifecycle.md)
 - [0047 — Player battle actions have one typed policy owner](0047-typed-player-battle-actions.md)
+- [0048 — Rendered player input has one allocation-free frame owner](0048-typed-player-frame-input.md)

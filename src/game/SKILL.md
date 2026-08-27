@@ -25,6 +25,8 @@ owns bot decisions and is injected into the headless multiplayer authority;
 `input.js` normalizes devices; `profile.js` persists real local match history;
 `playerBattleActions.ts` owns ammunition, consumable, special-action, and
 local-versus-network command policy without importing the combat runtime;
+`playerFrameInput.ts` owns allocation-free per-frame movement, fire, mouse,
+touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
@@ -55,8 +57,10 @@ independent map plans, texture generations, or garage timers in `main.js`.
 Acquire killcam implementation through `killcamAccess.ts`; do not restore its
 promise state in the composition root. Route player shell, consumable, and
 special-action policy through `playerBattleActions.ts`; inject combat and
-network ports instead of importing either implementation. Bot changes require
-both focused AI tests and battle probes.
+network ports instead of importing either implementation. Route rendered
+device polling through `playerFrameInput.ts`; keep the render loop ignorant of
+bindings and device modes. Bot changes require both focused AI tests and battle
+probes.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

@@ -88,6 +88,7 @@ import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinato
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
+import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -1553,9 +1554,6 @@ function showEndOverlay(result) {
 // the settings panel (src/ui/settings.js). Zoom is the zoomIn/zoomOut actions (wheel by default).
 // ---------------------------------------------------------------------------
 const debugFlags = { forceFire: false }; // headless-test hook (window.__DEBUG.flags)
-let wheelStep = 0;
-const _mouse = { x: 0, y: 0 };
-const _touchMove = { x: 0, y: 0 };
 
 const input = createInput({ lockElement: renderer.domElement });
 const armorAimOverlay = createArmorAimOverlayAccess();
@@ -1724,12 +1722,6 @@ function showLockToast() {
   });
 }
 
-// Accumulate wheel notches (clamped ±3) instead of a single ±1 latch: two
-// physical notches inside one render frame used to collapse to ONE zoom step
-// (WoT steps once per notch; at 30 fps fast flicks felt like dropped zooms).
-// The rig consumes the whole accumulated value each update (cameraRig.js).
-input.onAction('zoomIn', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = Math.min(wheelStep + 1, 3); });
-input.onAction('zoomOut', () => { if (game.phase === 'battle' && !settings.isOpen()) wheelStep = Math.max(wheelStep - 1, -3); });
 renderer.domElement.addEventListener('mousedown', () => {
   audio.resume();
   if (game.phase !== 'battle' || settings.isOpen()) return;
@@ -1772,6 +1764,11 @@ playerBattleActions = createPlayerBattleActions({
     resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
     startConsumableCooldown: battleClientAccess.startConsumableCooldown,
   },
+});
+const playerFrameInput = createPlayerFrameInput({
+  input,
+  hasAmmo: playerBattleActions.hasAmmo,
+  forceFire: () => !!debugFlags.forceFire,
 });
 // FEEL r12: perf overlay toggle works in every phase (garage included)
 input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); });
@@ -3313,16 +3310,9 @@ function refreshSpotFrame(focus = game.player) {
 // ---------------------------------------------------------------------------
 // Render loop
 // ---------------------------------------------------------------------------
-const camInput = {
-  mouseDX: 0, mouseDY: 0, wheel: 0, rmb: false, shiftPressed: false,
-  // gunnery r1: RMB hold-to-aim level (settings rmbMode 'hold' — the default)
-  aimHold: false,
-  // CURSOR-AIM FALLBACK (no-pointer-lock environments — see input.isCursorAim)
-  cursorAim: false, cursorX: 0, cursorY: 0,
-  // MOBILE AUTO-AIM: null when unlocked, live center-mass point when locked.
-  autoAimPoint: null,
-};
-const _cursorNdc = { x: 0, y: 0 };
+// A typed, allocation-free owner samples every device and publishes the one
+// mutable camera-input record consumed by the existing rig.
+const camInput = playerFrameInput.camera;
 const _listenerPose = {
   pos: null, forward: _fwd, kind: 'camera', ownerId: null, scoped: false,
 }; // reused — no per-frame literal
@@ -3697,78 +3687,18 @@ function tick(nowMs) {
   }
   pauseInfo.lastDtR = dtR;
 
-  // 1. poll input (action layer: rebindable, Set-based state — no ghosting)
-  if (inBattle && !paused && !kcActive && game.player && !game.player.combat.destroyed) {
-    const st = input.getState();
-    const inp = game.player.input;
-    const touchDriving = input.getVirtualMove(_touchMove);
-    inp.throttle = touchDriving
-      ? _touchMove.y
-      : (st.forward ? 1 : 0) - (st.back ? 1 : 0);
-    // CONTROLS-SIGN FIX (input routing only — 1 line): TankInput.steer is
-    // POSITIVE = increasing hull yaw (movement.js "Steering sign" note; the
-    // AI's `steer = wrapAngle(bearing - yaw) * k` depends on it). Increasing
-    // yaw rotates forwardAxis toward +X, which in this Y-up right-handed world
-    // is the player's screen-LEFT — so "steer right" (D) must send steer < 0.
-    // The old `right - left` drove D into +yaw and turned the hull LEFT on
-    // screen (user report; measured -0.36 NDC-x nose swing for D before this
-    // fix — tools/controls-probe.mjs now asserts the screen direction).
-    inp.steer = touchDriving
-      ? -_touchMove.x
-      : (st.left ? 1 : 0) - (st.right ? 1 : 0);
-    inp.brake = st.handbrake;
-    const haveAmmo = playerBattleActions.hasAmmo(inp.shellSlot | 0);
-    // Fire gate: pointer lock held, a recently-active gamepad, or CURSOR-AIM
-    // mode (lock unavailable — LMB must fire whenever the battle is live; the
-    // input layer already refuses edges from clicks on UI overlays).
-    inp.fire = ((st.fire && (input.isLocked() || input.padActive() ||
-      input.isCursorAim() || input.virtualActive())) ||
-      debugFlags.forceFire) && haveAmmo;
-  } else if (game.player) {
-    const inp = game.player.input;
-    inp.throttle = 0; inp.steer = 0; inp.brake = false; inp.fire = false;
-  }
-  // smoothed + sensitivity/invert-scaled aim delta (extra scale in sniper)
-  input.consumeMouseDelta(_mouse, dtR, rig.mode === 'SNIPER');
-  camInput.mouseDX = (paused || battleEntryCameraLocked) ? 0 : _mouse.x;
-  camInput.mouseDY = (paused || battleEntryCameraLocked) ? 0 : _mouse.y;
-  camInput.wheel = (paused || battleEntryCameraLocked) ? 0 : wheelStep;
-  // CURSOR-AIM FALLBACK: pointer lock unavailable — the rig raycasts through
-  // the real cursor instead of screen center and the turret chases that point.
-  const cursorAimNow = input.isCursorAim();
-  camInput.cursorAim = inBattle && !paused && !battleEntryCameraLocked && cursorAimNow;
-  if (camInput.cursorAim) {
-    input.getCursorNdc(_cursorNdc);
-    camInput.cursorX = _cursorNdc.x;
-    camInput.cursorY = _cursorNdc.y;
-  }
-  // FREE-LOOK / RMB ROUTING: Caps Lock (the rebindable `freeLook` action; Left
-  // Alt remains its secondary default) always provides classic hold-to-look with
-  // the aim point and turret frozen. What the RMB-bound `freeCamera` action
-  // does is the player's settings.rmbMode pick —
-  //   'hold' (DEFAULT, owner ask): hold-to-aim — the rig enters sniper while
-  //     held and returns to the prior arcade zoom + preserved aim pitch on
-  //     release (CamInput.aimHold; edges live in cameraRig).
-  //   'toggle': tap toggles sniper through the existing rising-edge lane.
-  //   'freelook': the WoT-classic gun-lock free look (pre-r1 behavior).
-  //     Meaningless in CURSOR-AIM mode (the camera never mouselooks), where
-  //     it degrades to the legacy RMB sniper toggle so no-pointer-lock embeds
-  //     keep a mouse-reachable scope on the button players aim with.
-  // isDown() consumes the sub-frame tap latch, so 'freeCamera' is read
-  // exactly once per frame.
-  const rmbMode = input.getSettings().rmbMode || 'hold';
-  const rmbHeld = input.isDown('freeCamera');
-  const freeLookHeld = input.isDown('freeLook');
-  const sniperToggleHeld = input.isDown('sniperToggle');
-  camInput.rmb = inBattle && !paused && !battleEntryCameraLocked && !cursorAimNow &&
-    (freeLookHeld || (rmbMode === 'freelook' && rmbHeld));
-  camInput.aimHold = inBattle && !paused && !battleEntryCameraLocked &&
-    rmbMode === 'hold' && rmbHeld;
-  camInput.shiftPressed = !battleEntryCameraLocked && (
-    sniperToggleHeld ||
-    (rmbMode === 'toggle' && rmbHeld) ||
-    (rmbMode === 'freelook' && cursorAimNow && rmbHeld));
-  wheelStep = 0;
+  // 1. Poll the complete rebindable device state through one typed owner.
+  // It reuses its scratch records and clears consumed wheel/mouse edges, so
+  // neither the render loop nor the input hot path allocates per frame.
+  playerFrameInput.poll({
+    dtSeconds: dtR,
+    inBattle,
+    paused,
+    killcamActive: kcActive,
+    cameraLocked: battleEntryCameraLocked,
+    rigMode: rig.mode,
+    player: game.player,
+  });
 
   // Network authority keeps pumping while the loading screen owns the page,
   // then consumes the same polled controls once the shared countdown opens.

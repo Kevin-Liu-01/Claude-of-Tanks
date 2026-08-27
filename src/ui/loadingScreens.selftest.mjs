@@ -132,6 +132,9 @@ const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 const minimapRuntimeSource = await readFile(
   new URL('./minimapAssetRuntime.ts', import.meta.url), 'utf8',
 );
+const playerFrameInputSource = await readFile(
+  new URL('../game/playerFrameInput.ts', import.meta.url), 'utf8',
+);
 assert.match(mainSource,
   /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,180}playMenuPromise[\s\S]{0,180}runtime\.hide\(false\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
@@ -325,7 +328,10 @@ assert.match(mainSource,
   /const battleEntryCameraLocked = inBattle && battleLoad\?\.covering === true;/,
   'camera input must stay locked through the complete loader fade');
 assert.match(mainSource,
-  /camInput\.mouseDX = \(paused \|\| battleEntryCameraLocked\) \? 0 : _mouse\.x;/,
+  /playerFrameInput\.poll\(\{[\s\S]{0,260}cameraLocked: battleEntryCameraLocked/,
+  'the render loop must pass the complete loader fade lock to the frame-input owner');
+assert.match(playerFrameInputSource,
+  /input\.consumeMouseDelta\(mouse,[\s\S]{0,180}camera\.mouseDX = paused \|\| cameraLocked \? 0 : mouse\.x;/,
   'queued mouse input must be drained without moving the covered battle camera');
 const openBattleBody = mainSource.slice(
   mainSource.indexOf('function openBattle()'),

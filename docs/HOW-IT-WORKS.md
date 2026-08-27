@@ -76,6 +76,12 @@ local authority, and forwards the equivalent commands during network battles.
 Because simulation rules are injected after Battle intent, this consolidation
 does not pull combat code or rendering work back into first-visit garage boot.
 
+The variable-rate frame loop delegates device sampling to a second typed
+owner. It reuses scratch records while combining keyboard, touch, gamepad,
+pointer-lock fallback, zoom, free-look, and sniper state into the existing
+tank and camera input records. Pauses, loading veils, killcams, empty magazines,
+and destroyed players are handled before either authority path sees input.
+
 ## First-party vehicle pipeline
 
 The registry currently retains **150 vehicle records**. The production

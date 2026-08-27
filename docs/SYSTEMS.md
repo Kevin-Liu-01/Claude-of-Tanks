@@ -71,6 +71,9 @@ strict TypeScript owners:
 - `src/game/playerBattleActions.ts` owns ammunition, shell selection,
   consumable cooldowns, special actions, and the local-versus-network command
   split without importing Three.js or the demand-loaded combat implementation;
+- `src/game/playerFrameInput.ts` owns allocation-free per-frame keyboard,
+  mouse, gamepad, touch, cursor-fallback, zoom, and RMB-mode sampling and
+  publishes the stable movement/fire and camera input records;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete
