@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { SELFTEST_SUITES } from './selftest-suites.mjs';
 
 const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
   .split('\0')
@@ -16,6 +17,39 @@ const forbidden = tracked.filter((file) => (
 ));
 assert.deepEqual(forbidden, [],
   `public tree contains transient task, backup, dependency, QA, or redundant GIF artifacts:\n${forbidden.join('\n')}`);
+
+const registeredSelftests = new Set(
+  Object.values(SELFTEST_SUITES).flat().filter((file) => file.endsWith('.selftest.mjs')),
+);
+const trackedSelftests = tracked.filter((file) => file.endsWith('.selftest.mjs'));
+const orphanedSelftests = trackedSelftests.filter((file) => !registeredSelftests.has(file));
+const missingSelftests = [...registeredSelftests].filter((file) => !fs.existsSync(file));
+assert.deepEqual(orphanedSelftests, [],
+  `tracked self-tests must remain executable release contracts or be removed:\n${orphanedSelftests.join('\n')}`);
+assert.deepEqual(missingSelftests, [],
+  `self-test registry references missing public files:\n${missingSelftests.join('\n')}`);
+
+const ownedSkillDocs = new Set([
+  '.agents/skills/improve-threejs/SKILL.md',
+  'SKILL.md',
+  'server/SKILL.md',
+  'src/audio/SKILL.md',
+  'src/engine/SKILL.md',
+  'src/fx/SKILL.md',
+  'src/gallery/SKILL.md',
+  'src/game/SKILL.md',
+  'src/net/SKILL.md',
+  'src/sim/SKILL.md',
+  'src/ui/SKILL.md',
+  'src/vehicles/SKILL.md',
+  'src/world/SKILL.md',
+  'tools/SKILL.md',
+  'tools/marketing-shots/SKILL.md',
+]);
+const straySkillDocs = tracked.filter((file) => file.endsWith('/SKILL.md') || file === 'SKILL.md')
+  .filter((file) => !ownedSkillDocs.has(file));
+assert.deepEqual(straySkillDocs, [],
+  `unindexed skill documents do not belong in the public source tree:\n${straySkillDocs.join('\n')}`);
 
 const critiqueFiles = tracked.filter((file) => (
   file.startsWith('docs/critique/') && fs.existsSync(file)
@@ -39,5 +73,6 @@ assert.deepEqual(orphanedCritiques, [],
 
 console.log(
   `public-repo-hygiene.selftest: ${tracked.length} tracked paths; ` +
+  `${trackedSelftests.length} registered tests; ${ownedSkillDocs.size} owned skills; ` +
   `${critiqueFiles.length} cited visual receipts; no generated reports or transient artifacts`,
 );

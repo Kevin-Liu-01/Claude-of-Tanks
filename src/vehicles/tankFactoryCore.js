@@ -7028,6 +7028,10 @@ export function createTank(specId, engineCtx, opts = {}) {
   // Capture original materials lazily when destruction starts so decoration
   // added after the base build participates in the continuous burn treatment.
   const originalMats = [];
+  // Exact meshes that cannot carry this visual's in-place burn hook. The
+  // visual streamer may discover them before the later network wreck warm,
+  // so retain the identities instead of returning only the current traversal.
+  const wreckFallbackWarmSources = new Set();
 
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
@@ -7864,7 +7868,7 @@ export function createTank(specId, engineCtx, opts = {}) {
      * disarmed hook is exact-identity output (mix factors are 0).
      */
     prewarmBurn() {
-      if (destroyed) return;
+      if (destroyed) return [];
       root.traverse((o) => {
         // perf-r2d: NODE-HIDDEN meshes are hooked too — conditional GLB
         // addon parts (TUSK rails/camo variants, addon_keep hardware) are
@@ -7875,8 +7879,21 @@ export function createTank(specId, engineCtx, opts = {}) {
         if (!o.isMesh) return;
         const mm = Array.isArray(o.material) ? o.material : [o.material];
         if (!mm[0] || mm[0].colorWrite === false) return;
-        for (const sm of mm) applyBurnHook(sm, burnU);
+        let patchable = true;
+        for (const sm of mm) patchable = applyBurnHook(sm, burnU) && patchable;
+        // setDestroyed swaps only single-slot non-patchable meshes to the
+        // shared burnt material. Return their exact geometry signatures so
+        // the covered network warm can submit only the variants first blood
+        // will actually use, including fittings without vertex normals.
+        if (mm.length === 1 && !patchable) wreckFallbackWarmSources.add(o);
       });
+      return [...wreckFallbackWarmSources];
+    },
+
+    /** Shared fallback used by non-standard fittings during the wreck sweep. */
+    getWreckFallbackMaterial() {
+      mats.prepareBurnt?.();
+      return mats.burnt;
     },
 
     /**

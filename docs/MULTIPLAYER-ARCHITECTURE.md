@@ -282,11 +282,18 @@ same barrier and may return an existing match owner synchronously.
 Before the ready barrier opens, network presentation switches to the exact
 battlefield light set and warms the fielded roster rather than a generic
 vehicle. The hidden pass submits pursuit dust/exhaust and every impact family,
-attaches distance-managed cosmetic groups, stages their destroyed materials,
-and performs one real offscreen wreck-cohort draw. This forces driver linking
-and hook-owned texture uploads for the live `cot:burnt` permutation; first
-blood is never its first real draw. Every pose, material, detail attachment,
-and visibility flag is restored before the loading veil exits.
+attaches distance-managed cosmetic groups, patches ordinary wreck materials,
+uploads their shared maps, and draws one real isolated fallback probe only when
+the exact roster contains non-patchable source geometry. It never builds and
+draws a second destroyed copy of the whole roster. Every pose, material, detail
+attachment, and visibility flag is restored before the loading veil exits.
+
+Snapshot destruction is ordered as an atomic visual transition: clear the
+vehicle's impact decals first, then swap the vehicle materials and wreck state.
+The reliable `tank:destroyed` presentation event may repeat the idempotent
+cleanup for FX, but correctness cannot wait for that later lane. This prevents
+normal-less decals from being mistaken for tank surfaces and compiled into
+live `cot:burnt` physical/depth permutations.
 
 `src/net/networkBattleBarrier.ts` owns the two authoritative entry predicates
 and the READY retry lease. A slow pristine guest keeps repeating the idempotent

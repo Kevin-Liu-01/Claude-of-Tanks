@@ -22,6 +22,7 @@ presentation invalidation, then forces a complete refresh before motion;
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
 roots while retaining their exact reusable objects;
+`phaseGpuResidency.ts` owns renewable WebGL suspension and covered restoration;
 `resourceLifetime.js` owns phase/cache disposal. Inactive retained phases may
 release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;

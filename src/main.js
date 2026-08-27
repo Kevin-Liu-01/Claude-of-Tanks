@@ -51,7 +51,7 @@ import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createPhaseSceneResidency } from './engine/phaseSceneResidency.ts';
-import { releaseObject3DGpuResources } from './engine/resourceLifetime.js';
+import { createRetainedPhaseGpuResidency } from './engine/phaseGpuResidency.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
@@ -59,6 +59,7 @@ import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.t
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
 import { createWorldBuildCoordinator } from './world/worldBuildCoordinator.ts';
+import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
 import {
@@ -325,29 +326,11 @@ let worldServicesMapId = null;   // collider/minimap/garage placement prepared
 // switching away and back still re-keys, as switchMap always did.
 let skyMapId = 'verdant';
 const _upNormal = new THREE.Vector3(0, 1, 0);
-const hfProxy = {
-  getHeightAt: (x, z) => {
-    if (!world) return 0;
-    const heightField = world.heightField;
-    return !shotMode && heightField.getHeightAtFast
-      ? heightField.getHeightAtFast(x, z)
-      : heightField.getHeightAt(x, z);
-  },
-  getHeightAtFast: (x, z) => {
-    if (!world) return 0;
-    const heightField = world.heightField;
-    return heightField.getHeightAtFast
-      ? heightField.getHeightAtFast(x, z)
-      : heightField.getHeightAt(x, z);
-  },
-  getHeightAtExact: (x, z) => (world ? world.heightField.getHeightAt(x, z) : 0),
-  getNormalAt: (x, z) => (world ? world.heightField.getNormalAt(x, z) : _upNormal),
-  getGroundType: (x, z) => (world ? world.heightField.getGroundType(x, z) : 'hard'),
-  getWaterMaskAt: (x, z) => (world ? world.heightField.getWaterMaskAt(x, z) : 0),
-  get size() { return world ? world.heightField.size : 1000; },
-  get minY() { return world ? world.heightField.minY : 0; },
-  get maxY() { return world ? world.heightField.maxY : 0; },
-};
+const hfProxy = createLiveHeightFieldProxy({
+  getWorld: () => world,
+  useExactHeight: () => shotMode,
+  upNormal: _upNormal,
+});
 
 const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
@@ -550,33 +533,14 @@ const phaseSceneResidency = createPhaseSceneResidency({
   scene,
   garageRoots: [garageStage.group, garageDressing.group, spotTarget, spotA, spotB],
 });
-const garageGpuResidency = {
-  suspended: false,
-  releases: 0,
-  resumes: 0,
-  lastRelease: null,
-};
-
-/**
- * Re-upload the exact retained workshop behind the owning transition. The
- * CPU-side geometry, textures and authored scene graph never changed; only
- * their inactive WebGL allocations were released while battle owned the GPU.
- */
-async function primeGarageGpuResources() {
-  if (!garageGpuResidency.suspended) return;
-  try {
-    // Do not compile the subtree in isolation. `compileAsync(root, camera,
-    // scene)` eagerly materializes light-count variants that the actual
-    // Garage frame never uses, permanently growing renderer.info.programs.
-    // The materials remained resident, so one hidden real frame is the exact
-    // and bounded re-upload path for the evicted buffers and textures.
-    warmRender();
-    await nextFrame();
-  } finally {
-    garageGpuResidency.suspended = false;
-    garageGpuResidency.resumes += 1;
-  }
-}
+const garageGpuResidency = createRetainedPhaseGpuResidency({
+  root: garageDressing.group,
+  preserveRoots: [scene],
+  // `warmRender` is created later in the composition sequence; defer lookup
+  // until Garage return instead of reading its lexical binding during boot.
+  warmRender: () => warmRender(),
+  nextFrame,
+});
 // PERF (performance_budget r4): the garage spots light NOTHING in battle (60 m
 // range, garage is 1500+ m from the battlefield) yet every battle draw paid
 // their per-material spot-light uniform uploads and per-fragment loop
@@ -591,21 +555,7 @@ function setGarageSpots(on) {
   // remount unchanged, while active battle scene/matrix/project walks cannot
   // reach hundreds of off-map Garage descendants.
   phaseSceneResidency.setGarageActive(on);
-  if (!on && !garageGpuResidency.suspended) {
-    garageGpuResidency.lastRelease = releaseObject3DGpuResources(
-      garageDressing.group,
-      {
-        preserveRoots: [scene],
-        // Keep the already-compiled workshop programs. Rebuilding 100+ exact
-        // materials after every battle inflated Three's program cache and
-        // caused a return-transition compile spike; geometry buffers and
-        // texture allocations are the large, safely renewable residency.
-        releaseMaterials: false,
-      },
-    );
-    garageGpuResidency.suspended = true;
-    garageGpuResidency.releases += 1;
-  }
+  if (!on) garageGpuResidency.suspend();
 }
 
 // camo_spotting r2: the pedestal is keyed by the ACTIVE MAP's warm sun
@@ -2130,6 +2080,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         viewerId: request.viewerId,
         spectator,
         worldCollision: world,
+        clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
       }),
       publish: (bridge) => networkSession.publishBridge(bridge),
       groundSampler,
@@ -2472,7 +2423,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   audio.playGarageSting();
   markGarageStage('audio');
   garageTrace.totalMs = Math.round(performance.now() - garageStartedAt);
-  return primeGarageGpuResources();
+  return garageGpuResidency.resume();
 }
 
 // STATE TRANSITIONS: every player-facing exit from a battle passes through
@@ -3360,13 +3311,7 @@ window.__DEBUG = {
   get garageFramePacer() { return { ...garageFramePacer.stats }; },
   get frameLoopScheduler() { return { ...frameLoop.stats }; },
   get phaseSceneResidency() { return { ...phaseSceneResidency.stats }; },
-  get garageGpuResidency() {
-    return {
-      ...garageGpuResidency,
-      lastRelease: garageGpuResidency.lastRelease
-        ? { ...garageGpuResidency.lastRelease } : null,
-    };
-  },
+  get garageGpuResidency() { return garageGpuResidency.diagnostics(); },
   get lastWorldRelease() {
     return worldBuildCoordinator.lastRelease
       ? { ...worldBuildCoordinator.lastRelease } : null;

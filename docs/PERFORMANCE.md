@@ -503,7 +503,7 @@ map construction was removed entirely.
 
 Performance gates now measure phase CPU, forced-GC heap, scene cardinality,
 renderer residency, complete-frame draw/primitive work, cache ownership, and
-render cadence—not FPS alone. A settled Garage paints at a 1 Hz watchdog
+render cadence—not FPS alone. A settled Garage paints at a 0.2 Hz watchdog
 cadence, but input and camera motion immediately restore display-rate frames.
 The showroom camera no longer walks the selected tank subtree to calculate
 bounds that fixed framing discards, and a settled camera solve runs only on a
@@ -517,10 +517,11 @@ and post stack; it does not mistake the composer's final fullscreen triangle
 for the complete frame.
 
 At 1280×577 and DPR 1, the current exact production receipt holds initial and
-returned Garage CPU at 0.017/0.016 core-equivalent with one complete WebGL paint
-per second. The initial Garage occupies 64.9 MB forced-GC heap, 849 scene
-objects, 277 renderer geometries, 87 renderer textures, and 496 complete-frame
-calls. Four of those textures are tiny `BatchedMesh` matrix/indirection data;
+returned Garage CPU at 0.004/0.004 core-equivalent with one watchdog WebGL paint
+every four seconds. The initial Garage occupies 63.3 MB forced-GC heap, 844
+scene objects, 276 renderer geometries, 88 renderer textures, and 290
+complete-frame calls. Four of those textures are tiny `BatchedMesh`
+matrix/indirection data;
 the actual visible scene owns 70 textures totaling 11.13 million pixels.
 These are independent release limits: a high displayed FPS does not compensate
 for excess retained memory, scene traversal, or GPU object residency.
@@ -545,21 +546,30 @@ shadow geometry.
 
 Destroyed-only char and ember atlases are also demand-owned. Constructing a
 live or showroom tank no longer bakes those canvases merely because its
-material vocabulary contains a wreck fallback. The covered battle warm still
-prepares and uploads the roster's exact destroyed variants before rollout;
-`setDestroyed()` prepares them synchronously only when a caller deliberately
-bypasses that warm owner. The production path retained eight fewer renderer
-textures in both active battle and returned Garage, with the same explosion,
-burn-front, ember, and rematch visuals.
+material vocabulary contains a wreck fallback. The covered battle warm patches
+the roster's ordinary materials directly, uploads the shared atlases, and draws
+one isolated fallback probe only when an exact non-patchable source exists. It
+does not instantiate and render a second destroyed copy of every fielded tank.
+`setDestroyed()` remains the synchronous correctness fallback for callers that
+deliberately bypass the warm owner. The production path retains eight fewer
+renderer textures in both active battle and returned Garage, with the same
+explosion, burn-front, ember, and rematch visuals.
+
+Network snapshot reconciliation clears impact decals before applying a newly
+destroyed visual. This ordering matters: decals deliberately omit vertex
+normals, so treating a still-attached decal as vehicle geometry would replace
+it with the opaque wreck fallback, add physical/depth shader permutations, and
+turn first destruction into live shader work. The browser capacity gate records
+program births after its combat baseline and rejects the associated frame gap.
 
 After these measurements, the enforced heap, shader, geometry, texture,
 scene-cardinality, complete-frame call, and triangle ceilings were tightened
 around the healthy production envelope. The current battle gate fails above
-280 MB forced-GC heap, 1,250 active scene objects, 235 programs, 725 geometries,
-324 renderer textures, 650 visible geometries, 220 visible materials, 120
-visible textures, 27 million visible texture pixels, 680 complete-frame calls,
-or 3.8 million triangle submissions.
-Returned Garage has independent 205 MB, 1,000-object, 265-program,
+280 MB forced-GC heap, 1,150 active scene objects, 225 programs, 575 geometries,
+300 renderer textures, 650 visible geometries, 220 visible materials, 120
+visible textures, 27 million visible texture pixels, 660 complete-frame calls,
+or 3.75 million triangle submissions.
+Returned Garage has independent 205 MB, 1,000-object, 260-program,
 510-geometry, 166-renderer-texture, 475-visible-geometry, 200-visible-material,
 82-visible-texture, 15-million-visible-pixel, and 525-call limits so a high-FPS static screen
 cannot hide leaked battle residency. Initial Garage independently fails above
@@ -600,9 +610,9 @@ receipt was:
 
 | Phase | Core equivalent | Forced-GC heap | Scene objects | Programs | Renderer geometries | Renderer textures | Calls |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Initial Garage | 0.017 | 64.9 MB | 849 | 92 | 277 | 87 | 496 |
-| Active 14-tank battle | 0.325 | 274.1 MB | 1,116 | 222 | 724 | 320 | 648 |
-| Returned Garage | 0.016 | 193.3 MB | 885 | 256 | 502 | 162 | 497 |
+| Initial Garage | 0.004 | 63.3 MB | 844 | 92 | 276 | 88 | 290 |
+| Active 14-tank battle | 0.439 | 264.5 MB | 1,116 | 222 | 556 | 292 | 648 |
+| Returned Garage | 0.004 | 183.5 MB | 880 | 256 | 498 | 162 | 291 |
 
 The same frames contained 442/648/467 visible geometries, 174/214/193 visible
 materials, and 70/117/80 visible textures for initial Garage, battle, and
@@ -617,11 +627,24 @@ shadow policy removed roughly 48 median CSM submissions in the comparable
 battle without deleting a structure, destructible state, collider, or visible
 surface.
 
-A clean production Verdant run reached Garage-ready in 1.04 seconds, completed
-covered battle construction in 3.73 seconds, and reached controllable rollout
-in 5.73 seconds. Its largest transition frame gap was 317 ms and it emitted no
-application errors. These receipts measure CPU, heap, shader/texture/geometry
-residency, and complete-frame work in addition to display rate.
+A fresh 14-player browser-host certification reached controllable network play
+in 7.459 seconds, including 1.548 seconds of exact roster construction and 957
+ms of covered combat warming. Its natural full match fired 55 shots from all 14
+participants, produced no live frame gaps above 40 ms, no hard prediction
+snaps, and no browser errors. These receipts measure CPU, heap,
+shader/texture/geometry residency, and complete-frame work in addition to
+display rate.
+
+The first-ever GPU-process path is not yet certified. In the four-profile
+mobile cold probe at 1.6 Mbps, 150 ms latency, and 4× CPU slowdown, profiles
+two through four reached the complete Garage in 7.0–7.8 seconds; the pristine
+GPU process took 18.5 seconds because initial shadow linking and scene uploads
+held the covered post stage for 11.8 seconds. Every profile still reached a
+working Garage without refresh, and injected main-module, evaluation, and
+selected-builder failures recovered automatically. This remains a release
+failure: the next loading round must reduce first-process Garage shader
+diversity or present an interactive lightweight owner while those exact
+programs finish, rather than weakening the eight-second budget.
 
 Passive Garage dwell must report zero resident worlds; desktop
 pedestal/world/rematch caches must stay within 4/2/2 respectively.

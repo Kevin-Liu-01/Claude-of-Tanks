@@ -13,17 +13,18 @@ variants: the measured returned-Garage program count rose from 254 to 295.
 
 ## Decision
 
-When battle takes ownership, `releaseObject3DGpuResources()` releases the
-detached workshop's geometry and texture WebGL allocations without detaching or
-changing its CPU-side objects. Compiled materials remain resident. Returning to
-Garage performs one real covered warm frame, which reuploads only resources the
-actual presentation needs. It must not call isolated `compileAsync` for the
-workshop.
+When battle takes ownership, `phaseGpuResidency.ts` uses
+`releaseObject3DGpuResources()` to release the detached workshop's geometry and
+texture WebGL allocations without detaching or changing its CPU-side objects.
+Compiled materials remain resident. Returning to Garage performs one real
+covered warm frame, which reuploads only resources the actual presentation
+needs. It must not call isolated `compileAsync` for the workshop.
 
-Ordinary live non-authoring terrain consumers use the warmed one-metre height
-cache. Deterministic captures retain the analytic sampler. Deferred midfield
-grass prepares half a chunk beyond the unchanged visible fade band, avoiding
-multiple invisible construction jobs during rollout.
+`liveHeightFieldProxy.ts` gives ordinary non-authoring terrain consumers the
+warmed one-metre height cache while deterministic captures retain the analytic
+sampler. Deferred midfield grass prepares half a chunk beyond the unchanged
+visible fade band, avoiding multiple invisible construction jobs during
+rollout.
 
 ## Consequences
 
@@ -40,6 +41,8 @@ multiple invisible construction jobs during rollout.
 
 ```sh
 node src/engine/resourceLifetime.selftest.mjs
+node src/engine/phaseGpuResidency.selftest.mjs
+node src/world/liveHeightFieldProxy.selftest.mjs
 node src/world/terrainFastGrid.selftest.mjs
 npm run typecheck
 npm run build

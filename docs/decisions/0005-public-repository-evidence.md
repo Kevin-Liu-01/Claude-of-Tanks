@@ -42,6 +42,9 @@ New iterative critique receipts must not be committed.
   historical review transcripts remain available through Git history.
 - Tests remain tracked release contracts; age alone is not grounds to remove a
   test that still runs in `tools/selftest-suites.mjs`.
+- The hygiene gate rejects tracked self-tests outside that registry and skill
+  documents outside the small subsystem index, preventing old task checks or
+  stray agent manuals from accumulating unnoticed.
 
 ## Verification
 

@@ -83,3 +83,4 @@ runtime documents remain authoritative for behavior.
 - [0071 — Terrain chunks share world-local index topology](0071-world-local-shared-terrain-topology.md)
 - [0072 — Browser networking has one cancellable session owner](0072-cancellable-network-browser-session.md)
 - [0073 — Inactive Garage phases release renewable GPU residency](0073-phase-exclusive-gpu-residency.md)
+- [0074 — Network wreck swaps clear decals first](0074-clear-decals-before-network-wreck-swap.md)

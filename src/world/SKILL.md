@@ -15,6 +15,7 @@ and map presentation.
 `worldBuildCoordinator.ts` owns map transfer, construction joins, background
 pacing, cancellation, residency, and eviction. `map.js` composes maps,
 `terrain.js` provides the height field and world-local shared LOD index pools,
+`liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
 props, destructibles, toppling, and wrecks own their visual/runtime layers.
 `propsModelStore.ts` owns the bounds-checked packed runtime representation of

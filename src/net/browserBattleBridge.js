@@ -45,6 +45,7 @@ export function createBrowserBattleBridge({
   worldCollision = null,
   createTankVisual = createTank,
   prepareVisualTextures = prebakeSharedTextures,
+  clearVehicleDecals = null,
 } = {}) {
   if (!engineCtx || !engineCtx.scene || !game) throw new TypeError('engineCtx and game are required');
   const id = String(viewerId || '');
@@ -340,6 +341,13 @@ export function createBrowserBattleBridge({
     entity._networkDestroyPop = pop;
     if (entity.visual.setDestroyed) {
       const startedAt = performance.now();
+      // Match the local destruction contract: impact scars are transient
+      // children of the live tank and must detach before the wreck material
+      // traversal. Network snapshots arrive before their reliable event is
+      // flushed, so relying on the effects listener alone converted those
+      // normal-less decal quads into opaque burnt meshes and linked two new
+      // programs on the first kill frame.
+      if (typeof clearVehicleDecals === 'function') clearVehicleDecals(entity.visual);
       entity.visual.setDestroyed({ pop });
       const elapsedMs = performance.now() - startedAt;
       visualDestroyCount += 1;

@@ -66,7 +66,6 @@ assets:
 | DECORATIONS.md | Vehicle fitting and decoration system |
 | references/tanks/ | Per-vehicle source packets, measurements, known limitations, and certification history |
 | geometry-gate/ | Tool-written work orders and score ledger |
-| critique/ | Independent visual review evidence |
 | FLEET-FREEZE-CURRENT.json | Deterministic geometry fingerprint ledger |
 
 ## World, simulation, and game research

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createBrowserBattleBridge } from './browserBattleBridge.js';
+import { SNAPSHOT_FLAGS } from './snapshot.js';
 
 const visuals = [];
 const visualOptions = [];
@@ -20,6 +21,7 @@ const game = {
   mapId: 'winter',
 };
 const busEvents = [];
+const destructionOrder = [];
 
 function fakeVisual(_specId, _engineCtx, opts) {
   visualOptions.push(opts);
@@ -42,6 +44,7 @@ function fakeVisual(_specId, _engineCtx, opts) {
     eraResets: 0,
     stripEra(name) { this.strippedEra.push(name); },
     resetEra() { this.eraResets++; },
+    setDestroyed() { destructionOrder.push(`wreck:${visuals.indexOf(this)}`); },
     dispose() {},
   };
   visuals.push(visual);
@@ -55,6 +58,9 @@ const bridge = createBrowserBattleBridge({
   viewerId: 'guest',
   createTankVisual: fakeVisual,
   prepareVisualTextures: async (...args) => { textureWarms.push(args); },
+  clearVehicleDecals: (visual) => {
+    destructionOrder.push(`decals:${visuals.indexOf(visual)}`);
+  },
 });
 
 await bridge.prepareRoster([
@@ -109,6 +115,15 @@ snapshot.entities[0].eraSpent = [];
 bridge.apply(snapshot);
 assert.equal(visuals[0].eraResets, 1,
   'new-round empty ERA state restores the reusable vehicle visual');
+
+snapshot.tick++;
+snapshot.entities[0].flags = SNAPSHOT_FLAGS.DESTROYED;
+snapshot.entities[0].hp = 0;
+bridge.apply(snapshot);
+assert.deepEqual(destructionOrder, ['decals:0', 'wreck:0'],
+  'network destruction clears transient scars before the wreck material traversal');
+snapshot.entities[0].flags = 0;
+snapshot.entities[0].hp = 2000;
 
 snapshot.tick++;
 bridge.apply(snapshot, 1 / 60, [{

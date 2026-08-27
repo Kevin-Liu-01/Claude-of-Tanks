@@ -89,6 +89,16 @@ compile-isolation result of 295. Host task-duration readings varied under local
 contention, so the release gate retains the independent frame-health trace and
 resource ceilings instead of treating FPS as the only acceptance signal.
 
+The same round removed an incorrect full-roster wreck-cohort draw from covered
+entry. Exact patchable materials and shared maps warm directly; a real isolated
+fallback draw occurs only when the roster contains non-patchable source
+geometry. Multiplayer reconciliation now clears impact decals before a wreck
+swap, preventing a normal-less decal from becoming an opaque burnt material and
+creating physical/depth programs during live combat. A fresh rendered 14-player
+host match consequently entered in 7.459 seconds, completed naturally with all
+14 shooters active, and recorded zero live frame gaps above 40 ms or hard
+prediction snaps.
+
 ## Reproduction
 
 ```sh

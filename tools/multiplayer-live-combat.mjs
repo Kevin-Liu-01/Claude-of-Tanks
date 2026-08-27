@@ -822,6 +822,14 @@ async function beginMeasuredCombat(pages, renderedRole) {
       state.programBaseline = new Set(
         (window.__DEBUG.renderer.info.programs || []).map((program) => program.cacheKey),
       );
+      state.wreckProgramBaseline = (window.__DEBUG.renderer.info.programs || [])
+        .filter((program) => program.name === 'cot:burnt'
+          || String(program.cacheKey || '').includes('burnt-triplanar'))
+        .map((program) => ({
+          cacheKey: String(program.cacheKey || '').slice(0, 800),
+          name: program.name || '',
+          usedTimes: program.usedTimes,
+        }));
       window.__DEV_TRACE.clear();
       window.__DEV_TRACE.mark('live-7v7:measured-combat');
       window.dispatchEvent(new KeyboardEvent('keydown', {
@@ -914,6 +922,7 @@ async function collectFullReport(page, renderedRole) {
       presentation: window.__DEBUG.networkPresentation,
       renderer,
       newPrograms,
+      wreckProgramBaseline: state.wreckProgramBaseline || [],
       rosterSize: window.__DEBUG.game.tankById.size,
       visibleRosterSize: window.__DEBUG.game.tanks.length,
       phase: window.__DEBUG.game.phase,

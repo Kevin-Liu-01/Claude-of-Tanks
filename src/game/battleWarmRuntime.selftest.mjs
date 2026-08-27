@@ -1,8 +1,20 @@
 import assert from 'node:assert/strict';
-import { Group, Object3D, PerspectiveCamera, Texture, Vector3 } from 'three';
+import {
+  BoxGeometry,
+  DirectionalLight,
+  Group,
+  Mesh,
+  MeshBasicMaterial,
+  Object3D,
+  PerspectiveCamera,
+  Scene,
+  Texture,
+  Vector3,
+} from 'three';
 import {
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
+  warmNetworkWrecks,
   warmStudioEffects,
 } from './battleWarmRuntime.ts';
 
@@ -111,5 +123,78 @@ submission.restore();
 assert.equal(combatFx.group.visible, false, 'FX root visibility is restored exactly');
 assert.equal(combatCamera.layers.mask, combatMask, 'combat staging restores camera layers');
 assert.equal(combatFx.calls.at(-1), 'reset');
+
+const scene = new Scene();
+const bridgeRoot = new Group();
+const siblingBefore = new Object3D();
+const wreckRoot = new Group();
+const siblingAfter = new Object3D();
+const intactMaterial = new MeshBasicMaterial({ name: 'intact' });
+const fallbackMaterial = new MeshBasicMaterial({ name: 'cot:burnt', map: new Texture() });
+const wreckMesh = new Mesh(new BoxGeometry(), intactMaterial);
+wreckMesh.castShadow = true;
+wreckMesh.frustumCulled = true;
+wreckRoot.visible = false;
+wreckRoot.add(wreckMesh);
+bridgeRoot.add(siblingBefore, wreckRoot, siblingAfter);
+let restoredDetails = 0;
+let realWarmFrames = 0;
+let compiledRoots = 0;
+let wreckTexturesInitialized = 0;
+const unrelatedSceneRoot = new Group();
+const shadowLight = new DirectionalLight();
+shadowLight.castShadow = true;
+shadowLight.shadow.autoUpdate = false;
+shadowLight.shadow.needsUpdate = false;
+scene.add(unrelatedSceneRoot, shadowLight);
+await warmNetworkWrecks({
+  entities: [{
+    specId: 'test-tank',
+    camo: 'factory',
+    visual: {
+      root: wreckRoot,
+      prewarmBurn() { return [wreckMesh]; },
+      getWreckFallbackMaterial: () => fallbackMaterial,
+      stageBattleDetailsForWarm() {
+        return () => { restoredDetails += 1; };
+      },
+    },
+  }],
+  prebakeBurntSteps: function* () { yield; },
+  anisotropy: 4,
+  renderer: {
+    info: { programs: [] },
+    compile() { compiledRoots += 1; },
+    initTexture() { wreckTexturesInitialized += 1; },
+  },
+  scene,
+  camera: new PerspectiveCamera(),
+  warmRender() {
+    realWarmFrames += 1;
+    const probe = scene.getObjectByName('WreckFallbackWarmProbe:0');
+    assert.ok(probe, 'one isolated fallback probe is mounted for the real draw');
+    assert.equal(probe.frustumCulled, false);
+    assert.equal(probe.material, fallbackMaterial);
+    assert.equal(probe.castShadow, true);
+    assert.equal(unrelatedSceneRoot.visible, false,
+      'the fallback draw does not resubmit the complete battlefield');
+    assert.equal(shadowLight.shadow.needsUpdate, true,
+      'one production shadow light submits the generic wreck depth variant');
+  },
+});
+assert.equal(realWarmFrames, 1);
+assert.equal(wreckRoot.parent, bridgeRoot, 'bridge ownership is restored after warming');
+assert.deepEqual(bridgeRoot.children, [siblingBefore, wreckRoot, siblingAfter],
+  'temporary scene staging preserves exact sibling order');
+assert.equal(wreckRoot.visible, false);
+assert.equal(wreckMesh.frustumCulled, true);
+assert.equal(wreckMesh.material, intactMaterial);
+assert.equal(unrelatedSceneRoot.visible, true);
+assert.equal(shadowLight.shadow.autoUpdate, false);
+assert.equal(shadowLight.shadow.needsUpdate, false,
+  'the production shadow scheduler state is restored exactly');
+assert.equal(restoredDetails, 1, 'compile staging restores detail state once');
+assert.equal(compiledRoots, 2, 'fielded burn hooks and the isolated fallback both compile');
+assert.equal(wreckTexturesInitialized, 1, 'destroyed-only maps upload before first blood');
 
 console.log('battleWarmRuntime.selftest: Studio invalidation and covered FX staging passed');

@@ -1,6 +1,7 @@
 import {
   Vector3,
   type Camera,
+  type Material,
   type Object3D,
   type Scene,
   type WebGLRenderer,
@@ -25,10 +26,9 @@ interface BattleWarmState {
 
 interface BattleWarmVisual {
   root?: Object3D;
-  prewarmBurn?(): void;
+  prewarmBurn?(): Object3D[] | void;
+  getWreckFallbackMaterial?(): Material | null;
   stageBattleDetailsForWarm?(): () => void;
-  setDestroyed?(options: { pop: boolean }): void;
-  resetDestroyed?(): void;
 }
 
 interface BattleWarmEntity {
@@ -151,6 +151,153 @@ export interface WreckWarmOptions {
   warmRender(): void;
 }
 
+type WreckWarmMesh = Object3D & {
+  isMesh?: boolean;
+  material?: Material | Material[];
+  castShadow?: boolean;
+  receiveShadow?: boolean;
+};
+
+type WreckWarmLight = Object3D & {
+  isLight?: boolean;
+  castShadow?: boolean;
+  shadow?: {
+    autoUpdate: boolean;
+    needsUpdate: boolean;
+  };
+};
+
+function containsLight(root: Object3D): boolean {
+  let found = false;
+  root.traverse((object) => {
+    if ((object as WreckWarmLight).isLight) found = true;
+  });
+  return found;
+}
+
+function initializeMaterialTextures(renderer: WebGLRenderer, material: Material): void {
+  for (const value of Object.values(material)) {
+    if (typeof value !== 'object' || value === null || !('isTexture' in value)) continue;
+    try {
+      renderer.initTexture(value as Parameters<WebGLRenderer['initTexture']>[0]);
+    } catch (_) { /* first real draw remains the fallback */ }
+  }
+}
+
+function wreckProbeSignature(source: WreckWarmMesh): string {
+  const candidate = source as WreckWarmMesh & {
+    geometry?: {
+      attributes?: Record<string, unknown>;
+      morphAttributes?: Record<string, unknown[]>;
+    };
+    isBatchedMesh?: boolean;
+    isInstancedMesh?: boolean;
+    isSkinnedMesh?: boolean;
+  };
+  const attributes = Object.keys(candidate.geometry?.attributes ?? {}).sort().join(',');
+  const morphs = Object.entries(candidate.geometry?.morphAttributes ?? {})
+    .filter(([, values]) => values.length > 0)
+    .map(([name, values]) => `${name}:${values.length}`)
+    .sort()
+    .join(',');
+  return [attributes, morphs, !!candidate.isBatchedMesh,
+    !!candidate.isInstancedMesh, !!candidate.isSkinnedMesh].join('|');
+}
+
+function potentialFallbackWarmMeshes(root: Object3D): WreckWarmMesh[] {
+  const candidates: WreckWarmMesh[] = [];
+  root.traverse((object) => {
+    const candidate = object as WreckWarmMesh & {
+      geometry?: { attributes?: Record<string, unknown> };
+    };
+    if (!candidate.isMesh || !candidate.material
+      || Array.isArray(candidate.material)) return;
+    const material = candidate.material as Material & { isMeshStandardMaterial?: boolean };
+    if (material.colorWrite === false || material.visible === false) return;
+    // Standard materials accept the in-place burn driver. Non-standard
+    // fittings use the shared fallback, and normal-less geometry has its own
+    // production program key even if an earlier presentation temporarily
+    // replaced its material before this later warm traversal.
+    if (!material.isMeshStandardMaterial
+      || !candidate.geometry?.attributes?.normal) candidates.push(candidate);
+  });
+  return candidates;
+}
+
+/**
+ * Submit one real destroyed-only material draw against the production lights.
+ * Hiding non-light scene roots prevents a shader warm from becoming a second
+ * full battlefield render; one forced shadow light also covers the generic
+ * depth variant without redrawing all four CSM cascades.
+ */
+function warmWreckFallbackProbe({
+  candidates,
+  renderer,
+  scene,
+  camera,
+  warmRender,
+}: {
+  candidates: Array<{ source: WreckWarmMesh; material: Material }>;
+  renderer: WebGLRenderer;
+  scene: Scene;
+  camera: Camera;
+  warmRender(): void;
+}): void {
+  const probes = candidates.map(({ source, material }, index) => {
+    const probe = source.clone(false) as WreckWarmMesh;
+    probe.name = `WreckFallbackWarmProbe:${index}`;
+    probe.material = material;
+    probe.visible = true;
+    probe.frustumCulled = false;
+    probe.castShadow = true;
+    probe.receiveShadow = true;
+    probe.layers.mask = camera.layers.mask;
+    return probe;
+  });
+
+  const hiddenRoots: Object3D[] = [];
+  const shadowStates: Array<{
+    shadow: NonNullable<WreckWarmLight['shadow']>;
+    autoUpdate: boolean;
+    needsUpdate: boolean;
+  }> = [];
+  scene.traverse((object) => {
+    const light = object as WreckWarmLight;
+    if (!light.isLight || !light.castShadow || !light.shadow) return;
+    shadowStates.push({
+      shadow: light.shadow,
+      autoUpdate: light.shadow.autoUpdate,
+      needsUpdate: light.shadow.needsUpdate,
+    });
+  });
+  const selectedShadow = shadowStates[0]?.shadow ?? null;
+
+  try {
+    scene.add(...probes);
+    for (const root of scene.children) {
+      if (probes.includes(root as WreckWarmMesh)
+        || root.visible === false || containsLight(root)) continue;
+      root.visible = false;
+      hiddenRoots.push(root);
+    }
+    for (const state of shadowStates) {
+      state.shadow.autoUpdate = false;
+      state.shadow.needsUpdate = false;
+    }
+    if (selectedShadow) selectedShadow.needsUpdate = true;
+    for (const probe of probes) renderer.compile(probe, camera, scene);
+    warmRender();
+  } catch (_) { /* first live draw remains the compatibility fallback */ }
+  finally {
+    for (const probe of probes) probe.removeFromParent();
+    for (const root of hiddenRoots) root.visible = true;
+    for (const state of shadowStates) {
+      state.shadow.autoUpdate = state.autoUpdate;
+      state.shadow.needsUpdate = state.needsUpdate;
+    }
+  }
+}
+
 /** Prebuild only the fielded roster's destroyed variants before first blood. */
 export async function warmNetworkWrecks({
   entities,
@@ -164,10 +311,10 @@ export async function warmNetworkWrecks({
   const yieldForFrameBudget = createFrameBudgetYielder(8);
   const warmedSpecs = new Set<string>();
   const roster = [...entities];
+  const fallbackProbes = new Map<string, { source: WreckWarmMesh; material: Material }>();
   for (const entity of roster) {
     const visual = entity?.visual;
     if (!visual) continue;
-    try { visual.prewarmBurn?.(); } catch (_) { /* warm only */ }
     const selection = entity.camo || 'factory';
     const wreckKey = entity.specId ? `${entity.specId}:${selection}` : '';
     if (wreckKey && entity.specId && !warmedSpecs.has(wreckKey)) {
@@ -178,58 +325,35 @@ export async function warmNetworkWrecks({
         }
       } catch (_) { /* warm only */ }
     }
-    if (visual.root && visual.setDestroyed && visual.resetDestroyed) {
+    if (visual.root) {
       const rootWasVisible = visual.root.visible;
       const restoreBattleDetails = visual.stageBattleDetailsForWarm?.() ?? (() => {});
       try {
-        visual.setDestroyed({ pop: true });
         visual.root.visible = true;
+        const fallbackSources = [
+          ...(visual.prewarmBurn?.() ?? []),
+          ...potentialFallbackWarmMeshes(visual.root),
+        ];
         const before = renderer.info.programs?.length || 0;
         renderer.compile(visual.root, camera, scene);
-        // Distant staged actors detach cosmetic descendants again inside
-        // setDestroyed(). At close range those same descendants are attached
-        // before first blood and can fall back to the shared `cot:burnt`
-        // material. Compile that fallback from the mesh itself so hidden
-        // staging parents cannot make the warm silently miss its live key.
-        visual.root.traverse((object) => {
-          const renderObject = object as Object3D & {
-            material?: any | any[];
-            isMesh?: boolean;
-          };
-          if (!renderObject.isMesh || !renderObject.material) return;
-          const materials = Array.isArray(renderObject.material)
-            ? renderObject.material : [renderObject.material];
-          const usesBurntFallback = materials.some((material) =>
-            material?.name === 'cot:burnt' ||
-            String(material?.customProgramCacheKey?.() || '').includes('burnt-triplanar'));
-          if (!usesBurntFallback) return;
-          const wasVisible = renderObject.visible;
-          try {
-            renderObject.visible = true;
-            renderer.compile(renderObject, camera, scene);
-          } catch (_) { /* first live render remains the fallback */ }
-          finally { renderObject.visible = wasVisible; }
-        });
         const programs = renderer.info.programs || [];
         for (let index = before; index < programs.length; index++) {
           try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
         }
-        visual.root.traverse((object) => {
-          const renderObject = object as Object3D & { material?: object | object[] };
-          const materials = Array.isArray(renderObject.material)
-            ? renderObject.material : (renderObject.material ? [renderObject.material] : []);
-          for (const material of materials) {
-            for (const value of Object.values(material)) {
-              if (typeof value !== 'object' || value === null || !('isTexture' in value)) continue;
-              try {
-                renderer.initTexture(value as Parameters<WebGLRenderer['initTexture']>[0]);
-              } catch (_) { /* first real render remains the fallback */ }
+        const material = visual.getWreckFallbackMaterial?.() ?? null;
+        if (material) {
+          initializeMaterialTextures(renderer, material);
+          for (const source of fallbackSources) {
+            const candidate = source as WreckWarmMesh;
+            if (!candidate.isMesh || !candidate.material) continue;
+            const signature = wreckProbeSignature(candidate);
+            if (!fallbackProbes.has(signature)) {
+              fallbackProbes.set(signature, { source: candidate, material });
             }
           }
-        });
+        }
       } catch (_) { /* warm only */ }
       finally {
-        try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
         try { restoreBattleDetails(); } catch (_) { /* warm only */ }
         visual.root.visible = rootWasVisible;
       }
@@ -237,42 +361,14 @@ export async function warmNetworkWrecks({
     await yieldForFrameBudget(true);
   }
 
-  // compile() can submit a program without forcing the driver to link it or
-  // upload hook-owned textures. Render the exact fielded wreck cohort once
-  // into the reusable private warm target, with detached close-detail groups
-  // temporarily attached. This is the final guarantee that first blood does
-  // not become the first real `cot:burnt` draw on an impaired client.
-  const staged: Array<{
-    visual: BattleWarmVisual;
-    root: Object3D;
-    rootWasVisible: boolean;
-    restoreBattleDetails: () => void;
-  }> = [];
-  try {
-    for (const entity of roster) {
-      const visual = entity?.visual;
-      if (!visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
-      const rootWasVisible = visual.root.visible;
-      const restoreBattleDetails = visual.stageBattleDetailsForWarm?.() ?? (() => {});
-      try {
-        visual.setDestroyed({ pop: true });
-        visual.root.visible = true;
-        staged.push({ visual, root: visual.root, rootWasVisible, restoreBattleDetails });
-      } catch (_) {
-        try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
-        try { restoreBattleDetails(); } catch (_) { /* warm only */ }
-        visual.root.visible = rootWasVisible;
-      }
-    }
-    if (staged.length) warmRender();
-  } catch (_) { /* first live render remains the fallback */ }
-  finally {
-    for (let index = staged.length - 1; index >= 0; index--) {
-      const { visual, root, rootWasVisible, restoreBattleDetails } = staged[index];
-      try { visual.resetDestroyed?.(); } catch (_) { /* warm only */ }
-      try { restoreBattleDetails(); } catch (_) { /* warm only */ }
-      root.visible = rootWasVisible;
-    }
+  if (fallbackProbes.size) {
+    warmWreckFallbackProbe({
+      candidates: [...fallbackProbes.values()],
+      renderer,
+      scene,
+      camera,
+      warmRender,
+    });
   }
   await yieldForFrameBudget(true);
 }

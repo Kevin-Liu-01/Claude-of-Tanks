@@ -6,12 +6,16 @@ import { createHeightField } from './terrain.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
+const liveProxy = fs.readFileSync(path.join(here, 'liveHeightFieldProxy.ts'), 'utf8');
 const vegetation = fs.readFileSync(path.join(here, 'vegetation.js'), 'utf8');
 assert.match(main,
-  /const hfProxy = \{[\s\S]{0,900}getHeightAtFast:[\s\S]{0,500}getHeightAtExact:/,
+  /const hfProxy = createLiveHeightFieldProxy\(\{[\s\S]{0,180}useExactHeight: \(\) => shotMode/,
+  'main delegates terrain mode and world lifetime to the typed proxy');
+assert.match(liveProxy,
+  /getHeightAtFast\(x: number, z: number\)[\s\S]{0,500}getHeightAtExact\(x: number, z: number\)/,
   'camera, HUD and FX receive both cached live terrain and exact capture terrain');
-assert.match(main,
-  /return !shotMode && heightField\.getHeightAtFast[\s\S]{0,180}heightField\.getHeightAt\(x, z\)/,
+assert.match(liveProxy,
+  /return useExactHeight\(\)[\s\S]{0,120}heightField\.getHeightAt\(x, z\)[\s\S]{0,80}fastHeight/,
   'ordinary presentation uses the cached height grid while deterministic shots stay exact');
 assert.match(vegetation,
   /const grassAhead = grassFadeEnd \+ \(movedFromSpawn > 28 \? CHUNK_SIZE \* 0\.5 : 32\)/,

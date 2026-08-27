@@ -11,7 +11,8 @@ interface BattleVisual {
   root?: BattleVisualRoot | null;
   syncFromState?: (state: unknown) => void;
   setVisible?: (visible: boolean) => void;
-  prewarmBurn?: () => void;
+  prewarmBurn?: () => Object3D[] | void;
+  getWreckFallbackMaterial?: () => Material | null;
 }
 
 export interface BattleVisualEntity {
