@@ -16,6 +16,7 @@ import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.js';
+import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { createUtilityNetwork } from './utilityNetwork.js';
@@ -89,6 +90,24 @@ function normalFromHeight(h, s, strength, anisotropy) {
   return toTexture(px, s, { anisotropy });
 }
 
+// One linear ORM-style texture feeds both material slots: AO reads red and
+// roughness reads green. Packing them together adds real PBR response without
+// doubling the building texture/upload budget.
+function surfaceFromHeight(h, s, anisotropy, {
+  roughMin = 0.72, roughMax = 0.98, aoMin = 0.76,
+} = {}) {
+  const px = new Uint8ClampedArray(s * s * 4);
+  for (let i = 0; i < h.length; i++) {
+    const height = clamp(h[i], 0, 1);
+    const j = i * 4;
+    px[j] = (aoMin + height * (1 - aoMin)) * 255;
+    px[j + 1] = (roughMin + (1 - height) * (roughMax - roughMin)) * 255;
+    px[j + 2] = 0;
+    px[j + 3] = 255;
+  }
+  return toTexture(px, s, { anisotropy });
+}
+
 const _col = new THREE.Color();
 
 function makePlaster(noi, anisotropy, tone = null) {
@@ -106,7 +125,11 @@ function makePlaster(noi, anisotropy, tone = null) {
     hgt[i] = n1 * 0.5 + n2 * 0.5;
   }
   applyTone(px, tone);
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.2, anisotropy) };
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 1.2, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
+  };
 }
 
 function makeRoofTiles(noi, anisotropy, tone = null) {
@@ -134,7 +157,11 @@ function makeRoofTiles(noi, anisotropy, tone = null) {
   applyTone(px, tone);
   // normal strength 2.4 -> 1.8: damps the per-tile specular rim glints that
   // aliased into fireflies once a roof fell below ~2px/tile on screen
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.8, anisotropy) };
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 1.8, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.70, roughMax: 0.94, aoMin: 0.73 }),
+  };
 }
 
 function makeStone(noi, anisotropy, tone = null) {
@@ -188,7 +215,11 @@ function makeStone(noi, anisotropy, tone = null) {
     }
   }
   applyTone(px, tone);
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 3.0, anisotropy) };
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 3.0, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.78, roughMax: 0.98, aoMin: 0.68 }),
+  };
 }
 
 function makeWood(noi, anisotropy, tone = null) {
@@ -206,7 +237,11 @@ function makeWood(noi, anisotropy, tone = null) {
     hgt[i] = gapped ? 0.1 : 0.5 + grain * 0.4;
   }
   applyTone(px, tone);
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 1.8, anisotropy) };
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 1.8, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.64, roughMax: 0.93, aoMin: 0.72 }),
+  };
 }
 
 function makeStraw(noi, anisotropy, tone = null) {
@@ -226,7 +261,11 @@ function makeStraw(noi, anisotropy, tone = null) {
     hgt[i] = (stalk * 0.45 + strand * 0.4 + kink * 0.15) * (1 - gap * 0.7);
   }
   applyTone(px, tone);
-  return { albedo: toTexture(px, s, { srgb: true, anisotropy }), normal: normalFromHeight(hgt, s, 2.4, anisotropy) };
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, s, 2.4, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.88, roughMax: 1.0, aoMin: 0.74 }),
+  };
 }
 
 // Neutral detail atlases for the vertex-colored destructible building kit.
@@ -263,6 +302,11 @@ function makeStructureDetail(noi, anisotropy, kind) {
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, kind === 'canvas' ? 0.9 : 1.45, anisotropy),
+    surface: surfaceFromHeight(hgt, s, anisotropy, kind === 'steel'
+      ? { roughMin: 0.52, roughMax: 0.84, aoMin: 0.76 }
+      : kind === 'canvas'
+        ? { roughMin: 0.90, roughMax: 1.0, aoMin: 0.84 }
+        : { roughMin: 0.68, roughMax: 0.95, aoMin: 0.74 }),
   };
 }
 
@@ -470,6 +514,7 @@ function makeCottage(rng, buckets, wallBucket = 'plaster') {
       }
     }
   }
+  addConnectedExterior(parts, { id: 'cottage', w, d, wallH, profile: 'rural', variant: 0 });
   mergeInto(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
@@ -524,6 +569,7 @@ function makeBarn(rng, buckets) {
       }
     }
   }
+  addConnectedExterior(parts, { id: 'barn', w, d, wallH, profile: 'timber', variant: 2 });
   mergeInto(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
@@ -544,6 +590,7 @@ function makeTower(rng, buckets) {
     parts.dark.push(box(0.06, 0.8, 0.5).translate(w / 2 + 0.04, yy, 0));
   }
   parts.wood.push(box(1.0, 2.2, 0.1).translate(0, 1.1, -d / 2 - 0.06));
+  addConnectedExterior(parts, { id: 'tower', w, d, wallH, profile: 'civic', variant: 1 });
   mergeInto(buckets, parts);
   return { w: w + 0.4, d: d + 0.4, h: wallH + 2.6 };
 }
@@ -613,6 +660,7 @@ function makeAdobe(rng, buckets) {
   if (rng() < 0.45) { // rooftop stair block
     parts.plaster.push(box(w * 0.35, 1.0, d * 0.3).translate(-w * 0.18, wallH + 0.5, -d * 0.18));
   }
+  addConnectedExterior(parts, { id: 'adobe', w, d, wallH, profile: 'desert', variant: 0 });
   mergeInto(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + 1.2 };
 }
@@ -867,6 +915,10 @@ function makeRowhouse(rng, buckets, wallBucket = 'plaster', dims = null) {
   parts.wood.push(box(1.2, 2.3, 0.12).translate(-w * 0.15, 1.15, d / 2 + 0.08));
   parts.dark.push(box(1.0, 2.1, 0.06).translate(-w * 0.15, 1.1, d / 2 + 0.14));
   if (rng() < 0.55) parts.glass.push(box(2.3, 1.5, 0.06).translate(w * 0.18, 1.5, d / 2 + 0.10));
+  const facadeVariant = (Math.round(w * 10) + Math.round(d * 10) + stories) % 4;
+  addConnectedExterior(parts, {
+    id: 'rowhouse', w, d, wallH, profile: 'urban', variant: facadeVariant,
+  });
   mergeInto(buckets, parts);
   return { w: w + 0.3, d: d + 0.3, h: wallH + roofH };
 }
@@ -1006,12 +1058,18 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
 
   const mats = {
-    plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal, roughness: 0.93, metalness: 0 }),
-    plaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal, roughness: 0.93, metalness: 0 }),
-    plaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal, roughness: 0.93, metalness: 0 }),
-    roof: new THREE.MeshStandardMaterial({ map: roofT.albedo, normalMap: roofT.normal, roughness: 0.82, metalness: 0 }),
-    stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal, roughness: 0.9, metalness: 0 }),
-    wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal, roughness: 0.8, metalness: 0 }),
+    plaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
+      roughnessMap: plaster.surface, aoMap: plaster.surface, roughness: 1, metalness: 0 }),
+    plaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
+      roughnessMap: plaster2.surface, aoMap: plaster2.surface, roughness: 1, metalness: 0 }),
+    plaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
+      roughnessMap: plaster3.surface, aoMap: plaster3.surface, roughness: 1, metalness: 0 }),
+    roof: new THREE.MeshStandardMaterial({ map: roofT.albedo, normalMap: roofT.normal,
+      roughnessMap: roofT.surface, aoMap: roofT.surface, roughness: 1, metalness: 0 }),
+    stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
+      roughnessMap: stone.surface, aoMap: stone.surface, roughness: 1, metalness: 0 }),
+    wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
+      roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
     // content_breadth r3: window PANES get real materials — the old shared
     // near-black 'dark' slabs read as unframed voids at establishing
@@ -1023,24 +1081,34 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
     // range — the sky-catch read comes from envMapIntensity, not tightness),
     // metalness <= 0.2, envMapIntensity capped at 1.0 below (1.5 pushed
     // glints past the 1.78 bloom threshold).
-    glass: new THREE.MeshStandardMaterial({ color: 0x2b3640, roughness: 0.35, metalness: 0.2 }),
-    curtain: new THREE.MeshStandardMaterial({ color: 0xb3a992, roughness: 0.92, metalness: 0 }),
-    straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal, roughness: 0.95, metalness: 0 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x2b3640, roughness: 0.35, metalness: 0.12,
+      clearcoat: 0.32, clearcoatRoughness: 0.28 }),
+    curtain: new THREE.MeshStandardMaterial({ color: 0xb3a992, roughness: 0.92, metalness: 0,
+      emissive: 0x8a4d1c, emissiveIntensity: 0.32 }),
+    straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
+      roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
     rock: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
     structureWood: new THREE.MeshStandardMaterial({
       map: structureWood.albedo, normalMap: structureWood.normal,
-      vertexColors: true, roughness: 0.94, metalness: 0,
+      roughnessMap: structureWood.surface, aoMap: structureWood.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
     }),
     structureCanvas: new THREE.MeshStandardMaterial({
       map: structureCanvas.albedo, normalMap: structureCanvas.normal,
-      vertexColors: true, roughness: 0.98, metalness: 0,
+      roughnessMap: structureCanvas.surface, aoMap: structureCanvas.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
     }),
     structureMetal: new THREE.MeshStandardMaterial({
       map: structureMetal.albedo, normalMap: structureMetal.normal,
-      vertexColors: true, roughness: 0.72, metalness: 0.08,
+      roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
+      vertexColors: true, roughness: 1, metalness: 0.08,
     }),
   };
+  for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
+    'straw', 'structureWood', 'structureCanvas', 'structureMetal']) {
+    mats[key].aoMapIntensity = 0.82;
+  }
   mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
   mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
   mats.structureWood.envMapIntensity = 0.34;
@@ -1488,7 +1556,9 @@ ${snowCap ? `
       if (!clear) continue;
       const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
       const tmp = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
+      const structureId = P.plan[bi] || 'cottage';
       const info = builders[bi](rng, tmp, pickWall(rng));
+      addCatalogExterior(tmp, { id: structureId, info, variant: bi });
       const fit = groundFit(px, pz, info.w, info.d, rot);
       if (fit.spread > P.maxSpread) continue;
       // per-building texture phase: no two facades repeat the same grid
@@ -1735,7 +1805,9 @@ ${snowCap ? `
         if (!clear) continue;
         const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
         const tmp = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [] };
+        const structureId = P.plan[bi] || 'cottage';
         const info = builders[bi](rng, tmp, pickWall(rng));
+        addCatalogExterior(tmp, { id: structureId, info, variant: bi });
         const fit = groundFit(px, pz, info.w, info.d, rot);
         if (fit.spread > P.maxSpread) continue;
         for (const bk of Object.keys(tmp)) for (const g of tmp[bk]) {

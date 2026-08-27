@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.js';
 import { RAIL_BUILDERS } from './railKit.js'; // maps r1: railyard + coastal kits
 import { gablePrism as createGablePrism } from '../propGeometry.js';
+import { addConnectedExterior } from './exteriorDetailKit.js';
 
 // --- tiny local twins of the props.js geometry helpers (not exported there) --
 function box(w, h, d, uvScale = 0.5) {
@@ -90,6 +91,7 @@ export function makeChurch(rng, buckets) {
   const ball = new THREE.SphereGeometry(0.28, 8, 6);
   ball.translate(0, towerH + 7.5, tz);
   parts.dark.push(ball);
+  addConnectedExterior(parts, { id: 'church', w, d, wallH, profile: 'civic', variant: 1 });
   pushParts(buckets, parts);
   return { w: w + 0.4, d: d + tw + 0.6, h: towerH + 7.8 };
 }
@@ -141,6 +143,7 @@ export function makeFactory(rng, buckets) {
   const crown = new THREE.CylinderGeometry(0.80, 0.66, 0.9, 10, 1);
   crown.translate(cx, stackH + 0.35, cz);
   parts.dark.push(crown);
+  addConnectedExterior(parts, { id: 'factory', w, d, wallH, profile: 'industrial', variant: 0 });
   pushParts(buckets, parts);
   return { w: w + 0.4, d: d + 0.4, h: stackH + 1 };
 }

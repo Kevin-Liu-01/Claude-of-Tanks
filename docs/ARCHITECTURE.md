@@ -498,6 +498,16 @@ Exports locked in §2.7. Additional requirements:
   { group, obstacles: AABB[], colliders /* for raycast */, features /* minimap */ }` —
   rocks, ~10-building village, walls/cover, roads are terrain-material features
   (getGroundType returns 'hard' on them).
+- Building authoring has two performance contracts. Landmark geometry and its
+  connected exterior fixtures merge into existing material buckets before GPU
+  upload. Repeated destructible structures keep one intact and one broken
+  `InstancedMesh` family, never one object/material per placement. Every
+  individual landmark part must be connected within the authoring tolerance;
+  the structure selftest owns that graph census.
+- Building PBR fallbacks carry color, normal, and one packed linear surface map
+  (AO in red, roughness in green). CC0 sourced replacements mutate those same
+  texture objects asynchronously. Renderer-owned ACES tone mapping, PMREM,
+  bloom and cascaded shadows must not be duplicated inside world builders.
 - Map layout: village near center (≈ x -60..+80, z -40..+120), two roads crossing it,
   spawnPoints.player south edge of village, 7 enemy spawns spread N/NE/NW at 150–400 m.
   Terrain must be drivable (slope ≤ 35°) between all spawn points and the village.

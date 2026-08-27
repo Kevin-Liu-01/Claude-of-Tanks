@@ -116,6 +116,13 @@ of recursive matrix traversal. Legitimate runtime world motion continues
 through instance buffers, uniforms, geometry-LOD swaps, and visibility. Do not
 freeze a subtree that owns an animated Object3D transform.
 
+Structure detail is paid at build time, not traversal time. Landmark façade
+parts are merged into the already-present plaster/stone/wood/roof/dark/glass
+batches. Repeated destructible buildings are two instanced pools (intact and
+broken), and settled instances require no per-frame transform work. Normal and
+packed AO/roughness textures supply surface relief without turning brickwork or
+panels into high-density geometry.
+
 The HUD reticle keeps its live CanvasTexture and caches the last complete paint
 signature. It repaints for aim, reload, shell, hit, fade, viewport, or mode
 changes, but a stable sight picture does not replay the same Canvas2D commands

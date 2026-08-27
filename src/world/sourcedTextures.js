@@ -11,8 +11,9 @@
 // Contract notes:
 // - terrain splat albedo packs ROUGHNESS IN ALPHA (terrain.js splat shader);
 //   composeAlbedo honors that via opts.roughInAlpha.
-// - AO is multiplied into the albedo RGB (the splat shader and the prop
-//   materials have no dedicated AO channel).
+// - terrain still multiplies AO into albedo because its splat shader owns the
+//   material response; building props receive a separate packed AO/roughness
+//   surface map (R=AO, G=roughness) for MeshStandardMaterial.
 
 import * as THREE from 'three';
 // MOBILE r1: central tier texture scale — the sourced photo-set composites
@@ -234,12 +235,13 @@ const NORMAL_CACHE_MAX = 4;
 function compositeKey(setKey, opts = {}) {
   const {
     roughInAlpha = false,
+    separateSurface = false,
     roughMul = 1,
     tint = null,
     desat = 0,
     lift = 0,
   } = opts;
-  return `${setKey}|${roughInAlpha ? 1 : 0}|${roughMul}|${tint ? tint.join(',') : '-'}|${desat}|${lift}`;
+  return `${setKey}|${roughInAlpha ? 1 : 0}|${separateSurface ? 1 : 0}|${roughMul}|${tint ? tint.join(',') : '-'}|${desat}|${lift}`;
 }
 
 /**
@@ -255,7 +257,10 @@ export function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul
   const px = ctx.getImageData(0, 0, s, s);
   const d = px.data;
   const aod = readScaledPixels(ao, s);
-  const rgd = readScaledPixels(rough, s);
+  // Only the terrain splat shader consumes roughness through albedo alpha.
+  // Building materials receive it through composeSurface(), so decoding it
+  // here as well would repeat a full 1K readback for no output change.
+  const rgd = roughInAlpha ? readScaledPixels(rough, s) : null;
   const tr = tint ? tint[0] : 1, tg = tint ? tint[1] : 1, tb = tint ? tint[2] : 1;
   for (let i = 0; i < d.length; i += 4) {
     const a = aod ? aod[i] / 255 : 1;
@@ -274,6 +279,25 @@ export function composeAlbedo(color, ao, rough, { roughInAlpha = false, roughMul
     d[i + 3] = roughInAlpha
       ? Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul))
       : 255;
+  }
+  ctx.putImageData(px, 0, 0);
+  return c;
+}
+
+/** Pack AO (red) and roughness (green) into one linear building surface map. */
+export function composeSurface(ao, rough, size, roughMul = 1) {
+  const aod = readScaledPixels(ao, size);
+  const rgd = readScaledPixels(rough, size);
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const px = ctx.createImageData(size, size);
+  const d = px.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = aod ? aod[i] : 255;
+    d[i + 1] = Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul));
+    d[i + 2] = 0;
+    d[i + 3] = 255;
   }
   ctx.putImageData(px, 0, 0);
   return c;
@@ -310,13 +334,20 @@ async function applySet(setKey, layer, opts) {
     set.ao ? loadImage(set.ao).catch(() => null) : null,
   ]);
   const size = Math.min(color.width, texSize(1024));
-  const key = compositeKey(setKey, opts);
+  const separateSurface = !!layer.surface;
+  const cacheOpts = { ...opts, separateSurface };
+  const key = compositeKey(setKey, cacheOpts);
   let composite = _compositeCache.get(key);
   if (!composite || composite.size !== size) {
-    composite = { size, canvas: composeAlbedo(color, ao, rough, opts) };
+    composite = {
+      size,
+      canvas: composeAlbedo(color, separateSurface ? null : ao, rough, opts),
+      surface: separateSurface ? composeSurface(ao, rough, size, opts.roughMul ?? 1) : null,
+    };
   }
   touchLru(_compositeCache, key, composite, COMPOSITE_CACHE_MAX);
   swapTexture(layer.albedo, composite.canvas);
+  if (separateSurface && composite.surface) swapTexture(layer.surface, composite.surface);
 
   let normalEntry = _normalCache.get(setKey);
   if (!normalEntry || normalEntry.size !== size) {

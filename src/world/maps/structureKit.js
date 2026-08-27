@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { addConnectedExterior } from './exteriorDetailKit.js';
 
 const _color = new THREE.Color();
 const _detailRng = () => 0.5;
@@ -122,7 +123,8 @@ function addGableRoof(out, w, d, wallH, roofH, over = 0.4) {
 function addWindow(out, x, y, z, face = 'z', wide = 0.9, tall = 1.15) {
   const pane = face === 'z' ? box(wide, tall, 0.06) : box(0.06, tall, wide);
   const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
-  out.glass.push(pane.translate(x, y, z));
+  const lit = Math.abs(Math.round(x * 17 + y * 11 + z * 7)) % 5 === 0;
+  out[lit ? 'curtain' : 'glass'].push(pane.translate(x, y, z));
   out.stone.push(sill.translate(x, y - tall / 2 - 0.08, z));
   // Full recessed surround: the former pane+sill treatment read as a flat
   // dark sticker at street distance. Jambs, lintel and divided glazing reuse
@@ -159,12 +161,14 @@ export function makeTavern(rng, buckets, wallBucket = 'plaster') {
   out.wood.push(box(w * 0.78, 0.20, 1.55).translate(0, 3.05, d / 2 + 0.7));
   for (let x = -3; x <= 3; x += 1.5) {
     out.wood.push(box(0.10, 1.05, 0.10).translate(x, 3.6, d / 2 + 1.25));
-    out.wood.push(box(0.10, 2.55, 0.10).translate(x, 1.37, d / 2 + 1.25));
+    // Posts reach the balcony bearer instead of stopping 30 cm below it.
+    out.wood.push(box(0.10, 3.05, 0.10).translate(x, 1.525, d / 2 + 1.25));
   }
   out.roof.push(slab(w * 0.88, 0.11, 2.1).rotateX(-0.15).translate(0, 5.05, d / 2 + 0.72));
   out.dark.push(box(1.6, 0.95, 0.10).translate(-w / 2 - 0.08, 3.1, d * 0.2));
   out.stone.push(box(0.72, 2.5, 0.72).translate(2.6, wallH + roofH - 0.3, -2.7));
   for (const x of [-2.5, 0, 2.5]) addWindow(out, x, 2.0, d / 2 + 0.04);
+  addConnectedExterior(out, { id: 'tavern', w, d, wallH, profile: 'rural', variant: 1 });
   finish(buckets, out);
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 1.0 };
 }
@@ -185,6 +189,7 @@ export function makeSchoolhouse(rng, buckets, wallBucket = 'plaster2') {
   for (const x of [-1.35, 1.35]) out.wood.push(box(0.13, 2.7, 0.13).translate(x, 1.5, d / 2 + 1.65));
   out.roof.push(slab(4.1, 0.12, 2.4).rotateX(-0.14).translate(0, 3.0, d / 2 + 0.95));
   for (const z of [-4.4, -1.5, 1.4]) for (const side of [-1, 1]) addWindow(out, side * (w / 2 + 0.04), 2.35, z, 'x', 1.25, 1.55);
+  addConnectedExterior(out, { id: 'schoolhouse', w, d, wallH, profile: 'civic', variant: 2 });
   finish(buckets, out);
   return { w: w + 0.5, d: d + 2.5, h: wallH + roofH + 4.0 };
 }
@@ -204,6 +209,7 @@ export function makeFireStation(rng, buckets, wallBucket = 'stone') {
   const towerCap = new THREE.ConeGeometry(2.25, 2.2, 4, 1);
   towerCap.rotateY(Math.PI / 4); towerCap.translate(tx, towerH + 1.1, -3.7); out.roof.push(towerCap);
   out.plaster3.push(box(4.8, 0.85, 0.12).translate(-1.0, 4.7, d / 2 + 0.1));
+  addConnectedExterior(out, { id: 'firestation', w, d, wallH, profile: 'industrial', variant: 0 });
   finish(buckets, out);
   return { w: w + 0.4, d: d + 0.4, h: towerH + 2.3 };
 }
@@ -222,6 +228,7 @@ export function makeFishery(rng, buckets) {
   out.stone.push(box(4.2, 3.4, 5.0).translate(-w / 2 - 1.5, 1.7, -2.4));
   out.roof.push(slab(4.6, 0.16, 5.4).rotateZ(0.12).translate(-w / 2 - 1.5, 3.75, -2.4));
   for (const x of [-2.8, 0, 2.8]) addWindow(out, x, 2.4, d / 2 + 0.04, 'z', 1.1, 1.1);
+  addConnectedExterior(out, { id: 'fishery', w, d, wallH: wallH + 0.35, profile: 'timber', variant: 1 });
   finish(buckets, out);
   return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
 }
@@ -240,6 +247,7 @@ export function makeBathhouse(rng, buckets, wallBucket = 'plaster3') {
   out[wallBucket].push(box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9));
   out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
   for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25);
+  addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3 });
   finish(buckets, out);
   return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
 }
@@ -259,6 +267,16 @@ export function makeCaravanserai(rng, buckets, wallBucket = 'plaster') {
     out.dark.push(box(1.8, 2.2, 0.08).translate(x, 1.4, -d / 2 + 4.04));
     out.wood.push(box(0.16, 2.8, 0.16).translate(x, 1.4, -d / 2 + 5.0));
   }
+  // The courtyard posts carry a continuous shade arcade back into the north
+  // wing. Besides giving the 21 m facade a readable rhythm, this closes the
+  // former one-metre air gap between every post and the actual structure.
+  out.wood.push(slab(16.4, 0.18, 1.25).rotateX(-0.045)
+    .translate(0, 2.86, -d / 2 + 4.48));
+  for (const x of [-8.2, -4.1, 0, 4.1, 8.2]) {
+    out.stone.push(box(0.42, wallH - 0.25, 0.38)
+      .translate(x, (wallH - 0.25) / 2, d / 2 + 0.08));
+  }
+  addConnectedExterior(out, { id: 'caravanserai', w, d, wallH, profile: 'desert', variant: 0 });
   finish(buckets, out);
   return { w: w + 0.4, d: d + 0.4, h: 7.4 };
 }
@@ -279,6 +297,7 @@ export function makeFoundryOffice(rng, buckets, wallBucket = 'stone') {
   for (const x of [-3.7, -1.2, 1.3, 3.8]) addWindow(out, x, 2.9, d / 2 + 0.05, 'z', 1.25, 1.8);
   out.dark.push(box(3.2, 3.5, 0.12).translate(0, 1.75, -d / 2 - 0.05));
   out.stone.push(box(1.0, 4.5, 1.0).translate(4.6, wallH + 1.7, -4.0));
+  addConnectedExterior(out, { id: 'foundryoffice', w, d, wallH, profile: 'industrial', variant: 2 });
   finish(buckets, out);
   return { w: w + 0.4, d: d + 0.4, h: wallH + 4.0 };
 }
@@ -299,6 +318,7 @@ export function makeRangerLodge(rng, buckets, wallBucket = 'wood') {
   const cap = new THREE.ConeGeometry(2.15, 1.9, 4, 1);
   cap.rotateY(Math.PI / 4); cap.translate(2.0, wallH + roofH + 2.15, -1.0); out.roof.push(cap);
   for (const x of [-3.2, 0, 3.2]) addWindow(out, x, 2.1, d / 2 + 0.04);
+  addConnectedExterior(out, { id: 'rangerlodge', w, d, wallH, profile: 'timber', variant: 2 });
   finish(buckets, out);
   return { w: w + 2.0, d: d + 3.0, h: wallH + roofH + 3.2 };
 }
@@ -355,13 +375,17 @@ export function makeMegatower(rng, buckets, wallBucket = 'plaster3') {
     const y = podiumH + lowerH + 4.5 + i * 4.0;
     out.stone.push(slab(7.5 - i * 0.7, 0.28, 6.4 - i * 0.55)
       .translate(w * 0.24, y, d * 0.18));
+    // Each torn slab retains one transfer beam into the surviving west spine.
+    // The asymmetry remains, but the floor plates are no longer suspended.
+    out.dark.push(box(3.65, 0.34, 0.44)
+      .translate(-0.05, y - 0.24, d * 0.18));
   }
   for (const [x, z, h] of [[5.4, 4.8, 14], [2.1, 5.0, 9], [5.2, 1.7, 7]]) {
     const col = box(0.36, h, 0.36); col.rotateZ((rng() - 0.5) * 0.18);
     out.dark.push(col.translate(x, podiumH + lowerH + h / 2, z));
   }
   const mast = box(0.28, 10.0, 0.28); mast.rotateZ(-0.22);
-  out.dark.push(mast.translate(-2.8, podiumH + lowerH + upperH + 4.2, -1.5));
+  out.dark.push(mast.translate(-2.8, podiumH + lowerH + upperH + 3.0, -1.5));
   finish(buckets, out);
   return { w: w + 5.2, d: d + 4.2, h: podiumH + lowerH + upperH + 9.2 };
 }
@@ -382,6 +406,10 @@ export function makeArcology(rng, buckets, wallBucket = 'stone') {
       deck.rotateZ((i - 1) * 0.055);
       out.stone.push(deck.translate(x + towerW * 0.22, intactH + 1.1 + i * 2.2, d * 0.20));
     }
+    // A battered service spine ties the cantilevered crown decks back to the
+    // intact slab below. It is intentionally exposed as part of the damage.
+    out.dark.push(box(0.48, 7.0, 0.48)
+      .translate(x + towerW * 0.13, intactH + 3.5, d * 0.15));
   }
   // Explicit facade ribbons preserve the gap between both towers.
   for (const [x, h] of [[-9.0, hA], [9.0, hB]]) {
@@ -417,6 +445,12 @@ export function makeParkingDeck(rng, buckets) {
   }
   for (let i = 0; i < floors; i++) {
     out.dark.push(box(w - 3.0, 1.15, 0.08).translate(0, i * floorH + 1.4, d / 2 + 0.05));
+    // Guard rails are carried by visible posts into the deck beneath; the old
+    // rails floated half a metre above every storey edge.
+    for (const x of [-10.8, -5.4, 0, 5.4, 10.8]) {
+      out.dark.push(box(0.10, 0.92, 0.10)
+        .translate(x, i * floorH + 0.72, d / 2 + 0.02));
+    }
   }
   const ramp = slab(7.0, 0.28, d * 0.68); ramp.rotateX(-0.24);
   out.plaster3.push(ramp.translate(-5.0, 5.8, 0));
@@ -448,6 +482,7 @@ export function makeCivicHall(rng, buckets, wallBucket = 'plaster2') {
     const rib = box(0.18, 7.0, 0.18); rib.rotateZ(-0.42 + i * 0.16);
     out.dark.push(rib.translate(-3.0 + (i - 2.5) * 0.7, h + 2.1, -1.0));
   }
+  addConnectedExterior(out, { id: 'civichall', w, d, wallH: h, profile: 'civic', variant: 4 });
   finish(buckets, out);
   return { w: w + 2.2, d: d + 4.8, h: h + 4.2 };
 }
@@ -529,6 +564,23 @@ function gableLight({ w, d, wallH, roofH, pal, porch = 0, raised = 0, chimney = 
     colored(out, awning.translate(0, y0 + wallH * 0.73, d / 2 + porch * 0.42), trim, rng);
   }
   if (chimney) colored(out, box(0.42, 1.8, 0.42).translate(-w * 0.28, y0 + wallH + roofH * 0.78, -d * 0.2), dark, rng);
+  // Connected exterior service language shared by the lightweight family.
+  // Battens overlap the wall shell, the fascia overlaps the gable caps, and
+  // the utility box/conduit both penetrate the side wall: no decorative part
+  // can hover beside the building after instancing on uneven terrain.
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    colored(out, box(0.14, wallH, 0.14).translate(
+      sx * (w / 2 + 0.025), y0 + wallH / 2, sz * (d / 2 + 0.025),
+    ), trim, _detailRng);
+  }
+  for (const z of [-d / 2 - 0.03, d / 2 + 0.03]) {
+    colored(out, box(w + 0.18, 0.14, 0.14).translate(0, y0 + wallH - 0.08, z), trim, _detailRng);
+  }
+  const serviceY = y0 + Math.min(1.65, wallH * 0.58);
+  colored(out, box(0.24, 0.62, 0.82).translate(w / 2 + 0.08, serviceY, -d * 0.12), dark, _detailRng);
+  colored(out, box(0.10, Math.max(0.45, serviceY - y0 - 0.20), 0.10).translate(
+    w / 2 + 0.035, y0 + Math.max(0.45, serviceY - y0 - 0.20) / 2 + 0.08, -d * 0.12,
+  ), dark, _detailRng);
   return out;
 }
 
@@ -549,6 +601,27 @@ function debris(meta, pal, rng, material = 'wood') {
   const roof = slab(meta.hw * 1.35, 0.08, meta.hl * 0.95);
   roof.rotateY((rng() - 0.5) * 0.8); roof.rotateX(0.12 + rng() * 0.18);
   colored(out, roof.translate(meta.hw * 0.18, 0.18, -meta.hl * 0.08), dark, rng, 0.12);
+  // Building-scale persistent wreckage: collapsed wall leaves, a snapped
+  // frame and a buckled service panel keep the broken state recognizable as
+  // the exact structure that stood here instead of a generic debris sprinkle.
+  const panelColor = material === 'metal' ? trim : base;
+  for (const side of [-1, 1]) {
+    const panel = slab(meta.hw * 1.15, 0.09, Math.min(meta.h * 0.46, meta.hl * 1.20));
+    panel.rotateY(side * (0.34 + rng() * 0.18));
+    panel.rotateX(0.08 + rng() * 0.14);
+    colored(out, panel.translate(side * meta.hw * 0.28, 0.14, side * meta.hl * 0.22),
+      panelColor, rng, 0.11);
+  }
+  const frameH = Math.min(1.55, meta.h * 0.30);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const post = box(0.16, frameH * (0.65 + rng() * 0.35), 0.16);
+    post.rotateZ((rng() - 0.5) * 0.22);
+    colored(out, post.translate(sx * meta.hw * 0.64, frameH * 0.42, sz * meta.hl * 0.58),
+      dark, rng, 0.10);
+  }
+  const service = box(0.12, 0.62, 0.86);
+  service.rotateZ(Math.PI / 2 - 0.16);
+  colored(out, service.translate(-meta.hw * 0.42, 0.22, meta.hl * 0.28), dark, rng, 0.08);
   return merge(out);
 }
 

@@ -71,17 +71,36 @@ road wheels, and scroll from measured hull travel rather than a cosmetic timer.
 
 ## World and renderer
 
-Sixteen authored battlefields are generated from code. The original eight are
+Twenty authored battlefields are generated from code. The original eight are
 Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford,
 Tarkhan Steppe, and Cinder Junction; Frontier Basin, Nordhavn Fjord, Jade River
 Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, and
-Ironworks form the second set. Each owns a height field, material palette,
+Ironworks form the second set; Ruinspires, Blackglass District, Titan Gorge,
+and Skybridge Chasm complete the current roster. Each owns a height field, material palette,
 roads, foliage, structures, collision, concealment, destructibles, lighting,
 sky, and minimap. Shared structure, wreck, loose-prop, utility-network,
 terrain-attachment, and destruction systems keep the expanded vocabulary
 consistent, while map-specific composition preserves distinct tactical spaces.
 The browser and dedicated server share generated collision manifests so an
 obstacle is not passable on one authority and solid on another.
+
+Buildings use two bounded authoring paths. Large landmarks add windows,
+reveals, ledges, gutters, downpipes, attached service equipment, roof fittings,
+and biome-specific trim to the existing material buckets before those buckets
+are merged. Lightweight destructible structures use intact and broken
+`InstancedMesh` pools, so adding façade depth or a persistent collapsed frame
+does not add one draw call per building. An authoring-time support graph rejects
+floating fixtures and disconnected landmark parts. Collision is then captured
+from the final seeded worlds into the dedicated-server manifest.
+
+Wall, roof, stone, wood, straw, canvas, and structural-metal materials use
+color, normal, and a packed linear surface texture (red AO, green roughness).
+Sourced CC0 PBR sets replace the procedural fallback in-place after loading;
+both paths keep the same material bindings. Glass uses the existing environment
+map and restrained clearcoat, while a deterministic minority of window panes
+emit warm light into the renderer's existing bloom path. Tone mapping, bloom,
+environment reflections, warm sun, cool sky fill, and cascaded shadows remain
+central renderer responsibilities rather than per-building effects.
 
 The rendering system uses Three.js: a WebGL renderer, procedural sky and PMREM,
 cascaded shadows, atmospheric fog, post-processing, particles, decals, and

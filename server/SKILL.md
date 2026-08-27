@@ -19,7 +19,7 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 - `rankedMatchmaker.js` owns bounded queues, team balance, and match-ticket handoff;
   `ratingStore.js` owns bearer identities, persistent Elo, and idempotent results.
 - `dedicatedWorldCollision.js` inflates match-local state from the generated
-  sixteen-map collision manifest; do not hand-edit that manifest.
+  twenty-map collision manifest; do not hand-edit that manifest.
 - A v1 browser-hosted room closes if its host leaves; never silently migrate a
   ranked authority to a player.
 - Production signaling must run behind TLS with an explicit origin allowlist.

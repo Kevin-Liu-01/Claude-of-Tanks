@@ -22,6 +22,9 @@ class TestCanvas {
       getImageData() {
         return { data: new Uint8ClampedArray(canvas.pixels) };
       },
+      createImageData(width, height) {
+        return { data: new Uint8ClampedArray(width * height * 4) };
+      },
       putImageData(image) {
         canvas.pixels = new Uint8ClampedArray(image.data);
       },
@@ -51,7 +54,9 @@ class TestImage {
 }
 globalThis.Image = TestImage;
 
-const { applySourcedTerrain, composeAlbedo } = await import('./sourcedTextures.js');
+const {
+  applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
+} = await import('./sourcedTextures.js');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });
 
 const color = image([
@@ -82,6 +87,14 @@ assert.equal(contextOptions.filter((options) => options?.willReadFrequently).len
 assert.equal(contextOptions.length, 2,
   'one output context plus one reusable readback context are allocated');
 
+const surface = composeSurface(ao, rough, 2, 1.25);
+assert.deepEqual([...surface.pixels], [
+  128, 250, 0, 255, 255, 125, 0, 255,
+  64, 62, 0, 255, 0, 255, 0, 255,
+], 'building surface composer packs AO in red and roughness in green');
+assert.equal(contextOptions.length, 3,
+  'packed surface output reuses the one readback context and allocates one write-only canvas');
+
 const texture = () => ({ disposeCount: 0, dispose() { this.disposeCount++; } });
 const layer = { albedo: texture(), normal: texture() };
 let terrainSettled = false;
@@ -94,5 +107,12 @@ assert.equal(terrainSettled, true,
   'terrain readiness resolves after every requested texture swap');
 assert.equal(layer.albedo.disposeCount, 1, 'sourced albedo replaces the fallback once');
 assert.equal(layer.normal.disposeCount, 1, 'sourced normal replaces the fallback once');
+
+const buildingLayer = { albedo: texture(), normal: texture(), surface: texture() };
+await applySourcedBuildings({ plaster: buildingLayer }, 'verdant');
+assert.equal(buildingLayer.albedo.disposeCount, 1, 'building albedo swaps without baked-in AO');
+assert.equal(buildingLayer.normal.disposeCount, 1, 'building normal swaps once');
+assert.equal(buildingLayer.surface.disposeCount, 1,
+  'building packed AO/roughness surface swaps once');
 
 console.log('sourcedTextures.selftest: byte, readback, and async readiness contracts passed');

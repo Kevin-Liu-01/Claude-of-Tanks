@@ -182,6 +182,17 @@ connected utility networks, loose physical props, terrain attachment, and
 narrow collision shapes. The original eight received a deliberate backport
 rather than remaining a lower-detail compatibility tier.
 
+Landmarks and ordinary buildings share connected exterior-detail rules:
+foundations, courses, corner piers, gutters, drainpipes, awnings, service
+conduits, AC/louver clusters, window frames, ledges, doors, chimneys, dormers,
+and roof equipment must touch a wall, the ground, or a declared supported
+fixture. Large structures merge those details into their existing material
+batches. Repeated destructible buildings retain one instanced intact pool and
+one instanced wreck pool, including collapsed panels and surviving frames.
+Packed AO/roughness maps and normal maps deepen surfaces without multiplying
+geometry, while restrained clearcoat and emissive panes reuse the renderer's
+environment and post-processing stack.
+
 Destruction is durable state. A destroyed prop changes collision and is
 represented by a revision plus destroyed identifiers so a packet loss,
 keyframe, or reconnect cannot restore the obstacle on only one client.

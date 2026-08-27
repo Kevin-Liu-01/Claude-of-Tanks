@@ -22,6 +22,14 @@ assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 12, 'twelve heavyweight mer
 assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 16,
   'sixteen light buildings have destruction states');
 
+let connectedHeavyStructures = 0;
+function boundsGap(a, b) {
+  const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
+  const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
+  const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
+  return Math.hypot(dx, dy, dz);
+}
+
 for (const [id, build] of Object.entries(STRUCTURE_BUILDERS)) {
   const buckets = Object.fromEntries(
     ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked']
@@ -31,8 +39,36 @@ for (const [id, build] of Object.entries(STRUCTURE_BUILDERS)) {
   assert.ok(info.w > 5 && info.d > 5 && info.h > 4, `${id}: authored building dimensions`);
   const geos = Object.values(buckets).flat();
   assert.ok(geos.length >= 10, `${id}: detailed multi-part geometry`);
-  for (const geo of geos) assert.ok(geo.attributes.position.count > 0, `${id}: valid geometry`);
+  for (const geo of geos) {
+    assert.ok(geo.attributes.position.count > 0, `${id}: valid geometry`);
+    geo.computeBoundingBox();
+  }
+  // Authoring-time connectivity census: every visible part must overlap or
+  // sit within a realistic fixture tolerance of the primary structure. This
+  // catches unsupported balconies, rails, crown slabs and facade hardware
+  // before the material buckets erase their individual identity by merging.
+  const connected = new Set([0]);
+  const pending = [0];
+  while (pending.length) {
+    const current = pending.pop();
+    for (let candidate = 0; candidate < geos.length; candidate++) {
+      if (connected.has(candidate)) continue;
+      if (boundsGap(geos[current].boundingBox, geos[candidate].boundingBox) > 0.12) continue;
+      connected.add(candidate);
+      pending.push(candidate);
+    }
+  }
+  assert.equal(connected.size, geos.length, `${id}: no disconnected or floating authored part`);
+  const supported = geos.filter((geo) => geo.userData.structureSupport);
+  if (supported.length) {
+    connectedHeavyStructures++;
+    assert.ok(supported.length >= 13, `${id}: connected exterior fixture set`);
+    assert.ok(supported.every((geo) => geo.userData.structureSupport.gap <= 0.065),
+      `${id}: no authored exterior part floats from its declared support`);
+  }
 }
+assert.ok(connectedHeavyStructures >= 9,
+  'at least nine heavyweight families use the connected exterior authoring contract');
 
 for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.equal(meta.id, id, `${id}: registry id matches`);
@@ -47,6 +83,8 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   for (const [state, geo] of [['intact', intact], ['broken', broken]]) {
     const { position, color, uv } = geo.attributes;
     assert.ok(position.count >= 120, `${id}: ${state} geometry is detailed`);
+    if (state === 'broken') assert.ok(position.count >= 684,
+      `${id}: persistent wreck includes collapsed panels and surviving frame`);
     assert.equal(color.count, position.count,
       `${id}: ${state} geometry carries baked colors for one-draw-call rendering`);
     assert.equal(uv.count, position.count,
