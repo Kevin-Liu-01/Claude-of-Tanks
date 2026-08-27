@@ -6704,14 +6704,16 @@ function replaceT90MProryvHull(P) {
   // Glacis Relikt: broad V-shaped plates with nested seams, carried by the
   // sloped upper plate rather than standing vertically in front of it.
   for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, w, d] of [
-      [0.34, 1.275, 2.38, 0.20, 0.58, 0.40],
-      [0.78, 1.245, 2.50, 0.34, 0.54, 0.36],
-      [1.18, 1.205, 2.58, 0.48, 0.46, 0.31],
-    ]) {
-      P.add('hull', box(w, 0.075, d), s * x, y, z, -0.34, -s * yaw, 0);
-      P.add('hullDark', box(w * 0.76, 0.012, 0.025), s * x, y + 0.045, z - d * 0.34, -0.34, -s * yaw, 0);
-    }
+    P.destructibleCluster(`glacis_era_${s > 0 ? 'R' : 'L'}`, () => {
+      for (const [x, y, z, yaw, w, d] of [
+        [0.34, 1.275, 2.38, 0.20, 0.58, 0.40],
+        [0.78, 1.245, 2.50, 0.34, 0.54, 0.36],
+        [1.18, 1.205, 2.58, 0.48, 0.46, 0.31],
+      ]) {
+        P.add('hull', box(w, 0.075, d), s * x, y, z, -0.34, -s * yaw, 0);
+        P.add('hullDark', box(w * 0.76, 0.012, 0.025), s * x, y + 0.045, z - d * 0.34, -0.34, -s * yaw, 0);
+      }
+    });
   }
 
   // One native linked course around six separately readable road
@@ -6907,36 +6909,41 @@ function replaceT90MProryvTurret(P) {
   // deliberately vary; the
   // roots sit inside the welded planes and the dark seams remain flush.
   for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, roll, w, h, d] of [
-      [0.27, 0.34, 1.31, 0.14, -0.34, 0.32, 0.27, 0.39],
-      [0.49, 0.36, 1.18, 0.29, -0.37, 0.38, 0.31, 0.43],
-      [0.72, 0.36, 1.02, 0.43, -0.35, 0.43, 0.34, 0.46],
-      [0.96, 0.34, 0.83, 0.56, -0.31, 0.47, 0.35, 0.45],
-      [1.20, 0.31, 0.60, 0.68, -0.27, 0.48, 0.34, 0.43],
-      [1.42, 0.28, 0.34, 0.56, -0.20, 0.40, 0.31, 0.40],
-      [1.57, 0.25, 0.08, 0.33, -0.13, 0.28, 0.27, 0.34],
-    ]) {
-      P.add('turretCloth', KIT.xform(box(w, h, d), 0, 0, -0.075), s * x, y, z, roll, -s * yaw, -s * 0.20);
-      P.add('turretDark', KIT.xform(box(w * 0.80, 0.012, d * 0.75), 0, h * 0.52, 0.045), s * x, y, z, roll, -s * yaw, -s * 0.20);
-    }
-    // A second, lower stagger closes the bare valley between the mantlet
-    // saddle and the main fan. These plates overlap both the crown and the
-    // primary modules, giving the protection blanket real layered depth.
-    for (const [x, y, z, yaw, w, d] of [
-      [0.35, 0.48, 0.93, 0.20, 0.30, 0.34],
-      [0.61, 0.49, 0.73, 0.34, 0.34, 0.36],
-      [0.88, 0.46, 0.50, 0.48, 0.36, 0.34],
-    ]) {
-      P.add('turretCloth', box(w, 0.20, d), s * x, y, z, -0.14, -s * yaw, -s * 0.12);
-      P.add('turretDark', box(w * 0.72, 0.014, d * 0.70), s * x, y + 0.105, z, -0.14, -s * yaw, -s * 0.12);
-    }
-    for (const [z, w, h, d, yaw] of [
-      [0.02, 0.22, 0.28, 0.36, 0.10], [-0.36, 0.24, 0.30, 0.34, 0.04],
-      [-0.72, 0.22, 0.27, 0.31, -0.06], [-1.04, 0.20, 0.24, 0.28, -0.12],
-    ]) {
-      P.add('turretCloth', box(w, h, d), s * 1.62, 0.28, z, -0.08, -s * yaw, 0);
-      P.add('turretDark', box(0.015, h * 0.78, d * 0.78), s * (1.62 + w * 0.52), 0.28, z, -0.08, -s * yaw, 0);
-    }
+    const side = s > 0 ? 'R' : 'L';
+    P.destructibleCluster(`turret_era_${side}`, () => {
+      for (const [x, y, z, yaw, roll, w, h, d] of [
+        [0.27, 0.34, 1.31, 0.14, -0.34, 0.32, 0.27, 0.39],
+        [0.49, 0.36, 1.18, 0.29, -0.37, 0.38, 0.31, 0.43],
+        [0.72, 0.36, 1.02, 0.43, -0.35, 0.43, 0.34, 0.46],
+        [0.96, 0.34, 0.83, 0.56, -0.31, 0.47, 0.35, 0.45],
+        [1.20, 0.31, 0.60, 0.68, -0.27, 0.48, 0.34, 0.43],
+        [1.42, 0.28, 0.34, 0.56, -0.20, 0.40, 0.31, 0.40],
+        [1.57, 0.25, 0.08, 0.33, -0.13, 0.28, 0.27, 0.34],
+      ]) {
+        P.add('turretCloth', KIT.xform(box(w, h, d), 0, 0, -0.075), s * x, y, z, roll, -s * yaw, -s * 0.20);
+        P.add('turretDark', KIT.xform(box(w * 0.80, 0.012, d * 0.75), 0, h * 0.52, 0.045), s * x, y, z, roll, -s * yaw, -s * 0.20);
+      }
+      // A second, lower stagger closes the bare valley between the mantlet
+      // saddle and the main fan. These plates overlap both the crown and the
+      // primary modules, giving the protection blanket real layered depth.
+      for (const [x, y, z, yaw, w, d] of [
+        [0.35, 0.48, 0.93, 0.20, 0.30, 0.34],
+        [0.61, 0.49, 0.73, 0.34, 0.34, 0.36],
+        [0.88, 0.46, 0.50, 0.48, 0.36, 0.34],
+      ]) {
+        P.add('turretCloth', box(w, 0.20, d), s * x, y, z, -0.14, -s * yaw, -s * 0.12);
+        P.add('turretDark', box(w * 0.72, 0.014, d * 0.70), s * x, y + 0.105, z, -0.14, -s * yaw, -s * 0.12);
+      }
+    });
+    P.destructibleCluster(`side_era_${side}`, () => {
+      for (const [z, w, h, d, yaw] of [
+        [0.02, 0.22, 0.28, 0.36, 0.10], [-0.36, 0.24, 0.30, 0.34, 0.04],
+        [-0.72, 0.22, 0.27, 0.31, -0.06], [-1.04, 0.20, 0.24, 0.28, -0.12],
+      ]) {
+        P.add('turretCloth', box(w, h, d), s * 1.62, 0.28, z, -0.08, -s * yaw, 0);
+        P.add('turretDark', box(0.015, h * 0.78, d * 0.78), s * (1.62 + w * 0.52), 0.28, z, -0.08, -s * yaw, 0);
+      }
+    });
   }
   P.add('turretDark', box(0.54, 0.30, 0.07), 0, 0.24, 1.38, -0.29, 0, 0);
 
@@ -7110,23 +7117,28 @@ function enhanceT90MProryvSurface2026(P) {
   // than and buried into its existing load-bearing carrier, so this changes
   // the armor language without manufacturing another turret skin.
   for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, roll, w, h, d] of [
-      [0.32, 0.29, 1.38, 0.30, -0.30, 0.24, 0.27, 0.13],
-      [0.52, 0.28, 1.28, 0.42, -0.31, 0.27, 0.29, 0.14],
-      [0.73, 0.27, 1.15, 0.53, -0.29, 0.30, 0.30, 0.14],
-      [0.96, 0.25, 0.96, 0.66, -0.27, 0.32, 0.30, 0.14],
-      [1.19, 0.23, 0.74, 0.78, -0.24, 0.32, 0.29, 0.13],
-      [1.37, 0.22, 0.48, 0.84, -0.20, 0.25, 0.26, 0.12],
-    ]) {
-      P.add('turretDark', box(w * 0.72, 0.010, d * 0.70), s * x, y + h * 0.48, z, roll, -s * yaw, -s * 0.10);
-    }
+    const side = s > 0 ? 'R' : 'L';
+    P.destructibleCluster(`turret_era_${side}`, () => {
+      for (const [x, y, z, yaw, roll, w, h, d] of [
+        [0.32, 0.29, 1.38, 0.30, -0.30, 0.24, 0.27, 0.13],
+        [0.52, 0.28, 1.28, 0.42, -0.31, 0.27, 0.29, 0.14],
+        [0.73, 0.27, 1.15, 0.53, -0.29, 0.30, 0.30, 0.14],
+        [0.96, 0.25, 0.96, 0.66, -0.27, 0.32, 0.30, 0.14],
+        [1.19, 0.23, 0.74, 0.78, -0.24, 0.32, 0.29, 0.13],
+        [1.37, 0.22, 0.48, 0.84, -0.20, 0.25, 0.26, 0.12],
+      ]) {
+        P.add('turretDark', box(w * 0.72, 0.010, d * 0.70), s * x, y + h * 0.48, z, roll, -s * yaw, -s * 0.10);
+      }
+    });
 
     // Broken flank course and welded lower-cheek return.  The parts remain
     // inside the native ±1.55 m side carrier and share its armor plane.
-    for (const [z, h, d] of [[0.12, 0.25, 0.25], [-0.20, 0.28, 0.27], [-0.54, 0.27, 0.27], [-0.87, 0.24, 0.25]]) {
-      P.add('turretDark', box(0.010, h * 0.72, d * 0.72), s * 1.548, 0.24, z, -0.06, 0, 0);
-    }
-    P.add('turretDark', box(0.035, 0.030, 1.18), s * 1.46, 0.49, -0.45, 0, 0, -s * 0.05);
+    P.destructibleCluster(`side_era_${side}`, () => {
+      for (const [z, h, d] of [[0.12, 0.25, 0.25], [-0.20, 0.28, 0.27], [-0.54, 0.27, 0.27], [-0.87, 0.24, 0.25]]) {
+        P.add('turretDark', box(0.010, h * 0.72, d * 0.72), s * 1.548, 0.24, z, -0.06, 0, 0);
+      }
+      P.add('turretDark', box(0.035, 0.030, 1.18), s * 1.46, 0.49, -0.45, 0, 0, -s * 0.05);
+    });
 
     // Bustle lids, latch shoes and short side-return ribs break the old
     // rectangular magazine boxes while staying entirely inside their plan.
@@ -7202,36 +7214,42 @@ function finishT90MProryvOwner2026(P) {
   const skirtDz = (skirtZ1 - skirtZ0) / skirtPanels;
   for (const s of [-1, 1]) {
     const xi = s * 1.770, xo = s * 1.825;
-    for (let i = 0; i < skirtPanels; i++) {
-      const a = skirtZ0 + i * skirtDz;
-      const m = a + skirtDz * 0.5;
-      const b = a + skirtDz;
-      const edgeY = i === 0 || i === skirtPanels - 1 ? 0.66 : 0.70;
-      const lobeY = 0.47 + (i % 2) * 0.035;
-      P.add('hull', orientedSlab(
-        [xi, edgeY, a], [xo, edgeY, a], [xo, lobeY, m], [xi, lobeY, m],
-        [xi, 1.245, a], [xo, 1.245, a], [xo, 1.245, m], [xi, 1.245, m],
-      ));
-      P.add('hull', orientedSlab(
-        [xi, lobeY, m], [xo, lobeY, m], [xo, edgeY, b], [xi, edgeY, b],
-        [xi, 1.245, m], [xo, 1.245, m], [xo, 1.245, b], [xi, 1.245, b],
-      ));
-      P.add('hullDark', box(0.026, 0.50, 0.024), xo, 0.97, b - 0.012);
-      P.add('hullDetail', box(0.032, 0.035, skirtDz * 0.68), xo, 1.265, m);
-    }
+    P.destructibleCluster(`skirt_era_${s > 0 ? 'R' : 'L'}`, () => {
+      for (let i = 0; i < skirtPanels; i++) {
+        const a = skirtZ0 + i * skirtDz;
+        const m = a + skirtDz * 0.5;
+        const b = a + skirtDz;
+        const edgeY = i === 0 || i === skirtPanels - 1 ? 0.66 : 0.70;
+        const lobeY = 0.47 + (i % 2) * 0.035;
+        P.add('hull', orientedSlab(
+          [xi, edgeY, a], [xo, edgeY, a], [xo, lobeY, m], [xi, lobeY, m],
+          [xi, 1.245, a], [xo, 1.245, a], [xo, 1.245, m], [xi, 1.245, m],
+        ));
+        P.add('hull', orientedSlab(
+          [xi, lobeY, m], [xo, lobeY, m], [xo, edgeY, b], [xi, edgeY, b],
+          [xi, 1.245, m], [xo, 1.245, m], [xo, 1.245, b], [xi, 1.245, b],
+        ));
+        P.add('hullDark', box(0.026, 0.50, 0.024), xo, 0.97, b - 0.012);
+        P.add('hullDetail', box(0.032, 0.035, skirtDz * 0.68), xo, 1.265, m);
+      }
+    });
   }
 
   // The native upper Relikt field remains authoritative. These lower
   // inboard plates and nested seams complete the upper/lower-glacis read
   // without extending into the idler lanes or replacing the bow shell.
   for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, w, d] of [
-      [0.32, 0.99, 2.78, 0.16, 0.52, 0.32],
-      [0.72, 0.93, 2.91, 0.28, 0.44, 0.28],
-    ]) {
-      P.add('hull', box(w, 0.060, d), s * x, y, z, -0.47, -s * yaw, 0);
-      P.add('hullDark', box(w * 0.72, 0.010, 0.026), s * x, y + 0.037, z - d * 0.33, -0.47, -s * yaw, 0);
-    }
+    P.destructibleCluster(`glacis_era_${s > 0 ? 'R' : 'L'}`, () => {
+      for (const [x, y, z, yaw, w, d] of [
+        [0.32, 0.99, 2.78, 0.16, 0.52, 0.32],
+        [0.72, 0.93, 2.91, 0.28, 0.44, 0.28],
+      ]) {
+        P.add('hull', box(w, 0.060, d), s * x, y, z, -0.47, -s * yaw, 0);
+        P.add('hullDark', box(w * 0.72, 0.010, 0.026), s * x, y + 0.037, z - d * 0.33, -0.47, -s * yaw, 0);
+      }
+    });
+  }
+  for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.038, 0.20, 0.42), s * 0.96, 0.78, 3.02, -0.40, 0, 0);
     P.add('hullDark', torus(0.096, 0.022, 16), s * 0.70, 0.61, 3.09, Math.PI / 2, 0, 0);
   }
@@ -7310,14 +7328,16 @@ function refineT90MProryvArmor2026(P) {
     // Unequal Relikt shoulder cassettes disappear into the structural brow.
     // Nested seam plates create a readable armor cadence without entering
     // the track lane or adding another suspended course.
-    for (const [x, y, z, yaw, w, d] of [
-      [1.13, 1.285, 2.54, 0.26, 0.38, 0.30],
-      [1.43, 1.225, 2.67, 0.38, 0.34, 0.28],
-      [1.63, 1.115, 2.88, 0.28, 0.25, 0.24],
-    ]) {
-      P.add('hull', box(w, 0.070, d), s * x, y, z, -0.35, -s * yaw, 0);
-      P.add('hullDark', box(w * 0.70, 0.010, 0.030), s * x, y + 0.043, z - d * 0.34, -0.35, -s * yaw, 0);
-    }
+    P.destructibleCluster(`glacis_era_${s > 0 ? 'R' : 'L'}`, () => {
+      for (const [x, y, z, yaw, w, d] of [
+        [1.13, 1.285, 2.54, 0.26, 0.38, 0.30],
+        [1.43, 1.225, 2.67, 0.38, 0.34, 0.28],
+        [1.63, 1.115, 2.88, 0.28, 0.25, 0.24],
+      ]) {
+        P.add('hull', box(w, 0.070, d), s * x, y, z, -0.35, -s * yaw, 0);
+        P.add('hullDark', box(w * 0.70, 0.010, 0.030), s * x, y + 0.043, z - d * 0.34, -0.35, -s * yaw, 0);
+      }
+    });
   }
 
   // Two overlapping lower-nose facets form a real V-section from the tow
@@ -7336,15 +7356,17 @@ function refineT90MProryvArmor2026(P) {
   // shoulder brows.  The old three broad plates remain the load-bearing
   // base; these smaller modules overlap it and leave deliberate dark breaks.
   for (const s of [-1, 1]) {
-    for (const [x, y, z, yaw, w, d] of [
-      [0.22, 1.340, 2.10, 0.10, 0.34, 0.28],
-      [0.50, 1.325, 2.20, 0.20, 0.38, 0.30],
-      [0.80, 1.300, 2.31, 0.30, 0.40, 0.30],
-      [1.09, 1.270, 2.43, 0.40, 0.36, 0.28],
-    ]) {
-      P.add('hull', box(w, 0.065, d), s * x, y, z, -0.32, -s * yaw, 0);
-      P.add('hullDark', box(w * 0.74, 0.010, 0.025), s * x, y + 0.040, z - d * 0.34, -0.32, -s * yaw, 0);
-    }
+    P.destructibleCluster(`glacis_era_${s > 0 ? 'R' : 'L'}`, () => {
+      for (const [x, y, z, yaw, w, d] of [
+        [0.22, 1.340, 2.10, 0.10, 0.34, 0.28],
+        [0.50, 1.325, 2.20, 0.20, 0.38, 0.30],
+        [0.80, 1.300, 2.31, 0.30, 0.40, 0.30],
+        [1.09, 1.270, 2.43, 0.40, 0.36, 0.28],
+      ]) {
+        P.add('hull', box(w, 0.065, d), s * x, y, z, -0.32, -s * yaw, 0);
+        P.add('hullDark', box(w * 0.74, 0.010, 0.025), s * x, y + 0.040, z - d * 0.34, -0.32, -s * yaw, 0);
+      }
+    });
   }
   P.add('hullDark', box(0.075, 0.040, 0.68), 0, 1.275, 2.30, -0.32, 0, 0);
 

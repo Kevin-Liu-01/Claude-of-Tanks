@@ -96,6 +96,14 @@ frames. Persistent facts are reconstructible after packet loss or reconnect:
 the verdict is mirrored in snapshot metadata and destructible state carries a
 revision plus destroyed identifiers in keyframes.
 
+Per-vehicle reactive-armor depletion follows the same rule. Entity keyframes
+carry a sorted optional `eraSpent` list. A live reliable `shell:hit` event owns
+the one-shot blast/audio timing, while the snapshot list owns durable visual
+truth: a late joiner or recovering client removes the exact spent cassettes,
+and an empty set in a new round restores them. The compact RTC row leaves the
+column sparse for the common no-activation case, and delta equality compares
+the identifiers by content rather than array identity.
+
 The browser host's own peer still crosses the exact protocol/runtime boundary,
 but its in-process transport delivers synchronously and without cloning. The
 presentation bridge and snapshot sampler reuse their frame/entity arrays and

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.js';
+import { TANK_SPECS } from '../specs.js';
 import './leopard2A7VGunEra.selftest.mjs';
 
 const a = new THREE.Vector3();
@@ -115,4 +116,46 @@ assertFlushFaceCaps('hull', 'hullDark', ({ centroid, area }) =>
 32, 'Oplot glacis Nozh');
 
 oplot.dispose();
-console.log('eraSeating.selftest: T-80 bars removed; Oplot ERA caps are carrier-seated');
+
+// Runtime depletion is physical visual state: every authoritative ERA plate
+// maps to exact authored vertices, collapses independently after activation,
+// and returns only when a new round resets the rig.
+{
+  const t90m = createTank('t90m', null, {
+    proceduralOnly: true,
+    geometryReceipt: true,
+  });
+  const countCollapsed = () => {
+    let collapsed = 0;
+    t90m.root.traverse((node) => {
+      const position = node.geometry?.getAttribute?.('position');
+      if (!position) return;
+      for (let index = 0; index < position.count; index++) {
+        if (position.getY(index) < -900) collapsed++;
+      }
+    });
+    return collapsed;
+  };
+  const plateNames = [...TANK_SPECS.t90m.armor.hullPlates, ...TANK_SPECS.t90m.armor.turretPlates]
+    .filter((plate) => plate.kind === 'era')
+    .map((plate) => plate.name)
+    .sort();
+  assert.deepEqual(t90m.root.userData.eraClusterNames, plateNames,
+    'every T-90M gameplay ERA plate has one exact visual cluster');
+  const before = countCollapsed();
+  let previous = before;
+  for (const plateName of plateNames) {
+    assert.equal(t90m.stripEra(plateName), true,
+      `${plateName} resolves an authored visual cassette cluster`);
+    const next = countCollapsed();
+    assert.ok(next > previous, `${plateName} removes visible authored vertices`);
+    assert.equal(t90m.stripEra(plateName), true, `${plateName} depletion is idempotent`);
+    assert.equal(countCollapsed(), next, `${plateName} is not depleted twice`);
+    previous = next;
+  }
+  assert.equal(t90m.resetEra(), true, 'new round restores authored ERA placement');
+  assert.equal(countCollapsed(), before, 'restored ERA has no collapsed cassette instances');
+  t90m.dispose();
+}
+
+console.log('eraSeating.selftest: ERA caps are seated, consumable, and resettable');

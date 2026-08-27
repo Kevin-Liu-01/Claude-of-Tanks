@@ -6110,6 +6110,15 @@ export function createTank(specId, engineCtx, opts = {}) {
   const moduleVisualParts = new Map();
   const eraClusters = new Map();
   const eraPlacements = [];
+  // Most historical ERA uses one shared instanced brick. Native fleet
+  // profiles increasingly author irregular cassettes, seams and carrier caps
+  // with their exact final geometry instead. Keep those vertices in the same
+  // merged material buckets (zero extra draw calls), but retain the small
+  // authored ranges needed to collapse and restore one gameplay plate after
+  // its one-shot charge fires.
+  const destructiblePartCluster = new WeakMap();
+  const destructibleClusters = new Map();
+  let activeDestructibleCluster = null;
   const decals = [];
   const disposables = [];
 
@@ -6134,7 +6143,11 @@ export function createTank(specId, engineCtx, opts = {}) {
     // shared articulation rig (gunG remains independently pitchable).
     postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
-      (buckets[bucket] || (buckets[bucket] = [])).push(xform(geo, x, y, z, rx, ry, rz, s));
+      const part = xform(geo, x, y, z, rx, ry, rz, s);
+      (buckets[bucket] || (buckets[bucket] = [])).push(part);
+      if (activeDestructibleCluster) {
+        destructiblePartCluster.set(part, activeDestructibleCluster);
+      }
     },
     // Mudguards and hanging mudflaps are still ordinary hull geometry, but
     // they carry a semantic receipt until bucket merge.  The seating audit
@@ -6251,6 +6264,29 @@ export function createTank(specId, engineCtx, opts = {}) {
       fill((x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) =>
         eraPlacements.push({ x, y, z, rx, ry, rz, sx, sy, sz, turretLocal }));
       eraClusters.set(plateName, { start, end: eraPlacements.length, turretLocal });
+    },
+    // Exact native ERA cluster: `fill` emits ordinary authored P.add parts.
+    // Their geometry and merge order stay byte-for-byte identical before a
+    // hit; the merge pass records only their vertex spans for rare activation
+    // and round-reset events. Repeating a plate name extends the same cluster,
+    // which lets layered profile passes contribute their visible seams/caps.
+    destructibleCluster(plateName, fill) {
+      if (typeof plateName !== 'string' || plateName.length === 0) {
+        throw new TypeError('destructibleCluster requires a gameplay plate name');
+      }
+      if (typeof fill !== 'function') throw new TypeError('destructibleCluster requires a fill callback');
+      if (activeDestructibleCluster) {
+        throw new Error(`Nested destructibleCluster ${plateName} inside ${activeDestructibleCluster}`);
+      }
+      if (!destructibleClusters.has(plateName)) {
+        destructibleClusters.set(plateName, { ranges: [], spent: false });
+      }
+      activeDestructibleCluster = plateName;
+      try {
+        fill();
+      } finally {
+        activeDestructibleCluster = null;
+      }
     },
   };
 
@@ -6371,11 +6407,40 @@ export function createTank(specId, engineCtx, opts = {}) {
   for (const [bucket, list] of Object.entries(buckets)) {
     if (!list.length) continue;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
+    const authoredRanges = [];
+    let vertexOffset = 0;
+    for (const part of list) {
+      const vertexCount = part.index
+        ? part.index.count
+        : (part.getAttribute('position')?.count || 0);
+      const plateName = destructiblePartCluster.get(part);
+      if (plateName && vertexCount > 0) {
+        authoredRanges.push({ plateName, start: vertexOffset, count: vertexCount });
+      }
+      vertexOffset += vertexCount;
+    }
     const merged = mergeAll(list);
     if (CAMO_BUCKETS.has(bucket)) {
       boxUV(merged, spec.visual.camoScale ?? 0.34);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
+    }
+    if (authoredRanges.length) {
+      const position = merged.getAttribute('position');
+      for (const range of authoredRanges) {
+        const cluster = destructibleClusters.get(range.plateName);
+        if (!cluster || !position || range.start + range.count > position.count) {
+          throw new Error(`${specId}: invalid destructible ERA range ${range.plateName}`);
+        }
+        const first = range.start * position.itemSize;
+        const last = (range.start + range.count) * position.itemSize;
+        cluster.ranges.push({
+          position,
+          start: range.start,
+          count: range.count,
+          original: position.array.slice(first, last),
+        });
+      }
     }
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
@@ -6441,6 +6506,9 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     seatEraBricks();
   }
+  root.userData.eraClusterNames = Object.freeze([
+    ...new Set([...eraClusters.keys(), ...destructibleClusters.keys()]),
+  ].sort());
 
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
@@ -7516,20 +7584,59 @@ export function createTank(specId, engineCtx, opts = {}) {
       gearForceUpdate = true;
     },
 
-    /** Remove one ERA brick cluster (t90m). */
+    /** Remove one exact authored or instanced ERA cluster. Idempotent. */
     stripEra(plateName) {
       const c = eraClusters.get(plateName);
-      if (!c) return;
-      _s.set(0, 0, 0);
-      _q.identity();
-      for (let i = c.start; i < c.end; i++) {
-        const e = eraPlacements[i];
-        if (!e._mesh) continue;
-        _v.set(0, -1000, 0);
-        _m.compose(_v, _q, _s);
-        e._mesh.setMatrixAt(e._index, _m);
-        e._mesh.instanceMatrix.needsUpdate = true;
+      const authored = destructibleClusters.get(plateName);
+      if (!c && !authored) return false;
+      if (c) {
+        _s.set(0, 0, 0);
+        _q.identity();
+        for (let i = c.start; i < c.end; i++) {
+          const e = eraPlacements[i];
+          if (!e._mesh) continue;
+          _v.set(0, -1000, 0);
+          _m.compose(_v, _q, _s);
+          e._mesh.setMatrixAt(e._index, _m);
+          e._mesh.instanceMatrix.needsUpdate = true;
+        }
       }
+      if (authored && !authored.spent) {
+        authored.spent = true;
+        for (const range of authored.ranges) {
+          const array = range.position.array;
+          const first = range.start * range.position.itemSize;
+          const last = (range.start + range.count) * range.position.itemSize;
+          for (let offset = first; offset < last; offset += range.position.itemSize) {
+            // Degenerate every triangle at one out-of-scene point. Keeping the
+            // attribute length and original bounding volume stable avoids a
+            // scene rebuild, draw-call change or per-frame branch.
+            array[offset] = 0;
+            array[offset + 1] = -1000;
+            array[offset + 2] = 0;
+          }
+          range.position.needsUpdate = true;
+        }
+      }
+      return true;
+    },
+
+    /** Restore all ERA cassettes for a new round/replay reset. */
+    resetEra() {
+      if (!eraPlacements.length && !destructibleClusters.size) return false;
+      if (eraPlacements.length) seatEraBricks();
+      for (const cluster of destructibleClusters.values()) {
+        if (!cluster.spent) continue;
+        cluster.spent = false;
+        for (const range of cluster.ranges) {
+          range.position.array.set(
+            range.original,
+            range.start * range.position.itemSize,
+          );
+          range.position.needsUpdate = true;
+        }
+      }
+      return true;
     },
 
     /**

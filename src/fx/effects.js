@@ -16,6 +16,7 @@ import { LATE_FX_LAYER } from './layers.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
 import { createImpactDecals } from './impactDecals.js';
 import { syncSubjectEmitterAnchor } from './effectAttachments.js';
+import { isEraActivation } from '../game/eraActivation.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
@@ -3128,6 +3129,12 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
             notifyShellSweep(tail[0], tail[1], tail[2], e.pos[0], e.pos[1], e.pos[2]);
           }
           shellKinds.delete(e.shellId);
+        }
+        // ERA is an outer-layer activation, not necessarily the final hit
+        // result. A rod/jet may pop the cassette and continue into a pen or
+        // non-pen on the base armor; preserve both visual events.
+        if (isEraActivation(e) && e.kind !== 'era') {
+          fx.impact('era', _v3, _v4, e.caliberMm);
         }
         fx.impact(e.kind, _v3, _v4, e.caliberMm);
         // Ballistic scarring: stamp the mark for this hit into the struck

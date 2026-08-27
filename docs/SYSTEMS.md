@@ -221,14 +221,32 @@ The solver covers:
 - crushable prop interaction;
 - per-wheel terrain support;
 - damped chassis height, pitch, and roll;
-- suspension-limited contact release, ballistic flight, and landing.
+- suspension-limited contact release, ballistic flight, and landing;
+- bounded rigid-air angular momentum, rollover, and tank-on-tank support.
 
 Vertical motion has two explicit deterministic phases. While `grounded`, the
 sprung chassis follows the sampled support plane within the running gear's
 compression and droop limits. When support falls beyond full droop, the tracks
 unload, drive/brake/steering forces stop, horizontal momentum is preserved, and
-`verticalSpeed` integrates gravity. Contact resumes only when the fully
-extended footprint reaches terrain. There is no universal climb angle. The
+`verticalSpeed` integrates gravity. Pitch and roll angular velocity continue
+through the unsupported phase with light air drag; terrain attitude cannot
+instantaneously pull the nose onto a distant downslope. Contact resumes only
+when the fully extended footprint reaches terrain. The landing impulse is
+bounded and applied at the contact offset before the terrain spring blends
+back in, so hard or off-axis landings can initiate a physical tumble while
+ordinary landings retain the established suspension settle.
+
+`src/sim/tankBodyContacts.ts` adds the deliberately narrow three-dimensional
+dynamic-contact layer that the ground capsule solver does not own. Grounded
+tanks keep the established inexpensive two-dimensional collision path. A
+clearly vertically ordered overlapping pair can instead resolve roof/side
+support, mass-weighted vertical impulse, off-center pitch/roll torque, stacking,
+and rollover. At the fourteen-vehicle ceiling this is 91 allocation-free broad
+phase checks per fixed tick; the capsule and vertical-box work runs only for
+horizontal overlaps. An overturned tank remains overturned until another
+physical contact changes its state—there is no automatic upright correction.
+
+There is no universal climb angle. The
 solver compares gravity demand with engine acceleration and track grip derived
 from power-to-weight, current engine/module health, the vehicle's per-ground
 resistance, and its optional `trackTraction` multiplier. Insufficient engine
@@ -278,6 +296,17 @@ authority while keeping close-range aim consistent with solo play.
 src/sim/ballistics.js advances shells and resolves candidate impacts.
 src/sim/armor.js evaluates the struck plate. src/sim/damage.js applies vehicle,
 module, crew, fire, and destruction state.
+
+Explosive reactive armor is a one-shot authoritative plate, not a cosmetic hit
+kind. The damage solver records the exact activated plate name in `eraSpent`
+even when the projectile continues into base armor. Presentation consumes that
+same event additively: the cassette emits its sharp blast, sparks, smoke,
+fragments, and audio before the deeper penetration/non-penetration effect, then
+the exact authored visual cluster is removed. Procedural irregular cassettes
+retain their ordinary merged material buckets and draw-call count; the factory
+records vertex spans only for the rare activation/reset operation. Instanced
+ERA uses the equivalent matrix-depletion path. A round reset restores every
+cluster.
 
 The authority emits:
 

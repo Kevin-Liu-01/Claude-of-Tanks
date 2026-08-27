@@ -38,6 +38,10 @@ function fakeVisual(_specId, _engineCtx, opts) {
     },
     recoilKick() { return 1; },
     gunMuzzleWorld(out, muzzleIndex) { return out.set(20 + muzzleIndex, 3, -8); },
+    strippedEra: [],
+    eraResets: 0,
+    stripEra(name) { this.strippedEra.push(name); },
+    resetEra() { this.eraResets++; },
     dispose() {},
   };
   visuals.push(visual);
@@ -93,9 +97,18 @@ assert.deepEqual(
 snapshot.tick++;
 snapshot.entities[0].x++;
 snapshot.entities[1].z++;
+snapshot.entities[0].eraSpent = ['glacis_era_L'];
 bridge.apply(snapshot);
 assert.deepEqual(visuals.map((visual) => visual.syncs), [1, 1],
   'subsequent snapshots leave visual sync ownership to the render loop');
+assert.deepEqual(visuals[0].strippedEra, ['glacis_era_L'],
+  'snapshot state depletes ERA for clients that missed the activation event');
+
+snapshot.tick++;
+snapshot.entities[0].eraSpent = [];
+bridge.apply(snapshot);
+assert.equal(visuals[0].eraResets, 1,
+  'new-round empty ERA state restores the reusable vehicle visual');
 
 snapshot.tick++;
 bridge.apply(snapshot, 1 / 60, [{

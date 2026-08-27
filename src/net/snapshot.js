@@ -17,7 +17,7 @@ const ENTITY_DELTA_FIELDS = Object.freeze([
   'x', 'y', 'z', 'vx', 'vy', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
-  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags',
+  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags', 'eraSpent',
 ]);
 
 const SNAPSHOT_RELOAD_KINDS = Object.freeze({
@@ -86,7 +86,7 @@ export function captureEntitySnapshot(entity) {
   const state = entity.state;
   const speed = finite(state.speed);
   const yaw = finite(state.yaw);
-  return {
+  const snapshot = {
     id: String(entity.id),
     specId: String(entity.specId || (entity.spec && entity.spec.id) || ''),
     team: String(entity.team || ''),
@@ -113,6 +113,10 @@ export function captureEntitySnapshot(entity) {
     shellSlot: Math.max(0, Math.min(2, entity.combat.shellSlot | 0)),
     flags: entityFlags(entity),
   };
+  if (entity.combat.eraSpent?.size) {
+    snapshot.eraSpent = [...entity.combat.eraSpent].sort();
+  }
+  return snapshot;
 }
 
 function captureShellSnapshot(shell) {
@@ -184,6 +188,19 @@ export function captureWorldSnapshot({
 function sameEntitySnapshot(a, b) {
   if (!a || !b) return false;
   for (const field of ENTITY_DELTA_FIELDS) {
+    if (field === 'eraSpent') {
+      const aSpent = a.eraSpent;
+      const bSpent = b.eraSpent;
+      if (aSpent === bSpent) continue;
+      if (!Array.isArray(aSpent) || !Array.isArray(bSpent) ||
+          aSpent.length !== bSpent.length) return false;
+      let same = true;
+      for (let index = 0; index < aSpent.length; index++) {
+        if (aSpent[index] !== bSpent[index]) { same = false; break; }
+      }
+      if (!same) return false;
+      continue;
+    }
     if (a[field] !== b[field]) return false;
   }
   return true;
@@ -297,6 +314,7 @@ export function decodeEntitySnapshot(entity, target = null) {
   out.magazineCapacity = Math.max(0, entity.magazineCapacity | 0);
   out.shellSlot = entity.shellSlot;
   out.flags = entity.flags;
+  out.eraSpent = Array.isArray(entity.eraSpent) ? entity.eraSpent : [];
   return out;
 }
 

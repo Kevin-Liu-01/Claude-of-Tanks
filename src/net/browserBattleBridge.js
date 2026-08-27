@@ -272,6 +272,21 @@ export function createBrowserBattleBridge({
     entity.specialAction.pendingFire = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_PENDING);
     state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
       entity.specialAction.active;
+    const spentEra = Array.isArray(snapshot.eraSpent) ? snapshot.eraSpent : [];
+    const shownEra = entity._networkEraSpent || (entity._networkEraSpent = new Set());
+    let resetEra = false;
+    for (const plateName of shownEra) {
+      if (!spentEra.includes(plateName)) { resetEra = true; break; }
+    }
+    if (resetEra) {
+      entity.visual.resetEra?.();
+      shownEra.clear();
+    }
+    for (const plateName of spentEra) {
+      if (shownEra.has(plateName)) continue;
+      entity.visual.stripEra?.(plateName);
+      shownEra.add(plateName);
+    }
     if (destroyed) visualDestroy(entity);
     else if (!destroyed && entity._networkDestroyed) {
       if (entity.visual.resetDestroyed) entity.visual.resetDestroyed();

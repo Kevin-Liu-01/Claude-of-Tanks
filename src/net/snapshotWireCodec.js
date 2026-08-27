@@ -5,7 +5,7 @@ const ENTITY_FIELDS = Object.freeze([
   'x', 'y', 'z', 'vx', 'vy', 'vz',
   'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
   'hp', 'maxHp', 'reloadMs', 'reloadTotalMs', 'reloadKind',
-  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags',
+  'magazineRounds', 'magazineCapacity', 'shellSlot', 'flags', 'eraSpent',
 ]);
 const SHELL_FIELDS = Object.freeze([
   'id', 'shooterId', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'type',
@@ -41,7 +41,12 @@ function unpackRows(rows, fields, limit, label) {
       throw new TypeError(`invalid ${label} row`);
     }
     const row = {};
-    for (let index = 0; index < fields.length; index++) row[fields[index]] = values[index];
+    for (let index = 0; index < fields.length; index++) {
+      // JSON arrays encode an omitted optional column as null. Preserve the
+      // sparse object shape so optional state (currently ERA depletion) does
+      // not churn every unchanged entity delta after decode.
+      if (values[index] != null) row[fields[index]] = values[index];
+    }
     return row;
   });
 }

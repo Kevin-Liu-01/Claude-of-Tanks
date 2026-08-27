@@ -104,6 +104,26 @@ function entity(id, specId, team, x, {
   };
 }
 
+// Spent reactive armor is durable authoritative state, not only a transient
+// hit event: reconnecting/fresh clients must receive already-depleted tiles.
+{
+  const source = entity('era-tank', 't90m', 'alpha', 0);
+  source.combat.eraSpent = new Set(['glacis_era_L', 'turret_era_R']);
+  const captured = captureEntitySnapshot(source);
+  assert.deepEqual(captured.eraSpent, ['glacis_era_L', 'turret_era_R']);
+  assert.deepEqual(decodeEntitySnapshot(captured).eraSpent,
+    ['glacis_era_L', 'turret_era_R']);
+  const unchanged = createSnapshotDelta({
+    tick: 2, serverTimeMs: 100, ackInputSeq: 0, entities: [captureEntitySnapshot(source)],
+    shells: [], events: [], meta: null,
+  }, {
+    tick: 1, serverTimeMs: 50, ackInputSeq: 0, entities: [captured],
+    shells: [], events: [], meta: null,
+  });
+  assert.equal(unchanged.entities.length, 0,
+    'equal ERA arrays do not defeat snapshot delta compression');
+}
+
 function snapshotEnvelope(tick, x = tick) {
   return createEnvelope(MESSAGE_TYPES.SNAPSHOT, captureWorldSnapshot({
     tick,
@@ -884,10 +904,13 @@ assert.ok(airborne.flags & SNAPSHOT_FLAGS.AIRBORNE,
         index % 2 ? 'bravo' : 'alpha', index * 7)),
     viewerId: 'tank-0',
   }));
+  full.entities[1].eraSpent = ['glacis_era_L', 'turret_era_R'];
   const envelopeValue = createEnvelope(MESSAGE_TYPES.SNAPSHOT, full, { seq: 9, ack: 7, tick: 30 });
   const binary = snapshotWireCodec.encode(envelopeValue);
   const decoded = snapshotWireCodec.decode(binary);
   assert.deepEqual(decoded, envelopeValue, 'compact snapshot codec round-trips the full envelope');
+  assert.deepEqual(decoded.payload.entities[1].eraSpent, ['glacis_era_L', 'turret_era_R'],
+    'binary RTC snapshots preserve persistent ERA depletion');
   assert.ok(binary.byteLength < new TextEncoder().encode(JSON.stringify(envelopeValue)).byteLength * 0.7,
     'binary array rows remove at least 30% of full-snapshot JSON bytes');
 }

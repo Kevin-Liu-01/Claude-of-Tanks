@@ -117,6 +117,7 @@ import { createBus, createGameState, mulberry32 } from './game/stateCore.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
+import { stripActivatedEra } from './game/eraActivation.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
@@ -1885,6 +1886,7 @@ bus.on('shell:hit', (ev) => {
   // Receiving-end reactions on ANY struck tank: caliber-scaled hull flinch,
   // plus a persistent armor scar decal at penetration points.
   const target = ev.targetId ? game.tankById.get(ev.targetId) : null;
+  if (target?.visual) stripActivatedEra(ev, target.visual);
   if (target && target.visual && ev.normal) {
     const pen = ev.kind === 'pen' || ev.kind === 'he_pen';
     if (target.visual.hitFlinch) {

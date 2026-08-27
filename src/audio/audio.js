@@ -54,6 +54,7 @@
  */
 
 import { createVoiceRadio } from './voices.js';
+import { isEraActivation } from '../game/eraActivation.ts';
 
 /**
  * Baked combat sample map: log/debug name → file under public/audio/sfx/.
@@ -2459,6 +2460,9 @@ export function createAudio({ context: initialContext = null } = {}) {
     // deliberately get NONE — a bounce must feel like relief, not damage.
     const playerHit = (listenerOwnerId != null && e.targetId === listenerOwnerId) ||
       (listenerOwnerId == null && playerId != null && e.targetId === playerId);
+    // Like the FX path, the reactive charge is additive to the deeper armor
+    // result. Play its sharp cassette blast even when the final event is pen.
+    if (isEraActivation(e) && e.kind !== 'era') eraPop(p[0], p[1], p[2]);
     switch (e.kind) {
       case 'pen':
         clang(p[0], p[1], p[2], playerHit && (e.damage || 0) > 0 ? 1 : 0);
