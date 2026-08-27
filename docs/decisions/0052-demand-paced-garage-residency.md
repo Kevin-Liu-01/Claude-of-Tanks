@@ -26,6 +26,12 @@ Persistent room/session pumping is deliberately outside this WebGL gate. A
 static Garage may paint at 8 Hz without reducing signaling recovery, host
 snapshot, or reconnect cadence.
 
+The production phase-resource gate also enforces broad release ceilings for
+task CPU, forced-GC JavaScript heap, renderer programs, geometries, and textures
+in settled Garage, active battle, and returned Garage. These are regression
+ceilings above the healthy baseline, not quality targets; they prevent a high
+FPS reading from hiding excessive resource residency.
+
 Fixed showroom framing never measures the vehicle subtree and writes a camera
 pose only when framing or motion changed. Passive dwell no longer constructs a
 world. Desktop residency is bounded at four pedestal visuals, two world scenes,

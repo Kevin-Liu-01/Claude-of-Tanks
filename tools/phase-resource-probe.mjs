@@ -36,6 +36,33 @@ const viewport = {
   deviceScaleFactor: Math.max(1, Number(option('dpr', '1')) || 1),
 };
 
+// Broad release ceilings, not performance targets. They sit well above the
+// measured healthy baseline so ordinary host noise does not fail CI, while a
+// return to full-cadence Garage work or unbounded scene/heap residency does.
+const RESOURCE_BUDGETS = Object.freeze({
+  garageIdle: Object.freeze({
+    taskCoreEquivalent: 0.25,
+    heapMB: 128,
+    programs: 140,
+    geometries: 450,
+    textures: 110,
+  }),
+  battleActive: Object.freeze({
+    taskCoreEquivalent: 0.9,
+    heapMB: 384,
+    programs: 300,
+    geometries: 900,
+    textures: 360,
+  }),
+  garageReturned: Object.freeze({
+    taskCoreEquivalent: 0.3,
+    heapMB: 300,
+    programs: 320,
+    geometries: 700,
+    textures: 240,
+  }),
+});
+
 const server = production
   ? await preview({
     root: process.cwd(),
@@ -195,18 +222,28 @@ const measurePhase = async (name) => {
 const evaluateBudgets = (phases) => {
   const byName = new Map(phases.map((phase) => [phase.name, phase]));
   const idle = byName.get('garage-idle');
+  const battle = byName.get('battle-active');
   const returned = byName.get('garage-returned');
   const checks = [];
   const check = (name, pass, actual, limit) => {
     checks.push({ name, pass: Boolean(pass), actual, limit });
   };
 
-  // CPU and heap remain measurements rather than hard gates: host contention
-  // and GC scheduling make their absolute values noisy. These deterministic
-  // ownership/cadence invariants prevent a regression from hiding behind a
-  // superficially healthy FPS number.
   check('garage idle render cadence', idle?.rendersPerSecond <= 10,
     idle?.rendersPerSecond ?? null, '<= 10 renders/s');
+  check('garage idle CPU residency',
+    idle?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageIdle.taskCoreEquivalent,
+    idle?.taskCoreEquivalent ?? null,
+    `<= ${RESOURCE_BUDGETS.garageIdle.taskCoreEquivalent} core equivalent`);
+  check('garage idle JavaScript heap',
+    idle?.resources.heapMB <= RESOURCE_BUDGETS.garageIdle.heapMB,
+    idle?.resources.heapMB ?? null, `<= ${RESOURCE_BUDGETS.garageIdle.heapMB} MB`);
+  for (const resource of ['programs', 'geometries', 'textures']) {
+    check(`garage idle renderer ${resource}`,
+      idle?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageIdle[resource],
+      idle?.resources.renderer[resource] ?? null,
+      `<= ${RESOURCE_BUDGETS.garageIdle[resource]}`);
+  }
   check('garage constructs no battlefield without intent',
     (idle?.resources.caches.worldIds?.length || 0) === 0,
     idle?.resources.caches.worldIds || [], '0 resident worlds');
@@ -215,6 +252,33 @@ const evaluateBudgets = (phases) => {
       <= (idle?.resources.caches.residentLimits?.pedestalVisuals ?? 0),
     idle?.resources.caches.pedestalIds?.length ?? null,
     idle?.resources.caches.residentLimits?.pedestalVisuals ?? null);
+  check('active battle CPU residency',
+    battle?.taskCoreEquivalent <= RESOURCE_BUDGETS.battleActive.taskCoreEquivalent,
+    battle?.taskCoreEquivalent ?? null,
+    `<= ${RESOURCE_BUDGETS.battleActive.taskCoreEquivalent} core equivalent`);
+  check('active battle JavaScript heap',
+    battle?.resources.heapMB <= RESOURCE_BUDGETS.battleActive.heapMB,
+    battle?.resources.heapMB ?? null, `<= ${RESOURCE_BUDGETS.battleActive.heapMB} MB`);
+  for (const resource of ['programs', 'geometries', 'textures']) {
+    check(`active battle renderer ${resource}`,
+      battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],
+      battle?.resources.renderer[resource] ?? null,
+      `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
+  }
+  check('returned Garage CPU residency',
+    returned?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent,
+    returned?.taskCoreEquivalent ?? null,
+    `<= ${RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent} core equivalent`);
+  check('returned Garage JavaScript heap',
+    returned?.resources.heapMB <= RESOURCE_BUDGETS.garageReturned.heapMB,
+    returned?.resources.heapMB ?? null,
+    `<= ${RESOURCE_BUDGETS.garageReturned.heapMB} MB`);
+  for (const resource of ['programs', 'geometries', 'textures']) {
+    check(`returned Garage renderer ${resource}`,
+      returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
+      returned?.resources.renderer[resource] ?? null,
+      `<= ${RESOURCE_BUDGETS.garageReturned[resource]}`);
+  }
   check('returned Garage battle pool respects resident limit',
     (returned?.resources.caches.battleVisualPool?.size || 0)
       <= (returned?.resources.caches.battleVisualPool?.capacity ?? 0),
