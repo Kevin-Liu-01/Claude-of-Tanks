@@ -36,6 +36,7 @@ import { attachTankDecorations } from './decorations.js';
 // saw a fully-charred, already-settled wreck at "0.1 s" because rAF frames
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail } from '../fx/clock.js';
+import { markShadowOnly } from '../engine/renderLayers.ts';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -683,6 +684,7 @@ function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, dis
     mesh.userData.authoredShadowProxy = true;
     mesh.userData.shadowVehicleId = spec.id;
     mesh.raycast = () => {};
+    markShadowOnly(mesh);
     parent.add(mesh);
   };
   if (hullGeo) add(hullG, hullGeo, 'hull');

@@ -7,6 +7,7 @@ import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferG
 import { SimplexNoise } from '../engine/simplexFast.js';
 import { applyTone } from './terrain.js';
 import { getDeviceTier } from '../engine/quality.js';
+import { markShadowOnly } from '../engine/renderLayers.ts';
 import { applySourcedBuildings } from './sourcedTextures.js';
 import { URBAN_BUILDERS } from './maps/urbanKit.js';
 import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
@@ -3346,6 +3347,7 @@ ${snowCap ? `
           sm.castShadow = true;
           sm.receiveShadow = false;
           sm.matrixAutoUpdate = false;
+          markShadowOnly(sm);
           group.add(sm);
           for (const g of wreckShadowGeos) g.dispose();
         }

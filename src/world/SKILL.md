@@ -26,6 +26,9 @@ Keep height/collision queries deterministic and headless-capable. Bound per-fram
 LOD/vegetation work, reuse world caches, and reset destruction on rematch.
 Certify structure connectivity before material-bucket or instanced-geometry
 merges; merged geometry is too late to identify a floating authored fixture.
+World meshes authored only as low-polygon shadow casters must use
+`markShadowOnly()` from `src/engine/renderLayers.ts`; keep visible geometry on
+the presentation layer and verify that native shadow submissions are unchanged.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

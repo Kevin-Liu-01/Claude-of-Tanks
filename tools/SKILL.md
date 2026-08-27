@@ -47,7 +47,10 @@ records task/script CPU, forced-GC heap, scene and renderer residency, cache
 ownership, actual paint cadence, and complete-frame draw/primitive totals
 across Garage, battle, and returned Garage. The gate enforces broad CPU, heap,
 shader-program, geometry, texture, draw-call, primitive, cadence, and
-cache-residency ceilings; do not reduce it to an FPS-only check.
+cache-residency ceilings; its frame history also attributes exact native-shadow
+submissions by cascade mask and reports conservative scene-owner,
+texture-source, and program-use distributions. Do not reduce it to an FPS-only
+check.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.

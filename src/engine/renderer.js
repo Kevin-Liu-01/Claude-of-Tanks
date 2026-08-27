@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { getDeviceTier, resolveDeviceTier, noteGpuRenderer } from './quality.js';
 import { outputResolution } from './resolutionPolicy.js';
+import { routeShadowOnlyLayer } from './renderLayers.ts';
 
 // The canvas is the final display surface, not the expensive scene/post
 // resolution. DPR-3 phones now get a true native backing store instead of a
@@ -125,6 +126,7 @@ export function createRenderer(container) {
   renderer.toneMappingExposure = 1.16;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
+  routeShadowOnlyLayer(renderer);
 
   container.appendChild(renderer.domElement);
   return renderer;

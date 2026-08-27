@@ -28,6 +28,9 @@ gear profile, and land per-tank changes atomically with audits. Every playable
 tank carries the core combat modules; `combatAnatomy.js` adds only
 gameplay-backed vehicle-specific systems (autoloader, IFV feed, missile rack)
 and calibrates armor/module/crew coordinates to checked geometry receipts.
+Procedural low-polygon shadow hulls are presentation-invisible proxies: route
+them with `markShadowOnly()` rather than relying on `colorWrite: false`, which
+still incurs a forward submission in Three.js.
 Camouflaged roof fittings, sights, launchers, stowage, and machine guns must use
 `P.addEquipment()` so they never expand armor hitboxes. Structural cupolas use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.

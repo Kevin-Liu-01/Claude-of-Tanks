@@ -16,7 +16,8 @@ simulation.
 first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery and bounded
 hidden-pane recovery; `garageFramePacer.ts` suppresses redundant settled
 Garage frames while keeping interaction at display cadence; `lighting.js`,
-`post.js`, and `sky.js` build the frame;
+`post.js`, and `sky.js` build the frame; `renderLayers.ts` owns
+presentation/shadow-only routing for authored proxy casters;
 `cameraRig.js` owns player/cinematic poses; settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.js` and `deviceDiag.js`
 own tiering and rescue behavior.
@@ -25,6 +26,9 @@ own tiering and rescue behavior.
 <!-- agent-docs:fill:patterns -->
 Measure before adding passes, keep quality changes reversible, reuse render
 targets/materials, and avoid shader compilation during live control windows.
+Mark geometry built only to cast shadows with `markShadowOnly()`; a
+color-write-disabled material alone does not stop Three.js from submitting it
+in the forward pass.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

@@ -62,6 +62,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/driveTestController.selftest.mjs',
     'src/dev/combatTelemetry.selftest.mjs',
     'src/engine/csmShaderRelease.selftest.mjs',
+    'src/engine/renderLayers.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',

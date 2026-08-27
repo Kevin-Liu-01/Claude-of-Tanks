@@ -459,6 +459,24 @@ objects, and complete-frame geometry remained within measurement noise, so the
 gain comes from eliminating redundant static work rather than reducing visual
 content.
 
+The same probe attributes native shadow-map work separately from the forward
+and post stack and reports conservative scene-owner, texture-source, and
+shader-program residency. In the measured battle, native shadows accounted for
+about 267 calls and 1.31 million submitted triangles per complete frame;
+vegetation, props, and terrain were the largest color-scene geometry owners.
+This distinction prevents a lower final-pass counter or a high FPS result from
+hiding excess scene traversal, texture memory, program diversity, or shadow
+work.
+
+Authored low-polygon tank, canopy, and wreck shadow proxies now live on a
+dedicated shadow-only render layer. Three.js otherwise submits a
+`colorWrite: false` proxy during the forward pass even though it cannot change
+the image. At the same production viewport this removed roughly 21 invisible
+forward draws and 90,000 forward-pass triangle submissions per battle frame,
+while the exact native-shadow receipt remained unchanged at 267 calls and
+1.31 million triangles. The optimization changes neither visible geometry nor
+shadow geometry.
+
 Passive Garage dwell must report zero resident worlds; desktop
 pedestal/world/rematch caches must stay within 4/2/2 respectively.
 
@@ -513,6 +531,8 @@ regression record.
 - No serial profile-chunk await inside roster visual construction.
 - No track deformation or instance upload for an unchanged parked/off-screen actor.
 - No stable reticle Canvas2D repaint at the display refresh rate.
+- No `colorWrite: false` authored shadow proxy on the presentation-camera
+  layer; route it through `markShadowOnly()` and preserve native shadow work.
 - No browser-level second upscale on phone-size viewports: the final WebGL
   backing store is native through DPR 3 while under the 4 MP mobile output
   budget. Adaptive scene/post density remains an independent performance

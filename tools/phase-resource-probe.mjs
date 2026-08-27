@@ -142,6 +142,42 @@ const sampleResources = () => page.evaluate(() => {
   let visibleObjects = 0;
   let meshes = 0;
   let visibleMeshes = 0;
+  const visibleMeshWork = [];
+  const owners = new WeakMap();
+  const markOwner = (root, owner) => root?.traverse?.((object) => owners.set(object, owner));
+  markOwner(debug.world?.group, 'world');
+  for (const [index, child] of (debug.world?.group?.children || []).entries()) {
+    const label = child.name || child.type || `child-${index}`;
+    markOwner(child, `world/${label}`);
+  }
+  markOwner(debug.fx?.group, 'effects');
+  const vehicleRoots = new Set();
+  for (const entity of debug.game?.tanks || []) {
+    const root = entity?.visual?.root;
+    if (!root || vehicleRoots.has(root)) continue;
+    vehicleRoots.add(root);
+    markOwner(root, entity.isPlayer
+      ? 'vehicles/player'
+      : `vehicles/${entity.team || 'other'}`);
+  }
+  const sceneBreakdown = {};
+  const effectiveVisible = (object) => {
+    for (let cursor = object; cursor; cursor = cursor.parent) {
+      if (cursor.visible === false) return false;
+    }
+    return true;
+  };
+  const primitiveCount = (geometry) => {
+    const available = geometry?.index?.count
+      ?? geometry?.getAttribute?.('position')?.count
+      ?? 0;
+    const start = Math.max(0, geometry?.drawRange?.start || 0);
+    const requested = geometry?.drawRange?.count;
+    return Math.max(0, Math.min(
+      available - start,
+      Number.isFinite(requested) ? requested : available,
+    ));
+  };
   const collectTexture = (value) => {
     if (value?.isTexture) textures.add(value);
   };
@@ -152,6 +188,38 @@ const sampleResources = () => page.evaluate(() => {
     if (object.isMesh) {
       meshes += 1;
       if (object.visible) visibleMeshes += 1;
+      if (effectiveVisible(object)) {
+        const owner = owners.get(object) || 'scene';
+        const bucket = sceneBreakdown[owner] ||= {
+          meshes: 0, drawGroups: 0, triangles: 0, shadowCasters: 0,
+          shadowTriangles: 0, geometries: new Set(), materials: new Set(),
+        };
+        const instances = object.isInstancedMesh ? object.count : 1;
+        const triangles = Math.floor(primitiveCount(object.geometry) / 3) * instances;
+        const materialCount = Array.isArray(object.material)
+          ? Math.max(1, object.geometry?.groups?.length || object.material.length)
+          : 1;
+        bucket.meshes += 1;
+        bucket.drawGroups += materialCount;
+        bucket.triangles += triangles;
+        visibleMeshWork.push({
+          owner,
+          name: object.name || object.userData?.distanceRepresentation
+            || object.geometry?.type || object.type,
+          instances,
+          triangles,
+          castShadow: !!object.castShadow,
+          shadowOnly: !!object.userData?.shadowOnly,
+        });
+        bucket.geometries.add(object.geometry);
+        const ownedMaterials = Array.isArray(object.material)
+          ? object.material : object.material ? [object.material] : [];
+        ownedMaterials.forEach((material) => bucket.materials.add(material));
+        if (object.castShadow) {
+          bucket.shadowCasters += 1;
+          bucket.shadowTriangles += triangles;
+        }
+      }
     }
     const objectMaterials = Array.isArray(object.material)
       ? object.material
@@ -166,6 +234,46 @@ const sampleResources = () => page.evaluate(() => {
       }
     }
   });
+  for (const bucket of Object.values(sceneBreakdown)) {
+    bucket.geometries = bucket.geometries.size;
+    bucket.materials = bucket.materials.size;
+  }
+  visibleMeshWork.sort((a, b) => b.triangles - a.triangles);
+  const textureSources = {};
+  const textureWork = [];
+  let sceneTexturePixels = 0;
+  for (const texture of textures) {
+    const image = texture.image || texture.source?.data;
+    const images = Array.isArray(image) ? image : [image];
+    let pixels = 0;
+    let source = 'unknown';
+    for (const entry of images) {
+      if (!entry) continue;
+      const width = entry.videoWidth || entry.naturalWidth || entry.width || 0;
+      const height = entry.videoHeight || entry.naturalHeight || entry.height || 0;
+      pixels += Math.max(0, width * height);
+      source = entry.constructor?.name || source;
+    }
+    sceneTexturePixels += pixels;
+    textureSources[source] = (textureSources[source] || 0) + 1;
+    textureWork.push({
+      name: texture.name || texture.source?.data?.name || texture.constructor?.name || 'texture',
+      source,
+      pixels,
+      mipmapped: texture.generateMipmaps !== false,
+    });
+  }
+  textureWork.sort((a, b) => b.pixels - a.pixels);
+  const programUse = {};
+  const singletonProgramNames = {};
+  for (const program of renderer.info.programs || []) {
+    const uses = String(program.usedTimes ?? 0);
+    programUse[uses] = (programUse[uses] || 0) + 1;
+    if ((program.usedTimes ?? 0) === 1) {
+      const name = program.name || '(unnamed)';
+      singletonProgramNames[name] = (singletonProgramNames[name] || 0) + 1;
+    }
+  }
   return {
     phase: debug.game.phase,
     objects,
@@ -175,12 +283,19 @@ const sampleResources = () => page.evaluate(() => {
     sceneGeometries: geometries.size,
     sceneMaterials: materials.size,
     sceneTextures: textures.size,
+    sceneTexturePixels,
+    textureSources,
+    topSceneTextures: textureWork.slice(0, 20),
+    sceneBreakdown,
+    topVisibleMeshes: visibleMeshWork.slice(0, 24),
     renderer: {
       calls: completeFrame.calls,
       triangles: completeFrame.triangles,
       lines: completeFrame.lines,
       points: completeFrame.points,
       programs: (renderer.info.programs || []).length,
+      programUse,
+      singletonProgramNames,
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
     },
@@ -201,6 +316,7 @@ const sampleResources = () => page.evaluate(() => {
 const measurePhase = async (name) => {
   try { await cdp.send('HeapProfiler.collectGarbage'); } catch (_) { /* optional */ }
   await sleep(500);
+  await page.evaluate(() => { window.__PHASE_RESOURCE_FRAMES = []; });
   const resourcesBefore = await sampleResources();
   const metricsBefore = await metricMap();
   const startedAt = performance.now();
@@ -208,6 +324,46 @@ const measurePhase = async (name) => {
   const wallSeconds = (performance.now() - startedAt) / 1000;
   const metricsAfter = await metricMap();
   const resourcesAfter = await sampleResources();
+  const frameWorkload = await page.evaluate(() => {
+    const frames = window.__PHASE_RESOURCE_FRAMES || [];
+    const summarize = (values) => {
+      if (!values.length) return { min: 0, median: 0, max: 0, mean: 0 };
+      const sorted = [...values].sort((a, b) => a - b);
+      return {
+        min: sorted[0],
+        median: sorted[Math.floor(sorted.length / 2)],
+        max: sorted[sorted.length - 1],
+        mean: +(values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1),
+      };
+    };
+    const masks = {};
+    for (const frame of frames) {
+      const key = String(frame.shadowMask ?? 0);
+      const bucket = masks[key] ||= { samples: 0, calls: [], triangles: [], shadowCalls: [], shadowTriangles: [] };
+      bucket.samples += 1;
+      bucket.calls.push(frame.calls);
+      bucket.triangles.push(frame.triangles);
+      bucket.shadowCalls.push(frame.shadowCalls);
+      bucket.shadowTriangles.push(frame.shadowTriangles);
+    }
+    for (const [key, bucket] of Object.entries(masks)) {
+      masks[key] = {
+        samples: bucket.samples,
+        calls: summarize(bucket.calls),
+        triangles: summarize(bucket.triangles),
+        shadowCalls: summarize(bucket.shadowCalls),
+        shadowTriangles: summarize(bucket.shadowTriangles),
+      };
+    }
+    return {
+      samples: frames.length,
+      calls: summarize(frames.map((frame) => frame.calls)),
+      triangles: summarize(frames.map((frame) => frame.triangles)),
+      shadowCalls: summarize(frames.map((frame) => frame.shadowCalls)),
+      shadowTriangles: summarize(frames.map((frame) => frame.shadowTriangles)),
+      byShadowMask: masks,
+    };
+  });
   const taskSeconds = delta(metricsAfter, metricsBefore, 'TaskDuration');
   const scriptSeconds = delta(metricsAfter, metricsBefore, 'ScriptDuration');
   return {
@@ -222,6 +378,7 @@ const measurePhase = async (name) => {
     framesRendered: resourcesAfter.renderCount - resourcesBefore.renderCount,
     rendersPerSecond: +((resourcesAfter.renderCount - resourcesBefore.renderCount) /
       wallSeconds).toFixed(2),
+    frameWorkload,
     resources: resourcesAfter,
   };
 };
@@ -335,8 +492,22 @@ try {
     const post = window.__DEBUG.post;
     const renderer = window.__DEBUG.renderer;
     const originalRender = post.render.bind(post);
+    const originalShadowRender = renderer.shadowMap.render.bind(renderer.shadowMap);
     window.__PHASE_RESOURCE_RENDER_COUNT = 0;
     window.__PHASE_RESOURCE_LAST_RENDER = null;
+    window.__PHASE_RESOURCE_FRAMES = [];
+    let measuringFrame = null;
+    renderer.shadowMap.render = (...args) => {
+      const before = renderer.info.render;
+      const calls = before.calls;
+      const triangles = before.triangles;
+      const result = originalShadowRender(...args);
+      if (measuringFrame) {
+        measuringFrame.shadowCalls += renderer.info.render.calls - calls;
+        measuringFrame.shadowTriangles += renderer.info.render.triangles - triangles;
+      }
+      return result;
+    };
     post.render = (...args) => {
       window.__PHASE_RESOURCE_RENDER_COUNT += 1;
       // EffectComposer normally resets renderer.info for each pass, leaving
@@ -346,16 +517,25 @@ try {
       const previousAutoReset = renderer.info.autoReset;
       renderer.info.autoReset = false;
       renderer.info.reset();
+      measuringFrame = { shadowCalls: 0, shadowTriangles: 0 };
       try {
         return originalRender(...args);
       } finally {
         const frame = renderer.info.render;
-        window.__PHASE_RESOURCE_LAST_RENDER = {
+        const receipt = {
           calls: frame.calls,
           triangles: frame.triangles,
           lines: frame.lines,
           points: frame.points,
+          shadowCalls: measuringFrame.shadowCalls,
+          shadowTriangles: measuringFrame.shadowTriangles,
+          shadowMask: window.__DEBUG.lighting?.scheduledMask ?? 0,
         };
+        window.__PHASE_RESOURCE_LAST_RENDER = receipt;
+        const history = window.__PHASE_RESOURCE_FRAMES;
+        history.push(receipt);
+        if (history.length > 2400) history.splice(0, history.length - 2400);
+        measuringFrame = null;
         renderer.info.autoReset = previousAutoReset;
       }
     };

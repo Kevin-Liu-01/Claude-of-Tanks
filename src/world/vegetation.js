@@ -13,6 +13,7 @@ import { setCircleShape } from './collision.js';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.js';
+import { markShadowOnly } from '../engine/renderLayers.ts';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -2788,7 +2789,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
       const shadowProxy = makeTreeMesh(
         buildCanopyShadowProxy(g.cards), canopyShadowMat, sp, false);
       shadowProxy.receiveShadow = false;
-      shadowProxy.userData.shadowOnly = true;
+      markShadowOnly(shadowProxy);
       shadowProxy.userData.canopyShadowProxy = true;
       return [trunk, foliage, shadowProxy];
     });
