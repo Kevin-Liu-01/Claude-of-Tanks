@@ -517,6 +517,9 @@ Exports locked in §2.7. Additional requirements:
   structure selftests construct all 38 heavyweight/site builders with two
   deterministic variants before release. The 28 additional structure families
   retain 16 destructible families and their persistent broken-state pools.
+  `structureInstanceAppearance.ts` owns deterministic per-instance diffuse
+  variation; intact and packed broken slots must resolve the same tint without
+  cloning a material or adding a live update.
 - `destructibleRenderPolicy.ts` is the single cascaded-shadow classifier for
   destructible families. Buildings, cover, walls, fences, large silhouettes,
   and toppling actors keep dynamic shadows. Sub-meter grounded clutter can rely
@@ -916,6 +919,11 @@ fixed-step input, capture, and network entry.
 `src/game/playerFrameInput.ts` owns the variable-rate device poll. It mutates
 the canonical `TankInput`, publishes one stable camera-input record, retains
 keyboard/touch/gamepad/cursor/RMB policy, and performs no per-frame allocation.
+
+`src/game/playSurfaceRuntime.ts` owns the Garage play-mode surface. It keeps
+the menu import and construction retryable, bypasses it for solo entry,
+prioritizes an already-active room, selects mode-specific preload ports, and
+hides the menu for battle without terminating the retained session.
 
 ### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
 ```js

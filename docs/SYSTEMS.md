@@ -83,6 +83,9 @@ strict TypeScript owners:
 - `src/game/battleResultPresentationRuntime.ts` owns player-death holds,
   result replay selection, kill-cam completion, verdict presentation, and
   round/exit cancellation independently from the fixed-step render loop;
+- `src/game/playSurfaceRuntime.ts` owns mode-specific menu acquisition,
+  active-room reopening, solo bypass, preload policy, retained-room dismissal,
+  and retry after a failed cold menu construction;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/garageShowroomRuntime.ts` owns the Garage camera phase latch,
@@ -241,6 +244,14 @@ transient chunk failure can retry without restarting healthy boot work.
 The garage owns vehicle selection, equipment selection, map/mode entry,
 settings access, room reminder state, and entry into Scene Studio. Vehicle
 portraits and cards are generated from the same roster used by battle.
+
+`playSurfaceRuntime.ts` keeps the operation picker behind one retryable typed
+interface. Solo play bypasses menu construction, active-room state wins over a
+new operation request, private/LAN/ranked intent preloads only its required
+network owner, and battle entry hides the surface without closing a retained
+session. Ports declared later in the composition root are passed as closures;
+a pristine browser can therefore complete module evaluation before any
+battle-only binding is read.
 
 The optional workshop is split into two typed owners. `garageDressingAccess.ts`
 keeps the final light signature stable while demand-loading authored geometry;
@@ -536,9 +547,12 @@ Buildings are authored as supported assemblies before batching. The strict
 touching chain, and the census constructs all 38 heavyweight/site families with
 two deterministic variants. Exterior depth reuses established PBR material
 buckets for framed entrances, window surrounds, shutters, balconies, ladders,
-roof equipment, awnings, and buttresses; the parts merge before upload rather
+roof equipment, awnings, facade bay piers, recessed utility apertures, louvers,
+and buttresses; the parts merge before upload rather
 than becoming per-frame scene nodes. Sixteen of the 28 additional structure
-families retain persistent intact/broken instanced pools. Complete structures,
+families retain persistent intact/broken instanced pools. Their seeded
+per-instance diffuse variation is deterministic and follows the structure into
+its packed debris slot. Complete structures,
 cover, walls, fences, and toppling actors cast dynamic shadows, while only small
 ground clutter is exempted from separate CSM submissions.
 
