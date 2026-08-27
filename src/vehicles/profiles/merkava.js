@@ -7517,11 +7517,85 @@ function merkavaSourceOracleTurret(P, p, t) {
     const seamY = cfg.applique ? 2.10 : 2.12;
     const seamZs = cfg.applique ? [0.46, -0.18, -0.82, -1.43] : [0.28, -0.30, -0.90, -1.46];
     for (const s of [-1, 1]) {
-      for (const z of seamZs) {
-        P.add('turretDark', box(0.020, 0.39, 0.026), s * faceX, V(seamY), L(z), -0.05, 0, s * -0.03);
-        P.add('turretDetail', box(0.026, 0.020, 0.055), s * (faceX + 0.004), V(seamY - 0.12), L(z - 0.08));
+      if (id === 'merkava3c' || id === 'merkava3d') {
+        // The Mk.3 service rails used to sit on one constant-X plane even
+        // though their modular carrier sweeps inward fore/aft and upward at
+        // the shoulder. Sample the same outermost carrier used by the ERA,
+        // then bury each rail/backing shoe by 6 mm. Splitting the long rail
+        // into four overlapping courses follows that sweep without adding a
+        // runtime object or draw bucket: every piece still merges into the
+        // existing turretDark/turretDetail meshes.
+        const railSeats = [];
+        for (const z of seamZs) {
+          const frame = merkavaEarlySurfaceFrame(P, p, {
+            side: s, worldY: seamY, worldZ: z, outermost: true,
+          });
+          if (!frame) continue;
+          const seamCenter = addMerkavaEarlyFrameBox(P, 'turretDark', frame,
+            0.026, 0.39, 0.020, 0.010 - 0.006);
+          const shoeFrame = {
+            ...frame,
+            point: frame.point.clone()
+              .addScaledVector(frame.up, -0.12)
+              .addScaledVector(frame.tangent, -0.08),
+          };
+          addMerkavaEarlyFrameBox(P, 'turretDetail', shoeFrame,
+            0.055, 0.020, 0.026, 0.013 - 0.006);
+          railSeats.push(Object.freeze({
+            side: s,
+            kind: 'vertical-seam',
+            worldZ: z,
+            centerLocal: Object.freeze(seamCenter.toArray()),
+            surfaceLocal: Object.freeze(frame.point.toArray()),
+            normalLocal: Object.freeze(frame.normal.toArray()),
+            innerFaceOverlapM: 0.006,
+          }));
+        }
+
+        const railFrontZ = 0.31;
+        const railRearZ = -1.47;
+        const railSegments = 4;
+        for (let segment = 0; segment < railSegments; segment++) {
+          const z0 = THREE.MathUtils.lerp(railFrontZ, railRearZ, segment / railSegments);
+          const z1 = THREE.MathUtils.lerp(railFrontZ, railRearZ, (segment + 1) / railSegments);
+          const z = (z0 + z1) * 0.5;
+          const frame = merkavaEarlySurfaceFrame(P, p, {
+            side: s, worldY: seamY + 0.18, worldZ: z, outermost: true,
+          });
+          if (!frame) continue;
+          const tangentZ = Math.max(0.55, Math.abs(frame.tangent.z));
+          const width = Math.abs(z1 - z0) / tangentZ + 0.024;
+          const center = addMerkavaEarlyFrameBox(P, 'turretDark', frame,
+            width, 0.025, 0.022, 0.011 - 0.006);
+          railSeats.push(Object.freeze({
+            side: s,
+            kind: 'longitudinal-rail',
+            segment,
+            worldZ: z,
+            centerLocal: Object.freeze(center.toArray()),
+            surfaceLocal: Object.freeze(frame.point.toArray()),
+            normalLocal: Object.freeze(frame.normal.toArray()),
+            innerFaceOverlapM: 0.006,
+          }));
+        }
+        const receiptKey = `${id}TurretRailSeatReceipt`;
+        const existing = P.turretG.userData[receiptKey]?.seats ?? [];
+        P.turretG.userData[receiptKey] = Object.freeze({
+          revision: 'outer-carrier-conformal-r1',
+          surface: 'outermost-modular-turret-carrier',
+          sides: 2,
+          segmentsPerSide: seamZs.length + railSegments,
+          structuralOverlapM: 0.006,
+          maximumSurfaceGapM: 0,
+          seats: Object.freeze([...existing, ...railSeats]),
+        });
+      } else {
+        for (const z of seamZs) {
+          P.add('turretDark', box(0.020, 0.39, 0.026), s * faceX, V(seamY), L(z), -0.05, 0, s * -0.03);
+          P.add('turretDetail', box(0.026, 0.020, 0.055), s * (faceX + 0.004), V(seamY - 0.12), L(z - 0.08));
+        }
+        P.add('turretDark', box(0.022, 0.025, 1.78), s * faceX, V(seamY + 0.18), L(-0.58), -0.02, 0, 0);
       }
-      P.add('turretDark', box(0.022, 0.025, 1.78), s * faceX, V(seamY + 0.18), L(-0.58), -0.02, 0, 0);
       P.add('turretDetail', box(0.16, 0.13, 0.34), s * (faceX - 0.06), V(2.18), L(-1.78), 0, s * 0.06, s * 0.03);
       P.add('turretDark', box(0.024, 0.14, 0.28), s * (faceX + 0.018), V(2.18), L(-1.78), 0, s * 0.06, s * 0.03);
     }
@@ -8217,6 +8291,14 @@ function merkavaSourceFinish(P, p, t) {
   const mk4bEraEmbedM = 0.014;
   const mk4bEraSeats = [];
   const earlyEraEmbedM = 0.014;
+  const layeredEraStyle = Object.freeze({
+    coverInset: 0.82,
+    coverDepthM: 0.014,
+    coverOverlapM: 0.003,
+  });
+  let layeredEraBaseTiles = 0;
+  let layeredEraCoverTiles = 0;
+  const layeredEraSectors = [];
   const earlyEraSeats = [];
   const earlyEraMountSeats = [];
   const earlySidePanelSeats = [];
@@ -8248,6 +8330,45 @@ function merkavaSourceFinish(P, p, t) {
       }
     }
     return cells;
+  };
+
+  // Author both ERA layers into one semantic external-armor bucket. UVs are
+  // generated after all turret-local parts are transformed and merged, so a
+  // single vehicle-scale camouflage field crosses the complete array instead
+  // of restarting on each 28 cm instance. The inset cover shares its base's
+  // destructible sector, preserving strip/reset behavior with one draw bucket
+  // and no per-frame work.
+  const addLayeredEraCassette = (cell) => {
+    const sourceConformal = id === 'merkava4b' || (earlyOracle && cell.sourceConformal);
+    const center = sourceConformal
+      ? new THREE.Vector3(cell.x, cell.y, cell.z)
+      : new THREE.Vector3(cell.x, V(cell.y), L(cell.z));
+    const rotation = sourceConformal
+      ? new THREE.Euler(cell.boxRx, cell.boxRy, cell.boxRz)
+      : new THREE.Euler(-0.18, cell.yaw, cell.roll);
+    const normal = sourceConformal
+      ? new THREE.Vector3(cell.nx, cell.ny, cell.nz).normalize()
+      : new THREE.Vector3(0, 0, 1).applyEuler(rotation).normalize();
+
+    P.addExternalArmor('turret',
+      new THREE.BoxGeometry(cell.tileW, cell.tileH, cell.tileD),
+      center.x, center.y, center.z, rotation.x, rotation.y, rotation.z);
+    layeredEraBaseTiles++;
+
+    const coverCenter = center.clone().addScaledVector(
+      normal,
+      cell.tileD * 0.5 + layeredEraStyle.coverDepthM * 0.5
+        - layeredEraStyle.coverOverlapM,
+    );
+    P.addExternalArmor('turret',
+      new THREE.BoxGeometry(
+        cell.tileW * layeredEraStyle.coverInset,
+        cell.tileH * layeredEraStyle.coverInset,
+        layeredEraStyle.coverDepthM,
+      ),
+      coverCenter.x, coverCenter.y, coverCenter.z,
+      rotation.x, rotation.y, rotation.z);
+    layeredEraCoverTiles++;
   };
 
   // Faceted cheek arrays follow the Mk.4B's newly seated flank-panel courses.
@@ -8399,23 +8520,14 @@ function merkavaSourceFinish(P, p, t) {
         earlyEraSeats.push(Object.freeze(seat));
       }
     }
-    // These are actual ERA placements rather than permanent decorative
-    // boxes: damage stripping now removes the cassette while the seated
-    // retainer remains on the cheek.  Per-cell scaling preserves the
-    // source-derived faceted field and keeps one instanced mesh per side.
-    P.eraCluster(`merkava_${id}_turret_era_${s > 0 ? 'R' : 'L'}`, (put) => {
-      for (const cell of eraCells) {
-        if (id === 'merkava4b' || (earlyOracle && cell.sourceConformal)) {
-          const armorPivot = P.spec.armor.turretPivot;
-          put(armorPivot[0] + cell.x, armorPivot[1] + cell.y, armorPivot[2] + cell.z,
-            cell.rx, cell.ry, cell.rz,
-            cell.tileW / 0.28, cell.tileH / 0.13, cell.tileD / 0.07);
-        } else {
-          put(cell.x, cell.y, cell.z, -0.18, cell.yaw, cell.roll,
-            cell.tileW / 0.28, cell.tileH / 0.13, cell.tileD / 0.07);
-        }
-      }
-    }, true);
+    // These remain gameplay ERA rather than permanent decorative boxes.
+    // Base and cover are captured by the same authored range and disappear
+    // together, while their support cradle remains on the turret.
+    const sector = `merkava_${id}_turret_era_${s > 0 ? 'R' : 'L'}`;
+    layeredEraSectors.push(sector);
+    P.destructibleCluster(sector, () => {
+      for (const cell of eraCells) addLayeredEraCassette(cell);
+    });
 
     // Sample the actual outer shell instead of guessing from xOut.  Mk.4B's
     // source-specific armor already owns this exact envelope and therefore
@@ -8483,6 +8595,22 @@ function merkavaSourceFinish(P, p, t) {
       seats: Object.freeze(mk4bEraSeats),
     });
   }
+  P.turretG.userData.merkavaEraFinishReceipt = Object.freeze({
+    revision: 'layered-vehicle-scale-camo-r1',
+    baseTiles: layeredEraBaseTiles,
+    coverTiles: layeredEraCoverTiles,
+    cassetteLayers: 2,
+    totalAuthoredParts: layeredEraBaseTiles + layeredEraCoverTiles,
+    sectors: Object.freeze(layeredEraSectors),
+    coverInset: layeredEraStyle.coverInset,
+    coverDepthM: layeredEraStyle.coverDepthM,
+    coverOverlapM: layeredEraStyle.coverOverlapM,
+    camoProjection: 'vehicle-scale-box-uv',
+    destructibleConstruction: 'authored-layered-cluster',
+    staticMergedProtection: true,
+    externalArmorDrawBuckets: 1,
+    perFrameWorkAdded: false,
+  });
 
   // Shallow roof cassettes create visible styling without replacing the cast
   // roof.  Their lower halves are buried in the shell; unequal lanes leave

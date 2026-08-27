@@ -13,6 +13,8 @@ const near = (value, target, epsilon = 1e-5) => Math.abs(value - target) <= epsi
 const turret = tank.root.getObjectByName('rig_turret');
 const hull = tank.root.getObjectByName('rig_hull');
 const gun = tank.root.getObjectByName('rig_gun');
+const matrix = new THREE.Matrix4();
+const position = new THREE.Vector3();
 
 const roofSeatReceipt = turret?.userData.merkava4bRoofSeatReceipt;
 assert.ok(roofSeatReceipt, 'Merkava 4B exposes its roof-equipment seating receipt');
@@ -77,31 +79,26 @@ for (const seat of eraReceipt.seats) {
     'ERA station remains inside the audited forward panel span');
 }
 
-const eraLayers = [];
+const obsoleteEraLayers = [];
+const externalArmorLayers = [];
 turret.traverse((object) => {
   const dimensions = object.geometry?.parameters;
   if (object.isInstancedMesh && object.count === 20
     && near(dimensions?.width ?? 0, 0.28)
     && near(dimensions?.height ?? 0, 0.13)
-    && near(dimensions?.depth ?? 0, 0.07)) eraLayers.push(object);
+    && near(dimensions?.depth ?? 0, 0.07)) obsoleteEraLayers.push(object);
+  if (object.isMesh && object.name === 'turretExternalArmor') externalArmorLayers.push(object);
 });
-assert.equal(eraLayers.length, 1, 'all twenty flank-panel cassettes share one instanced ERA layer');
-
-const matrix = new THREE.Matrix4();
-const position = new THREE.Vector3();
-const normal = new THREE.Vector3();
-let leftCount = 0;
-let rightCount = 0;
-for (let instance = 0; instance < eraLayers[0].count; instance++) {
-  eraLayers[0].getMatrixAt(instance, matrix);
-  position.setFromMatrixPosition(matrix);
-  normal.set(0, 0, 1).transformDirection(matrix);
-  if (position.x < 0) leftCount++; else rightCount++;
-  assert.ok(position.x * normal.x > 0,
-    `rendered ERA cassette ${instance} faces away from the centerline`);
-}
-assert.equal(leftCount, 10, 'ten rendered cassettes cover the left cheek');
-assert.equal(rightCount, 10, 'ten rendered cassettes cover the right cheek');
+assert.equal(obsoleteEraLayers.length, 0,
+  'ERA no longer repeats one complete camouflage island on an instanced tile');
+assert.equal(externalArmorLayers.length, 1,
+  'all twenty two-layer cassettes merge into one turret external-armor draw bucket');
+const finishReceipt = turret.userData.merkavaEraFinishReceipt;
+assert.equal(finishReceipt.baseTiles, 20, 'twenty flank-panel charge bodies are authored');
+assert.equal(finishReceipt.coverTiles, 20, 'every charge body receives one inset cover');
+assert.equal(finishReceipt.cassetteLayers, 2, 'Mk 4B ERA has a body and service cover');
+assert.equal(finishReceipt.camoProjection, 'vehicle-scale-box-uv',
+  'camouflage projects across the complete ERA field');
 
 const flankPanelReceipt = turret?.userData.merkava4bFlankPanelReceipt;
 assert.ok(flankPanelReceipt, 'Merkava 4B exposes its turret-side panel seating receipt');

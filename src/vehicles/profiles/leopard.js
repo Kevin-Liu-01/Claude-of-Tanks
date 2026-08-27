@@ -5642,7 +5642,14 @@ function leo2A7VCheekSurface(side, absX, courseFraction) {
 }
 
 function addLeo2A7VFrontalERA(P) {
-  const turretPivot = P.spec.armor.turretPivot;
+  const cassette = Object.freeze({
+    widthM: 0.28,
+    heightM: 0.13,
+    depthM: 0.07,
+    coverInset: 0.82,
+    coverDepthM: 0.014,
+    coverOverlapM: 0.003,
+  });
   const cheekSeats = [];
   const glacisSeats = [];
   const sectors = [
@@ -5650,9 +5657,40 @@ function addLeo2A7VFrontalERA(P) {
     'a7v_upper_glacis_era',
   ];
 
+  // Author both layers into the semantic external-armor buckets. Their UVs
+  // are projected only after the complete hull/turret bucket is transformed
+  // and merged, so the camouflage remains one vehicle-scale field instead of
+  // restarting its full 0..1 pattern on every tiny cassette instance. The
+  // inset cover is captured by the same destructible sector as its charge
+  // body, preserving one-shot strip/reset behavior without another draw call.
+  const addLayeredCassette = (bucket, center, normal, rotation, scale) => {
+    const width = cassette.widthM * scale.x;
+    const height = cassette.heightM * scale.y;
+    const depth = cassette.depthM * scale.z;
+    P.addExternalArmor(
+      bucket, new THREE.BoxGeometry(width, height, depth),
+      center.x, center.y, center.z,
+      rotation.x, rotation.y, rotation.z,
+    );
+    const coverCenter = center.clone().addScaledVector(
+      normal,
+      depth * 0.5 + cassette.coverDepthM * 0.5 - cassette.coverOverlapM,
+    );
+    P.addExternalArmor(
+      bucket,
+      new THREE.BoxGeometry(
+        width * cassette.coverInset,
+        height * cassette.coverInset,
+        cassette.coverDepthM,
+      ),
+      coverCenter.x, coverCenter.y, coverCenter.z,
+      rotation.x, rotation.y, rotation.z,
+    );
+  };
+
   for (const side of [-1, 1]) {
     const sector = `a7v_turret_cheek_era_${side > 0 ? 'R' : 'L'}`;
-    P.eraCluster(sector, (place) => {
+    P.destructibleCluster(sector, () => {
       for (let row = 0; row < 6; row++) {
         for (let station = 0; station < 7; station++) {
           const absX = 0.42 + station * 0.15;
@@ -5666,13 +5704,7 @@ function addLeo2A7VFrontalERA(P) {
           const overlap = 0.022;
           const halfDepth = 0.07 * scale.z * 0.5;
           const center = surface.point.clone().addScaledVector(surface.normal, halfDepth - overlap);
-          place(
-            center.x,
-            turretPivot[1] + center.y,
-            turretPivot[2] + center.z,
-            surface.rotation.x, surface.rotation.y, surface.rotation.z,
-            scale.x, scale.y, scale.z,
-          );
+          addLayeredCassette('turret', center, surface.normal, surface.rotation, scale);
           cheekSeats.push(Object.freeze({
             side, row, station, courseFraction,
             surfaceLocal: surface.point.toArray().map((value) => Number(value.toFixed(5))),
@@ -5683,13 +5715,13 @@ function addLeo2A7VFrontalERA(P) {
           }));
         }
       }
-    }, true);
+    });
   }
 
   // Four rows occupy only the broad upper plate behind the A7V's lane cut.
   // They sample the exact five-station profile and sink their backs 18 mm,
   // leaving the headlight and articulated idler corridors untouched.
-  P.eraCluster('a7v_upper_glacis_era', (place) => {
+  P.destructibleCluster('a7v_upper_glacis_era', () => {
     for (let row = 0; row < 4; row++) {
       for (let station = 0; station < 11; station++) {
         const x = -1.45 + station * 0.29;
@@ -5711,11 +5743,7 @@ function addLeo2A7VFrontalERA(P) {
         const overlap = 0.018;
         const halfDepth = 0.07 * scale.z * 0.5;
         const center = surface.clone().addScaledVector(normal, halfDepth - overlap);
-        place(
-          center.x, center.y, center.z,
-          rotation.x, rotation.y, rotation.z,
-          scale.x, scale.y, scale.z,
-        );
+        addLayeredCassette('hull', center, normal, rotation, scale);
         glacisSeats.push(Object.freeze({
           row, station,
           surfaceLocal: surface.toArray().map((value) => Number(value.toFixed(5))),
@@ -5731,11 +5759,19 @@ function addLeo2A7VFrontalERA(P) {
     cheekTilesPerSide: 42,
     glacisTiles: 44,
     totalTiles: 128,
+    cassetteLayers: 2,
+    coverTiles: 128,
+    totalAuthoredParts: 256,
     sectors: Object.freeze(sectors),
     cheekSeats: Object.freeze(cheekSeats),
     glacisSeats: Object.freeze(glacisSeats),
     cheekInnerFaceOverlapM: 0.022,
     glacisInnerFaceOverlapM: 0.018,
+    coverInset: cassette.coverInset,
+    coverDepthM: cassette.coverDepthM,
+    coverOverlapM: cassette.coverOverlapM,
+    camoProjection: 'vehicle-scale-box-uv',
+    destructibleConstruction: 'authored-layered-cluster',
     staticMergedProtection: true,
   });
 }
