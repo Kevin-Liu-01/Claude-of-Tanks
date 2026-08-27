@@ -28,6 +28,7 @@ export interface TankBodyState {
     tumbling: boolean;
     landingBlendS: number;
     dynamicSupport: boolean;
+    autoRighting?: boolean;
   };
 }
 
@@ -90,7 +91,14 @@ function ensureBodyState(state: TankBodyState) {
     tumbling: false,
     landingBlendS: 0,
     dynamicSupport: false,
+    autoRighting: false,
   });
+}
+
+function isDynamicBodyContact(entity: TankBodyEntity): boolean {
+  const state = entity.state;
+  return state.grounded === false || state.overturned === true ||
+    state._body?.tumbling === true || state._body?.dynamicSupport === true;
 }
 
 /**
@@ -102,6 +110,11 @@ export function prefersVerticalTankContact(
   a: TankBodyEntity,
   b: TankBodyEntity,
 ): boolean {
+  // Two ordinarily grounded tanks can have materially different world-Y on a
+  // side slope while still sharing a normal horizontal hull contact. Reserve
+  // the pair only after one body is actually in flight/tumble/support state;
+  // otherwise this layer would mistake hill traffic for a roof landing.
+  if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) return false;
   verticalBounds(a, _boundsA);
   verticalBounds(b, _boundsB);
   const minHeight = Math.min(
@@ -151,6 +164,7 @@ export function resolveTankBodyContacts(
     for (let j = i + 1; j < entities.length; j++) {
       const b = entities[j];
       if (!b?.state || !b.spec?.dims) continue;
+      if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) continue;
       const bState = b.state;
       const bHalfW = b.spec.dims.widthM * 0.5;
       const bSeg = Math.max(b.spec.dims.hullLengthM * 0.5 - bHalfW, 0);
@@ -227,10 +241,11 @@ export function resolveTankBodyContacts(
       if (closing > 0.8) {
         const centerDx = upper.state.pos.x - lower.state.pos.x;
         const centerDz = upper.state.pos.z - lower.state.pos.z;
-        const rightX = Math.cos(upper.state.yaw);
-        const rightZ = -Math.sin(upper.state.yaw);
-        const forwardX = Math.sin(upper.state.yaw);
-        const forwardZ = Math.cos(upper.state.yaw);
+        const upperYaw = upper.state.yaw;
+        const rightX = Math.cos(upperYaw);
+        const rightZ = -Math.sin(upperYaw);
+        const forwardX = Math.sin(upperYaw);
+        const forwardZ = Math.cos(upperYaw);
         // The lower hull supports the side opposite the upper center offset.
         // Upward impulse there supplies the physically correct tipping sense.
         const leverRight = clamp(

@@ -364,10 +364,13 @@ first-volley/live screenshots under `.qa-dev/multiplayer-live-7v7/`.
 
 Together the soaks prove room policy, identity separation, dual-channel WebRTC
 handoff, rematches, authoritative movement and combat, adaptive delivery, and
-the maximum fourteen-player room. Node tests separately cover four-client dedicated
-WebSockets, hidden-coordinate filtering, combat authority, consumables, ram/HE
-damage, bots, reconnect, matchmaking, Elo persistence, abuse bounds, and all-map
-collision.
+the maximum fourteen-player room. Rollover pose, stationary recovery timing,
+and the bounded auto-right transition run in the same fixed-step simulation for
+solo, browser-hosted private rooms, and dedicated authority; `tank_autoflip` is
+an authority event, never a client-side pose correction. Node tests separately
+cover four-client dedicated WebSockets, hidden-coordinate filtering, combat
+authority, consumables, ram/HE damage, bots, reconnect, matchmaking, Elo
+persistence, abuse bounds, and all-map collision.
 
 Useful service commands:
 

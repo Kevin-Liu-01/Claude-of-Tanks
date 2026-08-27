@@ -227,8 +227,16 @@ During a tumble, a conservative eight-corner hull box participates in terrain
 support so the roof, nose, tail, and sides cannot pass through the heightfield.
 The angular gravity term has stable upright and roof-down equilibria. This
 allows stacking, ramp rollovers, and upside-down rests without an expensive
-general-purpose rigid-body world or magical auto-uprighting. Normal grounded
-driving pays none of the extra terrain-corner sampling cost.
+general-purpose rigid-body world. Normal grounded driving pays none of the
+extra terrain-corner sampling cost.
+
+A tank settled on its side or roof starts a deterministic stationary recovery
+window. Physical movement restarts that window, leaving another tank free to
+push it upright. After fifteen still seconds, assisted recovery uses the same
+bounded pitch/roll state to visibly roll toward the sampled terrain plane
+instead of snapping the transform. This follows the current World of Tanks
+random-battle recovery interval while preserving our own continuous body
+motion: <https://worldoftanks.com/en/content/docs/release_notes/update-1-22-list-of-changes/>.
 
 ---
 

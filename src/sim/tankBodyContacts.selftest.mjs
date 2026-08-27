@@ -91,4 +91,16 @@ function entity(id, x, y, z, grounded) {
     'vertical overlay ignores ordinary side contact');
 }
 
+// Adjacent grounded tanks on a side slope are not a stack. Their world-Y
+// separation can exceed the vertical-axis threshold, but neither body has
+// entered a dynamic contact phase.
+{
+  const low = entity('slope-low', 0, 0, 0, true);
+  const high = entity('slope-high', 0.5, 1.2, 0, true);
+  assert(!prefersVerticalTankContact(low, high),
+    'grounded slope traffic stays with horizontal collision');
+  assert(resolveTankBodyContacts([low, high], SIM_DT) === 0,
+    'grounded elevation difference cannot create roof support');
+}
+
 console.log(`tankBodyContacts.selftest: ${checks} assertions passed`);

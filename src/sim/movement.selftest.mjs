@@ -493,6 +493,21 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `airborne attitude advances continuously without a pitch snap (${maxStep.toFixed(4)} rad/tick)`);
 }
 
+// A hard but still-upright landing receives bounded angular impulse and spring
+// blending; closing speed alone must not lock the drivetrain into rollover.
+// If the resulting rotation actually carries the center of mass past the
+// threshold on later ticks, the normal rigid-body transition still owns it.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.state.visualPitch = 0.65;
+  ent.state._spring.pitch = ent.state.visualPitch;
+  ent.state.landingImpactMps = 12;
+  updateTank(ent, field, SIM_DT);
+  assert(ent.state._body.tumbling === false,
+    'upright hard landing does not enter tumble from an angle-speed heuristic');
+}
+
 // A tank that crosses its rollover point must not be auto-uprighted by the
 // ordinary terrain-conformance spring. It should settle on the roof/side until
 // another physical impulse rolls it back.
@@ -506,6 +521,23 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(ent.state.overturned === true, 'rollover: upside-down state is explicit');
   assert(Math.cos(ent.state.visualPitch) * Math.cos(ent.state.visualRoll) < -0.65,
     `rollover: hull remains roof-down instead of auto-uprighting (${ent.state.visualRoll.toFixed(2)} rad)`);
+}
+
+// Assisted recovery is intentionally separate from ordinary suspension. Once
+// its stationary timer fires, the same bounded angular state visibly rolls the
+// hull upright; it never teleports the rendered pose.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.state.visualRoll = Math.PI - 0.02;
+  ent.state._spring.roll = ent.state.visualRoll;
+  ent.state._body.tumbling = true;
+  ent.state._body.autoRighting = true;
+  run(ent, field, 300);
+  const upY = Math.cos(ent.state.visualPitch) * Math.cos(ent.state.visualRoll);
+  assert(upY > 0.9, `auto-right actuator rolls through the contact edge (${upY.toFixed(3)} up)`);
+  assert(ent.state._body.autoRighting === false && ent.state._body.tumbling === false,
+    'auto-right actuator releases back to ordinary terrain support');
 }
 
 // Airborne ticks skip loaded-track material and four-corner suspension-rock

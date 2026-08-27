@@ -14,6 +14,7 @@ import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
+import { stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.js';
@@ -1499,6 +1500,16 @@ export function simStep(game, bus, world, rig, collider) {
       });
     }
     rams.length = 0;
+  }
+
+  // A side/roof-down tank remains physically recoverable before the bounded
+  // righting actuator engages. The shared lifecycle resets on a shove or
+  // renewed motion, preserving real teammate recovery and preventing immortal
+  // overturned bots from holding a match open indefinitely.
+  for (const ent of game.tanks) {
+    if (!ent.state || !ent.combat || ent.combat.destroyed) continue;
+    if (!stepRolloverLifecycle(ent.state, dt)) continue;
+    bus.emit('tank:autoflip', { id: ent.id, specId: ent.specId });
   }
 
   // c. reload timers + firing

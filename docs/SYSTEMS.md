@@ -243,8 +243,11 @@ clearly vertically ordered overlapping pair can instead resolve roof/side
 support, mass-weighted vertical impulse, off-center pitch/roll torque, stacking,
 and rollover. At the fourteen-vehicle ceiling this is 91 allocation-free broad
 phase checks per fixed tick; the capsule and vertical-box work runs only for
-horizontal overlaps. An overturned tank remains overturned until another
-physical contact changes its state—there is no automatic upright correction.
+horizontal overlaps. A side/roof-down tank remains physically recoverable: a
+teammate shove or renewed body motion restarts its stationary recovery timer.
+After fifteen still seconds, a bounded righting actuator rolls the hull across
+its contact edge; it does not teleport the pose. This preserves visible flips
+and stacking without letting an overturned bot hold a match open forever.
 
 There is no universal climb angle. The
 solver compares gravity demand with engine acceleration and track grip derived

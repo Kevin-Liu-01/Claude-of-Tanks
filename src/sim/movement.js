@@ -286,6 +286,8 @@ const OVERTURN_ENTER_UP_Y = -0.08; // center of mass has crossed past the side
 const OVERTURN_EXIT_UP_Y = 0.48;
 const GROUND_TUMBLE_DAMP_S = 1.7;
 const GROUND_TUMBLE_GRAVITY = 3.1;
+const AUTO_RIGHT_OMEGA = 3.4;
+const AUTO_RIGHT_ZETA = 1.0;
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
 // fast turn cannot dip the leaned-into track edge below the terrain.
@@ -594,6 +596,7 @@ export function createTankState(spec, pos, yaw) {
     visualPitch: 0,
     visualRoll: 0,
     overturned: false,
+    rolloverCountdownS: 0,
     turretYaw: 0,
     gunPitch: 0,
     turretYawRate: 0,
@@ -625,8 +628,9 @@ export function createTankState(spec, pos, yaw) {
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
-      tumbling: false, landingBlendS: 0, dynamicSupport: false,
+      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false,
     },
+    _rollover: { elapsedS: 0, expired: false },
     _groundType: 'medium',
     _debuff: { // reused hot-loop output; readDebuffs allocates nothing per tick
       immobile: false,
@@ -710,7 +714,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const debuff = readDebuffs(entity.combat, state._debuff || (state._debuff = {}));
   const groundedAtStart = state.grounded !== false;
   const body = state._body || (state._body = {
-    tumbling: false, landingBlendS: 0, dynamicSupport: false,
+    tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false,
   });
   body.dynamicSupport = false;
   const upYAtStart = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0);
@@ -1168,8 +1172,12 @@ export function updateTank(entity, heightField, dt, collide = null) {
       LANDING_TORQUE_MAX,
     );
     body.landingBlendS = LANDING_CONTACT_BLEND_S;
-    if (upYAtStart < TUMBLE_ENTER_UP_Y ||
-        landingImpactAtStart * (Math.abs(pitchError) + Math.abs(rollError)) > 6.5) {
+    // Do not turn an ordinary hard landing into a drivetrain lock merely from
+    // closing speed × terrain-angle error. The bounded torque above already
+    // rotates the hull; it enters tumble naturally if that motion carries the
+    // center of mass past the physical attitude threshold. Direct tank-body
+    // contacts can also enter tumble through their measured lever impulse.
+    if (upYAtStart < TUMBLE_ENTER_UP_Y) {
       body.tumbling = true;
     }
   }
@@ -1183,11 +1191,22 @@ export function updateTank(entity, heightField, dt, collide = null) {
       // crossed instead of receiving a magical self-righting torque.
       const relativePitch = wrapAngle(spr.pitch - state._terr.pitch);
       const relativeRoll = wrapAngle(spr.roll - state._terr.roll);
-      spr.pitchV += -Math.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
-      spr.rollV += -Math.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
-      const contactDrag = Math.exp(-GROUND_TUMBLE_DAMP_S * dt);
-      spr.pitchV *= contactDrag;
-      spr.rollV *= contactDrag;
+      if (body.autoRighting) {
+        // Modern random-battle recovery is represented as a strong, bounded
+        // righting actuator rather than a pose teleport. The hull visibly
+        // rolls back across its contact edge and keeps the same angular-rate
+        // cap as every other grounded tumble.
+        spr.pitchV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativePitch -
+          2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spr.pitchV) * dt;
+        spr.rollV += (-AUTO_RIGHT_OMEGA * AUTO_RIGHT_OMEGA * relativeRoll -
+          2 * AUTO_RIGHT_ZETA * AUTO_RIGHT_OMEGA * spr.rollV) * dt;
+      } else {
+        spr.pitchV += -Math.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
+        spr.rollV += -Math.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
+        const contactDrag = Math.exp(-GROUND_TUMBLE_DAMP_S * dt);
+        spr.pitchV *= contactDrag;
+        spr.rollV *= contactDrag;
+      }
     } else {
       const airDrag = Math.exp(-AIR_ANGULAR_DRAG_S * dt);
       spr.pitchV *= airDrag;
@@ -1200,10 +1219,20 @@ export function updateTank(entity, heightField, dt, collide = null) {
     spr.roll = wrapAngle(spr.roll + spr.rollV * dt);
 
     const upY = Math.cos(spr.pitch) * Math.cos(spr.roll);
+    const relativeUpY = Math.cos(wrapAngle(spr.pitch - state._terr.pitch)) *
+      Math.cos(wrapAngle(spr.roll - state._terr.roll));
     if ((!groundedAtStart || landingImpactAtStart > 0) && upY < TUMBLE_ENTER_UP_Y) {
       body.tumbling = true;
     }
-    if (groundedAtStart && body.tumbling && upY > TUMBLE_EXIT_UP_Y &&
+    // Settle relative to the supporting terrain plane. A tank upright on a
+    // steep authored slope can have world-up dot < the old threshold; using
+    // world up here left its drivetrain locked in a permanent false tumble.
+    if (groundedAtStart && body.autoRighting && relativeUpY > 0.94 &&
+        Math.abs(spr.pitchV) + Math.abs(spr.rollV) < 0.18) {
+      body.autoRighting = false;
+      body.tumbling = false;
+    } else if (groundedAtStart && body.tumbling && !body.autoRighting &&
+        relativeUpY > TUMBLE_EXIT_UP_Y &&
         Math.abs(spr.pitchV) + Math.abs(spr.rollV) < 0.12 &&
         landingImpactAtStart <= 0) {
       body.tumbling = false;

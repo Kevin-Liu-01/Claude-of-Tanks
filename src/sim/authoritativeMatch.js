@@ -22,6 +22,7 @@ import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
+import { stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.js';
@@ -999,6 +1000,10 @@ export function createAuthoritativeMatch({
         }));
       resolvePendingCrushes();
       resolvePendingRams();
+      for (const entity of entities) {
+        if (entity.combat.destroyed || !stepRolloverLifecycle(entity.state, dt)) continue;
+        emit('tank_autoflip', { id: entity.id });
+      }
       for (const entity of entities) {
         if (entity.combat.destroyed) continue;
         if (entity.combat.reload.t > 0) {

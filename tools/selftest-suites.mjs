@@ -171,6 +171,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/authoritativeBots.selftest.mjs',
     'server/battlePacing.selftest.mjs',
     'src/sim/movement.selftest.mjs',
+    'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
