@@ -361,6 +361,13 @@ whose intended receiver session has already been replaced. Page-session
 rotation discards negotiation queued by the dead peer connection; ordinary
 WebSocket resume preserves and flushes the current generation. This prevents
 durable mailbox replay from mixing pre- and post-reload peer connections.
+The signaling send boundary checks the browser socket's native ready state as
+well as the higher-level client state. A socket that has entered `CLOSING`
+before its asynchronous close event arrives cannot receive another native
+send: requests fail into the normal reconnect path, while SDP/ICE messages
+remain bounded in the current-generation queue. A partial queue flush restores
+the unsent suffix before reconnecting, so a handover cannot lose negotiation
+messages or emit browser console errors.
 
 STUN-only fallback keeps room creation non-blocking, but cannot traverse every
 NAT. A production release must receive HTTP 200 from `/api/ice` and verify that

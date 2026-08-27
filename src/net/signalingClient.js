@@ -56,6 +56,10 @@ function addListener(target, type, listener) {
   return () => { if (target[`on${type}`] === listener) target[`on${type}`] = null; };
 }
 
+function socketIsOpen(socket) {
+  return !!socket && (socket.readyState === 1 || socket.readyState === 'open');
+}
+
 function cleanPlayer(player) {
   const id = String(player && player.id || '').trim();
   const name = String(player && player.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
@@ -189,10 +193,16 @@ export class RoomSignalingClient {
   }
 
   #send(value) {
-    if (this.state !== 'open' || !this.socket) throw new Error('signaling socket is not open');
+    if (this.state !== 'open' || !socketIsOpen(this.socket)) {
+      throw codedError('signaling_closed', 'signaling socket is not open');
+    }
     const encoded = JSON.stringify(value);
     if (encoded.length * 2 > MAX_SIGNAL_BYTES) throw new Error('signaling message is too large');
-    this.socket.send(encoded);
+    try {
+      this.socket.send(encoded);
+    } catch (_) {
+      throw codedError('signaling_closed', 'signaling socket closed during send');
+    }
   }
 
   #request(type, payload, timeoutMs = this.requestTimeoutMs) {
@@ -203,7 +213,13 @@ export class RoomSignalingClient {
         reject(codedError('signaling_request_timeout', `signaling request timed out: ${type}`));
       }, timeoutMs);
       this.pending.set(requestId, { resolve, reject, timer });
-      this.#send({ type, requestId, payload });
+      try {
+        this.#send({ type, requestId, payload });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(requestId);
+        reject(error);
+      }
     });
   }
 
@@ -345,7 +361,14 @@ export class RoomSignalingClient {
         this._reconnectAttempt = 0;
         this.#startEventPolling();
         const queued = this._signalQueue.splice(0);
-        for (const message of queued) this.#send(message);
+        for (let index = 0; index < queued.length; index++) {
+          try {
+            this.#send(queued[index]);
+          } catch (error) {
+            this._signalQueue.unshift(...queued.slice(index));
+            throw error;
+          }
+        }
         this.#dispatch({
           type: 'signaling_resumed',
           payload: { ...result, roomCode: code, peerId: this.peerId, hostId: this.hostId },
@@ -492,7 +515,7 @@ export class RoomSignalingClient {
         signal,
       },
     };
-    if (!this._roomAuthenticated || this.state !== 'open') {
+    if (!this._roomAuthenticated || this.state !== 'open' || !socketIsOpen(this.socket)) {
       if (this._signalQueue.length >= MAX_QUEUED_SIGNALS) this._signalQueue.shift();
       this._signalQueue.push(message);
       this.#scheduleReconnect('signal_queued');

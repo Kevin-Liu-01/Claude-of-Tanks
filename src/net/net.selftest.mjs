@@ -688,7 +688,13 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   signaling.sendSignal('p2', { kind: 'ice', candidate: { candidate: 'x' } }, 'peer-session-2');
   assert.equal(JSON.parse(socket.sent.at(-1)).type, 'room_signal');
   assert.equal(JSON.parse(socket.sent.at(-1)).payload.toSessionId, 'peer-session-2');
-  signaling._signalQueue.push({ type: 'room_signal', payload: { signal: { kind: 'restart' } } });
+  socket.readyState = 2;
+  assert.equal(
+    signaling.sendSignal('p2', { kind: 'ice', candidate: { candidate: 'closing' } }, 'peer-session-2'),
+    false,
+    'a browser socket already entering CLOSING queues signaling without a native send error',
+  );
+  assert.equal(signaling._signalQueue.length, 1);
   const restart = signaling.restartRoomSession('test_generation_rotation');
   assert.equal(signaling._signalQueue.length, 0,
     'rotating the page session discards negotiation queued by the dead RTC generation');
