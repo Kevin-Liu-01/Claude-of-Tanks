@@ -31,6 +31,13 @@ const localRayHits = (mesh, origin, direction, far = 4) => {
     .intersectObject(mesh, false)
     .map((hit) => mesh.worldToLocal(hit.point.clone()));
 };
+const expectedTurretPositionCounts = {
+  leclerc: 12192,
+  leclerc_xlr: 12324,
+  amx56: 15060,
+};
+const removedMarkedSurfacePatches = ['surface-2', 'surface-3', 'surface-4',
+  'surface-5', 'surface-6', 'surface-8', 'surface-9', 'surface-15', 'surface-19'];
 
 for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
   const tank = createTank(id, null, {
@@ -65,7 +72,10 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       forwardRoofBulkheads: 2,
       aftSideWingCores: 2,
       gunnerSightWellPreserved: true,
+      removedMarkedSurfacePatches,
     }, `${id} records the shared structural shell beneath its outer turret panels`);
+    assert.equal(turret.geometry.attributes.position.count, expectedTurretPositionCounts[id],
+      `${id} removes exactly the 36 marked triangles without deleting adjoining turret geometry`);
 
     const centerHits = localRayHits(turret, [0.25, 0, 1.70], [0, 1, 0], 0.8);
     assert.ok(centerHits.some((point) => near(point.y, 0.17, 0.002)),

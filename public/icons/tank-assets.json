@@ -5423,7 +5423,7 @@
           }
         ]
       },
-      "geometryHash": "2d6bc67b",
+      "geometryHash": "767d438f",
       "metadataHash": "51e04150",
       "presentationAnchor": {
         "xM": 0.0028,
@@ -5518,24 +5518,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66938,
-          "sha256": "c5a569890da388ef950f012dc6dc09e13e6a6b53642768f90badc3fbd0bfe3fb"
+          "bytes": 66897,
+          "sha256": "1722f5ef9a471a2b4e19dfc82414912f424aa1b4ba1fa645df556f8287f39ddf"
         },
         "armorSide": {
           "file": "amx56_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66387,
-          "sha256": "1e86d5f30dae8d09263940187a6a0b7aa3358ea5e87ebb2607980be054acb4b8"
+          "bytes": 66496,
+          "sha256": "f22b30fbed666833f59aed0d8060578058a1cdcbac331098266159172b6ab04f"
         },
         "modulesSide": {
           "file": "amx56_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68600,
-          "sha256": "d76f7289015a138eb24cbee6fbfd40e4fcc56ab1680d64d7d77637d4e1f8a471"
+          "bytes": 68162,
+          "sha256": "c8556c6def1ef1c8d59b09e6c73afa6da847d5adcdb8ac173db68a5c997da069"
         },
         "markings": {
           "file": "amx56_markings.png",
@@ -43572,7 +43572,7 @@
           }
         ]
       },
-      "geometryHash": "e03fb245",
+      "geometryHash": "3697de69",
       "metadataHash": "2dc995ed",
       "presentationAnchor": {
         "xM": 0.0031,
@@ -43667,24 +43667,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 57688,
-          "sha256": "2c349a7830f02a393927cc5a8ba2663da44a004cc1e6ade79a87bfd40f31bbe2"
+          "bytes": 58359,
+          "sha256": "16c1696a76c6c4df6f2582cf546d1d4d97bbd71f91376159ed9d91d5c73557f2"
         },
         "armorSide": {
           "file": "leclerc_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59851,
-          "sha256": "50af1cab0aad7f1a69c5b00e5caa95ebc9cfd190d96225b164d201142f4d0de5"
+          "bytes": 59532,
+          "sha256": "0eebf9ee1973450ca304e7ecf5cb007c91bcbe71031d229f1a6f753dbf53e77b"
         },
         "modulesSide": {
           "file": "leclerc_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68190,
-          "sha256": "4afe319b312e9d2222c1cd52e8d801aec370f5c88c0c74135c7a95265af0ac20"
+          "bytes": 68502,
+          "sha256": "91afb837bf4c2d1176afc9b2d5a0b25bbda14345c19ab08a7019a0ccc9a9a428"
         },
         "markings": {
           "file": "leclerc_markings.png",
@@ -45033,7 +45033,7 @@
           }
         ]
       },
-      "geometryHash": "db909600",
+      "geometryHash": "bb0e5d78",
       "metadataHash": "1f7f79a2",
       "presentationAnchor": {
         "xM": 0.0031,
@@ -45128,24 +45128,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65732,
-          "sha256": "e46e01b2f2dbede736461fa9d67e66a9dec7ca2051213755c4249af1184ce0f8"
+          "bytes": 66182,
+          "sha256": "a56b8b4e2203a8450dea68bd73ad0c98780e12ce634147d44e6234ca06da92e0"
         },
         "armorSide": {
           "file": "leclerc_xlr_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66829,
-          "sha256": "f9ee180308da4bea0e429cba9a5e38a1b8dba4d4568b1c84458c45ffff7924d7"
+          "bytes": 66939,
+          "sha256": "1d5a8f25efd85f66321db7ac7f438029336e646935530b4fc5bea92393538211"
         },
         "modulesSide": {
           "file": "leclerc_xlr_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69153,
-          "sha256": "2e826b16e7b76cf98f7c794f4dc84aef19cccb814c758215cd1a4582b25f7992"
+          "bytes": 69192,
+          "sha256": "15a9ad2be0aa9f1c7845fa1ae07fd3a157c3b8e18249a8a8bd4d717afa87e5a4"
         },
         "markings": {
           "file": "leclerc_xlr_markings.png",
