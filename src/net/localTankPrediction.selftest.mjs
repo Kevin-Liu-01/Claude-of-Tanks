@@ -106,8 +106,13 @@ assert.equal(predictor.getStats().hardSnaps, 1);
   };
   const wreck = new LocalTankPredictor({ entity: wreckEntity, heightField: FIELD });
   wreck.reconcile(authority(0, null));
-  wreck.reconcile(authority(3, null, 0, 0, { destroyed: true }), 1 / 60, true);
-  wreck.reconcile(authority(6, null, 0, 0, { destroyed: true }), 1 / 60, true);
+  wreck.reconcile(authority(3, null, 0, -0.4, { destroyed: true }), 1 / 60, true);
+  assert.ok(wreckEntity.state.pos.z > -0.1,
+    'the first terminal authority sample preserves the displayed pose instead of popping the wreck');
+  for (let index = 0; index < 45; index++) wreck.present(1 / 60);
+  assert.ok(Math.abs(wreckEntity.state.pos.z + 0.4) < 0.002,
+    'the wreck settles smoothly onto its terminal authoritative pose');
+  wreck.reconcile(authority(6, null, 0, -0.4, { destroyed: true }), 1 / 60, true);
   assert.deepEqual(
     { hardSnaps: wreck.getStats().hardSnaps, terminalSyncs: wreck.getStats().terminalSyncs },
     { hardSnaps: 0, terminalSyncs: 1 },

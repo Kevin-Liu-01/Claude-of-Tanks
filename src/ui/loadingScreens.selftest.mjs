@@ -287,6 +287,7 @@ const soloLoaderBody = mainSource.slice(
   mainSource.indexOf('// Headless probes drive the battle entry'),
 );
 const loaderShowAt = soloLoaderBody.indexOf('battleLoad.show({');
+const visualStreamerAwaitAt = soloLoaderBody.indexOf('await ensureBattleVisualStreamer();');
 const audioResumeAt = soloLoaderBody.indexOf('audio.resume();', loaderShowAt);
 const loadingSoundAt = soloLoaderBody.indexOf('audio.loadingOn(true);', audioResumeAt);
 const firstYieldAt = soloLoaderBody.indexOf('await nextFrame();', loaderShowAt);
@@ -295,6 +296,8 @@ const ambienceAt = soloLoaderBody.indexOf('audio.ambientOn(true);', loadingStopA
 assert.ok(loaderShowAt >= 0 && audioResumeAt > loaderShowAt && loadingSoundAt > audioResumeAt &&
   firstYieldAt > loadingSoundAt,
   'solo battle loading audio must unlock and start inside the Battle gesture before the first yield');
+assert.ok(visualStreamerAwaitAt > firstYieldAt,
+  'solo battle entry must show and paint its boot-critical veil before a lazy presentation import');
 assert.ok(loadingStopAt > loadingSoundAt && ambienceAt > loadingStopAt,
   'loader audio must crossfade into battlefield ambience before reveal');
 const cameraPrepareAt = mainSource.indexOf('prepareBattleRevealCamera();');
@@ -322,4 +325,12 @@ assert.doesNotMatch(openBattleBody, /snapArcade/,
 assert.match(mainSource,
   /enterGarage\(\);\s*battleLoadRenderingCovered = false;\s*await nextFrame\(\);\s*await battleLoad\?\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
+const networkEntryBody = mainSource.slice(
+  mainSource.indexOf('async function beginNetworkBattle('),
+  mainSource.indexOf('/** Load another authority round'),
+);
+assert.ok(networkEntryBody.indexOf('battleLoad.show({') >= 0 &&
+  networkEntryBody.indexOf('battleLoad.show({') <
+    networkEntryBody.indexOf('await preloadPrivateMatchHandoffModule();'),
+  'network entry must synchronously show its boot-critical veil before its first lazy import');
 console.log('loading screen featured-capture selftest: PASS');

@@ -120,8 +120,8 @@ import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
 import { createBootScreen } from './ui/bootScreen.js';
+import { createBattleLoadScreen } from './ui/battleLoad.js';
 import { tierNumeral } from './vehicles/tier.js';
-import { createBattleLoadAccess } from './ui/battleLoadAccess.ts';
 import { createTransition } from './ui/transition.js';
 // Direct /studio navigation is a distinct boot target, not "boot the garage,
 // reveal it, then start a second load".  The intent is captured before any
@@ -440,7 +440,6 @@ function cancelBattleIntentTextureWarm() {
 }
 
 function preloadBattleIntent({ specId, mapId } = {}) {
-  battleLoadAccess.preload().catch(() => null);
   battleVisualStreamerAccess.preload().catch(() => null);
   audio.preload();
   settings.preload().catch(() => null);
@@ -1520,7 +1519,6 @@ const {
 } = createBattleModuleAccess();
 
 function preloadPlayMode(mode) {
-  battleLoadAccess.preload().catch(() => null);
   ensureBattleHud().catch(() => null);
   preloadFxModule().catch(() => null);
   preloadKillcamModule().catch(() => null);
@@ -1678,12 +1676,7 @@ const garage = await bootStage('ui', () => createGarage({
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.js): map art + both rosters +
 // real build progress + countdown. Created here so its stylesheet/DOM is warm
 // before the first BATTLE press.
-const battleLoadAccess = createBattleLoadAccess();
-let battleLoad = null;
-async function ensureBattleLoad() {
-  battleLoad = await battleLoadAccess.preload();
-  return battleLoad;
-}
+const battleLoad = createBattleLoadScreen();
 
 // STATE TRANSITIONS (src/ui/transition.js): the shared branded veil/loading
 // screen every non-battle state swap passes through — garage↔studio (wired
@@ -2433,7 +2426,6 @@ bus.on('shell:fired', (p) => {
  * @returns {Promise<void>} resolves when the battle is live
  */
 async function startBattleLoading(specId, mapId = null, { randomRoster = true } = {}) {
-  await Promise.all([ensureBattleLoad(), ensureBattleVisualStreamer()]);
   // Debug/API entry can bypass the garage's ui:battleStart event.
   post.setAdaptiveSuspended(true);
   const shownAt = performance.now();
@@ -2471,6 +2463,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   audio.resume();
   audio.loadingOn(true);
   await nextFrame();
+  await ensureBattleVisualStreamer();
 
   // The combat HUD, damage schematic, and exact top-mask rig are battle-only.
   // Start their retryable chunks at the first covered frame, then join them
@@ -2947,7 +2940,6 @@ function resolveFxSubject(id) {
  */
 function preloadNetworkLobbyIntent(state) {
   if (!state || game.phase !== 'garage' || state.phase !== 'waiting') return;
-  battleLoadAccess.preload().catch(() => null);
   battleVisualStreamerAccess.preload().catch(() => null);
   preloadNetworkBattleModules().catch(() => null);
   preloadNetworkRoomChatModule().catch(() => null);
@@ -3008,7 +3000,6 @@ async function beginBattleEntry(specId, mapId = null, options = undefined) {
   if (battleEntryPending) return;
   battleEntryPending = true;
   try {
-    await ensureBattleLoad();
     battleLoadRenderingCovered = true;
     await startBattleLoading(specId, mapId, options);
   } catch (error) {
@@ -3060,7 +3051,7 @@ async function presentNetworkBattle({
   connectAfterWorld = false,
   transitionShown = false,
 } = {}) {
-  await Promise.all([ensureBattleLoad(), ensureBattleVisualStreamer()]);
+  await ensureBattleVisualStreamer();
   // Direct presentation calls and every lobby handoff converge here. Calls
   // from a user gesture unlock immediately; rematches reuse the live context.
   audio.resume();
@@ -3340,7 +3331,6 @@ async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = 
   const viewerId = String(session?.roomInfo?.peerId || '');
   const own = lobbyState?.players?.find((player) => player.id === viewerId);
   try {
-    await ensureBattleLoad();
     if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
     resetNetworkBattleState();
     // Cover the page before the first cold import can yield. The play menu
@@ -3429,7 +3419,6 @@ async function beginNetworkRematch(lobbyState) {
   const viewerId = networkMatch.playerId;
   const own = lobbyState.players.find((player) => player.id === viewerId);
   try {
-    await ensureBattleLoad();
     if (!own) throw new Error('Your player is no longer in this room.');
     const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
     const modeLabel = lobbyState.mode === 'lan'
@@ -3491,7 +3480,6 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
   const viewerId = String(ticket?.playerId || '');
   const own = ticket?.roster?.find((player) => player.id === viewerId);
   try {
-    await ensureBattleLoad();
     if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
     resetNetworkBattleState();
     const modeLabel = `Ranked · ${own.rating || 1000} rating`;

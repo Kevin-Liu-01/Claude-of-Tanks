@@ -58,8 +58,9 @@ strict TypeScript owners:
 - `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
   synchronous capture drains, round resets, and countdown cancellation;
 - `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
-- `src/ui/battleLoadAccess.ts` keeps the roster/deployment screen out of the
-  first-visit graph and retries its chunk on explicit battle intent;
+- `src/ui/battleLoad.js` is intentionally boot-critical: its small roster veil
+  is ready before Battle can be pressed and covers the first asynchronous
+  world, vehicle, or network transfer on a pristine connection;
 - `src/game/battleVisualStreamer.ts` owns bounded vehicle texture upload,
   production-target shader submission, and spotting-safe scene attachment;
 - `src/game/battleVisualStreamerAccess.ts` keeps that staging implementation
@@ -419,7 +420,8 @@ terrain contact, map bounds, and nearby static collision. On snapshot:
 3. replay remaining inputs through shared movement;
 4. ease normal visual error through separate horizontal, terrain-support, and
    live-aim presentation channels;
-5. snap on death or an error beyond the safety threshold.
+5. snap only beyond the safety threshold; a terminal wreck pose remains
+   authoritative but settles through bounded presentation correction.
 
 Prediction never resolves local damage, spotting, destructibles, or match
 result. Terrain and dynamic contact keep support height and hull attitude on a

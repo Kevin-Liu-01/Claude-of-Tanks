@@ -115,7 +115,9 @@ unacknowledged inputs after each authority snapshot. Presentation correction is
 grouped by physical role: horizontal hull motion uses an 110 ms envelope,
 support height and hull attitude use 160 ms, and live turret/gun aim uses 75 ms.
 Recent terrain or dynamic contact extends hull envelopes to 180/240 ms for
-300 ms. Death or errors above 7 m still snap immediately.
+300 ms. Errors above 7 m still snap immediately. Death applies its combat state
+immediately but settles the displayed wreck onto the final authority pose
+through the same bounded correction path, preventing a last-frame hull pop.
 
 Both presentation paths suppress quantization chatter only when a tank is
 actually at rest. Remote snapshot samples retain a stable hull pose across

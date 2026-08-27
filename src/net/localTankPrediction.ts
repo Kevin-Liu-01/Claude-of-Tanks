@@ -482,12 +482,11 @@ export class LocalTankPredictor {
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
     const terminalDestroyed = !!(destroyed || snapshot.destroyed);
     const distanceSnap = positionError > this.hardSnapDistanceM;
-    if (distanceSnap || terminalDestroyed) {
+    if (distanceSnap) {
       for (const key of PREDICTION_CORRECTION_KEYS) this.correction[key] = 0;
       this.holdRestingHull = false;
       this.contactSmoothingS = 0;
-      if (distanceSnap) this.stats.hardSnaps++;
-      else if (!this.terminalDestroyed) this.stats.terminalSyncs++;
+      this.stats.hardSnaps++;
     } else {
       this.correction.x = old.x - predicted.pos.x;
       this.correction.y = old.y - predicted.pos.y;
@@ -497,13 +496,23 @@ export class LocalTankPredictor {
       this.correction.roll = wrapAngle(old.roll - predicted.visualRoll);
       this.correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
       this.correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
-      this.holdRestingHull = canHoldRestingHull(
+      this.holdRestingHull = !terminalDestroyed && canHoldRestingHull(
         old,
         predicted,
         snapshot,
         this.motionIntent || this.history.some((frame) => hasDriveIntent(frame.input)),
       );
       if (this.holdRestingHull) this.stats.restingHullHolds++;
+      if (terminalDestroyed && !this.terminalDestroyed) this.stats.terminalSyncs++;
+    }
+    if (terminalDestroyed) {
+      // Death ends local input authority, but it must not teleport the hull to
+      // the terminal server pose. Preserve the already displayed pose as a
+      // bounded presentation correction and let the wreck settle over the
+      // following frames. Combat state is still authoritative immediately.
+      this.history.length = 0;
+      this.motionIntent = false;
+      this.contactSmoothingS = 0;
     }
     this.terminalDestroyed = terminalDestroyed;
     this.present(elapsedS);
