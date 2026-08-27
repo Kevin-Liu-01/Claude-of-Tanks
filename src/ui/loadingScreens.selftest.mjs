@@ -129,6 +129,9 @@ const pedestalRuntimeSource = await readFile(
 );
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
+const minimapRuntimeSource = await readFile(
+  new URL('./minimapAssetRuntime.ts', import.meta.url), 'utf8',
+);
 assert.match(mainSource,
   /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,180}playMenuPromise[\s\S]{0,180}runtime\.hide\(false\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
@@ -259,10 +262,12 @@ assert.match(mainSource,
   /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(world\)/,
   'solo entry must defer battle-only services until the real battle light set is active');
 assert.match(mainSource,
-  /function prepareBattleWorldServices[\s\S]{0,700}worldServicesMapId = next\.mapId[\s\S]{0,100}queueBakedWorldMinimap\(next\)/,
+  /function prepareBattleWorldServices[\s\S]{0,700}worldServicesMapId = next\.mapId[\s\S]{0,120}minimapAssets\.queue\(next\)/,
   'battle entry must queue the preloaded exact map without resampling the heightfield');
-assert.match(mainSource,
-  /function queueBakedWorldMinimap[\s\S]{0,1400}hud\.buildMinimapFromAsset[\s\S]{0,900}buildWorldMinimap\(next, false\)/,
+assert.match(mainSource, /createMinimapAssetRuntime\(\{[\s\S]{0,500}buildMinimapFromAsset/,
+  'main must connect the HUD asset loader through the typed minimap owner');
+assert.match(minimapRuntimeSource,
+  /const isCurrent[\s\S]{0,1100}await loadAsset[\s\S]{0,700}buildFallback\(world\)/,
   'the exact map must be a lazy static asset with procedural cartography only as its error fallback');
 assert.match(hudSource,
   /function installMinimapAsset[\s\S]{0,900}mmBg = image;[\s\S]{0,120}drawMinimapBackground\(\)/,

@@ -75,6 +75,7 @@ import {
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
+import { createMinimapAssetRuntime } from './ui/minimapAssetRuntime.ts';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
 import {
@@ -297,9 +298,6 @@ const engineCtx = {
 // props + minimap capture are now deferred to ensureWorld(), which the battle
 // entry (behind the pre-battle loading screen) and the __SHOTS staging path
 // call. Boot never touches them.
-let minimapAssetMapId = null;
-let minimapAssetGeneration = 0;
-let minimapAssetPending = null;
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let pendingMapChoice = 'verdant'; // includes the non-prefetchable Random card
@@ -746,48 +744,22 @@ function minimapAssetUrl(mapId) {
     `?v=${MINIMAP_ASSET_VERSION}`;
 }
 
-/**
- * Upgrade the immediately available procedural tactical map with the exact
- * supersampled background baked by tools/bake-minimap-assets.mjs. Loading one
- * ~30-85 KB WebP is asynchronous and cacheable; production never traverses the
- * battlefield, compiles shaders, or reads GPU pixels merely to draw the HUD.
- */
-function queueBakedWorldMinimap(next = world) {
-  if (!hud || !next || world !== next || minimapAssetMapId === next.mapId) return null;
-  if (minimapAssetPending?.world === next) return minimapAssetPending.promise;
-  const generation = ++minimapAssetGeneration;
-  const trace = { mapId: next.mapId, state: 'queued', startedAt: performance.now() };
-  if (typeof window !== 'undefined') window.__MINIMAP_LOAD = trace;
-  const promise = (async () => {
-    if (generation !== minimapAssetGeneration || world !== next
-        || worldServicesMapId !== next.mapId) return false;
-    trace.state = 'loading';
-    const installed = await hud.buildMinimapFromAsset(
-      next.heightField, minimapAssetUrl(next.mapId),
-    );
-    if (!installed || generation !== minimapAssetGeneration || world !== next
-        || worldServicesMapId !== next.mapId) {
-      trace.state = 'stale';
-      return false;
-    }
-    minimapAssetMapId = next.mapId;
-    trace.state = 'ready';
-    trace.totalMs = Math.round(performance.now() - trace.startedAt);
-    return true;
-  })().catch((error) => {
-    trace.state = 'fallback';
-    trace.error = String(error);
-    if (generation === minimapAssetGeneration && world === next
-        && worldServicesMapId === next.mapId) {
-      buildWorldMinimap(next, false);
-    }
-    return false;
-  }).finally(() => {
-    if (minimapAssetPending?.generation === generation) minimapAssetPending = null;
-  });
-  minimapAssetPending = { world: next, generation, promise };
-  return promise;
-}
+// Upgrade the immediately available procedural tactical map with the exact
+// supersampled background baked by tools/bake-minimap-assets.mjs. The typed
+// owner rejects stale map results and invokes the procedural fallback without
+// exposing its promise/generation state to this composition root.
+const minimapAssets = createMinimapAssetRuntime({
+  isReady: () => !!hud,
+  getActiveWorld: () => world,
+  isPrepared: (mapId) => worldServicesMapId === mapId,
+  loadAsset: (next, url) => hud.buildMinimapFromAsset(next.heightField, url),
+  buildFallback: (next) => buildWorldMinimap(next, false),
+  assetUrl: minimapAssetUrl,
+  now: () => performance.now(),
+  publishTrace: (trace) => {
+    if (typeof window !== 'undefined') window.__MINIMAP_LOAD = trace;
+  },
+});
 
 function prepareWorldServices(next = world) {
   if (!next || world !== next) return;
@@ -796,12 +768,12 @@ function prepareWorldServices(next = world) {
   collider = isSoloBattleRuntimeReady() ? createCollider(game, next) : null;
   if (worldServicesMapId === next.mapId) {
     placeGarage();
-    queueBakedWorldMinimap(next);
+    minimapAssets.queue(next);
     return;
   }
   placeGarage();
   worldServicesMapId = next.mapId;
-  queueBakedWorldMinimap(next);
+  minimapAssets.queue(next);
 }
 
 function prepareBattleWorldServices(next = world) {
@@ -813,10 +785,10 @@ function prepareBattleWorldServices(next = world) {
     // still building. Do not synchronously resample the complete heightfield
     // into a duplicate fallback here; that old safety path made the roster
     // frame pay ~0.2-0.5 s of pure CPU work. A failed static asset installs the
-    // same full-resolution procedural cartography in queueBakedWorldMinimap.
+    // same full-resolution procedural cartography through minimapAssets.
     worldServicesMapId = next.mapId;
   }
-  queueBakedWorldMinimap(next);
+  minimapAssets.queue(next);
 }
 
 function activateWorld(next, { services = true } = {}) {
@@ -1024,7 +996,7 @@ async function ensureBattleHud() {
   const runtime = await battleHudAccess.preload();
   hud = runtime.hud;
   damagePanel = runtime.damagePanel;
-  if (world && worldServicesMapId === world.mapId) queueBakedWorldMinimap(world);
+  if (world && worldServicesMapId === world.mapId) minimapAssets.queue(world);
   return runtime;
 }
 // Preserve the staged progress contract without transferring battle-only UI

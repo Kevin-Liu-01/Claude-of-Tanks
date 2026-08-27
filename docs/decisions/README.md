@@ -53,3 +53,4 @@ runtime documents remain authoritative for behavior.
 - [0041 — Garage hero visuals have one typed lifecycle owner](0041-typed-garage-pedestal-lifecycle.md)
 - [0042 — Structure connectivity is certified before batching](0042-structure-connectivity-before-batching.md)
 - [0043 — Battle intent has one typed lifecycle owner](0043-typed-battle-intent-lifecycle.md)
+- [0044 — Baked minimaps have one typed async owner](0044-typed-minimap-asset-lifecycle.md)

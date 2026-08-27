@@ -51,6 +51,12 @@ Resolution, shadows, post effects, texture sizes, vegetation density, and
 background work scale independently. A WebGL target watchdog can disable a
 failing feature and restore output without changing combat behavior.
 
+The battle HUD upgrades its immediately available tactical cartography with a
+small baked WebP for the active map. A typed minimap lifecycle coalesces repeat
+requests and rechecks both active-world identity and prepared world services
+after decode. A late result from a previous map is discarded; an active-map
+load error keeps the existing full-resolution procedural fallback.
+
 ## First-party vehicle pipeline
 
 The registry currently retains **150 vehicle records**. The production

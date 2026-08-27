@@ -13,14 +13,17 @@ Present game and session state with fast, legible desktop/mobile interactions.
 <!-- agent-docs:fill:model -->
 `garage.js` owns roster/loadout presentation; `playMenu.js` owns direct Solo,
 Private, LAN, and Ranked deployment; `networkStatus.js` owns reconnect feedback;
-`hud.js` owns live battle chrome;
+`hud.js` owns live battle chrome; `minimapAssetRuntime.ts` owns baked-map load
+coalescing, stale-world rejection, and the procedural cartography fallback;
 `settings.js` and `touchControls.js` own input-facing UI; `transition.js`,
 `battleLoad.js`, and `endScreen.js` own flow beats.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
 Consume canonical state rather than duplicating policy. Keep large/high-cost
-screens lazy. Preserve large touch targets and test desktop plus mobile.
+screens lazy. Preserve large touch targets and test desktop plus mobile. Baked
+minimap requests must pass through `minimapAssetRuntime.ts`; keep active-world
+and prepared-service checks at the asynchronous completion edge.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
