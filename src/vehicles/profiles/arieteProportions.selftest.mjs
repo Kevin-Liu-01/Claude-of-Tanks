@@ -18,6 +18,43 @@ function countPanelCarrierFaces(mesh) {
   return count;
 }
 
+function countPreserieGlacisRearFaces(mesh, rearStationZM) {
+  const position = mesh.geometry.getAttribute('position');
+  let count = 0;
+  for (let i = 0; i < position.count; i += 3) {
+    const vertices = [0, 1, 2].map((offset) => new THREE.Vector3(
+      position.getX(i + offset), position.getY(i + offset), position.getZ(i + offset)));
+    if (!vertices.every((vertex) => Math.abs(vertex.z - rearStationZM) < 1e-5)) continue;
+    const bounds = new THREE.Box3().setFromPoints(vertices);
+    if (bounds.min.y >= 0.99 && bounds.max.y <= 1.255
+        && bounds.min.x >= -0.93 && bounds.max.x <= 0.93) count += 1;
+  }
+  return count;
+}
+
+{
+  const tank = createTank('ariete', null, { proceduralOnly: true, geometryReceipt: true });
+  const hullRig = tank.root.getObjectByName('rig_hull');
+  const hull = hullRig.getObjectByName('hull');
+  const glacis = hullRig.userData.arietePreserieGlacisSeatReceipt;
+  assert.ok(glacis, 'Ariete Preserie exposes its upper-glacis seating receipt');
+  assert.equal(glacis.revision, 'upper-glacis-rear-seat-r1');
+  assert.equal(glacis.formerRearStationZM, 3.38,
+    'receipt preserves the former forward rear-cap station');
+  assert.equal(glacis.rearStationZM, 2.98,
+    'upper-glacis rear cap returns to the hull carrier');
+  assert.equal(glacis.carrierFaceZM, 3.00,
+    'upper glacis targets the accepted hull-front plane');
+  assert.ok(glacis.buriedEdgeOverlapM >= 0.019,
+    'upper glacis overlaps the hull carrier by at least 19 mm');
+  assert.equal(glacis.maxSupportGapM, 0, 'no support gap remains behind the upper glacis');
+  assert.equal(glacis.noseTipZM, 3.60, 'the correction preserves the Preserie bow projection');
+  assert.equal(glacis.lowerGlacisUnchanged, true, 'the lower glacis remains on its accepted station');
+  assert.ok(countPreserieGlacisRearFaces(hull, glacis.rearStationZM) >= 2,
+    'the structural hull contains the re-seated upper-glacis rear face');
+  tank.dispose();
+}
+
 for (const id of ['ariete_c1', 'ariete_c2']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
@@ -106,4 +143,4 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   tank.dispose();
 }
 
-console.log('arieteProportions.selftest: C1/C2 source-width, taller single smart courses verified');
+console.log('arieteProportions.selftest: Preserie glacis seat and C1/C2 source-width courses verified');

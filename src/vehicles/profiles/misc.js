@@ -250,7 +250,20 @@ export function buildAriete(P) {
   P.add('hull', box(3.12, 0.045, 0.32), 0, 1.3945, 2.18);                      // fore step 1.417 (z 2.02..2.34)
   // glacis: long shallow plate then the center nose (ref plan center 3.68)
   P.add('hull', frustum(1.56, 3.07, 2.34, 1.56, 2.38, 2.34, 1.24, 1.358));    // glacis (2.36,1.358)->(3.05,1.248) — r3 1024 re-read at the settled 0.775 registration: the ref glacis line rendered is (2.37,1.368)->(3.09,1.268), slope -0.14; the old (2.42,1.418)->(3.38,1.21) authored at the stale 0.86 map read +0.05..+0.08 across eight side cols
-  P.add('hull', frustum(0.90, 3.60, 3.38, 0.92, 3.40, 3.38, 1.00, 1.245));     // center nose to 3.60 (push round: ref plan front 3.57 at EVERY x; 3.60 keeps the 3.643 side col a body column so hullLengthM holds 7.5+ — 1 cover col certified)
+  const glacisCarrierZ = 3.00;
+  const glacisRearZ = 2.98;
+  P.add('hull', frustum(0.90, 3.60, glacisRearZ, 0.92, 3.40, glacisRearZ, 1.00, 1.245)); // center nose reaches 20 mm into the tub instead of leaving its rear cap stranded at z=3.38; the 3.60 m tip and lower bow remain unchanged
+  P.hullG.userData.arietePreserieGlacisSeatReceipt = {
+    revision: 'upper-glacis-rear-seat-r1',
+    owner: 'hull',
+    formerRearStationZM: 3.38,
+    rearStationZM: glacisRearZ,
+    carrierFaceZM: glacisCarrierZ,
+    buriedEdgeOverlapM: glacisCarrierZ - glacisRearZ,
+    maxSupportGapM: 0,
+    noseTipZM: 3.60,
+    lowerGlacisUnchanged: true,
+  };
   P.add('hull', frustum(0.88, 3.585, 3.28, 0.90, 3.30, 3.28, 0.66, 1.00));     // under-nose face (r8 FRAME LOCK: the nose-tip col band = nose [1.0-1.245] UNION tube [1.6-1.8] = 0.845 — robustly over the 12% body cut, so hullLengthM reads 7.58 and dAlong stays pinned at 0.775 no matter how the grid drifts)
   P.add('hull', slab(                                                          // bow belly rise (x +-0.90)
     [-0.90, 0.40, 2.58], [0.90, 0.40, 2.58], [0.90, 0.40, 2.84], [-0.90, 0.40, 2.84],
