@@ -177,63 +177,41 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
     "schemaVersion": 1,
     "seats": [
       {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.22,
-        "pos": [
-          1.4503575,
-          0.3211222,
-          -0.6010862
-        ],
-        "quaternion": [
-          -0.0734056,
-          0.7649378,
-          0.0611266,
-          0.6369815
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0050212
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.22,
-        "pos": [
-          -1.4503575,
-          0.3211222,
-          -0.6010862
-        ],
-        "quaternion": [
-          -0.0734056,
-          -0.7649378,
-          -0.0611266,
-          0.6369815
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0050211
-      },
-      {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.2801207,
+          1.531,
           0.364,
-          -1.1335731
+          0.5478
         ],
         "quaternion": [
           0,
-          0.8048353,
+          0.7071068,
           0,
-          0.5934982
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "ua_t84_oplot_m",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          1.0373657,
+          0.4846564,
+          -1.355184
+        ],
+        "quaternion": [
+          -0.0805562,
+          0.8319726,
+          0.0529038,
+          0.5463822
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ua_t84_oplot_m",

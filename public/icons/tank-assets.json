@@ -158062,7 +158062,7 @@
           }
         ]
       },
-      "geometryHash": "9103a3ec",
+      "geometryHash": "60c456fd",
       "metadataHash": "29b792f9",
       "presentationAnchor": {
         "xM": 0.0003,
@@ -158089,7 +158089,7 @@
           "armorPaint": 4,
           "opticGlass": 2,
           "tireRubber": 1,
-          "unclassified": 13,
+          "unclassified": 12,
           "gearShadow": 2
         }
       },
@@ -158101,11 +158101,11 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 3,
+        "total": 2,
         "insignia": 1,
-        "designation": 2,
+        "designation": 1,
         "verifiedInsignia": 1,
-        "verifiedDesignation": 2,
+        "verifiedDesignation": 1,
         "minimumVisibilityRatio": 1,
         "codes": [
           "UA:ua-trident:OPLOT"
@@ -158157,24 +158157,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62241,
-          "sha256": "d575e2e4578c7109ab62023af00e79f12b399d529042ba4646610f27df713e14"
+          "bytes": 62322,
+          "sha256": "8a59b39b469bde646b23a732da4f9c2c0028e3df945590b7b2a191b6c404163a"
         },
         "armorSide": {
           "file": "ua_t84_oplot_m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64499,
-          "sha256": "95caae4231fd3b73e47d73da2bfafb112b395cca39a3b22d891ecd0e031e3eb9"
+          "bytes": 64483,
+          "sha256": "a4391ff9394e4f64f168b821e86f6a6ef34a041621f4389762d561ff5a87bd06"
         },
         "modulesSide": {
           "file": "ua_t84_oplot_m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73336,
-          "sha256": "c9bca36b5399e7e5296ed228d66d951f481e719896a7f866a59e0d5cd8d9d002"
+          "bytes": 73665,
+          "sha256": "600303301e53489f17645d36547cf84082aa4a94c9675d2da8956975367ee82c"
         },
         "markings": {
           "file": "ua_t84_oplot_m_markings.png",

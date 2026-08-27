@@ -64,12 +64,14 @@ assert.equal(eraReceipt.additionalTurretCassettes, 8,
   'the revised turret gains eight cassettes over the replaced layout');
 assert.ok(eraReceipt.contactEmbedM >= 0.01,
   'every revised cassette penetrates its armor carrier by at least 10 mm');
+assert.equal(eraReceipt.lidNormalOffsetM, 0.003,
+  'Oplot ERA lid overlays stand 3 mm proud of their cassette faces');
 assert.equal(eraReceipt.maxSupportGapM, 0,
   'carrier-derived seating permits no daylight under the cassette backs');
 assert.equal(eraReceipt.faceNormalAlignmentDeg, 0,
   'cassette backs and armor faces share the same normal');
 
-function assertFlushFaceCaps(bodyName, capName, accept, minimum, label) {
+function assertSeatedFaceCaps(bodyName, capName, accept, minimum, label) {
   const body = oplot.root.getObjectByName(bodyName);
   const caps = oplot.root.getObjectByName(capName);
   assert.ok(body?.geometry && caps?.geometry, `${label} merged geometry exists`);
@@ -79,12 +81,13 @@ function assertFlushFaceCaps(bodyName, capName, accept, minimum, label) {
   for (const cap of capFaces) {
     const mate = bodyFaces.find((face) => face.normal.dot(cap.normal) > 0.999
       && face.centroid.distanceTo(cap.centroid) < 0.14
-      && Math.abs(face.centroid.clone().sub(cap.centroid).dot(cap.normal)) < 0.001);
-    assert.ok(mate, `${label} cap is coplanar with its rotated cassette face`);
+      && Math.abs(cap.centroid.clone().sub(face.centroid).dot(cap.normal)
+        - eraReceipt.lidNormalOffsetM) < 0.0005);
+    assert.ok(mate, `${label} cap clears its rotated cassette face without floating`);
   }
 }
 
-assertFlushFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
+assertSeatedFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
   area > 0.012 && area < 0.020 && Math.abs(centroid.x) > 0.35 && Math.abs(centroid.x) < 1.25
     && centroid.y > 0.50 && centroid.y < 0.90 && centroid.z > 0.50 && centroid.z < 2.00,
 60, 'Oplot turret Duplet');
@@ -110,7 +113,7 @@ assertFlushFaceCaps('turret', 'turretDark', ({ centroid, area }) =>
   }
 }
 
-assertFlushFaceCaps('hull', 'hullDark', ({ centroid, area }) =>
+assertSeatedFaceCaps('hull', 'hullDark', ({ centroid, area }) =>
   area > 0.020 && area < 0.045 && Math.abs(centroid.x) > 0.15 && Math.abs(centroid.x) < 1.35
     && centroid.y > 1.15 && centroid.y < 1.46 && centroid.z > 1.95 && centroid.z < 2.70,
 32, 'Oplot glacis Nozh');

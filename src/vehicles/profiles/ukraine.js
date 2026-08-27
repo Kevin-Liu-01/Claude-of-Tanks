@@ -61,7 +61,7 @@ function kTile(P, owner, x, y, z, w, h, d, rotation = null, lid = true) {
 // `axis` is the cassette-local carrier normal; `contactSide` points inward.
 function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   axis = 'y', contactSide = -1, embed = 0.04, lid = true, painted = false,
-  external = false,
+  external = false, lidClearance = 0,
 } = {}) {
   const { box } = KIT;
   const bucket = painted ? owner : (owner === 'hull' ? 'hullTrack' : 'turretTrack');
@@ -80,7 +80,11 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
   const lidDims = { x: w * 0.80, y: h * 0.80, z: d * 0.80 };
   lidDims[axis] = Math.min(0.024, dims[axis] * 0.22);
   const lidShift = { x: 0, y: 0, z: 0 };
-  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5 - lidDims[axis] * 0.5);
+  // Decorative lids normally share the cassette face. A small explicit
+  // clearance is available for painted carriers whose merged surfaces would
+  // otherwise compete in the depth buffer.
+  lidShift[axis] = outward * (dims[axis] * 0.5 - embed * 0.5
+    - lidDims[axis] * 0.5 + lidClearance);
   P.add(dark, KIT.xform(box(lidDims.x, lidDims.y, lidDims.z),
     lidShift.x, lidShift.y, lidShift.z), x, y, z, r[0], r[1], r[2]);
 }
@@ -91,6 +95,7 @@ function seatedCassette(P, owner, x, y, z, w, h, d, rotation = null, {
 // the carrier by `embed` so there can be no daylight under the module.
 function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
   embed = 0.012, painted = true, lid = true, external = false,
+  lidClearance = 0,
 } = {}) {
   const n = new THREE.Vector3(...normal).normalize();
   const course = new THREE.Vector3(...courseAxis);
@@ -104,7 +109,7 @@ function faceSeatedCassette(P, owner, point, normal, courseAxis, w, h, d, {
   seatedCassette(P, owner, center.x, center.y, center.z, w, h, d,
     [rotation.x, rotation.y, rotation.z], {
       axis: 'y', contactSide: -1, embed, painted, lid,
-      external,
+      external, lidClearance,
     });
   return { support, normal: n, center, rotation, embed };
 }
@@ -1374,6 +1379,7 @@ function buildUAOplotM(P) {
   const eraReceipt = {
     carrierDerivedTransforms: true,
     contactEmbedM: 0.012,
+    lidNormalOffsetM: 0.003,
     maxSupportGapM: 0,
     faceNormalAlignmentDeg: 0,
     hullGlacisCassettes: 0,
@@ -1435,7 +1441,10 @@ function buildUAOplotM(P) {
         faceSeatedCassette(P, 'hull',
           [s * (0.23 + i * 0.30), carrier.y, z],
           [0, 1, -carrier.slope], [0, carrier.slope, 1],
-          0.25, 0.10, 0.29, { embed: eraReceipt.contactEmbedM });
+          0.25, 0.10, 0.29, {
+            embed: eraReceipt.contactEmbedM,
+            lidClearance: eraReceipt.lidNormalOffsetM,
+          });
         eraReceipt.hullGlacisCassettes += 1;
       }
     }
@@ -1618,7 +1627,10 @@ function buildUAOplotM(P) {
     for (const u of [0.22, 0.50, 0.78]) for (const v of [0.10, 0.245, 0.39, 0.535, 0.68]) {
       const face = sampleFace(...wingTop, u, v, [0, 1, 0]);
       faceSeatedCassette(P, 'turret', face.point.toArray(), face.normal.toArray(),
-        face.dv.toArray(), 0.235, 0.09, 0.205, { embed: eraReceipt.contactEmbedM });
+        face.dv.toArray(), 0.235, 0.09, 0.205, {
+          embed: eraReceipt.contactEmbedM,
+          lidClearance: eraReceipt.lidNormalOffsetM,
+        });
       eraReceipt.turretWingCassettes += 1;
     }
     // shell-flank Duplet brick AFT of the edge stack — the rear turret
@@ -1627,6 +1639,7 @@ function buildUAOplotM(P) {
     seatedCassette(P, 'turret', s * 1.21, 0.34, -1.12, 0.13, 0.36, 0.34,
       [0, s * 0.30, 0], {
         axis: 'x', contactSide: -s, embed: 0.045, painted: true,
+        lidClearance: eraReceipt.lidNormalOffsetM,
       });
     P.add('turretDark', box(0.02, 0.30, 0.035), s * 1.258, 0.34, -1.28, 0, s * 0.30, 0);
     // Shoulder wrap follows the actual welded side quad rather than four
@@ -1638,7 +1651,10 @@ function buildUAOplotM(P) {
     for (const u of [0.11, 0.37, 0.63, 0.89]) {
       const face = sampleFace(...shoulderFace, u, 0.42, [s, 0, 0]);
       faceSeatedCassette(P, 'turret', face.point.toArray(), face.normal.toArray(),
-        face.du.toArray(), 0.245, 0.11, 0.28, { embed: eraReceipt.contactEmbedM });
+        face.du.toArray(), 0.245, 0.11, 0.28, {
+          embed: eraReceipt.contactEmbedM,
+          lidClearance: eraReceipt.lidNormalOffsetM,
+        });
       eraReceipt.turretShoulderCassettes += 1;
     }
   }
