@@ -13,8 +13,11 @@ assert.match(main, /isReady:\s*isSoloBattleRuntimeReady/,
   'non-battle world activation uses the typed readiness contract');
 assert.match(access, /import\(['"]\.\/soloBattleRuntime\.ts['"]\)/,
   'solo authority must be demand-loaded behind its typed boundary');
-assert.match(main,
-  /function preloadBattleIntent[\s\S]{0,260}preloadSoloBattleRuntime\(\)/,
+const battleIntent = main.slice(
+  main.indexOf('function preloadBattleIntent('),
+  main.indexOf('function worldRaycast(', main.indexOf('function preloadBattleIntent(')),
+);
+assert.match(battleIntent, /preloadSoloBattleRuntime\(\)/,
   'Battle intent must overlap the solo authority transfer with garage dwell');
 const battleEntry = main.slice(
   main.indexOf('async function startBattleLoading('),
