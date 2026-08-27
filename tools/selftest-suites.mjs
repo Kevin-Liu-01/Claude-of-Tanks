@@ -145,6 +145,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainFastGrid.selftest.mjs',
     'src/world/liveHeightFieldProxy.selftest.mjs',
     'src/world/worldBuildCoordinator.selftest.mjs',
+    'src/world/worldActivationRuntime.selftest.mjs',
     'src/world/terrainIndexPool.selftest.mjs',
     'src/ui/driveTelemetry.selftest.mjs',
     'src/world/terrainLodPolicy.selftest.mjs',

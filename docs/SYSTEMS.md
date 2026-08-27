@@ -108,6 +108,9 @@ strict TypeScript owners:
 - `src/game/battleVisualStreamerAccess.ts` keeps that staging implementation
   out of garage boot and retries it on battle or joined-lobby intent;
 - `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
+- `src/world/worldActivationRuntime.ts` owns the one active browser world,
+  atmosphere/collider/minimap readiness, covered program and shadow warming,
+  dormancy, and activation telemetry;
 - `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
 - `src/net/networkBattleBarrier.ts` owns initial-snapshot and peer-ready
   predicates plus the identity-bound READY retry lease;

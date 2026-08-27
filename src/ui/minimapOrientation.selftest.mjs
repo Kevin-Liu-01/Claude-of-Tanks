@@ -28,7 +28,9 @@ assert.equal(orientMinimapYaw(Math.PI, MINIMAP_SPAWN_FLIPPED), Math.PI * 2,
   'a south-facing far-side tank points screen-up after the map flip');
 
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
-const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const worldActivationSource = await readFile(
+  new URL('../world/worldActivationRuntime.ts', import.meta.url), 'utf8',
+);
 assert.match(hudSource,
   /minimapRotation = minimapRotationForSpawnYaw\(frame\.player\.state\.yaw\)/,
   'orientation locks to the actual local spawn pose');
@@ -38,7 +40,8 @@ assert.match(hudSource,
 assert.match(hudSource,
   /function drawMinimapBackground\([\s\S]{0,500}rotate\(Math\.PI\)[\s\S]{0,500}drawMinimapChrome\(mmCtx\)/,
   'the background flips beneath upright, orientation-aware grid chrome');
-assert.match(mainSource, /MINIMAP_ASSET_VERSION = 'spawn-oriented-v2'/,
+assert.match(worldActivationSource,
+  /minimapAssetVersion \|\| 'spawn-oriented-v2'/,
   'the chrome-free asset contract must bypass previously cached tactical maps');
 
 console.log('minimapOrientation.selftest: ok');

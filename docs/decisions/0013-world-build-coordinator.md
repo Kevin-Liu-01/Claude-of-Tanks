@@ -22,8 +22,9 @@ residency.
 - Completed scenes enter one exact cache and remain dormant until activated.
 - Device-tier residency limits evict inactive scenes with shared-resource and
   CSM-material release preserved.
-- `main.js` retains active-world selection, scene activation, minimap, sky,
-  collision, and gameplay-service ownership.
+- Active-world selection initially remained in `main.js`; ADR 0075 moves that
+  complete presentation lifecycle into `worldActivationRuntime.ts` while this
+  coordinator remains the build/cache owner.
 
 ## Consequences
 

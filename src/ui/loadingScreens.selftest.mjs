@@ -143,6 +143,9 @@ const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 const minimapRuntimeSource = await readFile(
   new URL('./minimapAssetRuntime.ts', import.meta.url), 'utf8',
 );
+const worldActivationSource = await readFile(
+  new URL('../world/worldActivationRuntime.ts', import.meta.url), 'utf8',
+);
 const playerFrameInputSource = await readFile(
   new URL('../game/playerFrameInput.ts', import.meta.url), 'utf8',
 );
@@ -284,11 +287,15 @@ assert.match(soloLoadingSource,
 assert.match(soloLoadingSource,
   /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(getWorld\(\)\)/,
   'solo entry must defer battle-only services until the real battle light set is active');
-assert.match(mainSource,
-  /function prepareBattleWorldServices[\s\S]{0,700}worldServicesMapId = next\.mapId[\s\S]{0,120}minimapAssets\.queue\(next\)/,
+assert.match(worldActivationSource,
+  /const prepareBattleServices[\s\S]{0,700}servicesMapId = world\.mapId[\s\S]{0,120}queueMinimap\(world\)/,
   'battle entry must queue the preloaded exact map without resampling the heightfield');
-assert.match(mainSource, /createMinimapAssetRuntime\(\{[\s\S]{0,500}buildMinimapFromAsset/,
-  'main must connect the HUD asset loader through the typed minimap owner');
+assert.match(worldActivationSource,
+  /createMinimapAssetRuntime<World>\(\{[\s\S]{0,700}loadAsset: options\.loadMinimapAsset/,
+  'the typed world owner must route exact minimap loading through its injected adapter');
+assert.match(mainSource,
+  /loadMinimapAsset: \(next, url\) => hud\.buildMinimapFromAsset\(next\.heightField, url\)/,
+  'main composition must connect the HUD asset loader to the typed world owner');
 assert.match(minimapRuntimeSource,
   /const isCurrent[\s\S]{0,1100}await loadAsset[\s\S]{0,700}buildFallback\(world\)/,
   'the exact map must be a lazy static asset with procedural cartography only as its error fallback');

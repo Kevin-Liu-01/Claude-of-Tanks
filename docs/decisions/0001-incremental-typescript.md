@@ -75,6 +75,11 @@ chunk acquisition after a transient first-visit failure.
 acquired solo world and roster to a live round, while
 `src/game/soloBattleStartAccess.ts` keeps that policy out of ordinary Garage
 and multiplayer boot until covered solo entry requests it.
+`src/world/worldActivationRuntime.ts` owns active-world selection, atmosphere,
+collider/minimap readiness, covered GPU warming, dormancy, and activation
+telemetry. The existing build coordinator remains a deeper construction/cache
+module; `main.js` now consumes one world-lifecycle interface instead of
+retaining parallel world, service, sky, and dormancy state.
 
 ## Consequences
 

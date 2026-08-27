@@ -84,3 +84,4 @@ runtime documents remain authoritative for behavior.
 - [0072 — Browser networking has one cancellable session owner](0072-cancellable-network-browser-session.md)
 - [0073 — Inactive Garage phases release renewable GPU residency](0073-phase-exclusive-gpu-residency.md)
 - [0074 — Network wreck swaps clear decals first](0074-clear-decals-before-network-wreck-swap.md)
+- [0075 — Active battlefield presentation has one typed owner](0075-typed-world-activation.md)

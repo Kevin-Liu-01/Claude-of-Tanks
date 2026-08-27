@@ -13,7 +13,9 @@ and map presentation.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `worldBuildCoordinator.ts` owns map transfer, construction joins, background
-pacing, cancellation, residency, and eviction. `map.js` composes maps,
+pacing, cancellation, residency, and eviction. `worldActivationRuntime.ts`
+owns the single active battlefield, atmosphere re-keying, collider/minimap
+readiness, covered GPU warm, dormancy, and activation telemetry. `map.js` composes maps,
 `terrain.js` provides the height field and world-local shared LOD index pools,
 `liveHeightFieldProxy.ts` selects cached live versus exact authoring queries,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
@@ -44,6 +46,9 @@ Use the warmed one-metre height cache for live non-authoring presentation. Keep
 the analytic sampler for deterministic captures and construction receipts.
 Deferred grass may prepare only a half-chunk beyond its unchanged fade band;
 larger invisible lookahead jobs steal CPU from the opening drive.
+Keep active-world state inside `worldActivationRuntime.ts`; browser callers
+must use its `ensure`, `switchMap`, `prepareBattleServices`, and `setDormant`
+interface rather than recreating activation order or retaining parallel map IDs.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

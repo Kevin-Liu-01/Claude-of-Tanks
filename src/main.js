@@ -56,7 +56,7 @@ import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.t
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from './world/maps/index.js';
-import { createWorldBuildCoordinator } from './world/worldBuildCoordinator.ts';
+import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import { MAP_THUMBS } from './ui/mapThumbs.js';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.js';
@@ -72,7 +72,6 @@ import {
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.js';
 import { createBattleHudAccess } from './ui/battleHudAccess.ts';
-import { createMinimapAssetRuntime } from './ui/minimapAssetRuntime.ts';
 import { createGarage } from './ui/garage.js';
 import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
 import {
@@ -296,11 +295,11 @@ const engineCtx = {
   quality: 'high',
 };
 // --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
-// Worlds are lazy-built per map config and cached; `world` always points at
-// the active one (null until one exists). Long-lived systems (camera rig, fx,
-// kill-cam) reach terrain through the stable proxy below, so a map switch —
-// or a boot with no world at all — never leaves them holding a stale or
-// missing heightfield.
+// Worlds are lazy-built per map config and cached. One typed runtime owns the
+// active-world choice, atmosphere, collider/minimap readiness, GPU warm,
+// dormancy and trace. Long-lived systems reach terrain through the stable
+// proxy below, so a map switch — or a boot with no world at all — never leaves
+// them holding a stale or missing heightfield.
 //
 // PERF (boot r8): the battlefield used to be built synchronously right here,
 // on the boot-critical path, even though the garage bay is fully enclosed and
@@ -308,24 +307,16 @@ const engineCtx = {
 // props + minimap capture are now deferred to ensureWorld(), which the battle
 // entry (behind the pre-battle loading screen) and the __SHOTS staging path
 // call. Boot never touches them.
-let world = null;
-let pendingMapId = 'verdant';    // battlefield the garage is pointing at
-let pendingMapChoice = 'verdant'; // includes the non-prefetchable Random card
-let worldDormant = false;        // garage: world hidden + per-frame update off
 // Deterministic engineering captures keep the analytic terrain function.
 // Ordinary live presentation uses the measured 1 m cache: its sub-centimeter
 // error is below the rendered terrain grid while avoiding the complete
 // multi-octave height stack in camera, HUD, FX and kill-cam hot paths.
 let shotMode = false;
-let worldServicesMapId = null;   // collider/minimap/garage placement prepared
-// The sky/fog preset the atmosphere is currently keyed to. Seeded with the
-// boot map so the FIRST activation of 'verdant' behaves exactly like the old
-// boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
-// switching away and back still re-keys, as switchMap always did.
-let skyMapId = 'verdant';
 const _upNormal = new THREE.Vector3(0, 1, 0);
+let worldRuntime = null;
+const currentWorld = () => worldRuntime?.current ?? null;
 const hfProxy = createLiveHeightFieldProxy({
-  getWorld: () => world,
+  getWorld: currentWorld,
   useExactHeight: () => shotMode,
   upNormal: _upNormal,
 });
@@ -334,36 +325,63 @@ const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
-if (typeof window !== 'undefined') {
-  window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
-}
-const worldBuildCoordinator = createWorldBuildCoordinator({
-  engineContext: engineCtx,
-  scene,
-  renderer,
-  deviceTier: getDeviceTier(),
-  getCurrentWorld: () => world,
-  getGarageActivity: () => ({
-    phase: game.phase,
-    transitionActive: transition.active,
-    lastActivityAt: garageDressingScheduler.getLastActivityAt(),
-  }),
-  releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
-  acquireBackgroundWork: (kind, stillValid) =>
-    garageIdleWorkCoordinator.acquire(kind, stillValid),
+if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
+worldRuntime = createWorldActivationRuntime({
+  initialMapId: 'verdant',
+  coordinatorDependencies: {
+    engineContext: engineCtx,
+    scene,
+    renderer,
+    deviceTier: getDeviceTier(),
+    getGarageActivity: () => ({
+      phase: game.phase,
+      transitionActive: transition.active,
+      lastActivityAt: garageDressingScheduler.getLastActivityAt(),
+    }),
+    releaseShadowMaterial: (resource) => lighting.releaseShadowMaterial(resource),
+    acquireBackgroundWork: (kind, stillValid) =>
+      garageIdleWorkCoordinator.acquire(kind, stillValid),
+  },
+  swapSceneWorld: (previous, next) => phaseSceneResidency.swapWorld(previous, next),
+  setSceneWorldActive: (root, active) => phaseSceneResidency.setWorldActive(root, active),
+  ensureCloudTextures: () => sky.ensureCloudTextures(),
+  ensureCloudTexturesChunked: sky.ensureCloudTexturesChunked
+    ? (yieldFrame) => sky.ensureCloudTexturesChunked(yieldFrame)
+    : undefined,
+  awaitInitialCloudWarm: () => bootCloudWarmP,
+  applySkyPreset: (skyConfig) => sky.applyPreset(skyConfig, scene),
+  setSun: (skyConfig) => lighting.setSun(sky.sunDir, skyConfig),
+  getFogDensity: () => scene.fog?.density ?? 0,
+  onFogDensityChanged: (density) => { baseFogDensity = density; },
+  canCreateCollider: () => isSoloBattleRuntimeReady(),
+  createCollider: (next) => createCollider(game, next),
+  placeGarage,
+  isMinimapReady: () => !!hud,
+  buildMinimap: (next, textured) => {
+    if (!hud) return;
+    hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
+      textured ? minimapSnapCtx() : null);
+  },
+  loadMinimapAsset: (next, url) => hud.buildMinimapFromAsset(next.heightField, url),
+  compilePrograms: (root) => forwardProgramWarm.compile(root),
+  linkerBreathingSlices: (maxSlices) => forwardProgramWarm.linkerBreathingSlices(maxSlices),
+  updateShadowFrustums: () => lighting.updateFrustums?.(),
+  warmShadowFrame: () => warmRender(),
+  nextFrame,
+  baseUrl: import.meta.env.BASE_URL || '/',
+  publishActivationTrace: (trace) => { window.__WORLD_LOAD = trace; },
+  publishMinimapTrace: (trace) => { window.__MINIMAP_LOAD = trace; },
 });
-const worldCache = worldBuildCoordinator.cache;
-const residentLimits = worldBuildCoordinator.resourceLimits;
-const worldPrefetchStats = worldBuildCoordinator.stats;
+const worldCache = worldRuntime.cache;
+const residentLimits = worldRuntime.resourceLimits;
+const worldPrefetchStats = worldRuntime.prefetchStats;
 if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
-const loadWorldModule = worldBuildCoordinator.loadModule;
-const enforceWorldCacheBudget = worldBuildCoordinator.enforceCacheBudget;
-const beginWorldBuild = worldBuildCoordinator.beginBuild;
-const prefetchWorld = worldBuildCoordinator.prefetch;
-const cancelBackgroundWorldBuildsExcept = worldBuildCoordinator.cancelBackgroundExcept;
+const loadWorldModule = worldRuntime.loadModule;
+const prefetchWorld = worldRuntime.prefetch;
+const cancelBackgroundWorldBuildsExcept = worldRuntime.cancelBackgroundExcept;
 
 /** World raycast that is safe before any battlefield exists. */
-function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
+function worldRaycast(o, d, m) { return worldRuntime.raycast(o, d, m); }
 
 // --- game state + tanks -----------------------------------------------------
 // Device QA: `?debug=1` opts a production build into the same bounded flight
@@ -400,7 +418,6 @@ spawnTanks(game, engineCtx);
 // here. PERF r3: deferVisuals still keeps the 7 enemy texture bakes off the
 // critical path — warmCombatPipeline / the post-ready idle pump stream them in
 // before any battle or screenshot frame can render the battlefield.
-let collider = null;
 let battleStaged = false;
 // perf-r2f: handle of the in-flight chunked camo sweep startBattle kicks —
 // The covered entry warm awaits it before the wreck dances (burnt bakes copy
@@ -447,11 +464,12 @@ function requireFxRuntime() {
 // capture contexts (shotMode) and the pre-world boot keep the exact analytic
 // path so the frozen screenshot/metrology contracts are byte-identical. The
 // garage pedestal never conforms at all (rigid on its disc).
-const groundSampler = (x, z) => (
-  world && !shotMode && world.heightField.getHeightAtFast
+const groundSampler = (x, z) => {
+  const world = currentWorld();
+  return world && !shotMode && world.heightField.getHeightAtFast
     ? world.heightField.getHeightAtFast(x, z)
-    : hfProxy.getHeightAt(x, z)
-);
+    : hfProxy.getHeightAt(x, z);
+};
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -499,7 +517,7 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     lighting,
     post,
     game,
-    getWorld: () => world,
+    getWorld: currentWorld,
     getNetworkTelemetry: () => networkSession.diagnostics(),
     resolvePresetName,
     getDeviceTier,
@@ -568,7 +586,8 @@ function setGarageSunTrim(on) {
   // boot r8: the world is deferred, so fall back to the config of the map the
   // garage is currently pointing at (identical to the old boot, which read
   // verdant's config off the eagerly built world).
-  const skyCfg = (world ? world.config.sky : getMapConfig(pendingMapId).sky) || {};
+  const world = currentWorld();
+  const skyCfg = (world ? world.config.sky : getMapConfig(worldRuntime.pendingMapId).sky) || {};
   lighting.setSun(sky.sunDir, on
     ? { ...skyCfg, sunColorHex: GARAGE_SUN_COLOR,
         sunIntensity: (skyCfg.sunIntensity ?? 4.5) * 0.55 }
@@ -743,217 +762,24 @@ function placeGarage() {
   if (game.phase === 'garage') garageCameraPose();
 }
 
-/**
- * Make `next` the active battlefield: hide whatever was active, re-target
- * atmosphere/lighting to the map's sky preset, rebuild the collider + minimap
- * and optionally prepare the battle/garage-only services.
- * @param {object} next a World from createMap/createMapAsync
- * @param {{services?:boolean}} [opts]
- * @returns {object|Promise<object>} active World, immediately when cached
- */
 function buildWorldMinimap(next, textured = true) {
-  if (!hud) return;
-  hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
-    textured ? minimapSnapCtx() : null);
+  worldRuntime.buildMinimap(next, textured);
 }
 
-const MINIMAP_ASSET_VERSION = 'spawn-oriented-v2';
-function minimapAssetUrl(mapId) {
-  return `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp` +
-    `?v=${MINIMAP_ASSET_VERSION}`;
+function prepareWorldServices(next = currentWorld()) {
+  worldRuntime.prepareServices(next);
 }
 
-// Upgrade the immediately available procedural tactical map with the exact
-// supersampled background baked by tools/bake-minimap-assets.mjs. The typed
-// owner rejects stale map results and invokes the procedural fallback without
-// exposing its promise/generation state to this composition root.
-const minimapAssets = createMinimapAssetRuntime({
-  isReady: () => !!hud,
-  getActiveWorld: () => world,
-  isPrepared: (mapId) => worldServicesMapId === mapId,
-  loadAsset: (next, url) => hud.buildMinimapFromAsset(next.heightField, url),
-  buildFallback: (next) => buildWorldMinimap(next, false),
-  assetUrl: minimapAssetUrl,
-  now: () => performance.now(),
-  publishTrace: (trace) => {
-    if (typeof window !== 'undefined') window.__MINIMAP_LOAD = trace;
-  },
-});
-
-function prepareWorldServices(next = world) {
-  if (!next || world !== next) return;
-  // Background map intent is garage-safe. The solo collider is created when
-  // the battle runtime arrives; private/ranked presentation does not use it.
-  collider = isSoloBattleRuntimeReady() ? createCollider(game, next) : null;
-  if (worldServicesMapId === next.mapId) {
-    placeGarage();
-    minimapAssets.queue(next);
-    return;
-  }
-  placeGarage();
-  worldServicesMapId = next.mapId;
-  minimapAssets.queue(next);
+function prepareBattleWorldServices(next = currentWorld()) {
+  worldRuntime.prepareBattleServices(next);
 }
 
-function prepareBattleWorldServices(next = world) {
-  if (!next || world !== next) return;
-  collider = createCollider(game, next);
-  placeGarage();
-  if (worldServicesMapId !== next.mapId) {
-    // The exact background is preloaded on Battle intent while the world is
-    // still building. Do not synchronously resample the complete heightfield
-    // into a duplicate fallback here; that old safety path made the roster
-    // frame pay ~0.2-0.5 s of pure CPU work. A failed static asset installs the
-    // same full-resolution procedural cartography through minimapAssets.
-    worldServicesMapId = next.mapId;
-  }
-  minimapAssets.queue(next);
-}
-
-function activateWorld(next, { services = true } = {}) {
-  phaseSceneResidency.swapWorld(world?.group || null, next.group);
-  world = next;
-  worldDormant = false;
-  // LOADING PERF (boot r9): the cloud-deck sprites bake lazily (see sky.js) —
-  // an active battlefield is the first thing that can see the sky, so finish
-  // them here (idempotent; usually already done by the post-ready idle chain,
-  // and applyPreset below re-asserts it on map re-keys).
-  sky.ensureCloudTextures();
-  pendingMapId = world.mapId;
-  const skyCfg = world.config.sky || {};
-  // Only re-key the atmosphere when the map actually changed — the first
-  // activation of the boot map keeps createSky's DEFAULT_PRESET exactly as the
-  // old eager boot did (see skyMapId).
-  if (skyMapId !== world.mapId) {
-    skyMapId = world.mapId;
-    sky.applyPreset(skyCfg, scene);
-    baseFogDensity = scene.fog.density;
-  }
-  lighting.setSun(sky.sunDir, skyCfg);
-  // Studio never consumes the simulation collider, hidden battle minimap, or
-  // garage placement. Building all three during a direct Studio launch costs
-  // hundreds of milliseconds without changing its visible frame.
-  if (services) prepareWorldServices(next);
-  else {
-    collider = null;
-    if (worldServicesMapId !== next.mapId) worldServicesMapId = null;
-  }
-  enforceWorldCacheBudget();
-  return world;
-}
-
-/**
- * MAP-CONFIG WIRING: activate a cached battlefield immediately, or return the
- * asynchronous world-build promise for callers that deliberately switch cold.
- * @param {string} mapId concrete map id (never 'random' — resolve first)
- * @returns {object} the active World
- */
 function switchMap(mapId) {
-  if (world && world.mapId === mapId) return world;
-  const next = worldCache.get(mapId);
-  return next ? activateWorld(next) : ensureWorld(mapId);
+  return worldRuntime.switchMap(mapId);
 }
 
-/**
- * BOOT DEFERRAL: guarantee a battlefield exists and is active, building it one
- * subsystem per frame so the caller's loading bar keeps animating.
- * @param {string} mapId concrete map id
- * @param {?function(number, string):void} [onProgress] (fraction, label)
- * @param {{precompile?:boolean,compilePrograms?:boolean,services?:boolean}}
- *   [opts] optionally submit color programs without the exhaustive shadow
- *   warm, and defer battle/garage-only services for Studio
- * @returns {Promise<object>} the active World
- */
-async function ensureWorld(mapId, onProgress = null, opts = null) {
-  const id = mapId || pendingMapId;
-  cancelBackgroundWorldBuildsExcept(id);
-  let next = worldCache.get(id);
-  const wt = { id, cached: !!next };
-  const wtStart = performance.now();
-  let wtMark = wtStart;
-  const wtStage = (key) => {
-    const now = performance.now();
-    wt[key] = Math.round(now - wtMark);
-    wtMark = now;
-  };
-  if (!next) {
-    const rec = beginWorldBuild(id, onProgress);
-    try {
-      next = await rec.promise;
-      wt.buildDetail = { ...rec.stageTimings };
-      if (next._buildDetail?.vegetation) {
-        wt.buildDetail.vegetationDetail = { ...next._buildDetail.vegetation };
-      }
-      if (next._buildDetail?.terrain) {
-        wt.buildDetail.terrainDetail = { ...next._buildDetail.terrain };
-      }
-    } finally {
-      if (onProgress && rec.listeners) rec.listeners.delete(onProgress);
-    }
-  }
-  wtStage('build');
-  // Keep the fresh world out of the normal render loop while yielding the
-  // progress frame. Showing it here made that supposedly cheap paint frame
-  // perform a full first world/shadow render before the explicit warm below.
-  next.group.visible = false;
-  // perf-r3: assembleWorld and activateWorld (minimap top-down capture,
-  // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
-  // loading bar a painted frame between them.
-  // Fine-sliced builders have already painted progress immediately before
-  // sealing the world. Fast-path battle/Studio loads skip a redundant extra
-  // frame here; exhaustive capture/shot preparation keeps the old seam.
-  if (opts?.precompile !== false) await nextFrame();
-  wtStage('present');
-  next.group.visible = true;
-  // perf-r5c (retina probe): activateWorld's minimap capture was the FIRST
-  // render touching the fresh world's programs — 55 links resolved in that
-  // one slice (630 ms). Submit the exact linear-HDR variants now, then let the
-  // parallel linker breathe. renderer.compileAsync() both targets the wrong
-  // default framebuffer here and can wait indefinitely on faulty ANGLE
-  // completion-status reporting, so it is deliberately not an entry gate.
-  if (opts?.precompile !== false || opts?.compilePrograms === true) {
-    try { forwardProgramWarm.compile(next.group); } catch (_) { /* warm only */ }
-    for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
-  }
-  wtStage('compile');
-  if (opts?.precompile !== false) await nextFrame();
-  // shadow-depth variants never build through compile() (r2d note) and the
-  // render that submits them also BINDS them — one full render resolved ~59
-  // links in a single slice (3 s under heavy host load). Render the world in
-  // SUBSETS instead (terrain -> +vegetation -> +props): each slice submits
-  // and resolves roughly a third, with linker breathing between.
-  if (opts?.precompile !== false) {
-    const kids = next.group.children.slice();
-    const cohorts = Math.min(3, Math.max(1, kids.length));
-    for (let sub = 0; sub < cohorts; sub++) {
-      const lastVisible = Math.ceil(((sub + 1) / cohorts) * kids.length) - 1;
-      const hidden = [];
-      for (let j = lastVisible + 1; j < kids.length; j++) {
-        if (kids[j].visible) { kids[j].visible = false; hidden.push(kids[j]); }
-      }
-      try {
-        if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-        warmRender();
-      } catch (_) { /* warm only */ }
-      for (const o of hidden) o.visible = true;
-      for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
-      await nextFrame();
-    }
-  }
-  wtStage('shadowWarm');
-  await bootCloudWarmP;
-  if (sky.ensureCloudTexturesChunked) await sky.ensureCloudTexturesChunked(() => nextFrame());
-  wtStage('clouds');
-  const needsServices = opts?.services !== false && worldServicesMapId !== next.mapId;
-  if (world !== next || worldDormant) {
-    activateWorld(next, { services: opts?.services !== false });
-  } else if (needsServices) {
-    prepareWorldServices(next);
-  }
-  wtStage('activate');
-  wt.totalMs = Math.round(performance.now() - wtStart);
-  if (typeof window !== 'undefined') window.__WORLD_LOAD = wt;
-  return world;
+function ensureWorld(mapId, onProgress = null, opts = null) {
+  return worldRuntime.ensure(mapId, onProgress, opts);
 }
 
 /**
@@ -963,6 +789,7 @@ async function ensureWorld(mapId, onProgress = null, opts = null) {
  * @returns {void}
  */
 function ensureBattleStaged() {
+  const world = currentWorld();
   if (battleStaged || !world) return;
   battleStaged = true;
   setupBattle(game, selectedSpecId, world, { deferVisuals: true });
@@ -984,12 +811,7 @@ function ensureBattleStaged() {
  * @param {boolean} on true = dormant (garage), false = live (battle/shots)
  */
 function setWorldDormant(on) {
-  if (!world || worldDormant === on) return;
-  worldDormant = on;
-  // Cached worlds retain their exact generated state, but do not remain
-  // descendants of the Garage scene. This removes inactive map objects from
-  // every renderer and matrix traversal without paying a rebuild on rematch.
-  phaseSceneResidency.setWorldActive(world.group, !on);
+  worldRuntime.setDormant(on);
 }
 
 // hud_ui r6: live-scene handles for the minimap's one-time orthographic
@@ -1013,7 +835,7 @@ async function ensureBattleHud() {
   const runtime = await battleHudAccess.preload();
   hud = runtime.hud;
   damagePanel = runtime.damagePanel;
-  if (world && worldServicesMapId === world.mapId) minimapAssets.queue(world);
+  worldRuntime.queueMinimap();
   return runtime;
 }
 // Preserve the staged progress contract without transferring battle-only UI
@@ -1177,8 +999,7 @@ const garage = await bootStage('ui', () => createGarage({
   // the roll, so battle state is always correct regardless.
   onMapSelect: (mapId) => {
     battleIntent.invalidateMapPlan();
-    pendingMapChoice = mapId;
-    if (mapId !== 'random') pendingMapId = mapId;
+    if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
     cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
@@ -1298,7 +1119,7 @@ const killcamAccess = createKillcamAccess({
     const live = createKillCam({
       scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
       getEntity: (id) => game.tankById.get(id),
-      getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
+      getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
     });
@@ -1451,7 +1272,7 @@ renderer.userData.contextRecovery = {
     if (getDeviceTier() === 'mobile') {
       setMobilePresetName('mobile-low');
       pedestal.trim(1);
-      enforceWorldCacheBudget();
+      worldRuntime.enforceCacheBudget();
     }
     await nextFrame();
     viewport.apply();
@@ -1779,7 +1600,7 @@ const battlePresentation = createBattlePresentationRuntime({
   scene,
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
-  getWorld: () => world,
+  getWorld: currentWorld,
   isNetworkMatchActive: () => !!networkSession.match,
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
@@ -1800,7 +1621,7 @@ const soloBattleDeployment = createSoloBattleDeploymentRuntime({
   post,
   lighting,
   createShell,
-  getWorld: () => world,
+  getWorld: currentWorld,
   getBattleVisuals: () => {
     if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
     return battleVisuals;
@@ -1858,7 +1679,7 @@ const soloBattleStart = createSoloBattleStartAccess({
   options: () => ({
     state: {
       game,
-      getPendingMapId: () => pendingMapId,
+      getPendingMapId: () => worldRuntime.pendingMapId,
       setSelectedSpecId: (value) => { selectedSpecId = value; },
       rememberSpecId,
       setShotMode: (value) => { shotMode = value; },
@@ -1871,6 +1692,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       resolveMapId,
       switchMap,
       getActive: () => {
+        const world = currentWorld();
         if (!world) throw new Error('solo battle start requires an active world');
         return world;
       },
@@ -1932,11 +1754,12 @@ const soloBattleLoading = createSoloBattleLoadingRuntime({
   acquisition: battleEntryAcquisition,
   deployment: soloBattleDeployment,
   lifecycle: battleEntryLifecycle,
-  getPendingMapId: () => pendingMapId,
+  getPendingMapId: () => worldRuntime.pendingMapId,
   getMapConfig,
   getMapThumb: (mapId) => MAP_THUMBS[mapId] || '',
   hasCachedWorld: (mapId) => !!worldCache.get(mapId),
   getWorld: () => {
+    const world = currentWorld();
     if (!world) throw new Error('solo battle loading requires an active world');
     return world;
   },
@@ -2085,7 +1908,7 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         bus,
         viewerId: request.viewerId,
         spectator,
-        worldCollision: world,
+        worldCollision: currentWorld(),
         clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
       }),
       publish: (bridge) => networkSession.publishBridge(bridge),
@@ -2095,9 +1918,13 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
     },
     warm: {
       getFx: requireFxRuntime,
-      terrain: () => battleWarm.warmBattleTerrainTiles({
-        game, world, yieldForBudget: createFrameBudgetYielder(16),
-      }),
+      terrain: () => {
+        const world = currentWorld();
+        if (!world) throw new Error('network terrain warm requires an active world');
+        return battleWarm.warmBattleTerrainTiles({
+          game, world, yieldForBudget: createFrameBudgetYielder(16),
+        });
+      },
       wrecks: (bridge) => battleWarm.warmNetworkWrecks({
         entities: bridge.entities.values(),
         prebakeBurntSteps,
@@ -2108,14 +1935,19 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         compilePrograms: (root) => forwardProgramWarm.compile(root),
         warmRender,
       }),
-      openingEffects: (fx) => battleWarm.warmNetworkOpeningEffects({
-        fx,
-        post,
-        camera,
-        shells: game.shells,
-        compilePrograms: (root) => forwardProgramWarm.compile(root),
-        warmRender,
-      }),
+      openingEffects: (fx, bridge) => {
+        const decalVisual = [...bridge.entities.values()]
+          .find((entity) => entity.visual?.root)?.visual || null;
+        return battleWarm.warmNetworkOpeningEffects({
+          fx,
+          post,
+          camera,
+          shells: game.shells,
+          decalVisual,
+          compilePrograms: (root) => forwardProgramWarm.compile(root),
+          warmRender,
+        });
+      },
       shotCards: (specIds) => hud.warmShotCards(specIds),
       compile: async () => {
         forwardProgramWarm.compile(scene);
@@ -2140,7 +1972,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   audio,
   getMatch: () => networkSession.match,
   getRoomCoordinator: () => networkRoomCoordinator,
-  getWorldCollision: () => world,
+  getWorldCollision: currentWorld,
   getMapPresentation: (mapId, fallback) => {
     if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
     const cfg = getMapConfig(mapId);
@@ -2252,7 +2084,7 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
     setSelectedSpecId: (value) => { selectedSpecId = value; },
     rememberSpecId,
     setWorldDormant,
-    getWorld: () => world,
+    getWorld: currentWorld,
     setCamoBiome,
     hideGarage: () => garage.hide(),
     hideEndOverlay: () => { endOverlay.style.display = 'none'; },
@@ -2292,7 +2124,7 @@ function rosterRows(team) {
 /** QA-only cold entry. Production paths already own a loading veil and call
  * the activation owner only after the selected world and roster builders are ready. */
 async function debugStartBattle(specId, mapId = null, opts = {}) {
-  const resolved = resolveMapId(mapId || pendingMapId);
+  const resolved = resolveMapId(mapId || worldRuntime.pendingMapId);
   await Promise.all([
     ensureFullFleet(),
     ensureWorld(resolved, null, { precompile: false }),
@@ -2306,7 +2138,7 @@ async function debugStartBattle(specId, mapId = null, opts = {}) {
     battleWarm.preload(),
     soloBattleStart.preload(),
   ]);
-  prepareBattleWorldServices(world);
+  prepareBattleWorldServices(currentWorld());
   return soloBattleStart.start(specId, resolved, opts);
 }
 
@@ -2389,7 +2221,8 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   // collider plus an offscreen top-down render here was a repeatable ~330 ms
   // exit freeze. ensureWorld prepares those services behind the next battle
   // loader, where they are actually consumed.
-  if (world && worldServicesMapId !== world.mapId) placeGarage();
+  const activeWorld = currentWorld();
+  if (activeWorld && worldRuntime.servicesMapId !== activeWorld.mapId) placeGarage();
   markGarageStage('worldServices');
   // PAUSE: leaving battle clears any paused overlay (Leave Battle closes the
   // panel itself before calling here — this covers every other exit path).
@@ -2453,7 +2286,7 @@ function leaveBattleToGarage() {
   clearBattlePresentationForExit();
   transition.run(() => { enterGarage(); }, {
     kicker: 'Leaving battle', title: 'Garage',
-    mapId: world?.mapId || game.mapId,
+    mapId: currentWorld()?.mapId || game.mapId,
     progress: false, minShowMs: 760,
   }).finally(() => { leavingBattle = false; });
 }
@@ -2478,7 +2311,7 @@ bus.on('ui:battleAgain', async () => {
     }
     await transition.run(() => { enterGarage(); }, {
       kicker: 'Regrouping', title: 'Next battle',
-      mapId: world?.mapId || game.mapId,
+      mapId: currentWorld()?.mapId || game.mapId,
       progress: false, minShowMs: 420,
     });
   } finally {
@@ -2629,6 +2462,8 @@ function tick(nowMs) {
 
   if (battleEntryLifecycle.renderingCovered) return;
   const fx = fxRuntimeAccess.current;
+  const world = currentWorld();
+  const collider = worldRuntime.collider;
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
   // contrast to haze; scale density down toward 0.35x as FOV drops below 15
@@ -2818,7 +2653,7 @@ function tick(nowMs) {
   // opens the sight line all the way to the aimed target, not just 70 m.
   // GARAGE PERF (boot r8): a dormant battle world costs nothing per frame —
   // no terrain LOD swap, no vegetation wind rebuild, no prop animation.
-  if (world && !worldDormant) {
+  if (world && !worldRuntime.dormant) {
     world.setSniperFade(rig.mode === 'SNIPER' ? 1 : 0, false, camera.fov, rig.aimDist);
   }
   camera.getWorldDirection(_fwd);
@@ -2835,7 +2670,7 @@ function tick(nowMs) {
     occlFocus = cameraFocus.visual.root.getWorldPosition(_occlFocus);
     occlFocus.y += cameraFocus.spec.dims.heightM * 0.75;
   }
-  if (world && !worldDormant) world.update(dtR, camera.position, _fwd, occlFocus);
+  if (world && !worldRuntime.dormant) world.update(dtR, camera.position, _fwd, occlFocus);
 
   // 5. fx — dt 0 while live-paused pins the shared particle clock, which is
   // the one timeline every particle/timer/light/decal ages against (the same
@@ -2986,7 +2821,7 @@ window.__SHOTS = {
       hideEndOverlay: () => { endOverlay.style.display = 'none'; },
       setLastFov: (value) => { lastFov = value; },
       refreshSpotFrame,
-      getWorld: () => world,
+      getWorld: currentWorld,
       getHud: () => hud,
       getFx: () => fxRuntimeAccess.current,
       getKillcam: () => killcam,
@@ -3033,8 +2868,8 @@ hud?.setMode('hidden');
 // pressed, so `world` is legitimately null on the garage boot path — the
 // garage bay renders without it. When a world IS already active (harness
 // staging a battlefield view before readiness), warm it as before.
-if (world) {
-  world.update(0, camera.position);
+if (currentWorld()) {
+  currentWorld().update(0, camera.position);
   battlePresentation.update();
 }
 await bootStage('post', async () => {
@@ -3097,7 +2932,7 @@ const deferredCombatWarm = createDeferredCombatWarmRuntime({
   getBattleVisuals: () => battleVisuals,
   combatWarm,
   battleWarm,
-  getWorld: () => world,
+  getWorld: currentWorld,
   getGeneration: () => battleWarmGeneration,
   setPending: (pending) => { battleWarmPending = pending; },
   prepareNextOpeningRoute,
@@ -3118,7 +2953,7 @@ const deploymentShadowWarm = createDeploymentShadowWarmOwner({
   camera,
   lighting,
   warmRender,
-  getWorldGroup: () => world?.group ?? null,
+  getWorldGroup: () => currentWorld()?.group ?? null,
   noteFovPrimed: (fov) => { lastFov = fov; },
   simDt: SIM_DT,
 });
@@ -3131,7 +2966,7 @@ function createCombatWarmRuntimeContext() {
     renderer,
     camera,
     scene,
-    world: () => world,
+    world: currentWorld,
     warmRender,
     deploymentShadowWarm,
     forwardProgramWarm,
@@ -3169,7 +3004,7 @@ const studioAccess = createStudioAccess({
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
   createContext: (studioFx) => ({
     renderer, scene, camera, post, lighting, game, hud, garage, showroom,
-    hfProxy, getWorld: () => world,
+    hfProxy, getWorld: currentWorld,
     ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
       precompile: false,
       compilePrograms: true,
@@ -3223,9 +3058,9 @@ const driveTestRequested = import.meta.env.DEV
 const driveTestController = driveTestRequested
   ? (await import('./dev/driveTestController.ts')).createDriveTestController({
     getGame: () => game,
-    getWorld: () => world,
+    getWorld: currentWorld,
     getRig: () => rig,
-    getCollider: () => collider,
+    getCollider: () => worldRuntime.collider,
     bus,
     input,
     aimController,
@@ -3296,8 +3131,7 @@ window.__DEBUG = {
   get phaseSceneResidency() { return { ...phaseSceneResidency.stats }; },
   get garageGpuResidency() { return garageGpuResidency.diagnostics(); },
   get lastWorldRelease() {
-    return worldBuildCoordinator.lastRelease
-      ? { ...worldBuildCoordinator.lastRelease } : null;
+    return worldRuntime.lastRelease ? { ...worldRuntime.lastRelease } : null;
   },
   get graphicsContextLost() { return graphicsContextLost; },
   selectGarageTank: (id) => garage.setSelected(id),
@@ -3308,7 +3142,7 @@ window.__DEBUG = {
     selectedSpecId = id;
     return pedestal.set(id, true);
   },
-  get world() { return world; },
+  get world() { return currentWorld(); },
   switchMap,
   flags: debugFlags,
   frameInfo,
