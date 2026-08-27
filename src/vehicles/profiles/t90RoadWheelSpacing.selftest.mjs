@@ -42,6 +42,16 @@ for (const [id, expected] of Object.entries(CASES)) {
         't90: skirt reaches behind the rear final-drive sprocket');
       assert.ok(attachment.skirt.z1 >= receipt.idler.z + receipt.idler.r,
         't90: skirt reaches beyond the forward idler');
+      assert.ok(attachment.skirt.yBot <= receipt.topY,
+        't90: skirt drops into the return-track shoulder instead of becoming a thin fender strip');
+      assert.ok(attachment.skirt.yTop >= 1.43,
+        't90: skirt meets the upper fender course');
+      assert.ok(attachment.skirt.height >= 0.60,
+        't90: full-length skirt retains the front ERA apron depth');
+      assert.equal(attachment.skirt.panels, 8,
+        't90: each side keeps an eight-panel full-length skirt course');
+      assert.equal(attachment.skirt.sides, 2,
+        't90: full-length skirts are authored on both sides');
 
       const mg = tank.root.getObjectByName('fitting_pintleMG');
       assert.ok(mg, 't90: exposes the mounted NSVT fitting');

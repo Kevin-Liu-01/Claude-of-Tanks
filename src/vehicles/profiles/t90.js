@@ -4276,13 +4276,13 @@ function buildT90(P) {
     P.add('hullDark', box(0.045, 0.04, 0.56), s * 1.858, 0.86, 2.30 - i * 0.655);
   }
   widthAnchor(P, 1.89, 0.95, 0.46);
-  // Continuous skirt course from the rear guard into the forward guard.
-  // The former z=-1.30 start abandoned the entire final-drive half of the
-  // running gear; extending the same shallow production band to both guard
-  // overlaps closes that exposed break without moving it into the track lane.
+  // Continuous full-depth skirt course from the rear guard into the forward
+  // guard. Match the 0.60 m front ERA apron vertically so the eight-panel run
+  // protects the complete track shoulder instead of collapsing to a thin
+  // fender strip behind the three forward blocks.
   const t90SkirtCourse = Object.freeze({
     x: 1.7675, th: 0.036, z0: -3.10, z1: 3.40,
-    yTop: 1.44, yBot: 1.22, panels: 8, lipX: 1.755,
+    yTop: 1.44, yBot: 0.82, panels: 8, lipX: 1.755,
   });
   ruSkirtBand(P, t90SkirtCourse);
   for (const s of [-1, 1]) {
@@ -4299,7 +4299,15 @@ function buildT90(P) {
     P.add('hullDark', box(0.42, 0.03, 0.054), s * 1.48, 1.085, 3.345);  // front fender clamp
   }
   P.hullG.userData.t90AttachmentReceipt = Object.freeze({
-    skirt: Object.freeze({ z0: t90SkirtCourse.z0, z1: t90SkirtCourse.z1 }),
+    skirt: Object.freeze({
+      z0: t90SkirtCourse.z0,
+      z1: t90SkirtCourse.z1,
+      yTop: t90SkirtCourse.yTop,
+      yBot: t90SkirtCourse.yBot,
+      height: t90SkirtCourse.yTop - t90SkirtCourse.yBot,
+      panels: t90SkirtCourse.panels,
+      sides: 2,
+    }),
     guardLabels: Object.freeze([
       't90-rear-mudguard-left', 't90-rear-mudguard-right',
       't90-front-mudguard-left', 't90-front-mudguard-right',
