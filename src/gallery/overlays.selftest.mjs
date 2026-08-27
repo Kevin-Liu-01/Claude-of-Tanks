@@ -74,6 +74,8 @@ function assertCrewInsideArmor(model, label) {
     `${label}: fleet-wide armor clearance`);
   const bounds = crewBounds(model);
   const compartment = metadata.compartmentBounds;
+  assert.ok(bounds.min.y >= metadata.compartmentFloorY + CREW_ARMOR_CLEARANCE_M - 1e-8,
+    `${label}: feet remain above the exact hull-shell floor`);
   assert.ok(bounds.max.y <= metadata.compartmentRoofY - CREW_ARMOR_CLEARANCE_M + 1e-8,
     `${label}: helmet remains below the local structural roof`);
   for (const axis of [0, 2]) {
@@ -87,6 +89,18 @@ function assertCrewInsideArmor(model, label) {
         <= compartment.max[axis] - CREW_ARMOR_CLEARANCE_M + 1e-8,
     `${label}: crew stays inside the structural ${axis === 0 ? 'side' : 'fore/aft'} limit`);
   }
+}
+
+function assertModuleAboveFloor(model, label) {
+  const metadata = model.userData.internalAnatomy;
+  if (!Number.isFinite(metadata.compartmentFloorY)) return;
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3();
+  model.traverse((object) => {
+    if (object.isMesh && object.material?.colorWrite !== false) bounds.expandByObject(object);
+  });
+  assert.ok(bounds.min.y >= metadata.compartmentFloorY + CREW_ARMOR_CLEARANCE_M - 1e-8,
+    `${label}: recognizable module remains above the exact hull-shell floor`);
 }
 
 function assertCanonicalCrewScale(model, expected, label) {
@@ -147,7 +161,10 @@ const modules = createInspectionOverlay(spec, visual, 'modules');
 assert.equal(modules.count, 1,
   'shape segmentation never duplicates one canonical module model');
 const engineModel = modules.pickables[0].userData.inspectionVisual;
-assert.deepEqual(engineModel.userData.internalAnatomy, { type: 'module', key: 'engine' });
+assert.equal(engineModel.userData.internalAnatomy.type, 'module');
+assert.equal(engineModel.userData.internalAnatomy.key, 'engine');
+assert.equal(engineModel.userData.internalAnatomy.visualAnchorPolicy, 'preciseCombatShapes',
+  'internal module visuals use the same shell-fitted shapes as combat');
 assert.ok(anatomyMeshes(modules.pickables[0]).length > 12,
   'Gallery uses the recognizable kill-cam engine assembly');
 const moduleLines = [];
@@ -216,6 +233,7 @@ const canonicalCrewSize = assertCanonicalCrewScale(
   null,
   'fixture driver',
 );
+const canonicalCrewSizes = new Map([['reclinedSeated', canonicalCrewSize]]);
 crew.clear();
 
 let auditedModules = 0;
@@ -234,6 +252,10 @@ for (const id of ALL_TANK_IDS) {
     picker.userData.inspectionVisual.userData.internalAnatomy.key === 'turretRing');
   assert.equal(renderedRings.length, ringVolumes.length,
     `${id}: each turret-ring module renders exactly once`);
+  for (const picker of moduleOverlay.pickables) {
+    const model = picker.userData.inspectionVisual;
+    assertModuleAboveFloor(model, `${id}:${model.userData.internalAnatomy.key}`);
+  }
   auditedModules += moduleOverlay.count;
   moduleOverlay.clear();
 
@@ -248,11 +270,14 @@ for (const id of ALL_TANK_IDS) {
       picker.userData.inspectionVisual,
       `${id}:${picker.userData.inspectionVisual.userData.internalAnatomy.key}`,
     );
-    assertCanonicalCrewScale(
-      picker.userData.inspectionVisual,
-      canonicalCrewSize,
-      `${id}:${picker.userData.inspectionVisual.userData.internalAnatomy.key}`,
+    const model = picker.userData.inspectionVisual;
+    const pose = model.userData.internalAnatomy.pose;
+    const size = assertCanonicalCrewScale(
+      model,
+      canonicalCrewSizes.get(pose) || null,
+      `${id}:${model.userData.internalAnatomy.key}`,
     );
+    if (!canonicalCrewSizes.has(pose)) canonicalCrewSizes.set(pose, size);
     assertCrewInsideArmor(
       picker.userData.inspectionVisual,
       `${id}:${picker.userData.inspectionVisual.userData.internalAnatomy.key}`,

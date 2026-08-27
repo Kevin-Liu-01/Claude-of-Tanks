@@ -233,11 +233,13 @@ function addModuleModels(spec, hullContainer, turretContainer, resources, pickab
       resources.push(fill);
       const model = addInternalModuleModel(
         resolved, fill, hullContainer, turretContainer, resources,
-        spec.era, caliberMm, fill,
+        spec.era, caliberMm, fill, spec.armor,
       );
       if (!model) return;
       addDashedLines(model, color, resources);
-      addVolumePicker(model, resolved, index, 'modules', resources, pickables, partIndex, parts.length);
+      const visualBounds = model.userData.internalAnatomy.visualBounds;
+      addVolumePicker(model, { ...resolved, ...visualBounds }, index, 'modules', resources, pickables,
+        partIndex, parts.length);
     });
   });
   const drivetrainColor = 0x98a6ad;

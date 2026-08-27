@@ -4,6 +4,14 @@ import { isPostwarVehicleEra } from './taxonomy.js';
 export const CREW_STANDING_HEIGHT_M = 5 * 0.3048;
 export const CREW_ARMOR_CLEARANCE_M = 0.035;
 
+// Hull stations (drivers and turretless fighting compartments) are materially
+// lower than turret baskets. Keep one real body scale, but use the reclined
+// posture real low-roof stations require instead of letting the shins pass
+// through the belly plate.
+const HULL_CREW_RECLINE_RAD = Math.PI * 0.35;
+const HULL_CREW_SHIN_RAD = Math.PI * 0.42;
+const TURRET_CREW_SHIN_RAD = Math.PI * 0.08;
+
 // One real-world body scale for every vehicle. Combat crew volumes describe
 // damage and station placement; they must never resize the person occupying
 // that station. These proportions yield a 1.524 m standing reference and a
@@ -91,6 +99,20 @@ function localCrewRoofY(armor, turretLocal, anchor, crownBounds, fallback) {
   return samples ? roof : fallback;
 }
 
+/** Lowest exact hull-shell point, expressed in the requested owner frame. */
+export function internalTankFloorY(armor, turretLocal = false) {
+  let floor = Infinity;
+  for (const cell of armor?.collisionShells?.hull || []) {
+    if (Array.isArray(cell?.min) && Number.isFinite(cell.min[1])) {
+      floor = Math.min(floor, cell.min[1]);
+    }
+  }
+  if (!Number.isFinite(floor)) {
+    floor = crewArmorEnvelope(armor, false)?.min?.[1] ?? 0;
+  }
+  return floor - (turretLocal ? Number(armor?.turretPivot?.[1] || 0) : 0);
+}
+
 function reseatCrewInsideArmor(group, poseBounds, crownBounds, armor, turretLocal) {
   const envelope = crewArmorEnvelope(armor, turretLocal);
   if (!envelope) return null;
@@ -113,24 +135,91 @@ function reseatCrewInsideArmor(group, poseBounds, crownBounds, armor, turretLoca
 
   const roofY = localCrewRoofY(armor, turretLocal, group.position, crownBounds, envelope.max[1]);
   const roofLimit = roofY - crownBounds.max.y - CREW_ARMOR_CLEARANCE_M;
-  const floorLimit = envelope.min[1] - poseMin[1] + CREW_ARMOR_CLEARANCE_M;
-  const height = roofY - envelope.min[1];
+  const floorY = internalTankFloorY(armor, turretLocal);
+  const floorLimit = floorY - poseMin[1] + CREW_ARMOR_CLEARANCE_M;
+  const height = roofY - floorY;
   if (height + 1e-9 >= poseSize[1] + CREW_ARMOR_CLEARANCE_M * 2) {
     group.position.y = THREE.MathUtils.clamp(group.position.y, floorLimit, roofLimit);
   } else {
-    // Turret crew extend into the basket below the turret shell. The crown is
-    // the hard visual boundary; forcing the full seated body into a low turret
-    // would either shrink the human or push the helmet through the roof.
-    group.position.y = Math.min(group.position.y, roofLimit);
+    // This is a fail-safe for malformed authoring data. The canonical hull
+    // posture fits every measured fighting compartment; if a future spec does
+    // not, preserve the belly boundary rather than silently drawing anatomy
+    // through the tank floor.
+    group.position.y = floorLimit;
   }
 
   return {
     envelope,
     roofY,
+    floorY,
     original: original.toArray(),
     resolved: group.position.toArray(),
     adjustment: group.position.clone().sub(original).toArray(),
   };
+}
+
+
+function shapeBounds(shape) {
+  if (shape?.kind === 'ellipsoid') {
+    return {
+      min: shape.center.map((value, axis) => value - shape.radii[axis]),
+      max: shape.center.map((value, axis) => value + shape.radii[axis]),
+    };
+  }
+  if (shape?.kind === 'capsule') {
+    return {
+      min: shape.a.map((value, axis) => Math.min(value, shape.b[axis]) - shape.radius),
+      max: shape.a.map((value, axis) => Math.max(value, shape.b[axis]) + shape.radius),
+    };
+  }
+  if (shape?.kind === 'ellipticCylinder') {
+    let radialIndex = 0;
+    const half = [0, 0, 0].map((_, axis) => {
+      if (axis === shape.axis) return shape.halfLength;
+      const radius = shape.radii[radialIndex];
+      radialIndex += 1;
+      return radius;
+    });
+    return {
+      min: shape.center.map((value, axis) => value - half[axis]),
+      max: shape.center.map((value, axis) => value + half[axis]),
+    };
+  }
+  return null;
+}
+
+function preciseModuleVisualVolume(volume) {
+  const internal = volume?.external !== true
+    && !['trackL', 'trackR', 'gun', 'optics', 'turretRing', 'gunMount'].includes(volume?.module);
+  if (!internal || !Array.isArray(volume?.shapes) || !volume.shapes.length) return volume;
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const shape of volume.shapes) {
+    const bounds = shapeBounds(shape);
+    if (!bounds) continue;
+    for (let axis = 0; axis < 3; axis += 1) {
+      min[axis] = Math.min(min[axis], bounds.min[axis]);
+      max[axis] = Math.max(max[axis], bounds.max[axis]);
+    }
+  }
+  return Number.isFinite(min[0]) ? { ...volume, min, max } : volume;
+}
+
+function localGeometryBounds(group) {
+  group.updateMatrixWorld(true);
+  const inverse = group.matrixWorld.clone().invert();
+  const relative = new THREE.Matrix4();
+  const bounds = new THREE.Box3();
+  group.traverse((object) => {
+    if (!object.isMesh || !object.geometry) return;
+    if (object.isInstancedMesh) object.computeBoundingBox();
+    else object.geometry.computeBoundingBox();
+    const objectBounds = object.isInstancedMesh ? object.boundingBox : object.geometry.boundingBox;
+    if (!objectBounds) return;
+    relative.multiplyMatrices(inverse, object.matrixWorld);
+    bounds.union(objectBounds.clone().applyMatrix4(relative));
+  });
+  return bounds;
 }
 
 /** Center an internal model on its canonical combat volume and owner rig. */
@@ -161,17 +250,24 @@ export function addInternalModuleModel(
   era,
   caliberMm,
   steelMaterial = material,
+  armor = null,
 ) {
   const kind = volume.module;
   const form = volume.visualForm || '';
   if (kind === 'trackL' || kind === 'trackR') return null;
+  const authoredVolume = volume;
+  volume = preciseModuleVisualVolume(volume);
   const modern = isPostwarVehicleEra(era);
   const caliberRadius = caliberMm > 0 ? (caliberMm / 2000) * 1.08 : 0;
   const sx = volume.max[0] - volume.min[0];
   const sy = volume.max[1] - volume.min[1];
   const sz = volume.max[2] - volume.min[2];
   const group = proxyGroup(volume, hullGroup, turretGroup, `module_${kind}`);
-  group.userData.internalAnatomy = { type: 'module', key: kind, ...(form ? { form } : {}) };
+  group.userData.internalAnatomy = {
+    type: 'module', key: kind, ...(form ? { form } : {}),
+    visualAnchorPolicy: volume === authoredVolume ? 'authoredVolume' : 'preciseCombatShapes',
+    visualBounds: { min: [...volume.min], max: [...volume.max] },
+  };
 
   const put = (geometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, nextMaterial = material) => {
     disposables.push(geometry);
@@ -470,6 +566,19 @@ export function addInternalModuleModel(
   } else {
     put(new THREE.BoxGeometry(sx * 0.6, sy * 0.6, sz * 0.6));
   }
+  if (armor && volume.external !== true && kind !== 'optics') {
+    const bounds = localGeometryBounds(group);
+    const floorY = internalTankFloorY(armor, !!volume.turretLocal);
+    const modelFloor = group.position.y + bounds.min.y;
+    const adjustment = Math.max(0, floorY + CREW_ARMOR_CLEARANCE_M - modelFloor);
+    group.position.y += adjustment;
+    if (adjustment > 0) {
+      group.userData.internalAnatomy.visualBounds.min[1] += adjustment;
+      group.userData.internalAnatomy.visualBounds.max[1] += adjustment;
+    }
+    group.userData.internalAnatomy.compartmentFloorY = floorY;
+    group.userData.internalAnatomy.floorAdjustmentY = adjustment;
+  }
   return group;
 }
 
@@ -488,7 +597,7 @@ export function addInternalCrewModel(
     key: volume.crew,
     form: volume.visualForm || 'seatedCrew',
     station: volume.station || null,
-    pose: 'seated',
+    pose: volume.turretLocal ? 'seated' : 'reclinedSeated',
     standingHeightM: CREW_STANDING_HEIGHT_M,
     scalePolicy: 'canonicalMeters',
   };
@@ -528,6 +637,15 @@ export function addInternalCrewModel(
     Math.PI * 0.52,
   );
   disposables.push(body, shoulder, head, helmet);
+  const upperBody = new THREE.Group();
+  upperBody.name = 'crew_upper_body';
+  upperBody.position.y = torsoRadius * 0.45;
+  upperBody.rotation.x = volume.turretLocal ? 0 : -HULL_CREW_RECLINE_RAD;
+  poseGroup.add(upperBody);
+  const upperBodyMesh = (mesh) => {
+    mesh.position.y -= upperBody.position.y;
+    upperBody.add(mesh);
+  };
   const bodyMesh = new THREE.Mesh(body, material);
   bodyMesh.name = 'crew_torso';
   bodyMesh.position.y = torsoHeight / 2;
@@ -547,7 +665,10 @@ export function addInternalCrewModel(
   const thighGeometry = new THREE.CapsuleGeometry(limbRadius * 1.12, thighLength, 3, 7);
   const shinGeometry = new THREE.CapsuleGeometry(limbRadius, shinLength, 3, 7);
   disposables.push(armGeometry, thighGeometry, shinGeometry);
-  poseGroup.add(bodyMesh, shoulderMesh, headMesh, helmetMesh);
+  upperBodyMesh(bodyMesh);
+  upperBodyMesh(shoulderMesh);
+  upperBodyMesh(headMesh);
+  upperBodyMesh(helmetMesh);
   for (const side of [-1, 1]) {
     const arm = new THREE.Mesh(armGeometry, material);
     arm.name = side < 0 ? 'crew_arm_left' : 'crew_arm_right';
@@ -561,6 +682,7 @@ export function addInternalCrewModel(
     const armShoulderOffset = new THREE.Vector3(0, upperArmLength / 2, 0)
       .applyQuaternion(arm.quaternion);
     arm.position.copy(shoulderJoint).sub(armShoulderOffset);
+    upperBodyMesh(arm);
     const thigh = new THREE.Mesh(thighGeometry, material);
     thigh.name = side < 0 ? 'crew_leg_left' : 'crew_leg_right';
     thigh.rotation.x = Math.PI * 0.48;
@@ -574,7 +696,7 @@ export function addInternalCrewModel(
     thigh.position.copy(hip).sub(thighHipOffset);
     const shin = new THREE.Mesh(shinGeometry, material);
     shin.name = side < 0 ? 'crew_shin_left' : 'crew_shin_right';
-    shin.rotation.x = Math.PI * 0.08;
+    shin.rotation.x = volume.turretLocal ? TURRET_CREW_SHIN_RAD : HULL_CREW_SHIN_RAD;
     // Anchor both segments to the same knee instead of estimating their
     // positions independently. CapsuleGeometry's height spans the two cap
     // centers along local Y, so matching those centers keeps the dashed and
@@ -585,7 +707,7 @@ export function addInternalCrewModel(
     const shinKneeOffset = new THREE.Vector3(0, shinLength / 2, 0)
       .applyQuaternion(shin.quaternion);
     shin.position.copy(knee).sub(shinKneeOffset);
-    poseGroup.add(arm, thigh, shin);
+    poseGroup.add(thigh, shin);
   }
   // Center the fixed-size seated pose on the authored station centroid. The
   // damage volume remains authoritative for simulation; the visual anchor is
@@ -612,6 +734,7 @@ export function addInternalCrewModel(
     group.userData.internalAnatomy.armorClearanceM = CREW_ARMOR_CLEARANCE_M;
     group.userData.internalAnatomy.compartmentBounds = seat.envelope;
     group.userData.internalAnatomy.compartmentRoofY = seat.roofY;
+    group.userData.internalAnatomy.compartmentFloorY = seat.floorY;
     group.userData.internalAnatomy.originalAnchor = seat.original;
     group.userData.internalAnatomy.resolvedAnchor = seat.resolved;
     group.userData.internalAnatomy.anchorAdjustment = seat.adjustment;

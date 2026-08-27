@@ -3017,7 +3017,7 @@ export function createKillCam(deps) {
       for (const part of parts) {
         addInternalModuleModel(clampBB({ ...mb, min: part.min, max: part.max }),
           proxMatForState(effState(mb.module)), poseGrp, turretGrp,
-          pb.disposables, specEra, victimCalMm, S.proxSteel);
+          pb.disposables, specEra, victimCalMm, S.proxSteel, armor);
       }
     }
     // hull anatomy between the boxes: driveshaft spine + transmission block
