@@ -1,6 +1,6 @@
 {
   "libraryId": "claude-of-tanks-feature-loops-r1",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "renderer": {
     "width": 1280,
     "height": 720,
@@ -25,10 +25,8 @@
       "title": "Desert crossfire",
       "map": "desert",
       "durationMs": 6000,
-      "gif": "/media/feature-loops-r1/01_desert_duel_leclerc_kill.gif",
       "video": "/media/feature-loops-r1/01_desert_duel_leclerc_kill.webm",
       "poster": "/media/feature-loops-r1/01_desert_duel_leclerc_kill.jpg",
-      "gifBytes": 6944229,
       "videoBytes": 1839369,
       "actors": [
         {
@@ -46,10 +44,8 @@
       "title": "Close armored contact",
       "map": "desert",
       "durationMs": 6000,
-      "gif": "/media/feature-loops-r1/02_desert_ram_abramsx_t90m.gif",
       "video": "/media/feature-loops-r1/02_desert_ram_abramsx_t90m.webm",
       "poster": "/media/feature-loops-r1/02_desert_ram_abramsx_t90m.jpg",
-      "gifBytes": 8908279,
       "videoBytes": 2300729,
       "actors": [
         {
@@ -67,10 +63,8 @@
       "title": "Winter knockout",
       "map": "winter",
       "durationMs": 6000,
-      "gif": "/media/feature-loops-r1/03_winter_lake_duel.gif",
       "video": "/media/feature-loops-r1/03_winter_lake_duel.webm",
       "poster": "/media/feature-loops-r1/03_winter_lake_duel.jpg",
-      "gifBytes": 7164814,
       "videoBytes": 1756750,
       "actors": [
         {
@@ -88,10 +82,8 @@
       "title": "Urban advance",
       "map": "urban",
       "durationMs": 6000,
-      "gif": "/media/feature-loops-r1/04_urban_street_duel.gif",
       "video": "/media/feature-loops-r1/04_urban_street_duel.webm",
       "poster": "/media/feature-loops-r1/04_urban_street_duel.jpg",
-      "gifBytes": 11581803,
       "videoBytes": 2822863,
       "actors": [
         {
@@ -109,10 +101,8 @@
       "title": "Urban heavy armor",
       "map": "urban",
       "durationMs": 6000,
-      "gif": "/media/feature-loops-r1/05_urban_hero_abramsx.gif",
       "video": "/media/feature-loops-r1/05_urban_hero_abramsx.webm",
       "poster": "/media/feature-loops-r1/05_urban_hero_abramsx.jpg",
-      "gifBytes": 8949715,
       "videoBytes": 2540874,
       "actors": [
         {
@@ -130,10 +120,8 @@
       "title": "Meadow breakthrough",
       "map": "verdant",
       "durationMs": 6000,
-      "gif": "/media/feature-loops-r1/06_verdant_meadow_duel.gif",
       "video": "/media/feature-loops-r1/06_verdant_meadow_duel.webm",
       "poster": "/media/feature-loops-r1/06_verdant_meadow_duel.jpg",
-      "gifBytes": 13826762,
       "videoBytes": 5961864,
       "actors": [
         {

@@ -7,7 +7,7 @@ const manifest = JSON.parse(await readFile(`${root}/manifest.json`, 'utf8'));
 const approvedMaps = new Set(['desert', 'winter', 'urban', 'verdant']);
 
 assert.equal(manifest.libraryId, 'claude-of-tanks-feature-loops-r1');
-assert.equal(manifest.schemaVersion, 1);
+assert.equal(manifest.schemaVersion, 2);
 assert.equal(manifest.qualityGate?.passed, 6);
 assert.equal(manifest.qualityGate?.failed, 0);
 assert.equal(manifest.loops?.length, 6);
@@ -24,12 +24,9 @@ for (const loop of manifest.loops) {
   representedMaps.add(loop.map);
   assert.ok(loop.actors.length >= 2, `${loop.id} actor count`);
 
-  for (const [kind, expectedBytes] of [['gif', loop.gifBytes], ['video', loop.videoBytes]]) {
-    const publicPath = loop[kind];
-    assert.equal(publicPath.startsWith('/media/feature-loops-r1/'), true, `${loop.id} ${kind} path`);
-    const file = `${root}/${publicPath.split('/').at(-1)}`;
-    assert.equal((await stat(file)).size, expectedBytes, `${loop.id} ${kind} byte receipt`);
-  }
+  assert.equal(loop.video.startsWith('/media/feature-loops-r1/'), true, `${loop.id} video path`);
+  const video = `${root}/${loop.video.split('/').at(-1)}`;
+  assert.equal((await stat(video)).size, loop.videoBytes, `${loop.id} video byte receipt`);
 
   const poster = `${root}/${loop.poster.split('/').at(-1)}`;
   assert.ok((await stat(poster)).size > 100_000, `${loop.id} poster size`);

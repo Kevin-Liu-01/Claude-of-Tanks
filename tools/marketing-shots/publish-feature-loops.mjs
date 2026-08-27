@@ -1,5 +1,5 @@
 // Encode the six visually reviewed Studio feature masters for public pages.
-// Masters remain under shots/; lightweight VP9, GIF, poster, and manifest
+// Masters remain under shots/; lightweight VP9, poster, and manifest
 // renditions are committed under public/media/feature-loops-r1.
 
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -38,38 +38,31 @@ for (const [index, video] of sourceManifest.videos.entries()) {
   const base = `${sequence}_${slug}`;
   const source = join(inputDir, video.file);
   const webm = join(outputDir, `${base}.webm`);
-  const gif = join(outputDir, `${base}.gif`);
   const poster = join(outputDir, `${base}.jpg`);
 
   run(['-loglevel', 'error', '-y', '-i', source, '-an', '-vf', 'scale=960:-2:flags=lanczos',
     '-c:v', 'libvpx-vp9', '-crf', '34', '-b:v', '0', '-deadline', 'good', '-row-mt', '1', webm]);
-  run(['-loglevel', 'error', '-y', '-i', source, '-vf',
-    'fps=10,scale=720:-2:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=192:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4',
-    '-loop', '0', gif]);
   run(['-loglevel', 'error', '-y', '-ss', '3', '-i', source, '-frames:v', '1',
     '-vf', 'scale=1280:-2:flags=lanczos', '-q:v', '3', poster]);
 
-  const gifBytes = statSync(gif).size;
   const videoBytes = statSync(webm).size;
-  if (gifBytes < 150_000 || videoBytes < 80_000) throw new Error(`${base}: encoded output is unexpectedly small`);
+  if (videoBytes < 80_000) throw new Error(`${base}: encoded output is unexpectedly small`);
   loops.push({
     id: base,
     title: featureLabels[index] || slug.replaceAll('_', ' '),
     map: video.map,
     durationMs: video.durationMs,
-    gif: `/media/feature-loops-r1/${base}.gif`,
     video: `/media/feature-loops-r1/${base}.webm`,
     poster: `/media/feature-loops-r1/${base}.jpg`,
-    gifBytes,
     videoBytes,
     actors: [video.alpha, video.bravo],
   });
-  console.log(`[feature-loops] ${base}: ${gifBytes} byte GIF / ${videoBytes} byte WebM`);
+  console.log(`[feature-loops] ${base}: ${videoBytes} byte WebM`);
 }
 
 const manifest = {
   libraryId: 'claude-of-tanks-feature-loops-r1',
-  schemaVersion: 1,
+  schemaVersion: 2,
   renderer: sourceManifest.renderer,
   source: 'Scene Studio using approved action-campaign sightlines',
   qualityGate: {

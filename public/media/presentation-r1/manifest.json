@@ -9,12 +9,6 @@
   "interfaceShotCount": 10,
   "totalShotCount": 28,
   "authoritativeManifest": "/media/showcase-r1/manifest.json",
-  "animatedPreview": {
-    "src": "/media/presentation-r1/studio_action_loop.gif",
-    "poster": "/media/presentation-r1/studio_action_poster.webp",
-    "durationMs": 6500,
-    "bytes": 8514298
-  },
   "shots": [
     {
       "id": "02_desert_rooftop_dive",

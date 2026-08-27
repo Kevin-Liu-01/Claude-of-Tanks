@@ -24,9 +24,6 @@ assert.ok(manifest.shots.slice(0, 13).every((shot) => shot.kind === 'owner pick'
 assert.ok(manifest.shots.filter((shot) => ['action', 'foreground'].includes(shot.kind))
   .every((shot) => shot.quality?.passed && shot.quality?.ownerApproved && shot.sourceScene && shot.sourceMaster));
 assert.ok(manifest.shots.every((shot) => existsSync(join(ROOT, 'public', shot.src))));
-assert.ok(existsSync(join(ROOT, 'public', manifest.animatedPreview.src)));
-assert.ok(existsSync(join(ROOT, 'public', manifest.animatedPreview.poster)));
-
 assert.equal(captureRecipes.schemaVersion, 1);
 for (const shot of manifest.shots.filter((entry) => entry.sourceScene)) {
   const recipeId = captureRecipes.media[shot.src];

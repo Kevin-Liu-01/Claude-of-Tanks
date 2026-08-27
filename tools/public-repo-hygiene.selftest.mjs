@@ -9,12 +9,13 @@ const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
 const forbidden = tracked.filter((file) => (
   /(?:^|\/)(?:tasks?|dev[-_]?handoff|worklog|status)(?:[-_.\/]|$)/i.test(file) ||
   /\.(?:bak|orig|rej|tmp)$/i.test(file) ||
+  /^public\/media\/.*\.gif$/i.test(file) ||
   /^docs\/(?:model-quality-report|procedural-fidelity-report|perf-after|perf-trend)(?:\.|$)/i.test(file) ||
   /^docs\/(?:DEVELOPMENT-EVOLUTION|IMPROVEMENT-PROGRAM|MOBILE-QA|native-fleet-restoration)(?:[-_.]|$)/i.test(file) ||
   /(?:^|\/)(?:node_modules|dist|\.qa-dev|\.qa-device)(?:\/|$)/.test(file)
 ));
 assert.deepEqual(forbidden, [],
-  `public tree contains transient task, backup, dependency, or QA artifacts:\n${forbidden.join('\n')}`);
+  `public tree contains transient task, backup, dependency, QA, or redundant GIF artifacts:\n${forbidden.join('\n')}`);
 
 const critiqueFiles = tracked.filter((file) => (
   file.startsWith('docs/critique/') && fs.existsSync(file)

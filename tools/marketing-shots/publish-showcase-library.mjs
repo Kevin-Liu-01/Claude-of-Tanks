@@ -12,7 +12,7 @@
 
 import { spawnSync } from 'node:child_process';
 import {
-  existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync,
+  existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -239,18 +239,7 @@ function studioShots(offset) {
     };
   });
 
-  const master = join(STUDIO, 'studio_winter_breakthrough.webm');
-  const gif = join(PRESENTATION_OUT, 'studio_action_loop.gif');
-  run('ffmpeg', [
-    '-hide_banner', '-loglevel', 'error', '-y', '-i', master,
-    '-filter_complex',
-    'fps=10,scale=720:-1:flags=lanczos,split[s0][s1];' +
-      '[s0]palettegen=max_colors=128:stats_mode=diff[p];' +
-      '[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle',
-    '-loop', '0', gif,
-  ], 'Studio GIF encode');
-  encodeWebp(join(STUDIO, keyframes.at(-1)), join(PRESENTATION_OUT, 'studio_action_poster.webp'), 84);
-  return { shots, studioScene, gif };
+  return { shots };
 }
 
 function interfaceShots() {
@@ -298,12 +287,6 @@ const interfaces = interfaceShots();
 const shots = [...ownerPicks, ...campaign, ...studio.shots, ...interfaces]
   .map((shot, index) => ({ ...shot, sequence: index + 1 }));
 
-const animatedPreview = {
-  src: '/media/presentation-r1/studio_action_loop.gif',
-  poster: '/media/presentation-r1/studio_action_poster.webp',
-  durationMs: studio.studioScene.storyboard.durationMs,
-  bytes: statSync(studio.gif).size,
-};
 const manifest = {
   libraryId: 'claude-of-tanks-showcase-r1',
   schemaVersion: 1,
@@ -327,7 +310,6 @@ const manifest = {
     thresholds: qualityReport.thresholds,
   },
   process: reviewProcess,
-  animatedPreview,
   shots,
 };
 writeFileSync(join(SHOWCASE_OUT, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
@@ -345,7 +327,6 @@ const presentationManifest = {
   interfaceShotCount: interfaces.length,
   totalShotCount: presentationShots.length,
   authoritativeManifest: '/media/showcase-r1/manifest.json',
-  animatedPreview,
   shots: presentationShots,
 };
 writeFileSync(join(PRESENTATION_OUT, 'manifest.json'), `${JSON.stringify(presentationManifest, null, 2)}\n`);

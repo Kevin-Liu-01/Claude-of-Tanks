@@ -73,7 +73,9 @@ review sheets, and the manifest are shipped artifacts.
 
 The six short feature loops are deterministic Scene Studio captures based on
 approved action-campaign sightlines. Capture masters remain local. The publisher
-creates a VP9 WebM, a true GIF, a JPEG poster, and a byte receipt for every loop.
+creates a VP9 WebM, a JPEG poster, and a byte receipt for every loop. GIF
+duplicates are prohibited because they reproduce the same frames at several
+times the transfer and repository cost.
 
 ```bash
 npm run studio:features:render
@@ -84,5 +86,5 @@ node tools/marketing-shots/feature-loops.selftest.mjs
 `public/media/feature-loops-r1/manifest.json` must report six passed loops and
 zero failures. Each loop must include two or more identified vehicles, one of the
 approved map families, a six-second duration, and matching file-size receipts.
-Public pages prefer WebM for playback efficiency; the GIF renditions remain
-available for documentation and third-party embedding.
+Public pages use WebM for playback and JPEG posters for static or no-script
+presentation.
