@@ -80,6 +80,15 @@ for (const [id, meta] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) {
   assert.ok(meta.hw > 1 && meta.hl > 1 && meta.h > 3, `${id}: building-scale footprint`);
   const intact = meta.build(seeded());
   const broken = meta.broken(seeded(0x71f00d));
+  const connectivity = intact.userData.structureConnectivity;
+  assert.equal(connectivity.id, id, `${id}: connectivity receipt follows the family id`);
+  assert.equal(connectivity.connected, connectivity.parts,
+    `${id}: every authored intact part belongs to a building or grounded support chain`);
+  assert.ok(connectivity.groundSupported >= 1,
+    `${id}: the intact assembly has at least one physical ground contact`);
+  assert.ok(connectivity.parts >= 5, `${id}: connectivity covers a detailed assembly`);
+  assert.ok(connectivity.maxConnectionGap <= connectivity.epsilon,
+    `${id}: connections stay inside the fixture tolerance`);
   for (const [state, geo] of [['intact', intact], ['broken', broken]]) {
     const { position, color, uv } = geo.attributes;
     assert.ok(position.count >= 120, `${id}: ${state} geometry is detailed`);

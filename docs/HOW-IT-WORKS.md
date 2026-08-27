@@ -90,8 +90,11 @@ and biome-specific trim to the existing material buckets before those buckets
 are merged. Lightweight destructible structures use intact and broken
 `InstancedMesh` pools, so adding façade depth or a persistent collapsed frame
 does not add one draw call per building. An authoring-time support graph rejects
-floating fixtures and disconnected landmark parts. Collision is then captured
-from the final seeded worlds into the dedicated-server manifest.
+floating fixtures and disconnected landmark parts. The same support receipt is
+created before each lightweight building is merged, proving every intact roof,
+porch, ladder, rack, frame, utility fitting, and grounded accessory reaches a
+wall or physical ground contact. Collision is then captured from the final
+seeded worlds into the dedicated-server manifest.
 
 Wall, roof, stone, wood, straw, canvas, and structural-metal materials use
 color, normal, and a packed linear surface texture (red AO, green roughness).

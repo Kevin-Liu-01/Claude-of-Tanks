@@ -51,3 +51,4 @@ runtime documents remain authoritative for behavior.
 - [0039 — Battle-entry acquisition has one typed owner](0039-typed-battle-entry-acquisition.md)
 - [0040 — RTC sessions own expiring TURN credential generations](0040-expiring-turn-credential-ownership.md)
 - [0041 — Garage hero visuals have one typed lifecycle owner](0041-typed-garage-pedestal-lifecycle.md)
+- [0042 — Structure connectivity is certified before batching](0042-structure-connectivity-before-batching.md)

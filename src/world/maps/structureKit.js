@@ -90,6 +90,65 @@ function merge(parts) {
   return mergeGeometries(parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo)), false);
 }
 
+const STRUCTURE_CONNECTION_EPSILON = 0.12;
+
+function boundsGap(a, b) {
+  const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
+  const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
+  const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
+  return Math.hypot(dx, dy, dz);
+}
+
+/**
+ * Prove a lightweight building is one supported assembly before its authored
+ * parts are flattened into a single instanced geometry. After merge there is
+ * no reliable way to distinguish an intentional window surround from a
+ * floating porch, ladder, service box or roof sheet, so the receipt belongs
+ * at this boundary rather than in the renderer or destruction path.
+ */
+function mergeConnectedStructure(id, parts) {
+  if (!parts.length) throw new Error(`${id}: structure has no authored parts`);
+  const bounds = parts.map((geo) => {
+    geo.computeBoundingBox();
+    return geo.boundingBox;
+  });
+  const footprint = bounds.reduce((all, boxBounds) => all.union(boxBounds.clone()), new THREE.Box3());
+  const ground = new THREE.Box3(
+    new THREE.Vector3(footprint.min.x, -0.14, footprint.min.z),
+    new THREE.Vector3(footprint.max.x, 0.10, footprint.max.z),
+  );
+  const connected = new Set();
+  const pending = [ground];
+  let groundSupported = 0;
+  let maxConnectionGap = 0;
+  while (pending.length) {
+    const current = pending.pop();
+    for (let candidate = 0; candidate < bounds.length; candidate++) {
+      if (connected.has(candidate)) continue;
+      const gap = boundsGap(current, bounds[candidate]);
+      if (gap > STRUCTURE_CONNECTION_EPSILON) continue;
+      maxConnectionGap = Math.max(maxConnectionGap, gap);
+      if (current === ground) groundSupported++;
+      connected.add(candidate);
+      pending.push(bounds[candidate]);
+    }
+  }
+  if (connected.size !== parts.length) {
+    const detached = parts.length - connected.size;
+    throw new Error(`${id}: ${detached} floating authored part${detached === 1 ? '' : 's'}`);
+  }
+  const geometry = merge(parts);
+  geometry.userData.structureConnectivity = {
+    id,
+    parts: parts.length,
+    connected: connected.size,
+    groundSupported,
+    maxConnectionGap,
+    epsilon: STRUCTURE_CONNECTION_EPSILON,
+  };
+  return geometry;
+}
+
 function push(parts, bucket, geo) {
   (parts[bucket] || parts.dark).push(geo);
 }
@@ -628,7 +687,7 @@ function debris(meta, pal, rng, material = 'wood') {
 function makeFieldHut(rng) {
   const out = gableLight({ w: 4.2, d: 5.6, wallH: 2.45, roofH: 1.35, pal: PAL.timber, porch: 1.1, chimney: true }, rng);
   colored(out, box(1.4, 0.75, 0.55).translate(-1.15, 0.4, 3.15), PAL.paleWood[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('fieldhut', out);
 }
 
 function makeLeanTo(rng) {
@@ -637,7 +696,7 @@ function makeLeanTo(rng) {
   colored(out, box(5.2, 2.3, 0.18).translate(0, 1.15, -2.05), p[0], rng);
   const roof = slab(5.8, 0.12, 5.0); roof.rotateX(-0.18); colored(out, roof.translate(0, 2.75, 0), p[1], rng);
   for (let i = 0; i < 3; i++) colored(out, box(1.1, 0.85, 0.8).translate(-1.5 + i * 1.45, 0.43, -1.45), p[0], rng);
-  return merge(out);
+  return mergeConnectedStructure('leanto', out);
 }
 
 function makeHuntingBlind(rng) {
@@ -647,42 +706,47 @@ function makeHuntingBlind(rng) {
   colored(out, slab(3.2, 0.12, 3.3).rotateZ(0.10).translate(0, y + 2.3, 0), p[1], rng);
   for (const side of [-1, 1]) colored(out, box(0.08, 0.45, 1.5).translate(side * 1.43, y + 1.35, 0), p[2], rng);
   for (let i = 0; i < 6; i++) colored(out, box(0.75, 0.08, 0.12).translate(1.7, 0.35 + i * 0.45, 1.15), p[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('huntingblind', out);
 }
 
 function makeFisherShack(rng) {
   const out = gableLight({ w: 4.8, d: 6.2, wallH: 2.7, roofH: 1.45, pal: PAL.nordic, porch: 1.5, raised: 0.45 }, rng);
-  for (const x of [-1.8, 0, 1.8]) colored(out, box(0.10, 2.2, 0.10).translate(x, 1.1, -3.65), PAL.nordic[2], rng);
+  for (const x of [-1.8, 0, 1.8]) {
+    colored(out, box(0.10, 2.2, 0.10).translate(x, 1.1, -3.65), PAL.nordic[2], rng);
+    // The drying rack used to stand half a metre behind the shack with no
+    // join. Tie every upright back into the rear wall with a real bearer.
+    colored(out, box(0.10, 0.10, 0.66).translate(x, 1.1, -3.34), PAL.nordic[2], _detailRng);
+  }
   colored(out, box(4.0, 0.08, 0.08).translate(0, 2.15, -3.65), PAL.nordic[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('fishershack', out);
 }
 
 function makeSaunaHut(rng) {
   const out = gableLight({ w: 4.6, d: 5.0, wallH: 2.5, roofH: 1.65, pal: PAL.nordic, chimney: true, windows: 1 }, rng);
   for (let y = 0.45; y < 2.4; y += 0.38) colored(out, box(4.75, 0.10, 0.12).translate(0, y, 2.56), PAL.nordic[1], rng);
   colored(out, box(1.2, 0.28, 1.2).translate(1.3, 0.14, 3.1), PAL.nordic[2], rng);
-  return merge(out);
+  return mergeConnectedStructure('saunahut', out);
 }
 
 function makeAlpineRefuge(rng) {
   const out = gableLight({ w: 6.0, d: 7.0, wallH: 2.8, roofH: 2.7, pal: PAL.nordic, porch: 1.0, chimney: true }, rng);
   for (const x of [-2.3, -0.8, 0.8, 2.3]) colored(out, box(0.12, 0.9, 0.12).translate(x, 3.25, 3.85), PAL.nordic[1], rng);
   colored(out, box(5.4, 0.12, 0.15).translate(0, 3.7, 3.85), PAL.nordic[2], rng);
-  return merge(out);
+  return mergeConnectedStructure('alpinerefuge', out);
 }
 
 function makeStiltHouse(rng) {
   const out = gableLight({ w: 5.6, d: 7.2, wallH: 2.7, roofH: 1.8, pal: PAL.paleWood, porch: 1.3, raised: 2.0 }, rng);
   for (let i = 0; i < 6; i++) colored(out, box(1.0, 0.10, 0.18).translate(3.0, 0.35 + i * 0.34, 2.6 + i * 0.22), PAL.paleWood[1], rng);
   colored(out, box(0.12, 2.6, 0.12).rotateX(-0.58).translate(3.0, 1.2, 3.15), PAL.paleWood[2], rng);
-  return merge(out);
+  return mergeConnectedStructure('stilthouse', out);
 }
 
 function makeLonghouse(rng) {
   const out = gableLight({ w: 6.8, d: 12.8, wallH: 2.8, roofH: 3.7, pal: PAL.timber, windows: 3 }, rng);
   for (const z of [-4.3, -1.4, 1.4, 4.3]) for (const side of [-1, 1]) colored(out, box(0.12, 2.2, 0.12).translate(side * 3.46, 1.1, z), PAL.timber[1], rng);
   const ridge = cylinder(0.18, 0.18, 13.6, 7); ridge.rotateX(Math.PI / 2); colored(out, ridge.translate(0, 6.55, 0), PAL.timber[2], rng);
-  return merge(out);
+  return mergeConnectedStructure('longhouse', out);
 }
 
 function makeDesertTent(rng) {
@@ -696,7 +760,7 @@ function makeDesertTent(rng) {
     colored(out, rope.translate(x * 1.1, 0.65, z * 1.08), p[2], rng);
   }
   colored(out, slab(3.8, 0.05, 2.2).translate(0, 0.06, d / 2 + 1.2), p[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('deserttent', out);
 }
 
 function makeCommandTent(rng) {
@@ -707,7 +771,7 @@ function makeCommandTent(rng) {
   colored(out, box(2.4, 0.9, 0.9).translate(-1.55, 0.45, 4.25), PAL.timber[0], rng);
   colored(out, box(0.10, 5.2, 0.10).translate(2.8, 2.6, -3.6), p[2], rng);
   colored(out, box(1.8, 0.06, 0.06).rotateZ(-0.22).translate(3.0, 5.0, -3.6), p[2], rng);
-  return merge(out);
+  return mergeConnectedStructure('commandtent', out);
 }
 
 function makeFieldHospital(rng) {
@@ -721,7 +785,7 @@ function makeFieldHospital(rng) {
   colored(out, box(0.22, 0.05, 0.82).translate(0, 2.19, 4.52), 0x7b2c28, rng, 0.02);
   colored(out, box(0.82, 0.05, 0.22).translate(0, 2.20, 4.53), 0x7b2c28, rng, 0.02);
   for (let i = 0; i < 4; i++) colored(out, box(1.65, 0.14, 0.62).translate(-2.7 + (i % 2) * 5.4, 0.48, -2.8 + ((i / 2) | 0) * 5.6), PAL.steel[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('fieldhospital', out);
 }
 
 function makeGuardPost(rng) {
@@ -734,7 +798,7 @@ function makeGuardPost(rng) {
   colored(out, slab(3.9, 0.16, 3.9).translate(0, y0 + 2.72, 0), p[2], rng);
   for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) colored(out, box(0.18, y0, 0.18).translate(x, y0 / 2, z), p[2], rng);
   for (let i = 0; i < 5; i++) colored(out, box(0.65, 0.08, 0.10).translate(1.7, 0.25 + i * 0.35, 1.3), p[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('guardpost', out);
 }
 
 function makeMotorPool(rng) {
@@ -744,7 +808,7 @@ function makeMotorPool(rng) {
   colored(out, box(2.0, 0.25, 7.0).translate(0, 0.05, 0), p[2], rng);
   for (const x of [-3.1, 3.1]) for (const z of [-3.7, 0, 3.7]) colored(out, cylinder(0.38, 0.38, 0.85, 10).translate(x, 0.43, z), p[1], rng);
   colored(out, box(2.5, 1.0, 0.7).translate(-3.0, 0.5, -4.8), PAL.timber[0], rng);
-  return merge(out);
+  return mergeConnectedStructure('motorpool', out);
 }
 
 function makeQuonsetHut(rng) {
@@ -755,7 +819,7 @@ function makeQuonsetHut(rng) {
   }
   colored(out, box(3.5, 3.0, 0.10).translate(0, 1.5, d / 2 + 0.06), p[2], rng);
   for (const x of [-2.2, 2.2]) colored(out, box(0.65, 0.9, 0.08).translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
-  return merge(out);
+  return mergeConnectedStructure('quonsethut', out);
 }
 
 function makeTransformerShed(rng) {
@@ -768,7 +832,7 @@ function makeTransformerShed(rng) {
     colored(out, cylinder(0.22, 0.22, 0.36, 8).translate(x, h + 1.16, -1.1), 0x7b735d, rng);
   }
   colored(out, box(2.2, 2.8, 0.10).translate(0, 1.4, -d / 2 - 0.05), p[2], rng);
-  return merge(out);
+  return mergeConnectedStructure('transformershed', out);
 }
 
 function makeCheckpointHut(rng) {
@@ -779,7 +843,7 @@ function makeCheckpointHut(rng) {
   colored(out, box(2.5, 0.12, 1.8).translate(0, 0.12, d / 2 + 0.85), p[1], rng);
   for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, 1.15, d / 2 + 1.55), p[2], rng);
   colored(out, slab(2.8, 0.10, 2.0).rotateX(-0.12).translate(0, 2.35, d / 2 + 0.9), p[1], rng);
-  return merge(out);
+  return mergeConnectedStructure('checkpointhut', out);
 }
 
 function lightMeta(id, family, hw, hl, h, pal, build, debrisMaterial = 'wood') {

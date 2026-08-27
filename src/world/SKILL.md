@@ -24,6 +24,8 @@ dedicated server without importing any renderer or DOM state.
 <!-- agent-docs:fill:patterns -->
 Keep height/collision queries deterministic and headless-capable. Bound per-frame
 LOD/vegetation work, reuse world caches, and reset destruction on rematch.
+Certify structure connectivity before material-bucket or instanced-geometry
+merges; merged geometry is too late to identify a floating authored fixture.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
