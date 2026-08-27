@@ -170,6 +170,17 @@ export function createSignalingServer({
               if (typeof store.poll === 'function') {
                 await sendNotifications(await store.poll(connection));
               }
+              // Browser WebSockets do not expose protocol ping/pong. Correlate
+              // the durable-mailbox poll so the client can detect a silently
+              // blackholed socket instead of waiting for an RTC rebuild to
+              // discover that signaling disappeared minutes earlier.
+              if (requestId) {
+                safeSend(connection, {
+                  type: 'room_polled',
+                  requestId,
+                  payload: { roomCode: String(message.payload?.roomCode || '') },
+                });
+              }
               break;
             case 'room_leave':
               await sendNotifications(await store.leave(connection, 'client_leave'));

@@ -737,6 +737,63 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   signaling.close();
 }
 
+// Browser WebSockets expose no ping/pong API. A poll that disappears into a
+// half-open route must rotate the socket and resume the same durable seat.
+{
+  const events = [];
+  const signaling = new RoomSignalingClient({
+    url: 'ws://localhost:7777',
+    WebSocketImpl: FakeWebSocket,
+    requestTimeoutMs: 1_000,
+    eventPollIntervalMs: 10,
+    eventPollTimeoutMs: 100,
+    reconnectDelaysMs: [0],
+  });
+  signaling.onEvent((event) => events.push(event));
+  const connecting = signaling.connect();
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  await connecting;
+  const roomPromise = signaling.createRoom({
+    player: { id: 'poll-watchdog', name: 'Poll Watchdog' },
+  });
+  await Promise.resolve();
+  const create = JSON.parse(socket.sent.at(-1));
+  socket.receive({
+    type: 'room_created', requestId: create.requestId,
+    payload: { roomCode: 'WATCH2', peerId: 'poll-watchdog', hostId: 'poll-watchdog' },
+  });
+  await roomPromise;
+  await new Promise((resolve) => setTimeout(resolve, 125));
+  const replacement = FakeWebSocket.instances.at(-1);
+  assert.notEqual(replacement, socket, 'an unacknowledged poll replaces the half-open socket');
+  assert.ok(events.some((event) => event.type === 'signaling_state' &&
+    event.payload?.reason === 'signaling_request_timeout'));
+  replacement.open();
+  await Promise.resolve();
+  const resume = replacement.sent.map((value) => JSON.parse(value))
+    .find((message) => message.type === 'room_join');
+  assert.ok(resume, 'the replacement socket resumes the durable room seat');
+  replacement.receive({
+    type: 'room_joined', requestId: resume.requestId,
+    payload: {
+      roomCode: 'WATCH2', peerId: 'poll-watchdog', hostId: 'poll-watchdog', peers: [],
+    },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const heartbeat = replacement.sent.map((value) => JSON.parse(value))
+    .find((message) => message.type === 'room_poll');
+  assert.ok(heartbeat?.requestId, 'room liveness polls are request-correlated');
+  replacement.receive({
+    type: 'room_polled', requestId: heartbeat.requestId,
+    payload: { roomCode: 'WATCH2' },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(signaling.state, 'open');
+  assert.ok(events.some((event) => event.type === 'signaling_resumed'));
+  signaling.close();
+}
+
 // A failed WebSocket handshake is bounded and the same client can retry.
 {
   const signaling = new RoomSignalingClient({

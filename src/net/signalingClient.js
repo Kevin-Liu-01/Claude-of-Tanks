@@ -73,6 +73,7 @@ export class RoomSignalingClient {
     connectTimeoutMs = 5000,
     requestTimeoutMs = 30000,
     eventPollIntervalMs = 500,
+    eventPollTimeoutMs = 10_000,
     reconnectDelaysMs = DEFAULT_RECONNECT_DELAYS_MS,
     sessionId = null,
   } = {}) {
@@ -89,6 +90,10 @@ export class RoomSignalingClient {
       throw new TypeError('signaling event poll interval must be at least 10 ms');
     }
     this.eventPollIntervalMs = eventPollIntervalMs;
+    if (!Number.isFinite(eventPollTimeoutMs) || eventPollTimeoutMs < 100) {
+      throw new TypeError('signaling event poll timeout must be at least 100 ms');
+    }
+    this.eventPollTimeoutMs = eventPollTimeoutMs;
     if (!Array.isArray(reconnectDelaysMs) || reconnectDelaysMs.length === 0 ||
         reconnectDelaysMs.some((delay) => !Number.isFinite(delay) || delay < 0)) {
       throw new TypeError('signaling reconnect delays must be a non-empty array of milliseconds');
@@ -107,6 +112,7 @@ export class RoomSignalingClient {
     this.player = null;
     this._connectPromise = null;
     this._pollTimer = null;
+    this._pollInFlight = null;
     this._roomAuthenticated = false;
     this._manualClose = false;
     this._reconnectAttempt = 0;
@@ -189,13 +195,13 @@ export class RoomSignalingClient {
     this.socket.send(encoded);
   }
 
-  #request(type, payload) {
+  #request(type, payload, timeoutMs = this.requestTimeoutMs) {
     const requestId = `${++this.requestSeq}`;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
         reject(codedError('signaling_request_timeout', `signaling request timed out: ${type}`));
-      }, this.requestTimeoutMs);
+      }, timeoutMs);
       this.pending.set(requestId, { resolve, reject, timer });
       this.#send({ type, requestId, payload });
     });
@@ -264,15 +270,19 @@ export class RoomSignalingClient {
     this.#dispatch(message);
   }
 
-  #closed(reason, unexpected = false) {
-    this.state = 'closed';
-    this._connectPromise = null;
-    this._roomAuthenticated = false;
+  #rejectPending(reason) {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(codedError(reason, reason));
     }
     this.pending.clear();
+  }
+
+  #closed(reason, unexpected = false) {
+    this.state = 'closed';
+    this._connectPromise = null;
+    this._roomAuthenticated = false;
+    this.#rejectPending(reason);
     if (this._pollTimer) clearInterval(this._pollTimer);
     this._pollTimer = null;
     if (unexpected && !this._manualClose && this.roomCode && this.player) {
@@ -286,6 +296,7 @@ export class RoomSignalingClient {
     this.state = 'closed';
     this._connectPromise = null;
     this._roomAuthenticated = false;
+    this.#rejectPending(reason);
     if (socket && socket.readyState < 2) {
       try { socket.close(1000, String(reason).slice(0, 120)); } catch (_) { /* already failed */ }
     }
@@ -391,12 +402,28 @@ export class RoomSignalingClient {
 
   #startEventPolling() {
     if (this._pollTimer || !this._roomAuthenticated || !this.roomCode || !this.peerId) return;
-    this._pollTimer = setInterval(() => {
-      if (this.state !== 'open' || !this.roomCode || !this.peerId) return;
-      try { this.#send({ type: 'room_poll', payload: { roomCode: this.roomCode } }); }
-      catch (_) { /* socket close handling owns recovery */ }
-    }, this.eventPollIntervalMs);
+    const poll = () => {
+      if (this.state !== 'open' || !this.roomCode || !this.peerId || this._pollInFlight) return;
+      const roomCode = this.roomCode;
+      const attempt = this.#request('room_poll', { roomCode }, this.eventPollTimeoutMs)
+        .then((result) => {
+          if (result?.roomCode && normalizeRoomCode(result.roomCode) !== roomCode) {
+            throw codedError('signaling_poll_mismatch', 'signaling poll returned another room');
+          }
+        })
+        .catch((error) => {
+          if (this._manualClose || !this.roomCode || this.state !== 'open') return;
+          this.#discardSocket(error?.code || 'signaling_poll_failed');
+          this.#scheduleReconnect(error?.code || 'signaling_poll_failed');
+        })
+        .finally(() => {
+          if (this._pollInFlight === attempt) this._pollInFlight = null;
+        });
+      this._pollInFlight = attempt;
+    };
+    this._pollTimer = setInterval(poll, this.eventPollIntervalMs);
     if (typeof this._pollTimer.unref === 'function') this._pollTimer.unref();
+    poll();
   }
 
   setEventPollInterval(intervalMs) {

@@ -507,7 +507,10 @@ The room controller outlives the match runtime. At result:
 
 server/signalingServer.js relays membership, Session Description Protocol
 offers and answers, and Interactive Connectivity Establishment candidates. It
-does not carry gameplay.
+does not carry gameplay. Correlated mailbox-poll acknowledgements provide the
+browser-visible liveness signal that native WebSocket ping/pong cannot expose;
+the client replaces a half-open signaling socket and resumes the same durable
+room seat after a bounded missed acknowledgement.
 
 Production signaling can use server/distributedRoomStore.js for Redis-backed
 membership and publish/subscribe notifications across function instances.

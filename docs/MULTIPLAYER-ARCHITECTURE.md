@@ -305,7 +305,10 @@ still-valid TURN generation. This matters because room membership outlives the
 default TURN credential lifetime.
 
 Room signaling membership is durable for 24 hours and refreshed by active
-polling. An unclean RTC close reserves the canonical lobby seat, marks the
+polling. Every mailbox poll has a correlated acknowledgement and a bounded
+watchdog; a silently half-open browser WebSocket is replaced and the same room
+membership is resumed before a later RTC recovery needs it. An unclean RTC
+close reserves the canonical lobby seat, marks the
 authority entity disconnected with neutral input, and permits the same player
 identity to attach a replacement peer during an active round. The client
 attempts ICE restart first, then rotates its signaling runtime epoch and
