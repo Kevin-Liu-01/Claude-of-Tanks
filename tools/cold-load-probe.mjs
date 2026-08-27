@@ -21,6 +21,10 @@ const cpuRate = Math.max(1, Number(option('cpu', '4')) || 4);
 const latencyMs = Math.max(0, Number(option('latency', '150')) || 0);
 const downloadKbps = Math.max(64, Number(option('down-kbps', '1600')) || 1600);
 const uploadKbps = Math.max(32, Number(option('up-kbps', '750')) || 750);
+const maxFirstVisitWallMs = Math.max(1000,
+  Number(option('max-wall-ms', '8000')) || 8000);
+const maxFirstVisitAppMs = Math.max(500,
+  Number(option('max-app-ms', '2500')) || 2500);
 const compactOutput = option('summary', '0') === '1';
 const browser = await puppeteer.launch({
   headless: 'new',
@@ -270,13 +274,23 @@ try {
   const results = [
     ...firstVisits, noHero, downloadRecovery, evaluationRecovery, builderRecovery,
   ];
+  const firstVisitWallPass = firstVisits.every((row) =>
+    Number.isFinite(row.wallMs) && row.wallMs <= maxFirstVisitWallMs);
+  const firstVisitAppPass = firstVisits.every((row) =>
+    Number.isFinite(row.bootMs) && row.bootMs <= maxFirstVisitAppMs);
   const printable = compactOutput
     ? results.map(({ scripts: _scripts, ...row }) => row)
     : results;
   console.log(JSON.stringify({
-    ok: results.every((row) => row.ready),
+    ok: results.every((row) => row.ready) && firstVisitWallPass && firstVisitAppPass,
     conditions: {
       sessions: sessionCount, cpuRate, latencyMs, downloadKbps, uploadKbps,
+    },
+    budgets: {
+      maxFirstVisitWallMs,
+      maxFirstVisitAppMs,
+      firstVisitWallPass,
+      firstVisitAppPass,
     },
     results: printable,
   }, null, 2));
@@ -284,6 +298,8 @@ try {
   if (firstVisits.some((row) => row.sourceChunks !== 0)) process.exitCode = 2;
   if (firstVisits.some((row) => row.diagnosticChunks.length !== 0)) process.exitCode = 8;
   if (firstVisits.some((row) => row.captureChunks.length !== 0)) process.exitCode = 9;
+  if (!firstVisitWallPass) process.exitCode = 10;
+  if (!firstVisitAppPass) process.exitCode = 11;
   if (downloadRecovery.failedMainRequests !== 1 || downloadRecovery.navigations < 2) {
     process.exitCode = 3;
   }

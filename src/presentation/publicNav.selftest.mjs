@@ -35,14 +35,12 @@ const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.js'), 'utf
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
 
-// A fresh surface renders its packaged value immediately and refreshes the
-// live count in the background without waiting for pointer or keyboard intent.
-const githubIntentHandlers = {};
+// Decorative release metadata is deterministic and never turns GitHub's
+// public-IP rate limit into a fresh-player console/network failure.
 const githubControlProbe = {
   dataset: {},
   getAttribute: () => 'Claude of Tanks on GitHub',
   setAttribute() {},
-  addEventListener(type, handler) { githubIntentHandlers[type] = handler; },
 };
 const githubStarProbe = {
   textContent: '',
@@ -58,13 +56,8 @@ await mountGitHubStars({
   matches: () => false,
   querySelectorAll: () => [githubStarProbe],
 });
-assert.equal(githubFetches, 1, 'mounting star counts performs one automatic live refresh');
-assert.equal(githubStarProbe.textContent, '321');
-assert.equal(typeof githubIntentHandlers.pointerenter, 'function');
-assert.equal(typeof githubIntentHandlers.focus, 'function');
-await githubIntentHandlers.pointerenter();
-assert.equal(githubFetches, 1, 'GitHub intent reuses the fresh verified count');
-assert.equal(githubStarProbe.textContent, '321');
+assert.equal(githubFetches, 0, 'mounting star counts performs no third-party request');
+assert.equal(githubStarProbe.textContent, String(FALLBACK_GITHUB_STAR_COUNT));
 globalThis.fetch = originalFetch;
 assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:8px\}/,
   'desktop navigation controls must retain visible spacing');

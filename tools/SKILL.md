@@ -42,6 +42,11 @@ safety cap. Use `--only=host` or `--only=client` for targeted diagnosis.
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.
+The standard 4× CPU, 150 ms, 1.6 Mbps gate enforces an 8-second navigation-to-
+ready ceiling and a 2.5-second post-transfer application-work ceiling for every
+pristine session; slower custom conditions must declare intentional
+`--max-wall-ms` and `--max-app-ms` budgets rather than silently weakening the
+default evidence.
 Static-screen and transition claims require `npm run perf:resources:gate`; it
 records task/script CPU, forced-GC heap, scene and renderer residency, cache
 ownership, actual paint cadence, and complete-frame draw/primitive totals

@@ -511,6 +511,21 @@ reported a 17.9 ms p95 and 26.2 ms maximum. Both paths recorded zero hard
 snaps, with worst authority steps of 2.0 ms and 1.7 ms respectively. The
 50 ms live-freeze threshold was not relaxed for the refactor.
 
+Repository star counts are release metadata and no longer issue direct
+`api.github.com` requests from the browser. Those decorative requests were
+rate-limited by shared public IP, produced two 403 console errors during a
+pristine 7v7 certification, and supplied no gameplay value. Boot and Garage
+render the packaged verified count without creating a third-party dependency.
+
+Cold-load certification now fails on latency as well as eventual readiness.
+Under the standard 4× CPU slowdown, 150 ms RTT, 1.6 Mbps download, and 750 Kbps
+upload profile, every cache-disabled first visit must reach `__GAME_READY`
+within 8 seconds and spend no more than 2.5 seconds in post-transfer
+application work. A three-profile production run completed in 6.24–6.32
+seconds wall and 1.88–1.94 seconds of application work; separate injected main
+download, main evaluation, and selected-builder failures recovered without a
+manual refresh.
+
 ## Reporting a performance result
 
 Record:

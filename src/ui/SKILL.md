@@ -24,6 +24,8 @@ Consume canonical state rather than duplicating policy. Keep large/high-cost
 screens lazy. Preserve large touch targets and test desktop plus mobile. Baked
 minimap requests must pass through `minimapAssetRuntime.ts`; keep active-world
 and prepared-service checks at the asynchronous completion edge.
+Decorative metadata such as repository stars must use release-verified local
+values; never add third-party network traffic to boot or Garage presentation.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
