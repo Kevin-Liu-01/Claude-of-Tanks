@@ -143,6 +143,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainLodPolicy.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/ui/hitEventFormat.selftest.mjs',
+    'src/ui/shotDiagramProjection.selftest.mjs',
     'src/ui/dom.selftest.mjs',
     'src/ui/keyboardOwnership.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',

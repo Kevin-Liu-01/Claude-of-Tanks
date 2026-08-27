@@ -363,6 +363,44 @@ function mkShell(shellSpec, distM = 100) {
   assert(!spent.some((h) => h.kind === 'plate' && h.plate.name === 'era_tile'), 'spent ERA tile skipped');
 }
 
+// -------------------------- MOVING REAR-IMPACT LOCALIZATION REGRESSION ---
+// A rear hit on a tank that is still advancing must be localized against the
+// impact-tick hull pose. Presentation can arrive after the target has moved;
+// the resolved event remains pinned to the exact rear-plate intersection.
+{
+  const rearPlate = mkPlate({
+    name: 'hull_rear', physicalMm: 45, keMm: 45, ceMm: 45,
+    verts: [[1, 0, -2], [-1, 0, -2], [-1, 2, -2], [1, 2, -2]],
+  });
+  const armor = {
+    boundingRadiusM: 4,
+    turretPivot: [0, 1.5, 0], gunPivot: [0, 0.3, 0.4],
+    gunBarrel: { lengthM: 3, radiusM: 0.07 },
+    hullPlates: [rearPlate], turretPlates: [], modules: [], crew: [],
+  };
+  const spec = mkSpec({ armor });
+  const impactPos = V(7, 0, 20.4);
+  const target = {
+    id: 'moving_rear_target', spec,
+    state: mkState({ pos: impactPos.clone(), speed: 12 }),
+    combat: createCombatState(spec),
+  };
+  const from = V(7, 1, 10);
+  const to = V(7, 1, 30);
+  const shell = createShell(AP100, 'rear_shooter', true, from, V(0, 0, 1), 991);
+  shell.prevPos.copy(from);
+  shell.pos.copy(to);
+  const hits = traceTank(from, to, tankPoseFromState(target.state), armor);
+  const ev = resolveShellHit(shell, target, hits, rngHalf);
+  assert(ev.zone === 'hull_rear', `moving rear shot resolves the rear plate (got ${ev.zone})`);
+  near(ev.localPos[0], 0, 1e-9, 'moving rear shot local X matches resolved intersection');
+  near(ev.localPos[1], 1, 1e-9, 'moving rear shot local Y matches resolved intersection');
+  near(ev.localPos[2], -2, 1e-9, 'moving rear shot local Z stays on rear plate');
+  near(ev.pos[2], impactPos.z - 2, 1e-9, 'moving rear shot world point uses impact-tick pose');
+  target.state.pos.z += 18; // card renders later, after the target advanced
+  near(ev.localPos[2], -2, 1e-9, 'later target motion cannot drag the resolved rear marker');
+}
+
 // ---------------------------------------------------- REQUIRED ASSERT §1 ---
 // T-34-85 BR-365K at 500 m vs Tiger I 100 mm driver plate head-on ⇒ pen.
 {

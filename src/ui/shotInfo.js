@@ -19,14 +19,17 @@ import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js'
 import { uiIconSVG } from './uiIcons.js';
 import { maskIcon, iconUrl } from './icons.js';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
+import { createShotDiagramProjection } from './shotDiagramProjection.js';
 import { getSpec } from '../vehicles/specs.js';
+import {
+  presentationAnchorFor,
+  presentationProjectionFor,
+} from '../vehicles/presentationAnchors.generated.js';
 import { getMapConfig } from '../world/maps/index.js';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.js — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.
 import { createEndScreen } from './endScreen.js';
-
-const ICON_MARGIN = 1.07; // tools/icons-page.html bounding-box framing margin
 
 const COL = {
   pen: '#f0a030',
@@ -690,9 +693,15 @@ export function createShotInfo(bus) {
       wrap.remove();
       return null;
     }
-    const czOff = (dims.overallLengthM - dims.hullLengthM) / 2;
     const lp = ev.localPos;
     const ld = ev.localDir;
+    const projection = createShotDiagramProjection({ dims, armor: arm }, {
+      topSize: CARD_TOP_S,
+      sideWidth: CARD_SIDE_W,
+      sideHeight: CARD_SIDE_H,
+      presentationAnchor: presentationAnchorFor(specId),
+      presentationProjection: presentationProjectionFor(specId),
+    });
     const badgeCol = (cls && cls.col) || '#ff8a5c';
     // silhouette contrast (r4: the 0.34-alpha mask read as a gray pill):
     // brighter fill + a drop-shadow outline pass that traces the mask edge
@@ -719,9 +728,8 @@ export function createShotInfo(bus) {
     const topSil = el('div', 'sil', top);
     maskIcon(topSil, specId, 'top_silhouette', SIL_FILL);
     topSil.style.filter = SIL_OUTLINE;
-    const halfT = (Math.max(dims.widthM, dims.overallLengthM) / 2) * ICON_MARGIN;
-    const sT = (TS / 2) / halfT;
-    const topPx = (x, z) => [TS / 2 - x * sT, TS / 2 - (z - czOff) * sT];
+    const sT = projection.topScale;
+    const topPx = projection.topPoint;
     const [hx, hy] = topPx(lp[0], lp[2]);
     // zone glow UNDER the plan-form (r2: painted over it, the orange radial
     // muddied the schematic into a blob); the translucent plan layer lets
@@ -812,10 +820,7 @@ export function createShotInfo(bus) {
     const sideSil = el('div', 'sil', side);
     maskIcon(sideSil, specId, 'side_silhouette', SIL_FILL);
     sideSil.style.filter = SIL_OUTLINE;
-    const halfS = Math.max(dims.heightM / 2, dims.overallLengthM / 4) * ICON_MARGIN;
-    const sS = (SH / 2) / halfS;
-    const sx = SW / 2 + (lp[2] - czOff) * sS;
-    const sy = SH / 2 - (lp[1] - dims.heightM / 2) * sS;
+    const [sx, sy] = projection.sidePoint(lp[1], lp[2]);
     zoneTint(side, 'side_silhouette', sx, sy, 20); // glow under the plan-form
     planForm(side, specId, 'side', SW, SH);
     const ovS = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

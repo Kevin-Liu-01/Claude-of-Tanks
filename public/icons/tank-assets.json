@@ -1095,6 +1095,11 @@
         "zM": -0.0227
       },
       "presentationHash": "4e85158b",
+      "presentationProjection": {
+        "centerYM": 2.0455,
+        "topHalfM": 6.3175,
+        "sideHalfM": 3.1588
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -2271,6 +2276,11 @@
         "zM": 0.0068
       },
       "presentationHash": "39afd558",
+      "presentationProjection": {
+        "centerYM": 1.9669,
+        "topHalfM": 6.6468,
+        "sideHalfM": 3.3234
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -3450,6 +3460,11 @@
         "zM": 0.0066
       },
       "presentationHash": "3db458d2",
+      "presentationProjection": {
+        "centerYM": 1.6671,
+        "topHalfM": 6.647,
+        "sideHalfM": 3.3235
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -4496,6 +4511,11 @@
         "zM": 0.0379
       },
       "presentationHash": "2dbabfd0",
+      "presentationProjection": {
+        "centerYM": 1.763,
+        "topHalfM": 7.0855,
+        "sideHalfM": 3.5428
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -6056,6 +6076,11 @@
         "zM": 0.1171
       },
       "presentationHash": "32c8cc0f",
+      "presentationProjection": {
+        "centerYM": 1.6834,
+        "topHalfM": 6.6263,
+        "sideHalfM": 3.3131
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -7104,6 +7129,11 @@
         "zM": -0.0267
       },
       "presentationHash": "fbbe7e8d",
+      "presentationProjection": {
+        "centerYM": 1.2837,
+        "topHalfM": 5.9674,
+        "sideHalfM": 2.9837
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -8175,6 +8205,11 @@
         "zM": 0.1146
       },
       "presentationHash": "5c85b9b3",
+      "presentationProjection": {
+        "centerYM": 1.7985,
+        "topHalfM": 6.1936,
+        "sideHalfM": 3.0968
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -9425,6 +9460,11 @@
         "zM": 0.0996
       },
       "presentationHash": "5cc78937",
+      "presentationProjection": {
+        "centerYM": 1.7985,
+        "topHalfM": 6.2097,
+        "sideHalfM": 3.1048
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -10436,6 +10476,11 @@
         "zM": 0.0287
       },
       "presentationHash": "75e2e722",
+      "presentationProjection": {
+        "centerYM": 1.4619,
+        "topHalfM": 4.254,
+        "sideHalfM": 2.127
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -11414,6 +11459,11 @@
         "zM": -0.0324
       },
       "presentationHash": "675b64bb",
+      "presentationProjection": {
+        "centerYM": 2.019,
+        "topHalfM": 4.0156,
+        "sideHalfM": 2.2224
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -12406,6 +12456,11 @@
         "zM": 0.0298
       },
       "presentationHash": "e3899a42",
+      "presentationProjection": {
+        "centerYM": 1.7891,
+        "topHalfM": 3.8469,
+        "sideHalfM": 1.9958
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -13769,6 +13824,11 @@
         "zM": 0.0078
       },
       "presentationHash": "8120afc9",
+      "presentationProjection": {
+        "centerYM": 1.8109,
+        "topHalfM": 4.3883,
+        "sideHalfM": 2.1942
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -14985,6 +15045,11 @@
         "zM": -1.1405
       },
       "presentationHash": "18739303",
+      "presentationProjection": {
+        "centerYM": 1.5833,
+        "topHalfM": 4.3982,
+        "sideHalfM": 2.1991
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -15977,6 +16042,11 @@
         "zM": 0.0268
       },
       "presentationHash": "975bd568",
+      "presentationProjection": {
+        "centerYM": 1.7943,
+        "topHalfM": 3.7229,
+        "sideHalfM": 2.0013
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -17059,6 +17129,11 @@
         "zM": -0.0184
       },
       "presentationHash": "6dee0e57",
+      "presentationProjection": {
+        "centerYM": 2.0108,
+        "topHalfM": 7.6515,
+        "sideHalfM": 3.8257
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -18271,6 +18346,11 @@
         "zM": 0.0074
       },
       "presentationHash": "b123c627",
+      "presentationProjection": {
+        "centerYM": 1.4371,
+        "topHalfM": 6.5641,
+        "sideHalfM": 3.2821
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -19482,6 +19562,11 @@
         "zM": 0.0111
       },
       "presentationHash": "9b68a34a",
+      "presentationProjection": {
+        "centerYM": 1.8607,
+        "topHalfM": 6.5586,
+        "sideHalfM": 3.2793
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -20698,6 +20783,11 @@
         "zM": -0.0058
       },
       "presentationHash": "075bb6f5",
+      "presentationProjection": {
+        "centerYM": 2.5108,
+        "topHalfM": 7.8787,
+        "sideHalfM": 3.9394
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -21662,6 +21752,11 @@
         "zM": 0.0119
       },
       "presentationHash": "408e6ed9",
+      "presentationProjection": {
+        "centerYM": 2.0422,
+        "topHalfM": 4.491,
+        "sideHalfM": 2.2455
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -22693,6 +22788,11 @@
         "zM": 0.2011
       },
       "presentationHash": "c69866b5",
+      "presentationProjection": {
+        "centerYM": 1.5802,
+        "topHalfM": 7.7387,
+        "sideHalfM": 3.8694
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -23978,6 +24078,11 @@
         "zM": 0.0869
       },
       "presentationHash": "2b80d700",
+      "presentationProjection": {
+        "centerYM": 1.8967,
+        "topHalfM": 7.8716,
+        "sideHalfM": 3.9358
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -24879,6 +24984,11 @@
         "zM": 0.0393
       },
       "presentationHash": "95bff3a8",
+      "presentationProjection": {
+        "centerYM": 1.8688,
+        "topHalfM": 6.326,
+        "sideHalfM": 3.163
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -25849,6 +25959,11 @@
         "zM": -0.0018
       },
       "presentationHash": "b97e4e1b",
+      "presentationProjection": {
+        "centerYM": 1.6772,
+        "topHalfM": 7.6103,
+        "sideHalfM": 3.8051
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -26821,6 +26936,11 @@
         "zM": -0.0402
       },
       "presentationHash": "9f5a72fd",
+      "presentationProjection": {
+        "centerYM": 1.9772,
+        "topHalfM": 7.5872,
+        "sideHalfM": 3.7936
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -27786,6 +27906,11 @@
         "zM": 0.0459
       },
       "presentationHash": "a8ee0ecd",
+      "presentationProjection": {
+        "centerYM": 1.8363,
+        "topHalfM": 4.7117,
+        "sideHalfM": 2.3558
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -28858,6 +28983,11 @@
         "zM": 0.0818
       },
       "presentationHash": "4c92d0ee",
+      "presentationProjection": {
+        "centerYM": 1.6036,
+        "topHalfM": 3.4794,
+        "sideHalfM": 1.7397
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -30005,6 +30135,11 @@
         "zM": 0.083
       },
       "presentationHash": "cc29be98",
+      "presentationProjection": {
+        "centerYM": 1.6036,
+        "topHalfM": 3.4807,
+        "sideHalfM": 1.7404
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -30907,6 +31042,11 @@
         "zM": -0.0389
       },
       "presentationHash": "36613c69",
+      "presentationProjection": {
+        "centerYM": 1.7494,
+        "topHalfM": 6.6696,
+        "sideHalfM": 3.3348
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -31900,6 +32040,11 @@
         "zM": -0.0403
       },
       "presentationHash": "101384bb",
+      "presentationProjection": {
+        "centerYM": 1.7738,
+        "topHalfM": 7.0484,
+        "sideHalfM": 3.5242
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -32800,6 +32945,11 @@
         "zM": -0.1493
       },
       "presentationHash": "d91b0ebc",
+      "presentationProjection": {
+        "centerYM": 1.7975,
+        "topHalfM": 7.1222,
+        "sideHalfM": 3.5611
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -33701,6 +33851,11 @@
         "zM": -0.1188
       },
       "presentationHash": "57f8d7f3",
+      "presentationProjection": {
+        "centerYM": 1.7848,
+        "topHalfM": 7.0896,
+        "sideHalfM": 3.5448
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -34601,6 +34756,11 @@
         "zM": -1.6482
       },
       "presentationHash": "e5d6e79f",
+      "presentationProjection": {
+        "centerYM": 1.7887,
+        "topHalfM": 6.104,
+        "sideHalfM": 3.052
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -35500,6 +35660,11 @@
         "zM": -1.6693
       },
       "presentationHash": "286299b7",
+      "presentationProjection": {
+        "centerYM": 1.7699,
+        "topHalfM": 8.0483,
+        "sideHalfM": 4.0242
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -36437,6 +36602,11 @@
         "zM": -0.1219
       },
       "presentationHash": "a3fc6e71",
+      "presentationProjection": {
+        "centerYM": 1.4135,
+        "topHalfM": 7.1084,
+        "sideHalfM": 3.5542
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -37375,6 +37545,11 @@
         "zM": -0.0248
       },
       "presentationHash": "c8ec2e9a",
+      "presentationProjection": {
+        "centerYM": 1.3998,
+        "topHalfM": 6.1704,
+        "sideHalfM": 3.0852
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -38276,6 +38451,11 @@
         "zM": -0.1579
       },
       "presentationHash": "a43f9429",
+      "presentationProjection": {
+        "centerYM": 1.4802,
+        "topHalfM": 7.057,
+        "sideHalfM": 3.5285
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -39204,6 +39384,11 @@
         "zM": -0.0791
       },
       "presentationHash": "6ef1f78d",
+      "presentationProjection": {
+        "centerYM": 1.9008,
+        "topHalfM": 7.4672,
+        "sideHalfM": 3.7336
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -40285,6 +40470,11 @@
         "zM": -0.0418
       },
       "presentationHash": "a36f6ef3",
+      "presentationProjection": {
+        "centerYM": 1.9368,
+        "topHalfM": 6.3717,
+        "sideHalfM": 3.1858
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -41490,6 +41680,11 @@
         "zM": -0.0535
       },
       "presentationHash": "f8cc41b7",
+      "presentationProjection": {
+        "centerYM": 2.2754,
+        "topHalfM": 7.5499,
+        "sideHalfM": 3.775
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -42742,6 +42937,11 @@
         "zM": -0.0414
       },
       "presentationHash": "1088933e",
+      "presentationProjection": {
+        "centerYM": 2.2754,
+        "topHalfM": 7.537,
+        "sideHalfM": 3.7685
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -43696,6 +43896,11 @@
         "zM": -0.0153
       },
       "presentationHash": "8b2e9604",
+      "presentationProjection": {
+        "centerYM": 2.1375,
+        "topHalfM": 7.3355,
+        "sideHalfM": 3.6678
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -44779,6 +44984,11 @@
         "zM": 0.031
       },
       "presentationHash": "ac3d3d73",
+      "presentationProjection": {
+        "centerYM": 1.7171,
+        "topHalfM": 7.6695,
+        "sideHalfM": 3.8347
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -45739,6 +45949,11 @@
         "zM": -0.2015
       },
       "presentationHash": "9922f852",
+      "presentationProjection": {
+        "centerYM": 2.2054,
+        "topHalfM": 4.1901,
+        "sideHalfM": 2.3583
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -46798,6 +47013,11 @@
         "zM": 0.1097
       },
       "presentationHash": "64df2cf4",
+      "presentationProjection": {
+        "centerYM": 2.0158,
+        "topHalfM": 6.6342,
+        "sideHalfM": 3.3171
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -48358,6 +48578,11 @@
         "zM": 0.1018
       },
       "presentationHash": "ccc90eab",
+      "presentationProjection": {
+        "centerYM": 1.6836,
+        "topHalfM": 6.6426,
+        "sideHalfM": 3.3213
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -49261,6 +49486,11 @@
         "zM": 0.0192
       },
       "presentationHash": "b6b7b8a7",
+      "presentationProjection": {
+        "centerYM": 1.6897,
+        "topHalfM": 2.6527,
+        "sideHalfM": 1.8946
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -51044,6 +51274,11 @@
         "zM": 0.0357
       },
       "presentationHash": "3af3d7f5",
+      "presentationProjection": {
+        "centerYM": 2.187,
+        "topHalfM": 6.4018,
+        "sideHalfM": 3.2009
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -52592,6 +52827,11 @@
         "zM": -0.0864
       },
       "presentationHash": "a8a846fe",
+      "presentationProjection": {
+        "centerYM": 2.0083,
+        "topHalfM": 6.3819,
+        "sideHalfM": 3.191
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -53661,6 +53901,11 @@
         "zM": 0.0467
       },
       "presentationHash": "8274912f",
+      "presentationProjection": {
+        "centerYM": 2.0707,
+        "topHalfM": 6.7983,
+        "sideHalfM": 3.3992
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -54735,6 +54980,11 @@
         "zM": 0.0289
       },
       "presentationHash": "be2679d8",
+      "presentationProjection": {
+        "centerYM": 1.8648,
+        "topHalfM": 6.8174,
+        "sideHalfM": 3.4087
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -55808,6 +56058,11 @@
         "zM": -0.0178
       },
       "presentationHash": "9d78220a",
+      "presentationProjection": {
+        "centerYM": 1.9029,
+        "topHalfM": 6.7199,
+        "sideHalfM": 3.36
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -56998,6 +57253,11 @@
         "zM": 0.1369
       },
       "presentationHash": "ffa0ebbd",
+      "presentationProjection": {
+        "centerYM": 1.8414,
+        "topHalfM": 6.335,
+        "sideHalfM": 3.1675
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -58189,6 +58449,11 @@
         "zM": 0.0121
       },
       "presentationHash": "052c947e",
+      "presentationProjection": {
+        "centerYM": 2.1558,
+        "topHalfM": 7.5894,
+        "sideHalfM": 3.7947
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -59605,6 +59870,11 @@
         "zM": -0.0166
       },
       "presentationHash": "4c556aa3",
+      "presentationProjection": {
+        "centerYM": 1.8959,
+        "topHalfM": 7.8314,
+        "sideHalfM": 3.9157
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -60914,6 +61184,11 @@
         "zM": 0.0172
       },
       "presentationHash": "93f0dff9",
+      "presentationProjection": {
+        "centerYM": 1.8655,
+        "topHalfM": 7.7953,
+        "sideHalfM": 3.8976
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -62066,6 +62341,11 @@
         "zM": 0.029
       },
       "presentationHash": "3e825704",
+      "presentationProjection": {
+        "centerYM": 2.1599,
+        "topHalfM": 8.0394,
+        "sideHalfM": 4.0197
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -63455,6 +63735,11 @@
         "zM": -0.0066
       },
       "presentationHash": "9ab56296",
+      "presentationProjection": {
+        "centerYM": 2.354,
+        "topHalfM": 7.6067,
+        "sideHalfM": 3.8034
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -64622,6 +64907,11 @@
         "zM": 0.0225
       },
       "presentationHash": "35e75296",
+      "presentationProjection": {
+        "centerYM": 1.4003,
+        "topHalfM": 7.2843,
+        "sideHalfM": 3.6422
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -66059,6 +66349,11 @@
         "zM": 0.0362
       },
       "presentationHash": "83a9b7b6",
+      "presentationProjection": {
+        "centerYM": 1.7447,
+        "topHalfM": 6.2,
+        "sideHalfM": 3.1
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -67532,6 +67827,11 @@
         "zM": 0.0791
       },
       "presentationHash": "38abb384",
+      "presentationProjection": {
+        "centerYM": 1.7446,
+        "topHalfM": 6.1541,
+        "sideHalfM": 3.077
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -69029,6 +69329,11 @@
         "zM": 0.0559
       },
       "presentationHash": "ddd89c9e",
+      "presentationProjection": {
+        "centerYM": 2.0432,
+        "topHalfM": 6.1789,
+        "sideHalfM": 3.0894
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -70242,6 +70547,11 @@
         "zM": 0.0603
       },
       "presentationHash": "e3ab759f",
+      "presentationProjection": {
+        "centerYM": 2.0912,
+        "topHalfM": 6.1774,
+        "sideHalfM": 3.0887
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -71741,6 +72051,11 @@
         "zM": 0.0234
       },
       "presentationHash": "9e7c5788",
+      "presentationProjection": {
+        "centerYM": 2.0446,
+        "topHalfM": 6.2137,
+        "sideHalfM": 3.1068
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -73228,6 +73543,11 @@
         "zM": 0.0337
       },
       "presentationHash": "ebf9cc65",
+      "presentationProjection": {
+        "centerYM": 2.0963,
+        "topHalfM": 6.2026,
+        "sideHalfM": 3.1013
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -74762,6 +75082,11 @@
         "zM": -0.0138
       },
       "presentationHash": "6aed26f6",
+      "presentationProjection": {
+        "centerYM": 2.044,
+        "topHalfM": 6.2535,
+        "sideHalfM": 3.1267
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -75972,6 +76297,11 @@
         "zM": -1.2087
       },
       "presentationHash": "b60b36b0",
+      "presentationProjection": {
+        "centerYM": 1.9301,
+        "topHalfM": 5.9578,
+        "sideHalfM": 2.9789
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -77031,6 +77361,11 @@
         "zM": 0.0201
       },
       "presentationHash": "65172f2e",
+      "presentationProjection": {
+        "centerYM": 1.9338,
+        "topHalfM": 3.6122,
+        "sideHalfM": 2.1376
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -78406,6 +78741,11 @@
         "zM": 0.001
       },
       "presentationHash": "7cfe0840",
+      "presentationProjection": {
+        "centerYM": 1.8232,
+        "topHalfM": 3.6326,
+        "sideHalfM": 2.0193
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -79401,6 +79741,11 @@
         "zM": -0.1068
       },
       "presentationHash": "764d3769",
+      "presentationProjection": {
+        "centerYM": 1.6875,
+        "topHalfM": 3.6359,
+        "sideHalfM": 1.8775
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -80639,6 +80984,11 @@
         "zM": -1.1631
       },
       "presentationHash": "aa379e87",
+      "presentationProjection": {
+        "centerYM": 1.4587,
+        "topHalfM": 5.8324,
+        "sideHalfM": 2.9162
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -81878,6 +82228,11 @@
         "zM": -1.0525
       },
       "presentationHash": "77b61f4f",
+      "presentationProjection": {
+        "centerYM": 1.7729,
+        "topHalfM": 5.836,
+        "sideHalfM": 2.918
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -83031,6 +83386,11 @@
         "zM": 0.0177
       },
       "presentationHash": "8ffda5a0",
+      "presentationProjection": {
+        "centerYM": 2.0388,
+        "topHalfM": 6.1044,
+        "sideHalfM": 3.0522
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -83995,6 +84355,11 @@
         "zM": -0.0911
       },
       "presentationHash": "ca8f0de2",
+      "presentationProjection": {
+        "centerYM": 1.946,
+        "topHalfM": 4.8385,
+        "sideHalfM": 2.4192
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -85077,6 +85442,11 @@
         "zM": 0.0052
       },
       "presentationHash": "94163706",
+      "presentationProjection": {
+        "centerYM": 2.1664,
+        "topHalfM": 6.4184,
+        "sideHalfM": 3.2092
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -86101,6 +86471,11 @@
         "zM": -0.084
       },
       "presentationHash": "648189ea",
+      "presentationProjection": {
+        "centerYM": 2.1465,
+        "topHalfM": 4.1096,
+        "sideHalfM": 2.3524
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -87329,6 +87704,11 @@
         "zM": 0.018
       },
       "presentationHash": "4163e3d6",
+      "presentationProjection": {
+        "centerYM": 1.6387,
+        "topHalfM": 6.4047,
+        "sideHalfM": 3.2024
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -88380,6 +88760,11 @@
         "zM": 0.0064
       },
       "presentationHash": "25f3d119",
+      "presentationProjection": {
+        "centerYM": 2.0375,
+        "topHalfM": 3.6321,
+        "sideHalfM": 2.2486
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -89738,6 +90123,11 @@
         "zM": -0.1156
       },
       "presentationHash": "44e56597",
+      "presentationProjection": {
+        "centerYM": 1.7859,
+        "topHalfM": 6.0646,
+        "sideHalfM": 3.0323
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -90942,6 +91332,11 @@
         "zM": -0.6279
       },
       "presentationHash": "136eb9c0",
+      "presentationProjection": {
+        "centerYM": 1.8127,
+        "topHalfM": 5.3504,
+        "sideHalfM": 2.6752
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -92158,6 +92553,11 @@
         "zM": -0.531
       },
       "presentationHash": "1479411b",
+      "presentationProjection": {
+        "centerYM": 2.1123,
+        "topHalfM": 5.3323,
+        "sideHalfM": 2.6662
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -93374,6 +93774,11 @@
         "zM": -0.4652
       },
       "presentationHash": "35312851",
+      "presentationProjection": {
+        "centerYM": 2.0923,
+        "topHalfM": 4.866,
+        "sideHalfM": 2.433
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -94566,6 +94971,11 @@
         "zM": -0.7678
       },
       "presentationHash": "2400aeba",
+      "presentationProjection": {
+        "centerYM": 1.7079,
+        "topHalfM": 5.7462,
+        "sideHalfM": 2.8731
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -95783,6 +96193,11 @@
         "zM": -0.747
       },
       "presentationHash": "fba06bf4",
+      "presentationProjection": {
+        "centerYM": 1.5463,
+        "topHalfM": 5.6919,
+        "sideHalfM": 2.8459
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -96841,6 +97256,11 @@
         "zM": -0.2889
       },
       "presentationHash": "3117317a",
+      "presentationProjection": {
+        "centerYM": 1.8446,
+        "topHalfM": 5.4799,
+        "sideHalfM": 2.7399
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -98247,6 +98667,11 @@
         "zM": -0.3184
       },
       "presentationHash": "63bffcda",
+      "presentationProjection": {
+        "centerYM": 1.6897,
+        "topHalfM": 5.0407,
+        "sideHalfM": 2.5203
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -99151,6 +99576,11 @@
         "zM": -0.0464
       },
       "presentationHash": "b1b27d6c",
+      "presentationProjection": {
+        "centerYM": 1.8312,
+        "topHalfM": 3.995,
+        "sideHalfM": 2.015
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -100052,6 +100482,11 @@
         "zM": 0.0225
       },
       "presentationHash": "afdd95d4",
+      "presentationProjection": {
+        "centerYM": 1.8268,
+        "topHalfM": 5.5302,
+        "sideHalfM": 2.7651
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -100954,6 +101389,11 @@
         "zM": -1.6482
       },
       "presentationHash": "3a291b12",
+      "presentationProjection": {
+        "centerYM": 1.324,
+        "topHalfM": 7.3302,
+        "sideHalfM": 3.6651
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -102184,6 +102624,11 @@
         "zM": -0.0363
       },
       "presentationHash": "9bba9dd2",
+      "presentationProjection": {
+        "centerYM": 1.9232,
+        "topHalfM": 5.8873,
+        "sideHalfM": 2.9437
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -103831,6 +104276,11 @@
         "zM": -0.0466
       },
       "presentationHash": "7370a50d",
+      "presentationProjection": {
+        "centerYM": 1.605,
+        "topHalfM": 5.7233,
+        "sideHalfM": 2.8617
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -105478,6 +105928,11 @@
         "zM": -0.045
       },
       "presentationHash": "b255f219",
+      "presentationProjection": {
+        "centerYM": 1.9083,
+        "topHalfM": 5.7203,
+        "sideHalfM": 2.8601
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -106677,6 +107132,11 @@
         "zM": 0.0811
       },
       "presentationHash": "bbc9c54e",
+      "presentationProjection": {
+        "centerYM": 1.6765,
+        "topHalfM": 6.6479,
+        "sideHalfM": 3.3239
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -108195,6 +108655,11 @@
         "zM": 0.0601
       },
       "presentationHash": "95530ae4",
+      "presentationProjection": {
+        "centerYM": 1.5195,
+        "topHalfM": 6.5082,
+        "sideHalfM": 3.2541
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -109099,6 +109564,11 @@
         "zM": -0.4187
       },
       "presentationHash": "a1704dc0",
+      "presentationProjection": {
+        "centerYM": 1.8263,
+        "topHalfM": 3.884,
+        "sideHalfM": 2.0471
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -110002,6 +110472,11 @@
         "zM": -0.133
       },
       "presentationHash": "c090e590",
+      "presentationProjection": {
+        "centerYM": 1.7538,
+        "topHalfM": 3.5859,
+        "sideHalfM": 1.9322
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -111053,6 +111528,11 @@
         "zM": -0.0554
       },
       "presentationHash": "b7a688a9",
+      "presentationProjection": {
+        "centerYM": 1.9402,
+        "topHalfM": 4.2119,
+        "sideHalfM": 2.1445
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -112391,6 +112871,11 @@
         "zM": -0.035
       },
       "presentationHash": "c711b401",
+      "presentationProjection": {
+        "centerYM": 1.8036,
+        "topHalfM": 6.5548,
+        "sideHalfM": 3.2774
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -113136,6 +113621,11 @@
         "zM": -0.3022
       },
       "presentationHash": "f9c6aa2b",
+      "presentationProjection": {
+        "centerYM": 1.6512,
+        "topHalfM": 5.9257,
+        "sideHalfM": 2.9629
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -113881,6 +114371,11 @@
         "zM": -0.0009
       },
       "presentationHash": "ba7adaf0",
+      "presentationProjection": {
+        "centerYM": 1.5828,
+        "topHalfM": 5.9029,
+        "sideHalfM": 2.9515
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -115180,6 +115675,11 @@
         "zM": 0.1194
       },
       "presentationHash": "71f770a4",
+      "presentationProjection": {
+        "centerYM": 1.9062,
+        "topHalfM": 6.3538,
+        "sideHalfM": 3.1769
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -116468,6 +116968,11 @@
         "zM": 0.0003
       },
       "presentationHash": "2b427823",
+      "presentationProjection": {
+        "centerYM": 1.8992,
+        "topHalfM": 6.5717,
+        "sideHalfM": 3.2859
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -117393,6 +117898,11 @@
         "zM": -0.0049
       },
       "presentationHash": "6fc81977",
+      "presentationProjection": {
+        "centerYM": 2.034,
+        "topHalfM": 3.5051,
+        "sideHalfM": 2.2507
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -118706,6 +119216,11 @@
         "zM": -0.0762
       },
       "presentationHash": "6c3043c9",
+      "presentationProjection": {
+        "centerYM": 1.8852,
+        "topHalfM": 6.137,
+        "sideHalfM": 3.0685
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -119607,6 +120122,11 @@
         "zM": -0.008
       },
       "presentationHash": "470bda1f",
+      "presentationProjection": {
+        "centerYM": 2.2306,
+        "topHalfM": 7.5761,
+        "sideHalfM": 3.7881
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -120603,6 +121123,11 @@
         "zM": -0.0312
       },
       "presentationHash": "ae0a47ac",
+      "presentationProjection": {
+        "centerYM": 1.7886,
+        "topHalfM": 5.4705,
+        "sideHalfM": 2.7352
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -121507,6 +122032,11 @@
         "zM": -1.1137
       },
       "presentationHash": "0a315aee",
+      "presentationProjection": {
+        "centerYM": 1.8161,
+        "topHalfM": 5.632,
+        "sideHalfM": 2.816
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -122500,6 +123030,11 @@
         "zM": -0.5668
       },
       "presentationHash": "b6d95951",
+      "presentationProjection": {
+        "centerYM": 1.8055,
+        "topHalfM": 4.9184,
+        "sideHalfM": 2.4592
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -123494,6 +124029,11 @@
         "zM": -0.0731
       },
       "presentationHash": "2847d63b",
+      "presentationProjection": {
+        "centerYM": 1.7519,
+        "topHalfM": 6.24,
+        "sideHalfM": 3.12
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -124575,6 +125115,11 @@
         "zM": 0.0594
       },
       "presentationHash": "a06dd259",
+      "presentationProjection": {
+        "centerYM": 2.0203,
+        "topHalfM": 6.7991,
+        "sideHalfM": 3.3996
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -125878,6 +126423,11 @@
         "zM": -0.1117
       },
       "presentationHash": "4cf711f5",
+      "presentationProjection": {
+        "centerYM": 1.7006,
+        "topHalfM": 6.371,
+        "sideHalfM": 3.1855
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -127061,6 +127611,11 @@
         "zM": -0.0163
       },
       "presentationHash": "d5dd7f41",
+      "presentationProjection": {
+        "centerYM": 1.4747,
+        "topHalfM": 6.4829,
+        "sideHalfM": 3.2415
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -128240,6 +128795,11 @@
         "zM": -0.0275
       },
       "presentationHash": "8b61c594",
+      "presentationProjection": {
+        "centerYM": 1.5211,
+        "topHalfM": 7.169,
+        "sideHalfM": 3.5845
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -129437,6 +129997,11 @@
         "zM": -1.2069
       },
       "presentationHash": "128b0357",
+      "presentationProjection": {
+        "centerYM": 1.4649,
+        "topHalfM": 6.5964,
+        "sideHalfM": 3.2982
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -130822,6 +131387,11 @@
         "zM": -0.0825
       },
       "presentationHash": "569db74e",
+      "presentationProjection": {
+        "centerYM": 1.3676,
+        "topHalfM": 6.6185,
+        "sideHalfM": 3.3093
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -132117,6 +132687,11 @@
         "zM": 0.2083
       },
       "presentationHash": "41d2c58a",
+      "presentationProjection": {
+        "centerYM": 1.1962,
+        "topHalfM": 6.5007,
+        "sideHalfM": 3.2504
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -133347,6 +133922,11 @@
         "zM": -0.0348
       },
       "presentationHash": "31704584",
+      "presentationProjection": {
+        "centerYM": 1.7506,
+        "topHalfM": 6.788,
+        "sideHalfM": 3.394
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -134577,6 +135157,11 @@
         "zM": -0.0313
       },
       "presentationHash": "c7d54b9b",
+      "presentationProjection": {
+        "centerYM": 1.8553,
+        "topHalfM": 6.8485,
+        "sideHalfM": 3.4242
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -135795,6 +136380,11 @@
         "zM": 0.0433
       },
       "presentationHash": "2953edfa",
+      "presentationProjection": {
+        "centerYM": 1.7324,
+        "topHalfM": 6.2229,
+        "sideHalfM": 3.1115
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -137216,6 +137806,11 @@
         "zM": -0.02
       },
       "presentationHash": "04d2a5af",
+      "presentationProjection": {
+        "centerYM": 1.8509,
+        "topHalfM": 6.6438,
+        "sideHalfM": 3.3219
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -138350,6 +138945,11 @@
         "zM": -1.2264
       },
       "presentationHash": "699d3a62",
+      "presentationProjection": {
+        "centerYM": 1.7145,
+        "topHalfM": 6.5543,
+        "sideHalfM": 3.2772
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -139772,6 +140372,11 @@
         "zM": -0.0384
       },
       "presentationHash": "47ca8436",
+      "presentationProjection": {
+        "centerYM": 2.2514,
+        "topHalfM": 6.6621,
+        "sideHalfM": 3.3311
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -141729,6 +142334,11 @@
         "zM": 0.025
       },
       "presentationHash": "bf1e816e",
+      "presentationProjection": {
+        "centerYM": 1.5013,
+        "topHalfM": 6.0766,
+        "sideHalfM": 3.0383
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -143091,6 +143701,11 @@
         "zM": 0.0425
       },
       "presentationHash": "a19bbc10",
+      "presentationProjection": {
+        "centerYM": 2.1414,
+        "topHalfM": 5.9309,
+        "sideHalfM": 2.9654
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -144453,6 +145068,11 @@
         "zM": -1.1868
       },
       "presentationHash": "d6baa88a",
+      "presentationProjection": {
+        "centerYM": 1.6703,
+        "topHalfM": 6.4252,
+        "sideHalfM": 3.2126
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -146207,6 +146827,11 @@
         "zM": -0.0001
       },
       "presentationHash": "c83d9b19",
+      "presentationProjection": {
+        "centerYM": 1.5782,
+        "topHalfM": 6.1116,
+        "sideHalfM": 3.0558
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -147615,6 +148240,11 @@
         "zM": 0.0153
       },
       "presentationHash": "70c4e29c",
+      "presentationProjection": {
+        "centerYM": 2.3453,
+        "topHalfM": 6.7921,
+        "sideHalfM": 3.396
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -148964,6 +149594,11 @@
         "zM": 0.0889
       },
       "presentationHash": "33bd929a",
+      "presentationProjection": {
+        "centerYM": 1.695,
+        "topHalfM": 6.617,
+        "sideHalfM": 3.3085
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -149893,6 +150528,11 @@
         "zM": 0.0952
       },
       "presentationHash": "9002e747",
+      "presentationProjection": {
+        "centerYM": 1.472,
+        "topHalfM": 7.4592,
+        "sideHalfM": 3.7296
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -151085,6 +151725,11 @@
         "zM": -0.0499
       },
       "presentationHash": "04374530",
+      "presentationProjection": {
+        "centerYM": 1.963,
+        "topHalfM": 5.7644,
+        "sideHalfM": 2.8822
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -151989,6 +152634,11 @@
         "zM": -1.1786
       },
       "presentationHash": "46e5f98f",
+      "presentationProjection": {
+        "centerYM": 2.1177,
+        "topHalfM": 7.0288,
+        "sideHalfM": 3.5144
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -153046,6 +153696,11 @@
         "zM": -0.0143
       },
       "presentationHash": "9d1ac7a6",
+      "presentationProjection": {
+        "centerYM": 1.8293,
+        "topHalfM": 7.1449,
+        "sideHalfM": 3.5725
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -154130,6 +154785,11 @@
         "zM": -0.0123
       },
       "presentationHash": "217c11fd",
+      "presentationProjection": {
+        "centerYM": 1.8314,
+        "topHalfM": 7.1428,
+        "sideHalfM": 3.5714
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -155153,6 +155813,11 @@
         "zM": 0.0518
       },
       "presentationHash": "24a34820",
+      "presentationProjection": {
+        "centerYM": 1.5046,
+        "topHalfM": 5.4572,
+        "sideHalfM": 2.7286
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -156357,6 +157022,11 @@
         "zM": -0.0958
       },
       "presentationHash": "b44d85bc",
+      "presentationProjection": {
+        "centerYM": 1.8393,
+        "topHalfM": 6.0769,
+        "sideHalfM": 3.0384
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -157430,6 +158100,11 @@
         "zM": -0.034
       },
       "presentationHash": "34e0c68a",
+      "presentationProjection": {
+        "centerYM": 1.7857,
+        "topHalfM": 4.2169,
+        "sideHalfM": 2.1085
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -158490,6 +159165,11 @@
         "zM": -0.2075
       },
       "presentationHash": "bbf45e5c",
+      "presentationProjection": {
+        "centerYM": 1.5892,
+        "topHalfM": 6.6207,
+        "sideHalfM": 3.3103
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -159656,6 +160336,11 @@
         "zM": -0.2184
       },
       "presentationHash": "cce677dd",
+      "presentationProjection": {
+        "centerYM": 1.5893,
+        "topHalfM": 6.6324,
+        "sideHalfM": 3.3162
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -161702,6 +162387,11 @@
         "zM": -0.271
       },
       "presentationHash": "7b769df5",
+      "presentationProjection": {
+        "centerYM": 2.1239,
+        "topHalfM": 8.2327,
+        "sideHalfM": 4.1164
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -163202,6 +163892,11 @@
         "zM": 0.0416
       },
       "presentationHash": "2351ae89",
+      "presentationProjection": {
+        "centerYM": 2.3702,
+        "topHalfM": 6.1942,
+        "sideHalfM": 3.0971
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -164422,6 +165117,11 @@
         "zM": -0.0129
       },
       "presentationHash": "48abd1a4",
+      "presentationProjection": {
+        "centerYM": 1.9338,
+        "topHalfM": 3.6475,
+        "sideHalfM": 2.1377
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -165716,6 +166416,11 @@
         "zM": -0.0278
       },
       "presentationHash": "3771ac60",
+      "presentationProjection": {
+        "centerYM": 1.4335,
+        "topHalfM": 6.6664,
+        "sideHalfM": 3.3332
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -166949,6 +167654,11 @@
         "zM": -0.0083
       },
       "presentationHash": "8f502ee5",
+      "presentationProjection": {
+        "centerYM": 1.609,
+        "topHalfM": 6.7597,
+        "sideHalfM": 3.3798
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -168180,6 +168890,11 @@
         "zM": 0.0122
       },
       "presentationHash": "de6ded94",
+      "presentationProjection": {
+        "centerYM": 1.9268,
+        "topHalfM": 6.604,
+        "sideHalfM": 3.302
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -169424,6 +170139,11 @@
         "zM": -0.0157
       },
       "presentationHash": "b788ddd2",
+      "presentationProjection": {
+        "centerYM": 2.0312,
+        "topHalfM": 6.6713,
+        "sideHalfM": 3.3356
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -170170,6 +170890,11 @@
         "zM": -0.0225
       },
       "presentationHash": "92dbda35",
+      "presentationProjection": {
+        "centerYM": 1.4286,
+        "topHalfM": 5.1022,
+        "sideHalfM": 2.5511
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -171206,6 +171931,11 @@
         "zM": -0.0234
       },
       "presentationHash": "c060342d",
+      "presentationProjection": {
+        "centerYM": 1.5247,
+        "topHalfM": 2.9178,
+        "sideHalfM": 1.7042
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -172156,6 +172886,11 @@
         "zM": -0.0655
       },
       "presentationHash": "da496c1a",
+      "presentationProjection": {
+        "centerYM": 1.6299,
+        "topHalfM": 6.2692,
+        "sideHalfM": 3.1346
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -173193,6 +173928,11 @@
         "zM": -0.7849
       },
       "presentationHash": "aa309df3",
+      "presentationProjection": {
+        "centerYM": 2.4045,
+        "topHalfM": 6.2634,
+        "sideHalfM": 3.1317
+      },
       "appearance": {
         "version": 1,
         "issues": [],
@@ -175250,6 +175990,11 @@
         "zM": -0.425
       },
       "presentationHash": "19c814ae",
+      "presentationProjection": {
+        "centerYM": 1.8394,
+        "topHalfM": 8.0103,
+        "sideHalfM": 4.0051
+      },
       "appearance": {
         "version": 1,
         "issues": [],

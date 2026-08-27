@@ -13,16 +13,26 @@ import {
   requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
 import { VEHICLE_ERA_META } from './taxonomy.js';
-import { TANK_PRESENTATION_ANCHORS } from './presentationAnchors.generated.js';
+import {
+  TANK_PRESENTATION_ANCHORS,
+  TANK_PRESENTATION_PROJECTIONS,
+} from './presentationAnchors.generated.js';
 import { isKillcamGhostSurface } from '../game/killcamGhostPolicy.js';
 import { FIRST_PARTY_LICENSE } from '../authorship.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 assert.equal(Object.keys(TANK_PRESENTATION_ANCHORS).length, DEVELOPMENT_TANK_IDS.length,
   'rendered-pixel presentation receipt count matches the development fleet');
+assert.equal(Object.keys(TANK_PRESENTATION_PROJECTIONS).length, DEVELOPMENT_TANK_IDS.length,
+  'orthographic projection receipt count matches the development fleet');
 for (const id of DEVELOPMENT_TANK_IDS) {
   assert.ok(TANK_PRESENTATION_ANCHORS[id],
     `${id}: rendered-pixel presentation receipt covers the saved development tank`);
+  const projection = TANK_PRESENTATION_PROJECTIONS[id];
+  assert.ok(Number.isFinite(projection?.centerYM)
+    && Number.isFinite(projection?.topHalfM) && projection.topHalfM > 0
+    && Number.isFinite(projection?.sideHalfM) && projection.sideHalfM > 0,
+  `${id}: generated asset projection carries finite top/side fit envelopes`);
 }
 const assetManifest = JSON.parse(readFileSync(new URL('../../public/icons/tank-assets.json', import.meta.url)));
 assert.equal(assetManifest.schemaVersion, TANK_ASSET_SCHEMA_VERSION,
@@ -35,6 +45,8 @@ for (const id of DEVELOPMENT_TANK_IDS) {
   assert.ok(Number.isFinite(record.presentationAnchor?.xM)
     && Number.isFinite(record.presentationAnchor?.zM),
   `${id}: generated assets record their rendered-body presentation center`);
+  assert.deepEqual(record.presentationProjection, TANK_PRESENTATION_PROJECTIONS[id],
+    `${id}: public icon manifest and runtime hit-marker projection share one fit receipt`);
   assert.match(record.presentationHash || '', /^[0-9a-f]{8}$/,
     `${id}: generated assets fingerprint their structural presentation center`);
   for (const asset of Object.values(assets)) {
