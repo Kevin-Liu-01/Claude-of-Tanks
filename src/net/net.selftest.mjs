@@ -1323,6 +1323,67 @@ function createTestSimulation() {
   host.close('test_done');
 }
 
+// A full room result yields between reliable room-state batches. A newer room
+// command cancels any unsent old result state, so responsiveness never trades
+// away revision ordering.
+{
+  const scheduled = [];
+  const room = {
+    phase: 'playing', round: 1, revision: 1,
+    players: ['fan-a', 'fan-b', 'fan-c'].map((id) => ({ id, team: 'alpha' })),
+  };
+  const roomController = {
+    state: () => ({ ...room, players: room.players.map((player) => ({ ...player })) }),
+    command() {
+      room.revision++;
+      return this.state();
+    },
+    finish() {
+      room.phase = 'waiting';
+      room.revision++;
+      return this.state();
+    },
+  };
+  const simulation = createTestSimulation();
+  simulation.result = 'alpha';
+  simulation.resultReason = 'elimination';
+  const host = new AuthoritativeMatchRuntime({
+    simulation,
+    roomController,
+    scheduleRoomStateFanout: (callback) => scheduled.push(callback),
+    roomStateFanoutBatchSize: 1,
+  });
+  const revisions = [[], [], []];
+  const links = revisions.map((seen, index) => {
+    const link = createLoopbackTransportPair({ direct: true });
+    link.client.onMessage((message) => {
+      if (message.type === MESSAGE_TYPES.ROOM_STATE) seen.push(message.payload.revision);
+    });
+    const peerId = room.players[index].id;
+    host.attachPeer({ peerId, transport: link.host });
+    link.client.send(createEnvelope(MESSAGE_TYPES.HELLO, { playerId: peerId }, {
+      seq: 0, tick: 0,
+    }));
+    seen.length = 0;
+    return link;
+  });
+  host.matchStarted = true;
+  host.advance(1000 / 60);
+  assert.deepEqual(revisions.map((seen) => seen.length), [1, 0, 0],
+    'the result sends only one room-state batch inside the authority tick');
+  assert.equal(scheduled.length, 1, 'the next room-state batch is deferred');
+
+  links[0].client.send(createEnvelope(MESSAGE_TYPES.ROOM_COMMAND, { type: 'ready' }, {
+    seq: 1, tick: host.tick,
+  }));
+  assert.deepEqual(revisions.map((seen) => seen.at(-1)), [3, 3, 3],
+    'a newer room revision reaches every peer immediately');
+  while (scheduled.length) scheduled.shift()();
+  assert.ok(revisions.every((seen) => seen.at(-1) === 3 && seen.filter((value) => value === 2).length <= 1),
+    'cancelled result batches never overwrite the newer room revision');
+  host.close();
+}
+
 // A pre-handshake packet must be rejected without making a later valid HELLO
 // look stale. Real transports are ordered; this defense keeps a simulated or
 // hostile first packet from permanently poisoning the connection.

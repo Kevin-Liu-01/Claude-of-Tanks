@@ -186,6 +186,13 @@ revision that arrives on the final combat edge updates room truth and the garage
 reminder immediately, but defers rebuilding the hidden lobby DOM until results,
 garage, or an explicit room-open action can actually display it.
 
+The browser host does not synchronously fan a completed-round `ROOM_STATE` to
+all fourteen transports inside the final authority tick. It sends a small
+reliable batch, yields, and continues in bounded batches. Any newer room
+revision cancels the unsent older fanout, so a fast ready/rematch command can
+never be overwritten by stale waiting state. This keeps room policy identical
+while preventing result UI work from becoming a host render hitch.
+
 Battle chat uses dedicated `ROOM_CHAT_COMMAND` and `ROOM_CHAT` control
 messages instead of bloating snapshots or room-state broadcasts. Authority
 derives the sender name and team from the authenticated room peer, normalizes
@@ -265,6 +272,15 @@ successfully opened match immediately, ensuring a later world/module failure
 closes the transport through the normal cleanup path. Cached rematches use the
 same barrier and may return an existing match owner synchronously.
 
+Before the ready barrier opens, network presentation switches to the exact
+battlefield light set and warms the fielded roster rather than a generic
+vehicle. The hidden pass submits pursuit dust/exhaust and every impact family,
+attaches distance-managed cosmetic groups, stages their destroyed materials,
+and performs one real offscreen wreck-cohort draw. This forces driver linking
+and hook-owned texture uploads for the live `cot:burnt` permutation; first
+blood is never its first real draw. Every pose, material, detail attachment,
+and visibility flag is restored before the loading veil exits.
+
 The full rendered capacity gate is `npm run test:net:seven:full`. It runs two
 independent natural 7v7 battles—one with the browser host rendered and one with
 an impaired remote client rendered. All 28 participants across those runs use
@@ -277,6 +293,9 @@ the production 900-second safety cap. Production room limits are unchanged. The
 gate requires every session to receive the result, retain the room in its
 waiting phase, and clear readiness; it also enforces transport, prediction,
 frame-pacing, shadow, and presentation budgets throughout the match.
+The artifact records exact frame rows around any 40 ms gap and renderer
+programs created after the combat baseline, so first-use shader and texture
+hitches are attributable rather than hidden by aggregate FPS.
 
 ## Deployment and trust
 

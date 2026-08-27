@@ -7861,6 +7861,19 @@ export function createTank(specId, engineCtx, opts = {}) {
     },
 
     /**
+     * Keep distance-detached cosmetic groups present for an offscreen program
+     * warm, then restore their exact prior attachment state. setDestroyed()
+     * normally reattaches only for its synchronous material capture and sheds
+     * them again immediately; that made a later close-range wreck link the
+     * shared burnt fallback during live multiplayer combat.
+     */
+    stageBattleDetailsForWarm() {
+      const wasAttached = battleDetailsAttached;
+      setBattleDetailsAttached(true);
+      return () => setBattleDetailsAttached(wasAttached);
+    },
+
+    /**
      * Restore the live (pre-wreck) visual for a rematch: original materials,
      * decals, neutral turret/gun pose, re-seated ERA bricks and track bands,
      * cleared flinch/recoil/pop animation state. Safe on a never-destroyed

@@ -819,6 +819,9 @@ async function beginMeasuredCombat(pages, renderedRole) {
     state.measureMotion = true;
     if (full) {
       state.predictionCombatBaseline = { ...(window.__DEBUG.network?.prediction || {}) };
+      state.programBaseline = new Set(
+        (window.__DEBUG.renderer.info.programs || []).map((program) => program.cacheKey),
+      );
       window.__DEV_TRACE.clear();
       window.__DEV_TRACE.mark('live-7v7:measured-combat');
       window.dispatchEvent(new KeyboardEvent('keydown', {
@@ -861,11 +864,38 @@ async function collectFullReport(page, renderedRole) {
     const trace = window.__DEV_TRACE.stats();
     const traceAnomalies = window.__DEV_TRACE.tail(2000, 'anomaly');
     const traceTail = window.__DEV_TRACE.tail(240);
+    const traceSnapshot = window.__DEV_TRACE.snapshot({ gpu: false });
+    const traceColumns = Object.fromEntries(
+      traceSnapshot.frameSchema.map((name, index) => [name, index]),
+    );
+    const spikeIndexes = traceSnapshot.frames
+      .map((row, index) => row[traceColumns.gapMs] >= 40 ? index : -1)
+      .filter((index) => index >= 0);
+    const diagnosticIndexes = new Set();
+    for (const index of spikeIndexes) {
+      for (let offset = -3; offset <= 3; offset++) {
+        if (index + offset >= 0 && index + offset < traceSnapshot.frames.length) {
+          diagnosticIndexes.add(index + offset);
+        }
+      }
+    }
+    const traceSpikeFrames = [...diagnosticIndexes].sort((a, b) => a - b).map((index) =>
+      Object.fromEntries(traceSnapshot.frameSchema.map((name, column) => [
+        name,
+        traceSnapshot.frames[index][column],
+      ])));
     const renderer = {
       calls: window.__DEBUG.renderer.info.render.calls,
       triangles: window.__DEBUG.renderer.info.render.triangles,
       programs: window.__DEBUG.renderer.info.programs?.length || 0,
     };
+    const newPrograms = (window.__DEBUG.renderer.info.programs || [])
+      .filter((program) => !state.programBaseline?.has(program.cacheKey))
+      .map((program) => ({
+        cacheKey: String(program.cacheKey || '').slice(0, 800),
+        name: program.name || '',
+        usedTimes: program.usedTimes,
+      }));
     const shadowSample = await window.__DEBUG.sampleShadowContribution();
     const telemetry = window.__DEBUG.telemetry();
     const glError = window.__DEBUG.renderer.getContext().getError();
@@ -876,12 +906,14 @@ async function collectFullReport(page, renderedRole) {
       trace,
       traceAnomalies,
       traceTail,
+      traceSpikeFrames,
       events: state.eventCounts,
       motion: state.motion,
       network: window.__DEBUG.network,
       predictionCombatBaseline: state.predictionCombatBaseline || null,
       presentation: window.__DEBUG.networkPresentation,
       renderer,
+      newPrograms,
       rosterSize: window.__DEBUG.game.tankById.size,
       visibleRosterSize: window.__DEBUG.game.tanks.length,
       phase: window.__DEBUG.game.phase,

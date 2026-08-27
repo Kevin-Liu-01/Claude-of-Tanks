@@ -175,6 +175,13 @@ export function beginPrivateHostMatch({
     maxCatchUpTicks: 6,
     maxBacklogTicks: 300,
     longStallCatchUpTicks: 2,
+    // Room/result presentation is reliable but non-authoritative. On browser
+    // hosts, yield between two-peer batches so a 7v7 result cannot make every
+    // connected room UI update inside the final simulation/render task.
+    scheduleRoomStateFanout: typeof window === 'undefined'
+      ? null
+      : (callback) => setTimeout(callback, 8),
+    roomStateFanoutBatchSize: 2,
   });
   session.bindMatchRuntime?.(host);
   // The browser host's local player does not need an emulated network hop.

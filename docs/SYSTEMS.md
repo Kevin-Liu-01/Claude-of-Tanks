@@ -59,7 +59,10 @@ strict TypeScript owners:
   synchronous capture drains, round resets, and countdown cancellation;
 - `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
   effect, wreck, hidden-variant, and fallback shader-warm implementation; its
-  retryable access facade is acquired before any synchronous fallback drain;
+  retryable access facade is acquired before any synchronous fallback drain.
+  Network entry uses the final battlefield light set, temporarily attaches
+  distance-managed detail, and performs one offscreen fielded-wreck draw so
+  driver linking and destruction textures cannot move into live combat;
 - `src/game/battleClientAccess.ts` owns the retryable client combat boundary;
 - `src/ui/battleLoad.js` is intentionally boot-critical: its small roster veil
   is ready before Battle can be pressed and covers the first asynchronous
@@ -501,6 +504,8 @@ The room controller outlives the match runtime. At result:
 - return the room to waiting;
 - clear all ready flags;
 - retain connected peers and transports;
+- fan reliable waiting state in bounded browser-host batches, cancelling any
+  unsent stale revision if a newer room command arrives;
 - allow a new match runtime for the next round.
 
 ## Signaling and dedicated services

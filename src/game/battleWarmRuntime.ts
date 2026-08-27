@@ -24,7 +24,9 @@ interface BattleWarmState {
 }
 
 interface BattleWarmVisual {
+  root?: Object3D;
   prewarmBurn?(): void;
+  stageBattleDetailsForWarm?(): () => void;
   setDestroyed?(options: { pop: boolean }): void;
   resetDestroyed?(): void;
 }
@@ -143,6 +145,10 @@ export interface WreckWarmOptions {
   entities: Iterable<BattleWarmEntity>;
   prebakeBurntSteps: BurnStepFactory;
   anisotropy: number;
+  renderer: WebGLRenderer;
+  scene: Scene;
+  camera: Camera;
+  warmRender(): void;
 }
 
 /** Prebuild only the fielded roster's destroyed variants before first blood. */
@@ -150,10 +156,15 @@ export async function warmNetworkWrecks({
   entities,
   prebakeBurntSteps,
   anisotropy,
+  renderer,
+  scene,
+  camera,
+  warmRender,
 }: WreckWarmOptions): Promise<void> {
   const yieldForFrameBudget = createFrameBudgetYielder(8);
   const warmedSpecs = new Set<string>();
-  for (const entity of entities) {
+  const roster = [...entities];
+  for (const entity of roster) {
     const visual = entity?.visual;
     if (!visual) continue;
     try { visual.prewarmBurn?.(); } catch (_) { /* warm only */ }
@@ -167,16 +178,103 @@ export async function warmNetworkWrecks({
         }
       } catch (_) { /* warm only */ }
     }
-    if (visual.setDestroyed && visual.resetDestroyed) {
+    if (visual.root && visual.setDestroyed && visual.resetDestroyed) {
+      const rootWasVisible = visual.root.visible;
+      const restoreBattleDetails = visual.stageBattleDetailsForWarm?.() ?? (() => {});
       try {
-        visual.setDestroyed({ pop: false });
-        visual.resetDestroyed();
         visual.setDestroyed({ pop: true });
-        visual.resetDestroyed();
+        visual.root.visible = true;
+        const before = renderer.info.programs?.length || 0;
+        renderer.compile(visual.root, camera, scene);
+        // Distant staged actors detach cosmetic descendants again inside
+        // setDestroyed(). At close range those same descendants are attached
+        // before first blood and can fall back to the shared `cot:burnt`
+        // material. Compile that fallback from the mesh itself so hidden
+        // staging parents cannot make the warm silently miss its live key.
+        visual.root.traverse((object) => {
+          const renderObject = object as Object3D & {
+            material?: any | any[];
+            isMesh?: boolean;
+          };
+          if (!renderObject.isMesh || !renderObject.material) return;
+          const materials = Array.isArray(renderObject.material)
+            ? renderObject.material : [renderObject.material];
+          const usesBurntFallback = materials.some((material) =>
+            material?.name === 'cot:burnt' ||
+            String(material?.customProgramCacheKey?.() || '').includes('burnt-triplanar'));
+          if (!usesBurntFallback) return;
+          const wasVisible = renderObject.visible;
+          try {
+            renderObject.visible = true;
+            renderer.compile(renderObject, camera, scene);
+          } catch (_) { /* first live render remains the fallback */ }
+          finally { renderObject.visible = wasVisible; }
+        });
+        const programs = renderer.info.programs || [];
+        for (let index = before; index < programs.length; index++) {
+          try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
+        }
+        visual.root.traverse((object) => {
+          const renderObject = object as Object3D & { material?: object | object[] };
+          const materials = Array.isArray(renderObject.material)
+            ? renderObject.material : (renderObject.material ? [renderObject.material] : []);
+          for (const material of materials) {
+            for (const value of Object.values(material)) {
+              if (typeof value !== 'object' || value === null || !('isTexture' in value)) continue;
+              try {
+                renderer.initTexture(value as Parameters<WebGLRenderer['initTexture']>[0]);
+              } catch (_) { /* first real render remains the fallback */ }
+            }
+          }
+        });
       } catch (_) { /* warm only */ }
+      finally {
+        try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
+        try { restoreBattleDetails(); } catch (_) { /* warm only */ }
+        visual.root.visible = rootWasVisible;
+      }
     }
     await yieldForFrameBudget(true);
   }
+
+  // compile() can submit a program without forcing the driver to link it or
+  // upload hook-owned textures. Render the exact fielded wreck cohort once
+  // into the reusable private warm target, with detached close-detail groups
+  // temporarily attached. This is the final guarantee that first blood does
+  // not become the first real `cot:burnt` draw on an impaired client.
+  const staged: Array<{
+    visual: BattleWarmVisual;
+    root: Object3D;
+    rootWasVisible: boolean;
+    restoreBattleDetails: () => void;
+  }> = [];
+  try {
+    for (const entity of roster) {
+      const visual = entity?.visual;
+      if (!visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
+      const rootWasVisible = visual.root.visible;
+      const restoreBattleDetails = visual.stageBattleDetailsForWarm?.() ?? (() => {});
+      try {
+        visual.setDestroyed({ pop: true });
+        visual.root.visible = true;
+        staged.push({ visual, root: visual.root, rootWasVisible, restoreBattleDetails });
+      } catch (_) {
+        try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
+        try { restoreBattleDetails(); } catch (_) { /* warm only */ }
+        visual.root.visible = rootWasVisible;
+      }
+    }
+    if (staged.length) warmRender();
+  } catch (_) { /* first live render remains the fallback */ }
+  finally {
+    for (let index = staged.length - 1; index >= 0; index--) {
+      const { visual, root, rootWasVisible, restoreBattleDetails } = staged[index];
+      try { visual.resetDestroyed?.(); } catch (_) { /* warm only */ }
+      try { restoreBattleDetails(); } catch (_) { /* warm only */ }
+      root.visible = rootWasVisible;
+    }
+  }
+  await yieldForFrameBudget(true);
 }
 
 interface BattleFxPort {
@@ -188,6 +286,9 @@ interface BattleFxPort {
     normal: Vector3,
     distance: number,
   ): void;
+  impact(kind: string, position: Vector3, normal: Vector3, caliberMm: number): void;
+  dust(position: Vector3, direction: Vector3, scale: number): void;
+  exhaust(position: Vector3, scale: number, moving: boolean): void;
   update(dt: number, shells: unknown[], camera: Camera): void;
   destruction(position: Vector3, source: null, kind: 'shot' | 'ammorack'): void;
   resetAll(): void;
@@ -453,6 +554,11 @@ export async function warmNetworkOpeningEffects({
   try {
     fx.warmTextures?.();
     fx.warmOpeningEffects(position, direction, normal, 120);
+    for (const kind of [
+      'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
+    ]) fx.impact(kind, position, normal, 120);
+    fx.dust(position, direction, 1);
+    fx.exhaust(position, 1, true);
     await nextFrame();
     try { fx.update(0.016, shells, camera); } catch (_) { /* warm only */ }
     fx.destruction(position, null, 'shot');

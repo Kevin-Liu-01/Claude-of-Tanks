@@ -3203,6 +3203,13 @@ async function presentNetworkBattle({
   markLoadStage('initialSnapshot');
   networkBridge = preparedBridge;
   networkBridge.apply(initial, 1 / 60);
+  // Compile against the exact live battlefield light set. The garage spots
+  // alter Three's program cache key; leaving them enabled through wreck/FX
+  // warm made first blood link a second `cot:burnt` shader for every wreck.
+  // The opaque roster veil still owns the screen, so this handoff changes no
+  // presented frame and also removes unused garage lights from compile work.
+  setGarageSpots(false);
+  setGarageSunTrim(false);
   battleLoad.progress(0.845, 'Warming suspension terrain');
   await battleWarm.warmBattleTerrainTiles({
     game, world, yieldForBudget: createFrameBudgetYielder(16),
@@ -3217,6 +3224,10 @@ async function presentNetworkBattle({
     entities: networkBridge.entities.values(),
     prebakeBurntSteps,
     anisotropy: engineCtx.anisotropy ?? 4,
+    renderer,
+    scene,
+    camera,
+    warmRender,
   });
   battleLoad.progress(0.87, 'Priming combat effects');
   await battleWarm.warmNetworkOpeningEffects({

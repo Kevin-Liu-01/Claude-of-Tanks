@@ -81,6 +81,8 @@ export class AuthoritativeMatchRuntime {
     maxInputLeadTicks = 120,
     roomController = null,
     chatClock = defaultClock,
+    scheduleRoomStateFanout = null,
+    roomStateFanoutBatchSize = 2,
     keyframeIntervalTicks = tickHz * 2,
     snapshotHistoryCapacity = Math.max(64,
       Math.ceil(keyframeIntervalTicks * snapshotHz / tickHz) * 2),
@@ -110,7 +112,17 @@ export class AuthoritativeMatchRuntime {
     }
     this.roomController = roomController;
     if (typeof chatClock !== 'function') throw new TypeError('chatClock must be a function');
+    if (scheduleRoomStateFanout != null && typeof scheduleRoomStateFanout !== 'function') {
+      throw new TypeError('scheduleRoomStateFanout must be a function');
+    }
+    if (!Number.isInteger(roomStateFanoutBatchSize) || roomStateFanoutBatchSize < 1 ||
+        roomStateFanoutBatchSize > 8) {
+      throw new TypeError('roomStateFanoutBatchSize must be between 1 and 8');
+    }
     this.chatClock = chatClock;
+    this.scheduleRoomStateFanout = scheduleRoomStateFanout;
+    this.roomStateFanoutBatchSize = roomStateFanoutBatchSize;
+    this.roomStateFanoutGeneration = 0;
     this.chatSequence = 0;
     this.tickHz = tickHz;
     this.snapshotHz = snapshotHz;
@@ -145,6 +157,8 @@ export class AuthoritativeMatchRuntime {
       snapshotEntityRows: 0,
       reliableEventBatches: 0,
       reliableEvents: 0,
+      roomStateFanoutBatches: 0,
+      roomStateFanoutPeers: 0,
     };
   }
 
@@ -433,10 +447,41 @@ export class AuthoritativeMatchRuntime {
 
   #broadcastRoomState(state = null) {
     if (!this.roomController) return null;
+    this.roomStateFanoutGeneration++;
     const next = state || this.roomController.state();
     for (const peer of this.peers.values()) {
       if (peer.welcomed) this.#send(peer, MESSAGE_TYPES.ROOM_STATE, next);
     }
+    return next;
+  }
+
+  /**
+   * A result can return a full 7v7 room to waiting in the same task as the
+   * final authoritative tick. Sending that DOM-facing state to every browser
+   * synchronously made the host pay all peers' room UI work before its next
+   * frame. Keep the host/current first peers immediate, then yield between
+   * small reliable batches. A newer room revision cancels the remaining old
+   * fanout so a fast rematch can never be overwritten by stale waiting state.
+   */
+  #broadcastRoomStateDeferred(state = null) {
+    if (!this.roomController || !this.scheduleRoomStateFanout) {
+      return this.#broadcastRoomState(state);
+    }
+    const next = state || this.roomController.state();
+    const peers = [...this.peers.values()].filter((peer) => peer.welcomed);
+    const generation = ++this.roomStateFanoutGeneration;
+    let cursor = 0;
+    const pump = () => {
+      if (this.closed || generation !== this.roomStateFanoutGeneration) return;
+      const end = Math.min(peers.length, cursor + this.roomStateFanoutBatchSize);
+      for (; cursor < end; cursor++) {
+        this.#send(peers[cursor], MESSAGE_TYPES.ROOM_STATE, next);
+        this.stats.roomStateFanoutPeers++;
+      }
+      this.stats.roomStateFanoutBatches++;
+      if (cursor < peers.length) this.scheduleRoomStateFanout(pump);
+    };
+    pump();
     return next;
   }
 
@@ -592,7 +637,7 @@ export class AuthoritativeMatchRuntime {
               result: this.simulation.result,
               reason: this.simulation.resultReason || null,
             });
-            this.#broadcastRoomState();
+            this.#broadcastRoomStateDeferred();
           }
         }
       }
@@ -657,6 +702,7 @@ export class AuthoritativeMatchRuntime {
   close(reason = 'host_closed') {
     if (this.closed) return;
     this.closed = true;
+    this.roomStateFanoutGeneration++;
     for (const peer of [...this.peers.values()]) {
       if (typeof peer.transport.close === 'function') peer.transport.close(reason);
       this.detachPeer(peer.id, reason);
