@@ -153,6 +153,7 @@ export interface PrivateRoomClientOptions {
   refreshIceConfiguration?: (() => Promise<RtcIceLeaseConfiguration>) | null;
   RTCPeerConnectionImpl?: typeof RTCPeerConnection | null;
   onError?: ((error: unknown) => void) | null;
+  onClose?: ((reason: string) => void) | null;
   onConnectionState?: ((state: RTCPeerConnectionState) => void) | null;
   disconnectedRebuildDelayMs?: number;
   failedRebuildDelayMs?: number;
@@ -389,6 +390,7 @@ export class PrivateRoomClientSession {
   readonly signaling: SignalingPort;
   readonly roomInfo: RoomInfo & { hostId: string };
   readonly onError: ((error: unknown) => void) | null;
+  readonly onClose: ((reason: string) => void) | null;
   private readonly iceLease: RtcIceLease;
   readonly RTCPeerConnectionImpl: typeof RTCPeerConnection | null;
   readonly onConnectionState: ((state: RTCPeerConnectionState) => void) | null;
@@ -417,6 +419,7 @@ export class PrivateRoomClientSession {
     refreshIceConfiguration = null,
     RTCPeerConnectionImpl = null,
     onError = null,
+    onClose = null,
     onConnectionState = null,
     disconnectedRebuildDelayMs = 8_000,
     failedRebuildDelayMs = 2_000,
@@ -429,6 +432,7 @@ export class PrivateRoomClientSession {
     this.signaling = signaling;
     this.roomInfo = roomInfo as RoomInfo & { hostId: string };
     this.onError = onError;
+    this.onClose = typeof onClose === 'function' ? onClose : null;
     this.iceLease = new RtcIceLease({
       iceServers,
       relayOnly,
@@ -475,7 +479,7 @@ export class PrivateRoomClientSession {
         }
       } else if (message && message.type === 'room_closed' && payload &&
                  payload.roomCode === roomInfo.roomCode) {
-        this.close(payload.reason || 'room_closed');
+        this.#close(payload.reason || 'room_closed', true);
       } else if (message && message.type === 'signaling_resumed' && payload &&
                  payload.roomCode === roomInfo.roomCode) {
         const host = payload.peers?.find((peer) => peer.peerId === roomInfo.hostId);
@@ -692,7 +696,8 @@ export class PrivateRoomClientSession {
     return this.runtime;
   }
 
-  close(reason = 'client_closed'): void {
+  #close(reason: string, notifyOwner: boolean): void {
+    if (this.closed) return;
     this.closed = true;
     if (this.recoveryTimer) clearTimeout(this.recoveryTimer);
     this.recoveryTimer = null;
@@ -702,5 +707,10 @@ export class PrivateRoomClientSession {
     if (this.runtime && !this.runtime.closed) this.runtime.close(reason);
     this.peer.close(reason);
     this.signaling.close(reason);
+    if (notifyOwner) this.onClose?.(reason);
+  }
+
+  close(reason = 'client_closed'): void {
+    this.#close(reason, false);
   }
 }

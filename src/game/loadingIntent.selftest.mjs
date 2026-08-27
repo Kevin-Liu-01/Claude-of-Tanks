@@ -90,8 +90,11 @@ assert.match(networkPresentation,
   /entry\.acquire\(\{[\s\S]{0,180}loadModules: entry\.loadModules/,
   'network entry should delegate the intent-preloaded module join');
 assert.match(networkPresentation,
-  /loadWorld:[\s\S]{0,180}entry\.loadWorld\(mapId[\s\S]{0,300}connect: connectMatch/,
+  /loadWorld:[\s\S]{0,180}entry\.loadWorld\(mapId[\s\S]{0,300}connect: async \(\) =>/,
   'network entry should delegate modules, battlefield construction, and connection setup');
+assert.match(networkPresentation,
+  /connect: async \(\) => \{[\s\S]{0,160}await connectMatch\(\)[\s\S]{0,240}match\.close\?\.\('network_entry_cancelled'\)/,
+  'a transport resolving after room closure must be retired before publication');
 assert.match(networkLaunch, /connectAfterWorld: role === 'host'/,
   'browser authority must wait for world collision while cold clients connect concurrently');
 assert.match(main,

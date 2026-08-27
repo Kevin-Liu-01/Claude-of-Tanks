@@ -77,6 +77,18 @@ the former per-geometry Uint32 representation. The same gate measured 260.5 MB a
 battle heap, versus 265.4 MB immediately before topology pooling, while all
 visible triangle, material, LOD, collision, and quality contracts stayed fixed.
 
+The phase-residency follow-up evicts the detached workshop's renewable GPU
+allocations during battle while retaining its CPU graph and compiled material
+programs. On the pinned 14-vehicle Verdant lifecycle, active renderer residency
+fell from 723 to 556 geometries and from 321 to 292 textures. Initial Garage
+remains 290 calls, 205,569 triangles, about 63 MB forced-GC heap, and roughly
+0.004–0.005 of one CPU core while settled. Active battle measured about 260–264
+MB heap, 222 programs, 556 geometries, and 292 textures; the returned Garage
+restored behind its transition at 256 programs rather than the rejected
+compile-isolation result of 295. Host task-duration readings varied under local
+contention, so the release gate retains the independent frame-health trace and
+resource ceilings instead of treating FPS as the only acceptance signal.
+
 ## Reproduction
 
 ```sh

@@ -235,10 +235,12 @@ async function waitUntil(predicate, timeoutMs = 500) {
 // room_closed event still retires gameplay honestly.
 {
   const signaling = new FakeSignaling();
+  const closeReasons = [];
   const session = new PrivateRoomClientSession({
     signaling,
     roomInfo: { roomCode: 'LIFE22', peerId: 'guest', hostId: 'host', mode: 'private' },
     RTCPeerConnectionImpl: FakeClientPeerConnection,
+    onClose: (reason) => closeReasons.push(reason),
   });
   const control = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
   const state = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
@@ -250,6 +252,8 @@ async function waitUntil(predicate, timeoutMs = 500) {
   signaling.emit({ type: 'room_closed', payload: { roomCode: 'LIFE22', reason: 'host_left' } });
   assert.equal(released.readyState, 'closed', 'an explicitly closed room retires gameplay');
   assert.equal(session.peer.peerConnection.connectionState, 'closed');
+  assert.deepEqual(closeReasons, ['host_left'],
+    'remote room closure reaches the browser lifecycle owner exactly once');
   released.close('test_done');
 }
 

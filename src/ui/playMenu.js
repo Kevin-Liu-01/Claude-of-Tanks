@@ -406,6 +406,7 @@ export function createPlayMenu({
   getSelection,
   onSolo,
   onNetworkStart,
+  onNetworkClose = () => {},
   onRankedStart,
   onLobbyChange,
   isVehicleAllowed = () => true,
@@ -716,16 +717,19 @@ export function createPlayMenu({
     });
   }
 
-  function closeCurrentSession(reason = 'menu_closed') {
+  function closeCurrentSession(reason = 'menu_closed', { skipTransportClose = false } = {}) {
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
-    if (activeRoom) activeRoom.leave(reason);
-    else if (session) session.close(reason);
+    if (!skipTransportClose) {
+      if (activeRoom) activeRoom.leave(reason);
+      else if (session) session.close(reason);
+    }
     session = null;
     roomIce = null;
     activeRoom = null;
     state = null;
     role = null;
+    handedOff = false;
     notifyLobbyChange(null);
     clearRoomUrl();
     resetInvitation();
@@ -1021,6 +1025,11 @@ export function createPlayMenu({
             iceExpiresInSeconds: ice.expiresInSeconds,
             refreshIceConfiguration: () => iceServers(mode),
             onError: (error) => setStatus(error.message, true),
+            onClose: (reason) => {
+              closeCurrentSession(reason, { skipTransportClose: true });
+              setStatus('The host closed this room.', true);
+              onNetworkClose(reason);
+            },
           });
           role = 'client';
           const runtime = await session.ready;

@@ -51,6 +51,7 @@ import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createPhaseSceneResidency } from './engine/phaseSceneResidency.ts';
+import { releaseObject3DGpuResources } from './engine/resourceLifetime.js';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
@@ -109,9 +110,7 @@ import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleClientAccess } from './game/battleClientAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
-import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
-import { createNetworkFramePump } from './net/networkFramePump.ts';
-import { createNetworkBattleBarrier } from './net/networkBattleBarrier.ts';
+import { createNetworkBrowserSessionRuntime } from './net/networkBrowserSessionRuntime.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
 import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
@@ -314,6 +313,11 @@ let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let pendingMapChoice = 'verdant'; // includes the non-prefetchable Random card
 let worldDormant = false;        // garage: world hidden + per-frame update off
+// Deterministic engineering captures keep the analytic terrain function.
+// Ordinary live presentation uses the measured 1 m cache: its sub-centimeter
+// error is below the rendered terrain grid while avoiding the complete
+// multi-octave height stack in camera, HUD, FX and kill-cam hot paths.
+let shotMode = false;
 let worldServicesMapId = null;   // collider/minimap/garage placement prepared
 // The sky/fog preset the atmosphere is currently keyed to. Seeded with the
 // boot map so the FIRST activation of 'verdant' behaves exactly like the old
@@ -322,7 +326,21 @@ let worldServicesMapId = null;   // collider/minimap/garage placement prepared
 let skyMapId = 'verdant';
 const _upNormal = new THREE.Vector3(0, 1, 0);
 const hfProxy = {
-  getHeightAt: (x, z) => (world ? world.heightField.getHeightAt(x, z) : 0),
+  getHeightAt: (x, z) => {
+    if (!world) return 0;
+    const heightField = world.heightField;
+    return !shotMode && heightField.getHeightAtFast
+      ? heightField.getHeightAtFast(x, z)
+      : heightField.getHeightAt(x, z);
+  },
+  getHeightAtFast: (x, z) => {
+    if (!world) return 0;
+    const heightField = world.heightField;
+    return heightField.getHeightAtFast
+      ? heightField.getHeightAtFast(x, z)
+      : heightField.getHeightAt(x, z);
+  },
+  getHeightAtExact: (x, z) => (world ? world.heightField.getHeightAt(x, z) : 0),
   getNormalAt: (x, z) => (world ? world.heightField.getNormalAt(x, z) : _upNormal),
   getGroundType: (x, z) => (world ? world.heightField.getGroundType(x, z) : 'hard'),
   getWaterMaskAt: (x, z) => (world ? world.heightField.getWaterMaskAt(x, z) : 0),
@@ -501,7 +519,7 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     post,
     game,
     getWorld: () => world,
-    getNetworkTelemetry: () => networkFramePump.diagnostics(),
+    getNetworkTelemetry: () => networkSession.diagnostics(),
     resolvePresetName,
     getDeviceTier,
   });
@@ -532,6 +550,33 @@ const phaseSceneResidency = createPhaseSceneResidency({
   scene,
   garageRoots: [garageStage.group, garageDressing.group, spotTarget, spotA, spotB],
 });
+const garageGpuResidency = {
+  suspended: false,
+  releases: 0,
+  resumes: 0,
+  lastRelease: null,
+};
+
+/**
+ * Re-upload the exact retained workshop behind the owning transition. The
+ * CPU-side geometry, textures and authored scene graph never changed; only
+ * their inactive WebGL allocations were released while battle owned the GPU.
+ */
+async function primeGarageGpuResources() {
+  if (!garageGpuResidency.suspended) return;
+  try {
+    // Do not compile the subtree in isolation. `compileAsync(root, camera,
+    // scene)` eagerly materializes light-count variants that the actual
+    // Garage frame never uses, permanently growing renderer.info.programs.
+    // The materials remained resident, so one hidden real frame is the exact
+    // and bounded re-upload path for the evicted buffers and textures.
+    warmRender();
+    await nextFrame();
+  } finally {
+    garageGpuResidency.suspended = false;
+    garageGpuResidency.resumes += 1;
+  }
+}
 // PERF (performance_budget r4): the garage spots light NOTHING in battle (60 m
 // range, garage is 1500+ m from the battlefield) yet every battle draw paid
 // their per-material spot-light uniform uploads and per-fragment loop
@@ -546,6 +591,21 @@ function setGarageSpots(on) {
   // remount unchanged, while active battle scene/matrix/project walks cannot
   // reach hundreds of off-map Garage descendants.
   phaseSceneResidency.setGarageActive(on);
+  if (!on && !garageGpuResidency.suspended) {
+    garageGpuResidency.lastRelease = releaseObject3DGpuResources(
+      garageDressing.group,
+      {
+        preserveRoots: [scene],
+        // Keep the already-compiled workshop programs. Rebuilding 100+ exact
+        // materials after every battle inflated Three's program cache and
+        // caused a return-transition compile spike; geometry buffers and
+        // texture allocations are the large, safely renewable residency.
+        releaseMaterials: false,
+      },
+    );
+    garageGpuResidency.suspended = true;
+    garageGpuResidency.releases += 1;
+  }
 }
 
 // camo_spotting r2: the pedestal is keyed by the ACTIVE MAP's warm sun
@@ -1095,6 +1155,7 @@ async function openPlayMenu(request) {
         });
       },
       onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
+      onNetworkClose: (reason) => closeNetworkMatch(reason || 'room_closed'),
       onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
       onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
     }));
@@ -1362,7 +1423,7 @@ bus.on('shell:fired', (ev) => {
   // Network authority owns firing, so the bridge supplies the barrel stroke
   // and this client-side layer restores the same camera/FOV recoil used by
   // local battles. Local simulation already applies it in state.js.
-  if (networkMatch && game.player && rig) {
+  if (networkSession.match && game.player && rig) {
     const shells = game.player.spec.gun.shells || [];
     const shellSpec = shells.find((shell) => shell.name === ev.shellName)
       || shells.find((shell) => shell.type === ev.shellType) || null;
@@ -1741,9 +1802,9 @@ playerBattleActions = createPlayerBattleActions({
   input,
   isSettingsOpen: () => settings.isOpen(),
   network: {
-    isActive: () => !!networkMatch,
-    queueConsumable: (slot) => networkFramePump.queueConsumable(slot),
-    queueAction: (action) => networkFramePump.queueAction(action),
+    isActive: () => !!networkSession.match,
+    queueConsumable: (slot) => networkSession.queueConsumable(slot),
+    queueAction: (action) => networkSession.queueAction(action),
   },
   rules: {
     selectShell: battleClientAccess.selectShell,
@@ -1769,7 +1830,7 @@ const battlePresentation = createBattlePresentationRuntime({
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: () => world,
-  isNetworkMatchActive: () => !!networkMatch,
+  isNetworkMatchActive: () => !!networkSession.match,
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
 });
@@ -1973,32 +2034,18 @@ function prepareBattleRevealCamera() {
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
 }
-let networkMatch = null;
-let networkBridge = null;
-let networkStatus = null;
-let networkSpectator = false;
-const networkRecovery = createNetworkRecoveryOwner();
-const networkFramePump = createNetworkFramePump({
-  getMatch: () => networkMatch,
-  getBridge: () => networkBridge,
-  getStatus: () => networkStatus,
+const networkSession = createNetworkBrowserSessionRuntime({
   getPlayer: () => game.player,
   isBattleActive: () => game.phase === 'battle',
   shouldPresentDisconnect: () => game.phase === 'battle' && !game.result,
-  recovery: networkRecovery,
   nextFrame,
-});
-const networkBattleBarrier = createNetworkBattleBarrier({
-  getMatch: () => networkMatch,
-  waitForSnapshot: (predicate, timeoutMs, label) =>
-    networkFramePump.waitForSnapshot(predicate, timeoutMs, label),
 });
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
 // solo falls back to the fixed-step roster.
 function resolveFxSubject(id) {
-  return networkBridge?.entities.get(id) || game.tankById.get(id) || null;
+  return networkSession.resolveEntity(id) || game.tankById.get(id) || null;
 }
 
 /**
@@ -2068,14 +2115,14 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         audio.warmBattleEvents(),
       ]).then(([modules]) => modules),
       loadWorld: (mapId, onProgress) => ensureWorld(mapId, onProgress),
-      publishMatch: (match) => { networkMatch = match; },
-      getMatch: () => networkMatch,
+      publishMatch: (match) => networkSession.publishMatch(match),
+      getMatch: () => networkSession.match,
     },
     bridge: {
-      installInputRuntime: (factory) => networkFramePump.ensureInputRuntime(factory),
+      installInputRuntime: (factory) => networkSession.ensureInputRuntime(factory),
       createStatus: (factory) => factory(),
-      publishStatus: (status) => { networkStatus = status; },
-      attachRecovery: (client, status) => networkRecovery.attach(client, status),
+      publishStatus: (status) => networkSession.publishStatus(status),
+      attachRecovery: () => networkSession.attachRecovery(),
       create: (factory, request, spectator) => factory({
         engineCtx,
         game,
@@ -2084,10 +2131,10 @@ const networkBattlePresentation = createNetworkBattlePresentationAccess({
         spectator,
         worldCollision: world,
       }),
-      publish: (bridge) => { networkBridge = bridge; },
+      publish: (bridge) => networkSession.publishBridge(bridge),
       groundSampler,
-      waitForInitialSnapshot: (request) => networkBattleBarrier.waitForInitialSnapshot(request),
-      waitForPeerReadiness: () => networkBattleBarrier.waitForPeerReadiness(),
+      waitForInitialSnapshot: (request) => networkSession.waitForInitialSnapshot(request),
+      waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
     },
     warm: {
       getFx: requireFxRuntime,
@@ -2127,7 +2174,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   lifecycle: battleEntryLifecycle,
   battleLoad,
   audio,
-  getMatch: () => networkMatch,
+  getMatch: () => networkSession.match,
   getRoomCoordinator: () => networkRoomCoordinator,
   getWorldCollision: () => world,
   getMapPresentation: (mapId, fallback) => {
@@ -2142,24 +2189,24 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   loadPrivateMatch: preloadPrivateMatchHandoffModule,
   loadDedicatedMatch: preloadDedicatedClientModule,
   disposePresentation: disposeNetworkPresentation,
-  clearNetworkRound: () => networkFramePump.clearRound(),
+  clearNetworkRound: () => networkSession.clearRound(),
   closeMatch: closeNetworkMatch,
   enterGarage,
-  setNetworkStatus: (status) => networkStatus?.set(status),
+  setNetworkStatus: (status) => networkSession.status?.set(status),
   recordEntryFailure: (failure) => {
     if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
   },
 });
 
 networkRoomCoordinator = createNetworkRoomCoordinator({
-  getMatch: () => networkMatch,
+  getMatch: () => networkSession.match,
   getPlayMenu: () => playMenuPromise,
   loadRoomChat: preloadNetworkRoomChatModule,
   getPhase: () => game.phase,
   isSettingsOpen: () => settings.isOpen(),
   hasResult: () => !!game.result,
   isKillcamActive: () => killcam.isActive(),
-  isSpectator: () => networkSpectator,
+  isSpectator: () => networkSession.spectator,
   input,
   setGarageStatus: (status) => garage.setRoomStatus(status),
   emitRoomState: (payload) => bus.emit('network:roomState', payload),
@@ -2173,20 +2220,12 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
 bus.on('phase:change', () => networkRoomCoordinator.syncChatVisibility());
 
 function disposeNetworkPresentation() {
-  networkBattleBarrier.cancel();
-  networkRecovery.dispose();
-  networkFramePump.dispose();
-  if (networkBridge) networkBridge.dispose();
-  if (networkStatus) networkStatus.dispose();
-  networkBridge = null;
-  networkStatus = null;
-  networkSpectator = false;
+  networkSession.disposePresentation();
 }
 
 function closeNetworkMatch(reason = 'network_match_closed') {
-  if (networkMatch) networkMatch.close(reason);
-  disposeNetworkPresentation();
-  networkMatch = null;
+  networkBattleLauncher.cancel(reason);
+  networkSession.close(reason);
   networkRoomCoordinator.clear();
 }
 
@@ -2245,7 +2284,7 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
   presentation: {
     setShotMode: (value) => { shotMode = value; },
     setCaptureHidden: (value) => perfHud.setCaptureHidden(value),
-    setNetworkSpectator: (value) => { networkSpectator = value; },
+    setNetworkSpectator: (value) => networkSession.setSpectator(value),
     setSelectedSpecId: (value) => { selectedSpecId = value; },
     rememberSpecId,
     setWorldDormant,
@@ -2433,6 +2472,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   audio.playGarageSting();
   markGarageStage('audio');
   garageTrace.totalMs = Math.round(performance.now() - garageStartedAt);
+  return primeGarageGpuResources();
 }
 
 // STATE TRANSITIONS: every player-facing exit from a battle passes through
@@ -2569,7 +2609,6 @@ let lastMs = -1;
 // asserts it never exceeds SIM_DT (no pause-duration catch-up hop).
 const pauseInfo = { paused: false, resumes: 0, lastDtR: 0, lastResumeDtR: -1 };
 let lastFov = camera.fov;
-let shotMode = false;
 // controls_gunnery r5: true while the current __SHOTS view staged a live HUD
 // frame (player_view / sniper_view) — those views re-run hud.update each
 // shot-mode frame so the reticle canvas stays live (forceHitMark etc.).
@@ -2601,7 +2640,7 @@ const frameLoop = createFrameLoopScheduler({
   shouldUseIdleCadence: () => bootComplete && game.phase === 'garage' &&
     !battleEntryLifecycle.renderingCovered && !transition.active &&
     !studio.active && !shotMode && !showroom.moving &&
-    !pedestal.switchPending && !networkMatch,
+    !pedestal.switchPending && !networkSession.match,
   idleIntervalMs: 5000,
 });
 rearmRafAfterContext = frameLoop.restart;
@@ -2681,7 +2720,7 @@ function tick(nowMs) {
   // Persistent room ownership is independent of WebGL presentation cadence.
   // Keep lobby recovery and host snapshots at display cadence even while a
   // settled Garage only paints twice per second.
-  if (game.phase === 'garage') networkFramePump.pump(dtR, nowMs);
+  if (game.phase === 'garage') networkSession.pump(dtR, nowMs);
   if (game.phase === 'garage' && !garageFramePacer.shouldRender(nowMs, {
     animate: garageAnimating,
   })) return;
@@ -2729,7 +2768,7 @@ function tick(nowMs) {
 
   // Network authority keeps pumping while the loading screen owns the page,
   // then consumes the same polled controls once the shared countdown opens.
-  if (game.phase !== 'garage') networkFramePump.pump(dtR, nowMs);
+  if (game.phase !== 'garage') networkSession.pump(dtR, nowMs);
 
   // 2. fixed-step simulation (held while the settings panel is open)
   if (inBattle && !paused && !kcActive) {
@@ -2741,7 +2780,7 @@ function tick(nowMs) {
     // catch-up burst of queued sim steps. The rest of the frame (rig,
     // visuals, fx, render) runs normally; entry loading must already be done
     // so this phase has the same frame budget as live play.
-    if (networkMatch) {
+    if (networkSession.match) {
       // The server/host owns both the countdown and every simulation step.
       // `game.preBattleS` is presentation copied from snapshot metadata.
       hud.preBattleCountdown(game.preBattleS);
@@ -2777,7 +2816,7 @@ function tick(nowMs) {
   // same interpolated pose in the same frame instead of the camera chasing
   // yesterday's visual transform while the tank jumps to today's sim tick.
   if (!kcActive && !livePaused) {
-    const presentationAlpha = networkMatch ? 1 : simAcc / SIM_DT;
+    const presentationAlpha = networkSession.match ? 1 : simAcc / SIM_DT;
     battlePresentation.update(dtR, presentationAlpha);
   }
   camInput.autoAimPoint = null;
@@ -2820,7 +2859,7 @@ function tick(nowMs) {
   }
   camera.getWorldDirection(_fwd);
   let occlFocus = null;
-  const cameraFocus = game.player || (networkSpectator ? rig.spectateTargetEnt : null);
+  const cameraFocus = game.player || (networkSession.spectator ? rig.spectateTargetEnt : null);
   // lighting_post r2: never run the chase-camera occlusion fade during an
   // external capture pose (setExternalPose keeps mode ARCADE) — the fade
   // dithered bushes into screen-door noise in staged combat_firing frames.
@@ -2848,18 +2887,18 @@ function tick(nowMs) {
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   // NOTE: live isActive() check — the replay may have STARTED in step 2 of
   // this very tick, and hud.update would re-show the HUD over the letterbox.
-  const observerFocus = networkSpectator && killcam.spectate.active
-    ? networkBridge?.entities.get(killcam.spectate.targetId) || null
+  const observerFocus = networkSession.spectator && killcam.spectate.active
+    ? networkSession.bridge?.entities.get(killcam.spectate.targetId) || null
     : null;
   const hudFocus = game.player || observerFocus;
-  if (observerFocus) networkBridge?.setPerspective(observerFocus.id);
+  if (observerFocus) networkSession.bridge?.setPerspective(observerFocus.id);
   if (inBattle && hudFocus && !kcActive && !killcam.isActive()) {
     frameInfo.timeS = game.timeS;
-    frameInfo.pingMs = networkMatch ? (networkMatch.client?.rttMs ?? 0) : 0;
+    frameInfo.pingMs = networkSession.match ? (networkSession.match.client?.rttMs ?? 0) : 0;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = hudFocus;
     frameInfo.tanks = game.tanks; // COMMUNITY TANKS: roster varies per battle
-    frameInfo.rosterTanks = networkBridge ? networkBridge.roster : game.tanks;
+    frameInfo.rosterTanks = networkSession.bridge ? networkSession.bridge.roster : game.tanks;
     frameInfo.shells = game.shells;
     refreshSpotFrame(hudFocus); // SPOTTING WIRING
     if (game.player) aimController.update(frameInfo.aim);
@@ -3321,6 +3360,13 @@ window.__DEBUG = {
   get garageFramePacer() { return { ...garageFramePacer.stats }; },
   get frameLoopScheduler() { return { ...frameLoop.stats }; },
   get phaseSceneResidency() { return { ...phaseSceneResidency.stats }; },
+  get garageGpuResidency() {
+    return {
+      ...garageGpuResidency,
+      lastRelease: garageGpuResidency.lastRelease
+        ? { ...garageGpuResidency.lastRelease } : null,
+    };
+  },
   get lastWorldRelease() {
     return worldBuildCoordinator.lastRelease
       ? { ...worldBuildCoordinator.lastRelease } : null;
@@ -3387,23 +3433,25 @@ window.__DEBUG = {
   // Development flight recorder, or production QA recorder with `?debug=1`.
   // Ordinary production sessions keep this null and never load its chunk.
   devTrace,
-  get network() { return networkFramePump.diagnostics(); },
-  get networkPresentation() { return networkBridge?.getPresentationEventStats?.() || null; },
+  get network() { return networkSession.diagnostics(); },
+  get networkPresentation() {
+    return networkSession.bridge?.getPresentationEventStats?.() || null;
+  },
   telemetry: collectDebugTelemetry,
   sampleShadowContribution,
   // Development-only rendered lifecycle probe: feed authoritative-format
   // presentation events through the real bridge/queue without exposing the
   // authority runtime or mutating production networking APIs.
   injectNetworkEvents(events) {
-    const latestNetworkSnapshot = networkFramePump.latestSnapshot;
-    if (!import.meta.env.DEV || !networkBridge || !latestNetworkSnapshot) return false;
+    const latestNetworkSnapshot = networkSession.latestSnapshot;
+    if (!import.meta.env.DEV || !networkSession.bridge || !latestNetworkSnapshot) return false;
     const batch = Array.isArray(events) ? events : [];
     const matchEnded = batch.find((event) => event?.type === 'match_ended');
     const snapshot = matchEnded
       ? { ...latestNetworkSnapshot,
         meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
       : latestNetworkSnapshot;
-    return networkBridge.apply(snapshot, 1 / 60, batch);
+    return networkSession.bridge.apply(snapshot, 1 / 60, batch);
   },
 };
 await bootStage('ready', null);

@@ -39,6 +39,10 @@ Terrain position/normal buffers remain chunk-local, but identical LOD topology
 must share one Uint16 index attribute per resolution within each world.
 Register off-tree streamed LOD geometries with the world root's retained
 resource lifetime so cache eviction can dispose them.
+Use the warmed one-metre height cache for live non-authoring presentation. Keep
+the analytic sampler for deterministic captures and construction receipts.
+Deferred grass may prepare only a half-chunk beyond its unchanged fade band;
+larger invisible lookahead jobs steal CPU from the opening drive.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

@@ -22,6 +22,9 @@ presentation invalidation, then forces a complete refresh before motion;
 presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
 roots while retaining their exact reusable objects;
+`resourceLifetime.js` owns phase/cache disposal. Inactive retained phases may
+release geometry buffers and textures, but preserve compiled materials and
+restore through a covered real render rather than isolated `compileAsync`;
 `cameraRig.js` owns player/cinematic poses; settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.js` and `deviceDiag.js`
 own tiering and rescue behavior.
@@ -36,6 +39,10 @@ in the forward pass.
 Every asynchronous Garage producer that changes visible state must invalidate
 presentation; the five-second paint is a safety watchdog, not its delivery
 mechanism.
+Do not dispose inactive-phase materials merely to lower the live program count:
+returning can create a larger cache of light-count variants and a visible
+compile spike. Gate programs, buffers, textures, heap, objects, calls and
+triangles independently with `npm run perf:resources:gate`.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

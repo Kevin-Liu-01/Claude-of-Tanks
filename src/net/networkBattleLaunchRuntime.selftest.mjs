@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createNetworkBattleLaunchRuntime } from './networkBattleLaunchRuntime.ts';
+import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 
 function createHarness(overrides = {}) {
   const calls = [];
@@ -140,4 +141,36 @@ assert.ok(failed.calls.some(([name, reason]) => name === 'close' && reason === '
 assert.ok(failed.calls.some(([name]) => name === 'hide'));
 assert.ok(failed.calls.some(([name]) => name === 'garage'));
 
-console.log('networkBattleLaunchRuntime.selftest: private, rematch, ranked, and cold-failure paths pass');
+let cancelSignal = null;
+let presentStarted;
+const presentStartedP = new Promise((resolve) => { presentStarted = resolve; });
+const cancelled = createHarness({
+  presentBattle: (request) => new Promise((resolve, reject) => {
+    cancelSignal = request.signal;
+    presentStarted();
+    request.signal.addEventListener('abort', () => {
+      try {
+        throwIfNetworkBattleEntryAborted(request.signal);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    }, { once: true });
+  }),
+});
+const cancelledRuntime = createNetworkBattleLaunchRuntime(cancelled.options);
+const cancelledEntry = cancelledRuntime.beginPrivate({
+  role: 'client', session: { roomInfo: { peerId: 'friend' } }, lobbyState: state,
+});
+await presentStartedP;
+cancelledRuntime.cancel('room closed during cold entry');
+assert.equal(cancelSignal.aborted, true);
+assert.equal(await cancelledEntry, false);
+assert.ok(cancelled.calls.some(([name, reason]) =>
+  name === 'close' && reason === 'entry_cancelled'));
+assert.ok(!cancelled.calls.some(([name, value]) => name === 'failure' && value),
+  'intentional cancellation does not overwrite entry diagnostics');
+assert.ok(!cancelled.calls.some(([name]) => name === 'error'),
+  'intentional cancellation does not report a false load failure');
+
+console.log('networkBattleLaunchRuntime.selftest: private, rematch, ranked, failure, and cancellation paths pass');

@@ -81,3 +81,5 @@ runtime documents remain authoritative for behavior.
 - [0069 — Solo round activation is an intent-loaded transaction](0069-intent-loaded-solo-round-activation.md)
 - [0070 — Static Garage rendering is event-invalidated](0070-event-invalidated-static-garage-depth.md)
 - [0071 — Terrain chunks share world-local index topology](0071-world-local-shared-terrain-topology.md)
+- [0072 — Browser networking has one cancellable session owner](0072-cancellable-network-browser-session.md)
+- [0073 — Inactive Garage phases release renewable GPU residency](0073-phase-exclusive-gpu-residency.md)

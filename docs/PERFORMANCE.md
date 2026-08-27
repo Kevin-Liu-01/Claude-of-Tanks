@@ -131,9 +131,22 @@ display-rate presentation and force fresh shadows immediately.
 
 Garage and battle roots are phase-exclusive scene residents. An inactive phase
 is detached from the Three.js scene rather than merely hidden, so renderer
-projection and matrix traversal cannot reach it. The exact objects and GPU
-resources remain retained and remount synchronously for Garage return or a
-rematch; phase changes do not trade lower traversal for a rebuild stall.
+projection and matrix traversal cannot reach it. The complete CPU-side scene
+graph remains retained. While battle owns the renderer, the inactive workshop
+releases its renewable geometry buffers and texture allocations, but retains
+material programs: releasing those programs created dozens of unused
+light-count variants and a return-transition compile spike. One covered real
+Garage frame restores the exact buffers and textures before reveal; isolated
+`compileAsync` is forbidden because it compiles variants the displayed Garage
+does not use.
+
+Ordinary live presentation reads the height field's warmed one-metre bilinear
+cache for camera clearance, HUD, effects, running gear, and other non-authoring
+queries. Deterministic Studio/marketing captures retain the analytic terrain
+function. Both paths resolve the same authored surface; the cache error is
+smaller than the rendered terrain mesh discretization. Far-grass construction
+keeps a half-chunk lookahead—enough for more than three seconds at 72 km/h—so
+invisible 12,000-candidate jobs do not occupy the opening live drive.
 
 Immutable battlefield subtrees finalize their world matrices once and opt out
 of recursive matrix traversal. Legitimate runtime world motion continues
@@ -183,8 +196,11 @@ ownership, complete-frame draw calls/triangles, shadow masks, cache residency,
 Garage paint cadence, and animation-versus-idle clock cadence across initial
 Garage, live battle, and returned Garage. The probe pins one mixed modern 7v7
 roster and waits for all fourteen visuals, preventing random vehicle selection
-from hiding a resource regression. Its limits track the measured production
-baseline rather than serving as loose theoretical maxima.
+from hiding a resource regression. It also rejects a frame that submits all
+four CSM cascades: near shadows remain current while the two distant cascades
+alternate, with independent shadow-call and shadow-triangle ceilings. Its
+limits track the measured production baseline rather than serving as loose
+theoretical maxima.
 
 Combat warming has two ownership phases. The opaque loader builds the exact
 roster, presents one real deployment-camera frame, and prepares only opening

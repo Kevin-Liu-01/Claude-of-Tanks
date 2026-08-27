@@ -1,5 +1,21 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createHeightField } from './terrain.js';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const main = fs.readFileSync(path.join(here, '..', 'main.js'), 'utf8');
+const vegetation = fs.readFileSync(path.join(here, 'vegetation.js'), 'utf8');
+assert.match(main,
+  /const hfProxy = \{[\s\S]{0,900}getHeightAtFast:[\s\S]{0,500}getHeightAtExact:/,
+  'camera, HUD and FX receive both cached live terrain and exact capture terrain');
+assert.match(main,
+  /return !shotMode && heightField\.getHeightAtFast[\s\S]{0,180}heightField\.getHeightAt\(x, z\)/,
+  'ordinary presentation uses the cached height grid while deterministic shots stay exact');
+assert.match(vegetation,
+  /const grassAhead = grassFadeEnd \+ \(movedFromSpawn > 28 \? CHUNK_SIZE \* 0\.5 : 32\)/,
+  'live grass streaming keeps a bounded half-chunk lookahead without changing its fade band');
 
 const field = createHeightField(1337);
 

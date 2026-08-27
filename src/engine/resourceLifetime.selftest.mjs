@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   disposeObject3DResources,
+  releaseObject3DGpuResources,
   registerRetainedObject3DResources,
   residentResourceLimits,
 } from './resourceLifetime.js';
@@ -64,5 +65,33 @@ assert.deepEqual(disposalOrder.map(([type]) => type),
   'resource owners are notified before each owned GPU resource is disposed');
 assert.equal(disposalOrder.some(([, resource]) => resource === sharedTexture), false,
   'preserved shared resources never reach disposal callbacks');
+
+const suspendedRoot = new THREE.Group();
+const suspendedGeometry = new THREE.BoxGeometry();
+const suspendedTexture = new THREE.Texture();
+const suspendedMaterial = new THREE.MeshStandardMaterial({ map: suspendedTexture });
+const suspendedMesh = new THREE.Mesh(suspendedGeometry, suspendedMaterial);
+suspendedRoot.add(suspendedMesh);
+parent.add(suspendedRoot);
+let suspendedDisposals = 0;
+for (const resource of [suspendedGeometry, suspendedTexture, suspendedMaterial]) {
+  resource.addEventListener('dispose', () => { suspendedDisposals += 1; });
+}
+const suspended = releaseObject3DGpuResources(suspendedRoot);
+assert.equal(suspendedRoot.parent, parent,
+  'GPU suspension keeps the retained presentation in its ownership tree');
+assert.equal(suspendedMesh.geometry, suspendedGeometry,
+  'GPU suspension preserves the exact CPU-side geometry for automatic re-upload');
+assert.equal(suspendedMesh.material, suspendedMaterial,
+  'GPU suspension preserves the exact material and shader contract');
+assert.deepEqual(suspended, { objects: 2, geometries: 1, materials: 1, textures: 1 });
+assert.equal(suspendedDisposals, 3, 'every independently owned WebGL allocation is released');
+
+const programRetained = releaseObject3DGpuResources(suspendedRoot, {
+  releaseMaterials: false,
+});
+assert.deepEqual(programRetained,
+  { objects: 2, geometries: 1, materials: 0, textures: 1 },
+  'phase suspension can retain compiled programs while releasing buffers and textures');
 
 console.log('resourceLifetime self-test passed');

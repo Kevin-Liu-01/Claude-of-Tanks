@@ -88,6 +88,72 @@ function collectTreeResources(root, bag) {
 }
 
 /**
+ * Release the WebGL allocations owned by a retained Object3D subtree without
+ * destroying its CPU-side scene graph. Three.js resources are intentionally
+ * reusable after `dispose()`: their next render uploads the same typed arrays,
+ * images and shader state again. This lets mutually exclusive phases trade
+ * GPU residency while preserving an exact, rebuild-free presentation.
+ *
+ * BatchedMesh's own `dispose()` is deliberately not called here because it
+ * nulls the private matrix/indirect textures and makes the object unusable.
+ * Its public geometry/material resources are still released normally; the
+ * small private control textures remain as the bounded cost of retaining the
+ * live batch.
+ *
+ * @param {import('three').Object3D} root
+ * @param {{preserveRoots?: import('three').Object3D[], releaseMaterials?: boolean,
+ *   onDispose?: Function}} [opts]
+ * @returns {{objects:number, geometries:number, materials:number, textures:number}}
+ */
+export function releaseObject3DGpuResources(
+  root,
+  { preserveRoots = [], releaseMaterials = true, onDispose = null } = {},
+) {
+  const keep = { geometries: new Set(), materials: new Set(), textures: new Set() };
+  for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
+
+  const owned = { geometries: new Set(), materials: new Set(), textures: new Set() };
+  let objects = 0;
+  if (root?.traverse) {
+    root.traverse((object) => {
+      objects += 1;
+      collectDeclaredResources(object, owned);
+      if (object.geometry) owned.geometries.add(object.geometry);
+      const materials = Array.isArray(object.material)
+        ? object.material : (object.material ? [object.material] : []);
+      for (const material of materials) {
+        owned.materials.add(material);
+        collectMaterialTextures(material, owned.textures);
+      }
+      if (object.skeleton?.boneTexture) owned.textures.add(object.skeleton.boneTexture);
+    });
+  }
+
+  const receipt = { objects, geometries: 0, materials: 0, textures: 0 };
+  for (const geometry of owned.geometries) {
+    if (keep.geometries.has(geometry)) continue;
+    onDispose?.('geometry', geometry);
+    geometry.dispose?.();
+    receipt.geometries += 1;
+  }
+  if (releaseMaterials) {
+    for (const material of owned.materials) {
+      if (keep.materials.has(material)) continue;
+      onDispose?.('material', material);
+      material.dispose?.();
+      receipt.materials += 1;
+    }
+  }
+  for (const texture of owned.textures) {
+    if (keep.textures.has(texture)) continue;
+    onDispose?.('texture', texture);
+    texture.dispose?.();
+    receipt.textures += 1;
+  }
+  return receipt;
+}
+
+/**
  * Detach a scene subtree and release resources not referenced by preserved
  * roots. Shared materials/textures used by the active world or garage remain
  * live; disposed Three resources may still be lazily re-uploaded if a module

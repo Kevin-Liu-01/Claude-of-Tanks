@@ -237,8 +237,36 @@ try {
     'battle cover must own the first guest frame after the lobby closes');
   assert.deepEqual(report.exposed, [], 'guest exposed the garage before entering battle');
   assert.equal(report.entryFailure, null, 'guest handoff must not enter recovery');
+
+  // Close the host while the pristine guest is still behind its cold loader.
+  // The obsolete async entry must unwind to Garage and remain there; it may
+  // not publish its late transport/bridge or remount the battle surface.
+  await hostPage.evaluate(() => {
+    globalThis.__COT_GUEST_ENTRY_HOST.session.close('cold_entry_cancel_test');
+  });
+  await guestPage.waitForFunction(() =>
+    window.__DEBUG?.game?.phase === 'garage'
+      && window.__DEBUG?.garage?.isOpen === true
+      && !document.querySelector('.cot-bl')?.classList.contains('on'),
+  { timeout: 30_000, polling: 25 });
+  await guestPage.evaluate(() => new Promise((resolve) => setTimeout(resolve, 1_500)));
+  const cancellation = await guestPage.evaluate(() => ({
+    phase: window.__DEBUG?.game?.phase,
+    garageOpen: window.__DEBUG?.garage?.isOpen === true,
+    loaderOn: document.querySelector('.cot-bl')?.classList.contains('on') || false,
+    entryFailure: window.__NETWORK_ENTRY_FAILURE || null,
+    network: window.__DEBUG?.network || null,
+  }));
+  assert.equal(cancellation.phase, 'garage',
+    'a cancelled pristine entry must remain in Garage after late work settles');
+  assert.equal(cancellation.garageOpen, true);
+  assert.equal(cancellation.loaderOn, false);
+  assert.equal(cancellation.entryFailure, null,
+    'intentional room closure is not presented as a cold-load failure');
+  assert.equal(cancellation.network, null,
+    'a late cold-entry transport must not regain browser session ownership');
   assert.deepEqual(errors, [], `browser errors:\n${errors.join('\n')}`);
-  console.log(JSON.stringify({ ok: true, report }, null, 2));
+  console.log(JSON.stringify({ ok: true, report, cancellation }, null, 2));
 
   await Promise.all([closeState(hostPage), closeState(guestPage)]);
 } finally {

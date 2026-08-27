@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
 import { createNetworkBattlePresentationRuntime } from './networkBattlePresentationRuntime.ts';
+import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
 
-function createHarness(failAt = '') {
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+async function waitForEvent(events, name) {
+  for (let i = 0; i < 20 && !events.includes(name); i++) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.ok(events.includes(name), `expected ${name} before continuing`);
+}
+
+function createHarness(failAt = '', pauseAt = '') {
   const events = [];
   const progress = [];
   let clock = 0;
@@ -9,6 +23,8 @@ function createHarness(failAt = '') {
   let publishedBridge = null;
   let publishedMatch = null;
   let trace = null;
+  const connectGate = deferred();
+  const rosterGate = deferred();
   const entity = (specId) => ({
     specId,
     visual: { setGroundSampler: () => events.push(`ground:${specId}`) },
@@ -20,12 +36,16 @@ function createHarness(failAt = '') {
     ]),
     async prepareRoster() {
       events.push('prepareRoster');
+      if (pauseAt === 'roster') await rosterGate.promise;
       if (failAt === 'roster') throw new Error('roster failed');
     },
     apply() { events.push('apply'); },
     dispose() { disposed = true; events.push('disposeBridge'); },
   };
-  const match = { client: { id: 'client' } };
+  const match = {
+    client: { id: 'client' },
+    close: (reason) => events.push(`closeMatch:${reason}`),
+  };
   const createBrowserBattleBridge = Symbol('bridge');
   const createNetworkStatus = Symbol('status');
   const createBrowserInputRuntime = Symbol('input');
@@ -130,7 +150,11 @@ function createHarness(failAt = '') {
       { id: 'peer', specId: 't90m', team: 'bravo' },
     ],
     modeLabel: 'Private Battle',
-    connectMatch: async () => { events.push('connect'); return match; },
+    connectMatch: async () => {
+      events.push('connect');
+      if (pauseAt === 'connect') await connectGate.promise;
+      return match;
+    },
   };
   return {
     runtime,
@@ -141,6 +165,8 @@ function createHarness(failAt = '') {
     get disposed() { return disposed; },
     get publishedBridge() { return publishedBridge; },
     get trace() { return trace; },
+    releaseConnect: () => connectGate.resolve(),
+    releaseRoster: () => rosterGate.resolve(),
   };
 }
 
@@ -168,6 +194,40 @@ for (const failure of ['roster', 'initial']) {
   assert.equal(harness.disposed, true, `${failure}: unpublished bridge is released`);
   assert.equal(harness.publishedBridge, null, `${failure}: partial bridge never becomes visible`);
   assert.ok(!harness.events.includes('activate'), `${failure}: battle never activates`);
+}
+
+{
+  const harness = createHarness('', 'connect');
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'connect');
+  controller.abort('room closed during transport acquisition');
+  harness.releaseConnect();
+  await assert.rejects(pending, (error) => isNetworkBattleEntryAbortError(error));
+  assert.ok(harness.events.includes('closeMatch:network_entry_cancelled'),
+    'a transport resolving after cancellation is closed before publication');
+  assert.ok(!harness.events.includes('publishMatch'),
+    'a cancelled transport never becomes the browser session owner');
+  assert.ok(!harness.events.includes('createBridge'),
+    'cancelled acquisition cannot begin visual preparation');
+}
+
+{
+  const harness = createHarness('', 'roster');
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'prepareRoster');
+  controller.abort('page session replaced during roster preparation');
+  harness.releaseRoster();
+  await assert.rejects(pending, (error) => isNetworkBattleEntryAbortError(error));
+  assert.equal(harness.disposed, true,
+    'a bridge prepared by an obsolete page session is disposed');
+  assert.equal(harness.publishedBridge, null,
+    'an obsolete bridge never becomes render-visible');
+  assert.ok(!harness.events.includes('activate'),
+    'an obsolete cold load cannot remount battle presentation');
 }
 
 assert.throws(

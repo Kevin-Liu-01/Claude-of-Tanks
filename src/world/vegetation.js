@@ -3383,9 +3383,14 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass)
     let urgentGrass = null, aheadGrass = null, aheadDist = Infinity;
     // Do not spend the opening/countdown frames filling an invisible outer
     // ring while the tank is parked. Once the camera has travelled roughly
-    // two hull lengths, stream a full chunk-width ahead of the fade band.
+    // two hull lengths, stream half a chunk ahead of the fade band. A grass
+    // chunk finishes in under one second at the bounded 250-candidate/frame
+    // rate, while 64 m is more than three seconds of lookahead at 72 km/h.
+    // The former full-chunk margin started several wholly invisible 12k-tuft
+    // jobs during the first live drive and needlessly kept terrain/noise work
+    // resident on the main thread; the rendered fade band is unchanged.
     const movedFromSpawn = Math.hypot(camPos.x - spawn.x, camPos.z - spawn.z);
-    const grassAhead = grassFadeEnd + (movedFromSpawn > 28 ? CHUNK_SIZE : 32);
+    const grassAhead = grassFadeEnd + (movedFromSpawn > 28 ? CHUNK_SIZE * 0.5 : 32);
     for (const gc of grassChunks) {
       const d = Math.max(0,
         Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);

@@ -3,6 +3,7 @@ import type {
   NetworkRoomPlayer,
   NetworkRoomState,
 } from './networkRoomCoordinator.ts';
+import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
 
 interface BattleEntryLifecyclePort {
   run<T>(task: () => Promise<T>, busyValue: T): Promise<T>;
@@ -62,6 +63,7 @@ interface PresentNetworkBattleRequest {
   matchPlayers: NetworkRoomPlayer[];
   modeLabel: string;
   transitionShown: boolean;
+  signal?: AbortSignal;
   connectAfterWorld?: boolean;
   connectMatch: () => unknown;
 }
@@ -128,6 +130,7 @@ export interface NetworkBattleLaunchRuntime {
   beginPrivate(request?: PrivateBattleLaunchRequest): Promise<boolean>;
   beginRematch(state: NetworkRoomState): Promise<boolean>;
   beginRanked(request?: RankedBattleLaunchRequest): Promise<void>;
+  cancel(reason?: string): void;
 }
 
 function messageFor(error: unknown): string {
@@ -171,6 +174,22 @@ export function createNetworkBattleLaunchRuntime({
     const owner = getRoomCoordinator();
     if (!owner) throw new Error('The network room coordinator is unavailable.');
     return owner;
+  };
+  let activeEntry: AbortController | null = null;
+
+  const beginEntry = () => {
+    const controller = new AbortController();
+    activeEntry = controller;
+    return controller;
+  };
+
+  const finishEntry = (controller: AbortController) => {
+    if (activeEntry === controller) activeEntry = null;
+  };
+
+  const cancel = (reason = 'Network room closed during battle entry.') => {
+    if (!activeEntry || activeEntry.signal.aborted) return;
+    activeEntry.abort(reason);
   };
 
   const displayTeamFor = (player: NetworkRoomPlayer): string =>
@@ -233,6 +252,7 @@ export function createNetworkBattleLaunchRuntime({
     async beginPrivate({ role, session, lobbyState, battleLimitS } = {}) {
       if (getMatch()) return false;
       return lifecycle.run(async () => {
+        const entryController = beginEntry();
         let entered = false;
         recordEntryFailure(null);
         const viewerId = String(session?.roomInfo?.peerId || '');
@@ -258,6 +278,7 @@ export function createNetworkBattleLaunchRuntime({
             matchPlayers,
             modeLabel,
             transitionShown: true,
+            signal: entryController.signal,
             connectAfterWorld: role === 'host',
             connectMatch: () => role === 'host'
               ? privateMatch.beginPrivateHostMatch({
@@ -268,9 +289,15 @@ export function createNetworkBattleLaunchRuntime({
           coordinator().attach(lobbyState);
           entered = true;
         } catch (error) {
-          recordEntryFailure(diagnosticFor(error, role));
-          reportError('network', error);
-          await stopLoading('entry_failed');
+          const cancelled = entryController.signal.aborted
+            || isNetworkBattleEntryAbortError(error);
+          if (!cancelled) {
+            recordEntryFailure(diagnosticFor(error, role));
+            reportError('network', error);
+          }
+          await stopLoading(cancelled ? 'entry_cancelled' : 'entry_failed');
+        } finally {
+          finishEntry(entryController);
         }
         return entered;
       }, false);
@@ -282,6 +309,7 @@ export function createNetworkBattleLaunchRuntime({
       const existingMatch = getMatch();
       if (!existingMatch || !room.claimRematch(lobbyState, lifecycle.pending)) return false;
       return lifecycle.run(async () => {
+        const entryController = beginEntry();
         const viewerId = String(existingMatch.playerId || '');
         const own = lobbyState.players.find((player) => player.id === viewerId);
         try {
@@ -304,6 +332,7 @@ export function createNetworkBattleLaunchRuntime({
             matchPlayers,
             modeLabel,
             transitionShown: true,
+            signal: entryController.signal,
             connectMatch: () => {
               const match = getMatch();
               if (!match) throw new Error('The retained room transport is unavailable.');
@@ -315,10 +344,13 @@ export function createNetworkBattleLaunchRuntime({
           });
           return true;
         } catch (error) {
-          reportError('network rematch', error);
-          await stopLoading('rematch_entry_failed');
+          const cancelled = entryController.signal.aborted
+            || isNetworkBattleEntryAbortError(error);
+          if (!cancelled) reportError('network rematch', error);
+          await stopLoading(cancelled ? 'entry_cancelled' : 'rematch_entry_failed');
           return false;
         } finally {
+          finishEntry(entryController);
           room.finishRematch();
         }
       }, false);
@@ -327,6 +359,7 @@ export function createNetworkBattleLaunchRuntime({
     async beginRanked({ serviceUrl, state } = {}) {
       if (getMatch()) return;
       await lifecycle.run(async () => {
+        const entryController = beginEntry();
         const ticket = state?.match;
         const viewerId = String(ticket?.playerId || '');
         const own = ticket?.roster?.find((player) => player.id === viewerId);
@@ -358,6 +391,7 @@ export function createNetworkBattleLaunchRuntime({
             matchPlayers: ticket.roster,
             modeLabel,
             transitionShown: true,
+            signal: entryController.signal,
             connectMatch: () => dedicatedMatch.beginDedicatedClientMatch({
               url: serviceUrl,
               ticket,
@@ -365,10 +399,16 @@ export function createNetworkBattleLaunchRuntime({
             }),
           });
         } catch (error) {
-          reportError('ranked', error);
-          await stopLoading('entry_failed');
+          const cancelled = entryController.signal.aborted
+            || isNetworkBattleEntryAbortError(error);
+          if (!cancelled) reportError('ranked', error);
+          await stopLoading(cancelled ? 'entry_cancelled' : 'entry_failed');
+        } finally {
+          finishEntry(entryController);
         }
       }, undefined);
     },
+
+    cancel,
   };
 }

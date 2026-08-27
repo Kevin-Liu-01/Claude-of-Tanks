@@ -11,15 +11,16 @@ export interface NetworkInputFrame {
   [key: string]: unknown;
 }
 
-interface NetworkClientLike {
+export interface NetworkClientLike {
   closed: boolean;
   connected: boolean;
   lastSubmittedInputSeq: number | null;
+  onConnection?(listener: (connected: boolean) => void): (() => void) | void;
   drainEventsThrough?(tick: number, target: unknown[]): void;
   getStats?(): Record<string, unknown> | null;
 }
 
-interface NetworkMatchLike {
+export interface NetworkMatchLike {
   role: string;
   client: NetworkClientLike;
   advance(dtMs: number, input: NetworkInputFrame | null): NetworkSnapshot | null;
@@ -27,19 +28,21 @@ interface NetworkMatchLike {
   submitInput(input: NetworkInputFrame): boolean;
 }
 
-interface NetworkBridgeLike {
+export interface NetworkBridgeLike {
   apply(snapshot: NetworkSnapshot, dt: number, events?: unknown[]): void;
   recordInput(input: NetworkInputFrame, elapsedS: number, sequence: number | null): void;
   endDisconnected?(): void;
   getPredictionStats?(): Record<string, unknown> | null;
 }
 
-interface NetworkStatusLike {
+export interface NetworkStatusLike {
   readonly diagnosticsVisible?: boolean;
+  set?(status: unknown): void;
+  dispose?(): void;
   update(stats: Record<string, unknown> | null): void;
 }
 
-interface NetworkInputRuntimeLike {
+export interface NetworkInputRuntimeLike {
   frame(player: unknown): NetworkInputFrame | null;
   advance(dt: number): void;
   shouldSend(input: NetworkInputFrame): boolean;
@@ -185,10 +188,15 @@ export function createNetworkFramePump({
       const deadline = now() + timeoutMs;
       while (!latestSnapshot || !predicate(latestSnapshot)) {
         const match = getMatch();
-        if (!match || match.client?.closed) {
+        if (!match) {
           throw new Error('The match connection closed while loading.');
         }
         if (now() >= deadline) throw new Error(label);
+        // A closed transport generation is recoverable: private-room and
+        // dedicated clients retain the same MatchClientRuntime while their
+        // session replaces the underlying RTC/WebSocket channel. Keep the
+        // covered loading barrier alive until the match owner disappears,
+        // authority arrives, or the existing bounded timeout expires.
         await nextFrame();
       }
       return latestSnapshot;

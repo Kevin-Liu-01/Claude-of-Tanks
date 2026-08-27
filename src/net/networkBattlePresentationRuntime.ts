@@ -1,3 +1,5 @@
+import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
+
 type MaybePromise<T> = T | PromiseLike<T>;
 
 export interface NetworkBattlePresentationPlayer {
@@ -14,6 +16,7 @@ export interface NetworkBattlePresentationRequest {
   matchPlayers: NetworkBattlePresentationPlayer[];
   modeLabel: string;
   connectMatch: () => MaybePromise<NetworkMatchPort>;
+  signal?: AbortSignal;
   connectAfterWorld?: boolean;
   transitionShown?: boolean;
 }
@@ -31,6 +34,7 @@ export interface NetworkBattleLoadTrace {
 
 interface NetworkMatchPort {
   client?: unknown;
+  close?(reason?: string): unknown;
 }
 
 interface NetworkEntityVisualPort {
@@ -218,6 +222,7 @@ export function createNetworkBattlePresentationRuntime({
       matchPlayers,
       modeLabel,
       connectMatch,
+      signal,
       connectAfterWorld = false,
       transitionShown = false,
     }) {
@@ -225,8 +230,10 @@ export function createNetworkBattlePresentationRuntime({
         || !Array.isArray(matchPlayers) || typeof connectMatch !== 'function') {
         throw new TypeError('network battle presentation requires a complete request');
       }
+      throwIfNetworkBattleEntryAborted(signal);
 
       await load.ensureBattleVisuals();
+      throwIfNetworkBattleEntryAborted(signal);
       load.audio.resume();
       load.audio.loadingOn(true);
       load.lighting.setFarCascadeDormant(false);
@@ -265,6 +272,7 @@ export function createNetworkBattlePresentationRuntime({
       }
       load.battleLoad.progress(0.02, 'Securing match channel');
       await load.nextFrame();
+      throwIfNetworkBattleEntryAborted(signal);
 
       load.battleLoad.progress(0.08, 'Loading battlefield');
       const { modules } = await entry.acquire({
@@ -272,11 +280,27 @@ export function createNetworkBattlePresentationRuntime({
         loadWorld: () => entry.loadWorld(mapId, (fraction, label) => {
           load.battleLoad.progress(0.08 + fraction * 0.48, label);
         }),
-        connect: connectMatch,
+        connect: async () => {
+          const match = await connectMatch();
+          if (signal?.aborted) {
+            match.close?.('network_entry_cancelled');
+            throwIfNetworkBattleEntryAborted(signal);
+          }
+          return match;
+        },
         connectAfterWorld,
-        publishMatch: entry.publishMatch,
+        publishMatch: (match) => {
+          try {
+            throwIfNetworkBattleEntryAborted(signal);
+            entry.publishMatch(match);
+          } catch (error) {
+            match.close?.('network_entry_cancelled');
+            throw error;
+          }
+        },
         timings: trace,
       });
+      throwIfNetworkBattleEntryAborted(signal);
       const [
         { createBrowserBattleBridge },
         { createNetworkStatus },
@@ -316,6 +340,7 @@ export function createNetworkBattlePresentationRuntime({
             `Painting ${roster.vehicleName(specId)}`,
           );
         });
+        throwIfNetworkBattleEntryAborted(signal);
       } catch (error) {
         preparedBridge.dispose();
         throw error;
@@ -329,6 +354,7 @@ export function createNetworkBattlePresentationRuntime({
       let initial: unknown;
       try {
         initial = await bridge.waitForInitialSnapshot({ viewerId, spectator });
+        throwIfNetworkBattleEntryAborted(signal);
       } catch (error) {
         preparedBridge.dispose();
         throw error;
@@ -340,11 +366,14 @@ export function createNetworkBattlePresentationRuntime({
 
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain(preparedBridge);
+      throwIfNetworkBattleEntryAborted(signal);
       mark('terrainGrid');
       load.battleLoad.progress(0.85, 'Priming wreck variants');
       await warm.wrecks(preparedBridge);
+      throwIfNetworkBattleEntryAborted(signal);
       load.battleLoad.progress(0.87, 'Priming combat effects');
       await warm.openingEffects(fx);
+      throwIfNetworkBattleEntryAborted(signal);
       mark('combatWarm');
       warm.shotCards([...preparedBridge.entities.values()].map((entity) => entity.specId));
 
@@ -353,9 +382,11 @@ export function createNetworkBattlePresentationRuntime({
       try {
         await warm.compile();
       } catch (_) { /* warm only */ }
+      throwIfNetworkBattleEntryAborted(signal);
       mark('compile');
       load.battleLoad.progress(0.96, 'Waiting for every commander');
       await bridge.waitForPeerReadiness();
+      throwIfNetworkBattleEntryAborted(signal);
       mark('readyBarrier');
 
       presentation.activate({ viewerId, own, spectator, mapId, bridge: preparedBridge, fx });

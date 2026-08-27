@@ -41,6 +41,7 @@ const input = {
   queueAction(action) { calls.push(['action', action]); },
   queueConsumable(slot) { calls.push(['consumable', slot]); },
 };
+let nextFrameAction = async () => {};
 
 const pump = createNetworkFramePump({
   getMatch: () => match,
@@ -49,7 +50,7 @@ const pump = createNetworkFramePump({
   getPlayer: () => ({ id: 'player' }),
   isBattleActive: () => true,
   recovery,
-  nextFrame: async () => {},
+  nextFrame: () => nextFrameAction(),
   now: () => 0,
 });
 pump.ensureInputRuntime(() => input);
@@ -76,6 +77,21 @@ assert.ok(calls.some(([name]) => name === 'disconnected'),
 
 pump.clearRound();
 assert.equal(pump.latestSnapshot, null);
+let recoveryFrames = 0;
+nextFrameAction = async () => {
+  recoveryFrames += 1;
+  client.closed = false;
+  match.role = 'host';
+  pump.pump(1 / 60, 950);
+};
+client.closed = true;
+assert.equal((await pump.waitForSnapshot(
+  (snapshot) => snapshot.tick === 12,
+  10,
+  'recovery timed out',
+)).tick, 12);
+assert.equal(recoveryFrames, 1,
+  'the covered snapshot barrier survives one replaceable transport generation');
 pump.dispose();
 assert.ok(calls.filter(([name]) => name === 'reset').length >= 2);
 

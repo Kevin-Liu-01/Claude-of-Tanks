@@ -68,24 +68,28 @@ const RESOURCE_BUDGETS = Object.freeze({
   battleActive: Object.freeze({
     taskCoreEquivalent: 0.45,
     heapMB: 280,
-    objects: 1250,
-    programs: 235,
-    geometries: 725,
-    textures: 324,
+    objects: 1150,
+    programs: 225,
+    // Phase-exclusive GPU suspension removes inactive workshop allocations;
+    // keep these limits close enough to catch their accidental retention.
+    geometries: 575,
+    textures: 300,
     sceneGeometries: 650,
     sceneMaterials: 220,
     sceneTextures: 120,
     sceneTexturePixels: 27_000_000,
     // Dynamic explosions and decals move the exact sampled frame by several
     // submissions; 700 still fails a sustained scene-complexity regression.
-    calls: 680,
-    triangles: 3_800_000,
+    calls: 660,
+    triangles: 3_750_000,
+    shadowCalls: 235,
+    shadowTriangles: 1_300_000,
   }),
   garageReturned: Object.freeze({
     taskCoreEquivalent: 0.06,
     heapMB: 205,
     objects: 1000,
-    programs: 265,
+    programs: 260,
     geometries: 510,
     textures: 166,
     sceneGeometries: 475,
@@ -344,6 +348,7 @@ const sampleResources = () => page.evaluate(() => {
       garageFramePacer: debug.garageFramePacer,
       frameLoopScheduler: debug.frameLoopScheduler,
       phaseSceneResidency: debug.phaseSceneResidency,
+      garageGpuResidency: debug.garageGpuResidency,
       workshopOptimization:
         debug.garageDressing?.group?.userData?.optimizationReceipt || null,
       terrainIndexPool:
@@ -484,6 +489,20 @@ const evaluateBudgets = (phases) => {
       idle?.resources.renderer[workload] ?? null,
       `<= ${RESOURCE_BUDGETS.garageIdle[workload]}`);
   }
+  check('active battle staggers distant shadow cascades',
+    Object.keys(battle?.frameWorkload?.byShadowMask || {}).length === 2
+      && battle?.frameWorkload?.byShadowMask?.['7']
+      && battle?.frameWorkload?.byShadowMask?.['11']
+      && !battle?.frameWorkload?.byShadowMask?.['15'],
+    Object.keys(battle?.frameWorkload?.byShadowMask || {}),
+    'alternating masks 7/11; never all four cascades in one frame');
+  for (const workload of ['shadowCalls', 'shadowTriangles']) {
+    check(`active battle complete-frame ${workload}`,
+      battle?.frameWorkload?.[workload]?.max
+        <= RESOURCE_BUDGETS.battleActive[workload],
+      battle?.frameWorkload?.[workload]?.max ?? null,
+      `<= ${RESOURCE_BUDGETS.battleActive[workload]}`);
+  }
   check('garage constructs no battlefield without intent',
     (idle?.resources.caches.worldIds?.length || 0) === 0,
     idle?.resources.caches.worldIds || [], '0 resident worlds');
@@ -521,6 +540,12 @@ const evaluateBudgets = (phases) => {
       && battle?.resources.caches.phaseSceneResidency?.worldMounted === true,
     battle?.resources.caches.phaseSceneResidency || null,
     'Garage detached; world mounted');
+  check('active battle releases hidden workshop GPU residency',
+    battle?.resources.caches.garageGpuResidency?.suspended === true
+      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.geometries || 0) >= 200
+      && (battle?.resources.caches.garageGpuResidency?.lastRelease?.textures || 0) >= 20,
+    battle?.resources.caches.garageGpuResidency || null,
+    'suspended with >= 200 geometries and >= 20 textures released');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`active battle renderer ${resource}`,
       battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],
@@ -571,6 +596,11 @@ const evaluateBudgets = (phases) => {
       && returned?.resources.caches.phaseSceneResidency?.worldMounted === false,
     returned?.resources.caches.phaseSceneResidency || null,
     'Garage mounted; world detached');
+  check('returned Garage restores retained workshop GPU resources',
+    returned?.resources.caches.garageGpuResidency?.suspended === false
+      && (returned?.resources.caches.garageGpuResidency?.resumes || 0) >= 1,
+    returned?.resources.caches.garageGpuResidency || null,
+    'workshop resumed once behind the return transition');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`returned Garage renderer ${resource}`,
       returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
