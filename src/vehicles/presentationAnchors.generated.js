@@ -46,7 +46,7 @@ export const TANK_PRESENTATION_ANCHORS = Object.freeze({
   k2: Object.freeze({ xM: 0.0071, zM: -0.0535 }),
   k2b: Object.freeze({ xM: 0.0052, zM: -0.0414 }),
   kf51: Object.freeze({ xM: 0.0001, zM: -0.0153 }),
-  kf51b: Object.freeze({ xM: 0, zM: 0.0155 }),
+  kf51b: Object.freeze({ xM: 0, zM: 0.031 }),
   kv2: Object.freeze({ xM: 0, zM: -0.2015 }),
   leclerc: Object.freeze({ xM: 0.0031, zM: 0.1097 }),
   leclerc_xlr: Object.freeze({ xM: 0.0031, zM: 0.1018 }),

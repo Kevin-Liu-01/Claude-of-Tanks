@@ -132,6 +132,12 @@ function leoGear(P, g) {
     shoeRadialScale: g.shoeRadialScale,
     shoeWidthScale: g.shoeWidthScale,
     shoeOutboardOffset: g.shoeOutboardOffset,
+    frontArcSteps: g.frontArcSteps,
+    rearArcSteps: g.rearArcSteps,
+    tautFrontSpan: g.tautFrontSpan,
+    tautRearSpan: g.tautRearSpan,
+    smoothRearTopTangent: g.smoothRearTopTangent,
+    dedupeLoopPoints: g.dedupeLoopPoints,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
     // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
@@ -1134,11 +1140,21 @@ function leoHullV3(P, H) {
     // byte-identical, sibling hashes hold).
     gearFloor: H.gearFloor, tireHex: H.tireHex, padHex: H.padHex, chainHex: H.chainHex,
     shoeRadialScale: H.shoeRadialScale,
+    shoeWidthScale: H.shoeWidthScale,
+    shoeOutboardOffset: H.shoeOutboardOffset,
     wheelFaceLayers: H.wheelFaceLayers,
     // §5.345 opt-in passthrough (kf51b leopard-descent rebase): undefined
     // for every other caller — leoGear/buildRunningGear defaults hold
     // byte-identical (guard hashes prove it).
     linkPitchM: H.linkPitchM,
+    frontArcSteps: H.frontArcSteps,
+    rearArcSteps: H.rearArcSteps,
+    tautFrontSpan: H.tautFrontSpan,
+    tautRearSpan: H.tautRearSpan,
+    smoothRearTopTangent: H.smoothRearTopTangent,
+    dedupeLoopPoints: H.dedupeLoopPoints,
+    contactZF: H.contactZF,
+    contactZR: H.contactZR,
   });
 }
 
@@ -9945,9 +9961,9 @@ function buildKF51OwnerExact(P) {
   // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
   // complete rotating rig moves 0.28 m forward to z 0.30; nose 3.84,
   // tail lip -3.82, width anchor ±1.80
-  // (spec widM 3.60, §5.263). Running gear params VERBATIM from the
-  // §5.303 source trace (7×0.405 wheels, 0.105 fine pitch, §5.262
-  // gear-contrast tones) via the linkPitchM passthrough. The formerly low,
+  // (spec widM 3.60, §5.263). Running gear keeps the §5.303 source cadence
+  // with seven 0.385 m wheels, 0.105 fine pitch and §5.262 gear-contrast
+  // tones via the opt-in course passthrough. The formerly low,
   // oversized end wheels made the course read as a rounded rectangle;
   // smaller raised Leopard terminals now produce real approach/departure
   // ramps. §B4 walls: tub innerW 1.837 (±0.92, 5 cm off the 0.9685 band
@@ -9970,15 +9986,20 @@ function buildKF51OwnerExact(P) {
     fenderFore: { z0: 1.55, z1: 3.30, drop: 0.03 },
     // frontSkirt/rearSkirt OMITTED (§SRCFIX-0808 opt-out): the two-band
     // modular course builds bespoke below at the leopard skirt grammar.
-    wheelR: 0.405, wheelY: 0.425, span: [2.60, -2.30],
+    wheelR: 0.385, wheelY: 0.425, span: [2.60, -2.30],
     sprocket: { z: -3.16, y: 1.00, r: 0.275 },
-    idler: { z: 3.30, y: 0.98, r: 0.24 },
+    // A small forward reseat keeps the high-resolution idler crown clear of
+    // the glacis shoulder while preserving the full wrap inside the 3.84 m nose.
+    idler: { z: 3.40, y: 0.98, r: 0.24 },
     topY: 0.95, botY: 0.055, dishR: 0.78,
     rollers: [
       { z: 2.00, y: 0.94, r: 0.085 }, { z: 0.72, y: 0.94, r: 0.085 },
       { z: -0.58, y: 0.94, r: 0.085 }, { z: -1.82, y: 0.94, r: 0.085 },
     ],
-    linkPitchM: 0.105, padHex: 0x2c2d25, chainHex: 0x24251f,
+    linkPitchM: 0.105, frontArcSteps: 14, rearArcSteps: 14,
+    tautFrontSpan: true, tautRearSpan: true, smoothRearTopTangent: true,
+    dedupeLoopPoints: true,
+    padHex: 0x2c2d25, chainHex: 0x24251f,
     tireHex: 0x2b2d24, gearFloor: true,
     fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true,
     splashArms: false, jackDark: true,
@@ -9986,9 +10007,9 @@ function buildKF51OwnerExact(P) {
 
   // fleet per-tank weathered rubber (a4/revolution receipt)
   P.mats.rubber.color.setHex(0x33352b);
-  // (running gear now rides INSIDE the leoHullV3 call above — the §5.303
-  // source-trace params are verbatim there, §5.262 tones included; no
-  // second course exists.)
+  // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
+  // wheel/course refinements and §5.262 tones live there; no second course
+  // exists.)
   // ---- two-band modular skirts at the LEOPARD grammar (the §5.324 course
   // upgraded to the family read): proud upper armored band hung just under
   // the fender line + recessed lower panel run to the 0.60 hem, panel
@@ -10095,7 +10116,7 @@ function buildKF51OwnerExact(P) {
   KIT.towCable(P, [[-0.90, 1.487, 2.55], [0, 1.645, 1.70], [0.90, 1.487, 2.55]], 0.024); // glacis tow cable V
   {
     const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.10, pitch: 0.16, seed: 73, rotation: [0.16, 0, 0] });
-    st.position.set(-0.55, 1.585, 2.30);                                      // glacis spare links
+    st.position.set(-0.55, 1.495, 2.30);                                      // glacis spare links, bedded into the raked plate
     P.hullG.add(st);
   }
   KIT.shovelTool(P, -1.45, 1.8325, -3.45, 0.60);                              // pioneer kit, aft shelf (§5.311 §B5 seat kept)
@@ -10120,6 +10141,24 @@ function buildKF51OwnerExact(P) {
     [1.40, -2.43], [0.96, -2.96], [-0.96, -2.96], [-1.40, -2.43],
     [-1.55, 0.18], [-1.48, 1.28],
   ];
+  const rightTurretWall = turretPlan.slice(1, 6);
+  const turretWallHalfWidthAt = (z) => {
+    for (let i = 0; i < rightTurretWall.length - 1; i++) {
+      const [x0, z0] = rightTurretWall[i];
+      const [x1, z1] = rightTurretWall[i + 1];
+      if (z <= Math.max(z0, z1) && z >= Math.min(z0, z1)) {
+        const t = (z - z0) / (z1 - z0);
+        return x0 + (x1 - x0) * t;
+      }
+    }
+    return z > rightTurretWall[0][1]
+      ? rightTurretWall[0][0]
+      : rightTurretWall[rightTurretWall.length - 1][0];
+  };
+  // The panel belt sits midway up the loft wall. At that height the wall is
+  // about 94-96% of the plan ring; use the same taper station-by-station so
+  // the aft panels do not remain stranded at the widest cheek datum.
+  const turretPanelWallXAt = (z) => turretWallHalfWidthAt(z) * (0.945 + Math.max(0, -z) * 0.006);
   P.add('turret', polyMultiLoft(turretPlan, [
     { height: -0.01, inset: 0.93 },
     { height: 0.24, inset: 1.00 },
@@ -10169,9 +10208,11 @@ function buildKF51OwnerExact(P) {
   // broad roof seat and therefore rotates with the turret as one assembly.
   P.add('turret', cylY(0.31, 0.34, 0.075, P.q ? 22 : 14), -0.48, 0.61, -0.12);
   P.add('turretDark', cylY(0.25, 0.27, 0.035, P.q ? 22 : 14), -0.48, 0.665, -0.12);
-  P.add('turret', box(0.58, 0.055, 0.46), 0.47, 0.61, -0.22, 0, -0.10, 0);
-  periscope(P, 'turret', 0.18, 0.645, 0.34, 0.17, 0.09, 0.12, 0);
-  periscope(P, 'turret', -0.08, 0.645, 0.42, 0.15, 0.08, 0.10, 0);
+  P.add('turret', box(0.58, 0.055, 0.46), 0.47, 0.603, -0.22, 0, -0.10, 0);
+  // These two forward periscopes previously started 30 mm above the roof.
+  // Lower their armored bodies into the plate while leaving the glass clear.
+  periscope(P, 'turret', 0.18, 0.615, 0.34, 0.17, 0.09, 0.12, 0);
+  periscope(P, 'turret', -0.08, 0.615, 0.42, 0.15, 0.08, 0.10, 0);
 
   // The source roof is low, not featureless.  Give its two crew stations a
   // readable coaming/lid/hinge cadence and carry the access-panel seams
@@ -10186,10 +10227,10 @@ function buildKF51OwnerExact(P) {
     [0.24, -0.18, Math.PI / 2], [0.48, 0.02, 0], [0.70, -0.25, Math.PI / 2],
   ]) periscope(P, 'turretDetail', x, 0.682, z, yaw, 0.080, 0.055, 0.040);
   for (const [z, w] of [[0.70, 1.18], [0.18, 1.42], [-0.64, 1.72], [-1.46, 1.78], [-2.18, 1.54]]) {
-    P.add('turretDark', box(w, 0.014, 0.028), 0, 0.617, z);
+    P.add('turretDark', box(w, 0.014, 0.028), 0, 0.587, z);
   }
   for (const x of [-0.73, 0.73]) {
-    P.add('turretDetail', box(0.026, 0.018, 1.46), x, 0.626, -1.28, 0, x * 0.035, 0);
+    P.add('turretDetail', box(0.026, 0.018, 1.46), x, 0.595, -1.28, 0, x * 0.035, 0);
   }
 
   // Flush modular flank armor and backed sensor cells break the large plain
@@ -10203,12 +10244,21 @@ function buildKF51OwnerExact(P) {
       [-2.03, 0.39, 0.21],
     ];
     for (const [z, d, h] of sidePanels) {
-      P.add('turretDark', box(0.030, h + 0.035, d + 0.032), s * 1.420, 0.35, z,
+      const wallX = turretPanelWallXAt(z);
+      const backingX = wallX + 0.002;
+      const armorX = wallX + 0.018;
+      P.add('turretDark', box(0.050, h + 0.035, d + 0.032), s * backingX, 0.35, z,
         0, s * 0.11, 0);
-      P.add('turret', box(0.042, h, d), s * 1.438, 0.36, z,
+      P.add('turret', box(0.046, h, d), s * armorX, 0.36, z,
         0, s * 0.11, 0);
-      P.add('turretDetail', box(0.046, 0.018, d * 0.70), s * 1.461, 0.43, z,
+      P.add('turretDetail', box(0.050, 0.018, d * 0.70), s * (armorX + 0.025), 0.43, z,
         0, s * 0.11, 0);
+      // Two buried carrier feet give every module a visible load path into
+      // the tapered shell instead of relying on a near-coplanar backing face.
+      for (const dz of [-d * 0.32, d * 0.32]) {
+        P.add('turretDark', box(0.080, h * 0.32, 0.045),
+          s * (wallX - 0.015), 0.35, z + dz, 0, s * 0.11, 0);
+      }
     }
     P.add('turret', box(0.20, 0.15, 0.24), s * 1.22, 0.56, 0.78, -0.05, s * 0.13, 0);
     P.add('turretDark', box(0.024, 0.09, 0.15), s * 1.33, 0.57, 0.80, -0.05, s * 0.13, 0);
@@ -10240,8 +10290,11 @@ function buildKF51OwnerExact(P) {
     mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.92,
     elev: 0.015, ammo: false, shield: false,
   });
-  rwsGun.position.set(0.28, 0.79, -2.08);
+  // Pull the MG's fitting-foot back onto the pedestal. Its local aft bound
+  // is -0.117 m, so z=-2.18 makes it overlap the post face by ~2 mm.
+  rwsGun.position.set(0.28, 0.79, -2.18);
   P.turretG.add(rwsGun);
+  P.add('turretDark', box(0.16, 0.13, 0.18), 0.28, 0.88, -2.245, -0.04, 0, 0);
   P.add('turretDetail', box(0.24, 0.16, 0.30), 0.71, 0.91, -2.03);
   P.add('turretDark', box(0.20, 0.10, 0.026), 0.71, 0.91, -1.866);
   P.add('turretGlass', box(0.12, 0.055, 0.018), 0.71, 0.92, -1.850);
@@ -10301,6 +10354,22 @@ function buildKF51OwnerExact(P) {
     P.add('turretDetail', box(0.024, 0.46, 0.024), x, 0.29, -3.05);
     if (i % 2 === 0) P.add('turretDark', box(0.034, 0.034, 0.10), x, 0.29, -2.99);
   }
+
+  P.hullG.userData.kf51bTrackSeatReceipt = {
+    roadWheelRadiusM: 0.385,
+    idlerZ: 3.40,
+    trackArcSteps: 14,
+    deduplicatedLoop: true,
+    smoothRearTopTangent: true,
+    spareTrackSeatY: 1.495,
+  };
+  P.turretG.userData.kf51bAttachmentSeatReceipt = {
+    rwsGunZ: -2.18,
+    roofPeriscopeY: 0.615,
+    roofSeamY: 0.587,
+    sidePanelStations: [0.82, 0.42, -0.04, -0.54, -1.05, -1.56, -2.03]
+      .map((z) => ({ z, wallX: turretPanelWallXAt(z) })),
+  };
 
   P.topY = 1.29;
 }

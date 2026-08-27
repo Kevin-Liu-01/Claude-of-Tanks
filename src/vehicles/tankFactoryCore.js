@@ -1623,6 +1623,19 @@ function buildTrackCourse({
       smoothRearTopTangent: cfg.smoothRearTopTangent ?? false,
     });
 
+  // Some high-resolution profile courses intentionally join a support point
+  // and an end-wheel arc at the same crown. Drop only exact consecutive
+  // duplicates for opted-in profiles so the belt never emits a zero-length
+  // segment or a stacked pair of shoes at that join.
+  if (cfg.dedupeLoopPoints) {
+    for (let i = pts.length - 1; i > 0; i--) {
+      if (Math.abs(pts[i][0] - pts[i - 1][0]) < 1e-7
+          && Math.abs(pts[i][1] - pts[i - 1][1]) < 1e-7) {
+        pts.splice(i, 1);
+      }
+    }
+  }
+
   // Band normals and shoe orientation use a clockwise (z,y) course.
   let loopArea2 = 0;
   for (let i = 0; i < pts.length; i++) {

@@ -546,8 +546,8 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.4656326,
-          0.3472,
+          -1.4549127,
+          0.4168,
           -1.0457587
         ],
         "quaternion": [
@@ -561,14 +561,14 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0139033
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.4689571,
+          -1.4815036,
           0.4168,
           -0.5056587
         ],
