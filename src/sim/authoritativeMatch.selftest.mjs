@@ -366,9 +366,23 @@ const stackMatch = createAuthoritativeMatch({
 stackMatch.onMatchReady();
 const stackBase = stackMatch.entityById.get('stack-base');
 const stackTop = stackMatch.entityById.get('stack-top');
+const stackHullY = stackBase.spec.armor.bodyContactPoints.hull;
+const stackTurretY = stackBase.spec.armor.bodyContactPoints.turret;
+const stackPivotY = stackBase.spec.armor.turretPivot[1];
+let stackMinY = Infinity;
+let stackMaxY = -Infinity;
+for (let index = 1; index < stackHullY.length; index += 3) {
+  stackMinY = Math.min(stackMinY, stackHullY[index]);
+  stackMaxY = Math.max(stackMaxY, stackHullY[index]);
+}
+for (let index = 1; index < stackTurretY.length; index += 3) {
+  stackMinY = Math.min(stackMinY, stackPivotY + stackTurretY[index]);
+  stackMaxY = Math.max(stackMaxY, stackPivotY + stackTurretY[index]);
+}
+const stackBodyHeight = stackMaxY - stackMinY;
 stackTop.state.pos.set(
   stackBase.state.pos.x + 0.8,
-  stackBase.state.pos.y + stackBase.spec.dims.heightM - 0.15,
+  stackBase.state.pos.y + stackBodyHeight - 0.15,
   stackBase.state.pos.z + 0.45,
 );
 stackTop.state._ride.y = stackTop.state.pos.y;
@@ -377,7 +391,7 @@ stackTop.state.verticalSpeed = -6;
 stackTop.state.grounded = false;
 stackTop.state._ride.grounded = false;
 stackMatch.step({ dt: 1 / 60, tick: 1, inputs: new Map() });
-assert.ok(stackTop.state.pos.y >= stackBase.state.pos.y + stackBase.spec.dims.heightM - 0.03,
+assert.ok(stackTop.state.pos.y >= stackBase.state.pos.y + stackBodyHeight - 0.03,
   'authoritative roof landing seats the upper hull above the lower tank');
 assert.ok(Math.abs(stackTop.state._spring.pitchV) + Math.abs(stackTop.state._spring.rollV) > 0.1,
   'authoritative off-center landing preserves rollover angular impulse');
@@ -422,6 +436,14 @@ const eventSnapB = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60,
   viewerId: 'bravo-1', ackInputSeq: 8 });
 assert.ok(eventSnapA.events.length > 0 && eventSnapB.events.length > 0,
   'one snapshot cycle serves every viewer before events clear');
+const replicatedHit = eventSnapA.events.find((event) =>
+  event.type === 'shell_hit' && event.targetId === 'bravo-1');
+assert.ok(replicatedHit?.impactFrame,
+  'authoritative hit replication retains its exact articulation frame');
+assert.equal(replicatedHit?.impactLocalPos?.length, 3,
+  'authoritative hit replication retains exact frame-local contact coordinates');
+assert.equal(replicatedHit?.impactLocalDir?.length, 3,
+  'authoritative hit replication retains exact frame-local shot direction');
 match.afterSnapshotBroadcast();
 assert.equal(match.snapshot({ tick: tick + 1, serverTimeMs: (tick + 1) * 1000 / 60,
   viewerId: 'alpha-1', ackInputSeq: 4 }).events.length, 0);

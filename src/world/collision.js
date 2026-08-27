@@ -190,6 +190,57 @@ export function pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, ob, outP
   return true;
 }
 
+/**
+ * Tight OBB-vs-OBB hull contact. Unlike the historical capsule approximation,
+ * this does not round away solid shoulder/track corners. All arguments are
+ * scalars so the fixed-step pair loop can reuse existing state without
+ * allocating temporary obstacle records.
+ */
+export function pushHullFromHull(
+  ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
+  bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW,
+  outPush,
+) {
+  const best = _pushBest;
+  best.overlap = Infinity; best.nx = 0; best.nz = 0;
+  if (!testHullAxis(afx, afz, ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
+    bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW, best) ||
+      !testHullAxis(arx, arz, ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
+        bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW, best) ||
+      !testHullAxis(bfx, bfz, ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
+        bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW, best) ||
+      !testHullAxis(brx, brz, ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
+        bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW, best)) return false;
+  outPush.x += best.nx * best.overlap;
+  outPush.z += best.nz * best.overlap;
+  return true;
+}
+
+function testHullAxis(
+  nx, nz,
+  ax, az, afx, afz, arx, arz, aHalfL, aHalfW,
+  bx, bz, bfx, bfz, brx, brz, bHalfL, bHalfW,
+  best,
+) {
+  const length = Math.hypot(nx, nz);
+  if (length < EPS) return true;
+  nx /= length; nz /= length;
+  const radiusA = aHalfL * Math.abs(afx * nx + afz * nz) +
+    aHalfW * Math.abs(arx * nx + arz * nz);
+  const radiusB = bHalfL * Math.abs(bfx * nx + bfz * nz) +
+    bHalfW * Math.abs(brx * nx + brz * nz);
+  const separation = (ax - bx) * nx + (az - bz) * nz;
+  const overlap = radiusA + radiusB - Math.abs(separation);
+  if (overlap <= 0) return false;
+  if (overlap < best.overlap) {
+    const sign = separation >= 0 ? 1 : -1;
+    best.overlap = overlap;
+    best.nx = nx * sign;
+    best.nz = nz * sign;
+  }
+  return true;
+}
+
 const _pushBest = { overlap: Infinity, nx: 0, nz: 0 };
 const _fallbackBox = { cx: 0, cz: 0, hw: 0, hl: 0, yaw: 0 };
 const _localO = { x: 0, y: 0, z: 0 };

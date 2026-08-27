@@ -19,7 +19,10 @@ import { nominalPenFor, shellDisplayName, zoneLabel } from './hitEventFormat.js'
 import { uiIconSVG } from './uiIcons.js';
 import { maskIcon, iconUrl } from './icons.js';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
-import { createShotDiagramProjection } from './shotDiagramProjection.js';
+import {
+  createShotDiagramProjection,
+  impactForShotDiagram,
+} from './shotDiagramProjection.js';
 import { getSpec } from '../vehicles/specs.js';
 import {
   presentationAnchorFor,
@@ -689,12 +692,13 @@ export function createShotInfo(bus) {
       arm = spec ? spec.armor : null;
     } catch (_) { dims = null; }
     const wrap = el('div', 'cot-si-diag');
-    if (!dims || !ev.localPos) {
+    const diagramImpact = impactForShotDiagram(ev, arm || {});
+    if (!dims || !diagramImpact) {
       wrap.remove();
       return null;
     }
-    const lp = ev.localPos;
-    const ld = ev.localDir;
+    const lp = diagramImpact.point;
+    const ld = diagramImpact.direction;
     const projection = createShotDiagramProjection({ dims, armor: arm }, {
       topSize: CARD_TOP_S,
       sideWidth: CARD_SIDE_W,

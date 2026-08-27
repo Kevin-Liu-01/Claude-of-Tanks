@@ -1,12 +1,14 @@
 /**
  * Deterministic, allocation-free dynamic tank contact overlay.
  *
- * Ground driving keeps the established hull-capsule/static-world solver. This
- * module handles the missing third dimension once one hull is materially above
- * another: airborne landings, roof/side support and off-center angular impulse.
+ * Ground driving uses exact-shell OBB/static-world contact. This module handles
+ * the missing third dimension once one hull is materially above another:
+ * airborne landings, roof/side support and off-center angular impulse.
  * At the game's 14-vehicle ceiling the complete pair pass is only 91 cheap
  * tests, and the expensive path runs solely for horizontally overlapping hulls.
  */
+
+import { tankContactRect } from './tankContactShape.ts';
 
 export interface TankBodyState {
   pos: { x: number; y: number; z: number };
@@ -16,6 +18,7 @@ export interface TankBodyState {
   grounded: boolean;
   visualPitch: number;
   visualRoll: number;
+  turretYaw: number;
   overturned?: boolean;
   _spring: { pitchV: number; rollV: number };
   _ride: {
@@ -37,6 +40,10 @@ export interface TankBodyEntity {
   spec: {
     weightTons: number;
     dims: { hullLengthM: number; widthM: number; heightM: number };
+    armor?: {
+      turretPivot?: number[];
+      bodyContactPoints?: { hull?: number[]; turret?: number[] };
+    };
   };
   state: TankBodyState;
 }
@@ -65,7 +72,44 @@ function clamp(value: number, lo: number, hi: number): number {
   return value < lo ? lo : value > hi ? hi : value;
 }
 
-/** Conservative world-Y interval of the rendered YXZ-oriented hull box. */
+function rectsOverlap(
+  ax: number, az: number, afx: number, afz: number,
+  arx: number, arz: number, aHalfL: number, aHalfW: number,
+  bx: number, bz: number, bfx: number, bfz: number,
+  brx: number, brz: number, bHalfL: number, bHalfW: number,
+): boolean {
+  const dx = ax - bx;
+  const dz = az - bz;
+  return !axisSeparates(dx, dz, afx, afz,
+    afx, afz, arx, arz, aHalfL, aHalfW,
+    bfx, bfz, brx, brz, bHalfL, bHalfW) &&
+    !axisSeparates(dx, dz, arx, arz,
+      afx, afz, arx, arz, aHalfL, aHalfW,
+      bfx, bfz, brx, brz, bHalfL, bHalfW) &&
+    !axisSeparates(dx, dz, bfx, bfz,
+      afx, afz, arx, arz, aHalfL, aHalfW,
+      bfx, bfz, brx, brz, bHalfL, bHalfW) &&
+    !axisSeparates(dx, dz, brx, brz,
+      afx, afz, arx, arz, aHalfL, aHalfW,
+      bfx, bfz, brx, brz, bHalfL, bHalfW);
+}
+
+function axisSeparates(
+  dx: number, dz: number, nx: number, nz: number,
+  afx: number, afz: number, arx: number, arz: number,
+  aHalfL: number, aHalfW: number,
+  bfx: number, bfz: number, brx: number, brz: number,
+  bHalfL: number, bHalfW: number,
+): boolean {
+  const distance = Math.abs(dx * nx + dz * nz);
+  const aRadius = aHalfL * Math.abs(afx * nx + afz * nz) +
+    aHalfW * Math.abs(arx * nx + arz * nz);
+  const bRadius = bHalfL * Math.abs(bfx * nx + bfz * nz) +
+    bHalfW * Math.abs(brx * nx + brz * nz);
+  return distance >= aRadius + bRadius;
+}
+
+/** Exact world-Y interval of the YXZ-oriented closed armor shell. */
 function verticalBounds(entity: TankBodyEntity, out: Float64Array): Float64Array {
   const state = entity.state;
   const dims = entity.spec.dims;
@@ -75,6 +119,44 @@ function verticalBounds(entity: TankBodyEntity, out: Float64Array): Float64Array
   const sinPitch = Math.sin(pitch);
   const cosRoll = Math.cos(roll);
   const sinRoll = Math.sin(roll);
+  const contact = entity.spec.armor?.bodyContactPoints;
+  const hull = contact?.hull;
+  if (hull && hull.length >= 3) {
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let index = 0; index < hull.length; index += 3) {
+      // Euler YXZ: yaw does not affect world Y. Roll is applied before the
+      // pitch rotation, matching movement.js pointCloudSupportY.
+      const rolledY = hull[index] * sinRoll + hull[index + 1] * cosRoll;
+      const worldY = state.pos.y + rolledY * cosPitch - hull[index + 2] * sinPitch;
+      if (worldY < minY) minY = worldY;
+      if (worldY > maxY) maxY = worldY;
+    }
+    const turret = contact?.turret;
+    if (turret && turret.length >= 3) {
+      const pivot = entity.spec.armor?.turretPivot || [0, 0, 0];
+      const turretYaw = state.turretYaw || 0;
+      const turretCos = Math.cos(turretYaw);
+      const turretSin = Math.sin(turretYaw);
+      for (let index = 0; index < turret.length; index += 3) {
+        const x = turret[index];
+        const z = turret[index + 2];
+        const localX = pivot[0] + x * turretCos + z * turretSin;
+        const localY = pivot[1] + turret[index + 1];
+        const localZ = pivot[2] - x * turretSin + z * turretCos;
+        const rolledY = localX * sinRoll + localY * cosRoll;
+        const worldY = state.pos.y + rolledY * cosPitch - localZ * sinPitch;
+        if (worldY < minY) minY = worldY;
+        if (worldY > maxY) maxY = worldY;
+      }
+    }
+    out[0] = minY;
+    out[1] = maxY;
+    out[2] = (minY + maxY) * 0.5;
+    return out;
+  }
+
+  // Synthetic/unfinalized fixtures retain a conservative dimensions box.
   const centerOffsetY = dims.heightM * 0.5 * cosRoll * cosPitch;
   const extentY = Math.abs(sinRoll * cosPitch) * dims.widthM * 0.5 +
     Math.abs(cosRoll * cosPitch) * dims.heightM * 0.5 +
@@ -102,7 +184,7 @@ function isDynamicBodyContact(entity: TankBodyEntity): boolean {
 }
 
 /**
- * The legacy 2D capsule solver calls this before applying a horizontal push.
+ * The ground-driving OBB solver calls this before applying a horizontal push.
  * A clear vertical ordering reserves the pair for this module, allowing an
  * airborne hull to land on another tank instead of being teleported sideways.
  */
@@ -118,8 +200,8 @@ export function prefersVerticalTankContact(
   verticalBounds(a, _boundsA);
   verticalBounds(b, _boundsB);
   const minHeight = Math.min(
-    a.spec.dims.heightM,
-    b.spec.dims.heightM,
+    _boundsA[1] - _boundsA[0],
+    _boundsB[1] - _boundsB[0],
   );
   if (Math.abs(_boundsA[2] - _boundsB[2]) < minHeight * STACK_AXIS_FRACTION) {
     return false;
@@ -156,41 +238,38 @@ export function resolveTankBodyContacts(
     const a = entities[i];
     if (!a?.state || !a.spec?.dims) continue;
     const aState = a.state;
-    const aHalfW = a.spec.dims.widthM * 0.5;
-    const aSeg = Math.max(a.spec.dims.hullLengthM * 0.5 - aHalfW, 0);
+    const aRect = tankContactRect(a.spec);
+    const aHalfW = aRect.halfWidth;
+    const aHalfL = aRect.halfLength;
     const aFx = Math.sin(aState.yaw);
     const aFz = Math.cos(aState.yaw);
+    const aRx = aFz;
+    const aRz = -aFx;
+    const aCenterX = aState.pos.x + aRx * aRect.centerX + aFx * aRect.centerZ;
+    const aCenterZ = aState.pos.z + aRz * aRect.centerX + aFz * aRect.centerZ;
 
     for (let j = i + 1; j < entities.length; j++) {
       const b = entities[j];
       if (!b?.state || !b.spec?.dims) continue;
       if (!isDynamicBodyContact(a) && !isDynamicBodyContact(b)) continue;
       const bState = b.state;
-      const bHalfW = b.spec.dims.widthM * 0.5;
-      const bSeg = Math.max(b.spec.dims.hullLengthM * 0.5 - bHalfW, 0);
-      const minDistance = aHalfW + bHalfW;
-      const dx = aState.pos.x - bState.pos.x;
-      const dz = aState.pos.z - bState.pos.z;
-      const outer = aSeg + bSeg + minDistance;
-      if (dx * dx + dz * dz > outer * outer) continue;
-
-      // Closest points between the two horizontal hull capsule segments.
+      const bRect = tankContactRect(b.spec);
+      const bHalfW = bRect.halfWidth;
+      const bHalfL = bRect.halfLength;
       const bFx = Math.sin(bState.yaw);
       const bFz = Math.cos(bState.yaw);
-      const parallel = aFx * bFx + aFz * bFz;
-      const alongA = dx * aFx + dz * aFz;
-      const alongB = dx * bFx + dz * bFz;
-      const denom = 1 - parallel * parallel;
-      let aT = denom > 1e-6
-        ? (parallel * alongB - alongA) / denom
-        : -alongA;
-      aT = clamp(aT, -aSeg, aSeg);
-      let bT = clamp(alongB + parallel * aT, -bSeg, bSeg);
-      aT = clamp(parallel * bT - alongA, -aSeg, aSeg);
-      const wx = dx + aFx * aT - bFx * bT;
-      const wz = dz + aFz * aT - bFz * bT;
-      const distanceSq = wx * wx + wz * wz;
-      if (distanceSq >= minDistance * minDistance) continue;
+      const bRx = bFz;
+      const bRz = -bFx;
+      const bCenterX = bState.pos.x + bRx * bRect.centerX + bFx * bRect.centerZ;
+      const bCenterZ = bState.pos.z + bRz * bRect.centerX + bFz * bRect.centerZ;
+      const dx = aCenterX - bCenterX;
+      const dz = aCenterZ - bCenterZ;
+      const outer = Math.hypot(aHalfL, aHalfW) + Math.hypot(bHalfL, bHalfW);
+      if (dx * dx + dz * dz > outer * outer) continue;
+      if (!rectsOverlap(
+        aCenterX, aCenterZ, aFx, aFz, aRx, aRz, aHalfL, aHalfW,
+        bCenterX, bCenterZ, bFx, bFz, bRx, bRz, bHalfL, bHalfW,
+      )) continue;
 
       verticalBounds(a, _boundsA);
       verticalBounds(b, _boundsB);
@@ -199,7 +278,10 @@ export function resolveTankBodyContacts(
       const lower = aAbove ? b : a;
       const upperBounds = aAbove ? _boundsA : _boundsB;
       const lowerBounds = aAbove ? _boundsB : _boundsA;
-      const minHeight = Math.min(upper.spec.dims.heightM, lower.spec.dims.heightM);
+      const minHeight = Math.min(
+        upperBounds[1] - upperBounds[0],
+        lowerBounds[1] - lowerBounds[0],
+      );
       if (upperBounds[2] - lowerBounds[2] < minHeight * STACK_AXIS_FRACTION) continue;
 
       const penetration = lowerBounds[1] - upperBounds[0];
@@ -239,6 +321,7 @@ export function resolveTankBodyContacts(
       upper.state._ride.grounded = false;
 
       if (closing > 0.8) {
+        const upperRect = aAbove ? aRect : bRect;
         const centerDx = upper.state.pos.x - lower.state.pos.x;
         const centerDz = upper.state.pos.z - lower.state.pos.z;
         const upperYaw = upper.state.yaw;
@@ -250,13 +333,13 @@ export function resolveTankBodyContacts(
         // Upward impulse there supplies the physically correct tipping sense.
         const leverRight = clamp(
           -(centerDx * rightX + centerDz * rightZ) /
-            Math.max(upper.spec.dims.widthM * 0.5, 0.1),
+            Math.max(upperRect.halfWidth, 0.1),
           -1,
           1,
         );
         const leverForward = clamp(
           -(centerDx * forwardX + centerDz * forwardZ) /
-            Math.max(upper.spec.dims.hullLengthM * 0.5, 0.1),
+            Math.max(upperRect.halfLength, 0.1),
           -1,
           1,
         );

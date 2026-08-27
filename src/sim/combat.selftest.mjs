@@ -247,6 +247,10 @@ function mkShell(shellSpec, distM = 100) {
   const hits = traceTank(V(0, 1, 10), V(0, 1, -10), pose0, armorModel);
   assert(hits.length >= 3, `front trace finds plate+crew+rear (got ${hits.length})`);
   assert(hits[0].kind === 'plate' && hits[0].plate.name === 'front', 'first hit is the front plate');
+  assert(hits[0].impactFrame === 'hull', 'hull plate records its authoritative articulation frame');
+  near(hits[0].impactLocalX, 0, 1e-9, 'hull frame preserves exact local hit X');
+  near(hits[0].impactLocalY, 1, 1e-9, 'hull frame preserves exact local hit Y');
+  near(hits[0].impactLocalZ, 2, 1e-9, 'hull frame preserves exact local hit Z');
   near(hits[0].impactAngleDeg, 0, 0.01, 'head-on impact angle is 0');
   near(hits[0].point.z, 2, 1e-6, 'front plate hit point at z=2');
   near(hits[0].normal.z, 1, 1e-6, 'front plate world normal +Z');
@@ -296,7 +300,32 @@ function mkShell(shellSpec, distM = 100) {
   const hitsTur = traceTank(V(5, 1.8, 0), V(-5, 1.8, 0), poseTur, armorModel);
   const turHit = hitsTur.find((h) => h.kind === 'plate' && h.plate.name === 'turret_front');
   assert(!!turHit, 'rotated turret plate intersected from the side');
-  if (turHit) near(turHit.point.x, 1, 1e-6, 'turret plate world position honors turretYaw');
+  if (turHit) {
+    near(turHit.point.x, 1, 1e-6, 'turret plate world position honors turretYaw');
+    assert(turHit.impactFrame === 'turret', 'turret hit retains turret-frame provenance');
+    near(turHit.impactLocalX, 0, 1e-6, 'rotated turret hit local X stays centered');
+    near(turHit.impactLocalY, 0.3, 1e-6, 'rotated turret hit local Y is exact');
+    near(turHit.impactLocalZ, 1, 1e-6, 'rotated turret hit local Z stays on face');
+    near(turHit.impactLocalNormalZ, 1, 1e-6, 'turret hit keeps local face normal');
+
+    const spec = mkSpec({ armor: armorModel });
+    const target = {
+      id: 'rotated_turret_target', spec,
+      state: mkState({ turretYaw: Math.PI / 2 }),
+      combat: createCombatState(spec),
+    };
+    const shell = createShell(AP100, 'side_shooter', true, V(5, 1.8, 0), V(-1, 0, 0), 313);
+    shell.prevPos.set(5, 1.8, 0);
+    shell.pos.set(-5, 1.8, 0);
+    const ev = resolveShellHit(shell, target, hitsTur, rngHalf);
+    assert(ev.impactFrame === 'turret', 'resolved event preserves turret-frame provenance');
+    near(ev.impactLocalPos[2], 1, 1e-6, 'resolved event preserves turret-local contact');
+    near(ev.impactLocalNormal[2], 1, 1e-6, 'resolved event preserves turret-local normal');
+    near(ev.impactLocalDir[2], -1, 1e-6, 'resolved event preserves turret-local shot direction');
+    // Backward-compatible hull-local coordinates still describe the impact
+    // in the shot-time hull pose for replay consumers.
+    near(ev.localPos[0], 1, 1e-6, 'legacy event localPos remains hull-local');
+  }
 
   // Gun barrel cylinder (external module 'gun').
   const hitsGun = traceTank(V(5, 1.9, 2), V(-5, 1.9, 2), pose0, armorModel);

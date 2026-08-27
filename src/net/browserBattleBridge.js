@@ -4,7 +4,8 @@ import { createTankState, shotRecoilScale } from '../sim/movement.js';
 import { getSpec } from '../vehicles/specs.js';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
-import { pushHullFromObstacle } from '../world/collision.js';
+import { tankContactRect } from '../sim/tankContactShape.ts';
+import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.ts';
 import { PresentationEventQueue } from './presentationEventQueue.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
@@ -14,6 +15,7 @@ const POS_SCALE = 100;
 const VEL_SCALE = 100;
 const MAP_HALF_M = 508;
 const _muzzleTip = new Vector3(); // §5.362 twin-plant flash-origin scratch
+const _predictionContactCenter = new Vector3();
 
 function hashString(value) {
   let hash = 2166136261;
@@ -74,16 +76,20 @@ export function createBrowserBattleBridge({
     outPush.x = safeX - pos.x;
     outPush.z = safeZ - pos.z;
     if (!worldCollision) return outPush.x !== 0 || outPush.z !== 0;
-    const halfL = entity.spec.dims.hullLengthM * 0.5;
-    const halfW = entity.spec.dims.widthM * 0.5;
+    const contactRect = tankContactRect(entity.spec);
+    const halfL = contactRect.halfLength;
+    const halfW = contactRect.halfWidth;
     const yaw = entity.state.yaw;
     const fx = Math.sin(yaw), fz = Math.cos(yaw);
     const rx = fz, rz = -fx;
+    const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
+    const centerZ = pos.z + rz * contactRect.centerX + fz * contactRect.centerZ;
+    _predictionContactCenter.set(centerX, pos.y, centerZ);
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const candidates = typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles(
-        pos.x - broadRadius, pos.z - broadRadius,
-        pos.x + broadRadius, pos.z + broadRadius,
+        centerX - broadRadius, centerZ - broadRadius,
+        centerX + broadRadius, centerZ + broadRadius,
         nearbyPredictionObstacles,
       )
       : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
@@ -94,58 +100,43 @@ export function createBrowserBattleBridge({
       // that the next snapshot is about to destroy.
       if (obstacle.crushable &&
           Math.abs(entity.state.speed) > (obstacle.crushMin ?? 2.8)) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(pos.x, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(pos.z, obstacle.max[2]));
-      const dx = pos.x - closestX, dz = pos.z - closestZ;
+      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
+      const dx = centerX - closestX, dz = centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
-      if (pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, obstacle, outPush)) {
+      if (pushHullFromObstacle(
+        _predictionContactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
+      )) {
         entity._predictionStaticContacts = (entity._predictionStaticContacts || 0) + 1;
       }
     }
 
-    // Authority resolves tanks as hull capsules. Predicting only static world
-    // collision lets the local hull drive several metres through a teammate
-    // before a snapshot pulls it back, producing the rapid rubber-band loop
-    // seen after sustained movement. Mirror the same narrow phase against
-    // currently disclosed snapshot poses; never consult hidden entities.
-    const mySeg = Math.max(halfL - halfW, 0);
+    // Mirror authority's exact-shell OBB narrow phase against currently
+    // disclosed snapshot poses; never consult hidden entities. Parity here is
+    // what prevents a teammate contact from becoming a correction loop.
     for (const other of entities.values()) {
       if (other.id === id || !other.state ||
           (!other.networkVisible && !other.combat?.destroyed)) continue;
-      const otherHalfW = other.spec.dims.widthM * 0.5;
-      const otherSeg = Math.max(other.spec.dims.hullLengthM * 0.5 - otherHalfW, 0);
-      const minDistance = halfW + otherHalfW;
-      const dx = pos.x - other.state.pos.x;
-      const dz = pos.z - other.state.pos.z;
-      const outer = mySeg + otherSeg + minDistance;
-      if (dx * dx + dz * dz > outer * outer) continue;
+      const otherRect = tankContactRect(other.spec);
+      const otherHalfL = otherRect.halfLength;
+      const otherHalfW = otherRect.halfWidth;
       const ofx = Math.sin(other.state.yaw);
       const ofz = Math.cos(other.state.yaw);
-      const parallel = fx * ofx + fz * ofz;
-      const alongSelf = dx * fx + dz * fz;
-      const alongOther = dx * ofx + dz * ofz;
-      const denom = 1 - parallel * parallel;
-      let selfT = denom > 1e-6
-        ? (parallel * alongOther - alongSelf) / denom
-        : -alongSelf;
-      selfT = Math.max(-mySeg, Math.min(mySeg, selfT));
-      let otherT = alongOther + parallel * selfT;
-      otherT = Math.max(-otherSeg, Math.min(otherSeg, otherT));
-      selfT = Math.max(-mySeg, Math.min(mySeg, parallel * otherT - alongSelf));
-      const wx = dx + fx * selfT - ofx * otherT;
-      const wz = dz + fz * selfT - ofz * otherT;
-      const distanceSq = wx * wx + wz * wz;
-      if (distanceSq >= minDistance * minDistance) continue;
+      const orx = ofz, orz = -ofx;
+      const otherCenterX = other.state.pos.x +
+        orx * otherRect.centerX + ofx * otherRect.centerZ;
+      const otherCenterZ = other.state.pos.z +
+        orz * otherRect.centerX + ofz * otherRect.centerZ;
+      const dx = centerX - otherCenterX;
+      const dz = centerZ - otherCenterZ;
+      const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
+      if (dx * dx + dz * dz > outer * outer) continue;
+      if (!pushHullFromHull(
+        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
+        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
+        outPush,
+      )) continue;
       entity._predictionDynamicContacts = (entity._predictionDynamicContacts || 0) + 1;
-      const distance = Math.sqrt(Math.max(distanceSq, 1e-8));
-      const push = minDistance - distance;
-      if (distance > 1e-4) {
-        outPush.x += (wx / distance) * push;
-        outPush.z += (wz / distance) * push;
-      } else {
-        outPush.x += rx * push;
-        outPush.z += rz * push;
-      }
     }
     return outPush.x !== 0 || outPush.z !== 0;
   }

@@ -14,6 +14,7 @@ import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,
 } from '../sim/tankBodyContacts.ts';
+import { tankContactRect } from '../sim/tankContactShape.ts';
 import { stepRolloverLifecycle } from '../sim/rollover.ts';
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
@@ -31,7 +32,7 @@ import {
 } from '../sim/specialActions.js';
 import { createAI, roleOf } from './ai.js';
 import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.js';
-import { pushHullFromObstacle } from '../world/collision.js';
+import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
@@ -62,6 +63,7 @@ const _dir = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _toC = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
+const _contactCenter = new THREE.Vector3();
 
 // PERF (steady-churn): shell objects + the shell:fired payload were the last
 // per-shot allocations in the combat hot path (8 tanks firing every 4-8 s for
@@ -843,12 +845,10 @@ function measureContactGeom(ent) {
  * AABBs — the live probe dead-stopped twice in 13 s of open-meadow driving,
  * both times ~2 m short of any visible geometry, and grazing paths deflected
  * ~2.5 m before the hull could reach the prop. Replaced with:
- *  - tank vs OBSTACLE: the true 2D hull footprint (hullLengthM × widthM
- *    oriented box, NO barrel) vs the AABB via SAT minimum-translation
- *    push-out — contact happens where the tracks visually touch;
- *  - tank vs TANK: hull capsules (segment down the hull axis, radius
- *    widthM/2 each) — tight nose-to-nose / side-by-side contact instead of a
- *    6 m circular force field;
+ *  - tank vs OBSTACLE: cached bounds from the finalized armor collision shell
+ *    as an oriented box (NO barrel) vs each prop's exact projected shape;
+ *  - tank vs TANK: the same exact-shell rectangles through four-axis SAT —
+ *    no rounded invisible shoulders or overlapping track corners;
  *  - broad phase stays a cheap circle reject (footprint circumradius).
  * CRUSHABLE props (round critique MAJOR "nothing in the world crushes"):
  * obstacle records tagged `crushable` by the world layer (vegetation.js tags
@@ -886,65 +886,48 @@ function makeCollide(game, world) {
     outPush.set(0, 0, 0);
     let pushed = false;
     const spec = self ? self.spec : null;
-    const halfL = spec ? spec.dims.hullLengthM * 0.5 : radiusM * 0.6;
-    const halfW = spec ? spec.dims.widthM * 0.5 : radiusM * 0.45;
+    const contactRect = spec ? tankContactRect(spec) : null;
+    const halfL = contactRect ? contactRect.halfLength : radiusM * 0.6;
+    const halfW = contactRect ? contactRect.halfWidth : radiusM * 0.45;
     const yaw = self && self.state ? self.state.yaw : 0;
     const fx = Math.sin(yaw), fz = Math.cos(yaw);   // hull forward (world XZ)
     const rx = fz, rz = -fx;                        // hull right
-    const mySeg = Math.max(halfL - halfW, 0);       // capsule half-segment
+    const centerX = pos.x + rx * (contactRect?.centerX || 0) + fx * (contactRect?.centerZ || 0);
+    const centerZ = pos.z + rz * (contactRect?.centerX || 0) + fz * (contactRect?.centerZ || 0);
+    _contactCenter.set(centerX, pos.y, centerZ);
     const selfSpeed = self && self.state ? Math.abs(self.state.speed) : 0;
 
-    // --- other tanks: hull capsule vs hull capsule (2D segment-segment) ----
+    // --- other tanks: exact-shell bounds as oriented rectangles ------------
     for (const other of game.tanks) {
       if (other === self || !other.state) continue;
-      const od = other.spec.dims;
-      const oHalfW = od.widthM * 0.5;
-      const oSeg = Math.max(od.hullLengthM * 0.5 - oHalfW, 0);
-      const minD = halfW + oHalfW;
-      const dx0 = pos.x - other.state.pos.x;
-      const dz0 = pos.z - other.state.pos.z;
-      const outer = mySeg + oSeg + minD;
+      const otherRect = tankContactRect(other.spec);
+      const oHalfW = otherRect.halfWidth;
+      const oHalfL = otherRect.halfLength;
+      const ofx = Math.sin(other.state.yaw), ofz = Math.cos(other.state.yaw);
+      const orx = ofz, orz = -ofx;
+      const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
+      const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
+      const dx0 = centerX - otherCenterX;
+      const dz0 = centerZ - otherCenterZ;
+      const outer = Math.hypot(halfL, halfW) + Math.hypot(oHalfL, oHalfW);
       if (dx0 * dx0 + dz0 * dz0 > outer * outer) continue;
       if (self && prefersVerticalTankContact(self, other)) continue;
-      const ofx = Math.sin(other.state.yaw), ofz = Math.cos(other.state.yaw);
-      // closest points between segments A(s)=pos+f·s, B(t)=oPos+of·t
-      const b = fx * ofx + fz * ofz;            // f·of
-      const dU = dx0 * fx + dz0 * fz;           // d·f   (d = A0 − B0)
-      const dV = dx0 * ofx + dz0 * ofz;         // d·of
-      const denom = 1 - b * b;
-      let s = denom > 1e-6 ? (b * dV - dU) / denom : -dU;
-      s = s < -mySeg ? -mySeg : (s > mySeg ? mySeg : s);
-      let t = dV + b * s;
-      t = t < -oSeg ? -oSeg : (t > oSeg ? oSeg : t);
-      s = b * t - dU;
-      s = s < -mySeg ? -mySeg : (s > mySeg ? mySeg : s);
-      const wx = dx0 + fx * s - ofx * t;        // B-closest → A-closest
-      const wz = dz0 + fz * s - ofz * t;
-      const d2 = wx * wx + wz * wz;
-      if (d2 < minD * minD) {
-        const d = Math.sqrt(Math.max(d2, 1e-8));
-        if (d > 1e-4) {
-          outPush.x += (wx / d) * (minD - d);
-          outPush.z += (wz / d) * (minD - d);
-        } else {
-          // dead-center overlap: push out sideways
-          outPush.x += rx * minD;
-          outPush.z += rz * minD;
-        }
+      const beforeX = outPush.x, beforeZ = outPush.z;
+      if (pushHullFromHull(
+        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
+        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, oHalfL, oHalfW,
+        outPush,
+      )) {
         pushed = true;
-        // RAMMING: queue the contact with closing speed along the contact
-        // normal (n points other → self). Hulls only move along their own
-        // forward axis, so v = fwd · signed speed captures each side fully.
-        if (self && self.state && d > 1e-4) {
-          const nx = wx / d, nz = wz / d;
-          const vSelf = self.state.speed;
-          const vOther = other.state.speed;
-          const relX = fx * vSelf - ofx * vOther;
-          const relZ = fz * vSelf - ofz * vOther;
-          const closing = -(relX * nx + relZ * nz); // >0 = approaching
-          if (closing > 0) {
-            pendingRams.push({ a: self, b: other, closing, nx, nz });
-          }
+        const pushX = outPush.x - beforeX;
+        const pushZ = outPush.z - beforeZ;
+        const pushLength = Math.hypot(pushX, pushZ);
+        if (self && self.state && pushLength > 1e-6) {
+          const nx = pushX / pushLength, nz = pushZ / pushLength;
+          const relX = fx * self.state.speed - ofx * other.state.speed;
+          const relZ = fz * self.state.speed - ofz * other.state.speed;
+          const closing = -(relX * nx + relZ * nz);
+          if (closing > 0) pendingRams.push({ a: self, b: other, closing, nx, nz });
         }
       }
     }
@@ -952,23 +935,23 @@ function makeCollide(game, world) {
     // --- static obstacle AABBs: hull OBB vs box via 2D SAT -----------------
     const broadR = Math.sqrt(halfL * halfL + halfW * halfW) + 0.01;
     const candidates = world.queryObstacles
-      ? world.queryObstacles(pos.x - broadR, pos.z - broadR,
-        pos.x + broadR, pos.z + broadR, nearby)
+      ? world.queryObstacles(centerX - broadR, centerZ - broadR,
+        centerX + broadR, centerZ + broadR, nearby)
       : obstacles;
     for (const ob of candidates) {
       if (ob.crushed) continue;                 // felled — ghosts for everyone
       if (pos.y > ob.max[1] + 0.5) continue;
-      const ccx = Math.max(ob.min[0], Math.min(pos.x, ob.max[0]));
-      const ccz = Math.max(ob.min[2], Math.min(pos.z, ob.max[2]));
-      const bdx = pos.x - ccx;
-      const bdz = pos.z - ccz;
+      const ccx = Math.max(ob.min[0], Math.min(centerX, ob.max[0]));
+      const ccz = Math.max(ob.min[2], Math.min(centerZ, ob.max[2]));
+      const bdx = centerX - ccx;
+      const bdz = centerZ - ccz;
       if (bdx * bdx + bdz * bdz >= broadR * broadR) continue;
       // Narrow phase honors a prop's projected shape: rotated structures are
       // OBBs, trunks/round props are circles, and displaced rocks publish the
       // convex hull of their rendered mesh. The helper adds the exact MTV to
       // a scratch vector so a crushable can still choose to ignore it.
       const beforeX = outPush.x, beforeZ = outPush.z;
-      if (!pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, ob, outPush)) continue;
+      if (!pushHullFromObstacle(_contactCenter, fx, fz, rx, rz, halfL, halfW, ob, outPush)) continue;
       if (ob.crushable && self) {
         // DESTRUCTIBLES r1: per-obstacle overrun threshold — heavy light-cover
         // (stone wall runs) resists a touch harder than a sapling before the

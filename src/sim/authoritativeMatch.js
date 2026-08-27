@@ -22,6 +22,7 @@ import {
   prefersVerticalTankContact,
   resolveTankBodyContacts,
 } from './tankBodyContacts.ts';
+import { tankContactRect } from './tankContactShape.ts';
 import { stepRolloverLifecycle } from './rollover.ts';
 import {
   applyDispersion, createShell, guideShellToward, stepShell,
@@ -44,7 +45,7 @@ import {
 } from './damage.js';
 import { createSpottingSystem } from './spotting.js';
 import { captureWorldSnapshot } from '../net/snapshot.js';
-import { pushHullFromObstacle } from '../world/collision.js';
+import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.js';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
@@ -75,6 +76,7 @@ const TEAM_SPECTATOR = 'spectator';
 
 const _spawn = new Vector3();
 const _push = new Vector3();
+const _contactCenter = new Vector3();
 const _aim = new Vector3();
 const _muzzle = new Vector3();
 const _gunDir = new Vector3();
@@ -502,32 +504,36 @@ export function createAuthoritativeMatch({
     outPush.x += safeX - pos.x;
     outPush.z += safeZ - pos.z;
 
-    const halfL = entity.spec.dims.hullLengthM * 0.5;
-    const halfW = entity.spec.dims.widthM * 0.5;
+    const contactRect = tankContactRect(entity.spec);
+    const halfL = contactRect.halfLength;
+    const halfW = contactRect.halfWidth;
     const yaw = entity.state.yaw;
     const fx = Math.sin(yaw);
     const fz = Math.cos(yaw);
     const rx = fz;
     const rz = -fx;
+    const centerX = pos.x + rx * contactRect.centerX + fx * contactRect.centerZ;
+    const centerZ = pos.z + rz * contactRect.centerX + fz * contactRect.centerZ;
+    _contactCenter.set(centerX, pos.y, centerZ);
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const candidates = worldCollision && typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles(
-        pos.x - broadRadius, pos.z - broadRadius,
-        pos.x + broadRadius, pos.z + broadRadius,
+        centerX - broadRadius, centerZ - broadRadius,
+        centerX + broadRadius, centerZ + broadRadius,
         nearbyObstacles,
       )
       : staticObstacles;
     for (const obstacle of candidates) {
       if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(pos.x, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(pos.z, obstacle.max[2]));
-      const dx = pos.x - closestX;
-      const dz = pos.z - closestZ;
+      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
+      const dx = centerX - closestX;
+      const dz = centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       if (!pushHullFromObstacle(
-        pos, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
+        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
       )) continue;
       if (obstacle.crushable) {
         let crushNow = Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS);
@@ -548,44 +554,37 @@ export function createAuthoritativeMatch({
       }
     }
 
-    // Match the local simulation's hull-capsule contact instead of using a
-    // circular force field. This keeps close formation driving natural and
-    // gives ram damage a stable contact normal.
-    const mySeg = Math.max(halfL - halfW, 0);
+    // Match the local simulation's exact-shell OBB contact. Shared geometry
+    // keeps private rooms and solo from disagreeing at rectangular shoulders.
     for (const other of entities) {
       if (other === entity || !other.state) continue;
-      const otherHalfW = other.spec.dims.widthM * 0.5;
-      const otherSeg = Math.max(other.spec.dims.hullLengthM * 0.5 - otherHalfW, 0);
-      const minDistance = halfW + otherHalfW;
-      const dx = pos.x - other.state.pos.x;
-      const dz = pos.z - other.state.pos.z;
-      const outer = mySeg + otherSeg + minDistance;
-      if (dx * dx + dz * dz > outer * outer) continue;
-      if (prefersVerticalTankContact(entity, other)) continue;
+      const otherRect = tankContactRect(other.spec);
+      const otherHalfW = otherRect.halfWidth;
+      const otherHalfL = otherRect.halfLength;
       const ofx = Math.sin(other.state.yaw);
       const ofz = Math.cos(other.state.yaw);
-      const parallel = fx * ofx + fz * ofz;
-      const alongSelf = dx * fx + dz * fz;
-      const alongOther = dx * ofx + dz * ofz;
-      const denom = 1 - parallel * parallel;
-      let selfT = denom > 1e-6
-        ? (parallel * alongOther - alongSelf) / denom
-        : -alongSelf;
-      selfT = Math.max(-mySeg, Math.min(mySeg, selfT));
-      let otherT = alongOther + parallel * selfT;
-      otherT = Math.max(-otherSeg, Math.min(otherSeg, otherT));
-      selfT = Math.max(-mySeg, Math.min(mySeg, parallel * otherT - alongSelf));
-      const wx = dx + fx * selfT - ofx * otherT;
-      const wz = dz + fz * selfT - ofz * otherT;
-      const distanceSq = wx * wx + wz * wz;
-      if (distanceSq >= minDistance * minDistance) continue;
-      const distance = Math.sqrt(Math.max(distanceSq, 1e-8));
-      const nx = distance > 1e-4 ? wx / distance : rx;
-      const nz = distance > 1e-4 ? wz / distance : rz;
-      const push = minDistance - distance;
-      outPush.x += nx * push;
-      outPush.z += nz * push;
-      if (distance > 1e-4) {
+      const orx = ofz;
+      const orz = -ofx;
+      const otherCenterX = other.state.pos.x + orx * otherRect.centerX + ofx * otherRect.centerZ;
+      const otherCenterZ = other.state.pos.z + orz * otherRect.centerX + ofz * otherRect.centerZ;
+      const dx = centerX - otherCenterX;
+      const dz = centerZ - otherCenterZ;
+      const outer = Math.hypot(halfL, halfW) + Math.hypot(otherHalfL, otherHalfW);
+      if (dx * dx + dz * dz > outer * outer) continue;
+      if (prefersVerticalTankContact(entity, other)) continue;
+      const beforeX = outPush.x;
+      const beforeZ = outPush.z;
+      if (!pushHullFromHull(
+        centerX, centerZ, fx, fz, rx, rz, halfL, halfW,
+        otherCenterX, otherCenterZ, ofx, ofz, orx, orz, otherHalfL, otherHalfW,
+        outPush,
+      )) continue;
+      const pushX = outPush.x - beforeX;
+      const pushZ = outPush.z - beforeZ;
+      const pushLength = Math.hypot(pushX, pushZ);
+      if (pushLength > 1e-6) {
+        const nx = pushX / pushLength;
+        const nz = pushZ / pushLength;
         const relativeX = fx * entity.state.speed - ofx * other.state.speed;
         const relativeZ = fz * entity.state.speed - ofz * other.state.speed;
         const closing = -(relativeX * nx + relativeZ * nz);

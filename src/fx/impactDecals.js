@@ -22,14 +22,11 @@
  *           soot blot, low alpha at the edge, no hole
  *  - scuff  blunt non-penetration: small chipped-paint dish, no hole
  *
- * Placement: prefers the sim's HULL-LOCAL hit data (HitEvent.localPos /
- * localDir — exact inverse of the tankFactory 'YXZ' visual mapping) so the
- * stamp cannot smear when the tank moved between sim tick and render sync.
- * Turret hits are detected against the spec's armor turret-plate envelope
- * (the same geometry the sim traced) and stamped in rig_turret local space,
- * so marks ride turret rotation and the turret pop. Works identically for
- * procedural and GLB visuals (the GLB turret is re-parented into rig_turret
- * at swap time).
+ * Placement: uses the exact articulation-local contact emitted by armor.js
+ * (HitEvent.impactFrame / impactLocal*) so a hull, traversed turret, or
+ * elevated gun-housing strike is parented directly to the rig that was
+ * traced. Legacy events retain the hull-local envelope fallback. This keeps
+ * marks fixed to their true surface even if a tank moves before presentation.
  *
  * Lifecycle: per-vehicle ring of IMPACT_DECAL_CAP quads (oldest evicted),
  * persistent for the battle, cleared when the vehicle wrecks (matching the
@@ -551,8 +548,8 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
       }
       rec = {
         key, visual,
-        hull: null, turret: null,
-        turretNode: null,
+        hull: null, turret: null, gun: null,
+        turretNode: null, gunNode: null,
         ring: new Array(IMPACT_DECAL_CAP),
         head: 0, count: 0,
         lastStampT: 0,
@@ -565,6 +562,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   function clearRecord(rec) {
     if (rec.hull) releaseNodeMesh(rec.hull);
     if (rec.turret) releaseNodeMesh(rec.turret);
+    if (rec.gun) releaseNodeMesh(rec.gun);
     records.delete(rec.key);
   }
 
@@ -709,17 +707,35 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   }
 
   /**
-   * Core stamp in HULL-LOCAL space. pos/normal/dir are hull-local (dir may
-   * be null); turretYaw/turretPivot/env route turret hits into rig_turret.
+   * Core stamp in the supplied articulation frame. Legacy calls pass no
+   * impactFrame and retain the hull-local turret-envelope fallback.
    */
   function stampLocal(key, visual, fam, sizeK, caliberMm, pos, normal, dir,
-    turretYaw, turretPivot, env) {
+    turretYaw, turretPivot, env, impactFrame = null, gunPivot = null) {
     const rec = recFor(key, visual);
     rec.lastStampT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    // --- node routing: armor-model turret envelope test (turret frame) ------
+    // --- exact node routing from the authoritative collision frame ----------
     let nodeKey = 'hull';
     let node = visual.root;
-    if (env && turretPivot) {
+    if (impactFrame === 'turret' || impactFrame === 'gun') {
+      const isGun = impactFrame === 'gun';
+      const cacheKey = isGun ? 'gunNode' : 'turretNode';
+      const rigName = isGun ? 'rig_gun' : 'rig_turret';
+      const exactNode = rec[cacheKey] || (rec[cacheKey] = visual.root.getObjectByName(rigName));
+      if (!exactNode) return false;
+      nodeKey = impactFrame;
+      node = exactNode;
+      if (isGun && gunPivot) {
+        // Gun-follow collision coordinates retain the turret origin while
+        // rig_gun's local origin is the trunnion.
+        pos.x -= gunPivot[0];
+        pos.y -= gunPivot[1];
+        pos.z -= gunPivot[2];
+      }
+    } else if (!impactFrame && env && turretPivot) {
+      // Legacy payloads know only hull-local position, so preserve the old
+      // armor-envelope inference for recordings/network packets from before
+      // impactFrame was introduced.
       _pt.copy(pos);
       _pt.x -= turretPivot[0]; _pt.y -= turretPivot[1]; _pt.z -= turretPivot[2];
       const cy = Math.cos(-turretYaw || 0);
@@ -786,7 +802,8 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
 
     /**
      * Stamp from a resolved HitEvent + game entity ({state, spec, visual}).
-     * Uses the sim's hull-local hit data; returns false when skipped.
+     * Uses the sim's exact articulation-local hit data; returns false when
+     * skipped. Old recordings fall back to hull-local inference.
      */
     stampFromEvent(ev, ent) {
       if (!ev || !ent || !ent.visual || !ent.visual.root) return false;
@@ -796,24 +813,42 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
       const cls = classify(ev);
       if (!cls) return false;
       const st = ent.state;
-      // hull-local position: prefer the sim's exact localPos
-      if (ev.localPos) {
+      const exactFrame = typeof ev.impactFrame === 'string' &&
+        Array.isArray(ev.impactLocalPos) ? ev.impactFrame : null;
+      if (exactFrame === 'barrel') return false; // tube cannot host a flat quad
+      if (exactFrame) {
+        _p.set(ev.impactLocalPos[0], ev.impactLocalPos[1], ev.impactLocalPos[2]);
+      } else if (ev.localPos) {
         _p.set(ev.localPos[0], ev.localPos[1], ev.localPos[2]);
       } else if (ev.pos && st && st.pos) {
         _e.set(-(st.visualPitch || 0), st.yaw || 0, st.visualRoll || 0, 'YXZ');
         _q.setFromEuler(_e).invert();
         _p.set(ev.pos[0], ev.pos[1], ev.pos[2]).sub(st.pos).applyQuaternion(_q);
       } else return false;
-      // world normal -> hull-local
-      _e.set(-(st.visualPitch || 0), st.yaw || 0, st.visualRoll || 0, 'YXZ');
-      _q.setFromEuler(_e).invert();
-      _n.set(ev.normal ? ev.normal[0] : 0, ev.normal ? ev.normal[1] : 1,
-        ev.normal ? ev.normal[2] : 0).applyQuaternion(_q);
-      const dir = ev.localDir ? _d.set(ev.localDir[0], ev.localDir[1], ev.localDir[2]) : null;
+      if (exactFrame && Array.isArray(ev.impactLocalNormal)) {
+        _n.set(ev.impactLocalNormal[0], ev.impactLocalNormal[1], ev.impactLocalNormal[2]);
+      } else if (exactFrame && Array.isArray(ev.impactLocalDir)) {
+        // AABB-only module contacts do not have a resolved face normal. The
+        // opposite incoming direction is a stable outward approximation in
+        // the correct articulation frame and lets clampToSkin refine it.
+        _n.set(
+          -ev.impactLocalDir[0], -ev.impactLocalDir[1], -ev.impactLocalDir[2],
+        );
+      } else {
+        // Legacy world normal -> hull-local.
+        _e.set(-(st.visualPitch || 0), st.yaw || 0, st.visualRoll || 0, 'YXZ');
+        _q.setFromEuler(_e).invert();
+        _n.set(ev.normal ? ev.normal[0] : 0, ev.normal ? ev.normal[1] : 1,
+          ev.normal ? ev.normal[2] : 0).applyQuaternion(_q);
+      }
+      const exactDir = exactFrame && Array.isArray(ev.impactLocalDir)
+        ? ev.impactLocalDir : ev.localDir;
+      const dir = exactDir ? _d.set(exactDir[0], exactDir[1], exactDir[2]) : null;
+      const armor = ent.spec && ent.spec.armor;
       return stampLocal(String(ev.targetId), visual, cls.fam, cls.sizeK,
         ev.caliberMm, _p, _n, dir, st.turretYaw || 0,
-        ent.spec && ent.spec.armor ? ent.spec.armor.turretPivot : null,
-        turretEnvelope(ent.spec));
+        armor ? armor.turretPivot : null,
+        turretEnvelope(ent.spec), exactFrame, armor ? armor.gunPivot : null);
     },
 
     /**

@@ -8,6 +8,38 @@ function finite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * Put an exact articulation-local impact back into the neutral, forward-facing
+ * hull pose used by the static top/side schematics. Legacy events already
+ * carry hull-local coordinates and remain bit-for-bit compatible.
+ */
+export function impactForShotDiagram(event, armor = {}) {
+  const exact = Array.isArray(event?.impactLocalPos) ? event.impactLocalPos : null;
+  const position = exact || event?.localPos || null;
+  if (!position) return null;
+  const point = [position[0], position[1], position[2]];
+  const directionSource = Array.isArray(event?.impactLocalDir)
+    ? event.impactLocalDir : event?.localDir;
+  const direction = directionSource
+    ? [directionSource[0], directionSource[1], directionSource[2]] : null;
+  const frame = exact ? event.impactFrame : 'hull';
+  if (frame === 'turret' || frame === 'gun' || frame === 'barrel') {
+    const turretPivot = armor.turretPivot || [0, 0, 0];
+    point[0] += turretPivot[0];
+    point[1] += turretPivot[1];
+    point[2] += turretPivot[2];
+  }
+  if (frame === 'barrel') {
+    // Barrel-frame coordinates are trunnion-relative. Gun-follow armor uses
+    // turret-origin coordinates, so it deliberately does not take this step.
+    const gunPivot = armor.gunPivot || [0, 0, 0];
+    point[0] += gunPivot[0];
+    point[1] += gunPivot[1];
+    point[2] += gunPivot[2];
+  }
+  return { point, direction };
+}
+
 function anatomyEnvelope(spec, anchor) {
   const dims = spec.dims || {};
   const armor = spec.armor || {};

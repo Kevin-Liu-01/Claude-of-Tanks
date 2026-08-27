@@ -46,6 +46,7 @@ const FR_HULL = 0;
 const FR_TURRET = 1;
 const FR_GUN = 2;
 const FR_BARREL = 3;
+const FRAME_NAME = ['hull', 'turret', 'gun', 'barrel'];
 const _fromL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _toL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
 const _dirL = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
@@ -222,18 +223,44 @@ function traceCollisionShell(cells, frame, out) {
     const n = face.normal;
     const cosI = Math.min(1, Math.max(0,
       -(_dirN[frame].x * n[0] + _dirN[frame].y * n[1] + _dirN[frame].z * n[2])));
-    out.push({
+    out.push(finishFrameHit({
       t: first.t,
       tExit,
       kind: 'plate',
       plate: face.plate,
       collisionFace: face,
-      point: _pt.copy(_fromL[frame]).addScaledVector(_dirL[frame], first.t)
-        .clone().applyMatrix4(_forward[frame]),
-      normal: _n.set(n[0], n[1], n[2]).clone().transformDirection(_forward[frame]),
       impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
-    });
+    }, frame, first.t, n[0], n[1], n[2]));
   }
+}
+
+/**
+ * Preserve the articulation frame that produced an intersection. A resolved
+ * world point alone is not enough for presentation: converting a rotated
+ * turret or elevated mantlet hit to hull-local and later guessing its owner
+ * moves the marker and makes the decal detach as the gun traverses.
+ *
+ * Numeric fields avoid allocating three additional arrays for every armor,
+ * module and crew candidate in the hot trace. damage.js materializes arrays
+ * only for the decisive hit event that crosses the presentation boundary.
+ */
+function finishFrameHit(hit, frame, t, nx = null, ny = null, nz = null) {
+  _pt.copy(_fromL[frame]).addScaledVector(_dirL[frame], t);
+  hit.impactFrame = FRAME_NAME[frame];
+  hit.impactLocalX = _pt.x;
+  hit.impactLocalY = _pt.y;
+  hit.impactLocalZ = _pt.z;
+  hit.impactLocalDirX = _dirN[frame].x;
+  hit.impactLocalDirY = _dirN[frame].y;
+  hit.impactLocalDirZ = _dirN[frame].z;
+  hit.point = _pt.clone().applyMatrix4(_forward[frame]);
+  if (nx !== null && ny !== null && nz !== null) {
+    hit.impactLocalNormalX = nx;
+    hit.impactLocalNormalY = ny;
+    hit.impactLocalNormalZ = nz;
+    hit.normal = _n.set(nx, ny, nz).clone().transformDirection(_forward[frame]);
+  }
+  return hit;
 }
 
 /**
@@ -633,14 +660,12 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
       const t = intersectQuad(fr, plate.verts);
       if (t < 0) continue;
       const cosI = Math.min(1, Math.max(0, -_dirN[fr].dot(_n)));
-      out.push({
+      out.push(finishFrameHit({
         t,
         kind: 'plate',
         plate,
-        point: _pt.clone().applyMatrix4(_forward[fr]),
-        normal: _n.clone().transformDirection(_forward[fr]),
         impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
-      });
+      }, fr, t, _n.x, _n.y, _n.z));
     }
   };
 
@@ -664,15 +689,12 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
       if (t > 0) {
         const cosI = Math.min(1, Math.max(0,
           -(_dirN[FR_HULL].x * _pnx + _dirN[FR_HULL].y * _pny + _dirN[FR_HULL].z * _pnz)));
-        out.push({
+        out.push(finishFrameHit({
           t,
           kind: 'plate',
           plate: shape.plate,
-          point: _pt.copy(_fromL[FR_HULL]).addScaledVector(_dirL[FR_HULL], t)
-            .clone().applyMatrix4(_hullM),
-          normal: _n.set(_pnx, _pny, _pnz).clone().transformDirection(_hullM),
           impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
-        });
+        }, FR_HULL, t, _pnx, _pny, _pnz));
       }
       const span = shape.module === 'trackL' ? spanL : spanR;
       if (!span) {
@@ -685,15 +707,13 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
     }
     for (const [module, span] of [['trackL', spanL], ['trackR', spanR]]) {
       if (!span) continue;
-      out.push({
+      out.push(finishFrameHit({
         t: span.t,
         tExit: span.tExit,
         kind: 'module',
         module,
         external: false, // parity with the legacy track AABB record
-        point: _pt.copy(_fromL[FR_HULL]).addScaledVector(_dirL[FR_HULL], span.t)
-          .clone().applyMatrix4(_hullM),
-      });
+      }, FR_HULL, span.t));
     }
   }
 
@@ -724,7 +744,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         tExit = _aabbExitT;
       }
       if (t < 0 || !Number.isFinite(t)) continue;
-      out.push({
+      out.push(finishFrameHit({
         t,
         tExit,
         kind: 'module',
@@ -732,8 +752,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         // Damageable without hull penetration (armor doc §12: viewports are
         // external). Explicit box.external overrides the by-name default.
         external: volume.external !== undefined ? !!volume.external : volume.module === 'optics',
-        point: _pt.copy(_fromL[fr]).addScaledVector(_dirL[fr], t).clone().applyMatrix4(_forward[fr]),
-      });
+      }, fr, t));
     }
   }
 
@@ -754,20 +773,19 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         tExit = _aabbExitT;
       }
       if (t < 0 || !Number.isFinite(t)) continue;
-      out.push({
+      out.push(finishFrameHit({
         t,
         tExit,
         kind: 'crew',
         crew: volume.crew,
-        point: _pt.copy(_fromL[fr]).addScaledVector(_dirL[fr], t).clone().applyMatrix4(_forward[fr]),
-      });
+      }, fr, t));
     }
   }
 
   if (armorModel.gunBarrel) {
     const t = intersectBarrel(armorModel.gunBarrel.lengthM, armorModel.gunBarrel.radiusM);
     if (t >= 0) {
-      out.push({
+      out.push(finishFrameHit({
         t,
         kind: 'module',
         module: 'gun',
@@ -776,12 +794,7 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
         // charges a radius-scaled screen thickness against crossing shells.
         barrel: true,
         barrelRadiusM: armorModel.gunBarrel.radiusM,
-        point: _pt
-          .copy(_fromL[FR_BARREL])
-          .addScaledVector(_dirL[FR_BARREL], t)
-          .clone()
-          .applyMatrix4(_forward[FR_BARREL]),
-      });
+      }, FR_BARREL, t));
     }
   }
 

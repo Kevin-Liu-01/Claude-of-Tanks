@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
   convexHull2, createObstacleGrid, pushHullFromObstacle,
-  rayCollisionRecord, setCircleShape, setConvexShape, setObbShape,
+  pushHullFromHull, rayCollisionRecord, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -26,6 +26,23 @@ assert.equal(hullHit({ x: 0.8, z: 0.8 }, trunk, 0.1, 0.1).hit, false,
   'circle footprint rejects its old square corner');
 assert.equal(hullHit({ x: 0.58, z: 0 }, trunk, 0.1, 0.1).hit, true,
   'circle footprint still contacts at the visible radius');
+
+// Tank interaction boxes are true oriented hull rectangles. The old capsule
+// rounded each shoulder by half the tank width, producing contact where both
+// visible corners were still clear.
+const tankPush = push();
+assert.equal(pushHullFromHull(
+  0, 0, 0, 1, 1, 0, 3.5, 1.7,
+  3.5, 4.3, 0, 1, 1, 0, 3.5, 1.7,
+  tankPush,
+), false, 'separated rectangular tank corners do not collide');
+assert.equal(pushHullFromHull(
+  0, 0, 0, 1, 1, 0, 3.5, 1.7,
+  3.3, 3.3, 0, 1, 1, 0, 3.5, 1.7,
+  tankPush,
+), true, 'overlapping rectangular tank corners resolve with SAT');
+assert.ok(Math.hypot(tankPush.x, tankPush.z) > 0,
+  'tank OBB contact returns a minimum translation');
 
 // Displaced-rock projected hull: convex silhouette, not its enclosing square.
 const hull = convexHull2([[-1, 0], [0, -0.75], [1.15, 0], [0, 0.9], [0.2, 0.1]]);

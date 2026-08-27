@@ -432,6 +432,13 @@ function baseEvent(shell, targetId) {
     nominalMm: 0,                  // nominal RHAe the shell class sees (ke/ce base)
     localPos: null,                // hit point in HULL-LOCAL space [x,y,z]
     localDir: null,                // shell direction in HULL-LOCAL space [x,y,z]
+    // Exact articulation-local contact emitted by armor.js. Unlike localPos,
+    // this remains stable on a traversed turret or elevated gun housing and
+    // lets decals attach to the actual rig node without an envelope guess.
+    impactFrame: null,             // 'hull' | 'turret' | 'gun' | 'barrel'
+    impactLocalPos: null,
+    impactLocalNormal: null,
+    impactLocalDir: null,
   };
 }
 
@@ -462,6 +469,22 @@ function stampShotInfo(event, hit, shellSpec, target, vel) {
       event.zone = 'gun_barrel';
     } else if (hit.kind === 'module') {
       event.zone = hit.module;
+    }
+    if (hit.impactFrame && Number.isFinite(hit.impactLocalX)) {
+      event.impactFrame = hit.impactFrame;
+      event.impactLocalPos = [
+        hit.impactLocalX, hit.impactLocalY, hit.impactLocalZ,
+      ];
+      if (Number.isFinite(hit.impactLocalNormalX)) {
+        event.impactLocalNormal = [
+          hit.impactLocalNormalX, hit.impactLocalNormalY, hit.impactLocalNormalZ,
+        ];
+      }
+      if (Number.isFinite(hit.impactLocalDirX)) {
+        event.impactLocalDir = [
+          hit.impactLocalDirX, hit.impactLocalDirY, hit.impactLocalDirZ,
+        ];
+      }
     }
   }
   const st = target ? target.state : null;

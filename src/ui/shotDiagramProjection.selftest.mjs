@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { createShotDiagramProjection } from './shotDiagramProjection.js';
+import {
+  createShotDiagramProjection,
+  impactForShotDiagram,
+} from './shotDiagramProjection.js';
 import {
   presentationAnchorFor,
   presentationProjectionFor,
@@ -37,4 +40,33 @@ assert.ok(topRear[1] <= 96 - 6.2,
 assert.ok(sideRear[0] >= 5.6,
   `rear hit ring stays inside side schematic (got x=${sideRear[0].toFixed(2)})`);
 
-console.log('shotDiagramProjection.selftest: rear impact remains on both schematics');
+// A 90-degree traversed turret hit arrives in turret-local space. The static
+// schematic always depicts the turret forward, so normalize only the owning
+// frame translation—not the live traverse—before projecting it.
+const turretImpact = impactForShotDiagram({
+  impactFrame: 'turret',
+  impactLocalPos: [0.25, 0.4, 1.1],
+  impactLocalDir: [0, 0, -1],
+  // Deliberately wrong legacy coordinates prove the exact payload wins.
+  localPos: [8, 8, 8],
+  localDir: [1, 0, 0],
+}, amx56.armor);
+assert.deepEqual(turretImpact.point, [0.25, 2, 1],
+  'turret-local impact is placed in the neutral hull schematic');
+assert.deepEqual(turretImpact.direction, [0, 0, -1],
+  'turret-local shot direction drives the diagram arrow');
+
+const gunImpact = impactForShotDiagram({
+  impactFrame: 'gun',
+  impactLocalPos: [-0.2, 0.3, 1.7],
+}, amx56.armor);
+assert.ok(Math.abs(gunImpact.point[0] + 0.2) < 1e-12 &&
+  Math.abs(gunImpact.point[1] - 1.9) < 1e-12 &&
+  Math.abs(gunImpact.point[2] - 1.6) < 1e-12,
+  'gun-follow armor uses turret-origin coordinates in the neutral diagram');
+
+const legacyImpact = impactForShotDiagram({ localPos: [1, 2, 3], localDir: [0, 1, 0] }, amx56.armor);
+assert.deepEqual(legacyImpact, { point: [1, 2, 3], direction: [0, 1, 0] },
+  'legacy hull-local events remain compatible');
+
+console.log('shotDiagramProjection.selftest: impact frames remain aligned with both schematics');
