@@ -49,6 +49,19 @@ still reused by covered entry.
 - Simulation, collision heightfields, vegetation, props, armor, and damage rules
   are unchanged.
 
+### Packed environment geometry
+
+The 2026-08-27 follow-up removes `props-models.json` from the normal map module
+graph. `propsModelStore.ts` transfers a 190.7 KB deterministic gzip archive in
+parallel with terrain and vegetation, validates its bounds, and presents
+zero-copy typed-array views. The executable map chunk is now about 268 KB
+instead of 1.51 MB. The JSON remains the attributed authoring source and is
+available only through a demand-loaded compatibility fallback.
+
+Run `npm run world:props:pack` after an intentional JSON edit. The focused
+self-test compares every decoded float, index, bound, and model name against
+the source before release.
+
 ## Reproduction
 
 ```sh

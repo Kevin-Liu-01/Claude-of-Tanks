@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { createHeightField, buildTerrainMeshes, buildTerrainMeshesAsync } from './terrain.js';
 import { createVegetation, createVegetationAsync } from './vegetation.js';
-import { createProps, createPropsAsync } from './props.js';
+import { createProps, createPropsAsync, preloadPropModels } from './props.js';
 import { getMapConfig } from './maps/index.js';
 import { createObstacleGrid, rayCollisionRecord } from './collision.js';
 
@@ -44,6 +44,11 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
 export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337 } = {},
   onStep = null, { fineSlices = false } = {}) {
   const config = getMapConfig(mapId);
+  // Transfer/decompress the exact authored sandbag and utility-pole streams
+  // while terrain and vegetation occupy the main thread. Previously their
+  // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
+  // parsed before even the height field could start.
+  const propModelsReady = preloadPropModels();
   const step = async (label, f) => { if (onStep) await onStep(label, f); };
   // perf-r3 (play-session probe): the old five-yield build left each
   // subsystem ATOMIC — 1.5-2.4 s tasks that pinned the loading bar (and
@@ -68,6 +73,7 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
   const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
     sub('Planting vegetation', 0.58, 0.82), fineSlices);
   await step('Placing structures', 0.82);
+  await propModelsReady;
   const props = await createPropsAsync(heightField, engineCtx, 2002, config,
     sub('Placing structures', 0.82, 0.96), fineSlices);
   await step('Sealing the battlefield', 0.96);

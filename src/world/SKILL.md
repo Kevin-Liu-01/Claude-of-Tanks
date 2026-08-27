@@ -17,6 +17,9 @@ pacing, cancellation, residency, and eviction. `map.js` composes maps,
 `terrain.js` provides the height field,
 `collision.js` owns broad phase/shapes, `maps/` owns layouts, and vegetation,
 props, destructibles, toppling, and wrecks own their visual/runtime layers.
+`propsModelStore.ts` owns the bounds-checked packed runtime representation of
+the attributed `props-models.json` authoring source; regenerate it with
+`npm run world:props:pack` after intentional source changes.
 `headlessCollisionWorld.js` inflates the captured authored records for a
 dedicated server without importing any renderer or DOM state.
 
@@ -26,6 +29,9 @@ Keep height/collision queries deterministic and headless-capable. Bound per-fram
 LOD/vegetation work, reuse world caches, and reset destruction on rematch.
 Certify structure connectivity before material-bucket or instanced-geometry
 merges; merged geometry is too late to identify a floating authored fixture.
+Keep large baked numeric streams out of executable chunks. Start their bounded
+transfer with explicit Battle intent, overlap it with independent construction,
+and verify the packed representation against its authoring source.
 World meshes authored only as low-polygon shadow casters must use
 `markShadowOnly()` from `src/engine/renderLayers.ts`; keep visible geometry on
 the presentation layer and verify that native shadow submissions are unchanged.

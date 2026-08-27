@@ -39,9 +39,11 @@ import {
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.js';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.js';
+import { preloadPropModels, requirePropModels } from './propsModelStore.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
-// docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
-import MODELS from './props-models.json';
+// docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
+// binary archive; createMapAsync starts it while terrain is being constructed.
+export { preloadPropModels };
 
 // Per-category switch: sourced model vs procedural, set from side-by-side
 // screenshot judging on 2026-07-27 (record in docs/ATTRIBUTION.md). Only the
@@ -359,7 +361,7 @@ function bakedGeometry(name, opts = {}) {
   const key = name + JSON.stringify(opts);
   const hit = _bakedCache.get(key);
   if (hit) return hit;
-  const m = MODELS[name];
+  const m = requirePropModels()[name];
   if (!m) throw new Error('world/props: missing baked model ' + name);
   let [minX, minY, minZ] = m.bbox.min, [maxX, maxY, maxZ] = m.bbox.max;
   let sourceVertexIds = null;
@@ -447,7 +449,13 @@ function bakedGeometry(name, opts = {}) {
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  geo.setIndex(sourceIndices);
+  // BufferGeometry#setIndex only wraps ordinary JS arrays. Packed runtime
+  // models expose a Uint16Array view, which must be wrapped explicitly or the
+  // renderer later mistakes the raw typed array for a BufferAttribute.
+  const indexArray = sourceIndices instanceof Uint16Array
+    ? sourceIndices
+    : new Uint16Array(sourceIndices);
+  geo.setIndex(new THREE.BufferAttribute(indexArray, 1));
   geo.userData.size = {
     w: (maxX - minX) * s, h: (maxY - minY) * s, d: (maxZ - minZ) * s,
   };

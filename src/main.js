@@ -383,8 +383,13 @@ installBattleRecords(bus);
 const game = createGameState();
 const playerShellLog = [];
 const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
+// Randomized rosters made the two-entry detached bot cache a poor hit-rate
+// trade: it retained complete procedural tank graphs, paint canvases and GPU
+// programs throughout the mostly-static Garage, yet usually missed the next
+// battle's exact roster. The selected player visual still transfers directly
+// into the pedestal; all other battle actors now release at the phase edge.
 const battleVisualPool = createBattleVisualPool({
-  capacity: getDeviceTier() === 'mobile' ? 0 : 2,
+  capacity: 0,
 });
 game._battleVisualPool = battleVisualPool;
 devTrace?.configure({ game });

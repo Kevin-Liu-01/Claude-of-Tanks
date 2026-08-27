@@ -42,29 +42,31 @@ const viewport = {
 const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
     taskCoreEquivalent: 0.06,
-    heapMB: 72,
-    programs: 95,
-    geometries: 360,
-    textures: 86,
-    calls: 750,
+    heapMB: 68,
+    programs: 92,
+    geometries: 352,
+    textures: 85,
+    calls: 600,
     triangles: 240_000,
   }),
   battleActive: Object.freeze({
     taskCoreEquivalent: 0.45,
-    heapMB: 290,
-    programs: 255,
+    heapMB: 280,
+    programs: 252,
     geometries: 770,
     textures: 320,
-    calls: 680,
+    // Dynamic explosions and decals move the exact sampled frame by several
+    // submissions; 700 still fails a sustained scene-complexity regression.
+    calls: 700,
     triangles: 3_800_000,
   }),
   garageReturned: Object.freeze({
     taskCoreEquivalent: 0.06,
-    heapMB: 220,
-    programs: 290,
-    geometries: 570,
-    textures: 185,
-    calls: 750,
+    heapMB: 205,
+    programs: 285,
+    geometries: 565,
+    textures: 165,
+    calls: 600,
     triangles: 240_000,
   }),
 });
@@ -444,6 +446,10 @@ const evaluateBudgets = (phases) => {
     (idle?.resources.caches.workshopOptimization?.shadowCastersPruned || 0) > 0,
     idle?.resources.caches.workshopOptimization || null,
     'authored proxy-safe pruning receipt');
+  check('static workshop props are submission-batched',
+    (idle?.resources.caches.workshopOptimization?.drawCallsRemoved || 0) >= 100,
+    idle?.resources.caches.workshopOptimization || null,
+    '>= 100 exact repeated-prop draws removed');
   check('active battle CPU residency',
     battle?.taskCoreEquivalent <= RESOURCE_BUDGETS.battleActive.taskCoreEquivalent,
     battle?.taskCoreEquivalent ?? null,

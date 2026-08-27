@@ -11,6 +11,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { readdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
+import { writePropModelArchive } from './pack-prop-models.mjs';
 
 const dir = resolve('public/models/props');
 const args = process.argv.slice(2);
@@ -49,3 +50,4 @@ for (const [name, m] of Object.entries(baked)) {
 }
 writeFileSync(outPath, JSON.stringify(existing));
 console.log(`[bake] wrote ${outPath} (${ok}/${files.length} models, ${Math.round(JSON.stringify(existing).length / 1024)} KB total)`);
+writePropModelArchive({ input: outPath });

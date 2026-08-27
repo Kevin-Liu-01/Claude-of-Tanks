@@ -504,10 +504,44 @@ burn-front, ember, and rematch visuals.
 
 After these measurements, the enforced heap, shader, geometry, texture,
 complete-frame call, and triangle ceilings were tightened around the healthy
-production envelope. The battle gate now fails above 320 MB forced-GC heap,
-270 programs, 810 geometries, 340 textures, 750 complete-frame calls, or 4.1
-million triangle submissions. Returned Garage has independent limits so a
-high-FPS static screen cannot hide leaked battle residency.
+production envelope. The current battle gate fails above 280 MB forced-GC
+heap, 252 programs, 770 geometries, 320 textures, 700 complete-frame calls, or
+3.8 million triangle submissions. Returned Garage has independent 205 MB,
+285-program, 565-geometry, 165-texture, and 600-call limits so a high-FPS
+static screen cannot hide leaked battle residency.
+
+## Submission and world-data round — 2026-08-27
+
+The mostly static Garage now batches exact repeated opaque workshop props by
+shared geometry, material, render state, and world transform. Transparent,
+skinned, specialized, child-owning, and authored fleet-exhibit meshes remain
+independent. This preserves their geometry and materials while reducing a
+complete Garage frame from 733 to 584 draw calls. The production receipt
+records 137 meshes in 31 batches: 106 submissions removed.
+
+The baked environment-prop payload no longer enters the battlefield as 1.2 MB
+of JavaScript numeric literals. Its authored JSON remains the reviewable source;
+the production path fetches one deterministic gzip archive containing exact
+Float32 streams and Uint16 indices, starts that transfer alongside terrain
+construction, and exposes zero-copy typed-array views after decompression. The
+map chunk fell from about 1.51 MB / 279 KB gzip to 268 KB / 94 KB gzip. The
+190.7 KB archive overlaps terrain and avoids constructing hundreds of thousands
+of boxed parser values. Browsers without `DecompressionStream` demand-load the
+legacy JSON fallback rather than placing it on the common path.
+
+At 1280×577, DPR 1, production Chromium, the resulting phase receipt was:
+
+| Phase | Core equivalent | Forced-GC heap | Programs | Geometries | Textures | Calls |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Initial Garage | 0.018 | 63.5 MB | 90 | 347 | 84 | 584 |
+| Active 14-tank battle | 0.321 | 269.5 MB | 248 | 696 | 309 | 686 peak |
+| Returned Garage | 0.018 | 194.6 MB | 282 | 541 | 158 | 585 |
+
+A clean production Verdant run reached Garage-ready in 1.04 seconds, completed
+covered battle construction in 3.73 seconds, and reached controllable rollout
+in 5.73 seconds. Its largest transition frame gap was 317 ms and it emitted no
+application errors. These receipts measure CPU, heap, shader/texture/geometry
+residency, and complete-frame work in addition to display rate.
 
 Passive Garage dwell must report zero resident worlds; desktop
 pedestal/world/rematch caches must stay within 4/2/2 respectively.
@@ -575,6 +609,9 @@ regression record.
 - No failed diagnostic leaves an off-screen render target bound.
 - No transition certification from a host-contended measurement window.
 - No full battlefield construction from passive garage idle.
+- No numeric environment-geometry JSON in the common battlefield module graph;
+  regenerate and validate the packed archive after authoring-source changes.
+- No one-draw-per-prop submission for exact repeated opaque workshop meshes.
 - No serial profile-chunk await inside roster visual construction.
 - No track deformation or instance upload for an unchanged parked/off-screen actor.
 - No stable reticle Canvas2D repaint at the display refresh rate.

@@ -247,6 +247,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propGeometry.selftest.mjs',
     'src/world/randomBattleMaps.selftest.mjs',
     'src/world/mapQuality.selftest.mjs',
+    'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
     'src/world/exteriorDetailKit.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',

@@ -210,6 +210,12 @@ input, coalesces repeated intent, and bounds retained texture-only previews.
 `garageIdleWorkCoordinator.ts` serializes that paint with background world and
 workshop construction; it does not change authored work or visual quality.
 
+After the complete workshop arrives, `garageDressingOptimization.ts` freezes
+stable descendant transforms, batches exact repeated opaque props sharing
+geometry/material/render state, and removes only sub-resolution fitting shadow
+casters. Transparent or specialized meshes and authored fleet exhibits stay
+independent; authored proxy shadows and every visible surface remain intact.
+
 `garageShowroomRuntime.ts` presents one phase-scoped camera interface to the
 composition root. It owns primary-pointer capture, drag cancellation, wheel
 consumption, and listener lifetime. The existing engine orbit still computes
@@ -443,6 +449,14 @@ world must describe matching obstacles and destructible identifiers.
 World instances may be cached between entries. Reset logic must clear
 match-specific destruction and visibility state without rebuilding immutable
 terrain unnecessarily.
+
+Large baked sandbag and utility-pole streams have two representations with one
+owner. `props-models.json` is the attributed, reviewable authoring source.
+`propsModelStore.ts` owns the deterministic packed runtime archive, transfer,
+decompression, validation, retry, and zero-copy typed-array views. Async map
+construction begins that transfer before terrain work and joins it only when
+props are needed. `npm run world:props:pack` regenerates the archive; its
+self-test proves every float and index matches the source.
 
 ## Renderer and quality
 

@@ -38,8 +38,9 @@ residency, switch convergence, and battle visual handoff; it composes
 drag/wheel bindings, and disposal while the engine orbit remains the only pose
 solver.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
-bakes descendant transforms, and removes only sub-resolution fitting shadows
-while preserving authored vehicle shadow proxies and all color geometry.
+bakes descendant transforms, batches only exact repeated opaque prop meshes,
+and removes only sub-resolution fitting shadows while preserving authored
+vehicle exhibits, shadow proxies, and all color geometry.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
