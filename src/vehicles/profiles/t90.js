@@ -7495,9 +7495,8 @@ function addT90BurlakBustleNative2026(P, { scale = 1 } = {}) {
   // One shallow tapered bustle begins inside the existing cast rear bins.
   // It is a closed authored loft with a real floor and roof; lids and rails
   // merely articulate that load-bearing body and never substitute for it.
-  // The production T-90 retains the source envelope (scale=1). The Burlak
-  // prototype passes 0.90, shrinking its complete rear magazine about the
-  // fixed neck plane so the attachment stays buried in the cast shell.
+  // Scale remains available to comparison tools, while production vehicles
+  // use the complete source envelope around the fixed neck plane.
   const stations = [
     [-1.08, 0.00, 0.64, -1.10, 1.10, -0.98, 0.98, -1.04, 1.04],
     [-1.50, 0.05, 0.67, -1.02, 1.02, -0.90, 0.90, -0.96, 0.96],
@@ -7523,10 +7522,8 @@ function addT90BurlakBustleNative2026(P, { scale = 1 } = {}) {
         s * fit(x + 0.105), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
     }
     if (scale < 0.999) {
-      // A hidden lap plate joins the two armour-pod runs where the old clear
-      // seam became a 6 cm continuity pinhole after scaling. The visible pods
-      // remain exactly 90% of their source dimensions; the production T-90
-      // keeps its original helper output at scale=1.
+      // Keep optional reduced comparison envelopes watertight without changing
+      // the visible armour-pod proportions. Production vehicles remain scale=1.
       P.add('turret', box(fit(0.16), fit(0.24), fit(0.20)),
         s * fit(1.07), fit(0.37), fitZ(-2.44), 0, -s * 0.32, 0);
     }
@@ -7553,7 +7550,9 @@ function addT90BurlakBustleNative2026(P, { scale = 1 } = {}) {
 
 function finishT90BurlakNative2026(P) {
   const { box, cylY, cylZ, torus } = KIT;
-  const bustleScale = 0.90;
+  // Preserve the full authored magazine envelope. A previous 0.90 scale made
+  // the Burlak bustle visibly undersized relative to its turret foundation.
+  const bustleScale = 1;
   const bustleRootZ = -1.08;
   const fitBustle = (value) => value * bustleScale;
   const fitBustleZ = (z) => bustleRootZ + (z - bustleRootZ) * bustleScale;

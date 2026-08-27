@@ -31,17 +31,17 @@ near(production.rearZ, -3.30,
   'T-90 production bustle rear station remains unchanged');
 
 const burlak = inspect('t90a_burlak');
-assert.equal(burlak.scale, 0.90,
-  'Burlak rear magazine is scaled to ninety percent');
+assert.equal(burlak.scale, 1,
+  'Burlak rear magazine restores its full authored scale');
 near(burlak.rootZ, -1.08,
   'Burlak bustle keeps its shell attachment plane');
-near(burlak.rearZ, -3.078,
-  'Burlak bustle length is reduced ten percent about its attachment plane');
-near(burlak.frontHalfWidth, 0.99,
-  'Burlak bustle width is reduced ten percent');
-near(burlak.frontHeight, 0.576,
-  'Burlak bustle height is reduced ten percent');
-near(burlak.maxRoofY, 0.621,
-  'Burlak bustle roof equipment follows the reduced envelope');
+near(burlak.rearZ, -3.30,
+  'Burlak bustle restores its full authored length');
+near(burlak.frontHalfWidth, 1.10,
+  'Burlak bustle restores its full authored width');
+near(burlak.frontHeight, 0.64,
+  'Burlak bustle restores its full authored height');
+near(burlak.maxRoofY, 0.69,
+  'Burlak bustle roof equipment follows the restored envelope');
 
-console.log('t90BurlakRearScale.selftest: Burlak rear magazine shrinks around its fixed turret neck');
+console.log('t90BurlakRearScale.selftest: Burlak rear magazine restores its full envelope around the fixed turret neck');
