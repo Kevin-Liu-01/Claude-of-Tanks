@@ -12,6 +12,10 @@ const combatWarmCoordinator = await readFile(
   new URL('../game/combatWarmCoordinator.ts', import.meta.url), 'utf8',
 );
 const shotRuntime = await readFile(new URL('../dev/shotRuntime.ts', import.meta.url), 'utf8');
+const studioAccess = await readFile(new URL('../game/studioAccess.ts', import.meta.url), 'utf8');
+const deferredWarm = await readFile(
+  new URL('../game/deferredCombatWarmRuntime.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -33,10 +37,12 @@ if (!/attachLateFxState\(softState\)[\s\S]{0,100}lateFx\.setSoftState\(softState
 const requiredGates = [
   ['solo battle', /async function startBattleLoading[\s\S]{0,5200}const fxTextureP = ensureFxRuntime\(\)/],
   ['QA battle', /async function debugStartBattle[\s\S]{0,420}ensureFxRuntime\(\)/],
-  ['Studio', /async function loadStudioRuntime[\s\S]{0,260}ensureFxRuntime\(\)/],
 ];
 for (const [name, pattern] of requiredGates) {
   if (!pattern.test(main)) throw new Error(`${name} can enter without the live effects runtime`);
+}
+if (!/const loadRuntime[^=]*=[\s\S]{0,520}Promise\.all\(\[[\s\S]{0,120}preloadModule\(\),[\s\S]{0,80}ensureFxRuntime\(\)/.test(studioAccess)) {
+  throw new Error('Studio can enter without its module and live effects runtime');
 }
 if (!/window\.__SHOTS\s*=\s*\{[\s\S]{0,320}import\(['"]\.\/dev\/shotRuntime\.ts['"]\)/.test(main)
     || !/export async function setShotView[\s\S]*context\.ensureFxRuntime\(\)/.test(shotRuntime)) {
@@ -80,14 +86,13 @@ if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*c
 if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
   throw new Error('the typed battle warm owner must retain every covered FX family and tracer');
 }
-const deferredWarm = main.slice(
-  main.indexOf('function scheduleDeferredCombatWarm(generation)'),
-  main.indexOf('const warmRender = createOffscreenSceneWarmer'),
-);
-const enemyAt = deferredWarm.indexOf('battleVisuals.stream(');
+const enemyAt = deferredWarm.indexOf('getBattleVisuals().stream(');
 const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');
+const navigationAt = deferredWarm.indexOf('prepareNextOpeningRoute(game)');
+const terrainAt = deferredWarm.indexOf('battleWarm.warmBattleTerrainTiles({');
 const rareAt = deferredWarm.indexOf('combatWarm.warmRareChunked(6, guardedYield)');
-if (!(enemyAt >= 0 && openingAt > enemyAt && rareAt > openingAt)) {
+if (!(enemyAt >= 0 && openingAt > enemyAt && navigationAt > openingAt
+    && terrainAt > navigationAt && rareAt > terrainAt)) {
   throw new Error('hidden enemy receipts and fallback opening/rare work must retain countdown order');
 }
 if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,900}fxTextureP/.test(main)) {
@@ -102,14 +107,15 @@ if (!/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeBurntSteps[\s\S
   || !/function\* createCombatRareWarmSteps\([\s\S]*yield\* warmCombatDestructionEffectSteps\(context\)[\s\S]*compileHiddenVariantsSteps/.test(battleWarm)) {
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
 }
-if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*battleWarmPending = false/.test(main)) {
+if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*setPending\(false\)/.test(deferredWarm)
+    || !/setPending:\s*\(pending\)[\s\S]{0,80}battleWarmPending = pending/.test(main)) {
   throw new Error('deferred warm must retain the one-second rollout hold and record completion');
 }
 if (!/setupBattle\(game, specId, world,[\s\S]{0,900}combatWarm\.reset\(\)/.test(main)
   || !/const reset = \(\): void => \{[\s\S]{0,320}openingReady = false;[\s\S]{0,80}rareReady = false;/.test(combatWarmCoordinator)) {
   throw new Error('each new map/roster must receive a fresh opening and rare warm receipt');
 }
-if (!/deferredCombatWarmPromise === pending/.test(main)) {
+if (!/pendingPromise === pending/.test(deferredWarm)) {
   throw new Error('a cancelled round must not clear a newer deferred warm queue');
 }
 const hiddenVariants = battleWarm.slice(
@@ -120,12 +126,8 @@ if (!hiddenVariants.includes('yield* compileAll(entity.visual.root)')
   || /initializeForwardProgramsSteps\(scene\)|renderer\.compile\(scene/.test(hiddenVariants)) {
   throw new Error('rare effects must never recompile the entire visible battlefield');
 }
-const routeAt = deferredWarm.indexOf('prepareNextOpeningRoute(game)');
-const terrainAt = deferredWarm.indexOf(
-  'battleWarm.warmBattleTerrainTiles({',
-);
 if (!/deferOpeningRoutes: !!opts\.deferVisuals/.test(main)
-  || !(routeAt >= 0 && terrainAt > routeAt)
+  || !(navigationAt >= 0 && terrainAt > navigationAt)
   || !/battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,180}primePresentation: false/.test(deferredWarm)
   || !/opts\.deferOpeningRoutes\) game\.openingRouteJobs\.push\(prepareOpeningRoute\)/.test(state)) {
   throw new Error('solo A* routes and their terrain tiles must finish in the bounded deployment queue');

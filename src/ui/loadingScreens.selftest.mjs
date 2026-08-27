@@ -121,6 +121,9 @@ const deploymentShadowWarmSource = await readFile(
 const battleVisualStreamerSource = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
+const deferredWarmSource = await readFile(
+  new URL('../game/deferredCombatWarmRuntime.ts', import.meta.url), 'utf8',
+);
 const studioSource = await readFile(new URL('../game/studio.js', import.meta.url), 'utf8');
 const hudSource = await readFile(new URL('./hud.js', import.meta.url), 'utf8');
 assert.match(mainSource,
@@ -215,20 +218,20 @@ assert.match(mainSource,
 assert.match(mainSource,
   /actorVisible = ent\._spotFade > 0\.02;[\s\S]*setBattleVisualResident\(visual, actorVisible\)[\s\S]*visual\.setVisible\(actorVisible\)[\s\S]*if \(!actorVisible\) continue/,
   'spotting must restore scene residency before the first visible pose sync');
-const deferredWarmBody = mainSource.slice(
-  mainSource.indexOf('function scheduleDeferredCombatWarm('),
-  mainSource.indexOf('const warmRender = createOffscreenSceneWarmer'),
-);
-const deferredEnemyAt = deferredWarmBody.indexOf('battleVisuals.stream(');
-const deferredOpeningAt = deferredWarmBody.indexOf(
+const deferredEnemyAt = deferredWarmSource.indexOf('getBattleVisuals().stream(');
+const deferredOpeningAt = deferredWarmSource.indexOf(
   'combatWarm.warmOpeningChunked(6, guardedYield)',
 );
-const deferredRareAt = deferredWarmBody.indexOf(
+const deferredNavigationAt = deferredWarmSource.indexOf('prepareNextOpeningRoute(game)');
+const deferredTerrainAt = deferredWarmSource.indexOf('battleWarm.warmBattleTerrainTiles({');
+const deferredRareAt = deferredWarmSource.indexOf(
   'combatWarm.warmRareChunked(6, guardedYield)',
 );
 assert.ok(deferredEnemyAt >= 0
   && deferredOpeningAt > deferredEnemyAt
-  && deferredRareAt > deferredOpeningAt,
+  && deferredNavigationAt > deferredOpeningAt
+  && deferredTerrainAt > deferredNavigationAt
+  && deferredRareAt > deferredTerrainAt,
 'opponent receipts and fallback opening/rare work must retain countdown order');
 const coveredFxBody = mainSource.slice(
   mainSource.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),

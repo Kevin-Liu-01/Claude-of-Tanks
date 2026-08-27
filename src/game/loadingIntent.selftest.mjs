@@ -9,6 +9,7 @@ const garage = fs.readFileSync(path.join(here, '..', 'ui', 'garage.js'), 'utf8')
 const pedestalPreloader = fs.readFileSync(
   path.join(here, 'garagePedestalPreloader.ts'), 'utf8',
 );
+const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8');
 
 const neighborWarm = pedestalPreloader.slice(
   pedestalPreloader.indexOf('const queueNeighbors = () =>'),
@@ -71,9 +72,12 @@ assert.match(main,
 
 assert.match(garage, /\[data-nav="studio"\], \[data-mobile-nav="studio"\]/,
   'desktop and mobile Studio controls should expose an intent boundary');
-assert.match(main, /function preloadStudioIntent\(\)[\s\S]*?preloadStudioModule\(\)/,
-  'Studio intent should transfer its route chunk');
-assert.match(main, /Promise\.all\(\[\s*preloadStudioModule\(\),\s*ensureFxRuntime\(\)/,
+assert.match(main, /function preloadStudioIntent\(\) \{ studioAccess\.preloadIntent\(\); \}/,
+  'main should delegate Studio intent to the typed lazy owner');
+assert.match(studioAccess,
+  /preloadIntent\(\)[\s\S]{0,180}preloadModule\(\)[\s\S]{0,100}preloadFxModule\(\)/,
+  'Studio intent should transfer its route and effect chunks');
+assert.match(studioAccess, /Promise\.all\(\[\s*preloadModule\(\),\s*ensureFxRuntime\(\)/,
   'Studio entry should reuse the intent-preloaded chunk and construct FX only on entry');
 
 console.log('loadingIntent.selftest: solo, multiplayer, garage-neighbor, and Studio boundaries passed');
