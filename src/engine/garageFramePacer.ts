@@ -28,10 +28,10 @@ export interface GarageFramePacerOptions {
  * The browser continues to composite DOM/CSS transitions independently. A
  * low idle cadence remains as a fail-safe for async texture/model completion,
  * so work that does not emit a dirty signal still becomes visible within one
- * half-second without keeping the complete GPU pipeline hot.
+ * second without keeping the complete GPU pipeline hot.
  */
 export function createGarageFramePacer({
-  idleFramesPerSecond = 2,
+  idleFramesPerSecond = 1,
   activeTailMs = 240,
 }: GarageFramePacerOptions = {}): GarageFramePacer {
   const idleFps = Math.max(1, Math.min(30, idleFramesPerSecond));

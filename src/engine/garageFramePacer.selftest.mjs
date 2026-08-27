@@ -28,11 +28,12 @@ assert.ok(pacer.stats.rendered > 0 && pacer.stats.skipped > 0,
   'diagnostics expose both render and skip decisions');
 
 const defaultPacer = createGarageFramePacer();
-assert.equal(defaultPacer.stats.idleFramesPerSecond, 2,
+assert.equal(defaultPacer.stats.idleFramesPerSecond, 1,
   'the static Garage watchdog must not keep a mostly idle GPU hot');
 assert.equal(defaultPacer.shouldRender(0), true);
 assert.equal(defaultPacer.shouldRender(499), false);
-assert.equal(defaultPacer.shouldRender(500), true,
-  'un-signaled async completion remains visible within half a second');
+assert.equal(defaultPacer.shouldRender(999), false);
+assert.equal(defaultPacer.shouldRender(1000), true,
+  'un-signaled async completion remains visible within one second');
 
 console.log('garageFramePacer.selftest: static Garage is demand-paced without clipping motion');

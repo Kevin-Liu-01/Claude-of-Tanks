@@ -36,36 +36,36 @@ const viewport = {
   deviceScaleFactor: Math.max(1, Number(option('dpr', '1')) || 1),
 };
 
-// Broad release ceilings, not performance targets. They sit well above the
-// measured healthy baseline so ordinary host noise does not fail CI, while a
-// return to full-cadence Garage work or unbounded scene/heap residency does.
+// Release ceilings around the measured production baseline. CPU limits retain
+// host-noise margin; deterministic renderer/heap limits intentionally fail a
+// meaningful residency or complete-frame workload regression.
 const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
-    taskCoreEquivalent: 0.15,
-    heapMB: 90,
-    programs: 105,
-    geometries: 400,
-    textures: 90,
-    calls: 950,
-    triangles: 270_000,
+    taskCoreEquivalent: 0.12,
+    heapMB: 80,
+    programs: 100,
+    geometries: 370,
+    textures: 88,
+    calls: 780,
+    triangles: 250_000,
   }),
   battleActive: Object.freeze({
-    taskCoreEquivalent: 0.65,
-    heapMB: 320,
-    programs: 270,
-    geometries: 810,
-    textures: 340,
-    calls: 750,
-    triangles: 4_100_000,
+    taskCoreEquivalent: 0.55,
+    heapMB: 300,
+    programs: 260,
+    geometries: 780,
+    textures: 325,
+    calls: 700,
+    triangles: 3_900_000,
   }),
   garageReturned: Object.freeze({
-    taskCoreEquivalent: 0.18,
-    heapMB: 240,
-    programs: 300,
-    geometries: 625,
-    textures: 210,
-    calls: 950,
-    triangles: 270_000,
+    taskCoreEquivalent: 0.12,
+    heapMB: 225,
+    programs: 295,
+    geometries: 590,
+    textures: 190,
+    calls: 780,
+    triangles: 250_000,
   }),
 });
 
@@ -151,6 +151,7 @@ const sampleResources = () => page.evaluate(() => {
     markOwner(child, `world/${label}`);
   }
   markOwner(debug.fx?.group, 'effects');
+  markOwner(debug.garageDressing?.group, 'garage/workshop');
   const vehicleRoots = new Set();
   for (const entity of debug.game?.tanks || []) {
     const root = entity?.visual?.root;
@@ -305,6 +306,8 @@ const sampleResources = () => page.evaluate(() => {
       worldIds: debug.worldCacheIds,
       residentLimits: debug.residentLimits,
       garageFramePacer: debug.garageFramePacer,
+      workshopOptimization:
+        debug.garageDressing?.group?.userData?.optimizationReceipt || null,
     },
     renderCount: window.__PHASE_RESOURCE_RENDER_COUNT || 0,
     heapMB: performance.memory
@@ -393,8 +396,8 @@ const evaluateBudgets = (phases) => {
     checks.push({ name, pass: Boolean(pass), actual, limit });
   };
 
-  check('garage idle render cadence', idle?.rendersPerSecond <= 3,
-    idle?.rendersPerSecond ?? null, '<= 3 renders/s');
+  check('garage idle render cadence', idle?.rendersPerSecond <= 1.25,
+    idle?.rendersPerSecond ?? null, '<= 1.25 renders/s');
   check('garage idle CPU residency',
     idle?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageIdle.taskCoreEquivalent,
     idle?.taskCoreEquivalent ?? null,
@@ -422,6 +425,10 @@ const evaluateBudgets = (phases) => {
       <= (idle?.resources.caches.residentLimits?.pedestalVisuals ?? 0),
     idle?.resources.caches.pedestalIds?.length ?? null,
     idle?.resources.caches.residentLimits?.pedestalVisuals ?? null);
+  check('static workshop shadows are resolution-budgeted',
+    (idle?.resources.caches.workshopOptimization?.shadowCastersPruned || 0) > 0,
+    idle?.resources.caches.workshopOptimization || null,
+    'authored proxy-safe pruning receipt');
   check('active battle CPU residency',
     battle?.taskCoreEquivalent <= RESOURCE_BUDGETS.battleActive.taskCoreEquivalent,
     battle?.taskCoreEquivalent ?? null,

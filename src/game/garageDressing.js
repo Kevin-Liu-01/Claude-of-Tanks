@@ -34,6 +34,7 @@ import {
 } from '../ui/garageStage.js';
 import { createTank } from '../vehicles/fleetFactory.js';
 import { DECOR_KITS } from '../vehicles/decorations.js';
+import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 
 // Repair-bay residents use the same first-party builders as playable tanks;
 // the lighter proceduralOnly option skips cosmetic decoration for background
@@ -58,6 +59,7 @@ const MODERN_COMPONENT_SOURCES = Object.freeze([
 export function createGarageDressing(engineCtx, pos, existing = {}) {
   const group = existing.group || new THREE.Group();
   group.name = 'garage_dressing';
+  group.userData.perfOwner = 'garage/workshop';
   group.position.copy(pos);
   group.userData.modernComponentSources = MODERN_COMPONENT_SOURCES;
 
@@ -1162,6 +1164,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
           chunk: fn.name,
           ms: Math.round(performance.now() - startedAt),
         });
+        if (next >= chunks.length) optimizeGarageDressing(group);
       } catch (e) {
         group.userData.lastBuildError = { chunk: fn.name, message: e.message };
         console.warn(`[garageDressing] chunk '${fn.name}' failed —`, e.message);

@@ -113,6 +113,14 @@ or visibility changes. Off-screen remote actors retain their last exact gear
 matrices and force one exact catch-up when they return to the camera guard.
 Nearby and player running gear keeps the full authored update rate.
 
+The Garage workshop finalizes once after its last quiet-window build slice.
+Every static descendant bakes its local transform, and sub-40 cm fittings leave
+the two shadow cascades while remaining unchanged in the color pass. Authored
+tank shadow proxies are exempt. The finalizer publishes its exact before/after
+caster receipt to the phase-resource probe. A settled Garage paints only once
+per second; direct camera input, spring motion, and vehicle switching restore
+display-rate presentation immediately.
+
 Immutable battlefield subtrees finalize their world matrices once and opt out
 of recursive matrix traversal. Legitimate runtime world motion continues
 through instance buffers, uniforms, geometry-LOD swaps, and visibility. Do not
@@ -137,6 +145,13 @@ fast.
 
 Diagnostics remain dormant unless requested. F3 panels and traces must not
 become hidden always-on observers in production play.
+
+`npm run perf:resources:gate` is the non-FPS release contract. It measures
+browser task/script CPU, forced-GC heap, shader programs, geometries, textures,
+scene ownership, complete-frame draw calls/triangles, shadow masks, cache
+residency, and Garage paint cadence across initial Garage, live battle, and
+returned Garage. Its limits track the measured production baseline rather than
+serving as loose theoretical maxima.
 
 Combat warming has two ownership phases. The opaque loader builds the exact
 roster, presents one real deployment-camera frame, and prepares only opening

@@ -34,6 +34,9 @@ facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
+`garageDressingOptimization.ts` finalizes the fully streamed static workshop,
+bakes descendant transforms, and removes only sub-resolution fitting shadows
+while preserving authored vehicle shadow proxies and all color geometry.
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
@@ -67,6 +70,8 @@ bindings and device modes. Route rendered tank updates through
 `battlePresentationRuntime.ts`; never apply the solo interpolation buffer to
 already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
+Workshop changes must preserve the typed optimization receipt and pass the
+phase resource gate; do not re-enable shadows on every tiny static fitting.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
