@@ -23,7 +23,7 @@
  * overlay → back to garage.
  */
 import * as THREE from 'three';
-import { createRenderer, onResize } from './engine/renderer.js';
+import { createRenderer } from './engine/renderer.js';
 import {
   createOffscreenSceneWarmer,
   warmSceneOffscreenBatched,
@@ -47,6 +47,7 @@ import {
   nextFrame,
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
+import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import {
   createForwardProgramWarmOwner,
   snapshotRendererPrograms,
@@ -1432,6 +1433,7 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
+const viewport = createViewportRuntime({ container, renderer, camera, post, lighting });
 const forwardProgramWarm = createForwardProgramWarmOwner({
   renderer,
   scene,
@@ -1473,7 +1475,7 @@ renderer.userData.contextRecovery = {
       enforceWorldCacheBudget();
     }
     await nextFrame();
-    applyViewportSize();
+    viewport.apply();
     post.resetAdaptiveResolution();
     lighting.update(true);
     graphicsContextLost = false;
@@ -3990,42 +3992,6 @@ function tick(nowMs) {
   if (game.phase === 'battle') presentedBattleFrameSerial++;
   perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
 }
-
-function applyViewportSize() {
-  onResize(renderer, camera);
-  post.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
-  lighting.updateFrustums();
-}
-window.addEventListener('resize', applyViewportSize);
-// zero-viewport boot hardening: embedded panes can boot while the layout is
-// still 0×0 — the renderer/canvas stay zero-sized and the screen is black
-// until something fires a real window `resize` event (which such hosts may
-// never send). If boot happened at zero size, watch for the FIRST non-zero
-// layout (ResizeObserver on the container, plus a cheap interval fallback
-// for hosts that only lie through the window metrics) and run the shared
-// resize seam once. Inert on normal boots.
-(() => {
-  const zeroNow = () =>
-    !(container.clientWidth || window.innerWidth) ||
-    !(container.clientHeight || window.innerHeight);
-  if (!zeroNow() && renderer.domElement.width > 0 && renderer.domElement.height > 0) return;
-  let ro = null;
-  let iv = 0;
-  const tryFix = () => {
-    if (zeroNow()) return false;
-    applyViewportSize();
-    if (ro) { ro.disconnect(); ro = null; }
-    if (iv) { clearInterval(iv); iv = 0; }
-    return true;
-  };
-  if (typeof ResizeObserver === 'function') {
-    ro = new ResizeObserver(() => tryFix());
-    ro.observe(container);
-    ro.observe(document.documentElement);
-  }
-  iv = setInterval(tryFix, 250);
-  tryFix();
-})();
 
 // Deterministic engineering captures keep a synchronous discovery facade for
 // screenshot tooling, while the orchestration and recipes stay out of every

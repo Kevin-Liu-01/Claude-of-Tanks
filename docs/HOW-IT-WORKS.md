@@ -37,6 +37,12 @@ authoring are the only explicit full-fleet gates. Garage and battle transitions
 remain painted while this asynchronous work proceeds, so low-end hardware sees
 progress instead of a blocked black canvas.
 
+Viewport synchronization also has one typed engine owner. Renderer output,
+camera projection, post targets, and shadow frustums resize together. If an
+embedded or mobile browser initially reports a 0x0 layout, a bounded temporary
+observer repairs the first positive layout automatically and then removes all
+of its recovery work.
+
 Battle hover/focus is a typed intent boundary rather than a collection of UI
 callbacks. It transfers battle-only modules, plans only the next deterministic
 roster, coalesces that roster's texture bakes, and reserves one concrete map

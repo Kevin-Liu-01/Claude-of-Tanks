@@ -146,6 +146,10 @@ vehicle, and primary interface first. Optional or combat-only work is deferred
 until after a presentable frame. The quality module classifies capability and
 runs a render probe before committing expensive defaults.
 
+`src/engine/viewportRuntime.ts` keeps renderer, camera, post, and CSM dimensions
+atomic. Its zero-size first-layout recovery is inert on normal boots and
+self-disarms as soon as a host exposes usable dimensions.
+
 The boot contract is:
 
 - a visible transition or garage frame must cover asynchronous work;

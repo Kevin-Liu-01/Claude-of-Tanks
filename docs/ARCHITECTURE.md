@@ -398,6 +398,11 @@ export function createRenderer(container /* HTMLElement */) => THREE.WebGLRender
 export function onResize(renderer, camera) // sets size + camera aspect + updateProjectionMatrix
 ```
 
+`viewportRuntime.ts` composes that renderer policy with post-target sizing and
+CSM frustum refresh. It owns the sole window listener and a temporary 0x0 boot
+recovery observer/interval; the first positive layout disconnects the recovery
+work, while ordinary boots never create it.
+
 #### 3.1.2 `lighting.js`
 ```js
 export function createLighting(scene, camera, sunDir /* Vector3, unit, FROM origin TOWARD sun */)
