@@ -4,6 +4,7 @@ import { createTank } from '../tankFactory.js';
 import { getSpec } from '../specs.js';
 
 const EPS = 1e-4;
+const PIVOT = new THREE.Vector3(0, 0.27, 0.50);
 const nearPoint = (a, b, eps = EPS) => a.distanceToSquared(b) <= eps * eps;
 
 function findTriangle(mesh, points) {
@@ -50,8 +51,43 @@ const movingTriangles = [
   },
 ];
 
-const fixedTriangle = [
-  [-0.436, 0.626, 1.475], [-0.436, 0.054, 1.475], [0.436, 0.626, 1.475],
+const restoredMarkedTriangles = [
+  {
+    id: 'surface-2',
+    points: [[-0.422, 0.260, 1.558], [-0.422, 0.260, 1.607], [0.422, 0.260, 1.558]],
+  },
+  {
+    id: 'surface-3',
+    points: [[-0.44, -0.10, 1.655], [-0.06, -0.10, 1.655], [-0.06, 0.26, 1.625]],
+  },
+  {
+    id: 'surface-4',
+    points: [[0.06, -0.10, 1.655], [0.44, -0.10, 1.655], [0.44, 0.26, 1.625]],
+  },
+  {
+    id: 'surface-5',
+    points: [[-0.44, 0.26, 1.54], [-0.06, 0.26, 1.54], [-0.06, 0.378, 0.88]],
+  },
+  {
+    id: 'surface-6',
+    points: [[0.06, 0.26, 1.54], [0.44, 0.378, 0.88], [0.06, 0.378, 0.88]],
+  },
+  {
+    id: 'surface-8',
+    points: [[-0.436, 0.38, 0.951], [0.436, 0.38, 0.951], [0.436, 0.38, 0.149]],
+  },
+  {
+    id: 'surface-9',
+    points: [[-0.46, -0.216, 0.149], [-0.46, -0.216, 0.951], [-0.46, 0.356, 0.951]],
+  },
+  {
+    id: 'surface-15',
+    points: [[0.5, -0.32, 1.675], [0.5, -0.10, -0.3], [0.5, -0.10, 1.66]],
+  },
+  {
+    id: 'surface-19',
+    points: [[-0.43, -0.076, 0.884], [-0.43, -0.076, 1.516], [-0.43, 0.234, 1.516]],
+  },
 ];
 
 for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
@@ -69,9 +105,12 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
     assert.ok(turret && gun && turretMesh, `${id}: canonical turret and gun rigs exist`);
     assert.deepEqual(turret.userData.leclercGunHousingRig, {
       gunPivotLocal: [0, 0.27, 0.50],
-      fixedSealingBackplateCenter: [0, 0.34, 1.05],
+      movingBrowBridgeBounds: { x: [-0.43, 0.43], y: [-0.10, 0.258], z: [0.86, 1.54] },
+      movingSealingBackplateCenter: [0, 0.07, 0.55],
       movingHousingBucket: 'gunMount',
       movingDarkBucket: 'gunMountDark',
+      restoredMarkedSurfacePatches: ['surface-2', 'surface-3', 'surface-4',
+        'surface-5', 'surface-6', 'surface-8', 'surface-9', 'surface-15', 'surface-19'],
       neutralHousingSurfaceAnchors: [
         [0.127, 0.53, 2.455],
         [-0.21, 0.291, 2.455],
@@ -87,16 +126,23 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       assert.ok(centroid, `${id}: ${label} marked triangle is physically present in ${mesh}`);
       return { label, node, centroid };
     });
-    const fixedCentroid = findTriangle(turretMesh,
-      fixedTriangle.map((p) => new THREE.Vector3(...p)));
-    assert.ok(fixedCentroid, `${id}: marked sealing backplate is physically present in turret armor`);
+    const housingMesh = gun.getObjectByName('gunMount');
+    assert.ok(housingMesh?.isMesh, `${id}: complete housing uses the gun-owned armor bucket`);
+    for (const { id: surfaceId, points } of restoredMarkedTriangles) {
+      const expected = points.map((point) => new THREE.Vector3(...point));
+      const centroid = findTriangle(housingMesh, expected);
+      assert.ok(centroid, `${id}: ${surfaceId} is restored intact below rig_gun`);
+      const oldTurretLocal = expected.map((point) => point.clone().add(PIVOT));
+      assert.equal(findTriangle(turretMesh, oldTurretLocal), null,
+        `${id}: ${surfaceId} is no longer stranded in turret-fixed armor`);
+      moving.push({ label: surfaceId, node: housingMesh, centroid });
+    }
 
     const sample = (pitchDeg) => {
       gun.rotation.x = -THREE.MathUtils.degToRad(pitchDeg);
       root.updateMatrixWorld(true);
       return {
         moving: moving.map(({ node, centroid }) => node.localToWorld(centroid.clone())),
-        fixed: turretMesh.localToWorld(fixedCentroid.clone()),
         bore: tank.gunDirWorld(new THREE.Vector3()),
       };
     };
@@ -105,14 +151,11 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
     const depressed = sample(-getSpec(id).gunDepressionDeg);
 
     for (let index = 0; index < moving.length; index++) {
-      assert.ok(elevated.moving[index].y > neutral.moving[index].y + 0.25,
+      assert.ok(elevated.moving[index].y > neutral.moving[index].y + 0.10,
         `${id}: ${moving[index].label} elevates with the gun`);
-      assert.ok(depressed.moving[index].y < neutral.moving[index].y - 0.10,
+      assert.ok(depressed.moving[index].y < neutral.moving[index].y - 0.04,
         `${id}: ${moving[index].label} declines with the gun`);
     }
-    assert.ok(nearPoint(neutral.fixed, elevated.fixed, 1e-7)
-      && nearPoint(neutral.fixed, depressed.fixed, 1e-7),
-    `${id}: turret-side sealing backplate stays fixed through gun pitch`);
     assert.ok(elevated.bore.y > neutral.bore.y + 0.20
       && depressed.bore.y < neutral.bore.y - 0.10,
     `${id}: barrel follows the same legal elevation/depression sweep`);
@@ -121,4 +164,4 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
   }
 }
 
-console.log('leclercGunHousingRig.selftest: all four marked housing surfaces pitch and the marked backplate stays turret-fixed');
+console.log('leclercGunHousingRig.selftest: complete marked housing assemblies restore and pitch with all three gun rigs');

@@ -31,14 +31,6 @@ const localRayHits = (mesh, origin, direction, far = 4) => {
     .intersectObject(mesh, false)
     .map((hit) => mesh.worldToLocal(hit.point.clone()));
 };
-const expectedTurretPositionCounts = {
-  leclerc: 12192,
-  leclerc_xlr: 12324,
-  amx56: 15060,
-};
-const removedMarkedSurfacePatches = ['surface-2', 'surface-3', 'surface-4',
-  'surface-5', 'surface-6', 'surface-8', 'surface-9', 'surface-15', 'surface-19'];
-
 for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
@@ -52,11 +44,13 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
     tank.root.updateMatrixWorld(true);
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
+    const gunRig = tank.root.getObjectByName('rig_gun');
     const hull = hullRig?.getObjectByName('hull');
     const hullDark = hullRig?.getObjectByName('hullDark');
     const turret = turretRig?.getObjectByName('turret');
-    assert.ok(hullRig && turretRig && hull && hullDark && turret,
-      `${id} retains canonical hull and turret meshes`);
+    const gunMount = gunRig?.getObjectByName('gunMount');
+    assert.ok(hullRig && turretRig && gunRig && hull && hullDark && turret && gunMount,
+      `${id} retains canonical hull, turret and gun-housing meshes`);
 
     assert.deepEqual(hullRig.userData.leclercRigFinish, {
       removedLowerSkirtRails: 2,
@@ -68,18 +62,14 @@ for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
       anf1BarrelBridge: true,
     }, `${id} records both roof returns and the connected ANF1`);
     assert.deepEqual(turretRig.userData.leclercTurretClosure, {
-      centerBrowBridgeBounds: { x: [-0.43, 0.43], y: [0.17, 0.528], z: [1.36, 2.04] },
       forwardRoofBulkheads: 2,
       aftSideWingCores: 2,
       gunnerSightWellPreserved: true,
-      removedMarkedSurfacePatches,
     }, `${id} records the shared structural shell beneath its outer turret panels`);
-    assert.equal(turret.geometry.attributes.position.count, expectedTurretPositionCounts[id],
-      `${id} removes exactly the 36 marked triangles without deleting adjoining turret geometry`);
 
-    const centerHits = localRayHits(turret, [0.25, 0, 1.70], [0, 1, 0], 0.8);
-    assert.ok(centerHits.some((point) => near(point.y, 0.17, 0.002)),
-      `${id} center brow panel has solid armor immediately beneath it`);
+    const centerHits = localRayHits(gunMount, [0.25, -0.27, 1.20], [0, 1, 0], 0.8);
+    assert.ok(centerHits.some((point) => near(point.y, -0.10, 0.002)),
+      `${id} moving center brow panel retains its solid structural core`);
     for (const side of [-1, 1]) {
       const riserHits = localRayHits(turret, [side * 0.72, 0, 1.02], [0, 1, 0], 0.8);
       assert.ok(riserHits.some((point) => near(point.y, 0.20, 0.002)),

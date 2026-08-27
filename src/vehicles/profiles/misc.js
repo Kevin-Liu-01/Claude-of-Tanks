@@ -176,69 +176,6 @@ function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
     : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
 }
 
-// Surface-markup packets identify exact coplanar patches, not whole parts.
-// Keep that intent explicit in the procedural source: filter only the marked
-// triangles while retaining every bevel, adjoining face and structural return.
-// The helper accepts canonical KIT.slab face names plus axis-aligned planes on
-// rounded boxes. All profile geometry is throwaway until bucket merge, so the
-// filtered replacement owns fresh attributes and the source can be disposed.
-const SLAB_FACE_TRIANGLES = Object.freeze({
-  front: [0, 1],
-  right: [2, 3],
-  rear: [4, 5],
-  left: [6, 7],
-  top: [8, 9],
-  bottom: [10, 11],
-});
-function omitMarkedSurfacePatches(geometry, {
-  slabFaces = [], triangleIndices = [], axisPlanes = [],
-} = {}) {
-  const source = geometry.index ? geometry.toNonIndexed() : geometry;
-  const position = source.getAttribute('position');
-  const omittedTriangles = new Set([
-    ...slabFaces.flatMap((face) => SLAB_FACE_TRIANGLES[face] || []),
-    ...triangleIndices,
-  ]);
-  const axisIndex = { x: 0, y: 1, z: 2 };
-  const epsilon = 1e-5;
-  const triangleMatchesPlane = (triangle, patch) => {
-    const component = axisIndex[patch.axis];
-    if (component === undefined) return false;
-    for (let vertex = 0; vertex < 3; vertex++) {
-      const offset = (triangle * 3 + vertex) * 3 + component;
-      if (Math.abs(position.array[offset] - patch.value) > epsilon) return false;
-    }
-    return true;
-  };
-  const keep = [];
-  for (let triangle = 0; triangle < position.count / 3; triangle++) {
-    if (omittedTriangles.has(triangle)
-      || axisPlanes.some((patch) => triangleMatchesPlane(triangle, patch))) continue;
-    keep.push(triangle);
-  }
-  if (keep.length === position.count / 3) {
-    if (source !== geometry) source.dispose();
-    return geometry;
-  }
-
-  const filtered = new THREE.BufferGeometry();
-  for (const [name, attribute] of Object.entries(source.attributes)) {
-    const values = new attribute.array.constructor(keep.length * 3 * attribute.itemSize);
-    let target = 0;
-    for (const triangle of keep) {
-      const start = triangle * 3 * attribute.itemSize;
-      const end = start + 3 * attribute.itemSize;
-      values.set(attribute.array.subarray(start, end), target);
-      target += 3 * attribute.itemSize;
-    }
-    filtered.setAttribute(name,
-      new THREE.BufferAttribute(values, attribute.itemSize, attribute.normalized));
-  }
-  source.dispose();
-  if (source !== geometry) geometry.dispose();
-  return filtered;
-}
-
 // §B3.1 MUZZLE BORE (owner 2026-08-06 "make tips of guns have holes, bruh";
 // law banked 32a6946): annular rim at tube radius + near-black bore disc
 // recessed ~2 cm inside the rim mouth. MECHANISM: the first (bucket-based)
@@ -1388,18 +1325,16 @@ function buildLeclerc(P, variant = 's2') {
   // +-0.35 = the ref's 2.22-2.23 plan band) ending at the slope landing.
   P.add('turret', box(0.70, 0.648, 1.735), 0, 0.324, 0.5125);                  // center pad: x +-0.35, top 2.248w, z_l -0.355..1.38
   for (const s of [-1, 1]) {
-    P.add('turret', omitMarkedSurfacePatches(slab(                             // center PLATE half (near-vertical, 8-deg lean; the print's 2.02-2.08 face)
+    gunHousing('turret', slab(                                                 // center PLATE half: marked housing face, intact and pitch-owned
       [s * 0.06, 0.17, 2.155], [s * 0.44, 0.17, 2.155], [s * 0.44, 0.17, 2.03], [s * 0.06, 0.17, 2.03],
-      [s * 0.06, 0.53, 2.125], [s * 0.44, 0.53, 2.125], [s * 0.44, 0.53, 2.03], [s * 0.06, 0.53, 2.03]),
-    { slabFaces: ['bottom'] }));                                               // markup surfaces 3/4: delete only the downward plate patches
-    P.add('turret', omitMarkedSurfacePatches(slab(                             // center SLOPE half: the long raked face, brow -> 2.248 line (9.8 deg)
+      [s * 0.06, 0.53, 2.125], [s * 0.44, 0.53, 2.125], [s * 0.44, 0.53, 2.03], [s * 0.06, 0.53, 2.03]), 0, 0, 0);
+    gunHousing('turret', slab(                                                 // center SLOPE half: marked housing roof, intact and pitch-owned
       [s * 0.06, 0.53, 2.04], [s * 0.44, 0.53, 2.04], [s * 0.44, 0.53, 1.36], [s * 0.06, 0.53, 1.36],
-      [s * 0.06, 0.648, 1.38], [s * 0.44, 0.648, 1.38], [s * 0.44, 0.648, 1.36], [s * 0.06, 0.648, 1.36]),
-    { slabFaces: ['top'] }));                                                  // markup surfaces 5/6: remove the duplicate upper slope skin
-    P.add('turretDark', box(0.006, 0.36, 0.02), s * 0.445, 0.35, 2.09);        // panel seam line at the plate/cheek junction
-    P.add('turret', slab(                                                      // center flank wall x +-0.435..0.445 (field -> raised center; real panel side)
+      [s * 0.06, 0.648, 1.38], [s * 0.44, 0.648, 1.38], [s * 0.44, 0.648, 1.36], [s * 0.06, 0.648, 1.36]), 0, 0, 0);
+    gunHousing('turretDark', box(0.006, 0.36, 0.02), s * 0.445, 0.35, 2.09);   // housing seam follows its plate and roof
+    gunHousing('turret', slab(                                                 // center flank wall completes the moving plate/slope shell
       [s * 0.435, 0.355, 1.90], [s * 0.445, 0.355, 1.90], [s * 0.445, 0.435, 1.10], [s * 0.435, 0.435, 1.10],
-      [s * 0.435, 0.53, 2.06], [s * 0.445, 0.53, 2.06], [s * 0.445, 0.648, 1.36], [s * 0.435, 0.648, 1.36]));
+      [s * 0.435, 0.53, 2.06], [s * 0.445, 0.53, 2.06], [s * 0.445, 0.648, 1.36], [s * 0.435, 0.648, 1.36]), 0, 0, 0);
   }
   // STRUCTURAL INNER SHELL. The outer brow slopes, forward roof risers and
   // aft side-roof wings are armor skins, not empty canopies. Their marked
@@ -1407,18 +1342,14 @@ function buildLeclerc(P, variant = 's2') {
   // grazing camera angles. These overlapping cores stop immediately below
   // those skins and remain inside every established exterior datum. The
   // right-cheek gunner sight well stays deliberately open and functional.
-  P.add('turret', omitMarkedSurfacePatches(box(0.86, 0.358, 0.68), {
-    axisPlanes: [{ axis: 'x', value: -0.43 }],
-  }), 0, 0.349, 1.70);                                                        // markup surface 19: remove the bridge's marked left patch, preserve its core
+  gunHousing('turret', box(0.86, 0.358, 0.68), 0, 0.349, 1.70);               // marked brow bridge moves as one intact structural housing core
   for (const s of [-1, 1]) {
     P.add('turret', box(0.905, 0.238, 0.18), s * 0.5675, 0.319, 1.02);        // solid bulkhead beneath field->mid riser
     P.add('turret', box(0.42, 0.318, 1.28), s * 1.19, 0.399, -0.66);          // side-wing core beneath aft roof chamfer
   }
-  P.add('turret', omitMarkedSurfacePatches(box(0.88, 0.075, 0.085), {
-    axisPlanes: [{ axis: 'y', value: 0.0375 }],
-  }), 0, 0.4925, 2.0825);                                                     // markup surface 2: remove the flat upper brow patch
+  gunHousing('turret', box(0.88, 0.075, 0.085), 0, 0.4925, 2.0825);           // marked flat brow strip belongs to the moving housing
   gunHousing('turret', box(0.42, 0.115, 0.235), 0, 0.5855, 2.1725);            // mantlet ROTOR housing bulge above the brow (x +-0.21, top 0.643 = 2.243w, z_w 1.955..2.19 — gun-frame rotor mass)
-  P.add('turret', box(0.23, 0.10, 0.36), 0, 0.593, 1.875);                     // rotor SPINE strip riding the center slope (x +-0.115, top 0.643, z_w 1.595..1.955 — continues the rotor line aft; the ref's 2.243 band covers cols 1.733/1.844 the slope alone undershot 0.044)
+  gunHousing('turret', box(0.23, 0.10, 0.36), 0, 0.593, 1.875);                // rotor spine stays attached to the moving center shell
   P.add('turret', slab(                                                        // right main cheek core (re-topped to the FIELD line — the swept-planar
     [0.33, 0, 1.12], [1.30, 0, -0.10], [1.30, 0, -0.5], [0.33, 0, 0.68],
     [0.31, 0.44, 1.02], [1.00, 0.44, -0.16], [1.00, 0.44, -0.5], [0.31, 0.44, 0.58]));
@@ -1527,12 +1458,15 @@ function buildLeclerc(P, variant = 's2') {
     const m = (x) => s * x;
     // the near-vertical STRIP (15 mm lean, swept corner) — plan lines
     // unchanged: priced cols 0.845/0.955/1.066/1.509 keep their owners
-    const stripSeg = (x0, x1) => P.add('turret', omitMarkedSurfacePatches(slab(
-      [m(x0), FR.sB, FR.inZb], [m(x1), FR.sB, FR.inZb], [m(x1), FR.sB, FR.rear], [m(x0), FR.sB, FR.rear],
-      [m(x0), FR.sT, FR.inZ], [m(x1), FR.sT, FR.inZ], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear]),
-    { slabFaces: s > 0 && x1 === 0.50 ? ['right'] : [] }));
+    const stripSeg = (x0, x1, moving = false) => {
+      const geometry = slab(
+        [m(x0), FR.sB, FR.inZb], [m(x1), FR.sB, FR.inZb], [m(x1), FR.sB, FR.rear], [m(x0), FR.sB, FR.rear],
+        [m(x0), FR.sT, FR.inZ], [m(x1), FR.sT, FR.inZ], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear]);
+      if (moving) gunHousing('turret', geometry, 0, 0, 0);
+      else P.add('turret', geometry);
+    };
     if (s < 0) stripSeg(0.06, FR.kink);
-    else { stripSeg(0.06, 0.50); stripSeg(0.80, FR.kink); }
+    else { stripSeg(0.06, 0.50, true); stripSeg(0.80, FR.kink); }
     // CONVEX corner sweep (loop 6 workorder: the linear 0.98->1.47 line
     // undershot the ref's own plan cols — 1.288: ref 1.925 vs 1.79, 1.398:
     // ref 1.869 vs 1.694, err 0.07-0.175. Waypoints hit the ref columns;
@@ -1542,12 +1476,15 @@ function buildLeclerc(P, variant = 's2') {
       [m(FR.kink), FR.sT, czAt(FR.kink)], [m(FR.outX), FR.sT, czAt(FR.outX)], [m(FR.outX), FR.sT, FR.rear], [m(FR.kink), FR.sT, FR.rear]));
     // CHEEK RAKE 30.5 deg (print inboard fit 29-31 over both cheeks):
     // strip top -> field edge, swept parallel to the strip (planar quads)
-    const rake = (x0, x1, z0, z1) => P.add('turret', omitMarkedSurfacePatches(slab(
-      [m(x0), FR.sT, z0], [m(x1), FR.sT, z1], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear],
-      [m(x0), FR.rkT, z0 - FR.rkD], [m(x1), FR.rkT, z1 - FR.rkD], [m(x1), FR.rkT, FR.rear], [m(x0), FR.rkT, FR.rear]),
-    { slabFaces: s > 0 && x1 === 0.50 ? ['right'] : [] }));
+    const rake = (x0, x1, z0, z1, moving = false) => {
+      const geometry = slab(
+        [m(x0), FR.sT, z0], [m(x1), FR.sT, z1], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear],
+        [m(x0), FR.rkT, z0 - FR.rkD], [m(x1), FR.rkT, z1 - FR.rkD], [m(x1), FR.rkT, FR.rear], [m(x0), FR.rkT, FR.rear]);
+      if (moving) gunHousing('turret', geometry, 0, 0, 0);
+      else P.add('turret', geometry);
+    };
     if (s < 0) rake(0.44, FR.kink, FR.inZ, FR.inZ);
-    else { rake(0.44, 0.50, FR.inZ, FR.inZ); rake(0.80, FR.kink, FR.inZ, FR.inZ); }
+    else { rake(0.44, 0.50, FR.inZ, FR.inZ, true); rake(0.80, FR.kink, FR.inZ, FR.inZ); }
     // corner rake: swept parallelogram over the strip corner (planar)
     P.add('turret', slab(
       [m(FR.kink), FR.sT, czAt(FR.kink)], [m(1.36), FR.sT, czAt(1.36)], [m(1.36), FR.sT, FR.rear], [m(FR.kink), FR.sT, FR.rear],
@@ -1898,20 +1835,12 @@ function buildLeclerc(P, variant = 's2') {
   P.decal('turret', 'number', tacticalNumber, 0.30, [1.30, 0.35, -1.0], Math.PI / 2);
   P.decal('turret', 'number', tacticalNumber, 0.30, [-1.30, 0.35, -1.0], -Math.PI / 2);
   // CN120-26 L/52 seated LOW (measured ref axis ~1.85, band half 0.14):
-  // The sealing backplate is turret-side structure: it closes the recess but
-  // must not orbit with the barrel.  Its former gun-local neutral transform
-  // is preserved here in turret coordinates.  The flexible boot, rotor and
-  // collars above own the actual pitch motion.
+  // The marked sealing backplate is the rear wall of the gun housing, not a
+  // turret-fixed bulkhead. Keep the complete rounded part in the same pitch
+  // frame as the boot, rotor and collars so elevation/depression never tears
+  // the housing apart or leaves selected faces behind.
   trunnionRoll(P, 0.21, 0.68);
-  P.add('turret', omitMarkedSurfacePatches(box(0.92, 0.62, 0.85), {
-    // RoundedBoxGeometry segment order is deterministic. These are the exact
-    // local triangles exported as XLR surfaces 8 and 9, including their tiny
-    // connected bevel returns without touching the four corner fans.
-    triangleIndices: [
-      64, 65, 72, 73, 74, 75, 76, 77, 84, 85,
-      114, 115, 122, 123, 124, 125, 126, 127, 134, 135,
-    ],
-  }), 0, 0.34, 1.05);                                                         // markup surfaces 8/9: remove only the selected top/left backplate patches
+  gunHousing('turret', box(0.92, 0.62, 0.85), 0, 0.34, 1.05);                 // complete marked backplate, restored and pitch-owned
   P.addGunExtraDark(cylZ(0.12, 0.06, 14), 0, 0, 0.985);                        // §B3.1 dust-boot ring where the tube exits the plate face (r 0.12 < the 0.132 junction collar — interior to the priced sleeve band)
   P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
   P.addGunExtraDark(box(0.07, 0.05, 0.05), 0.34, 0.145, 0.44);                 // §5.14 coax hood tell (§B3 sight grammar: hood + port)
@@ -1956,18 +1885,18 @@ function buildLeclerc(P, variant = 's2') {
     anf1BarrelBridge: true,
   };
   P.turretG.userData.leclercTurretClosure = {
-    centerBrowBridgeBounds: { x: [-0.43, 0.43], y: [0.17, 0.528], z: [1.36, 2.04] },
     forwardRoofBulkheads: 2,
     aftSideWingCores: 2,
     gunnerSightWellPreserved: true,
-    removedMarkedSurfacePatches: ['surface-2', 'surface-3', 'surface-4',
-      'surface-5', 'surface-6', 'surface-8', 'surface-9', 'surface-15', 'surface-19'],
   };
   P.turretG.userData.leclercGunHousingRig = {
     gunPivotLocal: [0, 0.27, 0.50],
-    fixedSealingBackplateCenter: [0, 0.34, 1.05],
+    movingBrowBridgeBounds: { x: [-0.43, 0.43], y: [-0.10, 0.258], z: [0.86, 1.54] },
+    movingSealingBackplateCenter: [0, 0.07, 0.55],
     movingHousingBucket: 'gunMount',
     movingDarkBucket: 'gunMountDark',
+    restoredMarkedSurfacePatches: ['surface-2', 'surface-3', 'surface-4',
+      'surface-5', 'surface-6', 'surface-8', 'surface-9', 'surface-15', 'surface-19'],
     neutralHousingSurfaceAnchors: [
       [0.127, 0.53, 2.455],
       [-0.21, 0.291, 2.455],
