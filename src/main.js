@@ -50,6 +50,7 @@ import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
+import { createPhaseSceneResidency } from './engine/phaseSceneResidency.ts';
 import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
@@ -522,6 +523,10 @@ spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
 scene.add(spotTarget, spotA, spotB);
 spotA.target = spotTarget;
 spotB.target = spotTarget;
+const phaseSceneResidency = createPhaseSceneResidency({
+  scene,
+  garageRoots: [garageStage.group, garageDressing.group, spotTarget, spotA, spotB],
+});
 // PERF (performance_budget r4): the garage spots light NOTHING in battle (60 m
 // range, garage is 1500+ m from the battlefield) yet every battle draw paid
 // their per-material spot-light uniform uploads and per-fragment loop
@@ -531,14 +536,11 @@ spotB.target = spotTarget;
 function setGarageSpots(on) {
   if (spotA.visible === on) return;
   if (!on) lighting.setFarCascadeDormant(false);
-  spotA.visible = on;
-  spotB.visible = on;
-  // garage-scene r1: the workshop dressing (and its one whisper fill light)
-  // rides the same toggle — hidden subtrees drop out of the render list, so
-  // battle frames never draw, cull or light any of it. The light-count change
-  // shares the spots' pre-compiled shader-variant story (warmCombatPipeline
-  // compiles the battle set with this toggle OFF).
-  garageDressing.group.visible = on;
+  // Garage and battle are mutually exclusive. Detach the complete hangar,
+  // workshop and light roots instead of merely hiding them: retained objects
+  // remount unchanged, while active battle scene/matrix/project walks cannot
+  // reach hundreds of off-map Garage descendants.
+  phaseSceneResidency.setGarageActive(on);
 }
 
 // camo_spotting r2: the pedestal is keyed by the ACTIVE MAP's warm sun
@@ -789,10 +791,9 @@ function prepareBattleWorldServices(next = world) {
 }
 
 function activateWorld(next, { services = true } = {}) {
-  if (world && world !== next) world.group.visible = false;
+  phaseSceneResidency.swapWorld(world?.group || null, next.group);
   world = next;
   worldDormant = false;
-  world.group.visible = true;
   // LOADING PERF (boot r9): the cloud-deck sprites bake lazily (see sky.js) —
   // an active battlefield is the first thing that can see the sky, so finish
   // them here (idempotent; usually already done by the post-ready idle chain,
@@ -969,7 +970,10 @@ function ensureBattleStaged() {
 function setWorldDormant(on) {
   if (!world || worldDormant === on) return;
   worldDormant = on;
-  world.group.visible = !on;
+  // Cached worlds retain their exact generated state, but do not remain
+  // descendants of the Garage scene. This removes inactive map objects from
+  // every renderer and matrix traversal without paying a rebuild on rematch.
+  phaseSceneResidency.setWorldActive(world.group, !on);
 }
 
 // hud_ui r6: live-scene handles for the minimap's one-time orthographic
@@ -3663,6 +3667,7 @@ window.__DEBUG = {
   get battleVisualPool() { return battleVisualPool.stats(); },
   get garageFramePacer() { return { ...garageFramePacer.stats }; },
   get frameLoopScheduler() { return { ...frameLoop.stats }; },
+  get phaseSceneResidency() { return { ...phaseSceneResidency.stats }; },
   get lastWorldRelease() {
     return worldBuildCoordinator.lastRelease
       ? { ...worldBuildCoordinator.lastRelease } : null;

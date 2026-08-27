@@ -75,3 +75,4 @@ runtime documents remain authoritative for behavior.
 - [0063 — Covered solo deployment warming has one typed owner](0063-covered-solo-deployment-warm-owner.md)
 - [0064 — Battle result presentation has one typed state machine](0064-typed-battle-result-presentation.md)
 - [0065 — Network battle activation is one atomic presentation transition](0065-typed-network-battle-activation.md)
+- [0066 — Garage and battle roots have exclusive scene residency](0066-phase-exclusive-scene-residency.md)

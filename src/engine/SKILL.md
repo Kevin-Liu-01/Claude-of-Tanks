@@ -18,6 +18,8 @@ hidden-pane recovery and visible Garage clock sleep; `garageFramePacer.ts` suppr
 Garage frames while keeping interaction at display cadence; `lighting.js`,
 `post.js`, and `sky.js` build the frame; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
+`phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
+roots while retaining their exact reusable objects;
 `cameraRig.js` owns player/cinematic poses; settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.js` and `deviceDiag.js`
 own tiering and rescue behavior.

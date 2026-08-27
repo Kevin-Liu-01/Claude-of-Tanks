@@ -67,6 +67,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/viewportRuntime.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
+    'src/engine/phaseSceneResidency.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
