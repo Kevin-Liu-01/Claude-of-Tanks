@@ -447,12 +447,15 @@ function addModernizedT80TurretSuite(P, variant, dome) {
 // ---------------------------------------------------------------------------
 function buildUAT64BV(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
-  // Grow the course upward by 10% while keeping the lower run and road-wheel
-  // axles grounded. The body retains a 240 mm lift above its legacy seating,
-  // producing a proportionate \____/ silhouette without the oversized gap.
+  // Grow the course upward by 10% while keeping the lower run grounded and
+  // seating the road wheels just above its shoe crest. The body retains a
+  // 240 mm lift above its legacy seating, producing a proportionate \____/
+  // silhouette without the oversized gap.
   const trackHeightIncreaseM = 0.08;
   const hullRideHeightIncreaseM = 0.24;
   const turretForwardShiftM = 0.20;
+  const roadWheelRadiusM = 0.285;
+  const roadWheelCenterY = 0.49;
 
   // Hull loft to the print lines (deck plateau 1.315 T-64 datum; glacis
   // break +0.53 falling to the 0.70 nose; flat 0.38 belly; transom at
@@ -617,14 +620,14 @@ function buildUAT64BV(P) {
     P.hullG.add(log);
   }
 
-  // T-64 running gear at the print's mapped stations: six 0.267 steel
+  // T-64 running gear at the print's mapped stations: six 0.285 steel
   // wheels (print pairs c 1.92/1.17/0.29/-0.45/-1.25/-2.06), raised front
   // idler (2.75, 0.675), rear drive (-2.63, 0.76), four return rollers.
   buildRunningGear(P, {
     style: 'holes',
-    wheelR: 0.267,
+    wheelR: roadWheelRadiusM,
     wheelW: 0.30,
-    wheelY: 0.315,
+    wheelY: roadWheelCenterY,
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.92, 1.17, 0.29, -0.45, -1.25, -2.06],
@@ -634,6 +637,9 @@ function buildUAT64BV(P) {
       .map((z) => ({ z, y: 0.90 + trackHeightIncreaseM, r: 0.078 })),
     trackW: 0.57,
     pinCapOuter: 0.27,
+    // Keep the Donbas course on the same thin T-64 shoe family as BV1. The
+    // generic full-depth shoe intersected the raised road-wheel tires.
+    shoeRadialScale: 0.46,
     topY: 0.93 + trackHeightIncreaseM,
     botY: 0.14,
     contactZF: 2.20,
@@ -846,6 +852,8 @@ function buildUAT64BV(P) {
     trackBottomY: 0.14,
     trackTopY: 1.01,
     authoredEnvelopeHeightM: 0.79,
+    roadWheelRadiusM,
+    roadWheelCenterY,
   });
   P.topY = 1.30;
 }

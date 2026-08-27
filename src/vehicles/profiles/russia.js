@@ -1290,14 +1290,17 @@ function buildT44(P) {
 // (same world seats) so the component masks compare like for like.
 function buildT64BV1(P) {
   const { box, cylX, cylY, cylZ, slab, buildRunningGear } = KIT;
-  // Grow the authored 0.80 m course upward by 10%. The loaded lower run and
-  // road-wheel axles stay on their ground datums; only the terminal wheels,
-  // return rollers and upper run rise. The body retains a 240 mm lift above
-  // the legacy seating so the result is a proportionate \____/ course rather
+  // Grow the authored 0.80 m course upward by 10%. The loaded lower run stays
+  // on its ground datum while the road wheels clear its shoe crest; the
+  // terminal wheels, return rollers and upper run rise. The body retains a
+  // 240 mm lift above the legacy seating so the result is a proportionate
+  // \____/ course rather
   // than suspension translated upward into the old hull bay.
   const trackHeightIncreaseM = 0.08;
   const hullRideHeightIncreaseM = 0.24;
   const turretForwardShiftM = 0.20;
+  const roadWheelRadiusM = 0.285;
+  const roadWheelCenterY = 0.49;
 
   // §5.247 LECLERC-METHOD REDESIGN (2026-08-16/17). Visual/measurement
   // oracle: the owner-supplied t-64bv1_ussr print (SHA-256 608336f2...,
@@ -1457,13 +1460,13 @@ function buildT64BV1(P) {
   // banked in the packet.)
 
   // One suspension-driven T-64 course at the six MEASURED wheel stations:
-  // small 0.267 steel wheels (hub y 0.315), four return rollers, the raised
+  // 0.285 steel wheels (hub y 0.490), four return rollers, the raised
   // 0.665 idler and the 0.788 rear drive. Track band x 0.996..1.565 exact.
   buildRunningGear(P, {
     style: 'holes',
-    wheelR: 0.267,
+    wheelR: roadWheelRadiusM,
     wheelW: 0.30,
-    wheelY: 0.315,
+    wheelY: roadWheelCenterY,
     xc: 1.28,
     dishR: 0.82,
     wheelZs: [1.875, 1.125, 0.40, -0.325, -1.075, -1.775],
@@ -1694,6 +1697,8 @@ function buildT64BV1(P) {
     trackBottomY: 0.13,
     trackTopY: 1.01,
     authoredEnvelopeHeightM: 0.80,
+    roadWheelRadiusM,
+    roadWheelCenterY,
   });
   P.topY = 1.30;
 }
@@ -1721,6 +1726,8 @@ export function liftT64HullAboveTallTrack(P, {
   trackBottomY,
   trackTopY,
   authoredEnvelopeHeightM,
+  roadWheelRadiusM,
+  roadWheelCenterY,
 }) {
   P.offsetBuckets([
     'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
@@ -1746,7 +1753,8 @@ export function liftT64HullAboveTallTrack(P, {
     installedEnvelopeHeightM: trackTopY - trackBottomY,
     trackBottomY,
     trackTopY,
-    roadWheelCenterY: 0.315,
+    roadWheelRadiusM,
+    roadWheelCenterY,
     hullRideHeightIncreaseM,
     lowerHullDropM,
     upperHullShiftM: 0,

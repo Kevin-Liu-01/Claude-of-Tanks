@@ -5,7 +5,8 @@ import { createTank } from '../tankFactory.js';
 const EPSILON = 1e-6;
 const CASES = {
   t64bv1: {
-    wheelY: 0.315,
+    wheelR: 0.285,
+    wheelY: 0.49,
     topY: 1.01,
     botY: 0.13,
     idlerY: 0.745,
@@ -19,7 +20,8 @@ const CASES = {
     armorCenterZ: [-0.20, -0.16],
   },
   ua_t64bv: {
-    wheelY: 0.315,
+    wheelR: 0.285,
+    wheelY: 0.49,
     topY: 1.01,
     botY: 0.14,
     idlerY: 0.755,
@@ -76,7 +78,16 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.ok(suspensionLinks?.isInstancedMesh && suspensionJoints?.isInstancedMesh
       && structuralHull?.isMesh,
     `${id}: exposes the wheel-bound torsion arms, joint bosses and structural hull`);
-    near(receipt.wheelY, expected.wheelY, `${id}: road-wheel axle stays on its ground datum`);
+    near(receipt.wheelR, expected.wheelR, `${id}: road wheels use the taller T-64 profile`);
+    near(receipt.wheelY, expected.wheelY, `${id}: road-wheel axle clears the lower track run`);
+    near(tallTrack.roadWheelRadiusM, expected.wheelR,
+      `${id}: tall-track receipt records the installed road-wheel radius`);
+    near(tallTrack.roadWheelCenterY, expected.wheelY,
+      `${id}: tall-track receipt records the raised road-wheel axle`);
+    assert.ok(receipt.wheelY - receipt.wheelR >= 0.205 - EPSILON,
+      `${id}: wheel bottoms stay above the lower track-shoe crest datum`);
+    near(receipt.shoeRadialScale, 0.46,
+      `${id}: thin T-64 shoes preserve wheel-to-track clearance`);
     near(receipt.topY, expected.topY, `${id}: upper track run gains 80 mm`);
     near(receipt.botY, expected.botY, `${id}: loaded lower run stays on its ground datum`);
     near(receipt.idler.y, expected.idlerY, `${id}: idler follows the lifted course`);
@@ -178,4 +189,4 @@ for (const [id, expected] of Object.entries(CASES)) {
   }
 }
 
-console.log('t64RunningGearTurretCenter.selftest: T-64BV1 and Donbas keep their upper rigs fixed while the lower hulls and wheel-bound torsion arms gain depth');
+console.log('t64RunningGearTurretCenter.selftest: T-64BV1 and Donbas seat taller road wheels above the lower track run while preserving the tall-course hull and turret alignment');
