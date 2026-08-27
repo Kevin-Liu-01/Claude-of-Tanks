@@ -1984,20 +1984,35 @@ export function eraRuCheeks(P, p, kind) {
         const tf = p.k5MirrorFlankTiles
           ? (s > 0 ? tileAngle : Math.PI - tileAngle)
           : s * tileAngle;
-        const tY = p.k5TileY ?? 0.26;
-        const tileDist = skinD(tf, tY) + (p.k5TileOut ?? 0.02);
-        if (p.k5FlushFlankTiles) {
-          // Fit the broad rear face to the upper cheek rather than standing
-          // the cassette vertically beside it.  The pitch/yaw progression
-          // follows the faceted shoulder normals; a deeper cassette buries
-          // its inner course through the armor skin and removes the visible
-          // air seam without increasing the exterior standoff.
-          const tileYaw = s * ((p.k5TileYaw0 ?? 0.36) + i * (p.k5TileYawStep ?? 0.12));
-          P.add('turretTrack', box(0.34, 0.30, p.k5TileDepth ?? 0.11),
-            Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
-            p.k5TilePitch ?? -1.05, tileYaw, 0);
-        } else {
-          put(tf, tY, 0.34, 0.30, 0.07, -0.08, 'turretTrack', tileDist);
+        const baseTileY = p.k5TileY ?? 0.26;
+        const rowOffsets = p.k5FlankRowOffsets ?? [0];
+        for (const rowOffset of rowOffsets) {
+          const tY = baseTileY + rowOffset;
+          const tileDist = skinD(tf, tY) + (p.k5TileOut ?? 0.02);
+          if (p.k5FlushFlankTiles) {
+            // Fit the broad rear face to the upper cheek rather than standing
+            // the cassette vertically beside it.  The pitch/yaw progression
+            // follows the faceted shoulder normals; a deeper cassette buries
+            // its inner course through the armor skin and removes the visible
+            // air seam without increasing the exterior standoff.
+            const tileYaw = s * ((p.k5TileYaw0 ?? 0.36) + i * (p.k5TileYawStep ?? 0.12));
+            const tilePitch = p.k5TilePitch ?? -1.05;
+            const tileDepth = p.k5TileDepth ?? 0.11;
+            if (p.k5LayeredFlankTiles) {
+              // A buried backing shoe follows the exact cassette transform.
+              // Its outer face overlaps the ERA inner face by 15 mm, so the
+              // visible two-row grid has a real load path into the cheek
+              // rather than reading as a necklace of hovering blocks.
+              P.add('turretDark', KIT.xform(box(0.30, 0.26, 0.06), 0, 0, -0.07),
+                Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
+                tilePitch, tileYaw, 0);
+            }
+            P.add('turretTrack', box(0.34, 0.30, tileDepth),
+              Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
+              tilePitch, tileYaw, 0);
+          } else {
+            put(tf, tY, 0.34, 0.30, 0.07, -0.08, 'turretTrack', tileDist);
+          }
         }
       }
     }

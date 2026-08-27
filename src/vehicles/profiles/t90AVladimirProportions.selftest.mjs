@@ -88,6 +88,22 @@ try {
     'flank cassettes carry enough depth to remain buried through the armor plane');
   assert.ok(near(proportion.eraFlankTilePitchRad, -1.05),
     'flank cassettes follow the sloped cheek plane');
+  assert.equal(proportion.eraFlankRows, 2,
+    'Vladimir carries two conformal ERA rows on each cheek');
+  assert.equal(proportion.eraFlankColumnsPerSide, 3,
+    'each cheek ERA row contains three aligned cassettes');
+  assert.ok(near(proportion.eraFlankRowOffsetM, 0.17),
+    'cheek ERA rows use a compact 170-mm vertical cadence');
+  assert.equal(proportion.eraFlankLayered, true,
+    'every visible ERA cassette includes a buried attachment layer');
+  assert.equal(proportion.sideHeadsFlush, true,
+    'unequal side blocks are explicitly seated through the turret cheek');
+  assert.ok(near(proportion.sideHeadOriginalAbsX, 1.44),
+    'the former detached side-head station remains documented');
+  assert.ok(near(proportion.sideHeadMaxAbsX, 1.28),
+    'both complete side heads move inward onto the turret shell');
+  assert.ok(near(proportion.sideHeadInboardShiftMinM, 0.16),
+    'each side head moves inward by at least 160 mm');
   assert.ok(near(proportion.shtoraCenterY, 0.28), 'Shtora optical centres sit at the mantlet-side station');
   assert.ok(near(proportion.shtoraSupportY, 0.20), 'Shtora support shoes move with the complete eye assembly');
   assert.ok(near(proportion.shtoraLoweredM, 0.208), 'Shtora package drops by the former cheek-rise inheritance');
@@ -198,11 +214,91 @@ try {
     const centerZ = (part.min[2] + part.max[2]) * 0.5;
     return height > 0.30 && Math.abs(centerX) > 0.8 && centerZ > 0.30;
   });
-  assert.equal(flankEra.length, 6, 'six sloped flank ERA cassettes are present');
-  assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 < 0).length, 3,
-    'three ERA cassettes seat on the left cheek');
-  assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 > 0).length, 3,
-    'three ERA cassettes seat on the right cheek');
+  assert.equal(flankEra.length, 12, 'twelve sloped flank ERA cassettes form the two-row grid');
+  assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 < 0).length, 6,
+    'six ERA cassettes seat on the left cheek');
+  assert.equal(flankEra.filter((part) => (part.min[0] + part.max[0]) * 0.5 > 0).length, 6,
+    'six ERA cassettes seat on the right cheek');
+  const flankEraRows = flankEra.map((part) => (part.min[1] + part.max[1]) * 0.5);
+  assert.equal(flankEraRows.filter((y) => near(y, 0.108, 1e-5)).length, 6,
+    'lower cheek ERA row is complete and mirrored');
+  assert.equal(flankEraRows.filter((y) => near(y, 0.278, 1e-5)).length, 6,
+    'upper cheek ERA row is complete and mirrored');
+
+  const flankEraBackers = parts.filter((part) => {
+    if (part.bucket !== 'turretDark' || part.parent !== 'turretG') return false;
+    const width = part.max[0] - part.min[0];
+    const height = part.max[1] - part.min[1];
+    const depth = part.max[2] - part.min[2];
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    const centerY = (part.min[1] + part.max[1]) * 0.5;
+    const centerZ = (part.min[2] + part.max[2]) * 0.5;
+    return Math.abs(centerX) > 0.9 && centerZ > 0.30
+      && centerY > 0.04 && centerY < 0.24
+      && width > 0.26 && width < 0.30
+      && height > 0.24 && height < 0.31
+      && depth > 0.28 && depth < 0.32;
+  });
+  assert.equal(flankEraBackers.length, 12,
+    'all twelve flank ERA cassettes have conformal buried backers');
+
+  const seatedSideHeads = parts.filter((part) => {
+    if (part.bucket !== 'turret' || part.parent !== 'turretG') return false;
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    const centerY = (part.min[1] + part.max[1]) * 0.5;
+    const centerZ = (part.min[2] + part.max[2]) * 0.5;
+    return Math.abs(centerX) >= 1.26 && Math.abs(centerX) <= 1.29
+      && centerY >= 0.11 && centerY <= 0.16
+      && centerZ >= -0.56 && centerZ <= -0.43;
+  });
+  assert.equal(seatedSideHeads.length, 2,
+    'both unequal side blocks occupy the inward turret-shell stations');
+  assert.ok(seatedSideHeads.every((part) => Math.min(Math.abs(part.min[0]), Math.abs(part.max[0])) < 1.19),
+    'each side block penetrates inward through the aft cheek surface');
+
+  const fenderAttachment = hullRig.userData.t90aVladimirFenderAttachmentReceipt;
+  assert.ok(fenderAttachment?.seated, 'former turret strip exposes a seated hull attachment receipt');
+  assert.equal(fenderAttachment.owner, 'rig_hull', 'fender shoulder pieces are fixed to the hull rig');
+  assert.equal(fenderAttachment.formerOwner, 'rig_turret', 'receipt records the corrected articulation owner');
+  assert.equal(fenderAttachment.turretOwnedPieces, 0, 'no fender shoulder pieces remain turret-owned');
+  assert.equal(fenderAttachment.visiblePiecesPerSide, 3, 'each hull shoulder retains three overlapping visible pieces');
+  assert.equal(fenderAttachment.carrierPiecesPerSide, 1, 'each shoulder has one buried hull carrier');
+
+  const hullFenderPieces = parts.filter((part) => {
+    if (part.bucket !== 'hullDetail' || part.parent !== 'hullG') return false;
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    const centerY = (part.min[1] + part.max[1]) * 0.5;
+    const centerZ = (part.min[2] + part.max[2]) * 0.5;
+    return Math.abs(centerX) > 1.54 && Math.abs(centerX) < 1.76
+      && near(centerY, fenderAttachment.seatY, 1e-5)
+      && centerZ > -0.58 && centerZ < -0.47;
+  });
+  assert.equal(hullFenderPieces.length, 6,
+    'three fixed fender pieces per side are present at the hull crown');
+  const hullFenderCarriers = parts.filter((part) => {
+    if (part.bucket !== 'hullDark' || part.parent !== 'hullG') return false;
+    const size = part.max.map((value, index) => value - part.min[index]);
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    const centerZ = (part.min[2] + part.max[2]) * 0.5;
+    return near(Math.abs(centerX), 1.50, 1e-5)
+      && near(centerZ, fenderAttachment.seatZ, 1e-5)
+      && near(size[0], 0.28, 1e-5)
+      && near(size[1], 0.05, 1e-5)
+      && near(size[2], 0.43, 1e-5);
+  });
+  assert.equal(hullFenderCarriers.length, 2,
+    'both hull-owned fender courses overlap a buried support carrier');
+  const legacyTurretFenderPieces = parts.filter((part) => {
+    if (part.bucket !== 'turretDetail' || part.parent !== 'turretG') return false;
+    const centerX = (part.min[0] + part.max[0]) * 0.5;
+    const centerY = (part.min[1] + part.max[1]) * 0.5;
+    const centerZ = (part.min[2] + part.max[2]) * 0.5;
+    return Math.abs(centerX) > 1.54 && Math.abs(centerX) < 1.76
+      && near(centerY, 0.128, 1e-5)
+      && centerZ > 0.17 && centerZ < 0.28;
+  });
+  assert.equal(legacyTurretFenderPieces.length, 0,
+    'the floating turret-owned fender-strip replicas are absent');
 
   const bustleFace = turretRig.userData.t90aVladimirBustleFaceReceipt;
   assert.ok(bustleFace?.seated, 'rear-side dark service faces expose a seated receipt');
@@ -234,4 +330,4 @@ try {
   tank.dispose();
 }
 
-console.log('t90AVladimirProportions.selftest: compact tracks, raked glacis, reseated bow fittings, aligned Shtora, connected cheeks, ERA, smoke banks, RWS, and enlarged cannon verified');
+console.log('t90AVladimirProportions.selftest: two-row backed ERA, flush side heads, hull-owned fender shoulders, bustle rails, and calibrated roof/cue proportions verified');

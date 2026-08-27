@@ -1263,11 +1263,19 @@ function buildT90AVladimirLegacy(P) {
 
   // ---- turret: dome to the normalized 2.19-2.23 roof, pano spike 2.60 ----
   P.turretG.position.set(0, 1.50, -0.75);
-  // Unequal armored side heads retain Vladimir's recovered asymmetry, but
-  // their inner faces now penetrate the cheek instead of hovering outside
-  // the hull. They share the rotating owner with the bustle hardware.
-  P.add('turret', box(0.19, 0.38, 0.50), -1.44, 0.12, -0.55, 0, 0.08, 0);
-  P.add('turret', box(0.17, 0.24, 0.30), 1.44, 0.15, -0.44, 0, -0.08, 0);
+  // Unequal armored side heads retain Vladimir's recovered asymmetry. Their
+  // former |x|=1.44 seats left the inboard faces outside the actual cast
+  // cheek at this aft station. Pull both complete blocks inward until their
+  // inner thirds penetrate the shell, while preserving their measured cant,
+  // height and fore/aft asymmetry. They remain structural turret children.
+  const sideHeadSeats = Object.freeze([
+    Object.freeze({ side: -1, x: -1.27, y: 0.12, z: -0.55, width: 0.19, height: 0.38, depth: 0.50, yaw: 0.08 }),
+    Object.freeze({ side: 1, x: 1.28, y: 0.15, z: -0.44, width: 0.17, height: 0.24, depth: 0.30, yaw: -0.08 }),
+  ]);
+  for (const seat of sideHeadSeats) {
+    P.add('turret', box(seat.width, seat.height, seat.depth),
+      seat.x, seat.y, seat.z, 0, seat.yaw, 0);
+  }
   // r13b: apex squashed 1.98 -> 1.95 (ref front center cols ±0.24..0.41
   // read 1.892-1.914; heightM lives on the sight block, not the dome)
   const rings = [[1.38, 0.10], [1.50, 0.18], [1.35, 0.26], [1.05, 0.32], [0.72, 0.35], [0.40, 0.36], [0.15, 0.36], [0.02, 0.36]];
@@ -1342,6 +1350,11 @@ function buildT90AVladimirLegacy(P) {
     k5TilePitch: -1.05,
     k5TileYaw0: 0.36,
     k5TileYawStep: 0.12,
+    // Two conformal rows form a real cheek grid. Every visible cassette has
+    // a buried backer on the same pitch/yaw plane, preserving the accepted
+    // front leaf while making the marked side fields visibly continuous.
+    k5FlankRowOffsets: [-0.17, 0],
+    k5LayeredFlankTiles: true,
   };
   eraRuCheeks(P, p5, 'k5');
   // Vladimir's OTShU-1-7 pair belongs beside the gun, not in the former roof
@@ -1384,6 +1397,15 @@ function buildT90AVladimirLegacy(P) {
     eraFlankTileInsetM: 0.03,
     eraFlankTileDepthM: 0.11,
     eraFlankTilePitchRad: -1.05,
+    eraFlankRows: 2,
+    eraFlankColumnsPerSide: 3,
+    eraFlankRowOffsetM: 0.17,
+    eraFlankLayered: true,
+    sideHeads: sideHeadSeats,
+    sideHeadsFlush: true,
+    sideHeadOriginalAbsX: 1.44,
+    sideHeadMaxAbsX: Math.max(...sideHeadSeats.map(({ x }) => Math.abs(x))),
+    sideHeadInboardShiftMinM: Math.min(...sideHeadSeats.map(({ x }) => 1.44 - Math.abs(x))),
     shtoraCenterY,
     shtoraSupportY,
     shtoraLoweredM: cheekRiseM,
@@ -1478,20 +1500,31 @@ function buildT90AVladimirLegacy(P) {
   // under the 2.2 block line.
   P.add('turret', box(0.16, 0.145, 0.10), 1.10, 0.5025, -0.2175);
   P.add('turret', box(0.04, 0.09, 0.10), 1.20, 0.415, -0.2175);
-  // rTAIL r13 ORACLE-PARITY: the print's turret-parented fender-strip
-  // fragments at |x| 1.545..1.79 (plan_turret ONLY-REF cols, cover 9.68 —
-  // the r2-quarantined LOD-copy quirk). Matched as tapered thin rails at
-  // the measured seats (y_w 1.628, t64bv1 unstrutted-rail precedent;
-  // plan/side-overlapped with the hull so the dilated floater mask stays
-  // connected). Drop-not-strut if the graduation critic vetoes.
-  // (r13b: outer taper piece trimmed to the ref's own ±1.745 mesh bound —
-  // at 1.79 the rails topped the ±1.77 front cols at 1.63 vs the ref's
-  // 1.41 skirt line; the ±1.787 plan pair goes back to certified cover.)
+  // These recovered fender-strip fragments were formerly turret-parented
+  // 300 mm above the fender. Rebuild the complete left/right courses on the
+  // fixed hull: a buried carrier reaches the hull shoulder, the two visible
+  // strips overlap each other, and the terminal tab enters the skirt lip.
+  // Their turret-local z stations are converted through the -0.75 m turret
+  // pivot so the longitudinal placement remains recognizable.
+  const hullFenderSeatY = 1.305;
+  const hullFenderSeatZ = -0.4955;
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.085, 0.026, 0.403), s * 1.5875, 0.128, 0.2545);
-    P.add('turretDetail', box(0.09, 0.026, 0.215), s * 1.675, 0.128, 0.2145);
-    P.add('turretDetail', box(0.035, 0.026, 0.04), s * 1.7225, 0.128, 0.20);
+    P.add('hullDark', box(0.28, 0.050, 0.43), s * 1.50, hullFenderSeatY - 0.020, hullFenderSeatZ);
+    P.add('hullDetail', box(0.085, 0.045, 0.403), s * 1.5875, hullFenderSeatY, hullFenderSeatZ);
+    P.add('hullDetail', box(0.09, 0.045, 0.215), s * 1.675, hullFenderSeatY, hullFenderSeatZ - 0.040);
+    P.add('hullDetail', box(0.060, 0.045, 0.050), s * 1.72, hullFenderSeatY, hullFenderSeatZ - 0.055);
   }
+  P.hullG.userData.t90aVladimirFenderAttachmentReceipt = Object.freeze({
+    owner: 'rig_hull',
+    sideCourses: 2,
+    visiblePiecesPerSide: 3,
+    carrierPiecesPerSide: 1,
+    seatY: hullFenderSeatY,
+    seatZ: hullFenderSeatZ,
+    formerOwner: 'rig_turret',
+    turretOwnedPieces: 0,
+    seated: true,
+  });
   // Mirrored 902B smoke batteries grow from armored shoes on the connected
   // cheek course. The roots enter the side facets while the tubes clear the
   // Shtora heads and the frontal K-5 fan.
