@@ -29,6 +29,8 @@ play without importing Three.js rendering or DOM state.
   correction; it never owns combat or match results.
 - `networkFramePump.ts` owns browser host/client frame order, snapshot/event
   application, input cadence, snapshot barriers, and network diagnostics.
+- `networkBattleBarrier.ts` owns first-authority and peer-ready predicates plus
+  the identity-bound idempotent READY retry lease.
 - `networkRoomCoordinator.ts` owns browser room subscriptions, garage/menu/chat
   presentation, selection commands, readiness, and rematch admission.
 - `connectionRecovery.ts` owns reconnect status and the single bounded failure

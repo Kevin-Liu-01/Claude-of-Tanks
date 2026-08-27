@@ -159,6 +159,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/rtcIceLease.selftest.mjs',
     'src/net/connectionRecovery.selftest.mjs',
     'src/net/networkFramePump.selftest.mjs',
+    'src/net/networkBattleBarrier.selftest.mjs',
     'src/net/networkRoomCoordinator.selftest.mjs',
     'src/net/matchRuntime.deadPeer.selftest.mjs',
     'src/net/browserBattleBridge.selftest.mjs',

@@ -62,3 +62,4 @@ runtime documents remain authoritative for behavior.
 - [0050 — Rendered tank presentation has one typed hot-path owner](0050-typed-battle-presentation-runtime.md)
 - [0051 — Browser frame delivery has one typed scheduler](0051-typed-frame-loop-scheduler.md)
 - [0052 — Static Garage work and residency are bounded](0052-demand-paced-garage-residency.md)
+- [0053 — Network battle barriers own their retry lease](0053-typed-network-battle-barrier.md)

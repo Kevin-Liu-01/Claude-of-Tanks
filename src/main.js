@@ -112,6 +112,7 @@ import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
 import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
+import { createNetworkBattleBarrier } from './net/networkBattleBarrier.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
@@ -2279,6 +2280,11 @@ const networkFramePump = createNetworkFramePump({
   recovery: networkRecovery,
   nextFrame,
 });
+const networkBattleBarrier = createNetworkBattleBarrier({
+  getMatch: () => networkMatch,
+  waitForSnapshot: (predicate, timeoutMs, label) =>
+    networkFramePump.waitForSnapshot(predicate, timeoutMs, label),
+});
 
 // Persistent subject-owned FX resolve against the presentation entity the
 // player actually sees. Network entities take priority during online battles;
@@ -2335,6 +2341,7 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
 bus.on('phase:change', () => networkRoomCoordinator.syncChatVisibility());
 
 function disposeNetworkPresentation() {
+  networkBattleBarrier.cancel();
   networkRecovery.dispose();
   networkFramePump.dispose();
   if (networkBridge) networkBridge.dispose();
@@ -2540,13 +2547,7 @@ async function presentNetworkBattle({
   battleLoad.progress(0.84, 'Synchronizing authority');
   let initial;
   try {
-    initial = await networkFramePump.waitForSnapshot(
-      (snapshot) => spectator
-        ? snapshot.entities.length > 0
-        : snapshot.entities.some((entity) => entity.id === viewerId),
-      60000,
-      'Timed out waiting for the first authoritative snapshot.',
-    );
+    initial = await networkBattleBarrier.waitForInitialSnapshot({ viewerId, spectator });
   } catch (error) {
     preparedBridge.dispose();
     throw error;
@@ -2593,24 +2594,8 @@ async function presentNetworkBattle({
     else renderer.compile(scene, camera);
   } catch (_) { /* warm only */ }
   markLoadStage('compile');
-  const readyMatch = networkMatch;
-  readyMatch.ready();
-  // READY is deliberately idempotent. Keep announcing it until an
-  // authoritative countdown/playing snapshot acknowledges that every peer
-  // crossed the loading barrier; this also covers the RTC listener handoff.
-  const readyRetryTimer = setInterval(() => {
-    if (networkMatch === readyMatch && !readyMatch.client?.closed) readyMatch.ready();
-  }, 1000);
   battleLoad.progress(0.96, 'Waiting for every commander');
-  try {
-    await networkFramePump.waitForSnapshot(
-      (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
-      60000,
-      'Another player did not finish loading in time.',
-    );
-  } finally {
-    clearInterval(readyRetryTimer);
-  }
+  await networkBattleBarrier.waitForPeerReadiness();
   markLoadStage('readyBarrier');
 
   shotMode = false;

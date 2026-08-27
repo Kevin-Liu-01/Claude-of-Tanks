@@ -97,6 +97,8 @@ strict TypeScript owners:
   out of garage boot and retries it on battle or joined-lobby intent;
 - `src/world/worldBuildCoordinator.ts` owns battlefield build/cache work;
 - `src/net/networkFramePump.ts` owns host/client frame cadence and snapshots;
+- `src/net/networkBattleBarrier.ts` owns initial-snapshot and peer-ready
+  predicates plus the identity-bound READY retry lease;
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
 - `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
 - `src/dev/debugTelemetry.ts` owns read-only diagnostics;

@@ -281,6 +281,12 @@ and hook-owned texture uploads for the live `cot:burnt` permutation; first
 blood is never its first real draw. Every pose, material, detail attachment,
 and visibility flag is restored before the loading veil exits.
 
+`src/net/networkBattleBarrier.ts` owns the two authoritative entry predicates
+and the READY retry lease. A slow pristine guest keeps repeating the idempotent
+READY edge until countdown or play acknowledges it, but only while its exact
+match remains current and open. Success, failure, disposal, or a retained-room
+rematch cancels the lease, so no previous round can signal into the next.
+
 The full rendered capacity gate is `npm run test:net:seven:full`. It runs two
 independent natural 7v7 battles—one with the browser host rendered and one with
 an impaired remote client rendered. All 28 participants across those runs use
