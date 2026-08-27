@@ -112,6 +112,8 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const networkBattleLaunchSource = await readFile(
+  new URL('../net/networkBattleLaunchRuntime.ts', import.meta.url), 'utf8');
 const battlePresentationSource = await readFile(
   new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8',
 );
@@ -351,12 +353,14 @@ assert.doesNotMatch(openBattleBody, /snapArcade/,
 assert.match(mainSource,
   /enterGarage\(\);\s*battleEntryLifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\?\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
-const networkEntryBody = mainSource.slice(
-  mainSource.indexOf('async function beginNetworkBattle('),
-  mainSource.indexOf('/** Load another authority round'),
+const networkEntryBody = networkBattleLaunchSource.slice(
+  networkBattleLaunchSource.indexOf('async beginPrivate('),
+  networkBattleLaunchSource.indexOf('async beginRematch('),
 );
-assert.ok(networkEntryBody.indexOf('battleLoad.show({') >= 0 &&
-  networkEntryBody.indexOf('battleLoad.show({') <
-    networkEntryBody.indexOf('await preloadPrivateMatchHandoffModule();'),
+assert.match(networkBattleLaunchSource,
+  /const showRoomLoad =[\s\S]*battleLoad\.show\(\{/,
+  'the typed network launch owner must synchronously present the boot-critical veil');
+assert.ok(networkEntryBody.indexOf('showRoomLoad(') >= 0 &&
+  networkEntryBody.indexOf('showRoomLoad(') < networkEntryBody.indexOf('await loadPrivateMatch();'),
   'network entry must synchronously show its boot-critical veil before its first lazy import');
 console.log('loading screen featured-capture selftest: PASS');

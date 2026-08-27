@@ -33,6 +33,8 @@ play without importing Three.js rendering or DOM state.
   the identity-bound idempotent READY retry lease.
 - `networkRoomCoordinator.ts` owns browser room subscriptions, garage/menu/chat
   presentation, selection commands, readiness, and rematch admission.
+- `networkBattleLaunchRuntime.ts` owns private/LAN, retained-room rematch, and
+  ranked launch policy, including cold-loader presentation and terminal cleanup.
 - `connectionRecovery.ts` owns reconnect status and the single bounded failure
   edge; transport replacement remains below it.
 - `rankedServiceClient.js` owns service-scoped ladder identity and queue polling;

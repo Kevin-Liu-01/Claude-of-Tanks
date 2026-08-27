@@ -40,7 +40,7 @@ import {
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
-import { createCameraRig, createShowroomOrbit } from './engine/cameraRig.js';
+import { createCameraRig } from './engine/cameraRig.js';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -87,6 +87,7 @@ import {
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
+import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
@@ -114,6 +115,7 @@ import { createNetworkRecoveryOwner } from './net/connectionRecovery.ts';
 import { createNetworkFramePump } from './net/networkFramePump.ts';
 import { createNetworkBattleBarrier } from './net/networkBattleBarrier.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
+import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
@@ -1076,8 +1078,8 @@ async function openPlayMenu(request) {
           console.error('[solo] entry failed', error);
         });
       },
-      onNetworkStart: beginNetworkBattle,
-      onRankedStart: beginRankedBattle,
+      onNetworkStart: (request) => networkBattleLauncher.beginPrivate(request),
+      onRankedStart: (request) => networkBattleLauncher.beginRanked(request),
       onLobbyChange: (context) => networkRoomCoordinator?.handleLobbyChange(context),
     }));
     playMenuPromise = pending;
@@ -1225,59 +1227,23 @@ const rig = createCameraRig(camera, {
 // latch, the canvas pointer wiring, and the per-frame pump — tick() runs it
 // in the garage phase only, so shot staging ('shot') and battle keep their
 // own camera owners. startBattle()/enterGarage() call stop()/start().
-const showroom = (() => {
-  const ctl = createShowroomOrbit(camera, rig, {
-    getSubject: () => pedestal.current?.root || null,
-    getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
-    // HERO POSE (garage_ui: front+side three-quarter). The pedestal hull is
-    // aligned to the floor's world-Z tread axis. Park the eye 45° off the
-    // nose on the vehicle's RIGHT: classic WoT front-right 3/4 —
-    // gun sweeps toward camera-left, front plate and one flank both read.
-    heroYawRad: GARAGE_TRACK_AXIS_YAW_RAD + 45 * DEG,
-    // elevation keeps the original garageCameraPose() composition (~6.3°)
-    heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
-    // FIXED FRAMING (garage r9): pose against the stage center + a canonical
-    // hero box instead of the selected hull's own measured box, so switching
-    // tanks never slides the camera. Drag-orbit / zoom / spring-back all keep
-    // working — they just pivot around this fixed anchor.
-    fixedFrame: () => ({
-      x: GARAGE_POS.x, y: GARAGE_POS.y + GARAGE_LOOK_Y, z: GARAGE_POS.z,
-      hw: GARAGE_FRAME_BOX.hw, hh: GARAGE_FRAME_BOX.hh, hd: GARAGE_FRAME_BOX.hd,
-    }),
-    floorY: () => GARAGE_POS.y,
-  });
-  let on = false;
-  let dragPtr = -1;
-  const el = renderer.domElement;
-  el.addEventListener('pointerdown', (e) => {
-    if (!on || e.button !== 0) return;
-    dragPtr = e.pointerId;
-    try { el.setPointerCapture(e.pointerId); } catch (_) { /* embedded panes */ }
-    ctl.beginDrag();
-  });
-  el.addEventListener('pointermove', (e) => {
-    if (on && e.pointerId === dragPtr) ctl.drag(e.movementX || 0, e.movementY || 0);
-  });
-  const endDrag = (e) => { if (e.pointerId === dragPtr) { dragPtr = -1; ctl.endDrag(); } };
-  el.addEventListener('pointerup', endDrag);
-  el.addEventListener('pointercancel', endDrag);
-  el.addEventListener('wheel', (e) => {
-    if (!on) return;
-    ctl.wheel(e.deltaY < 0 ? 1 : -1);
-    e.preventDefault();
-  }, { passive: false });
-  return {
-    // reset() fails harmlessly while the pedestal is still empty — update()
-    // re-measures a few times a second and takes over once a hero exists.
-    start() { on = true; ctl.start(); },
-    stop() { on = false; dragPtr = -1; ctl.stop(); },
-    reset() { return ctl.reset(); },
-    update(dt) { return on ? ctl.update(dt) : false; },
-    get active() { return on && ctl.active; },
-    get moving() { return on && ctl.moving; },
-    debugState: () => ctl.debugState(),
-  };
-})();
+const showroom = createGarageShowroomRuntime({
+  camera,
+  rig,
+  element: renderer.domElement,
+  getSubject: () => pedestal.current?.root || null,
+  getStageRect: () => (garage.getStageRect ? garage.getStageRect() : null),
+  // Classic front-right three-quarter hero framing. All dimensions and camera
+  // math remain owned by the existing engine solver; this root supplies only
+  // scene anchors and the canonical vehicle-independent frame.
+  heroYawRad: GARAGE_TRACK_AXIS_YAW_RAD + 45 * DEG,
+  heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
+  fixedFrame: () => ({
+    x: GARAGE_POS.x, y: GARAGE_POS.y + GARAGE_LOOK_Y, z: GARAGE_POS.z,
+    hw: GARAGE_FRAME_BOX.hw, hh: GARAGE_FRAME_BOX.hh, hd: GARAGE_FRAME_BOX.hd,
+  }),
+  floorY: () => GARAGE_POS.y,
+});
 
 // Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
 // trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
@@ -2301,6 +2267,34 @@ function preloadNetworkLobbyIntent(state) {
   prefetchWorld(mapId);
 }
 
+const networkBattleLauncher = createNetworkBattleLaunchRuntime({
+  lifecycle: battleEntryLifecycle,
+  battleLoad,
+  audio,
+  getMatch: () => networkMatch,
+  getRoomCoordinator: () => networkRoomCoordinator,
+  getWorldCollision: () => world,
+  getMapPresentation: (mapId, fallback) => {
+    if (!mapId) return { name: fallback, thumb: '', biome: 'none' };
+    const cfg = getMapConfig(mapId);
+    return { name: cfg.name || fallback, thumb: MAP_THUMBS[mapId] || '', biome: mapId };
+  },
+  rosterRows: lobbyRosterRows,
+  emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
+  resetBattleState: resetNetworkBattleState,
+  presentBattle: presentNetworkBattle,
+  loadPrivateMatch: preloadPrivateMatchHandoffModule,
+  loadDedicatedMatch: preloadDedicatedClientModule,
+  disposePresentation: disposeNetworkPresentation,
+  clearNetworkRound: () => networkFramePump.clearRound(),
+  closeMatch: closeNetworkMatch,
+  enterGarage,
+  setNetworkStatus: (status) => networkStatus?.set(status),
+  recordEntryFailure: (failure) => {
+    if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = failure;
+  },
+});
+
 networkRoomCoordinator = createNetworkRoomCoordinator({
   getMatch: () => networkMatch,
   getPlayMenu: () => playMenuPromise,
@@ -2316,7 +2310,7 @@ networkRoomCoordinator = createNetworkRoomCoordinator({
   preloadLobbyIntent: preloadNetworkLobbyIntent,
   equipmentFor: (specId) => loadSelectedEquipment(specId, getSpec(specId)),
   camoFor: getMultiplayerCamoSelection,
-  onRematch: beginNetworkRematch,
+  onRematch: (state) => networkBattleLauncher.beginRematch(state),
   onClose: (reason) => closeNetworkMatch(reason),
 });
 
@@ -2651,210 +2645,6 @@ async function presentNetworkBattle({
 async function beginSoloBattle({ specId, mapId, randomRoster = true } = {}) {
   const selected = VISIBLE_TANK_IDS.includes(specId) ? specId : garage.getSelected();
   return beginBattleEntry(selected, mapId || garage.getSelectedMap(), { randomRoster });
-}
-
-/** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
-async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = {}) {
-  if (networkMatch) return false;
-  return battleEntryLifecycle.run(async () => {
-    let entered = false;
-    if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = null;
-    const viewerId = String(session?.roomInfo?.peerId || '');
-    const own = lobbyState?.players?.find((player) => player.id === viewerId);
-    try {
-      if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
-      resetNetworkBattleState();
-      // Cover the page before the first cold import can yield. The play menu
-      // hands off from the garage synchronously; previously its hide exposed a
-      // garage frame (or several on a slow machine) while this module loaded.
-      const modeLabel = lobbyState.mode === 'lan'
-        ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code';
-      const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
-      const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
-      const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
-      bus.emit('ui:battleStart', {
-        playerId: viewerId,
-        specId: own.specId,
-        mapId: lobbyState.mapId,
-      });
-      battleLoad.show({
-        mapName: pendingCfg?.name || 'Battle',
-        thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
-        biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
-        mode: modeLabel,
-        allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
-        enemies: lobbyRosterRows(lobbyState,
-          displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-      });
-      audio.resume();
-      audio.loadingOn(true);
-      battleLoad.progress(0.01, 'Opening battle channel');
-      const {
-        beginPrivateHostMatch,
-        beginPrivateClientMatch,
-        buildPrivateMatchPlayers,
-        resolvePrivateMatchMap,
-      } = await preloadPrivateMatchHandoffModule();
-      const mapId = resolvePrivateMatchMap(lobbyState);
-      const matchPlayers = buildPrivateMatchPlayers(lobbyState);
-      await presentNetworkBattle({
-        viewerId,
-        own,
-        mapId,
-        matchPlayers,
-        modeLabel,
-        transitionShown: true,
-        connectAfterWorld: role === 'host',
-        connectMatch: () => role === 'host'
-          ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world, battleLimitS })
-          : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
-      });
-      networkRoomCoordinator.attach(lobbyState);
-      entered = true;
-    } catch (error) {
-      if (typeof window !== 'undefined') {
-        window.__NETWORK_ENTRY_FAILURE = {
-          message: error.message,
-          role,
-          clientConnected: !!networkMatch?.client?.connected,
-          clientReadySent: !!networkMatch?.client?.readySent,
-          matchStarted: !!networkMatch?.host?.matchStarted,
-          peers: networkMatch?.host
-            ? [...networkMatch.host.peers.values()].map((peer) => ({
-              id: peer.id,
-              welcomed: peer.welcomed,
-              ready: peer.ready,
-              pendingRoundReady: peer.pendingRoundReady,
-              lastRecvSeq: peer.lastRecvSeq,
-              transportKind: peer.transport?.kind || null,
-            }))
-            : [],
-        };
-      }
-      console.error('[network] entry failed', error);
-      audio.loadingOn(false);
-      closeNetworkMatch('entry_failed');
-      await battleLoad?.hide?.();
-      enterGarage();
-    }
-    return entered;
-  }, false);
-}
-
-/** Load another authority round over the room's existing WebRTC channels. */
-async function beginNetworkRematch(lobbyState) {
-  const round = Number(lobbyState?.round) || 0;
-  if (!networkRoomCoordinator.claimRematch(lobbyState, battleEntryLifecycle.pending)) return false;
-  return battleEntryLifecycle.run(async () => {
-    const viewerId = networkMatch.playerId;
-    const own = lobbyState.players.find((player) => player.id === viewerId);
-    try {
-      if (!own) throw new Error('Your player is no longer in this room.');
-      const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
-      const modeLabel = lobbyState.mode === 'lan'
-        ? `LAN Battle · Round ${round}` : `Private Battle · Round ${round}`;
-      const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
-      const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
-      bus.emit('ui:battleStart', {
-        playerId: viewerId, specId: own.specId, mapId: lobbyState.mapId,
-      });
-      battleLoad.show({
-        mapName: pendingCfg?.name || 'Next battle',
-        thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
-        biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
-        mode: modeLabel,
-        allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
-        enemies: lobbyRosterRows(lobbyState,
-          displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-      });
-      audio.resume();
-      audio.loadingOn(true);
-      battleLoad.progress(0.01, 'Preparing the next round');
-      disposeNetworkPresentation();
-      networkFramePump.clearRound();
-      const { buildPrivateMatchPlayers, resolvePrivateMatchMap } =
-        await preloadPrivateMatchHandoffModule();
-      const mapId = resolvePrivateMatchMap(lobbyState);
-      const matchPlayers = buildPrivateMatchPlayers(lobbyState);
-      await presentNetworkBattle({
-        viewerId,
-        own,
-        mapId,
-        matchPlayers,
-        modeLabel,
-        transitionShown: true,
-        connectMatch: () => {
-          if (networkMatch.role === 'host') {
-            networkMatch.prepareRound({ lobbyState, worldCollision: world });
-          }
-          return networkMatch;
-        },
-      });
-      return true;
-    } catch (error) {
-      console.error('[network] rematch entry failed', error);
-      audio.loadingOn(false);
-      closeNetworkMatch('rematch_entry_failed');
-      await battleLoad?.hide?.();
-      enterGarage();
-      return false;
-    } finally {
-      networkRoomCoordinator.finishRematch();
-    }
-  }, false);
-}
-
-/** Join a server-authoritative rated match issued by the ranked queue. */
-async function beginRankedBattle({ serviceUrl, state } = {}) {
-  if (networkMatch) return;
-  return battleEntryLifecycle.run(async () => {
-    const ticket = state?.match;
-    const viewerId = String(ticket?.playerId || '');
-    const own = ticket?.roster?.find((player) => player.id === viewerId);
-    try {
-      if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
-      resetNetworkBattleState();
-      const modeLabel = `Ranked · ${own.rating || 1000} rating`;
-      const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
-      bus.emit('ui:battleStart', {
-        playerId: viewerId,
-        specId: own.specId,
-        mapId: ticket.mapId,
-      });
-      battleLoad.show({
-        mapName: 'Ranked operation',
-        thumb: '',
-        biome: ticket.mapId,
-        mode: modeLabel,
-        allies: lobbyRosterRows({ players: ticket.roster }, displayTeam, viewerId),
-        enemies: lobbyRosterRows({ players: ticket.roster },
-          displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-      });
-      audio.resume();
-      audio.loadingOn(true);
-      battleLoad.progress(0.01, 'Opening dedicated channel');
-      const { beginDedicatedClientMatch } = await preloadDedicatedClientModule();
-      await presentNetworkBattle({
-        viewerId,
-        own,
-        mapId: ticket.mapId,
-        matchPlayers: ticket.roster,
-        modeLabel,
-        transitionShown: true,
-        connectMatch: () => beginDedicatedClientMatch({
-          url: serviceUrl,
-          ticket,
-          onStatus: (status) => networkStatus?.set(status),
-        }),
-      });
-    } catch (error) {
-      console.error('[ranked] entry failed', error);
-      audio.loadingOn(false);
-      closeNetworkMatch('entry_failed');
-      await battleLoad?.hide?.();
-      enterGarage();
-    }
-  }, undefined);
 }
 
 /** Rows for the pre-battle roster panels. @param {string} team @returns {Array} */
@@ -4157,7 +3947,7 @@ window.__DEBUG = {
   beginSoloBattle,
   // Full-render QA seam: browser probes create real room sessions, then hand
   // them to the same private/LAN entry path used by the play menu.
-  beginNetworkBattle,
+  beginNetworkBattle: (request) => networkBattleLauncher.beginPrivate(request),
   enterGarage,
   leaveBattleToGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks

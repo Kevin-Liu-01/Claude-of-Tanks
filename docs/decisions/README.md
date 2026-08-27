@@ -69,3 +69,4 @@ runtime documents remain authoritative for behavior.
 - [0057 — Player boot does not fetch third-party metadata](0057-no-third-party-boot-metadata.md)
 - [0058 — First-visit recovery has an enforceable latency budget](0058-first-visit-latency-budget.md)
 - [0059 — Static workshop detail has a projected shadow budget](0059-static-workshop-shadow-budget.md)
+- [0060 — The composition root delegates browser lifecycles](0060-composition-root-delegates-browser-lifecycles.md)

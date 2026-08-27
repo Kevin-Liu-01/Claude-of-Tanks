@@ -78,6 +78,9 @@ strict TypeScript owners:
   publishes the stable movement/fire and camera input records;
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
+- `src/game/garageShowroomRuntime.ts` owns the Garage camera phase latch,
+  pointer capture, drag/wheel routing, and listener disposal while the engine
+  orbit remains the sole camera-pose solver;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete
   Random-map reservation, intent-only world scheduling, exact-roster texture
   coalescing, and the camouflage-safe handoff into covered entry;
@@ -102,6 +105,8 @@ strict TypeScript owners:
 - `src/net/networkBattleBarrier.ts` owns initial-snapshot and peer-ready
   predicates plus the identity-bound READY retry lease;
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
+- `src/net/networkBattleLaunchRuntime.ts` owns private/LAN, retained-room
+  rematch, and ranked launch policy plus cold-entry failure cleanup;
 - `src/net/connectionRecovery.ts` owns the single reconnect presentation edge;
 - `src/dev/debugTelemetry.ts` owns read-only diagnostics;
 - `src/dev/driveTestController.ts` owns deterministic rendered-battle QA input.
@@ -205,6 +210,11 @@ input, coalesces repeated intent, and bounds retained texture-only previews.
 `garageIdleWorkCoordinator.ts` serializes that paint with background world and
 workshop construction; it does not change authored work or visual quality.
 
+`garageShowroomRuntime.ts` presents one phase-scoped camera interface to the
+composition root. It owns primary-pointer capture, drag cancellation, wheel
+consumption, and listener lifetime. The existing engine orbit still computes
+every camera pose from the unchanged canonical hero frame.
+
 `battleIntentRuntime.ts` owns the next operation rather than any rendered
 object. A Battle hover or focus transfers battle-only modules, plans the exact
 roster, coalesces its texture work, resolves Random to one concrete map, and
@@ -222,6 +232,11 @@ network battle first establishes a room or ranked session, then loads the
 selected map and roster behind an opaque transition without importing solo
 authority. The browser bridge mounts visuals only after authority has a valid
 initial state.
+
+`networkBattleLaunchRuntime.ts` is the common mode-launch owner above that
+presentation seam. Private/LAN first entry, retained-room rematch, and ranked
+handoff share identity validation, loader presentation, cleanup, and typed
+failure diagnostics instead of implementing parallel policies in `main.js`.
 
 Every new battle resets result and presentation state. A previous verdict must
 not survive into a new network round.

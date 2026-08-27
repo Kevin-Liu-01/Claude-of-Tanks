@@ -13,6 +13,9 @@ const pedestalRuntime = fs.readFileSync(
   path.join(here, 'garagePedestalRuntime.ts'), 'utf8',
 );
 const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8');
+const networkLaunch = fs.readFileSync(
+  path.join(here, '..', 'net', 'networkBattleLaunchRuntime.ts'), 'utf8',
+);
 
 const neighborWarm = pedestalPreloader.slice(
   pedestalPreloader.indexOf('const queueNeighbors = () =>'),
@@ -62,14 +65,14 @@ assert.match(networkBattle,
 assert.match(networkBattle,
   /loadWorld:[\s\S]{0,180}ensureWorld\(mapId[\s\S]{0,300}connect: connectMatch/,
   'network entry should delegate modules, battlefield construction, and connection setup');
-assert.match(main, /connectAfterWorld: role === 'host'/,
+assert.match(networkLaunch, /connectAfterWorld: role === 'host'/,
   'browser authority must wait for world collision while cold clients connect concurrently');
 assert.match(networkBattle,
   /Promise\.all\(\[[\s\S]{0,500}armorAimOverlay\.preload\(\)\.catch/,
   'network entry must acquire the optional armor overlay under its loading veil');
-assert.match(main, /await preloadPrivateMatchHandoffModule\(\)/,
+assert.match(networkLaunch, /await loadPrivateMatch\(\)/,
   'private handoff should join the mode-intent preload');
-assert.match(main, /await preloadDedicatedClientModule\(\)/,
+assert.match(networkLaunch, /await loadDedicatedMatch\(\)/,
   'ranked entry should join the mode-intent preload');
 assert.match(main,
   /async function debugStartBattle[\s\S]{0,760}preloadSoloBattleRuntime\(\)[\s\S]{0,100}ensureBattleHud\(\)[\s\S]{0,100}ensureTouchControls\(\)[\s\S]{0,100}armorAimOverlay\.preload\(\)/,

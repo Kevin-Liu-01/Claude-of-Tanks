@@ -34,6 +34,9 @@ facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
+`garageShowroomRuntime.ts` owns the Garage camera phase latch, pointer capture,
+drag/wheel bindings, and disposal while the engine orbit remains the only pose
+solver.
 `garageDressingOptimization.ts` finalizes the fully streamed static workshop,
 bakes descendant transforms, and removes only sub-resolution fitting shadows
 while preserving authored vehicle shadow proxies and all color geometry.
