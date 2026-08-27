@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.js';
 import { createHeightField } from './terrain.js';
-import { sampleHorizonSilhouette } from './maps/horizon.js';
+import {
+  HORIZON_TREELINE_ATLAS_VARIANTS,
+  sampleHorizonSilhouette,
+  sampleTreelineCrownProfile,
+} from './maps/horizon.js';
 import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.js';
 import './treeGrounding.selftest.mjs';
 
@@ -244,6 +248,34 @@ for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
     maxStep = Math.max(maxStep, Math.abs(heights[i] - heights[(i + 1) % heights.length]));
   }
   assert.ok(maxStep <= 5.5, `${mapId}: alpine skyline has no needle-like one-segment peaks`);
+}
+
+{
+  const profiles = [];
+  for (let variant = 0; variant < HORIZON_TREELINE_ATLAS_VARIANTS; variant++) {
+    const heights = sampleTreelineCrownProfile({ seed: 1337, variant });
+    profiles.push(heights);
+    let maxStep = 0;
+    let maxImpulse = 0;
+    for (let i = 0; i < heights.length; i++) {
+      const previous = heights[(i - 1 + heights.length) % heights.length];
+      const next = heights[(i + 1) % heights.length];
+      maxStep = Math.max(maxStep, Math.abs(next - heights[i]));
+      maxImpulse = Math.max(maxImpulse, Math.abs(next - 2 * heights[i] + previous));
+    }
+    assert.ok(Math.min(...heights) >= 0.43 && Math.max(...heights) <= 0.78,
+      `treeline atlas ${variant}: connected canopy stays broad and low`);
+    assert.ok(maxStep <= 0.035 && maxImpulse <= 0.01,
+      `treeline atlas ${variant}: scope view cannot reveal one-sample needles`);
+  }
+  for (let i = 1; i < profiles.length; i++) {
+    let difference = 0;
+    for (let k = 0; k < profiles[i].length; k++) {
+      difference += Math.abs(profiles[i][k] - profiles[0][k]);
+    }
+    assert.ok(difference / profiles[i].length >= 0.045,
+      `treeline atlas ${i}: ridge ranges do not repeat the same crown strip`);
+  }
 }
 
 {

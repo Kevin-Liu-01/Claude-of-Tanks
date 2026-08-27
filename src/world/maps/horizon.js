@@ -49,6 +49,46 @@ function idHash(s) {
   return h >>> 0;
 }
 
+export const HORIZON_TREELINE_ATLAS_VARIANTS = 4;
+
+/**
+ * Periodic, low-frequency crown line used by the distant forest impostor.
+ * The returned values are fractions of one atlas band, measured up from its
+ * base. Keeping this pure lets the Node quality gate reject isolated needles
+ * without needing a DOM/canvas implementation.
+ */
+export function sampleTreelineCrownProfile({
+  seed = 0x5EED, variant = 0, samples = 192,
+} = {}) {
+  const count = Math.max(24, samples | 0);
+  const rng = mulberry32((seed ^ Math.imul((variant | 0) + 1, 0x9E3779B1)) >>> 0);
+  const phase0 = rng() * Math.PI * 2;
+  const phase1 = rng() * Math.PI * 2;
+  const phase2 = rng() * Math.PI * 2;
+  const f0 = 2 + ((variant + (rng() * 2 | 0)) % 3);
+  const f1 = 5 + ((variant * 2 + (rng() * 3 | 0)) % 4);
+  const f2 = 9 + ((variant * 3 + (rng() * 4 | 0)) % 5);
+  const heights = new Float32Array(count);
+  const scratch = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    heights[i] = clamp(0.61
+      + Math.sin(a * f0 + phase0) * 0.095
+      + Math.sin(a * f1 + phase1) * 0.050
+      + Math.sin(a * f2 + phase2) * 0.022, 0.44, 0.77);
+  }
+  // A compact circular blur keeps crown groups readable while guaranteeing
+  // that no one-texel spike survives x8 scope magnification.
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < count; i++) {
+      scratch[i] = heights[(i - 1 + count) % count] * 0.2
+        + heights[i] * 0.6 + heights[(i + 1) % count] * 0.2;
+    }
+    heights.set(scratch);
+  }
+  return heights;
+}
+
 const STYLE_BY_MAP = {
   verdant: 'rolling', desert: 'mesa', winter: 'alpine', urban: 'escarpment',
 };
@@ -471,150 +511,55 @@ function makeDetailNoiseTexture(rng) {
 }
 
 // ---------------------------------------------------------------------------
-// Ridgeline tree-line texture (r5) — a repeating strip of conifer/broadleaf
-// SILHOUETTES with alpha. Planted along the crest of the nearer ridge rows on
-// vegetated styles: the loudest tell of the old backdrop was a perfectly
-// smooth dome wrapped in speckle noise, where a real forested hill reads as a
-// serrated tree line breaking the sky. Drawn in a neutral green-grey band and
-// multiplied by per-vertex crest colors so haze/sun grading matches the ridge.
+// Ridgeline tree-line texture — a repeating alpha-tested canopy silhouette.
+// It is reserved for the outer skyline: using the same ribbon on nearer ridge
+// faces turns it into a contour stripe under scope magnification. Drawn in a
+// neutral green-grey and multiplied by the crest colors so haze/sun grading
+// stays continuous with the distant terrain proxy.
 // ---------------------------------------------------------------------------
-function makeTreeLineTexture(rng) {
-  // controls_gunnery r5: 1024x256 -> 2048x320 (2x u-resolution — at x8 one
-  // 56 m repeat spans several hundred screen px and the old texels smeared),
-  // and every tree carries INTERNAL shading — sun-lit upper tiers/crown lobes
-  // over a darker shadow core — so the magnified skyline reads as lit forest
-  // depth instead of flat paper cutouts.
-  const w = texSize(768), h = texSize(128); // distant alpha comb; see loading-speed r1 above
+function makeTreeLineTexture(profileSeed) {
+  // Four crown variants share one atlas and one material. Earlier revisions
+  // repeated one strip every 56 m on every ridge and flank; scopes exposed the
+  // same conifer triangles as giant fins. A connected, low-frequency canopy
+  // keeps the cheap impostor philosophy while reading as a forest mass.
+  const w = texSize(768), h = texSize(128);
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, w, h);
-  const base = h - 2;
-  // lighting_post r7 (CRITICAL "flat teal paint-smear impostor forest 2-3
-  // stops darker and desaturated vs sunlit midground trees"): the comb strip
-  // is UNLIT MeshBasic — its texel values must carry SCENE-LIT canopy level,
-  // not shade albedo. Base ink raised toward warm sunlit green (was
-  // 126,148,116 — multiplied by the dark crest vertex colors it landed the
-  // whole band ~2 stops under the lit midground canopy).
-  const ink = (tone) =>
-    `rgb(${Math.round(157 * tone)},${Math.round(172 * tone)},${Math.round(112 * tone)})`;
-  // per-tree sun-side/shade-side gradient (same critique): horizontal fill
-  // gradient across one crown, lit toward -u — the wall reads as lit canopy.
-  const inkGrad = (x0, x1, tone) => {
-    const g = ctx.createLinearGradient(x0, 0, x1, 0);
-    g.addColorStop(0, ink(tone * 1.14));
-    g.addColorStop(1, ink(tone * 0.74));
-    return g;
-  };
-  // r8 FOREST MASS BAND: two depth layers of overlapping crown lobes filling
-  // the lower ~35% of the strip as a CONTINUOUS closed-canopy mass. Spaced
-  // individual silhouettes alone minify to isolated 1-2 px "toothpick" dashes
-  // along every distant ridgeline (critique: "model-railway diorama, no
-  // coherent forest mass past ~800 m"); a real forested crest is a solid
-  // serrated band with emergent crowns — the trees drawn after this become
-  // those emergents. Band height wanders and dips (never to zero) so
-  // clearings read as low scrub saddles, not bald crest.
-  // r7 terrain_environment: THREE haze-stepped depth layers (was 2) and a
-  // taller band — the scalloped emergent clusters ride on a deep connected
-  // canopy mass, so the crest silhouette is a soft layered scallop line
-  // instead of spaced teeth (the "2-3 parallax layers of soft scalloped
-  // forest-silhouette cards" the critique asked for, in texture space).
-  for (let layer = 0; layer < 3; layer++) {
-    const tone0 = layer === 0 ? 0.50 : layer === 1 ? 0.64 : 0.80; // back layers darker (depth)
-    const hTop = layer === 0 ? 0.58 : layer === 1 ? 0.46 : 0.34;  // fraction of strip height
-    let bx = -20;
-    let bh = h * hTop * (0.75 + rng() * 0.4);
-    while (bx < w + 20) {
-      const cw = 30 + rng() * 52;
-      bh = clamp(bh + (rng() - 0.5) * h * 0.09, h * 0.09, h * hTop);
-      const rY = bh * 0.55;
-      // hud_ui r6: each canopy cell is 3 overlapping jittered lobes instead
-      // of ONE clean ellipse — at x8 sniper magnification the single-ellipse
-      // band read as smooth paper-cutout blobs; broken lobed edges read as
-      // crown texture.
-      for (let lb = 0; lb < 3; lb++) {
-        const ox = (rng() - 0.5) * cw * 0.5;
-        const oy = (rng() - 0.3) * rY * 0.5;
-        ctx.fillStyle = ink(tone0 * (0.78 + rng() * 0.44));
-        ctx.beginPath();
-        ctx.ellipse(bx + cw / 2 + ox, base - bh + rY + oy,
-          cw * (0.34 + rng() * 0.30), rY * (0.55 + rng() * 0.40),
-          rng() * Math.PI, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      bx += cw * (0.42 + rng() * 0.30);
+  const variants = HORIZON_TREELINE_ATLAS_VARIANTS;
+  const bandH = Math.floor(h / variants);
+  for (let variant = 0; variant < variants; variant++) {
+    // CanvasTexture flips Y at upload, so variant zero is drawn into the
+    // bottom canvas band to keep its UV range at v=0..0.25.
+    const bandTop = (variants - 1 - variant) * bandH;
+    const base = bandTop + bandH - 2;
+    const usableH = Math.max(8, bandH - 5);
+    const profile = sampleTreelineCrownProfile({
+      seed: profileSeed, variant, samples: 192,
+    });
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, bandTop + 1, w, bandH - 2);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(0, base - profile[0] * usableH);
+    for (let i = 1; i <= profile.length; i++) {
+      const index = i % profile.length;
+      ctx.lineTo((i / profile.length) * w, base - profile[index] * usableH);
     }
-  }
-  let x = 2;
-  // r7 terrain_environment SCALLOP REWRITE. The emergent pass used to draw
-  // isolated tall-thin trees (conifers up to ~200 px tall x ~40 px wide) —
-  // at ridge distance one tree minifies to a 1-2 px vertical NEEDLE, and the
-  // whole crest rendered as the critique's "sawtooth spike silhouettes /
-  // vertical stripe noise" (the single biggest AAA tell). A far forest crest
-  // actually reads as a CONNECTED SCALLOPED band: overlapping crown clusters
-  // with low aspect (wider than tall), height undulating on a stand scale,
-  // with only shallow serration on top. Emergents are now drawn as CLUSTERS
-  // of 2-5 broad crowns rising modestly out of the mass band, conifer spires
-  // are short and always shouldered by neighbours, and the value range is
-  // tightened so no isolated dark needle survives minification.
-  const scPhase = rng() * 9.7;
-  while (x < w - 24) {
-    const stand = 0.62 + 0.55 * (Math.sin(x * 0.006 + scPhase) * 0.5 + 0.5) + rng() * 0.18;
-    const conifer = rng() < 0.55;
-    const tj = 0.72 + rng() * 0.42; // per-cluster value jitter (tightened)
-    // cluster footprint: several crowns overlapping into one scalloped mass
-    const nCr = 2 + (rng() * 4) | 0;
-    const cw = (70 + rng() * 90) * stand;   // cluster width
-    const chMax = (58 + rng() * 64) * stand; // cluster rise above the band
-    if (conifer) {
-      // spruce cluster: short broad spires leaning on each other. Aspect
-      // capped ~1.9:1 per spire so nothing minifies to a flagpole.
-      for (let k2 = 0; k2 < nCr; k2++) {
-        const fx = x + (k2 + 0.5) / nCr * cw + (rng() - 0.5) * cw * 0.2;
-        const th = chMax * (0.55 + rng() * 0.45);
-        const tw = Math.max(th * (0.55 + rng() * 0.25), 26 * stand);
-        const tiers = 3;
-        for (let t = 0; t < tiers; t++) {
-          const ty = base - (th * (t + 1)) / tiers;
-          const twt = tw * (1 - (t / tiers) * 0.62);
-          // lighting_post r7: per-tree sun-side/shade-side gradient — the
-          // wall reads as LIT canopy, not one flat tone (critique)
-          ctx.fillStyle = inkGrad(fx - tw / 2, fx + tw / 2,
-            tj * (0.80 + 0.34 * (t / (tiers - 1))));
-          ctx.beginPath();
-          ctx.moveTo(fx - twt / 2, ty + (th / tiers) * 1.5);
-          ctx.lineTo(fx + twt / 2, ty + (th / tiers) * 1.5);
-          ctx.lineTo(fx + (rng() - 0.5) * 6, ty);
-          ctx.closePath();
-          ctx.fill();
-        }
-      }
-      x += cw * (0.72 + rng() * 0.4);
-    } else {
-      // broadleaf cluster: broad overlapping crown lobes (scallops)
-      for (let k2 = 0; k2 < nCr; k2++) {
-        const fx = x + (k2 + 0.5) / nCr * cw + (rng() - 0.5) * cw * 0.25;
-        const th = chMax * (0.5 + rng() * 0.5);
-        const tw = th * (1.15 + rng() * 0.6); // wider than tall
-        const cy = base - th * 0.52;
-        for (let k = 0; k < 4; k++) {
-          const ox = (rng() - 0.5) * tw * 0.45;
-          const oy = (rng() - 0.5) * th * 0.30;
-          // lighting_post r7: horizontal lit-side bias doubled (0.08 ->
-          // 0.18) — per-crown sun-side/shade-side split (critique)
-          const lit = 0.86 - (oy / (th * 0.30)) * 0.20 - (ox / (tw * 0.45)) * 0.18;
-          ctx.fillStyle = ink(tj * clamp(lit, 0.62, 1.2));
-          ctx.beginPath();
-          ctx.ellipse(fx + ox, cy + oy,
-            tw * (0.30 + rng() * 0.20), th * (0.26 + rng() * 0.16), rng() * Math.PI, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      x += cw * (0.75 + rng() * 0.4);
-    }
-    if (rng() < 0.20) { // low saddle: the mass band alone carries the crest
-      x += 30 + rng() * 60;
-    }
+    ctx.lineTo(w, base);
+    ctx.lineTo(0, base);
+    ctx.closePath();
+    const canopy = ctx.createLinearGradient(0, bandTop + 2, 0, base);
+    canopy.addColorStop(0, 'rgb(166,181,122)');
+    canopy.addColorStop(0.52, 'rgb(143,160,103)');
+    canopy.addColorStop(1, 'rgb(103,122,78)');
+    ctx.fillStyle = canopy;
+    ctx.fill();
+    ctx.clip();
+
+    ctx.restore();
   }
   // flood transparent texels with the mean tone so mips never halo dark
   const id = ctx.getImageData(0, 0, w, h);
@@ -853,6 +798,7 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
           amp: rA.amp + (rB.amp - rA.amp) * f,
           f0: rA.f0, f1: rA.f1,
           aer: rA.aer + (rB.aer - rA.aer) * f,
+          interpolated: true,
         });
         const fq = 6.5 + s * 2.3;
         for (let k = 0; k < N; k++) {
@@ -1283,37 +1229,43 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
   // silhouettes — exclude the backdrop like the other flat-lit world layers
   mesh.userData.aoExclude = true;
 
-  // --- ridgeline tree combs (r5, vegetated styles only) ---------------------
-  // Alpha-tested tree-silhouette ribbons planted along the crest of every
-  // ridge row below the treeline: the skyline breaks into serrated forest
-  // instead of smooth painted domes. Ribbons follow the exact crest vertices
-  // and inherit their vertex colors (x ~1.5 against a ~0.53-mean texture, so
-  // trees sit slightly darker than the flank they stand on and pick up the
-  // same haze/sun grading).
-  if (treeline > 0) {
-    const trng = mulberry32(((seed ^ 0x5EED) ^ idHash(mapId)) >>> 0);
-    const combTex = makeTreeLineTexture(trng);
-    // r6: comb the outermost ridge too — every vegetated crest silhouette
-    // carries a serrated tree line, and the recession shells read forested
-    // all the way out instead of going bald past row 4
-    const combRows = [2, 3, 4, 5];
+  // --- distant skyline impostor (vegetated styles only) ---------------------
+  // One alpha-tested canopy ribbon follows the outer authored crest. It adds
+  // a soft forest-scale irregularity against the sky without layering cards
+  // over visible ridge faces, and inherits the same baked color/haze grading.
+  // Values below 0.14 fade every crown to zero; skip the texture, geometry,
+  // and draw call entirely on the intentionally bare desert/canyon maps.
+  if (treeline >= 0.14) {
+    const profileSeed = ((seed ^ 0xA771) ^ idHash(mapId)) >>> 0;
+    const combTex = makeTreeLineTexture(profileSeed);
+    // Alpine walls contain interpolated geometry rows for smooth shading.
+    // Planting on row indices 2..5 stacked four silhouettes into the first
+    // 65 m radial gap. Select from authored ridges and keep the outer skyline.
+    const authoredRows = [];
+    for (let ri = 0; ri < rows.length; ri++) {
+      if (!rows[ri].skirt && !rows[ri].interpolated) authoredRows.push(ri);
+    }
+    // Only the outer skyline receives an alpha silhouette. On any nearer
+    // ridge the same card is seen against another hill and reads as a broad
+    // contour stripe rather than vegetation.
+    const combRows = authoredRows.length
+      ? [authoredRows[authoredRows.length - 1]] : [];
     const tlH = treeline * maxH;
     const cPos = [], cCol = [], cUv = [], cIdx = [];
     let vBase = 0;
-    // controls_gunnery r5: every comb row plants TWO ranks — the crest ribbon
-    // plus a BACK rank just outside and below the crest (u phase-shifted,
-    // hazier, ~15% shorter). Its crowns peek through the front rank's gaps
-    // and dips, so at x8 the skyline reads as layered forest DEPTH instead of
-    // one paper-cutout strip glued to the ridge line.
-    const ranks = [];
-    for (const ri of combRows) ranks.push([ri, 0], [ri, 1]);
-    for (const [ri, back] of ranks) {
+    const atlasPad = 1.5 / Math.max(1, combTex.image.height);
+    const atlasRange = (variant) => {
+      const v0 = variant / HORIZON_TREELINE_ATLAS_VARIANTS + atlasPad;
+      const v1 = (variant + 1) / HORIZON_TREELINE_ATLAS_VARIANTS - atlasPad;
+      return [v0, Math.max(v0, v1)];
+    };
+    // A single range is enough to soften the sky edge. Repeated front/back
+    // ranks made the inexpensive backdrop obvious under scope magnification.
+    for (const ri of combRows) {
       const row = rows[ri];
-      // r6: 92 -> 72 m per texture repeat — denser tree combs so the crest
-      // reads as closed forest, not scattered lollipops along a bare rim
-      // lighting_post r3: 72 -> 56 m per repeat keeps density while the comb
-      // span drops to real conifer scale (8-20 m crowns, was 12-30 m)
-      const repeats = Math.max(8, Math.round((Math.PI * 2 * row.r) / 56));
+      const repeats = Math.max(8, Math.round((Math.PI * 2 * row.r) / 96));
+      const variant = profileSeed % HORIZON_TREELINE_ATLAS_VARIANTS;
+      const [v0, v1] = atlasRange(variant);
       for (let k = 0; k <= N; k++) {  // N+1 columns: seam-free u wrap
         const kk = k % N;
         const i = ri * N + kk;
@@ -1322,47 +1274,30 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
         // to a hidden zero-height line where faded out
         const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
         const a = (kk / N) * Math.PI * 2;
-        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9 + back * 3.7,
-          Math.sin(a) * 5.3 - ri * 5 - back * 2.9) * 0.5 + 0.5;
-        // r7: crown span scales with row radius so far-ring combs keep their
-        // angular weight — distant ridges must read forested, not stubbled
-        // r6 terrain_environment: a second, faster stand-height walk (hn2)
-        // modulates the ribbon height ±35% on a ~40 m period — the smooth hn
-        // field alone kept the comb top at near-constant height for hundreds
-        // of meters, the "even sawtooth comb edge" tell (critique)
-        const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1 + back * 7.3,
+        const hn = gnoi.noise(Math.cos(a) * 5.3 + ri * 9,
+          Math.sin(a) * 5.3 - ri * 5) * 0.5 + 0.5;
+        // A second, faster stand-height walk keeps the low-frequency crown
+        // from holding one constant angular weight for hundreds of metres.
+        const hn2 = gnoi.noise(Math.cos(a) * 19.7 + ri * 3.1,
           Math.sin(a) * 19.7 + ri * 11.9) * 0.5 + 0.5;
-        const span = (5 + (8 + hn * 12) * (0.85 + row.r / 2600)) * fade *
-          (back ? 0.85 : 1) * (0.72 + hn2 * 0.56);
-        const inw = back ? 1.004 : 0.995; // back rank behind the crest line
-        const drop = back ? 5 + span * 0.4 : 5;
+        const span = (9 + hn * 7) * (0.94 + Math.min(row.r, 1400) / 7000) * fade *
+          (0.88 + hn2 * 0.24);
+        const inw = 0.995;
+        const drop = 3.2;
         cPos.push(x * inw, hh - drop, z * inw, x * inw, hh - drop + span, z * inw);
-        // lighting_post r3: combs inherit extra aerial haze (row.aer * 0.5)
-        // so distant tree lines melt into the ridge instead of popping darker
-        // in front of it (r5: the back rank gets an extra step of haze)
-        // r6 terrain_environment: 0.5 -> 0.66 + a small unconditional floor —
-        // the ranked combs still stacked into a high-contrast serrated WALL
-        // of packed silhouettes at the frame edges (critique); sitting them
-        // deeper into the aerial tint keeps the serration but recesses it
-        // r7 terrain_environment: front-rank haze floor 0.06 -> 0.16 — the
-        // crest band must sit INSIDE the aerial tint of its own ridge, never
-        // as a high-contrast dark serration pasted on it (sawtooth critique)
-        const hz = Math.min(0.92, row.aer * 0.66 + (back ? 0.28 : 0.16));
-        // lighting_post r7 (CRITICAL sniper teal-curtain): x1.5 on the DARK
-        // crest colors left the whole comb band ~2 stops under sunlit
-        // midground canopy (measured lum 68-86 vs 158 on shots/sniper_view).
-        // The strip is unlit — its vertex tint must carry the sun product:
-        // x2.1 front / x1.8 back (cap 1.9) lands the first comb row within
-        // ~15% of lit midground trees; the haze lerp still recesses far rows.
-        let cr = Math.min(1.9, col[i * 3] * (back ? 1.8 : 2.1));
-        let cg = Math.min(1.9, col[i * 3 + 1] * (back ? 1.8 : 2.1));
-        let cb = Math.min(1.9, col[i * 3 + 2] * (back ? 1.8 : 2.1));
+        // The unlit impostor inherits the baked sun product and extra aerial
+        // haze so it sits inside its ridge tint rather than popping as a dark
+        // serrated layer in front of it.
+        const hz = Math.min(0.92, row.aer * 0.66 + 0.16);
+        let cr = Math.min(1.9, col[i * 3] * 1.7);
+        let cg = Math.min(1.9, col[i * 3 + 1] * 1.7);
+        let cb = Math.min(1.9, col[i * 3 + 2] * 1.7);
         cr += (fogC.r - cr) * hz;
         cg += (fogC.g - cg) * hz;
         cb += (fogC.b - cb) * hz;
         cCol.push(cr, cg, cb, cr, cg, cb);
-        const u = (k / N) * repeats + (back ? 0.5 : 0); // de-correlate ranks
-        cUv.push(u, 0, u, 1);
+        const u = (k / N) * repeats + variant * 0.23;
+        cUv.push(u, v0, u, v1);
       }
       for (let k = 0; k < N; k++) {
         const b0 = vBase + k * 2, t0 = b0 + 1, b1 = b0 + 2, t1 = b1 + 1;
@@ -1370,84 +1305,16 @@ export function buildHorizonRing(engineCtx, cfg, seed) {
       }
       vBase += (N + 1) * 2;
     }
-    // r2 terrain_environment: FLANK ribbons. The crest combs serrate the
-    // skylines, but the big wall faces BETWEEN comb rows carried only smooth
-    // canopy tint — the "bald gumdrop" midground hills behind the village.
-    // Plant additional crown ribbons directly ON the slope surface (linear
-    // interpolation between consecutive row vertices lies exactly on the
-    // wall quad strip) at 2-3 fractional heights per span, so every visible
-    // flank reads as massed forest instead of green felt.
-    {
-      const flankSpans = [
-        [1, 2, 0.28], [1, 2, 0.60], [1, 2, 0.86],
-        [2, 3, 0.30], [2, 3, 0.58], [2, 3, 0.84],
-        [3, 4, 0.40], [3, 4, 0.74],
-      ];
-      // r4 terrain_environment: the r2 flank ribbons were the critique's
-      // "rows of dark dotted striations crawling across the hill faces" —
-      // each ribbon ran at ONE constant fractional height between two ring
-      // rows, so at range its individual tree silhouettes minified into
-      // 1-2 px dots strung along perfect arcs. Three changes kill the rows:
-      //  (a) the ribbon samples only the LOWER HALF of the comb texture (the
-      //      continuous closed-canopy mass band) — no isolated emergent
-      //      trees left to read as dots,
-      //  (b) per-column HEIGHT WANDER (±0.4 span) so the band drifts off the
-      //      contour line instead of tracing it,
-      //  (c) PATCH GATING — a low-frequency noise collapses the span to zero
-      //      over ~40% of each ring, breaking the band into irregular forest
-      //      stands with clean slope between them.
-      for (const [ra, rb, f] of flankSpans) {
-        const rowA = rows[ra], rowB = rows[rb];
-        const rMid = rowA.r + (rowB.r - rowA.r) * f;
-        const aerMid = rowA.aer + (rowB.aer - rowA.aer) * f;
-        const repeats = Math.max(8, Math.round((Math.PI * 2 * rMid) / 56));
-        for (let k = 0; k <= N; k++) {
-          const kk = k % N;
-          const iA = ra * N + kk, iB = rb * N + kk;
-          const x = pos[iA * 3] + (pos[iB * 3] - pos[iA * 3]) * f;
-          let hh = pos[iA * 3 + 1] + (pos[iB * 3 + 1] - pos[iA * 3 + 1]) * f;
-          const z = pos[iA * 3 + 2] + (pos[iB * 3 + 2] - pos[iA * 3 + 2]) * f;
-          const fade = 1 - smoothstep(tlH * 0.8, tlH * 1.12, hh);
-          const a = (kk / N) * Math.PI * 2;
-          const hn = gnoi.noise(Math.cos(a) * 5.3 + ra * 7 + f * 17,
-            Math.sin(a) * 5.3 - rb * 5 - f * 11) * 0.5 + 0.5;
-          // (c) stand patches: ~40% of the ring carries no band at all
-          const pn = gnoi.noise(Math.cos(a) * 2.1 + ra * 13 + f * 29,
-            Math.sin(a) * 2.1 - rb * 9 + f * 41) * 0.5 + 0.5;
-          const patch = smoothstep(0.34, 0.58, pn);
-          const span = (5 + (8 + hn * 12) * (0.85 + rMid / 2600)) * fade * 0.9 * patch;
-          // (b) wander the band off the constant-height contour line
-          hh += (gnoi.noise(Math.cos(a) * 3.7 - ra * 5 + f * 7,
-            Math.sin(a) * 3.7 + rb * 3 - f * 13)) * span * 0.4;
-          // sink the ribbon base into the slope so crowns emerge from it
-          cPos.push(x, hh - span * 0.35, z, x, hh + span * 0.65, z);
-          const hz = Math.min(0.9, aerMid * 0.5 + 0.10);
-          // lighting_post r7: flank stands follow the crest-comb relight
-          // (x1.42 -> x2.0, cap 1.9) so wall faces match the lit crest band
-          let cr = Math.min(1.9, (col[iA * 3] + (col[iB * 3] - col[iA * 3]) * f) * 2.0);
-          let cg = Math.min(1.9, (col[iA * 3 + 1] + (col[iB * 3 + 1] - col[iA * 3 + 1]) * f) * 2.0);
-          let cb = Math.min(1.9, (col[iA * 3 + 2] + (col[iB * 3 + 2] - col[iA * 3 + 2]) * f) * 2.0);
-          cr += (fogC.r - cr) * hz;
-          cg += (fogC.g - cg) * hz;
-          cb += (fogC.b - cb) * hz;
-          cCol.push(cr, cg, cb, cr, cg, cb);
-          const u = (k / N) * repeats + f * 0.71; // de-correlate vs crest ranks
-          cUv.push(u, 0, u, 0.5); // (a) mass band only — no emergent-tree dots
-        }
-        for (let k = 0; k < N; k++) {
-          const b0 = vBase + k * 2, t0 = b0 + 1, b1 = b0 + 2, t1 = b1 + 1;
-          cIdx.push(b0, b1, t0, t0, b1, t1);
-        }
-        vBase += (N + 1) * 2;
-      }
-    }
+    // Do not plant ribbons on the ridge faces. They only read as parallel
+    // contour stripes under scope magnification; the baked forest tint on the
+    // horizon mesh already provides the correct distant canopy mass there.
     const cGeo = new THREE.BufferGeometry();
     cGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cPos), 3));
     cGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cCol), 3));
     cGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(cUv), 2));
     cGeo.setIndex(cIdx);
     const cMat = new THREE.MeshBasicMaterial({
-      map: combTex, vertexColors: true, alphaTest: 0.45,
+      map: combTex, vertexColors: true, alphaTest: 0.38,
       alphaToCoverage: true, side: THREE.DoubleSide,
     });
     const comb = new THREE.Mesh(cGeo, cMat);
