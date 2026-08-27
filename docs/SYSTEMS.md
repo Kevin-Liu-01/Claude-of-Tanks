@@ -139,6 +139,11 @@ only when its coherent owner and focused behavioral test are clear. A rename
 to `.ts`, broad `any`, or `@ts-nocheck` does not count as migration. Refactor
 commits preserve rendering and gameplay; behavior changes land separately.
 
+`src/game/battlePresentationRuntime.ts` is the hot rendered-vehicle owner. It
+separates fixed-step solo interpolation from already-smoothed network poses and
+concentrates spotting residency, track-detail cadence, vehicle FX, and light
+prop contacts behind one allocation-bounded interface.
+
 ### Boot
 
 The boot path establishes the renderer, essential garage scene, selected

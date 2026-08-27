@@ -112,6 +112,9 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+const battlePresentationSource = await readFile(
+  new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8',
+);
 const battleWarmSource = await readFile(
   new URL('../game/battleWarmRuntime.ts', import.meta.url), 'utf8',
 );
@@ -221,11 +224,11 @@ assert.match(stageRevealBody, /forwardProgramWarm\.compile\(root\)[\s\S]{0,1400}
 assert.match(stageRevealBody,
   /forwardProgramWarm\.compile\(root\)[\s\S]*if \(initiallyHidden\)[\s\S]*visual\.setVisible\?\.\(false\)[\s\S]*root\.removeFromParent\(\)[\s\S]*battleVisibilityDetached = true[\s\S]*await yieldForBudget\(true\)/,
   'countdown-streamed opponents must compile exactly, then detach before the next painted frame');
-assert.match(mainSource,
-  /function setBattleVisualResident\(visual, resident\)[\s\S]{0,500}battleVisibilityDetached && !root\.parent\)[\s\S]{0,80}scene\.add\(root\)[\s\S]{0,500}if \(root\.parent === scene\)[\s\S]{0,100}root\.removeFromParent\(\)/,
+assert.match(battlePresentationSource,
+  /const setVisualResident = \(visual: TankVisual, resident: boolean\)[\s\S]{0,500}battleVisibilityDetached && !root\.parent\)[\s\S]{0,80}scene\.add\(root\)[\s\S]{0,500}if \(root\.parent === scene\)[\s\S]{0,100}root\.removeFromParent\(\)/,
   'fully hidden opponents must leave the scene hierarchy and only the visibility owner may restore them');
-assert.match(mainSource,
-  /actorVisible = ent\._spotFade > 0\.02;[\s\S]*setBattleVisualResident\(visual, actorVisible\)[\s\S]*visual\.setVisible\(actorVisible\)[\s\S]*if \(!actorVisible\) continue/,
+assert.match(battlePresentationSource,
+  /actorVisible = entity\._spotFade > 0\.02;[\s\S]*setVisualResident\(visual, actorVisible\)[\s\S]*visual\.setVisible\(actorVisible\)[\s\S]*if \(!actorVisible\) continue/,
   'spotting must restore scene residency before the first visible pose sync');
 const deferredEnemyAt = deferredWarmSource.indexOf('getBattleVisuals().stream(');
 const deferredOpeningAt = deferredWarmSource.indexOf(

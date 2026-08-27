@@ -31,6 +31,9 @@ const playerBattleActions = await readFile(
 const playerFrameInput = await readFile(
   new URL('../game/playerFrameInput.ts', import.meta.url), 'utf8',
 );
+const battlePresentation = await readFile(
+  new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -149,7 +152,7 @@ if (!/const fxTextureP = ensureFxRuntime\(\)\.then[\s\S]{0,420}live\.preloadText
   throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
 }
 if (!/if \(initiallyHidden\) \{[\s\S]{0,900}visual\.setVisible\?\.\(false\)[\s\S]{0,900}root\.removeFromParent\(\)[\s\S]{0,180}battleVisibilityDetached = true/.test(battleVisualStreamer)
-  || !/actorVisible = ent\._spotFade > 0\.02;[\s\S]{0,160}setBattleVisualResident\(visual, actorVisible\)[\s\S]{0,100}visual\.setVisible\(actorVisible\)/.test(main)) {
+  || !/actorVisible = entity\._spotFade > 0\.02;[\s\S]{0,160}setVisualResident\(visual, actorVisible\)[\s\S]{0,100}visual\.setVisible\(actorVisible\)/.test(battlePresentation)) {
   throw new Error('countdown-built enemy visuals must stay detached until a legal spotting edge');
 }
 if (!/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeBurntSteps[\s\S]*setDestroyed/.test(battleWarm)

@@ -120,6 +120,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/effectAttachments.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
+    'src/game/battlePresentationRuntime.selftest.mjs',
     'src/game/battleVisualPool.selftest.mjs',
     'src/game/battleVisualStreamer.selftest.mjs',
     'src/game/battleVisualStreamerAccess.selftest.mjs',

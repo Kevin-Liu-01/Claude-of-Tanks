@@ -90,6 +90,7 @@ import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
+import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -1212,13 +1213,8 @@ const {
   resolveShellHit,
   createCombatState,
   createShell,
-  isPostwarVehicleEra,
   advancePreBattleCountdown,
   resolveVisiblePreBattleSeconds,
-  advanceTankPresentationPose,
-  createTankPresentationPose,
-  resetTankPresentationPose,
-  sampleTankPresentationPose,
   mobileAutoAimCenter,
   pickMobileAutoAimTarget,
 } = battleClientAccess;
@@ -1771,6 +1767,17 @@ const playerFrameInput = createPlayerFrameInput({
   input,
   hasAmmo: playerBattleActions.hasAmmo,
   forceFire: () => !!debugFlags.forceFire,
+});
+const battlePresentation = createBattlePresentationRuntime({
+  game,
+  camera,
+  scene,
+  battleClient: battleClientAccess,
+  getFx: () => fxRuntimeAccess.current,
+  getWorld: () => world,
+  isNetworkMatchActive: () => !!networkMatch,
+  getPedestalVisual: () => pedestal.current,
+  isCinematicActive: () => rig.cinematicActive,
 });
 // FEEL r12: perf overlay toggle works in every phase (garage included)
 input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); });
@@ -2979,13 +2986,13 @@ function startBattle(specId, mapId = null, opts = {}) {
   // LOD/shadow variants, moving their first touch into live combat.
   combatWarm.reset();
   sbtStage('setupRoster');
-  primeDeploymentTerrainTiles();
+  battlePresentation.primeDeploymentTerrainTiles();
   sbtStage('terrainTiles');
   // Fixed-step authority starts every round with a matching presentation
   // history. Without this reset a debug/rematch entry could interpolate from
   // the previous battlefield pose for one frame.
   simAcc = 0;
-  resetSoloPresentationPoses();
+  battlePresentation.resetSoloPoses();
   battleStaged = true;
   // perf-r2f: ONE chunked sweep covers the biome flip AND the bot camo rolls
   // setupBattle just made (its own trailing sweep is deferred by the flag
@@ -3346,213 +3353,6 @@ let shotMode = false;
 let shotHudFrame = false;
 let lastCineActive = false; // battle-open flyby HUD veil edge latch
 
-function resetSoloPresentationPoses() {
-  for (const ent of game.tanks) {
-    if (!ent.state) continue;
-    if (!ent._soloRenderPose) ent._soloRenderPose = createTankPresentationPose();
-    resetTankPresentationPose(ent._soloRenderPose, ent.state);
-  }
-}
-
-function primeDeploymentTerrainTiles() {
-  const warmer = world?.heightField?.warmFastTilesAround;
-  if (typeof warmer !== 'function') return;
-  const points = [];
-  for (const ent of game.tanks) {
-    const pos = ent?.state?.pos;
-    if (pos) points.push({ x: pos.x, z: pos.z, radiusM: 0 });
-  }
-  // This runs while battle entry is still covered (or inside a debug start),
-  // preventing deployment first-touch tile bakes from stacking on the first
-  // live simulation frame. The larger player neighborhood remains chunked below.
-  for (const _tile of warmer.call(world.heightField, points)) { /* drain */ }
-}
-
-function captureSoloPresentationPoses() {
-  for (const ent of game.tanks) {
-    if (!ent.state) continue;
-    if (!ent._soloRenderPose) ent._soloRenderPose = createTankPresentationPose(ent.state);
-    else advanceTankPresentationPose(ent._soloRenderPose, ent.state);
-  }
-}
-
-function presentationStateFor(ent, alpha) {
-  // BrowserBattleBridge already supplies Hermite-interpolated remote poses and
-  // corrected local prediction every render frame. Interpolating those again
-  // would add latency and smear corrections, so this buffer is solo-only.
-  if (networkMatch || game.phase !== 'battle') return ent.state;
-  if (!ent._soloRenderPose) ent._soloRenderPose = createTankPresentationPose(ent.state);
-  return sampleTankPresentationPose(ent._soloRenderPose, ent.state, alpha);
-}
-
-const _detailScreenPos = new THREE.Vector3();
-function setBattleVisualResident(visual, resident) {
-  const root = visual?.root;
-  if (!root) return;
-  if (resident) {
-    if (root.userData.battleVisibilityDetached && !root.parent) scene.add(root);
-    root.userData.battleVisibilityDetached = false;
-    return;
-  }
-  // Only roots deliberately detached by this visibility owner may be
-  // reattached above. This prevents a late spotting edge from resurrecting a
-  // visual that another lifecycle owner disposed or parked.
-  if (root.parent === scene) {
-    root.removeFromParent();
-    root.userData.battleVisibilityDetached = true;
-  }
-}
-function updateDustAndSync(dtFrame, presentationAlpha = 1) {
-  const cameraPosition = camera.position;
-  const fx = fxRuntimeAccess.current;
-  // Renderer frustum-culls individual meshes later, but running-gear
-  // conformance happens before that traversal. Build one conservative screen
-  // guard so an actor just outside the view cannot upload hundreds of hidden
-  // wheel/link matrices every render frame.
-  camera.updateMatrixWorld();
-  for (const ent of game.tanks) {
-    // PERF r3: staged-battle visuals are deferred to post-ready idle — skip
-    // entities whose visual has not streamed in yet (garage phase only;
-    // warmCombatPipeline builds all of them before battle/shot frames).
-    if (!ent.state || !ent.combat || !ent.visual) continue;
-    const state = ent.state;
-    const combat = ent.combat;
-    const visual = ent.visual;
-    const spec = ent.spec;
-    const dims = spec.dims;
-    const topSpeedMps = spec.topSpeedKmh / 3.6;
-    // Resolve spotting before any presentation work. A fully faded enemy has
-    // no legal pixels or presentation FX, so interpolating/projecting its
-    // pose and walking its complete visual hierarchy every render frame was
-    // pure hidden work. The first fade-in frame resumes from the current
-    // authoritative pose before the root becomes visible.
-    let actorVisible = true;
-    if (game.phase === 'battle' && game.spotting && ent.team === 'enemy') {
-      const spotted = combat.destroyed ||
-        game.spotting.isSpotted(ent.id, 'player', game.player);
-      const target = spotted ? 1 : 0;
-      if (ent._spotFade === undefined) ent._spotFade = target;
-      // eased fade to avoid popping (0 -> 1 in ~0.35 s); no dt (boot) = snap
-      ent._spotFade += (target - ent._spotFade) *
-        (dtFrame === undefined ? 1 : Math.min(1, dtFrame / 0.35));
-      actorVisible = ent._spotFade > 0.02;
-      setBattleVisualResident(visual, actorVisible);
-      visual.setVisible(actorVisible);
-    } else if (game.phase === 'battle' && !ent.isPlayer) {
-      // Allies (and enemies in the no-spotting fallback) are force-shown; the
-      // player's hull visibility remains owned by the camera rig below.
-      visual.setVisible(true);
-    }
-    if (!actorVisible) continue;
-
-    const presented = presentationStateFor(ent, presentationAlpha);
-    // effects_combat r1: pass the real frame dt so self-timed visual
-    // timelines (recuperator recoil, turret-pop arc, ember cooldown) play at
-    // wall-clock speed on 120 Hz displays (undefined at boot -> 1/60 default).
-    // PERF (perf-r2): the camera distance lets the visual run its track
-    // dressing (per-wheel heightAt conform + link/band instance pass) at a
-    // reduced cadence beyond fine-detail range — battle loop only; studio,
-    // killcam and staged poses omit it and keep full-rate updates.
-    const viewDistM = cameraPosition.distanceTo(presented.pos);
-    _detailScreenPos.copy(presented.pos);
-    _detailScreenPos.y += dims.heightM * 0.5;
-    _detailScreenPos.project(camera);
-    const detailVisible = ent.isPlayer || game.phase !== 'battle'
-      || (_detailScreenPos.z >= -1.2 && _detailScreenPos.z <= 1.2
-        && Math.abs(_detailScreenPos.x) <= 1.35
-        && Math.abs(_detailScreenPos.y) <= 1.45);
-    if (game.phase !== 'garage' || visual !== pedestal.current) {
-      visual.syncFromState(state, dtFrame, viewDistM, presented, detailVisible);
-    }
-    // The PLAYER's hull visibility is OWNED by the camera rig — it hides the
-    // hull while scoped (sniper). Never force-show it here: doing so one step
-    // after the rig hid it renders the inside of the hull/mantlet.
-    // Presentation FX must obey the same visibility boundary as the actor.
-    // Emitting dust for an unspotted enemy both leaks its position and burns
-    // transparent overdraw on a vehicle the player is not allowed to see.
-    // The far field is already absorbed by aerial perspective; skip vehicle
-    // media beyond it instead of filling a 1024-card pool off camera.
-    const vehicleFxVisible = visual.root.visible && viewDistM < 360;
-    if (fx && game.phase === 'battle' && !combat.destroyed && vehicleFxVisible) {
-      // PERF (perf-budget): dust/exhaust emission was per-FRAME — an unlocked
-      // 120 fps client emitted 2x the particles the fx were tuned for at 60,
-      // rotating the smoke/dust pools twice as fast late-battle. Fixed 60 Hz
-      // cadence (up to 2 catch-up ticks) keeps the tuned 60 fps look identical
-      // and makes emission frame-rate-independent.
-      ent._fxAcc = (ent._fxAcc || 0) + (dtFrame === undefined ? 1 / 60 : dtFrame);
-      if (ent._fxAcc < 1 / 60) continue;
-      const fxTicks = Math.min(2, Math.floor(ent._fxAcc * 60));
-      ent._fxAcc -= fxTicks / 60;
-      const sp = Math.abs(presented.speed);
-      const throttle = Math.abs(ent.input.throttle || 0);
-      _fwd.set(Math.sin(presented.yaw), 0, Math.cos(presented.yaw));
-      if (sp > 0.8) {
-        const intensity = Math.min(1, sp / topSpeedMps);
-        // Distance-driven emission: the old "three puffs per 60 Hz tick per
-        // track" saturated the complete dust pool in about one second and
-        // layered hundreds of overlapping 5 m cards into a muddy veil. One
-        // structured burst every ~0.45-0.70 m leaves continuous twin tracks
-        // at speed, scales naturally with vehicle motion, and is identical
-        // on 60/120/240 Hz displays.
-        const spacingM = THREE.MathUtils.lerp(0.70, 0.45, intensity);
-        ent._dustTravelAcc = Math.min(spacingM * 2,
-          (ent._dustTravelAcc || 0) + sp * (fxTicks / 60));
-        if (ent._dustTravelAcc >= spacingM) {
-          ent._dustTravelAcc -= spacingM;
-          _v3.set(_fwd.z, 0, -_fwd.x); // right axis
-          for (let side = -1; side <= 1; side += 2) {
-            _v1.copy(presented.pos)
-              .addScaledVector(_fwd, -dims.hullLengthM * 0.45)
-              .addScaledVector(_v3, side * dims.widthM * 0.45);
-            fx.dust(_v1, _fwd, intensity);
-          }
-        }
-      } else {
-        ent._dustTravelAcc = 0;
-      }
-      // Exhaust puffs off the engine deck whenever the engine is under load.
-      // effects_combat r2: the stationary hero tank idles visibly during the
-      // opening flyby (motion accent), and era picks the exhaust character —
-      // WW2 diesels puff sooty, modern turbines emit a fast thin haze.
-      // effects_combat r1: always emit — a parked idling tank still breathes
-      // (idle floor 0.10; fx.exhaust is probability-gated so idle stays wispy)
-      {
-        const load = Math.max(0.10, (rig.cinematicActive && ent.isPlayer) ? 0.3 : 0,
-          Math.min(1, throttle * 0.7 + (sp / topSpeedMps) * 0.5));
-        _v1.copy(presented.pos).addScaledVector(_fwd, -dims.hullLengthM * 0.42);
-        _v1.y += dims.heightM * 0.72;
-        fx.exhaust(_v1, load, !isPostwarVehicleEra(spec.era));
-      }
-      // effects_combat r1: crushable props — pole vs hull overlap triggers
-      // the hinge-topple (world.crushProp) + wood-splinter burst.
-      if (sp > 1.2 && world && world.crushables && world.crushables.length) {
-        const hl = dims.hullLengthM * 0.5 + 0.5;
-        // Lightweight loop-contact props bypass the sim collider, so derive
-        // the signed travel direction here. Facing direction alone made props
-        // rammed in reverse fall toward the moving tank.
-        _v2.copy(_fwd).multiplyScalar(Math.sign(state.speed) || 1);
-        for (let ci = 0; ci < world.crushables.length; ci++) {
-          const c = world.crushables[ci];
-          if (c.toppled) continue;
-          const dx = c.x - state.pos.x, dz = c.z - state.pos.z;
-          if (dx * dx + dz * dz > hl * hl) continue;
-          // DESTRUCTIBLES r1: the hull speed rides into the break so tossed
-          // drums/debris inherit the rammer's velocity
-          if (world.crushProp(ci, _v2.x, _v2.z, sp)) {
-            _v1.set(c.x, c.y, c.z);
-            if (c.dynamic && fx.loosePropHit) fx.loosePropHit(_v1, _v2, c.h);
-            else fx.propCrush(_v1, _v2, c.h);
-          }
-        }
-      }
-    } else if (!vehicleFxVisible) {
-      // Never bank invisible travel and dump it as one giant plume when the
-      // actor re-enters spotting/range.
-      ent._dustTravelAcc = 0;
-    }
-  }
-}
-
 // rAF-STARVATION FALLBACK (embedded panes): some embedded Chromium panes
 // report visibilityState 'hidden' PERMANENTLY (while still focused, receiving
 // real input events and compositing on demand) and never deliver
@@ -3738,7 +3538,7 @@ function tick(nowMs) {
       simAcc = Math.min(simAcc + dtR, SIM_DT * MAX_SIM_STEPS);
       while (simAcc >= SIM_DT) {
         simStep(game, bus, world, rig, collider);
-        captureSoloPresentationPoses();
+        battlePresentation.captureSoloPoses();
         simAcc -= SIM_DT;
       }
     }
@@ -3835,7 +3635,7 @@ function tick(nowMs) {
   // yesterday's visual transform while the tank jumps to today's sim tick.
   if (!kcActive && !livePaused) {
     const presentationAlpha = networkMatch ? 1 : simAcc / SIM_DT;
-    updateDustAndSync(dtR, presentationAlpha);
+    battlePresentation.update(dtR, presentationAlpha);
   }
   camInput.autoAimPoint = null;
   if (mobileAutoAimTargetId && inBattle && !paused && !kcActive) {
@@ -4084,7 +3884,7 @@ hud?.setMode('hidden');
 // staging a battlefield view before readiness), warm it as before.
 if (world) {
   world.update(0, camera.position);
-  updateDustAndSync();
+  battlePresentation.update();
 }
 await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
@@ -4314,7 +4114,7 @@ const driveTestController = driveTestRequested
     playerShellLog,
     heightField: hfProxy,
     simStep,
-    resetPresentationPoses: resetSoloPresentationPoses,
+    resetPresentationPoses: battlePresentation.resetSoloPoses,
     resetSimAccumulator: () => { simAcc = 0; },
   })
   : {

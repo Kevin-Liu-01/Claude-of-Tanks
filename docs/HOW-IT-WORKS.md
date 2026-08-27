@@ -88,6 +88,13 @@ pointer-lock fallback, zoom, free-look, and sniper state into the existing
 tank and camera input records. Pauses, loading veils, killcams, empty magazines,
 and destroyed players are handled before either authority path sees input.
 
+Rendered tanks cross a separate typed presentation owner. Solo state is
+interpolated between completed 60 Hz steps; multiplayer state is already
+interpolated and locally corrected by its bridge, so it is presented directly
+instead of being smoothed twice. The owner also removes fully hidden opponents
+from traversal, reduces off-screen running-gear detail work, and keeps dust and
+exhaust density fixed across 60, 120, and 240 Hz displays.
+
 ## First-party vehicle pipeline
 
 The registry currently retains **150 vehicle records**. The production

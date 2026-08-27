@@ -882,6 +882,13 @@ preload is permitted on explicit intent, while `createFx` remains a singleton
 construction gate. Module and initializer failures are independently retryable;
 `src/main.js` supplies scene, bus, and post-composite installation as ports.
 
+Rendered vehicle state is owned by `src/game/battlePresentationRuntime.ts`.
+Solo entities sample one fixed-step presentation buffer; network entities use
+the BrowserBattleBridge's already interpolated and locally corrected state
+directly. The same owner gates spotting residency, off-screen running-gear
+detail, fixed-cadence vehicle FX, and light crushable contacts without allocating
+inside its rendered-frame update.
+
 `src/game/killcamAccess.ts` applies the same retry contract to replay code and
 publishes a stable inactive presentation facade. After construction, solo
 fixed-step capture is wired directly to the live killcam implementation.

@@ -27,6 +27,8 @@ owns bot decisions and is injected into the headless multiplayer authority;
 local-versus-network command policy without importing the combat runtime;
 `playerFrameInput.ts` owns allocation-free per-frame movement, fire, mouse,
 touch, cursor fallback, zoom, free-look, and sniper-mode sampling;
+`battlePresentationRuntime.ts` owns solo/network pose selection, spotting
+residency, running-gear detail cadence, vehicle FX, and light prop contact;
 `killcamAccess.ts` owns retryable replay acquisition and its stable inactive
 facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
@@ -59,8 +61,10 @@ promise state in the composition root. Route player shell, consumable, and
 special-action policy through `playerBattleActions.ts`; inject combat and
 network ports instead of importing either implementation. Route rendered
 device polling through `playerFrameInput.ts`; keep the render loop ignorant of
-bindings and device modes. Bot changes require both focused AI tests and battle
-probes.
+bindings and device modes. Route rendered tank updates through
+`battlePresentationRuntime.ts`; never apply the solo interpolation buffer to
+already-smoothed network poses. Bot changes require both focused AI tests and
+battle probes.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

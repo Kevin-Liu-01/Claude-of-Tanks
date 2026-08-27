@@ -59,3 +59,4 @@ runtime documents remain authoritative for behavior.
 - [0047 — Player battle actions have one typed policy owner](0047-typed-player-battle-actions.md)
 - [0048 — Rendered player input has one allocation-free frame owner](0048-typed-player-frame-input.md)
 - [0049 — Viewport synchronization has one typed engine owner](0049-typed-viewport-runtime.md)
+- [0050 — Rendered tank presentation has one typed hot-path owner](0050-typed-battle-presentation-runtime.md)
