@@ -70,3 +70,4 @@ runtime documents remain authoritative for behavior.
 - [0058 — First-visit recovery has an enforceable latency budget](0058-first-visit-latency-budget.md)
 - [0059 — Static workshop detail has a projected shadow budget](0059-static-workshop-shadow-budget.md)
 - [0060 — The composition root delegates browser lifecycles](0060-composition-root-delegates-browser-lifecycles.md)
+- [0061 — Sleep the settled Garage frame clock](0061-sleep-the-settled-garage-frame-clock.md)

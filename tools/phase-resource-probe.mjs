@@ -41,31 +41,31 @@ const viewport = {
 // meaningful residency or complete-frame workload regression.
 const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
-    taskCoreEquivalent: 0.12,
-    heapMB: 80,
-    programs: 100,
-    geometries: 370,
-    textures: 88,
-    calls: 780,
-    triangles: 250_000,
+    taskCoreEquivalent: 0.06,
+    heapMB: 72,
+    programs: 95,
+    geometries: 360,
+    textures: 86,
+    calls: 750,
+    triangles: 240_000,
   }),
   battleActive: Object.freeze({
-    taskCoreEquivalent: 0.55,
-    heapMB: 300,
-    programs: 260,
-    geometries: 780,
-    textures: 325,
-    calls: 700,
-    triangles: 3_900_000,
+    taskCoreEquivalent: 0.45,
+    heapMB: 290,
+    programs: 255,
+    geometries: 770,
+    textures: 320,
+    calls: 680,
+    triangles: 3_800_000,
   }),
   garageReturned: Object.freeze({
-    taskCoreEquivalent: 0.12,
-    heapMB: 225,
-    programs: 295,
-    geometries: 590,
-    textures: 190,
-    calls: 780,
-    triangles: 250_000,
+    taskCoreEquivalent: 0.06,
+    heapMB: 220,
+    programs: 290,
+    geometries: 570,
+    textures: 185,
+    calls: 750,
+    triangles: 240_000,
   }),
 });
 
@@ -306,6 +306,7 @@ const sampleResources = () => page.evaluate(() => {
       worldIds: debug.worldCacheIds,
       residentLimits: debug.residentLimits,
       garageFramePacer: debug.garageFramePacer,
+      frameLoopScheduler: debug.frameLoopScheduler,
       workshopOptimization:
         debug.garageDressing?.group?.userData?.optimizationReceipt || null,
     },
@@ -369,6 +370,8 @@ const measurePhase = async (name) => {
   });
   const taskSeconds = delta(metricsAfter, metricsBefore, 'TaskDuration');
   const scriptSeconds = delta(metricsAfter, metricsBefore, 'ScriptDuration');
+  const frameLoopBefore = resourcesBefore.caches.frameLoopScheduler || {};
+  const frameLoopAfter = resourcesAfter.caches.frameLoopScheduler || {};
   return {
     name,
     wallSeconds: +wallSeconds.toFixed(3),
@@ -381,6 +384,14 @@ const measurePhase = async (name) => {
     framesRendered: resourcesAfter.renderCount - resourcesBefore.renderCount,
     rendersPerSecond: +((resourcesAfter.renderCount - resourcesBefore.renderCount) /
       wallSeconds).toFixed(2),
+    frameLoopTicks: {
+      animation: Math.max(0,
+        (frameLoopAfter.animationTicks || 0) - (frameLoopBefore.animationTicks || 0)),
+      idle: Math.max(0,
+        (frameLoopAfter.idleTicks || 0) - (frameLoopBefore.idleTicks || 0)),
+      inputWakeups: Math.max(0,
+        (frameLoopAfter.inputWakeups || 0) - (frameLoopBefore.inputWakeups || 0)),
+    },
     frameWorkload,
     resources: resourcesAfter,
   };
@@ -398,6 +409,10 @@ const evaluateBudgets = (phases) => {
 
   check('garage idle render cadence', idle?.rendersPerSecond <= 1.25,
     idle?.rendersPerSecond ?? null, '<= 1.25 renders/s');
+  check('garage idle animation clock sleeps',
+    (idle?.frameLoopTicks?.animation || 0) / (idle?.wallSeconds || 1) <= 1.25,
+    +((idle?.frameLoopTicks?.animation || 0) / (idle?.wallSeconds || 1)).toFixed(2),
+    '<= 1.25 animation ticks/s');
   check('garage idle CPU residency',
     idle?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageIdle.taskCoreEquivalent,
     idle?.taskCoreEquivalent ?? null,
@@ -452,6 +467,11 @@ const evaluateBudgets = (phases) => {
     returned?.taskCoreEquivalent <= RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent,
     returned?.taskCoreEquivalent ?? null,
     `<= ${RESOURCE_BUDGETS.garageReturned.taskCoreEquivalent} core equivalent`);
+  check('returned Garage animation clock sleeps',
+    (returned?.frameLoopTicks?.animation || 0) / (returned?.wallSeconds || 1) <= 1.25,
+    +((returned?.frameLoopTicks?.animation || 0) /
+      (returned?.wallSeconds || 1)).toFixed(2),
+    '<= 1.25 animation ticks/s');
   check('returned Garage JavaScript heap',
     returned?.resources.heapMB <= RESOURCE_BUDGETS.garageReturned.heapMB,
     returned?.resources.heapMB ?? null,

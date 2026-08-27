@@ -149,8 +149,9 @@ become hidden always-on observers in production play.
 `npm run perf:resources:gate` is the non-FPS release contract. It measures
 browser task/script CPU, forced-GC heap, shader programs, geometries, textures,
 scene ownership, complete-frame draw calls/triangles, shadow masks, cache
-residency, and Garage paint cadence across initial Garage, live battle, and
-returned Garage. Its limits track the measured production baseline rather than
+residency, Garage paint cadence, and animation-versus-idle clock cadence across
+initial Garage, live battle, and returned Garage. Its limits track the measured
+production baseline rather than
 serving as loose theoretical maxima.
 
 Combat warming has two ownership phases. The opaque loader builds the exact

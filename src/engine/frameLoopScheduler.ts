@@ -22,9 +22,15 @@ interface InputTarget {
 export interface FrameLoopSchedulerOptions {
   tick: FrameCallback;
   isBootComplete(): boolean;
+  /** True only while a visible phase has no frame-rate work to perform. */
+  shouldUseIdleCadence?(): boolean;
+  /** Watchdog cadence for an otherwise event-driven visible phase. */
+  idleIntervalMs?: number;
   requestFrame?(callback: FrameCallback): number;
   cancelFrame?(id: number): void;
   now?(): number;
+  setDelayed?(callback: () => void, delayMs: number): unknown;
+  clearDelayed?(handle: unknown): void;
   setRecurring?(callback: () => void, intervalMs: number): unknown;
   clearRecurring?(handle: unknown): void;
   documentState?: DocumentState;
@@ -35,9 +41,17 @@ export interface FrameLoopScheduler {
   schedule(): void;
   restart(): void;
   dispose(): void;
+  readonly stats: {
+    animationTicks: number;
+    idleTicks: number;
+    inputWakeups: number;
+    queued: 'animation' | 'idle' | 'none';
+  };
 }
 
 const INPUT_EVENTS = Object.freeze([
+  'pointerdown',
+  'touchstart',
   'mousedown',
   'mouseup',
   'mousemove',
@@ -56,9 +70,13 @@ const INPUT_EVENTS = Object.freeze([
 export function createFrameLoopScheduler({
   tick,
   isBootComplete,
+  shouldUseIdleCadence = () => false,
+  idleIntervalMs = 1000,
   requestFrame = (callback) => requestAnimationFrame(callback),
   cancelFrame = (id) => cancelAnimationFrame(id),
   now = () => performance.now(),
+  setDelayed = (callback, delayMs) => setTimeout(callback, delayMs),
+  clearDelayed = (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
   setRecurring = (callback, intervalMs) => setInterval(callback, intervalMs),
   clearRecurring = (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
   documentState = document,
@@ -67,29 +85,66 @@ export function createFrameLoopScheduler({
   let lastTickWallMs = -Infinity;
   let frameQueued = false;
   let frameId: number | null = null;
+  let idleHandle: unknown = null;
   let disposed = false;
+  const idleDelayMs = Math.max(100, Math.min(5000, idleIntervalMs));
+  const stats = {
+    animationTicks: 0,
+    idleTicks: 0,
+    inputWakeups: 0,
+    queued: 'none' as 'animation' | 'idle' | 'none',
+  };
 
   const runTick = (timestampMs: number) => {
     lastTickWallMs = now();
     tick(timestampMs);
   };
 
-  const schedule = () => {
+  const scheduleAnimation = () => {
     if (disposed || frameQueued) return;
     frameQueued = true;
+    stats.queued = 'animation';
     frameId = requestFrame((timestampMs) => {
       frameId = null;
       frameQueued = false;
+      stats.queued = 'none';
+      stats.animationTicks += 1;
       runTick(timestampMs);
     });
   };
 
+  const schedule = () => {
+    if (disposed || frameQueued) return;
+    if (!shouldUseIdleCadence()) {
+      scheduleAnimation();
+      return;
+    }
+    frameQueued = true;
+    stats.queued = 'idle';
+    idleHandle = setDelayed(() => {
+      idleHandle = null;
+      frameQueued = false;
+      stats.queued = 'none';
+      stats.idleTicks += 1;
+      runTick(now());
+    }, idleDelayMs);
+  };
+
+  const cancelQueued = () => {
+    if (frameId !== null) cancelFrame(frameId);
+    if (idleHandle !== null) clearDelayed(idleHandle);
+    frameId = null;
+    idleHandle = null;
+    frameQueued = false;
+    stats.queued = 'none';
+  };
+
   const restart = () => {
     if (disposed) return;
-    if (frameId !== null) cancelFrame(frameId);
-    frameId = null;
-    frameQueued = false;
-    schedule();
+    cancelQueued();
+    // A wake is always immediate. The resulting tick chooses idle cadence
+    // again only after input/phase owners have had a chance to mutate state.
+    scheduleAnimation();
   };
 
   const rescueFromTimer = () => {
@@ -102,7 +157,12 @@ export function createFrameLoopScheduler({
   };
 
   const rescueFromInput = () => {
-    if (!isBootComplete() || !documentState.hidden) return;
+    if (!isBootComplete()) return;
+    if (idleHandle !== null) {
+      stats.inputWakeups += 1;
+      restart();
+    }
+    if (!documentState.hidden) return;
     const timestampMs = now();
     if (timestampMs - lastTickWallMs > 100) runTick(timestampMs);
   };
@@ -116,12 +176,11 @@ export function createFrameLoopScheduler({
   return {
     schedule,
     restart,
+    stats,
     dispose() {
       if (disposed) return;
       disposed = true;
-      if (frameId !== null) cancelFrame(frameId);
-      frameId = null;
-      frameQueued = false;
+      cancelQueued();
       clearRecurring(timerHandle);
       for (const eventName of INPUT_EVENTS) {
         inputTarget.removeEventListener(eventName, rescueFromInput);

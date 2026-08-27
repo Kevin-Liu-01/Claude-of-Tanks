@@ -3118,8 +3118,18 @@ let lastCineActive = false; // battle-open flyby HUD veil edge latch
 const frameLoop = createFrameLoopScheduler({
   tick,
   isBootComplete: () => bootComplete,
+  // A settled, room-free Garage is event-driven. CSS/UI transitions remain
+  // browser-owned; the complete Three.js clock wakes for camera motion,
+  // vehicle swaps, transition coverage, loading, input, or retained network
+  // authority, and otherwise runs only its one-second paint watchdog.
+  shouldUseIdleCadence: () => bootComplete && game.phase === 'garage' &&
+    !battleEntryLifecycle.renderingCovered && !transition.active &&
+    !studio.active && !shotMode && !showroom.moving &&
+    !pedestal.switchPending && !networkMatch,
+  idleIntervalMs: 1000,
 });
 rearmRafAfterContext = frameLoop.restart;
+bus.on('phase:change', () => frameLoop.restart());
 
 function tick(nowMs) {
   frameLoop.schedule();
@@ -3904,6 +3914,7 @@ window.__DEBUG = {
   get residentLimits() { return { ...residentLimits }; },
   get battleVisualPool() { return battleVisualPool.stats(); },
   get garageFramePacer() { return { ...garageFramePacer.stats }; },
+  get frameLoopScheduler() { return { ...frameLoop.stats }; },
   get lastWorldRelease() {
     return worldBuildCoordinator.lastRelease
       ? { ...worldBuildCoordinator.lastRelease } : null;

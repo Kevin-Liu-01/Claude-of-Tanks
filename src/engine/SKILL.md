@@ -14,7 +14,7 @@ simulation.
 <!-- agent-docs:fill:model -->
 `renderer.js` creates WebGL; `viewportRuntime.ts` owns atomic resize and 0x0
 first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery and bounded
-hidden-pane recovery; `garageFramePacer.ts` suppresses redundant settled
+hidden-pane recovery and visible Garage clock sleep; `garageFramePacer.ts` suppresses redundant settled
 Garage frames while keeping interaction at display cadence; `lighting.js`,
 `post.js`, and `sky.js` build the frame; `renderLayers.ts` owns
 presentation/shadow-only routing for authored proxy casters;
