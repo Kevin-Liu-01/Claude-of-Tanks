@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export interface GarageDressingOptimizationOptions {
   /**
@@ -12,6 +13,9 @@ export interface GarageDressingOptimizationReceipt {
   objectsFrozen: number;
   meshesInstanced: number;
   instanceBatches: number;
+  meshesMerged: number;
+  mergeBatches: number;
+  sourceGeometriesReleased: number;
   drawCallsRemoved: number;
   shadowCastersBefore: number;
   shadowCastersAfter: number;
@@ -30,6 +34,16 @@ interface StaticMeshBatch {
   receiveShadow: boolean;
   renderOrder: number;
   layersMask: number;
+  meshes: THREE.Mesh[];
+}
+
+interface StaticMergeBatch {
+  material: THREE.Material;
+  castShadow: boolean;
+  receiveShadow: boolean;
+  renderOrder: number;
+  layersMask: number;
+  frustumCulled: boolean;
   meshes: THREE.Mesh[];
 }
 
@@ -54,6 +68,39 @@ function canInstanceStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean 
   if (!mesh.visible || mesh.material.transparent || mesh.material.visible === false) return false;
   if (mesh.userData.keepWorkshopMesh || belongsToFleetExhibit(mesh, root)) return false;
   return true;
+}
+
+function geometryLayoutKey(geometry: THREE.BufferGeometry): string | null {
+  if (Object.keys(geometry.morphAttributes).length > 0) return null;
+  const attributes = Object.entries(geometry.attributes).sort(([a], [b]) => a.localeCompare(b));
+  for (const [, attribute] of attributes) {
+    if ('isInterleavedBufferAttribute' in attribute
+        && attribute.isInterleavedBufferAttribute) return null;
+  }
+  const layout = attributes.map(([name, attribute]) => {
+    const arrayName = attribute.array?.constructor?.name || 'Array';
+    return `${name}:${attribute.itemSize}:${Number(attribute.normalized)}:${arrayName}`;
+  }).join('|');
+  return `${geometry.index ? 'indexed' : 'flat'}:${layout}`;
+}
+
+function canMergeStaticMesh(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
+  const specialized = mesh as THREE.Mesh & {
+    isInstancedMesh?: boolean;
+    isBatchedMesh?: boolean;
+    isSkinnedMesh?: boolean;
+  };
+  if (specialized.isInstancedMesh || specialized.isBatchedMesh || specialized.isSkinnedMesh) {
+    return false;
+  }
+  if (!mesh.geometry || Array.isArray(mesh.material) || !mesh.material) return false;
+  if (mesh.children.length > 0 || mesh.morphTargetInfluences) return false;
+  if (!mesh.visible || mesh.material.transparent || mesh.material.visible === false) return false;
+  if (mesh.customDepthMaterial || mesh.customDistanceMaterial) return false;
+  if (Object.keys(mesh.userData).length > 0 || belongsToFleetExhibit(mesh, root)) return false;
+  const range = mesh.geometry.drawRange;
+  if (range.start !== 0 || Number.isFinite(range.count)) return false;
+  return geometryLayoutKey(mesh.geometry) !== null;
 }
 
 /**
@@ -133,6 +180,104 @@ function instanceStaticWorkshopProps(root: THREE.Object3D): {
   };
 }
 
+/**
+ * Merge remaining opaque, semantically inert workshop meshes by material and
+ * render state. The first pass above already instances repeated geometry, so
+ * this primarily collapses one-off boxes, cylinders and fittings without
+ * duplicating the large repeated meshes. Vertices move into root-local space;
+ * the rendered surfaces, materials and shadow flags remain unchanged.
+ */
+function mergeStaticWorkshopProps(root: THREE.Object3D): {
+  meshesMerged: number;
+  mergeBatches: number;
+  sourceGeometriesReleased: number;
+  drawCallsRemoved: number;
+} {
+  const byMaterial = new Map<THREE.Material, Map<string, StaticMergeBatch>>();
+  root.updateMatrixWorld(true);
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !canMergeStaticMesh(mesh, root)) return;
+    const layout = geometryLayoutKey(mesh.geometry);
+    if (!layout) return;
+    let byState = byMaterial.get(mesh.material as THREE.Material);
+    if (!byState) byMaterial.set(mesh.material as THREE.Material, byState = new Map());
+    const key = `${Number(mesh.castShadow)}:${Number(mesh.receiveShadow)}:${mesh.renderOrder}`
+      + `:${mesh.layers.mask}:${Number(mesh.frustumCulled)}:${layout}`;
+    let batch = byState.get(key);
+    if (!batch) {
+      batch = {
+        material: mesh.material as THREE.Material,
+        castShadow: mesh.castShadow,
+        receiveShadow: mesh.receiveShadow,
+        renderOrder: mesh.renderOrder,
+        layersMask: mesh.layers.mask,
+        frustumCulled: mesh.frustumCulled,
+        meshes: [],
+      };
+      byState.set(key, batch);
+    }
+    batch.meshes.push(mesh);
+  });
+
+  _rootWorldInverse.copy(root.matrixWorld).invert();
+  const generated = root.userData.optimizationDisposables ||= [];
+  let meshesMerged = 0;
+  let mergeBatches = 0;
+  const mergedSources = new Set<THREE.BufferGeometry>();
+  for (const byState of byMaterial.values()) {
+    for (const batch of byState.values()) {
+      if (batch.meshes.length < 2) continue;
+      const transformed = batch.meshes.map((mesh) => {
+        const geometry = mesh.geometry.clone();
+        _instanceMatrix.multiplyMatrices(_rootWorldInverse, mesh.matrixWorld);
+        geometry.applyMatrix4(_instanceMatrix);
+        return geometry;
+      });
+      const geometry = mergeGeometries(transformed, false);
+      for (const clone of transformed) clone.dispose();
+      if (!geometry) continue;
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      const merged = new THREE.Mesh(geometry, batch.material);
+      merged.name = `workshop_static_merge_${mergeBatches + 1}`;
+      merged.castShadow = batch.castShadow;
+      merged.receiveShadow = batch.receiveShadow;
+      merged.renderOrder = batch.renderOrder;
+      merged.layers.mask = batch.layersMask;
+      merged.frustumCulled = batch.frustumCulled;
+      merged.userData.workshopStaticMerge = true;
+      merged.updateMatrix();
+      merged.matrixAutoUpdate = false;
+      for (const mesh of batch.meshes) {
+        mergedSources.add(mesh.geometry);
+        mesh.removeFromParent();
+      }
+      root.add(merged);
+      generated.push(geometry);
+      meshesMerged += batch.meshes.length;
+      mergeBatches += 1;
+    }
+  }
+  const liveGeometries = new Set<THREE.BufferGeometry>();
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (mesh.geometry) liveGeometries.add(mesh.geometry);
+  });
+  let sourceGeometriesReleased = 0;
+  for (const geometry of mergedSources) {
+    if (liveGeometries.has(geometry)) continue;
+    geometry.dispose();
+    sourceGeometriesReleased += 1;
+  }
+  return {
+    meshesMerged,
+    mergeBatches,
+    sourceGeometriesReleased,
+    drawCallsRemoved: meshesMerged - mergeBatches,
+  };
+}
+
 function isAuthoredShadowOwner(object: THREE.Mesh): boolean {
   const material = Array.isArray(object.material) ? object.material[0] : object.material;
   return object.userData.authoredShadowProxy === true
@@ -181,10 +326,16 @@ export function optimizeGarageDressing(
   });
 
   const instancing = instanceStaticWorkshopProps(root);
+  const merging = mergeStaticWorkshopProps(root);
 
   const receipt: GarageDressingOptimizationReceipt = {
     objectsFrozen,
-    ...instancing,
+    meshesInstanced: instancing.meshesInstanced,
+    instanceBatches: instancing.instanceBatches,
+    meshesMerged: merging.meshesMerged,
+    mergeBatches: merging.mergeBatches,
+    sourceGeometriesReleased: merging.sourceGeometriesReleased,
+    drawCallsRemoved: instancing.drawCallsRemoved + merging.drawCallsRemoved,
     shadowCastersBefore,
     shadowCastersAfter,
     shadowCastersPruned: shadowCastersBefore - shadowCastersAfter,

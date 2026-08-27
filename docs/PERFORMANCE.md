@@ -116,10 +116,18 @@ Nearby and player running gear keeps the full authored update rate.
 The Garage workshop finalizes once after its last quiet-window build slice.
 Every static descendant bakes its local transform, and sub-40 cm fittings leave
 the two shadow cascades while remaining unchanged in the color pass. Authored
-tank shadow proxies are exempt. The finalizer publishes its exact before/after
-caster receipt to the phase-resource probe. A settled Garage paints only once
-per second; direct camera input, spring motion, and vehicle switching restore
-display-rate presentation immediately.
+tank shadow proxies are exempt. Exact repeated meshes become instances; the
+remaining compatible, opaque, semantic-free workshop surfaces merge by material
+and render state in root-local space. The finalizer publishes exact batching,
+released-geometry, and before/after caster receipts to the phase-resource probe.
+A settled Garage paints only once per second; direct camera input, spring motion,
+and vehicle switching restore display-rate presentation immediately.
+
+Garage and battle roots are phase-exclusive scene residents. An inactive phase
+is detached from the Three.js scene rather than merely hidden, so renderer
+projection and matrix traversal cannot reach it. The exact objects and GPU
+resources remain retained and remount synchronously for Garage return or a
+rematch; phase changes do not trade lower traversal for a rebuild stall.
 
 Immutable battlefield subtrees finalize their world matrices once and opt out
 of recursive matrix traversal. Legitimate runtime world motion continues
@@ -455,7 +463,7 @@ map construction was removed entirely.
 
 Performance gates now measure phase CPU, forced-GC heap, scene cardinality,
 renderer residency, complete-frame draw/primitive work, cache ownership, and
-render cadence—not FPS alone. A settled Garage paints at a 2 Hz watchdog
+render cadence—not FPS alone. A settled Garage paints at a 1 Hz watchdog
 cadence, but input and camera motion immediately restore display-rate frames.
 The showroom camera no longer walks the selected tank subtree to calculate
 bounds that fixed framing discards, and a settled camera solve runs only on a
@@ -468,12 +476,12 @@ The probe accumulates renderer diagnostics across the complete scene, shadow,
 and post stack; it does not mistake the composer's final fullscreen triangle
 for the complete frame.
 
-At 1280×577 and DPR 1, an exact production A/B reduced initial/returned
-Garage CPU from 0.106/0.117 to 0.055/0.055 core-equivalent and reduced complete
-WebGL paints from 7.5 to 2.0 per second. Forced-GC heap, resident renderer
-objects, and complete-frame geometry remained within measurement noise, so the
-gain comes from eliminating redundant static work rather than reducing visual
-content.
+At 1280×577 and DPR 1, the current exact production receipt holds initial and
+returned Garage CPU at 0.017/0.017 core-equivalent with one complete WebGL paint
+per second. The initial Garage occupies 64.5 MB forced-GC heap, 867 scene
+objects, 283 renderer geometries, 83 textures, and 508 complete-frame calls.
+These are independent release limits: a high displayed FPS does not compensate
+for excess retained memory, scene traversal, or GPU object residency.
 
 The same probe attributes native shadow-map work separately from the forward
 and post stack and reports conservative scene-owner, texture-source, and
@@ -503,21 +511,32 @@ textures in both active battle and returned Garage, with the same explosion,
 burn-front, ember, and rematch visuals.
 
 After these measurements, the enforced heap, shader, geometry, texture,
-complete-frame call, and triangle ceilings were tightened around the healthy
-production envelope. The current battle gate fails above 280 MB forced-GC
-heap, 252 programs, 770 geometries, 320 textures, 700 complete-frame calls, or
-3.8 million triangle submissions. Returned Garage has independent 205 MB,
-285-program, 565-geometry, 165-texture, and 600-call limits so a high-FPS
-static screen cannot hide leaked battle residency.
+scene-cardinality, complete-frame call, and triangle ceilings were tightened
+around the healthy production envelope. The current battle gate fails above
+280 MB forced-GC heap, 1,250 active scene objects, 235 programs, 720 geometries,
+320 textures, 680 complete-frame calls, or 3.8 million triangle submissions.
+Returned Garage has independent 205 MB, 1,000-object, 265-program,
+510-geometry, 165-texture, and 525-call limits so a high-FPS static screen
+cannot hide leaked battle residency. Initial Garage independently fails above
+68 MB, 900 objects, 92 programs, 300 geometries, 85 textures, or 525 calls.
 
 ## Submission and world-data round — 2026-08-27
 
-The mostly static Garage now batches exact repeated opaque workshop props by
-shared geometry, material, render state, and world transform. Transparent,
-skinned, specialized, child-owning, and authored fleet-exhibit meshes remain
-independent. This preserves their geometry and materials while reducing a
-complete Garage frame from 733 to 584 draw calls. The production receipt
-records 137 meshes in 31 batches: 106 submissions removed.
+The mostly static Garage first instances exact repeated opaque workshop props
+by shared geometry, material, render state, and world transform. It then merges
+compatible one-off opaque, semantic-free surfaces by material and render state
+in root-local space. Transparent, skinned, specialized, child-owning, and
+authored fleet-exhibit meshes remain independent. This preserves the exact
+visible surfaces and materials while reducing a complete Garage frame from 733
+to 508 draw calls. The production receipt records 137 meshes in 31 instance
+batches plus 98 meshes in 21 merged batches: 183 submissions removed and 97
+now-unreferenced source geometries released.
+
+Mutually exclusive phase roots are also detached. A live battle therefore does
+not traverse the workshop, pedestal, or Garage lights; the returned Garage does
+not traverse the retained battlefield. Detachment preserves shaders, textures,
+world state, rematch speed, and the exact visible result while shrinking active
+battle scene cardinality from 1,925 objects to 1,116 in the measured run.
 
 The baked environment-prop payload no longer enters the battlefield as 1.2 MB
 of JavaScript numeric literals. Its authored JSON remains the reviewable source;
@@ -531,11 +550,11 @@ legacy JSON fallback rather than placing it on the common path.
 
 At 1280×577, DPR 1, production Chromium, the resulting phase receipt was:
 
-| Phase | Core equivalent | Forced-GC heap | Programs | Geometries | Textures | Calls |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Initial Garage | 0.018 | 63.5 MB | 90 | 347 | 84 | 584 |
-| Active 14-tank battle | 0.321 | 269.5 MB | 248 | 696 | 309 | 686 peak |
-| Returned Garage | 0.018 | 194.6 MB | 282 | 541 | 158 | 585 |
+| Phase | Core equivalent | Forced-GC heap | Scene objects | Programs | Geometries | Textures | Calls |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Initial Garage | 0.017 | 64.5 MB | 867 | 90 | 283 | 83 | 508 |
+| Active 14-tank battle | 0.322 | 275.4 MB | 1,116 | 220 | 692 | 316 | 650 |
+| Returned Garage | 0.017 | 192.2 MB | 903 | 253 | 490 | 158 | 509 |
 
 A clean production Verdant run reached Garage-ready in 1.04 seconds, completed
 covered battle construction in 3.73 seconds, and reached controllable rollout

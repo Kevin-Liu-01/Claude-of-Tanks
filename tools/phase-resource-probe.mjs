@@ -43,30 +43,33 @@ const RESOURCE_BUDGETS = Object.freeze({
   garageIdle: Object.freeze({
     taskCoreEquivalent: 0.06,
     heapMB: 68,
+    objects: 900,
     programs: 92,
-    geometries: 352,
+    geometries: 300,
     textures: 85,
-    calls: 600,
+    calls: 525,
     triangles: 240_000,
   }),
   battleActive: Object.freeze({
     taskCoreEquivalent: 0.45,
     heapMB: 280,
-    programs: 252,
-    geometries: 770,
+    objects: 1250,
+    programs: 235,
+    geometries: 720,
     textures: 320,
     // Dynamic explosions and decals move the exact sampled frame by several
     // submissions; 700 still fails a sustained scene-complexity regression.
-    calls: 700,
+    calls: 680,
     triangles: 3_800_000,
   }),
   garageReturned: Object.freeze({
     taskCoreEquivalent: 0.06,
     heapMB: 205,
-    programs: 285,
-    geometries: 565,
+    objects: 1000,
+    programs: 265,
+    geometries: 510,
     textures: 165,
-    calls: 600,
+    calls: 525,
     triangles: 240_000,
   }),
 });
@@ -309,6 +312,7 @@ const sampleResources = () => page.evaluate(() => {
       residentLimits: debug.residentLimits,
       garageFramePacer: debug.garageFramePacer,
       frameLoopScheduler: debug.frameLoopScheduler,
+      phaseSceneResidency: debug.phaseSceneResidency,
       workshopOptimization:
         debug.garageDressing?.group?.userData?.optimizationReceipt || null,
     },
@@ -422,6 +426,9 @@ const evaluateBudgets = (phases) => {
   check('garage idle JavaScript heap',
     idle?.resources.heapMB <= RESOURCE_BUDGETS.garageIdle.heapMB,
     idle?.resources.heapMB ?? null, `<= ${RESOURCE_BUDGETS.garageIdle.heapMB} MB`);
+  check('garage idle scene objects',
+    idle?.resources.objects <= RESOURCE_BUDGETS.garageIdle.objects,
+    idle?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.garageIdle.objects}`);
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`garage idle renderer ${resource}`,
       idle?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageIdle[resource],
@@ -447,9 +454,10 @@ const evaluateBudgets = (phases) => {
     idle?.resources.caches.workshopOptimization || null,
     'authored proxy-safe pruning receipt');
   check('static workshop props are submission-batched',
-    (idle?.resources.caches.workshopOptimization?.drawCallsRemoved || 0) >= 100,
+    (idle?.resources.caches.workshopOptimization?.drawCallsRemoved || 0) >= 175
+      && (idle?.resources.caches.workshopOptimization?.sourceGeometriesReleased || 0) >= 90,
     idle?.resources.caches.workshopOptimization || null,
-    '>= 100 exact repeated-prop draws removed');
+    '>= 175 exact static draws and >= 90 source geometries removed');
   check('active battle CPU residency',
     battle?.taskCoreEquivalent <= RESOURCE_BUDGETS.battleActive.taskCoreEquivalent,
     battle?.taskCoreEquivalent ?? null,
@@ -457,6 +465,14 @@ const evaluateBudgets = (phases) => {
   check('active battle JavaScript heap',
     battle?.resources.heapMB <= RESOURCE_BUDGETS.battleActive.heapMB,
     battle?.resources.heapMB ?? null, `<= ${RESOURCE_BUDGETS.battleActive.heapMB} MB`);
+  check('active battle scene objects',
+    battle?.resources.objects <= RESOURCE_BUDGETS.battleActive.objects,
+    battle?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.battleActive.objects}`);
+  check('active battle detaches Garage roots',
+    battle?.resources.caches.phaseSceneResidency?.garageMounted === false
+      && battle?.resources.caches.phaseSceneResidency?.worldMounted === true,
+    battle?.resources.caches.phaseSceneResidency || null,
+    'Garage detached; world mounted');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`active battle renderer ${resource}`,
       battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],
@@ -482,6 +498,14 @@ const evaluateBudgets = (phases) => {
     returned?.resources.heapMB <= RESOURCE_BUDGETS.garageReturned.heapMB,
     returned?.resources.heapMB ?? null,
     `<= ${RESOURCE_BUDGETS.garageReturned.heapMB} MB`);
+  check('returned Garage scene objects',
+    returned?.resources.objects <= RESOURCE_BUDGETS.garageReturned.objects,
+    returned?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.garageReturned.objects}`);
+  check('returned Garage detaches battlefield root',
+    returned?.resources.caches.phaseSceneResidency?.garageMounted === true
+      && returned?.resources.caches.phaseSceneResidency?.worldMounted === false,
+    returned?.resources.caches.phaseSceneResidency || null,
+    'Garage mounted; world detached');
   for (const resource of ['programs', 'geometries', 'textures']) {
     check(`returned Garage renderer ${resource}`,
       returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],

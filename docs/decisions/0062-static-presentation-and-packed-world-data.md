@@ -16,7 +16,10 @@ After the complete workshop has streamed, `garageDressingOptimization.ts`
 replaces exact repeated opaque meshes with `InstancedMesh` batches keyed by
 geometry, material, shadow/receive state, render order, and layer. It preserves
 world transforms and excludes transparent, specialized, child-owning, and
-authored fleet-exhibit meshes.
+authored fleet-exhibit meshes. A second pass merges remaining compatible
+opaque, semantic-free meshes by material, vertex layout, and render state in
+root-local space. It releases source geometries that no live mesh references;
+generated merge buffers belong to the Garage dressing lifecycle.
 
 `props-models.json` remains the attributed authoring source. The common battle
 path uses a deterministic gzip archive of Float32 vertex streams and Uint16
@@ -26,7 +29,9 @@ before terrain work and awaits it only at the prop boundary.
 
 ## Consequences
 
-- Initial and returned Garage frames lose 106 exact repeated-prop submissions.
+- Initial and returned Garage frames lose 183 exact static submissions: 137
+  meshes become 31 instance batches and 98 become 21 merged batches.
+- Ninety-seven unreferenced source geometries are released after the merge.
 - The executable map chunk falls from about 1.51 MB to 268 KB; the geometry
   payload becomes one compact transferable backing buffer.
 - Visual geometry, materials, transforms, simulation, collision, and map

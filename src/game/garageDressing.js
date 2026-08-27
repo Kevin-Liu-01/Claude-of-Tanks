@@ -1181,6 +1181,8 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
       if (group.parent) group.parent.remove(group);
       for (const v of tankVisuals) { try { v.dispose(); } catch (_) { /* shared refs */ } }
       tankVisuals.length = 0;
+      for (const o of group.userData.optimizationDisposables || []) o.dispose?.();
+      group.userData.optimizationDisposables = [];
       for (const o of disposables) if (o && o.dispose) o.dispose();
       disposables.length = 0;
     },

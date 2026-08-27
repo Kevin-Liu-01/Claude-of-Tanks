@@ -230,10 +230,17 @@ input, coalesces repeated intent, and bounds retained texture-only previews.
 workshop construction; it does not change authored work or visual quality.
 
 After the complete workshop arrives, `garageDressingOptimization.ts` freezes
-stable descendant transforms, batches exact repeated opaque props sharing
-geometry/material/render state, and removes only sub-resolution fitting shadow
-casters. Transparent or specialized meshes and authored fleet exhibits stay
-independent; authored proxy shadows and every visible surface remain intact.
+stable descendant transforms, instances exact repeated opaque props, merges
+remaining compatible semantic-free surfaces sharing material/render state, and
+removes only sub-resolution fitting shadow casters. Released source geometries
+and generated merge buffers have an explicit disposal owner. Transparent or
+specialized meshes and authored fleet exhibits stay independent; authored
+proxy shadows and every visible surface remain intact.
+
+`engine/phaseSceneResidency.ts` owns the mutually exclusive Garage and battle
+roots. It detaches the inactive phase from the scene graph without disposing
+it, removing hidden descendants from projection and matrix traversal while
+preserving exact state and immediate remounts for returns and rematches.
 
 `garageShowroomRuntime.ts` presents one phase-scoped camera interface to the
 composition root. It owns primary-pointer capture, drag cancellation, wheel
