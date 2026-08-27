@@ -22,6 +22,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, rmdirSync, statSync, writeFileSync, readdirSync, unlinkSync, utimesSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { MAP_IDS } from '../src/world/maps/index.js';
 
 // --- exclusive harness lock (FIFO ticket protocol, see screenshot.mjs) ------
 const LOCK_DIR = '/tmp/cot-shots.lock';
@@ -247,13 +248,14 @@ try {
     throw new Error(`Studio group order is ${panelLayout.groups.join(',')}`);
   }
   if (panelLayout.hiddenSections) throw new Error(`${panelLayout.hiddenSections} Studio sections remain tab-hidden`);
-  if (panelLayout.mapCards !== 16 || panelLayout.selectedMap !== 'desert') {
+  if (panelLayout.mapCards !== MAP_IDS.length || panelLayout.selectedMap !== 'desert') {
     throw new Error(`map picker rendered ${panelLayout.mapCards} cards, selected=${panelLayout.selectedMap}`);
   }
-  if (!panelLayout.hero?.endsWith('/maps/desert.webp') || panelLayout.previewsHydrated !== 16) {
+  if (!panelLayout.hero?.endsWith('/maps/desert.webp')
+      || panelLayout.previewsHydrated !== MAP_IDS.length) {
     throw new Error(`map preview hydration failed: ${JSON.stringify(panelLayout)}`);
   }
-  console.log('[studio-selftest] one-workspace hierarchy and 16-card visual map picker are live');
+  console.log(`[studio-selftest] one-workspace hierarchy and ${MAP_IDS.length}-card visual map picker are live`);
 
   // 2. deterministic 3-tank load
   const s1 = await page.evaluate(
@@ -331,7 +333,15 @@ try {
   if (!canvas) throw new Error('renderer canvas missing');
   const canvasBox = await canvas.boundingBox();
   if (!canvasBox) throw new Error('renderer canvas has no box');
-  await page.mouse.click(canvasBox.x + canvasBox.width * 0.38, canvasBox.y + canvasBox.height * 0.38);
+  // Actor silhouettes and the responsive control rail can legitimately move
+  // across one historical hard-coded pixel. Probe a small, fixed canvas grid
+  // and stop on the first real terrain hit; this still exercises the shipped
+  // pointer/raycast path instead of mutating Studio internals.
+  for (const [x, y] of [[0.38, 0.38], [0.18, 0.72], [0.42, 0.76], [0.68, 0.72]]) {
+    await page.mouse.click(canvasBox.x + canvasBox.width * x, canvasBox.y + canvasBox.height * y);
+    const armed = await page.evaluate(() => window.__STUDIO._internal.markerActive);
+    if (armed) break;
+  }
   const board = await page.evaluate(() => {
     window.__STUDIO.selectActor('victim');
     const labels = [

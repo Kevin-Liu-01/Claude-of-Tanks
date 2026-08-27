@@ -7,10 +7,12 @@ or the battle HUD. Users can place vehicles, set pose and damage state, schedule
 game effects, operate a free camera, define camera and vehicle tracks, edit a
 20-second timeline, record browser video, and capture high-resolution stills.
 
-Implementation: `src/game/studio.js` (runtime and `window.__STUDIO`),
-`src/game/studioTimeline.js` (pure storyboard normalization and sampling),
-and `src/ui/studioPanel.js` (panel interface). `main.js` integrates the mode
-through an import, a `createStudio(ctx)` call, and a `tick()` branch.
+Implementation: `src/game/studioAccess.ts` (retryable chunk/FX acquisition,
+stable frame proxy, and temporary F8 ownership), `src/game/studio.js` (runtime
+and `window.__STUDIO`), `src/game/studioTimeline.js` (pure storyboard
+normalization and sampling), and `src/ui/studioPanel.js` (panel interface).
+`main.js` supplies integration ports and retains only the Studio `tick()`
+composition branch.
 
 ## Entering / leaving
 

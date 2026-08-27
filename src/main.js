@@ -119,6 +119,7 @@ import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
+import { createStudioAccess } from './game/studioAccess.ts';
 import { stripActivatedEra } from './game/eraActivation.ts';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -4989,69 +4990,38 @@ function createCombatWarmRuntimeContext() {
 // window.__STUDIO (schema in docs/STUDIO.md). main.js only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
-let studio = { active: false, tick() {} };
-let studioModulePromise = null;
-let studioRuntimePromise = null;
-function preloadStudioModule() {
-  if (!studioModulePromise) {
-    const request = import('./game/studio.js');
-    studioModulePromise = request;
-    request.catch(() => {
-      if (studioModulePromise === request) studioModulePromise = null;
-    });
-  }
-  return studioModulePromise;
-}
-
-function preloadStudioIntent() {
-  preloadStudioModule().catch(() => null);
-  preloadFxModule().catch(() => null);
-}
-
-async function loadStudioRuntime() {
-  if (studioRuntimePromise) return studioRuntimePromise;
-  lighting.setFarCascadeDormant(false);
-  studioRuntimePromise = Promise.all([
-    preloadStudioModule(),
-    ensureFxRuntime(),
-  ]).then(([{ createStudio }]) => {
-    window.removeEventListener('keydown', lazyStudioKeyDown, true);
-    studio = createStudio({
-      renderer, scene, camera, post, lighting, fx, game, hud, garage, showroom,
-      hfProxy, getWorld: () => world,
-      ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
-        precompile: false,
-        compilePrograms: true,
-        services: false,
-      }),
-      setWorldDormant,
-      setGarageSpots, setGarageSunTrim, enterGarage,
-      warmStudioPipeline: warmStudioPipelineChunked,
-      transition,
-      // main.js owns both direct boot and the first lazy F8 handoff.
-      autoEnter: false,
-    });
-    return studio;
-  }).catch((error) => {
-    studioRuntimePromise = null;
-    throw error;
-  });
-  return studioRuntimePromise;
-}
-
-function lazyStudioKeyDown(event) {
-  if (event.code !== 'F8' || event.repeat || game.phase !== 'garage') return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  loadStudioRuntime()
-    .then((runtime) => runtime.enter())
-    .catch((error) => console.error('[studio] lazy entry failed', error));
-}
+const studioAccess = createStudioAccess({
+  loadModule: () => import('./game/studio.js'),
+  preloadFxModule,
+  ensureFxRuntime,
+  prepareRuntime: () => lighting.setFarCascadeDormant(false),
+  createContext: (studioFx) => ({
+    renderer, scene, camera, post, lighting, game, hud, garage, showroom,
+    hfProxy, getWorld: () => world,
+    ensureWorld: (id, onProgress) => ensureWorld(id, onProgress, {
+      precompile: false,
+      compilePrograms: true,
+      services: false,
+    }),
+    setWorldDormant,
+    setGarageSpots, setGarageSunTrim, enterGarage,
+    warmStudioPipeline: warmStudioPipelineChunked,
+    transition,
+    // main.js owns both direct boot and the first lazy F8 handoff.
+    autoEnter: false,
+    fx: studioFx,
+  }),
+  getPhase: () => game.phase,
+  keyTarget: window,
+});
+const studio = studioAccess.presentation;
+function preloadStudioIntent() { studioAccess.preloadIntent(); }
+function loadStudioRuntime() { return studioAccess.loadRuntime(); }
 
 if (!STUDIO_BOOT_INTENT) {
   // Capture owns the first F8/navigation click until the Studio chunk exists;
   // createStudio installs the permanent toggle listener after import.
-  window.addEventListener('keydown', lazyStudioKeyDown, true);
+  studioAccess.installKeyboard();
 }
 
 if (STUDIO_BOOT_INTENT) {

@@ -60,6 +60,8 @@ strict TypeScript owners:
 - `src/game/deferredCombatWarmRuntime.ts` owns the revision-bound deployment
   queue: hidden opponent visuals, opening FX, bot routes, terrain lookahead,
   rare shader work, cooperative yields, and stale-rematch cancellation;
+- `src/game/studioAccess.ts` owns retryable Studio/FX acquisition, the stable
+  render-loop proxy, and transfer of temporary F8 ownership to the full mode;
 - `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
   effect, wreck, hidden-variant, and fallback shader-warm implementation; its
   retryable access facade is acquired before any synchronous fallback drain.
