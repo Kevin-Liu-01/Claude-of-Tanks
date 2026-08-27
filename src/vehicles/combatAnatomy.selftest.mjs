@@ -164,6 +164,18 @@ for (const id of ALL_TANK_IDS) {
     `${id}: finalized hull collision shell`);
   assert(Array.isArray(shell.turret), `${id}: finalized turret collision shell`);
   if (calibration.turret) assert(shell.turret.length >= 5, `${id}: finalized turret cells`);
+  const contactPoints = spec.armor.bodyContactPoints;
+  assert(contactPoints && Array.isArray(contactPoints.hull) && contactPoints.hull.length >= 12,
+    `${id}: rollover contact derives from the finalized hull shell`);
+  assert(contactPoints.hull.length % 3 === 0,
+    `${id}: hull rollover contact is xyz triples`);
+  assert(Array.isArray(contactPoints.turret) && contactPoints.turret.length % 3 === 0,
+    `${id}: turret rollover contact is xyz triples`);
+  if (calibration.turret) assert(contactPoints.turret.length >= 12,
+    `${id}: rollover contact includes the finalized turret shell`);
+  for (const value of [...contactPoints.hull, ...contactPoints.turret]) {
+    assert(Number.isFinite(value), `${id}: finite rollover contact coordinate`);
+  }
   for (const cell of [...shell.hull, ...shell.turret]) {
     assert(Array.isArray(cell.vertices) && cell.vertices.length >= 4, `${id}: collision vertices`);
     assert(Array.isArray(cell.faces) && cell.faces.length >= 4, `${id}: collision faces`);

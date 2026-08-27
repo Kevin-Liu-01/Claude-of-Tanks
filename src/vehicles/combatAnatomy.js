@@ -223,6 +223,31 @@ function prepareCollisionCells(sourceCells, plates) {
   return cells;
 }
 
+/**
+ * Flatten the exact closed-shell vertices into a de-duplicated point cloud for
+ * rigid terrain contact. Rollover support must use the same authored envelope
+ * as shell tracing: spec.dims.heightM includes antennas, weapon stations and
+ * other non-load-bearing dressing, so a dimensions box visibly levitates an
+ * inverted tank. This receipt is built once with the combat anatomy and costs
+ * no allocation in the fixed-step movement loop.
+ */
+function collisionContactPoints(cells) {
+  const points = [];
+  const seen = new Set();
+  for (const cell of cells || []) {
+    for (const point of cell.vertices || []) {
+      // Generated anatomy is quantized well beyond contact precision. A
+      // millimetre key removes shared cell-boundary duplicates without moving
+      // the coordinates that armor tracing owns.
+      const key = `${Math.round(point[0] * 1000)},${Math.round(point[1] * 1000)},${Math.round(point[2] * 1000)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      points.push(point[0], point[1], point[2]);
+    }
+  }
+  return points;
+}
+
 function centeredBounds(bounds) {
   const center = [0, 0, 0];
   const half = [0, 0, 0];
@@ -983,6 +1008,10 @@ export function finalizeCombatAnatomy(spec, calibration = combatAnatomyCalibrati
       ...(calibration?.turretCollision || []),
       ...(calibration?.turretStructureCollision || []),
     ], armor.turretPlates),
+  };
+  armor.bodyContactPoints = {
+    hull: collisionContactPoints(armor.collisionShells.hull),
+    turret: collisionContactPoints(armor.collisionShells.turret),
   };
   addPreciseInternalShapes(armor);
   Object.defineProperty(spec, FINALIZED, { value: true, enumerable: false });

@@ -63,6 +63,24 @@ const SPEC = {
     turretPivot: [0, 1.55, 0],
     gunPivot: [0, 0.25, 0.3],
     gunBarrel: { lengthM: 4.0 },
+    // Exact structural contact envelope used only once the hull leaves its
+    // normal running-gear support. The roof-down height is 1.55 + 0.60 =
+    // 2.15 m; spec.dims.heightM deliberately includes non-load-bearing roof
+    // dressing and must never become an invisible rollover box.
+    bodyContactPoints: {
+      hull: [
+        -1.42, 0.42, -2.75, 1.42, 0.42, -2.75,
+        -1.42, 1.48, -2.75, 1.42, 1.48, -2.75,
+        -1.42, 0.42, 2.75, 1.42, 0.42, 2.75,
+        -1.42, 1.48, 2.75, 1.42, 1.48, 2.75,
+      ],
+      turret: [
+        -0.82, 0.02, -0.95, 0.82, 0.02, -0.95,
+        -0.72, 0.60, -0.82, 0.72, 0.60, -0.82,
+        -0.82, 0.02, 0.82, 0.82, 0.02, 0.82,
+        -0.72, 0.60, 0.72, 0.72, 0.60, 0.72,
+      ],
+    },
   },
 };
 
@@ -521,6 +539,10 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(ent.state.overturned === true, 'rollover: upside-down state is explicit');
   assert(Math.cos(ent.state.visualPitch) * Math.cos(ent.state.visualRoll) < -0.65,
     `rollover: hull remains roof-down instead of auto-uprighting (${ent.state.visualRoll.toFixed(2)} rad)`);
+  near(ent.state.pos.y, 2.158, 0.025,
+    'rollover: exact turret roof contact seats the inverted visual on flat ground');
+  assert(ent.state.pos.y < SPEC.dims.heightM - 0.45,
+    `rollover: non-structural published height cannot prop up the tank (${ent.state.pos.y.toFixed(3)} m)`);
 }
 
 // Assisted recovery is intentionally separate from ordinary suspension. Once

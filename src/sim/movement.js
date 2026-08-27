@@ -248,6 +248,11 @@ const SUPPORT_MARGIN_M = 0.017;
 // −3 cm gate. Still exactly zero cost on flat ground.
 const SUPPORT_MARGIN_ATT_M = 0.017;
 const SUPPORT_MARGIN_ATT_RAD = 35 * (Math.PI / 180);
+// Closed armor-shell contact is rigid and does not need the track solver's
+// attitude/transient insurance. Keep only a sub-centimetre interpolation
+// allowance so an overturned hull visibly rests on its real roof/side rather
+// than hovering above an invisible dimensions box.
+const RIGID_BODY_MARGIN_M = 0.008;
 // Vertical ride dynamics. The support solve below computes the minimum safe
 // chassis height, but assigning pos.y to that value every fixed tick made the
 // whole vehicle trace the heightfield like a rigid magnet. Keep the support
@@ -561,6 +566,33 @@ function gunPivotHeight(spec) {
   const a = spec.armor;
   if (a && a.turretPivot && a.gunPivot) return a.turretPivot[1] + a.gunPivot[1];
   return spec.dims.heightM * 0.85;
+}
+
+/**
+ * Sample one frame-local closed-shell point cloud against terrain after the
+ * exact rendered hull YXZ transform. Turret-local clouds pass their pivot and
+ * yaw; hull-local clouds use the defaults. Arrays are flat xyz triples so the
+ * rollover-only fixed-step path performs no allocation.
+ */
+function pointCloudSupportY(points, hAt, px, pz, hullCosYaw, hullSinYaw,
+  hullCosPitch, hullSinPitch, hullCosRoll, hullSinRoll,
+  frameCosYaw = 1, frameSinYaw = 0, pivotX = 0, pivotY = 0, pivotZ = 0) {
+  if (!Array.isArray(points) || points.length < 3) return -Infinity;
+  let supportY = -Infinity;
+  for (let i = 0; i + 2 < points.length; i += 3) {
+    const localX = pivotX + points[i] * frameCosYaw + points[i + 2] * frameSinYaw;
+    const localY = pivotY + points[i + 1];
+    const localZ = pivotZ - points[i] * frameSinYaw + points[i + 2] * frameCosYaw;
+    const rolledX = localX * hullCosRoll - localY * hullSinRoll;
+    const rolledY = localX * hullSinRoll + localY * hullCosRoll;
+    const pitchedZ = rolledY * hullSinPitch + localZ * hullCosPitch;
+    const worldX = px + rolledX * hullCosYaw + pitchedZ * hullSinYaw;
+    const worldZ = pz - rolledX * hullSinYaw + pitchedZ * hullCosYaw;
+    const worldYOffset = rolledY * hullCosPitch - localZ * hullSinPitch;
+    const deficit = hAt(worldX, worldZ) - worldYOffset;
+    if (deficit > supportY) supportY = deficit;
+  }
+  return supportY;
 }
 
 // ---------------------------------------------------------------------------
@@ -1560,35 +1592,56 @@ export function updateTank(entity, heightField, dt, collide = null) {
     if (bellySupportY > supportY) supportY = bellySupportY;
     // The ordinary support polygon intentionally samples running gear and the
     // belly only. During a rollover those are no longer the lowest rigid
-    // surfaces: a roof, turret side, nose or tail can carry the hull. Sample a
-    // conservative eight-corner body box only while tumbling/overturned. This
-    // costs zero terrain reads in normal driving and prevents a flipped tank
-    // from burying its entire superstructure below the map.
+    // surfaces: a roof, turret side, nose or tail can carry the hull. Use the
+    // exact closed armor-shell vertices that traceTank uses, including the
+    // current turret yaw. The former spec-dimensions cuboid put the full
+    // published height at every hull corner (including antenna/RWS height) and
+    // visibly levitated roof-down tanks by up to nearly a metre.
     let rigidBodySupportY = -Infinity;
     if (body.tumbling || upYAfterAttitude < TUMBLE_ENTER_UP_Y) {
-      const bodyHalfL = spec.dims.hullLengthM * 0.5;
-      const bodyHalfW = spec.dims.widthM * 0.5;
-      const bodyTopY = Math.max(spec.dims.heightM, yBot + 0.8);
-      for (let yi = 0; yi < 2; yi++) {
-        const localY = yi === 0 ? yBot : bodyTopY;
-        for (let xi = -1; xi <= 1; xi += 2) {
-          const localX = xi * bodyHalfW;
-          const x1 = localX * cr0 - localY * sr0;
-          const y1 = localX * sr0 + localY * cr0;
-          for (let zi = -1; zi <= 1; zi += 2) {
-            const localZ = zi * bodyHalfL;
-            const z2 = y1 * sa0 + localZ * ca0;
-            const h = hAt(
-              px1 + x1 * cb + z2 * sb,
-              pz1 - x1 * sb + z2 * cb,
-            );
-            const yOffset = y1 * cosP + localZ * sinP;
-            const deficit = h - yOffset;
-            if (deficit > rigidBodySupportY) rigidBodySupportY = deficit;
+      const contact = spec.armor && spec.armor.bodyContactPoints;
+      if (contact && contact.hull && contact.hull.length >= 3) {
+        rigidBodySupportY = pointCloudSupportY(
+          contact.hull, hAt, px1, pz1, cb, sb, ca0, sa0, cr0, sr0,
+        );
+        const turret = contact.turret;
+        if (turret && turret.length >= 3) {
+          const tp = spec.armor.turretPivot || [0, 0, 0];
+          const turretCosYaw = Math.cos(state.turretYaw || 0);
+          const turretSinYaw = Math.sin(state.turretYaw || 0);
+          const turretSupportY = pointCloudSupportY(
+            turret, hAt, px1, pz1, cb, sb, ca0, sa0, cr0, sr0,
+            turretCosYaw, turretSinYaw, tp[0], tp[1], tp[2],
+          );
+          if (turretSupportY > rigidBodySupportY) rigidBodySupportY = turretSupportY;
+        }
+      } else {
+        // Non-finalized development fixtures retain a conservative fallback;
+        // every playable fleet spec publishes bodyContactPoints during combat
+        // anatomy finalization.
+        const bodyHalfL = spec.dims.hullLengthM * 0.5;
+        const bodyHalfW = spec.dims.widthM * 0.5;
+        const bodyTopY = Math.max(spec.dims.heightM, yBot + 0.8);
+        for (let yi = 0; yi < 2; yi++) {
+          const localY = yi === 0 ? yBot : bodyTopY;
+          for (let xi = -1; xi <= 1; xi += 2) {
+            const localX = xi * bodyHalfW;
+            const x1 = localX * cr0 - localY * sr0;
+            const y1 = localX * sr0 + localY * cr0;
+            for (let zi = -1; zi <= 1; zi += 2) {
+              const localZ = zi * bodyHalfL;
+              const z2 = y1 * sa0 + localZ * ca0;
+              const h = hAt(
+                px1 + x1 * cb + z2 * sb,
+                pz1 - x1 * sb + z2 * cb,
+              );
+              const yOffset = y1 * cosP + localZ * sinP;
+              const deficit = h - yOffset;
+              if (deficit > rigidBodySupportY) rigidBodySupportY = deficit;
+            }
           }
         }
       }
-      if (rigidBodySupportY > supportY) supportY = rigidBodySupportY;
     }
     // Least-squares plane: pitch from the along-track height gradient (Σz = 0
     // by symmetry), roll from the mean left/right line difference. RENDERER
@@ -1639,11 +1692,12 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // hull pan is rigid and remains an absolute floor. If a visual publishes
     // a keel below its gear plane, that undercut is also rigid: do not spend
     // suspension travel by pushing the hull itself through the terrain.
-    const compressionFloorY = Math.max((rigidUndercut
+    const normalCompressionFloorY = (rigidUndercut
       ? supportY
-      : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)),
-    rigidBodySupportY) + supportMargin;
-    supportY += supportMargin;
+      : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + supportMargin;
+    const rigidBodyFloorY = rigidBodySupportY + RIGID_BODY_MARGIN_M;
+    const compressionFloorY = Math.max(normalCompressionFloorY, rigidBodyFloorY);
+    supportY = Math.max(supportY + supportMargin, rigidBodyFloorY);
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
     sup.pitch = pitchEff; sup.roll = rollEff;
     sup.y = supportY; sup.floorY = compressionFloorY;

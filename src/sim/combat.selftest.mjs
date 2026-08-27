@@ -261,6 +261,36 @@ function mkShell(shellSpec, distM = 100) {
   near(hitsYaw[0].point.x, 2, 1e-6, 'yawed front plate at world x=2');
   near(hitsYaw[0].impactAngleDeg, 0, 0.01, 'yawed head-on angle 0');
 
+  // Full rollover pose: combat geometry must rotate with the same YXZ hull
+  // attitude as the visible tank. An asymmetric plate makes a stale upright
+  // hitbox unambiguous: roof-down it moves from +X to -X as well as below the
+  // root, so only the visually occupied side may register a hit.
+  const rolloverPlate = mkPlate({
+    name: 'rollover_asymmetric',
+    verts: [[0.3, 0.3, 2], [1.1, 0.3, 2], [1.1, 1.3, 2], [0.3, 1.3, 2]],
+  });
+  const rolloverModel = {
+    boundingRadiusM: 4,
+    hullPlates: [rolloverPlate],
+    turretPlates: [],
+    modules: [],
+    crew: [],
+  };
+  const rolloverPose = tankPoseFromState(mkState({
+    pos: V(0, 2, 0),
+    visualRoll: Math.PI,
+  }));
+  const rolloverHits = traceTank(
+    V(-0.7, 1.2, 10), V(-0.7, 1.2, -10), rolloverPose, rolloverModel,
+  );
+  assert(rolloverHits.some((hit) => hit.plate?.name === 'rollover_asymmetric'),
+    'roof-down shell trace follows the visibly rotated armor');
+  const staleUprightHits = traceTank(
+    V(0.7, 1.2, 10), V(0.7, 1.2, -10), rolloverPose, rolloverModel,
+  );
+  assert(!staleUprightHits.some((hit) => hit.plate?.name === 'rollover_asymmetric'),
+    'roof-down shell trace leaves no upright ghost hitbox');
+
   // Turret yaw: turret plate rotates with turretYaw, hull plates do not.
   const poseTur = tankPoseFromState(mkState({ turretYaw: Math.PI / 2 }));
   const hitsTur = traceTank(V(5, 1.8, 0), V(-5, 1.8, 0), poseTur, armorModel);
