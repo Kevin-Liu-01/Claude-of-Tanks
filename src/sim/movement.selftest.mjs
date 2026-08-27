@@ -380,7 +380,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   let takeoffZ = 0;
   let takeoffY = 0;
   let takeoffVY = 0;
-  let afterHalfSecondVY = null;
+  let afterThirdSecondVY = null;
   let airborneTicks = 0;
   let maxClearance = 0;
   run(ent, field, 360, () => {
@@ -394,7 +394,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     }
     if (ent.state.grounded === false) {
       airborneTicks++;
-      if (airborneTicks === 30) afterHalfSecondVY = ent.state.verticalSpeed;
+      if (airborneTicks === 20) afterThirdSecondVY = ent.state.verticalSpeed;
     } else if (tookOff && airborneTicks > 0) {
       landed = true;
     }
@@ -404,9 +404,9 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `ledge: support reaches the lip before takeoff (z=${takeoffZ.toFixed(2)})`);
   assert(maxClearance > 0.75,
     `ledge: chassis follows a free-flight arc instead of support (${maxClearance.toFixed(2)} m)`);
-  assert(afterHalfSecondVY !== null &&
-    Math.abs((afterHalfSecondVY - takeoffVY) + 9.81 * 0.5) < 0.35,
-  `ledge: airborne vertical acceleration is gravity (vy0=${takeoffVY}, vy.5=${afterHalfSecondVY})`);
+  assert(afterThirdSecondVY !== null &&
+    Math.abs((afterThirdSecondVY - takeoffVY) + 9.81 * (20 / 60)) < 0.35,
+  `ledge: airborne vertical acceleration is gravity (vy0=${takeoffVY}, vy.33=${afterThirdSecondVY})`);
   assert(ent.state.pos.z > takeoffZ + 2,
     `ledge: horizontal momentum continues in flight (${(ent.state.pos.z - takeoffZ).toFixed(2)} m)`);
   assert(landed && ent.state.grounded === true,
@@ -464,6 +464,48 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(airborneTicks >= 6,
     `rolling crest: horizontal momentum produces a visible free-flight arc (${airborneTicks} ticks)`);
   assert(landed, 'rolling crest: tank naturally reconnects with the descending face');
+}
+
+// Free flight is a rigid-body phase, not a suspension target. Once the tracks
+// lose support, angular momentum must carry continuously until a contact
+// applies a torque. The former spring path critically damped pitch velocity in
+// mid-air, then yanked a long jump toward the landing slope in one ugly lurch.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.state.pos.y = 100;
+  ent.state.grounded = false;
+  ent.state._ride.y = 100;
+  ent.state._ride.v = 0;
+  ent.state._ride.supportY = 0;
+  ent.state._ride.grounded = false;
+  ent.state._spring.pitchV = 0.55;
+  const startPitch = ent.state.visualPitch;
+  let previousPitch = startPitch;
+  let maxStep = 0;
+  run(ent, field, 180, () => {
+    maxStep = Math.max(maxStep, Math.abs(ent.state.visualPitch - previousPitch));
+    previousPitch = ent.state.visualPitch;
+  });
+  assert(ent.state.visualPitch > startPitch + 1.35,
+    `three-second flight conserves launch rotation (${ent.state.visualPitch.toFixed(3)} rad)`);
+  assert(maxStep < 0.02,
+    `airborne attitude advances continuously without a pitch snap (${maxStep.toFixed(4)} rad/tick)`);
+}
+
+// A tank that crosses its rollover point must not be auto-uprighted by the
+// ordinary terrain-conformance spring. It should settle on the roof/side until
+// another physical impulse rolls it back.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.state.visualRoll = Math.PI - 0.08;
+  ent.state._spring.roll = ent.state.visualRoll;
+  ent.state._spring.rollV = 0;
+  run(ent, field, 90);
+  assert(ent.state.overturned === true, 'rollover: upside-down state is explicit');
+  assert(Math.cos(ent.state.visualPitch) * Math.cos(ent.state.visualRoll) < -0.65,
+    `rollover: hull remains roof-down instead of auto-uprighting (${ent.state.visualRoll.toFixed(2)} rad)`);
 }
 
 // Airborne ticks skip loaded-track material and four-corner suspension-rock

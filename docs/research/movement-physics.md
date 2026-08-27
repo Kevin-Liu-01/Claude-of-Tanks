@@ -196,14 +196,39 @@ each fixed tick in flight:
   xz += horizontalVelocity * dt       // no track drive, brake, or steering force
   vy -= 9.81 * dt
   y  += vy * dt
+  pitch += pitchVelocity * dt         // unsupported rigid angular momentum
+  roll  += rollVelocity * dt
 ```
 
 The tank lands when its fully extended running-gear footprint reaches the
 terrain while closing. The contact phase then resumes with the impact velocity
 still in the heave spring, which absorbs the landing against the compression
-floor. Terrain pitch and roll do not torque an unsupported chassis. This phase
-state and `vy` are authoritative, deterministic, and included in network
-snapshots and local prediction.
+floor. Terrain pitch and roll do not torque an unsupported chassis. Air applies
+only light bounded angular drag; it must never snap attitude toward the support
+plane. Landing converts the contact offset and closing speed into bounded
+pitch/roll angular impulse, then blends the ordinary terrain spring back in.
+This phase state, `vy`, pitch/roll, and their deterministic angular history are
+shared by solo, hosted, dedicated, and prediction paths.
+
+### 5.2 Rollover and tank-on-tank support
+
+The ordinary driving solver remains ground-constrained and uses horizontal
+hull capsules. A second allocation-free pair pass handles only tanks with a
+clear vertical ordering and overlapping horizontal capsules. It resolves:
+
+- mass-weighted vertical separation and restitution;
+- a dynamic roof/side support plane without pretending it is terrain;
+- off-center pitch/roll impulse from the contact lever arm;
+- momentum loss while one tank scrubs across another hull;
+- transition into a bounded tumble when impulse or attitude crosses the
+  physical threshold.
+
+During a tumble, a conservative eight-corner hull box participates in terrain
+support so the roof, nose, tail, and sides cannot pass through the heightfield.
+The angular gravity term has stable upright and roof-down equilibria. This
+allows stacking, ramp rollovers, and upside-down rests without an expensive
+general-purpose rigid-body world or magical auto-uprighting. Normal grounded
+driving pays none of the extra terrain-corner sampling cost.
 
 ---
 

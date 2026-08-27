@@ -11,6 +11,10 @@ import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
 import {
+  prefersVerticalTankContact,
+  resolveTankBodyContacts,
+} from '../sim/tankBodyContacts.ts';
+import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
@@ -900,6 +904,7 @@ function makeCollide(game, world) {
       const dz0 = pos.z - other.state.pos.z;
       const outer = mySeg + oSeg + minD;
       if (dx0 * dx0 + dz0 * dz0 > outer * outer) continue;
+      if (self && prefersVerticalTankContact(self, other)) continue;
       const ofx = Math.sin(other.state.yaw), ofz = Math.cos(other.state.yaw);
       // closest points between segments A(s)=pos+f·s, B(t)=oPos+of·t
       const b = fx * ofx + fz * ofz;            // f·of
@@ -1002,7 +1007,15 @@ function makeCollide(game, world) {
     }
     return pushed;
   }
-  return { collide, setSelf(e) { self = e; }, pendingCrush, pendingRams };
+  return {
+    collide,
+    setSelf(e) { self = e; },
+    queueRam(a, b, closing, nx = 0, nz = 0) {
+      if (closing > 0) pendingRams.push({ a, b, closing, nx, nz });
+    },
+    pendingCrush,
+    pendingRams,
+  };
 }
 
 /** Emit the derived bus events flagged inside one HitEvent. */
@@ -1373,6 +1386,13 @@ export function simStep(game, bus, world, rig, collider) {
       });
     }
   }
+
+  // b1. Three-dimensional dynamic hull contacts. The ordinary collision seam
+  // remains the fast horizontal/static-world path; this single pair pass owns
+  // airborne roof landings, stacking and off-center rollover impulse.
+  resolveTankBodyContacts(game.tanks, dt,
+    (upper, lower, closing, nx, nz) =>
+      collider.queueRam(upper, lower, closing, nx, nz));
 
   // b2. crushable props (gameplay_feel r6): resolve the hull-overrun crushes
   // the collider queued this tick — mark the record dead for all collision/AI

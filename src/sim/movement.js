@@ -268,6 +268,24 @@ const RIDE_SUPPORT_V_CAP = 12;         // m/s; bounds extreme launch ramps
 // extended running gear intersects terrain again.
 const RIDE_DETACH_CLEARANCE_M = 0.015;
 const RIDE_DETACH_REL_V_MPS = 0.20;
+// Unsupported hull attitude is a rigid-body phase. Angular momentum decays
+// only very lightly in air; ground contact supplies the strong damping and
+// gravity torque. This is intentionally separate from the suspension spring:
+// using that spring in flight erased launch rotation, then produced a sharp
+// nose lurch when a long jump reacquired terrain.
+const AIR_ANGULAR_DRAG_S = 0.055;
+const AIR_ANGULAR_SPEED_MAX = 1.15; // rad/s; ordinary launch-rate bound
+const TUMBLE_ANGULAR_SPEED_MAX = 2.8; // collisions/rollovers may rotate faster
+const LANDING_CONTACT_BLEND_S = 0.34;
+const LANDING_SPRING_MIN_SCALE = 0.28;
+const LANDING_TORQUE_GAIN = 0.22;
+const LANDING_TORQUE_MAX = 1.7;
+const TUMBLE_ENTER_UP_Y = 0.55;    // ~57° from upright
+const TUMBLE_EXIT_UP_Y = 0.88;     // hysteresis: settle close to upright only
+const OVERTURN_ENTER_UP_Y = -0.08; // center of mass has crossed past the side
+const OVERTURN_EXIT_UP_Y = 0.48;
+const GROUND_TUMBLE_DAMP_S = 1.7;
+const GROUND_TUMBLE_GRAVITY = 3.1;
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
 // fast turn cannot dip the leaned-into track edge below the terrain.
@@ -575,6 +593,7 @@ export function createTankState(spec, pos, yaw) {
     yawRate: 0,
     visualPitch: 0,
     visualRoll: 0,
+    overturned: false,
     turretYaw: 0,
     gunPitch: 0,
     turretYawRate: 0,
@@ -604,6 +623,9 @@ export function createTankState(spec, pos, yaw) {
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0,
+    },
+    _body: { // rigid attitude/contact state; dormant during ordinary driving
+      tumbling: false, landingBlendS: 0, dynamicSupport: false,
     },
     _groundType: 'medium',
     _debuff: { // reused hot-loop output; readDebuffs allocates nothing per tick
@@ -647,6 +669,11 @@ export function resetTankVerticalState(state, y = state?.pos?.y, verticalSpeed =
     ride.airTime = 0;
   }
   if (state._sup) state._sup.x = NaN;
+  if (state._body) {
+    state._body.landingBlendS = 0;
+    state._body.dynamicSupport = false;
+    if (grounded !== false && !state.overturned) state._body.tumbling = false;
+  }
 }
 
 /**
@@ -682,10 +709,26 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const input = entity.input;
   const debuff = readDebuffs(entity.combat, state._debuff || (state._debuff = {}));
   const groundedAtStart = state.grounded !== false;
+  const body = state._body || (state._body = {
+    tumbling: false, landingBlendS: 0, dynamicSupport: false,
+  });
+  body.dynamicSupport = false;
+  const upYAtStart = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0);
+  // A grounded tank on extreme authored terrain still belongs to the normal
+  // support solver. Enter the rigid tumble phase automatically only after the
+  // center of mass has genuinely crossed the side; lesser tilts need a launch
+  // or landing/contact impulse.
+  if (upYAtStart < OVERTURN_ENTER_UP_Y) body.tumbling = true;
+  state.overturned = state.overturned
+    ? upYAtStart < OVERTURN_EXIT_UP_Y
+    : upYAtStart < OVERTURN_ENTER_UP_Y;
+  const landingImpactAtStart = Number.isFinite(state.landingImpactMps)
+    ? state.landingImpactMps : 0;
   state.slopeBlocked = false;
 
-  const throttle = debuff.immobile ? 0 : clamp(input.throttle || 0, -1, 1);
-  const steer = debuff.immobile ? 0 : clamp(input.steer || 0, -1, 1);
+  const drivetrainLocked = debuff.immobile || body.tumbling || state.overturned;
+  const throttle = drivetrainLocked ? 0 : clamp(input.throttle || 0, -1, 1);
+  const steer = drivetrainLocked ? 0 : clamp(input.steer || 0, -1, 1);
   const braking = !!input.brake;
 
   // ---- ground sampling (hull center) ----
@@ -1098,23 +1141,96 @@ export function updateTank(entity, heightField, dt, collide = null) {
     if (!state.suspensionAim && Math.abs(suspensionAimPitch) < 1e-6) suspensionAimPitch = 0;
     state.suspensionAimPitch = suspensionAimPitch;
   }
-  // Once unsupported, terrain below cannot torque the hull. Retain the launch
-  // attitude and damp its existing angular spring velocity; landing resumes
-  // the ordinary terrain target on the following fixed tick.
+  // Once unsupported, terrain below cannot torque the hull. The spring's two
+  // rate fields become the rigid body's pitch/roll angular velocity until
+  // contact resumes, so the launch attitude evolves continuously instead of
+  // being critically damped in mid-air. Reusing this already-authoritative
+  // state keeps snapshots, armor pose and local prediction on one attitude.
   const targetPitch = groundedAtStart
     ? state._terr.pitch + inertialPitch + suspensionAimPitch
     : spr.pitch;
   const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
-  const wP = SPRING_OMEGA * (1 + PERCH_W_BOOST * perch);
-  const zP = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
-  spr.pitchV += (wP * wP * (targetPitch - spr.pitch) -
-                 2 * zP * wP * spr.pitchV) * dt;
-  spr.pitch += spr.pitchV * dt;
-  spr.rollV += (SPRING_OMEGA * SPRING_OMEGA * (targetRoll - spr.roll) -
-                2 * SPRING_ZETA * SPRING_OMEGA * spr.rollV) * dt;
-  spr.roll += spr.rollV * dt;
+  if (landingImpactAtStart > 0) {
+    // A landing applies torque toward the support plane in proportion to the
+    // closing impulse and attitude error. This is a bounded impulse, not an
+    // instantaneous pose assignment; nose/side-first landings can therefore
+    // continue into a roll while square landings settle quickly.
+    const pitchError = wrapAngle(targetPitch - spr.pitch);
+    const rollError = wrapAngle(targetRoll - spr.roll);
+    spr.pitchV += clamp(
+      pitchError * landingImpactAtStart * LANDING_TORQUE_GAIN,
+      -LANDING_TORQUE_MAX,
+      LANDING_TORQUE_MAX,
+    );
+    spr.rollV += clamp(
+      rollError * landingImpactAtStart * LANDING_TORQUE_GAIN,
+      -LANDING_TORQUE_MAX,
+      LANDING_TORQUE_MAX,
+    );
+    body.landingBlendS = LANDING_CONTACT_BLEND_S;
+    if (upYAtStart < TUMBLE_ENTER_UP_Y ||
+        landingImpactAtStart * (Math.abs(pitchError) + Math.abs(rollError)) > 6.5) {
+      body.tumbling = true;
+    }
+  }
+
+  const rigidAttitude = !groundedAtStart || body.tumbling;
+  if (rigidAttitude) {
+    if (groundedAtStart) {
+      // Approximate gravity about the contact edge. -sin(2a) has stable
+      // equilibria both upright and roof-down, and an unstable balance on the
+      // side: the hull falls naturally to whichever side its center of mass
+      // crossed instead of receiving a magical self-righting torque.
+      const relativePitch = wrapAngle(spr.pitch - state._terr.pitch);
+      const relativeRoll = wrapAngle(spr.roll - state._terr.roll);
+      spr.pitchV += -Math.sin(2 * relativePitch) * GROUND_TUMBLE_GRAVITY * dt;
+      spr.rollV += -Math.sin(2 * relativeRoll) * GROUND_TUMBLE_GRAVITY * dt;
+      const contactDrag = Math.exp(-GROUND_TUMBLE_DAMP_S * dt);
+      spr.pitchV *= contactDrag;
+      spr.rollV *= contactDrag;
+    } else {
+      const airDrag = Math.exp(-AIR_ANGULAR_DRAG_S * dt);
+      spr.pitchV *= airDrag;
+      spr.rollV *= airDrag;
+    }
+    const angularCap = body.tumbling ? TUMBLE_ANGULAR_SPEED_MAX : AIR_ANGULAR_SPEED_MAX;
+    spr.pitchV = clamp(spr.pitchV, -angularCap, angularCap);
+    spr.rollV = clamp(spr.rollV, -angularCap, angularCap);
+    spr.pitch = wrapAngle(spr.pitch + spr.pitchV * dt);
+    spr.roll = wrapAngle(spr.roll + spr.rollV * dt);
+
+    const upY = Math.cos(spr.pitch) * Math.cos(spr.roll);
+    if ((!groundedAtStart || landingImpactAtStart > 0) && upY < TUMBLE_ENTER_UP_Y) {
+      body.tumbling = true;
+    }
+    if (groundedAtStart && body.tumbling && upY > TUMBLE_EXIT_UP_Y &&
+        Math.abs(spr.pitchV) + Math.abs(spr.rollV) < 0.12 &&
+        landingImpactAtStart <= 0) {
+      body.tumbling = false;
+    }
+  } else {
+    body.landingBlendS = Math.max(0, (body.landingBlendS || 0) - dt);
+    const settle = body.landingBlendS > 0
+      ? 1 - body.landingBlendS / LANDING_CONTACT_BLEND_S
+      : 1;
+    const springScale = LANDING_SPRING_MIN_SCALE +
+      (1 - LANDING_SPRING_MIN_SCALE) * settle;
+    const wP = SPRING_OMEGA * springScale * (1 + PERCH_W_BOOST * perch);
+    const zP = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
+    spr.pitchV += (wP * wP * (targetPitch - spr.pitch) -
+                   2 * zP * wP * spr.pitchV) * dt;
+    spr.pitch += spr.pitchV * dt;
+    const wR = SPRING_OMEGA * springScale;
+    spr.rollV += (wR * wR * (targetRoll - spr.roll) -
+                  2 * SPRING_ZETA * wR * spr.rollV) * dt;
+    spr.roll += spr.rollV * dt;
+  }
   state.visualPitch = spr.pitch;
   state.visualRoll = spr.roll;
+  const upYAfterAttitude = Math.cos(spr.pitch) * Math.cos(spr.roll);
+  state.overturned = state.overturned
+    ? upYAfterAttitude < OVERTURN_EXIT_UP_Y
+    : upYAfterAttitude < OVERTURN_ENTER_UP_Y;
 
   // ---- mirror of tankFactory's visual susp rock layer -----------------------
   // syncFromState (which runs right after this tick) will render the hull at
@@ -1413,6 +1529,38 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const bellyYield = panY !== null ? 0 : fanYield;
     const bellySupportY = bellyMax - bellyYield;
     if (bellySupportY > supportY) supportY = bellySupportY;
+    // The ordinary support polygon intentionally samples running gear and the
+    // belly only. During a rollover those are no longer the lowest rigid
+    // surfaces: a roof, turret side, nose or tail can carry the hull. Sample a
+    // conservative eight-corner body box only while tumbling/overturned. This
+    // costs zero terrain reads in normal driving and prevents a flipped tank
+    // from burying its entire superstructure below the map.
+    let rigidBodySupportY = -Infinity;
+    if (body.tumbling || upYAfterAttitude < TUMBLE_ENTER_UP_Y) {
+      const bodyHalfL = spec.dims.hullLengthM * 0.5;
+      const bodyHalfW = spec.dims.widthM * 0.5;
+      const bodyTopY = Math.max(spec.dims.heightM, yBot + 0.8);
+      for (let yi = 0; yi < 2; yi++) {
+        const localY = yi === 0 ? yBot : bodyTopY;
+        for (let xi = -1; xi <= 1; xi += 2) {
+          const localX = xi * bodyHalfW;
+          const x1 = localX * cr0 - localY * sr0;
+          const y1 = localX * sr0 + localY * cr0;
+          for (let zi = -1; zi <= 1; zi += 2) {
+            const localZ = zi * bodyHalfL;
+            const z2 = y1 * sa0 + localZ * ca0;
+            const h = hAt(
+              px1 + x1 * cb + z2 * sb,
+              pz1 - x1 * sb + z2 * cb,
+            );
+            const yOffset = y1 * cosP + localZ * sinP;
+            const deficit = h - yOffset;
+            if (deficit > rigidBodySupportY) rigidBodySupportY = deficit;
+          }
+        }
+      }
+      if (rigidBodySupportY > supportY) supportY = rigidBodySupportY;
+    }
     // Least-squares plane: pitch from the along-track height gradient (Σz = 0
     // by symmetry), roll from the mean left/right line difference. RENDERER
     // ROLL SIGN: positive roll lifts the right side, so ground higher on the
@@ -1462,9 +1610,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // hull pan is rigid and remains an absolute floor. If a visual publishes
     // a keel below its gear plane, that undercut is also rigid: do not spend
     // suspension travel by pushing the hull itself through the terrain.
-    const compressionFloorY = (rigidUndercut
+    const compressionFloorY = Math.max((rigidUndercut
       ? supportY
-      : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + supportMargin;
+      : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)),
+    rigidBodySupportY) + supportMargin;
     supportY += supportMargin;
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
     sup.pitch = pitchEff; sup.roll = rollEff;

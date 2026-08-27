@@ -346,6 +346,41 @@ assert.ok(ramMatch.snapshot({ tick: 240, serverTimeMs: 4000,
   viewerId: 'ram-a', ackInputSeq: 1 }).events.some((event) => event.type === 'tank_ram'),
 'ram feedback is replicated');
 
+// Airborne hulls use the same three-dimensional contact pass in dedicated/
+// private authority as solo play. A roof landing stays vertical, carries its
+// angular impulse into the shared pose, and replicates as airborne/tumbling
+// rather than being shoved sideways by the legacy 2D capsule path.
+const stackMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0,
+  players: [
+    { id: 'stack-base', specId: 'm1a2', team: 'alpha', spawn: { x: -20, z: -20, yaw: 0 } },
+    { id: 'stack-top', specId: 'm1a2', team: 'bravo', spawn: { x: 20, z: 20, yaw: 0 } },
+  ],
+});
+stackMatch.onMatchReady();
+const stackBase = stackMatch.entityById.get('stack-base');
+const stackTop = stackMatch.entityById.get('stack-top');
+stackTop.state.pos.set(
+  stackBase.state.pos.x + 0.8,
+  stackBase.state.pos.y + stackBase.spec.dims.heightM - 0.15,
+  stackBase.state.pos.z + 0.45,
+);
+stackTop.state._ride.y = stackTop.state.pos.y;
+stackTop.state._ride.v = -6;
+stackTop.state.verticalSpeed = -6;
+stackTop.state.grounded = false;
+stackTop.state._ride.grounded = false;
+stackMatch.step({ dt: 1 / 60, tick: 1, inputs: new Map() });
+assert.ok(stackTop.state.pos.y >= stackBase.state.pos.y + stackBase.spec.dims.heightM - 0.03,
+  'authoritative roof landing seats the upper hull above the lower tank');
+assert.ok(Math.abs(stackTop.state._spring.pitchV) + Math.abs(stackTop.state._spring.rollV) > 0.1,
+  'authoritative off-center landing preserves rollover angular impulse');
+assert.equal(stackTop.state._body.dynamicSupport, true,
+  'tank roof is represented as dynamic support in shared authority');
+assert.ok(stackMatch.snapshot({ tick: 1, serverTimeMs: 17,
+  viewerId: 'stack-top', ackInputSeq: 0 }).events.some((event) => event.type === 'tank_ram'),
+'vertical tank contact emits the same replicated ram event');
+
 const heMatch = createAuthoritativeMatch({
   countdownS: 0,
   seed: 19,

@@ -19,6 +19,10 @@ import {
   updateTank,
 } from './movement.js';
 import {
+  prefersVerticalTankContact,
+  resolveTankBodyContacts,
+} from './tankBodyContacts.ts';
+import {
   applyDispersion, createShell, guideShellToward, stepShell,
 } from './ballistics.js';
 import { tankPoseFromState, traceTank } from './armor.js';
@@ -555,6 +559,7 @@ export function createAuthoritativeMatch({
       const dz = pos.z - other.state.pos.z;
       const outer = mySeg + otherSeg + minDistance;
       if (dx * dx + dz * dz > outer * outer) continue;
+      if (prefersVerticalTankContact(entity, other)) continue;
       const ofx = Math.sin(other.state.yaw);
       const ofz = Math.cos(other.state.yaw);
       const parallel = fx * ofx + fz * ofz;
@@ -986,6 +991,12 @@ export function createAuthoritativeMatch({
         updateTank(entity, heightField, dt,
           (pos, radius, out) => collideFor(entity, pos, radius, out));
       }
+      resolveTankBodyContacts(entities, dt,
+        (upper, lower, closing) => pendingRams.push({
+          a: upper,
+          b: lower,
+          closing,
+        }));
       resolvePendingCrushes();
       resolvePendingRams();
       for (const entity of entities) {
