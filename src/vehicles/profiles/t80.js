@@ -7,6 +7,7 @@ import {
   loftHull,
   meshDome,
   ringSkin,
+  domeBoxPlanSeat,
   tubeGun,
   ruSaddle,
   nsvt,
@@ -469,7 +470,15 @@ function buildT80Line(P, v) {
     // T-80BV Kontakt-1: discrete cheek field + flank wrap + glacis raft. The
     // obsolete shared continuous bars are gone; every visible module below
     // has a painted carrier shoe buried into the cast turret.
-    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.18, k1Pitch: 0.21, k1T0: 0.24, k1Step: 0.22, k1H: 0.21, k1Out: 0.04, k1Bucket: 'turret', k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.17, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
+    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.18, k1Pitch: 0.21, k1T0: 0.24, k1Step: 0.22, k1H: 0.21, k1Out: 0.072, k1Bucket: 'turret', k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.17, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
+    const eraSurfaceSeats = [];
+    const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
+      const seat = domeBoxPlanSeat(ringsT, 0.88, {
+        x, y, z, w, h, d, rx, ry, overlap, cz: 0.17,
+      });
+      eraSurfaceSeats.push(seat);
+      return seat;
+    };
     // Tagil-style frontal protection: a planted, faceted module course on
     // each side of the gun.  Each outer module steps down/back with the cast
     // shoulder, while a deep painted shoe remains buried in the dome.  This
@@ -481,9 +490,12 @@ function buildT80Line(P, v) {
       const z = 1.47 - i * 0.18;
       const y = 0.44 - i * 0.012;
       const yaw = 0.76;
-      P.add('turret', box(0.31, 0.20, 0.25), s * (x - 0.025), y - 0.055, z - 0.035, -0.22, s * yaw, 0);
-      P.add('turret', box(0.35, 0.27, 0.28), s * x, y, z, -0.22, s * yaw, 0);
-      P.add('turretDark', box(0.27, 0.022, 0.21), s * x, y + 0.145, z, -0.22, s * yaw, 0);
+      const shoe = seatEra(s * (x - 0.025), y - 0.055, z - 0.035,
+        0.31, 0.20, 0.25, -0.22, s * yaw, 0.045);
+      const cassette = seatEra(s * x, y, z, 0.35, 0.27, 0.28, -0.22, s * yaw);
+      P.add('turret', box(0.31, 0.20, 0.25), shoe.x, y - 0.055, shoe.z, -0.22, s * yaw, 0);
+      P.add('turret', box(0.35, 0.27, 0.28), cassette.x, y, cassette.z, -0.22, s * yaw, 0);
+      P.add('turretDark', box(0.27, 0.022, 0.21), cassette.x, y + 0.145, cassette.z, -0.22, s * yaw, 0);
     }
     // Continue the Kontakt-1 blanket into six individually readable flank
     // cassettes per side.  Their buried inner shoes overlap the existing
@@ -492,10 +504,23 @@ function buildT80Line(P, v) {
       const x = 1.24 + i * 0.030;
       const z = 0.46 - i * 0.235;
       const yaw = 0.66 + i * 0.105;
-      P.add('turret', box(0.19, 0.11, 0.20), s * (x - 0.035), 0.12 - i * 0.006, z, -0.06, s * yaw, 0);
-      P.add('turret', box(0.22, 0.14, 0.22), s * x, 0.15 - i * 0.006, z, -0.06, s * yaw, 0);
-      P.add('turretDark', box(0.17, 0.012, 0.15), s * x, 0.226 - i * 0.006, z, -0.06, s * yaw, 0);
+      const shoeY = 0.12 - i * 0.006;
+      const cassetteY = 0.15 - i * 0.006;
+      const shoe = seatEra(s * (x - 0.035), shoeY, z,
+        0.19, 0.11, 0.20, -0.06, s * yaw, 0.040);
+      const cassette = seatEra(s * x, cassetteY, z,
+        0.22, 0.14, 0.22, -0.06, s * yaw);
+      P.add('turret', box(0.19, 0.11, 0.20), shoe.x, shoeY, shoe.z, -0.06, s * yaw, 0);
+      P.add('turret', box(0.22, 0.14, 0.22), cassette.x, cassetteY, cassette.z, -0.06, s * yaw, 0);
+      P.add('turretDark', box(0.17, 0.012, 0.15), cassette.x, 0.226 - i * 0.006, cassette.z, -0.06, s * yaw, 0);
     }
+    P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
+      profile: 't80bv',
+      cassetteSeats: eraSurfaceSeats.length,
+      arcCassetteOverlapM: 0.008,
+      maximumSurfaceGapM: Math.max(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
+      minimumSurfaceGapM: Math.min(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
+    });
     });
     // The production BV's 902B system is visibly asymmetric: seven tubes
     // on the left cheek and five on the right, each on a planted shoe.

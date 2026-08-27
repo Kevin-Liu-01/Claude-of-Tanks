@@ -27,6 +27,21 @@ tank.root.traverse((node) => {
 });
 assert.deepEqual(bandNames.sort(), ['gearTrackBandL', 'gearTrackBandR'],
   'Jaguar has exactly one linked track course on each side');
+const [runningGear] = hull.userData.runningGearReceipts || [];
+assert.ok(runningGear, 'Jaguar publishes its linked running-gear receipt');
+assert.equal(runningGear.idler.z, 2.83,
+  'front idler reaches forward beneath the bow instead of crowding the sixth road wheel');
+assert.ok(runningGear.idler.z - runningGear.wheelZs.at(-1) >= 0.73,
+  'front idler has a natural full-wheel center spacing from the last road wheel');
+assert.ok(Math.max(...runningGear.loopPoints.map(([z]) => z)) > 3.16,
+  'linked track course wraps around the relocated front idler');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.revision,
+  'forward-idler-linked-course-r1',
+  'Jaguar records the forward-idler running-gear revision');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.frontContactZ, 2.53,
+  'loaded track run extends forward to meet the relocated idler naturally');
+assert.equal(hull.userData.jaguarRunningGearReceipt?.bowSlotClearedForWrap, true,
+  'bow slot floors are trimmed clear of the longer idler wrap');
 assert.equal(tank.root.getObjectByName('hullTrack'), undefined,
   'Jaguar ERAWA inherits hull camouflage rather than generic gray track steel');
 assert.equal(tank.root.getObjectByName('turretTrack'), undefined,

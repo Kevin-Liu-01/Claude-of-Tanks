@@ -30,6 +30,21 @@ try {
   assert.equal(glacis.attachmentGapM, 0,
     'lower glacis permits no daylight below the steep nose');
 
+  const hullLift = hullRig.userData.t80uHullLiftReceipt;
+  assert.ok(hullLift, 'T-80U exposes its fixed-running-gear hull-lift receipt');
+  assert.equal(hullLift.architecture, 'lifted-hull-fixed-running-gear');
+  assert.equal(hullLift.hullBodyLiftM, 0.18,
+    'armored hull package receives the requested substantial 180 mm lift');
+  assert.equal(hullLift.runningGearTranslated, false,
+    'hull stance correction leaves the running gear in place');
+  assert.equal(hullLift.roadWheelCenterY, 0.42);
+  assert.equal(hullLift.loadedTrackY, 0.055);
+  assert.equal(hullLift.liftedServiceLockers, 2);
+  assert.equal(hullLift.rearUnditchingLog, true);
+  assert.ok(hullLift.unditchingLogDiameterM >= 0.24
+    && hullLift.unditchingLogLengthM >= 2.2,
+  'rear unditching log is large enough to remain legible in the rear view');
+
   const position = hull.geometry.getAttribute('position');
   const normal = hull.geometry.getAttribute('normal');
   const a = new THREE.Vector3();
@@ -44,16 +59,16 @@ try {
     c.fromBufferAttribute(position, index + 2);
     n.fromBufferAttribute(normal, index).normalize();
     const centroid = a.clone().add(b).add(c).multiplyScalar(1 / 3);
-    if (Math.abs(centroid.y - 0.89) > 0.006
+    if (Math.abs(centroid.y - glacis.lowerGlacisTopY) > 0.006
       || centroid.z < 2.95 || centroid.z > 3.33
       || Math.abs(centroid.x) > 1.15) continue;
     if (n.y > 0.98) raisedLowerTopFaces += 1;
     if (n.y < -0.98) matingNoseUndersideFaces += 1;
   }
   assert.ok(raisedLowerTopFaces >= 1,
-    'raised lower-glacis top reaches the 0.89 m mating plane');
+    'raised lower-glacis top reaches the lifted mating plane');
   assert.ok(matingNoseUndersideFaces >= 1,
-    'steep-nose underside remains on the same 0.89 m mating plane');
+    'steep-nose underside remains on the same lifted mating plane');
 
   assert.equal(turretRig.userData.t80uTurretEraReceipt, undefined,
     'owner-rejected replacement turret/ERA architecture stays removed');
@@ -76,6 +91,22 @@ try {
   assert.equal(modernizedTurret.plantedCommanderStation, true);
   assert.equal(modernizedTurret.plantedSmokeFoundations, true);
   assert.equal(modernizedTurret.rearEquipmentReseated, true);
+  assert.equal(modernizedTurret.machineGunCount, 2,
+    'T-80U roof carries two complete machine-gun stations');
+  assert.deepEqual([...modernizedTurret.machineGunTypes], ['NSVT Utyos', 'PK-pattern GPMG']);
+  assert.equal(modernizedTurret.gunFlankLightCount, 2,
+    'paired armored lights flank the main-gun mask');
+  assert.equal(modernizedTurret.rearSoftStowageBundles, 2);
+  assert.equal(modernizedTurret.rearAmmoBoxes, 1);
+
+  const machineGuns = [];
+  tank.root.traverse((object) => {
+    if (object.userData.fittingRoot && object.userData.fitting === 'pintleMG') {
+      machineGuns.push(object);
+    }
+  });
+  assert.equal(machineGuns.length, 2,
+    'both machine guns exist as full shared fittings, not hand-authored rods');
 
   const mantlet = gunRig.userData.t80uMantletReceipt;
   assert.ok(mantlet, 'T-80U exposes its compact mantlet receipt');
@@ -98,8 +129,10 @@ try {
   const gunAxisWorld = gunRig.getWorldPosition(new THREE.Vector3());
   assert.ok(Math.abs(gunRig.position.y - 0.24) < 1e-6,
     'complete T-80U gun package uses the raised local trunnion seat');
-  assert.ok(Math.abs(gunAxisWorld.y - 1.66) < 1e-6,
-    'T-80U gun axis reaches its documented 1.66 m world datum');
+  assert.ok(Math.abs(turretRig.position.y - 1.60) < 1e-6,
+    'turret package rises with the hull roof and stays seated on its ring');
+  assert.ok(Math.abs(gunAxisWorld.y - 1.84) < 1e-6,
+    'T-80U gun axis inherits the complete 180 mm hull/turret lift');
 
   const runningGear = hullRig.userData.runningGearReceipts?.[0];
   assert.ok(runningGear, 'T-80U exposes its native running-gear receipt');

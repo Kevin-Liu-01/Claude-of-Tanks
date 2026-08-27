@@ -80,47 +80,25 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
       },
       {
         "kind": "designation",
-        "parent": "turret",
-        "size": 0.22,
+        "parent": "hull",
+        "size": 0.24,
         "pos": [
-          1.3593163,
-          0.3595705,
-          -0.3027018
+          -1.286,
+          1.4066196,
+          -1.6096552
         ],
         "quaternion": [
-          0.0341605,
-          0.8508696,
-          -0.0210312,
-          0.5238433
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
+        "surfaceMesh": "hull",
+        "anchorProfile": "ua_t80bv",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0373286
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.22,
-        "pos": [
-          -1.3593163,
-          0.3595705,
-          -0.3027018
-        ],
-        "quaternion": [
-          0.0341603,
-          -0.8508696,
-          0.021031,
-          0.5238433
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0373286
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -132,37 +110,37 @@ export const VEHICLE_MARKING_SEATS = Object.freeze({
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.3718528,
+          -1.2686408,
           0.2735146,
-          -0.2186998
+          -0.4226998
         ],
         "quaternion": [
-          0.0386063,
+          0.0386052,
           -0.8505849,
-          0.0237778,
-          0.5238792
+          0.0237771,
+          0.5238794
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ua_t80u_kursk",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0057672
+        "maximumSurfaceErrorM": 0.0153404
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          -1.455874,
-          0.2735031,
-          0.158
+          -1.4238485,
+          0.2735062,
+          -0.0474039
         ],
         "quaternion": [
-          0.0293048,
-          -0.7064993,
-          0.0293048,
-          0.7064993
+          0.033276,
+          -0.7847861,
+          0.0262175,
+          0.6183172
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ua_t80u_kursk",

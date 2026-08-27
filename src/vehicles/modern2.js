@@ -137,6 +137,32 @@ function mbtArmor(o) {
   };
 }
 
+// Raise a complete armored hull package without disturbing its independently
+// authored track volumes.  T-80U's procedural running gear is already seated
+// correctly on the ground; the owner-requested stance correction applies to
+// the hull shell, hull-local systems/crew and rotating package only.
+function liftHullAssemblyAboveTracks(armor, liftM) {
+  const fixedTrackModules = new Set(['trackL', 'trackR']);
+  for (const plate of armor.hullPlates) {
+    if (fixedTrackModules.has(plate.moduleLink) || /^track_[LR]$/.test(plate.name)) continue;
+    plate.verts = plate.verts.map(([x, y, z]) => [x, y + liftM, z]);
+  }
+  for (const module of armor.modules) {
+    if (module.turretLocal || fixedTrackModules.has(module.module)) continue;
+    module.min[1] += liftM;
+    module.max[1] += liftM;
+  }
+  for (const crew of armor.crew) {
+    if (crew.turretLocal) continue;
+    crew.min[1] += liftM;
+    crew.max[1] += liftM;
+  }
+  armor.turretPivot[1] += liftM;
+  return armor;
+}
+
+const T80U_HULL_LIFT_M = 0.18;
+
 // ERA behavior packs (t90m precedent: keReduction fraction + flat CE add).
 const KONTAKT5 = { keReduction: 0.20, ceFlatMm: 400 };
 const MALACHIT = { keReduction: 0.25, ceFlatMm: 450 };
@@ -236,8 +262,8 @@ const MODERN2_SPECS = {
         shell('3OF26 HE-Frag', 'HE', 125, 50, 50, 570, 850),
       ],
     },
-    dims: { hullLengthM: 7.01, overallLengthM: 9.65, widthM: 3.60, heightM: 2.20 },
-    armor: mbtArmor({
+    dims: { hullLengthM: 7.01, overallLengthM: 9.65, widthM: 3.60, heightM: 2.38 },
+    armor: liftHullAssemblyAboveTracks(mbtArmor({
       hl: 3.5, hw: 1.8, roofY: 1.38, trkTop: 1.0, floor: 0.43,
       turretPivot: [0, 1.38, 0.15], gunPivot: [0, 0.32, 0.55],
       barrelLenM: 6.0, barrelRadM: 0.068,
@@ -255,7 +281,7 @@ const MODERN2_SPECS = {
         chR('turret_era_R', 15, 0.26, 1.0, 1.08, 0.30, 0.05, 0.66, 0.08, 0, { kind: 'era', era: KONTAKT5 }),
         chL('turret_era_L', 15, 0.26, 1.0, 1.08, 0.30, 0.05, 0.66, 0.08, 0, { kind: 'era', era: KONTAKT5 }),
       ],
-    }),
+    }), T80U_HULL_LIFT_M),
     visual: {
       // r5 ("entire vehicle is one uniform pale pea-green ... factory scheme
       // applies no camo pattern"): base pulled ANOTHER step toward wartime

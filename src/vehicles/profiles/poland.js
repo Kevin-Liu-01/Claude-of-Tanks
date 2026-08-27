@@ -16,7 +16,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import { addVehicleGhillieSuit } from '../ghillieSuit.js';
 import {
   loftHull, meshDomeCurved, ringSkin, tubeGun, ruBoot, ruSaddle, nsvt, mast,
-  ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone,
+  ruGlacisKit, ruDeck, ruSkirtBand, ruFlaps, rehookClone, domeBoxPlanSeat,
 } from './russia.js';
 import { buildT72B87Native, t72TrackFinishFor } from './t72.js';
 
@@ -47,9 +47,14 @@ function erawaCourse(P, o) {
       const u = (c - (nx - 1) / 2) * o.pitchU;
       const v = (r - (ny - 1) / 2) * o.pitchV;
       // local face frame: right = o.right, up = o.up, out = o.out
-      const x = o.x + o.right[0] * u + o.up[0] * v;
+      let x = o.x + o.right[0] * u + o.up[0] * v;
       const y = o.y + o.right[1] * u + o.up[1] * v;
-      const z = o.z + o.right[2] * u + o.up[2] * v;
+      let z = o.z + o.right[2] * u + o.up[2] * v;
+      if (o.planSeat) {
+        const seat = o.planSeat({ x, y, z, row: r, col: c });
+        x = seat.x;
+        z = seat.z;
+      }
       P.add(bucket, box(o.tileW, o.tileH, o.tileD), x, y, z,
         o.rx ?? 0, o.ry ?? 0, o.rz ?? 0);
       if (o.seams !== false) {
@@ -160,12 +165,12 @@ function buildT72M1JaguarLegacy(P) {
     P.add('hull', box(0.70, 0.10, 0.06), s * 1.42, 1.06, 3.685);  // fender lip f 3.715? no: face 3.715 too far — keep 3.685+0.03
     P.add('hullRubber', box(0.62, 0.16, 0.04), s * 1.40, 0.92, 3.70); // mud flap
     P.add('hullDark', box(0.03, 0.05, 0.48), s * 1.775, 1.245, 3.35); // guard rail
-    // fender-slot §B2 floors: REAL dark slot plates (the v2 hole scan hides
-    // /shadow/ meshes — per-harness law receipt this round), both proven
-    // outside the swept course by the strict clip audit (wrap+shoes end
-    // ~2.97; plates at z >=3.00 / inboard of the 1.09 course wall).
-    P.add('hullDark', box(0.64, 0.01, 0.76), s * 1.30, 1.06, 3.26);
-    P.add('hullDark', box(0.16, 0.01, 0.32), s * 0.99, 1.10, 2.76);
+    // Fender-slot §B2 floors: keep the deep outer slot ahead of the longer
+    // idler wrap and pull the small inner floor just inside the track lane.
+    // This preserves the dark bow recess without letting a static floor cut
+    // through the linked shoes after the tension wheel moves forward.
+    P.add('hullDark', box(0.64, 0.01, 0.34), s * 1.30, 1.06, 3.48);
+    P.add('hullDark', box(0.24, 0.01, 0.70), s * 0.96, 1.10, 2.95);
     // §5.267 fix 3: seat the bow corner boxes — the webs live INSIDE the
     // box/slot-floor union (r-fix receipt: deep webs at y 0.91 printed
     // -0.28 bottoms on three bow side columns and cost whole 0.3)
@@ -176,13 +181,15 @@ function buildT72M1JaguarLegacy(P) {
 
   // ---- running gear: T-72 family stance (six dished pairs) ---------------
   const wheelZs = [-2.01, -1.19, -0.37, 0.45, 1.27, 2.09];
+  const frontIdler = Object.freeze({ z: 2.83, y: 0.69, r: 0.30 });
+  const frontContactZ = 2.53;
   buildRunningGear(P, {
     ...t72TrackFinishFor(P),
     style: 'rubber', wheelR: 0.455, wheelW: 0.23, wheelY: 0.47, xc: 1.37,
     dishR: 0.79, wheelZs,
     sprocket: { z: -2.36, y: 0.68, r: 0.32 },
-    idler: { z: 2.46, y: 0.69, r: 0.30 },
-    contactZF: 2.20, contactZR: -2.08,
+    idler: frontIdler,
+    contactZF: frontContactZ, contactZR: -2.08,
     rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.91, r: 0.082 })),
     trackW: 0.56, topY: 1.00, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
@@ -190,6 +197,14 @@ function buildT72M1JaguarLegacy(P) {
     // re-hooked tire/dish clones so the six dished pairs read crisply
     // instead of ambient-dead discs
     tireHex: 0x2e302a, wheelHex: 0x49503f, gearFloor: true,
+  });
+  P.hullG.userData.jaguarRunningGearReceipt = Object.freeze({
+    revision: 'forward-idler-linked-course-r1',
+    frontIdlerZ: frontIdler.z,
+    frontContactZ,
+    lastRoadWheelZ: wheelZs.at(-1),
+    idlerRoadWheelCenterGapM: frontIdler.z - wheelZs.at(-1),
+    bowSlotClearedForWrap: true,
   });
   // The smart running-gear builder above owns the complete dished wheel
   // train.  Do not add a second static face course here: it cannot follow the
@@ -221,7 +236,7 @@ function buildT72M1JaguarLegacy(P) {
     mount(P, 'hull', FITTINGS.lightCluster({
       mats: P.mats, pods: 2, spacing: 0.085, r: 0.038,
       shield: true, seed: 7351 + (s > 0 ? 1 : 0),
-    }), s * 1.13, 1.13, 2.56, [-0.30, 0, 0]);
+    }), s * 0.96, 1.13, 2.56, [-0.30, 0, 0]);
   }
   P.add('hull', box(2.20, 0.045, 0.15), 0, 1.31, 2.42, -0.30, 0, 0); // splash ridge
   ruDeck(P, { deckY: 1.44, hatchX: -0.42, hatchZ: 1.78, gz: -1.55,
@@ -287,6 +302,14 @@ function buildT72M1JaguarLegacy(P) {
   // device — silhouette bytes identical) so the dome stops reading as an
   // oversized smooth ball
   meshDomeCurved(P, rings, 0.96, 0, -0.06, { capR: 1.9, roofTiltScale: 0.55 });
+  const eraSurfaceSeats = [];
+  const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
+    const seat = domeBoxPlanSeat(rings, 0.96, {
+      x, y, z, w, h, d, rx, ry, overlap, cz: -0.06,
+    });
+    eraSurfaceSeats.push(seat);
+    return seat;
+  };
   // cast-texture cues (§5.267 fix 1, all <=6 mm proud — mask-neutral):
   // casting seam band at the dome waist + lifting bosses + cheek weld beads
   P.add('turretDark', KIT.lathe([[1.215, 0.395], [1.228, 0.415], [1.215, 0.435]], 30, 0.96), 0, 0, -0.06);
@@ -318,6 +341,8 @@ function buildT72M1JaguarLegacy(P) {
       cols: 3, rows: 2, pitchU: 0.30, pitchV: 0.235,
       tileW: 0.26, tileH: 0.215, tileD: 0.05,
       ry: s * 0.60, rx: -0.16,
+      planSeat: ({ x, y, z }) => seatEra(x, y, z,
+        0.26, 0.215, 0.05, -0.16, s * 0.60, 0.008),
     });
     // Conformal ERAWA flank course: the blocks follow the cast side instead
     // of hovering beyond it, and give the Jaguar the layered armor read that
@@ -325,9 +350,12 @@ function buildT72M1JaguarLegacy(P) {
     for (let i = 0; i < 4; i++) {
       const z = 0.18 - i * 0.36;
       const x = 1.17 - i * 0.025;
-      P.add('turret', box(0.075, 0.235, 0.30), s * x, 0.39, z,
+      const cassette = seatEra(s * x, 0.39, z,
+        0.075, 0.235, 0.30, -0.10, s * (0.10 + i * 0.035));
+      P.add('turret', box(0.075, 0.235, 0.30), cassette.x, 0.39, cassette.z,
         -0.10, s * (0.10 + i * 0.035), 0);
-      P.add('turretDark', box(0.018, 0.16, 0.24), s * (x + 0.041), 0.40, z,
+      P.add('turretDark', box(0.018, 0.16, 0.24),
+        cassette.x + cassette.nx * 0.041, 0.40, cassette.z + cassette.nz * 0.041,
         -0.10, s * (0.10 + i * 0.035), 0);
     }
   }
@@ -603,6 +631,15 @@ function buildT72M1JaguarCurrentPrototype(P) {
 function buildT72M1Jaguar(P) {
   const { box, cylY, cylZ, torus } = KIT;
   buildT72M1JaguarLegacy(P);
+  const eraSurfaceSeats = [];
+  const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
+    const seat = domeBoxPlanSeat([
+      [1.24, 0.045], [1.28, 0.16], [1.22, 0.42], [1.06, 0.60],
+      [0.80, 0.74], [0.44, 0.83], [0.03, 0.85],
+    ], 0.96, { x, y, z, w, h, d, rx, ry, overlap, cz: -0.06 });
+    eraSurfaceSeats.push(seat);
+    return seat;
+  };
 
   P.hullG.userData.t72FamilyFoundation = 'measured-current-t72-family';
   P.turretG.userData.polishModernization = 't72m1-jaguar-erawa-refit';
@@ -635,10 +672,13 @@ function buildT72M1Jaguar(P) {
     for (let i = 0; i < 4; i++) {
       const x = s * (0.20 + i * 0.185);
       const z = 1.00 - i * 0.105;
-      P.add('turret', box(0.165, 0.078, 0.175), x, 0.44 - i * 0.012, z,
+      const y = 0.44 - i * 0.012;
+      const cassette = seatEra(x, y, z,
+        0.165, 0.078, 0.175, -0.14, s * (0.22 + i * 0.08));
+      P.add('turret', box(0.165, 0.078, 0.175), cassette.x, y, cassette.z,
         -0.14, s * (0.22 + i * 0.08), -0.045);
-      P.add('turretDark', box(0.125, 0.010, 0.024), x, 0.485 - i * 0.012,
-        z + 0.075, -0.14, s * (0.22 + i * 0.08), -0.045);
+      P.add('turretDark', box(0.125, 0.010, 0.024), cassette.x, 0.485 - i * 0.012,
+        cassette.z + 0.075, -0.14, s * (0.22 + i * 0.08), -0.045);
     }
   }
 
@@ -774,6 +814,14 @@ function buildT72M1Jaguar(P) {
     panoramicSight: true,
     sideBaskets: 2,
     rearEraCourse: 5,
+  });
+  P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
+    profile: 't72m1_jaguar',
+    cassetteSeats: 20 + eraSurfaceSeats.length,
+    maximumSurfaceGapM: Math.max(-0.008,
+      ...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
+    minimumSurfaceGapM: Math.min(-0.010,
+      ...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
   });
   P.hullG.userData.jaguarModernizationReceipt = Object.freeze({
     hullEquipmentPieces,

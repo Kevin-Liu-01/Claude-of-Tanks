@@ -25,6 +25,7 @@
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, buildProfile } from './kit.js';
+import { domeBoxPlanSeat } from './russia.js';
 
 // ---------------------------------------------------------------------------
 // Family machinery
@@ -2119,6 +2120,7 @@ function buildT80UNative2026(P) {
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   const D2R = Math.PI / 180;
+  const hullBodyLiftM = 0.18;
   // pancake hull. VERTEX ROUND (2026-08-03 workorder): the ref deck plateau
   // ends ~z 2.45 and the glacis crest line runs (2.67, 1.22) -> (3.43, 0.76)
   // — the old deck band carried the 1.38 plateau out to 2.94 and read +0.17
@@ -2135,8 +2137,8 @@ function buildT80UNative2026(P) {
   // quarters.  This original loft keeps the full-width suspension bay amid
   // ships, then closes toward the bow and stern inside the native tracks.
   P.add('hull', polyLoft([
-    [-0.96, 2.50], [0.96, 2.50], [1.14, 1.72], [1.14, -1.72],
-    [0.96, -2.20], [-0.96, -2.20], [-1.14, -1.72], [-1.14, 1.72],
+    [-0.96, 2.50], [0.96, 2.50], [1.06, 1.72], [1.06, -1.72],
+    [0.96, -2.20], [-0.96, -2.20], [-1.06, -1.72], [-1.06, 1.72],
   ], 0.26, 0.98, 0.98));
   P.add('hull', slab(                                                          // stern boat-tail (x ±1.14 inside the tracks)
     [-1.14, 0.26, -2.10], [1.14, 0.26, -2.10], [1.14, 0.26, -2.30], [-1.14, 0.26, -2.30],
@@ -2149,10 +2151,10 @@ function buildT80UNative2026(P) {
   const lowerGlacisLiftM = 0.23;
   const lowerGlacisTopY = 0.66 + lowerGlacisLiftM;
   P.add('hull', slab(                                                          // raised lower glacis / bow belly rise
-    [-1.14, 0.26 + lowerGlacisLiftM, 2.46], [1.14, 0.26 + lowerGlacisLiftM, 2.46],
-    [1.14, 0.26 + lowerGlacisLiftM, 2.66], [-1.14, 0.26 + lowerGlacisLiftM, 2.66],
-    [-1.14, lowerGlacisTopY, 2.46], [1.14, lowerGlacisTopY, 2.46],
-    [1.14, lowerGlacisTopY, 3.32], [-1.14, lowerGlacisTopY, 3.32]));
+    [-1.06, 0.26 + lowerGlacisLiftM, 2.46], [1.06, 0.26 + lowerGlacisLiftM, 2.46],
+    [1.06, 0.26 + lowerGlacisLiftM, 2.66], [-1.06, 0.26 + lowerGlacisLiftM, 2.66],
+    [-1.06, lowerGlacisTopY, 2.46], [1.06, lowerGlacisTopY, 2.46],
+    [1.06, lowerGlacisTopY, 3.32], [-1.06, lowerGlacisTopY, 3.32]));
   P.hullG.userData.t80uHullGlacisReceipt = {
     architecture: 'raised-overlapping-lower-glacis',
     liftM: lowerGlacisLiftM,
@@ -2283,8 +2285,8 @@ function buildT80UNative2026(P) {
     P.add('hullDark', cylY(0.145, 0.145, 0.03, 12), s * 0.98, 1.19, -3.15, 0, 0, s * 0.045);
     P.add('hullDark', box(0.05, 0.34, 0.03), s * 0.98, 0.96, -3.26);
   }
-  P.add('hullWood', cylX(0.105, 2.05, 10), 0, 0.71, -3.17);                    // log LOW on the plate
-  for (const s of [-0.55, 0.55]) P.add('hullDark', cylX(0.112, 0.04, 10), s * 1.6, 0.71, -3.17);
+  P.add('hullWood', cylX(0.12, 2.20, 12), 0, 0.79, -3.17);                     // full-width unditching log on the rear service plate
+  for (const s of [-0.58, 0, 0.58]) P.add('hullDark', cylX(0.128, 0.045, 12), s * 1.70, 0.79, -3.17);
   // engine deck: turbine intake field + louvres + hump
   P.add('hullDark', box(1.70, 0.02, 1.10), 0, 1.358, -2.00);
   for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.60, 0.018, 0.05), 0, 1.364, -1.60 - k * 0.16);
@@ -2299,6 +2301,17 @@ function buildT80UNative2026(P) {
   P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.37, -2.45);
   bin(P, 1.42, 1.29, -1.35, 0.26, 0.15, 0.88);                                 // restrained right fender bin row, seated above the return
   bin(P, 1.42, 1.29, -2.27, 0.26, 0.15, 0.46);                                 // rear bin stays clear of the sprocket wrap
+  // Additional field-service kit uses the free forward-right fender run.
+  // Every locker bottoms on the 1.29 m fender datum and the long-handled
+  // tool is strapped to the opposite run, so the added density never reads
+  // as loose floating boxes.
+  bin(P, 1.42, 1.38, -0.64, 0.26, 0.16, 0.48);
+  bin(P, 1.42, 1.38, -0.10, 0.26, 0.16, 0.44);
+  P.add('hullWood', box(0.035, 0.030, 0.92), -1.43, 1.395, -0.38, 0, 0.08, 0);
+  P.add('hullDark', box(0.14, 0.038, 0.22), -1.39, 1.397, 0.16, 0, 0.08, 0);
+  for (const z of [-0.74, -0.18]) {
+    P.add('hullDark', box(0.10, 0.035, 0.045), -1.43, 1.40, z, 0, 0.08, 0);
+  }
   // r3 §B4: pods pulled inboard of the band inner plane (the -1.42 pod sat
   // in the idler wrap) and re-seated proud of the narrowed nose face
   headlight(P, -1.02, 1.00, 3.26, -0.35, 0.05);
@@ -2319,7 +2332,7 @@ function buildT80UNative2026(P) {
   // deficits) while the game culls it. Re-pinned 5 mm proud of the dark
   // port / louvre aft faces (-3.295) and sized inside the stern silhouette
   // (top 1.15 stays under the hood lip 1.155 and the deck corner line).
-  P.decal('hull', 'soot', null, 0.55, [0.0, 0.875, -3.30], Math.PI);
+  P.decal('hull', 'soot', null, 0.55, [0.0, 0.875 + hullBodyLiftM, -3.30], Math.PI);
   // 6 small dished wheels + 5 skirt-hidden rollers, rear sprocket. VERTEX
   // ROUND: the ref's flat contact patch is SHORT (-2.0..2.24) with long
   // climbing ramps to a HIGH short idler (bottom ~0.58 at z~3.06) and a
@@ -2341,12 +2354,39 @@ function buildT80UNative2026(P) {
   // running-gear ownership; these cylinders are not hull armor.
   wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21, 'hullRunningGearDark');
 
+  // Owner stance correction: translate only hull-owned armor, skirts,
+  // fittings, spare links and markings. buildRunningGear's live wheels,
+  // linked course and wheel-bay recesses remain on their original datums.
+  // The turret pivot rises by the same amount below, preserving its ring
+  // contact and the gun's articulation relative to the hull roof.
+  P.offsetBuckets([
+    'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+    'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
+    'hullGlass', 'hullTrack',
+  ], 0, hullBodyLiftM, 0);
+  const liftedGlacis = P.hullG.userData.t80uHullGlacisReceipt;
+  liftedGlacis.authoredLowerGlacisTopY = liftedGlacis.lowerGlacisTopY;
+  liftedGlacis.authoredMatingNoseBottomY = liftedGlacis.matingNoseBottomY;
+  liftedGlacis.lowerGlacisTopY += hullBodyLiftM;
+  liftedGlacis.matingNoseBottomY += hullBodyLiftM;
+  P.hullG.userData.t80uHullLiftReceipt = Object.freeze({
+    architecture: 'lifted-hull-fixed-running-gear',
+    hullBodyLiftM,
+    roadWheelCenterY: 0.42,
+    loadedTrackY: 0.055,
+    runningGearTranslated: false,
+    liftedServiceLockers: 2,
+    rearUnditchingLog: true,
+    unditchingLogDiameterM: 0.24,
+    unditchingLogLengthM: 2.20,
+  });
+
   // ---- turret: wide full-shouldered dome under the K-5 CLAMSHELL ----
   // Raise the complete rotating package onto the source roof datum.  A
   // buried collar below the casting keeps the four-centimetre correction
   // physically seated on the 1.38 m deck instead of opening a yaw-visible
   // gap at the ring.
-  P.turretG.position.set(0, 1.42, 0.11);
+  P.turretG.position.set(0, 1.42 + hullBodyLiftM, 0.11);
   P.add('turretDark', cylY(0.82, 0.88, 0.09, 24), 0, -0.045, 0.02);
   const turretBodyScaleY = 0.90;
   const rawT80URings = [
@@ -2358,6 +2398,14 @@ function buildT80UNative2026(P) {
   const roofY = (y) => y - turretRoofDrop;
   const bodyY = (y) => y * turretBodyScaleY;
   P.add('turret', lathe(t80uRings, P.q ? 30 : 16, 1.26), 0, 0, 0.02);
+  const eraSurfaceSeats = [];
+  const seatEra = (x, y, z, w, h, d, rx, ry, overlap = 0.01) => {
+    const seat = domeBoxPlanSeat(t80uRings, 1.26, {
+      x, y, z, w, h, d, rx, ry, overlap, cz: 0.02,
+    });
+    eraSurfaceSeats.push(seat);
+    return seat;
+  };
   // K-5 clamshell — r3 FULL RE-LAY from the fresh workorder: the wedges sweep
   // OUTWARD-FORWARD (plan edge (x0.40, 1.53w) -> prong (x0.91, 1.84w) — the
   // r2 inward sweep put the tips at center-x where the ref V notch is
@@ -2406,10 +2454,20 @@ function buildT80UNative2026(P) {
       [1.17, 0.47, 0.68, 0.61, -0.32, 0.35, 0.19, 0.36],
       [1.30, 0.43, 0.43, 0.68, -0.27, 0.31, 0.18, 0.33],
     ]) {
-      P.add('turret', KIT.xform(box(w * 0.86, h * 0.55, d * 0.80), 0, -h * 0.23, -0.075), s * (x - 0.028), bodyY(y), z, roll, -s * yaw, 0);
-      P.add('turret', KIT.xform(box(w, h * 0.90, d), 0, 0, -0.045), s * x, bodyY(y), z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.68), 0, h * 0.47, 0.030), s * x, bodyY(y), z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.016, h * 0.67, d * 0.62), w * 0.45, 0, 0.025), s * x, bodyY(y), z, roll, -s * yaw, 0);
+      const shoeY = bodyY(y) - h * 0.23;
+      const cassetteY = bodyY(y);
+      const shoe = seatEra(s * (x - 0.028), shoeY, z,
+        w * 0.86, h * 0.55, d * 0.80, roll, -s * yaw, 0.045);
+      const cassette = seatEra(s * x, cassetteY, z,
+        w, h * 0.90, d, roll, -s * yaw);
+      P.add('turret', box(w * 0.86, h * 0.55, d * 0.80),
+        shoe.x, shoeY, shoe.z, roll, -s * yaw, 0);
+      P.add('turret', box(w, h * 0.90, d),
+        cassette.x, cassetteY, cassette.z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.68), 0, h * 0.47, 0.030),
+        cassette.x, cassetteY, cassette.z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.016, h * 0.67, d * 0.62), w * 0.45, 0, 0.025),
+        cassette.x, cassetteY, cassette.z, roll, -s * yaw, 0);
     }
     for (const [x, y, z, yaw, w, h, d] of [
       [1.40, 0.39, 0.22, 0.40, 0.28, 0.17, 0.29],
@@ -2418,9 +2476,18 @@ function buildT80UNative2026(P) {
       [1.44, 0.345, -0.59, -0.01, 0.27, 0.16, 0.28],
       [1.36, 0.325, -0.85, -0.15, 0.25, 0.15, 0.26],
     ]) {
-      P.add('turret', box(w * 0.86, h * 0.56, d * 0.80), s * (x - 0.040), bodyY(y - 0.040), z, -0.08, -s * yaw, 0);
-      P.add('turret', box(w, h * 0.90, d), s * x, bodyY(y), z, -0.08, -s * yaw, 0);
-      P.add('turretDark', box(w * 0.74, 0.012, d * 0.68), s * x, bodyY(y + h * 0.54), z, -0.08, -s * yaw, 0);
+      const shoeY = bodyY(y - 0.040);
+      const cassetteY = bodyY(y);
+      const shoe = seatEra(s * (x - 0.040), shoeY, z,
+        w * 0.86, h * 0.56, d * 0.80, -0.08, -s * yaw, 0.045);
+      const cassette = seatEra(s * x, cassetteY, z,
+        w, h * 0.90, d, -0.08, -s * yaw);
+      P.add('turret', box(w * 0.86, h * 0.56, d * 0.80),
+        shoe.x, shoeY, shoe.z, -0.08, -s * yaw, 0);
+      P.add('turret', box(w, h * 0.90, d),
+        cassette.x, cassetteY, cassette.z, -0.08, -s * yaw, 0);
+      P.add('turretDark', box(w * 0.74, 0.012, d * 0.68),
+        cassette.x, bodyY(y + h * 0.54), cassette.z, -0.08, -s * yaw, 0);
     }
   }
   // Low crown tiles continue the T-90 visual language without turning the
@@ -2479,6 +2546,18 @@ function buildT80UNative2026(P) {
   P.addEquipment('turret', box(0.38, 0.11, 0.30), 0.52, roofY(0.655), -0.60, 0, -0.08, 0);
   P.add('turret', cylY(0.23, 0.23, 0.04, 14), -0.48, roofY(0.64), -0.30);
   P.add('turretDark', cylY(0.235, 0.235, 0.012, 14), -0.48, roofY(0.675), -0.30);
+  // Loader's PK-pattern GPMG on a compact buried pintle.  This is a second
+  // complete weapon, not a decorative barrel: receiver, cradle, ammunition
+  // can and roof foot are all supplied by the shared fitting and sit on a
+  // broad shoe tied into the loader-hatch shoulder.
+  P.add('turret', box(0.30, 0.055, 0.26), -0.68, roofY(0.665), -0.58, 0, -0.18, 0);
+  P.add('turretDark', cylY(0.045, 0.055, 0.07, 12), -0.68, roofY(0.71), -0.58);
+  const loaderGpmg = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 31, ammo: true,
+    elev: 0.04, scale: 0.88, barrelBridge: true, rotation: [0, -0.38, 0],
+  });
+  loaderGpmg.position.set(-0.68, roofY(0.735), -0.58);
+  P.turretG.add(loaderGpmg);
   // Modernized gunner's sight doghouse left of gun + Luna IR right.  The
   // armor plinth intersects the crown while the taller hood and twin glass
   // apertures remain visible between the new crown tiles.
@@ -2489,6 +2568,18 @@ function buildT80UNative2026(P) {
   P.add('turretGlass', box(0.075, 0.095, 0.020), -0.36, roofY(0.735), 0.45, 0, 0.04, 0);
   P.add('turretDetail', box(0.26, 0.22, 0.24), 0.55, bodyY(0.40), 0.96);
   P.add('turretGlass', box(0.18, 0.15, 0.02), 0.55, bodyY(0.40), 1.09);
+  // Paired armored service/search lamps flank the gun mask.  Their support
+  // knees overlap the cast nose, while proud glass faces clear the K-5
+  // carrier line and remain readable head-on.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.075, 0.22, 0.11), s * 0.47, bodyY(0.39), 1.29, -0.10, 0, 0);
+    P.addEquipment('turret', box(0.20, 0.17, 0.18), s * 0.47, bodyY(0.52), 1.38, -0.10, 0, 0);
+    P.add('turretDark', box(0.18, 0.14, 0.022), s * 0.47, bodyY(0.52), 1.475, -0.10, 0, 0);
+    P.add('turretGlass', cylZ(0.060, 0.025, 14), s * 0.47, bodyY(0.52), 1.492, -0.10, 0, 0);
+    for (const xOff of [-0.075, 0.075]) {
+      P.add('turretDark', box(0.018, 0.19, 0.018), s * 0.47 + xOff, bodyY(0.52), 1.505, -0.10, 0, 0);
+    }
+  }
   // Cupola/periscope cadence remains low and asymmetric, but is large
   // enough to survive normal gameplay distance.  These windows sit on the
   // cupola rim rather than hovering above the roof.
@@ -2529,6 +2620,12 @@ function buildT80UNative2026(P) {
   P.add('turretCloth', box(1.20, 0.23, 0.15), 0, roofY(0.60), -1.205);
   P.addEquipment('turret', box(0.44, 0.16, 0.36), -0.74, roofY(0.59), -1.23, 0, -0.10, 0);
   P.addEquipment('turret', box(0.36, 0.14, 0.32), 0.72, roofY(0.58), -1.25, 0, 0.12, 0);
+  stowage(P, 'turret', rng, [
+    [-0.30, roofY(0.585), -1.66, 0.58, 0.16, 0.34],
+    [0.32, roofY(0.575), -1.68, 0.46, 0.14, 0.30],
+  ]);
+  P.addEquipment('turret', box(0.16, 0.20, 0.30), -0.88, roofY(0.60), -1.08, 0, -0.12, 0);
+  P.add('turretDark', box(0.14, 0.014, 0.28), -0.88, roofY(0.707), -1.08, 0, -0.12, 0);
   basket(P, 1.15, -1.96, -2.24, 0.25, 0.46, 0.5);
   P.add('turretDetail', box(0.05, 0.05, 0.72), 0.78, roofY(0.50), -0.95, 0, 0.5, 0);
   P.add('turretDetail', box(0.05, 0.05, 0.72), -0.78, roofY(0.50), -0.95, 0, -0.5, 0);
@@ -2555,10 +2652,22 @@ function buildT80UNative2026(P) {
     plantedCommanderStation: true,
     plantedSmokeFoundations: true,
     rearEquipmentReseated: true,
+    machineGunCount: 2,
+    machineGunTypes: Object.freeze(['NSVT Utyos', 'PK-pattern GPMG']),
+    gunFlankLightCount: 2,
+    rearSoftStowageBundles: 2,
+    rearAmmoBoxes: 1,
+  });
+  P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
+    profile: 't80u',
+    cassetteSeats: eraSurfaceSeats.length,
+    maximumSurfaceGapM: Math.max(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
+    minimumSurfaceGapM: Math.min(...eraSurfaceSeats.map((seat) => seat.surfaceGapM)),
   });
   P.decal('turret', 'number', '518', 0.28, [1.05, 0.28, -0.15], Math.PI / 2, 0, 0.1);
   P.decal('turret', 'number', '518', 0.28, [-1.05, 0.28, -0.15], -Math.PI / 2, 0, -0.1);
-  // 2A46M-1 at the documented 1.66 m axis: sealed embrasure roll, sleeve
+  // 2A46M-1 follows the lifted hull/turret package at its 1.84 m visual axis:
+  // sealed embrasure roll, sleeve
   // pair, fat evacuator in the sleeve gap, no muzzle brake/MRS.  The former
   // 0.10 m local seat put the complete rocking package 140 mm too low.
   P.gunG.position.set(0, 0.24, 0.55);

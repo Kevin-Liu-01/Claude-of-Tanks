@@ -27,6 +27,7 @@ import {
   loftHull,
   meshDomeCurved,
   ringSkin,
+  domeBoxPlanSeat,
   tubeGun,
   ruSaddle,
   ruBoot,
@@ -277,11 +278,12 @@ function addFacetedT80FrontERA(P, variant) {
 // angular T-90-family read requested by the owner. True armor stays in the
 // structural turret buckets; sights, RWS hardware, basket rails and stowage
 // use the equipment path so they cannot enlarge combat hit volumes.
-function addModernizedT80TurretSuite(P, variant) {
+function addModernizedT80TurretSuite(P, variant, dome) {
   const { box, cylX, cylY, torus } = KIT;
   const kursk = variant === 'kursk';
   const suite = kursk ? 't80u-kursk-t90-style' : 't80bv-ua-t90-style';
   P.turretG.userData.uaT80ModernizationSuite = suite;
+  const returnSurfaceGaps = [];
 
   // Joined faceted cheek carriers: their inner/rear edges are buried in the
   // casting, while the shared frontal datum stands proud of the cast skin.
@@ -298,12 +300,25 @@ function addModernizedT80TurretSuite(P, variant) {
       [-0.30, 0.46, -0.04, -0.03],
       [-0.80, 0.42, 0.08, 0.05],
     ]) {
-      P.add('turretDark', box(0.15, 0.15, 0.34), s * 1.08, y - 0.03, z,
-        -0.10, s * yaw, s * roll);
-      seatedCassette(P, 'turret', s * 1.22, y, z, 0.28, 0.22, 0.42,
-        [-0.10, s * yaw, s * roll], {
-          axis: 'x', contactSide: -s, embed: 0.055, painted: true,
+      const rotation = [-0.10, s * yaw, s * roll];
+      const cassetteSeat = domeBoxPlanSeat(dome.rings, dome.sz, {
+        x: s * 1.22, y, z, w: 0.28, h: 0.22, d: 0.42,
+        rx: rotation[0], ry: rotation[1], rz: rotation[2],
+        cz: dome.cz, overlap: 0.012,
+      });
+      const backingSeat = domeBoxPlanSeat(dome.rings, dome.sz, {
+        x: s * 1.08, y: y - 0.03, z, w: 0.15, h: 0.15, d: 0.34,
+        rx: rotation[0], ry: rotation[1], rz: rotation[2],
+        cz: dome.cz, overlap: 0.035,
+      });
+      P.add('turretDark', box(0.15, 0.15, 0.34),
+        backingSeat.x, y - 0.03, backingSeat.z, ...rotation);
+      seatedCassette(P, 'turret', cassetteSeat.x, y, cassetteSeat.z,
+        0.28, 0.22, 0.42,
+        rotation, {
+          axis: 'x', contactSide: -s, embed: 0.025, painted: true,
         });
+      returnSurfaceGaps.push(cassetteSeat.surfaceGapM - 0.025);
     }
 
     // Bustle shoulder and external service box. The carrier overlaps both the
@@ -344,6 +359,20 @@ function addModernizedT80TurretSuite(P, variant) {
     P.add('turret', box(0.36, 0.075, 0.38), x, 0.665, z, -0.04, ry, 0);
     P.add('turretDark', box(0.29, 0.018, 0.30), x, 0.709, z, -0.04, ry, 0);
   }
+
+  const frontReceipt = P.turretG.userData.uaT80FrontERAReceipt;
+  const surfaceGaps = [-0.040, -0.0325, ...returnSurfaceGaps];
+  P.turretG.userData.turretEraSurfaceSeatReceipt = Object.freeze({
+    profile: variant === 'kursk' ? 'ua_t80u_kursk' : 'ua_t80bv',
+    cassetteSeats: frontReceipt.cheekCassettes
+      + frontReceipt.mantletCassettes
+      + frontReceipt.shoulderReturnCassettes + 6,
+    facetedFrontSeats: frontReceipt.cheekCassettes + frontReceipt.mantletCassettes,
+    domeReturnSeats: returnSurfaceGaps.length,
+    crownBridgeSeats: 6,
+    maximumSurfaceGapM: Math.max(...surfaceGaps),
+    minimumSurfaceGapM: Math.min(...surfaceGaps),
+  });
 
   // Sosna-class gunner optic on the right-front crown.
   const sightX = 0.58;
@@ -1077,7 +1106,7 @@ function buildUAT80BV(P) {
       s * 0.86, 0.33, -0.88);
   }
 
-  addModernizedT80TurretSuite(P, 'bv');
+  addModernizedT80TurretSuite(P, 'bv', { rings, sz: 0.88, cz: 0.17 });
 
   // 2A46M-1 at the 1.69 axis: saddle, boot, sleeve, muzzle +6.27, bore
   // (gun local +0.06 compensates the 1.50 -> 1.44 ring drop — the world
@@ -1343,7 +1372,7 @@ function buildUAT80UKursk(P) {
       s * 0.88, 0.31, -0.83);
   }
 
-  addModernizedT80TurretSuite(P, 'kursk');
+  addModernizedT80TurretSuite(P, 'kursk', { rings, sz: 0.88, cz: 0.22 });
 
   // 2A46M-1 at the 1.70 axis, muzzle +6.145 world, true bore (gun local
   // +0.06 compensates the 1.50 -> 1.44 ring drop — world axis certified).

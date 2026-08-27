@@ -207,6 +207,54 @@ export function ringSkin(rings, y) {
   return r;
 }
 
+// Seat an oriented box on an elliptical cast-turret shell without changing
+// its authored angular layout. The returned centre puts the box's innermost
+// plan corner a small `overlap` inside the measured dome, so ERA reads as a
+// supported outer layer instead of either floating clear or disappearing
+// through the casting. This is a build-time geometry helper, never a render
+// loop allocation path.
+export function domeBoxPlanSeat(rings, sz, o) {
+  const cx = o.cx ?? 0;
+  const cz = o.cz ?? 0;
+  const dx = o.x - cx;
+  const dz = o.z - cz;
+  const angle = Math.atan2(dz, dx);
+  const r = Math.max(1e-5, ringSkin(rings, o.y));
+  const a = r;
+  const b = Math.max(1e-5, r * sz);
+  const ray = 1 / Math.sqrt((Math.cos(angle) / a) ** 2 + (Math.sin(angle) / b) ** 2);
+  const surfaceX = cx + Math.cos(angle) * ray;
+  const surfaceZ = cz + Math.sin(angle) * ray;
+  let nx = (surfaceX - cx) / (a * a);
+  let nz = (surfaceZ - cz) / (b * b);
+  const nLen = Math.hypot(nx, nz) || 1;
+  nx /= nLen;
+  nz /= nLen;
+
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+    o.rx ?? 0, o.ry ?? 0, o.rz ?? 0, o.order ?? 'XYZ'));
+  const normal = new THREE.Vector3(nx, 0, nz);
+  const axisX = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+  const axisY = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+  const axisZ = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+  const planHalfExtent = Math.abs(normal.dot(axisX)) * (o.w / 2)
+    + Math.abs(normal.dot(axisY)) * (o.h / 2)
+    + Math.abs(normal.dot(axisZ)) * (o.d / 2);
+  const overlap = o.overlap ?? 0.01;
+  const offset = Math.max(0, planHalfExtent - overlap + (o.standoff ?? 0));
+  return Object.freeze({
+    x: surfaceX + nx * offset,
+    z: surfaceZ + nz * offset,
+    surfaceX,
+    surfaceZ,
+    nx,
+    nz,
+    planHalfExtent,
+    overlap,
+    surfaceGapM: offset - planHalfExtent,
+  });
+}
+
 // r15 item 6 (t72b3m): chamfered roof plate — same outer face planes and
 // top/bottom as a plain box, but the plan corners are cut 45° by c (center
 // box + two trapezoid prisms). Every certified face keeps a full-width /
