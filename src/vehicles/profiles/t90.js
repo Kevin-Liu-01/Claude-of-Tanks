@@ -1114,19 +1114,10 @@ function buildT90AVladimirLegacy(P) {
   // The former 1.82 m centre plateau and two 1.90+ m sliver frames were the
   // fixed duplicate turret visible in the owner's yaw screenshot. They are
   // deliberately absent; real shallow engine-deck fittings remain below.
-  // The source envelope in this station belongs to an OPEN fender/service
-  // frame (long side rails plus one transverse tie), not to a solid deck
-  // slab. Reconstruct that load path with narrow seated members: it keeps
-  // the real hull profile while leaving the entire turret footprint open at
-  // yaw. Every upright enters the 1.47..1.51 m deck and every upper member
-  // meets another rail; none is a silhouette-only floater.
-  for (const s of [-1, 1]) {
-    P.add('hull', box(0.09, 0.07, 1.80), s * 1.55, 1.785, -1.82);
-    for (const z of [-2.60, -1.82, -1.04]) {
-      P.add('hull', box(0.09, 0.29, 0.08), s * 1.55, 1.64, z);
-    }
-  }
-  P.add('hull', box(3.10, 0.07, 0.08), 0, 1.785, -1.82);
+  // The recovered high side frame was once reproduced in rig_hull.  The
+  // source silhouette is turret stowage hardware, so its rotating rebuild
+  // is authored after the turret pivot below; leaving even the transverse
+  // tie here would create a fixed bar through the casting at non-zero yaw.
   // Two small asymmetric source service heads keep their measured stations.
   // Each receives a narrow post buried through the local deck, so the
   // high, thin source silhouette is preserved without a floating plate.
@@ -1253,19 +1244,9 @@ function buildT90AVladimirLegacy(P) {
   // (r13e clip audit: the r12 ground skids at ±1.752 deleted — the widened
   // track band grounds at 1.74..1.77 itself and the skids sat INSIDE the
   // shoe lane)
-  // LEFT tall skirt-front cassette (rTAIL r13b RE-SEAT): the r12 z 0.0..0.6
-  // guess put its 1.80 top into six side_HULL cols where the ref deck line
-  // reads 1.42-1.45 (err 0.17-0.19 — the round's worst side_hull band);
-  // moved into the raised-band z-window like the right bin (mirror class).
-  P.add('hull', box(0.19, 0.50, 0.60), -1.705, 1.55, -1.30);
-  // rTAIL r13: RIGHT rear-flank bin — ref front cols +1.643..+1.728 read
-  // 1.69..1.786 (kitMerged hull mass x 1.60..1.722, y 1.54..1.80,
-  // z -1.267..-1.102; the r12 "right stays at the lip line" read missed
-  // it). Top 1.80 hides inside the 1.81 raised-deck side band.
-  // (r13c: stepped — ref front tops descend 1.786@1.643 / 1.712@1.685 /
-  // 1.69@1.728, the flat 1.80 top read 0.11 proud at the outer edge)
-  P.add('hull', box(0.07, 0.25, 0.165), 1.635, 1.665, -1.185);
-  P.add('hull', box(0.05, 0.16, 0.165), 1.695, 1.62, -1.185);
+  // The asymmetric side heads at this station were part of that same fused
+  // turret export.  Their turret-owned replacements are seated with the
+  // rail frame below instead of remaining fixed above the fenders.
   ruSkirtBand(P, { x: 1.78, z0: -4.00, z1: 1.70, yTop: 1.30, yBot: 0.78, lipY: 0.87, firstYBot: 0.78, firstLipY: 0.81, panels: 7 });
   // K-5 heavy course (rTAIL r13 re-decode): the ref outer course band is
   // TALLER and REARWARD of the r12 seat — AddOnWheel verts at x 1.82..1.89
@@ -1282,6 +1263,11 @@ function buildT90AVladimirLegacy(P) {
 
   // ---- turret: dome to the normalized 2.19-2.23 roof, pano spike 2.60 ----
   P.turretG.position.set(0, 1.50, -0.75);
+  // Unequal armored side heads retain Vladimir's recovered asymmetry, but
+  // their inner faces now penetrate the cheek instead of hovering outside
+  // the hull. They share the rotating owner with the bustle hardware.
+  P.add('turret', box(0.19, 0.38, 0.50), -1.44, 0.12, -0.55, 0, 0.08, 0);
+  P.add('turret', box(0.17, 0.24, 0.30), 1.44, 0.15, -0.44, 0, -0.08, 0);
   // r13b: apex squashed 1.98 -> 1.95 (ref front center cols ±0.24..0.41
   // read 1.892-1.914; heightM lives on the sight block, not the dome)
   const rings = [[1.38, 0.10], [1.50, 0.18], [1.35, 0.26], [1.05, 0.32], [0.72, 0.35], [0.40, 0.36], [0.15, 0.36], [0.02, 0.36]];
@@ -1349,6 +1335,13 @@ function buildT90AVladimirLegacy(P) {
     eyeKit: true, eyeRound: true, eyeScale: 1.50, eyeX: 0.60, eyeZ: 1.24,
     k5Len: 0.85, k5T: 0.50, k5Y: 0.05 + cheekRiseM,
     k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07 + cheekRiseM,
+    k5MirrorFlankTiles: true,
+    k5FlushFlankTiles: true,
+    k5TileOut: -0.03,
+    k5TileDepth: 0.11,
+    k5TilePitch: -1.05,
+    k5TileYaw0: 0.36,
+    k5TileYawStep: 0.12,
   };
   eraRuCheeks(P, p5, 'k5');
   // Vladimir's OTShU-1-7 pair belongs beside the gun, not in the former roof
@@ -1387,6 +1380,10 @@ function buildT90AVladimirLegacy(P) {
     edgeMatched: cheekBaseY === lowerCheekTopY && cheekBasePlanScale === lowerCheekTopPlanScale,
     cheekRiseM,
     eraRaisedM: cheekRiseM,
+    eraFlankBanksMirrored: true,
+    eraFlankTileInsetM: 0.03,
+    eraFlankTileDepthM: 0.11,
+    eraFlankTilePitchRad: -1.05,
     shtoraCenterY,
     shtoraSupportY,
     shtoraLoweredM: cheekRiseM,
@@ -5446,6 +5443,54 @@ function buildT90AVladimir(P) {
     [-2.30, 0.06, 0.52, -0.84, 0.84, -0.70, 0.70, -0.77, 0.77],
     [-2.72, 0.02, 0.46, -0.66, 0.66, -0.54, 0.54, -0.61, 0.61],
   ]));
+  // Seat the recovered side rails directly on the bustle rather than on one
+  // constant-X cage line. Each short course follows the faceted side taper;
+  // its inner 9.5 mm enters the armor skin, adjacent courses overlap at their
+  // joints, and every upright intersects both its rail and the bustle wall.
+  const sideRailY = 0.34;
+  const sideRailOutsetM = 0.018;
+  const sideRailThicknessM = 0.055;
+  const sideRailCourse = Object.freeze([
+    [-0.68, 1.230],
+    [-1.10, 1.226],
+    [-1.70, 1.042],
+    [-2.30, 0.830],
+    [-2.60, 0.700],
+  ]);
+  for (const s of [-1, 1]) {
+    const points = sideRailCourse.map(([z, shellX]) => ({
+      x: s * (shellX + sideRailOutsetM), z,
+    }));
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      P.add('turretDetail', KIT.box(
+        sideRailThicknessM,
+        sideRailThicknessM,
+        Math.hypot(dx, dz) + 0.035,
+      ), (a.x + b.x) * 0.5, sideRailY, (a.z + b.z) * 0.5,
+      0, Math.atan2(dx, dz), 0);
+    }
+    for (const { x, z } of points) {
+      P.add('turretDetail', KIT.box(sideRailThicknessM, 0.24, sideRailThicknessM),
+        x, 0.31, z);
+    }
+  }
+  P.turretG.userData.t90aVladimirSideRailReceipt = Object.freeze({
+    owner: 'rig_turret',
+    railY: sideRailY,
+    railZRange: [sideRailCourse.at(-1)[0], sideRailCourse[0][0]],
+    supportStations: sideRailCourse.map(([z, shellX]) => [z, shellX]),
+    segmentsPerSide: sideRailCourse.length - 1,
+    shellPenetrationM: sideRailThicknessM * 0.5 - sideRailOutsetM,
+    maxOutsetM: sideRailOutsetM,
+    hullRailParts: 0,
+    bustleAligned: true,
+    flushToBustle: true,
+    articulated: true,
+  });
   for (const [z, w, d, y] of [
     [-0.91, 1.84, 0.30, 0.62],
     [-1.35, 1.70, 0.34, 0.64],
@@ -5462,7 +5507,11 @@ function buildT90AVladimir(P) {
       [0.82, -2.08, 0.34, 0.24],
     ]) {
       P.add('turret', KIT.box(0.20, 0.30, d), s * x, 0.34, z, 0, -s * yaw, 0);
-      P.add('turretDark', KIT.box(0.016, 0.23, d * 0.78), s * (x + 0.11), 0.34, z, 0, -s * yaw, 0);
+      // Recess the dark service face into the bin's outer armor plane.  Its
+      // former +110 mm seat sat beyond the rotated shell and read as a loose
+      // black rectangle; +96 mm keeps the seam visible while its full rear
+      // face remains physically captured by the bin.
+      P.add('turretDark', KIT.box(0.012, 0.21, d * 0.72), s * (x + 0.096), 0.34, z, 0, -s * yaw, 0);
     }
     P.add('turretDetail', KIT.box(0.035, 0.38, 0.035), s * 0.50, 0.30, -2.69);
     P.add('turretDetail', KIT.box(0.035, 0.035, 0.64), s * 0.50, 0.28, -2.40);
@@ -5473,6 +5522,13 @@ function buildT90AVladimir(P) {
   for (const y of [0.18, 0.29, 0.40]) {
     P.add('turretDetail', KIT.box(0.98, 0.022, 0.022), 0, y, -2.744);
   }
+  P.turretG.userData.t90aVladimirBustleFaceReceipt = Object.freeze({
+    outerFaceOffsetM: 0.096,
+    faceThicknessM: 0.012,
+    faceHeightM: 0.21,
+    depthCoverage: 0.72,
+    seated: true,
+  });
   // Vladimir's recovered transom narrows to its own drum/rack stations.
   // The generic family stern face widened station 0 by 17.5% and covered
   // that identity, so the measured legacy transom remains authoritative.

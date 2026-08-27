@@ -1960,9 +1960,30 @@ export function eraRuCheeks(P, p, kind) {
       }
       } // end !k5LeafOff (TIP §5.29)
       for (let i = 0; i < 3; i++) {
-        const tf = s * (0.12 + i * 0.17);
+        const tileAngle = 0.12 + i * 0.17;
+        // Some recovered T-90 prints encoded the second flank bank by
+        // negating the arc angle.  That keeps cos(t) positive, so all six
+        // blocks land on vehicle-right (three of them behind the trunnion).
+        // Opt-in mirroring places the opposite bank on the actual left
+        // cheek while preserving the legacy byte layout for every caller.
+        const tf = p.k5MirrorFlankTiles
+          ? (s > 0 ? tileAngle : Math.PI - tileAngle)
+          : s * tileAngle;
         const tY = p.k5TileY ?? 0.26;
-        put(tf, tY, 0.34, 0.30, 0.07, -0.08, 'turretTrack', skinD(tf, tY) + 0.02);
+        const tileDist = skinD(tf, tY) + (p.k5TileOut ?? 0.02);
+        if (p.k5FlushFlankTiles) {
+          // Fit the broad rear face to the upper cheek rather than standing
+          // the cassette vertically beside it.  The pitch/yaw progression
+          // follows the faceted shoulder normals; a deeper cassette buries
+          // its inner course through the armor skin and removes the visible
+          // air seam without increasing the exterior standoff.
+          const tileYaw = s * ((p.k5TileYaw0 ?? 0.36) + i * (p.k5TileYawStep ?? 0.12));
+          P.add('turretTrack', box(0.34, 0.30, p.k5TileDepth ?? 0.11),
+            Math.cos(tf) * tileDist, tY, Math.sin(tf) * tileDist + (p.rCz ?? 0),
+            p.k5TilePitch ?? -1.05, tileYaw, 0);
+        } else {
+          put(tf, tY, 0.34, 0.30, 0.07, -0.08, 'turretTrack', tileDist);
+        }
       }
     }
   } else if (kind === 'k1') {
