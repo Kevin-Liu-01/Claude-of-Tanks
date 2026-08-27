@@ -62,6 +62,10 @@ strict TypeScript owners:
 - `src/game/deferredCombatWarmRuntime.ts` owns the revision-bound deployment
   queue: hidden opponent visuals, opening FX, bot routes, terrain lookahead,
   rare shader work, cooperative yields, and stale-rematch cancellation;
+- `src/game/soloBattleDeploymentRuntime.ts` owns the covered solo warm from
+  final camouflage through exact visual cohorts, terrain, FX, forward programs,
+  cascaded shadows, post passes, and the first production-quality reveal frame;
+  generation cancellation and failure fallback remain inside that boundary;
 - `src/game/studioAccess.ts` owns retryable Studio/FX acquisition, the stable
   render-loop proxy, and transfer of temporary F8 ownership to the full mode;
 - `src/fx/fxRuntimeAccess.ts` independently owns combat-effects code preload,
@@ -152,6 +156,10 @@ commits preserve rendering and gameplay; behavior changes land separately.
 separates fixed-step solo interpolation from already-smoothed network poses and
 concentrates spotting residency, track-detail cadence, vehicle FX, and light
 prop contacts behind one allocation-bounded interface.
+
+`src/game/soloBattleDeploymentRuntime.ts` is the covered entry owner. The
+composition root supplies concrete capabilities and receives only a generation
+and reveal receipt; it must not duplicate warm ordering or shader/shadow policy.
 
 ### Boot
 

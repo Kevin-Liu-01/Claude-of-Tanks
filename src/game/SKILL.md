@@ -46,6 +46,9 @@ concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
 garage dwell never constructs a battlefield. `battleEntryLifecycle.ts` owns
 entry exclusivity across every mode and the covered default-frame reveal gate.
+`soloBattleDeploymentRuntime.ts` owns the ordered solo deployment warm from
+final camouflage through exact roster, terrain, FX, shader, CSM, post, and
+reveal preparation; callers receive only generation and reveal receipts.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -74,6 +77,8 @@ bindings and device modes. Route rendered tank updates through
 `battlePresentationRuntime.ts`; never apply the solo interpolation buffer to
 already-smoothed network poses. Bot changes require both focused AI tests and
 battle probes.
+Route covered solo warm changes through `soloBattleDeploymentRuntime.ts`; do
+not put shader, effect, shadow, or reveal ordering back into `main.js`.
 Workshop changes must preserve the typed optimization receipt and pass the
 phase resource gate; do not re-enable shadows on every tiny static fitting.
 

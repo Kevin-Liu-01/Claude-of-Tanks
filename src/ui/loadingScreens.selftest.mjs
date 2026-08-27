@@ -123,6 +123,9 @@ const battleWarmSource = await readFile(
 const deploymentShadowWarmSource = await readFile(
   new URL('../engine/deploymentShadowWarm.ts', import.meta.url), 'utf8',
 );
+const soloDeploymentSource = await readFile(
+  new URL('../game/soloBattleDeploymentRuntime.ts', import.meta.url), 'utf8',
+);
 const battleVisualStreamerSource = await readFile(
   new URL('../game/battleVisualStreamer.ts', import.meta.url), 'utf8',
 );
@@ -198,9 +201,11 @@ assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(
   'opening combat warm must not force ANGLE program-completion queries');
 assert.match(openingWarmBody, /createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
   'fallback opening warm must still bind FX through real isolated renders');
-const coveredSubmissionBody = mainSource.slice(
-  mainSource.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
-  mainSource.indexOf('trace.deploymentCompileMs'),
+const coveredSubmissionBody = soloDeploymentSource.slice(
+  soloDeploymentSource.indexOf(
+    'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
+  ),
+  soloDeploymentSource.indexOf('trace.deploymentCompileMs'),
 );
 assert.match(coveredSubmissionBody,
   /forwardProgramWarm\.compile\(scene\)[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
@@ -250,20 +255,22 @@ assert.ok(deferredEnemyAt >= 0
   && deferredTerrainAt > deferredNavigationAt
   && deferredRareAt > deferredTerrainAt,
 'opponent receipts and fallback opening/rare work must retain countdown order');
-const coveredFxBody = mainSource.slice(
-  mainSource.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
-  mainSource.indexOf('await battleEntryLifecycle.primeReveal()'),
+const coveredFxBody = soloDeploymentSource.slice(
+  soloDeploymentSource.indexOf(
+    'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
+  ),
+  soloDeploymentSource.indexOf('await entryLifecycle.primeReveal()'),
 );
 assert.match(coveredFxBody,
-  /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*combatDestructionEffectsWarmed = true;/,
+  /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*setDestructionWarmed\(true\);/,
   'a successful covered FX bind must prevent duplicate countdown staging');
-const revealWarmBody = mainSource.slice(
-  mainSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')"),
-  mainSource.indexOf('entryRevealPrimed = true'),
+const revealWarmBody = soloDeploymentSource.slice(
+  soloDeploymentSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')"),
+  soloDeploymentSource.indexOf('revealPrimed = true'),
 );
-const shadowWarmAt = revealWarmBody.indexOf('deploymentShadowWarm.prime(coveredYield)');
+const shadowWarmAt = revealWarmBody.indexOf('getDeploymentShadowWarm().prime(coveredYield)');
 const postWarmAt = revealWarmBody.indexOf('post.warmFirstFrame(coveredYield)');
-const revealFrameAt = revealWarmBody.indexOf('battleEntryLifecycle.primeReveal()');
+const revealFrameAt = revealWarmBody.indexOf('entryLifecycle.primeReveal()');
 assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
   'solo entry must split cascade and post warming before the first full deployment frame');
 assert.match(mainSource,

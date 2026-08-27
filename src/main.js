@@ -50,15 +50,8 @@ import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
-import {
-  createForwardProgramWarmOwner,
-  snapshotRendererPrograms,
-  warmNewRendererProgramUniforms,
-} from './engine/programWarm.ts';
-import {
-  createDeploymentForwardWarmBatches,
-  createIsolatedForwardWarmBatches,
-} from './engine/deploymentWarm.ts';
+import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
+import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { createDeploymentShadowWarmOwner } from './engine/deploymentShadowWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.js';
@@ -94,6 +87,7 @@ import { createKillcamAccess } from './game/killcamAccess.ts';
 import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattlePresentationRuntime } from './game/battlePresentationRuntime.ts';
+import { createSoloBattleDeploymentRuntime } from './game/soloBattleDeploymentRuntime.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -1744,6 +1738,38 @@ const battlePresentation = createBattlePresentationRuntime({
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
 });
+// The opaque deployment transition has one typed owner. main.js coordinates
+// acquisition and phase changes; this runtime owns the exact shader, shadow,
+// terrain, FX and first-frame warm order plus cancellation/fallback policy.
+const soloBattleDeployment = createSoloBattleDeploymentRuntime({
+  game,
+  renderer,
+  scene,
+  camera,
+  battleLoad,
+  battleWarm,
+  armorAimOverlay,
+  forwardProgramWarm,
+  combatWarm,
+  post,
+  lighting,
+  createShell,
+  getWorld: () => world,
+  getBattleVisuals: () => {
+    if (!battleVisuals) throw new Error('battle visual streamer was not loaded');
+    return battleVisuals;
+  },
+  getFx: requireFxRuntime,
+  getWarmRender: () => warmRender,
+  getDeploymentShadowWarm: () => deploymentShadowWarm,
+  getEntryLifecycle: () => battleEntryLifecycle,
+  prepareRevealCamera: prepareBattleRevealCamera,
+  getGeneration: () => battleWarmGeneration,
+  advanceGeneration: () => ++battleWarmGeneration,
+  setPending: (pending) => { battleWarmPending = pending; },
+  setDestructionWarmed: (value) => { combatDestructionEffectsWarmed = value; },
+  devTrace,
+});
 // FEEL r12: perf overlay toggle works in every phase (garage included)
 input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); });
 
@@ -1936,207 +1962,14 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   });
   bltStage('bake');
 
-  // Complete the exact roster visuals and opening-critical caches while the
-  // opaque transition owns the screen. Rare variants continue in bounded
-  // slices during the frozen deployment countdown; rollout cannot release
-  // until that queue has produced its receipt.
+  // Finish camouflage, roster visuals, terrain, shader programs, effects,
+  // shadows and the exact reveal frame behind the opaque loader. The typed
+  // owner contains ordering, cancellation and fail-soft fallback policy.
   battleLoad.progress(0.90, 'Preparing deployment');
-  const entryCamoSweep = camoSweepP;
-  let entryRevealPrimed = false;
-  const finishEntryWarm = async () => {
-    const warmGeneration = ++battleWarmGeneration;
-    battleWarmPending = true;
-    await (async () => {
-      const countdownWarmStartedAt = performance.now();
-      const trace = { done: false, phase: 'transition', stages: {} };
-      if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
-      devTrace?.mark('battle:entry-warm-start', {});
-      let markedAt = performance.now();
-      const mark = (name) => {
-        const now = performance.now();
-        trace.stages[name] = Math.round(now - markedAt);
-        markedAt = now;
-      };
-      await entryCamoSweep;
-      if (warmGeneration !== battleWarmGeneration) return;
-      mark('camo');
-      battleLoad.progress(0.91, 'Finishing camouflage');
-      // The branded transition is opaque but still animated. A 24 ms slice
-      // preserves regular progress paints while avoiding the old interactive
-      // 8 ms duty cycle, which added several seconds of pure rAF waiting once
-      // this work moved out of the visible countdown.
-      const coveredYield = createOpaqueLoadingYielder(18, 80);
-      await battleVisuals.stream((ent) => ent.team === 'player', coveredYield, (fraction) => {
-        battleLoad.progress(0.91 + fraction * 0.02, 'Preparing allied vehicles');
-      });
-      if (warmGeneration !== battleWarmGeneration) return;
-      mark('allyVisuals');
-      // Build opponents under the still-opaque transition, but keep every
-      // root detached after its scoped compile. Deferring this cohort until
-      // the visible countdown let ANGLE carry its link queue into a later rAF
-      // (240-525 ms visible freezes). The covered deployment frame below now
-      // absorbs that completion before the loader can reveal a pixel.
-      battleLoad.progress(0.94, 'Preparing opposing vehicles');
-      const enemyProgramBaseline = snapshotRendererPrograms(renderer);
-      await battleVisuals.stream(
-        (ent) => ent.team === 'enemy', coveredYield, (fraction) => {
-          battleLoad.progress(0.94 + fraction * 0.02, 'Preparing opposing vehicles');
-        }, true,
-      );
-      trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
-        renderer,
-        enemyProgramBaseline,
-        coveredYield,
-      );
-      if (warmGeneration !== battleWarmGeneration) return;
-      mark('enemyVisuals');
-      battleLoad.progress(0.965, 'Warming suspension terrain');
-      await battleWarm.warmBattleTerrainTiles({
-        game, world, yieldForBudget: coveredYield,
-      });
-      if (warmGeneration !== battleWarmGeneration) return;
-      mark('terrainGrid');
-      // Render exactly the deployment camera once while the roster screen is
-      // still opaque. This single real frame compiles the visible world,
-      // roster, CSM and post paths that the countdown will actually use. The
-      // old opening warm exhaustively traversed every off-camera node and all
-      // shadow variants before revealing anything, then rendered this same
-      // frame anyway. Re-cover rendering after the receipt so later budget
-      // yields do not redraw the whole battlefield behind the loader.
-      battleLoad.progress(0.968, 'Priming deployment view');
-      // Resume the normal-quality renderer before this first real battle
-      // frame. The previous path primed once while adaptive accounting was
-      // suspended, resumed it later, then rendered the identical view again.
-      // One final-quality frame is sufficient and remains fully covered.
-      post.setAdaptiveSuspended(false);
-      mark('restoreRenderer');
-      prepareBattleRevealCamera();
-      // Submit the exact visible deployment programs before the first scene
-      // render, then give ANGLE two painted loader frames to link them in the
-      // background. Do not query completion: KHR_parallel_shader_compile is
-      // unreliable on affected Metal drivers and can itself block for many
-      // seconds. The first covered battle frame still renders the identical
-      // final-quality CSM/post scene; this only moves driver submission ahead
-      // of its onFirstUse queue.
-      const deploymentCompileStartedAt = performance.now();
-      const deploymentProgramBaseline = snapshotRendererPrograms(renderer);
-      const restoreArmorWarmVisibility = armorAimOverlay.warm();
-      const fx = requireFxRuntime();
-      const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
-        game, fx, post, camera, createShell,
-      });
-      const fxForwardWarmBatches = [];
-      try {
-        forwardProgramWarm.compile(scene);
-        // compile() submits programs but does not guarantee their first
-        // material/state bind. Keep the staged pools hidden between private
-        // one-renderable binds so a driver linker flush cannot escape into
-        // the visible deployment countdown.
-        fx.group.visible = false;
-        for (const batch of createIsolatedForwardWarmBatches({
-          scene, root: fx.group, warmRender, cohortSize: 1,
-        })) {
-          fxForwardWarmBatches.push(batch);
-          await coveredYield(true);
-        }
-      } catch (_) { /* first render fallback */ }
-      finally {
-        combatFxSubmission.restore();
-        restoreArmorWarmVisibility();
-      }
-      // This exact covered submission includes the opening volley, tracer,
-      // destruction, prop-break and crush pools after their shipped textures
-      // were uploaded above. Do not replay the legacy opening/destruction
-      // generators during the visible countdown; they remain fallbacks for
-      // deterministic captures and direct debug entry that bypass this path.
-      if (combatFxSubmission.staged) {
-        combatWarm.markOpeningReady();
-        combatDestructionEffectsWarmed = true;
-        if (typeof window !== 'undefined') {
-          window.__COMBAT_OPENING_WARM = {
-            covered: true,
-            batches: fxForwardWarmBatches.length,
-            totalMs: Math.round(performance.now() - deploymentCompileStartedAt),
-          };
-        }
-      }
-      trace.deploymentCompileMs = Math.round(performance.now() - deploymentCompileStartedAt);
-      trace.deploymentFxForwardWarm = {
-        batches: fxForwardWarmBatches.length,
-        maxMs: Math.max(0, ...fxForwardWarmBatches.map((batch) => batch.ms)),
-        totalMs: fxForwardWarmBatches.reduce((sum, batch) => sum + batch.ms, 0),
-      };
-      await nextFrame();
-      await nextFrame();
-      trace.deploymentProgramUniformWarm = await warmNewRendererProgramUniforms(
-        renderer,
-        deploymentProgramBaseline,
-        coveredYield,
-      );
-      battleLoad.progress(0.969, 'Priming deployment shadows');
-      trace.deploymentShadowWarm = await deploymentShadowWarm.prime(coveredYield);
-      mark('shadowMaps');
-      const forwardBatches = [];
-      for (const batch of createDeploymentForwardWarmBatches({
-        scene,
-        csmLights: lighting?.csm?.lights,
-        worldGroup: world?.group,
-        playerRoot: game.player?.visual?.root,
-        warmRender,
-      })) {
-        forwardBatches.push(batch);
-        await coveredYield(true);
-      }
-      const forwardBatchMs = forwardBatches.map((batch) => batch.ms);
-      trace.deploymentForwardWarm = {
-        batches: forwardBatches,
-        maxMs: forwardBatchMs.length ? Math.max(...forwardBatchMs) : 0,
-        totalMs: forwardBatchMs.reduce((sum, ms) => sum + ms, 0),
-      };
-      mark('forwardPrograms');
-      // Garage boot primes the post stack against the showroom, but the first
-      // battlefield introduces terrain/vegetation depth, normal and color
-      // inputs plus a different light program family. Asking the complete
-      // composer to discover all of that in one reveal frame produced the
-      // remaining 0.5-1.1 s cold freeze. Exercise the identical enabled pass
-      // set one pass at a time while the loader is opaque; the final composed
-      // frame below is unchanged, only its first-use work is distributed.
-      trace.deploymentPostWarm = await post.warmFirstFrame(coveredYield);
-      mark('postPasses');
-      battleLoad.progress(0.97, 'Priming deployment view');
-      await battleEntryLifecycle.primeReveal();
-      entryRevealPrimed = true;
-      battleEntryLifecycle.coverRendering();
-      if (warmGeneration !== battleWarmGeneration) return;
-      mark('openingFrame');
-      // The exact shipped atlases were decoded, installed and uploaded in
-      // parallel with world construction above. Program submission and
-      // isolated effect binding move to the frozen visible countdown below:
-      // no weapon can fire there, and rollout cannot release early.
-      battleLoad.progress(0.975, 'Combat effects ready');
-      mark('combatTextures');
-      if (warmGeneration !== battleWarmGeneration) return;
-      trace.totalMs = Math.round(performance.now() - countdownWarmStartedAt);
-      trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS : null;
-      trace.doneBeforeRollout = game.phase === 'battle' && game.preBattleS > 0;
-      trace.done = true;
-      if (typeof window !== 'undefined') window.__BATTLE_COUNTDOWN_WARM = trace;
-      devTrace?.mark('battle:entry-warm-end', { totalMs: trace.totalMs });
-    })().catch((error) => {
-      if (warmGeneration === battleWarmGeneration && typeof window !== 'undefined') {
-        window.__BATTLE_COUNTDOWN_WARM = {
-          done: true,
-          doneBeforeRollout: false,
-          error: String(error),
-        };
-      }
-    });
-    // The opening-critical subset is ready. Keep battleWarmPending armed
-    // until the rare/full-quality deployment queue below finishes; the
-    // visible countdown may advance but cannot release controls early.
-    return warmGeneration;
-  };
-  const entryWarmGeneration = await finishEntryWarm();
+  const {
+    generation: entryWarmGeneration,
+    revealPrimed: entryRevealPrimed,
+  } = await soloBattleDeployment.warm(camoSweepP);
   bltStage('warm');
   // Start the cheap ambient graph before reveal as well. openBattle keeps its
   // idempotent calls for debug/direct entry paths, but the normal player path

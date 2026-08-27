@@ -72,3 +72,4 @@ runtime documents remain authoritative for behavior.
 - [0060 — The composition root delegates browser lifecycles](0060-composition-root-delegates-browser-lifecycles.md)
 - [0061 — Sleep the settled Garage frame clock](0061-sleep-the-settled-garage-frame-clock.md)
 - [0062 — Batch static presentation and pack world data](0062-static-presentation-and-packed-world-data.md)
+- [0063 — Covered solo deployment warming has one typed owner](0063-covered-solo-deployment-warm-owner.md)

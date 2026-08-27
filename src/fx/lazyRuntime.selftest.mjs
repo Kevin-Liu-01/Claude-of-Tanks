@@ -16,6 +16,9 @@ const studioAccess = await readFile(new URL('../game/studioAccess.ts', import.me
 const deferredWarm = await readFile(
   new URL('../game/deferredCombatWarmRuntime.ts', import.meta.url), 'utf8',
 );
+const soloDeployment = await readFile(
+  new URL('../game/soloBattleDeploymentRuntime.ts', import.meta.url), 'utf8',
+);
 const battleIntentRuntime = await readFile(
   new URL('../game/battleIntentRuntime.ts', import.meta.url), 'utf8',
 );
@@ -129,11 +132,13 @@ if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
 if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.test(main)) {
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
-const coveredWarm = main.slice(
-  main.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
-  main.indexOf('await battleEntryLifecycle.primeReveal()'),
+const coveredWarm = soloDeployment.slice(
+  soloDeployment.indexOf(
+    'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
+  ),
+  soloDeployment.indexOf('await entryLifecycle.primeReveal()'),
 );
-if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*combatDestructionEffectsWarmed = true;/.test(coveredWarm)) {
+if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*setDestructionWarmed\(true\);/.test(coveredWarm)) {
   throw new Error('the exact covered FX bind must retire duplicate opening/destruction countdown work');
 }
 if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
