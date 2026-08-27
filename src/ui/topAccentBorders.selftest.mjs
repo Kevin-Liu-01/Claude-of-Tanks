@@ -29,6 +29,8 @@ absent(settings, /\.cot-set-panel::before\{/,
   'Settings does not draw a decorative top rule');
 absent(hud, /\.cot-spec(?:\{[^}]*border-top|::before\{)/,
   'the spectator panel uses one consistent outline');
+absent(hud, /\.cot-top \.sc(?:\.[a-z]+)?::after\{/,
+  'the battle score plate does not draw colored team underlines');
 absent(endScreen, /\.es-debrief\.(?:personal|teams)\{[^}]*border-top/,
   'debrief cards use one consistent outline');
 absent(killcam, /\.cot-kc-(?:killer|annot)::before\{/,

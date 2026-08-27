@@ -360,9 +360,6 @@ const HUD_CSS = `
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
 .cot-top .sc{display:grid;grid-template-rows:10px 1fr 7px;place-items:center;gap:1px;
   min-width:0;padding:6px 7px 5px;}
-.cot-top .sc::after{content:"";position:absolute;left:7px;right:7px;bottom:0;height:2px;}
-.cot-top .sc.ally::after{background:linear-gradient(90deg,transparent,rgba(126,232,126,.86));}
-.cot-top .sc.enemy::after{background:linear-gradient(90deg,rgba(240,90,90,.86),transparent);}
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:7.5px;font-weight:800;
   line-height:1;letter-spacing:.2em;text-transform:uppercase;color:#8f9eaa;white-space:nowrap;}
 .cot-top .sc.ally .team-label{color:rgba(161,225,170,.76);}
