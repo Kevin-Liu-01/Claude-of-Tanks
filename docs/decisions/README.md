@@ -56,3 +56,4 @@ runtime documents remain authoritative for behavior.
 - [0044 — Baked minimaps have one typed async owner](0044-typed-minimap-asset-lifecycle.md)
 - [0045 — Combat effects have one retryable runtime owner](0045-typed-fx-runtime-lifecycle.md)
 - [0046 — Killcam has one retryable runtime owner](0046-typed-killcam-runtime-lifecycle.md)
+- [0047 — Player battle actions have one typed policy owner](0047-typed-player-battle-actions.md)

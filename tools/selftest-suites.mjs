@@ -188,6 +188,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/equipment.selftest.mjs',
     'src/game/consumables.selftest.mjs',
     'src/game/input.selftest.mjs',
+    'src/game/playerBattleActions.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
     'src/game/aimController.selftest.mjs',
     'src/game/eraActivation.selftest.mjs',

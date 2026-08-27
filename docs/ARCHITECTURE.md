@@ -881,6 +881,12 @@ construction gate. Module and initializer failures are independently retryable;
 publishes a stable inactive presentation facade. After construction, solo
 fixed-step capture is wired directly to the live killcam implementation.
 
+`src/game/playerBattleActions.ts` owns live ammunition cards, shell selection,
+consumable cooldowns/effects, special actions, and multiplayer command routing.
+It receives combat rules and the network lane as ports, imports no renderer or
+combat implementation, and is the single action-policy interface used by HUD,
+fixed-step input, capture, and network entry.
+
 ### 3.9 audio — `src/audio/audio.js` (+ `src/audio/voices.js`)
 ```js
 export function createAudio() => Audio

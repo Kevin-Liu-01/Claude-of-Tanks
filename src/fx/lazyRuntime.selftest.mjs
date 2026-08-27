@@ -25,6 +25,9 @@ const fxRuntimeAccess = await readFile(
 const killcamAccess = await readFile(
   new URL('../game/killcamAccess.ts', import.meta.url), 'utf8',
 );
+const playerBattleActions = await readFile(
+  new URL('../game/playerBattleActions.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -74,6 +77,15 @@ if (!/createKillcamAccess\(\{[\s\S]{0,220}loadModule:\s*\(\)\s*=>\s*import\(['"]
 if (!/if \(modulePromise === request\) modulePromise = null/.test(killcamAccess)
     || !/if \(runtimePromise === request\) runtimePromise = null/.test(killcamAccess)) {
   throw new Error('killcam module and runtime failures must remain independently retryable');
+}
+if (!/createPlayerBattleActions\(\{/.test(main)
+    || /const SHELL_LOADOUT\s*=/.test(main)
+    || /bus\.on\(['"]ui:consumable['"]/.test(main)) {
+  throw new Error('the composition root must delegate player action policy to its typed owner');
+}
+if (/from\s+['"]three['"]/.test(playerBattleActions)
+    || /battleClientRuntime|\.\.\/sim\//.test(playerBattleActions)) {
+  throw new Error('player action policy must remain renderer-free and receive combat rules as ports');
 }
 const networkBattle = main.slice(
   main.indexOf('async function presentNetworkBattle('),

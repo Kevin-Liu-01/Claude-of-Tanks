@@ -87,6 +87,7 @@ import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
 import { createKillcamAccess } from './game/killcamAccess.ts';
+import { createPlayerBattleActions } from './game/playerBattleActions.ts';
 import { createBattleVisualPool } from './game/battleVisualPool.js';
 import { createBattleVisualStreamerAccess } from './game/battleVisualStreamerAccess.ts';
 import {
@@ -945,7 +946,7 @@ function ensureBattleStaged() {
   if (battleStaged || !world) return;
   battleStaged = true;
   setupBattle(game, selectedSpecId, world, { deferVisuals: true });
-  buildShellCards(game.player.spec);
+  playerBattleActions.setTank(game.player.spec);
   damagePanel.setTank(game.player.spec, game.player.visual);
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
@@ -1191,12 +1192,13 @@ const audio = await bootStage('audio', () => {
 // One typed owner resolves both the camera anchor and the articulated physical
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
+let playerBattleActions = null;
 const battleClientAccess = createBattleClientAccess(() => ({
   getGame: () => game,
   getRig: () => rig,
   worldRaycast,
   targetVisible: mobileAutoAimVisible,
-  getShellCards: () => shellCards,
+  getShellCards: () => playerBattleActions?.shellCards || [],
   computeDispersion: battleClientAccess.computeDispersionRadM,
 }));
 const {
@@ -1205,19 +1207,10 @@ const {
   shotRecoilScale,
   tankPoseFromState,
   traceTank,
-  selectShell,
   resolveShellHit,
   createCombatState,
-  repairAllModules,
-  startMagazineReload,
   createShell,
-  activateSpecialAction,
-  specialActionLocksShell,
   isPostwarVehicleEra,
-  hasConsumableRule,
-  cooldownRemaining,
-  resetConsumableCooldowns,
-  startConsumableCooldown,
   advancePreBattleCountdown,
   resolveVisiblePreBattleSeconds,
   advanceTankPresentationPose,
@@ -1754,146 +1747,38 @@ bus.on('ui:battleStart', () => {
   }
 });
 
-// Rebindable shell slots — the ONLY hotkey path (HUD renders from ui:shellSelect).
-for (let slot = 0; slot < 3; slot++) {
-  input.onAction(`shell${slot + 1}`, () => {
-    if (game.phase !== 'battle' || settings.isOpen()) return;
-    bus.emit('ui:shellSelect', { slot });
-    bus.emit('ui:click', {});
-  });
-}
-
-input.onAction('reloadMagazine', () => {
-  if (game.phase !== 'battle' || settings.isOpen()) return;
-  bus.emit('ui:magazineReload', {});
-});
-
-input.onAction('specialAction', () => {
-  if (game.phase !== 'battle' || settings.isOpen()) return;
-  bus.emit('ui:specialAction', {});
-});
-
-// Consumables — rebindable actions (Digit4/5/6 + pad X/Y/B default; HUD tray
-// clickable, which emits the same 'ui:consumable'). 0 = Repair Kit (all
-// damaged modules to full), 1 = First Aid (revive crew), 2 = Fire
-// Extinguisher. Kits have infinite uses for the whole battle and individual
-// cooldowns (repair 35 s, first aid 45 s, extinguisher 25 s). A no-op press
-// never starts a cooldown.
-const consumableReadyAt = [0, 0, 0];
-for (let slot = 0; slot < 3; slot++) {
-  input.onAction(`consumable${slot + 1}`, () => {
-    if (game.phase !== 'battle' || settings.isOpen()) return;
-    bus.emit('ui:consumable', { slot });
-  });
-}
-bus.on('ui:consumable', ({ slot }) => {
-  const p = game.player;
-  if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
-  if (!hasConsumableRule(slot)) return;
-  if (networkMatch) {
-    networkFramePump.queueConsumable(slot);
-    bus.emit('ui:click', {});
-    return;
-  }
-  const remainingS = cooldownRemaining(game.timeS, consumableReadyAt[slot]);
-  if (remainingS > 0) {
-    bus.emit('ui:consumableDenied', { slot, reason: 'COOLDOWN', remainingS });
-    return;
-  }
-  const c = p.combat;
-  let ok = false;
-  if (slot === 0) {
-    // Module state transitions live in sim/damage.js (module_hitbox r1).
-    for (const name of repairAllModules(c)) {
-      bus.emit('module:state', { id: p.id, module: name, state: 'ok' });
-      ok = true;
-    }
-  } else if (slot === 1) {
-    for (const name of Object.keys(c.crew)) {
-      if (c.crew[name] === false) { c.crew[name] = true; ok = true; }
-    }
-  } else if (slot === 2 && c.fire.burning) {
-    c.fire.burning = false;
-    c.fire.ticksLeft = 0;
-    c.fire.tickTimer = 0;
-    bus.emit('tank:fire', { id: p.id, burning: false });
-    ok = true;
-  }
-  if (!ok) { bus.emit('ui:consumableDenied', { slot, reason: 'NOTHING' }); return; }
-  const cooldown = startConsumableCooldown(consumableReadyAt, slot, game.timeS);
-  bus.emit('ui:consumableUsed', { slot, ...cooldown });
-  bus.emit('ui:click', {});
-});
-input.onAction('minimapZoom', () => {
-  if (game.phase === 'battle') bus.emit('ui:minimapZoom', {});
-});
-// SHOT-INFO: rebindable toggle for the shot-info log (src/ui/shotInfo.js).
-input.onAction('shotLog', () => {
-  if (game.phase === 'battle') bus.emit('ui:shotLog', {});
+// Shell inventory, consumable cooldowns, special actions, and the exact
+// local-versus-network command split have one typed, renderer-free owner.
+// Its ports are stable battle-client facades, so garage boot still transfers
+// no combat implementation and input remains inert outside a live battle.
+playerBattleActions = createPlayerBattleActions({
+  game,
+  bus,
+  input,
+  isSettingsOpen: () => settings.isOpen(),
+  network: {
+    isActive: () => !!networkMatch,
+    queueConsumable: (slot) => networkFramePump.queueConsumable(slot),
+    queueAction: (action) => networkFramePump.queueAction(action),
+  },
+  rules: {
+    selectShell: battleClientAccess.selectShell,
+    repairAllModules: battleClientAccess.repairAllModules,
+    startMagazineReload: battleClientAccess.startMagazineReload,
+    activateSpecialAction: battleClientAccess.activateSpecialAction,
+    specialActionLocksShell: battleClientAccess.specialActionLocksShell,
+    hasConsumableRule: battleClientAccess.hasConsumableRule,
+    cooldownRemaining: battleClientAccess.cooldownRemaining,
+    resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
+    startConsumableCooldown: battleClientAccess.startConsumableCooldown,
+  },
 });
 // FEEL r12: perf overlay toggle works in every phase (garage included)
 input.onAction('perfHud', () => { if (diagnosticsRequested) perfHud.toggle(); });
 
-bus.on('ui:shellSelect', ({ slot }) => {
-  if (game.player && game.player.combat && !game.player.combat.destroyed) {
-    if (specialActionLocksShell(game.player)) return;
-    if (slot === game.player.combat.shellSlot && game.player.combat.magazine) {
-      bus.emit('ui:magazineReload', {});
-      return;
-    }
-    // spec: with per-shell reloads the restart prices the INCOMING shell
-    // (autocannon belt 0.4 s vs. ATGM rail 14+ s on the same vehicle).
-    selectShell(game.player.combat, slot, game.player.spec);
-    game.player.input.shellSlot = slot;
-  }
-});
-
-bus.on('ui:magazineReload', () => {
-  const p = game.player;
-  if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
-  if (networkMatch) {
-    networkFramePump.queueAction('reloadMagazine');
-  } else {
-    startMagazineReload(p.combat, p.spec);
-  }
-  bus.emit('ui:click', {});
-});
-
-bus.on('ui:specialAction', () => {
-  const p = game.player;
-  if (game.phase !== 'battle' || settings.isOpen() || !p?.combat || p.combat.destroyed) return;
-  if (networkMatch) {
-    networkFramePump.queueAction('specialAction');
-  } else {
-    const result = activateSpecialAction(p);
-    bus.emit(result.ok ? 'ui:specialActionResult' : 'ui:specialActionDenied', result);
-  }
-  bus.emit('ui:click', {});
-});
-
 // ---------------------------------------------------------------------------
 // Game flow
 // ---------------------------------------------------------------------------
-// Per-battle loadout (rounds carried per shell type) — the HUD tray renders
-// card.count live, and firing is gated on the slot having rounds left.
-// A shell carrying its own `count` overrides the type table: IFV autocannon
-// belts hold hundreds of rounds against a handful of ATGMs (per-shell
-// reloads, sim/damage.js startReload), so type-level counts can't fit both.
-const SHELL_LOADOUT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
-let shellCards = [];
-function buildShellCards(spec) {
-  shellCards = spec.gun.shells.map((sh) => ({
-    name: sh.name, type: sh.type, dmg: sh.dmg, penLabel: `${Math.round(sh.pen100Mm)} mm`,
-    count: sh.count != null ? sh.count
-      : (SHELL_LOADOUT[sh.type] != null ? SHELL_LOADOUT[sh.type] : 20),
-  }));
-}
-// Real ammo depletion: the player's fired shells consume the active slot.
-bus.on('shell:fired', (p) => {
-  if (!p.isPlayer || !game.player || !game.player.combat) return;
-  const card = shellCards[game.player.combat.shellSlot];
-  if (card && card.count > 0) card.count -= 1;
-});
 
 /**
  * PRE-BATTLE LOADING SCREEN (boot r8): WoT shows map art + both rosters +
@@ -2747,7 +2632,7 @@ async function presentNetworkBattle({
   hud.shotInfo.setPlayer(viewerId);
   fx.resetAll();
   if (!spectator) {
-    buildShellCards(game.player.spec);
+    playerBattleActions.setTank(game.player.spec);
     damagePanel.setTank(game.player.spec, game.player.visual);
     damagePanel.setEquipment(game.player.equip || {});
   }
@@ -2761,7 +2646,7 @@ async function presentNetworkBattle({
   setGarageSpots(false);
   setGarageSunTrim(false);
   bus.emit('phase:change', { phase: 'battle' });
-  resetConsumableCooldowns(consumableReadyAt);
+  playerBattleActions.resetConsumables();
   bus.emit('ui:consumableReset', {});
   rig.release();
   if (spectator) {
@@ -3127,7 +3012,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // otherwise carry into the rematch.
   fx.resetAll();
   sbtStage('resetEffects');
-  buildShellCards(game.player.spec);
+  playerBattleActions.setTank(game.player.spec);
   damagePanel.setTank(game.player.spec, game.player.visual);
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   garage.hide();
@@ -3140,7 +3025,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
   setGarageSunTrim(false); // restore the map's authored warm sun
   bus.emit('phase:change', { phase: 'battle' });
-  resetConsumableCooldowns(consumableReadyAt);
+  playerBattleActions.resetConsumables();
   bus.emit('ui:consumableReset', {});
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
@@ -3832,7 +3717,7 @@ function tick(nowMs) {
       ? -_touchMove.x
       : (st.left ? 1 : 0) - (st.right ? 1 : 0);
     inp.brake = st.handbrake;
-    const haveAmmo = !shellCards.length || ((shellCards[inp.shellSlot | 0] || {}).count | 0) > 0;
+    const haveAmmo = playerBattleActions.hasAmmo(inp.shellSlot | 0);
     // Fire gate: pointer lock held, a recently-active gamepad, or CURSOR-AIM
     // mode (lock unavailable — LMB must fire whenever the battle is live; the
     // input layer already refuses edges from clicks on UI overlays).
@@ -4238,7 +4123,7 @@ window.__SHOTS = {
       resetCombatWarm: () => combatWarm.reset(),
       drainCombatWarm: () => combatWarm.drain(),
       setBattleStaged: (value) => { battleStaged = value; },
-      buildShellCards,
+      buildShellCards: playerBattleActions.setTank,
       setDamagePanelTank: (spec, visual) => damagePanel.setTank(spec, visual),
       setDamagePanelEquipment: (equipment) => damagePanel.setEquipment(equipment),
       groundSampler,
@@ -4259,7 +4144,7 @@ window.__SHOTS = {
       getHud: () => hud,
       getFx: () => fxRuntimeAccess.current,
       getKillcam: () => killcam,
-      getShellCards: () => shellCards,
+      getShellCards: () => playerBattleActions.shellCards,
       game,
       frameInfo,
       rig,
@@ -4290,7 +4175,7 @@ window.__SHOTS = {
 // first world activation (ensureBattleStaged), not at boot — so prime the HUD
 // cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
 // real player entity when a battle actually stages.
-buildShellCards(getSpec(selectedSpecId));
+playerBattleActions.setTank(getSpec(selectedSpecId));
 garage.show(selectedSpecId);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();

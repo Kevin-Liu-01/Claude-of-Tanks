@@ -70,6 +70,12 @@ entry completes; the fixed-step solo simulation then receives the direct live
 capture runtime. Chunk and initializer failures remain independently retryable,
 so a lost replay download cannot permanently wedge a later match or capture.
 
+Player actions also cross one typed policy owner. It holds the active shell
+cards and consumable cooldowns, applies repairs and special actions only for
+local authority, and forwards the equivalent commands during network battles.
+Because simulation rules are injected after Battle intent, this consolidation
+does not pull combat code or rendering work back into first-visit garage boot.
+
 ## First-party vehicle pipeline
 
 The registry currently retains **150 vehicle records**. The production

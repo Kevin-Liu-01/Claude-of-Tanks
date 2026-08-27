@@ -193,7 +193,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
     const r = b.getBoundingClientRect();
     const cx = r.x + r.width / 2, cy = r.y + r.height / 2;
     const top = document.elementFromPoint(cx, cy);
-    return { cx, cy, hit: !!top && top.classList.contains('cot-battle'), topEl: top ? top.className : 'none' };
+    return { cx, cy, hit: !!top && (top === b || b.contains(top)), topEl: top ? top.className : 'none' };
   });
   check(mode, 'BATTLE button unobstructed at center', btn.hit, `top element: "${btn.topEl}"`);
 
@@ -419,6 +419,14 @@ async function runMode(mode, { stubNoLock, width, height }) {
   // same setBinding), assert the new key actually fires a shell, then reload
   // the page and assert the binding survived localStorage round-trip.
   if (!stubNoLock) {
+    // The binding check is not a reload-speed check. Long-reload vehicles can
+    // still be cycling the deliberate reticle shot above after the movement
+    // assertions complete, so wait for the authoritative fire gate instead
+    // of making this probe timing-dependent on the selected garage tank.
+    await page.waitForFunction(
+      'window.__DEBUG.game.player?.combat?.reload?.t <= 0',
+      { timeout: 20000 },
+    );
     await page.evaluate(() => window.__DEBUG.input.setBinding('fire', 'KeyF', 0));
     const firedBefore = await page.evaluate(() => window.__PROBE.fired.length);
     await page.keyboard.down('KeyF');
