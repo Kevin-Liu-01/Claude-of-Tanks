@@ -310,7 +310,12 @@ try {
           const shapes = Array.isArray(entry.parts) && entry.parts.length ? entry.parts : [entry];
           for (const shape of shapes) {
             for (let axis = 0; axis < 3; axis++) {
-              minVolumeDepth = Math.min(minVolumeDepth, shape.max[axis] - shape.min[axis]);
+              // Visible external systems legitimately include thin glass,
+              // sight windows, ring plates and mantlet faces. The minimum
+              // interior-volume depth gate is not meaningful for them.
+              if (!externalVolume) {
+                minVolumeDepth = Math.min(minVolumeDepth, shape.max[axis] - shape.min[axis]);
+              }
               if (!envelope || externalVolume) continue;
               volumeOverflow = Math.max(
                 volumeOverflow,

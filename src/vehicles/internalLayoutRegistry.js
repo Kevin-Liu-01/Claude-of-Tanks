@@ -44,6 +44,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://roe.ru/pdfs/pdf_6184.pdf',
     kind: 'manufacturer',
   }),
+  rostecArmataOptics: Object.freeze({
+    title: 'Rostec — T-14 electro-optical observation and aiming systems',
+    url: 'https://elements.rostec.ru/media/news/uralvagonzavod-pokazhet-na-armii-2023-vozmozhnosti-modernizatsii-bronetekhniki-/',
+    kind: 'manufacturer',
+  }),
   bumarPt91: Object.freeze({
     title: 'Bumar Labedy — PT-91 family',
     url: 'https://bumar.gliwice.pl/en/strefa-militarna/o/czolg-pt-91a-twardy',
@@ -150,6 +155,7 @@ const crew = (...stations) => stations.map(([role, frame, station]) => ({ role, 
 const systems = (overrides = {}) => ({
   engine: { placement: 'rear', form: 'dieselPowerpack' },
   transmission: { placement: 'rear', form: 'integratedFinalDrive' },
+  optics: { placement: 'visibleSightStations', form: 'sightAndVisionBlocks' },
   ammoRack: { placement: 'hull', form: 'hullBins' },
   autoloader: null,
   feedSystem: null,
@@ -232,9 +238,9 @@ const LAYOUTS = Object.freeze({
   mbt70: { confidence: 'platform-inferred', sources: ['usArmySystems'], crew: crew(
     ['driver', 'turret', 'frontLeft'], ['gunner', 'turret', 'frontRight'], ['commander', 'turret', 'rearRight'],
   ), systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' }, missileRack: { placement: 'turret', form: 'gunLaunchedRounds' } }) },
-  armata: { confidence: 'platform-inferred', sources: ['roeT90'], crew: crew(
+  armata: { confidence: 'platform-inferred', sources: ['rostecArmataOptics'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
-  ), systems: systems({ ammoRack: { placement: 'hull', form: 'isolatedCarousel' }, autoloader: { placement: 'hull', form: 'unmannedTurretCarousel' } }) },
+  ), systems: systems({ optics: { placement: 'turretPerimeter', form: 'distributedElectroOpticalSuite' }, ammoRack: { placement: 'hull', form: 'isolatedCarousel' }, autoloader: { placement: 'hull', form: 'unmannedTurretCarousel' } }) },
   kf51: { confidence: 'documented', sources: ['rheinmetallKf51'], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   abramsX: { confidence: 'published-demonstrator', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
     ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],

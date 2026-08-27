@@ -1082,8 +1082,8 @@ function buildType59(P) {
   // anatomy) — vent crown held at the dome-apex line (p95 window).
   P.add('turret', cylY(0.16, 0.17, 0.24, 12), 0, 0.78, 0.91);
   P.add('turret', KIT.sph(0.16, 12, Math.PI / 2), 0, 0.88, 0.91);
-  P.add('turretDetail', box(0.10, 0.08, 0.14), -0.242, 1.00, 1.01);
-  P.add('turretDetail', box(0.10, 0.08, 0.14), 0.242, 1.00, 1.01);
+  P.addModuleVisual('optics', 'turretDetail', box(0.10, 0.08, 0.14), -0.242, 1.00, 1.01);
+  P.addModuleVisual('optics', 'turretDetail', box(0.10, 0.08, 0.14), 0.242, 1.00, 1.01);
   // curved rear stowage rack on the dome tail (turret-owned, §B5; the
   // Chinese service-rack grammar) + dark saddle straps into the skin.
   {

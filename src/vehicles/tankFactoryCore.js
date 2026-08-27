@@ -3208,9 +3208,9 @@ function liftEye(P, bucket, x, y, z, ry = 0) {
 
 // Fixed periscope block with glass slit (driver / roof optics).
 function periscope(P, bucket, x, y, z, ry = 0) {
-  P.addEquipment(bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
+  P.addModuleVisual('optics', bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
   const glassB = bucket.startsWith('turret') ? 'turretGlass' : 'hullGlass';
-  P.add(glassB, box(0.11, 0.028, 0.102), x, y + 0.012, z, 0, ry, 0);
+  P.addModuleVisual('optics', glassB, box(0.11, 0.028, 0.102), x, y + 0.012, z, 0, ry, 0);
 }
 
 function pintleMG(P, x, y, z, big = true) {
@@ -6148,6 +6148,12 @@ export function createTank(specId, engineCtx, opts = {}) {
       if (activeDestructibleCluster) {
         destructiblePartCluster.set(part, activeDestructibleCluster);
       }
+      // Turret glass is reserved for sights, periscopes and electro-optical
+      // apertures. Publish those authored surfaces as the canonical optics
+      // receipt so diagnostics follow the visible station instead of an
+      // affine legacy box. Hull glass also owns headlight lenses, so fixed
+      // hull periscopes are tagged explicitly by the shared helper below.
+      if (bucket === 'turretGlass') moduleVisualParts.set(part, 'optics');
     },
     // Mudguards and hanging mudflaps are still ordinary hull geometry, but
     // they carry a semantic receipt until bucket merge.  The seating audit

@@ -179,6 +179,16 @@ for (const id of ALL_TANK_IDS) {
   const names = boxes.map((box) => box.module);
   assert.equal(new Set(names).size, names.length, `${id}: one damage volume per module`);
   for (const name of CORE_MODULE_IDS) assert(names.includes(name), `${id}: ${name} volume`);
+  const optics = boxes.find((box) => box.module === 'optics');
+  const opticsReceipts = calibration.moduleShapes.filter((receipt) => (
+    receipt.module === 'optics'
+  ));
+  assert.equal(opticsReceipts.length, 1, `${id}: one owner-canonical optics receipt`);
+  const opticsReceipt = opticsReceipts.find((receipt) => (
+    receipt.module === 'optics' && receipt.turretLocal === !!optics?.turretLocal
+  ));
+  assert(opticsReceipt?.parts?.length > 0, `${id}: optics use owner-correct visible-geometry receipts`);
+  assert(optics?.parts?.length > 0, `${id}: optics volume follows visible sight stations`);
   const fixedMount = COMBAT_ANATOMY_CALIBRATIONS[id].turret === null;
   assert.equal(names.includes('gunMount'), fixedMount, `${id}: fixed gun-mount applicability`);
   assert.equal(names.includes('turretRing'), !fixedMount, `${id}: turret-ring applicability`);
@@ -272,6 +282,10 @@ for (const id of ALL_TANK_IDS) {
   // calibration-source name. Cupolas are the deliberate exception.
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   try {
+    const opticsParent = optics.turretLocal ? 'turretG' : 'hullG';
+    assert((visual.root.userData.combatGeometryParts || []).some((part) => (
+      part.module === 'optics' && part.parent === opticsParent
+    )), `${id}: procedural sight geometry publishes an optics receipt in its owning frame`);
     let hullArmor = 0;
     visual.root.traverse((object) => {
       if (!object.geometry) return;

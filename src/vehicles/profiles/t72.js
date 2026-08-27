@@ -3152,8 +3152,8 @@ function buildT72B3M(P) {
   P.add('turret', box(0.148, 0.69, 0.08), -0.954, 0.588, 0.525);      // rear step (top 2.4137 auth)
   P.add('turretDetail', box(0.0795, 0.012, 0.17), -0.98225, 1.0155, 0.6575); // lid
   P.add('turretDetail', box(0.045, 0.010, 0.17), -0.90825, 0.995, 0.6575);
-  P.add('turretDark', box(0.075, 0.055, 0.02), -0.98, 0.985, 0.7565);  // sensor window hood
-  P.add('turretDark', box(0.075, 0.04, 0.015), -0.98, 0.90, 0.7555);
+  P.addModuleVisual('optics', 'turretDark', box(0.075, 0.055, 0.02), -0.98, 0.985, 0.7565);  // sensor window hood
+  P.addModuleVisual('optics', 'turretDark', box(0.075, 0.04, 0.015), -0.98, 0.90, 0.7555);
   // peak cap ridge (the 2.449 crest at x -0.95..-0.99, z-thin)
   P.add('turret', box(0.045, 0.018, 0.10), -0.9825, 1.0275, 0.63);
   // mid tiers (front-view 2.302/2.332 staircase at x -0.80..-0.88)
@@ -3324,9 +3324,9 @@ function buildT72B3M(P) {
   // split armored doors + center jamb + sight slit on the certified faces
   // (dressing moved forward with the r18 housing re-seat; r25: dropped
   // 0.08 with the housing shave so nothing pokes the new 1.87 top).
-  P.add('turretDark', box(0.145, 0.105, 0.014), 0.645, 0.38, 0.475);
-  P.add('turretDark', box(0.145, 0.105, 0.014), 0.815, 0.38, 0.475);
-  P.add('turretDetail', box(0.022, 0.115, 0.016), 0.73, 0.38, 0.476);
+  P.addModuleVisual('optics', 'turretDark', box(0.145, 0.105, 0.014), 0.645, 0.38, 0.475);
+  P.addModuleVisual('optics', 'turretDark', box(0.145, 0.105, 0.014), 0.815, 0.38, 0.475);
+  P.addModuleVisual('optics', 'turretDetail', box(0.022, 0.115, 0.016), 0.73, 0.38, 0.476);
   P.add('turretDetail', box(0.36, 0.016, 0.015), 0.73, 0.443, 0.474);
   P.add('turretDark', box(0.16, 0.045, 0.012), 0.45, 0.33, 0.454); // r25: -0.045 with the inner-housing shave
   // r23 item 5b (critic r11 DECORATION placement flag — "khaki/red inside

@@ -818,7 +818,7 @@ function t26Cast(P, T) {
     // forward vision-block arc (interior: 0.6r keeps the a=0 block's z
     // reach inside the ridge-pod side-cover window ending 0.455)
     for (const a of [-0.5, 0, 0.5]) {
-      P.add('turretDark', box(0.06, 0.045, 0.045),
+      P.addModuleVisual('optics', 'turretDark', box(0.06, 0.045, 0.045),
         rx + Math.sin(a) * C.ring.r * 0.6, yl(C.ring.top + 0.02), zl(rz + Math.cos(a) * C.ring.r * 0.6), 0, a, 0);
     }
   } else {

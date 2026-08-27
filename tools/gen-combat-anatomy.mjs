@@ -13,7 +13,7 @@ import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { createTank } from '../src/vehicles/tankFactory.js';
-import { ALL_TANK_IDS } from '../src/vehicles/specs.js';
+import { ALL_TANK_IDS, TANK_SPECS } from '../src/vehicles/specs.js';
 import { COMBAT_ANATOMY_CALIBRATIONS } from '../src/vehicles/combatAnatomyCalibrations.js';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.js';
 
@@ -413,15 +413,25 @@ function structureCollisionCells(root, owner, frame, structures) {
   return rows;
 }
 
-function moduleShapeReceipts(root, hullRig, turretRig) {
+function moduleShapeReceipts(root, hullRig, turretRig, armorModules) {
   const rows = [];
   const receiptParts = root.userData.combatGeometryParts || [];
   const modules = new Set(receiptParts.map((part) => part.module).filter(Boolean));
+  const damageOwner = new Map((armorModules || []).map((entry) => [
+    entry.module,
+    !!entry.turretLocal,
+  ]));
   for (const module of [...modules].sort()) {
     for (const [owner, turretLocal, parent] of [
       [hullRig, false, 'hullG'],
       [turretRig, true, 'turretG'],
     ]) {
+      // One canonical damage state owns each module. Vehicles can expose
+      // additional passive vision blocks in the other articulation frame,
+      // but those must not create an impossible second damage volume or a
+      // receipt that the runtime cannot apply. Measure the visible geometry
+      // in the authored module's frame only.
+      if (damageOwner.has(module) && damageOwner.get(module) !== turretLocal) continue;
       const buckets = new Set(receiptParts
         .filter((part) => part.module === module && part.parent === parent)
         .map((part) => part.bucket));
@@ -486,7 +496,9 @@ function receiptFor(id) {
       turretStructureCollision: structureCollisionCells(
         tank.root, turretRig, 'turret', turretStructures,
       ),
-      moduleShapes: moduleShapeReceipts(tank.root, hullRig, turretRig),
+      moduleShapes: moduleShapeReceipts(
+        tank.root, hullRig, turretRig, TANK_SPECS[id]?.armor?.modules,
+      ),
       tracks: { left: trackL, right: trackR },
     };
   } finally {

@@ -3033,7 +3033,7 @@ export function createKillCam(deps) {
     for (const cb of armor.crew || []) {
       const down = crewHit.has(cb.crew) || (crewAlive && crewAlive[cb.crew] === false);
       addInternalCrewModel(cb, down ? S.proxRed : corpse ? S.proxGrey : S.proxGreen,
-        poseGrp, turretGrp, pb.disposables);
+        poseGrp, turretGrp, pb.disposables, armor);
     }
 
     // 4. shell path through the hull: approach tracer, penetration marker, a

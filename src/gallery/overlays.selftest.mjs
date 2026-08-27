@@ -3,6 +3,10 @@ import * as THREE from 'three';
 import '../vehicles/tankFactory.js';
 import { MODULE_IDS } from '../sim/moduleCatalog.js';
 import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import {
+  CREW_ARMOR_CLEARANCE_M,
+  CREW_STANDING_HEIGHT_M,
+} from '../vehicles/internalAnatomyVisuals.js';
 import { createInspectionOverlay } from './overlays.js';
 
 function visualRoot() {
@@ -20,6 +24,84 @@ function anatomyMeshes(picker) {
     if (object.isMesh && object !== picker) meshes.push(object);
   });
   return meshes;
+}
+
+function capsuleJoint(mesh, side) {
+  const halfHeight = mesh.geometry.parameters.height / 2;
+  return new THREE.Vector3(0, side * halfHeight, 0)
+    .applyQuaternion(mesh.quaternion)
+    .add(mesh.position);
+}
+
+function assertCrewLegsAttached(model, label) {
+  model.updateMatrixWorld(true);
+  const torsoBounds = new THREE.Box3().setFromObject(model.getObjectByName('crew_torso'));
+  for (const side of ['left', 'right']) {
+    const thigh = model.getObjectByName(`crew_leg_${side}`);
+    const shin = model.getObjectByName(`crew_shin_${side}`);
+    assert.ok(capsuleJoint(thigh, 1).distanceTo(capsuleJoint(shin, 1)) < 1e-9,
+      `${label}: ${side} thigh and shin share one knee joint`);
+    assert.ok(torsoBounds.intersectsBox(new THREE.Box3().setFromObject(thigh)),
+      `${label}: ${side} thigh remains attached at the hip`);
+    assert.ok(new THREE.Box3().setFromObject(thigh).intersectsBox(new THREE.Box3().setFromObject(shin)),
+      `${label}: ${side} knee geometry overlaps without a visible gap`);
+  }
+}
+
+function crewSize(model) {
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3();
+  model.traverse((object) => {
+    if (object.isMesh && object.name.startsWith('crew_')) bounds.expandByObject(object);
+  });
+  return bounds.getSize(new THREE.Vector3());
+}
+
+function crewBounds(model) {
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3();
+  model.traverse((object) => {
+    if (object.isMesh && object.name.startsWith('crew_')) bounds.expandByObject(object);
+  });
+  return bounds;
+}
+
+function assertCrewInsideArmor(model, label) {
+  const metadata = model.userData.internalAnatomy;
+  assert.equal(metadata.visualAnchorPolicy, 'structuralArmorEnvelope',
+    `${label}: visual station is resolved against structural armor`);
+  assert.equal(metadata.armorClearanceM, CREW_ARMOR_CLEARANCE_M,
+    `${label}: fleet-wide armor clearance`);
+  const bounds = crewBounds(model);
+  const compartment = metadata.compartmentBounds;
+  assert.ok(bounds.max.y <= metadata.compartmentRoofY - CREW_ARMOR_CLEARANCE_M + 1e-8,
+    `${label}: helmet remains below the local structural roof`);
+  for (const axis of [0, 2]) {
+    const span = compartment.max[axis] - compartment.min[axis];
+    const bodySpan = bounds.max.getComponent(axis) - bounds.min.getComponent(axis);
+    if (span + 1e-9 < bodySpan + CREW_ARMOR_CLEARANCE_M * 2) continue;
+    assert.ok(bounds.min.getComponent(axis)
+        >= compartment.min[axis] + CREW_ARMOR_CLEARANCE_M - 1e-8,
+    `${label}: crew stays inside the structural ${axis === 0 ? 'side' : 'fore/aft'} limit`);
+    assert.ok(bounds.max.getComponent(axis)
+        <= compartment.max[axis] - CREW_ARMOR_CLEARANCE_M + 1e-8,
+    `${label}: crew stays inside the structural ${axis === 0 ? 'side' : 'fore/aft'} limit`);
+  }
+}
+
+function assertCanonicalCrewScale(model, expected, label) {
+  const metadata = model.userData.internalAnatomy;
+  assert.equal(metadata.standingHeightM, CREW_STANDING_HEIGHT_M,
+    `${label}: five-foot standing-height reference`);
+  assert.equal(metadata.scalePolicy, 'canonicalMeters', `${label}: canonical meter scale`);
+  const size = crewSize(model);
+  assert(size.y < CREW_STANDING_HEIGHT_M,
+    `${label}: seated pose is shorter than its standing-height reference`);
+  if (expected) {
+    assert(size.distanceTo(expected) < 1e-9,
+      `${label}: crew dimensions do not inherit the station damage volume`);
+  }
+  return size;
 }
 
 const plate = {
@@ -128,6 +210,12 @@ assert.deepEqual(anatomyMeshes(crew.pickables[0]).map((mesh) => mesh.name).sort(
     'crew_shoulders', 'crew_torso',
   ],
   'crew uses the kill-cam seated human silhouette, not combat-shape blobs');
+assertCrewLegsAttached(crew.pickables[0].userData.inspectionVisual, 'fixture driver');
+const canonicalCrewSize = assertCanonicalCrewScale(
+  crew.pickables[0].userData.inspectionVisual,
+  null,
+  'fixture driver',
+);
 crew.clear();
 
 let auditedModules = 0;
@@ -156,6 +244,19 @@ for (const id of ALL_TANK_IDS) {
   for (const picker of crewOverlay.pickables) {
     assert.equal(anatomyMeshes(picker).filter((mesh) => mesh.name.startsWith('crew_')).length, 10,
       `${id}: every crew station keeps the articulated human silhouette`);
+    assertCrewLegsAttached(
+      picker.userData.inspectionVisual,
+      `${id}:${picker.userData.inspectionVisual.userData.internalAnatomy.key}`,
+    );
+    assertCanonicalCrewScale(
+      picker.userData.inspectionVisual,
+      canonicalCrewSize,
+      `${id}:${picker.userData.inspectionVisual.userData.internalAnatomy.key}`,
+    );
+    assertCrewInsideArmor(
+      picker.userData.inspectionVisual,
+      `${id}:${picker.userData.inspectionVisual.userData.internalAnatomy.key}`,
+    );
   }
   auditedCrew += crewOverlay.count;
   crewOverlay.clear();

@@ -256,7 +256,7 @@ function addCrewModels(spec, hullContainer, turretContainer, resources, pickable
     const fill = anatomyFillMaterial(color);
     resources.push(fill);
     const model = addInternalCrewModel(
-      volume, fill, hullContainer, turretContainer, resources,
+      volume, fill, hullContainer, turretContainer, resources, spec.armor,
     );
     addDashedLines(model, color, resources);
     addVolumePicker(model, volume, index, 'crew', resources, pickables);

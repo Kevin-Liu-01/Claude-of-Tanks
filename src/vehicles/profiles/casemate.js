@@ -1762,8 +1762,8 @@ function isuCommon(P, o) {
   // two boxes + slits, slits on the dark bucket instead. Geometry EXACT.
   if (o.noPeriGlass) {
     for (const [pxp, pzp] of [[-0.35, o.clusterZ + 0.35], [0.15, o.clusterZ + 0.45]]) {
-      P.add('hullDetail', box(0.14, 0.07, 0.1), pxp, o.roofY - 0.055, pzp);
-      P.add('hullDark', box(0.11, 0.028, 0.102), pxp, o.roofY - 0.043, pzp);
+      P.addModuleVisual('optics', 'hullDetail', box(0.14, 0.07, 0.1), pxp, o.roofY - 0.055, pzp);
+      P.addModuleVisual('optics', 'hullDark', box(0.11, 0.028, 0.102), pxp, o.roofY - 0.043, pzp);
     }
   } else {
     // (o.periYOff, isu152 realign: with roofY = the true roof PLATE the pods
