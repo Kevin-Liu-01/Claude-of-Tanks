@@ -131,7 +131,7 @@ if (!/openBattle\([^;]*\);\s*scheduleDeferredCombatWarm\(entryWarmGeneration\)/.
 }
 const coveredWarm = main.slice(
   main.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
-  main.indexOf('await primeSoloBattleRevealFrame()'),
+  main.indexOf('await battleEntryLifecycle.primeReveal()'),
 );
 if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*combatDestructionEffectsWarmed = true;/.test(coveredWarm)) {
   throw new Error('the exact covered FX bind must retire duplicate opening/destruction countdown work');

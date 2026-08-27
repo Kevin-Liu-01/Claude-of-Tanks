@@ -37,7 +37,8 @@ residency, switch convergence, and battle visual handoff; it composes
 `battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
 concrete Random-map reservation, exact-roster texture coalescing, stale intent
 cancellation, and the camouflage-safe handoff into covered loading. Passive
-garage dwell never constructs a battlefield.
+garage dwell never constructs a battlefield. `battleEntryLifecycle.ts` owns
+entry exclusivity across every mode and the covered default-frame reveal gate.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

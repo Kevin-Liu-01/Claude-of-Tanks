@@ -55,6 +55,8 @@ strict TypeScript owners:
 - `src/engine/deploymentShadowWarm.ts` owns bounded deployment caster uploads,
   depth-program submission, exact cascade priming, and state restoration;
 - `src/game/battleModuleAccess.ts` owns retryable battle-only imports;
+- `src/game/battleEntryLifecycle.ts` owns cross-mode entry exclusivity, the
+  covered render gate, and default-frame reveal acknowledgement;
 - `src/game/combatWarmCoordinator.ts` owns resumable opening/rare warm receipts,
   synchronous capture drains, round resets, and countdown cancellation;
 - `src/game/deferredCombatWarmRuntime.ts` owns the revision-bound deployment

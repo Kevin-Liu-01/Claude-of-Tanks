@@ -127,6 +127,7 @@ import { createBus, createGameState } from './game/stateCore.ts';
 import { SHOT_VIEWS } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
+import { createBattleEntryLifecycle } from './game/battleEntryLifecycle.ts';
 import { createCombatWarmCoordinator } from './game/combatWarmCoordinator.ts';
 import { createDeferredCombatWarmRuntime } from './game/deferredCombatWarmRuntime.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
@@ -2132,9 +2133,9 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
       trace.deploymentPostWarm = await post.warmFirstFrame(coveredYield);
       mark('postPasses');
       battleLoad.progress(0.97, 'Priming deployment view');
-      await primeSoloBattleRevealFrame();
+      await battleEntryLifecycle.primeReveal();
       entryRevealPrimed = true;
-      battleLoadRenderingCovered = true;
+      battleEntryLifecycle.coverRendering();
       if (warmGeneration !== battleWarmGeneration) return;
       mark('openingFrame');
       // The exact shipped atlases were decoded, installed and uploaded in
@@ -2194,7 +2195,7 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   // of rendering the same scene twice behind the loader.
   if (!entryRevealPrimed) {
     prepareBattleRevealCamera();
-    await primeSoloBattleRevealFrame();
+    await battleEntryLifecycle.primeReveal();
   }
   bltStage('primeReveal');
   await battleLoad.hide();
@@ -2213,46 +2214,27 @@ async function startBattleLoading(specId, mapId = null, { randomRoster = true } 
   bltStage('open');
   blt.totalMs = Math.round(performance.now() - shownAt);
 }
-// Headless probes drive the battle entry through __DEBUG.startBattle (which is
-// synchronous) and skip the in-battle countdown (startBattle arms it only on
-// the player path — see opts.preBattleHold).
-let battleEntryPending = false;
 // The solo battle loader is an opaque DOM surface. Rendering the newly
 // activated 3D world behind it made ordinary `nextFrame()` budget yields pay
 // the complete first world/shadow draw before the explicit offscreen warm,
 // producing 0.5–1.4 s "Assembling rosters" stalls. Keep rAF alive for the
 // loader/progress UI, but suppress redundant scene frames until the covered
 // warm is complete and the loader is being dismissed.
-let battleLoadRenderingCovered = false;
-let presentedBattleFrameSerial = 0;
-
-/**
- * Release the covered render gate and wait until the active battlefield has
- * actually reached the default framebuffer. The loader remains fully opaque
- * throughout this wait, so its exit can never reveal the retained Garage
- * frame left behind when covered rendering began.
- */
-async function primeSoloBattleRevealFrame() {
-  const firstRequiredSerial = presentedBattleFrameSerial + 1;
-  const startedAt = performance.now();
-  battleLoadRenderingCovered = false;
-  while (presentedBattleFrameSerial < firstRequiredSerial) {
-    if (performance.now() - startedAt > 1500) {
-      throw new Error('Battlefield did not present before the loading screen exit.');
-    }
-    await nextFrame();
-  }
-  if (typeof window !== 'undefined') {
-    window.__BATTLE_REVEAL = {
-      primed: true,
-      phase: game.phase,
-      garageHidden: !garage.isOpen,
-      loaderVisible: battleLoad?.visible === true,
-      frameSerial: presentedBattleFrameSerial,
-      waitMs: Math.round(performance.now() - startedAt),
-    };
-  }
-}
+// Headless probes drive the battle entry through __DEBUG.startBattle (which is
+// synchronous) and skip the in-battle countdown (startBattle arms it only on
+// the player path — see opts.preBattleHold). Player/network entry and the
+// default-frame reveal share one typed lifecycle owner.
+const battleEntryLifecycle = createBattleEntryLifecycle({
+  nextFrame,
+  getRevealContext: () => ({
+    phase: game.phase,
+    garageHidden: !garage.isOpen,
+    loaderVisible: battleLoad?.visible === true,
+  }),
+  onReveal: (receipt) => {
+    if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
+  },
+});
 
 /**
  * Establish the exact camera pose that the loader fade will reveal. Covered
@@ -2359,26 +2341,23 @@ function closeNetworkMatch(reason = 'network_match_closed') {
 }
 
 async function beginBattleEntry(specId, mapId = null, options = undefined) {
-  if (battleEntryPending) return;
-  battleEntryPending = true;
-  try {
-    battleLoadRenderingCovered = true;
-    await startBattleLoading(specId, mapId, options);
-  } catch (error) {
-    console.error('[battle] entry failed', error);
-    audio.loadingOn(false);
-    // Failure exits obey the same covered-frame rule in the opposite
-    // direction: restore and paint the Garage while the loader is opaque,
-    // then let the loader fade. Never expose whichever old WebGL frame was
-    // retained when the failure occurred.
-    enterGarage();
-    battleLoadRenderingCovered = false;
-    await nextFrame();
-    await battleLoad?.hide?.();
-  } finally {
-    battleLoadRenderingCovered = false;
-    battleEntryPending = false;
-  }
+  return battleEntryLifecycle.run(async () => {
+    try {
+      battleEntryLifecycle.coverRendering();
+      await startBattleLoading(specId, mapId, options);
+    } catch (error) {
+      console.error('[battle] entry failed', error);
+      audio.loadingOn(false);
+      // Failure exits obey the same covered-frame rule in the opposite
+      // direction: restore and paint the Garage while the loader is opaque,
+      // then let the loader fade. Never expose whichever old WebGL frame was
+      // retained when covered rendering began.
+      enterGarage();
+      battleEntryLifecycle.uncoverRendering();
+      await nextFrame();
+      await battleLoad?.hide?.();
+    }
+  }, undefined);
 }
 
 function lobbyRosterRows(lobbyState, team, viewerId) {
@@ -2676,206 +2655,206 @@ async function beginSoloBattle({ specId, mapId, randomRoster = true } = {}) {
 
 /** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
 async function beginNetworkBattle({ role, session, lobbyState, battleLimitS } = {}) {
-  if (battleEntryPending || networkMatch) return false;
-  battleEntryPending = true;
-  let entered = false;
-  if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = null;
-  const viewerId = String(session?.roomInfo?.peerId || '');
-  const own = lobbyState?.players?.find((player) => player.id === viewerId);
-  try {
-    if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
-    resetNetworkBattleState();
-    // Cover the page before the first cold import can yield. The play menu
-    // hands off from the garage synchronously; previously its hide exposed a
-    // garage frame (or several on a slow machine) while this module loaded.
-    const modeLabel = lobbyState.mode === 'lan'
-      ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code';
-    const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
-    const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
-    const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
-    bus.emit('ui:battleStart', {
-      playerId: viewerId,
-      specId: own.specId,
-      mapId: lobbyState.mapId,
-    });
-    battleLoad.show({
-      mapName: pendingCfg?.name || 'Battle',
-      thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
-      biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
-      mode: modeLabel,
-      allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
-      enemies: lobbyRosterRows(lobbyState,
-        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    });
-    audio.resume();
-    audio.loadingOn(true);
-    battleLoad.progress(0.01, 'Opening battle channel');
-    const {
-      beginPrivateHostMatch,
-      beginPrivateClientMatch,
-      buildPrivateMatchPlayers,
-      resolvePrivateMatchMap,
-    } = await preloadPrivateMatchHandoffModule();
-    const mapId = resolvePrivateMatchMap(lobbyState);
-    const matchPlayers = buildPrivateMatchPlayers(lobbyState);
-    await presentNetworkBattle({
-      viewerId,
-      own,
-      mapId,
-      matchPlayers,
-      modeLabel,
-      transitionShown: true,
-      connectAfterWorld: role === 'host',
-      connectMatch: () => role === 'host'
-        ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world, battleLimitS })
-        : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
-    });
-    networkRoomCoordinator.attach(lobbyState);
-    entered = true;
-  } catch (error) {
-    if (typeof window !== 'undefined') {
-      window.__NETWORK_ENTRY_FAILURE = {
-        message: error.message,
-        role,
-        clientConnected: !!networkMatch?.client?.connected,
-        clientReadySent: !!networkMatch?.client?.readySent,
-        matchStarted: !!networkMatch?.host?.matchStarted,
-        peers: networkMatch?.host
-          ? [...networkMatch.host.peers.values()].map((peer) => ({
-            id: peer.id,
-            welcomed: peer.welcomed,
-            ready: peer.ready,
-            pendingRoundReady: peer.pendingRoundReady,
-            lastRecvSeq: peer.lastRecvSeq,
-            transportKind: peer.transport?.kind || null,
-          }))
-          : [],
-      };
+  if (networkMatch) return false;
+  return battleEntryLifecycle.run(async () => {
+    let entered = false;
+    if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = null;
+    const viewerId = String(session?.roomInfo?.peerId || '');
+    const own = lobbyState?.players?.find((player) => player.id === viewerId);
+    try {
+      if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
+      resetNetworkBattleState();
+      // Cover the page before the first cold import can yield. The play menu
+      // hands off from the garage synchronously; previously its hide exposed a
+      // garage frame (or several on a slow machine) while this module loaded.
+      const modeLabel = lobbyState.mode === 'lan'
+        ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code';
+      const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+      const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
+      const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
+      bus.emit('ui:battleStart', {
+        playerId: viewerId,
+        specId: own.specId,
+        mapId: lobbyState.mapId,
+      });
+      battleLoad.show({
+        mapName: pendingCfg?.name || 'Battle',
+        thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
+        biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
+        mode: modeLabel,
+        allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
+        enemies: lobbyRosterRows(lobbyState,
+          displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      });
+      audio.resume();
+      audio.loadingOn(true);
+      battleLoad.progress(0.01, 'Opening battle channel');
+      const {
+        beginPrivateHostMatch,
+        beginPrivateClientMatch,
+        buildPrivateMatchPlayers,
+        resolvePrivateMatchMap,
+      } = await preloadPrivateMatchHandoffModule();
+      const mapId = resolvePrivateMatchMap(lobbyState);
+      const matchPlayers = buildPrivateMatchPlayers(lobbyState);
+      await presentNetworkBattle({
+        viewerId,
+        own,
+        mapId,
+        matchPlayers,
+        modeLabel,
+        transitionShown: true,
+        connectAfterWorld: role === 'host',
+        connectMatch: () => role === 'host'
+          ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world, battleLimitS })
+          : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
+      });
+      networkRoomCoordinator.attach(lobbyState);
+      entered = true;
+    } catch (error) {
+      if (typeof window !== 'undefined') {
+        window.__NETWORK_ENTRY_FAILURE = {
+          message: error.message,
+          role,
+          clientConnected: !!networkMatch?.client?.connected,
+          clientReadySent: !!networkMatch?.client?.readySent,
+          matchStarted: !!networkMatch?.host?.matchStarted,
+          peers: networkMatch?.host
+            ? [...networkMatch.host.peers.values()].map((peer) => ({
+              id: peer.id,
+              welcomed: peer.welcomed,
+              ready: peer.ready,
+              pendingRoundReady: peer.pendingRoundReady,
+              lastRecvSeq: peer.lastRecvSeq,
+              transportKind: peer.transport?.kind || null,
+            }))
+            : [],
+        };
+      }
+      console.error('[network] entry failed', error);
+      audio.loadingOn(false);
+      closeNetworkMatch('entry_failed');
+      await battleLoad?.hide?.();
+      enterGarage();
     }
-    console.error('[network] entry failed', error);
-    audio.loadingOn(false);
-    closeNetworkMatch('entry_failed');
-    await battleLoad?.hide?.();
-    enterGarage();
-  } finally {
-    battleEntryPending = false;
-  }
-  return entered;
+    return entered;
+  }, false);
 }
 
 /** Load another authority round over the room's existing WebRTC channels. */
 async function beginNetworkRematch(lobbyState) {
   const round = Number(lobbyState?.round) || 0;
-  if (!networkRoomCoordinator.claimRematch(lobbyState, battleEntryPending)) return false;
-  battleEntryPending = true;
-  const viewerId = networkMatch.playerId;
-  const own = lobbyState.players.find((player) => player.id === viewerId);
-  try {
-    if (!own) throw new Error('Your player is no longer in this room.');
-    const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
-    const modeLabel = lobbyState.mode === 'lan'
-      ? `LAN Battle · Round ${round}` : `Private Battle · Round ${round}`;
-    const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
-    const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
-    bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId: lobbyState.mapId });
-    battleLoad.show({
-      mapName: pendingCfg?.name || 'Next battle',
-      thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
-      biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
-      mode: modeLabel,
-      allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
-      enemies: lobbyRosterRows(lobbyState,
-        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    });
-    audio.resume();
-    audio.loadingOn(true);
-    battleLoad.progress(0.01, 'Preparing the next round');
-    disposeNetworkPresentation();
-    networkFramePump.clearRound();
-    const { buildPrivateMatchPlayers, resolvePrivateMatchMap } =
-      await preloadPrivateMatchHandoffModule();
-    const mapId = resolvePrivateMatchMap(lobbyState);
-    const matchPlayers = buildPrivateMatchPlayers(lobbyState);
-    await presentNetworkBattle({
-      viewerId,
-      own,
-      mapId,
-      matchPlayers,
-      modeLabel,
-      transitionShown: true,
-      connectMatch: () => {
-        if (networkMatch.role === 'host') {
-          networkMatch.prepareRound({ lobbyState, worldCollision: world });
-        }
-        return networkMatch;
-      },
-    });
-    return true;
-  } catch (error) {
-    console.error('[network] rematch entry failed', error);
-    audio.loadingOn(false);
-    closeNetworkMatch('rematch_entry_failed');
-    await battleLoad?.hide?.();
-    enterGarage();
-    return false;
-  } finally {
-    battleEntryPending = false;
-    networkRoomCoordinator.finishRematch();
-  }
+  if (!networkRoomCoordinator.claimRematch(lobbyState, battleEntryLifecycle.pending)) return false;
+  return battleEntryLifecycle.run(async () => {
+    const viewerId = networkMatch.playerId;
+    const own = lobbyState.players.find((player) => player.id === viewerId);
+    try {
+      if (!own) throw new Error('Your player is no longer in this room.');
+      const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+      const modeLabel = lobbyState.mode === 'lan'
+        ? `LAN Battle · Round ${round}` : `Private Battle · Round ${round}`;
+      const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
+      const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
+      bus.emit('ui:battleStart', {
+        playerId: viewerId, specId: own.specId, mapId: lobbyState.mapId,
+      });
+      battleLoad.show({
+        mapName: pendingCfg?.name || 'Next battle',
+        thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
+        biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
+        mode: modeLabel,
+        allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
+        enemies: lobbyRosterRows(lobbyState,
+          displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      });
+      audio.resume();
+      audio.loadingOn(true);
+      battleLoad.progress(0.01, 'Preparing the next round');
+      disposeNetworkPresentation();
+      networkFramePump.clearRound();
+      const { buildPrivateMatchPlayers, resolvePrivateMatchMap } =
+        await preloadPrivateMatchHandoffModule();
+      const mapId = resolvePrivateMatchMap(lobbyState);
+      const matchPlayers = buildPrivateMatchPlayers(lobbyState);
+      await presentNetworkBattle({
+        viewerId,
+        own,
+        mapId,
+        matchPlayers,
+        modeLabel,
+        transitionShown: true,
+        connectMatch: () => {
+          if (networkMatch.role === 'host') {
+            networkMatch.prepareRound({ lobbyState, worldCollision: world });
+          }
+          return networkMatch;
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error('[network] rematch entry failed', error);
+      audio.loadingOn(false);
+      closeNetworkMatch('rematch_entry_failed');
+      await battleLoad?.hide?.();
+      enterGarage();
+      return false;
+    } finally {
+      networkRoomCoordinator.finishRematch();
+    }
+  }, false);
 }
 
 /** Join a server-authoritative rated match issued by the ranked queue. */
 async function beginRankedBattle({ serviceUrl, state } = {}) {
-  if (battleEntryPending || networkMatch) return;
-  battleEntryPending = true;
-  const ticket = state?.match;
-  const viewerId = String(ticket?.playerId || '');
-  const own = ticket?.roster?.find((player) => player.id === viewerId);
-  try {
-    if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
-    resetNetworkBattleState();
-    const modeLabel = `Ranked · ${own.rating || 1000} rating`;
-    const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
-    bus.emit('ui:battleStart', {
-      playerId: viewerId,
-      specId: own.specId,
-      mapId: ticket.mapId,
-    });
-    battleLoad.show({
-      mapName: 'Ranked operation',
-      thumb: '',
-      biome: ticket.mapId,
-      mode: modeLabel,
-      allies: lobbyRosterRows({ players: ticket.roster }, displayTeam, viewerId),
-      enemies: lobbyRosterRows({ players: ticket.roster },
-        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    });
-    audio.resume();
-    audio.loadingOn(true);
-    battleLoad.progress(0.01, 'Opening dedicated channel');
-    const { beginDedicatedClientMatch } = await preloadDedicatedClientModule();
-    await presentNetworkBattle({
-      viewerId,
-      own,
-      mapId: ticket.mapId,
-      matchPlayers: ticket.roster,
-      modeLabel,
-      transitionShown: true,
-      connectMatch: () => beginDedicatedClientMatch({
-        url: serviceUrl,
-        ticket,
-        onStatus: (status) => networkStatus?.set(status),
-      }),
-    });
-  } catch (error) {
-    console.error('[ranked] entry failed', error);
-    audio.loadingOn(false);
-    closeNetworkMatch('entry_failed');
-    await battleLoad?.hide?.();
-    enterGarage();
-  } finally {
-    battleEntryPending = false;
-  }
+  if (networkMatch) return;
+  return battleEntryLifecycle.run(async () => {
+    const ticket = state?.match;
+    const viewerId = String(ticket?.playerId || '');
+    const own = ticket?.roster?.find((player) => player.id === viewerId);
+    try {
+      if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
+      resetNetworkBattleState();
+      const modeLabel = `Ranked · ${own.rating || 1000} rating`;
+      const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+      bus.emit('ui:battleStart', {
+        playerId: viewerId,
+        specId: own.specId,
+        mapId: ticket.mapId,
+      });
+      battleLoad.show({
+        mapName: 'Ranked operation',
+        thumb: '',
+        biome: ticket.mapId,
+        mode: modeLabel,
+        allies: lobbyRosterRows({ players: ticket.roster }, displayTeam, viewerId),
+        enemies: lobbyRosterRows({ players: ticket.roster },
+          displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      });
+      audio.resume();
+      audio.loadingOn(true);
+      battleLoad.progress(0.01, 'Opening dedicated channel');
+      const { beginDedicatedClientMatch } = await preloadDedicatedClientModule();
+      await presentNetworkBattle({
+        viewerId,
+        own,
+        mapId: ticket.mapId,
+        matchPlayers: ticket.roster,
+        modeLabel,
+        transitionShown: true,
+        connectMatch: () => beginDedicatedClientMatch({
+          url: serviceUrl,
+          ticket,
+          onStatus: (status) => networkStatus?.set(status),
+        }),
+      });
+    } catch (error) {
+      console.error('[ranked] entry failed', error);
+      audio.loadingOn(false);
+      closeNetworkMatch('entry_failed');
+      await battleLoad?.hide?.();
+      enterGarage();
+    }
+  }, undefined);
 }
 
 /** Rows for the pre-battle roster panels. @param {string} team @returns {Array} */
@@ -3208,10 +3187,10 @@ bus.on('ui:battleAgain', async () => {
   leavingBattle = true;
   try {
     // a verdict can land while the previous entry pipeline is still in its
-    // drain/countdown tail (battleEntryPending true) — wait it out, bounded,
+    // drain/countdown tail (entry lifecycle pending) — wait it out, bounded,
     // instead of silently dropping the click
     const t0 = performance.now();
-    while (battleEntryPending && performance.now() - t0 < 15000) {
+    while (battleEntryLifecycle.pending && performance.now() - t0 < 15000) {
       await new Promise((r) => setTimeout(r, 150));
     }
     await transition.run(() => { enterGarage(); }, {
@@ -3363,7 +3342,7 @@ function tick(nowMs) {
   devTrace?.frame(dtR * 1000);
   if (graphicsContextLost) return;
 
-  if (battleLoadRenderingCovered) return;
+  if (battleEntryLifecycle.renderingCovered) return;
   const fx = fxRuntimeAccess.current;
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
@@ -3749,7 +3728,7 @@ function tick(nowMs) {
   if (camera.fov !== lastFov) { lighting.updateFov(); lastFov = camera.fov; }
   lighting.update(false, dtR);
   post.render(dtR);
-  if (game.phase === 'battle') presentedBattleFrameSerial++;
+  if (game.phase === 'battle') battleEntryLifecycle.noteBattleFrame();
   perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
 }
 

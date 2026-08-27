@@ -138,6 +138,9 @@ const minimapRuntimeSource = await readFile(
 const playerFrameInputSource = await readFile(
   new URL('../game/playerFrameInput.ts', import.meta.url), 'utf8',
 );
+const battleEntryLifecycleSource = await readFile(
+  new URL('../game/battleEntryLifecycle.ts', import.meta.url), 'utf8',
+);
 assert.match(mainSource,
   /bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,180}playMenuPromise[\s\S]{0,180}runtime\.hide\(false\)/,
   'every battle entry must dismiss the play modal without closing a retained room');
@@ -247,7 +250,7 @@ assert.ok(deferredEnemyAt >= 0
 'opponent receipts and fallback opening/rare work must retain countdown order');
 const coveredFxBody = mainSource.slice(
   mainSource.indexOf('const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({'),
-  mainSource.indexOf('await primeSoloBattleRevealFrame()'),
+  mainSource.indexOf('await battleEntryLifecycle.primeReveal()'),
 );
 assert.match(coveredFxBody,
   /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*combatDestructionEffectsWarmed = true;/,
@@ -258,7 +261,7 @@ const revealWarmBody = mainSource.slice(
 );
 const shadowWarmAt = revealWarmBody.indexOf('deploymentShadowWarm.prime(coveredYield)');
 const postWarmAt = revealWarmBody.indexOf('post.warmFirstFrame(coveredYield)');
-const revealFrameAt = revealWarmBody.indexOf('primeSoloBattleRevealFrame()');
+const revealFrameAt = revealWarmBody.indexOf('battleEntryLifecycle.primeReveal()');
 assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
   'solo entry must split cascade and post warming before the first full deployment frame');
 assert.match(mainSource,
@@ -318,15 +321,18 @@ assert.ok(visualStreamerAwaitAt > firstYieldAt,
 assert.ok(loadingStopAt > loadingSoundAt && ambienceAt > loadingStopAt,
   'loader audio must crossfade into battlefield ambience before reveal');
 const cameraPrepareAt = mainSource.indexOf('prepareBattleRevealCamera();');
-const revealPrimeAt = mainSource.indexOf('await primeSoloBattleRevealFrame();');
+const revealPrimeAt = mainSource.indexOf('await battleEntryLifecycle.primeReveal();');
 const loaderFadeAt = mainSource.indexOf('await battleLoad.hide();', revealPrimeAt);
-const battleOpenAt = mainSource.indexOf('openBattle();', loaderFadeAt);
+const battleOpenAt = mainSource.indexOf('openBattle(visiblePreBattleS);', loaderFadeAt);
 assert.ok(cameraPrepareAt >= 0 && revealPrimeAt > cameraPrepareAt &&
   loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
   'solo battle entry must lock the chase camera and paint it before the roster loader fades');
 assert.match(mainSource,
-  /post\.render\(dtR\);\s*if \(game\.phase === 'battle'\) presentedBattleFrameSerial\+\+;/,
+  /post\.render\(dtR\);\s*if \(game\.phase === 'battle'\) battleEntryLifecycle\.noteBattleFrame\(\);/,
   'the reveal barrier must advance only after a real battle frame is rendered');
+assert.match(battleEntryLifecycleSource,
+  /noteBattleFrame\(\) \{ presentedBattleFrameSerial \+= 1; \}[\s\S]*firstRequiredSerial = presentedBattleFrameSerial \+ 1/,
+  'the typed reveal owner must wait for a newer presented battle frame');
 assert.match(mainSource,
   /const battleEntryCameraLocked = inBattle && battleLoad\?\.covering === true;/,
   'camera input must stay locked through the complete loader fade');
@@ -343,7 +349,7 @@ const openBattleBody = mainSource.slice(
 assert.doesNotMatch(openBattleBody, /snapArcade/,
   'openBattle must never visibly re-snap the camera after the loader fade');
 assert.match(mainSource,
-  /enterGarage\(\);\s*battleLoadRenderingCovered = false;\s*await nextFrame\(\);\s*await battleLoad\?\.hide\?\.\(\);/,
+  /enterGarage\(\);\s*battleEntryLifecycle\.uncoverRendering\(\);\s*await nextFrame\(\);\s*await battleLoad\?\.hide\?\.\(\);/,
   'battle-entry failures must paint the restored Garage before fading the loader');
 const networkEntryBody = mainSource.slice(
   mainSource.indexOf('async function beginNetworkBattle('),
