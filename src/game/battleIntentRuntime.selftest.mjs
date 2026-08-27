@@ -6,20 +6,10 @@ const flushTasks = () => new Promise((resolve) => setImmediate(resolve));
 function createHarness(overrides = {}) {
   const log = [];
   const state = {
-    bootComplete: true,
-    phase: 'garage',
-    pendingMapChoice: 'random',
-    selectedSpecId: 'hero',
     battleCount: 3,
     randomMaps: ['alpine', 'desert', 'coast'],
-    timers: new Map(),
-    nextTimer: 1,
   };
   const options = {
-    isBootComplete: () => state.bootComplete,
-    getPhase: () => state.phase,
-    getPendingMapChoice: () => state.pendingMapChoice,
-    getSelectedSpecId: () => state.selectedSpecId,
     getBattleCount: () => state.battleCount,
     resolveMapId: (mapId) => {
       const resolved = mapId === 'random' ? state.randomMaps.shift() : mapId;
@@ -30,7 +20,6 @@ function createHarness(overrides = {}) {
     prefetchWorld: async (mapId, settings) => {
       log.push(`world:${mapId}:${settings?.intent === true ? 'intent' : 'idle'}`);
     },
-    ensureTankBuilder: async (specId) => { log.push(`builder:${specId}`); },
     ensureTankBuilders: async (ids) => { log.push(`builders:${ids.join(',')}`); },
     planRoster: (specId) => [specId, 'wing', 'wing'],
     getSpec: (specId) => ({ id: specId }),
@@ -58,12 +47,6 @@ function createHarness(overrides = {}) {
       preloadTextures: async () => { log.push('preload:fx-textures'); },
     }),
     preloadMinimap: async (mapId) => { log.push(`preload:minimap:${mapId}`); },
-    scheduleDelay: (callback, delayMs) => {
-      const id = state.nextTimer++;
-      state.timers.set(id, { callback, delayMs });
-      return id;
-    },
-    cancelDelay: (id) => { state.timers.delete(id); },
     warn: (message, error) => { log.push(`warn:${message}:${error}`); },
     ...overrides,
   };
@@ -71,12 +54,6 @@ function createHarness(overrides = {}) {
     log,
     state,
     runtime: createBattleIntentRuntime(options),
-    fireTimer(id) {
-      const timer = state.timers.get(id);
-      assert.ok(timer, `timer ${id} exists`);
-      state.timers.delete(id);
-      timer.callback();
-    },
   };
 }
 
@@ -162,29 +139,11 @@ function createHarness(overrides = {}) {
 }
 
 {
-  const { runtime, state, log, fireTimer } = createHarness();
-  runtime.scheduleIdleWorld('random', 600);
-  assert.equal(state.timers.get(1)?.delayMs, 600, 'deliberate map intent uses its short idle delay');
-  fireTimer(1);
-  await flushTasks();
-  assert.ok(log.includes('world:alpine:idle') && log.includes('builder:hero'),
-    'a valid garage lull warms the reserved world and selected vehicle');
-
-  runtime.scheduleIdleWorld('verdant');
-  state.phase = 'battle';
-  fireTimer(2);
-  await flushTasks();
-  assert.equal(log.includes('world:verdant:idle'), false,
-    'a phase change invalidates quiet garage work at callback time');
-
-  state.phase = 'garage';
-  runtime.scheduleIdleWorld('verdant');
-  assert.ok(state.timers.has(3));
+  const { runtime, log } = createHarness();
   runtime.dispose();
-  assert.equal(state.timers.has(3), false, 'dispose cancels pending world intent');
   runtime.preload({ specId: 'hero', mapId: 'verdant' });
   assert.equal(log.filter((entry) => entry === 'world:verdant:intent').length, 0,
     'disposed intent cannot start new speculative work');
 }
 
-console.log('battleIntentRuntime.selftest: map reservation, coalescing, handoff, and idle cancellation passed');
+console.log('battleIntentRuntime.selftest: explicit map intent, coalescing, and handoff passed');

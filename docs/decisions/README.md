@@ -61,3 +61,4 @@ runtime documents remain authoritative for behavior.
 - [0049 — Viewport synchronization has one typed engine owner](0049-typed-viewport-runtime.md)
 - [0050 — Rendered tank presentation has one typed hot-path owner](0050-typed-battle-presentation-runtime.md)
 - [0051 — Browser frame delivery has one typed scheduler](0051-typed-frame-loop-scheduler.md)
+- [0052 — Static Garage work and residency are bounded](0052-demand-paced-garage-residency.md)

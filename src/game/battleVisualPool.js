@@ -4,7 +4,7 @@
  * destroyed at the garage boundary without forcing every rematch to rebuild
  * the same procedural geometry.
  */
-export function createBattleVisualPool({ capacity = 4 } = {}) {
+export function createBattleVisualPool({ capacity = 2 } = {}) {
   const limit = Math.max(0, capacity | 0);
   const entries = new Map();
 

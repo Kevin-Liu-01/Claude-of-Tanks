@@ -42,6 +42,9 @@ safety cap. Use `--only=host` or `--only=client` for targeted diagnosis.
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.
+Static-screen and transition claims require `npm run perf:resources:gate`; it
+records task/script CPU, forced-GC heap, scene and renderer residency, cache
+ownership, and actual paint cadence across Garage, battle, and returned Garage.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.

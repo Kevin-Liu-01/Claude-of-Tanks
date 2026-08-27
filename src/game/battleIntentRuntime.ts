@@ -23,15 +23,10 @@ export interface BattleRosterPreparation {
 }
 
 interface BattleIntentRuntimeOptions {
-  isBootComplete(): boolean;
-  getPhase(): string;
-  getPendingMapChoice(): string | null;
-  getSelectedSpecId(): string;
   getBattleCount(): number;
   resolveMapId(mapId: string): string;
   loadWorldModule(): MaybePromise;
   prefetchWorld(mapId: string, options?: { intent?: boolean }): MaybePromise;
-  ensureTankBuilder(specId: string): Promise<unknown>;
   ensureTankBuilders(specIds: readonly string[]): Promise<unknown>;
   planRoster(specId: string): readonly string[];
   getSpec(specId: string): BattleIntentSpec;
@@ -61,13 +56,10 @@ interface BattleIntentRuntimeOptions {
   preloadKillcam(): MaybePromise;
   ensureFxRuntime(): Promise<BattleIntentFxRuntime>;
   preloadMinimap(mapId: string): MaybePromise;
-  scheduleDelay(callback: () => void, delayMs: number): unknown;
-  cancelDelay(handle: unknown): void;
   warn?(message: string, error: unknown): void;
 }
 
 export interface BattleIntentRuntime {
-  scheduleIdleWorld(mapId: string | null, delayMs?: number): void;
   preload(options?: BattleIntentOptions): void;
   invalidateMapPlan(): void;
   consumeMap(specId: string, requestedMapId: string): string;
@@ -87,15 +79,10 @@ interface MapPlan {
  * this module owns ordering, coalescing, cancellation, and Random-map identity.
  */
 export function createBattleIntentRuntime({
-  isBootComplete,
-  getPhase,
-  getPendingMapChoice,
-  getSelectedSpecId,
   getBattleCount,
   resolveMapId,
   loadWorldModule,
   prefetchWorld,
-  ensureTankBuilder,
   ensureTankBuilders,
   planRoster,
   getSpec,
@@ -117,25 +104,20 @@ export function createBattleIntentRuntime({
   preloadKillcam,
   ensureFxRuntime,
   preloadMinimap,
-  scheduleDelay,
-  cancelDelay,
   warn = (message, error) => console.warn(message, error),
 }: BattleIntentRuntimeOptions): BattleIntentRuntime {
-  const required = [isBootComplete, getPhase, getPendingMapChoice,
-    getSelectedSpecId, getBattleCount, resolveMapId, loadWorldModule,
-    prefetchWorld, ensureTankBuilder, ensureTankBuilders, planRoster, getSpec,
+  const required = [getBattleCount, resolveMapId, loadWorldModule,
+    prefetchWorld, ensureTankBuilders, planRoster, getSpec,
     prebakeSharedTextures, createBudgetYield, setCamoBiome,
     clearCamoOverrides, setCamoOverride, applyCamoPatterns,
     preloadBattleVisuals, preloadAudio, preloadSettings, preloadArmorOverlay,
     preloadBattleHud, preloadTouchControls, preloadSoloBattle,
-    preloadBattleClient, preloadKillcam, ensureFxRuntime, preloadMinimap,
-    scheduleDelay, cancelDelay, warn];
+    preloadBattleClient, preloadKillcam, ensureFxRuntime, preloadMinimap, warn];
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('battle intent runtime requires every lifecycle port');
   }
   if (!(anisotropy > 0)) throw new TypeError('battle intent runtime requires anisotropy');
 
-  let worldTimer: unknown = null;
   let textureKey = '';
   let textureGeneration = 0;
   let texturePromise: Promise<void> | null = null;
@@ -210,23 +192,6 @@ export function createBattleIntentRuntime({
     return pending;
   };
 
-  const scheduleIdleWorld = (mapId: string | null, delayMs = 2500) => {
-    if (worldTimer !== null) cancelDelay(worldTimer);
-    worldTimer = null;
-    if (disposed || !isBootComplete() || !mapId) return;
-    worldTimer = scheduleDelay(() => {
-      worldTimer = null;
-      if (disposed || getPhase() !== 'garage' || getPendingMapChoice() !== mapId) return;
-      const selectedSpecId = getSelectedSpecId();
-      const resolvedMapId = mapId === 'random' ? planMap(selectedSpecId, mapId) : mapId;
-      ignoreFailure(async () => {
-        await loadWorldModule();
-        await prefetchWorld(resolvedMapId);
-      });
-      ignoreFailure(() => ensureTankBuilder(selectedSpecId));
-    }, delayMs);
-  };
-
   const preload = ({ specId, mapId }: BattleIntentOptions = {}) => {
     if (disposed) return;
     ignoreFailure(preloadBattleVisuals);
@@ -288,14 +253,11 @@ export function createBattleIntentRuntime({
 
   const dispose = () => {
     disposed = true;
-    if (worldTimer !== null) cancelDelay(worldTimer);
-    worldTimer = null;
     invalidateMapPlan();
     void cancelTextureWarm();
   };
 
   return {
-    scheduleIdleWorld,
     preload,
     invalidateMapPlan,
     consumeMap,

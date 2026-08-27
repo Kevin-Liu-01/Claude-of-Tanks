@@ -77,7 +77,7 @@ strict TypeScript owners:
 - `src/game/garagePedestalRuntime.ts` owns garage hero construction, shader
   submission, warm visual residency, switch convergence, and battle handoff;
 - `src/game/battleIntentRuntime.ts` owns explicit Battle preloading, concrete
-  Random-map reservation, quiet-world scheduling, exact-roster texture
+  Random-map reservation, intent-only world scheduling, exact-roster texture
   coalescing, and the camouflage-safe handoff into covered entry;
 - `src/game/battleWarmRuntime.ts` owns the typed Battle/Studio-only terrain,
   effect, wreck, hidden-variant, and fallback shader-warm implementation; its

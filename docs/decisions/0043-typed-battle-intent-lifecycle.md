@@ -5,7 +5,7 @@
 
 ## Context
 
-Battle hover, focus, quiet garage dwell, and the eventual solo click operated
+Battle hover, focus, passive garage dwell, and the eventual solo click operated
 on the same future battle, but their policy was spread across `src/main.js`.
 Separate timer, Random-map plan, texture generation, texture promise, and
 camouflage handoff variables made their shared lifecycle implicit. Structural
@@ -18,15 +18,17 @@ hover.
 `src/game/battleIntentRuntime.ts` is the sole owner of speculative Battle work
 and its covered roster handoff. The composition root supplies loaders, roster
 planning, camouflage, scheduling, and presentation ports. The runtime exposes
-only idle-world scheduling, explicit preload, map-plan invalidation and
-consumption, covered roster preparation, and disposal.
+only explicit preload, map-plan invalidation and consumption, covered roster
+preparation, and disposal. Passive Garage dwell is deliberately not Battle
+intent and cannot allocate a battlefield.
 
 The runtime preserves these invariants:
 
 - repeated intent coalesces the exact roster texture work;
 - one `(spec, battleCount)` pair reserves one concrete Random map until click;
 - tank/map changes and battle consumption invalidate the reservation;
-- quiet world work rechecks garage phase and selected map when its timer fires;
+- world construction starts only from explicit Battle intent, room roster
+  intent, or covered entry—not from an idle Garage timer;
 - speculative loader failures never block the covered entry path;
 - covered preparation waits for an in-flight hover bake before changing shared
   camouflage canvases, cancels the stale generation, and resumes with the

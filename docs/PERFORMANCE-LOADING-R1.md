@@ -22,19 +22,25 @@ also exercises deferred LOD creation. A final post-rebase sample measured
 17.86-18.73%. Each traversal admitted 234 deferred jobs, with a 5.4 ms worst
 individual job across the recorded runs.
 
-An exact selected map now prefetches only after four quiet seconds and promotes
+In the original R1 policy, an exact selected map prefetched after four quiet
+seconds and promoted
 the same in-progress build if battle starts. In a diagnostic mobile Verdant run,
 the world stage fell from 1,874 ms to 407 ms (-78.3%) and click-to-control fell
 from 7,585 ms to 5,668 ms (-25.3%). This transition comparison is useful but is
 not certification evidence because the shared host was contended. The isolated
 terrain and bundle measurements above are the stable acceptance evidence.
 
+The 2026-08-27 static-phase audit superseded passive map prefetch: it consumed
+heap and CPU on a screen that did not establish Battle intent. The same world
+promise still starts on Battle hover/focus/touch or joined-room intent and is
+still reused by covered entry.
+
 ## Implementation boundaries
 
 - Studio is a route-level dynamic import and does not enter the initial garage
   graph.
-- Exact-map prefetch respects the existing world-cache capacity, cancels stale
-  selections, pauses during garage interaction, and never builds Random.
+- Explicit exact-map prefetch respects the world-cache capacity, cancels stale
+  selections, and never starts from passive Garage dwell.
 - Async worlds create only the initially visible terrain LOD. Remaining LODs
   stream at one job per four rendered world updates with one-level lookahead.
 - The synchronous screenshot path remains eager and deterministic.

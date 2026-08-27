@@ -14,7 +14,9 @@ simulation.
 <!-- agent-docs:fill:model -->
 `renderer.js` creates WebGL; `viewportRuntime.ts` owns atomic resize and 0x0
 first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery and bounded
-hidden-pane recovery; `lighting.js`, `post.js`, and `sky.js` build the frame;
+hidden-pane recovery; `garageFramePacer.ts` suppresses redundant settled
+Garage frames while keeping interaction at display cadence; `lighting.js`,
+`post.js`, and `sky.js` build the frame;
 `cameraRig.js` owns player/cinematic poses; `quality.js` and `deviceDiag.js`
 own tiering and rescue behavior.
 
@@ -31,4 +33,5 @@ then compare both visual evidence and worst-frame metrics.
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Garage and battle have different active worlds/lights. A lower draw count is
-not a win if it causes first-use shader or transition spikes.
+not a win if it causes first-use shader or transition spikes. Passive Garage
+dwell must not construct a battlefield or retain resources without a ceiling.

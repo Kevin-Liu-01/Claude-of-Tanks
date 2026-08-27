@@ -11,6 +11,7 @@ load, frame, network-presentation, and diagnostic contracts.
 - Avoid making solo play pay for network transport or snapshot work.
 - Prevent one effects burst from blocking the next visible frame.
 - Avoid per-frame object churn in common network and presentation paths.
+- Avoid display-rate work and unbounded GPU/heap residency on static screens.
 - Recover from optional graphics failures without a black output.
 - Scale visual density before reducing the fidelity of combat rules.
 
@@ -49,9 +50,10 @@ fixed host-map intent. Combat FX and killcam code are battle/Studio chunks and
 are constructed once behind an opaque entry gate. Garage browsing must not
 compete with a background terrain, vegetation, or shader build.
 
-Optional garage construction shares one typed idle-work coordinator. Exact-map
-intent, adjacent-card texture paint, background world generation, and workshop
-dressing are mutually exclusive main-thread lanes with deterministic priority.
+Optional garage construction shares one typed idle-work coordinator. Explicit
+exact-map intent, adjacent-card texture paint, Battle-intent world generation,
+and workshop dressing are mutually exclusive main-thread lanes with
+deterministic priority.
 Each producer retains its own cancellation and frame-budget policy, but it must
 release the shared lease before waiting for the next construction slice. This
 prevents several individually cooperative jobs from combining into a visible
@@ -371,6 +373,11 @@ idle freezes. The cold Merkava switch itself remained under its 2.5-second
 budget at 1.53 seconds. These measurements diagnose scheduling behavior rather
 than certify absolute device latency.
 
+This passive-world policy was superseded on 2026-08-27: an idle Garage is not
+evidence that the player will battle, so it no longer parses or constructs a
+map. World work now requires Battle hover/focus/touch, a joined room with a
+fixed map, or covered entry.
+
 ### 2026-08-26 exact opening terrain residency
 
 The opening world used to allocate all three terrain LOD buffers inside 430 m
@@ -418,13 +425,30 @@ its exact collision owner; clients and dedicated sessions do not inherit that
 dependency. Rematches accept synchronous reuse of an existing match owner as
 well as a fresh asynchronous connection.
 
-The desktop garage retains ten recently displayed pedestal visuals so browsing
+At that point, the desktop garage retained ten recently displayed pedestal
+visuals so browsing
 the principal modern fleet does not repeatedly reconstruct the vehicles just
 visited; verified revisits complete without a builder wait. Battle entry trims
 that cache to three visuals (one on mobile) before roster construction, keeping
-the responsiveness gain out of the live-scene memory budget. Passive map warm
-waits 2.5 seconds after garage activity and explicit map selection waits 600 ms,
-so neither competes with active vehicle browsing.
+the responsiveness gain out of the live-scene memory budget. The 2026-08-27
+resource pass superseded those cache and timer values: desktop residency is
+four pedestal visuals, two worlds, and two detached rematch visuals; passive
+map construction was removed entirely.
+
+### 2026-08-27 static-phase CPU and residency
+
+Performance gates now measure phase CPU, forced-GC heap, scene cardinality,
+renderer residency, cache ownership, and render cadence—not FPS alone. A
+settled Garage paints at an 8 Hz safety cadence, but input and camera motion
+immediately restore display-rate frames. The showroom camera no longer walks
+the selected tank subtree to calculate bounds that fixed framing discards, and
+it no longer rewrites an identical pose indefinitely.
+
+The production probe is `npm run perf:resources`; its enforceable form is
+`npm run perf:resources:gate`. It runs Garage idle, a live solo battle, and
+returned Garage in one browser so leaks and hidden ownership remain visible.
+Passive Garage dwell must report zero resident worlds; desktop
+pedestal/world/rematch caches must stay within 4/2/2 respectively.
 
 Loading audio begins before these barriers and remains independent of the full
 audio graph. A production-path PCM probe captured the battle loader at 48 kHz

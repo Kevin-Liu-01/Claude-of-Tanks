@@ -14,8 +14,8 @@ and animation stalls even though no individual owner violated its own budget.
 ## Decision
 
 `src/game/garageIdleWorkCoordinator.ts` owns mutual exclusion and priority for
-optional garage construction. Battle/map intent runs first, followed by
-adjacent-vehicle paint, passive world work, and workshop dressing. Producers
+optional garage construction. Explicit Battle/map intent runs first, followed
+by adjacent-vehicle paint and workshop dressing. Producers
 retain their existing cancellation, yielding, construction, and visual-quality
 contracts. Stale queued requests are discarded before a lease is granted.
 

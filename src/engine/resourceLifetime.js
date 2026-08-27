@@ -8,13 +8,11 @@
  */
 
 const LIMITS = Object.freeze({
-  // Ten recent showroom heroes remain below the existing ~512 MB scene
-  // budget (about 35 MB each in the measured fleet) and cover an ordinary
-  // country-row browsing session without rebuilding procedural geometry on
-  // every revisit. Battle entry trims this convenience set before the combat
-  // roster becomes resident, so the larger garage window cannot inflate live
-  // battle memory.
-  desktop: Object.freeze({ pedestalVisuals: 10, worldScenes: Infinity }),
+  // Keep enough recent heroes/maps for quick backtracking without allowing a
+  // long browsing session to become an unbounded GPU/heap residency policy.
+  // Four preview tanks and two worlds preserve useful reuse while putting a
+  // deterministic ceiling on hidden scene graphs, textures and programs.
+  desktop: Object.freeze({ pedestalVisuals: 4, worldScenes: 2 }),
   mobile: Object.freeze({ pedestalVisuals: 2, worldScenes: 1 }),
 });
 

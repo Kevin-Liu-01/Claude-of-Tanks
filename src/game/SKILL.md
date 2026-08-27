@@ -34,9 +34,10 @@ facade; `killcam.js` and `studio.js` own separate presentation timelines.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.
-`battleIntentRuntime.ts` owns the Battle hover/focus lifecycle: concrete Random
-map reservation, quiet-world scheduling, exact-roster texture coalescing, stale
-hover cancellation, and the camouflage-safe handoff into covered loading.
+`battleIntentRuntime.ts` owns the explicit Battle hover/focus lifecycle:
+concrete Random-map reservation, exact-roster texture coalescing, stale intent
+cancellation, and the camouflage-safe handoff into covered loading. Passive
+garage dwell never constructs a battlefield.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

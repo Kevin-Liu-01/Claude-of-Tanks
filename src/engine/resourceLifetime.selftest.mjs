@@ -9,8 +9,12 @@ assert.deepEqual(residentResourceLimits('mobile'), {
   pedestalVisuals: 2,
   worldScenes: 1,
 });
-assert.equal(residentResourceLimits('desktop').pedestalVisuals, 10);
-assert.equal(residentResourceLimits('desktop').worldScenes, Infinity);
+assert.deepEqual(residentResourceLimits('desktop'), {
+  pedestalVisuals: 4,
+  worldScenes: 2,
+});
+assert.ok(Number.isFinite(residentResourceLimits('desktop').worldScenes),
+  'desktop map residency must never grow without a ceiling');
 
 const sharedTexture = new THREE.Texture();
 const retiredTexture = new THREE.Texture();

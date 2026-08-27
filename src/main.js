@@ -49,6 +49,7 @@ import {
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
+import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import {
   createForwardProgramWarmOwner,
   snapshotRendererPrograms,
@@ -327,6 +328,7 @@ const hfProxy = {
 };
 
 const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
+const garageFramePacer = createGarageFramePacer();
 if (typeof window !== 'undefined') {
   window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 }
@@ -378,7 +380,7 @@ const game = createGameState();
 const playerShellLog = [];
 const botPressure = { enemyShells: 0, aimedAtPlayer: 0, hitsOnPlayer: 0, dmgOnPlayer: 0 };
 const battleVisualPool = createBattleVisualPool({
-  capacity: getDeviceTier() === 'mobile' ? 0 : 4,
+  capacity: getDeviceTier() === 'mobile' ? 0 : 2,
 });
 game._battleVisualPool = battleVisualPool;
 devTrace?.configure({ game });
@@ -579,21 +581,17 @@ function frameBudgetTick(budgetMs = 6) {
   };
 }
 
-// Battle hover/focus, quiet garage world streaming, and the covered roster
-// handoff share one lifecycle owner. Keeping the policy here used to expose
+// Explicit Battle hover/focus and the covered roster handoff share one
+// lifecycle owner. Passive Garage dwell is deliberately not Battle intent.
+// Keeping the policy here used to expose
 // several independent timers/generations in the composition root and made a
 // Random-map hover race the eventual click. The typed runtime preserves the
 // exact loaders and visuals while owning their ordering and cancellation.
 const battleIntent = createBattleIntentRuntime({
-  isBootComplete: () => bootComplete,
-  getPhase: () => game.phase,
-  getPendingMapChoice: () => pendingMapChoice,
-  getSelectedSpecId: () => selectedSpecId,
   getBattleCount: () => game.battleCount,
   resolveMapId,
   loadWorldModule,
   prefetchWorld,
-  ensureTankBuilder,
   ensureTankBuilders,
   planRoster: (specId) => planBattleParticipantIds(game, specId, true),
   getSpec,
@@ -616,8 +614,6 @@ const battleIntent = createBattleIntentRuntime({
   ensureFxRuntime,
   preloadMinimap: (mapId) => ensureBattleHud()
     .then(() => hud.preloadMinimapAsset(minimapAssetUrl(mapId))),
-  scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
-  cancelDelay: (handle) => clearTimeout(handle),
 });
 
 // Garage vehicle selection now crosses one typed lifecycle boundary. The
@@ -655,11 +651,9 @@ const pedestal = createGaragePedestalRuntime({
 });
 
 const noteGarageActivity = () => {
+  garageFramePacer.noteActivity(performance.now());
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
-  if (bootComplete && game.phase === 'garage') {
-    battleIntent.scheduleIdleWorld(pendingMapChoice);
-  }
 };
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
   window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
@@ -1159,10 +1153,6 @@ const garage = await bootStage('ui', () => createGarage({
     pendingMapChoice = mapId;
     if (mapId !== 'random') pendingMapId = mapId;
     cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
-    // A deliberate map pick is stronger intent than passive garage dwell.
-    // The coordinator still enforces its 1.2 s no-input guard and 4 ms
-    // background slices, but does not add the full generic idle delay again.
-    battleIntent.scheduleIdleWorld(mapId, 600);
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the
@@ -1280,8 +1270,9 @@ const showroom = (() => {
     start() { on = true; ctl.start(); },
     stop() { on = false; dragPtr = -1; ctl.stop(); },
     reset() { return ctl.reset(); },
-    update(dt) { if (on) ctl.update(dt); },
+    update(dt) { return on ? ctl.update(dt) : false; },
     get active() { return on && ctl.active; },
+    get moving() { return on && ctl.moving; },
     debugState: () => ctl.debugState(),
   };
 })();
@@ -3145,6 +3136,7 @@ function enterGarage({ preserveRoom = networkRoomCoordinator.shouldPreserveAfter
   // exhibits must not inherit a stale timestamp from before the battle and
   // contend with the transition reveal or the first interactive frames.
   garageDressingScheduler.noteActivity();
+  garageFramePacer.reset(performance.now());
   scheduleGarageDressingBuild();
   // Direct Studio activation deliberately skips battle-only collision and
   // minimap capture. The garage needs only its placement; building the
@@ -3432,6 +3424,20 @@ function tick(nowMs) {
   // resuming just continues the fixed-step loop (no drifted timers).
   const kcActive = killcam.isActive();
 
+  // A settled Garage is a static presentation, not a 60 Hz game simulation.
+  // Keep camera interaction and async scene changes immediate, then skip the
+  // complete input/presentation/world/audio/shadow/post pipeline between the
+  // bounded idle paints. DOM/CSS animation continues on the compositor.
+  const showroomDirty = game.phase === 'garage' ? showroom.update(dtR) : false;
+  // Persistent room ownership is independent of WebGL presentation cadence.
+  // Keep lobby recovery and host snapshots at display cadence even while a
+  // settled Garage only paints eight frames per second.
+  if (game.phase === 'garage') networkFramePump.pump(dtR, nowMs);
+  if (game.phase === 'garage' && !garageFramePacer.shouldRender(nowMs, {
+    animate: showroom.moving || pedestal.switchPending,
+    dirty: showroomDirty,
+  })) return;
+
   // PAUSE (owner: Esc mid-game). `paused` has always gated the fixed-step sim
   // (step 2) plus input/rig, but fx kept aging, dust kept pumping off frozen
   // hulls and the engine mix kept roaring — an open menu over a live battle,
@@ -3474,7 +3480,7 @@ function tick(nowMs) {
 
   // Network authority keeps pumping while the loading screen owns the page,
   // then consumes the same polled controls once the shared countdown opens.
-  networkFramePump.pump(dtR, nowMs);
+  if (game.phase !== 'garage') networkFramePump.pump(dtR, nowMs);
 
   // 2. fixed-step simulation (held while the settings panel is open)
   if (inBattle && !paused && !kcActive) {
@@ -3620,7 +3626,6 @@ function tick(nowMs) {
   }
   if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
   if (kcActive) killcam.update(dtR);
-  if (game.phase === 'garage') showroom.update(dtR);
 
   // Battle-open flyby: hide the battle HUD while the rig owns the camera
   // (the rig itself shows the letterbox bars — cameraRig.setLetterbox).
@@ -3845,6 +3850,7 @@ playerBattleActions.setTank(getSpec(selectedSpecId));
 garage.show(selectedSpecId);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();
+garageFramePacer.reset(performance.now());
 setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
 hud?.setMode('hidden');
 
@@ -4061,7 +4067,6 @@ if (STUDIO_BOOT_INTENT) {
 }
 
 bootComplete = true;
-battleIntent.scheduleIdleWorld(pendingMapChoice);
 frameLoop.schedule();
 
 // ---------------------------------------------------------------------------
@@ -4141,6 +4146,7 @@ window.__DEBUG = {
   get worldCacheIds() { return [...worldCache.keys()]; },
   get residentLimits() { return { ...residentLimits }; },
   get battleVisualPool() { return battleVisualPool.stats(); },
+  get garageFramePacer() { return { ...garageFramePacer.stats }; },
   get lastWorldRelease() {
     return worldBuildCoordinator.lastRelease
       ? { ...worldBuildCoordinator.lastRelease } : null;

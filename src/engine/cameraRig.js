@@ -1299,6 +1299,7 @@ const SHOW_INERTIA_MIN = THREE.MathUtils.degToRad(2.5); // rad/s: coast cutoff
 const SHOW_INERTIA_MAX = THREE.MathUtils.degToRad(220); // rad/s: flick clamp
 const SHOW_IDLE_RETURN_S = 2.0;        // idle before the spring back engages
 const SHOW_RETURN_TAU_S = 0.75;        // spring-back ease
+const SHOW_SETTLE_EPS = 1e-5;          // explicit rest; stop rewriting one pose forever
 const SHOW_ZOOM_STEP = 0.9;            // per wheel notch
 const SHOW_ZOOM_MIN = 0.62;
 const SHOW_ZOOM_MAX = 1.55;
@@ -1402,6 +1403,8 @@ export function createShowroomOrbit(camera, rig, deps) {
   let lastDragMs = 0;
   let measureAccS = 0;
   const win = { cx: 0, cy: 0, hx: 1, hy: 1 };
+  let appliedAspect = NaN;
+  const appliedWin = { cx: NaN, cy: NaN, hx: NaN, hy: NaN };
 
   /** Stage rect (CSS px) → NDC center/half-extents, with a sanity floor. */
   function readWindow() {
@@ -1435,14 +1438,6 @@ export function createShowroomOrbit(camera, rig, deps) {
     subject = root || null;
     haveBox = false;
     if (!root) return false;
-    if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
-    for (let i = 0; i < 8; i++) {
-      _sbCorners[i].set(i & 1 ? _sbMax.x : _sbMin.x, i & 2 ? _sbMax.y : _sbMin.y,
-        i & 4 ? _sbMax.z : _sbMin.z).applyMatrix4(root.matrixWorld);
-    }
-    _sbCenter.set(0, 0, 0);
-    for (let i = 0; i < 8; i++) _sbCenter.add(_sbCorners[i]);
-    _sbCenter.multiplyScalar(1 / 8);
     // FIXED FRAMING (garage r9 — owner: "when I select different tanks the
     // camera keeps shifting around, just keep the camera in one place looking
     // at center of garage"). The per-hull fit re-solved the ANCHOR (measured
@@ -1454,12 +1449,26 @@ export function createShowroomOrbit(camera, rig, deps) {
     // below still adapts to viewport size / UI panel layout as before.
     const fb = deps.fixedFrame ? deps.fixedFrame() : null;
     if (fb) {
+      // The fixed showroom contract deliberately ignores each vehicle's own
+      // bounds. Do not traverse hundreds of meshes and update their matrices
+      // merely to overwrite the result with this canonical stage box.
+      _sbMin.set(-fb.hw, -fb.hh, -fb.hd);
+      _sbMax.set(fb.hw, fb.hh, fb.hd);
       _sbCenter.set(fb.x, fb.y, fb.z);
       for (let i = 0; i < 8; i++) {
         _sbCorners[i].set(_sbCenter.x + (i & 1 ? fb.hw : -fb.hw),
           _sbCenter.y + (i & 2 ? fb.hh : -fb.hh),
           _sbCenter.z + (i & 4 ? fb.hd : -fb.hd));
       }
+    } else {
+      if (!measureLocalBox(root, _sbMin, _sbMax)) return false;
+      for (let i = 0; i < 8; i++) {
+        _sbCorners[i].set(i & 1 ? _sbMax.x : _sbMin.x, i & 2 ? _sbMax.y : _sbMin.y,
+          i & 4 ? _sbMax.z : _sbMin.z).applyMatrix4(root.matrixWorld);
+      }
+      _sbCenter.set(0, 0, 0);
+      for (let i = 0; i < 8; i++) _sbCenter.add(_sbCorners[i]);
+      _sbCenter.multiplyScalar(1 / 8);
     }
     let radius = 0;
     for (let i = 0; i < 8; i++) radius = Math.max(radius, _sbCorners[i].distanceTo(_sbCenter));
@@ -1571,11 +1580,22 @@ export function createShowroomOrbit(camera, rig, deps) {
     if (_sbPos.y < minY) _sbPos.y = minY;
     _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
     rig.setExternalPose(_sbPos, _sbLook, SHOW_FOV_DEG);
+    appliedAspect = camera.aspect;
+    appliedWin.cx = win.cx; appliedWin.cy = win.cy;
+    appliedWin.hx = win.hx; appliedWin.hy = win.hy;
   }
 
   const api = {
     /** True once a hero has been measured (the orbit owns the camera). */
     get active() { return running && haveBox; },
+    /** True only while an interaction/spring can produce another camera pose. */
+    get moving() {
+      return running && haveBox && (dragging ||
+        Math.hypot(yawVel, pitchVel) > SHOW_INERTIA_MIN ||
+        Math.abs(tYaw - yaw) > SHOW_SETTLE_EPS ||
+        Math.abs(tPitch - pitch) > SHOW_SETTLE_EPS ||
+        Math.abs(tZoom - zoom) > SHOW_SETTLE_EPS);
+    },
     /** Hero framing distance in meters (0 until measured). */
     get heroDist() { return haveBox ? heroDist : 0; },
 
@@ -1614,13 +1634,14 @@ export function createShowroomOrbit(camera, rig, deps) {
 
     /**
      * Per-frame damped integration (drag → momentum → idle spring-back) and
-     * pose write. Cheap: two 8-corner solves, no allocation.
+     * pose write. Returns whether the rendered camera pose changed.
      * @param {number} dt render delta seconds
-     * @returns {void}
+     * @returns {boolean}
      */
     update(dt) {
-      if (!running) return;
+      if (!running) return false;
       const d = THREE.MathUtils.clamp(dt, 0, 0.1);
+      let dirty = false;
       // perf-r5 camera-lock fix: the empty-pedestal poll below used to sit
       // BEHIND the haveBox gate, so a start() on an empty pedestal (the boot
       // hero now builds asynchronously behind a chunked prebake) left the
@@ -1631,9 +1652,9 @@ export function createShowroomOrbit(camera, rig, deps) {
         measureAccS += d;
         if (measureAccS > 0.4) {
           measureAccS = 0;
-          if (measure() && haveBox) api.reset();
+          if (measure() && haveBox) return api.reset();
         }
-        return;
+        return false;
       }
       // The hero GLB streams in behind a procedural stand-in and the carousel
       // can swap vehicles at any time — re-measure a few times a second so the
@@ -1642,8 +1663,15 @@ export function createShowroomOrbit(camera, rig, deps) {
       if (measureAccS > 0.4) {
         measureAccS = 0;
         const prev = subject;
+        const previousHeroDist = heroDist;
         if (measure() && haveBox) {
           heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+          dirty = Math.abs(heroDist - previousHeroDist) > SHOW_SETTLE_EPS ||
+            Math.abs(camera.aspect - appliedAspect) > SHOW_SETTLE_EPS ||
+            Math.abs(win.cx - appliedWin.cx) > SHOW_SETTLE_EPS ||
+            Math.abs(win.cy - appliedWin.cy) > SHOW_SETTLE_EPS ||
+            Math.abs(win.hx - appliedWin.hx) > SHOW_SETTLE_EPS ||
+            Math.abs(win.hy - appliedWin.hy) > SHOW_SETTLE_EPS;
           if (prev !== subject) { // new hero on the pedestal — settle it back
             // nearest yaw equivalent of the hero heading: a tank switch after
             // a free 360° orbit swings ≤180° home, never rewinds whole turns
@@ -1652,7 +1680,7 @@ export function createShowroomOrbit(camera, rig, deps) {
             yawVel = pitchVel = 0;
           }
         }
-        if (!haveBox) return;
+        if (!haveBox) return false;
       }
       if (dragging) {
         sinceInputS = 0;
@@ -1678,13 +1706,30 @@ export function createShowroomOrbit(camera, rig, deps) {
           tYaw += wrapPi(heroYaw - tYaw) * a;
           tPitch += (heroPitch - tPitch) * a;
           tZoom += (1 - tZoom) * a;
+          if (Math.abs(wrapPi(heroYaw - tYaw)) < SHOW_SETTLE_EPS &&
+              Math.abs(heroPitch - tPitch) < SHOW_SETTLE_EPS &&
+              Math.abs(1 - tZoom) < SHOW_SETTLE_EPS) {
+            tYaw = yaw + wrapPi(heroYaw - yaw);
+            tPitch = heroPitch;
+            tZoom = 1;
+          }
         }
       }
+      const previousYaw = yaw;
+      const previousPitch = pitch;
+      const previousZoom = zoom;
       const f = 1 - Math.exp(-d / SHOW_FOLLOW_TAU_S);
       yaw += (tYaw - yaw) * f;
       pitch += (tPitch - pitch) * f;
       zoom += (tZoom - zoom) * f;
-      applyPose();
+      if (Math.abs(tYaw - yaw) < SHOW_SETTLE_EPS) yaw = tYaw;
+      if (Math.abs(tPitch - pitch) < SHOW_SETTLE_EPS) pitch = tPitch;
+      if (Math.abs(tZoom - zoom) < SHOW_SETTLE_EPS) zoom = tZoom;
+      const moved = Math.abs(yaw - previousYaw) > Number.EPSILON ||
+        Math.abs(pitch - previousPitch) > Number.EPSILON ||
+        Math.abs(zoom - previousZoom) > Number.EPSILON;
+      if (dirty || moved) applyPose();
+      return dirty || moved;
     },
 
     /** Pointer went down on the 3D stage. @returns {void} */

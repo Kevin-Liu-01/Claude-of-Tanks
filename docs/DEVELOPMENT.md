@@ -197,6 +197,8 @@ the complete vehicle-authoring contract.
 Cold-load probe:
 
     npm run perf:cold
+    npm run perf:resources
+    npm run perf:resources:gate
 
 Repeat the cache-disabled first visit across four weak-device sessions while
 retaining the failed-download and failed-evaluation recovery gates:
