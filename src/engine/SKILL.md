@@ -13,9 +13,10 @@ simulation.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `renderer.js` creates WebGL; `viewportRuntime.ts` owns atomic resize and 0x0
-first-layout recovery; `lighting.js`, `post.js`, and `sky.js` build the frame;
-`cameraRig.js` owns player/cinematic poses; `quality.js` and
-`deviceDiag.js` own tiering and rescue behavior.
+first-layout recovery; `frameLoopScheduler.ts` owns rAF delivery and bounded
+hidden-pane recovery; `lighting.js`, `post.js`, and `sky.js` build the frame;
+`cameraRig.js` owns player/cinematic poses; `quality.js` and `deviceDiag.js`
+own tiering and rescue behavior.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

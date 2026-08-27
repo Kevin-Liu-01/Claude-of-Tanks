@@ -403,6 +403,11 @@ CSM frustum refresh. It owns the sole window listener and a temporary 0x0 boot
 recovery observer/interval; the first positive layout disconnects the recovery
 work, while ordinary boots never create it.
 
+`frameLoopScheduler.ts` owns browser frame delivery, including one queued-rAF
+latch, context-restoration restart, and bounded hidden-pane recovery. Every
+delivery path enters the same frame callback; hidden input or timer rescue can
+never stack a second render loop when animation frames resume.
+
 #### 3.1.2 `lighting.js`
 ```js
 export function createLighting(scene, camera, sunDir /* Vector3, unit, FROM origin TOWARD sun */)

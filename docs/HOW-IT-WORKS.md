@@ -88,6 +88,12 @@ pointer-lock fallback, zoom, free-look, and sniper state into the existing
 tank and camera input records. Pauses, loading veils, killcams, empty magazines,
 and destroyed players are handled before either authority path sees input.
 
+The browser clock is also isolated from that frame body. One typed scheduler
+coalesces animation-frame requests, explicitly rearms after WebGL restoration,
+and rescues controls in embedded panes that remain interactive while reporting
+themselves hidden. Recovery is focus- and cadence-gated, so background tabs
+stay frozen and a returning animation frame cannot create a second loop.
+
 Rendered tanks cross a separate typed presentation owner. Solo state is
 interpolated between completed 60 Hz steps; multiplayer state is already
 interpolated and locally corrected by its bridge, so it is presented directly

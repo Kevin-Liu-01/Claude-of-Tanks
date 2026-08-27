@@ -155,6 +155,11 @@ runs a render probe before committing expensive defaults.
 atomic. Its zero-size first-layout recovery is inert on normal boots and
 self-disarms as soon as a host exposes usable dimensions.
 
+`src/engine/frameLoopScheduler.ts` keeps one queued animation-frame owner and
+funnels context-restoration, hidden-pane timer, and hidden-input recovery into
+the same frame callback. Boot gating and focus checks preserve full background
+freeze without losing short control edges in interactive embedded panes.
+
 The boot contract is:
 
 - a visible transition or garage frame must cover asynchronous work;

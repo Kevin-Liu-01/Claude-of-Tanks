@@ -48,6 +48,7 @@ import {
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
+import { createFrameLoopScheduler } from './engine/frameLoopScheduler.ts';
 import {
   createForwardProgramWarmOwner,
   snapshotRendererPrograms,
@@ -3368,45 +3369,14 @@ let lastCineActive = false; // battle-open flyby HUD veil edge latch
 //     registration order), so the pumped tick samples the fresh press.
 // rAF re-arming is latched (rafQueued) so fallback ticks can never stack
 // extra rAF callbacks for a speed burst when frames come back.
-let lastTickWallMs = -Infinity;
-let rafQueued = false;
-let rafId = 0;
-function scheduleRaf() {
-  if (rafQueued) return;
-  rafQueued = true;
-  rafId = requestAnimationFrame((t) => {
-    rafId = 0;
-    rafQueued = false;
-    tick(t);
-  });
-}
-function restartRaf() {
-  if (rafId) cancelAnimationFrame(rafId);
-  rafId = 0;
-  rafQueued = false;
-  scheduleRaf();
-}
-rearmRafAfterContext = restartRaf;
-setInterval(() => {
-  if (!bootComplete) return;
-  const now = performance.now();
-  if (now - lastTickWallMs > 200 && document.hasFocus() && document.hidden) {
-    tick(now);
-  }
-}, 100);
-function starvedPump() {
-  if (!bootComplete) return;
-  if (!document.hidden) return; // visible pages tick on rAF as always
-  const now = performance.now();
-  if (now - lastTickWallMs > 100) tick(now);
-}
-for (const ev of ['mousedown', 'mouseup', 'mousemove', 'keydown', 'keyup', 'wheel']) {
-  window.addEventListener(ev, starvedPump, { passive: true });
-}
+const frameLoop = createFrameLoopScheduler({
+  tick,
+  isBootComplete: () => bootComplete,
+});
+rearmRafAfterContext = frameLoop.restart;
 
 function tick(nowMs) {
-  scheduleRaf();
-  lastTickWallMs = performance.now();
+  frameLoop.schedule();
   if (lastMs < 0) lastMs = nowMs;
   const frameWallDtS = Math.max(0, (nowMs - lastMs) / 1000);
   // Frame dt clamp (0.1 s): a stalled/backgrounded loop never integrates its
@@ -4092,7 +4062,7 @@ if (STUDIO_BOOT_INTENT) {
 
 bootComplete = true;
 battleIntent.scheduleIdleWorld(pendingMapChoice);
-scheduleRaf();
+frameLoop.schedule();
 
 // ---------------------------------------------------------------------------
 // Debug / drive-test hooks (not part of the screenshot contract).
