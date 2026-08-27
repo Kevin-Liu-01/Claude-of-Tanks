@@ -55,6 +55,11 @@ reveal preparation; callers receive only generation and reveal receipts.
 `soloBattleLoadingRuntime.ts` owns the complete covered solo entry around that
 warm: exact world/roster acquisition, progress, texture upload, visual staging,
 minimum loader dwell, reveal fallback, countdown calculation, and diagnostics.
+The corresponding multiplayer lifecycle lives in
+`src/net/networkBattlePresentationRuntime.ts`; `main.js` supplies renderer and
+world adapters but must not reimplement its preparation/readiness/reveal order.
+Keep it behind `src/net/networkBattlePresentationAccess.ts` so Garage and solo
+boot do not evaluate or allocate multiplayer-only presentation policy.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -88,6 +93,9 @@ not put shader, effect, shadow, or reveal ordering back into `main.js`.
 Route covered solo entry changes through `soloBattleLoadingRuntime.ts`; do not
 recreate its acquisition barrier, progress policy, or reveal handoff in the
 composition root.
+Route cold network entry changes through `networkBattlePresentationRuntime.ts`;
+keep partial bridges private until roster preparation and initial authority
+succeed.
 Route result, death-beat, and replay-handoff changes through
 `battleResultPresentationRuntime.ts`; keep those latches out of `tick()`.
 Workshop changes must preserve the typed optimization receipt and pass the

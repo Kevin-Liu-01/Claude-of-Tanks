@@ -114,6 +114,12 @@ strict TypeScript owners:
 - `src/net/networkRoomCoordinator.ts` owns the persistent room UI lifecycle;
 - `src/net/networkBattleLaunchRuntime.ts` owns private/LAN, retained-room
   rematch, and ranked launch policy plus cold-entry failure cleanup;
+- `src/net/networkBattlePresentationRuntime.ts` owns the shared cold-client
+  preparation path: parallel dependencies, private bridge preparation, first
+  authority, covered warmup, peer readiness, activation, validation, and reveal;
+- `src/net/networkBattlePresentationAccess.ts` keeps that multiplayer-only
+  policy and adapter graph out of Garage and solo startup, with retryable
+  acquisition on network-mode or joined-room intent;
 - `src/net/networkBattleActivationRuntime.ts` owns the atomic prepared-bridge
   transition into live player or spectator presentation, including prior-round
   reset, world/HUD/FX state, phase publication, camera ownership, and Garage
@@ -173,6 +179,13 @@ world, exact-roster, battle-interface, FX and authority acquisition share one
 barrier; then player upload, deployment warm, loader dwell, reveal fallback,
 countdown calculation and diagnostics run in one typed order. `src/main.js`
 connects its ports and no longer implements that loading state machine.
+
+`src/net/networkBattlePresentationRuntime.ts` owns the equivalent cold network
+transition for private/LAN and dedicated play. It overlaps modules, battlefield,
+and transport; keeps a newly created bridge private until its roster and
+viewer-bearing first snapshot succeed; performs warmup and the all-peer barrier
+under the loader; then delegates one atomic activation and hides the loader only
+after black-frame validation. `src/main.js` supplies concrete adapters only.
 
 `src/game/battleResultPresentationRuntime.ts` is the post-simulation result
 owner. The frame loop invokes it once after authority advances and does not own
@@ -281,6 +294,12 @@ initial state.
 presentation seam. Private/LAN first entry, retained-room rematch, and ranked
 handoff share identity validation, loader presentation, cleanup, and typed
 failure diagnostics instead of implementing parallel policies in `main.js`.
+
+`networkBattlePresentationRuntime.ts` is the deep presentation module below
+that launcher. Its single `present()` interface owns the ordering shared by
+browser-hosted and dedicated adapters. An unpublished bridge is disposed if
+roster preparation or initial authority fails; it becomes render-visible only
+after both gates pass.
 
 Every new battle resets result and presentation state. A previous verdict must
 not survive into a new network round.

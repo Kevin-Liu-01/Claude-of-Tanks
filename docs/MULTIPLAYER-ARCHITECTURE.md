@@ -32,6 +32,13 @@ damage, spotting, and AI modules.
   cadence, reliable-event draining, snapshot waits, and diagnostics.
 - `src/net/networkRoomCoordinator.ts` owns lobby-to-room presentation,
   selection locks, chat buffering, ready/start commands, and rematch claims.
+- `src/net/networkBattlePresentationRuntime.ts` owns the complete covered
+  cold-client transition for private/LAN and dedicated adapters. Module, world,
+  and transport acquisition overlap; a bridge is published only after exact
+  roster preparation and a viewer-bearing authoritative snapshot; warmup and
+  peer readiness finish before atomic activation and loader reveal.
+- `src/net/networkBattlePresentationAccess.ts` demand-loads that deep owner on
+  network-mode or joined-lobby intent and retries a transient chunk failure.
 - `src/net/connectionRecovery.ts` owns the single reconnect/failure
   presentation edge while the session rebuilds transport underneath it.
 - `src/net/localSession.js` provides loopback authority for protocol tests and

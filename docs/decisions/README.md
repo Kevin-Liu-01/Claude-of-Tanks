@@ -77,3 +77,4 @@ runtime documents remain authoritative for behavior.
 - [0065 — Network battle activation is one atomic presentation transition](0065-typed-network-battle-activation.md)
 - [0066 — Garage and battle roots have exclusive scene residency](0066-phase-exclusive-scene-residency.md)
 - [0067 — Solo battle loading has one typed lifecycle owner](0067-typed-solo-battle-loading.md)
+- [0068 — Cold network battle presentation has one typed owner](0068-typed-network-battle-presentation.md)

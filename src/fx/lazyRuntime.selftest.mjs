@@ -40,6 +40,9 @@ const playerFrameInput = await readFile(
 const battlePresentation = await readFile(
   new URL('../game/battlePresentationRuntime.ts', import.meta.url), 'utf8',
 );
+const networkBattlePresentation = await readFile(
+  new URL('../net/networkBattlePresentationRuntime.ts', import.meta.url), 'utf8',
+);
 
 if (/import\s*\{\s*createFx\s*\}\s*from\s*['"]\.\/fx\/effects\.js['"]/.test(main)) {
   throw new Error('combat effects must not return to the garage boot graph');
@@ -107,11 +110,12 @@ if (/from\s+['"]three['"]/.test(playerFrameInput)
     || /document\.|window\.|setTimeout\(/.test(playerFrameInput)) {
   throw new Error('frame input must remain allocation-free and independent from browser presentation');
 }
-const networkBattle = main.slice(
-  main.indexOf('async function presentNetworkBattle('),
-  main.indexOf('async function beginSoloBattle('),
+const networkBattleAdapters = main.slice(
+  main.indexOf('const networkBattlePresentation = createNetworkBattlePresentationAccess('),
+  main.indexOf('const networkBattleLauncher = createNetworkBattleLaunchRuntime('),
 );
-if (!/preloadNetworkBattleModules\(\)[\s\S]{0,900}ensureFxRuntime\(\)/.test(networkBattle)) {
+if (!/loadModules:[\s\S]{0,700}ensureFxRuntime\(\)/.test(networkBattleAdapters)
+    || !/entry\.acquire\(\{[\s\S]{0,220}loadModules: entry\.loadModules/.test(networkBattlePresentation)) {
   throw new Error('network battle can enter without the live effects runtime');
 }
 const plannedRosterAt = battleIntentRuntime.indexOf('const planned = planRoster(specId)');

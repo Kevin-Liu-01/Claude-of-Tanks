@@ -114,6 +114,7 @@ import { createNetworkBattleBarrier } from './net/networkBattleBarrier.ts';
 import { createNetworkRoomCoordinator } from './net/networkRoomCoordinator.ts';
 import { createNetworkBattleLaunchRuntime } from './net/networkBattleLaunchRuntime.ts';
 import { createNetworkBattleActivationRuntime } from './net/networkBattleActivationRuntime.ts';
+import { createNetworkBattlePresentationAccess } from './net/networkBattlePresentationAccess.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createTouchControlsAccess } from './ui/touchControlsAccess.ts';
@@ -1029,6 +1030,7 @@ function preloadPlayMode(mode) {
   preloadKillcamModule().catch(() => null);
   preloadNetworkBattleModules().catch(() => null);
   preloadNetworkRoomChatModule().catch(() => null);
+  if (mode !== 'solo') networkBattlePresentation.preload().catch(() => null);
   if (mode === 'private' || mode === 'lan') {
     preloadPrivateMatchHandoffModule().catch(() => null);
   } else if (mode === 'ranked') {
@@ -1921,6 +1923,7 @@ function resolveFxSubject(id) {
  */
 function preloadNetworkLobbyIntent(state) {
   if (!state || game.phase !== 'garage' || state.phase !== 'waiting') return;
+  networkBattlePresentation.preload().catch(() => null);
   battleVisualStreamerAccess.preload().catch(() => null);
   preloadNetworkBattleModules().catch(() => null);
   preloadNetworkRoomChatModule().catch(() => null);
@@ -1939,6 +1942,101 @@ function preloadNetworkLobbyIntent(state) {
   prefetchWorld(mapId);
 }
 
+const networkBattlePresentation = createNetworkBattlePresentationAccess({
+  options: () => ({
+    load: {
+      battleLoad,
+      audio,
+      lighting,
+      ensureBattleVisuals: ensureBattleVisualStreamer,
+      nextFrame,
+      recordTrace: (trace) => {
+        if (typeof window !== 'undefined') window.__NETWORK_LOAD = trace;
+      },
+      setAdaptiveSuspended: (value) => post.setAdaptiveSuspended(value),
+    },
+    roster: {
+      getMap: (mapId) => {
+        const cfg = getMapConfig(mapId);
+        return { name: cfg.name || mapId, thumb: MAP_THUMBS[mapId] || '', biome: mapId };
+      },
+      rows: (players, team, viewerId) => lobbyRosterRows({ players }, team, viewerId),
+      vehicleName: (specId) => getSpec(specId)?.name || specId,
+      emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
+      setCamoBiome,
+    },
+    entry: {
+      acquire: (options) => battleEntryAcquisition.acquireNetwork(options),
+      loadModules: () => Promise.all([
+        preloadNetworkBattleModules(),
+        preloadBattleClientRuntime(),
+        ensureBattleHud(),
+        ensureTouchControls(),
+        armorAimOverlay.preload().catch((error) => {
+          console.warn('[loading] Optional armor overlay unavailable:', error);
+          return null;
+        }),
+        ensureFxRuntime(),
+        ensureKillcamRuntime(),
+        battleWarm.preload(),
+        audio.warmBattleEvents(),
+      ]).then(([modules]) => modules),
+      loadWorld: (mapId, onProgress) => ensureWorld(mapId, onProgress),
+      publishMatch: (match) => { networkMatch = match; },
+      getMatch: () => networkMatch,
+    },
+    bridge: {
+      installInputRuntime: (factory) => networkFramePump.ensureInputRuntime(factory),
+      createStatus: (factory) => factory(),
+      publishStatus: (status) => { networkStatus = status; },
+      attachRecovery: (client, status) => networkRecovery.attach(client, status),
+      create: (factory, request, spectator) => factory({
+        engineCtx,
+        game,
+        bus,
+        viewerId: request.viewerId,
+        spectator,
+        worldCollision: world,
+      }),
+      publish: (bridge) => { networkBridge = bridge; },
+      groundSampler,
+      waitForInitialSnapshot: (request) => networkBattleBarrier.waitForInitialSnapshot(request),
+      waitForPeerReadiness: () => networkBattleBarrier.waitForPeerReadiness(),
+    },
+    warm: {
+      getFx: requireFxRuntime,
+      terrain: () => battleWarm.warmBattleTerrainTiles({
+        game, world, yieldForBudget: createFrameBudgetYielder(16),
+      }),
+      wrecks: (bridge) => battleWarm.warmNetworkWrecks({
+        entities: bridge.entities.values(),
+        prebakeBurntSteps,
+        anisotropy: engineCtx.anisotropy ?? 4,
+        renderer,
+        scene,
+        camera,
+        warmRender,
+      }),
+      openingEffects: (fx) => battleWarm.warmNetworkOpeningEffects({
+        fx, post, renderer, scene, camera, shells: game.shells, warmRender,
+      }),
+      shotCards: (specIds) => hud.warmShotCards(specIds),
+      compile: () => (typeof renderer.compileAsync === 'function'
+        ? renderer.compileAsync(scene, camera)
+        : renderer.compile(scene, camera)),
+    },
+    presentation: {
+      resetRoundState: resetNetworkBattleState,
+      setGarageLighting: (active) => {
+        setGarageSpots(active);
+        setGarageSunTrim(active);
+      },
+      activate: (request) => networkBattleActivation.activate(request),
+      runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
+    },
+  }),
+});
+
 const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   lifecycle: battleEntryLifecycle,
   battleLoad,
@@ -1954,7 +2052,7 @@ const networkBattleLauncher = createNetworkBattleLaunchRuntime({
   rosterRows: lobbyRosterRows,
   emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
   resetBattleState: resetNetworkBattleState,
-  presentBattle: presentNetworkBattle,
+  presentBattle: networkBattlePresentation.present,
   loadPrivateMatch: preloadPrivateMatchHandoffModule,
   loadDedicatedMatch: preloadDedicatedClientModule,
   disposePresentation: disposeNetworkPresentation,
@@ -2077,231 +2175,6 @@ const networkBattleActivation = createNetworkBattleActivationRuntime({
     stopShowroom: () => showroom.stop(),
   },
 });
-
-/** Shared renderer/presentation path for private, LAN, and dedicated matches. */
-async function presentNetworkBattle({
-  viewerId,
-  own,
-  mapId,
-  matchPlayers,
-  modeLabel,
-  connectMatch,
-  connectAfterWorld = false,
-  transitionShown = false,
-} = {}) {
-  await ensureBattleVisualStreamer();
-  // Direct presentation calls and every lobby handoff converge here. Calls
-  // from a user gesture unlock immediately; rematches reuse the live context.
-  audio.resume();
-  audio.loadingOn(true);
-  // Network entry builds/compiles the world before its later phase flip.
-  // Wake all battlefield shadow bands now so that cost stays under this
-  // already-visible roster loader rather than the first multiplayer frame.
-  lighting.setFarCascadeDormant(false);
-  const loadStartedAt = performance.now();
-  const loadTrace = { mode: modeLabel, map: mapId, stages: {} };
-  let loadMarkAt = loadStartedAt;
-  const markLoadStage = (name) => {
-    const now = performance.now();
-    loadTrace.stages[name] = Math.round(now - loadMarkAt);
-    loadMarkAt = now;
-  };
-  if (typeof window !== 'undefined') window.__NETWORK_LOAD = loadTrace;
-  // A network bridge is mounted over reusable global game state. Retire the
-  // previous verdict before any snapshot/reveal work; otherwise a rematch
-  // enters its first battle frame with the old result and immediately opens
-  // the previous victory/defeat flow again.
-  resetNetworkBattleState();
-  // AUTO paint must resolve against the authoritative map before any roster
-  // texture variant is prewarmed or built.
-  setCamoBiome(mapId);
-  const spectator = own.team === 'spectator';
-  const displayTeam = spectator ? 'alpha' : own.team;
-  if (!transitionShown) {
-    const pendingCfg = getMapConfig(mapId);
-    bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
-    battleLoad.show({
-      mapName: pendingCfg.name || 'Battle',
-      thumb: MAP_THUMBS[mapId] || '',
-      biome: mapId,
-      mode: modeLabel,
-      allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
-      enemies: lobbyRosterRows({ players: matchPlayers },
-        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    });
-  } else {
-    battleLoad.rosters(
-      lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
-      lobbyRosterRows({ players: matchPlayers },
-        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    );
-  }
-  battleLoad.progress(0.02, 'Securing match channel');
-  await nextFrame();
-  // Battlefield construction is independent from transport/HUD/killcam
-  // transfer. The previous serial await made cold invitees pay both costs in
-  // full, which was especially visible for friends opening the game for the
-  // first time. The typed acquisition owner runs both under this opaque
-  // loader, preserves the host's world-collision dependency, and retains
-  // individual timings for production diagnosis.
-  battleLoad.progress(0.08, 'Loading battlefield');
-  const { modules: networkModules } = await battleEntryAcquisition.acquireNetwork({
-    loadModules: () => Promise.all([
-      preloadNetworkBattleModules(),
-      preloadBattleClientRuntime(),
-      ensureBattleHud(),
-      ensureTouchControls(),
-      // Scope armor is presentation-only. Acquire it under the opaque network
-      // loader, but do not strand a whole room if this optional chunk is the
-      // one request a cold browser loses; its access owner remains fail-soft
-      // and the next intent/round retries the transfer.
-      armorAimOverlay.preload().catch((error) => {
-        console.warn('[loading] Optional armor overlay unavailable:', error);
-        return null;
-      }),
-      ensureFxRuntime(),
-      ensureKillcamRuntime(),
-      battleWarm.preload(),
-      audio.warmBattleEvents(),
-    ]).then(([modules]) => modules),
-    loadWorld: () => ensureWorld(mapId, (fraction, label) => {
-      battleLoad.progress(0.08 + fraction * 0.48, label);
-    }),
-    connect: connectMatch,
-    connectAfterWorld,
-    publishMatch: (match) => { networkMatch = match; },
-    timings: loadTrace,
-  });
-  const [
-    { createBrowserBattleBridge },
-    { createNetworkStatus },
-    { createBrowserInputRuntime },
-  ] = networkModules;
-  const fx = requireFxRuntime();
-  networkFramePump.ensureInputRuntime(createBrowserInputRuntime);
-  markLoadStage('modulesWorldAndConnect');
-  networkStatus = createNetworkStatus();
-  networkRecovery.attach(networkMatch?.client || null, networkStatus);
-  const cfg = getMapConfig(mapId);
-  battleLoad.show({
-    mapName: cfg.name || mapId,
-    thumb: MAP_THUMBS[mapId] || '',
-    biome: mapId,
-    mode: modeLabel,
-    allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
-    enemies: lobbyRosterRows({ players: matchPlayers },
-      displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-  });
-  // Keep the bridge private until every roster builder is ready. The render
-  // loop starts pumping the connected match immediately; publishing a
-  // half-prepared bridge let an early authoritative snapshot synchronously
-  // create an unwarmed bot and throw on every frame of a cold session.
-  const preparedBridge = createBrowserBattleBridge({
-    engineCtx,
-    game,
-    bus,
-    viewerId,
-    spectator,
-    worldCollision: world,
-  });
-  try {
-    await preparedBridge.prepareRoster(matchPlayers, (fraction, specId) => {
-      battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
-    });
-  } catch (error) {
-    preparedBridge.dispose();
-    throw error;
-  }
-  markLoadStage('roster');
-  // Install terrain sampling before the bridge performs its one hidden
-  // authority-pose sync. Remote tracks and suspension must be conformed at
-  // the spawn pose before any visual is eligible to become visible.
-  for (const entity of preparedBridge.entities.values()) {
-    if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
-  }
-  battleLoad.progress(0.84, 'Synchronizing authority');
-  let initial;
-  try {
-    initial = await networkBattleBarrier.waitForInitialSnapshot({ viewerId, spectator });
-  } catch (error) {
-    preparedBridge.dispose();
-    throw error;
-  }
-  markLoadStage('initialSnapshot');
-  networkBridge = preparedBridge;
-  networkBridge.apply(initial, 1 / 60);
-  // Compile against the exact live battlefield light set. The garage spots
-  // alter Three's program cache key; leaving them enabled through wreck/FX
-  // warm made first blood link a second `cot:burnt` shader for every wreck.
-  // The opaque roster veil still owns the screen, so this handoff changes no
-  // presented frame and also removes unused garage lights from compile work.
-  setGarageSpots(false);
-  setGarageSunTrim(false);
-  battleLoad.progress(0.845, 'Warming suspension terrain');
-  await battleWarm.warmBattleTerrainTiles({
-    game, world, yieldForBudget: createFrameBudgetYielder(16),
-  });
-  markLoadStage('terrainGrid');
-  // Network rosters can contain vehicles the garage-idle solo warmer never
-  // touched. Bake every fielded wreck family while the opaque load screen
-  // owns the frame, otherwise first blood can synchronously build burn
-  // canvases/materials and freeze a constrained client for hundreds of ms.
-  battleLoad.progress(0.85, 'Priming wreck variants');
-  await battleWarm.warmNetworkWrecks({
-    entities: networkBridge.entities.values(),
-    prebakeBurntSteps,
-    anisotropy: engineCtx.anisotropy ?? 4,
-    renderer,
-    scene,
-    camera,
-    warmRender,
-  });
-  battleLoad.progress(0.87, 'Priming combat effects');
-  await battleWarm.warmNetworkOpeningEffects({
-    fx, post, renderer, scene, camera, shells: game.shells, warmRender,
-  });
-  markLoadStage('combatWarm');
-  hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
-  battleLoad.progress(0.88, 'Compiling combat shaders');
-  await nextFrame();
-  try {
-    if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(scene, camera);
-    else renderer.compile(scene, camera);
-  } catch (_) { /* warm only */ }
-  markLoadStage('compile');
-  battleLoad.progress(0.96, 'Waiting for every commander');
-  await networkBattleBarrier.waitForPeerReadiness();
-  markLoadStage('readyBarrier');
-
-  networkBattleActivation.activate({
-    viewerId,
-    own,
-    spectator,
-    mapId,
-    bridge: networkBridge,
-    fx,
-  });
-  // Validate the actual loaded battlefield before removing the opaque load
-  // screen. The garage boot watchdog cannot catch a map-specific poisoned
-  // environment/shadow program, and discovering it after reveal presents as
-  // a black multiplayer spawn. Any rescue/recompile work stays hidden here.
-  try {
-    const blackCheck = runSceneBlackWatchdog(renderer, scene, camera);
-    loadTrace.blackCheck = blackCheck;
-  } catch (error) {
-    loadTrace.blackCheck = { error: error?.message || String(error) };
-  }
-  // Keep every battle entry path phase-consistent and crossfade the loader
-  // machinery into the battlefield wind while the roster veil still covers.
-  audio.loadingOn(false);
-  audio.ambientOn(true);
-  battleLoad.progress(1, 'Ready');
-  // As in solo entry, perform the fresh-baseline resize while still covered.
-  post.setAdaptiveSuspended(false);
-  await battleLoad.hide();
-  markLoadStage('reveal');
-  loadTrace.totalMs = Math.round(performance.now() - loadStartedAt);
-}
 
 /**
  * Keep bot play on the original in-page simulation path. Multiplayer's

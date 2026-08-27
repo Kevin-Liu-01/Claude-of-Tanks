@@ -76,6 +76,14 @@ class FakeSignaling {
   emit(message) { for (const listener of [...this.listeners]) listener(message); }
 }
 
+async function waitUntil(predicate, timeoutMs = 500) {
+  const deadline = performance.now() + timeoutMs;
+  while (!predicate()) {
+    if (performance.now() >= deadline) throw new Error('timed out waiting for test condition');
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+}
+
 // A first-visit browser can lose its opening RTC generation while signaling,
 // modules, or TURN credentials are still warming. The replacement generation
 // must resolve the original public ready promise instead of connecting behind
@@ -90,10 +98,11 @@ class FakeSignaling {
       peers: [{ peerId: 'host', player: { name: 'Host' }, sessionId: 'host_epoch_1' }],
     },
     RTCPeerConnectionImpl: RecoveringClientPeerConnection,
-    connectTimeoutMs: 5,
+    connectTimeoutMs: 20,
     initialRebuildDelaysMs: [0],
   });
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  const firstPeer = session.peer;
+  await waitUntil(() => session.peer !== firstPeer);
   assert.equal(RecoveringClientPeerConnection.instances.length, 2,
     'a timed-out cold generation creates one fresh RTC peer');
   const nextControl = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);

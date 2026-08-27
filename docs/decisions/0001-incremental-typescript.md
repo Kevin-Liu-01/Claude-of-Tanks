@@ -63,6 +63,14 @@ transition: exact roster/world acquisition, battle-only interface and FX
 preparation, visual upload, deployment warm, reveal fallback, countdown, and
 timing receipts. The composition root supplies ports instead of retaining that
 order-sensitive policy inline.
+`src/net/networkBattlePresentationRuntime.ts` owns the corresponding private,
+LAN, and dedicated presentation transition. It keeps partial bridges private,
+orders first authority and all-peer readiness, and exposes one `present()`
+operation while the composition root supplies concrete renderer and transport
+adapters.
+`src/net/networkBattlePresentationAccess.ts` keeps that deep owner out of
+Garage and solo startup until network-mode intent, while retaining retryable
+chunk acquisition after a transient first-visit failure.
 
 ## Consequences
 

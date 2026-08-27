@@ -16,6 +16,12 @@ const studioAccess = fs.readFileSync(path.join(here, 'studioAccess.ts'), 'utf8')
 const networkLaunch = fs.readFileSync(
   path.join(here, '..', 'net', 'networkBattleLaunchRuntime.ts'), 'utf8',
 );
+const networkPresentationAccess = fs.readFileSync(
+  path.join(here, '..', 'net', 'networkBattlePresentationAccess.ts'), 'utf8',
+);
+const networkPresentation = fs.readFileSync(
+  path.join(here, '..', 'net', 'networkBattlePresentationRuntime.ts'), 'utf8',
+);
 
 const neighborWarm = pedestalPreloader.slice(
   pedestalPreloader.indexOf('const queueNeighbors = () =>'),
@@ -55,19 +61,28 @@ assert.match(main, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,100
   'joined rooms should transfer the actual roster families');
 assert.match(main, /prefetchWorld\(mapId\);/,
   'fixed host maps should use the quiet background world path');
-const networkBattle = main.slice(
-  main.indexOf('async function presentNetworkBattle('),
-  main.indexOf('async function beginSoloBattle('),
-);
-assert.match(networkBattle,
-  /battleEntryAcquisition\.acquireNetwork\(\{[\s\S]{0,400}loadModules:[\s\S]{0,200}preloadNetworkBattleModules\(\)/,
+assert.match(main, /createNetworkBattlePresentationAccess\(\{/,
+  'main should compose one intent-loaded network presentation owner');
+assert.doesNotMatch(main, /async function presentNetworkBattle\(/,
+  'the cold network lifecycle must not return to the composition root');
+assert.match(networkPresentationAccess,
+  /load = \(\) => import\('\.\/networkBattlePresentationRuntime\.ts'\)/,
+  'Garage boot must not evaluate the multiplayer-only presentation runtime');
+assert.match(main,
+  /function preloadPlayMode\(mode\)[\s\S]{0,600}mode !== 'solo'\) networkBattlePresentation\.preload\(\)/,
+  'network mode intent should transfer the presentation runtime before entry');
+assert.match(main,
+  /function preloadNetworkLobbyIntent\(state\)[\s\S]{0,180}networkBattlePresentation\.preload\(\)/,
+  'a joined waiting room should keep the presentation runtime warm');
+assert.match(networkPresentation,
+  /entry\.acquire\(\{[\s\S]{0,180}loadModules: entry\.loadModules/,
   'network entry should delegate the intent-preloaded module join');
-assert.match(networkBattle,
-  /loadWorld:[\s\S]{0,180}ensureWorld\(mapId[\s\S]{0,300}connect: connectMatch/,
+assert.match(networkPresentation,
+  /loadWorld:[\s\S]{0,180}entry\.loadWorld\(mapId[\s\S]{0,300}connect: connectMatch/,
   'network entry should delegate modules, battlefield construction, and connection setup');
 assert.match(networkLaunch, /connectAfterWorld: role === 'host'/,
   'browser authority must wait for world collision while cold clients connect concurrently');
-assert.match(networkBattle,
+assert.match(main,
   /Promise\.all\(\[[\s\S]{0,500}armorAimOverlay\.preload\(\)\.catch/,
   'network entry must acquire the optional armor overlay under its loading veil');
 assert.match(networkLaunch, /await loadPrivateMatch\(\)/,

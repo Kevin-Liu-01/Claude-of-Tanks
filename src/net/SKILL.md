@@ -35,6 +35,12 @@ play without importing Three.js rendering or DOM state.
   presentation, selection commands, readiness, and rematch admission.
 - `networkBattleLaunchRuntime.ts` owns private/LAN, retained-room rematch, and
   ranked launch policy, including cold-loader presentation and terminal cleanup.
+- `networkBattlePresentationRuntime.ts` owns the shared cold-client path from
+  opaque loader through parallel module/world/transport acquisition, hidden
+  roster preparation, initial authority, warmup, all-peer readiness, atomic
+  activation, black-frame validation, and reveal.
+- `networkBattlePresentationAccess.ts` keeps that deep multiplayer-only owner
+  out of Garage/solo boot and retries failed intent transfers.
 - `networkBattleActivationRuntime.ts` owns the atomic post-readiness transfer
   into live player or spectator presentation: world/HUD/FX/result reset, phase
   publication, camera ownership, and Garage shutdown.
@@ -69,6 +75,9 @@ play without importing Three.js rendering or DOM state.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
 - Network activation must remain one operation after the peer-ready barrier;
   do not publish battle phase or camera state piecemeal from `main.js`.
+- A bridge must remain private until its exact roster and viewer-bearing first
+  snapshot are ready. Keep that order in `networkBattlePresentationRuntime.ts`;
+  failed unpublished bridges are disposed before the launcher handles cleanup.
 - Tests exercise the public host/client interface, not private internals.
 
 ## Verification
