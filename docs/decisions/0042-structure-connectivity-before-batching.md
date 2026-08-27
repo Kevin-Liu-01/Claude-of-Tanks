@@ -22,6 +22,15 @@ unmerged part bounds and a physical ground plane before producing their single
 instanced geometry. The build fails when any intact part is outside the
 connection tolerance.
 
+`src/world/structureConnectivity.ts` is the shared strict TypeScript gate. Its
+fleet-style census constructs all 38 heavyweight and site-building families
+with two deterministic variants before release. The pass also corrected four
+concrete authoring defects: granary treads gained grounded risers, courtyard
+wells gained a real bucket rope, and rail gantries gained both tower cap beams
+and cabin hangers. Exterior profiles now carry bounded, connected signatures:
+framed entrances plus shutters, balconies, service ladders, roof equipment, or
+adobe buttresses as appropriate to the building family.
+
 The merged lightweight geometry retains a compact connectivity receipt for
 tests and audits. Broken-state wreckage is exempt because detached collapsed
 panels and debris are intentional after destruction.
@@ -35,11 +44,16 @@ panels and debris are intentional after destruction.
   per-frame scene nodes, traversal, material, or draw-call cost.
 - Material merging, intact/broken instancing, collision capture, and rematch
   reset behavior remain unchanged.
+- Small ground clutter may opt out of cascaded-shadow submissions, but complete
+  structures, walls, fences, cover, and toppling actors retain their shadows.
+  The policy changes renderer work only; it never removes visible geometry.
 
 ## Verification
 
     node src/world/structureKit.selftest.mjs
+    node src/world/structureConnectivity.selftest.mjs
     node src/world/exteriorDetailKit.selftest.mjs
+    node src/world/destructibleRenderPolicy.selftest.mjs
     npm run qa:maps -- --gate
     npm test
     npm run build

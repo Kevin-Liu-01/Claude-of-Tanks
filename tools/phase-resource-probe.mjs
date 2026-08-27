@@ -35,6 +35,14 @@ const viewport = {
   height: Math.max(360, Number(option('height', '577')) || 577),
   deviceScaleFactor: Math.max(1, Number(option('dpr', '1')) || 1),
 };
+// Pin one mixed modern 7v7 lineup so heap and renderer residency are directly
+// comparable across commits. A random roster made geometry/program counts
+// swing enough to hide real regressions behind vehicle-selection variance.
+const RESOURCE_PLAYER = 'm1a1';
+const RESOURCE_ROSTER = Object.freeze([
+  'fv510_milan', 'bwp1', 'amx40', 'strv103a', 't80b', 't80bv', 'type90',
+  'm60a2', 'type90a', 'm1a1ha', 'carro45t', 'ztz85_iii', 'm2a2_bradley',
+]);
 
 // Release ceilings around the measured production baseline. CPU limits retain
 // host-noise margin; deterministic renderer/heap limits intentionally fail a
@@ -46,7 +54,14 @@ const RESOURCE_BUDGETS = Object.freeze({
     objects: 900,
     programs: 92,
     geometries: 300,
-    textures: 85,
+    // Two parked-vehicle BatchedMeshes replace twelve color submissions. Their
+    // four tiny matrix/indirection DataTextures are renderer internals, not
+    // visible content, so content residency is gated separately below.
+    textures: 89,
+    sceneGeometries: 450,
+    sceneMaterials: 180,
+    sceneTextures: 72,
+    sceneTexturePixels: 12_000_000,
     calls: 525,
     triangles: 240_000,
   }),
@@ -55,8 +70,12 @@ const RESOURCE_BUDGETS = Object.freeze({
     heapMB: 280,
     objects: 1250,
     programs: 235,
-    geometries: 720,
-    textures: 320,
+    geometries: 725,
+    textures: 324,
+    sceneGeometries: 650,
+    sceneMaterials: 220,
+    sceneTextures: 120,
+    sceneTexturePixels: 27_000_000,
     // Dynamic explosions and decals move the exact sampled frame by several
     // submissions; 700 still fails a sustained scene-complexity regression.
     calls: 680,
@@ -68,7 +87,11 @@ const RESOURCE_BUDGETS = Object.freeze({
     objects: 1000,
     programs: 265,
     geometries: 510,
-    textures: 165,
+    textures: 166,
+    sceneGeometries: 475,
+    sceneMaterials: 200,
+    sceneTextures: 82,
+    sceneTexturePixels: 15_000_000,
     calls: 525,
     triangles: 240_000,
   }),
@@ -282,6 +305,14 @@ const sampleResources = () => page.evaluate(() => {
   }
   return {
     phase: debug.game.phase,
+    roster: (debug.game?.tanks || []).map((entity) => ({
+      specId: entity.specId,
+      team: entity.team,
+      isPlayer: !!entity.isPlayer,
+      visual: !!entity.visual,
+      textureQuality: entity.visual?.root?.userData?.textureQuality || null,
+      geometryQuality: entity.visual?.root?.userData?.geometryQuality || null,
+    })),
     objects,
     visibleObjects,
     meshes,
@@ -435,6 +466,13 @@ const evaluateBudgets = (phases) => {
       idle?.resources.renderer[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.garageIdle[resource]}`);
   }
+  for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
+    'sceneTexturePixels']) {
+    check(`garage idle visible ${resource}`,
+      idle?.resources[resource] <= RESOURCE_BUDGETS.garageIdle[resource],
+      idle?.resources[resource] ?? null,
+      `<= ${RESOURCE_BUDGETS.garageIdle[resource]}`);
+  }
   for (const workload of ['calls', 'triangles']) {
     check(`garage idle complete-frame ${workload}`,
       idle?.resources.renderer[workload] <= RESOURCE_BUDGETS.garageIdle[workload],
@@ -468,6 +506,11 @@ const evaluateBudgets = (phases) => {
   check('active battle scene objects',
     battle?.resources.objects <= RESOURCE_BUDGETS.battleActive.objects,
     battle?.resources.objects ?? null, `<= ${RESOURCE_BUDGETS.battleActive.objects}`);
+  check('active battle resource roster is pinned and complete',
+    battle?.resources.roster?.length === 14
+      && battle.resources.roster.every((entity) => entity.visual),
+    battle?.resources.roster || null,
+    '14 visualized actors in the pinned production roster');
   check('active battle detaches Garage roots',
     battle?.resources.caches.phaseSceneResidency?.garageMounted === false
       && battle?.resources.caches.phaseSceneResidency?.worldMounted === true,
@@ -477,6 +520,13 @@ const evaluateBudgets = (phases) => {
     check(`active battle renderer ${resource}`,
       battle?.resources.renderer[resource] <= RESOURCE_BUDGETS.battleActive[resource],
       battle?.resources.renderer[resource] ?? null,
+      `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
+  }
+  for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
+    'sceneTexturePixels']) {
+    check(`active battle visible ${resource}`,
+      battle?.resources[resource] <= RESOURCE_BUDGETS.battleActive[resource],
+      battle?.resources[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.battleActive[resource]}`);
   }
   for (const workload of ['calls', 'triangles']) {
@@ -510,6 +560,13 @@ const evaluateBudgets = (phases) => {
     check(`returned Garage renderer ${resource}`,
       returned?.resources.renderer[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
       returned?.resources.renderer[resource] ?? null,
+      `<= ${RESOURCE_BUDGETS.garageReturned[resource]}`);
+  }
+  for (const resource of ['sceneGeometries', 'sceneMaterials', 'sceneTextures',
+    'sceneTexturePixels']) {
+    check(`returned Garage visible ${resource}`,
+      returned?.resources[resource] <= RESOURCE_BUDGETS.garageReturned[resource],
+      returned?.resources[resource] ?? null,
       `<= ${RESOURCE_BUDGETS.garageReturned[resource]}`);
   }
   for (const workload of ['calls', 'triangles']) {
@@ -601,16 +658,21 @@ try {
   await sleep(garageSettleSeconds * 1000);
   const garageIdle = await measurePhase('garage-idle');
 
-  await page.evaluate(async () => {
+  await page.evaluate(async ({ player, roster }) => {
     const debug = window.__DEBUG;
+    debug.flags.forceRoster = roster;
     await debug.beginSoloBattle({
-      specId: debug.selectedSpecId,
+      specId: player,
       mapId: 'verdant',
       randomRoster: true,
     });
-  });
+  }, { player: RESOURCE_PLAYER, roster: RESOURCE_ROSTER });
   await page.waitForFunction(
     'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
+    { timeout: 180_000 },
+  );
+  await page.waitForFunction(
+    'window.__DEBUG.game.tanks.every((entity) => entity.visual)',
     { timeout: 180_000 },
   );
   await sleep(1000);

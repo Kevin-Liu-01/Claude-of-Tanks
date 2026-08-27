@@ -8,6 +8,7 @@ import { SimplexNoise } from '../engine/simplexFast.js';
 import { applyTone } from './terrain.js';
 import { getDeviceTier } from '../engine/quality.js';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import { applySourcedBuildings } from './sourcedTextures.js';
 import { URBAN_BUILDERS } from './maps/urbanKit.js';
 import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
@@ -4130,7 +4131,8 @@ ${snowCap ? `
       const tint = new THREE.Color(0.52, 0.50, 0.47);
       for (let i = 0; i < pool.mats4.length; i++) imI.setColorAt(i, tint);
     }
-    imI.castShadow = true;
+    const castsDynamicShadow = destructibleCastsShadow(meta);
+    imI.castShadow = castsDynamicShadow;
     imI.receiveShadow = true;
     imI.matrixAutoUpdate = false;
     if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
@@ -4143,7 +4145,7 @@ ${snowCap ? `
       const imB = new THREE.InstancedMesh(geoB, mat, pool.mats4.length);
       imB.count = 0;
       imB.visible = false;
-      imB.castShadow = true;
+      imB.castShadow = castsDynamicShadow;
       imB.receiveShadow = true;
       imB.matrixAutoUpdate = false;
       imB.frustumCulled = false; // slots appended over the battle

@@ -54,6 +54,12 @@ const _c = new THREE.Color();
 // return rollers and end-wheel fasteners that disappear under the charred
 // track band at gameplay scale.
 const WRECK_FINE_GEAR = /^(?:gearRoadWheel.*(?:Inset|Ring|Rim|Bowl|Hub|Dish|Recess)|gearReturnRoller|gearEndWheelHardware)/;
+// At the closest authored wreck framing (~16 m), a 45 cm object projects to
+// only a few pixels and its charred material has almost no internal contrast.
+// Keep silhouette-bearing fittings, but do not bake smaller inspection parts
+// into a map-long static mesh. This threshold is deliberately below road
+// wheels, hatches, stowage boxes, guns and ERA blocks.
+const WRECK_MIN_PART_DIAGONAL_M = 0.45;
 
 /** true when o and every ancestor up to (incl.) root renders */
 function chainVisible(o, root) {
@@ -83,7 +89,13 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
   try {
     visual = createTank(specId, engineCtx, {
       camoSeed: 4000 + (seed % 997),
-      quality: 'low',          // texture tier only — silhouette stays hero
+      quality: 'low',
+      // Battlefield hulks are read by their hull/turret/track silhouette, not
+      // inspection-scale fasteners. Use the same authored low-geometry branch
+      // as distant live combatants before baking the pose. This preserves the
+      // exact vehicle proportions and wreck choreography while avoiding a
+      // permanent hero-mesh tax on every frame of the match.
+      geometryQuality: 'low',
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
     });
     // settled wreck pose through the factory's own machinery: ageS far past
@@ -139,7 +151,7 @@ export function bakeTankWreck(engineCtx, specId, opts = {}) {
       if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
       o.geometry.boundingBox.getSize(_sz);
       const diag = Math.hypot(_sz.x, _sz.y, _sz.z);
-      if (diag < 0.35) return;
+      if (diag < WRECK_MIN_PART_DIAGONAL_M) return;
       const g = o.geometry.clone()
         .applyMatrix4(new THREE.Matrix4().multiplyMatrices(rootInv, o.matrixWorld));
       geos.push(g);

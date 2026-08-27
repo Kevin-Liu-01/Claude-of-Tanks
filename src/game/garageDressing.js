@@ -43,7 +43,16 @@ const BAY_A_SPEC = 't90a_burlak';
 const BAY_B_SPEC = 'm1a2';
 const SALVAGE_TURRET_SPEC = 't90m';
 const SALVAGE_HULL_SPEC = 'k2';
-const BAY_TANK_OPTS = { quality: 'ai', proceduralOnly: true };
+// Repair-bay residents are immobile for the lifetime of the Garage. Preserve
+// their full authored geometry, but collapse same-material fittings inside
+// each parked vehicle. Salvage exhibits override batching because their named
+// component subtrees remain independently staged and rearranged below.
+const BAY_TANK_OPTS = {
+  quality: 'ai', geometryQuality: 'high', batchStatic: true, proceduralOnly: true,
+};
+const SALVAGE_TANK_OPTS = {
+  quality: 'ai', geometryQuality: 'high', batchStatic: false, proceduralOnly: true,
+};
 const MODERN_COMPONENT_SOURCES = Object.freeze([
   BAY_A_SPEC, BAY_B_SPEC, SALVAGE_TURRET_SPEC, SALVAGE_HULL_SPEC,
 ]);
@@ -901,7 +910,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   // ==========================================================================
   chunks.push(function buildT90mComponents() {
     const vis = createTank(SALVAGE_TURRET_SPEC, engineCtx, {
-      camoSeed: 906, ...BAY_TANK_OPTS,
+      camoSeed: 906, ...SALVAGE_TANK_OPTS,
     });
     tankVisuals.push(vis);
     const hull = vis.root.getObjectByName('rig_hull');
@@ -989,7 +998,7 @@ export function createGarageDressing(engineCtx, pos, existing = {}) {
   // ==========================================================================
   chunks.push(function buildK2Components() {
     const vis = createTank(SALVAGE_HULL_SPEC, engineCtx, {
-      camoSeed: 172, ...BAY_TANK_OPTS,
+      camoSeed: 172, ...SALVAGE_TANK_OPTS,
     });
     tankVisuals.push(vis);
     const hull = vis.root.getObjectByName('rig_hull');

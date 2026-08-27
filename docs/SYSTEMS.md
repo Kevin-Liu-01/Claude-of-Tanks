@@ -243,6 +243,12 @@ and generated merge buffers have an explicit disposal owner. Transparent or
 specialized meshes and authored fleet exhibits stay independent; authored
 proxy shadows and every visible surface remain intact.
 
+The two immobile repair-bay vehicles use the normal first-party high-geometry
+builders with static batching enabled. This collapses same-material fittings
+without changing their silhouettes, materials, or texture quality. Independently
+staged salvage turret and hull exhibits remain unbatched because their named
+component subtrees are part of the workshop choreography.
+
 `engine/phaseSceneResidency.ts` owns the mutually exclusive Garage and battle
 roots. It detaches the inactive phase from the scene graph without disposing
 it, removing hidden descendants from projection and matrix traversal while
@@ -481,6 +487,17 @@ world must describe matching obstacles and destructible identifiers.
 World instances may be cached between entries. Reset logic must clear
 match-specific destruction and visibility state without rebuilding immutable
 terrain unnecessarily.
+
+Buildings are authored as supported assemblies before batching. The strict
+`structureConnectivity.ts` gate proves every part reaches the ground through a
+touching chain, and the census constructs all 38 heavyweight/site families with
+two deterministic variants. Exterior depth reuses established PBR material
+buckets for framed entrances, window surrounds, shutters, balconies, ladders,
+roof equipment, awnings, and buttresses; the parts merge before upload rather
+than becoming per-frame scene nodes. Sixteen of the 28 additional structure
+families retain persistent intact/broken instanced pools. Complete structures,
+cover, walls, fences, and toppling actors cast dynamic shadows, while only small
+ground clutter is exempted from separate CSM submissions.
 
 Large baked sandbag and utility-pole streams have two representations with one
 owner. `props-models.json` is the attributed, reviewable authoring source.

@@ -23,6 +23,23 @@ for (const [profile, minimum] of [
   assert.equal(authored.length, receipt.added, `${profile}: every added geometry has a support receipt`);
   assert.equal(new Set(receipt.records.map(({ part }) => part)).size, receipt.records.length,
     `${profile}: fixture ids are unique within one building`);
+  assert.ok(receipt.records.some(({ part }) => part === 'entry-door'),
+    `${profile}: the shared facade pass includes a framed entrance`);
+  assert.ok(receipt.added <= 48,
+    `${profile}: exterior variety remains bounded before material merging`);
+  const partIds = new Set(receipt.records.map(({ part }) => part));
+  if (profile === 'rural' || profile === 'timber') {
+    assert.ok(partIds.has('shutter-head'), `${profile}: timber facade signature`);
+  } else if (profile === 'urban' || profile === 'civic') {
+    assert.ok(partIds.has('balcony-deck') && partIds.has('balcony-rail'),
+      `${profile}: connected balcony signature`);
+  } else if (profile === 'industrial') {
+    assert.ok(partIds.has('ladder-rail--1') && partIds.has('ladder-rung-0'),
+      `${profile}: connected service ladder signature`);
+  } else if (profile === 'desert') {
+    assert.ok(partIds.has('buttress--1') && partIds.has('buttress-1'),
+      `${profile}: grounded adobe buttress signature`);
+  }
 }
 
 const catalogParts = makeParts();

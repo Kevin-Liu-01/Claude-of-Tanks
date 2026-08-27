@@ -256,6 +256,11 @@ function courtyardWell(rng, buckets, x, z) {
   const bk = box(0.3, 0.3, 0.3, 1.2);
   bk.translate(x + 0.2, 1.35, z);
   buckets.dark.push(bk);
+  // The bucket hangs from an authored rope instead of levitating beneath the
+  // crossbar. This also keeps the complete well in one support chain.
+  const rope = box(0.035, 0.45, 0.035, 2.0);
+  rope.translate(x + 0.2, 1.575, z);
+  buckets.dark.push(rope);
 }
 
 // scattered courtyard living clutter: crates, clay pots, sacks, a rug

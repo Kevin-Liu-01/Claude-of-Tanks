@@ -157,6 +157,11 @@ export function makeGantry(rng, buckets) {
     const foot = box(1.4, 0.5, 4.6, 0.8);
     foot.translate(lx, 0.22, 0);
     buckets.stone.push(jitterUV(foot, rng));
+    // Cap beam joins both A-frame legs to the central bridge. Previously the
+    // girder visually hovered between the two z-offset towers.
+    const cap = box(0.62, 0.42, 4.0, 0.8);
+    cap.translate(lx, legH + 0.14, 0);
+    mk(cap);
   }
   // bridge girder + rail, overhanging one side
   const gird = box(span + 4.5, girderH, 1.5, 0.7);
@@ -181,6 +186,12 @@ export function makeGantry(rng, buckets) {
   const cab = box(1.6, 1.5, 1.6, 0.8);
   cab.translate(-span / 2 + 1.4, legH - 0.9, 1.3);
   mk(cab);
+  // Twin hangers physically seat the operator cabin under the girder.
+  for (const x of [-span / 2 + 0.95, -span / 2 + 1.85]) {
+    const hanger = box(0.12, 0.42, 0.12, 1.0);
+    hanger.translate(x, legH + 0.15, 0.62);
+    mk(hanger);
+  }
   if (buckets.glass) {
     const gl = box(1.4, 0.7, 0.06);
     gl.translate(-span / 2 + 1.4, legH - 0.65, 2.11);

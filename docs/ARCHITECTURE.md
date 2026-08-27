@@ -512,8 +512,17 @@ Exports locked in §2.7. Additional requirements:
   connected exterior fixtures merge into existing material buckets before GPU
   upload. Repeated destructible structures keep one intact and one broken
   `InstancedMesh` family, never one object/material per placement. Every
-  individual landmark part must be connected within the authoring tolerance;
-  the structure selftest owns that graph census.
+  individual landmark part must be connected within the authoring tolerance.
+  `structureConnectivity.ts` owns the typed support-graph invariant and the
+  structure selftests construct all 38 heavyweight/site builders with two
+  deterministic variants before release. The 28 additional structure families
+  retain 16 destructible families and their persistent broken-state pools.
+- `destructibleRenderPolicy.ts` is the single cascaded-shadow classifier for
+  destructible families. Buildings, cover, walls, fences, large silhouettes,
+  and toppling actors keep dynamic shadows. Sub-meter grounded clutter can rely
+  on direct lighting, GTAO, and received world shadows rather than multiplying
+  a tiny silhouette through every cascade. Visible geometry and collisions are
+  not changed by this policy.
 - Building PBR fallbacks carry color, normal, and one packed linear surface map
   (AO in red, roughness in green). CC0 sourced replacements mutate those same
   texture objects asynchronously. Renderer-owned ACES tone mapping, PMREM,

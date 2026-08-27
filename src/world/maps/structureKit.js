@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.js';
+import { certifyGroundedStructureParts } from '../structureConnectivity.ts';
 
 const _color = new THREE.Color();
 const _detailRng = () => 0.5;
@@ -90,15 +91,6 @@ function merge(parts) {
   return mergeGeometries(parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo)), false);
 }
 
-const STRUCTURE_CONNECTION_EPSILON = 0.12;
-
-function boundsGap(a, b) {
-  const dx = Math.max(0, b.min.x - a.max.x, a.min.x - b.max.x);
-  const dy = Math.max(0, b.min.y - a.max.y, a.min.y - b.max.y);
-  const dz = Math.max(0, b.min.z - a.max.z, a.min.z - b.max.z);
-  return Math.hypot(dx, dy, dz);
-}
-
 /**
  * Prove a lightweight building is one supported assembly before its authored
  * parts are flattened into a single instanced geometry. After merge there is
@@ -107,45 +99,9 @@ function boundsGap(a, b) {
  * at this boundary rather than in the renderer or destruction path.
  */
 function mergeConnectedStructure(id, parts) {
-  if (!parts.length) throw new Error(`${id}: structure has no authored parts`);
-  const bounds = parts.map((geo) => {
-    geo.computeBoundingBox();
-    return geo.boundingBox;
-  });
-  const footprint = bounds.reduce((all, boxBounds) => all.union(boxBounds.clone()), new THREE.Box3());
-  const ground = new THREE.Box3(
-    new THREE.Vector3(footprint.min.x, -0.14, footprint.min.z),
-    new THREE.Vector3(footprint.max.x, 0.10, footprint.max.z),
-  );
-  const connected = new Set();
-  const pending = [ground];
-  let groundSupported = 0;
-  let maxConnectionGap = 0;
-  while (pending.length) {
-    const current = pending.pop();
-    for (let candidate = 0; candidate < bounds.length; candidate++) {
-      if (connected.has(candidate)) continue;
-      const gap = boundsGap(current, bounds[candidate]);
-      if (gap > STRUCTURE_CONNECTION_EPSILON) continue;
-      maxConnectionGap = Math.max(maxConnectionGap, gap);
-      if (current === ground) groundSupported++;
-      connected.add(candidate);
-      pending.push(bounds[candidate]);
-    }
-  }
-  if (connected.size !== parts.length) {
-    const detached = parts.length - connected.size;
-    throw new Error(`${id}: ${detached} floating authored part${detached === 1 ? '' : 's'}`);
-  }
+  const connectivity = certifyGroundedStructureParts(id, parts);
   const geometry = merge(parts);
-  geometry.userData.structureConnectivity = {
-    id,
-    parts: parts.length,
-    connected: connected.size,
-    groundSupported,
-    maxConnectionGap,
-    epsilon: STRUCTURE_CONNECTION_EPSILON,
-  };
+  geometry.userData.structureConnectivity = connectivity;
   return geometry;
 }
 

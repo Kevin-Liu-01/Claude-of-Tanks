@@ -145,7 +145,16 @@ export function makeGranary(rng, buckets) {
   parts.dark.push(box(0.9, 1.3, 0.07).translate(0, y0 + 0.16 + 0.85, d / 2 + 0.03));
   parts.wood.push(box(1.0, 0.10, 0.14).translate(0, y0 + 0.16 + 1.58, d / 2 + 0.05));
   for (let k = 0; k < 4; k++) {
-    parts.wood.push(box(0.9, 0.09, 0.28).translate(0, 0.16 + k * 0.24, d / 2 + 1.05 - k * 0.26));
+    const treadY = 0.16 + k * 0.24;
+    const treadZ = d / 2 + 1.05 - k * 0.26;
+    parts.wood.push(box(0.9, 0.09, 0.28).translate(0, treadY, treadZ));
+    // Two real risers carry every tread to the ground. The old stair read as
+    // four disconnected planks hovering toward the loft door.
+    const riserH = treadY - 0.045;
+    for (const side of [-1, 1]) {
+      parts.wood.push(box(0.10, riserH, 0.18)
+        .translate(side * 0.34, riserH / 2, treadZ));
+    }
   }
   pushParts(buckets, parts);
   return { w: w + 0.4, d: d + 1.6, h: raise + wallH + roofH };

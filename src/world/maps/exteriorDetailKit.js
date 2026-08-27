@@ -157,6 +157,121 @@ function addSupportedAwning(author, w, d, wallH, material) {
   }
 }
 
+function addEntryAssembly(author, w, d, wallH, profile, variant) {
+  const industrial = profile === 'industrial';
+  const timber = profile === 'timber' || profile === 'rural';
+  const doorW = industrial ? Math.min(2.4, w * 0.28) : Math.min(1.35, w * 0.18);
+  const doorH = Math.min(industrial ? 2.75 : 2.25, wallH * 0.72);
+  const lane = (variant % 3) - 1;
+  const x = THREE.MathUtils.clamp(lane * w * 0.19, -w * 0.28, w * 0.28);
+  const z = d / 2 + 0.055;
+  const frameMaterial = timber ? 'wood' : 'stone';
+  author.add('entry-threshold', frameMaterial,
+    box(doorW + 0.40, 0.12, 0.42).translate(x, 0.06, d / 2 + 0.14), 'ground');
+  author.add('entry-door', timber ? 'wood' : 'dark',
+    box(doorW, doorH, 0.10).translate(x, doorH / 2 + 0.08, z));
+  for (const side of [-1, 1]) {
+    author.add(`entry-jamb-${side}`, frameMaterial,
+      box(0.14, doorH + 0.24, 0.14)
+        .translate(x + side * (doorW / 2 + 0.07), doorH / 2 + 0.08, z + 0.015));
+  }
+  author.add('entry-lintel', frameMaterial,
+    box(doorW + 0.42, 0.16, 0.16).translate(x, doorH + 0.20, z + 0.02));
+
+  // Alternate variants gain a shallow supported rain hood. Its rear edge is
+  // embedded in the facade and both braces terminate at the wall.
+  if (variant % 2 === 0) {
+    const hood = box(doorW + 0.75, 0.10, 0.95);
+    hood.rotateX(-0.10);
+    author.add('entry-hood', profile === 'desert' ? 'wood' : 'roof',
+      hood.translate(x, doorH + 0.52, d / 2 + 0.40));
+    for (const side of [-1, 1]) {
+      const brace = box(0.09, 0.09, 0.74);
+      brace.rotateX(-0.58);
+      author.add(`entry-hood-brace-${side}`, 'dark',
+        brace.translate(x + side * doorW * 0.40, doorH + 0.28, d / 2 + 0.23));
+    }
+  }
+}
+
+function addProfileSignature(author, w, d, wallH, profile, variant) {
+  const frontZ = d / 2 + 0.06;
+  if (profile === 'rural' || profile === 'timber') {
+    // Asymmetric shutter groups break the repeated blank-house silhouette.
+    const y = Math.min(2.15, wallH * 0.58);
+    const centerX = variant % 2 === 0 ? -w * 0.23 : w * 0.23;
+    for (const side of [-1, 1]) {
+      author.add(`shutter-${side}`, 'wood',
+        box(Math.min(0.36, w * 0.055), 1.12, 0.11)
+          .translate(centerX + side * Math.min(0.56, w * 0.085), y, frontZ));
+    }
+    author.add('shutter-head', 'wood',
+      box(Math.min(1.5, w * 0.22), 0.10, 0.13)
+        .translate(centerX, y + 0.62, frontZ + 0.01));
+    return;
+  }
+
+  if (profile === 'urban' || profile === 'civic') {
+    // A shallow balcony is carried by its wall-embedded deck; railings are
+    // registered against that deck so no bar can survive as a floating part.
+    const deckY = Math.min(wallH - 0.85, profile === 'civic' ? 3.45 : 3.05);
+    const deckW = Math.min(w * (variant % 2 === 0 ? 0.56 : 0.42), 5.8);
+    author.add('balcony-deck', 'stone',
+      box(deckW, 0.13, 0.88).translate(0, deckY, d / 2 + 0.40));
+    const postXs = [-deckW / 2 + 0.12, 0, deckW / 2 - 0.12];
+    for (let index = 0; index < postXs.length; index++) {
+      author.add(`balcony-post-${index}`, 'dark',
+        box(0.08, 0.78, 0.08)
+          .translate(postXs[index], deckY + 0.45, d / 2 + 0.78), 'balcony-deck');
+    }
+    author.add('balcony-rail', 'dark',
+      box(deckW, 0.08, 0.08).translate(0, deckY + 0.82, d / 2 + 0.78),
+      'balcony-post-0');
+    return;
+  }
+
+  if (profile === 'industrial') {
+    // External service ladder: two facade-seated rails and bounded rungs.
+    const x = w / 2 + 0.055;
+    const z = (variant % 3 - 1) * d * 0.18;
+    const ladderH = Math.max(1.8, wallH * 0.78);
+    for (const side of [-1, 1]) {
+      author.add(`ladder-rail-${side}`, 'dark',
+        cylinder(0.045, ladderH, 7)
+          .translate(x, ladderH / 2 + 0.16, z + side * 0.42));
+    }
+    const rungCount = Math.max(4, Math.min(8, Math.round(ladderH / 0.48)));
+    for (let index = 0; index < rungCount; index++) {
+      author.add(`ladder-rung-${index}`, 'dark',
+        box(0.12, 0.055, 0.84)
+          .translate(x + 0.025, 0.34 + index * (ladderH - 0.36) / (rungCount - 1), z),
+        'ladder-rail--1');
+    }
+    return;
+  }
+
+  if (profile === 'desert') {
+    // Grounded facade buttresses add adobe depth without a new material or
+    // per-building object. They taper visually as stepped supported blocks.
+    for (const side of [-1, 1]) {
+      const x = side * w * (variant % 2 === 0 ? 0.34 : 0.26);
+      author.add(`buttress-${side}`, 'stone',
+        box(0.42, Math.min(1.55, wallH * 0.46), 0.72)
+          .translate(x, Math.min(0.775, wallH * 0.23), d / 2 + 0.27), 'ground');
+    }
+  }
+}
+
+function addRoofService(author, w, d, wallH, profile, variant) {
+  if (!['urban', 'civic', 'industrial'].includes(profile)) return;
+  const x = (variant % 2 === 0 ? -1 : 1) * Math.min(w * 0.24, 2.1);
+  const z = (variant % 3 - 1) * Math.min(d * 0.16, 1.8);
+  author.add('roof-service-base', profile === 'industrial' ? 'dark' : 'stone',
+    box(0.54, 0.34, 0.54).translate(x, wallH + 0.17, z));
+  author.add('roof-service-cap', 'dark',
+    cylinder(0.24, 0.28, 8).translate(x, wallH + 0.48, z), 'roof-service-base');
+}
+
 /**
  * Add a bounded, zero-runtime-cost façade pass to an authored building.
  * Call this before the building's material buckets are merged.
@@ -170,6 +285,11 @@ export function addConnectedExterior(parts, {
   const author = detailAuthor(parts, { w, d, wallH, id, profile });
   const masonry = profile !== 'timber' && profile !== 'canvas';
   addCourses(author, w, d, wallH, masonry ? 'stone' : 'wood');
+  if (profile !== 'canvas' && profile !== 'open') {
+    addEntryAssembly(author, w, d, wallH, profile, variant);
+    addProfileSignature(author, w, d, wallH, profile, variant);
+    addRoofService(author, w, d, wallH, profile, variant);
+  }
 
   // Dense rowhouse strips already carry authored window reveals, dormers and
   // street furniture. Alternate the heavyweight corner/service package there

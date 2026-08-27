@@ -120,6 +120,9 @@ tank shadow proxies are exempt. Exact repeated meshes become instances; the
 remaining compatible, opaque, semantic-free workshop surfaces merge by material
 and render state in root-local space. The finalizer publishes exact batching,
 released-geometry, and before/after caster receipts to the phase-resource probe.
+A pair of full-geometry, immobile repair-bay vehicles also batches compatible
+same-material fittings inside its first-party builders. The separately posed
+salvage exhibits remain unbatched so their named component ownership is intact.
 A settled Garage paints only once per second; direct camera input, spring motion,
 and vehicle switching restore display-rate presentation immediately.
 
@@ -141,6 +144,13 @@ broken), and settled instances require no per-frame transform work. Normal and
 packed AO/roughness textures supply surface relief without turning brickwork or
 panels into high-density geometry.
 
+Destructible shadow submission is size- and role-aware. Complete buildings,
+cover, walls, fences, large silhouettes, and moving topple actors remain CSM
+casters. Sub-meter grounded clutter receives the same lighting, GTAO, and world
+shadows but does not submit a separate tiny silhouette into every cascade.
+This removes shadow-pass work without changing visible geometry, collision, or
+destruction state.
+
 The HUD reticle keeps its live CanvasTexture and caches the last complete paint
 signature. It repaints for aim, reload, shell, hit, fade, viewport, or mode
 changes, but a stable sight picture does not replay the same Canvas2D commands
@@ -155,12 +165,14 @@ Diagnostics remain dormant unless requested. F3 panels and traces must not
 become hidden always-on observers in production play.
 
 `npm run perf:resources:gate` is the non-FPS release contract. It measures
-browser task/script CPU, forced-GC heap, shader programs, geometries, textures,
-scene ownership, complete-frame draw calls/triangles, shadow masks, cache
-residency, Garage paint cadence, and animation-versus-idle clock cadence across
-initial Garage, live battle, and returned Garage. Its limits track the measured
-production baseline rather than
-serving as loose theoretical maxima.
+browser task/script CPU, forced-GC heap, shader programs, renderer-owned
+geometries/textures, visible scene geometries/materials/texture pixels, scene
+ownership, complete-frame draw calls/triangles, shadow masks, cache residency,
+Garage paint cadence, and animation-versus-idle clock cadence across initial
+Garage, live battle, and returned Garage. The probe pins one mixed modern 7v7
+roster and waits for all fourteen visuals, preventing random vehicle selection
+from hiding a resource regression. Its limits track the measured production
+baseline rather than serving as loose theoretical maxima.
 
 Combat warming has two ownership phases. The opaque loader builds the exact
 roster, presents one real deployment-camera frame, and prepares only opening
@@ -477,17 +489,19 @@ and post stack; it does not mistake the composer's final fullscreen triangle
 for the complete frame.
 
 At 1280×577 and DPR 1, the current exact production receipt holds initial and
-returned Garage CPU at 0.017/0.017 core-equivalent with one complete WebGL paint
-per second. The initial Garage occupies 64.5 MB forced-GC heap, 867 scene
-objects, 283 renderer geometries, 83 textures, and 508 complete-frame calls.
+returned Garage CPU at 0.017/0.016 core-equivalent with one complete WebGL paint
+per second. The initial Garage occupies 64.9 MB forced-GC heap, 849 scene
+objects, 277 renderer geometries, 87 renderer textures, and 496 complete-frame
+calls. Four of those textures are tiny `BatchedMesh` matrix/indirection data;
+the actual visible scene owns 70 textures totaling 11.13 million pixels.
 These are independent release limits: a high displayed FPS does not compensate
 for excess retained memory, scene traversal, or GPU object residency.
 
 The same probe attributes native shadow-map work separately from the forward
 and post stack and reports conservative scene-owner, texture-source, and
-shader-program residency. In the measured battle, native shadows accounted for
-about 267 calls and 1.31 million submitted triangles per complete frame;
-vegetation, props, and terrain were the largest color-scene geometry owners.
+shader-program residency. In the measured battle, the role-aware destructible
+policy reduced the comparable median shadow submission from 272 to 224 calls;
+vegetation, props, and terrain remain the largest color-scene geometry owners.
 This distinction prevents a lower final-pass counter or a high FPS result from
 hiding excess scene traversal, texture memory, program diversity, or shadow
 work.
@@ -513,12 +527,17 @@ burn-front, ember, and rematch visuals.
 After these measurements, the enforced heap, shader, geometry, texture,
 scene-cardinality, complete-frame call, and triangle ceilings were tightened
 around the healthy production envelope. The current battle gate fails above
-280 MB forced-GC heap, 1,250 active scene objects, 235 programs, 720 geometries,
-320 textures, 680 complete-frame calls, or 3.8 million triangle submissions.
+280 MB forced-GC heap, 1,250 active scene objects, 235 programs, 725 geometries,
+324 renderer textures, 650 visible geometries, 220 visible materials, 120
+visible textures, 27 million visible texture pixels, 680 complete-frame calls,
+or 3.8 million triangle submissions.
 Returned Garage has independent 205 MB, 1,000-object, 265-program,
-510-geometry, 165-texture, and 525-call limits so a high-FPS static screen
+510-geometry, 166-renderer-texture, 475-visible-geometry, 200-visible-material,
+82-visible-texture, 15-million-visible-pixel, and 525-call limits so a high-FPS static screen
 cannot hide leaked battle residency. Initial Garage independently fails above
-68 MB, 900 objects, 92 programs, 300 geometries, 85 textures, or 525 calls.
+68 MB, 900 objects, 92 programs, 300 geometries, 89 renderer textures, 450
+visible geometries, 180 visible materials, 72 visible textures, 12 million
+visible texture pixels, or 525 calls.
 
 ## Submission and world-data round — 2026-08-27
 
@@ -548,13 +567,27 @@ map chunk fell from about 1.51 MB / 279 KB gzip to 268 KB / 94 KB gzip. The
 of boxed parser values. Browsers without `DecompressionStream` demand-load the
 legacy JSON fallback rather than placing it on the common path.
 
-At 1280×577, DPR 1, production Chromium, the resulting phase receipt was:
+At 1280×577, DPR 1, production Chromium, the resulting pinned-roster phase
+receipt was:
 
-| Phase | Core equivalent | Forced-GC heap | Scene objects | Programs | Geometries | Textures | Calls |
+| Phase | Core equivalent | Forced-GC heap | Scene objects | Programs | Renderer geometries | Renderer textures | Calls |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Initial Garage | 0.017 | 64.5 MB | 867 | 90 | 283 | 83 | 508 |
-| Active 14-tank battle | 0.322 | 275.4 MB | 1,116 | 220 | 692 | 316 | 650 |
-| Returned Garage | 0.017 | 192.2 MB | 903 | 253 | 490 | 158 | 509 |
+| Initial Garage | 0.017 | 64.9 MB | 849 | 92 | 277 | 87 | 496 |
+| Active 14-tank battle | 0.325 | 274.1 MB | 1,116 | 222 | 724 | 320 | 648 |
+| Returned Garage | 0.016 | 193.3 MB | 885 | 256 | 502 | 162 | 497 |
+
+The same frames contained 442/648/467 visible geometries, 174/214/193 visible
+materials, and 70/117/80 visible textures for initial Garage, battle, and
+returned Garage respectively. Their visible texture footprints were
+11.13/26.06/14.21 million pixels. Separating renderer internals from visible
+content keeps static batching data honest without weakening the content budget.
+
+Relative to the immediately preceding production baseline, static repair-bay
+batching removed 18 Garage objects, 6 renderer geometries, and 12 complete-frame
+draws while preserving all 237,341 submitted Garage triangles. The structure
+shadow policy removed roughly 48 median CSM submissions in the comparable
+battle without deleting a structure, destructible state, collider, or visible
+surface.
 
 A clean production Verdant run reached Garage-ready in 1.04 seconds, completed
 covered battle construction in 3.73 seconds, and reached controllable rollout
