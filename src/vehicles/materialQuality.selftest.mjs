@@ -46,6 +46,13 @@ const materialsSource = await readFile(new URL('./materials.js', import.meta.url
 assert.match(materialsSource,
   /await run\(bakeSharedCanvasesSteps\(entry, quality\)\);[\s\S]{0,900}const acquiredDuringBake = TEX_CACHE\.get\(key\);[\s\S]{0,700}finalizeEntryResize\(acquiredDuringBake\);[\s\S]{0,200}return;/,
   'chunked pre-bake must preserve a live cache entry acquired during a yielded painter pass');
+assert.match(materialsSource,
+  /const burnt = track\(setup\(new THREE\.MeshStandardMaterial\(\{[\s\S]{0,500}map: null,[\s\S]{0,500}emissiveMap: null,[\s\S]{0,500}const prepareBurnt = \(\) => \{[\s\S]{0,400}ensureBurntTextures\(shared, aniso\);/,
+  'Garage material construction must defer destroyed-only atlases until prepareBurnt');
+const factorySource = await readFile(new URL('./tankFactoryCore.js', import.meta.url), 'utf8');
+assert.match(factorySource,
+  /setDestroyed\(opts\) \{[\s\S]{0,350}mats\.prepareBurnt\?\.\(\);/,
+  'destruction remains self-contained when a caller bypasses battle warming');
 
 {
   const size = 19;

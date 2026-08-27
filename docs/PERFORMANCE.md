@@ -477,6 +477,22 @@ while the exact native-shadow receipt remained unchanged at 267 calls and
 1.31 million triangles. The optimization changes neither visible geometry nor
 shadow geometry.
 
+Destroyed-only char and ember atlases are also demand-owned. Constructing a
+live or showroom tank no longer bakes those canvases merely because its
+material vocabulary contains a wreck fallback. The covered battle warm still
+prepares and uploads the roster's exact destroyed variants before rollout;
+`setDestroyed()` prepares them synchronously only when a caller deliberately
+bypasses that warm owner. The production path retained eight fewer renderer
+textures in both active battle and returned Garage, with the same explosion,
+burn-front, ember, and rematch visuals.
+
+After these measurements, the enforced heap, shader, geometry, texture,
+complete-frame call, and triangle ceilings were tightened around the healthy
+production envelope. The battle gate now fails above 320 MB forced-GC heap,
+270 programs, 810 geometries, 340 textures, 750 complete-frame calls, or 4.1
+million triangle submissions. Returned Garage has independent limits so a
+high-FPS static screen cannot hide leaked battle residency.
+
 Passive Garage dwell must report zero resident worlds; desktop
 pedestal/world/rematch caches must stay within 4/2/2 respectively.
 

@@ -4791,12 +4791,25 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high',
   // rising streaks over the darkened pattern) instead of the r2 flat clay
   // color — plus a patchy ember emissiveMap that tankFactory pulses/cools
   // over the first ~20 s of the wreck (emissiveIntensity is animated there).
-  ensureBurntTextures(shared, aniso);
   const burnt = track(setup(new THREE.MeshStandardMaterial({
-    map: shared.burntTex, roughness: 0.94, metalness: 0.16, roughnessMap: roughTex,
+    // The destroyed maps are genuinely deferred. Every Garage visual used to
+    // allocate and retain a 1024² char atlas plus its ember atlas even though
+    // the material is never presented there. Battle warming still builds and
+    // uploads the exact same maps before rollout; prepareBurnt is also the
+    // synchronous correctness fallback if a diagnostic skips that warm.
+    map: null, roughness: 0.94, metalness: 0.16, roughnessMap: roughTex,
     normalMap: normalTex, normalScale: new THREE.Vector2(0.9, 0.9),
-    emissive: 0xff5a18, emissiveIntensity: 0.018, emissiveMap: shared.emberTex,
+    emissive: 0xff5a18, emissiveIntensity: 0.018, emissiveMap: null,
   })));
+  const prepareBurnt = () => {
+    ensureBurntTextures(shared, aniso);
+    if (burnt.map === shared.burntTex && burnt.emissiveMap === shared.emberTex) return;
+    burnt.map = shared.burntTex;
+    burnt.emissiveMap = shared.emberTex;
+    // USE_MAP and USE_EMISSIVEMAP are program defines. Force one relink when
+    // the deferred atlases first attach; the covered battle warm owns it.
+    burnt.needsUpdate = true;
+  };
   // effects_combat r3: lift the charred albedo floor ~1.3x (color multiplier
   // above white) so wrecks read as scorched steel rather than a silhouette
   // in overcast/shadowed framings.
@@ -4913,6 +4926,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     canvasCloth, wood, burnt,
     trackL, trackR, trackTexL, trackTexR,
     trackLinkM: 0.165 * 4, // meters of track per full texture repeat (4 links)
+    prepareBurnt,
     decal,
     dispose() {
       for (const rec of paintableRecs) shared.paintable.delete(rec);

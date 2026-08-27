@@ -7755,6 +7755,10 @@ export function createTank(specId, engineCtx, opts = {}) {
      */
     setDestroyed(opts) {
       if (destroyed) return;
+      // Battle warm normally prepares these exact maps behind the loading
+      // cover. Keep setDestroyed self-contained for screenshots, Studio, and
+      // any recovery path that intentionally bypasses the warm coordinator.
+      mats.prepareBurnt?.();
       // A distant live bot may have its cosmetic hierarchy detached from the
       // scene graph. Restore it before the one-time burn capture so a later
       // close killcam never reveals pristine fittings on a charred wreck.

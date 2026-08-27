@@ -31,6 +31,10 @@ and calibrates armor/module/crew coordinates to checked geometry receipts.
 Procedural low-polygon shadow hulls are presentation-invisible proxies: route
 them with `markShadowOnly()` rather than relying on `colorWrite: false`, which
 still incurs a forward submission in Three.js.
+Destroyed-only char and ember atlases must remain demand-owned. The battle warm
+pipeline prepares fielded variants before rollout, while `setDestroyed()` is
+the correctness fallback for Studio and diagnostic callers that skip warming;
+never restore eager wreck-map creation to ordinary vehicle construction.
 Camouflaged roof fittings, sights, launchers, stowage, and machine guns must use
 `P.addEquipment()` so they never expand armor hitboxes. Structural cupolas use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.
